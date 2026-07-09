@@ -1,0 +1,257 @@
+# Joint-space inner-loop (WBC slack-QP) + task-space admittance outer-loop config.
+#
+# Cascade: admittance outer loop emits a 6D Cartesian twist against the MEASURED
+# pose (encoder FK); the inner WBC QP turns it into absolute joint angles via
+# rm_movej_canfd (mode 0, no driver-side filtering).  There is NO low-pass
+# filter on the send path - the QP velocity/acceleration box + SafetyLimiter
+# already emit a C1 stream; extra filtering only adds phase lag.
+#
+# Run:  source env.sh
+#       python apps/joint_admittance/run_joint_admittance.py --config configs/joint_admittance.yaml
+
+robot:
+  ip: "192.168.1.18"
+  port: 8080
+  thread_mode: 2
+
+timing:
+  dt_ms: 5.0
+
+# UDP arm-state push (rm_set_realtime_push).  Replaces the old TCP polling
+# path (rm_get_current_arm_state in a side thread) which collapsed to ~10 Hz
+# under 200 Hz rm_movej_canfd.  Requires robot.thread_mode: 2.
+realtime_push:
+  cycle: 1              # broadcast period = cycle * 5 ms (1 -> 200 Hz)
+  port: 8098
+  # ip: auto-detected toward robot.ip; override if multi-NIC
+  force_coordinate: 0   # 0=sensor frame (matches rm_get_force_data force_data)
+
+inner:
+  control_frame: tool
+  euler_order: xyz
+
+  v_scale: 0.5             # fraction of URDF joint velocity limit
+  a_max: 18.0              # rad/s^2 per joint
+  position_margin_deg: 2.0
+  # Command-lead anti-windup: a QP velocity bound (never a position jump) that
+  # stops q_cmd from leading the encoders by more than this much per joint.
+  # Some lag during a fast move is normal servo behaviour, not a fault - set
+  # generously above the following error you actually observe in telemetry
+  # (follow_err_deg column) during a healthy move; too tight throttles normal
+  # moves, too loose defeats the point. 0 disables the bound entirely.
+  resync_err_deg: 6.0
+
+  qp:
+    # Escande-style slack QP: task_weight >> reg makes the Cartesian equality
+    # "hard" (solver penalizes slack w heavily instead of sacrificing tracking
+    # for nullspace); reg stays small so secondary tasks act only in the
+    # nullspace.  Ratio kept near 1e4 (with mass_reg_floor below) so ProxQP
+    # stays well-conditioned - the old 1000/0.001*diag(M) ratio reached ~1e9
+    # and caused sporadic solver failures (one-tick freezes).
+    task_weight: [100.0, 100.0, 100.0, 50.0, 50.0, 50.0]
+    reg: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    backend: proxqp
+    eps_abs: 1.0e-6
+    max_iter: 3000
+    # Chiaverini 1997 SR damping for nullspace projection.
+    sr_damping:
+      lam0: 0.05
+      sigma_ref: 0.08
+      sigma_floor: 1.0e-6
+    # Primary-task weight floor near singularities (see 8-DOF tuning notes).
+    task_weight_min_frac: 0.05
+    # Uniform Euclidean joint-velocity reg (min ||qdot||^2), NOT kinetic energy
+    # min qdot^T M qdot: on RM75, M_shoulder >> M_wrist and the solver avoids
+    # moving the base, over-stretching elbow/wrist until the arm "collapses".
+    use_mass_weighted_reg: false
+    mass_reg_floor: 0.05
+    # Kinematic nullspace for secondary projection (dyn N_dyn is oblique and
+    # amplified tiny wrist inertias; keep false unless tuning with care).
+    use_dyn_nullspace: false
+    # Faverjon/Tournassoud joint-limit velocity damper: speed toward a limit
+    # ramps to 0 over this band (rad) before the position margin (replaces the
+    # old binary one-sided bound at |u|>0.95, which chattered).
+    limit_damper_band_rad: 0.15
+
+  collision:
+    enabled: true          # CBF self-collision (low-poly STL)
+    d_safe: 0.01
+    d_activate: 0.04
+    gamma: 5.0
+    max_pairs: 8
+
+  nullspace:
+    k_center: 1.0
+    k_limit: 2.0
+    activation: 0.85
+    # Comfortable elbow-bent posture (deg): centering target for the redundant
+    # DOF (geometric mid on a symmetric J4 limit would mean a dead-straight arm).
+    q_nominal_deg: [0.0, -45.0, 0.0, 90.0, 0.0, 45.0, 0.0]
+    # Move-phase nullspace: ascend Yoshikawa μ instead of centering (see
+    # manipulability_task.py).  Enabled by d_sin_tool_y move_enter().
+    manipulability:
+      k_mu: 0.8
+      eps_rad: 5.0e-4
+      sigma_fade_ref: 0.12
+
+  # Viscous damping on composed secondary qdot (1/s); scales up near limits.
+  nullspace_d_null: 0.5
+  nullspace_d_null_adaptive: 1.0
+  # Per-joint cap on the soft secondary tasks (centering/arm/damping) as a
+  # fraction of the URDF velocity limit.  Near a singularity the SR projector
+  # opens (N -> I); without this cap the centering gradient from a straight
+  # arm drove rad/s-scale self-motion while the Cartesian task was soft.
+  nullspace_max_qdot_frac: 0.2
+
+  arm_angle:
+    # S-R-S swivel-angle redundancy task: holds the elbow branch at psi_ref
+    # (captured from the IK solution / loop start when psi_ref_deg is null).
+    # More deterministic than the posture attractor; both may run together
+    # (arm_angle pins the branch, nullspace handles limit repulsion).
+    enabled: true
+    k_psi: 1.0
+    psi_ref_deg: null      # null -> capture at reset / set by the app after IK
+
+frames:
+  euler_order: xyz
+  control_frame: tool
+
+force:
+  desired_z_n: 1.0
+  phi_source: phi_recommended
+  fc_hz: 6.0
+  min_samples: 22
+  causal_fc_hz: 6.0
+  causal_order: 2
+  causal_history: 5
+  # Inertia compensation off: on the joint stream it injected command-side
+  # acceleration noise into F_ext. Re-enable only after verifying with telemetry.
+  use_inertia: false
+
+hybrid_motion:
+  # Tool-frame masks — all axis discrimination is tool-frame, so this config
+  # supports any spatial trajectory (Y sweep, arc, spline, teleop) as long as
+  # force_axes selects the surface-normal tool axis.
+  force_axes: [0, 0, 1, 0, 0, 0]
+  track_axes: [1, 1, 0, 1, 1, 1]
+  # Tool-frame PBAC: v = vel_ff + kp*err (De Schutter 1988).
+  # Tangential X and Y gains are equal so a diagonal / arc / spline path is
+  # not biased along one tool axis. Trajectory-agnostic (see plan §4).
+  kp_pos: [2.0, 2.0, 0.0, 1.5, 1.5, 1.5]
+  pos_err_deadband_m: 0.0005
+  pos_correction_max_m_s: 0.08
+  system_delay_s: 0.015
+  # fz-only enter-only contact latch: lateral scan shear must not flip contact.
+  contact_threshold_n: 0.8
+  contact_use_fz_only: true
+  # Noise-rejection deadband — a FIXED sensor-noise quantity, never scaled
+  # with desired_z (scaling it made a 5 N hold need >0.5 N over-force before
+  # any retract authority: the "over-force / heavy damping" hand feel).
+  deadband_n: 0.10
+  deadband_width_n: 0.10
+  # Tool-frame velocity/acceleration caps. Tangential X == Y (trajectory-
+  # agnostic); tool-Z equals max_vz_tool_m_s below (single vz authority —
+  # scan-jitter-fix §2a: two disagreeing caps caused admittance-state windup).
+  max_velocity: [0.22, 0.22, 0.10, 0.6, 0.6, 0.6]
+  max_acceleration: [1.0, 1.0, 0.8, 2.0, 2.0, 2.0]
+  admittance_mass_z: 1.0
+  admittance_damping_z: 25.0   # free-space D (adaptive_ke b_d(t) takes over on contact)
+  # ONE press/retract cap on tool-Z, applied identically in and out of
+  # contact. Restored to 0.10 (27c1689 headroom) so the Li 2022 integral
+  # v_r has room to work — the previous 0.05 cap saturated v_r
+  # anti-windup instantly and the retract lag never got the boost the
+  # paper promises. Bounce control is done by the stiff-first K̂_e jump
+  # + Dimeas inertia inflation, NOT by capping the cap.
+  max_vz_tool_m_s: 0.10
+  # Engagement ramp: tool-Z setpoint ramps from ~contact threshold to full
+  # desired_z over this many seconds of latched contact (smooth force start).
+  desired_force_ramp_s: 1.0
+  # Dimeas & Aspragathos 2016 variable-INERTIA channel on tool-Z. The
+  # instability index Iₛ is an HP-filtered raw-force energy ratio (5–20 Hz
+  # contact-resonance band). M(t) = admittance_mass_z + m_u·Iₛ capped at
+  # m_max; a small residual D bump d_u·Iₛ rides on top of the adaptive b_d.
+  # Table 2 in the paper: inertia adaptation is ~5× better than damping-only
+  # on operator effort, so d_u is kept small and m_u carries the load.
+  var_damping_enabled: true
+  var_damping_omega_c_hz: 2.5
+  # Iₛ final-stage EWMA smoothing. Dimeas & Aspragathos 2016 tune λ=0.99 at
+  # their 1 kHz loop rate -> τ=-Ts/ln(λ)≈0.0995 s. The previous 0.998 at our
+  # 200 Hz rate gave τ≈2.5 s (25x slower than the paper): bounce_2n.csv
+  # 6.5-7 Hz episodes showed Iₛ eventually crossing the gate but only after
+  # fz had already built to 5-6 N. 0.951 = exp(-dt/0.1) reproduces the
+  # paper's ~0.1 s equivalent bandwidth at 200 Hz.
+  var_damping_lambda: 0.951
+  var_damping_f_max_n: 7.0
+  var_damping_d_u: 2.0
+  var_damping_m_u: 4.0
+  # Dimeas & Aspragathos 2016 Eq. (8): md = md_min + m_u·Iₛ. Iₛ is the
+  # paper's Eq. (5) UNBOUNDED leaky accumulator (its own Sec. 4.1: "not
+  # bounded by 1 ... increases exponentially in proportion to the
+  # magnitude of the oscillation"), so md is unbounded in the paper's own
+  # law too — there is no "natural bound" to derive a cap from. This is
+  # purely our own hardware safety limit (virtual-mass authority); Keemink
+  # b_d = 2ζ√(m·Ke) at m=5, Ke≈1500 is ~156 (under bd_max=200), so damping
+  # doesn't hit its own cap first when this one engages.
+  var_damping_m_max: 5.0
+  var_damping_dc_alpha: 0.02
+  adaptive_ke:
+    # Asymmetric-λ EWMA of |ΔF/Δx| (Duan et al. 2018 eq. 14, with the
+    # 27c1689 asymmetric-forgetting bias toward stiffer estimates) on the
+    # normal (tool-Z) admittance axis; Keemink 2018 §III.C critical damping
+    # b_d = 2·ζ·sqrt(m_d · K̂_e).
+    enabled: true
+    zeta: 0.9
+    # ke_initial is the SEED at reset() and the target for the soft
+    # idle/detach decays. On a contact rising edge K̂_e JUMPS UP to
+    # ke_impact_initial (stiff-first, safe overdamped-at-impact) and then
+    # learns down on soft surfaces via ΔF/Δx. A previous refactor's
+    # "hold-last-K̂_e" without stiff-first grew unbounded (72 → 1866 in
+    # 50 s on scan_v5); a hard reset to a low seed on every re-impact
+    # under-damped every bounce cycle. The two-branch design (impact jump
+    # + soft decay) matches the hardware-tested 27c1689 behaviour.
+    ke_initial: 80.0
+    ke_min: 40.0
+    ke_max: 2500.0
+    ke_impact_initial: 1500.0
+    ke_forgetting: 0.995         # slow forget (surface softens)
+    ke_forgetting_inc: 0.88      # fast track  (surface stiffens)
+    ke_idle_decay_s: 2.0         # steady-contact decay toward ke_initial
+    ke_soft_floor: 300.0
+    ke_detach_decay_s: 1.0       # out-of-contact decay (keeps 95 % across a 50 ms bounce)
+    displacement_source: admittance
+    dx_threshold_m: 0.00008
+    contact_force_n: 0.8
+    settle_ticks: 10             # hold K̂_e after contact-latch first-impact transient
+    # Direction-agnostic tangential-speed gate: |v_lat| = ||R_tool^T v_pos_base_xy||.
+    # Any sweep direction (Y, X, arc, spline, teleop) gates learning the same way.
+    gate_lateral_velocity: true
+    lateral_vel_gate_m_s: 0.02
+    gate_df_spike: true
+    df_spike_n: 4.0
+    # Effective |f_err| gate = max(f_err_gate_n, f_err_gate_frac * f_des_z):
+    # the absolute value is the small-setpoint noise floor, the fraction keeps
+    # the steady/transient judgement self-similar at any setpoint. A fixed
+    # 1.2 N gate at a 5 N hold froze K̂_e at ke_impact_initial (b_d ~70+) and
+    # made the retract feel heavily damped.
+    f_err_gate_n: 1.2
+    f_err_gate_frac: 0.35
+    bd_min: 25.0
+    bd_max: 200.0
+    bd_slew_max: 400.0
+    ke_slew_max: 1200.0
+  proactive_feedforward: true
+  proactive_retract_only: false
+  proactive_gain: 0.10
+  proactive_leak_s: 0.3
+  v_r_max_m_s: 0.06
+  proactive_press_is_gate: 0.5
+
+startup:
+  pose_slot_q_deg: null
+  duration_s: 20.0
+  move_speed: 20
+  reference: hold
+  enable_force: false
+  follow: true
+  realtime: false
+  watchdog_timeout_s: 0.1

@@ -1,0 +1,45 @@
+# RM75-6F capability map — 4 cm / ~20°, TCP at link_7 flange (armtip).
+
+urdf_path: rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf
+tcp_frame: link_7
+rail_locked_at_m: 0.0
+
+grid:
+  origin_m: [-1.10, -1.10, -0.30]
+  step_m: 0.04
+  shape: [56, 56, 43]
+
+orient:
+  kind: icosphere
+  subdiv: 2
+
+roll:
+  enabled: false
+  step_deg: 20.0
+
+mode: mc
+
+mc:
+  n_samples: 10_000_000
+  batch: 500_000
+  seed: 0
+
+ik:
+  enabled: false
+  boundary_d_min: 0.02
+  boundary_d_max: 0.98
+  per_voxel_budget_s: 0.20
+  lam: 0.05
+  max_iter: 40
+  keep_manipulability: true
+  seeds:
+    n_random: 8
+    include_nominal: true
+    include_zeros: true
+    include_elbow_flip: true
+    nominal_deg: [0.0, -45.0, 0.0, 90.0, 0.0, 45.0, 0.0]
+
+workers: 8
+reachable_radius_m: 1.20
+output_dir: data/reachability/rm75_armtip_4cm_20deg
+progress: true

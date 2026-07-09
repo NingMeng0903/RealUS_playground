@@ -1,0 +1,74 @@
+[
+  {
+    "name": "base_link",
+    "src": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/base_link.dae",
+    "dst": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/collision/base_link.stl",
+    "src_tris": 9889,
+    "dst_tris": 300,
+    "target_tris": 300,
+    "size_bytes": 15084
+  },
+  {
+    "name": "link_1",
+    "src": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/link_1.dae",
+    "dst": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/collision/link_1.stl",
+    "src_tris": 2006,
+    "dst_tris": 150,
+    "target_tris": 150,
+    "size_bytes": 7584
+  },
+  {
+    "name": "link_2",
+    "src": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/link_2.dae",
+    "dst": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/collision/link_2.stl",
+    "src_tris": 3802,
+    "dst_tris": 200,
+    "target_tris": 200,
+    "size_bytes": 10084
+  },
+  {
+    "name": "link_3",
+    "src": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/link_3.dae",
+    "dst": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/collision/link_3.stl",
+    "src_tris": 1770,
+    "dst_tris": 150,
+    "target_tris": 150,
+    "size_bytes": 7584
+  },
+  {
+    "name": "link_4",
+    "src": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/link_4.dae",
+    "dst": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/collision/link_4.stl",
+    "src_tris": 2710,
+    "dst_tris": 199,
+    "target_tris": 200,
+    "size_bytes": 10034
+  },
+  {
+    "name": "link_5",
+    "src": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/link_5.dae",
+    "dst": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/collision/link_5.stl",
+    "src_tris": 1874,
+    "dst_tris": 150,
+    "target_tris": 150,
+    "size_bytes": 7584
+  },
+  {
+    "name": "link_6",
+    "src": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/link_6.dae",
+    "dst": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f/meshes/collision/link_6.stl",
+    "src_tris": 3904,
+    "dst_tris": 200,
+    "target_tris": 200,
+    "size_bytes": 10084
+  },
+  {
+    "name": "link_7",
+    "src": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/link_7.dae",
+    "dst": "/media/camp/EXT_DRIVE/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_7.stl",
+    "src_tris": 4218,
+    "dst_tris": 84,
+    "target_tris": 84,
+    "size_bytes": 4284
+  }
+]

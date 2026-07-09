@@ -1,0 +1,15 @@
+# RealMan SDK: add RM_API2/Python to PYTHONPATH, e.g.
+#   export PYTHONPATH=/media/camp/EXT_DRIVE/RM_API2/Python:$PYTHONPATH
+numpy
+pyyaml
+ruckig==0.17.3
+scipy
+pin>=3.0
+pyvista>=0.43
+trimesh>=4.0
+pycollada>=0.7
+imageio>=2.30
+tqdm>=4.66
+# Phase 2 QP inner-loop solver: proxsuite (preferred, warm-started) with osqp fallback.
+proxsuite
+osqp

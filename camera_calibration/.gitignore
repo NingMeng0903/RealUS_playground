@@ -1,0 +1,7 @@
+data/
+# Keep exported calibration YAML (genesis_bundle, intrinsics, extrinsics, world_meta)
+calibration_results/board.pdf
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/

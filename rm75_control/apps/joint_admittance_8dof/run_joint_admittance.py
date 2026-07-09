@@ -1,0 +1,305 @@
+#!/usr/bin/env python3
+"""8-DOF controller daemon (window A): UDP + SHM + local WBC when C submits a task.
+
+Window A in the 3-terminal layout: keeps the sole Realman TCP/UDP session,
+publishes ``rm75_state`` for the Genesis twin, and **runs the 200 Hz WBC loop
+locally** when window C submits a phase program (no per-tick CANFD SHM relay).
+
+  source env.sh
+  python apps/joint_admittance_8dof/run_joint_admittance.py \\
+      --config configs/joint_admittance_8dof.yaml
+
+Twin (separate terminal):
+
+  python apps/joint_admittance_8dof/run_with_twin.py
+
+Task orchestration (window C):
+
+  python apps/joint_admittance_8dof/d_sin_tool_y.py --config ... --enable-force ...
+"""
+
+from __future__ import annotations
+
+import argparse
+import signal
+import time
+from pathlib import Path
+
+import numpy as np
+import yaml
+
+from rm75_control.control.admittance_common.phase_ipc import PhaseCmd, PhaseCommandHub, PhaseStatus
+from rm75_control.control.admittance_common.state_bus import RobotStateBus
+from rm75_control.control.admittance_common.state_relay import (
+    StateRelayPublisher,
+    parse_state_relay_config,
+)
+from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
+from rm75_control.control.joint_admittance_8dof.loop import (
+    CartesianTrackConfig,
+    CartesianTrackOuterLoop,
+    JointIkController,
+    run_joint_admittance_loop,
+)
+from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
+from rm75_control.control.joint_admittance_8dof.reference import HoldReference
+from rm75_control.control.joint_admittance_8dof.sin_tool_y_program import (
+    build_sin_tool_y_program,
+    execute_sin_tool_y_program,
+)
+from rm75_control.core.session import RobotSession
+
+
+def load_yaml(path: Path) -> dict:
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def _run_controller_service(
+    sess,
+    bus: RobotStateBus,
+    raw: dict,
+    *,
+    hub: PhaseCommandHub,
+    rail_m_fn,
+    poll_s: float = 0.05,
+    verbose: bool = False,
+) -> None:
+    """Hot-wait for window C; run WBC locally on START (direct UDP + CANFD)."""
+    stop = False
+
+    def _on_sig(_signum, _frame) -> None:
+        nonlocal stop
+        stop = True
+
+    signal.signal(signal.SIGINT, _on_sig)
+    signal.signal(signal.SIGTERM, _on_sig)
+
+    hub.set_idle()
+    print("rm75 controller: hot-wait", flush=True)
+
+    while not stop:
+        polled = hub.poll()
+        if polled is None:
+            time.sleep(poll_s)
+            continue
+
+        cmd, cmd_seq, params = polled
+        if cmd == PhaseCmd.STOP:
+            hub.ack(cmd_seq)
+            hub.set_stopped(cmd_seq)
+            continue
+
+        if cmd != PhaseCmd.START or params is None:
+            hub.ack(cmd_seq)
+            continue
+
+        task_n = hub.task_n
+        hub.set_running(cmd_seq, msg="accepted")
+        print(f"rm75 controller: running task #{task_n}", flush=True)
+        phase_labels: list[str] = []
+        tick_counter = [0]
+        phase_idx = [0]
+        last_progress_label = [""]
+
+        def _on_step(label, t_phase, step, pose, f_ext, t_wall=float("nan")) -> None:
+            tick_counter[0] += 1
+            if label in phase_labels:
+                idx = phase_labels.index(label)
+            else:
+                phase_labels.append(label)
+                idx = len(phase_labels) - 1
+            phase_idx[0] = idx
+            label_s = str(label)
+            if label_s != last_progress_label[0]:
+                last_progress_label[0] = label_s
+                hub.set_progress(
+                    cmd_seq,
+                    phase_idx=idx,
+                    phase_label=label_s,
+                    ticks=tick_counter[0],
+                )
+
+        try:
+            built = build_sin_tool_y_program(params, raw=raw)
+            rail_m_fn.set_active(built.inner)
+            result = execute_sin_tool_y_program(
+                sess,
+                bus,
+                params,
+                raw=raw,
+                built=built,
+                on_step=_on_step,
+                stop_check=hub.should_stop,
+                verbose=verbose,
+            )
+            if hub.should_stop():
+                hub.set_stopped(cmd_seq)
+                print(f"rm75 controller: task #{task_n} stopped", flush=True)
+            else:
+                hub.set_done(cmd_seq)
+                print(
+                    f"rm75 controller: task #{task_n} done "
+                    f"({result.duration_s:.1f}s, {result.ticks} ticks)",
+                    flush=True,
+                )
+        except KeyboardInterrupt:
+            stop = True
+            hub.set_stopped(cmd_seq, msg="interrupted")
+            print(f"rm75 controller: task #{task_n} interrupted", flush=True)
+        except Exception as exc:
+            hub.set_error(cmd_seq, str(exc))
+            print(f"rm75 controller: task error: {exc}", flush=True)
+        finally:
+            hub.ack(cmd_seq)
+            rail_m_fn.reset_idle()
+            if not stop:
+                print("rm75 controller: hot-wait", flush=True)
+
+
+class _RailPublisher:
+    """Mutable rail source for SHM twin during idle vs active WBC."""
+
+    def __init__(self, default_m: float) -> None:
+        self._default_m = float(default_m)
+        self._active_inner: JointIkController | None = None
+
+    def reset_idle(self) -> None:
+        if self._active_inner is not None:
+            self._default_m = float(self._active_inner.q_cmd[0])
+        self._active_inner = None
+
+    def set_active(self, inner: JointIkController) -> None:
+        self._active_inner = inner
+
+    def __call__(self) -> float:
+        if self._active_inner is not None:
+            return float(self._active_inner.q_cmd[0])
+        return self._default_m
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(
+        description="8-DOF controller daemon (window A)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    ap.add_argument("--config", type=Path, default=Path("configs/joint_admittance_8dof.yaml"))
+    ap.add_argument(
+        "--state-relay",
+        default="rm75_state",
+        metavar="NAME",
+        help="Publish robot state to SHM for twin / window C (default rm75_state)",
+    )
+    ap.add_argument("--no-state-relay", action="store_true", help="Do not publish SHM")
+    ap.add_argument("--relay-hz", type=float, default=None, help="SHM publish rate (default from YAML)")
+    ap.add_argument(
+        "--hold",
+        action="store_true",
+        help="Stream CANFD idle hold (teach re-anchor). Do NOT use with d_sin_tool_y.py",
+    )
+    ap.add_argument("--verbose", "-v", action="store_true", help="Print loop / teach / phase status")
+    ap.add_argument("--dry-run", action="store_true", help="build controllers only, do not connect")
+    args = ap.parse_args()
+
+    raw = load_yaml(args.config)
+    startup = raw.get("startup", {})
+    relay_cfg = parse_state_relay_config(raw)
+    if args.no_state_relay:
+        relay_name = None
+    else:
+        relay_name = str(args.state_relay or relay_cfg.name or "rm75_state")
+    relay_hz = float(args.relay_hz) if args.relay_hz is not None else relay_cfg.hz
+    dt = float(raw.get("timing", {}).get("dt_ms", 5.0)) / 1000.0
+    rail_default_m = float(raw.get("inner", {}).get("rail", {}).get("q_ref_m", 0.0))
+    rail_pub = _RailPublisher(rail_default_m)
+
+    if args.dry_run:
+        mode = "hold+CANFD" if args.hold else "controller+hot-wait"
+        print(f"rm75 controller: dry-run OK ({mode})", flush=True)
+        return 0
+
+    robot_cfg = raw.get("robot", {})
+    relay: StateRelayPublisher | None = None
+    inner: JointIkController | None = None
+    hub: PhaseCommandHub | None = None
+
+    if args.hold:
+        kin = RobotKinematics()
+        inner_cfg = build_joint_ik_config(raw)
+        inner = JointIkController(kin, inner_cfg)
+        rail_pub.set_active(inner)
+
+    with RobotSession(
+        ip=robot_cfg.get("ip"),
+        port=robot_cfg.get("port"),
+        config=args.config,
+        quiet=True,
+    ) as sess:
+        bus = RobotStateBus(sess.robot, raw, robot_ip=sess.ip)
+        bus.start()
+
+        if relay_name:
+            relay = StateRelayPublisher(
+                bus,
+                name=relay_name,
+                hz=relay_hz,
+                rail_m_fn=rail_pub,
+            )
+            relay.start()
+            if args.hold:
+                print(
+                    f"rm75 controller: hold + shm {relay_name!r} @ {relay_hz:.0f} Hz",
+                    flush=True,
+                )
+            else:
+                print(
+                    f"rm75 controller: running (shm {relay_name!r} @ {relay_hz:.0f} Hz)",
+                    flush=True,
+                )
+        elif args.hold:
+            print("rm75 controller: hold (no SHM)", flush=True)
+        else:
+            print("rm75 controller: running (no SHM)", flush=True)
+
+        try:
+            if args.hold:
+                assert inner is not None
+                outer = CartesianTrackOuterLoop(
+                    HoldReference(),
+                    CartesianTrackConfig(
+                        k_task=np.full(6, 2.0),
+                        euler_order=inner.cfg.euler_order,
+                        control_frame=inner.cfg.control_frame,
+                    ),
+                )
+                run_joint_admittance_loop(
+                    sess,
+                    outer,
+                    inner,
+                    q_start_deg=None,
+                    duration_s=None,
+                    dt=dt,
+                    force_observer=None,
+                    follow=bool(startup.get("follow", True)),
+                    move_speed=int(startup.get("move_speed", 20)),
+                    realtime=bool(startup.get("realtime", False)),
+                    watchdog_timeout_s=float(startup.get("watchdog_timeout_s", 0.1)),
+                    state_bus=bus,
+                    verbose=args.verbose,
+                )
+            else:
+                hub = PhaseCommandHub()
+                _run_controller_service(
+                    sess, bus, raw, hub=hub, rail_m_fn=rail_pub, verbose=args.verbose
+                )
+        finally:
+            if hub is not None:
+                hub.close()
+            if relay is not None:
+                relay.stop()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

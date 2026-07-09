@@ -1,0 +1,67 @@
+# ---- RealUS_playground: lean monorepo (code + docs + small configs) ----
+
+# Large / binary media
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+
+# Model weights & serialized arrays
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.npz
+*.pkl
+*.pickle
+
+# Raw calibration capture sessions (large)
+camera_calibration/data/
+
+# Regenerated / local artifacts
+**/.genesis_urdf_cache/
+**/.cuda_shim/
+rm75_control/data/force_compensation/logs/
+rm75_control/data/velocity_admittance/logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environments & secrets
+.env
+.env.*
+.venv/
+venv/
+*.local.yaml
+
+# IDE / OS
+.vscode/
+.idea/
+.cursor/
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Logs
+*.log

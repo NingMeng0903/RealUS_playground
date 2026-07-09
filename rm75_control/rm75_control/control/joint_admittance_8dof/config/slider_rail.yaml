@@ -1,0 +1,45 @@
+# Parametric slider/rail spec for the RM75 8-DOF base.
+# Consumed by param_model/generator.py -> generated URDF for Genesis viewer.
+# Conventions: rail travel = Y, Z up, "outer side" = +X.
+#   - arm is offset toward +X and flush with the rail +X face
+#   - frame (机架) protrudes toward -X
+#   - URDF root = rail_base (frame bottom)
+#   - rail_link frame = rail module floor (top of frame); slider_link = slider top center
+#   - world placement from world_calib (base pose at rail_y = 0), NOT frame pose
+# All lengths in millimeters unless noted (meters for world_calib positions).
+slider_rail:
+  arm: rm75                      # future: select arm base ("realmanbase")
+
+  rail:
+    effective_travel_mm: 600     # usable Y stroke (rail_y limits = +-travel/2)
+    end_overhead_mm: 100          # total rail length = travel + overhead
+    width_mm: 150                 # rail plate width (X)
+    base_plate_thickness_mm: 12   # light metallic gray floor plate
+    track_height_mm: 18           # two raised tracks
+    track_width_mm: 22
+    track_gap_mm: 66              # center-to-center of the two tracks
+    side_plate_thickness_mm: 14   # end plate thickness along Y
+    side_plate_height_mm: 80      # end plate height (Z) above rail bottom
+
+  slider:
+    width_mm: 160                 # X
+    length_mm: 170                # Y
+    top_to_rail_bottom_mm: 66     # must be > base_plate_thickness + track_height
+
+  frame:                          # 机架 under the rail (derived from rail_base)
+    height_mm: 200
+    width_mm: 300                 # +X edge flush with rail, extra protrudes -X
+
+  arm_mount:                      # base coordinate on slider top (URDF internal)
+    offset_x_mm: 20               # +X toward outer edge
+    offset_y_mm: 0
+
+  world_calib:
+    # base_link pose in calibration world @ rail_y = 0; rail_base back-solved (rail fixed in world).
+    base_pos_m: [0.0, 0.5, 0.266]
+    base_quat_wxyz: [0.7071067811865476, 0.0, 0.0, -0.7071067811865476]  # world Z -90 deg
+
+  colors:                         # rgba 0..1
+    frame: [0.75, 0.75, 0.78, 1.0]
+    rail_metal: [0.60, 0.62, 0.65, 1.0]
+    dark: [0.18, 0.18, 0.20, 1.0]

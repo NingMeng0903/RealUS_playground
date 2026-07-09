@@ -1,0 +1,5 @@
+# Genesis viewer deps — already in envs/genesis (Among_US).
+# Do NOT pip install into envs/rm75 for viewer.
+#
+# Controller deps: ../../../../../requirements.txt + env.sh (rm75 env)
+# Viewer launch: source env_viewer.sh from repo root

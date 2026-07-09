@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "map_dir": "data/reachability/rm75_6f_3cm_15deg",
+    "trajectory": "rm75_control/tools/reachability/data/examples/scan_line_y.json",
+    "traj_hash": "cdd6dfe31a65cf80",
+    "n_waypoints": 5,
+    "elapsed_s": 5.434
+  },
+  "full_scan": {
+    "feasible": true,
+    "y_b_best": 4.440892098500626e-16,
+    "score": 2.601557630300522,
+    "rail_y_series": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "feasible_y_b_count": 71
+  },
+  "prefix": {
+    "feasible": true,
+    "y_b_best": 4.440892098500626e-16,
+    "last_wp_index": 4,
+    "arc_len_m": 0.7954105774180319,
+    "rail_y": 0.0,
+    "rail_y_series": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "score": 2.601557630300522,
+    "relaxed": false
+  }
+}

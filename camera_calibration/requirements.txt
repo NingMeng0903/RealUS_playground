@@ -1,0 +1,25 @@
+# Core numerics — lock numpy<2 to keep opencv-python + apriltags happy.
+numpy>=1.24,<2
+scipy>=1.11
+
+# Camera SDK & imaging
+pyrealsense2>=2.55
+# headless build: same cv2 API but no bundled Qt (avoids PyQt5 xcb conflict in run_ui).
+# Pin 4.11.x — works with numpy 1.26; 4.13+ pulls numpy>=2.
+opencv-python-headless>=4.11.0.86,<4.12
+
+# AprilTag detection
+pupil-apriltags>=1.0.4.post11
+
+# UI
+PyQt5>=5.15
+PyQt5-Qt5>=5.15
+
+# I/O + geometry
+pyyaml>=6.0
+transforms3d>=0.4
+reportlab>=4.0
+
+# Verification tooling. open3d pulls in dash / pandas / matplotlib / etc. via
+# its default vis stack; installing normally (without --no-deps) picks those up.
+open3d>=0.18

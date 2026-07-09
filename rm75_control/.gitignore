@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Secrets / local env
+.env
+.env.*
+*.local.yaml
+
+# Local Taichi libcuda.so shim (genesis/.cuda_shim/)
+**/.cuda_shim/
+
+# Force compensation: regenerated locally (collection / identification)
+data/force_compensation/logs/*.npz
+data/force_compensation/logs/force_id_phi.json
+
+# Legacy velocity-admittance npz captures
+data/velocity_admittance/logs/*.npz
+
+# OS / editor
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/

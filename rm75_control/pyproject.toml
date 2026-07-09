@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rm75-control"
+version = "0.1.0"
+description = "RealMan RM75 integrated controller wrapper"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "pyyaml",
+    "ruckig==0.17.3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["rm75_control*"]
+
+[tool.pytest.ini_options]
+# A stray dash pytest11 plugin in this box's site-packages crashes collection
+# because it drags in importlib_metadata; disable it globally so our unit tests
+# stay independent of user-side installs.
+addopts = "-p no:dash"
+

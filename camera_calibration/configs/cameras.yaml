@@ -1,0 +1,17 @@
+cameras:
+- alias: cam1
+  serial: '332522073018'
+  driver: realsense
+  model: Intel RealSense D435IF
+- alias: cam2
+  serial: '327122072810'
+  driver: realsense
+  model: Intel RealSense D435IF
+- alias: cam3
+  serial: '832112070867'
+  driver: realsense
+  model: Intel RealSense D435
+- alias: cam4
+  serial: '935422072872'
+  driver: realsense
+  model: Intel RealSense D435

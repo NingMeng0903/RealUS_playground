@@ -1,0 +1,28 @@
+# Stage 2 world alignment parameters.
+
+# Board outer-corner AprilTag IDs (12x11 physical board).
+corner_tags:
+  tl: 151
+  tr: 1
+  bl: 162
+  br: 12
+
+min_floor_samples: 3
+min_bed_samples: 3
+min_corner_samples: 4
+
+# Corner capture gate: all four corner IDs + at least this many cameras for fusion.
+min_cameras_corner_fusion: 3
+require_all_corner_tags: true
+# Max 3D deviation (mm) of per-camera board pose vs fused pose at corner tags.
+corner_fusion_max_std_mm: 40.0
+# Partial board views at bed edges (Stage 1 uses min_tags_per_view: 80).
+min_tags_corner_view: 20
+
+# Phase capture gates (mm above fitted floor plane in ref frame).
+floor_max_height_above_plane_mm: 120
+bed_min_height_above_floor_mm: 200
+bed_height_match_tolerance_mm: 100
+
+# bed_center_projected_to_floor: world origin on floor under bed rectangle center.
+origin_mode: bed_center_projected_to_floor

@@ -1,0 +1,35 @@
+schema_version: '1.0'
+urdf_path: rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf
+urdf_sha256: 93e324c60643e1fd6fecedde2f19cf8a886340bc7828b015ca64fbd998a2ced0
+tcp_frame: tcp
+git_sha: 924c32dc54d0d2ecec8be2bec5d791a22253dcad
+build_wall_s: 7.534907229000964
+mc_samples: 10000000
+ik_refined: false
+with_roll: false
+extra:
+  mc_wall_s: 7.2582421059996705
+  workers: 8
+  reachable_radius_m: 1.2
+  ik_refine_stats: null
+grid:
+  origin_m:
+  - -1.1
+  - -1.1
+  - -0.3
+  step_m: 0.03
+  shape:
+  - 74
+  - 74
+  - 57
+orientations:
+  kind: icosphere
+  n: 642
+  subdiv: 3
+roll: null
+layout:
+  n_orient: 642
+  n_roll: 0
+counts:
+  n_reachable_voxels: 90968
+  n_grid_voxels: 312132

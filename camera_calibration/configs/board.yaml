@@ -1,0 +1,27 @@
+# AprilTag board geometry — matched to the PHYSICAL board (identified from photo).
+#
+# Family: tag36h11
+# Grid:   12 rows × 11 columns  (132 tags total)
+#
+# ID layout (read each row left → right):
+#   row 0:  151 136 121 106  91  76  61  46  31  16   1
+#   row 1:  152 137 122 107  92  77  62  47  32  17   2
+#   ...
+#   row11:  162 147 132 117 102  87  72  57  42  27  12
+#
+# Formula:  id(row, col) = 151 + row - 15 * col
+#   row 0 = top,  col 0 = left,  col 10 = right
+#   id=1  is top-right;  id=12 is bottom-right
+#   id=151 top-left;       id=162 bottom-left
+#
+# Board coordinate frame (algorithm):
+#   origin at geometric center, +X along columns (left→right), +Y up (bottom→top row).
+
+family: tag36h11
+rows: 12
+cols: 11
+id_row_step: 1        # +1 per row downward
+id_col_step: -15      # -15 per column rightward (ids decrease left→right on each row)
+id_origin: 151        # id at (row=0, col=0) = top-left corner
+tag_size_m: 0.04      # 4 cm — confirm with ruler if unsure
+tag_spacing_m: 0.01   # 1 cm gap — confirm with ruler if unsure
