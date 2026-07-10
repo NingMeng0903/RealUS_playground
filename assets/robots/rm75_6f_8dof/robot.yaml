@@ -1,0 +1,49 @@
+model_id: rm75_6f_8dof
+urdf_path: rm75_control/rm75_control/control/joint_admittance_8dof/assets/RM75-6F-8dof.slider.generated.urdf
+mesh_root: rm75_control/rm75_control/control/joint_admittance_8dof/assets/meshes
+visual_mesh_format: fbx
+default_joint_positions:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+defaults:
+  name: robot_main
+  base_pos: [0.0, 0.52, 0.0]
+  base_quat_wxyz: [-0.7071067811865477, 0.0, 0.0, 0.7071067811865475]
+  use_collision_geometry: false
+  use_visual_mesh: true
+  allow_collision_fallback: false
+  ue_visual_asset_root: /Game/Bedlam/Generated/RM758DofVisual
+  visual_mesh_scale: 1.0
+  color: [0.55, 0.55, 0.6, 1.0]
+capabilities:
+  dof_count: 8
+  supports_torque_control: false
+  supports_joint_position: true
+  supports_joint_velocity: true
+  supports_cartesian_pose: true
+  supports_force_position_hybrid: false
+  has_6axis_ft: false
+  control_rate_hz: 100.0
+metadata:
+  vendor: RealManRobot
+  embodiment_builder: generic_urdf
+  pd_profile: rm75_6f
+  base_frame: rail_base
+  spawn_pose_frame: rail_base
+  spawn_pose_note: rail_base pose from entity_pose_from_calib(slider_rail.yaml); base_link @ rail_y=0 matches world_calib base_pos_m
+  joint_names:
+    - rail_y
+    - joint_1
+    - joint_2
+    - joint_3
+    - joint_4
+    - joint_5
+    - joint_6
+    - joint_7
+  ue_visual_pipeline: convert_collada_to_fbx.py then import FBX when visual_mesh_format is fbx.

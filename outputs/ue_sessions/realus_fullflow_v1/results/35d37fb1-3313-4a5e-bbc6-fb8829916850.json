@@ -1,0 +1,65 @@
+{
+  "request_id": "35d37fb1-3313-4a5e-bbc6-fb8829916850",
+  "success": true,
+  "detail": "canonical_tick_applied",
+  "payload": {
+    "robot_updates": [
+      {
+        "robot_id": "robot_main",
+        "dof": 8,
+        "result": {
+          "robot_id": "robot_main",
+          "updated_links": 8,
+          "missing_pose_links": [],
+          "solve_links_n": 8,
+          "world_kind": "editor",
+          "link0_label": "base_link",
+          "link0_actor_loc_cm": [
+            0.0,
+            -52.0,
+            0.0
+          ],
+          "link_tip_label": "link_7",
+          "link_tip_actor_loc_cm": [
+            -18.735537435410603,
+            -23.86106536014561,
+            50.663048356962406
+          ],
+          "link_tip_delta_cm": [
+            -0.0015687727612032631,
+            -0.0013219140290097187,
+            -0.0010651380824313605
+          ]
+        }
+      }
+    ],
+    "world": {
+      "world_kind": "editor",
+      "note": "canonical writes are targeting editor world; press Play before expecting PIE viewport motion",
+      "active_actor_count": 28
+    },
+    "camera_clock": {
+      "updated": 1,
+      "errors": []
+    },
+    "registered_robot_ids": [
+      "robot_main"
+    ],
+    "human_keys": [],
+    "object_keys": [],
+    "dynamic_objects": {
+      "count": 0,
+      "active": 0,
+      "expired": 0,
+      "skipped": 0,
+      "kinds": {}
+    },
+    "human": {
+      "updated": false,
+      "reason": "empty_human_payload"
+    },
+    "canonical_udp_apply_count": 5700,
+    "canonical_udp_drop_count": 26
+  },
+  "updated_at_ns": 1783670248182369046
+}

@@ -1,0 +1,8 @@
+# Minimal Python deps for the multiview track worker (DWPose ONNX + DLT triangulation).
+# Install into the genesis conda env:
+#   $PY -m pip install -r configs/tracking/requirements_dwpose_triangulation_runtime.txt
+
+onnxruntime-gpu>=1.16
+opencv-python>=4.8
+numpy>=1.24
+pyzmq>=25.0

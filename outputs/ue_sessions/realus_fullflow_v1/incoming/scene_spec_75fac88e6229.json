@@ -1,0 +1,337 @@
+{
+  "name": "realus_bed_rail_scene",
+  "environment": {
+    "ue_map": "/Game/Bedlam/IBLMap",
+    "ue_hdri_name": "abandoned_hopper_terminal_03",
+    "ground_plane_color": [
+      0.92,
+      0.92,
+      0.92,
+      1.0
+    ]
+  },
+  "support_surface": {
+    "name": "bed_surface",
+    "pos": [
+      0.0,
+      0.0,
+      0.23429574145099236
+    ],
+    "size": [
+      1.9157895644124774,
+      0.7039417440422886,
+      0.1
+    ],
+    "color": [
+      0.55,
+      0.55,
+      0.57,
+      1.0
+    ],
+    "semantic_role": "bed",
+    "spawn_in_genesis": true,
+    "spawn_in_ue": true
+  },
+  "robot_model_overrides": {
+    "rm75_6f_8dof": {
+      "joint_positions": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "use_collision_geometry": false
+    },
+    "rm75_6f": {
+      "joint_positions": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "use_collision_geometry": false
+    }
+  },
+  "robot": {
+    "name": "robot_main",
+    "model_id": "rm75_6f",
+    "base_pos": [
+      0.0,
+      0.5,
+      0.266
+    ],
+    "joint_positions": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "use_visual_mesh": true,
+    "allow_collision_fallback": false,
+    "visual_mesh_format": "fbx",
+    "visual_mesh_scale": 1.0,
+    "ue_visual_asset_root": "/Game/Bedlam/Generated/RM75Visual",
+    "color": [
+      0.55,
+      0.55,
+      0.6,
+      1.0
+    ],
+    "genesis_link_visual_urdf_rgba": {
+      "link_7": [
+        0.86,
+        0.87,
+        0.88,
+        1.0
+      ]
+    },
+    "use_collision_geometry": false,
+    "probe_collision": {
+      "enabled": true,
+      "link_name": "rm75_probe",
+      "shape": "convex_hull_mesh",
+      "radius": 0.024,
+      "length": 0.14,
+      "origin_xyz": [
+        0.0,
+        0.0,
+        0.126
+      ],
+      "origin_rpy": [
+        0.0,
+        0.0,
+        -1.57079632679
+      ],
+      "mesh_filename": null
+    },
+    "force_sensor": {
+      "mount_link": "link_7",
+      "contact_link": "rm75_probe",
+      "link_T_sensor": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sensor_T_contact": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.252
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "tool_mass_kg": 1.0,
+      "tool_com_sensor_m": [
+        0.0,
+        0.0,
+        0.126
+      ],
+      "gravity_world_m_s2": [
+        0.0,
+        0.0,
+        -9.81
+      ],
+      "subtract_static_wrench_from_output": false
+    },
+    "tcp_control": {
+      "link_name": "rm75_probe",
+      "local_point_m": [
+        0.0,
+        0.0,
+        0.252
+      ]
+    }
+  },
+  "human": {
+    "anchor_pos": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "support_margin_m": 0.015,
+    "support_reference": "support_surface_top",
+    "align_floor": true,
+    "ue_root_offset_genesis_m": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "motion": {
+    "source_id": "realus_easymocap_subject",
+    "sequence_npz_path": "outputs/ue_bake/subject_shape_tpose.npz",
+    "fps": 30.0,
+    "frame_count": 1,
+    "start_frame": 0,
+    "frame_step": 1
+  },
+  "render": {
+    "fps": 30.0,
+    "frame_limit": 1,
+    "genesis_backend": "cuda",
+    "ue_frame_count": 1,
+    "ue_frame_step": 1,
+    "ue_render_now": false
+  },
+  "ue_avatar": {
+    "body_mode": "official_retargeted_overlay",
+    "body_name": "it_4375_M_2400",
+    "texture_body": "Male_Skin_Preset_0027",
+    "texture_clothing": "gr_ben_004_M_texture_01",
+    "texture_clothing_overlay": "T_gr_ben_004_M_texture_01_diffuse",
+    "skeletal_mesh_path": "/Engine/PS/Bedlam/SMPLX_LH_animations/it_4375_M/it_4375_M_2400",
+    "animation_asset_root": "/Game/Bedlam/Generated/RetargetedAnimations",
+    "imported_fbx_root": "/Game/Bedlam/Generated/ImportedSMPLMotion",
+    "hidden_material_path": "/Engine/PS/Bedlam/Core/Materials/M_SMPLX_Hidden.M_SMPLX_Hidden",
+    "fbx_global_scale": 100.0,
+    "subject_betas_path": "outputs/offline_capture/latest/beta_calibration/betas.npy",
+    "note": "After EasyMocap fit, rebake body with subject shapes (see bake_subject_ue_body.py)"
+  },
+  "cameras": [
+    {
+      "name": "cam1",
+      "res": [
+        1280,
+        720
+      ],
+      "pos": [
+        -1.598561724773389,
+        0.7615689810268219,
+        1.675629903937599
+      ],
+      "lookat": [
+        -0.9727083061296149,
+        0.4258348706013124,
+        0.9716482951815345
+      ],
+      "up": [
+        0.5270932356889811,
+        -0.48322234584177526,
+        0.6990485572320126
+      ],
+      "fov": 42.981516994218566,
+      "fov_axis": "vertical"
+    },
+    {
+      "name": "cam2",
+      "res": [
+        1280,
+        720
+      ],
+      "pos": [
+        -0.040063774149243336,
+        1.2531309862705609,
+        1.4555026546371734
+      ],
+      "lookat": [
+        -0.03935006371023719,
+        0.5705784467905598,
+        0.7246664750012625
+      ],
+      "up": [
+        -0.013522193452207038,
+        -0.730776133344612,
+        0.6824832548979742
+      ],
+      "fov": 43.538865295306955,
+      "fov_axis": "vertical"
+    },
+    {
+      "name": "cam3",
+      "res": [
+        1280,
+        720
+      ],
+      "pos": [
+        0.06728353769825479,
+        -1.174023016578286,
+        1.6165511917268198
+      ],
+      "lookat": [
+        0.017485759840810966,
+        -0.5069473509971884,
+        0.8732274145556584
+      ],
+      "up": [
+        0.016610169706752942,
+        0.7446973615902833,
+        0.6671955799469758
+      ],
+      "fov": 44.09134335046276,
+      "fov_axis": "vertical"
+    },
+    {
+      "name": "cam4",
+      "res": [
+        1280,
+        720
+      ],
+      "pos": [
+        2.147601953686169,
+        0.060571166527304876,
+        1.640821218661601
+      ],
+      "lookat": [
+        1.3120873818316097,
+        -0.008029338828266508,
+        1.0956520973041832
+      ],
+      "up": [
+        -0.5440008232779612,
+        -0.036343170930455526,
+        0.8382972493081616
+      ],
+      "fov": 43.0110070372247,
+      "fov_axis": "vertical"
+    }
+  ]
+}

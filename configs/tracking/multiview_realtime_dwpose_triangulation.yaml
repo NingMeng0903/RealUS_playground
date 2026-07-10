@@ -1,0 +1,164 @@
+calibration_path: configs/calibration/ue_exec2_bedroom/cameras.yaml
+scene_spec_path: configs/scenes/amass_lie_sync_scene.yaml
+camera_ids:
+- cam_left
+- cam_right
+- cam_top
+- cam_front
+- cam_front_left
+- cam_front_right
+primary_camera_id: cam_left
+ingress:
+  connect: tcp://127.0.0.1:17356
+  topic: amongus_camera_frame_v1
+  recv_timeout_ms: 250
+  sync_tolerance_frames: 2
+  max_buffer_per_camera: 8
+pose_backend:
+  type: dwpose_triangulation
+  primary_camera_id: cam_left
+  precorrect_views_rgb: true
+  image_correction_mode: ingress
+  scale_intrinsics_to_ingress: true
+  dwpose:
+    repo_root: ref_code_library/DWPose/ControlNet-v1-1-nightly
+    detector_onnx_path: ref_code_library/DWPose/ControlNet-v1-1-nightly/annotator/ckpts/yolox_s.onnx
+    pose_onnx_path: ref_code_library/DWPose/ControlNet-v1-1-nightly/annotator/ckpts/dw-ll_ucoco_384.onnx
+    device: cuda
+    confidence_threshold: 0.15
+    batch_pose: true
+    batch_yolo: true
+    execution_provider: tensorrt
+    trt_opt_batch: 6
+    trt_max_batch: 8
+  triangulation:
+    confidence_threshold: 0.30
+    min_conf: 0.12
+    min_view: 4
+    min_joints: 5
+    dist_max_px: 22.0
+    thres_outlier_view: 0.35
+    thres_outlier_joint: 0.35
+  easymocap_fit:
+    # Official EasyMocap SMPL-X weights (empty opts). 2D refine: body=green DLT reproj, hands=raw DWPose.
+    body_focus: false
+    zero_hand_keypoints: false
+    fit_2d_source: mixed
+    opts: {}
+    write_debug_images: true
+    write_easymocap_smpl_json: false
+    export_canonical_tpose: true
+    canonical_staging_dir: outputs/anatomy_retarget/latest_canonical
+    bed_sdf: true
+    bed_sdf_weight: 4.0
+    bed_sdf_max_iter: 4
+    publish_genesis: true
+    publish_duration_s: 3.0
+    publish_rate_hz: 5.0
+  frame_quality:
+    reject_on_hand3d: false
+    reject_on_2d_capture: false
+    capture:
+      min_valid_body25_per_cam: 16
+      min_cameras_passing: 5
+      confidence_threshold: 0.22
+    shape3d:
+      min_valid_body25: 14
+      min_core_body25: 5
+      min_valid_shape_limbs: 6
+      confidence_threshold: 0.28
+  smpl_fit:
+    enable: true
+    smpl_model_dir: dataset/intermediate/humans/body_models/smpl
+    body25_regressor_path: ref_code_library/EasyMocap/data/smplx/J_regressor_body25.npy
+    betas_path: ""
+    device: cuda
+    iterations: 8
+    lr: 0.05
+    root_stage_iterations: 5
+    root_stage_warm_start_iterations: 1
+    root_stage_lr: 0.08
+    k3d_weight: 20.0
+    bone3d_weight: 3.0
+    pelvis_weight: 12.0
+    k2d_weight: 0.000001
+    reg_poses_zero_weight: 0.2
+    reg_poses_weight: 0.03
+    smooth_poses_weight: 8.0
+    zero_pose_smpl_joints:
+    - 10
+    - 11
+    - 15
+    - 22
+    - 23
+    huber_delta_m: 0.12
+    optimize_body_pose: true
+    dropout_hold_frames: 2
+    min_valid_joints: 7
+    min_valid_body25_joints: 10
+    dropout_reset_after: 20
+    recovery_cold_start_after: 15
+    recovery_rms_hold_m: 0.25
+    max_fit_rms_m: 0.30
+    temporal_jump_reset_m: 0.75
+    temporal_reset_cooldown_frames: 2
+    cold_start_use_ik: true
+    lbfgs_enable: true
+    lbfgs_max_iter: 8
+    lbfgs_lr: 0.5
+    lbfgs_adaptive: true
+    lbfgs_warm_start_every_n: 3
+    lbfgs_force_rms_m: 0.45
+    lbfgs_min_improve_m: 0.01
+    lbfgs_skip_after_small_improve_frames: 2
+    vposer:
+      enable: true
+      weight: 0.08
+  ik:
+    enable: false
+    smpl_model_dir: dataset/intermediate/humans/body_models/smpl
+    max_iters: 12
+    tol_m: 0.025
+    damping: 0.12
+world_reconstruction:
+  enable: false
+  live_translation_mode: backend_world_keypoints
+  apply_triangulated_root_orient: false
+  enable_smpl_refine: false
+robot_kinematic_mask:
+  enable: false
+  fill_value: 0
+  margin_px: 2
+  face_stride: 8
+  image_correction_mode: metadata
+  precorrect_views_rgb: false
+  canonical_connect: tcp://127.0.0.1:5599
+  canonical_topic: amongus_canonical_v1
+  robot_entity_name: robot_main
+  occlusion:
+    enable: false
+    heatmap_protect:
+      enable: false
+  export:
+    enable: false
+    output_root: outputs/tracking_debug/dwpose_triangulation/robot_mask
+    max_frames: 32
+    save_original: true
+    save_overlay: true
+    save_masked: true
+    save_mask_binary: true
+    save_tiled: true
+    log_paths: true
+genesis:
+  backend: cuda
+  show_viewer: true
+  show_fps: true
+  spawn_bed: true
+  spawn_robot: false
+  track_mesh_rgba:
+  - 250
+  - 122
+  - 31
+  - 235
+  inference_every_n_synced_frames: 1
+  max_track_fps: 0.0

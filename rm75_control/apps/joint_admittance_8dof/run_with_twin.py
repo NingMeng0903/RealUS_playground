@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Genesis mirror (window B): read-only SHM subscriber, no robot TCP.
 
-  source env.sh
+  source env_viewer.sh   # or RealUS env.sh + genesis
   python apps/joint_admittance_8dof/run_with_twin.py
+
+Optional human overlay (requires RealUS src on PYTHONPATH):
+  --track-subscribe tcp://127.0.0.1:5598
+  --canonical-human-source fitted
 """
 
 from __future__ import annotations
@@ -11,6 +15,7 @@ import argparse
 import signal
 import sys
 import time
+from pathlib import Path
 
 from rm75_control.control.admittance_common.state_relay import RelayStateBus, relay_shm_has_publisher
 from rm75_control.control.joint_admittance_8dof.viewer import DigitalTwinMirror, RailGenesisConfig, RailGenesisScene
@@ -67,6 +72,18 @@ def main() -> int:
     ap.add_argument("--twin-hz", type=float, default=60.0)
     ap.add_argument("--backend", choices=("cpu", "cuda"), default="cuda")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--track-subscribe", type=str, default="", help="ZMQ track overlay (e.g. tcp://127.0.0.1:5598)")
+    ap.add_argument("--anatomy-subscribe", type=str, default="tcp://127.0.0.1:5601")
+    ap.add_argument("--canonical-bind", type=str, default="tcp://127.0.0.1:5599")
+    ap.add_argument(
+        "--canonical-human-source",
+        type=str,
+        default="none",
+        choices=["none", "robot", "fitted"],
+        help="none=off; robot=5599 robot only (no human); fitted=5599 robot+EasyMocap human",
+    )
+    ap.add_argument("--smplx-npz", type=Path, default=None, help="Optional static smplx_result.npz for anatomy/canonical")
+    ap.add_argument("--no-anatomy", action="store_true")
     args = ap.parse_args()
 
     if args.dry_run:
@@ -80,6 +97,7 @@ def main() -> int:
         ensure_cuda_driver_for_taichi(require_gpu=True)
 
     twin: DigitalTwinMirror | None = None
+    overlay = None
 
     scene = RailGenesisScene(
         RailGenesisConfig(
@@ -99,8 +117,41 @@ def main() -> int:
     try:
         twin = DigitalTwinMirror(bus, scene, hz=args.twin_hz)
         twin.start_background()
+
+        if args.track_subscribe or args.canonical_human_source in ("fitted", "robot") or args.smplx_npz:
+            try:
+                from rm75_control.control.joint_admittance_8dof.viewer.human_overlay import (
+                    TwinHumanOverlay,
+                    TwinHumanOverlayConfig,
+                )
+
+                overlay = TwinHumanOverlay(
+                    scene,
+                    TwinHumanOverlayConfig(
+                        track_subscribe=str(args.track_subscribe or "tcp://127.0.0.1:5598"),
+                        anatomy_subscribe=str(args.anatomy_subscribe),
+                        canonical_bind=str(args.canonical_bind),
+                        canonical_human_source=str(args.canonical_human_source),
+                        smplx_npz=args.smplx_npz,
+                        enable_track=bool(args.track_subscribe) or args.canonical_human_source == "fitted",
+                        enable_anatomy=not args.no_anatomy,
+                        enable_canonical=args.canonical_human_source in ("fitted", "robot"),
+                    ),
+                )
+                overlay.set_robot_q_provider(lambda: bus.q_meas_8dof(0.0) if bus.is_live() else None)
+                overlay.start()
+                print(
+                    f"rm75 twin: human overlay track={args.track_subscribe or '-'} "
+                    f"canonical={args.canonical_human_source}",
+                    flush=True,
+                )
+            except Exception as exc:
+                print(f"rm75 twin: human overlay disabled ({exc})", flush=True)
+
         _run_subscribe_loop(bus=bus, twin=twin, shm_name=shm_name)
     finally:
+        if overlay is not None:
+            overlay.stop()
         bus.stop()
         if twin is not None:
             twin.stop()

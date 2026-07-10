@@ -1,0 +1,225 @@
+{
+  "model_id": "rm75_6f",
+  "urdf_path": "vendor/rm_models/RM75/urdf/RM75-6F/urdf/RM75-6F.urdf",
+  "mesh_root": "meshes",
+  "visual_mesh_format": "fbx",
+  "default_joint_positions": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "defaults": {
+    "name": "rm75_main",
+    "base_pos": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "use_collision_geometry": false,
+    "use_visual_mesh": true,
+    "allow_collision_fallback": false,
+    "ue_visual_asset_root": "/Game/Bedlam/Generated/RM75Visual",
+    "visual_mesh_scale": 1.0,
+    "color": [
+      0.55,
+      0.55,
+      0.6,
+      1.0
+    ],
+    "genesis_link_visual_urdf_rgba": {
+      "link_7": [
+        0.86,
+        0.87,
+        0.88,
+        1.0
+      ]
+    },
+    "probe_collision": {
+      "enabled": true,
+      "link_name": "rm75_probe",
+      "shape": "convex_hull_mesh",
+      "radius": 0.024,
+      "length": 0.14,
+      "origin_xyz": [
+        0.0,
+        0.0,
+        0.126
+      ],
+      "origin_rpy": [
+        0.0,
+        0.0,
+        -1.57079632679
+      ]
+    },
+    "tcp_control": {
+      "link_name": "rm75_probe",
+      "local_point_m": [
+        0.0,
+        0.0,
+        0.252
+      ]
+    },
+    "force_sensor": {
+      "mount_link": "link_7",
+      "contact_link": "rm75_probe",
+      "tool_mass_kg": 1.0,
+      "tool_com_sensor_m": [
+        0.0,
+        0.0,
+        0.126
+      ],
+      "gravity_world_m_s2": [
+        0.0,
+        0.0,
+        -9.81
+      ],
+      "subtract_static_wrench_from_output": false,
+      "link_T_sensor": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "sensor_T_contact": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.252
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    }
+  },
+  "capabilities": {
+    "dof_count": 7,
+    "supports_torque_control": false,
+    "supports_joint_position": true,
+    "supports_joint_velocity": true,
+    "supports_cartesian_pose": true,
+    "supports_force_position_hybrid": true,
+    "has_6axis_ft": true,
+    "control_rate_hz": 100.0,
+    "tcp_frame": "rm75_probe"
+  },
+  "controllers": {
+    "default": "rm75_cartesian_pose",
+    "simulation_profiles": {
+      "rm75_cartesian_pose": {
+        "type": "cartesian_pose",
+        "output_mode": "joint_position"
+      },
+      "rm75_admittance_outer_loop": {
+        "type": "sim_admittance_outer_loop",
+        "inner": "cartesian_pose",
+        "output_mode": "joint_position",
+        "note": "Simulation fallback only; not the RealMan hardware inner-loop."
+      },
+      "rm75_force_position_hybrid": {
+        "type": "force_position_hybrid",
+        "adapter": "projects.genesis_ue_sync.integrations.realman.sim_robot_interface",
+        "output_mode": "joint_position"
+      }
+    },
+    "hardware_profiles": {
+      "rm75_force_position_hybrid": {
+        "adapter": "projects.genesis_ue_sync.integrations.realman.force_position",
+        "requires": [
+          "force_position_hybrid",
+          "six_axis_ft"
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "vendor": "RealManRobot",
+    "embodiment_builder": "generic_urdf",
+    "pd_profile": "rm75_6f",
+    "base_frame": "base_link",
+    "tcp_frame": "rm75_probe",
+    "tool_name": "rm75_probe",
+    "max_contact_force_n": 50.0,
+    "fixed_tool_chain": {
+      "enabled": true,
+      "parent_link": "link_7",
+      "sensor_link": "rm75_ft_sensor",
+      "tool_link": "rm75_probe",
+      "sensor_origin_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sensor_origin_rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "tool_origin_xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "tool_origin_rpy": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "visual_mesh_filename": "assets/robots/rm75_6f/visual/rm75_probe.dae",
+      "visual_origin_xyz": [
+        0.0,
+        0.0,
+        -0.10385
+      ],
+      "visual_origin_rpy": [
+        0.0,
+        0.0,
+        -1.57079632679
+      ],
+      "tool_mass_kg": 1.0
+    },
+    "upstream": "https://github.com/RealManRobot/rm_models/tree/main/RM75/urdf/RM75-6F",
+    "visual_source_collada_in_repo": "meshes/*.dae",
+    "ue_visual_pipeline": "convert_collada_to_fbx.py then import FBX when visual_mesh_format is fbx."
+  }
+}

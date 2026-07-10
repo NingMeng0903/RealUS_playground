@@ -1,0 +1,40 @@
+{
+  "request_id": "5d255462-a1b9-416e-a742-1c7bae104dab",
+  "success": true,
+  "detail": "canonical_tick_applied",
+  "payload": {
+    "robot_updates": [
+      {
+        "robot_id": "robot_main",
+        "dof": 8,
+        "error": "KeyError(\"No articulated URDF robot registered as 'robot_main'. Known: []\")"
+      }
+    ],
+    "world": {
+      "world_kind": "editor",
+      "note": "canonical writes are targeting editor world; press Play before expecting PIE viewport motion",
+      "active_actor_count": 4
+    },
+    "camera_clock": {
+      "updated": 0,
+      "errors": []
+    },
+    "registered_robot_ids": [],
+    "human_keys": [],
+    "object_keys": [],
+    "dynamic_objects": {
+      "count": 0,
+      "active": 0,
+      "expired": 0,
+      "skipped": 0,
+      "kinds": {}
+    },
+    "human": {
+      "updated": false,
+      "reason": "empty_human_payload"
+    },
+    "canonical_udp_apply_count": 100,
+    "canonical_udp_drop_count": 6
+  },
+  "updated_at_ns": 1783670488318745444
+}

@@ -1,0 +1,15 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0",
+  "FriendlyName": "AmongUsRealtimeCapture",
+  "Description": "Streams compressed capture buffers over TCP for Among_US mux bridging.",
+  "Category": "Rendering",
+  "Modules": [
+    {
+      "Name": "AmongUsRealtimeCapture",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ]
+}

@@ -6,14 +6,19 @@
 
 | 目录 | 环境 | 功能 |
 |------|------|------|
-| [`rm75_control/`](rm75_control/) | `envs/rm75` | RM75 8-DOF 关节导纳 WBC、Genesis viewer、twin、任务编排 |
-| [`camera_calibration/`](camera_calibration/) | `envs/camera_calib` | 4 相机 + 床内外参标定 UI、标定结果导出 |
+| [`rm75_control/`](rm75_control/) | `envs/rm75` / viewer:`envs/genesis` | RM75 8-DOF 导纳、Genesis twin（可挂 SMPL/解剖 overlay） |
+| [`camera_calibration/`](camera_calibration/) | `envs/camera_calib` | 4 相机 + 床内外参标定 UI、`genesis_bundle.yaml` |
+| [`perception/`](perception/) | `envs/genesis` | 真相机 ZMQ、DWPose+EasyMocap、解剖 retarget 入口 |
+| [`src/`](src/) | `envs/genesis` | 从 Among_US 迁移的 `genesis_ue_sync` / `bridge` / `common` |
+| [`configs/`](configs/) | — | RealUS scene / tracking / anatomy |
+| [`ref_code_library/`](ref_code_library/) | — | EasyMocap、DWPose ONNX、SMPL-X 权重 |
+
+全链路启动：[`MD/COMMAND.md`](MD/COMMAND.md)。根目录 `source env.sh`。
 
 ## 规划中的包（按需新建同级目录）
 
 | 建议目录名 | 职责 |
 |------------|------|
-| `perception/` | 相机识别 / 多视角融合 / 目标检测（消费 `camera_calibration/calibration_results/`） |
 | `servo_executor/` | 发布给真机执行的伺服层（轨迹/力控接口，调用 `rm75_control` 或独立 CANFD） |
 | `shared/`（可选） | 跨包公共类型：坐标系、时间戳、消息格式（仅当两包强耦合时再抽） |
 
@@ -55,13 +60,12 @@ python scripts/run_ui.py
 ```
 camera_calibration/calibration_results/genesis_bundle.yaml
         │
-        ├─► rm75_control viewer (demo / twin)  自动加载
-        │      • 4 路相机：外参位姿 + 内参垂直 FOV
-        │      • 地面：Z=0 平面（标定世界系）
-        │      • 床：淡蓝矩形（size + rotation + height）
-        │
-        └─► perception/（未来）
+        ├─► rm75_control viewer (demo / twin)  自动加载床+相机
+        ├─► perception/ (RealSense ZMQ + EasyMocap)
+        └─► genesis_ue_sync SceneInit / UE bridge
 ```
+
+全链路命令见 [`MD/COMMAND.md`](MD/COMMAND.md)。
 
 标定结果路径（viewer 自动发现，按优先级）：
 

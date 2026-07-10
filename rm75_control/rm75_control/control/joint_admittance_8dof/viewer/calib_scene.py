@@ -89,6 +89,14 @@ class BedSurfaceCalib:
         if top_z <= 0.0:
             return None
 
+        thickness_m = 0.1
+        if isinstance(support, dict):
+            support_size = support.get("size")
+            if isinstance(support_size, (list, tuple)) and len(support_size) >= 3:
+                thickness_m = float(support_size[2])
+            elif support.get("thickness_m") is not None:
+                thickness_m = float(support["thickness_m"])
+
         # World origin = bed center on floor; bed X/Y parallel to world when xy_aligned.
         center_floor = bed.get("center_on_floor")
         if isinstance(center_floor, (list, tuple)) and len(center_floor) >= 2:
@@ -96,9 +104,8 @@ class BedSurfaceCalib:
         else:
             cx, cy = 0.0, 0.0
 
-        height = top_z
-        center = (cx, cy, height / 2.0)
-        size = (lx, ly, height)
+        center = (cx, cy, top_z - thickness_m / 2.0)
+        size = (lx, ly, thickness_m)
         return cls(
             name=name,
             center=center,

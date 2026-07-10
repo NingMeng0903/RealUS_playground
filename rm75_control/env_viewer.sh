@@ -23,8 +23,12 @@ fi
 
 export RM75_CONTROL_ROOT="/media/camp/EXT_DRIVE/RealUS_playground/rm75_control"
 export RM_API2_PYTHON="/media/camp/EXT_DRIVE/RM_API2/Python"
+export REALUS_PROJECT_ROOT="${REALUS_PROJECT_ROOT:-/media/camp/EXT_DRIVE/RealUS_playground}"
+export AMONGUS_PROJECT_ROOT="${AMONGUS_PROJECT_ROOT:-${REALUS_PROJECT_ROOT}}"
 # Robotic_Arm only needed for rm75_control package __init__ import chain; not used by viewer runtime.
-export PYTHONPATH="${RM75_CONTROL_ROOT}:${RM_API2_PYTHON}:${PYTHONPATH:-}"
+# RealUS src enables track/anatomy/canonical overlays on the twin.
+export PYTHONPATH="${REALUS_PROJECT_ROOT}/src:${RM75_CONTROL_ROOT}:${RM_API2_PYTHON}:${PYTHONPATH:-}"
 
 echo "viewer env: $(which python)  (genesis / Among_US)"
 echo "RM75_CONTROL_ROOT=${RM75_CONTROL_ROOT}"
+echo "REALUS_PROJECT_ROOT=${REALUS_PROJECT_ROOT}"

@@ -1,0 +1,366 @@
+{
+  "request_id": "3e0dfe26-f682-4cad-8d4a-de13dc9321fe",
+  "success": true,
+  "detail": "scene_applied",
+  "payload": {
+    "scene_name": "realus_bed_rail_scene",
+    "ue_map": "/Game/Bedlam/IBLMap",
+    "ue_hdri_name": "abandoned_hopper_terminal_03",
+    "support_surface": {
+      "name": "bed_surface",
+      "semantic_role": "bed",
+      "pos_m": [
+        0.0,
+        0.0,
+        0.23429574145099236
+      ],
+      "size_m": [
+        1.9157895644124774,
+        0.7039417440422886,
+        0.1
+      ]
+    },
+    "robot_visual_debug": {
+      "urdf_path": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/assets/RM75-6F-8dof.slider.generated.urdf",
+      "base_pos_m": [
+        0.0,
+        0.52,
+        0.0
+      ],
+      "base_quat_xyzw": [
+        0.0,
+        0.0,
+        0.7071067811865475,
+        -0.7071067811865477
+      ],
+      "joint_positions": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mesh_source": "fbx",
+      "visual_basis_rpy_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "visual_mesh_scale": 1.0,
+      "mesh_source_to_ue_scale": 1.0,
+      "cache_key": "fbx_f43a67fc32",
+      "fbx_axis_forward": "X",
+      "fbx_axis_up": "Z",
+      "fbx_global_scale": 1.0,
+      "mirror_y_for_unreal_fbx_import": false,
+      "articulation_registered": true,
+      "visual_mesh_asset_paths": [
+        "/Game/Bedlam/Generated/RM758DofVisual/base_link_fbx_f43a67fc32.base_link_fbx_f43a67fc32",
+        "/Game/Bedlam/Generated/RM758DofVisual/link_1_fbx_f43a67fc32.link_1_fbx_f43a67fc32",
+        "/Game/Bedlam/Generated/RM758DofVisual/link_2_fbx_f43a67fc32.link_2_fbx_f43a67fc32",
+        "/Game/Bedlam/Generated/RM758DofVisual/link_3_fbx_f43a67fc32.link_3_fbx_f43a67fc32",
+        "/Game/Bedlam/Generated/RM758DofVisual/link_4_fbx_f43a67fc32.link_4_fbx_f43a67fc32",
+        "/Game/Bedlam/Generated/RM758DofVisual/link_5_fbx_f43a67fc32.link_5_fbx_f43a67fc32",
+        "/Game/Bedlam/Generated/RM758DofVisual/link_6_fbx_f43a67fc32.link_6_fbx_f43a67fc32",
+        "/Game/Bedlam/Generated/RM758DofVisual/link_7_fbx_f43a67fc32.link_7_fbx_f43a67fc32"
+      ],
+      "diagnostics_enabled": false,
+      "skipped_visual_links": [
+        "rail_base",
+        "tcp"
+      ],
+      "robot_id": "robot_main",
+      "model_id": "rm75_6f_8dof",
+      "instance_id": "robot_main"
+    },
+    "robot_visual_debug_all": [
+      {
+        "urdf_path": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/assets/RM75-6F-8dof.slider.generated.urdf",
+        "base_pos_m": [
+          0.0,
+          0.52,
+          0.0
+        ],
+        "base_quat_xyzw": [
+          0.0,
+          0.0,
+          0.7071067811865475,
+          -0.7071067811865477
+        ],
+        "joint_positions": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "mesh_source": "fbx",
+        "visual_basis_rpy_deg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "visual_mesh_scale": 1.0,
+        "mesh_source_to_ue_scale": 1.0,
+        "cache_key": "fbx_f43a67fc32",
+        "fbx_axis_forward": "X",
+        "fbx_axis_up": "Z",
+        "fbx_global_scale": 1.0,
+        "mirror_y_for_unreal_fbx_import": false,
+        "articulation_registered": true,
+        "visual_mesh_asset_paths": [
+          "/Game/Bedlam/Generated/RM758DofVisual/base_link_fbx_f43a67fc32.base_link_fbx_f43a67fc32",
+          "/Game/Bedlam/Generated/RM758DofVisual/link_1_fbx_f43a67fc32.link_1_fbx_f43a67fc32",
+          "/Game/Bedlam/Generated/RM758DofVisual/link_2_fbx_f43a67fc32.link_2_fbx_f43a67fc32",
+          "/Game/Bedlam/Generated/RM758DofVisual/link_3_fbx_f43a67fc32.link_3_fbx_f43a67fc32",
+          "/Game/Bedlam/Generated/RM758DofVisual/link_4_fbx_f43a67fc32.link_4_fbx_f43a67fc32",
+          "/Game/Bedlam/Generated/RM758DofVisual/link_5_fbx_f43a67fc32.link_5_fbx_f43a67fc32",
+          "/Game/Bedlam/Generated/RM758DofVisual/link_6_fbx_f43a67fc32.link_6_fbx_f43a67fc32",
+          "/Game/Bedlam/Generated/RM758DofVisual/link_7_fbx_f43a67fc32.link_7_fbx_f43a67fc32"
+        ],
+        "diagnostics_enabled": false,
+        "skipped_visual_links": [
+          "rail_base",
+          "tcp"
+        ],
+        "robot_id": "robot_main",
+        "model_id": "rm75_6f_8dof",
+        "instance_id": "robot_main"
+      }
+    ],
+    "urdf_articulation": {
+      "robot_id": "robot_main",
+      "registered_link_count": 15
+    },
+    "urdf_articulations": [
+      {
+        "robot_id": "robot_main",
+        "registered_link_count": 15
+      }
+    ],
+    "human_anchor_m": [
+      0.0,
+      0.0,
+      0.29929574145099236
+    ],
+    "human_anchor_cm": [
+      0.0,
+      0.0,
+      29.929574145099235
+    ],
+    "human_payload": {
+      "align_floor": true,
+      "display_vertical_sink_m": 0.0,
+      "display_vertical_offset_m": 0.0,
+      "display_pitch_forward_deg": 0.0
+    },
+    "camera_payloads": [
+      {
+        "name": "cam1",
+        "x": -159.8561724773389,
+        "y": -76.15689810268219,
+        "z": 167.5629903937599,
+        "roll": -10.17494902798663,
+        "pitch": -44.747328379298764,
+        "yaw": 28.210981179876303,
+        "fov": 42.981516994218566,
+        "lookat_cm": [
+          -97.27083061296149,
+          -42.58348706013124,
+          97.16482951815345
+        ],
+        "res": [
+          1280,
+          720
+        ]
+      },
+      {
+        "name": "cam2",
+        "x": -4.006377414924334,
+        "y": -125.31309862705609,
+        "z": 145.55026546371735,
+        "roll": -0.8185737468589718,
+        "pitch": -46.95653981704319,
+        "yaw": 89.94008874235982,
+        "fov": 43.538865295306955,
+        "lookat_cm": [
+          -3.9350063710237193,
+          -57.05784467905598,
+          72.46664750012624
+        ],
+        "res": [
+          1280,
+          720
+        ]
+      },
+      {
+        "name": "cam3",
+        "x": 6.728353769825479,
+        "y": 117.40230165782859,
+        "z": 161.655119172682,
+        "roll": -4.1289909821364805,
+        "pitch": -48.0153254088438,
+        "yaw": -94.26926094766286,
+        "fov": 44.09134335046276,
+        "lookat_cm": [
+          1.7485759840810966,
+          50.694735099718834,
+          87.32274145556585
+        ],
+        "res": [
+          1280,
+          720
+        ]
+      },
+      {
+        "name": "cam4",
+        "x": 214.7601953686169,
+        "y": -6.057116652730487,
+        "z": 164.0821218661601,
+        "roll": -0.47524438756023074,
+        "pitch": -33.036221550134485,
+        "yaw": 175.30621872337096,
+        "fov": 43.0110070372247,
+        "lookat_cm": [
+          131.20873818316096,
+          0.8029338828266508,
+          109.56520973041832
+        ],
+        "res": [
+          1280,
+          720
+        ]
+      }
+    ],
+    "motion_payload": {
+      "source_id": "realus_easymocap_subject",
+      "sequence_npz_path": "/media/camp/EXT_DRIVE/RealUS_playground/outputs/ue_bake/subject_shape_tpose.npz",
+      "mesh_manifest_path": "",
+      "fps": 30.0,
+      "frame_count": 1,
+      "start_frame": 0,
+      "frame_step": 1,
+      "human_world_offset_m": [
+        0.0,
+        0.0,
+        0.29929574145099236
+      ],
+      "human_align_floor": true,
+      "human_scene_placement_json": "",
+      "human_ue_calibration_json": ""
+    },
+    "render_payload": {
+      "fps": 30.0,
+      "frame_limit": 1,
+      "ue_frame_count": 1,
+      "ue_frame_step": 1,
+      "ue_render_now": false,
+      "ue_spawn_robot": true,
+      "ue_spawn_human": true
+    },
+    "ue_avatar_payload": {
+      "body_mode": "official_retargeted_overlay",
+      "body_name": "it_4375_M_2400",
+      "texture_body": "Male_Skin_Preset_0027",
+      "texture_clothing": "gr_ben_004_M_texture_01",
+      "texture_clothing_overlay": "T_gr_ben_004_M_texture_01_diffuse",
+      "skeletal_mesh_path": "/Engine/PS/Bedlam/SMPLX_LH_animations/it_4375_M/it_4375_M_2400",
+      "animation_asset_root": "/Game/Bedlam/Generated/RetargetedAnimations",
+      "imported_fbx_root": "/Game/Bedlam/Generated/ImportedSMPLMotion",
+      "fallback_animation_path": "",
+      "hidden_material_path": "/Engine/PS/Bedlam/Core/Materials/M_SMPLX_Hidden.M_SMPLX_Hidden",
+      "fbx_global_scale": 100.0
+    },
+    "ue_avatar_source": {
+      "source": "scene_spec",
+      "selection_path": null,
+      "applied": false
+    },
+    "augmentation_payload": null,
+    "bedlam_camera_rig_hidden": {
+      "hidden": [
+        "BE_CameraTarget",
+        "BE_CameraOperator"
+      ],
+      "skipped": false
+    },
+    "visible_human": {
+      "spawned": true,
+      "label": "GEN_visible_human",
+      "skeletal_mesh_path": "/Engine/PS/Bedlam/SMPLX_LH_animations/it_4375_M/it_4375_M_2400",
+      "skeletal_mesh_loaded": true,
+      "spawn_location_cm": [
+        0.0,
+        0.0,
+        29.929574145099235
+      ],
+      "animation_mode": "custom",
+      "smpl_bone_preset": "smplx_snake_case",
+      "mesh_bone_name_count": 57,
+      "preset_hit_count": 21,
+      "bone_dump_path": "/media/camp/EXT_DRIVE/RealUS_playground/outputs/ue_sessions/realus_fullflow_v1/visible_human_bones.json",
+      "human_component": "poseable_mesh_smpl_realtime"
+    },
+    "amongus_capture_rig": {
+      "installed": true,
+      "install_path": "uclass_factory",
+      "rig_actor_label": "GEN_AmongUsCaptureRig",
+      "rig_actor_class": "TargetPoint",
+      "capture_actor_labels": [
+        "GEN_cap_cam1",
+        "GEN_cap_cam2",
+        "GEN_cap_cam3",
+        "GEN_cap_cam4"
+      ],
+      "camera_names": [
+        "cam1",
+        "cam2",
+        "cam3",
+        "cam4"
+      ],
+      "scene_capture_image_corrections": {
+        "cam1": {
+          "flip_u": false,
+          "flip_v": false,
+          "reason": "cam1: identity (same spawn as side cameras)"
+        },
+        "cam2": {
+          "flip_u": false,
+          "flip_v": false,
+          "reason": "cam2: identity (same spawn as side cameras)"
+        },
+        "cam3": {
+          "flip_u": false,
+          "flip_v": false,
+          "reason": "cam3: identity (same spawn as side cameras)"
+        },
+        "cam4": {
+          "flip_u": false,
+          "flip_v": false,
+          "reason": "cam4: identity (same spawn as side cameras)"
+        }
+      },
+      "tcp_host": "127.0.0.1",
+      "tcp_port": 17355,
+      "jpeg_quality": 85,
+      "render_target_count": 4,
+      "applied_property_names": {
+        "host": "tcp_host",
+        "port": "tcp_port",
+        "scene_captures": "scene_captures",
+        "camera_names": "camera_names",
+        "camera_flip_u": "camera_flip_u",
+        "camera_flip_v": "camera_flip_v",
+        "jpeg_quality": "jpeg_quality",
+        "auto_connect": "auto_connect"
+      }
+    }
+  },
+  "updated_at_ns": 1783670516073078060
+}

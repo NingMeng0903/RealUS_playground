@@ -1,0 +1,17 @@
+{
+  "shapes10": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "npz": "/media/camp/EXT_DRIVE/RealUS_playground/outputs/ue_bake/subject_shape_tpose.npz",
+  "gender": "neutral",
+  "note": "UE bake must use this NPZ/FBX so GEN_visible_human matches EasyMocap body shape"
+}

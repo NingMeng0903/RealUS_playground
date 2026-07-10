@@ -1,0 +1,62 @@
+{
+  "applied": true,
+  "bone": "pelvis",
+  "bone_primary_resolved": "pelvis",
+  "align_source": "component_bone_location",
+  "relative_shift_cm": [
+    -0.0,
+    -0.0,
+    -0.0
+  ],
+  "bind_pelvis_component_cm": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "candidate_bone_component_cm": {
+    "SMPLX-neutral": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "root": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "pelvis": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "left_ankle": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "right_ankle": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "left_foot": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "right_foot": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "component_relative_location_before_cm": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "component_bounds_before_align_cm": {
+    "origin_cm": null,
+    "extent_cm": null
+  }
+}

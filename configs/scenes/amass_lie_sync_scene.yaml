@@ -1,0 +1,386 @@
+{
+  "name": "amass_lie_sync_scene",
+  "environment": {
+    "ue_map": "/Game/Bedlam/IBLMap",
+    "ue_hdri_name": "abandoned_hopper_terminal_03",
+    "ground_plane_color": [
+      0.92,
+      0.92,
+      0.92,
+      1.0
+    ]
+  },
+  "support_surface": {
+    "name": "bed_surface",
+    "pos": [
+      0.0,
+      0.0,
+      0.18
+    ],
+    "size": [
+      2.0,
+      1.0,
+      0.36
+    ],
+    "color": [
+      0.55,
+      0.55,
+      0.57,
+      1.0
+    ],
+    "semantic_role": "bed",
+    "contact_stiffness_n_per_m": 1500000.0,
+    "spawn_in_genesis": true,
+    "spawn_in_ue": true
+  },
+  "robot_model_overrides": {
+    "panda_urdf": {
+      "joint_positions": [
+        0.0,
+        0.0,
+        0.0,
+        -1.8,
+        0.0,
+        1.8,
+        0.0
+      ]
+    },
+    "rm75_6f": {
+      "joint_positions": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "use_collision_geometry": false
+    }
+  },
+  "robot": {
+    "model_id": "panda_urdf",
+    "name": "robot_main",
+    "base_pos": [
+      -0.55,
+      -0.35,
+      0.36
+    ],
+    "joint_positions": [
+      0.0,
+      0.0,
+      0.0,
+      -1.8,
+      0.0,
+      1.8,
+      0.0
+    ],
+    "probe_collision": {
+      "enabled": true,
+      "link_name": "panda_probe",
+      "shape": "convex_hull_mesh",
+      "mesh_filename": "visual/panda_probe.dae",
+      "radius": 0.024,
+      "length": 0.14,
+      "origin_xyz": [0.0, 0.0, -0.107],
+      "origin_rpy": [0.0, 0.0, -1.57079632679]
+    },
+    "tcp_control": {
+      "link_name": "panda_probe",
+      "local_point_m": [
+        0.0,
+        0.0,
+        0.04
+      ]
+    },
+    "force_sensor": {
+      "mount_link": "panda_link7",
+      "contact_link": "panda_probe",
+      "tool_mass_kg": 0.55,
+      "tool_com_sensor_m": [
+        0.0,
+        0.0,
+        0.035
+      ],
+      "gravity_world_m_s2": [
+        0.0,
+        0.0,
+        -9.81
+      ],
+      "subtract_static_wrench_from_output": false,
+      "link_T_sensor": [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0]
+      ],
+      "sensor_T_contact": [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.04],
+        [0.0, 0.0, 0.0, 1.0]
+      ]
+    },
+    "use_collision_geometry": false,
+    "use_visual_mesh": true,
+    "allow_collision_fallback": false,
+    "ue_visual_asset_root": "/Game/Bedlam/Generated/PandaVisual",
+    "visual_mesh_format": "fbx",
+    "visual_mesh_scale": 1.0,
+    "color": [
+      0.55,
+      0.55,
+      0.6,
+      1.0
+    ]
+  },
+  "human": {
+    "anchor_pos": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "support_margin_m": 0.015,
+    "support_reference": "support_surface_top",
+    "align_floor": true,
+    "ue_root_offset_genesis_m": [0.0, 0.0, 0.0]
+  },
+  "motion": {
+    "source_id": "CMU/114/114_11_poses",
+    "source_path": "dataset/raw/humans/amass_hf/raw/CMU/114/114_11_poses.npz",
+    "sequence_npz_path": "outputs/amass_lie_sync/sequence_cmu_114_11/sequence.npz",
+    "mesh_manifest_path": "dataset/processed/humans/mesh_sequences/amass/114_11_poses/manifest.json",
+    "fps": 30.0,
+    "frame_count": 870,
+    "start_frame": 0,
+    "frame_step": 4
+  },
+  "render": {
+    "fps": 30.0,
+    "frame_limit": 870,
+    "genesis_backend": "cuda",
+    "ue_frame_count": 870,
+    "ue_frame_step": 1,
+    "ue_render_now": true
+  },
+  "ue_avatar": {
+    "body_mode": "official_retargeted_overlay",
+    "body_name": "it_4375_M_2400",
+    "texture_body": "Male_Skin_Preset_0027",
+    "texture_clothing": "gr_ben_004_M_texture_01",
+    "texture_clothing_overlay": "T_gr_ben_004_M_texture_01_diffuse",
+    "skeletal_mesh_path": "/Engine/PS/Bedlam/SMPLX_LH_animations/it_4375_M/it_4375_M_2400",
+    "animation_asset_root": "/Game/Bedlam/Generated/RetargetedAnimations",
+    "imported_fbx_root": "/Game/Bedlam/Generated/ImportedSMPLMotion",
+    "hidden_material_path": "/Engine/PS/Bedlam/Core/Materials/M_SMPLX_Hidden.M_SMPLX_Hidden",
+    "fbx_global_scale": 100.0
+  },
+  "cameras": [
+    {
+      "name": "cam_left",
+      "res": [
+        640,
+        352
+      ],
+      "pos": [
+        0.35,
+        -1.4,
+        1.98
+      ],
+      "lookat": [
+        0.28,
+        0.1,
+        0.52
+      ],
+      "up": [
+        -0.032496,
+        0.69634,
+        0.716976
+      ],
+      "fov": 82.0,
+      "near": 0.05,
+      "far": 100.0,
+      "gui": false,
+      "roll_deg": 0.0,
+      "metadata": {
+        "layout": "oblique_surveillance_left",
+        "pitch_down_deg": 44.2,
+        "fov_deg": 82.0,
+        "fov_axis": "horizontal"
+      }
+    },
+    {
+      "name": "cam_right",
+      "res": [
+        640,
+        352
+      ],
+      "pos": [
+        0.35,
+        1.4,
+        1.98
+      ],
+      "lookat": [
+        0.28,
+        -0.1,
+        0.52
+      ],
+      "up": [
+        -0.040131,
+        -0.745287,
+        0.665535
+      ],
+      "fov": 82.0,
+      "near": 0.05,
+      "far": 100.0,
+      "gui": false,
+      "roll_deg": 0.0,
+      "metadata": {
+        "layout": "oblique_surveillance_right",
+        "pitch_down_deg": 44.2,
+        "fov_deg": 82.0,
+        "fov_axis": "horizontal"
+      }
+    },
+    {
+      "name": "cam_top",
+      "res": [
+        640,
+        352
+      ],
+      "pos": [
+        0.25,
+        0.0,
+        2.28
+      ],
+      "lookat": [
+        0.35468478451804275,
+        0.0,
+        1.2854945470785937
+      ],
+      "up": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "fov": 70.0,
+      "near": 0.05,
+      "far": 100.0,
+      "gui": false,
+      "roll_deg": 0.0,
+      "metadata": {
+        "synced_from_calibration": true,
+        "sync_fx": 457.0073621574767,
+        "fov_deg": 70.0,
+        "fov_axis": "horizontal",
+        "derived_from_scene_spec": true
+      }
+    },
+    {
+      "name": "cam_front",
+      "res": [
+        640,
+        352
+      ],
+      "pos": [
+        2.0,
+        0.0,
+        1.9
+      ],
+      "lookat": [
+        0.45,
+        0.0,
+        0.6
+      ],
+      "up": [
+        -0.643,
+        0.0,
+        0.766
+      ],
+      "fov": 82.0,
+      "near": 0.05,
+      "far": 100.0,
+      "gui": false,
+      "roll_deg": 0.0,
+      "metadata": {
+        "layout": "foot_end_along_body",
+        "pitch_down_deg": 39.0,
+        "fov_deg": 82.0,
+        "fov_axis": "horizontal"
+      }
+    },
+    {
+      "name": "cam_front_left",
+      "res": [
+        640,
+        352
+      ],
+      "pos": [
+        1.7,
+        -1.25,
+        1.95
+      ],
+      "lookat": [
+        0.45,
+        0.0,
+        0.55
+      ],
+      "up": [
+        -0.439,
+        0.439,
+        0.784
+      ],
+      "fov": 82.0,
+      "near": 0.05,
+      "far": 100.0,
+      "gui": false,
+      "roll_deg": 0.0,
+      "metadata": {
+        "layout": "front_corner_left",
+        "pitch_down_deg": 38.4,
+        "fov_deg": 82.0,
+        "fov_axis": "horizontal"
+      }
+    },
+    {
+      "name": "cam_front_right",
+      "res": [
+        640,
+        352
+      ],
+      "pos": [
+        1.7,
+        1.25,
+        1.95
+      ],
+      "lookat": [
+        0.45,
+        0.0,
+        0.55
+      ],
+      "up": [
+        -0.439,
+        -0.439,
+        0.784
+      ],
+      "fov": 82.0,
+      "near": 0.05,
+      "far": 100.0,
+      "gui": false,
+      "roll_deg": 0.0,
+      "metadata": {
+        "layout": "front_corner_right",
+        "pitch_down_deg": 38.4,
+        "fov_deg": 82.0,
+        "fov_axis": "horizontal"
+      }
+    }
+  ],
+  "metadata": {
+    "selected_amass_clip": "CMU/114/114_11_poses.npz",
+    "selected_amass_duration_s": 29.02,
+    "notes": "Shared scene for Genesis and UE. Units are meters. Bed center is the shared world origin target; cam_left/cam_right are raised oblique surveillance views (~+1m Z, ~44 deg pitch toward chest/pelvis). cam_right lookat y is mirrored (-0.1 vs left +0.1) so equal horizontal range gives symmetric pitch; cam_top is nadir above bed center. Same pos/lookat/up/fov/res in Genesis and UE via ue_camera_payload_from_spec.",
+    "cameras_synced_from_calibration": "configs/calibration/ue_exec2_bedroom/cameras.yaml",
+    "cameras_synced_at_utc": "2026-04-16T23:55:17.365860+00:00"
+  }
+}

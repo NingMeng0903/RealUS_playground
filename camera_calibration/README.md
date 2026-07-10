@@ -171,11 +171,13 @@ hand-eye) and are not used here.
   is the first alias in `cameras.yaml` at the time Stage 1 ran (usually
   `cam1`).
 - `extrinsics_world.yaml`: dictionary `alias -> T_world_cam (4×4)`. World +Z is
-  the floor normal; origin is on the floor (see `configs/world.yaml → origin_mode`).
+  the floor normal; origin is bed center projected to floor (`origin_mode`).
+  When `align_xy_to_bed: true` (default), world +X/+Y are rotated about +Z so
+  bed edges are parallel to world axes (`bed_rotation_deg` ≈ 0 in exports).
 - `world_meta.yaml`: bed envelope (`bed_size_m`, `bed_rotation_deg`,
-  `bed_outer_rect_xy` — 4 ordered corner points, any rotation —
-  `bed_center_world`, `bed_center_on_floor`), plane residuals, and
-  per-corner capture rectangles.
+  `bed_outer_rect_xy`, `bed_center_world`, `bed_center_on_floor` — all in the
+  **final** world frame, origin at bed center on floor), plane residuals, and
+  `bed_xy_skew_deg_pre_align` when XY was deskewed.
 - `genesis_bundle.yaml`: **single Genesis handoff file** — merges intrinsics,
   world extrinsics, bed geometry, and quality metrics under fixed top-level
   sections (`metadata`, `world_frame`, `bed`, `cameras`). The `cameras` block

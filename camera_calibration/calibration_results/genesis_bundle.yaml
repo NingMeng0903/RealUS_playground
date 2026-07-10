@@ -1,7 +1,7 @@
 schema_version: 1
 metadata:
   pipeline: multicam_calib
-  generated_at: '2026-07-10T13:42:22'
+  generated_at: '2026-07-10T13:43:44'
   camera_aliases:
   - cam1
   - cam2

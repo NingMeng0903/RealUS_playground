@@ -1,0 +1,27 @@
+# BEDLAM UE avatar routing: map SMPL-X priors / subjects to skeletal meshes + textures.
+# Extend this list as new Meshcapade bodies are imported into the UE project.
+schema_version: 1
+avatars:
+  - avatar_id: default_male_it4375
+    gender: male
+    body_name: it_4375_M_2400
+    skeletal_mesh_path: /Engine/PS/Bedlam/SMPLX_LH_animations/it_4375_M/it_4375_M_2400
+    texture_body: Male_Skin_Preset_0027
+    texture_clothing_overlay: gr_ben_004_M_texture_01
+    smplx_beta_prior_key: neutral_male_prior_v1
+    notes: Pack default from SyncSceneSpec bindings.
+  - avatar_id: alternate_placeholder_female
+    gender: female
+    body_name: REPLACE_WITH_BODY_NAME
+    skeletal_mesh_path: /Engine/PS/Bedlam/SMPLX_LH_animations/REPLACE/REPLACE
+    texture_body: REPLACE_SKIN_PRESET
+    smplx_beta_prior_key: neutral_female_prior_v1
+    notes: Placeholder row; duplicate and fill after importing assets.
+
+beta_priors:
+  neutral_male_prior_v1:
+    summary: Ten SMPL-X shape dims heuristic prior for male avatars.
+    values: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  neutral_female_prior_v1:
+    summary: Ten SMPL-X shape dims heuristic prior for female avatars.
+    values: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

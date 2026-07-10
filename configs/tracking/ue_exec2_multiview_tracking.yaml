@@ -1,0 +1,114 @@
+# GPU: uhmr.device + genesis_mask.backend (Genesis sim). SMPL mesh bake uses torch when
+# AMONGUS_TORCH_DEVICE is unset (auto -> cuda if available). ViT MP4 overlay is numpy/ffmpeg (CPU).
+scene_spec_path: configs/scenes/amass_lie_sync_scene.yaml
+calibration_path: configs/calibration/ue_exec2_bedroom/cameras.yaml
+run_meta_path: dataset/demo_video/ue_render_exec2/ue_render/run_meta.json
+# Use a fresh directory if re-running after a partial/killed job (avoid stale heatmaps).
+output_root: outputs/tracking/ue_exec2_multiview_tracking
+input_fps: 30.0
+selected_camera_ids: [cam_left, cam_right]
+frame_start: 0
+frame_step: 1
+# Only first N synced frames: cuts U-HMR + heatmaps + ViT + Genesis + pointcloud RAM/time.
+frame_limit: 300
+
+uhmr:
+  repo_root: ref_code_library/U-HMR-main
+  experiment_config: ref_code_library/U-HMR-main/experiments/h36m/vit_pos_trans_encoder_token.yaml
+  checkpoint_path: dataset/weights/model_best.pth.tar
+  device: cuda
+  # Put official SMPL assets in this folder (see U-HMR README):
+  # - SMPL_NEUTRAL.pkl (or point smpl_model_path at the folder containing it)
+  # - smpl_mean_params.npz
+  # - SMPL_to_J19.pkl
+  smpl_assets_dir: dataset/extra/smpl_assets
+  primary_camera_id: cam_left
+  # Map U-HMR global_orient from primary camera frame -> cameras.yaml world (Genesis Z-up).
+  world_root_orient: true
+  # Degrees: limit SMPL root rotation change per frame to suppress rare U-HMR axis-angle spikes (e.g. ~120deg jumps). null disables.
+  root_orient_max_step_deg: 45
+  image_size: [256, 256]
+  vit_crop_left: 32
+  vit_crop_right: 32
+  heatmap_strategy: baseline_or_variance
+  heatmap_metric: l2
+  # 0-based ViT block for mid-layer heatmaps (U-HMR ViT depth=32 -> blocks[5] is the 6th block). Set null to disable.
+  vit_mid_block_index: 5
+
+tracking_render:
+  enable: true
+  export_png: true
+  export_mp4: true
+  line_width: 3
+  joint_count: 24
+  # Pinhole SMPL mesh (vertices) alpha-blended onto each camera RGB -> tracking_mesh_renders/
+  smpl_mesh_overlay:
+    enable: true
+    alpha: 0.98
+    face_stride: 1
+    mesh_rgb: [224, 224, 224]
+    max_triangle_px: 420
+  gt_mesh_overlay:
+    enable: true
+    # Empty -> use scene_spec.motion.sequence_npz_path.
+    sequence_npz_path:
+    alpha: 0.92
+    face_stride: 1
+    mesh_rgb: [64, 128, 255]
+    max_triangle_px: 420
+  scene_geometry_overlay:
+    enable: true
+    line_rgb: [255, 0, 255]
+    line_width: 3
+
+vit_video:
+  alpha: 0.45
+  # Half-open slice on the *in-memory* U-HMR sequence (0-based). Omit both to encode all frames.
+  # frame_end: 435
+  # frame_start: 435
+  frame_start:
+  frame_end:
+  # When true, writes per-camera mp4 then ffmpeg hstack strip (higher disk, lower peak RAM than old in-RAM strip).
+  enable_strip: false
+  strip_name: multiview_vit_overlay.mp4
+
+genesis_mask:
+  backend: cuda
+  robot_enabled: true
+  segmentation_threshold: 1.0e-6
+  # false saves disk and some RAM during mask export (set true if you need per-frame PNGs).
+  export_png: false
+
+world_reconstruction:
+  min_views_per_joint: 2
+  max_reprojection_error_px: 25.0
+  min_camera_bbox_long_edge_px: 40.0
+  min_camera_bbox_short_edge_px: 12.0
+  enable_camera_consistency_filter: true
+  max_camera_consistency_mean_abs_delta_px: 80.0
+  camera_consistency_relative_factor: 2.5
+  min_cameras_after_consistency_filter: 2
+  min_consistent_cameras_for_smpl_refine: 2
+  translation_h36m17_indices: [0, 1, 4, 2, 5]
+  use_exact_h36m17_regressor: true
+  enable_smpl_refine: false
+  smpl_refine_iterations: 60
+  smpl_refine_lr: 0.03
+  smpl_refine_pose_weight: 5.0e-2
+  smpl_refine_optimize_body_pose: false
+  # First processed frame: diagnostics/frame_XXXXX_multiview_keypoint_geometry.json (2D + triangulation vs pinhole).
+  export_frame0_multiview_geometry_json: true
+
+epipolar:
+  source_camera_id: cam_left
+  max_source_points: 32
+  source_min_distance: 12
+  source_threshold_quantile: 0.995
+  target_line_samples: 256
+  target_peak_threshold: 0.60
+  max_matches_per_source: 2
+  max_reprojection_error_px: 25.0
+
+pointcloud_filter:
+  k_neighbors: 8
+  std_ratio: 1.0
