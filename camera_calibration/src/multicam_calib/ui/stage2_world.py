@@ -548,10 +548,16 @@ class Stage2Panel(QWidget):
             )
         if report.world_meta is not None and report.phase == "corners":
             m = report.world_meta
-            lines.append(
-                f"  Bed size (m): {m.bed_size_m[0]:.3f} x {m.bed_size_m[1]:.3f} "
-                f"(rotated {m.bed_rotation_deg:.1f} deg from world X)"
-            )
+            if m.xy_aligned_to_bed:
+                lines.append(
+                    f"  Bed size (m): {m.bed_size_m[0]:.3f} x {m.bed_size_m[1]:.3f} "
+                    f"(world X/Y aligned to bed; pre-align skew {m.bed_xy_skew_deg_pre_align:.1f} deg)"
+                )
+            else:
+                lines.append(
+                    f"  Bed size (m): {m.bed_size_m[0]:.3f} x {m.bed_size_m[1]:.3f} "
+                    f"(rotated {m.bed_rotation_deg:.1f} deg from world X)"
+                )
             lines.append(f"  Origin (floor): {m.bed_center_on_floor}")
             lines.append(f"  Bed center (world): {m.bed_center_world}")
             lines.append("  Exported: calibration_results/genesis_bundle.yaml")

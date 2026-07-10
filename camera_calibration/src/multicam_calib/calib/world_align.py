@@ -7,8 +7,9 @@ Pipeline (requires Stage 1 ``extrinsics_rel.yaml``):
 3. **Corners** — four captures, one board placement per physical bed corner
    (any rotation allowed); fuse four board corner tags (151/1/162/12) per
    sample, pool every physical tag-corner point across all captures, and fit
-   the minimum-area bounding rectangle (any orientation, not axis-aligned) →
-   bed size; origin at bed-center projected to floor (configurable).
+   the    minimum-area bounding rectangle (any orientation, not axis-aligned) →
+   bed size; origin at bed-center projected to floor; optionally rotate
+   world X/Y about +Z so bed edges are parallel to world axes (``align_xy_to_bed``).
 """
 from __future__ import annotations
 
@@ -27,7 +28,10 @@ from multicam_calib.calib.plane_fit import (
     build_world_basis_from_floor,
     fit_plane_svd,
     min_area_rect_from_xy,
+    rect_corners_xy,
+    rotate_basis_about_z,
     signed_heights_along_normal,
+    transform_xy_between_bases,
 )
 from multicam_calib.calib.pnp import solve_view_pose
 from multicam_calib.calib.pose_graph import _average_se3, se3_inv
@@ -877,22 +881,45 @@ def _run_corners_export(
     # Minimum-area rectangle over every physical tag-corner point from every
     # capture — allows the bed to be at any rotation relative to world X/Y
     # (an axis-aligned union would overestimate the size of a rotated bed).
-    bed_rect: RotatedRect = min_area_rect_from_xy(np.concatenate(all_corner_pts, axis=0))
+    all_corner_xy = np.concatenate(all_corner_pts, axis=0)
+    bed_rect: RotatedRect = min_area_rect_from_xy(all_corner_xy)
     cx, cy = bed_rect.center_xy
-    bed_center_world = np.array([cx, cy, z_bed], dtype=np.float64)
-    bed_center_on_floor = np.array([cx, cy, 0.0], dtype=np.float64)
+    bed_center_on_floor_tmp = np.array([cx, cy, 0.0], dtype=np.float64)
+    bed_center_world_tmp = np.array([cx, cy, z_bed], dtype=np.float64)
+    bed_skew_deg_pre_align = float(bed_rect.angle_deg)
 
     if world_cfg.origin_mode == "bed_center_projected_to_floor":
-        origin_ref = basis_tmp.world_to_ref(bed_center_on_floor)
+        origin_ref = basis_tmp.world_to_ref(bed_center_on_floor_tmp)
     else:
-        origin_ref = basis_tmp.world_to_ref(bed_center_world)
+        origin_ref = basis_tmp.world_to_ref(bed_center_world_tmp)
 
     basis = WorldFrameBasis(
         origin_ref=origin_ref,
-        x_axis=basis_tmp.x_axis,
-        y_axis=basis_tmp.y_axis,
-        z_axis=basis_tmp.z_axis,
+        x_axis=np.asarray(basis_tmp.x_axis, dtype=np.float64),
+        y_axis=np.asarray(basis_tmp.y_axis, dtype=np.float64),
+        z_axis=np.asarray(basis_tmp.z_axis, dtype=np.float64),
     )
+
+    if world_cfg.align_xy_to_bed:
+        basis = rotate_basis_about_z(basis, bed_skew_deg_pre_align)
+        corner_xy_final = transform_xy_between_bases(all_corner_xy, basis_tmp, basis)
+        aabb = axis_aligned_rect_from_xy(corner_xy_final)
+        bed_size_m = (aabb.width, aabb.height)
+        bed_rotation_deg = 0.0
+        bed_center_on_floor = [0.0, 0.0, 0.0]
+        bed_center_world = [0.0, 0.0, z_bed]
+        bed_outer_rect_xy = [{"x": float(p[0]), "y": float(p[1])} for p in rect_corners_xy(aabb)]
+        xy_aligned_to_bed = True
+    else:
+        bed_size_m = (float(bed_rect.size[0]), float(bed_rect.size[1]))
+        bed_rotation_deg = bed_skew_deg_pre_align
+        bed_center_on_floor = bed_center_on_floor_tmp.tolist()
+        bed_center_world = bed_center_world_tmp.tolist()
+        bed_outer_rect_xy = [
+            {"x": float(p[0]), "y": float(p[1])} for p in bed_rect.corners_xy
+        ]
+        xy_aligned_to_bed = False
+
     T_ref_world = basis.T_ref_world()
     T_world_ref = basis.T_world_ref()
 
@@ -917,14 +944,14 @@ def _run_corners_export(
         floor_plane_residual_mm=floor_fit.residual_mm,
         bed_height_m=z_bed,
         bed_plane_residual_mm=bed_residual_mm,
-        bed_size_m=(bed_rect.size[0], bed_rect.size[1]),
-        bed_center_world=bed_center_world.tolist(),
-        bed_center_on_floor=bed_center_on_floor.tolist(),
+        bed_size_m=bed_size_m,
+        bed_center_world=bed_center_world,
+        bed_center_on_floor=bed_center_on_floor,
         corner_rects_xy=corner_rect_dicts,
-        bed_outer_rect_xy=[
-            {"x": float(p[0]), "y": float(p[1])} for p in bed_rect.corners_xy
-        ],
-        bed_rotation_deg=bed_rect.angle_deg,
+        bed_outer_rect_xy=bed_outer_rect_xy,
+        bed_rotation_deg=bed_rotation_deg,
+        bed_xy_skew_deg_pre_align=bed_skew_deg_pre_align if xy_aligned_to_bed else 0.0,
+        xy_aligned_to_bed=xy_aligned_to_bed,
         corner_fusion_std_mm=all_std,
         phases_completed=["floor", "bed", "corners"],
     )

@@ -148,6 +148,8 @@ class WorldMeta:
     bed_rotation_deg: float
     corner_fusion_std_mm: list[float]
     phases_completed: list[str]
+    xy_aligned_to_bed: bool = False
+    bed_xy_skew_deg_pre_align: float = 0.0
     extra: dict[str, Any] = field(default_factory=dict)
 
     def as_yaml_dict(self) -> dict[str, Any]:
@@ -162,6 +164,8 @@ class WorldMeta:
             "corner_rects_xy": self.corner_rects_xy,
             "bed_outer_rect_xy": self.bed_outer_rect_xy,
             "bed_rotation_deg": float(self.bed_rotation_deg),
+            "xy_aligned_to_bed": bool(self.xy_aligned_to_bed),
+            "bed_xy_skew_deg_pre_align": float(self.bed_xy_skew_deg_pre_align),
             "corner_fusion_std_mm": [float(v) for v in self.corner_fusion_std_mm],
             "phases_completed": list(self.phases_completed),
             **{k: _yamlify(v) for k, v in self.extra.items()},
@@ -173,7 +177,8 @@ class WorldMeta:
         known = {
             "origin_mode", "floor_plane_residual_mm", "bed_height_m", "bed_plane_residual_mm",
             "bed_size_m", "bed_center_world", "bed_center_on_floor", "corner_rects_xy",
-            "bed_outer_rect_xy", "bed_rotation_deg", "corner_fusion_std_mm", "phases_completed",
+            "bed_outer_rect_xy", "bed_rotation_deg", "xy_aligned_to_bed",
+            "bed_xy_skew_deg_pre_align", "corner_fusion_std_mm", "phases_completed",
         }
         extra = {k: v for k, v in d.items() if k not in known}
         raw_outer = d.get("bed_outer_rect_xy") or []
@@ -191,6 +196,8 @@ class WorldMeta:
             corner_rects_xy=list(d.get("corner_rects_xy") or []),
             bed_outer_rect_xy=list(raw_outer),
             bed_rotation_deg=float(d.get("bed_rotation_deg", 0.0)),
+            xy_aligned_to_bed=bool(d.get("xy_aligned_to_bed", False)),
+            bed_xy_skew_deg_pre_align=float(d.get("bed_xy_skew_deg_pre_align", 0.0)),
             corner_fusion_std_mm=list(d.get("corner_fusion_std_mm") or []),
             phases_completed=list(d.get("phases_completed") or []),
             extra=extra,

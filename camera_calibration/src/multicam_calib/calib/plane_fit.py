@@ -69,6 +69,39 @@ class WorldFrameBasis:
         return T
 
 
+def rotate_basis_about_z(basis: WorldFrameBasis, angle_deg: float) -> WorldFrameBasis:
+    """Rotate X/Y about +Z (right-hand rule). Origin and Z axis are unchanged."""
+    rad = np.deg2rad(float(angle_deg))
+    c, s = np.cos(rad), np.sin(rad)
+    x = np.asarray(basis.x_axis, dtype=np.float64)
+    y = np.asarray(basis.y_axis, dtype=np.float64)
+    z = np.asarray(basis.z_axis, dtype=np.float64)
+    x_new = c * x + s * y
+    y_new = -s * x + c * y
+    x_new = x_new / (np.linalg.norm(x_new) + 1e-12)
+    y_new = y_new / (np.linalg.norm(y_new) + 1e-12)
+    return WorldFrameBasis(
+        origin_ref=np.asarray(basis.origin_ref, dtype=np.float64),
+        x_axis=x_new,
+        y_axis=y_new,
+        z_axis=z,
+    )
+
+
+def transform_xy_between_bases(
+    p_xy: np.ndarray,
+    from_basis: WorldFrameBasis,
+    to_basis: WorldFrameBasis,
+) -> np.ndarray:
+    """Map Nx2 points on z=0 from ``from_basis`` world XY to ``to_basis`` world XY."""
+    pts = np.asarray(p_xy, dtype=np.float64).reshape(-1, 2)
+    out = np.empty_like(pts)
+    for i, row in enumerate(pts):
+        p_ref = from_basis.world_to_ref(np.array([row[0], row[1], 0.0], dtype=np.float64))
+        out[i] = to_basis.ref_to_world(p_ref)[:2]
+    return out
+
+
 def fit_plane_svd(points: np.ndarray) -> PlaneFitResult:
     """Fit a plane to Nx3 points via SVD; orient normal so mean lies on +Z side."""
     pts = np.asarray(points, dtype=np.float64).reshape(-1, 3)

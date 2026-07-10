@@ -243,6 +243,8 @@ class WorldConfig:
     # Corners capture: lower tag count than full-board BA (partial views at bed edges).
     min_tags_corner_view: int = 20
     origin_mode: str = "bed_center_projected_to_floor"
+    # Rotate world +X/+Y about +Z so bed edges are parallel to world axes (after origin shift).
+    align_xy_to_bed: bool = True
     # Ground capture: board origin must be within this height (mm) above floor plane.
     floor_max_height_above_plane_mm: float = 120.0
     # Bed capture: board must be at least this high (mm) above floor plane.
@@ -272,6 +274,7 @@ def load_world(path: Path | None = None) -> WorldConfig:
         corner_fusion_max_std_mm=float(raw.get("corner_fusion_max_std_mm", defaults.corner_fusion_max_std_mm)),
         min_tags_corner_view=int(raw.get("min_tags_corner_view", defaults.min_tags_corner_view)),
         origin_mode=str(raw.get("origin_mode", defaults.origin_mode)),
+        align_xy_to_bed=bool(raw.get("align_xy_to_bed", defaults.align_xy_to_bed)),
         floor_max_height_above_plane_mm=float(
             raw.get("floor_max_height_above_plane_mm", defaults.floor_max_height_above_plane_mm)
         ),

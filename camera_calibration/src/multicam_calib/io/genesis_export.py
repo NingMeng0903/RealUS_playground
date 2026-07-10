@@ -169,6 +169,8 @@ def build_genesis_bundle(
                 "floor_plane_residual_mm": float(world_meta.floor_plane_residual_mm),
                 "bed_plane_residual_mm": float(world_meta.bed_plane_residual_mm),
                 "fusion_residual_m": float(world_ext_meta.get("fusion_residual_m", 0.0)),
+                "xy_aligned_to_bed": bool(world_meta.xy_aligned_to_bed),
+                "bed_xy_skew_deg_pre_align": float(world_meta.bed_xy_skew_deg_pre_align),
             },
         },
         "world_frame": {
@@ -179,6 +181,7 @@ def build_genesis_bundle(
                 "handedness": "right",
                 "image_origin": "top_left",
                 "camera_forward_axis": "+z",
+                "xy_alignment": "bed_edges" if world_meta.xy_aligned_to_bed else "floor_board",
             },
             "origin": {
                 "mode": world_meta.origin_mode,

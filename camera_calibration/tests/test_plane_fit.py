@@ -63,5 +63,50 @@ class TestPlaneFit(unittest.TestCase):
         self.assertAlmostEqual(abs(x @ y), 0.0, places=9)
 
 
+    def test_rotate_basis_about_z_near_axis_aligned(self) -> None:
+        from multicam_calib.calib.plane_fit import (
+            min_area_rect_from_xy,
+            rotate_basis_about_z,
+            transform_xy_between_bases,
+            WorldFrameBasis,
+        )
+
+        basis_tmp = WorldFrameBasis(
+            origin_ref=np.zeros(3),
+            x_axis=np.array([1.0, 0.0, 0.0]),
+            y_axis=np.array([0.0, 1.0, 0.0]),
+            z_axis=np.array([0.0, 0.0, 1.0]),
+        )
+        corners = np.array(
+            [
+                [-0.9, -0.3],
+                [0.9, -0.3],
+                [0.9, 0.3],
+                [-0.9, 0.3],
+            ],
+            dtype=np.float64,
+        )
+        angle = 9.0
+        rad = np.deg2rad(angle)
+        c, s = np.cos(rad), np.sin(rad)
+        R = np.array([[c, -s], [s, c]])
+        pts = (R @ corners.T).T
+        bed_rect = min_area_rect_from_xy(pts)
+        origin = basis_tmp.world_to_ref(np.array([bed_rect.center_xy[0], bed_rect.center_xy[1], 0.0]))
+        basis = WorldFrameBasis(
+            origin_ref=origin,
+            x_axis=basis_tmp.x_axis.copy(),
+            y_axis=basis_tmp.y_axis.copy(),
+            z_axis=basis_tmp.z_axis.copy(),
+        )
+        b = rotate_basis_about_z(basis, float(bed_rect.angle_deg))
+        pf = transform_xy_between_bases(pts, basis_tmp, b)
+        aa = axis_aligned_rect_from_xy(pf)
+        self.assertAlmostEqual(aa.width, 1.8, places=2)
+        self.assertAlmostEqual(aa.height, 0.6, places=2)
+        self.assertLess(abs(aa.center_xy()[0]), 0.02)
+        self.assertLess(abs(aa.center_xy()[1]), 0.02)
+
+
 if __name__ == "__main__":
     unittest.main()

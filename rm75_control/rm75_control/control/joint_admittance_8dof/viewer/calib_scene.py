@@ -89,25 +89,12 @@ class BedSurfaceCalib:
         if top_z <= 0.0:
             return None
 
-        # Calibration world origin = bed_center_projected_to_floor → (0,0,0) in world.
-        # bundle bed.center_on_floor stores pre-origin ref-plane coords (often non-zero);
-        # cameras/extrinsics use true world frame, so place bed at world origin convention.
-        world_frame = payload.get("world_frame") if isinstance(payload.get("world_frame"), dict) else {}
-        origin = world_frame.get("origin") if isinstance(world_frame.get("origin"), dict) else {}
-        origin_mode = str(origin.get("mode", "bed_center_projected_to_floor"))
-        if origin_mode == "bed_center_projected_to_floor":
-            cx, cy = 0.0, 0.0
-        elif origin_mode == "bed_center_world":
-            cx, cy = 0.0, 0.0
+        # World origin = bed center on floor; bed X/Y parallel to world when xy_aligned.
+        center_floor = bed.get("center_on_floor")
+        if isinstance(center_floor, (list, tuple)) and len(center_floor) >= 2:
+            cx, cy = float(center_floor[0]), float(center_floor[1])
         else:
-            center_floor = bed.get("center_on_floor")
-            if isinstance(center_floor, (list, tuple)) and len(center_floor) >= 2:
-                cx, cy = float(center_floor[0]), float(center_floor[1])
-            elif bed.get("center_world"):
-                cw = bed["center_world"]
-                cx, cy = float(cw[0]), float(cw[1])
-            else:
-                return None
+            cx, cy = 0.0, 0.0
 
         height = top_z
         center = (cx, cy, height / 2.0)

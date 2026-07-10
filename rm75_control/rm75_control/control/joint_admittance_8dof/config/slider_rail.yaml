@@ -2,7 +2,7 @@
 # Consumed by param_model/generator.py -> generated URDF for Genesis viewer.
 # Conventions: rail travel = Y, Z up, "outer side" = +X.
 #   - arm is offset toward +X and flush with the rail +X face
-#   - frame (机架) protrudes toward -X
+#   - frame protrudes toward -X
 #   - URDF root = rail_base (frame bottom)
 #   - rail_link frame = rail module floor (top of frame); slider_link = slider top center
 #   - world placement from world_calib (base pose at rail_y = 0), NOT frame pose
@@ -26,7 +26,7 @@ slider_rail:
     length_mm: 170                # Y
     top_to_rail_bottom_mm: 66     # must be > base_plate_thickness + track_height
 
-  frame:                          # 机架 under the rail (derived from rail_base)
+  frame:                          # frame under the rail (derived from rail_base)
     height_mm: 200
     width_mm: 300                 # +X edge flush with rail, extra protrudes -X
 

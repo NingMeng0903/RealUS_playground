@@ -25,4 +25,6 @@ bed_min_height_above_floor_mm: 200
 bed_height_match_tolerance_mm: 100
 
 # bed_center_projected_to_floor: world origin on floor under bed rectangle center.
+# align_xy_to_bed: rotate world X/Y about +Z so bed edges are parallel to world axes.
 origin_mode: bed_center_projected_to_floor
+align_xy_to_bed: true
