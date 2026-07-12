@@ -49,7 +49,7 @@ git push -u origin main
 
 ```bash
 git add .
-git commit -m "viewer加入床和相机，修复床中心与世界原点对齐"
+git commit -m "ue联动好了，ue床size有点问题但不大"
 git push -u origin main
 ```
 

@@ -1,0 +1,145 @@
+digraph HybridControl8DOF {
+  graph [
+    rankdir=TB
+    bgcolor="white"
+    pad=0.5
+    nodesep=0.4
+    ranksep=0.6
+    fontname="DejaVu Sans"
+    fontsize=11
+    label="8-DOF Hybrid Control — Outer Loop + Inner Loop (200 Hz)"
+    labelloc=t
+    fontsize=16
+    fontname="DejaVu Sans Bold"
+  ];
+  node [
+    shape=box
+    style="rounded,filled"
+    fillcolor="#f8f9fb"
+    color="#4a5568"
+    fontname="DejaVu Sans"
+    fontsize=10
+    margin="0.14,0.09"
+  ];
+  edge [
+    color="#4a5568"
+    arrowsize=0.75
+    fontname="DejaVu Sans"
+    fontsize=9
+  ];
+
+  subgraph cluster_inputs {
+    label="Inputs";
+    style="rounded,dashed";
+    color="#718096";
+    bgcolor="#fafafa";
+
+    Xd   [label="x_d\n(desired pose)"];
+    Xdff [label="xdot_ff\n(velocity FF)"];
+    Fdes [label="F_des\n(desired force)"];
+  }
+
+  subgraph cluster_sense {
+    label="Sensing";
+    style="rounded,dashed";
+    color="#718096";
+    bgcolor="#fafafa";
+
+    FK  [label="x = FK(q_m)"];
+    Sf  [label="S_f:\ncompensate + LPF\nF_ext = S_f(F_raw - F_grav)"];
+    Sv  [label="S_v:\nscale + sample"];
+  }
+
+  subgraph cluster_outer {
+    label="Outer Loop — Hybrid Admittance (Tool-Frame TTF)";
+    style="rounded,filled";
+    color="#2b6cb0";
+    fillcolor="#ebf4ff";
+    penwidth=2;
+
+    subgraph cluster_pos {
+      label="Position Tracking (track axes m_t)";
+      style="rounded";
+      color="#4299e1";
+      bgcolor="#f0f7ff";
+
+      ErrX  [label="Delta x = x_d - x_hat\nx_hat = x + R v_cmd T_delay"];
+      ErrT  [label="Delta x_t = R^T Delta x\n(Delta x_t)_z = 0"];
+      Cfb   [label="C_fb:\nv_corr = R K_t Delta x_t\nK_t = diag(K_p,K_w) o m_t"];
+      Cff   [label="C_ff:\nxdot_ff"];
+      SumPos [shape=circle label="+" width=0.35 fixedsize=true fillcolor="#ffffff"];
+      Vpos  [label="v_pos = xdot_ff + v_corr"];
+    }
+
+    subgraph cluster_force {
+      label="Force Tracking (force axis m_f, tool-Z)";
+      style="rounded";
+      color="#4299e1";
+      bgcolor="#f0f7ff";
+
+      eF [label="e_F = F_des,z^eff - F_ext,z"];
+      Gf [label="G_f:\nv_r_dot = gamma e_F - v_r/tau_leak\n|v_r| <= v_r,max"];
+      Yv [label="Y_v (2nd-order admittance):\nM_z v_fz_dot + D_z (v_fz - v_r) = e_F"];
+    }
+
+    subgraph cluster_ttf {
+      label="TTF Fusion (Tool Frame)";
+      style="rounded";
+      color="#4299e1";
+      bgcolor="#f0f7ff";
+
+      VposT [label="v_pos,t = R^T v_pos"];
+      Fuse  [label="v_cmd,t:\n  force axis <- v_fz\n  track axis <- v_pos,t"];
+      Vd    [label="v_d = R v_cmd,t\n(base frame twist)"];
+    }
+
+    ClipV [label="clip v_d:\n|v| <= v_max\nDelta v gate on track axes"];
+  }
+
+  subgraph cluster_inner {
+    label="Inner Loop — WBC Velocity IK -> q Execution";
+    style="rounded,filled";
+    color="#276749";
+    fillcolor="#f0fff4";
+    penwidth=2;
+
+    Nom   [label="qdot_nom = qdot_ff + N g_sec(q_m)\nN = I - J+ J"];
+    QP    [label="QP (Escande slack):\n  min 1/2 ||qdot-qdot_nom||^2_W + 1/2 w^T W_task w\n  s.t. J(q_m) qdot - w = v_d\n       qdot_min <= qdot <= qdot_max"];
+    Qdot  [label="qdot"];
+    Integ [label="q_c <- q_c + qdot dt\n(velocity -> position)"];
+    Sat   [label="Saturate:\nvel / acc / pos limits"];
+  }
+
+  subgraph cluster_plant {
+    label="Plant";
+    style="rounded,dashed";
+    color="#718096";
+    bgcolor="#fafafa";
+
+    Qact [label="q_act = saturate(q_c)"];
+    Dyn  [label="G: robot dynamics\n+ contact environment\n(8-DOF: 1 prismatic + 7 revolute)"];
+  }
+
+  Xd   -> ErrX;
+  Xdff -> Cff;
+  Fdes -> eF;
+
+  ErrX -> ErrT -> Cfb -> SumPos;
+  Cff  -> SumPos;
+  SumPos -> Vpos -> VposT -> Fuse;
+  eF -> Gf -> Yv -> Fuse [label="v_fz"];
+  Fuse -> Vd -> ClipV;
+
+  ClipV -> QP [label="v_d = v_task"];
+  Nom -> QP;
+  QP -> Qdot -> Integ -> Sat -> Qact -> Dyn;
+
+  Dyn -> FK [label="q_m"];
+  FK -> ErrX [label="x, R"];
+  FK -> QP [label="J(q_m), R"];
+  Dyn -> Sf [label="F_raw"];
+  Sf -> eF [label="F_ext,z"];
+  Dyn -> Sv [label="v"];
+  Sv -> Cfb [label="v_m (via PBAC)" style=dashed];
+  ClipV -> ErrX [label="v_cmd delay" style=dashed color="#a0aec0"];
+}
