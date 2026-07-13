@@ -1,17 +1,17 @@
 {
-  "source": "/media/camp/EXT_DRIVE/RealUS_playground/smplx_outputs/20260713_153936",
+  "source": "/media/camp/EXT_DRIVE/RealUS_playground/smplx_outputs/20260713_173841",
   "gender": "male",
   "betas": [
-    0.321125328540802,
-    0.03584989905357361,
-    0.12079475820064545,
-    0.00346882245503366,
-    0.008750690147280693,
-    -0.03510722145438194,
-    0.035516154021024704,
-    -0.004220603033900261,
-    0.007688307669013739,
-    0.008657148107886314
+    0.35630711913108826,
+    -0.014973171055316925,
+    0.08943160623311996,
+    0.005445058457553387,
+    0.011114032939076424,
+    -0.032179154455661774,
+    0.02335473708808422,
+    -0.004472059663385153,
+    -0.0032564178109169006,
+    0.0017893961630761623
   ],
   "subject_obj": "/media/camp/EXT_DRIVE/RealUS_playground/outputs/anatomy_retarget/latest_canonical/smpl_canonical_tpose.obj",
   "neutral_obj": "/media/camp/EXT_DRIVE/RealUS_playground/outputs/anatomy_retarget/latest_canonical/smpl_canonical_tpose_neutral.obj",

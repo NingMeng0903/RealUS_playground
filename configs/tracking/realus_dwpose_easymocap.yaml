@@ -55,6 +55,9 @@ pose_backend:
     zero_hand_keypoints: false
     # Raw DWPose inliers; green triangulation reprojection is debug only.
     fit_2d_source: raw_inlier_2d
+    # Publication gate requested for the four-camera burst pipeline.  This is
+    # separate from EasyMocap's internal per-observation outlier threshold.
+    final_smplx_reprojection_max_px: 50.0
     opts: {}
     write_debug_images: true
     write_easymocap_smpl_json: false

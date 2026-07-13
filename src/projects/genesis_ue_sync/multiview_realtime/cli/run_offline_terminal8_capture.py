@@ -70,7 +70,7 @@ def parse_args() -> argparse.Namespace:
         "--bed-sdf",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Light bed-plane pose refine after EasyMocap fit (default: on).",
+        help="Use bed-plane SDF as a soft joint-fit loss and diagnostic (default: on).",
     )
     p.add_argument("--bed-sdf-weight", type=float, default=4.0)
     p.add_argument("--bed-sdf-max-iter", type=int, default=4)
@@ -554,6 +554,7 @@ def main() -> int:
             bed_sdf_max_iter=int(args.bed_sdf_max_iter),
             scene_spec_path=cfg.scene_spec_path,
             motion_frame_indices=burst_motion_fi,
+            write_debug_images=write_debug_images,
         )
 
         if fixed_betas is None and moment_summary.get("easymocap_betas") is not None:

@@ -19,6 +19,7 @@ from projects.genesis_ue_sync.tracking.dwpose_easymocap_export import easymocap_
 logger = logging.getLogger(__name__)
 
 _FRAME_NAME = "000000"
+_BODY25_ROOT_CORE_JOINTS = (0, 1, 2, 5, 8, 9, 10, 11, 12, 13, 14)
 
 
 def easymocap_repo_root() -> Path:
@@ -476,6 +477,253 @@ def _resolve_fixed_betas(fixed_betas: np.ndarray | None, *, n_betas: int = 10) -
     return beta[: int(n_betas)].astype(np.float32)
 
 
+def estimate_body25_root_offsets(
+    predicted_joints: np.ndarray,
+    keypoints3d: np.ndarray,
+    *,
+    min_conf: float = 0.05,
+    min_valid_core: int = 5,
+    max_offset_m: float = 0.75,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Estimate per-frame translations from SMPL-X joints to trusted Body25 core joints."""
+    predicted = np.asarray(predicted_joints, dtype=np.float32)
+    target = np.asarray(keypoints3d, dtype=np.float32)
+    if predicted.ndim != 3 or predicted.shape[-1] < 3:
+        raise ValueError(f"predicted_joints must be (F, J, 3), got {predicted.shape}")
+    if target.ndim != 3 or target.shape[-1] < 4:
+        raise ValueError(f"keypoints3d must be (F, J, 4), got {target.shape}")
+    n_frames = min(int(predicted.shape[0]), int(target.shape[0]))
+    offsets = np.zeros((n_frames, 3), dtype=np.float32)
+    per_frame: list[dict[str, Any]] = []
+    for frame_index in range(n_frames):
+        n_joints = min(25, int(predicted.shape[1]), int(target.shape[1]))
+        core = np.asarray([j for j in _BODY25_ROOT_CORE_JOINTS if j < n_joints], dtype=np.int64)
+        valid = (
+            (target[frame_index, core, 3] > float(min_conf))
+            & np.all(np.isfinite(target[frame_index, core, :3]), axis=1)
+            & np.all(np.isfinite(predicted[frame_index, core, :3]), axis=1)
+        )
+        valid_count = int(np.sum(valid))
+        if valid_count < int(min_valid_core):
+            per_frame.append(
+                {
+                    "frame_index": frame_index,
+                    "applied": False,
+                    "reason": "too_few_valid_core_joints",
+                    "valid_core_joints": valid_count,
+                }
+            )
+            continue
+        residuals = (
+            target[frame_index, core[valid], :3]
+            - predicted[frame_index, core[valid], :3]
+        )
+        offset = np.median(residuals, axis=0).astype(np.float32)
+        offset_norm = float(np.linalg.norm(offset))
+        core_rms = float(np.sqrt(np.mean(np.sum((residuals - offset.reshape(1, 3)) ** 2, axis=1))))
+        applied = bool(np.all(np.isfinite(offset)) and offset_norm <= float(max_offset_m))
+        if applied:
+            offsets[frame_index] = offset
+        per_frame.append(
+            {
+                "frame_index": frame_index,
+                "applied": applied,
+                "reason": "ok" if applied else "offset_out_of_range",
+                "valid_core_joints": valid_count,
+                "offset_m": [float(v) for v in offset.tolist()],
+                "offset_norm_m": offset_norm,
+                "core_rms_m": core_rms,
+            }
+        )
+    accepted = [entry for entry in per_frame if bool(entry.get("applied"))]
+    summary: dict[str, Any] = {
+        "core_joint_indices": list(_BODY25_ROOT_CORE_JOINTS),
+        "n_frames": n_frames,
+        "applied_frames": len(accepted),
+        "per_frame": per_frame,
+    }
+    if accepted:
+        accepted_offsets = np.asarray([entry["offset_m"] for entry in accepted], dtype=np.float32)
+        summary.update(
+            {
+                "median_offset_m": [float(v) for v in np.median(accepted_offsets, axis=0).tolist()],
+                "median_z_offset_m": float(np.median(accepted_offsets[:, 2])),
+                "median_core_rms_m": float(np.median([entry["core_rms_m"] for entry in accepted])),
+            }
+        )
+    return offsets, summary
+
+
+def _body_model_joints_sequence(body_model: Any, params: dict[str, Any]) -> np.ndarray:
+    Rh = np.asarray(params["Rh"], dtype=np.float32).reshape(-1, 3)
+    n_frames = int(Rh.shape[0])
+    poses_raw = np.asarray(params["poses"], dtype=np.float32)
+    poses = poses_raw.reshape(n_frames, -1)
+    kw: dict[str, Any] = {
+        "Rh": Rh,
+        "Th": np.asarray(params["Th"], dtype=np.float32).reshape(n_frames, 3),
+        "poses": poses,
+        "shapes": _prepare_shapes_for_body_model(body_model, params["shapes"]),
+        "return_verts": False,
+        "return_tensor": False,
+    }
+    if "expression" in params and getattr(body_model, "expr_dirs", None) is not None:
+        kw["expression"] = np.asarray(params["expression"], dtype=np.float32).reshape(n_frames, -1)
+    joints = body_model(**kw)
+    if isinstance(joints, (list, tuple)):
+        joints = joints[0]
+    return np.asarray(joints, dtype=np.float32).reshape(n_frames, -1, 3)
+
+
+def _initialize_roots_from_body25(
+    body_model: Any,
+    params: dict[str, Any],
+    kp3ds: np.ndarray,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    out = {key: np.asarray(value).copy() for key, value in params.items()}
+    before_joints = _body_model_joints_sequence(body_model, out)
+    offsets, before = estimate_body25_root_offsets(before_joints, kp3ds)
+    Th = np.asarray(out["Th"], dtype=np.float32).reshape(-1, 3)
+    Th[: len(offsets)] += offsets
+    out["Th"] = Th
+    after_joints = _body_model_joints_sequence(body_model, out)
+    _unused, after = estimate_body25_root_offsets(after_joints, kp3ds)
+    return out, {
+        "method": "body25_core_median_initialization_plus_joint_3d2d",
+        "before_initialization": before,
+        "applied_initialization_offsets_m": offsets,
+        "after_initialization": after,
+    }
+
+
+class _JointBedSdfLoss:
+    """One-sided bed anti-penetration term used inside the visual optimizer."""
+
+    def __init__(self, body_model: Any, *, bed_top_z: float, margin_m: float) -> None:
+        self.body_model = body_model
+        self.bed_top_z = float(bed_top_z)
+        self.margin_m = float(margin_m)
+
+    def __call__(self, kpts_est: Any, **params: Any) -> Any:
+        import torch
+
+        model_params = {
+            key: params[key]
+            for key in ("Rh", "Th", "poses", "shapes", "expression")
+            if key in params
+        }
+        vertices = self.body_model(
+            **model_params,
+            return_verts=True,
+            return_tensor=True,
+        )
+        if isinstance(vertices, (list, tuple)):
+            vertices = vertices[0]
+        penetration = self.margin_m + self.bed_top_z - vertices.reshape(-1, 3)[:, 2]
+        active = penetration > 0.0
+        if bool(torch.any(active)):
+            return torch.mean(penetration[active] ** 2)
+        return torch.sum(vertices[..., 2] * 0.0)
+
+
+def _joint_optimize_pose3d2d(
+    body_model: Any,
+    params: dict[str, Any],
+    kp3ds: np.ndarray,
+    kp2ds: np.ndarray,
+    bboxes: np.ndarray,
+    Pall: np.ndarray,
+    weight_pose: dict[str, float],
+    args: Any,
+    *,
+    bed_top_z: float | None,
+    bed_sdf_margin_m: float,
+    bed_sdf_weight: float,
+) -> dict[str, Any]:
+    """Joint final stage; unlike EasyMocap's 2D-only tail it cannot drop the 3D anchor."""
+    from easymocap.pipeline.config import Config
+    from easymocap.pyfitting.lossfactory import (
+        LossKeypoints3D,
+        LossKeypointsMV2D,
+        LossRegPoses,
+        LossRegPosesZero,
+        LossSmoothBodyMean,
+        LossSmoothPoses,
+    )
+    from easymocap.pyfitting.optimize_simple import (
+        _optimizeSMPL,
+        deepcopy_tensor,
+        dict_of_tensor_to_numpy,
+        get_interp_by_keypoints,
+        get_prepare_smplx,
+    )
+
+    n_frames = int(kp3ds.shape[0])
+    cfg = Config(args)
+    cfg.device = body_model.device
+    cfg.model = body_model.model_type
+    cfg.OPT_R = True
+    cfg.OPT_T = True
+    cfg.OPT_POSE = True
+    cfg.OPT_HAND = cfg.model in ("smplh", "smplx")
+    cfg.OPT_EXPR = cfg.model == "smplx"
+    cfg.OPT_SHAPE = False
+
+    kp2d_vf = np.asarray(kp2ds, dtype=np.float32).transpose(1, 0, 2, 3)
+    bbox_vf = np.asarray(bboxes, dtype=np.float32).transpose(1, 0, 2)
+    loss_funcs: dict[str, Any] = {
+        "k3d": LossKeypoints3D(kp3ds, cfg).body,
+        "k2d": LossKeypointsMV2D(kp2d_vf, bbox_vf, Pall, cfg).__call__,
+        "smooth_body": LossSmoothBodyMean(cfg).body,
+        "smooth_poses": LossSmoothPoses(1, n_frames, cfg).poses,
+        "reg_poses": LossRegPoses(cfg).reg_body,
+        "reg_poses_zero": LossRegPosesZero(kp3ds, cfg).__call__,
+    }
+    if cfg.OPT_HAND:
+        loss_funcs.update(
+            {
+                "k3d_hand": LossKeypoints3D(kp3ds, cfg, norm="l1").hand,
+                "reg_hand": LossRegPoses(cfg).reg_hand,
+                "smooth_hand": LossSmoothBodyMean(cfg).hand,
+            }
+        )
+    if cfg.OPT_EXPR:
+        loss_funcs.update(
+            {
+                "k3d_face": LossKeypoints3D(kp3ds, cfg, norm="l1").face,
+                "reg_head": LossRegPoses(cfg).reg_head,
+                "reg_expr": LossRegPoses(cfg).reg_expr,
+                "smooth_head": LossSmoothPoses(1, n_frames, cfg).head,
+            }
+        )
+    weights = dict(weight_pose)
+    if n_frames < 3:
+        for key in ("smooth_body", "smooth_poses", "smooth_hand", "smooth_head"):
+            weights[key] = 0.0
+    if bed_top_z is not None and float(bed_sdf_weight) > 0.0:
+        loss_funcs["bed_sdf"] = _JointBedSdfLoss(
+            body_model,
+            bed_top_z=float(bed_top_z),
+            margin_m=float(bed_sdf_margin_m),
+        )
+        weights["bed_sdf"] = float(bed_sdf_weight)
+    prepare_funcs = [
+        deepcopy_tensor,
+        get_prepare_smplx(params, cfg, n_frames),
+        get_interp_by_keypoints(kp3ds),
+    ]
+    postprocess_funcs = [get_interp_by_keypoints(kp3ds), dict_of_tensor_to_numpy]
+    return _optimizeSMPL(
+        body_model,
+        params,
+        prepare_funcs,
+        postprocess_funcs,
+        loss_funcs,
+        weight_loss=weights,
+        cfg=cfg,
+    )
+
+
 def _smpl_fit_from_keypoints(
     body_model: Any,
     kp3ds: np.ndarray,
@@ -487,8 +735,12 @@ def _smpl_fit_from_keypoints(
     *,
     fixed_betas: np.ndarray | None = None,
     kp2ds_for_2d: np.ndarray | None = None,
+    bed_top_z: float | None = None,
+    bed_sdf_margin_m: float = 0.008,
+    bed_sdf_weight: float = 0.0,
+    fit_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """EasyMocap official pose path, with optional externally calibrated shape."""
+    """Shared-shape 3D initialization followed by joint 3D/2D/bed optimization."""
     from easymocap.dataset import CONFIG
     from easymocap.pipeline.basic import multi_stage_optimize
     from easymocap.pipeline.config import Config
@@ -529,7 +781,18 @@ def _smpl_fit_from_keypoints(
     params["shapes"] = params_shape["shapes"].copy()
     weight_pose = load_weight_pose(model_type, args.opts)
     fit_kp2ds = kp2ds_for_2d if kp2ds_for_2d is not None else kp2ds
-    return multi_stage_optimize(
+    params = multi_stage_optimize(
+        body_model,
+        params,
+        kp3ds,
+        None,
+        None,
+        None,
+        weight_pose,
+        cfg,
+    )
+    params, root_diag = _initialize_roots_from_body25(body_model, params, kp3ds)
+    params = _joint_optimize_pose3d2d(
         body_model,
         params,
         kp3ds,
@@ -537,8 +800,24 @@ def _smpl_fit_from_keypoints(
         bboxes,
         Pall,
         weight_pose,
-        cfg,
+        args,
+        bed_top_z=bed_top_z,
+        bed_sdf_margin_m=bed_sdf_margin_m,
+        bed_sdf_weight=bed_sdf_weight,
     )
+    _unused, final_alignment = estimate_body25_root_offsets(
+        _body_model_joints_sequence(body_model, params),
+        kp3ds,
+    )
+    root_diag["final"] = final_alignment
+    if fit_diagnostics is not None:
+        fit_diagnostics["root_alignment"] = root_diag
+        fit_diagnostics["final_optimizer"] = {
+            "mode": "joint_3d_2d_bed",
+            "shape_frozen": True,
+            "bed_sdf_integrated": bed_top_z is not None and float(bed_sdf_weight) > 0.0,
+        }
+    return params
 
 
 def _pad_kp2d_joint_count(keypoints2d: np.ndarray, target_joints: int) -> np.ndarray:
@@ -746,6 +1025,13 @@ def run_mv1p_smplx_fit(
             model_path=easymocap_model_root(),
         )
         t_after_model = _time.perf_counter()
+        integrated_bed_z: float | None = None
+        if bool(bed_sdf):
+            from projects.genesis_ue_sync.multiview_realtime.easymocap.bed_sdf import bed_top_z_from_scene_spec
+
+            if scene_spec_path is None:
+                raise ValueError("bed_sdf requires scene_spec_path")
+            integrated_bed_z = bed_top_z_from_scene_spec(str(scene_spec_path))
         params = _smpl_fit_from_keypoints(
             body_model,
             kp3ds,
@@ -756,6 +1042,10 @@ def run_mv1p_smplx_fit(
             args=args,
             fixed_betas=fixed_betas,
             kp2ds_for_2d=keypoints2d_fit,
+            bed_top_z=integrated_bed_z,
+            bed_sdf_margin_m=float(bed_sdf_margin_m),
+            bed_sdf_weight=float(bed_sdf_weight) if bool(bed_sdf) else 0.0,
+            fit_diagnostics=diag,
         )
         t_after_fit = _time.perf_counter()
         diag["betas_source"] = beta_source
@@ -763,31 +1053,30 @@ def run_mv1p_smplx_fit(
         if not _smpl_params_finite(params):
             raise RuntimeError(f"{beta_source}: optimization produced non-finite parameters")
         t_after_bed = t_after_fit
-        if bool(bed_sdf):
-            from projects.genesis_ue_sync.multiview_realtime.easymocap.bed_sdf import (
-                BedSdfConfig,
-                bed_top_z_from_scene_spec,
-                refine_params_with_bed_sdf,
-            )
+        if integrated_bed_z is not None:
+            from projects.genesis_ue_sync.multiview_realtime.easymocap.bed_sdf import bed_penetration_loss
 
-            if scene_spec_path is None:
-                raise ValueError("bed_sdf requires scene_spec_path")
-            bed_z = bed_top_z_from_scene_spec(str(scene_spec_path))
-            params, bed_diag = refine_params_with_bed_sdf(
-                body_model,
-                params,
-                bed_top_z=bed_z,
-                cfg=BedSdfConfig(
+            frame_losses: list[float] = []
+            penetrating_verts = 0
+            for frame_index in range(int(kp3ds.shape[0])):
+                frame_verts, _faces = easymocap_vertices_world(body_model, params, frame_index=frame_index)
+                frame_loss, frame_count = bed_penetration_loss(
+                    frame_verts,
+                    bed_top_z=integrated_bed_z,
                     margin_m=float(bed_sdf_margin_m),
-                    weight=float(bed_sdf_weight),
-                    max_iter=int(bed_sdf_max_iter),
-                ),
-            )
-            if not _smpl_params_finite(params):
-                raise RuntimeError("SMPL-X bed-SDF refinement produced non-finite parameters")
-            logger.info("bed_sdf refine: %s", bed_diag)
-            diag["bed_sdf"] = bed_diag
-            t_after_bed = _time.perf_counter()
+                )
+                frame_losses.append(float(frame_loss))
+                penetrating_verts += int(frame_count)
+            bed_loss = float(np.mean(frame_losses)) if frame_losses else 0.0
+            diag["bed_sdf"] = {
+                "mode": "integrated_with_visual_losses",
+                "bed_sdf": bed_loss,
+                "total": float(bed_sdf_weight) * bed_loss,
+                "penetrating_verts": penetrating_verts,
+                "margin_m": float(bed_sdf_margin_m),
+                "weight": float(bed_sdf_weight),
+                "legacy_standalone_max_iter_ignored": int(bed_sdf_max_iter),
+            }
         t_write0 = _time.perf_counter()
         if bool(write_easymocap_smpl_json):
             for nf in range(start, end):
@@ -796,7 +1085,7 @@ def run_mv1p_smplx_fit(
         diag["timing_s"] = {
             "load_body_model": float(t_after_model - t_fit0),
             "easymocap_fit": float(t_after_fit - t_after_model),
-            "bed_sdf": float(t_after_bed - t_after_fit),
+            "bed_sdf_standalone": float(t_after_bed - t_after_fit),
             "write_smpl_json": float(_time.perf_counter() - t_write0),
             "total": float(_time.perf_counter() - t_fit0),
         }

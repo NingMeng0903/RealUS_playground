@@ -38,6 +38,7 @@ from projects.genesis_ue_sync.multiview_realtime.easymocap.delayed_smplx import 
     pack_burst_dataset,
     pack_single_frame_dataset,
     run_mv1p_smplx_fit,
+    stack_bodyhand_keypoints3d,
     triangulate_bodyhand_keypoints3d,
 )
 from projects.genesis_ue_sync.multiview_realtime.ingress.camera_stream import SyncedMultiviewFrame
@@ -66,6 +67,11 @@ def _jsonable(value: Any) -> Any:
     if isinstance(value, (list, tuple)):
         return [_jsonable(v) for v in value]
     return value
+
+
+def _passes_reprojection_gate(errors_px: list[float], max_px: float) -> bool:
+    """The publication boundary is inclusive: mean reprojection <= max_px."""
+    return bool(errors_px) and float(np.mean(errors_px)) <= float(max_px)
 
 
 def _align_smpl_root_to_body25(
@@ -604,6 +610,7 @@ def process_burst(
     bed_sdf_max_iter: int = 4,
     scene_spec_path: str | Path | None = None,
     motion_frame_indices: list[int | None] | None = None,
+    write_debug_images: bool = True,
 ) -> dict[str, Any]:
     """Fit one shared-beta SMPL-X sequence from a 0.5 s synced RGB burst."""
     if not synced_frames:
@@ -612,6 +619,7 @@ def process_burst(
     moment_dir.mkdir(parents=True, exist_ok=True)
     tri_cfg, fit_opts, zero_hand_keypoints, fit_2d_source = easymocap_fit_runtime_from_pose_backend(cfg.pose_backend)
     annots_by_frame: list[dict[str, dict[str, np.ndarray]]] = []
+    raw_annots_by_frame: list[dict[str, dict[str, np.ndarray]]] = []
     parts_by_frame: list[dict[str, np.ndarray]] = []
     tri_by_frame: list[dict[str, Any]] = []
     detection_by_frame: list[dict[str, Any]] = []
@@ -625,6 +633,7 @@ def process_burst(
             raw_simcc_arrays[f"frame_{len(annots_by_frame):06d}_x"] = np.asarray(raw_simcc["x"])
             raw_simcc_arrays[f"frame_{len(annots_by_frame):06d}_y"] = np.asarray(raw_simcc["y"])
         annots = _sanitize_annots_by_cam(annots)
+        raw_annots_by_frame.append(_sanitize_annots_by_cam(annots))
         tri_diag: dict[str, Any] = {}
         parts = triangulate_bodyhand_keypoints3d(
             annots, camera_ids, arrays["P"], tri_cfg=tri_cfg,
@@ -695,8 +704,15 @@ def process_burst(
     # remains low-confidence in the stored joint diagnostics.
     foot_ok = foot_valid >= 4
     repro_errors = [float(d["reprojection_error_px"]) for d in ref_details if d.get("reprojection_error_px") is not None]
-    repro_ok = bool(final_reprojection_errors) and float(np.mean(final_reprojection_errors)) <= float(max_repro_error)
-    fit_ok = bool(core_ok and foot_ok and repro_ok and int(pen_count) == 0)
+    publish_reprojection_max_px = float(
+        dict(cfg.pose_backend.get("easymocap_fit") or {}).get("final_smplx_reprojection_max_px", 50.0)
+    )
+    repro_ok = _passes_reprojection_gate(final_reprojection_errors, publish_reprojection_max_px)
+    # A mattress is deformable.  Bed SDF is therefore a one-sided soft loss and
+    # diagnostic, not a hard publication gate: visual geometry controls whether
+    # the fitted mesh is published.
+    bed_soft_constraint_satisfied = int(pen_count) == 0
+    fit_ok = bool(core_ok and foot_ok and repro_ok)
     # Save only the selected frame's mesh parameters for Genesis, preserving
     # the full per-frame sequence in EasyMocap output and diagnostics.
     def _frame_param(name: str, width: int) -> np.ndarray:
@@ -709,9 +725,69 @@ def process_burst(
         shapes=np.asarray(params["shapes"], dtype=np.float32),
         root_align_offset=np.zeros((3,), dtype=np.float32), vertices=verts.astype(np.float32), faces=np.asarray(faces, dtype=np.int32),
     )
+    debug_overlay_dirs: list[str] = []
+    if bool(write_debug_images):
+        # Save actual fitted pose overlays for both the burst start and the
+        # selected reference.  These are RGB reprojections, not Genesis-viewer
+        # screenshots, so they diagnose visual geometry independently of bed
+        # rendering or mesh publishing.
+        for debug_index in sorted({0, int(reference_index)}):
+            debug_verts, _ = easymocap_vertices_world(body_model, params, frame_index=debug_index)
+            frame_tag = f"frame_{debug_index:06d}"
+            debug_dirs = {
+                "skeleton_2d": moment_dir / "skeleton_2d" / frame_tag,
+                "skeleton_3d_repro": moment_dir / "skeleton_3d_repro" / frame_tag,
+                "skeleton_fused": moment_dir / "skeleton_fused" / frame_tag,
+                "overlays": moment_dir / "overlays" / frame_tag,
+                "panels": moment_dir / "panels" / frame_tag,
+                "compare": moment_dir / "compare" / frame_tag,
+            }
+            for directory in debug_dirs.values():
+                directory.mkdir(parents=True, exist_ok=True)
+            for view_index, cid in enumerate(camera_ids):
+                raw_rgb = np.asarray(views_by_frame[debug_index][cid], dtype=np.uint8)
+                raw_annot = raw_annots_by_frame[debug_index][cid]
+                bodyhand_3d = stack_bodyhand_keypoints3d(
+                    parts_by_frame[debug_index],
+                    pad_face_for_smplx=False,
+                )
+                cam = calibration.camera(cid)
+                K = _scaled_intrinsics_for_view(calibration, cid, raw_rgb)
+                xyz_cam = _world_points_camera_xyz(debug_verts, cam.camera_from_world)
+                uv, valid = _project_camera_points_to_pixels(xyz_cam, K)
+                visible = valid & np.all(np.isfinite(uv), axis=1) & (xyz_cam[:, 2] > 1.0e-4)
+                image = _blend_mesh_on_rgb(
+                    raw_rgb, faces=np.asarray(faces, dtype=np.int64), uv=uv, valid=visible,
+                    xyz_cam=xyz_cam, z_cam=xyz_cam[:, 2], mesh_alpha=0.82,
+                    mesh_rgb=(255, 128, 32), face_stride=1, max_triangle_px=520.0,
+                )
+                sk2d = draw_bodyhandface_2d(raw_rgb, raw_annot)
+                sk3d = draw_keypoints3d_repro(raw_rgb, bodyhand_3d, arrays["P"][view_index])
+                fused = draw_skeleton_fused_2d_3d(raw_rgb, raw_annot, bodyhand_3d, arrays["P"][view_index])
+                Image.fromarray(sk2d).save(debug_dirs["skeleton_2d"] / f"{cid}_bodyhandface.png")
+                Image.fromarray(sk3d).save(debug_dirs["skeleton_3d_repro"] / f"{cid}_tri3d_repro.png")
+                Image.fromarray(fused).save(debug_dirs["skeleton_fused"] / f"{cid}_red_gray_green.png")
+                Image.fromarray(image).save(debug_dirs["overlays"] / f"{cid}_smplx_overlay.png")
+                Image.fromarray(compose_raw_skeleton_pair(raw_rgb, sk2d)).save(
+                    debug_dirs["compare"] / f"{cid}_raw_skeleton.png"
+                )
+                Image.fromarray(image).save(debug_dirs["compare"] / f"{cid}_smpl_overlay.png")
+                Image.fromarray(compose_triptych(raw_rgb, sk2d, image)).save(
+                    debug_dirs["panels"] / f"{cid}_raw_skeleton_smplx.png"
+                )
+                Image.fromarray(compose_quad(raw_rgb, sk2d, sk3d, image)).save(
+                    debug_dirs["panels"] / f"{cid}_raw_skeleton_3d_smplx.png"
+                )
+            debug_overlay_dirs.append(str(debug_dirs["overlays"].relative_to(moment_dir)))
     summary = {
         "moment_dir": str(moment_dir.resolve()), "fit_ok": fit_ok,
-        "publish_mode": "high_precision_mesh" if fit_ok else "degraded_skeleton_or_resample",
+        "publish_mode": (
+            "high_precision_mesh"
+            if fit_ok and bed_soft_constraint_satisfied
+            else "high_precision_mesh_bed_soft_warning"
+            if fit_ok
+            else "degraded_skeleton_or_resample"
+        ),
         "burst": {"duration_s": (timestamps[-1] - timestamps[0]) * 1e-9, "n_frames": len(synced_frames),
                   "reference_index": reference_index, "temporal_completed_joints": completed,
                   "timestamps_ns": timestamps, "raw_simcc_path": "raw_simcc.npz" if raw_simcc_arrays else None},
@@ -719,12 +795,19 @@ def process_burst(
         "motion_frame_index": (motion_frame_indices or [None] * len(synced_frames))[reference_index],
         "triangulation_by_frame": tri_by_frame, "detection_by_frame": detection_by_frame,
         "fit_diagnostics": fit_diagnostics, "smplx_fit_2d_source": fit_diagnostics.get("smplx_fit_2d_source"),
-        "smpl_root_alignment": {"applied": False, "reason": "root_optimized_in_fit_no_posthoc_shift"},
+        "smpl_root_alignment": fit_diagnostics.get(
+            "root_alignment",
+            {"method": "joint_3d_2d_bed", "reason": "diagnostics_unavailable"},
+        ),
         "bed_penetration_loss": float(pen_loss), "bed_penetrating_verts": int(pen_count),
         "final_quality": {"core_ok": core_ok, "foot_ok": foot_ok, "foot_valid_joints": foot_valid,
                           "reprojection_ok": repro_ok,
+                          "bed_soft_constraint_satisfied": bed_soft_constraint_satisfied,
+                          "bed_penetrating_verts": int(pen_count),
                           "triangulation_reprojection_error_px": float(np.mean(repro_errors)) if repro_errors else None,
-                          "final_smplx_reprojection_error_px": float(np.mean(final_reprojection_errors)) if final_reprojection_errors else None},
+                          "final_smplx_reprojection_error_px": float(np.mean(final_reprojection_errors)) if final_reprojection_errors else None,
+                          "final_smplx_reprojection_max_px": publish_reprojection_max_px},
+        "debug_overlay_dirs": debug_overlay_dirs,
         "easymocap_betas": [float(v) for v in np.asarray(params["shapes"]).reshape(-1)[:10]],
     }
     (moment_dir / "moment.json").write_text(json.dumps(_jsonable(summary), ensure_ascii=True, indent=2), encoding="utf-8")

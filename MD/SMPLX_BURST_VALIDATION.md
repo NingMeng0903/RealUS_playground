@@ -24,8 +24,15 @@ python -m projects.genesis_ue_sync.multiview_realtime.cli.run_offline_terminal8_
 - 错误两视角接受率与错误第三视角剔除率；
 - 两个清晰视角是否以 `observed_low_two_view` 保留；
 - 单视角是否保持 `missing`，不被时序补造；
-- `final_quality` 是否通过，且 `bed_penetrating_verts` 为零；
-- `smpl_root_alignment` 必须是 `root_optimized_in_fit_no_posthoc_shift`。
+- `final_quality` 是否通过；`bed_penetrating_verts` 仅记录床垫软约束诊断，
+  不作为发布拒绝条件；
+- `final_quality.final_smplx_reprojection_max_px` 必须为 `50.0`，平均误差
+  `<= 50.0 px` 才通过该发布门；
+- `smpl_root_alignment.method` 必须为
+  `body25_core_median_initialization_plus_joint_3d2d`，并检查 `final` 中的逐帧
+  核心关节偏移，不能再出现所有相机一致的 5–9 cm 整体 Z 漂移；
+- `skeleton_3d_repro` 与 `skeleton_fused` 应绘制有效的 Body25、左手21点和
+  右手21点；缺失手指保持缺失，不补造3D face。
 
-只有 `fit_ok=true` 才会发布高精度 mesh。脚部、躯干、最终 SMPL-X 重投影或防穿透
-任一质量门失败时，run 标记为 `degraded_skeleton_or_resample`，不向 Genesis 控制链路发布高精度 mesh。
+只有 `fit_ok=true` 才会发布高精度 mesh。脚部、躯干或最终 SMPL-X 重投影失败时，run
+标记为 `degraded_skeleton_or_resample`；床体 SDF 穿透保留为软约束告警，不阻断 Genesis 发布。
