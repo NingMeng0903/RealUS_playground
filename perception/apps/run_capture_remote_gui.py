@@ -110,7 +110,6 @@ class CaptureRemoteGui:
         src = str((self._repo / "src").resolve())
         env["PYTHONPATH"] = src if not env.get("PYTHONPATH") else f"{src}:{env['PYTHONPATH']}"
         quality_rejection: dict[str, object] | None = None
-        bed_soft_warning_count = 0
         try:
             proc = subprocess.run(
                 cmd,
@@ -126,18 +125,11 @@ class CaptureRemoteGui:
             )
             ok = proc.returncode == 0 and (moment_dir / "smplx_result.npz").is_file()
             summary_path = moment_dir / "moment.json"
-            if summary_path.is_file():
-                try:
-                    capture_summary = json.loads(summary_path.read_text(encoding="utf-8"))
-                    bed_soft_warning_count = int(capture_summary.get("bed_penetrating_verts") or 0)
-                except Exception:
-                    pass
             if not ok and summary_path.is_file() and (moment_dir / "smplx_result.npz").is_file():
                 try:
                     summary = json.loads(summary_path.read_text(encoding="utf-8"))
                     quality = dict(summary.get("final_quality") or {})
                     if not bool(summary.get("fit_ok", True)):
-                        quality["bed_penetrating_verts"] = int(summary.get("bed_penetrating_verts") or 0)
                         quality_rejection = dict(quality)
                 except Exception:
                     pass
@@ -153,8 +145,7 @@ class CaptureRemoteGui:
             self._btn.config(state=tk.NORMAL)
             if ok:
                 rel = f"smplx_outputs/{run_name}/moment_0000/"
-                suffix = f" — bed soft warning ({bed_soft_warning_count} verts)" if bed_soft_warning_count else ""
-                self._status.set(f"Done → {rel}{suffix}")
+                self._status.set(f"Done → {rel}")
                 messagebox.showinfo(
                     "Capture OK",
                     "SMPL-X fit complete.\n\n"
@@ -163,12 +154,7 @@ class CaptureRemoteGui:
                     "skeleton_2d/ — DWPose\n"
                     "skeleton_fused/ — fused keypoints\n"
                     "overlays/ — SMPL-X reprojection\n\n"
-                    + (
-                        f"Bed SDF soft warning: {bed_soft_warning_count} vertices are below the rigid proxy plane.\n\n"
-                        if bed_soft_warning_count
-                        else ""
-                    )
-                    + "Genesis viewer should show orange mesh.",
+                    "Genesis viewer should show orange mesh.",
                 )
             elif quality_rejection is not None:
                 actual = quality_rejection.get("final_smplx_reprojection_error_px")
@@ -181,14 +167,10 @@ class CaptureRemoteGui:
                     reasons.append("foot quality")
                 if not bool(quality_rejection.get("reprojection_ok", True)):
                     reasons.append("reprojection")
-                penetrating = int(quality_rejection.get("bed_penetrating_verts") or 0)
-                if penetrating > 0:
-                    reasons.append("bed penetration")
                 if isinstance(actual, (int, float)):
                     details.append(f"Final reprojection: {actual:.2f}px")
                 if isinstance(limit, (int, float)):
                     details.append(f"Publication limit: {limit:.2f}px")
-                details.append(f"Bed penetrating vertices: {penetrating}")
                 reason_text = ", ".join(reasons) if reasons else "final quality gate"
                 rel = f"smplx_outputs/{run_name}/moment_0000/"
                 self._status.set(f"Quality rejected — {reason_text}")

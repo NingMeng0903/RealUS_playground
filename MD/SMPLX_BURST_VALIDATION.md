@@ -24,8 +24,7 @@ python -m projects.genesis_ue_sync.multiview_realtime.cli.run_offline_terminal8_
 - 错误两视角接受率与错误第三视角剔除率；
 - 两个清晰视角是否以 `observed_low_two_view` 保留；
 - 单视角是否保持 `missing`，不被时序补造；
-- `final_quality` 是否通过；`bed_penetrating_verts` 仅记录床垫软约束诊断，
-  不作为发布拒绝条件；
+- `final_quality` 是否通过；床垫穿透完全允许，不参与质量判定或发布状态；
 - `final_quality.final_smplx_reprojection_max_px` 必须为 `50.0`，平均误差
   `<= 50.0 px` 才通过该发布门；
 - `smpl_root_alignment.method` 必须为
@@ -35,4 +34,4 @@ python -m projects.genesis_ue_sync.multiview_realtime.cli.run_offline_terminal8_
   右手21点；缺失手指保持缺失，不补造3D face。
 
 只有 `fit_ok=true` 才会发布高精度 mesh。脚部、躯干或最终 SMPL-X 重投影失败时，run
-标记为 `degraded_skeleton_or_resample`；床体 SDF 穿透保留为软约束告警，不阻断 Genesis 发布。
+标记为 `degraded_skeleton_or_resample`；床体 SDF 仅作为拟合损失，不参与发布状态。

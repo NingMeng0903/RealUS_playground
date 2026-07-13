@@ -711,7 +711,6 @@ def process_burst(
     # A mattress is deformable.  Bed SDF is therefore a one-sided soft loss and
     # diagnostic, not a hard publication gate: visual geometry controls whether
     # the fitted mesh is published.
-    bed_soft_constraint_satisfied = int(pen_count) == 0
     fit_ok = bool(core_ok and foot_ok and repro_ok)
     # Save only the selected frame's mesh parameters for Genesis, preserving
     # the full per-frame sequence in EasyMocap output and diagnostics.
@@ -781,13 +780,7 @@ def process_burst(
             debug_overlay_dirs.append(str(debug_dirs["overlays"].relative_to(moment_dir)))
     summary = {
         "moment_dir": str(moment_dir.resolve()), "fit_ok": fit_ok,
-        "publish_mode": (
-            "high_precision_mesh"
-            if fit_ok and bed_soft_constraint_satisfied
-            else "high_precision_mesh_bed_soft_warning"
-            if fit_ok
-            else "degraded_skeleton_or_resample"
-        ),
+        "publish_mode": "high_precision_mesh" if fit_ok else "degraded_skeleton_or_resample",
         "burst": {"duration_s": (timestamps[-1] - timestamps[0]) * 1e-9, "n_frames": len(synced_frames),
                   "reference_index": reference_index, "temporal_completed_joints": completed,
                   "timestamps_ns": timestamps, "raw_simcc_path": "raw_simcc.npz" if raw_simcc_arrays else None},
@@ -802,8 +795,6 @@ def process_burst(
         "bed_penetration_loss": float(pen_loss), "bed_penetrating_verts": int(pen_count),
         "final_quality": {"core_ok": core_ok, "foot_ok": foot_ok, "foot_valid_joints": foot_valid,
                           "reprojection_ok": repro_ok,
-                          "bed_soft_constraint_satisfied": bed_soft_constraint_satisfied,
-                          "bed_penetrating_verts": int(pen_count),
                           "triangulation_reprojection_error_px": float(np.mean(repro_errors)) if repro_errors else None,
                           "final_smplx_reprojection_error_px": float(np.mean(final_reprojection_errors)) if final_reprojection_errors else None,
                           "final_smplx_reprojection_max_px": publish_reprojection_max_px},
