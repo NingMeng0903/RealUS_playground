@@ -68,6 +68,12 @@ class BedSurfaceCalib:
 
     @classmethod
     def from_bundle(cls, payload: dict[str, Any]) -> BedSurfaceCalib | None:
+        """Build a floor-anchored bed box from ``genesis_bundle.yaml`` (no fixed thickness).
+
+        Vertical extent is always ``[z=0, z=bed_top_z_m]`` where ``bed_top_z_m`` comes from
+        calibration (``bed.height_m`` or ``bed.support_surface.top_z_m``). Re-run Stage 2 /
+        re-export bundle after bed height changes — viewer picks it up automatically.
+        """
         bed = payload.get("bed")
         if not isinstance(bed, dict):
             return None
@@ -79,33 +85,28 @@ class BedSurfaceCalib:
         rot = float(bed.get("rotation_deg", 0.0))
         name = "bed_surface"
 
-        top_z = bed.get("height_m")
+        bed_top_z_m: float | None = None
+        if bed.get("height_m") is not None:
+            bed_top_z_m = float(bed["height_m"])
         support = bed.get("support_surface")
         if isinstance(support, dict) and support.get("top_z_m") is not None:
-            top_z = support["top_z_m"]
-        if top_z is None:
-            return None
-        top_z = float(top_z)
-        if top_z <= 0.0:
+            bed_top_z_m = float(support["top_z_m"])
+        if bed_top_z_m is None:
+            center_world = bed.get("center_world")
+            if isinstance(center_world, (list, tuple)) and len(center_world) >= 3:
+                bed_top_z_m = float(center_world[2])
+        if bed_top_z_m is None or bed_top_z_m <= 0.0:
             return None
 
-        thickness_m = 0.1
-        if isinstance(support, dict):
-            support_size = support.get("size")
-            if isinstance(support_size, (list, tuple)) and len(support_size) >= 3:
-                thickness_m = float(support_size[2])
-            elif support.get("thickness_m") is not None:
-                thickness_m = float(support["thickness_m"])
-
-        # World origin = bed center on floor; bed X/Y parallel to world when xy_aligned.
         center_floor = bed.get("center_on_floor")
         if isinstance(center_floor, (list, tuple)) and len(center_floor) >= 2:
             cx, cy = float(center_floor[0]), float(center_floor[1])
         else:
             cx, cy = 0.0, 0.0
 
-        center = (cx, cy, top_z - thickness_m / 2.0)
-        size = (lx, ly, thickness_m)
+        # Box bottom on world floor (z=0); top at calibrated bed surface height.
+        center = (cx, cy, bed_top_z_m / 2.0)
+        size = (lx, ly, bed_top_z_m)
         return cls(
             name=name,
             center=center,

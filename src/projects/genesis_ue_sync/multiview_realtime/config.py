@@ -7,6 +7,40 @@ from pathlib import Path
 from typing import Any
 
 from common.project import project_paths
+from projects.genesis_ue_sync.tracking.calibration import load_calibration_bundle
+
+
+def camera_ids_from_calibration(calibration_path: Path) -> tuple[str, ...]:
+    bundle = load_calibration_bundle(calibration_path)
+    ids = tuple(sorted(str(k) for k in bundle.cameras.keys()))
+    if not ids:
+        raise ValueError(f"No cameras in calibration bundle: {calibration_path}")
+    return ids
+
+
+def _scale_pose_backend_for_ncam(pose_backend: dict[str, Any], n_cameras: int) -> dict[str, Any]:
+    """Scale batch sizes, without overriding adaptive per-joint view policy."""
+    out = dict(pose_backend)
+    n = max(1, int(n_cameras))
+    tri = dict(out.get("triangulation") or {})
+    if tri:
+        tri["min_view"] = min(n, max(2, int(tri.get("min_view", 2))))
+        tri["core_min_view"] = min(n, max(2, int(tri.get("core_min_view", 3))))
+        out["triangulation"] = tri
+    fq = dict(out.get("frame_quality") or {})
+    cap = dict(fq.get("capture") or {})
+    if cap:
+        cap["min_cameras_passing"] = min(n, max(2, int(cap.get("min_cameras_passing", 2))))
+        fq["capture"] = cap
+    if fq:
+        out["frame_quality"] = fq
+    dw = dict(out.get("dwpose") or {})
+    if dw:
+        batch = max(int(dw.get("trt_opt_batch", n)), 1)
+        dw["trt_opt_batch"] = batch
+        dw["trt_max_batch"] = max(int(dw.get("trt_max_batch", n + 2)), batch)
+        out["dwpose"] = dw
+    return out
 
 
 def _expand_path(raw: str | Path | None) -> Path | None:
@@ -42,6 +76,8 @@ class IngressConfig:
     recv_timeout_ms: int = 250
     sync_tolerance_frames: int = 2
     max_buffer_per_camera: int = 8
+    sync_mode: str = "hardware_timestamp"  # hardware_timestamp | frame_index
+    max_hardware_spread_ms: float = 33.0
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any] | None) -> "IngressConfig":
@@ -52,6 +88,8 @@ class IngressConfig:
             recv_timeout_ms=int(payload.get("recv_timeout_ms", cls.recv_timeout_ms)),
             sync_tolerance_frames=int(payload.get("sync_tolerance_frames", cls.sync_tolerance_frames)),
             max_buffer_per_camera=int(payload.get("max_buffer_per_camera", cls.max_buffer_per_camera)),
+            sync_mode=str(payload.get("sync_mode", cls.sync_mode)),
+            max_hardware_spread_ms=float(payload.get("max_hardware_spread_ms", cls.max_hardware_spread_ms)),
         )
 
 
@@ -100,10 +138,19 @@ class MultiviewRealtimeConfig:
         if cal_path is None:
             raise ValueError("calibration_path is required.")
         scene_path = _expand_path(payload.get("scene_spec_path"))
+        auto_camera_ids = bool(payload.get("auto_camera_ids", True))
         camera_ids = tuple(str(v) for v in payload.get("camera_ids") or ())
+        if not camera_ids and auto_camera_ids:
+            camera_ids = camera_ids_from_calibration(cal_path)
+        elif auto_camera_ids and camera_ids:
+            cal_ids = camera_ids_from_calibration(cal_path)
+            if set(camera_ids) != set(cal_ids):
+                camera_ids = cal_ids
         if not camera_ids:
-            raise ValueError("camera_ids must list at least one camera.")
+            raise ValueError("camera_ids must list at least one camera (or set auto_camera_ids with calibration_path).")
         pose_backend = dict(payload.get("pose_backend") or {})
+        if bool(payload.get("auto_scale_triangulation", True)):
+            pose_backend = _scale_pose_backend_for_ncam(pose_backend, len(camera_ids))
         primary = str(
             payload.get("primary_camera_id")
             or pose_backend.get("primary_camera_id")

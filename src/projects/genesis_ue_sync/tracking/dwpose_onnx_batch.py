@@ -68,6 +68,29 @@ def _postprocess_pose_batch(
     return out_kp, out_sc
 
 
+def _simcc_summary(simcc_x: np.ndarray, simcc_y: np.ndarray, topk: int) -> dict[str, np.ndarray]:
+    """Compact uncertainty/candidate summary; full logits are saved separately."""
+    def one_axis(raw: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        arr = np.asarray(raw, dtype=np.float32)
+        k = min(max(1, int(topk)), arr.shape[-1])
+        indices = np.argpartition(arr, -k, axis=-1)[..., -k:]
+        values = np.take_along_axis(arr, indices, axis=-1)
+        order = np.argsort(values, axis=-1)[..., ::-1]
+        indices = np.take_along_axis(indices, order, axis=-1)
+        values = np.take_along_axis(values, order, axis=-1)
+        stable = arr - np.max(arr, axis=-1, keepdims=True)
+        prob = np.exp(stable)
+        prob /= np.maximum(np.sum(prob, axis=-1, keepdims=True), 1e-12)
+        bins = np.arange(arr.shape[-1], dtype=np.float32)
+        mean = np.sum(prob * bins, axis=-1)
+        std = np.sqrt(np.maximum(np.sum(prob * (bins - mean[..., None]) ** 2, axis=-1), 0.0))
+        return indices.astype(np.int16), values.astype(np.float32), std.astype(np.float32)
+    x_idx, x_score, x_std = one_axis(simcc_x)
+    y_idx, y_score, y_std = one_axis(simcc_y)
+    return {"x_bins": x_idx, "y_bins": y_idx, "x_scores": x_score, "y_scores": y_score,
+            "x_std_bins": x_std, "y_std_bins": y_std}
+
+
 def infer_multiview_body25(
     *,
     session_det: Any,
@@ -79,6 +102,8 @@ def infer_multiview_body25(
     camera_ids: list[str],
     decode_body25_fn,
     confidence_threshold: float,
+    retain_simcc: bool = False,
+    simcc_topk: int = 5,
 ) -> tuple[dict[str, np.ndarray], dict[str, Any], dict[str, Any]]:
     """Run YOLO per view + one batched pose ONNX call; return Body25 per camera."""
     images = [np.asarray(images_by_id[cid], dtype=np.uint8) for cid in camera_ids]
@@ -127,6 +152,7 @@ def infer_multiview_body25(
     keypoints_by_camera: dict[str, np.ndarray] = {}
     diagnostics_by_camera: dict[str, Any] = {}
     post_ms = 0.0
+    simcc_info = _simcc_summary(simcc_x, simcc_y, simcc_topk)
     for i, cid in enumerate(camera_ids):
         t_post0 = time.perf_counter()
         kp_view = np.asarray(keypoints[i : i + 1], dtype=np.float32)
@@ -151,6 +177,19 @@ def infer_multiview_body25(
             "postprocess_ms": 0.0,
             "total_ms": round(per_yolo + (t_pose1 - t_pose0) * 1000.0 / max(len(camera_ids), 1), 3),
         }
+        simcc_meta = {key: np.asarray(value[i]).tolist() for key, value in simcc_info.items()}
+        # Top-K x/y ranks form candidate image coordinates in the same frame as
+        # the exported DWPose points.  The lossless SimCC logits are attached
+        # privately to batch_timing and written by the burst recorder as NPZ.
+        bins_xy = np.stack((simcc_info["x_bins"][i], simcc_info["y_bins"][i]), axis=-1).astype(np.float32)
+        scale_xy = np.asarray(scales[i], dtype=np.float32).reshape(1, 1, 2)
+        center_xy = np.asarray(centers[i], dtype=np.float32).reshape(1, 1, 2)
+        # DWPose's SimCC decoder uses the model-default split ratio 2.0;
+        # keep candidate coordinates in the same image frame as decoded pose.
+        candidate_xy = bins_xy / 2.0 / np.asarray(model_input_size, dtype=np.float32).reshape(1, 1, 2)
+        candidate_xy = candidate_xy * scale_xy + center_xy - scale_xy / 2.0
+        simcc_meta["candidate_xy"] = candidate_xy.tolist()
+        meta["simcc"] = simcc_meta
         keypoints_by_camera[cid] = body25
         diagnostics_by_camera[cid] = meta
         post_ms += (time.perf_counter() - t_post0) * 1000.0
@@ -170,6 +209,9 @@ def infer_multiview_body25(
             else "YOLOX fixed batch=1; detection remains per-view."
         ),
     }
+    if retain_simcc:
+        # Private payload: callers write lossless NPZ, never JSON-serialize it.
+        batch_timing["_raw_simcc"] = {"x": np.asarray(simcc_x), "y": np.asarray(simcc_y)}
     return keypoints_by_camera, diagnostics_by_camera, batch_timing
 
 
@@ -183,6 +225,8 @@ def infer_multiview_easymocap(
     images_by_id: dict[str, np.ndarray],
     camera_ids: list[str],
     confidence_threshold: float,
+    retain_simcc: bool = False,
+    simcc_topk: int = 5,
 ) -> tuple[dict[str, dict[str, np.ndarray]], dict[str, Any], dict[str, Any]]:
     """Batched pose ONNX with UCOCO-133 -> EasyMocap bodyhandface per view."""
     from projects.genesis_ue_sync.tracking.dwpose_easymocap_export import ucoco133_to_easymocap_annot
@@ -222,6 +266,8 @@ def infer_multiview_easymocap(
         camera_ids=camera_ids,
         decode_body25_fn=_decode_view,
         confidence_threshold=confidence_threshold,
+        retain_simcc=retain_simcc,
+        simcc_topk=simcc_topk,
     )
     annots_by_camera: dict[str, dict[str, np.ndarray]] = {}
     for cid in camera_ids:

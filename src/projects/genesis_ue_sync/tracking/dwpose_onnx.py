@@ -57,6 +57,8 @@ class DwposeOnnxConfig:
     execution_provider: str = "cuda"
     trt_opt_batch: int = 6
     trt_max_batch: int = 8
+    retain_simcc: bool = True
+    simcc_topk: int = 5
 
     @classmethod
     def from_dict(cls, payload: dict | None) -> "DwposeOnnxConfig":
@@ -88,6 +90,8 @@ class DwposeOnnxConfig:
             execution_provider=str(payload.get("execution_provider", "cuda")).lower(),
             trt_opt_batch=int(payload.get("trt_opt_batch", 6)),
             trt_max_batch=int(payload.get("trt_max_batch", 8)),
+            retain_simcc=bool(payload.get("retain_simcc", True)),
+            simcc_topk=max(1, int(payload.get("simcc_topk", 5))),
         )
 
 
@@ -439,6 +443,8 @@ class DwposeOnnxDetector:
                 images_by_id=views_rgb,
                 camera_ids=list(camera_ids),
                 confidence_threshold=float(self.config.confidence_threshold),
+                retain_simcc=bool(self.config.retain_simcc),
+                simcc_topk=int(self.config.simcc_topk),
             )
 
         annots: dict[str, dict[str, np.ndarray]] = {}
@@ -506,6 +512,8 @@ class DwposeOnnxDetector:
             camera_ids=list(camera_ids),
             decode_body25_fn=lambda kp, sc, thr: _decode_pose_outputs_to_body25(kp, sc, thr),
             confidence_threshold=float(self.config.confidence_threshold),
+            retain_simcc=bool(self.config.retain_simcc),
+            simcc_topk=int(self.config.simcc_topk),
         )
 
     def close(self) -> None:

@@ -17,6 +17,7 @@ PyQt5-Qt5>=5.15
 
 # I/O + geometry
 pyyaml>=6.0
+pyzmq>=25.0
 transforms3d>=0.4
 reportlab>=4.0
 

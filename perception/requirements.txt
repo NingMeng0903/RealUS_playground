@@ -1,0 +1,3 @@
+# Phase 1 perception runtime (install into envs/genesis after env.sh deps).
+#   source env.sh && pip install -r perception/requirements.txt
+pyrealsense2>=2.55

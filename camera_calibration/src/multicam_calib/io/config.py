@@ -132,13 +132,18 @@ class StreamConfig:
 
 @dataclass
 class SyncConfig:
-    # Reject capture when host-timestamp spread across cameras exceeds this (ms).
-    # 4x D435 on one USB3 hub typically sees 40–90 ms host spread at 30 fps; 80 ms
-    # is safe for static-board calibration (board does not move during capture).
     max_spread_ms: float = 80.0
-    # On capture, poll latest frames several times and keep the tightest-sync set.
     capture_poll_attempts: int = 30
     capture_poll_interval_ms: float = 2.0
+    use_device_timestamp: bool = True
+
+
+@dataclass
+class PreviewConfig:
+    source: str = "local"  # local | zmq
+    zmq_connect: str = "tcp://127.0.0.1:17356"
+    zmq_preview_topic: str = "amongus_camera_preview_v1"
+    zmq_capture_topic: str = "amongus_camera_frame_v1"
 
 
 @dataclass
@@ -148,7 +153,7 @@ class DetectorConfig:
     quad_sigma: float = 0.0
     refine_edges: int = 1
     decode_sharpening: float = 0.25
-    preview_quad_decimate: float = 1.0  # must stay 1.0 for reliable preview on all cameras
+    preview_quad_decimate: float = 2.0  # faster live preview; capture uses quad_decimate
 
 
 @dataclass
@@ -183,6 +188,7 @@ class CalibrationConfig:
 class AppConfig:
     stream: StreamConfig = field(default_factory=StreamConfig)
     sync: SyncConfig = field(default_factory=SyncConfig)
+    preview: PreviewConfig = field(default_factory=PreviewConfig)
     detector: DetectorConfig = field(default_factory=DetectorConfig)
     recording: RecordingConfig = field(default_factory=RecordingConfig)
     calibration: CalibrationConfig = field(default_factory=CalibrationConfig)
@@ -202,6 +208,7 @@ def load_app(path: Path | None = None) -> AppConfig:
 
     stream = StreamConfig(**{**StreamConfig().__dict__, **_sec("stream")})
     sync = SyncConfig(**{**SyncConfig().__dict__, **_sec("sync")})
+    preview = PreviewConfig(**{**PreviewConfig().__dict__, **_sec("preview")})
     detector = DetectorConfig(**{**DetectorConfig().__dict__, **_sec("detector")})
     recording = RecordingConfig(**{**RecordingConfig().__dict__, **_sec("recording")})
     ui = UIConfig(**{**UIConfig().__dict__, **_sec("ui")})
@@ -214,7 +221,7 @@ def load_app(path: Path | None = None) -> AppConfig:
         **{**{k: v for k, v in CalibrationConfig().__dict__.items() if k not in ("ba",)}, **calib_kwargs},
         ba=ba,
     )
-    return AppConfig(stream=stream, sync=sync, detector=detector, recording=recording, calibration=calibration, ui=ui)
+    return AppConfig(stream=stream, sync=sync, preview=preview, detector=detector, recording=recording, calibration=calibration, ui=ui)
 
 
 # -------------------- world.yaml (Stage 2) --------------------

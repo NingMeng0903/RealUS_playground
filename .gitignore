@@ -26,6 +26,9 @@
 camera_calibration/data/
 
 # Regenerated / local artifacts
+smplx_outputs/*
+!smplx_outputs/README.md
+!smplx_outputs/.gitignore
 **/.genesis_urdf_cache/
 **/.cuda_shim/
 rm75_control/data/force_compensation/logs/

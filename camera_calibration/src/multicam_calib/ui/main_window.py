@@ -1,10 +1,7 @@
-"""Main window: 3-tab layout for Stage 0/1/2 sharing the same 4-camera stream.
-
-Each tab owns its own ``RecordingSession`` (except Stage 0 which stores
-captures in memory, since chessboard inputs are per-camera, not multi-cam
-synced).
-"""
+"""Main window: 3-tab layout for Stage 0/1/2 sharing the same 4-camera stream."""
 from __future__ import annotations
+
+from dataclasses import replace
 
 from PyQt5.QtWidgets import QLabel, QMainWindow, QMessageBox, QTabWidget, QVBoxLayout, QWidget
 
@@ -12,7 +9,7 @@ from multicam_calib.board.apriltag_board import BoardGeometry
 from multicam_calib.board.detector import AprilTagDetector
 from multicam_calib.calib.intrinsics import load_intrinsics_for_aliases
 from multicam_calib.devices.base import CameraDevice
-from multicam_calib.io.config import AppConfig, load_world
+from multicam_calib.io.config import AppConfig, DetectorConfig, load_world
 from multicam_calib.recording.session import RecordingSession
 from multicam_calib.recording.stage2_session import Stage2SessionBundle
 from multicam_calib.recording.sync import CameraStreamThread
@@ -31,6 +28,7 @@ class MainWindow(QMainWindow):
         devices: dict[str, CameraDevice],
         board_geom: BoardGeometry,
         app_cfg: AppConfig,
+        zmq_hub=None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -39,15 +37,33 @@ class MainWindow(QMainWindow):
         self._devices = devices
         self._board_geom = board_geom
         self._app_cfg = app_cfg
+        self._zmq_hub = zmq_hub
 
-        self._streams = {alias: CameraStreamThread(alias=alias, device=dev) for alias, dev in devices.items()}
-        for s in self._streams.values():
-            s.start()
+        self._streams: dict[str, CameraStreamThread]
+        snapshot_fn = None
+        if zmq_hub is not None:
+            self._streams = zmq_hub.stream_threads()  # type: ignore[assignment]
+            for s in self._streams.values():
+                s.start()
+            snapshot_fn = lambda: zmq_hub.capture_snapshot_best_effort(
+                attempts=app_cfg.sync.capture_poll_attempts,
+                poll_interval_ms=app_cfg.sync.capture_poll_interval_ms,
+                use_device_timestamp=app_cfg.sync.use_device_timestamp,
+            )
+        else:
+            self._streams = {alias: CameraStreamThread(alias=alias, device=dev) for alias, dev in devices.items()}
+            for s in self._streams.values():
+                s.start()
 
         self._detector = AprilTagDetector(board_geom.config, app_cfg.detector)
+        preview_det_cfg = replace(app_cfg.detector, quad_decimate=app_cfg.detector.preview_quad_decimate)
+        self._preview_detector = AprilTagDetector(board_geom.config, preview_det_cfg)
 
         try:
-            self._intrinsics = load_intrinsics_for_aliases(aliases, devices=devices)
+            if zmq_hub is not None:
+                self._intrinsics = load_intrinsics_for_aliases(aliases)
+            else:
+                self._intrinsics = load_intrinsics_for_aliases(aliases, devices=devices)
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, "Intrinsics unavailable", str(exc))
             raise
@@ -65,18 +81,19 @@ class MainWindow(QMainWindow):
         )
         world_cfg = load_world()
 
-        # Each tab gets its OWN LiveViewGrid so switching tabs doesn't tear down / rebuild widgets.
-        self._live_stage1 = LiveViewGrid(
-            aliases, self._streams, self._detector,
+        live_kwargs = dict(
             sync_cfg=app_cfg.sync,
-            cell_width=480, refresh_hz=app_cfg.ui.preview_refresh_hz,
+            cell_width=480,
+            refresh_hz=app_cfg.ui.preview_refresh_hz,
             min_tags_for_ba=app_cfg.calibration.min_tags_per_view,
+            preview_detector=self._preview_detector,
+            snapshot_fn=snapshot_fn,
+        )
+        self._live_stage1 = LiveViewGrid(
+            aliases, self._streams, self._detector, **live_kwargs,
         )
         self._live_stage2 = LiveViewGrid(
-            aliases, self._streams, self._detector,
-            sync_cfg=app_cfg.sync,
-            cell_width=480, refresh_hz=app_cfg.ui.preview_refresh_hz,
-            min_tags_for_ba=app_cfg.calibration.min_tags_per_view,
+            aliases, self._streams, self._detector, **live_kwargs,
         )
 
         stage0 = Stage0Panel(
@@ -116,16 +133,18 @@ class MainWindow(QMainWindow):
         tabs.addTab(stage0, "Stage 0: Intrinsics")
         tabs.addTab(stage1, "Stage 1: Relative Extrinsics")
         tabs.addTab(stage2, "Stage 2: World Alignment")
-        tabs.setCurrentIndex(1)  # most-common workflow
+        tabs.setCurrentIndex(1 if zmq_hub is not None else 1)
         tabs.currentChanged.connect(self._on_tab_changed)
         self._on_tab_changed(tabs.currentIndex())
 
         central = QWidget()
         lay = QVBoxLayout(central)
+        mode = "ZMQ preview" if zmq_hub is not None else "local USB"
         header = QLabel(
             f"Cameras: {', '.join(aliases)}   "
             f"Board: {board_geom.config.family} {board_geom.config.rows}x{board_geom.config.cols}   "
-            f"Stream: {app_cfg.stream.width}x{app_cfg.stream.height}@{app_cfg.stream.fps}"
+            f"Stream: {app_cfg.stream.width}x{app_cfg.stream.height}@{app_cfg.stream.fps}   "
+            f"Mode: {mode}"
         )
         header.setStyleSheet("padding: 4px; background: #333; color: white;")
         lay.addWidget(header)
@@ -134,22 +153,25 @@ class MainWindow(QMainWindow):
         self.resize(1600, 1000)
 
     def _on_tab_changed(self, index: int) -> None:
-        """Only run Stage 0's chessboard-detection preview while its tab is visible."""
         self._stage0_panel.set_active(index == 0)
+        self._live_stage1.set_active(index == 1)
+        self._live_stage2.set_active(index == 2)
 
     def _reload_intrinsics(self) -> None:
-        """Refresh the shared intrinsics dict after Stage 0 writes intrinsics.yaml."""
         refresh_intrinsics_cache(self._intrinsics)
         self._stage1_panel.on_intrinsics_updated()
         self._stage2_panel.on_intrinsics_updated()
 
     def _on_stage1_saved(self) -> None:
-        """Notify Stage 2 after Stage 1 writes extrinsics_rel.yaml."""
         self._stage2_panel.on_stage1_updated()
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt override
+        self._live_stage1.stop()
+        self._live_stage2.stop()
         for s in self._streams.values():
             s.stop()
+        if self._zmq_hub is not None:
+            self._zmq_hub.stop()
         for dev in self._devices.values():
             try:
                 dev.close()

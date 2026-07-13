@@ -51,6 +51,7 @@ class RailGenesisConfig:
     spec_yaml: Path | None = DEFAULT_SPEC_YAML
     calib_bundle: Path | None = None
     load_calib_scene: bool = True
+    spawn_robot: bool = True
 
 
 class RailGenesisScene:
@@ -120,34 +121,36 @@ class RailGenesisScene:
         )
         if self._calib_spec is not None:
             add_calibration_scene(self.scene, gs, self._calib_spec)
-        urdf = Path(self.cfg.urdf_path)
-        if not urdf.is_absolute():
-            urdf = ASSETS_DIR / urdf
-        if not urdf.exists():
-            raise FileNotFoundError(f"Genesis URDF not found: {urdf}")
+        if self.cfg.spawn_robot:
+            urdf = Path(self.cfg.urdf_path)
+            if not urdf.is_absolute():
+                urdf = ASSETS_DIR / urdf
+            if not urdf.exists():
+                raise FileNotFoundError(f"Genesis URDF not found: {urdf}")
 
-        urdf = prepare_genesis_urdf(urdf)
-        morph_kwargs: dict = {
-            "file": str(urdf),
-            "pos": self._robot_pos,
-            "quat": self._robot_quat,
-            "fixed": True,
-            "merge_fixed_links": False,
-            "decimate": False,
-            "prioritize_urdf_material": True,
-        }
-        self.robot = self.scene.add_entity(
-            gs.morphs.URDF(**morph_kwargs),
-            material=gs.materials.Rigid(),
-            surface=gs.surfaces.Default(),
-            name="rm75_rail",
-        )
+            urdf = prepare_genesis_urdf(urdf)
+            morph_kwargs: dict = {
+                "file": str(urdf),
+                "pos": self._robot_pos,
+                "quat": self._robot_quat,
+                "fixed": True,
+                "merge_fixed_links": False,
+                "decimate": False,
+                "prioritize_urdf_material": True,
+            }
+            self.robot = self.scene.add_entity(
+                gs.morphs.URDF(**morph_kwargs),
+                material=gs.materials.Rigid(),
+                surface=gs.surfaces.Default(),
+                name="rm75_rail",
+            )
         self.scene.build()
-        if hasattr(self.robot, "material") and hasattr(self.robot.material, "gravity_compensation"):
-            self.robot.material.gravity_compensation = 1.0
-        self._apply_pd_gains()
-        q0 = DEFAULT_Q if self.cfg.init_q is None else np.asarray(self.cfg.init_q, dtype=float)
-        self.set_joint_positions(q0)
+        if self.robot is not None:
+            if hasattr(self.robot, "material") and hasattr(self.robot.material, "gravity_compensation"):
+                self.robot.material.gravity_compensation = 1.0
+            self._apply_pd_gains()
+            q0 = DEFAULT_Q if self.cfg.init_q is None else np.asarray(self.cfg.init_q, dtype=float)
+            self.set_joint_positions(q0)
 
     def _apply_pd_gains(self) -> None:
         n = int(to_numpy(self.robot.get_dofs_position()).reshape(-1).size)
@@ -165,15 +168,20 @@ class RailGenesisScene:
 
     def set_joint_positions(self, q: np.ndarray) -> None:
         self._q_cmd = np.asarray(q, dtype=np.float64).reshape(-1).copy()
+        if self.robot is None:
+            return
         qf = self._q_cmd.astype(np.float32)
         self.robot.set_dofs_position(self._q_cmd)
         self.robot.control_dofs_position(qf)
 
     def step(self) -> None:
-        self.robot.control_dofs_position(self._q_cmd.astype(np.float32))
+        if self.robot is not None:
+            self.robot.control_dofs_position(self._q_cmd.astype(np.float32))
         self.scene.step()
 
     def joint_positions(self) -> np.ndarray:
+        if self.robot is None:
+            return self._q_cmd.copy()
         return to_numpy(self.robot.get_dofs_position()).reshape(-1).astype(float)
 
     def set_rail_y(self, y_m: float) -> None:

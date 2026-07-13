@@ -8,6 +8,7 @@ from typing import Any, TypedDict
 
 TOPIC_CANONICAL_SCENE_V1 = "amongus_canonical_v1"
 TOPIC_CAMERA_FRAME_V1 = "amongus_camera_frame_v1"
+TOPIC_CAMERA_PREVIEW_V1 = "amongus_camera_preview_v1"
 TOPIC_SCENE_INIT_V1 = "amongus_scene_init_v1"
 
 

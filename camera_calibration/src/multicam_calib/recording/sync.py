@@ -83,7 +83,17 @@ class MultiCamSnapshot:
         return self.host_timestamp_spread_ns / 1e6
 
 
-def snapshot(streams: dict[str, CameraStreamThread]) -> MultiCamSnapshot | None:
+def _frame_sync_ns(frame: Frame, *, use_device_timestamp: bool) -> int:
+    if use_device_timestamp and frame.device_timestamp_ns is not None:
+        return int(frame.device_timestamp_ns)
+    return int(frame.timestamp_ns)
+
+
+def snapshot(
+    streams: dict[str, CameraStreamThread],
+    *,
+    use_device_timestamp: bool = True,
+) -> MultiCamSnapshot | None:
     """Grab the most recent frame from every stream. Returns None if any is missing."""
     frames: dict[str, Frame] = {}
     for alias, s in streams.items():
@@ -93,7 +103,7 @@ def snapshot(streams: dict[str, CameraStreamThread]) -> MultiCamSnapshot | None:
         frames[alias] = f
     if not frames:
         return None
-    ts = [f.timestamp_ns for f in frames.values()]
+    ts = [_frame_sync_ns(f, use_device_timestamp=use_device_timestamp) for f in frames.values()]
     spread = max(ts) - min(ts)
     return MultiCamSnapshot(frames=frames, host_timestamp_spread_ns=int(spread))
 
@@ -103,18 +113,14 @@ def snapshot_best_effort(
     *,
     attempts: int = 30,
     poll_interval_ms: float = 2.0,
+    use_device_timestamp: bool = True,
 ) -> MultiCamSnapshot | None:
-    """Poll ``snapshot`` several times and return the tightest-sync frame set.
-
-    Four independent USB streams rarely expose frames at the same host instant;
-    polling over ~60 ms usually finds a moment when all four ``latest()`` frames
-    were received within a few tens of milliseconds of each other.
-    """
+    """Poll ``snapshot`` several times and return the tightest-sync frame set."""
     best: MultiCamSnapshot | None = None
     n = max(1, int(attempts))
     sleep_s = max(0.0, float(poll_interval_ms)) / 1000.0
     for _ in range(n):
-        snap = snapshot(streams)
+        snap = snapshot(streams, use_device_timestamp=use_device_timestamp)
         if snap is None:
             if sleep_s > 0:
                 time.sleep(sleep_s)

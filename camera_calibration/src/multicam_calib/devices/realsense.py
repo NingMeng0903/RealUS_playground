@@ -75,6 +75,13 @@ class RealSenseCamera(CameraDevice):
         cfg.enable_stream(rs.stream.color, int(width), int(height), rs.format.bgr8, int(fps))
         pipeline = rs.pipeline()
         profile = pipeline.start(cfg)
+        try:
+            dev = profile.get_device()
+            for sensor in dev.query_sensors():
+                if sensor.supports(rs.option.global_time_enabled):
+                    sensor.set_option(rs.option.global_time_enabled, 1.0)
+        except Exception:  # noqa: BLE001
+            pass
         # Read the device string for reporting purposes.
         try:
             dev = profile.get_device()
@@ -113,8 +120,8 @@ class RealSenseCamera(CameraDevice):
         # code (and threads) can retain it safely.
         img = np.ascontiguousarray(img).copy()
         try:
-            dev_ts_ms = float(color.get_timestamp())  # milliseconds, epoch depends on TS domain
-            dev_ns = int(dev_ts_ms * 1e6)
+            dev_ts_ms = float(color.get_timestamp())  # ms, host-comparable after global_time_enabled
+            dev_ns = int(dev_ts_ms * 1_000_000)
         except Exception:  # noqa: BLE001
             dev_ns = None
         self._frame_counter += 1

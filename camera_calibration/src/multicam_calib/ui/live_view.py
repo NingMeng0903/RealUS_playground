@@ -8,16 +8,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from math import ceil, sqrt
+from typing import Callable, Protocol
 
 import cv2
 import numpy as np
-from PyQt5.QtCore import QObject, Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QGridLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from multicam_calib.board.detector import AprilTagDetector, TagDetection, draw_detections
 from multicam_calib.io.config import SyncConfig
-from multicam_calib.recording.sync import CameraStreamThread, snapshot_best_effort
+from multicam_calib.recording.sync import CameraStreamThread, MultiCamSnapshot, snapshot_best_effort
+
+
+class StreamLike(Protocol):
+    def latest(self): ...
+    def last_error(self) -> BaseException | None: ...
 
 
 @dataclass
@@ -38,14 +44,16 @@ class LiveViewGrid(QWidget):
     def __init__(
         self,
         aliases: list[str],
-        streams: dict[str, CameraStreamThread],
+        streams: dict[str, StreamLike],
         detector: AprilTagDetector,
         *,
         capture_detector: AprilTagDetector | None = None,
+        preview_detector: AprilTagDetector | None = None,
         sync_cfg: SyncConfig | None = None,
         cell_width: int = 480,
         refresh_hz: int = 15,
         min_tags_for_ba: int | None = None,
+        snapshot_fn: Callable[[], MultiCamSnapshot | None] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -53,9 +61,12 @@ class LiveViewGrid(QWidget):
         self._streams = streams
         self._detector = detector
         self._capture_detector = capture_detector or detector
+        self._preview_detector = preview_detector or detector
         self._sync_cfg = sync_cfg or SyncConfig()
         self._cell_width = int(cell_width)
         self._min_tags_for_ba = min_tags_for_ba
+        self._snapshot_fn = snapshot_fn
+        self._active = True
         self._labels: dict[str, QLabel] = {}
         self._status_labels: dict[str, QLabel] = {}
         self._caches: dict[str, ViewCache] = {a: ViewCache() for a in self._aliases}
@@ -64,6 +75,15 @@ class LiveViewGrid(QWidget):
         self._timer.setInterval(max(30, int(1000 / max(1, refresh_hz))))
         self._timer.timeout.connect(self._refresh)
         self._timer.start()
+
+    def set_active(self, active: bool) -> None:
+        """Pause preview timer when tab is hidden (saves CPU, reduces lag)."""
+        self._active = bool(active)
+        if self._active:
+            if not self._timer.isActive():
+                self._timer.start()
+        else:
+            self._timer.stop()
 
     def _build_ui(self) -> None:
         n = len(self._aliases)
@@ -89,7 +109,18 @@ class LiveViewGrid(QWidget):
             self._labels[alias] = pic
             self._status_labels[alias] = status
 
+    def _preview_detect_image(self, image_bgr: np.ndarray) -> np.ndarray:
+        """Run AprilTag on a downscaled image for fast live preview."""
+        h, w = image_bgr.shape[:2]
+        target_w = min(self._cell_width * 2, w)
+        if target_w < w:
+            target_h = max(1, int(round(h * target_w / w)))
+            return cv2.resize(image_bgr, (target_w, target_h), interpolation=cv2.INTER_AREA)
+        return image_bgr
+
     def _refresh(self) -> None:
+        if not self._active:
+            return
         for alias in self._aliases:
             stream = self._streams.get(alias)
             if stream is None:
@@ -105,13 +136,13 @@ class LiveViewGrid(QWidget):
                 continue
             cache = self._caches[alias]
             if frame.frame_index == cache.frame_index:
-                # Frame hasn't advanced, no need to re-detect.
                 self._render_cell(alias, cache)
                 continue
             cache.frame_index = int(frame.frame_index or 0)
             cache.image_bgr = frame.image
             try:
-                cache.detections = self._detector.detect(frame.image)
+                detect_img = self._preview_detect_image(frame.image)
+                cache.detections = self._preview_detector.detect(detect_img)
                 cache.error = None
             except Exception as exc:  # noqa: BLE001
                 cache.detections = []
@@ -148,12 +179,16 @@ class LiveViewGrid(QWidget):
         self._status_labels[alias].setStyleSheet(style)
 
     def snapshot_now(self) -> dict[str, tuple[np.ndarray, list[TagDetection], int]] | None:
-        """Return a copy of the best-synced (image, detections, host_ts) per alias."""
-        snap = snapshot_best_effort(
-            self._streams,
-            attempts=self._sync_cfg.capture_poll_attempts,
-            poll_interval_ms=self._sync_cfg.capture_poll_interval_ms,
-        )
+        """Return a copy of the best-synced (image, detections, sync_ts_ns) per alias."""
+        if self._snapshot_fn is not None:
+            snap = self._snapshot_fn()
+        else:
+            snap = snapshot_best_effort(
+                self._streams,  # type: ignore[arg-type]
+                attempts=self._sync_cfg.capture_poll_attempts,
+                poll_interval_ms=self._sync_cfg.capture_poll_interval_ms,
+                use_device_timestamp=self._sync_cfg.use_device_timestamp,
+            )
         if snap is None:
             return None
         result: dict[str, tuple[np.ndarray, list[TagDetection], int]] = {}
@@ -162,8 +197,12 @@ class LiveViewGrid(QWidget):
             if frame is None:
                 return None
             img = frame.image
-            dets = self._detector.detect(img)
-            result[alias] = (img.copy(), dets, int(frame.timestamp_ns))
+            dets = self._capture_detector.detect(img)
+            if self._sync_cfg.use_device_timestamp and frame.device_timestamp_ns is not None:
+                ts_ns = int(frame.device_timestamp_ns)
+            else:
+                ts_ns = int(frame.timestamp_ns)
+            result[alias] = (img.copy(), dets, ts_ns)
         return result
 
     def stop(self) -> None:

@@ -172,21 +172,44 @@ def pack_single_frame_dataset(
     return dataset_root
 
 
+def pack_burst_dataset(
+    *,
+    dataset_root: Path,
+    calibration: CalibrationBundle,
+    camera_ids: list[str],
+    views_rgb_by_frame: list[dict[str, np.ndarray]],
+    annot_records_by_frame: list[dict[str, dict[str, object]]],
+) -> Path:
+    """Write a short synchronized sequence in EasyMocap's native layout."""
+    if len(views_rgb_by_frame) != len(annot_records_by_frame) or not views_rgb_by_frame:
+        raise ValueError("burst views and annotations must have the same non-zero length")
+    for index, (views_rgb, records) in enumerate(zip(views_rgb_by_frame, annot_records_by_frame)):
+        pack_single_frame_dataset(
+            dataset_root=dataset_root,
+            calibration=calibration,
+            camera_ids=camera_ids,
+            views_rgb=views_rgb,
+            annot_records_by_camera=records,
+            frame_name=f"{index:06d}",
+        )
+    return Path(dataset_root)
+
+
 def _triangulate_part(
     annots_by_cam: dict[str, dict[str, np.ndarray]],
     camera_ids: list[str],
     P_all: np.ndarray,
     field: str,
     tri_cfg: Any,
-) -> np.ndarray:
+) -> tuple[np.ndarray, dict[str, Any]]:
     from projects.genesis_ue_sync.multiview_realtime.triangulation.dlt import triangulate_multiview
 
     stack = np.stack(
         [np.asarray(annots_by_cam[cid][field], dtype=np.float64).reshape(-1, 3) for cid in camera_ids],
         axis=0,
     )
-    k3d, _ = triangulate_multiview(stack, P_all, tri_cfg)
-    return np.asarray(k3d, dtype=np.float32)
+    k3d, diag = triangulate_multiview(stack, P_all, tri_cfg)
+    return np.asarray(k3d, dtype=np.float32), diag
 
 
 def triangulate_bodyhand_keypoints3d(
@@ -196,20 +219,43 @@ def triangulate_bodyhand_keypoints3d(
     *,
     tri_cfg: Any | None = None,
     include_hands: bool = True,
+    diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, np.ndarray]:
     from projects.genesis_ue_sync.multiview_realtime.triangulation.dlt import TriangulationConfig
 
     cfg = tri_cfg or TriangulationConfig()
     empty_hand = np.zeros((21, 4), dtype=np.float32)
-    return {
-        "keypoints3d": _triangulate_part(annots_by_cam, camera_ids, P_all, "keypoints", cfg),
-        "handl3d": _triangulate_part(annots_by_cam, camera_ids, P_all, "handl2d", cfg)
-        if include_hands
-        else empty_hand.copy(),
-        "handr3d": _triangulate_part(annots_by_cam, camera_ids, P_all, "handr2d", cfg)
-        if include_hands
-        else empty_hand.copy(),
-    }
+    body, body_diag = _triangulate_part(annots_by_cam, camera_ids, P_all, "keypoints", cfg)
+    if include_hands:
+        handl, handl_diag = _triangulate_part(annots_by_cam, camera_ids, P_all, "handl2d", cfg)
+        handr, handr_diag = _triangulate_part(annots_by_cam, camera_ids, P_all, "handr2d", cfg)
+    else:
+        handl, handr = empty_hand.copy(), empty_hand.copy()
+        handl_diag = handr_diag = {"disabled": True}
+    if diagnostics is not None:
+        diagnostics.update({"body25": body_diag, "handl": handl_diag, "handr": handr_diag})
+    return {"keypoints3d": body, "handl3d": handl, "handr3d": handr}
+
+
+def mask_body25_2d_to_triangulation_inliers(
+    annots_by_cam: dict[str, dict[str, np.ndarray]],
+    camera_ids: list[str],
+    body_diag: dict[str, Any],
+) -> dict[str, dict[str, np.ndarray]]:
+    """Keep original DWPose 2D values only where robust DLT accepted them."""
+    out = _sanitize_annots_by_cam(annots_by_cam)
+    for detail in list(body_diag.get("joint_details") or []):
+        joint = int(detail.get("joint_index", -1))
+        used = {int(v) for v in detail.get("used_views") or []}
+        if joint < 0:
+            continue
+        for view_index, cid in enumerate(camera_ids):
+            points = out[cid].get("keypoints")
+            if points is None or joint >= len(points) or view_index in used:
+                continue
+            points[joint, :2] = 0.0
+            points[joint, 2] = 0.0
+    return out
 
 
 def easymocap_fit_runtime_from_pose_backend(
@@ -223,7 +269,7 @@ def easymocap_fit_runtime_from_pose_backend(
     em = dict(pb.get("easymocap_fit") or {})
     body_focus = bool(em.get("body_focus", False))
     zero_hand = bool(em.get("zero_hand_keypoints", body_focus))
-    fit_2d_source = str(em.get("fit_2d_source", "mixed")).lower()
+    fit_2d_source = str(em.get("fit_2d_source", "raw_inlier_2d")).lower()
     opts: dict[str, float] = {}
     if body_focus:
         opts.update(
@@ -292,8 +338,8 @@ def write_bodyhand_keypoints3d(
 
 SMPLX_REGRESSOR_JOINTS = 118
 
-# 2D refine: body from green DLT reproj; hands from raw DWPose when fit_2d_source=mixed (default).
-# Pose/shape loss weights use EasyMocap official defaults (args.opts={}).
+# 2D refinement defaults to robust-fusion-filtered raw DWPose.  Green DLT
+# reprojections remain available only for diagnostics/backward compatibility.
 
 
 def build_keypoints2d_for_fit(
@@ -301,13 +347,13 @@ def build_keypoints2d_for_fit(
     kp3ds: np.ndarray,
     Pall: np.ndarray,
     *,
-    source: str = "mixed",
+    source: str = "raw_inlier_2d",
 ) -> tuple[np.ndarray, str]:
     """Build per-view 2D targets for EasyMocap k2d refine."""
     raw = np.asarray(raw_kp2d, dtype=np.float32).copy()
-    source_norm = str(source or "mixed").lower()
-    if source_norm in ("raw_dwpose", "raw", "dwpose"):
-        return raw, "raw_dwpose"
+    source_norm = str(source or "raw_inlier_2d").lower()
+    if source_norm in ("raw_dwpose", "raw", "dwpose", "raw_inlier_2d", "raw_inliers", "inlier_2d"):
+        return raw, "raw_inlier_2d"
 
     green = reproject_keypoints3d_to_multiview_2d(kp3ds, Pall)
     if source_norm in ("green3d_reproj", "green", "green3d"):
@@ -454,7 +500,9 @@ def _smpl_fit_from_keypoints(
     if beta_fixed is not None:
         params_shape = {"shapes": beta_fixed.reshape(1, -1).astype(np.float32)}
     else:
-        params_init = body_model.init_params(nFrames=1)
+        # Shape is explicitly shared across all burst frames; pose/root remain
+        # per-frame in the subsequent multi-stage optimisation.
+        params_init = body_model.init_params(nFrames=kp3ds.shape[0])
         weight_shape = load_weight_shape(model_type, args.opts)
         if model_type in ["smpl", "smplh", "smplx"]:
             params_shape = optimizeShape(
@@ -525,6 +573,8 @@ def run_mv1p_smplx_fit(
     thres2d: float = 0.15,
     max_repro_error: float = 50.0,
     annots_by_cam: dict[str, dict[str, np.ndarray]] | None = None,
+    annots_by_frame: list[dict[str, dict[str, np.ndarray]]] | None = None,
+    parts3d_by_frame: list[dict[str, np.ndarray]] | None = None,
     fixed_betas: np.ndarray | None = None,
     bed_sdf: bool = False,
     scene_spec_path: str | Path | None = None,
@@ -535,10 +585,10 @@ def run_mv1p_smplx_fit(
     tri_cfg: Any | None = None,
     fit_opts: dict[str, float] | None = None,
     zero_hand_keypoints: bool = False,
-    fit_2d_source: str = "mixed",
+    fit_2d_source: str = "raw_inlier_2d",
     write_easymocap_smpl_json: bool = False,
 ) -> tuple[dict[str, Any], Any]:
-    """Run EasyMocap mv1p SMPL/SMPL-X fit: project DLT 3D + configurable 2D refine."""
+    """Run EasyMocap mv1p fit; a burst shares beta and has per-frame pose/root."""
     ensure_easymocap_import()
     model_type = str(model_type).lower()
     ensure_smplx_assets(gender=gender, model_type=model_type)
@@ -560,7 +610,7 @@ def run_mv1p_smplx_fit(
         annot="annots",
         sub=list(camera_ids),
         start=0,
-        end=1,
+        end=(len(annots_by_frame) if annots_by_frame is not None else 1),
         thres2d=float(thres2d),
         MAX_REPRO_ERROR=float(max_repro_error),
         smooth3d=0,
@@ -601,20 +651,29 @@ def run_mv1p_smplx_fit(
     import os
 
     triangulation_source = "cached_keypoints3d"
-    if annots_by_cam is not None:
+    if annots_by_frame is not None:
+        if len(annots_by_frame) != int(args.end):
+            raise ValueError("annots_by_frame length must match burst dataset")
+        for index, frame_annots in enumerate(annots_by_frame):
+            parts = (
+                parts3d_by_frame[index]
+                if parts3d_by_frame is not None
+                else triangulate_bodyhand_keypoints3d(
+                    _sanitize_annots_by_cam(frame_annots), list(camera_ids), dataset.Pall,
+                    tri_cfg=tri_cfg, include_hands=not bool(zero_hand_keypoints),
+                )
+            )
+            write_bodyhand_keypoints3d(
+                skel_dir / f"{index:06d}.json", parts, pad_face_for_smplx=(model_type == "smplx")
+            )
+        triangulation_source = "burst_robust_bodyhand_dlt"
+    elif annots_by_cam is not None:
         annots_by_cam = _sanitize_annots_by_cam(annots_by_cam)
         parts = triangulate_bodyhand_keypoints3d(
-            annots_by_cam,
-            list(camera_ids),
-            dataset.Pall,
-            tri_cfg=tri_cfg,
+            annots_by_cam, list(camera_ids), dataset.Pall, tri_cfg=tri_cfg,
             include_hands=not bool(zero_hand_keypoints),
         )
-        write_bodyhand_keypoints3d(
-            skel_file,
-            parts,
-            pad_face_for_smplx=(model_type == "smplx"),
-        )
+        write_bodyhand_keypoints3d(skel_file, parts, pad_face_for_smplx=(model_type == "smplx"))
         triangulation_source = "project_bodyhand_dlt"
     elif not skel_file.is_file():
         old_cwd = os.getcwd()
@@ -672,6 +731,8 @@ def run_mv1p_smplx_fit(
     diag["smplx_fit_2d_source_config"] = str(fit_2d_source)
     diag["smplx_fit_opts"] = dict(resolved_fit_opts) if resolved_fit_opts else "easymocap_official_defaults"
     diag["smplx_fit_zero_hand_keypoints"] = bool(zero_hand_keypoints)
+    diag["n_frames"] = int(end - start)
+    diag["shared_beta"] = True
     beta_source = "fixed" if fixed_betas is not None else "easymocap_optimize_shape"
     old_cwd = os.getcwd()
     os.chdir(str(easymocap_root))
@@ -748,11 +809,18 @@ def run_mv1p_smplx_fit(
 def easymocap_vertices_world(
     body_model: Any,
     params: dict[str, Any],
+    *,
+    frame_index: int = 0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return (vertices_world Nx3, faces) from EasyMocap SMPL-X params."""
-    Rh = np.asarray(params["Rh"], dtype=np.float32).reshape(1, 3)
-    Th = np.asarray(params["Th"], dtype=np.float32).reshape(1, 3)
-    poses = np.asarray(params["poses"], dtype=np.float32).reshape(1, -1)
+    def select(value: Any, width: int) -> np.ndarray:
+        arr = np.asarray(value, dtype=np.float32).reshape(-1, width)
+        return arr[min(max(int(frame_index), 0), len(arr) - 1) : min(max(int(frame_index), 0), len(arr) - 1) + 1]
+    Rh = select(params["Rh"], 3)
+    Th = select(params["Th"], 3)
+    poses_raw = np.asarray(params["poses"], dtype=np.float32)
+    poses = poses_raw.reshape(-1, poses_raw.shape[-1] if poses_raw.ndim > 1 else poses_raw.size)
+    poses = poses[min(max(int(frame_index), 0), len(poses) - 1) : min(max(int(frame_index), 0), len(poses) - 1) + 1]
     shapes = _prepare_shapes_for_body_model(body_model, np.asarray(params["shapes"], dtype=np.float32).reshape(1, -1))
     kw: dict[str, Any] = {
         "Rh": Rh,
@@ -790,11 +858,20 @@ def _prepare_shapes_for_body_model(body_model: Any, shapes: np.ndarray) -> np.nd
 def easymocap_joints_world(
     body_model: Any,
     params: dict[str, Any],
+    *,
+    frame_index: int = 0,
 ) -> np.ndarray:
     """Return body-model joints in the same world frame as ``easymocap_vertices_world``."""
-    Rh = np.asarray(params["Rh"], dtype=np.float32).reshape(1, 3)
-    Th = np.asarray(params["Th"], dtype=np.float32).reshape(1, 3)
-    poses = np.asarray(params["poses"], dtype=np.float32).reshape(1, -1)
+    def select(value: Any, width: int) -> np.ndarray:
+        arr = np.asarray(value, dtype=np.float32).reshape(-1, width)
+        index = min(max(int(frame_index), 0), len(arr) - 1)
+        return arr[index : index + 1]
+    Rh = select(params["Rh"], 3)
+    Th = select(params["Th"], 3)
+    poses_raw = np.asarray(params["poses"], dtype=np.float32)
+    poses = poses_raw.reshape(-1, poses_raw.shape[-1] if poses_raw.ndim > 1 else poses_raw.size)
+    index = min(max(int(frame_index), 0), len(poses) - 1)
+    poses = poses[index : index + 1]
     shapes = _prepare_shapes_for_body_model(body_model, np.asarray(params["shapes"], dtype=np.float32).reshape(1, -1))
     kw: dict[str, Any] = {
         "Rh": Rh,

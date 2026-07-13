@@ -12,24 +12,24 @@ stream:
   color_format: bgr8       # driver returns numpy HxWx3 uint8 in BGR order
 
 sync:
-  # Reject capture when host-timestamp spread across cameras exceeds this (ms).
-  # 4x D435 on one USB3 hub: typical spread 40–90 ms at 30 fps; 80 ms is OK for
-  # static-board calibration. Lower to 50 for stricter sync; raise to 100 if
-  # captures are still rejected on a busy USB bus.
-  max_spread_ms: 80
-  # On Space/capture, poll latest frames and keep the tightest-sync set (~60 ms).
+  max_spread_ms: 40
   capture_poll_attempts: 30
   capture_poll_interval_ms: 2.0
+  use_device_timestamp: true
+
+preview:
+  source: local
+  zmq_connect: tcp://127.0.0.1:17356
+  zmq_preview_topic: amongus_camera_preview_v1
+  zmq_capture_topic: amongus_camera_frame_v1
 
 detector:
-  # pupil_apriltags.Detector kwargs. tag_family is derived from board.yaml.
   nthreads: 4
-  quad_decimate: 1.0       # full-res for saved captures / calibration
+  quad_decimate: 1.0
   quad_sigma: 0.0
   refine_edges: 1
   decode_sharpening: 0.25
-  # Keep at 1.0 for preview — 2.0 misses distant/grazing tags on long-bed setups.
-  preview_quad_decimate: 1.0
+  preview_quad_decimate: 2.0
 
 ui:
   preview_refresh_hz: 15   # same cadence as fb97347; stream threads stay at stream.fps

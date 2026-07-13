@@ -1,0 +1,2 @@
+# Genesis viewer optional speedups (envs/genesis).
+PyOpenGL-accelerate>=3.1.0

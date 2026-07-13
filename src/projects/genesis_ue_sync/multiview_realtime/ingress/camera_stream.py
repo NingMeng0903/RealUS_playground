@@ -41,6 +41,10 @@ def bgr_to_rgb(frame_bgr: np.ndarray) -> np.ndarray:
     return cv2.cvtColor(np.asarray(frame_bgr), cv2.COLOR_BGR2RGB)
 
 
+def _source_time_ns(meta: dict[str, Any]) -> int:
+    return int(meta.get("source_time_ns") or meta.get("sim_time_ns") or meta.get("wall_time_ns") or 0)
+
+
 class MultiviewCameraStream:
     """Subscribe to multiplexed camera JPEG frames and emit synchronized triplets."""
 
@@ -100,9 +104,7 @@ class MultiviewCameraStream:
         self._ctx = zmq.Context.instance()
         self._sock = self._ctx.socket(zmq.SUB)
         self._sock.setsockopt(zmq.RCVTIMEO, int(max(self.config.recv_timeout_ms, 1)))
-        # Keep a generous receive buffer so a momentarily busy consumer does not lose
-        # messages at the PUB high-water mark; the background drain thread keeps it empty.
-        self._sock.setsockopt(zmq.RCVHWM, 200)
+        self._sock.setsockopt(zmq.RCVHWM, 16)
         self._sock.connect(str(self.config.connect))
         self._sock.setsockopt(zmq.SUBSCRIBE, self.topic.encode("utf-8"))
 
@@ -206,13 +208,56 @@ class MultiviewCameraStream:
                 fi, meta, rgb = self._buffers[camera_id].popleft()
                 views_rgb[camera_id] = rgb
                 metadata_by_camera[camera_id] = dict(meta)
-                timestamps.append(int(meta.get("sim_time_ns") or meta.get("wall_time_ns") or fi))
+                timestamps.append(_source_time_ns(meta))
         return SyncedMultiviewFrame(
             frame_index=int(target),
             views_rgb=views_rgb,
             metadata_by_camera=metadata_by_camera,
             timestamp_ns=min(timestamps) if timestamps else int(target),
         )
+
+    def clear_buffers(self) -> None:
+        with self._lock:
+            for buf in self._buffers.values():
+                buf.clear()
+
+    def try_pop_synced_hardware(self, *, max_spread_ns: int | None = None) -> SyncedMultiviewFrame | None:
+        """Pop the oldest multiview set aligned by RealSense source_time_ns (ROS-like)."""
+        if not self.camera_ids:
+            return None
+        spread_ns = int(max_spread_ns if max_spread_ns is not None else self.config.max_hardware_spread_ms * 1_000_000)
+        spread_ns = max(spread_ns, 1)
+        with self._lock:
+            while True:
+                heads: list[tuple[str, int, dict[str, Any], np.ndarray]] = []
+                for camera_id in self.camera_ids:
+                    buf = self._buffers[camera_id]
+                    if not buf:
+                        return None
+                    fi, meta, rgb = buf[0]
+                    heads.append((camera_id, int(fi), meta, rgb))
+                source_times = [_source_time_ns(meta) for _cid, _fi, meta, _rgb in heads]
+                min_t = min(source_times)
+                max_t = max(source_times)
+                if max_t - min_t <= spread_ns:
+                    views_rgb: dict[str, np.ndarray] = {}
+                    metadata_by_camera: dict[str, dict[str, Any]] = {}
+                    frame_indices: list[int] = []
+                    for camera_id in self.camera_ids:
+                        fi, meta, rgb = self._buffers[camera_id].popleft()
+                        views_rgb[camera_id] = rgb
+                        metadata_by_camera[camera_id] = dict(meta)
+                        frame_indices.append(int(fi))
+                    return SyncedMultiviewFrame(
+                        frame_index=int(min(frame_indices)),
+                        views_rgb=views_rgb,
+                        metadata_by_camera=metadata_by_camera,
+                        timestamp_ns=int(min_t),
+                    )
+                for camera_id, _fi, meta, _rgb in heads:
+                    if _source_time_ns(meta) == min_t:
+                        self._buffers[camera_id].popleft()
+                        break
 
     def try_pop_synced_strict(self, *, max_frame_span: int = 2) -> SyncedMultiviewFrame | None:
         """Return the oldest synchronized frame with a bounded cross-camera frame span.
@@ -242,7 +287,7 @@ class MultiviewCameraStream:
                         fi, meta, rgb = self._buffers[camera_id].popleft()
                         views_rgb[camera_id] = rgb
                         metadata_by_camera[camera_id] = dict(meta)
-                        timestamps.append(int(meta.get("sim_time_ns") or meta.get("wall_time_ns") or fi))
+                        timestamps.append(_source_time_ns(meta))
                     return SyncedMultiviewFrame(
                         frame_index=int(min_f),
                         views_rgb=views_rgb,

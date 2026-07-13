@@ -10,8 +10,12 @@ import sys
 from pathlib import Path
 
 
+def _smplx_output_root(repo: Path) -> Path:
+    return Path(os.environ.get("REALUS_SMPLX_OUTPUT_ROOT", repo / "smplx_outputs"))
+
+
 def _latest_smplx_npz(repo: Path) -> Path | None:
-    fit = repo / "outputs/offline_capture"
+    fit = _smplx_output_root(repo)
     if not fit.is_dir():
         return None
     runs = sorted([p for p in fit.iterdir() if p.is_dir()], key=lambda p: p.stat().st_mtime, reverse=True)

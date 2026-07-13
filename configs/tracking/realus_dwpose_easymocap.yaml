@@ -1,5 +1,7 @@
 calibration_path: configs/calibration/realus_realsense/cameras.yaml
 scene_spec_path: configs/scenes/realus_bed_rail_scene.yaml
+auto_camera_ids: true
+auto_scale_triangulation: true
 camera_ids:
 - cam1
 - cam2
@@ -12,6 +14,8 @@ ingress:
   recv_timeout_ms: 250
   sync_tolerance_frames: 2
   max_buffer_per_camera: 8
+  sync_mode: hardware_timestamp
+  max_hardware_spread_ms: 33
 pose_backend:
   type: dwpose_triangulation
   primary_camera_id: cam1
@@ -29,18 +33,28 @@ pose_backend:
     execution_provider: tensorrt
     trt_opt_batch: 4
     trt_max_batch: 6
+    retain_simcc: true
+    simcc_topk: 5
   triangulation:
     confidence_threshold: 0.3
     min_conf: 0.12
-    min_view: 4
+    # Adaptive policy: torso/pelvis/hips need 3 views; distal joints retain a
+    # geometrically valid pair at low confidence.  Never use a global N-1 gate.
+    adaptive_views: true
+    min_view: 2
+    core_min_view: 3
     min_joints: 5
     dist_max_px: 22.0
+    two_view_max_reproj_px: 12.0
+    two_view_min_ray_angle_deg: 3.0
+    low_view_confidence_scale: 0.5
     thres_outlier_view: 0.35
     thres_outlier_joint: 0.35
   easymocap_fit:
     body_focus: false
     zero_hand_keypoints: false
-    fit_2d_source: mixed
+    # Raw DWPose inliers; green triangulation reprojection is debug only.
+    fit_2d_source: raw_inlier_2d
     opts: {}
     write_debug_images: true
     write_easymocap_smpl_json: false

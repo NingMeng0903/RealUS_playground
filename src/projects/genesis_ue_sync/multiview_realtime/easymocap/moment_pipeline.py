@@ -34,6 +34,8 @@ from projects.genesis_ue_sync.multiview_realtime.easymocap.delayed_smplx import 
     easymocap_joints_world,
     easymocap_vertices_world,
     ensure_smplx_assets,
+    mask_body25_2d_to_triangulation_inliers,
+    pack_burst_dataset,
     pack_single_frame_dataset,
     run_mv1p_smplx_fit,
     triangulate_bodyhand_keypoints3d,
@@ -331,16 +333,19 @@ def process_one_moment(
         keypoints3d_world=None,
         config=quality_cfg,
     )
+    triangulation_diagnostics: dict[str, Any] = {}
     parts3d_for_quality = triangulate_bodyhand_keypoints3d(
         annots_by_cam,
         camera_ids,
         arrays["P"],
         tri_cfg=tri_cfg,
         include_hands=not bool(zero_hand_keypoints),
+        diagnostics=triangulation_diagnostics,
     )
     ok3d, qual3d_report = evaluate_bodyhand3d_quality(parts3d_for_quality, config=quality_cfg)
     summary["pose2d_quality"] = qual_report
     summary["bodyhand3d_quality"] = qual3d_report
+    summary["triangulation"] = triangulation_diagnostics
     if not ok2d or not ok3d:
         summary["fit_ok"] = False
         summary["skip_reason"] = "bodyhand3d_quality" if not ok3d else "pose2d_quality"
@@ -353,6 +358,20 @@ def process_one_moment(
         else:
             shutil.rmtree(moment_dir, ignore_errors=True)
         return summary
+
+    # The 2D objective receives raw DWPose inliers, never green 3D
+    # reprojections.  Invalid/outlier body observations are set missing before
+    # both EasyMocap annotation loading and the SMPL-X data term.
+    annots_for_fit = mask_body25_2d_to_triangulation_inliers(
+        annots_by_cam, camera_ids, dict(triangulation_diagnostics.get("body25") or {})
+    )
+    pack_single_frame_dataset(
+        dataset_root=dataset_root,
+        calibration=calibration,
+        camera_ids=camera_ids,
+        views_rgb=synced.views_rgb,
+        annot_records_by_camera={cid: easymocap_person_record(annots_for_fit[cid], person_id=0) for cid in camera_ids},
+    )
 
     fit_model = str(fit_model).lower()
     fallback = str(fit_model_fallback).lower()
@@ -376,7 +395,7 @@ def process_one_moment(
                 model_type=attempt_model,
                 thres2d=thres2d,
                 max_repro_error=max_repro_error,
-                annots_by_cam=annots_by_cam,
+                annots_by_cam=annots_for_fit,
                 fixed_betas=fixed_betas,
                 bed_sdf=bool(bed_sdf),
                 bed_sdf_weight=float(bed_sdf_weight),
@@ -415,12 +434,10 @@ def process_one_moment(
             keypoints3d=kp3d,
         )
         verts, faces = easymocap_vertices_world(body_model, params)
-        verts, root_align = _align_smpl_root_to_body25(
-            body_model=body_model,
-            params=params,
-            verts=verts,
-            keypoints3d=kp3d,
-        )
+        # Root translation is part of the SMPL-X optimization.  Do not shift a
+        # finished mesh afterwards: that would invalidate both reprojection and
+        # the subsequent anti-penetration check.
+        root_align = {"applied": False, "reason": "root_optimized_in_fit_no_posthoc_shift"}
         summary["smpl_root_alignment"] = root_align
         bed_z = bed_top_z_from_scene_spec(str(scene_spec_path or cfg.scene_spec_path))
         pen_loss, pen_count = bed_penetration_loss(verts, bed_top_z=bed_z, margin_m=0.008)
@@ -513,6 +530,204 @@ def process_one_moment(
         json.dumps(_jsonable(summary), ensure_ascii=True, indent=2),
         encoding="utf-8",
     )
+    return summary
+
+
+def _burst_frame_score(body_diag: dict[str, Any], index: int, center: int) -> float:
+    details = list(body_diag.get("joint_details") or [])
+    valid = {int(d.get("joint_index", -1)): d for d in details if d.get("geometry_ok")}
+    core = sum(j in valid and len(valid[j].get("used_views") or []) >= 3 for j in (0, 1, 2, 5, 8, 9, 12))
+    lower = sum(j in valid for j in (9, 10, 11, 12, 13, 14, 19, 20, 21, 22, 23, 24))
+    residuals = [float(d["reprojection_error_px"]) for d in valid.values() if d.get("reprojection_error_px") is not None]
+    return 20.0 * core + 4.0 * lower + len(valid) - 0.05 * (float(np.mean(residuals)) if residuals else 99.0) - 0.2 * abs(index - center)
+
+
+def _temporal_complete_body25(
+    parts_by_frame: list[dict[str, np.ndarray]],
+    diagnostics_by_frame: list[dict[str, Any]],
+    timestamps_ns: list[int],
+    *,
+    max_speed_mps: float = 1.5,
+) -> int:
+    """Conservative short-window completion for failed multi-view observations.
+
+    A point seen by only one camera remains missing.  Completion is considered
+    only when this frame had at least two observations, both adjacent frames
+    have geometric measurements and their implied speed is continuous.
+    """
+    completed = 0
+    if len(parts_by_frame) < 3:
+        return completed
+    for frame in range(1, len(parts_by_frame) - 1):
+        body = np.asarray(parts_by_frame[frame]["keypoints3d"], dtype=np.float32)
+        before = np.asarray(parts_by_frame[frame - 1]["keypoints3d"], dtype=np.float32)
+        after = np.asarray(parts_by_frame[frame + 1]["keypoints3d"], dtype=np.float32)
+        details = list((diagnostics_by_frame[frame].get("body25") or {}).get("joint_details") or [])
+        for joint, detail in enumerate(details):
+            if joint >= len(body) or body[joint, 3] > 0.0:
+                continue
+            # Explicitly reject the "only one view" case rather than invent it.
+            if len(detail.get("observed_views") or []) < 2:
+                continue
+            if before[joint, 3] <= 0.0 or after[joint, 3] <= 0.0:
+                continue
+            dt = max((int(timestamps_ns[frame + 1]) - int(timestamps_ns[frame - 1])) * 1e-9, 1e-3)
+            speed = float(np.linalg.norm(after[joint, :3] - before[joint, :3]) / dt)
+            if not np.isfinite(speed) or speed > float(max_speed_mps):
+                continue
+            body[joint, :3] = 0.5 * (before[joint, :3] + after[joint, :3])
+            body[joint, 3] = 0.25 * min(float(before[joint, 3]), float(after[joint, 3]))
+            detail["status"] = "temporal_completed"
+            detail["temporal_speed_mps"] = speed
+            detail["geometry_ok"] = False
+            completed += 1
+        parts_by_frame[frame]["keypoints3d"] = body
+    return completed
+
+
+def process_burst(
+    *,
+    moment_dir: Path,
+    synced_frames: list[SyncedMultiviewFrame],
+    cfg: MultiviewRealtimeConfig,
+    calibration: CalibrationBundle,
+    detector: DwposeOnnxDetector,
+    camera_ids: list[str],
+    gender: str,
+    fit_model: str,
+    thres2d: float,
+    max_repro_error: float,
+    body_model_cache: dict[str, Any],
+    fixed_betas: np.ndarray | None = None,
+    bed_sdf: bool = True,
+    bed_sdf_weight: float = 4.0,
+    bed_sdf_max_iter: int = 4,
+    scene_spec_path: str | Path | None = None,
+    motion_frame_indices: list[int | None] | None = None,
+) -> dict[str, Any]:
+    """Fit one shared-beta SMPL-X sequence from a 0.5 s synced RGB burst."""
+    if not synced_frames:
+        raise ValueError("process_burst requires at least one synced frame")
+    moment_dir = Path(moment_dir)
+    moment_dir.mkdir(parents=True, exist_ok=True)
+    tri_cfg, fit_opts, zero_hand_keypoints, fit_2d_source = easymocap_fit_runtime_from_pose_backend(cfg.pose_backend)
+    annots_by_frame: list[dict[str, dict[str, np.ndarray]]] = []
+    parts_by_frame: list[dict[str, np.ndarray]] = []
+    tri_by_frame: list[dict[str, Any]] = []
+    detection_by_frame: list[dict[str, Any]] = []
+    raw_simcc_arrays: dict[str, np.ndarray] = {}
+    views_by_frame = [frame.views_rgb for frame in synced_frames]
+    arrays, _ = camera_arrays(calibration, camera_ids, synced_frames[0].views_rgb, scale_to_ingress=True)
+    for frame in synced_frames:
+        annots, det_meta, batch_meta = detector.infer_easymocap_annot_multiview(frame.views_rgb, camera_ids)
+        raw_simcc = batch_meta.pop("_raw_simcc", None)
+        if isinstance(raw_simcc, dict):
+            raw_simcc_arrays[f"frame_{len(annots_by_frame):06d}_x"] = np.asarray(raw_simcc["x"])
+            raw_simcc_arrays[f"frame_{len(annots_by_frame):06d}_y"] = np.asarray(raw_simcc["y"])
+        annots = _sanitize_annots_by_cam(annots)
+        tri_diag: dict[str, Any] = {}
+        parts = triangulate_bodyhand_keypoints3d(
+            annots, camera_ids, arrays["P"], tri_cfg=tri_cfg,
+            include_hands=not bool(zero_hand_keypoints), diagnostics=tri_diag,
+        )
+        annots_by_frame.append(mask_body25_2d_to_triangulation_inliers(annots, camera_ids, tri_diag["body25"]))
+        parts_by_frame.append(parts)
+        tri_by_frame.append(tri_diag)
+        detection_by_frame.append({"per_camera": det_meta, "batch": batch_meta})
+
+    timestamps = [int(frame.timestamp_ns) for frame in synced_frames]
+    if raw_simcc_arrays:
+        np.savez_compressed(moment_dir / "raw_simcc.npz", **raw_simcc_arrays)
+    completed = _temporal_complete_body25(parts_by_frame, tri_by_frame, timestamps)
+    center = len(synced_frames) // 2
+    reference_index = max(
+        range(len(synced_frames)),
+        key=lambda i: _burst_frame_score(dict(tri_by_frame[i].get("body25") or {}), i, center),
+    )
+    dataset_root = moment_dir / "easymocap_dataset"
+    easymocap_out = moment_dir / "easymocap_output"
+    pack_burst_dataset(
+        dataset_root=dataset_root,
+        calibration=calibration,
+        camera_ids=camera_ids,
+        views_rgb_by_frame=views_by_frame,
+        annot_records_by_frame=[{cid: easymocap_person_record(a[cid], person_id=0) for cid in camera_ids} for a in annots_by_frame],
+    )
+    fit_diagnostics: dict[str, Any] = {}
+    ensure_smplx_assets(gender=gender, model_type=fit_model)
+    params, body_model = run_mv1p_smplx_fit(
+        dataset_root=dataset_root, output_root=easymocap_out, camera_ids=camera_ids,
+        gender=gender, model_type=fit_model, thres2d=thres2d, max_repro_error=max_repro_error,
+        annots_by_frame=annots_by_frame, parts3d_by_frame=parts_by_frame,
+        fixed_betas=fixed_betas, bed_sdf=bed_sdf, bed_sdf_weight=bed_sdf_weight,
+        bed_sdf_max_iter=bed_sdf_max_iter, scene_spec_path=scene_spec_path or cfg.scene_spec_path,
+        fit_diagnostics=fit_diagnostics, tri_cfg=tri_cfg, fit_opts=fit_opts,
+        zero_hand_keypoints=zero_hand_keypoints, fit_2d_source=fit_2d_source,
+    )
+    body_model_cache["model"] = body_model
+    reference = synced_frames[reference_index]
+    verts, faces = easymocap_vertices_world(body_model, params, frame_index=reference_index)
+    pred_joints = easymocap_joints_world(body_model, params, frame_index=reference_index)
+    final_reprojection_errors: list[float] = []
+    for view_index, cid in enumerate(camera_ids):
+        target = np.asarray(annots_by_frame[reference_index][cid]["keypoints"], dtype=np.float32)
+        n = min(len(target), len(pred_joints))
+        for joint in range(n):
+            if target[joint, 2] <= 0.0:
+                continue
+            h = np.r_[pred_joints[joint, :3], 1.0]
+            q = np.asarray(arrays["P"][view_index], dtype=np.float64) @ h
+            if q[2] <= 1e-8:
+                continue
+            final_reprojection_errors.append(float(np.linalg.norm(q[:2] / q[2] - target[joint, :2])))
+    bed_z = bed_top_z_from_scene_spec(str(scene_spec_path or cfg.scene_spec_path))
+    pen_loss, pen_count = bed_penetration_loss(verts, bed_top_z=bed_z, margin_m=0.008)
+    ref_body_diag = dict(tri_by_frame[reference_index].get("body25") or {})
+    ref_details = list(ref_body_diag.get("joint_details") or [])
+    core_ok = sum(
+        bool(d.get("geometry_ok")) and len(d.get("used_views") or []) >= 3
+        for d in ref_details if int(d.get("joint_index", -1)) in (0, 1, 2, 5, 8, 9, 12)
+    ) >= 5
+    foot_indices = (11, 14, 19, 20, 21, 22, 23, 24)
+    foot_valid = sum(bool(d.get("geometry_ok")) for d in ref_details if int(d.get("joint_index", -1)) in foot_indices)
+    # Four geometrically measured ankle/foot landmarks is the minimum for a
+    # mesh advertised as high precision.  A two-view distal point counts, but
+    # remains low-confidence in the stored joint diagnostics.
+    foot_ok = foot_valid >= 4
+    repro_errors = [float(d["reprojection_error_px"]) for d in ref_details if d.get("reprojection_error_px") is not None]
+    repro_ok = bool(final_reprojection_errors) and float(np.mean(final_reprojection_errors)) <= float(max_repro_error)
+    fit_ok = bool(core_ok and foot_ok and repro_ok and int(pen_count) == 0)
+    # Save only the selected frame's mesh parameters for Genesis, preserving
+    # the full per-frame sequence in EasyMocap output and diagnostics.
+    def _frame_param(name: str, width: int) -> np.ndarray:
+        arr = np.asarray(params[name], dtype=np.float32).reshape(-1, width)
+        return arr[reference_index : reference_index + 1]
+    np.savez(
+        moment_dir / "smplx_result.npz",
+        Rh=_frame_param("Rh", 3), Th=_frame_param("Th", 3),
+        poses=np.asarray(params["poses"], dtype=np.float32).reshape(len(synced_frames), -1)[reference_index],
+        shapes=np.asarray(params["shapes"], dtype=np.float32),
+        root_align_offset=np.zeros((3,), dtype=np.float32), vertices=verts.astype(np.float32), faces=np.asarray(faces, dtype=np.int32),
+    )
+    summary = {
+        "moment_dir": str(moment_dir.resolve()), "fit_ok": fit_ok,
+        "publish_mode": "high_precision_mesh" if fit_ok else "degraded_skeleton_or_resample",
+        "burst": {"duration_s": (timestamps[-1] - timestamps[0]) * 1e-9, "n_frames": len(synced_frames),
+                  "reference_index": reference_index, "temporal_completed_joints": completed,
+                  "timestamps_ns": timestamps, "raw_simcc_path": "raw_simcc.npz" if raw_simcc_arrays else None},
+        "frame_index": int(reference.frame_index), "timestamp_ns": int(reference.timestamp_ns),
+        "motion_frame_index": (motion_frame_indices or [None] * len(synced_frames))[reference_index],
+        "triangulation_by_frame": tri_by_frame, "detection_by_frame": detection_by_frame,
+        "fit_diagnostics": fit_diagnostics, "smplx_fit_2d_source": fit_diagnostics.get("smplx_fit_2d_source"),
+        "smpl_root_alignment": {"applied": False, "reason": "root_optimized_in_fit_no_posthoc_shift"},
+        "bed_penetration_loss": float(pen_loss), "bed_penetrating_verts": int(pen_count),
+        "final_quality": {"core_ok": core_ok, "foot_ok": foot_ok, "foot_valid_joints": foot_valid,
+                          "reprojection_ok": repro_ok,
+                          "triangulation_reprojection_error_px": float(np.mean(repro_errors)) if repro_errors else None,
+                          "final_smplx_reprojection_error_px": float(np.mean(final_reprojection_errors)) if final_reprojection_errors else None},
+        "easymocap_betas": [float(v) for v in np.asarray(params["shapes"]).reshape(-1)[:10]],
+    }
+    (moment_dir / "moment.json").write_text(json.dumps(_jsonable(summary), ensure_ascii=True, indent=2), encoding="utf-8")
     return summary
 
 
@@ -659,12 +874,7 @@ def refit_saved_moment(
             keypoints3d=kp3d,
         )
         verts, faces = easymocap_vertices_world(body_model, params)
-        verts, root_align = _align_smpl_root_to_body25(
-            body_model=body_model,
-            params=params,
-            verts=verts,
-            keypoints3d=kp3d,
-        )
+        root_align = {"applied": False, "reason": "root_optimized_in_fit_no_posthoc_shift"}
         summary["smpl_root_alignment"] = root_align
         if scene_spec_path is not None:
             bed_z = bed_top_z_from_scene_spec(str(scene_spec_path))

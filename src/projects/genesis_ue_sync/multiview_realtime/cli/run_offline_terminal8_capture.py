@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Terminal 8 offline capture: one synced 6-camera moment + EasyMocap SMPL-X fit.
+"""Terminal 8: hardware-sync RGB burst + robust 4-camera EasyMocap SMPL-X fit.
 
-  1. Grab the next strict-sync six-camera frame from terminal 2 ingress.
-  2. Run DWPose133, project DLT 3D skeleton, EasyMocap SMPL-X fit (optimizeShape unless --betas-path).
-  3. Optionally apply a light bed-plane refinement.
-  4. Write all images and diagnostics under ``outputs/offline_capture/<run>/``.
+  1. Grab a 0.5 s hardware-timestamp synchronized burst from camera ingress.
+  2. Run DWPose133 and adaptive per-joint robust DLT for every group.
+  3. Fit shared beta with per-frame pose/root; the bed SDF only prevents
+     penetration and never attracts joints/feet to the bed.
+  4. Write RGB, SimCC, fusion and SMPL-X diagnostics under output-root.
 """
 
 from __future__ import annotations
@@ -28,14 +29,14 @@ from projects.genesis_ue_sync.multiview_realtime.config import MultiviewRealtime
 from projects.genesis_ue_sync.multiview_realtime.easymocap.moment_pipeline import (
     _jsonable,
     load_fixed_betas,
-    process_one_moment,
+    process_burst,
 )
 from projects.genesis_ue_sync.multiview_realtime.ingress.camera_stream import MultiviewCameraStream
 from projects.genesis_ue_sync.multiview_realtime.ingress.motion_frame_gate import (
     CanonicalMotionIndexClient,
     motion_window_from_scene_spec,
 )
-from projects.genesis_ue_sync.multiview_realtime.ingress.synced_frame_acquire import wait_pop_next_synced
+from projects.genesis_ue_sync.multiview_realtime.ingress.synced_frame_acquire import collect_synced_burst
 from projects.genesis_ue_sync.multiview_realtime.track_stream import (
     DEFAULT_TRACK_PUB_BIND,
     TOPIC_MULTIVIEW_TRACK_V1,
@@ -59,6 +60,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--skip-beta-calib", action="store_true", help="Use betas from yaml smpl_fit.betas_path instead of optimizeShape.")
     p.add_argument("--betas-path", type=Path, default=None, help="Use existing betas; skip optimizeShape when set.")
     p.add_argument("--capture-wait-timeout-s", type=float, default=90.0)
+    p.add_argument("--capture-burst-s", type=float, default=0.5, help="Hardware-sync RGB burst duration (default: 0.5 s).")
+    p.add_argument("--min-burst-frames", type=int, default=8, help="Reject a short burst rather than fitting it as high precision.")
     p.add_argument("--sync-tolerance-frames", type=int, default=16)
     p.add_argument("--max-output-frame-span", type=int, default=2)
     p.add_argument("--gender", type=str, default="male", choices=["male", "female", "neutral"])
@@ -183,6 +186,8 @@ def _ingress_cfg(
             recv_timeout_ms=ing.recv_timeout_ms,
             sync_tolerance_frames=max(int(sync_tolerance_frames), int(ing.sync_tolerance_frames)),
             max_buffer_per_camera=max(16, int(ing.max_buffer_per_camera)),
+            sync_mode=ing.sync_mode,
+            max_hardware_spread_ms=ing.max_hardware_spread_ms,
         ),
         pose_backend=cfg.pose_backend,
         world_reconstruction=cfg.world_reconstruction,
@@ -210,6 +215,44 @@ def _write_frozen_capture(moment_dir: Path, synced: Any, camera_ids: list[str], 
     (moment_dir / "frozen_capture.json").write_text(
         json.dumps(metadata, ensure_ascii=True, indent=2),
         encoding="utf-8",
+    )
+
+
+def _validate_undistorted_geometry(frames: list[Any], camera_ids: list[str]) -> None:
+    """Reject mixed raw/undistorted frames before they reach calibrated DLT."""
+    contract: dict[str, tuple[bool, str]] = {}
+    for frame in frames:
+        for cid in camera_ids:
+            meta = dict((frame.metadata_by_camera.get(cid) or {}))
+            geometry = dict(meta.get("image_geometry") or {})
+            if not geometry:
+                raise ValueError(
+                    f"{cid} frame {frame.frame_index} lacks image_geometry metadata; "
+                    "use the updated RealSense publisher with --undistort."
+                )
+            undistorted = bool(geometry.get("undistorted", False))
+            model = str(geometry.get("projection_distortion_model") or "")
+            if not undistorted or model != "zero":
+                raise ValueError(
+                    f"{cid} frame {frame.frame_index} violates undistorted/zero-distortion contract: {geometry}"
+                )
+            state = (undistorted, model)
+            if cid in contract and contract[cid] != state:
+                raise ValueError(f"inconsistent image geometry for {cid}: {contract[cid]} vs {state}")
+            contract[cid] = state
+
+
+def _write_frozen_burst(moment_dir: Path, frames: list[Any], camera_ids: list[str], *, write_images: bool) -> None:
+    burst_dir = Path(moment_dir) / "burst"
+    rows = []
+    for index, frame in enumerate(frames):
+        frame_dir = burst_dir / f"{index:06d}"
+        _write_frozen_capture(frame_dir, frame, camera_ids, write_images=write_images)
+        rows.append(json.loads((frame_dir / "frozen_capture.json").read_text(encoding="utf-8")))
+    reference = frames[len(frames) // 2]
+    _write_frozen_capture(moment_dir, reference, camera_ids, write_images=write_images)
+    (Path(moment_dir) / "burst_sync_metadata.json").write_text(
+        json.dumps({"n_frames": len(frames), "frames": rows}, ensure_ascii=True, indent=2), encoding="utf-8"
     )
 
 
@@ -401,7 +444,8 @@ def main() -> int:
         "ingress_connect": str(cfg.ingress.connect),
         "max_output_frame_span": int(args.max_output_frame_span),
         "sync_tolerance_frames": int(args.sync_tolerance_frames),
-        "smplx_fit_2d_source": "mixed",
+        "smplx_fit_2d_source": "raw_inlier_2d",
+        "capture_burst_s": float(args.capture_burst_s),
         "bed_sdf": bool(args.bed_sdf),
         "bed_sdf_weight": float(args.bed_sdf_weight),
         "bed_sdf_max_iter": int(args.bed_sdf_max_iter),
@@ -444,30 +488,29 @@ def main() -> int:
     try:
         stream.connect()
         stream.start_ingest()
+        stream.clear_buffers()
         deadline = time.perf_counter() + float(args.capture_wait_timeout_s)
-        synced = None
-        motion_fi = None
-        skip_reason = "no_synced_frame"
-        while time.perf_counter() < deadline:
-            synced, motion_fi, skip_reason = wait_pop_next_synced(
-                stream,
-                motion_window=motion_window,
-                canonical=canonical,
-                wait_timeout_s=0.5,
-                max_frame_span=int(args.max_output_frame_span),
-            )
-            if synced is not None:
-                break
-            time.sleep(0.01)
-        if synced is None:
+        burst_frames, burst_motion_fi, skip_reason = collect_synced_burst(
+            stream,
+            duration_s=float(args.capture_burst_s),
+            wait_timeout_s=max(0.1, deadline - time.perf_counter()),
+            motion_window=motion_window,
+            canonical=canonical,
+            max_frame_span=int(args.max_output_frame_span),
+            sync_mode=str(cfg.ingress.sync_mode),
+            max_hardware_spread_ms=float(cfg.ingress.max_hardware_spread_ms),
+        )
+        if len(burst_frames) < max(1, int(args.min_burst_frames)):
             logging.error(
-                "timed out waiting for synced six-camera frame (%s) buffer=%s",
+                "timed out/short hardware-sync burst (%s, got=%d) buffer=%s",
                 skip_reason,
+                len(burst_frames),
                 stream.buffer_status(),
             )
             summary["capture"] = {
                 "ok": False,
-                "reason": skip_reason,
+                "reason": "short_burst:" + str(skip_reason),
+                "n_frames": len(burst_frames),
                 "elapsed_s": float(time.perf_counter() - t_capture),
             }
             (run_dir / "capture_summary.json").write_text(
@@ -476,16 +519,11 @@ def main() -> int:
             )
             return 2
 
-        logging.info(
-            "captured ue_frame=%s motion_fi=%s span cameras=%s",
-            synced.frame_index,
-            motion_fi,
-            {
-                cid: int((synced.metadata_by_camera.get(cid) or {}).get("frame_index", synced.frame_index))
-                for cid in cfg.camera_ids
-            },
-        )
-        _write_frozen_capture(moment_dir, synced, list(cfg.camera_ids), write_images=write_debug_images)
+        _validate_undistorted_geometry(burst_frames, list(cfg.camera_ids))
+        synced = burst_frames[len(burst_frames) // 2]
+        motion_fi = burst_motion_fi[len(burst_motion_fi) // 2]
+        logging.info("captured %d hardware-sync groups over %.3fs", len(burst_frames), (burst_frames[-1].timestamp_ns - burst_frames[0].timestamp_ns) * 1e-9)
+        _write_frozen_burst(moment_dir, burst_frames, list(cfg.camera_ids), write_images=write_debug_images)
         logging.info(
             "frozen six-camera moment written -> %s%s",
             moment_dir,
@@ -498,9 +536,9 @@ def main() -> int:
 
         detector = DwposeOnnxDetector(DwposeOnnxConfig.from_dict(dict(cfg.pose_backend.get("dwpose") or {})))
         detector.preload()
-        moment_summary = process_one_moment(
+        moment_summary = process_burst(
             moment_dir=moment_dir,
-            synced=synced,
+            synced_frames=burst_frames,
             cfg=cfg,
             calibration=calibration,
             detector=detector,
@@ -509,21 +547,14 @@ def main() -> int:
             fit_model=str(args.fit_model),
             thres2d=float(args.thres2d),
             max_repro_error=float(args.max_repro_error),
-            mesh_alpha=float(args.mesh_alpha),
-            mesh_rgb=mesh_rgb,
-            face_stride=int(args.face_stride),
-            max_triangle_px=float(args.max_triangle_px),
             body_model_cache=body_model_cache,
             fixed_betas=fixed_betas,
             bed_sdf=bool(args.bed_sdf),
             bed_sdf_weight=float(args.bed_sdf_weight),
             bed_sdf_max_iter=int(args.bed_sdf_max_iter),
             scene_spec_path=cfg.scene_spec_path,
-            motion_frame_index=motion_fi,
-            keep_rejected=bool(args.keep_rejected),
-            write_debug_images=write_debug_images,
+            motion_frame_indices=burst_motion_fi,
         )
-        moment_summary["motion_frame_index"] = int(motion_fi) if motion_fi is not None else None
 
         if fixed_betas is None and moment_summary.get("easymocap_betas") is not None:
             betas_path, diag_path = _save_beta_calibration(
