@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 
 from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import skin_vertices
+from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import smplx_pose_hash
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import AnatomyRiggedAsset, load_rigged_asset
 from projects.genesis_ue_sync.multiview_realtime.viz.debug_mesh_draw import replace_colored_debug_mesh
 from projects.genesis_ue_sync.multiview_realtime.viz.genesis_viewer_lock import try_viewer_render_lock
@@ -125,7 +126,15 @@ class AnatomyLbsDrawer:
         if not self.visible or self.opacity <= 0.0:
             self.clear_node()
             return True
-        vertices = skin_vertices(self.asset, pose, transl=transl)
+        cache_hit = (
+            self.asset.pose_cache_vertices is not None
+            and self.asset.pose_cache_hash == smplx_pose_hash(pose, new_transl)
+        )
+        vertices = (
+            np.asarray(self.asset.pose_cache_vertices, dtype=np.float32)
+            if cache_hit
+            else skin_vertices(self.asset, pose, transl=transl)
+        )
         if not np.all(np.isfinite(vertices)):
             return False
         span_m = float(np.max(np.ptp(vertices, axis=0)))
@@ -152,4 +161,3 @@ class AnatomyLbsDrawer:
             double_sided=True,
         )
         return self._mesh_node is not None
-

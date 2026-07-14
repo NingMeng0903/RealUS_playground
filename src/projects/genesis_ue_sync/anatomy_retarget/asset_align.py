@@ -56,6 +56,8 @@ def normalize_rigged_asset(
     asset: AnatomyRiggedAsset,
     config: dict[str, Any] | None = None,
 ) -> AnatomyRiggedAsset:
+    if asset.source_bone_names is not None:
+        raise ValueError("source-rig v2 must be exported in metric canonical coordinates; post-hoc scaling is forbidden")
     cfg = dict(config or {})
     pelvis_joint = str(cfg.get("fallback_joint", DEFAULT_PELVIS_JOINT))
     pelvis_idx = _pelvis_index(asset.joint_names, pelvis_joint=pelvis_joint)
@@ -71,19 +73,7 @@ def normalize_rigged_asset(
     meta["vertex_rest_normalized"] = True
     meta["blender_unit_scale"] = unit_scale
     meta["align_pelvis_joint"] = pelvis_joint
-    return AnatomyRiggedAsset(
-        vertices_rest=verts,
-        faces=asset.faces,
-        lbs_weights=asset.lbs_weights,
-        joint_names=asset.joint_names,
-        parents=asset.parents,
-        rest_joints=asset.rest_joints,
-        inverse_bind=asset.inverse_bind,
-        source_mesh_names=asset.source_mesh_names,
-        pose_format=asset.pose_format,
-        coordinate_system=asset.coordinate_system,
-        metadata=meta,
-    )
+    return type(asset)(**{**asset.__dict__, "vertices_rest": verts, "metadata": meta})
 
 
 def normalize_rigged_asset_file(

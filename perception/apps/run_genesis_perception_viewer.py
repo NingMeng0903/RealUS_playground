@@ -120,7 +120,8 @@ class PerceptionViewerOverlay:
                     self._latest_transl,
                     self._anatomy_reg.canonical_pelvis(),
                 )
-                self._anatomy_reg.draw_all(self._latest_pose55, transl=transl)
+                shape_hash = self._track.latest_anatomy_shape_hash() if self._track is not None else ""
+                self._anatomy_reg.draw_all(self._latest_pose55, transl=transl, shape_hash=shape_hash)
             except Exception:
                 pass
 

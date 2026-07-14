@@ -592,7 +592,8 @@ def main() -> None:
 
             root_aa = np.asarray(pose_aa, dtype=np.float32).reshape(-1)[:3]
             transl = easymocap_drive_translation(root_aa, transl, pelvis)
-        anatomy_registry.draw_all(pose_aa, transl=transl)
+        shape_hash = track_subscriber.latest_anatomy_shape_hash() if track_subscriber is not None else ""
+        anatomy_registry.draw_all(pose_aa, transl=transl, shape_hash=shape_hash)
 
     mesh_node = joint_node = None
     if args.show_viewer and runtime.scene.visualizer is not None:

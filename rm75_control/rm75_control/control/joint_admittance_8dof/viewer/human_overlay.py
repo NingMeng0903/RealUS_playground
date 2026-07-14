@@ -186,7 +186,8 @@ class TwinHumanOverlay:
                     self._latest_transl,
                     pelvis,
                 )
-                self._anatomy_reg.draw_all(self._latest_pose55, transl=transl)
+                shape_hash = self._track.latest_anatomy_shape_hash() if self._track is not None else ""
+                self._anatomy_reg.draw_all(self._latest_pose55, transl=transl, shape_hash=shape_hash)
             except Exception:
                 pass
         if self._canonical_pub is not None:

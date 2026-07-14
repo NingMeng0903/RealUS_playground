@@ -36,7 +36,6 @@ class ReceivedTrackPose:
     shape_hash: str = ""
     pose_hash: str = ""
     gender: str = ""
-    betas: np.ndarray | None = None
 
 
 class TrackPoseSubscriber:
@@ -232,6 +231,12 @@ class TrackPoseSubscriber:
                 np.asarray(pose.translation_m, dtype=np.float32).reshape(3),
             )
         return None
+
+    def latest_anatomy_shape_hash(self) -> str:
+        """Shape identity carried by the latest SMPL-X track payload."""
+        with self._lock:
+            pose = self._latest
+        return "" if pose is None else str(pose.shape_hash or "")
 
     def poll_draw(self) -> bool:
         with self._lock:

@@ -101,9 +101,29 @@ class AnatomyAssetRegistry:
         else:
             logger.warning("unknown anatomy asset action=%s", action)
 
-    def draw_all(self, pose_axis_angle: Any, *, transl: Any | None = None) -> None:
-        for drawer in list(self._drawers.values()):
-            drawer.draw(pose_axis_angle, transl=transl)
+    def draw_all(
+        self,
+        pose_axis_angle: Any,
+        *,
+        transl: Any | None = None,
+        shape_hash: str = "",
+    ) -> bool:
+        """Draw only assets baked for the incoming SMPL-X body shape."""
+        incoming = str(shape_hash or "")
+        drawn = False
+        for model_id, drawer in list(self._drawers.items()):
+            expected = str((drawer.asset.metadata or {}).get("shape_hash", ""))
+            if incoming and expected and incoming != expected:
+                logger.error(
+                    "anatomy drive rejected model_id=%s shape_hash=%s asset_shape_hash=%s",
+                    model_id,
+                    incoming,
+                    expected,
+                )
+                drawer.clear_node()
+                continue
+            drawn = bool(drawer.draw(pose_axis_angle, transl=transl)) or drawn
+        return drawn
 
     def canonical_pelvis(self) -> np.ndarray | None:
         """Canonical-frame pelvis joint shared by registered assets (None if empty)."""
@@ -172,4 +192,3 @@ class AnatomyAssetSubscriber:
                 self.registry.apply_control(payload)
             except Exception as exc:
                 logger.warning("anatomy asset control failed: %s", exc)
-

@@ -59,7 +59,16 @@ def _load_mapping(path: Path) -> dict[str, Any]:
         ) from exc
 
 
-def _load_canonical(canonical_dir: Path) -> dict[str, Any]:
+def _global_bind_matrices(rest_joints: np.ndarray, parents: np.ndarray) -> np.ndarray:
+    joints = np.asarray(rest_joints, dtype=np.float32).reshape(-1, 3)
+    pa = np.asarray(parents, dtype=np.int32).reshape(-1)
+    out = np.tile(np.eye(4, dtype=np.float32), (joints.shape[0], 1, 1))
+    for idx in range(joints.shape[0]):
+        out[idx, :3, 3] = joints[idx]
+    return out
+
+
+def _load_canonical(canonical_dir: Path, *, rest_space: str = "neutral") -> dict[str, Any]:
     weights_path = canonical_dir / "smpl_canonical_weights.npz"
     skeleton_path = canonical_dir / "smpl_canonical_skeleton.json"
     if not weights_path.is_file():
@@ -69,11 +78,18 @@ def _load_canonical(canonical_dir: Path) -> dict[str, Any]:
     weights = np.load(weights_path, allow_pickle=True)
     skeleton = json.loads(skeleton_path.read_text(encoding="utf-8"))
     joint_names = [str(v) for v in weights["joint_names"].reshape(-1).tolist()]
+    parents = np.asarray(weights["parents"], dtype=np.int32).reshape(-1)
+    if str(rest_space).lower() == "neutral":
+        rest_joints = np.asarray(skeleton["rest_joints_neutral"], dtype=np.float32).reshape(-1, 3)
+        inverse_bind = np.linalg.inv(_global_bind_matrices(rest_joints, parents)).astype(np.float32)
+    else:
+        rest_joints = np.asarray(weights["rest_joints"], dtype=np.float32).reshape(-1, 3)
+        inverse_bind = np.asarray(weights["inverse_bind"], dtype=np.float32).reshape(-1, 4, 4)
     return {
         "joint_names": joint_names,
-        "parents": np.asarray(weights["parents"], dtype=np.int32).reshape(-1),
-        "rest_joints": np.asarray(weights["rest_joints"], dtype=np.float32).reshape(-1, 3),
-        "inverse_bind": np.asarray(weights["inverse_bind"], dtype=np.float32).reshape(-1, 4, 4),
+        "parents": parents,
+        "rest_joints": rest_joints,
+        "inverse_bind": inverse_bind,
         "skeleton": skeleton,
     }
 
@@ -174,6 +190,104 @@ def _limit_weights(row: np.ndarray, max_influences: int) -> np.ndarray:
     if total > 0:
         out /= total
     return out
+
+
+def _propagate_empty_vertex_data(
+    *,
+    mesh: bpy.types.Mesh,
+    raw: np.ndarray,
+    posed: np.ndarray,
+    weights: np.ndarray,
+    empty: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Fill unweighted vertices from their own connected component.
+
+    Propagating displacement (rather than absolute position) preserves the local
+    mesh shape. A disconnected component with no weighted seed is ambiguous and
+    therefore fails the bake instead of silently attaching to the pelvis.
+    """
+    pending = np.asarray(empty, dtype=bool).copy()
+    if not np.any(pending):
+        return posed, weights
+    neighbors: list[list[int]] = [[] for _ in range(len(mesh.vertices))]
+    for edge in mesh.edges:
+        a, b = (int(edge.vertices[0]), int(edge.vertices[1]))
+        neighbors[a].append(b)
+        neighbors[b].append(a)
+    displacement = np.asarray(posed - raw, dtype=np.float32)
+    while np.any(pending):
+        filled: list[tuple[int, list[int]]] = []
+        for vi in np.flatnonzero(pending).tolist():
+            known = [vj for vj in neighbors[vi] if not pending[vj]]
+            if known:
+                filled.append((int(vi), known))
+        if not filled:
+            raise RuntimeError(
+                f"mesh {mesh.name!r} contains {int(np.count_nonzero(pending))} unweighted "
+                "vertices in a component without a weighted seed"
+            )
+        # Fill one graph-distance shell at a time so a result does not depend on
+        # Blender's vertex iteration order.
+        for vi, known in filled:
+            displacement[vi] = np.mean(displacement[known], axis=0)
+            weights[vi] = np.mean(weights[known], axis=0)
+        for vi, _known in filled:
+            pending[vi] = False
+    posed = raw + displacement
+    weights /= np.maximum(weights.sum(axis=1, keepdims=True), 1.0e-8)
+    return posed.astype(np.float32), weights.astype(np.float32)
+
+
+def _sparse_source_weights(
+    mesh: bpy.types.Mesh,
+    *,
+    group_names: dict[int, str],
+    bone_index: dict[str, int],
+    max_influences: int,
+) -> tuple[np.ndarray, np.ndarray, int]:
+    """Extract normalized original Blender weights without collapsing bones."""
+    k = max(1, int(max_influences))
+    indices = np.zeros((len(mesh.vertices), k), dtype=np.int16)
+    weights = np.zeros((len(mesh.vertices), k), dtype=np.float32)
+    empty: list[int] = []
+    for vi, vertex in enumerate(mesh.vertices):
+        merged: dict[int, float] = {}
+        for elem in vertex.groups:
+            name = group_names.get(int(elem.group), "")
+            if name not in bone_index or float(elem.weight) <= 0.0:
+                continue
+            bi = int(bone_index[name])
+            merged[bi] = merged.get(bi, 0.0) + float(elem.weight)
+        if not merged:
+            empty.append(vi)
+            continue
+        selected = sorted(merged.items(), key=lambda item: item[1], reverse=True)[:k]
+        total = max(sum(value for _idx, value in selected), 1.0e-12)
+        for slot, (bi, value) in enumerate(selected):
+            indices[vi, slot] = bi
+            weights[vi, slot] = float(value / total)
+    if empty:
+        pending = set(empty)
+        neighbors: list[list[int]] = [[] for _ in mesh.vertices]
+        for edge in mesh.edges:
+            a, b = int(edge.vertices[0]), int(edge.vertices[1])
+            neighbors[a].append(b)
+            neighbors[b].append(a)
+        while pending:
+            shell: list[tuple[int, int]] = []
+            for vi in sorted(pending):
+                known = next((vj for vj in neighbors[vi] if vj not in pending), None)
+                if known is not None:
+                    shell.append((vi, int(known)))
+            if not shell:
+                raise RuntimeError(
+                    f"mesh {mesh.name!r} has an unweighted component with {len(pending)} vertices"
+                )
+            for vi, source in shell:
+                indices[vi] = indices[source]
+                weights[vi] = weights[source]
+                pending.remove(vi)
+    return indices, weights, len(empty)
 
 
 def _rotation_between(src: np.ndarray, dst: np.ndarray) -> np.ndarray:
@@ -384,15 +498,18 @@ def _merge_and_skin_meshes(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
     """Merge selected meshes; skin them with the FULL original bone weights.
 
-    Replicates Blender's armature modifier in armature object space: weights > 1 are
-    normalized, the remainder below 1 stays at the rest position. Collapsed SMPL-55
-    weights are exported alongside for runtime LBS.
+    Replicates Blender's armature modifier in armature object space after explicitly
+    normalizing every non-empty source weight row. Leaving ``1-sum(weights)`` at
+    the bind position creates metre-scale edges when the weighted part moves.
+    Collapsed SMPL-X driver weights are exported alongside for runtime LBS.
     """
     max_influences = int(config.get("max_influences", 4))
     fallback_joint_name = str(config.get("fallback_joint", "pelvis"))
     fallback_joint = joint_names.index(fallback_joint_name) if fallback_joint_name in joint_names else 0
     joint_count = len(joint_names)
     joint_index = {name: idx for idx, name in enumerate(joint_names)}
+    source_bone_names = [str(b.name) for b in arm.data.bones]
+    source_bone_index = {name: idx for idx, name in enumerate(source_bone_names)}
     rigid_collections = set(str(v) for v in config.get("rigid_collections", []) or [])
     rigid_mesh_to_smplx = {
         str(k): str(v)
@@ -404,17 +521,35 @@ def _merge_and_skin_meshes(
     frame_modes: dict[str, int] = {}
 
     all_vertices: list[np.ndarray] = []
+    all_raw_vertices: list[np.ndarray] = []
     all_weights: list[np.ndarray] = []
+    all_source_indices: list[np.ndarray] = []
+    all_source_weights: list[np.ndarray] = []
+    all_rigid_component_ids: list[np.ndarray] = []
     faces: list[tuple[int, int, int]] = []
     source_mesh_names: list[str] = []
     source_vertex_ranges: list[tuple[int, int]] = []
+    source_tissues: list[str] = []
     fallback_groups: dict[str, int] = {}
     inherited_groups: dict[str, int] = {}
     rigid_meshes: list[str] = []
+    empty_source_weight_vertices = 0
+    missing_deform_groups: dict[str, int] = {}
+    source_pose_edge_ratios: list[np.ndarray] = []
     vertex_offset = 0
+    rigid_component_counter = 0
 
     for obj in meshes:
         source_mesh_names.append(str(obj.name))
+        object_collections = set(_collections_for_object(obj))
+        if "Skeletal_Sys" in object_collections:
+            source_tissues.append("bone")
+        elif "Cardiovascular_Sys" in object_collections:
+            source_tissues.append("vessel")
+        elif "Nervous_Sys" in object_collections:
+            source_tissues.append("nerve")
+        else:
+            source_tissues.append("organ")
         mesh = obj.data
         n = len(mesh.vertices)
         start = vertex_offset
@@ -435,6 +570,13 @@ def _merge_and_skin_meshes(
                     fallback_groups[group.name] = fallback_groups.get(group.name, 0) + 1
                 else:
                     inherited_groups[group.name] = inherited_groups.get(group.name, 0) + 1
+
+        source_indices, source_weights, source_empty_count = _sparse_source_weights(
+            mesh,
+            group_names=group_names,
+            bone_index=source_bone_index,
+            max_influences=max_influences,
+        )
 
         to_arm, frame_mode = _mesh_to_armature_transform(obj, arm_inv, arm_bbox)
         frame_modes[frame_mode] = frame_modes.get(frame_mode, 0) + 1
@@ -457,13 +599,13 @@ def _merge_and_skin_meshes(
                 w55[vi, group_to_joint.get(gi, fallback_joint)] += wv
         totals = w55.sum(axis=1)
         empty = totals <= 1.0e-8
-        w55[empty, fallback_joint] = 1.0
         w55[~empty] /= totals[~empty][:, None]
         for vi in range(n):
             w55[vi] = _limit_weights(w55[vi], max_influences=max_influences)
 
         collections = set(_collections_for_object(obj))
-        if rigid_collections and collections.intersection(rigid_collections):
+        is_rigid = bool(rigid_collections and collections.intersection(rigid_collections))
+        if is_rigid:
             joint_name = rigid_mesh_to_smplx.get(str(obj.name))
             if joint_name is None:
                 joint = int(np.argmax(w55.mean(axis=0)))
@@ -471,31 +613,85 @@ def _merge_and_skin_meshes(
                 joint = int(joint_index[joint_name])
             w55[:, :] = 0.0
             w55[:, joint] = 1.0
+            source_mass = np.zeros(len(source_bone_names), dtype=np.float64)
+            for slot in range(source_indices.shape[1]):
+                np.add.at(source_mass, source_indices[:, slot], source_weights[:, slot])
+            rigid_source_bone = int(np.argmax(source_mass))
+            source_indices[:, :] = rigid_source_bone
+            source_weights[:, :] = 0.0
+            source_weights[:, 0] = 1.0
             rigid_meshes.append(str(obj.name))
 
+        source_totals = np.zeros(n, dtype=np.float32)
+        for _gi, (idxs, ws) in group_elems.items():
+            source_totals[np.asarray(idxs, dtype=np.int64)] += np.asarray(ws, dtype=np.float32)
+        source_empty = source_totals <= 1.0e-8
+        empty_source_weight_vertices += int(source_empty_count)
+
         acc = np.zeros((n, 3), dtype=np.float32)
-        total_w = np.zeros(n, dtype=np.float32)
+        applied = np.zeros(n, dtype=np.float32)
         for gi, (idxs, ws) in group_elems.items():
-            D = deform.get(group_names.get(gi, ""))
+            group_name = group_names.get(gi, "")
+            D = deform.get(group_name)
             if D is None:
+                missing_deform_groups[group_name] = missing_deform_groups.get(group_name, 0) + len(idxs)
                 continue
             idx = np.asarray(idxs, dtype=np.int64)
-            w = np.asarray(ws, dtype=np.float32)
+            w = np.asarray(ws, dtype=np.float32) / np.maximum(source_totals[idx], 1.0e-8)
             acc[idx] += w[:, None] * (raw[idx] @ D[:3, :3].T + D[:3, 3])
-            total_w[idx] += w
-        over = total_w > 1.0
-        acc[over] /= total_w[over][:, None]
-        remainder = np.clip(1.0 - total_w, 0.0, 1.0)
-        posed = acc + remainder[:, None] * raw
+            applied[idx] += w
+        missing_vertex = (~source_empty) & (applied <= 1.0e-8)
+        if np.any(missing_vertex):
+            names = sorted(k for k, count in missing_deform_groups.items() if count > 0)
+            raise RuntimeError(
+                f"{obj.name}: {int(np.count_nonzero(missing_vertex))} weighted vertices have no "
+                f"armature deform; missing groups sample={names[:12]}"
+            )
+        posed = raw.copy()
+        valid = applied > 1.0e-8
+        posed[valid] = acc[valid] / applied[valid, None]
+        if np.any(source_empty):
+            posed, w55 = _propagate_empty_vertex_data(
+                mesh=mesh,
+                raw=raw,
+                posed=posed,
+                weights=w55,
+                empty=source_empty,
+            )
+        if len(mesh.edges):
+            edge_idx = np.asarray(
+                [(int(edge.vertices[0]), int(edge.vertices[1])) for edge in mesh.edges],
+                dtype=np.int64,
+            )
+            raw_len = np.linalg.norm(raw[edge_idx[:, 0]] - raw[edge_idx[:, 1]], axis=1)
+            posed_len = np.linalg.norm(posed[edge_idx[:, 0]] - posed[edge_idx[:, 1]], axis=1)
+            valid_edge = raw_len > 1.0e-8
+            if np.any(valid_edge):
+                source_pose_edge_ratios.append((posed_len[valid_edge] / raw_len[valid_edge]).astype(np.float32))
 
         all_vertices.append(posed)
+        all_raw_vertices.append(raw)
         all_weights.append(w55)
+        all_source_indices.append(source_indices)
+        all_source_weights.append(source_weights)
+        if is_rigid:
+            all_rigid_component_ids.append(np.full(n, rigid_component_counter, dtype=np.int32))
+            rigid_component_counter += 1
+        else:
+            all_rigid_component_ids.append(np.full(n, -1, dtype=np.int32))
         for poly in mesh.polygons:
             indices = [vertex_offset + int(i) for i in poly.vertices]
             faces.extend(_triangulated_faces(indices))
         vertex_offset += n
         source_vertex_ranges.append((start, vertex_offset))
 
+    if fallback_groups and bool(config.get("fail_on_unmapped_groups", True)):
+        raise RuntimeError(
+            "Unmapped Blender vertex groups cannot silently fall back to pelvis: "
+            + ", ".join(sorted(fallback_groups)[:24])
+        )
+
+    edge_ratio = np.concatenate(source_pose_edge_ratios) if source_pose_edge_ratios else np.ones(1, dtype=np.float32)
     return (
         np.concatenate(all_vertices, axis=0),
         np.asarray(faces, dtype=np.int32),
@@ -503,10 +699,20 @@ def _merge_and_skin_meshes(
         {
             "source_mesh_names": source_mesh_names,
             "source_vertex_ranges": source_vertex_ranges,
+            "source_tissues": source_tissues,
             "fallback_groups": fallback_groups,
             "inherited_groups": inherited_groups,
             "rigid_meshes": rigid_meshes,
             "frame_modes": frame_modes,
+            "empty_source_weight_vertices": int(empty_source_weight_vertices),
+            "missing_deform_groups": missing_deform_groups,
+            "source_pose_edge_ratio_max": float(np.max(edge_ratio)),
+            "source_pose_edge_ratio_p999": float(np.quantile(edge_ratio, 0.999)),
+            "source_driver_indices": np.concatenate(all_source_indices, axis=0),
+            "source_driver_weights": np.concatenate(all_source_weights, axis=0),
+            "source_bone_names": source_bone_names,
+            "rigid_component_ids": np.concatenate(all_rigid_component_ids, axis=0),
+            "raw_vertices": np.concatenate(all_raw_vertices, axis=0),
         },
     )
 
@@ -518,7 +724,7 @@ def _align_rest_to_canonical(
     *,
     arm: bpy.types.Object,
     primary: dict[int, str],
-) -> tuple[np.ndarray, dict[str, Any]]:
+) -> tuple[np.ndarray, dict[str, Any], dict[str, np.ndarray]]:
     """Posed (T-pose) anatomy -> canonical frame.
 
     Global similarity Procrustes on the POSED primary anchors, then a
@@ -552,16 +758,159 @@ def _align_rest_to_canonical(
         if not is_mapped[j]:
             offsets[j] = offsets[_nearest_mapped_ancestor(j)]
 
+    anchor_positions = a_glob.astype(np.float32)
+    anchor_offsets = np.stack([offsets[j] for j in mapped]).astype(np.float32)
+    pair_distance = np.linalg.norm(
+        anchor_positions[:, None, :] - anchor_positions[None, :, :], axis=2
+    ).astype(np.float64)
+    polynomial = np.column_stack((np.ones(len(anchor_positions)), anchor_positions)).astype(np.float64)
+    rbf_system = np.block(
+        [
+            [pair_distance + 5.0e-3 * np.eye(len(anchor_positions)), polynomial],
+            [polynomial.T, np.zeros((4, 4), dtype=np.float64)],
+        ]
+    )
+    rbf_rhs = np.vstack((anchor_offsets.astype(np.float64), np.zeros((4, 3), dtype=np.float64)))
+    rbf_solution = np.linalg.solve(rbf_system, rbf_rhs)
+    rbf_coefficients = rbf_solution[: len(anchor_positions)]
+    rbf_affine = rbf_solution[len(anchor_positions) :]
+    fitted_anchor_offsets = pair_distance @ rbf_coefficients + polynomial @ rbf_affine
+    anchor_residual = fitted_anchor_offsets - anchor_offsets
+
+    def _continuous_offset_field(points: np.ndarray) -> np.ndarray:
+        output = np.empty_like(points, dtype=np.float32)
+        for start in range(0, len(points), 50000):
+            stop = min(len(points), start + 50000)
+            query = points[start:stop].astype(np.float64)
+            radial = np.linalg.norm(query[:, None, :] - anchor_positions[None, :, :], axis=2)
+            affine = np.column_stack((np.ones(len(query)), query))
+            output[start:stop] = (radial @ rbf_coefficients + affine @ rbf_affine).astype(np.float32)
+        return output
+
     verts = np.asarray(vertices, dtype=np.float32) @ G.T + tg
-    verts = verts + np.asarray(weights, dtype=np.float32) @ offsets
+    verts = verts + _continuous_offset_field(verts)
     diag = {
         "mode": "fk_pose_global_procrustes",
         "scale": float(scale),
-        "anchor_rms_m": rms,
+        "initial_anchor_rms_m": rms,
+        "anchor_rms_m": float(np.sqrt(np.mean(np.sum(anchor_residual**2, axis=1)))),
         "mapped_joints": int(len(mapped)),
-        "max_joint_offset_m": float(np.max(np.linalg.norm(offsets, axis=1))),
+        "max_joint_correction_m": float(np.max(np.linalg.norm(offsets, axis=1))),
+        "max_joint_offset_m": float(np.max(np.linalg.norm(anchor_residual, axis=1))),
     }
-    return verts.astype(np.float32), diag
+    return verts.astype(np.float32), diag, {
+        "linear": G.astype(np.float32),
+        "rotation": Rg.astype(np.float32),
+        "translation": tg.astype(np.float32),
+        "joint_offsets": offsets.astype(np.float32),
+        "anchor_positions": anchor_positions,
+        "anchor_offsets": anchor_offsets,
+        "rbf_coefficients": rbf_coefficients.astype(np.float32),
+        "rbf_affine": rbf_affine.astype(np.float32),
+    }
+
+
+def _sample_alignment_offset(points: np.ndarray, align: dict[str, np.ndarray]) -> np.ndarray:
+    anchors = np.asarray(align["anchor_positions"], dtype=np.float64)
+    coefficients = np.asarray(align["rbf_coefficients"], dtype=np.float64)
+    affine_coefficients = np.asarray(align["rbf_affine"], dtype=np.float64)
+    query = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+    radial = np.linalg.norm(query[:, None, :] - anchors[None, :, :], axis=2)
+    polynomial = np.column_stack((np.ones(len(query)), query))
+    return radial @ coefficients + polynomial @ affine_coefficients
+
+
+def _source_rig_canonical(
+    arm: bpy.types.Object,
+    *,
+    direct: dict[str, int],
+    parents_by_bone: dict[str, str | None],
+    canonical: dict[str, Any],
+    align: dict[str, np.ndarray],
+    joint_names: list[str],
+) -> dict[str, Any]:
+    """Export the complete Blender hierarchy in canonical metric coordinates."""
+    bones = list(arm.data.bones)
+    names = [str(b.name) for b in bones]
+    index = {name: idx for idx, name in enumerate(names)}
+    source_parents = np.asarray(
+        [index[str(b.parent.name)] if b.parent is not None else -1 for b in bones], dtype=np.int16
+    )
+    if any(parent >= idx for idx, parent in enumerate(source_parents.tolist())):
+        raise RuntimeError("Blender source bones are not stored in parent-before-child order")
+    joint_index = {name: idx for idx, name in enumerate(joint_names)}
+    fallback = joint_index.get("pelvis", 0)
+    linear = np.asarray(align["linear"], dtype=np.float64)
+    rotation_global = np.asarray(align["rotation"], dtype=np.float64)
+    translation = np.asarray(align["translation"], dtype=np.float64)
+    offsets = np.asarray(align["joint_offsets"], dtype=np.float64)
+
+    rest_global = np.tile(np.eye(4, dtype=np.float64), (len(bones), 1, 1))
+    joint_a = np.zeros(len(bones), dtype=np.int16)
+    joint_b = np.zeros(len(bones), dtype=np.int16)
+    blend = np.zeros(len(bones), dtype=np.float32)
+    driver_types: list[str] = []
+
+    for bi, bone in enumerate(bones):
+        name = str(bone.name)
+        mapped, inherited = _resolve_group_joint(
+            name, direct=direct, parents_by_bone=parents_by_bone, fallback=fallback
+        )
+        mapped = int(mapped)
+        joint_a[bi] = mapped
+        joint_b[bi] = mapped
+        driver_type = "parent_follow" if inherited else "direct_joint"
+
+        lower = name.lower()
+        if "scapula" in lower:
+            driver_type = "scapula_left" if lower.endswith("_l") else "scapula_right"
+        elif "patella" in lower:
+            driver_type = "patella_left" if lower.endswith("_l") else "patella_right"
+        elif "forearm_bone" in lower or "forearm_twist" in lower:
+            side = "left" if lower.endswith("_l") else "right"
+            joint_a[bi] = joint_index[f"{side}_elbow"]
+            joint_b[bi] = joint_index[f"{side}_wrist"]
+            blend[bi] = 0.35 if "bone" in lower else 0.78
+            driver_type = f"forearm_twist_{side}"
+        elif "tibia_bone" in lower or "tibia_twist" in lower:
+            side = "left" if lower.endswith("_l") else "right"
+            joint_a[bi] = joint_index[f"{side}_knee"]
+            joint_b[bi] = joint_index[f"{side}_ankle"]
+            blend[bi] = 0.30 if "bone" in lower else 0.78
+            driver_type = f"shin_twist_{side}"
+        elif lower.startswith("rib_bone_") or lower.startswith("rib_name_"):
+            digits = "".join(ch for ch in name if ch.isdigit())
+            rib_number = max(1, min(12, int(digits or "6")))
+            joint_a[bi] = joint_index["spine2"]
+            joint_b[bi] = joint_index["spine3"]
+            blend[bi] = float((12 - rib_number) / 11.0)
+            driver_type = "spine_interpolation"
+
+        pb = arm.pose.bones.get(name)
+        if pb is None:
+            raise RuntimeError(f"missing source pose bone {name}")
+        source_pose = np.asarray(pb.matrix, dtype=np.float64).reshape(4, 4)
+        U, _S, Vt = np.linalg.svd(rotation_global @ source_pose[:3, :3])
+        R = U @ Vt
+        if np.linalg.det(R) < 0.0:
+            U[:, -1] *= -1.0
+            R = U @ Vt
+        point_global = source_pose[:3, 3] @ linear.T + translation
+        point = point_global + _sample_alignment_offset(point_global.reshape(1, 3), align)[0]
+        rest_global[bi, :3, :3] = R
+        rest_global[bi, :3, 3] = point
+        driver_types.append(driver_type)
+
+    return {
+        "source_bone_names": names,
+        "source_bone_parents": source_parents,
+        "source_rest_global": rest_global.astype(np.float32),
+        "source_inverse_bind": np.linalg.inv(rest_global).astype(np.float32),
+        "source_bone_smplx_a": joint_a,
+        "source_bone_smplx_b": joint_b,
+        "source_bone_blend": blend,
+        "source_bone_driver_types": driver_types,
+    }
 
 
 def _export_glb(meshes: list[bpy.types.Object], output_glb: Path) -> None:
@@ -577,7 +926,10 @@ def _export_glb(meshes: list[bpy.types.Object], output_glb: Path) -> None:
 def main() -> None:
     args = _parse_args()
     config = _load_mapping(args.mapping)
-    canonical = _load_canonical(args.canonical_dir)
+    canonical = _load_canonical(
+        args.canonical_dir,
+        rest_space=str(config.get("canonical_rest_space", "neutral")),
+    )
     joint_names = list(canonical["joint_names"])
     direct, direct_labels = _build_bone_to_joint(config, joint_names)
     arm = _armature()
@@ -598,7 +950,8 @@ def main() -> None:
         parents_by_bone=parents_by_bone,
         deform=deform,
     )
-    vertices, rest_align = _align_rest_to_canonical(
+    posed_vertices = vertices.copy()
+    vertices, rest_align, align_context = _align_rest_to_canonical(
         vertices,
         weights,
         canonical,
@@ -606,22 +959,55 @@ def main() -> None:
         primary=primary,
     )
     rest_align.update(pose_diag)
+    source_rig = _source_rig_canonical(
+        arm,
+        direct=direct,
+        parents_by_bone=parents_by_bone,
+        canonical=canonical,
+        align=align_context,
+        joint_names=joint_names,
+    )
+    registration_reference = (
+        np.asarray(diag["raw_vertices"], dtype=np.float32) @ align_context["linear"].T
+        + align_context["translation"]
+    ).astype(np.float32)
+    tri_edges = np.concatenate((faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]), axis=0)
+    before_len = np.linalg.norm(
+        posed_vertices[tri_edges[:, 0]] - posed_vertices[tri_edges[:, 1]], axis=1
+    )
+    after_len = np.linalg.norm(vertices[tri_edges[:, 0]] - vertices[tri_edges[:, 1]], axis=1)
+    valid_edge = before_len > 1.0e-8
+    unit_similarity_scale = max(float(rest_align.get("scale", 1.0)), 1.0e-8)
+    canonical_ratio = after_len[valid_edge] / (before_len[valid_edge] * unit_similarity_scale)
 
     args.output_npz.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         args.output_npz,
         vertices_rest=vertices.astype(np.float32),
         faces=faces.astype(np.int32),
-        lbs_weights=weights.astype(np.float32),
         joint_names=np.asarray(joint_names, dtype=object),
         parents=np.asarray(canonical["parents"], dtype=np.int32),
         rest_joints=np.asarray(canonical["rest_joints"], dtype=np.float32),
         inverse_bind=np.asarray(canonical["inverse_bind"], dtype=np.float32),
         source_mesh_names=np.asarray(diag["source_mesh_names"], dtype=object),
         source_vertex_ranges=np.asarray(diag["source_vertex_ranges"], dtype=np.int32),
+        source_tissues=np.asarray(diag["source_tissues"], dtype=object),
+        driver_indices=np.asarray(diag["source_driver_indices"], dtype=np.int16),
+        driver_weights=np.asarray(diag["source_driver_weights"], dtype=np.float32),
+        rigid_component_ids=np.asarray(diag["rigid_component_ids"], dtype=np.int32),
+        source_bone_names=np.asarray(source_rig["source_bone_names"], dtype=object),
+        source_bone_parents=np.asarray(source_rig["source_bone_parents"], dtype=np.int16),
+        source_rest_global=np.asarray(source_rig["source_rest_global"], dtype=np.float32),
+        source_inverse_bind=np.asarray(source_rig["source_inverse_bind"], dtype=np.float32),
+        source_bone_smplx_a=np.asarray(source_rig["source_bone_smplx_a"], dtype=np.int16),
+        source_bone_smplx_b=np.asarray(source_rig["source_bone_smplx_b"], dtype=np.int16),
+        source_bone_blend=np.asarray(source_rig["source_bone_blend"], dtype=np.float32),
+        source_bone_driver_types=np.asarray(source_rig["source_bone_driver_types"], dtype=object),
+        registration_reference=registration_reference,
+        schema_version=np.asarray(2, dtype=np.int32),
         pose_format=np.asarray("smplx_body55_axis_angle", dtype=object),
         coordinate_system=np.asarray("genesis_z_up_m", dtype=object),
-        metadata=np.asarray({"mapping": str(args.mapping)}, dtype=object),
+        metadata=np.asarray({"mapping": str(args.mapping), "driver_index_space": "blender_source_bones"}, dtype=object),
     )
     _export_glb(meshes, args.output_glb)
     report = {
@@ -632,6 +1018,10 @@ def main() -> None:
         "vertex_count": int(vertices.shape[0]),
         "face_count": int(faces.shape[0]),
         "joint_count": int(len(joint_names)),
+        "source_bone_count": int(len(source_rig["source_bone_names"])),
+        "active_source_group_count": int(len(set(
+            str(group.name) for obj in meshes for group in obj.vertex_groups
+        ))),
         "rest_align": rest_align,
         "mesh_frame_modes": diag["frame_modes"],
         "primary_anchor_bones": {joint_names[j]: name for j, name in sorted(primary.items())},
@@ -643,6 +1033,14 @@ def main() -> None:
         "rigid_mesh_count": int(len(diag["rigid_meshes"])),
         "rigid_meshes_sample": sorted(diag["rigid_meshes"])[:80],
         "max_weight_sum_error": float(np.max(np.abs(weights.sum(axis=1) - 1.0))) if weights.size else 0.0,
+        "empty_source_weight_vertices_repaired": int(diag["empty_source_weight_vertices"]),
+        "missing_deform_groups": diag["missing_deform_groups"],
+        "edge_stretch": {
+            "source_to_pose_max": float(diag["source_pose_edge_ratio_max"]),
+            "source_to_pose_p999": float(diag["source_pose_edge_ratio_p999"]),
+            "pose_to_canonical_max": float(np.max(canonical_ratio)),
+            "pose_to_canonical_p999": float(np.quantile(canonical_ratio, 0.999)),
+        },
     }
     args.report_json.parent.mkdir(parents=True, exist_ok=True)
     args.report_json.write_text(json.dumps(report, indent=2, ensure_ascii=True), encoding="utf-8")

@@ -53,12 +53,18 @@ def _run_blender(
             check=False,
         )
     elapsed = float(time.perf_counter() - t0)
+    # Blender exits with code zero even when a background Python script raises.
+    # Treat an uncaught traceback as failure so an incomplete bake can never be
+    # normalized or published as if it were valid.
+    log_text = log_path.read_text(encoding="utf-8", errors="replace")
+    python_failed = "Traceback (most recent call last):" in log_text
+    effective_returncode = int(proc.returncode) if int(proc.returncode) != 0 else (1 if python_failed else 0)
     return BlenderRunResult(
-        ok=(int(proc.returncode) == 0),
+        ok=(effective_returncode == 0),
         command=list(cmd),
         log_path=log_path,
         elapsed_s=elapsed,
-        returncode=int(proc.returncode),
+        returncode=effective_returncode,
     )
 
 
@@ -131,4 +137,3 @@ def run_retarget(
         f"--report-json={Path(report_json).expanduser().resolve()}",
     ]
     return _run_blender(cmd, log_path=log, timeout_s=timeout_s)
-

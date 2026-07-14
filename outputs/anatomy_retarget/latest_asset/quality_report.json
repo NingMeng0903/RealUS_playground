@@ -1,0 +1,67 @@
+{
+  "schema_version": 2,
+  "passed": false,
+  "failures": [
+    "source_to_final max edge ratio 55.32 exceeds 3.00",
+    "source_to_final p99.9 edge ratio 2.76 exceeds 1.50"
+  ],
+  "thresholds": {
+    "weight_sum_error": 1e-05,
+    "anchor_rms_m": 0.01,
+    "anchor_max_m": 0.02,
+    "edge_ratio_max": 3.0,
+    "edge_ratio_p999": 1.5,
+    "inside_fraction": 0.995,
+    "max_outside_m": 0.002,
+    "critical_max_outside_m": 0.001
+  },
+  "weights": {
+    "max_sum_error": 1.1920928955078125e-07,
+    "negative_count": 0,
+    "nonfinite_count": 0,
+    "active_finger_joints": 30
+  },
+  "anchors": {
+    "rms_m": 0.002596222822976232,
+    "max_m": 0.0069952590756664846
+  },
+  "edge_stretch": {
+    "source_to_pose_max": 4.798596382141113,
+    "source_to_pose_p999": 1.072217836260796,
+    "pose_to_canonical_max": 3.0753026008605957,
+    "pose_to_canonical_p999": 2.166147232055664,
+    "source_to_final_max": 55.318443298339844,
+    "source_to_final_p999": 2.757209539413452
+  },
+  "containment_backend": "libigl_exact_signed_distance",
+  "containment": {
+    "organ": {
+      "vertex_count": 44394,
+      "outside_count": 0,
+      "inside_fraction": 1.0,
+      "max_outside_m": 0.0,
+      "min_skin_distance_m": 6.083622565711266e-07
+    },
+    "nerve": {
+      "vertex_count": 209005,
+      "outside_count": 0,
+      "inside_fraction": 1.0,
+      "max_outside_m": 0.0,
+      "min_skin_distance_m": 0.000985035439953208
+    },
+    "bone": {
+      "vertex_count": 111990,
+      "outside_count": 0,
+      "inside_fraction": 1.0,
+      "max_outside_m": 0.0,
+      "min_skin_distance_m": 0.0013523777015507221
+    },
+    "vessel": {
+      "vertex_count": 29381,
+      "outside_count": 0,
+      "inside_fraction": 1.0,
+      "max_outside_m": 0.0,
+      "min_skin_distance_m": 0.0012018170673400164
+    }
+  }
+}

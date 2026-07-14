@@ -138,6 +138,9 @@ def easymocap_drive_translation(Rh: Any, Th: Any, pelvis: Any) -> np.ndarray:
 
 def load_easymocap_smplx_fit_drive(
     npz_path: str | Path,
+    *,
+    gender: str = "male",
+    model_path: str | Path | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Load static UE/terminal-8 SMPL-X fit params for anatomy drive (pose55 flat, Th).
 
@@ -151,7 +154,9 @@ def load_easymocap_smplx_fit_drive(
     Th = np.asarray(data["Th"], dtype=np.float32).reshape(3)
     if "root_align_offset" in data.files:
         Th = Th + np.asarray(data["root_align_offset"], dtype=np.float32).reshape(3)
-    pose55 = easymocap_fit_to_smplx55(Rh, poses).reshape(-1)
+    pose55 = easymocap_fit_to_smplx55(
+        Rh, poses, gender=gender, model_path=model_path
+    ).reshape(-1)
     return pose55, Th
 
 
@@ -160,7 +165,7 @@ def pose_to_smplx55_axis_angle(pose: Any) -> np.ndarray:
 
     Supported inputs:
     - 72D SMPL axis-angle: copy root + first 21 body joints, ignore SMPL hand end joints.
-    - 87D EasyMocap SMPL-X: copy the first 66 body values; hand PCA/face terms are ignored.
+    - 87D EasyMocap SMPL-X: decode body, face and both six-component hand PCA vectors.
     - 165D SMPL-X full axis-angle: reshape directly to 55 joints.
     - [J, 3] arrays: copy up to 55 joints.
     """
@@ -177,8 +182,9 @@ def pose_to_smplx55_axis_angle(pose: Any) -> np.ndarray:
         out[:22] = smpl[:22]
         return out
     if flat.size == 87:
-        out[:22] = flat[:66].reshape(22, 3)
-        return out
+        # This generic adapter has no separate EasyMocap ``Rh`` argument. Callers
+        # that have ``Rh`` should use ``easymocap_fit_to_smplx55`` directly.
+        return easymocap_fit_to_smplx55(flat[:3], flat)
     if flat.size == 165:
         return flat.reshape(SMPLX_RUNTIME_JOINT_COUNT, 3).astype(np.float32)
     if flat.size % 3 == 0:
