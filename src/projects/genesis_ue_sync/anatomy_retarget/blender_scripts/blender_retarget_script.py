@@ -871,20 +871,24 @@ def _source_rig_canonical(
             joint_a[bi] = joint_index[f"{side}_elbow"]
             joint_b[bi] = joint_index[f"{side}_wrist"]
             blend[bi] = 0.35 if "bone" in lower else 0.78
-            driver_type = f"forearm_twist_{side}"
+            driver_type = f"forearm_segment_{side}"
         elif "tibia_bone" in lower or "tibia_twist" in lower:
             side = "left" if lower.endswith("_l") else "right"
             joint_a[bi] = joint_index[f"{side}_knee"]
             joint_b[bi] = joint_index[f"{side}_ankle"]
             blend[bi] = 0.30 if "bone" in lower else 0.78
-            driver_type = f"shin_twist_{side}"
+            driver_type = f"shin_segment_{side}"
+        elif name == "Head_Bone":
+            joint_a[bi] = joint_index["neck"]
+            joint_b[bi] = joint_index["head"]
+            driver_type = "head_segment"
         elif lower.startswith("rib_bone_") or lower.startswith("rib_name_"):
             digits = "".join(ch for ch in name if ch.isdigit())
             rib_number = max(1, min(12, int(digits or "6")))
             joint_a[bi] = joint_index["spine2"]
             joint_b[bi] = joint_index["spine3"]
             blend[bi] = float((12 - rib_number) / 11.0)
-            driver_type = "spine_interpolation"
+            driver_type = "rib_segment"
 
         pb = arm.pose.bones.get(name)
         if pb is None:

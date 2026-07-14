@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import hashlib
 import json
 import logging
 import os
@@ -30,6 +31,8 @@ from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
 from projects.genesis_ue_sync.anatomy_retarget.quality_gate import evaluate_asset_quality, write_quality_report
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import load_rigged_asset, save_rigged_asset
 from projects.genesis_ue_sync.anatomy_retarget.shape_volume import apply_subject_beta_shape
+from projects.genesis_ue_sync.anatomy_retarget.leg_material import compute_leg_material_coordinates
+from projects.genesis_ue_sync.anatomy_retarget.diagnostics import write_mesh_diagnostics
 from projects.genesis_ue_sync.multiview_realtime.track_stream import (
     DEFAULT_ANATOMY_ASSET_PUB_BIND,
     TOPIC_ANATOMY_ASSET_V1,
@@ -49,6 +52,22 @@ def _load_config(path: Path) -> dict[str, Any]:
         return dict(json.loads(text))
 
 
+def _file_digest(path: Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _cache_key(*paths: Path, extra: str = "") -> str:
+    digest = hashlib.sha256(extra.encode("utf-8"))
+    for path in paths:
+        digest.update(str(Path(path).resolve()).encode("utf-8"))
+        digest.update(_file_digest(Path(path)).encode("ascii"))
+    return digest.hexdigest()[:24]
+
+
 def parse_args() -> argparse.Namespace:
     paths = project_paths(__file__)
     p = argparse.ArgumentParser(description=__doc__)
@@ -56,6 +75,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--canonical-dir", type=Path, default=paths.outputs_root / "anatomy_retarget" / "latest_canonical")
     p.add_argument("--output-dir", type=Path, default=paths.outputs_root / "anatomy_retarget" / "latest_asset")
     p.add_argument("--blend", type=Path, default=None)
+    p.add_argument("--force-source-rebake", action="store_true", help="Ignore source/shape retarget caches.")
     p.add_argument("--motion-npz", type=Path, default=None, help="Exact saved SMPL-X fit for final-pose containment/cache")
     p.add_argument("--timeout-s", type=float, default=900.0)
     p.add_argument("--publish-genesis", action="store_true")
@@ -147,55 +167,103 @@ def main() -> int:
     output_npz = stage_dir / "anatomy_rigged.npz"
     output_glb = stage_dir / "anatomy_rigged.glb"
     report_json = stage_dir / "retarget_report.json"
-    result = run_retarget(
-        blend_path=blend,
-        canonical_dir=args.canonical_dir,
-        mapping_path=args.config,
-        output_npz=output_npz,
-        output_glb=output_glb,
-        report_json=report_json,
-        timeout_s=float(args.timeout_s),
-    )
-    if not result.ok:
-        logging.error("Blender retarget failed returncode=%s log=%s", result.returncode, result.log_path)
-        failed_dir = out_dir.parent / f"{out_dir.name}.failed-{time.strftime('%Y%m%d-%H%M%S')}"
-        os.replace(stage_dir, failed_dir)
-        logging.error("failed bake diagnostics preserved at %s", failed_dir)
-        return int(result.returncode or 1)
-    normalize_rigged_asset_file(output_npz, config=cfg, force=False)
-    asset = load_rigged_asset(output_npz, validate=True)
-    asset, registration_report = refine_canonical_arap(asset)
-    source_vertices = (
-        np.asarray(asset.registration_reference, dtype=np.float32).copy()
-        if asset.registration_reference is not None
-        else asset.vertices_rest.copy()
-    )
-    shape_report: dict[str, Any] = {"backend": "subject_bind_direct"}
-    containment_reports: list[dict[str, Any]] = []
-    if str(cfg.get("canonical_rest_space", "neutral")).lower() == "neutral":
-        neutral_surface = load_body_surface(Path(args.canonical_dir) / "smpl_canonical_tpose_neutral.obj")
-        asset, neutral_containment = repair_containment(
-            asset,
-            surface_vertices=neutral_surface[0],
-            surface_faces=neutral_surface[1],
-            stage="neutral_canonical",
-            strict=False,
-        )
-        containment_reports.append(neutral_containment)
-        asset, shape_report = apply_subject_beta_shape(asset, canonical_dir=args.canonical_dir)
-    subject_surface = load_body_surface(Path(args.canonical_dir) / "smpl_canonical_tpose.obj")
-    asset, subject_containment = repair_containment(
-        asset,
-        surface_vertices=subject_surface[0],
-        surface_faces=subject_surface[1],
-        stage="subject_beta",
-        strict=False,
-    )
-    containment_reports.append(subject_containment)
     manifest_path = Path(args.canonical_dir) / "source_manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.is_file() else {}
     betas = manifest.get("betas", [])
     gender = str(manifest.get("gender", "male"))
+    cache_root = out_dir.parent / "cache_v2"
+    source_key = _cache_key(
+        Path(blend), Path(args.config), Path(args.canonical_dir) / "smpl_canonical_tpose_neutral.obj",
+        Path(__file__).resolve().parents[1] / "blender_scripts" / "blender_retarget_script.py",
+        Path(__file__).resolve().parents[1] / "canonical_registration.py",
+        extra="source-rig-canonical-v2",
+    )
+    shape_hash = smplx_shape_hash(betas, gender=gender) if betas else "neutral"
+    source_cache = cache_root / "source" / f"{source_key}.npz"
+    shape_key = _cache_key(
+        Path(args.canonical_dir) / "smpl_canonical_tpose.obj",
+        Path(__file__).resolve().parents[1] / "shape_volume.py",
+        Path(__file__).resolve().parents[1] / "leg_material.py",
+        extra=f"{source_key}:{shape_hash}:subject-shape-v2",
+    )
+    shape_cache = cache_root / "shape" / f"{shape_key}.npz"
+    source_cache_hit = source_cache.is_file() and not args.force_source_rebake
+    shape_cache_hit = shape_cache.is_file() and not args.force_source_rebake
+    containment_reports: list[dict[str, Any]] = []
+    registration_report: dict[str, Any] = {}
+    blender_report: dict[str, Any]
+    if source_cache_hit:
+        asset = load_rigged_asset(source_cache, validate=True)
+        cached_meta = dict(asset.metadata or {})
+        registration_report = dict(cached_meta.get("registration_report") or {})
+        blender_report = dict(cached_meta.get("source_blender_report") or {})
+        containment_reports.extend(list(cached_meta.get("source_containment_reports") or []))
+        logging.info("source-rig cache hit key=%s", source_key)
+    else:
+        result = run_retarget(
+            blend_path=blend, canonical_dir=args.canonical_dir, mapping_path=args.config,
+            output_npz=output_npz, output_glb=output_glb, report_json=report_json,
+            timeout_s=float(args.timeout_s),
+        )
+        if not result.ok:
+            logging.error("Blender retarget failed returncode=%s log=%s", result.returncode, result.log_path)
+            return int(result.returncode or 1)
+        normalize_rigged_asset_file(output_npz, config=cfg, force=False)
+        asset = load_rigged_asset(output_npz, validate=True)
+        asset, registration_report = refine_canonical_arap(asset)
+        if str(cfg.get("canonical_rest_space", "neutral")).lower() == "neutral":
+            neutral_surface = load_body_surface(Path(args.canonical_dir) / "smpl_canonical_tpose_neutral.obj")
+            asset, neutral_containment = repair_containment(
+                asset, surface_vertices=neutral_surface[0], surface_faces=neutral_surface[1],
+                stage="neutral_canonical", strict=False,
+            )
+            containment_reports.append(neutral_containment)
+        blender_report = json.loads(report_json.read_text(encoding="utf-8"))
+        source_meta = dict(asset.metadata or {})
+        source_meta.update({
+            "registration_report": registration_report,
+            "source_blender_report": blender_report,
+            "source_containment_reports": containment_reports,
+            "source_cache_key": source_key,
+        })
+        asset = type(asset)(**{**asset.__dict__, "metadata": source_meta})
+        source_cache.parent.mkdir(parents=True, exist_ok=True)
+        save_rigged_asset(source_cache, asset)
+        logging.info("source-rig cache stored key=%s", source_key)
+
+    source_vertices = (
+        np.asarray(asset.registration_reference, dtype=np.float32).copy()
+        if asset.registration_reference is not None else asset.vertices_rest.copy()
+    )
+    subject_surface = load_body_surface(Path(args.canonical_dir) / "smpl_canonical_tpose.obj")
+    shape_report: dict[str, Any] = {"backend": "subject_bind_direct"}
+    if shape_cache_hit:
+        asset = load_rigged_asset(shape_cache, validate=True)
+        cached_meta = dict(asset.metadata or {})
+        shape_report = dict(cached_meta.get("shape_report") or shape_report)
+        containment_reports.extend(list(cached_meta.get("shape_containment_reports") or []))
+        logging.info("subject-shape cache hit shape_hash=%s", shape_hash)
+    else:
+        if str(cfg.get("canonical_rest_space", "neutral")).lower() == "neutral":
+            asset, shape_report = apply_subject_beta_shape(asset, canonical_dir=args.canonical_dir)
+        asset, subject_containment = repair_containment(
+            asset, surface_vertices=subject_surface[0], surface_faces=subject_surface[1],
+            stage="subject_beta", strict=False,
+        )
+        containment_reports.append(subject_containment)
+        asset, leg_material_report = compute_leg_material_coordinates(
+            asset, skin_vertices=subject_surface[0]
+        )
+        shape_meta = dict(asset.metadata or {})
+        shape_meta.update({
+            "shape_report": shape_report,
+            "shape_containment_reports": [subject_containment],
+            "leg_material_report": leg_material_report,
+        })
+        asset = type(asset)(**{**asset.__dict__, "metadata": shape_meta})
+        shape_cache.parent.mkdir(parents=True, exist_ok=True)
+        save_rigged_asset(shape_cache, asset)
+        logging.info("subject-shape cache stored shape_hash=%s", shape_hash)
     pose_report: dict[str, Any] | None = None
     if args.motion_npz is not None:
         motion_path = Path(args.motion_npz).expanduser().resolve()
@@ -209,28 +277,48 @@ def main() -> int:
             )
         pose55, raw_transl = load_easymocap_smplx_fit_drive(motion_path, gender=gender)
         effective_transl = easymocap_drive_translation(pose55[:3], raw_transl, asset.rest_joints[0])
-        posed_vertices = skin_vertices(asset, pose55, transl=effective_transl)
-        if "vertices" not in motion.files or "faces" not in motion.files:
-            raise ValueError(f"{motion_path} must include official posed SMPL-X vertices/faces")
-        posed_asset = type(asset)(**{**asset.__dict__, "vertices_rest": posed_vertices})
-        repaired_pose, pose_report = repair_containment(
-            posed_asset,
-            surface_vertices=np.asarray(motion["vertices"], dtype=np.float64).reshape(-1, 3),
-            surface_faces=np.asarray(motion["faces"], dtype=np.int32).reshape(-1, 3),
-            stage="final_pose",
-            # Offline diagnostic refinement; never runs in the online viewer.
-            max_iterations=12,
-            strict=False,
-        )
         cache_hash = smplx_pose_hash(pose55, effective_transl)
-        asset = type(asset)(
-            **{
-                **asset.__dict__,
-                "pose_cache_vertices": np.asarray(repaired_pose.vertices_rest, dtype=np.float32),
-                "pose_cache_hash": cache_hash,
-            }
-        )
-        containment_reports.append(pose_report)
+        pose_cache = cache_root / "pose" / f"{shape_key}-{cache_hash}.npz"
+        if pose_cache.is_file() and not args.force_source_rebake:
+            cached_pose = load_rigged_asset(pose_cache, validate=True)
+            pose_report = dict((cached_pose.metadata or {}).get("pose_cache_report") or {})
+            asset = type(asset)(
+                **{
+                    **asset.__dict__,
+                    "pose_cache_vertices": cached_pose.pose_cache_vertices,
+                    "pose_cache_hash": cached_pose.pose_cache_hash,
+                }
+            )
+            logging.info("pose cache hit pose_hash=%s", cache_hash)
+        else:
+            posed_vertices = skin_vertices(asset, pose55, transl=effective_transl)
+            if "vertices" not in motion.files or "faces" not in motion.files:
+                raise ValueError(f"{motion_path} must include official posed SMPL-X vertices/faces")
+            posed_asset = type(asset)(**{**asset.__dict__, "vertices_rest": posed_vertices})
+            repaired_pose, pose_report = repair_containment(
+                posed_asset,
+                surface_vertices=np.asarray(motion["vertices"], dtype=np.float64).reshape(-1, 3),
+                surface_faces=np.asarray(motion["faces"], dtype=np.int32).reshape(-1, 3),
+                stage="final_pose",
+                # Offline diagnostic refinement; never runs in the online viewer.
+                max_iterations=12,
+                strict=False,
+            )
+            asset = type(asset)(
+                **{
+                    **asset.__dict__,
+                    "pose_cache_vertices": np.asarray(repaired_pose.vertices_rest, dtype=np.float32),
+                    "pose_cache_hash": cache_hash,
+                }
+            )
+            pose_meta = dict(asset.metadata or {})
+            pose_meta["pose_cache_report"] = pose_report
+            pose_asset = type(asset)(**{**asset.__dict__, "metadata": pose_meta})
+            pose_cache.parent.mkdir(parents=True, exist_ok=True)
+            save_rigged_asset(pose_cache, pose_asset)
+            logging.info("pose cache stored pose_hash=%s", cache_hash)
+        if pose_report is not None:
+            containment_reports.append(pose_report)
 
     meta = dict(asset.metadata or {})
     meta.update(
@@ -245,11 +333,17 @@ def main() -> int:
             "shape_report": shape_report,
             "containment_reports": containment_reports,
             "pose_cache_report": pose_report,
+            "leg_material_report": dict(meta.get("leg_material_report") or {}),
         }
     )
     asset = type(asset)(**{**asset.__dict__, "metadata": meta})
     save_rigged_asset(output_npz, asset)
-    blender_report = json.loads(report_json.read_text(encoding="utf-8"))
+    mesh_diagnostics = write_mesh_diagnostics(
+        asset,
+        surface_vertices=subject_surface[0],
+        surface_faces=subject_surface[1],
+        output_path=stage_dir / "anatomy_mesh_diagnostics.json",
+    )
     tri_edges = np.concatenate(
         (asset.faces[:, [0, 1]], asset.faces[:, [1, 2]], asset.faces[:, [2, 0]]), axis=0
     )

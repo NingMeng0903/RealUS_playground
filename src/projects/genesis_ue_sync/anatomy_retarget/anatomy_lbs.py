@@ -145,6 +145,40 @@ def _interpolate_rigid(a: np.ndarray, b: np.ndarray, alpha: float) -> np.ndarray
     return out
 
 
+def _segment_frame(origin: np.ndarray, endpoint: np.ndarray, reference_x: np.ndarray) -> np.ndarray:
+    """Stable limb/head frame with its Y axis fixed by anatomical endpoints."""
+    y = np.asarray(endpoint - origin, dtype=np.float64)
+    y /= max(float(np.linalg.norm(y)), 1.0e-10)
+    x = np.asarray(reference_x, dtype=np.float64)
+    x -= float(x @ y) * y
+    if float(np.linalg.norm(x)) < 1.0e-8:
+        x = np.asarray([1.0, 0.0, 0.0], dtype=np.float64)
+        x -= float(x @ y) * y
+    x /= max(float(np.linalg.norm(x)), 1.0e-10)
+    z = np.cross(x, y)
+    z /= max(float(np.linalg.norm(z)), 1.0e-10)
+    x = np.cross(y, z)
+    out = np.eye(4, dtype=np.float64)
+    out[:3, :3] = np.stack((x, y, z), axis=1)
+    out[:3, 3] = origin
+    return out
+
+
+def _endpoint_segment_delta(
+    *,
+    rest_a: np.ndarray,
+    rest_b: np.ndarray,
+    pose_a: np.ndarray,
+    pose_b: np.ndarray,
+    rest_reference_x: np.ndarray,
+    proximal_delta: np.ndarray,
+) -> np.ndarray:
+    """Rigid transform for a limb segment; no blended global translations."""
+    F0 = _segment_frame(rest_a, rest_b, rest_reference_x)
+    F1 = _segment_frame(pose_a, pose_b, proximal_delta[:3, :3] @ rest_reference_x)
+    return F1 @ np.linalg.inv(F0)
+
+
 def source_bone_skinning_transforms(
     asset: AnatomyRiggedAsset,
     pose_axis_angle: Any,
@@ -172,7 +206,18 @@ def source_bone_skinning_transforms(
         a = int(asset.source_bone_smplx_a[bi])
         b = int(asset.source_bone_smplx_b[bi])
         alpha = float(asset.source_bone_blend[bi])
-        if driver_type.startswith("scapula_"):
+        if (
+            driver_type.startswith("forearm_segment_")
+            or driver_type.startswith("shin_segment_")
+            or driver_type in {"head_segment", "rib_segment"}
+        ):
+            reference_x = np.asarray(asset.source_rest_global[bi], dtype=np.float64)[:3, 0]
+            source_delta[bi] = _endpoint_segment_delta(
+                rest_a=rest_points[a], rest_b=rest_points[b],
+                pose_a=pose_points[a], pose_b=pose_points[b],
+                rest_reference_x=reference_x, proximal_delta=joint_delta[a],
+            ).astype(np.float32)
+        elif driver_type.startswith("scapula_"):
             side = "left" if driver_type.endswith("left") else "right"
             s, c, h = (joint_index["spine3"], joint_index[f"{side}_collar"], joint_index[f"{side}_shoulder"])
             F0 = _rigid_frame(rest_points[h], rest_points[c], rest_points[s])

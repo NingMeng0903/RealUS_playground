@@ -1,0 +1,22 @@
+{
+  "source": "/media/camp/EXT_DRIVE/RealUS_playground/smplx_outputs/20260713_213712",
+  "gender": "male",
+  "betas": [
+    0.23639877140522003,
+    -0.07891566306352615,
+    -0.043353933840990067,
+    -0.030770592391490936,
+    -0.019511833786964417,
+    0.025207575410604477,
+    -0.04412931948900223,
+    -0.005797328427433968,
+    -0.02204161323606968,
+    0.005521346814930439
+  ],
+  "subject_obj": "/media/camp/EXT_DRIVE/RealUS_playground/outputs/anatomy_retarget/canonical_cache/34deaeada36cdc4a505d/smpl_canonical_tpose.obj",
+  "neutral_obj": "/media/camp/EXT_DRIVE/RealUS_playground/outputs/anatomy_retarget/canonical_cache/34deaeada36cdc4a505d/smpl_canonical_tpose_neutral.obj",
+  "skeleton_json": "/media/camp/EXT_DRIVE/RealUS_playground/outputs/anatomy_retarget/canonical_cache/34deaeada36cdc4a505d/smpl_canonical_skeleton.json",
+  "weights_npz": "/media/camp/EXT_DRIVE/RealUS_playground/outputs/anatomy_retarget/canonical_cache/34deaeada36cdc4a505d/smpl_canonical_weights.npz",
+  "has_shapedirs": true,
+  "has_posedirs": true
+}
