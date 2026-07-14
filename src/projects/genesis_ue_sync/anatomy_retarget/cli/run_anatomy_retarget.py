@@ -33,6 +33,12 @@ from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import load_rigged_a
 from projects.genesis_ue_sync.anatomy_retarget.shape_volume import apply_subject_beta_shape
 from projects.genesis_ue_sync.anatomy_retarget.leg_material import compute_leg_material_coordinates
 from projects.genesis_ue_sync.anatomy_retarget.diagnostics import write_mesh_diagnostics
+from projects.genesis_ue_sync.anatomy_retarget.bone_segment_diagnostics import write_bone_segment_diagnostics
+from projects.genesis_ue_sync.anatomy_retarget.segment_coupling import (
+    bake_segment_coupling,
+    refresh_segment_coupling,
+    segment_coupling_roundtrip_error,
+)
 from projects.genesis_ue_sync.anatomy_retarget.source_rebind import source_bind_roundtrip
 from projects.genesis_ue_sync.multiview_realtime.track_stream import (
     DEFAULT_ANATOMY_ASSET_PUB_BIND,
@@ -180,10 +186,11 @@ def main() -> int:
         Path(blend), Path(args.config), Path(args.canonical_dir) / "smpl_canonical_tpose_neutral.obj",
         Path(__file__).resolve().parents[1] / "blender_scripts" / "blender_retarget_script.py",
         Path(__file__).resolve().parents[1] / "canonical_registration.py",
-        extra="source-template-v3-bind-synchronized",
+        Path(__file__).resolve().parents[1] / "segment_coupling.py",
+        extra="source-template-v4-segment-coupling-v1",
     )
     shape_hash = smplx_shape_hash(betas, gender=gender) if betas else "neutral"
-    source_cache = cache_root / "source_template_v3" / f"{source_key}.npz"
+    source_cache = cache_root / "source_template_v4" / f"{source_key}.npz"
     shape_key = _cache_key(
         Path(args.canonical_dir) / "smpl_canonical_tpose.obj",
         Path(__file__).resolve().parents[1] / "shape_volume.py",
@@ -222,6 +229,9 @@ def main() -> int:
                 stage="neutral_canonical", strict=False,
             )
             containment_reports.append(neutral_containment)
+        coupling, coupling_report = bake_segment_coupling(asset)
+        coupling_report["roundtrip_error_m"] = segment_coupling_roundtrip_error(asset, coupling)
+        asset = type(asset)(**{**asset.__dict__, "source_segment_coupling": coupling})
         blender_report = json.loads(report_json.read_text(encoding="utf-8"))
         source_meta = dict(asset.metadata or {})
         source_meta.update({
@@ -229,11 +239,12 @@ def main() -> int:
             "source_blender_report": blender_report,
             "source_containment_reports": containment_reports,
             "source_cache_key": source_key,
+            "segment_coupling_report": coupling_report,
         })
         asset = type(asset)(**{**asset.__dict__, "metadata": source_meta})
         source_cache.parent.mkdir(parents=True, exist_ok=True)
         save_rigged_asset(source_cache, asset)
-        logging.info("source_template_v3 stored key=%s", source_key)
+        logging.info("source_template_v4 stored key=%s", source_key)
     profile["source_template_s"] = time.perf_counter() - started_at
     bind_roundtrip = source_bind_roundtrip(asset)
     zero_pose_vertices = skin_vertices(asset, np.zeros((55, 3), dtype=np.float32))
@@ -277,6 +288,10 @@ def main() -> int:
         shape_cache.parent.mkdir(parents=True, exist_ok=True)
         save_rigged_asset(shape_cache, asset)
         logging.info("subject-shape cache stored shape_hash=%s", shape_hash)
+    asset, coupling_report = refresh_segment_coupling(asset)
+    meta_coupling = dict(asset.metadata or {})
+    meta_coupling["segment_coupling_report"] = coupling_report
+    asset = type(asset)(**{**asset.__dict__, "metadata": meta_coupling})
     profile["subject_shape_s"] = time.perf_counter() - started_at - profile["source_template_s"]
     pose_report: dict[str, Any] | None = None
     if args.motion_npz is not None:
@@ -348,7 +363,8 @@ def main() -> int:
             "containment_reports": containment_reports,
             "pose_cache_report": pose_report,
             "leg_material_report": dict(meta.get("leg_material_report") or {}),
-            "source_template_version": 3,
+            "segment_coupling_report": dict(meta.get("segment_coupling_report") or {}),
+            "source_template_version": 4,
             "source_bind_roundtrip": bind_roundtrip,
         }
     )
@@ -360,6 +376,21 @@ def main() -> int:
         surface_faces=subject_surface[1],
         output_path=stage_dir / "anatomy_mesh_diagnostics.json",
     )
+    bone_segment_report: dict[str, Any] | None = None
+    if args.motion_npz is not None:
+        motion_path = Path(args.motion_npz).expanduser().resolve()
+        pose55, raw_transl = load_easymocap_smplx_fit_drive(motion_path, gender=gender)
+        effective_transl = easymocap_drive_translation(pose55[:3], raw_transl, asset.rest_joints[0])
+        bone_segment_report = write_bone_segment_diagnostics(
+            asset,
+            pose_axis_angle=pose55,
+            transl=effective_transl,
+            output_path=stage_dir / "bone_segment_diagnostics.json",
+            mesh_diagnostics=mesh_diagnostics,
+        )
+    meta = dict(asset.metadata or {})
+    meta["bone_segment_diagnostics"] = bone_segment_report
+    asset = type(asset)(**{**asset.__dict__, "metadata": meta})
     profile["pose_and_diagnostics_s"] = time.perf_counter() - started_at - profile["source_template_s"] - profile["subject_shape_s"]
     profile["total_pre_publish_s"] = time.perf_counter() - started_at
     if args.profile_first_frame:

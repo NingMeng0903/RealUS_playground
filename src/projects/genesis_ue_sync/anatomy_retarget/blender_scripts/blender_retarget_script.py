@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -516,6 +517,7 @@ def _merge_and_skin_meshes(
         for k, v in (config.get("rigid_mesh_to_smplx", {}) or {}).items()
         if str(v) in joint_index
     }
+    preserve_source_weights = set(str(v) for v in (config.get("preserve_source_weights", []) or []))
     arm_inv = np.asarray(arm.matrix_world.inverted(), dtype=np.float64).reshape(4, 4)
     arm_bbox = _armature_local_bbox(arm)
     frame_modes: dict[str, int] = {}
@@ -605,7 +607,8 @@ def _merge_and_skin_meshes(
 
         collections = set(_collections_for_object(obj))
         is_rigid = bool(rigid_collections and collections.intersection(rigid_collections))
-        if is_rigid:
+        preserve_weights = str(obj.name) in preserve_source_weights
+        if is_rigid and not preserve_weights:
             joint_name = rigid_mesh_to_smplx.get(str(obj.name))
             if joint_name is None:
                 joint = int(np.argmax(w55.mean(axis=0)))
@@ -620,6 +623,8 @@ def _merge_and_skin_meshes(
             source_indices[:, :] = rigid_source_bone
             source_weights[:, :] = 0.0
             source_weights[:, 0] = 1.0
+            rigid_meshes.append(str(obj.name))
+        elif is_rigid and preserve_weights:
             rigid_meshes.append(str(obj.name))
 
         source_totals = np.zeros(n, dtype=np.float32)
@@ -851,6 +856,39 @@ def _source_rig_canonical(
     blend = np.zeros(len(bones), dtype=np.float32)
     driver_types: list[str] = []
 
+    _SIDE_LEFT = re.compile(r"(?:^|_)L(?:\d+)?$")
+    _SIDE_RIGHT = re.compile(r"(?:^|_)R(?:\d+)?$")
+
+    def _bone_side(name: str, lower: str) -> str | None:
+        if _SIDE_LEFT.search(name) or lower.endswith("_l"):
+            return "left"
+        if _SIDE_RIGHT.search(name) or lower.endswith("_r"):
+            return "right"
+        return None
+
+    def _is_foot_chain_bone(lower: str) -> bool:
+        if "ankle_rot" in lower or "arch_rot" in lower:
+            return True
+        if any(
+            token in lower
+            for token in (
+                "calcaneus",
+                "talus",
+                "navicular",
+                "cuboid",
+                "cuneiform",
+                "metatarsal",
+                "phalanx_foot",
+                "phalanges_foot",
+            )
+        ):
+            return True
+        if "phalanx" in lower and "foot" in lower:
+            return True
+        if "metatarsal" in lower:
+            return True
+        return False
+
     for bi, bone in enumerate(bones):
         name = str(bone.name)
         mapped, inherited = _resolve_group_joint(
@@ -864,8 +902,32 @@ def _source_rig_canonical(
         lower = name.lower()
         if "scapula" in lower:
             driver_type = "scapula_left" if lower.endswith("_l") else "scapula_right"
-        elif "patella" in lower:
-            driver_type = "patella_left" if lower.endswith("_l") else "patella_right"
+        elif "knee_rotate" in lower:
+            side = _bone_side(name, lower)
+            if side is not None:
+                joint_a[bi] = joint_index[f"{side}_hip"]
+                joint_b[bi] = joint_index[f"{side}_knee"]
+                blend[bi] = 0.55
+                driver_type = f"knee_chain_{side}"
+        elif _is_foot_chain_bone(lower) or "toes_rotate" in lower:
+            side = _bone_side(name, lower)
+            if side is not None:
+                joint_a[bi] = joint_index[f"{side}_ankle"]
+                joint_b[bi] = joint_index[f"{side}_foot"]
+                blend[bi] = 0.40 if "ankle_rot" in lower else 0.65
+                driver_type = f"foot_chain_{side}"
+        elif "patella" in lower or "fibula" in lower:
+            side = "left" if lower.endswith("_l") else "right"
+            joint_a[bi] = joint_index[f"{side}_knee"]
+            joint_b[bi] = joint_index[f"{side}_ankle"]
+            blend[bi] = 0.45 if "patella" in lower else 0.35
+            driver_type = f"knee_chain_{side}"
+        elif "femur_rot" in lower or name.startswith("Femur_Rot_"):
+            side = "left" if lower.endswith("_l") else "right"
+            joint_a[bi] = joint_index[f"{side}_hip"]
+            joint_b[bi] = joint_index[f"{side}_knee"]
+            blend[bi] = 0.35
+            driver_type = f"knee_chain_{side}"
         elif "forearm_bone" in lower or "forearm_twist" in lower:
             side = "left" if lower.endswith("_l") else "right"
             joint_a[bi] = joint_index[f"{side}_elbow"]
@@ -877,7 +939,7 @@ def _source_rig_canonical(
             joint_a[bi] = joint_index[f"{side}_knee"]
             joint_b[bi] = joint_index[f"{side}_ankle"]
             blend[bi] = 0.30 if "bone" in lower else 0.78
-            driver_type = f"shin_segment_{side}"
+            driver_type = f"knee_chain_{side}"
         elif name == "Head_Bone":
             joint_a[bi] = joint_index["neck"]
             joint_b[bi] = joint_index["head"]

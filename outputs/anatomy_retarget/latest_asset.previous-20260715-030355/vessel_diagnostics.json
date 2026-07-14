@@ -1,0 +1,52 @@
+{
+  "mesh_count": 3,
+  "meshes": [
+    {
+      "mesh": "Artery",
+      "tissue": "vessel",
+      "vertices": 14120,
+      "outside_vertices": 3213,
+      "min_skin_distance_m": -0.2462561817823377,
+      "mean_depth_m": 0.006477036413952039,
+      "in_leg_chart": true,
+      "classification": [
+        "leg_atlas"
+      ],
+      "leg_d_mean": 0.1763176787560036,
+      "leg_d_min": 0.0
+    },
+    {
+      "mesh": "Heart",
+      "tissue": "vessel",
+      "vertices": 1021,
+      "outside_vertices": 0,
+      "min_skin_distance_m": 0.03505574718727265,
+      "mean_depth_m": 0.07421332592610634,
+      "in_leg_chart": true,
+      "classification": [
+        "leg_atlas"
+      ],
+      "leg_d_mean": 0.5943010682340467,
+      "leg_d_min": 0.15561139583587646
+    },
+    {
+      "mesh": "Vein",
+      "tissue": "vessel",
+      "vertices": 14240,
+      "outside_vertices": 1538,
+      "min_skin_distance_m": -0.24595569936763187,
+      "mean_depth_m": 0.029177095964849357,
+      "in_leg_chart": true,
+      "classification": [
+        "leg_atlas"
+      ],
+      "leg_d_mean": 0.2362690155299699,
+      "leg_d_min": 0.0
+    }
+  ],
+  "summary": {
+    "leg_soft_vertices": 275520,
+    "non_leg_soft_vertices": 7260,
+    "vessel_outside_total": 4751
+  }
+}

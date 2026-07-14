@@ -134,9 +134,22 @@ def main() -> int:
             print("WARN drive-check skipped: vertex count mismatch")
 
     posed = skin_vertices(asset, pose55, transl=th_eff)
-    write_obj(out / "anatomy_posed.obj", posed, asset.faces, comment="anatomy skinned with capture pose")
+    write_obj(out / "anatomy_posed.obj", posed, asset.faces, comment="anatomy skinned with capture pose (live LBS)")
     report["anatomy_posed_span_m"] = _span(posed)
     report["anatomy_posed_center_m"] = [float(v) for v in posed.mean(axis=0)]
+
+    if asset.pose_cache_vertices is not None and asset.pose_cache_vertices.size:
+        cache_verts = np.asarray(asset.pose_cache_vertices, dtype=np.float32).reshape(-1, 3)
+        write_obj(out / "anatomy_pose_cache.obj", cache_verts, asset.faces, comment="offline pose cache vertices")
+        if cache_verts.shape == posed.shape:
+            delta = np.linalg.norm(cache_verts - posed, axis=1)
+            report["pose_cache_vs_lbs_max_m"] = float(np.max(delta))
+            report["pose_cache_vs_lbs_mean_m"] = float(np.mean(delta))
+            report["pose_cache_vs_lbs_p999_m"] = float(np.quantile(delta, 0.999))
+            print(
+                "INFO pose cache vs live LBS: "
+                f"max={report['pose_cache_vs_lbs_max_m']:.4f} m mean={report['pose_cache_vs_lbs_mean_m']:.4f} m"
+            )
 
     write_obj(out / "smpl_fit_posed.obj", fit_vertices + extra, fit_faces, comment="fitted SMPL-X mesh from capture")
     report["smpl_fit_center_m"] = [float(v) for v in (fit_vertices + extra).mean(axis=0)]
@@ -173,6 +186,7 @@ def main() -> int:
         "anatomy_tpose.obj",
         "smpl_tpose.obj",
         "anatomy_posed.obj",
+        "anatomy_pose_cache.obj",
         "smpl_fit_posed.obj",
         "smpl_drive_check.obj",
         "preview_overlay.png",

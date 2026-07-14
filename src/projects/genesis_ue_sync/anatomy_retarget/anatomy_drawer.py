@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -127,7 +128,8 @@ class AnatomyLbsDrawer:
             self.clear_node()
             return True
         cache_hit = (
-            self.asset.pose_cache_vertices is not None
+            not bool(os.environ.get("AMONGUS_ANATOMY_FORCE_LIVE_LBS", "").strip())
+            and self.asset.pose_cache_vertices is not None
             and self.asset.pose_cache_hash == smplx_pose_hash(pose, new_transl)
         )
         vertices = (

@@ -22,7 +22,7 @@
       "dominant_driver_mass": 0.7084877381689876,
       "extent_aspect_ratio": 1.991805986948729,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0746266792342239
+      "max_signed_distance_m": -0.07462667923422385
     },
     {
       "mesh_index": 1,
@@ -45,7 +45,7 @@
       "dominant_driver_mass": 0.4287782955890921,
       "extent_aspect_ratio": 2.082819682564832,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.08464724436410856
+      "max_signed_distance_m": -0.08464724436410855
     },
     {
       "mesh_index": 2,
@@ -68,7 +68,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.6457184547772747,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.03111280696977318
+      "max_signed_distance_m": -0.031112806969773168
     },
     {
       "mesh_index": 3,
@@ -91,7 +91,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.532721228780637,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.019845242732960445
+      "max_signed_distance_m": -0.019845242732960434
     },
     {
       "mesh_index": 4,
@@ -114,7 +114,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 10.508335936281426,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.031477680050231965
+      "max_signed_distance_m": -0.03147768005023121
     },
     {
       "mesh_index": 5,
@@ -137,7 +137,7 @@
       "dominant_driver_mass": 0.6199968160067922,
       "extent_aspect_ratio": 2.564628088138256,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.07679175475353961
+      "max_signed_distance_m": -0.0767917547535398
     },
     {
       "mesh_index": 6,
@@ -160,7 +160,7 @@
       "dominant_driver_mass": 0.2769360010435407,
       "extent_aspect_ratio": 6.072508881707523,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0012018514571328297
+      "max_signed_distance_m": -0.0012018514571328317
     },
     {
       "mesh_index": 7,
@@ -183,7 +183,7 @@
       "dominant_driver_mass": 0.13091599897133624,
       "extent_aspect_ratio": 7.555559920030774,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.023137794684057345
+      "max_signed_distance_m": -0.023137794684057366
     },
     {
       "mesh_index": 8,
@@ -206,7 +206,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.1438791492525766,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0222434401586196
+      "max_signed_distance_m": -0.022243440158619582
     },
     {
       "mesh_index": 9,
@@ -229,7 +229,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.2853608615514684,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.05807534878709229
+      "max_signed_distance_m": -0.05807534878709232
     },
     {
       "mesh_index": 10,
@@ -252,7 +252,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.3204721924324256,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.009572414899319296
+      "max_signed_distance_m": -0.0095724148993193
     },
     {
       "mesh_index": 11,
@@ -275,7 +275,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5786626300921884,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.013295774691919093
+      "max_signed_distance_m": -0.013295774691919096
     },
     {
       "mesh_index": 12,
@@ -298,7 +298,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.307992961791535,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.023214314720172966
+      "max_signed_distance_m": -0.02321431472017323
     },
     {
       "mesh_index": 13,
@@ -321,7 +321,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.8171091225501466,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.024049616781639943
+      "max_signed_distance_m": -0.024049616781639367
     },
     {
       "mesh_index": 14,
@@ -344,7 +344,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.75328575225179,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.02344008257500366
+      "max_signed_distance_m": -0.02344008257500691
     },
     {
       "mesh_index": 15,
@@ -367,7 +367,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.6664091733728434,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.02699870570209447
+      "max_signed_distance_m": -0.02699870570209452
     },
     {
       "mesh_index": 16,
@@ -390,7 +390,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.2618161073119567,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.025895377149750275
+      "max_signed_distance_m": -0.025895377149750404
     },
     {
       "mesh_index": 17,
@@ -408,7 +408,7 @@
         0.09922884404659271
       ],
       "driver_bone": "Ankle_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.994493464639567,
@@ -431,12 +431,12 @@
         0.1059250608086586
       ],
       "driver_bone": "Ankle_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.002356712765262,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029998100153259583
+      "max_signed_distance_m": -0.0029998100153259587
     },
     {
       "mesh_index": 19,
@@ -459,7 +459,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.1592277242943365,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029127034252579096
+      "max_signed_distance_m": -0.0029127034252578368
     },
     {
       "mesh_index": 20,
@@ -482,7 +482,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.4267880568384665,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029294462714074612
+      "max_signed_distance_m": -0.002929446271407438
     },
     {
       "mesh_index": 21,
@@ -528,7 +528,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.2627060687687317,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029468082181638273
+      "max_signed_distance_m": -0.00294680821816383
     },
     {
       "mesh_index": 23,
@@ -551,7 +551,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.516235408314903,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.005518428031939136
+      "max_signed_distance_m": -0.005518428031939133
     },
     {
       "mesh_index": 24,
@@ -574,7 +574,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.525800052636334,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.005936319867038575
+      "max_signed_distance_m": -0.005936319867038578
     },
     {
       "mesh_index": 25,
@@ -597,7 +597,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.721056006959439,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029199022267306597
+      "max_signed_distance_m": -0.0029199022267304476
     },
     {
       "mesh_index": 26,
@@ -620,7 +620,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.640828396982926,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002927969012594882
+      "max_signed_distance_m": -0.002927969012594934
     },
     {
       "mesh_index": 27,
@@ -643,7 +643,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.3385418097800446,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029587538683763397
+      "max_signed_distance_m": -0.002958753868376826
     },
     {
       "mesh_index": 28,
@@ -666,7 +666,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.3256465816758958,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029585749860801865
+      "max_signed_distance_m": -0.0029585749860801818
     },
     {
       "mesh_index": 29,
@@ -689,7 +689,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.8343736220233922,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.008635474285428523
+      "max_signed_distance_m": -0.008635474285428529
     },
     {
       "mesh_index": 30,
@@ -735,7 +735,7 @@
       "dominant_driver_mass": 0.1701197413960304,
       "extent_aspect_ratio": 5.50012197233928,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0009996052858250515
+      "max_signed_distance_m": -0.0009996052858250511
     },
     {
       "mesh_index": 32,
@@ -758,7 +758,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.1534386308786697,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002995705733508244
+      "max_signed_distance_m": -0.002995705733508243
     },
     {
       "mesh_index": 33,
@@ -781,7 +781,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.2072486247347545,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029952771073273837
+      "max_signed_distance_m": -0.0029952771073273824
     },
     {
       "mesh_index": 34,
@@ -804,7 +804,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 7.771712899285464,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0317190579623044
+      "max_signed_distance_m": -0.03171905796230441
     },
     {
       "mesh_index": 35,
@@ -827,7 +827,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 7.472415202517517,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.03030423844143061
+      "max_signed_distance_m": -0.030304238441430573
     },
     {
       "mesh_index": 36,
@@ -850,7 +850,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.7605862185782977,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0205219738655774
+      "max_signed_distance_m": -0.020521973865577404
     },
     {
       "mesh_index": 37,
@@ -873,7 +873,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.6033567049743507,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.012971815857059817
+      "max_signed_distance_m": -0.012971815857059803
     },
     {
       "mesh_index": 38,
@@ -896,7 +896,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.115759029851662,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.044953495513557415
+      "max_signed_distance_m": -0.04495349551355748
     },
     {
       "mesh_index": 39,
@@ -919,7 +919,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.4759436678850277,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.04033257558770748
+      "max_signed_distance_m": -0.0403325755877075
     },
     {
       "mesh_index": 40,
@@ -942,7 +942,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.0366710693826775,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.012910208770703268
+      "max_signed_distance_m": -0.012910208770703308
     },
     {
       "mesh_index": 41,
@@ -965,7 +965,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.228393488954906,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.011747095089471549
+      "max_signed_distance_m": -0.011747095089471516
     },
     {
       "mesh_index": 42,
@@ -983,7 +983,7 @@
         0.042144741863012314
       ],
       "driver_bone": "Ankle_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.3676943910271742,
@@ -1006,7 +1006,7 @@
         0.04154130071401596
       ],
       "driver_bone": "Ankle_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.4326353227443722,
@@ -1057,7 +1057,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5392108411977645,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.052618088309387086
+      "max_signed_distance_m": -0.05261808830938702
     },
     {
       "mesh_index": 46,
@@ -1080,7 +1080,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.6371171285754904,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.05265295231931614
+      "max_signed_distance_m": -0.052652952319316014
     },
     {
       "mesh_index": 47,
@@ -1103,7 +1103,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.9084466285298638,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.052756451571639884
+      "max_signed_distance_m": -0.05275645157163993
     },
     {
       "mesh_index": 48,
@@ -1126,7 +1126,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.897052769293397,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.05249968023599674
+      "max_signed_distance_m": -0.05249968023599685
     },
     {
       "mesh_index": 49,
@@ -1149,7 +1149,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.908757454541185,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.05231461446268626
+      "max_signed_distance_m": -0.05231461446268617
     },
     {
       "mesh_index": 50,
@@ -1172,7 +1172,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.1500148980084113,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.05015929999717581
+      "max_signed_distance_m": -0.050159299997175784
     },
     {
       "mesh_index": 51,
@@ -1195,7 +1195,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.9607912055164882,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.08661821220318831
+      "max_signed_distance_m": -0.08661821220314067
     },
     {
       "mesh_index": 52,
@@ -1218,7 +1218,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.9204621266354927,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.08124118538355364
+      "max_signed_distance_m": -0.08124118538354386
     },
     {
       "mesh_index": 53,
@@ -1241,7 +1241,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.368686925934759,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.07376209478148923
+      "max_signed_distance_m": -0.07376209478149107
     },
     {
       "mesh_index": 54,
@@ -1264,7 +1264,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.9585720737837153,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.06469338233100137
+      "max_signed_distance_m": -0.06469338233100938
     },
     {
       "mesh_index": 55,
@@ -1287,7 +1287,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.3572762639927607,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.06622495699290121
+      "max_signed_distance_m": -0.06622495699290028
     },
     {
       "mesh_index": 56,
@@ -1310,7 +1310,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.794511529269239,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.09781349502314099
+      "max_signed_distance_m": -0.09781349502313776
     },
     {
       "mesh_index": 57,
@@ -1333,7 +1333,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.2563402287477814,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0923790982216282
+      "max_signed_distance_m": -0.0923790982216378
     },
     {
       "mesh_index": 58,
@@ -1356,7 +1356,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.9325784627145015,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.08891004260187571
+      "max_signed_distance_m": -0.08891004260187459
     },
     {
       "mesh_index": 59,
@@ -1379,7 +1379,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.0192011579634284,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.07096318866777292
+      "max_signed_distance_m": -0.07096318866777165
     },
     {
       "mesh_index": 60,
@@ -1402,7 +1402,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.682202831146873,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.08235831009450462
+      "max_signed_distance_m": -0.08235831009450617
     },
     {
       "mesh_index": 61,
@@ -1425,7 +1425,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.467880804241825,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.08598139538795381
+      "max_signed_distance_m": -0.08598139538795997
     },
     {
       "mesh_index": 62,
@@ -1448,7 +1448,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.560489205163941,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.08887470671364475
+      "max_signed_distance_m": -0.08887470671364076
     },
     {
       "mesh_index": 63,
@@ -1471,7 +1471,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.6166720054588017,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.08806528162890073
+      "max_signed_distance_m": -0.08806528162889847
     },
     {
       "mesh_index": 64,
@@ -1494,7 +1494,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.2395710847684187,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.09437315394701412
+      "max_signed_distance_m": -0.09437315394701505
     },
     {
       "mesh_index": 65,
@@ -1517,7 +1517,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.6150553626974102,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0910551775516185
+      "max_signed_distance_m": -0.09105517755161789
     },
     {
       "mesh_index": 66,
@@ -1540,7 +1540,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 4.972014481149366,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0871358356862445
+      "max_signed_distance_m": -0.08713583568625012
     },
     {
       "mesh_index": 67,
@@ -1563,7 +1563,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 4.2447444473857585,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.09311702836171955
+      "max_signed_distance_m": -0.09311702836170235
     },
     {
       "mesh_index": 68,
@@ -1586,7 +1586,7 @@
       "dominant_driver_mass": 0.17897713570694776,
       "extent_aspect_ratio": 5.27458519404775,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.03289557599929144
+      "max_signed_distance_m": -0.03289557599929141
     },
     {
       "mesh_index": 69,
@@ -1609,7 +1609,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 9.718808068706903,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.023968628432778704
+      "max_signed_distance_m": -0.02396862843277873
     },
     {
       "mesh_index": 70,
@@ -1632,7 +1632,7 @@
       "dominant_driver_mass": 0.8468159039109081,
       "extent_aspect_ratio": 1.9226837182547123,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0009850590437161094
+      "max_signed_distance_m": -0.0009850590437161099
     },
     {
       "mesh_index": 71,
@@ -1673,7 +1673,7 @@
         0.054138392210006714
       ],
       "driver_bone": "Femur_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "knee_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 7.756724025271622,
@@ -1696,12 +1696,12 @@
         0.06606119871139526
       ],
       "driver_bone": "Femur_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "knee_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 6.431476654368808,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.00433260785790291
+      "max_signed_distance_m": -0.0043326078579029115
     },
     {
       "mesh_index": 74,
@@ -1719,12 +1719,12 @@
         0.03349149972200394
       ],
       "driver_bone": "Tibia_Bone_L",
-      "driver_type": "shin_segment_left",
-      "driver_weight_entropy": -0.0,
-      "dominant_driver_mass": 1.0,
+      "driver_type": "knee_chain_left",
+      "driver_weight_entropy": 0.6919176995218539,
+      "dominant_driver_mass": 0.5247888793704895,
       "extent_aspect_ratio": 5.779190163271417,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0030000007707087334
+      "max_signed_distance_m": -0.0030000007707087347
     },
     {
       "mesh_index": 75,
@@ -1742,12 +1742,12 @@
         0.04864457994699478
       ],
       "driver_bone": "Tibia_Bone_R",
-      "driver_type": "shin_segment_right",
-      "driver_weight_entropy": -0.0,
-      "dominant_driver_mass": 1.0,
+      "driver_type": "knee_chain_right",
+      "driver_weight_entropy": 0.6879906088153176,
+      "dominant_driver_mass": 0.5507331362186227,
       "extent_aspect_ratio": 16.202060173774335,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0030000045585883883
+      "max_signed_distance_m": -0.0030000045585883896
     },
     {
       "mesh_index": 76,
@@ -1770,7 +1770,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.7738352880681776,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.024468999479921292
+      "max_signed_distance_m": -0.02446899947992112
     },
     {
       "mesh_index": 77,
@@ -1793,7 +1793,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.9962656291884,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.010672930935427543
+      "max_signed_distance_m": -0.010672930935427536
     },
     {
       "mesh_index": 78,
@@ -1816,7 +1816,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.8969857553748253,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.005991954772671143
+      "max_signed_distance_m": -0.005991954772671146
     },
     {
       "mesh_index": 79,
@@ -1839,7 +1839,7 @@
       "dominant_driver_mass": 0.5385163331313865,
       "extent_aspect_ratio": 1.6198187437321783,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.08513894511299627
+      "max_signed_distance_m": -0.08513894511299626
     },
     {
       "mesh_index": 80,
@@ -1862,7 +1862,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.3288272119801732,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.005336378972473937
+      "max_signed_distance_m": -0.005336378972473936
     },
     {
       "mesh_index": 81,
@@ -1885,7 +1885,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.3271907738169768,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.004080472735976172
+      "max_signed_distance_m": -0.00408047273597617
     },
     {
       "mesh_index": 82,
@@ -1908,7 +1908,7 @@
       "dominant_driver_mass": 0.8704422510695404,
       "extent_aspect_ratio": 1.3977833031988762,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.016146938096468298
+      "max_signed_distance_m": -0.016146938096468062
     },
     {
       "mesh_index": 83,
@@ -1931,7 +1931,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.571618408885404,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.01595770632756519
+      "max_signed_distance_m": -0.015957706327565213
     },
     {
       "mesh_index": 84,
@@ -1954,7 +1954,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.196805052284615,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029981860153790625
+      "max_signed_distance_m": -0.002998186015379064
     },
     {
       "mesh_index": 85,
@@ -1977,7 +1977,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.785356167894026,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.01114093921114163
+      "max_signed_distance_m": -0.011140939211141622
     },
     {
       "mesh_index": 86,
@@ -2000,7 +2000,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.4054618332786255,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.005462614386368548
+      "max_signed_distance_m": -0.005462614386368589
     },
     {
       "mesh_index": 87,
@@ -2023,7 +2023,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.9060916137716744,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.008871061571065202
+      "max_signed_distance_m": -0.008871061571065198
     },
     {
       "mesh_index": 88,
@@ -2046,7 +2046,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.9161754054393103,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.006080901282217314
+      "max_signed_distance_m": -0.006080901282217323
     },
     {
       "mesh_index": 89,
@@ -2064,7 +2064,7 @@
         0.03401457890868187
       ],
       "driver_bone": "Ankle_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.6562791254519036,
@@ -2087,7 +2087,7 @@
         0.032781410962343216
       ],
       "driver_bone": "Ankle_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.815188584045751,
@@ -2111,11 +2111,11 @@
       ],
       "driver_bone": "Spine_C2",
       "driver_type": "direct_joint",
-      "driver_weight_entropy": -0.0,
-      "dominant_driver_mass": 1.0,
+      "driver_weight_entropy": 3.2466451358426602,
+      "dominant_driver_mass": 0.05420557347497691,
       "extent_aspect_ratio": 29.76654118805744,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.029621679756927442
+      "max_signed_distance_m": -0.029621679756926898
     },
     {
       "mesh_index": 92,
@@ -2138,7 +2138,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 8.989334787447449,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.04523497386371273
+      "max_signed_distance_m": -0.04523497386371272
     },
     {
       "mesh_index": 93,
@@ -2161,7 +2161,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 5.924573890373415,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.020461883462106506
+      "max_signed_distance_m": -0.020461883462106523
     },
     {
       "mesh_index": 94,
@@ -2184,7 +2184,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 5.400596794166208,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.013021612956893214
+      "max_signed_distance_m": -0.013021612956893185
     },
     {
       "mesh_index": 95,
@@ -2207,7 +2207,7 @@
       "dominant_driver_mass": 0.5520700169278252,
       "extent_aspect_ratio": 1.7099258162409519,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.057541457277802466
+      "max_signed_distance_m": -0.057541457277802494
     },
     {
       "mesh_index": 96,
@@ -2230,7 +2230,7 @@
       "dominant_driver_mass": 0.3940423645488967,
       "extent_aspect_ratio": 1.864401550108983,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.06556357605132626
+      "max_signed_distance_m": -0.0655635760513262
     },
     {
       "mesh_index": 97,
@@ -2253,7 +2253,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.2385055859994867,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.05052192142002096
+      "max_signed_distance_m": -0.0505219214200218
     },
     {
       "mesh_index": 98,
@@ -2276,7 +2276,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.2657319768699271,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.048335692439487994
+      "max_signed_distance_m": -0.04833569243948627
     },
     {
       "mesh_index": 99,
@@ -2299,7 +2299,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.4478537121386668,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.04005455302124956
+      "max_signed_distance_m": -0.04005455302124674
     },
     {
       "mesh_index": 100,
@@ -2322,7 +2322,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5755543001137056,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.035218484825596266
+      "max_signed_distance_m": -0.03521848482559916
     },
     {
       "mesh_index": 101,
@@ -2345,7 +2345,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.4280960643028182,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.041139319046993486
+      "max_signed_distance_m": -0.041139319046992626
     },
     {
       "mesh_index": 102,
@@ -2368,7 +2368,7 @@
       "dominant_driver_mass": 0.22839122663238337,
       "extent_aspect_ratio": 3.9712323053185847,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003999946133363021
+      "max_signed_distance_m": -0.003999946133363023
     },
     {
       "mesh_index": 103,
@@ -2391,7 +2391,7 @@
       "dominant_driver_mass": 0.3412897296487204,
       "extent_aspect_ratio": 1.0383570321225557,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003981039883253129
+      "max_signed_distance_m": -0.003981039883253353
     },
     {
       "mesh_index": 104,
@@ -2409,7 +2409,7 @@
         0.029028847813606262
       ],
       "driver_bone": "Ankle_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.1195216169993656,
@@ -2432,7 +2432,7 @@
         0.02639961615204811
       ],
       "driver_bone": "Ankle_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.200466357229977,
@@ -2460,7 +2460,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.7764285710149776,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029423305445597757
+      "max_signed_distance_m": -0.002942330544559621
     },
     {
       "mesh_index": 107,
@@ -2483,7 +2483,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.4934288757748893,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029316308986687845
+      "max_signed_distance_m": -0.002931630898668664
     },
     {
       "mesh_index": 108,
@@ -2506,7 +2506,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.4146698361471148,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029529055117345445
+      "max_signed_distance_m": -0.002952905511734599
     },
     {
       "mesh_index": 109,
@@ -2529,7 +2529,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.6893205971363106,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002951426331377316
+      "max_signed_distance_m": -0.0029514263313773184
     },
     {
       "mesh_index": 110,
@@ -2552,7 +2552,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.8270560504054814,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.02196336975648795
+      "max_signed_distance_m": -0.021963369756487997
     },
     {
       "mesh_index": 111,
@@ -2575,7 +2575,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.632019954069318,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.014408833874287012
+      "max_signed_distance_m": -0.014408833874286986
     },
     {
       "mesh_index": 112,
@@ -2598,7 +2598,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 13.17888697969632,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.03496410585796813
+      "max_signed_distance_m": -0.034964105857968004
     },
     {
       "mesh_index": 113,
@@ -2621,7 +2621,7 @@
       "dominant_driver_mass": 0.3610223797571378,
       "extent_aspect_ratio": 2.476910258321067,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.03607135963344102
+      "max_signed_distance_m": -0.03607135963344103
     },
     {
       "mesh_index": 114,
@@ -2639,7 +2639,7 @@
         0.11264415830373764
       ],
       "driver_bone": "Femur_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "knee_chain_left",
       "driver_weight_entropy": 2.0826421676303855,
       "dominant_driver_mass": 0.25643842066043376,
       "extent_aspect_ratio": 9.767317776896023,
@@ -2662,7 +2662,7 @@
         0.11208245158195496
       ],
       "driver_bone": "Femur_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "knee_chain_right",
       "driver_weight_entropy": 2.0826421676303855,
       "dominant_driver_mass": 0.25643842066043376,
       "extent_aspect_ratio": 9.859223268701891,
@@ -2736,7 +2736,7 @@
       "dominant_driver_mass": 0.21836848936374553,
       "extent_aspect_ratio": 1.5816540663323886,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.004437349076656962
+      "max_signed_distance_m": -0.0044373490766569665
     },
     {
       "mesh_index": 119,
@@ -2759,7 +2759,7 @@
       "dominant_driver_mass": 0.2449548611119056,
       "extent_aspect_ratio": 1.4762517600448772,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.011827948950653144
+      "max_signed_distance_m": -0.01182794895065315
     },
     {
       "mesh_index": 120,
@@ -2782,7 +2782,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.8796685919050957,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002934206150091264
+      "max_signed_distance_m": -0.0029342061500912905
     },
     {
       "mesh_index": 121,
@@ -2800,7 +2800,7 @@
         0.030612245202064514
       ],
       "driver_bone": "Ankle_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.0954435454077636,
@@ -2823,7 +2823,7 @@
         0.02992282807826996
       ],
       "driver_bone": "Ankle_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.1221450594646851,
@@ -2851,7 +2851,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.1597000596912914,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.04213274658545016
+      "max_signed_distance_m": -0.04213274658545008
     },
     {
       "mesh_index": 124,
@@ -2874,7 +2874,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.8012885814161097,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029367632568466613
+      "max_signed_distance_m": -0.0029367632568466496
     },
     {
       "mesh_index": 125,
@@ -2897,7 +2897,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.9696968688293162,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029324513009476635
+      "max_signed_distance_m": -0.0029324513009476704
     },
     {
       "mesh_index": 126,
@@ -2920,7 +2920,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.0312897203458062,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0037171518671275917
+      "max_signed_distance_m": -0.0037171518671275943
     },
     {
       "mesh_index": 127,
@@ -2943,7 +2943,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.137350348935997,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0038499839678254417
+      "max_signed_distance_m": -0.0038499839678254374
     },
     {
       "mesh_index": 128,
@@ -2966,7 +2966,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.7641291488329056,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029384603289864812
+      "max_signed_distance_m": -0.0029384603289864786
     },
     {
       "mesh_index": 129,
@@ -2989,7 +2989,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.8632972406379265,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.00292942687439709
+      "max_signed_distance_m": -0.002929426874397092
     },
     {
       "mesh_index": 130,
@@ -3012,7 +3012,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.9879932320391842,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.01085353986066058
+      "max_signed_distance_m": -0.01085353986066059
     },
     {
       "mesh_index": 131,
@@ -3035,7 +3035,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.44671602427204,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.01178926309691717
+      "max_signed_distance_m": -0.011789263096917182
     },
     {
       "mesh_index": 132,
@@ -3058,7 +3058,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.8713641541445667,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002941906151491366
+      "max_signed_distance_m": -0.002941906151491375
     },
     {
       "mesh_index": 133,
@@ -3081,7 +3081,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.9898754300415942,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029569661153224505
+      "max_signed_distance_m": -0.0029569661153224527
     },
     {
       "mesh_index": 134,
@@ -3104,7 +3104,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.756399224161646,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.01815051090837679
+      "max_signed_distance_m": -0.018150510908376803
     },
     {
       "mesh_index": 135,
@@ -3127,7 +3127,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.4112463129339368,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.019803274563516278
+      "max_signed_distance_m": -0.019803274563516292
     },
     {
       "mesh_index": 136,
@@ -3145,7 +3145,7 @@
         0.030842943117022514
       ],
       "driver_bone": "Ankle_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.3413326026792354,
@@ -3168,7 +3168,7 @@
         0.03517027199268341
       ],
       "driver_bone": "Ankle_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.1867441701829096,
@@ -3192,11 +3192,11 @@
       ],
       "driver_bone": "Head_Bone",
       "driver_type": "head_segment",
-      "driver_weight_entropy": -0.0,
-      "dominant_driver_mass": 1.0,
+      "driver_weight_entropy": 2.0381276493855536,
+      "dominant_driver_mass": 0.18888888748155702,
       "extent_aspect_ratio": 9.163070116208177,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.011933506243338958
+      "max_signed_distance_m": -0.011933506243339064
     },
     {
       "mesh_index": 139,
@@ -3219,7 +3219,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.1775552025563092,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0009957604484887423
+      "max_signed_distance_m": -0.0009957604484887425
     },
     {
       "mesh_index": 140,
@@ -3242,7 +3242,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.0884199040075306,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0010391945075805152
+      "max_signed_distance_m": -0.0010391945075805156
     },
     {
       "mesh_index": 141,
@@ -3265,7 +3265,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.6862076335829905,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.03478194034837084
+      "max_signed_distance_m": -0.03478194034837087
     },
     {
       "mesh_index": 142,
@@ -3288,7 +3288,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 4.642593703328329,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.025877705514400436
+      "max_signed_distance_m": -0.025877705514400495
     },
     {
       "mesh_index": 143,
@@ -3311,7 +3311,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5345819996580699,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.009780305615503637
+      "max_signed_distance_m": -0.009780305615503629
     },
     {
       "mesh_index": 144,
@@ -3380,7 +3380,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.2190753755855164,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.005279879276125952
+      "max_signed_distance_m": -0.005279879276125959
     },
     {
       "mesh_index": 147,
@@ -3403,7 +3403,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.2860678615765813,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003919750787699084
+      "max_signed_distance_m": -0.003919750787699078
     },
     {
       "mesh_index": 148,
@@ -3426,7 +3426,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.6235579607984034,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003920480456555688
+      "max_signed_distance_m": -0.003920480456555683
     },
     {
       "mesh_index": 149,
@@ -3449,7 +3449,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 4.113648347462939,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003946394600948306
+      "max_signed_distance_m": -0.003946394600948305
     },
     {
       "mesh_index": 150,
@@ -3472,7 +3472,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.7708190174431078,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003947271640189772
+      "max_signed_distance_m": -0.003947271640189774
     },
     {
       "mesh_index": 151,
@@ -3490,7 +3490,7 @@
         0.028518201783299446
       ],
       "driver_bone": "Patella_Rotate_L",
-      "driver_type": "patella_left",
+      "driver_type": "knee_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5426454089661974,
@@ -3513,7 +3513,7 @@
         0.02902807481586933
       ],
       "driver_bone": "Patella_Rotate_R",
-      "driver_type": "patella_right",
+      "driver_type": "knee_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5741207722193236,
@@ -3541,7 +3541,7 @@
       "dominant_driver_mass": 0.7495606562176464,
       "extent_aspect_ratio": 2.94777901383268,
       "outside_vertices": 0,
-      "max_signed_distance_m": -1.086782953229646e-06
+      "max_signed_distance_m": -1.0867829532180998e-06
     },
     {
       "mesh_index": 154,
@@ -3564,7 +3564,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5503985863289784,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.004833223331471287
+      "max_signed_distance_m": -0.0048332233314712855
     },
     {
       "mesh_index": 155,
@@ -3587,7 +3587,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.4075970481877635,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.005643379011552389
+      "max_signed_distance_m": -0.005643379011552393
     },
     {
       "mesh_index": 156,
@@ -3610,7 +3610,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.5935189048498937,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.05089561958936597
+      "max_signed_distance_m": -0.0508956195893653
     },
     {
       "mesh_index": 157,
@@ -3633,7 +3633,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.2674418231620108,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.042016556395508976
+      "max_signed_distance_m": -0.04201655639550875
     },
     {
       "mesh_index": 158,
@@ -3656,7 +3656,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 11.762581151200342,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.03962266217790656
+      "max_signed_distance_m": -0.039622662177906685
     },
     {
       "mesh_index": 159,
@@ -3679,7 +3679,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.037244222074722,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002919723130645471
+      "max_signed_distance_m": -0.0029197231306454735
     },
     {
       "mesh_index": 160,
@@ -3702,7 +3702,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.036663999295978,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0028767918383094853
+      "max_signed_distance_m": -0.002876791838309484
     },
     {
       "mesh_index": 161,
@@ -3725,7 +3725,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.5405237378433756,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029433302762513353
+      "max_signed_distance_m": -0.0029433302762513366
     },
     {
       "mesh_index": 162,
@@ -3748,7 +3748,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.5841311906220703,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029104752407712645
+      "max_signed_distance_m": -0.002910475240771268
     },
     {
       "mesh_index": 163,
@@ -3771,7 +3771,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.5591244584135193,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002938626125175828
+      "max_signed_distance_m": -0.0029386261251758273
     },
     {
       "mesh_index": 164,
@@ -3794,7 +3794,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.553353498241551,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029522484385543623
+      "max_signed_distance_m": -0.0029522484385543727
     },
     {
       "mesh_index": 165,
@@ -3817,7 +3817,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.217266236982494,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002929256375173269
+      "max_signed_distance_m": -0.0029292563751732717
     },
     {
       "mesh_index": 166,
@@ -3840,7 +3840,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.2392599724403293,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002930204161872129
+      "max_signed_distance_m": -0.0029302041618721308
     },
     {
       "mesh_index": 167,
@@ -3859,11 +3859,11 @@
       ],
       "driver_bone": "Forearm_Twist_L",
       "driver_type": "forearm_segment_left",
-      "driver_weight_entropy": -0.0,
-      "dominant_driver_mass": 1.0,
+      "driver_weight_entropy": 0.692669990182472,
+      "dominant_driver_mass": 0.5154452981371432,
       "extent_aspect_ratio": 7.262837291247242,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002999897507852944
+      "max_signed_distance_m": -0.002999897507852945
     },
     {
       "mesh_index": 168,
@@ -3882,8 +3882,8 @@
       ],
       "driver_bone": "Forearm_Twist_R",
       "driver_type": "forearm_segment_right",
-      "driver_weight_entropy": -0.0,
-      "dominant_driver_mass": 1.0,
+      "driver_weight_entropy": 0.692669990182472,
+      "dominant_driver_mass": 0.5154452981371432,
       "extent_aspect_ratio": 8.908007316914532,
       "outside_vertices": 0,
       "max_signed_distance_m": -0.0029998586484477493
@@ -3932,7 +3932,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.2860061336237445,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.04144644517899366
+      "max_signed_distance_m": -0.04144644517899362
     },
     {
       "mesh_index": 171,
@@ -3955,7 +3955,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.6815555296932372,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.051698146891345303
+      "max_signed_distance_m": -0.05169814689134528
     },
     {
       "mesh_index": 172,
@@ -3978,7 +3978,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.6843912221476822,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0608942519960415
+      "max_signed_distance_m": -0.06089425199604145
     },
     {
       "mesh_index": 173,
@@ -4024,7 +4024,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.0056180509978954,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0638554116908635
+      "max_signed_distance_m": -0.06385541169086356
     },
     {
       "mesh_index": 175,
@@ -4047,7 +4047,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.6616697532560878,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.05089758178890263
+      "max_signed_distance_m": -0.050897581788902656
     },
     {
       "mesh_index": 176,
@@ -4070,7 +4070,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.6944137319922596,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.04879477851053783
+      "max_signed_distance_m": -0.04879477851053778
     },
     {
       "mesh_index": 177,
@@ -4093,7 +4093,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.3071380246556565,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.04828317920139151
+      "max_signed_distance_m": -0.04828317920139163
     },
     {
       "mesh_index": 178,
@@ -4116,7 +4116,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.405079014430293,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.05062893895481522
+      "max_signed_distance_m": -0.05062893895481523
     },
     {
       "mesh_index": 179,
@@ -4185,7 +4185,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5669142135913379,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.024165873280092634
+      "max_signed_distance_m": -0.024165873280092655
     },
     {
       "mesh_index": 182,
@@ -4208,7 +4208,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5981359514916298,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.027152320221518852
+      "max_signed_distance_m": -0.027152320221518842
     },
     {
       "mesh_index": 183,
@@ -4231,7 +4231,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.6047786453719501,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.015591738495504787
+      "max_signed_distance_m": -0.015591738495504753
     },
     {
       "mesh_index": 184,
@@ -4277,7 +4277,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.4589736875524693,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.009252509883145767
+      "max_signed_distance_m": -0.00925250988314577
     },
     {
       "mesh_index": 186,
@@ -4300,7 +4300,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5408187429824751,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.014240709281960634
+      "max_signed_distance_m": -0.01424070928196064
     },
     {
       "mesh_index": 187,
@@ -4323,7 +4323,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.3468477416855253,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003614227143438269
+      "max_signed_distance_m": -0.0036142271434382736
     },
     {
       "mesh_index": 188,
@@ -4346,7 +4346,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.4187070340866703,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.009897594476464228
+      "max_signed_distance_m": -0.009897594476464234
     },
     {
       "mesh_index": 189,
@@ -4392,7 +4392,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.262728884226867,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.018340777127527953
+      "max_signed_distance_m": -0.018340777127527935
     },
     {
       "mesh_index": 191,
@@ -4438,7 +4438,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.156741476418569,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.027450939055122033
+      "max_signed_distance_m": -0.02745093905512202
     },
     {
       "mesh_index": 193,
@@ -4507,7 +4507,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.0337675711835104,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.028519268867715494
+      "max_signed_distance_m": -0.028519268867715157
     },
     {
       "mesh_index": 196,
@@ -4553,7 +4553,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.1531399971060792,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.01109845686511088
+      "max_signed_distance_m": -0.011098456865110882
     },
     {
       "mesh_index": 198,
@@ -4576,7 +4576,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.7341524936643278,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002996740930296716
+      "max_signed_distance_m": -0.0029967409302967185
     },
     {
       "mesh_index": 199,
@@ -4599,7 +4599,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.6747339381069495,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029964158651958834
+      "max_signed_distance_m": -0.0029964158651958842
     },
     {
       "mesh_index": 200,
@@ -4622,7 +4622,7 @@
       "dominant_driver_mass": 0.3116441476046905,
       "extent_aspect_ratio": 4.236614028255636,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.06266123401761134
+      "max_signed_distance_m": -0.06266123401761135
     },
     {
       "mesh_index": 201,
@@ -4645,7 +4645,7 @@
       "dominant_driver_mass": 0.23076923076923078,
       "extent_aspect_ratio": 22.528720965612614,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.047484371354322624
+      "max_signed_distance_m": -0.047484371354322784
     },
     {
       "mesh_index": 202,
@@ -4668,7 +4668,7 @@
       "dominant_driver_mass": 0.4721108341332148,
       "extent_aspect_ratio": 1.7677706454635222,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.03508032495186261
+      "max_signed_distance_m": -0.03508032495186262
     },
     {
       "mesh_index": 203,
@@ -4691,7 +4691,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.4092747323390338,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.011098230224874236
+      "max_signed_distance_m": -0.01109823022487562
     },
     {
       "mesh_index": 204,
@@ -4737,7 +4737,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.2881675725216204,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003935745070583925
+      "max_signed_distance_m": -0.00393574507058391
     },
     {
       "mesh_index": 206,
@@ -4760,7 +4760,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.2781777485859314,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003937200609591845
+      "max_signed_distance_m": -0.003937200609591855
     },
     {
       "mesh_index": 207,
@@ -4783,7 +4783,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.0762718361559642,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0039433301883211695
+      "max_signed_distance_m": -0.00394333018832117
     },
     {
       "mesh_index": 208,
@@ -4806,7 +4806,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.302936239348843,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003944612805135435
+      "max_signed_distance_m": -0.003944612805135421
     },
     {
       "mesh_index": 209,
@@ -4829,7 +4829,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.4595686623854107,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003937006473625695
+      "max_signed_distance_m": -0.003937006473625687
     },
     {
       "mesh_index": 210,
@@ -4852,7 +4852,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.2075494716333224,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003937717191471133
+      "max_signed_distance_m": -0.003937717191471148
     },
     {
       "mesh_index": 211,
@@ -4898,7 +4898,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.4026991913121982,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003943315752475133
+      "max_signed_distance_m": -0.003943315752475137
     },
     {
       "mesh_index": 213,
@@ -4917,11 +4917,11 @@
       ],
       "driver_bone": "Hip_bone",
       "driver_type": "direct_joint",
-      "driver_weight_entropy": -0.0,
-      "dominant_driver_mass": 1.0,
+      "driver_weight_entropy": 2.8906227371811704,
+      "dominant_driver_mass": 0.09791630128713241,
       "extent_aspect_ratio": 29.577127095156115,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.03871897783197272
+      "max_signed_distance_m": -0.038718977831977724
     },
     {
       "mesh_index": 214,
@@ -4944,7 +4944,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.53638417134104,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.02936074825893644
+      "max_signed_distance_m": -0.02936074825893618
     },
     {
       "mesh_index": 215,
@@ -4967,7 +4967,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.4150785190469557,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.05892579969048242
+      "max_signed_distance_m": -0.058925799690490104
     },
     {
       "mesh_index": 216,
@@ -4990,7 +4990,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.572343153843137,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.05694625564894949
+      "max_signed_distance_m": -0.05694625564895155
     },
     {
       "mesh_index": 217,
@@ -5013,7 +5013,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.4758606739460085,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.05563891129713354
+      "max_signed_distance_m": -0.0556389112971348
     },
     {
       "mesh_index": 218,
@@ -5036,7 +5036,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.228660591565475,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.03067525975320818
+      "max_signed_distance_m": -0.030675259753208357
     },
     {
       "mesh_index": 219,
@@ -5059,7 +5059,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.1347805888970526,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.03124138051762234
+      "max_signed_distance_m": -0.031241380517622763
     },
     {
       "mesh_index": 220,
@@ -5082,7 +5082,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.197480286896609,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.035346393729066866
+      "max_signed_distance_m": -0.03534639372906684
     },
     {
       "mesh_index": 221,
@@ -5128,7 +5128,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.4635138901454683,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0511047087495533
+      "max_signed_distance_m": -0.05110470874955334
     },
     {
       "mesh_index": 223,
@@ -5151,7 +5151,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.2560105372266264,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.05668482390345726
+      "max_signed_distance_m": -0.05668482390345723
     },
     {
       "mesh_index": 224,
@@ -5174,7 +5174,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.2080676446967047,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.061543963830879025
+      "max_signed_distance_m": -0.06154396383087964
     },
     {
       "mesh_index": 225,
@@ -5197,7 +5197,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.3385172885312902,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.06152204367311013
+      "max_signed_distance_m": -0.06152204367312979
     },
     {
       "mesh_index": 226,
@@ -5215,7 +5215,7 @@
         0.08461089432239532
       ],
       "driver_bone": "Ankle_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.4955889387113495,
@@ -5238,7 +5238,7 @@
         0.0868181437253952
       ],
       "driver_bone": "Ankle_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5829012658282873,
@@ -5266,7 +5266,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.0039553257549563,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.006822353763163932
+      "max_signed_distance_m": -0.006822353763163928
     },
     {
       "mesh_index": 229,
@@ -5312,7 +5312,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5759654729969033,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.047192639359937685
+      "max_signed_distance_m": -0.04719263935993763
     },
     {
       "mesh_index": 231,
@@ -5335,7 +5335,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5878685278697386,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.03795942201989464
+      "max_signed_distance_m": -0.03795942201989456
     },
     {
       "mesh_index": 232,
@@ -5358,7 +5358,7 @@
       "dominant_driver_mass": 0.11006585136406397,
       "extent_aspect_ratio": 1.874384680686318,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0076662334408208865
+      "max_signed_distance_m": -0.007666233440820885
     },
     {
       "mesh_index": 233,
@@ -5404,7 +5404,7 @@
       "dominant_driver_mass": 0.2931831406389919,
       "extent_aspect_ratio": 1.9412977876185205,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.019477863922796115
+      "max_signed_distance_m": -0.01947786392279628
     },
     {
       "mesh_index": 235,
@@ -5422,9 +5422,9 @@
         0.08479568362236023
       ],
       "driver_bone": "Tibia_Bone_L",
-      "driver_type": "shin_segment_left",
-      "driver_weight_entropy": -0.0,
-      "dominant_driver_mass": 1.0,
+      "driver_type": "knee_chain_left",
+      "driver_weight_entropy": 0.6149218334483981,
+      "dominant_driver_mass": 0.6951451812400954,
       "extent_aspect_ratio": 5.185568466164064,
       "outside_vertices": 0,
       "max_signed_distance_m": -0.0027704232389897943
@@ -5445,12 +5445,12 @@
         0.08868657052516937
       ],
       "driver_bone": "Tibia_Bone_R",
-      "driver_type": "shin_segment_right",
-      "driver_weight_entropy": -0.0,
-      "dominant_driver_mass": 1.0,
+      "driver_type": "knee_chain_right",
+      "driver_weight_entropy": 0.6019027073733163,
+      "dominant_driver_mass": 0.7102778558604824,
       "extent_aspect_ratio": 5.665396131863793,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002725961481674551
+      "max_signed_distance_m": -0.00272596148167455
     },
     {
       "mesh_index": 237,
@@ -5473,7 +5473,7 @@
       "dominant_driver_mass": 0.18114641215843236,
       "extent_aspect_ratio": 3.497460940922121,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.013844771705044607
+      "max_signed_distance_m": -0.01384477170504322
     },
     {
       "mesh_index": 238,
@@ -5519,7 +5519,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.1942128862998302,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.004864549731409196
+      "max_signed_distance_m": -0.0048645497314092
     },
     {
       "mesh_index": 240,
@@ -5565,7 +5565,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.2041043606089548,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0038788533446436706
+      "max_signed_distance_m": -0.0038788533446436724
     },
     {
       "mesh_index": 242,
@@ -5588,7 +5588,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.1871922155959158,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.006991791429953477
+      "max_signed_distance_m": -0.006991791429953474
     },
     {
       "mesh_index": 243,
@@ -5611,7 +5611,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.1984973216227974,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.007564019921266493
+      "max_signed_distance_m": -0.007564019921266491
     },
     {
       "mesh_index": 244,
@@ -5634,7 +5634,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.1937108049541694,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0009956078823300538
+      "max_signed_distance_m": -0.0009956078823300536
     },
     {
       "mesh_index": 245,
@@ -5657,7 +5657,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.0508872747267404,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0009913664931487944
+      "max_signed_distance_m": -0.0009913664931487968
     },
     {
       "mesh_index": 246,
@@ -5699,8 +5699,8 @@
       ],
       "driver_bone": "Forearm_Bone_L",
       "driver_type": "forearm_segment_left",
-      "driver_weight_entropy": -0.0,
-      "dominant_driver_mass": 1.0,
+      "driver_weight_entropy": 0.6888289922065889,
+      "dominant_driver_mass": 0.5464325811359928,
       "extent_aspect_ratio": 6.375852756640892,
       "outside_vertices": 0,
       "max_signed_distance_m": -0.002999849563898859
@@ -5722,11 +5722,11 @@
       ],
       "driver_bone": "Forearm_Bone_R",
       "driver_type": "forearm_segment_right",
-      "driver_weight_entropy": -0.0,
-      "dominant_driver_mass": 1.0,
+      "driver_weight_entropy": 0.6888289922065889,
+      "dominant_driver_mass": 0.5464325811359928,
       "extent_aspect_ratio": 8.225662271722381,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.008846265281943346
+      "max_signed_distance_m": -0.00884626528194335
     },
     {
       "mesh_index": 249,
@@ -5749,7 +5749,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.3130068232265197,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002980537351686202
+      "max_signed_distance_m": -0.002980537351686204
     },
     {
       "mesh_index": 250,
@@ -5772,7 +5772,7 @@
       "dominant_driver_mass": 0.5467354513816394,
       "extent_aspect_ratio": 5.6641272511490515,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.07998856449977262
+      "max_signed_distance_m": -0.07998856449977279
     },
     {
       "mesh_index": 251,
@@ -5795,7 +5795,7 @@
       "dominant_driver_mass": 0.5475918058237886,
       "extent_aspect_ratio": 5.381096582009677,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.07638893659222362
+      "max_signed_distance_m": -0.07638893659222355
     },
     {
       "mesh_index": 252,
@@ -5841,7 +5841,7 @@
       "dominant_driver_mass": 0.406213247457759,
       "extent_aspect_ratio": 6.523728138458934,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.001472620718057467
+      "max_signed_distance_m": -0.0014726207180574664
     },
     {
       "mesh_index": 254,
@@ -5864,7 +5864,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.540786726700649,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.01924905580601479
+      "max_signed_distance_m": -0.01924905580601477
     },
     {
       "mesh_index": 255,
@@ -5887,7 +5887,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5729113921208249,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029875713115127484
+      "max_signed_distance_m": -0.0029875713115127475
     },
     {
       "mesh_index": 256,
@@ -5910,7 +5910,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.515128882768833,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002999639048031145
+      "max_signed_distance_m": -0.002999639048031144
     },
     {
       "mesh_index": 257,
@@ -5933,7 +5933,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.0401620522241175,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0018110116710342854
+      "max_signed_distance_m": -0.0018110116710342845
     },
     {
       "mesh_index": 258,
@@ -5979,7 +5979,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.017705558286879,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.006126003913509579
+      "max_signed_distance_m": -0.006126003913509578
     },
     {
       "mesh_index": 260,
@@ -6002,7 +6002,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.9849469036547895,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.006173220807987461
+      "max_signed_distance_m": -0.00617322080798746
     },
     {
       "mesh_index": 261,
@@ -6020,7 +6020,7 @@
         0.03628861904144287
       ],
       "driver_bone": "Arch_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.42779340176874,
@@ -6043,7 +6043,7 @@
         0.033196188509464264
       ],
       "driver_bone": "Arch_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.181213583345001,
@@ -6094,7 +6094,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.878936983204935,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.004932395689325684
+      "max_signed_distance_m": -0.004932395689325686
     },
     {
       "mesh_index": 265,
@@ -6117,7 +6117,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.8945438545027868,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029711835156867104
+      "max_signed_distance_m": -0.0029711835156867117
     },
     {
       "mesh_index": 266,
@@ -6186,7 +6186,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.3215582094362794,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029999403240718787
+      "max_signed_distance_m": -0.0029999403240718796
     },
     {
       "mesh_index": 269,
@@ -6324,7 +6324,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.998060439915137,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029999300973519777
+      "max_signed_distance_m": -0.002999930097351978
     },
     {
       "mesh_index": 275,
@@ -6342,12 +6342,12 @@
         0.056938864290714264
       ],
       "driver_bone": "Arch_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 4.338410193003551,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.001712520786211898
+      "max_signed_distance_m": -0.0017125207862118974
     },
     {
       "mesh_index": 276,
@@ -6365,12 +6365,12 @@
         0.05538739264011383
       ],
       "driver_bone": "Arch_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 4.163956592509777,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.001858550928180764
+      "max_signed_distance_m": -0.0018585509281807632
     },
     {
       "mesh_index": 277,
@@ -6531,7 +6531,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.5876886143325675,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002999926918153709
+      "max_signed_distance_m": -0.00299992691815371
     },
     {
       "mesh_index": 284,
@@ -6554,7 +6554,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.452556265554342,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029999300158173943
+      "max_signed_distance_m": -0.002999930015817396
     },
     {
       "mesh_index": 285,
@@ -6623,7 +6623,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.8817047313045627,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0032460126058814036
+      "max_signed_distance_m": -0.0032460126058814053
     },
     {
       "mesh_index": 288,
@@ -6646,7 +6646,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.846399944389183,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.003255234035865513
+      "max_signed_distance_m": -0.0032552340358655138
     },
     {
       "mesh_index": 289,
@@ -6669,7 +6669,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.388376239740122,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002104563472729121
+      "max_signed_distance_m": -0.0021045634727291204
     },
     {
       "mesh_index": 290,
@@ -6692,7 +6692,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 4.417343356971307,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029242692859924296
+      "max_signed_distance_m": -0.002924269285992428
     },
     {
       "mesh_index": 291,
@@ -6710,12 +6710,12 @@
         0.05652054399251938
       ],
       "driver_bone": "Arch_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 4.93271314018784,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.001189255711813523
+      "max_signed_distance_m": -0.0011892557118135226
     },
     {
       "mesh_index": 292,
@@ -6733,7 +6733,7 @@
         0.03731619566679001
       ],
       "driver_bone": "Arch_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 4.249839204286076,
@@ -6830,7 +6830,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 4.116188962107064,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002999916250241192
+      "max_signed_distance_m": -0.002999916250241194
     },
     {
       "mesh_index": 297,
@@ -6853,7 +6853,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.4836083828867954,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002816710968359532
+      "max_signed_distance_m": -0.0028167109683595345
     },
     {
       "mesh_index": 298,
@@ -6899,7 +6899,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.5722837625513173,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002945573250475276
+      "max_signed_distance_m": -0.0029455732504752754
     },
     {
       "mesh_index": 300,
@@ -6922,7 +6922,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.488997653219218,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002962781004206527
+      "max_signed_distance_m": -0.0029627810042065256
     },
     {
       "mesh_index": 301,
@@ -6991,7 +6991,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.085720507991305,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002980753132814549
+      "max_signed_distance_m": -0.0029807531328145493
     },
     {
       "mesh_index": 304,
@@ -7037,7 +7037,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.04518972228317,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0028189790877903385
+      "max_signed_distance_m": -0.002818979087790337
     },
     {
       "mesh_index": 306,
@@ -7060,7 +7060,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.3844811254933442,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029998877486669957
+      "max_signed_distance_m": -0.002999887748666997
     },
     {
       "mesh_index": 307,
@@ -7078,7 +7078,7 @@
         0.060182616114616394
       ],
       "driver_bone": "Arch_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 4.803664965055924,
@@ -7101,7 +7101,7 @@
         0.057642318308353424
       ],
       "driver_bone": "Arch_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 5.055864914159795,
@@ -7129,7 +7129,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 1.5345241903494518,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0030000674274863162
+      "max_signed_distance_m": -0.003000067427486315
     },
     {
       "mesh_index": 310,
@@ -7290,7 +7290,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.5575185515581316,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002994025247094247
+      "max_signed_distance_m": -0.0029940252470942465
     },
     {
       "mesh_index": 317,
@@ -7405,7 +7405,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.9072749579754684,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029995128723697426
+      "max_signed_distance_m": -0.002999512872369743
     },
     {
       "mesh_index": 322,
@@ -7428,7 +7428,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.6279315895271034,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002997405609054354
+      "max_signed_distance_m": -0.002997405609054353
     },
     {
       "mesh_index": 323,
@@ -7446,12 +7446,12 @@
         0.048092857003211975
       ],
       "driver_bone": "Arch_Rot_L",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_left",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.6746426355309376,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0017268366747756757
+      "max_signed_distance_m": -0.0017268366747756763
     },
     {
       "mesh_index": 324,
@@ -7469,7 +7469,7 @@
         0.04229059815406799
       ],
       "driver_bone": "Arch_Rot_R",
-      "driver_type": "direct_joint",
+      "driver_type": "foot_chain_right",
       "driver_weight_entropy": -0.0,
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.551650260422533,
@@ -7543,7 +7543,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.5871125591381743,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.002999885089798574
+      "max_signed_distance_m": -0.0029998850897985743
     },
     {
       "mesh_index": 328,
@@ -7566,7 +7566,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 3.507635394623403,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029998892646760427
+      "max_signed_distance_m": -0.002999889264676042
     },
     {
       "mesh_index": 329,
@@ -7612,7 +7612,7 @@
       "dominant_driver_mass": 1.0,
       "extent_aspect_ratio": 2.2287164251570726,
       "outside_vertices": 0,
-      "max_signed_distance_m": -0.0029921042448086345
+      "max_signed_distance_m": -0.002992104244808633
     }
   ]
 }

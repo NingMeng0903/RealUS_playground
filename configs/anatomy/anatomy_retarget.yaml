@@ -8,24 +8,32 @@ include_collections:
   - Urinary_Sys
   - Skeletal_Sys
 
-# Bones are rigid anatomy pieces. Keep soft LBS for vessels/nerves/organs, but
-# collapse skeletal meshes to one driving SMPL-X joint to avoid long-bone stretch.
+# Bones are rigid anatomy pieces. v4 keeps Blender sparse weights for long
+# bones/limbs (preserve_source_weights) while smaller rigid pieces may still
+# collapse to a single SMPL-X joint via rigid_mesh_to_smplx.
 rigid_collections:
   - Skeletal_Sys
 
-rigid_mesh_to_smplx:
-  Humerus_L: left_shoulder
-  Humerus_R: right_shoulder
-  Radius_L: left_elbow
-  Radius_R: right_elbow
-  Ulna_L: left_elbow
-  Ulna_R: right_elbow
-  Femur_L: left_hip
-  Femur_R: right_hip
-  Tibia_L: left_knee
-  Tibia_R: right_knee
-  Fibula_L: left_knee
-  Fibula_R: right_knee
+preserve_source_weights:
+  - Humerus_L
+  - Humerus_R
+  - Radius_L
+  - Radius_R
+  - Ulna_L
+  - Ulna_R
+  - Femur_L
+  - Femur_R
+  - Tibia_L
+  - Tibia_R
+  - Fibula_L
+  - Fibula_R
+  - Patella_L
+  - Patella_R
+  - Interspinous_Ligament
+  - Supraspinous_Ligament
+  - Nuchal_Ligament
+
+rigid_mesh_to_smplx: {}
 
 exclude_meshes:
   - Body
@@ -190,11 +198,23 @@ derived_drivers:
     type: three_point_frame
     joints: [spine3, right_collar, right_shoulder]
   patella_left:
-    type: limb_plane
-    joints: [left_hip, left_knee, left_ankle]
+    type: knee_chain_segment
+    joints: [left_knee, left_ankle]
   patella_right:
-    type: limb_plane
-    joints: [right_hip, right_knee, right_ankle]
+    type: knee_chain_segment
+    joints: [right_knee, right_ankle]
+  knee_chain_left:
+    type: endpoint_segment
+    joints: [left_knee, left_ankle]
+  knee_chain_right:
+    type: endpoint_segment
+    joints: [right_knee, right_ankle]
+  foot_chain_left:
+    type: endpoint_segment
+    joints: [left_ankle, left_foot]
+  foot_chain_right:
+    type: endpoint_segment
+    joints: [right_ankle, right_foot]
   forearm_twist_left:
     type: rotation_interpolation
     joints: [left_elbow, left_wrist]

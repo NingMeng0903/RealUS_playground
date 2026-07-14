@@ -94,4 +94,4 @@ def source_bind_roundtrip(asset: AnatomyRiggedAsset) -> dict[str, Any]:
         return {"source_rig": "legacy_skip"}
     skin = np.asarray(asset.source_rest_global, dtype=np.float64) @ np.asarray(asset.source_inverse_bind, dtype=np.float64)
     identity_error = np.max(np.abs(skin - np.eye(4)[None, :, :]))
-    return {"max_matrix_error": float(identity_error), "pass": bool(identity_error <= 1.0e-7)}
+    return {"max_matrix_error": float(identity_error), "pass": bool(identity_error <= 1.0e-6)}

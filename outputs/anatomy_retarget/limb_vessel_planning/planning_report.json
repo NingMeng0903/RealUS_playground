@@ -729,8 +729,8 @@
     "faces": 28192
   },
   "L_COM_FEM_V": {
-    "vertices": 93,
-    "faces": 167,
+    "vertices": 1034,
+    "faces": 2004,
     "color_rgb": [
       0,
       40,
@@ -738,53 +738,26 @@
     ]
   },
   "L_DEEP_FEM_V": {
-    "vertices": 95,
-    "faces": 174,
+    "vertices": 9,
+    "faces": 3,
     "color_rgb": [
       255,
       85,
       0
     ]
   },
-  "L_PERONEAL_V": {
-    "vertices": 454,
-    "faces": 880,
-    "color_rgb": [
-      210,
-      70,
-      230
-    ]
-  },
-  "L_POPV": {
-    "vertices": 16,
-    "faces": 16,
-    "color_rgb": [
-      30,
-      210,
-      110
-    ]
-  },
   "L_POST_TIB_V": {
-    "vertices": 403,
-    "faces": 788,
+    "vertices": 34,
+    "faces": 34,
     "color_rgb": [
       245,
       200,
       45
     ]
   },
-  "L_SAPH_V": {
-    "vertices": 90,
-    "faces": 145,
-    "color_rgb": [
-      255,
-      0,
-      180
-    ]
-  },
   "L_SUPFEMV": {
-    "vertices": 146,
-    "faces": 265,
+    "vertices": 14,
+    "faces": 11,
     "color_rgb": [
       0,
       210,
@@ -792,8 +765,8 @@
     ]
   },
   "R_COM_FEM_V": {
-    "vertices": 80,
-    "faces": 142,
+    "vertices": 8798,
+    "faces": 17234,
     "color_rgb": [
       0,
       25,
@@ -801,8 +774,8 @@
     ]
   },
   "R_DEEP_FEM_V": {
-    "vertices": 134,
-    "faces": 245,
+    "vertices": 133,
+    "faces": 211,
     "color_rgb": [
       190,
       55,
@@ -810,44 +783,26 @@
     ]
   },
   "R_PERONEAL_V": {
-    "vertices": 460,
-    "faces": 890,
+    "vertices": 865,
+    "faces": 1670,
     "color_rgb": [
       150,
       45,
       170
     ]
   },
-  "R_POPV": {
-    "vertices": 18,
-    "faces": 19,
-    "color_rgb": [
-      20,
-      150,
-      80
-    ]
-  },
   "R_POST_TIB_V": {
-    "vertices": 397,
-    "faces": 772,
+    "vertices": 823,
+    "faces": 1553,
     "color_rgb": [
       190,
       145,
       25
     ]
   },
-  "R_SAPH_V": {
-    "vertices": 52,
-    "faces": 85,
-    "color_rgb": [
-      190,
-      0,
-      135
-    ]
-  },
   "R_SUPFEMV": {
-    "vertices": 148,
-    "faces": 247,
+    "vertices": 216,
+    "faces": 355,
     "color_rgb": [
       0,
       155,
@@ -867,87 +822,24 @@
       "Tibia_L",
       "Tibia_R"
     ],
-    "leg_bone_marker_points_tpose": 661,
-    "leg_bone_marker_points_posed": 661
+    "leg_bone_marker_points_tpose": 663,
+    "leg_bone_marker_points_posed": 663
   },
   "CENTERLINE_JUNCTIONS": {
-    "L": {
-      "hip_saph": {
-        "xyz": [
-          0.06613591313362122,
-          -0.5036506652832031,
-          0.015302327461540699
-        ],
-        "max_delta_m": 0.0
-      },
-      "hip_deep": {
-        "xyz": [
-          0.06458871811628342,
-          -0.5333999395370483,
-          0.013319628313183784
-        ],
-        "max_delta_m": 0.029855389147996902
-      },
-      "hip_branch_sep_m": 0.029855389147996902,
-      "knee": {
-        "xyz": [
-          0.10941477119922638,
-          -0.8322731256484985,
-          -0.04195898026227951
-        ],
-        "max_delta_m": 0.0
-      },
-      "calf": {
-        "xyz": [
-          0.10569975525140762,
-          -0.8670873641967773,
-          -0.05688699707388878
-        ],
-        "max_delta_m": 0.0
-      },
-      "pop_mesh_bounds": {
-        "pop_upper_y": -0.8282541611790657,
-        "pop_lower_y": -0.8811813086271286,
-        "knee_joint_y": -0.8499137163162231,
-        "pop_upper_source": "knee_local_band",
-        "pop_lower_source": "knee_local_band",
-        "knee_j_y": -0.8322731256484985,
-        "calf_j_y": -0.8670873641967773,
-        "calf_junction_source": "mesh_band_median"
-      },
-      "calf_junction_source": "mesh_band_median"
-    },
     "R": {
-      "hip_saph": {
-        "xyz": [
-          -0.06682857871055603,
-          -0.49820855259895325,
-          0.01040225476026535
-        ],
-        "max_delta_m": 0.0
-      },
-      "hip_deep": {
-        "xyz": [
-          -0.0903087630867958,
-          -0.5262283682823181,
-          0.012955848127603531
-        ],
-        "max_delta_m": 0.0366462804377079
-      },
-      "hip_branch_sep_m": 0.0366462804377079,
       "knee": {
         "xyz": [
-          -0.09754202514886856,
-          -0.8207135200500488,
-          -0.03261442855000496
+          -0.04670378938317299,
+          -0.5866376161575317,
+          -0.025505438446998596
         ],
         "max_delta_m": 0.0
       },
       "calf": {
         "xyz": [
-          -0.09646257758140564,
-          -0.8664723634719849,
-          -0.05091802030801773
+          -0.10658034682273865,
+          -0.8652955889701843,
+          0.007933221757411957
         ],
         "max_delta_m": 0.0
       },
@@ -957,8 +849,8 @@
         "knee_joint_y": -0.8435583114624023,
         "pop_upper_source": "knee_local_band",
         "pop_lower_source": "knee_local_band",
-        "knee_j_y": -0.8207135200500488,
-        "calf_j_y": -0.8664723634719849,
+        "knee_j_y": -0.5866376161575317,
+        "calf_j_y": -0.8652955889701843,
         "calf_junction_source": "mesh_band_median"
       },
       "calf_junction_source": "mesh_band_median"

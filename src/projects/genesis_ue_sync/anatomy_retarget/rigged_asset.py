@@ -44,6 +44,7 @@ class AnatomyRiggedAsset:
     source_bone_driver_types: list[str] | None = None
     rigid_component_ids: np.ndarray | None = None
     leg_material_coordinates: np.ndarray | None = None
+    source_segment_coupling: np.ndarray | None = None
     registration_reference: np.ndarray | None = None
     pose_cache_vertices: np.ndarray | None = None
     pose_cache_hash: str = ""
@@ -184,6 +185,9 @@ def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
             leg_material_coordinates=np.asarray(
                 asset.leg_material_coordinates if asset.leg_material_coordinates is not None else [], dtype=np.float32
             ).reshape(-1, 3),
+            source_segment_coupling=np.asarray(
+                asset.source_segment_coupling if asset.source_segment_coupling is not None else [], dtype=np.float32
+            ).reshape(-1, 4, 4),
             registration_reference=np.asarray(
                 asset.registration_reference if asset.registration_reference is not None else [], dtype=np.float32
             ).reshape(-1, 3),
@@ -269,6 +273,11 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
         ),
         rigid_component_ids=np.asarray(data["rigid_component_ids"], dtype=np.int32) if "rigid_component_ids" in data.files else None,
         leg_material_coordinates=np.asarray(data["leg_material_coordinates"], dtype=np.float32).reshape(-1, 3) if "leg_material_coordinates" in data.files and data["leg_material_coordinates"].size else None,
+        source_segment_coupling=(
+            np.asarray(data["source_segment_coupling"], dtype=np.float32).reshape(-1, 4, 4)
+            if "source_segment_coupling" in data.files and data["source_segment_coupling"].size
+            else None
+        ),
         registration_reference=np.asarray(data["registration_reference"], dtype=np.float32).reshape(-1, 3) if "registration_reference" in data.files and data["registration_reference"].size else None,
         pose_cache_vertices=np.asarray(data["pose_cache_vertices"], dtype=np.float32).reshape(-1, 3) if "pose_cache_vertices" in data.files and data["pose_cache_vertices"].size else None,
         pose_cache_hash=str(data["pose_cache_hash"].item()) if "pose_cache_hash" in data.files else "",

@@ -174,9 +174,78 @@ def _endpoint_segment_delta(
     proximal_delta: np.ndarray,
 ) -> np.ndarray:
     """Rigid transform for a limb segment; no blended global translations."""
+    if float(np.linalg.norm(rest_b - rest_a)) < 1.0e-8:
+        return np.eye(4, dtype=np.float64)
     F0 = _segment_frame(rest_a, rest_b, rest_reference_x)
     F1 = _segment_frame(pose_a, pose_b, proximal_delta[:3, :3] @ rest_reference_x)
     return F1 @ np.linalg.inv(F0)
+
+
+def _endpoint_segment_pose_frame(
+    *,
+    rest_a: np.ndarray,
+    rest_b: np.ndarray,
+    pose_a: np.ndarray,
+    pose_b: np.ndarray,
+    rest_reference_x: np.ndarray,
+    proximal_delta: np.ndarray,
+) -> np.ndarray:
+    """Return the posed segment frame ``F_seg(pose)`` (not the delta)."""
+    return _segment_frame(
+        pose_a,
+        pose_b,
+        proximal_delta[:3, :3] @ rest_reference_x,
+    )
+
+
+def _uses_segment_coupling(driver_type: str) -> bool:
+    return (
+        driver_type.startswith("forearm_segment_")
+        or driver_type.startswith("shin_segment_")
+        or driver_type.startswith("knee_chain_")
+        or driver_type.startswith("foot_chain_")
+        or driver_type in {"head_segment", "rib_segment"}
+        or driver_type.startswith("scapula_")
+        or driver_type.startswith("patella_")
+    )
+
+
+def _segment_pose_frame_for_bone(
+    *,
+    bi: int,
+    driver_type: str,
+    asset: AnatomyRiggedAsset,
+    rest_points: np.ndarray,
+    pose_points: np.ndarray,
+    joint_index: dict[str, int],
+    joint_delta: np.ndarray,
+) -> np.ndarray:
+    a = int(asset.source_bone_smplx_a[bi])
+    b = int(asset.source_bone_smplx_b[bi])
+    reference_x = np.asarray(asset.source_rest_global[bi], dtype=np.float64)[:3, 0]
+    if float(np.linalg.norm(rest_points[b] - rest_points[a])) < 1.0e-8:
+        raise ValueError(f"degenerate segment joints for bone index {bi}")
+    if (
+        driver_type.startswith("forearm_segment_")
+        or driver_type.startswith("shin_segment_")
+        or driver_type.startswith("knee_chain_")
+        or driver_type.startswith("foot_chain_")
+        or driver_type in {"head_segment", "rib_segment"}
+        or driver_type.startswith("patella_")
+    ):
+        return _endpoint_segment_pose_frame(
+            rest_a=rest_points[a],
+            rest_b=rest_points[b],
+            pose_a=pose_points[a],
+            pose_b=pose_points[b],
+            rest_reference_x=reference_x,
+            proximal_delta=joint_delta[a],
+        )
+    if driver_type.startswith("scapula_"):
+        side = "left" if driver_type.endswith("left") else "right"
+        s, c, h = (joint_index["spine3"], joint_index[f"{side}_collar"], joint_index[f"{side}_shoulder"])
+        return _rigid_frame(pose_points[h], pose_points[c], pose_points[s])
+    raise ValueError(f"unsupported segment pose frame for driver_type={driver_type}")
 
 
 def source_bone_skinning_transforms(
@@ -209,6 +278,8 @@ def source_bone_skinning_transforms(
         if (
             driver_type.startswith("forearm_segment_")
             or driver_type.startswith("shin_segment_")
+            or driver_type.startswith("knee_chain_")
+            or driver_type.startswith("foot_chain_")
             or driver_type in {"head_segment", "rib_segment"}
         ):
             reference_x = np.asarray(asset.source_rest_global[bi], dtype=np.float64)[:3, 0]
@@ -225,16 +296,49 @@ def source_bone_skinning_transforms(
             source_delta[bi] = (F1 @ np.linalg.inv(F0)).astype(np.float32)
         elif driver_type.startswith("patella_"):
             side = "left" if driver_type.endswith("left") else "right"
-            hip, knee, ankle = (joint_index[f"{side}_hip"], joint_index[f"{side}_knee"], joint_index[f"{side}_ankle"])
-            F0 = _rigid_frame(rest_points[knee], rest_points[ankle], rest_points[hip])
-            F1 = _rigid_frame(pose_points[knee], pose_points[ankle], pose_points[hip])
-            source_delta[bi] = (F1 @ np.linalg.inv(F0)).astype(np.float32)
+            knee, ankle = (joint_index[f"{side}_knee"], joint_index[f"{side}_ankle"])
+            reference_x = np.asarray(asset.source_rest_global[bi], dtype=np.float64)[:3, 0]
+            source_delta[bi] = _endpoint_segment_delta(
+                rest_a=rest_points[knee], rest_b=rest_points[ankle],
+                pose_a=pose_points[knee], pose_b=pose_points[ankle],
+                rest_reference_x=reference_x, proximal_delta=joint_delta[knee],
+            ).astype(np.float32)
         elif a != b:
             source_delta[bi] = _interpolate_rigid(joint_delta[a], joint_delta[b], alpha)
         else:
             source_delta[bi] = joint_delta[a].astype(np.float32)
-    source_pose_global = source_delta @ np.asarray(asset.source_rest_global, dtype=np.float32)
-    return source_pose_global @ np.asarray(asset.source_inverse_bind, dtype=np.float32)
+
+    rest_global_bones = np.asarray(asset.source_rest_global, dtype=np.float32)
+    coupling = (
+        np.asarray(asset.source_segment_coupling, dtype=np.float32)
+        if asset.source_segment_coupling is not None and asset.source_segment_coupling.size
+        else None
+    )
+    posed_global = np.empty_like(rest_global_bones)
+    for bi, driver_type in enumerate(types):
+        use_coupling = (
+            coupling is not None
+            and coupling.shape[0] == len(asset.source_bone_names)
+            and _uses_segment_coupling(driver_type)
+            and float(np.max(np.abs(coupling[bi] - np.eye(4, dtype=np.float32)))) > 1.0e-6
+        )
+        if use_coupling:
+            try:
+                F_pose = _segment_pose_frame_for_bone(
+                    bi=bi,
+                    driver_type=driver_type,
+                    asset=asset,
+                    rest_points=rest_points,
+                    pose_points=pose_points,
+                    joint_index=joint_index,
+                    joint_delta=joint_delta,
+                )
+                posed_global[bi] = (F_pose @ np.asarray(coupling[bi], dtype=np.float64)).astype(np.float32)
+            except ValueError:
+                posed_global[bi] = source_delta[bi] @ rest_global_bones[bi]
+        else:
+            posed_global[bi] = source_delta[bi] @ rest_global_bones[bi]
+    return posed_global @ np.asarray(asset.source_inverse_bind, dtype=np.float32)
 
 
 def skin_vertices(
