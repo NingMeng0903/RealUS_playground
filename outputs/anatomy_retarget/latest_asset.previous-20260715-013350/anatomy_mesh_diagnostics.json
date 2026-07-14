@@ -1,0 +1,6294 @@
+{
+  "mesh_count": 331,
+  "meshes": [
+    {
+      "mesh_index": 0,
+      "mesh": "Adrenal_Gland_L",
+      "tissue": "organ",
+      "vertices": 250,
+      "centroid_m": [
+        0.06329476833343506,
+        -0.09722188115119934,
+        -0.0058484203182160854
+      ],
+      "extent_m": [
+        0.04551970958709717,
+        0.02251635491847992,
+        0.03946453332901001
+      ],
+      "driver_bone": "Rib_Name_L12",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.07559724011618255
+    },
+    {
+      "mesh_index": 1,
+      "mesh": "Adrenal_Gland_R",
+      "tissue": "organ",
+      "vertices": 250,
+      "centroid_m": [
+        -0.05154229328036308,
+        -0.10526005923748016,
+        -0.008005443029105663
+      ],
+      "extent_m": [
+        0.04679325222969055,
+        0.02222287654876709,
+        0.038510214537382126
+      ],
+      "driver_bone": "Rib_Bone_R12",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.08571711480695071
+    },
+    {
+      "mesh_index": 2,
+      "mesh": "Amygdala_L",
+      "tissue": "nerve",
+      "vertices": 162,
+      "centroid_m": [
+        0.028260543942451477,
+        0.2926633358001709,
+        -0.0016155128832906485
+      ],
+      "extent_m": [
+        0.00902811624109745,
+        0.00593334436416626,
+        0.009792573750019073
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.031136259550542562
+    },
+    {
+      "mesh_index": 3,
+      "mesh": "Amygdala_R",
+      "tissue": "nerve",
+      "vertices": 162,
+      "centroid_m": [
+        -0.04048801213502884,
+        0.2920190989971161,
+        -0.0024178752209991217
+      ],
+      "extent_m": [
+        0.008136704564094543,
+        0.006327927112579346,
+        0.009725136682391167
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.01982381673982375
+    },
+    {
+      "mesh_index": 4,
+      "mesh": "Anterior_Longitudinal_Ligament",
+      "tissue": "bone",
+      "vertices": 954,
+      "centroid_m": [
+        0.002642587060108781,
+        0.014017431065440178,
+        -0.006754730362445116
+      ],
+      "extent_m": [
+        0.047193754464387894,
+        0.48990190029144287,
+        0.07421264797449112
+      ],
+      "driver_bone": "Spine_C4",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.03157610797367487
+    },
+    {
+      "mesh_index": 5,
+      "mesh": "Appendix",
+      "tissue": "organ",
+      "vertices": 90,
+      "centroid_m": [
+        -0.030993543565273285,
+        -0.3713937997817993,
+        0.04123414680361748
+      ],
+      "extent_m": [
+        0.014887811616063118,
+        0.012294232845306396,
+        0.005900796502828598
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0780359344268863
+    },
+    {
+      "mesh_index": 6,
+      "mesh": "Artery",
+      "tissue": "vessel",
+      "vertices": 14120,
+      "centroid_m": [
+        -0.00024782243417575955,
+        -0.20707261562347412,
+        0.008618665859103203
+      ],
+      "extent_m": [
+        1.7453826665878296,
+        1.640784502029419,
+        0.289827823638916
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0012281684020313218
+    },
+    {
+      "mesh_index": 7,
+      "mesh": "Autonomic",
+      "tissue": "nerve",
+      "vertices": 3897,
+      "centroid_m": [
+        0.0014574243687093258,
+        -0.05292613431811333,
+        -0.021247923374176025
+      ],
+      "extent_m": [
+        0.09954584389925003,
+        0.6640426516532898,
+        0.08985531330108643
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.02338851217455143
+    },
+    {
+      "mesh_index": 8,
+      "mesh": "Basal_Ganglia",
+      "tissue": "nerve",
+      "vertices": 3454,
+      "centroid_m": [
+        -0.005156621336936951,
+        0.3092583417892456,
+        -0.02639784663915634
+      ],
+      "extent_m": [
+        0.07212017476558685,
+        0.03350698947906494,
+        0.04855236038565636
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.022230270632188426
+    },
+    {
+      "mesh_index": 9,
+      "mesh": "Bladder",
+      "tissue": "organ",
+      "vertices": 377,
+      "centroid_m": [
+        -9.303085244027898e-05,
+        -0.44594693183898926,
+        0.033064208924770355
+      ],
+      "extent_m": [
+        0.06458061933517456,
+        0.04979601502418518,
+        0.058755870908498764
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05907153763905889
+    },
+    {
+      "mesh_index": 10,
+      "mesh": "C1_Atlas",
+      "tissue": "bone",
+      "vertices": 692,
+      "centroid_m": [
+        0.01004598569124937,
+        0.25084853172302246,
+        -0.016553645953536034
+      ],
+      "extent_m": [
+        0.09273474663496017,
+        0.02757306396961212,
+        0.052588045597076416
+      ],
+      "driver_bone": "Spine_C1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.00959208278103372
+    },
+    {
+      "mesh_index": 11,
+      "mesh": "C2_Axis",
+      "tissue": "bone",
+      "vertices": 886,
+      "centroid_m": [
+        0.009991631843149662,
+        0.2318885177373886,
+        -0.014203653670847416
+      ],
+      "extent_m": [
+        0.07902693003416061,
+        0.04930165410041809,
+        0.06282282620668411
+      ],
+      "driver_bone": "Spine_C2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.013374840536152403
+    },
+    {
+      "mesh_index": 12,
+      "mesh": "C3",
+      "tissue": "bone",
+      "vertices": 886,
+      "centroid_m": [
+        0.007225761655718088,
+        0.20567572116851807,
+        -0.01690278761088848
+      ],
+      "extent_m": [
+        0.05392775312066078,
+        0.0243208110332489,
+        0.056855637580156326
+      ],
+      "driver_bone": "Spine_C3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.023603037125973836
+    },
+    {
+      "mesh_index": 13,
+      "mesh": "C4",
+      "tissue": "bone",
+      "vertices": 886,
+      "centroid_m": [
+        0.00406887149438262,
+        0.1814723163843155,
+        -0.01924107037484646
+      ],
+      "extent_m": [
+        0.05578619986772537,
+        0.03080931305885315,
+        0.05692081153392792
+      ],
+      "driver_bone": "Spine_C4",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.024480704580704966
+    },
+    {
+      "mesh_index": 14,
+      "mesh": "C5",
+      "tissue": "bone",
+      "vertices": 886,
+      "centroid_m": [
+        0.0009254837641492486,
+        0.16077247262001038,
+        -0.023136816918849945
+      ],
+      "extent_m": [
+        0.05833066999912262,
+        0.03455270826816559,
+        0.06159387156367302
+      ],
+      "driver_bone": "Spine_C5",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.02387389010348587
+    },
+    {
+      "mesh_index": 15,
+      "mesh": "C6",
+      "tissue": "bone",
+      "vertices": 886,
+      "centroid_m": [
+        -0.0025245193392038345,
+        0.1398075670003891,
+        -0.026839807629585266
+      ],
+      "extent_m": [
+        0.06270335614681244,
+        0.03736710548400879,
+        0.06315122544765472
+      ],
+      "driver_bone": "Spine_C6",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.027549035311778523
+    },
+    {
+      "mesh_index": 16,
+      "mesh": "C7",
+      "tissue": "bone",
+      "vertices": 906,
+      "centroid_m": [
+        -0.005239452701061964,
+        0.12078455835580826,
+        -0.03207853063941002
+      ],
+      "extent_m": [
+        0.08022661507129669,
+        0.03539296239614487,
+        0.07208825647830963
+      ],
+      "driver_bone": "Spine_C7",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.026417451136665836
+    },
+    {
+      "mesh_index": 17,
+      "mesh": "Calcaneus_L",
+      "tissue": "bone",
+      "vertices": 370,
+      "centroid_m": [
+        0.10444624722003937,
+        -1.2936806678771973,
+        -0.04707948863506317
+      ],
+      "extent_m": [
+        0.0637771412730217,
+        0.04938077926635742,
+        0.09880076348781586
+      ],
+      "driver_bone": "Ankle_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002976611114360944
+    },
+    {
+      "mesh_index": 18,
+      "mesh": "Calcaneus_R",
+      "tissue": "bone",
+      "vertices": 370,
+      "centroid_m": [
+        -0.10621973127126694,
+        -1.3008372783660889,
+        -0.04495580866932869
+      ],
+      "extent_m": [
+        0.06743786484003067,
+        0.05246245861053467,
+        0.10528260469436646
+      ],
+      "driver_bone": "Ankle_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002999982879462085
+    },
+    {
+      "mesh_index": 19,
+      "mesh": "Canine",
+      "tissue": "bone",
+      "vertices": 106,
+      "centroid_m": [
+        0.009650059044361115,
+        0.1961715966463089,
+        0.05246732756495476
+      ],
+      "extent_m": [
+        0.00640133349224925,
+        0.0192452073097229,
+        0.007612448185682297
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029141664746785293
+    },
+    {
+      "mesh_index": 20,
+      "mesh": "Canine_2",
+      "tissue": "bone",
+      "vertices": 106,
+      "centroid_m": [
+        -0.009646335616707802,
+        0.19577310979366302,
+        0.053687095642089844
+      ],
+      "extent_m": [
+        0.00757380947470665,
+        0.018976882100105286,
+        0.010408159345388412
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029572526462652796
+    },
+    {
+      "mesh_index": 21,
+      "mesh": "Canine_3",
+      "tissue": "bone",
+      "vertices": 106,
+      "centroid_m": [
+        0.014232010580599308,
+        0.20981469750404358,
+        0.06189493089914322
+      ],
+      "extent_m": [
+        0.00731364730745554,
+        0.022912800312042236,
+        0.007036976516246796
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029182419799188984
+    },
+    {
+      "mesh_index": 22,
+      "mesh": "Canine_4",
+      "tissue": "bone",
+      "vertices": 106,
+      "centroid_m": [
+        -0.016691194847226143,
+        0.20997688174247742,
+        0.06114079803228378
+      ],
+      "extent_m": [
+        0.0070613231509923935,
+        0.023049846291542053,
+        0.007295403629541397
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002948337730535315
+    },
+    {
+      "mesh_index": 23,
+      "mesh": "Capitate_L",
+      "tissue": "bone",
+      "vertices": 218,
+      "centroid_m": [
+        0.7328301668167114,
+        0.032219383865594864,
+        -0.06346894055604935
+      ],
+      "extent_m": [
+        0.027961373329162598,
+        0.01997731253504753,
+        0.01864985004067421
+      ],
+      "driver_bone": "Wrist_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0055442821139530495
+    },
+    {
+      "mesh_index": 24,
+      "mesh": "Capitate_R",
+      "tissue": "bone",
+      "vertices": 218,
+      "centroid_m": [
+        -0.7331728935241699,
+        0.0336160808801651,
+        -0.06320467591285706
+      ],
+      "extent_m": [
+        0.028667211532592773,
+        0.020283443853259087,
+        0.019008804112672806
+      ],
+      "driver_bone": "Wrist_Rotate_R1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.005980344208964407
+    },
+    {
+      "mesh_index": 25,
+      "mesh": "Central_Incisor",
+      "tissue": "bone",
+      "vertices": 102,
+      "centroid_m": [
+        0.0009530338575132191,
+        0.19848015904426575,
+        0.05678413435816765
+      ],
+      "extent_m": [
+        0.0070714401081204414,
+        0.018910422921180725,
+        0.008029669523239136
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029553247892065843
+    },
+    {
+      "mesh_index": 26,
+      "mesh": "Central_Incisor_2",
+      "tissue": "bone",
+      "vertices": 102,
+      "centroid_m": [
+        -0.0011340060736984015,
+        0.19824734330177307,
+        0.05732746794819832
+      ],
+      "extent_m": [
+        0.007226270157843828,
+        0.018677696585655212,
+        0.008714642375707626
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029554831162563453
+    },
+    {
+      "mesh_index": 27,
+      "mesh": "Central_Incisor_3",
+      "tissue": "bone",
+      "vertices": 102,
+      "centroid_m": [
+        0.0027615781873464584,
+        0.2080441415309906,
+        0.06577842682600021
+      ],
+      "extent_m": [
+        0.010522191412746906,
+        0.022397801280021667,
+        0.009622454643249512
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029602989234582965
+    },
+    {
+      "mesh_index": 28,
+      "mesh": "Central_Incisor_4",
+      "tissue": "bone",
+      "vertices": 102,
+      "centroid_m": [
+        -0.003845689119771123,
+        0.20808610320091248,
+        0.06571638584136963
+      ],
+      "extent_m": [
+        0.010459885001182556,
+        0.022326618432998657,
+        0.00964265689253807
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029601144973032305
+    },
+    {
+      "mesh_index": 29,
+      "mesh": "Cerebellum",
+      "tissue": "nerve",
+      "vertices": 9076,
+      "centroid_m": [
+        -3.820656274911016e-05,
+        0.28425097465515137,
+        -0.049320757389068604
+      ],
+      "extent_m": [
+        0.11050552129745483,
+        0.06054362654685974,
+        0.06029917299747467
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.008699025849053806
+    },
+    {
+      "mesh_index": 30,
+      "mesh": "Cervical_Nerves_L",
+      "tissue": "nerve",
+      "vertices": 2243,
+      "centroid_m": [
+        0.32181620597839355,
+        0.09807360172271729,
+        -0.03318639099597931
+      ],
+      "extent_m": [
+        0.8534024953842163,
+        0.2685616910457611,
+        0.16185297071933746
+      ],
+      "driver_bone": "Shoulder_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0009999341759911646
+    },
+    {
+      "mesh_index": 31,
+      "mesh": "Cervical_Nerves_R",
+      "tissue": "nerve",
+      "vertices": 2243,
+      "centroid_m": [
+        -0.31643393635749817,
+        0.10128569602966309,
+        -0.033160172402858734
+      ],
+      "extent_m": [
+        0.8754205703735352,
+        0.2685101628303528,
+        0.15990106761455536
+      ],
+      "driver_bone": "Shoulder_Rotate_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0009995981663150377
+    },
+    {
+      "mesh_index": 32,
+      "mesh": "Clavicle_L",
+      "tissue": "bone",
+      "vertices": 385,
+      "centroid_m": [
+        0.08749450743198395,
+        0.08418740332126617,
+        -0.005978417582809925
+      ],
+      "extent_m": [
+        0.11426763981580734,
+        0.103058822453022,
+        0.05365521460771561
+      ],
+      "driver_bone": "Clavicle_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029956753085604985
+    },
+    {
+      "mesh_index": 33,
+      "mesh": "Clavicle_R",
+      "tissue": "bone",
+      "vertices": 385,
+      "centroid_m": [
+        -0.08685151487588882,
+        0.08192901313304901,
+        -0.009922478348016739
+      ],
+      "extent_m": [
+        0.1005689948797226,
+        0.10620255023241043,
+        0.04889294132590294
+      ],
+      "driver_bone": "Clavicle_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029952361152820644
+    },
+    {
+      "mesh_index": 34,
+      "mesh": "Coccygeal_Nerve_L",
+      "tissue": "nerve",
+      "vertices": 162,
+      "centroid_m": [
+        0.006055407226085663,
+        -0.45799019932746887,
+        -0.03694906458258629
+      ],
+      "extent_m": [
+        0.015803297981619835,
+        0.12220731377601624,
+        0.05973120778799057
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.03183893827659399
+    },
+    {
+      "mesh_index": 35,
+      "mesh": "Coccygeal_Nerve_R",
+      "tissue": "nerve",
+      "vertices": 162,
+      "centroid_m": [
+        -0.004091513343155384,
+        -0.4586773216724396,
+        -0.03642785921692848
+      ],
+      "extent_m": [
+        0.016631359234452248,
+        0.12370672821998596,
+        0.0596693716943264
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.03049156187866858
+    },
+    {
+      "mesh_index": 36,
+      "mesh": "Cornea_L",
+      "tissue": "nerve",
+      "vertices": 258,
+      "centroid_m": [
+        0.030941374599933624,
+        0.2656312882900238,
+        0.054949842393398285
+      ],
+      "extent_m": [
+        0.01425694115459919,
+        0.012330770492553711,
+        0.005136899650096893
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.020703369303489438
+    },
+    {
+      "mesh_index": 37,
+      "mesh": "Cornea_R",
+      "tissue": "nerve",
+      "vertices": 258,
+      "centroid_m": [
+        -0.04117240384221077,
+        0.2649122476577759,
+        0.05455000326037407
+      ],
+      "extent_m": [
+        0.013271339237689972,
+        0.012414336204528809,
+        0.005079265683889389
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.013088160301233056
+    },
+    {
+      "mesh_index": 38,
+      "mesh": "Corpus_Callosum_L",
+      "tissue": "nerve",
+      "vertices": 586,
+      "centroid_m": [
+        0.006135567557066679,
+        0.32005074620246887,
+        -0.026974551379680634
+      ],
+      "extent_m": [
+        0.03226364403963089,
+        0.03436282277107239,
+        0.06815624982118607
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.045027773312273
+    },
+    {
+      "mesh_index": 39,
+      "mesh": "Corpus_Callosum_R",
+      "tissue": "nerve",
+      "vertices": 586,
+      "centroid_m": [
+        -0.016433941200375557,
+        0.31996574997901917,
+        -0.027100378647446632
+      ],
+      "extent_m": [
+        0.027468908578157425,
+        0.034574806690216064,
+        0.06791158765554428
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.04039679690352219
+    },
+    {
+      "mesh_index": 40,
+      "mesh": "Costal_Cartilage_L",
+      "tissue": "bone",
+      "vertices": 1830,
+      "centroid_m": [
+        0.05727236345410347,
+        -0.0827317088842392,
+        0.0635281577706337
+      ],
+      "extent_m": [
+        0.09119336307048798,
+        0.18292734026908875,
+        0.09796836972236633
+      ],
+      "driver_bone": "Sternum_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.01303965861843138
+    },
+    {
+      "mesh_index": 41,
+      "mesh": "Costal_Cartilage_R",
+      "tissue": "bone",
+      "vertices": 1830,
+      "centroid_m": [
+        -0.04964633658528328,
+        -0.08395548909902573,
+        0.06370805203914642
+      ],
+      "extent_m": [
+        0.08500191569328308,
+        0.1865367889404297,
+        0.10064707696437836
+      ],
+      "driver_bone": "Sternum_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.011918324026159182
+    },
+    {
+      "mesh_index": 42,
+      "mesh": "Cuboid_L",
+      "tissue": "bone",
+      "vertices": 238,
+      "centroid_m": [
+        0.12490050494670868,
+        -1.313360333442688,
+        0.040089502930641174
+      ],
+      "extent_m": [
+        0.05123601853847504,
+        0.037401795387268066,
+        0.04192955046892166
+      ],
+      "driver_bone": "Ankle_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029157316019040908
+    },
+    {
+      "mesh_index": 43,
+      "mesh": "Cuboid_R",
+      "tissue": "bone",
+      "vertices": 238,
+      "centroid_m": [
+        -0.1299799233675003,
+        -1.3171120882034302,
+        0.04778175428509712
+      ],
+      "extent_m": [
+        0.045871302485466,
+        0.0320054292678833,
+        0.04149182140827179
+      ],
+      "driver_bone": "Ankle_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029988446199115163
+    },
+    {
+      "mesh_index": 44,
+      "mesh": "Diaphragm",
+      "tissue": "organ",
+      "vertices": 1250,
+      "centroid_m": [
+        0.005798281170427799,
+        -0.10942474007606506,
+        0.014293101616203785
+      ],
+      "extent_m": [
+        0.23806652426719666,
+        0.11420086026191711,
+        0.141688272356987
+      ],
+      "driver_bone": "Spine_T12",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.02317530523450238
+    },
+    {
+      "mesh_index": 45,
+      "mesh": "Disc_C2_C3",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        -0.0081857331097126,
+        0.10919253528118134,
+        -0.026104163378477097
+      ],
+      "extent_m": [
+        0.025090767070651054,
+        0.016226112842559814,
+        0.016952458769083023
+      ],
+      "driver_bone": "Spine_C3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05302055022187525
+    },
+    {
+      "mesh_index": 46,
+      "mesh": "Disc_C3_C4",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        -0.008151189424097538,
+        0.10900093615055084,
+        -0.026187248528003693
+      ],
+      "extent_m": [
+        0.02661045268177986,
+        0.016178898513317108,
+        0.016823990270495415
+      ],
+      "driver_bone": "Spine_C4",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05305393477087951
+    },
+    {
+      "mesh_index": 47,
+      "mesh": "Disc_C4_C5",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        -0.008138943463563919,
+        0.1089877188205719,
+        -0.026195243000984192
+      ],
+      "extent_m": [
+        0.02625623717904091,
+        0.013703756034374237,
+        0.017599890008568764
+      ],
+      "driver_bone": "Spine_C5",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05316264143670385
+    },
+    {
+      "mesh_index": 48,
+      "mesh": "Disc_C5_C6",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        -0.008075745776295662,
+        0.10868334025144577,
+        -0.026224635541439056
+      ],
+      "extent_m": [
+        0.027751050889492035,
+        0.014569506049156189,
+        0.018540186807513237
+      ],
+      "driver_bone": "Spine_C6",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05289806213152669
+    },
+    {
+      "mesh_index": 49,
+      "mesh": "Disc_C6_C7",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        -0.00793383363634348,
+        0.10798835009336472,
+        -0.026293344795703888
+      ],
+      "extent_m": [
+        0.03166127949953079,
+        0.016516834497451782,
+        0.019918806850910187
+      ],
+      "driver_bone": "Spine_C7",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05269398832020777
+    },
+    {
+      "mesh_index": 50,
+      "mesh": "Disc_C7_T1",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        -0.007575395982712507,
+        0.10717396438121796,
+        -0.026364710181951523
+      ],
+      "extent_m": [
+        0.04328116402029991,
+        0.029921554028987885,
+        0.020301582291722298
+      ],
+      "driver_bone": "Spine_T1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05052742044345544
+    },
+    {
+      "mesh_index": 51,
+      "mesh": "Disc_L1_L2",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        0.00864113587886095,
+        -0.1006411463022232,
+        -0.019272875040769577
+      ],
+      "extent_m": [
+        0.03540823236107826,
+        0.017950408160686493,
+        0.028076406568288803
+      ],
+      "driver_bone": "Spine_L1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.08855160636343996
+    },
+    {
+      "mesh_index": 52,
+      "mesh": "Disc_L2_L3",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        0.009072029031813145,
+        -0.11611080914735794,
+        -0.01960860565304756
+      ],
+      "extent_m": [
+        0.03790254145860672,
+        0.019626684486865997,
+        0.029236825183033943
+      ],
+      "driver_bone": "Spine_L2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.08305733887200505
+    },
+    {
+      "mesh_index": 53,
+      "mesh": "Disc_L3_L4",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        0.006299168802797794,
+        -0.1587308645248413,
+        -0.01541369128972292
+      ],
+      "extent_m": [
+        0.0393901988863945,
+        0.016502872109413147,
+        0.03074776940047741
+      ],
+      "driver_bone": "Spine_L4",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.07525503414317376
+    },
+    {
+      "mesh_index": 54,
+      "mesh": "Disc_L4_L5",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        0.0029861810617148876,
+        -0.20851606130599976,
+        -0.01716339960694313
+      ],
+      "extent_m": [
+        0.03589668869972229,
+        0.008936718106269836,
+        0.029697004705667496
+      ],
+      "driver_bone": "Spine_L5",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.06599725353473922
+    },
+    {
+      "mesh_index": 55,
+      "mesh": "Disc_L5_S1",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        0.0004054026794619858,
+        -0.269951194524765,
+        -0.01586795412003994
+      ],
+      "extent_m": [
+        0.031235437840223312,
+        0.013114750385284424,
+        0.027832746505737305
+      ],
+      "driver_bone": "Spine_L5",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.06757946579605352
+    },
+    {
+      "mesh_index": 56,
+      "mesh": "Disc_T10_T11",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        0.003974124789237976,
+        -0.07330349832773209,
+        -0.010475266724824905
+      ],
+      "extent_m": [
+        0.032526545226573944,
+        0.011584848165512085,
+        0.03193113952875137
+      ],
+      "driver_bone": "Spine_T10",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.09979417569017379
+    },
+    {
+      "mesh_index": 57,
+      "mesh": "Disc_T11_T12",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        0.005482375156134367,
+        -0.08389901369810104,
+        -0.014822685159742832
+      ],
+      "extent_m": [
+        0.035103294998407364,
+        0.015475153923034668,
+        0.03153892233967781
+      ],
+      "driver_bone": "Spine_T11",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.09433047234793142
+    },
+    {
+      "mesh_index": 58,
+      "mesh": "Disc_T12_L1",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        0.007008740678429604,
+        -0.09285769611597061,
+        -0.017695529386401176
+      ],
+      "extent_m": [
+        0.03496295586228371,
+        0.017984166741371155,
+        0.029518017545342445
+      ],
+      "driver_bone": "Spine_T12",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.09085429113792395
+    },
+    {
+      "mesh_index": 59,
+      "mesh": "Disc_T1_T2",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        -0.006043929606676102,
+        0.07586515694856644,
+        -0.03057001158595085
+      ],
+      "extent_m": [
+        0.04357935115695,
+        0.031499315053224564,
+        0.021773412823677063
+      ],
+      "driver_bone": "Spine_T1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.07158172381798754
+    },
+    {
+      "mesh_index": 60,
+      "mesh": "Disc_T2_T3",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        -0.004540012218058109,
+        0.05107961595058441,
+        -0.03136329725384712
+      ],
+      "extent_m": [
+        0.038183361291885376,
+        0.027735698968172073,
+        0.02288723737001419
+      ],
+      "driver_bone": "Spine_T2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.08348125748183832
+    },
+    {
+      "mesh_index": 61,
+      "mesh": "Disc_T3_T4",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        -0.0033392903860658407,
+        0.03216155618429184,
+        -0.0315086729824543
+      ],
+      "extent_m": [
+        0.03482967987656593,
+        0.02361048199236393,
+        0.02408689074218273
+      ],
+      "driver_bone": "Spine_T3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.08711473133733035
+    },
+    {
+      "mesh_index": 62,
+      "mesh": "Disc_T4_T5",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        -0.0023093856871128082,
+        0.01536224689334631,
+        -0.03065251000225544
+      ],
+      "extent_m": [
+        0.03287528455257416,
+        0.020948750898241997,
+        0.02639562264084816
+      ],
+      "driver_bone": "Spine_T4",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.09001104950632324
+    },
+    {
+      "mesh_index": 63,
+      "mesh": "Disc_T5_T6",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        -0.0014178396668285131,
+        -0.00035587907768785954,
+        -0.027950948104262352
+      ],
+      "extent_m": [
+        0.03348414599895477,
+        0.020524896681308746,
+        0.03194616734981537
+      ],
+      "driver_bone": "Spine_T5",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.08921368181828049
+    },
+    {
+      "mesh_index": 64,
+      "mesh": "Disc_T6_T7",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        -0.0006082994514144957,
+        -0.015781786292791367,
+        -0.022772476077079773
+      ],
+      "extent_m": [
+        0.0323021225631237,
+        0.014491841197013855,
+        0.03311556577682495
+      ],
+      "driver_bone": "Spine_T6",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.09566979867870272
+    },
+    {
+      "mesh_index": 65,
+      "mesh": "Disc_T7_T8",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        0.0002628192014526576,
+        -0.032789040356874466,
+        -0.01287895254790783
+      ],
+      "extent_m": [
+        0.031825367361307144,
+        0.009325413033366203,
+        0.034415196627378464
+      ],
+      "driver_bone": "Spine_T7",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.09215497729662984
+    },
+    {
+      "mesh_index": 66,
+      "mesh": "Disc_T8_T9",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        0.00124266161583364,
+        -0.048862311989068985,
+        -0.004391578957438469
+      ],
+      "extent_m": [
+        0.031232737004756927,
+        0.006726924329996109,
+        0.03396918252110481
+      ],
+      "driver_bone": "Spine_T8",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.08829712335461506
+    },
+    {
+      "mesh_index": 67,
+      "mesh": "Disc_T9_T10",
+      "tissue": "bone",
+      "vertices": 178,
+      "centroid_m": [
+        0.0025131155271083117,
+        -0.06152638420462608,
+        -0.005930760409682989
+      ],
+      "extent_m": [
+        0.028852304443717003,
+        0.00752856582403183,
+        0.03227720409631729
+      ],
+      "driver_bone": "Spine_T9",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.09445507168414151
+    },
+    {
+      "mesh_index": 68,
+      "mesh": "Esophagus",
+      "tissue": "organ",
+      "vertices": 416,
+      "centroid_m": [
+        0.006647835485637188,
+        -0.0216120146214962,
+        0.003179031191393733
+      ],
+      "extent_m": [
+        0.04828086495399475,
+        0.2517273724079132,
+        0.06122147664427757
+      ],
+      "driver_bone": "Spine_T12",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.03323429893265813
+    },
+    {
+      "mesh_index": 69,
+      "mesh": "Facet_Capsular_Ligament",
+      "tissue": "bone",
+      "vertices": 4032,
+      "centroid_m": [
+        0.001986668212339282,
+        0.005531405098736286,
+        -0.03742222487926483
+      ],
+      "extent_m": [
+        0.07728451490402222,
+        0.5424950122833252,
+        0.05570089817047119
+      ],
+      "driver_bone": "Spine_L1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.024177570676532013
+    },
+    {
+      "mesh_index": 70,
+      "mesh": "Facial_Nerves_L",
+      "tissue": "nerve",
+      "vertices": 922,
+      "centroid_m": [
+        0.04885692149400711,
+        0.25151753425598145,
+        -0.0012211776338517666
+      ],
+      "extent_m": [
+        0.07041140645742416,
+        0.13492612540721893,
+        0.10946285724639893
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0009852297666652552
+    },
+    {
+      "mesh_index": 71,
+      "mesh": "Facial_Nerves_R",
+      "tissue": "nerve",
+      "vertices": 922,
+      "centroid_m": [
+        -0.05123300105333328,
+        0.24895116686820984,
+        -0.003056918503716588
+      ],
+      "extent_m": [
+        0.06780636310577393,
+        0.1346435397863388,
+        0.11073264479637146
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.000985197403209461
+    },
+    {
+      "mesh_index": 72,
+      "mesh": "Femur_L",
+      "tissue": "bone",
+      "vertices": 915,
+      "centroid_m": [
+        0.10595151036977768,
+        -0.6419806480407715,
+        -0.020404379814863205
+      ],
+      "extent_m": [
+        0.08669634163379669,
+        0.4143930673599243,
+        0.053799696266651154
+      ],
+      "driver_bone": "Femur_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0030000007526042732
+    },
+    {
+      "mesh_index": 73,
+      "mesh": "Femur_R",
+      "tissue": "bone",
+      "vertices": 915,
+      "centroid_m": [
+        -0.0931415855884552,
+        -0.6374363899230957,
+        -0.009856085292994976
+      ],
+      "extent_m": [
+        0.10155978798866272,
+        0.41915202140808105,
+        0.06603430211544037
+      ],
+      "driver_bone": "Femur_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0043578866658338196
+    },
+    {
+      "mesh_index": 74,
+      "mesh": "Fibula_L",
+      "tissue": "bone",
+      "vertices": 510,
+      "centroid_m": [
+        0.1271919310092926,
+        -0.978880763053894,
+        -0.04484963417053223
+      ],
+      "extent_m": [
+        0.044615499675273895,
+        0.19121378660202026,
+        0.0335085391998291
+      ],
+      "driver_bone": "Tibia_Bone_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029999997227437387
+    },
+    {
+      "mesh_index": 75,
+      "mesh": "Fibula_R",
+      "tissue": "bone",
+      "vertices": 510,
+      "centroid_m": [
+        -0.11593930423259735,
+        -1.0592374801635742,
+        -0.04090770706534386
+      ],
+      "extent_m": [
+        0.02644805610179901,
+        0.42027193307876587,
+        0.048525188118219376
+      ],
+      "driver_bone": "Tibia_Bone_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029999942276338096
+    },
+    {
+      "mesh_index": 76,
+      "mesh": "Fornix",
+      "tissue": "nerve",
+      "vertices": 1062,
+      "centroid_m": [
+        -0.0050678253173828125,
+        0.3064941465854645,
+        -0.025105159729719162
+      ],
+      "extent_m": [
+        0.0701543539762497,
+        0.03938892483711243,
+        0.04682760685682297
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.02448931548814401
+    },
+    {
+      "mesh_index": 77,
+      "mesh": "Frontal_Lobe_L",
+      "tissue": "nerve",
+      "vertices": 17309,
+      "centroid_m": [
+        0.017440540716052055,
+        0.3204067647457123,
+        0.008395867422223091
+      ],
+      "extent_m": [
+        0.0705120712518692,
+        0.08522388339042664,
+        0.14038421213626862
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.010668160707005348
+    },
+    {
+      "mesh_index": 78,
+      "mesh": "Frontal_Lobe_R",
+      "tissue": "nerve",
+      "vertices": 19208,
+      "centroid_m": [
+        -0.030761156231164932,
+        0.3229876160621643,
+        0.006257813423871994
+      ],
+      "extent_m": [
+        0.06935033202171326,
+        0.08693438768386841,
+        0.131434366106987
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0059983682247149615
+    },
+    {
+      "mesh_index": 79,
+      "mesh": "Gallbladder",
+      "tissue": "organ",
+      "vertices": 1122,
+      "centroid_m": [
+        -0.02810368686914444,
+        -0.11345601826906204,
+        0.0053304629400372505
+      ],
+      "extent_m": [
+        0.04593836888670921,
+        0.059764206409454346,
+        0.03767113387584686
+      ],
+      "driver_bone": "Spine_L2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.08639349785153574
+    },
+    {
+      "mesh_index": 80,
+      "mesh": "Hamate_L",
+      "tissue": "bone",
+      "vertices": 238,
+      "centroid_m": [
+        0.7342774271965027,
+        0.03414725884795189,
+        -0.08314172178506851
+      ],
+      "extent_m": [
+        0.018542110919952393,
+        0.01897437684237957,
+        0.024936072528362274
+      ],
+      "driver_bone": "Wrist_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0053626943999206785
+    },
+    {
+      "mesh_index": 81,
+      "mesh": "Hamate_R",
+      "tissue": "bone",
+      "vertices": 238,
+      "centroid_m": [
+        -0.7345320582389832,
+        0.036028407514095306,
+        -0.08269969373941422
+      ],
+      "extent_m": [
+        0.018812835216522217,
+        0.01900867372751236,
+        0.025132328271865845
+      ],
+      "driver_bone": "Wrist_Rotate_R1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.004100505179182833
+    },
+    {
+      "mesh_index": 82,
+      "mesh": "Heart",
+      "tissue": "vessel",
+      "vertices": 1021,
+      "centroid_m": [
+        0.007063879165798426,
+        -0.028736427426338196,
+        0.03323208540678024
+      ],
+      "extent_m": [
+        0.1130424290895462,
+        0.14249198138713837,
+        0.10377740859985352
+      ],
+      "driver_bone": "Sternum_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.016301012546293278
+    },
+    {
+      "mesh_index": 83,
+      "mesh": "Hippocampus",
+      "tissue": "nerve",
+      "vertices": 1554,
+      "centroid_m": [
+        -0.004419960547238588,
+        0.294268935918808,
+        -0.019950950518250465
+      ],
+      "extent_m": [
+        0.08261379599571228,
+        0.032021015882492065,
+        0.05430562421679497
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.015932527898459642
+    },
+    {
+      "mesh_index": 84,
+      "mesh": "Humerus_L",
+      "tissue": "bone",
+      "vertices": 601,
+      "centroid_m": [
+        0.32572880387306213,
+        0.056942254304885864,
+        -0.03513163700699806
+      ],
+      "extent_m": [
+        0.2764010429382324,
+        0.11751271039247513,
+        0.0879705622792244
+      ],
+      "driver_bone": "Shoulder_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029981839883544597
+    },
+    {
+      "mesh_index": 85,
+      "mesh": "Humerus_R",
+      "tissue": "bone",
+      "vertices": 601,
+      "centroid_m": [
+        -0.3230166733264923,
+        0.06089555472135544,
+        -0.03716982901096344
+      ],
+      "extent_m": [
+        0.30184507369995117,
+        0.1068594828248024,
+        0.08103047311306
+      ],
+      "driver_bone": "Shoulder_Rotate_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.011175668241721016
+    },
+    {
+      "mesh_index": 86,
+      "mesh": "Hyoid_Bone",
+      "tissue": "bone",
+      "vertices": 226,
+      "centroid_m": [
+        0.0037169877905398607,
+        0.16398675739765167,
+        0.020450958982110023
+      ],
+      "extent_m": [
+        0.05869925022125244,
+        0.029693111777305603,
+        0.024352271109819412
+      ],
+      "driver_bone": "Spine_C4",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.005461833241644244
+    },
+    {
+      "mesh_index": 87,
+      "mesh": "Ilium_L",
+      "tissue": "bone",
+      "vertices": 949,
+      "centroid_m": [
+        0.046536099165678024,
+        -0.402407169342041,
+        -0.0020819399505853653
+      ],
+      "extent_m": [
+        0.13279728591442108,
+        0.25062498450279236,
+        0.1374223530292511
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.009041407094389458
+    },
+    {
+      "mesh_index": 88,
+      "mesh": "Ilium_R",
+      "tissue": "bone",
+      "vertices": 949,
+      "centroid_m": [
+        -0.04463154077529907,
+        -0.4076260030269623,
+        0.0014880988746881485
+      ],
+      "extent_m": [
+        0.1313413679599762,
+        0.2493710219860077,
+        0.136703222990036
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.006170781023441414
+    },
+    {
+      "mesh_index": 89,
+      "mesh": "Intermediate_Cuneiform_L",
+      "tissue": "bone",
+      "vertices": 130,
+      "centroid_m": [
+        0.10812123119831085,
+        -1.316699504852295,
+        0.07284192740917206
+      ],
+      "extent_m": [
+        0.0205802321434021,
+        0.03127896785736084,
+        0.0338607132434845
+      ],
+      "driver_bone": "Ankle_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002984356347414454
+    },
+    {
+      "mesh_index": 90,
+      "mesh": "Intermediate_Cuneiform_R",
+      "tissue": "bone",
+      "vertices": 130,
+      "centroid_m": [
+        -0.10984990745782852,
+        -1.3173974752426147,
+        0.07673583924770355
+      ],
+      "extent_m": [
+        0.018308967351913452,
+        0.02962815761566162,
+        0.03259048983454704
+      ],
+      "driver_bone": "Ankle_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002980241253262136
+    },
+    {
+      "mesh_index": 91,
+      "mesh": "Interspinous_Ligament",
+      "tissue": "bone",
+      "vertices": 1529,
+      "centroid_m": [
+        0.0026011266745626926,
+        0.013560404069721699,
+        -0.05022357031702995
+      ],
+      "extent_m": [
+        0.0198726337403059,
+        0.5875641703605652,
+        0.08010783046483994
+      ],
+      "driver_bone": "Spine_C2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.030063840238322086
+    },
+    {
+      "mesh_index": 92,
+      "mesh": "Intertransverse_Ligament",
+      "tissue": "bone",
+      "vertices": 2160,
+      "centroid_m": [
+        0.0013790554367005825,
+        -0.054329562932252884,
+        -0.04526057839393616
+      ],
+      "extent_m": [
+        0.09048713743686676,
+        0.40496397018432617,
+        0.04586108773946762
+      ],
+      "driver_bone": "Spine_L5",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.04566489097739529
+    },
+    {
+      "mesh_index": 93,
+      "mesh": "Iris_L",
+      "tissue": "nerve",
+      "vertices": 208,
+      "centroid_m": [
+        0.031040336936712265,
+        0.265424519777298,
+        0.05538725480437279
+      ],
+      "extent_m": [
+        0.012644870206713676,
+        0.011050909757614136,
+        0.0021300464868545532
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.020646982245012276
+    },
+    {
+      "mesh_index": 94,
+      "mesh": "Iris_R",
+      "tissue": "nerve",
+      "vertices": 208,
+      "centroid_m": [
+        -0.041282717138528824,
+        0.26470276713371277,
+        0.054986272007226944
+      ],
+      "extent_m": [
+        0.011788040399551392,
+        0.011219948530197144,
+        0.0021809861063957214
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.013142506609421328
+    },
+    {
+      "mesh_index": 95,
+      "mesh": "Kidney_L",
+      "tissue": "organ",
+      "vertices": 490,
+      "centroid_m": [
+        0.07084333151578903,
+        -0.13496313989162445,
+        -0.013622166588902473
+      ],
+      "extent_m": [
+        0.06562355160713196,
+        0.09143365919589996,
+        0.05450496822595596
+      ],
+      "driver_bone": "Rib_Name_L12",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05805291350709555
+    },
+    {
+      "mesh_index": 96,
+      "mesh": "Kidney_R",
+      "tissue": "organ",
+      "vertices": 490,
+      "centroid_m": [
+        -0.059414517134428024,
+        -0.14810533821582794,
+        -0.01397631224244833
+      ],
+      "extent_m": [
+        0.065195731818676,
+        0.09593922644853592,
+        0.052429329603910446
+      ],
+      "driver_bone": "Rib_Bone_R12",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0662141861956687
+    },
+    {
+      "mesh_index": 97,
+      "mesh": "L1",
+      "tissue": "bone",
+      "vertices": 1106,
+      "centroid_m": [
+        0.007269999943673611,
+        -0.11266203969717026,
+        -0.03764282539486885
+      ],
+      "extent_m": [
+        0.0668741837143898,
+        0.053675033152103424,
+        0.06528722494840622
+      ],
+      "driver_bone": "Spine_L1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05169143386718052
+    },
+    {
+      "mesh_index": 98,
+      "mesh": "L2",
+      "tissue": "bone",
+      "vertices": 1106,
+      "centroid_m": [
+        0.008107469417154789,
+        -0.12565097212791443,
+        -0.03570207953453064
+      ],
+      "extent_m": [
+        0.07559709995985031,
+        0.05929812043905258,
+        0.0630384162068367
+      ],
+      "driver_bone": "Spine_L2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.04940929549727995
+    },
+    {
+      "mesh_index": 99,
+      "mesh": "L3",
+      "tissue": "bone",
+      "vertices": 1106,
+      "centroid_m": [
+        0.007233982905745506,
+        -0.15217053890228271,
+        -0.03256992623209953
+      ],
+      "extent_m": [
+        0.08367405831813812,
+        0.0573052316904068,
+        0.07147344946861267
+      ],
+      "driver_bone": "Spine_L3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.04086314375281836
+    },
+    {
+      "mesh_index": 100,
+      "mesh": "L4",
+      "tissue": "bone",
+      "vertices": 1106,
+      "centroid_m": [
+        0.0049100411124527454,
+        -0.19298574328422546,
+        -0.029766559600830078
+      ],
+      "extent_m": [
+        0.07964110374450684,
+        0.05006958544254303,
+        0.07120412588119507
+      ],
+      "driver_bone": "Spine_L4",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0358961346722188
+    },
+    {
+      "mesh_index": 101,
+      "mesh": "L5",
+      "tissue": "bone",
+      "vertices": 1092,
+      "centroid_m": [
+        0.002501805080100894,
+        -0.24357733130455017,
+        -0.02657846175134182
+      ],
+      "extent_m": [
+        0.06702125817537308,
+        0.04632487893104553,
+        0.06573126465082169
+      ],
+      "driver_bone": "Spine_L5",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.04197350186800085
+    },
+    {
+      "mesh_index": 102,
+      "mesh": "Large_Intestine",
+      "tissue": "organ",
+      "vertices": 7150,
+      "centroid_m": [
+        0.01463338639587164,
+        -0.27222874760627747,
+        0.022742586210370064
+      ],
+      "extent_m": [
+        0.18288064002990723,
+        0.36425119638442993,
+        0.0930960550904274
+      ],
+      "driver_bone": "Hip_Organ_Hold_L1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003999945738665081
+    },
+    {
+      "mesh_index": 103,
+      "mesh": "Larynx",
+      "tissue": "organ",
+      "vertices": 360,
+      "centroid_m": [
+        0.0025127429980784655,
+        0.13717278838157654,
+        0.011036374606192112
+      ],
+      "extent_m": [
+        0.042295441031455994,
+        0.041305020451545715,
+        0.04052174091339111
+      ],
+      "driver_bone": "Spine_C4",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003980706798749091
+    },
+    {
+      "mesh_index": 104,
+      "mesh": "Lateral_Cuneiform_L",
+      "tissue": "bone",
+      "vertices": 202,
+      "centroid_m": [
+        0.12159369885921478,
+        -1.3188810348510742,
+        0.06686384230852127
+      ],
+      "extent_m": [
+        0.02693565934896469,
+        0.02603614330291748,
+        0.028912082314491272
+      ],
+      "driver_bone": "Ankle_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029547671460255004
+    },
+    {
+      "mesh_index": 105,
+      "mesh": "Lateral_Cuneiform_R",
+      "tissue": "bone",
+      "vertices": 202,
+      "centroid_m": [
+        -0.12487506121397018,
+        -1.3206441402435303,
+        0.07390917092561722
+      ],
+      "extent_m": [
+        0.023655757308006287,
+        0.022054076194763184,
+        0.026378251612186432
+      ],
+      "driver_bone": "Ankle_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0028209600138883488
+    },
+    {
+      "mesh_index": 106,
+      "mesh": "Lateral_Incisor",
+      "tissue": "bone",
+      "vertices": 102,
+      "centroid_m": [
+        0.005851200316101313,
+        0.1977609544992447,
+        0.057790614664554596
+      ],
+      "extent_m": [
+        0.006509131286293268,
+        0.01808527112007141,
+        0.010762158781290054
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029388535832170584
+    },
+    {
+      "mesh_index": 107,
+      "mesh": "Lateral_Incisor_2",
+      "tissue": "bone",
+      "vertices": 102,
+      "centroid_m": [
+        -0.005981677211821079,
+        0.19765634834766388,
+        0.05764429643750191
+      ],
+      "extent_m": [
+        0.007233675569295883,
+        0.01812748610973358,
+        0.010596860200166702
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002932461381561602
+    },
+    {
+      "mesh_index": 108,
+      "mesh": "Lateral_Incisor_3",
+      "tissue": "bone",
+      "vertices": 102,
+      "centroid_m": [
+        0.007156719919294119,
+        0.20317623019218445,
+        0.0608208142220974
+      ],
+      "extent_m": [
+        0.011465025134384632,
+        0.013044774532318115,
+        0.016888916492462158
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029488979897967635
+    },
+    {
+      "mesh_index": 109,
+      "mesh": "Lateral_Incisor_4",
+      "tissue": "bone",
+      "vertices": 102,
+      "centroid_m": [
+        -0.010776102542877197,
+        0.2078794240951538,
+        0.06567488610744476
+      ],
+      "extent_m": [
+        0.00814000889658928,
+        0.02071349322795868,
+        0.007650408893823624
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002952928198794793
+    },
+    {
+      "mesh_index": 110,
+      "mesh": "Lens_L",
+      "tissue": "nerve",
+      "vertices": 72,
+      "centroid_m": [
+        0.030896620824933052,
+        0.26557284593582153,
+        0.05424000695347786
+      ],
+      "extent_m": [
+        0.009615961462259293,
+        0.008984744548797607,
+        0.0024983398616313934
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.02216932329412712
+    },
+    {
+      "mesh_index": 111,
+      "mesh": "Lens_R",
+      "tissue": "nerve",
+      "vertices": 72,
+      "centroid_m": [
+        -0.04116154834628105,
+        0.2648327648639679,
+        0.05379808321595192
+      ],
+      "extent_m": [
+        0.009310048073530197,
+        0.009104400873184204,
+        0.002549242228269577
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.014534962233335568
+    },
+    {
+      "mesh_index": 112,
+      "mesh": "Ligamentum_Flavum",
+      "tissue": "bone",
+      "vertices": 1452,
+      "centroid_m": [
+        0.0021920111030340195,
+        0.010902701877057552,
+        -0.03937928378582001
+      ],
+      "extent_m": [
+        0.04273089021444321,
+        0.5591672658920288,
+        0.04486224055290222
+      ],
+      "driver_bone": "Spine_L5",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.03532546489439345
+    },
+    {
+      "mesh_index": 113,
+      "mesh": "Liver",
+      "tissue": "organ",
+      "vertices": 1924,
+      "centroid_m": [
+        -0.009485932067036629,
+        -0.10968919098377228,
+        0.04065948352217674
+      ],
+      "extent_m": [
+        0.18520735204219818,
+        0.11328125,
+        0.07536393404006958
+      ],
+      "driver_bone": "Rib_Bone_R12",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.036520389143299394
+    },
+    {
+      "mesh_index": 114,
+      "mesh": "Lumbar_Nerves_L",
+      "tissue": "nerve",
+      "vertices": 1727,
+      "centroid_m": [
+        0.045413434505462646,
+        -0.3948132395744324,
+        0.0004851584089919925
+      ],
+      "extent_m": [
+        0.16366223990917206,
+        1.0898940563201904,
+        0.11485479027032852
+      ],
+      "driver_bone": "Femur_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.000999990901145453
+    },
+    {
+      "mesh_index": 115,
+      "mesh": "Lumbar_Nerves_R",
+      "tissue": "nerve",
+      "vertices": 1727,
+      "centroid_m": [
+        -0.03626749664545059,
+        -0.39732226729393005,
+        0.002524931915104389
+      ],
+      "extent_m": [
+        0.16638240218162537,
+        1.0945839881896973,
+        0.11414198577404022
+      ],
+      "driver_bone": "Femur_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.000999995083083054
+    },
+    {
+      "mesh_index": 116,
+      "mesh": "Lunate_L",
+      "tissue": "bone",
+      "vertices": 146,
+      "centroid_m": [
+        0.7118698954582214,
+        0.03508518263697624,
+        -0.07286403328180313
+      ],
+      "extent_m": [
+        0.01968008279800415,
+        0.019024435430765152,
+        0.021324358880519867
+      ],
+      "driver_bone": "Wrist_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.010664095846586267
+    },
+    {
+      "mesh_index": 117,
+      "mesh": "Lunate_R",
+      "tissue": "bone",
+      "vertices": 146,
+      "centroid_m": [
+        -0.7120451331138611,
+        0.038041673600673676,
+        -0.07212453335523605
+      ],
+      "extent_m": [
+        0.020075678825378418,
+        0.018803568556904793,
+        0.021403148770332336
+      ],
+      "driver_bone": "Wrist_Rotate_R1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.010963675111991185
+    },
+    {
+      "mesh_index": 118,
+      "mesh": "Lung_L",
+      "tissue": "organ",
+      "vertices": 1130,
+      "centroid_m": [
+        0.07759164273738861,
+        -0.04922323673963547,
+        0.015113074332475662
+      ],
+      "extent_m": [
+        0.12877382338047028,
+        0.20111319422721863,
+        0.15369459986686707
+      ],
+      "driver_bone": "Rib_Bone_L6",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.004482844643182702
+    },
+    {
+      "mesh_index": 119,
+      "mesh": "Lung_R",
+      "tissue": "organ",
+      "vertices": 1474,
+      "centroid_m": [
+        -0.06629020720720291,
+        -0.04223820939660072,
+        0.016715895384550095
+      ],
+      "extent_m": [
+        0.13276346027851105,
+        0.19343549013137817,
+        0.16450029611587524
+      ],
+      "driver_bone": "Rib_Bone_R6",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.01197482305856398
+    },
+    {
+      "mesh_index": 120,
+      "mesh": "Mandible",
+      "tissue": "bone",
+      "vertices": 2133,
+      "centroid_m": [
+        0.0002737703325692564,
+        0.2143096923828125,
+        0.028302785009145737
+      ],
+      "extent_m": [
+        0.12643545866012573,
+        0.11653150618076324,
+        0.06780008226633072
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002929814847913642
+    },
+    {
+      "mesh_index": 121,
+      "mesh": "Medial_Cuneiform_L",
+      "tissue": "bone",
+      "vertices": 266,
+      "centroid_m": [
+        0.09763146936893463,
+        -1.3143173456192017,
+        0.07888185977935791
+      ],
+      "extent_m": [
+        0.028636150062084198,
+        0.03133213520050049,
+        0.030664563179016113
+      ],
+      "driver_bone": "Ankle_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029926815063970567
+    },
+    {
+      "mesh_index": 122,
+      "mesh": "Medial_Cuneiform_R",
+      "tissue": "bone",
+      "vertices": 266,
+      "centroid_m": [
+        -0.09937214106321335,
+        -1.3152220249176025,
+        0.0808563083410263
+      ],
+      "extent_m": [
+        0.02680828422307968,
+        0.029376864433288574,
+        0.029932960867881775
+      ],
+      "driver_bone": "Ankle_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029941542375099173
+    },
+    {
+      "mesh_index": 123,
+      "mesh": "Midbrain",
+      "tissue": "nerve",
+      "vertices": 1905,
+      "centroid_m": [
+        -0.005552710499614477,
+        0.2970394492149353,
+        -0.022564537823200226
+      ],
+      "extent_m": [
+        0.030857760459184647,
+        0.026470601558685303,
+        0.027696311473846436
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.04220295305895807
+    },
+    {
+      "mesh_index": 124,
+      "mesh": "Molar_1st",
+      "tissue": "bone",
+      "vertices": 275,
+      "centroid_m": [
+        0.018692530691623688,
+        0.19756454229354858,
+        0.03903748095035553
+      ],
+      "extent_m": [
+        0.011154226027429104,
+        0.019258469343185425,
+        0.010680172592401505
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029376477517067405
+    },
+    {
+      "mesh_index": 125,
+      "mesh": "Molar_1st_2",
+      "tissue": "bone",
+      "vertices": 275,
+      "centroid_m": [
+        -0.019197652116417885,
+        0.19694913923740387,
+        0.040201667696237564
+      ],
+      "extent_m": [
+        0.010250433348119259,
+        0.019936174154281616,
+        0.011433102190494537
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002932065328572278
+    },
+    {
+      "mesh_index": 126,
+      "mesh": "Molar_1st_3",
+      "tissue": "bone",
+      "vertices": 275,
+      "centroid_m": [
+        0.02641076035797596,
+        0.21217995882034302,
+        0.044965315610170364
+      ],
+      "extent_m": [
+        0.010759461671113968,
+        0.021610170602798462,
+        0.011933296918869019
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003812641600826228
+    },
+    {
+      "mesh_index": 127,
+      "mesh": "Molar_1st_4",
+      "tissue": "bone",
+      "vertices": 275,
+      "centroid_m": [
+        -0.02701180800795555,
+        0.21161474287509918,
+        0.04446829855442047
+      ],
+      "extent_m": [
+        0.010040121152997017,
+        0.02133280038833618,
+        0.011674225330352783
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003932967836271817
+    },
+    {
+      "mesh_index": 128,
+      "mesh": "Molar_2nd",
+      "tissue": "bone",
+      "vertices": 275,
+      "centroid_m": [
+        0.023246774449944496,
+        0.20030604302883148,
+        0.03427523002028465
+      ],
+      "extent_m": [
+        0.013715295121073723,
+        0.021281763911247253,
+        0.011966140940785408
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029387134270876074
+    },
+    {
+      "mesh_index": 129,
+      "mesh": "Molar_2nd_2",
+      "tissue": "bone",
+      "vertices": 275,
+      "centroid_m": [
+        -0.022988038137555122,
+        0.1981535702943802,
+        0.035197556018829346
+      ],
+      "extent_m": [
+        0.011377515271306038,
+        0.020764216780662537,
+        0.011500336229801178
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002961548568977408
+    },
+    {
+      "mesh_index": 130,
+      "mesh": "Molar_2nd_3",
+      "tissue": "bone",
+      "vertices": 275,
+      "centroid_m": [
+        0.026224343106150627,
+        0.21894027292728424,
+        0.03693603351712227
+      ],
+      "extent_m": [
+        0.011388754472136497,
+        0.020691826939582825,
+        0.01039307750761509
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.011111813811564699
+    },
+    {
+      "mesh_index": 131,
+      "mesh": "Molar_2nd_4",
+      "tissue": "bone",
+      "vertices": 275,
+      "centroid_m": [
+        -0.02604273334145546,
+        0.21838673949241638,
+        0.036438118666410446
+      ],
+      "extent_m": [
+        0.008418696001172066,
+        0.020436212420463562,
+        0.010272128507494926
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.012011872167770905
+    },
+    {
+      "mesh_index": 132,
+      "mesh": "Molar_3rd",
+      "tissue": "bone",
+      "vertices": 275,
+      "centroid_m": [
+        0.024177545681595802,
+        0.20302745699882507,
+        0.028487948700785637
+      ],
+      "extent_m": [
+        0.021282849833369255,
+        0.019221872091293335,
+        0.011431967839598656
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002789219235335195
+    },
+    {
+      "mesh_index": 133,
+      "mesh": "Molar_3rd_2",
+      "tissue": "bone",
+      "vertices": 275,
+      "centroid_m": [
+        -0.02602146752178669,
+        0.20311428606510162,
+        0.031090926378965378
+      ],
+      "extent_m": [
+        0.014115603640675545,
+        0.02077464759349823,
+        0.010453285649418831
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029567933584347733
+    },
+    {
+      "mesh_index": 134,
+      "mesh": "Molar_3rd_3",
+      "tissue": "bone",
+      "vertices": 275,
+      "centroid_m": [
+        0.025949208065867424,
+        0.22586512565612793,
+        0.030172815546393394
+      ],
+      "extent_m": [
+        0.009787093847990036,
+        0.016952380537986755,
+        0.00958918035030365
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.01846159340524013
+    },
+    {
+      "mesh_index": 135,
+      "mesh": "Molar_3rd_4",
+      "tissue": "bone",
+      "vertices": 275,
+      "centroid_m": [
+        -0.0250137597322464,
+        0.22531583905220032,
+        0.02968783676624298
+      ],
+      "extent_m": [
+        0.006951451301574707,
+        0.016639232635498047,
+        0.009845469146966934
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.020147845718112976
+    },
+    {
+      "mesh_index": 136,
+      "mesh": "Navicular_L",
+      "tissue": "bone",
+      "vertices": 100,
+      "centroid_m": [
+        0.09624242037534714,
+        -1.3018324375152588,
+        0.041539810597896576
+      ],
+      "extent_m": [
+        0.041499488055706024,
+        0.035625576972961426,
+        0.030793393030762672
+      ],
+      "driver_bone": "Ankle_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029995397602707186
+    },
+    {
+      "mesh_index": 137,
+      "mesh": "Navicular_R",
+      "tissue": "bone",
+      "vertices": 100,
+      "centroid_m": [
+        -0.10026532411575317,
+        -1.306870937347412,
+        0.044131308794021606
+      ],
+      "extent_m": [
+        0.04186104238033295,
+        0.0395735502243042,
+        0.03509896621108055
+      ],
+      "driver_bone": "Ankle_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029865697775472216
+    },
+    {
+      "mesh_index": 138,
+      "mesh": "Nuchal_Ligament",
+      "tissue": "bone",
+      "vertices": 90,
+      "centroid_m": [
+        0.003391181118786335,
+        0.1985037624835968,
+        -0.053009986877441406
+      ],
+      "extent_m": [
+        0.014973356388509274,
+        0.13551820814609528,
+        0.04096516594290733
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.01204585120034003
+    },
+    {
+      "mesh_index": 139,
+      "mesh": "Occipital_Lobe_L",
+      "tissue": "nerve",
+      "vertices": 6261,
+      "centroid_m": [
+        0.02203485555946827,
+        0.31446561217308044,
+        -0.08450859040021896
+      ],
+      "extent_m": [
+        0.059510741382837296,
+        0.06626582145690918,
+        0.05629010498523712
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0009957415743209717
+    },
+    {
+      "mesh_index": 140,
+      "mesh": "Occipital_Lobe_R",
+      "tissue": "nerve",
+      "vertices": 6766,
+      "centroid_m": [
+        -0.019637588411569595,
+        0.3090781271457672,
+        -0.08372863382101059
+      ],
+      "extent_m": [
+        0.06201760098338127,
+        0.06732594966888428,
+        0.0638469010591507
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0010416553684029055
+    },
+    {
+      "mesh_index": 141,
+      "mesh": "Olfactory_Bulb_L",
+      "tissue": "nerve",
+      "vertices": 698,
+      "centroid_m": [
+        0.015914561226963997,
+        0.3066665828227997,
+        -0.01255456730723381
+      ],
+      "extent_m": [
+        0.026175694540143013,
+        0.05153334140777588,
+        0.09624120593070984
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.03484704345039021
+    },
+    {
+      "mesh_index": 142,
+      "mesh": "Olfactory_Bulb_R",
+      "tissue": "nerve",
+      "vertices": 698,
+      "centroid_m": [
+        -0.0264140572398901,
+        0.30629849433898926,
+        -0.01279175654053688
+      ],
+      "extent_m": [
+        0.020839272066950798,
+        0.051882773637771606,
+        0.09664411097764969
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.025878438508434982
+    },
+    {
+      "mesh_index": 143,
+      "mesh": "Optic_Chiasm",
+      "tissue": "nerve",
+      "vertices": 2136,
+      "centroid_m": [
+        -0.006279571447521448,
+        0.28894278407096863,
+        0.005458979867398739
+      ],
+      "extent_m": [
+        0.09878182411193848,
+        0.06396585702896118,
+        0.09427446126937866
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.009825575685429862
+    },
+    {
+      "mesh_index": 144,
+      "mesh": "Pancreas",
+      "tissue": "organ",
+      "vertices": 482,
+      "centroid_m": [
+        0.02055473066866398,
+        -0.12025168538093567,
+        0.009121992625296116
+      ],
+      "extent_m": [
+        0.10021688044071198,
+        0.050812557339668274,
+        0.02270256169140339
+      ],
+      "driver_bone": "Spine_L2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.08980611204697757
+    },
+    {
+      "mesh_index": 145,
+      "mesh": "Parietal_Lobe_L",
+      "tissue": "nerve",
+      "vertices": 8060,
+      "centroid_m": [
+        0.02520287036895752,
+        0.3403681814670563,
+        -0.05947074666619301
+      ],
+      "extent_m": [
+        0.06903839856386185,
+        0.060883939266204834,
+        0.0771314948797226
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.009819191185519495
+    },
+    {
+      "mesh_index": 146,
+      "mesh": "Parietal_Lobe_R",
+      "tissue": "nerve",
+      "vertices": 7727,
+      "centroid_m": [
+        -0.032741185277700424,
+        0.33797916769981384,
+        -0.060385964810848236
+      ],
+      "extent_m": [
+        0.07410182803869247,
+        0.060580283403396606,
+        0.0737776905298233
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.005293748624721494
+    },
+    {
+      "mesh_index": 147,
+      "mesh": "Parotid_Duct_L",
+      "tissue": "organ",
+      "vertices": 106,
+      "centroid_m": [
+        0.05005713552236557,
+        0.2244844287633896,
+        0.028662262484431267
+      ],
+      "extent_m": [
+        0.02299349382519722,
+        0.017556622624397278,
+        0.04034527763724327
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003920883982204371
+    },
+    {
+      "mesh_index": 148,
+      "mesh": "Parotid_Duct_R",
+      "tissue": "organ",
+      "vertices": 106,
+      "centroid_m": [
+        -0.04989184811711311,
+        0.22330203652381897,
+        0.027450159192085266
+      ],
+      "extent_m": [
+        0.021463871002197266,
+        0.015317395329475403,
+        0.040299512445926666
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0039215595211364055
+    },
+    {
+      "mesh_index": 149,
+      "mesh": "Parotid_Gland_L",
+      "tissue": "organ",
+      "vertices": 276,
+      "centroid_m": [
+        0.05680764839053154,
+        0.2218390256166458,
+        0.0020101454574614763
+      ],
+      "extent_m": [
+        0.015567395836114883,
+        0.06384314596652985,
+        0.027925992384552956
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0039467996240180854
+    },
+    {
+      "mesh_index": 150,
+      "mesh": "Parotid_Gland_R",
+      "tissue": "organ",
+      "vertices": 276,
+      "centroid_m": [
+        -0.05589771643280983,
+        0.21974122524261475,
+        0.0019836502615362406
+      ],
+      "extent_m": [
+        0.01693502813577652,
+        0.06367695331573486,
+        0.02818731963634491
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003947676486288505
+    },
+    {
+      "mesh_index": 151,
+      "mesh": "Patella_L",
+      "tissue": "bone",
+      "vertices": 128,
+      "centroid_m": [
+        0.11413896083831787,
+        -0.8598924875259399,
+        0.013422457501292229
+      ],
+      "extent_m": [
+        0.03848327696323395,
+        0.04339170455932617,
+        0.028339795768260956
+      ],
+      "driver_bone": "Patella_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0030000063149359705
+    },
+    {
+      "mesh_index": 152,
+      "mesh": "Patella_R",
+      "tissue": "bone",
+      "vertices": 128,
+      "centroid_m": [
+        -0.11069536954164505,
+        -0.8566805124282837,
+        0.019426630809903145
+      ],
+      "extent_m": [
+        0.03995811939239502,
+        0.04505640268325806,
+        0.02884312905371189
+      ],
+      "driver_bone": "Patella_Rotate_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0030000090360259015
+    },
+    {
+      "mesh_index": 153,
+      "mesh": "Pharynx",
+      "tissue": "organ",
+      "vertices": 2257,
+      "centroid_m": [
+        -0.0017160925781354308,
+        0.22493772208690643,
+        0.042930953204631805
+      ],
+      "extent_m": [
+        0.04314673691987991,
+        0.12537263333797455,
+        0.10549630969762802
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -4.401412039120233e-06
+    },
+    {
+      "mesh_index": 154,
+      "mesh": "Pisiform_L",
+      "tissue": "bone",
+      "vertices": 130,
+      "centroid_m": [
+        0.7158068418502808,
+        0.025393512099981308,
+        -0.08745548874139786
+      ],
+      "extent_m": [
+        0.011494040489196777,
+        0.007547939196228981,
+        0.011047177016735077
+      ],
+      "driver_bone": "Wrist_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0048542812688117725
+    },
+    {
+      "mesh_index": 155,
+      "mesh": "Pisiform_R",
+      "tissue": "bone",
+      "vertices": 130,
+      "centroid_m": [
+        -0.7148317694664001,
+        0.028437431901693344,
+        -0.08656160533428192
+      ],
+      "extent_m": [
+        0.011135995388031006,
+        0.008047541603446007,
+        0.011002801358699799
+      ],
+      "driver_bone": "Wrist_Rotate_R1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.005672785180222411
+    },
+    {
+      "mesh_index": 156,
+      "mesh": "Pituitary_Gland",
+      "tissue": "nerve",
+      "vertices": 506,
+      "centroid_m": [
+        -0.0077310726046562195,
+        0.2945379912853241,
+        -0.007319904398173094
+      ],
+      "extent_m": [
+        0.0077632758766412735,
+        0.020044565200805664,
+        0.014969908632338047
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.050999403618263967
+    },
+    {
+      "mesh_index": 157,
+      "mesh": "Pons",
+      "tissue": "nerve",
+      "vertices": 1010,
+      "centroid_m": [
+        -0.004026686307042837,
+        0.28839191794395447,
+        -0.024726707488298416
+      ],
+      "extent_m": [
+        0.032510511577129364,
+        0.02551010251045227,
+        0.030074529349803925
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.04208809226792146
+    },
+    {
+      "mesh_index": 158,
+      "mesh": "Posterior_Longitudinal_Ligament",
+      "tissue": "bone",
+      "vertices": 2010,
+      "centroid_m": [
+        0.002400163561105728,
+        0.0057362765073776245,
+        -0.027994118630886078
+      ],
+      "extent_m": [
+        0.04080383479595184,
+        0.4742739200592041,
+        0.06530790030956268
+      ],
+      "driver_bone": "Spine_L5",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.04029382972575605
+    },
+    {
+      "mesh_index": 159,
+      "mesh": "Premolar_1st",
+      "tissue": "bone",
+      "vertices": 152,
+      "centroid_m": [
+        0.012619542889297009,
+        0.1959991306066513,
+        0.05202198773622513
+      ],
+      "extent_m": [
+        0.008660809136927128,
+        0.018292903900146484,
+        0.00965474545955658
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002935789689792294
+    },
+    {
+      "mesh_index": 160,
+      "mesh": "Premolar_1st_2",
+      "tissue": "bone",
+      "vertices": 152,
+      "centroid_m": [
+        -0.01254352554678917,
+        0.19418375194072723,
+        0.05111519247293472
+      ],
+      "extent_m": [
+        0.009666603058576584,
+        0.017615094780921936,
+        0.009216748178005219
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002904816014122096
+    },
+    {
+      "mesh_index": 161,
+      "mesh": "Premolar_1st_3",
+      "tissue": "bone",
+      "vertices": 152,
+      "centroid_m": [
+        0.017958898097276688,
+        0.2090919464826584,
+        0.05717453360557556
+      ],
+      "extent_m": [
+        0.007798377424478531,
+        0.01976238191127777,
+        0.009054329246282578
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029447619775183178
+    },
+    {
+      "mesh_index": 162,
+      "mesh": "Premolar_1st_4",
+      "tissue": "bone",
+      "vertices": 152,
+      "centroid_m": [
+        -0.020133577287197113,
+        0.20961108803749084,
+        0.05647695064544678
+      ],
+      "extent_m": [
+        0.008151545189321041,
+        0.02110430598258972,
+        0.009514741599559784
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029087266562603125
+    },
+    {
+      "mesh_index": 163,
+      "mesh": "Premolar_2nd",
+      "tissue": "bone",
+      "vertices": 152,
+      "centroid_m": [
+        0.015610839240252972,
+        0.19489099085330963,
+        0.04517074301838875
+      ],
+      "extent_m": [
+        0.008877154439687729,
+        0.022497355937957764,
+        0.009690392762422562
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002945591324233049
+    },
+    {
+      "mesh_index": 164,
+      "mesh": "Premolar_2nd_2",
+      "tissue": "bone",
+      "vertices": 152,
+      "centroid_m": [
+        -0.015080761164426804,
+        0.19299983978271484,
+        0.04444121941924095
+      ],
+      "extent_m": [
+        0.008716459386050701,
+        0.021990716457366943,
+        0.009007494896650314
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029529493988693176
+    },
+    {
+      "mesh_index": 165,
+      "mesh": "Premolar_2nd_3",
+      "tissue": "bone",
+      "vertices": 152,
+      "centroid_m": [
+        0.021869933232665062,
+        0.20986144244670868,
+        0.051554542034864426
+      ],
+      "extent_m": [
+        0.009029269218444824,
+        0.01982840895652771,
+        0.009661868214607239
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029315732323840424
+    },
+    {
+      "mesh_index": 166,
+      "mesh": "Premolar_2nd_4",
+      "tissue": "bone",
+      "vertices": 152,
+      "centroid_m": [
+        -0.021716933697462082,
+        0.20916497707366943,
+        0.050439655780792236
+      ],
+      "extent_m": [
+        0.008865971118211746,
+        0.019735410809516907,
+        0.009363614022731781
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002931221718051919
+    },
+    {
+      "mesh_index": 167,
+      "mesh": "Radius_L",
+      "tissue": "bone",
+      "vertices": 366,
+      "centroid_m": [
+        0.5786789059638977,
+        0.03346081078052521,
+        -0.05660627782344818
+      ],
+      "extent_m": [
+        0.2740216553211212,
+        0.042816877365112305,
+        0.03822627291083336
+      ],
+      "driver_bone": "Forearm_Twist_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002999891204310937
+    },
+    {
+      "mesh_index": 168,
+      "mesh": "Radius_R",
+      "tissue": "bone",
+      "vertices": 366,
+      "centroid_m": [
+        -0.5839095115661621,
+        0.043922409415245056,
+        -0.05350784212350845
+      ],
+      "extent_m": [
+        0.2636990547180176,
+        0.030145423486828804,
+        0.03632371872663498
+      ],
+      "driver_bone": "Forearm_Twist_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029998532703795575
+    },
+    {
+      "mesh_index": 169,
+      "mesh": "Rib_10L",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        0.08557859063148499,
+        -0.11408265680074692,
+        -0.016235537827014923
+      ],
+      "extent_m": [
+        0.09197050333023071,
+        0.11037774384021759,
+        0.09501785039901733
+      ],
+      "driver_bone": "Rib_Bone_L10",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.03344643368605418
+    },
+    {
+      "mesh_index": 170,
+      "mesh": "Rib_10R",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        -0.07757212966680527,
+        -0.11608347296714783,
+        -0.015246241353452206
+      ],
+      "extent_m": [
+        0.08927717804908752,
+        0.11329923570156097,
+        0.09591460227966309
+      ],
+      "driver_bone": "Rib_Bone_R10",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0418939601834326
+    },
+    {
+      "mesh_index": 171,
+      "mesh": "Rib_11L",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        0.07863707840442657,
+        -0.13395629823207855,
+        -0.026886697858572006
+      ],
+      "extent_m": [
+        0.0770304948091507,
+        0.10209020972251892,
+        0.06183730065822601
+      ],
+      "driver_bone": "Rib_Name_L11",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.052139564257935124
+    },
+    {
+      "mesh_index": 172,
+      "mesh": "Rib_11R",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        -0.06904768198728561,
+        -0.13616661727428436,
+        -0.0256299190223217
+      ],
+      "extent_m": [
+        0.07654018700122833,
+        0.1049232929944992,
+        0.06351318210363388
+      ],
+      "driver_bone": "Rib_Bone_R11",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.061485287259351075
+    },
+    {
+      "mesh_index": 173,
+      "mesh": "Rib_12L",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        0.06482312828302383,
+        -0.13798734545707703,
+        -0.04374408349394798
+      ],
+      "extent_m": [
+        0.059797678142786026,
+        0.07846298068761826,
+        0.02768569253385067
+      ],
+      "driver_bone": "Rib_Name_L12",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.058099420418167486
+    },
+    {
+      "mesh_index": 174,
+      "mesh": "Rib_12R",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        -0.0533779077231884,
+        -0.13984553515911102,
+        -0.04264398664236069
+      ],
+      "extent_m": [
+        0.06069732457399368,
+        0.08094291388988495,
+        0.027489710599184036
+      ],
+      "driver_bone": "Rib_Bone_R12",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0649124007963933
+    },
+    {
+      "mesh_index": 175,
+      "mesh": "Rib_1L",
+      "tissue": "bone",
+      "vertices": 334,
+      "centroid_m": [
+        0.05862313508987427,
+        0.05531030148267746,
+        -0.014309823513031006
+      ],
+      "extent_m": [
+        0.07731404900550842,
+        0.10192638635635376,
+        0.06229827180504799
+      ],
+      "driver_bone": "Rib_Bone_L1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05143431486725338
+    },
+    {
+      "mesh_index": 176,
+      "mesh": "Rib_1R",
+      "tissue": "bone",
+      "vertices": 334,
+      "centroid_m": [
+        -0.06246825307607651,
+        0.05511424317955971,
+        -0.016882380470633507
+      ],
+      "extent_m": [
+        0.07138271629810333,
+        0.09894119948148727,
+        0.05924975499510765
+      ],
+      "driver_bone": "Rib_Bone_R1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.049351656989779495
+    },
+    {
+      "mesh_index": 177,
+      "mesh": "Rib_2L",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        0.05731898546218872,
+        0.04048597812652588,
+        -0.007593398913741112
+      ],
+      "extent_m": [
+        0.07825304567813873,
+        0.10142197459936142,
+        0.09681051969528198
+      ],
+      "driver_bone": "Rib_Bone_L2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.04878338556582379
+    },
+    {
+      "mesh_index": 178,
+      "mesh": "Rib_2R",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        -0.06031079590320587,
+        0.040082596242427826,
+        -0.00948767177760601
+      ],
+      "extent_m": [
+        0.07141005992889404,
+        0.09951819479465485,
+        0.09402383118867874
+      ],
+      "driver_bone": "Rib_Bone_R2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.051140007293353454
+    },
+    {
+      "mesh_index": 179,
+      "mesh": "Rib_3L",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        0.07013426721096039,
+        0.020077316090464592,
+        -0.0030688869301229715
+      ],
+      "extent_m": [
+        0.09344904869794846,
+        0.09832249581813812,
+        0.1316262185573578
+      ],
+      "driver_bone": "Rib_Bone_L3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.035331548323241015
+    },
+    {
+      "mesh_index": 180,
+      "mesh": "Rib_3R",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        -0.07108207046985626,
+        0.01940898410975933,
+        -0.004589790478348732
+      ],
+      "extent_m": [
+        0.0872061550617218,
+        0.09696942567825317,
+        0.1283223181962967
+      ],
+      "driver_bone": "Rib_Bone_R3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.03783535852337109
+    },
+    {
+      "mesh_index": 181,
+      "mesh": "Rib_4L",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        0.07849839329719543,
+        0.0011436054483056068,
+        0.0007687237812206149
+      ],
+      "extent_m": [
+        0.10025468468666077,
+        0.09692258387804031,
+        0.1546543836593628
+      ],
+      "driver_bone": "Rib_Bone_L4",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.024410382360228577
+    },
+    {
+      "mesh_index": 182,
+      "mesh": "Rib_4R",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        -0.07789575308561325,
+        0.00030649249674752355,
+        -0.00037521394551731646
+      ],
+      "extent_m": [
+        0.09467950463294983,
+        0.09710416942834854,
+        0.15195481479167938
+      ],
+      "driver_bone": "Rib_Bone_R4",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.02744909315139862
+    },
+    {
+      "mesh_index": 183,
+      "mesh": "Rib_5L",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        0.08200301975011826,
+        -0.018663812428712845,
+        0.0016739187994971871
+      ],
+      "extent_m": [
+        0.1041565015912056,
+        0.09836704283952713,
+        0.16093182563781738
+      ],
+      "driver_bone": "Rib_Bone_L5",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.015728195636572573
+    },
+    {
+      "mesh_index": 184,
+      "mesh": "Rib_5R",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        -0.08007176220417023,
+        -0.019620230421423912,
+        0.0009437609696760774
+      ],
+      "extent_m": [
+        0.09887860715389252,
+        0.09937328100204468,
+        0.15886041522026062
+      ],
+      "driver_bone": "Rib_Bone_R5",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.019090609788935845
+    },
+    {
+      "mesh_index": 185,
+      "mesh": "Rib_6L",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        0.08658085018396378,
+        -0.038121651858091354,
+        -0.0002234903658973053
+      ],
+      "extent_m": [
+        0.10751131922006607,
+        0.10706494748592377,
+        0.15714314579963684
+      ],
+      "driver_bone": "Rib_Bone_L6",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.009392296326018594
+    },
+    {
+      "mesh_index": 186,
+      "mesh": "Rib_6R",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        -0.08331449329853058,
+        -0.03926520422101021,
+        -0.000572912918869406
+      ],
+      "extent_m": [
+        0.100948765873909,
+        0.10866017639636993,
+        0.15597999095916748
+      ],
+      "driver_bone": "Rib_Bone_R6",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.01443441381914291
+    },
+    {
+      "mesh_index": 187,
+      "mesh": "Rib_7L",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        0.09409806877374649,
+        -0.061181969940662384,
+        0.0016376156127080321
+      ],
+      "extent_m": [
+        0.10706183314323425,
+        0.10949167609214783,
+        0.14450322091579437
+      ],
+      "driver_bone": "Rib_Bone_L7",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0036619285660399034
+    },
+    {
+      "mesh_index": 188,
+      "mesh": "Rib_7R",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        -0.08944456279277802,
+        -0.06263276189565659,
+        0.001709909294731915
+      ],
+      "extent_m": [
+        0.1012042686343193,
+        0.11178972572088242,
+        0.14402027428150177
+      ],
+      "driver_bone": "Rib_Bone_R7",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.01002618325618088
+    },
+    {
+      "mesh_index": 189,
+      "mesh": "Rib_8L",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        0.0944569781422615,
+        -0.08017007261514664,
+        -0.00315624987706542
+      ],
+      "extent_m": [
+        0.104730024933815,
+        0.10826577246189117,
+        0.12486971914768219
+      ],
+      "driver_bone": "Rib_Bone_L8",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.010924953049873922
+    },
+    {
+      "mesh_index": 190,
+      "mesh": "Rib_8R",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        -0.08863206952810287,
+        -0.08184459805488586,
+        -0.002729496220126748
+      ],
+      "extent_m": [
+        0.09852153062820435,
+        0.11092875152826309,
+        0.12484622001647949
+      ],
+      "driver_bone": "Rib_Bone_R8",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.01854696346536424
+    },
+    {
+      "mesh_index": 191,
+      "mesh": "Rib_9L",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        0.09098382294178009,
+        -0.09645798802375793,
+        -0.009974958375096321
+      ],
+      "extent_m": [
+        0.10141178965568542,
+        0.10735540091991425,
+        0.11188369989395142
+      ],
+      "driver_bone": "Rib_Bone_L9",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.019764145923603715
+    },
+    {
+      "mesh_index": 192,
+      "mesh": "Rib_9R",
+      "tissue": "bone",
+      "vertices": 331,
+      "centroid_m": [
+        -0.08413299918174744,
+        -0.09829089790582657,
+        -0.009272564202547073
+      ],
+      "extent_m": [
+        0.09671768546104431,
+        0.11029660701751709,
+        0.11222508549690247
+      ],
+      "driver_bone": "Rib_Bone_R9",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.02776911273322134
+    },
+    {
+      "mesh_index": 193,
+      "mesh": "Sacral_Nerves_L",
+      "tissue": "nerve",
+      "vertices": 2512,
+      "centroid_m": [
+        0.07733781635761261,
+        -0.8338502645492554,
+        -0.012052896432578564
+      ],
+      "extent_m": [
+        0.17380806803703308,
+        1.0304148197174072,
+        0.25884339213371277
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0009999544780549246
+    },
+    {
+      "mesh_index": 194,
+      "mesh": "Sacral_Nerves_R",
+      "tissue": "nerve",
+      "vertices": 2512,
+      "centroid_m": [
+        -0.07458027452230453,
+        -0.834155261516571,
+        -0.01046004518866539
+      ],
+      "extent_m": [
+        0.17407603561878204,
+        1.0301367044448853,
+        0.2605432868003845
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0009999548487317701
+    },
+    {
+      "mesh_index": 195,
+      "mesh": "Sacrum",
+      "tissue": "bone",
+      "vertices": 4698,
+      "centroid_m": [
+        0.0011433300096541643,
+        -0.39234399795532227,
+        -0.026634423062205315
+      ],
+      "extent_m": [
+        0.14986062049865723,
+        0.20167800784111023,
+        0.1006760224699974
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.028779393272983032
+    },
+    {
+      "mesh_index": 196,
+      "mesh": "Scaphoid_L",
+      "tissue": "bone",
+      "vertices": 294,
+      "centroid_m": [
+        0.7214198112487793,
+        0.030509918928146362,
+        -0.05131248012185097
+      ],
+      "extent_m": [
+        0.028787970542907715,
+        0.025899212807416916,
+        0.03140758350491524
+      ],
+      "driver_bone": "Wrist_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.009987854526625364
+    },
+    {
+      "mesh_index": 197,
+      "mesh": "Scaphoid_R",
+      "tissue": "bone",
+      "vertices": 294,
+      "centroid_m": [
+        -0.7219296097755432,
+        0.03225534409284592,
+        -0.05090183764696121
+      ],
+      "extent_m": [
+        0.029159188270568848,
+        0.027127156034111977,
+        0.031230084598064423
+      ],
+      "driver_bone": "Wrist_Rotate_R1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.011140504746663322
+    },
+    {
+      "mesh_index": 198,
+      "mesh": "Scapula_L",
+      "tissue": "bone",
+      "vertices": 585,
+      "centroid_m": [
+        0.1572115123271942,
+        0.08860171586275101,
+        -0.05453556403517723
+      ],
+      "extent_m": [
+        0.0782063826918602,
+        0.13458673655986786,
+        0.11416396498680115
+      ],
+      "driver_bone": "Scapula_Bone_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002996715645187099
+    },
+    {
+      "mesh_index": 199,
+      "mesh": "Scapula_R",
+      "tissue": "bone",
+      "vertices": 585,
+      "centroid_m": [
+        -0.15166206657886505,
+        0.08867383003234863,
+        -0.055654920637607574
+      ],
+      "extent_m": [
+        0.07963329553604126,
+        0.13239175081253052,
+        0.11437469720840454
+      ],
+      "driver_bone": "Scapula_Bone_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029963914427322963
+    },
+    {
+      "mesh_index": 200,
+      "mesh": "Small_Intestine",
+      "tissue": "organ",
+      "vertices": 6665,
+      "centroid_m": [
+        0.0038760064635425806,
+        -0.27481159567832947,
+        0.03021474927663803
+      ],
+      "extent_m": [
+        0.16363483667373657,
+        0.27758970856666565,
+        0.06709568947553635
+      ],
+      "driver_bone": "Spine_L4",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.06315765160780484
+    },
+    {
+      "mesh_index": 201,
+      "mesh": "Spinal_Cord",
+      "tissue": "nerve",
+      "vertices": 1560,
+      "centroid_m": [
+        0.002242646412923932,
+        0.050872381776571274,
+        -0.0274235587567091
+      ],
+      "extent_m": [
+        0.02680721879005432,
+        0.5975106358528137,
+        0.09282545745372772
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.047521026136818356
+    },
+    {
+      "mesh_index": 202,
+      "mesh": "Spleen",
+      "tissue": "organ",
+      "vertices": 450,
+      "centroid_m": [
+        0.09763681888580322,
+        -0.12200792878866196,
+        0.022889770567417145
+      ],
+      "extent_m": [
+        0.02960962802171707,
+        0.05162996053695679,
+        0.04629874229431152
+      ],
+      "driver_bone": "Rib_Name_L12",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.03546518004556293
+    },
+    {
+      "mesh_index": 203,
+      "mesh": "Sternum",
+      "tissue": "bone",
+      "vertices": 1234,
+      "centroid_m": [
+        0.002076196251437068,
+        -0.028708038851618767,
+        0.05614970996975899
+      ],
+      "extent_m": [
+        0.0326552540063858,
+        0.10963840037584305,
+        0.10138534754514694
+      ],
+      "driver_bone": "Sternum_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.011298203921921497
+    },
+    {
+      "mesh_index": 204,
+      "mesh": "Stomach",
+      "tissue": "organ",
+      "vertices": 768,
+      "centroid_m": [
+        0.028742365539073944,
+        -0.11364399641752243,
+        0.02605733461678028
+      ],
+      "extent_m": [
+        0.13964903354644775,
+        0.0880303755402565,
+        0.06364743411540985
+      ],
+      "driver_bone": "Spine_L2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.03875298599112846
+    },
+    {
+      "mesh_index": 205,
+      "mesh": "Sublingual_Ducts_L",
+      "tissue": "organ",
+      "vertices": 406,
+      "centroid_m": [
+        0.01435419823974371,
+        0.187220498919487,
+        0.045247867703437805
+      ],
+      "extent_m": [
+        0.012468419969081879,
+        0.011863261461257935,
+        0.009578850120306015
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003936739510229155
+    },
+    {
+      "mesh_index": 206,
+      "mesh": "Sublingual_Ducts_R",
+      "tissue": "organ",
+      "vertices": 406,
+      "centroid_m": [
+        -0.01289943978190422,
+        0.18622472882270813,
+        0.045443858951330185
+      ],
+      "extent_m": [
+        0.01065954752266407,
+        0.011071056127548218,
+        0.008844953030347824
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003938132853455348
+    },
+    {
+      "mesh_index": 207,
+      "mesh": "Sublingual_Gland_L",
+      "tissue": "organ",
+      "vertices": 264,
+      "centroid_m": [
+        0.01289681252092123,
+        0.18024516105651855,
+        0.04158366471529007
+      ],
+      "extent_m": [
+        0.017908336594700813,
+        0.01590830087661743,
+        0.008484620600938797
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003943872034149536
+    },
+    {
+      "mesh_index": 208,
+      "mesh": "Sublingual_Gland_R",
+      "tissue": "organ",
+      "vertices": 264,
+      "centroid_m": [
+        -0.011291186325252056,
+        0.17944219708442688,
+        0.04205513000488281
+      ],
+      "extent_m": [
+        0.01750670187175274,
+        0.01475602388381958,
+        0.007499098777770996
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003945109789005153
+    },
+    {
+      "mesh_index": 209,
+      "mesh": "Submandibular_Duct_L",
+      "tissue": "organ",
+      "vertices": 130,
+      "centroid_m": [
+        0.016519583761692047,
+        0.18494388461112976,
+        0.04119859263300896
+      ],
+      "extent_m": [
+        0.02406141348183155,
+        0.016114860773086548,
+        0.0200006403028965
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003938338008885871
+    },
+    {
+      "mesh_index": 210,
+      "mesh": "Submandibular_Duct_R",
+      "tissue": "organ",
+      "vertices": 130,
+      "centroid_m": [
+        -0.014517642557621002,
+        0.18415997922420502,
+        0.04157261177897453
+      ],
+      "extent_m": [
+        0.020353909581899643,
+        0.01651032269001007,
+        0.020101839676499367
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003939041921118866
+    },
+    {
+      "mesh_index": 211,
+      "mesh": "Submandibular_Gland_L",
+      "tissue": "organ",
+      "vertices": 450,
+      "centroid_m": [
+        0.026983661577105522,
+        0.18381942808628082,
+        0.031495336443185806
+      ],
+      "extent_m": [
+        0.021896913647651672,
+        0.024670451879501343,
+        0.01892067678272724
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003941885396592046
+    },
+    {
+      "mesh_index": 212,
+      "mesh": "Submandibular_Gland_R",
+      "tissue": "organ",
+      "vertices": 450,
+      "centroid_m": [
+        -0.02349095419049263,
+        0.18261681497097015,
+        0.03246317803859711
+      ],
+      "extent_m": [
+        0.01786097139120102,
+        0.024504274129867554,
+        0.02105787582695484
+      ],
+      "driver_bone": "Jaw_Bone_tip",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003943797565393524
+    },
+    {
+      "mesh_index": 213,
+      "mesh": "Supraspinous_Ligament",
+      "tissue": "bone",
+      "vertices": 489,
+      "centroid_m": [
+        0.0018240034114569426,
+        -0.08576588332653046,
+        -0.06461665034294128
+      ],
+      "extent_m": [
+        0.01419559121131897,
+        0.41647037863731384,
+        0.06371837109327316
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.03952905984637878
+    },
+    {
+      "mesh_index": 214,
+      "mesh": "T1",
+      "tissue": "bone",
+      "vertices": 1058,
+      "centroid_m": [
+        -0.0054987152107059956,
+        0.10260393470525742,
+        -0.04166167229413986
+      ],
+      "extent_m": [
+        0.09631183743476868,
+        0.03778151422739029,
+        0.0795460045337677
+      ],
+      "driver_bone": "Spine_T1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.02991671757497764
+    },
+    {
+      "mesh_index": 215,
+      "mesh": "T10",
+      "tissue": "bone",
+      "vertices": 1032,
+      "centroid_m": [
+        0.003053908236324787,
+        -0.07227262854576111,
+        -0.03266474977135658
+      ],
+      "extent_m": [
+        0.059734128415584564,
+        0.04933267831802368,
+        0.07090144604444504
+      ],
+      "driver_bone": "Spine_T10",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0602783883720358
+    },
+    {
+      "mesh_index": 216,
+      "mesh": "T11",
+      "tissue": "bone",
+      "vertices": 902,
+      "centroid_m": [
+        0.004540007095783949,
+        -0.08705943822860718,
+        -0.034761153161525726
+      ],
+      "extent_m": [
+        0.05783456563949585,
+        0.04262171685695648,
+        0.06809641420841217
+      ],
+      "driver_bone": "Spine_T11",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0582659894303911
+    },
+    {
+      "mesh_index": 217,
+      "mesh": "T12",
+      "tissue": "bone",
+      "vertices": 854,
+      "centroid_m": [
+        0.005964160431176424,
+        -0.10030481964349747,
+        -0.03654218837618828
+      ],
+      "extent_m": [
+        0.04965967312455177,
+        0.04304268956184387,
+        0.06454253196716309
+      ],
+      "driver_bone": "Spine_T12",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05695159439585053
+    },
+    {
+      "mesh_index": 218,
+      "mesh": "T2",
+      "tissue": "bone",
+      "vertices": 1104,
+      "centroid_m": [
+        -0.004866399802267551,
+        0.07675737887620926,
+        -0.04431810602545738
+      ],
+      "extent_m": [
+        0.08441855013370514,
+        0.0376678928732872,
+        0.08145193010568619
+      ],
+      "driver_bone": "Spine_T2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.031168042908335917
+    },
+    {
+      "mesh_index": 219,
+      "mesh": "T3",
+      "tissue": "bone",
+      "vertices": 1104,
+      "centroid_m": [
+        -0.003741338150575757,
+        0.05491393804550171,
+        -0.04736265540122986
+      ],
+      "extent_m": [
+        0.07786007970571518,
+        0.03905723616480827,
+        0.08450618386268616
+      ],
+      "driver_bone": "Spine_T3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.03170485705072842
+    },
+    {
+      "mesh_index": 220,
+      "mesh": "T4",
+      "tissue": "bone",
+      "vertices": 1104,
+      "centroid_m": [
+        -0.0027451736386865377,
+        0.034674566239118576,
+        -0.048156220465898514
+      ],
+      "extent_m": [
+        0.07305604219436646,
+        0.037465061992406845,
+        0.0833820253610611
+      ],
+      "driver_bone": "Spine_T4",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0358346894071181
+    },
+    {
+      "mesh_index": 221,
+      "mesh": "T5",
+      "tissue": "bone",
+      "vertices": 1104,
+      "centroid_m": [
+        -0.0018384992145001888,
+        0.01596720516681671,
+        -0.04793570563197136
+      ],
+      "extent_m": [
+        0.06742262840270996,
+        0.03863917663693428,
+        0.07819481939077377
+      ],
+      "driver_bone": "Spine_T5",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.04404622138079649
+    },
+    {
+      "mesh_index": 222,
+      "mesh": "T6",
+      "tissue": "bone",
+      "vertices": 1104,
+      "centroid_m": [
+        -0.001022892538458109,
+        -0.0007422240450978279,
+        -0.04800993949174881
+      ],
+      "extent_m": [
+        0.0622386671602726,
+        0.0490787997841835,
+        0.07286795973777771
+      ],
+      "driver_bone": "Spine_T6",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05192677567686645
+    },
+    {
+      "mesh_index": 223,
+      "mesh": "T7",
+      "tissue": "bone",
+      "vertices": 1104,
+      "centroid_m": [
+        -0.0001964750699698925,
+        -0.019813980907201767,
+        -0.041659168899059296
+      ],
+      "extent_m": [
+        0.05883652716875076,
+        0.05654561519622803,
+        0.0721544697880745
+      ],
+      "driver_bone": "Spine_T7",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05767393159475978
+    },
+    {
+      "mesh_index": 224,
+      "mesh": "T8",
+      "tissue": "bone",
+      "vertices": 1104,
+      "centroid_m": [
+        0.0007719192653894424,
+        -0.03990623354911804,
+        -0.034200843423604965
+      ],
+      "extent_m": [
+        0.06695820391178131,
+        0.05876867100596428,
+        0.07213180512189865
+      ],
+      "driver_bone": "Spine_T8",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.062787750302993
+    },
+    {
+      "mesh_index": 225,
+      "mesh": "T9",
+      "tissue": "bone",
+      "vertices": 1104,
+      "centroid_m": [
+        0.0018863751320168376,
+        -0.05789848044514656,
+        -0.030872037634253502
+      ],
+      "extent_m": [
+        0.06500270962715149,
+        0.053735874593257904,
+        0.07306639850139618
+      ],
+      "driver_bone": "Spine_T9",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.06289175485798983
+    },
+    {
+      "mesh_index": 226,
+      "mesh": "Talus_L",
+      "tissue": "bone",
+      "vertices": 163,
+      "centroid_m": [
+        0.0943765863776207,
+        -1.26833176612854,
+        -0.03538728877902031
+      ],
+      "extent_m": [
+        0.05716227740049362,
+        0.05594444274902344,
+        0.0842428132891655
+      ],
+      "driver_bone": "Ankle_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002904368194130345
+    },
+    {
+      "mesh_index": 227,
+      "mesh": "Talus_R",
+      "tissue": "bone",
+      "vertices": 163,
+      "centroid_m": [
+        -0.09476109594106674,
+        -1.273751139640808,
+        -0.03548466041684151
+      ],
+      "extent_m": [
+        0.05808189511299133,
+        0.05433237552642822,
+        0.08645012229681015
+      ],
+      "driver_bone": "Ankle_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029971764664532257
+    },
+    {
+      "mesh_index": 228,
+      "mesh": "Temporal_Lobe_L",
+      "tissue": "nerve",
+      "vertices": 7177,
+      "centroid_m": [
+        0.03679799661040306,
+        0.29599010944366455,
+        -0.02811291068792343
+      ],
+      "extent_m": [
+        0.06360328197479248,
+        0.04963862895965576,
+        0.09956233203411102
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.006828405171019107
+    },
+    {
+      "mesh_index": 229,
+      "mesh": "Temporal_Lobe_R",
+      "tissue": "nerve",
+      "vertices": 6346,
+      "centroid_m": [
+        -0.04029560089111328,
+        0.2943563759326935,
+        -0.032354552298784256
+      ],
+      "extent_m": [
+        0.07167267799377441,
+        0.05544942617416382,
+        0.09478193521499634
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0009912484696687417
+    },
+    {
+      "mesh_index": 230,
+      "mesh": "Thalamus_L",
+      "tissue": "nerve",
+      "vertices": 500,
+      "centroid_m": [
+        0.007980329915881157,
+        0.31007638573646545,
+        -0.026281286031007767
+      ],
+      "extent_m": [
+        0.028752954676747322,
+        0.024300217628479004,
+        0.03839394822716713
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.04729507478455555
+    },
+    {
+      "mesh_index": 231,
+      "mesh": "Thalamus_R",
+      "tissue": "nerve",
+      "vertices": 500,
+      "centroid_m": [
+        -0.01856204867362976,
+        0.30976641178131104,
+        -0.02668476291000843
+      ],
+      "extent_m": [
+        0.026883065700531006,
+        0.02434876561164856,
+        0.03875748813152313
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.03802174513009048
+    },
+    {
+      "mesh_index": 232,
+      "mesh": "Thoracic_Nerves_L",
+      "tissue": "nerve",
+      "vertices": 2126,
+      "centroid_m": [
+        0.07062892615795135,
+        -0.03670528903603554,
+        -0.023676639422774315
+      ],
+      "extent_m": [
+        0.14907075464725494,
+        0.26193559169769287,
+        0.14226104319095612
+      ],
+      "driver_bone": "Rib_Bone_L3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.007749380346200083
+    },
+    {
+      "mesh_index": 233,
+      "mesh": "Thoracic_Nerves_R",
+      "tissue": "nerve",
+      "vertices": 2126,
+      "centroid_m": [
+        -0.06781674176454544,
+        -0.037667881697416306,
+        -0.023997852578759193
+      ],
+      "extent_m": [
+        0.14577126502990723,
+        0.2651122212409973,
+        0.14097914099693298
+      ],
+      "driver_bone": "Rib_Bone_R3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.013523530258817945
+    },
+    {
+      "mesh_index": 234,
+      "mesh": "Thyroid_Gland",
+      "tissue": "organ",
+      "vertices": 386,
+      "centroid_m": [
+        -5.96560857957229e-05,
+        0.1010226383805275,
+        0.004086769185960293
+      ],
+      "extent_m": [
+        0.047252051532268524,
+        0.03591592609882355,
+        0.02448860928416252
+      ],
+      "driver_bone": "Spine_C6",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.019655336522440756
+    },
+    {
+      "mesh_index": 235,
+      "mesh": "Tibia_L",
+      "tissue": "bone",
+      "vertices": 489,
+      "centroid_m": [
+        0.10659506171941757,
+        -0.994661808013916,
+        -0.0231290552765131
+      ],
+      "extent_m": [
+        0.07821665704250336,
+        0.3988378047943115,
+        0.08465015888214111
+      ],
+      "driver_bone": "Tibia_Bone_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0027811981281827764
+    },
+    {
+      "mesh_index": 236,
+      "mesh": "Tibia_R",
+      "tissue": "bone",
+      "vertices": 489,
+      "centroid_m": [
+        -0.10065482556819916,
+        -0.9976136088371277,
+        -0.01959793083369732
+      ],
+      "extent_m": [
+        0.07337582856416702,
+        0.40769344568252563,
+        0.08855646103620529
+      ],
+      "driver_bone": "Tibia_Bone_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002734347549969752
+    },
+    {
+      "mesh_index": 237,
+      "mesh": "Trachea",
+      "tissue": "organ",
+      "vertices": 2761,
+      "centroid_m": [
+        0.0006091004470363259,
+        -0.009526814334094524,
+        0.00729457288980484
+      ],
+      "extent_m": [
+        0.23667433857917786,
+        0.27326303720474243,
+        0.07966256141662598
+      ],
+      "driver_bone": "Spine_T1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.014028811466276566
+    },
+    {
+      "mesh_index": 238,
+      "mesh": "Trapezium_L",
+      "tissue": "bone",
+      "vertices": 222,
+      "centroid_m": [
+        0.7383054494857788,
+        0.01793854497373104,
+        -0.03707270696759224
+      ],
+      "extent_m": [
+        0.015508115291595459,
+        0.016456373035907745,
+        0.013779420405626297
+      ],
+      "driver_bone": "Wrist_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0047155860284290585
+    },
+    {
+      "mesh_index": 239,
+      "mesh": "Trapezium_R",
+      "tissue": "bone",
+      "vertices": 222,
+      "centroid_m": [
+        -0.7382587790489197,
+        0.018137065693736076,
+        -0.03700326010584831
+      ],
+      "extent_m": [
+        0.016114234924316406,
+        0.016635393723845482,
+        0.01386316865682602
+      ],
+      "driver_bone": "Wrist_Rotate_R1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.004882718148589535
+    },
+    {
+      "mesh_index": 240,
+      "mesh": "Trapezoid_L",
+      "tissue": "bone",
+      "vertices": 222,
+      "centroid_m": [
+        0.7433205842971802,
+        0.0253902580589056,
+        -0.04682373255491257
+      ],
+      "extent_m": [
+        0.01592344045639038,
+        0.01822262816131115,
+        0.01839599385857582
+      ],
+      "driver_bone": "Wrist_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003918117768066536
+    },
+    {
+      "mesh_index": 241,
+      "mesh": "Trapezoid_R",
+      "tissue": "bone",
+      "vertices": 222,
+      "centroid_m": [
+        -0.7436319589614868,
+        0.02565612643957138,
+        -0.0468285009264946
+      ],
+      "extent_m": [
+        0.015473246574401855,
+        0.018825750797986984,
+        0.018468394875526428
+      ],
+      "driver_bone": "Wrist_Rotate_R1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003913961301326615
+    },
+    {
+      "mesh_index": 242,
+      "mesh": "Triquetrum_L",
+      "tissue": "bone",
+      "vertices": 113,
+      "centroid_m": [
+        0.7188296318054199,
+        0.029673291370272636,
+        -0.08493366837501526
+      ],
+      "extent_m": [
+        0.013021647930145264,
+        0.013391351327300072,
+        0.015711911022663116
+      ],
+      "driver_bone": "Wrist_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0070197098112606635
+    },
+    {
+      "mesh_index": 243,
+      "mesh": "Triquetrum_R",
+      "tissue": "bone",
+      "vertices": 113,
+      "centroid_m": [
+        -0.7183542251586914,
+        0.032461464405059814,
+        -0.08417270332574844
+      ],
+      "extent_m": [
+        0.012977957725524902,
+        0.01339060440659523,
+        0.015815578401088715
+      ],
+      "driver_bone": "Wrist_Rotate_R1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.007595941815759999
+    },
+    {
+      "mesh_index": 244,
+      "mesh": "UNCUT_Cerebrum_L",
+      "tissue": "nerve",
+      "vertices": 38334,
+      "centroid_m": [
+        0.023708093911409378,
+        0.3199746608734131,
+        -0.026719706133008003
+      ],
+      "extent_m": [
+        0.07443029433488846,
+        0.09714078903198242,
+        0.16288992762565613
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0009955972933678018
+    },
+    {
+      "mesh_index": 245,
+      "mesh": "UNCUT_Cerebrum_R",
+      "tissue": "nerve",
+      "vertices": 39678,
+      "centroid_m": [
+        -0.030974645167589188,
+        0.3182186782360077,
+        -0.02802780643105507
+      ],
+      "extent_m": [
+        0.07782408595085144,
+        0.11050429940223694,
+        0.15933415293693542
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0009913208247583742
+    },
+    {
+      "mesh_index": 246,
+      "mesh": "UNCUT_Digestive_Tract",
+      "tissue": "organ",
+      "vertices": 10058,
+      "centroid_m": [
+        0.011760784313082695,
+        -0.1415145844221115,
+        0.03185128793120384
+      ],
+      "extent_m": [
+        0.18933892250061035,
+        0.6564939022064209,
+        0.1173027828335762
+      ],
+      "driver_bone": "Spine_L4",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -1.1161184662552599e-05
+    },
+    {
+      "mesh_index": 247,
+      "mesh": "Ulna_L",
+      "tissue": "bone",
+      "vertices": 527,
+      "centroid_m": [
+        0.5540169477462769,
+        0.02585437521338463,
+        -0.07287784665822983
+      ],
+      "extent_m": [
+        0.2752734124660492,
+        0.04593907296657562,
+        0.043688759207725525
+      ],
+      "driver_bone": "Forearm_Bone_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002999843214495137
+    },
+    {
+      "mesh_index": 248,
+      "mesh": "Ulna_R",
+      "tissue": "bone",
+      "vertices": 527,
+      "centroid_m": [
+        -0.5588292479515076,
+        0.040273018181324005,
+        -0.06837546825408936
+      ],
+      "extent_m": [
+        0.27234432101249695,
+        0.033670127391815186,
+        0.043216314166784286
+      ],
+      "driver_bone": "Forearm_Bone_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.008983093874689157
+    },
+    {
+      "mesh_index": 249,
+      "mesh": "Upper_Skull",
+      "tissue": "bone",
+      "vertices": 4385,
+      "centroid_m": [
+        -0.0013335170224308968,
+        0.255889892578125,
+        0.026944119483232498
+      ],
+      "extent_m": [
+        0.13315510749816895,
+        0.1567523181438446,
+        0.17458227276802063
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029805803155434516
+    },
+    {
+      "mesh_index": 250,
+      "mesh": "Ureter_L",
+      "tissue": "organ",
+      "vertices": 225,
+      "centroid_m": [
+        0.03175017237663269,
+        -0.2814359664916992,
+        -0.0012091225944459438
+      ],
+      "extent_m": [
+        0.07564955204725266,
+        0.33850085735321045,
+        0.06147031486034393
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.08153797923086288
+    },
+    {
+      "mesh_index": 251,
+      "mesh": "Ureter_R",
+      "tissue": "organ",
+      "vertices": 225,
+      "centroid_m": [
+        -0.02624395303428173,
+        -0.2864096462726593,
+        -0.00022834060655441135
+      ],
+      "extent_m": [
+        0.06221883371472359,
+        0.3316717743873596,
+        0.06487830728292465
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.07783520120109198
+    },
+    {
+      "mesh_index": 252,
+      "mesh": "Urethra_Short",
+      "tissue": "organ",
+      "vertices": 80,
+      "centroid_m": [
+        -0.00032241776352748275,
+        -0.47912344336509705,
+        0.03231430426239967
+      ],
+      "extent_m": [
+        0.005810899659991264,
+        0.01607617735862732,
+        0.009002087637782097
+      ],
+      "driver_bone": "Hip_bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.05284465338201935
+    },
+    {
+      "mesh_index": 253,
+      "mesh": "Vein",
+      "tissue": "vessel",
+      "vertices": 14240,
+      "centroid_m": [
+        -0.0005353285814635456,
+        -0.07169874012470245,
+        -0.008073599077761173
+      ],
+      "extent_m": [
+        1.7220737934112549,
+        1.695137858390808,
+        0.2663609981536865
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.001473104155515516
+    },
+    {
+      "mesh_index": 254,
+      "mesh": "Ventricles",
+      "tissue": "nerve",
+      "vertices": 1627,
+      "centroid_m": [
+        -0.002853670157492161,
+        0.3076779544353485,
+        -0.02904007025063038
+      ],
+      "extent_m": [
+        0.07749255746603012,
+        0.05004054307937622,
+        0.06741578876972198
+      ],
+      "driver_bone": "Head_Bone",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.019241192168626412
+    },
+    {
+      "mesh_index": 255,
+      "mesh": "_1st_Distal_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 254,
+      "centroid_m": [
+        0.7827298045158386,
+        0.0138827720656991,
+        0.012447887100279331
+      ],
+      "extent_m": [
+        0.020736753940582275,
+        0.01331388670951128,
+        0.013690758496522903
+      ],
+      "driver_bone": "Finger_Thumb_L1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002987400367135066
+    },
+    {
+      "mesh_index": 256,
+      "mesh": "_1st_Distal_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 254,
+      "centroid_m": [
+        -0.7824340462684631,
+        0.013785957358777523,
+        0.012414737604558468
+      ],
+      "extent_m": [
+        0.01989501714706421,
+        0.013480253517627716,
+        0.013216733001172543
+      ],
+      "driver_bone": "bone307",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.00299963035153025
+    },
+    {
+      "mesh_index": 257,
+      "mesh": "_1st_Distal_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 180,
+      "centroid_m": [
+        0.10799431055784225,
+        -1.3238638639450073,
+        0.13396887481212616
+      ],
+      "extent_m": [
+        0.013377740979194641,
+        0.009047627449035645,
+        0.018481537699699402
+      ],
+      "driver_bone": "bone169",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0018080308405248797
+    },
+    {
+      "mesh_index": 258,
+      "mesh": "_1st_Distal_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 180,
+      "centroid_m": [
+        -0.10782182216644287,
+        -1.32383394241333,
+        0.1341262310743332
+      ],
+      "extent_m": [
+        0.013373136520385742,
+        0.00887608528137207,
+        0.018334627151489258
+      ],
+      "driver_bone": "bone272",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0018132039130239475
+    },
+    {
+      "mesh_index": 259,
+      "mesh": "_1st_Metacarpal_L",
+      "tissue": "bone",
+      "vertices": 322,
+      "centroid_m": [
+        0.7513015866279602,
+        0.01841728575527668,
+        -0.019762249663472176
+      ],
+      "extent_m": [
+        0.020935773849487305,
+        0.009272180497646332,
+        0.02769818715751171
+      ],
+      "driver_bone": "Finger_Thumb_L3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.006118849677000907
+    },
+    {
+      "mesh_index": 260,
+      "mesh": "_1st_Metacarpal_R",
+      "tissue": "bone",
+      "vertices": 322,
+      "centroid_m": [
+        -0.7513202428817749,
+        0.018351508304476738,
+        -0.019763482734560966
+      ],
+      "extent_m": [
+        0.020877480506896973,
+        0.009351960383355618,
+        0.0276730228215456
+      ],
+      "driver_bone": "bone303",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.006182938801027681
+    },
+    {
+      "mesh_index": 261,
+      "mesh": "_1st_Metatarsal_L",
+      "tissue": "bone",
+      "vertices": 259,
+      "centroid_m": [
+        0.10649947822093964,
+        -1.322938084602356,
+        0.11958680301904678
+      ],
+      "extent_m": [
+        0.014959663152694702,
+        0.016953110694885254,
+        0.03621430695056915
+      ],
+      "driver_bone": "Arch_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0014643822776347934
+    },
+    {
+      "mesh_index": 262,
+      "mesh": "_1st_Metatarsal_R",
+      "tissue": "bone",
+      "vertices": 259,
+      "centroid_m": [
+        -0.1091257706284523,
+        -1.3232269287109375,
+        0.12128695100545883
+      ],
+      "extent_m": [
+        0.015248239040374756,
+        0.015380263328552246,
+        0.03313273936510086
+      ],
+      "driver_bone": "Arch_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0018549134305720894
+    },
+    {
+      "mesh_index": 263,
+      "mesh": "_1st_Proximal_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 322,
+      "centroid_m": [
+        0.7691031694412231,
+        0.01693672500550747,
+        0.002696891315281391
+      ],
+      "extent_m": [
+        0.025304675102233887,
+        0.013626581989228725,
+        0.021698080003261566
+      ],
+      "driver_bone": "Finger_Thumb_L2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0049347073621771416
+    },
+    {
+      "mesh_index": 264,
+      "mesh": "_1st_Proximal_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 322,
+      "centroid_m": [
+        -0.7691736817359924,
+        0.016974322497844696,
+        0.0027137158904224634
+      ],
+      "extent_m": [
+        0.025407731533050537,
+        0.013667427003383636,
+        0.021725866943597794
+      ],
+      "driver_bone": "bone305",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.004938251153158321
+    },
+    {
+      "mesh_index": 265,
+      "mesh": "_1st_Proximal_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 226,
+      "centroid_m": [
+        0.1065368726849556,
+        -1.3231874704360962,
+        0.12604506313800812
+      ],
+      "extent_m": [
+        0.014244601130485535,
+        0.011031746864318848,
+        0.020721763372421265
+      ],
+      "driver_bone": "bone167",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029667816648510925
+    },
+    {
+      "mesh_index": 266,
+      "mesh": "_1st_Proximal_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 226,
+      "centroid_m": [
+        -0.10744863748550415,
+        -1.3243474960327148,
+        0.12480680644512177
+      ],
+      "extent_m": [
+        0.011202208697795868,
+        0.00901639461517334,
+        0.016686968505382538
+      ],
+      "driver_bone": "bone270",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029986207758947044
+    },
+    {
+      "mesh_index": 267,
+      "mesh": "_2nd_Distal_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 254,
+      "centroid_m": [
+        0.8700680732727051,
+        0.026728134602308273,
+        -0.040965717285871506
+      ],
+      "extent_m": [
+        0.018785834312438965,
+        0.007065415382385254,
+        0.0074487365782260895
+      ],
+      "driver_bone": "Finger_Index_L1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029998816251111623
+    },
+    {
+      "mesh_index": 268,
+      "mesh": "_2nd_Distal_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 254,
+      "centroid_m": [
+        -0.8700932264328003,
+        0.027781695127487183,
+        -0.04067748785018921
+      ],
+      "extent_m": [
+        0.01768738031387329,
+        0.008722255006432533,
+        0.007659941911697388
+      ],
+      "driver_bone": "bone313",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002999941899061168
+    },
+    {
+      "mesh_index": 269,
+      "mesh": "_2nd_Distal_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 90,
+      "centroid_m": [
+        0.11070606112480164,
+        -1.3258970975875854,
+        0.14233636856079102
+      ],
+      "extent_m": [
+        0.005944192409515381,
+        0.004364132881164551,
+        0.007905110716819763
+      ],
+      "driver_bone": "bone175",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0030000016596780934
+    },
+    {
+      "mesh_index": 270,
+      "mesh": "_2nd_Distal_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 90,
+      "centroid_m": [
+        -0.11124970018863678,
+        -1.326316237449646,
+        0.1421101689338684
+      ],
+      "extent_m": [
+        0.005475305020809174,
+        0.004244327545166016,
+        0.007425069808959961
+      ],
+      "driver_bone": "bone278",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0030000579518430722
+    },
+    {
+      "mesh_index": 271,
+      "mesh": "_2nd_Intermediate_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 338,
+      "centroid_m": [
+        0.8523076772689819,
+        0.029100798070430756,
+        -0.039632465690374374
+      ],
+      "extent_m": [
+        0.023849964141845703,
+        0.00967693142592907,
+        0.009919311851263046
+      ],
+      "driver_bone": "Finger_Index_L2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002999945245622394
+    },
+    {
+      "mesh_index": 272,
+      "mesh": "_2nd_Intermediate_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 338,
+      "centroid_m": [
+        -0.8522840738296509,
+        0.029165003448724747,
+        -0.03962165117263794
+      ],
+      "extent_m": [
+        0.023891568183898926,
+        0.009828409180045128,
+        0.009944632649421692
+      ],
+      "driver_bone": "bone311",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002999944377554973
+    },
+    {
+      "mesh_index": 273,
+      "mesh": "_2nd_Metacarpal_L",
+      "tissue": "bone",
+      "vertices": 946,
+      "centroid_m": [
+        0.7824068665504456,
+        0.02872702106833458,
+        -0.04278131201863289
+      ],
+      "extent_m": [
+        0.0631759762763977,
+        0.015410441905260086,
+        0.01588084176182747
+      ],
+      "driver_bone": "Wrist_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029999320724753663
+    },
+    {
+      "mesh_index": 274,
+      "mesh": "_2nd_Metacarpal_R",
+      "tissue": "bone",
+      "vertices": 946,
+      "centroid_m": [
+        -0.7832599878311157,
+        0.028426356613636017,
+        -0.04265768826007843
+      ],
+      "extent_m": [
+        0.061137497425079346,
+        0.015497945249080658,
+        0.015493303537368774
+      ],
+      "driver_bone": "Wrist_Rotate_R1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029999321696345975
+    },
+    {
+      "mesh_index": 275,
+      "mesh": "_2nd_Metatarsal_L",
+      "tissue": "bone",
+      "vertices": 246,
+      "centroid_m": [
+        0.10726872831583023,
+        -1.32102370262146,
+        0.11530477553606033
+      ],
+      "extent_m": [
+        0.013137727975845337,
+        0.020197629928588867,
+        0.05676230788230896
+      ],
+      "driver_bone": "Arch_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0017122066535466371
+    },
+    {
+      "mesh_index": 276,
+      "mesh": "_2nd_Metatarsal_R",
+      "tissue": "bone",
+      "vertices": 246,
+      "centroid_m": [
+        -0.10720420628786087,
+        -1.3211233615875244,
+        0.11635631322860718
+      ],
+      "extent_m": [
+        0.01334603875875473,
+        0.020499825477600098,
+        0.055208489298820496
+      ],
+      "driver_bone": "Arch_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0018597227759388783
+    },
+    {
+      "mesh_index": 277,
+      "mesh": "_2nd_Middle_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 226,
+      "centroid_m": [
+        0.10962904244661331,
+        -1.3250858783721924,
+        0.13916735351085663
+      ],
+      "extent_m": [
+        0.00837341696023941,
+        0.007653474807739258,
+        0.013715386390686035
+      ],
+      "driver_bone": "bone173",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029998675146028085
+    },
+    {
+      "mesh_index": 278,
+      "mesh": "_2nd_Middle_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 226,
+      "centroid_m": [
+        -0.10992066562175751,
+        -1.3252030611038208,
+        0.13908681273460388
+      ],
+      "extent_m": [
+        0.007699653506278992,
+        0.007461071014404297,
+        0.01367218792438507
+      ],
+      "driver_bone": "bone276",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029989787792726224
+    },
+    {
+      "mesh_index": 279,
+      "mesh": "_2nd_Proximal_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 322,
+      "centroid_m": [
+        0.8246369957923889,
+        0.030185017734766006,
+        -0.04043105989694595
+      ],
+      "extent_m": [
+        0.034478724002838135,
+        0.008848864585161209,
+        0.014857959002256393
+      ],
+      "driver_bone": "Finger_Index_L3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003538477217615728
+    },
+    {
+      "mesh_index": 280,
+      "mesh": "_2nd_Proximal_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 322,
+      "centroid_m": [
+        -0.8246395587921143,
+        0.030171705409884453,
+        -0.04043496027588844
+      ],
+      "extent_m": [
+        0.03443056344985962,
+        0.008834019303321838,
+        0.014759022742509842
+      ],
+      "driver_bone": "bone309",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0035862068108236033
+    },
+    {
+      "mesh_index": 281,
+      "mesh": "_2nd_Proximal_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 175,
+      "centroid_m": [
+        0.10815276205539703,
+        -1.3233782052993774,
+        0.1299348622560501
+      ],
+      "extent_m": [
+        0.01333562284708023,
+        0.010602831840515137,
+        0.028157003223896027
+      ],
+      "driver_bone": "bone171",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0028795398586576332
+    },
+    {
+      "mesh_index": 282,
+      "mesh": "_2nd_Proximal_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 175,
+      "centroid_m": [
+        -0.10761091113090515,
+        -1.3235589265823364,
+        0.12887634336948395
+      ],
+      "extent_m": [
+        0.014154031872749329,
+        0.011291027069091797,
+        0.029767796397209167
+      ],
+      "driver_bone": "bone274",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002868290524828753
+    },
+    {
+      "mesh_index": 283,
+      "mesh": "_3rd_Distal_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 254,
+      "centroid_m": [
+        0.877612829208374,
+        0.029809800907969475,
+        -0.07756693661212921
+      ],
+      "extent_m": [
+        0.01753866672515869,
+        0.004926839843392372,
+        0.006609082221984863
+      ],
+      "driver_bone": "Finger_Middle_L1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002999927239373053
+    },
+    {
+      "mesh_index": 284,
+      "mesh": "_3rd_Distal_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 254,
+      "centroid_m": [
+        -0.8775869607925415,
+        0.028991583734750748,
+        -0.07795850187540054
+      ],
+      "extent_m": [
+        0.017772972583770752,
+        0.005188986659049988,
+        0.006615445017814636
+      ],
+      "driver_bone": "bone319",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.00299992293366142
+    },
+    {
+      "mesh_index": 285,
+      "mesh": "_3rd_Distal_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 90,
+      "centroid_m": [
+        0.1109720841050148,
+        -1.3260083198547363,
+        0.14239461719989777
+      ],
+      "extent_m": [
+        0.005783401429653168,
+        0.004189133644104004,
+        0.007900267839431763
+      ],
+      "driver_bone": "bone181",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003000030643178889
+    },
+    {
+      "mesh_index": 286,
+      "mesh": "_3rd_Distal_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 90,
+      "centroid_m": [
+        -0.11167968809604645,
+        -1.3261501789093018,
+        0.14219450950622559
+      ],
+      "extent_m": [
+        0.00553257018327713,
+        0.004161238670349121,
+        0.007647380232810974
+      ],
+      "driver_bone": "bone284",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0030000503101716655
+    },
+    {
+      "mesh_index": 287,
+      "mesh": "_3rd_Intermediate_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 338,
+      "centroid_m": [
+        0.8587132096290588,
+        0.030908599495887756,
+        -0.07489039748907089
+      ],
+      "extent_m": [
+        0.025553464889526367,
+        0.008922263979911804,
+        0.012294329702854156
+      ],
+      "driver_bone": "Finger_Middle_L2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003258079029719513
+    },
+    {
+      "mesh_index": 288,
+      "mesh": "_3rd_Intermediate_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 338,
+      "centroid_m": [
+        -0.8587279915809631,
+        0.03096836432814598,
+        -0.07487688958644867
+      ],
+      "extent_m": [
+        0.025517046451568604,
+        0.009020531550049782,
+        0.01229742169380188
+      ],
+      "driver_bone": "bone317",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0032674553186389896
+    },
+    {
+      "mesh_index": 289,
+      "mesh": "_3rd_Metacarpal_L",
+      "tissue": "bone",
+      "vertices": 946,
+      "centroid_m": [
+        0.7795516848564148,
+        0.02845417521893978,
+        -0.05137896165251732
+      ],
+      "extent_m": [
+        0.06412655115127563,
+        0.027704861015081406,
+        0.038415856659412384
+      ],
+      "driver_bone": "Wrist_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0028314506579239546
+    },
+    {
+      "mesh_index": 290,
+      "mesh": "_3rd_Metacarpal_R",
+      "tissue": "bone",
+      "vertices": 946,
+      "centroid_m": [
+        -0.7940555214881897,
+        0.03826678916811943,
+        -0.06795568019151688
+      ],
+      "extent_m": [
+        0.057949185371398926,
+        0.02217095158994198,
+        0.01325109601020813
+      ],
+      "driver_bone": "Wrist_Rotate_R1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002994729369760871
+    },
+    {
+      "mesh_index": 291,
+      "mesh": "_3rd_Metatarsal_L",
+      "tissue": "bone",
+      "vertices": 246,
+      "centroid_m": [
+        0.1255558580160141,
+        -1.320755124092102,
+        0.10454725474119186
+      ],
+      "extent_m": [
+        0.011461131274700165,
+        0.022369742393493652,
+        0.05635114014148712
+      ],
+      "driver_bone": "Arch_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0011928718640718114
+    },
+    {
+      "mesh_index": 292,
+      "mesh": "_3rd_Metatarsal_R",
+      "tissue": "bone",
+      "vertices": 246,
+      "centroid_m": [
+        -0.10934588313102722,
+        -1.3215543031692505,
+        0.11578196287155151
+      ],
+      "extent_m": [
+        0.008786715567111969,
+        0.01345205307006836,
+        0.03718657046556473
+      ],
+      "driver_bone": "Arch_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0030000317770918603
+    },
+    {
+      "mesh_index": 293,
+      "mesh": "_3rd_Middle_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 226,
+      "centroid_m": [
+        0.10948759317398071,
+        -1.3247921466827393,
+        0.13948208093643188
+      ],
+      "extent_m": [
+        0.009015284478664398,
+        0.007884621620178223,
+        0.013804614543914795
+      ],
+      "driver_bone": "bone179",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029980901324343947
+    },
+    {
+      "mesh_index": 294,
+      "mesh": "_3rd_Middle_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 226,
+      "centroid_m": [
+        -0.11029479652643204,
+        -1.3251417875289917,
+        0.13947007060050964
+      ],
+      "extent_m": [
+        0.007019221782684326,
+        0.007269620895385742,
+        0.013426423072814941
+      ],
+      "driver_bone": "bone282",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0030000138465357032
+    },
+    {
+      "mesh_index": 295,
+      "mesh": "_3rd_Proximal_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 322,
+      "centroid_m": [
+        0.8305312395095825,
+        0.03232830762863159,
+        -0.07012954354286194
+      ],
+      "extent_m": [
+        0.03386408090591431,
+        0.008312409743666649,
+        0.012683480978012085
+      ],
+      "driver_bone": "Finger_Middle_L3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003034056523843353
+    },
+    {
+      "mesh_index": 296,
+      "mesh": "_3rd_Proximal_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 322,
+      "centroid_m": [
+        -0.8305254578590393,
+        0.03232283145189285,
+        -0.07015533000230789
+      ],
+      "extent_m": [
+        0.03397989273071289,
+        0.008336951956152916,
+        0.012826643884181976
+      ],
+      "driver_bone": "bone315",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029999141173362442
+    },
+    {
+      "mesh_index": 297,
+      "mesh": "_3rd_Proximal_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 175,
+      "centroid_m": [
+        0.10828731954097748,
+        -1.3235783576965332,
+        0.1312243491411209
+      ],
+      "extent_m": [
+        0.01415107399225235,
+        0.010735869407653809,
+        0.026530511677265167
+      ],
+      "driver_bone": "bone177",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0028155568005747322
+    },
+    {
+      "mesh_index": 298,
+      "mesh": "_3rd_Proximal_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 175,
+      "centroid_m": [
+        -0.10788125544786453,
+        -1.324197769165039,
+        0.13095712661743164
+      ],
+      "extent_m": [
+        0.013275176286697388,
+        0.009144067764282227,
+        0.026248514652252197
+      ],
+      "driver_bone": "bone280",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002956383220942162
+    },
+    {
+      "mesh_index": 299,
+      "mesh": "_4th_Distal_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 254,
+      "centroid_m": [
+        0.863550066947937,
+        0.027317646890878677,
+        -0.10655578225851059
+      ],
+      "extent_m": [
+        0.01881808042526245,
+        0.005303489044308662,
+        0.00828535109758377
+      ],
+      "driver_bone": "Finger_Ring_L1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029410767006082805
+    },
+    {
+      "mesh_index": 300,
+      "mesh": "_4th_Distal_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 254,
+      "centroid_m": [
+        -0.8628533482551575,
+        0.026907753199338913,
+        -0.10692038387060165
+      ],
+      "extent_m": [
+        0.01853090524673462,
+        0.005354827269911766,
+        0.008754968643188477
+      ],
+      "driver_bone": "bone325",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002966308005873301
+    },
+    {
+      "mesh_index": 301,
+      "mesh": "_4th_Distal_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 90,
+      "centroid_m": [
+        0.1262805312871933,
+        -1.3267037868499756,
+        0.13178130984306335
+      ],
+      "extent_m": [
+        0.005549982190132141,
+        0.0049593448638916016,
+        0.008257299661636353
+      ],
+      "driver_bone": "bone187",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003000030091500617
+    },
+    {
+      "mesh_index": 302,
+      "mesh": "_4th_Distal_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 90,
+      "centroid_m": [
+        -0.1119203269481659,
+        -1.325487732887268,
+        0.1424080729484558
+      ],
+      "extent_m": [
+        0.005127079784870148,
+        0.005171418190002441,
+        0.007495895028114319
+      ],
+      "driver_bone": "bone290",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029997292002211383
+    },
+    {
+      "mesh_index": 303,
+      "mesh": "_4th_Intermediate_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 338,
+      "centroid_m": [
+        0.8444271683692932,
+        0.02821679599583149,
+        -0.10319585353136063
+      ],
+      "extent_m": [
+        0.022746026515960693,
+        0.007396485656499863,
+        0.011799782514572144
+      ],
+      "driver_bone": "Finger_Ring_L2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029817602679237934
+    },
+    {
+      "mesh_index": 304,
+      "mesh": "_4th_Intermediate_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 338,
+      "centroid_m": [
+        -0.8444228172302246,
+        0.028158720582723618,
+        -0.10319431871175766
+      ],
+      "extent_m": [
+        0.022708415985107422,
+        0.007282407954335213,
+        0.01180112361907959
+      ],
+      "driver_bone": "bone323",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002985030483931021
+    },
+    {
+      "mesh_index": 305,
+      "mesh": "_4th_Metacarpal_L",
+      "tissue": "bone",
+      "vertices": 946,
+      "centroid_m": [
+        0.7798062562942505,
+        0.028158515691757202,
+        -0.08631658554077148
+      ],
+      "extent_m": [
+        0.04538172483444214,
+        0.011572152376174927,
+        0.025408856570720673
+      ],
+      "driver_bone": "Wrist_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002913330236969236
+    },
+    {
+      "mesh_index": 306,
+      "mesh": "_4th_Metacarpal_R",
+      "tissue": "bone",
+      "vertices": 946,
+      "centroid_m": [
+        -0.7838385105133057,
+        0.03535587340593338,
+        -0.08295854926109314
+      ],
+      "extent_m": [
+        0.05198556184768677,
+        0.021932557225227356,
+        0.029093191027641296
+      ],
+      "driver_bone": "Wrist_Rotate_R1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002999891620295541
+    },
+    {
+      "mesh_index": 307,
+      "mesh": "_4th_Metatarsal_L",
+      "tissue": "bone",
+      "vertices": 246,
+      "centroid_m": [
+        0.12523318827152252,
+        -1.3190701007843018,
+        0.10090667009353638
+      ],
+      "extent_m": [
+        0.012468576431274414,
+        0.021912217140197754,
+        0.0600004568696022
+      ],
+      "driver_bone": "Arch_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0017106022577013482
+    },
+    {
+      "mesh_index": 308,
+      "mesh": "_4th_Metatarsal_R",
+      "tissue": "bone",
+      "vertices": 246,
+      "centroid_m": [
+        -0.12565508484840393,
+        -1.319840908050537,
+        0.10376757383346558
+      ],
+      "extent_m": [
+        0.01146155595779419,
+        0.021537303924560547,
+        0.05747125297784805
+      ],
+      "driver_bone": "Arch_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0015963233708581829
+    },
+    {
+      "mesh_index": 309,
+      "mesh": "_4th_Middle_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 226,
+      "centroid_m": [
+        0.12544624507427216,
+        -1.3261005878448486,
+        0.13023878633975983
+      ],
+      "extent_m": [
+        0.005820609629154205,
+        0.006499528884887695,
+        0.008923664689064026
+      ],
+      "driver_bone": "bone185",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.003000064267876452
+    },
+    {
+      "mesh_index": 310,
+      "mesh": "_4th_Middle_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 226,
+      "centroid_m": [
+        -0.11162062734365463,
+        -1.3253769874572754,
+        0.13957050442695618
+      ],
+      "extent_m": [
+        0.00615701824426651,
+        0.0052874088287353516,
+        0.009278789162635803
+      ],
+      "driver_bone": "bone288",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002999970791881018
+    },
+    {
+      "mesh_index": 311,
+      "mesh": "_4th_Proximal_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 322,
+      "centroid_m": [
+        0.8165194392204285,
+        0.0290871262550354,
+        -0.09582487493753433
+      ],
+      "extent_m": [
+        0.02967017889022827,
+        0.007129644975066185,
+        0.01564803719520569
+      ],
+      "driver_bone": "Finger_Ring_L3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029998970038402155
+    },
+    {
+      "mesh_index": 312,
+      "mesh": "_4th_Proximal_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 322,
+      "centroid_m": [
+        -0.8165637850761414,
+        0.030023759230971336,
+        -0.09590271860361099
+      ],
+      "extent_m": [
+        0.02947258949279785,
+        0.007761584594845772,
+        0.01553449034690857
+      ],
+      "driver_bone": "bone321",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029998899818392175
+    },
+    {
+      "mesh_index": 313,
+      "mesh": "_4th_Proximal_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 175,
+      "centroid_m": [
+        0.12431153655052185,
+        -1.324414849281311,
+        0.12295470386743546
+      ],
+      "extent_m": [
+        0.0109882652759552,
+        0.010533809661865234,
+        0.023441053926944733
+      ],
+      "driver_bone": "bone183",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029927732428132996
+    },
+    {
+      "mesh_index": 314,
+      "mesh": "_4th_Proximal_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 175,
+      "centroid_m": [
+        -0.12466821819543839,
+        -1.3249425888061523,
+        0.12329099327325821
+      ],
+      "extent_m": [
+        0.009959124028682709,
+        0.009405851364135742,
+        0.022696316242218018
+      ],
+      "driver_bone": "bone286",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029928869894313335
+    },
+    {
+      "mesh_index": 315,
+      "mesh": "_5th_Distal_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 254,
+      "centroid_m": [
+        0.8265329003334045,
+        0.019497865810990334,
+        -0.13720975816249847
+      ],
+      "extent_m": [
+        0.01169741153717041,
+        0.004652464762330055,
+        0.00803723931312561
+      ],
+      "driver_bone": "Finger_Pinky_L1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002987976880551892
+    },
+    {
+      "mesh_index": 316,
+      "mesh": "_5th_Distal_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 254,
+      "centroid_m": [
+        -0.8266268372535706,
+        0.019526096060872078,
+        -0.13727129995822906
+      ],
+      "extent_m": [
+        0.011394619941711426,
+        0.00450734980404377,
+        0.007955491542816162
+      ],
+      "driver_bone": "bone331",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029987196340060646
+    },
+    {
+      "mesh_index": 317,
+      "mesh": "_5th_Distal_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 90,
+      "centroid_m": [
+        0.12621267139911652,
+        -1.3264662027359009,
+        0.1312868893146515
+      ],
+      "extent_m": [
+        0.0064848437905311584,
+        0.0055887699127197266,
+        0.00861997902393341
+      ],
+      "driver_bone": "bone193",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029990564046150857
+    },
+    {
+      "mesh_index": 318,
+      "mesh": "_5th_Distal_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 90,
+      "centroid_m": [
+        -0.126106858253479,
+        -1.3264979124069214,
+        0.1319502890110016
+      ],
+      "extent_m": [
+        0.006086044013500214,
+        0.0058095455169677734,
+        0.008091568946838379
+      ],
+      "driver_bone": "bone296",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029952577727286604
+    },
+    {
+      "mesh_index": 319,
+      "mesh": "_5th_Intermediate_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 338,
+      "centroid_m": [
+        0.8129947781562805,
+        0.020591694861650467,
+        -0.13012473285198212
+      ],
+      "extent_m": [
+        0.01768094301223755,
+        0.006630878895521164,
+        0.01409228891134262
+      ],
+      "driver_bone": "Finger_Pinky_L2",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029985327352928482
+    },
+    {
+      "mesh_index": 320,
+      "mesh": "_5th_Intermediate_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 338,
+      "centroid_m": [
+        -0.8130309581756592,
+        0.020550603047013283,
+        -0.13015305995941162
+      ],
+      "extent_m": [
+        0.01761871576309204,
+        0.006463631987571716,
+        0.014003932476043701
+      ],
+      "driver_bone": "bone329",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002998685693812216
+    },
+    {
+      "mesh_index": 321,
+      "mesh": "_5th_Metacarpal_L",
+      "tissue": "bone",
+      "vertices": 946,
+      "centroid_m": [
+        0.7663690447807312,
+        0.02504909038543701,
+        -0.10218863934278488
+      ],
+      "extent_m": [
+        0.05233156681060791,
+        0.013561401516199112,
+        0.026129968464374542
+      ],
+      "driver_bone": "Wrist_Rotate_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029995155666396565
+    },
+    {
+      "mesh_index": 322,
+      "mesh": "_5th_Metacarpal_R",
+      "tissue": "bone",
+      "vertices": 946,
+      "centroid_m": [
+        -0.7677724361419678,
+        0.026835059747099876,
+        -0.1017577052116394
+      ],
+      "extent_m": [
+        0.05079853534698486,
+        0.014112066477537155,
+        0.027095459401607513
+      ],
+      "driver_bone": "Wrist_Rotate_R1",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029980323465556773
+    },
+    {
+      "mesh_index": 323,
+      "mesh": "_5th_Metatarsal_L",
+      "tissue": "bone",
+      "vertices": 246,
+      "centroid_m": [
+        0.14088329672813416,
+        -1.3211891651153564,
+        0.09135304391384125
+      ],
+      "extent_m": [
+        0.013088852167129517,
+        0.01616191864013672,
+        0.04801003634929657
+      ],
+      "driver_bone": "Arch_Rot_L",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.001730117335570474
+    },
+    {
+      "mesh_index": 324,
+      "mesh": "_5th_Metatarsal_R",
+      "tissue": "bone",
+      "vertices": 246,
+      "centroid_m": [
+        -0.14329476654529572,
+        -1.319429874420166,
+        0.09168580174446106
+      ],
+      "extent_m": [
+        0.011965751647949219,
+        0.0163419246673584,
+        0.042460136115550995
+      ],
+      "driver_bone": "Arch_Rot_R",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0017807569185179584
+    },
+    {
+      "mesh_index": 325,
+      "mesh": "_5th_Middle_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 226,
+      "centroid_m": [
+        0.14098957180976868,
+        -1.3261924982070923,
+        0.11710675805807114
+      ],
+      "extent_m": [
+        0.004761978983879089,
+        0.005128622055053711,
+        0.0058693960309028625
+      ],
+      "driver_bone": "bone191",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002994605452494032
+    },
+    {
+      "mesh_index": 326,
+      "mesh": "_5th_Middle_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 226,
+      "centroid_m": [
+        -0.12578479945659637,
+        -1.3267022371292114,
+        0.132234588265419
+      ],
+      "extent_m": [
+        0.0064594075083732605,
+        0.005132913589477539,
+        0.0071471333503723145
+      ],
+      "driver_bone": "bone294",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002995955446409505
+    },
+    {
+      "mesh_index": 327,
+      "mesh": "_5th_Proximal_Phalanges_Hand_L",
+      "tissue": "bone",
+      "vertices": 322,
+      "centroid_m": [
+        0.7966799736022949,
+        0.022913476452231407,
+        -0.11732900142669678
+      ],
+      "extent_m": [
+        0.022971391677856445,
+        0.006438421085476875,
+        0.01932591199874878
+      ],
+      "driver_bone": "Finger_Pinky_L3",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.00299987071439994
+    },
+    {
+      "mesh_index": 328,
+      "mesh": "_5th_Proximal_Phalanges_Hand_R",
+      "tissue": "bone",
+      "vertices": 322,
+      "centroid_m": [
+        -0.7967796325683594,
+        0.023091895505785942,
+        -0.1175156906247139
+      ],
+      "extent_m": [
+        0.022882163524627686,
+        0.006568297743797302,
+        0.01888507604598999
+      ],
+      "driver_bone": "bone327",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002999865512809011
+    },
+    {
+      "mesh_index": 329,
+      "mesh": "_5th_Proximal_Phalanx_Foot_L",
+      "tissue": "bone",
+      "vertices": 175,
+      "centroid_m": [
+        0.1418236941099167,
+        -1.3241451978683472,
+        0.10864684730768204
+      ],
+      "extent_m": [
+        0.008909240365028381,
+        0.010029792785644531,
+        0.019779451191425323
+      ],
+      "driver_bone": "bone189",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.002568726150410142
+    },
+    {
+      "mesh_index": 330,
+      "mesh": "_5th_Proximal_Phalanx_Foot_R",
+      "tissue": "bone",
+      "vertices": 175,
+      "centroid_m": [
+        -0.12581075727939606,
+        -1.324548363685608,
+        0.12501071393489838
+      ],
+      "extent_m": [
+        0.009020939469337463,
+        0.01013171672821045,
+        0.020064011216163635
+      ],
+      "driver_bone": "bone292",
+      "outside_vertices": 0,
+      "max_signed_distance_m": -0.0029920492773158765
+    }
+  ]
+}

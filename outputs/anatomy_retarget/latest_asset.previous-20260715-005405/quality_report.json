@@ -1,0 +1,71 @@
+{
+  "schema_version": 2,
+  "passed": false,
+  "failures": [
+    "source_to_final max edge ratio 55.33 exceeds 3.00",
+    "source_to_final p99.9 edge ratio 2.75 exceeds 1.50",
+    "source_to_pose_cache max edge ratio 113.43 exceeds 3.00",
+    "source_to_pose_cache p99.9 edge ratio 3.71 exceeds 1.50"
+  ],
+  "thresholds": {
+    "weight_sum_error": 1e-05,
+    "anchor_rms_m": 0.01,
+    "anchor_max_m": 0.02,
+    "edge_ratio_max": 3.0,
+    "edge_ratio_p999": 1.5,
+    "inside_fraction": 0.995,
+    "max_outside_m": 0.002,
+    "critical_max_outside_m": 0.001
+  },
+  "weights": {
+    "max_sum_error": 1.1920928955078125e-07,
+    "negative_count": 0,
+    "nonfinite_count": 0,
+    "active_finger_joints": 30
+  },
+  "anchors": {
+    "rms_m": 0.002596224847122982,
+    "max_m": 0.00699526492190705
+  },
+  "edge_stretch": {
+    "source_to_pose_max": 4.798596382141113,
+    "source_to_pose_p999": 1.0722143181562427,
+    "pose_to_canonical_max": 3.0753047466278076,
+    "pose_to_canonical_p999": 2.166153907775879,
+    "source_to_final_max": 55.32573318481445,
+    "source_to_final_p999": 2.7540972232818604,
+    "source_to_pose_cache_max": 113.42892456054688,
+    "source_to_pose_cache_p999": 3.7051641941070557
+  },
+  "containment_backend": "libigl_exact_signed_distance",
+  "containment": {
+    "organ": {
+      "vertex_count": 44394,
+      "outside_count": 0,
+      "inside_fraction": 1.0,
+      "max_outside_m": 0.0,
+      "min_skin_distance_m": 1.086782958736876e-06
+    },
+    "nerve": {
+      "vertex_count": 209005,
+      "outside_count": 0,
+      "inside_fraction": 1.0,
+      "max_outside_m": 0.0,
+      "min_skin_distance_m": 0.00098503683693707
+    },
+    "bone": {
+      "vertex_count": 111990,
+      "outside_count": 0,
+      "inside_fraction": 1.0,
+      "max_outside_m": 0.0,
+      "min_skin_distance_m": 0.0011892557376995683
+    },
+    "vessel": {
+      "vertex_count": 29381,
+      "outside_count": 0,
+      "inside_fraction": 1.0,
+      "max_outside_m": 0.0,
+      "min_skin_distance_m": 0.0012018514098599553
+    }
+  }
+}
