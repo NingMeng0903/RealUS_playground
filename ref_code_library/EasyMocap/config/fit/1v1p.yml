@@ -13,7 +13,7 @@ args:
     init_pose:
       module: easymocap.multistage.init_pose.SmoothPoses
       args:
-        window_size: 2 # 前后N帧
+        window_size: 2 # N frames before and after
   stages:
     camera:
       optimize: [Th, Rh]

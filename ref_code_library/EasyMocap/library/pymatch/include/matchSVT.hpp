@@ -33,7 +33,7 @@ namespace match
     ListList getBlocksFromDimGroups(const List& dimGroups){
         ListList block;
         for(int i=0;i<dimGroups.size() - 1;i++){
-            // 这个视角没有找到人的情况
+            // no person detected in this view
             if(dimGroups[i] == dimGroups[i+1])continue;
             for(int j=0;j<dimGroups.size()-1;j++){
                 if(i==j)continue;
@@ -58,14 +58,14 @@ namespace match
 
         int N = M_aff.rows();
         auto dual_blocks = getBlocksFromDimGroups(dimGroups);
-        // 对角线约束
+        // diagonal constraint
         for(int i=0;i<dimGroups.size() - 1;i++){
             M_constr.block(dimGroups[i], dimGroups[i], dimGroups[i+1] - dimGroups[i], dimGroups[i+1]-dimGroups[i]).setZero();
         }
         M_constr.diagonal().setOnes();
-        // 将affinity乘一下constraint，保证满足约束
+        // multiply affinity by constraint to enforce feasibility
         M_aff = (M_aff.array() * M_constr.array()).matrix();
-        // check一下所有区块，如果最大值和最小值差异过小的，直接认为是错误观测
+        // check each block; if max-min spread is too small, treat as bad observation
         for (auto block : dual_blocks)
         {
             Mat mat = M_aff.block(block[0], block[2], block[1], block[3]);
@@ -74,7 +74,7 @@ namespace match
                 std::cout << "min: " << mat.minCoeff() << ", max: " << mat.maxCoeff() << std::endl;
             }
             if(mat.minCoeff() > 0.7 && block[1] > 1 && block[3] > 1){
-                // 如果大于0.9,说明区分度不够高啊，认为观测是虚假的
+                // if min > 0.7, discrimination is too low; treat observation as spurious
                 M_obs.block(block[0], block[2], block[1], block[3]).setZero();
             }
         }
@@ -101,7 +101,7 @@ namespace match
             X = (X.array() * M_constr.array()).matrix();
             // set the diagonal
             X.diagonal().setOnes();
-            // 注意这个min,max
+            // note the min/max clamp
             X = X.cwiseMin(1.f).cwiseMax(0.f);
             #pragma omp parallel for
             for(int i=0;i<dual_blocks.size();i++)
@@ -189,7 +189,7 @@ namespace match
                 int end = dimGroups[i+1];
                 Z.block(start, start, end-start, end-start).setIdentity();
             }
-            // 注意这个min,max
+            // note the min/max clamp
             Z = Z.cwiseMin(1.f).cwiseMax(0.f);
             Y = Y + mu*(X - Z);
             

@@ -111,7 +111,7 @@ class MediaPipe:
         if squeeze:
             keypoints = keypoints[0]
             bboxes = bboxes[0]
-        self.timestamp += 33 # 假设30fps
+        self.timestamp += 33 # assume 30 fps
         return {
             'keypoints': keypoints,
             'bbox': bboxes,

@@ -100,7 +100,7 @@ class CritLimbLength(BaseCrit):
                 continue
             l_mean = info['mean']
             l_est = np.linalg.norm(keypoints3d[i, :3] - keypoints3d[j, :3])
-            if l_mean > 0.15: # 超过十五厘米的 用均值判断
+            if l_mean > 0.15: # Use mean for bones longer than 15 cm
                 l_std = info['std']
                 rate = abs(l_est - l_mean)/l_mean
                 if rate > self.max_rate:

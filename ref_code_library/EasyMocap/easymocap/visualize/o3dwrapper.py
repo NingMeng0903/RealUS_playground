@@ -108,7 +108,7 @@ def create_rt_bbox(rtbbox):
     return lines
 
 def create_my_bbox(min_bound=(-3., -3., 0), max_bound=(3., 3., 2)):
-    # 使用圆柱去创建一个mesh
+    # Create mesh using axis-aligned bounding box
     bbox = o3d.geometry.AxisAlignedBoundingBox(min_bound, max_bound)
     return bbox
 

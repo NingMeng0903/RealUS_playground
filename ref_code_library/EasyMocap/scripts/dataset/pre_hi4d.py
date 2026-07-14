@@ -62,7 +62,7 @@ for seq in seqlist:
             'R': R,
             'T': T
         }
-        # 绕x轴转90度
+        # Rotate 90 degrees around x-axis
         center = - R.T @ T
         print(cam, center.T[0])
 
@@ -103,7 +103,7 @@ for seq in seqlist:
         vertices = data['verts']
         vertices = vertices @ R_global.T + T_global.T
         joints = np.matmul(regressor[None], vertices)
-        # 绕x轴旋转90度
+        # Rotate 90 degrees around x-axis
         results = [{
             'id': 0,
             'keypoints3d': joints[0]

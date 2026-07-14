@@ -72,7 +72,7 @@ class Select_Views:
         # return new_poses[minid], mindis, minid, dis
     
     def calculate_aff(self, poseslist, DIST_MAX):
-        #TODO Rh的距离不能这么求，最好是转成Rot再求误差
+        # TODO: Rh distance should use rotation matrices, not raw Rh
         M = len(poseslist)
         distance = np.zeros((M, M), dtype=np.float32)
         for id0 in range(M):
@@ -158,7 +158,7 @@ class Select_Views:
             Merge_list_rot = []
 
             if(isinstance(dt,int)):
-                # TODO:处理-1的情况，也就是没有找到合适的匹配到的手
+                # TODO: handle -1 when no matched hand is found
                 # hand_list.append(np.zeros((48,)))
                 Merge_list_rot.append(np.zeros((54,)))
                 # continue
@@ -185,32 +185,32 @@ class Select_Views:
                         Rh_m_old = np.matrix(cv2.Rodrigues(Rh)[0])
                         Merge_list_rot.append(np.hstack((np.array(Rh_m_old).reshape(-1),pose[:,3:].reshape(-1))))
 
-                    #将坐标系转换，及视角选择完的pose整理成新的集合。
+                    # convert coordinates and collect view-selected poses into a new set.
 
             
             # breakpoint()
-            # self.count, pid, self.handtype, str(groups), (0,1)  0的话是,选了哪一组？ 1 xuanle怎么选择的
-            #用层次聚类的方法进行视角的选择
+            # self.count, pid, self.handtype, str(groups), (0,1): which group was selected and how
+            # select views via hierarchical clustering
             # groups = self.Hierarchical_Cluster(Merge_list, self.threshold)
 
             groups = self.Hierarchical_Cluster(Merge_list_rot, self.threshold)
 
 
-            # #求亲和矩阵，即任意两个pose之间的距离。
+            # compute affinity matrix: distance between any two poses
             # affinity = self.calculate_aff(Merge_list,self.DIST_MAX)
             # N2D = affinity.shape[0]
             # prev_id = np.zeros(N2D) - 1
             # dims = [1]*N2D
             # dimGroups = np.cumsum([0] + dims)
             # groups = self.aff_to_groups(Merge_list, affinity, dimGroups, prev_id)
-            # # #根据亲和矩阵进行分组，这里可以考虑将分组的结果Merge起来。
+            # group by affinity matrix; may merge grouping results
             # groups = []
 
             FULL_LOG('[select views] frame:{}, pid:{}, handtype:{}'.format(self.count, pid, self.handtype))
             FULL_LOG('[groups] groups:{}'.format(str(groups)))
 
             
-            #合并分组结果
+            # merge grouping results
             new_poses = []
             for gp in groups:
                 # merge_pose = np.array(Merge_list)[gp].mean(axis=0)
@@ -223,23 +223,23 @@ class Select_Views:
                 merge_pose = np.hstack((Rh.reshape(3),merge_pose[9:].reshape(-1)))
 
                 new_poses.append(merge_pose)
-            #多个组，求每个组和上一帧结果之间的距离。（找出上一帧匹配的手，和这帧对应的手）
-            #根据该距离在多个组之间进行选择。选出距离更小的组。
+            # for multiple groups, distance to previous frame (match prior hand to current)
+            # pick the group with smallest distance to previous frame
             # if self.handtype == 'handr':
             #     breakpoint()
             if (len(self.results)>pid): # False and 
-                # TODO 求与前一帧的距离，如果发现距离过大？则尝试重启跟踪？即选择视角最多的
+                # TODO: compare to previous frame; if too far, restart tracking with most views
                 pose_, dis, minid, dis_ = self.match_with_lastframe(self.results[pid],new_poses)
                 FULL_LOG('[select 0 ] minid:{}'.format(minid))
                 FULL_LOG('[select 0 ] dis:{}'.format(str(dis_.tolist())))
-                if isinstance(dt,int) or dis_.min()>10: # 没有合适的视角检测到手，或者所有视角检测到的都与上一帧差的很远
+                if isinstance(dt,int) or dis_.min()>10: # no view detected hand, or all views differ too much from previous frame
                     FULL_LOG('[select 0 ] las pose')
                     pose_ = self.results[pid].copy()
                 else:
                     threshold_=0.3
                     if self.mode==1:
                         threshold_=1
-                    if(dis>threshold_):# 超过一定阈值，假定上一帧不是很好，则这帧重选
+                    if(dis>threshold_):# above threshold, assume previous frame was poor and reselect this frame
                         array_len = np.array([len(gp) for gp in groups])
                         a_max = array_len.max()
                         d_max = 500
@@ -259,14 +259,14 @@ class Select_Views:
 
                 self.results[pid] = pose_.copy()
             else:
-                #TODO如果没有前一帧的监督，一种可以用所有组的结果进行处理，另外就是可以用数量较多的组的结果
-                #TODO 如果数量相同的有多组，需要进一步处理 比如根据aff求sum最大的？
+                # TODO: without previous-frame supervision, use all groups or the largest group
+                # TODO: if multiple groups tie in size, break ties e.g. by max affinity sum
                 idx=np.argmax([len(gp) for gp in groups])
                 pose_ = new_poses[idx].copy()
                 self.results.append(pose_.copy())
 
                 FULL_LOG('[select 1 ] max len(groups):{}\n'.format(idx))
-            #将结果整理返回，有一组和身体id对应的左手或者右手的Pose集合（在世界坐标系下的），也可以返回Params ,看卡params是个list还是dict?
+            # return poses for left/right hand per body id in world coordinates; params may be list or dict
 
             hand_list.append(pose_)
         poses_ = np.stack(hand_list)

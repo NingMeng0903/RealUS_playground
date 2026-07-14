@@ -46,14 +46,14 @@ def coco17tobody25(points2d):
     kpts[:, 8, 2] = kpts[:, [9, 12], 2].min(axis=1)
     kpts[:, 1, :2] = kpts[:, [2, 5], :2].mean(axis=1)
     kpts[:, 1, 2] = kpts[:, [2, 5], 2].min(axis=1)
-    # 需要交换一下
+    # swap x and y if needed
     # kpts = kpts[:, :, [1,0,2]]
     return kpts
 
 class MyHRNet(BaseTopDownModelCache):
     def __init__(self, ckpt, single_person=True, num_joints=17, name='keypoints2d'):
         super().__init__(name, bbox_scale=1.25, res_input=[288, 384])
-        # 如果启用，那么将每个视角最多保留一个，并且squeeze and stack
+        # when enabled, keep at most one detection per view, then squeeze and stack
         self.single_person = single_person
         model = HRNet(48, num_joints, 0.1)
         self.num_joints = num_joints

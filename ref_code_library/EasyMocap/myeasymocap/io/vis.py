@@ -40,7 +40,7 @@ class VisBase:
                 vis[i] = v
         if len(vis) == 0:
             return 0
-        if len(vis) == 3: # 只有3个的时候的merge方案：第一个不变，后面两个缩小了放在右边
+        if len(vis) == 3: # merge layout for 3 views: keep first full-size, stack two smaller on the right
             vis_0 = vis[0]
             vis_1 = cv2.resize(vis[1], None, fx=0.5, fy=0.5)
             vis_2 = cv2.resize(vis[2], None, fx=0.5, fy=0.5)
@@ -50,7 +50,7 @@ class VisBase:
             vis = merge(vis)
         vis = cv2.resize(vis, None, fx=self.scale, fy=self.scale)
         vis = add_logo(vis)
-        # TODO: 从输入的Meta里面读入图片名字
+        # TODO: read image names from input meta
         outname = join(self.output, self.name, '{:06d}.jpg'.format(self.count))
         os.makedirs(os.path.dirname(outname), exist_ok=True)
         cv2.imwrite(outname, vis)
@@ -168,7 +168,7 @@ class VisBirdEye(VisBase):
         vis = self.blank.copy()
         R = cameras['R']
         T = cameras['T']
-        # 这里要兼容将来的相机运动的情况，所以不能预先可视化好
+        # must support future moving cameras, so cannot pre-visualize
         center = - np.einsum('bmn,bnj->bmj', R.swapaxes(1, 2), T)
         for nv in range(center.shape[0]):
             x, y = center[nv, 0], center[nv, 1]

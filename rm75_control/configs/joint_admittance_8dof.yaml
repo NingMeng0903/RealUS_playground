@@ -190,7 +190,7 @@ inner:
     # Two-layer rail mode:
     #   mode: coupled            — rail is a normal QP joint (reg/v_max/a_max)
     #   mode: locked             — rail motion is externally imposed:
-    #     locked_style: hold        挡位（仅 mode=locked 时；hold@D 相位也会强制锁定）
+    #     locked_style: hold        hold position (only when mode=locked; hold@D phase also forces lock)
     #     locked_style: rail_only   plan drives rail, arm frozen
     #     locked_style: tcp_fixed   plan drives rail, arm QP holds TCP
     mode: coupled              # scan: rail joins QP (set locked for pin-only scan)

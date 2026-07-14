@@ -127,7 +127,7 @@ def pose_kin_vs_active_drift_mm(
     match, both paths degenerate to the same contact-frame math and drift is
     ~0 by construction.  A large drift means the URDF ``tcp`` frame's Z axis at
     ``q_deg`` does not represent the currently-active physical tool - the
-    "位置用 Arm_Tip、姿态用 Pin tcp" cross-frame assumption
+    Arm_Tip position + Pin tcp orientation cross-frame assumption
     ``slot_scan_approach_pose_kin`` depends on is violated, and ``pose_kin``
     should NOT be trusted as an IK target (see ``resolve_scan_pose_d`` in
     ``apps/joint_admittance/d_sin_tool_y.py`` for the hard-abort threshold this

@@ -51,7 +51,7 @@ class MV1PMF_Mirror(MVBase):
         val = {'id': pid}
         val.update(params)
         results.append(val)
-        # 增加镜子里的人的
+        # Add the person in the mirror
         val = {'id': pid + 1}
         val.update(flipSMPLParams(params, self.mirror))
         results.append(val)

@@ -23,11 +23,11 @@ def coco17tobody25(points2d):
     kpts[:, 8, 2] = kpts[:, [9, 12], 2].min(axis=1)
     kpts[:, 1, :2] = kpts[:, [2, 5], :2].mean(axis=1)
     kpts[:, 1, 2] = kpts[:, [2, 5], 2].min(axis=1)
-    # 需要交换一下
+    # Swap axes
     # kpts = kpts[:, :, [1,0,2]]
     return kpts
 
-# 生成高斯核
+# Generate Gaussian kernel
 def generate_gauss(sigma):
     tmp_size = sigma * 3
     size = 2 * tmp_size + 1
@@ -480,7 +480,7 @@ class SimpleHRNet:
                 filename = join('../output/debughrnet', '{:06d}.jpg'.format(humanId))
                 humanId += 1
                 # save_batch_heatmaps(images, out, filename)
-                # 制造高斯核，默认为1
+                # Build Gaussian kernel, default weight 1
                 weights = np.ones(out.shape, dtype=np.float32)
                 for i in range(weights.shape[0]):
                     for nj in range(weights.shape[1]):

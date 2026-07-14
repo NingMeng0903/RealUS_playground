@@ -1,4 +1,4 @@
-# 这个脚本用于通用的多阶段的优化
+# Script for generic multi-stage optimization
 import numpy as np
 import torch
 
@@ -47,7 +47,7 @@ def rel_change(prev_val, curr_val):
 def make_optimizer(opt_params, optim_type='lbfgs', max_iter=20,
     lr=1e-3, betas=(0.9, 0.999), weight_decay=0.0, **kwargs):
     if isinstance(opt_params, dict):
-        # LBFGS 不支持参数字典
+        # LBFGS does not support parameter dicts
         opt_params = list(opt_params.values())
     if optim_type == 'lbfgs':
         from ..pyfitting.lbfgs import LBFGS
@@ -192,7 +192,7 @@ class MultiStage:
         return True
 
     def fit_stage(self, body_model, body_params, infos, stage, irepeat):
-        # 单独拟合一个stage, 返回body_params
+        # Fit a single stage, return body_params
         optimizer_args = stage.get('optimizer', self.optimizer_args)
         dtype, device = body_model.dtype, body_model.device
         body_params = process(stage.get('at_start', {'convert': 'numpy_to_tensor'}), body_model, body_params, infos)
@@ -202,7 +202,7 @@ class MultiStage:
         else:
             optimize_names = stage.optimizes[irepeat]
         for key in optimize_names:
-            if key in infos.keys(): # 优化的参数
+            if key in infos.keys(): # Parameters to optimize
                 infos[key] = infos[key].to(device)
                 opt_params[key] = infos[key]
             elif key in body_params.keys():

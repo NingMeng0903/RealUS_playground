@@ -1,7 +1,7 @@
 network_module: easymocap.neuralbody.model.compose.ComposedModel
 network_args:
   models:
-    background: # 背景假设基本保持静态的
+    background: # Background assumed mostly static
       _parent_: config/neuralbody/network/nerf.yml
       network_args:
         sample_args:
@@ -10,9 +10,9 @@ network_args:
         D: 4
         D_rgb: 1
         skips: []
-    ground: # 地面假设动态不强
+    ground: # Ground assumed not highly dynamic
       _parent_: config/neuralbody/network/nerf_shadowground.yml
-    allhuman: # 降低人的动态性能
+    allhuman: # Lower human dynamic modeling complexity
       _parent_: config/neuralbody/network/neuralbodypp.yml
       pids: [0]
       # network_args:

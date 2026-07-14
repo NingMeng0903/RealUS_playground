@@ -8,7 +8,7 @@ import cv2
 
 class BaseWindow: # this window is the basic of Open3D new render style
     colormap = {
-        0: (94/255, 124/255, 226/255, 1.), # 青色
+        0: (94/255, 124/255, 226/255, 1.), # cyan
         1: (255/255, 200/255, 87/255, 1.), # yellow
         2: (74/255.,  189/255.,  172/255., 1.), # green
         3: (8/255, 76/255, 97/255, 1.), # blue
@@ -182,14 +182,14 @@ class BaseWindow: # this window is the basic of Open3D new render style
         grid.add_child(widget0)
         grid.add_child(label1)
         grid.add_child(widget1)
-        # 增加棋盘格的范围选项
+        # Add checkerboard range option
         label_range, widget_range = self.add_vec3d(
             'ranges', 
             [param['xrange'], param['yrange'], param['step']],
             self._on_chess_range)
         grid.add_child(label_range)
         grid.add_child(widget_range)
-        # 增加棋盘格的中心选项
+        # Add checkerboard center option
         label_center, widget_center = self.add_vec3d(
             'center', 
             param['center'],

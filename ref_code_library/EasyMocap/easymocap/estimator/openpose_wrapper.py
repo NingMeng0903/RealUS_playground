@@ -65,7 +65,7 @@ def extract_2d(image_root, annot_root, tmp_root, config):
         run_openpose(image_root, tmp_root, config)
     # TODO: add current task to global_tasks
     thread = Process(target=convert_from_openpose, 
-        args=(tmp_root, annot_root, image_root, config['ext'])) # 应该不存在任何数据竞争
+        args=(tmp_root, annot_root, image_root, config['ext'])) # No data race expected
     thread.start()
     global_tasks.append(thread)
     return global_tasks
@@ -135,17 +135,17 @@ def transoform_foot(crop_shape, start, rot, keypoints, kpts_old=None):
     if kpts_old is None:
         kpts_op = keypoints[0]
         return kpts_op
-    # 选择最好的
+    # Select the best match
     kpts_np = np.array(kpts_old)
     dist = np.linalg.norm(kpts_np[None, :15, :2] - keypoints[:, :15, :2], axis=-1)
     conf = np.minimum(kpts_np[None, :15, 2], keypoints[:, :15, 2])
     dist = (dist * conf).sum(axis=-1)/conf.sum(axis=-1)*conf.shape[1]/(conf>0).sum(axis=-1)
     best = dist.argmin()
     kpts_op = keypoints[best]
-    # TODO:判断一下关键点
-    # 这里以HRNet的估计为准
+    # TODO: validate keypoints
+    # Use HRNet estimate as reference
     # WARN: disable feet
-    # 判断OpenPose的脚与HRNet的脚是否重合
+    # Check if OpenPose feet overlap with HRNet feet
     if (kpts_np[[11, 14], -1] > 0.3).all() and (kpts_op[[11, 14], -1] > 0.3).all():
         dist_ll = np.linalg.norm(kpts_np[11, :2] - kpts_op[11, :2])
         dist_rr = np.linalg.norm(kpts_np[14, :2] - kpts_op[14, :2])
@@ -160,19 +160,19 @@ def transoform_foot(crop_shape, start, rot, keypoints, kpts_old=None):
     #             > np.linalg.norm(kpts_op[22, :2] - kpts_np[14, :2]):
     #             kpts_op[[19, 20, 21, 22, 23, 24]] = kpts_op[[22, 23, 24, 19, 20, 21]]
     #             print('[info] swap left and right')
-    # 直接选择第一个
+    # Use the first match directly
     kpts_np[19:] = kpts_op[19:]
     return kpts_np
 
 def filter_feet(kpts):
-    # 判断左脚
+    # Check left foot
     if (kpts[[13, 14, 19], -1]>0).all():
         l_feet = ((kpts[[19,20,21],-1]>0)*np.linalg.norm(kpts[[19, 20, 21], :2] - kpts[14, :2], axis=-1)).max()
         l_leg = np.linalg.norm(kpts[13, :2] - kpts[14, :2])
         if  l_leg < 1.5 * l_feet:
             kpts[[19, 20, 21]] = 0.
             print('[LOG] remove left ankle {} < {}'.format(l_leg, l_feet))
-    # 判断右脚
+    # Check right foot
     if (kpts[[10, 11], -1]>0).all():
         l_feet = ((kpts[[22, 23, 24],-1]>0)*np.linalg.norm(kpts[[22, 23, 24], :2] - kpts[11, :2], axis=-1)).max()
         l_leg = np.linalg.norm(kpts[10, :2] - kpts[11, :2])
@@ -204,11 +204,11 @@ class FeetEstimatorByCrop:
         }
 
     def detect_foot(self, image_root, annot_root, ext):
-        # TODO:换成取heatmap的最大值
+        # TODO: use heatmap maximum instead
         THRES = 0.3
         imgnames = sorted(glob(join(image_root, '*'+ext)))
         if len(imgnames) == 0:
-            # 尝试换成png格式
+            # Try png format instead
             ext = '.png'
             imgnames = sorted(glob(join(image_root, '*'+ext)))
         infos = {}
@@ -223,17 +223,17 @@ class FeetEstimatorByCrop:
             infos[base] = {}
             for i, annot in enumerate(annots['annots']):
                 bbox = annot['bbox']
-                # 判断bbox大小
+                # Check bbox size
                 width, height = bbox[2] - bbox[0], bbox[3] - bbox[1]
                 if width < 100 and height < 100:
                     continue
                 rot = 0
                 if not self.fullbody:
                     kpts = np.array(annot['keypoints'])
-                    # 判断有没有脚的关键点
+                    # Check if foot keypoints exist
                     if kpts[11][-1] < THRES and kpts[14][-1] < THRES:
                         continue
-                    # 判断(1, 8)的朝向
+                    # Check orientation of joints (1, 8)
                     if kpts[1][-1] < THRES or kpts[8][-1] < THRES:
                         continue
                     dir_1_8 = np.array([kpts[1][0]-kpts[8][0], kpts[1][1]-kpts[8][1]])
@@ -255,7 +255,7 @@ class FeetEstimatorByCrop:
         tmp_tmp_root = join(self.tmpdir, 'openpose')
         print(len(os.listdir(tmp_image_root)), crop_counts)
         run_openpose(tmp_image_root, tmp_tmp_root, self.config)
-        convert_from_openpose(tmp_tmp_root, tmp_annot_root, tmp_image_root, '.jpg') # 应该不存在任何数据竞争
+        convert_from_openpose(tmp_tmp_root, tmp_annot_root, tmp_image_root, '.jpg') # No data race expected
         for imgname in tqdm(imgnames, desc='{:10s}'.format(os.path.basename(annot_root))):
             base = os.path.basename(imgname).replace(ext, '')
             annotname = join(annot_root, base+'.json')
@@ -310,7 +310,7 @@ class FeetEstimator:
             self.vec = lambda x:x
 
     def detect_foot(self, image_root, annot_root, ext):
-        # TODO:换成取heatmap的最大值
+        # TODO: use heatmap maximum instead
         THRES = 0.3
         imgnames = sorted(glob(join(image_root, '*'+ext)))
         for imgname in tqdm(imgnames, desc='{:10s}'.format(os.path.basename(annot_root))):
@@ -321,7 +321,7 @@ class FeetEstimator:
             for annot in annots['annots']:
                 bbox = annot['bbox']
                 kpts = np.array(annot['keypoints'])
-                # 判断(1, 8)的朝向
+                # Check orientation of joints (1, 8)
                 if kpts[1][-1] < THRES or kpts[8][-1] < THRES:
                     continue
                 dir_1_8 = np.array([kpts[1][0]-kpts[8][0], kpts[1][1]-kpts[8][1]])

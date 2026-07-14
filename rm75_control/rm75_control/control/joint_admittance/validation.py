@@ -1,4 +1,4 @@
-"""FK validation: Pinocchio model vs the real Realman controller (重中之重).
+"""FK validation: Pinocchio model vs the real Realman controller (critical).
 
 The entire cascade is only as trustworthy as the URDF <-> robot frame match.
 Before running ANY joint-position control, prove that Pinocchio FK agrees with

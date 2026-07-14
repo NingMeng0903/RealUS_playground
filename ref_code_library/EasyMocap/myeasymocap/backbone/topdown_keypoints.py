@@ -41,7 +41,7 @@ def coco17tobody25(points2d):
     kpts[:, 8, 2] = kpts[:, [9, 12], 2].min(axis=1)
     kpts[:, 1, :2] = kpts[:, [2, 5], :2].mean(axis=1)
     kpts[:, 1, 2] = kpts[:, [2, 5], 2].min(axis=1)
-    # 需要交换一下
+    # swap x and y if needed
     # kpts = kpts[:, :, [1,0,2]]
     return kpts
 

@@ -45,8 +45,8 @@ args:
           min_joints: 9
           distance:
             mode: epipolar
-            threshold: 0.05 # 用于控制匹配的内点阈值
-            threshold_track: 0.05 # track的匹配的内点阈值
+            threshold: 0.05 # Inlier threshold for matching
+            threshold_track: 0.05 # Inlier threshold for track matching
             min_common_joints: 9
             cfg_svt:
               debug: 0
@@ -63,14 +63,14 @@ args:
             dist_track: 100 # mm
         cfg_track:
           max_person: 100
-          max_missing: 3 # 最多丢失3帧就要删除
-          final_ranges: [[-10000, -10000, -10000], [10000, 10000, 10000]] # 最终的输出的range，仅用于输出的时候的筛选
+          max_missing: 3 # Delete track after at most 3 missing frames
+          final_ranges: [[-10000, -10000, -10000], [10000, 10000, 10000]] # Output bounding range; used only when filtering final output
           final_max_person: 100
           kintree: [[2, 3], [5, 6], [3, 4], [6, 7], [11, 22], [22, 23], [11, 24], [14, 19], [19, 20], [14, 21]]
     vis_kpts3d:
       module: myeasymocap.io.vis.Vis3D
       key_from_data: [images, cameras]
-      key_from_previous: [results] # 用于最后的一起优化
+      key_from_previous: [results] # Kept for final joint optimization
       args:
         scale: 0.5
         lw_factor: 10

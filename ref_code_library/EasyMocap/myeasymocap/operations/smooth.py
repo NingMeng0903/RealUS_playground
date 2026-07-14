@@ -36,7 +36,7 @@ class SmoothPoses:
         self.W = window_size
     
     def __call__(self, params):
-        # TODO: 这个是使用了padding的
+        # TODO: this uses padding
         poses = params['poses']
         padding_before = poses[:1].copy().repeat(self.W, 0)
         padding_after = poses[-1:].copy().repeat(self.W, 0)
@@ -115,7 +115,7 @@ class SmoothSmplh(SmoothRealtime):
         self.smooth_lists=[]
         # self.smooth_smplh = SmoothRealtime(opt_name, win_sizes)
     def __call__(self, params_smplh):
-        #TODO 应该根据id， 放入到对应的smooth列表中， 长久不在的要删除或者清空,之后把id作为输入，然后smoothlists换成map
+        # TODO: group by id into per-id smooth lists; purge stale entries; pass id as input and use a map instead of smoothlists
         bz = params_smplh['Rh'].shape[0]
         while (len(self.smooth_lists)<bz):
             self.smooth_lists.append(SmoothRealtime(self.opt_name, self.win_sizes))

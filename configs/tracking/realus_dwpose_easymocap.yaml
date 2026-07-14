@@ -38,8 +38,9 @@ pose_backend:
   triangulation:
     confidence_threshold: 0.3
     min_conf: 0.12
-    # Adaptive policy: torso/pelvis/hips need 3 views; distal joints retain a
-    # geometrically valid pair at low confidence.  Never use a global N-1 gate.
+    # Adaptive policy: central joints plus elbows/knees need 3 views; wrists,
+    # ankles, toes, heels and hand joints retain a geometrically valid pair at
+    # low confidence. Never use a global N-1 gate.
     adaptive_views: true
     min_view: 2
     core_min_view: 3
@@ -48,6 +49,13 @@ pose_backend:
     two_view_max_reproj_px: 12.0
     two_view_min_ray_angle_deg: 3.0
     low_view_confidence_scale: 0.5
+    # Robust hypotheses are compared on the same observed-camera support.
+    # View count is used only when these normalized costs are effectively tied.
+    simcc_probability_weight: 0.05
+    simcc_uncertainty_weight: 0.05
+    detector_confidence_weight: 0.05
+    hypothesis_cost_tie: 0.01
+    simcc_pair_hypotheses: 5
     thres_outlier_view: 0.35
     thres_outlier_joint: 0.35
   easymocap_fit:
@@ -58,7 +66,27 @@ pose_backend:
     # Publication gate requested for the four-camera burst pipeline.  This is
     # separate from EasyMocap's internal per-observation outlier threshold.
     final_smplx_reprojection_max_px: 50.0
-    opts: {}
+    # Delayed EasyMocap owns these weights/limits. Low-view endpoint quality is
+    # already encoded in fused 3D confidence and is applied linearly here.
+    opts:
+      k3d: 1.0
+      k3d_hand: 5.0
+      k3d_face: 2.0
+      k2d: 1.0e-4
+      reg_poses_zero: 1.0e-2
+      smooth_body: 5.0e-1
+      smooth_poses: 1.0e-1
+      smooth_hand: 1.0e-3
+      reg_hand: 1.0e-4
+      reg_expr: 1.0e-2
+      reg_head: 1.0e-2
+      s3d: 1.0
+      reg_shapes: 5.0e-3
+      body25_robust_sigma_m: 0.10
+      shape_retry_threshold_m: 0.02
+      shape_retry_max_passes: 1
+      final_outer_max_iter: 100
+      final_lbfgs_max_iter: 20
     write_debug_images: true
     write_easymocap_smpl_json: false
     export_canonical_tpose: true
@@ -81,6 +109,8 @@ pose_backend:
       min_core_body25: 5
       min_valid_shape_limbs: 6
       confidence_threshold: 0.28
+  # Realtime tracker only. The 0.5 s delayed SMPL-X capture does not read this
+  # block; its resolved weights and iteration caps come from easymocap_fit.
   smpl_fit:
     enable: true
     smpl_model_dir: dataset/intermediate/humans/body_models/smpl

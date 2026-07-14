@@ -86,13 +86,13 @@ def main(inp, out, body_model):
                 write_keypoints3d(outname, output)
         if len(write_tasks) == 100:
             import threading
-            thread = threading.Thread(target=write_func, args=(write_tasks,)) # 应该不存在任何数据竞争
+            thread = threading.Thread(target=write_func, args=(write_tasks,)) # no data race expected
             thread.start()
             threads.append(thread)
             write_tasks = []
     if len(write_tasks) > 0:
         import threading
-        thread = threading.Thread(target=write_func, args=(write_tasks,)) # 应该不存在任何数据竞争
+        thread = threading.Thread(target=write_func, args=(write_tasks,)) # no data race expected
         thread.start()
         threads.append(thread)
         write_tasks = []

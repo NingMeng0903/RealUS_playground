@@ -24,17 +24,17 @@ def dict_of_tensor_to_numpy(body_params):
 def make_optimizer(opt_params, optim_type='lbfgs', max_iter=20,
     lr=1e-3, betas=(0.9, 0.999), weight_decay=0.0, **kwargs):
     if isinstance(opt_params, dict):
-        # LBFGS 不支持参数字典
+        # LBFGS does not support parameter dicts
         opt_params = list(opt_params.values())
     if optim_type == 'lbfgs':
         # optimizer = torch.optim.LBFGS(
         #     opt_params, max_iter=max_iter, lr=lr, line_search_fn='strong_wolfe',
-        #     tolerance_grad= 0.0000001, # float32的有效位数是7位
+        #     tolerance_grad= 0.0000001, # float32 has 7 significant digits
         #     tolerance_change=0.0000001,
         # )
         from easymocap.pyfitting.lbfgs import LBFGS
         optimizer = LBFGS(opt_params, line_search_fn='strong_wolfe', max_iter=max_iter,
-                          tolerance_grad= 0.0000001, # float32的有效位数是7位
+                          tolerance_grad= 0.0000001, # float32 has 7 significant digits
                             tolerance_change=0.0000001,
                           **kwargs)
     elif optim_type == 'adam':
@@ -130,10 +130,10 @@ class Optimizer:
 
     def __call__(self, params, model, **infos):
         """
-            待优化变量一定要在params中，但params中不一定会被优化
-            infos中的变量不一定会被优化
+            Variables to optimize must be in params, but not all params are optimized.
+            Variables in infos may or may not be optimized.
         """
-        # TODO: 应该使用model的device，但考虑到model可能是一个函数，所以暂时当场计算
+        # TODO: should use model's device; model may be a function, so compute locally for now
         device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
         params = dict_of_numpy_to_tensor(params, device=device)
         infos_used = {key: infos[key] for key in self.used_infos if key in infos.keys()}
@@ -146,7 +146,7 @@ class Optimizer:
         log('[{}] Loading {}'.format(self.__class__.__name__, self.used_infos))
         opt_params = {}
         for key in optimize_keys:
-            if key in infos.keys(): # 优化的参数
+            if key in infos.keys(): # parameters to optimize
                 opt_params[key] = infos_used[key]
             elif key in params.keys():
                 opt_params[key] = params[key]
@@ -156,11 +156,11 @@ class Optimizer:
             infos_used['init_'+key] = val.clone()
         optimizer = make_optimizer(opt_params, **self.optimizer_args)
         closure = make_closure(optimizer, model, params, infos_used, self.loss, device)
-        # 准备开始优化
+        # prepare to optimize
         grad_require(opt_params, True)
         self.optimizer_step(optimizer, closure)
         grad_require(opt_params, False)
-        # 直接返回
+        # return directly
         ret = {
             'params': params
         }

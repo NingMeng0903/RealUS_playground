@@ -30,7 +30,7 @@ class Model(torch.nn.Module):
 
 class ComposedModel(torch.nn.Module):
     def __init__(self, config_dict):
-        # 叠加多个模型的配置
+        # Merge configs from multiple models
         for name, config in config_dict.items():
             pass
 

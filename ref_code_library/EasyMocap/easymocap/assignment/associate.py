@@ -110,7 +110,7 @@ def simple_associate(annots, affinity, dimGroups, Pall, group, cfg):
         result = results[0]
         proposal = result['indices']
         Vused = result['Vused']
-        # proposal中有-1的，所以需要使用Vused进行赋值
+        # proposal contains -1, so use Vused for assignment
         p2dAssigned[proposal[Vused]] = 1
         group.add(result)
     group.dimGroups = dimGroups

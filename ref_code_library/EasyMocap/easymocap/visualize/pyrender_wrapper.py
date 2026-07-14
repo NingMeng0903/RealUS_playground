@@ -82,7 +82,7 @@ class Renderer:
                 faces = data['faces']
                 vert = vert @ R.T + T.T
                 if 'colors' not in data.keys():
-                    # 如果使用了vid这个键，那么可视化的颜色使用vid的颜色
+                    # If 'vid' key is set, use vid for visualization color
                     if False:
                         col = get_rgb(data.get('vid', trackId))
                     else:
@@ -147,9 +147,9 @@ def plot_meshes(img, meshes, K, R, T, mode='image'):
         rend_cat[rend_rgba[:,:,-1]==255] = rend_rgba[:,:,:3][rend_rgba[:,:,-1]==255]
         return rend_cat
 
-# 这个顺序是BGR的。虽然render的使用的是RGB的，但是由于和图像拼接了，所以又变成BGR的了
+# BGR order: render uses RGB but image concatenation makes it BGR again
 colors = [
-    (94/255, 124/255, 226/255), # 青色
+    (94/255, 124/255, 226/255), # cyan
     (255/255, 200/255, 87/255), # yellow
     (74/255.,  189/255.,  172/255.), # green
     (8/255, 76/255, 97/255), # blue

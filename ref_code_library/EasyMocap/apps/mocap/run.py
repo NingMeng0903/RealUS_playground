@@ -1,4 +1,4 @@
-# 这个脚本提供mocap的基本运行接口
+# Basic mocap run interface for this script
 import os
 from easymocap.config import Config, load_object
 from tqdm import tqdm

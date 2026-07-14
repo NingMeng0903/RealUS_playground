@@ -7,8 +7,8 @@ from easymocap.mytools.triangulator import project_points, batch_triangulate
 from easymocap.mytools.timer import Timer
 
 class DistanceBase:
-    # 这个类用于计算affinity
-    # 主要基于关键点计算；未来可以考虑支持其他东西
+    # class for computing affinity
+    # mainly from keypoints; may support other features later
     def __init__(self, cfg) -> None:
         self.cfg = cfg
 
@@ -81,7 +81,7 @@ class EpipolarDistance(DistanceBase):
         return aff
 
     def calculate_affinity_MxM(self, keypoints, cameras):
-        # 计算一下总长度
+        # compute total dimensions
         dims = [d.shape[0] for d in keypoints]
         dimGroups = np.cumsum([0] + dims)
         M = dimGroups[-1]
@@ -219,12 +219,12 @@ class MatchBase:
         keypoints2d = np.stack(keypoints2d)
         if previous is not None:
             kpts_proj = project_points(previous, cameras['P'], einsum='vab,kb->vka')
-            # 注意，这里需要考虑深度，因为深度是已知的
-            # 越近的地方这个阈值应该越大，越远的地方阈值越小
+            # depth is known here and must be accounted for
+            # nearer points need larger threshold, farther need smaller
             # radius / depth * focal
             depth = kpts_proj[..., -1]
-            # 超出这个track阈值的直接丢掉了；这样可以保证三角化出来的一定是小于阈值的
-            # 如果对这个阈值有意见，应该增大这个阈值条件
+            # discard beyond track threshold so triangulation stays within bounds
+            # increase threshold if this limit is too strict
             radius = self.cfg.triangulate.dist_track * cameras['K'][:, 0, 0][:, None] / depth
             dist = np.linalg.norm(kpts_proj[..., :2] - keypoints2d[..., :2], axis=-1)
             conf = np.sqrt(kpts_proj[..., -1] * keypoints2d[..., -1]) > 0
@@ -253,7 +253,7 @@ class MatchBase:
                                  (~assigned[start:end]) & \
                                  (~visited[start:end]))[0]
             if to_select.shape[0] == 1:
-                # 只有唯一的一个候选
+                # only one candidate
                 indices[nv] = to_select[0]
             elif to_select.shape[0] > 1:
                 to_select_sort = sorted(to_select, key=lambda x:-block[x])
@@ -275,7 +275,7 @@ class MatchBase:
 
     def _simple_associate2d_triangulate(self, affinity, keypoints, cameras, assigned=None):
         # sum1 = affinity.sum(axis=1)
-        # 注意：这里的排序应该是对每个视角，挑选最大的一个
+        # sort per view and pick the largest affinity
         affinity_sum, dimGroups, views = self._prepare_associate(affinity, keypoints)
         nViews = len(keypoints)
         n2d = affinity.shape[0]
@@ -290,10 +290,10 @@ class MatchBase:
             log('[Tri] Visited view{}: {}'.format(views[idx], idx-dimGroups[views[idx]]))
             affinit_row = affinity[idx]
             indices, proposals = self._indices_from_affinity(dimGroups, affinit_row, assigned, visited, nViews)
-            # 注意：要再生成所有的proposal之后再设置visited
+            # set visited only after generating all proposals
             visited[idx] = True
             if not self._check_indices(indices):continue
-            # 只考虑有候选的；不考虑移除某个视角的
+            # only consider views with candidates; do not drop views
             log('[Tri] First try to triangulate of {}'.format(indices))
             indices_origin = indices.copy()
             result, indices = self.try_to_triangulate(keypoints, cameras, indices)
@@ -346,7 +346,7 @@ class MatchBase:
             affinit_row = affinity[:, idx3d]
             indices, proposals = self._indices_from_affinity(dimGroups, affinit_row, assigned, visited, nViews)
             if not self._check_indices(indices):continue
-            # 只考虑有候选的；不考虑移除某个视角的
+            # only consider views with candidates; do not drop views
             log('[Tri] First try to triangulate of {}'.format(indices))
             indices_origin = indices.copy()
             result, indices = self.try_to_triangulate(keypoints, cameras, indices, previous=keypoints3d[idx3d])
@@ -378,7 +378,7 @@ class MatchBase:
                         log('[Tri] Max fail, then try to triangulate of {}'.format(indices))
                         result, indices = self.try_to_triangulate(keypoints, cameras, indices, previous=keypoints3d[idx3d])
                         if (self._check_indices(indices, result['keypoints3d']) and self._check_speed(keypoints3d[idx3d], result['keypoints3d'])):
-                            # 检测合格了，需要计算一下所有的view里面，那些是合格的，再一起计算
+                            # after valid detection, find valid views and recompute jointly
                             k2d_repro = project_points(result['keypoints3d'], cameras['P'])
                             dist = np.linalg.norm(k2d_repro[..., :2] - keypoints_all[..., :2], axis=-1)
                             conf = (result['keypoints3d'][:, -1][None] > 0.1) & (keypoints_all[..., 2] > 0.1)
@@ -438,11 +438,11 @@ class MatchBase:
                     affinity_comp, 
                     dimGroups.tolist() + [dimGroups[-1] + len(self.prev_ids)],
                     vis=False)
-            # 先associate2d 3d
+            # associate 2D with 3D first
             affinity2d3d = affinity2d2d_2d3d[:affinity2d2d.shape[0], affinity2d2d.shape[1]:]
             with Timer('associate 3d'):
                 k3dresults, assigned = self._simple_associate2d3d_triangulate(self.prev_keypoints, affinity2d3d, keypoints, dimGroups, cameras)
-            # 再associate2d 2d
+            # then associate 2D with 2D
             with Timer('associate 2d'):
                 affinity2d2d = affinity2d2d_2d3d[:affinity2d2d.shape[0], :affinity2d2d.shape[1]]
                 match_results = self._simple_associate2d_triangulate(affinity2d2d, keypoints, cameras, assigned=assigned)
@@ -450,13 +450,13 @@ class MatchBase:
         else:
             affinity2d2d, dimGroups = self.distance.calculate_affinity_MxM(keypoints, cameras)
             affinity2d2d = self.distance.low_rank_optimization(affinity2d2d, dimGroups)
-            # 直接associate2d
+            # associate 2D directly
             match_results = self._simple_associate2d_triangulate(affinity2d2d, keypoints, cameras)
         return match_results
 
 class TrackBase:
-    # 这个类用于维护一般的track操作
-    # 主要提供的接口：
+    # class for general tracking
+    # main interfaces:
     # 1. add
     # 2. remove
     # 3. smooth
@@ -487,7 +487,7 @@ class TrackBase:
             k3d = record['records'][-1]
             valid = k3d[:, -1] > 0.1
             if ret_final:
-                # 判断一下valid range
+                # check valid spatial range
                 k3d_valid = k3d[valid]
                 flag = (k3d_valid[:, 0] > self.cfg.final_ranges[0][0]) & \
                       (k3d_valid[:, 0] < self.cfg.final_ranges[1][0]) & \
@@ -523,7 +523,7 @@ class TrackBase:
         pid = res['id']
         N_UPDATE_LENGTH = 10
         if len(self.record[pid]['frames']) >= N_UPDATE_LENGTH and len(self.record[pid]['frames']) % N_UPDATE_LENGTH == 0:
-            # 更新骨长
+            # update bone lengths
             # (nFrames, nJoints, 4)
             history = np.stack(self.record[pid]['records'])
             left = history[:, self.kintree[:, 0]]

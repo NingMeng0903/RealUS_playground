@@ -163,7 +163,7 @@ config_high = {
     'yolov4': {
             'ckpt_path': 'data/models/yolov4.weights',
             'conf_thres': 0.3,
-            'box_nms_thres': 0.5 # 阈值=0.9，表示IOU 0.9的不会被筛掉
+            'box_nms_thres': 0.5 # threshold=0.9 means boxes with IOU 0.9 are kept
     },
     'hrnet':{
         'nof_joints': 17,
@@ -182,7 +182,7 @@ config_low = {
     'yolov4': {
         'ckpt_path': 'data/models/yolov4.weights',
         'conf_thres': 0.1,
-        'box_nms_thres': 0.9 # 阈值=0.9，表示IOU 0.9的不会被筛掉
+        'box_nms_thres': 0.9 # threshold=0.9 means boxes with IOU 0.9 are kept
     },
     'hrnet':{
         'nof_joints': 17,
@@ -214,7 +214,7 @@ def extract_yolo_hrnet(image_root, annot_root, ext='jpg', use_low=False):
             x = annot['annots'][i]
             x['area'] = max(x['bbox'][2] - x['bbox'][0], x['bbox'][3] - x['bbox'][1])**2
         annot['annots'].sort(key=lambda x:-x['area'])
-        # 重新赋值人的ID
+        # Reassign person IDs
         for i in range(len(annot['annots'])):
             annot['annots'][i]['personID'] = i
         save_json(annotname, annot)

@@ -31,7 +31,7 @@ def transform_cameras(cameras):
             R = cv2.Rodrigues(rvec)[0]
             R_global = R @ R_global
         T_global = R_global @ T_global
-    # 平移相机
+    # Translate cameras
     if len(args.trans) == 3:
         trans = np.array(args.trans).reshape(3, 1)
         T_global += trans

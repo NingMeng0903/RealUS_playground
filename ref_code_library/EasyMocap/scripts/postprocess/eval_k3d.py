@@ -39,7 +39,7 @@ class Conversion:
         return inp[..., self.idx_i, :], out[..., self.idx_o, :]
 
 def run_eval_keypoints(inp, out, type_i, type_o, step_gt, mode='single', args=None):
-    # 遍历输出文件夹
+    # Iterate over output folder
     conversion = Conversion(type_i, type_o)
     inplists = sorted(glob(join(inp, '*.json')))[::step_gt]
     outlists = sorted(glob(join(out, '*.json')))[args.start:args.end]
@@ -49,7 +49,7 @@ def run_eval_keypoints(inp, out, type_i, type_o, step_gt, mode='single', args=No
         outname = outlists[nf]
         gts = read_keypoints3d(inpname)
         ests = read_keypoints3d(outname)
-        # 将GT转换到当前坐标系
+        # Convert GT to current coordinate system
         for gt in gts:
             gt['keypoints3d'] = conversion.inp(gt['keypoints3d'])
             if gt['keypoints3d'].shape[1] == 3:
@@ -58,33 +58,33 @@ def run_eval_keypoints(inp, out, type_i, type_o, step_gt, mode='single', args=No
             est['keypoints3d'] = conversion.out(est['keypoints3d'])
             if est['keypoints3d'].shape[1] == 3:
                 est['keypoints3d'] = np.hstack([est['keypoints3d'], np.ones((est['keypoints3d'].shape[0], 1))])
-        # 这一步将交换est的顺序
+        # This step reorders estimated IDs
         if mode == 'single':
-            # 单人的：直接匹配上
+            # Single person: direct match
             pass
-        elif mode == 'matched': # ID已经匹配过了
+        elif mode == 'matched': # IDs already matched
             pass 
-        else: # 进行匹配
-            # 把估计的id都清空
+        else: # Perform matching
+            # Clear estimated IDs
             for est in ests:
                 est['id'] = -1
-            # 计算距离先
+            # Compute distances first
             kpts_gt = np.stack([v['keypoints3d'] for v in gts])
             kpts_dt = np.stack([v['keypoints3d'] for v in ests])
             distances = np.linalg.norm(kpts_gt[:, None, :, :3] - kpts_dt[None, :, :, :3], axis=-1)
             conf = (kpts_gt[:, None, :, -1] > 0) * (kpts_dt[None, :, :, -1] > 0)
             dist = (distances * conf).sum(axis=-1)/conf.sum(axis=-1)
-            # 贪婪的匹配
+            # Greedy matching
             ests_new = []
             for igt, gt in enumerate(gts):
                 bestid = np.argmin(dist[igt])
                 ests_new.append(ests[bestid])
             ests = ests_new
-        # 计算误差
+        # Compute errors
         for i, data in enumerate(gts):
             kpts_gt = data['keypoints3d']
             kpts_est = ests[i]['keypoints3d']
-            # 计算各种误差，存成字典
+            # Compute error metrics and store as dict
             result = keypoints_error(kpts_gt, kpts_est, conversion.commons, joint_level=args.joint, use_align=args.align)
             result['nf'] = nf
             result['id'] = data['id']
@@ -117,7 +117,7 @@ def write_to_csv(filename, results):
     print('>> Totally {} samples:'.format(len(results)))
     print(tabulate([table], headers, tablefmt='fancy_grid'))
     with open(filename, 'w') as f:
-        # 写入头
+        # Write CSV header
         header = list(results[0].keys())
         f.write(','.join(header) + '\n')
         for res in results:
@@ -147,7 +147,7 @@ def run_eval_keypoints_mono(inp, out, type_i, type_o, type_e, step_gt, cam_path,
             gtname = join(inp, basename)
             gts = read_keypoints3d(gtname)
             ests = read_keypoints3d(outname)
-            # 将GT转换到当前坐标系
+            # Convert GT to current coordinate system
             for gt in gts:
                 keypoints3d = conversion.inp(gt['keypoints3d'])
                 conf = keypoints3d[:, -1:].copy()
@@ -157,13 +157,13 @@ def run_eval_keypoints_mono(inp, out, type_i, type_o, type_e, step_gt, cam_path,
             for est in ests:
                 est['keypoints3d'] = conversion.out(est['keypoints3d'])
                 if est['keypoints3d'].shape[1] == 3:
-                    # 增加置信度为1
+                    # Append confidence of 1
                     est['keypoints3d'] = np.hstack([est['keypoints3d'], np.ones((est['keypoints3d'].shape[0], 1))])
-            # 计算误差
+            # Compute errors
             for i, data in enumerate(gts):
                 kpts_gt = data['keypoints3d']
                 kpts_est = ests[i]['keypoints3d']
-                # 计算各种误差，存成字典
+                # Compute error metrics and store as dict
                 result = keypoints_error(kpts_gt, kpts_est, conversion.commons, joint_level=args.joint, use_align=True)
                 result['pid'] = data['id']
                 result['view'] = view

@@ -15,13 +15,13 @@ def save_json(file, data):
         json.dump(data, f, indent=4)
 
 def parseImg(imgname):
-    """ 解析图像名称
-    
+    """Parse image filename.
+
     Arguments:
-        imgname {str} -- 
-    
+        imgname {str} -- image filename
+
     Returns:
-        dic -- 包含文件图像信息的字典
+        dic -- dict with parsed image metadata
     """
     s = re.search(
         '(?P<id>\d+)_(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})_(?P<hour>\d{2})-(?P<min>\d{2})-(?P<sec>\d{2})\.(?P<ms>\d{3})',
@@ -73,9 +73,9 @@ def findRef(images_info):
 
 
 def findNearest(cam_info, time):
-    # 找time最接近的帧的名称
+    # Find the frame name closest to time
     select_frame = ''
-    # WARN: 确保cam_info是有序的
+    # WARN: ensure cam_info is ordered
     img_pre = None
     for idx, img in enumerate(cam_info.keys()):
         if isinstance(cam_info[img], dict):
@@ -85,7 +85,7 @@ def findNearest(cam_info, time):
             else:
                 select_frame = img
                 break
-    # 判断一下处于边界上的两帧，哪一帧的时间更接近
+    # Pick the closer of the two boundary frames
     if img_pre is not None:
         if abs(time - cam_info[img_pre]['time']) < abs(time - cam_info[img]['time']):
             select_frame = img_pre
@@ -104,17 +104,17 @@ def get_filelists(path, save_path):
         images_info[camname]['first_frame'] = imglists[0]
         images_info[camname]['last_frame'] = imglists[-1]
         # print(images_info[camname])
-    # 寻找最晚开始最早结束的时间
+    # Find latest start and earliest end time
     begin_time, end_time = findBeginEnd(images_info)
     print('begin time: {}, end time: {}'.format(begin_time, end_time))
-    # 寻找帧率最低的视频，以这个视频为参考
+    # Use the lowest-framerate camera as reference
     if args.ref is None:
         ref_cam = findRef(images_info)
     else:
         ref_cam = args.ref
 
     print('The reference camera is {}'.format(ref_cam))
-    # 以帧率最低的相机为参考，对每一帧寻找其他相机时间最接近的帧
+    # For each reference frame, find nearest-time frames in other cameras
     output_info = {key: [] for key in cameralists}
     for imgname in tqdm(images_info[ref_cam].keys(), 'sync'):
         if isinstance(images_info[ref_cam][imgname], dict):
@@ -129,10 +129,9 @@ def get_filelists(path, save_path):
                 else:
                     select = findNearest(images_info[cam], cur_time)
                 output_info[cam].append(select)
-    # 将图片保存
     mkdir(save_path)
-    # 保存匹配信息
-    # TODO:增加匹配时间差的指标
+    # Save match info
+    # TODO: add metric for match time difference
     import json
     with open(join(save_path, 'match_info.json'), 'w') as f:
         json.dump(output_info, f, indent=4)
@@ -153,29 +152,29 @@ def getFileDict(path):
         lambda x:\
             x.startswith('Camera')\
             and x not in filter_list
-            , cams)) # B6相机同步有问题 不要使用了
+            , cams)) # Camera B6 has sync issues; skip it
     results = {}
     for cam in cams:
-        # 注意：lightstage的图像直接sort就是按照顺序了的
+        # LightStage images are already in order when sorted
         files = sorted(os.listdir(join(path, cam)))
         files = [f for f in files if f.endswith('.jpg')]
         results[cam] = files
     return cams, results
 
 def sync_by_name(imagelists, times_all, cams):
-    # 选择开始帧
+    # Select start frame
     start = max([t[0] for t in times_all.values()])
-    # 弹出开始帧以前的数据
+    # Drop frames before start
     for cam in cams:
         times = times_all[cam].tolist()
         while times[0] < start:
             times.pop(0)
             imagelists[cam].pop(0)
         times_all[cam] = np.array(times)
-    # 选择参考视角的时候,应该选择与其他视角的距离最近的作为参考
+    # Pick reference view with smallest average distance to other views
     best_distances = []
     for cam in cams:
-        # 分别对每个进行设置, 使用第一帧的时间,留有余地
+        # Use first frame time per view, with margin
         ref_time = times_all[cam][1]
         distances = []
         for c in cams:
@@ -204,20 +203,20 @@ def sync_by_name(imagelists, times_all, cams):
                 distance[dimGroups[nv1]:dimGroups[nv1+1], dimGroups[nv0]:dimGroups[nv0+1]] = dist.T
         matched, ref_view = match_dtw(distance, dimGroups, debug=args.debug)
     elif True:
-        # 使用最近邻选择
+        # Nearest-neighbor matching
         matched = []
         for nv in range(len(times_all)):
             dist = np.abs(times_all[ref_view][:, None] - times_all[nv][None, :])
             rows = np.arange(dist.shape[0])
             argmin0 = dist.argmin(axis=1)
-            # 直接选择最近的吧
-            # 去掉开头
+            # Pick nearest frame directly
+            # Trim start
             for i in range(argmin0.shape[0]):
                 if argmin0[i] == argmin0[i+1]:
                     argmin0[i] = -1
                 else:
                     break
-            # 去掉结尾
+            # Trim end
             for i in range(1, argmin0.shape[0]):
                 if argmin0[-i] == argmin0[-i-1]:
                     argmin0[-i] = -1
@@ -226,10 +225,10 @@ def sync_by_name(imagelists, times_all, cams):
             matched.append(argmin0)
         matched = np.stack(matched)
     elif False:
-        # 1. 首先判断一下所有视角的最接近的点
+        # 1. Find nearest points across all views first
         nViews = len(times_all)
         TIME_STEP = 20
-        REF_OFFSET = 20 # 给参考视角增加一个帧的偏移，保证所有相机都正常开启了，同时增加一个帧的结束，保证所有相机都结束了
+        REF_OFFSET = 20 # Offset reference view by one frame so all cameras are on; same at end
         views_ref = [ref_view]
         matched = {
             ref_view:np.arange(REF_OFFSET, times_all[ref_view].shape[0]-REF_OFFSET)
@@ -267,12 +266,11 @@ def sync_by_name(imagelists, times_all, cams):
             matched[infos[0]['v']] = infos[0]['argmin']
         matched = np.stack([matched[nv] for nv in range(nViews)])
     else:
-        # 选择一个开头，计算最佳的偏移
-        # 开始帧：所有的开始帧中的最晚的一帧
-        # 假定恒定帧率，只需要选择一个开头就好了
+        # Pick start offset; start frame = latest start across views
+        # Assume constant frame rate; only need to pick a start
         nViews = len(times_all)
         start_t = max([t[0] for t in times_all])
-        # 留出10帧来操作
+        # Leave 10 frames margin
         start_f = [np.where(t>start_t)[0][0] + 10 for t in times_all]
         start_t = times_all[ref_view][start_f[ref_view]]
         valid_f = [[np.where(t<start_t)[0][-1],np.where(t>=start_t)[0][0]] for t in times_all]
@@ -289,7 +287,7 @@ def sync_by_name(imagelists, times_all, cams):
             for nv in range(nViews):
                 if len(valid_f[nv]) == 1:
                     continue
-                # 存在多个的
+                # Multiple candidates remain
                 min_info.append({
                     'v': nv,
                     't': times_all[nv][valid_f[nv][0]]
@@ -298,7 +296,7 @@ def sync_by_name(imagelists, times_all, cams):
                     'v': nv,
                     't': times_all[nv][valid_f[nv][-1]]
                 })
-            # 判断最小和最大的弹出谁
+            # Decide whether to pop min or max candidate
             min_info.sort(key=lambda x:x['t'])
             max_info.sort(key=lambda x:-x['t'])
             if len(min_info) > 1 and len(max_info) > 1:
@@ -417,7 +415,7 @@ def copy_with_match(path, out, matched, imagelists, cams, multiple_thread = Fals
             import threading
             threads = []
             for i in range(THREAD_CNT):
-                thread = threading.Thread(target=copy_func_batch, args=(imgname_old_s[i], imgname_new_s[i])) # 应该不存在任何数据竞争
+                thread = threading.Thread(target=copy_func_batch, args=(imgname_old_s[i], imgname_new_s[i])) # no data race expected
                 thread.start()
                 threads.append(thread)
             for thread in threads:
@@ -465,10 +463,10 @@ def parse_time(imagelists, cams):
 
 def soft_sync(path, out, multiple_thread = False):
     os.makedirs(out, exist_ok=True)
-    # 获取图像名称
+    # Get image filenames
     cams, imagelists = getFileDict(path)
     if args.static:
-        # 静止场景，直接保存第一帧图像
+        # Static scene: save first frame only
         matched = np.zeros((len(cams), 1), dtype=np.int)
     elif args.nosync:
         assert len(cams) == 1
@@ -476,14 +474,14 @@ def soft_sync(path, out, multiple_thread = False):
         matched = np.arange(0, len(imagelists[cams[0]])).reshape(1, -1)
         # matched = np.arange((1, len(imagelists[cams[0]])), dtype=np.int)
     else:
-        # 获取图像时间
+        # Get image timestamps
         times_all = parse_time(imagelists, cams)
         matched, matched_time = sync_by_name(imagelists, times_all, cams)
         matched = matched[:, ::args.step]
         times_all = {key:val.tolist() for key, val in times_all.items()}
         save_json(join(out, 'timestamp.json'), times_all)
         np.savetxt(join(out, 'sync_time.txt'), matched_time-matched_time.min(), fmt='%10d')
-        # 保存图像
+        # Save images
     copy_with_match(path, out, matched, imagelists, cams, multiple_thread)
 
 def read_json(path):

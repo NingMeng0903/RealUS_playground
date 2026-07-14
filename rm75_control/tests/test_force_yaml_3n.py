@@ -86,7 +86,7 @@ def test_yaml_unified_vz_cap():
 
     Also: there must be NO free-space vs in-contact press cap split
     (approach_vz_tool_m_s is removed) — the 5× press-speed jump at every
-    contact latch was the source of the ``两个下压速度挡`` jitter observed
+    contact latch was the source of the dual press-speed-tier jitter observed
     on /tmp/scan_v5.csv. Bounce control is done by stiff-first K̂_e +
     Dimeas inertia, NOT by capping the cap."""
     raw = yaml.safe_load(Path("configs/joint_admittance.yaml").read_text())

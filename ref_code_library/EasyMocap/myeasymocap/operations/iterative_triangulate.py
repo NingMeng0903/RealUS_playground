@@ -48,7 +48,7 @@ def remove_outjoint(kpts2d, Pall, out_joint, dist_max, dist_track, min_view=3, p
         comb_Pall = Pall_nj[comb_views]
         comb_k3d = batch_triangulate(comb_kpts, comb_Pall)
         depth, dist, conf = project_and_distance(comb_k3d, comb_Pall, comb_kpts)
-        # 依次选择置信度最高的
+        # pick highest-confidence views in order
         sort_by_conf = (-comb_kpts[..., -1].sum(axis=0)).argsort()
         flag = (dist[:, sort_by_conf]<dist_max).all(axis=0)
         if previous is not None:
@@ -64,7 +64,7 @@ def remove_outjoint(kpts2d, Pall, out_joint, dist_max, dist_track, min_view=3, p
             k3d = comb_k3d[valid[0]].reshape(1, 4)
             depth, dist, conf = project_and_distance(k3d, Pall_nj, kpts_nj[:, None])
             valid_view = view_index[np.where(dist < dist_max)[0]]
-            # 这里需要尝试三角化一下，如果按照新的三角化之后误差更大的话，不应该用新的，而是使用老的
+            # try triangulation; if new result has larger error, keep the old one
             if debug:
                 log('[triangulate] {} find valid combinations of joint: {}'.format(nj, valid_view))
                 log('[triangulate] {} distance 2d pixel (max {}): {}'.format(nj, dist_max, dist[np.where(dist < dist_max)[0], 0]))
@@ -106,10 +106,10 @@ def iterative_triangulate(kpts2d, RT,
         # for joint, we calculate the mean distance of this joint
         out_joint = np.where((ratio_outlier_joint > thres_outlier_joint) & (error_joint > dist_max))[0]
         if len(out_view) > 1:
-            # TODO: 如果全都小于0的话，相当于随机丢了，应该增加视角的置信度
-            # 应该生成多个proposal；然后递归的去寻找
-            # 不应该直接抛弃的
-            # 如果有previous的情况，应该用previous来作为判断标准
+            # TODO: if all below 0, views are dropped randomly; boost view confidence
+            # generate multiple proposals and search recursively
+            # should not discard outright
+            # use previous frame as criterion when available
             # cfg = dict(min_conf=min_conf, min_view=min_view, min_joints=min_joints, dist_max=dist_max, dist_track=dist_track,
             #            thres_outlier_view=thres_outlier_view, thres_outlier_joint=0.4, debug=True, previous=None)
             if debug: mywarn('[triangulate] More than one outlier view: {}, stop triangulation.'.format(ratio_outlier_view))

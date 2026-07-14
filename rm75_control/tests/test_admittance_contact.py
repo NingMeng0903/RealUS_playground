@@ -40,7 +40,7 @@ def _tick(ctrl: AdmittanceController, fz: float, f_des_z: float = 3.0) -> float:
 
 def test_single_press_cap_no_free_space_switch():
     """One tool-Z cap in and out of contact — the 5× press-speed jump at
-    contact latch that produced the ``两个下压速度挡`` jitter is gone."""
+    contact latch that produced the dual press-speed-tier jitter is gone."""
     ctrl = AdmittanceController(0.005, _base_cfg())
     # Externally inject a large negative state, no contact ever latched.
     ctrl.v_force_z = -0.15

@@ -5,11 +5,11 @@
   @ LastEditTime: 2022-07-14 21:37:34
   @ FilePath: /EasyMocapPublic/apps/annotation/annot_clip.py
 '''
-# 功能：
-# 1. 快速预览图像
-# 2. 设置起点
-# 3. 设置终点
-# 不兼容的接口：没有标注文件
+# Features:
+# 1. Quick image preview
+# 2. Set clip start
+# 3. Set clip end
+# Incompatible: no annotation files required
 from easymocap.mytools.debug_utils import myerror, mywarn, run_cmd
 from easymocap.mytools.vis_base import plot_line
 from easymocap.annotator.basic_annotator import AnnotBase, parse_parser
@@ -95,10 +95,10 @@ class Clips:
         width = img.shape[1]
         pos = lambda x: int(width*(x+1)/nFrames)
         lw = 12
-        # 可视化标注的clips
+        # Visualize saved clips
         for (start, end) in self.clips:
             plot_line(img, (pos(start), lw/2), (pos(end), lw/2), lw, COL_CLIP)
-        # 可视化当前的标注
+        # Visualize current clip markers
         if self.start_ is not None:
             top = pos(self.start_)
             pts = np.array([[top, lw], [top-lw, lw*4], [top, lw*4]])

@@ -23,10 +23,10 @@ exp_opts:
             min_view: 3 # at least 3 views to triangulate
             min_view_body: 5 # at least 5 views to triangulate
             dist_max: 25 # pixel
-            dist_track: 100 # 100mm；
+            dist_track: 100 # 100 mm
         cfg_track:
           max_person: 2
-          final_ranges: [[-3, -3, 0.], [3, 3, 3.]] # 最终的输出的range，仅用于输出的时候的筛选
+          final_ranges: [[-3, -3, 0.], [3, 3, 3.]] # Output bounding range; used only when filtering final output
           final_max_person: 2
   at_final:
     collect:

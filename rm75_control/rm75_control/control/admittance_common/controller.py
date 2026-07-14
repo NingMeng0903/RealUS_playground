@@ -111,7 +111,7 @@ class AdmittanceConfig:
     # Single tool-Z velocity cap on the admittance axis, applied identically
     # in and out of contact. The previous free-space split
     # (``approach_vz_tool_m_s`` ≪ ``max_vz_tool_m_s``) produced a discrete
-    # 5× jump in press speed on every contact latch — the "两个下压速度挡"
+    # 5× jump in press speed on every contact latch — the dual press-speed-tier
     # jitter on /tmp/scan_v5.csv. One cap = no switch to jitter on.
     #
     # The unified cap is min(max_vz_tool_m_s, max_velocity[2]); the same value

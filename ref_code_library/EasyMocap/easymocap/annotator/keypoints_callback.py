@@ -17,7 +17,7 @@ def callback_select_joints(start, end, annots, select, bbox_name='bbox', kpts_na
         return 0
     if select['corner'] != -1:
         return 0
-    # 判断选择了哪个角点
+    # Determine which corner point was selected
     annots = annots['annots']
     # not select a bbox
     if select[bbox_name] == -1 and select['joints'] == -1:

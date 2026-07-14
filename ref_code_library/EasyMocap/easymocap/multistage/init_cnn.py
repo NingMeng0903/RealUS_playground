@@ -48,8 +48,8 @@ class InitSpin:
         self.spin_model.device = body_model.device
         params_all = []
         for nf, imgname in enumerate(tqdm(infos['imgname'], desc='Run SPIN')):
-            # 暂时不考虑多视角情况
-            # TODO: 没有考虑多人的情况
+            # Multi-view not considered for now
+            # TODO: multi-person not handled
             basename = os.sep.join(imgname.split(os.sep)[-2:]).split('.')[0] + '.json'
             sub = os.path.dirname(basename)
             cache_dir = os.path.abspath(join(os.sep.join(imgname.split(os.sep)[:-3]), 'cache_spin'))

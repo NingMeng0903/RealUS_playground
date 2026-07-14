@@ -52,7 +52,7 @@ def padding_empty(datas):
     return collect
 
 def parse_frames(pafs_frame, H, W):
-    # 解析单帧的
+    # parse a single frame
     res = {
         'joints': [],
         'pafs': {}
@@ -76,7 +76,7 @@ def parse_frames(pafs_frame, H, W):
 
 def read_4dassociation(pafs, H, W):
     outputs = []
-    # 解析paf文件
+    # parse PAF file
     with open(pafs, 'r') as f:
         pafs = f.readlines()
     indices = []
@@ -122,7 +122,7 @@ class MVDataset(ImageDataBase):
                 else:
                     self.length = len(data)
             elif key == 'openpose':
-                # 读取open pose
+                # read OpenPose data
                 if len(subs) == 0:
                     pafs = sorted(os.listdir(join(root, value['root'])))
                 else:
@@ -154,7 +154,7 @@ class MVDataset(ImageDataBase):
                 for filename in filenames:
                     results = read_json(join(k3droot, filename))
                     if 'pids' not in results.keys():
-                        # 擅自补全
+                        # auto-fill missing pids
                         results['pids'] = list(range(len(results[res_key])))
                     data.append({
                         'pids': results['pids'],
@@ -237,9 +237,9 @@ class MVDataset(ImageDataBase):
                     ret_list['imgnames'] = val
             elif key == 'openpose':
                 ret_list[key] = [v['joints'] for v in val]
-                # 同时返回PAF
+                # also return PAF
                 ret_list[key+'_paf'] = [v['pafs'] for v in val]
-                # check一下PAF:
+                # check PAF:
                 for nv in range(len(ret_list[key])):
                     ret_list[key+'_paf'][nv][(8, 1)] = ret_list[key+'_paf'][nv].pop((1, 8)).T
                 ret_list[key], ret_list[key+'_paf'] = self.filter_openpose(ret_list[key], ret_list[key+'_paf'])
@@ -281,7 +281,7 @@ class MVMP(MVDataset):
         val = []
         for annname in annotnames:
             annots = read_json(annname)['annots']
-            # 在这里进行filter，去掉不需要的2D
+            # filter out unwanted 2D detections here
             annots_valid = []
             for annot in annots:
                 flag = True
@@ -332,7 +332,7 @@ args:
         annots:
             root: annots
             ext: .json
-        cameras: # 兼容所有帧的相机参数不同的情况
+        cameras: # support per-frame varying camera parameters
             root: ''
 '''
     import yaml

@@ -36,7 +36,7 @@ class InitTranslation:
         self.solve_R = solve_R
     
     def __call__(self, body_model, params, cameras, keypoints):
-        nJoints = 15 # 只使用主要的15个点
+        nJoints = 15 # use only the main 15 joints
         params['Th'] = np.zeros_like(params['Th'])
         kpts1 = body_model.keypoints(params, return_tensor=False)
         for i in range(kpts1.shape[0]):
@@ -77,7 +77,7 @@ class InitParams:
             'shapes': np.zeros((*shape, self.num_shapes),dtype=np.float32)
         }
         # TODO: check the root confidence and interpolate
-        # 初始化
+        # initialize
         if key == 'keypoints3d':
             params['Th'] = keypoints3d[..., self.rootid, :3]
         else:

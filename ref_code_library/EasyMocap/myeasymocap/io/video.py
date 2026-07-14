@@ -32,7 +32,7 @@ class MakeVideo:
                 shell += ' -loglevel quiet'
             print(shell)
             os.system(shell)
-            # 确认一下文件已经生成了
+            # verify output file was generated
             if not os.path.exists(path+'.mp4'):
                 mywarn('Video {} is not generated'.format(path+'.mp4'))
                 shell = shell.replace(' -loglevel quiet', '')

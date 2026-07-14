@@ -72,15 +72,15 @@ def _simcc_summary(simcc_x: np.ndarray, simcc_y: np.ndarray, topk: int) -> dict[
     """Compact uncertainty/candidate summary; full logits are saved separately."""
     def one_axis(raw: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         arr = np.asarray(raw, dtype=np.float32)
-        k = min(max(1, int(topk)), arr.shape[-1])
-        indices = np.argpartition(arr, -k, axis=-1)[..., -k:]
-        values = np.take_along_axis(arr, indices, axis=-1)
-        order = np.argsort(values, axis=-1)[..., ::-1]
-        indices = np.take_along_axis(indices, order, axis=-1)
-        values = np.take_along_axis(values, order, axis=-1)
         stable = arr - np.max(arr, axis=-1, keepdims=True)
         prob = np.exp(stable)
         prob /= np.maximum(np.sum(prob, axis=-1, keepdims=True), 1e-12)
+        k = min(max(1, int(topk)), arr.shape[-1])
+        indices = np.argpartition(prob, -k, axis=-1)[..., -k:]
+        values = np.take_along_axis(prob, indices, axis=-1)
+        order = np.argsort(values, axis=-1)[..., ::-1]
+        indices = np.take_along_axis(indices, order, axis=-1)
+        values = np.take_along_axis(values, order, axis=-1)
         bins = np.arange(arr.shape[-1], dtype=np.float32)
         mean = np.sum(prob * bins, axis=-1)
         std = np.sqrt(np.maximum(np.sum(prob * (bins - mean[..., None]) ** 2, axis=-1), 0.0))
@@ -89,6 +89,54 @@ def _simcc_summary(simcc_x: np.ndarray, simcc_y: np.ndarray, topk: int) -> dict[
     y_idx, y_score, y_std = one_axis(simcc_y)
     return {"x_bins": x_idx, "y_bins": y_idx, "x_scores": x_score, "y_scores": y_score,
             "x_std_bins": x_std, "y_std_bins": y_std}
+
+
+def _cartesian_simcc_candidates(
+    simcc_info: dict[str, np.ndarray],
+    view_index: int,
+    *,
+    topk: int,
+    model_input_size: tuple[int, int],
+    center: np.ndarray,
+    scale: np.ndarray,
+) -> dict[str, np.ndarray]:
+    """Build image-pixel 2D candidates from independent SimCC axes."""
+    x_bins = np.asarray(simcc_info["x_bins"][view_index], dtype=np.float32)
+    y_bins = np.asarray(simcc_info["y_bins"][view_index], dtype=np.float32)
+    x_prob = np.asarray(simcc_info["x_scores"][view_index], dtype=np.float64)
+    y_prob = np.asarray(simcc_info["y_scores"][view_index], dtype=np.float64)
+    cartesian_prob = x_prob[..., :, None] * y_prob[..., None, :]
+    flat_prob = cartesian_prob.reshape(cartesian_prob.shape[0], -1)
+    candidate_count = min(max(1, int(topk)), flat_prob.shape[-1])
+    selected = np.argpartition(flat_prob, -candidate_count, axis=-1)[..., -candidate_count:]
+    selected_probability = np.take_along_axis(flat_prob, selected, axis=-1)
+    order = np.argsort(selected_probability, axis=-1)[..., ::-1]
+    selected = np.take_along_axis(selected, order, axis=-1)
+    selected_probability = np.take_along_axis(selected_probability, order, axis=-1)
+    selected_probability /= np.maximum(np.sum(selected_probability, axis=-1, keepdims=True), 1e-12)
+    x_rank = selected // y_prob.shape[-1]
+    y_rank = selected % y_prob.shape[-1]
+    candidate_bins = np.stack(
+        (np.take_along_axis(x_bins, x_rank, axis=-1), np.take_along_axis(y_bins, y_rank, axis=-1)),
+        axis=-1,
+    ).astype(np.float32)
+    size_xy = np.asarray(model_input_size, dtype=np.float32).reshape(1, 1, 2)
+    scale_xy = np.asarray(scale, dtype=np.float32).reshape(1, 1, 2)
+    center_xy = np.asarray(center, dtype=np.float32).reshape(1, 1, 2)
+    candidate_xy = candidate_bins / 2.0 / size_xy
+    candidate_xy = candidate_xy * scale_xy + center_xy - scale_xy / 2.0
+    std_bins = np.stack(
+        (simcc_info["x_std_bins"][view_index], simcc_info["y_std_bins"][view_index]), axis=-1
+    ).astype(np.float32)
+    std_xy_px = std_bins / 2.0 / np.asarray(model_input_size, dtype=np.float32).reshape(1, 2)
+    std_xy_px = std_xy_px * np.asarray(scale, dtype=np.float32).reshape(1, 2)
+    return {
+        "candidate_xy": candidate_xy.astype(np.float32),
+        "candidate_probabilities": selected_probability.astype(np.float32),
+        "candidate_axis_ranks": np.stack((x_rank, y_rank), axis=-1).astype(np.int16),
+        "std_xy_px": std_xy_px.astype(np.float32),
+        "variance_px2": np.square(std_xy_px).astype(np.float32),
+    }
 
 
 def infer_multiview_body25(
@@ -178,17 +226,34 @@ def infer_multiview_body25(
             "total_ms": round(per_yolo + (t_pose1 - t_pose0) * 1000.0 / max(len(camera_ids), 1), 3),
         }
         simcc_meta = {key: np.asarray(value[i]).tolist() for key, value in simcc_info.items()}
-        # Top-K x/y ranks form candidate image coordinates in the same frame as
-        # the exported DWPose points.  The lossless SimCC logits are attached
-        # privately to batch_timing and written by the burst recorder as NPZ.
-        bins_xy = np.stack((simcc_info["x_bins"][i], simcc_info["y_bins"][i]), axis=-1).astype(np.float32)
-        scale_xy = np.asarray(scales[i], dtype=np.float32).reshape(1, 1, 2)
-        center_xy = np.asarray(centers[i], dtype=np.float32).reshape(1, 1, 2)
-        # DWPose's SimCC decoder uses the model-default split ratio 2.0;
-        # keep candidate coordinates in the same image frame as decoded pose.
-        candidate_xy = bins_xy / 2.0 / np.asarray(model_input_size, dtype=np.float32).reshape(1, 1, 2)
-        candidate_xy = candidate_xy * scale_xy + center_xy - scale_xy / 2.0
-        simcc_meta["candidate_xy"] = candidate_xy.tolist()
+        # SimCC predicts independent x/y distributions.  Form their Cartesian
+        # product and retain the strongest joint modes; pairing equal ranks is
+        # incorrect whenever the two axes are multimodal in a different order.
+        candidate_summary = _cartesian_simcc_candidates(
+            simcc_info,
+            i,
+            topk=simcc_topk,
+            model_input_size=model_input_size,
+            center=centers[i],
+            scale=scales[i],
+        )
+        for name, value in candidate_summary.items():
+            simcc_meta[name] = np.asarray(value).tolist()
+        candidate_xy = candidate_summary["candidate_xy"]
+        try:
+            from projects.genesis_ue_sync.tracking.dwpose_easymocap_export import (
+                ucoco133_simcc_to_easymocap_meta,
+            )
+
+            if candidate_xy.shape[0] >= 133:
+                mapped = ucoco133_simcc_to_easymocap_meta(simcc_meta)
+                meta["simcc_easymocap"] = {
+                    part: {name: np.asarray(value).tolist() for name, value in payload.items()}
+                    for part, payload in mapped.items()
+                }
+        except (TypeError, ValueError):
+            # Older/non-UCOCO models retain their native SimCC metadata.
+            pass
         meta["simcc"] = simcc_meta
         keypoints_by_camera[cid] = body25
         diagnostics_by_camera[cid] = meta

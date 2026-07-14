@@ -11,8 +11,10 @@ CONFIG = Path(__file__).resolve().parents[2] / "configs" / "rm75f_default.yaml"
 
 ERR_4119 = "4119"
 ERR_4119_MSG = (
-    "4119 = 六维力外载数据校验失败。示教器：配置→机械臂配置→力传感器配置→"
-    "重新做六维力重心标定（标定时末端勿碰外物）；系统信息里清除错误后再试。"
+    "4119 = six-axis force external-load data validation failed. On the pendant: "
+    "Config -> Arm Config -> Force Sensor Config -> redo six-axis force center-of-mass "
+    "calibration (do not touch external objects at the tool tip during calibration); "
+    "clear the error in System Info, then retry."
 )
 
 
@@ -42,8 +44,9 @@ def main() -> int:
 
         if ERR_4119 in after_clear:
             print(
-                f"\n4119 still latched — movev/力控都会不动。请先在示教器做力传感器重心标定并清错，"
-                f"再运行本脚本。\n{ERR_4119_MSG}",
+                f"\n4119 still latched — movev/force control will not move. Calibrate the "
+                f"force sensor center of mass on the pendant and clear the error, then rerun "
+                f"this script.\n{ERR_4119_MSG}",
                 file=sys.stderr,
                 flush=True,
             )

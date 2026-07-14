@@ -25,7 +25,7 @@ class ComposedCallback:
             return 0
         for process in self.processes:
             ret = process(**param)
-            if ret: # 操作成功，结束
+            if ret: # operation succeeded; stop processing
                 param['click'] = None
                 param['start'] = None
                 param['end'] = None
@@ -45,8 +45,8 @@ restore_key = {
 }
 
 class BaseWindow:
-    # 2021.10.11: 考虑新的层次的抽象
-    # 这个实现的基类只包含了打开一个窗口->进行标注->关闭窗口 功能
+    # 2021.10.11: consider a new abstraction layer
+    # Base class: open window -> annotate -> close window
     def __init__(self, name, param, register_keys, vis_funcs, callbacks) -> None:
         self.name = name
         register_keys['h'] = print_help
@@ -193,10 +193,10 @@ class AnnotBase:
     @staticmethod
     def set_param(param, imgname, annname, nf, no_img=False):
         annots = load_annot_to_tmp(annname)
-        # 清空键盘
+        # Clear keyboard/mouse state
         for key in ['click', 'start', 'end']:
             param[key] = None
-        # 清空选中
+        # Clear selection
         for key in param['select']:
             param['select'][key] = -1
         param['imgname'] = imgname
@@ -309,8 +309,8 @@ class AnnotMV:
 
 
 class AnnotMVMerge(BaseWindow):
-    # 这个类的设计理念是
-    # 只负责整体的合并与可视化，不要考虑具体的操作
+    # Design philosophy for this class:
+    # Only handle merging and visualization, not specific operations
     restore_key = {
         'body25': ('bbox', 'keypoints'),
         'handl': ('bbox_handl2d', 'handl2d'),
@@ -386,7 +386,7 @@ class AnnotMVMerge(BaseWindow):
         return list(self.param['frames'].values())[0]
 
     def update_param(self):
-        # 先保存
+        # Save current state first
         for nv, sub in enumerate(self.subs):
             self.visited_frames[sub].add(self.param['frames'][sub])
             save_annot(self.params_view[sub]['annname'], self.param['annots'][nv])
@@ -434,7 +434,7 @@ class AnnotMVMerge(BaseWindow):
         return imgs, annots
     
     def run(self, key=None, noshow=False):
-        # 更新选中
+        # Update selection
         if key is None:
             key = chr(get_key())
         actv = self.param['select']['camera']

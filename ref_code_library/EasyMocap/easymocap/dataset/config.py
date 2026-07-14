@@ -187,7 +187,7 @@ CONFIG['body25'] = {'nJoints': 25, 'kintree':
     'joint_names': [
         "Nose", "Neck", "RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist", "MidHip", "RHip","RKnee","RAnkle","LHip","LKnee","LAnkle","REye","LEye","REar","LEar","LBigToe","LSmallToe","LHeel","RBigToe","RSmallToe","RHeel"]}
 CONFIG['body25']['kintree_order'] = [
-    [1, 8], # 躯干放在最前面
+    [1, 8], # torso first
     [1, 2],
     [2, 3],
     [3, 4],
@@ -244,7 +244,7 @@ CONFIG['body25']['skeleton'] = \
 CONFIG['body25vis'] = {
     'nJoints': 25,
     'kintree': [
-        [8, 1], # 躯干放在最前面
+        [8, 1], # torso first
         [8, 9],
         [8, 12],
         [9, 10],

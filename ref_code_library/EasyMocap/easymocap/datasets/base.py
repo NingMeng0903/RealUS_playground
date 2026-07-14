@@ -78,7 +78,7 @@ def crop_image(img, bbox, crop_square=True):
     b = min(img.shape[0], int(b+0.5))
     crop_img = img[t:b, l:r, :]
     if crop_square:
-        # 先padding黑边
+        # Pad with black borders first
         if crop_img.shape[0] < crop_img.shape[1] - 1:
             length = crop_img.shape[1] - crop_img.shape[0]
             padding0 = np.zeros((length//2, crop_img.shape[1], 3), dtype=np.uint8)
@@ -145,7 +145,7 @@ class BaseData:
             img = cv2.resize(img, None, fx=scale, fy=scale)
         return img
 
-    # TODO: 多视角多人的拆分成单独的数据
+    # TODO: split multi-view multi-person into separate datasets
     def collect_data(self, data_all):
         keys = list(set(sum([list(d.keys()) for d in data_all], [])))
         if len(keys) < len(list(self.cache_shape.keys())):
@@ -166,7 +166,7 @@ class BaseData:
                                 mywarn('{} not in {}'.format(key, self.cache_shape.keys()))
                         ret[key].append(np.zeros((0, *self.cache_shape[key].shape[1:])))
                     else:
-                        # 单人的情况，读入一个全是0的
+                        # Single person: load all-zero placeholder
                         ret[key].append(np.zeros_like(self.cache_shape[key]))
                 else:
                     ret[key].append(d[key])
@@ -558,7 +558,7 @@ class MultiVideo(ImageFolder):
             data_all.append(data)
         # load camera for each sub
         ret = self.collect_data(data_all)
-        if self.loadmp and self.compose_mp: # 针对镜子的情况，需要load多人的数据
+        if self.loadmp and self.compose_mp: # mirror setup: load multi-person data
             for key in ['keypoints2d', 'keypoints2d_distort', 'keypoints2d_unproj']:
                 if len(self.pids) > 0:
                     for i in range(len(ret[key])):
@@ -874,10 +874,10 @@ class MultiView(ImageFolder):
             basename = os.path.basename(annname0).replace('.json', '')
             outname = join(self.out, 'smpl', basename) +'.json'
             params = body_params[index]
-            # 单个视角 + 单个人
-            # 多个视角 + 单个人
-            # 单个视角 + 多个人
-            # 多个视角 + 多个人
+            # single view + single person
+            # multi view + single person
+            # single view + multiple people
+            # multi view + multiple people
             if self.loadmp:
                 for nv, sub in enumerate(self.subs):
                     if len(params.poses.shape) == 3: # with different views
@@ -899,7 +899,7 @@ class MultiView(ImageFolder):
                     outname = join(self.out, self.writer.fullpose.root, basename) +'.json'
                     params['poses'] = body_model.export_full_poses(**params)
                     self.write_params(outname, [params])
-                else: # 单人的；每个视角都不相同的情况
+                else: # single person; different params per view
                     for nv, sub in enumerate(self.subs):
                         param_v = params[nv]
                         outname = join(self.out, 'smpl', sub, basename+'.json')
@@ -907,7 +907,7 @@ class MultiView(ImageFolder):
                         fullname = join(self.out, self.writer.fullpose.root, sub, basename+'.json')
                         param_v['poses'] = body_model.export_full_poses(**param_v)
                         self.write_params(fullname, [param_v])
-            # 可视化
+            # Visualization
             if not self.writer.render.enable:
                 continue
             vis = []

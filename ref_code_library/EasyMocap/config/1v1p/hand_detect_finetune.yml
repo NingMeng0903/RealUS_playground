@@ -2,10 +2,10 @@ smooth: &smooth_keypoints
   weight: 50.
   module: myeasymocap.operations.loss.Smooth
   key_from_output: [keypoints, Th]
-  key_from_infos: [] # TODO: 根据2D的置信度来计算smooth权重
+  key_from_infos: [] # TODO: compute smooth weights from 2D confidence
   args:
     keys: [Th, keypoints]
-    smooth_type: [Linear, Linear] # 这个depth似乎需要相机参数进行转换
+    smooth_type: [Linear, Linear] # depth smoothing may need camera parameters for conversion
     norm: [l2, l2]
     order: [2, 2]
     weights: [1000., 1000.]
@@ -38,17 +38,17 @@ args:
       args:
         name: vis_keypoints2d
         scale: 0.5
-    infer_mano: # 
+    infer_mano:
       module: myeasymocap.backbone.hmr.hmr.MyHMR
       key_from_data: [images, imgnames]
       key_from_previous: [bbox]
-      key_keep: [meta, cameras, imgnames] # 将这些参数都保留到最后的输出中
+      key_keep: [meta, cameras, imgnames] # Keep these params through to final output
       args:
         ckpt: models/hand_manol_pca45_noflat.ckpt
         url: '1KTi_oJ_udLRK3WZ3xyHzBUd6vKAApfT8'
     # TODO: add visualize for Init MANO
   at_final:
-    load_hand_model: # 载入身体模型
+    load_hand_model: # Load hand model
       module: myeasymocap.io.model.MANOLoader
       args:
         cfg_path: config/model/manol.yml
@@ -57,13 +57,13 @@ args:
         num_pca_comps: 45
         use_pca: True
         use_flat_mean: False
-      # 这个模块返回两个内容：body_model, model; 其中的body_model是用来进行可视化的
-    mean_param: # 初始化姿态，这里将poses和shapes都进行平均
+      # Returns body_model and model; body_model is used for visualization
+    mean_param: # Initialize pose; average poses and shapes here
       module: myeasymocap.operations.init.MeanShapes
       key_from_data: [params]
       args:
         keys: ['shapes']
-    init_T:  # 初始化每一帧的位置
+    init_T: # Initialize per-frame translation
       module: myeasymocap.operations.optimizer.Optimizer
       key_from_data: [keypoints, cameras, params]
       key_from_previous: [model]
@@ -79,7 +79,7 @@ args:
             args:
               norm: l2
           smooth: *smooth_keypoints
-    init_R:  # 初始化每一帧的旋转
+    init_R: # Initialize per-frame rotation
       module: myeasymocap.operations.optimizer.Optimizer
       key_from_data: [keypoints, cameras]
       key_from_previous: [model, params]
@@ -95,7 +95,7 @@ args:
             args:
               norm: l2
           smooth: *smooth_keypoints
-    refine_poses: # 优化poses
+    refine_poses: # Optimize poses
       repeat: 2
       module: myeasymocap.operations.optimizer.Optimizer
       key_from_data: [keypoints, cameras]

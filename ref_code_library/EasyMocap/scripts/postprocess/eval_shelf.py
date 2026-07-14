@@ -138,7 +138,7 @@ def _readResult(filename, isA4d):
         if (keypoints3d[:, 3]>0).sum() > 1:
             res_.append({'id':trackId, 'keypoints3d': keypoints3d})
     if isA4d:
-        # association4d 的关节顺序和正常的定义不一样
+        # association4d joint order differs from standard definition
         for r in res_:
             r['keypoints3d'] = r['keypoints3d'][[4, 1, 5, 9, 13, 6, 10, 14, 0, 2, 7, 11, 3, 8, 12], :]
     return res_
@@ -183,7 +183,7 @@ def write_to_csv(filename, results, id_wise=True):
                 vals = [res[key] for res in results if res['id'] == pid]
                 content.append('{:.3f}'.format(sum(vals)/len(vals)))
             contents.append(content)
-        # 计算平均值
+        # Compute mean
         content = ['Mean']
         for i, key in enumerate(keys):
             content.append('{:.3f}'.format(sum([float(con[i+1]) for con in contents])/len(ids)))
@@ -198,7 +198,7 @@ def write_to_csv(filename, results, id_wise=True):
     print(tabulate.tabulate(contents, header, tablefmt='fancy_grid'), file=open(filename.replace('.csv', '.txt'), 'w'))
 
     with open(filename, 'w') as f:
-        # 写入头
+        # Write CSV header
         header = list(results[0].keys())
         f.write(','.join(header) + '\n')
         for res in results:
@@ -215,30 +215,30 @@ def evaluate(actor3D, range_, out):
 
     results = []
     for img_id in tqdm(range_):
-        # 转化成model_poses
+        # Convert to model poses
         ests = []
         for res in result[img_id]:
             ests.append({'id': res['id'], 'keypoints3d': convert_openpose_shelf1(res['keypoints3d'])})
         gts = shelfgt[img_id]
         if len(gts) < 1:
             continue
-        # 匹配最近的
+        # Match nearest
         kpts_gt = np.stack([v['keypoints3d'] for v in gts])
         kpts_dt = np.stack([v['keypoints3d'] for v in ests])
         distances = np.linalg.norm(kpts_gt[:, None, :, :3] - kpts_dt[None, :, :, :3], axis=-1)
         conf = (kpts_gt[:, None, :, -1] > 0) * (kpts_dt[None, :, :, -1] > 0)
         dist = (distances * conf).sum(axis=-1)/conf.sum(axis=-1)
-        # 贪婪的匹配
+        # Greedy matching
         ests_new = []
         for igt, gt in enumerate(gts):
             bestid = np.argmin(dist[igt])
             ests_new.append(ests[bestid])
         ests = ests_new
-        # 计算误差
+        # Compute errors
         for i, data in enumerate(gts):
             kpts_gt = data['keypoints3d']
             kpts_est = ests[i]['keypoints3d']
-            # 计算各种误差，存成字典
+            # Compute error metrics and store as dict
             da = np.linalg.norm(kpts_gt[start, :3] - kpts_est[start, :3], axis=1)
             db = np.linalg.norm(kpts_gt[end, :3] - kpts_est[end, :3], axis=1)
             l = np.linalg.norm(kpts_gt[start, :3] - kpts_gt[end, :3], axis=1)

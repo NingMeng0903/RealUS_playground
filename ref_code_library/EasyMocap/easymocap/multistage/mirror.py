@@ -77,7 +77,7 @@ class InitNormal:
         vanish_line = vanish_line[conf]
         vline0 = vanish_line.numpy().transpose(1, 0, 2)
         vpoint0 = calc_vanishpoint(vline0).reshape(1, 3)
-        # 计算点到线的距离进行检查
+        # Compute point-to-line distance for validation
         # two points line: (x1, y1), (x2, y2) ==> (y-y1)/(x-x1) = (y2-y1)/(x2-x1)
         # A = y2 - y1
         # B = x1 - x2
@@ -93,7 +93,7 @@ class InitNormal:
         distance10 = np.abs(A_v1 * kpts0[:, :, 0] + B_v1 * kpts0[:, :, 1] + C_v1)/np.sqrt(A_v1*A_v1 + B_v1*B_v1)
         DIST_THRES = 0.05
         for nf in range(kpts.shape[0]):
-            # 计算scale
+            # Compute scale
             bbox0 = bbox_from_keypoints(kpts0[nf].cpu().numpy())
             bbox1 = bbox_from_keypoints(kpts1[nf].cpu().numpy())
             bbox_size0 = max(bbox0[2]-bbox0[0], bbox0[3]-bbox0[1])
@@ -101,8 +101,8 @@ class InitNormal:
             valid = (kpts0[nf, :, 2] > 0.3) & (kpts1[nf, :, 2] > 0.3)
             dist01_ = valid*distance01[nf] / bbox_size1
             dist10_ = valid*distance10[nf] / bbox_size0
-            # 对于距离异常的点，阈值设定为0.1
-            # 抑制掉置信度低的视角的点
+            # For abnormally distant points, threshold is 0.1
+            # Suppress low-confidence view points
             not_valid0 = np.where((dist01_ + dist10_ > DIST_THRES*2) & (kpts0[nf][:, -1] < kpts1[nf][:, -1]))[0]
             not_valid1 = np.where((dist01_ + dist10_ > DIST_THRES*2) & (kpts0[nf][:, -1] > kpts1[nf][:, -1]))[0]
             kpts0[nf, not_valid0] = 0.
@@ -120,10 +120,10 @@ class InitNormal:
         print('>>> Calculating normal from keypoints: {}'.format(normal[0]))
         infos['normal'] = torch.Tensor(normal)
         mirror = torch.zeros((1, 4))
-        # 计算镜子平面到相机的距离
+        # Compute distance from mirror plane to camera
         Th = body_params['Th']
         center = Th.mean(axis=1)
-        # 相机原点到两个人中心的连线在normal上的投影
+        # Projection of camera-to-center line onto normal
         dist = (center * normal).sum(axis=-1).mean()
         print('>>> Calculating distance from Th: {}'.format(dist))
         mirror[0, 3] = - dist # initial guess

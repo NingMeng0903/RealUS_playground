@@ -91,7 +91,7 @@ class MirrorDataset(BaseDataset):
         obj = AABBwMask(split=self.split, bounds=info['bounds'], 
             mask=msk, 
             label=None,
-            dilate=False, # 这里假设mask很准，或者使用了patch
+            dilate=False, # assume accurate mask or patch-based sampling
             rate_body=0.85)
         for key in ['R', 'Rh', 'Th', 'vertices', 'poses', 'shapes']:
             obj.feature[key] = info['params'][key]
@@ -127,7 +127,7 @@ class MirrorDataset(BaseDataset):
 class MirrorDatasetDemo(MirrorDataset):
     def __init__(self, keyframes, **cfg):
         self.keyframes = keyframes
-        # 注意：初始化里面调用了get_allnames，所以要预先写进去
+        # Note: __init__ calls get_allnames, so keyframes must be set first
         super().__init__(**cfg)
     
     def __len__(self):

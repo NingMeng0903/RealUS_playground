@@ -92,7 +92,7 @@ def sample_rays_rate(bounds, rates, back_mask, nrays=1024, **kwargs):
     if 'method' in kwargs and kwargs['method'] == 'patch':
         cv2.imwrite('debug/back.jpg', (back_mask*255).astype(np.uint8))
         mask_valid = back_mask
-        # 腐蚀一下
+        # Erode the mask
         mask_valid[:, 0] = 0
         mask_valid[:, -1] = 0
         mask_valid[0, :] = 0
@@ -101,8 +101,8 @@ def sample_rays_rate(bounds, rates, back_mask, nrays=1024, **kwargs):
         patch_size = kwargs['patch_size']
         kernel = np.ones((2*patch_size//2+1, 2*patch_size//2+1), np.uint8)
         back_mask = cv2.erode(mask_valid, kernel, iterations=1)
-        # TODO: 这里每个object的mask并不会被erode掉
-        # 导致object的边缘也是会被选中的
+        # TODO: each object's mask is not eroded here
+        # so object edges may still be selected
     coords = generate_weight_coords(bounds, rates, back_mask)
     if 'method' in kwargs and kwargs['method'] == 'patch':
         patch_size = kwargs['patch_size']
@@ -208,7 +208,7 @@ class AABBSampler(BaseSampler):
             scale = np.array(scale).reshape(1, 3)
             bounds = np.concatenate([center - scale, center + scale], axis=0)
         self.bounds = np.array(bounds).astype(np.float32)
-        self.depth_min = 0.05 # 限定最近距离
+        self.depth_min = 0.05 # minimum depth limit
         # self.method = method
         # self.no_mask = no_mask
         # self.instance = instance
@@ -242,7 +242,7 @@ class AABBSampler(BaseSampler):
 
         Returns:
             near, far, mask_at_box
-            这里的near是实际物理空间中的深度
+            near is depth in physical world space
         """
         norm_d = np.linalg.norm(ray_d, axis=-1, keepdims=True)
         viewdir = ray_d/norm_d
@@ -251,7 +251,7 @@ class AABBSampler(BaseSampler):
         inv_dir = 1.0/viewdir
         tmin = (bounds[:1] - ray_o[:1])*inv_dir
         tmax = (bounds[1:2] - ray_o[:1])*inv_dir
-        # 限定时间是增加的
+        # Ensure t increases along the ray
         t1 = np.minimum(tmin, tmax)
         t2 = np.maximum(tmin, tmax)
         near = np.max(t1, axis=-1)
@@ -273,13 +273,13 @@ class AABBSampler(BaseSampler):
     def uniform_sample(self, ray_o, ray_d, coord, depth=None):
         near, far, mask_at_box = self.get_near_far(ray_o, ray_d, self.bounds, coord=coord)
         if depth is not None:
-            #TODO:考虑最近和最远
-            # 暂时只考虑修改near
+            # TODO: consider nearest and farthest
+            # For now only adjust near
             flag = mask_at_box & (depth > 0.05) & (depth<9999.)
             near[flag] = np.maximum(near[flag], depth[flag])
-        # 返回的near, far是以mask_at_box为大小的
+        # near/far returned here are sized to mask_at_box
         norm_d = np.linalg.norm(ray_d, axis=-1, keepdims=True)
-        # 返回的near far是去掉长度的
+        # returned near/far are normalized by ray length
         near = near[mask_at_box] / norm_d[mask_at_box, 0]
         far = far[mask_at_box] / norm_d[mask_at_box, 0]
         return near, far, mask_at_box
@@ -323,7 +323,7 @@ class AABBwMask(AABBSampler):
 
         size_body = instance.sum()
         size_outer = mask_out_body.sum()
-        # 身体部分0.9, 身体以外的部分0.1
+        # body region 0.9, outside body 0.1
         rate_body = self.rate_body
         rate_outer = 1 - rate_body
         if size_body < 10 or size_outer < 10:
@@ -351,9 +351,9 @@ class AABBwMask(AABBSampler):
             ray_o_rt = (ray_o - T) @ (R.T).T
             ray_d_rt = ray_d @ (R.T).T
             near, far, mask_at_box = self.get_near_far(ray_o_rt, ray_d_rt, bounds, coord=coord)
-            # 返回的near, far是以mask_at_box为大小的
+            # near/far returned here are sized to mask_at_box
             norm_d = np.linalg.norm(ray_d, axis=-1, keepdims=True)
-            # 返回的near far是去掉长度的
+            # returned near/far are normalized by ray length
             near = near[mask_at_box] / norm_d[mask_at_box, 0]
             far = far[mask_at_box] / norm_d[mask_at_box, 0]
             return near, far, mask_at_box
@@ -376,9 +376,9 @@ class TwoAABBSampler(BaseSampler):
         near_inter, far_inter, mask_inter = AABBSampler.get_near_far(ray_o, ray_d, self.bbox_inter, coord)
         near_outer, far_outer, mask_outer = AABBSampler.get_near_far(ray_o, ray_d, self.bbox_outer, coord)
         mask_at_box = mask_inter & mask_outer & (far_inter < far_outer)
-        # 返回的near, far是以mask_at_box为大小的
+        # near/far returned here are sized to mask_at_box
         norm_d = np.linalg.norm(ray_d, axis=-1, keepdims=True)
-        # 返回的near far是去掉长度的
+        # returned near/far are normalized by ray length
         near = far_inter[mask_at_box] / norm_d[mask_at_box, 0]
         far = far_outer[mask_at_box] / norm_d[mask_at_box, 0]
         return near, far, mask_at_box
@@ -455,23 +455,23 @@ class CylinderSampler(BaseSampler):
 
     @staticmethod
     def get_near_far_cylinder(ray_o, ray_d, viewdirs, radius):
-        # 计算与圆柱的交点
+        # Compute intersections with the cylinder
         radius0, radius1 = radius
-        # 1. 计算xy方向的单位向量
+        # 1. Unit vector in the xy plane
         ray_d_xy = ray_d[..., :2]
         viewdirs_xy = ray_d_xy/np.linalg.norm(ray_d_xy, axis=-1, keepdims=True)
-        # d1: 相机中心到原点的向量在射线方向的投影
+        # d1: projection of camera-to-origin vector onto ray direction
         d1 = - (viewdirs_xy * ray_o[..., :2]).sum(axis=-1)
-        # d0_dir: 直线 x=0, y=0到射线的距离
+        # d0_dir: distance from line x=0, y=0 to the ray
         d_0_dir = np.sqrt(np.maximum((ray_o[..., :2]*ray_o[..., :2]).sum(axis=-1) - d1 * d1, 1e-5))
-        # 计算与内圆交点：确保到射线的距离小于半径
+        # Inner-circle intersection: ensure distance to ray is less than radius
         # assert d_0_dir.max() < radius0, d_0_dir.max()
-        # 计算与圆的第二个交点
+        # Second intersection with the circle
         dr0 = np.sqrt(np.clip(radius0*radius0 - d_0_dir*d_0_dir, 0., 1e5)) + d1
         dr1 = np.sqrt(np.clip(radius1*radius1 - d_0_dir*d_0_dir, 0., 1e5)) + d1
-        # 现在这个距离是二维的，需要变成三维的
-        # 由于计算的是时间t，所以这个除的时候，直接除以归一化xy平面的就好
-        # 得到的值也是绝对时间
+        # This distance is 2D; convert to 3D
+        # Since we compute parametric t, divide by the normalized xy-plane norm
+        # Result is absolute parametric time
         norm_xy = np.linalg.norm(viewdirs[..., :2], axis=-1)
         dr0, dr1 = dr0/norm_xy, dr1/norm_xy
         return dr0, dr1
@@ -479,7 +479,7 @@ class CylinderSampler(BaseSampler):
     def __call__(self, ray_o, ray_d, coord):
         near, far, mask = self.near[coord[:, 0], coord[:, 1]], self.far[coord[:, 0], coord[:, 1]], self._mask[coord[:, 0], coord[:, 1]]
         near, far = near[mask], far[mask]
-        # 注意，这里都是当作背景来处理的，所以mask_at_box一定是全是True的
+        # Note: treated as background here, so mask_at_box is all True
         return near, far, mask
 
 def create_cameras_mean(cameras, camera_args):
@@ -492,7 +492,7 @@ def create_cameras_mean(cameras, camera_args):
     zmean = Rold[:, 2, 2].mean()
     xynorm = np.sqrt(1. - zmean**2)
     thetas = np.linspace(0., 2*np.pi, camera_args['allstep'])
-    # 计算第一个相机对应的theta
+    # Compute theta for the first camera
     dir0 = Cold[0] - center[0]
     dir0[2, 0] = 0.
     dir0 = dir0 / np.linalg.norm(dir0)

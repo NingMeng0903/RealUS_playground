@@ -188,7 +188,7 @@ class BaseRenderer(nn.Module):
                 model.current = key
             else:
                 model = self.net.model(key)
-                # 这里手动设置一下key,因为在非share模式下,不会自动覆盖
+                # Set key manually; non-share mode does not auto-overwrite
                 model.current = key
             
             mask = batch[key + '_mask'][0]
@@ -256,7 +256,7 @@ class BaseRenderer(nn.Module):
             #         self.bound_u = bound_u
             #         notInBound = ((wpts < bound_l)|(wpts>bound_u)).any(dim=-1)
             #     mask_valid = mask & (~notInBound.all(dim=-1))
-            #     # 注意:这里只在背景的时候正确,如果不是背景,数据量不一样的
+            #     # Note: correct only for background; data size differs otherwise
             #     wpts_valid = wpts[mask_valid]
             #     # print('[back] forward {} points of {}'.format(mask_valid.sum(), mask.sum()))
             #     z_val_valid = z_val[mask_valid]
@@ -283,7 +283,7 @@ class BaseRenderer(nn.Module):
             #     for ret_name, val in ret_layer.items():
             #         ret_all[ret_name+'_'+key] = val
         if len(ret_all) == 0:
-            # 补全0
+            # Fill with zeros
             occupancy = torch.zeros([ray_d.shape[0], 1, 1], device=ray_d.device)
             color = torch.zeros([ray_d.shape[0], 1, 3], device=ray_d.device)
             instance = torch.zeros([ray_d.shape[0], 1, len(object_keys)], device=ray_d.device)

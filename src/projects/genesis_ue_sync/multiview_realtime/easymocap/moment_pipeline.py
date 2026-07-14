@@ -34,7 +34,7 @@ from projects.genesis_ue_sync.multiview_realtime.easymocap.delayed_smplx import 
     easymocap_joints_world,
     easymocap_vertices_world,
     ensure_smplx_assets,
-    mask_body25_2d_to_triangulation_inliers,
+    mask_keypoints2d_to_triangulation_inliers,
     pack_burst_dataset,
     pack_single_frame_dataset,
     run_mv1p_smplx_fit,
@@ -74,43 +74,16 @@ def _passes_reprojection_gate(errors_px: list[float], max_px: float) -> bool:
     return bool(errors_px) and float(np.mean(errors_px)) <= float(max_px)
 
 
-def _align_smpl_root_to_body25(
+def _passes_final_publication_gate(
     *,
-    body_model: Any,
-    params: dict[str, Any],
-    verts: np.ndarray,
-    keypoints3d: np.ndarray | None,
-) -> tuple[np.ndarray, dict[str, Any]]:
-    if keypoints3d is None:
-        return verts, {"applied": False, "reason": "missing_keypoints3d"}
-    kp = np.asarray(keypoints3d, dtype=np.float32).reshape(-1, 4)
-    if kp.shape[0] < 15:
-        return verts, {"applied": False, "reason": "too_few_keypoints3d"}
-    joints = easymocap_joints_world(body_model, params)
-    n = min(25, joints.shape[0], kp.shape[0])
-    core = np.asarray([0, 1, 2, 5, 8, 9, 10, 11, 12, 13, 14], dtype=np.int64)
-    core = core[core < n]
-    valid = kp[core, 3] > 0.05
-    if int(np.sum(valid)) < 5:
-        return verts, {"applied": False, "reason": "too_few_valid_core_joints"}
-    offsets = kp[core[valid], :3] - joints[core[valid], :3]
-    offset = np.median(offsets, axis=0).astype(np.float32)
-    norm = float(np.linalg.norm(offset))
-    if not np.all(np.isfinite(offset)) or norm > 0.75:
-        return verts, {
-            "applied": False,
-            "reason": "offset_out_of_range",
-            "offset_m": [float(v) for v in offset.tolist()],
-            "offset_norm_m": norm,
-        }
-    params["Th"] = np.asarray(params["Th"], dtype=np.float32).reshape(1, 3) + offset.reshape(1, 3)
-    aligned = np.asarray(verts, dtype=np.float32).reshape(-1, 3) + offset.reshape(1, 3)
-    return aligned, {
-        "applied": True,
-        "offset_m": [float(v) for v in offset.tolist()],
-        "offset_norm_m": norm,
-        "valid_core_joints": int(np.sum(valid)),
-    }
+    core_ok: bool,
+    foot_ok: bool,
+    reprojection_ok: bool,
+    bed_penetrating_verts: int | None = None,
+) -> bool:
+    """Visual publication contract; mattress penetration is diagnostic only."""
+    del bed_penetrating_verts
+    return bool(core_ok and foot_ok and reprojection_ok)
 
 
 def _smplx_joint_fit_error(
@@ -199,6 +172,114 @@ def _sanitize_annots_by_cam(annots_by_cam: dict[str, dict[str, np.ndarray]]) -> 
             cam_out[key] = arr
         cleaned[camera_id] = cam_out
     return cleaned
+
+
+def _simcc_observation_meta(
+    detection_meta: dict[str, dict[str, Any]],
+    camera_ids: list[str],
+) -> dict[str, dict[str, Any]] | None:
+    """Extract per-camera EasyMocap-mapped SimCC distributions."""
+    result = {
+        cid: dict((detection_meta.get(cid) or {}).get("simcc_easymocap") or {})
+        for cid in camera_ids
+    }
+    return result if any(result.values()) else None
+
+
+def _part_annots_from_selected_inliers(
+    annots_by_cam: dict[str, dict[str, np.ndarray]],
+    camera_ids: list[str],
+    part_diag: dict[str, Any],
+    detection_meta: dict[str, dict[str, Any]],
+    *,
+    field: str,
+) -> dict[str, dict[str, np.ndarray]]:
+    """Mask rejected views and restore the selected raw SimCC-mode pixels."""
+    out = mask_keypoints2d_to_triangulation_inliers(
+        annots_by_cam,
+        camera_ids,
+        part_diag,
+        field=field,
+    )
+    for detail in list(part_diag.get("joint_details") or []):
+        joint = int(detail.get("joint_index", -1))
+        ranks = list(detail.get("selected_candidate_ranks") or [])
+        selected_xy = list(detail.get("selected_observations_xy") or [])
+        used = {int(v) for v in detail.get("used_views") or []}
+        if joint < 0:
+            continue
+        for view_index in used:
+            if view_index >= len(camera_ids):
+                continue
+            cid = camera_ids[view_index]
+            points = out[cid].get(field)
+            if (
+                points is not None
+                and joint < len(points)
+                and view_index < len(selected_xy)
+                and selected_xy[view_index] is not None
+            ):
+                xy = np.asarray(selected_xy[view_index], dtype=np.float32).reshape(-1)[:2]
+                if xy.size == 2 and np.all(np.isfinite(xy)):
+                    points[joint, :2] = xy
+                    continue
+            if view_index >= len(ranks) or int(ranks[view_index]) < 0:
+                continue
+            payload = dict(
+                ((detection_meta.get(cid) or {}).get("simcc_easymocap") or {}).get(field) or {}
+            )
+            candidates = np.asarray(payload.get("candidate_xy", []), dtype=np.float32)
+            rank = int(ranks[view_index])
+            if (
+                points is None or joint >= len(points) or candidates.ndim != 3
+                or joint >= candidates.shape[0] or rank >= candidates.shape[1]
+            ):
+                continue
+            xy = candidates[joint, rank, :2]
+            if np.all(np.isfinite(xy)):
+                points[joint, :2] = xy
+    return out
+
+
+def _body25_annots_from_temporal_inliers(
+    annots_by_cam: dict[str, dict[str, np.ndarray]],
+    camera_ids: list[str],
+    body_diag: dict[str, Any],
+    detection_meta: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, np.ndarray]]:
+    """Backward-compatible Body25 wrapper used by focused unit tests."""
+    return _part_annots_from_selected_inliers(
+        annots_by_cam,
+        camera_ids,
+        body_diag,
+        detection_meta,
+        field="keypoints",
+    )
+
+
+def _bodyhand_annots_from_selected_inliers(
+    annots_by_cam: dict[str, dict[str, np.ndarray]],
+    camera_ids: list[str],
+    triangulation_diag: dict[str, Any],
+    detection_meta: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, np.ndarray]]:
+    """Apply the robust DLT camera/mode decision to Body25 and both hands."""
+    out = _sanitize_annots_by_cam(annots_by_cam)
+    for diag_key, field in (
+        ("body25", "keypoints"),
+        ("handl", "handl2d"),
+        ("handr", "handr2d"),
+    ):
+        part_diag = dict(triangulation_diag.get(diag_key) or {})
+        if part_diag.get("joint_details"):
+            out = _part_annots_from_selected_inliers(
+                out,
+                camera_ids,
+                part_diag,
+                detection_meta,
+                field=field,
+            )
+    return out
 
 
 def _load_keypoints3d(easymocap_out: Path) -> np.ndarray | None:
@@ -347,6 +428,7 @@ def process_one_moment(
         tri_cfg=tri_cfg,
         include_hands=not bool(zero_hand_keypoints),
         diagnostics=triangulation_diagnostics,
+        observation_meta_by_cam=_simcc_observation_meta(det_meta, camera_ids),
     )
     ok3d, qual3d_report = evaluate_bodyhand3d_quality(parts3d_for_quality, config=quality_cfg)
     summary["pose2d_quality"] = qual_report
@@ -368,8 +450,11 @@ def process_one_moment(
     # The 2D objective receives raw DWPose inliers, never green 3D
     # reprojections.  Invalid/outlier body observations are set missing before
     # both EasyMocap annotation loading and the SMPL-X data term.
-    annots_for_fit = mask_body25_2d_to_triangulation_inliers(
-        annots_by_cam, camera_ids, dict(triangulation_diagnostics.get("body25") or {})
+    annots_for_fit = _bodyhand_annots_from_selected_inliers(
+        annots_by_cam,
+        camera_ids,
+        triangulation_diagnostics,
+        det_meta,
     )
     pack_single_frame_dataset(
         dataset_root=dataset_root,
@@ -539,13 +624,357 @@ def process_one_moment(
     return summary
 
 
-def _burst_frame_score(body_diag: dict[str, Any], index: int, center: int) -> float:
+_BODY25_FOOT_JOINTS = frozenset((11, 14, 19, 20, 21, 22, 23, 24))
+_BODY25_LOWER_EDGES: tuple[tuple[int, int], ...] = (
+    (9, 10), (10, 11), (12, 13), (13, 14),
+    (11, 22), (11, 23), (11, 24), (22, 23), (22, 24),
+    (14, 19), (14, 20), (14, 21), (19, 20), (19, 21),
+)
+
+
+def _finite_float(value: Any, default: float) -> float:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return float(default)
+    return result if np.isfinite(result) else float(default)
+
+
+def _candidate_xyz(candidate: dict[str, Any]) -> np.ndarray | None:
+    """Read the versioned DLT hypothesis contract without depending on it."""
+    raw = candidate.get("xyz", candidate.get("point3d"))
+    if raw is None:
+        return None
+    xyz = np.asarray(raw, dtype=np.float64).reshape(-1)
+    if xyz.size < 3 or not np.all(np.isfinite(xyz[:3])):
+        return None
+    return xyz[:3]
+
+
+def _joint_candidates(
+    detail: dict[str, Any],
+    current: np.ndarray,
+) -> list[dict[str, Any]]:
+    """Return real triangulation hypotheses, with old diagnostics as fallback."""
+    candidates: list[dict[str, Any]] = []
+    for raw in list(detail.get("candidate_hypotheses") or []):
+        candidate = dict(raw)
+        xyz = _candidate_xyz(candidate)
+        if not bool(candidate.get("geometry_ok", xyz is not None)) or xyz is None:
+            continue
+        candidate["xyz"] = xyz.tolist()
+        candidate.setdefault("confidence", float(current[3]) if len(current) >= 4 else 0.0)
+        candidate.setdefault("used_views", list(detail.get("used_views") or []))
+        candidate.setdefault(
+            "robust_cost",
+            candidate.get("mean_reprojection_error_px", detail.get("reprojection_error_px", 0.0)),
+        )
+        candidates.append(candidate)
+    if candidates:
+        # SimCC Top-K seeds intentionally export every auditable hypothesis,
+        # often hundreds per joint.  Viterbi needs distinct 3D clusters, not
+        # all pair/rank duplicates.  Keep the best-cost representative within
+        # 3 mm and cap the state space so burst latency stays bounded.
+        candidates.sort(key=lambda c: _finite_float(c.get("robust_cost"), 50.0))
+        distinct: list[dict[str, Any]] = []
+        for candidate in candidates:
+            xyz = _candidate_xyz(candidate)
+            assert xyz is not None
+            duplicate = next(
+                (
+                    i for i, kept in enumerate(distinct)
+                    if np.linalg.norm(xyz - np.asarray(kept["xyz"], dtype=np.float64)) < 0.003
+                ),
+                None,
+            )
+            if duplicate is not None:
+                if bool(candidate.get("selected")):
+                    distinct[duplicate] = candidate
+                continue
+            distinct.append(candidate)
+            if len(distinct) >= 16:
+                break
+        return distinct
+    if len(current) < 4 or float(current[3]) <= 0.0 or not np.all(np.isfinite(current[:3])):
+        return candidates
+    # Backward compatibility with bursts triangulated before candidate export.
+    return [{
+        "hypothesis_id": detail.get("selected_hypothesis_id", -1),
+        "xyz": np.asarray(current[:3], dtype=np.float64).tolist(),
+        "confidence": float(current[3]),
+        "used_views": list(detail.get("used_views") or []),
+        "inlier_mask": detail.get("inlier_mask"),
+        "candidate_ranks": detail.get("selected_candidate_ranks"),
+        "robust_cost": detail.get("robust_cost", detail.get("reprojection_error_px", 0.0)),
+        "mean_reprojection_error_px": detail.get("reprojection_error_px"),
+        "max_reprojection_error_px": detail.get("max_reprojection_error_px"),
+        "min_ray_angle_deg": detail.get("min_ray_angle_deg"),
+        "geometry_ok": True,
+        "selected": True,
+    }]
+
+
+def _burst_bone_length_targets(parts_by_frame: list[dict[str, np.ndarray]]) -> dict[tuple[int, int], float]:
+    targets: dict[tuple[int, int], float] = {}
+    for a, b in _BODY25_LOWER_EDGES:
+        values: list[float] = []
+        for parts in parts_by_frame:
+            body = np.asarray(parts["keypoints3d"], dtype=np.float64)
+            if max(a, b) >= len(body) or body[a, 3] <= 0.0 or body[b, 3] <= 0.0:
+                continue
+            distance = float(np.linalg.norm(body[a, :3] - body[b, :3]))
+            if np.isfinite(distance) and 0.01 < distance < 1.0:
+                values.append(distance)
+        if values:
+            targets[(a, b)] = float(np.median(values))
+    return targets
+
+
+def _candidate_bone_cost(
+    *,
+    joint: int,
+    xyz: np.ndarray,
+    frame_body: np.ndarray,
+    targets: dict[tuple[int, int], float],
+) -> float:
+    costs: list[float] = []
+    for edge, target in targets.items():
+        if joint not in edge:
+            continue
+        other = edge[1] if edge[0] == joint else edge[0]
+        if other >= len(frame_body) or frame_body[other, 3] <= 0.0:
+            continue
+        distance = float(np.linalg.norm(xyz - frame_body[other, :3]))
+        tolerance = 0.02 if joint in _BODY25_FOOT_JOINTS and other in _BODY25_FOOT_JOINTS else 0.03
+        costs.append(min(((distance - target) / tolerance) ** 2, 9.0))
+    return 0.35 * float(np.mean(costs)) if costs else 0.0
+
+
+def _apply_temporal_candidate(
+    detail: dict[str, Any],
+    point: np.ndarray,
+    candidate: dict[str, Any],
+    *,
+    speed_mps: float | None,
+) -> bool:
+    previous_id = detail.get("selected_hypothesis_id")
+    selected_id = candidate.get("hypothesis_id", -1)
+    reselected = previous_id is not None and selected_id != previous_id
+    xyz = _candidate_xyz(candidate)
+    assert xyz is not None
+    point[:3] = xyz.astype(np.float32)
+    point[3] = max(0.0, _finite_float(candidate.get("confidence"), float(point[3])))
+    used = [int(v) for v in candidate.get("used_views") or []]
+    observed = [int(v) for v in detail.get("observed_views") or []]
+    detail.update({
+        "used_views": used,
+        "rejected_views": [v for v in observed if v not in set(used)],
+        "reprojection_error_px": candidate.get(
+            "mean_reprojection_error_px", detail.get("reprojection_error_px")
+        ),
+        "max_reprojection_error_px": candidate.get(
+            "max_reprojection_error_px", detail.get("max_reprojection_error_px")
+        ),
+        "min_ray_angle_deg": candidate.get("min_ray_angle_deg", detail.get("min_ray_angle_deg")),
+        "robust_cost": candidate.get("robust_cost", detail.get("robust_cost")),
+        "selected_hypothesis_id": selected_id,
+        "selected_candidate_ranks": candidate.get("candidate_ranks"),
+        "selected_observations_xy": candidate.get("observation_xy"),
+        "selected_reprojection_errors_px": candidate.get("reprojection_errors_px"),
+        "selected_candidate_probabilities": candidate.get("candidate_probabilities"),
+        "selected_simcc_variance_px2": candidate.get("simcc_variance_px2"),
+        "geometry_ok": True,
+        "status": "temporal_reselected" if reselected else detail.get("status", "observed"),
+    })
+    if speed_mps is not None:
+        detail["temporal_speed_mps"] = float(speed_mps)
+    for hypothesis in list(detail.get("candidate_hypotheses") or []):
+        hypothesis["selected"] = hypothesis.get("hypothesis_id") == selected_id
+    return reselected
+
+
+def _reject_temporal_joint(detail: dict[str, Any], point: np.ndarray) -> None:
+    point[:] = 0.0
+    detail["used_views"] = []
+    detail["geometry_ok"] = False
+    detail["status"] = "temporal_rejected"
+    detail["temporal_rejection_reason"] = "no_speed_continuous_hypothesis_path"
+    for hypothesis in list(detail.get("candidate_hypotheses") or []):
+        hypothesis["selected"] = False
+
+
+def _temporal_select_body25_hypotheses(
+    parts_by_frame: list[dict[str, np.ndarray]],
+    diagnostics_by_frame: list[dict[str, Any]],
+    timestamps_ns: list[int],
+    *,
+    max_speed_mps: float = 1.5,
+) -> dict[str, int]:
+    """Select a short-window path through *measured* DLT hypotheses.
+
+    A missing state lets the path reject an isolated cluster jump.  It never
+    creates a 3D point; conservative interpolation remains a separate step for
+    observations that originally failed geometry.
+    """
+    n_frames = len(parts_by_frame)
+    report = {"reselected_joints": 0, "rejected_joints": 0}
+    if n_frames == 0:
+        return report
+    targets = _burst_bone_length_targets(parts_by_frame)
+    bodies = [np.asarray(parts["keypoints3d"], dtype=np.float32) for parts in parts_by_frame]
+    details_by_frame: list[dict[int, dict[str, Any]]] = []
+    for diagnostics in diagnostics_by_frame:
+        details = list((diagnostics.get("body25") or {}).get("joint_details") or [])
+        details_by_frame.append({int(d.get("joint_index", i)): d for i, d in enumerate(details)})
+    n_joints = min((len(body) for body in bodies), default=0)
+    missing_penalty = 4.0
+    missing_transition = 1.0
+    infinity = 1.0e12
+    for joint in range(n_joints):
+        states: list[list[dict[str, Any] | None]] = []
+        emissions: list[list[float]] = []
+        for frame in range(n_frames):
+            detail = details_by_frame[frame].get(joint, {})
+            candidates = _joint_candidates(detail, bodies[frame][joint])
+            raw_costs = [_finite_float(c.get("robust_cost"), 50.0) for c in candidates]
+            min_cost = min(raw_costs) if raw_costs else 0.0
+            frame_states: list[dict[str, Any] | None] = list(candidates) + [None]
+            frame_emissions = [
+                min(max(cost - min_cost, 0.0), 12.0)
+                + _candidate_bone_cost(
+                    joint=joint,
+                    xyz=np.asarray(candidate["xyz"], dtype=np.float64),
+                    frame_body=bodies[frame],
+                    targets=targets,
+                )
+                for candidate, cost in zip(candidates, raw_costs)
+            ]
+            frame_emissions.append(missing_penalty if candidates else 0.0)
+            states.append(frame_states)
+            emissions.append(frame_emissions)
+
+        costs = [np.asarray(emissions[0], dtype=np.float64)]
+        back: list[np.ndarray] = [np.full((len(states[0]),), -1, dtype=np.int32)]
+        for frame in range(1, n_frames):
+            current_cost = np.full((len(states[frame]),), infinity, dtype=np.float64)
+            current_back = np.full((len(states[frame]),), -1, dtype=np.int32)
+            dt = max((int(timestamps_ns[frame]) - int(timestamps_ns[frame - 1])) * 1e-9, 1.0e-3)
+            for dst, candidate in enumerate(states[frame]):
+                for src, previous in enumerate(states[frame - 1]):
+                    transition = 0.0
+                    if candidate is None or previous is None:
+                        if candidate is not previous:
+                            transition = missing_transition
+                    else:
+                        xyz = _candidate_xyz(candidate)
+                        prev_xyz = _candidate_xyz(previous)
+                        assert xyz is not None and prev_xyz is not None
+                        speed = float(np.linalg.norm(xyz - prev_xyz) / dt)
+                        if not np.isfinite(speed) or speed > float(max_speed_mps):
+                            continue
+                        transition = 0.25 * (speed / float(max_speed_mps)) ** 2
+                    value = float(costs[-1][src]) + transition + float(emissions[frame][dst])
+                    if value < current_cost[dst]:
+                        current_cost[dst] = value
+                        current_back[dst] = src
+            costs.append(current_cost)
+            back.append(current_back)
+
+        selected = [0] * n_frames
+        selected[-1] = int(np.argmin(costs[-1]))
+        for frame in range(n_frames - 1, 0, -1):
+            parent = int(back[frame][selected[frame]])
+            selected[frame - 1] = parent if parent >= 0 else len(states[frame - 1]) - 1
+        # Missing states must not provide a loophole for switching between two
+        # distant 3D clusters.  Connect selected measurements across gaps using
+        # their real elapsed time, and retain the longest speed-continuous
+        # component (geometry cost breaks equal-length ties).
+        measured_frames = [
+            frame for frame, state_index in enumerate(selected)
+            if states[frame][state_index] is not None
+        ]
+        components: list[list[int]] = []
+        for frame in measured_frames:
+            if not components:
+                components.append([frame])
+                continue
+            previous_frame = components[-1][-1]
+            xyz = _candidate_xyz(states[frame][selected[frame]])  # type: ignore[arg-type]
+            previous_xyz = _candidate_xyz(states[previous_frame][selected[previous_frame]])  # type: ignore[arg-type]
+            assert xyz is not None and previous_xyz is not None
+            dt = max((int(timestamps_ns[frame]) - int(timestamps_ns[previous_frame])) * 1e-9, 1.0e-3)
+            speed = float(np.linalg.norm(xyz - previous_xyz) / dt)
+            if np.isfinite(speed) and speed <= float(max_speed_mps):
+                components[-1].append(frame)
+            else:
+                components.append([frame])
+        if len(components) > 1:
+            keep = max(
+                components,
+                key=lambda component: (
+                    len(component),
+                    -sum(float(emissions[frame][selected[frame]]) for frame in component),
+                ),
+            )
+            keep_set = set(keep)
+            for frame in measured_frames:
+                if frame not in keep_set:
+                    selected[frame] = len(states[frame]) - 1
+        previous_xyz: np.ndarray | None = None
+        previous_time: int | None = None
+        for frame, state_index in enumerate(selected):
+            detail = details_by_frame[frame].get(joint)
+            if detail is None:
+                continue
+            candidate = states[frame][state_index]
+            had_measurement = bodies[frame][joint, 3] > 0.0
+            if candidate is None:
+                if had_measurement:
+                    _reject_temporal_joint(detail, bodies[frame][joint])
+                    report["rejected_joints"] += 1
+                continue
+            xyz = _candidate_xyz(candidate)
+            assert xyz is not None
+            speed: float | None = None
+            if previous_xyz is not None and previous_time is not None:
+                dt = max((int(timestamps_ns[frame]) - previous_time) * 1e-9, 1.0e-3)
+                speed = float(np.linalg.norm(xyz - previous_xyz) / dt)
+            if _apply_temporal_candidate(detail, bodies[frame][joint], candidate, speed_mps=speed):
+                report["reselected_joints"] += 1
+            previous_xyz = xyz
+            previous_time = int(timestamps_ns[frame])
+    for frame, parts in enumerate(parts_by_frame):
+        parts["keypoints3d"] = bodies[frame]
+    return report
+
+
+def _burst_frame_score(body_diag: dict[str, Any], index: int, center: int) -> tuple[float, float]:
     details = list(body_diag.get("joint_details") or [])
     valid = {int(d.get("joint_index", -1)): d for d in details if d.get("geometry_ok")}
     core = sum(j in valid and len(valid[j].get("used_views") or []) >= 3 for j in (0, 1, 2, 5, 8, 9, 12))
     lower = sum(j in valid for j in (9, 10, 11, 12, 13, 14, 19, 20, 21, 22, 23, 24))
     residuals = [float(d["reprojection_error_px"]) for d in valid.values() if d.get("reprojection_error_px") is not None]
-    return 20.0 * core + 4.0 * lower + len(valid) - 0.05 * (float(np.mean(residuals)) if residuals else 99.0) - 0.2 * abs(index - center)
+    foot_residuals = [
+        float(valid[j]["reprojection_error_px"])
+        for j in _BODY25_FOOT_JOINTS
+        if j in valid and valid[j].get("reprojection_error_px") is not None
+    ]
+    speeds = [
+        float(d["temporal_speed_mps"])
+        for d in valid.values()
+        if d.get("temporal_speed_mps") is not None and np.isfinite(float(d["temporal_speed_mps"]))
+    ]
+    temporal_reselected = sum(d.get("status") == "temporal_reselected" for d in valid.values())
+    quality = (
+        20.0 * core + 4.0 * lower + len(valid)
+        - 0.05 * (float(np.mean(residuals)) if residuals else 99.0)
+        - 0.25 * (float(np.mean(foot_residuals)) if foot_residuals else 48.0)
+        - 0.25 * (float(np.mean(speeds)) if speeds else 0.0)
+        - 0.5 * temporal_reselected
+    )
+    # Center proximity is deliberately a tie-break, never compensation for
+    # worse lower-body/foot geometry.
+    return quality, -float(abs(index - center))
 
 
 def _temporal_complete_body25(
@@ -570,7 +999,12 @@ def _temporal_complete_body25(
         after = np.asarray(parts_by_frame[frame + 1]["keypoints3d"], dtype=np.float32)
         details = list((diagnostics_by_frame[frame].get("body25") or {}).get("joint_details") or [])
         for joint, detail in enumerate(details):
+            joint = int(detail.get("joint_index", joint))
             if joint >= len(body) or body[joint, 3] > 0.0:
+                continue
+            # A measured point rejected as a cluster jump must stay missing;
+            # interpolation would merely hide the failed observation.
+            if detail.get("status") == "temporal_rejected":
                 continue
             # Explicitly reject the "only one view" case rather than invent it.
             if len(detail.get("observed_views") or []) < 2:
@@ -638,8 +1072,11 @@ def process_burst(
         parts = triangulate_bodyhand_keypoints3d(
             annots, camera_ids, arrays["P"], tri_cfg=tri_cfg,
             include_hands=not bool(zero_hand_keypoints), diagnostics=tri_diag,
+            observation_meta_by_cam=_simcc_observation_meta(det_meta, camera_ids),
         )
-        annots_by_frame.append(mask_body25_2d_to_triangulation_inliers(annots, camera_ids, tri_diag["body25"]))
+        # The final inlier annotation is rebuilt after the burst path selects
+        # (or rejects) a per-joint triangulation hypothesis.
+        annots_by_frame.append(annots)
         parts_by_frame.append(parts)
         tri_by_frame.append(tri_diag)
         detection_by_frame.append({"per_camera": det_meta, "batch": batch_meta})
@@ -647,7 +1084,22 @@ def process_burst(
     timestamps = [int(frame.timestamp_ns) for frame in synced_frames]
     if raw_simcc_arrays:
         np.savez_compressed(moment_dir / "raw_simcc.npz", **raw_simcc_arrays)
+    temporal_selection = _temporal_select_body25_hypotheses(
+        parts_by_frame, tri_by_frame, timestamps, max_speed_mps=1.5,
+    )
     completed = _temporal_complete_body25(parts_by_frame, tri_by_frame, timestamps)
+    # A reselected hypothesis can have a different camera subset.  Always
+    # derive the fitting mask from the final temporal decision, while retaining
+    # the original DWPose pixels rather than green reprojections.
+    annots_by_frame = [
+        _bodyhand_annots_from_selected_inliers(
+            raw_annots_by_frame[i],
+            camera_ids,
+            tri_by_frame[i],
+            dict(detection_by_frame[i].get("per_camera") or {}),
+        )
+        for i in range(len(synced_frames))
+    ]
     center = len(synced_frames) // 2
     reference_index = max(
         range(len(synced_frames)),
@@ -711,7 +1163,12 @@ def process_burst(
     # A mattress is deformable.  Bed SDF is therefore a one-sided soft loss and
     # diagnostic, not a hard publication gate: visual geometry controls whether
     # the fitted mesh is published.
-    fit_ok = bool(core_ok and foot_ok and repro_ok)
+    fit_ok = _passes_final_publication_gate(
+        core_ok=core_ok,
+        foot_ok=foot_ok,
+        reprojection_ok=repro_ok,
+        bed_penetrating_verts=int(pen_count),
+    )
     # Save only the selected frame's mesh parameters for Genesis, preserving
     # the full per-frame sequence in EasyMocap output and diagnostics.
     def _frame_param(name: str, width: int) -> np.ndarray:
@@ -783,6 +1240,7 @@ def process_burst(
         "publish_mode": "high_precision_mesh" if fit_ok else "degraded_skeleton_or_resample",
         "burst": {"duration_s": (timestamps[-1] - timestamps[0]) * 1e-9, "n_frames": len(synced_frames),
                   "reference_index": reference_index, "temporal_completed_joints": completed,
+                  "temporal_selection": temporal_selection,
                   "timestamps_ns": timestamps, "raw_simcc_path": "raw_simcc.npz" if raw_simcc_arrays else None},
         "frame_index": int(reference.frame_index), "timestamp_ns": int(reference.timestamp_ns),
         "motion_frame_index": (motion_frame_indices or [None] * len(synced_frames))[reference_index],

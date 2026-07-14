@@ -312,10 +312,10 @@ class Track2D(BaseTrack):
                 bbox_now = bbox_now[None, :]
                 areas_pre = (bbox_pre[..., 2] - bbox_pre[..., 0]) * (bbox_pre[..., 3] - bbox_pre[..., 1])
                 areas_now = (bbox_now[..., 2] - bbox_now[..., 0]) * (bbox_now[..., 3] - bbox_now[..., 1])
-                # 左边界的大值
+                # Max of left boundaries
                 xx1 = np.maximum(bbox_pre[..., 0], bbox_now[..., 0])
                 yy1 = np.maximum(bbox_pre[..., 1], bbox_now[..., 1])
-                # 右边界的小值
+                # Min of right boundaries
                 xx2 = np.minimum(bbox_pre[..., 2], bbox_now[..., 2])
                 yy2 = np.minimum(bbox_pre[..., 3], bbox_now[..., 3])
                 

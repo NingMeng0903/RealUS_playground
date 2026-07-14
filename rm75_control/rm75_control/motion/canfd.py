@@ -257,7 +257,7 @@ def settle_movev_after_init(
     after move_j), with follow=True the high-bandwidth servo sees the residual
     error and issues a large corrective velocity → visible twitch/snap.
 
-    Sending ALL settle frames with follow=False (低跟随, gentler servo) keeps
+    Sending ALL settle frames with follow=False (low follow mode, gentler servo) keeps
     the correction velocity small regardless of when init was called.  The
     actual scan commands use follow=True from the first tick of the main loop,
     by which point the arm is already confirmed quiescent.
@@ -290,7 +290,7 @@ def wait_movev_quiescent(
     """
     Stream zero velocity until TCP motion < settle_mm for need_consecutive ticks.
 
-    Uses follow=False (低跟随) to match settle_movev_after_init — quiescence is
+    Uses follow=False (low follow mode) to match settle_movev_after_init — quiescence is
     measured under the same gentle-servo conditions the arm will settle in.
     The actual session's follow mode takes effect from the first real command.
 

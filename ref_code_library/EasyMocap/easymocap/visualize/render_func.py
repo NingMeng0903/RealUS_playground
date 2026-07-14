@@ -5,7 +5,7 @@
   @ LastEditTime: 2022-05-05 16:43:17
   @ FilePath: /EasyMocapPublic/easymocap/visualize/render_func.py
 '''
-# 提供各个接口的统一的对外的接口，封装了一些利用基础接口实现的功能
+# Unified external interface wrapping base rendering utilities
 import cv2
 class RenderFunc:
     def __init__(self, render) -> None:

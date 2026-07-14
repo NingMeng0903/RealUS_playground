@@ -146,7 +146,7 @@ class ImageFolder:
         self.writer.vis_smpl(render_data, images, camera, outname, add_back=True)
 
 # class VideoFolder(ImageFolder):
-#     "一段视频的图片的文件夹"
+#     "Folder of images from one video sequence"
 #     def __init__(self, root, name, out=None, 
 #         image_root='images', annot_root='annots', 
 #         kpts_type='body15', config={}, no_img=False) -> None:
@@ -162,14 +162,14 @@ class ImageFolder:
 #         self.gtK, self.gtRT = False, False
 
     def load_annot_all(self, path):
-        # 这个不使用personID，只是单纯的罗列一下
+        # List all annotations without grouping by personID
         assert os.path.exists(path), '{} not exists!'.format(path)
         results = []
         annnames = sorted(glob(join(path, '*.json')))
         for annname in annnames:
             datas = read_annot(annname, self.kpts_type)
             if self.ret_crop:
-                # TODO:修改imgname
+                # TODO: fix imgname
                 basename = os.path.basename(annname)
                 imgname = annname\
                     .replace('annots-cpn', 'images')\
@@ -182,7 +182,7 @@ class ImageFolder:
         return results
 
     def load_annot(self, path, pids=[]):
-        # 这个根据人的ID预先存一下
+        # Pre-store annotations grouped by person ID
         assert os.path.exists(path), '{} not exists!'.format(path)
         results = {}
         annnames = sorted(glob(join(path, '*.json')))
@@ -193,7 +193,7 @@ class ImageFolder:
                 pid = data['id']
                 if len(pids) > 0 and pid not in pids:
                     continue
-                # 注意 这里没有考虑从哪开始的
+                # Note: start frame is not considered here
                 if pid not in results.keys():
                     results[pid] = {'bboxes': [], 'keypoints2d': []}
                 results[pid]['bboxes'].append(data['bbox'])
@@ -220,7 +220,7 @@ class ImageFolder:
                 pid = data['id']
                 if len(pids) > 0 and pid not in pids:
                     continue
-                # 注意 这里没有考虑从哪开始的
+                # Note: start frame is not considered here
                 if pid not in results.keys():
                     results[pid] = {'body_params': [], 'frames': []}
                 results[pid]['body_params'].append(data)
@@ -249,7 +249,7 @@ class _VideoBase:
         self.read_camera()
     
     def read_camera(self):
-        # 读入相机参数
+        # Load camera parameters
         annname = join(self.annot_root, self.annotlist[0])
         data = read_json(annname)
         if 'K' not in data.keys():
@@ -288,7 +288,7 @@ class _VideoBase:
             key='keypoints', to_img=to_img, vis_id=True)
     
     def vis_repro(self, peopleDict, image, annots, nf):
-        # 可视化重投影的关键点与输入的关键点
+        # Visualize reprojected vs input keypoints
         detections = []
         for pid, data in peopleDict.items():
             keypoints3d = (data.keypoints3d @ self.camera['R'].T + self.camera['T'].T) @ self.camera['K'].T
@@ -305,9 +305,9 @@ class _VideoBase:
     def vis_smpl(self, peopleDict, faces, image, nf, sub_vis=[], 
         mode='smpl', extra_data=[], add_back=True,
         axis=np.array([1., 0., 0.]), degree=0., fix_center=None):
-        # 为了统一接口，旋转视角的在此处实现，只在单视角的数据中使用
-        # 通过修改相机参数实现
-        # 相机参数的修正可以通过计算点的中心来获得
+        # Rotate viewpoint here for a unified API; single-view data only
+        # Implemented by modifying camera parameters
+        # Camera correction can use the center of points
         # render the smpl to each view
         render_data = {}
         for pid, data in peopleDict.items():
@@ -355,7 +355,7 @@ class _VideoBase:
         self.writer.vis_smpl(render_data, nf, images, camera, mode, add_back=add_back)
 
 def load_cameras(path):
-    # 读入相机参数
+    # Load camera parameters
     intri_name = join(path, 'intri.yml')
     extri_name = join(path, 'extri.yml')
     if os.path.exists(intri_name) and os.path.exists(extri_name):
@@ -394,7 +394,7 @@ class MVBase:
         self.cams = cams
         self.imagelist = {}
         self.annotlist = {}
-        for cam in cams: #TODO: 增加start,end
+        for cam in cams: # TODO: add start, end
             # ATTN: when image name's frame number is not continuous,
             imgnames = sorted(os.listdir(join(self.image_root, cam)))
             self.imagelist[cam] = imgnames
@@ -413,13 +413,13 @@ class MVBase:
             self.filter2d = make_filter(filter2d)
 
     def read_camera(self, path):
-        # 读入相机参数
+        # Load camera parameters
         intri_name = join(path, 'intri.yml')
         extri_name = join(path, 'extri.yml')
         if os.path.exists(intri_name) and os.path.exists(extri_name):
             self.cameras = read_camera(intri_name, extri_name)
             self.cameras.pop('basenames')
-            # 注意：这里的相机参数一定要用定义的，不然只用一部分相机的时候会出错
+            # Note: use the defined camera set; partial camera lists will fail otherwise
             cams = self.cams
             self.cameras_for_affinity = [[cam['invK'], cam['R'], cam['T']] for cam in [self.cameras[name] for name in cams]]
             self.Pall = np.stack([self.cameras[cam]['P'] for cam in cams])
@@ -576,17 +576,17 @@ class MVBase:
                 cameras[key] = [self.cameras[cam][key] for cam in sub_vis]
         for key in cameras.keys():
             cameras[key] = np.stack([self.cameras[cam][key] for cam in sub_vis])
-        # 根据camera_back参数，控制相机向后退的距离
-        # 相机的光心的位置: -R.T @ T
+        # Use camera_back to move the camera backward
+        # Camera center: -R.T @ T
         if False:
             R = cameras['R']
             T = cameras['T']
             cam_center = np.einsum('bij,bjk->bik', -R.transpose(0, 2, 1), T)
-            # 相机的朝向: R @ [0, 0, 1]
+            # Camera viewing direction: R @ [0, 0, 1]
             zdir = np.array([0., 0., 1.]).reshape(-1, 3, 1)
             direction = np.einsum('bij,bjk->bik', R, zdir)
             cam_center = cam_center - direction * 1
-            # 更新过后的相机的T: - R @ C
+            # Updated camera T: - R @ C
             Tnew = - np.einsum('bij,bjk->bik', R, cam_center)
             cameras['T'] = Tnew
         else:

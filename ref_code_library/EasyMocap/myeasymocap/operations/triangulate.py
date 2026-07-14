@@ -21,11 +21,11 @@ def batch_triangulate(keypoints_, Pall, min_view=2):
     valid_joint = np.where(v >= min_view)[0]
     keypoints = keypoints_[:, valid_joint]
     conf3d = keypoints[:, :, -1].sum(axis=0)/v[valid_joint]
-    # P2: P矩阵的最后一行：(1, nViews, 1, 4)
+    # P2: last row of P matrix: (1, nViews, 1, 4)
     P0 = Pall[None, :, 0, :]
     P1 = Pall[None, :, 1, :]
     P2 = Pall[None, :, 2, :]
-    # uP2: x坐标乘上P2: (nJoints, nViews, 1, 4)
+    # uP2: x coordinate times P2: (nJoints, nViews, 1, 4)
     uP2 = keypoints[:, :, 0].T[:, :, None] * P2
     vP2 = keypoints[:, :, 1].T[:, :, None] * P2
     conf = keypoints[:, :, 2].T[:, :, None]
@@ -87,7 +87,7 @@ class RobustTriangulate(SimpleTriangulate):
         self.cfg = cfg
 
     def try_to_triangulate_and_project(self, index, keypoints, cameras):
-        # 选择最好的3个视角
+        # select the best 3 views
         P = cameras['P'][index]
         kpts = keypoints[index][:, None]
         k3d = batch_triangulate(kpts, P)
@@ -96,8 +96,8 @@ class RobustTriangulate(SimpleTriangulate):
         return k3d, dist_repro
 
     def robust_triangulate(self, keypoints, cameras):
-        # 选择最好的3个视角
-        # TODO: 移除不合理的视角
+        # select the best 3 views
+        # TODO: remove invalid views
         nViews = keypoints.shape[0]
         if nViews not in self.cache_view:
             views = list(range(nViews))

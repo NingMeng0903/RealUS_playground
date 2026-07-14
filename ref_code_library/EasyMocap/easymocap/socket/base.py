@@ -17,7 +17,7 @@ def log(x):
 
 class BaseSocket:
     def __init__(self, host, port, debug=False) -> None:
-        # 创建 socket 对象
+        # Create socket object
         print('[Info] server start')
         serversocket = socket.socket(
                     socket.AF_INET, socket.SOCK_STREAM)

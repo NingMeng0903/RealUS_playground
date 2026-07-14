@@ -25,6 +25,6 @@ class RailMode(str, Enum):
 class LockedStyle(str, Enum):
     """How the rail is externally driven while in RailMode.LOCKED."""
 
-    HOLD = "hold"              # q_cmd[0] pinned to q_ref (挡位)
+    HOLD = "hold"              # q_cmd[0] pinned to q_ref (hold position)
     RAIL_ONLY = "rail_only"    # external qdot_ff[0] drives rail; arm 1..7 frozen
     TCP_FIXED = "tcp_fixed"    # external qdot_ff[0] drives rail; arm QP holds TCP

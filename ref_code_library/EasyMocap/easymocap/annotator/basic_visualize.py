@@ -42,16 +42,16 @@ def capture_screen(img, capture_screen=False, **kwargs):
 
 def plot_text(img, annots, imgname, **kwargs):
     if 'isKeyframe' in annots.keys():
-        if annots['isKeyframe']: # 关键帧使用红框表示
+        if annots['isKeyframe']: # keyframes shown with red border
             cv2.rectangle(img, (0, 0), (img.shape[1], img.shape[0]), (0, 0, 255), img.shape[1]//100)
-        else: # 非关键帧使用绿框表示
+        else: # non-keyframes shown with green border
             cv2.rectangle(img, (0, 0), (img.shape[1], img.shape[0]), (0, 255, 0), img.shape[1]//100)
     imgname = '/'.join(imgname.split(os.sep)[-3:])
     text_size = int(max(1, img.shape[0]//1500))
     border = 20 * text_size
     width = 2 * text_size
     cv2.putText(img, '{}'.format(imgname), (border, img.shape[0]-border), cv2.FONT_HERSHEY_SIMPLEX, text_size, (0, 0, 255), width)
-    # 显示标注进度条:
+    # Show annotation progress bar:
     if 'frame' in kwargs.keys():
         width = img.shape[1]
         frame, nFrames = kwargs['frame'], kwargs['nFrames']
@@ -71,7 +71,7 @@ def plot_bbox_body(img, annots, **kwargs):
     annots = annots['annots']
     for data in annots:
         bbox = data['bbox']
-        # 画一个X形
+        # Draw an X mark
         x1, y1, x2, y2 = bbox[:4]
         pid = data['personID']
         color = get_rgb(pid)
@@ -96,7 +96,7 @@ def plot_bbox_sp(img, annots, bbox_type='handl_bbox', add_center=False):
             continue
         bbox = data[bbox_type]
         if bbox[-1] < 0.001: continue
-        # 画一个X形
+        # Draw an X mark
         x1, y1, x2, y2 = bbox[:4]
         pid = data['personID']
         color = get_rgb(pid)

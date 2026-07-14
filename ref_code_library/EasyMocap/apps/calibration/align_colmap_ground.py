@@ -1,7 +1,7 @@
-# 这个脚本用于对colmap的相机标定结果，寻找地面与场景中心
-# 方法：
-# 1. 使用棋盘格
-# 2. 估计点云里的地面
+# Align COLMAP camera calibration to ground plane and scene center.
+# Methods:
+# 1. Use chessboard
+# 2. Estimate ground from point cloud
 import os
 from os.path import join
 from easymocap.annotator.file_utils import save_json
@@ -111,7 +111,7 @@ def align_by_chessboard(cameras, path):
         areas.append([cam, area, k2d, k3d])
     areas.sort(key=lambda x: -x[1])
     best_cam, area, k2d, k3d = areas[0]
-    # 先解决尺度问题
+    # Resolve scale first
     ref_point_id = np.linalg.norm(k3d - k3d[:1], axis=-1).argmax()
     k3d_pre = triangulate(cameras, areas)
     length_gt = np.linalg.norm(k3d[0, :3] - k3d[ref_point_id, :3])
@@ -123,23 +123,23 @@ def align_by_chessboard(cameras, path):
     k3d_pre = triangulate(cameras, areas)
     length = np.linalg.norm(k3d_pre[0, :3] - k3d_pre[-1, :3])
     log('gt diag={:.3f}, est diag={:.3f}, scale={:.3f}'.format(length_gt, length, length_gt/length))
-    # 计算相机相对于棋盘格的RT
+    # Compute camera RT relative to chessboard
     if False:
         for cam, _, k2d, k3d in areas:
             K, dist = cameras[cam]['K'], cameras[cam]['dist']
             R, T = cameras[cam]['R'], cameras[cam]['T']
             err, rvec, tvec, kpts_repro = solvePnP(k3d, k2d, K, dist, flag=cv2.SOLVEPNP_ITERATIVE)
-            # 不同视角的计算的相对变换应该是一致的
+            # Relative transform should be consistent across views
             R_tgt = cv2.Rodrigues(rvec)[0]
             T_tgt = tvec.reshape(3, 1)
             R_rel, T_rel = compute_rel(R, T, R_tgt, T_tgt)
             break
     else:
-        # 使用估计的棋盘格坐标与实际的棋盘格坐标
+        # Use estimated vs ground-truth chessboard coordinates
         X = k3d_pre[:, :3]
         X_gt = k3d[:, :3]
         R_rel, T_rel = best_fit_transform(X_gt, X)
-        # 从棋盘格坐标系映射到colmap坐标系
+        # Map from chessboard frame to COLMAP frame
         T_rel = T_rel.reshape(3, 1)
     centers = []
     for cam, camera in cameras.items():
@@ -152,7 +152,7 @@ def align_by_chessboard(cameras, path):
         center = - camera['R'].T @ camera['T']
         centers.append(center)
         print('{}: ({:6.3f}, {:.3f}, {:.3f})'.format(cam, *np.round(center.T[0], 3)))
-    # 使用棋盘格估计一下尺度
+    # Refine scale using chessboard
     k3d_pre = triangulate(cameras, areas)
     length = np.linalg.norm(k3d_pre[0, :3] - k3d_pre[ref_point_id, :3])
     log('{} {} {}'.format(length_gt, length, length_gt/length))
@@ -190,7 +190,7 @@ if __name__ == '__main__':
     
     cameras = read_cameras(args.path)
     if args.plane_by_point is not None:
-        # 读入点云
+        # Load point cloud
         import ipdb; ipdb.set_trace()
     if args.plane_by_chessboard is not None:
         cameras, scale, transform = align_by_chessboard(cameras, args.plane_by_chessboard)

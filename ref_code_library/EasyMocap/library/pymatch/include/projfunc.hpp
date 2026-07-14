@@ -74,7 +74,7 @@ namespace match
             {
                 u.push_back(y(i, 0));
             }
-            // 排序
+            // sort
             std::sort(u.begin(), u.end(), std::greater<float>());
             float usum = 0;
             for (int i = 0; i < u.size(); i++)
@@ -115,7 +115,7 @@ namespace match
             {
                 u.push_back(y(i, 0));
             }
-            // 排序
+            // sort
             std::sort(u.begin(), u.end(), std::greater<float>());
             float tmpsum = 0;
             bool bget = false;

@@ -96,9 +96,9 @@ class MatchBase:
         valid_theta = np.logical_and(theta > self.cfg.valid_angle[0], theta < self.cfg.valid_angle[1])
         for src in range(nViews - 1):
             for dst in range(src + 1, nViews):
-                # TODO: 计算两个射线的夹角
-                # 这里对于不相邻或者对角的视角，我们直接跳过距离的计算
-                # 这样后面在进行初始化的时候就无法挑到两个比较接近的视角了
+                # TODO: compute angle between two rays
+                # skip distance for non-adjacent or diagonal view pairs
+                # so initialization cannot pick two nearby views later
                 # if not valid_theta[src, dst]:
                 #     continue
                 p_src = pelvis_undis[src][:, None] #(m, 2)
@@ -154,20 +154,20 @@ class MatchBase:
     @staticmethod
     def sort_with_affinity(distance, dimGroups, INLIER_REPRO):
         nViews = len(dimGroups) - 1
-        # 排序计算affinity
+        # sort and compute affinity
         count_rows = np.zeros((dimGroups[-1]), dtype=int)
         distance_rows = np.zeros((dimGroups[-1]))
         for nv in range(nViews):
             if dimGroups[nv] == dimGroups[nv+1]:continue
             valid_view = np.clip((distance[:, dimGroups[nv]:dimGroups[nv+1]] < INLIER_REPRO).sum(axis=-1), 0, 1)
-            count_rows += valid_view # 最多也只累计一个
+            count_rows += valid_view # accumulate at most one per row
             distance_rows += valid_view * (distance[:, dimGroups[nv]:dimGroups[nv+1]].min(axis=-1))
         index = list(range(dimGroups[-1]))
         # index.sort(key=lambda x: (-count_rows[x], distance_rows[x]))
         # sort with 2D confidence
         # index.sort(key=lambda x: -pelvis_all[x, 2])
         # sort with valid matches
-        # 选择2D的依据改为：根据有效的2D重投影距离的数量
+        # select 2D by count of valid reprojection distances
         valid_count = (distance < INLIER_REPRO * 2).sum(axis=0)
         index = (-valid_count).argsort()
         return index
@@ -175,7 +175,7 @@ class MatchBase:
     def assign_by_3D(self, used_index, distance, pelvis_all, views_all, dimGroups, cameras):
         INLIER_TRACK = self.cfg.track_pixel
         INLIER_REPRO = self.cfg.max_pixel
-        # 使用前一帧的可见性来进行排序
+        # sort using previous-frame visibility
         index_3d = list(range(len(self.results)))
         index_3d.sort(key=lambda x:-len(self.results[x]['views']))
         results = []
@@ -190,12 +190,12 @@ class MatchBase:
             current = []
             views = []
             proposal = dist.argsort()
-            # 初始化一下：
+            # initialize:
             for idx2d in proposal:
-                # 不满足视角关系
+                # view relation not satisfied
                 # if not valid_theta[views_all[row], views_all[idx2d]]:
                 #     continue
-                # 不满足距离关系
+                # distance relation not satisfied
                 if dist[idx2d] > INLIER_TRACK:
                     break
                 if used_index[idx2d] > -1:
@@ -204,12 +204,12 @@ class MatchBase:
                     continue
                 if not self.check_is_best_3d_of_2d(distance, idx3d, idx2d, visited3d):
                     continue
-                if len(current) == 1: # 已经有一个了，如果还要再添加，那么需要判断一下三角化出来的距离关系
+                if len(current) == 1: # already have one; check triangulated distances before adding more
                     k3d, dist_repro, depth = self.triangulate_and_repro(cameras, views + [views_all[idx2d]], current + [pelvis_all[idx2d]])
                     _dist = np.linalg.norm(k3d[:, :3] - self.results[idx3d]['pelvis'][:, :3], axis=-1).mean()
                     if _dist > self.cfg.max_movement:
                         continue
-                # 找到了合理的pair，作为一个良好的初始化
+                # found valid pair for initialization
                 current.append(pelvis_all[idx2d])
                 views.append(views_all[idx2d])
                 used_index[idx2d] = pid
@@ -217,17 +217,17 @@ class MatchBase:
                 if len(current) == 2:
                     break
             if len(current) < 2:
-                # 没有找到良好的初始化
+                # no good initialization found
                 continue
             for idx2d in proposal:
-                # 这个视角已经有了 ｜ 这个2D已经被使用过了
+                # view already used | this 2D already taken
                 if views_all[idx2d] in views:
                     continue
                 if used_index[idx2d] > -1:
                     continue
                 if not self.check_is_best_3d_of_2d(distance, idx3d, idx2d, visited3d):
                     continue
-                # 尝试添加
+                # try to add
                 FULL_LOG('[Assign 3D] 3D {} add {}, distance={:.2f}'.format(pid, idx2d, dist[idx2d]))
                 new = current + [pelvis_all[idx2d]]
                 views_new = views + [views_all[idx2d]]
@@ -239,7 +239,7 @@ class MatchBase:
                 flag = flag_repro & flag_depth
                 FULL_LOG('[Assign 3D] repro: \n{}, \ndepth: \n{}'.format(LOG_ARRAY(dist_repro[None]), LOG_ARRAY(depth.T)))
                 if flag:
-                    # 添加
+                    # add
                     current = new
                     views = views_new
                     used_index[idx2d] = pid
@@ -247,14 +247,14 @@ class MatchBase:
                 else:
                     FULL_LOG('[Assign 3D] Failed')
             # check the results
-            if len(views) < self.cfg.min_views: #不足以添加
+            if len(views) < self.cfg.min_views: # not enough views to add
                 continue
             k3d, dist_repro, depth = self.triangulate_and_repro(cameras, views, current)
             select = np.where(used_index == pid)[0]
             results.append({
                 'id': pid,
                 'pelvis': k3d, 
-                'keypoints3d': k3d, # 这里保存两个，这样即使后面覆盖掉了keypoints3d还能取出pelvis来
+                'keypoints3d': k3d, # keep duplicate so pelvis can be retrieved if keypoints3d is overwritten
                 'views': views_all[select],
                 'select': select,
                 'indices': select - dimGroups[views_all[select]],
@@ -270,8 +270,8 @@ class MatchBase:
         for res in self.results:
             if not res['tracked']:
                 mywarn('- 3D {} not tracked'.format(res['id']))
-                # 对于没有被跟踪到的：检查是否有两个距离很小的视角
-                # 如果有，并且被其他人占用了，那么把这个2D也给他；在极端情况下，有的视角下会有人恰好被另一个人挡住
+                # for untracked: check if two views have very small distance
+                # if occupied by others, assign that 2D too; someone may be occluded in some views
                 print(res)
                 if len(res['frames']) < 3:
                     mywarn('- 3D {} not tracked, but only {} frames'.format(res['id'], len(res['frames'])))
@@ -281,7 +281,7 @@ class MatchBase:
         return results
     
     def find_initial_3_pair(self, distance, pelvis_all, views_all, dimGroups):
-        # 生成所有可能的候选的3个pair
+        # generate all candidate 3-view pairs
         index_0 = np.arange(pelvis_all.shape[0])
         index_0 = np.stack(np.meshgrid(index_0, index_0, index_0), axis=-1).reshape(-1, 3)
         flag_order = (index_0[:, 0] < index_0[:, 1]) & (index_0[:, 1] < index_0[:, 2])
@@ -308,13 +308,13 @@ class MatchBase:
         for idx2d in proposal:
             if dist_row[idx2d] > INLIER_REPRO:
                 break
-            # 这个视角已经有了 ｜ 这个2D已经被使用过了
+            # view already used | this 2D already taken
             if views_all[idx2d] in views:
                 continue
             if used_index[idx2d] > -1:
                 continue
             FULL_LOG('[Assign 2D] Try to add {}, distance={:.2f}'.format(idx2d, dist_row[idx2d]))
-            # 尝试三角化并进行重投影
+            # try triangulate and reproject
             new = current + [pelvis_all[idx2d]]
             views_new = views + [views_all[idx2d]]
             k3d, dist_repro, depth = self.triangulate_and_repro(cameras, views_new, new)
@@ -323,7 +323,7 @@ class MatchBase:
             flag = flag_repro & flag_depth
             FULL_LOG('[Assign 2D] repro: \n{}, \ndepth: \n{}'.format(LOG_ARRAY(dist_repro[None]), LOG_ARRAY(depth.T)))
             if flag:
-                # 添加
+                # add
                 current.append(pelvis_all[idx2d])
                 views.append(views_all[idx2d])
                 indices.append(idx2d)
@@ -335,10 +335,10 @@ class MatchBase:
     def assign_by_2D_3pair(self, results, distance, dimGroups, used_index, valid_3pairs, views_all, pelvis_all, cameras):
         INLIER_REPRO = self.cfg.max_pixel
         for ipair, valid_3pair in enumerate(valid_3pairs):
-            # 先检查是否被使用过了
+            # check if already used
             if (used_index[valid_3pair] > -1).any():
                 continue
-            # 先检查是否是合理的
+            # check if valid
             FULL_LOG('[Assign 2D] Check 3 pair {}'.format(valid_3pair))
             k3d, dist_repro, depth = self.triangulate_and_repro(cameras, views_all[valid_3pair], pelvis_all[valid_3pair])
             flag_depth = (depth > 0.5).all()
@@ -346,7 +346,7 @@ class MatchBase:
             # TODO: flag range
             flag = flag_repro & flag_depth
             if not flag: continue
-            # 添加其余的点
+            # add remaining points
             pid = self.max_id
             self.max_id += 1
             dist_pair = distance[valid_3pair].mean(axis=0)
@@ -361,7 +361,7 @@ class MatchBase:
             results.append({
                 'id': pid,
                 'pelvis': k3d, 
-                'keypoints3d': k3d, # 这里保存两个，这样即使后面覆盖掉了keypoints3d还能取出pelvis来
+                'keypoints3d': k3d, # keep duplicate so pelvis can be retrieved if keypoints3d is overwritten
                 'views': views_all[select],
                 'select': select,
                 'indices': select - dimGroups[views_all[select]],
@@ -383,20 +383,20 @@ class MatchBase:
             results = self.assign_by_2D_3pair(results, distance, dimGroups, used_index, valid_3pairs, views_all, pelvis_all, cameras)
         valid_theta = cameras['valid_theta']
         nViews = len(dimGroups)-1
-        # 排序计算affinity
+        # sort and compute affinity
         count_rows = np.zeros((dimGroups[-1]), dtype=int)
         distance_rows = np.zeros((dimGroups[-1]))
         for nv in range(nViews):
             if dimGroups[nv] == dimGroups[nv+1]:continue
             valid_view = np.clip((distance[:, dimGroups[nv]:dimGroups[nv+1]] < INLIER_REPRO).sum(axis=-1), 0, 1)
-            count_rows += valid_view # 最多也只累计一个
+            count_rows += valid_view # accumulate at most one per row
             distance_rows += valid_view * (distance[:, dimGroups[nv]:dimGroups[nv+1]].min(axis=-1))
         index = list(range(dimGroups[-1]))
         # index.sort(key=lambda x: (-count_rows[x], distance_rows[x]))
         # sort with 2D confidence
         # index.sort(key=lambda x: -pelvis_all[x, 2])
         # sort with valid matches
-        # 选择2D的依据改为：根据有效的2D重投影距离的数量
+        # select 2D by count of valid reprojection distances
         valid_count = (distance < INLIER_REPRO * 2).sum(axis=0)
         index = (-valid_count).argsort()
 
@@ -412,12 +412,12 @@ class MatchBase:
             current = [pelvis_all[row]]
             views = [views_all[row]]
             used_index[row] = pid
-            # 初始化一下：
+            # initialize:
             for idx2d in proposal:
-                # 不满足视角关系
+                # view relation not satisfied
                 if not valid_theta[views_all[row], views_all[idx2d]]:
                     continue
-                # 不满足距离关系
+                # distance relation not satisfied
                 if dist_row[idx2d] > INLIER_REPRO:
                     break
                 if used_index[idx2d] > -1:
@@ -425,30 +425,30 @@ class MatchBase:
                 if views_all[idx2d] in views:
                     continue
                 # self.triangulate_and_repro(cameras, [views_all[18], views_all[34]], [pelvis_all[18], pelvis_all[34]])
-                # 2D的时候不能选择是最好的，因为2D可能还有其他视角的在
-                # 顶多判断一下，是对于这个视角来说最好的
+                # for 2D, best per view is not global best; other views may have better
+                # at most check if best for this view
                 # if not self.check_is_best_3d_of_2d(distance, row, idx2d, visited2d):
                 #     continue
-                # 找到了合理的pair，作为一个良好的初始化
+                # found valid pair for initialization
                 current.append(pelvis_all[idx2d])
                 views.append(views_all[idx2d])
                 used_index[idx2d] = pid
                 FULL_LOG(f'[Assign 2D] Init with {log_index_2d(idx2d)}')
                 break
             if len(current) < 2:
-                # 没有找到良好的初始化
+                # no good initialization found
                 continue
             for idx2d in proposal:
                 if dist_row[idx2d] > INLIER_REPRO:
                     break
-                # 这个视角已经有了 ｜ 这个2D已经被使用过了
+                # view already used | this 2D already taken
                 if views_all[idx2d] in views:
                     continue
                 if used_index[idx2d] > -1:
                     continue
                 # if not self.check_is_best_3d_of_2d(distance, row, idx2d, visited2d):
                 #     continue
-                # 尝试三角化并进行重投影
+                # try triangulate and reproject
                 new = current + [pelvis_all[idx2d]]
                 views_new = views + [views_all[idx2d]]
                 k3d, dist_repro, depth = self.triangulate_and_repro(cameras, views_new, new)
@@ -457,7 +457,7 @@ class MatchBase:
                 flag = flag_repro & flag_depth
                 FULL_LOG('[Assign 2D] repro: \n{}, \ndepth: \n{}'.format(LOG_ARRAY(dist_repro[None]), LOG_ARRAY(depth.T)))
                 if flag:
-                    # 添加
+                    # add
                     current = new
                     views = views_new
                     used_index[idx2d] = pid
@@ -465,7 +465,7 @@ class MatchBase:
                     FULL_LOG('[Assign 2D] {} => {}'.format(idx2d, log_indexes_2d(_current_id)))
                 else:
                     FULL_LOG('[Assign 2D] Failed')
-            if len(views) < self.cfg.min_views_init: #不足以添加
+            if len(views) < self.cfg.min_views_init: # not enough views to add
                 continue
             k3d, dist_repro, depth = self.triangulate_and_repro(cameras, views, current)
             select = np.where(used_index == pid)[0]
@@ -475,7 +475,7 @@ class MatchBase:
             results.append({
                 'id': final_id,
                 'pelvis': k3d, 
-                'keypoints3d': k3d, # 这里保存两个，这样即使后面覆盖掉了keypoints3d还能取出pelvis来
+                'keypoints3d': k3d, # keep duplicate so pelvis can be retrieved if keypoints3d is overwritten
                 'views': views_all[select],
                 'select': select,
                 'indices': select - dimGroups[views_all[select]],
@@ -532,7 +532,7 @@ class MatchRoot(MatchBase):
         if self.mode == 'track':
             self.results = results
         results.sort(key=lambda x:x['id'])
-        # TODO: 增加结果的NMS检查和合并
+        # TODO: add NMS check and merge results
         if len(results) == 0:
             keypoints3d = np.zeros((0, 25, 3))
         else:
@@ -591,25 +591,25 @@ class MatchTwoRoot(MatchRoot):
         self.current = 'neck'
         record_neck = super().__call__(neck, cameras)['results']
         current_3d = {p['id']: {'pelvis': -1, 'neck': -1} for p in self.results_limb}
-        # 先检查是否已经track过了
+        # check if already tracked
         self.check_tracked('pelvis', record_pelvis, current_3d, self.mapping)
         self.check_tracked('neck', record_neck, current_3d, self.mapping)
-        # 先整体记录一下ID；然后如果某一帧有丢掉的；就更新
+        # record IDs globally; update when a frame drops detections
         for p in self.results_limb:
-            # 检查一下当前帧
+            # check current frame
             current_a, current_b = current_3d[p['id']]['pelvis'], current_3d[p['id']]['neck']
             if current_a != -1 and current_b != -1:
                 assert current_a < len(record_pelvis) and current_b < len(record_neck), 'Index Error {}/{}, {}/{}'.format(current_a, current_b, len(record_pelvis), len(record_neck))
                 p['pelvis'] = record_pelvis[current_a]['pelvis']
                 p['neck'] = record_neck[current_b]['pelvis']
             elif current_a == -1 and current_b != -1:
-                # a没有检测到，但b检测到了
-                # 保持相对值
+                # a not detected but b detected
+                # keep relative offset
                 mywarn('Missing Pelvis')
                 p['neck'] = record_neck[current_b]['pelvis']
                 pre_direc = p['pelvis'][:, :3] - p['neck'][:, :3]
                 p['pelvis'][:, :3] = p['neck'][:, :3] + pre_direc
-                # 得把补全的这个点设置回去
+                # write back the filled-in point
                 self._results['pelvis'].append({
                     'id': p['pelvis_id'],
                     'pelvis': p['pelvis'],
@@ -623,7 +623,7 @@ class MatchTwoRoot(MatchRoot):
                 pre_direc = p['neck'][:, :3] - p['pelvis'][:, :3]
                 p['pelvis'] = record_pelvis[current_a]['pelvis']
                 p['neck'][:, :3] = p['pelvis'][:, :3] + pre_direc
-                # 得把补全的这个点设置回去
+                # write back the filled-in point
                 self._results['neck'].append({
                     'id': p['neck_id'],
                     'pelvis': p['neck'],
@@ -635,11 +635,11 @@ class MatchTwoRoot(MatchRoot):
             else:
                 import ipdb; ipdb.set_trace()
                 raise NotImplementedError
-        # 遍历所有没有跟踪上的组合
+        # iterate unmatched combinations
         n_pelvis = len(record_pelvis)
         n_neck = len(record_neck)
         dist = np.zeros((n_pelvis, n_neck))
-        # TODO: 用2D PAF来关联
+        # TODO: associate using 2D PAF
         for i in range(n_pelvis):
             if record_pelvis[i]['limb_id'] > -1:
                 continue
@@ -661,7 +661,7 @@ class MatchTwoRoot(MatchRoot):
                 pa = record_pelvis[i]['pelvis']
                 pb = record_neck[j]['pelvis']
                 if dist_to_mean[i, j] > 0.8:
-                    # 可以接受
+                    # acceptable
                     limb = {
                         'id': self.max_id_add,
                         'pelvis_id': record_pelvis[i]['id'],
@@ -673,7 +673,7 @@ class MatchTwoRoot(MatchRoot):
                     self.mapping['pelvis'][limb['pelvis_id']] = limb['id']
                     self.mapping['neck'][limb['neck_id']] = limb['id']
                     self.results_limb.append(limb)
-        # 丢掉没有跟踪上的
+        # discard unmatched
         results = []
         for limb in self.results_limb:
             k3d = np.vstack([limb['pelvis'], limb['neck']])
@@ -768,21 +768,21 @@ class MatchTorso(MatchBase):
             FULL_LOG('[Assign 2D] Check 2D {}'.format(log_index_2d(row)))
             dist_row = distance[row]
             proposal = dist_row.argsort()
-            # 尝试初始化
+            # try to initialize
             views = [views_all[row]]
             current = [row]
             for idx2d in proposal:
-                # 不满足视角关系
+                # view relation not satisfied
                 if not valid_theta[views_all[row], views_all[idx2d]]:
                     continue
-                # 不满足距离关系
+                # distance relation not satisfied
                 if dist_row[idx2d] > INLIER_REPRO:
                     break
                 if self.check_used_index(info_limb, idx2d, info_joints):
                     continue
                 if views_all[idx2d] in views:
                     continue
-                # 检查骨长
+                # check bone lengths
                 flag, k3d, repro_error = self.triangulate_limb(info_limb, info_joints, [row, idx2d], [views_all[row], views_all[idx2d]], cameras)
                 length = np.linalg.norm(k3d[1, ..., :3] - k3d[0, ..., :3])
                 if flag:
@@ -793,18 +793,18 @@ class MatchTorso(MatchBase):
                 else:
                     FULL_LOG(f'[Assign 2D] Init failed with {log_index_2d(idx2d)}, length = {length:.4f}')
             if len(current) < 2:
-                # 没有找到良好的初始化
+                # no good initialization found
                 FULL_LOG(f'[Assign 2D] Cannot find a good initialization pair {log_index_2d(row)}')
                 continue
             for idx2d in proposal:
                 if dist_row[idx2d] > INLIER_REPRO:break
-                # 这个视角已经有了 ｜ 这个2D已经被使用过了
+                # view already used | this 2D already taken
                 if views_all[idx2d] in views:
                     continue
                 if self.check_used_index(info_limb, idx2d, info_joints):
                     continue
                 FULL_LOG('[Assign 2D] Try to add 2D {} => {}'.format(idx2d, log_index_2d(idx2d)))
-                # 尝试三角化并进行重投影
+                # try triangulate and reproject
                 new = current + [idx2d]
                 views_new = views + [views_all[idx2d]]
                 flag_limb, k3d, dist_repro = self.triangulate_limb(info_limb, info_joints, new, views_new, cameras)
@@ -814,7 +814,7 @@ class MatchTorso(MatchBase):
                 flag = flag_repro & flag_depth & flag_limb
                 FULL_LOG('[Assign 2D] repro: \n{}'.format(LOG_ARRAY(dist_repro[None])))
                 if flag:
-                    # 添加
+                    # add
                     current = new
                     views = views_new
                     self.set_used_index(info_limb, idx2d, info_joints, pid)
@@ -823,7 +823,7 @@ class MatchTorso(MatchBase):
                     FULL_LOG('[Assign 2D] Failed')
                     new = None
                     views_new = None
-            if len(views) < self.cfg.min_views: #不足以添加
+            if len(views) < self.cfg.min_views: # not enough views to add
                 continue
             flag_limb, k3d, dist_repro = self.triangulate_limb(info_limb, info_joints, current, views, cameras)
             final_id = self.max_id
@@ -831,7 +831,7 @@ class MatchTorso(MatchBase):
             results.append({
                 'id': final_id,
                 'torso': k3d, 
-                'keypoints3d': k3d, # 这里保存两个，这样即使后面覆盖掉了keypoints3d还能取出pelvis来
+                'keypoints3d': k3d, # keep duplicate so pelvis can be retrieved if keypoints3d is overwritten
                 'views': views,
                 'select': current,
                 # 'indices': select - dimGroups[views_all[select]],
@@ -889,7 +889,7 @@ class MatchTorso(MatchBase):
         dist_src_src = distance_src[src_idx0, src_idx1]
         dst_idx0, dst_idx1 = np.meshgrid(dst_idx, dst_idx)
         dist_dst_dst = distance_dst[dst_idx0, dst_idx1]
-        # TODO: 考虑每个视角的 limb的置信度，joint的置信度
+        # TODO: consider per-view limb and joint confidence
         dist_spatial = np.maximum(dist_src_src, dist_dst_dst)
         return dist_spatial
 
@@ -916,7 +916,7 @@ class MatchTorso(MatchBase):
         #     self.results = results
         results.sort(key=lambda x:x['id'])
 
-        # TODO: 增加结果的NMS检查和合并
+        # TODO: add NMS check and merge results
         if len(results) == 0:
             keypoints3d = np.zeros((0, 2, 3))
         else:
@@ -969,7 +969,7 @@ class MatchBodyHand:
     
     def projectPoints(self, X, K, R, t, Kd):    
         x = R @ X + t
-        x[0:2,:] = x[0:2,:]/x[2,:]#到归一化平面
+        x[0:2,:] = x[0:2,:]/x[2,:]# project to normalized plane
         r = x[0,:]*x[0,:] + x[1,:]*x[1,:]
 
         x[0,:] = x[0,:]*(1 + Kd[0]*r + Kd[1]*r*r + Kd[4]*r*r*r) + 2*Kd[2]*x[0,:]*x[1,:] + Kd[3]*(r + 2*x[0,:]*x[0,:])
@@ -1014,7 +1014,7 @@ class MatchBodyHand:
                 for j in range(len(mv)):
                     mv_use_hand[mv[j]].append(indices[j])
 
-        wrist3dkpts = keypoints3d[lack_body_id,wristid,:3] #(nperson,3)每个人呢的wrist关键点
+        wrist3dkpts = keypoints3d[lack_body_id,wristid,:3] # (nperson, 3) wrist keypoint per person
         dis = []
         for nv in range(len(bbox_hand)):
             for hid in range(len(bbox_hand[nv])):
@@ -1031,24 +1031,24 @@ class MatchBodyHand:
                 wristkpts2d = self.projectPoints(wrist3dkpts.T[0:3,:], K, R, t, Kd).T
                 for bid in range(len(lack_body_id)):
                     D = ((wristkpts2d[bid][:2]-k2d[:2])**2).sum()
-                    dis.append([D,lack_body_id[bid],nv,hid]) # 误差，3d身体id ,视角编号  ,2d图像上手box id
+                    dis.append([D,lack_body_id[bid],nv,hid]) # error, 3D body id, view index, 2D hand box id
 
         if(len(dis)>0):
             vis = (np.zeros((len(keypoints3d)))-1).tolist()
             dis = np.array(dis)
             dis = dis[np.argsort(dis[:,0])]
-            # TODO 判断dis大小，将dis过大的删除掉
+            # TODO: filter out excessively large distances
             for i in range(len(dis)):
                 bid = int(dis[i][1])
                 nv =  int(dis[i][2])
                 hid = int(dis[i][3])
                 if vis[bid]>=0 or hid in vis or results_match_l[bid]!=-1:
                     continue
-                if dis[i][0]>50: #人和手的在2D中距离
+                if dis[i][0]>50: # 2D distance between person and hand
                     continue
                 results_match_l[bid]={
                     'views': np.array([nv]), 
-                    'indices': np.array([hid]), # ?indices是在对应的视角下第几个Box 
+                    'indices': np.array([hid]), # indices: box index in the corresponding view 
                     # 'dis_bh': dis[i][0]
                 }
 
@@ -1065,9 +1065,9 @@ class MatchBodyHand:
         results_match_r = self.match3d_step(results_r, keypoints3d, 4)
 
         if(-1 in results_match_l):
-            # TODO: dis为空，则表示没有身体，或者所有视角都未检测到手，尝试启动单视角检测
-            # TODO: dis不为空，也有可能有的身体缺少与手的匹配，可以尝试单视角检测，或者之后尝试补全。
-            # 单视角匹配，从匹配列表中找出-1的部分，将其投影到多视角中，在多视角找出未被选择的box，然后匹配，记录在a
+            # TODO: empty dis means no body or no hand in any view; try single-view detection
+            # TODO: even with dis, some bodies may lack hand match; try single-view or fill later
+            # single-view match: find -1 in match list, project to other views, match unselected boxes
             results_match_l = self.match2d_step(bbox_handl, keypoints3d, 7, results_match_l, cameras)
         if(-1 in results_match_r):
             results_match_r = self.match2d_step(bbox_handr, keypoints3d, 4, results_match_r, cameras)

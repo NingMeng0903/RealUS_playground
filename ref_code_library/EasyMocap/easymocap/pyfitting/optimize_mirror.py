@@ -10,13 +10,13 @@ from .lossfactory import LossRepro, LossInit, LossSmoothBody, LossSmoothPoses, L
 from ..dataset.mirror import flipSMPLPoses, flipPoint2D, flipSMPLParams
 import torch
 import numpy as np
-    # 这里存在几种技术方案:
+    # Several approaches are available:
     #   1. theta, beta, R, T, (a, b, c, d)          || L_r
     #   2. theta, beta, R, T, R', T'                || L_r, L_s
     #   3. theta, beta, R, T, theta', beta', R', T' || L_r, L_s
 
 def flipSMPLPosesV(params, reverse=False):
-    # 前面部分是外面的人，后面部分是镜子里的人
+    # First half is person outside mirror, second half is mirror reflection
     nFrames = params['poses'].shape[0] // 2
     if reverse:
         params['poses'][:nFrames] = flipSMPLPoses(params['poses'][nFrames:])
@@ -116,9 +116,9 @@ class LossKeypointsMirror2DDirect(LossKeypointsMirror2D):
         homo = torch.ones((kpts_est.shape[0], kpts_est.shape[1], 1), device=kpts_est.device)
         kpts_homo = torch.cat([kpts_est, homo], dim=2)
         kpts_mirror = flipPoint2D(torch.bmm(M, kpts_homo.transpose(1, 2)).transpose(1, 2))
-        # 视频的时候注意拼接的顺序
+        # Note concatenation order for video
         kpts_new = torch.cat([kpts_est, kpts_mirror])
-        # 使用镜像进行翻转
+        # Flip using mirror
         return super().__call__(kpts_new)
 
     def __str__(self) -> str:
@@ -219,12 +219,11 @@ class MirrorLoss():
 def optimizeMirrorDirect(body_model, params, bboxes, keypoints2d, Pall, normal, weight, cfg):
     """ 
         simple function for optimizing mirror
-        # 先写图片的
     Args:
         body_model (SMPL model)
         params (DictParam): poses(2, 72), shapes(1, 10), Rh(2, 3), Th(2, 3)
-        bboxes (nFrames, nViews, nJoints, 4): 2D bbox of each view，输入的时候是按照时序叠起来的
-        keypoints2d (nFrames, nViews, nJoints, 4): 2D keypoints of each view，输入的时候是按照时序叠起来的
+        bboxes (nFrames, nViews, nJoints, 4): 2D bbox of each view, stacked by frame order
+        keypoints2d (nFrames, nViews, nJoints, 4): 2D keypoints of each view, stacked by frame order
         weight (Dict): string:float
         cfg (Config): Config Node controling running mode
     """
@@ -269,7 +268,7 @@ def viewSelection(params, body_model, loss_repro, nFrames):
     residual = loss_repro.residual(kpts_est)
     res_o = torch.norm(residual, dim=-1).mean(dim=-1).sum(dim=0)
     for nf in range(res_i.shape[0]):
-        if res_i[nf] < res_o[nf]: # 使用外面的
+        if res_i[nf] < res_o[nf]: # Use the outer person
             params['poses'][[nFrames+nf]] = flipSMPLPoses(params['poses'][[nf]])
         else:
             params['poses'][[nf]] = flipSMPLPoses(params['poses'][[nFrames+nf]])
@@ -282,8 +281,8 @@ def optimizeMirrorSoft(body_model, params, bboxes, keypoints2d, Pall, normal, we
     Args:
         body_model (SMPL model)
         params (DictParam): poses(2, 72), shapes(1, 10), Rh(2, 3), Th(2, 3)
-        bboxes (nViews, nFrames, 5): 2D bbox of each view，输入的时候是按照时序叠起来的
-        keypoints2d (nViews, nFrames, nJoints, 3): 2D keypoints of each view，输入的时候是按照时序叠起来的
+        bboxes (nViews, nFrames, 5): 2D bbox of each view, stacked by frame order
+        keypoints2d (nViews, nFrames, nJoints, 3): 2D keypoints of each view, stacked by frame order
         weight (Dict): string:float
         cfg (Config): Config Node controling running mode
     """

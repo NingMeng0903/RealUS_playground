@@ -1,7 +1,7 @@
 optimizer:
   optim_type: "lbfgs"
   # L-BFGS
-  tolerance_grad: 0.0000001 # float32的有效位数是7位
+  tolerance_grad: 0.0000001 # float32 has ~7 significant digits
   tolerance_change: 0.0000001
   max_iter: 20 # for L-BFGS
   # adam

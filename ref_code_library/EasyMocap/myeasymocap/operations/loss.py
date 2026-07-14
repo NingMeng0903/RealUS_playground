@@ -129,7 +129,7 @@ class LimbLength(BaseKeypoints):
     def forward(self, pred, target):
         pred_kpts3d = pred['keypoints']
         target_kpts3d = target['keypoints3d']
-        # 用kin tree来进行选择
+        # select joints via kinematic tree
         pred = torch.norm(pred_kpts3d[..., self.kintree[:, 1], :] - pred_kpts3d[..., self.kintree[:, 0], :], dim=-1, keepdim=True)
         target = torch.norm(target_kpts3d[..., self.kintree[:, 1], :] - target_kpts3d[..., self.kintree[:, 0], :], dim=-1, keepdim=True)
         target_conf = torch.minimum(target_kpts3d[..., self.kintree[:, 1], -1], target_kpts3d[..., self.kintree[:, 0], -1])
@@ -176,12 +176,12 @@ class Smooth(BaseLoss):
                     _value = self.convert_Rh_to_R(value)
                     vel = _value[width:] - _value[:-width]
                 elif cfg['type'] == 'Depth':
-                    # TODO: 考虑相机的RT
+                    # TODO: account for camera R/T
                     if 'cameras' in target.keys():
                         R = target['cameras']['R']
                         _value = torch.bmm(value[..., None, :], R.transpose(-1, -2))
                         _value = _value[..., 0, :]
-                    _value = _value[..., [2]] # 只使用深度
+                    _value = _value[..., [2]] # use depth only
                     vel = _value[width:] - _value[:-width]
                 if cfg['order'] == 2:
                     vel = vel[1:] - vel[:-1]

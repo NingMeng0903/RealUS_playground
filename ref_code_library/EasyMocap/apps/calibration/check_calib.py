@@ -35,7 +35,7 @@ def load_cube(grid_size=1, **kwargs):
     max_x, max_y, max_z = (grid_size, grid_size, grid_size)
     # min_x, min_y, min_z = (-0.75, -0.9, 0.)
     # max_x, max_y, max_z = (0.75, 0.7, 0.9)
-    # # 灯光球场篮球:
+    # # Indoor basketball court:
     # min_x, min_y, min_z = (-7.5, -2.89, 0.)
     # max_x, max_y, max_z = (7.5, 11.11, 2.)
     # # 4d association:
@@ -198,7 +198,7 @@ class BaseCheck:
                 # import ipdb; ipdb.set_trace()
                 if k2d[:, 2].sum() > 0.:
                     diff = np.linalg.norm(k2d[:, :2] - kpts_repro[:, :2], axis=1) * valid
-                    print('[Check] {}: {} points, {:3.2f} pixels， max is {}, {:3.2f} pixels'.format(cam, valid.sum(), diff.sum()/valid.sum(), diff.argmax(), diff.max()))
+                    print('[Check] {}: {} points, {:3.2f} pixels, max is {}, {:3.2f} pixels'.format(cam, valid.sum(), diff.sum()/valid.sum(), diff.argmax(), diff.max()))
                     diff = diff.sum()/valid.sum()
                     errors.append(diff)
                     self.errors.append((diff, nv, nf))
@@ -254,7 +254,7 @@ class QuanCheck(BaseCheck):
         k2dus = np.stack(k2dus)
         k3d = batch_triangulate(k2dus, Pall)
         if gt is not None:
-            if gt.shape[0] < k3d.shape[0]: # gt少了点
+            if gt.shape[0] < k3d.shape[0]: # GT has fewer points
                 gt = np.vstack([gt, np.zeros((k3d.shape[0]-gt.shape[0], 3))])
             valid = np.where(k3d[:, -1] > 0.)[0]
             err3d = np.linalg.norm(k3d[valid, :3] - gt[valid], axis=1)

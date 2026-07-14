@@ -45,7 +45,7 @@ def create_corners(path, grid, image='images', ext='.jpg', overwrite=True):
         annname = imgname.replace(ext, '.json')
         annname = join(path, args.annot, annname)
         if os.path.exists(annname) and overwrite:
-            # 覆盖keypoints3d
+            # Overwrite keypoints3d
             data = read_json(annname)
             data['keypoints3d'] = template['keypoints3d']
             data['grid_size'] = grid

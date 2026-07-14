@@ -20,10 +20,10 @@ import threading
 from easymocap.mytools.debug_utils import log
 
 def getChessboard3d(pattern, gridSize, axis='yx'):
-    # 注意：这里为了让标定板z轴朝上，设定了短边是x，长边是y
+    # Short edge is x, long edge is y so calibration board z-axis points up
     template = np.mgrid[0:pattern[0], 0:pattern[1]].T.reshape(-1,2)
     object_points = np.zeros((pattern[1]*pattern[0], 3), np.float32)
-    # 长边是x,短边是z
+    # Long edge is x, short edge is z
     if axis == 'xz':
         object_points[:, 0] = template[:, 0]
         object_points[:, 2] = template[:, 1]
@@ -51,7 +51,7 @@ def create_chessboard(path, image, pattern, gridSize, ext, overwrite=True):
         annname = imgname.replace(ext, '.json')
         annname = join(path, 'chessboard', annname)
         if os.path.exists(annname) and overwrite:
-            # 覆盖keypoints3d
+            # Overwrite keypoints3d
             data = read_json(annname)
             data['keypoints3d'] = template['keypoints3d']
             save_json(annname, data)
@@ -88,7 +88,7 @@ def detect_chessboard(path, image, out, pattern, gridSize, args):
     for i in range(args.mp):
         ranges = trange[i::args.mp]
         datas = [dataset[t] for t in ranges]
-        thread = threading.Thread(target=_detect_chessboard, args=(datas, path, image, out, pattern)) # 应该不存在任何数据竞争
+        thread = threading.Thread(target=_detect_chessboard, args=(datas, path, image, out, pattern)) # no data race expected
         thread.start()
         threads.append(thread)
     for thread in threads:

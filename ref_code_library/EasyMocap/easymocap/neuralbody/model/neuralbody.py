@@ -174,7 +174,7 @@ class Network(Nerf):
         nerf['ch_pts_extra'] = sparse['dims'][-1]*2 + sparse['dims'][-2] + sparse['dims'][-3]
         nerf['latent'] = {'time': embed_time.shape[1]}
         if use_canonical_viewdirs and use_viewdirs:
-            # 注意:这里不能写*2, 因为多个人的时候这个字典没有拷贝
+            # Note: do not use *2 here; the dict is not copied for multiple people
             nerf['dim_dir'] = 6
         self.use_canonical_viewdirs = use_canonical_viewdirs
         print('- [Load Network](Neuralbody) use_viewdirs={}, use_canonical_viewdirs={}'.format(use_viewdirs, use_canonical_viewdirs))

@@ -134,7 +134,7 @@ def getJacobianOfRT(rvec, tvec, joints):
     jacobi_J_R[:, :, 2, 6:9] = joints
     # jacobi_J_rvec: (bn, nJ, 3, 3)
     jacobi_J_rvec = torch.matmul(jacobi_J_R, jacobiToRvec[:, None].transpose(-1, -2))
-    # if True: # 测试自动梯度
+    # if True: # test autograd
     #     def test_func(rvec):
     #         Rot = batch_rodrigues(rvec[None])[0]
     #         joints_new = joints[0] @ Rot.t()
@@ -311,24 +311,24 @@ class MyFilter:
         data = np.array(self.data)
         conf = np.array(self.conf)
         smoothed = self.smooth_record[-1]
-        # 预计的速度
+        # Predicted velocity
         dx_new = x - smoothed.x
-        # 滤波器可见，当前可见
+        # Filter visible, currently visible
         flag_vis = (smoothed.v > 0.1) & (v > 0.1)
-        # - 速度异常的，移除掉，认为当前帧不可见
+        # - Abnormal velocity: remove, treat current frame as invisible
         flag_outlier = (np.abs(smoothed.dx) > 0.05) & (np.abs(dx_new - smoothed.dx)/(1e-5 + smoothed.dx) > 2.)
         if self.key != 'Rh':
             v[flag_vis&flag_outlier] = 0.
-        # 滤波器不可见，当前可见，速度打折，认为是新增的帧
+        # Filter invisible, currently visible: discount velocity, treat as new frame
         flag_new = (smoothed.v < 0.1)&(v>0.1)
         dx_new[flag_new] /= 3
-        # 滤波器可见，当前不可见，速度使用滤波器的速度
+        # Filter visible, currently invisible: use filter velocity
         flag_unvis = (v<0.1) & (conf[-2] < 0.1)
         dx_new[flag_unvis] = smoothed.dx[flag_unvis]
-        # 滤波器不可见，当前也不可见，速度清0
+        # Filter invisible, currently invisible: zero velocity
         dx_new[(v<0.1)&(smoothed.v<0.1)] = 0.
-        # 实际估计出来的速度，这里要去掉不可见的地方
-        # 混合的权重使用 0.7, 0.3默认全部使用新的一半
+        # Estimated velocity; mask out invisible regions
+        # Blend weights 0.7, 0.3; default uses half of new velocity
         weight_dx = np.zeros_like(dx_new) + 0.7
         dx_smoothed = smoothed.dx*(1-weight_dx) + dx_new*weight_dx
         smoothed_value = smoothed.x + dx_smoothed
@@ -366,11 +366,11 @@ class MyFilter:
             self.records.append(result)
             return self.fill(result.x, result.v)
         # return self.fill(x, v)
-        # 维护一个前一帧的，去除outlier
+        # Keep previous frame to remove outliers
         prev = self.result
         t = prev.t.copy()
         t[v>0.] = self.counter
-        dx = x - prev.x # 这里直接使用与之前的结果的差了，避免多帧不可见，然后速度过大
+        dx = x - prev.x # Use diff from previous result to avoid large velocity after multi-frame gaps
         MAX_DX = 1.
         WINDOW = 31
         not_valid = ((np.abs(dx) > MAX_DX) & (prev.v > 0.1))|\
@@ -387,7 +387,7 @@ class MyFilter:
             x_pred = x_mean
             dx_pred = np.zeros_like(x_pred)
         elif x_all.shape[0] >= 5:
-            # 进行smooth
+            # Smooth
             axt = np.zeros((2, x_all.shape[1]))
             xrange = np.arange(x_all.shape[0]).reshape(-1, 1)
             A0 = np.hstack([xrange, np.ones((x_all.shape[0], 1))])
@@ -415,7 +415,7 @@ class MyFilter:
             # current = FilterResult(x_pred, dx_hat, v, t)
             current = FilterResult(x, dx, v, t)
             self.records.append(current)
-            # 使用平均速度模型
+            # Use average velocity model
             self.result = FilterResult(x_pred, dx_pred, v_sum, t)
         return self.fill(self.result.x, self.result.v)
 
@@ -431,9 +431,9 @@ class MyFilter:
         t[v>0.] = self.counter
         # update t
         # dx = (x - prev.x)/(np.maximum(t-prev.t, 1))
-        dx = x - prev.x # 这里直接使用与之前的结果的差了，避免多帧不可见，然后速度过大
+        dx = x - prev.x # Use diff from previous result to avoid large velocity after multi-frame gaps
         dx_ = dx.copy()
-        # 判断dx的大小
+        # Check magnitude of dx
         large_dx = np.abs(dx) > 0.5
         if large_dx.sum() > 0:
             v[large_dx] = 0.
@@ -448,7 +448,7 @@ class MyFilter:
             dx[new_index] = 0.
         weight_dx = v/(1e-5+ 3*prev.v + 1*v)
         weight_x  = v/(1e-5+ 3*prev.v + 1*v)
-        # 移除速度过大的点
+        # Remove points with excessive velocity
         dx_hat = exponential_smoothing(weight_dx, dx, prev.dx)
         x_pred = prev.x + dx_hat
         x_hat = exponential_smoothing(weight_x, x, x_pred)
@@ -475,7 +475,7 @@ class MyFilter:
             for key in print_val.keys():
                 print('{:7.2f}'.format(print_val[key][i]), end='  ')
             print('')
-        v[missing_index] = prev.v[missing_index] / 1.2 # 衰减系数
+        v[missing_index] = prev.v[missing_index] / 1.2 # decay factor
         result = FilterResult(x_hat, dx_hat, v, t)
         self.result = result
         return self.fill(result.x, result.v)
@@ -493,10 +493,10 @@ class MyFilter:
             t_prev = np.zeros_like(self.x, dtype=int) - 1
             t_prev[conf_sum>0] = self.counter
             self.t_prev = t_prev
-            # 零速度初始化
+            # Zero-velocity initialization
             self.d_x = np.zeros_like(self.x)
             return self.fill(self.x, self.x_conf)
-        # 假设每帧都传进来的吧
+        # Assume every frame is passed in
         return self.fill(self.x, self.x_conf)
         x_est, v_est, conf_est = self.x.copy(), self.d_x.copy(), self.x_conf.copy()
         value = value[0]
@@ -505,25 +505,25 @@ class MyFilter:
         t_current = np.zeros_like(self.x, dtype=int) - 1
         t_current[conf>0.] = self.counter
         t_est = t_current - self.t_prev
-        # 前一帧有观测，当前帧有观测，两帧之差在10帧以内。正常更新
+        # Previous frame observed, current observed, gap <= 10 frames: normal update
         flag_vv = (t_current > 0) & (self.t_prev > 0) & \
             (t_current - self.t_prev < 10)
-        # 前一帧无观测；当前帧有观测的；判断为新增的
+        # Previous frame not observed; current observed: treat as new
         flag_iv = (self.t_prev < 0) & (t_current > 0)
         weight_vel = smoothing_factor(t_est, self.d_cutoff)
-        # 将观测的速度权重置0
+        # Zero observation velocity weight
         weight_vel[flag_vv] = 0.
         vel_hat = exponential_smoothing(weight_vel, d_x, self.d_x)
         cutoff = self.min_cutoff + self.beta * np.abs(vel_hat)
         weight_value = smoothing_factor(t_est, cutoff)
-        # 将观测的数值权重置0
+        # Zero observation value weight
         weight_value[flag_vv] = 0.
-        weight_value[flag_iv] = 1. # 当前帧可见的，之前的帧不可见的，直接选择当前帧
+        weight_value[flag_iv] = 1. # Current visible, previous invisible: use current frame
         vel_hat[flag_iv] = 0.
         x_hat = exponential_smoothing(weight_value, value, self.x)
         flag_vi = (self.t_prev > 0) & (~flag_vv)
         flag_v = flag_vv | flag_vi | flag_iv
-        # 前一帧有观测；当前帧无观测的；判断为丢失的
+        # Previous frame observed; current not observed: treat as lost
         x_est[flag_v] = x_hat[flag_v]
         v_est[flag_v] = vel_hat[flag_v]
         conf_est[flag_v] = (self.x_conf + conf)[flag_v]/2
@@ -608,21 +608,21 @@ class IKBody(BaseBody):
                         value, conf = value[valid2], conf[valid2]
                         conf_sum = conf.sum(axis=0)
                         mean = (value*conf).sum(axis=0)/(conf_sum + 1e-5)
-                        # 计算latest
+                        # Compute latest
                         break
                         if key in ['poses', 'handl', 'handr']:
                             conf_sum_p = conf.sum(axis=0)
                             mean_previous = (value*conf).sum(axis=0)/(conf_sum_p + 1e-5)
                             mean[conf_sum<0.01] = mean_previous[conf_sum<0.01]
                             conf_sum[conf_sum<0.01] = conf_sum_p[conf_sum<0.01]
-                            # 使用fill的填值
+                            # Use fill value
                             mean[conf_sum<0.01] = self.fill_result[key][0][conf_sum<0.01]
                         break
                 if find:
                     results[key] = mean[None]
                 else:
                     results[key] = self.fill_result[key]
-        if False: # 均值滤波
+        if False: # mean filter
             for key in ['Rh', 'poses', 'handl', 'handr']:
                 if key not in params.keys():
                     continue
@@ -633,7 +633,7 @@ class IKBody(BaseBody):
                 conf = np.vstack([r[key+'_conf'] for r in records])
                 conf_sum = conf.sum(axis=0)
                 mean = (value*conf).sum(axis=0)/(conf_sum + 1e-5)
-                # 计算latest
+                # Compute latest
                 if key in ['poses', 'handl', 'handr']:
                     records = self.results[-5*self.cfg.SMOOTH_SIZE[key]:]
                     value = np.vstack([r[key] for r in records])
@@ -642,7 +642,7 @@ class IKBody(BaseBody):
                     mean_previous = (value*conf).sum(axis=0)/(conf_sum_p + 1e-5)
                     mean[conf_sum<0.01] = mean_previous[conf_sum<0.01]
                     conf_sum[conf_sum<0.01] = conf_sum_p[conf_sum<0.01]
-                    # 使用fill的填值
+                    # Use fill value
                     mean[conf_sum<0.01] = self.fill_result[key][0][conf_sum<0.01]
                 results[key] = mean[None]
         results['Th'] = self.blank_result['Th']
@@ -673,8 +673,8 @@ class IKBody(BaseBody):
         flag = self.check_keypoints(keypoints3d)
         if not flag:
             mywarn('Missing keypoints {} [{}->{}]'.format(keypoints3d[..., -1].sum(), self.frame_latest, self.frame_index))
-            # 1. 初始化过了，但是超出帧数了，清零
-            # 2. 没有初始化过，超出了，清零
+            # 1. Initialized but exceeded frame count: reset
+            # 2. Not initialized and exceeded: reset
             if (self.frame_index - self.frame_latest > 10 and self.init) or not self.init:
                 mywarn('Missing keypoints, resetting...')
                 self.init = False
@@ -683,7 +683,7 @@ class IKBody(BaseBody):
                 return [self.fill_result]
             else:
                 return [self.smooth_results()]
-        elif not self.init: # 暂时还没有初始化，先等待
+        elif not self.init: # Not initialized yet, wait
             if len(self.records) < 10:
                 self.records.append(k3d)
                 return [self.fill_result]
@@ -727,7 +727,7 @@ class HalfBodyIK(IKBody):
             shoulder[..., 2] = 0.
             up_vector = np.array([0., 0., 1.], dtype=np.float32)        
         shoulder = shoulder/np.linalg.norm(shoulder, keepdims=True)
-        # 限定一下角度范围
+        # Clamp angle range
         theta = -np.rad2deg(np.arctan2(shoulder[1], shoulder[2]))
         if (theta < 30 or theta > 150) and False:
             return False, params
@@ -810,8 +810,8 @@ class HalfBodyIK(IKBody):
         return params
     
     def _ik_arm(self, keypoints3d, params):
-        # forward一遍获得关键点
-        # 这里需要确保求解的关节点没有父节点了
+        # Forward pass to get keypoints
+        # Ensure solved joints have no parent
         template = self.body_model.keypoints({'poses': params['poses'], 'shapes': params['shapes']}, return_tensor=False)[0]
         for name, info in self.cfg.NODE.items():
             idx = info['children']
@@ -840,30 +840,30 @@ class HalfBodyIK(IKBody):
         T_joints, _ = self.body_model.transform({'poses': params['poses'], 'shapes': params['shapes']}, return_vertices=False)
         T_joints = T_joints[0].cpu().numpy()
         for name, info in self.cfg.PALM.items():
-            # 计算手掌的朝向
+            # Compute palm orientation
             est_points = keypoints3d[:, :3]
             est_conf = keypoints3d[:, 3]
             if est_conf[info.children].min() < self.cfg.MIN_THRES:
                 continue
-            # 计算朝向
+            # Compute orientation
             dir0 = normalize(est_points[info.children[1]] - est_points[info.children[0]])
             dir1 = normalize(est_points[info.children[-1]] - est_points[info.children[0]])
             normal = normalize(np.cross(dir0, dir1))
             dir_parent = normalize(est_points[info.parent[1]] - est_points[info.parent[0]])
-            # 计算夹角
+            # Compute angle
             rad = np.arccos((normal * dir_parent).sum()) - np.pi/2
             rad = np.clip(rad, *info['ranges'])
             rot = rad*np.array(info['axis']).reshape(1, 3)
             params['poses'][:, 3*info['index']:3*(info['index']+1)] = rot
-            # 考虑手肘的朝向；这个时候还差一个绕手肘的朝向的方向的旋转；这个旋转是在手肘扭曲之前的
-            # 先计算出这个朝向；再转化
+            # Consider elbow orientation; still need rotation around elbow axis (before twist)
+            # Compute orientation first, then convert
             R_parents = params['R'] @ T_joints[info.index, :3, :3]
             normal_canonical = R_parents.T @ normal.reshape(3, 1)
             normal_canonical[0, 0] = 0
             normal_canonical = normalize(normal_canonical)
-            # 在canonical下的投影
+            # Projection in canonical frame
             # normal_T = np.array([0., -1., 0.])
-            # trick: 旋转角度的正弦值等于在z轴上的坐标
+            # trick: rotation angle sine equals z-axis coordinate
             rad = np.arcsin(normal_canonical[2, 0])
             rot_x = np.array([-rad, 0., 0.])
             R_x = cv2.Rodrigues(rot_x)[0]
@@ -873,7 +873,7 @@ class HalfBodyIK(IKBody):
         return params
 
     def _ik_hand(self, template, keypoints3d, poses, conf, is_left):
-        # 计算手的每一段的置信度
+        # Compute per-segment hand confidence
         poses_full = np.zeros((1, 45))
         conf_full = np.zeros((1, 45))
         y_axis = np.array([0., 1., 0.])
@@ -883,14 +883,14 @@ class HalfBodyIK(IKBody):
             if conf <= 0.: 
                 log('- skip: {}'.format(name))
                 continue
-            # trick: 手的朝向是反的
+            # trick: hand orientation is reversed
             rad = - rad
             if info.axis == 'auto':
                 template_dir = template[info.ranges[2]] - template[info.ranges[1]]
-                # y轴方向设成0
+                # Set y-axis direction to 0
                 template_dir[1] = 0.
                 template_dir = normalize(template_dir)
-                # 计算旋转轴，在与z轴的cross方向上
+                # Compute rotation axis along cross with z-axis
                 rot_vec = normalize(np.cross(template_dir, y_axis)).reshape(1, 3)
             elif info.axis == 'root':
                 template_dir0 = template[info.ranges[1]] - template[info.ranges[0]]
@@ -898,19 +898,19 @@ class HalfBodyIK(IKBody):
                 template_dir0 = normalize(template_dir0)
                 template_dir1 = normalize(template_dir1)
                 costheta0 = (template_dir0 *template_dir1).sum()
-                # 计算当前的夹角
+                # Compute current angle
                 est_dir0 = keypoints3d[info.ranges[1], :3] - keypoints3d[info.ranges[0], :3]
                 est_dir1 = keypoints3d[info.ranges[2], :3] - keypoints3d[info.ranges[1], :3]
                 est_dir0 = normalize(est_dir0)
                 est_dir1 = normalize(est_dir1)
                 costheta1 = (est_dir0 * est_dir1).sum()
-                # trick: 手的旋转角度都是相反的
+                # trick: hand rotation angles are reversed
                 rad = - np.arccos(np.clip(costheta1/costheta0, 0., 1.))
                 rot_vec = normalize(np.cross(template_dir1, y_axis)).reshape(1, 3)
             log('- get: {}: {:.1f}, {}'.format(name, np.rad2deg(rad), rot_vec))            
             poses_full[:, 3*info.index:3*info.index+3] = rot_vec * rad
             conf_full[:, 3*info.index:3*info.index+3] = conf
-        # 求解
+        # Solve
         usePCA = False
         if usePCA:
             ncomp = 24
@@ -951,7 +951,7 @@ class HalfBodyIK(IKBody):
 
     def fitting(self, keypoints3d, results_pre):
         # keypoints3d: (nFrames, nJoints, 4)
-        # 根据肩膀计算身体朝向
+        # Compute body orientation from shoulders
         if len(keypoints3d.shape) == 3:
             keypoints3d = keypoints3d[0]
         params = self.body_model.init_params(1, ret_tensor=False)
@@ -1060,7 +1060,7 @@ class BaseFitter(BaseBody):
         # jacobian: (nFrames, nLimbs, 3, nShapes)
         jacob_limb_shapes = self.jacobian_limb_shapes[None].repeat(nFrames, 1, 1, 1)
         jacob_limb_shapes = jacob_limb_shapes.reshape(-1, nShapes)
-        # 注意：这里乘到雅克比的应该是 sqrt(conf)，这里把两个合并了
+        # Note: Jacobian should be multiplied by sqrt(conf); merged here
         JTJ_limb_shapes = jacob_limb_shapes.t() @ (jacob_limb_shapes * conf)
         lossnorm = 0
         self.time = time()
@@ -1070,7 +1070,7 @@ class BaseFitter(BaseBody):
             keyShaped = self.k_template + shape_offset[..., 0]
             JTJ = JTJ_limb_shapes
             JTr = torch.zeros((nShapes, 1), device=device, dtype=dtype)
-            # 并行添加所有的骨架
+            # Add all skeletons in parallel
             dir = keyShaped[kintree[:, 1]] - keyShaped[kintree[:, 0]]
             dir_normalized = dir / torch.norm(dir, dim=-1, keepdim=True)
             # res: (nFrames, nLimbs, 3)
@@ -1141,7 +1141,7 @@ class BaseFitter(BaseBody):
                 for key in keys_optimized:
                     start, end = nf*NUM_FRAME + keys_range[key][0], nf*NUM_FRAME + keys_range[key][1]
                     if key == 'Rh':
-                        # 增加初始化的loss
+                        # Add initialization loss
                         res_init = rot[nf] - init_dict['Rot'][nf]
                         JTJ[start:end, start:end] += weight['init_'+key] * jacobi_R_rvec[nf] @ jacobi_R_rvec[nf].T
                         JTr[start:end] += -weight.init_Rh * jacobi_R_rvec[nf] @ res_init.reshape(-1, 1)
@@ -1200,7 +1200,7 @@ class BaseFitter(BaseBody):
         # tic('local trans')
         globalTrans = self.globalTransform(localTrans, rootIdx, kintree)
         # tic('global trans')
-        # 计算localTransformation
+        # Compute localTransformation
         poses_flat = poses.view(poses.shape[0], -1, 3)
         # jacobi_R_rvec: (bn, nJ, 3, 9)
         Rot, jacobi_R_rvec = batch_rodrigues_jacobi(poses_flat)
@@ -1213,29 +1213,29 @@ class BaseFitter(BaseBody):
         # tic('rodrigues')
         for djIdx in range(1, nJoints):
             if djIdx in self.cfg.IGNORE_JOINTS: continue
-            # // 第djIdx个轴角的第dAxis个维度
+            # // dAxis dimension of axis-angle djIdx
             for dAxis in range(3):
                 if dAxis in self.cfg.IGNORE_AXIS.get(str(djIdx), []): continue
                 # if(model->frozenJoint[3*djIdx+dAxis])continue;
-                # // 从上至下堆叠起来
+                # // Stack top to bottom
                 dGlobalTrans = dGlobalTrans_template.clone()
-                # // 将local的映射过来
+                # // Map from local
                 dGlobalTrans[:, djIdx, :3, :3] = jacobi_R_rvec[:, djIdx, dAxis].view(bn, 3, 3)
                 if djIdx != rootIdx:
-                    # // d(R0 @ R1)/dt1 = R0 @ dR1/dt1, 这里的R0是上一级所有的累积，因此使用全局的
+                    # // d(R0 @ R1)/dt1 = R0 @ dR1/dt1; R0 is accumulated from parent, use global
                     parent = parents[djIdx]
                     dGlobalTrans[:, djIdx] = globalTrans[:, parent] @ dGlobalTrans[:, djIdx]
                 valid = np.zeros(nJoints, dtype=np.bool)
                 valid[djIdx] = True
                 # tic('current {}'.format(djIdx))
-                # // 遍历骨架树: 将对当前theta的导数传递下去
+                # // Traverse skeleton tree: propagate derivative of current theta
                 for (src, dst) in kintree:
-                    # // 当前处理的关节为子节点的不用考虑
+                    # // Skip if current joint is a child node
                     if dst == djIdx: continue
                     # if dst in self.cfg.IGNORE_JOINTS:continue
                     valid[dst] = valid[src]
                     if valid[src]:
-                        # // 如果父节点是有效的: d(R0 @ R1)/dt0 = dR0/dt0 @ R1，这里的R1是当前的局部的，因此使用local的
+                        # // If parent is valid: d(R0 @ R1)/dt0 = dR0/dt0 @ R1; R1 is local, use local
                         dGlobalTrans[:, dst] = dGlobalTrans[:, src] @ localTrans[:, dst]
                 # tic('forward {}'.format(djIdx))
                 jacobi_GlobalTrans_theta[..., 3*djIdx+dAxis] = dGlobalTrans
@@ -1342,7 +1342,7 @@ class BaseFitter(BaseBody):
                 'Rh': Rh,
                 'poses': poses,
             }
-            # 计算loss
+            # Compute loss
             # JTJ = torch.zeros((bn*NUM_FRAME, bn*NUM_FRAME), device=device, dtype=dtype)
             JTJ = torch.eye(bn*NUM_FRAME, device=device, dtype=dtype) * 1e-4
             JTr = torch.zeros((bn*NUM_FRAME, 1), device=device, dtype=dtype)
@@ -1354,7 +1354,7 @@ class BaseFitter(BaseBody):
                     JTr[start:end] += -weight['reg_{}'.format(key)] * cache_dict[key][nf].view(-1, 1)
                     # add init for Rh
                     if key == 'Rh':
-                        # 增加初始化的loss
+                        # Add initialization loss
                         res_init = rot[nf] - init_dict['Rot'][nf]
                         JTJ[start:end, start:end] += weight['init_'+key] * jacobi_R_rvec[nf] @ jacobi_R_rvec[nf].T
                         JTr[start:end] += -weight.init_Rh * jacobi_R_rvec[nf] @ res_init.reshape(-1, 1)
@@ -1423,7 +1423,7 @@ class BaseFitter(BaseBody):
 
     def filter_result(self, result):
         poses = result['poses'].reshape(-1, 3)
-        # TODO: 这里的xyz是scipy中的XYZ
+        # TODO: xyz here refers to scipy XYZ convention
         euler = axis_angle_to_euler(poses, order='xyz')
         # euler[euler>np.pi] = 0.
         poses = euler_to_axis_angle(euler, order='xyz')
@@ -1491,7 +1491,7 @@ class FitterCPPCache:
             return copy.deepcopy(self.params_newest)
         mywarn('>> Initialize')
         params = self.handmodel.init_params(1)
-        if not (keypoints3d[..., -1] > 0.).all(): # 只有一半的点可见
+        if not (keypoints3d[..., -1] > 0.).all(): # Only half of points visible
             return params
         params = self.handmodel.fit3DShape(keypoints3d, params)
         params = self.handmodel.init3DRT(keypoints3d[-1:], params)
@@ -1659,11 +1659,11 @@ class HalfFitter(BodyFitter):
     
     def filter_result(self, result):
         result = super().filter_result(result)
-        # 限定一下关节旋转
-        # 手肘
+        # Clamp joint rotation
+        # Elbow
         # result['poses'][:, 5*3+1] = np.clip(result['poses'][:, 5*3+1], -2.5, 0.1)
         # result['poses'][:, 6*3+1] = np.clip(result['poses'][:, 5*3+1], -0.1, 2.5)
-        # 手腕
+        # Wrist
         return result
 
 class HalfHandFitter(HalfFitter):

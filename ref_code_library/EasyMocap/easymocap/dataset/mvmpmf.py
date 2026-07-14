@@ -41,7 +41,7 @@ class MVMPMF(MVBase):
 
     def __getitem__(self, index: int):
         images, annots_all = super().__getitem__(index)
-        # 筛除不需要的2d
+        # Filter out unwanted 2D detections
         return images, annots_all
 
     def __len__(self) -> int:

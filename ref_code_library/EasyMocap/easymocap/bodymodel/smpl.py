@@ -315,7 +315,7 @@ class SMPLModel(Model):
         return params
 
     def check_params(self, body_params):
-        # 预先拷贝一下，不要修改到原始数据了
+        # Copy first to avoid modifying the original data
         body_params = body_params.copy()
         poses = body_params['poses']
         nFrames = poses.shape[0]

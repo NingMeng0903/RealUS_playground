@@ -29,7 +29,7 @@ class Merge_hand(MultilView_Merge):
         for pid in range(len(match3d_l)):
             dt = match3d_l[pid]
             if(isinstance(dt,int)):
-                # TODO:处理-1的情况，也就是没有找到合适的匹配到的手
+                # TODO: handle -1 when no matched hand is found
                 hand_list.append(np.zeros((1,48)))
                 break
             Merge_list=[]
@@ -162,7 +162,7 @@ class Merge_bodyandhand:
                 
         out_L = []
         pose = np.hstack((bodypose,handlpose[:,3:],handrpose[:,3:])) # (1,156)
-        out_pose = self.process_poses_mano(pose, [handlpose[0,:3],handrpose[0,:3]], flag) # 如果没找到手，那么应该设置为全0 这里设置为false
+        out_pose = self.process_poses_mano(pose, [handlpose[0,:3],handrpose[0,:3]], flag) # if hand not found, should be all zeros; here set flag to false
         out_L.append(out_pose)
         return out_pose
     def __call__(self, params_l, params_r, params):
@@ -180,7 +180,7 @@ class Merge_bodyandhand:
         for i in range(bz):
             inpose = np.zeros((1,66))
             inpose[:,3:] = params['poses'][i][:63].copy()
-            inpose[:,:3] = params['Rh'][i].copy() # pose0:3有值 Rh  可能要合并
+            inpose[:,:3] = params['Rh'][i].copy() # pose[:3] holds Rh; may need merging
 
             handlpose = params_l['poses'][i].reshape((1,-1)).copy()
             handrpose = params_r['poses'][i].reshape((1,-1)).copy()

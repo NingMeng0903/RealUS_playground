@@ -44,7 +44,7 @@ class CritNoBorder(BaseCrit):
 
     def __call__(self, keypoints, bbox, **kwargs) -> bool:
         l, t, r, b, c = bbox[:5]
-        if t < self.border: # 跳过上面部分被截掉的
+        if t < self.border: # skip the cropped top region
             pass
         if l < self.border or r > self.width - self.border:
             if self.log:print('[Crit2d]: {}'.format(' '.join(['%8.3f'%(i) for i in bbox])))

@@ -114,7 +114,7 @@ def read_camera(intri_name, extri_name, cam_names=[]):
     cams, P = {}, {}
     cam_names = intri.read('names', dt='list')
     for cam in cam_names:
-        # 内参只读子码流的
+        # Read intrinsics from sub-stream only
         cams[cam] = {}
         cams[cam]['K'] = intri.read('K_{}'.format( cam))
         cams[cam]['invK'] = np.linalg.inv(cams[cam]['K'])
@@ -308,14 +308,14 @@ def interp_cameras(cameras, keys, step=20, loop=True, allstep=-1, **kwargs):
         left, right = keys[ik], keys[0 if ik == len(keys)-1 else ik + 1]
         camera_left = cameras[left]
         camera_right = cameras[right]
-        # 插值相机中心: center = - R.T @ T
+        # Interpolate camera center: center = - R.T @ T
         center_l = - camera_left['R'].T @ camera_left['T']
         center_r = - camera_right['R'].T @ camera_right['T']
         center_l, center_r = center_l[None], center_r[None]
         if False:
             centers = center_l * (1-t) + center_r * t
         else:
-            # 球面插值
+            # Spherical interpolation
             norm_l, norm_r = np.linalg.norm(center_l), np.linalg.norm(center_r)
             center_l, center_r = center_l/norm_l, center_r/norm_r
             costheta = (center_l*center_r).sum()
@@ -328,7 +328,7 @@ def interp_cameras(cameras, keys, step=20, loop=True, allstep=-1, **kwargs):
         key_times = [0, 1]
         slerp = Slerp(key_times, key_rots)
         interp_rots = slerp(t.squeeze()).as_matrix()
-        # 计算相机T RX + T = 0 => T = - R @ X
+        # Compute camera T: RX + T = 0 => T = - R @ X
         T = - np.einsum('bmn,bno->bmo', interp_rots, centers)
         K = camera_left['K'] * (1-t) + camera_right['K'] * t
         for i in range(T.shape[0]):

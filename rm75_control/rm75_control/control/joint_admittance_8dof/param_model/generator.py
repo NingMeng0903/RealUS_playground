@@ -4,7 +4,7 @@ Reads a YAML (or dict) spec and emits a Genesis-loadable URDF whose kinematic
 tree is::
 
     rail_base (root, fixed in world)
-     |-- frame_link   (fixed)     -> 机架
+     |-- frame_link   (fixed)     -> frame
      |-- rail_link    (fixed)     -> rail assembly (deck + tracks + end plates)
      |     |-- slider_link (prismatic rail_y, axis Y) -> slider; driven DOF #0
      |           |-- base_link (fixed arm_mount) -> RM75 arm links (verbatim)

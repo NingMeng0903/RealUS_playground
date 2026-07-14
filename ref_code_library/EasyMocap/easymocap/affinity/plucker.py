@@ -53,7 +53,7 @@ def dist_ll_pointwise_conf(p0, p1):
     return dist
 
 def computeRay(keypoints2d, invK, R, T):
-    # 将点转为世界坐标系下plucker坐标
+    # Convert points to Plucker coordinates in world space
     # points: (nJoints, 3)
     # invK: (3, 3)
     # R: (3, 3)
@@ -68,7 +68,7 @@ def computeRay(keypoints2d, invK, R, T):
     kp_all_3d = (kp_pixel @ invK.T - T.T) @ R
     l, m = plucker_from_pp(cam_center.T, kp_all_3d)
     res = np.hstack((l, m, conf))
-    # 兼容cpp版本，所以补一个维度
+    # Add dimension for C++ version compatibility
     return res[None, :, :]
 
 def computeRaynd(keypoints2d, invK, R, T):

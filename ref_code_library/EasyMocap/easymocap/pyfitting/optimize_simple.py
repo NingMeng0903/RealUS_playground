@@ -25,7 +25,7 @@ def optimizeShape(body_model, body_params, keypoints3d,
         cfg (Config): Config Node controling running mode
     """
     device = body_model.device
-    # 计算不同的骨长
+    # Compute limb lengths
     kintree = np.array(kintree, dtype=int)
     # limb_length: nFrames, nLimbs, 1
     limb_length = np.linalg.norm(keypoints3d[:, kintree[:, 1], :3] - keypoints3d[:, kintree[:, 0], :3], axis=2, keepdims=True)
@@ -98,21 +98,21 @@ def get_interp_by_keypoints(keypoints):
     else:
         raise NotImplementedError
     not_valid_frames = np.where(conf.sum(axis=1) < 0.01)[0].tolist()
-    # 遍历空白帧，选择起点和终点
+    # Iterate blank frames, select start and end
     ranges = []
     if len(not_valid_frames) > 0:
         start = not_valid_frames[0]
         for i in range(1, len(not_valid_frames)):
             if not_valid_frames[i] == not_valid_frames[i-1] + 1:
                 pass
-            else:# 改变位置了
+            else:# Gap in consecutive frames
                 end = not_valid_frames[i-1]
                 ranges.append((start, end))
                 start = not_valid_frames[i]
         ranges.append((start, not_valid_frames[-1]))
     def interp_func(params):
         for start, end in ranges:
-            # 对每个需要插值的区间: 这里直接使用最近帧进行插值了
+            # For each interpolation range: use nearest-frame interpolation
             left = start - 1
             right = end + 1
             for nf in range(start, end+1):
@@ -127,20 +127,20 @@ def interp_by_k3d(conf, params):
         params[key] = params[key].clone()
     # Totally invalid frames
     not_valid_frames = torch.nonzero(conf.sum(dim=1).squeeze() < 0.01)[:, 0].detach().cpu().numpy().tolist()
-    # 遍历空白帧，选择起点和终点
+    # Iterate blank frames, select start and end
     ranges = []
     if len(not_valid_frames) > 0:
         start = not_valid_frames[0]
         for i in range(1, len(not_valid_frames)):
             if not_valid_frames[i] == not_valid_frames[i-1] + 1:
                 pass
-            else:# 改变位置了
+            else:# Gap in consecutive frames
                 end = not_valid_frames[i-1]
                 ranges.append((start, end))
                 start = not_valid_frames[i]
         ranges.append((start, not_valid_frames[-1]))
     for start, end in ranges:
-        # 对每个需要插值的区间: 这里直接使用最近帧进行插值了
+        # For each interpolation range: use nearest-frame interpolation
         left = start - 1
         right = end + 1
         for nf in range(start, end+1):

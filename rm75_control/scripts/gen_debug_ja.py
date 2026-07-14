@@ -350,7 +350,7 @@ in `controller.py`. Conclusion: **the `admittance_force_derivative_gain_z`
 (Kdf) term was differentiating a real, reproducible ~9 Hz contact oscillation
 that the observer's 6 Hz low-pass only attenuates to ~40%, turning a modest
 force ripple into a large velocity-command jitter ("derivative kick")** —
-this is a bigger and more direct contributor to "抖动特别厉害" than the
+this is a bigger and more direct contributor to severe jitter than the
 `adaptive_ke` lateral-scan mis-learning, which is real but secondary.
 
 ### 1. Hard evidence: a reproducible ~9 Hz contact oscillation
@@ -379,7 +379,7 @@ Reading:
   vibration/resonance (sensor/tool/gripper assembly) picked up by the force
   channel and then **amplified by the control loop into an actual velocity
   command** — that amplification, not a visibly large arm motion, is what
-  "抖动特别厉害" feels like.
+  severe jitter feels like.
 - **Not CBF/QP clamping**: `n_cbf` and `vel_clamped` are 0 throughout, ruling
   out a velocity-box limit-cycle explanation.
 

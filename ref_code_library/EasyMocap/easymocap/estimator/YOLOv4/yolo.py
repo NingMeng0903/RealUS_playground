@@ -122,7 +122,7 @@ class YOLOv4:
         width  = image.shape[1]
         height = image.shape[0]
         tgt_width = self.model.width
-        # 先缩小，再padding
+        # Downscale first, then pad
         if width > height:
             tgt_shape = (tgt_width, int(height/width*tgt_width))
             resize = cv2.resize(image, tgt_shape)

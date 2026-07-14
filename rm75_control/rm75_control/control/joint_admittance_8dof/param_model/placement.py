@@ -1,6 +1,6 @@
 """World placement from base-coordinate calibration (rail_y = 0).
 
-The assembly is NOT placed by specifying the frame (机架) pose.  Instead the
+The assembly is NOT placed by specifying the frame pose.  Instead the
 user calibrates the **base coordinate** (``base_link`` / ``arm_mount`` origin)
 in world when ``rail_y = 0``, optionally with a small tilt.  The Genesis entity
 pose (``rail_base`` root) is back-solved so rail, slider, frame, and arm all

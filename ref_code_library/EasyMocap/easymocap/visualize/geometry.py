@@ -65,9 +65,9 @@ def create_line(start, end, r=0.01, col=None):
     return ret
 
 def create_ground(
-    center=[0, 0, 0], xdir=[1, 0, 0], ydir=[0, 1, 0], # 位置
-    step=1, xrange=10, yrange=10, # 尺寸
-    white=[1., 1., 1.], black=[0.,0.,0.], # 颜色
+    center=[0, 0, 0], xdir=[1, 0, 0], ydir=[0, 1, 0], # position
+    step=1, xrange=10, yrange=10, # size
+    white=[1., 1., 1.], black=[0.,0.,0.], # color
     two_sides=True
     ):
     if isinstance(center, list):
@@ -143,7 +143,7 @@ def create_plane(normal, center, dx=1, dy=1, dz=0.005, color=[0.8, 0.8, 0.8]):
     vertices[:, 0] = vertices[:, 0]*dx - dx/2
     vertices[:, 1] = vertices[:, 1]*dy - dy/2
     vertices[:, 2] = vertices[:, 2]*dz - dz/2
-    # 根据normal计算旋转
+    # Compute rotation from normal
     rotmat = get_rotation_from_two_directions(
         np.array([0, 0, 1]), np.array(normal))
     vertices = vertices @ rotmat.T

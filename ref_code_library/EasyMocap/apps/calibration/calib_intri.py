@@ -29,8 +29,8 @@ def read_chess(chessname):
         valid = k2d[:, -1] > 0.1
         k2d = k2d[valid]
         k3d = k3d[valid]
-    # TODO:去除正对相机的
-    # TODO:去除各条线不平行的噪声
+    # TODO: remove views facing camera directly
+    # TODO: remove noise from non-parallel lines
     return True, k2d, k3d
 
 def pop(k2ds_, k3ds_, valid_idx, imgnames, max_num):

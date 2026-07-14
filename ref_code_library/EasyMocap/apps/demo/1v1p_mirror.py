@@ -64,7 +64,7 @@ def demo_1v1p1f_smpl_mirror(path, body_model, spin_model, args):
 def demo_1v1pmf_smpl_mirror(path, body_model, spin_model, args):
     subs = args.sub
     assert len(subs) > 0
-    # 遍历所有文件夹
+    # Iterate over all subfolders
     for sub in subs:
         dataset = ImageFolder(path, subs=[sub], out=args.out, kpts_type=args.body)
         start, end = args.start, min(args.end, len(dataset))
@@ -76,9 +76,9 @@ def demo_1v1pmf_smpl_mirror(path, body_model, spin_model, args):
         keypoints2d = {pid:[None for nf in frames] for pid in pids}
         for nf in tqdm(frames, desc='loading'):
             image, annots = dataset[nf]
-            # 这个时候如果annots不够 不能够跳过了，需要进行补全
+            # If annots are incomplete, pad instead of skipping
             camera = dataset.camera(nf)
-            # 初始化每个人的SMPL参数
+            # Initialize SMPL parameters per person
             for i, annot in enumerate(annots):
                 pid = annot['id']
                 if pid not in pids:
@@ -113,7 +113,7 @@ def demo_1v1pmf_smpl_mirror(path, body_model, spin_model, args):
             for i in range(len(pids)):
                 write_data[i].update(select_nf(body_params, i*nFrames+idx))
             dataset.write_smpl(write_data, nf)
-            # 保存结果
+            # Save results
             if args.vis_smpl:
                 image, annots = dataset[nf]
                 camera = dataset.camera(nf)

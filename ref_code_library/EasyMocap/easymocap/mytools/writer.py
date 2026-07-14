@@ -125,7 +125,7 @@ class FileWriter:
             for info in infos:
                 pid = info['id']
                 keypoints3d = info['keypoints3d']
-                # 重投影
+                # Reprojection
                 kcam = np.hstack([keypoints3d[:, :3], np.ones((keypoints3d.shape[0], 1))]) @ P.T
                 kcam = kcam[:, :2]/kcam[:, 2:]
                 k2d = np.hstack((kcam, keypoints3d[:, -1:]))

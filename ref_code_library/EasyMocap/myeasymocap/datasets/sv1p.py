@@ -8,7 +8,7 @@ import cv2
 
 class SVDataset(ImageDataBase):
     '''
-        这个数据只用来返回单段的视频数据，不用来返回多段的视频数据
+        This dataset returns single-segment video data only, not multi-segment
     '''
     def __init__(self, root, subs, ranges, read_image=False, reader={}) -> None:
         super().__init__(root, subs, ranges, read_image)
@@ -38,7 +38,7 @@ class SVDataset(ImageDataBase):
                 else:
                     self.length = len(data)
             elif key == 'cameras':
-                myerror('暂时没有实现相机参数')
+                myerror('camera parameters not implemented yet')
                 raise NotImplementedError
             else:
                 raise ValueError(f'Unknown reader: {key}')

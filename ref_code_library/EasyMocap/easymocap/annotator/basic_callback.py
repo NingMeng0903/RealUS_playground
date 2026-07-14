@@ -10,7 +10,7 @@ import cv2
 class CV_KEY:
     BLANK = 32
     ENTER = 13
-    LSHIFT = 225 # Mac上不行
+    LSHIFT = 225 # does not work on Mac
     NONE = 255
     TAB = 9
     q = 113
@@ -31,23 +31,23 @@ def get_key():
         key1 = cv2.waitKey(500) & 0xFF
         if key1 == CV_KEY.NONE:
             return key1
-        # 转换为大写
+        # Convert to uppercase
         k = key1 - ord('a') + ord('A')
     return k
 
 def point_callback(event, x, y, flags, param):
     """
-        OpenCV使用的简单的回调函数，主要实现两个基础功能：
-        1. 对于按住拖动的情况，记录起始点与终止点（当前点）
-        2. 对于点击的情况，记录选择的点
-        3. 记录当前是否按住了键
+        Simple OpenCV callback that implements three basic behaviors:
+        1. For click-and-drag, record start and end (current) points
+        2. For clicks, record the selected point
+        3. Track whether a mouse button is currently held
     """
     if event not in [cv2.EVENT_LBUTTONDOWN, cv2.EVENT_MOUSEMOVE, cv2.EVENT_LBUTTONUP]:
         return 0
     param['button_down'] = flags == cv2.EVENT_FLAG_LBUTTON
-    # 判断出了选择了的点的位置，直接写入这个位置
+    # Write the selected point position directly
     if event == cv2.EVENT_LBUTTONDOWN:
-        # 如果选中了框，那么在按下的时候，就不能清零
+        # If a bbox is selected, do not clear on mouse down
         param['click'] = None
         param['start'] = (x, y)
         param['end'] = (x, y)

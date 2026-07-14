@@ -219,7 +219,7 @@ def get_bbox_from_pose(pose_2d, img=None, rate = 0.1):
     x_max = int(max(pose_2d[validIdx, 0]))
     dx = (x_max - x_min)*rate
     dy = (y_max - y_min)*rate
-    # 后面加上类别这些
+    # Append category info later
     bbox = [x_min-dx, y_min-dy, x_max+dx, y_max+dy, 1]
     if img is not None:
         correct_bbox(img, bbox)

@@ -11,7 +11,7 @@ from func_timeout import func_set_timeout
 
 def getChessboard3d(pattern, gridSize, axis='xy'):
     object_points = np.zeros((pattern[1]*pattern[0], 3), np.float32)
-    # 注意：这里为了让标定板z轴朝上，设定了短边是x，长边是y
+    # Note: short edge is x, long edge is y so the board z-axis points up
     object_points[:,:2] = np.mgrid[0:pattern[0], 0:pattern[1]].T.reshape(-1,2)
     object_points[:, [0, 1]] = object_points[:, [1, 0]]
     object_points = object_points * gridSize
@@ -109,7 +109,7 @@ def detect_charuco(image, aruco_type, long, short, squareLength, aruco_len):
         "5X5_100": cv2.aruco.DICT_5X5_100,
         "5X5_250": cv2.aruco.DICT_5X5_250,
     }
-    # 创建ChArUco标定板
+    # Create ChArUco calibration board
     dictionary = cv2.aruco.getPredefinedDictionary(dict=ARUCO_DICT[aruco_type])
     board = cv2.aruco.CharucoBoard_create(
         squaresY=long,
@@ -122,11 +122,11 @@ def detect_charuco(image, aruco_type, long, short, squareLength, aruco_len):
     # ATTN: exchange the XY
     corners3d = corners[:, [1, 0, 2]]
     keypoints2d = np.zeros_like(corners3d)
-    # 查找标志块的左上角点
+    # Find top-left corner of marker blocks
     corners, ids, _ = cv2.aruco.detectMarkers(
         image=image, dictionary=dictionary, parameters=None
     )
-    # 棋盘格黑白块内角点
+    # Inner corners of chessboard squares
     if ids is not None:
         retval, charucoCorners, charucoIds = cv2.aruco.interpolateCornersCharuco(
             markerCorners=corners, markerIds=ids, image=image, board=board
@@ -143,18 +143,18 @@ def detect_charuco(image, aruco_type, long, short, squareLength, aruco_len):
 class CharucoBoard:
     def __init__(self, long, short, squareLength, aruco_len, aruco_type) -> None:    
         '''
-            short,long 分别表示短边、长边的格子数.
-            squareLength,aruco_len 分别表示棋盘格的边长与aruco的边长.
-            aruco_type 表示Aruco的类型 4X4表示aruco中的白色格子是4x4的 _50表示aruco字典中有多少种aruco.
+            short, long: number of squares on the short and long edges.
+            squareLength, aruco_len: chessboard square size and ArUco marker size.
+            aruco_type: ArUco dictionary type; 4X4 means 4x4 white cells, _50 is dictionary size.
         '''
-        # 定义现有的Aruco类型
+        # Define available ArUco dictionary types
         self.ARUCO_DICT = {
             "4X4_50": cv2.aruco.DICT_4X4_50,
             "4X4_100": cv2.aruco.DICT_4X4_100,
             "5X5_100": cv2.aruco.DICT_5X5_100,
             "5X5_250": cv2.aruco.DICT_5X5_250,
         }
-        # 创建ChArUco标定板
+        # Create ChArUco calibration board
         dictionary = cv2.aruco.getPredefinedDictionary(dict=self.ARUCO_DICT[aruco_type])
         board = cv2.aruco.CharucoBoard_create(
             squaresY=long,
@@ -178,11 +178,11 @@ class CharucoBoard:
         self.board = board
     
     def detect(self, img_color, annots):
-        # 查找标志块的左上角点
+        # Find top-left corner of marker blocks
         corners, ids, _ = cv2.aruco.detectMarkers(
             image=img_color, dictionary=self.dictionary, parameters=None
         )
-        # 棋盘格黑白块内角点
+        # Inner corners of chessboard squares
         if ids is not None:
             retval, charucoCorners, charucoIds = cv2.aruco.interpolateCornersCharuco(
                 markerCorners=corners, markerIds=ids, image=img_color, board=self.board
@@ -190,7 +190,7 @@ class CharucoBoard:
         else:
             retval = False
         if retval:
-            # 绘制棋盘格黑白块内角点
+            # Draw inner corners of chessboard squares
             cv2.aruco.drawDetectedCornersCharuco(
                 img_color, charucoCorners, charucoIds, [0, 0, 255]
             )

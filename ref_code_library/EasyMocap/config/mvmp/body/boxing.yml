@@ -22,9 +22,9 @@ exp_opts:
             min_view: 3 # at least 3 views to triangulate
             min_view_body: 4 # at least 5 views to triangulate
             dist_max: 25 # pixel
-            dist_track: 50 # 100mm；
+            dist_track: 50 # 50 mm
         cfg_track:
-          final_ranges: [[-3, -3, 0.], [3, 3, 3.]] # 最终的输出的range，仅用于输出的时候的筛选
+          final_ranges: [[-3, -3, 0.], [3, 3, 3.]] # Output bounding range; used only when filtering final output
   at_final:
     collect:
       args:

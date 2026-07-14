@@ -23,7 +23,7 @@ class SMPLControl(BaseWindow):
         mesh = o3d.geometry.TriangleMesh()
         mesh.vertices = Vector3dVector(vertices[0])
         mesh.triangles = Vector3iVector(self.body_model.faces)
-        # 使用blendweight计算颜色
+        # Color vertices from blend weights
         if True:
             weights = self.body_model.weights.cpu().numpy()
             nJoints = weights.shape[-1]            

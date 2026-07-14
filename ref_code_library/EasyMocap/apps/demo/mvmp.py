@@ -29,7 +29,7 @@ def mvposev1(dataset, args, cfg):
             images, annots = dataset[nf]
         if args.vis_det:
             dataset.vis_detections(images, annots, nf, sub_vis=args.sub_vis)
-        # 计算不同视角的检测结果的affinity
+        # Compute affinity across views for detections
         with Timer('compute affinity', not args.time):
             affinity, dimGroups = affinity_model(annots, images=images)
         with Timer('associate', not args.time):

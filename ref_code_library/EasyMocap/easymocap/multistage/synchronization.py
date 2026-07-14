@@ -45,7 +45,7 @@ class Interpolate:
         for key in body_params.keys():
             if key in ['sync_offset', 'shapes']:
                 continue
-            # TODO: Rh有正周期旋转的时候会有问题
+            # TODO: Rh has issues with positive periodic rotation
             val = body_params[key]
             if key == 'Rh':
                 pass

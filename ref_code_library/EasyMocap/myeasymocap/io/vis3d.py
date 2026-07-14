@@ -19,7 +19,7 @@ class Render(VisBase):
         faces = body_model.faces
         for nf, img in enumerate(tqdm(imgnames, desc=self.name)):
             basename = os.path.basename(img)
-            # 重新读入图片
+            # reload image
             assert os.path.exists(img), img
             vis = cv2.imread(img)
             vis = cv2.resize(vis, None, fx=self.scale3d, fy=self.scale3d)
@@ -85,9 +85,9 @@ class Render_multiview(VisBase):
             if self.render_mode == 'ground':
                 from easymocap.visualize.geometry import create_ground
                 ground = create_ground(
-                    center=[0, 0, -0.05], xdir=[1, 0, 0], ydir=[0, 1, 0], # 位置
-                    step=1, xrange=10, yrange=10, # 尺寸
-                    white=[1., 1., 1.], black=[0.5,0.5,0.5], # 颜色
+                    center=[0, 0, -0.05], xdir=[1, 0, 0], ydir=[0, 1, 0], # position
+                    step=1, xrange=10, yrange=10, # size
+                    white=[1., 1., 1.], black=[0.5,0.5,0.5], # colors
                     two_sides=True
                 )
                 meshes[1001] = ground
@@ -159,7 +159,7 @@ class Render_nocam:
                     basename = '{:06}.jpg'.format(nf)
                 else:
                     basename = os.path.basename(img[nv])
-                    # 重新读入图片
+                    # reload image
                     assert os.path.exists(img[nv]), img[nv]
                     vis = cv2.imread(img[nv])
                     
@@ -209,7 +209,7 @@ class Render_smplh2(Render_smplh):
 
 def projectPoints(X, K, R, t, Kd):    
     x = R @ X + t
-    x[0:2,:] = x[0:2,:]/x[2,:]#到归一化平面
+    x[0:2,:] = x[0:2,:]/x[2,:]# project to normalized plane
     r = x[0,:]*x[0,:] + x[1,:]*x[1,:]
 
     x[0,:] = x[0,:]*(1 + Kd[0]*r + Kd[1]*r*r + Kd[4]*r*r*r) + 2*Kd[2]*x[0,:]*x[1,:] + Kd[3]*(r + 2*x[0,:]*x[0,:])
@@ -220,13 +220,13 @@ def projectPoints(X, K, R, t, Kd):
 class Render_multiview_handbyk3d(Render_multiview):
     def __call__(self, hand_model_l, params_l, hand_model_r, params_r, cameras, imgnames, keypoints3d):
         # breakpoint()
-        joint_regressor_r = np.load('models/handmesh/data/joint_regressor_r.npy') #右手
-        joint_regressor_l = np.load('models/handmesh/data/joint_regressor_l.npy') #右手
+        joint_regressor_r = np.load('models/handmesh/data/joint_regressor_r.npy') # right hand
+        joint_regressor_l = np.load('models/handmesh/data/joint_regressor_l.npy') # right hand
         facesl = hand_model_l.faces
         facesr = hand_model_r.faces
 
         # for nf, img in enumerate(tqdm(imgnames, desc=self.name)):
-        #不显示0号人物的结果
+        # do not show results for person 0
         keypoints3d[0]=0
 
         img = imgnames
@@ -239,8 +239,8 @@ class Render_multiview_handbyk3d(Render_multiview):
 
         joint_l = np.repeat(joint_regressor_l[None, :, :],vertices_l.shape[0],0) @ vertices_l
         joint_r = np.repeat(joint_regressor_r[None, :, :],vertices_r.shape[0],0) @ vertices_r
-        params_l['Th']+=k3d[:,7,:3] - joint_l[:,0,:] #左手7右手4 #[nf]
-        params_r['Th']+=k3d[:,4,:3] - joint_r[:,0,:] #左手7右手4 #[nf]
+        params_l['Th']+=k3d[:,7,:3] - joint_l[:,0,:] # left hand joint 7, right hand joint 4 #[nf]
+        params_r['Th']+=k3d[:,4,:3] - joint_r[:,0,:] # left hand joint 7, right hand joint 4 #[nf]
         vertices_l = hand_model_l(**params_l, return_verts=True, return_tensor=False) #[nf]
         vertices_r = hand_model_r(**params_r, return_verts=True, return_tensor=False) #[nf]
 
@@ -268,7 +268,7 @@ class Render_multiview_handbyk3d(Render_multiview):
         
         for nv in self.view_list:
             basename = os.path.basename(img[nv])
-            # 重新读入图片
+            # reload image
             assert os.path.exists(img[nv]), img[nv]
             vis = cv2.imread(img[nv])
             vis = cv2.resize(vis, None, fx=self.scale, fy=self.scale)
@@ -318,7 +318,7 @@ class Render_selectview:
 
         img = imgnames
         k3d = keypoints3d
-        # joint_regressor_r = np.load('models/handmesh/data/joint_regressor_r.npy') #右手
+        # joint_regressor_r = np.load('models/handmesh/data/joint_regressor_r.npy') # right hand
         # joint_regressor_l = np.load('models/handmesh/data/joint_regressor_l.npy') 
         joint_regressor_l = joint_regressor
         facesl = hand_model_l.faces
@@ -328,7 +328,7 @@ class Render_selectview:
         for pid in range(len(match3d_l)):
             dt = match3d_l[pid]
             if(isinstance(dt,int)):
-                # TODO:处理-1的情况，也就是没有找到合适的匹配到的手
+                # TODO: handle -1 when no matched hand is found
                 hand_list.append(np.zeros((1,48)))
                 break
             # Merge_list=[]
@@ -363,7 +363,7 @@ class Render_selectview:
                 faces = facesl
 
                 basename = os.path.basename(img[nv])
-                # 重新读入图片
+                # reload image
                 assert os.path.exists(img[nv]), img[nv]
                 vis = cv2.imread(img[nv])
 
@@ -407,7 +407,7 @@ class Render_selectview_lr:
         self.model_l.name+='_l'
         self.model_r.name+='_r'
     def __call__(self, hand_model_l, posel, poser, match3d_l, match3d_r, hand_model_r, cameras, imgnames, keypoints3d,bbox_handl,bbox_handr):
-        joint_regressor_r = np.load('models/handmesh/data/joint_regressor_r.npy') #右手
+        joint_regressor_r = np.load('models/handmesh/data/joint_regressor_r.npy') # right hand
         joint_regressor_l = np.load('models/handmesh/data/joint_regressor_l.npy') 
 
         self.model_l(hand_model_l, posel, match3d_l, cameras, imgnames, keypoints3d,bbox_handl, joint_regressor_l, 7)

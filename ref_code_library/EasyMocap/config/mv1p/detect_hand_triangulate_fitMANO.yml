@@ -2,10 +2,10 @@ smooth: &smooth_keypoints
   weight: 1.
   module: myeasymocap.operations.loss.Smooth
   key_from_output: [keypoints, poses]
-  key_from_infos: [] # TODO: 根据2D的置信度来计算smooth权重
+  key_from_infos: [] # TODO: compute smooth weights from 2D confidence
   args:
     keys: [poses, keypoints]
-    smooth_type: [Linear, Linear] # 这个depth似乎需要相机参数进行转换
+    smooth_type: [Linear, Linear] # depth smoothing may need camera parameters for conversion
     norm: [l2, l2]
     order: [2, 2]
     weights: [10., 1000.]
@@ -43,18 +43,18 @@ args:
       module: myeasymocap.operations.triangulate.SimpleTriangulate
       key_from_data: [cameras]
       key_from_previous: [keypoints]
-      key_keep: [cameras] # 用于最后的一起优化
+      key_keep: [cameras] # Kept for final joint optimization
       args:
         mode: iterative # [naive, iterative]
     visualize:
       module: myeasymocap.io.vis.Vis3D
       key_from_data: [images, cameras]
-      key_from_previous: [keypoints3d] # 用于最后的一起优化
+      key_from_previous: [keypoints3d] # Kept for final joint optimization
       args:
         scale: 0.5
         mode: center
   at_final:
-    load_hand_model: # 载入身体模型
+    load_hand_model: # Load hand model
       module: myeasymocap.io.model.MANOLoader
       args:
         cfg_path: config/model/manol.yml

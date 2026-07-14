@@ -317,7 +317,7 @@ class JointIkController:
         """Set rail top-level mode + (optionally) locked substyle.
 
         - ``COUPLED``: rail is a normal QP joint.  ``locked_style`` is ignored.
-        - ``LOCKED``:  set ``locked_style`` to HOLD (挡位), RAIL_ONLY (plan drives
+        - ``LOCKED``:  set ``locked_style`` to HOLD (hold position), RAIL_ONLY (plan drives
           rail, arm frozen) or TCP_FIXED (plan drives rail, arm compensates TCP).
         """
         if isinstance(mode, str):

@@ -495,7 +495,7 @@ class ComposeVit(nn.Module):
         back_out = self.backbone(x, indices)
         out = self.keypoint_head(back_out)
         if True:
-            indices += 5 # 最后一个是whole body dataset
+            indices += 5 # last index is whole body dataset
             back_133 = self.backbone(x, indices)
             out_133 = self.associate_head(back_133)
             out_foot = out_133[:, 17:23]

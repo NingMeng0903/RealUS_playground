@@ -33,7 +33,7 @@ def generate_colorbar(N = 20, cmap = 'jet', rand=True,
 
 # colors_bar_rgb = generate_colorbar(cmap='hsv')
 colors_bar_rgb = [
-    (94, 124, 226), # 青色
+    (94, 124, 226), # cyan
     (255, 200, 87), # yellow
     (74,  189,  172), # green
     (8, 76, 97), # blue
@@ -106,7 +106,7 @@ def plot_cross(img, x, y, col, width=-1, lw=-1):
     cv2.line(img, (int(x), int(y-width)), (int(x), int(y+width)), col, lw)
     
 def plot_bbox(img, bbox, pid, scale=1, vis_id=True):
-    # 画bbox: (l, t, r, b)
+    # Draw bbox: (l, t, r, b)
     x1, y1, x2, y2, c = bbox
     if c < 0.01:return img
     x1 = int(round(x1*scale))
@@ -227,7 +227,7 @@ def plot_keypoints_total(img, annots, scale, pid_offset=0):
     return img
 
 def plot_points2d(img, points2d, lines, lw=-1, col=(0, 255, 0), putText=True, style='+'):
-    # 将2d点画上去
+    # Draw 2D keypoints
     if points2d.shape[1] == 2:
         points2d = np.hstack([points2d, np.ones((points2d.shape[0], 1))])
     if lw == -1:

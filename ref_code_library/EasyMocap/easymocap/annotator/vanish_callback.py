@@ -69,7 +69,7 @@ def get_record_vanish_lines(index):
         start, end = param['start'], param['end']
         if start is not None and end is not None:
             annots['vanish_line'][index].append([[start[0], start[1], CONF_VANISHING_ANNOT], [end[0], end[1], CONF_VANISHING_ANNOT]])
-            # 更新vanish point
+            # Update vanishing point
             param['start'] = None
             param['end'] = None
         if len(annots['vanish_line'][index]) > 1:

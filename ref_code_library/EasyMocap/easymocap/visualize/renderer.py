@@ -4,7 +4,7 @@ import cv2
 import pyrender
 import trimesh
 import copy
-# 这个顺序是BGR的。虽然render的使用的是RGB的，但是由于和图像拼接了，所以又变成BGR的了
+# BGR order: render uses RGB but image concatenation makes it BGR again
 colors = [
     # (0.5, 0.2, 0.2, 1.),  # Defalut BGR
     (.5, .5, .7, 1.),  # Pink BGR
@@ -79,7 +79,7 @@ if render_flags['rgba']:
 
 class Renderer(object):
     def __init__(self, focal_length=1000, height=512, width=512, faces=None,
-        bg_color=[1.0, 1.0, 1.0, 0.0], down_scale=1,   # render 配置
+        bg_color=[1.0, 1.0, 1.0, 0.0], down_scale=1,   # render config
         extra_mesh=[]
     ): 
         self.renderer = pyrender.OffscreenRenderer(height, width)
@@ -153,7 +153,7 @@ class Renderer(object):
                 faces = data['faces']
                 vert = vert @ R.T + T.T
                 if 'colors' not in data.keys():
-                    # 如果使用了vid这个键，那么可视化的颜色使用vid的颜色
+                    # If 'vid' key is set, use vid for visualization color
                     col = get_colors(data.get('vid', trackId))
                     mesh = trimesh.Trimesh(vert, faces, process=False)
                     mesh.apply_transform(rot)
@@ -292,7 +292,7 @@ class Renderer(object):
             output_depths.append(rend_depth)
             color = color.astype(np.uint8)
             valid_mask = (rend_depth > 0)[:, :, None]
-            if color.shape[2] == 3: # 在服务器上透明通道失败
+            if color.shape[2] == 3: # Alpha channel fails on server
                 color = np.dstack((color, (valid_mask*255).astype(np.uint8)))
             output_colors.append(color)
             output_img = (color[:, :, :3] * valid_mask +

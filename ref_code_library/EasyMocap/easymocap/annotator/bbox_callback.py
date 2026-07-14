@@ -23,7 +23,7 @@ def callback_select_bbox_corner(start, end, annots, select, bbox_name, **kwargs)
         return 0
     if start[0] == end[0] and start[1] == end[1]:
         return 0
-    # 判断选择了哪个角点
+    # Determine which corner point was selected
     annots = annots['annots']
     if len(annots) == 0:
         return 0
@@ -109,17 +109,17 @@ def get_auto_track(mode='kpts'):
             diff = np.linalg.norm(keypoints_now[:, None, :, :2] - keypoints_pre[None, :, :, :2], axis=-1)
             dist = np.sum(diff * conf, axis=-1)/np.sum(conf, axis=-1)
         elif mode == bbox_name:
-            # 计算IoU
+            # Compute IoU
             bbox_pre = np.array([d[bbox_name] for d in previous['annots']])
             bbox_now = np.array([d[bbox_name] for d in annots])
             bbox_pre = bbox_pre[None]
             bbox_now = bbox_now[:, None]
             areas_pre = (bbox_pre[..., 2] - bbox_pre[..., 0]) * (bbox_pre[..., 3] - bbox_pre[..., 1])
             areas_now = (bbox_now[..., 2] - bbox_now[..., 0]) * (bbox_now[..., 3] - bbox_now[..., 1])
-            # 左边界的大值
+            # Max of left boundaries
             xx1 = np.maximum(bbox_pre[..., 0], bbox_now[..., 0])
             yy1 = np.maximum(bbox_pre[..., 1], bbox_now[..., 1])
-            # 右边界的小值
+            # Min of right boundaries
             xx2 = np.minimum(bbox_pre[..., 2], bbox_now[..., 2])
             yy2 = np.minimum(bbox_pre[..., 3], bbox_now[..., 3])
             
@@ -264,7 +264,7 @@ def callback_select_image_bbox(click, start, end, select, ranges, annots, bbox_n
     res = (click[:, 0]>ranges[:, 0])&(click[:, 0]<ranges[:, 2])&(click[:, 1]>ranges[:, 1])&(click[:, 1]<ranges[:, 3])
     if res.any():
         select['camera'] = int(np.where(res)[0])
-    # 判断是否在人体bbox里面
+    # Check whether click is inside a person bbox
     nv = select['camera']
     if nv == -1:
         return 0
@@ -280,7 +280,7 @@ def callback_move_bbox(start, end, click, select, annots, ranges, bbox_name='bbo
     start = (start[0]-ranges[nv][0], start[1]-ranges[nv][1])
     end = (end[0]-ranges[nv][0], end[1]-ranges[nv][1])
     annots = annots[nv]['annots']
-    # 判断start是否在bbox的角点附近
+    # Check whether start is near a bbox corner
     i = select[bbox_name]
     if select['corner'] == -1:
         l, t, r, b = annots[i][bbox_name][:4]

@@ -33,7 +33,7 @@ args:
     visualize:
       module: myeasymocap.io.vis.Vis3D
       key_from_data: [images, cameras]
-      key_from_previous: [keypoints3d] # 用于最后的一起优化
+      key_from_previous: [keypoints3d] # Kept for final joint optimization
       args:
         scale: 0.5
         mode: center

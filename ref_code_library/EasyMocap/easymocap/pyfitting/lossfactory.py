@@ -46,7 +46,7 @@ class LossKeypoints3D:
         elif self.norm == 'l1':
             loss_3d = funcl1(diff_square)
         elif self.norm == 'gm':
-            # 阈值设为0.2^2米
+            # Threshold set to 0.2^2 meters
             loss_3d = torch.sum(gmof(diff_square**2, 0.04))
         else:
             raise NotImplementedError
@@ -187,7 +187,7 @@ class LossSmoothPoses:
         loss = 0
         for nv in range(self.nViews):
             poses_ = poses[nv*self.nFrames:(nv+1)*self.nFrames, ]
-            # 计算poses插值
+            # Interpolate poses
             poses_interp = poses_.clone().detach()
             poses_interp[1:-1] = (poses_interp[1:-1] + poses_interp[:-2] + poses_interp[2:])/3
             loss += funcl2(poses_[1:-1] - poses_interp[1:-1])
@@ -257,12 +257,12 @@ class LossRepro:
     def __init__(self, bboxes, keypoints2d, cfg) -> None:
         device = cfg.device
         bbox_sizes = np.maximum(bboxes[..., 2] - bboxes[..., 0], bboxes[..., 3] - bboxes[..., 1])
-        # 这里的valid不是一维的，因为不清楚总共有多少维，所以不能遍历去做
+        # valid is not 1D; total dims unknown, so cannot iterate
         bbox_conf = bboxes[..., 4]
         bbox_mean_axis = -1
         bbox_sizes = (bbox_sizes * bbox_conf).sum(axis=bbox_mean_axis)/(1e-3 + bbox_conf.sum(axis=bbox_mean_axis))
         bbox_sizes = bbox_sizes[..., None, None, None]
-        # 抑制掉完全不可见的视角，将其置信度设成0
+        # Suppress fully invisible views by zeroing confidence
         bbox_sizes[bbox_sizes < 10] = 1e6
         inv_bbox_sizes = torch.Tensor(1./bbox_sizes).to(device)
         keypoints2d = torch.Tensor(keypoints2d).to(device)

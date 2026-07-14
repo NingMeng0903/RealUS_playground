@@ -114,7 +114,7 @@ class LossAcc(nn.Module):
         super().__init__()
     
     def forward(self, inp, out):
-        # TODO:暂时只考虑一个人的情况
+        # TODO: single-person case only for now
         diff = inp['human_0_acc'] - out['fore_acc_map']
         loss = torch.mean(diff**2)
         return loss
@@ -164,7 +164,7 @@ class LossNormal(nn.Module):
         return pts
 
     def forward(self, model, batch, output):
-        # TODO:暂时只考虑一个人的情况
+        # TODO: single-person case only for now
         key = 'human_0'
         model = model.model('human_0')
         # (1, 2, 3)
@@ -173,7 +173,7 @@ class LossNormal(nn.Module):
             pts = self.get_sampling_points(bounds)
         else:
             pts = batch[key+'_pts'].reshape(1, -1, 3)
-            # 采样一些点
+            # Sample some points
             N_sample = 1024*32
             idx = torch.randint(0, pts.shape[1], (N_sample,))
             pts = pts[:, idx]
@@ -207,7 +207,7 @@ class SmoothT(nn.Module):
         nframe = batch['meta']['nframe'].item()
         loss0, loss1 = 0, 0
         cnt = 0
-        # 直接优化所有帧的话，会出现全都坍缩到一个点上去
+        # Optimizing all frames at once causes collapse to a single point
         if nframe > 0:
             cnt += 1
             loss0 = torch.mean((value[nframe] - value[nframe-1].detach())**2)

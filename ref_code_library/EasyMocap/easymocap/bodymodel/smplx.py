@@ -54,7 +54,7 @@ class MANOLR(Model):
         super().__init__()
         self.name = 'manolr'
         keys = list(model_path.keys())
-        # stack 方式：(nframes, nhand x ndim)
+        # stack layout: (nframes, nhand x ndim)
         self.keys = keys
         modules_hand = {}
         faces = []

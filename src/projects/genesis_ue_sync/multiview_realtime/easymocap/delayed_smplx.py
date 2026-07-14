@@ -20,6 +20,23 @@ logger = logging.getLogger(__name__)
 
 _FRAME_NAME = "000000"
 _BODY25_ROOT_CORE_JOINTS = (0, 1, 2, 5, 8, 9, 10, 11, 12, 13, 14)
+_BODY25_LONG_BONES = {
+    "right_femur": (9, 10),
+    "right_tibia": (10, 11),
+    "left_femur": (12, 13),
+    "left_tibia": (13, 14),
+}
+
+# These are delayed-backend controls rather than EasyMocap's upstream weights.
+# Keeping them in easymocap_fit.opts preserves the existing public config shape,
+# while the resolved values are written to fit diagnostics for every capture.
+_DELAYED_FIT_DEFAULTS = {
+    "body25_robust_sigma_m": 0.10,
+    "shape_retry_threshold_m": 0.02,
+    "shape_retry_max_passes": 1.0,
+    "final_outer_max_iter": 100.0,
+    "final_lbfgs_max_iter": 20.0,
+}
 
 
 def easymocap_repo_root() -> Path:
@@ -202,6 +219,7 @@ def _triangulate_part(
     P_all: np.ndarray,
     field: str,
     tri_cfg: Any,
+    observation_meta_by_cam: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     from projects.genesis_ue_sync.multiview_realtime.triangulation.dlt import triangulate_multiview
 
@@ -209,7 +227,38 @@ def _triangulate_part(
         [np.asarray(annots_by_cam[cid][field], dtype=np.float64).reshape(-1, 3) for cid in camera_ids],
         axis=0,
     )
-    k3d, diag = triangulate_multiview(stack, P_all, tri_cfg)
+    observation_meta: dict[str, np.ndarray] | None = None
+    if observation_meta_by_cam:
+        per_camera: list[dict[str, Any]] = []
+        for cid in camera_ids:
+            camera_meta = observation_meta_by_cam.get(cid) or {}
+            field_meta = camera_meta.get(field) if isinstance(camera_meta, dict) else None
+            if not isinstance(field_meta, dict):
+                per_camera = []
+                break
+            per_camera.append(field_meta)
+        if per_camera:
+            observation_meta = {}
+            for key in (
+                "candidate_xy",
+                "candidate_probabilities",
+                "variance_px2",
+                "std_xy_px",
+            ):
+                values = [meta.get(key) for meta in per_camera]
+                if all(value is not None for value in values):
+                    try:
+                        observation_meta[key] = np.stack(values, axis=0)
+                    except ValueError:
+                        logger.warning("Ignoring incompatible SimCC %s metadata for %s", key, field)
+            if not observation_meta:
+                observation_meta = None
+    k3d, diag = triangulate_multiview(
+        stack,
+        P_all,
+        tri_cfg,
+        observation_meta=observation_meta,
+    )
     return np.asarray(k3d, dtype=np.float32), diag
 
 
@@ -221,15 +270,22 @@ def triangulate_bodyhand_keypoints3d(
     tri_cfg: Any | None = None,
     include_hands: bool = True,
     diagnostics: dict[str, Any] | None = None,
+    observation_meta_by_cam: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, np.ndarray]:
     from projects.genesis_ue_sync.multiview_realtime.triangulation.dlt import TriangulationConfig
 
     cfg = tri_cfg or TriangulationConfig()
     empty_hand = np.zeros((21, 4), dtype=np.float32)
-    body, body_diag = _triangulate_part(annots_by_cam, camera_ids, P_all, "keypoints", cfg)
+    body, body_diag = _triangulate_part(
+        annots_by_cam, camera_ids, P_all, "keypoints", cfg, observation_meta_by_cam
+    )
     if include_hands:
-        handl, handl_diag = _triangulate_part(annots_by_cam, camera_ids, P_all, "handl2d", cfg)
-        handr, handr_diag = _triangulate_part(annots_by_cam, camera_ids, P_all, "handr2d", cfg)
+        handl, handl_diag = _triangulate_part(
+            annots_by_cam, camera_ids, P_all, "handl2d", cfg, observation_meta_by_cam
+        )
+        handr, handr_diag = _triangulate_part(
+            annots_by_cam, camera_ids, P_all, "handr2d", cfg, observation_meta_by_cam
+        )
     else:
         handl, handr = empty_hand.copy(), empty_hand.copy()
         handl_diag = handr_diag = {"disabled": True}
@@ -238,25 +294,41 @@ def triangulate_bodyhand_keypoints3d(
     return {"keypoints3d": body, "handl3d": handl, "handr3d": handr}
 
 
-def mask_body25_2d_to_triangulation_inliers(
+def mask_keypoints2d_to_triangulation_inliers(
     annots_by_cam: dict[str, dict[str, np.ndarray]],
     camera_ids: list[str],
-    body_diag: dict[str, Any],
+    part_diag: dict[str, Any],
+    *,
+    field: str,
 ) -> dict[str, dict[str, np.ndarray]]:
-    """Keep original DWPose 2D values only where robust DLT accepted them."""
+    """Keep a DWPose body/hand 2D point only where robust DLT accepted it."""
     out = _sanitize_annots_by_cam(annots_by_cam)
-    for detail in list(body_diag.get("joint_details") or []):
+    for detail in list(part_diag.get("joint_details") or []):
         joint = int(detail.get("joint_index", -1))
         used = {int(v) for v in detail.get("used_views") or []}
         if joint < 0:
             continue
         for view_index, cid in enumerate(camera_ids):
-            points = out[cid].get("keypoints")
+            points = out[cid].get(field)
             if points is None or joint >= len(points) or view_index in used:
                 continue
             points[joint, :2] = 0.0
             points[joint, 2] = 0.0
     return out
+
+
+def mask_body25_2d_to_triangulation_inliers(
+    annots_by_cam: dict[str, dict[str, np.ndarray]],
+    camera_ids: list[str],
+    body_diag: dict[str, Any],
+) -> dict[str, dict[str, np.ndarray]]:
+    """Backward-compatible Body25 wrapper around the generic inlier mask."""
+    return mask_keypoints2d_to_triangulation_inliers(
+        annots_by_cam,
+        camera_ids,
+        body_diag,
+        field="keypoints",
+    )
 
 
 def easymocap_fit_runtime_from_pose_backend(
@@ -596,6 +668,199 @@ def _initialize_roots_from_body25(
     }
 
 
+class _LinearConfidenceRobustBody25Loss:
+    """Robust body/hand/face 3D loss with confidence applied exactly once.
+
+    EasyMocap's stock loss multiplies xyz residuals by confidence before an
+    L2 reduction, which makes the effective weight ``confidence ** 2``.  The
+    fused keypoints already encode low-view/temporal quality in confidence, so
+    the delayed fitter must preserve that linear meaning.
+    """
+
+    def __init__(self, keypoints3d: np.ndarray, cfg: Any, *, sigma_m: float = 0.10) -> None:
+        import torch
+
+        target = torch.as_tensor(keypoints3d, dtype=torch.float32, device=cfg.device)
+        self.target = target[..., :3]
+        self.confidence = torch.clamp(target[..., 3], min=0.0, max=1.0)
+        self.sigma_squared = float(sigma_m) ** 2
+        self.n_frames = max(int(target.shape[0]), 1)
+
+    def _range(self, kpts_est: Any, start: int, stop: int) -> Any:
+        import torch
+
+        upper = min(int(kpts_est.shape[1]), int(self.target.shape[1]), int(stop))
+        lower = min(max(int(start), 0), upper)
+        if upper <= lower:
+            return torch.sum(kpts_est[..., :1] * 0.0)
+        residual_sq = torch.sum(
+            (kpts_est[:, lower:upper, :3] - self.target[:, lower:upper, :3]) ** 2,
+            dim=-1,
+        )
+        # Geman-McClure: quadratic near zero, bounded for gross fused outliers.
+        robust = self.sigma_squared * residual_sq / (self.sigma_squared + residual_sq)
+        return torch.sum(self.confidence[:, lower:upper] * robust) / self.n_frames
+
+    def body(self, kpts_est: Any, **_kwargs: Any) -> Any:
+        return self._range(kpts_est, 0, 25)
+
+    def hand(self, kpts_est: Any, **_kwargs: Any) -> Any:
+        return self._range(kpts_est, 25, 67)
+
+    def face(self, kpts_est: Any, **_kwargs: Any) -> Any:
+        return self._range(kpts_est, 67, int(self.target.shape[1]))
+
+
+def body25_long_bone_diagnostics(
+    predicted_joints: np.ndarray,
+    keypoints3d: np.ndarray,
+    *,
+    threshold_m: float = 0.02,
+) -> dict[str, Any]:
+    """Compare SMPL-X and fused femur/tibia lengths over a burst."""
+    predicted = np.asarray(predicted_joints, dtype=np.float32)
+    target = np.asarray(keypoints3d, dtype=np.float32)
+    if predicted.ndim != 3 or target.ndim != 3 or target.shape[-1] < 4:
+        raise ValueError("expected predicted (F,J,3) and target (F,J,4+)")
+    n_frames = int(target.shape[0])
+    if predicted.shape[0] == 1 and n_frames > 1:
+        predicted = np.repeat(predicted, n_frames, axis=0)
+    n_frames = min(n_frames, int(predicted.shape[0]))
+    min_systematic_frames = min(n_frames, max(3, int(np.ceil(0.4 * n_frames))))
+    bones: dict[str, Any] = {}
+    systematic: list[str] = []
+    absolute_medians: list[float] = []
+    for name, (src, dst) in _BODY25_LONG_BONES.items():
+        if max(src, dst) >= min(int(predicted.shape[1]), int(target.shape[1])):
+            bones[name] = {"valid_frames": 0, "reason": "joint_unavailable"}
+            continue
+        valid = (
+            (target[:n_frames, src, 3] > 0.0)
+            & (target[:n_frames, dst, 3] > 0.0)
+            & np.all(np.isfinite(target[:n_frames, (src, dst), :3]), axis=(1, 2))
+            & np.all(np.isfinite(predicted[:n_frames, (src, dst), :3]), axis=(1, 2))
+        )
+        if not np.any(valid):
+            bones[name] = {"valid_frames": 0, "reason": "no_confident_observations"}
+            continue
+        observed = np.linalg.norm(
+            target[:n_frames, dst, :3] - target[:n_frames, src, :3], axis=1
+        )[valid]
+        estimated = np.linalg.norm(
+            predicted[:n_frames, dst, :3] - predicted[:n_frames, src, :3], axis=1
+        )[valid]
+        signed = estimated - observed
+        median_signed = float(np.median(signed))
+        median_abs = float(np.median(np.abs(signed)))
+        absolute_medians.append(median_abs)
+        if int(np.sum(valid)) >= min_systematic_frames and abs(median_signed) > float(threshold_m):
+            systematic.append(name)
+        bones[name] = {
+            "valid_frames": int(np.sum(valid)),
+            "observed_median_m": float(np.median(observed)),
+            "smplx_median_m": float(np.median(estimated)),
+            "median_signed_error_m": median_signed,
+            "median_absolute_error_m": median_abs,
+        }
+    return {
+        "threshold_m": float(threshold_m),
+        "min_systematic_frames": int(min_systematic_frames),
+        "bones": bones,
+        "systematic_bones": systematic,
+        "requires_shape_retry": bool(systematic),
+        "max_median_absolute_error_m": max(absolute_medians, default=None),
+    }
+
+
+def _shape_only_joints(body_model: Any, shapes: np.ndarray, n_frames: int) -> np.ndarray:
+    params = body_model.init_params(nFrames=max(int(n_frames), 1))
+    params["shapes"] = np.asarray(shapes, dtype=np.float32).copy()
+    joints = body_model(
+        **params,
+        only_shape=True,
+        return_verts=False,
+        return_tensor=False,
+    )
+    if isinstance(joints, (list, tuple)):
+        joints = joints[0]
+    return np.asarray(joints, dtype=np.float32).reshape(-1, np.asarray(joints).shape[-2], 3)
+
+
+def fusion_to_smplx_joint_diagnostics(
+    predicted_joints: np.ndarray,
+    keypoints3d: np.ndarray,
+    keypoints2d: np.ndarray | None = None,
+    Pall: np.ndarray | None = None,
+) -> dict[str, Any]:
+    """Aggregate per-joint fusion-to-model 3D and raw-inlier 2D errors."""
+    predicted = np.asarray(predicted_joints, dtype=np.float32)
+    target = np.asarray(keypoints3d, dtype=np.float32)
+    n_frames = min(int(predicted.shape[0]), int(target.shape[0]))
+    n_joints = min(int(predicted.shape[1]), int(target.shape[1]))
+    repro: np.ndarray | None = None
+    repro_depth_valid: np.ndarray | None = None
+    obs2d: np.ndarray | None = None
+    if keypoints2d is not None and Pall is not None:
+        obs2d = np.asarray(keypoints2d, dtype=np.float32)[:n_frames, :, :n_joints]
+        projections = np.asarray(Pall, dtype=np.float64)
+        homog = np.concatenate(
+            [predicted[:n_frames, :n_joints].astype(np.float64), np.ones((n_frames, n_joints, 1))],
+            axis=-1,
+        )
+        camera = np.einsum("vij,fkj->fvki", projections, homog)
+        repro = (camera[..., :2] / np.maximum(camera[..., 2:3], 1.0e-8)).astype(np.float32)
+        repro_depth_valid = camera[..., 2] > 1.0e-4
+    per_joint: list[dict[str, Any]] = []
+    all_3d: list[float] = []
+    all_2d: list[float] = []
+    for joint in range(n_joints):
+        valid3 = (
+            (target[:n_frames, joint, 3] > 0.0)
+            & np.all(np.isfinite(target[:n_frames, joint, :3]), axis=1)
+            & np.all(np.isfinite(predicted[:n_frames, joint, :3]), axis=1)
+        )
+        errors3 = np.linalg.norm(
+            predicted[:n_frames, joint, :3] - target[:n_frames, joint, :3], axis=1
+        )[valid3]
+        entry: dict[str, Any] = {
+            "joint_index": joint,
+            "part": (
+                "body25" if joint < 25 else
+                "hand_left" if joint < 46 else
+                "hand_right" if joint < 67 else
+                "face"
+            ),
+            "valid_3d_frames": int(errors3.size),
+            "mean_3d_m": float(np.mean(errors3)) if errors3.size else None,
+            "median_3d_m": float(np.median(errors3)) if errors3.size else None,
+        }
+        all_3d.extend(float(v) for v in errors3.tolist())
+        if repro is not None and repro_depth_valid is not None and obs2d is not None:
+            valid2 = (
+                (obs2d[:, :, joint, 2] > 0.0)
+                & np.all(np.isfinite(obs2d[:, :, joint, :2]), axis=-1)
+                & np.all(np.isfinite(repro[:, :, joint]), axis=-1)
+                & repro_depth_valid[:, :, joint]
+            )
+            errors2 = np.linalg.norm(repro[:, :, joint] - obs2d[:, :, joint, :2], axis=-1)[valid2]
+            entry.update(
+                {
+                    "valid_2d_observations": int(errors2.size),
+                    "mean_2d_px": float(np.mean(errors2)) if errors2.size else None,
+                    "median_2d_px": float(np.median(errors2)) if errors2.size else None,
+                }
+            )
+            all_2d.extend(float(v) for v in errors2.tolist())
+        per_joint.append(entry)
+    return {
+        "per_joint": per_joint,
+        "mean_3d_m": float(np.mean(all_3d)) if all_3d else None,
+        "median_3d_m": float(np.median(all_3d)) if all_3d else None,
+        "mean_2d_px": float(np.mean(all_2d)) if all_2d else None,
+        "median_2d_px": float(np.median(all_2d)) if all_2d else None,
+    }
+
+
 class _JointBedSdfLoss:
     """One-sided bed anti-penetration term used inside the visual optimizer."""
 
@@ -626,6 +891,93 @@ class _JointBedSdfLoss:
         return torch.sum(vertices[..., 2] * 0.0)
 
 
+def _optimize_smpl_with_limits(
+    body_model: Any,
+    params: dict[str, Any],
+    prepare_funcs: list[Any],
+    postprocess_funcs: list[Any],
+    loss_funcs: dict[str, Any],
+    weights: dict[str, float],
+    cfg: Any,
+    *,
+    outer_max_iter: int,
+    lbfgs_max_iter: int,
+    diagnostics: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Local form of EasyMocap's optimizer with explicit, reproducible caps."""
+    import torch
+
+    from easymocap.pyfitting.lbfgs import LBFGS
+    from easymocap.pyfitting.optimize import grad_require, rel_change
+    from easymocap.pyfitting.optimize_simple import get_optParams
+
+    active_losses = {
+        key: func
+        for key, func in loss_funcs.items()
+        if key in weights and float(weights[key]) > 0.0
+    }
+    opt_params = get_optParams(params, cfg, None)
+    grad_require(opt_params, True)
+    optimizer = LBFGS(
+        opt_params,
+        line_search_fn="strong_wolfe",
+        max_iter=max(1, int(lbfgs_max_iter)),
+    )
+    closure_evaluations = 0
+
+    def closure(debug: bool = False) -> Any:
+        nonlocal closure_evaluations
+        optimizer.zero_grad()
+        new_params = params.copy()
+        for func in prepare_funcs:
+            new_params = func(new_params)
+        kpts_est = body_model(return_verts=False, return_tensor=True, **new_params)
+        values = {
+            key: func(kpts_est=kpts_est, **new_params)
+            for key, func in active_losses.items()
+        }
+        if debug:
+            return values
+        loss = sum(values[key] * float(weights[key]) for key in values)
+        closure_evaluations += 1
+        loss.backward()
+        return loss
+
+    previous: float | None = None
+    stop_reason = "outer_iteration_cap"
+    completed_outer = 0
+    for outer_index in range(max(1, int(outer_max_iter))):
+        loss = optimizer.step(closure)
+        completed_outer = outer_index + 1
+        current = float(loss.detach().cpu().item())
+        if not np.isfinite(current):
+            stop_reason = "non_finite_loss"
+            break
+        if previous is not None and rel_change(previous, current) <= 1.0e-4:
+            stop_reason = "relative_loss_convergence"
+            break
+        previous = current
+    grad_require(opt_params, False)
+    final_values = closure(debug=True)
+    for func in postprocess_funcs:
+        params = func(params)
+    if diagnostics is not None:
+        diagnostics.update(
+            {
+                "outer_max_iter": max(1, int(outer_max_iter)),
+                "lbfgs_max_iter": max(1, int(lbfgs_max_iter)),
+                "completed_outer_iterations": completed_outer,
+                "closure_evaluations": closure_evaluations,
+                "stop_reason": stop_reason,
+                "final_unweighted_losses": {
+                    key: float(value.detach().cpu().item()) for key, value in final_values.items()
+                },
+                "active_weights": {key: float(weights[key]) for key in active_losses},
+            }
+        )
+    return params
+
+
 def _joint_optimize_pose3d2d(
     body_model: Any,
     params: dict[str, Any],
@@ -639,11 +991,14 @@ def _joint_optimize_pose3d2d(
     bed_top_z: float | None,
     bed_sdf_margin_m: float,
     bed_sdf_weight: float,
+    body25_robust_sigma_m: float,
+    outer_max_iter: int,
+    lbfgs_max_iter: int,
+    optimizer_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Joint final stage; unlike EasyMocap's 2D-only tail it cannot drop the 3D anchor."""
     from easymocap.pipeline.config import Config
     from easymocap.pyfitting.lossfactory import (
-        LossKeypoints3D,
         LossKeypointsMV2D,
         LossRegPoses,
         LossRegPosesZero,
@@ -651,7 +1006,6 @@ def _joint_optimize_pose3d2d(
         LossSmoothPoses,
     )
     from easymocap.pyfitting.optimize_simple import (
-        _optimizeSMPL,
         deepcopy_tensor,
         dict_of_tensor_to_numpy,
         get_interp_by_keypoints,
@@ -671,8 +1025,11 @@ def _joint_optimize_pose3d2d(
 
     kp2d_vf = np.asarray(kp2ds, dtype=np.float32).transpose(1, 0, 2, 3)
     bbox_vf = np.asarray(bboxes, dtype=np.float32).transpose(1, 0, 2)
+    robust_k3d = _LinearConfidenceRobustBody25Loss(
+        kp3ds, cfg, sigma_m=float(body25_robust_sigma_m)
+    )
     loss_funcs: dict[str, Any] = {
-        "k3d": LossKeypoints3D(kp3ds, cfg).body,
+        "k3d": robust_k3d.body,
         "k2d": LossKeypointsMV2D(kp2d_vf, bbox_vf, Pall, cfg).__call__,
         "smooth_body": LossSmoothBodyMean(cfg).body,
         "smooth_poses": LossSmoothPoses(1, n_frames, cfg).poses,
@@ -682,7 +1039,7 @@ def _joint_optimize_pose3d2d(
     if cfg.OPT_HAND:
         loss_funcs.update(
             {
-                "k3d_hand": LossKeypoints3D(kp3ds, cfg, norm="l1").hand,
+                "k3d_hand": robust_k3d.hand,
                 "reg_hand": LossRegPoses(cfg).reg_hand,
                 "smooth_hand": LossSmoothBodyMean(cfg).hand,
             }
@@ -690,7 +1047,7 @@ def _joint_optimize_pose3d2d(
     if cfg.OPT_EXPR:
         loss_funcs.update(
             {
-                "k3d_face": LossKeypoints3D(kp3ds, cfg, norm="l1").face,
+                "k3d_face": robust_k3d.face,
                 "reg_head": LossRegPoses(cfg).reg_head,
                 "reg_expr": LossRegPoses(cfg).reg_expr,
                 "smooth_head": LossSmoothPoses(1, n_frames, cfg).head,
@@ -713,14 +1070,17 @@ def _joint_optimize_pose3d2d(
         get_interp_by_keypoints(kp3ds),
     ]
     postprocess_funcs = [get_interp_by_keypoints(kp3ds), dict_of_tensor_to_numpy]
-    return _optimizeSMPL(
+    return _optimize_smpl_with_limits(
         body_model,
         params,
         prepare_funcs,
         postprocess_funcs,
         loss_funcs,
-        weight_loss=weights,
-        cfg=cfg,
+        weights,
+        cfg,
+        outer_max_iter=outer_max_iter,
+        lbfgs_max_iter=lbfgs_max_iter,
+        diagnostics=optimizer_diagnostics,
     )
 
 
@@ -748,7 +1108,18 @@ def _smpl_fit_from_keypoints(
     from easymocap.pyfitting import optimizeShape
 
     model_type = body_model.model_type
+    delayed_opts = {
+        key: float(args.opts.get(key, default))
+        for key, default in _DELAYED_FIT_DEFAULTS.items()
+    }
     beta_fixed = _resolve_fixed_betas(fixed_betas)
+    shape_diag: dict[str, Any] = {
+        "source": "fixed" if beta_fixed is not None else "burst_optimize_shape",
+        "retry_threshold_m": delayed_opts["shape_retry_threshold_m"],
+        "max_retry_passes": int(delayed_opts["shape_retry_max_passes"]),
+        "retry_attempted": False,
+        "retry_accepted": False,
+    }
     if beta_fixed is not None:
         params_shape = {"shapes": beta_fixed.reshape(1, -1).astype(np.float32)}
     else:
@@ -773,6 +1144,59 @@ def _smpl_fit_from_keypoints(
                 kintree=config["kintree"],
             )
 
+        initial_bones = body25_long_bone_diagnostics(
+            _shape_only_joints(body_model, params_shape["shapes"], kp3ds.shape[0]),
+            kp3ds,
+            threshold_m=delayed_opts["shape_retry_threshold_m"],
+        )
+        shape_diag["initial_long_bones"] = initial_bones
+        best_score = initial_bones.get("max_median_absolute_error_m")
+        max_retries = max(0, int(delayed_opts["shape_retry_max_passes"]))
+        for retry_index in range(max_retries):
+            if not bool(initial_bones.get("requires_shape_retry")):
+                break
+            shape_diag["retry_attempted"] = True
+            retry_init = body_model.init_params(nFrames=kp3ds.shape[0])
+            retry_init["shapes"] = np.asarray(params_shape["shapes"], dtype=np.float32).copy()
+            retry_shape = optimizeShape(
+                body_model,
+                retry_init,
+                kp3ds,
+                weight_loss=weight_shape,
+                kintree=(
+                    CONFIG["body15"]["kintree"][1:]
+                    if model_type in ["smpl", "smplh", "smplx"]
+                    else config["kintree"]
+                ),
+            )
+            retry_bones = body25_long_bone_diagnostics(
+                _shape_only_joints(body_model, retry_shape["shapes"], kp3ds.shape[0]),
+                kp3ds,
+                threshold_m=delayed_opts["shape_retry_threshold_m"],
+            )
+            shape_diag[f"retry_{retry_index + 1}_long_bones"] = retry_bones
+            retry_score = retry_bones.get("max_median_absolute_error_m")
+            if (
+                retry_score is not None
+                and np.isfinite(float(retry_score))
+                and (best_score is None or float(retry_score) < float(best_score))
+                and np.all(np.isfinite(np.asarray(retry_shape["shapes"], dtype=np.float32)))
+            ):
+                params_shape = retry_shape
+                initial_bones = retry_bones
+                best_score = float(retry_score)
+                shape_diag["retry_accepted"] = True
+                shape_diag["accepted_retry_index"] = retry_index + 1
+            else:
+                shape_diag["retry_rejected_reason"] = "non_finite_or_no_long_bone_improvement"
+                break
+
+    shape_diag["final_long_bones"] = body25_long_bone_diagnostics(
+        _shape_only_joints(body_model, params_shape["shapes"], kp3ds.shape[0]),
+        kp3ds,
+        threshold_m=delayed_opts["shape_retry_threshold_m"],
+    )
+
     cfg = Config(args)
     cfg.device = body_model.device
     cfg.model = model_type
@@ -792,6 +1216,7 @@ def _smpl_fit_from_keypoints(
         cfg,
     )
     params, root_diag = _initialize_roots_from_body25(body_model, params, kp3ds)
+    optimizer_diag: dict[str, Any] = {}
     params = _joint_optimize_pose3d2d(
         body_model,
         params,
@@ -804,18 +1229,37 @@ def _smpl_fit_from_keypoints(
         bed_top_z=bed_top_z,
         bed_sdf_margin_m=bed_sdf_margin_m,
         bed_sdf_weight=bed_sdf_weight,
+        body25_robust_sigma_m=delayed_opts["body25_robust_sigma_m"],
+        outer_max_iter=int(delayed_opts["final_outer_max_iter"]),
+        lbfgs_max_iter=int(delayed_opts["final_lbfgs_max_iter"]),
+        optimizer_diagnostics=optimizer_diag,
     )
-    _unused, final_alignment = estimate_body25_root_offsets(
-        _body_model_joints_sequence(body_model, params),
-        kp3ds,
-    )
+    predicted_final = _body_model_joints_sequence(body_model, params)
+    _unused, final_alignment = estimate_body25_root_offsets(predicted_final, kp3ds)
     root_diag["final"] = final_alignment
     if fit_diagnostics is not None:
+        fit_diagnostics["shape_fit"] = shape_diag
         fit_diagnostics["root_alignment"] = root_diag
+        fit_diagnostics["fusion_to_smplx"] = fusion_to_smplx_joint_diagnostics(
+            predicted_final,
+            kp3ds,
+            fit_kp2ds,
+            Pall,
+        )
         fit_diagnostics["final_optimizer"] = {
             "mode": "joint_3d_2d_bed",
             "shape_frozen": True,
             "bed_sdf_integrated": bed_top_z is not None and float(bed_sdf_weight) > 0.0,
+            "body25_3d_loss": "linear_confidence_geman_mcclure",
+            "hand_3d_loss": "linear_confidence_geman_mcclure",
+            "body25_robust_sigma_m": delayed_opts["body25_robust_sigma_m"],
+            "iteration_limits": {
+                "outer": int(delayed_opts["final_outer_max_iter"]),
+                "lbfgs": int(delayed_opts["final_lbfgs_max_iter"]),
+                "note": "fixed caps; relative-loss convergence may stop earlier",
+            },
+            "resolved_weights": {key: float(value) for key, value in weight_pose.items()},
+            "run": optimizer_diag,
         }
     return params
 
