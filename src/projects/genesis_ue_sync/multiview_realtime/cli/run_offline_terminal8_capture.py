@@ -37,13 +37,8 @@ from projects.genesis_ue_sync.multiview_realtime.ingress.motion_frame_gate impor
     motion_window_from_scene_spec,
 )
 from projects.genesis_ue_sync.multiview_realtime.ingress.synced_frame_acquire import collect_synced_burst
-from projects.genesis_ue_sync.multiview_realtime.track_stream import (
-    DEFAULT_TRACK_PUB_BIND,
-    TOPIC_MULTIVIEW_TRACK_V1,
-    track_keypoints3d_to_dict,
-    track_mesh_vertices_to_dict,
-    track_pose_to_dict,
-)
+from projects.genesis_ue_sync.multiview_realtime.publish.static_smplx_track import publish_static_smplx_track
+from projects.genesis_ue_sync.multiview_realtime.track_stream import DEFAULT_TRACK_PUB_BIND
 from projects.genesis_ue_sync.tracking.calibration import load_calibration_bundle
 from projects.genesis_ue_sync.tracking.dwpose_onnx import DwposeOnnxConfig, DwposeOnnxDetector
 
@@ -254,105 +249,6 @@ def _write_frozen_burst(moment_dir: Path, frames: list[Any], camera_ids: list[st
     (Path(moment_dir) / "burst_sync_metadata.json").write_text(
         json.dumps({"n_frames": len(frames), "frames": rows}, ensure_ascii=True, indent=2), encoding="utf-8"
     )
-
-
-def _load_keypoints3d_for_publish(moment_dir: Path) -> np.ndarray:
-    data = json.loads((Path(moment_dir) / "easymocap_output" / "keypoints3d" / "000000.json").read_text(encoding="utf-8"))
-    rows = data[0].get("keypoints3d") if isinstance(data, list) and data else None
-    if rows is None:
-        raise ValueError("Missing keypoints3d payload for Genesis publish.")
-    return np.asarray(rows, dtype=np.float32).reshape(-1, 4)
-
-
-def _publish_static_genesis_track(
-    *,
-    moment_dir: Path,
-    frame_index: int,
-    timestamp_ns: int,
-    bind: str,
-    duration_s: float,
-    rate_hz: float,
-    publish_kind: str,
-) -> dict[str, Any]:
-    try:
-        import zmq
-    except ImportError as exc:
-        raise ImportError("pyzmq required for Genesis static publish.") from exc
-
-    moment_dir = Path(moment_dir)
-    if str(publish_kind) == "smpl_pose":
-        smpl_npz = np.load(moment_dir / "smplx_result.npz")
-        poses = np.asarray(smpl_npz["poses"], dtype=np.float32).reshape(-1)
-        if poses.size != 72:
-            raise ValueError(f"smpl_pose publish requires 72D SMPL pose, got {poses.size}; use --publish-kind keypoints3d.")
-        payload = track_pose_to_dict(
-            frame_index=int(frame_index),
-            timestamp_ns=int(timestamp_ns),
-            pose_aa=poses,
-            betas=np.asarray(smpl_npz["shapes"], dtype=np.float32).reshape(-1)[:10],
-            translation_m=np.asarray(smpl_npz["Th"], dtype=np.float32).reshape(-1)[:3],
-        )
-    elif str(publish_kind) == "smplx_mesh":
-        smpl_npz = np.load(moment_dir / "smplx_result.npz")
-        vertices = np.asarray(smpl_npz["vertices"], dtype=np.float32).reshape(-1, 3)
-        if "faces" not in smpl_npz:
-            raise ValueError("smplx_result.npz missing faces; rerun fitting with the updated pipeline.")
-        faces = np.asarray(smpl_npz["faces"], dtype=np.int32).reshape(-1, 3)
-        trans = np.asarray(smpl_npz["Th"], dtype=np.float32).reshape(3)
-        if "root_align_offset" in smpl_npz:
-            trans = trans + np.asarray(smpl_npz["root_align_offset"], dtype=np.float32).reshape(3)
-        payload = track_mesh_vertices_to_dict(
-            frame_index=int(frame_index),
-            timestamp_ns=int(timestamp_ns),
-            vertices=vertices,
-            faces=faces,
-            translation_m=trans,
-            mesh_schema="smplx_vertices",
-            Rh=np.asarray(smpl_npz["Rh"], dtype=np.float32).reshape(3),
-            Th=trans,
-            poses=np.asarray(smpl_npz["poses"], dtype=np.float32).reshape(-1),
-        )
-    else:
-        kp3d = _load_keypoints3d_for_publish(moment_dir)
-        conf = kp3d[:, 3] > 0.05
-        trans = kp3d[8, :3] if kp3d.shape[0] > 8 and bool(conf[8]) else np.nanmean(kp3d[conf, :3], axis=0)
-        payload = track_keypoints3d_to_dict(
-            frame_index=int(frame_index),
-            timestamp_ns=int(timestamp_ns),
-            keypoints3d=kp3d,
-            schema="body25",
-            translation_m=trans,
-        )
-
-    ctx = zmq.Context.instance()
-    sock = ctx.socket(zmq.PUB)
-    sock.setsockopt(zmq.LINGER, 200)
-    sock.bind(str(bind))
-    topic = TOPIC_MULTIVIEW_TRACK_V1.encode("utf-8")
-    body = json.dumps(payload, ensure_ascii=True).encode("utf-8")
-    rate = max(float(rate_hz), 1.0e-6)
-    dt = 1.0 / rate
-    sent = 0
-    # Static mesh: repeat publish so terminal 7 SUB reliably receives (ZMQ slow-joiner).
-    hold_s = 2.0 if float(duration_s) <= 0.0 else float(duration_s)
-    time.sleep(0.35)
-    try:
-        deadline = time.perf_counter() + max(0.1, hold_s)
-        while time.perf_counter() < deadline:
-            sock.send_multipart([topic, body])
-            sent += 1
-            time.sleep(dt)
-    finally:
-        sock.close(linger=0)
-    return {
-        "bind": str(bind),
-        "topic": TOPIC_MULTIVIEW_TRACK_V1,
-        "payload_kind": str(payload.get("payload_kind")),
-        "sent": int(sent),
-        "duration_s": float(duration_s),
-        "hold_s": float(hold_s),
-        "rate_hz": float(rate_hz),
-    }
 
 
 def _save_beta_calibration(
@@ -628,7 +524,7 @@ def main() -> int:
             }
         if bool(args.publish_genesis) and bool(moment_summary.get("fit_ok")):
             try:
-                pub_diag = _publish_static_genesis_track(
+                pub_diag = publish_static_smplx_track(
                     moment_dir=moment_dir,
                     frame_index=int(synced.frame_index),
                     timestamp_ns=int(synced.timestamp_ns),

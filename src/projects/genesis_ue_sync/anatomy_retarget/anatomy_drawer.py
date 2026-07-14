@@ -9,6 +9,7 @@ import numpy as np
 
 from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import skin_vertices
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import AnatomyRiggedAsset, load_rigged_asset
+from projects.genesis_ue_sync.multiview_realtime.viz.debug_mesh_draw import replace_colored_debug_mesh
 from projects.genesis_ue_sync.multiview_realtime.viz.genesis_viewer_lock import try_viewer_render_lock
 from projects.genesis_ue_sync.sim_platform.simulation.runtime import GenesisPlatformRuntime
 
@@ -144,15 +145,11 @@ class AnatomyLbsDrawer:
         rgba = _rgba_float_to_uint8(self.default_color_rgba, self.opacity)
         mesh.visual.vertex_colors = np.tile(rgba, (len(mesh.vertices), 1))
 
-        with try_viewer_render_lock(self.runtime, timeout_s=0.15) as acquired:
-            if not acquired:
-                return False
-            if self._mesh_node is not None:
-                try:
-                    self.runtime.scene.clear_debug_object(self._mesh_node)
-                except Exception:
-                    pass
-                self._mesh_node = None
-            self._mesh_node = self.runtime.scene.draw_debug_mesh(mesh)
-        return True
+        self._mesh_node = replace_colored_debug_mesh(
+            self.runtime,
+            mesh,
+            self._mesh_node,
+            double_sided=True,
+        )
+        return self._mesh_node is not None
 

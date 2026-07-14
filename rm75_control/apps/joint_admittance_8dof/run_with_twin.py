@@ -84,6 +84,13 @@ def main() -> int:
     )
     ap.add_argument("--smplx-npz", type=Path, default=None, help="Optional static smplx_result.npz for anatomy/canonical")
     ap.add_argument("--no-anatomy", action="store_true")
+    ap.add_argument(
+        "--track-mesh-alpha",
+        type=int,
+        default=55,
+        metavar="0-255",
+        help="Orange SMPL-X skin opacity (default 55; anatomy draws underneath in solid pass)",
+    )
     args = ap.parse_args()
 
     if args.dry_run:
@@ -125,6 +132,7 @@ def main() -> int:
                     TwinHumanOverlayConfig,
                 )
 
+                alpha = max(0, min(255, int(args.track_mesh_alpha)))
                 overlay = TwinHumanOverlay(
                     scene,
                     TwinHumanOverlayConfig(
@@ -133,6 +141,7 @@ def main() -> int:
                         canonical_bind=str(args.canonical_bind),
                         canonical_human_source=str(args.canonical_human_source),
                         smplx_npz=args.smplx_npz,
+                        track_mesh_rgba=(250, 122, 31, alpha),
                         enable_track=bool(args.track_subscribe) or args.canonical_human_source == "fitted",
                         enable_anatomy=not args.no_anatomy,
                         enable_canonical=args.canonical_human_source in ("fitted", "robot"),

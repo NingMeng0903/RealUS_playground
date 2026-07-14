@@ -3,6 +3,8 @@
 
 Wraps Among_US Terminal-8 capture against configs/tracking/realus_dwpose_easymocap.yaml.
 Default publish kind remains smplx_mesh (stable); pose drive uses Rh/poses via pose_adapter.
+
+To republish a saved fit without recapture, use ``perception/apps/publish_saved_smplx.py``.
 """
 
 from __future__ import annotations

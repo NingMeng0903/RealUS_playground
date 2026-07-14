@@ -144,6 +144,11 @@ def track_mesh_vertices_to_dict(
     Rh: Any = None,
     Th: Any = None,
     poses: Any = None,
+    smplx_pose_aa_165: Any = None,
+    betas: Any = None,
+    gender: str | None = None,
+    shape_hash: str | None = None,
+    pose_hash: str | None = None,
 ) -> dict[str, Any]:
     """Serialize a fitted mesh directly for Genesis display (SMPL-X or any vertex mesh)."""
     import numpy as np
@@ -151,7 +156,7 @@ def track_mesh_vertices_to_dict(
     verts = np.asarray(vertices, dtype=np.float32).reshape(-1, 3)
     tri = np.asarray(faces, dtype=np.int32).reshape(-1, 3)
     out: dict[str, Any] = {
-        "schema_version": 4,
+        "schema_version": 5,
         "payload_kind": "mesh_vertices",
         "frame_index": int(frame_index),
         "timestamp_ns": int(timestamp_ns),
@@ -167,6 +172,19 @@ def track_mesh_vertices_to_dict(
         out["Th"] = [float(v) for v in np.asarray(Th, dtype=np.float32).reshape(3).tolist()]
     if poses is not None:
         out["poses"] = [float(v) for v in np.asarray(poses, dtype=np.float32).reshape(-1).tolist()]
+    if smplx_pose_aa_165 is not None:
+        pose = np.asarray(smplx_pose_aa_165, dtype=np.float32).reshape(-1)
+        if pose.size != 165:
+            raise ValueError(f"smplx_pose_aa_165 must contain 165 values, got {pose.size}")
+        out["smplx_pose_aa_165"] = [float(v) for v in pose.tolist()]
+    if betas is not None:
+        out["betas"] = [float(v) for v in np.asarray(betas, dtype=np.float32).reshape(-1)[:10].tolist()]
+    if gender is not None:
+        out["gender"] = str(gender).lower()
+    if shape_hash is not None:
+        out["shape_hash"] = str(shape_hash)
+    if pose_hash is not None:
+        out["pose_hash"] = str(pose_hash)
     return out
 
 

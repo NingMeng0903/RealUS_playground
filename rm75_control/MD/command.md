@@ -1,10 +1,191 @@
 # 常用命令
 
-仓库根目录（所有命令均在此执行）：
+仓库根目录（控制器 / 任务窗口在此执行）：
 
 ```bash
-cd /media/camp/EXT_DRIVE/rm75_control
+cd /media/camp/EXT_DRIVE/RealUS_playground/rm75_control
 source env.sh
+```
+
+**两个 Python 环境：**
+
+| 用途 | 环境 | 激活 |
+|------|------|------|
+| 窗口 A / C（控制器、任务、连真机） | `envs/rm75` | `source env.sh` |
+| 窗口 B（Genesis twin / viewer） | `envs/genesis` | `source env_viewer.sh` |
+
+全链路（相机 → SMPL-X → 解剖 → twin overlay）见上级目录 `RealUS_playground/MD/COMMAND.md`。
+
+---
+
+## 0. 控制器启动流程（三窗口 + 可选感知）
+
+日常真机控制推荐 **三个终端**，**同一台机器**。感知服务（5598 / 5601）仅在需要人体 overlay 时另开。
+
+### 0.1 前置（首次或换工具后）
+
+1. **力补偿标定**（扫描力控必做）：完成本文 §1，生成 `data/force_compensation/logs/force_id_phi.json`。
+2. **示教器 / Web UI**：当前工具坐标系设为 **Arm_Tip**（与 `configs/force_compensation/poses.yaml` 一致）。
+3. **网络**：`configs/joint_admittance_8dof.yaml` 中 `robot.ip` / `port` 与真机一致（默认 `192.168.1.18:8080`）。
+4. **首次 rm75 环境**：`pip install -r requirements.txt`（pinocchio、proxsuite 等）。
+
+### 0.2 架构
+
+| 窗口 | 进程 | 环境 | 连真机？ | 职责 |
+|------|------|------|----------|------|
+| **A** | `run_joint_admittance.py` | `env.sh` | **是**（唯一 TCP + UDP） | 常驻；200 Hz WBC；发布 `rm75_state`；直发 CANFD |
+| **B** | `run_with_twin.py` | `env_viewer.sh` | 否 | Genesis 数字孪生，只读 `rm75_state`；可选 5598/5601 人体 overlay |
+| **C** | `d_sin_tool_y.py` | `env.sh` | 否（attach A） | 本地 IK / 相位规划；经 phase IPC 提交任务 |
+
+**SHM（同机 POSIX 共享内存）：**
+
+| 段名 | 方向 | 用途 |
+|------|------|------|
+| `rm75_state` | A → B/C | 关节 / 位姿 / 力 / 滑轨（200 Hz） |
+| `rm75_phase_ctl` | A ↔ C | 任务 START / STOP、运行状态 |
+| `rm75_phase_payload` | C → A | 任务参数 JSON |
+
+> C **不跑** 200 Hz 控制环，也不经 SHM 转发 CANFD。WBC 只在 A 内：UDP 反馈 → QP → `send_joint_canfd`。
+
+### 0.3 启动顺序
+
+```
+[可选感知] Cam → 8(SMPL-X) → 9(解剖)
+        ↓
+    先开 A（控制器）
+        ↓
+    B、C 任意顺序（B 可先开，等 A 上线后自动 running）
+```
+
+1. **必须先开窗口 A**；B/C 可后开。
+2. 仅重启 C/B 时**不必**重启 A；C 连不上时先 Ctrl+C 重启 A。
+3. 需要 twin 上橙色人 / 解剖 overlay 时，在 A 之前或并行启动感知（端口见下表）。
+
+| 端口 | 用途 |
+|------|------|
+| `tcp://127.0.0.1:17356` | 相机 ZMQ（SMPL-X 输入） |
+| `tcp://127.0.0.1:5598` | 橙色 SMPL-X mesh |
+| `tcp://127.0.0.1:5601` | 解剖 asset upsert |
+
+感知命令详见 `../MD/COMMAND.md` Phase 1（`run_realsense_camera_publisher.py` → `run_smplx_capture.py` → `run_anatomy_retarget.py`）。
+
+### 0.4 窗口 A — 控制器（必开）
+
+```bash
+cd /media/camp/EXT_DRIVE/RealUS_playground/rm75_control
+source env.sh
+
+python apps/joint_admittance_8dof/run_joint_admittance.py \
+  --config configs/joint_admittance_8dof.yaml
+```
+
+**正常输出：**
+
+```
+rm75 controller: running (shm 'rm75_state' @ 200 Hz)
+rm75 controller: hot-wait
+rm75 controller: running task #1
+rm75 controller: task #1 done (8.6s, 1709 ticks)
+rm75 controller: hot-wait
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--no-state-relay` | 不发布 SHM（仅调试） |
+| `--verbose` / `-v` | WBC 相位细节、力补偿 tool 提示 |
+| `--hold` | A 本地 idle hold（**勿与 C 同时**） |
+| `--dry-run` | 不连真机，检查配置 |
+
+保持 A 常驻；`Ctrl+C` 会断开 TCP/UDP 并停止 SHM。
+
+### 0.5 窗口 B — Genesis 数字孪生
+
+```bash
+cd /media/camp/EXT_DRIVE/RealUS_playground/rm75_control
+source env_viewer.sh
+
+# 仅机械臂镜像（无人体）
+python apps/joint_admittance_8dof/run_with_twin.py
+
+# 机械臂 + 橙色 SMPL-X + 解剖（需感知已发布 5598/5601）
+python apps/joint_admittance_8dof/run_with_twin.py \
+  --track-subscribe tcp://127.0.0.1:5598 \
+  --track-mesh-alpha 120 \
+  --anatomy-subscribe tcp://127.0.0.1:5601 \
+  --canonical-human-source fitted
+```
+
+**正常输出：**
+
+```
+rm75 twin: waiting for 'rm75_state' …
+rm75 twin: running
+rm75 twin: human overlay track=tcp://127.0.0.1:5598 canonical=fitted
+```
+
+| 选项 | 说明 |
+|------|------|
+| `--backend cpu` | CUDA 不可用时降级（慢，见 §0.7） |
+| `--headless` | 无 Genesis 窗口，仅后台同步 |
+| `--no-anatomy` | 关闭 5601 解剖绘制 |
+| `--track-mesh-alpha 0-255` | 橙色皮肤透明度（默认 55） |
+
+A 重启后 B 会打印 `rm75 twin: reconnected to controller`。B **不连机器人**。
+
+### 0.6 窗口 C — 任务编排（attach A）
+
+```bash
+cd /media/camp/EXT_DRIVE/RealUS_playground/rm75_control
+source env.sh
+
+# 示例：到 D 后力控 Y 扫描（需 §1 力补偿标定）
+python apps/joint_admittance_8dof/d_sin_tool_y.py \
+  --config configs/joint_admittance_8dof.yaml \
+  --enable-force --desired-z 1.0 \
+  --scan-duration 30
+```
+
+```bash
+# 示例：到 D → hold 5s → tcp_fixed 滑轨 +Y 15cm（无扫描）
+python apps/joint_admittance_8dof/d_sin_tool_y.py \
+  --config configs/joint_admittance_8dof.yaml \
+  --scan-duration 0 \
+  --hold-at-d-s 5 \
+  --rail-move-cm 15 \
+  --rail-move-mode tcp_fixed \
+  --rail-move-dir +y
+```
+
+**正常输出：**
+
+```
+rm75 task: connecting to window A …
+rm75 task: connected
+rm75 task: submitted task #1
+rm75 task: done
+```
+
+- 默认 **attach 窗口 A**，C **不应**出现 `current c api version`（出现说明 C 误连 TCP）。
+- C 中 `Ctrl+C` → A 打印 `task #N stopped` 后回到 hot-wait。
+- 单进程调试加 `--no-attach-state`（**勿与 A 同开**）。
+
+### 0.7 故障排查（启动阶段）
+
+| 现象 | 处理 |
+|------|------|
+| C 卡在 `connecting to window A` | 确认 A 已开；不行则重启 A |
+| C 出现 `current c api version` | C 误连 TCP；关掉 C，勿加 `--no-attach-state` |
+| B viewer 不动 | 等 A 发布 `rm75_state`；或重启 B |
+| `Backend gs.cuda not available` | GPU 驱动异常；**重启电脑**后重试；临时加 `--backend cpu` |
+| `CUDA unknown error` / `cuInit 999` | 内核日志 `Xid 154 Node Reboot Required` → 必须重启整机 |
+| twin 无橙色人 / 解剖 | 确认 5598/5601 有发布；先跑 Phase 1 窗口 8、9 |
+| 扫描卡顿 | 确认 C 为 attach 模式（WBC 在 A） |
+
+**辅助：**
+
+```bash
+python -m rm75_control.tools.state_echo --subscribe rm75_state
+python apps/joint_admittance_8dof/check_fk_once.py --subscribe rm75_state
 ```
 
 ---
@@ -71,116 +252,9 @@ python apps/force_compensation/force_monitor.py --10p-only
 
 ---
 
-## 3. 三窗口：控制器 + Viewer + 任务编排
+## 3. 任务参数速查（窗口 C）
 
-**同一台机器、三个终端，推荐日常用法。**
-
-### 架构（当前 main 分支）
-
-| 窗口 | 进程 | 连真机？ | 职责 |
-|------|------|----------|------|
-| **A** | `run_joint_admittance.py` | **是**（唯一 TCP + UDP） | 常驻；发布 `rm75_state`；**200 Hz WBC 在 A 内**；直发 CANFD |
-| **B** | `run_with_twin.py` | 否 | Genesis 数字孪生，只读 `rm75_state` |
-| **C** | `d_sin_tool_y.py` | 否（默认 attach） | 本地 IK / 相位规划；经 phase IPC 提交任务；监控进度 |
-
-**进程间通信（POSIX SHM，同机）：**
-
-| 段名 | 方向 | 用途 |
-|------|------|------|
-| `rm75_state` | A → B/C | 关节 / 位姿 / 力 / 滑轨（200 Hz） |
-| `rm75_phase_ctl` | A ↔ C | 任务 START / STOP、运行状态 |
-| `rm75_phase_payload` | C → A | 任务参数 JSON（IK 结果、scan 参数等） |
-
-> **要点：** C **不跑** 200 Hz 控制环，也不经 SHM 转发 CANFD（旧版 attach 卡顿根因）。WBC 路径与 ebd313a 单进程一致：A 内 UDP 反馈 → QP → `send_joint_canfd`。
-
-### 启动顺序
-
-1. **先开 A**
-2. B、C 任意顺序；B 可先开，等 A 上线后自动 `running`
-3. C 可反复启动；A 保持 hot-wait，任务结束后再提交下一项
-4. **仅重启 C/B 时不必重启 A**；若 C 连不上 A，先 Ctrl+C 重启 A 再试
-
-### 窗口 A — 控制器 daemon
-
-```bash
-cd /media/camp/EXT_DRIVE/rm75_control
-source env.sh
-
-python apps/joint_admittance_8dof/run_joint_admittance.py \
-  --config configs/joint_admittance_8dof.yaml
-```
-
-**正常输出（精简）：**
-
-```
-rm75 controller: running (shm 'rm75_state' @ 200 Hz)
-rm75 controller: hot-wait
-rm75 controller: running task #1
-rm75 controller: task #1 done (8.6s, 1709 ticks)
-rm75 controller: hot-wait
-```
-
-| 选项 | 说明 |
-|------|------|
-| `--no-state-relay` | 不发布 SHM（仅调试） |
-| `--verbose` / `-v` | 打印 WBC 相位细节、力补偿 tool 提示等 |
-| `--hold` | A 本地 idle hold（**勿与 C 同时**） |
-
-### 窗口 B — Genesis Viewer
-
-```bash
-cd /media/camp/EXT_DRIVE/rm75_control
-source env.sh
-
-python apps/joint_admittance_8dof/run_with_twin.py
-```
-
-**正常输出：**
-
-```
-rm75 twin: waiting for 'rm75_state' …
-rm75 twin: running
-```
-
-A 重启后会多一行 `rm75 twin: reconnected to controller`。  
-**不连机器人**；只订阅 A 的 SHM。`Ctrl+C` 退出即可。
-
-### 窗口 C — 任务编排（attach A）
-
-```bash
-cd /media/camp/EXT_DRIVE/rm75_control
-source env.sh
-
-# 示例：到 D 后力控 Y 扫描（需 §1 力补偿标定）
-python apps/joint_admittance_8dof/d_sin_tool_y.py \
-  --config configs/joint_admittance_8dof.yaml \
-  --enable-force --desired-z 1.0 \
-  --scan-duration 30
-```
-
-```bash
-# 示例：到 D → hold 5s → tcp_fixed 滑轨 +Y 15cm（无扫描）
-python apps/joint_admittance_8dof/d_sin_tool_y.py \
-  --config configs/joint_admittance_8dof.yaml \
-  --scan-duration 0 \
-  --hold-at-d-s 5 \
-  --rail-move-cm 15 \
-  --rail-move-mode tcp_fixed \
-  --rail-move-dir +y
-```
-
-**正常输出（默认精简）：**
-
-```
-rm75 task: connecting to window A …
-rm75 task: connected
-D dz=220mm tool=Pin-tcp z=0.405
-scan: Y 16cmpp Fz=1.0N 30s
-rm75 task: submitted task #1
-rm75 task: move->d
-rm75 task: scan
-rm75 task: done
-```
+启动流程见 **§0**。以下为 `d_sin_tool_y.py` 常用参数。
 
 | 参数 | 含义 |
 |------|------|
@@ -198,13 +272,6 @@ rm75 task: done
 
 滑轨峰值速度：`configs/joint_admittance_8dof.yaml` → `inner.rail.v_max_m_s`（默认 5 cm/s）。
 
-**attach 默认规则：**
-
-- 默认 attach 窗口 A（读 `rm75_state`），C **不连** TCP
-- C **不应**出现 `current c api version`（出现说明 C 在连 TCP，与 A 冲突）
-- C 中 `Ctrl+C` → 向 A 发 `stop_req`，A 打印 `task #N stopped` 后回到 hot-wait
-- 任务编号 `#1, #2, #3…` 在 A/C 一致；仅 START 占序号，STOP 不占
-
 ### 单进程调试（勿与三窗口同开）
 
 ```bash
@@ -216,33 +283,12 @@ python apps/joint_admittance_8dof/d_sin_tool_y.py \
 
 Viewer 请单独开窗口 B（`run_with_twin.py`），不要和 C 绑在一起。
 
-### 辅助
-
-```bash
-# 查看 SHM relay 是否在发
-python -m rm75_control.tools.state_echo --subscribe rm75_state
-
-# FK 对齐检查（读 relay，可选直连真机对比）
-python apps/joint_admittance_8dof/check_fk_once.py --subscribe rm75_state
-```
-
-### 故障排查
-
-| 现象 | 处理 |
-|------|------|
-| C 卡在 `connecting to window A` | 确认 A 已开；不行则重启 A |
-| C 出现 `current c api version` | C 误连 TCP；关掉 C，勿加 `--no-attach-state` |
-| 臂不动 | 仅 A 可连 TCP；确认 C 为 attach 模式 |
-| B viewer 不动 | 等 A 发布 `rm75_state`；或重启 B |
-| 扫描卡顿 | 确认 C 为 attach（WBC 在 A），勿用旧版 CANFD SHM 转发 |
-| 退出后 C 再连不上 A | 重启 A（旧客户端可能破坏 SHM）；现已修复 tracker 误 unlink |
-
 ---
 
 ## 4. Genesis 首次安装（Viewer 报缺依赖时）
 
 ```bash
-source env.sh
+source env_viewer.sh
 bash rm75_control/control/joint_admittance_8dof/viewer/install_torch.sh
 pip install -r rm75_control/control/joint_admittance_8dof/viewer/requirements.txt
 ```
@@ -252,8 +298,8 @@ pip install -r rm75_control/control/joint_admittance_8dof/viewer/requirements.tx
 ## 5. Genesis 离线 Viewer（不连机器人 / 不调 SHM）
 
 ```bash
-cd /media/camp/EXT_DRIVE/rm75_control
-source env.sh
+cd /media/camp/EXT_DRIVE/RealUS_playground/rm75_control
+source env_viewer.sh
 
 # 默认加载 config/slider_rail.yaml，一般无需 --spec
 python -m rm75_control.control.joint_admittance_8dof.viewer.demo --show-viewer

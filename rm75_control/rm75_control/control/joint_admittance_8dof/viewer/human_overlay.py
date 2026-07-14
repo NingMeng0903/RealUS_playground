@@ -25,6 +25,8 @@ class TwinHumanOverlayConfig:
     canonical_bind: str = "tcp://127.0.0.1:5599"
     canonical_human_source: str = "none"  # none | robot | fitted
     smplx_npz: Path | None = None
+    track_mesh_rgba: tuple[int, int, int, int] = (250, 122, 31, 55)
+    anatomy_opaque: bool = True
     enable_track: bool = True
     enable_anatomy: bool = True
     enable_canonical: bool = True
@@ -101,6 +103,7 @@ class TwinHumanOverlay:
             connect=str(self._cfg.track_subscribe),
             device="cuda",
             default_betas=np.zeros(10, dtype=np.float32),
+            mesh_rgba=self._cfg.track_mesh_rgba,
         )
         self._track.start()
         logger.info("track subscribe %s", self._cfg.track_subscribe)
@@ -119,6 +122,21 @@ class TwinHumanOverlay:
         self._anatomy_sub = AnatomyAssetSubscriber(self._anatomy_reg, connect=str(self._cfg.anatomy_subscribe))
         self._anatomy_sub.start()
         logger.info("anatomy subscribe %s", self._cfg.anatomy_subscribe)
+
+    def _ensure_anatomy_opaque(self) -> None:
+        if self._anatomy_reg is None or not self._cfg.anatomy_opaque:
+            return
+        for model_id in self._anatomy_reg.model_ids:
+            drawer = self._anatomy_reg._drawers.get(model_id)
+            if drawer is None:
+                continue
+            if getattr(drawer, "_realus_opaque_layer", False):
+                continue
+            try:
+                drawer.set_render_mode("opaque")
+                drawer._realus_opaque_layer = True
+            except Exception:
+                pass
 
     def _start_canonical(self) -> None:
         import zmq
@@ -159,10 +177,15 @@ class TwinHumanOverlay:
                 self._latest_pose55, self._latest_transl = drive
         if self._anatomy_reg is not None and self._latest_pose55 is not None:
             try:
-                from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import easymocap_drive_translation
+                from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import anatomy_transl_from_track_drive
 
-                transl = self._latest_transl
-                # Registry draw expects pose55 + transl; pelvis compensation when asset known.
+                self._ensure_anatomy_opaque()
+                pelvis = self._anatomy_reg.canonical_pelvis()
+                transl = anatomy_transl_from_track_drive(
+                    self._latest_pose55,
+                    self._latest_transl,
+                    pelvis,
+                )
                 self._anatomy_reg.draw_all(self._latest_pose55, transl=transl)
             except Exception:
                 pass

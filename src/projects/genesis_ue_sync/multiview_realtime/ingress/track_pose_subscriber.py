@@ -33,6 +33,10 @@ class ReceivedTrackPose:
     anatomy_pose_aa: np.ndarray | None = None
     anatomy_transl: np.ndarray | None = None
     reason: str = ""
+    shape_hash: str = ""
+    pose_hash: str = ""
+    gender: str = ""
+    betas: np.ndarray | None = None
 
 
 class TrackPoseSubscriber:
@@ -172,10 +176,23 @@ class TrackPoseSubscriber:
                     pose.vertices = np.asarray(data["vertices"], dtype=np.float32).reshape(-1, 3)
                     pose.faces = np.asarray(data["faces"], dtype=np.int64).reshape(-1, 3)
                     pose.mesh_schema = str(data.get("mesh_schema", ""))
-                    if "Rh" in data and "poses" in data:
+                    pose.shape_hash = str(data.get("shape_hash", ""))
+                    pose.pose_hash = str(data.get("pose_hash", ""))
+                    pose.gender = str(data.get("gender", ""))
+                    if "betas" in data:
+                        pose.betas = np.asarray(data["betas"], dtype=np.float32).reshape(-1)[:10]
+                    if "smplx_pose_aa_165" in data:
+                        full = np.asarray(data["smplx_pose_aa_165"], dtype=np.float32).reshape(-1)
+                        if full.size != 165:
+                            raise ValueError(f"invalid smplx_pose_aa_165 length {full.size}")
+                        pose.anatomy_pose_aa = full
+                        pose.anatomy_transl = np.asarray(data.get("Th", translation), dtype=np.float32).reshape(3)
+                    elif "Rh" in data and "poses" in data:
                         from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import easymocap_fit_to_smplx55
 
-                        pose.anatomy_pose_aa = easymocap_fit_to_smplx55(data["Rh"], data["poses"]).reshape(-1)
+                        pose.anatomy_pose_aa = easymocap_fit_to_smplx55(
+                            data["Rh"], data["poses"], gender=str(data.get("gender", "male"))
+                        ).reshape(-1)
                         if "Th" in data:
                             pose.anatomy_transl = np.asarray(data["Th"], dtype=np.float32).reshape(3)
                         else:

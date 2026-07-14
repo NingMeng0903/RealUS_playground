@@ -27,6 +27,7 @@ class PerceptionViewerConfig:
     anatomy_subscribe: str = "tcp://127.0.0.1:5601"
     planning_root: Path = Path("outputs/anatomy_retarget/limb_vessel_planning")
     anatomy_transparent_alpha: float = 0.35
+    track_mesh_rgba: tuple[int, int, int, int] = (250, 122, 31, 55)
     spawn_robot: bool = True
     backend: str = "cuda"
     reload_planning_s: float = 2.0
@@ -57,6 +58,7 @@ class PerceptionViewerOverlay:
                 connect=str(self._cfg.track_subscribe),
                 device=str(self._cfg.backend),
                 default_betas=__import__("numpy").zeros(10, dtype=__import__("numpy").float32),
+                mesh_rgba=self._cfg.track_mesh_rgba,
             )
             self._track.start()
             logging.debug("track subscribe %s", self._cfg.track_subscribe)
@@ -106,19 +108,21 @@ class PerceptionViewerOverlay:
 
         if self._anatomy_reg is not None and self._latest_pose55 is not None:
             try:
-                self._anatomy_reg.draw_all(self._latest_pose55, transl=self._latest_transl)
+                from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import anatomy_transl_from_track_drive
+
+                for model_id in self._anatomy_reg.model_ids:
+                    drawer = self._anatomy_reg._drawers.get(model_id)
+                    if drawer is not None and not getattr(drawer, "_realus_opaque_layer", False):
+                        drawer.set_render_mode("opaque")
+                        drawer._realus_opaque_layer = True
+                transl = anatomy_transl_from_track_drive(
+                    self._latest_pose55,
+                    self._latest_transl,
+                    self._anatomy_reg.canonical_pelvis(),
+                )
+                self._anatomy_reg.draw_all(self._latest_pose55, transl=transl)
             except Exception:
                 pass
-            for model_id in self._anatomy_reg.model_ids:
-                if model_id in self._anatomy_transparent_applied:
-                    continue
-                drawer = self._anatomy_reg._drawers.get(model_id)
-                if drawer is not None:
-                    try:
-                        drawer.set_render_mode("transparent", transparent_alpha=self._cfg.anatomy_transparent_alpha)
-                        self._anatomy_transparent_applied.add(model_id)
-                    except Exception:
-                        pass
 
         now = time.monotonic()
         if self._planning is not None and (now - self._last_planning_check) >= float(self._cfg.reload_planning_s):
@@ -149,6 +153,13 @@ def main() -> int:
     ap.add_argument("--anatomy-subscribe", type=str, default="tcp://127.0.0.1:5601")
     ap.add_argument("--planning-root", type=Path, default=Path("outputs/anatomy_retarget/limb_vessel_planning"))
     ap.add_argument("--anatomy-alpha", type=float, default=0.35)
+    ap.add_argument(
+        "--track-mesh-alpha",
+        type=int,
+        default=55,
+        metavar="0-255",
+        help="Orange SMPL-X skin opacity (default 55)",
+    )
     ap.add_argument(
         "--no-robot",
         action="store_true",
@@ -184,6 +195,7 @@ def main() -> int:
         anatomy_subscribe=str(args.anatomy_subscribe),
         planning_root=args.planning_root,
         anatomy_transparent_alpha=float(args.anatomy_alpha),
+        track_mesh_rgba=(250, 122, 31, max(0, min(255, int(args.track_mesh_alpha)))),
         spawn_robot=not bool(args.no_robot),
         backend=str(args.backend),
         reload_planning_s=float(args.reload_planning_s),

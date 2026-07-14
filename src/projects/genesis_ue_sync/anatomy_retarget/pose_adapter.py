@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import pickle
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -11,16 +14,80 @@ import numpy as np
 SMPLX_RUNTIME_JOINT_COUNT = 55
 
 
-def easymocap_fit_to_smplx55(Rh: Any, poses: Any) -> np.ndarray:
-    """Map EasyMocap mv1p params (Rh + poses 87D) to [55, 3] SMPL-X axis-angle."""
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[4]
+
+
+def _default_smplx_model_path(gender: str) -> Path:
+    requested = str(gender).strip().upper() or "MALE"
+    roots = [
+        _repo_root() / "ref_code_library" / "EasyMocap" / "data" / "smplx" / "smplx",
+        _repo_root() / "ref_code_library" / "InteractVLM" / "data" / "body_models" / "smplx",
+    ]
+    for root in roots:
+        candidate = root / f"SMPLX_{requested}.pkl"
+        if candidate.is_file():
+            return candidate.resolve()
+    raise FileNotFoundError(f"SMPL-X {requested} model is required to decode EasyMocap hand PCA")
+
+
+@lru_cache(maxsize=8)
+def _hand_pca_components(model_path: str) -> tuple[np.ndarray, np.ndarray]:
+    """Load the exact six-component hand bases used by EasyMocap SMPL-X."""
+    with Path(model_path).open("rb") as handle:
+        payload = pickle.load(handle, encoding="latin1")
+    left = np.asarray(payload["hands_componentsl"], dtype=np.float32)[:6, :45]
+    right = np.asarray(payload["hands_componentsr"], dtype=np.float32)[:6, :45]
+    if left.shape != (6, 45) or right.shape != (6, 45):
+        raise ValueError(f"Invalid SMPL-X hand PCA bases in {model_path}: {left.shape}, {right.shape}")
+    return left, right
+
+
+def easymocap_fit_to_smplx55(
+    Rh: Any,
+    poses: Any,
+    *,
+    gender: str = "male",
+    model_path: str | Path | None = None,
+) -> np.ndarray:
+    """Map EasyMocap ``Rh + poses`` to the full [55, 3] SMPL-X pose.
+
+    EasyMocap stores SMPL-X as body66 + left/right hand PCA6 + head9.  The
+    official SMPL-X runtime order is body22 + head3 + left/right hand15.
+    ``use_flat_mean=True`` is hard-coded by EasyMocap, so no MANO mean is added.
+    """
     root = np.asarray(Rh, dtype=np.float32).reshape(3)
     flat = np.asarray(poses, dtype=np.float32).reshape(-1)
     out = np.zeros((SMPLX_RUNTIME_JOINT_COUNT, 3), dtype=np.float32)
     out[0] = root
-    if flat.size >= 66:
-        body22 = flat[:66].reshape(22, 3)
-        out[1:22] = body22[1:22]
+    if flat.size == 165:
+        full = flat.reshape(SMPLX_RUNTIME_JOINT_COUNT, 3).copy()
+        full[0] = root
+        return full.astype(np.float32)
+    if flat.size != 87:
+        raise ValueError(f"Expected EasyMocap SMPL-X 87D or full 165D pose, got {flat.size}")
+    body22 = flat[:66].reshape(22, 3)
+    out[1:22] = body22[1:22]
+    out[22:25] = flat[78:87].reshape(3, 3)
+    resolved = Path(model_path).expanduser().resolve() if model_path is not None else _default_smplx_model_path(gender)
+    left_basis, right_basis = _hand_pca_components(str(resolved))
+    out[25:40] = (flat[66:72].reshape(1, 6) @ left_basis).reshape(15, 3)
+    out[40:55] = (flat[72:78].reshape(1, 6) @ right_basis).reshape(15, 3)
     return out
+
+
+def smplx_shape_hash(betas: Any, *, gender: str = "male") -> str:
+    beta = np.asarray(betas, dtype=np.float32).reshape(-1)[:10]
+    digest = hashlib.sha256(str(gender).lower().encode("utf-8") + beta.tobytes()).hexdigest()
+    return digest[:20]
+
+
+def smplx_pose_hash(pose55: Any, transl: Any | None = None) -> str:
+    pose = np.asarray(pose55, dtype=np.float32).reshape(55, 3)
+    payload = pose.tobytes()
+    if transl is not None:
+        payload += np.asarray(transl, dtype=np.float32).reshape(3).tobytes()
+    return hashlib.sha256(payload).hexdigest()[:20]
 
 
 def axis_angle_to_rotation(axis_angle: Any) -> np.ndarray:
@@ -41,6 +108,19 @@ def axis_angle_to_rotation(axis_angle: Any) -> np.ndarray:
         ],
         dtype=np.float32,
     )
+
+
+def anatomy_transl_from_track_drive(
+    pose55_flat: Any,
+    Th: Any,
+    pelvis: Any | None,
+) -> np.ndarray:
+    """Pelvis-compensated translation for anatomy LBS from a flat pose55 + raw Th."""
+    th = np.asarray(Th, dtype=np.float32).reshape(3)
+    if pelvis is None:
+        return th
+    rh = np.asarray(pose55_flat, dtype=np.float32).reshape(-1)[:3]
+    return easymocap_drive_translation(rh, th, pelvis)
 
 
 def easymocap_drive_translation(Rh: Any, Th: Any, pelvis: Any) -> np.ndarray:
@@ -107,4 +187,3 @@ def pose_to_smplx55_axis_angle(pose: Any) -> np.ndarray:
         out[:n] = rows[:n]
         return out
     raise ValueError(f"Unsupported pose shape for SMPL-X anatomy drive: {arr.shape}")
-
