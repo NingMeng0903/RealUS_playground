@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 
 from .rigged_asset import AnatomyRiggedAsset
+from .source_rebind import rebind_source_rig
 
 
 TISSUE_MARGIN_M = {"bone": 0.003, "organ": 0.004, "vessel": 0.0015, "nerve": 0.001}
@@ -238,12 +239,19 @@ def repair_containment(
             f"outside={remaining}; meshes={remaining_meshes}"
         )
 
-    displacement = vertices - np.asarray(asset.vertices_rest, dtype=np.float64)
-    meta = dict(asset.metadata or {})
+    original_vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
+    displacement = vertices - original_vertices
+    # Containment is also a rest-space modification.  Keep the source-rig bind
+    # matrices synchronized rather than leaving a corrected mesh under stale
+    # Blender inverse binds.
+    rebound, rebind_report = rebind_source_rig(
+        asset, source_vertices=original_vertices, target_vertices=vertices, stage=str(stage)
+    )
+    meta = dict(rebound.metadata or {})
     history = list(meta.get("containment_repairs", []))
     history.append({"stage": str(stage), "iterations": iteration_count})
     meta["containment_repairs"] = history
-    result = type(asset)(**{**asset.__dict__, "vertices_rest": vertices.astype(np.float32), "metadata": meta})
+    result = type(rebound)(**{**rebound.__dict__, "vertices_rest": vertices.astype(np.float32), "metadata": meta})
     return result, {
         "stage": str(stage),
         "iterations": int(iteration_count),
@@ -254,4 +262,5 @@ def repair_containment(
         "remaining_margin_violations": remaining,
         "over_limit_count": over_limit,
         "remaining_meshes": dict(sorted(remaining_meshes.items(), key=lambda item: item[1], reverse=True)[:20]),
+        "source_rig_rebind": rebind_report,
     }

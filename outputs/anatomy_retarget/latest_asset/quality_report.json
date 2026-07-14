@@ -5,7 +5,7 @@
     "source_to_final max edge ratio 55.33 exceeds 3.00",
     "source_to_final p99.9 edge ratio 2.75 exceeds 1.50",
     "source_to_pose_cache max edge ratio 113.43 exceeds 3.00",
-    "source_to_pose_cache p99.9 edge ratio 3.71 exceeds 1.50"
+    "source_to_pose_cache p99.9 edge ratio 3.70 exceeds 1.50"
   ],
   "thresholds": {
     "weight_sum_error": 1e-05,
@@ -34,8 +34,8 @@
     "pose_to_canonical_p999": 2.166153907775879,
     "source_to_final_max": 55.32573318481445,
     "source_to_final_p999": 2.7540972232818604,
-    "source_to_pose_cache_max": 113.42892456054688,
-    "source_to_pose_cache_p999": 3.7051641941070557
+    "source_to_pose_cache_max": 113.42890930175781,
+    "source_to_pose_cache_p999": 3.7013463973999023
   },
   "containment_backend": "libigl_exact_signed_distance",
   "containment": {

@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 
 from .rigged_asset import AnatomyRiggedAsset
+from .source_rebind import rebind_source_rig
 
 
 def _farthest_samples(points: np.ndarray, count: int) -> np.ndarray:
@@ -122,9 +123,16 @@ def refine_canonical_arap(asset: AnatomyRiggedAsset) -> tuple[AnatomyRiggedAsset
     final_length = np.linalg.norm(output[edges[:, 0]] - output[edges[:, 1]], axis=1)
     valid = original_length > 1.0e-8
     ratios = final_length[valid] / original_length[valid]
-    meta = dict(asset.metadata or {})
+    # The ARAP result is a rest-space warp.  Refit the Blender source bind
+    # frames from the same reference/result pair before any source-weight LBS
+    # is evaluated.  Without this, the original weights are correct but their
+    # inverse binds describe a different coordinate system.
+    rebound, rebind_report = rebind_source_rig(
+        asset, source_vertices=reference, target_vertices=output, stage="canonical_arap"
+    )
+    meta = dict(rebound.metadata or {})
     meta["canonical_registration"] = "anchor_rbf_plus_component_arap_v2"
-    result = type(asset)(**{**asset.__dict__, "vertices_rest": output.astype(np.float32), "metadata": meta})
+    result = type(rebound)(**{**rebound.__dict__, "vertices_rest": output.astype(np.float32), "metadata": meta})
     return result, {
         "backend": "anchor_rbf_plus_component_arap_v2",
         "arap_components": int(solved_components),
@@ -132,4 +140,5 @@ def refine_canonical_arap(asset: AnatomyRiggedAsset) -> tuple[AnatomyRiggedAsset
         "distortion_fallback_components": int(distortion_fallback_components),
         "source_to_final_max": float(np.max(ratios)),
         "source_to_final_p999": float(np.quantile(ratios, 0.999)),
+        "source_rig_rebind": rebind_report,
     }

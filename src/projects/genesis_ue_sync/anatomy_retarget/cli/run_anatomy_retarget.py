@@ -33,6 +33,7 @@ from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import load_rigged_a
 from projects.genesis_ue_sync.anatomy_retarget.shape_volume import apply_subject_beta_shape
 from projects.genesis_ue_sync.anatomy_retarget.leg_material import compute_leg_material_coordinates
 from projects.genesis_ue_sync.anatomy_retarget.diagnostics import write_mesh_diagnostics
+from projects.genesis_ue_sync.anatomy_retarget.source_rebind import source_bind_roundtrip
 from projects.genesis_ue_sync.multiview_realtime.track_stream import (
     DEFAULT_ANATOMY_ASSET_PUB_BIND,
     TOPIC_ANATOMY_ASSET_V1,
@@ -76,6 +77,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output-dir", type=Path, default=paths.outputs_root / "anatomy_retarget" / "latest_asset")
     p.add_argument("--blend", type=Path, default=None)
     p.add_argument("--force-source-rebake", action="store_true", help="Ignore source/shape retarget caches.")
+    p.add_argument("--profile-first-frame", action="store_true", help="Write source/shape/pose/publish timing report.")
     p.add_argument("--motion-npz", type=Path, default=None, help="Exact saved SMPL-X fit for final-pose containment/cache")
     p.add_argument("--timeout-s", type=float, default=900.0)
     p.add_argument("--publish-genesis", action="store_true")
@@ -142,6 +144,8 @@ def _publish_upsert(
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     args = parse_args()
+    started_at = time.perf_counter()
+    profile: dict[str, float] = {}
     cfg = _load_config(args.config)
     blend = args.blend or Path(str(cfg.get("blend_path", "")))
     if not blend:
@@ -176,10 +180,10 @@ def main() -> int:
         Path(blend), Path(args.config), Path(args.canonical_dir) / "smpl_canonical_tpose_neutral.obj",
         Path(__file__).resolve().parents[1] / "blender_scripts" / "blender_retarget_script.py",
         Path(__file__).resolve().parents[1] / "canonical_registration.py",
-        extra="source-rig-canonical-v2",
+        extra="source-template-v3-bind-synchronized",
     )
     shape_hash = smplx_shape_hash(betas, gender=gender) if betas else "neutral"
-    source_cache = cache_root / "source" / f"{source_key}.npz"
+    source_cache = cache_root / "source_template_v3" / f"{source_key}.npz"
     shape_key = _cache_key(
         Path(args.canonical_dir) / "smpl_canonical_tpose.obj",
         Path(__file__).resolve().parents[1] / "shape_volume.py",
@@ -229,7 +233,16 @@ def main() -> int:
         asset = type(asset)(**{**asset.__dict__, "metadata": source_meta})
         source_cache.parent.mkdir(parents=True, exist_ok=True)
         save_rigged_asset(source_cache, asset)
-        logging.info("source-rig cache stored key=%s", source_key)
+        logging.info("source_template_v3 stored key=%s", source_key)
+    profile["source_template_s"] = time.perf_counter() - started_at
+    bind_roundtrip = source_bind_roundtrip(asset)
+    zero_pose_vertices = skin_vertices(asset, np.zeros((55, 3), dtype=np.float32))
+    bind_roundtrip["zero_pose_vertex_error_m"] = float(
+        np.max(np.linalg.norm(zero_pose_vertices - np.asarray(asset.vertices_rest, dtype=np.float32), axis=1))
+    )
+    bind_roundtrip["pass"] = bool(bind_roundtrip.get("pass", True) and bind_roundtrip["zero_pose_vertex_error_m"] <= 1.0e-4)
+    if not bool(bind_roundtrip.get("pass", True)):
+        raise RuntimeError(f"source bind round-trip failed: {bind_roundtrip}")
 
     source_vertices = (
         np.asarray(asset.registration_reference, dtype=np.float32).copy()
@@ -264,6 +277,7 @@ def main() -> int:
         shape_cache.parent.mkdir(parents=True, exist_ok=True)
         save_rigged_asset(shape_cache, asset)
         logging.info("subject-shape cache stored shape_hash=%s", shape_hash)
+    profile["subject_shape_s"] = time.perf_counter() - started_at - profile["source_template_s"]
     pose_report: dict[str, Any] | None = None
     if args.motion_npz is not None:
         motion_path = Path(args.motion_npz).expanduser().resolve()
@@ -334,6 +348,8 @@ def main() -> int:
             "containment_reports": containment_reports,
             "pose_cache_report": pose_report,
             "leg_material_report": dict(meta.get("leg_material_report") or {}),
+            "source_template_version": 3,
+            "source_bind_roundtrip": bind_roundtrip,
         }
     )
     asset = type(asset)(**{**asset.__dict__, "metadata": meta})
@@ -344,6 +360,14 @@ def main() -> int:
         surface_faces=subject_surface[1],
         output_path=stage_dir / "anatomy_mesh_diagnostics.json",
     )
+    profile["pose_and_diagnostics_s"] = time.perf_counter() - started_at - profile["source_template_s"] - profile["subject_shape_s"]
+    profile["total_pre_publish_s"] = time.perf_counter() - started_at
+    if args.profile_first_frame:
+        (stage_dir / "first_frame_profile.json").write_text(
+            json.dumps({"seconds": profile, "source_cache_hit": source_cache_hit, "shape_cache_hit": shape_cache_hit}, indent=2),
+            encoding="utf-8",
+        )
+        logging.info("first-frame profile %s", {key: round(value, 3) for key, value in profile.items()})
     tri_edges = np.concatenate(
         (asset.faces[:, [0, 1]], asset.faces[:, [1, 2]], asset.faces[:, [2, 0]]), axis=0
     )

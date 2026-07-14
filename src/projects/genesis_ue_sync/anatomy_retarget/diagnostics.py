@@ -28,16 +28,30 @@ def write_mesh_diagnostics(
         verts = np.asarray(asset.vertices_rest[start:stop], dtype=np.float32)
         idx = np.asarray(asset.driver_indices[start:stop], dtype=np.int64)
         weight = np.asarray(asset.driver_weights[start:stop], dtype=np.float32)
-        dominant = int(np.bincount(idx.reshape(-1), weights=weight.reshape(-1), minlength=len(asset.source_bone_names or [])).argmax())
+        mass = np.bincount(idx.reshape(-1), weights=weight.reshape(-1), minlength=len(asset.source_bone_names or []))
+        dominant = int(mass.argmax())
         source_name = (asset.source_bone_names or [])[dominant] if asset.source_bone_names else asset.joint_names[dominant]
+        probability = mass / max(float(mass.sum()), 1.0e-12)
+        nonzero = probability[probability > 1.0e-8]
+        entropy = float(-np.sum(nonzero * np.log(nonzero)))
+        extent = np.ptp(verts, axis=0)
+        longest = float(np.max(extent))
+        shortest = float(max(np.min(extent), 1.0e-6))
+        driver_type = "legacy"
+        if asset.source_bone_driver_types is not None and asset.source_bone_names is not None:
+            driver_type = str(asset.source_bone_driver_types[dominant])
         entries.append({
             "mesh_index": mesh_idx,
             "mesh": str(name),
             "tissue": str(tissue),
             "vertices": int(stop - start),
             "centroid_m": [float(v) for v in verts.mean(axis=0)],
-            "extent_m": [float(v) for v in np.ptp(verts, axis=0)],
+            "extent_m": [float(v) for v in extent],
             "driver_bone": source_name,
+            "driver_type": driver_type,
+            "driver_weight_entropy": entropy,
+            "dominant_driver_mass": float(probability[dominant]),
+            "extent_aspect_ratio": longest / shortest,
             "outside_vertices": int(np.count_nonzero(values[start:stop] > 0.0)),
             "max_signed_distance_m": float(np.max(values[start:stop])),
         })
