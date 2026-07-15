@@ -47,6 +47,34 @@ def read_tool_offset_cache() -> tuple[str, np.ndarray] | None:
         return None
 
 
+_LAST_TCP_OFFSET_PRINTED: np.ndarray | None = None
+
+
+def _offsets_equal(a: np.ndarray, b: np.ndarray) -> bool:
+    x = np.asarray(a, dtype=float).reshape(6)
+    y = np.asarray(b, dtype=float).reshape(6)
+    return bool(
+        np.allclose(x[:3], y[:3], atol=1e-6)
+        and np.allclose(x[3:6], y[3:6], atol=1e-5)
+    )
+
+
+def _apply_tcp_offset(
+    kin: "RobotKinematics",
+    offset: np.ndarray,
+    message: str,
+    *,
+    euler_order: str | None = None,
+) -> None:
+    global _LAST_TCP_OFFSET_PRINTED
+    offset = np.asarray(offset, dtype=float).reshape(6)
+    apply_kin_tcp_offset(kin, offset, euler_order=euler_order)
+    if _LAST_TCP_OFFSET_PRINTED is not None and _offsets_equal(offset, _LAST_TCP_OFFSET_PRINTED):
+        return
+    _LAST_TCP_OFFSET_PRINTED = offset.copy()
+    print(message, flush=True)
+
+
 def apply_kin_tcp_offset(
     kin: "RobotKinematics",
     offset: np.ndarray,
@@ -247,17 +275,19 @@ def sync_kin_tcp_from_robot(
     else:
         raise ValueError("sync_kin_tcp_from_robot requires robot or ip")
 
-    kin.apply_link7_to_tcp_offset(offset, euler_order=euler_order)
+    _apply_tcp_offset(
+        kin,
+        offset,
+        (
+            f"tcp sync: tool={name!r} xyz(mm)={np.round(offset[:3] * 1000.0, 1).tolist()} "
+            f"rpy(deg)={np.round(np.degrees(offset[3:6]), 1).tolist()}"
+        ),
+        euler_order=euler_order,
+    )
     try:
         write_tool_offset_cache(name, offset)
     except OSError:
         pass
-    print(
-        f"tcp sync: tool={name!r} xyz(mm)={np.round(offset[:3] * 1000.0, 1).tolist()} "
-        f"rpy(deg)={np.round(np.degrees(offset[3:6]), 1).tolist()} "
-        "-> Pin FK + force Tool-Z",
-        flush=True,
-    )
     return name
 
 
@@ -277,11 +307,14 @@ def maybe_sync_kin_tcp_from_config(
 
     if tcp_offset_pose is not None and len(tcp_offset_pose) >= 6:
         offset = np.asarray(tcp_offset_pose, dtype=float).reshape(6)
-        apply_kin_tcp_offset(kin, offset, euler_order=euler_order)
-        print(
-            f"tcp sync: from task params xyz(mm)={np.round(offset[:3] * 1000.0, 1).tolist()} "
-            f"rpy(deg)={np.round(np.degrees(offset[3:6]), 1).tolist()}",
-            flush=True,
+        _apply_tcp_offset(
+            kin,
+            offset,
+            (
+                f"tcp sync: from task params xyz(mm)={np.round(offset[:3] * 1000.0, 1).tolist()} "
+                f"rpy(deg)={np.round(np.degrees(offset[3:6]), 1).tolist()}"
+            ),
+            euler_order=euler_order,
         )
         return "task_params"
 
@@ -299,12 +332,15 @@ def maybe_sync_kin_tcp_from_config(
             cached = read_tool_offset_cache()
             if cached is not None:
                 name, offset = cached
-                apply_kin_tcp_offset(kin, offset, euler_order=euler_order)
-                print(
-                    f"tcp sync: cached tool={name!r} xyz(mm)={np.round(offset[:3] * 1000.0, 1).tolist()} "
-                    f"rpy(deg)={np.round(np.degrees(offset[3:6]), 1).tolist()} "
-                    "(window A cache; no second TCP)",
-                    flush=True,
+                _apply_tcp_offset(
+                    kin,
+                    offset,
+                    (
+                        f"tcp sync: cached tool={name!r} xyz(mm)={np.round(offset[:3] * 1000.0, 1).tolist()} "
+                        f"rpy(deg)={np.round(np.degrees(offset[3:6]), 1).tolist()} "
+                        "(window A cache; no second TCP)"
+                    ),
+                    euler_order=euler_order,
                 )
                 return name
             if ip:

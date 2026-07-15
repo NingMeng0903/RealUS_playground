@@ -808,15 +808,6 @@ def execute_sin_tool_y_program(
     dt = float(raw.get("timing", {}).get("dt_ms", 5.0)) / 1000.0
     if built is None:
         built = build_sin_tool_y_program(params, raw=raw)
-    elif params.tcp_offset_pose:
-        maybe_sync_kin_tcp_from_config(
-            built.kin,
-            raw,
-            robot=getattr(session, "robot", None),
-            tcp_offset_pose=params.tcp_offset_pose,
-        )
-    elif getattr(session, "robot", None) is not None:
-        maybe_sync_kin_tcp_from_config(built.kin, raw, robot=session.robot)
 
     return run_joint_admittance_phases(
         session,

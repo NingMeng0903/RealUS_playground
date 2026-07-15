@@ -11,6 +11,26 @@ if TYPE_CHECKING:
     from Robotic_Arm.rm_robot_interface import RoboticArm
 
 
+def _patch_robotic_arm_version_print() -> None:
+    """Use rm75_control log label instead of SDK 'current c api version'."""
+    try:
+        import Robotic_Arm.rm_robot_interface as ri
+        from Robotic_Arm.rm_ctypes_wrap import rm_api_version, rm_init
+    except ImportError:
+        return
+    if getattr(ri.RoboticArm, "_rm75_version_print_patched", False):
+        return
+
+    def __init__(self, mode=None) -> None:
+        if mode is None:
+            return
+        rm_init(mode)
+        print("current api version: ", rm_api_version(), flush=True)
+
+    __init__._rm75_version_print_patched = True  # type: ignore[attr-defined]
+    ri.RoboticArm.__init__ = __init__  # type: ignore[method-assign]
+
+
 class RealManBackend(RobotBackend):
     """Maps rm75_control calls to Robotic_Arm.rm_* APIs."""
 
@@ -30,6 +50,7 @@ class RealManBackend(RobotBackend):
         from Robotic_Arm.rm_ctypes_wrap import rm_thread_mode_e
         from Robotic_Arm.rm_robot_interface import RoboticArm
 
+        _patch_robotic_arm_version_print()
         self._robot = RoboticArm(rm_thread_mode_e(self.thread_mode))
         handle = self._robot.rm_create_robot_arm(self.ip, self.port)
         if handle.id == -1:

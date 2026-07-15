@@ -256,12 +256,12 @@ def main() -> int:
             relay.start()
             if args.hold:
                 print(
-                    f"rm75 controller: hold + shm {relay_name!r} @ {relay_hz:.0f} Hz",
+                    f"rm75 controller: hold @ {relay_hz:.0f} Hz",
                     flush=True,
                 )
             else:
                 print(
-                    f"rm75 controller: running (shm {relay_name!r} @ {relay_hz:.0f} Hz)",
+                    f"rm75 controller: running @ {relay_hz:.0f} Hz",
                     flush=True,
                 )
         elif args.hold:
