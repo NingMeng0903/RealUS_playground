@@ -285,10 +285,6 @@ def main() -> int:
             from rm75_control.control.admittance_common.observer import CompensatedForceObserver
 
             force_observer = CompensatedForceObserver.from_yaml(raw)
-            active = get_active_tool_name(sess.robot)
-            calib = poses_calib_tool_frame(ex.load_poses_yaml(load_force_id_config(CONFIG_ID).poses_yaml))
-            if active and active != calib:
-                print(f"note: phi calibrated on {calib!r}, active {active!r}", flush=True)
 
         specs = [
             phase_cartesian_goto(

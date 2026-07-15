@@ -992,12 +992,8 @@ def run_joint_admittance_phases(
                         f_ext = np.zeros(6)
                         f_ext_raw = None
                         if obs is not None:
-                            reg_pose = None
-                            if obs.frame.regressor_pose_frame == "link_7":
-                                reg_pose = inner.kin.frame_pose(q_meas, "link_7")
-                            _signed, f_ext = obs.update(
-                                now - total_t0, pose_rm, snap.force_raw, regressor_pose=reg_pose
-                            )
+                            pose_l7 = inner.kin.frame_pose(q_meas, "link_7")
+                            _signed, f_ext = obs.update(now - total_t0, pose_l7, snap.force_raw)
                             f_ext_raw = getattr(obs, "f_ext_raw_last", None)
     
                         q_prev = inner.q_cmd.copy()

@@ -818,14 +818,6 @@ def execute_sin_tool_y_program(
     elif getattr(session, "robot", None) is not None:
         maybe_sync_kin_tcp_from_config(built.kin, raw, robot=session.robot)
 
-    if built.force_observer is not None and session.robot is not None:
-        active = get_active_tool_name(session.robot)
-        calib = poses_calib_tool_frame(
-            ex.load_poses_yaml(load_force_id_config(CONFIG_ID).poses_yaml)
-        )
-        if active and active != calib and verbose:
-            print(f"note: phi calibrated on {calib!r}, active {active!r}", flush=True)
-
     return run_joint_admittance_phases(
         session,
         built.phases,

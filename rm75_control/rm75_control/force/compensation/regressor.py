@@ -37,17 +37,13 @@ class FrameConfig:
     offset_rad: tuple[float, float, float]
     origin_in_link7_m: tuple[float, float, float] = (0.0, 0.0, 0.0)
     gravity_base: tuple[float, float, float] = (0.0, 0.0, -9.80665)
-    regressor_pose_frame: str = "link_7"
 
     def label(self) -> str:
         fs = ",".join(str(int(s)) for s in self.force_sign)
         off = "0" if self.offset_rad == (0.0, 0.0, 0.0) else ",".join(
             f"{v:.2f}" for v in self.offset_rad
         )
-        return (
-            f"sign=[{fs}] order={self.euler_order} off=[{off}] "
-            f"regressor={self.regressor_pose_frame}"
-        )
+        return f"sign=[{fs}] order={self.euler_order} off=[{off}]"
 
     @classmethod
     def from_yaml(cls, path: Path) -> FrameConfig:
@@ -60,7 +56,6 @@ class FrameConfig:
                 float(x) for x in data.get("sensor_origin_in_link7_m", [0.0, 0.0, 0.0])
             ),
             gravity_base=tuple(float(x) for x in data["gravity_base"]),
-            regressor_pose_frame=str(data.get("regressor_pose_frame", "link_7")),
         )
 
 

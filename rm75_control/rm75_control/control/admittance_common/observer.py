@@ -96,8 +96,7 @@ class CompensatedForceObserver:
         """
         Return (signed_filtered_raw, f_ext).
 
-        f_ext is computed in the **link_7 / sensor** frame (φ regressor). After
-        compensation, ``loop.py`` applies ``wrench_link7_to_tcp`` for Tool-Z admittance.
+        Return (signed_filtered_raw, f_ext) in the link_7 / sensor frame.
         """
         if not self.ready():
             return None
@@ -116,25 +115,11 @@ class CompensatedForceObserver:
     def update(
         self,
         t_s: float,
-        pose6: np.ndarray,
+        regressor_pose: np.ndarray,
         force_raw: np.ndarray,
-        *,
-        regressor_pose: np.ndarray | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
-        """
-        O(1) causal external-wrench estimate. Returns (signed_raw, f_ext_filtered),
-        both 6D in the **link_7 / sensor** frame before ``wrench_link7_to_tcp``.
-
-        ``regressor_pose`` overrides ``pose6`` for φ kinematics when using
-        ``regressor_pose_frame: link_7`` (Pin FK or flange recovery).
-        """
-        pose6 = np.asarray(pose6, dtype=float)
-        pose_reg = (
-            np.asarray(regressor_pose, dtype=float).reshape(6)
-            if regressor_pose is not None
-            else pose6
-        )
-        self._pose_ring.append(pose_reg.copy())
+        """Causal link_7-frame external wrench (before ``wrench_link7_to_tcp``)."""
+        self._pose_ring.append(np.asarray(regressor_pose, dtype=float).reshape(6).copy())
         self._t_ring.append(float(t_s))
         self._n_updates += 1
 

@@ -2,9 +2,7 @@
 # Library: rm75_control.force.compensation
 # Entry: apps/force_compensation/force_calibrate.py, force_monitor.py
 #
-# Prerequisite for force_calibrate: active tool = Arm_Tip in Web UI.
-# φ regressor uses link_7 orientation (force_sensor.yaml); runtime TCP rotation
-# is handled by wrench_link7_to_tcp after compensation.
+# Prerequisite: active tool = Arm_Tip in Web UI.
 
 poses_yaml: poses.yaml
 required_tool_frame: Arm_Tip

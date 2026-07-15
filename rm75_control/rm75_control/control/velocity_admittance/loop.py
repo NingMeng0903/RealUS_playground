@@ -14,7 +14,8 @@ from rm75_control.force.compensation.collection import load_slot, move_j, wait_s
 from rm75_control.force.compensation import excitation as ex
 from rm75_control.force.compensation.id_config import load_config
 from rm75_control.force.compensation.paths import CONFIG_ID
-from rm75_control.force.compensation.tool_pose import get_active_tool_name, poses_calib_tool_frame
+from rm75_control.force.compensation.link7_pose import link7_pose_from_q_deg
+from rm75_control.force.compensation.tool_pose import poses_calib_tool_frame
 from rm75_control.motion.canfd import (
     enter_movev_session,
     exit_canfd_session,
@@ -440,13 +441,6 @@ def run_hybrid_motion_loop(
             fid = load_config(CONFIG_ID)
             poses_data = ex.load_poses_yaml(fid.poses_yaml)
             calib_tool = poses_calib_tool_frame(poses_data)
-            active_tool = get_active_tool_name(bot.robot)
-            if active_tool and calib_tool and active_tool != calib_tool:
-                print(
-                    f"  pose slot TCP: FK(q_deg) with active {active_tool!r} "
-                    f"(yaml pose_base in {calib_tool!r})",
-                    flush=True,
-                )
             spd = int(move_speed) if move_speed is not None else fid.collect.move_speed
             q_tgt, pose_slot_cartesian, rec = load_slot(
                 fid, pose_slot, bot.robot, calib_tool=calib_tool,
@@ -700,10 +694,11 @@ def run_hybrid_motion_loop(
                     pose_fb = snap.pose
                     if snap.q_deg is not None:
                         q_fb = snap.q_deg
-                    # O(1) causal wrench estimate (no whole-buffer filtfilt rebuild):
-                    # keeps the loop ~10 ms so high-follow movev stays bumpless, and
-                    # f_ext is phase-honest / free of filtfilt right-edge jitter.
-                    _signed, f_ext = observer.update(t_s, pose_fb, snap.force_raw)
+                        _signed, f_ext = observer.update(
+                            t_s,
+                            link7_pose_from_q_deg(snap.q_deg),
+                            snap.force_raw,
+                        )
                 pose = pose_fb
 
                 if not scan_started and wait_contact and t_s >= hold_s:

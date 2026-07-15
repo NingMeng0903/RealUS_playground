@@ -3,7 +3,6 @@
 One-shot force compensation calibration: collect A→B→C→D→A, then identify φ.
 
 Prerequisite: set active tool frame to Arm_Tip in the teach pendant / Web UI.
-φ uses link_7 orientation; scan/hybrid may use gripper — force is transformed to Tool-Z at runtime.
 
   source env.sh
   python apps/force_compensation/force_calibrate.py

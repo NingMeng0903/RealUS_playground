@@ -1,10 +1,4 @@
-"""
-Multi-pose force-ID data collection: A → B → C → D → return A.
-
-  source env.sh
-  python -m rm75_control.force.compensation.collection
-  python apps/force_compensation/force_calibrate.py
-"""
+"""Multi-pose force-ID data collection: A → B → C → D → return A."""
 
 from __future__ import annotations
 
@@ -16,57 +10,10 @@ import numpy as np
 
 from . import excitation as ex
 from .id_config import ForceIdConfig, load_config
-from .paths import CONFIG_FORCE, CONFIG_ID, CONFIG_ROBOT, npz_for_slot
+from .link7_pose import link7_pose_from_q_deg
+from .paths import CONFIG_ID, CONFIG_ROBOT, npz_for_slot
 from .progress import stage_progress
-from .regressor import FrameConfig
-
-
-from .sensor_pose import regressor_pose6
-from .tool_pose import get_active_tool_name, poses_calib_tool_frame, read_active_tool_offset, slot_tcp_pose
-
-
-_KIN7 = None
-
-
-def _kin7_arm():
-    global _KIN7
-    if _KIN7 is None:
-        from rm75_control.control.joint_admittance.model import RobotKinematics, deg2rad as d2r
-
-        _KIN7 = (RobotKinematics(), d2r)
-    return _KIN7
-
-
-def pose_for_regressor_log(
-    q_deg: np.ndarray,
-    pose_tcp: np.ndarray,
-    frame: FrameConfig,
-    *,
-    robot=None,
-) -> np.ndarray:
-    """Pose stored in force-ID npz for φ regressor (link_7 or tcp)."""
-    if frame.regressor_pose_frame == "tcp":
-        return np.asarray(pose_tcp, dtype=float).reshape(6)
-    kin, d2r = _kin7_arm()
-    try:
-        return kin.frame_pose(d2r(np.asarray(q_deg, dtype=float)), "link_7")
-    except Exception:
-        if robot is None:
-            raise
-        _, off = read_active_tool_offset(robot)
-        return regressor_pose6(
-            pose_tcp, frame="link_7", tool_offset=off, euler_order=frame.euler_order
-        )
-
-
-_FRAME_CFG: FrameConfig | None = None
-
-
-def _frame_cfg() -> FrameConfig:
-    global _FRAME_CFG
-    if _FRAME_CFG is None:
-        _FRAME_CFG = FrameConfig.from_yaml(CONFIG_FORCE)
-    return _FRAME_CFG
+from .tool_pose import poses_calib_tool_frame, slot_tcp_pose
 
 
 def load_slot(
@@ -101,7 +48,6 @@ def move_j_p(robot, pose: np.ndarray, *, speed: int) -> None:
 
 
 def require_tool_frame(robot, *, required: str) -> None:
-    """Abort calibration unless the active TCP tool frame matches ``required_tool_frame``."""
     ret, cur = robot.rm_get_current_tool_frame()
     if ret != 0:
         raise SystemExit(
@@ -115,34 +61,6 @@ def require_tool_frame(robot, *, required: str) -> None:
             f"Switch the tool coordinate to {required!r} in the RealMan Web UI / teach pendant, then re-run.\n"
         )
     print(f"  Tool frame OK: {active!r}", flush=True)
-
-
-def _poses_taught_tool(cfg: ForceIdConfig) -> str:
-    return poses_calib_tool_frame(ex.load_poses_yaml(cfg.poses_yaml))
-
-
-def use_joint_approach(cfg: ForceIdConfig) -> bool:
-    """Use ``movej(q_deg)`` when taught ``pose_base`` frame != active calibration tool."""
-    return cfg.required_tool_frame != _poses_taught_tool(cfg)
-
-
-def approach_to_slot(
-    robot,
-    cfg: ForceIdConfig,
-    slot: str,
-    q_tgt: np.ndarray,
-    pose_tgt: np.ndarray,
-    *,
-    move_speed: int,
-    settle_timeout_s: float,
-) -> None:
-    """Move to slot a/b/c/d; joint path when TCP teach frame != calibration tool."""
-    if slot == "d" or use_joint_approach(cfg):
-        move_j(robot, q_tgt, speed=move_speed)
-        wait_settle(robot, q_tgt, timeout_s=settle_timeout_s)
-    else:
-        move_j_p(robot, pose_tgt, speed=move_speed)
-        wait_settle_pose(robot, pose_tgt, timeout_s=settle_timeout_s)
 
 
 def wait_settle(robot, target_q: np.ndarray, *, timeout_s: float) -> tuple[np.ndarray, np.ndarray]:
@@ -183,6 +101,23 @@ def wait_settle_pose(
     if ret != 0:
         raise RuntimeError("get state failed after movej_p")
     return np.asarray(st["pose"][:6], dtype=float), np.asarray(st["joint"][:7], dtype=float)
+
+
+def _move_to_slot(
+    robot,
+    slot: str,
+    q_tgt: np.ndarray,
+    pose_tgt: np.ndarray,
+    *,
+    move_speed: int,
+    settle_timeout_s: float,
+) -> None:
+    if slot == "d":
+        move_j(robot, q_tgt, speed=move_speed)
+        wait_settle(robot, q_tgt, timeout_s=settle_timeout_s)
+    else:
+        move_j_p(robot, pose_tgt, speed=move_speed)
+        wait_settle_pose(robot, pose_tgt, timeout_s=settle_timeout_s)
 
 
 def run_cartesian(bot, cfg: ForceIdConfig, slot: str) -> Path:
@@ -237,10 +172,7 @@ def run_cartesian(bot, cfg: ForceIdConfig, slot: str) -> Path:
                 ret_f, fd = bot.robot.rm_get_force_data()
                 if ret_s == 0:
                     q = np.asarray(st["joint"][:7], dtype=float)
-                    pose_tcp = np.asarray(st["pose"][:6], dtype=float)
-                    pose_log[log_i] = pose_for_regressor_log(
-                        q, pose_tcp, _frame_cfg(), robot=bot.robot
-                    )
+                    pose_log[log_i] = link7_pose_from_q_deg(q)
                     q_log[log_i] = q
                 if ret_f == 0:
                     f_log[log_i] = np.asarray(fd["force_data"][:6], dtype=float)
@@ -270,7 +202,6 @@ def run_cartesian(bot, cfg: ForceIdConfig, slot: str) -> Path:
     if out.exists():
         out.unlink()
     cfg.log_dir.mkdir(parents=True, exist_ok=True)
-    frame = _frame_cfg()
     np.savez(
         out,
         t=t_log[:log_i], pose=pose_log[:log_i], q_deg=q_log[:log_i],
@@ -278,7 +209,6 @@ def run_cartesian(bot, cfg: ForceIdConfig, slot: str) -> Path:
         pose0=pose0, q0_deg=q0, pose_slot=slot, preset="cartesian",
         scale=c.scale, max_delta_mm=cart.max_delta_mm, max_delta_deg=max_deg,
         dt_ms=c.dt_ms, log_every=c.log_every, method="cartesian",
-        regressor_pose_frame=frame.regressor_pose_frame,
     )
     return out
 
@@ -378,10 +308,7 @@ def run_pose_d(bot, cfg: ForceIdConfig) -> Path:
                 ret_f, fd = bot.robot.rm_get_force_data()
                 if ret_s == 0:
                     q = np.asarray(st["joint"][:7], dtype=float)
-                    pose_tcp = np.asarray(st["pose"][:6], dtype=float)
-                    pose_log[log_i] = pose_for_regressor_log(
-                        q, pose_tcp, _frame_cfg(), robot=bot.robot
-                    )
+                    pose_log[log_i] = link7_pose_from_q_deg(q)
                     q_log[log_i] = q
                 if ret_f == 0:
                     f_log[log_i] = np.asarray(fd["force_data"][:6], dtype=float)
@@ -416,7 +343,6 @@ def run_pose_d(bot, cfg: ForceIdConfig) -> Path:
     if out.exists():
         out.unlink()
     cfg.log_dir.mkdir(parents=True, exist_ok=True)
-    frame = _frame_cfg()
     np.savez(
         out,
         t=t_log[:log_i], pose=pose_log[:log_i], q_deg=q_log[:log_i],
@@ -426,7 +352,6 @@ def run_pose_d(bot, cfg: ForceIdConfig) -> Path:
         joint_s=pd.joint_duration_s, burst_s=pd.burst_duration_s,
         dt_ms=c.dt_ms, log_every=c.log_every, method="pose_d_vel_burst",
         velocity_burst_profile=vb.profile,
-        regressor_pose_frame=frame.regressor_pose_frame,
     )
     return out
 
@@ -506,13 +431,6 @@ def main(argv: list[str] | None = None) -> int:
 
     with RobotSession(config=CONFIG_ROBOT) as bot:
         require_tool_frame(bot.robot, required=cfg.required_tool_frame)
-        taught = _poses_taught_tool(cfg)
-        if use_joint_approach(cfg):
-            print(
-                f"  Approach: joint q_deg (poses taught as {taught!r}, "
-                f"calibration tool={cfg.required_tool_frame!r})",
-                flush=True,
-            )
         saved = []
         for slot in seq:
             q_tgt, pose_tgt, rec = slots[slot]
@@ -526,9 +444,8 @@ def main(argv: list[str] | None = None) -> int:
                 settle_timeout_s=c.settle_timeout_s,
                 print_diag=True,
             )
-            approach_to_slot(
+            _move_to_slot(
                 bot.robot,
-                cfg,
                 slot,
                 q_tgt,
                 pose_tgt,
@@ -552,9 +469,8 @@ def main(argv: list[str] | None = None) -> int:
             settle_timeout_s=c.settle_timeout_s,
             print_diag=True,
         )
-        approach_to_slot(
+        _move_to_slot(
             bot.robot,
-            cfg,
             home,
             q_h,
             pose_h,
