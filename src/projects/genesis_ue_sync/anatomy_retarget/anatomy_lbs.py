@@ -246,66 +246,19 @@ def _uses_segment_coupling(driver_type: str) -> bool:
     )
 
 
-def _is_finger_joint(name: str) -> bool:
-    return (
-        (name.startswith("left_") or name.startswith("right_"))
-        and any(token in name for token in ("thumb", "index", "middle", "ring", "pinky"))
-    )
-
-
-def _hand_chain_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
-    """Source bones whose motion must be evaluated below the Blender wrist.
-
-    Finger roots are deliberately included even when Blender did not mark the
-    root ``use_connect``: they still inherit the wrist's bind-local frame.
-    Descendant helper bones then preserve their authored local translation and
-    roll rather than being placed as independent SMPL-X globals.
-    """
-    names = list(asset.joint_names)
-    a = np.asarray(asset.source_bone_smplx_a, dtype=np.int64)
-    b = np.asarray(asset.source_bone_smplx_b, dtype=np.int64)
-    return np.asarray(
-        [_is_finger_joint(names[int(ai)]) or _is_finger_joint(names[int(bi)]) for ai, bi in zip(a, b)],
-        dtype=bool,
-    )
-
-
-def _toe_chain_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
-    """All descendants of Blender's authored toe controls.
-
-    SMPL-X has no per-toe pose parameters.  These bones must therefore remain
-    a rigid subhierarchy of the foot instead of being independently fitted.
-    """
-    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
-    names = [str(name).lower() for name in asset.source_bone_names]
-    mask = np.asarray(["toes_rotate" in name or "toe_rotate" in name for name in names], dtype=bool)
-    changed = True
-    while changed:
-        inherited = np.asarray(
-            [bool(parent >= 0 and mask[int(parent)]) for parent in parents], dtype=bool
-        )
-        changed = bool(np.any(inherited & ~mask))
-        mask |= inherited
-    return mask
-
-
-def _uses_bind_local_fk(
-    bone_index: int,
-    parent_index: int,
-    driver_types: list[str],
-    hand_chain: np.ndarray,
-    toe_chain: np.ndarray,
+def _uses_connected_upper_limb_fk(
+    bone_index: int, parent_index: int, driver_types: list[str]
 ) -> bool:
-    """Whether a source bone is solved from its parent's Blender bind frame."""
+    """Whether a connected Blender bone belongs to a mapped arm chain.
+
+    This is based on the exported driver semantics, never on a mesh position.
+    Leg chains retain their already validated segment drivers until their
+    analogous local-control calibration is available.
+    """
     arm_prefixes = ("clavicle_segment_", "humerus_segment_", "forearm_segment_")
     own = str(driver_types[bone_index]) if bone_index < len(driver_types) else ""
     parent = str(driver_types[parent_index]) if 0 <= parent_index < len(driver_types) else ""
-    return (
-        bool(hand_chain[bone_index])
-        or bool(toe_chain[bone_index])
-        or own.startswith(arm_prefixes)
-        or parent.startswith(arm_prefixes)
-    )
+    return own.startswith(arm_prefixes) or parent.startswith(arm_prefixes)
 
 
 def _segment_pose_frame_for_bone(
@@ -429,8 +382,6 @@ def source_bone_skinning_transforms(
     posed_global = np.empty_like(rest_global_bones)
     source_parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
     rest_local_bones = _source_rest_local(asset)
-    hand_chain = _hand_chain_mask(asset)
-    toe_chain = _toe_chain_mask(asset)
     use_connect = (
         np.asarray(asset.source_bone_use_connect, dtype=bool)
         if getattr(asset, "source_bone_use_connect", None) is not None
@@ -447,6 +398,20 @@ def source_bone_skinning_transforms(
                 np.asarray(posed_global[parent], dtype=np.float64) @ rest_local_bones[bi]
             ).astype(np.float32)
             continue
+        # SMPL-X has one rigid foot pose and no articulated toe parameters.
+        # Preserve Blender's authored foot/toe subtree exactly: only the first
+        # foot-chain control receives the SMPL-X segment motion, while all of
+        # its descendants retain their bind-local transform.  This is driven
+        # by exported rig semantics, not mesh names or spatial thresholds.
+        if (
+            parent >= 0
+            and driver_type.startswith("foot_chain_")
+            and str(types[parent]) == str(driver_type)
+        ):
+            posed_global[bi] = (
+                np.asarray(posed_global[parent], dtype=np.float64) @ rest_local_bones[bi]
+            ).astype(np.float32)
+            continue
         # Blender's connected bones share their head with the parent's tail.
         # Keep that bind-local translation exact and take only the desired
         # *local rotation* from the SMPL-X-driven target.  This is hierarchy
@@ -456,9 +421,9 @@ def source_bone_skinning_transforms(
         # SMPL-X head global orientation, including pitch.
         if (
             parent >= 0
-            and (bool(use_connect[bi]) or bool(hand_chain[bi]) or bool(toe_chain[bi]))
+            and bool(use_connect[bi])
             and driver_type != "head_orientation"
-            and _uses_bind_local_fk(bi, parent, types, hand_chain, toe_chain)
+            and _uses_connected_upper_limb_fk(bi, parent, types)
         ):
             # Convert the two global SMPL-X-driven deltas into the child's
             # rotation *relative to its Blender parent*.  Using the child's

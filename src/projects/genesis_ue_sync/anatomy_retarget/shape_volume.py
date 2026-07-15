@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-
-from .anatomy_roles import is_cranial_shell_mesh, is_foot_toe_mesh
 
 from .rigged_asset import AnatomyRiggedAsset
 from .source_rebind import rebind_source_rig
@@ -147,6 +146,94 @@ def _solve_harmonic_field(
     return field
 
 
+def _solve_harmonic_beta_basis(
+    cage: dict[str, np.ndarray], surface_basis: np.ndarray
+) -> np.ndarray:
+    """Solve all SMPL-X beta directions with one sparse factorization."""
+    from scipy.sparse.linalg import splu
+
+    nodes = np.asarray(cage["nodes"], dtype=np.float64)
+    elements = np.asarray(cage["elements"], dtype=np.int32)
+    boundary = np.asarray(cage["boundary"], dtype=np.int64)
+    triangles = np.asarray(cage["source_triangles"], dtype=np.int64)
+    bary = np.asarray(cage["source_bary"], dtype=np.float64)
+    shapedirs = np.asarray(surface_basis, dtype=np.float64)
+    if shapedirs.ndim != 3 or shapedirs.shape[1] != 3:
+        raise ValueError(f"SMPL-X shapedirs must be [V,3,B], got {shapedirs.shape}")
+    boundary_basis = np.sum(
+        shapedirs[triangles] * bary[:, :, None, None], axis=1
+    )
+    interior = np.setdiff1d(
+        np.arange(len(nodes), dtype=np.int64), boundary, assume_unique=False
+    )
+    basis = np.zeros((len(nodes), 3, shapedirs.shape[2]), dtype=np.float64)
+    basis[boundary] = boundary_basis
+    if interior.size:
+        stiffness = _tet_stiffness(nodes, elements)
+        Kii = stiffness[interior][:, interior].tocsc()
+        Kib = stiffness[interior][:, boundary]
+        rhs = -(Kib @ boundary_basis.reshape(len(boundary), -1))
+        solved = splu(Kii).solve(np.asarray(rhs, dtype=np.float64))
+        basis[interior] = solved.reshape(len(interior), 3, shapedirs.shape[2])
+    return basis.astype(np.float32)
+
+
+def _beta_volume_field(
+    *,
+    root: Path,
+    cage: dict[str, np.ndarray],
+    betas: np.ndarray,
+) -> tuple[np.ndarray, bool, str]:
+    """Load/build the linear volume basis and combine it on CUDA when available."""
+    weights_path = root / "smpl_canonical_weights.npz"
+    weights = np.load(weights_path)
+    if "shapedirs" not in weights.files:
+        raise KeyError(f"{weights_path} does not contain SMPL-X shapedirs")
+    shapedirs = np.asarray(weights["shapedirs"], dtype=np.float32)
+    count = min(int(shapedirs.shape[2]), int(np.asarray(betas).size), 10)
+    digest = hashlib.sha256()
+    digest.update(np.asarray(cage["nodes"], dtype=np.float32).tobytes())
+    digest.update(np.asarray(cage["elements"], dtype=np.int32).tobytes())
+    digest.update(shapedirs[:, :, :count].tobytes())
+    shared_cache = root.parent / "volume_beta_basis_v1"
+    shared_cache.mkdir(parents=True, exist_ok=True)
+    cache_path = shared_cache / f"{digest.hexdigest()[:24]}.npz"
+    cache_hit = False
+    basis: np.ndarray
+    if cache_path.is_file():
+        cached = np.load(cache_path)
+        candidate = np.asarray(cached["field_basis"], dtype=np.float32)
+        if candidate.shape == (len(cage["nodes"]), 3, count):
+            basis = candidate
+            cache_hit = True
+        else:
+            basis = _solve_harmonic_beta_basis(cage, shapedirs[:, :, :count])
+    else:
+        basis = _solve_harmonic_beta_basis(cage, shapedirs[:, :, :count])
+    if not cache_hit:
+        np.savez_compressed(cache_path, field_basis=basis)
+
+    beta = np.asarray(betas, dtype=np.float32).reshape(-1)[:count]
+    backend = "numpy"
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            with torch.inference_mode():
+                field_t = torch.tensordot(
+                    torch.as_tensor(basis, device="cuda"),
+                    torch.as_tensor(beta, device="cuda"),
+                    dims=([2], [0]),
+                )
+                field = field_t.cpu().numpy().astype(np.float64)
+            backend = "cuda"
+        else:
+            field = np.tensordot(basis, beta, axes=(2, 0)).astype(np.float64)
+    except Exception:
+        field = np.tensordot(basis, beta, axes=(2, 0)).astype(np.float64)
+    return field, cache_hit, backend
+
+
 def _tet_barycentric(points: np.ndarray, tetrahedra: np.ndarray) -> np.ndarray:
     output = np.empty((len(points), 4), dtype=np.float64)
     for idx, (point, tet) in enumerate(zip(points, tetrahedra)):
@@ -259,27 +346,52 @@ def _rigid_fit(source: np.ndarray, target: np.ndarray) -> np.ndarray:
     return (source - src_center) @ rot.T + dst_center
 
 
-def _cranial_shell_fit(source: np.ndarray, target: np.ndarray) -> np.ndarray:
-    """Head-local anisotropic beta response for a rigid cranial shell.
+def _shared_anisotropic_fit(source: np.ndarray, target: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Fit one positive, axis-aligned material transform for a mesh group.
 
-    The harmonic field supplies the subject-specific target samples.  We keep
-    its principal stretches (rather than shrinking the skull with a generic
-    containment pass), while retaining a single rigid orientation.  This is a
-    material fit and contains no position/direction constants.
+    A single transform preserves the relative layout of all meshes in the
+    articulated region.  The axes and scales come entirely from the source
+    group and the harmonic target samples; there are no anatomical offsets.
     """
-    src_center, dst_center = source.mean(axis=0), target.mean(axis=0)
-    u, _s, vt = np.linalg.svd((source - src_center).T @ (target - dst_center))
-    rot = vt.T @ u.T
-    if np.linalg.det(rot) < 0.0:
+    src_center = np.asarray(source, dtype=np.float64).mean(axis=0)
+    dst_center = np.asarray(target, dtype=np.float64).mean(axis=0)
+    centered = np.asarray(source, dtype=np.float64) - src_center
+    _values, axes = np.linalg.eigh(np.cov(centered.T))
+    src_local = centered @ axes
+    dst_centered = np.asarray(target, dtype=np.float64) - dst_center
+    u, _s, vt = np.linalg.svd(centered.T @ dst_centered)
+    rotation = vt.T @ u.T
+    if np.linalg.det(rotation) < 0.0:
         vt[-1] *= -1.0
-        rot = vt.T @ u.T
-    _evals, axes = np.linalg.eigh(np.cov((source - src_center).T))
-    source_local = (source - src_center) @ axes
-    target_local = (target - dst_center) @ (rot @ axes)
-    source_std = np.sqrt(np.mean(source_local * source_local, axis=0))
-    target_std = np.sqrt(np.mean(target_local * target_local, axis=0))
-    scale = np.divide(target_std, source_std, out=np.ones(3), where=source_std > 1.0e-8)
-    return (source_local * scale) @ (rot @ axes).T + dst_center
+        rotation = vt.T @ u.T
+    target_axes = rotation @ axes
+    dst_local = dst_centered @ target_axes
+    src_extent = np.sqrt(np.mean(src_local * src_local, axis=0))
+    dst_extent = np.sqrt(np.mean(dst_local * dst_local, axis=0))
+    scales = np.divide(dst_extent, src_extent, out=np.ones(3), where=src_extent > 1.0e-8)
+    linear = axes @ np.diag(scales) @ target_axes.T
+    translation = dst_center - src_center @ linear
+    return linear, translation
+
+
+def _dominant_source_bone(asset: AnatomyRiggedAsset, start: int, stop: int) -> int | None:
+    if asset.driver_indices is None or asset.driver_weights is None or asset.source_bone_names is None:
+        return None
+    indices = np.asarray(asset.driver_indices[start:stop], dtype=np.int64).reshape(-1)
+    weights = np.asarray(asset.driver_weights[start:stop], dtype=np.float64).reshape(-1)
+    mass = np.bincount(indices, weights=weights, minlength=len(asset.source_bone_names))
+    return int(np.argmax(mass)) if mass.size and float(mass.max()) > 0.0 else None
+
+
+def _has_ancestor(bone: int, ancestor: int, parents: np.ndarray) -> bool:
+    current = int(bone)
+    visited = 0
+    while current >= 0 and visited <= len(parents):
+        if current == int(ancestor):
+            return True
+        current = int(parents[current])
+        visited += 1
+    return False
 
 
 def _preserve_rigid_bone_components(
@@ -292,24 +404,63 @@ def _preserve_rigid_bone_components(
     output = np.asarray(field_vertices, dtype=np.float64).copy()
     if asset.source_vertex_ranges is None or asset.source_tissues is None:
         return output, 0
-    rigid = 0
-    for mesh_name, (start, stop), tissue in zip(
-        asset.source_mesh_names, np.asarray(asset.source_vertex_ranges, dtype=np.int64), asset.source_tissues
-    ):
+    ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
+    types = list(asset.source_bone_driver_types or [])
+    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    dominant = [_dominant_source_bone(asset, int(start), int(stop)) for start, stop in ranges]
+    processed: set[int] = set()
+    groups: list[list[int]] = []
+
+    # Each foot uses one rest-space material transform.  Individual toe bones
+    # are never fitted separately, so they cannot drift away from the foot.
+    for side in ("left", "right"):
+        members = [
+            idx for idx, (bone, tissue) in enumerate(zip(dominant, asset.source_tissues))
+            if bone is not None
+            and str(tissue) == "bone"
+            and bone < len(types)
+            and str(types[bone]) == f"foot_chain_{side}"
+        ]
+        if members:
+            groups.append(members)
+
+    # Skull, brain and jaw share the source Head_Bone material frame.  Their
+    # source enclosure relationship therefore survives beta adaptation.
+    head_index = (
+        asset.source_bone_names.index("Head_Bone")
+        if asset.source_bone_names is not None and "Head_Bone" in asset.source_bone_names
+        else None
+    )
+    if head_index is not None:
+        members = [
+            idx for idx, (bone, tissue) in enumerate(zip(dominant, asset.source_tissues))
+            if bone is not None
+            and str(tissue) in {"bone", "nerve", "organ"}
+            and _has_ancestor(bone, head_index, parents)
+        ]
+        if members:
+            groups.append(members)
+
+    for members in groups:
+        indices = np.concatenate(
+            [np.arange(int(ranges[idx, 0]), int(ranges[idx, 1]), dtype=np.int64) for idx in members]
+        )
+        linear, translation = _shared_anisotropic_fit(
+            np.asarray(source_vertices[indices], dtype=np.float64),
+            np.asarray(field_vertices[indices], dtype=np.float64),
+        )
+        output[indices] = np.asarray(source_vertices[indices], dtype=np.float64) @ linear + translation
+        processed.update(members)
+
+    rigid = len(groups)
+    for mesh_idx, ((start, stop), tissue) in enumerate(zip(ranges, asset.source_tissues)):
         if str(tissue) != "bone" or int(stop - start) < 3:
+            continue
+        if mesh_idx in processed:
             continue
         src = np.asarray(source_vertices[start:stop], dtype=np.float64)
         dst = np.asarray(field_vertices[start:stop], dtype=np.float64)
-        # Toe phalanges deliberately keep the authored foot hierarchy.  They
-        # have no corresponding SMPL-X joints and should not be squeezed by a
-        # body-shape field.  The skull keeps the field's anisotropic head scale
-        # so it remains the outer shell around the brain.
-        if is_foot_toe_mesh(str(mesh_name)):
-            output[start:stop] = src
-        elif is_cranial_shell_mesh(str(mesh_name)):
-            output[start:stop] = _cranial_shell_fit(src, dst)
-        else:
-            output[start:stop] = _rigid_fit(src, dst)
+        output[start:stop] = _rigid_fit(src, dst)
         rigid += 1
     return output, rigid
 
@@ -326,7 +477,38 @@ def apply_subject_beta_shape(
     if neutral_v.shape != subject_v.shape or not np.array_equal(faces, subject_faces):
         raise ValueError("neutral and subject SMPL-X surfaces must share exact topology")
     cage = _build_cage(neutral_v, faces, cache_path=root / "neutral_volume_cage_v2.npz")
-    field = _solve_harmonic_field(cage, surface_displacement=subject_v - neutral_v)
+    manifest_path = root / "source_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.is_file() else {}
+    beta_values = np.asarray(manifest.get("betas", []), dtype=np.float32).reshape(-1)
+    basis_cache_hit = False
+    basis_backend = "exact_surface_solve"
+    if beta_values.size and (root / "smpl_canonical_weights.npz").is_file():
+        weights = np.load(root / "smpl_canonical_weights.npz")
+        shapedirs = np.asarray(weights["shapedirs"], dtype=np.float64)
+        count = min(shapedirs.shape[2], beta_values.size, 10)
+        predicted_surface_delta = np.tensordot(
+            shapedirs[:, :, :count], beta_values[:count], axes=(2, 0)
+        )
+        surface_basis_error = float(
+            np.max(np.linalg.norm((subject_v - neutral_v) - predicted_surface_delta, axis=1))
+        )
+        if surface_basis_error <= 1.0e-5:
+            field, basis_cache_hit, basis_backend = _beta_volume_field(
+                root=root, cage=cage, betas=beta_values
+            )
+        else:
+            field = _solve_harmonic_field(cage, surface_displacement=subject_v - neutral_v)
+            basis_backend = "exact_surface_solve_basis_mismatch"
+    else:
+        field = _solve_harmonic_field(cage, surface_displacement=subject_v - neutral_v)
+        surface_basis_error = 0.0
+
+    before = np.asarray(cage["nodes"], dtype=np.float64)[np.asarray(cage["elements"], dtype=np.int64)]
+    after = (np.asarray(cage["nodes"], dtype=np.float64) + field)[np.asarray(cage["elements"], dtype=np.int64)]
+    det0 = np.linalg.det(before[:, 1:] - before[:, :1])
+    det1 = np.linalg.det(after[:, 1:] - after[:, :1])
+    if np.any(det0 * det1 <= 0.0):
+        raise RuntimeError("cached subject beta harmonic basis flips one or more tetrahedra")
     points = np.asarray(asset.vertices_rest, dtype=np.float64)
     point_delta, outside_points, outside_mask = _sample_field(points, cage=cage, field=field)
     outside_by_tissue: dict[str, int] = {}
@@ -371,6 +553,9 @@ def apply_subject_beta_shape(
     norm = np.linalg.norm(point_delta, axis=1)
     return result, {
         "backend": "tetgen_fem_harmonic_v5_soft_tissue",
+        "beta_basis_cache_hit": bool(basis_cache_hit),
+        "beta_basis_combine_backend": str(basis_backend),
+        "surface_basis_error_m": float(surface_basis_error),
         "tetra_vertices": int(len(cage["nodes"])),
         "tetrahedra": int(len(cage["elements"])),
         "mean_displacement_m": float(np.mean(norm)),

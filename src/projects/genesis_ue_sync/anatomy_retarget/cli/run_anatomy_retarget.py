@@ -203,20 +203,16 @@ def main() -> int:
         Path(__file__).resolve().parents[1] / "source_skin_volume.py",
         Path(__file__).resolve().parents[1] / "shape_volume.py",
         Path(__file__).resolve().parents[1] / "source_rebind.py",
-        Path(__file__).resolve().parents[1] / "containment.py",
         Path(__file__).resolve().parents[1] / "segment_coupling.py",
-        Path(__file__).resolve().parents[1] / "anatomy_lbs.py",
-        Path(__file__).resolve().parents[1] / "anatomy_roles.py",
-        extra="source-template-v5.3-bind-local-hand-toe-head-v1",
+        extra="source-template-v5.4-stable-volume-group-rig-v1",
     )
     shape_hash = smplx_shape_hash(betas, gender=gender) if betas else "neutral"
     source_cache = cache_root / "source_template_v5" / f"{source_key}.npz"
     shape_key = _cache_key(
         Path(args.canonical_dir) / "smpl_canonical_tpose.obj",
         Path(__file__).resolve().parents[1] / "shape_volume.py",
-        Path(__file__).resolve().parents[1] / "anatomy_roles.py",
         Path(__file__).resolve().parents[1] / "leg_material.py",
-        extra=f"{source_key}:{shape_hash}:subject-shape-v5.3",
+        extra=f"{source_key}:{shape_hash}:subject-shape-v5.4",
     )
     shape_cache = cache_root / "shape" / f"{shape_key}.npz"
     source_cache_hit = source_cache.is_file() and not args.force_source_rebake
@@ -254,7 +250,7 @@ def main() -> int:
             asset, neutral_containment = repair_containment(
                 asset, surface_vertices=neutral_surface[0], surface_faces=neutral_surface[1],
                 stage="neutral_canonical", strict=False,
-                repair_tissues=("bone",),
+                repair_tissues=(),
             )
             containment_reports.append(neutral_containment)
         coupling, coupling_report = bake_segment_coupling(asset)
@@ -302,7 +298,7 @@ def main() -> int:
         asset, subject_containment = repair_containment(
             asset, surface_vertices=subject_surface[0], surface_faces=subject_surface[1],
             stage="subject_beta", strict=False,
-            repair_tissues=("bone",),
+            repair_tissues=(),
         )
         containment_reports.append(subject_containment)
         asset, subject_soft_containment = repair_soft_tissue_residual_containment(
@@ -345,7 +341,12 @@ def main() -> int:
         pose55, raw_transl = load_easymocap_smplx_fit_drive(motion_path, gender=gender)
         effective_transl = easymocap_drive_translation(pose55[:3], raw_transl, asset.rest_joints[0])
         cache_hash = smplx_pose_hash(pose55, effective_transl)
-        pose_cache = cache_root / "pose" / f"{shape_key}-{cache_hash}.npz"
+        runtime_key = _cache_key(
+            Path(__file__).resolve().parents[1] / "anatomy_lbs.py",
+            Path(__file__).resolve().parents[1] / "pose_adapter.py",
+            extra="runtime-source-fk-v5.4",
+        )
+        pose_cache = cache_root / "pose" / f"{shape_key}-{runtime_key}-{cache_hash}.npz"
         if pose_cache.is_file() and not args.force_source_rebake:
             cached_pose = load_rigged_asset(pose_cache, validate=True)
             pose_report = dict((cached_pose.metadata or {}).get("pose_cache_report") or {})
@@ -383,6 +384,7 @@ def main() -> int:
                     stage="final_pose",
                     max_iterations=12,
                     strict=False,
+                    repair_tissues=(),
                 )
                 pose_cache_vertices = np.asarray(repaired_pose.vertices_rest, dtype=np.float32)
             else:
@@ -443,7 +445,7 @@ def main() -> int:
             "leg_material_report": dict(meta.get("leg_material_report") or {}),
             "segment_coupling_report": dict(meta.get("segment_coupling_report") or {}),
             "source_template_version": 5,
-            "source_template_revision": "5.3",
+            "source_template_revision": "5.4",
             "source_bind_roundtrip": bind_roundtrip,
             "show_connective_tissue": bool(args.show_connective_tissue),
         }

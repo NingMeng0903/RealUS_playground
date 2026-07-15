@@ -10,7 +10,6 @@ import numpy as np
 
 from .rigged_asset import AnatomyRiggedAsset
 from .source_rebind import rebind_source_rig
-from .anatomy_roles import exempt_from_rigid_containment
 
 
 TISSUE_MARGIN_M = {"bone": 0.003, "organ": 0.004, "vessel": 0.0015, "nerve": 0.001}
@@ -449,13 +448,45 @@ def repair_containment(
     initial_signed, _closest, _normal = signed_distance(vertices, surface_vertices, surface_faces)
     iteration_count = 0
 
+    # Rigid anatomy is driven by the registered source rig and articulated
+    # segment transforms.  An SDF is useful for reporting protrusions, but it
+    # must never resize or translate bones independently.  In diagnostic-only
+    # mode return after a single signed-distance evaluation.
+    if not permitted:
+        remaining: dict[str, int] = {}
+        over_limit: dict[str, int] = {}
+        remaining_meshes: dict[str, int] = {}
+        for mesh_name, (start, stop), tissue in zip(
+            asset.source_mesh_names, ranges, tissues
+        ):
+            local = initial_signed[int(start) : int(stop)]
+            count = int(np.count_nonzero(local > 0.0))
+            remaining[str(tissue)] = remaining.get(str(tissue), 0) + count
+            tolerance = 0.0 if str(tissue) == "vessel" else (0.001 if str(tissue) == "bone" else 0.002)
+            severe = int(np.count_nonzero(local > tolerance))
+            over_limit[str(tissue)] = over_limit.get(str(tissue), 0) + severe
+            if count:
+                remaining_meshes[str(mesh_name)] = count
+        return asset, {
+            "stage": str(stage),
+            "backend": "signed_distance_diagnostic_only",
+            "iterations": 0,
+            "initial_outside_count": int(np.count_nonzero(initial_signed > 0.0)),
+            "final_outside_count": int(np.count_nonzero(initial_signed > 0.0)),
+            "mean_displacement_m": 0.0,
+            "max_displacement_m": 0.0,
+            "remaining_margin_violations": remaining,
+            "over_limit_count": over_limit,
+            "remaining_meshes": dict(sorted(remaining_meshes.items(), key=lambda item: item[1], reverse=True)[:20]),
+            "source_rig_rebind": {"stage": str(stage), "source_rig": "unchanged"},
+            "repair_tissues": [],
+        }
+
     for iteration in range(int(max_iterations)):
         values, closest, normals = signed_distance(vertices, surface_vertices, surface_faces)
         any_violation = False
         for mesh_idx, ((start, stop), tissue) in enumerate(zip(ranges, tissues)):
             if str(tissue) not in permitted:
-                continue
-            if exempt_from_rigid_containment(str(asset.source_mesh_names[mesh_idx])):
                 continue
             margin = float(TISSUE_MARGIN_M.get(str(tissue), 0.0015))
             local_values = values[start:stop]
@@ -498,8 +529,6 @@ def repair_containment(
         for _mesh_name, (start, stop), tissue in zip(mesh_names, ranges, tissues):
             if str(tissue) != "bone" or "bone" not in permitted:
                 continue
-            if exempt_from_rigid_containment(str(_mesh_name)):
-                continue
             local_values = values[start:stop]
             violating = local_values > -1.0e-4
             if not np.any(violating):
@@ -524,10 +553,8 @@ def repair_containment(
     for _rigid_iteration in range(5):
         values, closest, normals = signed_distance(vertices, surface_vertices, surface_faces)
         moved = False
-        for mesh_name, (start, stop), tissue in zip(mesh_names, ranges, tissues):
+        for (start, stop), tissue in zip(ranges, tissues):
             if str(tissue) != "bone" or "bone" not in permitted:
-                continue
-            if exempt_from_rigid_containment(str(mesh_name)):
                 continue
             local = values[start:stop]
             worst = int(np.argmax(local))

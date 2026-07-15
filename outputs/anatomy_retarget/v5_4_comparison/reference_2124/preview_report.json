@@ -1,0 +1,48 @@
+{
+  "asset_npz": "outputs/anatomy_retarget/v52_validation_fast/anatomy_rigged.npz",
+  "motion_npz": "smplx_outputs/20260713_213712/moment_0000/smplx_result.npz",
+  "root_align_offset_m": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "root_align_applied": false,
+  "anatomy_tpose_span_m": [
+    1.786092758178711,
+    1.753753662109375,
+    0.3794446587562561
+  ],
+  "drive_check_rms_m": 0.003751590149477124,
+  "anatomy_posed_span_m": [
+    1.9022541046142578,
+    0.8053208589553833,
+    0.3462534248828888
+  ],
+  "anatomy_posed_center_m": [
+    -0.5715194344520569,
+    -0.04522796347737312,
+    0.4507778584957123
+  ],
+  "pose_cache_vs_lbs_max_m": 0.008914913050830364,
+  "pose_cache_vs_lbs_mean_m": 0.0003210945287719369,
+  "pose_cache_vs_lbs_p999_m": 0.008460394106805325,
+  "smpl_fit_center_m": [
+    -0.5454045534133911,
+    -0.05081614479422569,
+    0.4090367555618286
+  ],
+  "leg_bone_marker_points": {
+    "tpose": 720,
+    "posed": 726,
+    "meshes": [
+      "Femur_L",
+      "Femur_R",
+      "Fibula_L",
+      "Fibula_R",
+      "Patella_L",
+      "Patella_R",
+      "Tibia_L",
+      "Tibia_R"
+    ]
+  }
+}
