@@ -44,6 +44,19 @@ class AnatomyLbsDrawer:
         self._last_pose: np.ndarray | None = None
         self._last_transl: np.ndarray | None = None
 
+    def _render_faces(self) -> np.ndarray:
+        """Hide optional tissue layers without deleting them from the asset."""
+        faces = np.asarray(self.asset.faces, dtype=np.int32)
+        if bool((self.asset.metadata or {}).get("show_connective_tissue", False)):
+            return faces
+        if self.asset.source_vertex_ranges is None or self.asset.source_tissues is None:
+            return faces
+        hidden = np.zeros(len(self.asset.vertices_rest), dtype=bool)
+        for (start, stop), tissue in zip(self.asset.source_vertex_ranges, self.asset.source_tissues):
+            if str(tissue) == "connective_tissue":
+                hidden[int(start) : int(stop)] = True
+        return faces[~np.any(hidden[faces], axis=1)]
+
     @classmethod
     def from_npz(
         cls,
@@ -152,7 +165,7 @@ class AnatomyLbsDrawer:
 
         import trimesh
 
-        mesh = trimesh.Trimesh(vertices=vertices, faces=self.asset.faces, process=False)
+        mesh = trimesh.Trimesh(vertices=vertices, faces=self._render_faces(), process=False)
         rgba = _rgba_float_to_uint8(self.default_color_rgba, self.opacity)
         mesh.visual.vertex_colors = np.tile(rgba, (len(mesh.vertices), 1))
 

@@ -12,6 +12,19 @@ import numpy as np
 DEFAULT_POSE_FORMAT = "smplx_body55_axis_angle"
 DEFAULT_COORDINATE_SYSTEM = "genesis_z_up_m"
 
+# Compact serialization for Blender's Bone.inherit_scale enum.  Keep this
+# stable: source templates are intended to outlive the Blender process that
+# produced them.
+SOURCE_INHERIT_SCALE_CODES: dict[str, int] = {
+    "FULL": 0,
+    "FIX_SHEAR": 1,
+    "AVERAGE": 2,
+    "NONE": 3,
+    "NONE_LEGACY": 4,
+    "ALIGNED": 5,
+}
+SOURCE_INHERIT_SCALE_NAMES: tuple[str, ...] = tuple(SOURCE_INHERIT_SCALE_CODES)
+
 
 def _string_array(values: Any) -> np.ndarray:
     arr = np.asarray(values)
@@ -37,7 +50,13 @@ class AnatomyRiggedAsset:
     source_bone_names: list[str] | None = None
     source_bone_parents: np.ndarray | None = None
     source_rest_global: np.ndarray | None = None
+    source_rest_local: np.ndarray | None = None
     source_inverse_bind: np.ndarray | None = None
+    source_bone_head: np.ndarray | None = None
+    source_bone_tail: np.ndarray | None = None
+    source_bone_roll: np.ndarray | None = None
+    source_bone_use_connect: np.ndarray | None = None
+    source_bone_inherit_scale: np.ndarray | None = None
     source_bone_smplx_a: np.ndarray | None = None
     source_bone_smplx_b: np.ndarray | None = None
     source_bone_blend: np.ndarray | None = None
@@ -144,6 +163,58 @@ class AnatomyRiggedAsset:
             if self.driver_indices is None or self.driver_weights is None:
                 raise ValueError("source-rig v2 requires sparse driver indices and weights")
 
+            fk_values = (
+                self.source_rest_local,
+                self.source_bone_head,
+                self.source_bone_tail,
+                self.source_bone_roll,
+                self.source_bone_use_connect,
+                self.source_bone_inherit_scale,
+            )
+            if any(value is not None for value in fk_values):
+                if not all(value is not None for value in fk_values):
+                    raise ValueError("source-rig FK metadata must be stored as one complete set")
+                fk_arrays = {
+                    "source_rest_local": (self.source_rest_local, (bone_count, 4, 4)),
+                    "source_bone_head": (self.source_bone_head, (bone_count, 3)),
+                    "source_bone_tail": (self.source_bone_tail, (bone_count, 3)),
+                    "source_bone_roll": (self.source_bone_roll, (bone_count,)),
+                    "source_bone_use_connect": (self.source_bone_use_connect, (bone_count,)),
+                    "source_bone_inherit_scale": (self.source_bone_inherit_scale, (bone_count,)),
+                }
+                for name, (value, shape) in fk_arrays.items():
+                    arr = np.asarray(value)
+                    if arr.shape != shape:
+                        raise ValueError(f"{name} must be {shape} for source-rig v3")
+                    if not np.all(np.isfinite(arr)):
+                        raise ValueError(f"{name} contains non-finite values")
+                connected = np.asarray(self.source_bone_use_connect, dtype=np.uint8)
+                if np.any(connected > 1):
+                    raise ValueError("source_bone_use_connect must contain only 0 or 1")
+                inherit_scale = np.asarray(self.source_bone_inherit_scale, dtype=np.uint8)
+                if np.any(inherit_scale >= len(SOURCE_INHERIT_SCALE_NAMES)):
+                    raise ValueError("source_bone_inherit_scale contains an unknown enum code")
+                source_global = np.asarray(self.source_rest_global, dtype=np.float64)
+                source_local = np.asarray(self.source_rest_local, dtype=np.float64)
+                for idx, parent in enumerate(source_parents.tolist()):
+                    reconstructed = (
+                        source_local[idx]
+                        if int(parent) < 0
+                        else source_global[int(parent)] @ source_local[idx]
+                    )
+                    if not np.allclose(reconstructed, source_global[idx], atol=1.0e-4, rtol=0.0):
+                        raise ValueError(
+                            f"source_rest_local[{idx}] does not reconstruct source_rest_global"
+                        )
+                heads = np.asarray(self.source_bone_head, dtype=np.float64)
+                tails = np.asarray(self.source_bone_tail, dtype=np.float64)
+                if np.any(np.linalg.norm(tails - heads, axis=1) <= 1.0e-8):
+                    raise ValueError("source bone head/tail contains a zero-length bone")
+                for idx in np.flatnonzero(connected):
+                    parent = int(source_parents[int(idx)])
+                    if parent < 0:
+                        raise ValueError(f"connected source bone {idx} has no parent")
+
 
 def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
     asset.validate()
@@ -156,7 +227,10 @@ def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
     else:
         driver_indices, driver_weights = asset.driver_indices, asset.driver_weights
     payload: dict[str, Any] = dict(
-        schema_version=np.asarray(2 if asset.source_bone_names is not None else 1, dtype=np.int32),
+        schema_version=np.asarray(
+            3 if asset.source_rest_local is not None else (2 if asset.source_bone_names is not None else 1),
+            dtype=np.int32,
+        ),
         vertices_rest=np.asarray(asset.vertices_rest, dtype=np.float32),
         faces=np.asarray(asset.faces, dtype=np.int32),
         joint_names=np.asarray(asset.joint_names, dtype=object),
@@ -209,6 +283,15 @@ def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
             ).reshape(-1, 3),
             pose_cache_hash=np.asarray(str(asset.pose_cache_hash), dtype=object),
         )
+        if asset.source_rest_local is not None:
+            payload.update(
+                source_rest_local=np.asarray(asset.source_rest_local, dtype=np.float32),
+                source_bone_head=np.asarray(asset.source_bone_head, dtype=np.float32),
+                source_bone_tail=np.asarray(asset.source_bone_tail, dtype=np.float32),
+                source_bone_roll=np.asarray(asset.source_bone_roll, dtype=np.float32),
+                source_bone_use_connect=np.asarray(asset.source_bone_use_connect, dtype=np.uint8),
+                source_bone_inherit_scale=np.asarray(asset.source_bone_inherit_scale, dtype=np.uint8),
+            )
     np.savez_compressed(
         out,
         **payload,
@@ -275,7 +358,13 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
         ),
         source_bone_parents=np.asarray(data["source_bone_parents"], dtype=np.int32) if "source_bone_parents" in data.files else None,
         source_rest_global=np.asarray(data["source_rest_global"], dtype=np.float32) if "source_rest_global" in data.files else None,
+        source_rest_local=np.asarray(data["source_rest_local"], dtype=np.float32) if "source_rest_local" in data.files else None,
         source_inverse_bind=np.asarray(data["source_inverse_bind"], dtype=np.float32) if "source_inverse_bind" in data.files else None,
+        source_bone_head=np.asarray(data["source_bone_head"], dtype=np.float32) if "source_bone_head" in data.files else None,
+        source_bone_tail=np.asarray(data["source_bone_tail"], dtype=np.float32) if "source_bone_tail" in data.files else None,
+        source_bone_roll=np.asarray(data["source_bone_roll"], dtype=np.float32) if "source_bone_roll" in data.files else None,
+        source_bone_use_connect=np.asarray(data["source_bone_use_connect"], dtype=np.uint8) if "source_bone_use_connect" in data.files else None,
+        source_bone_inherit_scale=np.asarray(data["source_bone_inherit_scale"], dtype=np.uint8) if "source_bone_inherit_scale" in data.files else None,
         source_bone_smplx_a=np.asarray(data["source_bone_smplx_a"], dtype=np.int32) if "source_bone_smplx_a" in data.files else None,
         source_bone_smplx_b=np.asarray(data["source_bone_smplx_b"], dtype=np.int32) if "source_bone_smplx_b" in data.files else None,
         source_bone_blend=np.asarray(data["source_bone_blend"], dtype=np.float32) if "source_bone_blend" in data.files else None,

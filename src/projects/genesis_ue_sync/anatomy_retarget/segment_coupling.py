@@ -17,6 +17,7 @@ _SEGMENT_PREFIXES = (
     "knee_chain_",
     "foot_chain_",
     "head_segment",
+    "head_orientation",
     "rib_segment",
 )
 
@@ -36,6 +37,12 @@ def _segment_rest_frame(
             or driver_type.startswith("forearm_segment_") or driver_type.startswith("shin_segment_")
             or driver_type.startswith("knee_chain_") or driver_type.startswith("foot_chain_")):
         return _segment_frame(rest_points[a], rest_points[b], reference_x)
+    if driver_type == "head_orientation":
+        return joint_global_transforms(
+            pose_axis_angle=np.zeros((55, 3), dtype=np.float32),
+            rest_joints=asset.rest_joints,
+            parents=asset.parents,
+        )[joint_index["head"]].astype(np.float64)
     if driver_type == "head_segment" or driver_type == "rib_segment":
         return _segment_frame(rest_points[a], rest_points[b], reference_x)
     if driver_type.startswith("scapula_"):

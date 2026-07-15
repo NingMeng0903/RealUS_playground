@@ -60,6 +60,7 @@ def rebind_source_rig(
     weights = np.asarray(asset.driver_weights, dtype=np.float64)
     old = np.asarray(asset.source_rest_global, dtype=np.float64)
     new = old.copy()
+    bone_transforms = np.tile(np.eye(4, dtype=np.float64), (len(asset.source_bone_names), 1, 1))
     residuals: list[float] = []
     fitted = 0
     for bone in range(len(asset.source_bone_names)):
@@ -72,19 +73,76 @@ def rebind_source_rig(
         predicted = src[selected] @ transform[:3, :3].T + transform[:3, 3]
         residuals.append(float(np.sqrt(np.average(np.sum((predicted - dst[selected]) ** 2, axis=1), weights=row_weight[selected]))))
         new[bone] = transform @ old[bone]
+        bone_transforms[bone] = transform
         fitted += 1
+    # Preserve the actual Blender FK relation for bones that have no
+    # independent SMPL-X control.  Fitting every helper/follower globally was
+    # enough to keep zero-pose LBS identity, but it silently broke the local
+    # shoulder/elbow/neck hierarchy used at runtime.
+    parents = np.asarray(asset.source_bone_parents, dtype=np.int32)
+    types = list(asset.source_bone_driver_types or [])
+    use_connect = (
+        np.asarray(asset.source_bone_use_connect, dtype=bool)
+        if getattr(asset, "source_bone_use_connect", None) is not None
+        else np.zeros(len(parents), dtype=bool)
+    )
+    old_local = (
+        np.asarray(asset.source_rest_local, dtype=np.float64).copy()
+        if asset.source_rest_local is not None
+        else old.copy()
+    )
+    if asset.source_rest_local is None:
+        for bone, parent in enumerate(parents.tolist()):
+            if int(parent) >= 0:
+                old_local[bone] = np.linalg.inv(old[int(parent)]) @ old[bone]
+    hierarchy_preserved = 0
+    for bone, parent in enumerate(parents.tolist()):
+        if int(parent) < 0:
+            continue
+        if bone >= len(types):
+            continue
+        is_upper_limb_connected = bool(use_connect[bone]) and (
+            str(types[bone]).startswith(("clavicle_segment_", "humerus_segment_", "forearm_segment_"))
+            or str(types[int(parent)]).startswith(("clavicle_segment_", "humerus_segment_", "forearm_segment_"))
+        )
+        if (
+            str(types[bone]) != "parent_follow" and not is_upper_limb_connected
+        ):
+            continue
+        new[bone] = new[int(parent)] @ old_local[bone]
+        hierarchy_preserved += 1
+    bone_transforms = new @ np.linalg.inv(old)
     inverse = np.linalg.inv(new).astype(np.float32)
+    updates: dict[str, Any] = {
+        "source_rest_global": new.astype(np.float32),
+        "source_inverse_bind": inverse,
+    }
+    if asset.source_rest_local is not None:
+        local = new.copy()
+        for bone, parent in enumerate(parents.tolist()):
+            if int(parent) >= 0:
+                local[bone] = np.linalg.inv(new[int(parent)]) @ new[bone]
+        updates["source_rest_local"] = local.astype(np.float32)
+    for field_name in ("source_bone_head", "source_bone_tail"):
+        value = getattr(asset, field_name)
+        if value is None:
+            continue
+        points = np.asarray(value, dtype=np.float64)
+        moved = np.einsum("bij,bj->bi", bone_transforms[:, :3, :3], points)
+        moved += bone_transforms[:, :3, 3]
+        updates[field_name] = moved.astype(np.float32)
     meta = dict(asset.metadata or {})
     history = list(meta.get("source_rig_rebind", []))
     history.append({"stage": str(stage), "fitted_bones": fitted})
     meta["source_rig_rebind"] = history
-    result = type(asset)(**{**asset.__dict__, "source_rest_global": new.astype(np.float32), "source_inverse_bind": inverse, "metadata": meta})
+    result = type(asset)(**{**asset.__dict__, **updates, "metadata": meta})
     return result, {
         "stage": str(stage),
         "fitted_bones": int(fitted),
         "unfitted_bones": int(len(asset.source_bone_names) - fitted),
         "weighted_fit_rms_m": float(np.mean(residuals)) if residuals else 0.0,
         "weighted_fit_max_m": float(np.max(residuals)) if residuals else 0.0,
+        "hierarchy_preserved_followers": int(hierarchy_preserved),
     }
 
 

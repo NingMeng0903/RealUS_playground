@@ -137,7 +137,10 @@ def _armature() -> bpy.types.Object:
 def _is_connective_tissue(name: str) -> bool:
     """Classify deformable skeletal connective tissue by source semantics."""
     normalized = str(name).lower()
-    return any(token in normalized for token in ("ligament", "cartilage", "tendon"))
+    return any(
+        token in normalized
+        for token in ("ligament", "cartilage", "tendon", "fascia", "aponeuros")
+    )
 
 
 def _bone_parents(arm: bpy.types.Object) -> dict[str, str | None]:
@@ -551,7 +554,9 @@ def _merge_and_skin_meshes(
         source_mesh_names.append(str(obj.name))
         object_collections = set(_collections_for_object(obj))
         connective_tissue = _is_connective_tissue(str(obj.name))
-        if "Skeletal_Sys" in object_collections and not connective_tissue:
+        if connective_tissue:
+            source_tissues.append("connective_tissue")
+        elif "Skeletal_Sys" in object_collections:
             source_tissues.append("bone")
         elif "Cardiovascular_Sys" in object_collections:
             source_tissues.append("vessel")
@@ -862,6 +867,21 @@ def _source_rig_canonical(
     offsets = np.asarray(align["joint_offsets"], dtype=np.float64)
 
     rest_global = np.tile(np.eye(4, dtype=np.float64), (len(bones), 1, 1))
+    bone_head = np.zeros((len(bones), 3), dtype=np.float64)
+    bone_tail = np.zeros((len(bones), 3), dtype=np.float64)
+    bone_roll = np.zeros(len(bones), dtype=np.float64)
+    bone_use_connect = np.asarray([bool(b.use_connect) for b in bones], dtype=np.uint8)
+    inherit_scale_codes = {
+        "FULL": 0,
+        "FIX_SHEAR": 1,
+        "AVERAGE": 2,
+        "NONE": 3,
+        "NONE_LEGACY": 4,
+        "ALIGNED": 5,
+    }
+    bone_inherit_scale = np.asarray(
+        [inherit_scale_codes[str(b.inherit_scale)] for b in bones], dtype=np.uint8
+    )
     joint_a = np.zeros(len(bones), dtype=np.int16)
     joint_b = np.zeros(len(bones), dtype=np.int16)
     blend = np.zeros(len(bones), dtype=np.float32)
@@ -899,6 +919,33 @@ def _source_rig_canonical(
         if "metatarsal" in lower:
             return True
         return False
+
+    def _canonical_point(point: np.ndarray) -> np.ndarray:
+        point_global = np.asarray(point, dtype=np.float64) @ linear.T + translation
+        return point_global + _sample_alignment_offset(point_global.reshape(1, 3), align)[0]
+
+    def _roll_about_axis(rotation: np.ndarray, head: np.ndarray, tail: np.ndarray) -> float:
+        """Encode bind roll relative to a deterministic transverse reference.
+
+        Blender's data Bone exposes the complete roll through ``matrix_local``
+        rather than as a scalar.  The matrix is already retained in the bind
+        frame; this scalar is a compact diagnostic/reconstruction aid.
+        """
+        axis = np.asarray(tail - head, dtype=np.float64)
+        axis /= max(float(np.linalg.norm(axis)), 1.0e-12)
+        candidates = np.eye(3, dtype=np.float64)
+        reference = candidates[int(np.argmin(np.abs(candidates @ axis)))]
+        reference -= axis * float(np.dot(reference, axis))
+        reference /= max(float(np.linalg.norm(reference)), 1.0e-12)
+        transverse = np.asarray(rotation[:, 0], dtype=np.float64)
+        transverse -= axis * float(np.dot(transverse, axis))
+        transverse /= max(float(np.linalg.norm(transverse)), 1.0e-12)
+        return float(
+            math.atan2(
+                float(np.dot(np.cross(reference, transverse), axis)),
+                float(np.dot(reference, transverse)),
+            )
+        )
 
     for bi, bone in enumerate(bones):
         name = str(bone.name)
@@ -964,9 +1011,12 @@ def _source_rig_canonical(
             blend[bi] = 0.30 if "bone" in lower else 0.78
             driver_type = f"knee_chain_{side}"
         elif name == "Head_Bone":
-            joint_a[bi] = joint_index["neck"]
+            # Head pitch/yaw/roll is an orientation DOF, not recoverable from
+            # the short neck->head position vector.  Runtime uses the SMPL-X
+            # head global frame and this bind coupling preserves Blender roll.
+            joint_a[bi] = joint_index["head"]
             joint_b[bi] = joint_index["head"]
-            driver_type = "head_segment"
+            driver_type = "head_orientation"
         elif lower.startswith("rib_bone_") or lower.startswith("rib_name_"):
             digits = "".join(ch for ch in name if ch.isdigit())
             rib_number = max(1, min(12, int(digits or "6")))
@@ -984,17 +1034,34 @@ def _source_rig_canonical(
         if np.linalg.det(R) < 0.0:
             U[:, -1] *= -1.0
             R = U @ Vt
-        point_global = source_pose[:3, 3] @ linear.T + translation
-        point = point_global + _sample_alignment_offset(point_global.reshape(1, 3), align)[0]
+        point = _canonical_point(source_pose[:3, 3])
         rest_global[bi, :3, :3] = R
         rest_global[bi, :3, 3] = point
+        bone_head[bi] = _canonical_point(
+            np.asarray([pb.head.x, pb.head.y, pb.head.z], dtype=np.float64)
+        )
+        bone_tail[bi] = _canonical_point(
+            np.asarray([pb.tail.x, pb.tail.y, pb.tail.z], dtype=np.float64)
+        )
+        bone_roll[bi] = _roll_about_axis(R, bone_head[bi], bone_tail[bi])
         driver_types.append(driver_type)
+
+    rest_local = rest_global.copy()
+    for bi, parent in enumerate(source_parents.tolist()):
+        if int(parent) >= 0:
+            rest_local[bi] = np.linalg.inv(rest_global[int(parent)]) @ rest_global[bi]
 
     return {
         "source_bone_names": names,
         "source_bone_parents": source_parents,
         "source_rest_global": rest_global.astype(np.float32),
+        "source_rest_local": rest_local.astype(np.float32),
         "source_inverse_bind": np.linalg.inv(rest_global).astype(np.float32),
+        "source_bone_head": bone_head.astype(np.float32),
+        "source_bone_tail": bone_tail.astype(np.float32),
+        "source_bone_roll": bone_roll.astype(np.float32),
+        "source_bone_use_connect": bone_use_connect,
+        "source_bone_inherit_scale": bone_inherit_scale,
         "source_bone_smplx_a": joint_a,
         "source_bone_smplx_b": joint_b,
         "source_bone_blend": blend,
@@ -1103,7 +1170,13 @@ def main() -> None:
         source_bone_names=np.asarray(source_rig["source_bone_names"], dtype=object),
         source_bone_parents=np.asarray(source_rig["source_bone_parents"], dtype=np.int16),
         source_rest_global=np.asarray(source_rig["source_rest_global"], dtype=np.float32),
+        source_rest_local=np.asarray(source_rig["source_rest_local"], dtype=np.float32),
         source_inverse_bind=np.asarray(source_rig["source_inverse_bind"], dtype=np.float32),
+        source_bone_head=np.asarray(source_rig["source_bone_head"], dtype=np.float32),
+        source_bone_tail=np.asarray(source_rig["source_bone_tail"], dtype=np.float32),
+        source_bone_roll=np.asarray(source_rig["source_bone_roll"], dtype=np.float32),
+        source_bone_use_connect=np.asarray(source_rig["source_bone_use_connect"], dtype=np.uint8),
+        source_bone_inherit_scale=np.asarray(source_rig["source_bone_inherit_scale"], dtype=np.uint8),
         source_bone_smplx_a=np.asarray(source_rig["source_bone_smplx_a"], dtype=np.int16),
         source_bone_smplx_b=np.asarray(source_rig["source_bone_smplx_b"], dtype=np.int16),
         source_bone_blend=np.asarray(source_rig["source_bone_blend"], dtype=np.float32),
@@ -1111,7 +1184,7 @@ def main() -> None:
         registration_reference=registration_reference,
         source_skin_vertices=skin_vertices,
         source_skin_faces=np.asarray(skin_faces, dtype=np.int32),
-        schema_version=np.asarray(2, dtype=np.int32),
+        schema_version=np.asarray(3, dtype=np.int32),
         pose_format=np.asarray("smplx_body55_axis_angle", dtype=object),
         coordinate_system=np.asarray("genesis_z_up_m", dtype=object),
         metadata=np.asarray({"mapping": str(args.mapping), "driver_index_space": "blender_source_bones"}, dtype=object),

@@ -1,0 +1,88 @@
+{
+  "schema_version": 2,
+  "passed": false,
+  "failures": [
+    "source_to_final max edge ratio 8.80 exceeds 3.00",
+    "source_to_final p99.9 edge ratio 2.23 exceeds 1.50",
+    "source_to_final maximum absolute edge growth 23.1 mm exceeds 10.0 mm",
+    "source_to_pose_cache max edge ratio 8.80 exceeds 3.00",
+    "source_to_pose_cache p99.9 edge ratio 2.29 exceeds 1.50",
+    "source_to_pose_cache maximum absolute edge growth 24.0 mm exceeds 10.0 mm",
+    "organ maximum protrusion 2.1 mm exceeds 2.0 mm",
+    "nerve maximum protrusion 31.4 mm exceeds 2.0 mm",
+    "vessel containment 89.72% is below 99.50%",
+    "vessel maximum protrusion 38.2 mm exceeds 2.0 mm"
+  ],
+  "thresholds": {
+    "weight_sum_error": 1e-05,
+    "anchor_rms_m": 0.01,
+    "anchor_max_m": 0.02,
+    "edge_ratio_max": 3.0,
+    "edge_ratio_p999": 1.5,
+    "edge_growth_max_m": 0.01,
+    "inside_fraction": 0.995,
+    "max_outside_m": 0.002,
+    "critical_max_outside_m": 0.001
+  },
+  "weights": {
+    "max_sum_error": 1.1920928955078125e-07,
+    "negative_count": 0,
+    "nonfinite_count": 0,
+    "active_finger_joints": 30
+  },
+  "anchors": {
+    "rms_m": 0.002596224847122982,
+    "max_m": 0.00699526492190705
+  },
+  "edge_stretch": {
+    "source_to_pose_max": 4.798596382141113,
+    "source_to_pose_p999": 1.0722143181562427,
+    "pose_to_canonical_max": 3.0753047466278076,
+    "pose_to_canonical_p999": 2.166153907775879,
+    "source_to_final_max": 8.803805351257324,
+    "source_to_final_p999": 2.2252683639526367,
+    "source_to_final_max_growth_m": 0.02308802865445614,
+    "ratio_ignored_sub_0_2mm_edges": 10128,
+    "source_to_pose_cache_max": 8.803668975830078,
+    "source_to_pose_cache_p999": 2.2930121421813965,
+    "source_to_pose_cache_max_growth_m": 0.023992834612727165
+  },
+  "containment_backend": "libigl_exact_signed_distance",
+  "containment": {
+    "organ": {
+      "vertex_count": 44394,
+      "outside_count": 70,
+      "inside_fraction": 0.9984232103437402,
+      "max_outside_m": 0.0021362868137657642,
+      "min_skin_distance_m": 0.0
+    },
+    "nerve": {
+      "vertex_count": 209005,
+      "outside_count": 470,
+      "inside_fraction": 0.9977512499700965,
+      "max_outside_m": 0.03142217919230461,
+      "min_skin_distance_m": 0.0
+    },
+    "connective_tissue": {
+      "vertex_count": 16376,
+      "outside_count": 0,
+      "inside_fraction": 1.0,
+      "max_outside_m": 0.0,
+      "min_skin_distance_m": 0.008357898332178593
+    },
+    "vessel": {
+      "vertex_count": 29381,
+      "outside_count": 3019,
+      "inside_fraction": 0.8972465198597733,
+      "max_outside_m": 0.038226183503866196,
+      "min_skin_distance_m": 0.0
+    },
+    "bone": {
+      "vertex_count": 95614,
+      "outside_count": 0,
+      "inside_fraction": 1.0,
+      "max_outside_m": 0.0,
+      "min_skin_distance_m": 0.0012440519640222192
+    }
+  }
+}

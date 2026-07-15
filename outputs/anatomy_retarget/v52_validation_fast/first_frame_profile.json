@@ -1,0 +1,11 @@
+{
+  "seconds": {
+    "source_template_s": 0.15396379300000262,
+    "subject_shape_s": 1.1413718419971701,
+    "pose_and_diagnostics_s": 2.137176610001916,
+    "total_pre_publish_s": 3.4325132759986445
+  },
+  "source_cache_hit": true,
+  "shape_cache_hit": true,
+  "runtime_fast_path": true
+}

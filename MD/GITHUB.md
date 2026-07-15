@@ -49,7 +49,7 @@ git push -u origin main
 
 ```bash
 git add .
-git commit -m "备份，重构骨骼链接问题前"
+git commit -m "比较好的血管retargt sota,但是小穿模型"
 git push -u origin main
 ```
 

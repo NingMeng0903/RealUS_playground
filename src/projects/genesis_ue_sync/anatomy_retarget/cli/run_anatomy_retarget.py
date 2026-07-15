@@ -9,6 +9,7 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 import tempfile
 import time
 from pathlib import Path
@@ -22,6 +23,7 @@ from projects.genesis_ue_sync.anatomy_retarget.blender_retarget_runner import ru
 from projects.genesis_ue_sync.anatomy_retarget.containment import (
     load_body_surface,
     repair_containment,
+    repair_soft_tissue_residual_containment,
 )
 from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import joint_global_transforms, skin_vertices
 from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
@@ -87,6 +89,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--blend", type=Path, default=None)
     p.add_argument("--force-source-rebake", action="store_true", help="Ignore source/shape retarget caches.")
     p.add_argument("--profile-first-frame", action="store_true", help="Write source/shape/pose/publish timing report.")
+    p.add_argument(
+        "--refresh-diagnostics",
+        action="store_true",
+        help="Run slow mesh/SDF diagnostics even when source and shape caches hit.",
+    )
+    p.add_argument(
+        "--show-connective-tissue",
+        action="store_true",
+        help="Render ligament/tendon connective-tissue meshes in Genesis (hidden by default).",
+    )
     p.add_argument("--motion-npz", type=Path, default=None, help="Exact saved SMPL-X fit for final-pose containment/cache")
     p.add_argument("--timeout-s", type=float, default=900.0)
     p.add_argument("--publish-genesis", action="store_true")
@@ -194,7 +206,7 @@ def main() -> int:
         Path(__file__).resolve().parents[1] / "containment.py",
         Path(__file__).resolve().parents[1] / "segment_coupling.py",
         Path(__file__).resolve().parents[1] / "anatomy_lbs.py",
-        extra="source-template-v5-skin-volume-shoulder-chain-v1",
+        extra="source-template-v5.2-hierarchical-fk-positive-volume-v1",
     )
     shape_hash = smplx_shape_hash(betas, gender=gender) if betas else "neutral"
     source_cache = cache_root / "source_template_v5" / f"{source_key}.npz"
@@ -231,9 +243,6 @@ def main() -> int:
         asset, source_skin_report = apply_source_skin_volume_registration(
             asset, canonical_dir=args.canonical_dir
         )
-        # The Skin_Glass volume transport is the canonical registration.
-        # A second per-anatomy-mesh ARAP pass would destroy the shared material
-        # field and was the source of vessel/nerve points returning outside.
         registration_report = {
             "backend": "source_skin_volume_only_v5_4",
             "source_skin_volume": source_skin_report,
@@ -243,6 +252,7 @@ def main() -> int:
             asset, neutral_containment = repair_containment(
                 asset, surface_vertices=neutral_surface[0], surface_faces=neutral_surface[1],
                 stage="neutral_canonical", strict=False,
+                repair_tissues=("bone",),
             )
             containment_reports.append(neutral_containment)
         coupling, coupling_report = bake_segment_coupling(asset)
@@ -290,15 +300,24 @@ def main() -> int:
         asset, subject_containment = repair_containment(
             asset, surface_vertices=subject_surface[0], surface_faces=subject_surface[1],
             stage="subject_beta", strict=False,
+            repair_tissues=("bone",),
         )
         containment_reports.append(subject_containment)
+        asset, subject_soft_containment = repair_soft_tissue_residual_containment(
+            asset,
+            surface_vertices=subject_surface[0],
+            surface_faces=subject_surface[1],
+            stage="subject_beta_residual_soft",
+            target="rest",
+        )
+        containment_reports.append(subject_soft_containment)
         asset, leg_material_report = compute_leg_material_coordinates(
             asset, skin_vertices=subject_surface[0]
         )
         shape_meta = dict(asset.metadata or {})
         shape_meta.update({
             "shape_report": shape_report,
-            "shape_containment_reports": [subject_containment],
+            "shape_containment_reports": [subject_containment, subject_soft_containment],
             "leg_material_report": leg_material_report,
         })
         asset = type(asset)(**{**asset.__dict__, "metadata": shape_meta})
@@ -371,6 +390,25 @@ def main() -> int:
                     "diagnostic_deferred": True,
                     "repair_tissues": [],
                 }
+            soft_pose_asset = type(asset)(
+                **{
+                    **asset.__dict__,
+                    "pose_cache_vertices": np.asarray(pose_cache_vertices, dtype=np.float32),
+                    "pose_cache_hash": cache_hash,
+                }
+            )
+            soft_pose_asset, soft_pose_report = repair_soft_tissue_residual_containment(
+                soft_pose_asset,
+                surface_vertices=np.asarray(motion["vertices"], dtype=np.float64).reshape(-1, 3),
+                surface_faces=np.asarray(motion["faces"], dtype=np.int32).reshape(-1, 3),
+                stage="final_pose_residual_soft",
+                target="pose_cache",
+            )
+            pose_cache_vertices = np.asarray(soft_pose_asset.pose_cache_vertices, dtype=np.float32)
+            pose_report = {
+                **dict(pose_report or {}),
+                "soft_tissue_residual": soft_pose_report,
+            }
             asset = type(asset)(
                 **{
                     **asset.__dict__,
@@ -403,11 +441,89 @@ def main() -> int:
             "leg_material_report": dict(meta.get("leg_material_report") or {}),
             "segment_coupling_report": dict(meta.get("segment_coupling_report") or {}),
             "source_template_version": 5,
+            "source_template_revision": "5.2",
             "source_bind_roundtrip": bind_roundtrip,
+            "show_connective_tissue": bool(args.show_connective_tissue),
         }
     )
     asset = type(asset)(**{**asset.__dict__, "metadata": meta})
     save_rigged_asset(output_npz, asset)
+    fast_cached_publish = bool(
+        source_cache_hit
+        and shape_cache_hit
+        and not args.refresh_diagnostics
+        and not args.enforce_quality_gate
+    )
+    if fast_cached_publish:
+        # Runtime publication must not pay for full exact-SDF/mesh diagnostics.
+        # Preserve the last offline reports for inspection and mark this run as
+        # cache-only; --refresh-diagnostics explicitly regenerates them.
+        if out_dir.is_dir():
+            for report_name in (
+                "quality_report.json",
+                "bone_segment_diagnostics.json",
+                "anatomy_mesh_diagnostics.json",
+            ):
+                previous_report = out_dir / report_name
+                if previous_report.is_file():
+                    shutil.copy2(previous_report, stage_dir / report_name)
+        (stage_dir / "runtime_fast_path.json").write_text(
+            json.dumps(
+                {
+                    "source_cache_hit": True,
+                    "shape_cache_hit": True,
+                    "blender": False,
+                    "tetgen": False,
+                    "sdf_diagnostics": False,
+                    "refresh_with": "--refresh-diagnostics",
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        profile["pose_and_diagnostics_s"] = (
+            time.perf_counter() - started_at - profile["source_template_s"] - profile["subject_shape_s"]
+        )
+        profile["total_pre_publish_s"] = time.perf_counter() - started_at
+        if args.profile_first_frame:
+            (stage_dir / "first_frame_profile.json").write_text(
+                json.dumps(
+                    {
+                        "seconds": profile,
+                        "source_cache_hit": True,
+                        "shape_cache_hit": True,
+                        "runtime_fast_path": True,
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+        previous_dir: Path | None = None
+        if out_dir.exists():
+            previous_dir = out_dir.parent / f"{out_dir.name}.previous-{time.strftime('%Y%m%d-%H%M%S')}"
+            os.replace(out_dir, previous_dir)
+        try:
+            os.replace(stage_dir, out_dir)
+        except Exception:
+            if previous_dir is not None and previous_dir.exists() and not out_dir.exists():
+                os.replace(previous_dir, out_dir)
+            raise
+        output_npz = out_dir / "anatomy_rigged.npz"
+        logging.info(
+            "runtime fast path source/shape cache hit; skipped Blender/TetGen/SDF diagnostics output=%s",
+            output_npz,
+        )
+        if args.publish_genesis:
+            sent = _publish_upsert(
+                bind=str(args.publish_bind),
+                model_id=str(args.model_id),
+                asset_npz=output_npz,
+                color_rgba=_parse_rgba(str(args.color_rgba)),
+                duration_s=float(args.publish_duration_s),
+                rate_hz=float(args.publish_rate_hz),
+            )
+            logging.info("published anatomy upsert sent=%s bind=%s", sent, args.publish_bind)
+        return 0
     mesh_diagnostics = write_mesh_diagnostics(
         asset,
         surface_vertices=subject_surface[0],
