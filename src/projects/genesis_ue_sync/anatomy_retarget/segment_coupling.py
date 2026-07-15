@@ -16,6 +16,7 @@ _SEGMENT_PREFIXES = (
     "shin_segment_",
     "knee_chain_",
     "foot_chain_",
+    "hand_chain_",
     "head_segment",
     "head_orientation",
     "rib_segment",
@@ -35,7 +36,14 @@ def _segment_rest_frame(
     reference_x = np.asarray(asset.source_rest_global[bi], dtype=np.float64)[:3, 0]
     if (driver_type.startswith("clavicle_segment_") or driver_type.startswith("humerus_segment_")
             or driver_type.startswith("forearm_segment_") or driver_type.startswith("shin_segment_")
-            or driver_type.startswith("knee_chain_") or driver_type.startswith("foot_chain_")):
+            or driver_type.startswith("knee_chain_") or driver_type.startswith("foot_chain_")
+            or driver_type.startswith("hand_chain_")):
+        if a == b:
+            return joint_global_transforms(
+                pose_axis_angle=np.zeros((55, 3), dtype=np.float32),
+                rest_joints=asset.rest_joints,
+                parents=asset.parents,
+            )[a].astype(np.float64)
         return _segment_frame(rest_points[a], rest_points[b], reference_x)
     if driver_type == "head_orientation":
         return joint_global_transforms(
@@ -72,6 +80,12 @@ def bake_segment_coupling(asset: AnatomyRiggedAsset) -> tuple[np.ndarray, dict[s
             for prefix in _SEGMENT_PREFIXES
         )
         if not is_segment and not driver_type.startswith("scapula_"):
+            continue
+        a = int(asset.source_bone_smplx_a[bi])
+        b = int(asset.source_bone_smplx_b[bi])
+        # Finger controls are single-joint hand_chain bones; they use direct
+        # SMPL-X joint deltas at runtime and do not need segment coupling.
+        if driver_type.startswith("hand_chain_") and a == b:
             continue
         F_seg = _segment_rest_frame(asset, bi, driver_type, rest_points=rest_points, joint_index=joint_index)
         T_bone = np.asarray(asset.source_rest_global[bi], dtype=np.float64)

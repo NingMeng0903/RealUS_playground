@@ -19,6 +19,7 @@ TISSUE_MARGIN_M = {"bone": 0.003, "organ": 0.004, "vessel": 0.0015, "nerve": 0.0
 # numerical surface crossings after volume registration, not to relocate an
 # anatomy branch that was registered incorrectly.
 SOFT_TISSUE_RESIDUAL_MARGIN_M = 0.0002
+SOFT_TISSUE_RESIDUAL_CAP_M = 0.006
 
 
 def load_body_surface(path: Path | str) -> tuple[np.ndarray, np.ndarray]:
@@ -183,7 +184,7 @@ def repair_soft_tissue_vertices(
     stage: str,
     repair_tissues: tuple[str, ...] = ("vessel", "nerve"),
     max_iterations: int = 4,
-    correction_cap_m: float = 0.003,
+    correction_cap_m: float = SOFT_TISSUE_RESIDUAL_CAP_M,
     safety_margin_m: float = SOFT_TISSUE_RESIDUAL_MARGIN_M,
     max_component_outside_fraction: float = 0.10,
     data_weight: float = 100.0,
@@ -201,8 +202,8 @@ def repair_soft_tissue_vertices(
         raise ValueError("soft-tissue repair requires source mesh ranges and tissue labels")
     if not 2 <= int(max_iterations) <= 4:
         raise ValueError("soft-tissue residual repair requires 2 to 4 iterations")
-    if not 0.0 < float(correction_cap_m) <= 0.003:
-        raise ValueError("correction_cap_m must be in (0, 0.003]")
+    if not 0.0 < float(correction_cap_m) <= float(SOFT_TISSUE_RESIDUAL_CAP_M):
+        raise ValueError(f"correction_cap_m must be in (0, {SOFT_TISSUE_RESIDUAL_CAP_M}]")
     if not 0.0 < float(max_component_outside_fraction) <= 1.0:
         raise ValueError("max_component_outside_fraction must be in (0, 1]")
 

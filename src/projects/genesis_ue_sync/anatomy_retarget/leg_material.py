@@ -76,14 +76,16 @@ def compute_leg_material_coordinates(
         theta = np.mod(np.arctan2(np.sum(radial * e2, axis=1), np.sum(radial * e1, axis=1)), 2.0 * np.pi)
         candidate = eligible & (h >= -0.02) & (h <= 1.02) & (radius <= float(max_leg_radius_m))
         # Assign points only to their closest limb axis to avoid pelvis overlap.
-        if side == "left":
-            other_h, other_axis, _ = _segment_coordinate(points, joints[names["right_hip"]], joints[names["right_knee"]], joints[names["right_ankle"]])
-            other_radius = np.linalg.norm(points - other_axis, axis=1)
-            candidate &= radius <= other_radius
-        else:
-            other_h, other_axis, _ = _segment_coordinate(points, joints[names["left_hip"]], joints[names["left_knee"]], joints[names["left_ankle"]])
-            other_radius = np.linalg.norm(points - other_axis, axis=1)
-            candidate &= radius < other_radius
+        other_side = "right" if side == "left" else "left"
+        other_h, other_axis, _ = _segment_coordinate(
+            points,
+            joints[names[f"{other_side}_hip"]],
+            joints[names[f"{other_side}_knee"]],
+            joints[names[f"{other_side}_ankle"]],
+        )
+        other_radius = np.linalg.norm(points - other_axis, axis=1)
+        candidate &= radius < other_radius
+        candidate |= (np.abs(radius - other_radius) <= 1.0e-8) & (h <= other_h)
         xi[candidate] = np.stack((theta[candidate], h[candidate], np.clip(1.0 - radius[candidate] / skin_radius[candidate], 0.0, 1.0)), axis=1)
         assigned_side[candidate] = 0 if side == "left" else 1
         del skin_h, other_h

@@ -77,14 +77,14 @@ def test_residual_repair_only_moves_soft_tissue_and_never_rebinds(monkeypatch):
     np.testing.assert_array_equal(repaired.source_inverse_bind, inverse_bind_before)
     assert report["source_rig_rebound"] is False
     assert report["unrepairable"] is False
-    assert report["max_displacement_m"] <= 0.003 + 1.0e-9
+    assert report["max_displacement_m"] <= containment.SOFT_TISSUE_RESIDUAL_CAP_M + 1.0e-9
     assert report["changed_tissues"] == ["vessel"]
 
 
 def test_over_cap_penetration_is_reported_and_left_for_volume_registration(monkeypatch):
     monkeypatch.setattr(containment, "signed_distance", _plane_signed_distance)
     x = np.full(12, -0.005, dtype=np.float32)
-    x[5] = 0.0031
+    x[5] = 0.0061
     asset = _asset(x)
 
     repaired, report = containment.repair_soft_tissue_residual_containment(

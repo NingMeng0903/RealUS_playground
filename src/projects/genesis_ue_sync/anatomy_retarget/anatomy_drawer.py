@@ -25,6 +25,62 @@ def _rgba_float_to_uint8(color: tuple[float, float, float, float], opacity: floa
     return np.clip(rgba, 0, 255).astype(np.uint8)
 
 
+_TISSUE_RGBA = {
+    "artery": (0.92, 0.05, 0.05, 0.88),
+    "vein": (0.08, 0.25, 0.95, 0.88),
+    "bone": (0.94, 0.92, 0.86, 0.95),
+    "heart": (0.92, 0.05, 0.05, 0.90),
+    "organ": (0.55, 0.55, 0.55, 0.75),
+    "nerve": (0.95, 0.85, 0.20, 0.80),
+    "connective_tissue": (0.70, 0.55, 0.40, 0.55),
+    "default": (0.80, 0.05, 0.05, 0.85),
+}
+
+
+def _mesh_color_rgba(mesh_name: str, tissue: str) -> tuple[float, float, float, float]:
+    lower = str(mesh_name).lower()
+    tissue_key = str(tissue).lower()
+    if tissue_key == "heart" or "heart" in lower:
+        return _TISSUE_RGBA["heart"]
+    if tissue_key == "bone":
+        return _TISSUE_RGBA["bone"]
+    if tissue_key == "organ":
+        return _TISSUE_RGBA["organ"]
+    if tissue_key == "nerve":
+        return _TISSUE_RGBA["nerve"]
+    if tissue_key == "connective_tissue":
+        return _TISSUE_RGBA["connective_tissue"]
+    if tissue_key == "vessel":
+        if "vein" in lower:
+            return _TISSUE_RGBA["vein"]
+        if "arter" in lower:
+            return _TISSUE_RGBA["artery"]
+        return _TISSUE_RGBA["artery"]
+    return _TISSUE_RGBA["default"]
+
+
+def _vertex_colors_for_asset(
+    asset: AnatomyRiggedAsset,
+    *,
+    fallback_rgba: tuple[float, float, float, float],
+    opacity: float,
+) -> np.ndarray:
+    vertex_count = len(asset.vertices_rest)
+    colors = np.tile(
+        _rgba_float_to_uint8(fallback_rgba, opacity),
+        (vertex_count, 1),
+    )
+    if asset.source_vertex_ranges is None or asset.source_tissues is None:
+        return colors
+    mesh_names = asset.source_mesh_names or [""] * len(asset.source_tissues)
+    for (start, stop), tissue, mesh_name in zip(
+        asset.source_vertex_ranges, asset.source_tissues, mesh_names
+    ):
+        rgba = _rgba_float_to_uint8(_mesh_color_rgba(str(mesh_name), str(tissue)), opacity)
+        colors[int(start) : int(stop)] = rgba
+    return colors
+
+
 class AnatomyLbsDrawer:
     def __init__(
         self,
@@ -166,8 +222,12 @@ class AnatomyLbsDrawer:
         import trimesh
 
         mesh = trimesh.Trimesh(vertices=vertices, faces=self._render_faces(), process=False)
-        rgba = _rgba_float_to_uint8(self.default_color_rgba, self.opacity)
-        mesh.visual.vertex_colors = np.tile(rgba, (len(mesh.vertices), 1))
+        rgba = _vertex_colors_for_asset(
+            self.asset,
+            fallback_rgba=self.default_color_rgba,
+            opacity=self.opacity,
+        )
+        mesh.visual.vertex_colors = rgba
 
         self._mesh_node = replace_colored_debug_mesh(
             self.runtime,

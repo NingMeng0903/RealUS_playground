@@ -232,6 +232,19 @@ def _source_rest_local(asset: AnatomyRiggedAsset) -> np.ndarray:
     return local
 
 
+def _hand_chain_inherits_parent_joint(
+    bone_index: int, parent_index: int, asset: AnatomyRiggedAsset
+) -> bool:
+    """True when a hand-chain follower reuses the parent's SMPL-X joint mapping."""
+    if parent_index < 0:
+        return False
+    a = int(asset.source_bone_smplx_a[bone_index])
+    b = int(asset.source_bone_smplx_b[bone_index])
+    pa = int(asset.source_bone_smplx_a[parent_index])
+    pb = int(asset.source_bone_smplx_b[parent_index])
+    return a == b and pa == pb and a == pa
+
+
 def _uses_segment_coupling(driver_type: str) -> bool:
     return (
         driver_type.startswith("forearm_segment_")
@@ -240,6 +253,7 @@ def _uses_segment_coupling(driver_type: str) -> bool:
         or driver_type.startswith("shin_segment_")
         or driver_type.startswith("knee_chain_")
         or driver_type.startswith("foot_chain_")
+        or driver_type.startswith("hand_chain_")
         or driver_type in {"head_segment", "head_orientation", "rib_segment"}
         or driver_type.startswith("scapula_")
         or driver_type.startswith("patella_")
@@ -255,7 +269,12 @@ def _uses_connected_upper_limb_fk(
     Leg chains retain their already validated segment drivers until their
     analogous local-control calibration is available.
     """
-    arm_prefixes = ("clavicle_segment_", "humerus_segment_", "forearm_segment_")
+    arm_prefixes = (
+        "clavicle_segment_",
+        "humerus_segment_",
+        "forearm_segment_",
+        "hand_chain_",
+    )
     own = str(driver_types[bone_index]) if bone_index < len(driver_types) else ""
     parent = str(driver_types[parent_index]) if 0 <= parent_index < len(driver_types) else ""
     return own.startswith(arm_prefixes) or parent.startswith(arm_prefixes)
@@ -287,9 +306,10 @@ def _segment_pose_frame_for_bone(
         or driver_type.startswith("shin_segment_")
         or driver_type.startswith("knee_chain_")
         or driver_type.startswith("foot_chain_")
+        or driver_type.startswith("hand_chain_")
         or driver_type in {"head_segment", "rib_segment"}
         or driver_type.startswith("patella_")
-    ):
+    ) and a != b:
         return _endpoint_segment_pose_frame(
             rest_a=rest_points[a],
             rest_b=rest_points[b],
@@ -341,8 +361,9 @@ def source_bone_skinning_transforms(
             or driver_type.startswith("shin_segment_")
             or driver_type.startswith("knee_chain_")
             or driver_type.startswith("foot_chain_")
+            or driver_type.startswith("hand_chain_")
             or driver_type in {"head_segment", "rib_segment"}
-        ):
+        ) and a != b:
             reference_x = np.asarray(asset.source_rest_global[bi], dtype=np.float64)[:3, 0]
             source_delta[bi] = _endpoint_segment_delta(
                 rest_a=rest_points[a], rest_b=rest_points[b],
@@ -407,6 +428,19 @@ def source_bone_skinning_transforms(
             parent >= 0
             and driver_type.startswith("foot_chain_")
             and str(types[parent]) == str(driver_type)
+        ):
+            posed_global[bi] = (
+                np.asarray(posed_global[parent], dtype=np.float64) @ rest_local_bones[bi]
+            ).astype(np.float32)
+            continue
+        # Hand-chain followers that inherit the parent SMPL-X joint keep the
+        # authored bind-local transform, while finger controls with their own
+        # joint mapping are solved through the connected-FK branch below.
+        if (
+            parent >= 0
+            and driver_type.startswith("hand_chain_")
+            and str(types[parent]) == str(driver_type)
+            and _hand_chain_inherits_parent_joint(bi, parent, asset)
         ):
             posed_global[bi] = (
                 np.asarray(posed_global[parent], dtype=np.float64) @ rest_local_bones[bi]

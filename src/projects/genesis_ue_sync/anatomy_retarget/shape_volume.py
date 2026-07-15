@@ -11,6 +11,7 @@ import numpy as np
 
 from .rigged_asset import AnatomyRiggedAsset
 from .source_rebind import rebind_source_rig
+from .pose_adapter import smplx_shape_hash
 
 
 def _load_obj(path: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -94,24 +95,36 @@ def _build_cage(neutral_v: np.ndarray, neutral_f: np.ndarray, *, cache_path: Pat
 def _tet_stiffness(nodes: np.ndarray, elements: np.ndarray):
     from scipy.sparse import coo_matrix
 
-    rows: list[int] = []
-    cols: list[int] = []
-    values: list[float] = []
-    for tet in np.asarray(elements, dtype=np.int64):
-        xyz = nodes[tet]
-        system = np.column_stack((np.ones(4), xyz))
-        determinant = float(np.linalg.det(xyz[1:] - xyz[0]))
-        volume = abs(determinant) / 6.0
-        if volume <= 1.0e-18:
-            raise RuntimeError("degenerate tetrahedron in neutral volume cage")
-        gradients = np.linalg.inv(system)[1:, :]
-        local = volume * (gradients.T @ gradients)
-        for i in range(4):
-            for j in range(4):
-                rows.append(int(tet[i]))
-                cols.append(int(tet[j]))
-                values.append(float(local[i, j]))
-    return coo_matrix((values, (rows, cols)), shape=(len(nodes), len(nodes))).tocsr()
+    tet = np.asarray(elements, dtype=np.int64)
+    xyz = np.asarray(nodes[tet], dtype=np.float64)
+    system = np.concatenate([np.ones((len(tet), 4, 1), dtype=np.float64), xyz], axis=2)
+    determinants = np.linalg.det(xyz[:, 1:] - xyz[:, :1])
+    volume = np.abs(determinants) / 6.0
+    if np.any(volume <= 1.0e-18):
+        raise RuntimeError("degenerate tetrahedron in neutral volume cage")
+    gradients = np.linalg.inv(system)[:, 1:, :]
+    local = volume[:, None, None] * np.einsum("tji,tjk->tik", gradients, gradients)
+    row_idx = np.repeat(tet, 4, axis=1).reshape(-1)
+    col_idx = np.tile(tet, (1, 4)).reshape(-1)
+    values = local.reshape(-1)
+    return coo_matrix((values, (row_idx, col_idx)), shape=(len(nodes), len(nodes))).tocsr()
+
+
+def _solve_interior_harmonic(
+    stiffness,
+    interior: np.ndarray,
+    boundary: np.ndarray,
+    boundary_values: np.ndarray,
+) -> np.ndarray:
+    """Solve ``Kii x = -Kib boundary`` for one or more RHS columns."""
+    from scipy.sparse.linalg import splu
+
+    if interior.size == 0:
+        return np.zeros((0, boundary_values.shape[-1]), dtype=np.float64)
+    kii = stiffness[interior][:, interior].tocsc()
+    kib = stiffness[interior][:, boundary]
+    rhs = -(kib @ np.asarray(boundary_values, dtype=np.float64).reshape(len(boundary), -1))
+    return np.asarray(splu(kii).solve(np.asarray(rhs, dtype=np.float64)), dtype=np.float64)
 
 
 def _solve_harmonic_field(
@@ -119,8 +132,6 @@ def _solve_harmonic_field(
     *,
     surface_displacement: np.ndarray,
 ) -> np.ndarray:
-    from scipy.sparse.linalg import spsolve
-
     nodes = np.asarray(cage["nodes"], dtype=np.float64)
     elements = np.asarray(cage["elements"], dtype=np.int32)
     boundary = np.asarray(cage["boundary"], dtype=np.int64)
@@ -132,10 +143,13 @@ def _solve_harmonic_field(
     field[boundary] = boundary_values
     if interior.size:
         stiffness = _tet_stiffness(nodes, elements)
-        Kii = stiffness[interior][:, interior]
-        Kib = stiffness[interior][:, boundary]
         for axis in range(3):
-            field[interior, axis] = spsolve(Kii, -(Kib @ boundary_values[:, axis]))
+            field[interior, axis] = _solve_interior_harmonic(
+                stiffness,
+                interior,
+                boundary,
+                boundary_values[:, axis : axis + 1],
+            ).reshape(-1)
 
     before = nodes[elements]
     after = (nodes + field)[elements]
@@ -150,8 +164,6 @@ def _solve_harmonic_beta_basis(
     cage: dict[str, np.ndarray], surface_basis: np.ndarray
 ) -> np.ndarray:
     """Solve all SMPL-X beta directions with one sparse factorization."""
-    from scipy.sparse.linalg import splu
-
     nodes = np.asarray(cage["nodes"], dtype=np.float64)
     elements = np.asarray(cage["elements"], dtype=np.int32)
     boundary = np.asarray(cage["boundary"], dtype=np.int64)
@@ -170,10 +182,12 @@ def _solve_harmonic_beta_basis(
     basis[boundary] = boundary_basis
     if interior.size:
         stiffness = _tet_stiffness(nodes, elements)
-        Kii = stiffness[interior][:, interior].tocsc()
-        Kib = stiffness[interior][:, boundary]
-        rhs = -(Kib @ boundary_basis.reshape(len(boundary), -1))
-        solved = splu(Kii).solve(np.asarray(rhs, dtype=np.float64))
+        solved = _solve_interior_harmonic(
+            stiffness,
+            interior,
+            boundary,
+            boundary_basis.reshape(len(boundary), -1),
+        )
         basis[interior] = solved.reshape(len(interior), 3, shapedirs.shape[2])
     return basis.astype(np.float32)
 
@@ -234,12 +248,62 @@ def _beta_volume_field(
     return field, cache_hit, backend
 
 
+def _beta_basis_digest(cage: dict[str, np.ndarray], shapedirs: np.ndarray, count: int) -> str:
+    digest = hashlib.sha256()
+    digest.update(np.asarray(cage["nodes"], dtype=np.float32).tobytes())
+    digest.update(np.asarray(cage["elements"], dtype=np.int32).tobytes())
+    digest.update(np.asarray(shapedirs[:, :, :count], dtype=np.float32).tobytes())
+    return digest.hexdigest()[:24]
+
+
+def _load_or_sample_point_delta(
+    *,
+    root: Path,
+    cage: dict[str, np.ndarray],
+    field: np.ndarray,
+    points: np.ndarray,
+    betas: np.ndarray,
+    basis_digest: str,
+    gender: str,
+) -> tuple[np.ndarray, int, np.ndarray, bool]:
+    shape_key = smplx_shape_hash(betas, gender=gender)
+    cache_dir = root.parent / "volume_beta_displacement_v2"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_path = cache_dir / f"{basis_digest}_{shape_key[:16]}.npz"
+    if cache_path.is_file():
+        cached = np.load(cache_path)
+        point_delta = np.asarray(cached["point_delta"], dtype=np.float64)
+        outside_mask = np.asarray(cached["outside_mask"], dtype=bool)
+        if point_delta.shape == points.shape:
+            max_norm = float(np.max(np.linalg.norm(point_delta, axis=1)))
+            if max_norm <= 0.25:
+                return point_delta, int(np.count_nonzero(outside_mask)), outside_mask, True
+    point_delta, outside_points, outside_mask = _sample_field(points, cage=cage, field=field)
+    np.savez_compressed(
+        cache_path,
+        point_delta=point_delta.astype(np.float32),
+        outside_mask=outside_mask.astype(np.uint8),
+    )
+    return point_delta, outside_points, outside_mask, False
+
+
 def _tet_barycentric(points: np.ndarray, tetrahedra: np.ndarray) -> np.ndarray:
-    output = np.empty((len(points), 4), dtype=np.float64)
-    for idx, (point, tet) in enumerate(zip(points, tetrahedra)):
-        system = np.column_stack((np.ones(4), tet))
-        output[idx] = np.asarray([1.0, *point], dtype=np.float64) @ np.linalg.inv(system)
-    return output
+    """Return tet barycentric weights for each (point, tet) pair.
+
+    Each tet matrix stacks vertex rows ``[1, x, y, z]``; weights satisfy
+    ``[1, px, py, pz] @ inv(system)`` (not ``inv(system) @ rhs``).
+    """
+    tet = np.asarray(tetrahedra, dtype=np.float64)
+    pts = np.asarray(points, dtype=np.float64)
+    if len(tet) != len(pts):
+        raise ValueError("points and tetrahedra must have the same length")
+    system = np.concatenate(
+        [np.ones((len(tet), 4, 1), dtype=np.float64), tet], axis=2
+    )
+    rhs = np.concatenate(
+        [np.ones((len(pts), 1), dtype=np.float64), pts], axis=1
+    )
+    return np.einsum("pj,pjk->pk", rhs, np.linalg.inv(system))
 
 
 def _tet_boundary_faces(elements: np.ndarray) -> np.ndarray:
@@ -424,6 +488,17 @@ def _preserve_rigid_bone_components(
         if members:
             groups.append(members)
 
+    for side in ("left", "right"):
+        members = [
+            idx for idx, (bone, tissue) in enumerate(zip(dominant, asset.source_tissues))
+            if bone is not None
+            and str(tissue) == "bone"
+            and bone < len(types)
+            and str(types[bone]) == f"hand_chain_{side}"
+        ]
+        if members:
+            groups.append(members)
+
     # Skull, brain and jaw share the source Head_Bone material frame.  Their
     # source enclosure relationship therefore survives beta adaptation.
     head_index = (
@@ -482,10 +557,14 @@ def apply_subject_beta_shape(
     beta_values = np.asarray(manifest.get("betas", []), dtype=np.float32).reshape(-1)
     basis_cache_hit = False
     basis_backend = "exact_surface_solve"
+    displacement_cache_hit = False
+    basis_digest = ""
+    gender = str(manifest.get("gender", "neutral"))
     if beta_values.size and (root / "smpl_canonical_weights.npz").is_file():
         weights = np.load(root / "smpl_canonical_weights.npz")
         shapedirs = np.asarray(weights["shapedirs"], dtype=np.float64)
         count = min(shapedirs.shape[2], beta_values.size, 10)
+        basis_digest = _beta_basis_digest(cage, shapedirs.astype(np.float32), count)
         predicted_surface_delta = np.tensordot(
             shapedirs[:, :, :count], beta_values[:count], axes=(2, 0)
         )
@@ -510,7 +589,18 @@ def apply_subject_beta_shape(
     if np.any(det0 * det1 <= 0.0):
         raise RuntimeError("cached subject beta harmonic basis flips one or more tetrahedra")
     points = np.asarray(asset.vertices_rest, dtype=np.float64)
-    point_delta, outside_points, outside_mask = _sample_field(points, cage=cage, field=field)
+    if basis_digest and beta_values.size:
+        point_delta, outside_points, outside_mask, displacement_cache_hit = _load_or_sample_point_delta(
+            root=root,
+            cage=cage,
+            field=field,
+            points=points,
+            betas=beta_values,
+            basis_digest=basis_digest,
+            gender=gender,
+        )
+    else:
+        point_delta, outside_points, outside_mask = _sample_field(points, cage=cage, field=field)
     outside_by_tissue: dict[str, int] = {}
     if outside_points:
         extension, max_extension_m = _extend_from_cage_boundary(
@@ -554,6 +644,7 @@ def apply_subject_beta_shape(
     return result, {
         "backend": "tetgen_fem_harmonic_v5_soft_tissue",
         "beta_basis_cache_hit": bool(basis_cache_hit),
+        "beta_displacement_cache_hit": bool(displacement_cache_hit),
         "beta_basis_combine_backend": str(basis_backend),
         "surface_basis_error_m": float(surface_basis_error),
         "tetra_vertices": int(len(cage["nodes"])),

@@ -1,8 +1,0 @@
-{
-  "source_cache_hit": true,
-  "shape_cache_hit": true,
-  "blender": false,
-  "tetgen": false,
-  "sdf_diagnostics": false,
-  "refresh_with": "--refresh-diagnostics"
-}

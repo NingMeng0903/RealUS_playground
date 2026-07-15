@@ -215,6 +215,12 @@ derived_drivers:
   foot_chain_right:
     type: endpoint_segment
     joints: [right_ankle, right_foot]
+  hand_chain_left:
+    type: endpoint_segment
+    joints: [left_elbow, left_wrist]
+  hand_chain_right:
+    type: endpoint_segment
+    joints: [right_elbow, right_wrist]
   forearm_twist_left:
     type: rotation_interpolation
     joints: [left_elbow, left_wrist]

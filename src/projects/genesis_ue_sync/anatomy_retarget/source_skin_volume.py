@@ -276,6 +276,26 @@ def _skin_material_scale_correction(
         if len(local) >= 4:
             scales[segment] = min(1.0, float(np.quantile(local, 0.02)))
 
+    joint_names = list(asset.joint_names)
+    child_to_segment = {int(child): idx for idx, child in enumerate(children.tolist())}
+    for idx, child in enumerate(children.tolist()):
+        name = joint_names[int(child)]
+        mirror_name = (
+            ("right_" + name[5:]) if name.startswith("left_") else ("left_" + name[6:]) if name.startswith("right_") else None
+        )
+        if mirror_name is None:
+            continue
+        mirror_child = next(
+            (int(other) for other in children.tolist() if joint_names[int(other)] == mirror_name),
+            None,
+        )
+        if mirror_child is None:
+            continue
+        mirror_idx = child_to_segment[mirror_child]
+        shared = min(float(scales[idx]), float(scales[mirror_idx]))
+        scales[idx] = shared
+        scales[mirror_idx] = shared
+
     child_to_segment = {int(child): idx for idx, child in enumerate(children.tolist())}
     for _ in range(3):
         previous = scales.copy()

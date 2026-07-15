@@ -80,6 +80,18 @@ JOINT_CHAINS = {
         "distal": ("Wrist_Rotate_R1", "Wrist_Rotate_R"),
         "axes": (("Forearm_Bone_R", "right_elbow", "right_wrist"),),
     },
+    "index_proximal_left": {
+        "joint": "left_index1",
+        "proximal": ("Wrist_Rotate_L",),
+        "distal": ("Fingers_Rotate_L4", "Finger_Index_L3"),
+        "axes": (("Wrist_Rotate_L", "left_wrist", "left_index1"),),
+    },
+    "index_proximal_right": {
+        "joint": "right_index1",
+        "proximal": ("Wrist_Rotate_R1", "Wrist_Rotate_R"),
+        "distal": ("Fingers_Rotate_R4", "bone309"),
+        "axes": (("Wrist_Rotate_R1", "right_wrist", "right_index1"),),
+    },
     "knee_left": {
         "joint": "left_knee",
         "proximal": ("Femur_Rot_L", "Knee_Rotate_L"),

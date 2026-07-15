@@ -102,11 +102,22 @@ def rebind_source_rig(
         if bone >= len(types):
             continue
         is_upper_limb_connected = bool(use_connect[bone]) and (
-            str(types[bone]).startswith(("clavicle_segment_", "humerus_segment_", "forearm_segment_"))
-            or str(types[int(parent)]).startswith(("clavicle_segment_", "humerus_segment_", "forearm_segment_"))
+            str(types[bone]).startswith(
+                ("clavicle_segment_", "humerus_segment_", "forearm_segment_", "hand_chain_")
+            )
+            or str(types[int(parent)]).startswith(
+                ("clavicle_segment_", "humerus_segment_", "forearm_segment_", "hand_chain_")
+            )
+        )
+        is_chain_follower = (
+            str(types[bone]).startswith(("foot_chain_", "hand_chain_"))
+            and int(parent) >= 0
+            and str(types[int(parent)]) == str(types[bone])
         )
         if (
-            str(types[bone]) != "parent_follow" and not is_upper_limb_connected
+            str(types[bone]) != "parent_follow"
+            and not is_upper_limb_connected
+            and not is_chain_follower
         ):
             continue
         new[bone] = new[int(parent)] @ old_local[bone]

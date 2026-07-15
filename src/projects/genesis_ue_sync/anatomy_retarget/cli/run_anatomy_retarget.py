@@ -37,6 +37,7 @@ from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import load_rigged_a
 from projects.genesis_ue_sync.anatomy_retarget.shape_volume import apply_subject_beta_shape
 from projects.genesis_ue_sync.anatomy_retarget.leg_material import compute_leg_material_coordinates
 from projects.genesis_ue_sync.anatomy_retarget.diagnostics import write_mesh_diagnostics
+from projects.genesis_ue_sync.anatomy_retarget.head_calibration import calibrate_head_rest_offset
 from projects.genesis_ue_sync.anatomy_retarget.bone_segment_diagnostics import write_bone_segment_diagnostics
 from projects.genesis_ue_sync.anatomy_retarget.segment_coupling import (
     bake_segment_coupling,
@@ -204,6 +205,7 @@ def main() -> int:
         Path(__file__).resolve().parents[1] / "shape_volume.py",
         Path(__file__).resolve().parents[1] / "source_rebind.py",
         Path(__file__).resolve().parents[1] / "segment_coupling.py",
+        Path(__file__).resolve().parents[1] / "head_calibration.py",
         extra="source-template-v5.4-stable-volume-group-rig-v1",
     )
     shape_hash = smplx_shape_hash(betas, gender=gender) if betas else "neutral"
@@ -253,6 +255,7 @@ def main() -> int:
                 repair_tissues=(),
             )
             containment_reports.append(neutral_containment)
+        asset, head_calibration_report = calibrate_head_rest_offset(asset)
         coupling, coupling_report = bake_segment_coupling(asset)
         coupling_report["roundtrip_error_m"] = segment_coupling_roundtrip_error(asset, coupling)
         asset = type(asset)(**{**asset.__dict__, "source_segment_coupling": coupling})
@@ -263,6 +266,7 @@ def main() -> int:
             "source_blender_report": blender_report,
             "source_containment_reports": containment_reports,
             "source_skin_volume_report": source_skin_report,
+            "head_rest_calibration_report": head_calibration_report,
             "source_cache_key": source_key,
             "segment_coupling_report": coupling_report,
         })

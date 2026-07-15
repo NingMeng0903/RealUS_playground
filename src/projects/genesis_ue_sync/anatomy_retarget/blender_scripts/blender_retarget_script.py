@@ -349,9 +349,15 @@ _POSE_CHAIN: list[tuple[str, str]] = [
     ("left_collar", "left_shoulder"),
     ("left_shoulder", "left_elbow"),
     ("left_elbow", "left_wrist"),
+    ("left_wrist", "left_index1"),
+    ("left_index1", "left_index2"),
+    ("left_index2", "left_index3"),
     ("right_collar", "right_shoulder"),
     ("right_shoulder", "right_elbow"),
     ("right_elbow", "right_wrist"),
+    ("right_wrist", "right_index1"),
+    ("right_index1", "right_index2"),
+    ("right_index2", "right_index3"),
     ("left_hip", "left_knee"),
     ("left_knee", "left_ankle"),
     ("left_ankle", "left_foot"),
@@ -554,8 +560,11 @@ def _merge_and_skin_meshes(
         source_mesh_names.append(str(obj.name))
         object_collections = set(_collections_for_object(obj))
         connective_tissue = _is_connective_tissue(str(obj.name))
+        mesh_lower = str(obj.name).lower()
         if connective_tissue:
             source_tissues.append("connective_tissue")
+        elif "heart" in mesh_lower:
+            source_tissues.append("heart")
         elif "Skeletal_Sys" in object_collections:
             source_tissues.append("bone")
         elif "Cardiovascular_Sys" in object_collections:
@@ -624,6 +633,16 @@ def _merge_and_skin_meshes(
             and not connective_tissue
         )
         preserve_weights = str(obj.name) in preserve_source_weights
+        preserve_tokens = (
+            "metacarpal",
+            "metatarsal",
+            "phalanx_hand",
+            "phalanges_hand",
+            "phalanx_foot",
+            "phalanges_foot",
+        )
+        if is_rigid and any(token in mesh_lower for token in preserve_tokens):
+            preserve_weights = True
         if is_rigid and not preserve_weights:
             joint_name = rigid_mesh_to_smplx.get(str(obj.name))
             if joint_name is None:
@@ -636,6 +655,20 @@ def _merge_and_skin_meshes(
             for slot in range(source_indices.shape[1]):
                 np.add.at(source_mass, source_indices[:, slot], source_weights[:, slot])
             rigid_source_bone = int(np.argmax(source_mass))
+            foot_chain_roots: dict[str, int] = {}
+            for side_key, root_name in (("left", "Ankle_Rot_L"), ("right", "Ankle_Rot_R")):
+                if root_name in source_bone_index:
+                    foot_chain_roots[side_key] = int(source_bone_index[root_name])
+            side = None
+            if mesh_lower.endswith("_l") or "_l_" in mesh_lower or mesh_lower.endswith("_hand_l"):
+                side = "left"
+            elif mesh_lower.endswith("_r") or "_r_" in mesh_lower or mesh_lower.endswith("_hand_r"):
+                side = "right"
+            if side is not None and any(
+                token in mesh_lower for token in ("phalanx_foot", "phalanges_foot", "metatarsal")
+            ):
+                if side in foot_chain_roots:
+                    rigid_source_bone = int(foot_chain_roots[side])
             source_indices[:, :] = rigid_source_bone
             source_weights[:, :] = 0.0
             source_weights[:, 0] = 1.0
@@ -920,6 +953,36 @@ def _source_rig_canonical(
             return True
         return False
 
+    def _is_hand_smpl_joint(joint_name: str) -> bool:
+        lower = str(joint_name).lower()
+        if lower.endswith("_wrist"):
+            return True
+        return any(digit in lower for digit in ("index", "middle", "ring", "pinky", "thumb"))
+
+    def _is_hand_chain_bone(lower: str, name: str) -> bool:
+        if "wrist" in lower and "rot" in lower:
+            return True
+        if any(
+            token in lower
+            for token in (
+                "metacarpal",
+                "carpal",
+                "phalanx_hand",
+                "phalanges_hand",
+            )
+        ):
+            return True
+        if "phalanx" in lower and "hand" in lower:
+            return True
+        if "fingers_rotate" in lower or "finger_rotate" in lower:
+            return True
+        if lower.startswith("finger_") and "foot" not in lower:
+            return True
+        mapped = direct.get(str(name))
+        if mapped is not None and mapped < len(joint_names):
+            return _is_hand_smpl_joint(joint_names[int(mapped)])
+        return False
+
     def _canonical_point(point: np.ndarray) -> np.ndarray:
         point_global = np.asarray(point, dtype=np.float64) @ linear.T + translation
         return point_global + _sample_alignment_offset(point_global.reshape(1, 3), align)[0]
@@ -979,6 +1042,27 @@ def _source_rig_canonical(
                 joint_b[bi] = joint_index[f"{side}_knee"]
                 blend[bi] = 0.55
                 driver_type = f"knee_chain_{side}"
+        elif _is_hand_chain_bone(lower, name):
+            side = _bone_side(name, lower)
+            if side is not None:
+                if "wrist" in lower and "rot" in lower:
+                    joint_a[bi] = joint_index[f"{side}_elbow"]
+                    joint_b[bi] = joint_index[f"{side}_wrist"]
+                    blend[bi] = 0.55
+                elif name in direct:
+                    mapped_joint = int(direct[name])
+                    joint_a[bi] = mapped_joint
+                    joint_b[bi] = mapped_joint
+                else:
+                    inherited_joint, _ = _resolve_group_joint(
+                        name,
+                        direct=direct,
+                        parents_by_bone=parents_by_bone,
+                        fallback=fallback,
+                    )
+                    joint_a[bi] = int(inherited_joint)
+                    joint_b[bi] = int(inherited_joint)
+                driver_type = f"hand_chain_{side}"
         elif _is_foot_chain_bone(lower) or "toes_rotate" in lower:
             side = _bone_side(name, lower)
             if side is not None:
