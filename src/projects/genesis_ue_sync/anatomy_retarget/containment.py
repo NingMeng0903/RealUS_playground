@@ -10,6 +10,7 @@ import numpy as np
 
 from .rigged_asset import AnatomyRiggedAsset
 from .source_rebind import rebind_source_rig
+from .anatomy_roles import exempt_from_rigid_containment
 
 
 TISSUE_MARGIN_M = {"bone": 0.003, "organ": 0.004, "vessel": 0.0015, "nerve": 0.001}
@@ -454,6 +455,8 @@ def repair_containment(
         for mesh_idx, ((start, stop), tissue) in enumerate(zip(ranges, tissues)):
             if str(tissue) not in permitted:
                 continue
+            if exempt_from_rigid_containment(str(asset.source_mesh_names[mesh_idx])):
+                continue
             margin = float(TISSUE_MARGIN_M.get(str(tissue), 0.0015))
             local_values = values[start:stop]
             violating = local_values > -margin
@@ -495,6 +498,8 @@ def repair_containment(
         for _mesh_name, (start, stop), tissue in zip(mesh_names, ranges, tissues):
             if str(tissue) != "bone" or "bone" not in permitted:
                 continue
+            if exempt_from_rigid_containment(str(_mesh_name)):
+                continue
             local_values = values[start:stop]
             violating = local_values > -1.0e-4
             if not np.any(violating):
@@ -519,8 +524,10 @@ def repair_containment(
     for _rigid_iteration in range(5):
         values, closest, normals = signed_distance(vertices, surface_vertices, surface_faces)
         moved = False
-        for (start, stop), tissue in zip(ranges, tissues):
+        for mesh_name, (start, stop), tissue in zip(mesh_names, ranges, tissues):
             if str(tissue) != "bone" or "bone" not in permitted:
+                continue
+            if exempt_from_rigid_containment(str(mesh_name)):
                 continue
             local = values[start:stop]
             worst = int(np.argmax(local))

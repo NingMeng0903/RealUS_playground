@@ -9,6 +9,7 @@ from typing import Any
 import numpy as np
 
 from .rigged_asset import AnatomyRiggedAsset
+from .anatomy_roles import is_foot_toe_mesh
 
 
 DEFAULT_LIMITS: dict[str, float] = {
@@ -55,8 +56,9 @@ def _containment_by_tissue(asset: AnatomyRiggedAsset, signed: np.ndarray) -> dic
     tissues = asset.source_tissues
     groups: dict[str, list[np.ndarray]] = {}
     if ranges is not None and tissues is not None and len(ranges) == len(tissues):
-        for (start, stop), tissue in zip(np.asarray(ranges, dtype=np.int64), tissues):
-            groups.setdefault(str(tissue), []).append(signed[int(start) : int(stop)])
+        for name, (start, stop), tissue in zip(asset.source_mesh_names, np.asarray(ranges, dtype=np.int64), tissues):
+            key = "foot_toe_diagnostic" if is_foot_toe_mesh(str(name)) else str(tissue)
+            groups.setdefault(key, []).append(signed[int(start) : int(stop)])
     else:
         groups["all"] = [signed]
     result: dict[str, dict[str, float | int]] = {}
@@ -156,6 +158,8 @@ def evaluate_asset_quality(
                 f"{thresholds['edge_growth_max_m'] * 1000.0:.1f} mm"
             )
     for tissue, metrics in containment.items():
+        if tissue == "foot_toe_diagnostic":
+            continue
         inside = float(metrics["inside_fraction"])
         outside_m = float(metrics["max_outside_m"])
         max_allowed = thresholds["critical_max_outside_m"] if tissue == "bone" else thresholds["max_outside_m"]

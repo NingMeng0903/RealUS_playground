@@ -206,15 +206,17 @@ def main() -> int:
         Path(__file__).resolve().parents[1] / "containment.py",
         Path(__file__).resolve().parents[1] / "segment_coupling.py",
         Path(__file__).resolve().parents[1] / "anatomy_lbs.py",
-        extra="source-template-v5.2-hierarchical-fk-positive-volume-v1",
+        Path(__file__).resolve().parents[1] / "anatomy_roles.py",
+        extra="source-template-v5.3-bind-local-hand-toe-head-v1",
     )
     shape_hash = smplx_shape_hash(betas, gender=gender) if betas else "neutral"
     source_cache = cache_root / "source_template_v5" / f"{source_key}.npz"
     shape_key = _cache_key(
         Path(args.canonical_dir) / "smpl_canonical_tpose.obj",
         Path(__file__).resolve().parents[1] / "shape_volume.py",
+        Path(__file__).resolve().parents[1] / "anatomy_roles.py",
         Path(__file__).resolve().parents[1] / "leg_material.py",
-        extra=f"{source_key}:{shape_hash}:subject-shape-v2",
+        extra=f"{source_key}:{shape_hash}:subject-shape-v5.3",
     )
     shape_cache = cache_root / "shape" / f"{shape_key}.npz"
     source_cache_hit = source_cache.is_file() and not args.force_source_rebake
@@ -441,7 +443,7 @@ def main() -> int:
             "leg_material_report": dict(meta.get("leg_material_report") or {}),
             "segment_coupling_report": dict(meta.get("segment_coupling_report") or {}),
             "source_template_version": 5,
-            "source_template_revision": "5.2",
+            "source_template_revision": "5.3",
             "source_bind_roundtrip": bind_roundtrip,
             "show_connective_tissue": bool(args.show_connective_tissue),
         }

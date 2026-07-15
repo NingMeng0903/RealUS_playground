@@ -423,7 +423,7 @@
     "available": true,
     "source_bone": "Head_Bone",
     "comparison": "runtime_motion_vs_smplx_global_motion",
-    "orientation_error_deg": 0.029048383494173515,
+    "orientation_error_deg": 0.03144873676570898,
     "pass": true
   },
   "rigidity_segments": {
@@ -466,7 +466,7 @@
     "shin_left": [
       {
         "endpoint_error_m": 0.005750025144066855,
-        "axis_error_deg": 0.647464424590692,
+        "axis_error_deg": 0.6474610146189663,
         "length_error_m": 0.00025538637629252126,
         "mesh": "Tibia_L",
         "dominant_source_bone": "Tibia_Bone_L",
@@ -519,7 +519,7 @@
       {
         "endpoint_error_m": 3.8087681080678834e-08,
         "axis_error_deg": 0.0,
-        "length_error_m": 3.555629135565397e-08,
+        "length_error_m": 2.0655130161806312e-08,
         "mesh": "Scapula_L",
         "dominant_source_bone": "Scapula_Bone_L",
         "pass": true
@@ -536,7 +536,7 @@
     "shoulder_right": [
       {
         "endpoint_error_m": 5.3076762033511703e-08,
-        "axis_error_deg": 0.006978822924614272,
+        "axis_error_deg": 0.009907665353900343,
         "length_error_m": 1.9547352625437497e-08,
         "mesh": "Scapula_R",
         "dominant_source_bone": "Scapula_Bone_R",
@@ -553,9 +553,9 @@
     ],
     "head": [
       {
-        "endpoint_error_m": 6.72930393640796e-08,
+        "endpoint_error_m": 5.9169387267037856e-08,
         "axis_error_deg": 0.0,
-        "length_error_m": 8.203643753201817e-08,
+        "length_error_m": 7.913982502660843e-08,
         "mesh": "Upper_Skull",
         "dominant_source_bone": "Head_Bone",
         "pass": true
@@ -602,7 +602,7 @@
     "shin_left": [
       {
         "endpoint_error_m": 0.005750025144066855,
-        "axis_error_deg": 0.647464424590692,
+        "axis_error_deg": 0.6474610146189663,
         "length_error_m": 0.00025538637629252126,
         "mesh": "Tibia_L",
         "dominant_source_bone": "Tibia_Bone_L",
@@ -655,7 +655,7 @@
       {
         "endpoint_error_m": 3.8087681080678834e-08,
         "axis_error_deg": 0.0,
-        "length_error_m": 3.555629135565397e-08,
+        "length_error_m": 2.0655130161806312e-08,
         "mesh": "Scapula_L",
         "dominant_source_bone": "Scapula_Bone_L",
         "pass": true
@@ -672,7 +672,7 @@
     "shoulder_right": [
       {
         "endpoint_error_m": 5.3076762033511703e-08,
-        "axis_error_deg": 0.006978822924614272,
+        "axis_error_deg": 0.009907665353900343,
         "length_error_m": 1.9547352625437497e-08,
         "mesh": "Scapula_R",
         "dominant_source_bone": "Scapula_Bone_R",
@@ -689,9 +689,9 @@
     ],
     "head": [
       {
-        "endpoint_error_m": 6.72930393640796e-08,
+        "endpoint_error_m": 5.9169387267037856e-08,
         "axis_error_deg": 0.0,
-        "length_error_m": 8.203643753201817e-08,
+        "length_error_m": 7.913982502660843e-08,
         "mesh": "Upper_Skull",
         "dominant_source_bone": "Head_Bone",
         "pass": true

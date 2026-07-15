@@ -8,6 +8,8 @@ from typing import Any
 
 import numpy as np
 
+from .anatomy_roles import is_cranial_shell_mesh, is_foot_toe_mesh
+
 from .rigged_asset import AnatomyRiggedAsset
 from .source_rebind import rebind_source_rig
 
@@ -257,6 +259,29 @@ def _rigid_fit(source: np.ndarray, target: np.ndarray) -> np.ndarray:
     return (source - src_center) @ rot.T + dst_center
 
 
+def _cranial_shell_fit(source: np.ndarray, target: np.ndarray) -> np.ndarray:
+    """Head-local anisotropic beta response for a rigid cranial shell.
+
+    The harmonic field supplies the subject-specific target samples.  We keep
+    its principal stretches (rather than shrinking the skull with a generic
+    containment pass), while retaining a single rigid orientation.  This is a
+    material fit and contains no position/direction constants.
+    """
+    src_center, dst_center = source.mean(axis=0), target.mean(axis=0)
+    u, _s, vt = np.linalg.svd((source - src_center).T @ (target - dst_center))
+    rot = vt.T @ u.T
+    if np.linalg.det(rot) < 0.0:
+        vt[-1] *= -1.0
+        rot = vt.T @ u.T
+    _evals, axes = np.linalg.eigh(np.cov((source - src_center).T))
+    source_local = (source - src_center) @ axes
+    target_local = (target - dst_center) @ (rot @ axes)
+    source_std = np.sqrt(np.mean(source_local * source_local, axis=0))
+    target_std = np.sqrt(np.mean(target_local * target_local, axis=0))
+    scale = np.divide(target_std, source_std, out=np.ones(3), where=source_std > 1.0e-8)
+    return (source_local * scale) @ (rot @ axes).T + dst_center
+
+
 def _preserve_rigid_bone_components(
     asset: AnatomyRiggedAsset,
     *,
@@ -268,12 +293,23 @@ def _preserve_rigid_bone_components(
     if asset.source_vertex_ranges is None or asset.source_tissues is None:
         return output, 0
     rigid = 0
-    for (start, stop), tissue in zip(np.asarray(asset.source_vertex_ranges, dtype=np.int64), asset.source_tissues):
+    for mesh_name, (start, stop), tissue in zip(
+        asset.source_mesh_names, np.asarray(asset.source_vertex_ranges, dtype=np.int64), asset.source_tissues
+    ):
         if str(tissue) != "bone" or int(stop - start) < 3:
             continue
         src = np.asarray(source_vertices[start:stop], dtype=np.float64)
         dst = np.asarray(field_vertices[start:stop], dtype=np.float64)
-        output[start:stop] = _rigid_fit(src, dst)
+        # Toe phalanges deliberately keep the authored foot hierarchy.  They
+        # have no corresponding SMPL-X joints and should not be squeezed by a
+        # body-shape field.  The skull keeps the field's anisotropic head scale
+        # so it remains the outer shell around the brain.
+        if is_foot_toe_mesh(str(mesh_name)):
+            output[start:stop] = src
+        elif is_cranial_shell_mesh(str(mesh_name)):
+            output[start:stop] = _cranial_shell_fit(src, dst)
+        else:
+            output[start:stop] = _rigid_fit(src, dst)
         rigid += 1
     return output, rigid
 

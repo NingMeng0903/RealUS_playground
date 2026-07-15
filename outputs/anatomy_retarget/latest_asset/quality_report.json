@@ -6,12 +6,12 @@
     "source_to_final p99.9 edge ratio 2.20 exceeds 1.50",
     "source_to_final maximum absolute edge growth 24.5 mm exceeds 10.0 mm",
     "source_to_pose_cache max edge ratio 6.17 exceeds 3.00",
-    "source_to_pose_cache p99.9 edge ratio 2.29 exceeds 1.50",
+    "source_to_pose_cache p99.9 edge ratio 2.27 exceeds 1.50",
     "source_to_pose_cache maximum absolute edge growth 25.0 mm exceeds 10.0 mm",
     "nerve maximum protrusion 2.8 mm exceeds 2.0 mm",
     "vessel containment 98.52% is below 99.50%",
     "vessel maximum protrusion 3.7 mm exceeds 2.0 mm",
-    "bone maximum protrusion 1.1 mm exceeds 1.0 mm"
+    "bone maximum protrusion 6.1 mm exceeds 1.0 mm"
   ],
   "thresholds": {
     "weight_sum_error": 1e-05,
@@ -43,9 +43,9 @@
     "source_to_final_p999": 2.20167875289917,
     "source_to_final_max_growth_m": 0.024489862844347954,
     "ratio_ignored_sub_0_2mm_edges": 10128,
-    "source_to_pose_cache_max": 6.170023441314697,
-    "source_to_pose_cache_p999": 2.2919399738311768,
-    "source_to_pose_cache_max_growth_m": 0.025005130097270012
+    "source_to_pose_cache_max": 6.17001485824585,
+    "source_to_pose_cache_p999": 2.272540807723999,
+    "source_to_pose_cache_max_growth_m": 0.025005070492625237
   },
   "containment_backend": "libigl_exact_signed_distance",
   "containment": {
@@ -78,10 +78,17 @@
       "min_skin_distance_m": 0.0
     },
     "bone": {
-      "vertex_count": 95614,
-      "outside_count": 453,
-      "inside_fraction": 0.9952622000962202,
-      "max_outside_m": 0.0010734258685261011,
+      "vertex_count": 90874,
+      "outside_count": 141,
+      "inside_fraction": 0.998448401082818,
+      "max_outside_m": 0.00611139414831996,
+      "min_skin_distance_m": 0.0
+    },
+    "foot_toe_diagnostic": {
+      "vertex_count": 4740,
+      "outside_count": 4740,
+      "inside_fraction": 0.0,
+      "max_outside_m": 0.11504929512739182,
       "min_skin_distance_m": 0.0
     }
   }
