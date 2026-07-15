@@ -27,7 +27,7 @@ class PerceptionViewerConfig:
     anatomy_subscribe: str = "tcp://127.0.0.1:5601"
     planning_root: Path = Path("outputs/anatomy_retarget/limb_vessel_planning")
     anatomy_transparent_alpha: float = 0.35
-    track_mesh_rgba: tuple[int, int, int, int] = (250, 122, 31, 55)
+    track_mesh_rgba: tuple[int, int, int, int] = (250, 122, 31, 120)
     spawn_robot: bool = True
     backend: str = "cuda"
     reload_planning_s: float = 2.0
@@ -157,9 +157,9 @@ def main() -> int:
     ap.add_argument(
         "--track-mesh-alpha",
         type=int,
-        default=55,
+        default=120,
         metavar="0-255",
-        help="Orange SMPL-X skin opacity (default 55)",
+        help="Orange SMPL-X skin opacity (default 120)",
     )
     ap.add_argument(
         "--no-robot",

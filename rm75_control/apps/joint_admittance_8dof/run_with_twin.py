@@ -87,9 +87,9 @@ def main() -> int:
     ap.add_argument(
         "--track-mesh-alpha",
         type=int,
-        default=55,
+        default=120,
         metavar="0-255",
-        help="Orange SMPL-X skin opacity (default 55; anatomy draws underneath in solid pass)",
+        help="Orange SMPL-X skin opacity (default 120; anatomy draws underneath in solid pass)",
     )
     args = ap.parse_args()
 
