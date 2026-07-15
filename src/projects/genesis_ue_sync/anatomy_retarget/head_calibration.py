@@ -1,18 +1,47 @@
 """Static rest-space head/skull and foot-chain alignment.
 
-Head uses a neck→head axial stretch from config (skull/brain move with the
-crown; cervical bones and neck vessels interpolate along the same axis).
+Head uses a neck→head axial stretch from config (skull/brain/teeth move with the
+crown; cervical bones and neck vessels interpolate along the same axis) plus an
+optional Head_Bone local-Y height squash for the cranial vault.
 Feet align each foot_chain subtree length/rotation to the SMPL-X ankle→foot segment.
 """
 
 from __future__ import annotations
 
+import json
+import time
 from typing import Any
 
 import numpy as np
 
 from .anatomy_lbs import joint_global_transforms
 from .rigged_asset import AnatomyRiggedAsset
+
+_DEBUG_LOG = "/media/camp/EXT_DRIVE/RealUS_playground/.cursor/debug-10238d.log"
+
+
+def _agent_log(*, hypothesis_id: str, location: str, message: str, data: dict[str, Any]) -> None:
+    # #region agent log
+    try:
+        with open(_DEBUG_LOG, "a", encoding="utf-8") as fh:
+            fh.write(
+                json.dumps(
+                    {
+                        "sessionId": "10238d",
+                        "runId": "post-fix",
+                        "hypothesisId": hypothesis_id,
+                        "location": location,
+                        "message": message,
+                        "data": data,
+                        "timestamp": int(time.time() * 1000),
+                    },
+                    default=str,
+                )
+                + "\n"
+            )
+    except OSError:
+        pass
+    # #endregion
 
 
 def _has_ancestor(bone: int, ancestor: int, parents: np.ndarray) -> bool:
@@ -117,10 +146,26 @@ def _axial_stretch_points(
 
 
 def _is_head_mesh(mesh_name: str, tissue: str) -> bool:
+    """Skull plus everything that should squash/stretch with the cranial vault."""
     lower = str(mesh_name).lower()
-    if any(token in lower for token in ("skull", "jaw", "mandible", "maxilla", "brain", "cranium")):
+    if any(
+        token in lower
+        for token in (
+            "skull",
+            "jaw",
+            "mandible",
+            "maxilla",
+            "brain",
+            "cerebrum",
+            "cerebellum",
+            "cranium",
+            "teeth",
+            "tooth",
+            "dental",
+        )
+    ):
         return True
-    if str(tissue) == "bone" and any(token in lower for token in ("head", "teeth", "tooth", "hyoid")):
+    if str(tissue) == "bone" and any(token in lower for token in ("head", "hyoid")):
         return True
     return False
 
@@ -164,14 +209,30 @@ def _scale_along_axis(
     return pivot + perp + float(scale) * along
 
 
-def _head_bone_local_z_axis(asset: AnatomyRiggedAsset, head_index: int) -> np.ndarray:
+def _head_bone_local_height_axis(asset: AnatomyRiggedAsset, head_index: int) -> np.ndarray:
+    """World-up cranial height (not Head_Bone local X/Z which are AP/width)."""
+    _ = head_index
+    return np.array([0.0, 1.0, 0.0], dtype=np.float64)
+
+
+def _head_bone_local_ap_axis(asset: AnatomyRiggedAsset, head_index: int) -> np.ndarray:
+    """Head_Bone local X ≈ anterior–posterior length."""
     rest_global = np.asarray(asset.source_rest_global, dtype=np.float64)
-    return rest_global[int(head_index), :3, 2].copy()
+    return rest_global[int(head_index), :3, 0].copy()
 
 
-def _resolve_skull_z_scale(config: dict[str, Any] | None) -> float:
+def _resolve_skull_height_scale(config: dict[str, Any] | None) -> float:
     cfg = dict(config or {})
+    if "head_skull_local_height_scale" in cfg:
+        return float(cfg["head_skull_local_height_scale"])
+    if "head_skull_local_length_scale" in cfg:
+        return float(cfg["head_skull_local_length_scale"])
     return float(cfg.get("head_skull_local_z_scale", 1.0))
+
+
+def _resolve_skull_ap_scale(config: dict[str, Any] | None) -> float:
+    cfg = dict(config or {})
+    return float(cfg.get("head_skull_local_ap_scale", 1.0))
 
 
 def _neck_anchor_and_head_tip(asset: AnatomyRiggedAsset) -> tuple[np.ndarray, np.ndarray]:
@@ -194,7 +255,7 @@ def calibrate_head_rest_offset(
     *,
     config: dict[str, Any] | None = None,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
-    """Stretch neck→head and optionally compress skull along Head_Bone local Z."""
+    """Stretch neck→head and optionally compress skull/brain along Head_Bone local height."""
     if asset.source_bone_names is None or asset.source_rest_global is None:
         return asset, {"applied": False, "reason": "legacy_asset"}
     names = list(asset.source_bone_names)
@@ -202,14 +263,19 @@ def calibrate_head_rest_offset(
         return asset, {"applied": False, "reason": "missing_head_bone"}
     head_index = int(names.index("Head_Bone"))
     offset, source = _resolve_head_offset(asset, config)
-    z_scale = _resolve_skull_z_scale(config)
-    if float(np.linalg.norm(offset)) < 1.0e-4 and abs(z_scale - 1.0) < 1.0e-4:
+    height_scale = _resolve_skull_height_scale(config)
+    ap_scale = _resolve_skull_ap_scale(config)
+    if (
+        float(np.linalg.norm(offset)) < 1.0e-4
+        and abs(height_scale - 1.0) < 1.0e-4
+        and abs(ap_scale - 1.0) < 1.0e-4
+    ):
         return asset, {
             "applied": False,
             "reason": "within_tolerance",
             "offset_m": [0.0, 0.0, 0.0],
             "offset_source": source,
-            "skull_local_z_scale": z_scale,
+            "skull_local_height_scale": height_scale,
         }
 
     neck_anchor, head_tip = _neck_anchor_and_head_tip(asset)
@@ -220,6 +286,8 @@ def calibrate_head_rest_offset(
     vertices = np.asarray(asset.vertices_rest, dtype=np.float64).copy()
     mask = np.zeros(len(vertices), dtype=bool)
     skull_mask = np.zeros(len(vertices), dtype=bool)
+    cranial_named_verts = 0
+    cranial_dominant_only_verts = 0
     if asset.source_vertex_ranges is not None and asset.source_mesh_names is not None:
         tissues = list(asset.source_tissues or ["bone"] * len(asset.source_mesh_names))
         for (start, stop), mesh_name, tissue in zip(
@@ -230,13 +298,16 @@ def calibrate_head_rest_offset(
             start_i, stop_i = int(start), int(stop)
             block = vertices[start_i:stop_i]
             bone = _dominant_source_bone(asset, start_i, stop_i)
-            if _is_head_mesh(str(mesh_name), str(tissue)):
-                if bone is not None and int(bone) in head_bones:
-                    if float(np.linalg.norm(offset)) >= 1.0e-4:
-                        block = _axial_stretch_points(block, neck_anchor, head_tip, offset)
-                    vertices[start_i:stop_i] = block
-                    mask[start_i:stop_i] = True
-                    skull_mask[start_i:stop_i] = True
+            # Only explicitly cranial meshes (name/tissue), not every mesh
+            # whose LBS weights happen to peak on Head_Bone.
+            is_cranial = _is_head_mesh(str(mesh_name), str(tissue))
+            if is_cranial:
+                cranial_named_verts += stop_i - start_i
+                if float(np.linalg.norm(offset)) >= 1.0e-4:
+                    block = _axial_stretch_points(block, neck_anchor, head_tip, offset)
+                vertices[start_i:stop_i] = block
+                mask[start_i:stop_i] = True
+                skull_mask[start_i:stop_i] = True
                 continue
             if str(tissue) == "bone" and bone is not None and int(bone) in cervical_bones:
                 if float(np.linalg.norm(offset)) >= 1.0e-4:
@@ -249,13 +320,13 @@ def calibrate_head_rest_offset(
                     vertices[start_i:stop_i] = block + weights[:, None] * offset
                     mask[start_i:stop_i] = True
 
-    if not np.any(mask) and abs(z_scale - 1.0) < 1.0e-4:
+    if not np.any(mask) and abs(height_scale - 1.0) < 1.0e-4 and abs(ap_scale - 1.0) < 1.0e-4:
         return asset, {
             "applied": False,
             "reason": "no_head_meshes",
             "offset_m": offset.tolist(),
             "offset_source": source,
-            "skull_local_z_scale": z_scale,
+            "skull_local_height_scale": height_scale,
         }
 
     rest_global = np.asarray(asset.source_rest_global, dtype=np.float64).copy()
@@ -291,32 +362,42 @@ def calibrate_head_rest_offset(
                     )
                 points[int(bi)] += weight * offset
 
-    skull_z_axis = _head_bone_local_z_axis(asset, head_index)
+    skull_height_axis = _head_bone_local_height_axis(asset, head_index)
+    skull_ap_axis = _head_bone_local_ap_axis(asset, head_index)
     if bone_head is not None:
         skull_pivot = bone_head[int(head_index)].copy()
     else:
         skull_pivot = rest_global[int(head_index), :3, 3].copy()
 
-    if abs(z_scale - 1.0) >= 1.0e-4:
+    if abs(height_scale - 1.0) >= 1.0e-4 or abs(ap_scale - 1.0) >= 1.0e-4:
         if np.any(skull_mask):
-            vertices[skull_mask] = _scale_along_axis(
-                vertices[skull_mask], skull_pivot, skull_z_axis, z_scale
-            )
+            block = vertices[skull_mask]
+            if abs(height_scale - 1.0) >= 1.0e-4:
+                block = _scale_along_axis(block, skull_pivot, skull_height_axis, height_scale)
+            if abs(ap_scale - 1.0) >= 1.0e-4:
+                block = _scale_along_axis(block, skull_pivot, skull_ap_axis, ap_scale)
+            vertices[skull_mask] = block
         for bi in head_bones:
-            rest_global[int(bi), :3, 3] = _scale_along_axis(
-                rest_global[int(bi), :3, 3].reshape(1, 3),
-                skull_pivot,
-                skull_z_axis,
-                z_scale,
-            )[0]
+            point = rest_global[int(bi), :3, 3].reshape(1, 3)
+            if abs(height_scale - 1.0) >= 1.0e-4:
+                point = _scale_along_axis(point, skull_pivot, skull_height_axis, height_scale)
+            if abs(ap_scale - 1.0) >= 1.0e-4:
+                point = _scale_along_axis(point, skull_pivot, skull_ap_axis, ap_scale)
+            rest_global[int(bi), :3, 3] = point[0]
             if bone_head is not None:
-                bone_head[int(bi)] = _scale_along_axis(
-                    bone_head[int(bi)].reshape(1, 3), skull_pivot, skull_z_axis, z_scale
-                )[0]
+                p = bone_head[int(bi)].reshape(1, 3)
+                if abs(height_scale - 1.0) >= 1.0e-4:
+                    p = _scale_along_axis(p, skull_pivot, skull_height_axis, height_scale)
+                if abs(ap_scale - 1.0) >= 1.0e-4:
+                    p = _scale_along_axis(p, skull_pivot, skull_ap_axis, ap_scale)
+                bone_head[int(bi)] = p[0]
             if bone_tail is not None:
-                bone_tail[int(bi)] = _scale_along_axis(
-                    bone_tail[int(bi)].reshape(1, 3), skull_pivot, skull_z_axis, z_scale
-                )[0]
+                p = bone_tail[int(bi)].reshape(1, 3)
+                if abs(height_scale - 1.0) >= 1.0e-4:
+                    p = _scale_along_axis(p, skull_pivot, skull_height_axis, height_scale)
+                if abs(ap_scale - 1.0) >= 1.0e-4:
+                    p = _scale_along_axis(p, skull_pivot, skull_ap_axis, ap_scale)
+                bone_tail[int(bi)] = p[0]
 
     parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
     rest_local = rest_global.copy()
@@ -344,8 +425,11 @@ def calibrate_head_rest_offset(
     meta["head_rest_calibration"] = {
         "offset_m": [float(v) for v in offset.tolist()],
         "offset_source": source,
-        "mode": "neck_axial_stretch_plus_skull_z_scale",
-        "skull_local_z_scale": float(z_scale),
+        "mode": "neck_axial_stretch_plus_skull_height_ap_scale",
+        "skull_local_height_scale": float(height_scale),
+        "skull_local_ap_scale": float(ap_scale),
+        "skull_height_axis": [float(v) for v in skull_height_axis.tolist()],
+        "skull_ap_axis": [float(v) for v in skull_ap_axis.tolist()],
         "neck_anchor_m": [float(v) for v in neck_anchor.tolist()],
         "head_tip_m": [float(v) for v in head_tip.tolist()],
         "head_bones": int(len(head_bones)),
@@ -353,6 +437,22 @@ def calibrate_head_rest_offset(
         "vertex_count": int(np.count_nonzero(mask)),
         "skull_vertex_count": int(np.count_nonzero(skull_mask)),
     }
+    _agent_log(
+        hypothesis_id="C",
+        location="head_calibration.py:calibrate_head_rest_offset",
+        message="head calibration summary",
+        data={
+            "height_scale": float(height_scale),
+            "ap_scale": float(ap_scale),
+            "skull_height_axis": skull_height_axis.tolist(),
+            "skull_ap_axis": skull_ap_axis.tolist(),
+            "world_up_dot": float(skull_height_axis @ np.array([0.0, 1.0, 0.0])),
+            "skull_vertex_count": int(np.count_nonzero(skull_mask)),
+            "total_vertex_count": int(np.count_nonzero(mask)),
+            "cranial_named_verts": int(cranial_named_verts),
+            "cranial_dominant_only_verts": int(cranial_dominant_only_verts),
+        },
+    )
     updates["metadata"] = meta
     return type(asset)(**{**asset.__dict__, **updates}), dict(meta["head_rest_calibration"], applied=True)
 
@@ -419,10 +519,10 @@ def _rotation_between(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def calibrate_foot_rest_alignment(asset: AnatomyRiggedAsset) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
-    """Rotate each foot_chain so Blender ankle→tip matches SMPL-X ankle→foot direction.
+    """Align each foot_chain to SMPL-X ankle→foot and shrink Blender toe reach.
 
-    SMPL-X ``foot`` is a mid-foot joint, not the toe tip, so we never scale the
-    authored Blender foot length down to that short segment.
+    Bone *and* bone-mesh vertices share the same ankle-anchored map so length
+    scale is not skeleton-only. Soft vessels/nerves stay with volume registration.
     """
     if asset.source_bone_names is None or asset.source_rest_global is None:
         return asset, {"applied": False, "reason": "legacy_asset"}
@@ -466,23 +566,33 @@ def calibrate_foot_rest_alignment(asset: AnatomyRiggedAsset) -> tuple[AnatomyRig
             continue
 
         root_pos = rest_global[root, :3, 3]
-        # Prefer Arch_Rot as the direction probe: it sits on the ankle→toe axis
-        # without being as noisy as an anonymous distal phalanx helper.
-        names = list(asset.source_bone_names)
+        names_list = list(asset.source_bone_names)
+        types_list = list(asset.source_bone_driver_types or [])
         arch_name = f"Arch_Rot_{'L' if side == 'left' else 'R'}"
-        if arch_name in names and int(names.index(arch_name)) in bones:
-            tip = rest_global[int(names.index(arch_name)), :3, 3]
+        tip = root_pos.copy()
+        tip_bone = str(asset.source_bone_names[root])
+        tip_kind = "root"
+        tip_dist = 0.0
+        arch_dist = None
+        if arch_name in names_list and int(names_list.index(arch_name)) in bones:
+            arch_bi = int(names_list.index(arch_name))
+            tip = rest_global[arch_bi, :3, 3].copy()
+            tip_bone = arch_name
+            tip_kind = "arch"
+            tip_dist = float(np.linalg.norm(tip - root_pos))
+            arch_dist = tip_dist
         else:
-            tip = root_pos.copy()
-            tip_dist = 0.0
             for bi in bones:
+                own = str(types_list[int(bi)]) if int(bi) < len(types_list) else ""
+                if own != "foot_chain_left" and own != "foot_chain_right":
+                    continue
                 point = rest_global[int(bi), :3, 3]
-                if bone_tail is not None:
-                    point = bone_tail[int(bi)]
                 dist = float(np.linalg.norm(point - root_pos))
                 if dist > tip_dist:
                     tip_dist = dist
-                    tip = point
+                    tip = point.copy()
+                    tip_bone = str(asset.source_bone_names[int(bi)])
+                    tip_kind = "foot_chain_origin"
         blender_vec = tip - root_pos
         blender_len = float(np.linalg.norm(blender_vec))
         if blender_len < 1.0e-4:
@@ -492,19 +602,48 @@ def calibrate_foot_rest_alignment(asset: AnatomyRiggedAsset) -> tuple[AnatomyRig
         angle = float(np.degrees(np.arccos(np.clip(
             (blender_vec / blender_len) @ (smpl_vec / smpl_len), -1.0, 1.0
         ))))
-        # Skip near-identity corrections so we do not churn rest frames.
-        if angle < 1.0 and float(np.linalg.norm(root_pos - smpl_ankle)) < 0.005:
+        # Cap so we always shrink oversized Blender feet, never elongate.
+        length_scale = min(1.0, smpl_len / blender_len)
+        smpl_unit = smpl_vec / smpl_len
+        blender_unit = blender_vec / blender_len
+        _agent_log(
+            hypothesis_id="A",
+            location="head_calibration.py:calibrate_foot_rest_alignment",
+            message="foot tip probe",
+            data={
+                "side": side,
+                "tip_bone": tip_bone,
+                "tip_kind": tip_kind,
+                "tip_dist_m": tip_dist,
+                "arch_dist_m": arch_dist,
+                "blender_len_m": blender_len,
+                "smpl_len_m": smpl_len,
+                "length_scale": length_scale,
+                "rotation_deg": angle,
+                "tip_y": float(tip[1]),
+                "root_y": float(root_pos[1]),
+            },
+        )
+        if (
+            angle < 1.0
+            and abs(float(length_scale) - 1.0) < 0.005
+            and float(np.linalg.norm(root_pos - smpl_ankle)) < 0.005
+        ):
             report_sides[side] = {
                 "root_bone": str(asset.source_bone_names[root]),
                 "bones": int(len(bones)),
                 "applied": False,
                 "reason": "within_tolerance",
                 "rotation_deg": angle,
+                "length_scale": float(length_scale),
             }
             continue
 
         def _map_point(point: np.ndarray) -> np.ndarray:
-            return smpl_ankle + rotation @ (point - root_pos)
+            rel = np.asarray(point, dtype=np.float64) - root_pos
+            along = float(rel @ blender_unit)
+            perp = rel - along * blender_unit
+            return smpl_ankle + smpl_unit * (along * length_scale) + rotation @ perp
 
         for bi in bones:
             rest_global[int(bi), :3, :3] = rotation @ rest_global[int(bi), :3, :3]
@@ -527,11 +666,21 @@ def calibrate_foot_rest_alignment(asset: AnatomyRiggedAsset) -> tuple[AnatomyRig
                 if bone is None or int(bone) not in bones:
                     continue
                 block = vertices[int(start) : int(stop)]
-                vertices[int(start) : int(stop)] = smpl_ankle + (rotation @ (block - root_pos).T).T
+                rel = block - root_pos
+                along = rel @ blender_unit
+                perp = rel - along[:, None] * blender_unit
+                vertices[int(start) : int(stop)] = (
+                    smpl_ankle + smpl_unit * (along * length_scale)[:, None] + (rotation @ perp.T).T
+                )
                 if reference is not None:
                     ref_block = reference[int(start) : int(stop)]
+                    rel_r = ref_block - root_pos
+                    along_r = rel_r @ blender_unit
+                    perp_r = rel_r - along_r[:, None] * blender_unit
                     reference[int(start) : int(stop)] = (
-                        smpl_ankle + (rotation @ (ref_block - root_pos).T).T
+                        smpl_ankle
+                        + smpl_unit * (along_r * length_scale)[:, None]
+                        + (rotation @ perp_r.T).T
                     )
                 touched += int(stop - start)
 
@@ -542,6 +691,7 @@ def calibrate_foot_rest_alignment(asset: AnatomyRiggedAsset) -> tuple[AnatomyRig
             "blender_length_m": blender_len,
             "smplx_length_m": smpl_len,
             "rotation_deg": angle,
+            "length_scale": float(length_scale),
             "ankle_shift_m": float(np.linalg.norm(root_pos - smpl_ankle)),
         }
 

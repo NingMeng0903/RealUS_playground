@@ -230,13 +230,8 @@ derived_drivers:
 
 
 head_rest_offset_m: [0.0, 0.06, 0.0]
-head_skull_local_z_scale: 0.7
-
-vessel_priors:
-  enable: true
-  bone_anchor_blend: 0.2
-  edge_length_iters: 2
-  max_stretch_ratio: 1.15
+head_skull_local_height_scale: 0.9
+head_skull_local_ap_scale: 0.92
 
 quality_gate:
   weight_sum_error: 1.0e-5

@@ -1,0 +1,856 @@
+{
+  "endpoint_limit_m": 0.005,
+  "axis_limit_deg": 3.0,
+  "gap_change_limit_m": 0.002,
+  "head_orientation_limit_deg": 2.0,
+  "joints": {
+    "shoulder_left": {
+      "smplx_joint": "left_shoulder",
+      "endpoint_source": "blender_bind_probes",
+      "roles": {
+        "proximal": {
+          "available": true,
+          "source_bone": "Scapula_Bone_L",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.05216640890197548
+        },
+        "distal": {
+          "available": true,
+          "source_bone": "Shoulder_Rotate_L",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.0041480418451338
+        }
+      },
+      "source_shared_anchor_error_m": 0.02664305192379958,
+      "source_rest_gap_m": 0.0514881431633182,
+      "posed_gap_m": 0.05135827172420278,
+      "gap_change_m": 0.00012987143911542126,
+      "axis_error_deg": 4.764291901065614,
+      "axes": [
+        {
+          "source_bone": "Shoulder_Rotate_L",
+          "available": true,
+          "smplx_segment": [
+            "left_shoulder",
+            "left_elbow"
+          ],
+          "axis_error_deg": 4.764291901065614
+        }
+      ],
+      "connected_in_source": false,
+      "pass": false
+    },
+    "shoulder_right": {
+      "smplx_joint": "right_shoulder",
+      "endpoint_source": "blender_bind_probes",
+      "roles": {
+        "proximal": {
+          "available": true,
+          "source_bone": "Scapula_Bone_R",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.05220371961413643
+        },
+        "distal": {
+          "available": true,
+          "source_bone": "Shoulder_Rotate_R",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.00371610595506971
+        }
+      },
+      "source_shared_anchor_error_m": 0.025394251673552654,
+      "source_rest_gap_m": 0.05298871092110333,
+      "posed_gap_m": 0.05383868031260087,
+      "gap_change_m": 0.0008499693914975417,
+      "axis_error_deg": 2.4440379264241714,
+      "axes": [
+        {
+          "source_bone": "Shoulder_Rotate_R",
+          "available": true,
+          "smplx_segment": [
+            "right_shoulder",
+            "right_elbow"
+          ],
+          "axis_error_deg": 2.4440379264241714
+        }
+      ],
+      "connected_in_source": false,
+      "pass": false
+    },
+    "elbow_left": {
+      "smplx_joint": "left_elbow",
+      "endpoint_source": "blender_bind_probes",
+      "roles": {
+        "proximal": {
+          "available": true,
+          "source_bone": "Shoulder_Rotate_L",
+          "endpoint": "tail",
+          "smplx_joint_error_m": 0.01981717100278651
+        },
+        "distal": {
+          "available": true,
+          "source_bone": "Forearm_Bone_L",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.03378602095923197
+        }
+      },
+      "source_shared_anchor_error_m": 0.026305969469772032,
+      "source_rest_gap_m": 0.01733244474360403,
+      "posed_gap_m": 0.017332479298830156,
+      "gap_change_m": 3.455522612494377e-08,
+      "axis_error_deg": 5.338397812857842,
+      "axes": [
+        {
+          "source_bone": "Shoulder_Rotate_L",
+          "available": true,
+          "smplx_segment": [
+            "left_shoulder",
+            "left_elbow"
+          ],
+          "axis_error_deg": 4.764291901065614
+        },
+        {
+          "source_bone": "Forearm_Bone_L",
+          "available": true,
+          "smplx_segment": [
+            "left_elbow",
+            "left_wrist"
+          ],
+          "axis_error_deg": 5.338397812857842
+        }
+      ],
+      "connected_in_source": false,
+      "pass": false
+    },
+    "elbow_right": {
+      "smplx_joint": "right_elbow",
+      "endpoint_source": "blender_bind_probes",
+      "roles": {
+        "proximal": {
+          "available": true,
+          "source_bone": "Shoulder_Rotate_R",
+          "endpoint": "tail",
+          "smplx_joint_error_m": 0.01108999346101804
+        },
+        "distal": {
+          "available": true,
+          "source_bone": "Forearm_Bone_R",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.027418162886348987
+        }
+      },
+      "source_shared_anchor_error_m": 0.01912433338251097,
+      "source_rest_gap_m": 0.01692707991145833,
+      "posed_gap_m": 0.01692709995108085,
+      "gap_change_m": 2.0039622520423572e-08,
+      "axis_error_deg": 2.4440379264241714,
+      "axes": [
+        {
+          "source_bone": "Shoulder_Rotate_R",
+          "available": true,
+          "smplx_segment": [
+            "right_shoulder",
+            "right_elbow"
+          ],
+          "axis_error_deg": 2.4440379264241714
+        },
+        {
+          "source_bone": "Forearm_Bone_R",
+          "available": true,
+          "smplx_segment": [
+            "right_elbow",
+            "right_wrist"
+          ],
+          "axis_error_deg": 1.6552953877552794
+        }
+      ],
+      "connected_in_source": false,
+      "pass": false
+    },
+    "wrist_left": {
+      "smplx_joint": "left_wrist",
+      "endpoint_source": "blender_bind_probes",
+      "roles": {
+        "proximal": {
+          "available": true,
+          "source_bone": "Forearm_Bone_L",
+          "endpoint": "tail",
+          "smplx_joint_error_m": 0.11697895915894665
+        },
+        "distal": {
+          "available": true,
+          "source_bone": "Wrist_Rotate_L",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.02005438920575402
+        }
+      },
+      "source_shared_anchor_error_m": 0.0528181172493064,
+      "source_rest_gap_m": 0.13043585706906274,
+      "posed_gap_m": 0.1304357956452401,
+      "gap_change_m": 6.142382263929491e-08,
+      "axis_error_deg": 5.338397812857842,
+      "axes": [
+        {
+          "source_bone": "Forearm_Bone_L",
+          "available": true,
+          "smplx_segment": [
+            "left_elbow",
+            "left_wrist"
+          ],
+          "axis_error_deg": 5.338397812857842
+        }
+      ],
+      "connected_in_source": false,
+      "pass": false
+    },
+    "wrist_right": {
+      "smplx_joint": "right_wrist",
+      "endpoint_source": "blender_bind_probes",
+      "roles": {
+        "proximal": {
+          "available": true,
+          "source_bone": "Forearm_Bone_R",
+          "endpoint": "tail",
+          "smplx_joint_error_m": 0.1207616886501686
+        },
+        "distal": {
+          "available": true,
+          "source_bone": "Wrist_Rotate_R1",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.02398294346977577
+        }
+      },
+      "source_shared_anchor_error_m": 0.06030510084610059,
+      "source_rest_gap_m": 0.12557989440949366,
+      "posed_gap_m": 0.12557990800281707,
+      "gap_change_m": 1.3593323411331681e-08,
+      "axis_error_deg": 1.6552953877552794,
+      "axes": [
+        {
+          "source_bone": "Forearm_Bone_R",
+          "available": true,
+          "smplx_segment": [
+            "right_elbow",
+            "right_wrist"
+          ],
+          "axis_error_deg": 1.6552953877552794
+        }
+      ],
+      "connected_in_source": false,
+      "pass": false
+    },
+    "index_proximal_left": {
+      "smplx_joint": "left_index1",
+      "endpoint_source": "blender_bind_probes",
+      "roles": {
+        "proximal": {
+          "available": true,
+          "source_bone": "Wrist_Rotate_L",
+          "endpoint": "tail",
+          "smplx_joint_error_m": 0.05471980661629092
+        },
+        "distal": {
+          "available": true,
+          "source_bone": "Fingers_Rotate_L4",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.006370072207248558
+        }
+      },
+      "source_shared_anchor_error_m": 0.028204647024183797,
+      "source_rest_gap_m": 0.07146454542217474,
+      "posed_gap_m": 0.05373696732291906,
+      "gap_change_m": 0.01772757809925568,
+      "axis_error_deg": 10.486734896782698,
+      "axes": [
+        {
+          "source_bone": "Wrist_Rotate_L",
+          "available": true,
+          "smplx_segment": [
+            "left_wrist",
+            "left_index1"
+          ],
+          "axis_error_deg": 10.486734896782698
+        }
+      ],
+      "connected_in_source": false,
+      "pass": false
+    },
+    "index_proximal_right": {
+      "smplx_joint": "right_index1",
+      "endpoint_source": "blender_bind_probes",
+      "roles": {
+        "proximal": {
+          "available": true,
+          "source_bone": "Wrist_Rotate_R1",
+          "endpoint": "tail",
+          "smplx_joint_error_m": 0.05451244200060071
+        },
+        "distal": {
+          "available": true,
+          "source_bone": "Fingers_Rotate_R4",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.00645206633313891
+        }
+      },
+      "source_shared_anchor_error_m": 0.027988835012834033,
+      "source_rest_gap_m": 0.07052946682167217,
+      "posed_gap_m": 0.05378634997998643,
+      "gap_change_m": 0.016743116841685744,
+      "axis_error_deg": 14.841059903054463,
+      "axes": [
+        {
+          "source_bone": "Wrist_Rotate_R1",
+          "available": true,
+          "smplx_segment": [
+            "right_wrist",
+            "right_index1"
+          ],
+          "axis_error_deg": 14.841059903054463
+        }
+      ],
+      "connected_in_source": false,
+      "pass": false
+    },
+    "knee_left": {
+      "smplx_joint": "left_knee",
+      "endpoint_source": "blender_bind_probes",
+      "roles": {
+        "proximal": {
+          "available": true,
+          "source_bone": "Femur_Rot_L",
+          "endpoint": "tail",
+          "smplx_joint_error_m": 0.020502122835504462
+        },
+        "distal": {
+          "available": true,
+          "source_bone": "Tibia_Bone_L",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.03766201118357796
+        }
+      },
+      "source_shared_anchor_error_m": 0.026495935486102875,
+      "source_rest_gap_m": 0.030366466573262068,
+      "posed_gap_m": 0.029485417839556355,
+      "gap_change_m": 0.0008810487337057131,
+      "axis_error_deg": 7.68754246004473,
+      "axes": [
+        {
+          "source_bone": "Femur_Rot_L",
+          "available": true,
+          "smplx_segment": [
+            "left_hip",
+            "left_knee"
+          ],
+          "axis_error_deg": 6.0027885376210754
+        },
+        {
+          "source_bone": "Tibia_Bone_L",
+          "available": true,
+          "smplx_segment": [
+            "left_knee",
+            "left_ankle"
+          ],
+          "axis_error_deg": 7.68754246004473
+        }
+      ],
+      "connected_in_source": false,
+      "pass": false
+    },
+    "knee_right": {
+      "smplx_joint": "right_knee",
+      "endpoint_source": "blender_bind_probes",
+      "roles": {
+        "proximal": {
+          "available": true,
+          "source_bone": "Femur_Rot_R",
+          "endpoint": "tail",
+          "smplx_joint_error_m": 0.01162401119049986
+        },
+        "distal": {
+          "available": true,
+          "source_bone": "Tibia_Bone_R",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.03606731760404187
+        }
+      },
+      "source_shared_anchor_error_m": 0.022110374162842557,
+      "source_rest_gap_m": 0.033116681266871305,
+      "posed_gap_m": 0.03027314797195372,
+      "gap_change_m": 0.0028435332949175857,
+      "axis_error_deg": 5.1805507014238295,
+      "axes": [
+        {
+          "source_bone": "Femur_Rot_R",
+          "available": true,
+          "smplx_segment": [
+            "right_hip",
+            "right_knee"
+          ],
+          "axis_error_deg": 5.0821476619892225
+        },
+        {
+          "source_bone": "Tibia_Bone_R",
+          "available": true,
+          "smplx_segment": [
+            "right_knee",
+            "right_ankle"
+          ],
+          "axis_error_deg": 5.1805507014238295
+        }
+      ],
+      "connected_in_source": false,
+      "pass": false
+    },
+    "ankle_left": {
+      "smplx_joint": "left_ankle",
+      "endpoint_source": "blender_bind_probes",
+      "roles": {
+        "proximal": {
+          "available": true,
+          "source_bone": "Tibia_Bone_L",
+          "endpoint": "tail",
+          "smplx_joint_error_m": 0.2966120707080435
+        },
+        "distal": {
+          "available": true,
+          "source_bone": "Ankle_Rot_L",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.00931863077108188
+        }
+      },
+      "source_shared_anchor_error_m": 0.14953302719538816,
+      "source_rest_gap_m": 0.29693244965864934,
+      "posed_gap_m": 0.29443269154334,
+      "gap_change_m": 0.0024997581153093362,
+      "axis_error_deg": 7.68754246004473,
+      "axes": [
+        {
+          "source_bone": "Tibia_Bone_L",
+          "available": true,
+          "smplx_segment": [
+            "left_knee",
+            "left_ankle"
+          ],
+          "axis_error_deg": 7.68754246004473
+        },
+        {
+          "source_bone": "Ankle_Rot_L",
+          "available": true,
+          "smplx_segment": [
+            "left_ankle",
+            "left_foot"
+          ],
+          "axis_error_deg": 5.596711791332949
+        }
+      ],
+      "connected_in_source": false,
+      "pass": false
+    },
+    "ankle_right": {
+      "smplx_joint": "right_ankle",
+      "endpoint_source": "blender_bind_probes",
+      "roles": {
+        "proximal": {
+          "available": true,
+          "source_bone": "Tibia_Bone_R",
+          "endpoint": "tail",
+          "smplx_joint_error_m": 0.3038469833425088
+        },
+        "distal": {
+          "available": true,
+          "source_bone": "Ankle_Rot_R",
+          "endpoint": "head",
+          "smplx_joint_error_m": 0.008611341939463673
+        }
+      },
+      "source_shared_anchor_error_m": 0.1544749940786147,
+      "source_rest_gap_m": 0.3039828028582838,
+      "posed_gap_m": 0.2989049912770449,
+      "gap_change_m": 0.005077811581238878,
+      "axis_error_deg": 5.1805507014238295,
+      "axes": [
+        {
+          "source_bone": "Tibia_Bone_R",
+          "available": true,
+          "smplx_segment": [
+            "right_knee",
+            "right_ankle"
+          ],
+          "axis_error_deg": 5.1805507014238295
+        },
+        {
+          "source_bone": "Ankle_Rot_R",
+          "available": true,
+          "smplx_segment": [
+            "right_ankle",
+            "right_foot"
+          ],
+          "axis_error_deg": 4.3827600178681365
+        }
+      ],
+      "connected_in_source": false,
+      "pass": false
+    }
+  },
+  "head_orientation": {
+    "available": true,
+    "source_bone": "Head_Bone",
+    "comparison": "runtime_motion_vs_smplx_global_motion",
+    "orientation_error_deg": 0.028938974756675475,
+    "pass": true
+  },
+  "rigidity_segments": {
+    "forearm_left": [
+      {
+        "endpoint_error_m": 0.0013579047787028705,
+        "axis_error_deg": 0.19168762738809417,
+        "length_error_m": 0.00010821176643038832,
+        "mesh": "Radius_L",
+        "dominant_source_bone": "Forearm_Twist_L",
+        "pass": true
+      },
+      {
+        "endpoint_error_m": 0.004994731096567489,
+        "axis_error_deg": 1.0193814479369605,
+        "length_error_m": 0.0001267987426614714,
+        "mesh": "Ulna_L",
+        "dominant_source_bone": "Forearm_Bone_L",
+        "pass": true
+      }
+    ],
+    "forearm_right": [
+      {
+        "endpoint_error_m": 0.0024854108001368803,
+        "axis_error_deg": 1.1488379906114743,
+        "length_error_m": 0.00017609841083693345,
+        "mesh": "Radius_R",
+        "dominant_source_bone": "Forearm_Twist_R",
+        "pass": true
+      },
+      {
+        "endpoint_error_m": 0.005121007856978417,
+        "axis_error_deg": 1.0288656286952655,
+        "length_error_m": 0.00010723798930506456,
+        "mesh": "Ulna_R",
+        "dominant_source_bone": "Forearm_Bone_R",
+        "pass": false
+      }
+    ],
+    "shin_left": [
+      {
+        "endpoint_error_m": 0.005133355103259,
+        "axis_error_deg": 0.4545982776918825,
+        "length_error_m": 0.00012764533394571398,
+        "mesh": "Tibia_L",
+        "dominant_source_bone": "Tibia_Bone_L",
+        "pass": false
+      },
+      {
+        "endpoint_error_m": 0.010867944849704556,
+        "axis_error_deg": 1.49995321435244,
+        "length_error_m": 0.00029440296936678045,
+        "mesh": "Fibula_L",
+        "dominant_source_bone": "Tibia_Bone_L",
+        "pass": false
+      },
+      {
+        "endpoint_error_m": 3.775041613404246e-08,
+        "axis_error_deg": 0.0,
+        "length_error_m": 3.716390478691878e-08,
+        "mesh": "Patella_L",
+        "dominant_source_bone": "Patella_Rotate_L",
+        "pass": true
+      }
+    ],
+    "shin_right": [
+      {
+        "endpoint_error_m": 0.003159433459290898,
+        "axis_error_deg": 0.1394840537927377,
+        "length_error_m": 3.72474636918807e-05,
+        "mesh": "Tibia_R",
+        "dominant_source_bone": "Tibia_Bone_R",
+        "pass": true
+      },
+      {
+        "endpoint_error_m": 0.004210430954857584,
+        "axis_error_deg": 0.5226814723814924,
+        "length_error_m": 0.00013901113208225624,
+        "mesh": "Fibula_R",
+        "dominant_source_bone": "Tibia_Bone_R",
+        "pass": true
+      },
+      {
+        "endpoint_error_m": 4.014281982118929e-08,
+        "axis_error_deg": 0.0,
+        "length_error_m": 5.1956119240248455e-08,
+        "mesh": "Patella_R",
+        "dominant_source_bone": "Patella_Rotate_R",
+        "pass": true
+      }
+    ],
+    "shoulder_left": [
+      {
+        "endpoint_error_m": 3.9838903604674225e-08,
+        "axis_error_deg": 0.0,
+        "length_error_m": 2.6418424642349336e-08,
+        "mesh": "Scapula_L",
+        "dominant_source_bone": "Scapula_Bone_L",
+        "pass": true
+      },
+      {
+        "endpoint_error_m": 4.4107445476754194e-08,
+        "axis_error_deg": 0.006639241197859892,
+        "length_error_m": 3.407095577889763e-08,
+        "mesh": "Humerus_L",
+        "dominant_source_bone": "Shoulder_Rotate_L",
+        "pass": true
+      }
+    ],
+    "shoulder_right": [
+      {
+        "endpoint_error_m": 4.891311585153869e-08,
+        "axis_error_deg": 0.0,
+        "length_error_m": 7.735552381982203e-08,
+        "mesh": "Scapula_R",
+        "dominant_source_bone": "Scapula_Bone_R",
+        "pass": true
+      },
+      {
+        "endpoint_error_m": 1.8931649090644818e-08,
+        "axis_error_deg": 0.007716998114934194,
+        "length_error_m": 2.6138842035283716e-08,
+        "mesh": "Humerus_R",
+        "dominant_source_bone": "Shoulder_Rotate_R",
+        "pass": true
+      }
+    ],
+    "head": [
+      {
+        "endpoint_error_m": 3.9612486338901244e-08,
+        "axis_error_deg": 0.0,
+        "length_error_m": 3.893284350464654e-08,
+        "mesh": "Upper_Skull",
+        "dominant_source_bone": "Head_Bone",
+        "pass": true
+      }
+    ]
+  },
+  "segments": {
+    "forearm_left": [
+      {
+        "endpoint_error_m": 0.0013579047787028705,
+        "axis_error_deg": 0.19168762738809417,
+        "length_error_m": 0.00010821176643038832,
+        "mesh": "Radius_L",
+        "dominant_source_bone": "Forearm_Twist_L",
+        "pass": true
+      },
+      {
+        "endpoint_error_m": 0.004994731096567489,
+        "axis_error_deg": 1.0193814479369605,
+        "length_error_m": 0.0001267987426614714,
+        "mesh": "Ulna_L",
+        "dominant_source_bone": "Forearm_Bone_L",
+        "pass": true
+      }
+    ],
+    "forearm_right": [
+      {
+        "endpoint_error_m": 0.0024854108001368803,
+        "axis_error_deg": 1.1488379906114743,
+        "length_error_m": 0.00017609841083693345,
+        "mesh": "Radius_R",
+        "dominant_source_bone": "Forearm_Twist_R",
+        "pass": true
+      },
+      {
+        "endpoint_error_m": 0.005121007856978417,
+        "axis_error_deg": 1.0288656286952655,
+        "length_error_m": 0.00010723798930506456,
+        "mesh": "Ulna_R",
+        "dominant_source_bone": "Forearm_Bone_R",
+        "pass": false
+      }
+    ],
+    "shin_left": [
+      {
+        "endpoint_error_m": 0.005133355103259,
+        "axis_error_deg": 0.4545982776918825,
+        "length_error_m": 0.00012764533394571398,
+        "mesh": "Tibia_L",
+        "dominant_source_bone": "Tibia_Bone_L",
+        "pass": false
+      },
+      {
+        "endpoint_error_m": 0.010867944849704556,
+        "axis_error_deg": 1.49995321435244,
+        "length_error_m": 0.00029440296936678045,
+        "mesh": "Fibula_L",
+        "dominant_source_bone": "Tibia_Bone_L",
+        "pass": false
+      },
+      {
+        "endpoint_error_m": 3.775041613404246e-08,
+        "axis_error_deg": 0.0,
+        "length_error_m": 3.716390478691878e-08,
+        "mesh": "Patella_L",
+        "dominant_source_bone": "Patella_Rotate_L",
+        "pass": true
+      }
+    ],
+    "shin_right": [
+      {
+        "endpoint_error_m": 0.003159433459290898,
+        "axis_error_deg": 0.1394840537927377,
+        "length_error_m": 3.72474636918807e-05,
+        "mesh": "Tibia_R",
+        "dominant_source_bone": "Tibia_Bone_R",
+        "pass": true
+      },
+      {
+        "endpoint_error_m": 0.004210430954857584,
+        "axis_error_deg": 0.5226814723814924,
+        "length_error_m": 0.00013901113208225624,
+        "mesh": "Fibula_R",
+        "dominant_source_bone": "Tibia_Bone_R",
+        "pass": true
+      },
+      {
+        "endpoint_error_m": 4.014281982118929e-08,
+        "axis_error_deg": 0.0,
+        "length_error_m": 5.1956119240248455e-08,
+        "mesh": "Patella_R",
+        "dominant_source_bone": "Patella_Rotate_R",
+        "pass": true
+      }
+    ],
+    "shoulder_left": [
+      {
+        "endpoint_error_m": 3.9838903604674225e-08,
+        "axis_error_deg": 0.0,
+        "length_error_m": 2.6418424642349336e-08,
+        "mesh": "Scapula_L",
+        "dominant_source_bone": "Scapula_Bone_L",
+        "pass": true
+      },
+      {
+        "endpoint_error_m": 4.4107445476754194e-08,
+        "axis_error_deg": 0.006639241197859892,
+        "length_error_m": 3.407095577889763e-08,
+        "mesh": "Humerus_L",
+        "dominant_source_bone": "Shoulder_Rotate_L",
+        "pass": true
+      }
+    ],
+    "shoulder_right": [
+      {
+        "endpoint_error_m": 4.891311585153869e-08,
+        "axis_error_deg": 0.0,
+        "length_error_m": 7.735552381982203e-08,
+        "mesh": "Scapula_R",
+        "dominant_source_bone": "Scapula_Bone_R",
+        "pass": true
+      },
+      {
+        "endpoint_error_m": 1.8931649090644818e-08,
+        "axis_error_deg": 0.007716998114934194,
+        "length_error_m": 2.6138842035283716e-08,
+        "mesh": "Humerus_R",
+        "dominant_source_bone": "Shoulder_Rotate_R",
+        "pass": true
+      }
+    ],
+    "head": [
+      {
+        "endpoint_error_m": 3.9612486338901244e-08,
+        "axis_error_deg": 0.0,
+        "length_error_m": 3.893284350464654e-08,
+        "mesh": "Upper_Skull",
+        "dominant_source_bone": "Head_Bone",
+        "pass": true
+      }
+    ]
+  },
+  "ligament_flags": [
+    {
+      "mesh": "Anterior_Longitudinal_Ligament",
+      "flags": [
+        "single_spine_driver"
+      ],
+      "driver_bone": "Spine_C4",
+      "extent_aspect_ratio": 16.761391039712024
+    },
+    {
+      "mesh": "Fibula_L",
+      "flags": [
+        "high_aspect_bone_review"
+      ],
+      "driver_bone": "Tibia_Bone_L",
+      "extent_aspect_ratio": 11.966343830530592
+    },
+    {
+      "mesh": "Fibula_R",
+      "flags": [
+        "high_aspect_bone_review"
+      ],
+      "driver_bone": "Tibia_Bone_R",
+      "extent_aspect_ratio": 14.829422404832254
+    },
+    {
+      "mesh": "Interspinous_Ligament",
+      "flags": [
+        "single_spine_driver"
+      ],
+      "driver_bone": "Spine_C2",
+      "extent_aspect_ratio": 28.837889937396938
+    },
+    {
+      "mesh": "Radius_L",
+      "flags": [
+        "high_aspect_bone_review"
+      ],
+      "driver_bone": "Forearm_Twist_L",
+      "extent_aspect_ratio": 13.358247126232756
+    },
+    {
+      "mesh": "Ulna_L",
+      "flags": [
+        "high_aspect_bone_review"
+      ],
+      "driver_bone": "Forearm_Bone_L",
+      "extent_aspect_ratio": 8.372163559362058
+    },
+    {
+      "mesh": "Ulna_R",
+      "flags": [
+        "high_aspect_bone_review"
+      ],
+      "driver_bone": "Forearm_Bone_R",
+      "extent_aspect_ratio": 9.93140138303052
+    }
+  ],
+  "passed": false,
+  "failures": [
+    "joint/shoulder_left",
+    "joint/shoulder_right",
+    "joint/elbow_left",
+    "joint/elbow_right",
+    "joint/wrist_left",
+    "joint/wrist_right",
+    "joint/index_proximal_left",
+    "joint/index_proximal_right",
+    "joint/knee_left",
+    "joint/knee_right",
+    "joint/ankle_left",
+    "joint/ankle_right",
+    "rigidity/forearm_right/Ulna_R",
+    "rigidity/shin_left/Tibia_L",
+    "rigidity/shin_left/Fibula_L"
+  ],
+  "pass_requires": [
+    "joint_anchors",
+    "joint_gap_change",
+    "joint_axes",
+    "head_orientation",
+    "rigidity"
+  ]
+}

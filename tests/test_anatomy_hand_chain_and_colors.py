@@ -6,7 +6,10 @@ from projects.genesis_ue_sync.anatomy_retarget.anatomy_drawer import (
     _mesh_color_rgba,
     _vertex_colors_for_asset,
 )
-from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import _uses_connected_upper_limb_fk
+from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
+    _uses_bind_local_fk,
+    _uses_connected_upper_limb_fk,
+)
 from projects.genesis_ue_sync.anatomy_retarget.head_calibration import _resolve_head_offset
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import AnatomyRiggedAsset
 
@@ -17,11 +20,17 @@ def test_connected_fk_is_forearm_only() -> None:
         "forearm_proximal_left",
         "forearm_segment_left",
         "direct_joint",
+        "direct_joint",
     ]
+    toe = np.zeros(5, dtype=bool)
     assert _uses_connected_upper_limb_fk(0, -1, types)
-    assert _uses_connected_upper_limb_fk(1, 0, types)  # Elbow_Rot follows humerus FK
+    assert _uses_connected_upper_limb_fk(1, 0, types)
     assert _uses_connected_upper_limb_fk(2, 1, types)
-    assert _uses_connected_upper_limb_fk(3, 2, types)  # Wrist follows forearm FK
+    # Wrist/finger direct_joint controls stay global (45a8cf4 baseline).
+    assert not _uses_connected_upper_limb_fk(3, 2, types)
+    assert not _uses_bind_local_fk(3, 2, types, toe)
+    assert not _uses_connected_upper_limb_fk(4, 3, types)
+    assert not _uses_bind_local_fk(4, 3, types, toe)
 
 
 def test_neck_axial_stretch_weights() -> None:

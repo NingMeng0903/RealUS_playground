@@ -47,7 +47,6 @@ from projects.genesis_ue_sync.anatomy_retarget.segment_coupling import (
     refresh_segment_coupling,
     segment_coupling_roundtrip_error,
 )
-from projects.genesis_ue_sync.anatomy_retarget.vessel_priors import apply_vessel_priors
 from projects.genesis_ue_sync.anatomy_retarget.source_rebind import source_bind_roundtrip
 from projects.genesis_ue_sync.anatomy_retarget.source_skin_volume import apply_source_skin_volume_registration
 from projects.genesis_ue_sync.multiview_realtime.track_stream import (
@@ -354,8 +353,7 @@ def main() -> int:
         runtime_key = _cache_key(
             Path(__file__).resolve().parents[1] / "anatomy_lbs.py",
             Path(__file__).resolve().parents[1] / "pose_adapter.py",
-            Path(__file__).resolve().parents[1] / "vessel_priors.py",
-            extra="runtime-source-fk-v5.5",
+            extra="runtime-source-fk-v5.6",
         )
         pose_cache = cache_root / "pose" / f"{shape_key}-{runtime_key}-{cache_hash}.npz"
         if pose_cache.is_file() and not args.force_source_rebake:
@@ -420,16 +418,9 @@ def main() -> int:
                 target="pose_cache",
             )
             pose_cache_vertices = np.asarray(soft_pose_asset.pose_cache_vertices, dtype=np.float32)
-            pose_cache_vertices, vessel_prior_report = apply_vessel_priors(
-                soft_pose_asset,
-                pose_cache_vertices,
-                pose55,
-                config=cfg,
-            )
             pose_report = {
                 **dict(pose_report or {}),
                 "soft_tissue_residual": soft_pose_report,
-                "vessel_priors": vessel_prior_report,
             }
             asset = type(asset)(
                 **{

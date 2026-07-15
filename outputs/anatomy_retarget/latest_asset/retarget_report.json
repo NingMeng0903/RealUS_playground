@@ -1,7 +1,7 @@
 {
   "blend_file": "/media/camp/EXT_DRIVE/tmp/Skeleton_Anatomy_Nervous_Rigged_Blend_2-81/Skeleton_Anatomy_Nervous_Rigged_Blend_2-81/Skeleton_Anatomy_Nervous_Rigged_2-81.blend",
-  "output_npz": "/media/camp/EXT_DRIVE/RealUS_playground/outputs/anatomy_retarget/.latest_asset.staging-usyi2rxh/anatomy_rigged.npz",
-  "output_glb": "/media/camp/EXT_DRIVE/RealUS_playground/outputs/anatomy_retarget/.latest_asset.staging-usyi2rxh/anatomy_rigged.glb",
+  "output_npz": "/media/camp/EXT_DRIVE/RealUS_playground/outputs/anatomy_retarget/.latest_asset.staging-vy8a2d6t/anatomy_rigged.npz",
+  "output_glb": "/media/camp/EXT_DRIVE/RealUS_playground/outputs/anatomy_retarget/.latest_asset.staging-vy8a2d6t/anatomy_rigged.glb",
   "mesh_count": 331,
   "vertex_count": 394770,
   "face_count": 782856,
