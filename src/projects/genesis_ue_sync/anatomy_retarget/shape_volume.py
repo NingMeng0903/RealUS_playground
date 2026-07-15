@@ -488,17 +488,6 @@ def _preserve_rigid_bone_components(
         if members:
             groups.append(members)
 
-    for side in ("left", "right"):
-        members = [
-            idx for idx, (bone, tissue) in enumerate(zip(dominant, asset.source_tissues))
-            if bone is not None
-            and str(tissue) == "bone"
-            and bone < len(types)
-            and str(types[bone]) == f"hand_chain_{side}"
-        ]
-        if members:
-            groups.append(members)
-
     # Skull, brain and jaw share the source Head_Bone material frame.  Their
     # source enclosure relationship therefore survives beta adaptation.
     head_index = (

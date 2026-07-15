@@ -953,36 +953,6 @@ def _source_rig_canonical(
             return True
         return False
 
-    def _is_hand_smpl_joint(joint_name: str) -> bool:
-        lower = str(joint_name).lower()
-        if lower.endswith("_wrist"):
-            return True
-        return any(digit in lower for digit in ("index", "middle", "ring", "pinky", "thumb"))
-
-    def _is_hand_chain_bone(lower: str, name: str) -> bool:
-        if "wrist" in lower and "rot" in lower:
-            return True
-        if any(
-            token in lower
-            for token in (
-                "metacarpal",
-                "carpal",
-                "phalanx_hand",
-                "phalanges_hand",
-            )
-        ):
-            return True
-        if "phalanx" in lower and "hand" in lower:
-            return True
-        if "fingers_rotate" in lower or "finger_rotate" in lower:
-            return True
-        if lower.startswith("finger_") and "foot" not in lower:
-            return True
-        mapped = direct.get(str(name))
-        if mapped is not None and mapped < len(joint_names):
-            return _is_hand_smpl_joint(joint_names[int(mapped)])
-        return False
-
     def _canonical_point(point: np.ndarray) -> np.ndarray:
         point_global = np.asarray(point, dtype=np.float64) @ linear.T + translation
         return point_global + _sample_alignment_offset(point_global.reshape(1, 3), align)[0]
@@ -1042,27 +1012,6 @@ def _source_rig_canonical(
                 joint_b[bi] = joint_index[f"{side}_knee"]
                 blend[bi] = 0.55
                 driver_type = f"knee_chain_{side}"
-        elif _is_hand_chain_bone(lower, name):
-            side = _bone_side(name, lower)
-            if side is not None:
-                if "wrist" in lower and "rot" in lower:
-                    joint_a[bi] = joint_index[f"{side}_elbow"]
-                    joint_b[bi] = joint_index[f"{side}_wrist"]
-                    blend[bi] = 0.55
-                elif name in direct:
-                    mapped_joint = int(direct[name])
-                    joint_a[bi] = mapped_joint
-                    joint_b[bi] = mapped_joint
-                else:
-                    inherited_joint, _ = _resolve_group_joint(
-                        name,
-                        direct=direct,
-                        parents_by_bone=parents_by_bone,
-                        fallback=fallback,
-                    )
-                    joint_a[bi] = int(inherited_joint)
-                    joint_b[bi] = int(inherited_joint)
-                driver_type = f"hand_chain_{side}"
         elif _is_foot_chain_bone(lower) or "toes_rotate" in lower:
             side = _bone_side(name, lower)
             if side is not None:
@@ -1082,6 +1031,15 @@ def _source_rig_canonical(
             joint_b[bi] = joint_index[f"{side}_knee"]
             blend[bi] = 0.35
             driver_type = f"knee_chain_{side}"
+        elif "elbow_rot" in lower:
+            # Share the elbow→wrist segment with Forearm_Bone so the elbow
+            # anchor does not drift from the forearm driver under asymmetric
+            # SMPL-X rest corrections (left elbow is often ~2× right).
+            side = "left" if lower.endswith("_l") else "right"
+            joint_a[bi] = joint_index[f"{side}_elbow"]
+            joint_b[bi] = joint_index[f"{side}_wrist"]
+            blend[bi] = 0.0
+            driver_type = f"forearm_proximal_{side}"
         elif "forearm_bone" in lower or "forearm_twist" in lower:
             side = "left" if lower.endswith("_l") else "right"
             joint_a[bi] = joint_index[f"{side}_elbow"]

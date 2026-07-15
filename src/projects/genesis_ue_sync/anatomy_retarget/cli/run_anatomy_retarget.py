@@ -37,13 +37,17 @@ from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import load_rigged_a
 from projects.genesis_ue_sync.anatomy_retarget.shape_volume import apply_subject_beta_shape
 from projects.genesis_ue_sync.anatomy_retarget.leg_material import compute_leg_material_coordinates
 from projects.genesis_ue_sync.anatomy_retarget.diagnostics import write_mesh_diagnostics
-from projects.genesis_ue_sync.anatomy_retarget.head_calibration import calibrate_head_rest_offset
+from projects.genesis_ue_sync.anatomy_retarget.head_calibration import (
+    calibrate_foot_rest_alignment,
+    calibrate_head_rest_offset,
+)
 from projects.genesis_ue_sync.anatomy_retarget.bone_segment_diagnostics import write_bone_segment_diagnostics
 from projects.genesis_ue_sync.anatomy_retarget.segment_coupling import (
     bake_segment_coupling,
     refresh_segment_coupling,
     segment_coupling_roundtrip_error,
 )
+from projects.genesis_ue_sync.anatomy_retarget.vessel_priors import apply_vessel_priors
 from projects.genesis_ue_sync.anatomy_retarget.source_rebind import source_bind_roundtrip
 from projects.genesis_ue_sync.anatomy_retarget.source_skin_volume import apply_source_skin_volume_registration
 from projects.genesis_ue_sync.multiview_realtime.track_stream import (
@@ -255,7 +259,8 @@ def main() -> int:
                 repair_tissues=(),
             )
             containment_reports.append(neutral_containment)
-        asset, head_calibration_report = calibrate_head_rest_offset(asset)
+        asset, head_calibration_report = calibrate_head_rest_offset(asset, config=cfg)
+        asset, foot_calibration_report = calibrate_foot_rest_alignment(asset)
         coupling, coupling_report = bake_segment_coupling(asset)
         coupling_report["roundtrip_error_m"] = segment_coupling_roundtrip_error(asset, coupling)
         asset = type(asset)(**{**asset.__dict__, "source_segment_coupling": coupling})
@@ -267,6 +272,7 @@ def main() -> int:
             "source_containment_reports": containment_reports,
             "source_skin_volume_report": source_skin_report,
             "head_rest_calibration_report": head_calibration_report,
+            "foot_rest_calibration_report": foot_calibration_report,
             "source_cache_key": source_key,
             "segment_coupling_report": coupling_report,
         })
@@ -348,7 +354,8 @@ def main() -> int:
         runtime_key = _cache_key(
             Path(__file__).resolve().parents[1] / "anatomy_lbs.py",
             Path(__file__).resolve().parents[1] / "pose_adapter.py",
-            extra="runtime-source-fk-v5.4",
+            Path(__file__).resolve().parents[1] / "vessel_priors.py",
+            extra="runtime-source-fk-v5.5",
         )
         pose_cache = cache_root / "pose" / f"{shape_key}-{runtime_key}-{cache_hash}.npz"
         if pose_cache.is_file() and not args.force_source_rebake:
@@ -413,9 +420,16 @@ def main() -> int:
                 target="pose_cache",
             )
             pose_cache_vertices = np.asarray(soft_pose_asset.pose_cache_vertices, dtype=np.float32)
+            pose_cache_vertices, vessel_prior_report = apply_vessel_priors(
+                soft_pose_asset,
+                pose_cache_vertices,
+                pose55,
+                config=cfg,
+            )
             pose_report = {
                 **dict(pose_report or {}),
                 "soft_tissue_residual": soft_pose_report,
+                "vessel_priors": vessel_prior_report,
             }
             asset = type(asset)(
                 **{

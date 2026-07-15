@@ -103,14 +103,14 @@ def rebind_source_rig(
             continue
         is_upper_limb_connected = bool(use_connect[bone]) and (
             str(types[bone]).startswith(
-                ("clavicle_segment_", "humerus_segment_", "forearm_segment_", "hand_chain_")
+                ("clavicle_segment_", "humerus_segment_", "forearm_segment_")
             )
             or str(types[int(parent)]).startswith(
-                ("clavicle_segment_", "humerus_segment_", "forearm_segment_", "hand_chain_")
+                ("clavicle_segment_", "humerus_segment_", "forearm_segment_")
             )
         )
         is_chain_follower = (
-            str(types[bone]).startswith(("foot_chain_", "hand_chain_"))
+            str(types[bone]).startswith("foot_chain_")
             and int(parent) >= 0
             and str(types[int(parent)]) == str(types[bone])
         )
