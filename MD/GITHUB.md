@@ -49,7 +49,7 @@ git push -u origin main
 
 ```bash
 git add .
-git commit -m "备份"
+git commit -m "备份，重构骨骼链接问题前"
 git push -u origin main
 ```
 

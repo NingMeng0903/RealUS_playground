@@ -2,8 +2,9 @@
 # Library: rm75_control.force.compensation
 # Entry: apps/force_compensation/force_calibrate.py, force_monitor.py
 #
-# Prerequisite for force_calibrate: active tool = pose_tool_frame (Arm_Tip) in Web UI.
-# Scan demo may use gripper: slot TCP is FK(q_deg) in the active tool automatically.
+# Prerequisite for force_calibrate: active tool = Arm_Tip in Web UI.
+# φ regressor uses link_7 orientation (force_sensor.yaml); runtime TCP rotation
+# is handled by wrench_link7_to_tcp after compensation.
 
 poses_yaml: poses.yaml
 required_tool_frame: Arm_Tip
@@ -33,18 +34,18 @@ collect:
     max_delta_mm: 5.0
     max_orient_deg:
       a: 24.0
-      b: 32.0
+      b: 24.0
       c: 32.0
     amp_mm: [4.0, 4.0, 2.0]
     amp_mm_slots:
       # pose_a TCP ~horizontal: X-dominant linear + large Rx (gravity→Fx) at this pose.
       a: [4.5, 2.5, 1.5]
-      b: [4.5, 4.0, 2.5]
+      b: [3.5, 3.0, 2.0]
       c: [4.5, 4.0, 2.5]
     amp_rot_deg: [14.0, 16.0, 12.0]
     amp_rot_deg_slots:
       a: [24.0, 14.0, 12.0]
-      b: [16.0, 20.0, 16.0]
+      b: [12.0, 14.0, 12.0]
       c: [16.0, 20.0, 16.0]
     freqs_hz:
       - [0.12, 0.18]

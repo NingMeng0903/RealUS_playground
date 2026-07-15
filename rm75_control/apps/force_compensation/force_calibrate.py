@@ -3,6 +3,7 @@
 One-shot force compensation calibration: collect A→B→C→D→A, then identify φ.
 
 Prerequisite: set active tool frame to Arm_Tip in the teach pendant / Web UI.
+φ uses link_7 orientation; scan/hybrid may use gripper — force is transformed to Tool-Z at runtime.
 
   source env.sh
   python apps/force_compensation/force_calibrate.py
@@ -25,6 +26,8 @@ def _collect_argv(args: argparse.Namespace) -> list[str]:
         argv += ["--config", str(args.config)]
     if args.dry_run:
         argv.append("--dry-run")
+    if args.scale is not None:
+        argv += ["--scale", str(args.scale)]
     if args.save_pose:
         argv += ["--save-pose", args.save_pose]
     if args.pose_label:
@@ -46,6 +49,8 @@ def main() -> int:
     parser.add_argument("--save-pose", type=str, default=None, metavar="SLOT")
     parser.add_argument("--pose-label", type=str, default=None)
     parser.add_argument("--identify-only", action="store_true", help="skip collection, fit existing npz")
+    parser.add_argument("--scale", type=float, default=None,
+                        help="excitation amplitude scale (e.g. 0.65 if collision/limit during b/c)")
     args = parser.parse_args()
 
     if args.identify_only and (args.dry_run or args.save_pose):

@@ -96,9 +96,8 @@ class CompensatedForceObserver:
         """
         Return (signed_filtered_raw, f_ext).
 
-        f_ext is computed in the sensor frame (phi regressor). With
-        sensor_offset_euler=0 and TCP offset a pure translation, linear
-        f_ext[0:3] matches tool-frame force components — use f_ext[2] as tool-Z.
+        f_ext is computed in the **link_7 / sensor** frame (φ regressor). After
+        compensation, ``loop.py`` applies ``wrench_link7_to_tcp`` for Tool-Z admittance.
         """
         if not self.ready():
             return None
@@ -115,23 +114,27 @@ class CompensatedForceObserver:
         return raw_show, f_ext
 
     def update(
-        self, t_s: float, pose6: np.ndarray, force_raw: np.ndarray
+        self,
+        t_s: float,
+        pose6: np.ndarray,
+        force_raw: np.ndarray,
+        *,
+        regressor_pose: np.ndarray | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         """
-        O(1) causal external-wrench estimate (replaces append + latest_wrench on
-        the control hot path). Returns (signed_raw, f_ext_filtered), both 6D in
-        the sensor frame (≈ tool frame with sensor_offset=0 and a pure-translation
-        TCP; use f_ext[2] as tool-Z normal force).
+        O(1) causal external-wrench estimate. Returns (signed_raw, f_ext_filtered),
+        both 6D in the **link_7 / sensor** frame before ``wrench_link7_to_tcp``.
 
-        Pipeline:
-          1. gravity/bias/inertia compensation via a single causal regressor row
-             (regressor_row_causal — gravity exact, dynamic terms tiny & causal),
-          2. one persistent low-order Butterworth biquad (lfilter with state) on
-             the compensated wrench. No acausal filtfilt, no whole-buffer rebuild,
-             so the newest sample is phase-honest and free of right-edge jitter.
+        ``regressor_pose`` overrides ``pose6`` for φ kinematics when using
+        ``regressor_pose_frame: link_7`` (Pin FK or flange recovery).
         """
         pose6 = np.asarray(pose6, dtype=float)
-        self._pose_ring.append(pose6.copy())
+        pose_reg = (
+            np.asarray(regressor_pose, dtype=float).reshape(6)
+            if regressor_pose is not None
+            else pose6
+        )
+        self._pose_ring.append(pose_reg.copy())
         self._t_ring.append(float(t_s))
         self._n_updates += 1
 

@@ -152,7 +152,9 @@ def _segment_frame(origin: np.ndarray, endpoint: np.ndarray, reference_x: np.nda
     x = np.asarray(reference_x, dtype=np.float64)
     x -= float(x @ y) * y
     if float(np.linalg.norm(x)) < 1.0e-8:
-        x = np.asarray([1.0, 0.0, 0.0], dtype=np.float64)
+        # A clavicle can be almost parallel to world X.  Choose the least
+        # aligned canonical axis instead of producing a singular frame.
+        x = np.eye(3, dtype=np.float64)[int(np.argmin(np.abs(y)))]
         x -= float(x @ y) * y
     x /= max(float(np.linalg.norm(x)), 1.0e-10)
     z = np.cross(x, y)
@@ -201,6 +203,8 @@ def _endpoint_segment_pose_frame(
 def _uses_segment_coupling(driver_type: str) -> bool:
     return (
         driver_type.startswith("forearm_segment_")
+        or driver_type.startswith("clavicle_segment_")
+        or driver_type.startswith("humerus_segment_")
         or driver_type.startswith("shin_segment_")
         or driver_type.startswith("knee_chain_")
         or driver_type.startswith("foot_chain_")
@@ -227,6 +231,8 @@ def _segment_pose_frame_for_bone(
         raise ValueError(f"degenerate segment joints for bone index {bi}")
     if (
         driver_type.startswith("forearm_segment_")
+        or driver_type.startswith("clavicle_segment_")
+        or driver_type.startswith("humerus_segment_")
         or driver_type.startswith("shin_segment_")
         or driver_type.startswith("knee_chain_")
         or driver_type.startswith("foot_chain_")
@@ -277,6 +283,8 @@ def source_bone_skinning_transforms(
         alpha = float(asset.source_bone_blend[bi])
         if (
             driver_type.startswith("forearm_segment_")
+            or driver_type.startswith("clavicle_segment_")
+            or driver_type.startswith("humerus_segment_")
             or driver_type.startswith("shin_segment_")
             or driver_type.startswith("knee_chain_")
             or driver_type.startswith("foot_chain_")

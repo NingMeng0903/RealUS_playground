@@ -10,6 +10,8 @@ from .anatomy_lbs import _endpoint_segment_delta, _rigid_frame, _segment_frame, 
 from .rigged_asset import AnatomyRiggedAsset
 
 _SEGMENT_PREFIXES = (
+    "clavicle_segment_",
+    "humerus_segment_",
     "forearm_segment_",
     "shin_segment_",
     "knee_chain_",
@@ -30,7 +32,9 @@ def _segment_rest_frame(
     a = int(asset.source_bone_smplx_a[bi])
     b = int(asset.source_bone_smplx_b[bi])
     reference_x = np.asarray(asset.source_rest_global[bi], dtype=np.float64)[:3, 0]
-    if driver_type.startswith("forearm_segment_") or driver_type.startswith("shin_segment_") or driver_type.startswith("knee_chain_") or driver_type.startswith("foot_chain_"):
+    if (driver_type.startswith("clavicle_segment_") or driver_type.startswith("humerus_segment_")
+            or driver_type.startswith("forearm_segment_") or driver_type.startswith("shin_segment_")
+            or driver_type.startswith("knee_chain_") or driver_type.startswith("foot_chain_")):
         return _segment_frame(rest_points[a], rest_points[b], reference_x)
     if driver_type == "head_segment" or driver_type == "rib_segment":
         return _segment_frame(rest_points[a], rest_points[b], reference_x)

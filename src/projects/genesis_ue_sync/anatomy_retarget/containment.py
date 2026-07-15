@@ -127,14 +127,21 @@ def repair_containment(
     stage: str,
     max_iterations: int = 12,
     strict: bool = True,
+    repair_tissues: tuple[str, ...] = ("bone",),
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
-    """Move connected anatomy regions inside skin without pointwise clipping."""
+    """Apply bounded offline correction only to explicitly permitted tissues.
+
+    Soft tissues are deliberately diagnostic-only by default.  Their beta
+    adaptation must come from the volumetric field, not from a nearest-skin
+    projection that destroys subcutaneous depth and vessel topology.
+    """
     if asset.source_vertex_ranges is None or asset.source_tissues is None:
         raise ValueError("containment repair requires source mesh ranges and tissue labels")
     vertices = np.asarray(asset.vertices_rest, dtype=np.float64).copy()
     faces = np.asarray(asset.faces, dtype=np.int32)
     ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
     tissues = list(asset.source_tissues)
+    permitted = {str(value) for value in repair_tissues}
     initial_signed, _closest, _normal = signed_distance(vertices, surface_vertices, surface_faces)
     iteration_count = 0
 
@@ -142,6 +149,8 @@ def repair_containment(
         values, closest, normals = signed_distance(vertices, surface_vertices, surface_faces)
         any_violation = False
         for mesh_idx, ((start, stop), tissue) in enumerate(zip(ranges, tissues)):
+            if str(tissue) not in permitted:
+                continue
             margin = float(TISSUE_MARGIN_M.get(str(tissue), 0.0015))
             local_values = values[start:stop]
             violating = local_values > -margin
@@ -181,7 +190,7 @@ def repair_containment(
         values, closest, normals = signed_distance(vertices, surface_vertices, surface_faces)
         moved = False
         for _mesh_name, (start, stop), tissue in zip(mesh_names, ranges, tissues):
-            if str(tissue) != "bone":
+            if str(tissue) != "bone" or "bone" not in permitted:
                 continue
             local_values = values[start:stop]
             violating = local_values > -1.0e-4
@@ -208,7 +217,7 @@ def repair_containment(
         values, closest, normals = signed_distance(vertices, surface_vertices, surface_faces)
         moved = False
         for (start, stop), tissue in zip(ranges, tissues):
-            if str(tissue) != "bone":
+            if str(tissue) != "bone" or "bone" not in permitted:
                 continue
             local = values[start:stop]
             worst = int(np.argmax(local))
@@ -263,4 +272,5 @@ def repair_containment(
         "over_limit_count": over_limit,
         "remaining_meshes": dict(sorted(remaining_meshes.items(), key=lambda item: item[1], reverse=True)[:20]),
         "source_rig_rebind": rebind_report,
+        "repair_tissues": sorted(permitted),
     }

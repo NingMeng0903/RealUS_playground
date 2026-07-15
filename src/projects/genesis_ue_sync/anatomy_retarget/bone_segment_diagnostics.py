@@ -24,17 +24,6 @@ SEGMENT_MESHES = {
     "head": ("Upper_Skull",),
 }
 
-LIGAMENT_HELPERS = frozenset(
-    {
-        "Interspinous_Ligament",
-        "Supraspinous_Ligament",
-        "Nuchal_Ligament",
-        "Intertransverse_Ligament",
-        "Ligamentum_Flavum",
-    }
-)
-
-
 def _mesh_slice(asset: AnatomyRiggedAsset, name: str) -> slice | None:
     if name not in asset.source_mesh_names:
         return None
@@ -57,24 +46,38 @@ def _angle_deg(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.degrees(np.arccos(np.clip(float(a @ b), -1.0, 1.0))))
 
 
-def _endpoint_error(rest: np.ndarray, posed: np.ndarray) -> dict[str, float]:
-    rest_axis = _bone_axis(rest)
-    t = rest @ rest_axis
-    p = posed @ rest_axis
-    rest_span = float(t.max() - t.min())
-    if rest_span < 1.0e-6:
+def _endpoint_error(expected: np.ndarray, posed: np.ndarray) -> dict[str, float]:
+    """Measure deformation relative to the expected posed rigid component.
+
+    Comparing a posed mesh directly with its rest coordinates incorrectly counts
+    the subject's global motion as an endpoint error.  Both inputs here are in
+    the same posed/world frame: ``expected`` is the mesh transformed by its
+    dominant Blender bone and ``posed`` is the full sparse Blender LBS result.
+    """
+    expected_axis = _bone_axis(expected)
+    t = expected @ expected_axis
+    expected_span = float(t.max() - t.min())
+    if expected_span < 1.0e-6:
         return {"endpoint_error_m": 0.0, "axis_error_deg": 0.0, "length_error_m": 0.0}
-    rest_a, rest_b = float(t.min()), float(t.max())
-    posed_a = float(p[np.argmin(t)])
-    posed_b = float(p[np.argmax(t)])
-    endpoint = max(abs(posed_a - rest_a), abs(posed_b - rest_b))
+    end_indices = (int(np.argmin(t)), int(np.argmax(t)))
+    endpoint = max(float(np.linalg.norm(posed[i] - expected[i])) for i in end_indices)
     posed_axis = _bone_axis(posed)
-    length_err = abs(float(np.ptp(p)) - rest_span)
+    posed_span = float(np.ptp(posed @ posed_axis))
     return {
         "endpoint_error_m": float(endpoint),
-        "axis_error_deg": _angle_deg(rest_axis, posed_axis),
-        "length_error_m": float(length_err),
+        "axis_error_deg": min(
+            _angle_deg(expected_axis, posed_axis), _angle_deg(-expected_axis, posed_axis)
+        ),
+        "length_error_m": abs(posed_span - expected_span),
     }
+
+
+def _dominant_source_bone(asset: AnatomyRiggedAsset, sl: slice) -> int:
+    indices = np.asarray(asset.driver_indices, dtype=np.int64)[sl]
+    weights = np.asarray(asset.driver_weights, dtype=np.float64)[sl]
+    mass = np.zeros(len(asset.source_bone_names or []), dtype=np.float64)
+    np.add.at(mass, indices.reshape(-1), weights.reshape(-1))
+    return int(np.argmax(mass))
 
 
 def classify_ligament_meshes(asset: AnatomyRiggedAsset, mesh_diagnostics: dict[str, Any]) -> list[dict[str, Any]]:
@@ -86,11 +89,11 @@ def classify_ligament_meshes(asset: AnatomyRiggedAsset, mesh_diagnostics: dict[s
         driver = str(item.get("driver_bone", ""))
         tissue = str(item.get("tissue", ""))
         flags: list[str] = []
-        if name in LIGAMENT_HELPERS or ratio >= 8.0:
-            if name in rigid_meshes and "Hip_bone" in driver:
+        if ratio >= 8.0:
+            if name in rigid_meshes and tissue != "bone":
                 flags.append("mis_rigid_collapse")
-            if ratio >= 8.0 and tissue == "bone":
-                flags.append("high_aspect_ligament")
+            if tissue == "bone":
+                flags.append("high_aspect_bone_review")
         if "Spine_C" in driver and ratio >= 8.0:
             flags.append("single_spine_driver")
         if flags:
@@ -106,8 +109,9 @@ def write_bone_segment_diagnostics(
     output_path: Path | str,
     mesh_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    zero = skin_vertices(asset, np.zeros((55, 3), dtype=np.float32))
     posed = skin_vertices(asset, pose_axis_angle, transl=transl)
+    source_transforms = source_bone_skinning_transforms(asset, pose_axis_angle)
+    translation = np.zeros(3, dtype=np.float64) if transl is None else np.asarray(transl, dtype=np.float64)
     segments: dict[str, Any] = {}
     failures: list[str] = []
     for label, mesh_names in SEGMENT_MESHES.items():
@@ -117,8 +121,12 @@ def write_bone_segment_diagnostics(
             if sl is None:
                 continue
             rest = np.asarray(asset.vertices_rest, dtype=np.float64)[sl]
-            err = _endpoint_error(rest, posed[sl])
+            dominant = _dominant_source_bone(asset, sl)
+            transform = np.asarray(source_transforms[dominant], dtype=np.float64)
+            expected = rest @ transform[:3, :3].T + transform[:3, 3] + translation
+            err = _endpoint_error(expected, posed[sl])
             err["mesh"] = name
+            err["dominant_source_bone"] = str(asset.source_bone_names[dominant])
             err["pass"] = bool(
                 err["endpoint_error_m"] <= ENDPOINT_LIMIT_M and err["axis_error_deg"] <= AXIS_LIMIT_DEG
             )

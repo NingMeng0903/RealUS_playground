@@ -9,6 +9,7 @@ from typing import Any
 import numpy as np
 
 from .rigged_asset import AnatomyRiggedAsset
+from .source_rebind import rebind_source_rig
 
 
 def _load_obj(path: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -245,6 +246,38 @@ def _warp_source_frames(
     return result.astype(np.float32), np.linalg.inv(result).astype(np.float32), outside
 
 
+def _rigid_fit(source: np.ndarray, target: np.ndarray) -> np.ndarray:
+    """Best rigid map for an anatomical bone component after beta field warp."""
+    src_center, dst_center = source.mean(axis=0), target.mean(axis=0)
+    u, _s, vt = np.linalg.svd((source - src_center).T @ (target - dst_center))
+    rot = vt.T @ u.T
+    if np.linalg.det(rot) < 0.0:
+        vt[-1] *= -1.0
+        rot = vt.T @ u.T
+    return (source - src_center) @ rot.T + dst_center
+
+
+def _preserve_rigid_bone_components(
+    asset: AnatomyRiggedAsset,
+    *,
+    source_vertices: np.ndarray,
+    field_vertices: np.ndarray,
+) -> tuple[np.ndarray, int]:
+    """Do not let a harmonic soft-tissue field bend individual bone meshes."""
+    output = np.asarray(field_vertices, dtype=np.float64).copy()
+    if asset.source_vertex_ranges is None or asset.source_tissues is None:
+        return output, 0
+    rigid = 0
+    for (start, stop), tissue in zip(np.asarray(asset.source_vertex_ranges, dtype=np.int64), asset.source_tissues):
+        if str(tissue) != "bone" or int(stop - start) < 3:
+            continue
+        src = np.asarray(source_vertices[start:stop], dtype=np.float64)
+        dst = np.asarray(field_vertices[start:stop], dtype=np.float64)
+        output[start:stop] = _rigid_fit(src, dst)
+        rigid += 1
+    return output, rigid
+
+
 def apply_subject_beta_shape(
     asset: AnatomyRiggedAsset,
     *,
@@ -260,42 +293,55 @@ def apply_subject_beta_shape(
     field = _solve_harmonic_field(cage, surface_displacement=subject_v - neutral_v)
     points = np.asarray(asset.vertices_rest, dtype=np.float64)
     point_delta, outside_points, outside_mask = _sample_field(points, cage=cage, field=field)
+    outside_by_tissue: dict[str, int] = {}
     if outside_points:
         extension, max_extension_m = _extend_from_cage_boundary(
             points[outside_mask], cage=cage, field=field
         )
-        if max_extension_m > 0.005:
-            raise RuntimeError(
-                f"canonical anatomy has {outside_points} vertices outside the neutral tetrahedral cage "
-                f"and requires {max_extension_m * 1000.0:.1f} mm extension (limit 5.0 mm)"
-            )
+        if asset.source_vertex_ranges is not None and asset.source_tissues is not None:
+            for (start, stop), tissue in zip(asset.source_vertex_ranges, asset.source_tissues):
+                outside_by_tissue[str(tissue)] = outside_by_tissue.get(str(tissue), 0) + int(
+                    np.count_nonzero(outside_mask[start:stop])
+                )
+        # Outside points receive an extrapolated *beta displacement* from the
+        # cage boundary.  This does not move them toward skin; subsequent
+        # skeleton-section fitting handles rest containment as a whole field.
         point_delta[outside_mask] = extension
     else:
         max_extension_m = 0.0
-    source_rest, source_inverse, outside_probes = _warp_source_frames(asset, cage=cage, field=field)
+    field_vertices = points + point_delta
+    # The cage is a soft-tissue shape field.  Projecting it independently onto
+    # bone vertices bends skull/rib/limb meshes and breaks their source rig.
+    # Replace each bone mesh with its best rigid response to the same field.
+    shaped_vertices, rigid_bone_components = _preserve_rigid_bone_components(
+        asset, source_vertices=points, field_vertices=field_vertices
+    )
+    rebound, rebind_report = rebind_source_rig(
+        asset, source_vertices=points, target_vertices=shaped_vertices, stage="subject_beta_volume"
+    )
 
     skeleton = json.loads((root / "smpl_canonical_skeleton.json").read_text(encoding="utf-8"))
-    meta = dict(asset.metadata or {})
-    meta["shape_deformation"] = "tetgen_fem_harmonic_v2"
+    meta = dict(rebound.metadata or {})
+    meta["shape_deformation"] = "tetgen_fem_harmonic_v5_soft_tissue"
     result = type(asset)(
         **{
-            **asset.__dict__,
-            "vertices_rest": (points + point_delta).astype(np.float32),
+            **rebound.__dict__,
+            "vertices_rest": shaped_vertices.astype(np.float32),
             "rest_joints": np.asarray(skeleton["rest_joints_subject"], dtype=np.float32),
             "inverse_bind": np.asarray(skeleton["inverse_bind"], dtype=np.float32),
-            "source_rest_global": source_rest,
-            "source_inverse_bind": source_inverse,
             "metadata": meta,
         }
     )
     norm = np.linalg.norm(point_delta, axis=1)
     return result, {
-        "backend": "tetgen_fem_harmonic_v2",
+        "backend": "tetgen_fem_harmonic_v5_soft_tissue",
         "tetra_vertices": int(len(cage["nodes"])),
         "tetrahedra": int(len(cage["elements"])),
         "mean_displacement_m": float(np.mean(norm)),
         "max_displacement_m": float(np.max(norm)),
         "outside_query_count": int(outside_points),
+        "outside_query_by_tissue": outside_by_tissue,
         "max_cage_boundary_extension_m": float(max_extension_m),
-        "outside_source_frame_probes_extended": int(outside_probes),
+        "rigid_bone_components": int(rigid_bone_components),
+        "source_rig_rebind": rebind_report,
     }

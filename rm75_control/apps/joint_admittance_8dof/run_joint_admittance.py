@@ -48,6 +48,7 @@ from rm75_control.control.joint_admittance_8dof.sin_tool_y_program import (
     execute_sin_tool_y_program,
 )
 from rm75_control.core.session import RobotSession
+from rm75_control.force.compensation.tool_pose import maybe_sync_kin_tcp_from_config
 
 
 def load_yaml(path: Path) -> dict:
@@ -236,6 +237,12 @@ def main() -> int:
         config=args.config,
         quiet=True,
     ) as sess:
+        if inner is not None:
+            maybe_sync_kin_tcp_from_config(raw=raw, kin=inner.kin, robot=sess.robot)
+        else:
+            maybe_sync_kin_tcp_from_config(
+                raw=raw, kin=RobotKinematics(), robot=sess.robot
+            )
         bus = RobotStateBus(sess.robot, raw, robot_ip=sess.ip)
         bus.start()
 

@@ -268,7 +268,35 @@ python apps/force_compensation/force_monitor.py --10p-only
 | `--desired-z 1.0` | 目标 Fz (N) |
 | `--log-interval 2` | attach 模式下相位切换日志间隔（0=关闭） |
 | `--verbose` / `-v` | IK 细节、move 时长估算等 |
+| `--d-target legacy` | 默认：RealMan 活动 TCP + Pin standoff + pose IK |
+| `--d-target joints` | 仅用 `poses.yaml` 示教关节角；`pose_d = Pin FK(q)`；忽略 RealMan TCP |
+| `--d-target kin-fk` | Pin standoff 位姿 + IK；不用 RealMan FK |
 | `--no-attach-state` | **单进程模式**：C 自带 TCP+WBC（勿与 A 同开） |
+
+**TCP 旋转 / 力位混合验证**（示教器改 gripper 后：**先重启窗口 A** 读 tool 写 cache；C attach 不再开第二条 TCP）：
+
+```bash
+# 窗口 A 必须先起来（会打印 tcp sync 并写 outputs/rm75_tool_offset.json）
+python apps/joint_admittance_8dof/run_joint_admittance.py
+
+# 窗口 C
+python apps/joint_admittance_8dof/d_sin_tool_y.py \
+  --d-target joints --move-mode joint \
+  --enable-force --desired-z 1.0 \
+  --hybrid-hold-at-d --scan-duration 60 -v
+```
+
+C 应看到 `tcp sync: cached tool='gripper' ... (window A cache; no second TCP)`。
+
+**力不准（远大于 desired-z）**：φ 在 **Arm_Tip** 下标定，旋转 gripper 后重力/偏置投影到 Tool-Z 会错，导纳会过度加压。请在 **当前 gripper TCP** 下重标：
+
+```bash
+# 示教器：活动 tool = gripper（含 RY/Z 偏移），再跑
+python apps/force_compensation/force_calibrate.py
+# 或临时把 force_id.yaml 的 required_tool_frame 改成 gripper
+```
+
+标定完成前可先把 `--desired-z 0.3` 试压，或看 `force_monitor.py` 里哪一轴读数最像真实法向力。
 
 滑轨峰值速度：`configs/joint_admittance_8dof.yaml` → `inner.rail.v_max_m_s`（默认 5 cm/s）。
 

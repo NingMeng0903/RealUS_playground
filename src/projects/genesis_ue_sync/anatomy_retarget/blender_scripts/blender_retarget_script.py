@@ -134,6 +134,12 @@ def _armature() -> bpy.types.Object:
     return arm
 
 
+def _is_connective_tissue(name: str) -> bool:
+    """Classify deformable skeletal connective tissue by source semantics."""
+    normalized = str(name).lower()
+    return any(token in normalized for token in ("ligament", "cartilage", "tendon"))
+
+
 def _bone_parents(arm: bpy.types.Object) -> dict[str, str | None]:
     return {str(b.name): (str(b.parent.name) if b.parent else None) for b in arm.data.bones}
 
@@ -544,7 +550,8 @@ def _merge_and_skin_meshes(
     for obj in meshes:
         source_mesh_names.append(str(obj.name))
         object_collections = set(_collections_for_object(obj))
-        if "Skeletal_Sys" in object_collections:
+        connective_tissue = _is_connective_tissue(str(obj.name))
+        if "Skeletal_Sys" in object_collections and not connective_tissue:
             source_tissues.append("bone")
         elif "Cardiovascular_Sys" in object_collections:
             source_tissues.append("vessel")
@@ -606,7 +613,11 @@ def _merge_and_skin_meshes(
             w55[vi] = _limit_weights(w55[vi], max_influences=max_influences)
 
         collections = set(_collections_for_object(obj))
-        is_rigid = bool(rigid_collections and collections.intersection(rigid_collections))
+        is_rigid = bool(
+            rigid_collections
+            and collections.intersection(rigid_collections)
+            and not connective_tissue
+        )
         preserve_weights = str(obj.name) in preserve_source_weights
         if is_rigid and not preserve_weights:
             joint_name = rigid_mesh_to_smplx.get(str(obj.name))
@@ -902,6 +913,18 @@ def _source_rig_canonical(
         lower = name.lower()
         if "scapula" in lower:
             driver_type = "scapula_left" if lower.endswith("_l") else "scapula_right"
+        elif "clavicle_rot" in lower:
+            side = _bone_side(name, lower)
+            if side is not None:
+                joint_a[bi] = joint_index["spine3"]
+                joint_b[bi] = joint_index[f"{side}_collar"]
+                driver_type = f"clavicle_segment_{side}"
+        elif "shoulder_rotate" in lower:
+            side = _bone_side(name, lower)
+            if side is not None:
+                joint_a[bi] = joint_index[f"{side}_shoulder"]
+                joint_b[bi] = joint_index[f"{side}_elbow"]
+                driver_type = f"humerus_segment_{side}"
         elif "knee_rotate" in lower:
             side = _bone_side(name, lower)
             if side is not None:
@@ -1024,6 +1047,22 @@ def main() -> None:
         arm=arm,
         primary=primary,
     )
+    # Skin_Glass is never published as anatomy.  It is exported only as the
+    # source boundary for the offline source-skin volume registration.
+    skin = bpy.data.objects.get("Skin_Glass")
+    skin_vertices = np.zeros((0, 3), dtype=np.float32)
+    skin_faces = np.zeros((0, 3), dtype=np.int32)
+    if skin is not None and skin.type == "MESH":
+        skin_config = dict(config)
+        skin_config["include_collections"] = []
+        skin_config["include_meshes"] = [str(skin.name)]
+        skin_config["exclude_meshes"] = []
+        raw_skin, skin_faces, _skin_weights, _skin_diag = _merge_and_skin_meshes(
+            [skin], arm, config=skin_config, joint_names=joint_names,
+            direct_bone_to_joint=direct, parents_by_bone=parents_by_bone, deform=deform,
+        )
+        skin_global = raw_skin @ align_context["linear"].T + align_context["translation"]
+        skin_vertices = (skin_global + _sample_alignment_offset(skin_global, align_context)).astype(np.float32)
     rest_align.update(pose_diag)
     source_rig = _source_rig_canonical(
         arm,
@@ -1070,6 +1109,8 @@ def main() -> None:
         source_bone_blend=np.asarray(source_rig["source_bone_blend"], dtype=np.float32),
         source_bone_driver_types=np.asarray(source_rig["source_bone_driver_types"], dtype=object),
         registration_reference=registration_reference,
+        source_skin_vertices=skin_vertices,
+        source_skin_faces=np.asarray(skin_faces, dtype=np.int32),
         schema_version=np.asarray(2, dtype=np.int32),
         pose_format=np.asarray("smplx_body55_axis_angle", dtype=object),
         coordinate_system=np.asarray("genesis_z_up_m", dtype=object),
@@ -1085,6 +1126,7 @@ def main() -> None:
         "face_count": int(faces.shape[0]),
         "joint_count": int(len(joint_names)),
         "source_bone_count": int(len(source_rig["source_bone_names"])),
+        "source_skin_vertices": int(len(skin_vertices)),
         "active_source_group_count": int(len(set(
             str(group.name) for obj in meshes for group in obj.vertex_groups
         ))),

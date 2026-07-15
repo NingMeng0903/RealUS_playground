@@ -29,6 +29,7 @@ DEFAULT_URDF = (
 RAIL_JOINT_NAME = "rail_y"
 ARM_JOINT_NAMES = [f"joint_{i}" for i in range(1, 8)]
 JOINT_NAMES = [RAIL_JOINT_NAME, *ARM_JOINT_NAMES]
+TCP_JOINT_NAME = "link_7_to_tcp"
 RAIL_INDEX = 0
 ARM_Q_INDICES = slice(1, 8)
 N_ARM = 7
@@ -167,6 +168,12 @@ class RobotKinematics:
         self.tcp_frame = tcp_frame
         self.tcp_id = self.model.getFrameId(tcp_frame)
 
+        self._link7_id = (
+            self.model.getFrameId("link_7") if self.model.existFrame("link_7") else None
+        )
+        self._tcp_offset_pose = self._read_tcp_offset_pose()
+        self._R_link7_tcp, self._r_link7_tcp = self._compute_link7_to_tcp_kinematics()
+
         self.nq = self.model.nq
         self.nv = self.model.nv
         if self.nq != EXPECTED_NQ or self.nv != EXPECTED_NQ:
@@ -199,6 +206,62 @@ class RobotKinematics:
         M = self.fk_placement(q_rad)
         quat = Rsc.from_matrix(M.rotation).as_quat()  # [x, y, z, w]
         return np.concatenate([M.translation, quat])
+
+    def _read_tcp_offset_pose(self) -> np.ndarray:
+        M = self.model.frames[self.tcp_id].placement
+        pose = np.zeros(6, dtype=float)
+        pose[:3] = np.asarray(M.translation, dtype=float)
+        pose[3:6] = Rsc.from_matrix(M.rotation).as_euler(self.euler_order, degrees=False)
+        return pose
+
+    def apply_link7_to_tcp_offset(
+        self,
+        pose6: np.ndarray,
+        *,
+        euler_order: str | None = None,
+    ) -> np.ndarray:
+        """Set link_7->tcp frame from RealMan tool offset [x,y,z,rx,ry,rz] (m, rad)."""
+        pose6 = np.asarray(pose6, dtype=float).reshape(6)
+        order = str(euler_order or self.euler_order)
+        R = Rsc.from_euler(order, pose6[3:6], degrees=False).as_matrix()
+        self.model.frames[self.tcp_id].placement = pin.SE3(R, pose6[:3])
+        self._tcp_offset_pose = pose6.copy()
+        self._R_link7_tcp, self._r_link7_tcp = self._compute_link7_to_tcp_kinematics()
+        return self._tcp_offset_pose.copy()
+
+    @property
+    def tcp_offset_pose(self) -> np.ndarray:
+        return np.asarray(self._tcp_offset_pose, dtype=float).copy()
+
+    def _compute_link7_to_tcp_kinematics(self) -> tuple[np.ndarray, np.ndarray]:
+        """Rotation and translation (link_7 frame) from URDF tcp joint placement."""
+        M = self.model.frames[self.tcp_id].placement
+        R = np.asarray(M.rotation, dtype=float)
+        r = np.asarray(M.translation, dtype=float)
+        if self._link7_id is not None:
+            q = pin.neutral(self.model)
+            pin.forwardKinematics(self.model, self.data, q)
+            pin.updateFramePlacement(self.model, self.data, self._link7_id)
+            pin.updateFramePlacement(self.model, self.data, self.tcp_id)
+            R7 = self.data.oMf[self._link7_id].rotation
+            Rt = self.data.oMf[self.tcp_id].rotation
+            pt = self.data.oMf[self.tcp_id].translation - self.data.oMf[self._link7_id].translation
+            R = np.asarray(R7.T @ Rt, dtype=float)
+            r = np.asarray(R7.T @ pt, dtype=float)
+        return R, r
+
+    def wrench_link7_to_tcp(self, wrench: np.ndarray) -> np.ndarray:
+        """Express a link_7/sensor wrench at the tcp origin, in tcp tool coordinates."""
+        w = np.asarray(wrench, dtype=float).reshape(6).copy()
+        R = self._R_link7_tcp
+        r = self._r_link7_tcp
+        f_s = w[:3]
+        m_s = w[3:6]
+        # Transport moment to tcp origin (same frame), then rotate into tcp axes.
+        m_at_tcp = m_s + np.cross(r, f_s)
+        f_tcp = R.T @ f_s
+        m_tcp = R.T @ m_at_tcp
+        return np.concatenate([f_tcp, m_tcp])
 
     def frame_placement(self, q_rad: np.ndarray, frame_name: str) -> pin.SE3:
         """SE3 of an arbitrary frame (e.g. 'link_7' flange) in the base frame."""

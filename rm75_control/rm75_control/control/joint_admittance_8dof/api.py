@@ -347,7 +347,7 @@ def compute_move_plan(
         euler_order=euler_order,
     )
     max_dq_deg = float(meta["max_dq_deg"])
-    gov_joint_max_deg = float(np.clip(0.55 * max_dq_deg, 25.0, 90.0))
+    gov_joint_max_deg = float(np.clip(1.15 * max_dq_deg, 25.0, 90.0))
     resolved_mode = move_mode
     if auto_select_joint and move_mode == "cartesian" and max_dq_deg > joint_auto_threshold_deg:
         resolved_mode = "joint"
@@ -369,12 +369,14 @@ def make_move_arrived(
     tol_mm: float = 3.0,
     tol_deg: float = 1.5,
     joint_tol_deg: float = 3.0,
+    joint_only: bool = False,
     euler_order: str = "xyz",
 ) -> Callable[[np.ndarray, np.ndarray], bool]:
     def _fn(pose_meas: np.ndarray, q_meas: np.ndarray) -> bool:
-        d_mm, d_deg = pose_distance(pose_meas, pose_target, euler_order)
-        if d_mm > tol_mm or d_deg > tol_deg:
-            return False
+        if not joint_only:
+            d_mm, d_deg = pose_distance(pose_meas, pose_target, euler_order)
+            if d_mm > tol_mm or d_deg > tol_deg:
+                return False
         return max_joint_err_deg(q_meas, q_target_rad) <= joint_tol_deg
 
     return _fn
@@ -476,7 +478,7 @@ def phase_joint_reset(
         governor=GovernorSpec(err_max_mm=0.0, joint_err_max_deg=gov_joint_max_deg),
         scale_qdot_ff_with_governor=False,
         wait_until=(
-            make_move_arrived(pose_target, q_target_rad)
+            make_move_arrived(pose_target, q_target_rad, joint_only=True)
             if pose_target is not None and q_target_rad is not None
             else None
         ),
@@ -551,7 +553,11 @@ def phase_cartesian_goto(
         governor=gov,
         scale_qdot_ff_with_governor=False,
         wait_until=(
-            make_move_arrived(pose_target, q_target_rad)
+            make_move_arrived(
+                pose_target,
+                q_target_rad,
+                joint_only=(move_mode == "joint"),
+            )
             if pose_target is not None and q_target_rad is not None
             else None
         ),

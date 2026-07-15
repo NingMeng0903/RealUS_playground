@@ -17,6 +17,7 @@ DEFAULT_LIMITS: dict[str, float] = {
     "anchor_max_m": 0.020,
     "edge_ratio_max": 3.0,
     "edge_ratio_p999": 1.5,
+    "edge_growth_max_m": 0.01,
     "inside_fraction": 0.995,
     "max_outside_m": 0.002,
     "critical_max_outside_m": 0.001,
@@ -144,10 +145,16 @@ def evaluate_asset_quality(
     for stage in stages:
         maximum = float(stretch.get(f"{stage}_max", float("inf")))
         p999 = float(stretch.get(f"{stage}_p999", float("inf")))
+        growth = float(stretch.get(f"{stage}_max_growth_m", float("inf")))
         if maximum > thresholds["edge_ratio_max"]:
             failures.append(f"{stage} max edge ratio {maximum:.2f} exceeds {thresholds['edge_ratio_max']:.2f}")
         if p999 > thresholds["edge_ratio_p999"]:
             failures.append(f"{stage} p99.9 edge ratio {p999:.2f} exceeds {thresholds['edge_ratio_p999']:.2f}")
+        if growth > thresholds["edge_growth_max_m"]:
+            failures.append(
+                f"{stage} maximum absolute edge growth {growth * 1000.0:.1f} mm exceeds "
+                f"{thresholds['edge_growth_max_m'] * 1000.0:.1f} mm"
+            )
     for tissue, metrics in containment.items():
         inside = float(metrics["inside_fraction"])
         outside_m = float(metrics["max_outside_m"])

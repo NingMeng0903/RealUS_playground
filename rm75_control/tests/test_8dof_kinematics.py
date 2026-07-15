@@ -11,6 +11,7 @@ from rm75_control.control.joint_admittance_8dof.model import (
     full_q_from_arm,
     wrap_joint_delta,
 )
+from scipy.spatial.transform import Rotation as Rsc
 
 
 @pytest.fixture
@@ -45,3 +46,27 @@ def test_wrap_joint_delta_prismatic_vs_revolute():
     d = wrap_joint_delta(q_from, q_to)
     assert d[0] == pytest.approx(0.05)
     assert d[1] == pytest.approx(3.0)
+
+
+def test_link7_to_tcp_rotation_matches_gripper_ry90(kin: RobotKinematics):
+    kin.apply_link7_to_tcp_offset([0.0, 0.0, 0.220, 0.0, 1.5707963, 0.0])
+    expected = Rsc.from_euler("xyz", [0.0, 1.5707963, 0.0], degrees=False).as_matrix()
+    np.testing.assert_allclose(kin._R_link7_tcp, expected, atol=1e-5)
+
+
+def test_wrench_link7_to_tcp_maps_sensor_x_to_tool_z(kin: RobotKinematics):
+    """RY+90: tool +Z aligns with link_7 +X; sensor X force -> tool Fz."""
+    kin.apply_link7_to_tcp_offset([0.0, 0.0, 0.220, 0.0, 1.5707963, 0.0])
+    f_link7 = np.array([3.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    f_tool = kin.wrench_link7_to_tcp(f_link7)
+    assert f_tool[2] == pytest.approx(3.0, abs=1e-5)
+    assert abs(f_tool[0]) < 1e-5
+
+
+def test_wrench_link7_to_tcp_transports_moment(kin: RobotKinematics):
+    """Lever arm at tcp must not leak into tool Fz when force is along tool normal."""
+    kin.apply_link7_to_tcp_offset([0.0, 0.0, 0.220, 0.0, 1.5707963, 0.0])
+    # Pure link_7 +Y force at tcp with 220mm offset along +X produces sensor moment.
+    f_link7 = np.array([0.0, 5.0, 0.0, 0.0, -1.1, 0.0])
+    f_tool = kin.wrench_link7_to_tcp(f_link7)
+    assert abs(f_tool[2]) < 0.5

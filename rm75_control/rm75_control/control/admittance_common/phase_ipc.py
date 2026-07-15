@@ -100,6 +100,7 @@ class SinToolYTaskParams:
     scan_hybrid_hold: bool = False
     q_toggle_left_rad: list[float] = field(default_factory=list)
     q_toggle_right_rad: list[float] = field(default_factory=list)
+    tcp_offset_pose: list[float] = field(default_factory=list)
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), separators=(",", ":"))

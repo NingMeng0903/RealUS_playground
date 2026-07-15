@@ -2,18 +2,58 @@
 
 from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.spatial.transform import Rotation as Rsc
 
 if TYPE_CHECKING:
-    from rm75_control.control.joint_admittance.model import RobotKinematics
+    from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 
 # Scan standoff: poses.yaml slot d is force-ID Arm_Tip at contact; runtime with
 # gripper active applies +approach_dz along the *active* tool Z at teach q_deg.
 DEFAULT_SCAN_APPROACH_DZ_M = 0.220
 DEFAULT_EULER_ORDER = "xyz"
+
+
+def tool_offset_cache_path() -> Path:
+    root = Path(os.environ.get("RM75_CONTROL_ROOT", Path(__file__).resolve().parents[3]))
+    return root / "outputs" / "rm75_tool_offset.json"
+
+
+def write_tool_offset_cache(name: str, offset: np.ndarray) -> None:
+    path = tool_offset_cache_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "name": str(name),
+        "pose": np.asarray(offset, dtype=float).reshape(6).tolist(),
+    }
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def read_tool_offset_cache() -> tuple[str, np.ndarray] | None:
+    path = tool_offset_cache_path()
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        name = str(data.get("name", ""))
+        pose = np.asarray(data.get("pose", []), dtype=float).reshape(6)
+        return name, pose
+    except (json.JSONDecodeError, OSError, ValueError):
+        return None
+
+
+def apply_kin_tcp_offset(
+    kin: "RobotKinematics",
+    offset: np.ndarray,
+    *,
+    euler_order: str | None = None,
+) -> np.ndarray:
+    return kin.apply_link7_to_tcp_offset(offset, euler_order=euler_order)
 
 
 def get_active_tool_name(robot) -> str:
@@ -176,3 +216,105 @@ def slot_scan_approach_pose(
     out = fk_active.copy()
     out[:3] = contact[:3] + R @ np.array([0.0, 0.0, float(approach_dz_m)])
     return out
+
+
+def read_active_tool_offset(robot) -> tuple[str, np.ndarray]:
+    """Return (tool_name, link_7->tool offset) from RealMan ``rm_get_current_tool_frame``."""
+    ret, cur = robot.rm_get_current_tool_frame()
+    if ret != 0:
+        raise RuntimeError(f"rm_get_current_tool_frame failed: {ret}")
+    name = str(cur.get("name", ""))
+    pose = np.asarray(cur["pose"][:6], dtype=float)
+    return name, pose
+
+
+def sync_kin_tcp_from_robot(
+    kin: "RobotKinematics",
+    robot=None,
+    *,
+    ip: str | None = None,
+    port: int = 8080,
+    euler_order: str | None = None,
+) -> str:
+    """Apply the active RealMan tool frame to Pinocchio ``link_7_to_tcp`` (runtime, no URDF edit)."""
+    if robot is not None:
+        name, offset = read_active_tool_offset(robot)
+    elif ip:
+        from rm75_control.core.session import RobotSession
+
+        with RobotSession(ip=ip, port=port, quiet=True) as sess:
+            name, offset = read_active_tool_offset(sess.robot)
+    else:
+        raise ValueError("sync_kin_tcp_from_robot requires robot or ip")
+
+    kin.apply_link7_to_tcp_offset(offset, euler_order=euler_order)
+    try:
+        write_tool_offset_cache(name, offset)
+    except OSError:
+        pass
+    print(
+        f"tcp sync: tool={name!r} xyz(mm)={np.round(offset[:3] * 1000.0, 1).tolist()} "
+        f"rpy(deg)={np.round(np.degrees(offset[3:6]), 1).tolist()} "
+        "-> Pin FK + force Tool-Z",
+        flush=True,
+    )
+    return name
+
+
+def maybe_sync_kin_tcp_from_config(
+    kin: "RobotKinematics",
+    raw: dict,
+    *,
+    robot=None,
+    ip: str | None = None,
+    port: int | None = None,
+    attach_mode: bool = False,
+    tcp_offset_pose: np.ndarray | list[float] | None = None,
+) -> str | None:
+    """If ``inner.sync_tcp_from_robot`` (default true), align Pin tcp with RealMan tool."""
+    inner = raw.get("inner", {}) or {}
+    euler_order = str(inner.get("euler_order", "xyz"))
+
+    if tcp_offset_pose is not None and len(tcp_offset_pose) >= 6:
+        offset = np.asarray(tcp_offset_pose, dtype=float).reshape(6)
+        apply_kin_tcp_offset(kin, offset, euler_order=euler_order)
+        print(
+            f"tcp sync: from task params xyz(mm)={np.round(offset[:3] * 1000.0, 1).tolist()} "
+            f"rpy(deg)={np.round(np.degrees(offset[3:6]), 1).tolist()}",
+            flush=True,
+        )
+        return "task_params"
+
+    if not bool(inner.get("sync_tcp_from_robot", True)):
+        return None
+
+    robot_cfg = raw.get("robot", {}) or {}
+    ip = ip or robot_cfg.get("ip")
+    port = int(port if port is not None else robot_cfg.get("port", 8080))
+
+    try:
+        if robot is not None:
+            return sync_kin_tcp_from_robot(kin, robot=robot, euler_order=euler_order)
+        if attach_mode:
+            cached = read_tool_offset_cache()
+            if cached is not None:
+                name, offset = cached
+                apply_kin_tcp_offset(kin, offset, euler_order=euler_order)
+                print(
+                    f"tcp sync: cached tool={name!r} xyz(mm)={np.round(offset[:3] * 1000.0, 1).tolist()} "
+                    f"rpy(deg)={np.round(np.degrees(offset[3:6]), 1).tolist()} "
+                    "(window A cache; no second TCP)",
+                    flush=True,
+                )
+                return name
+            if ip:
+                print(
+                    "warn: no tool offset cache — start window A first so it can read RealMan tool",
+                    flush=True,
+                )
+            return None
+        if ip:
+            return sync_kin_tcp_from_robot(kin, ip=str(ip), port=port, euler_order=euler_order)
+    except Exception as exc:
+        print(f"warn: RealMan tcp sync skipped: {exc}", flush=True)
+    return None

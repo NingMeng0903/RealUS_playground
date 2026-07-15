@@ -1382,8 +1382,16 @@ def run_joint_admittance_phases(
                         f_ext = np.zeros(6)
                         f_ext_raw = None
                         if obs is not None:
-                            _signed, f_ext = obs.update(now - total_t0, pose_rm, snap.force_raw)
+                            reg_pose = None
+                            if obs.frame.regressor_pose_frame == "link_7":
+                                reg_pose = inner.kin.frame_pose(q_meas, "link_7")
+                            _signed, f_ext = obs.update(
+                                now - total_t0, pose_rm, snap.force_raw, regressor_pose=reg_pose
+                            )
                             f_ext_raw = getattr(obs, "f_ext_raw_last", None)
+                            f_ext = inner.kin.wrench_link7_to_tcp(f_ext)
+                            if f_ext_raw is not None:
+                                f_ext_raw = inner.kin.wrench_link7_to_tcp(f_ext_raw)
     
                         q_prev = inner.q_cmd.copy()
                         # Forward the previous tick's governed scale to the outer

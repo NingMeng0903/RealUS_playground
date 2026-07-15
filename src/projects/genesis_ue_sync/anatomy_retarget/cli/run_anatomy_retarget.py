@@ -19,9 +19,11 @@ import numpy as np
 from common.project import project_paths
 from projects.genesis_ue_sync.anatomy_retarget.asset_align import normalize_rigged_asset_file
 from projects.genesis_ue_sync.anatomy_retarget.blender_retarget_runner import run_retarget
-from projects.genesis_ue_sync.anatomy_retarget.canonical_registration import refine_canonical_arap
-from projects.genesis_ue_sync.anatomy_retarget.containment import load_body_surface, repair_containment
-from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import skin_vertices
+from projects.genesis_ue_sync.anatomy_retarget.containment import (
+    load_body_surface,
+    repair_containment,
+)
+from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import joint_global_transforms, skin_vertices
 from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
     easymocap_drive_translation,
     load_easymocap_smplx_fit_drive,
@@ -40,6 +42,7 @@ from projects.genesis_ue_sync.anatomy_retarget.segment_coupling import (
     segment_coupling_roundtrip_error,
 )
 from projects.genesis_ue_sync.anatomy_retarget.source_rebind import source_bind_roundtrip
+from projects.genesis_ue_sync.anatomy_retarget.source_skin_volume import apply_source_skin_volume_registration
 from projects.genesis_ue_sync.multiview_realtime.track_stream import (
     DEFAULT_ANATOMY_ASSET_PUB_BIND,
     TOPIC_ANATOMY_ASSET_V1,
@@ -185,12 +188,16 @@ def main() -> int:
     source_key = _cache_key(
         Path(blend), Path(args.config), Path(args.canonical_dir) / "smpl_canonical_tpose_neutral.obj",
         Path(__file__).resolve().parents[1] / "blender_scripts" / "blender_retarget_script.py",
-        Path(__file__).resolve().parents[1] / "canonical_registration.py",
+        Path(__file__).resolve().parents[1] / "source_skin_volume.py",
+        Path(__file__).resolve().parents[1] / "shape_volume.py",
+        Path(__file__).resolve().parents[1] / "source_rebind.py",
+        Path(__file__).resolve().parents[1] / "containment.py",
         Path(__file__).resolve().parents[1] / "segment_coupling.py",
-        extra="source-template-v4-segment-coupling-v1",
+        Path(__file__).resolve().parents[1] / "anatomy_lbs.py",
+        extra="source-template-v5-skin-volume-shoulder-chain-v1",
     )
     shape_hash = smplx_shape_hash(betas, gender=gender) if betas else "neutral"
-    source_cache = cache_root / "source_template_v4" / f"{source_key}.npz"
+    source_cache = cache_root / "source_template_v5" / f"{source_key}.npz"
     shape_key = _cache_key(
         Path(args.canonical_dir) / "smpl_canonical_tpose.obj",
         Path(__file__).resolve().parents[1] / "shape_volume.py",
@@ -221,7 +228,16 @@ def main() -> int:
             return int(result.returncode or 1)
         normalize_rigged_asset_file(output_npz, config=cfg, force=False)
         asset = load_rigged_asset(output_npz, validate=True)
-        asset, registration_report = refine_canonical_arap(asset)
+        asset, source_skin_report = apply_source_skin_volume_registration(
+            asset, canonical_dir=args.canonical_dir
+        )
+        # The Skin_Glass volume transport is the canonical registration.
+        # A second per-anatomy-mesh ARAP pass would destroy the shared material
+        # field and was the source of vessel/nerve points returning outside.
+        registration_report = {
+            "backend": "source_skin_volume_only_v5_4",
+            "source_skin_volume": source_skin_report,
+        }
         if str(cfg.get("canonical_rest_space", "neutral")).lower() == "neutral":
             neutral_surface = load_body_surface(Path(args.canonical_dir) / "smpl_canonical_tpose_neutral.obj")
             asset, neutral_containment = repair_containment(
@@ -238,13 +254,14 @@ def main() -> int:
             "registration_report": registration_report,
             "source_blender_report": blender_report,
             "source_containment_reports": containment_reports,
+            "source_skin_volume_report": source_skin_report,
             "source_cache_key": source_key,
             "segment_coupling_report": coupling_report,
         })
         asset = type(asset)(**{**asset.__dict__, "metadata": source_meta})
         source_cache.parent.mkdir(parents=True, exist_ok=True)
         save_rigged_asset(source_cache, asset)
-        logging.info("source_template_v4 stored key=%s", source_key)
+        logging.info("source_template_v5 stored key=%s", source_key)
     profile["source_template_s"] = time.perf_counter() - started_at
     bind_roundtrip = source_bind_roundtrip(asset)
     zero_pose_vertices = skin_vertices(asset, np.zeros((55, 3), dtype=np.float32))
@@ -323,20 +340,41 @@ def main() -> int:
             posed_vertices = skin_vertices(asset, pose55, transl=effective_transl)
             if "vertices" not in motion.files or "faces" not in motion.files:
                 raise ValueError(f"{motion_path} must include official posed SMPL-X vertices/faces")
-            posed_asset = type(asset)(**{**asset.__dict__, "vertices_rest": posed_vertices})
-            repaired_pose, pose_report = repair_containment(
-                posed_asset,
-                surface_vertices=np.asarray(motion["vertices"], dtype=np.float64).reshape(-1, 3),
-                surface_faces=np.asarray(motion["faces"], dtype=np.int32).reshape(-1, 3),
-                stage="final_pose",
-                # Offline diagnostic refinement; never runs in the online viewer.
-                max_iterations=12,
-                strict=False,
-            )
+            pose_cache_vertices = posed_vertices
+            if args.enforce_quality_gate:
+                posed_joint_transforms = joint_global_transforms(
+                    pose_axis_angle=pose55,
+                    rest_joints=asset.rest_joints,
+                    parents=asset.parents,
+                )
+                posed_joints = posed_joint_transforms[:, :3, 3] + effective_transl.reshape(1, 3)
+                posed_asset = type(asset)(
+                    **{
+                        **asset.__dict__,
+                        "vertices_rest": posed_vertices,
+                        "rest_joints": posed_joints.astype(np.float32),
+                    }
+                )
+                repaired_pose, pose_report = repair_containment(
+                    posed_asset,
+                    surface_vertices=np.asarray(motion["vertices"], dtype=np.float64).reshape(-1, 3),
+                    surface_faces=np.asarray(motion["faces"], dtype=np.int32).reshape(-1, 3),
+                    stage="final_pose",
+                    max_iterations=12,
+                    strict=False,
+                )
+                pose_cache_vertices = np.asarray(repaired_pose.vertices_rest, dtype=np.float32)
+            else:
+                pose_report = {
+                    "stage": "final_pose",
+                    "backend": "runtime_source_bone_lbs",
+                    "diagnostic_deferred": True,
+                    "repair_tissues": [],
+                }
             asset = type(asset)(
                 **{
                     **asset.__dict__,
-                    "pose_cache_vertices": np.asarray(repaired_pose.vertices_rest, dtype=np.float32),
+                    "pose_cache_vertices": pose_cache_vertices,
                     "pose_cache_hash": cache_hash,
                 }
             )
@@ -364,7 +402,7 @@ def main() -> int:
             "pose_cache_report": pose_report,
             "leg_material_report": dict(meta.get("leg_material_report") or {}),
             "segment_coupling_report": dict(meta.get("segment_coupling_report") or {}),
-            "source_template_version": 4,
+            "source_template_version": 5,
             "source_bind_roundtrip": bind_roundtrip,
         }
     )
@@ -408,12 +446,17 @@ def main() -> int:
     after_len = np.linalg.norm(
         asset.vertices_rest[tri_edges[:, 0]] - asset.vertices_rest[tri_edges[:, 1]], axis=1
     )
-    valid_edges = before_len > 1.0e-8
+    # Ratios on nearly coincident CAD seam vertices are numerically meaningless
+    # (e.g. 0.04 mm -> 0.4 mm looks like 10x but is not a visible spike).
+    # Keep a separate absolute-growth gate for every edge.
+    valid_edges = before_len > 2.0e-4
     post_ratio = after_len[valid_edges] / before_len[valid_edges]
     blender_report.setdefault("edge_stretch", {}).update(
         {
             "source_to_final_max": float(np.max(post_ratio)),
             "source_to_final_p999": float(np.quantile(post_ratio, 0.999)),
+            "source_to_final_max_growth_m": float(np.max(after_len - before_len)),
+            "ratio_ignored_sub_0_2mm_edges": int(np.count_nonzero(~valid_edges)),
         }
     )
     if asset.pose_cache_vertices is not None:
@@ -425,6 +468,7 @@ def main() -> int:
             {
                 "source_to_pose_cache_max": float(np.max(cached_ratio)),
                 "source_to_pose_cache_p999": float(np.quantile(cached_ratio, 0.999)),
+                "source_to_pose_cache_max_growth_m": float(np.max(cached_len - before_len)),
             }
         )
     quality = evaluate_asset_quality(

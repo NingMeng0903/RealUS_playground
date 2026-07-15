@@ -1,0 +1,235 @@
+{
+  "endpoint_limit_m": 0.005,
+  "axis_limit_deg": 3.0,
+  "segments": {
+    "forearm_left": [
+      {
+        "endpoint_error_m": 1.421636319753051,
+        "axis_error_deg": 145.5072004385914,
+        "length_error_m": 0.0432322221473897,
+        "mesh": "Radius_L",
+        "pass": false
+      },
+      {
+        "endpoint_error_m": 1.4463520112259551,
+        "axis_error_deg": 151.68001258163966,
+        "length_error_m": 0.030333526764389274,
+        "mesh": "Ulna_L",
+        "pass": false
+      }
+    ],
+    "forearm_right": [
+      {
+        "endpoint_error_m": 0.10135721476941945,
+        "axis_error_deg": 34.85589027512549,
+        "length_error_m": 0.04309371243236931,
+        "mesh": "Radius_R",
+        "pass": false
+      },
+      {
+        "endpoint_error_m": 0.08598421250370747,
+        "axis_error_deg": 33.90294515136768,
+        "length_error_m": 0.04366107875831571,
+        "mesh": "Ulna_R",
+        "pass": false
+      }
+    ],
+    "shin_left": [
+      {
+        "endpoint_error_m": 1.2233105037202932,
+        "axis_error_deg": 91.42948993678694,
+        "length_error_m": 0.33167153766306956,
+        "mesh": "Tibia_L",
+        "pass": false
+      },
+      {
+        "endpoint_error_m": 1.0793526271358405,
+        "axis_error_deg": 105.30049451551234,
+        "length_error_m": 0.14078565566024864,
+        "mesh": "Fibula_L",
+        "pass": false
+      },
+      {
+        "endpoint_error_m": 0.8895147542723655,
+        "axis_error_deg": 75.9108396615005,
+        "length_error_m": 0.005096699288078904,
+        "mesh": "Patella_L",
+        "pass": false
+      }
+    ],
+    "shin_right": [
+      {
+        "endpoint_error_m": 1.5274770173265886,
+        "axis_error_deg": 80.41804389885498,
+        "length_error_m": 0.2859710287190278,
+        "mesh": "Tibia_R",
+        "pass": false
+      },
+      {
+        "endpoint_error_m": 1.5836051132785023,
+        "axis_error_deg": 80.57844328186911,
+        "length_error_m": 0.3384080974642698,
+        "mesh": "Fibula_R",
+        "pass": false
+      },
+      {
+        "endpoint_error_m": 1.046848932320378,
+        "axis_error_deg": 76.27705810925833,
+        "length_error_m": 0.008671716665575285,
+        "mesh": "Patella_R",
+        "pass": false
+      }
+    ],
+    "shoulder_left": [
+      {
+        "endpoint_error_m": 0.27614490322902774,
+        "axis_error_deg": 77.78684596979355,
+        "length_error_m": 0.06667197614907788,
+        "mesh": "Scapula_L",
+        "pass": false
+      },
+      {
+        "endpoint_error_m": 0.7793047876783166,
+        "axis_error_deg": 44.65478749975398,
+        "length_error_m": 0.07048836724163549,
+        "mesh": "Humerus_L",
+        "pass": false
+      }
+    ],
+    "shoulder_right": [
+      {
+        "endpoint_error_m": 0.5068411457057933,
+        "axis_error_deg": 58.79233891201986,
+        "length_error_m": 0.060018435204757525,
+        "mesh": "Scapula_R",
+        "pass": false
+      },
+      {
+        "endpoint_error_m": 0.34934755219361,
+        "axis_error_deg": 105.62828517473507,
+        "length_error_m": 0.1901836288772838,
+        "mesh": "Humerus_R",
+        "pass": false
+      }
+    ],
+    "head": [
+      {
+        "endpoint_error_m": 0.7956932977710887,
+        "axis_error_deg": 29.49841714518723,
+        "length_error_m": 0.013917172623796603,
+        "mesh": "Upper_Skull",
+        "pass": false
+      }
+    ]
+  },
+  "ligament_flags": [
+    {
+      "mesh": "Anterior_Longitudinal_Ligament",
+      "flags": [
+        "high_aspect_ligament",
+        "single_spine_driver"
+      ],
+      "driver_bone": "Spine_C4",
+      "extent_aspect_ratio": 10.508335936281426
+    },
+    {
+      "mesh": "Facet_Capsular_Ligament",
+      "flags": [
+        "high_aspect_ligament"
+      ],
+      "driver_bone": "Spine_L1",
+      "extent_aspect_ratio": 9.718808068706903
+    },
+    {
+      "mesh": "Fibula_R",
+      "flags": [
+        "high_aspect_ligament"
+      ],
+      "driver_bone": "Tibia_Bone_R",
+      "extent_aspect_ratio": 16.202060173774335
+    },
+    {
+      "mesh": "Interspinous_Ligament",
+      "flags": [
+        "high_aspect_ligament",
+        "single_spine_driver"
+      ],
+      "driver_bone": "Spine_C2",
+      "extent_aspect_ratio": 29.76654118805744
+    },
+    {
+      "mesh": "Intertransverse_Ligament",
+      "flags": [
+        "high_aspect_ligament"
+      ],
+      "driver_bone": "Spine_L5",
+      "extent_aspect_ratio": 8.989334787447449
+    },
+    {
+      "mesh": "Ligamentum_Flavum",
+      "flags": [
+        "high_aspect_ligament"
+      ],
+      "driver_bone": "Spine_L5",
+      "extent_aspect_ratio": 13.17888697969632
+    },
+    {
+      "mesh": "Nuchal_Ligament",
+      "flags": [
+        "high_aspect_ligament"
+      ],
+      "driver_bone": "Head_Bone",
+      "extent_aspect_ratio": 9.163070116208177
+    },
+    {
+      "mesh": "Posterior_Longitudinal_Ligament",
+      "flags": [
+        "high_aspect_ligament"
+      ],
+      "driver_bone": "Spine_L5",
+      "extent_aspect_ratio": 11.762581151200342
+    },
+    {
+      "mesh": "Radius_R",
+      "flags": [
+        "high_aspect_ligament"
+      ],
+      "driver_bone": "Forearm_Twist_R",
+      "extent_aspect_ratio": 8.908007316914532
+    },
+    {
+      "mesh": "Supraspinous_Ligament",
+      "flags": [
+        "high_aspect_ligament"
+      ],
+      "driver_bone": "Hip_bone",
+      "extent_aspect_ratio": 29.577127095156115
+    },
+    {
+      "mesh": "Ulna_R",
+      "flags": [
+        "high_aspect_ligament"
+      ],
+      "driver_bone": "Forearm_Bone_R",
+      "extent_aspect_ratio": 8.225662271722381
+    }
+  ],
+  "passed": false,
+  "failures": [
+    "forearm_left/Radius_L",
+    "forearm_left/Ulna_L",
+    "forearm_right/Radius_R",
+    "forearm_right/Ulna_R",
+    "shin_left/Tibia_L",
+    "shin_left/Fibula_L",
+    "shin_left/Patella_L",
+    "shin_right/Tibia_R",
+    "shin_right/Fibula_R",
+    "shin_right/Patella_R",
+    "shoulder_left/Scapula_L",
+    "shoulder_left/Humerus_L",
+    "shoulder_right/Scapula_R",
+    "shoulder_right/Humerus_R",
+    "head/Upper_Skull"
+  ]
+}

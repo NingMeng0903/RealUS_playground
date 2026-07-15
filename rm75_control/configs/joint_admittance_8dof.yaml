@@ -33,6 +33,9 @@ state_relay:
 inner:
   control_frame: tool
   euler_order: xyz
+  # On connect / task start: read RealMan active tool (gripper TCP) into Pinocchio
+  # link_7->tcp so FK, WBC Tool-Z, and f_ext rotation match the teach pendant.
+  sync_tcp_from_robot: true
 
   v_scale: 0.5             # fraction of URDF joint velocity limit
   # Acceleration limits are unit-explicit: the old scalar a_max mixed arm

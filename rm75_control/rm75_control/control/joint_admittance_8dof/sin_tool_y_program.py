@@ -29,7 +29,12 @@ from rm75_control.control.joint_admittance_8dof.loop import (
     LoopResult,
     run_joint_admittance_phases,
 )
-from rm75_control.control.joint_admittance_8dof.model import RobotKinematics, full_q_from_arm, wrap_joint_delta
+from rm75_control.control.joint_admittance_8dof.model import (
+    RobotKinematics,
+    deg2rad,
+    full_q_from_arm,
+    wrap_joint_delta,
+)
 from rm75_control.control.joint_admittance_8dof.reference import (
     HoldReference,
     JointSmoothMoveReference,
@@ -40,7 +45,255 @@ from rm75_control.control.joint_admittance_8dof.tasks.arm_angle import _wrap_pi
 from rm75_control.force.compensation import excitation as ex
 from rm75_control.force.compensation.id_config import load_config as load_force_id_config
 from rm75_control.force.compensation.paths import CONFIG_ID
-from rm75_control.force.compensation.tool_pose import get_active_tool_name, poses_calib_tool_frame
+from rm75_control.force.compensation.tool_pose import (
+    DEFAULT_SCAN_APPROACH_DZ_M,
+    get_active_tool_name,
+    maybe_sync_kin_tcp_from_config,
+    poses_calib_tool_frame,
+    slot_scan_approach_pose_kin,
+)
+
+MAX_POSE_KIN_DRIFT_MM = 25.0
+
+
+@dataclass
+class ScanTargetD:
+    """Planned move->D target independent of RealMan published TCP (optional modes)."""
+
+    q_slot_deg: np.ndarray
+    pose_d: np.ndarray
+    pose_id: np.ndarray
+    q_target_rad: np.ndarray
+    d_target: str
+    skip_ik: bool = False
+    move_mode_hint: str | None = None
+
+
+def load_slot_joints_only(slot: str) -> tuple[np.ndarray, np.ndarray, dict]:
+    """Load taught ``q_deg`` / ``pose_base`` from poses.yaml without RealMan FK."""
+    fid = load_force_id_config(CONFIG_ID)
+    data = ex.load_poses_yaml(fid.poses_yaml)
+    rec = ex.get_slot_record(data, slot)
+    if rec is None:
+        raise RuntimeError(f"Pose slot {slot!r} missing in {fid.poses_yaml}")
+    q_deg = np.asarray(rec["q_deg"], dtype=float)
+    pose_id = np.asarray(rec["pose_base"], dtype=float)
+    return q_deg, pose_id, rec
+
+
+def resolve_scan_target_at_d(
+    slot: str,
+    kin: RobotKinematics,
+    *,
+    d_target: str = "legacy",
+    approach_dz_m: float = DEFAULT_SCAN_APPROACH_DZ_M,
+    use_force_id_pose: bool = False,
+    euler_order: str = "xyz",
+    rail_m: float = 0.0,
+    robot=None,
+    qp_cfg=None,
+    nullspace_cfg=None,
+) -> ScanTargetD:
+    """Resolve scan pose D and joint target for the move->D phase.
+
+    ``d_target`` modes:
+
+    * ``legacy`` — RealMan active-tool FK + Pin standoff + pose IK (original).
+    * ``joints`` — ``poses.yaml`` ``q_deg`` only; ``pose_d = kin.fk_pose(q)``;
+      no RealMan TCP, no pose IK (for TCP rotation experiments).
+    * ``kin-fk`` — Pinocchio standoff ``pose_d`` from taught contact frame;
+      optional pose IK; never uses ``rm_algo_forward_kinematics``.
+    """
+    mode = str(d_target).strip().lower()
+    if mode == "legacy":
+        return _resolve_scan_target_legacy(
+            slot,
+            kin,
+            approach_dz_m=approach_dz_m,
+            use_force_id_pose=use_force_id_pose,
+            euler_order=euler_order,
+            rail_m=rail_m,
+            robot=robot,
+            qp_cfg=qp_cfg,
+            nullspace_cfg=nullspace_cfg,
+        )
+    if mode == "joints":
+        return _resolve_scan_target_joints(slot, kin, rail_m=rail_m)
+    if mode in {"kin-fk", "kin_fk", "kinfk"}:
+        return _resolve_scan_target_kin_fk(
+            slot,
+            kin,
+            approach_dz_m=approach_dz_m,
+            use_force_id_pose=use_force_id_pose,
+            euler_order=euler_order,
+            rail_m=rail_m,
+            qp_cfg=qp_cfg,
+            nullspace_cfg=nullspace_cfg,
+        )
+    raise ValueError(f"unknown d_target mode {d_target!r}; use legacy, joints, or kin-fk")
+
+
+def _resolve_scan_target_joints(
+    slot: str,
+    kin: RobotKinematics,
+    *,
+    rail_m: float = 0.0,
+) -> ScanTargetD:
+    q_deg, pose_id, _rec = load_slot_joints_only(slot)
+    q_target_rad = full_q_from_arm(deg2rad(q_deg), float(rail_m))
+    pose_d = np.asarray(kin.fk_pose(q_target_rad), dtype=float)
+    print(
+        f"D target=joints slot={slot} q_deg={np.round(q_deg, 2).tolist()} "
+        f"pin_tcp z={pose_d[2]:.3f}m (RealMan TCP ignored)",
+        flush=True,
+    )
+    return ScanTargetD(
+        q_slot_deg=q_deg,
+        pose_d=pose_d,
+        pose_id=pose_id,
+        q_target_rad=q_target_rad,
+        d_target="joints",
+        skip_ik=True,
+        move_mode_hint="joint",
+    )
+
+
+def _resolve_scan_target_kin_fk(
+    slot: str,
+    kin: RobotKinematics,
+    *,
+    approach_dz_m: float,
+    use_force_id_pose: bool,
+    euler_order: str,
+    rail_m: float,
+    qp_cfg,
+    nullspace_cfg,
+) -> ScanTargetD:
+    q_deg, pose_id, _rec = load_slot_joints_only(slot)
+    q_slot_rad = full_q_from_arm(deg2rad(q_deg), float(rail_m))
+    if use_force_id_pose:
+        pose_d = np.asarray(kin.fk_pose(q_slot_rad), dtype=float)
+    else:
+        pose_d = slot_scan_approach_pose_kin(
+            kin,
+            pose_id,
+            q_deg,
+            approach_dz_m=approach_dz_m,
+            euler_order=euler_order,
+            rail_m=rail_m,
+        )
+    q_target_rad, _ok, rep = solve_pose_ik(
+        kin,
+        q_slot_rad,
+        pose_d,
+        qp_cfg=qp_cfg,
+        nullspace_cfg=nullspace_cfg,
+        attractor_q=q_slot_rad,
+    )
+    if rep.pos_err_mm > 5.0 or rep.rot_err_deg > 2.0 or not rep.within_limits:
+        raise RuntimeError(
+            f"kin-fk pose IK did not converge: pos={rep.pos_err_mm:.2f}mm, "
+            f"rot={rep.rot_err_deg:.2f}deg, within_limits={rep.within_limits}"
+        )
+    print(
+        f"D target=kin-fk dz={approach_dz_m * 1000:.0f}mm pin_tcp z={pose_d[2]:.3f}m "
+        "(RealMan TCP ignored)",
+        flush=True,
+    )
+    return ScanTargetD(
+        q_slot_deg=q_deg,
+        pose_d=pose_d,
+        pose_id=pose_id,
+        q_target_rad=q_target_rad,
+        d_target="kin-fk",
+        skip_ik=True,
+        move_mode_hint=None,
+    )
+
+
+def _resolve_scan_target_legacy(
+    slot: str,
+    kin: RobotKinematics,
+    *,
+    approach_dz_m: float,
+    use_force_id_pose: bool,
+    euler_order: str,
+    rail_m: float,
+    robot,
+    qp_cfg,
+    nullspace_cfg,
+) -> ScanTargetD:
+    from rm75_control.force.compensation.collection import load_slot
+    from rm75_control.force.compensation.tool_pose import pose_kin_vs_active_drift_mm
+
+    fid = load_force_id_config(CONFIG_ID)
+    poses_data = ex.load_poses_yaml(fid.poses_yaml)
+    calib_tool = poses_calib_tool_frame(poses_data)
+    active = get_active_tool_name(robot) if robot is not None else ""
+
+    q_deg, fk_pose, rec = load_slot(fid, slot, robot, calib_tool=calib_tool)
+    pose_id = np.asarray(rec["pose_base"], dtype=float)
+
+    if use_force_id_pose:
+        pose_d = fk_pose.copy()
+    else:
+        pose_d = slot_scan_approach_pose_kin(
+            kin,
+            pose_id,
+            q_deg,
+            approach_dz_m=approach_dz_m,
+            euler_order=euler_order,
+            rail_m=rail_m,
+        )
+        if robot is not None and active and calib_tool and active != calib_tool:
+            d_mm = pose_kin_vs_active_drift_mm(
+                robot,
+                pose_d,
+                pose_id,
+                q_deg,
+                approach_dz_m=approach_dz_m,
+                calib_tool=calib_tool,
+                euler_order=euler_order,
+            )
+            if d_mm > MAX_POSE_KIN_DRIFT_MM:
+                raise RuntimeError(
+                    f"pose D Pinocchio-tcp vs Realman {active!r} drift {d_mm:.1f}mm > "
+                    f"{MAX_POSE_KIN_DRIFT_MM:.0f}mm safety bound"
+                )
+            if d_mm > 5.0:
+                print(
+                    f"warn: D pose Pinocchio vs Realman {active!r} {d_mm:.1f}mm "
+                    "(loop tracks Pinocchio tcp)",
+                    flush=True,
+                )
+    tool_note = f"tool={active!r}" if active else "tool=Pin-tcp"
+    if active and calib_tool and active != calib_tool:
+        tool_note += " (contact Arm_Tip teach, +dz Pin tcp @ q)"
+    print(f"D target=legacy dz={approach_dz_m * 1000:.0f}mm {tool_note} z={pose_d[2]:.3f}", flush=True)
+
+    q_slot_rad = full_q_from_arm(deg2rad(q_deg), float(rail_m))
+    q_target_rad, _ok, rep = solve_pose_ik(
+        kin,
+        q_slot_rad,
+        pose_d,
+        qp_cfg=qp_cfg,
+        nullspace_cfg=nullspace_cfg,
+        attractor_q=q_slot_rad,
+    )
+    if rep.pos_err_mm > 5.0 or rep.rot_err_deg > 2.0 or not rep.within_limits:
+        raise RuntimeError(
+            f"pose IK did not converge: pos={rep.pos_err_mm:.2f}mm, "
+            f"rot={rep.rot_err_deg:.2f}deg, within_limits={rep.within_limits}"
+        )
+    return ScanTargetD(
+        q_slot_deg=q_deg,
+        pose_d=pose_d,
+        pose_id=pose_id,
+        q_target_rad=q_target_rad,
+        d_target="legacy",
+        skip_ik=True,
+        move_mode_hint=None,
+    )
 
 
 def load_yaml(path: Path | str) -> dict:
@@ -354,6 +607,11 @@ def build_sin_tool_y_program(
     """Build phase list from precomputed task params (same on C and A)."""
     raw = raw if raw is not None else load_yaml(params.config_path)
     kin = RobotKinematics()
+    maybe_sync_kin_tcp_from_config(
+        kin,
+        raw,
+        tcp_offset_pose=params.tcp_offset_pose if params.tcp_offset_pose else None,
+    )
     inner_cfg = build_joint_ik_config(raw)
     inner = JointIkController(kin, inner_cfg)
     hm_cfg = raw.get("hybrid_motion", {})
@@ -550,6 +808,15 @@ def execute_sin_tool_y_program(
     dt = float(raw.get("timing", {}).get("dt_ms", 5.0)) / 1000.0
     if built is None:
         built = build_sin_tool_y_program(params, raw=raw)
+    elif params.tcp_offset_pose:
+        maybe_sync_kin_tcp_from_config(
+            built.kin,
+            raw,
+            robot=getattr(session, "robot", None),
+            tcp_offset_pose=params.tcp_offset_pose,
+        )
+    elif getattr(session, "robot", None) is not None:
+        maybe_sync_kin_tcp_from_config(built.kin, raw, robot=session.robot)
 
     if built.force_observer is not None and session.robot is not None:
         active = get_active_tool_name(session.robot)
@@ -594,6 +861,7 @@ def make_task_params_from_args(
     psi_right_rad: float | None = None,
     q_toggle_left_rad: np.ndarray | None = None,
     q_toggle_right_rad: np.ndarray | None = None,
+    tcp_offset_pose: np.ndarray | None = None,
 ) -> SinToolYTaskParams:
     return SinToolYTaskParams(
         config_path=config_path,
@@ -662,6 +930,11 @@ def make_task_params_from_args(
         q_toggle_right_rad=(
             np.asarray(q_toggle_right_rad, dtype=float).reshape(-1).tolist()
             if q_toggle_right_rad is not None
+            else []
+        ),
+        tcp_offset_pose=(
+            np.asarray(tcp_offset_pose, dtype=float).reshape(6).tolist()
+            if tcp_offset_pose is not None
             else []
         ),
     )

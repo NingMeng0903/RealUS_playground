@@ -30,12 +30,22 @@ COLS16 = list(range(16))
 I_DIAG = [4, 5, 6]
 
 
-def load_npz(path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray, str, np.ndarray]:
+def load_npz(path: Path, cfg: fid.FrameConfig) -> tuple[np.ndarray, np.ndarray, np.ndarray, str, np.ndarray]:
     d = np.load(path, allow_pickle=True)
     slot = str(d.get("pose_slot", path.stem.split("_")[-1]))
     t = d["t"]
+    pose = np.asarray(d["pose"], dtype=float)
+    q_deg = np.asarray(d["q_deg"], dtype=float)
+    stored_frame = str(d.get("regressor_pose_frame", "tcp"))
+    if cfg.regressor_pose_frame == "link_7" and stored_frame != "link_7":
+        from .collection import pose_for_regressor_log
+
+        pose = np.array(
+            [pose_for_regressor_log(q_deg[i], pose[i], cfg) for i in range(len(t))],
+            dtype=float,
+        )
     phase = np.asarray(d["phase"], dtype=np.int8) if "phase" in d.files else np.zeros(len(t))
-    return d["pose"], d["force_raw"], t, slot, phase
+    return pose, d["force_raw"], t, slot, phase
 
 
 def sample_row_mask(n_samples: int, sample_mask: np.ndarray) -> np.ndarray:
@@ -53,7 +63,7 @@ def build_merged(
     W_parts, Y_parts, tags = [], [], []
     burst_parts, alpha_parts = [], []
     for p in paths:
-        pose, force, t, slot, phase = load_npz(p)
+        pose, force, t, slot, phase = load_npz(p, cfg)
         W, Y = fid.build_dataset(pose, force, t, cfg, fc=fc, use_inertia=use_inertia)
         omega_s, alpha_s, _, _ = fid.kinematics_sensor(pose, t, cfg, fc)
         alpha_norm = np.linalg.norm(alpha_s, axis=1)
@@ -145,7 +155,7 @@ def holdout_by_pose(
 ) -> dict:
     out = {}
     for p in paths:
-        pose, force, t, slot, phase = load_npz(p)
+        pose, force, t, slot, phase = load_npz(p, cfg)
         W, Y = fid.build_dataset(pose, force, t, cfg, fc=fc, use_inertia=True)
         Yhat = W @ phi
         e = Y - Yhat
@@ -265,7 +275,7 @@ def main(argv: list[str] | None = None) -> int:
     alpha_vals = np.zeros(len(Y16) // 6)
     idx = 0
     for p in paths:
-        pose, force, t, _, _ = load_npz(p)
+        pose, force, t, _, _ = load_npz(p, cfg)
         _, alpha_s, _, _ = fid.kinematics_sensor(pose, t, cfg, fc)
         alpha_vals[idx : idx + len(t)] = np.linalg.norm(alpha_s, axis=1)
         idx += len(t)

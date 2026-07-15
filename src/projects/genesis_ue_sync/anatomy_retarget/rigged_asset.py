@@ -46,6 +46,8 @@ class AnatomyRiggedAsset:
     leg_material_coordinates: np.ndarray | None = None
     source_segment_coupling: np.ndarray | None = None
     registration_reference: np.ndarray | None = None
+    source_skin_vertices: np.ndarray | None = None
+    source_skin_faces: np.ndarray | None = None
     pose_cache_vertices: np.ndarray | None = None
     pose_cache_hash: str = ""
     pose_format: str = DEFAULT_POSE_FORMAT
@@ -95,6 +97,11 @@ class AnatomyRiggedAsset:
             raise ValueError("vertices_rest contains non-finite values")
         if self.registration_reference is not None and np.asarray(self.registration_reference).shape != vertices.shape:
             raise ValueError("registration_reference must match vertices_rest")
+        if self.source_skin_vertices is not None:
+            skin_v = np.asarray(self.source_skin_vertices)
+            skin_f = np.asarray(self.source_skin_faces)
+            if skin_v.ndim != 2 or skin_v.shape[1] != 3 or skin_f.ndim != 2 or skin_f.shape[1] != 3:
+                raise ValueError("source skin must be [N,3] vertices and [F,3] faces")
         if self.pose_cache_vertices is not None:
             cached = np.asarray(self.pose_cache_vertices)
             if cached.shape != vertices.shape or not np.all(np.isfinite(cached)):
@@ -191,6 +198,12 @@ def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
             registration_reference=np.asarray(
                 asset.registration_reference if asset.registration_reference is not None else [], dtype=np.float32
             ).reshape(-1, 3),
+            source_skin_vertices=np.asarray(
+                asset.source_skin_vertices if asset.source_skin_vertices is not None else [], dtype=np.float32
+            ).reshape(-1, 3),
+            source_skin_faces=np.asarray(
+                asset.source_skin_faces if asset.source_skin_faces is not None else [], dtype=np.int32
+            ).reshape(-1, 3),
             pose_cache_vertices=np.asarray(
                 asset.pose_cache_vertices if asset.pose_cache_vertices is not None else [], dtype=np.float32
             ).reshape(-1, 3),
@@ -279,6 +292,8 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
             else None
         ),
         registration_reference=np.asarray(data["registration_reference"], dtype=np.float32).reshape(-1, 3) if "registration_reference" in data.files and data["registration_reference"].size else None,
+        source_skin_vertices=np.asarray(data["source_skin_vertices"], dtype=np.float32).reshape(-1, 3) if "source_skin_vertices" in data.files and data["source_skin_vertices"].size else None,
+        source_skin_faces=np.asarray(data["source_skin_faces"], dtype=np.int32).reshape(-1, 3) if "source_skin_faces" in data.files and data["source_skin_faces"].size else None,
         pose_cache_vertices=np.asarray(data["pose_cache_vertices"], dtype=np.float32).reshape(-1, 3) if "pose_cache_vertices" in data.files and data["pose_cache_vertices"].size else None,
         pose_cache_hash=str(data["pose_cache_hash"].item()) if "pose_cache_hash" in data.files else "",
         pose_format=str(data["pose_format"].item()) if "pose_format" in data.files else DEFAULT_POSE_FORMAT,
