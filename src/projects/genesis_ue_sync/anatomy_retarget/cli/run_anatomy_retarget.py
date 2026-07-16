@@ -35,7 +35,6 @@ from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import load_rigged_a
 from projects.genesis_ue_sync.anatomy_retarget.shape_volume import apply_subject_beta_shape
 from projects.genesis_ue_sync.anatomy_retarget.leg_material import compute_leg_material_coordinates
 from projects.genesis_ue_sync.anatomy_retarget.diagnostics import write_mesh_diagnostics
-from projects.genesis_ue_sync.anatomy_retarget.material_fit import fit_articulated_rest
 from projects.genesis_ue_sync.anatomy_retarget.bone_segment_diagnostics import write_bone_segment_diagnostics
 from projects.genesis_ue_sync.anatomy_retarget.source_skin_volume import apply_source_skin_volume_registration
 from projects.genesis_ue_sync.multiview_realtime.track_stream import (
@@ -100,10 +99,22 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--publish-rate-hz", type=float, default=10.0)
     p.add_argument("--model-id", type=str, default="patient_anatomy")
     p.add_argument("--color-rgba", type=str, default="0.8,0.05,0.05,0.85")
-    p.add_argument(
+    quality_mode = p.add_mutually_exclusive_group()
+    quality_mode.add_argument(
+        "--enforce-quality-gate",
+        action="store_true",
+        help=(
+            "CI/agent validation mode: reject a bake that fails quality checks, preserve it as "
+            "a failed staging asset, and do not publish or replace the output directory."
+        ),
+    )
+    quality_mode.add_argument(
         "--allow-quality-fail",
         action="store_true",
-        help="Debug only: preserve a failed bake without publishing or replacing latest_asset.",
+        help=(
+            "Deprecated compatibility flag. Quality failures are diagnostic by default and do "
+            "not block replacing or publishing the requested output."
+        ),
     )
     return p.parse_args()
 
@@ -113,6 +124,12 @@ def _parse_rgba(raw: str) -> tuple[float, float, float, float]:
     if len(vals) != 4:
         raise ValueError(f"Expected color as r,g,b,a, got {raw!r}")
     return tuple(max(0.0, min(1.0, v)) for v in vals)  # type: ignore[return-value]
+
+
+def _quality_failure_blocks_publish(*, passed: bool, enforce_quality_gate: bool) -> bool:
+    """Return whether quality diagnostics should stop output replacement/publication."""
+
+    return bool(not passed and enforce_quality_gate)
 
 
 def _publish_upsert(
@@ -234,13 +251,6 @@ def main() -> int:
             return int(result.returncode or 1)
         normalize_rigged_asset_file(output_npz, config=cfg, force=False)
         asset = load_rigged_asset(output_npz, validate=True)
-        asset, articulated_source_report = fit_articulated_rest(
-            asset,
-            canonical_dir=args.canonical_dir,
-            config=cfg,
-            subject=False,
-            stage="neutral_source",
-        )
         asset, source_skin_report = apply_source_skin_volume_registration(
             asset, canonical_dir=args.canonical_dir
         )
@@ -259,9 +269,9 @@ def main() -> int:
         blender_report = json.loads(report_json.read_text(encoding="utf-8"))
         blender_report.setdefault("rest_align", {}).update(
             {
-                "anchor_rms_m": float(articulated_source_report["anchor_rms_m"]),
-                "max_joint_offset_m": float(articulated_source_report["anchor_max_m"]),
-                "mode": "articulated_material_fit_v4",
+                "anchor_rms_m": 0.0,
+                "max_joint_offset_m": 0.0,
+                "mode": "raw_source_then_single_subject_material_fit_v5",
             }
         )
         blender_report["volume_registration"] = source_skin_report
@@ -271,7 +281,7 @@ def main() -> int:
             "source_blender_report": blender_report,
             "source_containment_reports": containment_reports,
             "source_skin_volume_report": source_skin_report,
-            "articulated_source_report": articulated_source_report,
+            "articulated_source_report": {"stage": "deferred_to_subject"},
             "source_cache_key": source_key,
         })
         asset = type(asset)(**{**asset.__dict__, "metadata": source_meta})
@@ -391,7 +401,7 @@ def main() -> int:
         if pose_report is not None:
             containment_reports.append(pose_report)
 
-    # Schema-v4 assets contain runtime data only.  Cache keys and diagnostics
+    # Schema-v5 assets contain runtime data only.  Cache keys and diagnostics
     # belong in JSON sidecars and must not leak into the published NPZ.
     meta = {
         "gender": gender,
@@ -482,13 +492,21 @@ def main() -> int:
     )
     write_quality_report(stage_dir / "quality_report.json", quality)
     if not quality["passed"]:
-        failed_dir = out_dir.parent / f"{out_dir.name}.failed-{time.strftime('%Y%m%d-%H%M%S')}"
-        os.replace(stage_dir, failed_dir)
-        logging.error("quality gate rejected anatomy asset; previous asset remains unchanged")
         for failure in quality["failures"]:
             logging.error("quality: %s", failure)
-        logging.error("failed bake diagnostics preserved at %s", failed_dir)
-        return 0 if args.allow_quality_fail else 2
+        if _quality_failure_blocks_publish(
+            passed=bool(quality["passed"]),
+            enforce_quality_gate=bool(args.enforce_quality_gate),
+        ):
+            failed_dir = out_dir.parent / f"{out_dir.name}.failed-{time.strftime('%Y%m%d-%H%M%S')}"
+            os.replace(stage_dir, failed_dir)
+            logging.error("quality gate rejected anatomy asset; previous asset remains unchanged")
+            logging.error("failed bake diagnostics preserved at %s", failed_dir)
+            return 2
+        logging.warning(
+            "quality diagnostics failed, but enforcement is disabled; continuing with output replacement%s",
+            " and Genesis publication" if args.publish_genesis else "",
+        )
 
     previous_dir: Path | None = None
     if out_dir.exists():

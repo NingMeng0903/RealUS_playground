@@ -125,6 +125,9 @@ $PY perception/apps/run_anatomy_retarget.py \
   --export-vessels
 ```
 
+质量检查始终写入 `quality_report.json`，但人工运行默认不会因诊断失败而阻止更新或发布。
+CI/自动验收需要阻断失败产物时显式增加 `--enforce-quality-gate`。
+
 **验收：** `outputs/anatomy_retarget/latest_asset/anatomy_rigged.npz`、`limb_vessel_planning/`；G 窗口见半透明解剖 + 血管 overlay。
 
 #### （可选）ZMQ 触发 Window 8

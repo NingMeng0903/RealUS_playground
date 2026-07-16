@@ -520,6 +520,12 @@ def _merge_and_skin_meshes(
     joint_index = {name: idx for idx, name in enumerate(joint_names)}
     source_bone_names = [str(b.name) for b in arm.data.bones]
     source_bone_index = {name: idx for idx, name in enumerate(source_bone_names)}
+    head_bone = source_bone_index.get("Head_Bone")
+    # The authored armature has a two-bone jaw chain, not a bone literally
+    # called ``Jaw_Bone``.  Resolving the base first is essential: otherwise
+    # controller-driven molars and the mandible are silently classified as
+    # Head_Bone material during extraction.
+    jaw_bone = source_bone_index.get("Jaw_Bone_base", source_bone_index.get("Jaw_Bone_tip"))
     rigid_collections = set(str(v) for v in config.get("rigid_collections", []) or [])
     rigid_mesh_to_smplx = {
         str(k): str(v)
@@ -541,6 +547,9 @@ def _merge_and_skin_meshes(
     source_mesh_names: list[str] = []
     source_vertex_ranges: list[tuple[int, int]] = []
     source_tissues: list[str] = []
+    source_mesh_controller_bones: list[int] = []
+    source_mesh_material_groups: list[str] = []
+    source_mesh_roles: list[str] = []
     fallback_groups: dict[str, int] = {}
     inherited_groups: dict[str, int] = {}
     rigid_meshes: list[str] = []
@@ -549,6 +558,45 @@ def _merge_and_skin_meshes(
     source_pose_edge_ratios: list[np.ndarray] = []
     vertex_offset = 0
     rigid_component_counter = 0
+
+    def _is_source_descendant(bone_index: int, ancestor_index: int | None) -> bool:
+        """Return whether a source bone belongs to an authored hierarchy branch."""
+        if ancestor_index is None:
+            return False
+        current = int(bone_index)
+        seen: set[int] = set()
+        while current >= 0 and current not in seen:
+            if current == int(ancestor_index):
+                return True
+            seen.add(current)
+            parent_name = parents_by_bone.get(source_bone_names[current])
+            current = source_bone_index.get(parent_name, -1) if parent_name is not None else -1
+        return False
+
+    def _mesh_semantics(name: str, tissue: str) -> tuple[str, str]:
+        """Stable extraction-time material semantics; never infer these at runtime."""
+        lower = name.lower()
+        if any(token in lower for token in ("jaw", "mandible", "teeth_lower", "lower_teeth")):
+            return "jaw", "jaw_compound"
+        if any(token in lower for token in (
+            "skull", "cranium", "brain", "fornix", "hippocamp", "ventric", "olfactory",
+            "optic_chiasm", "teeth_upper", "upper_teeth",
+        )):
+            return "cranial", "cranial_compound"
+        if "scapula" in lower:
+            return "scapula", "shoulder_girdle"
+        if any(token in lower for token in ("rib", "sternum", "thoracic")):
+            return "thoracic", "thoracic_level"
+        if any(token in lower for token in ("pelvis", "sacrum", "coccyx", "ilium", "ischium", "pubis")):
+            return "pelvis", "pelvis_compound"
+        if any(token in lower for token in (
+            "calcaneus", "talus", "navicular", "cuboid", "cuneiform", "metatarsal",
+            "phalanx_foot", "phalanges_foot", "foot",
+        )):
+            return "foot", "foot_compound"
+        if tissue in {"vessel", "nerve", "organ", "connective_tissue"}:
+            return "soft_tissue", tissue
+        return "skeletal", "authored_mesh"
 
     for obj in meshes:
         source_mesh_names.append(str(obj.name))
@@ -567,6 +615,7 @@ def _merge_and_skin_meshes(
             source_tissues.append("nerve")
         else:
             source_tissues.append("organ")
+        material_group, role = _mesh_semantics(str(obj.name), source_tissues[-1])
         mesh = obj.data
         n = len(mesh.vertices)
         start = vertex_offset
@@ -727,6 +776,23 @@ def _merge_and_skin_meshes(
             rigid_component_counter += 1
         else:
             all_rigid_component_ids.append(np.full(n, -1, dtype=np.int32))
+        controller_mass = np.zeros(len(source_bone_names), dtype=np.float64)
+        for slot in range(source_indices.shape[1]):
+            np.add.at(controller_mass, source_indices[:, slot], source_weights[:, slot])
+        controller_bone = int(np.argmax(controller_mass))
+        # Generic Molar/Canine/Incisor mesh names do not state upper versus
+        # lower.  The authored controller hierarchy does, and is the only
+        # reliable way to decide whether they must share the cranial compound
+        # or remain part of the independent jaw.  Do not apply this semantic
+        # override to soft meshes that merely happen to be head-driven.
+        if source_tissues[-1] == "bone":
+            if _is_source_descendant(controller_bone, jaw_bone):
+                material_group, role = "jaw", "jaw_compound"
+            elif _is_source_descendant(controller_bone, head_bone):
+                material_group, role = "cranial", "cranial_compound"
+        source_mesh_controller_bones.append(controller_bone)
+        source_mesh_material_groups.append(material_group)
+        source_mesh_roles.append(role)
         for poly in mesh.polygons:
             indices = [vertex_offset + int(i) for i in poly.vertices]
             faces.extend(_triangulated_faces(indices))
@@ -748,6 +814,9 @@ def _merge_and_skin_meshes(
             "source_mesh_names": source_mesh_names,
             "source_vertex_ranges": source_vertex_ranges,
             "source_tissues": source_tissues,
+            "source_mesh_controller_bones": source_mesh_controller_bones,
+            "source_mesh_material_groups": source_mesh_material_groups,
+            "source_mesh_roles": source_mesh_roles,
             "fallback_groups": fallback_groups,
             "inherited_groups": inherited_groups,
             "rigid_meshes": rigid_meshes,
@@ -827,11 +896,6 @@ def _align_rest_to_canonical(
     }
 
 
-def _sample_alignment_offset(points: np.ndarray, align: dict[str, np.ndarray]) -> np.ndarray:
-    _ = align
-    return np.zeros_like(np.asarray(points, dtype=np.float64).reshape(-1, 3))
-
-
 def _source_rig_canonical(
     arm: bpy.types.Object,
     *,
@@ -864,6 +928,7 @@ def _source_rig_canonical(
     joint_b = np.zeros(len(bones), dtype=np.int16)
     blend = np.zeros(len(bones), dtype=np.float32)
     driver_types: list[str] = []
+    frame_joints = np.full((len(bones), 3), -1, dtype=np.int16)
 
     _SIDE_LEFT = re.compile(r"(?:^|_)L(?:\d+)?$")
     _SIDE_RIGHT = re.compile(r"(?:^|_)R(?:\d+)?$")
@@ -899,8 +964,7 @@ def _source_rig_canonical(
         return False
 
     def _canonical_point(point: np.ndarray) -> np.ndarray:
-        point_global = np.asarray(point, dtype=np.float64) @ linear.T + translation
-        return point_global + _sample_alignment_offset(point_global.reshape(1, 3), align)[0]
+        return np.asarray(point, dtype=np.float64) @ linear.T + translation
 
     for bi, bone in enumerate(bones):
         name = str(bone.name)
@@ -1026,6 +1090,30 @@ def _source_rig_canonical(
         bone_tail[bi] = _canonical_point(
             np.asarray([pb.tail.x, pb.tail.y, pb.tail.z], dtype=np.float64)
         )
+        # Persist every frame dependency.  Runtime deliberately has no
+        # child-joint fallback: an exporter must make the frame choice here.
+        frame_joints[bi, 0] = joint_a[bi]
+        frame_joints[bi, 1] = joint_b[bi]
+        side = _bone_side(name, lower)
+        if ("scapula" in lower or "clavicle" in lower) and side is not None:
+            frame_joints[bi] = np.asarray(
+                (joint_index["spine3"], joint_index[f"{side}_collar"], joint_index[f"{side}_shoulder"]),
+                dtype=np.int16,
+            )
+            # The primary source driver remains shoulder for backward-compatible
+            # LBS lookup while the explicit three-point frame controls it.
+            joint_a[bi] = frame_joints[bi, 0]
+        elif "pelvis" in lower:
+            frame_joints[bi] = np.asarray(
+                (joint_index["pelvis"], joint_index["left_hip"], joint_index["right_hip"]), dtype=np.int16
+            )
+            joint_a[bi] = frame_joints[bi, 0]
+        elif name == "Head_Bone":
+            frame_joints[bi] = np.asarray(
+                (joint_index["head"], joint_index.get("left_eye", joint_index["head"]), joint_index.get("right_eye", joint_index["head"])),
+                dtype=np.int16,
+            )
+            joint_a[bi] = frame_joints[bi, 0]
         driver_types.append(driver_type)
 
     rest_local = rest_global.copy()
@@ -1045,6 +1133,7 @@ def _source_rig_canonical(
         "source_bone_smplx_b": joint_b,
         "source_bone_blend": blend,
         "source_bone_driver_types": driver_types,
+        "source_bone_frame_joints": frame_joints,
     }
 
 
@@ -1108,7 +1197,7 @@ def main() -> None:
             direct_bone_to_joint=direct, parents_by_bone=parents_by_bone, deform=deform,
         )
         skin_global = raw_skin @ align_context["linear"].T + align_context["translation"]
-        skin_vertices = (skin_global + _sample_alignment_offset(skin_global, align_context)).astype(np.float32)
+        skin_vertices = skin_global.astype(np.float32)
     rest_align.update(pose_diag)
     source_rig = _source_rig_canonical(
         arm,
@@ -1160,6 +1249,9 @@ def main() -> None:
         source_mesh_names=np.asarray(diag["source_mesh_names"], dtype=object),
         source_vertex_ranges=np.asarray(diag["source_vertex_ranges"], dtype=np.int32),
         source_tissues=np.asarray(diag["source_tissues"], dtype=object),
+        source_mesh_controller_bones=np.asarray(diag["source_mesh_controller_bones"], dtype=np.int16),
+        source_mesh_material_groups=np.asarray(diag["source_mesh_material_groups"], dtype=object),
+        source_mesh_roles=np.asarray(diag["source_mesh_roles"], dtype=object),
         driver_indices=np.asarray(diag["source_driver_indices"], dtype=np.int16),
         driver_weights=np.asarray(diag["source_driver_weights"], dtype=np.float32),
         rigid_component_ids=np.asarray(diag["rigid_component_ids"], dtype=np.int32),
@@ -1172,12 +1264,13 @@ def main() -> None:
         source_bone_smplx_b=np.asarray(source_rig["source_bone_smplx_b"], dtype=np.int16),
         source_bone_blend=np.asarray(source_rig["source_bone_blend"], dtype=np.float32),
         source_bone_driver_types=np.asarray(source_rig["source_bone_driver_types"], dtype=object),
+        source_bone_frame_joints=np.asarray(source_rig["source_bone_frame_joints"], dtype=np.int16),
         registration_reference=registration_reference,
         source_skin_vertices=skin_vertices,
         source_skin_faces=np.asarray(skin_faces, dtype=np.int32),
         posed_vertices=np.zeros((0, 3), dtype=np.float32),
         pose_hash=np.asarray("", dtype=object),
-        schema_version=np.asarray(4, dtype=np.int32),
+        schema_version=np.asarray(5, dtype=np.int32),
         pose_format=np.asarray("smplx_body55_axis_angle", dtype=object),
         coordinate_system=np.asarray("genesis_z_up_m", dtype=object),
         metadata=np.asarray({"mapping": str(args.mapping), "driver_index_space": "blender_source_bones"}, dtype=object),

@@ -1,4 +1,4 @@
-"""Linear blend skinning for retargeted anatomy assets."""
+"""Skin retargeted anatomy assets with rigid LBS bones and soft-tissue DQS for organs."""
 
 from __future__ import annotations
 
@@ -11,7 +11,178 @@ from .pose_adapter import pose_to_smplx55_axis_angle
 from .rigged_asset import AnatomyRiggedAsset
 
 
-_CUDA_ASSET_CACHE: dict[int, tuple[Any, Any, Any]] = {}
+_CUDA_ASSET_CACHE: dict[int, tuple[Any, Any, Any, Any]] = {}
+
+
+def _soft_tissue_vertex_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
+    """Return the vertices that may use dual-quaternion blending.
+
+    Bone meshes intentionally retain matrix LBS: most of them have a single
+    controlling bone and this preserves their authored rigid vertices exactly.
+    The per-mesh tissue labels are optional in older in-memory assets, so a
+    missing or malformed labelling deliberately falls back to LBS everywhere.
+    """
+    ranges = asset.source_vertex_ranges
+    tissues = asset.source_tissues
+    count = int(np.asarray(asset.vertices_rest).shape[0])
+    if ranges is None or tissues is None:
+        return np.zeros(count, dtype=bool)
+    ranges = np.asarray(ranges, dtype=np.int64).reshape(-1, 2)
+    if ranges.shape[0] != len(tissues):
+        return np.zeros(count, dtype=bool)
+    mask = np.zeros(count, dtype=bool)
+    for (start, end), tissue in zip(ranges.tolist(), tissues):
+        # Only labels exported by the extraction pipeline are trusted.  This
+        # keeps unknown legacy assets on their historical LBS result.
+        # Vessels and nerves deliberately stay on the authored LBS path.  The
+        # former DQS-only path did not fix their real issue (rest-frame drift)
+        # and visibly twisted long hand/foot branches relative to the Blender
+        # reference.  DQS remains useful for compact organs.
+        if str(tissue).strip().lower() not in {"organ", "connective_tissue"}:
+            continue
+        lo = max(0, int(start))
+        hi = min(count, int(end))
+        if hi > lo:
+            mask[lo:hi] = True
+    return mask
+
+
+def _matrix_quaternions_numpy(transforms: np.ndarray) -> np.ndarray:
+    """Convert proper rotation matrices to scalar-first unit quaternions."""
+    matrices = np.asarray(transforms, dtype=np.float64).reshape(-1, 4, 4)[:, :3, :3]
+    out = np.empty((matrices.shape[0], 4), dtype=np.float64)
+    for index, matrix in enumerate(matrices):
+        trace = float(np.trace(matrix))
+        if trace > 0.0:
+            scale = 2.0 * np.sqrt(trace + 1.0)
+            out[index] = (0.25 * scale, (matrix[2, 1] - matrix[1, 2]) / scale,
+                          (matrix[0, 2] - matrix[2, 0]) / scale, (matrix[1, 0] - matrix[0, 1]) / scale)
+            continue
+        diagonal = np.diag(matrix)
+        axis = int(np.argmax(diagonal))
+        if axis == 0:
+            scale = 2.0 * np.sqrt(max(1.0 + matrix[0, 0] - matrix[1, 1] - matrix[2, 2], 1.0e-16))
+            out[index] = ((matrix[2, 1] - matrix[1, 2]) / scale, 0.25 * scale,
+                          (matrix[0, 1] + matrix[1, 0]) / scale, (matrix[0, 2] + matrix[2, 0]) / scale)
+        elif axis == 1:
+            scale = 2.0 * np.sqrt(max(1.0 + matrix[1, 1] - matrix[0, 0] - matrix[2, 2], 1.0e-16))
+            out[index] = ((matrix[0, 2] - matrix[2, 0]) / scale, (matrix[0, 1] + matrix[1, 0]) / scale,
+                          0.25 * scale, (matrix[1, 2] + matrix[2, 1]) / scale)
+        else:
+            scale = 2.0 * np.sqrt(max(1.0 + matrix[2, 2] - matrix[0, 0] - matrix[1, 1], 1.0e-16))
+            out[index] = ((matrix[1, 0] - matrix[0, 1]) / scale, (matrix[0, 2] + matrix[2, 0]) / scale,
+                          (matrix[1, 2] + matrix[2, 1]) / scale, 0.25 * scale)
+    out /= np.maximum(np.linalg.norm(out, axis=1, keepdims=True), 1.0e-12)
+    return out
+
+
+def _dual_quaternion_skin_numpy(
+    vertices: np.ndarray,
+    indices: np.ndarray,
+    weights: np.ndarray,
+    transforms: np.ndarray,
+) -> np.ndarray:
+    """Skin points with sign-consistent dual-quaternion blending."""
+    qr = _matrix_quaternions_numpy(transforms)
+    translation = np.asarray(transforms, dtype=np.float64)[:, :3, 3]
+    qd = 0.5 * np.concatenate(
+        (-np.sum(translation * qr[:, 1:], axis=1, keepdims=True),
+         qr[:, :1] * translation + np.cross(translation, qr[:, 1:])), axis=1
+    )
+    count = int(np.asarray(vertices).reshape(-1, 3).shape[0])
+    selected_indices = np.asarray(indices, dtype=np.int64).reshape(count, -1)
+    selected_r = qr[selected_indices]
+    selected_d = qd[selected_indices]
+    selected_w = np.asarray(weights, dtype=np.float64).reshape(count, -1)
+    reference = selected_r[np.arange(selected_r.shape[0]), np.argmax(selected_w, axis=1)]
+    signs = np.where(np.sum(selected_r * reference[:, None], axis=2, keepdims=True) < 0.0, -1.0, 1.0)
+    real = np.sum(selected_r * selected_w[..., None] * signs, axis=1)
+    dual = np.sum(selected_d * selected_w[..., None] * signs, axis=1)
+    norm = np.maximum(np.linalg.norm(real, axis=1, keepdims=True), 1.0e-12)
+    real /= norm
+    dual /= norm
+    vector = real[:, 1:]
+    points = np.asarray(vertices, dtype=np.float64)
+    twice_cross = 2.0 * np.cross(vector, points)
+    rotated = points + real[:, :1] * twice_cross + np.cross(vector, twice_cross)
+    offset = 2.0 * (
+        real[:, :1] * dual[:, 1:]
+        - dual[:, :1] * vector
+        + np.cross(vector, dual[:, 1:])
+    )
+    return (rotated + offset).astype(np.float32)
+
+
+def _matrix_quaternions_torch(transforms: Any) -> Any:
+    """Torch equivalent of :func:`_matrix_quaternions_numpy`."""
+    import torch
+
+    matrix = transforms[:, :3, :3]
+    count = matrix.shape[0]
+    out = torch.empty((count, 4), dtype=matrix.dtype, device=matrix.device)
+    trace = matrix[:, 0, 0] + matrix[:, 1, 1] + matrix[:, 2, 2]
+    positive = trace > 0.0
+    if torch.any(positive):
+        scale = 2.0 * torch.sqrt(torch.clamp(trace[positive] + 1.0, min=1.0e-16))
+        m = matrix[positive]
+        out[positive] = torch.stack((0.25 * scale, (m[:, 2, 1] - m[:, 1, 2]) / scale,
+                                     (m[:, 0, 2] - m[:, 2, 0]) / scale,
+                                     (m[:, 1, 0] - m[:, 0, 1]) / scale), dim=1)
+    diagonal = torch.stack((matrix[:, 0, 0], matrix[:, 1, 1], matrix[:, 2, 2]), dim=1)
+    axis = torch.argmax(diagonal, dim=1)
+    for choice in range(3):
+        mask = (~positive) & (axis == choice)
+        if not torch.any(mask):
+            continue
+        m = matrix[mask]
+        if choice == 0:
+            scale = 2.0 * torch.sqrt(torch.clamp(1.0 + m[:, 0, 0] - m[:, 1, 1] - m[:, 2, 2], min=1.0e-16))
+            values = ( (m[:, 2, 1] - m[:, 1, 2]) / scale, 0.25 * scale,
+                       (m[:, 0, 1] + m[:, 1, 0]) / scale, (m[:, 0, 2] + m[:, 2, 0]) / scale )
+        elif choice == 1:
+            scale = 2.0 * torch.sqrt(torch.clamp(1.0 + m[:, 1, 1] - m[:, 0, 0] - m[:, 2, 2], min=1.0e-16))
+            values = ( (m[:, 0, 2] - m[:, 2, 0]) / scale, (m[:, 0, 1] + m[:, 1, 0]) / scale,
+                       0.25 * scale, (m[:, 1, 2] + m[:, 2, 1]) / scale )
+        else:
+            scale = 2.0 * torch.sqrt(torch.clamp(1.0 + m[:, 2, 2] - m[:, 0, 0] - m[:, 1, 1], min=1.0e-16))
+            values = ( (m[:, 1, 0] - m[:, 0, 1]) / scale, (m[:, 0, 2] + m[:, 2, 0]) / scale,
+                       (m[:, 1, 2] + m[:, 2, 1]) / scale, 0.25 * scale )
+        out[mask] = torch.stack(values, dim=1)
+    return out / torch.clamp(torch.linalg.vector_norm(out, dim=1, keepdim=True), min=1.0e-12)
+
+
+def _dual_quaternion_skin_torch(
+    vertices: Any,
+    indices: Any,
+    weights: Any,
+    transforms: Any,
+) -> Any:
+    import torch
+
+    real_bones = _matrix_quaternions_torch(transforms)
+    translation = transforms[:, :3, 3]
+    dual_bones = 0.5 * torch.cat(
+        (-torch.sum(translation * real_bones[:, 1:], dim=1, keepdim=True),
+         real_bones[:, :1] * translation + torch.linalg.cross(translation, real_bones[:, 1:])), dim=1
+    )
+    real = real_bones[indices]
+    dual = dual_bones[indices]
+    reference = real[torch.arange(real.shape[0], device=real.device), torch.argmax(weights, dim=1)]
+    signs = torch.where(torch.sum(real * reference[:, None], dim=2, keepdim=True) < 0.0, -1.0, 1.0)
+    blended_real = torch.sum(real * weights[..., None] * signs, dim=1)
+    blended_dual = torch.sum(dual * weights[..., None] * signs, dim=1)
+    norm = torch.clamp(torch.linalg.vector_norm(blended_real, dim=1, keepdim=True), min=1.0e-12)
+    blended_real = blended_real / norm
+    blended_dual = blended_dual / norm
+    vector = blended_real[:, 1:]
+    twice_cross = 2.0 * torch.linalg.cross(vector, vertices)
+    rotated = vertices + blended_real[:, :1] * twice_cross + torch.linalg.cross(vector, twice_cross)
+    offset = 2.0 * (
+        blended_real[:, :1] * blended_dual[:, 1:]
+        - blended_dual[:, :1] * vector
+        + torch.linalg.cross(vector, blended_dual[:, 1:])
+    )
+    return rotated + offset
 
 
 def _dense_asset_weights(asset: AnatomyRiggedAsset) -> np.ndarray:
@@ -57,15 +228,21 @@ def _skin_vertices_cuda(
         vertices_t = torch.as_tensor(asset.vertices_rest, dtype=torch.float32, device="cuda")
         indices_t = torch.as_tensor(indices, dtype=torch.long, device="cuda")
         weights_t = torch.as_tensor(weights, dtype=torch.float32, device="cuda")
-        cached = (vertices_t, indices_t, weights_t)
+        soft_mask_t = torch.as_tensor(_soft_tissue_vertex_mask(asset), dtype=torch.bool, device="cuda")
+        cached = (vertices_t, indices_t, weights_t, soft_mask_t)
         _CUDA_ASSET_CACHE[key] = cached
-    vertices_t, indices_t, weights_t = cached
+    vertices_t, indices_t, weights_t, soft_mask_t = cached
     tf = torch.as_tensor(transforms, dtype=torch.float32, device="cuda")
     selected = tf[indices_t]
     blended = torch.sum(selected * weights_t[..., None, None], dim=1)
     ones = torch.ones((vertices_t.shape[0], 1), dtype=torch.float32, device="cuda")
     homo = torch.cat((vertices_t, ones), dim=1)
     posed = torch.bmm(blended, homo.unsqueeze(-1))[:, :3, 0]
+    # DQS reduces candy-wrapper collapse in compact organs; vessels and nerves
+    # stay on authored matrix LBS.
+    if bool(torch.any(soft_mask_t)):
+        dqs = _dual_quaternion_skin_torch(vertices_t, indices_t, weights_t, tf)
+        posed = torch.where(soft_mask_t[:, None], dqs, posed)
     if transl is not None:
         posed = posed + torch.as_tensor(transl, dtype=torch.float32, device="cuda").reshape(1, 3)
     return posed.detach().cpu().numpy().astype(np.float32, copy=False)
@@ -156,6 +333,30 @@ def _segment_frame(origin: np.ndarray, endpoint: np.ndarray, reference_x: np.nda
     return out
 
 
+def _three_joint_frame(points: np.ndarray, joints: np.ndarray, reference_x: np.ndarray) -> np.ndarray:
+    """Frame from the three explicit V5 driver joints.
+
+    This is used for shoulder girdles, pelvis and head drivers.  It avoids the
+    old implicit ``first child`` rule, which made a pelvis point at one hip and
+    made a scapula inherit a humerus rotation.
+    """
+    ids = np.asarray(joints, dtype=np.int64)
+    origin = np.asarray(points[int(ids[0])], dtype=np.float64)
+    primary = np.asarray(points[int(ids[1])] - origin, dtype=np.float64)
+    plane = np.asarray(points[int(ids[2])] - origin, dtype=np.float64)
+    primary /= max(float(np.linalg.norm(primary)), 1.0e-10)
+    normal = np.cross(primary, plane)
+    if float(np.linalg.norm(normal)) < 1.0e-8:
+        return _segment_frame(origin, origin + primary, reference_x)
+    normal /= float(np.linalg.norm(normal))
+    transverse = np.cross(normal, primary)
+    transverse /= max(float(np.linalg.norm(transverse)), 1.0e-10)
+    out = np.eye(4, dtype=np.float64)
+    out[:3, :3] = np.stack((primary, transverse, normal), axis=1)
+    out[:3, 3] = origin
+    return out
+
+
 def _endpoint_segment_delta(
     *,
     rest_a: np.ndarray,
@@ -224,6 +425,9 @@ def source_bone_skinning_transforms(
     rest_local_bones = _source_rest_local(asset)
     posed_global = np.empty_like(rest_global_bones)
     source_parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    frame_joints = getattr(asset, "source_bone_frame_joints", None)
+    if frame_joints is not None:
+        frame_joints = np.asarray(frame_joints, dtype=np.int64)
     for bi, mode in enumerate(modes):
         parent = int(source_parents[bi])
         if mode == "bind_follow" and parent >= 0:
@@ -233,7 +437,17 @@ def source_bone_skinning_transforms(
         a = int(asset.source_bone_smplx_a[bi])
         b = int(asset.source_bone_smplx_b[bi])
         alpha = float(asset.source_bone_blend[bi])
-        if mode in {"segment_root", "rigid_group"} and a != b:
+        explicit_frame = (
+            frame_joints is not None
+            and frame_joints.shape == (len(modes), 3)
+            and np.all(frame_joints[bi] >= 0)
+            and len(np.unique(frame_joints[bi])) == 3
+        )
+        if explicit_frame:
+            rest_frame = _three_joint_frame(rest_points, frame_joints[bi], rest_global_bones[bi, :3, 0])
+            pose_frame = _three_joint_frame(pose_points, frame_joints[bi], rest_global_bones[bi, :3, 0])
+            delta = pose_frame @ np.linalg.inv(rest_frame)
+        elif mode in {"segment_root", "rigid_group"} and a != b:
             delta = _endpoint_segment_delta(
                 rest_a=rest_points[a],
                 rest_b=rest_points[b],
@@ -301,12 +515,25 @@ def skin_vertices(
     if asset.driver_indices is not None and asset.driver_weights is not None:
         selected = transforms[np.asarray(asset.driver_indices, dtype=np.int64)]
         blended = np.sum(selected * np.asarray(asset.driver_weights, dtype=np.float32)[..., None, None], axis=1)
+        dqs_indices = np.asarray(asset.driver_indices, dtype=np.int64)
+        dqs_weights = np.asarray(asset.driver_weights, dtype=np.float32)
     else:
         weights = _dense_asset_weights(asset)
         joint_count = min(transforms.shape[0], weights.shape[1])
         blended = np.matmul(weights[:, :joint_count], transforms[:joint_count].reshape(joint_count, 16)).reshape(-1, 4, 4)
+        from .rigged_asset import sparse_driver_weights
+
+        dqs_indices, dqs_weights = sparse_driver_weights(weights[:, :joint_count])
     homo = np.concatenate([vertices, np.ones((vertices.shape[0], 1), dtype=np.float32)], axis=1)
     posed = np.matmul(blended, homo[:, :, None])[:, :3, 0].astype(np.float32)
+    soft_mask = _soft_tissue_vertex_mask(asset)
+    if np.any(soft_mask):
+        posed[soft_mask] = _dual_quaternion_skin_numpy(
+            vertices[soft_mask],
+            dqs_indices[soft_mask],
+            dqs_weights[soft_mask],
+            transforms,
+        )
     if transl is not None:
         posed += np.asarray(transl, dtype=np.float32).reshape(1, 3)
     return posed

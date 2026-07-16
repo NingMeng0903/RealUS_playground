@@ -46,6 +46,9 @@ def _chain_asset() -> AnatomyRiggedAsset:
         source_mesh_names=["Upper", "Lower", "Palm", "Finger"],
         source_vertex_ranges=np.asarray(((0, 1), (1, 2), (2, 3), (3, 4)), dtype=np.int32),
         source_tissues=["bone"] * 4,
+        source_mesh_controller_bones=np.asarray((0, 1, 2, 3), dtype=np.int32),
+        source_mesh_material_groups=["skeletal"] * 4,
+        source_mesh_roles=["authored_mesh"] * 4,
         driver_indices=np.arange(4, dtype=np.int16)[:, None],
         driver_weights=np.ones((4, 1), dtype=np.float32),
         source_bone_names=["Upper", "Lower", "Palm", "Finger"],
@@ -59,19 +62,22 @@ def _chain_asset() -> AnatomyRiggedAsset:
         source_bone_smplx_b=np.asarray((1, 2, 2, 3), dtype=np.int32),
         source_bone_blend=np.zeros(4, dtype=np.float32),
         source_bone_driver_types=["segment_root", "segment_root", "joint_local", "joint_local"],
+        source_bone_frame_joints=np.asarray(((0, 1, -1), (1, 2, -1), (2, 2, -1), (3, 3, -1)), dtype=np.int32),
     )
 
 
-def test_schema_v4_roundtrip_reconstructs_global_bind(tmp_path: Path) -> None:
+def test_schema_v5_roundtrip_reconstructs_global_bind(tmp_path: Path) -> None:
     asset = _chain_asset()
     path = save_rigged_asset(tmp_path / "asset.npz", asset)
     with np.load(path, allow_pickle=True) as payload:
-        assert int(payload["schema_version"]) == 4
+        assert int(payload["schema_version"]) == 5
         assert "source_rest_global" not in payload.files
         assert "source_inverse_bind" not in payload.files
         assert "source_bone_head_local" in payload.files
         assert "posed_vertices" in payload.files
         assert "pose_cache_vertices" not in payload.files
+        assert "source_mesh_controller_bones" in payload.files
+        assert "source_bone_frame_joints" in payload.files
     loaded = load_rigged_asset(path)
     np.testing.assert_allclose(loaded.source_rest_global, asset.source_rest_global, atol=1.0e-7)
     np.testing.assert_allclose(loaded.source_inverse_bind, asset.source_inverse_bind, atol=1.0e-7)
@@ -81,7 +87,7 @@ def test_schema_v4_roundtrip_reconstructs_global_bind(tmp_path: Path) -> None:
 def test_schema_v3_is_rejected(tmp_path: Path) -> None:
     path = tmp_path / "legacy.npz"
     np.savez(path, schema_version=np.asarray(3, dtype=np.int32))
-    with pytest.raises(ValueError, match="schema 4"):
+    with pytest.raises(ValueError, match="schema 5"):
         load_rigged_asset(path)
 
 

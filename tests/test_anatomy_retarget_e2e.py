@@ -23,7 +23,7 @@ MOTION = ROOT / "smplx_outputs/20260713_213712/moment_0000/smplx_result.npz"
     os.environ.get("RUN_ANATOMY_E2E") != "1",
     reason="set RUN_ANATOMY_E2E=1 for the real Blender/SMPL-X/GPU bake",
 )
-def test_real_blend_to_schema_v4_quality_gate(tmp_path: Path) -> None:
+def test_real_blend_to_schema_v5_enforced_quality_gate(tmp_path: Path) -> None:
     assert BLEND.is_file()
     assert MOTION.is_file()
     env = dict(os.environ)
@@ -47,6 +47,7 @@ def test_real_blend_to_schema_v4_quality_gate(tmp_path: Path) -> None:
         "--motion-npz",
         str(MOTION),
         "--force-source-rebake",
+        "--enforce-quality-gate",
     ]
     completed = subprocess.run(command, cwd=ROOT, env=env, timeout=900, check=False)
     assert completed.returncode == 0

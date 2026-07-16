@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +11,7 @@ import numpy as np
 
 DEFAULT_POSE_FORMAT = "smplx_body55_axis_angle"
 DEFAULT_COORDINATE_SYSTEM = "genesis_z_up_m"
-ANATOMY_ASSET_SCHEMA_VERSION = 4
+ANATOMY_ASSET_SCHEMA_VERSION = 5
 SOURCE_DRIVER_MODES: tuple[str, ...] = (
     "joint_local",
     "segment_root",
@@ -71,6 +71,12 @@ class AnatomyRiggedAsset:
     source_mesh_names: list[str]
     source_vertex_ranges: np.ndarray | None = None
     source_tissues: list[str] | None = None
+    # V5 makes mesh material semantics explicit.  These are per
+    # ``source_mesh_names`` entry, not per vertex: consumers must never infer a
+    # controller from an arbitrary vertex or from an object name at runtime.
+    source_mesh_controller_bones: np.ndarray | None = None
+    source_mesh_material_groups: list[str] | None = None
+    source_mesh_roles: list[str] | None = None
     driver_indices: np.ndarray | None = None
     driver_weights: np.ndarray | None = None
     source_bone_names: list[str] | None = None
@@ -84,6 +90,10 @@ class AnatomyRiggedAsset:
     source_bone_smplx_b: np.ndarray | None = None
     source_bone_blend: np.ndarray | None = None
     source_bone_driver_types: list[str] | None = None
+    # Up to three explicit SMPL-X joints used to construct a source-bone
+    # driver frame.  ``-1`` is padding; column zero is always the primary
+    # driver and agrees with source_bone_smplx_a.
+    source_bone_frame_joints: np.ndarray | None = None
     rigid_component_ids: np.ndarray | None = None
     leg_material_coordinates: np.ndarray | None = None
     registration_reference: np.ndarray | None = None
@@ -138,6 +148,28 @@ class AnatomyRiggedAsset:
             raise ValueError("vertices_rest contains non-finite values")
         if self.registration_reference is not None and np.asarray(self.registration_reference).shape != vertices.shape:
             raise ValueError("registration_reference must match vertices_rest")
+        mesh_count = len(self.source_mesh_names)
+        if self.source_vertex_ranges is None or np.asarray(self.source_vertex_ranges).shape != (mesh_count, 2):
+            raise ValueError("source_vertex_ranges must have one [start, stop] range per source mesh")
+        ranges = np.asarray(self.source_vertex_ranges, dtype=np.int64)
+        if np.any(ranges[:, 0] < 0) or np.any(ranges[:, 1] < ranges[:, 0]) or (mesh_count and int(ranges[-1, 1]) != len(vertices)):
+            raise ValueError("source_vertex_ranges must be ordered and cover vertices_rest")
+        mesh_semantics = {
+            "source_mesh_controller_bones": self.source_mesh_controller_bones,
+            "source_mesh_material_groups": self.source_mesh_material_groups,
+            "source_mesh_roles": self.source_mesh_roles,
+        }
+        for name, value in mesh_semantics.items():
+            if value is None or len(value) != mesh_count:
+                raise ValueError(f"{name} must have one entry per source mesh")
+        controllers = np.asarray(self.source_mesh_controller_bones, dtype=np.int32).reshape(-1)
+        source_count_for_mesh = len(self.source_bone_names or [])
+        if controllers.size and (int(controllers.min()) < 0 or int(controllers.max()) >= source_count_for_mesh):
+            raise ValueError("source_mesh_controller_bones contains an invalid source bone")
+        if any(not str(value) for value in (self.source_mesh_material_groups or [])):
+            raise ValueError("source_mesh_material_groups may not contain empty values")
+        if any(not str(value) for value in (self.source_mesh_roles or [])):
+            raise ValueError("source_mesh_roles may not contain empty values")
         if self.source_skin_vertices is not None:
             skin_v = np.asarray(self.source_skin_vertices)
             skin_f = np.asarray(self.source_skin_faces)
@@ -181,6 +213,17 @@ class AnatomyRiggedAsset:
             unknown_modes = sorted(set(self.source_bone_driver_types) - set(SOURCE_DRIVER_MODES))
             if unknown_modes:
                 raise ValueError(f"unknown source driver mode(s): {unknown_modes}")
+            if self.source_bone_frame_joints is None:
+                raise ValueError("schema v5 requires explicit source_bone_frame_joints")
+            frame_joints = np.asarray(self.source_bone_frame_joints, dtype=np.int32)
+            if frame_joints.shape != (bone_count, 3):
+                raise ValueError("source_bone_frame_joints must be [source_bone_count, 3]")
+            if np.any(frame_joints < -1) or np.any(frame_joints >= joint_count):
+                raise ValueError("source_bone_frame_joints contains an invalid SMPL-X joint")
+            if np.any(frame_joints[:, 0] < 0):
+                raise ValueError("source_bone_frame_joints requires a primary joint in column zero")
+            if not np.array_equal(frame_joints[:, 0], np.asarray(self.source_bone_smplx_a, dtype=np.int32)):
+                raise ValueError("source_bone_frame_joints[:, 0] must match source_bone_smplx_a")
             source_parents = np.asarray(self.source_bone_parents, dtype=np.int32)
             for idx, parent in enumerate(source_parents.tolist()):
                 if parent >= idx or parent < -1:
@@ -221,10 +264,52 @@ class AnatomyRiggedAsset:
                     raise ValueError("source bone head/tail contains a zero-length bone")
 
 
+def _v5_semantic_defaults(asset: AnatomyRiggedAsset) -> AnatomyRiggedAsset:
+    """Materialize explicit V5 semantics for programmatically built assets.
+
+    Blender extraction always supplies these fields.  This narrow fallback
+    keeps small unit fixtures usable while ensuring the serialized V5 asset
+    never relies on runtime inference.
+    """
+    mesh_count = len(asset.source_mesh_names)
+    if asset.source_bone_names is None:
+        return asset
+    frame = asset.source_bone_frame_joints
+    if frame is None and asset.source_bone_smplx_a is not None and asset.source_bone_smplx_b is not None:
+        frame = np.full((len(asset.source_bone_names), 3), -1, dtype=np.int16)
+        frame[:, 0] = np.asarray(asset.source_bone_smplx_a, dtype=np.int16)
+        frame[:, 1] = np.asarray(asset.source_bone_smplx_b, dtype=np.int16)
+    controllers = asset.source_mesh_controller_bones
+    if controllers is None and asset.source_vertex_ranges is not None and asset.driver_indices is not None and asset.driver_weights is not None:
+        controllers = np.empty(mesh_count, dtype=np.int16)
+        for mi, (start, stop) in enumerate(np.asarray(asset.source_vertex_ranges, dtype=np.int64)):
+            indices = np.asarray(asset.driver_indices[start:stop], dtype=np.int64)
+            weights = np.asarray(asset.driver_weights[start:stop], dtype=np.float64)
+            mass = np.zeros(len(asset.source_bone_names), dtype=np.float64)
+            if indices.size:
+                np.add.at(mass, indices.reshape(-1), weights.reshape(-1))
+            controllers[mi] = int(np.argmax(mass))
+    tissues = list(asset.source_tissues or [])
+    groups = asset.source_mesh_material_groups
+    if groups is None and len(tissues) == mesh_count:
+        groups = ["soft_tissue" if tissue in {"vessel", "nerve", "organ", "connective_tissue"} else "skeletal" for tissue in tissues]
+    roles = asset.source_mesh_roles
+    if roles is None:
+        roles = ["authored_mesh"] * mesh_count
+    return replace(
+        asset,
+        source_bone_frame_joints=frame,
+        source_mesh_controller_bones=controllers,
+        source_mesh_material_groups=groups,
+        source_mesh_roles=roles,
+    )
+
+
 def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
+    asset = _v5_semantic_defaults(asset)
     asset.validate()
     if asset.source_bone_names is None:
-        raise ValueError("schema v4 requires a complete source rig")
+        raise ValueError("schema v5 requires a complete source rig")
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
     if asset.driver_indices is None or asset.driver_weights is None:
@@ -246,6 +331,9 @@ def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
             asset.source_vertex_ranges if asset.source_vertex_ranges is not None else [], dtype=np.int32
         ).reshape(-1, 2),
         source_tissues=np.asarray(asset.source_tissues or [], dtype=object),
+        source_mesh_controller_bones=np.asarray(asset.source_mesh_controller_bones, dtype=np.int16),
+        source_mesh_material_groups=np.asarray(asset.source_mesh_material_groups, dtype=object),
+        source_mesh_roles=np.asarray(asset.source_mesh_roles, dtype=object),
         driver_indices=np.asarray(driver_indices, dtype=np.int16),
         driver_weights=np.asarray(driver_weights, dtype=np.float32),
         pose_format=np.asarray(str(asset.pose_format), dtype=object),
@@ -254,7 +342,7 @@ def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
     )
     if asset.source_bone_names is not None:
         if asset.source_rest_local is None:
-            raise ValueError("schema v4 requires source_rest_local")
+            raise ValueError("schema v5 requires source_rest_local")
         source_global = source_global_from_local(asset.source_rest_local, asset.source_bone_parents)
         head_local = _points_to_bone_local(asset.source_bone_head, source_global)
         tail_local = _points_to_bone_local(asset.source_bone_tail, source_global)
@@ -268,6 +356,7 @@ def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
             source_bone_smplx_b=np.asarray(asset.source_bone_smplx_b, dtype=np.int16),
             source_bone_blend=np.asarray(asset.source_bone_blend, dtype=np.float32),
             source_bone_driver_types=np.asarray(asset.source_bone_driver_types, dtype=object),
+            source_bone_frame_joints=np.asarray(asset.source_bone_frame_joints, dtype=np.int16),
             rigid_component_ids=np.asarray(
                 asset.rigid_component_ids if asset.rigid_component_ids is not None else [], dtype=np.int32
             ),
@@ -329,11 +418,12 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
         "driver_indices", "driver_weights", "source_bone_names", "source_bone_parents",
         "source_rest_local", "source_bone_head_local", "source_bone_tail_local",
         "source_bone_smplx_a", "source_bone_smplx_b", "source_bone_blend",
-        "source_bone_driver_types",
+        "source_bone_driver_types", "source_bone_frame_joints",
+        "source_mesh_controller_bones", "source_mesh_material_groups", "source_mesh_roles",
     }
     missing = sorted(required - set(data.files))
     if missing:
-        raise ValueError(f"{path} is missing schema-v4 fields: {missing}")
+        raise ValueError(f"{path} is missing schema-v5 fields: {missing}")
     driver_indices = np.asarray(data["driver_indices"], dtype=np.int16)
     driver_weights = np.asarray(data["driver_weights"], dtype=np.float32)
     source_parents = (
@@ -375,6 +465,9 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
             if "source_tissues" in data.files and data["source_tissues"].size
             else None
         ),
+        source_mesh_controller_bones=np.asarray(data["source_mesh_controller_bones"], dtype=np.int32),
+        source_mesh_material_groups=[str(v) for v in _string_array(data["source_mesh_material_groups"]).tolist()],
+        source_mesh_roles=[str(v) for v in _string_array(data["source_mesh_roles"]).tolist()],
         driver_indices=driver_indices,
         driver_weights=driver_weights,
         source_bone_names=(
@@ -396,6 +489,7 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
             if "source_bone_driver_types" in data.files
             else None
         ),
+        source_bone_frame_joints=np.asarray(data["source_bone_frame_joints"], dtype=np.int32),
         rigid_component_ids=np.asarray(data["rigid_component_ids"], dtype=np.int32) if "rigid_component_ids" in data.files else None,
         leg_material_coordinates=np.asarray(data["leg_material_coordinates"], dtype=np.float32).reshape(-1, 3) if "leg_material_coordinates" in data.files and data["leg_material_coordinates"].size else None,
         registration_reference=np.asarray(data["registration_reference"], dtype=np.float32).reshape(-1, 3) if "registration_reference" in data.files and data["registration_reference"].size else None,

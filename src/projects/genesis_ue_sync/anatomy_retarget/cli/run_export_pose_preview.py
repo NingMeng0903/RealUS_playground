@@ -55,6 +55,11 @@ def _regional_vertices(asset, vertices: np.ndarray, region: str) -> np.ndarray:
             include = any(token in lower for token in ("skull", "brain", "cerebr", "cerebell", "lobe", "amygdala", "thalam"))
         elif region == "pelvis":
             include = str(tissue) == "bone" and any(token in lower for token in ("ilium", "sacrum", "ischium", "pubis", "pelvis"))
+        elif region == "thorax":
+            include = str(tissue) == "bone" and any(
+                token in lower
+                for token in ("rib_", "sternum", "scapula", "clavicle", "cervical", "thoracic")
+            )
         elif region in {"left_hand", "right_hand"}:
             include = side == region.split("_", 1)[0] and str(tissue) == "bone" and any(
                 token in lower for token in ("metacarpal", "phalanx_hand", "phalanges_hand")
@@ -213,7 +218,7 @@ def main() -> int:
             leg_bones_posed=bone_posed,
         )
         for region in (
-            "head", "pelvis", "left_arm_hand", "right_arm_hand", "left_hand",
+            "head", "pelvis", "thorax", "left_arm_hand", "right_arm_hand", "left_hand",
             "right_hand", "left_foot", "right_foot",
         ):
             rest_region = _regional_vertices(asset, asset.vertices_rest, region)
@@ -247,6 +252,7 @@ def main() -> int:
         "preview_overlay_with_leg_bones.png",
         "overlay_head.png",
         "overlay_pelvis.png",
+        "overlay_thorax.png",
         "overlay_left_hand.png",
         "overlay_right_hand.png",
         "overlay_left_foot.png",

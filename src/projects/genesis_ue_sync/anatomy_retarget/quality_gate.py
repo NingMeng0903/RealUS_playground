@@ -29,6 +29,15 @@ DEFAULT_LIMITS: dict[str, float] = {
     "long_bone_end_edge_change": 0.02,
     "foot_subtree_gap_m": 0.005,
     "digit_rigid_offset_m": 0.002,
+    # Soft-tissue meshes have to be judged independently.  A handful of
+    # badly sheared vessel triangles used to disappear in the global mesh
+    # percentile, even though they are conspicuous in the arm preview.
+    "soft_edge_ratio_p999": 1.10,
+    "soft_edge_growth_max_m": 0.001,
+    "foot_reach_min_ratio": 0.90,
+    "foot_reach_max_ratio": 0.97,
+    "cranial_shared_transform_rms_m": 1.0e-6,
+    "upper_teeth_skull_distance_drift_m": 0.001,
 }
 
 
@@ -109,7 +118,15 @@ def _brain_skull_metrics(asset: AnatomyRiggedAsset) -> dict[str, float | int]:
 
     skull_chunks: list[np.ndarray] = []
     brain_chunks: list[np.ndarray] = []
-    brain_tokens = ("brain", "cerebr", "cerebell", "amygdala", "basal_ganglia", "corpus_callosum", "lobe", "thalam")
+    # Keep this deliberately broader than the visible lobe meshes.  The
+    # previous list missed deep-brain meshes (fornix/hippocampus/ventricles),
+    # so a visibly displaced brain could still pass the publication gate.
+    brain_tokens = (
+        "brain", "cerebr", "cerebell", "amygdala", "basal_ganglia",
+        "corpus_callosum", "lobe", "thalam", "hypothalam", "midbrain",
+        "pons", "medulla", "fornix", "hippocamp", "ventric", "pituitar",
+        "pineal", "olfactory", "optic_chiasm", "chiasm",
+    )
     for name, (start, stop) in zip(asset.source_mesh_names, asset.source_vertex_ranges):
         lower = str(name).lower()
         points = np.asarray(asset.vertices_rest[int(start) : int(stop)], dtype=np.float64)
@@ -151,6 +168,173 @@ def _brain_skull_metrics(asset: AnatomyRiggedAsset) -> dict[str, float | int]:
         "inside_fraction": float(np.mean(outside <= 1.0e-6)),
         "max_outside_m": float(max(0.0, float(np.max(outside)))),
     }
+
+
+def _mesh_edges(asset: AnatomyRiggedAsset, start: int, stop: int) -> np.ndarray:
+    """Return mesh-local triangles as global unique-undirected edges."""
+    faces = np.asarray(asset.faces, dtype=np.int64)
+    selected = faces[np.all((faces >= int(start)) & (faces < int(stop)), axis=1)]
+    if not len(selected):
+        return np.empty((0, 2), dtype=np.int64)
+    edges = np.concatenate((selected[:, [0, 1]], selected[:, [1, 2]], selected[:, [2, 0]]), axis=0)
+    edges.sort(axis=1)
+    return np.unique(edges, axis=0)
+
+
+def _soft_mesh_pose_stretch(asset: AnatomyRiggedAsset) -> dict[str, dict[str, float | int]]:
+    """Per-mesh pose deformation diagnostics for vessels, nerves and organs."""
+    if asset.pose_cache_vertices is None:
+        return {}
+    rest = np.asarray(asset.vertices_rest, dtype=np.float64)
+    posed = np.asarray(asset.pose_cache_vertices, dtype=np.float64)
+    result: dict[str, dict[str, float | int]] = {}
+    for name, (start, stop), tissue in zip(asset.source_mesh_names, asset.source_vertex_ranges, asset.source_tissues):
+        if str(tissue) not in {"vessel", "nerve", "organ"}:
+            continue
+        edges = _mesh_edges(asset, int(start), int(stop))
+        if not len(edges):
+            continue
+        before = np.linalg.norm(rest[edges[:, 0]] - rest[edges[:, 1]], axis=1)
+        after = np.linalg.norm(posed[edges[:, 0]] - posed[edges[:, 1]], axis=1)
+        valid = before > 2.0e-4
+        if not np.any(valid):
+            continue
+        ratio = after[valid] / before[valid]
+        result[str(name)] = {
+            "tissue": str(tissue),
+            "edge_count": int(np.count_nonzero(valid)),
+            "ratio_p999": float(np.quantile(ratio, 0.999)),
+            "ratio_max": float(np.max(ratio)),
+            "max_growth_m": float(np.max(after - before)),
+        }
+    return result
+
+
+def _similarity(source: np.ndarray, target: np.ndarray) -> tuple[np.ndarray, float, np.ndarray]:
+    """Return the least-squares proper similarity mapping ``source`` to target."""
+    src = np.asarray(source, dtype=np.float64)
+    dst = np.asarray(target, dtype=np.float64)
+    src_center, dst_center = np.mean(src, axis=0), np.mean(dst, axis=0)
+    a, b = src - src_center, dst - dst_center
+    u, singular, vt = np.linalg.svd(a.T @ b)
+    rotation = u @ vt
+    if np.linalg.det(rotation) < 0.0:
+        u[:, -1] *= -1.0
+        rotation = u @ vt
+    scale = float(np.sum(singular) / max(float(np.sum(a * a)), 1.0e-12))
+    translation = dst_center - scale * (src_center @ rotation)
+    return rotation, scale, translation
+
+
+def _cranial_compound_metrics(asset: AnatomyRiggedAsset) -> dict[str, Any]:
+    """Verify head compound membership and the upper-teeth/skull transform.
+
+    Mesh names are retained for reporting, while source-rig hierarchy is used
+    when available: any mesh fully controlled by Head_Bone descendants but not
+    Jaw_Bone descendants belongs to the cranial compound.  This catches names
+    such as Fornix and Upper_Teeth without maintaining a fragile whitelist.
+    """
+    source = asset.registration_reference
+    if source is None:
+        return {"available": False, "member_meshes": [], "upper_teeth_meshes": []}
+    source = np.asarray(source, dtype=np.float64)
+    final = np.asarray(asset.vertices_rest, dtype=np.float64)
+    bone_names = [str(name).lower() for name in (asset.source_bone_names or [])]
+    head_index = next((i for i, name in enumerate(bone_names) if name in {"head_bone", "head"}), None)
+    jaw_index = next((i for i, name in enumerate(bone_names) if name in {"jaw_bone", "jaw"}), None)
+    descendants: set[int] = set()
+    jaw_descendants: set[int] = set()
+    if head_index is not None and asset.source_bone_parents is not None:
+        parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+        for index in range(len(parents)):
+            ancestry: set[int] = set()
+            cursor = index
+            while cursor >= 0 and cursor not in ancestry:
+                ancestry.add(cursor)
+                cursor = int(parents[cursor])
+            if head_index in ancestry:
+                descendants.add(index)
+            if jaw_index is not None and jaw_index in ancestry:
+                jaw_descendants.add(index)
+    skull_ranges: list[tuple[int, int]] = []
+    member_ranges: list[tuple[str, int, int]] = []
+    teeth_ranges: list[tuple[str, int, int]] = []
+    for mesh_index, (name, vertex_range) in enumerate(zip(asset.source_mesh_names, asset.source_vertex_ranges)):
+        start, stop = map(int, vertex_range)
+        lower = str(name).lower()
+        is_head_member = not bool(descendants)
+        if descendants and asset.driver_indices is not None and asset.driver_weights is not None:
+            ids = np.asarray(asset.driver_indices[start:stop], dtype=np.int64)
+            weights = np.asarray(asset.driver_weights[start:stop], dtype=np.float64)
+            active = set(ids[weights > 1.0e-5].tolist())
+            is_head_member = bool(active) and active.issubset(descendants) and not bool(active & jaw_descendants)
+        is_upper_teeth = (
+            ("upper" in lower and ("tooth" in lower or "teeth" in lower))
+            or any(token in lower for token in ("molar", "premolar", "incisor", "canine"))
+        ) and is_head_member
+        is_skull = "skull" in lower or "cranium" in lower
+        is_member = is_skull or any(token in lower for token in (
+            "brain", "cerebr", "cerebell", "amygdala", "fornix", "hippocamp", "ventric",
+            "thalam", "hypothalam", "midbrain", "pons", "medulla", "pituitar", "pineal",
+            "olfactory", "optic_chiasm", "chiasm",
+        )) or is_upper_teeth
+        if descendants:
+            is_member = is_member or is_head_member
+        if is_skull:
+            skull_ranges.append((start, stop))
+        if is_member:
+            member_ranges.append((str(name), start, stop))
+        if is_upper_teeth:
+            teeth_ranges.append((str(name), start, stop))
+    if not skull_ranges:
+        return {"available": False, "member_meshes": [name for name, *_ in member_ranges], "upper_teeth_meshes": [name for name, *_ in teeth_ranges]}
+    skull_idx = np.concatenate([np.arange(start, stop) for start, stop in skull_ranges])
+    rotation, scale, translation = _similarity(source[skull_idx], final[skull_idx])
+    def residual(start: int, stop: int) -> np.ndarray:
+        predicted = scale * (source[start:stop] @ rotation) + translation
+        return np.linalg.norm(final[start:stop] - predicted, axis=1)
+    member_errors = [residual(start, stop) for _name, start, stop in member_ranges]
+    teeth_errors = [residual(start, stop) for _name, start, stop in teeth_ranges]
+    errors = np.concatenate(member_errors) if member_errors else np.zeros(0)
+    teeth = np.concatenate(teeth_errors) if teeth_errors else np.zeros(0)
+    return {
+        "available": True,
+        "member_meshes": [name for name, *_ in member_ranges],
+        "upper_teeth_meshes": [name for name, *_ in teeth_ranges],
+        "member_count": len(member_ranges),
+        "shared_transform_rms_m": float(np.sqrt(np.mean(errors * errors))) if len(errors) else float("inf"),
+        "upper_teeth_skull_distance_drift_m": float(np.sqrt(np.mean(teeth * teeth))) if len(teeth) else float("inf"),
+    }
+
+
+def _foot_reach_metrics(asset: AnatomyRiggedAsset, canonical_dir: Path) -> dict[str, dict[str, float]]:
+    """Measure complete foot-bone reach against the final SMPL-X foot surface."""
+    surface, _faces = _subject_surface(canonical_dir)
+    names = list(asset.joint_names)
+    result: dict[str, dict[str, float]] = {}
+    foot_tokens = ("calcaneus", "talus", "navicular", "cuboid", "cuneiform", "metatarsal", "phalanx_foot", "phalanges_foot")
+    for side in ("left", "right"):
+        ankle_name, foot_name = f"{side}_ankle", f"{side}_foot"
+        if ankle_name not in names or foot_name not in names:
+            continue
+        ankle = np.asarray(asset.rest_joints[names.index(ankle_name)], dtype=np.float64)
+        forward = np.asarray(asset.rest_joints[names.index(foot_name)], dtype=np.float64) - ankle
+        forward /= max(float(np.linalg.norm(forward)), 1.0e-8)
+        chunks: list[np.ndarray] = []
+        suffix = "_l" if side == "left" else "_r"
+        for name, (start, stop), tissue in zip(asset.source_mesh_names, asset.source_vertex_ranges, asset.source_tissues):
+            lower = str(name).lower()
+            if str(tissue) == "bone" and any(token in lower for token in foot_tokens) and (lower.endswith(suffix) or f"{suffix}_" in lower):
+                chunks.append(np.asarray(asset.vertices_rest[int(start):int(stop)], dtype=np.float64))
+        if not chunks:
+            continue
+        # A local cylinder around ankle->foot avoids taking a leg or opposite
+        # foot point when the person is lying down.
+        local = surface[np.linalg.norm(np.cross(surface - ankle, forward), axis=1) < 0.16]
+        target = float(np.quantile((local - ankle) @ forward, 0.995)) if len(local) else 0.0
+        reach = float(np.quantile((np.concatenate(chunks) - ankle) @ forward, 0.995))
+        result[side] = {"bone_reach_m": reach, "skin_reach_m": target, "reach_ratio": reach / max(target, 1.0e-8)}
+    return result
 
 
 def _bone_pose_edge_stretch(asset: AnatomyRiggedAsset) -> dict[str, float]:
@@ -226,6 +410,9 @@ def evaluate_asset_quality(
     regions = _region_containment(asset, signed)
     brain_skull = _brain_skull_metrics(asset)
     bone_pose_stretch = _bone_pose_edge_stretch(asset)
+    soft_pose_stretch = _soft_mesh_pose_stretch(asset)
+    cranial_compound = _cranial_compound_metrics(asset)
+    foot_reach = _foot_reach_metrics(asset, Path(canonical_dir))
 
     failures: list[str] = []
     volume_report = dict(source_report.get("volume_registration", {}) or {})
@@ -299,6 +486,25 @@ def evaluate_asset_quality(
             f"brain inside skull {float(brain_skull['inside_fraction']) * 100.0:.2f}% is below "
             f"{thresholds['brain_inside_skull_fraction'] * 100.0:.2f}%"
         )
+    if not bool(cranial_compound.get("available", False)):
+        failures.append("cranial compound membership/skull reference is unavailable")
+    else:
+        shared_rms = float(cranial_compound["shared_transform_rms_m"])
+        if shared_rms > thresholds["cranial_shared_transform_rms_m"]:
+            failures.append(
+                f"cranial compound shared-transform RMS {shared_rms * 1000.0:.3f} mm exceeds "
+                f"{thresholds['cranial_shared_transform_rms_m'] * 1000.0:.3f} mm"
+            )
+        upper_teeth = list(cranial_compound.get("upper_teeth_meshes", []))
+        if not upper_teeth:
+            failures.append("cranial compound is missing an Upper_Teeth mesh")
+        else:
+            drift = float(cranial_compound["upper_teeth_skull_distance_drift_m"])
+            if drift > thresholds["upper_teeth_skull_distance_drift_m"]:
+                failures.append(
+                    f"upper-teeth/skull transform drift {drift * 1000.0:.3f} mm exceeds "
+                    f"{thresholds['upper_teeth_skull_distance_drift_m'] * 1000.0:.3f} mm"
+                )
     material_report = dict(source_report.get("material_shape") or {})
     for group in ("cranial", "pelvis"):
         change = float(material_report.get(f"{group}_aspect_ratio_change", float("inf")))
@@ -319,6 +525,29 @@ def evaluate_asset_quality(
         )
         if gap > thresholds["foot_subtree_gap_m"]:
             failures.append(f"{side} midfoot/forefoot gap {gap * 1000.0:.2f} mm exceeds {thresholds['foot_subtree_gap_m'] * 1000.0:.2f} mm")
+    for side in ("left", "right"):
+        metrics = foot_reach.get(side)
+        if metrics is None:
+            failures.append(f"{side} foot reach could not be measured")
+            continue
+        ratio = float(metrics["reach_ratio"])
+        if not thresholds["foot_reach_min_ratio"] <= ratio <= thresholds["foot_reach_max_ratio"]:
+            failures.append(
+                f"{side} foot bone reach {ratio * 100.0:.1f}% is outside "
+                f"[{thresholds['foot_reach_min_ratio'] * 100.0:.1f}, {thresholds['foot_reach_max_ratio'] * 100.0:.1f}]% of SMPL-X foot"
+            )
+    for mesh, metrics in soft_pose_stretch.items():
+        p999 = float(metrics["ratio_p999"])
+        growth = float(metrics["max_growth_m"])
+        if p999 > thresholds["soft_edge_ratio_p999"]:
+            failures.append(
+                f"{mesh} soft edge p99.9 ratio {p999:.3f} exceeds {thresholds['soft_edge_ratio_p999']:.3f}"
+            )
+        if growth > thresholds["soft_edge_growth_max_m"]:
+            failures.append(
+                f"{mesh} soft edge growth {growth * 1000.0:.2f} mm exceeds "
+                f"{thresholds['soft_edge_growth_max_m'] * 1000.0:.2f} mm"
+            )
     pose_report = dict(source_report.get("pose_cache_report") or {})
     pose_over_limit = dict(pose_report.get("over_limit_count") or {})
     if any(int(value) > 0 for value in pose_over_limit.values()):
@@ -349,12 +578,15 @@ def evaluate_asset_quality(
         "anchors": {"rms_m": anchor_rms, "max_m": anchor_max},
         "edge_stretch": stretch,
         "bone_pose_edge_stretch": bone_pose_stretch,
+        "soft_mesh_pose_stretch": soft_pose_stretch,
         "volume_registration": volume_report,
         "bone_chains": bone_chain_report,
         "containment_backend": "libigl_exact_signed_distance",
         "containment": containment,
         "regional_containment": regions,
         "brain_skull": brain_skull,
+        "cranial_compound": cranial_compound,
+        "foot_reach": foot_reach,
         "material_shape": material_report,
     }
 
