@@ -284,12 +284,10 @@ def _joint_chain_diagnostic(
     axis_error = max((float(item["axis_error_deg"]) for item in axes if item.get("available")), default=float("inf"))
 
     connected = False
-    use_connect = getattr(asset, "source_bone_use_connect", None)
     parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
-    if len(selected_indices) == 2 and use_connect is not None:
-        connected_flags = np.asarray(use_connect, dtype=np.uint8)
+    if len(selected_indices) == 2:
         proximal, distal = selected_indices
-        connected = bool(parents[distal] == proximal and connected_flags[distal])
+        connected = bool(parents[distal] == proximal and rest_gap <= 1.0e-5)
 
     passed = bool(
         np.isfinite(anchor_error)

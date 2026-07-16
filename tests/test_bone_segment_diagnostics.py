@@ -22,7 +22,6 @@ def test_joint_diagnostic_measures_shared_anchor_not_only_rigidity() -> None:
         rest_joints=np.asarray(((0, 0, 0), (0, 1, 0), (0, 2, 0)), dtype=np.float64),
         source_bone_names=["Upper", "Lower"],
         source_bone_parents=np.asarray((-1, 0), dtype=np.int64),
-        source_bone_use_connect=np.asarray((0, 1), dtype=np.uint8),
     )
     heads = np.asarray(((0, 0, 0), (0, 1, 0)), dtype=np.float64)
     tails = np.asarray(((0, 1, 0), (0, 2, 0)), dtype=np.float64)
@@ -100,4 +99,3 @@ def test_head_orientation_compares_runtime_motion_to_smplx_global_motion() -> No
     )
     assert result["pass"]
     assert result["orientation_error_deg"] < 1.0e-8
-

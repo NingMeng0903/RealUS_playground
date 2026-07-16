@@ -30,6 +30,7 @@ from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import load_rigged_asset
 from projects.genesis_ue_sync.anatomy_retarget.viz_overlay import (
     draw_preview_overlay,
+    draw_regional_preview_overlay,
     sparse_leg_bone_vertices,
 )
 
@@ -40,6 +41,43 @@ DEFAULT_OUTPUT = Path("outputs/anatomy_retarget/preview")
 LEG_BONE_VIZ_MESHES = frozenset(
     {"Femur_L", "Femur_R", "Tibia_L", "Tibia_R", "Fibula_L", "Fibula_R", "Patella_L", "Patella_R"}
 )
+
+
+def _regional_vertices(asset, vertices: np.ndarray, region: str) -> np.ndarray:
+    indices: list[np.ndarray] = []
+    for name, (start, stop), tissue in zip(
+        asset.source_mesh_names, asset.source_vertex_ranges, asset.source_tissues
+    ):
+        lower = str(name).lower()
+        side = "left" if lower.endswith("_l") else "right" if lower.endswith("_r") else ""
+        include = False
+        if region == "head":
+            include = any(token in lower for token in ("skull", "brain", "cerebr", "cerebell", "lobe", "amygdala", "thalam"))
+        elif region == "pelvis":
+            include = str(tissue) == "bone" and any(token in lower for token in ("ilium", "sacrum", "ischium", "pubis", "pelvis"))
+        elif region in {"left_hand", "right_hand"}:
+            include = side == region.split("_", 1)[0] and str(tissue) == "bone" and any(
+                token in lower for token in ("metacarpal", "phalanx_hand", "phalanges_hand")
+            )
+        elif region in {"left_arm_hand", "right_arm_hand"}:
+            include = side == region.split("_", 1)[0] and str(tissue) == "bone" and any(
+                token in lower
+                for token in (
+                    "humerus", "radius", "ulna", "scaphoid", "lunate", "triquetrum",
+                    "pisiform", "trapezium", "trapezoid", "capitate", "hamate",
+                    "metacarpal", "phalanx_hand", "phalanges_hand",
+                )
+            )
+        elif region in {"left_foot", "right_foot"}:
+            include = side == region.split("_", 1)[0] and str(tissue) == "bone" and any(
+                token in lower
+                for token in ("calcaneus", "talus", "navicular", "cuboid", "cuneiform", "metatarsal", "phalanx_foot", "phalanges_foot")
+            )
+        if include:
+            indices.append(np.arange(int(start), int(stop), dtype=np.int64))
+    if not indices:
+        return np.zeros((0, 3), dtype=np.float32)
+    return np.asarray(vertices, dtype=np.float32)[np.concatenate(indices)]
 
 
 def _load_root_align_offset(motion_npz: Path, data: "np.lib.npyio.NpzFile") -> np.ndarray:
@@ -174,6 +212,22 @@ def main() -> int:
             leg_bones_tpose=bone_tpose,
             leg_bones_posed=bone_posed,
         )
+        for region in (
+            "head", "pelvis", "left_arm_hand", "right_arm_hand", "left_hand",
+            "right_hand", "left_foot", "right_foot",
+        ):
+            rest_region = _regional_vertices(asset, asset.vertices_rest, region)
+            posed_region = _regional_vertices(asset, posed, region)
+            if not len(rest_region):
+                continue
+            draw_regional_preview_overlay(
+                out / f"overlay_{region}.png",
+                title=region.replace("_", " ").title(),
+                smpl_tpose=smpl_tpose_vertices,
+                anatomy_tpose=rest_region,
+                smpl_posed=fit_vertices + extra,
+                anatomy_posed=posed_region,
+            )
         report["leg_bone_marker_points"] = {
             "tpose": int(bone_tpose.shape[0]),
             "posed": int(bone_posed.shape[0]),
@@ -191,6 +245,14 @@ def main() -> int:
         "smpl_drive_check.obj",
         "preview_overlay.png",
         "preview_overlay_with_leg_bones.png",
+        "overlay_head.png",
+        "overlay_pelvis.png",
+        "overlay_left_hand.png",
+        "overlay_right_hand.png",
+        "overlay_left_foot.png",
+        "overlay_right_foot.png",
+        "overlay_left_arm_hand.png",
+        "overlay_right_arm_hand.png",
     ):
         if (out / name).is_file():
             print(f"  {out / name}")

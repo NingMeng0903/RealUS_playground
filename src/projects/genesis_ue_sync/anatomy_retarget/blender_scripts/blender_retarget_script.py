@@ -349,15 +349,9 @@ _POSE_CHAIN: list[tuple[str, str]] = [
     ("left_collar", "left_shoulder"),
     ("left_shoulder", "left_elbow"),
     ("left_elbow", "left_wrist"),
-    ("left_wrist", "left_index1"),
-    ("left_index1", "left_index2"),
-    ("left_index2", "left_index3"),
     ("right_collar", "right_shoulder"),
     ("right_shoulder", "right_elbow"),
     ("right_elbow", "right_wrist"),
-    ("right_wrist", "right_index1"),
-    ("right_index1", "right_index2"),
-    ("right_index2", "right_index3"),
     ("left_hip", "left_knee"),
     ("left_knee", "left_ankle"),
     ("left_ankle", "left_foot"),
@@ -779,11 +773,13 @@ def _align_rest_to_canonical(
     arm: bpy.types.Object,
     primary: dict[int, str],
 ) -> tuple[np.ndarray, dict[str, Any], dict[str, np.ndarray]]:
-    """Posed (T-pose) anatomy -> canonical frame.
+    """Place the authored T-pose in the canonical metric frame.
 
-    Global similarity Procrustes on the POSED primary anchors, then a
-    translation-only per-joint refinement blended through the collapsed weights
-    (continuous: no rotation mixing, so no tearing).
+    This extraction stage intentionally performs *only* a global similarity.
+    Articulated bone fitting and the soft-tissue volume solve happen later with
+    explicit material semantics.  The former whole-body RBF moved skull,
+    pelvis, finger and toe vertices independently and permanently destroyed
+    their authored shape before any rigid-preservation stage could run.
     """
     rest_joints = np.asarray(canonical["rest_joints"], dtype=np.float32).reshape(-1, 3)
     parents = np.asarray(canonical["parents"], dtype=np.int32).reshape(-1)
@@ -812,39 +808,10 @@ def _align_rest_to_canonical(
         if not is_mapped[j]:
             offsets[j] = offsets[_nearest_mapped_ancestor(j)]
 
-    anchor_positions = a_glob.astype(np.float32)
-    anchor_offsets = np.stack([offsets[j] for j in mapped]).astype(np.float32)
-    pair_distance = np.linalg.norm(
-        anchor_positions[:, None, :] - anchor_positions[None, :, :], axis=2
-    ).astype(np.float64)
-    polynomial = np.column_stack((np.ones(len(anchor_positions)), anchor_positions)).astype(np.float64)
-    rbf_system = np.block(
-        [
-            [pair_distance + 5.0e-3 * np.eye(len(anchor_positions)), polynomial],
-            [polynomial.T, np.zeros((4, 4), dtype=np.float64)],
-        ]
-    )
-    rbf_rhs = np.vstack((anchor_offsets.astype(np.float64), np.zeros((4, 3), dtype=np.float64)))
-    rbf_solution = np.linalg.solve(rbf_system, rbf_rhs)
-    rbf_coefficients = rbf_solution[: len(anchor_positions)]
-    rbf_affine = rbf_solution[len(anchor_positions) :]
-    fitted_anchor_offsets = pair_distance @ rbf_coefficients + polynomial @ rbf_affine
-    anchor_residual = fitted_anchor_offsets - anchor_offsets
-
-    def _continuous_offset_field(points: np.ndarray) -> np.ndarray:
-        output = np.empty_like(points, dtype=np.float32)
-        for start in range(0, len(points), 50000):
-            stop = min(len(points), start + 50000)
-            query = points[start:stop].astype(np.float64)
-            radial = np.linalg.norm(query[:, None, :] - anchor_positions[None, :, :], axis=2)
-            affine = np.column_stack((np.ones(len(query)), query))
-            output[start:stop] = (radial @ rbf_coefficients + affine @ rbf_affine).astype(np.float32)
-        return output
-
     verts = np.asarray(vertices, dtype=np.float32) @ G.T + tg
-    verts = verts + _continuous_offset_field(verts)
+    anchor_residual = a_glob - rest_joints[mapped]
     diag = {
-        "mode": "fk_pose_global_procrustes",
+        "mode": "fk_pose_global_similarity_only",
         "scale": float(scale),
         "initial_anchor_rms_m": rms,
         "anchor_rms_m": float(np.sqrt(np.mean(np.sum(anchor_residual**2, axis=1)))),
@@ -857,21 +824,12 @@ def _align_rest_to_canonical(
         "rotation": Rg.astype(np.float32),
         "translation": tg.astype(np.float32),
         "joint_offsets": offsets.astype(np.float32),
-        "anchor_positions": anchor_positions,
-        "anchor_offsets": anchor_offsets,
-        "rbf_coefficients": rbf_coefficients.astype(np.float32),
-        "rbf_affine": rbf_affine.astype(np.float32),
     }
 
 
 def _sample_alignment_offset(points: np.ndarray, align: dict[str, np.ndarray]) -> np.ndarray:
-    anchors = np.asarray(align["anchor_positions"], dtype=np.float64)
-    coefficients = np.asarray(align["rbf_coefficients"], dtype=np.float64)
-    affine_coefficients = np.asarray(align["rbf_affine"], dtype=np.float64)
-    query = np.asarray(points, dtype=np.float64).reshape(-1, 3)
-    radial = np.linalg.norm(query[:, None, :] - anchors[None, :, :], axis=2)
-    polynomial = np.column_stack((np.ones(len(query)), query))
-    return radial @ coefficients + polynomial @ affine_coefficients
+    _ = align
+    return np.zeros_like(np.asarray(points, dtype=np.float64).reshape(-1, 3))
 
 
 def _source_rig_canonical(
@@ -902,19 +860,6 @@ def _source_rig_canonical(
     rest_global = np.tile(np.eye(4, dtype=np.float64), (len(bones), 1, 1))
     bone_head = np.zeros((len(bones), 3), dtype=np.float64)
     bone_tail = np.zeros((len(bones), 3), dtype=np.float64)
-    bone_roll = np.zeros(len(bones), dtype=np.float64)
-    bone_use_connect = np.asarray([bool(b.use_connect) for b in bones], dtype=np.uint8)
-    inherit_scale_codes = {
-        "FULL": 0,
-        "FIX_SHEAR": 1,
-        "AVERAGE": 2,
-        "NONE": 3,
-        "NONE_LEGACY": 4,
-        "ALIGNED": 5,
-    }
-    bone_inherit_scale = np.asarray(
-        [inherit_scale_codes[str(b.inherit_scale)] for b in bones], dtype=np.uint8
-    )
     joint_a = np.zeros(len(bones), dtype=np.int16)
     joint_b = np.zeros(len(bones), dtype=np.int16)
     blend = np.zeros(len(bones), dtype=np.float32)
@@ -957,29 +902,6 @@ def _source_rig_canonical(
         point_global = np.asarray(point, dtype=np.float64) @ linear.T + translation
         return point_global + _sample_alignment_offset(point_global.reshape(1, 3), align)[0]
 
-    def _roll_about_axis(rotation: np.ndarray, head: np.ndarray, tail: np.ndarray) -> float:
-        """Encode bind roll relative to a deterministic transverse reference.
-
-        Blender's data Bone exposes the complete roll through ``matrix_local``
-        rather than as a scalar.  The matrix is already retained in the bind
-        frame; this scalar is a compact diagnostic/reconstruction aid.
-        """
-        axis = np.asarray(tail - head, dtype=np.float64)
-        axis /= max(float(np.linalg.norm(axis)), 1.0e-12)
-        candidates = np.eye(3, dtype=np.float64)
-        reference = candidates[int(np.argmin(np.abs(candidates @ axis)))]
-        reference -= axis * float(np.dot(reference, axis))
-        reference /= max(float(np.linalg.norm(reference)), 1.0e-12)
-        transverse = np.asarray(rotation[:, 0], dtype=np.float64)
-        transverse -= axis * float(np.dot(transverse, axis))
-        transverse /= max(float(np.linalg.norm(transverse)), 1.0e-12)
-        return float(
-            math.atan2(
-                float(np.dot(np.cross(reference, transverse), axis)),
-                float(np.dot(reference, transverse)),
-            )
-        )
-
     for bi, bone in enumerate(bones):
         name = str(bone.name)
         mapped, inherited = _resolve_group_joint(
@@ -988,49 +910,63 @@ def _source_rig_canonical(
         mapped = int(mapped)
         joint_a[bi] = mapped
         joint_b[bi] = mapped
-        driver_type = "parent_follow" if inherited else "direct_joint"
+        driver_type = "bind_follow" if inherited else "joint_local"
+
+        # A source rig often has two deform bones for one anatomical joint
+        # (rotate control + rigid follower).  Only the first direct mapping is
+        # allowed to consume that SMPL-X rotation; later bones retain their
+        # authored bind-local relation.
+        if not inherited:
+            ancestor = parents_by_bone.get(name)
+            while ancestor is not None and ancestor not in direct:
+                ancestor = parents_by_bone.get(ancestor)
+            if ancestor is not None and int(direct[ancestor]) == mapped:
+                driver_type = "bind_follow"
 
         lower = name.lower()
         if "scapula" in lower:
-            driver_type = "scapula_left" if lower.endswith("_l") else "scapula_right"
+            driver_type = "rigid_group"
         elif "clavicle_rot" in lower:
             side = _bone_side(name, lower)
             if side is not None:
                 joint_a[bi] = joint_index["spine3"]
                 joint_b[bi] = joint_index[f"{side}_collar"]
-                driver_type = f"clavicle_segment_{side}"
+                driver_type = "segment_root"
         elif "shoulder_rotate" in lower:
             side = _bone_side(name, lower)
             if side is not None:
                 joint_a[bi] = joint_index[f"{side}_shoulder"]
                 joint_b[bi] = joint_index[f"{side}_elbow"]
-                driver_type = f"humerus_segment_{side}"
+                driver_type = "segment_root"
         elif "knee_rotate" in lower:
             side = _bone_side(name, lower)
             if side is not None:
-                joint_a[bi] = joint_index[f"{side}_hip"]
-                joint_b[bi] = joint_index[f"{side}_knee"]
-                blend[bi] = 0.55
-                driver_type = f"knee_chain_{side}"
+                joint_a[bi] = joint_index[f"{side}_knee"]
+                joint_b[bi] = joint_index[f"{side}_ankle"]
+                driver_type = "segment_root"
         elif _is_foot_chain_bone(lower) or "toes_rotate" in lower:
             side = _bone_side(name, lower)
             if side is not None:
                 joint_a[bi] = joint_index[f"{side}_ankle"]
                 joint_b[bi] = joint_index[f"{side}_foot"]
-                blend[bi] = 0.40 if "ankle_rot" in lower else 0.65
-                driver_type = f"foot_chain_{side}"
+                if "ankle_rot" in lower:
+                    driver_type = "rigid_group"
+                elif "arch_rot" in lower:
+                    joint_a[bi] = joint_index[f"{side}_foot"]
+                    joint_b[bi] = joint_index[f"{side}_foot"]
+                    driver_type = "joint_local"
+                else:
+                    driver_type = "bind_follow"
         elif "patella" in lower or "fibula" in lower:
             side = "left" if lower.endswith("_l") else "right"
             joint_a[bi] = joint_index[f"{side}_knee"]
             joint_b[bi] = joint_index[f"{side}_ankle"]
-            blend[bi] = 0.45 if "patella" in lower else 0.35
-            driver_type = f"knee_chain_{side}"
+            driver_type = "rigid_group" if "patella" in lower else "bind_follow"
         elif "femur_rot" in lower or name.startswith("Femur_Rot_"):
             side = "left" if lower.endswith("_l") else "right"
             joint_a[bi] = joint_index[f"{side}_hip"]
             joint_b[bi] = joint_index[f"{side}_knee"]
-            blend[bi] = 0.35
-            driver_type = f"knee_chain_{side}"
+            driver_type = "segment_root"
         elif "elbow_rot" in lower:
             # Share the elbow→wrist segment with Forearm_Bone so the elbow
             # anchor does not drift from the forearm driver under asymmetric
@@ -1038,34 +974,39 @@ def _source_rig_canonical(
             side = "left" if lower.endswith("_l") else "right"
             joint_a[bi] = joint_index[f"{side}_elbow"]
             joint_b[bi] = joint_index[f"{side}_wrist"]
-            blend[bi] = 0.0
-            driver_type = f"forearm_proximal_{side}"
+            driver_type = "segment_root"
         elif "forearm_bone" in lower or "forearm_twist" in lower:
             side = "left" if lower.endswith("_l") else "right"
             joint_a[bi] = joint_index[f"{side}_elbow"]
             joint_b[bi] = joint_index[f"{side}_wrist"]
-            blend[bi] = 0.35 if "bone" in lower else 0.78
-            driver_type = f"forearm_segment_{side}"
+            blend[bi] = 0.78
+            driver_type = "twist" if "twist" in lower else "segment_root"
         elif "tibia_bone" in lower or "tibia_twist" in lower:
             side = "left" if lower.endswith("_l") else "right"
             joint_a[bi] = joint_index[f"{side}_knee"]
             joint_b[bi] = joint_index[f"{side}_ankle"]
-            blend[bi] = 0.30 if "bone" in lower else 0.78
-            driver_type = f"knee_chain_{side}"
+            blend[bi] = 0.78
+            driver_type = "twist" if "twist" in lower else "segment_root"
+        elif "wrist_rotate" in lower:
+            side = _bone_side(name, lower)
+            if side is not None:
+                joint_a[bi] = joint_index[f"{side}_wrist"]
+                joint_b[bi] = joint_index[f"{side}_wrist"]
+                driver_type = "joint_local"
         elif name == "Head_Bone":
             # Head pitch/yaw/roll is an orientation DOF, not recoverable from
             # the short neck->head position vector.  Runtime uses the SMPL-X
             # head global frame and this bind coupling preserves Blender roll.
             joint_a[bi] = joint_index["head"]
             joint_b[bi] = joint_index["head"]
-            driver_type = "head_orientation"
+            driver_type = "rigid_group"
         elif lower.startswith("rib_bone_") or lower.startswith("rib_name_"):
             digits = "".join(ch for ch in name if ch.isdigit())
             rib_number = max(1, min(12, int(digits or "6")))
             joint_a[bi] = joint_index["spine2"]
             joint_b[bi] = joint_index["spine3"]
             blend[bi] = float((12 - rib_number) / 11.0)
-            driver_type = "rib_segment"
+            driver_type = "rigid_group"
 
         pb = arm.pose.bones.get(name)
         if pb is None:
@@ -1085,7 +1026,6 @@ def _source_rig_canonical(
         bone_tail[bi] = _canonical_point(
             np.asarray([pb.tail.x, pb.tail.y, pb.tail.z], dtype=np.float64)
         )
-        bone_roll[bi] = _roll_about_axis(R, bone_head[bi], bone_tail[bi])
         driver_types.append(driver_type)
 
     rest_local = rest_global.copy()
@@ -1101,9 +1041,6 @@ def _source_rig_canonical(
         "source_inverse_bind": np.linalg.inv(rest_global).astype(np.float32),
         "source_bone_head": bone_head.astype(np.float32),
         "source_bone_tail": bone_tail.astype(np.float32),
-        "source_bone_roll": bone_roll.astype(np.float32),
-        "source_bone_use_connect": bone_use_connect,
-        "source_bone_inherit_scale": bone_inherit_scale,
         "source_bone_smplx_a": joint_a,
         "source_bone_smplx_b": joint_b,
         "source_bone_blend": blend,
@@ -1185,6 +1122,23 @@ def main() -> None:
         np.asarray(diag["raw_vertices"], dtype=np.float32) @ align_context["linear"].T
         + align_context["translation"]
     ).astype(np.float32)
+    source_inverse = np.linalg.inv(np.asarray(source_rig["source_rest_global"], dtype=np.float64))
+    source_head_local = (
+        np.einsum(
+            "bij,bj->bi",
+            source_inverse[:, :3, :3],
+            np.asarray(source_rig["source_bone_head"], dtype=np.float64),
+        )
+        + source_inverse[:, :3, 3]
+    )
+    source_tail_local = (
+        np.einsum(
+            "bij,bj->bi",
+            source_inverse[:, :3, :3],
+            np.asarray(source_rig["source_bone_tail"], dtype=np.float64),
+        )
+        + source_inverse[:, :3, 3]
+    )
     tri_edges = np.concatenate((faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]), axis=0)
     before_len = np.linalg.norm(
         posed_vertices[tri_edges[:, 0]] - posed_vertices[tri_edges[:, 1]], axis=1
@@ -1211,14 +1165,9 @@ def main() -> None:
         rigid_component_ids=np.asarray(diag["rigid_component_ids"], dtype=np.int32),
         source_bone_names=np.asarray(source_rig["source_bone_names"], dtype=object),
         source_bone_parents=np.asarray(source_rig["source_bone_parents"], dtype=np.int16),
-        source_rest_global=np.asarray(source_rig["source_rest_global"], dtype=np.float32),
         source_rest_local=np.asarray(source_rig["source_rest_local"], dtype=np.float32),
-        source_inverse_bind=np.asarray(source_rig["source_inverse_bind"], dtype=np.float32),
-        source_bone_head=np.asarray(source_rig["source_bone_head"], dtype=np.float32),
-        source_bone_tail=np.asarray(source_rig["source_bone_tail"], dtype=np.float32),
-        source_bone_roll=np.asarray(source_rig["source_bone_roll"], dtype=np.float32),
-        source_bone_use_connect=np.asarray(source_rig["source_bone_use_connect"], dtype=np.uint8),
-        source_bone_inherit_scale=np.asarray(source_rig["source_bone_inherit_scale"], dtype=np.uint8),
+        source_bone_head_local=source_head_local.astype(np.float32),
+        source_bone_tail_local=source_tail_local.astype(np.float32),
         source_bone_smplx_a=np.asarray(source_rig["source_bone_smplx_a"], dtype=np.int16),
         source_bone_smplx_b=np.asarray(source_rig["source_bone_smplx_b"], dtype=np.int16),
         source_bone_blend=np.asarray(source_rig["source_bone_blend"], dtype=np.float32),
@@ -1226,7 +1175,9 @@ def main() -> None:
         registration_reference=registration_reference,
         source_skin_vertices=skin_vertices,
         source_skin_faces=np.asarray(skin_faces, dtype=np.int32),
-        schema_version=np.asarray(3, dtype=np.int32),
+        posed_vertices=np.zeros((0, 3), dtype=np.float32),
+        pose_hash=np.asarray("", dtype=object),
+        schema_version=np.asarray(4, dtype=np.int32),
         pose_format=np.asarray("smplx_body55_axis_angle", dtype=object),
         coordinate_system=np.asarray("genesis_z_up_m", dtype=object),
         metadata=np.asarray({"mapping": str(args.mapping), "driver_index_space": "blender_source_bones"}, dtype=object),

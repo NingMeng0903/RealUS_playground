@@ -190,49 +190,15 @@ anatomy_to_smplx:
   Fingers_Rotate_R6: right_thumb3
   bone307: right_thumb3
 
-derived_drivers:
-  scapula_left:
-    type: three_point_frame
-    joints: [spine3, left_collar, left_shoulder]
-  scapula_right:
-    type: three_point_frame
-    joints: [spine3, right_collar, right_shoulder]
-  patella_left:
-    type: knee_chain_segment
-    joints: [left_knee, left_ankle]
-  patella_right:
-    type: knee_chain_segment
-    joints: [right_knee, right_ankle]
-  knee_chain_left:
-    type: endpoint_segment
-    joints: [left_knee, left_ankle]
-  knee_chain_right:
-    type: endpoint_segment
-    joints: [right_knee, right_ankle]
-  foot_chain_left:
-    type: endpoint_segment
-    joints: [left_ankle, left_foot]
-  foot_chain_right:
-    type: endpoint_segment
-    joints: [right_ankle, right_foot]
-  forearm_twist_left:
-    type: rotation_interpolation
-    joints: [left_elbow, left_wrist]
-  forearm_twist_right:
-    type: rotation_interpolation
-    joints: [right_elbow, right_wrist]
-  shin_twist_left:
-    type: rotation_interpolation
-    joints: [left_knee, left_ankle]
-  shin_twist_right:
-    type: rotation_interpolation
-    joints: [right_knee, right_ankle]
-
-
-head_rest_offset_m: [0.0, 0.06, 0.0]
-head_skull_center_uniform_scale: 0.94
-head_skull_local_height_scale: 1.0
-head_skull_local_ap_scale: 1.0
+# Subject overrides are applied in the compound group's local frame.  The
+# deterministic fit does not accept world-space offsets or axis-only scaling.
+fit_overrides:
+  skull:
+    scale_multiplier: 1.0
+    center_offset_local_m: [0.0, 0.0, 0.0]
+  pelvis:
+    scale_multiplier: 1.0
+    center_offset_local_m: [0.0, 0.0, 0.0]
 
 quality_gate:
   weight_sum_error: 1.0e-5

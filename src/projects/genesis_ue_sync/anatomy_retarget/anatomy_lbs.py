@@ -119,18 +119,6 @@ def joint_global_transforms(
     return out
 
 
-def _rigid_frame(origin: np.ndarray, primary: np.ndarray, plane: np.ndarray) -> np.ndarray:
-    x = np.asarray(primary - origin, dtype=np.float64)
-    x /= max(float(np.linalg.norm(x)), 1.0e-10)
-    z = np.cross(x, np.asarray(plane - origin, dtype=np.float64))
-    z /= max(float(np.linalg.norm(z)), 1.0e-10)
-    y = np.cross(z, x)
-    out = np.eye(4, dtype=np.float64)
-    out[:3, :3] = np.stack((x, y, z), axis=1)
-    out[:3, 3] = origin
-    return out
-
-
 def _interpolate_rigid(a: np.ndarray, b: np.ndarray, alpha: float) -> np.ndarray:
     from scipy.spatial.transform import Rotation
 
@@ -147,9 +135,11 @@ def _interpolate_rigid(a: np.ndarray, b: np.ndarray, alpha: float) -> np.ndarray
 
 def _segment_frame(origin: np.ndarray, endpoint: np.ndarray, reference_x: np.ndarray) -> np.ndarray:
     """Stable limb/head frame with its Y axis fixed by anatomical endpoints."""
-    y = np.asarray(endpoint - origin, dtype=np.float64)
+    y = np.array(endpoint - origin, dtype=np.float64, copy=True)
     y /= max(float(np.linalg.norm(y)), 1.0e-10)
-    x = np.asarray(reference_x, dtype=np.float64)
+    # ``reference_x`` is commonly a view into source_rest_global.  In-place
+    # orthogonalisation must never corrupt the persisted bind matrix.
+    x = np.array(reference_x, dtype=np.float64, copy=True)
     x -= float(x @ y) * y
     if float(np.linalg.norm(x)) < 1.0e-8:
         # A clavicle can be almost parallel to world X.  Choose the least
@@ -192,203 +182,28 @@ def _endpoint_segment_delta(
     return F1 @ np.linalg.inv(F0)
 
 
-def _endpoint_segment_pose_frame(
-    *,
-    rest_a: np.ndarray,
-    rest_b: np.ndarray,
-    pose_a: np.ndarray,
-    pose_b: np.ndarray,
-    rest_reference_x: np.ndarray,
-    proximal_delta: np.ndarray,
-    distal_delta: np.ndarray | None = None,
-    twist_alpha: float = 0.0,
-) -> np.ndarray:
-    """Return the posed segment frame ``F_seg(pose)`` (not the delta)."""
-    reference_delta = np.asarray(proximal_delta, dtype=np.float64)
-    if distal_delta is not None and float(twist_alpha) > 0.0:
-        reference_delta = _interpolate_rigid(
-            np.asarray(proximal_delta, dtype=np.float64),
-            np.asarray(distal_delta, dtype=np.float64),
-            float(twist_alpha),
-        ).astype(np.float64)
-    return _segment_frame(
-        pose_a,
-        pose_b,
-        reference_delta[:3, :3] @ rest_reference_x,
-    )
-
-
 def _source_rest_local(asset: AnatomyRiggedAsset) -> np.ndarray:
-    """Return Blender bind-local matrices, deriving them for legacy v2 assets."""
+    """Return the schema-v4 Blender bind-local matrices."""
     stored = getattr(asset, "source_rest_local", None)
     if stored is not None and np.asarray(stored).shape == np.asarray(asset.source_rest_global).shape:
         return np.asarray(stored, dtype=np.float64)
-    global_rest = np.asarray(asset.source_rest_global, dtype=np.float64)
-    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
-    local = global_rest.copy()
-    for bi, parent in enumerate(parents.tolist()):
-        if parent >= 0:
-            local[bi] = np.linalg.inv(global_rest[parent]) @ global_rest[bi]
-    return local
-
-
-def _uses_segment_coupling(driver_type: str) -> bool:
-    return (
-        driver_type.startswith("forearm_segment_")
-        or driver_type.startswith("clavicle_segment_")
-        or driver_type.startswith("humerus_segment_")
-        or driver_type.startswith("shin_segment_")
-        or driver_type.startswith("knee_chain_")
-        or driver_type.startswith("foot_chain_")
-        or driver_type in {"head_segment", "head_orientation", "rib_segment"}
-        or driver_type.startswith("scapula_")
-        or driver_type.startswith("patella_")
-    )
-
-
-def _is_finger_joint(name: str) -> bool:
-    return (
-        (name.startswith("left_") or name.startswith("right_"))
-        and any(token in name for token in ("thumb", "index", "middle", "ring", "pinky"))
-    )
-
-
-def _hand_chain_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
-    """Source bones driven by SMPL-X finger joints."""
-    names = list(asset.joint_names)
-    a = np.asarray(asset.source_bone_smplx_a, dtype=np.int64)
-    b = np.asarray(asset.source_bone_smplx_b, dtype=np.int64)
-    return np.asarray(
-        [_is_finger_joint(names[int(ai)]) or _is_finger_joint(names[int(bi)]) for ai, bi in zip(a, b)],
-        dtype=bool,
-    )
-
-
-def _toe_chain_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
-    """All descendants of Blender toe controls (SMPL-X has no toe pose)."""
-    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
-    names = [str(name).lower() for name in asset.source_bone_names or []]
-    mask = np.asarray(["toes_rotate" in name or "toe_rotate" in name for name in names], dtype=bool)
-    changed = True
-    while changed:
-        inherited = np.asarray(
-            [bool(parent >= 0 and mask[int(parent)]) for parent in parents], dtype=bool
-        )
-        changed = bool(np.any(inherited & ~mask))
-        mask |= inherited
-    return mask
-
-
-def _uses_connected_upper_limb_fk(
-    bone_index: int, parent_index: int, driver_types: list[str]
-) -> bool:
-    """Connected-FK for arm segments, wrist under forearm, and finger hand_chain."""
-    arm_prefixes = (
-        "clavicle_segment_",
-        "humerus_segment_",
-        "forearm_proximal_",
-        "forearm_segment_",
-    )
-    own = str(driver_types[bone_index]) if bone_index < len(driver_types) else ""
-    if own.startswith(arm_prefixes):
-        return True
-    if own == "direct_joint" and parent_index >= 0:
-        parent_type = (
-            str(driver_types[parent_index]) if parent_index < len(driver_types) else ""
-        )
-        if parent_type.startswith("forearm_segment_"):
-            return True
-    return False
-
-
-def _uses_bind_local_fk(
-    bone_index: int,
-    parent_index: int,
-    driver_types: list[str],
-    hand_chain: np.ndarray,
-    toe_chain: np.ndarray,
-) -> bool:
-    """Whether a source bone is solved from its parent's Blender bind frame."""
-    return (
-        bool(hand_chain[bone_index])
-        or bool(toe_chain[bone_index])
-        or _uses_connected_upper_limb_fk(bone_index, parent_index, driver_types)
-    )
-
-
-def _has_foot_chain_ancestor(
-    bone_index: int,
-    chain_type: str,
-    parents: np.ndarray,
-    driver_types: list[str],
-) -> bool:
-    """True when a same-side foot_chain control sits above ``bone_index`` via helpers."""
-    current = int(parents[bone_index])
-    visited = 0
-    while current >= 0 and visited <= len(parents):
-        own = str(driver_types[current]) if current < len(driver_types) else ""
-        if own == chain_type:
-            return True
-        if own != "parent_follow":
-            return False
-        current = int(parents[current])
-        visited += 1
-    return False
-
-
-def _segment_pose_frame_for_bone(
-    *,
-    bi: int,
-    driver_type: str,
-    asset: AnatomyRiggedAsset,
-    rest_points: np.ndarray,
-    pose_points: np.ndarray,
-    joint_index: dict[str, int],
-    joint_delta: np.ndarray,
-    pose_global: np.ndarray,
-) -> np.ndarray:
-    a = int(asset.source_bone_smplx_a[bi])
-    b = int(asset.source_bone_smplx_b[bi])
-    reference_x = np.asarray(asset.source_rest_global[bi], dtype=np.float64)[:3, 0]
-    if driver_type == "head_orientation":
-        head = joint_index["head"]
-        return np.asarray(pose_global[head], dtype=np.float64)
-    if float(np.linalg.norm(rest_points[b] - rest_points[a])) < 1.0e-8:
-        raise ValueError(f"degenerate segment joints for bone index {bi}")
-    if (
-        driver_type.startswith("forearm_segment_")
-        or driver_type.startswith("clavicle_segment_")
-        or driver_type.startswith("humerus_segment_")
-        or driver_type.startswith("shin_segment_")
-        or driver_type.startswith("knee_chain_")
-        or driver_type.startswith("foot_chain_")
-        or driver_type in {"head_segment", "rib_segment"}
-        or driver_type.startswith("patella_")
-    ) and a != b:
-        return _endpoint_segment_pose_frame(
-            rest_a=rest_points[a],
-            rest_b=rest_points[b],
-            pose_a=pose_points[a],
-            pose_b=pose_points[b],
-            rest_reference_x=reference_x,
-            proximal_delta=joint_delta[a],
-            distal_delta=joint_delta[b],
-            twist_alpha=float(asset.source_bone_blend[bi]),
-        )
-    if driver_type.startswith("scapula_"):
-        side = "left" if driver_type.endswith("left") else "right"
-        s, c, h = (joint_index["spine3"], joint_index[f"{side}_collar"], joint_index[f"{side}_shoulder"])
-        return _rigid_frame(pose_points[h], pose_points[c], pose_points[s])
-    raise ValueError(f"unsupported segment pose frame for driver_type={driver_type}")
+    raise ValueError("schema-v4 source rig is missing source_rest_local")
 
 
 def source_bone_skinning_transforms(
     asset: AnatomyRiggedAsset,
     pose_axis_angle: Any,
 ) -> np.ndarray:
-    """Solve all Blender source-bone transforms from a full SMPL-X pose."""
+    """Solve the source rig once, in parent-before-child local FK order.
+
+    Schema-v4 assets carry an explicit driver mode for every source bone.  A
+    connected child never receives an independently translated global delta:
+    its authored bind-local translation is retained and only its desired local
+    rotation is updated.  This is the invariant that keeps elbow/wrist/finger
+    and ankle/toe chains connected.
+    """
     if asset.source_bone_names is None:
-        raise ValueError("source bone transforms requested for a legacy asset")
+        raise ValueError("source bone transforms require an anatomy schema-v4 rig")
     pose_global = joint_global_transforms(
         pose_axis_angle=pose_axis_angle,
         rest_joints=asset.rest_joints,
@@ -402,154 +217,63 @@ def source_bone_skinning_transforms(
     joint_delta = pose_global @ np.linalg.inv(rest_global)
     rest_points = np.asarray(asset.rest_joints, dtype=np.float64)
     pose_points = pose_global[:, :3, 3]
-    joint_index = {name: idx for idx, name in enumerate(asset.joint_names)}
-    source_delta = np.tile(np.eye(4, dtype=np.float32), (len(asset.source_bone_names), 1, 1))
-    types = asset.source_bone_driver_types or ["direct_joint"] * len(asset.source_bone_names)
-    for bi, driver_type in enumerate(types):
+    modes = list(asset.source_bone_driver_types or [])
+    if len(modes) != len(asset.source_bone_names):
+        raise ValueError("schema-v4 source rig is missing explicit driver modes")
+    rest_global_bones = np.asarray(asset.source_rest_global, dtype=np.float64)
+    rest_local_bones = _source_rest_local(asset)
+    posed_global = np.empty_like(rest_global_bones)
+    source_parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    for bi, mode in enumerate(modes):
+        parent = int(source_parents[bi])
+        if mode == "bind_follow" and parent >= 0:
+            posed_global[bi] = posed_global[parent] @ rest_local_bones[bi]
+            continue
+
         a = int(asset.source_bone_smplx_a[bi])
         b = int(asset.source_bone_smplx_b[bi])
         alpha = float(asset.source_bone_blend[bi])
-        if (
-            driver_type.startswith("forearm_segment_")
-            or driver_type.startswith("forearm_proximal_")
-            or driver_type.startswith("clavicle_segment_")
-            or driver_type.startswith("humerus_segment_")
-            or driver_type.startswith("shin_segment_")
-            or driver_type.startswith("knee_chain_")
-            or driver_type.startswith("foot_chain_")
-            or driver_type in {"head_segment", "rib_segment"}
-        ) and a != b:
-            reference_x = np.asarray(asset.source_rest_global[bi], dtype=np.float64)[:3, 0]
-            source_delta[bi] = _endpoint_segment_delta(
-                rest_a=rest_points[a], rest_b=rest_points[b],
-                pose_a=pose_points[a], pose_b=pose_points[b],
-                rest_reference_x=reference_x, proximal_delta=joint_delta[a],
-                distal_delta=joint_delta[b], twist_alpha=alpha,
-            ).astype(np.float32)
-        elif driver_type == "head_orientation":
-            head = joint_index["head"]
-            source_delta[bi] = joint_delta[head].astype(np.float32)
-        elif driver_type.startswith("scapula_"):
-            side = "left" if driver_type.endswith("left") else "right"
-            s, c, h = (joint_index["spine3"], joint_index[f"{side}_collar"], joint_index[f"{side}_shoulder"])
-            F0 = _rigid_frame(rest_points[h], rest_points[c], rest_points[s])
-            F1 = _rigid_frame(pose_points[h], pose_points[c], pose_points[s])
-            source_delta[bi] = (F1 @ np.linalg.inv(F0)).astype(np.float32)
-        elif driver_type.startswith("patella_"):
-            side = "left" if driver_type.endswith("left") else "right"
-            knee, ankle = (joint_index[f"{side}_knee"], joint_index[f"{side}_ankle"])
-            reference_x = np.asarray(asset.source_rest_global[bi], dtype=np.float64)[:3, 0]
-            source_delta[bi] = _endpoint_segment_delta(
-                rest_a=rest_points[knee], rest_b=rest_points[ankle],
-                pose_a=pose_points[knee], pose_b=pose_points[ankle],
-                rest_reference_x=reference_x, proximal_delta=joint_delta[knee],
-            ).astype(np.float32)
-        elif a != b:
-            source_delta[bi] = _interpolate_rigid(joint_delta[a], joint_delta[b], alpha)
+        if mode in {"segment_root", "rigid_group"} and a != b:
+            delta = _endpoint_segment_delta(
+                rest_a=rest_points[a],
+                rest_b=rest_points[b],
+                pose_a=pose_points[a],
+                pose_b=pose_points[b],
+                rest_reference_x=rest_global_bones[bi, :3, 0],
+                proximal_delta=joint_delta[a],
+                distal_delta=joint_delta[b],
+                twist_alpha=0.0,
+            )
+        elif mode == "twist" and a != b:
+            # Twist changes the transverse frame only.  Its primary axis must
+            # still follow the complete posed segment; interpolating two full
+            # global transforms rotates the downstream wrist/ankle offset away
+            # from the segment endpoint.
+            delta = _endpoint_segment_delta(
+                rest_a=rest_points[a],
+                rest_b=rest_points[b],
+                pose_a=pose_points[a],
+                pose_b=pose_points[b],
+                rest_reference_x=rest_global_bones[bi, :3, 0],
+                proximal_delta=joint_delta[a],
+                distal_delta=joint_delta[b],
+                twist_alpha=alpha,
+            )
         else:
-            source_delta[bi] = joint_delta[a].astype(np.float32)
+            delta = np.asarray(joint_delta[a], dtype=np.float64)
 
-    rest_global_bones = np.asarray(asset.source_rest_global, dtype=np.float32)
-    coupling = (
-        np.asarray(asset.source_segment_coupling, dtype=np.float32)
-        if asset.source_segment_coupling is not None and asset.source_segment_coupling.size
-        else None
-    )
-    posed_global = np.empty_like(rest_global_bones)
-    source_parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
-    rest_local_bones = _source_rest_local(asset)
-    toe_chain = _toe_chain_mask(asset)
-    hand_chain = _hand_chain_mask(asset)
-    use_connect = (
-        np.asarray(asset.source_bone_use_connect, dtype=bool)
-        if getattr(asset, "source_bone_use_connect", None) is not None
-        else np.zeros(len(asset.source_bone_names), dtype=bool)
-    )
-    for bi, driver_type in enumerate(types):
-        parent = int(source_parents[bi])
-        # A Blender follower/helper has no independent SMPL-X control.  Preserve
-        # its exact bind-local transform and let the evaluated source hierarchy
-        # carry the parent motion.  Previous versions exported this hierarchy
-        # but solved every follower as an unrelated global joint.
-        if driver_type == "parent_follow" and parent >= 0:
-            posed_global[bi] = (
-                np.asarray(posed_global[parent], dtype=np.float64) @ rest_local_bones[bi]
-            ).astype(np.float32)
+        desired_global = delta @ rest_global_bones[bi]
+        if parent < 0:
+            posed_global[bi] = desired_global
             continue
-        # SMPL-X has one rigid foot pose and no articulated toe parameters.
-        # Preserve Blender's authored foot/toe subtree exactly: only the first
-        # foot-chain control receives the SMPL-X segment motion, while all of
-        # its descendants retain their bind-local transform.  This is driven
-        # by exported rig semantics, not mesh names or spatial thresholds.
-        # Toe rotors sit on parent_follow helpers (bone167, …) between two
-        # foot_chain controls; they must follow the helper, not the ankle→foot
-        # segment applied independently.  Chain roots (Ankle_Rot under eff16)
-        # must receive the segment motion themselves.
-        if parent >= 0 and driver_type.startswith("foot_chain_"):
-            parent_type = str(types[parent]) if parent < len(types) else ""
-            chain_type = str(driver_type)
-            is_follower = parent_type == chain_type or (
-                parent_type == "parent_follow"
-                and _has_foot_chain_ancestor(bi, chain_type, source_parents, types)
-            )
-            if is_follower:
-                posed_global[bi] = (
-                    np.asarray(posed_global[parent], dtype=np.float64) @ rest_local_bones[bi]
-                ).astype(np.float32)
-                continue
-        # Blender's connected bones share their head with the parent's tail.
-        # Keep that bind-local translation exact and take only the desired
-        # *local rotation* from the SMPL-X-driven target.  This is hierarchy
-        # semantics exported from Blender, so it applies equally to elbows,
-        # wrists, knees and ankles without a body-part correction table.
-        # Head_Bone intentionally bypasses this branch: it must match the
-        # SMPL-X head global orientation, including pitch.
-        if (
-            parent >= 0
-            and (bool(use_connect[bi]) or bool(hand_chain[bi]) or bool(toe_chain[bi]))
-            and driver_type != "head_orientation"
-            and _uses_bind_local_fk(bi, parent, types, hand_chain, toe_chain)
-        ):
-            # Convert the two global SMPL-X-driven deltas into the child's
-            # rotation *relative to its Blender parent*.  Using the child's
-            # desired global transform directly would apply the parent swing a
-            # second time after FK, which is the source of forearm twists.
-            relative_delta = np.linalg.inv(source_delta[parent]) @ source_delta[bi]
-            local_motion = (
-                np.linalg.inv(rest_global_bones[parent])
-                @ relative_delta
-                @ rest_global_bones[parent]
-            )
-            local = np.asarray(rest_local_bones[bi], dtype=np.float64).copy()
-            local[:3, :3] = (local_motion @ rest_local_bones[bi])[:3, :3]
-            posed_global[bi] = (
-                np.asarray(posed_global[parent], dtype=np.float64) @ local
-            ).astype(np.float32)
-            continue
-        use_coupling = (
-            coupling is not None
-            and coupling.shape[0] == len(asset.source_bone_names)
-            and _uses_segment_coupling(driver_type)
-            and float(np.max(np.abs(coupling[bi] - np.eye(4, dtype=np.float32)))) > 1.0e-6
+        local = np.asarray(rest_local_bones[bi], dtype=np.float64).copy()
+        # The parent supplies all translation.  Only solve the child's desired
+        # global rotation back into that already-posed parent frame.
+        local[:3, :3] = np.linalg.solve(
+            posed_global[parent, :3, :3], desired_global[:3, :3]
         )
-        if use_coupling:
-            try:
-                F_pose = _segment_pose_frame_for_bone(
-                    bi=bi,
-                    driver_type=driver_type,
-                    asset=asset,
-                    rest_points=rest_points,
-                    pose_points=pose_points,
-                    joint_index=joint_index,
-                    joint_delta=joint_delta,
-                    pose_global=pose_global,
-                )
-                posed_global[bi] = (F_pose @ np.asarray(coupling[bi], dtype=np.float64)).astype(np.float32)
-            except ValueError:
-                posed_global[bi] = source_delta[bi] @ rest_global_bones[bi]
-        else:
-            posed_global[bi] = source_delta[bi] @ rest_global_bones[bi]
-    return posed_global @ np.asarray(asset.source_inverse_bind, dtype=np.float32)
+        posed_global[bi] = posed_global[parent] @ local
+    return (posed_global @ np.asarray(asset.source_inverse_bind, dtype=np.float64)).astype(np.float32)
 
 
 def skin_vertices(

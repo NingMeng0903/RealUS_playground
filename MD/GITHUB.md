@@ -49,7 +49,7 @@ git push -u origin main
 
 ```bash
 git add .
-git commit -m "备份，断，头骨缩放问题，脚缩放问题"
+git commit -m "备份，断，头骨缩放问题，脚缩放问题2"
 git push -u origin main
 ```
 

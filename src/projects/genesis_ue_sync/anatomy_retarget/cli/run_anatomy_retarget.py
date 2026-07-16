@@ -9,7 +9,6 @@ import hashlib
 import json
 import logging
 import os
-import shutil
 import tempfile
 import time
 from pathlib import Path
@@ -23,7 +22,6 @@ from projects.genesis_ue_sync.anatomy_retarget.blender_retarget_runner import ru
 from projects.genesis_ue_sync.anatomy_retarget.containment import (
     load_body_surface,
     repair_containment,
-    repair_soft_tissue_residual_containment,
 )
 from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import joint_global_transforms, skin_vertices
 from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
@@ -37,18 +35,8 @@ from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import load_rigged_a
 from projects.genesis_ue_sync.anatomy_retarget.shape_volume import apply_subject_beta_shape
 from projects.genesis_ue_sync.anatomy_retarget.leg_material import compute_leg_material_coordinates
 from projects.genesis_ue_sync.anatomy_retarget.diagnostics import write_mesh_diagnostics
-from projects.genesis_ue_sync.anatomy_retarget.head_calibration import (
-    calibrate_foot_rest_alignment,
-    calibrate_hand_rest_alignment,
-    calibrate_head_rest_offset,
-)
+from projects.genesis_ue_sync.anatomy_retarget.material_fit import fit_articulated_rest
 from projects.genesis_ue_sync.anatomy_retarget.bone_segment_diagnostics import write_bone_segment_diagnostics
-from projects.genesis_ue_sync.anatomy_retarget.segment_coupling import (
-    bake_segment_coupling,
-    refresh_segment_coupling,
-    segment_coupling_roundtrip_error,
-)
-from projects.genesis_ue_sync.anatomy_retarget.source_rebind import source_bind_roundtrip
 from projects.genesis_ue_sync.anatomy_retarget.source_skin_volume import apply_source_skin_volume_registration
 from projects.genesis_ue_sync.multiview_realtime.track_stream import (
     DEFAULT_ANATOMY_ASSET_PUB_BIND,
@@ -113,14 +101,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--model-id", type=str, default="patient_anatomy")
     p.add_argument("--color-rgba", type=str, default="0.8,0.05,0.05,0.85")
     p.add_argument(
-        "--enforce-quality-gate",
+        "--allow-quality-fail",
         action="store_true",
-        help="Fail the offline bake when a diagnostic quality threshold is exceeded.",
-    )
-    p.add_argument(
-        "--no-quality-gate",
-        action="store_true",
-        help="Deprecated compatibility flag; quality is diagnostic by default.",
+        help="Debug only: preserve a failed bake without publishing or replacing latest_asset.",
     )
     return p.parse_args()
 
@@ -209,24 +192,23 @@ def main() -> int:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.is_file() else {}
     betas = manifest.get("betas", [])
     gender = str(manifest.get("gender", "male"))
-    cache_root = out_dir.parent / "cache_v2"
+    cache_root = out_dir.parent / "cache_v4"
     source_key = _cache_key(
         Path(blend), Path(args.config), Path(args.canonical_dir) / "smpl_canonical_tpose_neutral.obj",
         Path(__file__).resolve().parents[1] / "blender_scripts" / "blender_retarget_script.py",
         Path(__file__).resolve().parents[1] / "source_skin_volume.py",
         Path(__file__).resolve().parents[1] / "shape_volume.py",
-        Path(__file__).resolve().parents[1] / "source_rebind.py",
-        Path(__file__).resolve().parents[1] / "segment_coupling.py",
-        Path(__file__).resolve().parents[1] / "head_calibration.py",
-        extra="source-template-v5.4-stable-volume-group-rig-v1",
+        Path(__file__).resolve().parents[1] / "material_fit.py",
+        extra="source-template-v6-articulated-material-fit",
     )
     shape_hash = smplx_shape_hash(betas, gender=gender) if betas else "neutral"
-    source_cache = cache_root / "source_template_v5" / f"{source_key}.npz"
+    source_cache = cache_root / "source_template_v6" / f"{source_key}.npz"
     shape_key = _cache_key(
         Path(args.canonical_dir) / "smpl_canonical_tpose.obj",
         Path(__file__).resolve().parents[1] / "shape_volume.py",
+        Path(__file__).resolve().parents[1] / "material_fit.py",
         Path(__file__).resolve().parents[1] / "leg_material.py",
-        extra=f"{source_key}:{shape_hash}:subject-shape-v5.4",
+        extra=f"{source_key}:{shape_hash}:subject-shape-v6",
     )
     shape_cache = cache_root / "shape" / f"{shape_key}.npz"
     source_cache_hit = source_cache.is_file() and not args.force_source_rebake
@@ -252,6 +234,13 @@ def main() -> int:
             return int(result.returncode or 1)
         normalize_rigged_asset_file(output_npz, config=cfg, force=False)
         asset = load_rigged_asset(output_npz, validate=True)
+        asset, articulated_source_report = fit_articulated_rest(
+            asset,
+            canonical_dir=args.canonical_dir,
+            config=cfg,
+            subject=False,
+            stage="neutral_source",
+        )
         asset, source_skin_report = apply_source_skin_volume_registration(
             asset, canonical_dir=args.canonical_dir
         )
@@ -267,36 +256,44 @@ def main() -> int:
                 repair_tissues=(),
             )
             containment_reports.append(neutral_containment)
-        asset, head_calibration_report = calibrate_head_rest_offset(asset, config=cfg)
-        asset, foot_calibration_report = calibrate_foot_rest_alignment(asset)
-        asset, hand_calibration_report = calibrate_hand_rest_alignment(asset)
-        coupling, coupling_report = bake_segment_coupling(asset)
-        coupling_report["roundtrip_error_m"] = segment_coupling_roundtrip_error(asset, coupling)
-        asset = type(asset)(**{**asset.__dict__, "source_segment_coupling": coupling})
         blender_report = json.loads(report_json.read_text(encoding="utf-8"))
+        blender_report.setdefault("rest_align", {}).update(
+            {
+                "anchor_rms_m": float(articulated_source_report["anchor_rms_m"]),
+                "max_joint_offset_m": float(articulated_source_report["anchor_max_m"]),
+                "mode": "articulated_material_fit_v4",
+            }
+        )
+        blender_report["volume_registration"] = source_skin_report
         source_meta = dict(asset.metadata or {})
         source_meta.update({
             "registration_report": registration_report,
             "source_blender_report": blender_report,
             "source_containment_reports": containment_reports,
             "source_skin_volume_report": source_skin_report,
-            "head_rest_calibration_report": head_calibration_report,
-            "foot_rest_calibration_report": foot_calibration_report,
-            "hand_rest_calibration_report": hand_calibration_report,
+            "articulated_source_report": articulated_source_report,
             "source_cache_key": source_key,
-            "segment_coupling_report": coupling_report,
         })
         asset = type(asset)(**{**asset.__dict__, "metadata": source_meta})
         source_cache.parent.mkdir(parents=True, exist_ok=True)
         save_rigged_asset(source_cache, asset)
-        logging.info("source_template_v5 stored key=%s", source_key)
+        logging.info("source_template_v6 stored key=%s", source_key)
     profile["source_template_s"] = time.perf_counter() - started_at
-    bind_roundtrip = source_bind_roundtrip(asset)
+    bind_roundtrip = {
+        "max_matrix_error": float(np.max(np.abs(
+            np.asarray(asset.source_rest_global, dtype=np.float64)
+            @ np.asarray(asset.source_inverse_bind, dtype=np.float64)
+            - np.eye(4, dtype=np.float64)[None]
+        ))),
+    }
     zero_pose_vertices = skin_vertices(asset, np.zeros((55, 3), dtype=np.float32))
     bind_roundtrip["zero_pose_vertex_error_m"] = float(
         np.max(np.linalg.norm(zero_pose_vertices - np.asarray(asset.vertices_rest, dtype=np.float32), axis=1))
     )
-    bind_roundtrip["pass"] = bool(bind_roundtrip.get("pass", True) and bind_roundtrip["zero_pose_vertex_error_m"] <= 1.0e-4)
+    bind_roundtrip["pass"] = bool(
+        bind_roundtrip.get("pass", True)
+        and bind_roundtrip["zero_pose_vertex_error_m"] <= 1.0e-5
+    )
     if not bool(bind_roundtrip.get("pass", True)):
         raise RuntimeError(f"source bind round-trip failed: {bind_roundtrip}")
 
@@ -314,38 +311,28 @@ def main() -> int:
         logging.info("subject-shape cache hit shape_hash=%s", shape_hash)
     else:
         if str(cfg.get("canonical_rest_space", "neutral")).lower() == "neutral":
-            asset, shape_report = apply_subject_beta_shape(asset, canonical_dir=args.canonical_dir)
+            asset, shape_report = apply_subject_beta_shape(
+                asset, canonical_dir=args.canonical_dir, config=cfg
+            )
         asset, subject_containment = repair_containment(
             asset, surface_vertices=subject_surface[0], surface_faces=subject_surface[1],
             stage="subject_beta", strict=False,
             repair_tissues=(),
         )
         containment_reports.append(subject_containment)
-        asset, subject_soft_containment = repair_soft_tissue_residual_containment(
-            asset,
-            surface_vertices=subject_surface[0],
-            surface_faces=subject_surface[1],
-            stage="subject_beta_residual_soft",
-            target="rest",
-        )
-        containment_reports.append(subject_soft_containment)
         asset, leg_material_report = compute_leg_material_coordinates(
             asset, skin_vertices=subject_surface[0]
         )
         shape_meta = dict(asset.metadata or {})
         shape_meta.update({
             "shape_report": shape_report,
-            "shape_containment_reports": [subject_containment, subject_soft_containment],
+            "shape_containment_reports": [subject_containment],
             "leg_material_report": leg_material_report,
         })
         asset = type(asset)(**{**asset.__dict__, "metadata": shape_meta})
         shape_cache.parent.mkdir(parents=True, exist_ok=True)
         save_rigged_asset(shape_cache, asset)
         logging.info("subject-shape cache stored shape_hash=%s", shape_hash)
-    asset, coupling_report = refresh_segment_coupling(asset)
-    meta_coupling = dict(asset.metadata or {})
-    meta_coupling["segment_coupling_report"] = coupling_report
-    asset = type(asset)(**{**asset.__dict__, "metadata": meta_coupling})
     profile["subject_shape_s"] = time.perf_counter() - started_at - profile["source_template_s"]
     pose_report: dict[str, Any] | None = None
     if args.motion_npz is not None:
@@ -383,55 +370,10 @@ def main() -> int:
             if "vertices" not in motion.files or "faces" not in motion.files:
                 raise ValueError(f"{motion_path} must include official posed SMPL-X vertices/faces")
             pose_cache_vertices = posed_vertices
-            if args.enforce_quality_gate:
-                posed_joint_transforms = joint_global_transforms(
-                    pose_axis_angle=pose55,
-                    rest_joints=asset.rest_joints,
-                    parents=asset.parents,
-                )
-                posed_joints = posed_joint_transforms[:, :3, 3] + effective_transl.reshape(1, 3)
-                posed_asset = type(asset)(
-                    **{
-                        **asset.__dict__,
-                        "vertices_rest": posed_vertices,
-                        "rest_joints": posed_joints.astype(np.float32),
-                    }
-                )
-                repaired_pose, pose_report = repair_containment(
-                    posed_asset,
-                    surface_vertices=np.asarray(motion["vertices"], dtype=np.float64).reshape(-1, 3),
-                    surface_faces=np.asarray(motion["faces"], dtype=np.int32).reshape(-1, 3),
-                    stage="final_pose",
-                    max_iterations=12,
-                    strict=False,
-                    repair_tissues=(),
-                )
-                pose_cache_vertices = np.asarray(repaired_pose.vertices_rest, dtype=np.float32)
-            else:
-                pose_report = {
-                    "stage": "final_pose",
-                    "backend": "runtime_source_bone_lbs",
-                    "diagnostic_deferred": True,
-                    "repair_tissues": [],
-                }
-            soft_pose_asset = type(asset)(
-                **{
-                    **asset.__dict__,
-                    "pose_cache_vertices": np.asarray(pose_cache_vertices, dtype=np.float32),
-                    "pose_cache_hash": cache_hash,
-                }
-            )
-            soft_pose_asset, soft_pose_report = repair_soft_tissue_residual_containment(
-                soft_pose_asset,
-                surface_vertices=np.asarray(motion["vertices"], dtype=np.float64).reshape(-1, 3),
-                surface_faces=np.asarray(motion["faces"], dtype=np.int32).reshape(-1, 3),
-                stage="final_pose_residual_soft",
-                target="pose_cache",
-            )
-            pose_cache_vertices = np.asarray(soft_pose_asset.pose_cache_vertices, dtype=np.float32)
             pose_report = {
-                **dict(pose_report or {}),
-                "soft_tissue_residual": soft_pose_report,
+                "stage": "final_pose",
+                "backend": "runtime_local_fk_v4",
+                "repair_tissues": [],
             }
             asset = type(asset)(
                 **{
@@ -449,105 +391,17 @@ def main() -> int:
         if pose_report is not None:
             containment_reports.append(pose_report)
 
-    meta = dict(asset.metadata or {})
-    meta.update(
-        {
-            "schema_version": 2,
-            "gender": gender,
-            "betas": betas,
-            "shape_hash": smplx_shape_hash(betas, gender=gender) if betas else "",
-            "canonical_source": str(manifest.get("source", "")),
-            "derived_drivers": cfg.get("derived_drivers", {}),
-            "registration_report": registration_report,
-            "shape_report": shape_report,
-            "containment_reports": containment_reports,
-            "pose_cache_report": pose_report,
-            "leg_material_report": dict(meta.get("leg_material_report") or {}),
-            "segment_coupling_report": dict(meta.get("segment_coupling_report") or {}),
-            "source_template_version": 5,
-            "source_template_revision": "5.4",
-            "source_bind_roundtrip": bind_roundtrip,
-            "show_connective_tissue": bool(args.show_connective_tissue),
-        }
-    )
+    # Schema-v4 assets contain runtime data only.  Cache keys and diagnostics
+    # belong in JSON sidecars and must not leak into the published NPZ.
+    meta = {
+        "gender": gender,
+        "betas": betas,
+        "shape_hash": smplx_shape_hash(betas, gender=gender) if betas else "",
+        "canonical_source": str(manifest.get("source", "")),
+        "show_connective_tissue": bool(args.show_connective_tissue),
+    }
     asset = type(asset)(**{**asset.__dict__, "metadata": meta})
     save_rigged_asset(output_npz, asset)
-    fast_cached_publish = bool(
-        source_cache_hit
-        and shape_cache_hit
-        and not args.refresh_diagnostics
-        and not args.enforce_quality_gate
-    )
-    if fast_cached_publish:
-        # Runtime publication must not pay for full exact-SDF/mesh diagnostics.
-        # Preserve the last offline reports for inspection and mark this run as
-        # cache-only; --refresh-diagnostics explicitly regenerates them.
-        if out_dir.is_dir():
-            for report_name in (
-                "quality_report.json",
-                "bone_segment_diagnostics.json",
-                "anatomy_mesh_diagnostics.json",
-            ):
-                previous_report = out_dir / report_name
-                if previous_report.is_file():
-                    shutil.copy2(previous_report, stage_dir / report_name)
-        (stage_dir / "runtime_fast_path.json").write_text(
-            json.dumps(
-                {
-                    "source_cache_hit": True,
-                    "shape_cache_hit": True,
-                    "blender": False,
-                    "tetgen": False,
-                    "sdf_diagnostics": False,
-                    "refresh_with": "--refresh-diagnostics",
-                },
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
-        profile["pose_and_diagnostics_s"] = (
-            time.perf_counter() - started_at - profile["source_template_s"] - profile["subject_shape_s"]
-        )
-        profile["total_pre_publish_s"] = time.perf_counter() - started_at
-        if args.profile_first_frame:
-            (stage_dir / "first_frame_profile.json").write_text(
-                json.dumps(
-                    {
-                        "seconds": profile,
-                        "source_cache_hit": True,
-                        "shape_cache_hit": True,
-                        "runtime_fast_path": True,
-                    },
-                    indent=2,
-                ),
-                encoding="utf-8",
-            )
-        previous_dir: Path | None = None
-        if out_dir.exists():
-            previous_dir = out_dir.parent / f"{out_dir.name}.previous-{time.strftime('%Y%m%d-%H%M%S')}"
-            os.replace(out_dir, previous_dir)
-        try:
-            os.replace(stage_dir, out_dir)
-        except Exception:
-            if previous_dir is not None and previous_dir.exists() and not out_dir.exists():
-                os.replace(previous_dir, out_dir)
-            raise
-        output_npz = out_dir / "anatomy_rigged.npz"
-        logging.info(
-            "runtime fast path source/shape cache hit; skipped Blender/TetGen/SDF diagnostics output=%s",
-            output_npz,
-        )
-        if args.publish_genesis:
-            sent = _publish_upsert(
-                bind=str(args.publish_bind),
-                model_id=str(args.model_id),
-                asset_npz=output_npz,
-                color_rgba=_parse_rgba(str(args.color_rgba)),
-                duration_s=float(args.publish_duration_s),
-                rate_hz=float(args.publish_rate_hz),
-            )
-            logging.info("published anatomy upsert sent=%s bind=%s", sent, args.publish_bind)
-        return 0
     mesh_diagnostics = write_mesh_diagnostics(
         asset,
         surface_vertices=subject_surface[0],
@@ -566,9 +420,6 @@ def main() -> int:
             output_path=stage_dir / "bone_segment_diagnostics.json",
             mesh_diagnostics=mesh_diagnostics,
         )
-    meta = dict(asset.metadata or {})
-    meta["bone_segment_diagnostics"] = bone_segment_report
-    asset = type(asset)(**{**asset.__dict__, "metadata": meta})
     profile["pose_and_diagnostics_s"] = time.perf_counter() - started_at - profile["source_template_s"] - profile["subject_shape_s"]
     profile["total_pre_publish_s"] = time.perf_counter() - started_at
     if args.profile_first_frame:
@@ -611,6 +462,18 @@ def main() -> int:
                 "source_to_pose_cache_max_growth_m": float(np.max(cached_len - before_len)),
             }
         )
+    blender_report.update(
+        {
+            "registration": registration_report,
+            "shape": shape_report,
+            "containment_stages": containment_reports,
+            "pose_cache_report": pose_report,
+            "source_bind_roundtrip": bind_roundtrip,
+            "bone_segment_diagnostics": bone_segment_report,
+            "material_shape": dict(shape_report.get("articulated_rest_fit") or {}),
+        }
+    )
+    report_json.write_text(json.dumps(blender_report, indent=2, ensure_ascii=True), encoding="utf-8")
     quality = evaluate_asset_quality(
         asset,
         canonical_dir=args.canonical_dir,
@@ -618,22 +481,14 @@ def main() -> int:
         limits=dict(cfg.get("quality_gate", {}) or {}),
     )
     write_quality_report(stage_dir / "quality_report.json", quality)
-    if not quality["passed"] and args.enforce_quality_gate:
+    if not quality["passed"]:
         failed_dir = out_dir.parent / f"{out_dir.name}.failed-{time.strftime('%Y%m%d-%H%M%S')}"
         os.replace(stage_dir, failed_dir)
         logging.error("quality gate rejected anatomy asset; previous asset remains unchanged")
         for failure in quality["failures"]:
             logging.error("quality: %s", failure)
         logging.error("failed bake diagnostics preserved at %s", failed_dir)
-        return 2
-    if not quality["passed"]:
-        logging.warning(
-            "anatomy quality diagnostics have %d warning(s); asset remains publishable. "
-            "Use --enforce-quality-gate for offline regression enforcement.",
-            len(quality["failures"]),
-        )
-        for failure in quality["failures"]:
-            logging.warning("quality diagnostic: %s", failure)
+        return 0 if args.allow_quality_fail else 2
 
     previous_dir: Path | None = None
     if out_dir.exists():

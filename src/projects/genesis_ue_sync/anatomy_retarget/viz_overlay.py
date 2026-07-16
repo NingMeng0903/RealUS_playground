@@ -662,6 +662,57 @@ def draw_preview_overlay(
     plt.close(fig)
 
 
+def draw_regional_preview_overlay(
+    path: Path,
+    *,
+    title: str,
+    smpl_tpose: np.ndarray,
+    anatomy_tpose: np.ndarray,
+    smpl_posed: np.ndarray,
+    anatomy_posed: np.ndarray,
+    padding_m: float = 0.025,
+) -> None:
+    """Write orthographic rest/posed close-ups for one anatomical region."""
+    import matplotlib.pyplot as plt
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    figure, axes = plt.subplots(2, 3, figsize=(14, 8))
+    views = ((0, 1, "front"), (2, 1, "side"), (0, 2, "top"))
+    panels = (
+        (np.asarray(smpl_tpose), np.asarray(anatomy_tpose), SMPL_TPOSE_COLOR, "T-pose"),
+        (np.asarray(smpl_posed), np.asarray(anatomy_posed), SMPL_POSED_COLOR, "posed"),
+    )
+    for row, (body, region, body_color, pose_label) in enumerate(panels):
+        region = region.reshape(-1, 3)
+        lo = region.min(axis=0) - float(padding_m)
+        hi = region.max(axis=0) + float(padding_m)
+        body_mask = np.all((body >= lo) & (body <= hi), axis=1)
+        local_body = body[body_mask]
+        for column, (i, j, view_name) in enumerate(views):
+            axis = axes[row, column]
+            axis.scatter(local_body[:, i], local_body[:, j], s=2.0, c=body_color, alpha=0.32)
+            axis.scatter(region[:, i], region[:, j], s=1.2, c=ANATOMY_COLOR, alpha=0.70)
+            axis.set_aspect("equal")
+            axis.set_title(f"{pose_label} {view_name}")
+            _fit_axis_limits(axis, [local_body, region], i, j)
+            axis.grid(True, alpha=0.10)
+    figure.suptitle(title)
+    figure.legend(
+        handles=_overlay_legend_handles(
+            anatomy_label="regional anatomy",
+            smpl_label="SMPL-X skin",
+            smpl_color=SMPL_TPOSE_COLOR,
+            include_bones=False,
+        ),
+        loc="outside lower center",
+        ncol=2,
+    )
+    figure.tight_layout(rect=(0, 0.06, 1, 0.97))
+    plt.savefig(path, dpi=180)
+    plt.close(figure)
+
+
 def draw_vein_on_body_pose_figure(
     path: Path,
     *,

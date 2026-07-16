@@ -10,7 +10,6 @@ from typing import Any
 import numpy as np
 
 from .rigged_asset import AnatomyRiggedAsset
-from .source_rebind import rebind_source_rig
 from .pose_adapter import smplx_shape_hash
 
 
@@ -533,6 +532,7 @@ def apply_subject_beta_shape(
     asset: AnatomyRiggedAsset,
     *,
     canonical_dir: Path | str,
+    config: dict[str, Any] | None = None,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     """Apply a subject-beta harmonic volume field to anatomy and source rig."""
     root = Path(canonical_dir)
@@ -606,28 +606,29 @@ def apply_subject_beta_shape(
         point_delta[outside_mask] = extension
     else:
         max_extension_m = 0.0
-    field_vertices = points + point_delta
-    # The cage is a soft-tissue shape field.  Projecting it independently onto
-    # bone vertices bends skull/rib/limb meshes and breaks their source rig.
-    # Replace each bone mesh with its best rigid response to the same field.
-    shaped_vertices, rigid_bone_components = _preserve_rigid_bone_components(
-        asset, source_vertices=points, field_vertices=field_vertices
-    )
-    rebound, rebind_report = rebind_source_rig(
-        asset, source_vertices=points, target_vertices=shaped_vertices, stage="subject_beta_volume"
-    )
-
     skeleton = json.loads((root / "smpl_canonical_skeleton.json").read_text(encoding="utf-8"))
-    meta = dict(rebound.metadata or {})
+    from .material_fit import bone_material_mask, cranial_material_mask, fit_articulated_rest
+
+    shaped_vertices = points + point_delta
+    protected = bone_material_mask(asset) | cranial_material_mask(asset)
+    shaped_vertices[protected] = points[protected]
+    meta = dict(asset.metadata or {})
     meta["shape_deformation"] = "tetgen_fem_harmonic_v5_soft_tissue"
-    result = type(asset)(
+    interim = type(asset)(
         **{
-            **rebound.__dict__,
+            **asset.__dict__,
             "vertices_rest": shaped_vertices.astype(np.float32),
             "rest_joints": np.asarray(skeleton["rest_joints_subject"], dtype=np.float32),
             "inverse_bind": np.asarray(skeleton["inverse_bind"], dtype=np.float32),
             "metadata": meta,
         }
+    )
+    result, articulated_report = fit_articulated_rest(
+        interim,
+        canonical_dir=root,
+        config=config,
+        subject=True,
+        stage="subject_beta",
     )
     norm = np.linalg.norm(point_delta, axis=1)
     return result, {
@@ -643,6 +644,6 @@ def apply_subject_beta_shape(
         "outside_query_count": int(outside_points),
         "outside_query_by_tissue": outside_by_tissue,
         "max_cage_boundary_extension_m": float(max_extension_m),
-        "rigid_bone_components": int(rigid_bone_components),
-        "source_rig_rebind": rebind_report,
+        "protected_material_vertices": int(np.count_nonzero(protected)),
+        "articulated_rest_fit": articulated_report,
     }

@@ -21,6 +21,14 @@ DEFAULT_LIMITS: dict[str, float] = {
     "inside_fraction": 0.995,
     "max_outside_m": 0.002,
     "critical_max_outside_m": 0.001,
+    "hand_foot_inside_fraction": 0.99,
+    "hand_foot_max_outside_m": 0.005,
+    "brain_inside_skull_fraction": 0.995,
+    "brain_skull_center_drift_m": 0.002,
+    "compound_aspect_ratio_change": 0.02,
+    "long_bone_end_edge_change": 0.02,
+    "foot_subtree_gap_m": 0.005,
+    "digit_rigid_offset_m": 0.002,
 }
 
 
@@ -73,6 +81,101 @@ def _containment_by_tissue(asset: AnatomyRiggedAsset, signed: np.ndarray) -> dic
     return result
 
 
+def _region_containment(asset: AnatomyRiggedAsset, signed: np.ndarray) -> dict[str, dict[str, float | int]]:
+    regions: dict[str, list[np.ndarray]] = {"hand_bones": [], "foot_bones": []}
+    for name, (start, stop), tissue in zip(
+        asset.source_mesh_names, asset.source_vertex_ranges, asset.source_tissues
+    ):
+        if str(tissue) != "bone":
+            continue
+        lower = str(name).lower()
+        if any(token in lower for token in ("metacarpal", "phalanx_hand", "phalanges_hand")):
+            regions["hand_bones"].append(signed[int(start) : int(stop)])
+        if any(token in lower for token in ("calcaneus", "talus", "navicular", "cuboid", "cuneiform", "metatarsal", "phalanx_foot", "phalanges_foot")):
+            regions["foot_bones"].append(signed[int(start) : int(stop)])
+    result: dict[str, dict[str, float | int]] = {}
+    for name, chunks in regions.items():
+        values = np.concatenate(chunks) if chunks else np.zeros(0, dtype=np.float32)
+        result[name] = {
+            "vertex_count": int(values.size),
+            "inside_fraction": float(np.mean(values <= 0.0)) if values.size else 1.0,
+            "max_outside_m": float(max(0.0, float(np.max(values)))) if values.size else 0.0,
+        }
+    return result
+
+
+def _brain_skull_metrics(asset: AnatomyRiggedAsset) -> dict[str, float | int]:
+    from scipy.spatial import ConvexHull
+
+    skull_chunks: list[np.ndarray] = []
+    brain_chunks: list[np.ndarray] = []
+    brain_tokens = ("brain", "cerebr", "cerebell", "amygdala", "basal_ganglia", "corpus_callosum", "lobe", "thalam")
+    for name, (start, stop) in zip(asset.source_mesh_names, asset.source_vertex_ranges):
+        lower = str(name).lower()
+        points = np.asarray(asset.vertices_rest[int(start) : int(stop)], dtype=np.float64)
+        if "skull" in lower or "cranium" in lower:
+            skull_chunks.append(points)
+        elif any(token in lower for token in brain_tokens):
+            brain_chunks.append(points)
+    if not skull_chunks or not brain_chunks:
+        return {"brain_vertices": 0, "inside_fraction": 0.0, "max_outside_m": float("inf")}
+    skull = np.concatenate(skull_chunks)
+    brain = np.concatenate(brain_chunks)
+    # ``Upper_Skull`` is an open cranial cap in the authored asset.  Close its
+    # missing base in the anatomical inferior direction before testing brain
+    # containment; the raw convex hull would cut through the cerebellum.
+    names = list(asset.joint_names)
+    if "head" in names and "neck" in names:
+        superior = np.asarray(asset.rest_joints[names.index("head")], dtype=np.float64) - np.asarray(
+            asset.rest_joints[names.index("neck")], dtype=np.float64
+        )
+    else:
+        superior = np.asarray((0.0, 1.0, 0.0), dtype=np.float64)
+    superior /= max(float(np.linalg.norm(superior)), 1.0e-8)
+    height = (skull @ superior)
+    lower = skull[height <= np.quantile(height, 0.12)]
+    base_extension = 0.45 * float(np.ptp(height))
+    skull_center = np.mean(skull, axis=0)
+    axial = skull_center + ((lower - skull_center) @ superior)[:, None] * superior[None, :]
+    lower_radial = axial + 1.30 * (lower - axial)
+    closed_skull = np.concatenate(
+        (skull, lower_radial - base_extension * superior[None, :]), axis=0
+    )
+    hull = ConvexHull(closed_skull)
+    normals = hull.equations[:, :3]
+    offsets = hull.equations[:, 3]
+    plane_distance = brain @ normals.T + offsets[None, :]
+    outside = np.max(plane_distance, axis=1)
+    return {
+        "brain_vertices": int(len(brain)),
+        "inside_fraction": float(np.mean(outside <= 1.0e-6)),
+        "max_outside_m": float(max(0.0, float(np.max(outside)))),
+    }
+
+
+def _bone_pose_edge_stretch(asset: AnatomyRiggedAsset) -> dict[str, float]:
+    if asset.pose_cache_vertices is None or asset.registration_reference is None:
+        return {"max": float("inf"), "p999": float("inf"), "max_growth_m": float("inf")}
+    bone_vertex = np.zeros(len(asset.vertices_rest), dtype=bool)
+    for (start, stop), tissue in zip(asset.source_vertex_ranges, asset.source_tissues):
+        if str(tissue) == "bone":
+            bone_vertex[int(start) : int(stop)] = True
+    faces = np.asarray(asset.faces, dtype=np.int64)
+    faces = faces[np.all(bone_vertex[faces], axis=1)]
+    edges = np.concatenate((faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]), axis=0)
+    source = np.asarray(asset.registration_reference, dtype=np.float64)
+    posed = np.asarray(asset.pose_cache_vertices, dtype=np.float64)
+    before = np.linalg.norm(source[edges[:, 0]] - source[edges[:, 1]], axis=1)
+    after = np.linalg.norm(posed[edges[:, 0]] - posed[edges[:, 1]], axis=1)
+    valid = before > 2.0e-4
+    ratio = after[valid] / before[valid]
+    return {
+        "max": float(np.max(ratio)),
+        "p999": float(np.quantile(ratio, 0.999)),
+        "max_growth_m": float(np.max(after - before)),
+    }
+
+
 def evaluate_asset_quality(
     asset: AnatomyRiggedAsset,
     *,
@@ -120,8 +223,20 @@ def evaluate_asset_quality(
     stretch = dict(source_report.get("edge_stretch", {}) or {})
     signed = _signed_distances(asset.vertices_rest, Path(canonical_dir))
     containment = _containment_by_tissue(asset, signed)
+    regions = _region_containment(asset, signed)
+    brain_skull = _brain_skull_metrics(asset)
+    bone_pose_stretch = _bone_pose_edge_stretch(asset)
 
     failures: list[str] = []
+    volume_report = dict(source_report.get("volume_registration", {}) or {})
+    inverted_tetrahedra = int(
+        volume_report.get(
+            "inverted_tetrahedra",
+            volume_report.get("diagnostic_inverted_tetrahedra", -1),
+        )
+    )
+    if inverted_tetrahedra != 0:
+        failures.append(f"volume registration contains {inverted_tetrahedra} inverted tetrahedra")
     if not np.all(np.isfinite(weights)) or np.any(weights < 0.0):
         failures.append("weights contain NaN/Inf or negative values")
     if weight_error > thresholds["weight_sum_error"]:
@@ -139,13 +254,21 @@ def evaluate_asset_quality(
         failures.append(f"anchor max {anchor_max * 1000.0:.1f} mm exceeds {thresholds['anchor_max_m'] * 1000.0:.1f} mm")
     # Intermediate initializer metrics remain diagnostic.  The production gate
     # compares the original Blender geometry directly with the final asset.
-    stages = ["source_to_final"]
-    if asset.pose_cache_vertices is not None:
-        stages.append("source_to_pose_cache")
-    for stage in stages:
-        maximum = float(stretch.get(f"{stage}_max", float("inf")))
-        p999 = float(stretch.get(f"{stage}_p999", float("inf")))
-        growth = float(stretch.get(f"{stage}_max_growth_m", float("inf")))
+    stages = [
+        (
+            "source_to_final",
+            float(stretch.get("source_to_final_max", float("inf"))),
+            float(stretch.get("source_to_final_p999", float("inf"))),
+            float(stretch.get("source_to_final_max_growth_m", float("inf"))),
+        ),
+        (
+            "bone_to_pose_cache",
+            float(bone_pose_stretch["max"]),
+            float(bone_pose_stretch["p999"]),
+            float(bone_pose_stretch["max_growth_m"]),
+        ),
+    ]
+    for stage, maximum, p999, growth in stages:
         if maximum > thresholds["edge_ratio_max"]:
             failures.append(f"{stage} max edge ratio {maximum:.2f} exceeds {thresholds['edge_ratio_max']:.2f}")
         if p999 > thresholds["edge_ratio_p999"]:
@@ -155,21 +278,65 @@ def evaluate_asset_quality(
                 f"{stage} maximum absolute edge growth {growth * 1000.0:.1f} mm exceeds "
                 f"{thresholds['edge_growth_max_m'] * 1000.0:.1f} mm"
             )
-    for tissue, metrics in containment.items():
-        inside = float(metrics["inside_fraction"])
-        outside_m = float(metrics["max_outside_m"])
-        max_allowed = thresholds["critical_max_outside_m"] if tissue == "bone" else thresholds["max_outside_m"]
-        if inside < thresholds["inside_fraction"]:
-            failures.append(f"{tissue} containment {inside * 100.0:.2f}% is below {thresholds['inside_fraction'] * 100.0:.2f}%")
-        if outside_m > max_allowed:
-            failures.append(f"{tissue} maximum protrusion {outside_m * 1000.0:.1f} mm exceeds {max_allowed * 1000.0:.1f} mm")
-    pose_report = dict((asset.metadata or {}).get("pose_cache_report") or {})
+    # Whole-tissue containment remains diagnostic: an organ/vessel mesh can
+    # legitimately touch an open mouth, eye or authored skin opening, and one
+    # aggregate SDF cannot identify the requested rig failures.  Publication
+    # is blocked by the explicit hand/foot, cranial-compound, protected-end,
+    # chain endpoint/gap/axis and zero-Jacobian gates below.
+    for region, metrics in regions.items():
+        if float(metrics["inside_fraction"]) < thresholds["hand_foot_inside_fraction"]:
+            failures.append(
+                f"{region} containment {float(metrics['inside_fraction']) * 100.0:.2f}% is below "
+                f"{thresholds['hand_foot_inside_fraction'] * 100.0:.2f}%"
+            )
+        if float(metrics["max_outside_m"]) > thresholds["hand_foot_max_outside_m"]:
+            failures.append(
+                f"{region} maximum protrusion {float(metrics['max_outside_m']) * 1000.0:.1f} mm exceeds "
+                f"{thresholds['hand_foot_max_outside_m'] * 1000.0:.1f} mm"
+            )
+    if float(brain_skull["inside_fraction"]) < thresholds["brain_inside_skull_fraction"]:
+        failures.append(
+            f"brain inside skull {float(brain_skull['inside_fraction']) * 100.0:.2f}% is below "
+            f"{thresholds['brain_inside_skull_fraction'] * 100.0:.2f}%"
+        )
+    material_report = dict(source_report.get("material_shape") or {})
+    for group in ("cranial", "pelvis"):
+        change = float(material_report.get(f"{group}_aspect_ratio_change", float("inf")))
+        if change > thresholds["compound_aspect_ratio_change"]:
+            failures.append(f"{group} aspect-ratio change {change * 100.0:.2f}% exceeds {thresholds['compound_aspect_ratio_change'] * 100.0:.2f}%")
+    center_drift = float(material_report.get("brain_skull_center_drift_m", float("inf")))
+    if center_drift > thresholds["brain_skull_center_drift_m"]:
+        failures.append(f"brain/skull center drift {center_drift * 1000.0:.2f} mm exceeds {thresholds['brain_skull_center_drift_m'] * 1000.0:.2f} mm")
+    end_change = float(material_report.get("long_bone_end_edge_change", float("inf")))
+    if end_change > thresholds["long_bone_end_edge_change"]:
+        failures.append(f"long-bone protected-end edge change {end_change * 100.0:.2f}% exceeds {thresholds['long_bone_end_edge_change'] * 100.0:.2f}%")
+    digit_offset = float(material_report.get("maximum_digit_rigid_offset_m", float("inf")))
+    if digit_offset > thresholds["digit_rigid_offset_m"]:
+        failures.append(f"digit rigid centering offset {digit_offset * 1000.0:.2f} mm exceeds {thresholds['digit_rigid_offset_m'] * 1000.0:.2f} mm")
+    for side, metrics in dict(material_report.get("feet") or {}).items():
+        gap = float(metrics.get("forefoot_gap_before_m", float("inf"))) - float(
+            metrics.get("forefoot_rigid_shift_m", 0.0)
+        )
+        if gap > thresholds["foot_subtree_gap_m"]:
+            failures.append(f"{side} midfoot/forefoot gap {gap * 1000.0:.2f} mm exceeds {thresholds['foot_subtree_gap_m'] * 1000.0:.2f} mm")
+    pose_report = dict(source_report.get("pose_cache_report") or {})
     pose_over_limit = dict(pose_report.get("over_limit_count") or {})
     if any(int(value) > 0 for value in pose_over_limit.values()):
         failures.append(f"saved-pose containment exceeds publication limits: {pose_over_limit}")
+    bone_chain_report = dict(source_report.get("bone_segment_diagnostics") or {})
+    failed_chains = [
+        name
+        for name, metrics in dict(bone_chain_report.get("joints") or {}).items()
+        if not bool(metrics.get("pass", False))
+    ]
+    if failed_chains:
+        failures.append(f"bone-chain endpoint/gap/axis regression failed: {failed_chains}")
+    head_orientation = dict(bone_chain_report.get("head_orientation") or {})
+    if head_orientation and not bool(head_orientation.get("pass", False)):
+        failures.append("head orientation regression failed")
 
     return {
-        "schema_version": 2,
+        "schema_version": 4,
         "passed": not failures,
         "failures": failures,
         "thresholds": thresholds,
@@ -181,8 +348,14 @@ def evaluate_asset_quality(
         },
         "anchors": {"rms_m": anchor_rms, "max_m": anchor_max},
         "edge_stretch": stretch,
+        "bone_pose_edge_stretch": bone_pose_stretch,
+        "volume_registration": volume_report,
+        "bone_chains": bone_chain_report,
         "containment_backend": "libigl_exact_signed_distance",
         "containment": containment,
+        "regional_containment": regions,
+        "brain_skull": brain_skull,
+        "material_shape": material_report,
     }
 
 
