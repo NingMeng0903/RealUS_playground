@@ -1065,12 +1065,18 @@ def _source_rig_canonical(
             joint_b[bi] = joint_index["head"]
             driver_type = "rigid_group"
         elif lower.startswith("rib_bone_") or lower.startswith("rib_name_"):
+            # Each rib is authored as a child of its thoracic vertebra.  Follow
+            # that parent bind-local rather than collapsing every rib onto the
+            # spine2→spine3 segment (which exploded the cage under pose).
             digits = "".join(ch for ch in name if ch.isdigit())
             rib_number = max(1, min(12, int(digits or "6")))
-            joint_a[bi] = joint_index["spine2"]
-            joint_b[bi] = joint_index["spine3"]
-            blend[bi] = float((12 - rib_number) / 11.0)
-            driver_type = "rigid_group"
+            level = f"spine{2 if rib_number >= 8 else 3}"
+            if level not in joint_index:
+                level = "spine3"
+            joint_a[bi] = joint_index[level]
+            joint_b[bi] = joint_index[level]
+            blend[bi] = 0.0
+            driver_type = "bind_follow"
 
         pb = arm.pose.bones.get(name)
         if pb is None:

@@ -267,6 +267,36 @@ def _tet_barycentric(points: np.ndarray, tetrahedra: np.ndarray) -> np.ndarray:
     return np.einsum("pj,pjk->pk", rhs, np.linalg.inv(system))
 
 
+def _tet_boundary_faces(elements: np.ndarray) -> np.ndarray:
+    tet = np.asarray(elements, dtype=np.int64)
+    faces = np.concatenate(
+        (tet[:, [0, 1, 2]], tet[:, [0, 1, 3]], tet[:, [0, 2, 3]], tet[:, [1, 2, 3]]), axis=0
+    )
+    canonical = np.sort(faces, axis=1)
+    _unique, inverse, counts = np.unique(canonical, axis=0, return_inverse=True, return_counts=True)
+    return faces[counts[inverse] == 1]
+
+
+def _extend_from_cage_boundary(
+    points: np.ndarray,
+    *,
+    cage: dict[str, np.ndarray],
+    field: np.ndarray,
+) -> tuple[np.ndarray, float]:
+    """Continuous boundary extension for points excluded only by surface repair."""
+    import igl
+
+    nodes = np.asarray(cage["nodes"], dtype=np.float64)
+    boundary_faces = _tet_boundary_faces(np.asarray(cage["elements"], dtype=np.int64))
+    squared, face_index, closest = igl.point_mesh_squared_distance(
+        np.asarray(points, dtype=np.float64), nodes, boundary_faces
+    )
+    selected = boundary_faces[np.asarray(face_index, dtype=np.int64)]
+    bary = _triangle_barycentric(np.asarray(closest, dtype=np.float64), nodes[selected])
+    displacement = np.sum(field[selected] * bary[:, :, None], axis=1)
+    return displacement, float(np.sqrt(np.max(squared))) if len(squared) else 0.0
+
+
 def _sample_field(
     points: np.ndarray,
     *,
@@ -347,26 +377,31 @@ def apply_subject_beta_shape(
             f"subject beta harmonic field is near-degenerate: min Jacobian ratio {minimum_jacobian_ratio:.6f}"
         )
     points = np.asarray(asset.vertices_rest, dtype=np.float64)
-    # The source-skin constrained solve is the single rest-space soft-tissue
-    # transport.  A second beta cage was evaluated in a different volume and
-    # either extrapolated organs by centimetres or rejected valid anatomy at
-    # the repaired boundary.  Beta still supplies the subject skeleton and
-    # rigid material targets below; soft tissue remains on its one field.
-    point_delta = np.zeros_like(points)
-    outside_points = 0
-    outside_mask = np.zeros(len(points), dtype=bool)
-    displacement_cache_hit = False
+    # Soft tissue (vessels/nerves/organs) follows one global harmonic volume
+    # field from the neutral→subject surface.  Bones and cranial material stay
+    # at authored positions here and are fitted by articulated material_fit.
+    point_delta, outside_points, outside_mask = _sample_field(points, cage=cage, field=field)
     outside_by_tissue: dict[str, int] = {}
+    max_extension_m = 0.0
+    if outside_points:
+        extension, max_extension_m = _extend_from_cage_boundary(
+            points[outside_mask], cage=cage, field=field
+        )
+        point_delta[outside_mask] = extension
+        if asset.source_vertex_ranges is not None and asset.source_tissues is not None:
+            for (start, stop), tissue in zip(asset.source_vertex_ranges, asset.source_tissues):
+                outside_by_tissue[str(tissue)] = outside_by_tissue.get(str(tissue), 0) + int(
+                    np.count_nonzero(outside_mask[int(start) : int(stop)])
+                )
+    displacement_cache_hit = False
     skeleton = json.loads((root / "smpl_canonical_skeleton.json").read_text(encoding="utf-8"))
     from .material_fit import bone_material_mask, cranial_material_mask, fit_articulated_rest
 
     protected = bone_material_mask(asset) | cranial_material_mask(asset)
-    max_extension_m = 0.0
-
     shaped_vertices = points + point_delta
     shaped_vertices[protected] = points[protected]
     meta = dict(asset.metadata or {})
-    meta["shape_deformation"] = "tetgen_fem_harmonic_v5_soft_tissue"
+    meta["shape_deformation"] = "tetgen_fem_harmonic_v6_soft_plus_articulated_bones"
     interim = type(asset)(
         **{
             **asset.__dict__,
@@ -383,18 +418,21 @@ def apply_subject_beta_shape(
         subject=True,
         stage="subject_beta",
     )
-    norm = np.linalg.norm(point_delta, axis=1)
+    soft_mask = ~protected
+    soft_norm = (
+        np.linalg.norm(point_delta[soft_mask], axis=1) if np.any(soft_mask) else np.zeros(1)
+    )
     return result, {
-        "backend": "tetgen_fem_harmonic_v5_soft_tissue",
+        "backend": "tetgen_fem_harmonic_v6_soft_plus_articulated_bones",
         "beta_basis_cache_hit": bool(basis_cache_hit),
         "beta_displacement_cache_hit": bool(displacement_cache_hit),
-        "soft_beta_transport": "disabled_single_source_volume_field",
+        "soft_beta_transport": "global_harmonic_volume_field",
         "beta_basis_combine_backend": str(basis_backend),
         "surface_basis_error_m": float(surface_basis_error),
         "tetra_vertices": int(len(cage["nodes"])),
         "tetrahedra": int(len(cage["elements"])),
-        "mean_displacement_m": float(np.mean(norm)),
-        "max_displacement_m": float(np.max(norm)),
+        "mean_displacement_m": float(np.mean(soft_norm)),
+        "max_displacement_m": float(np.max(soft_norm)),
         "outside_query_count": int(outside_points),
         "outside_query_by_tissue": outside_by_tissue,
         "max_cage_boundary_extension_m": float(max_extension_m),

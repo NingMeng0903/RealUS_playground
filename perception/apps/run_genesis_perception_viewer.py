@@ -25,16 +25,14 @@ from pathlib import Path
 class PerceptionViewerConfig:
     track_subscribe: str = "tcp://127.0.0.1:5598"
     anatomy_subscribe: str = "tcp://127.0.0.1:5601"
-    planning_root: Path = Path("outputs/anatomy_retarget/limb_vessel_planning")
     anatomy_transparent_alpha: float = 0.35
     track_mesh_rgba: tuple[int, int, int, int] = (250, 122, 31, 120)
     spawn_robot: bool = True
     backend: str = "cuda"
-    reload_planning_s: float = 2.0
 
 
 class PerceptionViewerOverlay:
-    """Subscribe track + anatomy; draw planning assets on a Genesis scene."""
+    """Subscribe track + anatomy overlays on a Genesis scene."""
 
     def __init__(self, scene: object, cfg: PerceptionViewerConfig) -> None:
         self._scene = scene
@@ -42,11 +40,9 @@ class PerceptionViewerOverlay:
         self._track = None
         self._anatomy_reg = None
         self._anatomy_sub = None
-        self._planning = None
         self._latest_pose55 = None
         self._latest_transl = None
         self._anatomy_transparent_applied: set[str] = set()
-        self._last_planning_check = 0.0
 
     def start(self) -> None:
         runtime = getattr(self._scene, "amongus_runtime", None) or _SceneRuntimeAdapter(self._scene)
@@ -84,15 +80,6 @@ class PerceptionViewerOverlay:
         except Exception as exc:
             logging.warning("anatomy overlay unavailable: %s", exc)
 
-        try:
-            from projects.genesis_ue_sync.anatomy_retarget.planning_overlay import PlanningOverlayDrawer
-
-            runtime = getattr(self._scene, "amongus_runtime", None) or _SceneRuntimeAdapter(self._scene)
-            self._planning = PlanningOverlayDrawer(runtime, planning_root=self._cfg.planning_root)
-            self._planning.reload_if_changed(force=True)
-        except Exception as exc:
-            logging.warning("planning overlay unavailable: %s", exc)
-
     def poll_once(self) -> None:
         if self._track is not None:
             try:
@@ -125,14 +112,6 @@ class PerceptionViewerOverlay:
             except Exception:
                 pass
 
-        now = time.monotonic()
-        if self._planning is not None and (now - self._last_planning_check) >= float(self._cfg.reload_planning_s):
-            self._last_planning_check = now
-            try:
-                self._planning.reload_if_changed()
-            except Exception:
-                pass
-
 
 class _SceneRuntimeAdapter:
     def __init__(self, scene: object) -> None:
@@ -152,7 +131,6 @@ def main() -> int:
     )
     ap.add_argument("--track-subscribe", type=str, default="tcp://127.0.0.1:5598")
     ap.add_argument("--anatomy-subscribe", type=str, default="tcp://127.0.0.1:5601")
-    ap.add_argument("--planning-root", type=Path, default=Path("outputs/anatomy_retarget/limb_vessel_planning"))
     ap.add_argument("--anatomy-alpha", type=float, default=0.35)
     ap.add_argument(
         "--track-mesh-alpha",
@@ -167,7 +145,6 @@ def main() -> int:
         help="Hide RM75 + rail (default: show static arm at demo pose)",
     )
     ap.add_argument("--backend", choices=("cuda", "cpu"), default="cuda")
-    ap.add_argument("--reload-planning-s", type=float, default=2.0)
     ap.add_argument("--verbose", action="store_true", help="Log ZMQ overlay subscribe details")
     args = ap.parse_args()
 
@@ -186,7 +163,6 @@ def main() -> int:
         "OpenGL.arrays",
         "projects.genesis_ue_sync.multiview_realtime.ingress.track_pose_subscriber",
         "projects.genesis_ue_sync.anatomy_retarget.genesis_control",
-        "projects.genesis_ue_sync.anatomy_retarget.planning_overlay",
         "genesis",
     ):
         logging.getLogger(_name).setLevel(logging.DEBUG if args.verbose else logging.ERROR)
@@ -194,12 +170,10 @@ def main() -> int:
     cfg = PerceptionViewerConfig(
         track_subscribe=str(args.track_subscribe),
         anatomy_subscribe=str(args.anatomy_subscribe),
-        planning_root=args.planning_root,
         anatomy_transparent_alpha=float(args.anatomy_alpha),
         track_mesh_rgba=(250, 122, 31, max(0, min(255, int(args.track_mesh_alpha)))),
         spawn_robot=not bool(args.no_robot),
         backend=str(args.backend),
-        reload_planning_s=float(args.reload_planning_s),
     )
 
     if cfg.backend == "cuda":

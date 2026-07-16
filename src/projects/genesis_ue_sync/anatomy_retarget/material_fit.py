@@ -695,6 +695,20 @@ def fit_articulated_rest(
     asset.validate()
     cfg = dict(config or {})
     root = Path(canonical_dir)
+    # Ribs must follow their authored thoracic parent.  Older source caches still
+    # mark them as rigid_group(spine2→spine3), which explodes the cage under pose.
+    modes = list(asset.source_bone_driver_types or [])
+    source_names = list(asset.source_bone_names or [])
+    if modes and source_names and len(modes) == len(source_names):
+        patched = False
+        for bi, name in enumerate(source_names):
+            lower = str(name).lower()
+            if lower.startswith("rib_bone_") or lower.startswith("rib_name_"):
+                if modes[bi] != "bind_follow":
+                    modes[bi] = "bind_follow"
+                    patched = True
+        if patched:
+            asset = type(asset)(**{**asset.__dict__, "source_bone_driver_types": modes})
     old_vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
     vertices = old_vertices.copy()
     old_global = np.asarray(asset.source_rest_global, dtype=np.float64)
@@ -870,16 +884,13 @@ def fit_articulated_rest(
             parents=asset.parents,
         )[head_index]
         offset_world = head_frame[:3, :3] @ local_offset
+        # Place about the head joint (not an eye-midline AABB recenter).  The
+        # Head_Bone delta already put the compound on the subject head frame;
+        # the envelope only supplies a single isotropic scale about that joint.
+        cranial_envelope_center_before = np.asarray(target_joints[head_index], dtype=np.float64)
+        cranial_envelope_center_after = cranial_envelope_center_before + offset_world
         cranial_reference = (
             vertices[skull_reference] if np.any(skull_reference) else vertices[cranial]
-        )
-        cranial_envelope_center_before, cranial_envelope_center_after = _midline_envelope_centers(
-            reference_points=cranial_reference,
-            target_points=target_head,
-            source_anchors=source_anchors,
-            target_joints=target_joints,
-            joint_names=asset.joint_names,
-            center_offset=offset_world,
         )
         vertices[cranial], cranial_scale = _uniform_envelope_fit(
             vertices[cranial],
@@ -927,44 +938,52 @@ def fit_articulated_rest(
     pelvis_scale = 1.0
     pelvis_aspect_ratio_change = 0.0
     if np.any(pelvis):
+        # Uniform envelope against the subject pelvic *surface*, centered on the
+        # pelvis joint (spine base).  Scaling by the SMPL-X hip-joint span
+        # collapsed the ilium (~0.5x) because those joints sit far more medial
+        # than the authored iliac width.
         old_pelvis = old_vertices[pelvis].copy()
         multiplier, local_offset = _override(cfg, "pelvis")
         pelvis_id = asset.joint_names.index("pelvis")
+        target_pelvis = _surface_region(
+            root,
+            asset.joint_names,
+            ("pelvis", "left_hip", "right_hip", "spine1"),
+            subject=subject,
+        )
+        rest_global_pelvis = joint_global_transforms(
+            pose_axis_angle=np.zeros((55, 3), dtype=np.float32),
+            rest_joints=asset.rest_joints,
+            parents=asset.parents,
+        )[pelvis_id]
+        offset_world = rest_global_pelvis[:3, :3] @ local_offset
+        source_center = np.asarray(source_anchors[pelvis_id], dtype=np.float64)
+        target_center = np.asarray(target_joints[pelvis_id], dtype=np.float64) + offset_world
+        # Align lateral hip axis before the isotropic envelope so the sacrum
+        # stays on the spine chain after scaling about the pelvis joint.
         left_hip_id = asset.joint_names.index("left_hip")
         right_hip_id = asset.joint_names.index("right_hip")
-
-        def pelvis_frame(points: np.ndarray) -> np.ndarray:
-            p = points[pelvis_id]
-            left = points[left_hip_id] - p
-            right = points[right_hip_id] - p
-            spine = points[asset.joint_names.index("spine1")] - p
-            lateral = right - left
-            lateral /= max(float(np.linalg.norm(lateral)), 1.0e-8)
-            vertical = spine - lateral * float(spine @ lateral)
-            vertical /= max(float(np.linalg.norm(vertical)), 1.0e-8)
-            depth = np.cross(lateral, vertical)
-            depth /= max(float(np.linalg.norm(depth)), 1.0e-8)
-            return np.stack((lateral, vertical, depth), axis=1)
-
-        target_frame = pelvis_frame(target_joints)
-        source_left = source_anchors[left_hip_id]
-        source_right = source_anchors[right_hip_id]
-        target_left = target_joints[left_hip_id]
-        target_right = target_joints[right_hip_id]
-        source_center = 0.5 * (source_left + source_right)
-        target_center = 0.5 * (target_left + target_right)
-        source_axis = source_right - source_left
-        target_axis = target_right - target_left
+        source_axis = source_anchors[right_hip_id] - source_anchors[left_hip_id]
+        target_axis = target_joints[right_hip_id] - target_joints[left_hip_id]
         rotation = _rotation_between(source_axis, target_axis)
-        pelvis_scale = float(
-            np.linalg.norm(target_axis) / max(float(np.linalg.norm(source_axis)), 1.0e-12)
-            * multiplier
+        rotated = (old_vertices[pelvis] - source_center) @ rotation.T + target_center
+        vertices[pelvis], pelvis_scale = _uniform_envelope_fit(
+            rotated,
+            target_pelvis,
+            reference_points=rotated,
+            scale_multiplier=multiplier,
+            center_offset=np.zeros(3, dtype=np.float64),
+            margin=0.96,
+            maximum_scale=1.20,
+            source_center=target_center,
+            target_center=target_center,
         )
-        vertices[pelvis] = (
-            (old_vertices[pelvis] - source_center) @ rotation.T * pelvis_scale
-            + target_center
-            + target_frame @ local_offset
-        )
+        # Floor so a narrow subject hip surface cannot collapse the ilium.
+        if pelvis_scale < 0.80:
+            vertices[pelvis] = target_center + 0.80 / max(pelvis_scale, 1.0e-8) * (
+                vertices[pelvis] - target_center
+            )
+            pelvis_scale = 0.80
         pelvis_aspect_ratio_change = _aspect_ratio_change(old_pelvis, vertices[pelvis])
 
     thorax = thorax_material
@@ -1009,18 +1028,21 @@ def fit_articulated_rest(
         forward /= max(float(np.linalg.norm(forward)), 1.0e-8)
         root_name = f"Ankle_Rot_{'L' if side == 'left' else 'R'}"
         source_names = list(asset.source_bone_names or [])
+        # Foot compound follows the Ankle_Rot bind delta rigidly so the ankle
+        # joint stays connected.  Forefoot reach is then scaled about that
+        # ankle; no independent per-toe translation is introduced here.
         if root_name in source_names:
             vertices[foot] = _transform_points(
                 old_vertices[foot], bone_delta[source_names.index(root_name)]
             )
         source_reach = float(np.quantile((vertices[foot] - ankle) @ forward, 0.995))
         target_reach = float(np.quantile((target_foot - ankle) @ forward, 0.995))
-        scale = 0.95 * target_reach / max(source_reach, 1.0e-5)
+        scale = float(np.clip(0.95 * target_reach / max(source_reach, 1.0e-5), 0.85, 1.05))
         vertices[foot] = ankle + scale * (vertices[foot] - ankle)
         import igl
 
         rigid_offset = np.zeros(3, dtype=np.float64)
-        for _iteration in range(8):
+        for _iteration in range(4):
             signed, _face_index, closest, _normal = igl.signed_distance(
                 vertices[foot], subject_surface, surface_faces
             )
@@ -1031,25 +1053,7 @@ def fit_articulated_rest(
             length = float(np.linalg.norm(step))
             if length <= 1.0e-6:
                 break
-            step *= min(1.0, 0.005 / length)
-            vertices[foot] += step
-            rigid_offset += step
-        for _proximal_iteration in range(3):
-            proximal = ((vertices[foot] - ankle) @ forward) <= 0.30 * max(target_reach, 1.0e-5)
-            signed, _face_index, closest, _normal = igl.signed_distance(
-                vertices[foot][proximal], subject_surface, surface_faces
-            )
-            outside = np.asarray(signed) > 0.0
-            if not np.any(outside):
-                break
-            step = np.median(
-                np.asarray(closest)[outside] - vertices[foot][proximal][outside], axis=0
-            )
-            step -= forward * float(step @ forward)
-            length = float(np.linalg.norm(step))
-            if length <= 1.0e-7:
-                break
-            step *= min(1.0, 0.005 / length)
+            step *= min(1.0, 0.003 / length)
             vertices[foot] += step
             rigid_offset += step
         foot_report[side] = {
@@ -1057,7 +1061,15 @@ def fit_articulated_rest(
             "source_reach_m": source_reach,
             "target_reach_m": target_reach,
             "surface_center_offset_m": rigid_offset.tolist(),
+            "forefoot_gap_before_m": 0.0,
+            "forefoot_rigid_shift_m": 0.0,
         }
+
+    # Snapshot articulated bind frames before rebind.  Weighted vertex rebind
+    # may improve local orientation, but must not drag bind origins off the
+    # SMPL-X joints (that caused 13-32 cm anchor drift and detached chains).
+    articulated_global = new_global.copy()
+    articulated_local = new_local.copy()
 
     interim = type(asset)(
         **{
@@ -1076,19 +1088,40 @@ def fit_articulated_rest(
         bone_mask=bone_material,
     )
     new_global = np.asarray(rebound.source_rest_global, dtype=np.float64)
-    new_local = np.asarray(rebound.source_rest_local, dtype=np.float64)
+    # Rotation-only rebind for independent drivers: keep articulated bind
+    # translation on the SMPL-X joint, adopt rebind orientation only.
+    for bone, mode in enumerate(modes):
+        if mode == "bind_follow":
+            continue
+        new_global[bone, :3, 3] = articulated_global[bone, :3, 3]
+        if mode in {"segment_root", "twist", "rigid_group", "joint_local"}:
+            # Prefer articulated orientation when the frame was set explicitly
+            # from joint endpoints; rebind only supplies residual spin about it.
+            new_global[bone, :3, :3] = articulated_global[bone, :3, :3]
+    # Re-derive bind_follow children from the corrected parents so toes/patella
+    # stay attached to ankle/knee without independent translation.
+    for bone, mode in enumerate(modes):
+        parent = int(source_parents[bone])
+        if mode == "bind_follow" and parent >= 0:
+            new_global[bone] = new_global[parent] @ articulated_local[bone]
+    new_local = new_global.copy()
+    for bone, parent in enumerate(source_parents.tolist()):
+        if int(parent) >= 0:
+            new_local[bone] = np.linalg.inv(new_global[int(parent)]) @ new_global[bone]
     bone_delta = new_global @ np.linalg.inv(old_global)
+    rebind_report = {
+        **dict(rebind_report),
+        "anchor_translation_restored": True,
+        "bind_follow_rederived": True,
+    }
 
+    # Soft tissue rest shape comes from the harmonic volume field in
+    # shape_volume.py.  Do not LBS-blend soft through articulated bone deltas
+    # here — that re-introduces thin-structure explosions across rib/spine and
+    # wrist/finger driver boundaries.  Cranial soft already moved with the skull.
     soft_material = _soft_material_mask(asset)
     soft_material &= ~(cranial_soft_moved | jaw)
-    _transport_soft_material(
-        vertices,
-        old_vertices,
-        soft_material,
-        driver_indices=fit_driver_indices,
-        driver_weights=fit_driver_weights,
-        bone_delta=bone_delta,
-    )
+    # Soft vertices already hold the field-warped positions from shape_volume.
 
     endpoints_delta = bone_delta
     head = np.asarray(asset.source_bone_head, dtype=np.float64)
@@ -1135,6 +1168,7 @@ def fit_articulated_rest(
         "thorax_uniform_scale": float(thorax_scale),
         "thorax_axis_scale": thorax_axis_scale.tolist(),
         "long_bone_end_edge_change": float(protected_end_edge_change),
+        "maximum_digit_rigid_offset_m": 0.0,
         "feet": foot_report,
         "source_rig_rebind": rebind_report,
         "anchor_rms_m": float(np.sqrt(np.mean(anchor_error * anchor_error))) if len(anchor_error) else 0.0,
@@ -1146,6 +1180,9 @@ def fit_articulated_rest(
         **{
             **rebound.__dict__,
             "vertices_rest": vertices.astype(np.float32),
+            "source_rest_global": new_global.astype(np.float32),
+            "source_rest_local": new_local.astype(np.float32),
+            "source_inverse_bind": np.linalg.inv(new_global).astype(np.float32),
             "source_bone_head": new_head.astype(np.float32),
             "source_bone_tail": new_tail.astype(np.float32),
             "registration_reference": vertices.astype(np.float32),

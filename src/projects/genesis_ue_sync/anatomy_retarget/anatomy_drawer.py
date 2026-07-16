@@ -103,13 +103,16 @@ class AnatomyLbsDrawer:
     def _render_faces(self) -> np.ndarray:
         """Hide optional tissue layers without deleting them from the asset."""
         faces = np.asarray(self.asset.faces, dtype=np.int32)
-        if bool((self.asset.metadata or {}).get("show_connective_tissue", False)):
-            return faces
         if self.asset.source_vertex_ranges is None or self.asset.source_tissues is None:
             return faces
         hidden = np.zeros(len(self.asset.vertices_rest), dtype=bool)
+        show_connective = bool((self.asset.metadata or {}).get("show_connective_tissue", False))
+        show_vessels = bool((self.asset.metadata or {}).get("show_vessels", False))
         for (start, stop), tissue in zip(self.asset.source_vertex_ranges, self.asset.source_tissues):
-            if str(tissue) == "connective_tissue":
+            tissue_key = str(tissue)
+            if tissue_key == "connective_tissue" and not show_connective:
+                hidden[int(start) : int(stop)] = True
+            elif tissue_key == "vessel" and not show_vessels:
                 hidden[int(start) : int(stop)] = True
         return faces[~np.any(hidden[faces], axis=1)]
 
