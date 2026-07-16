@@ -42,6 +42,11 @@ class AnatomyAssetRegistry:
 
     def upsert(self, *, model_id: str, asset_npz: Path | str, color_rgba: tuple[float, float, float, float] | None = None) -> AnatomyLbsDrawer:
         model = str(model_id)
+        # Replace the entire anatomy overlay so stale debug meshes cannot stack.
+        stale = list(self._drawers.keys())
+        for stale_id in stale:
+            if stale_id != model:
+                self.delete(stale_id)
         old = self._drawers.pop(model, None)
         if old is not None:
             old.clear_node()
@@ -74,6 +79,9 @@ class AnatomyAssetRegistry:
             asset_npz = payload.get("asset_npz")
             if not asset_npz:
                 raise ValueError("anatomy upsert requires asset_npz")
+            for stale_id in list(self._drawers.keys()):
+                if stale_id != model_id:
+                    self.delete(stale_id)
             self.upsert(
                 model_id=model_id,
                 asset_npz=str(asset_npz),

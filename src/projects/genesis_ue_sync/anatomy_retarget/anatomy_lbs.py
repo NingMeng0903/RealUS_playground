@@ -2,41 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import os
-import time
 from typing import Any
 
 import numpy as np
 
 from .pose_adapter import pose_to_smplx55_axis_angle
 from .rigged_asset import AnatomyRiggedAsset
-
-_DEBUG_LOG = "/media/camp/EXT_DRIVE/RealUS_playground/.cursor/debug-10238d.log"
-
-
-def _agent_log(*, hypothesis_id: str, location: str, message: str, data: dict[str, Any]) -> None:
-    # #region agent log
-    try:
-        with open(_DEBUG_LOG, "a", encoding="utf-8") as fh:
-            fh.write(
-                json.dumps(
-                    {
-                        "sessionId": "10238d",
-                        "runId": "post-fix",
-                        "hypothesisId": hypothesis_id,
-                        "location": location,
-                        "message": message,
-                        "data": data,
-                        "timestamp": int(time.time() * 1000),
-                    },
-                    default=str,
-                )
-                + "\n"
-            )
-    except OSError:
-        pass
-    # #endregion
 
 
 _CUDA_ASSET_CACHE: dict[int, tuple[Any, Any, Any]] = {}
@@ -274,6 +246,24 @@ def _uses_segment_coupling(driver_type: str) -> bool:
     )
 
 
+def _is_finger_joint(name: str) -> bool:
+    return (
+        (name.startswith("left_") or name.startswith("right_"))
+        and any(token in name for token in ("thumb", "index", "middle", "ring", "pinky"))
+    )
+
+
+def _hand_chain_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
+    """Source bones driven by SMPL-X finger joints."""
+    names = list(asset.joint_names)
+    a = np.asarray(asset.source_bone_smplx_a, dtype=np.int64)
+    b = np.asarray(asset.source_bone_smplx_b, dtype=np.int64)
+    return np.asarray(
+        [_is_finger_joint(names[int(ai)]) or _is_finger_joint(names[int(bi)]) for ai, bi in zip(a, b)],
+        dtype=bool,
+    )
+
+
 def _toe_chain_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
     """All descendants of Blender toe controls (SMPL-X has no toe pose)."""
     parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
@@ -292,12 +282,7 @@ def _toe_chain_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
 def _uses_connected_upper_limb_fk(
     bone_index: int, parent_index: int, driver_types: list[str]
 ) -> bool:
-    """Connected-FK for clavicle/humerus/forearm segment bones only.
-
-    Wrist and finger ``direct_joint`` controls stay on absolute SMPL-X joints
-    (45a8cf4 / ea38b787).  Mixing connected wrist FK with global finger FK
-    creates a ~17 mm frame split at the palm on both hands.
-    """
+    """Connected-FK for arm segments, wrist under forearm, and finger hand_chain."""
     arm_prefixes = (
         "clavicle_segment_",
         "humerus_segment_",
@@ -305,18 +290,29 @@ def _uses_connected_upper_limb_fk(
         "forearm_segment_",
     )
     own = str(driver_types[bone_index]) if bone_index < len(driver_types) else ""
-    return own.startswith(arm_prefixes)
+    if own.startswith(arm_prefixes):
+        return True
+    if own == "direct_joint" and parent_index >= 0:
+        parent_type = (
+            str(driver_types[parent_index]) if parent_index < len(driver_types) else ""
+        )
+        if parent_type.startswith("forearm_segment_"):
+            return True
+    return False
 
 
 def _uses_bind_local_fk(
     bone_index: int,
     parent_index: int,
     driver_types: list[str],
+    hand_chain: np.ndarray,
     toe_chain: np.ndarray,
 ) -> bool:
     """Whether a source bone is solved from its parent's Blender bind frame."""
-    return bool(toe_chain[bone_index]) or _uses_connected_upper_limb_fk(
-        bone_index, parent_index, driver_types
+    return (
+        bool(hand_chain[bone_index])
+        or bool(toe_chain[bone_index])
+        or _uses_connected_upper_limb_fk(bone_index, parent_index, driver_types)
     )
 
 
@@ -463,6 +459,7 @@ def source_bone_skinning_transforms(
     source_parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
     rest_local_bones = _source_rest_local(asset)
     toe_chain = _toe_chain_mask(asset)
+    hand_chain = _hand_chain_mask(asset)
     use_connect = (
         np.asarray(asset.source_bone_use_connect, dtype=bool)
         if getattr(asset, "source_bone_use_connect", None) is not None
@@ -509,9 +506,9 @@ def source_bone_skinning_transforms(
         # SMPL-X head global orientation, including pitch.
         if (
             parent >= 0
-            and (bool(use_connect[bi]) or bool(toe_chain[bi]))
+            and (bool(use_connect[bi]) or bool(hand_chain[bi]) or bool(toe_chain[bi]))
             and driver_type != "head_orientation"
-            and _uses_bind_local_fk(bi, parent, types, toe_chain)
+            and _uses_bind_local_fk(bi, parent, types, hand_chain, toe_chain)
         ):
             # Convert the two global SMPL-X-driven deltas into the child's
             # rotation *relative to its Blender parent*.  Using the child's
@@ -552,47 +549,6 @@ def source_bone_skinning_transforms(
                 posed_global[bi] = source_delta[bi] @ rest_global_bones[bi]
         else:
             posed_global[bi] = source_delta[bi] @ rest_global_bones[bi]
-    # #region agent log
-    if asset.source_bone_names is not None:
-        bn = list(asset.source_bone_names)
-        hand_pairs = [
-            ("Wrist_Rotate_L", "Finger_Index_L3", "left"),
-            ("Wrist_Rotate_R1", "Finger_Rotate_R4", "right"),
-        ]
-        hand_rows: list[dict[str, Any]] = []
-        for wrist_name, finger_name, side in hand_pairs:
-            if wrist_name not in bn or finger_name not in bn:
-                continue
-            wi, fi = int(bn.index(wrist_name)), int(bn.index(finger_name))
-            wrist_pos = np.asarray(posed_global[wi, :3, 3], dtype=np.float64)
-            finger_pos = np.asarray(posed_global[fi, :3, 3], dtype=np.float64)
-            wrist_global = np.asarray(source_delta[wi, :3, 3], dtype=np.float64)
-            finger_global = np.asarray(source_delta[fi, :3, 3], dtype=np.float64)
-            hand_rows.append(
-                {
-                    "side": side,
-                    "wrist": wrist_name,
-                    "finger": finger_name,
-                    "posed_gap_mm": float(np.linalg.norm(finger_pos - wrist_pos) * 1000.0),
-                    "source_delta_gap_mm": float(np.linalg.norm(finger_global - wrist_global) * 1000.0),
-                    "wrist_connected_fk": bool(
-                        _uses_bind_local_fk(wi, int(source_parents[wi]), types, toe_chain)
-                    ),
-                    "finger_connected_fk": bool(
-                        _uses_bind_local_fk(fi, int(source_parents[fi]), types, toe_chain)
-                    ),
-                    "wrist_use_connect": bool(use_connect[wi]),
-                    "finger_use_connect": bool(use_connect[fi]),
-                }
-            )
-        if hand_rows:
-            _agent_log(
-                hypothesis_id="B",
-                location="anatomy_lbs.py:source_bone_skinning_transforms",
-                message="hand wrist vs finger frame gap",
-                data={"pairs": hand_rows},
-            )
-    # #endregion
     return posed_global @ np.asarray(asset.source_inverse_bind, dtype=np.float32)
 
 

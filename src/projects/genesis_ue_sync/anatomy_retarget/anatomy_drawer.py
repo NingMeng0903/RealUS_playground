@@ -127,13 +127,18 @@ class AnatomyLbsDrawer:
     def clear_node(self) -> None:
         if self._mesh_node is None:
             return
-        with try_viewer_render_lock(self.runtime, timeout_s=0.05) as acquired:
-            if not acquired:
-                return
-            try:
-                self.runtime.scene.clear_debug_object(self._mesh_node)
-            except Exception:
-                pass
+        node = self._mesh_node
+        for attempt in (0.15, 0.35, 0.75):
+            with try_viewer_render_lock(self.runtime, timeout_s=attempt) as acquired:
+                if not acquired:
+                    continue
+                try:
+                    self.runtime.scene.clear_debug_object(node)
+                except Exception:
+                    pass
+                else:
+                    self._mesh_node = None
+                    return
         self._mesh_node = None
 
     def set_visible(self, visible: bool) -> None:

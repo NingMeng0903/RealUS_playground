@@ -39,6 +39,7 @@ from projects.genesis_ue_sync.anatomy_retarget.leg_material import compute_leg_m
 from projects.genesis_ue_sync.anatomy_retarget.diagnostics import write_mesh_diagnostics
 from projects.genesis_ue_sync.anatomy_retarget.head_calibration import (
     calibrate_foot_rest_alignment,
+    calibrate_hand_rest_alignment,
     calibrate_head_rest_offset,
 )
 from projects.genesis_ue_sync.anatomy_retarget.bone_segment_diagnostics import write_bone_segment_diagnostics
@@ -158,6 +159,14 @@ def _publish_upsert(
     interval = 1.0 / max(1.0, float(rate_hz))
     sent = 0
     time.sleep(0.2)
+    clear_payload = anatomy_asset_control_to_dict(
+        action="clear_all",
+        model_id=str(model_id),
+        timestamp_ns=time.time_ns(),
+    )
+    body_clear = json.dumps(clear_payload, ensure_ascii=True).encode("utf-8")
+    sock.send_multipart([topic, body_clear])
+    time.sleep(0.1)
     while time.time() < end:
         sock.send_multipart([topic, body])
         sent += 1
@@ -260,6 +269,7 @@ def main() -> int:
             containment_reports.append(neutral_containment)
         asset, head_calibration_report = calibrate_head_rest_offset(asset, config=cfg)
         asset, foot_calibration_report = calibrate_foot_rest_alignment(asset)
+        asset, hand_calibration_report = calibrate_hand_rest_alignment(asset)
         coupling, coupling_report = bake_segment_coupling(asset)
         coupling_report["roundtrip_error_m"] = segment_coupling_roundtrip_error(asset, coupling)
         asset = type(asset)(**{**asset.__dict__, "source_segment_coupling": coupling})
@@ -272,6 +282,7 @@ def main() -> int:
             "source_skin_volume_report": source_skin_report,
             "head_rest_calibration_report": head_calibration_report,
             "foot_rest_calibration_report": foot_calibration_report,
+            "hand_rest_calibration_report": hand_calibration_report,
             "source_cache_key": source_key,
             "segment_coupling_report": coupling_report,
         })

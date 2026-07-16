@@ -22,15 +22,15 @@ def test_connected_fk_is_forearm_only() -> None:
         "direct_joint",
         "direct_joint",
     ]
+    hand = np.array([False, False, False, False, True], dtype=bool)
     toe = np.zeros(5, dtype=bool)
     assert _uses_connected_upper_limb_fk(0, -1, types)
     assert _uses_connected_upper_limb_fk(1, 0, types)
     assert _uses_connected_upper_limb_fk(2, 1, types)
-    # Wrist/finger direct_joint controls stay global (45a8cf4 baseline).
-    assert not _uses_connected_upper_limb_fk(3, 2, types)
-    assert not _uses_bind_local_fk(3, 2, types, toe)
+    assert _uses_connected_upper_limb_fk(3, 2, types)
+    assert _uses_bind_local_fk(3, 2, types, hand, toe)
     assert not _uses_connected_upper_limb_fk(4, 3, types)
-    assert not _uses_bind_local_fk(4, 3, types, toe)
+    assert _uses_bind_local_fk(4, 3, types, hand, toe)
 
 
 def test_neck_axial_stretch_weights() -> None:
