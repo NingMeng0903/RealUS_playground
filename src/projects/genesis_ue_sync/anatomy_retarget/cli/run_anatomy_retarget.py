@@ -23,7 +23,6 @@ from projects.genesis_ue_sync.anatomy_retarget.blender_retarget_runner import ru
 from projects.genesis_ue_sync.anatomy_retarget.containment import (
     load_body_surface,
     repair_containment,
-    repair_soft_tissue_residual_containment,
 )
 from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import joint_global_transforms, skin_vertices
 from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
@@ -225,7 +224,7 @@ def main() -> int:
         Path(__file__).resolve().parents[1] / "segment_coupling.py",
         Path(__file__).resolve().parents[1] / "anatomy_lbs.py",
         Path(__file__).resolve().parents[1] / "material_fit.py",
-        extra=f"source-template-bdfd6de-{RETARGET_PROFILE_ID}-axialfoot-softfollow",
+        extra=f"source-template-bdfd6de-{RETARGET_PROFILE_ID}-skull-compound",
     )
     shape_hash = smplx_shape_hash(betas, gender=gender) if betas else "neutral"
     source_cache = cache_root / "source_template_v5" / f"{source_key}.npz"
@@ -234,7 +233,7 @@ def main() -> int:
         Path(__file__).resolve().parents[1] / "shape_volume.py",
         Path(__file__).resolve().parents[1] / "leg_material.py",
         Path(__file__).resolve().parents[1] / "material_fit.py",
-        extra=f"{source_key}:{shape_hash}:subject-shape-bdfd6de-{RETARGET_PROFILE_ID}-axialfoot-softfollow",
+        extra=f"{source_key}:{shape_hash}:subject-shape-bdfd6de-{RETARGET_PROFILE_ID}-skull-compound",
     )
     shape_cache = cache_root / "shape" / f"{shape_key}.npz"
     source_cache_hit = source_cache.is_file() and not args.force_source_rebake
@@ -323,13 +322,13 @@ def main() -> int:
             repair_tissues=(),
         )
         containment_reports.append(subject_containment)
-        asset, subject_soft_containment = repair_soft_tissue_residual_containment(
-            asset,
-            surface_vertices=subject_surface[0],
-            surface_faces=subject_surface[1],
-            stage="subject_beta_residual_soft",
-            target="rest",
-        )
+        # Do not SDF-push vessels/nerves — that explodes thin tubes. Soft follow
+        # is handled by the bone-translation field in material_fit.
+        subject_soft_containment = {
+            "stage": "subject_beta_residual_soft",
+            "disabled": True,
+            "reason": "avoid_vessel_sdf_push",
+        }
         containment_reports.append(subject_soft_containment)
         asset, leg_material_report = compute_leg_material_coordinates(
             asset, skin_vertices=subject_surface[0]
@@ -418,14 +417,11 @@ def main() -> int:
                     "pose_cache_hash": cache_hash,
                 }
             )
-            soft_pose_asset, soft_pose_report = repair_soft_tissue_residual_containment(
-                soft_pose_asset,
-                surface_vertices=np.asarray(motion["vertices"], dtype=np.float64).reshape(-1, 3),
-                surface_faces=np.asarray(motion["faces"], dtype=np.int32).reshape(-1, 3),
-                stage="final_pose_residual_soft",
-                target="pose_cache",
-            )
-            pose_cache_vertices = np.asarray(soft_pose_asset.pose_cache_vertices, dtype=np.float32)
+            soft_pose_report = {
+                "stage": "final_pose_residual_soft",
+                "disabled": True,
+                "reason": "avoid_vessel_sdf_push",
+            }
             pose_report = {
                 **dict(pose_report or {}),
                 "soft_tissue_residual": soft_pose_report,

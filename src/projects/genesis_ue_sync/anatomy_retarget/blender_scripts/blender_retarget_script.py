@@ -963,8 +963,10 @@ def _source_rig_canonical(
         elif "clavicle_rot" in lower:
             side = _bone_side(name, lower)
             if side is not None:
-                joint_a[bi] = joint_index["spine3"]
-                joint_b[bi] = joint_index[f"{side}_collar"]
+                # Clavicle spans collar→shoulder. Anchoring at spine3 collapsed
+                # both sides onto the thoracic midline and hid the bones.
+                joint_a[bi] = joint_index[f"{side}_collar"]
+                joint_b[bi] = joint_index[f"{side}_shoulder"]
                 driver_type = f"clavicle_segment_{side}"
         elif "shoulder_rotate" in lower:
             side = _bone_side(name, lower)
