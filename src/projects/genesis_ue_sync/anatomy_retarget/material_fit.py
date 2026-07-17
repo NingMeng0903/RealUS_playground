@@ -610,6 +610,233 @@ def _soft_material_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
     return mask
 
 
+def _tissue_mask(asset: AnatomyRiggedAsset, *tissues: str) -> np.ndarray:
+    wanted = {str(t).lower() for t in tissues}
+    mask = np.zeros(len(asset.vertices_rest), dtype=bool)
+    if asset.source_vertex_ranges is None or asset.source_tissues is None:
+        return mask
+    for (start, stop), tissue in zip(asset.source_vertex_ranges, asset.source_tissues):
+        if str(tissue).lower() in wanted:
+            mask[int(start) : int(stop)] = True
+    return mask
+
+
+def _nearest_skeleton_segment(
+    points: np.ndarray,
+    joints: np.ndarray,
+    parents: np.ndarray,
+    *,
+    batch_size: int = 50000,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    children = np.flatnonzero(np.asarray(parents, dtype=np.int64) >= 0)
+    starts = joints[parents[children]]
+    vectors = joints[children] - starts
+    length2 = np.einsum("ij,ij->i", vectors, vectors)
+    valid = length2 > 1.0e-10
+    children, starts, vectors, length2 = (
+        children[valid],
+        starts[valid],
+        vectors[valid],
+        length2[valid],
+    )
+    assignment = np.empty(len(points), dtype=np.int32)
+    centers = np.empty_like(points, dtype=np.float64)
+    for begin in range(0, len(points), int(batch_size)):
+        end = min(len(points), begin + int(batch_size))
+        query = np.asarray(points[begin:end], dtype=np.float64)
+        rel = query[:, None, :] - starts[None, :, :]
+        parameter = np.clip(
+            np.einsum("nsi,si->ns", rel, vectors) / length2[None, :], 0.0, 1.0
+        )
+        projected = starts[None, :, :] + parameter[:, :, None] * vectors[None, :, :]
+        distance2 = np.sum((query[:, None, :] - projected) ** 2, axis=2)
+        selected = np.argmin(distance2, axis=1)
+        rows = np.arange(len(query))
+        assignment[begin:end] = selected.astype(np.int32)
+        centers[begin:end] = projected[rows, selected]
+    return assignment, centers, children
+
+
+def _smooth_material_displacement(
+    desired: np.ndarray, faces: np.ndarray, *, iterations: int = 30
+) -> np.ndarray:
+    from scipy.sparse import coo_matrix, diags
+
+    triangles = np.asarray(faces, dtype=np.int64)
+    if not len(triangles):
+        return np.asarray(desired, dtype=np.float64)
+    edges = np.concatenate(
+        (triangles[:, [0, 1]], triangles[:, [1, 2]], triangles[:, [2, 0]]), axis=0
+    )
+    edges = np.concatenate((edges, edges[:, ::-1]), axis=0)
+    adjacency = coo_matrix(
+        (np.ones(len(edges)), (edges[:, 0], edges[:, 1])),
+        shape=(len(desired), len(desired)),
+    ).tocsr()
+    adjacency.data[:] = 1.0
+    degree = np.asarray(adjacency.sum(axis=1)).reshape(-1)
+    average = diags(1.0 / np.maximum(degree, 1.0)) @ adjacency
+    target = np.asarray(desired, dtype=np.float64)
+    output = target.copy()
+    for _ in range(int(iterations)):
+        output = 0.1 * target + 0.9 * (average @ output)
+    return output
+
+
+def _follow_foot_soft_scale(
+    vertices: np.ndarray,
+    asset: AnatomyRiggedAsset,
+    *,
+    ankle: np.ndarray,
+    forward: np.ndarray,
+    scale: float,
+    rigid_offset: np.ndarray,
+) -> dict[str, float]:
+    """Apply ankle-centered *axial* foot scale to local vessel/nerve (width preserved)."""
+    soft = _tissue_mask(asset, "vessel", "nerve")
+    if not np.any(soft):
+        return {"soft_vertices": 0, "axial_scale": float(scale)}
+    ankle = np.asarray(ankle, dtype=np.float64).reshape(3)
+    forward = np.asarray(forward, dtype=np.float64).reshape(3)
+    forward /= max(float(np.linalg.norm(forward)), 1.0e-8)
+    offset = np.asarray(rigid_offset, dtype=np.float64).reshape(3)
+    relative = vertices[soft] - ankle
+    axial = relative @ forward
+    radial = np.linalg.norm(relative - axial[:, None] * forward, axis=1)
+    local = (axial > -0.03) & (axial < 0.50) & (radial < 0.14)
+    if not np.any(local):
+        return {"soft_vertices": 0, "axial_scale": float(scale)}
+    soft_idx = np.flatnonzero(soft)[local]
+    weight = np.clip((axial[local] + 0.03) / 0.08, 0.0, 1.0)
+    effective = 1.0 + weight * (float(scale) - 1.0)
+    rel = vertices[soft_idx] - ankle
+    ax = (rel @ forward)[:, None] * forward
+    rad = rel - ax
+    vertices[soft_idx] = ankle + effective[:, None] * ax + rad
+    vertices[soft_idx] += offset[None, :] * weight[:, None]
+    return {
+        "soft_vertices": int(len(soft_idx)),
+        "axial_scale": float(scale),
+        "mean_blend": float(np.mean(weight)),
+    }
+
+
+def _axial_scale_about_axis(
+    points: np.ndarray,
+    *,
+    origin: np.ndarray,
+    axis: np.ndarray,
+    scale: float,
+) -> np.ndarray:
+    """Scale only the component along ``axis``; keep transverse offsets."""
+    origin = np.asarray(origin, dtype=np.float64).reshape(3)
+    axis = np.asarray(axis, dtype=np.float64).reshape(3)
+    axis /= max(float(np.linalg.norm(axis)), 1.0e-8)
+    rel = np.asarray(points, dtype=np.float64) - origin
+    axial = (rel @ axis)[:, None] * axis
+    return origin + float(scale) * axial + (rel - axial)
+
+
+def _soft_section_inward_scale(
+    asset: AnatomyRiggedAsset,
+    vertices: np.ndarray,
+    *,
+    subject_surface: np.ndarray,
+    subject_faces: np.ndarray,
+    exclude: np.ndarray | None = None,
+) -> tuple[np.ndarray, dict[str, float]]:
+    """0a21d7b-style section radial shrink for soft tissue only (bones untouched).
+
+    Scales are estimated from soft points versus the subject SMPL surface, then
+    applied uniformly within each skeleton segment so vessel topology is kept.
+    """
+    import igl
+
+    soft = _soft_material_mask(asset)
+    if exclude is not None:
+        soft = soft & ~np.asarray(exclude, dtype=bool)
+    if not np.any(soft):
+        return vertices, {"minimum_section_scale": 1.0, "soft_vertices": 0}
+
+    joints = np.asarray(asset.rest_joints, dtype=np.float64)
+    parents = np.asarray(asset.parents, dtype=np.int64)
+    output = np.asarray(vertices, dtype=np.float64).copy()
+    assignment, centers, children = _nearest_skeleton_segment(output, joints, parents)
+    soft_points = output[soft]
+    _signed, _face_index, closest, _normal = igl.signed_distance(
+        soft_points, subject_surface, subject_faces
+    )
+    soft_centers = centers[soft]
+    source_radius = np.linalg.norm(soft_points - soft_centers, axis=1)
+    target_radius = np.linalg.norm(np.asarray(closest) - soft_centers, axis=1)
+    # Only trust near-surface / outside samples for inward shrink.
+    usable = source_radius > 1.0e-4
+    ratios = np.ones(len(soft_points), dtype=np.float64)
+    ratios[usable] = np.clip(
+        target_radius[usable] / source_radius[usable], 0.70, 1.0
+    )
+
+    scales = np.ones(len(children), dtype=np.float64)
+    soft_assignment = assignment[soft]
+    for segment in np.unique(soft_assignment):
+        local = ratios[soft_assignment == segment]
+        if len(local) >= 8:
+            scales[int(segment)] = min(1.0, float(np.quantile(local, 0.05)))
+
+    child_to_segment = {int(child): idx for idx, child in enumerate(children.tolist())}
+    for _ in range(3):
+        previous = scales.copy()
+        for idx, child in enumerate(children.tolist()):
+            neighbours = [idx]
+            parent = int(parents[child])
+            if parent in child_to_segment:
+                neighbours.append(child_to_segment[parent])
+            neighbours.extend(
+                child_to_segment[int(other)]
+                for other in children
+                if int(parents[int(other)]) == int(child)
+            )
+            scales[idx] = min(previous[idx], float(np.mean(previous[neighbours])))
+
+    local_scale = scales[assignment]
+    desired = (local_scale[:, None] - 1.0) * (output - centers)
+    ranges = asset.source_vertex_ranges
+    tissues = asset.source_tissues
+    if ranges is None or tissues is None:
+        output[~soft] = vertices[~soft]
+        return output, {"minimum_section_scale": 1.0, "soft_vertices": int(np.count_nonzero(soft))}
+    all_faces = np.asarray(asset.faces, dtype=np.int64)
+    for (start, stop), tissue in zip(ranges, tissues):
+        if str(tissue).lower() == "bone":
+            continue
+        start_i, stop_i = int(start), int(stop)
+        range_soft = soft[start_i:stop_i]
+        if not np.any(range_soft):
+            continue
+        local_faces = all_faces[
+            (all_faces[:, 0] >= start_i)
+            & (all_faces[:, 0] < stop_i)
+            & (all_faces[:, 1] >= start_i)
+            & (all_faces[:, 1] < stop_i)
+            & (all_faces[:, 2] >= start_i)
+            & (all_faces[:, 2] < stop_i)
+        ] - start_i
+        delta = _smooth_material_displacement(desired[start_i:stop_i], local_faces)
+        moved = output[start_i:stop_i] + delta
+        block = output[start_i:stop_i].copy()
+        block[range_soft] = moved[range_soft]
+        output[start_i:stop_i] = block
+
+    output[~soft] = vertices[~soft]
+    displacement = np.linalg.norm(output[soft] - vertices[soft], axis=1)
+    return output, {
+        "minimum_section_scale": float(np.min(scales)) if len(scales) else 1.0,
+        "mean_soft_displacement_m": float(np.mean(displacement)),
+        "max_soft_displacement_m": float(np.max(displacement)) if len(displacement) else 0.0,
+        "soft_vertices": int(np.count_nonzero(soft)),
+    }
+
+
 def _hand_mesh_segment(
     name: str,
     *,
@@ -1010,6 +1237,7 @@ def fit_articulated_rest(
                 )
 
     foot_report: dict[str, Any] = {}
+    soft_follow_report: dict[str, Any] = {}
     surface_faces = np.asarray(
         np.load(root / "smpl_canonical_weights.npz", allow_pickle=True)["faces"], dtype=np.int32
     )
@@ -1047,7 +1275,10 @@ def fit_articulated_rest(
         source_reach = float(np.quantile((vertices[foot] - ankle) @ forward, 0.995))
         target_reach = float(np.quantile((target_foot - ankle) @ forward, 0.995))
         scale = float(np.clip(0.95 * target_reach / max(source_reach, 1.0e-5), 0.5, 1.05))
-        vertices[foot] = ankle + scale * (vertices[foot] - ankle)
+        # Length-only scale about ankle: preserve foot width / vessel wrap.
+        vertices[foot] = _axial_scale_about_axis(
+            vertices[foot], origin=ankle, axis=forward, scale=scale
+        )
         import igl
 
         rigid_offset = np.zeros(3, dtype=np.float64)
@@ -1066,13 +1297,24 @@ def fit_articulated_rest(
             vertices[foot] += step
             rigid_offset += step
         foot_report[side] = {
-            "uniform_scale": float(scale),
+            "axial_scale": float(scale),
             "source_reach_m": source_reach,
             "target_reach_m": target_reach,
             "surface_center_offset_m": rigid_offset.tolist(),
             "forefoot_gap_before_m": 0.0,
             "forefoot_rigid_shift_m": 0.0,
         }
+        soft_follow_report[side] = _follow_foot_soft_scale(
+            vertices,
+            asset,
+            ankle=ankle,
+            forward=forward,
+            scale=scale,
+            rigid_offset=rigid_offset,
+        )
+        foot_report[side]["soft_follow"] = soft_follow_report[side]
+
+    soft_section_report = {"disabled": True, "reason": "knee_popliteal_pierce"}
 
     # Snapshot articulated bind frames before rebind.  Weighted vertex rebind
     # may improve local orientation, but must not drag bind origins off the
@@ -1124,13 +1366,10 @@ def fit_articulated_rest(
         "bind_follow_rederived": True,
     }
 
-    # Soft tissue rest shape comes from the harmonic volume field in
-    # shape_volume.py.  Do not LBS-blend soft through articulated bone deltas
-    # here — that re-introduces thin-structure explosions across rib/spine and
-    # wrist/finger driver boundaries.  Cranial soft already moved with the skull.
+    # Soft tissue stays on the harmonic field (plus foot axial soft follow above).
+    # No bone-delta LBS on vessels — that exploded thin structures.
     soft_material = _soft_material_mask(asset)
     soft_material &= ~(cranial_soft_moved | jaw)
-    # Soft vertices already hold the field-warped positions from shape_volume.
 
     endpoints_delta = bone_delta
     head = np.asarray(asset.source_bone_head, dtype=np.float64)
@@ -1179,6 +1418,8 @@ def fit_articulated_rest(
         "long_bone_end_edge_change": float(protected_end_edge_change),
         "maximum_digit_rigid_offset_m": 0.0,
         "feet": foot_report,
+        "foot_soft_follow": soft_follow_report,
+        "soft_section_inward": soft_section_report,
         "source_rig_rebind": rebind_report,
         "anchor_rms_m": float(np.sqrt(np.mean(anchor_error * anchor_error))) if len(anchor_error) else 0.0,
         "anchor_max_m": float(np.max(anchor_error)) if len(anchor_error) else 0.0,

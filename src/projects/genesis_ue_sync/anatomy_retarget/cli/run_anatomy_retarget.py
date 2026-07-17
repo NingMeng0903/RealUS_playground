@@ -225,7 +225,7 @@ def main() -> int:
         Path(__file__).resolve().parents[1] / "segment_coupling.py",
         Path(__file__).resolve().parents[1] / "anatomy_lbs.py",
         Path(__file__).resolve().parents[1] / "material_fit.py",
-        extra=f"source-template-bdfd6de-{RETARGET_PROFILE_ID}-footscale05",
+        extra=f"source-template-bdfd6de-{RETARGET_PROFILE_ID}-axialfoot-softfollow",
     )
     shape_hash = smplx_shape_hash(betas, gender=gender) if betas else "neutral"
     source_cache = cache_root / "source_template_v5" / f"{source_key}.npz"
@@ -234,7 +234,7 @@ def main() -> int:
         Path(__file__).resolve().parents[1] / "shape_volume.py",
         Path(__file__).resolve().parents[1] / "leg_material.py",
         Path(__file__).resolve().parents[1] / "material_fit.py",
-        extra=f"{source_key}:{shape_hash}:subject-shape-bdfd6de-{RETARGET_PROFILE_ID}-footscale05",
+        extra=f"{source_key}:{shape_hash}:subject-shape-bdfd6de-{RETARGET_PROFILE_ID}-axialfoot-softfollow",
     )
     shape_cache = cache_root / "shape" / f"{shape_key}.npz"
     source_cache_hit = source_cache.is_file() and not args.force_source_rebake
