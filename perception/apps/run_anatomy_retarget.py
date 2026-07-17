@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Terminal 9 wrapper: anatomy retarget + optional Genesis publish."""
+"""Terminal 9 wrapper: anatomy retarget + optional vessel/bone export."""
 
 from __future__ import annotations
 
@@ -51,6 +51,7 @@ def main() -> int:
     ap.add_argument("--publish-bind", type=str, default="tcp://127.0.0.1:5601")
     ap.add_argument("--publish-duration-s", type=float, default=5.0)
     ap.add_argument("--publish-genesis", action="store_true", default=True)
+    ap.add_argument("--export-vessels", action="store_true", help="Also run leg vessel centerline + thigh bone export")
     args, unknown = ap.parse_known_args()
 
     exact_fit: Path | None = None
@@ -99,7 +100,29 @@ def main() -> int:
             run_name="__main__",
         )
     except SystemExit as exc:
-        return int(exc.code or 0)
+        code = int(exc.code or 0)
+        if code != 0:
+            return code
+
+    if args.export_vessels:
+        asset = Path(args.output_dir) / "anatomy_rigged.npz"
+        v_argv = [
+            "run_export_vessel_segments",
+            "--asset-npz",
+            str(asset),
+            "--output-dir",
+            str(repo / "outputs/anatomy_retarget/limb_vessel_planning"),
+            "--canonical-dir",
+            str(args.canonical_dir),
+        ]
+        motion_fit = exact_fit or _latest_smplx_npz(repo)
+        if motion_fit is not None:
+            v_argv.extend(["--motion-npz", str(motion_fit)])
+        sys.argv = v_argv
+        runpy.run_module(
+            "projects.genesis_ue_sync.anatomy_retarget.cli.run_export_vessel_segments",
+            run_name="__main__",
+        )
     return 0
 
 

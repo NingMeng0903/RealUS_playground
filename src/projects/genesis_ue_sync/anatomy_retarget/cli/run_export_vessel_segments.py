@@ -5,6 +5,7 @@ Default output layout under ``outputs/anatomy_retarget/limb_vessel_planning/``:
   bone_segments/     per-bone rest + posed OBJ
   vessel_segments/   artery/vein segment OBJ (rest + posed)
   centerlines/       named centerline polylines
+  pointclouds/       colored planning point cloud PLY
   figures/           overlap / leg zoom / body overlay PNG
   planning_report.json
 """
@@ -167,6 +168,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--motion-npz", type=Path, default=DEFAULT_MOTION)
     p.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     p.add_argument("--canonical-dir", type=Path, default=DEFAULT_CANONICAL)
+    p.add_argument("--sample-step", type=int, default=8)
     return p.parse_args()
 
 
@@ -193,6 +195,23 @@ def _write_subset_obj(path: Path, vertices: np.ndarray, faces_global: np.ndarray
     local_faces = np.vectorize(lambda x: remap[int(x)], otypes=[np.int32])(faces_global)
     write_obj(path, np.asarray(vertices, dtype=np.float32)[unique], local_faces, comment=comment)
     return int(local_faces.shape[0])
+
+
+def _write_colored_ply(path: Path, points: np.ndarray, colors: np.ndarray) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pts = np.asarray(points, dtype=np.float32).reshape(-1, 3)
+    rgb = np.asarray(colors, dtype=np.uint8).reshape(-1, 3)
+    with path.open("w", encoding="utf-8") as handle:
+        handle.write("ply\nformat ascii 1.0\n")
+        handle.write(f"element vertex {pts.shape[0]}\n")
+        handle.write("property float x\nproperty float y\nproperty float z\n")
+        handle.write("property uchar red\nproperty uchar green\nproperty uchar blue\n")
+        handle.write("end_header\n")
+        for p, c in zip(pts, rgb, strict=True):
+            handle.write(
+                f"{float(p[0]):.6f} {float(p[1]):.6f} {float(p[2]):.6f} "
+                f"{int(c[0])} {int(c[1])} {int(c[2])}\n"
+            )
 
 
 def _write_centerline_obj(path: Path, centerlines: dict[str, np.ndarray]) -> None:
@@ -1777,7 +1796,8 @@ def main() -> int:
     vessel_out = out / "vessel_segments"
     figures_out = out / "figures"
     centerlines_out = out / "centerlines"
-    for sub in (bone_out, vessel_out, figures_out, centerlines_out):
+    pointclouds_out = out / "pointclouds"
+    for sub in (bone_out, vessel_out, figures_out, centerlines_out, pointclouds_out):
         sub.mkdir(parents=True, exist_ok=True)
 
     asset = load_rigged_asset(args.asset_npz)
@@ -1885,7 +1905,12 @@ def main() -> int:
             "color_rgb": SEGMENT_COLORS.get(label, (170, 170, 170)),
         }
 
+    sample_step = max(1, int(args.sample_step))
     point_mask = labels_global != ""
+    idx = np.flatnonzero(point_mask)[::sample_step]
+    point_labels = labels_global[idx]
+    point_colors = np.asarray([SEGMENT_COLORS.get(str(label), (170, 170, 170)) for label in point_labels], dtype=np.uint8)
+    _write_colored_ply(pointclouds_out / "vessel_segments_points.ply", posed_vertices[idx], point_colors)
 
     smpl_posed = np.asarray(np.load(args.motion_npz)["vertices"], dtype=np.float32).reshape(-1, 3)
     smpl_tpose_loaded = _load_smpl_tpose_vertices(args.canonical_dir)
@@ -1958,6 +1983,7 @@ def main() -> int:
         "bone_segments": str(bone_out),
         "vessel_segments": str(vessel_out),
         "centerlines": str(centerlines_out),
+        "pointclouds": str(pointclouds_out),
         "figures": str(figures_out),
     }
     (out / "planning_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
