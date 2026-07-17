@@ -41,6 +41,7 @@ def rebind_source_rig(
     target_vertices: np.ndarray,
     stage: str,
     minimum_weight: float = 0.05,
+    bone_mask: np.ndarray | None = None,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     """Synchronize all source bind frames after a generic rest-space warp.
 
@@ -63,10 +64,13 @@ def rebind_source_rig(
     bone_transforms = np.tile(np.eye(4, dtype=np.float64), (len(asset.source_bone_names), 1, 1))
     residuals: list[float] = []
     fitted = 0
+    bone_only = np.asarray(bone_mask, dtype=bool) if bone_mask is not None else None
     for bone in range(len(asset.source_bone_names)):
         mask = idx == bone
         row_weight = np.where(mask, weights, 0.0).sum(axis=1)
         selected = row_weight >= float(minimum_weight)
+        if bone_only is not None:
+            selected &= bone_only
         if int(np.count_nonzero(selected)) < 3:
             continue
         transform = _weighted_rigid(src[selected], dst[selected], row_weight[selected])

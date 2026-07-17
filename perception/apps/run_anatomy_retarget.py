@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Terminal 9 wrapper: anatomy retarget + optional vessel/bone export."""
+"""Terminal 9 wrapper: anatomy retarget + optional vessel/bone export.
+
+Active bake profile (bdfd6de, fit code unchanged):
+  bones-ok-feet-long-pelvis-deform-vessels-ok
+  骨头至少好了，但是脚太长，盆骨变形，血管不穿
+"""
 
 from __future__ import annotations
 

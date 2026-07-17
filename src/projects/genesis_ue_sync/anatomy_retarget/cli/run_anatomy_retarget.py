@@ -51,6 +51,11 @@ from projects.genesis_ue_sync.multiview_realtime.track_stream import (
     anatomy_asset_control_to_dict,
 )
 
+# Command-layer profile tag for the active bdfd6de preview (fit code unchanged).
+RETARGET_PROFILE_ID = "bones-ok-feet-long-pelvis-deform-vessels-ok"
+RETARGET_PROFILE_LABEL = "骨头至少好了，但是脚太长，盆骨变形，血管不穿"
+RETARGET_PROFILE_COMMIT = "bdfd6deb9ea1e149fd3f376261ef6fb6289e8b9b"
+
 
 def _load_config(path: Path) -> dict[str, Any]:
     text = Path(path).read_text(encoding="utf-8")
@@ -82,7 +87,14 @@ def _cache_key(*paths: Path, extra: str = "") -> str:
 
 def parse_args() -> argparse.Namespace:
     paths = project_paths(__file__)
-    p = argparse.ArgumentParser(description=__doc__)
+    p = argparse.ArgumentParser(
+        description=__doc__,
+        epilog=(
+            f"Active profile [{RETARGET_PROFILE_ID}] @ {RETARGET_PROFILE_COMMIT[:7]}: "
+            f"{RETARGET_PROFILE_LABEL}"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     p.add_argument("--config", type=Path, default=paths.configs_root / "anatomy" / "anatomy_retarget.yaml")
     p.add_argument("--canonical-dir", type=Path, default=paths.outputs_root / "anatomy_retarget" / "latest_canonical")
     p.add_argument("--output-dir", type=Path, default=paths.outputs_root / "anatomy_retarget" / "latest_asset")
@@ -165,6 +177,12 @@ def _publish_upsert(
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     args = parse_args()
+    logging.info(
+        "anatomy retarget profile [%s] @ %s: %s",
+        RETARGET_PROFILE_ID,
+        RETARGET_PROFILE_COMMIT[:7],
+        RETARGET_PROFILE_LABEL,
+    )
     started_at = time.perf_counter()
     profile: dict[str, float] = {}
     cfg = _load_config(args.config)
@@ -206,7 +224,8 @@ def main() -> int:
         Path(__file__).resolve().parents[1] / "containment.py",
         Path(__file__).resolve().parents[1] / "segment_coupling.py",
         Path(__file__).resolve().parents[1] / "anatomy_lbs.py",
-        extra="source-template-v5.2-hierarchical-fk-positive-volume-v1",
+        Path(__file__).resolve().parents[1] / "material_fit.py",
+        extra=f"source-template-bdfd6de-{RETARGET_PROFILE_ID}-footscale05",
     )
     shape_hash = smplx_shape_hash(betas, gender=gender) if betas else "neutral"
     source_cache = cache_root / "source_template_v5" / f"{source_key}.npz"
@@ -214,7 +233,8 @@ def main() -> int:
         Path(args.canonical_dir) / "smpl_canonical_tpose.obj",
         Path(__file__).resolve().parents[1] / "shape_volume.py",
         Path(__file__).resolve().parents[1] / "leg_material.py",
-        extra=f"{source_key}:{shape_hash}:subject-shape-v5.4-beta-basis",
+        Path(__file__).resolve().parents[1] / "material_fit.py",
+        extra=f"{source_key}:{shape_hash}:subject-shape-bdfd6de-{RETARGET_PROFILE_ID}-footscale05",
     )
     shape_cache = cache_root / "shape" / f"{shape_key}.npz"
     source_cache_hit = source_cache.is_file() and not args.force_source_rebake
@@ -443,6 +463,9 @@ def main() -> int:
             "segment_coupling_report": dict(meta.get("segment_coupling_report") or {}),
             "source_template_version": 5,
             "source_template_revision": "5.2",
+            "retarget_profile_id": RETARGET_PROFILE_ID,
+            "retarget_profile_label": RETARGET_PROFILE_LABEL,
+            "retarget_profile_commit": RETARGET_PROFILE_COMMIT,
             "source_bind_roundtrip": bind_roundtrip,
             "show_connective_tissue": bool(args.show_connective_tissue),
         }

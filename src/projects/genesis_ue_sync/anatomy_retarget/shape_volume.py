@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
+import hashlib
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from .pose_adapter import smplx_shape_hash
 from .rigged_asset import AnatomyRiggedAsset
-from .source_rebind import rebind_source_rig
-
 
 def _load_obj(path: Path) -> tuple[np.ndarray, np.ndarray]:
     vertices: list[list[float]] = []
@@ -41,14 +38,9 @@ def _triangle_barycentric(points: np.ndarray, triangles: np.ndarray) -> np.ndarr
 
 
 def _build_cage(neutral_v: np.ndarray, neutral_f: np.ndarray, *, cache_path: Path) -> dict[str, np.ndarray]:
-    required = ("nodes", "elements", "boundary", "source_triangles", "source_bary")
     if cache_path.is_file():
         data = np.load(cache_path)
-        cached = {key: np.asarray(data[key]) for key in data.files}
-        if all(key in cached for key in required):
-            return {key: cached[key] for key in required}
-        # Stale/overwritten caches (e.g. v7 voxel cages) lack the SMPL surface map.
-        # Drop them and rebuild so beta-basis transport stays on the neutral body.
+        return {key: np.asarray(data[key]) for key in data.files}
 
     import igl
     import pymeshfix
@@ -98,7 +90,6 @@ def _build_cage(neutral_v: np.ndarray, neutral_f: np.ndarray, *, cache_path: Pat
 
 
 def _tet_stiffness(nodes: np.ndarray, elements: np.ndarray):
-    """Assemble tet stiffness with a single vectorized pass (d77e9dc speedup)."""
     from scipy.sparse import coo_matrix
 
     tet = np.asarray(elements, dtype=np.int64)
@@ -122,7 +113,7 @@ def _solve_interior_harmonic(
     boundary: np.ndarray,
     boundary_values: np.ndarray,
 ) -> np.ndarray:
-    """Solve ``Kii x = -Kib boundary`` for one or more RHS columns with one LU."""
+    """Solve ``Kii x = -Kib boundary`` for one or more RHS columns."""
     from scipy.sparse.linalg import splu
 
     if interior.size == 0:
@@ -149,9 +140,13 @@ def _solve_harmonic_field(
     field[boundary] = boundary_values
     if interior.size:
         stiffness = _tet_stiffness(nodes, elements)
-        field[interior] = _solve_interior_harmonic(
-            stiffness, interior, boundary, boundary_values
-        )
+        for axis in range(3):
+            field[interior, axis] = _solve_interior_harmonic(
+                stiffness,
+                interior,
+                boundary,
+                boundary_values[:, axis : axis + 1],
+            ).reshape(-1)
 
     before = nodes[elements]
     after = (nodes + field)[elements]
@@ -174,7 +169,9 @@ def _solve_harmonic_beta_basis(
     shapedirs = np.asarray(surface_basis, dtype=np.float64)
     if shapedirs.ndim != 3 or shapedirs.shape[1] != 3:
         raise ValueError(f"SMPL-X shapedirs must be [V,3,B], got {shapedirs.shape}")
-    boundary_basis = np.sum(shapedirs[triangles] * bary[:, :, None, None], axis=1)
+    boundary_basis = np.sum(
+        shapedirs[triangles] * bary[:, :, None, None], axis=1
+    )
     interior = np.setdiff1d(
         np.arange(len(nodes), dtype=np.int64), boundary, assume_unique=False
     )
@@ -190,14 +187,6 @@ def _solve_harmonic_beta_basis(
         )
         basis[interior] = solved.reshape(len(interior), 3, shapedirs.shape[2])
     return basis.astype(np.float32)
-
-
-def _beta_basis_digest(cage: dict[str, np.ndarray], shapedirs: np.ndarray, count: int) -> str:
-    digest = hashlib.sha256()
-    digest.update(np.asarray(cage["nodes"], dtype=np.float32).tobytes())
-    digest.update(np.asarray(cage["elements"], dtype=np.int32).tobytes())
-    digest.update(np.asarray(shapedirs[:, :, :count], dtype=np.float32).tobytes())
-    return digest.hexdigest()[:24]
 
 
 def _beta_volume_field(
@@ -221,6 +210,7 @@ def _beta_volume_field(
     shared_cache.mkdir(parents=True, exist_ok=True)
     cache_path = shared_cache / f"{digest.hexdigest()[:24]}.npz"
     cache_hit = False
+    basis: np.ndarray
     if cache_path.is_file():
         cached = np.load(cache_path)
         candidate = np.asarray(cached["field_basis"], dtype=np.float32)
@@ -255,39 +245,15 @@ def _beta_volume_field(
     return field, cache_hit, backend
 
 
-def _load_or_sample_point_delta(
-    *,
-    root: Path,
-    cage: dict[str, np.ndarray],
-    field: np.ndarray,
-    points: np.ndarray,
-    betas: np.ndarray,
-    basis_digest: str,
-    gender: str,
-) -> tuple[np.ndarray, int, np.ndarray, bool]:
-    shape_key = smplx_shape_hash(betas, gender=gender)
-    cache_dir = root.parent / "volume_beta_displacement_v2"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_path = cache_dir / f"{basis_digest}_{shape_key[:16]}.npz"
-    if cache_path.is_file():
-        cached = np.load(cache_path)
-        point_delta = np.asarray(cached["point_delta"], dtype=np.float64)
-        outside_mask = np.asarray(cached["outside_mask"], dtype=bool)
-        if point_delta.shape == points.shape:
-            max_norm = float(np.max(np.linalg.norm(point_delta, axis=1)))
-            if max_norm <= 0.25:
-                return point_delta, int(np.count_nonzero(outside_mask)), outside_mask, True
-    point_delta, outside_points, outside_mask = _sample_field(points, cage=cage, field=field)
-    np.savez_compressed(
-        cache_path,
-        point_delta=point_delta.astype(np.float32),
-        outside_mask=outside_mask.astype(np.uint8),
-    )
-    return point_delta, outside_points, outside_mask, False
+def _beta_basis_digest(cage: dict[str, np.ndarray], shapedirs: np.ndarray, count: int) -> str:
+    digest = hashlib.sha256()
+    digest.update(np.asarray(cage["nodes"], dtype=np.float32).tobytes())
+    digest.update(np.asarray(cage["elements"], dtype=np.int32).tobytes())
+    digest.update(np.asarray(shapedirs[:, :, :count], dtype=np.float32).tobytes())
+    return digest.hexdigest()[:24]
 
 
 def _tet_barycentric(points: np.ndarray, tetrahedra: np.ndarray) -> np.ndarray:
-    """Return tet barycentric weights for each (point, tet) pair."""
     tet = np.asarray(tetrahedra, dtype=np.float64)
     pts = np.asarray(points, dtype=np.float64)
     if len(tet) != len(pts):
@@ -343,7 +309,9 @@ def _sample_field(
     elements = np.asarray(cage["elements"], dtype=np.int64)
     tree = igl.AABB()
     tree.init(nodes, elements)
-    element_index = np.asarray(igl.in_element(nodes, elements, np.asarray(points, dtype=np.float64), tree), dtype=np.int64)
+    element_index = np.asarray(
+        igl.in_element(nodes, elements, np.asarray(points, dtype=np.float64), tree), dtype=np.int64
+    )
     outside = element_index < 0
     displacement = np.zeros_like(points, dtype=np.float64)
     inside = ~outside
@@ -354,82 +322,11 @@ def _sample_field(
     return displacement, int(np.count_nonzero(outside)), outside
 
 
-def _warp_source_frames(
-    asset: AnatomyRiggedAsset,
-    *,
-    cage: dict[str, np.ndarray],
-    field: np.ndarray,
-) -> tuple[np.ndarray | None, np.ndarray | None, int]:
-    if asset.source_rest_global is None:
-        return None, None, 0
-    source = np.asarray(asset.source_rest_global, dtype=np.float64)
-    epsilon = 0.01
-    origins = source[:, :3, 3]
-    probes = [origins]
-    for axis in range(3):
-        probes.append(origins + epsilon * source[:, :3, axis])
-    query = np.concatenate(probes, axis=0)
-    delta, outside, outside_mask = _sample_field(query, cage=cage, field=field)
-    if outside:
-        from scipy.spatial import cKDTree
-
-        nodes = np.asarray(cage["nodes"], dtype=np.float64)
-        tree = cKDTree(nodes)
-        _distance, nearest = tree.query(query, k=1)
-        delta[outside_mask] = field[np.asarray(nearest, dtype=np.int64)[outside_mask]]
-    warped = query + delta
-    count = len(source)
-    result = np.tile(np.eye(4, dtype=np.float64), (count, 1, 1))
-    result[:, :3, 3] = warped[:count]
-    for bi in range(count):
-        axes = np.stack(
-            [warped[(axis + 1) * count + bi] - warped[bi] for axis in range(3)], axis=1
-        )
-        U, _S, Vt = np.linalg.svd(axes)
-        R = U @ Vt
-        if np.linalg.det(R) < 0.0:
-            U[:, -1] *= -1.0
-            R = U @ Vt
-        result[bi, :3, :3] = R
-    return result.astype(np.float32), np.linalg.inv(result).astype(np.float32), outside
-
-
-def _rigid_fit(source: np.ndarray, target: np.ndarray) -> np.ndarray:
-    """Best rigid map for an anatomical bone component after beta field warp."""
-    src_center, dst_center = source.mean(axis=0), target.mean(axis=0)
-    u, _s, vt = np.linalg.svd((source - src_center).T @ (target - dst_center))
-    rot = vt.T @ u.T
-    if np.linalg.det(rot) < 0.0:
-        vt[-1] *= -1.0
-        rot = vt.T @ u.T
-    return (source - src_center) @ rot.T + dst_center
-
-
-def _preserve_rigid_bone_components(
-    asset: AnatomyRiggedAsset,
-    *,
-    source_vertices: np.ndarray,
-    field_vertices: np.ndarray,
-) -> tuple[np.ndarray, int]:
-    """Do not let a harmonic soft-tissue field bend individual bone meshes."""
-    output = np.asarray(field_vertices, dtype=np.float64).copy()
-    if asset.source_vertex_ranges is None or asset.source_tissues is None:
-        return output, 0
-    rigid = 0
-    for (start, stop), tissue in zip(np.asarray(asset.source_vertex_ranges, dtype=np.int64), asset.source_tissues):
-        if str(tissue) != "bone" or int(stop - start) < 3:
-            continue
-        src = np.asarray(source_vertices[start:stop], dtype=np.float64)
-        dst = np.asarray(field_vertices[start:stop], dtype=np.float64)
-        output[start:stop] = _rigid_fit(src, dst)
-        rigid += 1
-    return output, rigid
-
-
 def apply_subject_beta_shape(
     asset: AnatomyRiggedAsset,
     *,
     canonical_dir: Path | str,
+    config: dict[str, Any] | None = None,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     """Apply a subject-beta harmonic volume field to anatomy and source rig."""
     root = Path(canonical_dir)
@@ -446,106 +343,100 @@ def apply_subject_beta_shape(
     displacement_cache_hit = False
     basis_digest = ""
     gender = str(manifest.get("gender", "neutral"))
-    surface_basis_error = 0.0
     if beta_values.size and (root / "smpl_canonical_weights.npz").is_file():
         weights = np.load(root / "smpl_canonical_weights.npz")
-        if "shapedirs" in weights.files:
-            shapedirs = np.asarray(weights["shapedirs"], dtype=np.float64)
-            count = min(shapedirs.shape[2], beta_values.size, 10)
-            basis_digest = _beta_basis_digest(cage, shapedirs.astype(np.float32), count)
-            predicted_surface_delta = np.tensordot(
-                shapedirs[:, :, :count], beta_values[:count], axes=(2, 0)
+        shapedirs = np.asarray(weights["shapedirs"], dtype=np.float64)
+        count = min(shapedirs.shape[2], beta_values.size, 10)
+        basis_digest = _beta_basis_digest(cage, shapedirs.astype(np.float32), count)
+        predicted_surface_delta = np.tensordot(
+            shapedirs[:, :, :count], beta_values[:count], axes=(2, 0)
+        )
+        surface_basis_error = float(
+            np.max(np.linalg.norm((subject_v - neutral_v) - predicted_surface_delta, axis=1))
+        )
+        if surface_basis_error <= 1.0e-5:
+            field, basis_cache_hit, basis_backend = _beta_volume_field(
+                root=root, cage=cage, betas=beta_values
             )
-            surface_basis_error = float(
-                np.max(np.linalg.norm((subject_v - neutral_v) - predicted_surface_delta, axis=1))
-            )
-            if surface_basis_error <= 1.0e-5:
-                field, basis_cache_hit, basis_backend = _beta_volume_field(
-                    root=root, cage=cage, betas=beta_values
-                )
-            else:
-                field = _solve_harmonic_field(cage, surface_displacement=subject_v - neutral_v)
-                basis_backend = "exact_surface_solve_basis_mismatch"
         else:
             field = _solve_harmonic_field(cage, surface_displacement=subject_v - neutral_v)
+            basis_backend = "exact_surface_solve_basis_mismatch"
     else:
         field = _solve_harmonic_field(cage, surface_displacement=subject_v - neutral_v)
+        surface_basis_error = 0.0
 
     before = np.asarray(cage["nodes"], dtype=np.float64)[np.asarray(cage["elements"], dtype=np.int64)]
-    after = (np.asarray(cage["nodes"], dtype=np.float64) + field)[
-        np.asarray(cage["elements"], dtype=np.int64)
-    ]
+    after = (np.asarray(cage["nodes"], dtype=np.float64) + field)[np.asarray(cage["elements"], dtype=np.int64)]
     det0 = np.linalg.det(before[:, 1:] - before[:, :1])
     det1 = np.linalg.det(after[:, 1:] - after[:, :1])
     if np.any(det0 * det1 <= 0.0):
-        raise RuntimeError("subject beta harmonic field flips one or more tetrahedra")
-
-    points = np.asarray(asset.vertices_rest, dtype=np.float64)
-    if basis_digest and beta_values.size:
-        point_delta, outside_points, outside_mask, displacement_cache_hit = _load_or_sample_point_delta(
-            root=root,
-            cage=cage,
-            field=field,
-            points=points,
-            betas=beta_values,
-            basis_digest=basis_digest,
-            gender=gender,
+        raise RuntimeError("cached subject beta harmonic basis flips one or more tetrahedra")
+    minimum_jacobian_ratio = float(np.min(det1 / det0))
+    if minimum_jacobian_ratio < 0.05:
+        raise RuntimeError(
+            f"subject beta harmonic field is near-degenerate: min Jacobian ratio {minimum_jacobian_ratio:.6f}"
         )
-    else:
-        point_delta, outside_points, outside_mask = _sample_field(points, cage=cage, field=field)
+    points = np.asarray(asset.vertices_rest, dtype=np.float64)
+    # Soft tissue (vessels/nerves/organs) follows one global harmonic volume
+    # field from the neutral→subject surface.  Bones and cranial material stay
+    # at authored positions here and are fitted by articulated material_fit.
+    point_delta, outside_points, outside_mask = _sample_field(points, cage=cage, field=field)
     outside_by_tissue: dict[str, int] = {}
+    max_extension_m = 0.0
     if outside_points:
         extension, max_extension_m = _extend_from_cage_boundary(
             points[outside_mask], cage=cage, field=field
         )
+        point_delta[outside_mask] = extension
         if asset.source_vertex_ranges is not None and asset.source_tissues is not None:
             for (start, stop), tissue in zip(asset.source_vertex_ranges, asset.source_tissues):
                 outside_by_tissue[str(tissue)] = outside_by_tissue.get(str(tissue), 0) + int(
-                    np.count_nonzero(outside_mask[start:stop])
+                    np.count_nonzero(outside_mask[int(start) : int(stop)])
                 )
-        # Outside points receive an extrapolated *beta displacement* from the
-        # cage boundary.  This does not move them toward skin; subsequent
-        # skeleton-section fitting handles rest containment as a whole field.
-        point_delta[outside_mask] = extension
-    else:
-        max_extension_m = 0.0
-    field_vertices = points + point_delta
-    # The cage is a soft-tissue shape field.  Projecting it independently onto
-    # bone vertices bends skull/rib/limb meshes and breaks their source rig.
-    # Replace each bone mesh with its best rigid response to the same field.
-    shaped_vertices, rigid_bone_components = _preserve_rigid_bone_components(
-        asset, source_vertices=points, field_vertices=field_vertices
-    )
-    rebound, rebind_report = rebind_source_rig(
-        asset, source_vertices=points, target_vertices=shaped_vertices, stage="subject_beta_volume"
-    )
-
+    displacement_cache_hit = False
     skeleton = json.loads((root / "smpl_canonical_skeleton.json").read_text(encoding="utf-8"))
-    meta = dict(rebound.metadata or {})
-    meta["shape_deformation"] = "tetgen_fem_harmonic_v5_soft_tissue"
-    result = type(asset)(
+    from .material_fit import bone_material_mask, cranial_material_mask, fit_articulated_rest
+
+    protected = bone_material_mask(asset) | cranial_material_mask(asset)
+    shaped_vertices = points + point_delta
+    shaped_vertices[protected] = points[protected]
+    meta = dict(asset.metadata or {})
+    meta["shape_deformation"] = "tetgen_fem_harmonic_v6_soft_plus_articulated_bones"
+    interim = type(asset)(
         **{
-            **rebound.__dict__,
+            **asset.__dict__,
             "vertices_rest": shaped_vertices.astype(np.float32),
             "rest_joints": np.asarray(skeleton["rest_joints_subject"], dtype=np.float32),
             "inverse_bind": np.asarray(skeleton["inverse_bind"], dtype=np.float32),
             "metadata": meta,
         }
     )
-    norm = np.linalg.norm(point_delta, axis=1)
+    result, articulated_report = fit_articulated_rest(
+        interim,
+        canonical_dir=root,
+        config=config,
+        subject=True,
+        stage="subject_beta",
+    )
+    soft_mask = ~protected
+    soft_norm = (
+        np.linalg.norm(point_delta[soft_mask], axis=1) if np.any(soft_mask) else np.zeros(1)
+    )
     return result, {
-        "backend": "tetgen_fem_harmonic_v5_soft_tissue",
+        "backend": "tetgen_fem_harmonic_v6_soft_plus_articulated_bones",
         "beta_basis_cache_hit": bool(basis_cache_hit),
         "beta_displacement_cache_hit": bool(displacement_cache_hit),
+        "soft_beta_transport": "global_harmonic_volume_field",
         "beta_basis_combine_backend": str(basis_backend),
         "surface_basis_error_m": float(surface_basis_error),
         "tetra_vertices": int(len(cage["nodes"])),
         "tetrahedra": int(len(cage["elements"])),
-        "mean_displacement_m": float(np.mean(norm)),
-        "max_displacement_m": float(np.max(norm)),
+        "mean_displacement_m": float(np.mean(soft_norm)),
+        "max_displacement_m": float(np.max(soft_norm)),
         "outside_query_count": int(outside_points),
         "outside_query_by_tissue": outside_by_tissue,
         "max_cage_boundary_extension_m": float(max_extension_m),
-        "rigid_bone_components": int(rigid_bone_components),
-        "source_rig_rebind": rebind_report,
+        "minimum_jacobian_ratio": minimum_jacobian_ratio,
+        "protected_material_vertices": int(np.count_nonzero(protected)),
+        "articulated_rest_fit": articulated_report,
     }
