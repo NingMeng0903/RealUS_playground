@@ -37,6 +37,23 @@ _TISSUE_RGBA = {
 }
 
 
+def _vertices_to_genesis_z_up(
+    vertices: np.ndarray,
+    *,
+    coordinate_system: str,
+) -> np.ndarray:
+    """Map asset coordinates into the Genesis viewer frame.
+
+    Live track overlays still draw SMPL-X meshes in ``smplx_y_up_m``, so anatomy
+    must stay in that frame until both paths share the same viewer conversion.
+    """
+    points = np.asarray(vertices, dtype=np.float32).reshape(-1, 3)
+    coordinate = str(coordinate_system)
+    if coordinate in {"smplx_y_up_m", "genesis_z_up_m"}:
+        return points.copy()
+    raise ValueError(f"unsupported anatomy coordinate system: {coordinate!r}")
+
+
 def _mesh_color_rgba(mesh_name: str, tissue: str) -> tuple[float, float, float, float]:
     lower = str(mesh_name).lower()
     tissue_key = str(tissue).lower()
@@ -107,7 +124,8 @@ class AnatomyLbsDrawer:
             return faces
         hidden = np.zeros(len(self.asset.vertices_rest), dtype=bool)
         show_connective = bool((self.asset.metadata or {}).get("show_connective_tissue", False))
-        show_vessels = bool((self.asset.metadata or {}).get("show_vessels", False))
+        # Vessels on by default (Artery/Vein). Opt out with metadata show_vessels=false.
+        show_vessels = bool((self.asset.metadata or {}).get("show_vessels", True))
         for (start, stop), tissue in zip(self.asset.source_vertex_ranges, self.asset.source_tissues):
             tissue_key = str(tissue)
             if tissue_key == "connective_tissue" and not show_connective:
@@ -216,6 +234,10 @@ class AnatomyLbsDrawer:
         )
         if not np.all(np.isfinite(vertices)):
             return False
+        vertices = _vertices_to_genesis_z_up(
+            vertices,
+            coordinate_system=self.asset.coordinate_system,
+        )
         span_m = float(np.max(np.ptp(vertices, axis=0)))
         if span_m < 0.05 or span_m > 10.0:
             import logging

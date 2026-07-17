@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -10,8 +11,8 @@ import numpy as np
 
 
 DEFAULT_POSE_FORMAT = "smplx_body55_axis_angle"
-DEFAULT_COORDINATE_SYSTEM = "genesis_z_up_m"
-ANATOMY_ASSET_SCHEMA_VERSION = 5
+DEFAULT_COORDINATE_SYSTEM = "smplx_y_up_m"
+ANATOMY_ASSET_SCHEMA_VERSION = 6
 SOURCE_DRIVER_MODES: tuple[str, ...] = (
     "joint_local",
     "segment_root",
@@ -77,13 +78,24 @@ class AnatomyRiggedAsset:
     source_mesh_controller_bones: np.ndarray | None = None
     source_mesh_material_groups: list[str] | None = None
     source_mesh_roles: list[str] | None = None
+    source_fit_policies: list[str] | None = None
+    source_driver_policies: list[str] | None = None
+    source_compound_ids: list[str] | None = None
+    source_sides: list[str] | None = None
+    source_landmarks: list[tuple[str, ...]] | None = None
+    target_landmark_recipes: list[str] | None = None
+    source_quality_profiles: list[str] | None = None
     driver_indices: np.ndarray | None = None
     driver_weights: np.ndarray | None = None
     source_bone_names: list[str] | None = None
     source_bone_parents: np.ndarray | None = None
+    # These compatibility field names hold the immutable authored source bind,
+    # never a target bind or a runtime controller frame.  The schema-v6 names
+    # are exposed by source_bind_global/source_bind_local below.
     source_rest_global: np.ndarray | None = None
     source_rest_local: np.ndarray | None = None
     source_inverse_bind: np.ndarray | None = None
+    # Authored Blender bone endpoints are independent of SMPL-X driver probes.
     source_bone_head: np.ndarray | None = None
     source_bone_tail: np.ndarray | None = None
     source_bone_smplx_a: np.ndarray | None = None
@@ -94,8 +106,19 @@ class AnatomyRiggedAsset:
     # driver frame.  ``-1`` is padding; column zero is always the primary
     # driver and agrees with source_bone_smplx_a.
     source_bone_frame_joints: np.ndarray | None = None
+    # For every independently driven source bone, C = inv(F_rest) @ B_bind.
+    # bind_follow entries are identity because their authored local bind is the
+    # authority.  Persisting this matrix prevents runtime from inventing a
+    # second rest frame from warped mesh vertices.
+    source_driver_coupling: np.ndarray | None = None
+    # Subject-fitted source-rig bind used by runtime skinning.  The authored
+    # source bind above remains immutable and available for Blender parity.
+    target_rest_global: np.ndarray | None = None
+    target_rest_local: np.ndarray | None = None
+    target_inverse_bind: np.ndarray | None = None
+    target_bone_head: np.ndarray | None = None
+    target_bone_tail: np.ndarray | None = None
     rigid_component_ids: np.ndarray | None = None
-    leg_material_coordinates: np.ndarray | None = None
     registration_reference: np.ndarray | None = None
     source_skin_vertices: np.ndarray | None = None
     source_skin_faces: np.ndarray | None = None
@@ -104,6 +127,69 @@ class AnatomyRiggedAsset:
     pose_format: str = DEFAULT_POSE_FORMAT
     coordinate_system: str = DEFAULT_COORDINATE_SYSTEM
     metadata: dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        """Detach and freeze authored source-rig authority arrays.
+
+        A frozen dataclass alone does not protect mutable NumPy buffers.  Copying
+        these arrays also prevents a caller's target-fit scratch buffer from
+        aliasing and later overwriting the persisted source bind or endpoints.
+        """
+        immutable_source_fields = (
+            "source_rest_global",
+            "source_rest_local",
+            "source_inverse_bind",
+            "source_bone_head",
+            "source_bone_tail",
+            "source_driver_coupling",
+            "target_rest_global",
+            "target_rest_local",
+            "target_inverse_bind",
+            "target_bone_head",
+            "target_bone_tail",
+        )
+        for name in immutable_source_fields:
+            value = getattr(self, name)
+            if value is None:
+                continue
+            detached = np.array(value, copy=True)
+            detached.setflags(write=False)
+            object.__setattr__(self, name, detached)
+
+    @property
+    def source_bind_global(self) -> np.ndarray | None:
+        """Immutable authored source-bone global bind matrices."""
+        return self.source_rest_global
+
+    @property
+    def source_bind_local(self) -> np.ndarray | None:
+        """Immutable authored source-bone local bind matrices."""
+        return self.source_rest_local
+
+    @property
+    def target_bind_global(self) -> np.ndarray | None:
+        """Subject-fitted bind, or the authored bind before regional fitting."""
+        return (
+            self.target_rest_global
+            if self.target_rest_global is not None
+            else self.source_rest_global
+        )
+
+    @property
+    def target_bind_local(self) -> np.ndarray | None:
+        return (
+            self.target_rest_local
+            if self.target_rest_local is not None
+            else self.source_rest_local
+        )
+
+    @property
+    def runtime_inverse_bind(self) -> np.ndarray | None:
+        return (
+            self.target_inverse_bind
+            if self.target_inverse_bind is not None
+            else self.source_inverse_bind
+        )
 
     def validate(self) -> None:
         vertices = np.asarray(self.vertices_rest, dtype=np.float32)
@@ -162,6 +248,19 @@ class AnatomyRiggedAsset:
         for name, value in mesh_semantics.items():
             if value is None or len(value) != mesh_count:
                 raise ValueError(f"{name} must have one entry per source mesh")
+        extended_semantics = {
+            "source_fit_policies": self.source_fit_policies,
+            "source_driver_policies": self.source_driver_policies,
+            "source_compound_ids": self.source_compound_ids,
+            "source_sides": self.source_sides,
+            "source_landmarks": self.source_landmarks,
+            "target_landmark_recipes": self.target_landmark_recipes,
+            "source_quality_profiles": self.source_quality_profiles,
+        }
+        if any(value is not None for value in extended_semantics.values()):
+            for name, value in extended_semantics.items():
+                if value is None or len(value) != mesh_count:
+                    raise ValueError(f"{name} must have one entry per source mesh")
         controllers = np.asarray(self.source_mesh_controller_bones, dtype=np.int32).reshape(-1)
         source_count_for_mesh = len(self.source_bone_names or [])
         if controllers.size and (int(controllers.min()) < 0 or int(controllers.max()) >= source_count_for_mesh):
@@ -200,7 +299,10 @@ class AnatomyRiggedAsset:
             source_arrays = {
                 "source_bone_parents": (self.source_bone_parents, (bone_count,)),
                 "source_rest_global": (self.source_rest_global, (bone_count, 4, 4)),
+                "source_rest_local": (self.source_rest_local, (bone_count, 4, 4)),
                 "source_inverse_bind": (self.source_inverse_bind, (bone_count, 4, 4)),
+                "source_bone_head": (self.source_bone_head, (bone_count, 3)),
+                "source_bone_tail": (self.source_bone_tail, (bone_count, 3)),
                 "source_bone_smplx_a": (self.source_bone_smplx_a, (bone_count,)),
                 "source_bone_smplx_b": (self.source_bone_smplx_b, (bone_count,)),
                 "source_bone_blend": (self.source_bone_blend, (bone_count,)),
@@ -208,13 +310,15 @@ class AnatomyRiggedAsset:
             for name, (value, shape) in source_arrays.items():
                 if value is None or np.asarray(value).shape != shape:
                     raise ValueError(f"{name} must be {shape} for source-rig v2")
+                if not np.all(np.isfinite(np.asarray(value))):
+                    raise ValueError(f"{name} contains non-finite values")
             if self.source_bone_driver_types is None or len(self.source_bone_driver_types) != bone_count:
                 raise ValueError("source_bone_driver_types must have one entry per source bone")
             unknown_modes = sorted(set(self.source_bone_driver_types) - set(SOURCE_DRIVER_MODES))
             if unknown_modes:
                 raise ValueError(f"unknown source driver mode(s): {unknown_modes}")
             if self.source_bone_frame_joints is None:
-                raise ValueError("schema v5 requires explicit source_bone_frame_joints")
+                raise ValueError("schema v6 requires explicit source_bone_frame_joints")
             frame_joints = np.asarray(self.source_bone_frame_joints, dtype=np.int32)
             if frame_joints.shape != (bone_count, 3):
                 raise ValueError("source_bone_frame_joints must be [source_bone_count, 3]")
@@ -224,48 +328,139 @@ class AnatomyRiggedAsset:
                 raise ValueError("source_bone_frame_joints requires a primary joint in column zero")
             if not np.array_equal(frame_joints[:, 0], np.asarray(self.source_bone_smplx_a, dtype=np.int32)):
                 raise ValueError("source_bone_frame_joints[:, 0] must match source_bone_smplx_a")
+            source_a = np.asarray(self.source_bone_smplx_a, dtype=np.int32)
+            source_b = np.asarray(self.source_bone_smplx_b, dtype=np.int32)
+            if (
+                np.any(source_a < 0)
+                or np.any(source_a >= joint_count)
+                or np.any(source_b < 0)
+                or np.any(source_b >= joint_count)
+            ):
+                raise ValueError("source bone driver contains an unmapped or invalid SMPL-X joint")
+            blends = np.asarray(self.source_bone_blend, dtype=np.float64)
+            if np.any(blends < 0.0) or np.any(blends > 1.0):
+                raise ValueError("source_bone_blend must be within [0, 1]")
+            if self.source_driver_coupling is not None:
+                coupling = np.asarray(self.source_driver_coupling)
+                if coupling.shape != (bone_count, 4, 4) or not np.all(np.isfinite(coupling)):
+                    raise ValueError("source_driver_coupling must be finite [source_bone_count, 4, 4]")
+                if (
+                    not np.allclose(
+                        coupling[:, 3, :],
+                        np.asarray((0.0, 0.0, 0.0, 1.0)),
+                        atol=1.0e-6,
+                        rtol=0.0,
+                    )
+                    or np.any(
+                        np.abs(np.linalg.det(coupling[:, :3, :3])) <= 1.0e-10
+                    )
+                ):
+                    raise ValueError("source_driver_coupling must be invertible affine")
             source_parents = np.asarray(self.source_bone_parents, dtype=np.int32)
             for idx, parent in enumerate(source_parents.tolist()):
                 if parent >= idx or parent < -1:
                     raise ValueError(f"source_bone_parents[{idx}]={parent} is not topological")
+                if (
+                    self.source_driver_coupling is not None
+                    and self.source_bone_driver_types[idx] == "bind_follow"
+                    and parent >= 0
+                    and not np.allclose(
+                        coupling[idx],
+                        np.eye(4),
+                        atol=1.0e-6,
+                        rtol=0.0,
+                    )
+                ):
+                    raise ValueError("bind_follow source_driver_coupling must be identity")
             if self.driver_indices is None or self.driver_weights is None:
                 raise ValueError("source-rig v2 requires sparse driver indices and weights")
 
-            fk_values = (self.source_rest_local, self.source_bone_head, self.source_bone_tail)
-            if any(value is not None for value in fk_values):
-                if not all(value is not None for value in fk_values):
-                    raise ValueError("source-rig FK metadata must be stored as one complete set")
-                fk_arrays = {
-                    "source_rest_local": (self.source_rest_local, (bone_count, 4, 4)),
-                    "source_bone_head": (self.source_bone_head, (bone_count, 3)),
-                    "source_bone_tail": (self.source_bone_tail, (bone_count, 3)),
-                }
-                for name, (value, shape) in fk_arrays.items():
-                    arr = np.asarray(value)
-                    if arr.shape != shape:
-                        raise ValueError(f"{name} must be {shape} for source-rig v3")
-                    if not np.all(np.isfinite(arr)):
-                        raise ValueError(f"{name} contains non-finite values")
-                source_global = np.asarray(self.source_rest_global, dtype=np.float64)
-                source_local = np.asarray(self.source_rest_local, dtype=np.float64)
-                for idx, parent in enumerate(source_parents.tolist()):
-                    reconstructed = (
-                        source_local[idx]
-                        if int(parent) < 0
-                        else source_global[int(parent)] @ source_local[idx]
+            source_global = np.asarray(self.source_bind_global, dtype=np.float64)
+            source_local = np.asarray(self.source_bind_local, dtype=np.float64)
+            inverse_source = np.asarray(self.source_inverse_bind, dtype=np.float64)
+            for name, matrices in (
+                ("source_bind_global", source_global),
+                ("source_bind_local", source_local),
+                ("source_inverse_bind", inverse_source),
+            ):
+                if not np.allclose(
+                    matrices[:, 3, :],
+                    np.asarray((0.0, 0.0, 0.0, 1.0)),
+                    atol=1.0e-6,
+                    rtol=0.0,
+                ):
+                    raise ValueError(f"{name} must contain affine transforms")
+                determinants = np.linalg.det(matrices[:, :3, :3])
+                if np.any(np.abs(determinants) <= 1.0e-10):
+                    raise ValueError(f"{name} contains a singular transform")
+            for idx, parent in enumerate(source_parents.tolist()):
+                reconstructed = (
+                    source_local[idx]
+                    if int(parent) < 0
+                    else source_global[int(parent)] @ source_local[idx]
+                )
+                if not np.allclose(reconstructed, source_global[idx], atol=1.0e-4, rtol=0.0):
+                    raise ValueError(
+                        f"source_bind_local[{idx}] does not reconstruct source_bind_global"
                     )
-                    if not np.allclose(reconstructed, source_global[idx], atol=1.0e-4, rtol=0.0):
-                        raise ValueError(
-                            f"source_rest_local[{idx}] does not reconstruct source_rest_global"
-                        )
-                heads = np.asarray(self.source_bone_head, dtype=np.float64)
-                tails = np.asarray(self.source_bone_tail, dtype=np.float64)
-                if np.any(np.linalg.norm(tails - heads, axis=1) <= 1.0e-8):
-                    raise ValueError("source bone head/tail contains a zero-length bone")
+            if not np.allclose(
+                source_global @ inverse_source,
+                np.eye(4, dtype=np.float64),
+                atol=1.0e-4,
+                rtol=0.0,
+            ):
+                raise ValueError("source_inverse_bind does not invert source_bind_global")
+            heads = np.asarray(self.source_bone_head, dtype=np.float64)
+            tails = np.asarray(self.source_bone_tail, dtype=np.float64)
+            if np.any(np.linalg.norm(tails - heads, axis=1) <= 1.0e-8):
+                raise ValueError("source bone head/tail contains a zero-length bone")
+            target_global = np.asarray(self.target_bind_global, dtype=np.float64)
+            target_local = np.asarray(self.target_bind_local, dtype=np.float64)
+            target_inverse = np.asarray(self.runtime_inverse_bind, dtype=np.float64)
+            if (
+                target_global.shape != source_global.shape
+                or target_local.shape != source_local.shape
+                or target_inverse.shape != inverse_source.shape
+            ):
+                raise ValueError("target bind matrices must match the source rig")
+            for idx, parent in enumerate(source_parents.tolist()):
+                reconstructed = (
+                    target_local[idx]
+                    if int(parent) < 0
+                    else target_global[int(parent)] @ target_local[idx]
+                )
+                if not np.allclose(
+                    reconstructed,
+                    target_global[idx],
+                    atol=1.0e-4,
+                    rtol=0.0,
+                ):
+                    raise ValueError(
+                        f"target_bind_local[{idx}] does not reconstruct target_bind_global"
+                    )
+            if not np.allclose(
+                target_global @ target_inverse,
+                np.eye(4, dtype=np.float64),
+                atol=1.0e-4,
+                rtol=0.0,
+            ):
+                raise ValueError("target_inverse_bind does not invert target_bind_global")
+            target_heads = np.asarray(
+                self.target_bone_head if self.target_bone_head is not None else heads,
+                dtype=np.float64,
+            )
+            target_tails = np.asarray(
+                self.target_bone_tail if self.target_bone_tail is not None else tails,
+                dtype=np.float64,
+            )
+            if target_heads.shape != heads.shape or target_tails.shape != tails.shape:
+                raise ValueError("target bone probes must match the source bone count")
+            if np.any(np.linalg.norm(target_tails - target_heads, axis=1) <= 1.0e-8):
+                raise ValueError("target bone head/tail contains a zero-length bone")
 
 
-def _v5_semantic_defaults(asset: AnatomyRiggedAsset) -> AnatomyRiggedAsset:
-    """Materialize explicit V5 semantics for programmatically built assets.
+def _semantic_defaults(asset: AnatomyRiggedAsset) -> AnatomyRiggedAsset:
+    """Materialize explicit v6 semantics for programmatically built assets.
 
     Blender extraction always supplies these fields.  This narrow fallback
     keeps small unit fixtures usable while ensuring the serialized V5 asset
@@ -296,20 +491,55 @@ def _v5_semantic_defaults(asset: AnatomyRiggedAsset) -> AnatomyRiggedAsset:
     roles = asset.source_mesh_roles
     if roles is None:
         roles = ["authored_mesh"] * mesh_count
-    return replace(
+    fit_policies = asset.source_fit_policies
+    if fit_policies is None:
+        fit_policies = ["volume_field"] * mesh_count
+    driver_policies = asset.source_driver_policies
+    if driver_policies is None:
+        driver_policies = ["bind_follow"] * mesh_count
+    compound_ids = asset.source_compound_ids
+    if compound_ids is None:
+        compound_ids = [""] * mesh_count
+    sides = asset.source_sides
+    if sides is None:
+        sides = ["center"] * mesh_count
+    landmarks = asset.source_landmarks
+    if landmarks is None:
+        landmarks = [("auto_geometry_landmarks",)] * mesh_count
+    target_recipes = asset.target_landmark_recipes
+    if target_recipes is None:
+        target_recipes = ["auto_geometry"] * mesh_count
+    quality_profiles = asset.source_quality_profiles
+    if quality_profiles is None:
+        quality_profiles = ["default"] * mesh_count
+    result = replace(
         asset,
         source_bone_frame_joints=frame,
         source_mesh_controller_bones=controllers,
         source_mesh_material_groups=groups,
         source_mesh_roles=roles,
+        source_fit_policies=fit_policies,
+        source_driver_policies=driver_policies,
+        source_compound_ids=compound_ids,
+        source_sides=sides,
+        source_landmarks=landmarks,
+        target_landmark_recipes=target_recipes,
+        source_quality_profiles=quality_profiles,
     )
+    if result.source_driver_coupling is None:
+        # Local import avoids a module cycle while allowing small programmatic
+        # fixtures and Blender extraction to use the same coupling builder.
+        from .anatomy_lbs import with_source_driver_coupling
+
+        result = with_source_driver_coupling(result)
+    return result
 
 
 def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
-    asset = _v5_semantic_defaults(asset)
+    asset = _semantic_defaults(asset)
     asset.validate()
     if asset.source_bone_names is None:
-        raise ValueError("schema v5 requires a complete source rig")
+        raise ValueError("schema v6 requires a complete source rig")
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
     if asset.driver_indices is None or asset.driver_weights is None:
@@ -334,6 +564,19 @@ def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
         source_mesh_controller_bones=np.asarray(asset.source_mesh_controller_bones, dtype=np.int16),
         source_mesh_material_groups=np.asarray(asset.source_mesh_material_groups, dtype=object),
         source_mesh_roles=np.asarray(asset.source_mesh_roles, dtype=object),
+        source_fit_policies=np.asarray(asset.source_fit_policies, dtype=object),
+        source_driver_policies=np.asarray(asset.source_driver_policies, dtype=object),
+        source_compound_ids=np.asarray(asset.source_compound_ids, dtype=object),
+        source_sides=np.asarray(asset.source_sides, dtype=object),
+        source_landmarks_json=np.asarray(
+            [
+                json.dumps(list(values), ensure_ascii=True)
+                for values in (asset.source_landmarks or [])
+            ],
+            dtype=object,
+        ),
+        target_landmark_recipes=np.asarray(asset.target_landmark_recipes, dtype=object),
+        source_quality_profiles=np.asarray(asset.source_quality_profiles, dtype=object),
         driver_indices=np.asarray(driver_indices, dtype=np.int16),
         driver_weights=np.asarray(driver_weights, dtype=np.float32),
         pose_format=np.asarray(str(asset.pose_format), dtype=object),
@@ -342,27 +585,44 @@ def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
     )
     if asset.source_bone_names is not None:
         if asset.source_rest_local is None:
-            raise ValueError("schema v5 requires source_rest_local")
+            raise ValueError("schema v6 requires source_rest_local")
         source_global = source_global_from_local(asset.source_rest_local, asset.source_bone_parents)
+        target_local = np.asarray(asset.target_bind_local, dtype=np.float32)
+        target_global = source_global_from_local(target_local, asset.source_bone_parents)
         head_local = _points_to_bone_local(asset.source_bone_head, source_global)
         tail_local = _points_to_bone_local(asset.source_bone_tail, source_global)
+        target_head = (
+            asset.target_bone_head
+            if asset.target_bone_head is not None
+            else asset.source_bone_head
+        )
+        target_tail = (
+            asset.target_bone_tail
+            if asset.target_bone_tail is not None
+            else asset.source_bone_tail
+        )
+        target_head_local = _points_to_bone_local(target_head, target_global)
+        target_tail_local = _points_to_bone_local(target_tail, target_global)
         payload.update(
             source_bone_names=np.asarray(asset.source_bone_names, dtype=object),
             source_bone_parents=np.asarray(asset.source_bone_parents, dtype=np.int16),
-            source_rest_local=np.asarray(asset.source_rest_local, dtype=np.float32),
+            source_bind_global=np.asarray(source_global, dtype=np.float32),
+            source_bind_local=np.asarray(asset.source_rest_local, dtype=np.float32),
             source_bone_head_local=np.asarray(head_local, dtype=np.float32),
             source_bone_tail_local=np.asarray(tail_local, dtype=np.float32),
+            target_bind_global=np.asarray(target_global, dtype=np.float32),
+            target_bind_local=np.asarray(target_local, dtype=np.float32),
+            target_bone_head_local=np.asarray(target_head_local, dtype=np.float32),
+            target_bone_tail_local=np.asarray(target_tail_local, dtype=np.float32),
             source_bone_smplx_a=np.asarray(asset.source_bone_smplx_a, dtype=np.int16),
             source_bone_smplx_b=np.asarray(asset.source_bone_smplx_b, dtype=np.int16),
             source_bone_blend=np.asarray(asset.source_bone_blend, dtype=np.float32),
             source_bone_driver_types=np.asarray(asset.source_bone_driver_types, dtype=object),
             source_bone_frame_joints=np.asarray(asset.source_bone_frame_joints, dtype=np.int16),
+            source_driver_coupling=np.asarray(asset.source_driver_coupling, dtype=np.float32),
             rigid_component_ids=np.asarray(
                 asset.rigid_component_ids if asset.rigid_component_ids is not None else [], dtype=np.int32
             ),
-            leg_material_coordinates=np.asarray(
-                asset.leg_material_coordinates if asset.leg_material_coordinates is not None else [], dtype=np.float32
-            ).reshape(-1, 3),
             registration_reference=np.asarray(
                 asset.registration_reference if asset.registration_reference is not None else [], dtype=np.float32
             ).reshape(-1, 3),
@@ -384,12 +644,19 @@ def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
     return out
 
 
-def sparse_driver_weights(weights: Any, *, top_k: int = 4) -> tuple[np.ndarray, np.ndarray]:
-    """Convert dense Blender-derived drivers to normalized sparse top-k form."""
+def sparse_driver_weights(
+    weights: Any,
+    *,
+    top_k: int | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Convert dense weights without truncating authoritative influences."""
     dense = np.asarray(weights, dtype=np.float32)
     if dense.ndim != 2 or dense.shape[1] == 0:
         raise ValueError(f"weights must be [N, J], got {dense.shape}")
-    k = max(1, min(int(top_k), int(dense.shape[1])))
+    if top_k is None:
+        k = max(1, int(np.max(np.count_nonzero(dense > 0.0, axis=1))))
+    else:
+        k = max(1, min(int(top_k), int(dense.shape[1])))
     indices = np.argpartition(dense, -k, axis=1)[:, -k:]
     values = np.take_along_axis(dense, indices, axis=1)
     order = np.argsort(-values, axis=1)
@@ -416,14 +683,19 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
             metadata = {}
     required = {
         "driver_indices", "driver_weights", "source_bone_names", "source_bone_parents",
-        "source_rest_local", "source_bone_head_local", "source_bone_tail_local",
+        "source_bind_global", "source_bind_local", "source_bone_head_local", "source_bone_tail_local",
+        "target_bind_global", "target_bind_local", "target_bone_head_local", "target_bone_tail_local",
         "source_bone_smplx_a", "source_bone_smplx_b", "source_bone_blend",
         "source_bone_driver_types", "source_bone_frame_joints",
+        "source_driver_coupling",
         "source_mesh_controller_bones", "source_mesh_material_groups", "source_mesh_roles",
+        "source_fit_policies", "source_driver_policies", "source_compound_ids",
+        "source_sides", "source_landmarks_json", "target_landmark_recipes",
+        "source_quality_profiles",
     }
     missing = sorted(required - set(data.files))
     if missing:
-        raise ValueError(f"{path} is missing schema-v5 fields: {missing}")
+        raise ValueError(f"{path} is missing schema-v6 fields: {missing}")
     driver_indices = np.asarray(data["driver_indices"], dtype=np.int16)
     driver_weights = np.asarray(data["driver_weights"], dtype=np.float32)
     source_parents = (
@@ -431,13 +703,13 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
         if "source_bone_parents" in data.files else None
     )
     source_local = (
-        np.asarray(data["source_rest_local"], dtype=np.float32)
-        if "source_rest_local" in data.files else None
+        np.asarray(data["source_bind_local"], dtype=np.float32)
+        if "source_bind_local" in data.files else None
     )
-    source_global = (
-        source_global_from_local(source_local, source_parents)
-        if source_local is not None and source_parents is not None else None
-    )
+    source_global = np.asarray(data["source_bind_global"], dtype=np.float32)
+    reconstructed_global = source_global_from_local(source_local, source_parents)
+    if not np.allclose(source_global, reconstructed_global, atol=1.0e-5, rtol=0.0):
+        raise ValueError(f"{path} source bind global/local matrices are inconsistent")
     source_head = (
         _points_from_bone_local(data["source_bone_head_local"], source_global).astype(np.float32)
         if "source_bone_head_local" in data.files and source_global is not None else None
@@ -446,6 +718,17 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
         _points_from_bone_local(data["source_bone_tail_local"], source_global).astype(np.float32)
         if "source_bone_tail_local" in data.files and source_global is not None else None
     )
+    target_local = np.asarray(data["target_bind_local"], dtype=np.float32)
+    target_global = np.asarray(data["target_bind_global"], dtype=np.float32)
+    reconstructed_target = source_global_from_local(target_local, source_parents)
+    if not np.allclose(target_global, reconstructed_target, atol=1.0e-5, rtol=0.0):
+        raise ValueError(f"{path} target bind global/local matrices are inconsistent")
+    target_head = _points_from_bone_local(
+        data["target_bone_head_local"], target_global
+    ).astype(np.float32)
+    target_tail = _points_from_bone_local(
+        data["target_bone_tail_local"], target_global
+    ).astype(np.float32)
     asset = AnatomyRiggedAsset(
         vertices_rest=np.asarray(data["vertices_rest"], dtype=np.float32),
         faces=np.asarray(data["faces"], dtype=np.int32),
@@ -468,6 +751,27 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
         source_mesh_controller_bones=np.asarray(data["source_mesh_controller_bones"], dtype=np.int32),
         source_mesh_material_groups=[str(v) for v in _string_array(data["source_mesh_material_groups"]).tolist()],
         source_mesh_roles=[str(v) for v in _string_array(data["source_mesh_roles"]).tolist()],
+        source_fit_policies=[str(v) for v in _string_array(data["source_fit_policies"]).tolist()],
+        source_driver_policies=[
+            str(v) for v in _string_array(data["source_driver_policies"]).tolist()
+        ],
+        source_compound_ids=[
+            str(v) for v in _string_array(data["source_compound_ids"]).tolist()
+        ],
+        source_sides=[str(v) for v in _string_array(data["source_sides"]).tolist()],
+        source_landmarks=[
+            tuple(
+                str(value)
+                for value in json.loads(str(serialized))
+            )
+            for serialized in _string_array(data["source_landmarks_json"]).tolist()
+        ],
+        target_landmark_recipes=[
+            str(v) for v in _string_array(data["target_landmark_recipes"]).tolist()
+        ],
+        source_quality_profiles=[
+            str(v) for v in _string_array(data["source_quality_profiles"]).tolist()
+        ],
         driver_indices=driver_indices,
         driver_weights=driver_weights,
         source_bone_names=(
@@ -490,8 +794,13 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
             else None
         ),
         source_bone_frame_joints=np.asarray(data["source_bone_frame_joints"], dtype=np.int32),
+        source_driver_coupling=np.asarray(data["source_driver_coupling"], dtype=np.float32),
+        target_rest_global=target_global,
+        target_rest_local=target_local,
+        target_inverse_bind=np.linalg.inv(target_global).astype(np.float32),
+        target_bone_head=target_head,
+        target_bone_tail=target_tail,
         rigid_component_ids=np.asarray(data["rigid_component_ids"], dtype=np.int32) if "rigid_component_ids" in data.files else None,
-        leg_material_coordinates=np.asarray(data["leg_material_coordinates"], dtype=np.float32).reshape(-1, 3) if "leg_material_coordinates" in data.files and data["leg_material_coordinates"].size else None,
         registration_reference=np.asarray(data["registration_reference"], dtype=np.float32).reshape(-1, 3) if "registration_reference" in data.files and data["registration_reference"].size else None,
         source_skin_vertices=np.asarray(data["source_skin_vertices"], dtype=np.float32).reshape(-1, 3) if "source_skin_vertices" in data.files and data["source_skin_vertices"].size else None,
         source_skin_faces=np.asarray(data["source_skin_faces"], dtype=np.int32).reshape(-1, 3) if "source_skin_faces" in data.files and data["source_skin_faces"].size else None,

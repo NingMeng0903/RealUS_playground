@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from projects.genesis_ue_sync.anatomy_retarget.bone_segment_diagnostics import (
+    _geometry_landmark_diagnostic,
     _head_orientation_diagnostic,
     _joint_chain_diagnostic,
 )
@@ -99,3 +100,61 @@ def test_head_orientation_compares_runtime_motion_to_smplx_global_motion() -> No
     )
     assert result["pass"]
     assert result["orientation_error_deg"] < 1.0e-8
+
+
+def test_virtual_controller_endpoints_cannot_make_joint_pass() -> None:
+    asset = SimpleNamespace(
+        joint_names=["left_shoulder", "left_elbow", "left_wrist"],
+        rest_joints=np.asarray(((0, 0, 0), (0, 1, 0), (0, 2, 0)), dtype=np.float64),
+        source_bone_names=["Upper", "Lower"],
+        source_bone_parents=np.asarray((-1, 0), dtype=np.int64),
+    )
+    heads = np.asarray(((0, 0, 0), (0, 1, 0)), dtype=np.float64)
+    tails = np.asarray(((0, 1, 0), (0, 2, 0)), dtype=np.float64)
+    spec = {
+        "joint": "left_elbow",
+        "proximal": ("Upper",),
+        "distal": ("Lower",),
+        "axes": (
+            ("Upper", "left_shoulder", "left_elbow"),
+            ("Lower", "left_elbow", "left_wrist"),
+        ),
+    }
+
+    report = _joint_chain_diagnostic(
+        asset,
+        spec=spec,
+        source_transforms=np.stack((_transform(), _transform())),
+        rest_heads=heads,
+        rest_tails=tails,
+        posed_smplx_joints=asset.rest_joints,
+        translation=np.zeros(3),
+        endpoint_fallback=True,
+    )
+
+    assert not report["pass"]
+    assert report["endpoint_source"] == "derived_legacy_bind"
+
+
+def test_missing_hip_geometry_is_unavailable_not_controller_success() -> None:
+    asset = SimpleNamespace(
+        vertices_rest=np.zeros((2, 3), dtype=np.float64),
+        rest_joints=np.asarray(((0, 0, 0),), dtype=np.float64),
+        joint_names=["left_hip"],
+        source_mesh_names=["Femur_L"],
+        source_vertex_ranges=np.asarray(((0, 2),), dtype=np.int64),
+        source_tissues=["bone"],
+    )
+
+    report = _geometry_landmark_diagnostic(
+        asset,
+        label="hip_left",
+        joint_name="left_hip",
+        posed_vertices=asset.vertices_rest,
+        posed_smplx_joints=asset.rest_joints,
+        translation=np.zeros(3),
+    )
+
+    assert not report["available"]
+    assert not report["pass"]
+    assert not report["roles"]["proximal"]["available"]

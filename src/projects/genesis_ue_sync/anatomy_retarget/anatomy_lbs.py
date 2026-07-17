@@ -1,17 +1,21 @@
-"""Skin retargeted anatomy assets with rigid LBS bones and soft-tissue DQS for organs."""
+"""Skin anatomy with matrix LBS and isolated opt-in DQS for soft tissue."""
 
 from __future__ import annotations
 
 import os
+import weakref
 from typing import Any
 
 import numpy as np
 
 from .pose_adapter import pose_to_smplx55_axis_angle
-from .rigged_asset import AnatomyRiggedAsset
+from .rigged_asset import SOURCE_DRIVER_MODES, AnatomyRiggedAsset
 
 
-_CUDA_ASSET_CACHE: dict[int, tuple[Any, Any, Any, Any]] = {}
+_CUDA_ASSET_CACHE: dict[
+    int,
+    tuple[weakref.ReferenceType[AnatomyRiggedAsset], Any, Any, Any, Any],
+] = {}
 
 
 def _soft_tissue_vertex_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
@@ -45,6 +49,16 @@ def _soft_tissue_vertex_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
         if hi > lo:
             mask[lo:hi] = True
     return mask
+
+
+def _dqs_requested() -> bool:
+    """Return whether the isolated soft-tissue DQS path is explicitly enabled."""
+    return str(os.environ.get("AMONGUS_ANATOMY_DQS", "")).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def _matrix_quaternions_numpy(transforms: np.ndarray) -> np.ndarray:
@@ -218,7 +232,7 @@ def _skin_vertices_cuda(
 
     key = id(asset)
     cached = _CUDA_ASSET_CACHE.get(key)
-    if cached is None:
+    if cached is None or cached[0]() is not asset:
         if asset.driver_indices is None or asset.driver_weights is None:
             from .rigged_asset import sparse_driver_weights
 
@@ -229,18 +243,25 @@ def _skin_vertices_cuda(
         indices_t = torch.as_tensor(indices, dtype=torch.long, device="cuda")
         weights_t = torch.as_tensor(weights, dtype=torch.float32, device="cuda")
         soft_mask_t = torch.as_tensor(_soft_tissue_vertex_mask(asset), dtype=torch.bool, device="cuda")
-        cached = (vertices_t, indices_t, weights_t, soft_mask_t)
+        cached = (
+            weakref.ref(asset),
+            vertices_t,
+            indices_t,
+            weights_t,
+            soft_mask_t,
+        )
         _CUDA_ASSET_CACHE[key] = cached
-    vertices_t, indices_t, weights_t, soft_mask_t = cached
+    _asset_ref, vertices_t, indices_t, weights_t, soft_mask_t = cached
     tf = torch.as_tensor(transforms, dtype=torch.float32, device="cuda")
     selected = tf[indices_t]
     blended = torch.sum(selected * weights_t[..., None, None], dim=1)
     ones = torch.ones((vertices_t.shape[0], 1), dtype=torch.float32, device="cuda")
     homo = torch.cat((vertices_t, ones), dim=1)
     posed = torch.bmm(blended, homo.unsqueeze(-1))[:, :3, 0]
-    # DQS reduces candy-wrapper collapse in compact organs; vessels and nerves
-    # stay on authored matrix LBS.
-    if bool(torch.any(soft_mask_t)):
+    # Matrix LBS is the parity baseline.  DQS is isolated behind an explicit
+    # opt-in because even a tissue-only default diverges from authored Blender
+    # matrix skinning.
+    if _dqs_requested() and bool(torch.any(soft_mask_t)):
         dqs = _dual_quaternion_skin_torch(vertices_t, indices_t, weights_t, tf)
         posed = torch.where(soft_mask_t[:, None], dqs, posed)
     if transl is not None:
@@ -312,11 +333,20 @@ def _interpolate_rigid(a: np.ndarray, b: np.ndarray, alpha: float) -> np.ndarray
 
 def _segment_frame(origin: np.ndarray, endpoint: np.ndarray, reference_x: np.ndarray) -> np.ndarray:
     """Stable limb/head frame with its Y axis fixed by anatomical endpoints."""
+    origin = np.asarray(origin, dtype=np.float64).reshape(3)
+    endpoint = np.asarray(endpoint, dtype=np.float64).reshape(3)
+    if not np.all(np.isfinite(origin)) or not np.all(np.isfinite(endpoint)):
+        raise ValueError("segment driver endpoints must be finite")
     y = np.array(endpoint - origin, dtype=np.float64, copy=True)
-    y /= max(float(np.linalg.norm(y)), 1.0e-10)
-    # ``reference_x`` is commonly a view into source_rest_global.  In-place
+    length = float(np.linalg.norm(y))
+    if length < 1.0e-8:
+        raise ValueError("segment driver endpoints are degenerate")
+    y /= length
+    # ``reference_x`` is commonly a view into source_bind_global.  In-place
     # orthogonalisation must never corrupt the persisted bind matrix.
-    x = np.array(reference_x, dtype=np.float64, copy=True)
+    x = np.asarray(reference_x, dtype=np.float64).reshape(3).copy()
+    if not np.all(np.isfinite(x)):
+        raise ValueError("segment driver transverse axis must be finite")
     x -= float(x @ y) * y
     if float(np.linalg.norm(x)) < 1.0e-8:
         # A clavicle can be almost parallel to world X.  Choose the least
@@ -340,11 +370,24 @@ def _three_joint_frame(points: np.ndarray, joints: np.ndarray, reference_x: np.n
     old implicit ``first child`` rule, which made a pelvis point at one hip and
     made a scapula inherit a humerus rotation.
     """
-    ids = np.asarray(joints, dtype=np.int64)
+    points = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+    ids = np.asarray(joints, dtype=np.int64).reshape(-1)
+    if (
+        ids.shape != (3,)
+        or np.any(ids < 0)
+        or np.any(ids >= len(points))
+        or len(np.unique(ids)) != 3
+    ):
+        raise ValueError("three-joint driver requires three distinct valid joints")
+    if not np.all(np.isfinite(points[ids])):
+        raise ValueError("three-joint driver points must be finite")
     origin = np.asarray(points[int(ids[0])], dtype=np.float64)
     primary = np.asarray(points[int(ids[1])] - origin, dtype=np.float64)
     plane = np.asarray(points[int(ids[2])] - origin, dtype=np.float64)
-    primary /= max(float(np.linalg.norm(primary)), 1.0e-10)
+    primary_length = float(np.linalg.norm(primary))
+    if primary_length < 1.0e-8:
+        raise ValueError("three-joint driver primary segment is degenerate")
+    primary /= primary_length
     normal = np.cross(primary, plane)
     if float(np.linalg.norm(normal)) < 1.0e-8:
         return _segment_frame(origin, origin + primary, reference_x)
@@ -370,7 +413,7 @@ def _endpoint_segment_delta(
 ) -> np.ndarray:
     """Rigid transform for a limb segment; no blended global translations."""
     if float(np.linalg.norm(rest_b - rest_a)) < 1.0e-8:
-        return np.eye(4, dtype=np.float64)
+        raise ValueError("segment driver rest endpoints are degenerate")
     F0 = _segment_frame(rest_a, rest_b, rest_reference_x)
     reference_delta = np.asarray(proximal_delta, dtype=np.float64)
     if distal_delta is not None and float(twist_alpha) > 0.0:
@@ -379,32 +422,63 @@ def _endpoint_segment_delta(
             np.asarray(distal_delta, dtype=np.float64),
             float(twist_alpha),
         ).astype(np.float64)
-    F1 = _segment_frame(pose_a, pose_b, reference_delta[:3, :3] @ rest_reference_x)
+    # Transport the *actual* transverse axis selected in the rest frame.  This
+    # matters when the authored bind X axis is parallel to the segment and
+    # _segment_frame had to choose a stable fallback.  Transporting the raw
+    # authored axis would discard pure axial rotation in that case.
+    F1 = _segment_frame(pose_a, pose_b, reference_delta[:3, :3] @ F0[:3, 0])
     return F1 @ np.linalg.inv(F0)
 
 
 def _source_rest_local(asset: AnatomyRiggedAsset) -> np.ndarray:
-    """Return the schema-v4 Blender bind-local matrices."""
-    stored = getattr(asset, "source_rest_local", None)
-    if stored is not None and np.asarray(stored).shape == np.asarray(asset.source_rest_global).shape:
+    """Return the schema-v6 fitted target bind-local matrices."""
+    stored = asset.target_bind_local
+    if stored is not None and np.asarray(stored).shape == np.asarray(asset.target_bind_global).shape:
         return np.asarray(stored, dtype=np.float64)
-    raise ValueError("schema-v4 source rig is missing source_rest_local")
+    raise ValueError("schema-v6 source rig is missing target_bind_local")
 
 
-def source_bone_skinning_transforms(
+def source_bone_driver_frames(
     asset: AnatomyRiggedAsset,
     pose_axis_angle: Any,
 ) -> np.ndarray:
-    """Solve the source rig once, in parent-before-child local FK order.
-
-    Schema-v4 assets carry an explicit driver mode for every source bone.  A
-    connected child never receives an independently translated global delta:
-    its authored bind-local translation is retained and only its desired local
-    rotation is updated.  This is the invariant that keeps elbow/wrist/finger
-    and ankle/toe chains connected.
-    """
+    """Build the one authoritative SMPL-X controller frame per source bone."""
     if asset.source_bone_names is None:
-        raise ValueError("source bone transforms require an anatomy schema-v4 rig")
+        raise ValueError("source driver frames require a schema-v6 source rig")
+    bone_count = len(asset.source_bone_names)
+    modes = list(asset.source_bone_driver_types or [])
+    if len(modes) != bone_count:
+        raise ValueError("schema-v6 source rig is missing explicit driver modes")
+    unknown_modes = sorted(set(modes) - set(SOURCE_DRIVER_MODES))
+    if unknown_modes:
+        raise ValueError(f"unknown source driver mode(s): {unknown_modes}")
+    source_parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    bind = np.asarray(asset.target_bind_global, dtype=np.float64)
+    a_ids = np.asarray(asset.source_bone_smplx_a, dtype=np.int64)
+    b_ids = np.asarray(asset.source_bone_smplx_b, dtype=np.int64)
+    blends = np.asarray(asset.source_bone_blend, dtype=np.float64)
+    frame_joints = np.asarray(asset.source_bone_frame_joints, dtype=np.int64)
+    expected_vector = (bone_count,)
+    if (
+        source_parents.shape != expected_vector
+        or a_ids.shape != expected_vector
+        or b_ids.shape != expected_vector
+        or blends.shape != expected_vector
+        or bind.shape != (bone_count, 4, 4)
+        or frame_joints.shape != (bone_count, 3)
+    ):
+        raise ValueError("schema-v6 source driver metadata has invalid shapes")
+    if (
+        not np.all(np.isfinite(bind))
+        or not np.allclose(
+            bind[:, 3, :],
+            np.asarray((0.0, 0.0, 0.0, 1.0)),
+            atol=1.0e-6,
+            rtol=0.0,
+        )
+        or np.any(np.abs(np.linalg.det(bind[:, :3, :3])) <= 1.0e-10)
+    ):
+        raise ValueError("source driver authored bind is invalid")
     pose_global = joint_global_transforms(
         pose_axis_angle=pose_axis_angle,
         rest_joints=asset.rest_joints,
@@ -415,79 +489,166 @@ def source_bone_skinning_transforms(
         rest_joints=asset.rest_joints,
         parents=asset.parents,
     ).astype(np.float64)
+    joint_count = len(pose_global)
+    if (
+        np.any(a_ids < 0)
+        or np.any(a_ids >= joint_count)
+        or np.any(b_ids < 0)
+        or np.any(b_ids >= joint_count)
+        or not np.all(np.isfinite(blends))
+        or np.any(blends < 0.0)
+        or np.any(blends > 1.0)
+    ):
+        raise ValueError("source driver contains an unmapped or invalid SMPL-X joint")
+    if (
+        np.any(frame_joints < -1)
+        or np.any(frame_joints >= joint_count)
+        or not np.array_equal(frame_joints[:, 0], a_ids)
+    ):
+        raise ValueError("source driver contains invalid explicit frame joints")
+    for bone, parent in enumerate(source_parents.tolist()):
+        if int(parent) < -1 or int(parent) >= bone:
+            raise ValueError(f"source bone parent {parent} for bone {bone} is not topological")
+    if not np.all(np.isfinite(pose_global)) or not np.all(np.isfinite(rest_global)):
+        raise ValueError("source driver joint frames must be finite")
     joint_delta = pose_global @ np.linalg.inv(rest_global)
     rest_points = np.asarray(asset.rest_joints, dtype=np.float64)
     pose_points = pose_global[:, :3, 3]
+    frames = np.tile(np.eye(4, dtype=np.float64), (bone_count, 1, 1))
+    for bone, mode in enumerate(modes):
+        if mode == "bind_follow" and int(source_parents[bone]) >= 0:
+            continue
+        a = int(a_ids[bone])
+        b = int(b_ids[bone])
+        explicit = (
+            np.all(frame_joints[bone] >= 0)
+            and len(np.unique(frame_joints[bone])) == 3
+        )
+        if explicit:
+            rest_frame = _three_joint_frame(
+                rest_points,
+                frame_joints[bone],
+                bind[bone, :3, 0],
+            )
+            frames[bone] = _three_joint_frame(
+                pose_points,
+                frame_joints[bone],
+                joint_delta[a, :3, :3] @ rest_frame[:3, 0],
+            )
+        elif mode in {"segment_root", "rigid_group", "twist"} and a != b:
+            rest_frame = _segment_frame(
+                rest_points[a],
+                rest_points[b],
+                bind[bone, :3, 0],
+            )
+            delta = _endpoint_segment_delta(
+                rest_a=rest_points[a],
+                rest_b=rest_points[b],
+                pose_a=pose_points[a],
+                pose_b=pose_points[b],
+                rest_reference_x=bind[bone, :3, 0],
+                proximal_delta=joint_delta[a],
+                distal_delta=joint_delta[b],
+                twist_alpha=float(blends[bone]) if mode == "twist" else 0.0,
+            )
+            frames[bone] = delta @ rest_frame
+        elif mode in {"segment_root", "twist"}:
+            raise ValueError(f"{mode} source driver {bone} has a degenerate joint mapping")
+        else:
+            frames[bone] = pose_global[a]
+        if not np.all(np.isfinite(frames[bone])):
+            raise ValueError(f"source driver frame {bone} is non-finite")
+        rotation = frames[bone, :3, :3]
+        if (
+            not np.allclose(rotation.T @ rotation, np.eye(3), atol=1.0e-6, rtol=0.0)
+            or not np.isclose(np.linalg.det(rotation), 1.0, atol=1.0e-6, rtol=0.0)
+        ):
+            raise ValueError(f"source driver frame {bone} is not a proper rigid frame")
+    return frames
+
+
+def build_source_driver_coupling(asset: AnatomyRiggedAsset) -> np.ndarray:
+    """Return C=inv(F_rest)@B_target for each independently driven bone."""
+    frames = source_bone_driver_frames(asset, np.zeros((55, 3), dtype=np.float32))
+    bind = np.asarray(asset.target_bind_global, dtype=np.float64)
+    coupling = np.tile(np.eye(4, dtype=np.float64), (len(bind), 1, 1))
+    for bone, mode in enumerate(asset.source_bone_driver_types or []):
+        if mode == "bind_follow" and int(asset.source_bone_parents[bone]) >= 0:
+            continue
+        coupling[bone] = np.linalg.inv(frames[bone]) @ bind[bone]
+    return coupling.astype(np.float32)
+
+
+def with_source_driver_coupling(asset: AnatomyRiggedAsset) -> AnatomyRiggedAsset:
+    """Return an asset whose persisted controller coupling matches its bind."""
+    coupling = build_source_driver_coupling(asset)
+    return type(asset)(**{**asset.__dict__, "source_driver_coupling": coupling})
+
+
+def source_bone_skinning_transforms(
+    asset: AnatomyRiggedAsset,
+    pose_axis_angle: Any,
+) -> np.ndarray:
+    """Solve the source rig once, in parent-before-child local FK order.
+
+    Schema-v6 stores one controller-to-bind coupling for every independently
+    driven source bone.  Authored bind_follow children retain their exact
+    Blender local bind.  No mesh-derived rebind or translation restoration is
+    performed at runtime.
+    """
+    if asset.source_bone_names is None:
+        raise ValueError("source bone transforms require an anatomy schema-v6 rig")
+    driver_frames = source_bone_driver_frames(asset, pose_axis_angle)
     modes = list(asset.source_bone_driver_types or [])
     if len(modes) != len(asset.source_bone_names):
-        raise ValueError("schema-v4 source rig is missing explicit driver modes")
-    rest_global_bones = np.asarray(asset.source_rest_global, dtype=np.float64)
+        raise ValueError("schema-v6 source rig is missing explicit driver modes")
+    rest_global_bones = np.asarray(asset.target_bind_global, dtype=np.float64)
     rest_local_bones = _source_rest_local(asset)
     posed_global = np.empty_like(rest_global_bones)
     source_parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
-    frame_joints = getattr(asset, "source_bone_frame_joints", None)
-    if frame_joints is not None:
-        frame_joints = np.asarray(frame_joints, dtype=np.int64)
+    coupling = np.asarray(
+        asset.source_driver_coupling
+        if asset.source_driver_coupling is not None
+        else build_source_driver_coupling(asset),
+        dtype=np.float64,
+    )
+    if coupling.shape != rest_global_bones.shape or not np.all(np.isfinite(coupling)):
+        raise ValueError("schema-v6 source driver coupling is invalid")
+    if (
+        not np.allclose(
+            coupling[:, 3, :],
+            np.asarray((0.0, 0.0, 0.0, 1.0)),
+            atol=1.0e-6,
+            rtol=0.0,
+        )
+        or np.any(np.abs(np.linalg.det(coupling[:, :3, :3])) <= 1.0e-10)
+    ):
+        raise ValueError("schema-v6 source driver coupling is not invertible affine")
     for bi, mode in enumerate(modes):
         parent = int(source_parents[bi])
+        if parent >= bi or parent < -1:
+            raise ValueError(f"source bone parent {parent} for bone {bi} is not topological")
         if mode == "bind_follow" and parent >= 0:
             posed_global[bi] = posed_global[parent] @ rest_local_bones[bi]
             continue
-
-        a = int(asset.source_bone_smplx_a[bi])
-        b = int(asset.source_bone_smplx_b[bi])
-        alpha = float(asset.source_bone_blend[bi])
-        explicit_frame = (
-            frame_joints is not None
-            and frame_joints.shape == (len(modes), 3)
-            and np.all(frame_joints[bi] >= 0)
-            and len(np.unique(frame_joints[bi])) == 3
-        )
-        if explicit_frame:
-            rest_frame = _three_joint_frame(rest_points, frame_joints[bi], rest_global_bones[bi, :3, 0])
-            pose_frame = _three_joint_frame(pose_points, frame_joints[bi], rest_global_bones[bi, :3, 0])
-            delta = pose_frame @ np.linalg.inv(rest_frame)
-        elif mode in {"segment_root", "rigid_group"} and a != b:
-            delta = _endpoint_segment_delta(
-                rest_a=rest_points[a],
-                rest_b=rest_points[b],
-                pose_a=pose_points[a],
-                pose_b=pose_points[b],
-                rest_reference_x=rest_global_bones[bi, :3, 0],
-                proximal_delta=joint_delta[a],
-                distal_delta=joint_delta[b],
-                twist_alpha=0.0,
-            )
-        elif mode == "twist" and a != b:
-            # Twist changes the transverse frame only.  Its primary axis must
-            # still follow the complete posed segment; interpolating two full
-            # global transforms rotates the downstream wrist/ankle offset away
-            # from the segment endpoint.
-            delta = _endpoint_segment_delta(
-                rest_a=rest_points[a],
-                rest_b=rest_points[b],
-                pose_a=pose_points[a],
-                pose_b=pose_points[b],
-                rest_reference_x=rest_global_bones[bi, :3, 0],
-                proximal_delta=joint_delta[a],
-                distal_delta=joint_delta[b],
-                twist_alpha=alpha,
-            )
-        else:
-            delta = np.asarray(joint_delta[a], dtype=np.float64)
-
-        desired_global = delta @ rest_global_bones[bi]
-        if parent < 0:
-            posed_global[bi] = desired_global
-            continue
-        local = np.asarray(rest_local_bones[bi], dtype=np.float64).copy()
-        # The parent supplies all translation.  Only solve the child's desired
-        # global rotation back into that already-posed parent frame.
-        local[:3, :3] = np.linalg.solve(
-            posed_global[parent, :3, :3], desired_global[:3, :3]
-        )
-        posed_global[bi] = posed_global[parent] @ local
-    return (posed_global @ np.asarray(asset.source_inverse_bind, dtype=np.float64)).astype(np.float32)
+        posed_global[bi] = driver_frames[bi] @ coupling[bi]
+    inverse_bind = np.asarray(asset.runtime_inverse_bind, dtype=np.float64)
+    if inverse_bind.shape != rest_global_bones.shape or not np.all(np.isfinite(inverse_bind)):
+        raise ValueError("schema-v6 target inverse bind is invalid")
+    if not np.allclose(
+        rest_global_bones @ inverse_bind,
+        np.eye(4, dtype=np.float64),
+        atol=2.0e-6,
+        rtol=0.0,
+    ):
+        raise ValueError("target inverse bind does not match the fitted bind")
+    transforms = posed_global @ inverse_bind
+    neutral_pose = pose_to_smplx55_axis_angle(pose_axis_angle)
+    if not np.any(neutral_pose):
+        if not np.allclose(posed_global, rest_global_bones, atol=2.0e-6, rtol=0.0):
+            raise ValueError("neutral source driver coupling does not recover the fitted bind")
+        transforms = np.tile(np.eye(4, dtype=np.float64), (len(rest_global_bones), 1, 1))
+    return transforms.astype(np.float32)
 
 
 def skin_vertices(
@@ -511,29 +672,85 @@ def skin_vertices(
         joint_count = min(global_tf.shape[0], inverse_bind.shape[0], weights.shape[1])
         transforms = np.matmul(global_tf[:joint_count], inverse_bind[:joint_count])
     if _cuda_requested():
-        return _skin_vertices_cuda(asset, transforms, transl)
-    if asset.driver_indices is not None and asset.driver_weights is not None:
-        selected = transforms[np.asarray(asset.driver_indices, dtype=np.int64)]
-        blended = np.sum(selected * np.asarray(asset.driver_weights, dtype=np.float32)[..., None, None], axis=1)
-        dqs_indices = np.asarray(asset.driver_indices, dtype=np.int64)
-        dqs_weights = np.asarray(asset.driver_weights, dtype=np.float32)
+        # Keep material constraints backend-independent.  The former early
+        # return silently skipped tube ARAP on CUDA, so production validation
+        # measured a different runtime from CPU tests.
+        posed = _skin_vertices_cuda(asset, transforms, None)
     else:
-        weights = _dense_asset_weights(asset)
-        joint_count = min(transforms.shape[0], weights.shape[1])
-        blended = np.matmul(weights[:, :joint_count], transforms[:joint_count].reshape(joint_count, 16)).reshape(-1, 4, 4)
-        from .rigged_asset import sparse_driver_weights
+        if asset.driver_indices is not None and asset.driver_weights is not None:
+            selected = transforms[np.asarray(asset.driver_indices, dtype=np.int64)]
+            blended = np.sum(
+                selected
+                * np.asarray(asset.driver_weights, dtype=np.float32)[
+                    ..., None, None
+                ],
+                axis=1,
+            )
+            dqs_indices = np.asarray(asset.driver_indices, dtype=np.int64)
+            dqs_weights = np.asarray(asset.driver_weights, dtype=np.float32)
+        else:
+            weights = _dense_asset_weights(asset)
+            joint_count = min(transforms.shape[0], weights.shape[1])
+            blended = np.matmul(
+                weights[:, :joint_count],
+                transforms[:joint_count].reshape(joint_count, 16),
+            ).reshape(-1, 4, 4)
+            from .rigged_asset import sparse_driver_weights
 
-        dqs_indices, dqs_weights = sparse_driver_weights(weights[:, :joint_count])
-    homo = np.concatenate([vertices, np.ones((vertices.shape[0], 1), dtype=np.float32)], axis=1)
-    posed = np.matmul(blended, homo[:, :, None])[:, :3, 0].astype(np.float32)
-    soft_mask = _soft_tissue_vertex_mask(asset)
-    if np.any(soft_mask):
-        posed[soft_mask] = _dual_quaternion_skin_numpy(
-            vertices[soft_mask],
-            dqs_indices[soft_mask],
-            dqs_weights[soft_mask],
-            transforms,
+            dqs_indices, dqs_weights = sparse_driver_weights(
+                weights[:, :joint_count]
+            )
+        homo = np.concatenate(
+            [vertices, np.ones((vertices.shape[0], 1), dtype=np.float32)],
+            axis=1,
         )
+        posed = np.matmul(blended, homo[:, :, None])[:, :3, 0].astype(
+            np.float32
+        )
+        soft_mask = _soft_tissue_vertex_mask(asset)
+        if _dqs_requested() and np.any(soft_mask):
+            posed[soft_mask] = _dual_quaternion_skin_numpy(
+                vertices[soft_mask],
+                dqs_indices[soft_mask],
+                dqs_weights[soft_mask],
+                transforms,
+            )
+    neutral_pose = pose_to_smplx55_axis_angle(pose_axis_angle)
+    if (
+        np.any(neutral_pose)
+        and asset.source_vertex_ranges is not None
+        and asset.source_tissues is not None
+    ):
+        from .soft_constraints import arap_volume_refine, limit_edge_strain
+
+        faces = np.asarray(asset.faces, dtype=np.int64)
+        for (start, stop), tissue in zip(
+            np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+            asset.source_tissues,
+        ):
+            if str(tissue) not in {"vessel", "nerve"}:
+                continue
+            start_i, stop_i = int(start), int(stop)
+            local_faces = faces[
+                np.all((faces >= start_i) & (faces < stop_i), axis=1)
+            ] - start_i
+            refined, _report = arap_volume_refine(
+                vertices[start_i:stop_i],
+                posed[start_i:stop_i],
+                local_faces,
+                target_weight=0.01,
+                iterations=15,
+                volume_weight=0.0,
+            )
+            refined, _strain_report = limit_edge_strain(
+                vertices[start_i:stop_i],
+                refined,
+                local_faces,
+                minimum_ratio=0.85,
+                maximum_ratio=1.08,
+                iterations=100,
+            )
+            posed[start_i:stop_i] = refined.astype(np.float32)
     if transl is not None:
         posed += np.asarray(transl, dtype=np.float32).reshape(1, 3)
     return posed

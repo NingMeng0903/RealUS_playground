@@ -41,10 +41,12 @@ exclude_meshes:
   # Combined cardiovascular duplicate; keep separate Artery/Vein meshes for planning labels.
   - UNCUT_Cardiovascular
 
-coordinate_transform: blender_y_up_to_genesis_z_up
+coordinate_transform: blender_armature_to_smplx_y_up_m
 blender_unit_scale: 0.01
 canonical_rest_space: neutral
 fallback_joint: pelvis
+# Optional non-authoritative compressed view for GPU experiments. The schema-v6
+# driver arrays always retain every non-zero Blender armature influence.
 max_influences: 4
 fail_on_unmapped_groups: true
 default_transparent_alpha: 0.35
@@ -202,10 +204,14 @@ fit_overrides:
 
 quality_gate:
   weight_sum_error: 1.0e-5
-  anchor_rms_m: 0.010
-  anchor_max_m: 0.020
+  bind_roundtrip_error_m: 1.0e-5
+  blender_parity_error_m: 5.0e-4
+  anchor_rms_m: 0.002
+  anchor_max_m: 0.002
   edge_ratio_max: 3.0
   edge_ratio_p999: 1.5
+  soft_edge_ratio_q99: 1.12
+  soft_edge_ratio_max: 1.30
   inside_fraction: 0.995
   max_outside_m: 0.002
   critical_max_outside_m: 0.001

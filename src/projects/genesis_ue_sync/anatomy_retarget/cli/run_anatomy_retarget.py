@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import argparse
 import atexit
+from dataclasses import replace
 import hashlib
 import json
 import logging
 import os
+import shutil
 import tempfile
 import time
 from pathlib import Path
@@ -21,9 +23,9 @@ from projects.genesis_ue_sync.anatomy_retarget.asset_align import normalize_rigg
 from projects.genesis_ue_sync.anatomy_retarget.blender_retarget_runner import run_retarget
 from projects.genesis_ue_sync.anatomy_retarget.containment import (
     load_body_surface,
-    repair_containment,
+    signed_distance,
 )
-from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import joint_global_transforms, skin_vertices
+from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import skin_vertices
 from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
     easymocap_drive_translation,
     load_easymocap_smplx_fit_drive,
@@ -31,12 +33,22 @@ from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
     smplx_shape_hash,
 )
 from projects.genesis_ue_sync.anatomy_retarget.quality_gate import evaluate_asset_quality, write_quality_report
-from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import load_rigged_asset, save_rigged_asset
+from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import (
+    ANATOMY_ASSET_SCHEMA_VERSION,
+    load_rigged_asset,
+    save_rigged_asset,
+)
 from projects.genesis_ue_sync.anatomy_retarget.shape_volume import apply_subject_beta_shape
-from projects.genesis_ue_sync.anatomy_retarget.leg_material import compute_leg_material_coordinates
 from projects.genesis_ue_sync.anatomy_retarget.diagnostics import write_mesh_diagnostics
 from projects.genesis_ue_sync.anatomy_retarget.bone_segment_diagnostics import write_bone_segment_diagnostics
 from projects.genesis_ue_sync.anatomy_retarget.source_skin_volume import apply_source_skin_volume_registration
+from projects.genesis_ue_sync.anatomy_retarget.provenance import build_run_manifest
+from projects.genesis_ue_sync.anatomy_retarget.tube_graph import (
+    build_asset_attachment_graphs,
+    tube_graph_metrics,
+)
+from projects.genesis_ue_sync.anatomy_retarget.material_fit import fit_articulated_rest
+from projects.genesis_ue_sync.anatomy_retarget.validation_matrix import pose_cases
 from projects.genesis_ue_sync.multiview_realtime.track_stream import (
     DEFAULT_ANATOMY_ASSET_PUB_BIND,
     TOPIC_ANATOMY_ASSET_V1,
@@ -72,12 +84,253 @@ def _cache_key(*paths: Path, extra: str = "") -> str:
     return digest.hexdigest()[:24]
 
 
+def _load_valid_cache(
+    path: Path,
+    *,
+    metadata_key: str,
+    expected_key: str,
+) -> Any | None:
+    """Return only a schema-valid cache produced by the exact current inputs."""
+    if not Path(path).is_file():
+        return None
+    try:
+        asset = load_rigged_asset(path, validate=True)
+    except (KeyError, OSError, ValueError) as exc:
+        logging.warning("ignoring stale anatomy cache %s: %s", path, exc)
+        return None
+    actual_key = str((asset.metadata or {}).get(metadata_key, ""))
+    if actual_key != str(expected_key):
+        logging.warning(
+            "ignoring anatomy cache %s with stale %s=%r",
+            path,
+            metadata_key,
+            actual_key,
+        )
+        return None
+    return asset
+
+
+def _signed_distance_containment_report(
+    asset: Any,
+    *,
+    anatomy_vertices: np.ndarray,
+    surface_vertices: np.ndarray,
+    surface_faces: np.ndarray,
+    stage: str,
+) -> dict[str, Any]:
+    """Build complete per-tissue and per-mesh signed-distance evidence."""
+    if asset.source_vertex_ranges is None or asset.source_tissues is None:
+        raise ValueError("containment diagnostics require mesh ranges and tissue labels")
+    points = np.asarray(anatomy_vertices, dtype=np.float64)
+    if points.shape != np.asarray(asset.vertices_rest).shape:
+        raise ValueError("containment vertices must match the anatomy asset")
+    values, _closest, _normal = signed_distance(
+        points,
+        np.asarray(surface_vertices, dtype=np.float64),
+        np.asarray(surface_faces, dtype=np.int32),
+    )
+    over_limit: dict[str, int] = {}
+    outside_count: dict[str, int] = {}
+    per_mesh: dict[str, dict[str, Any]] = {}
+    for mesh_name, (start, stop), tissue in zip(
+        asset.source_mesh_names,
+        np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+        asset.source_tissues,
+    ):
+        local = values[int(start) : int(stop)]
+        tissue_name = str(tissue)
+        tolerance = 0.001 if tissue_name in {"bone", "vessel", "nerve"} else 0.002
+        outside = int(np.count_nonzero(local > 0.0))
+        severe = int(np.count_nonzero(local > tolerance))
+        outside_count[tissue_name] = outside_count.get(tissue_name, 0) + outside
+        over_limit[tissue_name] = over_limit.get(tissue_name, 0) + severe
+        per_mesh[str(mesh_name)] = {
+            "tissue": tissue_name,
+            "vertex_count": int(local.size),
+            "outside_count": outside,
+            "over_limit_count": severe,
+            "inside_fraction": float(np.mean(local <= 0.0)) if local.size else None,
+            "max_outside_m": (
+                float(max(0.0, float(np.max(local)))) if local.size else None
+            ),
+            "tolerance_m": tolerance,
+        }
+    return {
+        "stage": str(stage),
+        "backend": "libigl_exact_signed_distance",
+        "vertex_count": int(values.size),
+        "outside_count": outside_count,
+        "over_limit_count": over_limit,
+        "per_mesh": per_mesh,
+    }
+
+
+def _runtime_pose_matrix_report(
+    asset: Any,
+    *,
+    tube_graphs: dict[str, Any],
+) -> dict[str, Any]:
+    rest = np.asarray(asset.vertices_rest, dtype=np.float64)
+    faces = np.asarray(asset.faces, dtype=np.int64)
+    reports: dict[str, Any] = {}
+    for case_name, pose in pose_cases(list(asset.joint_names)).items():
+        posed = np.asarray(skin_vertices(asset, pose), dtype=np.float64)
+        case: dict[str, Any] = {
+            "finite": bool(np.all(np.isfinite(posed))),
+            "soft_meshes": {},
+            "tube_graphs": {},
+        }
+        for mesh_name, (start, stop), tissue in zip(
+            asset.source_mesh_names,
+            np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+            asset.source_tissues,
+        ):
+            if str(tissue) not in {"vessel", "nerve"}:
+                continue
+            local_faces = faces[
+                np.all((faces >= int(start)) & (faces < int(stop)), axis=1)
+            ]
+            edges = np.concatenate(
+                (
+                    local_faces[:, (0, 1)],
+                    local_faces[:, (1, 2)],
+                    local_faces[:, (2, 0)],
+                ),
+                axis=0,
+            )
+            edges.sort(axis=1)
+            edges = np.unique(edges, axis=0)
+            before = np.linalg.norm(
+                rest[edges[:, 1]] - rest[edges[:, 0]], axis=1
+            )
+            after = np.linalg.norm(
+                posed[edges[:, 1]] - posed[edges[:, 0]], axis=1
+            )
+            valid = before > 2.0e-4
+            ratios = after[valid] / before[valid]
+            case["soft_meshes"][str(mesh_name)] = {
+                "edge_count": int(np.count_nonzero(valid)),
+                "ratio_q99": (
+                    float(np.quantile(ratios, 0.99)) if len(ratios) else None
+                ),
+                "ratio_max": float(np.max(ratios)) if len(ratios) else None,
+            }
+        for graph_name, graph in tube_graphs.items():
+            subject_graph = replace(
+                graph,
+                rest_nodes=graph.sample_nodes(rest).astype(np.float32),
+            )
+            case["tube_graphs"][graph_name] = tube_graph_metrics(
+                subject_graph,
+                posed,
+            )
+        reports[case_name] = case
+    return {
+        "case_count": int(len(reports)),
+        "cases": reports,
+    }
+
+
+def _directory_content_hash(path: Path) -> str:
+    digest = hashlib.sha256()
+    root = Path(path)
+    files = sorted(item for item in root.rglob("*") if item.is_file())
+    for item in files:
+        relative = item.relative_to(root).as_posix()
+        digest.update(relative.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(_file_digest(item).encode("ascii"))
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _store_immutable_run(
+    stage_dir: Path,
+    *,
+    output_root: Path,
+    schema_version: int,
+) -> tuple[Path, str]:
+    """Move a completed stage into its immutable content-addressed location."""
+    digest = _directory_content_hash(stage_dir)
+    run_dir = Path(output_root) / "runs" / str(int(schema_version)) / digest
+    run_dir.parent.mkdir(parents=True, exist_ok=True)
+    if run_dir.exists():
+        if _directory_content_hash(run_dir) != digest:
+            raise RuntimeError(f"immutable run hash collision at {run_dir}")
+        shutil.rmtree(stage_dir)
+    else:
+        try:
+            os.replace(stage_dir, run_dir)
+        except FileExistsError:
+            if not run_dir.is_dir() or _directory_content_hash(run_dir) != digest:
+                raise
+            shutil.rmtree(stage_dir)
+    return run_dir, digest
+
+
+def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+    """Durably replace a small JSON pointer on the same filesystem."""
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary_name = tempfile.mkstemp(
+        prefix=f".{destination.name}.",
+        suffix=".tmp",
+        dir=str(destination.parent),
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, ensure_ascii=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, destination)
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+        directory_fd = os.open(destination.parent, flags)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def _finalize_run(
+    stage_dir: Path,
+    *,
+    output_root: Path,
+    schema_version: int,
+    passed: bool,
+    update_latest: bool,
+) -> Path:
+    """Preserve every run and update latest only for accepted normal runs."""
+    run_dir, digest = _store_immutable_run(
+        stage_dir,
+        output_root=output_root,
+        schema_version=schema_version,
+    )
+    if bool(passed) and bool(update_latest):
+        relative_run = run_dir.relative_to(output_root).as_posix()
+        _atomic_write_json(
+            Path(output_root) / "latest.json",
+            {
+                "schema_version": int(schema_version),
+                "content_hash": digest,
+                "run": relative_run,
+                "asset": f"{relative_run}/anatomy_rigged.npz",
+                "quality_report": f"{relative_run}/quality_report.json",
+            },
+        )
+    return run_dir
+
+
 def parse_args() -> argparse.Namespace:
     paths = project_paths(__file__)
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--config", type=Path, default=paths.configs_root / "anatomy" / "anatomy_retarget.yaml")
     p.add_argument("--canonical-dir", type=Path, default=paths.outputs_root / "anatomy_retarget" / "latest_canonical")
-    p.add_argument("--output-dir", type=Path, default=paths.outputs_root / "anatomy_retarget" / "latest_asset")
+    p.add_argument("--output-dir", type=Path, default=paths.outputs_root / "anatomy_retarget")
     p.add_argument("--blend", type=Path, default=None)
     p.add_argument("--force-source-rebake", action="store_true", help="Ignore source/shape retarget caches.")
     p.add_argument("--profile-first-frame", action="store_true", help="Write source/shape/pose/publish timing report.")
@@ -91,6 +344,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Render ligament/tendon connective-tissue meshes in Genesis (hidden by default).",
     )
+    p.add_argument(
+        "--hide-vessels",
+        action="store_true",
+        help="Hide Artery/Vein meshes in Genesis (shown by default).",
+    )
     p.add_argument("--motion-npz", type=Path, default=None, help="Exact saved SMPL-X fit for final-pose containment/cache")
     p.add_argument("--timeout-s", type=float, default=900.0)
     p.add_argument("--publish-genesis", action="store_true")
@@ -99,21 +357,20 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--publish-rate-hz", type=float, default=10.0)
     p.add_argument("--model-id", type=str, default="patient_anatomy")
     p.add_argument("--color-rgba", type=str, default="0.8,0.05,0.05,0.85")
-    quality_mode = p.add_mutually_exclusive_group()
-    quality_mode.add_argument(
+    p.add_argument(
+        "--diagnostics-only",
+        action="store_true",
+        help=(
+            "Preserve the immutable run and diagnostics without updating latest.json or "
+            "publishing to Genesis."
+        ),
+    )
+    p.add_argument(
         "--enforce-quality-gate",
         action="store_true",
         help=(
-            "CI/agent validation mode: reject a bake that fails quality checks, preserve it as "
-            "a failed staging asset, and do not publish or replace the output directory."
-        ),
-    )
-    quality_mode.add_argument(
-        "--allow-quality-fail",
-        action="store_true",
-        help=(
-            "Deprecated compatibility flag. Quality failures are diagnostic by default and do "
-            "not block replacing or publishing the requested output."
+            "Strict mode: reject latest.json updates and Genesis publish when quality "
+            "checks fail. By default quality is advisory only."
         ),
     )
     return p.parse_args()
@@ -126,10 +383,12 @@ def _parse_rgba(raw: str) -> tuple[float, float, float, float]:
     return tuple(max(0.0, min(1.0, v)) for v in vals)  # type: ignore[return-value]
 
 
-def _quality_failure_blocks_publish(*, passed: bool, enforce_quality_gate: bool) -> bool:
-    """Return whether quality diagnostics should stop output replacement/publication."""
+def _quality_failure_blocks_publish(*, passed: bool, enforce_quality_gate: bool = False) -> bool:
+    """Quality is advisory unless strict publication mode is requested."""
 
-    return bool(not passed and enforce_quality_gate)
+    if not bool(enforce_quality_gate):
+        return False
+    return not bool(passed)
 
 
 def _publish_upsert(
@@ -184,19 +443,38 @@ def main() -> int:
     blend = args.blend or Path(str(cfg.get("blend_path", "")))
     if not blend:
         raise ValueError("Missing anatomy blend path; pass --blend or set blend_path in config.")
-    out_dir = Path(args.output_dir).expanduser().resolve()
-    out_dir.parent.mkdir(parents=True, exist_ok=True)
-    stage_dir = Path(tempfile.mkdtemp(prefix=f".{out_dir.name}.staging-", dir=str(out_dir.parent)))
+    output_root = Path(args.output_dir).expanduser().resolve()
+    output_root.parent.mkdir(parents=True, exist_ok=True)
+    stage_dir = Path(
+        tempfile.mkdtemp(
+            prefix=f".{output_root.name}.staging-",
+            dir=str(output_root.parent),
+        )
+    )
+
     def _preserve_uncommitted_stage() -> None:
         if not stage_dir.exists():
             return
-        failed_dir = out_dir.parent / f"{out_dir.name}.failed-{time.strftime('%Y%m%d-%H%M%S')}"
-        suffix = 1
-        while failed_dir.exists():
-            failed_dir = out_dir.parent / f"{out_dir.name}.failed-{time.strftime('%Y%m%d-%H%M%S')}-{suffix}"
-            suffix += 1
         try:
-            os.replace(stage_dir, failed_dir)
+            status_path = stage_dir / "run_status.json"
+            if not status_path.exists():
+                status_path.write_text(
+                    json.dumps(
+                        {
+                            "passed": False,
+                            "state": "aborted_before_quality_completion",
+                        },
+                        indent=2,
+                    ),
+                    encoding="utf-8",
+                )
+            failed_dir = _finalize_run(
+                stage_dir,
+                output_root=output_root,
+                schema_version=ANATOMY_ASSET_SCHEMA_VERSION,
+                passed=False,
+                update_latest=False,
+            )
             logging.error("uncommitted anatomy bake preserved at %s", failed_dir)
         except Exception:
             logging.exception("could not preserve failed anatomy staging directory %s", stage_dir)
@@ -205,40 +483,161 @@ def main() -> int:
     output_npz = stage_dir / "anatomy_rigged.npz"
     output_glb = stage_dir / "anatomy_rigged.glb"
     report_json = stage_dir / "retarget_report.json"
-    manifest_path = Path(args.canonical_dir) / "source_manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.is_file() else {}
-    betas = manifest.get("betas", [])
-    gender = str(manifest.get("gender", "male"))
-    cache_root = out_dir.parent / "cache_v4"
-    source_key = _cache_key(
-        Path(blend), Path(args.config), Path(args.canonical_dir) / "smpl_canonical_tpose_neutral.obj",
-        Path(__file__).resolve().parents[1] / "blender_scripts" / "blender_retarget_script.py",
-        Path(__file__).resolve().parents[1] / "source_skin_volume.py",
-        Path(__file__).resolve().parents[1] / "shape_volume.py",
-        Path(__file__).resolve().parents[1] / "material_fit.py",
-        extra="source-template-v6-articulated-material-fit",
+    canonical_dir = Path(args.canonical_dir).expanduser().resolve()
+    manifest_path = canonical_dir / "source_manifest.json"
+    if not manifest_path.is_file():
+        write_quality_report(
+            stage_dir / "quality_report.json",
+            {
+                "schema_version": ANATOMY_ASSET_SCHEMA_VERSION,
+                "passed": False,
+                "failures": [f"canonical manifest is missing: {manifest_path}"],
+            },
+        )
+        failed_dir = _finalize_run(
+            stage_dir,
+            output_root=output_root,
+            schema_version=ANATOMY_ASSET_SCHEMA_VERSION,
+            passed=False,
+            update_latest=False,
+        )
+        logging.error("canonical manifest failure preserved at %s", failed_dir)
+        return 2
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    betas = manifest.get("betas")
+    gender = str(manifest.get("gender", ""))
+    missing_manifest_fields = [
+        key
+        for key, value in (("source", manifest.get("source")), ("gender", gender), ("betas", betas))
+        if value in (None, "", [])
+    ]
+    if missing_manifest_fields:
+        write_quality_report(
+            stage_dir / "quality_report.json",
+            {
+                "schema_version": ANATOMY_ASSET_SCHEMA_VERSION,
+                "passed": False,
+                "failures": [
+                    f"canonical manifest fields are missing: {missing_manifest_fields}"
+                ],
+            },
+        )
+        failed_dir = _finalize_run(
+            stage_dir,
+            output_root=output_root,
+            schema_version=ANATOMY_ASSET_SCHEMA_VERSION,
+            passed=False,
+            update_latest=False,
+        )
+        logging.error("canonical manifest failure preserved at %s", failed_dir)
+        return 2
+    module_root = Path(__file__).resolve().parents[1]
+    weights_path = canonical_dir / "smpl_canonical_weights.npz"
+    skeleton_path = canonical_dir / "smpl_canonical_skeleton.json"
+    neutral_surface_path = canonical_dir / "smpl_canonical_tpose_neutral.obj"
+    subject_surface_path = canonical_dir / "smpl_canonical_tpose.obj"
+    semantics_path = Path(args.config).resolve().parent / "anatomy_semantics.yaml"
+    run_manifest = build_run_manifest(
+        repo_root=Path(__file__).resolve().parents[5],
+        blend_file=Path(blend),
+        motion_npz=(
+            None
+            if args.motion_npz is None
+            else Path(args.motion_npz).expanduser().resolve()
+        ),
+        canonical_files=(
+            manifest_path,
+            neutral_surface_path,
+            subject_surface_path,
+            weights_path,
+            skeleton_path,
+        ),
+        config_files=(Path(args.config), semantics_path),
+        code_files=(
+            module_root / "blender_scripts" / "blender_retarget_script.py",
+            module_root / "rigged_asset.py",
+            module_root / "anatomy_lbs.py",
+            module_root / "source_skin_volume.py",
+            module_root / "shape_volume.py",
+            module_root / "material_fit.py",
+            module_root / "quality_gate.py",
+        ),
+        solver_versions={
+            "source_volume": "source-skin-volume-v7",
+            "beta_volume": "beta-volume-v8-internal-handles",
+            "regional_fit": "articulated-material-fit-v7",
+            "runtime": "source-driver-coupling-v7",
+        },
+        random_seed=int(cfg.get("random_seed", 0)),
+        extra={
+            "canonical_shape_hash": smplx_shape_hash(betas, gender=gender),
+            "diagnostics_only": bool(args.diagnostics_only),
+        },
     )
-    shape_hash = smplx_shape_hash(betas, gender=gender) if betas else "neutral"
+    _atomic_write_json(stage_dir / "run_manifest.json", run_manifest)
+    cache_root = output_root.parent / "cache_v6"
+    source_key = _cache_key(
+        Path(blend),
+        Path(args.config),
+        semantics_path,
+        manifest_path,
+        neutral_surface_path,
+        weights_path,
+        skeleton_path,
+        module_root / "blender_scripts" / "blender_retarget_script.py",
+        module_root / "anatomy_semantics.py",
+        module_root / "source_audit.py",
+        module_root / "rigged_asset.py",
+        module_root / "anatomy_lbs.py",
+        module_root / "bone_handles.py",
+        module_root / "soft_constraints.py",
+        module_root / "source_skin_volume.py",
+        module_root / "shape_volume.py",
+        module_root / "material_fit.py",
+        extra=f"schema-{ANATOMY_ASSET_SCHEMA_VERSION}:source-template-v6",
+    )
+    shape_hash = smplx_shape_hash(betas, gender=gender)
     source_cache = cache_root / "source_template_v6" / f"{source_key}.npz"
     shape_key = _cache_key(
-        Path(args.canonical_dir) / "smpl_canonical_tpose.obj",
-        Path(__file__).resolve().parents[1] / "shape_volume.py",
-        Path(__file__).resolve().parents[1] / "material_fit.py",
-        Path(__file__).resolve().parents[1] / "leg_material.py",
-        extra=f"{source_key}:{shape_hash}:subject-shape-v6",
+        subject_surface_path,
+        weights_path,
+        skeleton_path,
+        module_root / "shape_volume.py",
+        module_root / "bone_handles.py",
+        module_root / "soft_constraints.py",
+        module_root / "material_fit.py",
+        module_root / "anatomy_lbs.py",
+        extra=f"schema-{ANATOMY_ASSET_SCHEMA_VERSION}:{source_key}:{shape_hash}:subject-shape-v6",
     )
     shape_cache = cache_root / "shape" / f"{shape_key}.npz"
-    source_cache_hit = source_cache.is_file() and not args.force_source_rebake
-    shape_cache_hit = shape_cache.is_file() and not args.force_source_rebake
+    cached_source = (
+        None
+        if args.force_source_rebake
+        else _load_valid_cache(
+            source_cache,
+            metadata_key="source_cache_key",
+            expected_key=source_key,
+        )
+    )
+    cached_shape = (
+        None
+        if args.force_source_rebake
+        else _load_valid_cache(
+            shape_cache,
+            metadata_key="shape_cache_key",
+            expected_key=shape_key,
+        )
+    )
+    source_cache_hit = cached_source is not None
+    shape_cache_hit = cached_shape is not None
     containment_reports: list[dict[str, Any]] = []
     registration_report: dict[str, Any] = {}
     blender_report: dict[str, Any]
     if source_cache_hit:
-        asset = load_rigged_asset(source_cache, validate=True)
+        asset = cached_source
         cached_meta = dict(asset.metadata or {})
         registration_report = dict(cached_meta.get("registration_report") or {})
         blender_report = dict(cached_meta.get("source_blender_report") or {})
-        containment_reports.extend(list(cached_meta.get("source_containment_reports") or []))
         logging.info("source-rig cache hit key=%s", source_key)
     else:
         result = run_retarget(
@@ -254,40 +653,67 @@ def main() -> int:
         asset, source_skin_report = apply_source_skin_volume_registration(
             asset, canonical_dir=args.canonical_dir
         )
-        registration_report = {
-            "backend": "source_skin_volume_only_v5_4",
-            "source_skin_volume": source_skin_report,
-        }
-        if str(cfg.get("canonical_rest_space", "neutral")).lower() == "neutral":
-            neutral_surface = load_body_surface(Path(args.canonical_dir) / "smpl_canonical_tpose_neutral.obj")
-            asset, neutral_containment = repair_containment(
-                asset, surface_vertices=neutral_surface[0], surface_faces=neutral_surface[1],
-                stage="neutral_canonical", strict=False,
-                repair_tissues=(),
+        asset, neutral_articulated_report = fit_articulated_rest(
+            asset,
+            canonical_dir=args.canonical_dir,
+            config=cfg,
+            subject=False,
+            stage="neutral",
+        )
+        from projects.genesis_ue_sync.anatomy_retarget.soft_constraints import (
+            regularize_asset_soft_materials,
+        )
+
+        neutral_surface = load_body_surface(neutral_surface_path)
+        neutral_soft_vertices, neutral_soft_report = (
+            regularize_asset_soft_materials(
+                asset,
+                reference_vertices=(
+                    asset.registration_reference
+                    if asset.registration_reference is not None
+                    else asset.vertices_rest
+                ),
+                surface_vertices=neutral_surface[0],
+                surface_faces=neutral_surface[1],
             )
-            containment_reports.append(neutral_containment)
-        blender_report = json.loads(report_json.read_text(encoding="utf-8"))
-        blender_report.setdefault("rest_align", {}).update(
-            {
-                "anchor_rms_m": 0.0,
-                "max_joint_offset_m": 0.0,
-                "mode": "raw_source_then_single_subject_material_fit_v5",
+        )
+        asset = type(asset)(
+            **{
+                **asset.__dict__,
+                "vertices_rest": neutral_soft_vertices.astype(np.float32),
             }
         )
+        neutral_articulated_report["soft_material_regularizer"] = (
+            neutral_soft_report
+        )
+        registration_report = {
+            "backend": "source_skin_volume_harmonic_v6",
+            "source_skin_volume": source_skin_report,
+            "neutral_articulated_fit": neutral_articulated_report,
+        }
+        blender_report = json.loads(report_json.read_text(encoding="utf-8"))
         blender_report["volume_registration"] = source_skin_report
         source_meta = dict(asset.metadata or {})
         source_meta.update({
             "registration_report": registration_report,
             "source_blender_report": blender_report,
-            "source_containment_reports": containment_reports,
             "source_skin_volume_report": source_skin_report,
-            "articulated_source_report": {"stage": "deferred_to_subject"},
+            "articulated_source_report": neutral_articulated_report,
             "source_cache_key": source_key,
         })
         asset = type(asset)(**{**asset.__dict__, "metadata": source_meta})
         source_cache.parent.mkdir(parents=True, exist_ok=True)
         save_rigged_asset(source_cache, asset)
         logging.info("source_template_v6 stored key=%s", source_key)
+    neutral_surface = load_body_surface(neutral_surface_path)
+    neutral_containment = _signed_distance_containment_report(
+        asset,
+        anatomy_vertices=asset.vertices_rest,
+        surface_vertices=neutral_surface[0],
+        surface_faces=neutral_surface[1],
+        stage="neutral_canonical",
+    )
+    containment_reports.append(neutral_containment)
     profile["source_template_s"] = time.perf_counter() - started_at
     bind_roundtrip = {
         "max_matrix_error": float(np.max(np.abs(
@@ -311,38 +737,72 @@ def main() -> int:
         np.asarray(asset.registration_reference, dtype=np.float32).copy()
         if asset.registration_reference is not None else asset.vertices_rest.copy()
     )
-    subject_surface = load_body_surface(Path(args.canonical_dir) / "smpl_canonical_tpose.obj")
+    tube_graphs = build_asset_attachment_graphs(asset)
+    subject_surface = load_body_surface(subject_surface_path)
     shape_report: dict[str, Any] = {"backend": "subject_bind_direct"}
     if shape_cache_hit:
-        asset = load_rigged_asset(shape_cache, validate=True)
+        asset = cached_shape
         cached_meta = dict(asset.metadata or {})
         shape_report = dict(cached_meta.get("shape_report") or shape_report)
-        containment_reports.extend(list(cached_meta.get("shape_containment_reports") or []))
         logging.info("subject-shape cache hit shape_hash=%s", shape_hash)
     else:
         if str(cfg.get("canonical_rest_space", "neutral")).lower() == "neutral":
             asset, shape_report = apply_subject_beta_shape(
                 asset, canonical_dir=args.canonical_dir, config=cfg
             )
-        asset, subject_containment = repair_containment(
-            asset, surface_vertices=subject_surface[0], surface_faces=subject_surface[1],
-            stage="subject_beta", strict=False,
-            repair_tissues=(),
-        )
-        containment_reports.append(subject_containment)
-        asset, leg_material_report = compute_leg_material_coordinates(
-            asset, skin_vertices=subject_surface[0]
-        )
         shape_meta = dict(asset.metadata or {})
         shape_meta.update({
             "shape_report": shape_report,
-            "shape_containment_reports": [subject_containment],
-            "leg_material_report": leg_material_report,
+            "shape_cache_key": shape_key,
         })
         asset = type(asset)(**{**asset.__dict__, "metadata": shape_meta})
         shape_cache.parent.mkdir(parents=True, exist_ok=True)
         save_rigged_asset(shape_cache, asset)
         logging.info("subject-shape cache stored shape_hash=%s", shape_hash)
+    target_bind = np.asarray(asset.target_bind_global, dtype=np.float64)
+    target_inverse = np.asarray(asset.runtime_inverse_bind, dtype=np.float64)
+    bind_roundtrip["target_bind_max_matrix_error"] = float(
+        np.max(
+            np.abs(
+                target_bind
+                @ target_inverse
+                - np.eye(4, dtype=np.float64)[None]
+            )
+        )
+    )
+    target_zero_pose = skin_vertices(
+        asset, np.zeros((55, 3), dtype=np.float32)
+    )
+    bind_roundtrip["target_zero_pose_vertex_error_m"] = float(
+        np.max(
+            np.linalg.norm(
+                target_zero_pose
+                - np.asarray(asset.vertices_rest, dtype=np.float32),
+                axis=1,
+            )
+        )
+    )
+    bind_roundtrip["pass"] = bool(
+        bind_roundtrip["pass"]
+        and bind_roundtrip["target_bind_max_matrix_error"] <= 1.0e-5
+        and bind_roundtrip["target_zero_pose_vertex_error_m"] <= 1.0e-5
+    )
+    if not bind_roundtrip["pass"]:
+        raise RuntimeError(f"target bind round-trip failed: {bind_roundtrip}")
+    if (
+        "inverted_tetrahedra" not in shape_report
+        and "minimum_jacobian_ratio" in shape_report
+    ):
+        minimum_jacobian = float(shape_report["minimum_jacobian_ratio"])
+        shape_report["inverted_tetrahedra"] = int(minimum_jacobian <= 0.0)
+    subject_containment = _signed_distance_containment_report(
+        asset,
+        anatomy_vertices=asset.vertices_rest,
+        surface_vertices=subject_surface[0],
+        surface_faces=subject_surface[1],
+        stage="subject_rest",
+    )
+    containment_reports.append(subject_containment)
     profile["subject_shape_s"] = time.perf_counter() - started_at - profile["source_template_s"]
     pose_report: dict[str, Any] | None = None
     if args.motion_npz is not None:
@@ -350,23 +810,37 @@ def main() -> int:
         motion = np.load(motion_path)
         motion_betas = np.asarray(motion["shapes"], dtype=np.float32).reshape(-1)[:10]
         motion_shape_hash = smplx_shape_hash(motion_betas, gender=gender)
-        expected_shape_hash = smplx_shape_hash(betas, gender=gender) if betas else ""
-        if expected_shape_hash and motion_shape_hash != expected_shape_hash:
+        expected_shape_hash = smplx_shape_hash(betas, gender=gender)
+        if motion_shape_hash != expected_shape_hash:
             raise ValueError(
                 f"motion/canonical shape mismatch: motion={motion_shape_hash} canonical={expected_shape_hash}"
             )
+        if "vertices" not in motion.files or "faces" not in motion.files:
+            raise ValueError(f"{motion_path} must include official posed SMPL-X vertices/faces")
+        posed_surface_vertices = np.asarray(motion["vertices"], dtype=np.float64).reshape(-1, 3)
+        posed_surface_faces = np.asarray(motion["faces"], dtype=np.int32).reshape(-1, 3)
         pose55, raw_transl = load_easymocap_smplx_fit_drive(motion_path, gender=gender)
         effective_transl = easymocap_drive_translation(pose55[:3], raw_transl, asset.rest_joints[0])
         cache_hash = smplx_pose_hash(pose55, effective_transl)
         runtime_key = _cache_key(
-            Path(__file__).resolve().parents[1] / "anatomy_lbs.py",
-            Path(__file__).resolve().parents[1] / "pose_adapter.py",
-            extra="runtime-source-fk-v5.6",
+            module_root / "anatomy_lbs.py",
+            module_root / "pose_adapter.py",
+            module_root / "rigged_asset.py",
+            module_root / "tube_graph.py",
+            extra=f"schema-{ANATOMY_ASSET_SCHEMA_VERSION}:runtime-source-fk-v6",
         )
         pose_cache = cache_root / "pose" / f"{shape_key}-{runtime_key}-{cache_hash}.npz"
-        if pose_cache.is_file() and not args.force_source_rebake:
-            cached_pose = load_rigged_asset(pose_cache, validate=True)
-            pose_report = dict((cached_pose.metadata or {}).get("pose_cache_report") or {})
+        pose_key = f"{shape_key}:{runtime_key}:{cache_hash}"
+        cached_pose = (
+            None
+            if args.force_source_rebake
+            else _load_valid_cache(
+                pose_cache,
+                metadata_key="pose_cache_key",
+                expected_key=pose_key,
+            )
+        )
+        if cached_pose is not None:
             asset = type(asset)(
                 **{
                     **asset.__dict__,
@@ -377,38 +851,66 @@ def main() -> int:
             logging.info("pose cache hit pose_hash=%s", cache_hash)
         else:
             posed_vertices = skin_vertices(asset, pose55, transl=effective_transl)
-            if "vertices" not in motion.files or "faces" not in motion.files:
-                raise ValueError(f"{motion_path} must include official posed SMPL-X vertices/faces")
-            pose_cache_vertices = posed_vertices
-            pose_report = {
-                "stage": "final_pose",
-                "backend": "runtime_local_fk_v4",
-                "repair_tissues": [],
-            }
             asset = type(asset)(
                 **{
                     **asset.__dict__,
-                    "pose_cache_vertices": pose_cache_vertices,
+                    "pose_cache_vertices": posed_vertices,
                     "pose_cache_hash": cache_hash,
                 }
             )
+        pose_report = _signed_distance_containment_report(
+            asset,
+            anatomy_vertices=np.asarray(asset.pose_cache_vertices, dtype=np.float64),
+            surface_vertices=posed_surface_vertices,
+            surface_faces=posed_surface_faces,
+            stage="final_pose",
+        )
+        containment_reports.append(pose_report)
+        if cached_pose is None:
             pose_meta = dict(asset.metadata or {})
-            pose_meta["pose_cache_report"] = pose_report
+            pose_meta.update(
+                {
+                    "pose_cache_key": pose_key,
+                    "pose_cache_report": pose_report,
+                }
+            )
             pose_asset = type(asset)(**{**asset.__dict__, "metadata": pose_meta})
             pose_cache.parent.mkdir(parents=True, exist_ok=True)
             save_rigged_asset(pose_cache, pose_asset)
             logging.info("pose cache stored pose_hash=%s", cache_hash)
-        if pose_report is not None:
-            containment_reports.append(pose_report)
+    else:
+        zero_pose = np.zeros((55, 3), dtype=np.float32)
+        zero_translation = np.zeros(3, dtype=np.float32)
+        zero_vertices = skin_vertices(
+            asset,
+            zero_pose,
+            transl=zero_translation,
+        )
+        asset = type(asset)(
+            **{
+                **asset.__dict__,
+                "pose_cache_vertices": zero_vertices,
+                "pose_cache_hash": "zero_pose",
+            }
+        )
+        pose_report = _signed_distance_containment_report(
+            asset,
+            anatomy_vertices=zero_vertices,
+            surface_vertices=subject_surface[0],
+            surface_faces=subject_surface[1],
+            stage="final_pose",
+        )
+        containment_reports.append(pose_report)
 
-    # Schema-v5 assets contain runtime data only.  Cache keys and diagnostics
+    # Schema-v6 assets contain runtime data only.  Cache keys and diagnostics
     # belong in JSON sidecars and must not leak into the published NPZ.
     meta = {
         "gender": gender,
         "betas": betas,
-        "shape_hash": smplx_shape_hash(betas, gender=gender) if betas else "",
+        "shape_hash": smplx_shape_hash(betas, gender=gender),
         "canonical_source": str(manifest.get("source", "")),
         "show_connective_tissue": bool(args.show_connective_tissue),
+        "show_vessels": not bool(args.hide_vessels),
     }
     asset = type(asset)(**{**asset.__dict__, "metadata": meta})
     save_rigged_asset(output_npz, asset)
@@ -419,6 +921,11 @@ def main() -> int:
         output_path=stage_dir / "anatomy_mesh_diagnostics.json",
     )
     bone_segment_report: dict[str, Any] | None = None
+    fitted_hip_geometry = (
+        (shape_report.get("articulated_rest_fit") or {}).get("hip_geometry")
+        if isinstance(shape_report, dict)
+        else None
+    )
     if args.motion_npz is not None:
         motion_path = Path(args.motion_npz).expanduser().resolve()
         pose55, raw_transl = load_easymocap_smplx_fit_drive(motion_path, gender=gender)
@@ -429,6 +936,16 @@ def main() -> int:
             transl=effective_transl,
             output_path=stage_dir / "bone_segment_diagnostics.json",
             mesh_diagnostics=mesh_diagnostics,
+            fitted_hip_geometry=fitted_hip_geometry,
+        )
+    else:
+        bone_segment_report = write_bone_segment_diagnostics(
+            asset,
+            pose_axis_angle=np.zeros((55, 3), dtype=np.float32),
+            transl=np.zeros(3, dtype=np.float32),
+            output_path=stage_dir / "bone_segment_diagnostics.json",
+            mesh_diagnostics=mesh_diagnostics,
+            fitted_hip_geometry=fitted_hip_geometry,
         )
     profile["pose_and_diagnostics_s"] = time.perf_counter() - started_at - profile["source_template_s"] - profile["subject_shape_s"]
     profile["total_pre_publish_s"] = time.perf_counter() - started_at
@@ -449,15 +966,38 @@ def main() -> int:
     )
     # Ratios on nearly coincident CAD seam vertices are numerically meaningless
     # (e.g. 0.04 mm -> 0.4 mm looks like 10x but is not a visible spike).
-    # Keep a separate absolute-growth gate for every edge.
-    valid_edges = before_len > 2.0e-4
+    # Regional bone solvers intentionally resize shafts; percentile and growth
+    # gates therefore apply to non-bone material while the all-material maximum
+    # remains a separate explosion guard.
+    soft_vertex = np.zeros(len(asset.vertices_rest), dtype=bool)
+    for (start, stop), tissue in zip(
+        np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+        asset.source_tissues,
+    ):
+        if str(tissue) != "bone":
+            soft_vertex[int(start) : int(stop)] = True
+    valid_edges = before_len > 1.0e-3
     post_ratio = after_len[valid_edges] / before_len[valid_edges]
+    soft_edges = (
+        valid_edges
+        & soft_vertex[tri_edges[:, 0]]
+        & soft_vertex[tri_edges[:, 1]]
+    )
+    soft_ratio = after_len[soft_edges] / before_len[soft_edges]
+    growth = after_len - before_len
+    growth_gate = growth[soft_edges]
     blender_report.setdefault("edge_stretch", {}).update(
         {
-            "source_to_final_max": float(np.max(post_ratio)),
-            "source_to_final_p999": float(np.quantile(post_ratio, 0.999)),
-            "source_to_final_max_growth_m": float(np.max(after_len - before_len)),
-            "ratio_ignored_sub_0_2mm_edges": int(np.count_nonzero(~valid_edges)),
+            "source_to_final_max": float(np.max(post_ratio)) if len(post_ratio) else None,
+            "source_to_final_p999": (
+                float(np.quantile(soft_ratio, 0.999))
+                if len(soft_ratio)
+                else None
+            ),
+            "source_to_final_max_growth_m": (
+                float(np.max(growth_gate)) if len(growth_gate) else None
+            ),
+            "ratio_ignored_sub_1mm_edges": int(np.count_nonzero(before_len <= 1.0e-3)),
         }
     )
     if asset.pose_cache_vertices is not None:
@@ -465,25 +1005,122 @@ def main() -> int:
             asset.pose_cache_vertices[tri_edges[:, 0]] - asset.pose_cache_vertices[tri_edges[:, 1]], axis=1
         )
         cached_ratio = cached_len[valid_edges] / before_len[valid_edges]
-        blender_report["edge_stretch"].update(
-            {
-                "source_to_pose_cache_max": float(np.max(cached_ratio)),
-                "source_to_pose_cache_p999": float(np.quantile(cached_ratio, 0.999)),
-                "source_to_pose_cache_max_growth_m": float(np.max(cached_len - before_len)),
-            }
+        cached_soft_ratio = cached_len[soft_edges] / before_len[soft_edges]
+        blender_report["edge_stretch"].update({
+            "source_to_pose_cache_max": (
+                float(np.max(cached_ratio)) if len(cached_ratio) else None
+            ),
+            "source_to_pose_cache_p999": (
+                float(np.quantile(cached_soft_ratio, 0.999))
+                if len(cached_soft_ratio)
+                else None
+            ),
+            "source_to_pose_cache_max_growth_m": (
+                float(np.max((cached_len - before_len)[soft_edges]))
+                if np.any(soft_edges)
+                else None
+            ),
+        })
+    material_report = dict(shape_report.get("articulated_rest_fit") or {})
+    controller_anchor_rms = material_report.get("anchor_rms_m")
+    controller_anchor_max = material_report.get("anchor_max_m")
+    geometry_errors: list[float] = []
+    if isinstance(bone_segment_report, dict):
+        for label, joint_metrics in (
+            bone_segment_report.get("joints") or {}
+        ).items():
+            if not isinstance(joint_metrics, dict):
+                continue
+            geometry = joint_metrics.get("geometry_landmarks")
+            if not isinstance(geometry, dict):
+                continue
+            if (
+                str(label) in {"hip_left", "hip_right"}
+                and geometry.get("femoral_head_to_acetabulum_m")
+                is not None
+            ):
+                geometry_errors.append(
+                    float(geometry["femoral_head_to_acetabulum_m"])
+                )
+                continue
+            if (
+                geometry.get("available") is True
+                and geometry.get("surface_gap_m") is not None
+            ):
+                geometry_errors.append(float(geometry["surface_gap_m"]))
+    material_report["controller_bind_origin_rms_m"] = controller_anchor_rms
+    material_report["controller_bind_origin_max_m"] = controller_anchor_max
+    material_report["anchor_rms_m"] = (
+        float(np.sqrt(np.mean(np.square(geometry_errors))))
+        if geometry_errors
+        else None
+    )
+    material_report["anchor_max_m"] = (
+        float(np.max(geometry_errors)) if geometry_errors else None
+    )
+    tube_graph_report: dict[str, Any] = {}
+    for graph_name, graph in tube_graphs.items():
+        subject_nodes = graph.sample_nodes(asset.vertices_rest)
+        subject_graph = replace(
+            graph,
+            rest_nodes=subject_nodes.astype(np.float32),
         )
+        tube_graph_report[graph_name] = {
+            "neutral_to_subject": tube_graph_metrics(graph, asset.vertices_rest),
+            "subject_to_pose": (
+                None
+                if asset.pose_cache_vertices is None
+                else tube_graph_metrics(subject_graph, asset.pose_cache_vertices)
+            ),
+            "topology_preserved": True,
+        }
+    runtime_pose_matrix = _runtime_pose_matrix_report(
+        asset,
+        tube_graphs=tube_graphs,
+    )
+    hip_geometry = material_report.get("hip_geometry")
+    landmark_report = {
+        "backend": "anatomy_mesh_geometry_landmarks",
+        "anchor_rms_m": material_report.get("anchor_rms_m"),
+        "anchor_max_m": material_report.get("anchor_max_m"),
+        "hip_geometry": hip_geometry,
+        "passed": bool(
+            geometry_errors
+            and isinstance(bone_segment_report, dict)
+            and bone_segment_report.get("passed") is True
+        ),
+    }
     blender_report.update(
         {
+            "schema": {
+                "asset_schema_version": ANATOMY_ASSET_SCHEMA_VERSION,
+                "expected_schema_version": ANATOMY_ASSET_SCHEMA_VERSION,
+                "passed": True,
+            },
+            "manifest": {
+                "path": str(manifest_path),
+                "sha256": _file_digest(manifest_path),
+                "source": manifest["source"],
+                "gender": gender,
+                "betas": betas,
+            },
+            "run_manifest": run_manifest,
             "registration": registration_report,
             "shape": shape_report,
             "containment_stages": containment_reports,
             "pose_cache_report": pose_report,
             "source_bind_roundtrip": bind_roundtrip,
             "bone_segment_diagnostics": bone_segment_report,
-            "material_shape": dict(shape_report.get("articulated_rest_fit") or {}),
+            "material_shape": material_report,
+            "landmark_report": landmark_report,
+            "tube_graphs": tube_graph_report,
+            "runtime_pose_matrix": runtime_pose_matrix,
         }
     )
-    report_json.write_text(json.dumps(blender_report, indent=2, ensure_ascii=True), encoding="utf-8")
+    report_json.write_text(
+        json.dumps(blender_report, indent=2, ensure_ascii=True, allow_nan=False),
+        encoding="utf-8",
+    )
     quality = evaluate_asset_quality(
         asset,
         canonical_dir=args.canonical_dir,
@@ -492,33 +1129,45 @@ def main() -> int:
     )
     write_quality_report(stage_dir / "quality_report.json", quality)
     if not quality["passed"]:
+        log_failure = logging.error if args.enforce_quality_gate else logging.warning
         for failure in quality["failures"]:
-            logging.error("quality: %s", failure)
+            log_failure("quality: %s", failure)
         if _quality_failure_blocks_publish(
             passed=bool(quality["passed"]),
             enforce_quality_gate=bool(args.enforce_quality_gate),
         ):
-            failed_dir = out_dir.parent / f"{out_dir.name}.failed-{time.strftime('%Y%m%d-%H%M%S')}"
-            os.replace(stage_dir, failed_dir)
-            logging.error("quality gate rejected anatomy asset; previous asset remains unchanged")
-            logging.error("failed bake diagnostics preserved at %s", failed_dir)
-            return 2
+            failed_dir = _finalize_run(
+                stage_dir,
+                output_root=output_root,
+                schema_version=ANATOMY_ASSET_SCHEMA_VERSION,
+                passed=False,
+                update_latest=False,
+            )
+            logging.error(
+                "quality gate rejected anatomy asset; latest.json remains unchanged"
+            )
+            logging.error("failed run diagnostics preserved at %s", failed_dir)
+            return 0 if args.diagnostics_only else 2
         logging.warning(
-            "quality diagnostics failed, but enforcement is disabled; continuing with output replacement%s",
-            " and Genesis publication" if args.publish_genesis else "",
+            "quality gate failed (%s issues); publishing anyway (use --enforce-quality-gate to block)",
+            len(quality.get("failures", [])),
         )
 
-    previous_dir: Path | None = None
-    if out_dir.exists():
-        previous_dir = out_dir.parent / f"{out_dir.name}.previous-{time.strftime('%Y%m%d-%H%M%S')}"
-        os.replace(out_dir, previous_dir)
-    try:
-        os.replace(stage_dir, out_dir)
-    except Exception:
-        if previous_dir is not None and previous_dir.exists() and not out_dir.exists():
-            os.replace(previous_dir, out_dir)
-        raise
-    output_npz = out_dir / "anatomy_rigged.npz"
+    run_dir = _finalize_run(
+        stage_dir,
+        output_root=output_root,
+        schema_version=ANATOMY_ASSET_SCHEMA_VERSION,
+        passed=True,
+        update_latest=not bool(args.diagnostics_only),
+    )
+    if args.diagnostics_only:
+        logging.info(
+            "diagnostics-only run preserved at %s; latest.json remains unchanged",
+            run_dir,
+        )
+        return 0
+
+    output_npz = run_dir / "anatomy_rigged.npz"
     logging.info(
         "retarget ok vertices=%s faces=%s joints=%s output=%s",
         asset.vertices_rest.shape[0],

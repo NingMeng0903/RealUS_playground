@@ -5,7 +5,9 @@ from types import SimpleNamespace
 import numpy as np
 
 from projects.genesis_ue_sync.anatomy_retarget.quality_gate import (
+    _brain_skull_metrics,
     _cranial_compound_metrics,
+    _required_number,
     _soft_mesh_pose_stretch,
 )
 
@@ -53,3 +55,30 @@ def test_soft_edge_gate_reports_each_vessel_mesh_not_global_average() -> None:
 
     assert float(metrics["Artery_Bad"]["ratio_p999"]) > 1.1
     assert float(metrics["Vein_Good"]["ratio_p999"]) == 1.0
+
+
+def test_missing_required_quality_field_is_explicit_failure_not_sentinel() -> None:
+    failures: list[str] = []
+
+    value = _required_number(
+        {},
+        "over_limit_count",
+        failures=failures,
+        label="posed containment",
+    )
+
+    assert value is None
+    assert failures == ["posed containment field 'over_limit_count' is missing"]
+
+
+def test_missing_brain_or_skull_reports_unavailable_without_infinity() -> None:
+    asset = SimpleNamespace(
+        source_mesh_names=["Upper_Skull"],
+        source_vertex_ranges=np.asarray(((0, 4),)),
+        vertices_rest=np.zeros((4, 3), dtype=np.float64),
+    )
+
+    metrics = _brain_skull_metrics(asset)
+
+    assert metrics["available"] is False
+    assert metrics["max_outside_m"] is None

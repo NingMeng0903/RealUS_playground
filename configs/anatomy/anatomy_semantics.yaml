@@ -1,0 +1,337 @@
+# Required schema-v6 source semantics. Matching is exact: mesh names and
+# collection names are never interpreted as regexes or token patterns.
+version: 1
+
+fit_policies:
+  - uniform_similarity
+  - rib
+  - hand_bone
+  - foot_compound
+  - soft_volume
+  - audit_only
+
+driver_policies:
+  - source_armature
+  - segment_smplx
+  - bind_follow
+  - compound_follow
+  - excluded_source
+
+quality_profiles:
+  skeletal_default:
+    max_landmark_rms_m: 0.010
+    max_surface_error_m: 0.020
+  connective_default:
+    max_surface_error_m: 0.010
+  soft_default:
+    max_outside_m: 0.002
+    min_inside_fraction: 0.995
+  cranial_strict:
+    max_landmark_rms_m: 0.005
+    max_surface_error_m: 0.010
+  source_boundary:
+    publish: false
+
+landmark_recipes:
+  generic_source_mesh:
+    method: source_mesh_frame
+  long_bone_ends:
+    method: axial_end_patches
+    proximal_fraction: 0.15
+    distal_fraction: 0.15
+  cranial_frame:
+    method: named_points
+    points: [left_eye_or_orbit, right_eye_or_orbit, skull_centroid, c1_interface]
+  jaw_frame:
+    method: named_points
+    points: [left_condyle, right_condyle, chin]
+  pelvis_frame:
+    method: named_points
+    points: [left_acetabulum, right_acetabulum, sacrum_superior, pubic_symphysis_proxy]
+  soft_volume_frame:
+    method: source_volume
+  source_skin_boundary:
+    method: source_surface_only
+
+global_defaults:
+  compound_id: none
+  side: none
+  source_landmarks: []
+
+# These exact collection defaults cover the production blend's hundreds of
+# meshes. A selected mesh outside these collections requires an exact record.
+collection_defaults:
+  Cardiovascular_Sys:
+    tissue_type: vessel
+  Nervous_Sys:
+    tissue_type: nerve
+  Respiratory_Sys:
+    tissue_type: organ
+  Digestive_Sys:
+    tissue_type: organ
+  Urinary_Sys:
+    tissue_type: organ
+  Skeletal_Sys:
+    tissue_type: bone
+
+tissue_defaults:
+  bone:
+    fit_policy: uniform_similarity
+    driver_policy: source_armature
+    source_landmarks: [auto_geometry_landmarks]
+    target_landmark_recipe: generic_source_mesh
+    quality_profile: skeletal_default
+    material_group: skeletal
+    role: authored_mesh
+  connective_tissue:
+    fit_policy: soft_volume
+    driver_policy: source_armature
+    source_landmarks: [attachment_region]
+    target_landmark_recipe: soft_volume_frame
+    quality_profile: connective_default
+    material_group: soft_tissue
+    role: connective_tissue
+  vessel:
+    fit_policy: soft_volume
+    driver_policy: source_armature
+    source_landmarks: [root, branches, endpoints, centerline_graph]
+    target_landmark_recipe: soft_volume_frame
+    quality_profile: soft_default
+    material_group: soft_tissue
+    role: vessel
+  nerve:
+    fit_policy: soft_volume
+    driver_policy: source_armature
+    source_landmarks: [root, branches, endpoints, centerline_graph]
+    target_landmark_recipe: soft_volume_frame
+    quality_profile: soft_default
+    material_group: soft_tissue
+    role: nerve
+  organ:
+    fit_policy: soft_volume
+    driver_policy: source_armature
+    source_landmarks: [volume_centroid, attachment_region]
+    target_landmark_recipe: soft_volume_frame
+    quality_profile: soft_default
+    material_group: soft_tissue
+    role: organ
+  heart:
+    fit_policy: soft_volume
+    driver_policy: source_armature
+    source_landmarks: [volume_centroid, attachment_region]
+    target_landmark_recipe: soft_volume_frame
+    quality_profile: soft_default
+    material_group: soft_tissue
+    role: heart
+  skin_boundary:
+    fit_policy: audit_only
+    driver_policy: excluded_source
+    source_landmarks: [surface]
+    target_landmark_recipe: source_skin_boundary
+    quality_profile: source_boundary
+    material_group: source_boundary
+    role: excluded_source
+
+# Exact overrides carry semantics that collection/tissue defaults cannot know.
+meshes:
+  Heart:
+    tissue_type: heart
+  Skin_Glass:
+    tissue_type: skin_boundary
+
+  # The Nervous_Sys collection also contains central nervous-system organs and
+  # eye structures.  They are volumetric organs, not centerline tubes.
+  Amygdala_L:
+    tissue_type: organ
+    compound_id: cranial
+    driver_policy: compound_follow
+    material_group: cranial
+    role: cranial_compound
+  Amygdala_R:
+    tissue_type: organ
+    compound_id: cranial
+  Basal_Ganglia:
+    tissue_type: organ
+    compound_id: cranial
+  Cerebellum:
+    tissue_type: organ
+    compound_id: cranial
+  Cornea_L:
+    tissue_type: organ
+    compound_id: cranial
+  Cornea_R:
+    tissue_type: organ
+    compound_id: cranial
+  Corpus_Callosum_L:
+    tissue_type: organ
+    compound_id: cranial
+  Corpus_Callosum_R:
+    tissue_type: organ
+    compound_id: cranial
+  Fornix:
+    tissue_type: organ
+    compound_id: cranial
+  Frontal_Lobe_L:
+    tissue_type: organ
+    compound_id: cranial
+  Frontal_Lobe_R:
+    tissue_type: organ
+    compound_id: cranial
+  Hippocampus:
+    tissue_type: organ
+    compound_id: cranial
+  Iris_L:
+    tissue_type: organ
+    compound_id: cranial
+  Iris_R:
+    tissue_type: organ
+    compound_id: cranial
+  Lens_L:
+    tissue_type: organ
+    compound_id: cranial
+  Lens_R:
+    tissue_type: organ
+    compound_id: cranial
+  Midbrain:
+    tissue_type: organ
+    compound_id: cranial
+  Occipital_Lobe_L:
+    tissue_type: organ
+    compound_id: cranial
+  Occipital_Lobe_R:
+    tissue_type: organ
+    compound_id: cranial
+  Olfactory_Bulb_L:
+    tissue_type: organ
+    compound_id: cranial
+  Olfactory_Bulb_R:
+    tissue_type: organ
+    compound_id: cranial
+  Parietal_Lobe_L:
+    tissue_type: organ
+    compound_id: cranial
+  Parietal_Lobe_R:
+    tissue_type: organ
+    compound_id: cranial
+  Pituitary_Gland:
+    tissue_type: organ
+    compound_id: cranial
+  Pons:
+    tissue_type: organ
+    compound_id: cranial
+  Temporal_Lobe_L:
+    tissue_type: organ
+    compound_id: cranial
+  Temporal_Lobe_R:
+    tissue_type: organ
+    compound_id: cranial
+  Thalamus_L:
+    tissue_type: organ
+    compound_id: cranial
+  Thalamus_R:
+    tissue_type: organ
+    compound_id: cranial
+  UNCUT_Cerebrum_L:
+    tissue_type: organ
+    compound_id: cranial
+  UNCUT_Cerebrum_R:
+    tissue_type: organ
+    compound_id: cranial
+  Ventricles:
+    tissue_type: organ
+    compound_id: cranial
+
+  Upper_Skull:
+    compound_id: cranial
+    fit_policy: uniform_similarity
+    driver_policy: compound_follow
+    source_landmarks: [left_eye_or_orbit, right_eye_or_orbit, skull_centroid, c1_interface]
+    target_landmark_recipe: cranial_frame
+    quality_profile: cranial_strict
+    material_group: cranial
+    role: cranial_compound
+  Mandible:
+    compound_id: jaw
+    fit_policy: uniform_similarity
+    driver_policy: bind_follow
+    source_landmarks: [left_condyle, right_condyle, chin]
+    target_landmark_recipe: jaw_frame
+    quality_profile: cranial_strict
+    material_group: jaw
+    role: jaw_compound
+
+  Humerus_L:
+    side: left
+    source_landmarks: [proximal_articular_surface, distal_articular_surface]
+    target_landmark_recipe: long_bone_ends
+  Humerus_R:
+    side: right
+    source_landmarks: [proximal_articular_surface, distal_articular_surface]
+    target_landmark_recipe: long_bone_ends
+  Radius_L:
+    side: left
+    source_landmarks: [proximal_articular_surface, distal_articular_surface]
+    target_landmark_recipe: long_bone_ends
+  Radius_R:
+    side: right
+    source_landmarks: [proximal_articular_surface, distal_articular_surface]
+    target_landmark_recipe: long_bone_ends
+  Ulna_L:
+    side: left
+    source_landmarks: [proximal_articular_surface, distal_articular_surface]
+    target_landmark_recipe: long_bone_ends
+  Ulna_R:
+    side: right
+    source_landmarks: [proximal_articular_surface, distal_articular_surface]
+    target_landmark_recipe: long_bone_ends
+  Femur_L:
+    side: left
+    source_landmarks: [proximal_articular_surface, distal_articular_surface]
+    target_landmark_recipe: long_bone_ends
+  Femur_R:
+    side: right
+    source_landmarks: [proximal_articular_surface, distal_articular_surface]
+    target_landmark_recipe: long_bone_ends
+  Tibia_L:
+    side: left
+    source_landmarks: [proximal_articular_surface, distal_articular_surface]
+    target_landmark_recipe: long_bone_ends
+  Tibia_R:
+    side: right
+    source_landmarks: [proximal_articular_surface, distal_articular_surface]
+    target_landmark_recipe: long_bone_ends
+  Fibula_L:
+    side: left
+    source_landmarks: [proximal_articular_surface, distal_articular_surface]
+    target_landmark_recipe: long_bone_ends
+  Fibula_R:
+    side: right
+    source_landmarks: [proximal_articular_surface, distal_articular_surface]
+    target_landmark_recipe: long_bone_ends
+
+  Costal_Cartilage_L:
+    tissue_type: connective_tissue
+    side: left
+  Costal_Cartilage_R:
+    tissue_type: connective_tissue
+    side: right
+  Facet_Capsular_Ligament:
+    tissue_type: connective_tissue
+  Ligamentum_Flavum:
+    tissue_type: connective_tissue
+  Interspinous_Ligament:
+    tissue_type: connective_tissue
+  Intertransverse_Ligament:
+    tissue_type: connective_tissue
+  Supraspinous_Ligament:
+    tissue_type: connective_tissue
+  Nuchal_Ligament:
+    tissue_type: connective_tissue
+  Posterior_Longitudinal_Ligament:
+    tissue_type: connective_tissue
+  Anterior_Longitudinal_Ligament:
+    tissue_type: connective_tissue
+
+notes: |
+  Every selected source mesh resolves to a concrete record before export.
+  SMPL-X joints initialize controllers; source geometry remains authoritative.

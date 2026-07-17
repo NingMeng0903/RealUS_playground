@@ -7,6 +7,7 @@ import pytest
 
 from projects.genesis_ue_sync.anatomy_retarget.anatomy_drawer import (
     _mesh_color_rgba,
+    _vertices_to_genesis_z_up,
     _vertex_colors_for_asset,
 )
 from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
@@ -66,13 +67,18 @@ def _chain_asset() -> AnatomyRiggedAsset:
     )
 
 
-def test_schema_v5_roundtrip_reconstructs_global_bind(tmp_path: Path) -> None:
+def test_schema_v6_roundtrip_persists_authoritative_bind_and_coupling(tmp_path: Path) -> None:
     asset = _chain_asset()
     path = save_rigged_asset(tmp_path / "asset.npz", asset)
     with np.load(path, allow_pickle=True) as payload:
-        assert int(payload["schema_version"]) == 5
+        assert int(payload["schema_version"]) == 6
         assert "source_rest_global" not in payload.files
         assert "source_inverse_bind" not in payload.files
+        assert "source_bind_global" in payload.files
+        assert "source_bind_local" in payload.files
+        assert "target_bind_global" in payload.files
+        assert "target_bind_local" in payload.files
+        assert "source_driver_coupling" in payload.files
         assert "source_bone_head_local" in payload.files
         assert "posed_vertices" in payload.files
         assert "pose_cache_vertices" not in payload.files
@@ -82,13 +88,28 @@ def test_schema_v5_roundtrip_reconstructs_global_bind(tmp_path: Path) -> None:
     np.testing.assert_allclose(loaded.source_rest_global, asset.source_rest_global, atol=1.0e-7)
     np.testing.assert_allclose(loaded.source_inverse_bind, asset.source_inverse_bind, atol=1.0e-7)
     np.testing.assert_allclose(loaded.source_bone_head, asset.source_bone_head, atol=1.0e-7)
+    np.testing.assert_allclose(loaded.target_bind_global, asset.source_bind_global, atol=1.0e-7)
+    np.testing.assert_allclose(loaded.target_bone_head, asset.source_bone_head, atol=1.0e-7)
+    assert loaded.coordinate_system == "smplx_y_up_m"
 
 
 def test_schema_v3_is_rejected(tmp_path: Path) -> None:
     path = tmp_path / "legacy.npz"
     np.savez(path, schema_version=np.asarray(3, dtype=np.int32))
-    with pytest.raises(ValueError, match="schema 5"):
+    with pytest.raises(ValueError, match="schema 6"):
         load_rigged_asset(path)
+
+
+def test_viewer_keeps_smplx_frame_until_track_mesh_converts() -> None:
+    points = np.asarray(((1.0, 2.0, 3.0),), dtype=np.float32)
+    np.testing.assert_array_equal(
+        _vertices_to_genesis_z_up(points, coordinate_system="smplx_y_up_m"),
+        points,
+    )
+    np.testing.assert_array_equal(
+        _vertices_to_genesis_z_up(points, coordinate_system="genesis_z_up_m"),
+        points,
+    )
 
 
 def test_parent_before_child_fk_keeps_arm_hand_chain_connected() -> None:

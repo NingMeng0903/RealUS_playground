@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -19,11 +20,82 @@ CANONICAL = ROOT / "outputs/anatomy_retarget/canonical_cache/34deaeada36cdc4a505
 MOTION = ROOT / "smplx_outputs/20260713_213712/moment_0000/smplx_result.npz"
 
 
+def _staged_run(tmp_path: Path, name: str, *, passed: bool) -> Path:
+    stage = tmp_path / name
+    stage.mkdir()
+    (stage / "anatomy_rigged.npz").write_bytes(name.encode("utf-8"))
+    (stage / "quality_report.json").write_text(
+        json.dumps({"passed": passed, "failures": [] if passed else ["forced failure"]}),
+        encoding="utf-8",
+    )
+    return stage
+
+
+def test_failed_run_preserves_latest_pointer_and_diagnostics(tmp_path: Path) -> None:
+    from projects.genesis_ue_sync.anatomy_retarget.cli.run_anatomy_retarget import (
+        _finalize_run,
+    )
+
+    output_root = tmp_path / "asset"
+    accepted = _finalize_run(
+        _staged_run(tmp_path, "accepted", passed=True),
+        output_root=output_root,
+        schema_version=6,
+        passed=True,
+        update_latest=True,
+    )
+    before = (output_root / "latest.json").read_bytes()
+
+    failed = _finalize_run(
+        _staged_run(tmp_path, "failed", passed=False),
+        output_root=output_root,
+        schema_version=6,
+        passed=False,
+        update_latest=True,
+    )
+
+    assert failed != accepted
+    assert (failed / "quality_report.json").is_file()
+    assert (output_root / "latest.json").read_bytes() == before
+
+
+def test_success_updates_latest_pointer_with_atomic_replace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import projects.genesis_ue_sync.anatomy_retarget.cli.run_anatomy_retarget as cli
+
+    output_root = tmp_path / "asset"
+    real_replace = cli.os.replace
+    replacements: list[tuple[Path, Path]] = []
+
+    def recording_replace(source: str | Path, destination: str | Path) -> None:
+        replacements.append((Path(source), Path(destination)))
+        real_replace(source, destination)
+
+    monkeypatch.setattr(cli.os, "replace", recording_replace)
+    run_dir = cli._finalize_run(
+        _staged_run(tmp_path, "success", passed=True),
+        output_root=output_root,
+        schema_version=6,
+        passed=True,
+        update_latest=True,
+    )
+
+    pointer = json.loads((output_root / "latest.json").read_text(encoding="utf-8"))
+    assert output_root / pointer["run"] == run_dir
+    assert pointer["content_hash"] == run_dir.name
+    assert any(
+        source.name.startswith(".latest.json.")
+        and destination == output_root / "latest.json"
+        for source, destination in replacements
+    )
+
+
 @pytest.mark.skipif(
     os.environ.get("RUN_ANATOMY_E2E") != "1",
     reason="set RUN_ANATOMY_E2E=1 for the real Blender/SMPL-X/GPU bake",
 )
-def test_real_blend_to_schema_v5_enforced_quality_gate(tmp_path: Path) -> None:
+def test_real_blend_to_schema_v6_fail_closed_quality_gate(tmp_path: Path) -> None:
     assert BLEND.is_file()
     assert MOTION.is_file()
     env = dict(os.environ)
@@ -47,12 +119,13 @@ def test_real_blend_to_schema_v5_enforced_quality_gate(tmp_path: Path) -> None:
         "--motion-npz",
         str(MOTION),
         "--force-source-rebake",
-        "--enforce-quality-gate",
     ]
     completed = subprocess.run(command, cwd=ROOT, env=env, timeout=900, check=False)
     assert completed.returncode == 0
-    assert (tmp_path / "asset/anatomy_rigged.npz").is_file()
-    assert (tmp_path / "asset/quality_report.json").is_file()
+    latest = json.loads((tmp_path / "asset/latest.json").read_text(encoding="utf-8"))
+    run_dir = tmp_path / "asset" / latest["run"]
+    assert (run_dir / "anatomy_rigged.npz").is_file()
+    assert (run_dir / "quality_report.json").is_file()
 
     from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import skin_vertices
     from projects.genesis_ue_sync.anatomy_retarget.bone_segment_diagnostics import (
@@ -60,7 +133,7 @@ def test_real_blend_to_schema_v5_enforced_quality_gate(tmp_path: Path) -> None:
     )
     from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import load_rigged_asset
 
-    asset = load_rigged_asset(tmp_path / "asset/anatomy_rigged.npz")
+    asset = load_rigged_asset(run_dir / "anatomy_rigged.npz")
     cases: dict[str, dict[str, tuple[float, float, float]]] = {
         "neutral": {},
         "both_elbows": {"left_elbow": (0.0, 0.0, 1.2), "right_elbow": (0.0, 0.0, -1.2)},
