@@ -161,6 +161,10 @@ class AnatomyRiggedAsset:
     registration_reference: np.ndarray | None = None
     source_skin_vertices: np.ndarray | None = None
     source_skin_faces: np.ndarray | None = None
+    # SMPL-X 55-joint semantic coordinates exported from Skin_Glass.  They
+    # define a fixed source-surface -> target-surface correspondence and must
+    # not be discarded in favour of unconstrained closest-point ICP.
+    source_skin_lbs_weights: np.ndarray | None = None
     pose_cache_vertices: np.ndarray | None = None
     pose_cache_hash: str = ""
     pose_format: str = DEFAULT_POSE_FORMAT
@@ -344,6 +348,16 @@ class AnatomyRiggedAsset:
             skin_f = np.asarray(self.source_skin_faces)
             if skin_v.ndim != 2 or skin_v.shape[1] != 3 or skin_f.ndim != 2 or skin_f.shape[1] != 3:
                 raise ValueError("source skin must be [N,3] vertices and [F,3] faces")
+            if self.source_skin_lbs_weights is not None:
+                skin_w = np.asarray(self.source_skin_lbs_weights)
+                if skin_w.shape != (len(skin_v), len(self.joint_names)):
+                    raise ValueError(
+                        "source_skin_lbs_weights must be [skin vertices, joints]"
+                    )
+                if not np.all(np.isfinite(skin_w)) or np.any(skin_w < 0.0):
+                    raise ValueError("source_skin_lbs_weights must be finite and non-negative")
+                if not np.allclose(skin_w.sum(axis=1), 1.0, atol=1.0e-5, rtol=0.0):
+                    raise ValueError("source_skin_lbs_weights rows must sum to one")
         if self.pose_cache_vertices is not None:
             cached = np.asarray(self.pose_cache_vertices)
             if cached.shape != vertices.shape or not np.all(np.isfinite(cached)):
@@ -841,6 +855,12 @@ def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
             source_skin_faces=np.asarray(
                 asset.source_skin_faces if asset.source_skin_faces is not None else [], dtype=np.int32
             ).reshape(-1, 3),
+            source_skin_lbs_weights=np.asarray(
+                asset.source_skin_lbs_weights
+                if asset.source_skin_lbs_weights is not None
+                else [],
+                dtype=np.float32,
+            ).reshape(-1, len(asset.joint_names)),
             posed_vertices=np.asarray(
                 asset.pose_cache_vertices if asset.pose_cache_vertices is not None else [], dtype=np.float32
             ).reshape(-1, 3),
@@ -1056,6 +1076,7 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
         registration_reference=np.asarray(data["registration_reference"], dtype=np.float32).reshape(-1, 3) if "registration_reference" in data.files and data["registration_reference"].size else None,
         source_skin_vertices=np.asarray(data["source_skin_vertices"], dtype=np.float32).reshape(-1, 3) if "source_skin_vertices" in data.files and data["source_skin_vertices"].size else None,
         source_skin_faces=np.asarray(data["source_skin_faces"], dtype=np.int32).reshape(-1, 3) if "source_skin_faces" in data.files and data["source_skin_faces"].size else None,
+        source_skin_lbs_weights=np.asarray(data["source_skin_lbs_weights"], dtype=np.float32).reshape(-1, len(data["joint_names"])) if "source_skin_lbs_weights" in data.files and data["source_skin_lbs_weights"].size else None,
         pose_cache_vertices=np.asarray(data["posed_vertices"], dtype=np.float32).reshape(-1, 3) if "posed_vertices" in data.files and data["posed_vertices"].size else None,
         pose_cache_hash=str(data["pose_hash"].item()) if "pose_hash" in data.files else "",
         pose_format=str(data["pose_format"].item()) if "pose_format" in data.files else DEFAULT_POSE_FORMAT,

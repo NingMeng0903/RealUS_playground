@@ -25,7 +25,11 @@ from projects.genesis_ue_sync.anatomy_retarget.containment import (
     load_body_surface,
     signed_distance,
 )
-from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import skin_vertices
+from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
+    joint_global_transforms,
+    skin_vertices,
+    with_source_driver_coupling,
+)
 from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
     easymocap_drive_translation,
     load_easymocap_smplx_fit_drive,
@@ -89,6 +93,623 @@ def _cache_key(*paths: Path, extra: str = "") -> str:
         digest.update(str(Path(path).resolve()).encode("utf-8"))
         digest.update(_file_digest(Path(path)).encode("ascii"))
     return digest.hexdigest()[:24]
+
+
+def _merge_fast_extremity_donor(
+    asset: Any,
+    donor: Any,
+    *,
+    expected_shape_hash: str,
+    canonical_dir: Path,
+    hand_donor_path: Path | None = None,
+) -> tuple[Any, dict[str, Any]]:
+    """Use the known-good fitted skeleton, retaining only the stable axial compound."""
+    if asset.vertices_rest.shape != donor.vertices_rest.shape:
+        raise ValueError("fast extremity donor vertex topology does not match")
+    if not np.array_equal(asset.faces, donor.faces):
+        raise ValueError("fast extremity donor faces do not match")
+    if asset.source_mesh_names != donor.source_mesh_names or not np.array_equal(
+        asset.source_vertex_ranges, donor.source_vertex_ranges
+    ):
+        raise ValueError("fast extremity donor source mesh layout does not match")
+    if asset.source_bone_names != donor.source_bone_names:
+        raise ValueError("fast extremity donor source bone layout does not match")
+    donor_shape_hash = str((donor.metadata or {}).get("shape_hash", ""))
+    if donor_shape_hash != str(expected_shape_hash):
+        raise ValueError(
+            "fast extremity donor shape mismatch: "
+            f"expected {expected_shape_hash}, got {donor_shape_hash or '<missing>'}"
+        )
+
+    legacy_hand: dict[str, np.ndarray] | None = None
+    if hand_donor_path is not None:
+        with np.load(Path(hand_donor_path), allow_pickle=True) as data:
+            required = {
+                "vertices_rest",
+                "faces",
+                "source_mesh_names",
+                "source_vertex_ranges",
+                "source_bone_names",
+                "source_rest_global",
+                "source_bone_head",
+                "source_bone_tail",
+            }
+            missing = sorted(required - set(data.files))
+            if missing:
+                raise ValueError(f"legacy hand donor is missing arrays: {missing}")
+            if not np.array_equal(np.asarray(data["faces"]), asset.faces):
+                raise ValueError("legacy hand donor faces do not match")
+            if [str(v) for v in data["source_mesh_names"].tolist()] != list(
+                asset.source_mesh_names
+            ) or not np.array_equal(
+                np.asarray(data["source_vertex_ranges"]), asset.source_vertex_ranges
+            ):
+                raise ValueError("legacy hand donor mesh layout does not match")
+            if [str(v) for v in data["source_bone_names"].tolist()] != list(
+                asset.source_bone_names
+            ):
+                raise ValueError("legacy hand donor bone layout does not match")
+            legacy_hand = {
+                name: np.asarray(data[name]).copy()
+                for name in required
+                if name not in {"faces", "source_mesh_names", "source_vertex_ranges", "source_bone_names"}
+            }
+
+    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    modes = list(asset.source_bone_driver_types or [])
+    axial_tokens = (
+        "pelvis",
+        "ilium",
+        "ischium",
+        "pubis",
+        "sacrum",
+        "sternum",
+        "rib_",
+        "spine_",
+        "vertebra",
+        "disc",
+    )
+    vertebra_mesh_names = {
+        *(f"c{index}" for index in range(1, 8)),
+        *(f"t{index}" for index in range(1, 13)),
+        *(f"l{index}" for index in range(1, 6)),
+    }
+    axial_vertices = np.zeros(len(asset.vertices_rest), dtype=bool)
+    for (start, stop), mesh_name, tissue in zip(
+        np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+        asset.source_mesh_names,
+        asset.source_tissues,
+    ):
+        start_i, stop_i = int(start), int(stop)
+        mesh_lower = str(mesh_name).lower()
+        if str(tissue).lower() == "bone" and (
+            any(token in mesh_lower for token in axial_tokens)
+            or mesh_lower in vertebra_mesh_names
+        ):
+            axial_vertices[start_i:stop_i] = True
+
+    axial_bone_tokens = ("hip_bone", "spine_", "disc", "rib_bone", "sternum_bone")
+    axial_bones = np.asarray(
+        [
+            any(token in str(name).lower() for token in axial_bone_tokens)
+            for name in asset.source_bone_names
+        ],
+        dtype=bool,
+    )
+    # Keep authored helper children belonging to the selected axial compound,
+    # but stop at independently driven head/limb roots.
+    for bone, parent in enumerate(parents):
+        if (
+            int(parent) >= 0
+            and axial_bones[int(parent)]
+            and str(modes[bone]) == "bind_follow"
+        ):
+            axial_bones[bone] = True
+
+    current_vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
+    vertices = np.asarray(donor.vertices_rest, dtype=np.float64).copy()
+    vertices[axial_vertices] = current_vertices[axial_vertices]
+
+    rest_joints = np.asarray(donor.rest_joints, dtype=np.float64).copy()
+    rest_global = joint_global_transforms(
+        pose_axis_angle=np.zeros((55, 3), dtype=np.float32),
+        rest_joints=rest_joints,
+        parents=np.asarray(asset.parents, dtype=np.int32),
+    ).astype(np.float64)
+
+    target_global = np.asarray(donor.target_bind_global, dtype=np.float64).copy()
+    target_global[axial_bones] = np.asarray(
+        asset.target_bind_global, dtype=np.float64
+    )[axial_bones]
+    target_head = np.asarray(donor.target_bone_head, dtype=np.float64).copy()
+    target_tail = np.asarray(donor.target_bone_tail, dtype=np.float64).copy()
+    target_head[axial_bones] = np.asarray(
+        asset.target_bone_head, dtype=np.float64
+    )[axial_bones]
+    target_tail[axial_bones] = np.asarray(
+        asset.target_bone_tail, dtype=np.float64
+    )[axial_bones]
+
+    legacy_hand_vertices = np.zeros(len(vertices), dtype=bool)
+    legacy_hand_bones = np.zeros(len(parents), dtype=bool)
+    legacy_clavicle_vertices = np.zeros(len(vertices), dtype=bool)
+    legacy_clavicle_bones = np.zeros(len(parents), dtype=bool)
+    donor_foot_vertices = np.zeros(len(vertices), dtype=bool)
+    donor_foot_bones = np.zeros(len(parents), dtype=bool)
+    if legacy_hand is not None:
+        limb_mesh_tokens = (
+            "clavicle",
+            "scapula",
+            "humerus",
+            "radius",
+            "ulna",
+            "metacarpal",
+            "phalanx_hand",
+            "phalanges_hand",
+            "capitate",
+            "hamate",
+            "lunate",
+            "pisiform",
+            "scaphoid",
+            "trapezium",
+            "trapezoid",
+            "triquetrum",
+            "femur",
+            "tibia",
+            "fibula",
+            "patella",
+            "calcaneus",
+            "talus",
+            "navicular",
+            "cuboid",
+            "cuneiform",
+            "metatarsal",
+            "phalanx_foot",
+            "phalanges_foot",
+        )
+        for (start, stop), mesh_name, tissue in zip(
+            np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+            asset.source_mesh_names,
+            asset.source_tissues,
+        ):
+            lower = str(mesh_name).lower()
+            if str(tissue).lower() != "bone":
+                continue
+            if any(token in lower for token in limb_mesh_tokens):
+                legacy_hand_vertices[int(start) : int(stop)] = True
+            if "clavicle" in lower:
+                legacy_clavicle_vertices[int(start) : int(stop)] = True
+        for bone, bone_name in enumerate(asset.source_bone_names):
+            lower = str(bone_name).lower()
+            legacy_hand_bones[bone] = lower.startswith(
+                ("femur_rot_", "clavicle_rot_")
+            )
+            legacy_clavicle_bones[bone] = "clavicle_rot" in lower
+        for bone, parent in enumerate(parents):
+            if int(parent) >= 0 and legacy_hand_bones[int(parent)]:
+                legacy_hand_bones[bone] = True
+        # The clavicle effector belongs with the clavicle, but the independently
+        # driven shoulder child must remain on the ef58024 arm chain.
+        for bone, parent in enumerate(parents):
+            if (
+                int(parent) >= 0
+                and legacy_clavicle_bones[int(parent)]
+                and str(modes[bone]) == "bind_follow"
+            ):
+                legacy_clavicle_bones[bone] = True
+        vertices[legacy_hand_vertices | legacy_clavicle_vertices] = np.asarray(
+            legacy_hand["vertices_rest"], dtype=np.float64
+        )[legacy_hand_vertices | legacy_clavicle_vertices]
+        legacy_bones = legacy_hand_bones | legacy_clavicle_bones
+        target_global[legacy_bones] = np.asarray(
+            legacy_hand["source_rest_global"], dtype=np.float64
+        )[legacy_bones]
+        target_head[legacy_bones] = np.asarray(
+            legacy_hand["source_bone_head"], dtype=np.float64
+        )[legacy_bones]
+        target_tail[legacy_bones] = np.asarray(
+            legacy_hand["source_bone_tail"], dtype=np.float64
+        )[legacy_bones]
+
+        # a7b8c7f/ef58024 has the correct foot compound width and length.  The
+        # schema-3 limb donor is retained for hands/long bones only; restoring
+        # both geometry and the complete ankle subtree avoids mixing a thin
+        # legacy foot with the newer bind.
+        foot_tokens = (
+            "calcaneus",
+            "talus",
+            "navicular",
+            "cuboid",
+            "cuneiform",
+            "metatarsal",
+            "phalanx_foot",
+            "phalanges_foot",
+        )
+        for (start, stop), mesh_name, tissue in zip(
+            np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+            asset.source_mesh_names,
+            asset.source_tissues,
+        ):
+            if str(tissue).lower() == "bone" and any(
+                token in str(mesh_name).lower() for token in foot_tokens
+            ):
+                donor_foot_vertices[int(start) : int(stop)] = True
+        foot_roots = {
+            list(donor.source_bone_names).index("Ankle_Rot_L"),
+            list(donor.source_bone_names).index("Ankle_Rot_R"),
+        }
+        for bone in range(len(parents)):
+            cursor = bone
+            while cursor >= 0:
+                if cursor in foot_roots:
+                    donor_foot_bones[bone] = True
+                    break
+                cursor = int(parents[cursor])
+        vertices[donor_foot_vertices] = np.asarray(
+            donor.vertices_rest, dtype=np.float64
+        )[donor_foot_vertices]
+        target_global[donor_foot_bones] = np.asarray(
+            donor.target_bind_global, dtype=np.float64
+        )[donor_foot_bones]
+        target_head[donor_foot_bones] = np.asarray(
+            donor.target_bone_head, dtype=np.float64
+        )[donor_foot_bones]
+        target_tail[donor_foot_bones] = np.asarray(
+            donor.target_bone_tail, dtype=np.float64
+        )[donor_foot_bones]
+
+    from projects.genesis_ue_sync.anatomy_retarget.material_fit import (
+        _femur_head_and_acetabulum,
+        _mesh_mask,
+        _rotation_between,
+        _surface_region,
+        cranial_material_mask,
+        jaw_material_mask,
+        shaft_preserving_segment_map,
+    )
+
+    clavicle_report: dict[str, Any] = {}
+    if legacy_hand is not None:
+        for side, suffix in (("left", "_l"), ("right", "_r")):
+            clavicle = _mesh_mask(
+                donor,
+                lambda name, tissue, suffix=suffix: tissue == "bone"
+                and "clavicle" in name
+                and name.endswith(suffix),
+            )
+            root_name = "Clavicle_Rot_L" if side == "left" else "Clavicle_Rot_R"
+            root_bone = list(donor.source_bone_names).index(root_name)
+            source_a = target_head[root_bone].copy()
+            source_b = target_tail[root_bone].copy()
+            target_a = rest_joints[donor.joint_names.index(f"{side}_collar")]
+            target_b = rest_joints[donor.joint_names.index(f"{side}_shoulder")]
+            vertices[clavicle] = shaft_preserving_segment_map(
+                vertices[clavicle],
+                source_a=source_a,
+                source_b=source_b,
+                target_a=target_a,
+                target_b=target_b,
+            )
+            side_bones = legacy_clavicle_bones & np.asarray(
+                [
+                    str(name).lower().endswith(suffix)
+                    or (
+                        int(parents[index]) >= 0
+                        and str(donor.source_bone_names[int(parents[index])])
+                        == root_name
+                    )
+                    for index, name in enumerate(donor.source_bone_names)
+                ],
+                dtype=bool,
+            )
+            old_positions = target_global[side_bones, :3, 3].copy()
+            target_global[side_bones, :3, 3] = shaft_preserving_segment_map(
+                old_positions,
+                source_a=source_a,
+                source_b=source_b,
+                target_a=target_a,
+                target_b=target_b,
+            )
+            rotation = _rotation_between(source_b - source_a, target_b - target_a)
+            target_global[side_bones, :3, :3] = np.einsum(
+                "ij,bjk->bik", rotation, target_global[side_bones, :3, :3]
+            )
+            target_head[side_bones] = shaft_preserving_segment_map(
+                target_head[side_bones],
+                source_a=source_a,
+                source_b=source_b,
+                target_a=target_a,
+                target_b=target_b,
+            )
+            target_tail[side_bones] = shaft_preserving_segment_map(
+                target_tail[side_bones],
+                source_a=source_a,
+                source_b=source_b,
+                target_a=target_a,
+                target_b=target_b,
+            )
+            clavicle_report[side] = {
+                "source_length_m": float(np.linalg.norm(source_b - source_a)),
+                "target_length_m": float(np.linalg.norm(target_b - target_a)),
+            }
+
+    hip_report: dict[str, Any] = {}
+    if legacy_hand is not None:
+        hip_report["mode"] = "legacy_1b66307_complete_limb_no_secondary_hip_shift"
+    for side in (() if legacy_hand is not None else ("left", "right")):
+        pair = _femur_head_and_acetabulum(
+            donor,
+            vertices,
+            side=side,
+            target_joints=rest_joints,
+        )
+        suffix = "_l" if side == "left" else "_r"
+        femur = _mesh_mask(
+            donor,
+            lambda name, tissue, suffix=suffix: tissue == "bone"
+            and "femur" in name
+            and (name.endswith(suffix) or f"{suffix}_" in name),
+        )
+        if pair is None or not np.any(femur):
+            continue
+        femoral_head, acetabulum = pair
+        knee = rest_joints[donor.joint_names.index(f"{side}_knee")]
+        femur_points = vertices[femur].copy()
+        shaft_axis = knee - femoral_head
+        shaft_axis /= max(float(np.linalg.norm(shaft_axis)), 1.0e-8)
+        axial = (femur_points - femoral_head) @ shaft_axis
+        distal = np.mean(femur_points[axial >= np.quantile(axial, 0.85)], axis=0)
+        vertices[femur] = shaft_preserving_segment_map(
+            femur_points,
+            source_a=femoral_head,
+            source_b=distal,
+            target_a=acetabulum,
+            target_b=knee,
+        )
+        rotation = _rotation_between(distal - femoral_head, knee - acetabulum)
+        frame_delta = np.eye(4, dtype=np.float64)
+        frame_delta[:3, :3] = rotation
+        frame_delta[:3, 3] = acetabulum - rotation @ femoral_head
+        femur_bones = np.asarray(
+            [
+                "femur" in str(name).lower()
+                and (
+                    str(name).lower().endswith(suffix)
+                    or f"{suffix}_" in str(name).lower()
+                )
+                for name in donor.source_bone_names
+            ],
+            dtype=bool,
+        )
+        target_global[femur_bones] = np.einsum(
+            "ij,bjk->bik", frame_delta, target_global[femur_bones]
+        )
+        target_head[femur_bones] = (
+            target_head[femur_bones] @ rotation.T + frame_delta[:3, 3]
+        )
+        target_tail[femur_bones] = (
+            target_tail[femur_bones] @ rotation.T + frame_delta[:3, 3]
+        )
+        post_head, post_acetabulum = _femur_head_and_acetabulum(
+            donor,
+            vertices,
+            side=side,
+            target_joints=rest_joints,
+        )
+        correction = post_acetabulum - post_head
+        vertices[femur] += correction
+        target_global[femur_bones, :3, 3] += correction
+        target_head[femur_bones] += correction
+        target_tail[femur_bones] += correction
+        hip_report[side] = {
+            "pre_gap_m": float(np.linalg.norm(femoral_head - acetabulum)),
+            "post_map_correction_m": float(np.linalg.norm(correction)),
+            "shared_center": post_acetabulum.tolist(),
+        }
+
+    # The right legacy hip is visually the reliable side.  Mirror its proximal
+    # centre to the left, while pinning the left distal femur to the SMPL-X knee.
+    # This removes the old left-only vertical asymmetry without pushing either
+    # ball toward an average of the irregular acetabular surface.
+    if legacy_hand is not None:
+        left_pair = _femur_head_and_acetabulum(
+            donor, vertices, side="left", target_joints=rest_joints
+        )
+        right_pair = _femur_head_and_acetabulum(
+            donor, vertices, side="right", target_joints=rest_joints
+        )
+        left_femur = _mesh_mask(
+            donor,
+            lambda name, tissue: tissue == "bone"
+            and "femur" in name
+            and (name.endswith("_l") or "_l_" in name),
+        )
+        if left_pair is not None and right_pair is not None and np.any(left_femur):
+            left_head = left_pair[0]
+            right_head = right_pair[0]
+            left_knee = rest_joints[donor.joint_names.index("left_knee")]
+            hip_mid_x = 0.5 * (
+                rest_joints[donor.joint_names.index("left_hip"), 0]
+                + rest_joints[donor.joint_names.index("right_hip"), 0]
+            )
+            mirrored_head = right_head.copy()
+            mirrored_head[0] = 2.0 * hip_mid_x - right_head[0]
+            femur_points = vertices[left_femur].copy()
+            axis = left_knee - left_head
+            axis /= max(float(np.linalg.norm(axis)), 1.0e-8)
+            axial = (femur_points - left_head) @ axis
+            distal = np.mean(femur_points[axial >= np.quantile(axial, 0.85)], axis=0)
+            vertices[left_femur] = shaft_preserving_segment_map(
+                femur_points,
+                source_a=left_head,
+                source_b=distal,
+                target_a=mirrored_head,
+                target_b=left_knee,
+            )
+            rotation = _rotation_between(distal - left_head, left_knee - mirrored_head)
+            frame_delta = np.eye(4, dtype=np.float64)
+            frame_delta[:3, :3] = rotation
+            frame_delta[:3, 3] = mirrored_head - rotation @ left_head
+            left_femur_bones = np.asarray(
+                [
+                    "femur" in str(name).lower()
+                    and (
+                        str(name).lower().endswith("_l")
+                        or "_l_" in str(name).lower()
+                    )
+                    for name in donor.source_bone_names
+                ],
+                dtype=bool,
+            )
+            target_global[left_femur_bones] = np.einsum(
+                "ij,bjk->bik", frame_delta, target_global[left_femur_bones]
+            )
+            target_head[left_femur_bones] = (
+                target_head[left_femur_bones] @ rotation.T + frame_delta[:3, 3]
+            )
+            target_tail[left_femur_bones] = (
+                target_tail[left_femur_bones] @ rotation.T + frame_delta[:3, 3]
+            )
+            hip_report["mode"] = "legacy_right_mirrored_left_head_smplx_knee"
+            hip_report["left"] = {
+                "source_head": left_head.tolist(),
+                "mirrored_right_head": mirrored_head.tolist(),
+                "proximal_correction_m": float(np.linalg.norm(mirrored_head - left_head)),
+                "distal_target": "smplx_left_knee",
+            }
+
+    raw_head = cranial_material_mask(donor) | jaw_material_mask(donor)
+    head_vertices = np.zeros(len(vertices), dtype=bool)
+    head_reference_vertices = np.zeros(len(vertices), dtype=bool)
+    for (start, stop), tissue in zip(
+        np.asarray(donor.source_vertex_ranges, dtype=np.int64),
+        donor.source_tissues,
+    ):
+        start_i, stop_i = int(start), int(stop)
+        if float(np.mean(raw_head[start_i:stop_i])) >= 0.90:
+            head_reference_vertices[start_i:stop_i] = True
+            if str(tissue).lower() == "bone":
+                head_vertices[start_i:stop_i] = True
+    target_head_surface = _surface_region(
+        Path(canonical_dir),
+        list(donor.joint_names),
+        ("head", "jaw"),
+        subject=True,
+    )
+    source_lo, source_hi = np.quantile(
+        vertices[head_reference_vertices], (0.01, 0.99), axis=0
+    )
+    target_lo, target_hi = np.quantile(target_head_surface, (0.01, 0.99), axis=0)
+    source_center = 0.5 * (source_lo + source_hi)
+    target_center = 0.5 * (target_lo + target_hi)
+    head_scale = float(
+        np.clip(
+            0.828
+            * np.min(
+                (target_hi - target_lo)
+                / np.maximum(source_hi - source_lo, 1.0e-8)
+            ),
+            0.72,
+            1.0,
+        )
+    )
+    vertices[head_vertices] = target_center + head_scale * (
+        vertices[head_vertices] - source_center
+    )
+    head_bones = np.asarray(
+        [
+            any(token in str(name).lower() for token in ("head_bone", "jaw_bone"))
+            for name in donor.source_bone_names
+        ],
+        dtype=bool,
+    )
+    for bone, parent in enumerate(parents):
+        if int(parent) >= 0 and head_bones[int(parent)]:
+            head_bones[bone] = True
+    for values in (target_head, target_tail):
+        values[head_bones] = target_center + head_scale * (
+            values[head_bones] - source_center
+        )
+    target_global[head_bones, :3, 3] = target_center + head_scale * (
+        target_global[head_bones, :3, 3] - source_center
+    )
+
+    # Keep the ef58024 all-harmonic vessel/nerve result untouched.  The former
+    # direct affine-weight residual and large nearest-surface SDF projection
+    # were not a volumetric elastic solve: they sheared tube branches at weight
+    # seams and pulled unrelated nerve components toward the skin.
+
+    rest_global = joint_global_transforms(
+        pose_axis_angle=np.zeros((55, 3), dtype=np.float32),
+        rest_joints=rest_joints,
+        parents=np.asarray(asset.parents, dtype=np.int32),
+    ).astype(np.float64)
+    target_local = np.empty_like(target_global)
+    for bone, parent in enumerate(parents):
+        target_local[bone] = (
+            target_global[bone]
+            if int(parent) < 0
+            else np.linalg.inv(target_global[int(parent)]) @ target_global[bone]
+        )
+
+    metadata = dict(donor.metadata or {})
+    metadata.update(
+        {
+            "fast_extremity_donor": True,
+            "fast_extremity_donor_shape_hash": donor_shape_hash,
+            "fast_axial_source": "current_source_rest",
+            "disable_soft_follow": True,
+            "soft_follow_scope": "disabled_use_blender_lbs",
+            "head_uniform_scale": head_scale,
+            "soft_bone_residual_follow": False,
+            "soft_surface_sdf": "disabled",
+        }
+    )
+    result = type(asset)(
+        **{
+            **donor.__dict__,
+            "vertices_rest": vertices.astype(np.float32),
+            "rest_joints": rest_joints.astype(np.float32),
+            "inverse_bind": np.linalg.inv(rest_global).astype(np.float32),
+            "target_rest_global": target_global.astype(np.float32),
+            "target_rest_local": target_local.astype(np.float32),
+            "target_inverse_bind": np.linalg.inv(target_global).astype(np.float32),
+            "target_bone_head": target_head.astype(np.float32),
+            "target_bone_tail": target_tail.astype(np.float32),
+            "soft_follow_driver_indices": None,
+            "soft_follow_driver_weights": None,
+            "soft_follow_stations": None,
+            "soft_follow_strength": None,
+            "soft_component_ids": None,
+            "source_mesh_follow_modes": None,
+            "metadata": metadata,
+        }
+    )
+    result = with_source_driver_coupling(result)
+    result.validate()
+    return result, {
+        "backend": "ef58024_material_fit_plus_current_axial",
+        "axial_source_bone_count": int(np.count_nonzero(axial_bones)),
+        "axial_source_vertex_count": int(np.count_nonzero(axial_vertices)),
+        "head_compound_vertex_count": int(np.count_nonzero(head_vertices)),
+        "head_uniform_scale": head_scale,
+        "head_source_center": source_center.tolist(),
+        "head_target_center": target_center.tolist(),
+        "hip_alignment": hip_report,
+        "clavicle_fit": clavicle_report,
+        "legacy_hand_vertex_count": int(np.count_nonzero(legacy_hand_vertices)),
+        "legacy_hand_bone_count": int(np.count_nonzero(legacy_hand_bones)),
+        "legacy_clavicle_vertex_count": int(
+            np.count_nonzero(legacy_clavicle_vertices)
+        ),
+        "legacy_clavicle_bone_count": int(np.count_nonzero(legacy_clavicle_bones)),
+        "donor_foot_vertex_count": int(np.count_nonzero(donor_foot_vertices)),
+        "donor_foot_bone_count": int(np.count_nonzero(donor_foot_bones)),
+        "vessel_pose_backend": "blender_lbs",
+        "soft_bone_residual": "disabled_pending_elastic_volume_field",
+        "rest_soft_sdf": "disabled",
+        "station_soft_follow_restored": False,
+    }
 
 
 def _load_valid_cache(
@@ -355,6 +976,24 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--fast-extremity-donor",
+        type=Path,
+        default=None,
+        help=(
+            "With --fast-publish, restore head/hands/feet plus vessel station "
+            "follow from a topology- and shape-matched known-good asset."
+        ),
+    )
+    p.add_argument(
+        "--fast-hand-donor",
+        type=Path,
+        default=None,
+        help=(
+            "Optional legacy topology-matched asset whose local hand and "
+            "clavicle geometry/binds replace the fast material donor."
+        ),
+    )
+    p.add_argument(
         "--show-connective-tissue",
         action="store_true",
         help="Render ligament/tendon connective-tissue meshes in Genesis (hidden by default).",
@@ -466,6 +1105,10 @@ def main() -> int:
     if args.fast_publish:
         cfg = dict(cfg)
         cfg["fast_publish"] = True
+    if args.fast_extremity_donor is not None and not args.fast_publish:
+        raise ValueError("--fast-extremity-donor requires --fast-publish")
+    if args.fast_hand_donor is not None and args.fast_extremity_donor is None:
+        raise ValueError("--fast-hand-donor requires --fast-extremity-donor")
     blend = args.blend or Path(str(cfg.get("blend_path", "")))
     if not blend:
         raise ValueError("Missing anatomy blend path; pass --blend or set blend_path in config.")
@@ -849,6 +1492,36 @@ def main() -> int:
         shape_cache.parent.mkdir(parents=True, exist_ok=True)
         save_rigged_asset(shape_cache, asset)
         logging.info("subject-shape cache stored shape_hash=%s", shape_hash)
+    if args.fast_extremity_donor is not None:
+        donor_path = Path(args.fast_extremity_donor).expanduser().resolve()
+        donor_asset = load_rigged_asset(donor_path, validate=True)
+        asset, donor_report = _merge_fast_extremity_donor(
+            asset,
+            donor_asset,
+            expected_shape_hash=shape_hash,
+            canonical_dir=Path(args.canonical_dir),
+            hand_donor_path=(
+                None
+                if args.fast_hand_donor is None
+                else Path(args.fast_hand_donor).expanduser().resolve()
+            ),
+        )
+        shape_report["fast_extremity_merge"] = {
+            **donor_report,
+            "donor_path": str(donor_path),
+            "donor_sha256": _file_digest(donor_path),
+            "hand_donor_path": (
+                None
+                if args.fast_hand_donor is None
+                else str(Path(args.fast_hand_donor).expanduser().resolve())
+            ),
+        }
+        logging.info(
+            "fast material donor merged axial_bones=%s axial_vertices=%s head_scale=%.4f",
+            donor_report["axial_source_bone_count"],
+            donor_report["axial_source_vertex_count"],
+            donor_report["head_uniform_scale"],
+        )
     target_bind = np.asarray(asset.target_bind_global, dtype=np.float64)
     target_inverse = np.asarray(asset.runtime_inverse_bind, dtype=np.float64)
     bind_roundtrip["target_bind_max_matrix_error"] = float(
@@ -924,7 +1597,7 @@ def main() -> int:
         pose_key = f"{shape_key}:{runtime_key}:{cache_hash}"
         cached_pose = (
             None
-            if args.force_source_rebake
+            if args.force_source_rebake or args.fast_extremity_donor is not None
             else _load_valid_cache(
                 pose_cache,
                 metadata_key="pose_cache_key",
@@ -963,6 +1636,7 @@ def main() -> int:
                 "stage": "final_pose",
                 "skipped": True,
                 "reason": "fast_publish",
+                "soft_sdf": "disabled",
             }
         if cached_pose is None:
             pose_meta = dict(asset.metadata or {})
@@ -1005,11 +1679,13 @@ def main() -> int:
                 "stage": "final_pose",
                 "skipped": True,
                 "reason": "fast_publish",
+                "soft_sdf": "disabled",
             }
 
     # Schema-v6 assets contain runtime data only.  Cache keys and diagnostics
     # belong in JSON sidecars and must not leak into the published NPZ.
-    meta = {
+    meta = dict(asset.metadata or {})
+    meta.update({
         "gender": gender,
         "betas": betas,
         "shape_hash": smplx_shape_hash(betas, gender=gender),
@@ -1018,20 +1694,28 @@ def main() -> int:
         "show_vessels": not bool(args.hide_vessels),
         "fast_publish": bool(args.fast_publish),
         "disable_soft_follow": bool(args.fast_publish),
-    }
+    })
     asset = type(asset)(**{**asset.__dict__, "metadata": meta})
     if args.fast_publish:
-        asset = type(asset)(
-            **{
-                **asset.__dict__,
+        fast_updates: dict[str, Any] = {}
+        if args.fast_extremity_donor is None:
+            fast_updates.update({
                 "pose_cache_vertices": None,
                 "pose_cache_hash": "",
+            })
+        if args.fast_extremity_donor is None:
+            fast_updates.update({
                 "soft_follow_driver_indices": None,
                 "soft_follow_driver_weights": None,
                 "soft_follow_stations": None,
                 "soft_follow_strength": None,
                 "soft_component_ids": None,
                 "source_mesh_follow_modes": None,
+            })
+        asset = type(asset)(
+            **{
+                **asset.__dict__,
+                **fast_updates,
             }
         )
     save_rigged_asset(output_npz, asset)

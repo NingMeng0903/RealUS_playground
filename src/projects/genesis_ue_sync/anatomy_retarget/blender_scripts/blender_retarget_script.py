@@ -1524,12 +1524,13 @@ def main() -> None:
     # source boundary for the offline source-skin volume registration.
     skin_vertices = np.zeros((0, 3), dtype=np.float32)
     skin_faces = np.zeros((0, 3), dtype=np.int32)
+    skin_weights = np.zeros((0, len(joint_names)), dtype=np.float32)
     if skin is not None and skin.type == "MESH":
         skin_config = dict(config)
         skin_config["include_collections"] = []
         skin_config["include_meshes"] = [str(skin.name)]
         skin_config["exclude_meshes"] = []
-        raw_skin, skin_faces, _skin_weights, _skin_diag = _merge_and_skin_meshes(
+        raw_skin, skin_faces, skin_weights, _skin_diag = _merge_and_skin_meshes(
             [skin], arm, config=skin_config, semantics=resolved_semantics,
             joint_names=joint_names,
             direct_bone_to_joint=direct, parents_by_bone=parents_by_bone, deform=deform,
@@ -1638,6 +1639,7 @@ def main() -> None:
         registration_reference=registration_reference,
         source_skin_vertices=skin_vertices,
         source_skin_faces=np.asarray(skin_faces, dtype=np.int32),
+        source_skin_lbs_weights=np.asarray(skin_weights, dtype=np.float32),
         posed_vertices=np.zeros((0, 3), dtype=np.float32),
         pose_hash=np.asarray("", dtype=object),
         schema_version=np.asarray(6, dtype=np.int32),

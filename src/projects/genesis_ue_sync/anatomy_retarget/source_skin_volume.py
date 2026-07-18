@@ -24,7 +24,8 @@ from .shape_volume import (
 from .soft_constraints import arap_volume_refine
 
 
-_CAGE_VERSION = "source_skin_volume_v7_surface_only_margin1"
+_CAGE_VERSION = "source_skin_volume_v8_semantic_surface_map"
+_SEMANTIC_MAP_VERSION = "skin_glass_smplx55_fixed_map_v1"
 _MIN_JACOBIAN_RATIO = 0.05
 _MAX_FINAL_SURFACE_RMS_M = 0.03
 _MAX_FINAL_SURFACE_DISTANCE_M = 0.10
@@ -125,6 +126,204 @@ def _voxel_union(vertices: np.ndarray, faces: np.ndarray):
     return surface, pitch
 
 
+def _barycentric_surface_map(
+    points: np.ndarray,
+    source_vertices: np.ndarray,
+    source_faces: np.ndarray,
+    mapped_vertices: np.ndarray,
+) -> np.ndarray:
+    """Sample a fixed source-topology surface map at arbitrary nearby points."""
+    import igl
+
+    _squared, face_index, closest = igl.point_mesh_squared_distance(
+        np.asarray(points, dtype=np.float64),
+        np.asarray(source_vertices, dtype=np.float64),
+        np.asarray(source_faces, dtype=np.int32),
+    )
+    triangles = np.asarray(source_vertices, dtype=np.float64)[
+        np.asarray(source_faces, dtype=np.int64)[face_index]
+    ]
+    a = triangles[:, 1] - triangles[:, 0]
+    b = triangles[:, 2] - triangles[:, 0]
+    q = np.asarray(closest, dtype=np.float64) - triangles[:, 0]
+    aa = np.einsum("ij,ij->i", a, a)
+    ab = np.einsum("ij,ij->i", a, b)
+    bb = np.einsum("ij,ij->i", b, b)
+    qa = np.einsum("ij,ij->i", q, a)
+    qb = np.einsum("ij,ij->i", q, b)
+    denominator = aa * bb - ab * ab
+    denominator = np.where(np.abs(denominator) > 1.0e-16, denominator, 1.0)
+    w1 = (bb * qa - ab * qb) / denominator
+    w2 = (aa * qb - ab * qa) / denominator
+    bary = np.column_stack((1.0 - w1 - w2, w1, w2))
+    bary = np.clip(bary, 0.0, 1.0)
+    bary /= np.maximum(np.sum(bary, axis=1, keepdims=True), 1.0e-12)
+    return np.sum(
+        np.asarray(mapped_vertices, dtype=np.float64)[
+            np.asarray(source_faces, dtype=np.int64)[face_index]
+        ]
+        * bary[:, :, None],
+        axis=1,
+    )
+
+
+def _semantic_map_digest(
+    source_vertices: np.ndarray,
+    source_faces: np.ndarray,
+    source_weights: np.ndarray,
+    target_vertices: np.ndarray,
+    target_faces: np.ndarray,
+    target_weights: np.ndarray,
+) -> str:
+    digest = hashlib.sha256(_SEMANTIC_MAP_VERSION.encode("utf-8"))
+    for value, dtype in (
+        (source_vertices, np.float32),
+        (source_faces, np.int32),
+        (source_weights, np.float32),
+        (target_vertices, np.float32),
+        (target_faces, np.int32),
+        (target_weights, np.float32),
+    ):
+        digest.update(np.ascontiguousarray(value, dtype=dtype).tobytes())
+    return digest.hexdigest()
+
+
+def _fixed_semantic_skin_map(
+    source_vertices: np.ndarray,
+    source_faces: np.ndarray,
+    source_weights: np.ndarray,
+    target_vertices: np.ndarray,
+    target_faces: np.ndarray,
+    target_weights: np.ndarray,
+    *,
+    joint_names: list[str],
+    cache_path: Path,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Map Skin_Glass to SMPL-X once using joint-material coordinates.
+
+    Spatial nearest points alone confuse facing surfaces at the axilla, groin,
+    fingers and neck.  Candidate target triangles are therefore selected in a
+    joint-weight + position feature space, with an explicit left/right barrier.
+    The selected triangle and point are frozen and cached; later harmonic solves
+    never repeat ICP or change correspondence.
+    """
+    from scipy.spatial import cKDTree
+    import trimesh
+
+    source = np.asarray(source_vertices, dtype=np.float64)
+    source_w = np.asarray(source_weights, dtype=np.float64)
+    target = np.asarray(target_vertices, dtype=np.float64)
+    faces = np.asarray(target_faces, dtype=np.int64)
+    target_w = np.asarray(target_weights, dtype=np.float64)
+    if source_w.shape != (len(source), len(joint_names)):
+        raise ValueError("Skin_Glass semantic weights do not match source vertices/joints")
+    if target_w.shape != (len(target), len(joint_names)):
+        raise ValueError("SMPL-X semantic weights do not match target vertices/joints")
+    digest = _semantic_map_digest(
+        source, source_faces, source_w, target, faces, target_w
+    )
+    if cache_path.is_file():
+        with np.load(cache_path, allow_pickle=False) as cached:
+            if str(cached["digest"].item()) == digest:
+                mapped = np.asarray(cached["mapped_vertices"], dtype=np.float64)
+                if mapped.shape == source.shape:
+                    return mapped, {
+                        "backend": _SEMANTIC_MAP_VERSION,
+                        "cache_hit": True,
+                        "digest": digest,
+                        "unique_target_faces": int(cached["unique_target_faces"].item()),
+                        "side_mismatch_count": int(cached["side_mismatch_count"].item()),
+                        "semantic_rms": float(cached["semantic_rms"].item()),
+                    }
+
+    triangle_vertices = target[faces]
+    face_centers = np.mean(triangle_vertices, axis=1)
+    face_weights = np.mean(target_w[faces], axis=1)
+    # 12 cm spatial and 0.4 joint-weight feature scales keep candidates local
+    # while making two spatially close but anatomically different surfaces far.
+    tree_features = np.concatenate(
+        (face_centers / 0.12, face_weights / 0.40), axis=1
+    )
+    source_features = np.concatenate((source / 0.12, source_w / 0.40), axis=1)
+    tree = cKDTree(tree_features)
+    _distance, candidates = tree.query(source_features, k=48, workers=-1)
+    candidates = np.asarray(candidates, dtype=np.int64).reshape(len(source), -1)
+    candidate_triangles = triangle_vertices[candidates.reshape(-1)]
+    repeated_source = np.repeat(source, candidates.shape[1], axis=0)
+    closest = trimesh.triangles.closest_point(
+        candidate_triangles, repeated_source
+    ).reshape(len(source), candidates.shape[1], 3)
+    candidate_weights = face_weights[candidates]
+    spatial_cost = np.sum((closest - source[:, None, :]) ** 2, axis=2)
+    semantic_cost = np.sum(
+        (candidate_weights - source_w[:, None, :]) ** 2, axis=2
+    )
+    cost = spatial_cost + (0.22**2) * semantic_cost
+
+    left_ids = np.asarray(
+        [index for index, name in enumerate(joint_names) if str(name).startswith("left_")],
+        dtype=np.int64,
+    )
+    right_ids = np.asarray(
+        [index for index, name in enumerate(joint_names) if str(name).startswith("right_")],
+        dtype=np.int64,
+    )
+    source_side = np.sign(
+        np.sum(source_w[:, left_ids], axis=1)
+        - np.sum(source_w[:, right_ids], axis=1)
+    )
+    candidate_side = np.sign(
+        np.sum(candidate_weights[:, :, left_ids], axis=2)
+        - np.sum(candidate_weights[:, :, right_ids], axis=2)
+    )
+    source_side_strength = np.abs(
+        np.sum(source_w[:, left_ids], axis=1)
+        - np.sum(source_w[:, right_ids], axis=1)
+    )
+    wrong_side = (
+        (source_side_strength[:, None] > 0.20)
+        & (candidate_side != 0.0)
+        & (candidate_side != source_side[:, None])
+    )
+    cost[wrong_side] = np.inf
+    selected_slot = np.argmin(cost, axis=1)
+    selected_face = candidates[np.arange(len(source)), selected_slot]
+    mapped = closest[np.arange(len(source)), selected_slot]
+    selected_weights = face_weights[selected_face]
+    selected_side = np.sign(
+        np.sum(selected_weights[:, left_ids], axis=1)
+        - np.sum(selected_weights[:, right_ids], axis=1)
+    )
+    side_mismatch = int(
+        np.count_nonzero(
+            (source_side_strength > 0.20)
+            & (selected_side != 0.0)
+            & (selected_side != source_side)
+        )
+    )
+    semantic_rms = float(
+        np.sqrt(np.mean(np.sum((selected_weights - source_w) ** 2, axis=1)))
+    )
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        cache_path,
+        digest=np.asarray(digest),
+        mapped_vertices=mapped.astype(np.float32),
+        selected_faces=selected_face.astype(np.int32),
+        unique_target_faces=np.asarray(len(np.unique(selected_face)), dtype=np.int32),
+        side_mismatch_count=np.asarray(side_mismatch, dtype=np.int32),
+        semantic_rms=np.asarray(semantic_rms, dtype=np.float64),
+    )
+    return mapped, {
+        "backend": _SEMANTIC_MAP_VERSION,
+        "cache_hit": False,
+        "digest": digest,
+        "unique_target_faces": int(len(np.unique(selected_face))),
+        "side_mismatch_count": side_mismatch,
+        "semantic_rms": semantic_rms,
+    }
+
+
 def _build_source_cage(
     vertices: np.ndarray,
     faces: np.ndarray,
@@ -208,6 +407,8 @@ def _topology_preserving_cage_registration(
     boundary_faces: np.ndarray,
     target: np.ndarray,
     target_faces: np.ndarray,
+    *,
+    fixed_target: np.ndarray | None = None,
 ) -> tuple[np.ndarray, dict[str, float | int]]:
     """Fit the closed cage and reject no-op or low-quality registrations."""
     import igl
@@ -218,6 +419,11 @@ def _topology_preserving_cage_registration(
     elements = np.asarray(elements, dtype=np.int64)
     boundary = np.asarray(boundary, dtype=np.int64)
     source = original[boundary]
+    fixed = (
+        None
+        if fixed_target is None
+        else np.asarray(fixed_target, dtype=np.float64).reshape(len(source), 3)
+    )
     local_index = np.full(len(original), -1, dtype=np.int64)
     local_index[boundary] = np.arange(len(boundary), dtype=np.int64)
     faces = local_index[np.asarray(boundary_faces, dtype=np.int64)]
@@ -250,9 +456,12 @@ def _topology_preserving_cage_registration(
     base_det = np.linalg.det(base_tet[:, 1:] - base_tet[:, :1])
     if np.any(~np.isfinite(base_det)) or np.any(np.abs(base_det) <= 1.0e-18):
         raise RuntimeError("source volume cage contains a degenerate tetrahedron")
-    initial_squared, _face_index, _closest = igl.point_mesh_squared_distance(
-        source, target, target_faces
-    )
+    if fixed is None:
+        initial_squared, _face_index, _closest = igl.point_mesh_squared_distance(
+            source, target, target_faces
+        )
+    else:
+        initial_squared = np.sum((source - fixed) ** 2, axis=1)
     initial_rms = float(np.sqrt(np.mean(initial_squared)))
     initial_max = float(np.sqrt(np.max(initial_squared)))
     accepted_iterations = 0
@@ -264,9 +473,13 @@ def _topology_preserving_cage_registration(
         accepted_in_stage = 0
         locked[:] = False
         for _iteration in range(iteration_count):
-            squared, _face_index, closest = igl.point_mesh_squared_distance(
-                registered, target, target_faces
-            )
+            if fixed is None:
+                squared, _face_index, closest = igl.point_mesh_squared_distance(
+                    registered, target, target_faces
+                )
+            else:
+                squared = np.sum((registered - fixed) ** 2, axis=1)
+                closest = fixed
             rhs = np.asarray(closest) + weight * differential
             proposal = np.column_stack([solve(rhs[:, axis]) for axis in range(3)])
             proposal[locked] = registered[locked]
@@ -300,9 +513,12 @@ def _topology_preserving_cage_registration(
             accepted_in_stage += 1
             minimum_ratio = min(minimum_ratio, float(np.min(ratio)))
         stage_iterations.append(int(accepted_in_stage))
-    squared, _face_index, _closest = igl.point_mesh_squared_distance(
-        registered, target, target_faces
-    )
+    if fixed is None:
+        squared, _face_index, _closest = igl.point_mesh_squared_distance(
+            registered, target, target_faces
+        )
+    else:
+        squared = np.sum((registered - fixed) ** 2, axis=1)
     final_rms = float(np.sqrt(np.mean(squared)))
     final_max = float(np.sqrt(np.max(squared)))
     boundary_norm = np.linalg.norm(registered - source, axis=1)
@@ -358,6 +574,7 @@ def _topology_preserving_cage_registration(
         "surface_regularization_weights": [float(value[0]) for value in weight_schedule],
         "minimum_surface_jacobian_ratio": float(minimum_ratio),
         "locked_surface_vertices": int(np.count_nonzero(locked)),
+        "fixed_semantic_correspondence": bool(fixed is not None),
     }
 
 
@@ -708,11 +925,21 @@ def apply_source_skin_volume_registration(
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     if asset.source_skin_vertices is None or asset.source_skin_faces is None:
         raise RuntimeError("source template lacks Skin_Glass; force source template rebake")
+    if asset.source_skin_lbs_weights is None:
+        raise RuntimeError(
+            "source template lacks Skin_Glass semantic weights; use --force-source-rebake"
+        )
 
     root = Path(canonical_dir)
     target_vertices, target_faces = _load_obj(root / "smpl_canonical_tpose_neutral.obj")
     skin_vertices = np.asarray(asset.source_skin_vertices, dtype=np.float64)
     skin_faces = np.asarray(asset.source_skin_faces, dtype=np.int32)
+    skin_weights = np.asarray(asset.source_skin_lbs_weights, dtype=np.float64)
+    target_weight_data = np.load(root / "smpl_canonical_weights.npz", allow_pickle=True)
+    target_weights = np.asarray(target_weight_data["lbs_weights"], dtype=np.float64)
+    target_joint_names = [str(value) for value in target_weight_data["joint_names"].tolist()]
+    if target_joint_names != list(asset.joint_names):
+        raise ValueError("Skin_Glass and SMPL-X joint semantic order does not match")
     query = np.asarray(asset.vertices_rest, dtype=np.float64)
     protected = bone_material_mask(asset) | cranial_material_mask(asset)
     cage = _build_source_cage(
@@ -734,6 +961,19 @@ def apply_source_skin_volume_registration(
         cage=cage,
         context="source Skin_Glass domain",
     )
+    mapped_skin, semantic_map_report = _fixed_semantic_skin_map(
+        skin_vertices,
+        skin_faces,
+        skin_weights,
+        target_vertices,
+        target_faces,
+        target_weights,
+        joint_names=list(asset.joint_names),
+        cache_path=root / "source_skin_semantic_map_v1.npz",
+    )
+    fixed_boundary = _barycentric_surface_map(
+        nodes[boundary], skin_vertices, skin_faces, mapped_skin
+    )
     registered_boundary, surface_report = _topology_preserving_cage_registration(
         nodes,
         elements,
@@ -741,6 +981,7 @@ def apply_source_skin_volume_registration(
         np.asarray(cage["boundary_faces"], dtype=np.int32),
         target_vertices,
         target_faces,
+        fixed_target=fixed_boundary,
     )
     boundary_values = registered_boundary - nodes[boundary]
     field, deformation_report = _incremental_harmonic_field(
@@ -868,6 +1109,7 @@ def apply_source_skin_volume_registration(
         "section_residual_regularizer": section_report,
         "soft_edge_strain_regularizer": strain_reports,
         "surface_barrier_regularizer": barrier_reports,
+        "surface_correspondence": semantic_map_report,
         **deformation_report,
         **surface_report,
     }
