@@ -70,11 +70,11 @@ $PY perception/apps/run_camera_preview.py \
 
 #### G — Genesis viewer（两种模式）
 
-**view（Phase 1 默认）** — 不连真机、不读 SHM；显示床+滑轨机械臂（静态 demo 姿态）+ 5598/5601 人：
+**view（Phase 1 默认）** — 不连真机、不读 SHM；显示床+滑轨+**静态 demo 机械臂** + 5598/5601 人体 overlay：
 
 ```bash
 cd rm75_control && source env_viewer.sh && cd "$REALUS_PROJECT_ROOT"
-$PY perception/apps/run_genesis_perception_viewer.py
+$PY perception/apps/run_genesis_perception_viewer.py --anatomy-alpha 0.3
 ```
 
 **twin** — 窗口 A 真机运行时，Genesis 镜像 `rm75_state`（机械臂随真机动）+ 可选人体 overlay：
@@ -87,7 +87,7 @@ python apps/joint_admittance_8dof/run_with_twin.py \
   --canonical-human-source fitted
 ```
 
-view 模式默认 **显示机械臂+滑轨**；仅床+相机时用 `--no-robot`。床体高度 **完全来自** `genesis_bundle.yaml` 的 `bed.height_m`（或 `support_surface.top_z_m`）：Genesis 网格从 z=0 铺到该标定顶面，无固定厚度常数。
+床体高度 **完全来自** `genesis_bundle.yaml` 的 `bed.height_m`（或 `support_surface.top_z_m`）：Genesis 网格从 z=0 铺到该标定顶面，无固定厚度常数。
 
 #### 8 — 触发 SMPL-X 拟合（躺下后执行，可多次）
 

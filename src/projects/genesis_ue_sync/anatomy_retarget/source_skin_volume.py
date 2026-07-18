@@ -1,4 +1,4 @@
-"""Offline Skin_Glass -> neutral SMPL-X volumetric registration.
+"""Offline Skin_Glass -> subject SMPL-X volumetric registration.
 
 The Blender skin is used only as a material boundary.  Internal anatomy is
 transported by one continuous harmonic volume field; no anatomy vertex is
@@ -8,6 +8,7 @@ individually projected or clamped to the SMPL-X surface.
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
@@ -15,25 +16,17 @@ import numpy as np
 
 from .rigged_asset import AnatomyRiggedAsset
 from .material_fit import bone_material_mask, cranial_material_mask
-from .shape_volume import (
-    _attach_smplx_boundary_map,
-    _field_jacobian_diagnostics,
-    _load_obj,
-    _outside_cage_max_distance,
-    _sample_field,
-    _solve_harmonic_field,
-    _tet_stiffness,
-)
-from .soft_constraints import arap_volume_refine
+from .shape_volume import _load_obj, _outside_cage_max_distance, _sample_field, _tet_stiffness
 
 
-_CAGE_VERSION = "source_skin_volume_v8_semantic_surface_map"
-_SEMANTIC_MAP_VERSION = "skin_glass_smplx55_fixed_map_v7_raw_dirichlet"
+_CAGE_VERSION = "source_skin_volume_v18_two_stage_closed_subject_shell"
+# A Stage-1 field is a diffeomorphic initialisation, not a nearly-flat cage.
 _MIN_JACOBIAN_RATIO = 0.05
 _MAX_FINAL_SURFACE_RMS_M = 0.03
 _MAX_FINAL_SURFACE_DISTANCE_M = 0.10
 _MAX_BOUNDARY_DISPLACEMENT_M = 0.50
 _MIN_REGISTRATION_PROGRESS_M = 1.0e-7
+_FINE_SHELL_HOMOTOPY = (0.10, 0.25, 0.45, 0.65, 0.82, 1.00)
 
 
 def _transport_sampled_material(
@@ -175,272 +168,187 @@ def _barycentric_surface_map(
     )
 
 
-def _semantic_map_digest(
-    source_vertices: np.ndarray,
-    source_faces: np.ndarray,
-    source_weights: np.ndarray,
-    target_vertices: np.ndarray,
-    target_faces: np.ndarray,
-    target_weights: np.ndarray,
-) -> str:
-    digest = hashlib.sha256(_SEMANTIC_MAP_VERSION.encode("utf-8"))
-    for value, dtype in (
-        (source_vertices, np.float32),
-        (source_faces, np.int32),
-        (source_weights, np.float32),
-        (target_vertices, np.float32),
-        (target_faces, np.int32),
-        (target_weights, np.float32),
-    ):
-        digest.update(np.ascontiguousarray(value, dtype=dtype).tobytes())
-    return digest.hexdigest()
+def _outer_body_component(
+    vertices: np.ndarray,
+    faces: np.ndarray,
+    weights: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, int]]:
+    """Keep the sole external SMPL-X body component, never eyes or teeth.
 
-
-def _fixed_semantic_skin_map(
-    source_vertices: np.ndarray,
-    source_faces: np.ndarray,
-    source_weights: np.ndarray,
-    target_vertices: np.ndarray,
-    target_faces: np.ndarray,
-    target_weights: np.ndarray,
-    *,
-    joint_names: list[str],
-    cache_path: Path,
-) -> tuple[np.ndarray, dict[str, Any]]:
-    """Map Skin_Glass to SMPL-X once using joint-material coordinates.
-
-    Spatial nearest points alone confuse facing surfaces at the axilla, groin,
-    fingers and neck.  Candidate target triangles are therefore selected in a
-    joint-weight + position feature space, with an explicit left/right barrier.
-    The selected triangle and point are frozen and cached; later harmonic solves
-    never repeat ICP or change correspondence.
+    The canonical SMPL-X OBJ contains the body plus two closed eyeball
+    components.  They are valid render geometry but invalid outer-volume
+    boundary candidates: a nearest-point or signed-distance query can jump to
+    an eyeball while registering the face.  The Skin_Glass field has exactly
+    one outer boundary, so select its largest connected component and reindex
+    the associated LBS weights with it.
     """
-    from scipy.spatial import cKDTree
-    import trimesh
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
 
-    source = np.asarray(source_vertices, dtype=np.float64)
-    source_w = np.asarray(source_weights, dtype=np.float64)
-    target = np.asarray(target_vertices, dtype=np.float64)
-    faces = np.asarray(target_faces, dtype=np.int64)
-    target_w = np.asarray(target_weights, dtype=np.float64)
-    if source_w.shape != (len(source), len(joint_names)):
-        raise ValueError("Skin_Glass semantic weights do not match source vertices/joints")
-    if target_w.shape != (len(target), len(joint_names)):
-        raise ValueError("SMPL-X semantic weights do not match target vertices/joints")
-    digest = _semantic_map_digest(
-        source, source_faces, source_w, target, faces, target_w
-    )
-    if cache_path.is_file():
-        with np.load(cache_path, allow_pickle=False) as cached:
-            if str(cached["digest"].item()) == digest:
-                mapped = np.asarray(cached["mapped_vertices"], dtype=np.float64)
-                if mapped.shape == source.shape:
-                    return mapped, {
-                        "backend": _SEMANTIC_MAP_VERSION,
-                        "cache_hit": True,
-                        "digest": digest,
-                        "unique_target_faces": int(cached["unique_target_faces"].item()),
-                        "side_mismatch_count": int(cached["side_mismatch_count"].item()),
-                        "semantic_rms": float(cached["semantic_rms"].item()),
-                    }
-
-    triangle_vertices = target[faces]
-    face_centers = np.mean(triangle_vertices, axis=1)
-    face_weights = np.mean(target_w[faces], axis=1)
-    # 12 cm spatial and 0.4 joint-weight feature scales keep candidates local
-    # while making two spatially close but anatomically different surfaces far.
-    tree_features = np.concatenate(
-        (face_centers / 0.12, face_weights / 0.40), axis=1
-    )
-    source_features = np.concatenate((source / 0.12, source_w / 0.40), axis=1)
-    tree = cKDTree(tree_features)
-    _distance, candidates = tree.query(source_features, k=48, workers=-1)
-    candidates = np.asarray(candidates, dtype=np.int64).reshape(len(source), -1)
-    candidate_triangles = triangle_vertices[candidates.reshape(-1)]
-    repeated_source = np.repeat(source, candidates.shape[1], axis=0)
-    closest = trimesh.triangles.closest_point(
-        candidate_triangles, repeated_source
-    ).reshape(len(source), candidates.shape[1], 3)
-    candidate_weights = face_weights[candidates]
-    spatial_cost = np.sum((closest - source[:, None, :]) ** 2, axis=2)
-    semantic_cost = np.sum(
-        (candidate_weights - source_w[:, None, :]) ** 2, axis=2
-    )
-    cost = spatial_cost + (0.22**2) * semantic_cost
-
-    left_ids = np.asarray(
-        [index for index, name in enumerate(joint_names) if str(name).startswith("left_")],
-        dtype=np.int64,
-    )
-    right_ids = np.asarray(
-        [index for index, name in enumerate(joint_names) if str(name).startswith("right_")],
-        dtype=np.int64,
-    )
-    source_side = np.sign(
-        np.sum(source_w[:, left_ids], axis=1)
-        - np.sum(source_w[:, right_ids], axis=1)
-    )
-    candidate_side = np.sign(
-        np.sum(candidate_weights[:, :, left_ids], axis=2)
-        - np.sum(candidate_weights[:, :, right_ids], axis=2)
-    )
-    source_side_strength = np.abs(
-        np.sum(source_w[:, left_ids], axis=1)
-        - np.sum(source_w[:, right_ids], axis=1)
-    )
-    wrong_side = (
-        (source_side_strength[:, None] > 0.20)
-        & (candidate_side != 0.0)
-        & (candidate_side != source_side[:, None])
-    )
-    cost[wrong_side] = np.inf
-    selected_slot = np.argmin(cost, axis=1)
-    selected_face = candidates[np.arange(len(source)), selected_slot]
-    raw_mapped = closest[np.arange(len(source)), selected_slot]
-    selected_weights = face_weights[selected_face]
-    selected_side = np.sign(
-        np.sum(selected_weights[:, left_ids], axis=1)
-        - np.sum(selected_weights[:, right_ids], axis=1)
-    )
-    side_mismatch = int(
-        np.count_nonzero(
-            (source_side_strength > 0.20)
-            & (selected_side != 0.0)
-            & (selected_side != source_side)
-        )
-    )
-    semantic_rms = float(
-        np.sqrt(np.mean(np.sum((selected_weights - source_w) ** 2, axis=1)))
-    )
-    # Independent triangle choices are semantic but not yet a continuous
-    # parameterisation.  Solve their displacement on the authored Skin_Glass
-    # topology before it becomes a volume boundary condition.
-    from scipy.sparse import coo_matrix, diags, eye
-    from scipy.sparse.linalg import splu
-
-    source_faces_i = np.asarray(source_faces, dtype=np.int64)
+    verts = np.asarray(vertices, dtype=np.float64)
+    triangles = np.asarray(faces, dtype=np.int64)
+    skin_weights = np.asarray(weights, dtype=np.float64)
+    if skin_weights.shape[0] != len(verts):
+        raise ValueError("SMPL-X weights do not match the canonical OBJ vertices")
     edges = np.concatenate(
-        (
-            source_faces_i[:, (0, 1)],
-            source_faces_i[:, (1, 2)],
-            source_faces_i[:, (2, 0)],
-        ),
+        (triangles[:, [0, 1]], triangles[:, [1, 2]], triangles[:, [2, 0]]),
         axis=0,
     )
-    edges = np.concatenate((edges, edges[:, ::-1]), axis=0)
-    adjacency = coo_matrix(
-        (np.ones(len(edges), dtype=np.float64), (edges[:, 0], edges[:, 1])),
-        shape=(len(source), len(source)),
-    ).tocsr()
-    adjacency.data[:] = 1.0
-    degree = np.asarray(adjacency.sum(axis=1)).reshape(-1)
-    laplacian = eye(len(source), format="csr") - diags(
-        1.0 / np.maximum(degree, 1.0)
-    ) @ adjacency
-    smoothness = (laplacian.T @ laplacian).tocsr()
-    smooth_weight = 20.0
-    solve = splu(
-        (eye(len(source), format="csc") + smooth_weight * smoothness).tocsc()
+    graph = coo_matrix(
+        (np.ones(len(edges), dtype=np.uint8), (edges[:, 0], edges[:, 1])),
+        shape=(len(verts), len(verts)),
     )
-    differential = smoothness @ source
-    rhs = raw_mapped + smooth_weight * differential
-    mapped = np.column_stack(
-        [solve.solve(rhs[:, axis]) for axis in range(3)]
-    )
-    screened_target_rms = float(
-        np.sqrt(np.mean(np.sum((mapped - raw_mapped) ** 2, axis=1)))
-    )
-    # Convert the semantic targets into a locally rigid parameterisation.  A
-    # farthest-point anchor set covers fingers, head and limb tips without
-    # constraining every vertex independently (which can fold triangles).
-    import igl
-
-    anchor_count = min(64, len(source))
-    anchors = np.empty(anchor_count, dtype=np.int32)
-    center = np.mean(source, axis=0)
-    anchors[0] = int(np.argmax(np.sum((source - center) ** 2, axis=1)))
-    farthest_distance = np.sum((source - source[anchors[0]]) ** 2, axis=1)
-    for anchor_index in range(1, anchor_count):
-        anchors[anchor_index] = int(np.argmax(farthest_distance))
-        farthest_distance = np.minimum(
-            farthest_distance,
-            np.sum((source - source[anchors[anchor_index]]) ** 2, axis=1),
-        )
-    anchors = np.unique(anchors).astype(np.int32)
-    arap_data = igl.ARAPData()
-    arap_data.max_iter = 40
-    igl.arap_precomputation(
-        source,
-        np.asarray(source_faces, dtype=np.int64),
-        3,
-        anchors,
-        arap_data,
-    )
-    mapped = np.asarray(
-        igl.arap_solve(raw_mapped[anchors], arap_data, mapped),
-        dtype=np.float64,
-    )
-    arap_anchor_rms = float(
-        np.sqrt(np.mean(np.sum((mapped[anchors] - raw_mapped[anchors]) ** 2, axis=1)))
-    )
-    source_triangles = source[source_faces_i]
-    source_normals = np.cross(
-        source_triangles[:, 1] - source_triangles[:, 0],
-        source_triangles[:, 2] - source_triangles[:, 0],
-    )
-    source_area = np.linalg.norm(source_normals, axis=1)
-    safe_alpha = 1.0
-    for _line_search in range(48):
-        trial = source + safe_alpha * (mapped - source)
-        triangles = trial[source_faces_i]
-        normals = np.cross(
-            triangles[:, 1] - triangles[:, 0],
-            triangles[:, 2] - triangles[:, 0],
-        )
-        orientation = np.einsum("ij,ij->i", normals, source_normals)
-        area_ratio = np.linalg.norm(normals, axis=1) / np.maximum(
-            source_area, 1.0e-12
-        )
-        if np.all(orientation > 0.0) and np.all(area_ratio >= 0.05):
-            mapped = trial
-            break
-        safe_alpha *= 0.8
-    else:
-        raise RuntimeError("semantic surface map cannot find an orientation-safe step")
-    # The map is a fixed semantic *Dirichlet target*, not a renderable skin.
-    # A single worst triangle previously forced the whole map to 26% of its
-    # intended displacement.  That globally damped outer boundary is exactly
-    # what let the volumetric interior escape the SMPL-X body.  The cage solve
-    # below owns inversion control and locks only the local unsafe boundary
-    # degrees of freedom, so retain the full per-vertex semantic projection.
-    mapped = raw_mapped
-    safe_alpha = 1.0
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(
-        cache_path,
-        digest=np.asarray(digest),
-        mapped_vertices=mapped.astype(np.float32),
-        selected_faces=selected_face.astype(np.int32),
-        unique_target_faces=np.asarray(len(np.unique(selected_face)), dtype=np.int32),
-        side_mismatch_count=np.asarray(side_mismatch, dtype=np.int32),
-        semantic_rms=np.asarray(semantic_rms, dtype=np.float64),
-        screened_target_rms=np.asarray(screened_target_rms, dtype=np.float64),
-        arap_anchor_count=np.asarray(len(anchors), dtype=np.int32),
-        arap_anchor_rms=np.asarray(arap_anchor_rms, dtype=np.float64),
-        orientation_safe_alpha=np.asarray(safe_alpha, dtype=np.float64),
-    )
-    return mapped, {
-        "backend": _SEMANTIC_MAP_VERSION,
-        "cache_hit": False,
-        "digest": digest,
-        "unique_target_faces": int(len(np.unique(selected_face))),
-        "side_mismatch_count": side_mismatch,
-        "semantic_rms": semantic_rms,
-        "screened_target_rms": screened_target_rms,
-        "arap_anchor_count": int(len(anchors)),
-        "arap_anchor_rms": arap_anchor_rms,
-        "orientation_safe_alpha": float(safe_alpha),
+    component_count, labels = connected_components(graph, directed=False)
+    counts = np.bincount(labels, minlength=component_count)
+    body_label = int(np.argmax(counts))
+    keep = np.flatnonzero(labels == body_label)
+    remap = np.full(len(verts), -1, dtype=np.int64)
+    remap[keep] = np.arange(len(keep), dtype=np.int64)
+    selected = np.all(labels[triangles] == body_label, axis=1)
+    body_faces = remap[triangles[selected]]
+    return verts[keep], body_faces.astype(np.int32), skin_weights[keep], {
+        "input_components": int(component_count), "input_vertices": int(len(verts)),
+        "input_faces": int(len(triangles)), "body_vertices": int(len(keep)),
+        "body_faces": int(len(body_faces)),
     }
+
+
+def _closed_solver_shell(
+    vertices: np.ndarray,
+    faces: np.ndarray,
+    *,
+    resolution: int = 360,
+    inward_margin_m: float = 0.001,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """Create a closed, strictly in-subject shell for Stage-1 registration.
+
+    SMPL-X body render meshes contain a small facial boundary loop.  The
+    harmonic boundary is still the authored body mesh; only inside/outside
+    diagnostics use this voxel-closed shell.  This avoids any SDF feedback or
+    geometry repair of anatomy itself.
+    """
+    import trimesh
+    from scipy import ndimage
+    from .containment import signed_distance
+
+    body = trimesh.Trimesh(vertices, faces, process=True)
+    pitch = float(np.max(body.extents) / max(int(resolution), 32))
+    grid = body.voxelized(pitch).fill()
+    occupancy = ndimage.binary_erosion(np.asarray(grid.matrix, dtype=bool), iterations=1)
+    shell = trimesh.voxel.VoxelGrid(occupancy, transform=grid.transform).marching_cubes
+    shell.apply_transform(grid.transform)
+    shell.remove_unreferenced_vertices()
+    shell.fix_normals()
+    shell_vertices = np.asarray(shell.vertices, dtype=np.float64)
+    signed, closest, normals = signed_distance(shell_vertices, vertices, faces)
+    margin = float(inward_margin_m)
+    needs_inset = signed > -margin
+    shell_vertices[needs_inset] = (
+        closest[needs_inset] - margin * normals[needs_inset]
+    )
+    verified, _closest, _normals = signed_distance(shell_vertices, vertices, faces)
+    if float(np.max(verified)) > 1.0e-6:
+        raise RuntimeError("closed subject solver shell is not fully inside SMPL-X")
+    return (
+        shell_vertices,
+        np.asarray(shell.faces, dtype=np.int32),
+        float(pitch),
+    )
+
+
+def _coarse_closed_solver_shell(
+    vertices: np.ndarray, faces: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """Return the robust, low-resolution closed shell used for initialization.
+
+    The first correspondence cannot jump directly from the source Skin_Glass
+    cage to the five-millimetre inset shell: that is a valid final target but
+    can violate the cage Jacobian barrier.  This closed shell is only an
+    initialization domain; the final boundary is refined to the strictly
+    in-subject shell below.
+    """
+    return _closed_solver_shell(vertices, faces, resolution=180, inward_margin_m=0.0)
+
+
+def _write_obj(path: Path, vertices: np.ndarray, faces: np.ndarray) -> None:
+    """Write a tiny deterministic OBJ for Stage-1 inspection."""
+    with path.open("w", encoding="utf-8") as stream:
+        for point in np.asarray(vertices, dtype=np.float64):
+            stream.write(f"v {point[0]:.9g} {point[1]:.9g} {point[2]:.9g}\n")
+        for triangle in np.asarray(faces, dtype=np.int64):
+            stream.write(
+                f"f {int(triangle[0]) + 1} {int(triangle[1]) + 1} {int(triangle[2]) + 1}\n"
+            )
+
+
+def _export_stage1_debug(
+    directory: Path,
+    *,
+    body_vertices: np.ndarray,
+    body_faces: np.ndarray,
+    shell_vertices: np.ndarray,
+    shell_faces: np.ndarray,
+    source_skin: np.ndarray,
+    source_skin_faces: np.ndarray,
+    stage1_skin: np.ndarray,
+    stage1_skin_faces: np.ndarray,
+    stage1_cage: np.ndarray,
+    cage_faces: np.ndarray,
+    stage1_anatomy: np.ndarray,
+    report: dict[str, Any],
+) -> None:
+    """Export the actual pre-bone-fit field, not merely semantic point targets."""
+    directory.mkdir(parents=True, exist_ok=True)
+    _write_obj(directory / "target_body.obj", body_vertices, body_faces)
+    _write_obj(directory / "target_solver_shell.obj", shell_vertices, shell_faces)
+    _write_obj(directory / "source_skin_glass.obj", source_skin, source_skin_faces)
+    _write_obj(directory / "stage1_skin_glass.obj", stage1_skin, stage1_skin_faces)
+    _write_obj(directory / "stage1_cage_boundary.obj", stage1_cage, cage_faces)
+    np.savez_compressed(
+        directory / "stage1_anatomy.npz",
+        vertices=np.asarray(stage1_anatomy, dtype=np.float32),
+    )
+    (directory / "stage1_report.json").write_text(
+        json.dumps(report, indent=2, sort_keys=True), encoding="utf-8"
+    )
+
+    # Matplotlib is intentionally diagnostic-only.  The opaque target body and
+    # the deformed Skin_Glass are both rendered as triangle meshes so a point
+    # cloud cannot hide a cross-face/foldover error.
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    figure = plt.figure(figsize=(15, 5))
+    views = ((20, -90, "front"), (12, 0, "side"), (72, -35, "top"))
+    all_points = np.vstack((body_vertices, stage1_skin))
+    lower = np.min(all_points, axis=0)
+    upper = np.max(all_points, axis=0)
+    center = 0.5 * (lower + upper)
+    radius = float(np.max(upper - lower) * 0.55)
+    for index, (elevation, azimuth, title) in enumerate(views, start=1):
+        axis = figure.add_subplot(1, 3, index, projection="3d")
+        axis.plot_trisurf(
+            body_vertices[:, 0], body_vertices[:, 1], body_vertices[:, 2],
+            triangles=body_faces, color="#f0a060", alpha=0.22,
+            linewidth=0.0, shade=False,
+        )
+        axis.plot_trisurf(
+            stage1_skin[:, 0], stage1_skin[:, 1], stage1_skin[:, 2],
+            triangles=stage1_skin_faces, color="#1565c0", alpha=0.36,
+            linewidth=0.0, shade=False,
+        )
+        axis.set_xlim(center[0] - radius, center[0] + radius)
+        axis.set_ylim(center[1] - radius, center[1] + radius)
+        axis.set_zlim(center[2] - radius, center[2] + radius)
+        axis.set_box_aspect((1, 1, 1))
+        axis.view_init(elev=elevation, azim=azimuth)
+        axis.set_title(title)
+        axis.set_axis_off()
+    figure.tight_layout()
+    figure.savefig(directory / "stage1_skin_overlay.png", dpi=180)
+    plt.close(figure)
 
 
 def _build_source_cage(
@@ -532,11 +440,12 @@ def _topology_preserving_cage_registration(
     target_faces: np.ndarray,
     *,
     fixed_target: np.ndarray | None = None,
+    initial_boundary: np.ndarray | None = None,
 ) -> tuple[np.ndarray, dict[str, float | int]]:
     """Fit the closed cage and reject no-op or low-quality registrations."""
     import igl
     from scipy.sparse import coo_matrix, eye
-    from scipy.sparse.linalg import factorized
+    from scipy.sparse.linalg import factorized, splu
 
     original = np.asarray(nodes, dtype=np.float64)
     elements = np.asarray(elements, dtype=np.int64)
@@ -587,15 +496,44 @@ def _topology_preserving_cage_registration(
                 (100000.0, 10),
                 (30000.0, 12),
                 (10000.0, 12),
+                (3000.0, 10),
+                (1000.0, 10),
+                (300.0, 12),
             )
         )
     )
     differential = smoothness @ source
-    registered = source.copy()
+    registered = (
+        source.copy()
+        if initial_boundary is None
+        else np.asarray(initial_boundary, dtype=np.float64).reshape(len(source), 3).copy()
+    )
     base_tet = original[elements]
     base_det = np.linalg.det(base_tet[:, 1:] - base_tet[:, :1])
     if np.any(~np.isfinite(base_det)) or np.any(np.abs(base_det) <= 1.0e-18):
         raise RuntimeError("source volume cage contains a degenerate tetrahedron")
+    if initial_boundary is not None:
+        initial_field = _harmonic_step(original, elements, boundary, registered - source)
+        initial_ratio = np.linalg.det(
+            (original + initial_field)[elements][:, 1:]
+            - (original + initial_field)[elements][:, :1]
+        ) / base_det
+        if np.any(~np.isfinite(initial_ratio) | (initial_ratio < _MIN_JACOBIAN_RATIO)):
+            raise RuntimeError("initial Stage-1 boundary is not Jacobian-safe")
+    interior = np.setdiff1d(np.arange(len(original), dtype=np.int64), boundary)
+    stiffness = _tet_stiffness(original, elements)
+    harmonic_solver = None if not len(interior) else splu(
+        stiffness[interior][:, interior].tocsc()
+    )
+
+    def solve_original_harmonic(boundary_values: np.ndarray) -> np.ndarray:
+        field = np.zeros_like(original)
+        field[boundary] = boundary_values
+        if harmonic_solver is not None:
+            field[interior] = harmonic_solver.solve(
+                np.asarray(-(stiffness[interior][:, boundary] @ boundary_values), dtype=np.float64)
+            )
+        return field
     # Surface progress is measured against the actual SMPL-X shell even when
     # a semantic correspondence is present.  The latter is a separate
     # Dirichlet objective and cannot be compared numerically to point-to-shell
@@ -625,10 +563,15 @@ def _topology_preserving_cage_registration(
             proposal = np.column_stack([solve(rhs[:, axis]) for axis in range(3)])
             proposal[locked] = registered[locked]
             accepted = False
-            for _barrier_iteration in range(12):
-                proposal_field = _harmonic_step(
-                    original, elements, boundary, proposal - source
-                )
+            # A constrained proposal can be valid after a short continuous
+            # step even when its full update flattens a thin tetrahedron.  The
+            # former lock-only behaviour rejected the entire registration at
+            # the first such node.  Backtracking changes only the boundary
+            # step size; the applied field remains one harmonic solve.
+            step_fraction = 1.0
+            for _barrier_iteration in range(16):
+                trial_boundary = registered + step_fraction * (proposal - registered)
+                proposal_field = solve_original_harmonic(trial_boundary - source)
                 trial = original + proposal_field
                 trial_tet = trial[elements]
                 ratio = np.linalg.det(trial_tet[:, 1:] - trial_tet[:, :1]) / base_det
@@ -638,15 +581,24 @@ def _topology_preserving_cage_registration(
                     (~np.isfinite(ratio)) | (ratio <= 0.0) | (ratio < _MIN_JACOBIAN_RATIO)
                 )
                 if not len(bad):
+                    proposal = trial_boundary
                     accepted = True
                     break
+                # Prefer a smaller globally continuous update before pinning
+                # vertices.  Locking first makes a local thin tet freeze an
+                # entire limb's correspondence on the first iteration.
+                if step_fraction > 1.0 / 2048.0:
+                    step_fraction *= 0.5
+                    continue
                 bad_boundary = local_index[np.unique(elements[bad])]
                 bad_boundary = bad_boundary[bad_boundary >= 0]
                 newly_locked = bad_boundary[~locked[bad_boundary]]
-                if not len(newly_locked):
-                    break
-                locked[newly_locked] = True
-                proposal[locked] = registered[locked]
+                if len(newly_locked):
+                    locked[newly_locked] = True
+                    proposal[locked] = registered[locked]
+                    step_fraction = 1.0
+                    continue
+                break
             if not accepted:
                 break
             registered = proposal
@@ -729,69 +681,6 @@ def _topology_preserving_cage_registration(
         "fixed_semantic_correspondence": bool(fixed is not None),
         "fixed_correspondence_rms_m": fixed_final_rms,
         "fixed_correspondence_max_m": fixed_final_max,
-    }
-
-
-def _fit_outer_dirichlet_boundary_inside_target(
-    registered: np.ndarray,
-    *,
-    boundary: np.ndarray,
-    boundary_faces: np.ndarray,
-    target_vertices: np.ndarray,
-    target_faces: np.ndarray,
-) -> tuple[np.ndarray, dict[str, Any]]:
-    """Make the *volume boundary* an interior SMPL-X Dirichlet surface.
-
-    This is deliberately not an anatomy SDF repair.  Only cage boundary nodes
-    are adjusted; every internal point is subsequently recomputed by the same
-    harmonic field.
-    """
-    from .containment import signed_distance, _screened_laplacian_displacement
-
-    result = np.asarray(registered, dtype=np.float64).copy()
-    boundary = np.asarray(boundary, dtype=np.int64)
-    local_index = np.full(int(np.max(boundary)) + 1, -1, dtype=np.int64)
-    local_index[boundary] = np.arange(len(boundary), dtype=np.int64)
-    local_faces = local_index[np.asarray(boundary_faces, dtype=np.int64)]
-    if np.any(local_faces < 0):
-        raise RuntimeError("outer Dirichlet faces reference a non-boundary node")
-    margin = 0.0005
-    initial_signed, _closest, _normals = signed_distance(
-        result, target_vertices, target_faces
-    )
-    for _iteration in range(4):
-        values, closest, normals = signed_distance(
-            result, target_vertices, target_faces
-        )
-        outside = values > -margin
-        if not np.any(outside):
-            break
-        desired = np.zeros_like(result)
-        desired[outside] = (
-            closest[outside] - margin * normals[outside] - result[outside]
-        )
-        displacement = _screened_laplacian_displacement(
-            desired,
-            outside,
-            local_faces,
-            data_weight=250.0,
-            zero_weight=40.0,
-            smooth_weight=2.0,
-        )
-        result += displacement
-        # The constrained boundary nodes are exact; diffusion only prevents a
-        # fold at their immediate neighbours.
-        result[outside] = closest[outside] - margin * normals[outside]
-    final_signed, _closest, _normals = signed_distance(
-        result, target_vertices, target_faces
-    )
-    return result, {
-        "backend": "semantic_outer_dirichlet_inside_v1",
-        "initial_outside_count": int(np.count_nonzero(initial_signed > 0.0)),
-        "final_outside_count": int(np.count_nonzero(final_signed > 0.0)),
-        "minimum_depth_m": float(-np.max(final_signed)),
-        "margin_m": margin,
-        "anatomy_vertices_projected": 0,
     }
 
 
@@ -1230,34 +1119,44 @@ def _raise_outside_query_error(
 
 
 def apply_source_skin_volume_registration(
-    asset: AnatomyRiggedAsset, *, canonical_dir: Path | str
+    asset: AnatomyRiggedAsset,
+    *,
+    canonical_dir: Path | str,
+    debug_stage1_dir: Path | str | None = None,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     if asset.source_skin_vertices is None or asset.source_skin_faces is None:
         raise RuntimeError("source template lacks Skin_Glass; force source template rebake")
-    if asset.source_skin_lbs_weights is None:
-        raise RuntimeError(
-            "source template lacks Skin_Glass semantic weights; use --force-source-rebake"
-        )
-
     root = Path(canonical_dir)
-    target_vertices, target_faces = _load_obj(root / "smpl_canonical_tpose_neutral.obj")
+    target_vertices_full, target_faces_full = _load_obj(
+        root / "smpl_canonical_tpose.obj"
+    )
     skin_vertices = np.asarray(asset.source_skin_vertices, dtype=np.float64)
     skin_faces = np.asarray(asset.source_skin_faces, dtype=np.int32)
-    skin_weights = np.asarray(asset.source_skin_lbs_weights, dtype=np.float64)
     target_weight_data = np.load(root / "smpl_canonical_weights.npz", allow_pickle=True)
-    target_weights = np.asarray(target_weight_data["lbs_weights"], dtype=np.float64)
+    target_weights_full = np.asarray(target_weight_data["lbs_weights"], dtype=np.float64)
     target_joint_names = [str(value) for value in target_weight_data["joint_names"].tolist()]
     if target_joint_names != list(asset.joint_names):
         raise ValueError("Skin_Glass and SMPL-X joint semantic order does not match")
+    target_vertices, target_faces, target_weights, body_report = _outer_body_component(
+        target_vertices_full, target_faces_full, target_weights_full
+    )
+    coarse_shell_vertices, coarse_shell_faces, coarse_shell_pitch = _coarse_closed_solver_shell(
+        target_vertices, target_faces
+    )
+    shell_vertices, shell_faces, shell_pitch = _closed_solver_shell(
+        target_vertices, target_faces
+    )
     query = np.asarray(asset.vertices_rest, dtype=np.float64)
     protected = bone_material_mask(asset) | cranial_material_mask(asset)
-    # The authored Skin_Glass voxel cage is the source material domain.  It is
-    # the only cage proven to contain every original anatomy vertex; SMPL-X is
-    # its fixed semantic boundary target, not a replacement source topology.
+    # Skin_Glass is the only authored closed source domain that contains all
+    # anatomy vertices.  Do not replace it with an expanded SMPL shell: that
+    # loses hands/feet and invalidates harmonic sampling.  The old ARAP skin
+    # map is intentionally not used here, because its output can drift away
+    # from the target surface despite preserving source-triangle orientation.
     cage = _build_source_cage(
         skin_vertices,
         skin_faces,
-        root / "source_skin_volume_cage_v7_surface_only.npz",
+        root / "source_skin_volume_cage_v18_subject_shell_full_domain.npz",
         dilation_iterations=1,
     )
     nodes = np.asarray(cage["nodes"], dtype=np.float64)
@@ -1274,45 +1173,118 @@ def apply_source_skin_volume_registration(
         cage=cage,
         context="source Skin_Glass domain",
     )
-    mapped_skin, semantic_map_report = _fixed_semantic_skin_map(
-        skin_vertices,
-        skin_faces,
-        skin_weights,
-        target_vertices,
-        target_faces,
-        target_weights,
-        joint_names=list(asset.joint_names),
-        cache_path=root / "source_skin_semantic_map_v1.npz",
-    )
-    fixed_boundary = _barycentric_surface_map(
-        nodes[boundary], skin_vertices, skin_faces, mapped_skin
-    )
-    registered_boundary, surface_report = _topology_preserving_cage_registration(
+    registered_boundary, coarse_surface_report = _topology_preserving_cage_registration(
         nodes,
         elements,
         boundary,
         np.asarray(cage["boundary_faces"], dtype=np.int32),
-        target_vertices,
-        target_faces,
-        fixed_target=fixed_boundary,
+        coarse_shell_vertices,
+        coarse_shell_faces,
     )
-    field, deformation_report = _incremental_harmonic_field(
-        nodes,
-        elements,
-        boundary,
-        registered_boundary - nodes[boundary],
+    # Refine on the *same cage* towards a strictly in-subject target.  This is
+    # a boundary-only homotopy, followed by one harmonic volume solve below;
+    # it never projects or clamps anatomy vertices with an SDF.
+    import igl
+
+    coarse_boundary = registered_boundary.copy()
+    _squared, _face_index, fine_correspondence = igl.point_mesh_squared_distance(
+        registered_boundary, shell_vertices, shell_faces
     )
-    outer_boundary_report = {
-        "backend": "skin_glass_fixed_semantic_dirichlet",
-        "anatomy_vertices_projected": 0,
-        "fixed_correspondence_rms_m": float(
-            surface_report["fixed_correspondence_rms_m"]
-        ),
-        "fixed_correspondence_max_m": float(
-            surface_report["fixed_correspondence_max_m"]
-        ),
+    phase_reports: list[dict[str, Any]] = []
+    achieved_fraction = 0.0
+    for fraction in _FINE_SHELL_HOMOTOPY:
+        phase_target = coarse_boundary + float(fraction) * (
+            np.asarray(fine_correspondence, dtype=np.float64) - coarse_boundary
+        )
+        try:
+            registered_boundary, phase_report = _topology_preserving_cage_registration(
+                nodes,
+                elements,
+                boundary,
+                np.asarray(cage["boundary_faces"], dtype=np.int32),
+                shell_vertices,
+                shell_faces,
+                fixed_target=phase_target,
+                initial_boundary=registered_boundary,
+            )
+        except RuntimeError as exc:
+            phase_reports.append({
+                "fine_shell_fraction": float(fraction),
+                "accepted": False,
+                "reason": str(exc),
+            })
+            break
+        phase_report["fine_shell_fraction"] = float(fraction)
+        phase_report["accepted"] = True
+        phase_reports.append(phase_report)
+        achieved_fraction = float(fraction)
+    surface_report = {
+        "coarse_initialization": coarse_surface_report,
+        "fine_inward_homotopy": phase_reports,
+        "final_fine_shell_fraction": achieved_fraction,
     }
-    delta, outside_count, outside_mask = _sample_field(query, cage=cage, field=field)
+    boundary_delta = registered_boundary - nodes[boundary]
+    # Preserve the actual Stage-1 boundary inspection even if the subsequent
+    # volume solve correctly rejects an inversion.  This is intentionally
+    # before any field sampling: it answers whether the skin correspondence,
+    # rather than a later bone/soft-tissue step, is the failing condition.
+    if debug_stage1_dir is not None:
+        debug_local_index = np.full(len(nodes), -1, dtype=np.int64)
+        debug_local_index[boundary] = np.arange(len(boundary), dtype=np.int64)
+        debug_cage_faces = debug_local_index[
+            np.asarray(cage["boundary_faces"], dtype=np.int64)
+        ]
+        if np.any(debug_cage_faces < 0):
+            raise RuntimeError("boundary faces reference a non-boundary cage node")
+        _export_stage1_debug(
+            Path(debug_stage1_dir),
+            body_vertices=target_vertices,
+            body_faces=target_faces,
+            shell_vertices=shell_vertices,
+            shell_faces=shell_faces,
+            source_skin=skin_vertices,
+            source_skin_faces=skin_faces,
+            stage1_skin=skin_vertices,
+            stage1_skin_faces=target_faces,
+            stage1_cage=registered_boundary,
+            cage_faces=debug_cage_faces,
+            stage1_anatomy=query,
+            report={
+                "state": "boundary_registered_before_volume_solve",
+                "surface_correspondence": {
+                    "backend": "closed_subject_shell_jacobian_safe",
+                    "target_surface": "smpl_canonical_tpose.obj",
+                },
+                "cage_registration": surface_report,
+            },
+        )
+    field1, harmonic_report = _incremental_harmonic_field(
+        nodes, elements, boundary, boundary_delta
+    )
+    deformation_report = {
+        "backend": "stage1_outer_skin_dirichlet",
+        **harmonic_report,
+    }
+    # This is Anatomy Transfer Stage 1: one outer-skin Dirichlet solve.  Every
+    # anatomy vertex, including bones and cranium, receives this initial field.
+    # Bone hardening and the later skin+bone multi-boundary solve are Stage 2;
+    # neither belongs in this function or in a Stage-1 publication.
+    deformed = np.asarray(nodes, dtype=np.float64) + field1
+    local_index = np.full(len(nodes), -1, dtype=np.int64)
+    local_index[boundary] = np.arange(len(boundary), dtype=np.int64)
+    local_boundary_faces = local_index[
+        np.asarray(cage["boundary_faces"], dtype=np.int64)
+    ]
+    if np.any(local_boundary_faces < 0):
+        raise RuntimeError("boundary faces reference a non-boundary cage node")
+    outer_boundary_report = {
+        "backend": "stage1_subject_surface_dirichlet_harmonic_v2",
+        "anatomy_vertices_projected": 0,
+        "coarse_surface_rms_m": float(coarse_surface_report["final_surface_rms_m"]),
+        "coarse_surface_max_m": float(coarse_surface_report["final_surface_max_m"]),
+        "semantic_harmonic": deformation_report,
+    }
+    delta, outside_count, outside_mask = _sample_field(query, cage=cage, field=field1)
     _raise_outside_query_error(
         asset,
         query=query,
@@ -1321,16 +1293,9 @@ def apply_source_skin_volume_registration(
         cage=cage,
         context="registered source Skin_Glass domain",
     )
-    mapped = _transport_sampled_material(
-        query,
-        delta,
-        protected=protected,
-        outside=outside_mask,
-    )
+    mapped = query + delta
     skin_delta, _skin_outside_count, skin_outside = _sample_field(
-        skin_vertices,
-        cage=cage,
-        field=field,
+        skin_vertices, cage=cage, field=field1,
     )
     if np.any(skin_outside):
         raise RuntimeError(
@@ -1356,14 +1321,14 @@ def apply_source_skin_volume_registration(
         raise RuntimeError("source skin registration produced non-finite soft displacement")
     if (
         soft_norm.size
-        and float(surface_report["boundary_displacement_max_m"]) > _MIN_REGISTRATION_PROGRESS_M
+        and float(coarse_surface_report["boundary_displacement_max_m"]) > _MIN_REGISTRATION_PROGRESS_M
         and soft_max < _MIN_REGISTRATION_PROGRESS_M
     ):
         raise RuntimeError(
             "source skin registration moved the boundary but produced no measurable soft displacement"
         )
     source_volume = np.linalg.det(nodes[elements][:, 1:] - nodes[elements][:, :1])
-    target_nodes = nodes + field
+    target_nodes = nodes + field1
     target_volume = np.linalg.det(target_nodes[elements][:, 1:] - target_nodes[elements][:, :1])
     inverted = int(np.count_nonzero(source_volume * target_volume <= 0.0))
     if inverted:
@@ -1373,13 +1338,90 @@ def apply_source_skin_volume_registration(
         raise RuntimeError(
             f"source skin harmonic field is near-degenerate: min Jacobian ratio {minimum_jacobian_ratio:.6f}"
         )
+    from .containment import signed_distance
+
+    shell_signed, _target_closest, _target_normals = signed_distance(
+        mapped, shell_vertices, shell_faces
+    )
+    shell_outside = shell_signed > 0.0
+    target_signed, _subject_closest, _subject_normals = signed_distance(
+        mapped, target_vertices, target_faces
+    )
+    subject_outside = target_signed > 0.0
+    soft_gate = np.zeros(len(mapped), dtype=bool)
+    for (start, stop), tissue in zip(asset.source_vertex_ranges, asset.source_tissues):
+        if str(tissue).lower() in {"vessel", "nerve", "organ"}:
+            soft_gate[int(start) : int(stop)] = True
+    gated_outside = subject_outside & soft_gate
+    gated_fraction = float(np.count_nonzero(gated_outside) / max(np.count_nonzero(soft_gate), 1))
+    gated_max = float(np.max(target_signed[gated_outside])) if np.any(gated_outside) else 0.0
+    stage1_report = {
+        "target_body_component": body_report,
+        "solver_shell": {
+            "vertices": int(len(shell_vertices)),
+            "faces": int(len(shell_faces)),
+            "voxel_pitch_m": float(shell_pitch),
+            "coarse_voxel_pitch_m": float(coarse_shell_pitch),
+        },
+        "actual_stage1_field": {
+            "all_material_vertices": int(len(mapped)),
+            "solver_shell_outside_count": int(np.count_nonzero(shell_outside)),
+            "solver_shell_outside_soft_count": int(np.count_nonzero(shell_outside & soft_gate)),
+            "subject_outside_soft_count": int(np.count_nonzero(gated_outside)),
+            "subject_outside_soft_fraction": gated_fraction,
+            "subject_outside_soft_max_m": gated_max,
+            "skin_sample_outside_source_cage": int(np.count_nonzero(skin_outside)),
+        },
+    }
+    if debug_stage1_dir is not None:
+        _export_stage1_debug(
+            Path(debug_stage1_dir),
+            body_vertices=target_vertices,
+            body_faces=target_faces,
+            shell_vertices=shell_vertices,
+            shell_faces=shell_faces,
+            source_skin=skin_vertices,
+            source_skin_faces=skin_faces,
+            stage1_skin=target_vertices,
+            stage1_skin_faces=target_faces,
+            stage1_cage=deformed[boundary],
+            cage_faces=local_boundary_faces,
+            stage1_anatomy=mapped,
+            report={
+                "surface_correspondence": {
+                    "backend": "closed_subject_shell_jacobian_safe",
+                    "target_surface": "smpl_canonical_tpose.obj",
+                },
+                "cage_registration": surface_report,
+                "harmonic": deformation_report,
+                **stage1_report,
+            },
+        )
+    if gated_fraction > 0.01 or gated_max > 0.010:
+        raise RuntimeError(
+            "Stage-1 soft containment gate failed against subject SMPL-X: "
+            f"outside_fraction={gated_fraction:.4f}/0.0100, "
+            f"max={gated_max * 1000.0:.2f}/10.00 mm"
+        )
+
     metadata = dict(asset.metadata or {})
-    metadata["source_skin_volume_registration"] = "topology_preserving_harmonic_v7"
+    metadata.update(
+        {
+            "source_skin_volume_registration": "stage1_subject_surface_dirichlet_harmonic_v3",
+            "stage1_preserves_blender_source_binding": True,
+            "stage1_fine_shell_homotopy": list(_FINE_SHELL_HOMOTOPY),
+        }
+    )
     result = type(asset)(
-        **{**asset.__dict__, "vertices_rest": mapped.astype(np.float32), "metadata": metadata}
+        **{
+            **asset.__dict__,
+            "vertices_rest": mapped.astype(np.float32),
+            "harmonic_reference_vertices": mapped.astype(np.float32),
+            "metadata": metadata,
+        }
     )
     return result, {
-        "backend": "topology_preserving_harmonic_v7",
+        "backend": "stage1_subject_surface_dirichlet_harmonic_v3",
         "cage_nodes": int(len(nodes)),
         "cage_tetrahedra": int(len(elements)),
         "cage_voxel_pitch_m": float(np.asarray(cage["voxel_pitch"]).reshape(-1)[0]),
@@ -1395,12 +1437,16 @@ def apply_source_skin_volume_registration(
         "soft_displacement_rms_m": soft_rms,
         "soft_displacement_max_m": soft_max,
         "protected_material_vertices": int(np.count_nonzero(protected)),
-        "anatomy_transport": "soft_volume_field_applied_rigid_material_preserved",
+        "anatomy_transport": "all_material_volume_field_applied_before_bone_fit",
         "section_residual_regularizer": section_report,
         "soft_edge_strain_regularizer": strain_reports,
         "surface_barrier_regularizer": barrier_reports,
-        "surface_correspondence": semantic_map_report,
+        "surface_correspondence": {
+            "backend": "closed_subject_shell_jacobian_safe",
+            "target_vertices": int(len(target_vertices)),
+            "target_surface": "smpl_canonical_tpose.obj",
+        },
         "outer_dirichlet_boundary": outer_boundary_report,
-        **deformation_report,
+        **stage1_report,
         **surface_report,
     }

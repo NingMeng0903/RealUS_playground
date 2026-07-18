@@ -178,6 +178,28 @@ def _merge_fast_extremity_donor(
         *(f"t{index}" for index in range(1, 13)),
         *(f"l{index}" for index in range(1, 6)),
     }
+
+    def _is_axial_vertebra_mesh(mesh_lower: str) -> bool:
+        # Exact c1..c7 misses authored names like C1_Atlas / C2_Axis and
+        # splits the cervical chain across donors.  Accept cN / cN_* / atlas / axis.
+        if mesh_lower in vertebra_mesh_names:
+            return True
+        if "atlas" in mesh_lower or "axis" in mesh_lower:
+            return True
+        for index in range(1, 8):
+            token = f"c{index}"
+            if mesh_lower == token or mesh_lower.startswith(f"{token}_"):
+                return True
+        for index in range(1, 13):
+            token = f"t{index}"
+            if mesh_lower == token or mesh_lower.startswith(f"{token}_"):
+                return True
+        for index in range(1, 6):
+            token = f"l{index}"
+            if mesh_lower == token or mesh_lower.startswith(f"{token}_"):
+                return True
+        return False
+
     axial_vertices = np.zeros(len(asset.vertices_rest), dtype=bool)
     for (start, stop), mesh_name, tissue in zip(
         np.asarray(asset.source_vertex_ranges, dtype=np.int64),
@@ -188,7 +210,7 @@ def _merge_fast_extremity_donor(
         mesh_lower = str(mesh_name).lower()
         if str(tissue).lower() == "bone" and (
             any(token in mesh_lower for token in axial_tokens)
-            or mesh_lower in vertebra_mesh_names
+            or _is_axial_vertebra_mesh(mesh_lower)
         ):
             axial_vertices[start_i:stop_i] = True
 
@@ -743,6 +765,136 @@ def _merge_fast_extremity_donor(
     }
 
 
+def _apply_stage1_harmonic_soft_reference(
+    asset: Any,
+    hand_donor_path: Path,
+    *,
+    canonical_dir: Path | None = None,
+) -> tuple[Any, dict[str, Any]]:
+    """Stage-1 checkpoint: publish the verified 1b pure-harmonic geometry.
+
+    Per Anatomy Transfer / the fixed-semantic Skin_Glass notes: Stage-1 soft
+    tissue is the single outer-Dirichlet harmonic result (1b66307).  Bones are
+    Dirichlet anchors for that soft field, not passengers of an extrapolated
+    cage sample.  Stage-2 material-fit + multi-boundary jelly moves bones and
+    re-solves soft around them.  Do not rebuild from registration_reference
+    with cage extrapolation — that destroyed 1b vessel containment.
+    """
+    del canonical_dir  # reserved for future in-cage rebake only
+    path = Path(hand_donor_path).expanduser().resolve()
+    with np.load(path, allow_pickle=True) as data:
+        required = {
+            "vertices_rest",
+            "faces",
+            "source_mesh_names",
+            "source_vertex_ranges",
+            "source_bone_names",
+            "source_rest_global",
+            "source_bone_head",
+            "source_bone_tail",
+        }
+        missing = sorted(required - set(data.files))
+        if missing:
+            raise ValueError(f"stage1 harmonic donor missing arrays: {missing}")
+        if not np.array_equal(np.asarray(data["faces"]), asset.faces):
+            raise ValueError("stage1 harmonic donor faces do not match")
+        if [str(v) for v in data["source_mesh_names"].tolist()] != list(
+            asset.source_mesh_names
+        ) or not np.array_equal(
+            np.asarray(data["source_vertex_ranges"]), asset.source_vertex_ranges
+        ):
+            raise ValueError("stage1 harmonic donor mesh layout does not match")
+        if [str(v) for v in data["source_bone_names"].tolist()] != list(
+            asset.source_bone_names
+        ):
+            raise ValueError("stage1 harmonic donor bone layout does not match")
+        reference = np.asarray(data["vertices_rest"], dtype=np.float64)
+        bone_global = np.asarray(data["source_rest_global"], dtype=np.float64)
+        bone_head = np.asarray(data["source_bone_head"], dtype=np.float64)
+        bone_tail = np.asarray(data["source_bone_tail"], dtype=np.float64)
+        source_inverse = (
+            np.asarray(data["source_inverse_bind"], dtype=np.float64)
+            if "source_inverse_bind" in data.files
+            else np.linalg.inv(bone_global)
+        )
+
+    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    bone_local = np.empty_like(bone_global)
+    for bone, parent in enumerate(parents):
+        bone_local[bone] = (
+            bone_global[bone]
+            if int(parent) < 0
+            else np.linalg.inv(bone_global[int(parent)]) @ bone_global[bone]
+        )
+
+    bone_count = 0
+    soft_count = 0
+    for (start, stop), tissue in zip(
+        np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+        asset.source_tissues,
+    ):
+        n = int(stop) - int(start)
+        if str(tissue).lower() == "bone":
+            bone_count += 1
+        else:
+            soft_count += n
+
+    metadata = dict(asset.metadata or {})
+    metadata.update(
+        {
+            "checkpoint_publish": "stage1_harmonic",
+            "stage1_harmonic_donor": str(path),
+            "stage1_mode": "wholesale_1b_pure_harmonic",
+            "soft_surface_sdf": "disabled",
+            "disable_soft_follow": True,
+        }
+    )
+    result = type(asset)(
+        **{
+            **asset.__dict__,
+            "vertices_rest": reference.astype(np.float32),
+            "harmonic_reference_vertices": reference.astype(np.float32),
+            "source_rest_global": bone_global.astype(np.float32),
+            "source_rest_local": bone_local.astype(np.float32),
+            "source_inverse_bind": source_inverse.astype(np.float32),
+            "source_bone_head": bone_head.astype(np.float32),
+            "source_bone_tail": bone_tail.astype(np.float32),
+            "target_rest_global": bone_global.astype(np.float32),
+            "target_rest_local": bone_local.astype(np.float32),
+            "target_inverse_bind": source_inverse.astype(np.float32),
+            "target_bone_head": bone_head.astype(np.float32),
+            "target_bone_tail": bone_tail.astype(np.float32),
+            "harmonic_bone_head": bone_head.astype(np.float32),
+            "harmonic_bone_mid": (0.5 * (bone_head + bone_tail)).astype(np.float32),
+            "harmonic_bone_tail": bone_tail.astype(np.float32),
+            # Never keep schema-6 shell pose_cache (would redraw fe99 bake).
+            "pose_cache_vertices": None,
+            "pose_cache_hash": "",
+            "soft_follow_driver_indices": None,
+            "soft_follow_driver_weights": None,
+            "soft_follow_stations": None,
+            "soft_follow_strength": None,
+            "soft_component_ids": None,
+            "source_mesh_follow_modes": None,
+            "metadata": metadata,
+        }
+    )
+    result = with_source_driver_coupling(result)
+    result.validate()
+    return result, {
+        "backend": "stage1_wholesale_1b_pure_harmonic",
+        "donor_path": str(path),
+        "soft_vertex_count": int(soft_count),
+        "bone_mesh_count": int(bone_count),
+        "kept_material_fit_bones": False,
+        "note": (
+            "Stage-1 is the 1b66307 pure-harmonic soft+rig wholesale into a "
+            "schema-6 shell. Soft containment is the Skin_Glass Dirichlet field "
+            "property; bone material-fit / jelly is Stage-2."
+        ),
+    }
+
+
 def _load_valid_cache(
     path: Path,
     *,
@@ -994,9 +1146,36 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--force-source-rebake", action="store_true", help="Ignore source/shape retarget caches.")
     p.add_argument("--profile-first-frame", action="store_true", help="Write source/shape/pose/publish timing report.")
     p.add_argument(
+        "--stage1-harmonic-only",
+        action="store_true",
+        help=(
+            "Publish only the verified Skin_Glass→SMPL-X outer-Dirichlet "
+            "harmonic result. Skips articulated/material fit, beta jelly, "
+            "donors, SDF repair and all Stage-2 processing."
+        ),
+    )
+    p.add_argument(
+        "--stage1-debug-dir",
+        type=Path,
+        default=None,
+        help="Write actual Stage-1 skin/cage/anatomy overlays and containment data.",
+    )
+    p.add_argument(
         "--refresh-diagnostics",
         action="store_true",
         help="Run slow mesh/SDF diagnostics even when source and shape caches hit.",
+    )
+    p.add_argument(
+        "--checkpoint-publish",
+        type=str,
+        choices=("stage1_harmonic", "post_merge_bones", "final"),
+        default="final",
+        help=(
+            "Stop the fast pipeline at a publishable intermediate: "
+            "stage1_harmonic skips donor merge and jelly field; "
+            "post_merge_bones runs donor merge but skips material_bounded jelly; "
+            "final runs the full fast path."
+        ),
     )
     p.add_argument(
         "--fast-publish",
@@ -1143,15 +1322,46 @@ def main() -> int:
     started_at = time.perf_counter()
     profile: dict[str, float] = {}
     cfg = _load_config(args.config)
+    if args.stage1_harmonic_only:
+        if any(
+            value is not None
+            for value in (
+                args.fast_extremity_donor,
+                args.fast_hand_donor,
+                args.fast_axial_donor,
+            )
+        ):
+            raise ValueError("--stage1-harmonic-only cannot be combined with donor assets")
+        if str(args.checkpoint_publish) != "final":
+            raise ValueError("--stage1-harmonic-only cannot be combined with --checkpoint-publish")
+        # Reuse the conservative publishing branch below, but never skip the
+        # source harmonic registration itself.
+        args.fast_publish = True
     if args.fast_publish:
         cfg = dict(cfg)
         cfg["fast_publish"] = True
     if args.fast_extremity_donor is not None and not args.fast_publish:
         raise ValueError("--fast-extremity-donor requires --fast-publish")
-    if args.fast_hand_donor is not None and args.fast_extremity_donor is None:
+    checkpoint = str(getattr(args, "checkpoint_publish", "final") or "final")
+    if checkpoint != "final" and not args.fast_publish:
+        raise ValueError("--checkpoint-publish requires --fast-publish")
+    if checkpoint == "stage1_harmonic":
+        raise ValueError(
+            "stage1_harmonic no longer accepts a historical donor: run "
+            "--stage1-harmonic-only to solve and validate the current subject"
+        )
+    if (
+        args.fast_hand_donor is not None
+        and args.fast_extremity_donor is None
+        and checkpoint != "stage1_harmonic"
+    ):
         raise ValueError("--fast-hand-donor requires --fast-extremity-donor")
     if args.fast_axial_donor is not None and args.fast_extremity_donor is None:
         raise ValueError("--fast-axial-donor requires --fast-extremity-donor")
+    if checkpoint == "post_merge_bones" and args.fast_extremity_donor is None:
+        raise ValueError(
+            "--checkpoint-publish post_merge_bones requires --fast-extremity-donor"
+        )
     blend = args.blend or Path(str(cfg.get("blend_path", "")))
     if not blend:
         raise ValueError("Missing anatomy blend path; pass --blend or set blend_path in config.")
@@ -1338,7 +1548,7 @@ def main() -> int:
     shape_cache = cache_root / "shape" / f"{shape_key}.npz"
     cached_source = (
         None
-        if args.force_source_rebake
+        if args.force_source_rebake or args.stage1_harmonic_only
         else _load_valid_cache(
             source_cache,
             metadata_key="source_cache_key",
@@ -1347,7 +1557,7 @@ def main() -> int:
     )
     cached_shape = (
         None
-        if args.force_source_rebake
+        if args.force_source_rebake or args.stage1_harmonic_only
         else _load_valid_cache(
             shape_cache,
             metadata_key="shape_cache_key",
@@ -1376,7 +1586,11 @@ def main() -> int:
             return int(result.returncode or 1)
         normalize_rigged_asset_file(output_npz, config=cfg, force=False)
         asset = load_rigged_asset(output_npz, validate=True)
-        if args.fast_publish and args.fast_hand_donor is not None:
+        if (
+            args.fast_publish
+            and args.fast_hand_donor is not None
+            and not args.stage1_harmonic_only
+        ):
             source_skin_report = {
                 "backend": "fast_donor_reference",
                 "skipped": True,
@@ -1384,7 +1598,9 @@ def main() -> int:
             }
         else:
             asset, source_skin_report = apply_source_skin_volume_registration(
-                asset, canonical_dir=args.canonical_dir
+                asset,
+                canonical_dir=args.canonical_dir,
+                debug_stage1_dir=args.stage1_debug_dir,
             )
         if args.fast_publish:
             neutral_articulated_report = {
@@ -1434,7 +1650,7 @@ def main() -> int:
                 neutral_soft_report
             )
         registration_report = {
-            "backend": "source_skin_volume_harmonic_v6",
+            "backend": "source_skin_volume_harmonic_stage1_subject_v2",
             "source_skin_volume": source_skin_report,
             "neutral_articulated_fit": neutral_articulated_report,
         }
@@ -1449,9 +1665,10 @@ def main() -> int:
             "source_cache_key": source_key,
         })
         asset = type(asset)(**{**asset.__dict__, "metadata": source_meta})
-        source_cache.parent.mkdir(parents=True, exist_ok=True)
-        save_rigged_asset(source_cache, asset)
-        logging.info("source_template_v6 stored key=%s", source_key)
+        if not args.stage1_harmonic_only:
+            source_cache.parent.mkdir(parents=True, exist_ok=True)
+            save_rigged_asset(source_cache, asset)
+            logging.info("source_template_v6 stored key=%s", source_key)
     neutral_surface = None
     if not args.fast_publish or args.refresh_diagnostics:
         neutral_surface = load_body_surface(neutral_surface_path)
@@ -1557,10 +1774,23 @@ def main() -> int:
             "shape_cache_key": shape_key,
         })
         asset = type(asset)(**{**asset.__dict__, "metadata": shape_meta})
-        shape_cache.parent.mkdir(parents=True, exist_ok=True)
-        save_rigged_asset(shape_cache, asset)
-        logging.info("subject-shape cache stored shape_hash=%s", shape_hash)
-    if args.fast_extremity_donor is not None:
+        if not args.stage1_harmonic_only:
+            shape_cache.parent.mkdir(parents=True, exist_ok=True)
+            save_rigged_asset(shape_cache, asset)
+            logging.info("subject-shape cache stored shape_hash=%s", shape_hash)
+    if str(getattr(args, "checkpoint_publish", "final")) == "stage1_harmonic":
+        asset, stage1_report = _apply_stage1_harmonic_soft_reference(
+            asset,
+            Path(args.fast_hand_donor).expanduser().resolve(),
+            canonical_dir=Path(args.canonical_dir),
+        )
+        shape_report["checkpoint_publish"] = stage1_report
+        logging.info(
+            "checkpoint stage1_harmonic wholesale soft_vertices=%s donor=%s",
+            stage1_report["soft_vertex_count"],
+            stage1_report["donor_path"],
+        )
+    elif args.fast_extremity_donor is not None:
         donor_path = Path(args.fast_extremity_donor).expanduser().resolve()
         donor_asset = load_rigged_asset(donor_path, validate=True)
         axial_asset = (
@@ -1582,11 +1812,23 @@ def main() -> int:
             ),
             axial_donor=axial_asset,
         )
-        asset, material_volume_report = apply_material_bounded_soft_volume(
-            asset,
-            canonical_dir=Path(args.canonical_dir),
-        )
-        donor_report["material_bounded_soft_volume"] = material_volume_report
+        checkpoint = str(getattr(args, "checkpoint_publish", "final") or "final")
+        if checkpoint == "post_merge_bones":
+            donor_report["material_bounded_soft_volume"] = {
+                "skipped": True,
+                "reason": "checkpoint_publish=post_merge_bones",
+            }
+            donor_report["checkpoint_publish"] = "post_merge_bones"
+            logging.info(
+                "checkpoint post_merge_bones: skipped material_bounded jelly field"
+            )
+        else:
+            asset, material_volume_report = apply_material_bounded_soft_volume(
+                asset,
+                canonical_dir=Path(args.canonical_dir),
+            )
+            donor_report["material_bounded_soft_volume"] = material_volume_report
+            donor_report["checkpoint_publish"] = "final"
         shape_report["fast_extremity_merge"] = {
             **donor_report,
             "donor_path": str(donor_path),

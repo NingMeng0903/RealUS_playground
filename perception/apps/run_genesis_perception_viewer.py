@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Genesis window G — **view** mode: bed + rail robot + SMPL/anatomy (no real robot / no SHM).
+"""Genesis window G — **view** mode: bed + rail + static demo RM75 + SMPL/anatomy.
+
+Does not connect to the real robot or SHM. The arm stays at the authored demo pose.
 
 For **twin** mode (mirror live robot via SHM), use rm75_control::
 
   python apps/joint_admittance_8dof/run_with_twin.py --track-subscribe tcp://127.0.0.1:5598
-
-Two modes only:
-  view  — this script (static/demo robot pose, ZMQ human overlays)
-  twin  — run_with_twin.py (subscribes rm75_state from window A)
 """
 
 from __future__ import annotations
@@ -139,11 +137,6 @@ def main() -> int:
         metavar="0-255",
         help="Orange SMPL-X skin opacity (default 120)",
     )
-    ap.add_argument(
-        "--no-robot",
-        action="store_true",
-        help="Hide RM75 + rail (default: show static arm at demo pose)",
-    )
     ap.add_argument("--backend", choices=("cuda", "cpu"), default="cuda")
     ap.add_argument("--verbose", action="store_true", help="Log ZMQ overlay subscribe details")
     args = ap.parse_args()
@@ -172,7 +165,7 @@ def main() -> int:
         anatomy_subscribe=str(args.anatomy_subscribe),
         anatomy_transparent_alpha=float(args.anatomy_alpha),
         track_mesh_rgba=(250, 122, 31, max(0, min(255, int(args.track_mesh_alpha)))),
-        spawn_robot=not bool(args.no_robot),
+        spawn_robot=True,
         backend=str(args.backend),
     )
 
