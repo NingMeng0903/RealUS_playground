@@ -1358,6 +1358,53 @@ def apply_material_bounded_soft_volume(
     if reference.shape != final.shape:
         raise ValueError("harmonic reference must match final anatomy topology")
 
+    # Blender binding defines the local elastic target: transform each
+    # reference point by its controlling bones, then blend by the authored
+    # weights.  This target is not applied directly; it is mixed with the
+    # multi-boundary volume solution below, so influence decays smoothly toward
+    # the fixed skin instead of shearing at weight seams.
+    weighted_bone_delta: np.ndarray | None = None
+    if (
+        asset.harmonic_bone_head is not None
+        and asset.harmonic_bone_tail is not None
+        and asset.target_bone_head is not None
+        and asset.target_bone_tail is not None
+        and asset.driver_indices is not None
+        and asset.driver_weights is not None
+    ):
+        from .material_fit import _rotation_between
+
+        reference_head = np.asarray(asset.harmonic_bone_head, dtype=np.float64)
+        reference_tail = np.asarray(asset.harmonic_bone_tail, dtype=np.float64)
+        fitted_head = np.asarray(asset.target_bone_head, dtype=np.float64)
+        fitted_tail = np.asarray(asset.target_bone_tail, dtype=np.float64)
+        rotations = np.stack(
+            [
+                _rotation_between(
+                    reference_tail[index] - reference_head[index],
+                    fitted_tail[index] - fitted_head[index],
+                )
+                for index in range(len(reference_head))
+            ],
+            axis=0,
+        )
+        translations = fitted_head - np.einsum(
+            "bij,bj->bi", rotations, reference_head
+        )
+        drivers = np.asarray(asset.driver_indices, dtype=np.int64)
+        weights = np.asarray(asset.driver_weights, dtype=np.float64)
+        transformed = np.einsum(
+            "nkij,nj->nki", rotations[drivers], reference
+        ) + translations[drivers]
+        weighted_target = np.sum(transformed * weights[:, :, None], axis=1)
+        weighted_bone_delta = weighted_target - reference
+        weighted_norm = np.linalg.norm(weighted_bone_delta, axis=1)
+        maximum_weighted_delta = 0.03
+        scale = np.minimum(
+            1.0, maximum_weighted_delta / np.maximum(weighted_norm, 1.0e-12)
+        )
+        weighted_bone_delta *= scale[:, None]
+
     root = Path(canonical_dir)
     subject_v, subject_faces = _load_obj(root / "smpl_canonical_tpose.obj")
     cage = _build_source_cage(
@@ -1468,7 +1515,8 @@ def apply_material_bounded_soft_volume(
         np.asarray(asset.source_vertex_ranges, dtype=np.int64),
         asset.source_tissues,
     ):
-        if str(tissue).lower() != "bone":
+        tissue_name = str(tissue).lower()
+        if tissue_name != "bone":
             soft[int(start) : int(stop)] = True
     from .material_fit import cranial_material_mask
 
@@ -1485,11 +1533,18 @@ def apply_material_bounded_soft_volume(
         if np.any(soft_outside)
         else 0.0
     )
-    # Outside points occur at the non-watertight SMPL-X hand/foot openings.
-    # Preserve their verified harmonic reference topology and apply no bone
-    # residual there; projecting them to this artificial cage boundary is what
-    # created the long vessel loops in the previous fast result.
-    point_delta[soft_outside] = 0.0
+    if weighted_bone_delta is not None:
+        inside_soft = soft & ~outside
+        point_delta[inside_soft] = (
+            0.5 * point_delta[inside_soft]
+            + 0.5 * weighted_bone_delta[inside_soft]
+        )
+        # Hand/foot openings are outside only because the SMPL-X shell is not
+        # watertight.  Continue with the Blender-weight target there rather
+        # than freezing the distal vessels or projecting them to the cage.
+        point_delta[soft_outside] = weighted_bone_delta[soft_outside]
+    else:
+        point_delta[soft_outside] = 0.0
     output = final.copy()
     output[soft] = reference[soft] + point_delta[soft]
     displacement = np.linalg.norm(output[soft] - reference[soft], axis=1)
@@ -1526,7 +1581,8 @@ def apply_material_bounded_soft_volume(
         "outside_handle_count": int(handle_outside_count),
         "outside_soft_count": int(np.count_nonzero(soft_outside)),
         "outside_soft_max_m": float(soft_outside_max_m),
-        "outside_soft_transport": "preserve_harmonic_reference_zero_residual" if np.any(soft_outside) else "none",
+        "outside_soft_transport": "blender_weight_elastic_target" if np.any(soft_outside) else "none",
+        "blender_weight_elastic_target": bool(weighted_bone_delta is not None),
         "soft_vertex_count": int(np.count_nonzero(soft)),
         "soft_residual_mean_m": float(np.mean(displacement)),
         "soft_residual_max_m": float(np.max(displacement)),

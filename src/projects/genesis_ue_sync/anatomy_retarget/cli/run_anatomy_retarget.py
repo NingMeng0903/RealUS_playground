@@ -288,6 +288,8 @@ def _merge_fast_extremity_donor(
                 continue
             if any(token in lower for token in limb_mesh_tokens):
                 legacy_hand_vertices[int(start) : int(stop)] = True
+            if "clavicle" in lower:
+                legacy_clavicle_vertices[int(start) : int(stop)] = True
         hand_roots = {
             list(asset.source_bone_names).index("Wrist_Rotate_L"),
             list(asset.source_bone_names).index("Wrist_Rotate_R1"),
@@ -299,6 +301,8 @@ def _merge_fast_extremity_donor(
                     legacy_hand_bones[bone] = True
                     break
                 cursor = int(parents[cursor])
+        for bone, bone_name in enumerate(asset.source_bone_names):
+            legacy_clavicle_bones[bone] = "clavicle_rot" in str(bone_name).lower()
         for bone, parent in enumerate(parents):
             if int(parent) >= 0 and legacy_hand_bones[int(parent)]:
                 legacy_hand_bones[bone] = True
@@ -311,10 +315,10 @@ def _merge_fast_extremity_donor(
                 and str(modes[bone]) == "bind_follow"
             ):
                 legacy_clavicle_bones[bone] = True
-        vertices[legacy_hand_vertices] = np.asarray(
+        vertices[legacy_hand_vertices | legacy_clavicle_vertices] = np.asarray(
             legacy_hand["vertices_rest"], dtype=np.float64
-        )[legacy_hand_vertices]
-        legacy_bones = legacy_hand_bones
+        )[legacy_hand_vertices | legacy_clavicle_vertices]
+        legacy_bones = legacy_hand_bones | legacy_clavicle_bones
         target_global[legacy_bones] = np.asarray(
             legacy_hand["source_rest_global"], dtype=np.float64
         )[legacy_bones]
@@ -450,7 +454,7 @@ def _merge_fast_extremity_donor(
     hip_report: dict[str, Any] = {}
     if legacy_hand is not None:
         hip_report["mode"] = "fe99_material_fit_preserved"
-    for side in (() if legacy_hand is not None else ("left", "right")):
+    for side in ("left", "right"):
         pair = _femur_head_and_acetabulum(
             donor,
             vertices,
@@ -610,15 +614,18 @@ def _merge_fast_extremity_donor(
     # Head is a single fe99 compound.  Mixing a rescaled skull with an
     # independently harmonic brain/eyes produced the visible concentric
     # layers, so restore every cranial component and its bind unchanged.
-    vertices[head_reference_vertices] = np.asarray(
-        donor.vertices_rest, dtype=np.float64
-    )[head_reference_vertices]
+    donor_head_vertices = np.asarray(donor.vertices_rest, dtype=np.float64)[
+        head_reference_vertices
+    ]
     source_lo, source_hi = np.quantile(
-        vertices[head_reference_vertices], (0.01, 0.99), axis=0
+        donor_head_vertices, (0.01, 0.99), axis=0
     )
     source_center = 0.5 * (source_lo + source_hi)
     target_center = source_center.copy()
-    head_scale = 1.0
+    head_scale = 0.70
+    vertices[head_reference_vertices] = source_center + head_scale * (
+        donor_head_vertices - source_center
+    )
     head_bones = np.asarray(
         [
             any(token in str(name).lower() for token in ("head_bone", "jaw_bone"))
@@ -629,6 +636,13 @@ def _merge_fast_extremity_donor(
     for bone, parent in enumerate(parents):
         if int(parent) >= 0 and head_bones[int(parent)]:
             head_bones[bone] = True
+    for values in (target_head, target_tail):
+        values[head_bones] = source_center + head_scale * (
+            values[head_bones] - source_center
+        )
+    target_global[head_bones, :3, 3] = source_center + head_scale * (
+        target_global[head_bones, :3, 3] - source_center
+    )
 
     # Keep the ef58024 all-harmonic vessel/nerve result untouched.  The former
     # direct affine-weight residual and large nearest-surface SDF projection
@@ -673,9 +687,25 @@ def _merge_fast_extremity_donor(
             "target_bone_head": target_head.astype(np.float32),
             "target_bone_tail": target_tail.astype(np.float32),
             "harmonic_reference_vertices": harmonic_reference.astype(np.float32),
-            "harmonic_bone_head": asset.harmonic_bone_head,
-            "harmonic_bone_mid": asset.harmonic_bone_mid,
-            "harmonic_bone_tail": asset.harmonic_bone_tail,
+            "harmonic_bone_head": (
+                np.asarray(legacy_hand["source_bone_head"], dtype=np.float32)
+                if legacy_hand is not None
+                else asset.harmonic_bone_head
+            ),
+            "harmonic_bone_mid": (
+                0.5
+                * (
+                    np.asarray(legacy_hand["source_bone_head"], dtype=np.float32)
+                    + np.asarray(legacy_hand["source_bone_tail"], dtype=np.float32)
+                )
+                if legacy_hand is not None
+                else asset.harmonic_bone_mid
+            ),
+            "harmonic_bone_tail": (
+                np.asarray(legacy_hand["source_bone_tail"], dtype=np.float32)
+                if legacy_hand is not None
+                else asset.harmonic_bone_tail
+            ),
             "soft_follow_driver_indices": None,
             "soft_follow_driver_weights": None,
             "soft_follow_stations": None,
