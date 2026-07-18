@@ -42,7 +42,10 @@ from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import (
     load_rigged_asset,
     save_rigged_asset,
 )
-from projects.genesis_ue_sync.anatomy_retarget.shape_volume import apply_subject_beta_shape
+from projects.genesis_ue_sync.anatomy_retarget.shape_volume import (
+    apply_material_bounded_soft_volume,
+    apply_subject_beta_shape,
+)
 from projects.genesis_ue_sync.anatomy_retarget.diagnostics import write_mesh_diagnostics
 from projects.genesis_ue_sync.anatomy_retarget.bone_segment_diagnostics import write_bone_segment_diagnostics
 from projects.genesis_ue_sync.anatomy_retarget.source_skin_volume import apply_source_skin_volume_registration
@@ -102,6 +105,7 @@ def _merge_fast_extremity_donor(
     expected_shape_hash: str,
     canonical_dir: Path,
     hand_donor_path: Path | None = None,
+    axial_donor: Any | None = None,
 ) -> tuple[Any, dict[str, Any]]:
     """Use the known-good fitted skeleton, retaining only the stable axial compound."""
     if asset.vertices_rest.shape != donor.vertices_rest.shape:
@@ -206,8 +210,32 @@ def _merge_fast_extremity_donor(
         ):
             axial_bones[bone] = True
 
-    current_vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
+    axial_source = asset if axial_donor is None else axial_donor
+    if axial_source.vertices_rest.shape != asset.vertices_rest.shape or not np.array_equal(
+        axial_source.faces, asset.faces
+    ):
+        raise ValueError("fast axial donor topology does not match")
+    current_vertices = np.asarray(axial_source.vertices_rest, dtype=np.float64)
     vertices = np.asarray(donor.vertices_rest, dtype=np.float64).copy()
+    harmonic_reference = (
+        np.asarray(asset.harmonic_reference_vertices, dtype=np.float64).copy()
+        if asset.harmonic_reference_vertices is not None
+        else np.asarray(asset.vertices_rest, dtype=np.float64).copy()
+    )
+    # The schema-3 1b66307 result is the visually verified pure-harmonic soft
+    # topology.  It is the immutable reference for vessels/nerves/organs;
+    # fe99 contributes fitted rigid material only.
+    if legacy_hand is not None:
+        harmonic_reference = np.asarray(
+            legacy_hand["vertices_rest"], dtype=np.float64
+        ).copy()
+    for (start, stop), tissue in zip(
+        asset.source_vertex_ranges, asset.source_tissues
+    ):
+        if str(tissue).lower() != "bone":
+            vertices[int(start) : int(stop)] = harmonic_reference[
+                int(start) : int(stop)
+            ]
     vertices[axial_vertices] = current_vertices[axial_vertices]
 
     rest_joints = np.asarray(donor.rest_joints, dtype=np.float64).copy()
@@ -219,15 +247,15 @@ def _merge_fast_extremity_donor(
 
     target_global = np.asarray(donor.target_bind_global, dtype=np.float64).copy()
     target_global[axial_bones] = np.asarray(
-        asset.target_bind_global, dtype=np.float64
+        axial_source.target_bind_global, dtype=np.float64
     )[axial_bones]
     target_head = np.asarray(donor.target_bone_head, dtype=np.float64).copy()
     target_tail = np.asarray(donor.target_bone_tail, dtype=np.float64).copy()
     target_head[axial_bones] = np.asarray(
-        asset.target_bone_head, dtype=np.float64
+        axial_source.target_bone_head, dtype=np.float64
     )[axial_bones]
     target_tail[axial_bones] = np.asarray(
-        asset.target_bone_tail, dtype=np.float64
+        axial_source.target_bone_tail, dtype=np.float64
     )[axial_bones]
 
     legacy_hand_vertices = np.zeros(len(vertices), dtype=bool)
@@ -238,11 +266,6 @@ def _merge_fast_extremity_donor(
     donor_foot_bones = np.zeros(len(parents), dtype=bool)
     if legacy_hand is not None:
         limb_mesh_tokens = (
-            "clavicle",
-            "scapula",
-            "humerus",
-            "radius",
-            "ulna",
             "metacarpal",
             "phalanx_hand",
             "phalanges_hand",
@@ -254,18 +277,6 @@ def _merge_fast_extremity_donor(
             "trapezium",
             "trapezoid",
             "triquetrum",
-            "femur",
-            "tibia",
-            "fibula",
-            "patella",
-            "calcaneus",
-            "talus",
-            "navicular",
-            "cuboid",
-            "cuneiform",
-            "metatarsal",
-            "phalanx_foot",
-            "phalanges_foot",
         )
         for (start, stop), mesh_name, tissue in zip(
             np.asarray(asset.source_vertex_ranges, dtype=np.int64),
@@ -277,14 +288,17 @@ def _merge_fast_extremity_donor(
                 continue
             if any(token in lower for token in limb_mesh_tokens):
                 legacy_hand_vertices[int(start) : int(stop)] = True
-            if "clavicle" in lower:
-                legacy_clavicle_vertices[int(start) : int(stop)] = True
-        for bone, bone_name in enumerate(asset.source_bone_names):
-            lower = str(bone_name).lower()
-            legacy_hand_bones[bone] = lower.startswith(
-                ("femur_rot_", "clavicle_rot_")
-            )
-            legacy_clavicle_bones[bone] = "clavicle_rot" in lower
+        hand_roots = {
+            list(asset.source_bone_names).index("Wrist_Rotate_L"),
+            list(asset.source_bone_names).index("Wrist_Rotate_R1"),
+        }
+        for bone in range(len(parents)):
+            cursor = bone
+            while cursor >= 0:
+                if cursor in hand_roots:
+                    legacy_hand_bones[bone] = True
+                    break
+                cursor = int(parents[cursor])
         for bone, parent in enumerate(parents):
             if int(parent) >= 0 and legacy_hand_bones[int(parent)]:
                 legacy_hand_bones[bone] = True
@@ -297,10 +311,10 @@ def _merge_fast_extremity_donor(
                 and str(modes[bone]) == "bind_follow"
             ):
                 legacy_clavicle_bones[bone] = True
-        vertices[legacy_hand_vertices | legacy_clavicle_vertices] = np.asarray(
+        vertices[legacy_hand_vertices] = np.asarray(
             legacy_hand["vertices_rest"], dtype=np.float64
-        )[legacy_hand_vertices | legacy_clavicle_vertices]
-        legacy_bones = legacy_hand_bones | legacy_clavicle_bones
+        )[legacy_hand_vertices]
+        legacy_bones = legacy_hand_bones
         target_global[legacy_bones] = np.asarray(
             legacy_hand["source_rest_global"], dtype=np.float64
         )[legacy_bones]
@@ -369,7 +383,7 @@ def _merge_fast_extremity_donor(
     )
 
     clavicle_report: dict[str, Any] = {}
-    if legacy_hand is not None:
+    if np.any(legacy_clavicle_bones):
         for side, suffix in (("left", "_l"), ("right", "_r")):
             clavicle = _mesh_mask(
                 donor,
@@ -435,7 +449,7 @@ def _merge_fast_extremity_donor(
 
     hip_report: dict[str, Any] = {}
     if legacy_hand is not None:
-        hip_report["mode"] = "legacy_1b66307_complete_limb_no_secondary_hip_shift"
+        hip_report["mode"] = "fe99_material_fit_preserved"
     for side in (() if legacy_hand is not None else ("left", "right")):
         pair = _femur_head_and_acetabulum(
             donor,
@@ -511,7 +525,10 @@ def _merge_fast_extremity_donor(
     # centre to the left, while pinning the left distal femur to the SMPL-X knee.
     # This removes the old left-only vertical asymmetry without pushing either
     # ball toward an average of the irregular acetabular surface.
-    if legacy_hand is not None:
+    if legacy_hand is not None and any(
+        legacy_hand_bones[index] and "femur" in str(name).lower()
+        for index, name in enumerate(donor.source_bone_names)
+    ):
         left_pair = _femur_head_and_acetabulum(
             donor, vertices, side="left", target_joints=rest_joints
         )
@@ -590,32 +607,18 @@ def _merge_fast_extremity_donor(
             head_reference_vertices[start_i:stop_i] = True
             if str(tissue).lower() == "bone":
                 head_vertices[start_i:stop_i] = True
-    target_head_surface = _surface_region(
-        Path(canonical_dir),
-        list(donor.joint_names),
-        ("head", "jaw"),
-        subject=True,
-    )
+    # Head is a single fe99 compound.  Mixing a rescaled skull with an
+    # independently harmonic brain/eyes produced the visible concentric
+    # layers, so restore every cranial component and its bind unchanged.
+    vertices[head_reference_vertices] = np.asarray(
+        donor.vertices_rest, dtype=np.float64
+    )[head_reference_vertices]
     source_lo, source_hi = np.quantile(
         vertices[head_reference_vertices], (0.01, 0.99), axis=0
     )
-    target_lo, target_hi = np.quantile(target_head_surface, (0.01, 0.99), axis=0)
     source_center = 0.5 * (source_lo + source_hi)
-    target_center = 0.5 * (target_lo + target_hi)
-    head_scale = float(
-        np.clip(
-            0.828
-            * np.min(
-                (target_hi - target_lo)
-                / np.maximum(source_hi - source_lo, 1.0e-8)
-            ),
-            0.72,
-            1.0,
-        )
-    )
-    vertices[head_vertices] = target_center + head_scale * (
-        vertices[head_vertices] - source_center
-    )
+    target_center = source_center.copy()
+    head_scale = 1.0
     head_bones = np.asarray(
         [
             any(token in str(name).lower() for token in ("head_bone", "jaw_bone"))
@@ -626,13 +629,6 @@ def _merge_fast_extremity_donor(
     for bone, parent in enumerate(parents):
         if int(parent) >= 0 and head_bones[int(parent)]:
             head_bones[bone] = True
-    for values in (target_head, target_tail):
-        values[head_bones] = target_center + head_scale * (
-            values[head_bones] - source_center
-        )
-    target_global[head_bones, :3, 3] = target_center + head_scale * (
-        target_global[head_bones, :3, 3] - source_center
-    )
 
     # Keep the ef58024 all-harmonic vessel/nerve result untouched.  The former
     # direct affine-weight residual and large nearest-surface SDF projection
@@ -676,6 +672,10 @@ def _merge_fast_extremity_donor(
             "target_inverse_bind": np.linalg.inv(target_global).astype(np.float32),
             "target_bone_head": target_head.astype(np.float32),
             "target_bone_tail": target_tail.astype(np.float32),
+            "harmonic_reference_vertices": harmonic_reference.astype(np.float32),
+            "harmonic_bone_head": asset.harmonic_bone_head,
+            "harmonic_bone_mid": asset.harmonic_bone_mid,
+            "harmonic_bone_tail": asset.harmonic_bone_tail,
             "soft_follow_driver_indices": None,
             "soft_follow_driver_weights": None,
             "soft_follow_stations": None,
@@ -689,6 +689,7 @@ def _merge_fast_extremity_donor(
     result.validate()
     return result, {
         "backend": "ef58024_material_fit_plus_current_axial",
+        "axial_donor_explicit": bool(axial_donor is not None),
         "axial_source_bone_count": int(np.count_nonzero(axial_bones)),
         "axial_source_vertex_count": int(np.count_nonzero(axial_vertices)),
         "head_compound_vertex_count": int(np.count_nonzero(head_vertices)),
@@ -705,8 +706,8 @@ def _merge_fast_extremity_donor(
         "legacy_clavicle_bone_count": int(np.count_nonzero(legacy_clavicle_bones)),
         "donor_foot_vertex_count": int(np.count_nonzero(donor_foot_vertices)),
         "donor_foot_bone_count": int(np.count_nonzero(donor_foot_bones)),
-        "vessel_pose_backend": "blender_lbs",
-        "soft_bone_residual": "disabled_pending_elastic_volume_field",
+        "vessel_pose_backend": "1b66307_pure_harmonic_reference",
+        "soft_bone_residual": "material_bounded_elastic_volume_field",
         "rest_soft_sdf": "disabled",
         "station_soft_follow_restored": False,
     }
@@ -994,6 +995,16 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--fast-axial-donor",
+        type=Path,
+        default=None,
+        help=(
+            "Optional topology-matched asset supplying the already accepted "
+            "pelvis/spine/rib/sternum compound while the new semantic volume "
+            "solve supplies soft anatomy."
+        ),
+    )
+    p.add_argument(
         "--show-connective-tissue",
         action="store_true",
         help="Render ligament/tendon connective-tissue meshes in Genesis (hidden by default).",
@@ -1109,6 +1120,8 @@ def main() -> int:
         raise ValueError("--fast-extremity-donor requires --fast-publish")
     if args.fast_hand_donor is not None and args.fast_extremity_donor is None:
         raise ValueError("--fast-hand-donor requires --fast-extremity-donor")
+    if args.fast_axial_donor is not None and args.fast_extremity_donor is None:
+        raise ValueError("--fast-axial-donor requires --fast-extremity-donor")
     blend = args.blend or Path(str(cfg.get("blend_path", "")))
     if not blend:
         raise ValueError("Missing anatomy blend path; pass --blend or set blend_path in config.")
@@ -1333,9 +1346,16 @@ def main() -> int:
             return int(result.returncode or 1)
         normalize_rigged_asset_file(output_npz, config=cfg, force=False)
         asset = load_rigged_asset(output_npz, validate=True)
-        asset, source_skin_report = apply_source_skin_volume_registration(
-            asset, canonical_dir=args.canonical_dir
-        )
+        if args.fast_publish and args.fast_hand_donor is not None:
+            source_skin_report = {
+                "backend": "fast_donor_reference",
+                "skipped": True,
+                "reason": "1b66307 supplies the verified harmonic soft reference",
+            }
+        else:
+            asset, source_skin_report = apply_source_skin_volume_registration(
+                asset, canonical_dir=args.canonical_dir
+            )
         if args.fast_publish:
             neutral_articulated_report = {
                 "stage": "neutral",
@@ -1446,7 +1466,15 @@ def main() -> int:
         logging.info("subject-shape cache hit shape_hash=%s", shape_hash)
     else:
         if str(cfg.get("canonical_rest_space", "neutral")).lower() == "neutral":
-            if args.fast_publish:
+            if args.fast_publish and args.fast_hand_donor is not None:
+                shape_report = {
+                    "backend": "fast_donor_subject_rest",
+                    "skipped_subject_beta_volume": True,
+                    "skipped_material_rest_fit": True,
+                    "skipped_soft_follow": True,
+                    "reason": "1b soft reference and fe99 fitted bones already match subject shape",
+                }
+            elif args.fast_publish and args.fast_extremity_donor is None:
                 # Do not run the beta volume cage in the live-preview path.
                 # Its extrapolation fallback moves soft material while the
                 # authored bone rig remains fixed, which is precisely the
@@ -1459,8 +1487,18 @@ def main() -> int:
                     "reason": "preserve authored source joints and all material links",
                 }
             else:
+                shape_cfg = dict(cfg)
+                if args.fast_extremity_donor is not None:
+                    # The semantic source solve is now authoritative for soft
+                    # anatomy.  Fast donor mode still needs neutral->subject
+                    # harmonic transport before rigid donor material is merged.
+                    shape_cfg["fast_publish"] = True
+                    shape_cfg["maximum_harmonic_extrapolation_m"] = max(
+                        0.10,
+                        float(shape_cfg.get("maximum_harmonic_extrapolation_m", 0.0)),
+                    )
                 asset, shape_report = apply_subject_beta_shape(
-                    asset, canonical_dir=args.canonical_dir, config=cfg
+                    asset, canonical_dir=args.canonical_dir, config=shape_cfg
                 )
         try:
             asset, station_intersection_acceptance = (
@@ -1495,6 +1533,13 @@ def main() -> int:
     if args.fast_extremity_donor is not None:
         donor_path = Path(args.fast_extremity_donor).expanduser().resolve()
         donor_asset = load_rigged_asset(donor_path, validate=True)
+        axial_asset = (
+            None
+            if args.fast_axial_donor is None
+            else load_rigged_asset(
+                Path(args.fast_axial_donor).expanduser().resolve(), validate=True
+            )
+        )
         asset, donor_report = _merge_fast_extremity_donor(
             asset,
             donor_asset,
@@ -1505,7 +1550,13 @@ def main() -> int:
                 if args.fast_hand_donor is None
                 else Path(args.fast_hand_donor).expanduser().resolve()
             ),
+            axial_donor=axial_asset,
         )
+        asset, material_volume_report = apply_material_bounded_soft_volume(
+            asset,
+            canonical_dir=Path(args.canonical_dir),
+        )
+        donor_report["material_bounded_soft_volume"] = material_volume_report
         shape_report["fast_extremity_merge"] = {
             **donor_report,
             "donor_path": str(donor_path),
@@ -1514,6 +1565,11 @@ def main() -> int:
                 None
                 if args.fast_hand_donor is None
                 else str(Path(args.fast_hand_donor).expanduser().resolve())
+            ),
+            "axial_donor_path": (
+                None
+                if args.fast_axial_donor is None
+                else str(Path(args.fast_axial_donor).expanduser().resolve())
             ),
         }
         logging.info(

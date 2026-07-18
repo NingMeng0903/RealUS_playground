@@ -511,10 +511,20 @@ def _solve_harmonic_field(
     base_tet = nodes[tet]
     base_det = np.linalg.det(base_tet[:, 1:] - base_tet[:, :1])
     for _iteration in range(64):
-        if float(np.max(np.linalg.norm(remaining_boundary, axis=1))) <= 1.0e-7:
-            break
         current_handle_displacement = current[handle_nodes] - nodes[handle_nodes]
         remaining_handles = handle_values - current_handle_displacement
+        boundary_remaining = (
+            float(np.max(np.linalg.norm(remaining_boundary, axis=1)))
+            if len(remaining_boundary)
+            else 0.0
+        )
+        handle_remaining = (
+            float(np.max(np.linalg.norm(remaining_handles, axis=1)))
+            if len(remaining_handles)
+            else 0.0
+        )
+        if max(boundary_remaining, handle_remaining) <= 1.0e-7:
+            break
         fraction = 1.0
         while fraction >= 1.0 / 1024.0:
             step = linear_step(
@@ -1319,4 +1329,206 @@ def apply_subject_beta_shape(
         "surface_barrier_regularizer": barrier_reports,
         **handle_report,
         "articulated_rest_fit": articulated_report,
+    }
+
+
+def apply_material_bounded_soft_volume(
+    asset: Any,
+    *,
+    canonical_dir: Path | str,
+    samples_per_bone_mesh: int = 24,
+) -> tuple[Any, dict[str, Any]]:
+    """Re-solve soft anatomy between fitted bone surfaces and target skin.
+
+    ``harmonic_reference_vertices`` is the all-harmonic first-stage result.
+    Final material-fit bone surfaces provide interior Dirichlet displacements;
+    the fitted SMPL-X skin has zero displacement on the outer boundary.  Soft
+    anatomy is sampled exactly once from this field.  There is no LBS residual,
+    station override, closest-surface push or SDF projection in this step.
+    """
+    from scipy.spatial import cKDTree
+    from .source_skin_volume import _build_source_cage
+
+    if asset.harmonic_reference_vertices is None:
+        raise ValueError("material-bounded volume requires harmonic_reference_vertices")
+    if asset.source_vertex_ranges is None or asset.source_tissues is None:
+        raise ValueError("material-bounded volume requires mesh ranges/tissues")
+    reference = np.asarray(asset.harmonic_reference_vertices, dtype=np.float64)
+    final = np.asarray(asset.vertices_rest, dtype=np.float64)
+    if reference.shape != final.shape:
+        raise ValueError("harmonic reference must match final anatomy topology")
+
+    root = Path(canonical_dir)
+    subject_v, subject_faces = _load_obj(root / "smpl_canonical_tpose.obj")
+    cage = _build_source_cage(
+        subject_v,
+        subject_faces,
+        # This is an ambient solve domain, not the skin boundary itself.  The
+        # first (Skin_Glass) harmonic stage can legitimately place source
+        # material a few centimetres beyond a non-watertight SMPL-X shell;
+        # retain it in the solve and constrain the actual SMPL-X skin below.
+        root / "material_bounded_subject_cage_v3_margin10.npz",
+        dilation_iterations=10,
+    )
+    cage = _attach_smplx_boundary_map(
+        cage, neutral_v=subject_v, neutral_f=subject_faces
+    )
+    nodes = np.asarray(cage["nodes"], dtype=np.float64)
+    boundary = np.asarray(cage["boundary"], dtype=np.int64)
+    interior = np.setdiff1d(
+        np.arange(len(nodes), dtype=np.int64), boundary, assume_unique=False
+    )
+    if not len(interior):
+        raise RuntimeError("material-bounded volume cage has no interior nodes")
+
+    handle_points: list[np.ndarray] = []
+    handle_displacements: list[np.ndarray] = []
+    bone_mesh_count = 0
+    requested_samples = max(4, int(samples_per_bone_mesh))
+    for (start, stop), tissue in zip(
+        np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+        asset.source_tissues,
+    ):
+        if str(tissue).lower() != "bone" or int(stop) <= int(start):
+            continue
+        start_i, stop_i = int(start), int(stop)
+        count = min(requested_samples, stop_i - start_i)
+        local = np.unique(
+            np.linspace(0, stop_i - start_i - 1, count, dtype=np.int64)
+        )
+        indices = start_i + local
+        displacement = final[indices] - reference[indices]
+        active = np.linalg.norm(displacement, axis=1) > 1.0e-7
+        if np.any(active):
+            handle_points.append(reference[indices][active])
+            handle_displacements.append(displacement[active])
+            bone_mesh_count += 1
+    if not handle_points:
+        return asset, {
+            "backend": "material_bounded_harmonic_v1",
+            "skipped": True,
+            "reason": "no fitted bone residual",
+        }
+    raw_points = np.concatenate(handle_points, axis=0)
+    raw_displacements = np.concatenate(handle_displacements, axis=0)
+    _zero, handle_outside_count, handle_outside = _sample_field(
+        raw_points, cage=cage, field=np.zeros_like(nodes)
+    )
+    raw_points = raw_points[~handle_outside]
+    raw_displacements = raw_displacements[~handle_outside]
+    if not len(raw_points):
+        raise RuntimeError("all material bone handles lie outside the subject cage")
+
+    # Aggregate bone-surface samples which resolve to the same tet node.
+    _distance, nearest = cKDTree(nodes[interior]).query(raw_points, k=1)
+    nearest = interior[np.asarray(nearest, dtype=np.int64)]
+    unique_nodes, inverse = np.unique(nearest, return_inverse=True)
+    displacement_sum = np.zeros((len(unique_nodes), 3), dtype=np.float64)
+    displacement_count = np.zeros(len(unique_nodes), dtype=np.float64)
+    np.add.at(displacement_sum, inverse, raw_displacements)
+    np.add.at(displacement_count, inverse, 1.0)
+    handle_delta = displacement_sum / displacement_count[:, None]
+    # The target skin is an explicit zero-displacement Dirichlet shell inside
+    # the ambient cage.  It replaces the old post-hoc SDF projection: soft
+    # material is affected only by this one multi-boundary harmonic solve.
+    skin_nearest = cKDTree(nodes[interior]).query(subject_v, k=1)[1]
+    skin_nodes = np.unique(interior[np.asarray(skin_nearest, dtype=np.int64)])
+    skin_nodes = skin_nodes[~np.isin(skin_nodes, unique_nodes)]
+    constrained_nodes = np.concatenate((skin_nodes, unique_nodes))
+    constrained_delta = np.concatenate(
+        (np.zeros((len(skin_nodes), 3), dtype=np.float64), handle_delta), axis=0
+    )
+    normalized_handles = {
+        "_normalized": True,
+        "node_indices": constrained_nodes,
+        "displacements": constrained_delta,
+        "mode_codes": np.concatenate(
+            (
+                np.zeros(len(skin_nodes), dtype=np.int8),
+                np.ones(len(unique_nodes), dtype=np.int8),
+            )
+        ),
+        "weights": np.concatenate(
+            (
+                np.full(len(skin_nodes), np.inf, dtype=np.float64),
+                np.full(len(unique_nodes), 0.05, dtype=np.float64),
+            )
+        ),
+    }
+    field = _solve_harmonic_field(
+        cage,
+        surface_displacement=np.zeros_like(subject_v, dtype=np.float64),
+        internal_handles=normalized_handles,
+    )
+    point_delta, outside_count, outside = _sample_field(
+        reference, cage=cage, field=field
+    )
+    soft = np.zeros(len(final), dtype=bool)
+    for (start, stop), tissue in zip(
+        np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+        asset.source_tissues,
+    ):
+        if str(tissue).lower() != "bone":
+            soft[int(start) : int(stop)] = True
+    from .material_fit import cranial_material_mask
+
+    raw_cranial = cranial_material_mask(asset)
+    cranial = np.zeros(len(final), dtype=bool)
+    for start, stop in np.asarray(asset.source_vertex_ranges, dtype=np.int64):
+        start_i, stop_i = int(start), int(stop)
+        if float(np.mean(raw_cranial[start_i:stop_i])) >= 0.90:
+            cranial[start_i:stop_i] = True
+    soft &= ~cranial
+    soft_outside = outside & soft
+    soft_outside_max_m = (
+        _outside_cage_max_distance(reference[soft_outside], cage=cage)
+        if np.any(soft_outside)
+        else 0.0
+    )
+    # Outside points occur at the non-watertight SMPL-X hand/foot openings.
+    # Preserve their verified harmonic reference topology and apply no bone
+    # residual there; projecting them to this artificial cage boundary is what
+    # created the long vessel loops in the previous fast result.
+    point_delta[soft_outside] = 0.0
+    output = final.copy()
+    output[soft] = reference[soft] + point_delta[soft]
+    displacement = np.linalg.norm(output[soft] - reference[soft], axis=1)
+    metadata = dict(asset.metadata or {})
+    metadata.update(
+        {
+            "soft_volume_backend": "material_bounded_harmonic_v1",
+            "soft_surface_sdf": "disabled",
+            "soft_bone_residual_follow": "inner_dirichlet_volume_field",
+        }
+    )
+    result = type(asset)(
+        **{
+            **asset.__dict__,
+            "vertices_rest": output.astype(np.float32),
+            "soft_follow_driver_indices": None,
+            "soft_follow_driver_weights": None,
+            "soft_follow_stations": None,
+            "soft_follow_strength": None,
+            "soft_component_ids": None,
+            "source_mesh_follow_modes": None,
+            "metadata": metadata,
+        }
+    )
+    return result, {
+        "backend": "material_bounded_harmonic_v1",
+        "outer_boundary": "subject_smplx_zero_dirichlet",
+        "skin_dirichlet_node_count": int(len(skin_nodes)),
+        "inner_boundary": "material_fit_bone_surface_soft_springs",
+        "bone_spring_weight": 0.05,
+        "bone_mesh_count": int(bone_mesh_count),
+        "raw_handle_count": int(len(raw_points)),
+        "handle_node_count": int(len(unique_nodes)),
+        "outside_handle_count": int(handle_outside_count),
+        "outside_soft_count": int(np.count_nonzero(soft_outside)),
+        "outside_soft_max_m": float(soft_outside_max_m),
+        "outside_soft_transport": "preserve_harmonic_reference_zero_residual" if np.any(soft_outside) else "none",
+        "soft_vertex_count": int(np.count_nonzero(soft)),
+        "soft_residual_mean_m": float(np.mean(displacement)),
+        "soft_residual_max_m": float(np.max(displacement)),
+        "sdf_projection": False,
     }
