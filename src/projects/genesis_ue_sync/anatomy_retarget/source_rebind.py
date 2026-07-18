@@ -1,9 +1,9 @@
-"""Keep Blender source-bone bind frames consistent with rest-space warps.
+"""Fit subject target bind frames without mutating Blender authored binds.
 
 The anatomy vertices retain Blender's original sparse source-bone weights.  Any
-canonical, shape, or containment warp must therefore update the source bind
-frames as well; otherwise the same weights are evaluated in a different rest
-coordinate system and produce detached rigid anatomy.
+The authored source frames remain the immutable Blender authority.  Rest-space
+fitting updates a separate target bind, while source-driver coupling connects
+the runtime SMPL-X frame to that final bind.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ def rebind_source_rig(
     bone.  This is generic (no body-part rules) and preserves the original
     source weights.  At zero pose every source skinning matrix remains identity.
     """
-    if asset.source_bone_names is None or asset.source_rest_global is None:
+    if asset.source_bone_names is None or asset.target_bind_global is None:
         return asset, {"stage": stage, "source_rig": "legacy_skip"}
     if asset.driver_indices is None or asset.driver_weights is None:
         raise ValueError("source-rig rebind requires sparse Blender driver weights")
@@ -59,7 +59,7 @@ def rebind_source_rig(
         raise ValueError("source/target vertices must match the anatomy rest mesh")
     idx = np.asarray(asset.driver_indices, dtype=np.int32)
     weights = np.asarray(asset.driver_weights, dtype=np.float64)
-    old = np.asarray(asset.source_rest_global, dtype=np.float64)
+    old = np.asarray(asset.target_bind_global, dtype=np.float64)
     new = old.copy()
     bone_transforms = np.tile(np.eye(4, dtype=np.float64), (len(asset.source_bone_names), 1, 1))
     residuals: list[float] = []
@@ -91,11 +91,11 @@ def rebind_source_rig(
         else np.zeros(len(parents), dtype=bool)
     )
     old_local = (
-        np.asarray(asset.source_rest_local, dtype=np.float64).copy()
-        if asset.source_rest_local is not None
+        np.asarray(asset.target_bind_local, dtype=np.float64).copy()
+        if asset.target_bind_local is not None
         else old.copy()
     )
-    if asset.source_rest_local is None:
+    if asset.target_bind_local is None:
         for bone, parent in enumerate(parents.tolist()):
             if int(parent) >= 0:
                 old_local[bone] = np.linalg.inv(old[int(parent)]) @ old[bone]
@@ -105,12 +105,9 @@ def rebind_source_rig(
             continue
         if bone >= len(types):
             continue
-        is_upper_limb_connected = bool(use_connect[bone]) and (
-            str(types[bone]).startswith(("clavicle_segment_", "humerus_segment_", "forearm_segment_"))
-            or str(types[int(parent)]).startswith(("clavicle_segment_", "humerus_segment_", "forearm_segment_"))
-        )
+        is_upper_limb_connected = bool(use_connect[bone])
         if (
-            str(types[bone]) != "parent_follow" and not is_upper_limb_connected
+            str(types[bone]) not in {"parent_follow", "bind_follow"} and not is_upper_limb_connected
         ):
             continue
         new[bone] = new[int(parent)] @ old_local[bone]
@@ -118,23 +115,28 @@ def rebind_source_rig(
     bone_transforms = new @ np.linalg.inv(old)
     inverse = np.linalg.inv(new).astype(np.float32)
     updates: dict[str, Any] = {
-        "source_rest_global": new.astype(np.float32),
-        "source_inverse_bind": inverse,
+        "target_rest_global": new.astype(np.float32),
+        "target_inverse_bind": inverse,
     }
-    if asset.source_rest_local is not None:
+    if asset.target_bind_local is not None:
         local = new.copy()
         for bone, parent in enumerate(parents.tolist()):
             if int(parent) >= 0:
                 local[bone] = np.linalg.inv(new[int(parent)]) @ new[bone]
-        updates["source_rest_local"] = local.astype(np.float32)
-    for field_name in ("source_bone_head", "source_bone_tail"):
-        value = getattr(asset, field_name)
+        updates["target_rest_local"] = local.astype(np.float32)
+    for source_name, target_name in (
+        ("source_bone_head", "target_bone_head"),
+        ("source_bone_tail", "target_bone_tail"),
+    ):
+        value = getattr(asset, target_name)
+        if value is None:
+            value = getattr(asset, source_name)
         if value is None:
             continue
         points = np.asarray(value, dtype=np.float64)
         moved = np.einsum("bij,bj->bi", bone_transforms[:, :3, :3], points)
         moved += bone_transforms[:, :3, 3]
-        updates[field_name] = moved.astype(np.float32)
+        updates[target_name] = moved.astype(np.float32)
     meta = dict(asset.metadata or {})
     history = list(meta.get("source_rig_rebind", []))
     history.append({"stage": str(stage), "fitted_bones": fitted})
@@ -152,8 +154,8 @@ def rebind_source_rig(
 
 def source_bind_roundtrip(asset: AnatomyRiggedAsset) -> dict[str, Any]:
     """Evaluate the exact zero-pose source LBS identity invariant."""
-    if asset.source_rest_global is None or asset.source_inverse_bind is None:
+    if asset.target_bind_global is None or asset.runtime_inverse_bind is None:
         return {"source_rig": "legacy_skip"}
-    skin = np.asarray(asset.source_rest_global, dtype=np.float64) @ np.asarray(asset.source_inverse_bind, dtype=np.float64)
+    skin = np.asarray(asset.target_bind_global, dtype=np.float64) @ np.asarray(asset.runtime_inverse_bind, dtype=np.float64)
     identity_error = np.max(np.abs(skin - np.eye(4)[None, :, :]))
     return {"max_matrix_error": float(identity_error), "pass": bool(identity_error <= 1.0e-6)}

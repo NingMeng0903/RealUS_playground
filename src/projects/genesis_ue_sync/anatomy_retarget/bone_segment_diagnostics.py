@@ -19,7 +19,7 @@ import numpy as np
 from .anatomy_lbs import joint_global_transforms, source_bone_skinning_transforms, skin_vertices
 from .rigged_asset import AnatomyRiggedAsset
 
-ENDPOINT_LIMIT_M = 0.005
+ENDPOINT_LIMIT_M = 0.002
 AXIS_LIMIT_DEG = 3.0
 GAP_CHANGE_LIMIT_M = 0.002
 HEAD_ORIENTATION_LIMIT_DEG = 2.0
@@ -38,6 +38,18 @@ SEGMENT_MESHES = {
 # Endpoint selection is geometric (nearest head/tail to the SMPL-X rest joint),
 # so this table does not encode a screenshot-specific offset or direction.
 JOINT_CHAINS = {
+    "hip_left": {
+        "joint": "left_hip",
+        "proximal": ("Hip_bone", "Hip_Organ_Hold_L"),
+        "distal": ("Femur_Rot_L",),
+        "axes": (("Femur_Rot_L", "left_hip", "left_knee"),),
+    },
+    "hip_right": {
+        "joint": "right_hip",
+        "proximal": ("Hip_bone", "Hip_Organ_Hold_R"),
+        "distal": ("Femur_Rot_R",),
+        "axes": (("Femur_Rot_R", "right_hip", "right_knee"),),
+    },
     "shoulder_left": {
         "joint": "left_shoulder",
         "proximal": ("Scapula_Bone_L", "Clavicle_Rot_L"),
@@ -80,6 +92,18 @@ JOINT_CHAINS = {
         "distal": ("Wrist_Rotate_R1", "Wrist_Rotate_R"),
         "axes": (("Forearm_Bone_R", "right_elbow", "right_wrist"),),
     },
+    "index_proximal_left": {
+        "joint": "left_index1",
+        "proximal": ("Wrist_Rotate_L",),
+        "distal": ("Fingers_Rotate_L4", "Finger_Index_L3"),
+        "axes": (("Wrist_Rotate_L", "left_wrist", "left_index1"),),
+    },
+    "index_proximal_right": {
+        "joint": "right_index1",
+        "proximal": ("Wrist_Rotate_R1", "Wrist_Rotate_R"),
+        "distal": ("Fingers_Rotate_R4", "bone309"),
+        "axes": (("Wrist_Rotate_R1", "right_wrist", "right_index1"),),
+    },
     "knee_left": {
         "joint": "left_knee",
         "proximal": ("Femur_Rot_L", "Knee_Rotate_L"),
@@ -117,6 +141,61 @@ JOINT_CHAINS = {
         ),
     },
 }
+
+GEOMETRY_LANDMARK_MESHES: dict[str, dict[str, tuple[str, ...]]] = {
+    "hip_left": {
+        "proximal": ("ilium", "ischium", "pubis", "acetabul", "pelvis", "sacrum"),
+        "distal": ("femur",),
+    },
+    "hip_right": {
+        "proximal": ("ilium", "ischium", "pubis", "acetabul", "pelvis", "sacrum"),
+        "distal": ("femur",),
+    },
+    "shoulder_left": {"proximal": ("scapula", "clavicle"), "distal": ("humerus",)},
+    "shoulder_right": {"proximal": ("scapula", "clavicle"), "distal": ("humerus",)},
+    "elbow_left": {"proximal": ("humerus",), "distal": ("radius", "ulna")},
+    "elbow_right": {"proximal": ("humerus",), "distal": ("radius", "ulna")},
+    "wrist_left": {
+        "proximal": ("radius", "ulna"),
+        "distal": (
+            "capitate", "hamate", "lunate", "pisiform", "scaphoid",
+            "trapezium", "trapezoid", "triquetrum",
+        ),
+    },
+    "wrist_right": {
+        "proximal": ("radius", "ulna"),
+        "distal": (
+            "capitate", "hamate", "lunate", "pisiform", "scaphoid",
+            "trapezium", "trapezoid", "triquetrum",
+        ),
+    },
+    "index_proximal_left": {
+        "proximal": ("metacarpal",),
+        "distal": ("proximal_phalanx_hand", "proximal_phalanges_hand"),
+    },
+    "index_proximal_right": {
+        "proximal": ("metacarpal",),
+        "distal": ("proximal_phalanx_hand", "proximal_phalanges_hand"),
+    },
+    "knee_left": {"proximal": ("femur",), "distal": ("tibia", "fibula", "patella")},
+    "knee_right": {"proximal": ("femur",), "distal": ("tibia", "fibula", "patella")},
+    "ankle_left": {"proximal": ("tibia", "fibula"), "distal": ("talus", "calcaneus")},
+    "ankle_right": {"proximal": ("tibia", "fibula"), "distal": ("talus", "calcaneus")},
+}
+
+
+def _joint_surface_gap_limit(label: str) -> float:
+    """Acceptance limits from the anatomy plan, independent of SMPL-X probes."""
+    if label.startswith(("hip_", "shoulder_")):
+        return 0.003
+    if label.startswith("index_"):
+        # The source has no cartilage mesh between metacarpal and phalanx;
+        # retain its authored bony clearance while still detecting separation.
+        return 0.007
+    if label.startswith(("elbow_", "wrist_", "knee_", "ankle_")):
+        return 0.005
+    return ENDPOINT_LIMIT_M
+
 
 def _mesh_slice(asset: AnatomyRiggedAsset, name: str) -> slice | None:
     if name not in asset.source_mesh_names:
@@ -159,8 +238,12 @@ def _bone_endpoints(asset: AnatomyRiggedAsset) -> tuple[np.ndarray, np.ndarray, 
     tail.  The report marks this lower-confidence path explicitly.
     """
     count = len(asset.source_bone_names or [])
-    head = getattr(asset, "source_bone_head", None)
-    tail = getattr(asset, "source_bone_tail", None)
+    head = getattr(asset, "target_bone_head", None)
+    tail = getattr(asset, "target_bone_tail", None)
+    if head is None:
+        head = getattr(asset, "source_bone_head", None)
+    if tail is None:
+        tail = getattr(asset, "source_bone_tail", None)
     if head is not None and tail is not None:
         h = np.asarray(head, dtype=np.float64)
         t = np.asarray(tail, dtype=np.float64)
@@ -249,8 +332,8 @@ def _joint_chain_diagnostic(
         anchor_error = float(np.linalg.norm(shared_pose - target_pose))
         gap_change = abs(posed_gap - rest_gap)
     else:
-        anchor_error = float("inf")
-        rest_gap = posed_gap = gap_change = float("inf")
+        anchor_error = None
+        rest_gap = posed_gap = gap_change = None
 
     axes: list[dict[str, Any]] = []
     for bone_name, smplx_a, smplx_b in spec["axes"]:
@@ -269,18 +352,23 @@ def _joint_chain_diagnostic(
                 "axis_error_deg": _undirected_angle_deg(posed_axis, target_axis),
             }
         )
-    axis_error = max((float(item["axis_error_deg"]) for item in axes if item.get("available")), default=float("inf"))
+    available_axis_errors = [
+        float(item["axis_error_deg"]) for item in axes if item.get("available")
+    ]
+    axis_error = max(available_axis_errors) if available_axis_errors else None
 
     connected = False
-    use_connect = getattr(asset, "source_bone_use_connect", None)
     parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
-    if len(selected_indices) == 2 and use_connect is not None:
-        connected_flags = np.asarray(use_connect, dtype=np.uint8)
+    if len(selected_indices) == 2:
         proximal, distal = selected_indices
-        connected = bool(parents[distal] == proximal and connected_flags[distal])
+        connected = bool(parents[distal] == proximal and rest_gap <= 1.0e-5)
 
     passed = bool(
-        np.isfinite(anchor_error)
+        not endpoint_fallback
+        and anchor_error is not None
+        and gap_change is not None
+        and axis_error is not None
+        and np.isfinite(anchor_error)
         and anchor_error <= ENDPOINT_LIMIT_M
         and gap_change <= GAP_CHANGE_LIMIT_M
         and axis_error <= AXIS_LIMIT_DEG
@@ -300,6 +388,229 @@ def _joint_chain_diagnostic(
     }
 
 
+def _side_matches(name: str, label: str) -> bool:
+    if label.endswith("_left"):
+        return name.endswith("_l") or "_l_" in name or "left" in name
+    if label.endswith("_right"):
+        return name.endswith("_r") or "_r_" in name or "right" in name
+    return True
+
+
+def _geometry_landmark_diagnostic(
+    asset: AnatomyRiggedAsset,
+    *,
+    label: str,
+    joint_name: str,
+    posed_vertices: np.ndarray,
+    posed_smplx_joints: np.ndarray,
+    translation: np.ndarray,
+) -> dict[str, Any]:
+    """Measure anatomical mesh landmarks independently of controller endpoints."""
+    spec = GEOMETRY_LANDMARK_MESHES.get(label)
+    if spec is None:
+        return {
+            "available": False,
+            "reason": "no geometry landmark recipe",
+            "roles": {},
+            "pass": False,
+        }
+    if asset.source_vertex_ranges is None or asset.source_tissues is None:
+        return {
+            "available": False,
+            "reason": "mesh ranges or tissue labels are unavailable",
+            "roles": {},
+            "pass": False,
+        }
+    joint_index = {name: idx for idx, name in enumerate(asset.joint_names)}
+    if joint_name not in joint_index:
+        return {
+            "available": False,
+            "reason": f"SMPL-X joint {joint_name!r} is unavailable",
+            "roles": {},
+            "pass": False,
+        }
+    ji = joint_index[joint_name]
+    target_rest = np.asarray(asset.rest_joints[ji], dtype=np.float64)
+    target_pose = np.asarray(posed_smplx_joints[ji], dtype=np.float64) + translation
+    rest_vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
+    registration_reference = getattr(asset, "registration_reference", None)
+    source_vertices = np.asarray(
+        registration_reference
+        if registration_reference is not None
+        else asset.vertices_rest,
+        dtype=np.float64,
+    )
+    posed_vertices = np.asarray(posed_vertices, dtype=np.float64)
+
+    roles: dict[str, Any] = {}
+    role_vertex_indices: list[np.ndarray] = []
+    source_landmarks: list[np.ndarray] = []
+    rest_landmarks: list[np.ndarray] = []
+    posed_landmarks: list[np.ndarray] = []
+    for role in ("proximal", "distal"):
+        tokens = tuple(token.lower() for token in spec[role])
+        indices: list[np.ndarray] = []
+        meshes: list[str] = []
+        for name, (start, stop), tissue in zip(
+            asset.source_mesh_names,
+            np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+            asset.source_tissues,
+        ):
+            lower = str(name).lower()
+            digit_matches = not label.startswith("index_proximal_") or lower.startswith(
+                "_2nd_"
+            )
+            if (
+                str(tissue) == "bone"
+                and any(token in lower for token in tokens)
+                and _side_matches(lower, label)
+                and digit_matches
+            ):
+                indices.append(np.arange(int(start), int(stop), dtype=np.int64))
+                meshes.append(str(name))
+        if not indices:
+            roles[role] = {
+                "available": False,
+                "mesh_tokens": list(tokens),
+                "meshes": [],
+            }
+            continue
+        vertex_indices = np.concatenate(indices)
+        role_vertex_indices.append(vertex_indices)
+        # Freeze the landmark membership on the pre-articulated registration
+        # reference.  Selecting nearest vertices after fitting would let a bad
+        # solver redefine its own probes and falsely report zero residual.
+        endpoint_tokens = {
+            "humerus",
+            "radius",
+            "ulna",
+            "femur",
+            "tibia",
+            "fibula",
+            "metacarpal",
+            "phalanx_hand",
+            "phalanges_hand",
+        }
+        if endpoint_tokens.intersection(tokens) and len(vertex_indices) >= 8:
+            reference = source_vertices[vertex_indices]
+            centered = reference - np.mean(reference, axis=0, keepdims=True)
+            _u, _singular, vt = np.linalg.svd(centered, full_matrices=False)
+            parameter = centered @ vt[0]
+            low, high = np.quantile(parameter, (0.10, 0.90))
+            low_indices = vertex_indices[parameter <= low]
+            high_indices = vertex_indices[parameter >= high]
+            # The two cap memberships are frozen from the registration
+            # reference; choose their anatomical role in fitted rest space so
+            # mirrored source objects cannot swap proximal and distal.
+            low_center = np.mean(rest_vertices[low_indices], axis=0)
+            high_center = np.mean(rest_vertices[high_indices], axis=0)
+            selected = (
+                low_indices
+                if np.linalg.norm(low_center - target_rest)
+                <= np.linalg.norm(high_center - target_rest)
+                else high_indices
+            )
+            sample_count = len(selected)
+        else:
+            distances = np.linalg.norm(
+                source_vertices[vertex_indices] - target_rest,
+                axis=1,
+            )
+            sample_count = min(
+                64,
+                max(1, int(np.ceil(0.01 * len(vertex_indices)))),
+            )
+            selected = vertex_indices[
+                np.argpartition(distances, sample_count - 1)[:sample_count]
+            ]
+        rest_landmark = np.mean(rest_vertices[selected], axis=0)
+        posed_landmark = np.mean(posed_vertices[selected], axis=0)
+        source_landmark = np.mean(source_vertices[selected], axis=0)
+        source_landmarks.append(source_landmark)
+        rest_landmarks.append(rest_landmark)
+        posed_landmarks.append(posed_landmark)
+        roles[role] = {
+            "available": True,
+            "meshes": meshes,
+            "sample_vertex_count": int(sample_count),
+            "rest_joint_error_m": float(np.linalg.norm(rest_landmark - target_rest)),
+            "posed_joint_error_m": float(np.linalg.norm(posed_landmark - target_pose)),
+            "landmark_source": source_landmark.tolist(),
+            "landmark_rest": rest_landmark.tolist(),
+            "landmark_posed": posed_landmark.tolist(),
+        }
+
+    if len(rest_landmarks) != 2:
+        return {
+            "available": False,
+            "reason": "proximal or distal anatomy geometry is unavailable",
+            "roles": roles,
+            "pass": False,
+        }
+    authored_gap = float(
+        np.linalg.norm(source_landmarks[0] - source_landmarks[1])
+    )
+    rest_gap = float(np.linalg.norm(rest_landmarks[0] - rest_landmarks[1]))
+    posed_gap = float(np.linalg.norm(posed_landmarks[0] - posed_landmarks[1]))
+    shared_pose = 0.5 * (posed_landmarks[0] + posed_landmarks[1])
+    shared_error = float(np.linalg.norm(shared_pose - target_pose))
+    fitting_gap_change = abs(rest_gap - authored_gap)
+    pose_gap_change = abs(posed_gap - rest_gap)
+    from scipy.spatial import cKDTree
+
+    local_roles: list[np.ndarray] = []
+    for vertex_indices in role_vertex_indices:
+        target_distance = np.linalg.norm(
+            rest_vertices[vertex_indices] - target_rest,
+            axis=1,
+        )
+        local_roles.append(
+            vertex_indices[
+                target_distance <= np.quantile(target_distance, 0.25)
+            ]
+        )
+    nearest_distance, nearest_index = cKDTree(
+        rest_vertices[local_roles[1]]
+    ).query(rest_vertices[local_roles[0]], k=1)
+    proximal_local = int(np.argmin(nearest_distance))
+    proximal_index = int(local_roles[0][proximal_local])
+    distal_index = int(local_roles[1][int(nearest_index[proximal_local])])
+    surface_gap = float(nearest_distance[proximal_local])
+    posed_surface_gap = float(
+        np.linalg.norm(
+            posed_vertices[proximal_index] - posed_vertices[distal_index]
+        )
+    )
+    surface_gap_change = abs(posed_surface_gap - surface_gap)
+    surface_gap_limit = _joint_surface_gap_limit(label)
+    passed = bool(
+        surface_gap <= surface_gap_limit
+        and surface_gap_change <= GAP_CHANGE_LIMIT_M
+    )
+    return {
+        "available": True,
+        "source": "anatomy_mesh_vertices",
+        "roles": roles,
+        "source_shared_anchor_error_m": shared_error,
+        "authored_geometry_gap_m": authored_gap,
+        "source_rest_gap_m": rest_gap,
+        "posed_gap_m": posed_gap,
+        "fitting_gap_change_m": fitting_gap_change,
+        "gap_change_m": pose_gap_change,
+        "surface_gap_m": surface_gap,
+        "surface_gap_limit_m": surface_gap_limit,
+        "posed_surface_gap_m": posed_surface_gap,
+        "surface_gap_change_m": surface_gap_change,
+        "surface_landmarks": {
+            "proximal_vertex": proximal_index,
+            "distal_vertex": distal_index,
+            "proximal_rest": rest_vertices[proximal_index].tolist(),
+            "distal_rest": rest_vertices[distal_index].tolist(),
+        },
+        "pass": passed,
+    }
+
+
 def _head_orientation_diagnostic(
     asset: AnatomyRiggedAsset,
     *,
@@ -311,7 +622,7 @@ def _head_orientation_diagnostic(
     bi = _first_bone_index(source_names, ("Head_Bone",))
     joint_index = {name: idx for idx, name in enumerate(asset.joint_names)}
     if bi is None or "head" not in joint_index:
-        return {"available": False, "orientation_error_deg": float("inf"), "pass": False}
+        return {"available": False, "orientation_error_deg": None, "pass": False}
     source_rest = np.asarray(asset.source_rest_global[bi], dtype=np.float64)
     source_posed = np.asarray(source_transforms[bi], dtype=np.float64) @ source_rest
     source_motion = source_posed[:3, :3] @ source_rest[:3, :3].T
@@ -329,7 +640,7 @@ def _head_orientation_diagnostic(
     }
 
 
-def _endpoint_error(expected: np.ndarray, posed: np.ndarray) -> dict[str, float]:
+def _endpoint_error(expected: np.ndarray, posed: np.ndarray) -> dict[str, Any]:
     """Measure deformation relative to the expected posed rigid component.
 
     Comparing a posed mesh directly with its rest coordinates incorrectly counts
@@ -341,12 +652,18 @@ def _endpoint_error(expected: np.ndarray, posed: np.ndarray) -> dict[str, float]
     t = expected @ expected_axis
     expected_span = float(t.max() - t.min())
     if expected_span < 1.0e-6:
-        return {"endpoint_error_m": 0.0, "axis_error_deg": 0.0, "length_error_m": 0.0}
+        return {
+            "available": False,
+            "endpoint_error_m": None,
+            "axis_error_deg": None,
+            "length_error_m": None,
+        }
     end_indices = (int(np.argmin(t)), int(np.argmax(t)))
     endpoint = max(float(np.linalg.norm(posed[i] - expected[i])) for i in end_indices)
     posed_axis = _bone_axis(posed)
     posed_span = float(np.ptp(posed @ posed_axis))
     return {
+        "available": True,
         "endpoint_error_m": float(endpoint),
         "axis_error_deg": min(
             _angle_deg(expected_axis, posed_axis), _angle_deg(-expected_axis, posed_axis)
@@ -368,7 +685,10 @@ def classify_ligament_meshes(asset: AnatomyRiggedAsset, mesh_diagnostics: dict[s
     entries: list[dict[str, Any]] = []
     for item in mesh_diagnostics.get("meshes", []):
         name = str(item.get("mesh", ""))
-        ratio = float(item.get("extent_aspect_ratio", 0.0))
+        if "extent_aspect_ratio" not in item:
+            entries.append({"mesh": name, "flags": ["missing_extent_aspect_ratio"]})
+            continue
+        ratio = float(item["extent_aspect_ratio"])
         driver = str(item.get("driver_bone", ""))
         tissue = str(item.get("tissue", ""))
         flags: list[str] = []
@@ -391,6 +711,7 @@ def write_bone_segment_diagnostics(
     transl: np.ndarray | None,
     output_path: Path | str,
     mesh_diagnostics: dict[str, Any] | None = None,
+    fitted_hip_geometry: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     posed = skin_vertices(asset, pose_axis_angle, transl=transl)
     source_transforms = source_bone_skinning_transforms(asset, pose_axis_angle)
@@ -425,18 +746,22 @@ def write_bone_segment_diagnostics(
             err["mesh"] = name
             err["dominant_source_bone"] = str(asset.source_bone_names[dominant])
             err["pass"] = bool(
-                err["endpoint_error_m"] <= ENDPOINT_LIMIT_M and err["axis_error_deg"] <= AXIS_LIMIT_DEG
+                err["available"]
+                and err["endpoint_error_m"] <= ENDPOINT_LIMIT_M
+                and err["axis_error_deg"] <= AXIS_LIMIT_DEG
             )
             if not err["pass"]:
                 rigidity_failures.append(f"rigidity/{label}/{name}")
             items.append(err)
+        if not items:
+            rigidity_failures.append(f"rigidity/{label}/unavailable")
         rigidity_segments[label] = items
 
     rest_heads, rest_tails, endpoint_fallback = _bone_endpoints(asset)
     joints: dict[str, Any] = {}
     joint_failures: list[str] = []
     for label, spec in JOINT_CHAINS.items():
-        result = _joint_chain_diagnostic(
+        controller = _joint_chain_diagnostic(
             asset,
             spec=spec,
             source_transforms=np.asarray(source_transforms, dtype=np.float64),
@@ -446,6 +771,66 @@ def write_bone_segment_diagnostics(
             translation=translation,
             endpoint_fallback=endpoint_fallback,
         )
+        geometry = _geometry_landmark_diagnostic(
+            asset,
+            label=label,
+            joint_name=str(spec["joint"]),
+            posed_vertices=np.asarray(posed, dtype=np.float64),
+            posed_smplx_joints=posed_smplx_joints,
+            translation=translation,
+        )
+        if label in {"hip_left", "hip_right"}:
+            metadata = asset.metadata or {}
+            fit_metadata = metadata.get("articulated_rest_fit")
+            if fit_metadata is None and isinstance(
+                metadata.get("shape_report"), dict
+            ):
+                fit_metadata = metadata["shape_report"].get(
+                    "articulated_rest_fit"
+                )
+            if fit_metadata is None:
+                fit_metadata = metadata.get("articulated_source_report")
+            if isinstance(fit_metadata, list):
+                latest_fit = fit_metadata[-1] if fit_metadata else {}
+            elif isinstance(fit_metadata, dict):
+                latest_fit = fit_metadata
+            else:
+                latest_fit = {}
+            side = "left" if label.endswith("_left") else "right"
+            hip_geometry = (
+                (fitted_hip_geometry or {}).get(side)
+                if isinstance(fitted_hip_geometry, dict)
+                else None
+            )
+            if hip_geometry is None:
+                hip_geometry = (
+                    (latest_fit.get("hip_geometry") or {}).get(side)
+                    if isinstance(latest_fit, dict)
+                    else None
+                )
+            if (
+                isinstance(hip_geometry, dict)
+                and hip_geometry.get("femoral_head_to_acetabulum_m")
+                is not None
+            ):
+                center_error = float(
+                    hip_geometry["femoral_head_to_acetabulum_m"]
+                )
+                geometry["femoral_head_to_acetabulum_m"] = center_error
+                geometry["pass"] = bool(
+                    center_error <= ENDPOINT_LIMIT_M
+                    and geometry.get("surface_gap_change_m", float("inf"))
+                    <= GAP_CHANGE_LIMIT_M
+                )
+        result = {
+            **controller,
+            "controller_probes": controller,
+            "geometry_landmarks": geometry,
+            # SMPL-X controllers are kinematic probes, not medical joint
+            # centers.  Their residual remains reported but cannot override a
+            # directly measured proximal/distal geometry gap.
+            "pass": bool(geometry["pass"]),
+        }
         joints[label] = result
         if not result["pass"]:
             joint_failures.append(f"joint/{label}")
@@ -472,10 +857,21 @@ def write_bone_segment_diagnostics(
         # longer sufficient to determine the top-level pass state.
         "segments": rigidity_segments,
         "ligament_flags": ligaments,
+        "controller_probe_fallback_used": bool(endpoint_fallback),
         "passed": len(failures) == 0,
         "failures": failures,
-        "pass_requires": ["joint_anchors", "joint_gap_change", "joint_axes", "head_orientation", "rigidity"],
+        "pass_requires": [
+            "geometry_landmarks",
+            "left_right_hip_landmarks",
+            "joint_gap_change",
+            "joint_axes",
+            "head_orientation",
+            "rigidity",
+        ],
     }
     out = Path(output_path)
-    out.write_text(json.dumps(report, indent=2, ensure_ascii=True), encoding="utf-8")
+    out.write_text(
+        json.dumps(report, indent=2, ensure_ascii=True, allow_nan=False),
+        encoding="utf-8",
+    )
     return report

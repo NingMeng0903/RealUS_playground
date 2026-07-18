@@ -49,7 +49,7 @@ git push -u origin main
 
 ```bash
 git add .
-git commit -m "备份，sol一轮"
+git commit -m "修复了骨骼（除去盆骨），两种模式打架穿模"
 git push -u origin main
 ```
 

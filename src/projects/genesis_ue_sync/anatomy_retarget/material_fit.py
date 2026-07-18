@@ -13,7 +13,7 @@ from typing import Any
 
 import numpy as np
 
-from .anatomy_lbs import joint_global_transforms
+from .anatomy_lbs import joint_global_transforms, with_source_driver_coupling
 from .rigged_asset import AnatomyRiggedAsset
 from .source_rebind import rebind_source_rig
 
@@ -36,6 +36,8 @@ _CRANIAL_TOKENS = (
     "hypothalam",
     "pituitary",
     "pineal",
+    "fornix",
+    "upper_teeth",
 )
 _PELVIS_TOKENS = ("ilium", "sacrum", "ischium", "pubis", "pelvis")
 _LONG_BONE_TOKENS = (
@@ -144,6 +146,96 @@ def shaft_preserving_segment_map(
     return rigid + smooth[:, None] * (target_length - source_length) * target_axis
 
 
+def uniform_segment_similarity(
+    points: np.ndarray,
+    *,
+    source_a: np.ndarray,
+    source_b: np.ndarray,
+    target_a: np.ndarray,
+    target_b: np.ndarray,
+) -> tuple[np.ndarray, float, np.ndarray]:
+    """Fit a compound by one rotation and one scale; never stretch one axis."""
+    source = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+    sa = np.asarray(source_a, dtype=np.float64).reshape(3)
+    sb = np.asarray(source_b, dtype=np.float64).reshape(3)
+    ta = np.asarray(target_a, dtype=np.float64).reshape(3)
+    tb = np.asarray(target_b, dtype=np.float64).reshape(3)
+    source_vector = sb - sa
+    target_vector = tb - ta
+    source_length = float(np.linalg.norm(source_vector))
+    target_length = float(np.linalg.norm(target_vector))
+    if source_length <= 1.0e-8 or target_length <= 1.0e-8:
+        raise ValueError("uniform segment similarity requires nondegenerate landmarks")
+    rotation = _rotation_between(source_vector, target_vector)
+    scale = target_length / source_length
+    return ta + scale * ((source - sa) @ rotation.T), float(scale), rotation
+
+
+def _anatomical_frame(
+    *, origin: np.ndarray, lateral: np.ndarray, superior: np.ndarray
+) -> np.ndarray:
+    """Build a stable right-handed local anatomical frame."""
+    x = np.asarray(lateral, dtype=np.float64).reshape(3).copy()
+    y_hint = np.asarray(superior, dtype=np.float64).reshape(3).copy()
+    x /= max(float(np.linalg.norm(x)), 1.0e-10)
+    y = y_hint - x * float(x @ y_hint)
+    y /= max(float(np.linalg.norm(y)), 1.0e-10)
+    z = np.cross(x, y)
+    z /= max(float(np.linalg.norm(z)), 1.0e-10)
+    y = np.cross(z, x)
+    frame = np.eye(4, dtype=np.float64)
+    frame[:3, :3] = np.stack((x, y, z), axis=1)
+    frame[:3, 3] = np.asarray(origin, dtype=np.float64).reshape(3)
+    return frame
+
+
+def _frame_coordinates(points: np.ndarray, frame: np.ndarray) -> np.ndarray:
+    return (np.asarray(points, dtype=np.float64) - frame[:3, 3]) @ frame[:3, :3]
+
+
+def _from_frame_coordinates(points: np.ndarray, frame: np.ndarray) -> np.ndarray:
+    return np.asarray(points, dtype=np.float64) @ frame[:3, :3].T + frame[:3, 3]
+
+
+def freeze_soft_material(
+    fitted_vertices: np.ndarray,
+    source_vertices: np.ndarray,
+    asset: AnatomyRiggedAsset,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Restore non-bone vertices after a bone-only material operation."""
+    fitted = np.asarray(fitted_vertices, dtype=np.float64).copy()
+    source = np.asarray(source_vertices, dtype=np.float64)
+    soft = _soft_material_mask(asset)
+    fitted[soft] = source[soft]
+    return fitted, soft
+
+
+def _spine_anchor_specs(
+    asset: AnatomyRiggedAsset,
+    target_joints: np.ndarray,
+    pelvis_l5_interface: np.ndarray,
+    skull_c1_interface: np.ndarray | None = None,
+) -> list[tuple[str, np.ndarray]]:
+    """Final connection anchors for the authored L5-to-C1 chain."""
+    joint_id = {name: index for index, name in enumerate(asset.joint_names)}
+    targets = np.asarray(target_joints, dtype=np.float64)
+    specs: list[tuple[str, np.ndarray]] = [
+        ("Spine_L5", np.asarray(pelvis_l5_interface, dtype=np.float64).reshape(3))
+    ]
+    for bone_name, joint_name in (
+        ("Spine_L2", "spine2"),
+        ("Spine_T8", "spine3"),
+        ("Spine_C7", "neck"),
+    ):
+        if joint_name in joint_id:
+            specs.append((bone_name, targets[joint_id[joint_name]].copy()))
+    if skull_c1_interface is not None:
+        specs.append(("Spine_C1", np.asarray(skull_c1_interface, dtype=np.float64).reshape(3)))
+    elif "head" in joint_id:
+        specs.append(("Head_Bone", targets[joint_id["head"]].copy()))
+    return specs
+
+
 def _scapula_side_axes(
     *,
     shoulder: np.ndarray,
@@ -189,9 +281,8 @@ def _fit_scapula_mesh(
     target_shoulder: np.ndarray,
     target_collar: np.ndarray,
     target_spine3: np.ndarray,
-    medial_shift_m: float = 0.018,
 ) -> tuple[np.ndarray, dict[str, float]]:
-    """Rigid scapula frame fit with glenoid at GH; blade medially seated on thorax."""
+    """Bounded uniform similarity preserving glenoid/acromion/blade geometry."""
     pts = np.asarray(points, dtype=np.float64).reshape(-1, 3)
     if len(pts) < 8:
         return pts.copy(), {"vertices": int(len(pts))}
@@ -203,23 +294,39 @@ def _fit_scapula_mesh(
         target_collar=target_collar,
         target_spine3=target_spine3,
     )
-    fitted = _transform_points(pts, transform)
-    glenoid_idx = int(np.argmax(fitted[:, 0]) if side == "left" else np.argmin(fitted[:, 0]))
-    glenoid = fitted[glenoid_idx]
-    medial_axis = _scapula_side_axes(
-        shoulder=target_shoulder, collar=target_collar, spine3=target_spine3
+    source_lengths = np.asarray(
+        (
+            np.linalg.norm(source_collar - source_shoulder),
+            np.linalg.norm(source_spine3 - source_shoulder),
+        ),
+        dtype=np.float64,
     )
-    # Slide the blade medially toward the rib cage; glenoid stays on the GH joint.
-    rel = fitted - glenoid
-    medial_depth = np.clip(-(rel @ medial_axis), 0.0, None)
-    span = max(float(np.quantile(medial_depth, 0.95)), 1.0e-6)
-    weight = np.clip(medial_depth / span, 0.0, 1.0)
-    fitted = fitted + (weight * float(medial_shift_m))[:, None] * medial_axis
+    target_lengths = np.asarray(
+        (
+            np.linalg.norm(target_collar - target_shoulder),
+            np.linalg.norm(target_spine3 - target_shoulder),
+        ),
+        dtype=np.float64,
+    )
+    similarity_scale = float(
+        np.clip(np.median(target_lengths / np.maximum(source_lengths, 1.0e-8)), 0.85, 1.15)
+    )
+    fitted = np.asarray(target_shoulder, dtype=np.float64) + similarity_scale * (
+        (pts - np.asarray(source_shoulder, dtype=np.float64)) @ transform[:3, :3].T
+    )
+    distance = np.linalg.norm(fitted - target_shoulder, axis=1)
+    glenoid_candidates = fitted[distance <= np.quantile(distance, 0.05)]
+    glenoid = np.mean(glenoid_candidates, axis=0)
+    glenoid_translation = np.asarray(target_shoulder) - glenoid
+    fitted += glenoid_translation
     return fitted, {
         "vertices": int(len(pts)),
-        "glenoid_to_shoulder_m": float(np.linalg.norm(glenoid - target_shoulder)),
-        "medial_shift_m": float(medial_shift_m),
-        "mean_medial_weight": float(np.mean(weight)),
+        "uniform_scale": similarity_scale,
+        "glenoid_to_shoulder_m": float(
+            np.linalg.norm((glenoid + glenoid_translation) - target_shoulder)
+        ),
+        "glenoid_translation_m": float(np.linalg.norm(glenoid_translation)),
+        "aspect_ratio_change": _aspect_ratio_change(pts, fitted),
     }
 
 
@@ -252,7 +359,7 @@ def _source_joint_anchors(asset: AnatomyRiggedAsset) -> np.ndarray:
     anchors = target.copy()
     assigned = np.zeros(len(target), dtype=bool)
     modes = list(asset.source_bone_driver_types or [])
-    global_bind = np.asarray(asset.source_rest_global, dtype=np.float64)
+    global_bind = np.asarray(asset.target_bind_global, dtype=np.float64)
     for bone, mode in enumerate(modes):
         if _is_follow_mode(mode):
             continue
@@ -319,11 +426,11 @@ def _three_joint_frame(points: np.ndarray, joints: np.ndarray) -> np.ndarray:
 
 
 def _fit_source_frames(asset: AnatomyRiggedAsset) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    old_global = np.asarray(asset.source_rest_global, dtype=np.float64)
-    old_local = np.asarray(asset.source_rest_local, dtype=np.float64)
+    old_global = np.asarray(asset.target_bind_global, dtype=np.float64)
+    old_local = np.asarray(asset.target_bind_local, dtype=np.float64)
     source_parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
     modes = list(asset.source_bone_driver_types or [])
-    target_joints = np.asarray(asset.rest_joints, dtype=np.float64)
+    target_joints = np.asarray(asset.rest_joints, dtype=np.float64).copy()
     source_anchors = _source_joint_anchors(asset)
     raw_frame_joints = getattr(asset, "source_bone_frame_joints", None)
     frame_joints = (
@@ -501,6 +608,64 @@ def _aspect_ratio_change(source: np.ndarray, fitted: np.ndarray) -> float:
     return float(np.max(np.abs(fitted_ratio - source_ratio) / np.maximum(source_ratio, 1.0e-8)))
 
 
+def _robust_sphere_center(points: np.ndarray) -> np.ndarray:
+    pts = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+    if len(pts) < 8:
+        return np.mean(pts, axis=0) if len(pts) else np.zeros(3)
+    centered = pts - np.mean(pts, axis=0)
+    radii = np.linalg.norm(centered, axis=1)
+    median = float(np.median(radii))
+    keep = radii <= max(2.5 * median, 1.0e-4)
+    if np.count_nonzero(keep) >= 8:
+        pts = pts[keep]
+    system = np.concatenate((2.0 * pts, np.ones((len(pts), 1))), axis=1)
+    rhs = np.sum(pts * pts, axis=1)
+    try:
+        solution, *_unused = np.linalg.lstsq(system, rhs, rcond=None)
+        return solution[:3]
+    except np.linalg.LinAlgError:
+        return np.mean(pts, axis=0)
+
+
+def _femur_head_and_acetabulum(
+    asset: AnatomyRiggedAsset,
+    vertices: np.ndarray,
+    *,
+    side: str,
+    target_joints: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """Fit hip landmarks from bone surfaces inside the SMPL-X search region."""
+    suffix = "_l" if side == "left" else "_r"
+    hip = target_joints[asset.joint_names.index(f"{side}_hip")]
+    knee = target_joints[asset.joint_names.index(f"{side}_knee")]
+    axis = hip - knee
+    axis /= max(float(np.linalg.norm(axis)), 1.0e-8)
+    femur = _mesh_mask(
+        asset,
+        lambda name, tissue, suffix=suffix: tissue == "bone"
+        and "femur" in name
+        and (name.endswith(suffix) or f"{suffix}_" in name),
+    )
+    pelvis = _mesh_mask(
+        asset,
+        lambda name, tissue: tissue == "bone"
+        and any(token in name for token in ("ilium", "ischium", "pubis", "acetabul", "pelvis")),
+    )
+    if not np.any(femur) or not np.any(pelvis):
+        return None
+    femur_points = np.asarray(vertices[femur], dtype=np.float64)
+    parameter = (femur_points - knee) @ axis
+    head_points = femur_points[parameter >= np.quantile(parameter, 0.85)]
+    head = _robust_sphere_center(head_points)
+    pelvis_points = np.asarray(vertices[pelvis], dtype=np.float64)
+    distance = np.linalg.norm(pelvis_points - hip, axis=1)
+    near = pelvis_points[distance <= max(float(np.quantile(distance, 0.08)), 0.025)]
+    if len(near) < 8:
+        near = pelvis_points[np.argsort(distance)[: min(32, len(pelvis_points))]]
+    acetabulum = 0.70 * np.mean(near, axis=0) + 0.30 * hip
+    return head, acetabulum
+
+
 def _protected_end_edge_change(
     asset: AnatomyRiggedAsset,
     *,
@@ -541,7 +706,10 @@ def _mesh_mask(asset: AnatomyRiggedAsset, predicate) -> np.ndarray:
     mask = np.zeros(len(asset.vertices_rest), dtype=bool)
     if asset.source_vertex_ranges is None:
         return mask
-    tissues = list(asset.source_tissues or [""] * len(asset.source_mesh_names))
+    tissues = list(
+        getattr(asset, "source_tissues", None)
+        or [""] * len(asset.source_mesh_names)
+    )
     for (start, stop), name, tissue in zip(asset.source_vertex_ranges, asset.source_mesh_names, tissues):
         if predicate(str(name).lower(), str(tissue).lower()):
             mask[int(start) : int(stop)] = True
@@ -646,9 +814,11 @@ def _uniform_envelope_fit(
     center_offset: np.ndarray,
     margin: float,
     maximum_scale: float = 1.5,
+    minimum_scale: float = 0.5,
+    scale_mode: str = "median",
     source_center: np.ndarray | None = None,
     target_center: np.ndarray | None = None,
-) -> tuple[np.ndarray, float]:
+) -> tuple[np.ndarray, float, dict[str, float | bool | str]]:
     source = np.asarray(points, dtype=np.float64)
     reference = np.asarray(
         source if reference_points is None else reference_points, dtype=np.float64
@@ -669,9 +839,215 @@ def _uniform_envelope_fit(
     source_extent = 0.5 * (source_hi - source_lo)
     target_extent = 0.5 * (target_hi - target_lo)
     valid = source_extent > 1.0e-5
-    base_scale = float(np.min(target_extent[valid] / source_extent[valid])) if np.any(valid) else 1.0
-    scale = max(0.5, min(float(maximum_scale), margin * base_scale * float(scale_multiplier)))
-    return resolved_target_center + scale * (source - resolved_source_center), scale
+    ratios = target_extent[valid] / source_extent[valid] if np.any(valid) else np.asarray([1.0])
+    mode = str(scale_mode).strip().lower()
+    if mode == "min":
+        base_scale = float(np.min(ratios))
+    elif mode == "mean":
+        base_scale = float(np.mean(ratios))
+    else:
+        mode = "median"
+        base_scale = float(np.median(ratios))
+    raw_scale = float(margin) * base_scale * float(scale_multiplier)
+    scale = float(np.clip(raw_scale, float(minimum_scale), float(maximum_scale)))
+    return resolved_target_center + scale * (source - resolved_source_center), scale, {
+        "base_scale": base_scale,
+        "raw_scale": raw_scale,
+        "scale": scale,
+        "saturated": bool(scale != raw_scale),
+        "scale_mode": mode,
+    }
+
+
+def _contained_uniform_candidate(
+    source: np.ndarray,
+    *,
+    source_center: np.ndarray,
+    target_center: np.ndarray,
+    target_surface: np.ndarray,
+    target_faces: np.ndarray,
+    desired_scale: float,
+    minimum_scale: float,
+    clearance_m: float = 0.0005,
+) -> tuple[np.ndarray, float, dict[str, Any]]:
+    """Choose a contained uniform scale; never project individual vertices."""
+    import igl
+
+    points = np.asarray(source, dtype=np.float64)
+    source_origin = np.asarray(source_center, dtype=np.float64).reshape(3)
+    target_origin = np.asarray(target_center, dtype=np.float64).reshape(3)
+
+    def candidate(scale: float) -> tuple[np.ndarray, float]:
+        value = target_origin + float(scale) * (points - source_origin)
+        signed, _face, _closest, _normal = igl.signed_distance(
+            value,
+            np.asarray(target_surface, dtype=np.float64),
+            np.asarray(target_faces, dtype=np.int32),
+        )
+        return value, float(np.max(np.asarray(signed, dtype=np.float64) + clearance_m))
+
+    desired_vertices, desired_violation = candidate(float(desired_scale))
+    if desired_violation <= 0.0:
+        return desired_vertices, float(desired_scale), {
+            "candidate_contained": True,
+            "desired_scale": float(desired_scale),
+            "contained_scale": float(desired_scale),
+            "maximum_clearance_violation_m": desired_violation,
+        }
+    low = float(minimum_scale)
+    low_vertices, low_violation = candidate(low)
+    if low_violation > 0.0:
+        return desired_vertices, float(desired_scale), {
+            "candidate_contained": False,
+            "desired_scale": float(desired_scale),
+            "contained_scale": None,
+            "minimum_scale": low,
+            "minimum_scale_violation_m": low_violation,
+            "maximum_clearance_violation_m": desired_violation,
+        }
+    high = float(desired_scale)
+    best_vertices = low_vertices
+    best_scale = low
+    best_violation = low_violation
+    for _ in range(20):
+        mid = 0.5 * (low + high)
+        mid_vertices, violation = candidate(mid)
+        if violation <= 0.0:
+            low = mid
+            best_vertices = mid_vertices
+            best_scale = mid
+            best_violation = violation
+        else:
+            high = mid
+    return best_vertices, float(best_scale), {
+        "candidate_contained": True,
+        "desired_scale": float(desired_scale),
+        "contained_scale": float(best_scale),
+        "maximum_clearance_violation_m": float(best_violation),
+    }
+
+
+def _sample_spine_centerline(
+    control_points: np.ndarray,
+    fractions: np.ndarray,
+    *,
+    control_fractions: np.ndarray | None = None,
+) -> np.ndarray:
+    """Sample an order-preserving C1 curve through anatomical anchors."""
+    controls = np.asarray(control_points, dtype=np.float64).reshape(-1, 3)
+    query = np.clip(np.asarray(fractions, dtype=np.float64).reshape(-1), 0.0, 1.0)
+    if not len(controls):
+        raise ValueError("spine centerline requires control points")
+    if len(controls) == 1:
+        return np.repeat(controls, len(query), axis=0)
+    if len(controls) == 2:
+        return (1.0 - query)[:, None] * controls[0] + query[:, None] * controls[1]
+    if control_fractions is None:
+        chord = np.linalg.norm(np.diff(controls, axis=0), axis=1)
+        param = np.r_[0.0, np.cumsum(np.maximum(chord, 1.0e-8))]
+    else:
+        param = np.asarray(control_fractions, dtype=np.float64).reshape(-1)
+        if len(param) != len(controls):
+            raise ValueError("control_fractions must match control_points")
+        if np.any(~np.isfinite(param)) or np.any(np.diff(param) <= 0.0):
+            raise ValueError("control_fractions must be finite and strictly increasing")
+        param = param - param[0]
+    param /= max(float(param[-1]), 1.0e-8)
+    try:
+        from scipy.interpolate import PchipInterpolator
+
+        return np.asarray(PchipInterpolator(param, controls, axis=0)(query), dtype=np.float64)
+    except Exception:
+        return np.stack([np.interp(query, param, controls[:, axis]) for axis in range(3)], axis=1)
+
+
+def _fit_final_spine_interfaces(
+    asset: AnatomyRiggedAsset,
+    *,
+    old_global: np.ndarray,
+    new_global: np.ndarray,
+    pelvis_l5_interface: np.ndarray,
+    skull_c1_interface: np.ndarray,
+    target_joints: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+    """Refit the authored L5--C1 path to a monotone C1 anatomical curve."""
+    names = list(asset.source_bone_names or [])
+    required = ("Spine_L5", "Spine_C1")
+    if not all(name in names for name in required):
+        return new_global, np.asarray(asset.target_bind_local), {
+            "available": False,
+            "reason": "l5_or_c1_missing",
+        }
+    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    start = names.index("Spine_L5")
+    stop = names.index("Spine_C1")
+    chain: list[int] = []
+    current = stop
+    while current >= 0:
+        chain.append(current)
+        if current == start:
+            break
+        current = int(parents[current])
+    if not chain or chain[-1] != start:
+        return new_global, np.asarray(asset.target_bind_local), {
+            "available": False,
+            "reason": "authored_path_missing",
+        }
+    chain.reverse()
+    authored = np.asarray(old_global, dtype=np.float64)[chain, :3, 3]
+    arc = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(authored, axis=0), axis=1))]
+    fractions = arc / max(float(arc[-1]), 1.0e-8)
+    joint_id = {name: index for index, name in enumerate(asset.joint_names)}
+    control_points = [np.asarray(pelvis_l5_interface, dtype=np.float64)]
+    control_fractions = [0.0]
+    for fraction, joint_name in ((0.30, "spine2"), (0.62, "spine3"), (0.86, "neck")):
+        if joint_name in joint_id:
+            control_fractions.append(float(fraction))
+            control_points.append(np.asarray(target_joints[joint_id[joint_name]], dtype=np.float64))
+    control_fractions.append(1.0)
+    control_points.append(np.asarray(skull_c1_interface, dtype=np.float64))
+    controls = np.asarray(control_points, dtype=np.float64)
+    # Guard against a noisy SMPL-X control point reversing the cranio-caudal
+    # order. Project controls monotonically along the hard endpoint axis while
+    # retaining their transverse curvature.
+    axis = controls[-1] - controls[0]
+    axis /= max(float(np.linalg.norm(axis)), 1.0e-10)
+    scalar = (controls - controls[0]) @ axis
+    total = max(float(scalar[-1]), 1.0e-8)
+    minimum_step = total * 1.0e-4
+    scalar = np.maximum.accumulate(scalar + minimum_step * np.arange(len(scalar)))
+    scalar *= total / max(float(scalar[-1]), 1.0e-8)
+    controls += (scalar - (controls - controls[0]) @ axis)[:, None] * axis
+    centerline = _sample_spine_centerline(
+        controls,
+        fractions,
+        control_fractions=np.asarray(control_fractions, dtype=np.float64),
+    )
+    fitted = np.asarray(new_global, dtype=np.float64).copy()
+    for position, bone in enumerate(chain):
+        lo = max(0, position - 1)
+        hi = min(len(chain) - 1, position + 1)
+        authored_tangent = authored[hi] - authored[lo]
+        fitted_tangent = centerline[hi] - centerline[lo]
+        fitted[bone, :3, :3] = (
+            _rotation_between(authored_tangent, fitted_tangent)
+            @ np.asarray(old_global[bone, :3, :3], dtype=np.float64)
+        )
+        fitted[bone, :3, 3] = centerline[position]
+    local = fitted.copy()
+    for bone, parent in enumerate(parents.tolist()):
+        if int(parent) >= 0:
+            local[bone] = np.linalg.inv(fitted[int(parent)]) @ fitted[bone]
+    projected = (centerline - centerline[0]) @ axis
+    gaps = np.linalg.norm(np.diff(centerline, axis=0), axis=1)
+    return fitted, local, {
+        "available": True,
+        "chain_bones": int(len(chain)),
+        "monotonic": bool(np.all(np.diff(projected) > 0.0)),
+        "minimum_center_gap_m": float(np.min(gaps)) if len(gaps) else 0.0,
+        "pelvis_l5_gap_m": 0.0,
+        "skull_c1_gap_m": 0.0,
+    }
 
 
 def _midline_envelope_centers(
@@ -1209,20 +1585,20 @@ def fit_articulated_rest(
             lower = str(name).lower()
             if lower.startswith("rib_bone_") or lower.startswith("rib_name_"):
                 if not _is_follow_mode(modes[bi]):
-                    modes[bi] = "parent_follow"
+                    modes[bi] = "bind_follow"
                     patched = True
         if patched:
             asset = type(asset)(**{**asset.__dict__, "source_bone_driver_types": modes})
     old_vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
     vertices = old_vertices.copy()
-    old_global = np.asarray(asset.source_rest_global, dtype=np.float64)
+    old_global = np.asarray(asset.target_bind_global, dtype=np.float64)
     new_global, new_local, bone_delta = _fit_source_frames(asset)
     # Pure Blender/SMPL joint-linkage bone centroids (before material mesh surgery).
     blender_bone_centroids, blender_bone_valid = _bone_mesh_centroids(
         asset, old_vertices, bone_delta=bone_delta
     )
     source_anchors = _source_joint_anchors(asset)
-    target_joints = np.asarray(asset.rest_joints, dtype=np.float64)
+    target_joints = np.asarray(asset.rest_joints, dtype=np.float64).copy()
     source_parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
     modes = list(asset.source_bone_driver_types or [])
     shaft_meshes = 0
@@ -1280,8 +1656,14 @@ def fit_articulated_rest(
                 # mesh along its authored head→tail onto subject collar→shoulder.
                 fitted = shaft_preserving_segment_map(
                     old_vertices[start_i:stop_i],
-                    source_a=np.asarray(asset.source_bone_head[bone], dtype=np.float64),
-                    source_b=np.asarray(asset.source_bone_tail[bone], dtype=np.float64),
+                    source_a=np.asarray(
+                        asset.target_bone_head if asset.target_bone_head is not None else asset.source_bone_head,
+                        dtype=np.float64,
+                    )[bone],
+                    source_b=np.asarray(
+                        asset.target_bone_tail if asset.target_bone_tail is not None else asset.source_bone_tail,
+                        dtype=np.float64,
+                    )[bone],
                     target_a=target_joints[a],
                     target_b=target_joints[b],
                 )
@@ -1294,8 +1676,14 @@ def fit_articulated_rest(
                         stop=stop_i,
                         source=old_vertices[start_i:stop_i],
                         fitted=fitted,
-                        source_a=np.asarray(asset.source_bone_head[bone], dtype=np.float64),
-                        source_b=np.asarray(asset.source_bone_tail[bone], dtype=np.float64),
+                        source_a=np.asarray(
+                            asset.target_bone_head if asset.target_bone_head is not None else asset.source_bone_head,
+                            dtype=np.float64,
+                        )[bone],
+                        source_b=np.asarray(
+                            asset.target_bone_tail if asset.target_bone_tail is not None else asset.source_bone_tail,
+                            dtype=np.float64,
+                        )[bone],
                     ),
                 )
                 shaft_meshes += 1
@@ -1400,6 +1788,7 @@ def fit_articulated_rest(
         and ("mandible" in name or "jaw" in name),
     )
     cranial_scale = 1.0
+    cranial_scale_report: dict[str, Any] = {}
     cranial_aspect_ratio_change = 0.0
     brain_skull_center_drift_m = 0.0
     cranial_envelope_center_before: np.ndarray | None = None
@@ -1453,17 +1842,48 @@ def fit_articulated_rest(
             joint_names=list(asset.joint_names),
             center_offset=offset_world,
         )
-        vertices[head_compound], cranial_scale = _uniform_envelope_fit(
-            vertices[head_compound],
+        compound_before_envelope = vertices[head_compound].copy()
+        vertices[head_compound], cranial_scale, cranial_scale_report = _uniform_envelope_fit(
+            compound_before_envelope,
             target_head,
             reference_points=cranial_reference,
             scale_multiplier=multiplier,
             center_offset=offset_world,
-            margin=0.88,
+            # The old 0.88 margin made the current skull 11.4% smaller.  Use
+            # the robust isotropic envelope and leave containment to the
+            # candidate-scale diagnostic rather than pre-shrinking the head.
+            margin=1.0,
             maximum_scale=1.25,
+            minimum_scale=0.70,
+            scale_mode="median",
             source_center=cranial_envelope_center_before,
             target_center=cranial_envelope_center_after,
         )
+        full_surface = _load_obj_vertices(
+            root
+            / (
+                "smpl_canonical_tpose.obj"
+                if subject
+                else "smpl_canonical_tpose_neutral.obj"
+            )
+        )
+        full_surface_faces = np.asarray(
+            np.load(root / "smpl_canonical_weights.npz", allow_pickle=True)["faces"],
+            dtype=np.int32,
+        )
+        contained_vertices, contained_scale, containment_candidate = _contained_uniform_candidate(
+            compound_before_envelope,
+            source_center=cranial_envelope_center_before,
+            target_center=cranial_envelope_center_after,
+            target_surface=full_surface,
+            target_faces=full_surface_faces,
+            desired_scale=cranial_scale,
+            minimum_scale=0.70,
+        )
+        cranial_scale_report["containment_candidate"] = containment_candidate
+        if bool(containment_candidate.get("candidate_contained")):
+            vertices[head_compound] = contained_vertices
+            cranial_scale = contained_scale
         cranial_soft_moved = (cranial | jaw) & ~bone_material
         if np.any(cranial) and len(old_cranial):
             cranial_aspect_ratio_change = _aspect_ratio_change(old_cranial, vertices[cranial])
@@ -1487,6 +1907,7 @@ def fit_articulated_rest(
     # Mandible stays in the closed-skull compound above (Head_Bone + envelope).
     pelvis = pelvis_material
     pelvis_scale = 1.0
+    pelvis_scale_report: dict[str, Any] = {}
     pelvis_aspect_ratio_change = 0.0
     if np.any(pelvis):
         # Uniform envelope against the subject pelvic *surface*, centered on the
@@ -1518,14 +1939,16 @@ def fit_articulated_rest(
         target_axis = target_joints[right_hip_id] - target_joints[left_hip_id]
         rotation = _rotation_between(source_axis, target_axis)
         rotated = (old_vertices[pelvis] - source_center) @ rotation.T + target_center
-        vertices[pelvis], pelvis_scale = _uniform_envelope_fit(
+        vertices[pelvis], pelvis_scale, pelvis_scale_report = _uniform_envelope_fit(
             rotated,
             target_pelvis,
             reference_points=rotated,
             scale_multiplier=multiplier,
             center_offset=np.zeros(3, dtype=np.float64),
-            margin=0.96,
-            maximum_scale=1.20,
+            margin=1.0,
+            maximum_scale=1.60,
+            minimum_scale=0.80,
+            scale_mode="median",
             source_center=target_center,
             target_center=target_center,
         )
@@ -1535,7 +1958,157 @@ def fit_articulated_rest(
                 vertices[pelvis] - target_center
             )
             pelvis_scale = 0.80
+        pelvis_surface = _load_obj_vertices(
+            root
+            / (
+                "smpl_canonical_tpose.obj"
+                if subject
+                else "smpl_canonical_tpose_neutral.obj"
+            )
+        )
+        pelvis_surface_faces = np.asarray(
+            np.load(root / "smpl_canonical_weights.npz", allow_pickle=True)["faces"],
+            dtype=np.int32,
+        )
+        contained_pelvis, contained_pelvis_scale, pelvis_candidate = _contained_uniform_candidate(
+            rotated,
+            source_center=target_center,
+            target_center=target_center,
+            target_surface=pelvis_surface,
+            target_faces=pelvis_surface_faces,
+            desired_scale=pelvis_scale,
+            minimum_scale=0.80,
+            clearance_m=0.0005,
+        )
+        pelvis_scale_report["containment_candidate"] = pelvis_candidate
+        if bool(pelvis_candidate.get("candidate_contained")):
+            vertices[pelvis] = contained_pelvis
+            pelvis_scale = contained_pelvis_scale
+            pelvis_scale_report["envelope_saturated"] = bool(
+                pelvis_scale_report.get("saturated")
+            )
+            pelvis_scale_report["scale"] = float(pelvis_scale)
+            pelvis_scale_report["saturated"] = False
+            pelvis_scale_report["selection"] = "maximum_contained_uniform"
         pelvis_aspect_ratio_change = _aspect_ratio_change(old_pelvis, vertices[pelvis])
+
+    hip_report: dict[str, Any] = {}
+    for side in ("left", "right"):
+        pair = _femur_head_and_acetabulum(
+            asset, vertices, side=side, target_joints=target_joints
+        )
+        suffix = "_l" if side == "left" else "_r"
+        femur = _mesh_mask(
+            asset,
+            lambda name, tissue, suffix=suffix: tissue == "bone"
+            and "femur" in name
+            and (name.endswith(suffix) or f"{suffix}_" in name),
+        )
+        if pair is None or not np.any(femur):
+            continue
+        femoral_head, acetabulum = pair
+        # The acetabular surface is the fixed member of the pelvis compound;
+        # the femoral epiphysis is mapped rigidly onto that shared center.
+        shared_center = acetabulum.copy()
+        knee_id = asset.joint_names.index(f"{side}_knee")
+        hip_id = asset.joint_names.index(f"{side}_hip")
+        knee = target_joints[knee_id]
+        femur_points = vertices[femur].copy()
+        shaft_axis = knee - femoral_head
+        shaft_axis /= max(float(np.linalg.norm(shaft_axis)), 1.0e-8)
+        axial = (femur_points - femoral_head) @ shaft_axis
+        distal = np.mean(
+            femur_points[axial >= np.quantile(axial, 0.85)], axis=0
+        )
+        vertices[femur] = shaft_preserving_segment_map(
+            femur_points,
+            source_a=femoral_head,
+            source_b=distal,
+            target_a=shared_center,
+            target_b=knee,
+        )
+        rotation = _rotation_between(distal - femoral_head, knee - shared_center)
+        frame_delta = np.eye(4, dtype=np.float64)
+        frame_delta[:3, :3] = rotation
+        frame_delta[:3, 3] = shared_center - rotation @ femoral_head
+        for bone, bone_name in enumerate(asset.source_bone_names or []):
+            lower = str(bone_name).lower()
+            if "femur" in lower and (lower.endswith(suffix) or f"{suffix}_" in lower):
+                new_global[bone] = frame_delta @ new_global[bone]
+        target_joints[hip_id] = shared_center
+        hip_report[side] = {
+            "search_prior": "smplx_hip_soft_constraint",
+            "pre_surface_gap_m": float(np.linalg.norm(femoral_head - acetabulum)),
+            "shared_center_m": shared_center.tolist(),
+            "femoral_head_to_shared_center_m": float(
+                np.linalg.norm(femoral_head - shared_center)
+            ),
+            "acetabulum_to_shared_center_m": float(
+                np.linalg.norm(acetabulum - shared_center)
+            ),
+            "femoral_head_to_acetabulum_m": 0.0,
+        }
+    if hip_report:
+        new_local = new_global.copy()
+        for bone, parent in enumerate(source_parents.tolist()):
+            if int(parent) >= 0:
+                new_local[bone] = np.linalg.inv(new_global[int(parent)]) @ new_global[bone]
+        bone_delta = new_global @ np.linalg.inv(old_global)
+
+    spine_interface_report: dict[str, Any] = {
+        "available": False,
+        "reason": "interface_geometry_missing",
+    }
+    if np.any(pelvis) and np.any(skull_reference):
+        pelvis_id = asset.joint_names.index("pelvis")
+        spine1_id = asset.joint_names.index("spine1")
+        neck_id = asset.joint_names.index("neck")
+        head_id = asset.joint_names.index("head")
+        inferior_axis = target_joints[spine1_id] - target_joints[pelvis_id]
+        inferior_axis /= max(float(np.linalg.norm(inferior_axis)), 1.0e-10)
+        sacrum = _mesh_mask(
+            asset,
+            lambda name, tissue: tissue == "bone" and "sacrum" in name,
+        )
+        pelvis_interface_points = vertices[sacrum] if np.any(sacrum) else vertices[pelvis]
+        pelvis_projection = pelvis_interface_points @ inferior_axis
+        pelvis_l5_interface = np.median(
+            pelvis_interface_points[
+                pelvis_projection >= np.quantile(pelvis_projection, 0.97)
+            ],
+            axis=0,
+        )
+        superior_axis = target_joints[head_id] - target_joints[neck_id]
+        superior_axis /= max(float(np.linalg.norm(superior_axis)), 1.0e-10)
+        skull_points = vertices[skull_reference]
+        skull_projection = skull_points @ superior_axis
+        skull_c1_interface = np.median(
+            skull_points[skull_projection <= np.quantile(skull_projection, 0.03)],
+            axis=0,
+        )
+        new_global, new_local, spine_interface_report = _fit_final_spine_interfaces(
+            asset,
+            old_global=old_global,
+            new_global=new_global,
+            pelvis_l5_interface=pelvis_l5_interface,
+            skull_c1_interface=skull_c1_interface,
+            target_joints=target_joints,
+        )
+        bone_delta = new_global @ np.linalg.inv(old_global)
+        for (start, stop), mesh_name, tissue in zip(
+            asset.source_vertex_ranges, asset.source_mesh_names, asset.source_tissues
+        ):
+            lower = str(mesh_name).lower()
+            if str(tissue).lower() != "bone" or not any(
+                token in lower for token in ("spine_", "vertebra", "disc")
+            ):
+                continue
+            start_i, stop_i = int(start), int(stop)
+            controller = _dominant_bone(asset, start_i, stop_i)
+            if controller is not None:
+                vertices[start_i:stop_i] = _transform_points(
+                    old_vertices[start_i:stop_i], bone_delta[controller]
+                )
 
     thorax = thorax_material
     thorax_scale = 1.0
@@ -1612,6 +2185,14 @@ def fit_articulated_rest(
             vertices[foot] += step
             rigid_offset += step
         foot_report[side] = {
+            # Preserve the ef58024 hand/foot material fit as requested.  The
+            # signed-distance query above selects one bounded rigid offset for
+            # the whole foot compound; it never projects individual vertices.
+            "fit_policy": "ef58024_ankle_axial_material_fit",
+            "post_projection_applied": False,
+            "rigid_containment_offset_applied": bool(
+                np.linalg.norm(rigid_offset) > 0.0
+            ),
             "axial_scale": float(scale),
             "source_reach_m": source_reach,
             "target_reach_m": target_reach,
@@ -1619,14 +2200,20 @@ def fit_articulated_rest(
             "forefoot_gap_before_m": 0.0,
             "forefoot_rigid_shift_m": 0.0,
         }
-        soft_follow_report[side] = _follow_foot_soft_scale(
-            vertices,
-            asset,
-            ankle=ankle,
-            forward=forward,
-            scale=scale,
-            rigid_offset=rigid_offset,
-        )
+        if asset.harmonic_reference_vertices is not None:
+            soft_follow_report[side] = {
+                "disabled": True,
+                "reason": "station_soft_follow_authoritative",
+            }
+        else:
+            soft_follow_report[side] = _follow_foot_soft_scale(
+                vertices,
+                asset,
+                ankle=ankle,
+                forward=forward,
+                scale=scale,
+                rigid_offset=rigid_offset,
+            )
         foot_report[side]["soft_follow"] = soft_follow_report[side]
 
     soft_section_report = {"disabled": True, "reason": "knee_popliteal_pierce"}
@@ -1641,9 +2228,9 @@ def fit_articulated_rest(
         **{
             **asset.__dict__,
             "vertices_rest": vertices.astype(np.float32),
-            "source_rest_global": new_global.astype(np.float32),
-            "source_rest_local": new_local.astype(np.float32),
-            "source_inverse_bind": np.linalg.inv(new_global).astype(np.float32),
+            "target_rest_global": new_global.astype(np.float32),
+            "target_rest_local": new_local.astype(np.float32),
+            "target_inverse_bind": np.linalg.inv(new_global).astype(np.float32),
         }
     )
     rebound, rebind_report = rebind_source_rig(
@@ -1653,7 +2240,7 @@ def fit_articulated_rest(
         stage=stage,
         bone_mask=bone_material,
     )
-    new_global = np.asarray(rebound.source_rest_global, dtype=np.float64)
+    new_global = np.asarray(rebound.target_bind_global, dtype=np.float64)
     # Rotation-only rebind for independent drivers: keep articulated bind
     # translation on the SMPL-X joint, adopt rebind orientation only.
     for bone, mode in enumerate(modes):
@@ -1693,22 +2280,37 @@ def fit_articulated_rest(
     vessel_nerve = _tissue_mask(asset, "vessel", "nerve") & soft_material
     material_bone_centroids, material_bone_valid = _bone_mesh_centroids(asset, vertices)
     bone_valid = blender_bone_valid & material_bone_valid
-    soft_translation_report = _apply_soft_bone_translation_field(
-        vertices,
-        asset,
-        vessel_nerve,
-        blender_centroids=blender_bone_centroids,
-        material_centroids=material_bone_centroids,
-        valid_bones=bone_valid,
-        driver_indices=fit_driver_indices,
-        driver_weights=fit_driver_weights,
-        subject_surface=subject_surface,
-        subject_faces=surface_faces,
-    )
+    if asset.harmonic_reference_vertices is not None:
+        # The explicit station bake performed after final endpoints are known
+        # supersedes the legacy centroid field and starts from the exact
+        # all-harmonic reference, avoiding compounded residuals.
+        soft_translation_report = {
+            "disabled": True,
+            "reason": "station_soft_follow_authoritative",
+        }
+    else:
+        soft_translation_report = _apply_soft_bone_translation_field(
+            vertices,
+            asset,
+            vessel_nerve,
+            blender_centroids=blender_bone_centroids,
+            material_centroids=material_bone_centroids,
+            valid_bones=bone_valid,
+            driver_indices=fit_driver_indices,
+            driver_weights=fit_driver_weights,
+            subject_surface=subject_surface,
+            subject_faces=surface_faces,
+        )
 
     endpoints_delta = bone_delta
-    head = np.asarray(asset.source_bone_head, dtype=np.float64)
-    tail = np.asarray(asset.source_bone_tail, dtype=np.float64)
+    head = np.asarray(
+        asset.target_bone_head if asset.target_bone_head is not None else asset.source_bone_head,
+        dtype=np.float64,
+    )
+    tail = np.asarray(
+        asset.target_bone_tail if asset.target_bone_tail is not None else asset.source_bone_tail,
+        dtype=np.float64,
+    )
     new_head = np.einsum("bij,bj->bi", endpoints_delta[:, :3, :3], head) + endpoints_delta[:, :3, 3]
     new_tail = np.einsum("bij,bj->bi", endpoints_delta[:, :3, :3], tail) + endpoints_delta[:, :3, 3]
     for bone, mode in enumerate(modes):
@@ -1744,9 +2346,12 @@ def fit_articulated_rest(
         "backend": "articulated_material_fit_v5",
         "shaft_meshes": int(shaft_meshes),
         "cranial_uniform_scale": float(cranial_scale),
+        "cranial_scale_report": cranial_scale_report,
         "cranial_aspect_ratio_change": float(cranial_aspect_ratio_change),
         "brain_skull_center_drift_m": float(brain_skull_center_drift_m),
         "pelvis_uniform_scale": float(pelvis_scale),
+        "pelvis_scale_report": pelvis_scale_report,
+        "hip_geometry": hip_report,
         "pelvis_aspect_ratio_change": float(pelvis_aspect_ratio_change),
         "thorax_uniform_scale": float(thorax_scale),
         "thorax_axis_scale": thorax_axis_scale.tolist(),
@@ -1755,6 +2360,7 @@ def fit_articulated_rest(
         "feet": foot_report,
         "foot_soft_follow": soft_follow_report,
         "scapula_thorax_fit": scapula_report,
+        "spine_interfaces": spine_interface_report,
         "soft_section_inward": soft_section_report,
         "soft_bone_translation_field": soft_translation_report,
         "source_rig_rebind": rebind_report,
@@ -1767,16 +2373,17 @@ def fit_articulated_rest(
         **{
             **rebound.__dict__,
             "vertices_rest": vertices.astype(np.float32),
-            "source_rest_global": new_global.astype(np.float32),
-            "source_rest_local": new_local.astype(np.float32),
-            "source_inverse_bind": np.linalg.inv(new_global).astype(np.float32),
-            "source_bone_head": new_head.astype(np.float32),
-            "source_bone_tail": new_tail.astype(np.float32),
+            "target_rest_global": new_global.astype(np.float32),
+            "target_rest_local": new_local.astype(np.float32),
+            "target_inverse_bind": np.linalg.inv(new_global).astype(np.float32),
+            "target_bone_head": new_head.astype(np.float32),
+            "target_bone_tail": new_tail.astype(np.float32),
             "registration_reference": vertices.astype(np.float32),
             "driver_indices": fit_driver_indices,
             "driver_weights": fit_driver_weights,
             "metadata": metadata,
         }
     )
+    result = with_source_driver_coupling(result)
     result.validate()
     return result, report
