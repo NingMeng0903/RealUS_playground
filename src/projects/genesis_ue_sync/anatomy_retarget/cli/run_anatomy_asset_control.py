@@ -22,8 +22,10 @@ def parse_args() -> argparse.Namespace:
         "--action",
         type=str,
         required=True,
-        choices=("delete", "clear_all", "set_visible", "set_opacity", "restore_opacity", "set_render_mode"),
+        choices=("upsert", "delete", "clear_all", "set_visible", "set_opacity", "restore_opacity", "set_render_mode"),
     )
+    p.add_argument("--asset-npz", type=str, default=None, help="Required for action=upsert.")
+    p.add_argument("--color-rgba", type=str, default="0.8,0.05,0.05,0.85")
     p.add_argument("--visible", action=argparse.BooleanOptionalAction, default=True)
     p.add_argument("--opacity", type=float, default=None)
     p.add_argument("--mode", type=str, default=None, choices=("hidden", "transparent", "opaque"))
@@ -36,12 +38,19 @@ def main() -> int:
     import zmq
 
     args = parse_args()
+    if str(args.action) == "upsert" and not args.asset_npz:
+        raise SystemExit("--asset-npz is required for action=upsert")
+    color = tuple(float(value.strip()) for value in str(args.color_rgba).split(","))
+    if len(color) != 4:
+        raise SystemExit("--color-rgba must be r,g,b,a")
     ctx = zmq.Context.instance()
     sock = ctx.socket(zmq.PUB)
     sock.bind(str(args.bind))
     payload = anatomy_asset_control_to_dict(
         action=str(args.action),
         model_id=str(args.model_id),
+        asset_npz=str(args.asset_npz) if str(args.action) == "upsert" else None,
+        color_rgba=color if str(args.action) == "upsert" else None,
         visible=bool(args.visible) if str(args.action) == "set_visible" else None,
         opacity=args.opacity,
         mode=args.mode,

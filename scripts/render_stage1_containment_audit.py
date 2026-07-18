@@ -32,19 +32,21 @@ def main() -> int:
     )
     sdf, _closest, _normals = signed_distance(vertices, surface_vertices, surface_faces)
     colors = {"vessel": "#d62728", "nerve": "#ffbf00", "organ": "#9467bd"}
-    groups: list[tuple[str, np.ndarray]] = []
+    groups: list[tuple[str, np.ndarray, np.ndarray]] = []
     for tissue in ("vessel", "nerve", "organ"):
         mask = np.zeros(len(vertices), dtype=bool)
         for (start, stop), label in zip(ranges, tissues):
             if label == tissue:
                 mask[int(start) : int(stop)] = True
-        groups.append((tissue, np.flatnonzero(mask & (sdf > 0.0))))
+        groups.append((tissue, np.flatnonzero(mask), np.flatnonzero(mask & (sdf > 0.0))))
     args.output_dir.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         args.output_dir / "stage1_outside_points.npz",
         vertices=vertices,
         sdf=sdf.astype(np.float32),
         vessel_indices=groups[0][1], nerve_indices=groups[1][1], organ_indices=groups[2][1],
+        vessel_outside_indices=groups[0][2], nerve_outside_indices=groups[1][2],
+        organ_outside_indices=groups[2][2],
     )
     import matplotlib
 
@@ -59,10 +61,19 @@ def main() -> int:
             surface_vertices[:, 0], surface_vertices[:, 1], surface_vertices[:, 2],
             triangles=surface_faces, color="#9aa7b2", alpha=0.15, linewidth=0.0,
         )
-        for tissue, indices in groups:
+        for tissue, indices, outside_indices in groups:
             if len(indices):
                 points = vertices[indices]
-                axis.scatter(points[:, 0], points[:, 1], points[:, 2], s=1.5, c=colors[tissue], label=tissue)
+                axis.scatter(
+                    points[:, 0], points[:, 1], points[:, 2], s=0.35,
+                    c=colors[tissue], alpha=0.32, label=tissue,
+                )
+            if len(outside_indices):
+                points = vertices[outside_indices]
+                axis.scatter(
+                    points[:, 0], points[:, 1], points[:, 2], s=2.2,
+                    c="#ff00ff", alpha=0.9, label=f"{tissue} outside",
+                )
         if title.startswith("leg"):
             axis.set_xlim(-0.28, 0.28)
             axis.set_ylim(-1.38, -0.38)
@@ -77,7 +88,8 @@ def main() -> int:
         axis.set_axis_off()
     handles, labels = figure.axes[0].get_legend_handles_labels()
     if handles:
-        figure.legend(handles, labels, loc="lower center", ncol=3)
+        unique = dict(zip(labels, handles))
+        figure.legend(unique.values(), unique.keys(), loc="lower center", ncol=3)
     figure.tight_layout(rect=(0, 0.04, 1, 1))
     figure.savefig(args.output_dir / "stage1_containment_audit.png", dpi=220)
     return 0
