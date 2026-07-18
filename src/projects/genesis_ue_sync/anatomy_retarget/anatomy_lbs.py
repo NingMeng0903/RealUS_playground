@@ -732,7 +732,10 @@ def skin_vertices(
     # direct evaluation (no online SDF, graph solve or collision iteration),
     # and therefore cannot rotate/collapse a vessel cross-section at a weight
     # boundary.  Organs receive one polar-rigid transform per component.
-    if asset.source_bone_names is not None:
+    if (
+        asset.source_bone_names is not None
+        and not bool((asset.metadata or {}).get("disable_soft_follow", False))
+    ):
         from .soft_follow import apply_regional_organ_follow, apply_station_pose_follow
 
         posed = apply_station_pose_follow(asset, transforms, posed)

@@ -1113,6 +1113,35 @@ def apply_subject_beta_shape(
             "metadata": meta,
         }
     )
+    if bool(dict(config or {}).get("fast_publish", False)):
+        from .anatomy_lbs import with_source_driver_coupling
+
+        result = with_source_driver_coupling(interim)
+        return result, {
+            "backend": "fast_publish_subject_harmonic",
+            "volume_solver_version": _BETA_SOLVER_VERSION,
+            "skipped_material_rest_fit": True,
+            "skipped_soft_follow": True,
+            "reason": "preserve source LBS and joint links for live preview",
+            "soft_rms_m": float(
+                np.sqrt(
+                    np.mean(
+                        np.sum(
+                            np.square(np.asarray(shaped_vertices) - np.asarray(points)),
+                            axis=1,
+                        )
+                    )
+                )
+            ),
+            "soft_max_m": float(
+                np.max(
+                    np.linalg.norm(
+                        np.asarray(shaped_vertices) - np.asarray(points),
+                        axis=1,
+                    )
+                )
+            ),
+        }
     result, articulated_report = fit_articulated_rest(
         interim,
         canonical_dir=root,

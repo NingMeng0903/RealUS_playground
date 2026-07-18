@@ -347,6 +347,14 @@ def parse_args() -> argparse.Namespace:
         help="Run slow mesh/SDF diagnostics even when source and shape caches hit.",
     )
     p.add_argument(
+        "--fast-publish",
+        action="store_true",
+        help=(
+            "Use the conservative live-preview bake: preserve source LBS, skip "
+            "slow diagnostics/material rest fitting/pose-cache publication."
+        ),
+    )
+    p.add_argument(
         "--show-connective-tissue",
         action="store_true",
         help="Render ligament/tendon connective-tissue meshes in Genesis (hidden by default).",
@@ -455,6 +463,9 @@ def main() -> int:
     started_at = time.perf_counter()
     profile: dict[str, float] = {}
     cfg = _load_config(args.config)
+    if args.fast_publish:
+        cfg = dict(cfg)
+        cfg["fast_publish"] = True
     blend = args.blend or Path(str(cfg.get("blend_path", "")))
     if not blend:
         raise ValueError("Missing anatomy blend path; pass --blend or set blend_path in config.")
@@ -615,7 +626,10 @@ def main() -> int:
         module_root / "source_skin_volume.py",
         module_root / "shape_volume.py",
         module_root / "material_fit.py",
-        extra=f"schema-{ANATOMY_ASSET_SCHEMA_VERSION}:source-template-v6",
+        extra=(
+            f"schema-{ANATOMY_ASSET_SCHEMA_VERSION}:source-template-v6"
+            + (":fast-publish" if args.fast_publish else "")
+        ),
     )
     shape_hash = smplx_shape_hash(betas, gender=gender)
     source_cache = cache_root / "source_template_v6" / f"{source_key}.npz"
@@ -630,7 +644,10 @@ def main() -> int:
         module_root / "intersection_diagnostics.py",
         module_root / "material_fit.py",
         module_root / "anatomy_lbs.py",
-        extra=f"schema-{ANATOMY_ASSET_SCHEMA_VERSION}:{source_key}:{shape_hash}:subject-shape-v6",
+        extra=(
+            f"schema-{ANATOMY_ASSET_SCHEMA_VERSION}:{source_key}:{shape_hash}:subject-shape-v6"
+            + (":fast-publish" if args.fast_publish else "")
+        ),
     )
     shape_cache = cache_root / "shape" / f"{shape_key}.npz"
     cached_source = (
@@ -676,39 +693,53 @@ def main() -> int:
         asset, source_skin_report = apply_source_skin_volume_registration(
             asset, canonical_dir=args.canonical_dir
         )
-        asset, neutral_articulated_report = fit_articulated_rest(
-            asset,
-            canonical_dir=args.canonical_dir,
-            config=cfg,
-            subject=False,
-            stage="neutral",
-        )
+        if args.fast_publish:
+            neutral_articulated_report = {
+                "stage": "neutral",
+                "backend": "fast_publish_source_lbs",
+                "skipped": True,
+                "reason": "preserve authored source rig and joint links",
+            }
+        else:
+            asset, neutral_articulated_report = fit_articulated_rest(
+                asset,
+                canonical_dir=args.canonical_dir,
+                config=cfg,
+                subject=False,
+                stage="neutral",
+            )
         from projects.genesis_ue_sync.anatomy_retarget.soft_constraints import (
             regularize_asset_soft_materials,
         )
 
-        neutral_surface = load_body_surface(neutral_surface_path)
-        neutral_soft_vertices, neutral_soft_report = (
-            regularize_asset_soft_materials(
-                asset,
-                reference_vertices=(
-                    asset.registration_reference
-                    if asset.registration_reference is not None
-                    else asset.vertices_rest
-                ),
-                surface_vertices=neutral_surface[0],
-                surface_faces=neutral_surface[1],
-            )
-        )
-        asset = type(asset)(
-            **{
-                **asset.__dict__,
-                "vertices_rest": neutral_soft_vertices.astype(np.float32),
+        if args.fast_publish:
+            neutral_articulated_report["soft_material_regularizer"] = {
+                "skipped": True,
+                "reason": "fast_publish_preserves_source_lbs",
             }
-        )
-        neutral_articulated_report["soft_material_regularizer"] = (
-            neutral_soft_report
-        )
+        else:
+            neutral_surface = load_body_surface(neutral_surface_path)
+            neutral_soft_vertices, neutral_soft_report = (
+                regularize_asset_soft_materials(
+                    asset,
+                    reference_vertices=(
+                        asset.registration_reference
+                        if asset.registration_reference is not None
+                        else asset.vertices_rest
+                    ),
+                    surface_vertices=neutral_surface[0],
+                    surface_faces=neutral_surface[1],
+                )
+            )
+            asset = type(asset)(
+                **{
+                    **asset.__dict__,
+                    "vertices_rest": neutral_soft_vertices.astype(np.float32),
+                }
+            )
+            neutral_articulated_report["soft_material_regularizer"] = (
+                neutral_soft_report
+            )
         registration_report = {
             "backend": "source_skin_volume_harmonic_v6",
             "source_skin_volume": source_skin_report,
@@ -728,15 +759,17 @@ def main() -> int:
         source_cache.parent.mkdir(parents=True, exist_ok=True)
         save_rigged_asset(source_cache, asset)
         logging.info("source_template_v6 stored key=%s", source_key)
-    neutral_surface = load_body_surface(neutral_surface_path)
-    neutral_containment = _signed_distance_containment_report(
-        asset,
-        anatomy_vertices=asset.vertices_rest,
-        surface_vertices=neutral_surface[0],
-        surface_faces=neutral_surface[1],
-        stage="neutral_canonical",
-    )
-    containment_reports.append(neutral_containment)
+    neutral_surface = None
+    if not args.fast_publish or args.refresh_diagnostics:
+        neutral_surface = load_body_surface(neutral_surface_path)
+        neutral_containment = _signed_distance_containment_report(
+            asset,
+            anatomy_vertices=asset.vertices_rest,
+            surface_vertices=neutral_surface[0],
+            surface_faces=neutral_surface[1],
+            stage="neutral_canonical",
+        )
+        containment_reports.append(neutral_containment)
     profile["source_template_s"] = time.perf_counter() - started_at
     bind_roundtrip = {
         "max_matrix_error": float(np.max(np.abs(
@@ -770,12 +803,34 @@ def main() -> int:
         logging.info("subject-shape cache hit shape_hash=%s", shape_hash)
     else:
         if str(cfg.get("canonical_rest_space", "neutral")).lower() == "neutral":
-            asset, shape_report = apply_subject_beta_shape(
-                asset, canonical_dir=args.canonical_dir, config=cfg
-            )
+            if args.fast_publish:
+                # Do not run the beta volume cage in the live-preview path.
+                # Its extrapolation fallback moves soft material while the
+                # authored bone rig remains fixed, which is precisely the
+                # pelvis/spine disconnect this mode is meant to avoid.
+                shape_report = {
+                    "backend": "fast_publish_source_rest",
+                    "skipped_subject_beta_volume": True,
+                    "skipped_material_rest_fit": True,
+                    "skipped_soft_follow": True,
+                    "reason": "preserve authored source joints and all material links",
+                }
+            else:
+                asset, shape_report = apply_subject_beta_shape(
+                    asset, canonical_dir=args.canonical_dir, config=cfg
+                )
         try:
             asset, station_intersection_acceptance = (
-                enforce_station_intersection_nonregression(asset)
+                (
+                    asset,
+                    {
+                        "available": False,
+                        "skipped": True,
+                        "reason": "fast_publish",
+                    },
+                )
+                if args.fast_publish
+                else enforce_station_intersection_nonregression(asset)
             )
         except Exception as exc:
             station_intersection_acceptance = {
@@ -830,14 +885,15 @@ def main() -> int:
     ):
         minimum_jacobian = float(shape_report["minimum_jacobian_ratio"])
         shape_report["inverted_tetrahedra"] = int(minimum_jacobian <= 0.0)
-    subject_containment = _signed_distance_containment_report(
-        asset,
-        anatomy_vertices=asset.vertices_rest,
-        surface_vertices=subject_surface[0],
-        surface_faces=subject_surface[1],
-        stage="subject_rest",
-    )
-    containment_reports.append(subject_containment)
+    if not args.fast_publish or args.refresh_diagnostics:
+        subject_containment = _signed_distance_containment_report(
+            asset,
+            anatomy_vertices=asset.vertices_rest,
+            surface_vertices=subject_surface[0],
+            surface_faces=subject_surface[1],
+            stage="subject_rest",
+        )
+        containment_reports.append(subject_containment)
     profile["subject_shape_s"] = time.perf_counter() - started_at - profile["source_template_s"]
     pose_report: dict[str, Any] | None = None
     if args.motion_npz is not None:
@@ -893,14 +949,21 @@ def main() -> int:
                     "pose_cache_hash": cache_hash,
                 }
             )
-        pose_report = _signed_distance_containment_report(
-            asset,
-            anatomy_vertices=np.asarray(asset.pose_cache_vertices, dtype=np.float64),
-            surface_vertices=posed_surface_vertices,
-            surface_faces=posed_surface_faces,
-            stage="final_pose",
-        )
-        containment_reports.append(pose_report)
+        if not args.fast_publish or args.refresh_diagnostics:
+            pose_report = _signed_distance_containment_report(
+                asset,
+                anatomy_vertices=np.asarray(asset.pose_cache_vertices, dtype=np.float64),
+                surface_vertices=posed_surface_vertices,
+                surface_faces=posed_surface_faces,
+                stage="final_pose",
+            )
+            containment_reports.append(pose_report)
+        else:
+            pose_report = {
+                "stage": "final_pose",
+                "skipped": True,
+                "reason": "fast_publish",
+            }
         if cached_pose is None:
             pose_meta = dict(asset.metadata or {})
             pose_meta.update(
@@ -928,14 +991,21 @@ def main() -> int:
                 "pose_cache_hash": "zero_pose",
             }
         )
-        pose_report = _signed_distance_containment_report(
-            asset,
-            anatomy_vertices=zero_vertices,
-            surface_vertices=subject_surface[0],
-            surface_faces=subject_surface[1],
-            stage="final_pose",
-        )
-        containment_reports.append(pose_report)
+        if not args.fast_publish or args.refresh_diagnostics:
+            pose_report = _signed_distance_containment_report(
+                asset,
+                anatomy_vertices=zero_vertices,
+                surface_vertices=subject_surface[0],
+                surface_faces=subject_surface[1],
+                stage="final_pose",
+            )
+            containment_reports.append(pose_report)
+        else:
+            pose_report = {
+                "stage": "final_pose",
+                "skipped": True,
+                "reason": "fast_publish",
+            }
 
     # Schema-v6 assets contain runtime data only.  Cache keys and diagnostics
     # belong in JSON sidecars and must not leak into the published NPZ.
@@ -946,9 +1016,127 @@ def main() -> int:
         "canonical_source": str(manifest.get("source", "")),
         "show_connective_tissue": bool(args.show_connective_tissue),
         "show_vessels": not bool(args.hide_vessels),
+        "fast_publish": bool(args.fast_publish),
+        "disable_soft_follow": bool(args.fast_publish),
     }
     asset = type(asset)(**{**asset.__dict__, "metadata": meta})
+    if args.fast_publish:
+        asset = type(asset)(
+            **{
+                **asset.__dict__,
+                "pose_cache_vertices": None,
+                "pose_cache_hash": "",
+                "soft_follow_driver_indices": None,
+                "soft_follow_driver_weights": None,
+                "soft_follow_stations": None,
+                "soft_follow_strength": None,
+                "soft_component_ids": None,
+                "source_mesh_follow_modes": None,
+            }
+        )
     save_rigged_asset(output_npz, asset)
+    if args.fast_publish:
+        # This mode is deliberately a live-preview path: it preserves the
+        # source rig's articulated rest geometry and publishes it directly.
+        # Do not spend minutes generating diagnostics / acceptance evidence,
+        # and do not run geometry checks that are intended for release bakes.
+        profile["pose_and_diagnostics_s"] = 0.0
+        profile["total_pre_publish_s"] = time.perf_counter() - started_at
+        if args.profile_first_frame:
+            (stage_dir / "first_frame_profile.json").write_text(
+                json.dumps(
+                    {
+                        "seconds": profile,
+                        "source_cache_hit": source_cache_hit,
+                        "shape_cache_hit": shape_cache_hit,
+                        "fast_publish": True,
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+        blender_report.update(
+            {
+                "schema": {
+                    "asset_schema_version": ANATOMY_ASSET_SCHEMA_VERSION,
+                    "expected_schema_version": ANATOMY_ASSET_SCHEMA_VERSION,
+                    "passed": True,
+                },
+                "manifest": {
+                    "path": str(manifest_path),
+                    "sha256": _file_digest(manifest_path),
+                    "source": manifest["source"],
+                    "gender": gender,
+                    "betas": betas,
+                },
+                "run_manifest": run_manifest,
+                "registration": registration_report,
+                "shape": shape_report,
+                "containment_stages": containment_reports,
+                "pose_cache_report": pose_report,
+                "source_bind_roundtrip": bind_roundtrip,
+                "fast_publish": {
+                    "skipped_acceptance": True,
+                    "skipped": [
+                        "mesh_diagnostics",
+                        "bone_segment_diagnostics",
+                        "tube_bone_intersections",
+                        "runtime_pose_matrix",
+                        "quality_gate_evaluation",
+                    ],
+                    "profile": profile,
+                },
+            }
+        )
+        report_json.write_text(
+            json.dumps(blender_report, indent=2, ensure_ascii=True, allow_nan=False),
+            encoding="utf-8",
+        )
+        write_quality_report(
+            stage_dir / "quality_report.json",
+            {
+                "schema_version": ANATOMY_ASSET_SCHEMA_VERSION,
+                "passed": True,
+                "failures": [],
+                "warnings": [],
+                "fast_publish": True,
+                "skipped_acceptance": True,
+            },
+        )
+        run_dir = _finalize_run(
+            stage_dir,
+            output_root=output_root,
+            schema_version=ANATOMY_ASSET_SCHEMA_VERSION,
+            passed=True,
+            update_latest=not bool(args.diagnostics_only),
+        )
+        if args.diagnostics_only:
+            logging.info(
+                "fast-publish diagnostics-only run preserved at %s; latest.json remains unchanged",
+                run_dir,
+            )
+            return 0
+
+        output_npz = run_dir / "anatomy_rigged.npz"
+        logging.info(
+            "fast-publish retarget ok vertices=%s faces=%s joints=%s output=%s",
+            asset.vertices_rest.shape[0],
+            asset.faces.shape[0],
+            len(asset.joint_names),
+            output_npz,
+        )
+        if args.publish_genesis:
+            sent = _publish_upsert(
+                bind=str(args.publish_bind),
+                model_id=str(args.model_id),
+                asset_npz=output_npz,
+                color_rgba=_parse_rgba(str(args.color_rgba)),
+                duration_s=float(args.publish_duration_s),
+                rate_hz=float(args.publish_rate_hz),
+            )
+            logging.info("published anatomy upsert sent=%s bind=%s", sent, args.publish_bind)
+        return 0
+
     mesh_diagnostics = write_mesh_diagnostics(
         asset,
         surface_vertices=subject_surface[0],
