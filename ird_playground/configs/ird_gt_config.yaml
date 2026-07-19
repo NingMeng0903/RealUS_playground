@@ -1,0 +1,22 @@
+# Dense stratified IRD GT (~2M) from 1.5 cm horizontal-probe+shaft map.
+# Layers: 35% interior / 40% boundary / 25% exterior.
+# m_gt is a truncated margin label (not a strict SDF).
+
+map_dir: ../rm75_control/data/reachability/rm75_6f_1p5cm_15deg_coll_probe
+out: data/ird/gt_samples_1p5cm_probe.npz
+
+sampling:
+  n_interior: 700000
+  n_boundary: 800000
+  n_exterior: 500000
+  max_orients_per_voxel: 28
+  hard_negative_frac: 0.45
+  hard_negative_radius_m: 0.06
+  sigma_p_m: 0.03
+  sigma_r_deg: 10.0
+  boundary_d_lo: 0.02
+  boundary_d_hi: 0.08
+  bbox_margin_m: 0.20
+  comfort_from: auto
+  k_candidates: 4
+  seed: 42

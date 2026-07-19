@@ -1,0 +1,24 @@
+# Query-side Region A extents (runtime only; NOT trained into the point field).
+
+position_region:
+  tangent_1_m: 0.020
+  tangent_2_m: 0.010
+  normal_m: 0.002
+
+orientation_region:
+  tilt_tangent_1_deg: 8.0
+  tilt_tangent_2_deg: 5.0
+  axial_roll_deg: 3.0
+
+aggregation:
+  name: mean_softmin
+  lambda: 0.6
+  tau: 0.10
+  d_min: 0.30
+  tau_c: 0.05
+
+sampling:
+  sobol: true
+  num_samples_nlp: 32
+  num_samples_eval: 512
+  seed: 0

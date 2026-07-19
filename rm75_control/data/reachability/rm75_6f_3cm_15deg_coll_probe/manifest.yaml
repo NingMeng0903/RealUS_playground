@@ -1,0 +1,36 @@
+schema_version: '1.0'
+urdf_path: data/urdf_patched/RM75-horizontal_probe.urdf
+urdf_sha256: e5ee4a046792fddf01c7fb4a54603620cbbca0eb89692a30545a46945c503ff2
+tcp_frame: tcp
+git_sha: 1c1a47ab2181db4dd4aa1b9eee1dc14f3cfb7c2b
+build_wall_s: 9.258623739999166
+mc_samples: 2000000
+ik_refined: false
+with_roll: false
+extra:
+  mc_wall_s: 9.018048038000416
+  workers: 8
+  reachable_radius_m: 1.2
+  self_collision: true
+  ik_refine_stats: null
+grid:
+  origin_m:
+  - -1.1
+  - -1.1
+  - -0.3
+  step_m: 0.03
+  shape:
+  - 74
+  - 74
+  - 57
+orientations:
+  kind: icosphere
+  n: 642
+  subdiv: 3
+roll: null
+layout:
+  n_orient: 642
+  n_roll: 0
+counts:
+  n_reachable_voxels: 54461
+  n_grid_voxels: 312132

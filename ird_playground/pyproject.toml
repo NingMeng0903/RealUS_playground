@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ird-playground"
+version = "0.1.0"
+description = "Generic Neural IRD point field + query-side region aggregation A"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "pyyaml",
+    "scipy",
+]
+
+[project.optional-dependencies]
+torch = ["torch"]
+dev = ["pytest"]
+
+[project.scripts]
+ird-build-ird-gt = "ird_playground.cli.build_ird_gt:main"
+ird-train = "ird_playground.cli.train:main"
+ird-eval = "ird_playground.cli.eval_point:main"
+ird-region = "ird_playground.cli.region_demo:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ird_playground*"]
+
+[tool.pytest.ini_options]
+addopts = "-p no:dash"
+testpaths = ["tests"]

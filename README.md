@@ -7,6 +7,7 @@
 | 目录 | 环境 | 功能 |
 |------|------|------|
 | [`rm75_control/`](rm75_control/) | `envs/rm75` / viewer:`envs/genesis` | RM75 8-DOF 导纳、Genesis twin（可挂 SMPL/解剖 overlay） |
+| [`ird_playground/`](ird_playground/) | `envs/rm75` + PyTorch | 通用 Neural IRD 点场 + 查询侧区域 A；离散能力图/IRD GT |
 | [`camera_calibration/`](camera_calibration/) | `envs/camera_calib` | 4 相机 + 床内外参标定 UI、`genesis_bundle.yaml` |
 | [`perception/`](perception/) | `envs/genesis` | 真相机 ZMQ、DWPose+EasyMocap、解剖 retarget 入口 |
 | [`src/`](src/) | `envs/genesis` | 从 Among_US 迁移的 `genesis_ue_sync` / `bridge` / `common` |
@@ -21,6 +22,8 @@
 |------------|------|
 | `servo_executor/` | 发布给真机执行的伺服层（轨迹/力控接口，调用 `rm75_control` 或独立 CANFD） |
 | `shared/`（可选） | 跨包公共类型：坐标系、时间戳、消息格式（仅当两包强耦合时再抽） |
+
+Neural IRD 全期清单见 [`MD/todo.md`](MD/todo.md)。
 
 ## 划分原则
 

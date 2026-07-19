@@ -130,6 +130,17 @@ CI/自动验收需要阻断失败产物时显式增加 `--enforce-quality-gate`�
 
 **验收：** `outputs/anatomy_retarget/latest_asset/anatomy_rigged.npz`、`limb_vessel_planning/`；G 窗口见半透明解剖 + 血管 overlay。
 
+Stage 1 单独交付时，用采集时固定的 beta 只做一次离线调和与 target bind：
+
+```bash
+$PY perception/apps/run_anatomy_retarget.py \
+  --run <tpose_or_shape_capture_run> \
+  --stage1-harmonic-only \
+  --enforce-quality-gate
+```
+
+产物中的 `anatomy_rigged.npz` 保存 Blender source rig、source weights、SMPL-X target bind 和 driver coupling；`stage1_runtime_contract.json` 必须通过。它不保存任何特定动作的 pose cache。新动作只输入 SMPL-X 55-joint pose 到运行时 LBS，不重新运行 Blender、不重新求调和场。
+
 #### （可选）ZMQ 触发 Window 8
 
 服务（常开）：

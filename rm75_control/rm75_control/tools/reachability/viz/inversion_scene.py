@@ -212,3 +212,107 @@ def render_best_placement_pose(
     pl.add_text(f"y_b={y_b:.3f} m  rail_y={rail_y:+.3f} m", position="upper_left", font_size=12)
     _iso_zacharias_camera(pl)
     return _persist(pl, Path(out_path), size, transparent=False)
+
+
+def render_scan_line_base_placement(
+    cm: CapabilityMap,
+    traj: ScanTrajectory,
+    out_path: str | Path,
+    *,
+    result: FullScanResult | PrefixResult | None = None,
+    xz_base_world: tuple[float, float] = (0.0, 0.0),
+    yb_range: tuple[float, float] = (-0.35, 0.35),
+    yb_step: float = 0.01,
+    mode: str = "full",
+    robot_urdf: str | Path | None = None,
+    size: tuple[int, int] = (1600, 1000),
+) -> Path:
+    """World-frame scene: TCP scan line + scored base candidates → gold y_b*.
+
+    Answers: if TCP sweeps this directed line, where should the base sit.
+    """
+    import pinocchio as pin
+
+    if result is None:
+        if mode == "prefix":
+            result = longest_prefix(
+                cm, traj, xz_base_world=xz_base_world, yb_range=yb_range, yb_step=yb_step,
+            )
+        else:
+            result = full_scan_best_yb(
+                cm, traj, xz_base_world=xz_base_world, yb_range=yb_range, yb_step=yb_step,
+            )
+    score_mode = "prefix" if isinstance(result, PrefixResult) else "full"
+    ybs, scores = _score_yb_candidates(
+        cm, traj, xz_base_world, yb_range, yb_step, mode=score_mode,
+    )
+    cmap = make_zacharias_d_cmap()
+    smax = float(scores.max()) if scores.size else 1.0
+    y_best = result.y_b_best
+    rail_y = float(getattr(result, "rail_y", 0.0) or 0.0)
+
+    off_screen = os.environ.get("PYVISTA_OFF_SCREEN", "true").lower() in {"1", "true", "yes"}
+    pl = pv.Plotter(off_screen=off_screen, window_size=size)
+    pl.set_background("white")
+
+    # TCP scan polyline + waypoints
+    if traj.n:
+        pts = np.stack([wp.p_world for wp in traj.waypoints], axis=0)
+        pl.add_mesh(pv.lines_from_points(pts), color="#c0392b", line_width=5, name="scan")
+        for wp in traj.waypoints:
+            pl.add_mesh(pv.Sphere(radius=0.012, center=tuple(wp.p_world)), color="#e74c3c")
+            tip = wp.p_world + 0.06 * wp.tool_axis_world
+            arrow = pv.Line(tuple(wp.p_world), tuple(tip))
+            pl.add_mesh(arrow, color="#8e44ad", line_width=3)
+
+    # Candidate bases along y (xz fixed) — colour / size = trajectory score
+    x0, z0 = float(xz_base_world[0]), float(xz_base_world[1])
+    for yb, sc in zip(ybs, scores):
+        center = (x0, float(yb), z0)
+        if sc <= 0:
+            pl.add_mesh(
+                pv.Sphere(radius=0.008, center=center),
+                color=VAHRENKAMP_INFEASIBLE_GRAY, opacity=0.2,
+            )
+        else:
+            t = sc / max(smax, 1e-9)
+            pl.add_mesh(
+                pv.Sphere(radius=0.010 + 0.012 * t, center=center),
+                color=cmap(t)[:3], opacity=0.35 + 0.55 * t,
+            )
+
+    if y_best is not None:
+        pl.add_mesh(
+            pv.Sphere(radius=0.028, center=(x0, float(y_best), z0)),
+            color=VAHRENKAMP_BEST_GOLD,
+        )
+        # thin guide from best base to scan midpoint
+        if traj.n:
+            mid = traj.waypoints[traj.n // 2].p_world
+            pl.add_mesh(
+                pv.Line((x0, float(y_best), z0), tuple(mid)),
+                color="#f1c40f", line_width=2, opacity=0.7,
+            )
+        q = np.zeros(8, dtype=np.float64)
+        q[0] = rail_y
+        base = pin.SE3(np.eye(3), np.array([x0, float(y_best), z0]))
+        try:
+            scene = build_robot_pv(robot_urdf, q_full=q, base_pose_world=base)
+            add_robot_to_plotter(pl, scene)
+        except Exception:
+            pass
+        score_txt = f"  score={result.score:.3f}" if result.feasible else ""
+        pl.add_text(
+            f"scan line → y_b*={y_best:.3f} m  rail_y={rail_y:+.3f} m{score_txt}",
+            position="upper_edge", font_size=11, color="black",
+        )
+    else:
+        pl.add_text("no feasible base for this scan line", position="upper_edge", font_size=12, color="red")
+
+    pl.add_text(
+        "red=TCP scan · purple=tool axis · spheres=base y candidates · gold=best",
+        position="lower_edge", font_size=9, color="black",
+    )
+    focus_z = float(np.mean([wp.p_world[2] for wp in traj.waypoints])) if traj.n else 0.35
+    _iso_zacharias_camera(pl, focus_z=focus_z, distance=2.8)
+    return _persist(pl, Path(out_path), size, transparent=False)

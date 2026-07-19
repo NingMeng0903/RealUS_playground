@@ -51,14 +51,96 @@ def _bone_record(bone: bpy.types.Bone) -> dict[str, Any]:
     }
 
 
+def _constraint_record(constraint: Any) -> dict[str, Any]:
+    target = getattr(constraint, "target", None)
+    return {
+        "name": str(constraint.name),
+        "type": str(constraint.type),
+        "target": str(target.name) if target is not None else None,
+        "subtarget": str(getattr(constraint, "subtarget", "")),
+        "influence": float(getattr(constraint, "influence", 1.0)),
+        "mute": bool(getattr(constraint, "mute", False)),
+    }
+
+
+def _animation_record(owner: Any) -> dict[str, Any]:
+    animation = getattr(owner, "animation_data", None)
+    action = getattr(animation, "action", None) if animation is not None else None
+    drivers = []
+    for fcurve in list(getattr(animation, "drivers", ()) or ()):
+        driver = getattr(fcurve, "driver", None)
+        variables = []
+        for variable in list(getattr(driver, "variables", ()) or ()):
+            targets = []
+            for target in list(getattr(variable, "targets", ()) or ()):
+                target_id = getattr(target, "id", None)
+                targets.append(
+                    {
+                        "id": str(target_id.name) if target_id is not None else None,
+                        "bone_target": str(getattr(target, "bone_target", "")),
+                        "data_path": str(getattr(target, "data_path", "")),
+                        "transform_type": str(getattr(target, "transform_type", "")),
+                        "transform_space": str(getattr(target, "transform_space", "")),
+                    }
+                )
+            variables.append(
+                {"name": str(variable.name), "type": str(variable.type), "targets": targets}
+            )
+        drivers.append(
+            {
+                "data_path": str(fcurve.data_path),
+                "array_index": int(fcurve.array_index),
+                "mute": bool(fcurve.mute),
+                "expression": str(getattr(driver, "expression", "")),
+                "type": str(getattr(driver, "type", "")),
+                "variables": variables,
+            }
+        )
+    return {
+        "action": str(action.name) if action is not None else None,
+        "driver_count": int(len(drivers)),
+        "drivers": drivers,
+    }
+
+
 def _mesh_record(obj: bpy.types.Object, *, max_vertex_groups: int) -> dict[str, Any]:
     groups = [str(group.name) for group in obj.vertex_groups]
+    shape_keys = getattr(obj.data, "shape_keys", None)
+    key_blocks = []
+    if shape_keys is not None:
+        for key in shape_keys.key_blocks:
+            key_blocks.append(
+                {
+                    "name": str(key.name),
+                    "value": float(key.value),
+                    "mute": bool(key.mute),
+                    "relative_key": str(key.relative_key.name) if key.relative_key is not None else None,
+                }
+            )
     return {
         "name": str(obj.name),
         "collections": _collections_for_object(obj),
         "vertices": int(len(obj.data.vertices)),
         "faces": int(len(obj.data.polygons)),
-        "modifiers": [{"name": str(mod.name), "type": str(mod.type)} for mod in obj.modifiers],
+        "modifiers": [
+            {
+                "name": str(mod.name),
+                "type": str(mod.type),
+                "show_viewport": bool(mod.show_viewport),
+                "object": str(mod.object.name) if getattr(mod, "object", None) is not None else None,
+                "use_deform_preserve_volume": bool(
+                    getattr(mod, "use_deform_preserve_volume", False)
+                ),
+            }
+            for mod in obj.modifiers
+        ],
+        "constraints": [_constraint_record(value) for value in obj.constraints],
+        "animation": _animation_record(obj),
+        "shape_keys": {
+            "count": int(len(key_blocks)),
+            "key_blocks": key_blocks,
+            "animation": _animation_record(shape_keys) if shape_keys is not None else _animation_record(None),
+        },
         "vertex_group_count": int(len(groups)),
         "vertex_groups": groups[: max(0, int(max_vertex_groups))],
     }
@@ -80,6 +162,13 @@ def inspect_scene(*, max_vertex_groups: int) -> dict[str, Any]:
                 "name": str(obj.name),
                 "bone_count": int(len(bones)),
                 "bones": bones,
+                "constraints": [_constraint_record(value) for value in obj.constraints],
+                "pose_bone_constraints": {
+                    str(pose_bone.name): [_constraint_record(value) for value in pose_bone.constraints]
+                    for pose_bone in obj.pose.bones
+                    if len(pose_bone.constraints)
+                },
+                "animation": _animation_record(obj),
             }
         )
 
@@ -102,6 +191,11 @@ def inspect_scene(*, max_vertex_groups: int) -> dict[str, Any]:
         )
     collections.sort(key=lambda row: str(row["name"]))
 
+    object_drivers = {
+        str(obj.name): _animation_record(obj)
+        for obj in objects
+        if _animation_record(obj)["driver_count"] or _animation_record(obj)["action"]
+    }
     return {
         "blend_file": str(bpy.data.filepath),
         "object_count": int(len(objects)),
@@ -109,6 +203,7 @@ def inspect_scene(*, max_vertex_groups: int) -> dict[str, Any]:
         "collections": collections,
         "armatures": armatures,
         "meshes": meshes,
+        "object_animation": object_drivers,
     }
 
 

@@ -34,6 +34,36 @@ def _weighted_rigid(source: np.ndarray, target: np.ndarray, weights: np.ndarray)
     return out
 
 
+def _weighted_similarity(
+    source: np.ndarray, target: np.ndarray, weights: np.ndarray
+) -> tuple[np.ndarray, float]:
+    """Return a proper rigid frame update plus the fitted uniform length scale."""
+    w = np.asarray(weights, dtype=np.float64).reshape(-1)
+    w /= max(float(w.sum()), 1.0e-12)
+    src_center = np.einsum("n,nj->j", w, source)
+    dst_center = np.einsum("n,nj->j", w, target)
+    x = source - src_center
+    y = target - dst_center
+    u, _singular, vt = np.linalg.svd((x * w[:, None]).T @ y)
+    rotation = vt.T @ u.T
+    if np.linalg.det(rotation) < 0.0:
+        vt[-1] *= -1.0
+        rotation = vt.T @ u.T
+    rotated = x @ rotation.T
+    denominator = float(np.einsum("n,nj,nj->", w, x, x))
+    scale = (
+        float(np.einsum("n,nj,nj->", w, y, rotated)) / denominator
+        if denominator > 1.0e-12
+        else 1.0
+    )
+    scale = float(np.clip(scale, 0.25, 4.0))
+    translation = dst_center - scale * (rotation @ src_center)
+    rigid = np.eye(4, dtype=np.float64)
+    rigid[:3, :3] = rotation
+    rigid[:3, 3] = translation
+    return rigid, scale
+
+
 def rebind_source_rig(
     asset: AnatomyRiggedAsset,
     *,
@@ -42,6 +72,8 @@ def rebind_source_rig(
     stage: str,
     minimum_weight: float = 0.05,
     bone_mask: np.ndarray | None = None,
+    fallback_to_soft: bool = True,
+    anchor_joint_local: bool = False,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     """Synchronize all source bind frames after a generic rest-space warp.
 
@@ -61,23 +93,44 @@ def rebind_source_rig(
     weights = np.asarray(asset.driver_weights, dtype=np.float64)
     old = np.asarray(asset.target_bind_global, dtype=np.float64)
     new = old.copy()
-    bone_transforms = np.tile(np.eye(4, dtype=np.float64), (len(asset.source_bone_names), 1, 1))
+    fitted_mask = np.zeros(len(asset.source_bone_names), dtype=bool)
+    bone_scales = np.ones(len(asset.source_bone_names), dtype=np.float64)
     residuals: list[float] = []
     fitted = 0
     bone_only = np.asarray(bone_mask, dtype=bool) if bone_mask is not None else None
+    bone_preferred_fits = 0
+    soft_fallback_fits = 0
     for bone in range(len(asset.source_bone_names)):
         mask = idx == bone
         row_weight = np.where(mask, weights, 0.0).sum(axis=1)
         selected = row_weight >= float(minimum_weight)
         if bone_only is not None:
-            selected &= bone_only
+            selected_bone = selected & bone_only
+            # Anatomical bone geometry is the authority for a skeleton frame.
+            # Some authored helpers only influence vessels, nerves or organs;
+            # retain the full weighted fallback for those bones rather than
+            # dropping their bind update altogether.
+            if int(np.count_nonzero(selected_bone)) >= 3:
+                selected = selected_bone
+                bone_preferred_fits += 1
+            elif fallback_to_soft:
+                soft_fallback_fits += 1
+            else:
+                selected = selected_bone
         if int(np.count_nonzero(selected)) < 3:
             continue
-        transform = _weighted_rigid(src[selected], dst[selected], row_weight[selected])
-        predicted = src[selected] @ transform[:3, :3].T + transform[:3, 3]
+        transform, scale = _weighted_similarity(
+            src[selected], dst[selected], row_weight[selected]
+        )
+        predicted = scale * (src[selected] @ transform[:3, :3].T) + transform[:3, 3]
         residuals.append(float(np.sqrt(np.average(np.sum((predicted - dst[selected]) ** 2, axis=1), weights=row_weight[selected]))))
-        new[bone] = transform @ old[bone]
-        bone_transforms[bone] = transform
+        new[bone, :3, :3] = transform[:3, :3] @ old[bone, :3, :3]
+        new[bone, :3, 3] = (
+            scale * (transform[:3, :3] @ old[bone, :3, 3])
+            + transform[:3, 3]
+        )
+        bone_scales[bone] = scale
+        fitted_mask[bone] = True
         fitted += 1
     # Preserve the actual Blender FK relation for bones that have no
     # independent SMPL-X control.  Fitting every helper/follower globally was
@@ -99,20 +152,104 @@ def rebind_source_rig(
         for bone, parent in enumerate(parents.tolist()):
             if int(parent) >= 0:
                 old_local[bone] = np.linalg.inv(old[int(parent)]) @ old[bone]
+    # Deform followers carry the authored vertex weights while their parent
+    # rotation controllers often carry none.  Infer those unsupported
+    # controller frames from a fitted connected/follower child before filling
+    # any remaining hierarchy gaps.  The former parent-first overwrite threw
+    # away every fitted finger frame and left rotations around the old palm.
+    inferred_controllers = 0
+    supported = fitted_mask.copy()
+    for bone in range(len(parents) - 1, -1, -1):
+        parent = int(parents[bone])
+        if parent < 0 or not supported[bone] or supported[parent]:
+            continue
+        if str(types[bone]) != "bind_follow" and not bool(use_connect[bone]):
+            continue
+        new[parent] = new[bone] @ np.linalg.inv(old_local[bone])
+        bone_scales[parent] = bone_scales[bone]
+        supported[parent] = True
+        inferred_controllers += 1
+
     hierarchy_preserved = 0
     for bone, parent in enumerate(parents.tolist()):
-        if int(parent) < 0:
+        if int(parent) < 0 or supported[bone]:
             continue
         if bone >= len(types):
             continue
-        is_upper_limb_connected = bool(use_connect[bone])
-        if (
-            str(types[bone]) not in {"parent_follow", "bind_follow"} and not is_upper_limb_connected
-        ):
+        if str(types[bone]) != "bind_follow" and not bool(use_connect[bone]):
             continue
         new[bone] = new[int(parent)] @ old_local[bone]
+        bone_scales[bone] = bone_scales[int(parent)]
+        supported[bone] = True
         hierarchy_preserved += 1
-    bone_transforms = new @ np.linalg.inv(old)
+
+    # A joint-local controller is the source-rig rotation center for its
+    # mapped SMPL-X degree of freedom.  Weighted rigid fitting recovers its
+    # axis but not that pivot (unweighted controllers can remain 1-2 cm away
+    # from the mapped anatomy).  Anchor the fitted origin before rebuilding
+    # locals so source FK rotates around the subject-beta joint center.
+    anchored_joint_local = 0
+    hard_anchor = np.zeros(len(parents), dtype=bool)
+    if anchor_joint_local:
+        smplx_a = np.asarray(asset.source_bone_smplx_a, dtype=np.int64)
+        smplx_b = np.asarray(asset.source_bone_smplx_b, dtype=np.int64)
+        target_joints = np.asarray(asset.rest_joints, dtype=np.float64)
+        for bone, mode in enumerate(types):
+            parent = int(parents[bone])
+            starts_new_segment = bool(
+                str(mode) == "segment_root"
+                and (
+                    parent < 0
+                    or not bool(use_connect[bone])
+                    or int(smplx_a[parent]) != int(smplx_a[bone])
+                    or int(smplx_b[parent]) != int(smplx_b[bone])
+                )
+            )
+            if str(mode) != "joint_local" and not starts_new_segment:
+                continue
+            joint = int(smplx_a[bone])
+            if joint < 0 or joint >= len(target_joints):
+                raise ValueError(f"anchored source bone {bone} has no valid target joint")
+            new[bone, :3, 3] = target_joints[joint]
+            supported[bone] = True
+            hard_anchor[bone] = True
+            if str(mode) == "joint_local":
+                anchored_joint_local += 1
+
+    # Blender connected bones share one physical joint even when the volume
+    # map changes segment length.  Keep each fitted rotation, but place the
+    # child origin at the mapped parent tail so the runtime cannot open a gap.
+    old_tail = (
+        np.asarray(asset.target_bone_tail, dtype=np.float64)
+        if asset.target_bone_tail is not None
+        else np.asarray(asset.source_bone_tail, dtype=np.float64)
+    )
+    old_origin = old[:, :3, 3]
+    mapped_head = new[:, :3, 3].copy()
+    mapped_tail = np.empty_like(mapped_head)
+    for bone in range(len(new)):
+        rotation_delta = new[bone, :3, :3] @ np.linalg.inv(old[bone, :3, :3])
+        mapped_tail[bone] = mapped_head[bone] + bone_scales[bone] * (
+            rotation_delta @ (old_tail[bone] - old_origin[bone])
+        )
+
+    connected_anchors = 0
+    for bone, parent in enumerate(parents.tolist()):
+        if int(parent) < 0 or not bool(use_connect[bone]):
+            continue
+        if bool(hard_anchor[bone]):
+            # A mapped rotation center or a semantic limb-boundary anchor is
+            # authoritative.  Pull the connected parent tail to that center
+            # instead of overwriting the center with the old parent length.
+            mapped_tail[int(parent)] = mapped_head[bone]
+            connected_anchors += 1
+            continue
+        anchor = mapped_tail[int(parent)].copy()
+        shift = anchor - mapped_head[bone]
+        new[bone, :3, 3] = anchor
+        mapped_head[bone] = anchor
+        mapped_tail[bone] += shift
+        connected_anchors += 1
     inverse = np.linalg.inv(new).astype(np.float32)
     updates: dict[str, Any] = {
         "target_rest_global": new.astype(np.float32),
@@ -124,19 +261,8 @@ def rebind_source_rig(
             if int(parent) >= 0:
                 local[bone] = np.linalg.inv(new[int(parent)]) @ new[bone]
         updates["target_rest_local"] = local.astype(np.float32)
-    for source_name, target_name in (
-        ("source_bone_head", "target_bone_head"),
-        ("source_bone_tail", "target_bone_tail"),
-    ):
-        value = getattr(asset, target_name)
-        if value is None:
-            value = getattr(asset, source_name)
-        if value is None:
-            continue
-        points = np.asarray(value, dtype=np.float64)
-        moved = np.einsum("bij,bj->bi", bone_transforms[:, :3, :3], points)
-        moved += bone_transforms[:, :3, 3]
-        updates[target_name] = moved.astype(np.float32)
+    updates["target_bone_head"] = mapped_head.astype(np.float32)
+    updates["target_bone_tail"] = mapped_tail.astype(np.float32)
     meta = dict(asset.metadata or {})
     history = list(meta.get("source_rig_rebind", []))
     history.append({"stage": str(stage), "fitted_bones": fitted})
@@ -149,6 +275,14 @@ def rebind_source_rig(
         "weighted_fit_rms_m": float(np.mean(residuals)) if residuals else 0.0,
         "weighted_fit_max_m": float(np.max(residuals)) if residuals else 0.0,
         "hierarchy_preserved_followers": int(hierarchy_preserved),
+        "controllers_inferred_from_weighted_children": int(inferred_controllers),
+        "connected_shared_anchors_enforced": int(connected_anchors),
+        "bone_preferred_fits": int(bone_preferred_fits),
+        "soft_fallback_fits": int(soft_fallback_fits),
+        "joint_local_centers_anchored": int(anchored_joint_local),
+        "bone_length_scale_min": float(np.min(bone_scales)),
+        "bone_length_scale_max": float(np.max(bone_scales)),
+        "bone_length_scale_p99": float(np.quantile(bone_scales, 0.99)),
     }
 
 

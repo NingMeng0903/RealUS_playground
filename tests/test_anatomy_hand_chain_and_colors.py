@@ -137,7 +137,7 @@ def test_pose_solver_does_not_mutate_persisted_bind_frames() -> None:
     np.testing.assert_array_equal(asset.source_rest_global, before)
 
 
-def test_each_metacarpal_uses_its_matching_finger_root() -> None:
+def test_each_metacarpal_uses_its_matching_source_driver_segment() -> None:
     names = ["left_wrist"] + [
         f"left_{finger}{level}"
         for finger in ("thumb", "index", "middle", "ring", "pinky")
@@ -154,7 +154,25 @@ def test_each_metacarpal_uses_its_matching_finger_root() -> None:
             finger_tips=tips,
         )
         assert segment is not None
-        np.testing.assert_array_equal(segment[3], anchors[names.index(f"left_{finger}1")])
+        expected_a = "left_thumb1" if finger == "thumb" else "left_wrist"
+        expected_b = "left_thumb2" if finger == "thumb" else f"left_{finger}1"
+        np.testing.assert_array_equal(segment[0], anchors[names.index(expected_a)])
+        np.testing.assert_array_equal(segment[3], anchors[names.index(expected_b)])
+
+    thumb_proximal = _hand_mesh_segment(
+        "_1st_Proximal_Phalanges_Hand_L",
+        joint_names=names,
+        source_anchors=anchors,
+        target_joints=anchors,
+        finger_tips=tips,
+    )
+    assert thumb_proximal is not None
+    np.testing.assert_array_equal(
+        thumb_proximal[2], anchors[names.index("left_thumb2")]
+    )
+    np.testing.assert_array_equal(
+        thumb_proximal[3], anchors[names.index("left_thumb3")]
+    )
 
 
 def test_distal_phalanx_stops_at_its_skin_tip() -> None:

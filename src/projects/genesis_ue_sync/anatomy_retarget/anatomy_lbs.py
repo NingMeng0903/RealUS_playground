@@ -625,6 +625,20 @@ def source_bone_skinning_transforms(
         else build_source_driver_coupling(asset),
         dtype=np.float64,
     )
+    use_source_local_fk = bool(
+        (asset.metadata or {}).get("source_joint_local_fk_v1", False)
+    )
+    target_pose_global = joint_global_transforms(
+        pose_axis_angle=pose_axis_angle,
+        rest_joints=asset.rest_joints,
+        parents=asset.parents,
+    ).astype(np.float64)
+    target_rest_global = joint_global_transforms(
+        pose_axis_angle=np.zeros((55, 3), dtype=np.float32),
+        rest_joints=asset.rest_joints,
+        parents=asset.parents,
+    ).astype(np.float64)
+    target_joint_delta = target_pose_global @ np.linalg.inv(target_rest_global)
     if coupling.shape != rest_global_bones.shape or not np.all(np.isfinite(coupling)):
         raise ValueError("schema-v6 source driver coupling is invalid")
     if (
@@ -643,6 +657,25 @@ def source_bone_skinning_transforms(
             raise ValueError(f"source bone parent {parent} for bone {bi} is not topological")
         if mode == "bind_follow" and parent >= 0:
             posed_global[bi] = posed_global[parent] @ rest_local_bones[bi]
+            continue
+        if mode == "joint_local" and parent >= 0 and use_source_local_fk:
+            joint = int(asset.source_bone_smplx_a[bi])
+            if joint < 0 or joint >= len(target_joint_delta):
+                raise ValueError(f"joint-local source bone {bi} has an invalid SMPL-X joint")
+            # Preserve the already validated target-global orientation
+            # retarget, but recover the bone origin through source FK.  This
+            # keeps the source local translation and mapped pivot without
+            # assuming that SMPL-X and Blender use the same local bone axes.
+            desired_global_rotation = (
+                target_joint_delta[joint, :3, :3]
+                @ rest_global_bones[bi, :3, :3]
+            )
+            posed_local = np.asarray(rest_local_bones[bi], dtype=np.float64).copy()
+            posed_local[:3, :3] = (
+                np.linalg.inv(posed_global[parent, :3, :3])
+                @ desired_global_rotation
+            )
+            posed_global[bi] = posed_global[parent] @ posed_local
             continue
         posed_global[bi] = driver_frames[bi] @ coupling[bi]
     inverse_bind = np.asarray(asset.runtime_inverse_bind, dtype=np.float64)

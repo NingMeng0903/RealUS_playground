@@ -1,0 +1,20 @@
+# Default ultrasound probe TCP relative to link7.
+#
+# Chain (body-fixed, right-multiply):
+#   Trans_z(0.07) · Rot_y(+pi/2) · Trans_z(0.05)
+# TCP origin ≈ (0.05, 0, 0.07) in link7; TCP +Z = link7 +X.
+
+name: ultrasound_probe_default
+parent_frame: link_7
+child_frame: tcp
+
+# Translation of the composed TCP origin in parent (link7), metres.
+translation_m: [0.05, 0.0, 0.07]
+
+# Orientation as quaternion xyzw of TCP axes in parent.
+# Rot_y(+90°) maps parent +X → child +Z, parent +Z → child -X, +Y → +Y.
+# SciPy Rotation.from_euler('y', 90, degrees=True).as_quat() → [0, 0.70710678, 0, 0.70710678]
+quaternion_xyzw: [0.0, 0.7071067811865476, 0.0, 0.7071067811865476]
+
+# Equivalent Euler for URDF patch / RealMan tool offset (xyz order, radians).
+euler_xyz_rad: [0.0, 1.5707963267948966, 0.0]

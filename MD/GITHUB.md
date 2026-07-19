@@ -49,7 +49,7 @@ git push -u origin main
 
 ```bash
 git add .
-git commit -m "sol,盆骨靠后，头大，血管90,慢"
+git commit -m "双 beta 独立候选通过 YA，手、下肢、下颌局部修正均保持 Blender 绑定"
 git push -u origin main
 ```
 

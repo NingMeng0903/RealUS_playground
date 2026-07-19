@@ -1,0 +1,11 @@
+data/
+*.pt
+*.npz
+__pycache__/
+.pytest_cache/
+*.egg-info/
+.venv/
+wandb/
+data/reports/*.png
+data/maps/*.urdf
+data/maps/*.genesis.urdf

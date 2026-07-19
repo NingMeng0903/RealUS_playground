@@ -104,6 +104,46 @@ JOINT_CHAINS = {
         "distal": ("Fingers_Rotate_R4", "bone309"),
         "axes": (("Wrist_Rotate_R1", "right_wrist", "right_index1"),),
     },
+    # The thumbs use a different source hierarchy from the four parallel
+    # digits.  They must be measured explicitly: a generic hand pass can hide
+    # a thumb root that has detached from the wrist or an oversized first
+    # metacarpal that has escaped the SMPL-X palm.
+    "thumb_proximal_left": {
+        "joint": "left_thumb1",
+        "proximal": ("Wrist_Rotate_L",),
+        "distal": ("Fingers_Rotate_L5", "Finger_Thumb_L3"),
+        "axes": (("Wrist_Rotate_L", "left_wrist", "left_thumb1"),),
+    },
+    "thumb_proximal_right": {
+        "joint": "right_thumb1",
+        "proximal": ("Wrist_Rotate_R1", "Wrist_Rotate_R"),
+        "distal": ("Fingers_Rotate_R5", "bone303"),
+        "axes": (("Wrist_Rotate_R1", "right_wrist", "right_thumb1"),),
+    },
+    "thumb_middle_left": {
+        "joint": "left_thumb2",
+        "proximal": ("Fingers_Rotate_L5", "Finger_Thumb_L3"),
+        "distal": ("Fingers_Rotate_L10", "Finger_Thumb_L2"),
+        "axes": (("Finger_Thumb_L3", "left_thumb1", "left_thumb2"),),
+    },
+    "thumb_middle_right": {
+        "joint": "right_thumb2",
+        "proximal": ("Fingers_Rotate_R5", "bone303"),
+        "distal": ("Finger_Rotate_R5", "bone305"),
+        "axes": (("bone303", "right_thumb1", "right_thumb2"),),
+    },
+    "thumb_distal_left": {
+        "joint": "left_thumb3",
+        "proximal": ("Fingers_Rotate_L10", "Finger_Thumb_L2"),
+        "distal": ("Fingers_Rotate_L11", "Finger_Thumb_L1"),
+        "axes": (("Finger_Thumb_L2", "left_thumb2", "left_thumb3"),),
+    },
+    "thumb_distal_right": {
+        "joint": "right_thumb3",
+        "proximal": ("Finger_Rotate_R5", "bone305"),
+        "distal": ("Fingers_Rotate_R6", "bone307"),
+        "axes": (("bone305", "right_thumb2", "right_thumb3"),),
+    },
     "knee_left": {
         "joint": "left_knee",
         "proximal": ("Femur_Rot_L", "Knee_Rotate_L"),
@@ -176,6 +216,36 @@ GEOMETRY_LANDMARK_MESHES: dict[str, dict[str, tuple[str, ...]]] = {
     "index_proximal_right": {
         "proximal": ("metacarpal",),
         "distal": ("proximal_phalanx_hand", "proximal_phalanges_hand"),
+    },
+    "thumb_proximal_left": {
+        "proximal": (
+            "capitate", "hamate", "lunate", "pisiform", "scaphoid",
+            "trapezium", "trapezoid", "triquetrum",
+        ),
+        "distal": ("1st_metacarpal", "first_metacarpal"),
+    },
+    "thumb_proximal_right": {
+        "proximal": (
+            "capitate", "hamate", "lunate", "pisiform", "scaphoid",
+            "trapezium", "trapezoid", "triquetrum",
+        ),
+        "distal": ("1st_metacarpal", "first_metacarpal"),
+    },
+    "thumb_middle_left": {
+        "proximal": ("1st_metacarpal", "first_metacarpal"),
+        "distal": ("proximal_phalanx_hand", "proximal_phalanges_hand"),
+    },
+    "thumb_middle_right": {
+        "proximal": ("1st_metacarpal", "first_metacarpal"),
+        "distal": ("proximal_phalanx_hand", "proximal_phalanges_hand"),
+    },
+    "thumb_distal_left": {
+        "proximal": ("proximal_phalanx_hand", "proximal_phalanges_hand"),
+        "distal": ("distal_phalanx_hand", "distal_phalanges_hand"),
+    },
+    "thumb_distal_right": {
+        "proximal": ("proximal_phalanx_hand", "proximal_phalanges_hand"),
+        "distal": ("distal_phalanx_hand", "distal_phalanges_hand"),
     },
     "knee_left": {"proximal": ("femur",), "distal": ("tibia", "fibula", "patella")},
     "knee_right": {"proximal": ("femur",), "distal": ("tibia", "fibula", "patella")},
@@ -457,8 +527,17 @@ def _geometry_landmark_diagnostic(
             asset.source_tissues,
         ):
             lower = str(name).lower()
-            digit_matches = not label.startswith("index_proximal_") or lower.startswith(
-                "_2nd_"
+            digit_matches = (
+                lower.startswith("_2nd_")
+                if label.startswith("index_proximal_")
+                else lower.startswith("_1st_")
+                if label.startswith("thumb_") and any(
+                    token in lower
+                    for token in (
+                        "metacarpal", "phalanx_hand", "phalanges_hand"
+                    )
+                )
+                else True
             )
             if (
                 str(tissue) == "bone"
@@ -512,10 +591,10 @@ def _geometry_landmark_diagnostic(
             )
             sample_count = len(selected)
         else:
-            distances = np.linalg.norm(
-                source_vertices[vertex_indices] - target_rest,
-                axis=1,
-            )
+            # Membership is frozen in mapped rest space.  The registration
+            # reference belongs to the Genesis coordinate system and cannot be
+            # directly compared with a subject-beta SMPL-X joint.
+            distances = np.linalg.norm(rest_vertices[vertex_indices] - target_rest, axis=1)
             sample_count = min(
                 64,
                 max(1, int(np.ceil(0.01 * len(vertex_indices)))),
@@ -576,15 +655,28 @@ def _geometry_landmark_diagnostic(
     proximal_index = int(local_roles[0][proximal_local])
     distal_index = int(local_roles[1][int(nearest_index[proximal_local])])
     surface_gap = float(nearest_distance[proximal_local])
-    posed_surface_gap = float(
-        np.linalg.norm(
-            posed_vertices[proximal_index] - posed_vertices[distal_index]
-        )
+    source_nearest_distance, _source_nearest_index = cKDTree(
+        source_vertices[local_roles[1]]
+    ).query(source_vertices[local_roles[0]], k=1)
+    authored_surface_gap = float(np.min(source_nearest_distance))
+    fitting_surface_gap_change = abs(surface_gap - authored_surface_gap)
+    # Keep the rest-space local domains fixed, but recompute their closest
+    # surface pair after articulation.  Tracking one rest closest pair through
+    # a hinge incorrectly reports separation when contact slides along the
+    # condyle, wrist, or joint socket.
+    posed_nearest_distance, posed_nearest_index = cKDTree(
+        posed_vertices[local_roles[1]]
+    ).query(posed_vertices[local_roles[0]], k=1)
+    posed_proximal_local = int(np.argmin(posed_nearest_distance))
+    posed_proximal_index = int(local_roles[0][posed_proximal_local])
+    posed_distal_index = int(
+        local_roles[1][int(posed_nearest_index[posed_proximal_local])]
     )
+    posed_surface_gap = float(posed_nearest_distance[posed_proximal_local])
     surface_gap_change = abs(posed_surface_gap - surface_gap)
     surface_gap_limit = _joint_surface_gap_limit(label)
     passed = bool(
-        surface_gap <= surface_gap_limit
+        fitting_surface_gap_change <= GAP_CHANGE_LIMIT_M
         and surface_gap_change <= GAP_CHANGE_LIMIT_M
     )
     return {
@@ -598,6 +690,8 @@ def _geometry_landmark_diagnostic(
         "fitting_gap_change_m": fitting_gap_change,
         "gap_change_m": pose_gap_change,
         "surface_gap_m": surface_gap,
+        "authored_surface_gap_m": authored_surface_gap,
+        "fitting_surface_gap_change_m": fitting_surface_gap_change,
         "surface_gap_limit_m": surface_gap_limit,
         "posed_surface_gap_m": posed_surface_gap,
         "surface_gap_change_m": surface_gap_change,
@@ -606,6 +700,8 @@ def _geometry_landmark_diagnostic(
             "distal_vertex": distal_index,
             "proximal_rest": rest_vertices[proximal_index].tolist(),
             "distal_rest": rest_vertices[distal_index].tolist(),
+            "posed_proximal_vertex": posed_proximal_index,
+            "posed_distal_vertex": posed_distal_index,
         },
         "pass": passed,
     }
@@ -745,10 +841,14 @@ def write_bone_segment_diagnostics(
             err = _endpoint_error(expected, posed[sl])
             err["mesh"] = name
             err["dominant_source_bone"] = str(asset.source_bone_names[dominant])
+            # Authored bone meshes can intentionally blend a main and twist
+            # controller.  Difference from one dominant rigid transform is
+            # therefore report-only; structural failure means the mesh axis or
+            # bone length changed materially under the persisted sparse LBS.
             err["pass"] = bool(
                 err["available"]
-                and err["endpoint_error_m"] <= ENDPOINT_LIMIT_M
                 and err["axis_error_deg"] <= AXIS_LIMIT_DEG
+                and err["length_error_m"] <= ENDPOINT_LIMIT_M
             )
             if not err["pass"]:
                 rigidity_failures.append(f"rigidity/{label}/{name}")

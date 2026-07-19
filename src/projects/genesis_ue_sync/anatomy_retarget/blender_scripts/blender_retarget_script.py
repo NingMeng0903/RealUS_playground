@@ -1018,7 +1018,13 @@ def _merge_and_skin_meshes(
                 "weight_influences": dict(packed.stats),
                 "semantics": semantic.to_dict(),
                 "modifiers": [
-                    {"name": str(modifier.name), "type": str(modifier.type)}
+                    {
+                        "name": str(modifier.name),
+                        "type": str(modifier.type),
+                        "use_deform_preserve_volume": bool(
+                            getattr(modifier, "use_deform_preserve_volume", False)
+                        ),
+                    }
                     for modifier in obj.modifiers
                 ],
             }
@@ -1244,6 +1250,34 @@ def _source_rig_canonical(
     blend = np.zeros(len(bones), dtype=np.float32)
     driver_types: list[str] = []
     frame_joints = np.full((len(bones), 3), -1, dtype=np.int16)
+    # Blender's read-only Bone API does not expose EditBone.roll in all
+    # versions.  The authoritative roll is already preserved by each complete
+    # rest-frame rotation matrix; this scalar remains compatibility metadata.
+    source_roll = np.asarray(
+        [float(getattr(bone, "roll", 0.0)) for bone in bones], dtype=np.float32
+    )
+    source_use_connect = np.asarray(
+        [bool(bone.use_connect) for bone in bones], dtype=np.uint8
+    )
+    inherit_scale_codes = {
+        "FULL": 0,
+        "FIX_SHEAR": 1,
+        "AVERAGE": 2,
+        "NONE": 3,
+        "NONE_LEGACY": 4,
+        "ALIGNED": 5,
+    }
+    unknown_inherit_scale = sorted(
+        {str(bone.inherit_scale) for bone in bones} - set(inherit_scale_codes)
+    )
+    if unknown_inherit_scale:
+        raise RuntimeError(
+            f"unsupported Blender bone inherit_scale values: {unknown_inherit_scale}"
+        )
+    source_inherit_scale = np.asarray(
+        [inherit_scale_codes[str(bone.inherit_scale)] for bone in bones],
+        dtype=np.uint8,
+    )
 
     _SIDE_LEFT = re.compile(r"(?:^|_)L(?:\d+)?$")
     _SIDE_RIGHT = re.compile(r"(?:^|_)R(?:\d+)?$")
@@ -1454,6 +1488,9 @@ def _source_rig_canonical(
         "source_inverse_bind": np.linalg.inv(rest_global).astype(np.float32),
         "source_bone_head": bone_head.astype(np.float32),
         "source_bone_tail": bone_tail.astype(np.float32),
+        "source_bone_roll": source_roll,
+        "source_bone_use_connect": source_use_connect,
+        "source_bone_inherit_scale": source_inherit_scale,
         "source_bone_smplx_a": joint_a,
         "source_bone_smplx_b": joint_b,
         "source_bone_blend": blend,
@@ -1470,6 +1507,75 @@ def _export_glb(meshes: list[bpy.types.Object], output_glb: Path) -> None:
         bpy.context.view_layer.objects.active = meshes[0]
     output_glb.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.export_scene.gltf(filepath=str(output_glb), export_format="GLB", use_selection=True)
+
+
+def _animation_driver_count(owner: Any) -> int:
+    animation = getattr(owner, "animation_data", None)
+    return int(len(list(getattr(animation, "drivers", ()) or ())))
+
+
+def _source_mechanism_audit(
+    arm: bpy.types.Object,
+    meshes: list[bpy.types.Object],
+) -> dict[str, Any]:
+    """Record every Blender mechanism that could add pose-dependent motion."""
+    object_constraints = sum(len(obj.constraints) for obj in [arm, *meshes])
+    pose_constraints = sum(len(bone.constraints) for bone in arm.pose.bones)
+    object_drivers = sum(_animation_driver_count(obj) for obj in [arm, *meshes])
+    shape_key_count = 0
+    shape_key_drivers = 0
+    active_shape_keys = 0
+    for obj in meshes:
+        keys = getattr(obj.data, "shape_keys", None)
+        if keys is None:
+            continue
+        blocks = list(keys.key_blocks)
+        shape_key_count += len(blocks)
+        shape_key_drivers += _animation_driver_count(keys)
+        active_shape_keys += sum(
+            abs(float(key.value)) > 1.0e-8 and not bool(key.mute)
+            for key in blocks
+            if str(key.name).lower() not in {"basis", "base"}
+        )
+    missing: list[str] = []
+    if object_constraints or pose_constraints:
+        missing.append("constraints")
+    if object_drivers or shape_key_drivers:
+        missing.append("drivers")
+    if shape_key_count:
+        missing.append("shape_keys")
+    preserve_volume_modifiers = int(
+        sum(
+            modifier.type == "ARMATURE"
+            and bool(getattr(modifier, "use_deform_preserve_volume", False))
+            for obj in meshes
+            for modifier in obj.modifiers
+        )
+    )
+    if preserve_volume_modifiers:
+        missing.append("armature_preserve_volume_mode")
+    return {
+        "armature_modifiers": int(
+            sum(modifier.type == "ARMATURE" for obj in meshes for modifier in obj.modifiers)
+        ),
+        "armature_preserve_volume_modifiers": preserve_volume_modifiers,
+        "object_constraints": int(object_constraints),
+        "pose_bone_constraints": int(pose_constraints),
+        "object_drivers": int(object_drivers),
+        "shape_key_count": int(shape_key_count),
+        "shape_key_drivers": int(shape_key_drivers),
+        "active_nonbasis_shape_keys": int(active_shape_keys),
+        "serialized": [
+            "armature_bone_names",
+            "armature_parent_hierarchy",
+            "armature_rest_local_global_frames",
+            "armature_connected_flags",
+            "armature_roll_and_inherit_scale",
+            "all_sparse_armature_vertex_weights",
+        ],
+        "not_serialized": missing,
+        "armature_only_source": not missing,
+    }
 
 
 def main() -> None:
@@ -1626,6 +1732,13 @@ def main() -> None:
         source_bind_local=np.asarray(source_rig["source_rest_local"], dtype=np.float32),
         source_bone_head_local=source_head_local.astype(np.float32),
         source_bone_tail_local=source_tail_local.astype(np.float32),
+        source_bone_roll=np.asarray(source_rig["source_bone_roll"], dtype=np.float32),
+        source_bone_use_connect=np.asarray(
+            source_rig["source_bone_use_connect"], dtype=np.uint8
+        ),
+        source_bone_inherit_scale=np.asarray(
+            source_rig["source_bone_inherit_scale"], dtype=np.uint8
+        ),
         target_bind_global=np.asarray(source_rig["source_rest_global"], dtype=np.float32),
         target_bind_local=np.asarray(source_rig["source_rest_local"], dtype=np.float32),
         target_bone_head_local=source_head_local.astype(np.float32),
@@ -1686,6 +1799,9 @@ def main() -> None:
                     "name": str(bone.name),
                     "parent": str(bone.parent.name) if bone.parent else None,
                     "use_deform": bool(bone.use_deform),
+                    "roll": float(getattr(bone, "roll", 0.0)),
+                    "use_connect": bool(bone.use_connect),
+                    "inherit_scale": str(bone.inherit_scale),
                 }
                 for index, bone in enumerate(arm.data.bones)
             ],
@@ -1725,6 +1841,7 @@ def main() -> None:
             ],
         },
         "meshes": diag["mesh_audit_records"],
+        "pose_dependent_mechanisms": _source_mechanism_audit(arm, meshes),
     }
     report = {
         "blend_file": str(bpy.data.filepath),

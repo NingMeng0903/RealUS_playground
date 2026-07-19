@@ -158,3 +158,49 @@ def test_missing_hip_geometry_is_unavailable_not_controller_success() -> None:
     assert not report["available"]
     assert not report["pass"]
     assert not report["roles"]["proximal"]["available"]
+
+
+def test_posed_surface_gap_recomputes_contact_inside_frozen_joint_domains() -> None:
+    proximal = np.asarray(
+        [
+            (0.000, 0.000, 0.000),
+            (0.010, 0.000, 0.000),
+            (0.030, 0.000, 0.000),
+            (0.040, 0.000, 0.000),
+            (0.050, 0.000, 0.000),
+            (0.060, 0.000, 0.000),
+            (0.070, 0.000, 0.000),
+            (0.080, 0.000, 0.000),
+        ],
+        dtype=np.float64,
+    )
+    distal = proximal + np.asarray((0.0, 0.001, 0.0))
+    rest = np.concatenate((proximal, distal), axis=0)
+    posed = rest.copy()
+    # The original closest pair separates, but the adjacent frozen-domain pair
+    # remains in contact after the hinge slides along the joint surface.
+    posed[0] += np.asarray((0.0, 0.050, 0.0))
+    asset = SimpleNamespace(
+        vertices_rest=rest,
+        registration_reference=rest.copy(),
+        rest_joints=np.asarray(((0.0, 0.0, 0.0),), dtype=np.float64),
+        joint_names=["left_hip"],
+        source_mesh_names=["Ilium_L", "Femur_L"],
+        source_vertex_ranges=np.asarray(((0, 8), (8, 16)), dtype=np.int64),
+        source_tissues=["bone", "bone"],
+    )
+
+    report = _geometry_landmark_diagnostic(
+        asset,
+        label="hip_left",
+        joint_name="left_hip",
+        posed_vertices=posed,
+        posed_smplx_joints=asset.rest_joints,
+        translation=np.zeros(3),
+    )
+
+    assert report["pass"]
+    assert np.isclose(report["surface_gap_m"], 0.001)
+    assert np.isclose(report["posed_surface_gap_m"], 0.001)
+    assert report["surface_landmarks"]["proximal_vertex"] == 0
+    assert report["surface_landmarks"]["posed_proximal_vertex"] == 1

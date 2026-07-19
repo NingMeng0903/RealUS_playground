@@ -24,15 +24,16 @@ ZACHARIAS_DIR_EDGE: str = "#000000"
 VAHRENKAMP_BEST_GOLD: str = "#ffd700"
 VAHRENKAMP_INFEASIBLE_GRAY: str = "#888888"
 
-# Paper Fig 3: red (low D) → orange → green → cyan → deep blue (high D).
+# Paper Fig 3: red (low D) → orange → green → cyan → blue (high D).
+# Keep stops saturated/bright so dense glyphs stay readable under lighting.
 _ZACHARIAS_D_STOPS: tuple[tuple[float, str], ...] = (
-    (0.00, "#d7191c"),
-    (0.20, "#fc8d59"),
-    (0.40, "#fee08b"),
-    (0.55, "#91cf60"),
-    (0.70, "#66c2a5"),
-    (0.85, "#3288bd"),
-    (1.00, "#08306b"),
+    (0.00, "#e31a1c"),
+    (0.18, "#fd8d3c"),
+    (0.36, "#fed976"),
+    (0.52, "#78c679"),
+    (0.68, "#41b6c4"),
+    (0.84, "#2b8cbe"),
+    (1.00, "#0868ac"),
 )
 
 _VAHRENKAMP_IRM_STOPS: tuple[tuple[float, str], ...] = (

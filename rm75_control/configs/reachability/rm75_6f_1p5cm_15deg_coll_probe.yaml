@@ -1,0 +1,37 @@
+# Horizontal ultrasound probe + shaft collision, 1.5 cm grid (rail locked).
+# Same AABB as 3 cm maps; shape ×2 per axis. Probe shaft to link7 centerline.
+
+urdf_path: data/urdf_patched/RM75-horizontal_probe.urdf
+tcp_frame: tcp
+rail_locked_at_m: 0.0
+
+grid:
+  origin_m: [-1.10, -1.10, -0.30]
+  step_m: 0.015
+  shape: [148, 148, 114]
+
+orient:
+  kind: icosphere
+  subdiv: 3
+
+roll:
+  enabled: false
+  step_deg: 15.0
+
+mode: mc
+
+mc:
+  n_samples: 5_000_000
+  batch: 8_000
+  seed: 0
+  self_collision: true
+  collision_urdf: data/urdf_patched/RM75-horizontal_probe.collision.urdf
+  collision_pairs: data/urdf_patched/collision_pairs_probe.yaml
+
+ik:
+  enabled: false
+
+workers: 8
+reachable_radius_m: 1.20
+output_dir: data/reachability/rm75_6f_1p5cm_15deg_coll_probe
+progress: true

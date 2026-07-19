@@ -1498,9 +1498,19 @@ def _hand_mesh_segment(
         return None
     finger = {1: "thumb", 2: "index", 3: "middle", 4: "ring", 5: "pinky"}[int(digit_match.group(1))]
     if "metacarpal" in lower:
-        a_name, b_name = f"{side}_wrist", f"{side}_{finger}1"
+        if finger == "thumb":
+            # SMPL-X thumb1 is the CMC pivot.  The first metacarpal lies
+            # distal to it and is driven by thumb1 in the Blender source rig;
+            # fitting it wrist->thumb1 puts the whole mesh proximal to its
+            # runtime pivot and makes it sweep outside the palm when flexed.
+            a_name, b_name = f"{side}_thumb1", f"{side}_thumb2"
+        else:
+            a_name, b_name = f"{side}_wrist", f"{side}_{finger}1"
     elif "proximal" in lower:
-        a_name, b_name = f"{side}_{finger}1", f"{side}_{finger}2"
+        if finger == "thumb":
+            a_name, b_name = f"{side}_thumb2", f"{side}_thumb3"
+        else:
+            a_name, b_name = f"{side}_{finger}1", f"{side}_{finger}2"
     elif "intermediate" in lower or "middle" in lower:
         a_name, b_name = f"{side}_{finger}2", f"{side}_{finger}3"
     elif "distal" in lower:

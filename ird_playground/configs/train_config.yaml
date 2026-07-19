@@ -1,0 +1,61 @@
+# train_config.yaml — Neural IRD point field f_θ(ΔT) → (m, q)
+# Env: Among_US genesis — source ird_playground/env.sh
+
+data:
+  gt_npz: data/ird/gt_samples_1p5cm_probe.npz
+  synthetic_n: 8192
+  val_frac: 0.15
+
+model:
+  num_freqs: 6          # xyz Fourier only
+  hidden: 256
+  depth: 5
+  tau_m: 1.0
+  lambda_q: 0.5         # score = -softplus(-m/τ) + λq
+
+training:
+  seed: 42
+  batch_size: 1024
+  num_workers: 4
+  torch_compile: false
+  epochs: 100
+  save_freq: 25
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-4
+  warmup_steps: 1000
+  min_lr_ratio: 0.01
+  grad_clip_norm: 10.0
+  log_every_steps: 10
+  print_every_steps: 50
+  hardneg_every: 10
+  hardneg_frac: 0.05
+  device: cuda
+
+loss:
+  lambda_cls: 1.0
+  lambda_margin: 0.5
+  lambda_q: 1.0
+  lambda_local: 0.1
+
+io:
+  checkpoint: data/checkpoints/latest.pt
+  checkpoint_dir: data/checkpoints
+  report: data/reports/train_point.json
+
+pass:
+  mae_max: 0.35
+  spearman_min: 0.70
+  boundary_iou_min: 0.70
+  grad_cosine_min: 0.30
+  ascent_improve_min: 0.40
+  rail_ad_fd_rel_max: 0.25
+  rail_sign_agree_min: 0.80
+  region_improve_min: 0.40
+
+wandb:
+  enable: true
+  project: neural-ird-rm75
+  entity: lpei82060-technical-university-of-munich
+  mode: online
+  run_name: neural_ird_mq
+  tags: [neural_ird, m_q, rm75]

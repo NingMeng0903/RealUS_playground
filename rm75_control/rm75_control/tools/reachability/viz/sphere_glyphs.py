@@ -92,7 +92,7 @@ def _resolve_clim(d: np.ndarray, d_min: float, clim: tuple[float, float] | None,
     return 0.0, 1.0
 
 
-def _sphere_radius_default(cm: CapabilityMap, factor: float = 0.52) -> float:
+def _sphere_radius_default(cm: CapabilityMap, factor: float = 0.42) -> float:
     return float(cm.grid.step_m) * float(factor)
 
 
@@ -107,8 +107,58 @@ def _make_sphere_glyphs(centres: np.ndarray, scalars: np.ndarray, radius_m: floa
     pts["D"] = scalars.astype(np.float32)
     return pts.glyph(
         orient=False, scale=False,
-        geom=pv.Sphere(radius=radius_m, phi_resolution=8, theta_resolution=8),
+        geom=pv.Sphere(radius=radius_m, phi_resolution=12, theta_resolution=12),
     )
+
+
+def _make_sphere_underlay(centres: np.ndarray, radius_m: float, scale: float = 1.14) -> pv.PolyData:
+    """Slightly larger black beads behind colour glyphs → crisp outline without wireframe mud."""
+    pts = pv.PolyData(centres)
+    return pts.glyph(
+        orient=False, scale=False,
+        geom=pv.Sphere(radius=float(radius_m) * float(scale), phi_resolution=10, theta_resolution=10),
+    )
+
+
+def _add_paper_sphere_glyphs(
+    pl: pv.Plotter,
+    glyphs: pv.PolyData,
+    *,
+    cmap,
+    clim_bar: tuple[float, float],
+    opacity: float = 1.0,
+    centres: np.ndarray | None = None,
+    radius_m: float | None = None,
+) -> object:
+    """Bright discrete beads — saturated face colour + soft lighting."""
+    del centres, radius_m  # reserved; underlay rims fight depth and hide colour
+    return pl.add_mesh(
+        glyphs,
+        scalars="D",
+        cmap=cmap,
+        clim=clim_bar,
+        show_scalar_bar=False,
+        smooth_shading=True,
+        opacity=float(opacity),
+        lighting=True,
+        ambient=0.55,
+        diffuse=0.65,
+        specular=0.22,
+        specular_power=16,
+        show_edges=False,
+        interpolate_before_map=False,
+    )
+
+
+def _setup_paper_lights(pl: pv.Plotter) -> None:
+    """Bright key + fill so sphere face colours stay saturated."""
+    try:
+        pl.remove_all_lights()
+    except Exception:
+        pass
+    pl.add_light(pv.Light(position=(2.4, -2.0, 3.2), focal_point=(0.0, 0.0, 0.2), light_type="scene light", intensity=0.95))
+    pl.add_light(pv.Light(position=(-1.6, 1.2, 2.0), focal_point=(0.0, 0.0, 0.2), light_type="scene light", intensity=0.40))
+    pl.add_light(pv.Light(light_type="headlight", intensity=0.22))
 
 
 def _push_actor_back(actor) -> None:
@@ -215,6 +265,7 @@ def _render_panel_from_glyphs(
     view: str,
     panel_size: tuple[int, int],
     background: str,
+    radius_m: float | None = None,
 ) -> np.ndarray:
     off_screen = os.environ.get("PYVISTA_OFF_SCREEN", "true").lower() in {"1", "true", "yes"}
     focus = _focus_from_bounds(bounds)
@@ -231,33 +282,23 @@ def _render_panel_from_glyphs(
             pl.camera.parallel_scale = float(parallel_scale)
             pl.camera.zoom(1.05)
 
-    # Pass 1 — glyphs only
-    pl_g = pv.Plotter(off_screen=off_screen, window_size=panel_size)
-    pl_g.set_background(background)
-    g_actor = pl_g.add_mesh(
-        glyphs, scalars="D", cmap=cmap, clim=clim_bar,
-        show_scalar_bar=False, smooth_shading=False, opacity=opacity, lighting=False,
-    )
-    _push_actor_back(g_actor)
-    _apply_camera(pl_g)
-    pl_g.enable_lightkit()
-    img_glyphs = pl_g.screenshot(return_img=True, window_size=panel_size)
-    pl_g.close()
-
-    # Pass 2 — robot only, identical camera (composited on top)
+    # Single pass: robot + spheres share the depth buffer so foreground spheres occlude the arm.
+    pl = pv.Plotter(off_screen=off_screen, window_size=panel_size)
+    pl.set_background(background)
     try:
         scene = build_robot_pv(robot_urdf, q_full=q_full)
-        pl_r = pv.Plotter(off_screen=off_screen, window_size=panel_size)
-        pl_r.set_background(background)
-        add_robot_to_plotter(pl_r, scene, use_dae_colors=True, opacity=1.0, on_top=True)
-        _apply_camera(pl_r)
-        pl_r.enable_lightkit()
-        img_robot = pl_r.screenshot(return_img=True, window_size=panel_size)
-        pl_r.close()
-        return _composite_robot_on_top(np.asarray(img_glyphs), np.asarray(img_robot))
+        add_robot_to_plotter(pl, scene, use_dae_colors=True, opacity=1.0, on_top=False)
     except Exception as e:  # pragma: no cover
-        print(f"[render_slice] robot overlay skipped: {e}")
-        return np.asarray(img_glyphs)
+        print(f"[render_slice] robot skipped: {e}")
+    _add_paper_sphere_glyphs(
+        pl, glyphs, cmap=cmap, clim_bar=clim_bar, opacity=opacity,
+        centres=centres, radius_m=radius_m,
+    )
+    _apply_camera(pl)
+    _setup_paper_lights(pl)
+    img = np.asarray(pl.screenshot(return_img=True, window_size=panel_size))
+    pl.close()
+    return img
 
 
 def _render_single_panel(
@@ -309,6 +350,7 @@ def _render_single_panel(
         robot_urdf=robot_urdf, q_full=q_full,
         cmap=cmap, clim_bar=clim_bar, opacity=opacity,
         view=view, panel_size=panel_size, background=background,
+        radius_m=sphere_radius_m,
     )
     return img, d_display
 
@@ -405,7 +447,12 @@ def _compose_paper_figure(
     for i in range(n):
         y_top = 1.0 - bar_y0 - i * cell_h
         y_bot = y_top - cell_h
-        ax_cb.add_patch(Rectangle((bar_x, y_bot), bar_w, cell_h, facecolor=colors[i], edgecolor="none"))
+        ax_cb.add_patch(
+            Rectangle(
+                (bar_x, y_bot), bar_w, cell_h,
+                facecolor=colors[i], edgecolor="#222222", linewidth=0.35,
+            )
+        )
         if i % 4 == 0 or i == n - 1:
             ax_cb.text(
                 bar_x + bar_w + 0.10, (y_top + y_bot) * 0.5,
@@ -548,17 +595,15 @@ def render_reachability_index(
 
     radius = _resolve_sphere_radius(cm, sphere_radius_m)
     glyphs = _make_sphere_glyphs(centres, d_display, radius_m=radius)
-    g_actor = pl.add_mesh(
-        glyphs, scalars="D", cmap=cmap, clim=clim_bar,
-        show_scalar_bar=False, smooth_shading=False, opacity=opacity, lighting=False,
-    )
-    _push_actor_back(g_actor)
-
     try:
         scene = build_robot_pv(robot_urdf, q_full=q_full)
-        add_robot_to_plotter(pl, scene, use_dae_colors=True, on_top=True)
+        add_robot_to_plotter(pl, scene, use_dae_colors=True, on_top=False)
     except Exception as e:  # pragma: no cover
         print(f"[render_reachability_index] robot mesh skipped: {e}")
+    _add_paper_sphere_glyphs(
+        pl, glyphs, cmap=cmap, clim_bar=clim_bar, opacity=opacity,
+        centres=centres, radius_m=radius,
+    )
     if show_ground_disk:
         from rm75_control.tools.reachability.viz.robot_scene import add_rest_pose_annotation
         add_rest_pose_annotation(pl, ground_radius_m=1.2)
@@ -618,14 +663,15 @@ def render_slice(
 
     radius = _resolve_sphere_radius(cm, sphere_radius_m)
     glyphs = _make_sphere_glyphs(centres, d_display, radius_m=radius)
-    g_actor = pl.add_mesh(glyphs, scalars="D", cmap=cmap, clim=clim_bar, show_scalar_bar=False, smooth_shading=False)
-    _push_actor_back(g_actor)
-
     try:
         scene = build_robot_pv(robot_urdf)
-        add_robot_to_plotter(pl, scene, use_dae_colors=True, opacity=1.0, on_top=True)
+        add_robot_to_plotter(pl, scene, use_dae_colors=True, opacity=1.0, on_top=False)
     except Exception as e:  # pragma: no cover
         print(f"[render_slice] robot mesh skipped: {e}")
+    _add_paper_sphere_glyphs(
+        pl, glyphs, cmap=cmap, clim_bar=clim_bar, opacity=1.0,
+        centres=centres, radius_m=radius,
+    )
 
     if show_colorbar:
         pl.add_scalar_bar(

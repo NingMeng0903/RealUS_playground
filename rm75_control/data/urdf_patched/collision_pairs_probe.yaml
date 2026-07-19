@@ -1,0 +1,13 @@
+# Disabled self-collision pairs for RM75 + horizontal probe shaft.
+# Adjacent arm pairs + flange↔probe_shaft (they meet at the mount by design).
+
+disabled_pairs:
+  - [base_link_0, link_1_0]
+  - [link_1_0, link_2_0]
+  - [link_2_0, link_3_0]
+  - [link_3_0, link_4_0]
+  - [link_4_0, link_5_0]
+  - [link_5_0, link_6_0]
+  - [link_6_0, link_7_0]
+  # Probe shaft meets link_7 at the flange / centerline — not a real contact fault.
+  - [link_7_0, tcp_0]

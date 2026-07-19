@@ -1,0 +1,37 @@
+# Horizontal ultrasound probe TCP + self-collision (same grid as vertical coll map).
+# TCP: Trans_z(0.07)·Rot_y(+π/2)·Trans_z(0.05) → origin≈(0.05,0,0.07), +Z=link7 +X.
+
+urdf_path: data/urdf_patched/RM75-horizontal_probe.urdf
+tcp_frame: tcp
+rail_locked_at_m: 0.0
+
+grid:
+  origin_m: [-1.10, -1.10, -0.30]
+  step_m: 0.03
+  shape: [74, 74, 57]
+
+orient:
+  kind: icosphere
+  subdiv: 3
+
+roll:
+  enabled: false
+  step_deg: 15.0
+
+mode: mc
+
+mc:
+  n_samples: 2_000_000
+  batch: 8_000
+  seed: 0
+  self_collision: true
+  collision_urdf: data/urdf_patched/RM75-horizontal_probe.collision.urdf
+  collision_pairs: data/urdf_patched/collision_pairs_probe.yaml
+
+ik:
+  enabled: false
+
+workers: 8
+reachable_radius_m: 1.20
+output_dir: data/reachability/rm75_6f_3cm_15deg_coll_probe
+progress: true

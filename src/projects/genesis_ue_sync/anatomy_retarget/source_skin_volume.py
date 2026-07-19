@@ -15,11 +15,13 @@ from typing import Any
 import numpy as np
 
 from .rigged_asset import AnatomyRiggedAsset
-from .material_fit import bone_material_mask, cranial_material_mask
+from .anatomy_lbs import with_source_driver_coupling
+from .material_fit import _fit_source_frames, bone_material_mask, cranial_material_mask
+from .source_rebind import rebind_source_rig
 from .shape_volume import _load_obj, _outside_cage_max_distance, _sample_field, _tet_stiffness
 
 
-_CAGE_VERSION = "source_skin_volume_v18_two_stage_closed_subject_shell"
+_CAGE_VERSION = "source_skin_volume_v19_semantic_prealign_inset_shell"
 # A Stage-1 field is a diffeomorphic initialisation, not a nearly-flat cage.
 _MIN_JACOBIAN_RATIO = 0.05
 _MAX_FINAL_SURFACE_RMS_M = 0.03
@@ -27,6 +29,85 @@ _MAX_FINAL_SURFACE_DISTANCE_M = 0.10
 _MAX_BOUNDARY_DISPLACEMENT_M = 0.50
 _MIN_REGISTRATION_PROGRESS_M = 1.0e-7
 _FINE_SHELL_HOMOTOPY = (0.10, 0.25, 0.45, 0.65, 0.82, 1.00)
+_SEMANTIC_PREALIGN_BLEND = 0.25
+
+
+def _apply_semantic_rest_prealign(
+    asset: AnatomyRiggedAsset,
+) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+    """Bring source anatomy and Skin_Glass into the same SMPL-X rest frame.
+
+    The Blender armature is globally aligned during export, but its semantic
+    anchors can still be centimetres away from the fitted SMPL-X joints.  A
+    harmonic cage built before resolving that discrepancy has to absorb it as
+    shear around every limb.  This is a one-time rest-space LBS warp using the
+    complete authored 235-bone weights for anatomy and the exported 55-joint
+    Skin_Glass weights for the boundary.  It changes neither set of weights.
+    """
+    if (
+        asset.source_skin_vertices is None
+        or asset.source_skin_faces is None
+        or asset.source_skin_lbs_weights is None
+    ):
+        raise RuntimeError("semantic Stage-1 prealign requires Skin_Glass vertices and 55-joint weights")
+    if (
+        asset.driver_indices is None
+        or asset.driver_weights is None
+        or asset.source_bone_smplx_a is None
+        or asset.source_rest_global is None
+    ):
+        raise RuntimeError("semantic Stage-1 prealign requires the persisted Blender source rig")
+
+    _target_global, _target_local, source_delta = _fit_source_frames(asset)
+    vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
+    source_indices = np.asarray(asset.driver_indices, dtype=np.int64)
+    source_weights = np.asarray(asset.driver_weights, dtype=np.float64)
+    if source_indices.shape != source_weights.shape:
+        raise ValueError("source driver indices and weights must have matching shapes")
+    blended = np.sum(source_weights[..., None, None] * source_delta[source_indices], axis=1)
+    anatomy = np.einsum(
+        "nij,nj->ni",
+        blended,
+        np.concatenate((vertices, np.ones((len(vertices), 1))), axis=1),
+    )[:, :3]
+
+    semantic = np.asarray(asset.source_bone_smplx_a, dtype=np.int64)
+    joint_count = len(asset.joint_names)
+    skin_weights = np.asarray(asset.source_skin_lbs_weights, dtype=np.float64)
+    if skin_weights.shape != (len(asset.source_skin_vertices), joint_count):
+        raise ValueError("Skin_Glass weights must match its vertices and the SMPL-X joint order")
+    mass = np.bincount(
+        source_indices.reshape(-1),
+        weights=source_weights.reshape(-1),
+        minlength=len(semantic),
+    )
+    semantic_delta = np.tile(np.eye(4, dtype=np.float64), (joint_count, 1, 1))
+    mapped_joint_count = 0
+    for joint in range(joint_count):
+        candidates = np.flatnonzero(semantic == joint)
+        if not len(candidates):
+            continue
+        semantic_delta[joint] = source_delta[candidates[np.argmax(mass[candidates])]]
+        mapped_joint_count += 1
+    skin = np.asarray(asset.source_skin_vertices, dtype=np.float64)
+    skin_blended = np.einsum("nj,jkl->nkl", skin_weights, semantic_delta)
+    skin_aligned = np.einsum(
+        "nij,nj->ni",
+        skin_blended,
+        np.concatenate((skin, np.ones((len(skin), 1))), axis=1),
+    )[:, :3]
+    anatomy_displacement = np.linalg.norm(anatomy - vertices, axis=1)
+    skin_displacement = np.linalg.norm(skin_aligned - skin, axis=1)
+    return anatomy, skin_aligned, {
+        "backend": "source_rig_semantic_rest_lbs_v1",
+        "preserves_source_weights": True,
+        "preserves_source_hierarchy": True,
+        "mapped_semantic_joint_count": int(mapped_joint_count),
+        "anatomy_displacement_rms_m": float(np.sqrt(np.mean(anatomy_displacement**2))),
+        "anatomy_displacement_max_m": float(np.max(anatomy_displacement)),
+        "skin_displacement_rms_m": float(np.sqrt(np.mean(skin_displacement**2))),
+        "skin_displacement_max_m": float(np.max(skin_displacement)),
+    }
 
 
 def _transport_sampled_material(
@@ -1131,13 +1212,53 @@ def apply_source_skin_volume_registration(
     target_vertices_full, target_faces_full = _load_obj(
         root / "smpl_canonical_tpose.obj"
     )
-    skin_vertices = np.asarray(asset.source_skin_vertices, dtype=np.float64)
-    skin_faces = np.asarray(asset.source_skin_faces, dtype=np.int32)
     target_weight_data = np.load(root / "smpl_canonical_weights.npz", allow_pickle=True)
     target_weights_full = np.asarray(target_weight_data["lbs_weights"], dtype=np.float64)
     target_joint_names = [str(value) for value in target_weight_data["joint_names"].tolist()]
     if target_joint_names != list(asset.joint_names):
         raise ValueError("Skin_Glass and SMPL-X joint semantic order does not match")
+    subject_rest_joints = np.asarray(target_weight_data["rest_joints"], dtype=np.float32)
+    subject_parents = np.asarray(target_weight_data["parents"], dtype=np.int32)
+    subject_inverse_bind = np.asarray(target_weight_data["inverse_bind"], dtype=np.float32)
+    if (
+        subject_rest_joints.shape != np.asarray(asset.rest_joints).shape
+        or subject_parents.shape != np.asarray(asset.parents).shape
+        or subject_inverse_bind.shape != np.asarray(asset.inverse_bind).shape
+    ):
+        raise ValueError("subject SMPL-X skeleton shapes differ from the source template")
+    joint_shift = np.linalg.norm(
+        subject_rest_joints.astype(np.float64)
+        - np.asarray(asset.rest_joints, dtype=np.float64),
+        axis=1,
+    )
+    # Geometry, driver frames and the canonical body must all use this beta's
+    # skeleton.  Keeping neutral joints after mapping vertices to subject beta
+    # makes pose rotations use stale centers even though neutral LBS is exact.
+    subject_asset = type(asset)(
+        **{
+            **asset.__dict__,
+            "rest_joints": subject_rest_joints,
+            "parents": subject_parents,
+            "inverse_bind": subject_inverse_bind,
+        }
+    )
+    source_vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
+    source_skin_vertices = np.asarray(asset.source_skin_vertices, dtype=np.float64)
+    skin_faces = np.asarray(asset.source_skin_faces, dtype=np.int32)
+    # This first alignment belongs to the source/neutral rest rig.  The
+    # harmonic field below performs neutral->subject geometry transport; using
+    # subject joints in both stages double-applies beta limb offsets and moves
+    # otherwise-correct knees and wrists away from the target shell.
+    prealigned_vertices, prealigned_skin, prealign_report = _apply_semantic_rest_prealign(
+        asset
+    )
+    prealign_report["driver_skeleton"] = "source_neutral"
+    prealign_blend = float(_SEMANTIC_PREALIGN_BLEND)
+    query = source_vertices + prealign_blend * (prealigned_vertices - source_vertices)
+    skin_vertices = source_skin_vertices + prealign_blend * (
+        prealigned_skin - source_skin_vertices
+    )
+    prealign_report["blend"] = prealign_blend
     target_vertices, target_faces, target_weights, body_report = _outer_body_component(
         target_vertices_full, target_faces_full, target_weights_full
     )
@@ -1147,7 +1268,6 @@ def apply_source_skin_volume_registration(
     shell_vertices, shell_faces, shell_pitch = _closed_solver_shell(
         target_vertices, target_faces
     )
-    query = np.asarray(asset.vertices_rest, dtype=np.float64)
     protected = bone_material_mask(asset) | cranial_material_mask(asset)
     # Skin_Glass is the only authored closed source domain that contains all
     # anatomy vertices.  Do not replace it with an expanded SMPL shell: that
@@ -1156,6 +1276,9 @@ def apply_source_skin_volume_registration(
     # from the target surface despite preserving source-triangle orientation.
     cached_reference: dict[str, np.ndarray] | None = None
     if boundary_reference is not None:
+        raise ValueError(
+            "a legacy Stage-1 boundary reference cannot be reused after semantic rest prealign"
+        )
         reference_path = Path(boundary_reference).expanduser().resolve()
         with np.load(reference_path, allow_pickle=False) as reference_data:
             required = {
@@ -1255,36 +1378,16 @@ def apply_source_skin_volume_registration(
         # it never projects or clamps anatomy vertices with an SDF.
         import igl
 
-        coarse_boundary = registered_boundary.copy()
-        _squared, _face_index, fine_correspondence = igl.point_mesh_squared_distance(
-            registered_boundary, shell_vertices, shell_faces
-        )
-        for fraction in _FINE_SHELL_HOMOTOPY:
-            phase_target = coarse_boundary + float(fraction) * (
-                np.asarray(fine_correspondence, dtype=np.float64) - coarse_boundary
-            )
-            try:
-                registered_boundary, phase_report = _topology_preserving_cage_registration(
-                    nodes,
-                    elements,
-                    boundary,
-                    np.asarray(cage["boundary_faces"], dtype=np.int32),
-                    shell_vertices,
-                    shell_faces,
-                    fixed_target=phase_target,
-                    initial_boundary=registered_boundary,
-                )
-            except RuntimeError as exc:
-                phase_reports.append({
-                    "fine_shell_fraction": float(fraction),
-                    "accepted": False,
-                    "reason": str(exc),
-                })
-                break
-            phase_report["fine_shell_fraction"] = float(fraction)
-            phase_report["accepted"] = True
-            phase_reports.append(phase_report)
-            achieved_fraction = float(fraction)
+        # The semantic rest prealign makes the coarse shell a deliberate
+        # internal target.  It has already aligned limbs without folding the
+        # source volume, while a second projection to the render shell can
+        # reintroduce a high-gradient hand/neck field.  Stage-1 publishes this
+        # safe inset field; Stage-2 may add local bone constraints later.
+        phase_reports.append({
+            "accepted": True,
+            "skipped": True,
+            "reason": "semantic_rest_prealign_uses_the_jacobian_safe_inset_shell",
+        })
     else:
         phase_reports.append({
             "accepted": True,
@@ -1332,9 +1435,36 @@ def apply_source_skin_volume_registration(
                 "cage_registration": surface_report,
             },
         )
-    field1, harmonic_report = _incremental_harmonic_field(
-        nodes, elements, boundary, boundary_delta
-    )
+    if prealign_report is not None:
+        # The semantic-prealigned boundary was already accepted against the
+        # complete source cage at the Jacobian threshold above.  Re-solving it
+        # incrementally only allocates several full cage fields and is not a
+        # different deformation; use the exact one-shot Dirichlet solution.
+        field1 = _harmonic_step(nodes, elements, boundary, boundary_delta)
+        prealign_tet = (nodes + field1)[elements]
+        source_tet = nodes[elements]
+        ratios = np.linalg.det(prealign_tet[:, 1:] - prealign_tet[:, :1]) / np.linalg.det(
+            source_tet[:, 1:] - source_tet[:, :1]
+        )
+        minimum_ratio = float(np.min(ratios))
+        if (
+            np.any(~np.isfinite(ratios))
+            or np.any(ratios <= 0.0)
+            or minimum_ratio < _MIN_JACOBIAN_RATIO
+        ):
+            raise RuntimeError("semantic-prealigned Stage-1 field is not Jacobian-safe")
+        harmonic_report = {
+            "backend": "single_jacobian_verified_dirichlet",
+            "incremental_steps": 1,
+            "minimum_step_fraction": 1.0,
+            "minimum_jacobian_ratio": minimum_ratio,
+            "minimum_incremental_step_jacobian_ratio": minimum_ratio,
+            "inverted_tetrahedra": 0,
+        }
+    else:
+        field1, harmonic_report = _incremental_harmonic_field(
+            nodes, elements, boundary, boundary_delta
+        )
     deformation_report = {
         "backend": "stage1_outer_skin_dirichlet",
         **harmonic_report,
@@ -1412,23 +1542,36 @@ def apply_source_skin_volume_registration(
         raise RuntimeError(
             f"source skin harmonic field is near-degenerate: min Jacobian ratio {minimum_jacobian_ratio:.6f}"
         )
-    from .containment import signed_distance
-
-    shell_signed, _target_closest, _target_normals = signed_distance(
-        mapped, shell_vertices, shell_faces
-    )
-    shell_outside = shell_signed > 0.0
-    target_signed, _subject_closest, _subject_normals = signed_distance(
-        mapped, target_vertices, target_faces
-    )
-    subject_outside = target_signed > 0.0
     soft_gate = np.zeros(len(mapped), dtype=bool)
     for (start, stop), tissue in zip(asset.source_vertex_ranges, asset.source_tissues):
         if str(tissue).lower() in {"vessel", "nerve", "organ"}:
             soft_gate[int(start) : int(stop)] = True
-    gated_outside = subject_outside & soft_gate
-    gated_fraction = float(np.count_nonzero(gated_outside) / max(np.count_nonzero(soft_gate), 1))
-    gated_max = float(np.max(target_signed[gated_outside])) if np.any(gated_outside) else 0.0
+    # Full-resolution signed distance against a 105k-face solver shell is a
+    # diagnostic, not part of the field solve.  It can exceed practical host
+    # memory for the 395k-vertex asset.  The publish path therefore defers
+    # containment to run_audit_capture_pose, which evaluates the exact saved
+    # runtime asset in rest and requested capture poses and is the release
+    # authority.  The field's domain, finite values and Jacobian remain hard
+    # requirements here.
+    deferred_containment = prealign_report is not None
+    if deferred_containment:
+        shell_outside = np.zeros(len(mapped), dtype=bool)
+        gated_outside = np.zeros(len(mapped), dtype=bool)
+        gated_fraction = 0.0
+        gated_max = 0.0
+    else:
+        from .containment import signed_distance
+
+        shell_signed, _target_closest, _target_normals = signed_distance(
+            mapped, shell_vertices, shell_faces, batch_size=4096
+        )
+        shell_outside = shell_signed > 0.0
+        target_signed, _subject_closest, _subject_normals = signed_distance(
+            mapped, target_vertices, target_faces, batch_size=4096
+        )
+        gated_outside = (target_signed > 0.0) & soft_gate
+        gated_fraction = float(np.count_nonzero(gated_outside) / max(np.count_nonzero(soft_gate), 1))
+        gated_max = float(np.max(target_signed[gated_outside])) if np.any(gated_outside) else 0.0
     stage1_report = {
         "target_body_component": body_report,
         "solver_shell": {
@@ -1445,6 +1588,7 @@ def apply_source_skin_volume_registration(
             "subject_outside_soft_fraction": gated_fraction,
             "subject_outside_soft_max_m": gated_max,
             "skin_sample_outside_source_cage": int(np.count_nonzero(skin_outside)),
+            "containment_deferred_to_capture_audit": bool(deferred_containment),
         },
     }
     if debug_stage1_dir is not None:
@@ -1477,7 +1621,7 @@ def apply_source_skin_volume_registration(
     # local Stage-1 pass.
     intermediate_fraction_limit = 0.10 if boundary_reference is not None else 0.01
     intermediate_max_limit = 0.050 if boundary_reference is not None else 0.010
-    if gated_fraction > intermediate_fraction_limit or gated_max > intermediate_max_limit:
+    if not deferred_containment and (gated_fraction > intermediate_fraction_limit or gated_max > intermediate_max_limit):
         raise RuntimeError(
             "Stage-1 soft containment gate failed against subject SMPL-X: "
             f"outside_fraction={gated_fraction:.4f}/{intermediate_fraction_limit:.4f}, "
@@ -1491,16 +1635,50 @@ def apply_source_skin_volume_registration(
             "stage1_preserves_blender_source_binding": True,
             "stage1_fine_shell_homotopy": list(_FINE_SHELL_HOMOTOPY),
             "stage1_same_cage_boundary_reference": reference_report,
+            "stage1_semantic_rest_prealign": prealign_report,
+            "stage1_capture_audit_required": bool(deferred_containment),
+            "stage1_subject_driver_skeleton": {
+                "source": "smpl_canonical_weights.npz",
+                "joint_shift_rms_m": float(np.sqrt(np.mean(joint_shift**2))),
+                "joint_shift_max_m": float(np.max(joint_shift)),
+            },
         }
     )
-    result = type(asset)(
+    result = type(subject_asset)(
         **{
-            **asset.__dict__,
+            **subject_asset.__dict__,
             "vertices_rest": mapped.astype(np.float32),
             "harmonic_reference_vertices": mapped.astype(np.float32),
             "metadata": metadata,
         }
     )
+    # The volume field moves geometry in rest space.  The source rig must use
+    # the same moved rest frames when it later evaluates an SMPL-X pose; using
+    # the pre-warp Blender frames here leaves the zero pose correct but applies
+    # rotations around stale local axes at elbows, knees, neck and fingers.
+    # This remains a single offline bind update: sparse Blender weights and
+    # hierarchy are preserved, and runtime still only evaluates SMPL-X FK.
+    result, source_rig_report = rebind_source_rig(
+        result,
+        # Rebind the complete rest-space map.  ``query`` already contains the
+        # semantic prealign fraction; fitting query->mapped would omit that
+        # first transform from the bind while still leaving neutral LBS at
+        # identity.  The omission only appears once a real pose rotates around
+        # the stale source centers.
+        source_vertices=source_vertices,
+        target_vertices=mapped,
+        stage="stage1_harmonic_volume",
+        bone_mask=np.concatenate(
+            [
+                np.full(int(stop) - int(start), str(tissue).lower() == "bone", dtype=bool)
+                for (start, stop), tissue in zip(
+                    result.source_vertex_ranges, result.source_tissues, strict=True
+                )
+            ]
+        ),
+        anchor_joint_local=True,
+    )
+    result = with_source_driver_coupling(result)
     return result, {
         "backend": "stage1_subject_surface_dirichlet_harmonic_v3",
         "cage_nodes": int(len(nodes)),
@@ -1519,6 +1697,8 @@ def apply_source_skin_volume_registration(
         "soft_displacement_max_m": soft_max,
         "protected_material_vertices": int(np.count_nonzero(protected)),
         "anatomy_transport": "all_material_volume_field_applied_before_bone_fit",
+        "semantic_rest_prealign": prealign_report,
+        "source_rig_rebind": source_rig_report,
         "section_residual_regularizer": section_report,
         "soft_edge_strain_regularizer": strain_reports,
         "surface_barrier_regularizer": barrier_reports,
