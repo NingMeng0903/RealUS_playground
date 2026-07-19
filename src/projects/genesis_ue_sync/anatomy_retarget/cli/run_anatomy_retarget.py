@@ -1161,6 +1161,15 @@ def parse_args() -> argparse.Namespace:
         help="Write actual Stage-1 skin/cage/anatomy overlays and containment data.",
     )
     p.add_argument(
+        "--stage1-boundary-reference",
+        type=Path,
+        default=None,
+        help=(
+            "Signed same-Skin_Glass cage initialization exported from an accepted "
+            "Stage-1 bake. Rejects topology/signature mismatches."
+        ),
+    )
+    p.add_argument(
         "--refresh-diagnostics",
         action="store_true",
         help="Run slow mesh/SDF diagnostics even when source and shape caches hit.",
@@ -1601,6 +1610,7 @@ def main() -> int:
                 asset,
                 canonical_dir=args.canonical_dir,
                 debug_stage1_dir=args.stage1_debug_dir,
+                boundary_reference=args.stage1_boundary_reference,
             )
         if args.fast_publish:
             neutral_articulated_report = {

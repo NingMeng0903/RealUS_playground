@@ -265,6 +265,37 @@ def _lower_limb_report(
     return output
 
 
+def _regional_mesh_report(
+    sdf: np.ndarray,
+    ranges: np.ndarray,
+    meshes: list[str],
+) -> dict[str, Any]:
+    """Report the Stage-1 hand and oral compounds independently of soft gate."""
+    regions = {
+        "hand_bones": ("metacarpal", "phalanx_hand", "phalanges_hand"),
+        "upper_skull": ("upper_skull", "skull", "cranium"),
+        "jaw_oral": (
+            "mandible", "incisor", "canine", "molar", "premolar",
+            "sublingual", "submandibular", "parotid", "duct", "pharynx",
+        ),
+    }
+    report: dict[str, Any] = {}
+    for label, tokens in regions.items():
+        selected: list[np.ndarray] = []
+        for (start, stop), mesh in zip(ranges, meshes):
+            if any(token in str(mesh).lower() for token in tokens):
+                selected.append(sdf[int(start) : int(stop)])
+        values = np.concatenate(selected) if selected else np.zeros(0, dtype=np.float64)
+        outside = values[values > 0.0]
+        report[label] = {
+            "vertex_count": int(len(values)),
+            "outside_count": int(len(outside)),
+            "outside_fraction": float(len(outside) / max(len(values), 1)),
+            "max_outside_m": float(np.max(outside)) if len(outside) else 0.0,
+        }
+    return report
+
+
 def analyze_asset(
     asset_path: Path,
     *,
@@ -323,6 +354,7 @@ def analyze_asset(
         "lower_limb_containment": _lower_limb_report(
             vertices, sdf, ranges, tissues, canonical_dir
         ),
+        "hand_head_regional_containment": _regional_mesh_report(sdf, ranges, meshes),
         "skin_glass_or_cage_report_from_metadata": cage_report,
         "cervical_chain": _cervical_chain(vertices, ranges, meshes, tissues),
         "axial_mask_hit_table": _axial_mask_hit_table(meshes, tissues),
