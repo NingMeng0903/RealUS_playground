@@ -21,7 +21,7 @@ from .source_rebind import rebind_source_rig
 from .shape_volume import _load_obj, _outside_cage_max_distance, _sample_field, _tet_stiffness
 
 
-_CAGE_VERSION = "source_skin_volume_v19_semantic_prealign_inset_shell"
+_CAGE_VERSION = "source_skin_volume_v20_bind_authority_no_lbs_prealign"
 # A Stage-1 field is a diffeomorphic initialisation, not a nearly-flat cage.
 _MIN_JACOBIAN_RATIO = 0.05
 _MAX_FINAL_SURFACE_RMS_M = 0.03
@@ -29,7 +29,11 @@ _MAX_FINAL_SURFACE_DISTANCE_M = 0.10
 _MAX_BOUNDARY_DISPLACEMENT_M = 0.50
 _MIN_REGISTRATION_PROGRESS_M = 1.0e-7
 _FINE_SHELL_HOMOTOPY = (0.10, 0.25, 0.45, 0.65, 0.82, 1.00)
-_SEMANTIC_PREALIGN_BLEND = 0.25
+# Per-bone LBS is not a continuous volume correspondence.  Even a 25% blend
+# opens authored tibia/fibula/ankle contacts by several centimetres before the
+# harmonic solve.  Blender extraction already supplies a canonical bind-space
+# source, so the single harmonic field must own all subsequent rest transport.
+_SEMANTIC_PREALIGN_BLEND = 0.0
 
 
 def _apply_semantic_rest_prealign(
@@ -1378,16 +1382,43 @@ def apply_source_skin_volume_registration(
         # it never projects or clamps anatomy vertices with an SDF.
         import igl
 
-        # The semantic rest prealign makes the coarse shell a deliberate
-        # internal target.  It has already aligned limbs without folding the
-        # source volume, while a second projection to the render shell can
-        # reintroduce a high-gradient hand/neck field.  Stage-1 publishes this
-        # safe inset field; Stage-2 may add local bone constraints later.
-        phase_reports.append({
-            "accepted": True,
-            "skipped": True,
-            "reason": "semantic_rest_prealign_uses_the_jacobian_safe_inset_shell",
-        })
+        coarse_boundary = registered_boundary.copy()
+        _squared, _face_index, fine_correspondence = (
+            igl.point_mesh_squared_distance(
+                registered_boundary, shell_vertices, shell_faces
+            )
+        )
+        for fraction in _FINE_SHELL_HOMOTOPY:
+            phase_target = coarse_boundary + float(fraction) * (
+                np.asarray(fine_correspondence, dtype=np.float64)
+                - coarse_boundary
+            )
+            try:
+                registered_boundary, phase_report = (
+                    _topology_preserving_cage_registration(
+                        nodes,
+                        elements,
+                        boundary,
+                        np.asarray(cage["boundary_faces"], dtype=np.int32),
+                        shell_vertices,
+                        shell_faces,
+                        fixed_target=phase_target,
+                        initial_boundary=registered_boundary,
+                    )
+                )
+            except RuntimeError as exc:
+                phase_reports.append(
+                    {
+                        "fine_shell_fraction": float(fraction),
+                        "accepted": False,
+                        "reason": str(exc),
+                    }
+                )
+                break
+            phase_report["fine_shell_fraction"] = float(fraction)
+            phase_report["accepted"] = True
+            phase_reports.append(phase_report)
+            achieved_fraction = float(fraction)
     else:
         phase_reports.append({
             "accepted": True,

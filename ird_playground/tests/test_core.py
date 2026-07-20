@@ -50,7 +50,7 @@ def test_delta_T_features_dim():
     T = mat4_from_Rt(R, [0.3, 0.1, 0.2])
     dT = delta_T_tcp_inv_base(T)
     f = features_from_delta_T(dT)
-    assert f.shape == (9,)
+    assert f.shape == (6,)
 
 
 def test_softmin_approaches_min():
@@ -110,11 +110,13 @@ def test_train_synthetic_and_region_a(tmp_path):
         checkpoint=str(ckpt),
         seed=0,
         num_workers=0,
+        lambda_local=0.0,
+        wandb_enable=False,
     )
     result = train_point_field(cfg)
     assert ckpt.exists()
+    assert result["val_metrics"]["boundary_iou"] > 0.5
     assert result["val_metrics"]["mae_m"] < 1.5
-    assert result["val_metrics"]["boundary_iou"] > 0.3
 
     net = NeuralIRD.load(ckpt)
     g = differentiability_smoke(net)

@@ -227,6 +227,37 @@ def test_nonroot_segment_twist_is_not_lost_when_endpoints_are_stationary() -> No
     np.testing.assert_allclose(transforms[1], expected, atol=2.0e-6, rtol=0.0)
 
 
+def test_twist_follower_rejects_distal_flexion() -> None:
+    base = _chain_asset()
+    modes = list(base.source_bone_driver_types or [])
+    modes[1] = "twist"
+    blends = np.asarray(base.source_bone_blend).copy()
+    blends[1] = np.float32(0.78)
+    asset = with_source_driver_coupling(
+        replace(base, source_bone_driver_types=modes, source_bone_blend=blends)
+    )
+    pose = np.zeros((55, 3), dtype=np.float32)
+    pose[2, 0] = np.float32(0.9)
+    transforms = source_bone_skinning_transforms(asset, pose)
+    np.testing.assert_allclose(transforms[1], np.eye(4), atol=2.0e-6, rtol=0.0)
+
+
+def test_twist_follower_interpolates_only_distal_axial_roll() -> None:
+    base = _chain_asset()
+    modes = list(base.source_bone_driver_types or [])
+    modes[1] = "twist"
+    blends = np.asarray(base.source_bone_blend).copy()
+    blends[1] = np.float32(0.25)
+    asset = with_source_driver_coupling(
+        replace(base, source_bone_driver_types=modes, source_bone_blend=blends)
+    )
+    pose = np.zeros((55, 3), dtype=np.float32)
+    pose[2, 1] = np.float32(0.8)
+    transforms = source_bone_skinning_transforms(asset, pose)
+    expected = _root_pose_delta(np.asarray((0.0, 0.2, 0.0), dtype=np.float32))
+    np.testing.assert_allclose(transforms[1], expected, atol=2.0e-6, rtol=0.0)
+
+
 def test_segment_root_combined_swing_and_twist_preserves_full_rotation() -> None:
     asset = with_source_driver_coupling(_chain_asset())
     _assert_all_bones_follow_delta(
@@ -264,6 +295,29 @@ def test_bind_follow_preserves_authored_parent_child_local_fk() -> None:
             rtol=0.0,
         )
     _assert_all_bones_follow_delta(asset, pose[0])
+
+
+def test_full_source_local_fk_preserves_controller_local_translations() -> None:
+    base = _chain_asset()
+    asset = with_source_driver_coupling(
+        replace(base, metadata={"source_full_local_fk_v2": True})
+    )
+    pose = np.zeros((55, 3), dtype=np.float32)
+    pose[1] = np.asarray((0.42, -0.18, 0.31), dtype=np.float32)
+    transforms = source_bone_skinning_transforms(asset, pose)
+    bind = np.asarray(asset.target_bind_global, dtype=np.float64)
+    posed = np.asarray(transforms, dtype=np.float64) @ bind
+    local_bind = np.asarray(asset.target_bind_local, dtype=np.float64)
+
+    for child in range(1, len(posed)):
+        parent = int(asset.source_bone_parents[child])
+        actual_local = np.linalg.inv(posed[parent]) @ posed[child]
+        np.testing.assert_allclose(
+            actual_local[:3, 3],
+            local_bind[child, :3, 3],
+            atol=2.0e-6,
+            rtol=0.0,
+        )
 
 
 def test_mirrored_source_bind_does_not_change_segment_motion() -> None:

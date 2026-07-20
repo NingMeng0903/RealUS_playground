@@ -70,7 +70,7 @@ def grad_cosine_vs_gt(
         # finite difference of network GT surrogate: compare AD to FD of the net
         # against a GT directional proxy from m labels of nearby samples.
         x = torch.tensor(f0[None, :], dtype=torch.float32, device=net.device, requires_grad=True)
-        m, _, _ = net.model(x)
+        reach_logit, m, _, _ = net.model(x)
         m.sum().backward()
         g_theta = x.grad[0, :3].detach().cpu().numpy()
 
@@ -126,7 +126,7 @@ def ascent_gt_improve(
     for i in pick:
         f0 = feats[i].astype(np.float32).copy()
         x = torch.tensor(f0[None, :], dtype=torch.float32, device=net.device, requires_grad=True)
-        m, _, _ = net.model(x)
+        _, m, _, _ = net.model(x)
         m.sum().backward()
         g = x.grad[0, :3].detach().cpu().numpy()
         g = g / (np.linalg.norm(g) + 1e-12)

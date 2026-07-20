@@ -251,6 +251,10 @@ GEOMETRY_LANDMARK_MESHES: dict[str, dict[str, tuple[str, ...]]] = {
     "knee_right": {"proximal": ("femur",), "distal": ("tibia", "fibula", "patella")},
     "ankle_left": {"proximal": ("tibia", "fibula"), "distal": ("talus", "calcaneus")},
     "ankle_right": {"proximal": ("tibia", "fibula"), "distal": ("talus", "calcaneus")},
+    "fibula_knee_left": {"proximal": ("tibia",), "distal": ("fibula",)},
+    "fibula_knee_right": {"proximal": ("tibia",), "distal": ("fibula",)},
+    "fibula_ankle_left": {"proximal": ("fibula",), "distal": ("talus",)},
+    "fibula_ankle_right": {"proximal": ("fibula",), "distal": ("talus",)},
 }
 
 
@@ -262,7 +266,7 @@ def _joint_surface_gap_limit(label: str) -> float:
         # The source has no cartilage mesh between metacarpal and phalanx;
         # retain its authored bony clearance while still detecting separation.
         return 0.007
-    if label.startswith(("elbow_", "wrist_", "knee_", "ankle_")):
+    if label.startswith(("elbow_", "wrist_", "knee_", "ankle_", "fibula_")):
         return 0.005
     return ENDPOINT_LIMIT_M
 
@@ -503,9 +507,12 @@ def _geometry_landmark_diagnostic(
     target_rest = np.asarray(asset.rest_joints[ji], dtype=np.float64)
     target_pose = np.asarray(posed_smplx_joints[ji], dtype=np.float64) + translation
     rest_vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
+    source_bind_vertices = getattr(asset, "source_bind_vertices", None)
     registration_reference = getattr(asset, "registration_reference", None)
     source_vertices = np.asarray(
-        registration_reference
+        source_bind_vertices
+        if source_bind_vertices is not None
+        else registration_reference
         if registration_reference is not None
         else asset.vertices_rest,
         dtype=np.float64,
@@ -514,6 +521,7 @@ def _geometry_landmark_diagnostic(
 
     roles: dict[str, Any] = {}
     role_vertex_indices: list[np.ndarray] = []
+    role_selected_indices: list[np.ndarray] = []
     source_landmarks: list[np.ndarray] = []
     rest_landmarks: list[np.ndarray] = []
     posed_landmarks: list[np.ndarray] = []
@@ -606,6 +614,7 @@ def _geometry_landmark_diagnostic(
         posed_landmark = np.mean(posed_vertices[selected], axis=0)
         source_landmark = np.mean(source_vertices[selected], axis=0)
         source_landmarks.append(source_landmark)
+        role_selected_indices.append(np.asarray(selected, dtype=np.int64))
         rest_landmarks.append(rest_landmark)
         posed_landmarks.append(posed_landmark)
         roles[role] = {
@@ -638,16 +647,21 @@ def _geometry_landmark_diagnostic(
     from scipy.spatial import cKDTree
 
     local_roles: list[np.ndarray] = []
-    for vertex_indices in role_vertex_indices:
-        target_distance = np.linalg.norm(
-            rest_vertices[vertex_indices] - target_rest,
-            axis=1,
-        )
-        local_roles.append(
-            vertex_indices[
-                target_distance <= np.quantile(target_distance, 0.25)
-            ]
-        )
+    if label.startswith("fibula_ankle_"):
+        local_roles = [role_selected_indices[0], role_vertex_indices[1]]
+    elif label.startswith("fibula_"):
+        local_roles = role_selected_indices
+    else:
+        for vertex_indices in role_vertex_indices:
+            target_distance = np.linalg.norm(
+                rest_vertices[vertex_indices] - target_rest,
+                axis=1,
+            )
+            local_roles.append(
+                vertex_indices[
+                    target_distance <= np.quantile(target_distance, 0.25)
+                ]
+            )
     nearest_distance, nearest_index = cKDTree(
         rest_vertices[local_roles[1]]
     ).query(rest_vertices[local_roles[0]], k=1)
@@ -933,6 +947,32 @@ def write_bone_segment_diagnostics(
         }
         joints[label] = result
         if not result["pass"]:
+            joint_failures.append(f"joint/{label}")
+
+    for label, joint_name in (
+        ("fibula_knee_left", "left_knee"),
+        ("fibula_knee_right", "right_knee"),
+        ("fibula_ankle_left", "left_ankle"),
+        ("fibula_ankle_right", "right_ankle"),
+    ):
+        geometry = _geometry_landmark_diagnostic(
+            asset,
+            label=label,
+            joint_name=joint_name,
+            posed_vertices=np.asarray(posed, dtype=np.float64),
+            posed_smplx_joints=posed_smplx_joints,
+            translation=translation,
+        )
+        joints[label] = {
+            "smplx_joint": joint_name,
+            "controller_probes": {
+                "available": False,
+                "reason": "bone-surface interface diagnostic",
+            },
+            "geometry_landmarks": geometry,
+            "pass": bool(geometry["pass"]),
+        }
+        if not geometry["pass"]:
             joint_failures.append(f"joint/{label}")
 
     head = _head_orientation_diagnostic(

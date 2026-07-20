@@ -428,18 +428,42 @@ def _endpoint_segment_delta(
     if float(np.linalg.norm(rest_b - rest_a)) < 1.0e-8:
         raise ValueError("segment driver rest endpoints are degenerate")
     F0 = _segment_frame(rest_a, rest_b, rest_reference_x)
-    reference_delta = np.asarray(proximal_delta, dtype=np.float64)
+    reference_x = np.asarray(proximal_delta, dtype=np.float64)[:3, :3] @ F0[:3, 0]
     if distal_delta is not None and float(twist_alpha) > 0.0:
-        reference_delta = _interpolate_rigid(
-            np.asarray(proximal_delta, dtype=np.float64),
-            np.asarray(distal_delta, dtype=np.float64),
-            float(twist_alpha),
-        ).astype(np.float64)
+        # A twist follower may interpolate roll about the limb axis, but must
+        # not inherit distal flexion.  Slerping the complete knee/ankle or
+        # elbow/wrist rotations turns foot/hand swing into a bend of the long
+        # bone and opens authored surface contacts at the distal epiphysis.
+        axis = np.asarray(pose_b - pose_a, dtype=np.float64)
+        axis /= max(float(np.linalg.norm(axis)), 1.0e-12)
+        distal_x = np.asarray(distal_delta, dtype=np.float64)[:3, :3] @ F0[:3, 0]
+        proximal_projected = reference_x - float(reference_x @ axis) * axis
+        distal_projected = distal_x - float(distal_x @ axis) * axis
+        proximal_norm = float(np.linalg.norm(proximal_projected))
+        distal_norm = float(np.linalg.norm(distal_projected))
+        if proximal_norm > 1.0e-8 and distal_norm > 1.0e-8:
+            proximal_projected /= proximal_norm
+            distal_projected /= distal_norm
+            angle = float(
+                np.arctan2(
+                    axis @ np.cross(proximal_projected, distal_projected),
+                    np.clip(proximal_projected @ distal_projected, -1.0, 1.0),
+                )
+            )
+            partial = float(np.clip(twist_alpha, 0.0, 1.0)) * angle
+            # Rodrigues rotation around the posed anatomical segment axis.
+            reference_x = (
+                np.cos(partial) * proximal_projected
+                + np.sin(partial) * np.cross(axis, proximal_projected)
+                + (1.0 - np.cos(partial))
+                * float(axis @ proximal_projected)
+                * axis
+            )
     # Transport the *actual* transverse axis selected in the rest frame.  This
     # matters when the authored bind X axis is parallel to the segment and
     # _segment_frame had to choose a stable fallback.  Transporting the raw
     # authored axis would discard pure axial rotation in that case.
-    F1 = _segment_frame(pose_a, pose_b, reference_delta[:3, :3] @ F0[:3, 0])
+    F1 = _segment_frame(pose_a, pose_b, reference_x)
     return F1 @ np.linalg.inv(F0)
 
 
@@ -628,6 +652,9 @@ def source_bone_skinning_transforms(
     use_source_local_fk = bool(
         (asset.metadata or {}).get("source_joint_local_fk_v1", False)
     )
+    use_full_source_local_fk = bool(
+        (asset.metadata or {}).get("source_full_local_fk_v2", False)
+    )
     target_pose_global = joint_global_transforms(
         pose_axis_angle=pose_axis_angle,
         rest_joints=asset.rest_joints,
@@ -657,6 +684,17 @@ def source_bone_skinning_transforms(
             raise ValueError(f"source bone parent {parent} for bone {bi} is not topological")
         if mode == "bind_follow" and parent >= 0:
             posed_global[bi] = posed_global[parent] @ rest_local_bones[bi]
+            continue
+        if use_full_source_local_fk and parent >= 0:
+            # Driver coupling supplies world rotation; Blender's fitted local
+            # bind remains authoritative for pivots and local translations.
+            desired = driver_frames[bi] @ coupling[bi]
+            posed_local = np.asarray(rest_local_bones[bi], dtype=np.float64).copy()
+            posed_local[:3, :3] = (
+                np.linalg.inv(posed_global[parent, :3, :3])
+                @ desired[:3, :3]
+            )
+            posed_global[bi] = posed_global[parent] @ posed_local
             continue
         if mode == "joint_local" and parent >= 0 and use_source_local_fk:
             joint = int(asset.source_bone_smplx_a[bi])

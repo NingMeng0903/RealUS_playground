@@ -35,17 +35,25 @@ def rot6d_from_R(R: np.ndarray) -> np.ndarray:
 
 
 def features_from_delta_T(delta_T: np.ndarray) -> np.ndarray:
-    """(9,) = translation(3) + rot6d(6)."""
+    """(6,) = ΔT translation(3) + TCP tool axis u(3) in base.
+
+    ΔT = T_tcp^{-1} T_base. With R_Δ = R_tcpᵀ when T_base=I, u = R_tcp[:,2] = R_Δ[2,:].
+    """
     T = np.asarray(delta_T, dtype=np.float64).reshape(4, 4)
-    return np.concatenate([T[:3, 3], rot6d_from_R(T[:3, :3])], axis=0)
+    t = T[:3, 3]
+    R_delta = T[:3, :3]
+    u = R_delta[2, :].copy()  # = R_tcp[:, 2]
+    n = np.linalg.norm(u) + 1e-12
+    u = u / n
+    return np.concatenate([t, u], axis=0).astype(np.float64)
 
 
 def batch_features_from_delta_T(delta_Ts: np.ndarray) -> np.ndarray:
-    """(N,9) from (N,4,4)."""
+    """(N,6) from (N,4,4)."""
     Ts = np.asarray(delta_Ts, dtype=np.float64)
     if Ts.ndim == 2:
         return features_from_delta_T(Ts)[None, :]
-    out = np.empty((Ts.shape[0], 9), dtype=np.float64)
+    out = np.empty((Ts.shape[0], 6), dtype=np.float64)
     for i, T in enumerate(Ts):
         out[i] = features_from_delta_T(T)
     return out

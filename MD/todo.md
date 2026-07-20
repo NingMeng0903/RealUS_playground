@@ -40,13 +40,12 @@ T_{\mathrm{base}}(\mathrm{rail}_y)=T_{\mathrm{rail}}\,\mathrm{Trans}_y(\mathrm{r
 
 ## P2a — 通用 Neural IRD 点场（裕量 + 舒适度）
 
-- [x] \(f_\theta(\Delta T)\to(m,q)\)：\(m\) logit/裕量，\(q\in[0,1]\)；点代价 \(\mathrm{softplus}(-m/\tau)-\lambda q\)
-- [x] 输入：归一化 xyz + rot6D；Fourier **主要在 xyz**（\(L_p=6\)）
-- [x] 网络：4–6 层 residual MLP，hidden 256，SiLU/Softplus
-- [x] 损失：BCE(m) + margin 回归 + 可达上 q + 局部差分一致性；难例挖掘
+- [x] **v3 contract**：\(f_\theta(t_\Delta,u)\to(\ell_{\mathrm{reach}},m,q)\) 三头；输入 6-D（无 rot6D）
+- [x] GT：bitmask 精确标签；jitter 重查；per-orient EDT 符号裕量；\(y{=}1\Rightarrow m{>}0\)；AABB 来自 features
+- [x] 损失：BCEWithLogits + SmoothL1(m) + SmoothL1(q|pos)；`lambda_local=0`；`hardneg_every=0`
 - [x] 训练不含：人体、血管、\(s\)、**rail**、患者、特定轨迹
 - [x] **过关**：分类 IoU / q 回归 / Spearman **+** 梯度余弦 / 上升改善 / `rail_y` AD·FD / 区域 softmin 改善
-- [x] CLI：`train` / `eval_point`（需扩展验收）
+- [x] CLI：`train` / `train_cls_only` / `eval_point`
 
 ## P2b — 查询侧区域 A
 

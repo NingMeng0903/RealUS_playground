@@ -62,11 +62,12 @@ def score_vs_rail_y(
 
 
 def _features_torch_from_delta_T(dT: "torch.Tensor") -> "torch.Tensor":
-    """dT (4,4) torch → features (9,)."""
+    """dT (4,4) → features (6,) = t + tool_axis."""
     t = dT[:3, 3]
     R = dT[:3, :3]
-    r6 = torch.cat([R[:, 0], R[:, 1]], dim=0)
-    return torch.cat([t, r6], dim=0)
+    u = R[2, :]
+    u = u / (u.norm().clamp_min(1e-6))
+    return torch.cat([t, u], dim=0)
 
 
 def score_vs_rail_y_torch(
@@ -103,7 +104,7 @@ def score_vs_rail_y_torch(
     Ti[:3, 3] = -R.T @ t
     dT = Ti @ T_base
     feat = _features_torch_from_delta_T(dT).unsqueeze(0)
-    _, _, score = neural_ird.model(feat)
+    _, _, _, score = neural_ird.model(feat)
     return score.squeeze()
 
 

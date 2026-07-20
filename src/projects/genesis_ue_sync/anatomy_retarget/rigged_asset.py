@@ -158,6 +158,11 @@ class AnatomyRiggedAsset:
     soft_follow_strength: np.ndarray | None = None
     soft_component_ids: np.ndarray | None = None
     source_mesh_follow_modes: list[str] | None = None
+    # Canonical source anatomy evaluated in the exact Blender bind used by
+    # source_bind_global and the exported sparse weights.  This is distinct
+    # from registration_reference, which is the pre-armature raw mesh used by
+    # the volume registration diagnostics.
+    source_bind_vertices: np.ndarray | None = None
     registration_reference: np.ndarray | None = None
     source_skin_vertices: np.ndarray | None = None
     source_skin_faces: np.ndarray | None = None
@@ -184,6 +189,7 @@ class AnatomyRiggedAsset:
             "source_inverse_bind",
             "source_bone_head",
             "source_bone_tail",
+            "source_bind_vertices",
             "source_driver_coupling",
             "target_rest_global",
             "target_rest_local",
@@ -308,6 +314,12 @@ class AnatomyRiggedAsset:
             raise ValueError("vertices_rest contains non-finite values")
         if self.registration_reference is not None and np.asarray(self.registration_reference).shape != vertices.shape:
             raise ValueError("registration_reference must match vertices_rest")
+        if self.source_bind_vertices is not None:
+            source_bind_vertices = np.asarray(self.source_bind_vertices)
+            if source_bind_vertices.shape != vertices.shape:
+                raise ValueError("source_bind_vertices must match vertices_rest")
+            if not np.all(np.isfinite(source_bind_vertices)):
+                raise ValueError("source_bind_vertices contains non-finite values")
         mesh_count = len(self.source_mesh_names)
         if self.source_vertex_ranges is None or np.asarray(self.source_vertex_ranges).shape != (mesh_count, 2):
             raise ValueError("source_vertex_ranges must have one [start, stop] range per source mesh")
@@ -796,6 +808,7 @@ def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
         "soft_follow_stations": asset.soft_follow_stations,
         "soft_follow_strength": asset.soft_follow_strength,
         "soft_component_ids": asset.soft_component_ids,
+        "source_bind_vertices": asset.source_bind_vertices,
     }
     for name, value in optional_payload.items():
         if value is not None:
@@ -1073,6 +1086,7 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
         soft_follow_strength=np.asarray(data["soft_follow_strength"], dtype=np.float32).reshape(-1) if "soft_follow_strength" in data.files else None,
         soft_component_ids=np.asarray(data["soft_component_ids"], dtype=np.int32).reshape(-1) if "soft_component_ids" in data.files else None,
         source_mesh_follow_modes=[str(v) for v in _string_array(data["source_mesh_follow_modes"]).tolist()] if "source_mesh_follow_modes" in data.files else None,
+        source_bind_vertices=np.asarray(data["source_bind_vertices"], dtype=np.float32).reshape(-1, 3) if "source_bind_vertices" in data.files and data["source_bind_vertices"].size else None,
         registration_reference=np.asarray(data["registration_reference"], dtype=np.float32).reshape(-1, 3) if "registration_reference" in data.files and data["registration_reference"].size else None,
         source_skin_vertices=np.asarray(data["source_skin_vertices"], dtype=np.float32).reshape(-1, 3) if "source_skin_vertices" in data.files and data["source_skin_vertices"].size else None,
         source_skin_faces=np.asarray(data["source_skin_faces"], dtype=np.int32).reshape(-1, 3) if "source_skin_faces" in data.files and data["source_skin_faces"].size else None,

@@ -204,3 +204,44 @@ def test_posed_surface_gap_recomputes_contact_inside_frozen_joint_domains() -> N
     assert np.isclose(report["posed_surface_gap_m"], 0.001)
     assert report["surface_landmarks"]["proximal_vertex"] == 0
     assert report["surface_landmarks"]["posed_proximal_vertex"] == 1
+
+
+def test_fibula_ankle_diagnostic_cannot_be_masked_by_tibia_contact() -> None:
+    fibula = np.asarray(
+        [(0.0, y, 0.0) for y in np.linspace(0.0, 0.07, 8)],
+        dtype=np.float64,
+    )
+    talus = fibula + np.asarray((0.001, 0.0, 0.0))
+    rest = np.concatenate((fibula, talus), axis=0)
+    asset = SimpleNamespace(
+        vertices_rest=rest,
+        registration_reference=rest.copy(),
+        rest_joints=np.asarray(((0.0, 0.0, 0.0),), dtype=np.float64),
+        joint_names=["left_ankle"],
+        source_mesh_names=["Fibula_L", "Talus_L"],
+        source_vertex_ranges=np.asarray(((0, 8), (8, 16)), dtype=np.int64),
+        source_tissues=["bone", "bone"],
+    )
+
+    good = _geometry_landmark_diagnostic(
+        asset,
+        label="fibula_ankle_left",
+        joint_name="left_ankle",
+        posed_vertices=rest,
+        posed_smplx_joints=asset.rest_joints,
+        translation=np.zeros(3),
+    )
+    assert good["pass"]
+
+    separated = rest.copy()
+    separated[8:, 0] += 0.010
+    bad = _geometry_landmark_diagnostic(
+        asset,
+        label="fibula_ankle_left",
+        joint_name="left_ankle",
+        posed_vertices=separated,
+        posed_smplx_joints=asset.rest_joints,
+        translation=np.zeros(3),
+    )
+    assert not bad["pass"]
+    assert bad["surface_gap_change_m"] >= 0.009

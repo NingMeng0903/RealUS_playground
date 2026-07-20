@@ -2,12 +2,14 @@
 
 **Neural Inverse Reachability Distribution** — rail-locked **7-DoF** point field + query-side Region A.
 
-## Architecture (locked)
+## Architecture (v3 contract)
 
-- **Train**: \(f_\theta(\Delta T)\to(m,q)\), \(\Delta T=T_{\mathrm{tcp}}^{-1}T_{\mathrm{base}}\). No rail / patient / trajectory in the net.
-- **Query**: \(T_{\mathrm{base}}(\mathrm{rail}_y)=T_{\mathrm{rail}}\,\mathrm{Trans}_y(\mathrm{rail}_y)\,T_{\mathrm{base},0}\) (full SE(3)), then \(\Delta T(r)\).
-- **Region A**: fixed Sobol; \(m_{\mathrm{robust}}=\mathrm{softmin}(m)\), \(q_{\mathrm{region}}=\mathrm{mean}(q)\). IPE is ablation only.
-- Runtime robot is 7-DoF arm + 1-DoF rail; the capability map and network are **rail-locked 7-DoF**.
+- **Features (6-D)**: \([t_\Delta(3),\,u(3)]\) — \(\Delta T\) translation + TCP tool axis (5-DoF map; no fake roll / rot6D).
+- **Heads**: \(f_\theta \to (\ell_{\mathrm{reach}},\, m_{\mathrm{margin}},\, q)\). Classification, signed margin, and capability are **separate**.
+- **GT**: bitmask-exact labels; jitter re-queries voxel+orient; margin = per-orient 3D EDT / \(\sigma_p\); \(y{=}1\Rightarrow m{>}0\), \(y{=}0\Rightarrow m{<}0\); AABB from `features[:,:3]`.
+- **Loss**: `BCEWithLogits(\ell,y)` + `SmoothL1(m)` + `SmoothL1(q|pos)`; `lambda_local=0`, `hardneg_every=0`.
+- **Query**: \(T_{\mathrm{base}}(\mathrm{rail}_y)=T_{\mathrm{rail}}\,\mathrm{Trans}_y(\mathrm{rail}_y)\,T_{\mathrm{base},0}\), then \(\Delta T(r)\).
+- **Region A**: \(m_{\mathrm{robust}}=\mathrm{softmin}(m)\), \(q_{\mathrm{region}}=\mathrm{mean}(q)\).
 
 ## Layout
 
@@ -18,7 +20,7 @@ ird_playground/
   ird_playground/
     probe/          # link7→TCP SE(3)
     ird/            # capability IO + GT export + rail SE(3) query
-    neural/         # MLP (m,q) + train + metrics
+    neural/         # 3-head MLP + train + metrics
     region/         # query-side Region A
     viz/            # global IRD + capability compare
     cli/
@@ -31,12 +33,25 @@ ird_playground/
 ```bash
 cd ird_playground && source env.sh
 
+# 1) Rebuild GT (required after contract change; delete old NPZ first)
 python -m ird_playground.cli.build_ird_gt --config configs/ird_gt_config.yaml
-python -m ird_playground.cli.train --config configs/train_config.yaml
-python -m ird_playground.cli.eval_point --checkpoint data/checkpoints/best.pt
 
-# Global IRD / capability figures (shared clim 0–18 for probe compare)
-# see rm75_control/scripts/regen_probe_compare_figs.py
+# 2a) Phase-1: classification only (IoU should rise quickly)
+python -m ird_playground.cli.train --config configs/train_cls_only.yaml
+
+# 2b) Full: cls + margin + q
+python -m ird_playground.cli.train --config configs/train_config.yaml
+
+python -m ird_playground.cli.eval_point --checkpoint data/checkpoints/best.pt
+```
+
+### GT contract check (after export)
+
+```python
+from ird_playground.ird.export_gt import load_ird_gt, assert_gt_contract
+a = load_ird_gt("data/ird/gt_samples_1p5cm_probe.npz")
+assert_gt_contract(a)
+print(a["features"].shape, float(a["reachable"].mean()))
 ```
 
 ### P2 pass targets
@@ -44,7 +59,7 @@ python -m ird_playground.cli.eval_point --checkpoint data/checkpoints/best.pt
 | Metric | Target |
 |--------|--------|
 | Reachable classification IoU | ≥ 0.70 |
-| Margin / score MAE | ≤ 0.35 |
+| Margin MAE | ≤ 0.35 |
 | Spearman on \(q\) (reachable) | ≥ 0.70 |
 | Grad cosine vs GT (median) | ≥ 0.30 |
 | Ascent GT improve rate | ≥ 0.40 |
@@ -52,4 +67,4 @@ python -m ird_playground.cli.eval_point --checkpoint data/checkpoints/best.pt
 | `rail_y` sign agree | ≥ 0.80 |
 | Region softmin improve rate | ≥ 0.40 |
 
-See [`../MD/todo.md`](../MD/todo.md).
+See [`../MD/todo.md`](../MD/todo.md) and [`../MD/debug.md`](../MD/debug.md).

@@ -50,11 +50,17 @@ def _components(vertex_count: int, faces: np.ndarray) -> list[np.ndarray]:
 
 def refine_canonical_arap(asset: AnatomyRiggedAsset) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     """Preserve source edge continuity while honoring the smooth anchor fit."""
-    if asset.registration_reference is None or asset.source_vertex_ranges is None:
+    source_bind_vertices = getattr(asset, "source_bind_vertices", None)
+    source_reference = (
+        source_bind_vertices
+        if source_bind_vertices is not None
+        else asset.registration_reference
+    )
+    if source_reference is None or asset.source_vertex_ranges is None:
         raise ValueError("ARAP registration requires source reference vertices and mesh ranges")
     import igl
 
-    reference = np.asarray(asset.registration_reference, dtype=np.float64)
+    reference = np.asarray(source_reference, dtype=np.float64)
     target = np.asarray(asset.vertices_rest, dtype=np.float64)
     output = target.copy()
     global_faces = np.asarray(asset.faces, dtype=np.int64)

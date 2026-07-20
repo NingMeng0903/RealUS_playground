@@ -399,7 +399,6 @@ def _merge_fast_extremity_donor(
         )[donor_foot_bones]
 
     from projects.genesis_ue_sync.anatomy_retarget.material_fit import (
-        _femur_head_and_acetabulum,
         _mesh_mask,
         _rotation_between,
         _surface_region,
@@ -473,153 +472,15 @@ def _merge_fast_extremity_donor(
                 "target_length_m": float(np.linalg.norm(target_b - target_a)),
             }
 
-    hip_report: dict[str, Any] = {}
-    if legacy_hand is not None:
-        hip_report["mode"] = "fe99_material_fit_preserved"
-    for side in ("left", "right"):
-        pair = _femur_head_and_acetabulum(
-            donor,
-            vertices,
-            side=side,
-            target_joints=rest_joints,
-        )
-        suffix = "_l" if side == "left" else "_r"
-        femur = _mesh_mask(
-            donor,
-            lambda name, tissue, suffix=suffix: tissue == "bone"
-            and "femur" in name
-            and (name.endswith(suffix) or f"{suffix}_" in name),
-        )
-        if pair is None or not np.any(femur):
-            continue
-        femoral_head, acetabulum = pair
-        knee = rest_joints[donor.joint_names.index(f"{side}_knee")]
-        femur_points = vertices[femur].copy()
-        shaft_axis = knee - femoral_head
-        shaft_axis /= max(float(np.linalg.norm(shaft_axis)), 1.0e-8)
-        axial = (femur_points - femoral_head) @ shaft_axis
-        distal = np.mean(femur_points[axial >= np.quantile(axial, 0.85)], axis=0)
-        vertices[femur] = shaft_preserving_segment_map(
-            femur_points,
-            source_a=femoral_head,
-            source_b=distal,
-            target_a=acetabulum,
-            target_b=knee,
-        )
-        rotation = _rotation_between(distal - femoral_head, knee - acetabulum)
-        frame_delta = np.eye(4, dtype=np.float64)
-        frame_delta[:3, :3] = rotation
-        frame_delta[:3, 3] = acetabulum - rotation @ femoral_head
-        femur_bones = np.asarray(
-            [
-                "femur" in str(name).lower()
-                and (
-                    str(name).lower().endswith(suffix)
-                    or f"{suffix}_" in str(name).lower()
-                )
-                for name in donor.source_bone_names
-            ],
-            dtype=bool,
-        )
-        target_global[femur_bones] = np.einsum(
-            "ij,bjk->bik", frame_delta, target_global[femur_bones]
-        )
-        target_head[femur_bones] = (
-            target_head[femur_bones] @ rotation.T + frame_delta[:3, 3]
-        )
-        target_tail[femur_bones] = (
-            target_tail[femur_bones] @ rotation.T + frame_delta[:3, 3]
-        )
-        post_head, post_acetabulum = _femur_head_and_acetabulum(
-            donor,
-            vertices,
-            side=side,
-            target_joints=rest_joints,
-        )
-        correction = post_acetabulum - post_head
-        vertices[femur] += correction
-        target_global[femur_bones, :3, 3] += correction
-        target_head[femur_bones] += correction
-        target_tail[femur_bones] += correction
-        hip_report[side] = {
-            "pre_gap_m": float(np.linalg.norm(femoral_head - acetabulum)),
-            "post_map_correction_m": float(np.linalg.norm(correction)),
-            "shared_center": post_acetabulum.tolist(),
-        }
-
-    # The right legacy hip is visually the reliable side.  Mirror its proximal
-    # centre to the left, while pinning the left distal femur to the SMPL-X knee.
-    # This removes the old left-only vertical asymmetry without pushing either
-    # ball toward an average of the irregular acetabular surface.
-    if legacy_hand is not None and any(
-        legacy_hand_bones[index] and "femur" in str(name).lower()
-        for index, name in enumerate(donor.source_bone_names)
-    ):
-        left_pair = _femur_head_and_acetabulum(
-            donor, vertices, side="left", target_joints=rest_joints
-        )
-        right_pair = _femur_head_and_acetabulum(
-            donor, vertices, side="right", target_joints=rest_joints
-        )
-        left_femur = _mesh_mask(
-            donor,
-            lambda name, tissue: tissue == "bone"
-            and "femur" in name
-            and (name.endswith("_l") or "_l_" in name),
-        )
-        if left_pair is not None and right_pair is not None and np.any(left_femur):
-            left_head = left_pair[0]
-            right_head = right_pair[0]
-            left_knee = rest_joints[donor.joint_names.index("left_knee")]
-            hip_mid_x = 0.5 * (
-                rest_joints[donor.joint_names.index("left_hip"), 0]
-                + rest_joints[donor.joint_names.index("right_hip"), 0]
-            )
-            mirrored_head = right_head.copy()
-            mirrored_head[0] = 2.0 * hip_mid_x - right_head[0]
-            femur_points = vertices[left_femur].copy()
-            axis = left_knee - left_head
-            axis /= max(float(np.linalg.norm(axis)), 1.0e-8)
-            axial = (femur_points - left_head) @ axis
-            distal = np.mean(femur_points[axial >= np.quantile(axial, 0.85)], axis=0)
-            vertices[left_femur] = shaft_preserving_segment_map(
-                femur_points,
-                source_a=left_head,
-                source_b=distal,
-                target_a=mirrored_head,
-                target_b=left_knee,
-            )
-            rotation = _rotation_between(distal - left_head, left_knee - mirrored_head)
-            frame_delta = np.eye(4, dtype=np.float64)
-            frame_delta[:3, :3] = rotation
-            frame_delta[:3, 3] = mirrored_head - rotation @ left_head
-            left_femur_bones = np.asarray(
-                [
-                    "femur" in str(name).lower()
-                    and (
-                        str(name).lower().endswith("_l")
-                        or "_l_" in str(name).lower()
-                    )
-                    for name in donor.source_bone_names
-                ],
-                dtype=bool,
-            )
-            target_global[left_femur_bones] = np.einsum(
-                "ij,bjk->bik", frame_delta, target_global[left_femur_bones]
-            )
-            target_head[left_femur_bones] = (
-                target_head[left_femur_bones] @ rotation.T + frame_delta[:3, 3]
-            )
-            target_tail[left_femur_bones] = (
-                target_tail[left_femur_bones] @ rotation.T + frame_delta[:3, 3]
-            )
-            hip_report["mode"] = "legacy_right_mirrored_left_head_smplx_knee"
-            hip_report["left"] = {
-                "source_head": left_head.tolist(),
-                "mirrored_right_head": mirrored_head.tolist(),
-                "proximal_correction_m": float(np.linalg.norm(mirrored_head - left_head)),
-                "distal_target": "smplx_left_knee",
-            }
+    hip_report: dict[str, Any] = {
+        "mode": "preserve_continuous_harmonic_relation",
+        "femur_surface_snap": False,
+        "left_right_mirroring": False,
+        "reason": (
+            "independent femur-to-acetabulum snapping changes the authored "
+            "pelvis/femur contact and is not a generic beta correspondence"
+        ),
+    }
 
     raw_head = cranial_material_mask(donor) | jaw_material_mask(donor)
     head_vertices = np.zeros(len(vertices), dtype=bool)
@@ -1642,7 +1503,9 @@ def main() -> int:
                 regularize_asset_soft_materials(
                     asset,
                     reference_vertices=(
-                        asset.registration_reference
+                        asset.source_bind_vertices
+                        if asset.source_bind_vertices is not None
+                        else asset.registration_reference
                         if asset.registration_reference is not None
                         else asset.vertices_rest
                     ),
@@ -1710,8 +1573,11 @@ def main() -> int:
         raise RuntimeError(f"source bind round-trip failed: {bind_roundtrip}")
 
     source_vertices = (
-        np.asarray(asset.registration_reference, dtype=np.float32).copy()
-        if asset.registration_reference is not None else asset.vertices_rest.copy()
+        np.asarray(asset.source_bind_vertices, dtype=np.float32).copy()
+        if asset.source_bind_vertices is not None
+        else np.asarray(asset.registration_reference, dtype=np.float32).copy()
+        if asset.registration_reference is not None
+        else asset.vertices_rest.copy()
     )
     tube_graphs = build_asset_attachment_graphs(asset)
     subject_surface = load_body_surface(subject_surface_path)

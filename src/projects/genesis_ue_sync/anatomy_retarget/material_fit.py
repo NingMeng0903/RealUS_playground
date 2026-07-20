@@ -2388,7 +2388,6 @@ def fit_articulated_rest(
             "target_inverse_bind": np.linalg.inv(new_global).astype(np.float32),
             "target_bone_head": new_head.astype(np.float32),
             "target_bone_tail": new_tail.astype(np.float32),
-            "registration_reference": vertices.astype(np.float32),
             "driver_indices": fit_driver_indices,
             "driver_weights": fit_driver_weights,
             "metadata": metadata,
