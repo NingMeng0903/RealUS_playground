@@ -45,6 +45,69 @@ def _triangles_intersect(a: np.ndarray, b: np.ndarray) -> bool:
     return False
 
 
+def _triangles_intersect_many(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Vectorized equivalent of ``_triangles_intersect`` for one-to-many tests."""
+    fixed = np.asarray(a, dtype=np.float64)
+    candidates = np.asarray(b, dtype=np.float64).reshape(-1, 3, 3)
+    hit = np.zeros(len(candidates), dtype=bool)
+    epsilon = 1.0e-10
+
+    def segments_against_triangles(start: np.ndarray, stop: np.ndarray) -> np.ndarray:
+        direction = stop - start
+        edge1 = candidates[:, 1] - candidates[:, 0]
+        edge2 = candidates[:, 2] - candidates[:, 0]
+        p = np.cross(direction, edge2)
+        determinant = np.einsum("ij,ij->i", edge1, p)
+        valid = np.abs(determinant) > epsilon
+        inverse = np.zeros_like(determinant)
+        inverse[valid] = 1.0 / determinant[valid]
+        tvec = start - candidates[:, 0]
+        u = np.einsum("ij,ij->i", tvec, p) * inverse
+        q = np.cross(tvec, edge1)
+        v = np.einsum("j,ij->i", direction, q) * inverse
+        distance = np.einsum("ij,ij->i", edge2, q) * inverse
+        return (
+            valid
+            & (u >= -epsilon)
+            & (u <= 1.0 + epsilon)
+            & (v >= -epsilon)
+            & (u + v <= 1.0 + epsilon)
+            & (distance >= -epsilon)
+            & (distance <= 1.0 + epsilon)
+        )
+
+    def candidate_segments_against_fixed(edge: tuple[int, int]) -> np.ndarray:
+        start = candidates[:, edge[0]]
+        stop = candidates[:, edge[1]]
+        direction = stop - start
+        edge1 = fixed[1] - fixed[0]
+        edge2 = fixed[2] - fixed[0]
+        p = np.cross(direction, edge2)
+        determinant = p @ edge1
+        valid = np.abs(determinant) > epsilon
+        inverse = np.zeros_like(determinant)
+        inverse[valid] = 1.0 / determinant[valid]
+        tvec = start - fixed[0]
+        u = np.einsum("ij,ij->i", tvec, p) * inverse
+        q = np.cross(tvec, edge1)
+        v = np.einsum("ij,ij->i", direction, q) * inverse
+        distance = (q @ edge2) * inverse
+        return (
+            valid
+            & (u >= -epsilon)
+            & (u <= 1.0 + epsilon)
+            & (v >= -epsilon)
+            & (u + v <= 1.0 + epsilon)
+            & (distance >= -epsilon)
+            & (distance <= 1.0 + epsilon)
+        )
+
+    for edge in ((0, 1), (1, 2), (2, 0)):
+        hit |= segments_against_triangles(fixed[edge[0]], fixed[edge[1]])
+        hit |= candidate_segments_against_fixed(edge)
+    return hit
+
+
 def _face_rows_for_ranges(
     faces: np.ndarray,
     ranges: list[tuple[int, int]],
@@ -94,14 +157,21 @@ def _intersection_pairs(
             candidates = center_tree.query_ball_point(
                 center, radius + maximum_bone_radius
             )
-        for local_bone in candidates:
-            bone_row = int(bone_rows[int(local_bone)])
-            if (
-                np.all(query[:3] <= bounds[int(local_bone), 3:])
-                and np.all(query[3:] >= bounds[int(local_bone), :3])
-                and _triangles_intersect(triangle, triangles[bone_row])
-            ):
-                result.add((int(tube_row), bone_row))
+        local_candidates = np.asarray(list(candidates), dtype=np.int64)
+        if not len(local_candidates):
+            continue
+        overlaps = np.all(query[:3] <= bounds[local_candidates, 3:], axis=1) & np.all(
+            query[3:] >= bounds[local_candidates, :3], axis=1
+        )
+        local_candidates = local_candidates[overlaps]
+        if not len(local_candidates):
+            continue
+        candidate_rows = bone_rows[local_candidates]
+        hits = _triangles_intersect_many(triangle, triangles[candidate_rows])
+        result.update(
+            (int(tube_row), int(bone_row))
+            for bone_row in candidate_rows[hits].tolist()
+        )
     return result
 
 

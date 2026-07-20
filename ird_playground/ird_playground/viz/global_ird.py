@@ -14,7 +14,15 @@ from pathlib import Path
 import numpy as np
 
 
-FIXED_IRD_CLIM: tuple[float, float] = (0.0, 1.0)
+from ird_playground.viz.viz_style import (
+    PROBE_COMPARE_BAR_MAX,
+    PROBE_COMPARE_CLIM,
+    PROBE_COMPARE_D_MIN,
+    PROBE_COMPARE_N_LEVELS,
+    SPHERE_RADIUS_FACTOR,
+)
+
+FIXED_IRD_CLIM: tuple[float, float] = PROBE_COMPARE_CLIM
 
 
 def invert_tcp_to_base_translation(p_tcp_in_base: np.ndarray, R_base_tcp: np.ndarray) -> np.ndarray:
@@ -22,6 +30,19 @@ def invert_tcp_to_base_translation(p_tcp_in_base: np.ndarray, R_base_tcp: np.nda
     p = np.asarray(p_tcp_in_base, dtype=np.float64).reshape(3)
     R = np.asarray(R_base_tcp, dtype=np.float64).reshape(3, 3)
     return (-R.T @ p).astype(np.float64)
+
+
+def _orient_indices_for_row(cm, row: int, n_orient: int) -> np.ndarray:
+    from ird_playground.ird.capability_io import unpack_bits_5dof
+
+    if cm.roll is None:
+        bits = unpack_bits_5dof(np.asarray(cm.bitmask[row : row + 1]), n_orient)[0]
+        return np.flatnonzero(bits).astype(np.int64)
+    bm = np.asarray(cm.bitmask[row])
+    if bm.ndim == 1:
+        bits = unpack_bits_5dof(bm[None, :], n_orient)[0]
+        return np.flatnonzero(bits).astype(np.int64)
+    return np.flatnonzero(np.any(bm, axis=-1)).astype(np.int64)
 
 
 def build_ird_points_from_capability(
@@ -36,7 +57,6 @@ def build_ird_points_from_capability(
     For each reachable (voxel, orient), place a sample at ``T_tcp_base`` translation
     with the voxel's quality (``d_value``).
     """
-    from ird_playground.ird.export_gt import _orient_indices_for_row
     from ird_playground.probe.se3 import complete_frame_from_tool_axis
 
     rng = np.random.default_rng(seed)
@@ -79,18 +99,28 @@ def voxelize_max(
     values: np.ndarray,
     *,
     step_m: float = 0.03,
+    lattice_centers: bool = False,
+    origin: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Paper Fig 2: per spatial cell keep **max** quality over orientations."""
+    """Per spatial cell keep **max** quality over orientations.
+
+    With ``lattice_centers=True``, output positions snap to regular grid cell
+    centres (same neat layout as capability-map sphere glyphs).
+    """
     xyz = np.asarray(xyz, dtype=np.float64)
     values = np.asarray(values, dtype=np.float64).reshape(-1)
     if xyz.shape[0] == 0:
         return xyz, values
-    ijk = np.floor(xyz / float(step_m)).astype(np.int64)
-    # hash cells
+    step = float(step_m)
+    if origin is None:
+        origin = np.floor(xyz.min(axis=0) / step) * step
+    else:
+        origin = np.asarray(origin, dtype=np.float64).reshape(3)
+    ijk = np.floor((xyz - origin) / step).astype(np.int64)
     keys = ijk[:, 0] * 73856093 ^ ijk[:, 1] * 19349663 ^ ijk[:, 2] * 83492791
     order = np.argsort(keys)
     keys_s = keys[order]
-    xyz_s = xyz[order]
+    ijk_s = ijk[order]
     val_s = values[order]
     cuts = np.flatnonzero(np.r_[True, keys_s[1:] != keys_s[:-1], True])
     out_xyz = []
@@ -98,9 +128,28 @@ def voxelize_max(
     for a, b in zip(cuts[:-1], cuts[1:]):
         sl = slice(a, b)
         j = a + int(np.argmax(val_s[sl]))
-        out_xyz.append(xyz_s[j])
+        if lattice_centers:
+            out_xyz.append(origin + (ijk_s[j] + 0.5) * step)
+        else:
+            out_xyz.append(xyz[order][j])
         out_v.append(val_s[j])
     return np.asarray(out_xyz, dtype=np.float64), np.asarray(out_v, dtype=np.float64)
+
+
+def build_ird_lattice_from_capability(
+    cm,
+    *,
+    step_m: float | None = None,
+    max_orients_per_voxel: int | None = None,
+    quality: str = "d_value",
+) -> tuple[np.ndarray, np.ndarray]:
+    """Invert full capability map → regular lattice in TCP frame (neat sphere grid)."""
+    step = float(step_m if step_m is not None else cm.grid.step_m)
+    kwargs: dict = {"quality": quality}
+    if max_orients_per_voxel is not None:
+        kwargs["max_orients_per_voxel"] = int(max_orients_per_voxel)
+    xyz, q = build_ird_points_from_capability(cm, **kwargs)
+    return voxelize_max(xyz, q, step_m=step, lattice_centers=True)
 
 
 def predict_ird_grid(
@@ -156,15 +205,18 @@ def render_global_ird(
     values: np.ndarray,
     out_path: str | Path,
     *,
-    d_min: float = 0.02,
-    clim: tuple[float, float] | None = (0.0, 0.30),
+    d_min: float = PROBE_COMPARE_D_MIN,
+    clim: tuple[float, float] | None = PROBE_COMPARE_CLIM,
     clim_auto: bool = False,
     sphere_radius_m: float | None = None,
+    step_m: float | None = None,
     halfspace_axis: str = "y",
     halfspace_keep_positive: bool = True,
     size: tuple[int, int] = (3200, 1100),
     robot_urdf: str | Path | None = None,
     title: str = "Global IRD",
+    n_color_levels: int = PROBE_COMPARE_N_LEVELS,
+    bar_max: float = PROBE_COMPARE_BAR_MAX,
 ) -> Path:
     """Dual-panel IRD figure (base positions in TCP frame).
 
@@ -176,7 +228,6 @@ def render_global_ird(
 
     ensure_rm75_namespace()
     from rm75_control.tools.reachability.viz.colormap import (
-        ZACHARIAS_COLOR_LEVELS,
         discretize_d_for_display,
         make_zacharias_d_cmap_discrete,
     )
@@ -205,32 +256,31 @@ def render_global_ird(
         raise RuntimeError("no IRD points left after half-space clip")
 
     if sphere_radius_m is None or sphere_radius_m <= 0:
-        if xyz.shape[0] > 1:
+        if step_m is not None and float(step_m) > 0:
+            radius = float(step_m) * SPHERE_RADIUS_FACTOR
+        elif xyz.shape[0] > 1:
             span = float(np.linalg.norm(xyz.max(0) - xyz.min(0)))
             step_est = max(span / (xyz.shape[0] ** (1.0 / 3.0)), 0.02)
+            radius = float(step_est) * SPHERE_RADIUS_FACTOR
         else:
-            step_est = 0.03
-        radius = float(step_est) * 0.52
+            radius = 0.03 * SPHERE_RADIUS_FACTOR
     else:
         radius = float(sphere_radius_m)
 
-    n_levels = ZACHARIAS_COLOR_LEVELS
     if clim_auto or clim is None:
-        # Percentile stretch → use full red↔blue ramp (raw IRD D is narrow/mid).
         lo = float(np.percentile(values, 5.0))
         hi = float(np.percentile(values, 98.0))
         lo = min(lo, float(values.min()))
         hi = max(hi, float(d_min) * 1.5, lo + 1e-6)
         clim_use = (lo, hi)
+        bar_max_use = float(clim_use[1]) * 100.0
     else:
         clim_use = (float(clim[0]), float(clim[1]))
-    # Colour-bar ticks in the same units as clim (×100 → percent of that window).
-    bar_max = float(clim_use[1]) * 100.0
-    # Fewer, chunkier bins so bands read clearly in a dense cloud.
-    n_levels = 8
+        bar_max_use = float(bar_max)
+    n_levels = max(2, int(n_color_levels))
     cmap = make_zacharias_d_cmap_discrete(n_levels)
     d_display, clim_bar = discretize_d_for_display(
-        values, clim=clim_use, n_levels=n_levels, bar_max=bar_max,
+        values, clim=clim_use, n_levels=n_levels, bar_max=bar_max_use,
     )
     glyphs = _make_sphere_glyphs(xyz, d_display, radius_m=radius)
 
@@ -269,7 +319,7 @@ def render_global_ird(
         img_right,
         out_path=out_path,
         n_color_levels=n_levels,
-        bar_max=bar_max,
+        bar_max=bar_max_use,
         d_display=d_display,
         cmap=cmap,
     )
@@ -287,6 +337,45 @@ def render_global_ird(
     except Exception:
         pass
     return path
+
+
+def render_global_ird_from_capability(
+    cm,
+    out_path: str | Path,
+    *,
+    robot_urdf: str | Path | None = None,
+    title: str = "Global IRD",
+    d_min: float = PROBE_COMPARE_D_MIN,
+    clim: tuple[float, float] | None = PROBE_COMPARE_CLIM,
+    clim_auto: bool = False,
+    step_m: float | None = None,
+    max_orients_per_voxel: int | None = None,
+    size: tuple[int, int] = (3200, 1100),
+    n_color_levels: int = PROBE_COMPARE_N_LEVELS,
+    bar_max: float = PROBE_COMPARE_BAR_MAX,
+) -> Path:
+    """Capability-style neat lattice query + global IRD pose (TCP at origin)."""
+    step = float(step_m if step_m is not None else cm.grid.step_m)
+    xyz, q = build_ird_lattice_from_capability(
+        cm,
+        step_m=step,
+        max_orients_per_voxel=max_orients_per_voxel,
+    )
+    return render_global_ird(
+        xyz,
+        q,
+        out_path,
+        d_min=d_min,
+        clim=clim,
+        clim_auto=clim_auto,
+        step_m=step,
+        sphere_radius_m=step * SPHERE_RADIUS_FACTOR,
+        robot_urdf=robot_urdf,
+        title=title,
+        size=size,
+        n_color_levels=n_color_levels,
+        bar_max=bar_max,
+    )
 
 
 def _pose_robot_tcp_at_origin(urdf_path: str | Path):

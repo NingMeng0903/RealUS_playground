@@ -32,10 +32,13 @@ pkg = types.ModuleType("rm75_control")
 pkg.__path__ = [str(PKG)]
 sys.modules["rm75_control"] = pkg
 
-# Shared display scale (matches horizontal-probe Dmax≈0.179 → bar 0–18).
-CLIM = (0.0, 0.18)
-BAR_MAX = 18.0
-N_LEVELS = 8
+from ird_playground.viz.viz_style import (  # noqa: E402
+    PROBE_COMPARE_BAR_MAX,
+    PROBE_COMPARE_CLIM,
+    PROBE_COMPARE_D_MIN,
+    PROBE_COMPARE_N_LEVELS,
+    SPHERE_RADIUS_FACTOR,
+)
 
 
 def _render_capability(map_dir: Path, out: Path, *, robot_urdf: Path | None, title: str) -> Path:
@@ -49,15 +52,15 @@ def _render_capability(map_dir: Path, out: Path, *, robot_urdf: Path | None, tit
         cm,
         out,
         robot_urdf=robot_urdf,
-        d_min=0.02,
+        d_min=PROBE_COMPARE_D_MIN,
         view="cross",
-        clim=CLIM,
+        clim=PROBE_COMPARE_CLIM,
         clim_auto=False,
         size=(3200, 1100),
-        n_color_levels=N_LEVELS,
-        bar_max=BAR_MAX,
+        n_color_levels=PROBE_COMPARE_N_LEVELS,
+        bar_max=PROBE_COMPARE_BAR_MAX,
         fixed_camera=True,
-        sphere_radius_m=float(cm.grid.step_m) * 0.48,
+        sphere_radius_m=float(cm.grid.step_m) * SPHERE_RADIUS_FACTOR,
     )
     img = plt.imread(path)
     fig, ax = plt.subplots(figsize=(32, 11), dpi=110)
@@ -66,45 +69,34 @@ def _render_capability(map_dir: Path, out: Path, *, robot_urdf: Path | None, tit
     ax.set_title(title, fontsize=13, pad=6, color="#222222")
     fig.savefig(path, bbox_inches="tight", facecolor="white", dpi=110)
     plt.close(fig)
-    print(f"wrote {path}  Dmax={float(cm.d_value.max()):.4f}  clim={CLIM}  bar=0–{BAR_MAX:g}")
+    print(
+        f"wrote {path}  Dmax={float(cm.d_value.max()):.4f}  "
+        f"clim={PROBE_COMPARE_CLIM}  bar=0–{PROBE_COMPARE_BAR_MAX:g}"
+    )
     return Path(path)
 
 
 def _render_global_ird(map_dir: Path, out: Path, *, robot_urdf: Path | None, title: str) -> Path:
-    import numpy as np
     from ird_playground.ird.capability_io import load_capability_map_dir
-    from ird_playground.viz.global_ird import (
-        build_ird_points_from_capability,
-        render_global_ird,
-        voxelize_max,
-    )
+    from ird_playground.viz.global_ird import render_global_ird_from_capability
 
     cm = load_capability_map_dir(map_dir)
-    order = np.argsort(-cm.d_value)[:12_000]
-    class _Sub:
-        pass
-    sub = _Sub()
-    sub.orientations = cm.orientations
-    sub.roll = cm.roll
-    sub.bitmask = cm.bitmask[order]
-    sub.d_value = cm.d_value[order]
-    sub.voxel_ids = cm.voxel_ids[order]
-    sub.grid = cm.grid
-    xyz, q = build_ird_points_from_capability(sub, max_orients_per_voxel=6)
-    xyz, q = voxelize_max(xyz, q, step_m=0.05)
     out.parent.mkdir(parents=True, exist_ok=True)
-    path = render_global_ird(
-        xyz,
-        q,
+    path = render_global_ird_from_capability(
+        cm,
         out,
-        d_min=0.02,
-        clim=CLIM,
-        clim_auto=False,
-        title=title,
-        sphere_radius_m=0.05 * 0.55,
         robot_urdf=robot_urdf,
+        title=title,
+        clim=PROBE_COMPARE_CLIM,
+        clim_auto=False,
+        d_min=PROBE_COMPARE_D_MIN,
+        n_color_levels=PROBE_COMPARE_N_LEVELS,
+        bar_max=PROBE_COMPARE_BAR_MAX,
     )
-    print(f"wrote {path}  n_cells={xyz.shape[0]}  mean={float(q.mean()):.4f}  clim={CLIM}")
+    print(
+        f"wrote {path}  n_voxels={int(cm.d_value.shape[0])}  "
+        f"clim={PROBE_COMPARE_CLIM}  bar=0–{PROBE_COMPARE_BAR_MAX:g}"
+    )
     return Path(path)
 
 
@@ -146,7 +138,6 @@ def main() -> int:
         robot_urdf=horiz_urdf,
         title="Global IRD · horizontal probe",
     )
-    # drop old filenames
     for sub in ("capability", "global_ird"):
         old = reports / sub / "vertical_z220.png"
         if old.is_file():

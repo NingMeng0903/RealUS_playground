@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from projects.genesis_ue_sync.anatomy_retarget.anatomy_drawer import (
+    AnatomyLbsDrawer,
     _mesh_color_rgba,
     _vertices_to_genesis_z_up,
     _vertex_colors_for_asset,
@@ -128,6 +129,22 @@ def test_zero_pose_roundtrip_is_exact() -> None:
     asset = _chain_asset()
     posed = skin_vertices(asset, np.zeros((55, 3), dtype=np.float32))
     np.testing.assert_allclose(posed, asset.vertices_rest, atol=1.0e-7)
+
+
+def test_genesis_anatomy_draw_uses_smooth_normals(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[dict[str, object]] = []
+
+    def fake_replace(runtime, mesh, old_node, **kwargs):
+        calls.append(kwargs)
+        return object()
+
+    monkeypatch.setattr(
+        "projects.genesis_ue_sync.anatomy_retarget.anatomy_drawer.replace_colored_debug_mesh",
+        fake_replace,
+    )
+    drawer = AnatomyLbsDrawer(object(), asset=_chain_asset(), model_id="test")
+    assert drawer.draw(np.zeros((55, 3), dtype=np.float32))
+    assert calls == [{"double_sided": True, "smooth": True}]
 
 
 def test_pose_solver_does_not_mutate_persisted_bind_frames() -> None:

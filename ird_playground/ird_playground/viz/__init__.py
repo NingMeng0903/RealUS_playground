@@ -1,4 +1,8 @@
-from ird_playground.viz.global_ird import FIXED_IRD_CLIM, render_global_ird
+from ird_playground.viz.global_ird import (
+    FIXED_IRD_CLIM,
+    render_global_ird,
+    render_global_ird_from_capability,
+)
 from ird_playground.viz.ird_compare import features_to_xyz, render_ird_comparison
 
 __all__ = [

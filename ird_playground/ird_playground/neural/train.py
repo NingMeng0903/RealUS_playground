@@ -96,6 +96,9 @@ class TrainConfig:
     wandb_mode: str = "online"
     wandb_run_name: str | None = None
     wandb_tags: list | None = None
+    # Phase B warm-start
+    init_checkpoint: str | None = None
+    freeze_cls_epochs: int = 0  # freeze stem+blocks+head_cls for first N epochs
 
 
 def _as_path(root: Path, p: str | None) -> str | None:
@@ -193,6 +196,10 @@ def load_train_config(path: str | Path, *, root: Path | None = None) -> TrainCon
         wandb_mode=str(wb.get("mode", "online")),
         wandb_run_name=(None if wb.get("run_name") in (None, "null", "") else str(wb.get("run_name"))),
         wandb_tags=tags,
+        init_checkpoint=_as_path(root, train.get("init_checkpoint")),
+        freeze_cls_epochs=int(
+            train.get("freeze_cls_epochs", train.get("freeze_trunk_epochs", 0))
+        ),
     )
 
 
@@ -693,10 +700,38 @@ def train_point_field(cfg: TrainConfig) -> dict:
         p_scale_m=cfg.p_scale_m,
     ).to(device)
     model.set_aabb(aabb_lo, aabb_hi)
+    if cfg.init_checkpoint:
+        ck0 = Path(cfg.init_checkpoint)
+        if not ck0.is_file():
+            raise FileNotFoundError(f"init_checkpoint not found: {ck0}")
+        blob = torch.load(ck0, map_location="cpu", weights_only=False)
+        missing, unexpected = model.load_state_dict(blob["state_dict"], strict=False)
+        print(
+            f"[train] warm-start from {ck0}  missing={len(missing)} unexpected={len(unexpected)}",
+            flush=True,
+        )
     if cfg.torch_compile and hasattr(torch, "compile"):
         model = torch.compile(model)  # type: ignore[assignment]
 
-    opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
+    def _set_cls_trainable(trainable: bool) -> None:
+        src = model._orig_mod if hasattr(model, "_orig_mod") else model
+        for p in src.stem.parameters():
+            p.requires_grad = trainable
+        for blk in src.blocks:
+            for p in blk.parameters():
+                p.requires_grad = trainable
+        for p in src.head_cls.parameters():
+            p.requires_grad = trainable
+
+    if cfg.freeze_cls_epochs > 0:
+        _set_cls_trainable(False)
+        print(f"[train] freeze stem+blocks+cls for {cfg.freeze_cls_epochs} epochs", flush=True)
+
+    opt = torch.optim.AdamW(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=cfg.lr,
+        weight_decay=cfg.weight_decay,
+    )
     scheduler, total_steps = _build_scheduler(opt, cfg, steps_per_epoch)
 
     history = []
@@ -756,6 +791,11 @@ def train_point_field(cfg: TrainConfig) -> dict:
 
     try:
         for epoch in range(int(cfg.epochs)):
+            if cfg.freeze_cls_epochs > 0 and epoch == int(cfg.freeze_cls_epochs):
+                _set_cls_trainable(True)
+                opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
+                scheduler, _ = _build_scheduler(opt, cfg, steps_per_epoch)
+                print(f"[train] unfreeze all @ epoch {epoch}", flush=True)
             model.train()
             tr_loss = n_tr = 0.0
             for x, y, m_gt, q_gt, mw, cw, _layer in tr_loader:

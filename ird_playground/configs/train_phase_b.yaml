@@ -22,7 +22,7 @@ training:
   torch_compile: false
   epochs: 60
   save_freq: 10
-  learning_rate: 2.0e-4
+  learning_rate: 1.0e-4
   weight_decay: 1.0e-4
   warmup_steps: 300
   min_lr_ratio: 0.01
@@ -35,6 +35,9 @@ training:
   val_calib_frac: 0.5
   train_hard_y: true
   device: cuda
+  # Phase B1: warm-start Phase A; freeze trunk+cls, train margin/q heads
+  init_checkpoint: data/checkpoints/best_iou.pt
+  freeze_cls_epochs: 5
   batch_mix:
     interior: 0.15
     bnd_pos: 0.25

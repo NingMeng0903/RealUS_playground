@@ -148,19 +148,26 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
         reach_logit = self.head_cls(h)
         margin = self.head_margin(h)
         q = torch.sigmoid(self.head_q(h))
-        score = -F.softplus(-margin / max(self.tau_m, 1e-6)) + self.lambda_q * q
+        # Legacy score kept for checkpoint / wandb compat — prefer optimization_cost.
+        from ird_playground.neural.cost import legacy_margin_score
+
+        score = legacy_margin_score(margin, q, tau_m=self.tau_m, lambda_q=self.lambda_q)
         return reach_logit, margin, q, score
 
     def score_features(self, features: "torch.Tensor") -> dict[str, "torch.Tensor"]:
+        from ird_playground.neural.cost import optimization_cost
+
         reach_logit, margin, q, score = self.forward(features)
         p_reach = torch.sigmoid(reach_logit)
+        cost = optimization_cost(reach_logit, margin, q)
         return {
             "reach_logit": reach_logit,
             "m": margin,
             "margin": margin,
             "q": q,
             "q_comfort": q,
-            "score": score,
+            "score": score,  # deprecated: margin-only
+            "cost": cost,  # preferred for P1 trajectory optimization
             "p_reach": p_reach,
             "d": score,
         }

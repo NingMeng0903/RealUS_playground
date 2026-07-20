@@ -1,236 +1,431 @@
-# Neural IRD v6 — 平台根因已定位并修复
+# Neural IRD RM75 — 第三方审查归档 (v6 GT + Phase A/B)
 
-Generated: 2026-07-20 17:08:54
+Generated: 2026-07-20 17:28:16
 
-## 结论
+Repository: `/media/camp/EXT_DRIVE/RealUS_playground`  
+Package: `ird_playground/`  
+Map: `rm75_6f_1p5cm_15deg_coll_probe` (1.5 cm voxel, 642 orient, 5-DoF, collision+probe)
 
-v5 不是「完全没学」：epoch 0 学完粗工作空间包络（IoU≈0.54），之后细边界无法继续学。
+---
 
-### Bug 1（最严重）：trusted boundary 筛选反了
+## 1. Executive summary
 
-`soft_neg <= 0.05` 在 7×7 邻域下等价于「局部最多 ~2 个 hit」→ **优先保留孤立盐粒点**，稳定连续边界反而被过滤。
+### 1.1 Problem & fix history
 
-v6 重建实测：
+| Version | Root issue | Peak val IoU |
+|---|---|---|
+| v4 | `bit=0` treated as unreachable; jitter 96% neg | ~0.29 |
+| v5 | Trusted boundary via `soft_neg<=0.05` **inverted** (isolated MC hits) | ~0.56 |
+| **v6** | **C+≥3 & C-=0** half-neighborhoods; physical PE 48…1.5 cm; fixed val | **~0.844** |
+
+MC map: 4.8M hits / 268M bins (1.8%). `bit=0` ≠ IK-unreachable.
+
+### 1.2 Phase A (cls-only) — final metrics
+
+Checkpoint: `ird_playground/data/checkpoints/best_iou.pt`  
+Config: `configs/train_config.yaml`  
+Wandb: `run-20260720_171010-yqv3lave` (`neural_ird_v6_stable_support`)
+
+| Metric | Value |
+|---|---|
+| iou / iou@cal | **0.8438** |
+| PR-AUC | **0.9300** |
+| bnd_pos_recall | 0.920 |
+| bnd_neg_spec | 0.929 |
+| reach_accuracy | 0.896 |
+| n (val full eval) | 125398 |
+
+Peak iou@cal @ epoch 10 (of 40 epochs).
+
+### 1.3 Phase B (cls + margin + q) — final metrics
+
+Checkpoint: `ird_playground/data/checkpoints/phase_b_latest.pt`  
+Config: `configs/train_phase_b.yaml` (λ_cls=1, λ_margin=0.25, λ_q=0.1)  
+Wandb: `run-20260720_171633-062f6gy6` (`neural_ird_v6_margin_q`)  
+**Note:** Phase B started **cold** (no init from Phase A best_iou.pt).
+
+| Metric | Value |
+|---|---|
+| iou / iou@cal | **0.8443** |
+| PR-AUC | **0.9264** |
+| boundary_margin_mae | **0.0281** (~0.8 mm, σ_p=3 cm) |
+| mae_q | 0.0616 |
+| spearman(q) | 0.758 |
+| bnd_pos_recall | 0.928 |
+| bnd_neg_spec | 0.925 |
+
+Peak iou@cal @ epoch 19.  
+Best margin_mae @ epoch 13.
+
+### 1.4 GT v6 contract
+
+- **Positive:** exact MC hit; face interior; jitter_pos
+- **Trusted boundary:** C+≥3 AND C-=0 on non-overlapping half-neighborhoods (6 spatial × 7 orient KNN)
+- **Exterior:** soft≈0 bit=0 or off-map
+- **Unknown:** not exported (no cls_weight=0 rows in NPZ)
+- **Features:** natural 6-D `[p_base,tcp, u_base]` (5-DoF, no roll)
+- **N=836,820** after stable-support filter
+
+### 1.5 Known limits for downstream NLP
+
+- Labels are MC stable-support, not full IK density
+- Operator is 5-DoF; insensitive to probe roll α
+- Region queries: not implemented (use MC multi-point average or future IPE)
+
+---
+
+## 2. GT build log (v6)
 
 ```
-support_pos quantiles=[1, 1, 2, 3, 12]   # 中位数=2 → 孤立 hit
-support_neg quantiles=[0, 0, 1, 2, 13]
-trusted faces=34,205/400,000 (C+>=3 & C-=0); rejected=365,795
-boundary capped 800k → 68,410
-jitter 34k+34k
-N=836,820 (was 1.9M)
+[gt] unpack bitmask M=417,201 n_orient=642
+[gt] MC hits=4,814,538 (1.798% of 267,843,042 sparse bins)
+[gt] stable-support filter (C+, C-)
+[gt] support_pos quantiles=[1, 1, 2, 3, 12] support_neg quantiles=[0, 0, 1, 2, 13]
+[gt] trusted faces=34,205/400,000 (C+>=3 & C-=0); rejected=365,795
+[gt] boundary capped 800,000 → 68,410
+[gt] N=836,820 reach=0.441 supervised=1.000
+layers: int=300k bnd±≈34k×2 jit±=34k ext=400k
 ```
 
-约 63% 的旧训练数据（800k bnd + 400k jitter）依赖错误筛选。
+Command:
+```bash
+cd ird_playground && source env.sh
+python -m ird_playground.cli.build_ird_gt --config configs/ird_gt_config.yaml
+```
 
-### Bug 2：位置 PE 最高物理周期 ~10 cm，解析不了 1.5–3 cm 边界
+---
 
-v6：物理波长 `[0.48, 0.24, 0.12, 0.06, 0.03, 0.015]` m；`num_freqs_u=5`。
+## 3. Phase A training log
 
-### 其它修复
-
-- 删除「trusted 不足则退回全部 pair」fallback → RuntimeError
-- 验证：固定 calib/test blocks + indices；分别报告 `iou@0.5` / `iou@cal` / `pr_auc`
-- Phase A 训练 hard `reachable`，不用 `y_soft`
-- Sampler：无放回 cycling
-
-### 开训
+### 3.1 Commands
 
 ```bash
 cd ird_playground && source env.sh
+python -m ird_playground.cli.build_ird_gt --config configs/ird_gt_config.yaml
 python -m ird_playground.cli.train --config configs/train_config.yaml
 ```
 
-期望：epoch 0 仍快速达粗包络；后续 `bnd_pos_recall` / `pr_auc` / `iou@cal` 应同步上升。
+### 3.2 Per-epoch table (from `data/reports/train_point.json`)
 
-Phase A 进入 B 门槛：`PR-AUC>0.80`，`bnd_pos_recall>0.65`，`bnd_neg_spec>0.65`，`iou@cal>0.65`。
+| epoch | train_loss | val_loss | iou@cal | pr_auc | bnd+ | bnd- | m_mae | train_iou |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 0.4185 | 0.4889 | 0.7351 | 0.8553 | 0.929 | 0.890 | 0.1959 | 0.776 |
+| 1 | 0.3262 | 0.4563 | 0.7560 | 0.8786 | 0.926 | 0.912 | 0.2572 | 0.806 |
+| 2 | 0.3008 | 0.3947 | 0.7887 | 0.8941 | 0.923 | 0.920 | 0.2593 | 0.827 |
+| 3 | 0.2778 | 0.3443 | 0.8076 | 0.9074 | 0.924 | 0.920 | 0.2614 | 0.847 |
+| 4 | 0.2604 | 0.3081 | 0.8238 | 0.9176 | 0.922 | 0.925 | 0.2435 | 0.856 |
+| 5 | 0.2477 | 0.2927 | 0.8312 | 0.9219 | 0.923 | 0.926 | 0.2699 | 0.862 |
+| 6 | 0.2401 | 0.3029 | 0.8353 | 0.9259 | 0.922 | 0.929 | 0.4012 | 0.866 |
+| 7 | 0.2319 | 0.2650 | 0.8398 | 0.9292 | 0.922 | 0.925 | 0.3921 | 0.870 |
+| 8 | 0.2250 | 0.2734 | 0.8429 | 0.9283 | 0.926 | 0.928 | 0.4704 | 0.872 |
+| 9 | 0.2196 | 0.2656 | 0.8423 | 0.9288 | 0.924 | 0.928 | 0.4354 | 0.877 |
+| 10 | 0.2135 | 0.2723 | 0.8438 | 0.9300 | 0.920 | 0.929 | 0.4620 | 0.877 |
+| 11 | 0.2099 | 0.2682 | 0.8436 | 0.9310 | 0.921 | 0.927 | 0.4221 | 0.878 |
+| 12 | 0.2047 | 0.2688 | 0.8403 | 0.9300 | 0.916 | 0.922 | 0.3681 | 0.878 |
+| 13 | 0.2002 | 0.2676 | 0.8427 | 0.9294 | 0.923 | 0.914 | 0.4379 | 0.883 |
+| 14 | 0.1953 | 0.2680 | 0.8388 | 0.9304 | 0.909 | 0.921 | 0.4032 | 0.888 |
+| 15 | 0.1897 | 0.2721 | 0.8385 | 0.9296 | 0.909 | 0.918 | 0.4058 | 0.889 |
+| 16 | 0.1851 | 0.2707 | 0.8376 | 0.9305 | 0.905 | 0.923 | 0.4192 | 0.890 |
+| 17 | 0.1802 | 0.2714 | 0.8391 | 0.9298 | 0.913 | 0.923 | 0.4417 | 0.891 |
+| 18 | 0.1740 | 0.2685 | 0.8385 | 0.9290 | 0.915 | 0.918 | 0.4071 | 0.894 |
+| 19 | 0.1690 | 0.2734 | 0.8353 | 0.9257 | 0.913 | 0.909 | 0.4357 | 0.898 |
+| 20 | 0.1636 | 0.2781 | 0.8381 | 0.9281 | 0.913 | 0.914 | 0.4506 | 0.904 |
+| 21 | 0.1571 | 0.2746 | 0.8356 | 0.9258 | 0.908 | 0.909 | 0.4413 | 0.903 |
+| 22 | 0.1531 | 0.2810 | 0.8306 | 0.9213 | 0.913 | 0.900 | 0.4584 | 0.906 |
+| 23 | 0.1476 | 0.2874 | 0.8324 | 0.9238 | 0.902 | 0.914 | 0.4674 | 0.908 |
+| 24 | 0.1432 | 0.2878 | 0.8296 | 0.9178 | 0.903 | 0.904 | 0.4684 | 0.911 |
+| 25 | 0.1395 | 0.2822 | 0.8347 | 0.9180 | 0.911 | 0.909 | 0.4782 | 0.915 |
+| 26 | 0.1354 | 0.2875 | 0.8312 | 0.9158 | 0.901 | 0.906 | 0.4919 | 0.919 |
+| 27 | 0.1321 | 0.2894 | 0.8358 | 0.9167 | 0.909 | 0.909 | 0.5149 | 0.921 |
+| 28 | 0.1291 | 0.2909 | 0.8303 | 0.9125 | 0.903 | 0.902 | 0.5088 | 0.919 |
+| 29 | 0.1265 | 0.2958 | 0.8320 | 0.9130 | 0.904 | 0.903 | 0.5291 | 0.921 |
+| 30 | 0.1239 | 0.3013 | 0.8303 | 0.9080 | 0.905 | 0.896 | 0.5458 | 0.920 |
+| 31 | 0.1221 | 0.3024 | 0.8300 | 0.9088 | 0.901 | 0.897 | 0.5504 | 0.923 |
+| 32 | 0.1199 | 0.3031 | 0.8304 | 0.9085 | 0.899 | 0.902 | 0.5590 | 0.922 |
+| 33 | 0.1190 | 0.3045 | 0.8288 | 0.9065 | 0.898 | 0.897 | 0.5596 | 0.923 |
+| 34 | 0.1175 | 0.3051 | 0.8284 | 0.9071 | 0.897 | 0.899 | 0.5678 | 0.923 |
+| 35 | 0.1164 | 0.3052 | 0.8295 | 0.9078 | 0.902 | 0.900 | 0.5692 | 0.924 |
+| 36 | 0.1157 | 0.3080 | 0.8306 | 0.9070 | 0.902 | 0.896 | 0.5746 | 0.923 |
+| 37 | 0.1159 | 0.3071 | 0.8305 | 0.9069 | 0.899 | 0.901 | 0.5734 | 0.924 |
+| 38 | 0.1144 | 0.3083 | 0.8293 | 0.9065 | 0.900 | 0.899 | 0.5758 | 0.925 |
+| 39 | 0.1148 | 0.3087 | 0.8294 | 0.9063 | 0.899 | 0.898 | 0.5773 | 0.924 |
+
+### 3.3 Final val_metrics JSON (Phase A)
+
+```json
+{
+  "mae": 0.5820985139737609,
+  "mae_m": 0.46034235578077587,
+  "mae_q": 0.11176038213863265,
+  "spearman": 0.32535996940325584,
+  "boundary_iou": 0.8009656816306452,
+  "reach_accuracy": 0.896122745179349,
+  "n": 125398,
+  "interior_recall": 0.958798754806812,
+  "bnd_pos_recall": 0.9199038846615939,
+  "bnd_neg_spec": 0.9286852589641434,
+  "jitter_pos_recall": 0.9239263803680982,
+  "jitter_neg_spec": 0.9385542168674699,
+  "exterior_spec": 0.8408716352316425,
+  "iou": 0.8438469493277453,
+  "accuracy": 0.9131518404907976,
+  "iou_t05": 0.8438469493277453,
+  "iou_calibrated": 0.8438469493277453,
+  "val_threshold": 0.49999999999999994,
+  "calib_best_iou": 0.8489383046312615,
+  "pr_auc": 0.9300139504648135,
+  "boundary_margin_mae": 0.46200379729270935,
+  "best_iou": 0.8438469493277453,
+  "best_threshold": 0.49999999999999994
+}
+```
+
+### 3.4 Stdout epoch lines (wandb `run-20260720_171010-yqv3lave`)
+
+```
+epoch=0 train_loss=0.4185 val_loss=0.4889 iou@0.5=0.730 iou@cal=0.735@t=0.35 pr_auc=0.855 train_iou=0.776 bnd_pos_r=0.929 bnd_neg_s=0.890 lr=3.00e-04
+epoch=1 train_loss=0.3262 val_loss=0.4563 iou@0.5=0.756 iou@cal=0.756@t=0.50 pr_auc=0.879 train_iou=0.806 bnd_pos_r=0.926 bnd_neg_s=0.912 lr=2.99e-04
+epoch=2 train_loss=0.3008 val_loss=0.3947 iou@0.5=0.788 iou@cal=0.789@t=0.45 pr_auc=0.894 train_iou=0.827 bnd_pos_r=0.923 bnd_neg_s=0.920 lr=2.98e-04
+epoch=3 train_loss=0.2778 val_loss=0.3443 iou@0.5=0.808 iou@cal=0.808@t=0.50 pr_auc=0.907 train_iou=0.847 bnd_pos_r=0.924 bnd_neg_s=0.920 lr=2.95e-04
+epoch=4 train_loss=0.2604 val_loss=0.3081 iou@0.5=0.824 iou@cal=0.824@t=0.50 pr_auc=0.918 train_iou=0.856 bnd_pos_r=0.922 bnd_neg_s=0.925 lr=2.91e-04
+epoch=5 train_loss=0.2477 val_loss=0.2927 iou@0.5=0.831 iou@cal=0.831@t=0.50 pr_auc=0.922 train_iou=0.862 bnd_pos_r=0.923 bnd_neg_s=0.926 lr=2.87e-04
+epoch=6 train_loss=0.2401 val_loss=0.3029 iou@0.5=0.834 iou@cal=0.835@t=0.65 pr_auc=0.926 train_iou=0.866 bnd_pos_r=0.922 bnd_neg_s=0.929 lr=2.82e-04
+epoch=7 train_loss=0.2319 val_loss=0.2650 iou@0.5=0.837 iou@cal=0.840@t=0.40 pr_auc=0.929 train_iou=0.870 bnd_pos_r=0.922 bnd_neg_s=0.925 lr=2.76e-04
+epoch=8 train_loss=0.2250 val_loss=0.2734 iou@0.5=0.843 iou@cal=0.843@t=0.50 pr_auc=0.928 train_iou=0.872 bnd_pos_r=0.926 bnd_neg_s=0.928 lr=2.69e-04
+epoch=9 train_loss=0.2196 val_loss=0.2656 iou@0.5=0.839 iou@cal=0.842@t=0.40 pr_auc=0.929 train_iou=0.877 bnd_pos_r=0.924 bnd_neg_s=0.928 lr=2.61e-04
+epoch=10 train_loss=0.2135 val_loss=0.2723 iou@0.5=0.844 iou@cal=0.844@t=0.50 pr_auc=0.930 train_iou=0.877 bnd_pos_r=0.920 bnd_neg_s=0.929 lr=2.53e-04
+epoch=11 train_loss=0.2099 val_loss=0.2682 iou@0.5=0.843 iou@cal=0.844@t=0.45 pr_auc=0.931 train_iou=0.878 bnd_pos_r=0.921 bnd_neg_s=0.927 lr=2.44e-04
+epoch=12 train_loss=0.2047 val_loss=0.2688 iou@0.5=0.840 iou@cal=0.840@t=0.50 pr_auc=0.930 train_iou=0.878 bnd_pos_r=0.916 bnd_neg_s=0.922 lr=2.34e-04
+epoch=13 train_loss=0.2002 val_loss=0.2676 iou@0.5=0.844 iou@cal=0.843@t=0.40 pr_auc=0.929 train_iou=0.883 bnd_pos_r=0.923 bnd_neg_s=0.914 lr=2.24e-04
+epoch=14 train_loss=0.1953 val_loss=0.2680 iou@0.5=0.839 iou@cal=0.839@t=0.50 pr_auc=0.930 train_iou=0.888 bnd_pos_r=0.909 bnd_neg_s=0.921 lr=2.13e-04
+epoch=15 train_loss=0.1897 val_loss=0.2721 iou@0.5=0.839 iou@cal=0.839@t=0.50 pr_auc=0.930 train_iou=0.889 bnd_pos_r=0.909 bnd_neg_s=0.918 lr=2.02e-04
+epoch=16 train_loss=0.1851 val_loss=0.2707 iou@0.5=0.838 iou@cal=0.838@t=0.50 pr_auc=0.930 train_iou=0.890 bnd_pos_r=0.905 bnd_neg_s=0.923 lr=1.91e-04
+epoch=17 train_loss=0.1802 val_loss=0.2714 iou@0.5=0.838 iou@cal=0.839@t=0.45 pr_auc=0.930 train_iou=0.891 bnd_pos_r=0.913 bnd_neg_s=0.923 lr=1.79e-04
+epoch=18 train_loss=0.1740 val_loss=0.2685 iou@0.5=0.834 iou@cal=0.838@t=0.35 pr_auc=0.929 train_iou=0.894 bnd_pos_r=0.915 bnd_neg_s=0.918 lr=1.68e-04
+epoch=19 train_loss=0.1690 val_loss=0.2734 iou@0.5=0.834 iou@cal=0.835@t=0.40 pr_auc=0.926 train_iou=0.898 bnd_pos_r=0.913 bnd_neg_s=0.909 lr=1.56e-04
+epoch=20 train_loss=0.1636 val_loss=0.2781 iou@0.5=0.838 iou@cal=0.838@t=0.50 pr_auc=0.928 train_iou=0.904 bnd_pos_r=0.913 bnd_neg_s=0.914 lr=1.44e-04
+epoch=21 train_loss=0.1571 val_loss=0.2746 iou@0.5=0.834 iou@cal=0.836@t=0.40 pr_auc=0.926 train_iou=0.903 bnd_pos_r=0.908 bnd_neg_s=0.909 lr=1.32e-04
+epoch=22 train_loss=0.1531 val_loss=0.2810 iou@0.5=0.831 iou@cal=0.831@t=0.50 pr_auc=0.921 train_iou=0.906 bnd_pos_r=0.913 bnd_neg_s=0.900 lr=1.20e-04
+epoch=23 train_loss=0.1476 val_loss=0.2874 iou@0.5=0.832 iou@cal=0.832@t=0.45 pr_auc=0.924 train_iou=0.908 bnd_pos_r=0.902 bnd_neg_s=0.914 lr=1.09e-04
+epoch=24 train_loss=0.1432 val_loss=0.2878 iou@0.5=0.829 iou@cal=0.830@t=0.45 pr_auc=0.918 train_iou=0.911 bnd_pos_r=0.903 bnd_neg_s=0.904 lr=9.76e-05
+epoch=25 train_loss=0.1395 val_loss=0.2822 iou@0.5=0.833 iou@cal=0.835@t=0.45 pr_auc=0.918 train_iou=0.915 bnd_pos_r=0.911 bnd_neg_s=0.909 lr=8.68e-05
+epoch=26 train_loss=0.1354 val_loss=0.2875 iou@0.5=0.831 iou@cal=0.831@t=0.50 pr_auc=0.916 train_iou=0.919 bnd_pos_r=0.901 bnd_neg_s=0.906 lr=7.63e-05
+epoch=27 train_loss=0.1321 val_loss=0.2894 iou@0.5=0.836 iou@cal=0.836@t=0.50 pr_auc=0.917 train_iou=0.921 bnd_pos_r=0.909 bnd_neg_s=0.909 lr=6.63e-05
+epoch=28 train_loss=0.1291 val_loss=0.2909 iou@0.5=0.831 iou@cal=0.830@t=0.55 pr_auc=0.913 train_iou=0.919 bnd_pos_r=0.903 bnd_neg_s=0.902 lr=5.69e-05
+epoch=29 train_loss=0.1265 val_loss=0.2958 iou@0.5=0.831 iou@cal=0.832@t=0.45 pr_auc=0.913 train_iou=0.921 bnd_pos_r=0.904 bnd_neg_s=0.903 lr=4.80e-05
+epoch=30 train_loss=0.1239 val_loss=0.3013 iou@0.5=0.829 iou@cal=0.830@t=0.40 pr_auc=0.908 train_iou=0.920 bnd_pos_r=0.905 bnd_neg_s=0.896 lr=3.98e-05
+epoch=31 train_loss=0.1221 val_loss=0.3024 iou@0.5=0.830 iou@cal=0.830@t=0.40 pr_auc=0.909 train_iou=0.923 bnd_pos_r=0.901 bnd_neg_s=0.897 lr=3.24e-05
+epoch=32 train_loss=0.1199 val_loss=0.3031 iou@0.5=0.830 iou@cal=0.830@t=0.50 pr_auc=0.909 train_iou=0.922 bnd_pos_r=0.899 bnd_neg_s=0.902 lr=2.57e-05
+epoch=33 train_loss=0.1190 val_loss=0.3045 iou@0.5=0.829 iou@cal=0.829@t=0.50 pr_auc=0.907 train_iou=0.923 bnd_pos_r=0.898 bnd_neg_s=0.897 lr=1.98e-05
+epoch=34 train_loss=0.1175 val_loss=0.3051 iou@0.5=0.828 iou@cal=0.828@t=0.50 pr_auc=0.907 train_iou=0.923 bnd_pos_r=0.897 bnd_neg_s=0.899 lr=1.47e-05
+epoch=35 train_loss=0.1164 val_loss=0.3052 iou@0.5=0.829 iou@cal=0.830@t=0.45 pr_auc=0.908 train_iou=0.924 bnd_pos_r=0.902 bnd_neg_s=0.900 lr=1.05e-05
+epoch=36 train_loss=0.1157 val_loss=0.3080 iou@0.5=0.829 iou@cal=0.831@t=0.40 pr_auc=0.907 train_iou=0.923 bnd_pos_r=0.902 bnd_neg_s=0.896 lr=7.25e-06
+epoch=37 train_loss=0.1159 val_loss=0.3071 iou@0.5=0.829 iou@cal=0.830@t=0.45 pr_auc=0.907 train_iou=0.924 bnd_pos_r=0.899 bnd_neg_s=0.901 lr=4.90e-06
+epoch=38 train_loss=0.1144 val_loss=0.3083 iou@0.5=0.828 iou@cal=0.829@t=0.45 pr_auc=0.906 train_iou=0.925 bnd_pos_r=0.900 bnd_neg_s=0.899 lr=3.47e-06
+epoch=39 train_loss=0.1148 val_loss=0.3087 iou@0.5=0.828 iou@cal=0.829@t=0.45 pr_auc=0.906 train_iou=0.924 bnd_pos_r=0.899 bnd_neg_s=0.898 lr=3.00e-06
+```
 
 ---
 
-# Neural IRD — 完整诊断 & 代码归档
+## 4. Phase B training log
 
-Generated: 2026-07-20 16:53:15
-
-> 本文档**替换**此前所有 debug 内容。包含：根因分析、v4/v5 训练对比、仍存在的瓶颈、以及当前全部相关源码。
-
----
-
-## 1. 结论（为什么「还是没有提升」）
-
-### 1.1 最大根因（目标定义错误）
-
-Capability map 是 **Monte Carlo 稀疏命中** 的二值场，不是 IK 验证后的真实可达场：
-
-| 量 | 值 |
-|---|---|
-| 稀疏格 `M×642` | 417,201 × 642 ≈ **2.68×10⁸** |
-| MC 正 bit | **4,814,538**（≈**1.80%**） |
-| 每体素平均命中方向 | ≈ **11.5** / 642 |
-| MC 采样量 | ~10⁷ 关节态 |
-| 每 bin 期望命中 | ≪ 1 |
-
-**`bit=0` 只表示「这次 MC 没碰巧落进该 (voxel, orient) bin」**，不表示 IK+碰撞后确定不可达。
-
-旧 pipeline 做 `neg = np.nonzero(~bits)` → 网络学的是 **MC hit vs miss** 的盐粒场，不是真实 reachability。
-
-### 1.2 v4 → v5 实际发生了什么
-
-| 指标 | v4（错误标签） | v5（trusted 标签 + 修 batch） | 目标 |
-|---|---|---|---|
-| val IoU @0.5（日志 `val_iou`） | **0.23–0.29** | **0.54–0.56**（ep0 即 0.54，ep8 后平台） | ≥0.70 |
-| best IoU（threshold sweep） | ~0.29 | **~0.559 @ 0.25–0.35** | ≥0.70 |
-| PR-AUC | — | **~0.73** | — |
-| bnd_pos_recall | **~5%** | **~35%** | 高 |
-| bnd_neg_spec | ~95% | **~65%**（不再极端保守） | 高 |
-| jitter 正率 | **3.7%** | **50%**（jitter_pos/neg 各半） | 50% |
-| train loss | ~0.62 | **~0.58** | — |
-
-**v5 相对 v4 有明显提升**（IoU 从 0.28→0.56，recall 从 5%→35%），但：
-
-1. **epoch 8 后完全平台** — loss 仍降，IoU/PR-AUC 不动 → 不是 LR/epoch 问题，是**标签/任务上限**
-2. **固定 0.5 阈值 IoU ~0.43**（wandb `val/iou`）— 概率整体偏低，需 threshold≈0.3
-3. **bnd_pos_recall 仍只有 ~35%** — face-pair 负侧仍是「同 orient 邻格 bit=0」，大量仍是 MC 漏采假负
-4. **未做 IK 假负率审计** — 近邻 bit=0 里有多少 IK 其实成功，未知
-5. **仍无 hit_count/KDE map** — 网络无法学平滑密度场
-
-若用户看的是 **固定 0.5 IoU ~0.43** 或 **与 0.70 目标的差距**，会感觉「完全没有提升」。
-
-### 1.3 已排除的硬 bug
-
-- **bit pack/unpack round-trip PASS** — writer `pack_bits_5dof` 与 reader `unpack_bits_5dof` 均为 little-endian OR；naive `np.packbits`（big-endian）约 **31.7%** bit 错位
-- **FK ±Z 单样本** — 未跑（缺 `Robotic_Arm` 模块）
-
-### 1.4 v5 标签合同（当前实现）
-
-| 类型 | 规则 | cls_weight |
-|---|---|---|
-| 正 | exact MC hit；face 内侧；jitter_pos | 1 |
-| 负 | soft≈0 的 bit=0；face 外侧；off-map | 1 |
-| unknown | 近 MC hit 但本 bin 未命中 | **0**（不进 BCE）|
-
-GT: `N=1,900,000`，`reach≈0.474`，`supervised=100%`，layers: int=300k, bnd±≈400k, jit±=200k, ext=400k
-
-### 1.5 仍存在的结构性问题
-
-1. **Boundary neg 仍基于 exact bit** — face 负侧 = 邻格同 orient `bit=0`，不是 IK 不可达
-2. **Exterior neg = soft≈0 的 bit=0** — 仍可能是 MC 漏采
-3. **Interior/bnd_pos = exact hit** — 正标签可信，但只占 1.8% 稀疏空间
-4. **5-DoF 无 roll** — 对绕 u 的探头自旋不敏感（后续优化 α(s) 的缺口）
-5. **MLP 容量不是瓶颈** — 256×5 + PE 足够学平滑场；瓶颈在 GT 语义
-
-### 1.6 不要继续做的事
-
-- 同标签加 epoch / 加深网络到 512×10
-- focal loss（会放大 MC 漏采假负）
-- hash grid / IPE / SIREN 堆模块
-- 只调 pos_weight 而不改 GT
-
-### 1.7 下一步（按优先级）
-
-1. **IK 假负率审计** — 抽 5k–10k 个 bit=0 近邻点，多 seed IK，估 FN rate
-2. **重建 map：hit_count + spatial/angular splatting** — 保存密度而非二值 bit
-3. **训练目标改 soft density** — `y_soft = 1-exp(-τ·c)`，BCE on soft labels
-4. **补 FK ±Z round-trip** — 确认 map 记录的是 TCP +Z
-5. **roll bin 或 6D rotation** — 若探头非轴对称
-
----
-
-## 2. 训练日志
-
-### 2.1 v4 Phase-A（错误：~bits 当不可达）
-
-```
-epoch=0 train_loss=0.6400 val_loss=0.6181 val_iou=0.235 bnd_m_mae=0.591 lr=3.00e-04
-epoch=1 train_loss=0.6311 val_loss=0.6162 val_iou=0.229 bnd_m_mae=0.593 lr=2.99e-04
-epoch=2 train_loss=0.6293 val_loss=0.6156 val_iou=0.244 bnd_m_mae=0.600 lr=2.97e-04
-epoch=3 train_loss=0.6282 val_loss=0.6141 val_iou=0.284 bnd_m_mae=0.606 lr=2.94e-04
-epoch=4 train_loss=0.6274 val_loss=0.6134 val_iou=0.242 bnd_m_mae=0.598 lr=2.90e-04
-epoch=5 train_loss=0.6268 val_loss=0.6129 val_iou=0.279 bnd_m_mae=0.608 lr=2.85e-04
-epoch=6 train_loss=0.6265 val_loss=0.6125 val_iou=0.255 bnd_m_mae=0.605 lr=2.80e-04
-epoch=7 train_loss=0.6253 val_loss=0.6103 val_iou=0.281 bnd_m_mae=0.622 lr=2.73e-04
-epoch=8 train_loss=0.6230 val_loss=0.6080 val_iou=0.259 bnd_m_mae=0.627 lr=2.66e-04
-epoch=9 train_loss=0.6217 val_loss=0.6079 val_iou=0.289 bnd_m_mae=0.627 lr=2.58e-04
-epoch=10 train_loss=0.6209 val_loss=0.6089 val_iou=0.256 bnd_m_mae=0.617 lr=2.50e-04
-epoch=11 train_loss=0.6202 val_loss=0.6073 val_iou=0.291 bnd_m_mae=0.623 lr=2.41e-04
-epoch=12 train_loss=0.6198 val_loss=0.6064 val_iou=0.275 bnd_m_mae=0.621 lr=2.31e-04
-epoch=13 train_loss=0.6195 val_loss=0.6072 val_iou=0.285 bnd_m_mae=0.623 lr=2.21e-04
-epoch=14 train_loss=0.6193 val_loss=0.6061 val_iou=0.265 bnd_m_mae=0.621 lr=2.10e-04
-epoch=15 train_loss=0.6188 val_loss=0.6062 val_iou=0.282 bnd_m_mae=0.621 lr=1.99e-04
-epoch=16 train_loss=0.6186 val_loss=0.6057 val_iou=0.278 bnd_m_mae=0.622 lr=1.88e-04
-epoch=17 train_loss=0.6182 val_loss=0.6057 val_iou=0.276 bnd_m_mae=0.618 lr=1.77e-04
-epoch=18 train_loss=0.6178 val_loss=0.6063 val_iou=0.275 bnd_m_mae=0.620 lr=1.65e-04
-```
-
-wandb: `neural_ird_v4_cls_only` / run `wbnnrdfo`
-
-### 2.2 v5 Phase-A（trusted labels，run `02gycww7`，中断于 ep18）
-
-```
-epoch=0 train_loss=0.6244 val_loss=0.5866 val_iou=0.542 best_iou=0.542@0.30 pr_auc=0.714 bnd_m_mae=0.148 lr=3.00e-04
-epoch=1 train_loss=0.6039 val_loss=0.5801 val_iou=0.545 best_iou=0.545@0.35 pr_auc=0.716 bnd_m_mae=0.155 lr=2.99e-04
-epoch=2 train_loss=0.6004 val_loss=0.5772 val_iou=0.548 best_iou=0.548@0.40 pr_auc=0.721 bnd_m_mae=0.162 lr=2.97e-04
-epoch=3 train_loss=0.5955 val_loss=0.5709 val_iou=0.551 best_iou=0.551@0.35 pr_auc=0.723 bnd_m_mae=0.164 lr=2.94e-04
-epoch=4 train_loss=0.5891 val_loss=0.5649 val_iou=0.555 best_iou=0.555@0.40 pr_auc=0.729 bnd_m_mae=0.159 lr=2.90e-04
-epoch=5 train_loss=0.5868 val_loss=0.5620 val_iou=0.557 best_iou=0.557@0.30 pr_auc=0.730 bnd_m_mae=0.157 lr=2.85e-04
-epoch=6 train_loss=0.5855 val_loss=0.5612 val_iou=0.557 best_iou=0.557@0.35 pr_auc=0.731 bnd_m_mae=0.152 lr=2.80e-04
-epoch=7 train_loss=0.5849 val_loss=0.5607 val_iou=0.557 best_iou=0.557@0.35 pr_auc=0.730 bnd_m_mae=0.156 lr=2.73e-04
-epoch=8 train_loss=0.5841 val_loss=0.5602 val_iou=0.558 best_iou=0.558@0.30 pr_auc=0.731 bnd_m_mae=0.159 lr=2.66e-04
-epoch=9 train_loss=0.5833 val_loss=0.5606 val_iou=0.558 best_iou=0.558@0.35 pr_auc=0.731 bnd_m_mae=0.159 lr=2.58e-04
-epoch=10 train_loss=0.5827 val_loss=0.5593 val_iou=0.558 best_iou=0.558@0.35 pr_auc=0.732 bnd_m_mae=0.156 lr=2.50e-04
-epoch=11 train_loss=0.5822 val_loss=0.5592 val_iou=0.557 best_iou=0.557@0.25 pr_auc=0.734 bnd_m_mae=0.169 lr=2.41e-04
-epoch=12 train_loss=0.5819 val_loss=0.5591 val_iou=0.558 best_iou=0.558@0.35 pr_auc=0.731 bnd_m_mae=0.168 lr=2.31e-04
-epoch=13 train_loss=0.5814 val_loss=0.5590 val_iou=0.558 best_iou=0.558@0.35 pr_auc=0.726 bnd_m_mae=0.163 lr=2.21e-04
-epoch=14 train_loss=0.5811 val_loss=0.5605 val_iou=0.558 best_iou=0.558@0.35 pr_auc=0.730 bnd_m_mae=0.167 lr=2.10e-04
-epoch=15 train_loss=0.5802 val_loss=0.5580 val_iou=0.559 best_iou=0.559@0.35 pr_auc=0.731 bnd_m_mae=0.164 lr=2.00e-04
-epoch=16 train_loss=0.5800 val_loss=0.5596 val_iou=0.558 best_iou=0.558@0.30 pr_auc=0.729 bnd_m_mae=0.164 lr=1.88e-04
-epoch=17 train_loss=0.5794 val_loss=0.5588 val_iou=0.559 best_iou=0.559@0.25 pr_auc=0.732 bnd_m_mae=0.172 lr=1.77e-04
-```
-
-wandb: `neural_ird_v5_cls_trusted` / run `02gycww7`
-
-**v5 epoch 摘要表：**
-
-| epoch | train_loss | val_loss | val_iou(best) | best@thr | pr_auc | bnd_m_mae |
-|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 0.6244 | 0.5866 | 0.542 | 0.542@0.30 | 0.714 | 0.148 || 1 | 0.6039 | 0.5801 | 0.545 | 0.545@0.35 | 0.716 | 0.155 || 2 | 0.6004 | 0.5772 | 0.548 | 0.548@0.40 | 0.721 | 0.162 || 3 | 0.5955 | 0.5709 | 0.551 | 0.551@0.35 | 0.723 | 0.164 || 4 | 0.5891 | 0.5649 | 0.555 | 0.555@0.40 | 0.729 | 0.159 || 5 | 0.5868 | 0.5620 | 0.557 | 0.557@0.30 | 0.730 | 0.157 || 6 | 0.5855 | 0.5612 | 0.557 | 0.557@0.35 | 0.731 | 0.152 || 7 | 0.5849 | 0.5607 | 0.557 | 0.557@0.35 | 0.730 | 0.156 || 8 | 0.5841 | 0.5602 | 0.558 | 0.558@0.30 | 0.731 | 0.159 || 9 | 0.5833 | 0.5606 | 0.558 | 0.558@0.35 | 0.731 | 0.159 || 10 | 0.5827 | 0.5593 | 0.558 | 0.558@0.35 | 0.732 | 0.156 || 11 | 0.5822 | 0.5592 | 0.557 | 0.557@0.25 | 0.734 | 0.169 || 12 | 0.5819 | 0.5591 | 0.558 | 0.558@0.35 | 0.731 | 0.168 || 13 | 0.5814 | 0.5590 | 0.558 | 0.558@0.35 | 0.726 | 0.163 || 14 | 0.5811 | 0.5605 | 0.558 | 0.558@0.35 | 0.730 | 0.167 || 15 | 0.5802 | 0.5580 | 0.559 | 0.559@0.35 | 0.731 | 0.164 || 16 | 0.5800 | 0.5596 | 0.558 | 0.558@0.30 | 0.729 | 0.164 || 17 | 0.5794 | 0.5588 | 0.559 | 0.559@0.25 | 0.732 | 0.172 |
-**观察：** ep0 即 val_iou=0.542；ep8 达 0.558 后至 ep17 几乎不变；loss 从 0.624→0.579 仍在下降。
-
----
-
-## 3. 命令
+### 4.1 Command
 
 ```bash
-cd /media/camp/EXT_DRIVE/RealUS_playground/ird_playground
-source env.sh
+cd ird_playground && source env.sh
+python -m ird_playground.cli.train --config configs/train_phase_b.yaml
+```
 
-# 重建 GT
-python -m ird_playground.cli.build_ird_gt --config configs/ird_gt_config.yaml
+### 4.2 Per-epoch table (from `data/reports/train_phase_b.json`)
 
-# Phase A cls-only
-python -m ird_playground.cli.train --config configs/train_config.yaml
+| epoch | train_loss | val_loss | iou@cal | pr_auc | bnd+ | bnd- | m_mae | train_iou |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 0.4327 | 0.4985 | 0.7339 | 0.8542 | 0.930 | 0.887 | 0.0429 | 0.777 |
+| 1 | 0.3378 | 0.4755 | 0.7484 | 0.8732 | 0.925 | 0.913 | 0.0347 | 0.793 |
+| 2 | 0.3167 | 0.4415 | 0.7663 | 0.8823 | 0.927 | 0.920 | 0.0325 | 0.811 |
+| 3 | 0.3031 | 0.4119 | 0.7851 | 0.8908 | 0.928 | 0.920 | 0.0307 | 0.828 |
+| 4 | 0.2871 | 0.3634 | 0.8040 | 0.9032 | 0.922 | 0.924 | 0.0294 | 0.844 |
+| 5 | 0.2749 | 0.3476 | 0.8127 | 0.9074 | 0.919 | 0.929 | 0.0319 | 0.852 |
+| 6 | 0.2678 | 0.3513 | 0.8169 | 0.9072 | 0.920 | 0.931 | 0.0294 | 0.855 |
+| 7 | 0.2576 | 0.3030 | 0.8302 | 0.9177 | 0.928 | 0.925 | 0.0295 | 0.862 |
+| 8 | 0.2480 | 0.2928 | 0.8330 | 0.9225 | 0.924 | 0.929 | 0.0293 | 0.864 |
+| 9 | 0.2411 | 0.2866 | 0.8362 | 0.9251 | 0.923 | 0.929 | 0.0281 | 0.868 |
+| 10 | 0.2342 | 0.2889 | 0.8387 | 0.9272 | 0.926 | 0.929 | 0.0295 | 0.869 |
+| 11 | 0.2308 | 0.2812 | 0.8375 | 0.9268 | 0.926 | 0.931 | 0.0285 | 0.869 |
+| 12 | 0.2260 | 0.2795 | 0.8391 | 0.9288 | 0.922 | 0.928 | 0.0285 | 0.869 |
+| 13 | 0.2222 | 0.2848 | 0.8401 | 0.9263 | 0.924 | 0.929 | 0.0275 | 0.872 |
+| 14 | 0.2184 | 0.2741 | 0.8414 | 0.9286 | 0.925 | 0.929 | 0.0295 | 0.873 |
+| 15 | 0.2150 | 0.2862 | 0.8413 | 0.9272 | 0.925 | 0.931 | 0.0290 | 0.876 |
+| 16 | 0.2126 | 0.2769 | 0.8436 | 0.9286 | 0.929 | 0.930 | 0.0280 | 0.878 |
+| 17 | 0.2102 | 0.2770 | 0.8408 | 0.9275 | 0.923 | 0.929 | 0.0284 | 0.882 |
+| 18 | 0.2065 | 0.2716 | 0.8412 | 0.9274 | 0.923 | 0.925 | 0.0293 | 0.881 |
+| 19 | 0.2048 | 0.2794 | 0.8443 | 0.9264 | 0.928 | 0.925 | 0.0281 | 0.881 |
+| 20 | 0.2022 | 0.2757 | 0.8418 | 0.9276 | 0.922 | 0.921 | 0.0296 | 0.884 |
+| 21 | 0.1979 | 0.2769 | 0.8410 | 0.9270 | 0.915 | 0.926 | 0.0307 | 0.881 |
+| 22 | 0.1963 | 0.2749 | 0.8436 | 0.9291 | 0.915 | 0.931 | 0.0298 | 0.885 |
+| 23 | 0.1929 | 0.2717 | 0.8435 | 0.9277 | 0.916 | 0.929 | 0.0289 | 0.888 |
+| 24 | 0.1899 | 0.2767 | 0.8407 | 0.9269 | 0.917 | 0.927 | 0.0295 | 0.888 |
+| 25 | 0.1869 | 0.2713 | 0.8393 | 0.9279 | 0.913 | 0.918 | 0.0306 | 0.890 |
+| 26 | 0.1834 | 0.2767 | 0.8414 | 0.9261 | 0.918 | 0.920 | 0.0301 | 0.894 |
+| 27 | 0.1800 | 0.2719 | 0.8354 | 0.9265 | 0.905 | 0.916 | 0.0326 | 0.897 |
+| 28 | 0.1771 | 0.2736 | 0.8355 | 0.9264 | 0.906 | 0.911 | 0.0314 | 0.896 |
+| 29 | 0.1729 | 0.2756 | 0.8378 | 0.9262 | 0.905 | 0.920 | 0.0315 | 0.899 |
+| 30 | 0.1691 | 0.2848 | 0.8296 | 0.9234 | 0.900 | 0.906 | 0.0333 | 0.901 |
+| 31 | 0.1666 | 0.2769 | 0.8359 | 0.9260 | 0.905 | 0.914 | 0.0321 | 0.903 |
+| 32 | 0.1624 | 0.2832 | 0.8320 | 0.9238 | 0.895 | 0.912 | 0.0333 | 0.904 |
+| 33 | 0.1595 | 0.2852 | 0.8262 | 0.9201 | 0.895 | 0.896 | 0.0360 | 0.908 |
+| 34 | 0.1557 | 0.2800 | 0.8297 | 0.9237 | 0.893 | 0.908 | 0.0342 | 0.909 |
+| 35 | 0.1527 | 0.2854 | 0.8301 | 0.9200 | 0.905 | 0.900 | 0.0344 | 0.910 |
+| 36 | 0.1502 | 0.2880 | 0.8334 | 0.9239 | 0.896 | 0.912 | 0.0338 | 0.911 |
+| 37 | 0.1469 | 0.2823 | 0.8360 | 0.9236 | 0.909 | 0.909 | 0.0328 | 0.913 |
+| 38 | 0.1443 | 0.2822 | 0.8363 | 0.9239 | 0.901 | 0.920 | 0.0328 | 0.911 |
+| 39 | 0.1424 | 0.2982 | 0.8273 | 0.9054 | 0.906 | 0.891 | 0.0358 | 0.912 |
+| 40 | 0.1400 | 0.2928 | 0.8302 | 0.9141 | 0.902 | 0.895 | 0.0346 | 0.918 |
+| 41 | 0.1377 | 0.2957 | 0.8294 | 0.9098 | 0.894 | 0.902 | 0.0352 | 0.918 |
+| 42 | 0.1361 | 0.2937 | 0.8297 | 0.9068 | 0.899 | 0.904 | 0.0351 | 0.919 |
+| 43 | 0.1350 | 0.2981 | 0.8287 | 0.9070 | 0.895 | 0.906 | 0.0353 | 0.920 |
+| 44 | 0.1333 | 0.2958 | 0.8312 | 0.9130 | 0.894 | 0.915 | 0.0343 | 0.919 |
+| 45 | 0.1317 | 0.2974 | 0.8316 | 0.9053 | 0.903 | 0.904 | 0.0343 | 0.921 |
+| 46 | 0.1306 | 0.3045 | 0.8285 | 0.8992 | 0.897 | 0.898 | 0.0355 | 0.923 |
+| 47 | 0.1285 | 0.3040 | 0.8309 | 0.9035 | 0.901 | 0.904 | 0.0348 | 0.920 |
+| 48 | 0.1282 | 0.3027 | 0.8295 | 0.9009 | 0.902 | 0.896 | 0.0347 | 0.923 |
+| 49 | 0.1276 | 0.3088 | 0.8277 | 0.8992 | 0.897 | 0.899 | 0.0355 | 0.923 |
+| 50 | 0.1268 | 0.3093 | 0.8282 | 0.8985 | 0.896 | 0.902 | 0.0355 | 0.924 |
+| 51 | 0.1263 | 0.3110 | 0.8286 | 0.8956 | 0.897 | 0.898 | 0.0355 | 0.925 |
+| 52 | 0.1251 | 0.3084 | 0.8293 | 0.8991 | 0.899 | 0.902 | 0.0352 | 0.925 |
+| 53 | 0.1249 | 0.3093 | 0.8289 | 0.8967 | 0.897 | 0.900 | 0.0352 | 0.927 |
+| 54 | 0.1239 | 0.3127 | 0.8283 | 0.8942 | 0.899 | 0.898 | 0.0354 | 0.927 |
+| 55 | 0.1240 | 0.3140 | 0.8271 | 0.8934 | 0.897 | 0.899 | 0.0357 | 0.926 |
+| 56 | 0.1243 | 0.3123 | 0.8289 | 0.8944 | 0.901 | 0.897 | 0.0355 | 0.927 |
+| 57 | 0.1234 | 0.3128 | 0.8289 | 0.8954 | 0.899 | 0.898 | 0.0354 | 0.927 |
+| 58 | 0.1235 | 0.3132 | 0.8286 | 0.8946 | 0.897 | 0.899 | 0.0356 | 0.927 |
+| 59 | 0.1237 | 0.3137 | 0.8289 | 0.8935 | 0.898 | 0.898 | 0.0356 | 0.927 |
+
+### 4.3 Final val_metrics JSON (Phase B)
+
+```json
+{
+  "mae": 0.6947223268736046,
+  "mae_m": 0.027411582813596118,
+  "mae_q": 0.061590589216620445,
+  "spearman": 0.7581727785748865,
+  "boundary_iou": 0.8029664924684783,
+  "reach_accuracy": 0.8977734892103543,
+  "n": 125398,
+  "interior_recall": 0.9641091375206006,
+  "bnd_pos_recall": 0.9275130156187424,
+  "bnd_neg_spec": 0.9250996015936255,
+  "jitter_pos_recall": 0.9276073619631902,
+  "jitter_neg_spec": 0.9373493975903614,
+  "exterior_spec": 0.8318989196117927,
+  "iou": 0.844275731170663,
+  "accuracy": 0.9134873466257669,
+  "iou_t05": 0.844275731170663,
+  "iou_calibrated": 0.8443206172309606,
+  "val_threshold": 0.44999999999999996,
+  "calib_best_iou": 0.8511364582465364,
+  "pr_auc": 0.9264274027105357,
+  "boundary_margin_mae": 0.028103552758693695,
+  "best_iou": 0.8443206172309606,
+  "best_threshold": 0.44999999999999996
+}
+```
+
+### 4.4 Stdout epoch lines (wandb `run-20260720_171633-062f6gy6`)
+
+```
+epoch=0 train_loss=0.4327 val_loss=0.4985 iou@0.5=0.726 iou@cal=0.734@t=0.30 pr_auc=0.854 train_iou=0.777 bnd_pos_r=0.930 bnd_neg_s=0.887 lr=2.00e-04
+epoch=1 train_loss=0.3378 val_loss=0.4755 iou@0.5=0.748 iou@cal=0.748@t=0.50 pr_auc=0.873 train_iou=0.793 bnd_pos_r=0.925 bnd_neg_s=0.913 lr=2.00e-04
+epoch=2 train_loss=0.3167 val_loss=0.4415 iou@0.5=0.766 iou@cal=0.766@t=0.45 pr_auc=0.882 train_iou=0.811 bnd_pos_r=0.927 bnd_neg_s=0.920 lr=1.99e-04
+epoch=3 train_loss=0.3031 val_loss=0.4119 iou@0.5=0.786 iou@cal=0.785@t=0.45 pr_auc=0.891 train_iou=0.828 bnd_pos_r=0.928 bnd_neg_s=0.920 lr=1.98e-04
+epoch=4 train_loss=0.2871 val_loss=0.3634 iou@0.5=0.803 iou@cal=0.804@t=0.45 pr_auc=0.903 train_iou=0.844 bnd_pos_r=0.922 bnd_neg_s=0.924 lr=1.97e-04
+epoch=5 train_loss=0.2749 val_loss=0.3476 iou@0.5=0.813 iou@cal=0.813@t=0.50 pr_auc=0.907 train_iou=0.852 bnd_pos_r=0.919 bnd_neg_s=0.929 lr=1.96e-04
+epoch=6 train_loss=0.2678 val_loss=0.3513 iou@0.5=0.814 iou@cal=0.817@t=0.65 pr_auc=0.907 train_iou=0.855 bnd_pos_r=0.920 bnd_neg_s=0.931 lr=1.94e-04
+epoch=7 train_loss=0.2576 val_loss=0.3030 iou@0.5=0.830 iou@cal=0.830@t=0.45 pr_auc=0.918 train_iou=0.862 bnd_pos_r=0.928 bnd_neg_s=0.925 lr=1.92e-04
+epoch=8 train_loss=0.2480 val_loss=0.2928 iou@0.5=0.834 iou@cal=0.833@t=0.55 pr_auc=0.923 train_iou=0.864 bnd_pos_r=0.924 bnd_neg_s=0.929 lr=1.90e-04
+epoch=9 train_loss=0.2411 val_loss=0.2866 iou@0.5=0.833 iou@cal=0.836@t=0.45 pr_auc=0.925 train_iou=0.868 bnd_pos_r=0.923 bnd_neg_s=0.929 lr=1.88e-04
+epoch=10 train_loss=0.2342 val_loss=0.2889 iou@0.5=0.840 iou@cal=0.839@t=0.45 pr_auc=0.927 train_iou=0.869 bnd_pos_r=0.926 bnd_neg_s=0.929 lr=1.85e-04
+epoch=11 train_loss=0.2308 val_loss=0.2812 iou@0.5=0.837 iou@cal=0.837@t=0.50 pr_auc=0.927 train_iou=0.869 bnd_pos_r=0.926 bnd_neg_s=0.931 lr=1.82e-04
+epoch=12 train_loss=0.2260 val_loss=0.2795 iou@0.5=0.839 iou@cal=0.839@t=0.50 pr_auc=0.929 train_iou=0.869 bnd_pos_r=0.922 bnd_neg_s=0.928 lr=1.79e-04
+epoch=13 train_loss=0.2222 val_loss=0.2848 iou@0.5=0.842 iou@cal=0.840@t=0.55 pr_auc=0.926 train_iou=0.872 bnd_pos_r=0.924 bnd_neg_s=0.929 lr=1.76e-04
+epoch=14 train_loss=0.2184 val_loss=0.2741 iou@0.5=0.837 iou@cal=0.841@t=0.40 pr_auc=0.929 train_iou=0.873 bnd_pos_r=0.925 bnd_neg_s=0.929 lr=1.72e-04
+epoch=15 train_loss=0.2150 val_loss=0.2862 iou@0.5=0.841 iou@cal=0.841@t=0.50 pr_auc=0.927 train_iou=0.876 bnd_pos_r=0.925 bnd_neg_s=0.931 lr=1.68e-04
+epoch=16 train_loss=0.2126 val_loss=0.2769 iou@0.5=0.843 iou@cal=0.844@t=0.45 pr_auc=0.929 train_iou=0.878 bnd_pos_r=0.929 bnd_neg_s=0.930 lr=1.65e-04
+epoch=17 train_loss=0.2102 val_loss=0.2770 iou@0.5=0.841 iou@cal=0.841@t=0.50 pr_auc=0.928 train_iou=0.882 bnd_pos_r=0.923 bnd_neg_s=0.929 lr=1.60e-04
+epoch=18 train_loss=0.2065 val_loss=0.2716 iou@0.5=0.839 iou@cal=0.841@t=0.40 pr_auc=0.927 train_iou=0.881 bnd_pos_r=0.923 bnd_neg_s=0.925 lr=1.56e-04
+epoch=19 train_loss=0.2048 val_loss=0.2794 iou@0.5=0.844 iou@cal=0.844@t=0.45 pr_auc=0.926 train_iou=0.881 bnd_pos_r=0.928 bnd_neg_s=0.925 lr=1.52e-04
+epoch=20 train_loss=0.2022 val_loss=0.2757 iou@0.5=0.842 iou@cal=0.842@t=0.45 pr_auc=0.928 train_iou=0.884 bnd_pos_r=0.922 bnd_neg_s=0.921 lr=1.47e-04
+epoch=21 train_loss=0.1979 val_loss=0.2769 iou@0.5=0.841 iou@cal=0.841@t=0.50 pr_auc=0.927 train_iou=0.881 bnd_pos_r=0.915 bnd_neg_s=0.926 lr=1.43e-04
+epoch=22 train_loss=0.1963 val_loss=0.2749 iou@0.5=0.844 iou@cal=0.844@t=0.50 pr_auc=0.929 train_iou=0.885 bnd_pos_r=0.915 bnd_neg_s=0.931 lr=1.38e-04
+epoch=23 train_loss=0.1929 val_loss=0.2717 iou@0.5=0.840 iou@cal=0.844@t=0.40 pr_auc=0.928 train_iou=0.888 bnd_pos_r=0.916 bnd_neg_s=0.929 lr=1.33e-04
+epoch=24 train_loss=0.1899 val_loss=0.2767 iou@0.5=0.842 iou@cal=0.841@t=0.40 pr_auc=0.927 train_iou=0.888 bnd_pos_r=0.917 bnd_neg_s=0.927 lr=1.28e-04
+epoch=25 train_loss=0.1869 val_loss=0.2713 iou@0.5=0.839 iou@cal=0.839@t=0.45 pr_auc=0.928 train_iou=0.890 bnd_pos_r=0.913 bnd_neg_s=0.918 lr=1.23e-04
+epoch=26 train_loss=0.1834 val_loss=0.2767 iou@0.5=0.841 iou@cal=0.841@t=0.45 pr_auc=0.926 train_iou=0.894 bnd_pos_r=0.918 bnd_neg_s=0.920 lr=1.18e-04
+epoch=27 train_loss=0.1800 val_loss=0.2719 iou@0.5=0.835 iou@cal=0.835@t=0.50 pr_auc=0.927 train_iou=0.897 bnd_pos_r=0.905 bnd_neg_s=0.916 lr=1.13e-04
+epoch=28 train_loss=0.1771 val_loss=0.2736 iou@0.5=0.836 iou@cal=0.836@t=0.45 pr_auc=0.926 train_iou=0.896 bnd_pos_r=0.906 bnd_neg_s=0.911 lr=1.07e-04
+epoch=29 train_loss=0.1729 val_loss=0.2756 iou@0.5=0.837 iou@cal=0.838@t=0.40 pr_auc=0.926 train_iou=0.899 bnd_pos_r=0.905 bnd_neg_s=0.920 lr=1.02e-04
+epoch=30 train_loss=0.1691 val_loss=0.2848 iou@0.5=0.831 iou@cal=0.830@t=0.55 pr_auc=0.923 train_iou=0.901 bnd_pos_r=0.900 bnd_neg_s=0.906 lr=9.69e-05
+epoch=31 train_loss=0.1666 val_loss=0.2769 iou@0.5=0.835 iou@cal=0.836@t=0.45 pr_auc=0.926 train_iou=0.903 bnd_pos_r=0.905 bnd_neg_s=0.914 lr=9.17e-05
+epoch=32 train_loss=0.1624 val_loss=0.2832 iou@0.5=0.831 iou@cal=0.832@t=0.45 pr_auc=0.924 train_iou=0.904 bnd_pos_r=0.895 bnd_neg_s=0.912 lr=8.65e-05
+epoch=33 train_loss=0.1595 val_loss=0.2852 iou@0.5=0.826 iou@cal=0.826@t=0.50 pr_auc=0.920 train_iou=0.908 bnd_pos_r=0.895 bnd_neg_s=0.896 lr=8.14e-05
+epoch=34 train_loss=0.1557 val_loss=0.2800 iou@0.5=0.830 iou@cal=0.830@t=0.50 pr_auc=0.924 train_iou=0.909 bnd_pos_r=0.893 bnd_neg_s=0.908 lr=7.63e-05
+epoch=35 train_loss=0.1527 val_loss=0.2854 iou@0.5=0.830 iou@cal=0.830@t=0.50 pr_auc=0.920 train_iou=0.910 bnd_pos_r=0.905 bnd_neg_s=0.900 lr=7.13e-05
+epoch=36 train_loss=0.1502 val_loss=0.2880 iou@0.5=0.832 iou@cal=0.833@t=0.45 pr_auc=0.924 train_iou=0.911 bnd_pos_r=0.896 bnd_neg_s=0.912 lr=6.63e-05
+epoch=37 train_loss=0.1469 val_loss=0.2823 iou@0.5=0.834 iou@cal=0.836@t=0.40 pr_auc=0.924 train_iou=0.913 bnd_pos_r=0.909 bnd_neg_s=0.909 lr=6.15e-05
+epoch=38 train_loss=0.1443 val_loss=0.2822 iou@0.5=0.836 iou@cal=0.836@t=0.50 pr_auc=0.924 train_iou=0.911 bnd_pos_r=0.901 bnd_neg_s=0.920 lr=5.68e-05
+epoch=39 train_loss=0.1424 val_loss=0.2982 iou@0.5=0.828 iou@cal=0.827@t=0.55 pr_auc=0.905 train_iou=0.912 bnd_pos_r=0.906 bnd_neg_s=0.891 lr=5.22e-05
+epoch=40 train_loss=0.1400 val_loss=0.2928 iou@0.5=0.829 iou@cal=0.830@t=0.45 pr_auc=0.914 train_iou=0.918 bnd_pos_r=0.902 bnd_neg_s=0.895 lr=4.77e-05
+epoch=41 train_loss=0.1377 val_loss=0.2957 iou@0.5=0.829 iou@cal=0.829@t=0.45 pr_auc=0.910 train_iou=0.918 bnd_pos_r=0.894 bnd_neg_s=0.902 lr=4.34e-05
+epoch=42 train_loss=0.1361 val_loss=0.2937 iou@0.5=0.830 iou@cal=0.830@t=0.50 pr_auc=0.907 train_iou=0.919 bnd_pos_r=0.899 bnd_neg_s=0.904 lr=3.92e-05
+epoch=43 train_loss=0.1350 val_loss=0.2981 iou@0.5=0.829 iou@cal=0.829@t=0.50 pr_auc=0.907 train_iou=0.920 bnd_pos_r=0.895 bnd_neg_s=0.906 lr=3.52e-05
+epoch=44 train_loss=0.1333 val_loss=0.2958 iou@0.5=0.829 iou@cal=0.831@t=0.45 pr_auc=0.913 train_iou=0.919 bnd_pos_r=0.894 bnd_neg_s=0.915 lr=3.14e-05
+epoch=45 train_loss=0.1317 val_loss=0.2974 iou@0.5=0.831 iou@cal=0.832@t=0.45 pr_auc=0.905 train_iou=0.921 bnd_pos_r=0.903 bnd_neg_s=0.904 lr=2.78e-05
+epoch=46 train_loss=0.1306 val_loss=0.3045 iou@0.5=0.829 iou@cal=0.829@t=0.50 pr_auc=0.899 train_iou=0.923 bnd_pos_r=0.897 bnd_neg_s=0.898 lr=2.44e-05
+epoch=47 train_loss=0.1285 val_loss=0.3040 iou@0.5=0.830 iou@cal=0.831@t=0.45 pr_auc=0.904 train_iou=0.920 bnd_pos_r=0.901 bnd_neg_s=0.904 lr=2.12e-05
+epoch=48 train_loss=0.1282 val_loss=0.3027 iou@0.5=0.830 iou@cal=0.830@t=0.50 pr_auc=0.901 train_iou=0.923 bnd_pos_r=0.902 bnd_neg_s=0.896 lr=1.82e-05
+epoch=49 train_loss=0.1276 val_loss=0.3088 iou@0.5=0.828 iou@cal=0.828@t=0.45 pr_auc=0.899 train_iou=0.923 bnd_pos_r=0.897 bnd_neg_s=0.899 lr=1.55e-05
+epoch=50 train_loss=0.1268 val_loss=0.3093 iou@0.5=0.828 iou@cal=0.828@t=0.50 pr_auc=0.899 train_iou=0.924 bnd_pos_r=0.896 bnd_neg_s=0.902 lr=1.29e-05
+epoch=51 train_loss=0.1263 val_loss=0.3110 iou@0.5=0.829 iou@cal=0.829@t=0.50 pr_auc=0.896 train_iou=0.925 bnd_pos_r=0.897 bnd_neg_s=0.898 lr=1.07e-05
+epoch=52 train_loss=0.1251 val_loss=0.3084 iou@0.5=0.829 iou@cal=0.829@t=0.50 pr_auc=0.899 train_iou=0.925 bnd_pos_r=0.899 bnd_neg_s=0.902 lr=8.67e-06
+epoch=53 train_loss=0.1249 val_loss=0.3093 iou@0.5=0.829 iou@cal=0.829@t=0.50 pr_auc=0.897 train_iou=0.927 bnd_pos_r=0.897 bnd_neg_s=0.900 lr=6.92e-06
+epoch=54 train_loss=0.1239 val_loss=0.3127 iou@0.5=0.828 iou@cal=0.828@t=0.50 pr_auc=0.894 train_iou=0.927 bnd_pos_r=0.899 bnd_neg_s=0.898 lr=5.42e-06
+epoch=55 train_loss=0.1240 val_loss=0.3140 iou@0.5=0.827 iou@cal=0.827@t=0.50 pr_auc=0.893 train_iou=0.926 bnd_pos_r=0.897 bnd_neg_s=0.899 lr=4.19e-06
+epoch=56 train_loss=0.1243 val_loss=0.3123 iou@0.5=0.829 iou@cal=0.829@t=0.45 pr_auc=0.894 train_iou=0.927 bnd_pos_r=0.901 bnd_neg_s=0.897 lr=3.24e-06
+epoch=57 train_loss=0.1234 val_loss=0.3128 iou@0.5=0.829 iou@cal=0.829@t=0.45 pr_auc=0.895 train_iou=0.927 bnd_pos_r=0.899 bnd_neg_s=0.898 lr=2.55e-06
+epoch=58 train_loss=0.1235 val_loss=0.3132 iou@0.5=0.829 iou@cal=0.829@t=0.50 pr_auc=0.895 train_iou=0.927 bnd_pos_r=0.897 bnd_neg_s=0.899 lr=2.14e-06
+epoch=59 train_loss=0.1237 val_loss=0.3137 iou@0.5=0.829 iou@cal=0.829@t=0.50 pr_auc=0.893 train_iou=0.927 bnd_pos_r=0.898 bnd_neg_s=0.898 lr=2.00e-06
 ```
 
 ---
 
-## 4. 完整源码
+## 5. Architecture notes (reviewer)
+
+**Model:** `NeuralIRDPoint` — 6-D in → reach_logit, margin, q, score  
+**PE:** physical wavelengths [0.48, 0.24, 0.12, 0.06, 0.03, 0.015] m on p; Fourier on u (5 bands)  
+**Loss:** BCE(reach, hard y, cls_weight) + λ_m SmoothL1(m|mw>0) + λ_q SmoothL1(q|pos)  
+**Val:** block-split; fixed calib/test indices; iou@0.5 and iou@cal reported separately  
+**Sampler:** CyclingLayerPool (no replace) + difficulty mix by layer_id
+
+**Bit pack/unpack:** little-endian OR in `capability_map.py` — round-trip verified.
+
+---
+
+## 6. Complete source code
 
 
 ### `ird_playground/ird/export_gt.py`
 
 ```python
-"""Build IRD GT v5 — MC-hit ≠ unreachable; soft / unknown / trusted-neg labels.
+"""Build IRD GT v6 — stable-support boundary; MC-hit ≠ unreachable.
 
 Contract:
   features = [p_base,tcp(3), u_base(3)]  natural 5-DoF
-  y_soft ∈ [0,1] from local spatial×orient neighborhood of MC hits
-  cls_weight = 0 on UNKNOWN (near hits but bit=0); only supervise trusted labels
-  Label rules (SE(3)-proxy distance in voxel/orient neighborhood):
-    exact hit          → y=1,   cls_weight=1
-    soft coverage > τ  → y=y_soft, cls_weight=1   (optional soft positives)
-    far from all hits  → y=0,   cls_weight=1       (trusted negative)
-    near miss (bit=0)  → unknown, cls_weight=0     (NOT in BCE)
-  margin: continuous face-pair interpolation only; margin_weight=0 elsewhere
-  jitter: face-pair normal ±delta half/half (LAYER_JITTER_POS/NEG)
+  exact MC hit → positive
+  trusted face pair: C+ >= min_positive_support AND C- == 0
+    (non-overlapping half-neighborhoods; never soft_neg <= tau)
+  near-miss / unstable faces → not exported (unknown)
+  margin: continuous face-pair interpolation only on trusted faces
+  jitter: face-normal ±delta from same trusted faces (pos/neg half)
 """
 
 from __future__ import annotations
@@ -276,11 +471,14 @@ class IrdGtConfig:
     aabb_pad_frac: float = 0.05
     aabb_pad_min_m: float = 0.02
     n_jitter: int = 400_000
-    # soft / unknown thresholds
+    # soft / exterior thresholds (NOT used for boundary trust)
     orient_knn: int = 7
-    soft_tau: float = 0.05  # soft>tau counts as weak positive coverage
-    unknown_soft_max: float = 0.25  # bit=0 & soft in (0, this] → unknown
-    trusted_neg_soft_max: float = 1e-6  # soft≈0 → trusted negative
+    soft_tau: float = 0.05
+    unknown_soft_max: float = 0.25
+    trusted_neg_soft_max: float = 1e-6
+    # v6: stable-support boundary (C+ / C-)
+    min_positive_support: int = 3
+    min_trusted_face_pairs: int = 5000
 
 
 def features_from_p_u(p: np.ndarray, u: np.ndarray) -> np.ndarray:
@@ -308,6 +506,39 @@ def _enforce_sign(m: np.ndarray, y: np.ndarray, eps: float, m_clip: float) -> np
 def _orient_knn(orients: np.ndarray, k: int) -> np.ndarray:
     dots = orients @ orients.T
     return np.argsort(-dots, axis=1)[:, :k].astype(np.int32)
+
+
+def _tangents_for_dlt(dlt: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Two unit tangent axes orthogonal to face normal ``dlt`` (int voxel step)."""
+    n = np.asarray(dlt, dtype=np.int32).reshape(3)
+    if abs(int(n[0])) == 1:
+        t1, t2 = np.array([0, 1, 0], np.int32), np.array([0, 0, 1], np.int32)
+    elif abs(int(n[1])) == 1:
+        t1, t2 = np.array([1, 0, 0], np.int32), np.array([0, 0, 1], np.int32)
+    else:
+        t1, t2 = np.array([1, 0, 0], np.int32), np.array([0, 1, 0], np.int32)
+    return t1, t2
+
+
+def _half_neighborhood(dlt: np.ndarray, *, positive_side: bool) -> np.ndarray:
+    """Non-overlapping half-neighborhood for support counting.
+
+    Positive side: current + interior (-dlt) + 4 tangents.
+    Negative side: current + exterior (+dlt) + 4 tangents.
+    """
+    t1, t2 = _tangents_for_dlt(dlt)
+    interior = -dlt if positive_side else dlt
+    return np.stack(
+        [
+            np.array([0, 0, 0], np.int32),
+            interior.astype(np.int32),
+            t1,
+            -t1,
+            t2,
+            -t2,
+        ],
+        axis=0,
+    )
 
 
 def export_ird_gt_from_capability_map(
@@ -358,36 +589,56 @@ def export_ird_gt_from_capability_map(
         dtype=np.int32,
     )
 
-    def soft_at(ijk: np.ndarray, oids: np.ndarray) -> np.ndarray:
-        """Local MC-hit coverage in 7-spatial × K-orient neighborhood (vectorized)."""
+    def _lookup_rows(ijk: np.ndarray) -> np.ndarray:
+        ijk = np.asarray(ijk, dtype=np.int32)
+        n = ijk.shape[0]
+        inb = (
+            (ijk[:, 0] >= 0) & (ijk[:, 0] < nx)
+            & (ijk[:, 1] >= 0) & (ijk[:, 1] < ny)
+            & (ijk[:, 2] >= 0) & (ijk[:, 2] < nz)
+        )
+        rows = np.full(n, -1, dtype=np.int32)
+        if inb.any():
+            keys = (
+                ijk[inb, 0].astype(np.int64) * (ny * nz)
+                + ijk[inb, 1].astype(np.int64) * nz
+                + ijk[inb, 2].astype(np.int64)
+            )
+            rows[inb] = row_of[keys]
+        return rows
+
+    def local_orient_hit_count(
+        ijk: np.ndarray,
+        oids: np.ndarray,
+        spatial_offsets: np.ndarray,
+    ) -> np.ndarray:
+        """Count local MC hits over spatial_offsets × orient-KNN (integer)."""
         ijk = np.asarray(ijk, dtype=np.int32)
         oids = np.asarray(oids, dtype=np.int32)
         n = oids.shape[0]
-        o_nb = knn[oids]  # (n, K)
+        o_nb = knn[oids]
+        count = np.zeros(n, dtype=np.int32)
+        for dlt in spatial_offsets:
+            rows = _lookup_rows(ijk + dlt)
+            ok = rows >= 0
+            if ok.any():
+                count[ok] += bits[rows[ok][:, None], o_nb[ok]].sum(axis=1).astype(np.int32)
+        return count
+
+    def soft_at(ijk: np.ndarray, oids: np.ndarray) -> np.ndarray:
+        """Local MC-hit fraction (7-spatial × K-orient) — exterior diagnostic only."""
+        ijk = np.asarray(ijk, dtype=np.int32)
+        oids = np.asarray(oids, dtype=np.int32)
+        n = oids.shape[0]
+        o_nb = knn[oids]
         acc = np.zeros(n, dtype=np.float64)
         cnt = np.zeros(n, dtype=np.float64)
         for dlt in spat:
-            j = ijk + dlt
-            inb = (
-                (j[:, 0] >= 0) & (j[:, 0] < nx)
-                & (j[:, 1] >= 0) & (j[:, 1] < ny)
-                & (j[:, 2] >= 0) & (j[:, 2] < nz)
-            )
-            if not inb.any():
-                continue
-            keys = (
-                np.clip(j[:, 0], 0, nx - 1).astype(np.int64) * (ny * nz)
-                + np.clip(j[:, 1], 0, ny - 1).astype(np.int64) * nz
-                + np.clip(j[:, 2], 0, nz - 1).astype(np.int64)
-            )
-            r = np.full(n, -1, dtype=np.int32)
-            r[inb] = row_of[keys[inb]]
-            ok = r >= 0
+            rows = _lookup_rows(ijk + dlt)
+            ok = rows >= 0
             if not ok.any():
                 continue
-            # mean over orient neighbors for valid rows (row-wise gather)
-            sub = bits[r[ok][:, None], o_nb[ok]].mean(axis=1)
-            acc[ok] += sub
+            acc[ok] += bits[rows[ok][:, None], o_nb[ok]].mean(axis=1)
             cnt[ok] += 1.0
         return (acc / np.maximum(cnt, 1.0)).astype(np.float32)
 
@@ -469,7 +720,7 @@ def export_ird_gt_from_capability_map(
         mw = np.zeros(n, dtype=np.float32)
         flush(voxel_xyz[rows], orients[oids], y, ys, cw, m, mw, LAYER_INTERIOR, rows, oids)
 
-    # --- Boundary face pairs ---
+    # --- Boundary face pairs with stable-support filter (v6) ---
     print("[gt] boundary face pairs…", flush=True)
     neigh = np.array([[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]], np.int32)
     n_cand = min(400_000, pool_bnd.size)
@@ -480,6 +731,7 @@ def export_ird_gt_from_capability_map(
     bnd_r = np.empty(n_cand, dtype=np.int32)
     bnd_o = np.empty(n_cand, dtype=np.int32)
     bnd_ijk_neg = np.empty((n_cand, 3), dtype=np.int32)
+    bnd_dlt = np.empty((n_cand, 3), dtype=np.int32)
     for dlt in neigh:
         j = ijk0 + dlt
         out_of = (
@@ -500,33 +752,73 @@ def export_ird_gt_from_capability_map(
             bnd_r[fail] = rows_c[fail]
             bnd_o[fail] = oids_c[fail]
             bnd_ijk_neg[fail] = j[fail]
+            bnd_dlt[fail] = dlt
             assigned[fail] = True
         if assigned.all():
             break
     keep = assigned
-    bnd_r, bnd_o, bnd_ijk_neg = bnd_r[keep], bnd_o[keep], bnd_ijk_neg[keep]
+    bnd_r, bnd_o, bnd_ijk_neg, bnd_dlt = (
+        bnd_r[keep],
+        bnd_o[keep],
+        bnd_ijk_neg[keep],
+        bnd_dlt[keep],
+    )
     print(f"[gt] face pairs kept={bnd_r.size:,}", flush=True)
     if bnd_r.size == 0:
         raise RuntimeError("no boundary face pairs found")
 
-    # Classify neg side soft coverage (diagnostic). Face geometry is still trusted:
-    # pos = exact MC hit, neg = adjacent cell with same orient bit=0.
-    print("[gt] soft-coverage on boundary neg side…", flush=True)
-    soft_neg = soft_at_batched(bnd_ijk_neg, bnd_o)
-    trusted_neg_pair = soft_neg <= cfg.soft_tau  # soft≈0 → especially clean neg
-    unknown_pair = (soft_neg > cfg.soft_tau) & (soft_neg <= cfg.unknown_soft_max)
+    # v6: C+ / C- support on non-overlapping half-neighborhoods
+    print("[gt] stable-support filter (C+, C-)…", flush=True)
+    ijk_pos = cm.voxel_ids[bnd_r].astype(np.int32)
+    support_pos = np.zeros(bnd_r.size, dtype=np.int32)
+    support_neg = np.zeros(bnd_r.size, dtype=np.int32)
+    for dlt in neigh:
+        mask = np.all(bnd_dlt == dlt, axis=1)
+        if not mask.any():
+            continue
+        pos_off = _half_neighborhood(dlt, positive_side=True)
+        neg_off = _half_neighborhood(dlt, positive_side=False)
+        support_pos[mask] = local_orient_hit_count(ijk_pos[mask], bnd_o[mask], pos_off)
+        support_neg[mask] = local_orient_hit_count(bnd_ijk_neg[mask], bnd_o[mask], neg_off)
+
+    cmin = int(cfg.min_positive_support)
+    trusted = (support_pos >= cmin) & (support_neg == 0)
+    if trusted.sum() < int(cfg.min_trusted_face_pairs) and cmin > 2:
+        print(
+            f"[gt] C+>={cmin} & C-=0 → {trusted.sum():,} pairs; "
+            f"relaxing min_positive_support to 2",
+            flush=True,
+        )
+        cmin = 2
+        trusted = (support_pos >= cmin) & (support_neg == 0)
+
+    trusted_idx = np.flatnonzero(trusted)
+    qs = [0.0, 0.1, 0.5, 0.9, 1.0]
     print(
-        f"[gt] face neg soft: clean={trusted_neg_pair.mean():.3f} mid={unknown_pair.mean():.3f} "
-        f"soft_mean={soft_neg.mean():.4f} (all face pairs kept for geometric margin)",
+        f"[gt] support_pos quantiles={np.quantile(support_pos, qs).astype(int).tolist()} "
+        f"support_neg quantiles={np.quantile(support_neg, qs).astype(int).tolist()}",
         flush=True,
     )
-    # Prefer cleaner face pairs when available; otherwise use all
-    trusted_idx = np.flatnonzero(trusted_neg_pair)
-    if trusted_idx.size < max(1000, n_bnd // 20):
-        trusted_idx = np.arange(bnd_r.size)
-    print(f"[gt] boundary face pool={trusted_idx.size:,}", flush=True)
+    print(
+        f"[gt] trusted faces={trusted_idx.size:,}/{bnd_r.size:,} "
+        f"(C+>={cmin} & C-=0); rejected={bnd_r.size - trusted_idx.size:,}",
+        flush=True,
+    )
+    if trusted_idx.size < int(cfg.min_trusted_face_pairs):
+        raise RuntimeError(
+            f"Not enough trusted boundary pairs ({trusted_idx.size} < {cfg.min_trusted_face_pairs}). "
+            "Increase MC coverage or lower min_positive_support explicitly — "
+            "do NOT fall back to all face pairs."
+        )
 
-    print(f"[gt] boundary interpolate {n_bnd:,} (supervised face pairs)", flush=True)
+    # Cap n_bnd / n_jitter to available trusted diversity (no fake continuity)
+    n_trusted = int(trusted_idx.size)
+    n_bnd_eff = min(n_bnd, max(n_trusted * 2, n_trusted))
+    if n_bnd_eff < n_bnd:
+        print(f"[gt] capping boundary samples {n_bnd:,} → {n_bnd_eff:,}", flush=True)
+    n_bnd = n_bnd_eff
+
+    print(f"[gt] boundary interpolate {n_bnd:,} (trusted face pairs only)", flush=True)
     for s in range(0, n_bnd, batch_size):
         n = min(batch_size, n_bnd - s)
         pick = trusted_idx[rng.integers(0, trusted_idx.size, size=n)]
@@ -542,7 +834,7 @@ def export_ird_gt_from_capability_map(
         y = (alpha < 0.5).astype(np.float32)
         m = _enforce_sign(m, y, cfg.m_eps, cfg.m_clip)
         ys = y.copy()
-        cw = np.ones(n, dtype=np.float32)  # only trusted pairs
+        cw = np.ones(n, dtype=np.float32)
         mw = np.ones(n, dtype=np.float32)
         layer = np.where(y >= 0.5, LAYER_BND_POS, LAYER_BND_NEG).astype(np.int32)
         rows_q = np.where(y >= 0.5, rows, -1)
@@ -550,6 +842,7 @@ def export_ird_gt_from_capability_map(
 
     # --- Jitter from face normal (pos/neg half-half), NOT isotropic MC-noise ---
     n_jit = int(cfg.n_jitter)
+    n_jit = min(n_jit, max(n_trusted * 2, n_trusted))
     n_jp = n_jit // 2
     n_jn = n_jit - n_jp
     print(f"[gt] face-normal jitter pos={n_jp:,} neg={n_jn:,}", flush=True)
@@ -756,7 +1049,7 @@ def export_ird_gt_from_capability_map(
         "sigma_r_deg": np.array([cfg.sigma_r_deg], dtype=np.float32),
         "feature_dim": np.array([6], dtype=np.int32),
         "feature_kind": np.array([1], dtype=np.int32),
-        "label_kind": np.array([2], dtype=np.int32),  # 2 = soft/unknown/trusted
+        "label_kind": np.array([3], dtype=np.int32),  # 3 = stable-support v6
     }
 
 
@@ -1192,7 +1485,11 @@ def complete_frame_from_tool_axis(tool_axis: np.ndarray) -> np.ndarray:
 ### `ird_playground/neural/model.py`
 
 ```python
-"""Neural IRD v4: f_θ(p,u) → (reach_logit, margin, q). Natural 5-DoF + u PE."""
+"""Neural IRD v6: f_θ(p,u) → (reach_logit, margin, q).
+
+Physical-wavelength Fourier PE on position (independent of AABB span);
+Fourier PE on tool axis.
+"""
 
 from __future__ import annotations
 
@@ -1211,10 +1508,33 @@ except ImportError:  # pragma: no cover
     F = None  # type: ignore
 
 
+# Physical wavelengths (meters): coarse workspace → single-voxel boundary
+DEFAULT_P_WAVELENGTHS_M = (0.48, 0.24, 0.12, 0.06, 0.03, 0.015)
+
+
 def positional_encoding(x: "torch.Tensor", num_freqs: int) -> "torch.Tensor":
+    """Normalized-space Fourier (used for direction u)."""
     freqs = (2.0 ** torch.arange(num_freqs, device=x.device, dtype=x.dtype)) * np.pi
     xb = x.unsqueeze(-1) * freqs
     return torch.cat([x, torch.sin(xb).flatten(-2), torch.cos(xb).flatten(-2)], dim=-1)
+
+
+def physical_position_encoding(
+    p_m: "torch.Tensor",
+    wavelengths_m: "torch.Tensor",
+    *,
+    p_scale_m: float = 1.0,
+) -> "torch.Tensor":
+    """Fourier features with fixed physical wavelengths (meters).
+
+    Returns [p/p_scale, sin(2π p/λ), cos(2π p/λ)] for each λ.
+    """
+    p_raw = p_m / max(float(p_scale_m), 1e-6)
+    phase = 2.0 * np.pi * p_m.unsqueeze(-1) / wavelengths_m
+    return torch.cat(
+        [p_raw, torch.sin(phase).flatten(-2), torch.cos(phase).flatten(-2)],
+        dim=-1,
+    )
 
 
 # backward-compat alias
@@ -1236,7 +1556,8 @@ class ResidualSiLUBlock(nn.Module if nn is not None else object):  # type: ignor
 class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[misc]
     """6-D natural [p(3), u(3)] → reach_logit, margin, q.
 
-    Fourier PE on position (num_freqs) and tool axis (num_freqs_u).
+    Position: physical-wavelength Fourier (default 48…1.5 cm).
+    Direction: raw u + num_freqs_u Fourier bands.
     """
 
     def __init__(
@@ -1244,11 +1565,14 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
         *,
         in_dim: int = 6,
         num_freqs: int = 6,
-        num_freqs_u: int = 3,
+        num_freqs_u: int = 5,
         hidden: int = 256,
         depth: int = 5,
         tau_m: float = 1.0,
         lambda_q: float = 0.5,
+        p_wavelengths_m: tuple[float, ...] | list[float] | None = None,
+        p_scale_m: float = 1.0,
+        use_physical_pe: bool = True,
     ) -> None:
         if torch is None:
             raise ImportError("torch is required for NeuralIRDPoint")
@@ -1262,7 +1586,18 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
         self.depth = int(depth)
         self.tau_m = float(tau_m)
         self.lambda_q = float(lambda_q)
-        pe_p = 3 + 3 * 2 * self.num_freqs
+        self.p_scale_m = float(p_scale_m)
+        self.use_physical_pe = bool(use_physical_pe)
+        waves = tuple(p_wavelengths_m) if p_wavelengths_m is not None else DEFAULT_P_WAVELENGTHS_M
+        self.register_buffer(
+            "p_wavelengths_m",
+            torch.tensor(waves, dtype=torch.float32),
+        )
+        n_wave = int(self.p_wavelengths_m.numel())
+        if self.use_physical_pe:
+            pe_p = 3 + 3 * 2 * n_wave  # p_raw + sin/cos per λ per axis
+        else:
+            pe_p = 3 + 3 * 2 * self.num_freqs
         pe_u = 3 + 3 * 2 * self.num_freqs_u
         self.stem = nn.Linear(pe_p + pe_u, hidden)
         self.blocks = nn.ModuleList([ResidualSiLUBlock(hidden) for _ in range(max(1, depth - 1))])
@@ -1276,18 +1611,19 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
         self.aabb_lo.copy_(torch.as_tensor(lo, dtype=torch.float32).reshape(3))
         self.aabb_hi.copy_(torch.as_tensor(hi, dtype=torch.float32).reshape(3))
 
-    def normalize_xyz(self, features: "torch.Tensor") -> "torch.Tensor":
+    def encode(self, features: "torch.Tensor") -> "torch.Tensor":
         p = features[..., :3]
         u = features[..., 3:6]
         u = u / (u.norm(dim=-1, keepdim=True).clamp_min(1e-6))
-        span = (self.aabb_hi - self.aabb_lo).clamp_min(1e-6)
-        p_n = 2.0 * (p - self.aabb_lo) / span - 1.0
-        return torch.cat([p_n, u], dim=-1)
-
-    def encode(self, features: "torch.Tensor") -> "torch.Tensor":
-        x = self.normalize_xyz(features)
-        p_enc = positional_encoding(x[..., :3], self.num_freqs)
-        u_enc = positional_encoding(x[..., 3:6], self.num_freqs_u)
+        if self.use_physical_pe:
+            p_enc = physical_position_encoding(
+                p, self.p_wavelengths_m, p_scale_m=self.p_scale_m
+            )
+        else:
+            span = (self.aabb_hi - self.aabb_lo).clamp_min(1e-6)
+            p_n = 2.0 * (p - self.aabb_lo) / span - 1.0
+            p_enc = positional_encoding(p_n, self.num_freqs)
+        u_enc = positional_encoding(u, self.num_freqs_u)
         return torch.cat([p_enc, u_enc], dim=-1)
 
     def forward(
@@ -1343,11 +1679,14 @@ class NeuralIRD:
         model = NeuralIRDPoint(
             in_dim=int(cfg.get("in_dim", 6)),
             num_freqs=int(cfg.get("num_freqs", 6)),
-            num_freqs_u=int(cfg.get("num_freqs_u", 3)),
+            num_freqs_u=int(cfg.get("num_freqs_u", 5)),
             hidden=int(cfg.get("hidden", 256)),
             depth=int(cfg.get("depth", 5)),
             tau_m=float(cfg.get("tau_m", 1.0)),
             lambda_q=float(cfg.get("lambda_q", 0.5)),
+            p_wavelengths_m=cfg.get("p_wavelengths_m"),
+            p_scale_m=float(cfg.get("p_scale_m", 1.0)),
+            use_physical_pe=bool(cfg.get("use_physical_pe", True)),
         )
         model.load_state_dict(ckpt["state_dict"], strict=False)
         aabb = cfg.get("aabb")
@@ -1361,6 +1700,7 @@ class NeuralIRD:
     def save(self, path: str | Path, *, model_cfg: dict | None = None, meta: dict | None = None) -> None:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
+        waves = self.model.p_wavelengths_m.detach().cpu().numpy().tolist()
         cfg = model_cfg or {
             "in_dim": 6,
             "num_freqs": self.model.num_freqs,
@@ -1369,6 +1709,9 @@ class NeuralIRD:
             "depth": self.model.depth,
             "tau_m": self.model.tau_m,
             "lambda_q": self.model.lambda_q,
+            "use_physical_pe": self.model.use_physical_pe,
+            "p_wavelengths_m": waves,
+            "p_scale_m": self.model.p_scale_m,
             "aabb": {
                 "lo": self.model.aabb_lo.detach().cpu().numpy().tolist(),
                 "hi": self.model.aabb_hi.detach().cpu().numpy().tolist(),
@@ -1413,9 +1756,10 @@ class NeuralIRD:
 ### `ird_playground/neural/train.py`
 
 ```python
-"""Train Neural IRD v4: BCE + masked SmoothL1(margin) + SmoothL1(q|pos).
+"""Train Neural IRD v6: BCE(hard y) + masked SmoothL1(margin) + SmoothL1(q|pos).
 
-Difficulty-aware batches, block-split val, best-by-IoU checkpoints.
+Cycling (no-replace) difficulty batches, block-split val with fixed calib/test,
+report IoU@0.5 and IoU@calibrated separately.
 """
 
 from __future__ import annotations
@@ -1465,11 +1809,13 @@ class TrainConfig:
     save_freq: int = 25
     val_frac: float = 0.15
     num_freqs: int = 6
-    num_freqs_u: int = 3
+    num_freqs_u: int = 5
     hidden: int = 256
     depth: int = 5
     tau_m: float = 1.0
     lambda_q_score: float = 0.5
+    use_physical_pe: bool = True
+    p_scale_m: float = 1.0
     seed: int = 42
     checkpoint: str = "data/checkpoints/latest.pt"
     checkpoint_dir: str = "data/checkpoints"
@@ -1492,6 +1838,8 @@ class TrainConfig:
     # alias for old yaml key "jitter"
     mix_jitter: float = 0.0
     val_eval_n: int = 65536
+    val_calib_frac: float = 0.5
+    train_hard_y: bool = True  # Phase A: BCE on reachable, not y_soft
     mae_max: float = 0.35
     spearman_min: float = 0.70
     boundary_iou_min: float = 0.70
@@ -1549,11 +1897,13 @@ def load_train_config(path: str | Path, *, root: Path | None = None) -> TrainCon
         synthetic_n=int(data.get("synthetic_n", 8192)),
         val_frac=float(data.get("val_frac", 0.15)),
         num_freqs=int(model.get("num_freqs", 6)),
-        num_freqs_u=int(model.get("num_freqs_u", 3)),
+        num_freqs_u=int(model.get("num_freqs_u", 5)),
         hidden=int(model.get("hidden", 256)),
         depth=int(model.get("depth", 5)),
         tau_m=float(model.get("tau_m", 1.0)),
         lambda_q_score=float(model.get("lambda_q", 0.5)),
+        use_physical_pe=bool(model.get("use_physical_pe", True)),
+        p_scale_m=float(model.get("p_scale_m", 1.0)),
         epochs=int(train.get("epochs", 100)),
         batch_size=int(train.get("batch_size", 1024)),
         num_workers=int(train.get("num_workers", 4)),
@@ -1577,6 +1927,8 @@ def load_train_config(path: str | Path, *, root: Path | None = None) -> TrainCon
         mix_jitter_neg=float(mix.get("jitter_neg", mix.get("jitter", 0.20) / 2)),
         mix_exterior=float(mix.get("exterior", 0.15)),
         val_eval_n=int(train.get("val_eval_n", 65536)),
+        val_calib_frac=float(train.get("val_calib_frac", 0.5)),
+        train_hard_y=bool(train.get("train_hard_y", True)),
         lambda_cls=float(loss.get("lambda_cls", 1.0)),
         lambda_margin=float(loss.get("lambda_margin", 0.0)),
         lambda_q=float(loss.get("lambda_q", 0.0)),
@@ -1654,9 +2006,13 @@ _split = _block_split
 
 
 class IRDTensorDataset(Dataset if torch is not None else object):  # type: ignore[misc]
-    def __init__(self, arrays: dict, yk: str, mk: str, qk: str):
+    def __init__(self, arrays: dict, yk: str, mk: str, qk: str, *, hard_y: bool = True):
         self.x = torch.as_tensor(arrays["features"], dtype=torch.float32)
-        y_raw = arrays.get("y_soft", arrays[yk])
+        # Phase A: hard classification on reachable; y_soft reserved for density head
+        if hard_y:
+            y_raw = arrays[yk]
+        else:
+            y_raw = arrays.get("y_soft", arrays[yk])
         self.y = torch.as_tensor(y_raw, dtype=torch.float32)
         self.m = torch.as_tensor(arrays[mk], dtype=torch.float32)
         self.q = torch.as_tensor(arrays[qk], dtype=torch.float32)
@@ -1684,12 +2040,35 @@ class IRDTensorDataset(Dataset if torch is not None else object):  # type: ignor
         return self.x[i], self.y[i], self.m[i], self.q[i], self.mw[i], self.cw[i], self.layer[i]
 
 
+class CyclingLayerPool:
+    """Without-replacement cycling within a layer (shuffle on wrap)."""
+
+    def __init__(self, indices: np.ndarray, seed: int):
+        self.indices = np.asarray(indices, dtype=np.int64).copy()
+        self.rng = np.random.default_rng(seed)
+        self.pos = len(self.indices)  # force shuffle on first take
+
+    def take(self, n: int) -> np.ndarray:
+        if len(self.indices) == 0:
+            return np.zeros(n, dtype=np.int64)
+        result = []
+        remain = int(n)
+        while remain > 0:
+            if self.pos >= len(self.indices):
+                self.rng.shuffle(self.indices)
+                self.pos = 0
+            k = min(remain, len(self.indices) - self.pos)
+            result.append(self.indices[self.pos : self.pos + k])
+            self.pos += k
+            remain -= k
+        return np.concatenate(result)
+
+
 class DifficultyBatchSampler(Sampler if torch is not None else object):  # type: ignore[misc]
-    """Fixed mix: interior / bnd+ / bnd- / jitter / exterior."""
+    """Fixed mix: interior / bnd+ / bnd- / jitter_pos / jitter_neg / exterior."""
 
     def __init__(self, layer: np.ndarray, batch_size: int, mix: dict[int, float], *, seed: int = 0, steps: int | None = None):
         self.batch_size = int(batch_size)
-        self.rng = np.random.default_rng(seed)
         self.pools = {}
         for lid in (
             LAYER_INTERIOR,
@@ -1701,7 +2080,6 @@ class DifficultyBatchSampler(Sampler if torch is not None else object):  # type:
         ):
             idx = np.flatnonzero(layer == lid)
             self.pools[lid] = idx if idx.size else np.array([], dtype=np.int64)
-        # remap empty pools to nearest non-empty
         fallback = np.arange(len(layer), dtype=np.int64)
         for lid, idx in list(self.pools.items()):
             if idx.size == 0:
@@ -1716,7 +2094,6 @@ class DifficultyBatchSampler(Sampler if torch is not None else object):  # type:
         }
         wsum = sum(weights.values()) or 1.0
         counts = {k: max(1, int(round(self.batch_size * v / wsum))) for k, v in weights.items()}
-        # fix rounding
         while sum(counts.values()) > self.batch_size:
             k = max(counts, key=counts.get)
             counts[k] -= 1
@@ -1724,6 +2101,10 @@ class DifficultyBatchSampler(Sampler if torch is not None else object):  # type:
             k = max(weights, key=weights.get)
             counts[k] += 1
         self.counts = counts
+        self.layer_pools = {
+            lid: CyclingLayerPool(idx, seed=seed + int(lid) * 97)
+            for lid, idx in self.pools.items()
+        }
         n = len(layer)
         self.steps = int(steps) if steps is not None else max(1, n // self.batch_size)
 
@@ -1734,8 +2115,7 @@ class DifficultyBatchSampler(Sampler if torch is not None else object):  # type:
         for _ in range(self.steps):
             batch = []
             for lid, c in self.counts.items():
-                pool = self.pools[lid]
-                batch.append(self.rng.choice(pool, size=c, replace=True))
+                batch.append(self.layer_pools[lid].take(c))
             yield np.concatenate(batch).tolist()
 
 
@@ -1748,8 +2128,8 @@ def _maybe_init_wandb(cfg: TrainConfig):
         project=cfg.wandb_project,
         entity=cfg.wandb_entity,
         mode=cfg.wandb_mode,
-        name=cfg.wandb_run_name or "neural_ird_v4",
-        tags=cfg.wandb_tags or ["neural_ird", "v4", "natural_pu"],
+        name=cfg.wandb_run_name or "neural_ird_v6",
+        tags=cfg.wandb_tags or ["neural_ird", "v6", "stable_support"],
         config={k: v for k, v in asdict(cfg).items() if not k.startswith("wandb_")},
     )
 
@@ -1799,7 +2179,7 @@ def _compute_loss(reach_logit, margin, q, y, m_gt, q_gt, mw, cw, cfg: TrainConfi
     }
 
 
-def _layer_metrics(y: np.ndarray, p: np.ndarray, layer: np.ndarray) -> dict[str, float]:
+def _layer_metrics(y: np.ndarray, p: np.ndarray, layer: np.ndarray, *, threshold: float = 0.5) -> dict[str, float]:
     out = {}
     names = {
         LAYER_INTERIOR: "interior",
@@ -1809,7 +2189,7 @@ def _layer_metrics(y: np.ndarray, p: np.ndarray, layer: np.ndarray) -> dict[str,
         LAYER_JITTER_NEG: "jitter_neg",
         LAYER_EXTERIOR: "exterior",
     }
-    pred = p >= 0.5
+    pred = p >= threshold
     gt = y >= 0.5
     for lid, name in names.items():
         m = layer == lid
@@ -1827,46 +2207,47 @@ def _layer_metrics(y: np.ndarray, p: np.ndarray, layer: np.ndarray) -> dict[str,
     union = float(np.logical_or(gt, pred).sum()) + 1e-9
     out["iou"] = inter / union
     out["accuracy"] = float((pred == gt).mean())
-    # threshold-swept IoU + PR-AUC proxy
-    thresholds = np.linspace(0.05, 0.95, 19)
-    ious = []
-    for t in thresholds:
-        yp = p >= t
-        inter_t = float(np.logical_and(gt, yp).sum())
-        union_t = float(np.logical_or(gt, yp).sum()) + 1e-9
-        ious.append(inter_t / union_t)
-    best_i = int(np.argmax(ious))
-    out["best_iou"] = float(ious[best_i])
-    out["best_threshold"] = float(thresholds[best_i])
-    # average precision approx via sorted scores
-    order = np.argsort(-p)
-    y_s = gt[order].astype(np.float64)
-    if y_s.sum() > 0 and (~gt).sum() > 0:
-        tp = np.cumsum(y_s)
-        fp = np.cumsum(1.0 - y_s)
-        prec = tp / np.maximum(tp + fp, 1.0)
-        rec = tp / y_s.sum()
-        # AP = ∫ P dR
-        out["pr_auc"] = float(np.sum((rec[1:] - rec[:-1]) * prec[1:]))
-    else:
-        out["pr_auc"] = 0.0
     return out
 
 
-def _eval_subset(net, arrays, cfg: TrainConfig, seed: int = 0) -> dict[str, float]:
+def _pr_auc(y: np.ndarray, p: np.ndarray) -> float:
+    gt = y >= 0.5
+    order = np.argsort(-p)
+    y_s = gt[order].astype(np.float64)
+    if y_s.sum() <= 0 or (~gt).sum() <= 0:
+        return 0.0
+    tp = np.cumsum(y_s)
+    fp = np.cumsum(1.0 - y_s)
+    prec = tp / np.maximum(tp + fp, 1.0)
+    rec = tp / y_s.sum()
+    return float(np.sum((rec[1:] - rec[:-1]) * prec[1:]))
+
+
+def _best_iou_threshold(y: np.ndarray, p: np.ndarray) -> tuple[float, float]:
+    gt = y >= 0.5
+    thresholds = np.linspace(0.05, 0.95, 19)
+    best_t, best_iou = 0.5, -1.0
+    for t in thresholds:
+        yp = p >= t
+        inter = float(np.logical_and(gt, yp).sum())
+        union = float(np.logical_or(gt, yp).sum()) + 1e-9
+        iou = inter / union
+        if iou > best_iou:
+            best_iou, best_t = iou, float(t)
+    return best_t, best_iou
+
+
+def _make_fixed_eval_indices(arrays: dict, n_eval: int, seed: int) -> np.ndarray:
     n = arrays["features"].shape[0]
-    yk, mk, qk = _y_key(arrays), _m_key(arrays), _q_key(arrays)
     rng = np.random.default_rng(seed)
-    # Prefer supervised labels only (cls_weight>0); unknowns must not enter IoU.
     cw_all = arrays.get("cls_weight")
     supervised = np.flatnonzero(cw_all > 0) if cw_all is not None else np.arange(n)
     if supervised.size == 0:
         supervised = np.arange(n)
-    # stratified by layer within supervised pool
-    if "layer_id" in arrays and supervised.size > cfg.val_eval_n:
+    if "layer_id" in arrays and supervised.size > n_eval:
         layer_all = arrays["layer_id"]
         picks = []
-        per = max(1, cfg.val_eval_n // 6)
+        per = max(1, n_eval // 6)
         for lid in (
             LAYER_INTERIOR,
             LAYER_BND_POS,
@@ -1879,16 +2260,60 @@ def _eval_subset(net, arrays, cfg: TrainConfig, seed: int = 0) -> dict[str, floa
             if idx.size == 0:
                 continue
             picks.append(rng.choice(idx, size=min(per, idx.size), replace=False))
-        idx = np.concatenate(picks) if picks else rng.choice(supervised, size=min(cfg.val_eval_n, supervised.size), replace=False)
-    else:
-        idx = rng.choice(supervised, size=min(cfg.val_eval_n, supervised.size), replace=False)
+        return np.concatenate(picks) if picks else rng.choice(supervised, size=min(n_eval, supervised.size), replace=False)
+    return rng.choice(supervised, size=min(n_eval, supervised.size), replace=False)
 
+
+def _split_val_blocks(val: dict, frac: float, seed: int) -> tuple[dict, dict]:
+    """Split validation arrays into fixed calibration / test by block_id."""
+    n = val["features"].shape[0]
+
+    def take(ix):
+        out = {}
+        for k, v in val.items():
+            if isinstance(v, np.ndarray) and v.ndim >= 1 and v.shape[0] == n:
+                out[k] = v[ix]
+            else:
+                out[k] = v
+        return out
+
+    if "block_id" in val:
+        blocks = val["block_id"]
+        uniq = np.unique(blocks)
+        rng = np.random.default_rng(seed)
+        rng.shuffle(uniq)
+        n_cal = max(1, int(len(uniq) * frac))
+        cal_blocks = set(uniq[:n_cal].tolist())
+        is_cal = np.array([int(b) in cal_blocks for b in blocks], dtype=bool)
+        cal_idx, test_idx = np.flatnonzero(is_cal), np.flatnonzero(~is_cal)
+        if cal_idx.size == 0 or test_idx.size == 0:
+            idx = rng.permutation(n)
+            n_cal_s = max(1, int(n * frac))
+            cal_idx, test_idx = idx[:n_cal_s], idx[n_cal_s:]
+    else:
+        idx = np.random.default_rng(seed).permutation(n)
+        n_cal_s = max(1, int(n * frac))
+        cal_idx, test_idx = idx[:n_cal_s], idx[n_cal_s:]
+    return take(cal_idx), take(test_idx)
+
+
+def _eval_fixed(
+    net,
+    arrays: dict,
+    idx: np.ndarray,
+    *,
+    threshold: float = 0.5,
+    mk: str | None = None,
+) -> dict[str, float]:
+    yk = _y_key(arrays)
+    mk = mk or _m_key(arrays)
     feats = arrays["features"][idx]
     pred = net.score_features_np(feats)
-    # hard reachability for IoU (not soft training target)
     y = arrays[yk][idx]
     layer = arrays["layer_id"][idx] if "layer_id" in arrays else np.zeros(len(idx), dtype=np.int32)
-    metrics = _layer_metrics(y, pred["p_reach"], layer)
+    metrics = _layer_metrics(y, pred["p_reach"], layer, threshold=threshold)
+    metrics["pr_auc"] = _pr_auc(y, pred["p_reach"])
+    metrics["threshold"] = float(threshold)
     mw = arrays["margin_weight"][idx] if "margin_weight" in arrays else np.ones(len(idx))
     mask = mw > 0
     if mask.any():
@@ -1897,7 +2322,64 @@ def _eval_subset(net, arrays, cfg: TrainConfig, seed: int = 0) -> dict[str, floa
         )
     else:
         metrics["boundary_margin_mae"] = 0.0
+    return metrics, y, pred["p_reach"]
+
+
+def _eval_subset(net, arrays, cfg: TrainConfig, seed: int = 0) -> dict[str, float]:
+    """Legacy single-split eval (kept for callers); prefer _eval_calib_test."""
+    idx = _make_fixed_eval_indices(arrays, cfg.val_eval_n, seed)
+    pred = net.score_features_np(arrays["features"][idx])
+    y = arrays[_y_key(arrays)][idx]
+    layer = arrays["layer_id"][idx] if "layer_id" in arrays else np.zeros(len(idx), dtype=np.int32)
+    metrics = _layer_metrics(y, pred["p_reach"], layer, threshold=0.5)
+    metrics["pr_auc"] = _pr_auc(y, pred["p_reach"])
+    t_star, best_iou = _best_iou_threshold(y, pred["p_reach"])
+    metrics["best_iou"] = best_iou
+    metrics["best_threshold"] = t_star
+    metrics["iou_t05"] = metrics["iou"]
+    mk = _m_key(arrays)
+    mw = arrays["margin_weight"][idx] if "margin_weight" in arrays else np.ones(len(idx))
+    mask = mw > 0
+    metrics["boundary_margin_mae"] = (
+        float(np.mean(np.abs(pred["m"][mask] - arrays[mk][idx][mask]))) if mask.any() else 0.0
+    )
     return metrics
+
+
+def _eval_calib_test(
+    net,
+    val_calib: dict,
+    val_test: dict,
+    calib_idx: np.ndarray,
+    test_idx: np.ndarray,
+) -> dict[str, float]:
+    """Fixed calibration → threshold; fixed test → report IoU@0.5 and IoU@t*."""
+    # Calib: choose threshold
+    calib_pred = net.score_features_np(val_calib["features"][calib_idx])
+    y_cal = val_calib[_y_key(val_calib)][calib_idx]
+    t_star, calib_best = _best_iou_threshold(y_cal, calib_pred["p_reach"])
+
+    # Test @ 0.5
+    m05, y_te, p_te = _eval_fixed(net, val_test, test_idx, threshold=0.5)
+    # Test @ calibrated
+    mcal, _, _ = _eval_fixed(net, val_test, test_idx, threshold=t_star)
+
+    out = {
+        "iou_t05": float(m05["iou"]),
+        "iou_calibrated": float(mcal["iou"]),
+        "val_threshold": float(t_star),
+        "calib_best_iou": float(calib_best),
+        "pr_auc": float(m05["pr_auc"]),
+        "accuracy": float(m05["accuracy"]),
+        "boundary_margin_mae": float(m05["boundary_margin_mae"]),
+        # layer metrics at calibrated threshold (more informative for boundary)
+        **{k: v for k, v in mcal.items() if k.endswith("_recall") or k.endswith("_spec")},
+        # keep aliases for checkpoint selection
+        "best_iou": float(mcal["iou"]),
+        "iou": float(m05["iou"]),
+        "best_threshold": float(t_star),
+    }
+    return out
 
 
 def train_point_field(cfg: TrainConfig) -> dict:
@@ -1919,8 +2401,8 @@ def train_point_field(cfg: TrainConfig) -> dict:
     aabb_lo = np.asarray(arrays["aabb_lo"], dtype=np.float32).reshape(3)
     aabb_hi = np.asarray(arrays["aabb_hi"], dtype=np.float32).reshape(3)
 
-    tr_ds = IRDTensorDataset(train, yk, mk, qk)
-    va_ds = IRDTensorDataset(val, yk, mk, qk)
+    tr_ds = IRDTensorDataset(train, yk, mk, qk, hard_y=cfg.train_hard_y)
+    va_ds = IRDTensorDataset(val, yk, mk, qk, hard_y=cfg.train_hard_y)
     mix = {
         LAYER_INTERIOR: cfg.mix_interior,
         LAYER_BND_POS: cfg.mix_bnd_pos,
@@ -1946,6 +2428,17 @@ def train_point_field(cfg: TrainConfig) -> dict:
         pin_memory=(device.type == "cuda"),
     )
 
+    # Fixed calib / test indices for comparable epoch curves
+    val_calib, val_test = _split_val_blocks(val, cfg.val_calib_frac, cfg.seed + 7)
+    per_half = max(1, cfg.val_eval_n // 2)
+    calib_idx = _make_fixed_eval_indices(val_calib, per_half, cfg.seed)
+    test_idx = _make_fixed_eval_indices(val_test, per_half, cfg.seed + 1)
+    print(
+        f"[train] fixed val: calib_n={len(calib_idx)} test_n={len(test_idx)} "
+        f"physical_pe={cfg.use_physical_pe} freqs_u={cfg.num_freqs_u}",
+        flush=True,
+    )
+
     model = NeuralIRDPoint(
         in_dim=6,
         num_freqs=cfg.num_freqs,
@@ -1954,6 +2447,8 @@ def train_point_field(cfg: TrainConfig) -> dict:
         depth=cfg.depth,
         tau_m=cfg.tau_m,
         lambda_q=cfg.lambda_q_score,
+        use_physical_pe=cfg.use_physical_pe,
+        p_scale_m=cfg.p_scale_m,
     ).to(device)
     model.set_aabb(aabb_lo, aabb_hi)
     if cfg.torch_compile and hasattr(torch, "compile"):
@@ -1970,6 +2465,8 @@ def train_point_field(cfg: TrainConfig) -> dict:
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     def model_cfg():
+        src = model._orig_mod if hasattr(model, "_orig_mod") else model
+        waves = src.p_wavelengths_m.detach().cpu().numpy().tolist()
         return {
             "in_dim": 6,
             "num_freqs": cfg.num_freqs,
@@ -1978,6 +2475,9 @@ def train_point_field(cfg: TrainConfig) -> dict:
             "depth": cfg.depth,
             "tau_m": cfg.tau_m,
             "lambda_q": cfg.lambda_q_score,
+            "use_physical_pe": cfg.use_physical_pe,
+            "p_wavelengths_m": waves,
+            "p_scale_m": cfg.p_scale_m,
             "aabb": {"lo": aabb_lo.tolist(), "hi": aabb_hi.tolist()},
             "feature_kind": "natural_pu",
         }
@@ -1995,6 +2495,8 @@ def train_point_field(cfg: TrainConfig) -> dict:
             depth=cfg.depth,
             tau_m=cfg.tau_m,
             lambda_q=cfg.lambda_q_score,
+            use_physical_pe=cfg.use_physical_pe,
+            p_scale_m=cfg.p_scale_m,
         )
         clean.load_state_dict(state)
         clean.set_aabb(aabb_lo, aabb_hi)
@@ -2076,8 +2578,15 @@ def train_point_field(cfg: TrainConfig) -> dict:
             wrapper = NeuralIRD(
                 model._orig_mod if hasattr(model, "_orig_mod") else model, device=str(device)
             )
-            val_m = _eval_subset(wrapper, val, cfg, seed=cfg.seed + epoch)
-            val_iou = float(val_m.get("best_iou", val_m["iou"]))
+            val_m = _eval_calib_test(wrapper, val_calib, val_test, calib_idx, test_idx)
+            # also fixed train subset for train/val gap diagnosis
+            train_idx_fixed = _make_fixed_eval_indices(train, min(8192, cfg.val_eval_n // 4), cfg.seed + 99)
+            train_m, _, _ = _eval_fixed(wrapper, train, train_idx_fixed, threshold=0.5)
+            train_m["pr_auc"] = _pr_auc(
+                train[_y_key(train)][train_idx_fixed],
+                wrapper.score_features_np(train["features"][train_idx_fixed])["p_reach"],
+            )
+            val_iou = float(val_m.get("iou_calibrated", val_m.get("best_iou", val_m["iou"])))
             bmae = float(val_m.get("boundary_margin_mae", 0.0))
 
             row = {
@@ -2087,16 +2596,21 @@ def train_point_field(cfg: TrainConfig) -> dict:
                 "val_iou": val_iou,
                 "boundary_margin_mae": bmae,
                 "lr": float(opt.param_groups[0]["lr"]),
+                "train_iou_t05": float(train_m["iou"]),
+                "train_pr_auc": float(train_m["pr_auc"]),
                 **{f"val_{k}": v for k, v in val_m.items()},
             }
             history.append(row)
             print(
                 f"epoch={epoch} train_loss={row['train_loss']:.4f} "
-                f"val_loss={row['val_loss']:.4f} val_iou={val_iou:.3f} "
-                f"best_iou={float(val_m.get('best_iou', val_iou)):.3f}@"
-                f"{float(val_m.get('best_threshold', 0.5)):.2f} "
+                f"val_loss={row['val_loss']:.4f} "
+                f"iou@0.5={float(val_m.get('iou_t05', 0)):.3f} "
+                f"iou@cal={val_iou:.3f}@t={float(val_m.get('val_threshold', 0.5)):.2f} "
                 f"pr_auc={float(val_m.get('pr_auc', 0)):.3f} "
-                f"bnd_m_mae={bmae:.3f} lr={row['lr']:.2e}"
+                f"train_iou={float(train_m['iou']):.3f} "
+                f"bnd_pos_r={float(val_m.get('bnd_pos_recall', 0)):.3f} "
+                f"bnd_neg_s={float(val_m.get('bnd_neg_spec', 0)):.3f} "
+                f"lr={row['lr']:.2e}"
             )
             if wb_run is not None:
                 import wandb
@@ -2106,7 +2620,12 @@ def train_point_field(cfg: TrainConfig) -> dict:
                         "epoch": epoch,
                         "train/loss": row["train_loss"],
                         "val/loss": row["val_loss"],
-                        "val/iou": val_iou,
+                        "val/iou_t05": float(val_m.get("iou_t05", 0)),
+                        "val/iou_calibrated": val_iou,
+                        "val/threshold": float(val_m.get("val_threshold", 0.5)),
+                        "val/pr_auc": float(val_m.get("pr_auc", 0)),
+                        "train/iou_t05": float(train_m["iou"]),
+                        "train/pr_auc": float(train_m["pr_auc"]),
                         "val/boundary_margin_mae": bmae,
                         **{f"val/{k}": v for k, v in val_m.items()},
                         "train/lr_epoch": row["lr"],
@@ -2138,6 +2657,8 @@ def train_point_field(cfg: TrainConfig) -> dict:
             depth=cfg.depth,
             tau_m=cfg.tau_m,
             lambda_q=cfg.lambda_q_score,
+            use_physical_pe=cfg.use_physical_pe,
+            p_scale_m=cfg.p_scale_m,
         )
         clean.load_state_dict(final_state)
         clean.set_aabb(aabb_lo, aabb_hi)
@@ -2156,7 +2677,7 @@ def train_point_field(cfg: TrainConfig) -> dict:
             },
         )
         metrics = evaluate_point_field(wrapper, val)
-        metrics.update(_eval_subset(wrapper, val, cfg, seed=cfg.seed))
+        metrics.update(_eval_calib_test(wrapper, val_calib, val_test, calib_idx, test_idx))
         if wb_run is not None:
             import wandb
 
@@ -2276,6 +2797,8 @@ def load_ird_gt_config(path: Path, *, root: Path) -> tuple[Path, Path, IrdGtConf
         soft_tau=float(samp.get("soft_tau", 0.05)),
         unknown_soft_max=float(samp.get("unknown_soft_max", 0.25)),
         trusted_neg_soft_max=float(samp.get("trusted_neg_soft_max", 0.0)),
+        min_positive_support=int(samp.get("min_positive_support", 3)),
+        min_trusted_face_pairs=int(samp.get("min_trusted_face_pairs", 5000)),
     )
     return map_dir, out, cfg
 
@@ -2315,9 +2838,9 @@ def main(argv: list[str] | None = None) -> int:
             "feature_dim": 6,
             "seed": cfg.seed,
             "n_total": int(arrays["features"].shape[0]),
-            "contract": "MC-hit=pos; far soft≈0=trusted neg; near-miss=unknown (cls_weight=0); natural(p,u); face-pair margin/jitter",
+            "contract": "MC-hit=pos; C+>=min & C-==0 trusted faces; no soft_tau fallback; natural(p,u)",
             "feature_kind": "natural_pu",
-            "label_kind": "trusted_soft_unknown",
+            "label_kind": "stable_support_v6",
         },
     )
     print(f"wrote {out}  N={arrays['features'].shape[0]} dim={arrays['features'].shape[1]}")
@@ -2384,7 +2907,274 @@ if __name__ == "__main__":
     raise SystemExit(main())
 ```
 
-### `rm75_control/.../capability_map.py (pack_bits only)`
+### `configs/ird_gt_config.yaml`
+
+```yaml
+# IRD GT v6 — stable-support boundary (C+>=3 & C-==0); no soft_tau fallback
+
+map_dir: ../rm75_control/data/reachability/rm75_6f_1p5cm_15deg_coll_probe
+out: data/ird/gt_samples_1p5cm_probe.npz
+
+sampling:
+  n_interior: 300000
+  n_boundary: 800000
+  n_exterior: 400000
+  n_jitter: 400000
+  max_orients_per_voxel: 28
+  hard_negative_frac: 0.50
+  hard_negative_radius_m: 0.06
+  sigma_p_m: 0.03
+  sigma_r_deg: 10.0
+  m_clip: 3.0
+  m_eps: 0.05
+  bbox_margin_m: 0.20
+  comfort_from: auto
+  k_candidates: 4
+  seed: 42
+  orient_knn: 7
+  soft_tau: 0.05
+  unknown_soft_max: 0.25
+  trusted_neg_soft_max: 1.0e-6
+  min_positive_support: 3
+  min_trusted_face_pairs: 5000
+```
+
+### `configs/train_config.yaml`
+
+```yaml
+# train_config.yaml — Neural IRD v6 phase A: cls-only on stable-support labels
+# Env: cd ird_playground && source env.sh
+
+data:
+  gt_npz: data/ird/gt_samples_1p5cm_probe.npz
+  synthetic_n: 8192
+  val_frac: 0.15
+
+model:
+  num_freqs: 6
+  num_freqs_u: 5
+  hidden: 256
+  depth: 5
+  tau_m: 1.0
+  lambda_q: 0.5
+  use_physical_pe: true
+  p_scale_m: 1.0
+
+training:
+  seed: 42
+  batch_size: 1024
+  num_workers: 4
+  torch_compile: false
+  epochs: 40
+  save_freq: 10
+  learning_rate: 3.0e-4
+  weight_decay: 1.0e-4
+  warmup_steps: 500
+  min_lr_ratio: 0.01
+  grad_clip_norm: 10.0
+  log_every_steps: 10
+  print_every_steps: 50
+  hardneg_every: 0
+  hardneg_frac: 0.0
+  val_eval_n: 65536
+  val_calib_frac: 0.5
+  train_hard_y: true
+  device: cuda
+  batch_mix:
+    interior: 0.15
+    bnd_pos: 0.25
+    bnd_neg: 0.25
+    jitter_pos: 0.10
+    jitter_neg: 0.10
+    exterior: 0.15
+
+loss:
+  lambda_cls: 1.0
+  lambda_margin: 0.0
+  lambda_q: 0.0
+  lambda_local: 0.0
+
+io:
+  checkpoint: data/checkpoints/latest.pt
+  checkpoint_dir: data/checkpoints
+  report: data/reports/train_point.json
+
+pass:
+  mae_max: 9.0
+  spearman_min: 0.0
+  boundary_iou_min: 0.65
+  grad_cosine_min: 0.0
+  ascent_improve_min: 0.0
+  rail_ad_fd_rel_max: 1.0
+  rail_sign_agree_min: 0.0
+  region_improve_min: 0.0
+
+wandb:
+  enable: true
+  project: neural-ird-rm75
+  entity: lpei82060-technical-university-of-munich
+  mode: online
+  run_name: neural_ird_v6_stable_support
+  tags: [neural_ird, v6, stable_support, physical_pe, cls_only]
+```
+
+### `configs/train_cls_only.yaml`
+
+```yaml
+# Alias of train_config.yaml — v6 cls-only on stable-support labels
+
+data:
+  gt_npz: data/ird/gt_samples_1p5cm_probe.npz
+  synthetic_n: 8192
+  val_frac: 0.15
+
+model:
+  num_freqs: 6
+  num_freqs_u: 5
+  hidden: 256
+  depth: 5
+  tau_m: 1.0
+  lambda_q: 0.5
+  use_physical_pe: true
+  p_scale_m: 1.0
+
+training:
+  seed: 42
+  batch_size: 1024
+  num_workers: 4
+  torch_compile: false
+  epochs: 40
+  save_freq: 10
+  learning_rate: 3.0e-4
+  weight_decay: 1.0e-4
+  warmup_steps: 500
+  min_lr_ratio: 0.01
+  grad_clip_norm: 10.0
+  log_every_steps: 10
+  print_every_steps: 50
+  hardneg_every: 0
+  hardneg_frac: 0.0
+  val_eval_n: 65536
+  val_calib_frac: 0.5
+  train_hard_y: true
+  device: cuda
+  batch_mix:
+    interior: 0.15
+    bnd_pos: 0.25
+    bnd_neg: 0.25
+    jitter_pos: 0.10
+    jitter_neg: 0.10
+    exterior: 0.15
+
+loss:
+  lambda_cls: 1.0
+  lambda_margin: 0.0
+  lambda_q: 0.0
+  lambda_local: 0.0
+
+io:
+  checkpoint: data/checkpoints/cls_only_latest.pt
+  checkpoint_dir: data/checkpoints
+  report: data/reports/train_cls_only.json
+
+pass:
+  mae_max: 9.0
+  spearman_min: 0.0
+  boundary_iou_min: 0.65
+  grad_cosine_min: 0.0
+  ascent_improve_min: 0.0
+  rail_ad_fd_rel_max: 1.0
+  rail_sign_agree_min: 0.0
+  region_improve_min: 0.0
+
+wandb:
+  enable: true
+  project: neural-ird-rm75
+  entity: lpei82060-technical-university-of-munich
+  mode: online
+  run_name: neural_ird_v6_stable_support
+  tags: [neural_ird, v6, stable_support, physical_pe, cls_only]
+```
+
+### `configs/train_phase_b.yaml`
+
+```yaml
+# Phase B: cls + boundary margin + q (after v6 Phase A gate)
+
+data:
+  gt_npz: data/ird/gt_samples_1p5cm_probe.npz
+  synthetic_n: 8192
+  val_frac: 0.15
+
+model:
+  num_freqs: 6
+  num_freqs_u: 5
+  hidden: 256
+  depth: 5
+  tau_m: 1.0
+  lambda_q: 0.5
+  use_physical_pe: true
+  p_scale_m: 1.0
+
+training:
+  seed: 42
+  batch_size: 1024
+  num_workers: 4
+  torch_compile: false
+  epochs: 60
+  save_freq: 10
+  learning_rate: 2.0e-4
+  weight_decay: 1.0e-4
+  warmup_steps: 300
+  min_lr_ratio: 0.01
+  grad_clip_norm: 10.0
+  log_every_steps: 10
+  print_every_steps: 50
+  hardneg_every: 0
+  hardneg_frac: 0.0
+  val_eval_n: 65536
+  val_calib_frac: 0.5
+  train_hard_y: true
+  device: cuda
+  batch_mix:
+    interior: 0.15
+    bnd_pos: 0.25
+    bnd_neg: 0.25
+    jitter_pos: 0.10
+    jitter_neg: 0.10
+    exterior: 0.15
+
+loss:
+  lambda_cls: 1.0
+  lambda_margin: 0.25
+  lambda_q: 0.1
+  lambda_local: 0.0
+
+io:
+  checkpoint: data/checkpoints/phase_b_latest.pt
+  checkpoint_dir: data/checkpoints
+  report: data/reports/train_phase_b.json
+
+pass:
+  mae_max: 0.35
+  spearman_min: 0.70
+  boundary_iou_min: 0.65
+  grad_cosine_min: 0.30
+  ascent_improve_min: 0.40
+  rail_ad_fd_rel_max: 0.25
+  rail_sign_agree_min: 0.80
+  region_improve_min: 0.40
+
+wandb:
+  enable: true
+  project: neural-ird-rm75
+  entity: lpei82060-technical-university-of-munich
+  mode: online
+  run_name: neural_ird_v6_margin_q
+  tags: [neural_ird, v6, stable_support, physical_pe, margin_q]
+```
+
+### `rm75_control/.../capability_map.py (pack_bits_5dof / unpack_bits_5dof only)`
 
 ```python
 def pack_bits_5dof(bool_matrix: np.ndarray) -> np.ndarray:
@@ -2426,263 +3216,9 @@ def d_value_from_bitmask(packed: np.ndarray, n_orient: int) -> np.ndarray:
     return (counts.astype(np.float32) / float(n_orient)).astype(np.float32)
 ```
 
-### `configs/ird_gt_config.yaml`
-
-```yaml
-# IRD GT v5 — MC-hit positives; trusted far negatives; unknown near-misses excluded
-
-map_dir: ../rm75_control/data/reachability/rm75_6f_1p5cm_15deg_coll_probe
-out: data/ird/gt_samples_1p5cm_probe.npz
-
-sampling:
-  n_interior: 300000
-  n_boundary: 800000
-  n_exterior: 400000
-  n_jitter: 400000
-  max_orients_per_voxel: 28
-  hard_negative_frac: 0.50
-  hard_negative_radius_m: 0.06
-  sigma_p_m: 0.03
-  sigma_r_deg: 10.0
-  m_clip: 3.0
-  m_eps: 0.05
-  bbox_margin_m: 0.20
-  comfort_from: auto
-  k_candidates: 4
-  seed: 42
-  orient_knn: 7
-  soft_tau: 0.05
-  unknown_soft_max: 0.25
-  trusted_neg_soft_max: 1.0e-6
-```
-
-### `configs/train_config.yaml`
-
-```yaml
-# train_config.yaml — Neural IRD v5 phase A: cls-only on trusted MC-hit labels
-# Env: cd ird_playground && source env.sh
-
-data:
-  gt_npz: data/ird/gt_samples_1p5cm_probe.npz
-  synthetic_n: 8192
-  val_frac: 0.15
-
-model:
-  num_freqs: 6
-  num_freqs_u: 3
-  hidden: 256
-  depth: 5
-  tau_m: 1.0
-  lambda_q: 0.5
-
-training:
-  seed: 42
-  batch_size: 1024
-  num_workers: 4
-  torch_compile: false
-  epochs: 40
-  save_freq: 10
-  learning_rate: 3.0e-4
-  weight_decay: 1.0e-4
-  warmup_steps: 500
-  min_lr_ratio: 0.01
-  grad_clip_norm: 10.0
-  log_every_steps: 10
-  print_every_steps: 50
-  hardneg_every: 0
-  hardneg_frac: 0.0
-  val_eval_n: 65536
-  device: cuda
-  batch_mix:
-    interior: 0.15
-    bnd_pos: 0.25
-    bnd_neg: 0.25
-    jitter_pos: 0.10
-    jitter_neg: 0.10
-    exterior: 0.15
-
-loss:
-  lambda_cls: 1.0
-  lambda_margin: 0.0
-  lambda_q: 0.0
-  lambda_local: 0.0
-
-io:
-  checkpoint: data/checkpoints/latest.pt
-  checkpoint_dir: data/checkpoints
-  report: data/reports/train_point.json
-
-pass:
-  mae_max: 9.0
-  spearman_min: 0.0
-  boundary_iou_min: 0.70
-  grad_cosine_min: 0.0
-  ascent_improve_min: 0.0
-  rail_ad_fd_rel_max: 1.0
-  rail_sign_agree_min: 0.0
-  region_improve_min: 0.0
-
-wandb:
-  enable: true
-  project: neural-ird-rm75
-  entity: lpei82060-technical-university-of-munich
-  mode: online
-  run_name: neural_ird_v5_cls_trusted
-  tags: [neural_ird, v5, trusted_labels, cls_only]
-```
-
-### `configs/train_cls_only.yaml`
-
-```yaml
-# Alias of train_config.yaml — v5 cls-only on trusted MC-hit labels
-# Prefer: python -m ird_playground.cli.train --config configs/train_config.yaml
-
-data:
-  gt_npz: data/ird/gt_samples_1p5cm_probe.npz
-  synthetic_n: 8192
-  val_frac: 0.15
-
-model:
-  num_freqs: 6
-  num_freqs_u: 3
-  hidden: 256
-  depth: 5
-  tau_m: 1.0
-  lambda_q: 0.5
-
-training:
-  seed: 42
-  batch_size: 1024
-  num_workers: 4
-  torch_compile: false
-  epochs: 40
-  save_freq: 10
-  learning_rate: 3.0e-4
-  weight_decay: 1.0e-4
-  warmup_steps: 500
-  min_lr_ratio: 0.01
-  grad_clip_norm: 10.0
-  log_every_steps: 10
-  print_every_steps: 50
-  hardneg_every: 0
-  hardneg_frac: 0.0
-  val_eval_n: 65536
-  device: cuda
-  batch_mix:
-    interior: 0.15
-    bnd_pos: 0.25
-    bnd_neg: 0.25
-    jitter_pos: 0.10
-    jitter_neg: 0.10
-    exterior: 0.15
-
-loss:
-  lambda_cls: 1.0
-  lambda_margin: 0.0
-  lambda_q: 0.0
-  lambda_local: 0.0
-
-io:
-  checkpoint: data/checkpoints/latest.pt
-  checkpoint_dir: data/checkpoints
-  report: data/reports/train_point.json
-
-pass:
-  mae_max: 9.0
-  spearman_min: 0.0
-  boundary_iou_min: 0.70
-  grad_cosine_min: 0.0
-  ascent_improve_min: 0.0
-  rail_ad_fd_rel_max: 1.0
-  rail_sign_agree_min: 0.0
-  region_improve_min: 0.0
-
-wandb:
-  enable: true
-  project: neural-ird-rm75
-  entity: lpei82060-technical-university-of-munich
-  mode: online
-  run_name: neural_ird_v5_cls_trusted
-  tags: [neural_ird, v5, trusted_labels, cls_only]
-```
-
-### `configs/train_phase_b.yaml`
-
-```yaml
-# Phase B: cls + boundary margin + q (init from best_iou.pt manually if needed)
-
-data:
-  gt_npz: data/ird/gt_samples_1p5cm_probe.npz
-  synthetic_n: 8192
-  val_frac: 0.15
-
-model:
-  num_freqs: 6
-  num_freqs_u: 3
-  hidden: 256
-  depth: 5
-  tau_m: 1.0
-  lambda_q: 0.5
-
-training:
-  seed: 42
-  batch_size: 1024
-  num_workers: 4
-  torch_compile: false
-  epochs: 60
-  save_freq: 10
-  learning_rate: 2.0e-4
-  weight_decay: 1.0e-4
-  warmup_steps: 300
-  min_lr_ratio: 0.01
-  grad_clip_norm: 10.0
-  log_every_steps: 10
-  print_every_steps: 50
-  hardneg_every: 0
-  hardneg_frac: 0.0
-  val_eval_n: 65536
-  device: cuda
-  batch_mix:
-    interior: 0.15
-    bnd_pos: 0.25
-    bnd_neg: 0.25
-    jitter_pos: 0.10
-    jitter_neg: 0.10
-    exterior: 0.15
-
-loss:
-  lambda_cls: 1.0
-  lambda_margin: 0.25
-  lambda_q: 0.1
-  lambda_local: 0.0
-
-io:
-  checkpoint: data/checkpoints/phase_b_latest.pt
-  checkpoint_dir: data/checkpoints
-  report: data/reports/train_phase_b.json
-
-pass:
-  mae_max: 0.35
-  spearman_min: 0.70
-  boundary_iou_min: 0.70
-  grad_cosine_min: 0.30
-  ascent_improve_min: 0.40
-  rail_ad_fd_rel_max: 0.25
-  rail_sign_agree_min: 0.80
-  region_improve_min: 0.40
-
-wandb:
-  enable: true
-  project: neural-ird-rm75
-  entity: lpei82060-technical-university-of-munich
-  mode: online
-  run_name: neural_ird_v5_margin_q
-  tags: [neural_ird, v5, trusted_labels, margin_q]
-```
-
 ---
 
-## 5. bit round-trip 验证脚本
+## 7. Bit round-trip test
 
 ```python
 import numpy as np
@@ -2700,12 +3236,24 @@ def pack_bits_5dof(bool_matrix):
 
 rng = np.random.default_rng(0)
 bits = rng.random((100, 642)) > 0.8
-packed = pack_bits_5dof(bits)
-assert np.array_equal(bits, unpack_bits_5dof(packed, 642))
-bad = np.packbits(bits.astype(np.uint8), axis=1)  # big-endian default
-print("roundtrip OK; naive packbits mismatch:", float((bits != unpack_bits_5dof(bad, 642)).mean()))
+assert np.array_equal(bits, unpack_bits_5dof(pack_bits_5dof(bits), 642))
 ```
 
 ---
 
-*End of archive.*
+## 8. File index
+
+| Path | Role |
+|---|---|
+| `ird_playground/ird/export_gt.py` | GT v6 export |
+| `ird_playground/neural/train.py` | Training loop |
+| `ird_playground/neural/model.py` | MLP + physical PE |
+| `ird_playground/data/ird/gt_samples_1p5cm_probe.npz` | GT (N=836820) |
+| `ird_playground/data/checkpoints/best_iou.pt` | Phase A best |
+| `ird_playground/data/checkpoints/phase_b_latest.pt` | Phase B final |
+| `ird_playground/data/reports/train_point.json` | Phase A history |
+| `ird_playground/data/reports/train_phase_b.json` | Phase B history |
+
+---
+
+*End of third-party review archive.*

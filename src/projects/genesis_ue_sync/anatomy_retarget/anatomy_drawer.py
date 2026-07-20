@@ -264,5 +264,10 @@ class AnatomyLbsDrawer:
             mesh,
             self._mesh_node,
             double_sided=True,
+            # Blender renders the vascular meshes with smooth shading (and a
+            # post-Armature subdivision modifier).  Flat debug-mesh normals
+            # made the unchanged low-poly tube topology look kinked in
+            # Genesis even when its skinned centerline was continuous.
+            smooth=True,
         )
         return self._mesh_node is not None

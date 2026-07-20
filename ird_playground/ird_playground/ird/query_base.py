@@ -1,9 +1,14 @@
-"""Query-time base pose from rail_y via full SE(3) composition + AD helpers."""
+"""Query-time base pose from rail_y + full SE(3) composition (torch AD).
+
+Optimization variables are (λ, r). T_tcp(λ) must stay a Tensor — never
+np.asarray — so ∂C/∂λ and ∂C/∂r both survive.
+"""
 
 from __future__ import annotations
 
 import numpy as np
 
+from ird_playground.neural.cost import legacy_margin_score, optimization_cost
 from ird_playground.probe.se3 import features_from_delta_T, invert_T, se3_mul
 
 try:
@@ -13,7 +18,6 @@ except ImportError:  # pragma: no cover
 
 
 def trans_y(r: float) -> np.ndarray:
-    """Homogeneous translation along +Y (rail axis)."""
     T = np.eye(4, dtype=np.float64)
     T[1, 3] = float(r)
     return T
@@ -25,7 +29,6 @@ def T_base_from_rail_y(
     T_world_rail: np.ndarray | None = None,
     T_rail_base0: np.ndarray | None = None,
 ) -> np.ndarray:
-    """T_base(r) = T_world_rail · Trans_y(r) · T_rail_base0."""
     Twr = np.eye(4, dtype=np.float64) if T_world_rail is None else np.asarray(T_world_rail, dtype=np.float64)
     Trb = np.eye(4, dtype=np.float64) if T_rail_base0 is None else np.asarray(T_rail_base0, dtype=np.float64)
     return se3_mul(se3_mul(Twr, trans_y(rail_y)), Trb)
@@ -38,7 +41,6 @@ def delta_T_from_tcp_and_rail(
     T_world_rail: np.ndarray | None = None,
     T_rail_base0: np.ndarray | None = None,
 ) -> np.ndarray:
-    """ΔT(r) = T_tcp^{-1} T_base(r)."""
     T_base = T_base_from_rail_y(
         rail_y, T_world_rail=T_world_rail, T_rail_base0=T_rail_base0
     )
@@ -53,61 +55,197 @@ def score_vs_rail_y(
     T_world_rail: np.ndarray | None = None,
     T_rail_base0: np.ndarray | None = None,
 ) -> dict[str, float]:
-    """Query network at ΔT(rail_y); returns scalar m,q,score."""
     dT = delta_T_from_tcp_and_rail(
         T_tcp, rail_y, T_world_rail=T_world_rail, T_rail_base0=T_rail_base0
     )
     ps = neural_ird.score(dT)
-    return {"m": ps.m, "q": ps.q, "score": ps.score}
+    return {
+        "m": ps.m,
+        "q": ps.q,
+        "score": ps.score,
+        "reach_logit": ps.reach_logit,
+        "p_reach": ps.p_reach,
+    }
 
 
-def _features_torch_from_delta_T(dT: "torch.Tensor") -> "torch.Tensor":
-    """dT (4,4) → natural features (6,) = p_base,tcp + u_base."""
-    R_delta = dT[:3, :3]
-    t_delta = dT[:3, 3]
-    R_base_tcp = R_delta.T
-    p = -(R_base_tcp @ t_delta)
-    u = R_base_tcp[:, 2]
-    u = u / (u.norm().clamp_min(1e-6))
-    return torch.cat([p, u], dim=0)
+def invert_T_torch(T: "torch.Tensor") -> "torch.Tensor":
+    """Batch-capable inverse: (...,4,4) → (...,4,4)."""
+    R = T[..., :3, :3]
+    t = T[..., :3, 3]
+    Rt = R.transpose(-1, -2)
+    Ti = torch.zeros_like(T)
+    # identity on last  row/col then fill
+    eye = torch.eye(4, dtype=T.dtype, device=T.device)
+    if T.ndim == 2:
+        Ti = eye.clone()
+        Ti[:3, :3] = Rt
+        Ti[:3, 3] = -(Rt @ t)
+        return Ti
+    Ti = eye.expand(T.shape).clone()
+    Ti[..., :3, :3] = Rt
+    Ti[..., :3, 3] = -(Rt @ t.unsqueeze(-1)).squeeze(-1)
+    return Ti
+
+
+def features_from_delta_T_torch(dT: "torch.Tensor") -> "torch.Tensor":
+    """(…,4,4) → (…,6) natural [p,u]."""
+    R_delta = dT[..., :3, :3]
+    t_delta = dT[..., :3, 3]
+    R_base_tcp = R_delta.transpose(-1, -2)
+    p = -(R_base_tcp @ t_delta.unsqueeze(-1)).squeeze(-1)
+    u = R_base_tcp[..., :, 2]
+    u = u / u.norm(dim=-1, keepdim=True).clamp_min(1e-6)
+    return torch.cat([p, u], dim=-1)
+
+
+def T_base_from_rail_y_torch(
+    rail_y: "torch.Tensor",
+    *,
+    T_world_rail: "torch.Tensor",
+    T_rail_base0: "torch.Tensor",
+) -> "torch.Tensor":
+    """rail_y: () or (N,) → T_base (4,4) or (N,4,4)."""
+    device, dtype = rail_y.device, rail_y.dtype
+    eye = torch.eye(4, dtype=dtype, device=device)
+    if rail_y.ndim == 0:
+        Ty = eye.clone()
+        Ty[1, 3] = rail_y
+        return T_world_rail @ Ty @ T_rail_base0
+    n = int(rail_y.shape[0])
+    Ty = eye.expand(n, 4, 4).clone()
+    Ty[:, 1, 3] = rail_y
+    return T_world_rail @ Ty @ T_rail_base0
+
+
+def cost_from_tcp_and_rail_torch(
+    neural_ird,
+    T_tcp: "torch.Tensor",
+    rail_y: "torch.Tensor",
+    *,
+    T_world_rail: np.ndarray | "torch.Tensor" | None = None,
+    T_rail_base0: np.ndarray | "torch.Tensor" | None = None,
+    use_optimization_cost: bool = True,
+    cost_kwargs: dict | None = None,
+) -> dict[str, "torch.Tensor"]:
+    """Full AD w.r.t. T_tcp and rail_y.
+
+    Returns reach_logit, m, q, cost (and legacy score).
+    """
+    if torch is None:
+        raise ImportError("torch required")
+    device = neural_ird.device
+    dtype = torch.float32
+    T_tcp = T_tcp.to(device=device, dtype=dtype)
+    rail_y = rail_y.to(device=device, dtype=dtype)
+
+    if T_world_rail is None:
+        Twr_t = torch.eye(4, dtype=dtype, device=device)
+    elif torch.is_tensor(T_world_rail):
+        Twr_t = T_world_rail.to(device=device, dtype=dtype)
+    else:
+        Twr_t = torch.as_tensor(np.asarray(T_world_rail), dtype=dtype, device=device)
+
+    if T_rail_base0 is None:
+        Trb_t = torch.eye(4, dtype=dtype, device=device)
+    elif torch.is_tensor(T_rail_base0):
+        Trb_t = T_rail_base0.to(device=device, dtype=dtype)
+    else:
+        Trb_t = torch.as_tensor(np.asarray(T_rail_base0), dtype=dtype, device=device)
+
+    T_base = T_base_from_rail_y_torch(rail_y, T_world_rail=Twr_t, T_rail_base0=Trb_t)
+    # broadcast T_tcp if scalar rail / batch mismatch
+    if T_tcp.ndim == 2 and T_base.ndim == 3:
+        T_tcp = T_tcp.expand(T_base.shape[0], 4, 4)
+    elif T_tcp.ndim == 3 and T_base.ndim == 2:
+        T_base = T_base.expand(T_tcp.shape[0], 4, 4)
+
+    dT = invert_T_torch(T_tcp) @ T_base
+    feat = features_from_delta_T_torch(dT)
+    if feat.ndim == 1:
+        feat = feat.unsqueeze(0)
+        squeeze = True
+    else:
+        squeeze = False
+
+    out = neural_ird.model.score_features(feat)
+    logit = out["reach_logit"].squeeze(-1)
+    m = out["m"].squeeze(-1)
+    q = out["q"].squeeze(-1)
+    legacy = legacy_margin_score(m, q, tau_m=neural_ird.model.tau_m, lambda_q=neural_ird.model.lambda_q)
+    if use_optimization_cost:
+        cost = optimization_cost(logit, m, q, **(cost_kwargs or {}))
+    else:
+        cost = -legacy
+
+    def _sq(x):
+        return x.squeeze(0) if squeeze and x.ndim > 0 and x.shape[0] == 1 else x
+
+    return {
+        "reach_logit": _sq(logit),
+        "m": _sq(m),
+        "q": _sq(q),
+        "cost": _sq(cost),
+        "score": _sq(legacy),  # deprecated margin-only score
+        "p_reach": _sq(torch.sigmoid(logit)),
+        "features": feat if not squeeze else feat[0],
+        "delta_T": dT if not (squeeze and dT.ndim == 3) else dT[0],
+    }
 
 
 def score_vs_rail_y_torch(
     neural_ird,
-    T_tcp: np.ndarray,
+    T_tcp,
     rail_y: "torch.Tensor",
     *,
     T_world_rail: np.ndarray | None = None,
     T_rail_base0: np.ndarray | None = None,
 ) -> "torch.Tensor":
-    """Differentiable score w.r.t. rail_y (scalar tensor)."""
+    """Backward-compat: returns legacy score. Prefer cost_from_tcp_and_rail_torch.
+
+    If ``T_tcp`` is a numpy array it is converted once (∂/∂T_tcp disabled);
+    pass a Tensor to keep the full graph.
+    """
     if torch is None:
         raise ImportError("torch required")
-    Twr = np.eye(4) if T_world_rail is None else np.asarray(T_world_rail, dtype=np.float64)
-    Trb = np.eye(4) if T_rail_base0 is None else np.asarray(T_rail_base0, dtype=np.float64)
-    T_tcp = np.asarray(T_tcp, dtype=np.float64)
-    device = neural_ird.device
+    if not torch.is_tensor(T_tcp):
+        T_tcp = torch.as_tensor(np.asarray(T_tcp, dtype=np.float64), dtype=torch.float32, device=neural_ird.device)
+    out = cost_from_tcp_and_rail_torch(
+        neural_ird,
+        T_tcp,
+        rail_y,
+        T_world_rail=T_world_rail,
+        T_rail_base0=T_rail_base0,
+        use_optimization_cost=False,
+    )
+    return out["score"]
 
-    Twr_t = torch.as_tensor(Twr, dtype=torch.float32, device=device)
-    Trb_t = torch.as_tensor(Trb, dtype=torch.float32, device=device)
-    Ttcp_t = torch.as_tensor(T_tcp, dtype=torch.float32, device=device)
 
-    # Trans_y(r)
-    Ty = torch.eye(4, dtype=torch.float32, device=device)
-    Ty = Ty.clone()
-    Ty[1, 3] = rail_y
-    T_base = Twr_t @ Ty @ Trb_t
-    # invert T_tcp
-    R = Ttcp_t[:3, :3]
-    t = Ttcp_t[:3, 3]
-    Ti = torch.eye(4, dtype=torch.float32, device=device)
-    Ti = Ti.clone()
-    Ti[:3, :3] = R.T
-    Ti[:3, 3] = -R.T @ t
-    dT = Ti @ T_base
-    feat = _features_torch_from_delta_T(dT).unsqueeze(0)
-    _, _, _, score = neural_ird.model(feat)
-    return score.squeeze()
+def cost_vs_lambda_rail_torch(
+    neural_ird,
+    manifold,
+    lam: "torch.Tensor",
+    rail: "torch.Tensor",
+    *,
+    T_world_rail: np.ndarray | None = None,
+    T_rail_base0: np.ndarray | None = None,
+    cost_kwargs: dict | None = None,
+) -> dict[str, "torch.Tensor"]:
+    """C(λ, r) with T_tcp = G(λ) from the vessel/skin manifold (full AD)."""
+    if torch is None:
+        raise ImportError("torch required")
+    if hasattr(manifold, "sample_torch"):
+        T_tcp = manifold.sample_torch(lam, dtype=torch.float32, device=neural_ird.device)
+    else:
+        raise TypeError("manifold must implement sample_torch for AD w.r.t. λ")
+    return cost_from_tcp_and_rail_torch(
+        neural_ird,
+        T_tcp,
+        rail,
+        T_world_rail=T_world_rail,
+        T_rail_base0=T_rail_base0,
+        use_optimization_cost=True,
+        cost_kwargs=cost_kwargs,
+    )
 
 
 def rail_y_grad_ad_fd(
@@ -120,7 +258,7 @@ def rail_y_grad_ad_fd(
     T_world_rail: np.ndarray | None = None,
     T_rail_base0: np.ndarray | None = None,
 ) -> dict[str, float]:
-    """Compare AD ∂score/∂rail_y to central finite differences."""
+    """Compare AD ∂cost/∂rail_y to central finite differences."""
     if torch is None:
         raise ImportError("torch required")
     from ird_playground.probe.se3 import complete_frame_from_tool_axis, mat4_from_Rt
@@ -133,21 +271,31 @@ def rail_y_grad_ad_fd(
         p = rng.uniform(-0.5, 0.5, size=3)
         u = rng.normal(size=3)
         u = u / (np.linalg.norm(u) + 1e-12)
-        T_tcp = mat4_from_Rt(complete_frame_from_tool_axis(u), p)
+        T_tcp_np = mat4_from_Rt(complete_frame_from_tool_axis(u), p)
+        T_tcp = torch.as_tensor(T_tcp_np, dtype=torch.float32, device=neural_ird.device)
 
         r = torch.tensor(float(rail_y), dtype=torch.float32, device=neural_ird.device, requires_grad=True)
-        s = score_vs_rail_y_torch(
+        out = cost_from_tcp_and_rail_torch(
             neural_ird, T_tcp, r, T_world_rail=T_world_rail, T_rail_base0=T_rail_base0
         )
-        s.backward()
+        out["cost"].backward()
         g_ad = float(r.grad.item())
 
-        sp = score_vs_rail_y(
-            neural_ird, T_tcp, rail_y + eps, T_world_rail=T_world_rail, T_rail_base0=T_rail_base0
-        )["score"]
-        sm = score_vs_rail_y(
-            neural_ird, T_tcp, rail_y - eps, T_world_rail=T_world_rail, T_rail_base0=T_rail_base0
-        )["score"]
+        with torch.no_grad():
+            sp = cost_from_tcp_and_rail_torch(
+                neural_ird,
+                T_tcp,
+                torch.tensor(rail_y + eps, dtype=torch.float32, device=neural_ird.device),
+                T_world_rail=T_world_rail,
+                T_rail_base0=T_rail_base0,
+            )["cost"].item()
+            sm = cost_from_tcp_and_rail_torch(
+                neural_ird,
+                T_tcp,
+                torch.tensor(rail_y - eps, dtype=torch.float32, device=neural_ird.device),
+                T_world_rail=T_world_rail,
+                T_rail_base0=T_rail_base0,
+            )["cost"].item()
         g_fd = (sp - sm) / (2.0 * eps)
         denom = max(abs(g_fd), abs(g_ad), 1e-6)
         rels.append(abs(g_ad - g_fd) / denom)
@@ -157,4 +305,62 @@ def rail_y_grad_ad_fd(
         "rail_ad_fd_rel": float(np.median(rels)),
         "rail_sign_agree": float(np.mean(signs)),
         "rail_n": float(n),
+    }
+
+
+def lambda_rail_grad_ad_fd(
+    neural_ird,
+    manifold,
+    *,
+    n: int = 16,
+    lam0: float = 0.15,
+    rail0: float = 0.0,
+    eps_lam: float = 1e-3,
+    eps_rail: float = 1e-3,
+    seed: int = 0,
+) -> dict[str, float]:
+    """AD vs FD for ∂C/∂λ and ∂C/∂r on the 2D decision manifold."""
+    if torch is None:
+        raise ImportError("torch required")
+    rng = np.random.default_rng(seed)
+    rel_l, rel_r, sign_l, sign_r = [], [], [], []
+    neural_ird.model.eval()
+    for _ in range(n):
+        lam_v = float(lam0 + rng.uniform(-0.05, 0.05))
+        rail_v = float(rail0 + rng.uniform(-0.05, 0.05))
+        lam = torch.tensor(lam_v, dtype=torch.float32, device=neural_ird.device, requires_grad=True)
+        rail = torch.tensor(rail_v, dtype=torch.float32, device=neural_ird.device, requires_grad=True)
+        c = cost_vs_lambda_rail_torch(neural_ird, manifold, lam, rail)["cost"]
+        c.backward()
+        g_lam_ad = float(lam.grad.item())
+        g_rail_ad = float(rail.grad.item())
+
+        with torch.no_grad():
+            def _c(lv, rv):
+                return float(
+                    cost_vs_lambda_rail_torch(
+                        neural_ird,
+                        manifold,
+                        torch.tensor(lv, dtype=torch.float32, device=neural_ird.device),
+                        torch.tensor(rv, dtype=torch.float32, device=neural_ird.device),
+                    )["cost"].item()
+                )
+
+            g_lam_fd = (_c(lam_v + eps_lam, rail_v) - _c(lam_v - eps_lam, rail_v)) / (2 * eps_lam)
+            g_rail_fd = (_c(lam_v, rail_v + eps_rail) - _c(lam_v, rail_v - eps_rail)) / (2 * eps_rail)
+
+        for g_ad, g_fd, rels, signs in (
+            (g_lam_ad, g_lam_fd, rel_l, sign_l),
+            (g_rail_ad, g_rail_fd, rel_r, sign_r),
+        ):
+            denom = max(abs(g_fd), abs(g_ad), 1e-6)
+            rels.append(abs(g_ad - g_fd) / denom)
+            signs.append(1.0 if np.sign(g_ad) == np.sign(g_fd) or abs(g_fd) < 1e-8 else 0.0)
+
+    return {
+        "lambda_ad_fd_rel": float(np.median(rel_l)),
+        "rail_ad_fd_rel": float(np.median(rel_r)),
+        "lambda_sign_agree": float(np.mean(sign_l)),
+        "rail_sign_agree": float(np.mean(sign_r)),
+        "n": float(n),
     }

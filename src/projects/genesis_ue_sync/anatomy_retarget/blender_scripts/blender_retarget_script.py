@@ -1537,6 +1537,31 @@ def _source_mechanism_audit(
             for key in blocks
             if str(key.name).lower() not in {"basis", "base"}
         )
+    action = (
+        None
+        if arm.animation_data is None
+        else arm.animation_data.action
+    )
+    action_curves = list(getattr(action, "fcurves", ()) or ()) if action is not None else []
+    keyed_pose_bones: set[str] = set()
+    for curve in action_curves:
+        match = re.search(r'pose\.bones\["([^"]+)"\]', str(curve.data_path))
+        if match:
+            keyed_pose_bones.add(match.group(1))
+    nla_strips = [
+        {
+            "track": str(track.name),
+            "strip": str(strip.name),
+            "action": None if strip.action is None else str(strip.action.name),
+            "frame_start": float(strip.frame_start),
+            "frame_end": float(strip.frame_end),
+            "mute": bool(track.mute or strip.mute),
+        }
+        for track in (
+            () if arm.animation_data is None else arm.animation_data.nla_tracks
+        )
+        for strip in track.strips
+    ]
     missing: list[str] = []
     if object_constraints or pose_constraints:
         missing.append("constraints")
@@ -1565,6 +1590,20 @@ def _source_mechanism_audit(
         "shape_key_count": int(shape_key_count),
         "shape_key_drivers": int(shape_key_drivers),
         "active_nonbasis_shape_keys": int(active_shape_keys),
+        "active_action": None if action is None else str(action.name),
+        "active_action_frame_range": (
+            None if action is None else [float(value) for value in action.frame_range]
+        ),
+        "active_action_fcurve_count": int(len(action_curves)),
+        "active_action_keyed_pose_bones": sorted(keyed_pose_bones),
+        "nla_strips": nla_strips,
+        "pose_source_serialization": {
+            "actions_serialized": False,
+            "reason": (
+                "Action supplies authored pose samples but adds no deformation "
+                "beyond the serialized Armature hierarchy and vertex weights"
+            ),
+        },
         "serialized": [
             "armature_bone_names",
             "armature_parent_hierarchy",

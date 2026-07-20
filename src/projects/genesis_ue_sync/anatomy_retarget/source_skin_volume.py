@@ -20,7 +20,7 @@ from .material_fit import bone_material_mask, cranial_material_mask
 from .shape_volume import _load_obj, _outside_cage_max_distance, _sample_field, _tet_stiffness
 
 
-_CAGE_VERSION = "source_skin_volume_v23_semantic_handles"
+_CAGE_VERSION = "source_skin_volume_v22_shared_bind_field"
 # A Stage-1 field is a diffeomorphic initialisation, not a nearly-flat cage.
 _MIN_JACOBIAN_RATIO = 0.05
 _MAX_FINAL_SURFACE_RMS_M = 0.03
@@ -28,206 +28,6 @@ _MAX_FINAL_SURFACE_DISTANCE_M = 0.10
 _MAX_BOUNDARY_DISPLACEMENT_M = 0.50
 _MIN_REGISTRATION_PROGRESS_M = 1.0e-7
 _FINE_SHELL_HOMOTOPY = (0.10, 0.25, 0.45, 0.65, 0.82, 1.00)
-
-
-def _add_semantic_joint_handles(
-    asset: AnatomyRiggedAsset,
-    *,
-    cage: dict[str, np.ndarray],
-    boundary_field: np.ndarray,
-    target_joints: np.ndarray,
-) -> tuple[np.ndarray, dict[str, Any]]:
-    """Move source controller pivots through the same safe harmonic field.
-
-    One controller per mapped joint is selected from the unambiguous
-    ``joint_local``, ``segment_root`` and ``rigid_group`` modes.  Treating
-    their pivots only as runtime metadata leaves limbs rotating around their
-    pre-registration centers.  A small set of interior Dirichlet nodes makes
-    those semantic translations part of the volume correspondence itself, so
-    anatomy and bind probes still sample one continuous field.
-    """
-    from scipy.spatial import cKDTree
-    from scipy.sparse.linalg import splu
-
-    nodes = np.asarray(cage["nodes"], dtype=np.float64)
-    elements = np.asarray(cage["elements"], dtype=np.int64)
-    boundary = np.asarray(cage["boundary"], dtype=np.int64)
-    initial = np.asarray(boundary_field, dtype=np.float64)
-    modes = list(asset.source_bone_driver_types or [])
-    smplx_a = np.asarray(asset.source_bone_smplx_a, dtype=np.int64)
-    source_bind = np.asarray(asset.source_bind_global, dtype=np.float64)
-    targets = np.asarray(target_joints, dtype=np.float64)
-    joint_names = list(asset.joint_names)
-    candidates = [
-        index
-        for index, mode in enumerate(modes)
-        if (
-            (
-                str(mode) == "joint_local"
-                and (
-                    joint_names[int(smplx_a[index])].split("_", 1)[-1] == "wrist"
-                    or joint_names[int(smplx_a[index])] in {"neck", "jaw"}
-                )
-            )
-            or (
-                str(mode) == "segment_root"
-                and joint_names[int(smplx_a[index])].split("_", 1)[-1]
-                in {"shoulder", "elbow"}
-            )
-        )
-        and (
-            joint_names[int(smplx_a[index])].startswith(("left_", "right_"))
-            or joint_names[int(smplx_a[index])] in {"neck", "jaw"}
-        )
-    ]
-    controller_bones_list: list[int] = []
-    for joint in sorted({int(smplx_a[index]) for index in candidates}):
-        joint_candidates = [index for index in candidates if int(smplx_a[index]) == joint]
-        controller_bones_list.append(
-            min(
-                joint_candidates,
-                key=lambda index: float(
-                    np.linalg.norm(source_bind[index, :3, 3] - targets[joint])
-                ),
-            )
-        )
-    controller_bones = np.asarray(controller_bones_list, dtype=np.int64)
-    if not len(controller_bones):
-        return initial, {"enabled": False, "reason": "no_joint_local_controllers"}
-
-    interior = np.setdiff1d(np.arange(len(nodes), dtype=np.int64), boundary)
-    if not len(interior):
-        raise RuntimeError("semantic joint handles require interior cage nodes")
-    pivots = source_bind[controller_bones, :3, 3]
-    nearest_distance, nearest_local = cKDTree(nodes[interior]).query(pivots, k=1)
-    handle_nodes = interior[np.asarray(nearest_local, dtype=np.int64)]
-    # A coarse cage can map two nearby finger controllers to one node.  Keep
-    # the closest controller for that node; conflicting Dirichlet values would
-    # otherwise make the result depend on source-bone ordering.
-    keep: list[int] = []
-    for node in np.unique(handle_nodes):
-        candidates = np.flatnonzero(handle_nodes == node)
-        keep.append(int(candidates[np.argmin(nearest_distance[candidates])]))
-    keep_array = np.asarray(sorted(keep), dtype=np.int64)
-    controller_bones = controller_bones[keep_array]
-    pivots = pivots[keep_array]
-    handle_nodes = handle_nodes[keep_array]
-    joint_ids = smplx_a[controller_bones]
-    desired = targets[joint_ids] - pivots
-
-    stiffness = _tet_stiffness(nodes, elements)
-    source_tet = nodes[elements]
-    source_det = np.linalg.det(source_tet[:, 1:] - source_tet[:, :1])
-
-    def minimum_ratio(field: np.ndarray) -> float:
-        posed = (nodes + field)[elements]
-        ratio = np.linalg.det(posed[:, 1:] - posed[:, :1]) / source_det
-        if np.any(~np.isfinite(ratio)) or np.any(ratio <= 0.0):
-            return float("-inf")
-        return float(np.min(ratio))
-
-    labels: list[str] = []
-    for joint in joint_ids.tolist():
-        name = joint_names[int(joint)]
-        suffix = name.split("_", 1)[1] if "_" in name else name
-        if suffix in {"hip", "shoulder", "knee", "elbow", "ankle", "wrist", "foot"}:
-            labels.append("feet" if suffix == "foot" else f"{suffix}s")
-        elif (
-            name.startswith(("left_", "right_"))
-            and name not in {"left_foot", "right_foot"}
-        ):
-            side, digit = name.split("_", 1)
-            labels.append(f"{side}_{''.join(character for character in digit if not character.isdigit())}")
-        elif name in {"left_foot", "right_foot"}:
-            labels.append(name)
-        else:
-            labels.append("head_neck")
-
-    accepted = initial.copy()
-    accepted_ratio = minimum_ratio(accepted)
-    fixed_nodes = boundary.copy()
-    group_reports: dict[str, dict[str, float | int]] = {}
-    group_order = (
-        "hips", "shoulders", "knees", "elbows", "ankles", "wrists",
-        "left_thumb", "right_thumb",
-        "left_index", "right_index",
-        "left_middle", "right_middle",
-        "left_ring", "right_ring",
-        "left_pinky", "right_pinky",
-        "head_neck", "feet",
-    )
-    for label in group_order:
-        group = np.flatnonzero(np.asarray(labels) == label)
-        if not len(group):
-            continue
-        group_nodes = handle_nodes[group]
-        constrained = np.concatenate((fixed_nodes, group_nodes))
-        free = np.setdiff1d(np.arange(len(nodes), dtype=np.int64), constrained)
-        solver = None if not len(free) else splu(stiffness[free][:, free].tocsc())
-        fixed_values = accepted[fixed_nodes]
-        group_initial = accepted[group_nodes]
-        group_desired = desired[group]
-
-        def solve(fraction: float) -> np.ndarray:
-            values = np.concatenate(
-                (
-                    fixed_values,
-                    group_initial
-                    + float(fraction) * (group_desired - group_initial),
-                ),
-                axis=0,
-            )
-            field = np.zeros_like(nodes)
-            field[constrained] = values
-            if solver is not None:
-                rhs = -(stiffness[free][:, constrained] @ values)
-                field[free] = solver.solve(np.asarray(rhs, dtype=np.float64))
-            return field
-
-        accepted_fraction = 0.0
-        group_accepted = accepted
-        group_ratio = accepted_ratio
-        low, high = 0.0, 1.0
-        for iteration in range(18):
-            fraction = high if iteration == 0 else 0.5 * (low + high)
-            candidate = solve(fraction)
-            ratio = minimum_ratio(candidate)
-            if ratio >= _MIN_JACOBIAN_RATIO:
-                accepted_fraction = fraction
-                group_accepted = candidate
-                group_ratio = ratio
-                low = fraction
-                if fraction >= 1.0 - 1.0e-8:
-                    break
-            else:
-                high = fraction
-        accepted = group_accepted
-        accepted_ratio = group_ratio
-        fixed_nodes = np.concatenate((fixed_nodes, group_nodes))
-        group_residual = np.linalg.norm(
-            pivots[group] + accepted[group_nodes] - targets[joint_ids[group]], axis=1
-        )
-        group_reports[label] = {
-            "handle_count": int(len(group)),
-            "accepted_fraction": float(accepted_fraction),
-            "pivot_residual_rms_m": float(
-                np.sqrt(np.mean(group_residual * group_residual))
-            ),
-            "pivot_residual_max_m": float(np.max(group_residual)),
-            "minimum_jacobian_ratio": float(accepted_ratio),
-        }
-
-    residual = np.linalg.norm(pivots + accepted[handle_nodes] - targets[joint_ids], axis=1)
-    return accepted, {
-        "enabled": True,
-        "backend": "shared_volume_semantic_joint_handles_v2_grouped",
-        "requested_controller_count": int(len(keep_array)),
-        "unique_handle_node_count": int(len(handle_nodes)),
-        "groups": group_reports,
-        "minimum_jacobian_ratio": float(accepted_ratio),
-        "pivot_residual_rms_m": float(np.sqrt(np.mean(residual * residual))),
-        "pivot_residual_max_m": float(np.max(residual)),
-    }
 
 
 def _rebind_source_rig_from_volume_field(
@@ -1681,16 +1481,9 @@ def apply_source_skin_volume_registration(
         field1, harmonic_report = _incremental_harmonic_field(
             nodes, elements, boundary, boundary_delta
         )
-    field1, semantic_handle_report = _add_semantic_joint_handles(
-        subject_asset,
-        cage=cage,
-        boundary_field=field1,
-        target_joints=subject_rest_joints,
-    )
     deformation_report = {
         "backend": "stage1_outer_skin_dirichlet",
         **harmonic_report,
-        "semantic_joint_handles": semantic_handle_report,
     }
     # This is Anatomy Transfer Stage 1: one outer-skin Dirichlet solve.  Every
     # anatomy vertex, including bones and cranium, receives this initial field.
@@ -1851,7 +1644,6 @@ def apply_source_skin_volume_registration(
                 "joint_shift_rms_m": float(np.sqrt(np.mean(joint_shift**2))),
                 "joint_shift_max_m": float(np.max(joint_shift)),
             },
-            "stage1_semantic_joint_handles": semantic_handle_report,
         }
     )
     result = type(subject_asset)(

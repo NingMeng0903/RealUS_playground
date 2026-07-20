@@ -10,6 +10,8 @@ from pathlib import Path
 
 import yaml
 
+from ird_playground.viz.viz_style import PROBE_COMPARE_BAR_MAX, PROBE_COMPARE_CLIM, PROBE_COMPARE_N_LEVELS
+
 
 def _resolve(root: Path, p: Path) -> Path:
     return p if p.is_absolute() else root / p
@@ -34,9 +36,9 @@ def main(argv: list[str] | None = None) -> int:
         "--clim",
         type=float,
         nargs=2,
-        default=[0.0, 0.30],
+        default=list(PROBE_COMPARE_CLIM),
         metavar=("LO", "HI"),
-        help="Colour limits in fraction units (default 0 0.30 ≈ map D max)",
+        help="Colour limits in fraction units (default shared probe compare 0 0.18)",
     )
     ap.add_argument(
         "--clim-auto",
@@ -48,9 +50,24 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Absolute 0..1 scale (0–100%% bar, cross-map compare)",
     )
-    ap.add_argument("--step-m", type=float, default=0.05, help="IRD voxelize step (max over orients)")
-    ap.add_argument("--max-orients", type=int, default=6)
-    ap.add_argument("--max-voxels", type=int, default=12_000, help="Cap map voxels when inverting")
+    ap.add_argument(
+        "--step-m",
+        type=float,
+        default=None,
+        help="IRD lattice step (default: map grid step_m)",
+    )
+    ap.add_argument(
+        "--max-orients",
+        type=int,
+        default=None,
+        help="Cap orientations per voxel when inverting (default: all reachable)",
+    )
+    ap.add_argument(
+        "--legacy-cloud",
+        action="store_true",
+        help="Use old sparse point cloud (subsample + non-lattice voxelize)",
+    )
+    ap.add_argument("--max-voxels", type=int, default=12_000, help="Cap map voxels (legacy-cloud only)")
     args = ap.parse_args(argv)
 
     root = Path(__file__).resolve().parents[2]
@@ -87,25 +104,40 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     from ird_playground.viz.global_ird import (
-        build_ird_points_from_capability,
+        build_ird_lattice_from_capability,
         build_ird_points_from_gt_npz,
         render_global_ird,
+        render_global_ird_from_capability,
         voxelize_max,
     )
 
+    xyz = None
+    q = None
     if args.mode == "ird_gt":
         xyz, q = build_ird_points_from_gt_npz(_resolve(root, args.gt_npz))
         title = "Global IRD"
-    else:
+        step_m = float(args.step_m) if args.step_m is not None else 0.03
+        xyz, q = voxelize_max(xyz, q, step_m=step_m, lattice_centers=True)
+        path = render_global_ird(
+            xyz,
+            q,
+            out if out.suffix else out.with_suffix(".png"),
+            d_min=args.d_min,
+            clim=clim,
+            clim_auto=clim_auto,
+            title=title,
+            step_m=step_m,
+            n_color_levels=PROBE_COMPARE_N_LEVELS,
+            bar_max=PROBE_COMPARE_BAR_MAX,
+        )
+    elif args.legacy_cloud:
         from ird_playground.ird.capability_io import load_capability_map_dir
 
         map_dir = _map_dir(root, args)
         cm = load_capability_map_dir(map_dir)
-        # subsample high-d voxels for speed
         import numpy as np
 
         order = np.argsort(-cm.d_value)[: int(args.max_voxels)]
-        # thin wrapper with subset — rebuild light view
         class _Sub:
             pass
 
@@ -116,36 +148,83 @@ def main(argv: list[str] | None = None) -> int:
         sub.d_value = cm.d_value[order]
         sub.voxel_ids = cm.voxel_ids[order]
         sub.grid = cm.grid
-        xyz, q = build_ird_points_from_capability(sub, max_orients_per_voxel=args.max_orients)
+        from ird_playground.viz.global_ird import build_ird_points_from_capability
+
+        max_orients = 6 if args.max_orients is None else int(args.max_orients)
+        xyz, q = build_ird_points_from_capability(sub, max_orients_per_voxel=max_orients)
+        step_m = float(args.step_m) if args.step_m is not None else 0.05
+        xyz, q = voxelize_max(xyz, q, step_m=step_m)
         title = "Global IRD"
+        path = render_global_ird(
+            xyz,
+            q,
+            out if out.suffix else out.with_suffix(".png"),
+            d_min=args.d_min,
+            clim=clim,
+            clim_auto=clim_auto,
+            title=title,
+            sphere_radius_m=step_m * 0.55,
+            n_color_levels=PROBE_COMPARE_N_LEVELS,
+            bar_max=PROBE_COMPARE_BAR_MAX,
+        )
+    else:
+        from ird_playground.ird.capability_io import load_capability_map_dir
 
-    xyz, q = voxelize_max(xyz, q, step_m=args.step_m)
-    path = render_global_ird(
-        xyz, q, out if out.suffix else out.with_suffix(".png"),
-        d_min=args.d_min, clim=clim, clim_auto=clim_auto, title=title,
-        sphere_radius_m=float(args.step_m) * 0.55,
-    )
-    print(
-        f"wrote {path}  n_cells={xyz.shape[0]}  mean={float(q.mean()):.4f}  "
-        f"max={float(q.max()):.4f}  clim={clim if not clim_auto else 'auto'}"
-    )
+        map_dir = _map_dir(root, args)
+        cm = load_capability_map_dir(map_dir)
+        title = "Global IRD"
+        xyz, q = build_ird_lattice_from_capability(
+            cm,
+            step_m=args.step_m,
+            max_orients_per_voxel=args.max_orients,
+        )
+        path = render_global_ird_from_capability(
+            cm,
+            out if out.suffix else out.with_suffix(".png"),
+            d_min=args.d_min,
+            clim=clim,
+            clim_auto=clim_auto,
+            title=title,
+            step_m=args.step_m,
+            max_orients_per_voxel=args.max_orients,
+            n_color_levels=PROBE_COMPARE_N_LEVELS,
+            bar_max=PROBE_COMPARE_BAR_MAX,
+        )
+    if xyz is not None and q is not None:
+        print(
+            f"wrote {path}  n_cells={xyz.shape[0]}  mean={float(q.mean()):.4f}  "
+            f"max={float(q.max()):.4f}  clim={clim if not clim_auto else 'auto'}"
+        )
+    else:
+        print(f"wrote {path}  clim={clim if not clim_auto else 'auto'}")
 
-    if args.checkpoint is not None:
+    if args.checkpoint is not None and xyz is not None:
         from ird_playground.neural.model import NeuralIRD
         from ird_playground.viz.global_ird import predict_ird_grid, render_global_ird as _r
 
         net = NeuralIRD.load(_resolve(root, args.checkpoint), device=args.device)
         lo = xyz.min(axis=0) - 0.05
         hi = xyz.max(axis=0) + 0.05
+        step_m = float(args.step_m) if args.step_m is not None else 0.05
         gxyz, gd = predict_ird_grid(
             net,
             bbox=((float(lo[0]), float(hi[0])), (float(lo[1]), float(hi[1])), (float(lo[2]), float(hi[2]))),
-            step_m=max(args.step_m, 0.05),
+            step_m=step_m,
             n_orients=4,
         )
         pred_out = out.with_name(out.stem + "_pred" + out.suffix) if out.suffix else Path(str(out) + "_pred.png")
-        gxyz, gd = voxelize_max(gxyz, gd, step_m=args.step_m)
-        _r(gxyz, gd, pred_out, d_min=args.d_min, clim=clim, title="Neural IRD")
+        gxyz, gd = voxelize_max(gxyz, gd, step_m=step_m, lattice_centers=True)
+        _r(
+            gxyz,
+            gd,
+            pred_out,
+            d_min=args.d_min,
+            clim=clim,
+            title="Neural IRD",
+            step_m=step_m,
+            n_color_levels=PROBE_COMPARE_N_LEVELS,
+            bar_max=PROBE_COMPARE_BAR_MAX,
+        )
         print(f"wrote {pred_out}")
     return 0
 

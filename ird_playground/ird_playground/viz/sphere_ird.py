@@ -25,9 +25,10 @@ from pathlib import Path
 import numpy as np
 
 from ird_playground.viz.rm75_ns import ensure_rm75_namespace
+from ird_playground.viz.viz_style import PROBE_COMPARE_CLIM
 
-# Fixed absolute scale for cross-figure compare (fraction → 0–100 bar ticks).
-FIXED_IRD_CLIM: tuple[float, float] = (0.0, 1.0)
+# Fixed absolute scale for cross-figure compare (fraction → bar ticks via sphere_glyphs).
+FIXED_IRD_CLIM: tuple[float, float] = PROBE_COMPARE_CLIM
 # Back-compat alias
 FIXED_D_CLIM = FIXED_IRD_CLIM
 
