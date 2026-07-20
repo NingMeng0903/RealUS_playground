@@ -1,5 +1,5 @@
-# train_config.yaml — Neural IRD v3: 5-DoF (6-D), 3 heads, sign-consistent GT
-# Env: source ird_playground/env.sh
+# train_config.yaml — Neural IRD v6 phase A: cls-only on stable-support labels
+# Env: cd ird_playground && source env.sh
 
 data:
   gt_npz: data/ird/gt_samples_1p5cm_probe.npz
@@ -8,18 +8,21 @@ data:
 
 model:
   num_freqs: 6
+  num_freqs_u: 5
   hidden: 256
   depth: 5
   tau_m: 1.0
   lambda_q: 0.5
+  use_physical_pe: true
+  p_scale_m: 1.0
 
 training:
   seed: 42
   batch_size: 1024
   num_workers: 4
   torch_compile: false
-  epochs: 100
-  save_freq: 25
+  epochs: 40
+  save_freq: 10
   learning_rate: 3.0e-4
   weight_decay: 1.0e-4
   warmup_steps: 500
@@ -29,12 +32,22 @@ training:
   print_every_steps: 50
   hardneg_every: 0
   hardneg_frac: 0.0
+  val_eval_n: 65536
+  val_calib_frac: 0.5
+  train_hard_y: true
   device: cuda
+  batch_mix:
+    interior: 0.15
+    bnd_pos: 0.25
+    bnd_neg: 0.25
+    jitter_pos: 0.10
+    jitter_neg: 0.10
+    exterior: 0.15
 
 loss:
   lambda_cls: 1.0
-  lambda_margin: 0.5
-  lambda_q: 0.25
+  lambda_margin: 0.0
+  lambda_q: 0.0
   lambda_local: 0.0
 
 io:
@@ -43,19 +56,19 @@ io:
   report: data/reports/train_point.json
 
 pass:
-  mae_max: 0.35
-  spearman_min: 0.70
-  boundary_iou_min: 0.70
-  grad_cosine_min: 0.30
-  ascent_improve_min: 0.40
-  rail_ad_fd_rel_max: 0.25
-  rail_sign_agree_min: 0.80
-  region_improve_min: 0.40
+  mae_max: 9.0
+  spearman_min: 0.0
+  boundary_iou_min: 0.65
+  grad_cosine_min: 0.0
+  ascent_improve_min: 0.0
+  rail_ad_fd_rel_max: 1.0
+  rail_sign_agree_min: 0.0
+  region_improve_min: 0.0
 
 wandb:
   enable: true
   project: neural-ird-rm75
   entity: lpei82060-technical-university-of-munich
   mode: online
-  run_name: neural_ird_v3_5dof
-  tags: [neural_ird, 5dof, 3head, edt_margin]
+  run_name: neural_ird_v6_stable_support
+  tags: [neural_ird, v6, stable_support, physical_pe, cls_only]

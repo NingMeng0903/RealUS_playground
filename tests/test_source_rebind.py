@@ -3,10 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import AnatomyRiggedAsset
-from projects.genesis_ue_sync.anatomy_retarget.source_rebind import (
-    rebind_selected_source_bones,
-    rebind_source_rig,
-)
+from projects.genesis_ue_sync.anatomy_retarget.source_rebind import rebind_source_rig
 
 
 def _controller_follower_asset() -> AnatomyRiggedAsset:
@@ -74,32 +71,3 @@ def test_rebind_infers_unweighted_controller_from_weighted_follower() -> None:
         rebound.target_bone_tail[0], rebound.target_bone_head[1], atol=1.0e-6
     )
 
-
-def test_selected_rebind_preserves_unselected_global_frame() -> None:
-    asset = _controller_follower_asset()
-    target = np.asarray(asset.vertices_rest) + np.asarray(
-        (0.5, 0.0, 0.0), dtype=np.float32
-    )
-
-    rebound, report = rebind_selected_source_bones(
-        asset,
-        source_vertices=asset.vertices_rest,
-        target_vertices=target,
-        bone_names=["DeformFollower"],
-        stage="selected_test",
-    )
-
-    np.testing.assert_array_equal(
-        rebound.target_rest_global[0], asset.target_rest_global[0]
-    )
-    np.testing.assert_allclose(
-        rebound.target_rest_global[1, 0, 3], 0.5, atol=1.0e-6
-    )
-    np.testing.assert_allclose(
-        rebound.target_rest_local[1],
-        np.linalg.inv(rebound.target_rest_global[0])
-        @ rebound.target_rest_global[1],
-        atol=1.0e-6,
-    )
-    assert report["selected_bones"] == ["DeformFollower"]
-    assert report["unselected_global_frames_preserved"] is True

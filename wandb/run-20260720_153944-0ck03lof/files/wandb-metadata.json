@@ -1,0 +1,42 @@
+{
+  "os": "Linux-6.8.0-90-generic-x86_64-with-glibc2.35",
+  "python": "CPython 3.10.20",
+  "startedAt": "2026-07-20T07:39:44.895075Z",
+  "args": [
+    "--config",
+    "configs/train_config.yaml"
+  ],
+  "program": "-m ird_playground.cli.train",
+  "git": {
+    "remote": "git@github.com:NingMeng0903/RealUS_playground.git",
+    "commit": "75ce391dab801ba5bb8f57fd0da1b12c4bfc500d"
+  },
+  "email": "pei.liu@tum.de",
+  "root": "/media/camp/EXT_DRIVE/RealUS_playground",
+  "host": "pei",
+  "executable": "/media/camp/EXT_DRIVE/envs/genesis/bin/python",
+  "cpu_count": 24,
+  "cpu_count_logical": 32,
+  "gpu": "NVIDIA GeForce RTX 4080 Laptop GPU",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "156868526080",
+      "used": "137307676672"
+    }
+  },
+  "memory": {
+    "total": "33243275264"
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 4080 Laptop GPU",
+      "memoryTotal": "12878610432",
+      "cudaCores": 7424,
+      "architecture": "Ada",
+      "uuid": "GPU-e58f5d53-ce96-f86d-cbb4-6a5605252c51"
+    }
+  ],
+  "cudaVersion": "13.0",
+  "writerId": "k3qs5xnllk6lvulbga8qjdmap7ql5vgx"
+}

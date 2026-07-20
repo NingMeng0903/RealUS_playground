@@ -62,12 +62,14 @@ def score_vs_rail_y(
 
 
 def _features_torch_from_delta_T(dT: "torch.Tensor") -> "torch.Tensor":
-    """dT (4,4) → features (6,) = t + tool_axis."""
-    t = dT[:3, 3]
-    R = dT[:3, :3]
-    u = R[2, :]
+    """dT (4,4) → natural features (6,) = p_base,tcp + u_base."""
+    R_delta = dT[:3, :3]
+    t_delta = dT[:3, 3]
+    R_base_tcp = R_delta.T
+    p = -(R_base_tcp @ t_delta)
+    u = R_base_tcp[:, 2]
     u = u / (u.norm().clamp_min(1e-6))
-    return torch.cat([t, u], dim=0)
+    return torch.cat([p, u], dim=0)
 
 
 def score_vs_rail_y_torch(

@@ -1,22 +1,27 @@
-# IRD GT v3 — bitmask-exact, EDT signed margin, 6-D (t,u), AABB from features
+# IRD GT v6 — stable-support boundary (C+>=3 & C-==0); no soft_tau fallback
 
 map_dir: ../rm75_control/data/reachability/rm75_6f_1p5cm_15deg_coll_probe
 out: data/ird/gt_samples_1p5cm_probe.npz
 
 sampling:
-  n_interior: 700000
+  n_interior: 300000
   n_boundary: 800000
-  n_exterior: 500000
-  n_jitter: 200000
+  n_exterior: 400000
+  n_jitter: 400000
   max_orients_per_voxel: 28
-  hard_negative_frac: 0.45
+  hard_negative_frac: 0.50
   hard_negative_radius_m: 0.06
   sigma_p_m: 0.03
   sigma_r_deg: 10.0
   m_clip: 3.0
   m_eps: 0.05
-  edt_dilate: 2
   bbox_margin_m: 0.20
   comfort_from: auto
   k_candidates: 4
   seed: 42
+  orient_knn: 7
+  soft_tau: 0.05
+  unknown_soft_max: 0.25
+  trusted_neg_soft_max: 1.0e-6
+  min_positive_support: 3
+  min_trusted_face_pairs: 5000

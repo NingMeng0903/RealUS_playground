@@ -10,11 +10,46 @@ import pytest
 
 from projects.genesis_ue_sync.anatomy_retarget import source_skin_volume
 from projects.genesis_ue_sync.anatomy_retarget.source_skin_volume import (
+    _add_semantic_joint_handles,
     _build_source_cage,
     _incremental_harmonic_field,
     _topology_preserving_cage_registration,
     _transport_sampled_material,
 )
+
+
+def test_semantic_joint_handle_moves_pivot_in_shared_volume_field() -> None:
+    nodes = np.asarray(
+        ((0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1), (0.2, 0.2, 0.2)),
+        dtype=np.float64,
+    )
+    elements = np.asarray(
+        ((0, 1, 2, 4), (0, 1, 4, 3), (0, 4, 2, 3), (4, 1, 2, 3)),
+        dtype=np.int32,
+    )
+    source_bind = np.eye(4, dtype=np.float64)[None]
+    source_bind[0, :3, 3] = nodes[4]
+    asset = SimpleNamespace(
+        joint_names=["left_wrist"],
+        source_bone_driver_types=["joint_local"],
+        source_bone_smplx_a=np.asarray((0,), dtype=np.int32),
+        source_bind_global=source_bind,
+    )
+    target = np.asarray(((0.22, 0.2, 0.2),), dtype=np.float64)
+    field, report = _add_semantic_joint_handles(
+        asset,
+        cage={
+            "nodes": nodes,
+            "elements": elements,
+            "boundary": np.asarray((0, 1, 2, 3), dtype=np.int32),
+        },
+        boundary_field=np.zeros_like(nodes),
+        target_joints=target,
+    )
+    np.testing.assert_allclose(field[:4], 0.0, atol=1.0e-10)
+    np.testing.assert_allclose(nodes[4] + field[4], target[0], atol=1.0e-7)
+    assert report["groups"]["wrists"]["accepted_fraction"] == pytest.approx(1.0)
+    assert report["minimum_jacobian_ratio"] >= 0.05
 
 
 def test_incremental_harmonic_field_reaches_boundary_without_flips() -> None:

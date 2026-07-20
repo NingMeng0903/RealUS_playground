@@ -1,4 +1,4 @@
-"""SE(3) helpers: ΔT features, Exp map, 6D rotation encoding."""
+"""SE(3) helpers: ΔT → natural (p,u) 5-DoF features, Exp map."""
 
 from __future__ import annotations
 
@@ -35,17 +35,21 @@ def rot6d_from_R(R: np.ndarray) -> np.ndarray:
 
 
 def features_from_delta_T(delta_T: np.ndarray) -> np.ndarray:
-    """(6,) = ΔT translation(3) + TCP tool axis u(3) in base.
+    """(6,) = natural 5-DoF [p_base,tcp, u_base] recovered from ΔT.
 
-    ΔT = T_tcp^{-1} T_base. With R_Δ = R_tcpᵀ when T_base=I, u = R_tcp[:,2] = R_Δ[2,:].
+    ΔT = T_tcp^{-1} T_base. With T_base=I:
+      R_base,tcp = R_Δᵀ
+      p_base,tcp = −R_Δᵀ t_Δ
+      u_base = R_base,tcp @ e_z = R_Δᵀ[:,2] = R_Δ[2,:]ᵀ wait: (R_Δᵀ)[:,2] = R_Δ[2,:].T
     """
     T = np.asarray(delta_T, dtype=np.float64).reshape(4, 4)
-    t = T[:3, 3]
     R_delta = T[:3, :3]
-    u = R_delta[2, :].copy()  # = R_tcp[:, 2]
-    n = np.linalg.norm(u) + 1e-12
-    u = u / n
-    return np.concatenate([t, u], axis=0).astype(np.float64)
+    t_delta = T[:3, 3]
+    R_base_tcp = R_delta.T
+    p = -(R_base_tcp @ t_delta)
+    u = R_base_tcp[:, 2].copy()
+    u = u / (np.linalg.norm(u) + 1e-12)
+    return np.concatenate([p, u], axis=0).astype(np.float64)
 
 
 def batch_features_from_delta_T(delta_Ts: np.ndarray) -> np.ndarray:
@@ -75,7 +79,6 @@ def complete_frame_from_tool_axis(tool_axis: np.ndarray) -> np.ndarray:
     """Build a rotation whose +Z is ``tool_axis`` (Zacharias tool axis = TCP +Z)."""
     z = np.asarray(tool_axis, dtype=np.float64).reshape(3)
     z = z / (np.linalg.norm(z) + 1e-12)
-    # Pick a stable tangent.
     a = np.array([1.0, 0.0, 0.0]) if abs(z[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
     x = np.cross(a, z)
     x = x / (np.linalg.norm(x) + 1e-12)

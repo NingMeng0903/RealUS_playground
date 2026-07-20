@@ -51,6 +51,9 @@ def test_delta_T_features_dim():
     dT = delta_T_tcp_inv_base(T)
     f = features_from_delta_T(dT)
     assert f.shape == (6,)
+    # natural (p,u): p should recover TCP position; u = tool axis
+    assert np.allclose(f[:3], [0.3, 0.1, 0.2], atol=1e-6)
+    assert np.allclose(f[3:], R[:, 2], atol=1e-6)
 
 
 def test_softmin_approaches_min():
@@ -104,12 +107,17 @@ def test_train_synthetic_and_region_a(tmp_path):
         hidden=128,
         depth=3,
         num_freqs=4,
+        num_freqs_u=2,
+        use_physical_pe=False,  # synthetic unit-ball; physical λ is for meter-scale maps
         warmup_steps=0,
         lr=3e-3,
         hardneg_every=0,
         checkpoint=str(ckpt),
         seed=0,
         num_workers=0,
+        lambda_cls=1.0,
+        lambda_margin=0.0,
+        lambda_q=0.0,
         lambda_local=0.0,
         wandb_enable=False,
     )

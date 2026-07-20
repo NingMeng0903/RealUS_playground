@@ -35,7 +35,7 @@ def load_ird_gt_config(path: Path, *, root: Path) -> tuple[Path, Path, IrdGtConf
         n_interior=n_int,
         n_boundary=n_bnd,
         n_exterior=n_ext,
-        n_jitter=int(samp.get("n_jitter", 200_000)),
+        n_jitter=int(samp.get("n_jitter", 400_000)),
         max_orients_per_voxel=int(samp.get("max_orients_per_voxel", 28)),
         hard_negative_frac=float(samp.get("hard_negative_frac", 0.45)),
         hard_negative_radius_m=float(samp.get("hard_negative_radius_m", 0.06)),
@@ -43,11 +43,16 @@ def load_ird_gt_config(path: Path, *, root: Path) -> tuple[Path, Path, IrdGtConf
         sigma_r_deg=float(samp.get("sigma_r_deg", 10.0)),
         m_clip=float(samp.get("m_clip", 3.0)),
         m_eps=float(samp.get("m_eps", 0.05)),
-        edt_dilate=int(samp.get("edt_dilate", 2)),
         bbox_margin_m=float(samp.get("bbox_margin_m", 0.20)),
         comfort_from=str(samp.get("comfort_from", "auto")),
         k_candidates=int(samp.get("k_candidates", 4)),
         seed=int(samp.get("seed", 0)),
+        orient_knn=int(samp.get("orient_knn", 7)),
+        soft_tau=float(samp.get("soft_tau", 0.05)),
+        unknown_soft_max=float(samp.get("unknown_soft_max", 0.25)),
+        trusted_neg_soft_max=float(samp.get("trusted_neg_soft_max", 0.0)),
+        min_positive_support=int(samp.get("min_positive_support", 3)),
+        min_trusted_face_pairs=int(samp.get("min_trusted_face_pairs", 5000)),
     )
     return map_dir, out, cfg
 
@@ -87,7 +92,9 @@ def main(argv: list[str] | None = None) -> int:
             "feature_dim": 6,
             "seed": cfg.seed,
             "n_total": int(arrays["features"].shape[0]),
-            "contract": "y=1=>m>0; y=0=>m<0; bitmask-exact; EDT margin; AABB from features",
+            "contract": "MC-hit=pos; C+>=min & C-==0 trusted faces; no soft_tau fallback; natural(p,u)",
+            "feature_kind": "natural_pu",
+            "label_kind": "stable_support_v6",
         },
     )
     print(f"wrote {out}  N={arrays['features'].shape[0]} dim={arrays['features'].shape[1]}")

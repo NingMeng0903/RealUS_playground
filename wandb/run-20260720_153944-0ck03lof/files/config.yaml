@@ -1,0 +1,134 @@
+_wandb:
+    value:
+        cli_version: 0.27.2
+        e:
+            k3qs5xnllk6lvulbga8qjdmap7ql5vgx:
+                args:
+                    - --config
+                    - configs/train_config.yaml
+                cpu_count: 24
+                cpu_count_logical: 32
+                cudaVersion: "13.0"
+                disk:
+                    /:
+                        total: "156868526080"
+                        used: "137307676672"
+                email: pei.liu@tum.de
+                executable: /media/camp/EXT_DRIVE/envs/genesis/bin/python
+                git:
+                    commit: 75ce391dab801ba5bb8f57fd0da1b12c4bfc500d
+                    remote: git@github.com:NingMeng0903/RealUS_playground.git
+                gpu: NVIDIA GeForce RTX 4080 Laptop GPU
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ada
+                      cudaCores: 7424
+                      memoryTotal: "12878610432"
+                      name: NVIDIA GeForce RTX 4080 Laptop GPU
+                      uuid: GPU-e58f5d53-ce96-f86d-cbb4-6a5605252c51
+                host: pei
+                memory:
+                    total: "33243275264"
+                os: Linux-6.8.0-90-generic-x86_64-with-glibc2.35
+                program: -m ird_playground.cli.train
+                python: CPython 3.10.20
+                root: /media/camp/EXT_DRIVE/RealUS_playground
+                startedAt: "2026-07-20T07:39:44.895075Z"
+                writerId: k3qs5xnllk6lvulbga8qjdmap7ql5vgx
+        m: []
+        python_version: 3.10.20
+        t:
+            "1":
+                - 1
+            "2":
+                - 1
+            "3":
+                - 2
+                - 13
+                - 15
+                - 16
+                - 61
+            "4": 3.10.20
+            "5": 0.27.2
+            "12": 0.27.2
+            "13": linux-x86_64
+ascent_improve_min:
+    value: 0.4
+batch_size:
+    value: 1024
+boundary_iou_min:
+    value: 0.7
+checkpoint:
+    value: /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/checkpoints/latest.pt
+checkpoint_dir:
+    value: /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/checkpoints
+depth:
+    value: 5
+device:
+    value: cuda
+epochs:
+    value: 100
+grad_clip_norm:
+    value: 10
+grad_cosine_min:
+    value: 0.3
+gt_npz:
+    value: /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/ird/gt_samples_1p5cm_probe.npz
+hardneg_every:
+    value: 0
+hardneg_frac:
+    value: 0
+hidden:
+    value: 256
+lambda_cls:
+    value: 1
+lambda_local:
+    value: 0
+lambda_margin:
+    value: 0.5
+lambda_q:
+    value: 0.25
+lambda_q_score:
+    value: 0.5
+log_every_steps:
+    value: 10
+lr:
+    value: 0.0003
+mae_max:
+    value: 0.35
+min_lr_ratio:
+    value: 0.01
+num_freqs:
+    value: 6
+num_workers:
+    value: 4
+print_every_steps:
+    value: 50
+rail_ad_fd_rel_max:
+    value: 0.25
+rail_sign_agree_min:
+    value: 0.8
+region_improve_min:
+    value: 0.4
+report:
+    value: /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/reports/train_point.json
+save_freq:
+    value: 25
+seed:
+    value: 42
+sigma_local_m:
+    value: 0.06
+spearman_min:
+    value: 0.7
+synthetic_n:
+    value: 8192
+tau_m:
+    value: 1
+torch_compile:
+    value: false
+val_frac:
+    value: 0.15
+warmup_steps:
+    value: 500
+weight_decay:
+    value: 0.0001

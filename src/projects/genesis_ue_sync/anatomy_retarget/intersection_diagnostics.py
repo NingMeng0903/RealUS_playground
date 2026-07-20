@@ -69,14 +69,38 @@ def _intersection_pairs(
     bounds = np.concatenate(
         (bone_triangles.min(axis=1), bone_triangles.max(axis=1)), axis=1
     )
-    tree = trimesh.util.bounds_tree(bounds)
+    try:
+        tree = trimesh.util.bounds_tree(bounds)
+    except ModuleNotFoundError:
+        tree = None
+        from scipy.spatial import cKDTree
+
+        bone_centers = np.mean(bone_triangles, axis=1)
+        bone_radii = np.max(
+            np.linalg.norm(bone_triangles - bone_centers[:, None, :], axis=2),
+            axis=1,
+        )
+        center_tree = cKDTree(bone_centers)
+        maximum_bone_radius = float(np.max(bone_radii)) if len(bone_radii) else 0.0
     result: set[tuple[int, int]] = set()
     for tube_row in tube_rows.tolist():
         triangle = triangles[int(tube_row)]
         query = np.r_[triangle.min(axis=0), triangle.max(axis=0)]
-        for local_bone in tree.intersection(query.tolist()):
+        if tree is not None:
+            candidates = tree.intersection(query.tolist())
+        else:
+            center = np.mean(triangle, axis=0)
+            radius = float(np.max(np.linalg.norm(triangle - center, axis=1)))
+            candidates = center_tree.query_ball_point(
+                center, radius + maximum_bone_radius
+            )
+        for local_bone in candidates:
             bone_row = int(bone_rows[int(local_bone)])
-            if _triangles_intersect(triangle, triangles[bone_row]):
+            if (
+                np.all(query[:3] <= bounds[int(local_bone), 3:])
+                and np.all(query[3:] >= bounds[int(local_bone), :3])
+                and _triangles_intersect(triangle, triangles[bone_row])
+            ):
                 result.add((int(tube_row), bone_row))
     return result
 

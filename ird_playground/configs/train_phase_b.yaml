@@ -1,4 +1,4 @@
-# Alias of train_config.yaml — v6 cls-only on stable-support labels
+# Phase B: cls + boundary margin + q (after v6 Phase A gate)
 
 data:
   gt_npz: data/ird/gt_samples_1p5cm_probe.npz
@@ -20,11 +20,11 @@ training:
   batch_size: 1024
   num_workers: 4
   torch_compile: false
-  epochs: 40
+  epochs: 60
   save_freq: 10
-  learning_rate: 3.0e-4
+  learning_rate: 2.0e-4
   weight_decay: 1.0e-4
-  warmup_steps: 500
+  warmup_steps: 300
   min_lr_ratio: 0.01
   grad_clip_norm: 10.0
   log_every_steps: 10
@@ -45,29 +45,29 @@ training:
 
 loss:
   lambda_cls: 1.0
-  lambda_margin: 0.0
-  lambda_q: 0.0
+  lambda_margin: 0.25
+  lambda_q: 0.1
   lambda_local: 0.0
 
 io:
-  checkpoint: data/checkpoints/cls_only_latest.pt
+  checkpoint: data/checkpoints/phase_b_latest.pt
   checkpoint_dir: data/checkpoints
-  report: data/reports/train_cls_only.json
+  report: data/reports/train_phase_b.json
 
 pass:
-  mae_max: 9.0
-  spearman_min: 0.0
+  mae_max: 0.35
+  spearman_min: 0.70
   boundary_iou_min: 0.65
-  grad_cosine_min: 0.0
-  ascent_improve_min: 0.0
-  rail_ad_fd_rel_max: 1.0
-  rail_sign_agree_min: 0.0
-  region_improve_min: 0.0
+  grad_cosine_min: 0.30
+  ascent_improve_min: 0.40
+  rail_ad_fd_rel_max: 0.25
+  rail_sign_agree_min: 0.80
+  region_improve_min: 0.40
 
 wandb:
   enable: true
   project: neural-ird-rm75
   entity: lpei82060-technical-university-of-munich
   mode: online
-  run_name: neural_ird_v6_stable_support
-  tags: [neural_ird, v6, stable_support, physical_pe, cls_only]
+  run_name: neural_ird_v6_margin_q
+  tags: [neural_ird, v6, stable_support, physical_pe, margin_q]

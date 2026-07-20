@@ -1,281 +1,236 @@
-# Neural IRD debug dump — training + GT production
+# Neural IRD v6 — 平台根因已定位并修复
 
-**Date:** 2026-07-19  
-**Run:** `wandb/run-20260719_213857-x65kb89k` (`neural_ird_mq_v2`)  
-**Purpose:** third-party review of why ~29 epochs still underperform.
+Generated: 2026-07-20 17:08:54
 
----
+## 结论
 
-## 0. Verdict (short)
+v5 不是「完全没学」：epoch 0 学完粗工作空间包络（IoU≈0.54），之后细边界无法继续学。
 
-Training is **not diverging**, but it is **stuck on a high loss floor** with **weak reachability classification**. The dominant issues are **label/feature contract bugs and a harmful local loss**, not “need more epochs”.
+### Bug 1（最严重）：trusted boundary 筛选反了
 
-| epoch | train | val |
-|------:|------:|----:|
-| 0 | 4.426 | 3.827 |
-| 5 | 3.974 | 3.637 |
-| 10 | 3.944 | 3.617 |
-| 20 | 3.924 | 3.609 |
-| 28 | 3.907 | 3.605 |
+`soft_neg <= 0.05` 在 7×7 邻域下等价于「局部最多 ~2 个 hit」→ **优先保留孤立盐粒点**，稳定连续边界反而被过滤。
 
-After ~epoch 5, val only moves **~0.03**. Step breakdown at epoch 28–29:
+v6 重建实测：
 
-- `L_cls ≈ 0.59` (barely better than predicting majority / weak classifier)
-- `L_m ≈ 2.9–3.2` (margin MSE stuck)
-- `L_q ≈ 0.006` (comfort already easy)
-- `L_local ≈ 5.5–8.0` (huge; with `λ_local=0.05` still adds ~0.3–0.4 every step)
-
-`best.pt` on 50k random GT points:
-
-- `boundary_iou ≈ 0.53`, `reach_accuracy ≈ 0.63`
-- `mae_m ≈ 1.39`, pred `m` mean≈−0.26 vs GT pos mean≈+1.23 / neg≈−2.52
-
----
-
-## 1. Root causes (ordered)
-
-### A. Feature frame vs AABB mismatch (critical)
-
-GT `features[:3]` are **ΔT translation** `t = −Rᵀ p` (TCP-inverse-base), built in `export_gt._batch_feat_from_p_u`.
-
-But `aabb_lo/hi` saved into the NPZ / checkpoint come from **world voxel centres** `voxel_xyz ± margin`.
-
-The network then does:
-
-```text
-p_n = 2 * (features[:3] − aabb_lo) / (aabb_hi − aabb_lo) − 1
+```
+support_pos quantiles=[1, 1, 2, 3, 12]   # 中位数=2 → 孤立 hit
+support_neg quantiles=[0, 0, 1, 2, 13]
+trusted faces=34,205/400,000 (C+>=3 & C-=0); rejected=365,795
+boundary capped 800k → 68,410
+jitter 34k+34k
+N=836,820 (was 1.9M)
 ```
 
-So Fourier PE is applied after **wrong-frame normalization**. Empirically a large fraction of ΔT translations sit outside that world AABB, so PE sees saturated / distorted coords.
+约 63% 的旧训练数据（800k bnd + 400k jitter）依赖错误筛选。
 
-### B. Reachability signal in features is weak / entangled
+### Bug 2：位置 PE 最高物理周期 ~10 cm，解析不了 1.5–3 cm 边界
 
-On the 2M GT:
+v6：物理波长 `[0.48, 0.24, 0.12, 0.06, 0.03, 0.015]` m；`num_freqs_u=5`。
 
-- `spearman(x|y|z, m) ≈ 0`
-- `spearman(|t|, m) ≈ −0.23`, `spearman(|t|, y) ≈ −0.19`
+### 其它修复
 
-Orientation (rot6D) carries much of the reachability bit, while margin labels are mostly a **function of map D(row)** attached to a sampled orientation — many different orientations at the same voxel share the same `m_gt`/`q`. That makes `(ΔT → m)` a **noisy, multi-valued** regression.
+- 删除「trusted 不足则退回全部 pair」fallback → RuntimeError
+- 验证：固定 calib/test blocks + indices；分别报告 `iou@0.5` / `iou@cal` / `pr_auc`
+- Phase A 训练 hard `reachable`，不用 `y_soft`
+- Sampler：无放回 cycling
 
-### C. `L_local` is still the wrong regularizer for this batching
+### 开训
 
-`_spatial_local_pair` takes **within-batch** nearest neighbours in feature `xyz` with `σ=0.06 m`.
+```bash
+cd ird_playground && source env.sh
+python -m ird_playground.cli.train --config configs/train_config.yaml
+```
 
-With `batch=1024` over a 2M workspace-scale cloud, in-batch NNs are usually **far**; when a rare close pair appears, their `m_gt` often differs a lot (esp. pos vs hard-neg). Log shows `L_local≈6–8` **late in training** — it never collapses. Val loss **does not include** `L_local` (eval path passes `local_pair=None`), so train/val are not comparable and the model is pressured by a term that does not match the val objective.
+期望：epoch 0 仍快速达粗包络；后续 `bnd_pos_recall` / `pr_auc` / `iou@cal` 应同步上升。
 
-### D. Margin labels still have a hard floor
-
-Even after log1p-D fix:
-
-- many exterior points sit at `m≈−3` (`tanh` clip)
-- trivial class-conditional mean MSE of `m` is still O(1)
-- with `λ_margin=1.0`, `L_m≈3` means the net has not fitted the margin field; combined with (A)(B) it may be **underdetermined / mis-normalized**
-
-### E. Classification head shares the margin logit
-
-`p = σ(m)` for BCE while `m` is also regressed to a continuous margin in `[-3,3]`. Early/mid training fights: BCE wants large |m| for confident class, MSE wants calibrated magnitudes. IoU stuck ~0.53 is consistent with this conflict under bad PE.
-
-### F. What is *not* the main issue
-
-- LR / warmup: lr still ~2.4e-4 at epoch 29; not annealed to death
-- q loss: already tiny
-- “need 100 epochs”: val plateaued by epoch ~10–15
+Phase A 进入 B 门槛：`PR-AUC>0.80`，`bnd_pos_recall>0.65`，`bnd_neg_spec>0.65`，`iou@cal>0.65`。
 
 ---
 
-## 2. Suggested fixes for third party (do not implement here)
+# Neural IRD — 完整诊断 & 代码归档
 
-1. Store / normalize **ΔT-frame AABB** (from `features[:,:3]`), or stop AABB-normalizing and use fixed scale.
-2. Either drop `L_local` until spatial pairs are true SE(3)-local neighbours from the map, or build neighbour indices offline.
-3. Decouple classification logit from margin head (two heads), or use BCE on `σ(m/τ)` with stop-grad between tasks.
-4. Rebuild GT so `m_gt` is consistent with the same ΔT sample (orientation-aware), not only voxel D.
-5. Report val with the same loss terms as train; log IoU / mae_m each epoch (not only scalar loss).
+Generated: 2026-07-20 16:53:15
+
+> 本文档**替换**此前所有 debug 内容。包含：根因分析、v4/v5 训练对比、仍存在的瓶颈、以及当前全部相关源码。
 
 ---
 
-## 3. Reproduce
+## 1. 结论（为什么「还是没有提升」）
+
+### 1.1 最大根因（目标定义错误）
+
+Capability map 是 **Monte Carlo 稀疏命中** 的二值场，不是 IK 验证后的真实可达场：
+
+| 量 | 值 |
+|---|---|
+| 稀疏格 `M×642` | 417,201 × 642 ≈ **2.68×10⁸** |
+| MC 正 bit | **4,814,538**（≈**1.80%**） |
+| 每体素平均命中方向 | ≈ **11.5** / 642 |
+| MC 采样量 | ~10⁷ 关节态 |
+| 每 bin 期望命中 | ≪ 1 |
+
+**`bit=0` 只表示「这次 MC 没碰巧落进该 (voxel, orient) bin」**，不表示 IK+碰撞后确定不可达。
+
+旧 pipeline 做 `neg = np.nonzero(~bits)` → 网络学的是 **MC hit vs miss** 的盐粒场，不是真实 reachability。
+
+### 1.2 v4 → v5 实际发生了什么
+
+| 指标 | v4（错误标签） | v5（trusted 标签 + 修 batch） | 目标 |
+|---|---|---|---|
+| val IoU @0.5（日志 `val_iou`） | **0.23–0.29** | **0.54–0.56**（ep0 即 0.54，ep8 后平台） | ≥0.70 |
+| best IoU（threshold sweep） | ~0.29 | **~0.559 @ 0.25–0.35** | ≥0.70 |
+| PR-AUC | — | **~0.73** | — |
+| bnd_pos_recall | **~5%** | **~35%** | 高 |
+| bnd_neg_spec | ~95% | **~65%**（不再极端保守） | 高 |
+| jitter 正率 | **3.7%** | **50%**（jitter_pos/neg 各半） | 50% |
+| train loss | ~0.62 | **~0.58** | — |
+
+**v5 相对 v4 有明显提升**（IoU 从 0.28→0.56，recall 从 5%→35%），但：
+
+1. **epoch 8 后完全平台** — loss 仍降，IoU/PR-AUC 不动 → 不是 LR/epoch 问题，是**标签/任务上限**
+2. **固定 0.5 阈值 IoU ~0.43**（wandb `val/iou`）— 概率整体偏低，需 threshold≈0.3
+3. **bnd_pos_recall 仍只有 ~35%** — face-pair 负侧仍是「同 orient 邻格 bit=0」，大量仍是 MC 漏采假负
+4. **未做 IK 假负率审计** — 近邻 bit=0 里有多少 IK 其实成功，未知
+5. **仍无 hit_count/KDE map** — 网络无法学平滑密度场
+
+若用户看的是 **固定 0.5 IoU ~0.43** 或 **与 0.70 目标的差距**，会感觉「完全没有提升」。
+
+### 1.3 已排除的硬 bug
+
+- **bit pack/unpack round-trip PASS** — writer `pack_bits_5dof` 与 reader `unpack_bits_5dof` 均为 little-endian OR；naive `np.packbits`（big-endian）约 **31.7%** bit 错位
+- **FK ±Z 单样本** — 未跑（缺 `Robotic_Arm` 模块）
+
+### 1.4 v5 标签合同（当前实现）
+
+| 类型 | 规则 | cls_weight |
+|---|---|---|
+| 正 | exact MC hit；face 内侧；jitter_pos | 1 |
+| 负 | soft≈0 的 bit=0；face 外侧；off-map | 1 |
+| unknown | 近 MC hit 但本 bin 未命中 | **0**（不进 BCE）|
+
+GT: `N=1,900,000`，`reach≈0.474`，`supervised=100%`，layers: int=300k, bnd±≈400k, jit±=200k, ext=400k
+
+### 1.5 仍存在的结构性问题
+
+1. **Boundary neg 仍基于 exact bit** — face 负侧 = 邻格同 orient `bit=0`，不是 IK 不可达
+2. **Exterior neg = soft≈0 的 bit=0** — 仍可能是 MC 漏采
+3. **Interior/bnd_pos = exact hit** — 正标签可信，但只占 1.8% 稀疏空间
+4. **5-DoF 无 roll** — 对绕 u 的探头自旋不敏感（后续优化 α(s) 的缺口）
+5. **MLP 容量不是瓶颈** — 256×5 + PE 足够学平滑场；瓶颈在 GT 语义
+
+### 1.6 不要继续做的事
+
+- 同标签加 epoch / 加深网络到 512×10
+- focal loss（会放大 MC 漏采假负）
+- hash grid / IPE / SIREN 堆模块
+- 只调 pos_weight 而不改 GT
+
+### 1.7 下一步（按优先级）
+
+1. **IK 假负率审计** — 抽 5k–10k 个 bit=0 近邻点，多 seed IK，估 FN rate
+2. **重建 map：hit_count + spatial/angular splatting** — 保存密度而非二值 bit
+3. **训练目标改 soft density** — `y_soft = 1-exp(-τ·c)`，BCE on soft labels
+4. **补 FK ±Z round-trip** — 确认 map 记录的是 TCP +Z
+5. **roll bin 或 6D rotation** — 若探头非轴对称
+
+---
+
+## 2. 训练日志
+
+### 2.1 v4 Phase-A（错误：~bits 当不可达）
+
+```
+epoch=0 train_loss=0.6400 val_loss=0.6181 val_iou=0.235 bnd_m_mae=0.591 lr=3.00e-04
+epoch=1 train_loss=0.6311 val_loss=0.6162 val_iou=0.229 bnd_m_mae=0.593 lr=2.99e-04
+epoch=2 train_loss=0.6293 val_loss=0.6156 val_iou=0.244 bnd_m_mae=0.600 lr=2.97e-04
+epoch=3 train_loss=0.6282 val_loss=0.6141 val_iou=0.284 bnd_m_mae=0.606 lr=2.94e-04
+epoch=4 train_loss=0.6274 val_loss=0.6134 val_iou=0.242 bnd_m_mae=0.598 lr=2.90e-04
+epoch=5 train_loss=0.6268 val_loss=0.6129 val_iou=0.279 bnd_m_mae=0.608 lr=2.85e-04
+epoch=6 train_loss=0.6265 val_loss=0.6125 val_iou=0.255 bnd_m_mae=0.605 lr=2.80e-04
+epoch=7 train_loss=0.6253 val_loss=0.6103 val_iou=0.281 bnd_m_mae=0.622 lr=2.73e-04
+epoch=8 train_loss=0.6230 val_loss=0.6080 val_iou=0.259 bnd_m_mae=0.627 lr=2.66e-04
+epoch=9 train_loss=0.6217 val_loss=0.6079 val_iou=0.289 bnd_m_mae=0.627 lr=2.58e-04
+epoch=10 train_loss=0.6209 val_loss=0.6089 val_iou=0.256 bnd_m_mae=0.617 lr=2.50e-04
+epoch=11 train_loss=0.6202 val_loss=0.6073 val_iou=0.291 bnd_m_mae=0.623 lr=2.41e-04
+epoch=12 train_loss=0.6198 val_loss=0.6064 val_iou=0.275 bnd_m_mae=0.621 lr=2.31e-04
+epoch=13 train_loss=0.6195 val_loss=0.6072 val_iou=0.285 bnd_m_mae=0.623 lr=2.21e-04
+epoch=14 train_loss=0.6193 val_loss=0.6061 val_iou=0.265 bnd_m_mae=0.621 lr=2.10e-04
+epoch=15 train_loss=0.6188 val_loss=0.6062 val_iou=0.282 bnd_m_mae=0.621 lr=1.99e-04
+epoch=16 train_loss=0.6186 val_loss=0.6057 val_iou=0.278 bnd_m_mae=0.622 lr=1.88e-04
+epoch=17 train_loss=0.6182 val_loss=0.6057 val_iou=0.276 bnd_m_mae=0.618 lr=1.77e-04
+epoch=18 train_loss=0.6178 val_loss=0.6063 val_iou=0.275 bnd_m_mae=0.620 lr=1.65e-04
+```
+
+wandb: `neural_ird_v4_cls_only` / run `wbnnrdfo`
+
+### 2.2 v5 Phase-A（trusted labels，run `02gycww7`，中断于 ep18）
+
+```
+epoch=0 train_loss=0.6244 val_loss=0.5866 val_iou=0.542 best_iou=0.542@0.30 pr_auc=0.714 bnd_m_mae=0.148 lr=3.00e-04
+epoch=1 train_loss=0.6039 val_loss=0.5801 val_iou=0.545 best_iou=0.545@0.35 pr_auc=0.716 bnd_m_mae=0.155 lr=2.99e-04
+epoch=2 train_loss=0.6004 val_loss=0.5772 val_iou=0.548 best_iou=0.548@0.40 pr_auc=0.721 bnd_m_mae=0.162 lr=2.97e-04
+epoch=3 train_loss=0.5955 val_loss=0.5709 val_iou=0.551 best_iou=0.551@0.35 pr_auc=0.723 bnd_m_mae=0.164 lr=2.94e-04
+epoch=4 train_loss=0.5891 val_loss=0.5649 val_iou=0.555 best_iou=0.555@0.40 pr_auc=0.729 bnd_m_mae=0.159 lr=2.90e-04
+epoch=5 train_loss=0.5868 val_loss=0.5620 val_iou=0.557 best_iou=0.557@0.30 pr_auc=0.730 bnd_m_mae=0.157 lr=2.85e-04
+epoch=6 train_loss=0.5855 val_loss=0.5612 val_iou=0.557 best_iou=0.557@0.35 pr_auc=0.731 bnd_m_mae=0.152 lr=2.80e-04
+epoch=7 train_loss=0.5849 val_loss=0.5607 val_iou=0.557 best_iou=0.557@0.35 pr_auc=0.730 bnd_m_mae=0.156 lr=2.73e-04
+epoch=8 train_loss=0.5841 val_loss=0.5602 val_iou=0.558 best_iou=0.558@0.30 pr_auc=0.731 bnd_m_mae=0.159 lr=2.66e-04
+epoch=9 train_loss=0.5833 val_loss=0.5606 val_iou=0.558 best_iou=0.558@0.35 pr_auc=0.731 bnd_m_mae=0.159 lr=2.58e-04
+epoch=10 train_loss=0.5827 val_loss=0.5593 val_iou=0.558 best_iou=0.558@0.35 pr_auc=0.732 bnd_m_mae=0.156 lr=2.50e-04
+epoch=11 train_loss=0.5822 val_loss=0.5592 val_iou=0.557 best_iou=0.557@0.25 pr_auc=0.734 bnd_m_mae=0.169 lr=2.41e-04
+epoch=12 train_loss=0.5819 val_loss=0.5591 val_iou=0.558 best_iou=0.558@0.35 pr_auc=0.731 bnd_m_mae=0.168 lr=2.31e-04
+epoch=13 train_loss=0.5814 val_loss=0.5590 val_iou=0.558 best_iou=0.558@0.35 pr_auc=0.726 bnd_m_mae=0.163 lr=2.21e-04
+epoch=14 train_loss=0.5811 val_loss=0.5605 val_iou=0.558 best_iou=0.558@0.35 pr_auc=0.730 bnd_m_mae=0.167 lr=2.10e-04
+epoch=15 train_loss=0.5802 val_loss=0.5580 val_iou=0.559 best_iou=0.559@0.35 pr_auc=0.731 bnd_m_mae=0.164 lr=2.00e-04
+epoch=16 train_loss=0.5800 val_loss=0.5596 val_iou=0.558 best_iou=0.558@0.30 pr_auc=0.729 bnd_m_mae=0.164 lr=1.88e-04
+epoch=17 train_loss=0.5794 val_loss=0.5588 val_iou=0.559 best_iou=0.559@0.25 pr_auc=0.732 bnd_m_mae=0.172 lr=1.77e-04
+```
+
+wandb: `neural_ird_v5_cls_trusted` / run `02gycww7`
+
+**v5 epoch 摘要表：**
+
+| epoch | train_loss | val_loss | val_iou(best) | best@thr | pr_auc | bnd_m_mae |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 0.6244 | 0.5866 | 0.542 | 0.542@0.30 | 0.714 | 0.148 || 1 | 0.6039 | 0.5801 | 0.545 | 0.545@0.35 | 0.716 | 0.155 || 2 | 0.6004 | 0.5772 | 0.548 | 0.548@0.40 | 0.721 | 0.162 || 3 | 0.5955 | 0.5709 | 0.551 | 0.551@0.35 | 0.723 | 0.164 || 4 | 0.5891 | 0.5649 | 0.555 | 0.555@0.40 | 0.729 | 0.159 || 5 | 0.5868 | 0.5620 | 0.557 | 0.557@0.30 | 0.730 | 0.157 || 6 | 0.5855 | 0.5612 | 0.557 | 0.557@0.35 | 0.731 | 0.152 || 7 | 0.5849 | 0.5607 | 0.557 | 0.557@0.35 | 0.730 | 0.156 || 8 | 0.5841 | 0.5602 | 0.558 | 0.558@0.30 | 0.731 | 0.159 || 9 | 0.5833 | 0.5606 | 0.558 | 0.558@0.35 | 0.731 | 0.159 || 10 | 0.5827 | 0.5593 | 0.558 | 0.558@0.35 | 0.732 | 0.156 || 11 | 0.5822 | 0.5592 | 0.557 | 0.557@0.25 | 0.734 | 0.169 || 12 | 0.5819 | 0.5591 | 0.558 | 0.558@0.35 | 0.731 | 0.168 || 13 | 0.5814 | 0.5590 | 0.558 | 0.558@0.35 | 0.726 | 0.163 || 14 | 0.5811 | 0.5605 | 0.558 | 0.558@0.35 | 0.730 | 0.167 || 15 | 0.5802 | 0.5580 | 0.559 | 0.559@0.35 | 0.731 | 0.164 || 16 | 0.5800 | 0.5596 | 0.558 | 0.558@0.30 | 0.729 | 0.164 || 17 | 0.5794 | 0.5588 | 0.559 | 0.559@0.25 | 0.732 | 0.172 |
+**观察：** ep0 即 val_iou=0.542；ep8 达 0.558 后至 ep17 几乎不变；loss 从 0.624→0.579 仍在下降。
+
+---
+
+## 3. 命令
 
 ```bash
 cd /media/camp/EXT_DRIVE/RealUS_playground/ird_playground
 source env.sh
-python -m ird_playground.cli.build_ird_gt --config configs/ird_gt_config.yaml
-python -m ird_playground.cli.train --config configs/train_config.yaml
-python -m ird_playground.cli.eval_point --checkpoint data/checkpoints/best.pt --config configs/train_config.yaml
-```
 
-Map used for GT: `rm75_control/data/reachability/rm75_6f_1p5cm_15deg_coll_probe`  
-GT NPZ: `ird_playground/data/ird/gt_samples_1p5cm_probe.npz` (N=2_000_000)
+# 重建 GT
+python -m ird_playground.cli.build_ird_gt --config configs/ird_gt_config.yaml
+
+# Phase A cls-only
+python -m ird_playground.cli.train --config configs/train_config.yaml
+```
 
 ---
 
-## 4. Verbatim source dump
-
-Below: full file contents (no omissions) for training + GT production stack.
+## 4. 完整源码
 
 
-## FILE: `ird_playground/configs/train_config.yaml`
-
-```yaml
-# train_config.yaml — Neural IRD point field f_θ(ΔT) → (m, q)
-# Env: Among_US genesis — source ird_playground/env.sh
-
-data:
-  gt_npz: data/ird/gt_samples_1p5cm_probe.npz
-  synthetic_n: 8192
-  val_frac: 0.15
-
-model:
-  num_freqs: 6          # xyz Fourier only
-  hidden: 256
-  depth: 5
-  tau_m: 1.0
-  lambda_q: 0.5         # score = -softplus(-m/τ) + λq
-
-training:
-  seed: 42
-  batch_size: 1024
-  num_workers: 4
-  torch_compile: false
-  epochs: 100
-  save_freq: 25
-  learning_rate: 3.0e-4
-  weight_decay: 1.0e-4
-  warmup_steps: 500
-  min_lr_ratio: 0.01
-  grad_clip_norm: 10.0
-  log_every_steps: 10
-  print_every_steps: 50
-  hardneg_every: 20
-  hardneg_frac: 0.02
-  device: cuda
-
-loss:
-  lambda_cls: 1.0
-  lambda_margin: 1.0
-  lambda_q: 1.0
-  # Spatial within-batch NN (||Δp|| < sigma_local_m), NOT random shuffle
-  lambda_local: 0.05
-  sigma_local_m: 0.06
-
-io:
-  # Written by cli.train only; inference: --checkpoint data/checkpoints/best.pt
-  checkpoint: data/checkpoints/latest.pt
-  checkpoint_dir: data/checkpoints
-  report: data/reports/train_point.json
-
-pass:
-  mae_max: 0.35
-  spearman_min: 0.70
-  boundary_iou_min: 0.70
-  grad_cosine_min: 0.30
-  ascent_improve_min: 0.40
-  rail_ad_fd_rel_max: 0.25
-  rail_sign_agree_min: 0.80
-  region_improve_min: 0.40
-
-wandb:
-  enable: true
-  project: neural-ird-rm75
-  entity: lpei82060-technical-university-of-munich
-  mode: online
-  run_name: neural_ird_mq_v2
-  tags: [neural_ird, m_q, rm75, fixed_local]
-```
-
-
-## FILE: `ird_playground/configs/ird_gt_config.yaml`
-
-```yaml
-# Dense stratified IRD GT (~2M) from 1.5 cm horizontal-probe+shaft map.
-# Layers: 35% interior / 40% boundary / 25% exterior.
-# m_gt is a continuous truncated margin (log1p in D), not a strict SDF.
-
-map_dir: ../rm75_control/data/reachability/rm75_6f_1p5cm_15deg_coll_probe
-out: data/ird/gt_samples_1p5cm_probe.npz
-
-sampling:
-  n_interior: 700000
-  n_boundary: 800000
-  n_exterior: 500000
-  max_orients_per_voxel: 28
-  hard_negative_frac: 0.45
-  hard_negative_radius_m: 0.06
-  sigma_p_m: 0.03
-  sigma_r_deg: 10.0
-  # Prefer percentiles if hi≈d_max (exporter auto-retunes); these are fallbacks
-  boundary_d_lo: 0.008
-  boundary_d_hi: 0.020
-  m_clip: 3.0
-  bbox_margin_m: 0.20
-  comfort_from: auto
-  k_candidates: 4
-  seed: 42
-```
-
-
-## FILE: `ird_playground/configs/probe_default.yaml`
-
-```yaml
-# Default ultrasound probe TCP relative to link7.
-#
-# Chain (body-fixed, right-multiply):
-#   Trans_z(0.07) · Rot_y(+pi/2) · Trans_z(0.05)
-# TCP origin ≈ (0.05, 0, 0.07) in link7; TCP +Z = link7 +X.
-
-name: ultrasound_probe_default
-parent_frame: link_7
-child_frame: tcp
-
-# Translation of the composed TCP origin in parent (link7), metres.
-translation_m: [0.05, 0.0, 0.07]
-
-# Orientation as quaternion xyzw of TCP axes in parent.
-# Rot_y(+90°) maps parent +X → child +Z, parent +Z → child -X, +Y → +Y.
-# SciPy Rotation.from_euler('y', 90, degrees=True).as_quat() → [0, 0.70710678, 0, 0.70710678]
-quaternion_xyzw: [0.0, 0.7071067811865476, 0.0, 0.7071067811865476]
-
-# Equivalent Euler for URDF patch / RealMan tool offset (xyz order, radians).
-euler_xyz_rad: [0.0, 1.5707963267948966, 0.0]
-```
-
-
-## FILE: `ird_playground/configs/region_config.yaml`
-
-```yaml
-# Query-side Region A extents (runtime only; NOT trained into the point field).
-
-position_region:
-  tangent_1_m: 0.020
-  tangent_2_m: 0.010
-  normal_m: 0.002
-
-orientation_region:
-  tilt_tangent_1_deg: 8.0
-  tilt_tangent_2_deg: 5.0
-  axial_roll_deg: 3.0
-
-aggregation:
-  name: mean_softmin
-  lambda: 0.6
-  tau: 0.10
-  d_min: 0.30
-  tau_c: 0.05
-
-sampling:
-  sobol: true
-  num_samples_nlp: 32
-  num_samples_eval: 512
-  seed: 0
-```
-
-
-## FILE: `ird_playground/ird_playground/ird/export_gt.py`
+### `ird_playground/ird/export_gt.py`
 
 ```python
-"""Build dense stratified IRD training samples from a CapabilityMap.
+"""Build IRD GT v5 — MC-hit ≠ unreachable; soft / unknown / trusted-neg labels.
 
-Layers (default): 35% reachable interior / 40% boundary band / 25% exterior.
-Labels: reachable, m_gt (margin, not a strict SDF), q and optional factor channels.
+Contract:
+  features = [p_base,tcp(3), u_base(3)]  natural 5-DoF
+  y_soft ∈ [0,1] from local spatial×orient neighborhood of MC hits
+  cls_weight = 0 on UNKNOWN (near hits but bit=0); only supervise trusted labels
+  Label rules (SE(3)-proxy distance in voxel/orient neighborhood):
+    exact hit          → y=1,   cls_weight=1
+    soft coverage > τ  → y=y_soft, cls_weight=1   (optional soft positives)
+    far from all hits  → y=0,   cls_weight=1       (trusted negative)
+    near miss (bit=0)  → unknown, cls_weight=0     (NOT in BCE)
+  margin: continuous face-pair interpolation only; margin_weight=0 elsewhere
+  jitter: face-pair normal ±delta half/half (LAYER_JITTER_POS/NEG)
 """
 
 from __future__ import annotations
@@ -286,354 +241,522 @@ from pathlib import Path
 import numpy as np
 import yaml
 
+LAYER_INTERIOR = 0
+LAYER_BND_POS = 1
+LAYER_BND_NEG = 2
+LAYER_JITTER_POS = 3
+LAYER_JITTER_NEG = 4
+LAYER_EXTERIOR = 5
+
+# backward-compat aliases
+LAYER_JITTER = LAYER_JITTER_POS
+
 
 @dataclass
 class IrdGtConfig:
-    n_interior: int = 700_000
+    n_interior: int = 300_000
     n_boundary: int = 800_000
-    n_exterior: int = 500_000
-    # legacy aliases used by older configs
+    n_exterior: int = 400_000
     n_positive: int = 700_000
     n_negative: int = 500_000
     seed: int = 0
     comfort_from: str = "auto"
     bbox_margin_m: float = 0.20
-    max_orients_per_voxel: int = 24
-    hard_negative_frac: float = 0.45
+    max_orients_per_voxel: int = 28
+    hard_negative_frac: float = 0.50
     hard_negative_radius_m: float = 0.06
     sigma_p_m: float = 0.03
     sigma_r_deg: float = 10.0
-    boundary_d_lo: float = 0.02
-    boundary_d_hi: float = 0.08
-    m_pos_scale: float = 2.0
-    m_neg_scale: float = 2.0
     m_clip: float = 3.0
+    m_eps: float = 0.05
     w_manip: float = 0.5
     w_d: float = 0.5
     k_candidates: int = 4
     n_dof: int = 7
+    aabb_pad_frac: float = 0.05
+    aabb_pad_min_m: float = 0.02
+    n_jitter: int = 400_000
+    # soft / unknown thresholds
+    orient_knn: int = 7
+    soft_tau: float = 0.05  # soft>tau counts as weak positive coverage
+    unknown_soft_max: float = 0.25  # bit=0 & soft in (0, this] → unknown
+    trusted_neg_soft_max: float = 1e-6  # soft≈0 → trusted negative
 
 
-def margin_from_d(
-    d: np.ndarray | float,
-    *,
-    d_ref: float,
-    d_max: float,
-    m_clip: float = 3.0,
-) -> np.ndarray:
-    """Continuous positive margin from capability D — avoids saturating all interiors.
-
-    ``m = m_clip * log1p(d/d_ref) / log1p(d_max/d_ref)`` ∈ (0, m_clip].
-    Not a strict SDF; monotonic in D.
-    """
-    d = np.asarray(d, dtype=np.float64)
-    d_ref = max(float(d_ref), 1e-6)
-    d_max = max(float(d_max), d_ref)
-    num = np.log1p(np.maximum(d, 0.0) / d_ref)
-    den = np.log1p(d_max / d_ref)
-    m = float(m_clip) * (num / max(den, 1e-12))
-    return np.clip(m, 0.0, float(m_clip)).astype(np.float64)
+def features_from_p_u(p: np.ndarray, u: np.ndarray) -> np.ndarray:
+    """(N,6): natural 5-DoF — TCP position in base + tool axis in base."""
+    p = np.asarray(p, dtype=np.float64)
+    u = np.asarray(u, dtype=np.float64)
+    single = p.ndim == 1
+    if single:
+        p = p[None, :]
+        u = u[None, :]
+    u = u / (np.linalg.norm(u, axis=1, keepdims=True) + 1e-12)
+    out = np.concatenate([p, u], axis=1).astype(np.float32)
+    return out[0] if single else out
 
 
-def margin_exterior(dist_m: np.ndarray | float, *, sigma_m: float, m_clip: float = 3.0) -> np.ndarray:
-    """Negative margin from distance-to-reachable; tanh keeps it non-saturating."""
-    dist = np.asarray(dist_m, dtype=np.float64)
-    sig = max(float(sigma_m), 1e-6)
-    return (-float(m_clip) * np.tanh(dist / sig)).astype(np.float64)
+def _enforce_sign(m: np.ndarray, y: np.ndarray, eps: float, m_clip: float) -> np.ndarray:
+    m = np.asarray(m, dtype=np.float64).copy()
+    y = np.asarray(y, dtype=np.float64)
+    m = np.clip(m, -m_clip, m_clip)
+    m = np.where((y >= 0.5) & (m <= 0.0), eps, m)
+    m = np.where((y < 0.5) & (m >= 0.0), -eps, m)
+    return np.clip(m, -m_clip, m_clip).astype(np.float32)
 
 
-def _batch_feat_from_p_u(ps: np.ndarray, us: np.ndarray) -> np.ndarray:
-    """ps (N,3), us (N,3) → features (N,9), vectorized frame build."""
-    n = int(ps.shape[0])
-    z = np.asarray(us, dtype=np.float64)
-    z = z / (np.linalg.norm(z, axis=1, keepdims=True) + 1e-12)
-    a = np.tile(np.array([1.0, 0.0, 0.0]), (n, 1))
-    flip = np.abs(z[:, 0]) >= 0.9
-    a[flip] = np.array([0.0, 1.0, 0.0])
-    x = np.cross(a, z)
-    x = x / (np.linalg.norm(x, axis=1, keepdims=True) + 1e-12)
-    y = np.cross(z, x)
-    # R columns = x,y,z; T_base_tcp; ΔT = T^{-1} = [R^T | -R^T t]
-    # features = t_delta(3) + R_delta[:,0](3) + R_delta[:,1](3)
-    # R_delta = R^T, t_delta = -R^T @ p
-    Rt = np.stack([x, y, z], axis=1)  # (N,3,3) rows = x,y,z → actually want columns
-    # stack as columns: R[..., :, 0] = x
-    R = np.stack([x, y, z], axis=2)  # (N,3,3)
-    Rt = np.transpose(R, (0, 2, 1))  # R^T
-    t_delta = -np.einsum("nij,nj->ni", Rt, ps.astype(np.float64))
-    r6 = np.concatenate([Rt[:, :, 0], Rt[:, :, 1]], axis=1)
-    return np.concatenate([t_delta, r6], axis=1).astype(np.float32)
-
-
-def _precompute_orient_table(cm, orients: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Return (row_ids, orient_ids) flattened over all reachable (voxel, orient) pairs."""
-    from ird_playground.ird.capability_io import unpack_bits_5dof
-
-    n_orient = orients.shape[0]
-    if cm.roll is None:
-        bits = unpack_bits_5dof(np.asarray(cm.bitmask), n_orient)
-    else:
-        bits = np.any(cm.bitmask, axis=-1)
-    rows, oids = np.nonzero(bits)
-    return rows.astype(np.int64), oids.astype(np.int64)
-
-
-def _sample_from_table(
-    rng: np.random.Generator,
-    table_rows: np.ndarray,
-    table_oids: np.ndarray,
-    pool_idx: np.ndarray,
-    orients: np.ndarray,
-    n: int,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Sample n (row, u) from precomputed indices into the orient table."""
-    if pool_idx.size == 0:
-        rows = np.zeros(n, dtype=np.int64)
-        v = rng.normal(size=(n, 3))
-        v /= np.linalg.norm(v, axis=1, keepdims=True) + 1e-12
-        return rows, v
-    pick = rng.integers(0, pool_idx.shape[0], size=n)
-    ti = pool_idx[pick]
-    return table_rows[ti], orients[table_oids[ti]]
+def _orient_knn(orients: np.ndarray, k: int) -> np.ndarray:
+    dots = orients @ orients.T
+    return np.argsort(-dots, axis=1)[:, :k].astype(np.int32)
 
 
 def export_ird_gt_from_capability_map(
     cm,
     cfg: IrdGtConfig | None = None,
     *,
-    batch_size: int = 16384,
+    batch_size: int = 65536,
 ) -> dict[str, np.ndarray]:
-    """Dense stratified GT with margin labels."""
     cfg = cfg or IrdGtConfig()
     rng = np.random.default_rng(cfg.seed)
+    from ird_playground.ird.capability_io import unpack_bits_5dof
 
-    if cfg.n_interior or cfg.n_boundary or cfg.n_exterior:
-        n_int = int(cfg.n_interior)
-        n_bnd = int(cfg.n_boundary)
-        n_ext = int(cfg.n_exterior)
-    else:
-        n_tot = int(cfg.n_positive + cfg.n_negative)
-        n_int = int(round(0.35 * n_tot))
-        n_bnd = int(round(0.40 * n_tot))
-        n_ext = max(0, n_tot - n_int - n_bnd)
-
+    n_int, n_bnd, n_ext = int(cfg.n_interior), int(cfg.n_boundary), int(cfg.n_exterior)
     orients = np.asarray(cm.orientations.vectors, dtype=np.float64)
+    n_orient = int(orients.shape[0])
     voxel_xyz = cm.grid.center_of(cm.voxel_ids)
     d_vals = np.asarray(cm.d_value, dtype=np.float64)
     M = int(cm.voxel_ids.shape[0])
-    d_max = float(max(d_vals.max(), 1e-6))
+    shape = tuple(int(s) for s in cm.grid.shape)
+    nx, ny, nz = shape
+    step = float(cm.grid.step_m)
+    origin = np.asarray(cm.grid.origin_m, dtype=np.float64)
 
-    # Prefer percentile bands so interior is not only the D tip (old hi≈d_max
-    # collapsed all interior m_gt → m_clip).
-    d_lo = float(cfg.boundary_d_lo)
-    d_hi = float(cfg.boundary_d_hi)
-    if d_hi >= 0.9 * d_max:
-        d_lo = float(np.percentile(d_vals, 35))
-        d_hi = float(np.percentile(d_vals, 70))
-        print(f"[gt] retuned boundary band to percentiles: lo={d_lo:.4f} hi={d_hi:.4f}", flush=True)
-
-    interior_rows = np.flatnonzero(d_vals >= d_hi)
-    boundary_rows = np.flatnonzero((d_vals >= d_lo) & (d_vals < d_hi))
-    if interior_rows.size == 0:
-        interior_rows = np.arange(M)
-    if boundary_rows.size == 0:
-        boundary_rows = interior_rows
+    print(f"[gt] unpack bitmask M={M:,} n_orient={n_orient}", flush=True)
+    bits = (
+        unpack_bits_5dof(np.asarray(cm.bitmask), n_orient)
+        if cm.roll is None
+        else np.any(cm.bitmask, axis=-1)
+    )
+    pos_rows, pos_oids = np.nonzero(bits)
     print(
-        f"[gt] rows interior={interior_rows.size:,} boundary={boundary_rows.size:,} "
-        f"d_max={d_max:.4f}",
+        f"[gt] MC hits={pos_rows.size:,} ({100.0 * pos_rows.size / max(bits.size, 1):.3f}% of "
+        f"{bits.size:,} sparse bins) — bit=0 is NOT verified unreachable",
         flush=True,
     )
 
-    print(f"[gt] unpacking orientation table for {M} voxels…", flush=True)
-    table_rows, table_oids = _precompute_orient_table(cm, orients)
-    print(f"[gt] table size={table_rows.shape[0]:,}", flush=True)
+    lin = (
+        cm.voxel_ids[:, 0].astype(np.int64) * (ny * nz)
+        + cm.voxel_ids[:, 1].astype(np.int64) * nz
+        + cm.voxel_ids[:, 2].astype(np.int64)
+    )
+    row_of = -np.ones(nx * ny * nz, dtype=np.int32)
+    row_of[lin] = np.arange(M, dtype=np.int32)
 
-    is_int = np.zeros(M, dtype=bool)
-    is_bnd = np.zeros(M, dtype=bool)
-    is_int[interior_rows] = True
-    is_bnd[boundary_rows] = True
-    pool_int = np.flatnonzero(is_int[table_rows])
-    pool_bnd = np.flatnonzero(is_bnd[table_rows])
-    if pool_int.size == 0:
-        pool_int = np.arange(table_rows.shape[0])
-    if pool_bnd.size == 0:
-        pool_bnd = pool_int
-    print(f"[gt] pool interior={pool_int.size:,} boundary={pool_bnd.size:,}", flush=True)
+    knn = _orient_knn(orients, int(cfg.orient_knn))
+    spat = np.array(
+        [[0, 0, 0], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]],
+        dtype=np.int32,
+    )
 
-    d_n_all = np.clip(d_vals / d_max, 0.0, 1.0).astype(np.float32)
+    def soft_at(ijk: np.ndarray, oids: np.ndarray) -> np.ndarray:
+        """Local MC-hit coverage in 7-spatial × K-orient neighborhood (vectorized)."""
+        ijk = np.asarray(ijk, dtype=np.int32)
+        oids = np.asarray(oids, dtype=np.int32)
+        n = oids.shape[0]
+        o_nb = knn[oids]  # (n, K)
+        acc = np.zeros(n, dtype=np.float64)
+        cnt = np.zeros(n, dtype=np.float64)
+        for dlt in spat:
+            j = ijk + dlt
+            inb = (
+                (j[:, 0] >= 0) & (j[:, 0] < nx)
+                & (j[:, 1] >= 0) & (j[:, 1] < ny)
+                & (j[:, 2] >= 0) & (j[:, 2] < nz)
+            )
+            if not inb.any():
+                continue
+            keys = (
+                np.clip(j[:, 0], 0, nx - 1).astype(np.int64) * (ny * nz)
+                + np.clip(j[:, 1], 0, ny - 1).astype(np.int64) * nz
+                + np.clip(j[:, 2], 0, nz - 1).astype(np.int64)
+            )
+            r = np.full(n, -1, dtype=np.int32)
+            r[inb] = row_of[keys[inb]]
+            ok = r >= 0
+            if not ok.any():
+                continue
+            # mean over orient neighbors for valid rows (row-wise gather)
+            sub = bits[r[ok][:, None], o_nb[ok]].mean(axis=1)
+            acc[ok] += sub
+            cnt[ok] += 1.0
+        return (acc / np.maximum(cnt, 1.0)).astype(np.float32)
+
+    def soft_at_batched(ijk: np.ndarray, oids: np.ndarray) -> np.ndarray:
+        return soft_at(ijk, oids)
+
+    d_max = float(max(d_vals.max(), 1e-6))
+    d_n = np.clip(d_vals / d_max, 0.0, 1.0).astype(np.float32)
     if cm.mu_mean is not None:
         mu = np.asarray(cm.mu_mean, dtype=np.float64)
-        qm_all = np.clip(mu / (np.abs(mu) + 1.0), 0.0, 1.0).astype(np.float32)
-        bad = ~np.isfinite(mu)
-        qm_all[bad] = d_n_all[bad]
+        q_manip = np.clip(mu / (np.abs(mu) + 1.0), 0.0, 1.0).astype(np.float32)
+        q_manip[~np.isfinite(mu)] = d_n[~np.isfinite(mu)]
     else:
-        qm_all = d_n_all.copy()
-    qj_all = d_n_all.copy()
-    qs_all = d_n_all.copy()
-    qn_all = d_n_all.copy()
-    q_all = np.clip(cfg.w_manip * qm_all + cfg.w_d * d_n_all, 0.0, 1.0).astype(np.float32)
+        q_manip = d_n.copy()
+    q_cap = np.clip(cfg.w_manip * q_manip + cfg.w_d * d_n, 0.0, 1.0).astype(np.float32)
 
-    chunks: list[dict[str, np.ndarray]] = []
+    d_hi = float(np.percentile(d_vals, 70))
+    d_lo = float(np.percentile(d_vals, 35))
+    is_int = d_vals >= d_hi
+    is_bnd = (d_vals >= d_lo) & (d_vals < d_hi)
+    if not is_int.any():
+        is_int[:] = True
+    if not is_bnd.any():
+        is_bnd = is_int.copy()
 
-    def _emit(
-        ps: np.ndarray,
-        us: np.ndarray,
-        y: np.ndarray,
-        m: np.ndarray,
-        rows: np.ndarray | None,
-        *,
-        zero_q: bool = False,
-    ) -> None:
-        feats = _batch_feat_from_p_u(ps, us)
-        if zero_q or rows is None:
-            q = np.zeros(ps.shape[0], dtype=np.float32)
-            qm = qj = qs = qn = q
-        else:
-            q = q_all[rows]
-            qm = qm_all[rows]
-            qj = qj_all[rows]
-            qs = qs_all[rows]
-            qn = qn_all[rows]
-            q = np.where(y >= 0.5, q, 0.0).astype(np.float32)
-            qm = np.where(y >= 0.5, qm, 0.0).astype(np.float32)
-            qj = np.where(y >= 0.5, qj, 0.0).astype(np.float32)
-            qs = np.where(y >= 0.5, qs, 0.0).astype(np.float32)
-            qn = np.where(y >= 0.5, qn, 0.0).astype(np.float32)
-        chunks.append(
-            {
-                "features": feats,
-                "reachable": y.astype(np.float32),
-                "m_gt": m.astype(np.float32),
-                "q": q,
-                "q_manip": qm,
-                "q_joint": qj,
-                "q_selfcol": qs,
-                "q_nullspace": qn,
-            }
+    pool_int = np.flatnonzero(is_int[pos_rows])
+    pool_bnd = np.flatnonzero(is_bnd[pos_rows])
+    if pool_int.size == 0:
+        pool_int = np.arange(pos_rows.size)
+    if pool_bnd.size == 0:
+        pool_bnd = pool_int
+
+    # Trusted negatives: voxels with D≈0 (no MC hit at all) — still sparse-map cells
+    # or off-map. On-map zeros with soft≈0 for a random orient.
+    zero_d_rows = np.flatnonzero(d_vals <= 1e-8)
+    print(f"[gt] zero-D voxels (trusted exterior candidates)={zero_d_rows.size:,}", flush=True)
+
+    chunks: dict[str, list] = {k: [] for k in ("f", "y", "ys", "cw", "m", "q", "qm", "mw", "layer", "vid", "oid")}
+
+    def flush(ps, us, y, y_soft, cw, m, mw, layer, rows_or_none, oids):
+        feat = features_from_p_u(ps, us)
+        n = len(y)
+        q = np.zeros(n, dtype=np.float32)
+        qm = np.zeros(n, dtype=np.float32)
+        vid = np.full(n, -1, dtype=np.int32)
+        if rows_or_none is not None:
+            pos = np.asarray(y) >= 0.5
+            rows_or_none = np.asarray(rows_or_none, dtype=np.int32)
+            ok = pos & (rows_or_none >= 0)
+            if ok.any():
+                q[ok] = q_cap[rows_or_none[ok]]
+                qm[ok] = q_manip[rows_or_none[ok]]
+            vid[:] = rows_or_none
+        layer_arr = np.asarray(layer, dtype=np.int32)
+        if layer_arr.ndim == 0:
+            layer_arr = np.full(n, int(layer_arr), dtype=np.int32)
+        chunks["f"].append(feat)
+        chunks["y"].append(np.asarray(y, dtype=np.float32))
+        chunks["ys"].append(np.asarray(y_soft, dtype=np.float32))
+        chunks["cw"].append(np.asarray(cw, dtype=np.float32))
+        chunks["m"].append(np.asarray(m, dtype=np.float32))
+        chunks["q"].append(q)
+        chunks["qm"].append(qm)
+        chunks["mw"].append(np.asarray(mw, dtype=np.float32))
+        chunks["layer"].append(layer_arr)
+        chunks["vid"].append(vid)
+        chunks["oid"].append(np.asarray(oids, dtype=np.int32))
+
+    # --- Interior: exact MC hits only (trusted positives) ---
+    print(f"[gt] interior exact-hits {n_int:,}", flush=True)
+    for s in range(0, n_int, batch_size):
+        n = min(batch_size, n_int - s)
+        ti = pool_int[rng.integers(0, pool_int.size, size=n)]
+        rows, oids = pos_rows[ti], pos_oids[ti]
+        y = np.ones(n, dtype=np.float32)
+        ys = np.ones(n, dtype=np.float32)
+        cw = np.ones(n, dtype=np.float32)
+        m = np.full(n, cfg.m_eps, dtype=np.float32)
+        mw = np.zeros(n, dtype=np.float32)
+        flush(voxel_xyz[rows], orients[oids], y, ys, cw, m, mw, LAYER_INTERIOR, rows, oids)
+
+    # --- Boundary face pairs ---
+    print("[gt] boundary face pairs…", flush=True)
+    neigh = np.array([[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]], np.int32)
+    n_cand = min(400_000, pool_bnd.size)
+    ti = pool_bnd[rng.choice(pool_bnd.size, size=n_cand, replace=False)]
+    rows_c, oids_c = pos_rows[ti], pos_oids[ti]
+    ijk0 = cm.voxel_ids[rows_c].astype(np.int32)
+    assigned = np.zeros(n_cand, dtype=bool)
+    bnd_r = np.empty(n_cand, dtype=np.int32)
+    bnd_o = np.empty(n_cand, dtype=np.int32)
+    bnd_ijk_neg = np.empty((n_cand, 3), dtype=np.int32)
+    for dlt in neigh:
+        j = ijk0 + dlt
+        out_of = (
+            (j[:, 0] < 0) | (j[:, 0] >= nx) | (j[:, 1] < 0) | (j[:, 1] >= ny) | (j[:, 2] < 0) | (j[:, 2] >= nz)
         )
-
-    def _layer_reachable(n_total: int, pool: np.ndarray, m_fn, label: str) -> None:
-        for s in range(0, n_total, batch_size):
-            n = min(batch_size, n_total - s)
-            rows, us = _sample_from_table(rng, table_rows, table_oids, pool, orients, n)
-            m = m_fn(rows)
-            _emit(voxel_xyz[rows], us, np.ones(n, dtype=np.float32), m, rows)
-            if (s // batch_size) % 5 == 0:
-                print(f"[gt] {label} {s + n:,}/{n_total:,}", flush=True)
-
-    d_ref = max(d_lo, 1e-4)
-
-    def _m_reach(rows: np.ndarray) -> np.ndarray:
-        return margin_from_d(d_vals[rows], d_ref=d_ref, d_max=d_max, m_clip=cfg.m_clip)
-
-    print(f"[gt] interior {n_int:,}", flush=True)
-    _layer_reachable(n_int, pool_int, _m_reach, "interior")
-
-    n_bnd_vox = n_bnd // 2
-    n_bnd_jit = n_bnd - n_bnd_vox
-    print(f"[gt] boundary voxels {n_bnd_vox:,}", flush=True)
-    # Boundary voxels: near-zero continuous margin around d_ref
-    def _m_bnd(rows: np.ndarray) -> np.ndarray:
-        # signed relative to band centre
-        mid = 0.5 * (d_lo + d_hi)
-        span = max(0.5 * (d_hi - d_lo), 1e-6)
-        return np.clip((d_vals[rows] - mid) / span, -1.0, 1.0) * (0.35 * cfg.m_clip)
-
-    _layer_reachable(n_bnd_vox, pool_bnd, _m_bnd, "boundary")
-
-    print(f"[gt] boundary jitter {n_bnd_jit:,}", flush=True)
-    for s in range(0, n_bnd_jit, batch_size):
-        n = min(batch_size, n_bnd_jit - s)
-        rows, us = _sample_from_table(rng, table_rows, table_oids, pool_int, orients, n)
-        jitter = rng.normal(scale=cfg.sigma_p_m, size=(n, 3))
-        ps = voxel_xyz[rows] + jitter
-        dist_m = np.linalg.norm(jitter, axis=1)
-        y = (dist_m < cfg.sigma_p_m).astype(np.float32)
-        m_base = _m_reach(rows)
-        # shrink / flip with radial distance in SE(3) σ-ball
-        m = np.where(
-            y >= 0.5,
-            m_base * (1.0 - dist_m / max(cfg.sigma_p_m, 1e-6)),
-            margin_exterior(dist_m, sigma_m=cfg.sigma_p_m, m_clip=cfg.m_clip),
+        keys = (
+            np.clip(j[:, 0], 0, nx - 1).astype(np.int64) * (ny * nz)
+            + np.clip(j[:, 1], 0, ny - 1).astype(np.int64) * nz
+            + np.clip(j[:, 2], 0, nz - 1).astype(np.int64)
         )
-        _emit(ps, us, y, m, rows)
-        if (s // batch_size) % 5 == 0:
-            print(f"[gt] jitter {s + n:,}/{n_bnd_jit:,}", flush=True)
+        r2 = row_of[keys]
+        reachable_nb = np.zeros(n_cand, dtype=bool)
+        ok = (~out_of) & (r2 >= 0)
+        if ok.any():
+            reachable_nb[ok] = bits[r2[ok], oids_c[ok]]
+        fail = (~assigned) & (out_of | (~reachable_nb))
+        if fail.any():
+            bnd_r[fail] = rows_c[fail]
+            bnd_o[fail] = oids_c[fail]
+            bnd_ijk_neg[fail] = j[fail]
+            assigned[fail] = True
+        if assigned.all():
+            break
+    keep = assigned
+    bnd_r, bnd_o, bnd_ijk_neg = bnd_r[keep], bnd_o[keep], bnd_ijk_neg[keep]
+    print(f"[gt] face pairs kept={bnd_r.size:,}", flush=True)
+    if bnd_r.size == 0:
+        raise RuntimeError("no boundary face pairs found")
 
-    # --- Exterior ---
-    mins = voxel_xyz.min(axis=0) - cfg.bbox_margin_m
-    maxs = voxel_xyz.max(axis=0) + cfg.bbox_margin_m
-    n_hard = int(round(n_ext * float(cfg.hard_negative_frac)))
-    n_unif = max(0, n_ext - n_hard)
-    n_cent = min(voxel_xyz.shape[0], 80_000)
-    cent_idx = rng.choice(voxel_xyz.shape[0], size=n_cent, replace=False)
-    centers = voxel_xyz[cent_idx]
-
-    t_unif = rng.uniform(mins, maxs, size=(n_unif, 3)) if n_unif else np.zeros((0, 3))
-    pick = rng.integers(0, centers.shape[0], size=n_hard) if n_hard else np.zeros(0, dtype=int)
-    t_hard = (
-        centers[pick] + rng.normal(scale=cfg.hard_negative_radius_m, size=(n_hard, 3))
-        if n_hard
-        else np.zeros((0, 3))
+    # Classify neg side soft coverage (diagnostic). Face geometry is still trusted:
+    # pos = exact MC hit, neg = adjacent cell with same orient bit=0.
+    print("[gt] soft-coverage on boundary neg side…", flush=True)
+    soft_neg = soft_at_batched(bnd_ijk_neg, bnd_o)
+    trusted_neg_pair = soft_neg <= cfg.soft_tau  # soft≈0 → especially clean neg
+    unknown_pair = (soft_neg > cfg.soft_tau) & (soft_neg <= cfg.unknown_soft_max)
+    print(
+        f"[gt] face neg soft: clean={trusted_neg_pair.mean():.3f} mid={unknown_pair.mean():.3f} "
+        f"soft_mean={soft_neg.mean():.4f} (all face pairs kept for geometric margin)",
+        flush=True,
     )
-    t_neg = np.concatenate([t_unif, t_hard], axis=0) if n_ext > 0 else np.zeros((0, 3))
-    v = rng.normal(size=(t_neg.shape[0], 3))
-    v /= np.linalg.norm(v, axis=1, keepdims=True) + 1e-12
+    # Prefer cleaner face pairs when available; otherwise use all
+    trusted_idx = np.flatnonzero(trusted_neg_pair)
+    if trusted_idx.size < max(1000, n_bnd // 20):
+        trusted_idx = np.arange(bnd_r.size)
+    print(f"[gt] boundary face pool={trusted_idx.size:,}", flush=True)
 
-    print(f"[gt] exterior {t_neg.shape[0]:,}", flush=True)
-    for s in range(0, t_neg.shape[0], batch_size):
-        n = min(batch_size, t_neg.shape[0] - s)
-        pts = t_neg[s : s + n]
-        sub = centers[rng.choice(centers.shape[0], size=min(2048, centers.shape[0]), replace=False)]
-        dmin = np.full(n, np.inf, dtype=np.float64)
-        for c0 in range(0, sub.shape[0], 512):
-            cblk = sub[c0 : c0 + 512]
-            d2 = ((pts[:, None, :] - cblk[None, :, :]) ** 2).sum(axis=2)
-            dmin = np.minimum(dmin, np.sqrt(d2.min(axis=1)))
-        m = margin_exterior(dmin, sigma_m=cfg.hard_negative_radius_m, m_clip=cfg.m_clip)
-        _emit(pts, v[s : s + n], np.zeros(n, dtype=np.float32), m, None, zero_q=True)
-        if (s // batch_size) % 5 == 0:
-            print(f"[gt] exterior {s + n:,}/{t_neg.shape[0]:,}", flush=True)
+    print(f"[gt] boundary interpolate {n_bnd:,} (supervised face pairs)", flush=True)
+    for s in range(0, n_bnd, batch_size):
+        n = min(batch_size, n_bnd - s)
+        pick = trusted_idx[rng.integers(0, trusted_idx.size, size=n)]
+        rows = bnd_r[pick]
+        oids = bnd_o[pick]
+        ijk_neg = bnd_ijk_neg[pick]
+        p_pos = voxel_xyz[rows]
+        p_neg = origin + step * (ijk_neg.astype(np.float64) + 0.5)
+        alpha = rng.uniform(0.0, 1.0, size=n).astype(np.float64)
+        ps = (1.0 - alpha[:, None]) * p_pos + alpha[:, None] * p_neg
+        m = ((0.5 - alpha) * step / max(cfg.sigma_p_m, 1e-6)).astype(np.float32)
+        m = np.clip(m, -cfg.m_clip, cfg.m_clip)
+        y = (alpha < 0.5).astype(np.float32)
+        m = _enforce_sign(m, y, cfg.m_eps, cfg.m_clip)
+        ys = y.copy()
+        cw = np.ones(n, dtype=np.float32)  # only trusted pairs
+        mw = np.ones(n, dtype=np.float32)
+        layer = np.where(y >= 0.5, LAYER_BND_POS, LAYER_BND_NEG).astype(np.int32)
+        rows_q = np.where(y >= 0.5, rows, -1)
+        flush(ps, orients[oids], y, ys, cw, m, mw, layer, rows_q, oids)
 
-    if not chunks:
-        raise RuntimeError("no IRD samples extracted from capability map")
+    # --- Jitter from face normal (pos/neg half-half), NOT isotropic MC-noise ---
+    n_jit = int(cfg.n_jitter)
+    n_jp = n_jit // 2
+    n_jn = n_jit - n_jp
+    print(f"[gt] face-normal jitter pos={n_jp:,} neg={n_jn:,}", flush=True)
 
-    def _cat(key: str) -> np.ndarray:
-        return np.concatenate([c[key] for c in chunks], axis=0)
+    def face_jitter(n_samples: int, positive: bool):
+        pick = trusted_idx[rng.integers(0, trusted_idx.size, size=n_samples)]
+        rows = bnd_r[pick]
+        oids = bnd_o[pick]
+        ijk_neg = bnd_ijk_neg[pick]
+        p_plus = voxel_xyz[rows]
+        p_minus = origin + step * (ijk_neg.astype(np.float64) + 0.5)
+        p_face = 0.5 * (p_plus + p_minus)
+        nrm = p_minus - p_plus
+        nn = np.linalg.norm(nrm, axis=1, keepdims=True) + 1e-12
+        n_hat = nrm / nn
+        delta = rng.uniform(0.05 * step, 0.45 * step, size=n_samples)
+        # tangent noise
+        a = np.where(np.abs(n_hat[:, 0:1]) < 0.9, np.array([[1.0, 0, 0]]), np.array([[0, 1.0, 0]]))
+        t1 = np.cross(a, n_hat)
+        t1 /= np.linalg.norm(t1, axis=1, keepdims=True) + 1e-12
+        t2 = np.cross(n_hat, t1)
+        rad = rng.uniform(0.0, 0.35 * step, size=n_samples)
+        ang = rng.uniform(0.0, 2 * np.pi, size=n_samples)
+        tang = (rad * np.cos(ang))[:, None] * t1 + (rad * np.sin(ang))[:, None] * t2
+        if positive:
+            ps = p_face - delta[:, None] * n_hat + tang
+            y = np.ones(n_samples, dtype=np.float32)
+            layer = LAYER_JITTER_POS
+            m = (delta / max(cfg.sigma_p_m, 1e-6)).astype(np.float32)
+            m = np.clip(m, cfg.m_eps, cfg.m_clip)
+            rows_out = rows
+        else:
+            ps = p_face + delta[:, None] * n_hat + tang
+            y = np.zeros(n_samples, dtype=np.float32)
+            layer = LAYER_JITTER_NEG
+            m = (-delta / max(cfg.sigma_p_m, 1e-6)).astype(np.float32)
+            m = np.clip(m, -cfg.m_clip, -cfg.m_eps)
+            rows_out = np.full(n_samples, -1, dtype=np.int32)
+        ys = y.copy()
+        cw = np.ones(n_samples, dtype=np.float32)
+        mw = np.ones(n_samples, dtype=np.float32)
+        flush(ps, orients[oids], y, ys, cw, m, mw, layer, rows_out, oids)
 
-    features = _cat("features")
-    y = _cat("reachable")
-    m_arr = _cat("m_gt")
-    q_arr = _cat("q")
+    for s in range(0, n_jp, batch_size):
+        face_jitter(min(batch_size, n_jp - s), True)
+    for s in range(0, n_jn, batch_size):
+        face_jitter(min(batch_size, n_jn - s), False)
+
+    # --- Exterior trusted negatives: soft≈0 on-map bit=0 + off-map ---
+    # Saved voxels almost never have D=0 (they exist because some orient hit).
+    n_hard = int(round(n_ext * cfg.hard_negative_frac))
+    n_unif = max(0, n_ext - n_hard)
+    print(f"[gt] trusted exterior soft0={n_hard:,} offmap={n_unif:,}", flush=True)
+
+    if n_hard:
+        # Rejection-sample (row, oid) with exact bit=0 and local soft≈0 (far from MC hits)
+        got = 0
+        attempts = 0
+        max_attempts = max(40, (n_hard // batch_size) * 80)
+        thr = float(cfg.trusted_neg_soft_max)
+        while got < n_hard and attempts < max_attempts:
+            attempts += 1
+            n = min(batch_size * 4, max(batch_size, (n_hard - got) * 4))
+            rows = rng.integers(0, M, size=n).astype(np.int32)
+            oids = rng.integers(0, n_orient, size=n).astype(np.int32)
+            hit = bits[rows, oids]
+            soft = soft_at_batched(cm.voxel_ids[rows], oids)
+            keep = (~hit) & (soft <= thr)
+            if not keep.any() and attempts > max_attempts // 4:
+                thr = float(cfg.soft_tau)  # relax once if too strict
+                keep = (~hit) & (soft <= thr)
+            if not keep.any():
+                continue
+            take = min(int(keep.sum()), n_hard - got)
+            sel = np.flatnonzero(keep)[:take]
+            rows, oids, soft = rows[sel], oids[sel], soft[sel]
+            n = len(rows)
+            y = np.zeros(n, dtype=np.float32)
+            ys = soft
+            cw = np.ones(n, dtype=np.float32)
+            m = np.full(n, -cfg.m_eps, dtype=np.float32)
+            mw = np.zeros(n, dtype=np.float32)
+            flush(voxel_xyz[rows], orients[oids], y, ys, cw, m, mw, LAYER_EXTERIOR, None, oids)
+            got += n
+        print(f"[gt] soft0 exterior accepted={got:,} attempts={attempts} thr={thr}", flush=True)
+
+    if n_unif:
+        mins = voxel_xyz.min(0) - float(cfg.bbox_margin_m)
+        maxs = voxel_xyz.max(0) + float(cfg.bbox_margin_m)
+        got = 0
+        attempts = 0
+        max_attempts = max(20, (n_unif // batch_size) * 40)
+        while got < n_unif and attempts < max_attempts:
+            attempts += 1
+            n = min(batch_size, n_unif - got)
+            ps = rng.uniform(mins, maxs, size=(n, 3))
+            oids = rng.integers(0, n_orient, size=n).astype(np.int32)
+            ijk = np.floor((ps - origin) / step).astype(np.int32)
+            inb = (
+                (ijk[:, 0] >= 0) & (ijk[:, 0] < nx)
+                & (ijk[:, 1] >= 0) & (ijk[:, 1] < ny)
+                & (ijk[:, 2] >= 0) & (ijk[:, 2] < nz)
+            )
+            soft = np.zeros(n, dtype=np.float32)
+            if inb.any():
+                soft[inb] = soft_at_batched(ijk[inb], oids[inb])
+            # keep clearly off-map OR soft≈0; never exact hits
+            hit = np.zeros(n, dtype=bool)
+            keys = (
+                np.clip(ijk[:, 0], 0, nx - 1).astype(np.int64) * (ny * nz)
+                + np.clip(ijk[:, 1], 0, ny - 1).astype(np.int64) * nz
+                + np.clip(ijk[:, 2], 0, nz - 1).astype(np.int64)
+            )
+            r = np.full(n, -1, dtype=np.int32)
+            r[inb] = row_of[keys[inb]]
+            ok = r >= 0
+            if ok.any():
+                hit[ok] = bits[r[ok], oids[ok]]
+            keep = ((~inb) | (soft <= cfg.soft_tau)) & (~hit)
+            if not keep.any():
+                continue
+            n = int(keep.sum())
+            y = np.zeros(n, dtype=np.float32)
+            ys = soft[keep]
+            cw = np.ones(n, dtype=np.float32)
+            m = np.full(n, -cfg.m_eps, dtype=np.float32)
+            mw = np.zeros(n, dtype=np.float32)
+            flush(ps[keep], orients[oids[keep]], y, ys, cw, m, mw, LAYER_EXTERIOR, None, oids[keep])
+            got += n
+        print(f"[gt] offmap/soft0 exterior accepted={got:,} attempts={attempts}", flush=True)
+
+    features = np.concatenate(chunks["f"], axis=0)
+    y = np.concatenate(chunks["y"], axis=0)
+    y_soft = np.concatenate(chunks["ys"], axis=0)
+    cw = np.concatenate(chunks["cw"], axis=0)
+    m_arr = np.concatenate(chunks["m"], axis=0)
+    q_arr = np.concatenate(chunks["q"], axis=0)
+    qm_arr = np.concatenate(chunks["qm"], axis=0)
+    mw_arr = np.concatenate(chunks["mw"], axis=0)
+    layer = np.concatenate(chunks["layer"], axis=0)
+    vid = np.concatenate(chunks["vid"], axis=0)
+    oid = np.concatenate(chunks["oid"], axis=0)
+
+    q_arr = np.where(y >= 0.5, q_arr, 0.0).astype(np.float32)
+    qm_arr = np.where(y >= 0.5, qm_arr, 0.0).astype(np.float32)
+    mw_pos = mw_arr > 0
+    if mw_pos.any():
+        m_arr[mw_pos] = _enforce_sign(m_arr[mw_pos], y[mw_pos], cfg.m_eps, cfg.m_clip)
+
+    max_abs = np.max(np.abs(features[:, :3]), axis=0)
+    scale = np.maximum(max_abs * 1.05, 0.1).astype(np.float32)
+    aabb_lo, aabb_hi = -scale, scale.copy()
+
+    # sign only where margin supervised
+    bad = mw_pos & (((y >= 0.5) & (m_arr <= 0.0)) | ((y < 0.5) & (m_arr >= 0.0)))
+    if bad.any():
+        raise RuntimeError(f"sign conflict on margin_weight>0: {bad.mean():.4%} n={bad.sum()}")
+    outside = np.any((features[:, :3] < aabb_lo) | (features[:, :3] > aabb_hi), axis=1)
+    if outside.mean() > 1e-4:
+        raise RuntimeError(f"outside AABB {outside.mean():.4%}")
+
+    ijk_feat = np.floor((features[:, :3] - origin) / step).astype(np.int32)
+    block = (
+        (np.clip(ijk_feat[:, 0], 0, nx - 1) // 8).astype(np.int64) * 1_000_000
+        + (np.clip(ijk_feat[:, 1], 0, ny - 1) // 8).astype(np.int64) * 1_000
+        + (np.clip(ijk_feat[:, 2], 0, nz - 1) // 8).astype(np.int64)
+        + oid.astype(np.int64) * 10_000_000_000
+    )
+
     perm = rng.permutation(features.shape[0])
-
-    aabb_lo = (voxel_xyz.min(axis=0) - cfg.bbox_margin_m).astype(np.float32)
-    aabb_hi = (voxel_xyz.max(axis=0) + cfg.bbox_margin_m).astype(np.float32)
-
-    n = features.shape[0]
-    k = int(cfg.k_candidates)
-    q_best = np.zeros((n, cfg.n_dof), dtype=np.float32)
-    q_candidates = np.zeros((n, k, cfg.n_dof), dtype=np.float32)
-
-    print(f"[gt] stacking N={n:,}", flush=True)
+    n = int(features.shape[0])
+    supervised = cw > 0
+    print(
+        f"[gt] N={n:,} reach={float(y.mean()):.3f} supervised={float(supervised.mean()):.3f} "
+        f"sup_pos={float(y[supervised].mean()) if supervised.any() else 0:.3f} "
+        f"layers={dict(zip(*np.unique(layer, return_counts=True)))}",
+        flush=True,
+    )
     return {
         "features": features[perm],
         "reachable": y[perm],
         "p_reach": y[perm],
+        "y_soft": y_soft[perm],
+        "cls_weight": cw[perm],
         "m_gt": m_arr[perm],
+        "margin_weight": mw_arr[perm],
+        "layer_id": layer[perm],
+        "voxel_id": vid[perm],
+        "orient_id": oid[perm],
+        "block_id": block[perm],
         "q": q_arr[perm],
         "q_comfort": q_arr[perm],
-        "q_manip": _cat("q_manip")[perm],
-        "q_joint": _cat("q_joint")[perm],
-        "q_selfcol": _cat("q_selfcol")[perm],
-        "q_nullspace": _cat("q_nullspace")[perm],
-        "q_best": q_best[perm],
-        "q_candidates": q_candidates[perm],
+        "q_capability": q_arr[perm],
+        "q_manip": qm_arr[perm],
+        "q_joint": q_arr[perm],
+        "q_selfcol": q_arr[perm],
+        "q_nullspace": q_arr[perm],
+        "q_best": np.zeros((n, cfg.n_dof), dtype=np.float32),
+        "q_candidates": np.zeros((n, cfg.k_candidates, cfg.n_dof), dtype=np.float32),
         "d": (y * q_arr)[perm],
         "aabb_lo": aabb_lo,
         "aabb_hi": aabb_hi,
         "sigma_p_m": np.array([cfg.sigma_p_m], dtype=np.float32),
         "sigma_r_deg": np.array([cfg.sigma_r_deg], dtype=np.float32),
+        "feature_dim": np.array([6], dtype=np.int32),
+        "feature_kind": np.array([1], dtype=np.int32),
+        "label_kind": np.array([2], dtype=np.int32),  # 2 = soft/unknown/trusted
     }
 
 
@@ -642,9 +765,7 @@ def save_ird_gt(path: str | Path, arrays: dict[str, np.ndarray], meta: dict | No
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(path, **arrays)
     if meta is not None:
-        path.with_suffix(".yaml").write_text(
-            yaml.safe_dump(meta, sort_keys=False), encoding="utf-8"
-        )
+        path.with_suffix(".yaml").write_text(yaml.safe_dump(meta, sort_keys=False), encoding="utf-8")
     return path
 
 
@@ -653,34 +774,58 @@ def load_ird_gt(path: str | Path) -> dict[str, np.ndarray]:
     return {k: data[k] for k in data.files}
 
 
-def make_synthetic_ird_gt(
-    n: int = 4096,
-    *,
-    seed: int = 0,
-    reach_radius: float = 0.6,
-) -> dict[str, np.ndarray]:
+def assert_gt_contract(arrays: dict[str, np.ndarray]) -> None:
+    x, y, m = arrays["features"], arrays["reachable"], arrays["m_gt"]
+    q = arrays["q"]
+    lo, hi = arrays["aabb_lo"], arrays["aabb_hi"]
+    assert x.shape[1] == 6
+    assert np.isfinite(x).all() and np.isfinite(m).all() and np.isfinite(q).all()
+    cw = arrays.get("cls_weight")
+    mw = arrays.get("margin_weight")
+    if mw is not None:
+        mask = mw > 0
+        if mask.any():
+            bad = ((y[mask] > 0.5) & (m[mask] <= 0.0)) | ((y[mask] < 0.5) & (m[mask] >= 0.0))
+            assert float(bad.mean()) < 1e-5, f"sign conflict {bad.mean()}"
+    if cw is not None:
+        assert float((cw >= 0).mean()) == 1.0
+    outside = np.any((x[:, :3] < lo) | (x[:, :3] > hi), axis=1)
+    assert float(outside.mean()) < 1e-4, f"outside AABB {outside.mean()}"
+
+
+def make_synthetic_ird_gt(n: int = 4096, *, seed: int = 0, reach_radius: float = 0.6) -> dict[str, np.ndarray]:
     rng = np.random.default_rng(seed)
-    t = rng.uniform(-1.0, 1.0, size=(n, 3)).astype(np.float32)
-    r6 = np.tile(np.array([1, 0, 0, 0, 1, 0], dtype=np.float32), (n, 1))
-    features = np.concatenate([t, r6], axis=1)
-    dist = np.linalg.norm(t, axis=1)
+    p = rng.uniform(-1.0, 1.0, size=(n, 3))
+    u = rng.normal(size=(n, 3))
+    u /= np.linalg.norm(u, axis=1, keepdims=True) + 1e-12
+    features = features_from_p_u(p, u)
+    dist = np.linalg.norm(p, axis=1)
     y = (dist < reach_radius).astype(np.float32)
-    # Continuous signed margin (not saturated ±const)
-    m_gt = np.clip(
-        (reach_radius - dist) / max(reach_radius, 1e-6) * 3.0,
-        -3.0,
-        3.0,
-    ).astype(np.float32)
-    q = np.clip(1.0 - dist / (reach_radius + 1e-6), 0.0, 1.0).astype(np.float32) * y
-    aabb_lo = np.array([-1.0, -1.0, -1.0], dtype=np.float32)
-    aabb_hi = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+    m = np.clip((reach_radius - dist) / reach_radius * 3.0, -3.0, 3.0)
+    m = _enforce_sign(m, y, 0.05, 3.0)
+    mw = (np.abs(dist - reach_radius) < 0.15).astype(np.float32)
+    # unknown band
+    unknown = (np.abs(dist - reach_radius) >= 0.15) & (np.abs(dist - reach_radius) < 0.25)
+    cw = (~unknown).astype(np.float32)
+    q = (np.clip(1.0 - dist / (reach_radius + 1e-6), 0, 1) * y).astype(np.float32)
+    layer = np.full(n, LAYER_INTERIOR, dtype=np.int32)
+    layer = np.where(mw > 0, np.where(y >= 0.5, LAYER_BND_POS, LAYER_BND_NEG), layer)
+    scale = np.maximum(np.max(np.abs(features[:, :3]), axis=0) * 1.05, 0.1).astype(np.float32)
     return {
         "features": features,
         "reachable": y,
         "p_reach": y,
-        "m_gt": m_gt,
+        "y_soft": y,
+        "cls_weight": cw,
+        "m_gt": m,
+        "margin_weight": mw,
+        "layer_id": layer,
+        "voxel_id": np.arange(n, dtype=np.int32),
+        "orient_id": np.zeros(n, dtype=np.int32),
+        "block_id": (np.floor(p[:, 0] * 4).astype(np.int64) * 1000 + np.floor(p[:, 1] * 4).astype(np.int64)),
         "q": q,
         "q_comfort": q,
+        "q_capability": q,
         "q_manip": q,
         "q_joint": q,
         "q_selfcol": q,
@@ -688,15 +833,17 @@ def make_synthetic_ird_gt(
         "q_best": np.zeros((n, 7), dtype=np.float32),
         "q_candidates": np.zeros((n, 4, 7), dtype=np.float32),
         "d": y * q,
-        "aabb_lo": aabb_lo,
-        "aabb_hi": aabb_hi,
+        "aabb_lo": -scale,
+        "aabb_hi": scale,
         "sigma_p_m": np.array([0.03], dtype=np.float32),
         "sigma_r_deg": np.array([10.0], dtype=np.float32),
+        "feature_dim": np.array([6], dtype=np.int32),
+        "feature_kind": np.array([1], dtype=np.int32),
+        "label_kind": np.array([2], dtype=np.int32),
     }
 ```
 
-
-## FILE: `ird_playground/ird_playground/ird/capability_io.py`
+### `ird_playground/ird/capability_io.py`
 
 ```python
 """File-format CapabilityMap loader (no rm75_control package import).
@@ -786,30 +933,7 @@ def load_capability_map_dir(map_dir: str | Path, *, mmap: bool = True) -> Loaded
     )
 ```
 
-
-## FILE: `ird_playground/ird_playground/ird/map_loader.py`
-
-```python
-"""Resolve capability-map directories."""
-
-from __future__ import annotations
-
-from pathlib import Path
-
-
-def resolve_map_dir(path: str | Path) -> Path:
-    p = Path(path).expanduser().resolve()
-    if not p.exists():
-        raise FileNotFoundError(p)
-    if p.is_file():
-        raise NotADirectoryError(p)
-    if not (p / "manifest.yaml").exists():
-        raise FileNotFoundError(f"missing manifest.yaml under {p}")
-    return p
-```
-
-
-## FILE: `ird_playground/ird_playground/ird/query_base.py`
+### `ird_playground/ird/query_base.py`
 
 ```python
 """Query-time base pose from rail_y via full SE(3) composition + AD helpers."""
@@ -876,11 +1000,14 @@ def score_vs_rail_y(
 
 
 def _features_torch_from_delta_T(dT: "torch.Tensor") -> "torch.Tensor":
-    """dT (4,4) torch → features (9,)."""
-    t = dT[:3, 3]
-    R = dT[:3, :3]
-    r6 = torch.cat([R[:, 0], R[:, 1]], dim=0)
-    return torch.cat([t, r6], dim=0)
+    """dT (4,4) → natural features (6,) = p_base,tcp + u_base."""
+    R_delta = dT[:3, :3]
+    t_delta = dT[:3, 3]
+    R_base_tcp = R_delta.T
+    p = -(R_base_tcp @ t_delta)
+    u = R_base_tcp[:, 2]
+    u = u / (u.norm().clamp_min(1e-6))
+    return torch.cat([p, u], dim=0)
 
 
 def score_vs_rail_y_torch(
@@ -917,7 +1044,7 @@ def score_vs_rail_y_torch(
     Ti[:3, 3] = -R.T @ t
     dT = Ti @ T_base
     feat = _features_torch_from_delta_T(dT).unsqueeze(0)
-    _, _, score = neural_ird.model(feat)
+    _, _, _, score = neural_ird.model(feat)
     return score.squeeze()
 
 
@@ -971,203 +1098,101 @@ def rail_y_grad_ad_fd(
     }
 ```
 
-
-## FILE: `ird_playground/ird_playground/cli/build_ird_gt.py`
+### `ird_playground/probe/se3.py`
 
 ```python
-"""Export IRD GT NPZ from a capability map (sampling from YAML)."""
+"""SE(3) helpers: ΔT → natural (p,u) 5-DoF features, Exp map."""
 
 from __future__ import annotations
 
-import argparse
-from pathlib import Path
-
-import yaml
-
-from ird_playground.ird.export_gt import IrdGtConfig, export_ird_gt_from_capability_map, save_ird_gt
-from ird_playground.ird.capability_io import load_capability_map_dir
-from ird_playground.ird.map_loader import resolve_map_dir
+import numpy as np
+from scipy.spatial.transform import Rotation
 
 
-def load_ird_gt_config(path: Path, *, root: Path) -> tuple[Path, Path, IrdGtConfig]:
-    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    samp = dict(raw.get("sampling") or {})
-    map_dir = Path(raw.get("map_dir", ""))
-    out = Path(raw.get("out", "data/ird/gt_samples.npz"))
-    if not map_dir.is_absolute():
-        map_dir = (root / map_dir).resolve()
-    if not out.is_absolute():
-        out = root / out
-
-    n_int = samp.get("n_interior")
-    n_bnd = samp.get("n_boundary")
-    n_ext = samp.get("n_exterior")
-    n_pos = int(samp.get("n_positive", 700_000))
-    n_neg = int(samp.get("n_negative", 500_000))
-    if n_int is None and n_bnd is None and n_ext is None:
-        n_tot = n_pos + n_neg
-        n_int = int(round(0.35 * n_tot))
-        n_bnd = int(round(0.40 * n_tot))
-        n_ext = max(0, n_tot - n_int - n_bnd)
-    else:
-        n_int = int(n_int or 0)
-        n_bnd = int(n_bnd or 0)
-        n_ext = int(n_ext or 0)
-
-    cfg = IrdGtConfig(
-        n_interior=n_int,
-        n_boundary=n_bnd,
-        n_exterior=n_ext,
-        n_positive=n_pos,
-        n_negative=n_neg,
-        max_orients_per_voxel=int(samp.get("max_orients_per_voxel", 24)),
-        hard_negative_frac=float(samp.get("hard_negative_frac", 0.45)),
-        hard_negative_radius_m=float(samp.get("hard_negative_radius_m", 0.06)),
-        sigma_p_m=float(samp.get("sigma_p_m", 0.03)),
-        sigma_r_deg=float(samp.get("sigma_r_deg", 10.0)),
-        boundary_d_lo=float(samp.get("boundary_d_lo", 0.008)),
-        boundary_d_hi=float(samp.get("boundary_d_hi", 0.020)),
-        m_clip=float(samp.get("m_clip", 3.0)),
-        bbox_margin_m=float(samp.get("bbox_margin_m", 0.20)),
-        comfort_from=str(samp.get("comfort_from", "auto")),
-        k_candidates=int(samp.get("k_candidates", 4)),
-        seed=int(samp.get("seed", 0)),
-    )
-    return map_dir, out, cfg
+def mat4_from_Rt(R: np.ndarray, t: np.ndarray) -> np.ndarray:
+    T = np.eye(4, dtype=np.float64)
+    T[:3, :3] = np.asarray(R, dtype=np.float64).reshape(3, 3)
+    T[:3, 3] = np.asarray(t, dtype=np.float64).reshape(3)
+    return T
 
 
-def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--config", type=Path, default=Path("configs/ird_gt_config.yaml"))
-    ap.add_argument("--map", type=Path, default=None, help="Override map_dir")
-    ap.add_argument("--out", type=Path, default=None, help="Override out")
-    args = ap.parse_args(argv)
-
-    root = Path(__file__).resolve().parents[2]
-    cfg_path = args.config if args.config.is_absolute() else root / args.config
-    map_dir, out, cfg = load_ird_gt_config(cfg_path, root=root)
-    if args.map is not None:
-        map_dir = resolve_map_dir(args.map if args.map.is_absolute() else root / args.map)
-    else:
-        map_dir = resolve_map_dir(map_dir)
-    if args.out is not None:
-        out = args.out if args.out.is_absolute() else root / args.out
-
-    cm = load_capability_map_dir(map_dir, mmap=True)
-    arrays = export_ird_gt_from_capability_map(cm, cfg)
-    save_ird_gt(
-        out,
-        arrays,
-        meta={
-            "map_dir": str(map_dir),
-            "config": str(cfg_path),
-            "n_interior": cfg.n_interior,
-            "n_boundary": cfg.n_boundary,
-            "n_exterior": cfg.n_exterior,
-            "sigma_p_m": cfg.sigma_p_m,
-            "sigma_r_deg": cfg.sigma_r_deg,
-            "m_clip": cfg.m_clip,
-            "boundary_d_lo": cfg.boundary_d_lo,
-            "boundary_d_hi": cfg.boundary_d_hi,
-            "max_orients_per_voxel": cfg.max_orients_per_voxel,
-            "seed": cfg.seed,
-            "n_total": int(arrays["features"].shape[0]),
-            "stratification": "0.35_interior_0.40_boundary_0.25_exterior",
-            "note": "m_gt = continuous log1p margin in D (not strict SDF); auto percentile band if hi≈d_max",
-        },
-    )
-    print(f"wrote {out}  N={arrays['features'].shape[0]}")
-    return 0
+def invert_T(T: np.ndarray) -> np.ndarray:
+    T = np.asarray(T, dtype=np.float64)
+    R = T[:3, :3]
+    t = T[:3, 3]
+    Ti = np.eye(4, dtype=np.float64)
+    Ti[:3, :3] = R.T
+    Ti[:3, 3] = -R.T @ t
+    return Ti
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+def delta_T_tcp_inv_base(T_base_tcp: np.ndarray) -> np.ndarray:
+    """ΔT = T_tcp^{-1} T_base = (T_base_tcp)^{-1} when T_base = I in arm-base frame."""
+    return invert_T(T_base_tcp)
+
+
+def rot6d_from_R(R: np.ndarray) -> np.ndarray:
+    """Zhou et al. continuous 6D rotation: first two columns of R."""
+    R = np.asarray(R, dtype=np.float64).reshape(3, 3)
+    return np.concatenate([R[:, 0], R[:, 1]], axis=0)
+
+
+def features_from_delta_T(delta_T: np.ndarray) -> np.ndarray:
+    """(6,) = natural 5-DoF [p_base,tcp, u_base] recovered from ΔT.
+
+    ΔT = T_tcp^{-1} T_base. With T_base=I:
+      R_base,tcp = R_Δᵀ
+      p_base,tcp = −R_Δᵀ t_Δ
+      u_base = R_base,tcp @ e_z = R_Δᵀ[:,2] = R_Δ[2,:]ᵀ wait: (R_Δᵀ)[:,2] = R_Δ[2,:].T
+    """
+    T = np.asarray(delta_T, dtype=np.float64).reshape(4, 4)
+    R_delta = T[:3, :3]
+    t_delta = T[:3, 3]
+    R_base_tcp = R_delta.T
+    p = -(R_base_tcp @ t_delta)
+    u = R_base_tcp[:, 2].copy()
+    u = u / (np.linalg.norm(u) + 1e-12)
+    return np.concatenate([p, u], axis=0).astype(np.float64)
+
+
+def batch_features_from_delta_T(delta_Ts: np.ndarray) -> np.ndarray:
+    """(N,6) from (N,4,4)."""
+    Ts = np.asarray(delta_Ts, dtype=np.float64)
+    if Ts.ndim == 2:
+        return features_from_delta_T(Ts)[None, :]
+    out = np.empty((Ts.shape[0], 6), dtype=np.float64)
+    for i, T in enumerate(Ts):
+        out[i] = features_from_delta_T(T)
+    return out
+
+
+def se3_exp(xi: np.ndarray) -> np.ndarray:
+    """ξ = [δp(3), δω(3)] → SE(3) via scipy Rotation (axis-angle)."""
+    xi = np.asarray(xi, dtype=np.float64).reshape(6)
+    dp, dw = xi[:3], xi[3:]
+    R = Rotation.from_rotvec(dw).as_matrix()
+    return mat4_from_Rt(R, dp)
+
+
+def se3_mul(A: np.ndarray, B: np.ndarray) -> np.ndarray:
+    return np.asarray(A, dtype=np.float64) @ np.asarray(B, dtype=np.float64)
+
+
+def complete_frame_from_tool_axis(tool_axis: np.ndarray) -> np.ndarray:
+    """Build a rotation whose +Z is ``tool_axis`` (Zacharias tool axis = TCP +Z)."""
+    z = np.asarray(tool_axis, dtype=np.float64).reshape(3)
+    z = z / (np.linalg.norm(z) + 1e-12)
+    a = np.array([1.0, 0.0, 0.0]) if abs(z[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
+    x = np.cross(a, z)
+    x = x / (np.linalg.norm(x) + 1e-12)
+    y = np.cross(z, x)
+    return np.stack([x, y, z], axis=1)
 ```
 
-
-## FILE: `ird_playground/ird_playground/cli/build_map.py`
-
-```python
-"""Patch URDF with probe TCP and optionally invoke rm75 reachability build (subprocess)."""
-
-from __future__ import annotations
-
-import argparse
-import subprocess
-import sys
-from pathlib import Path
-
-from ird_playground.probe.transform import load_probe_yaml, patch_urdf_tcp
-
-
-def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--probe", type=Path, default=Path("configs/probe_default.yaml"))
-    ap.add_argument(
-        "--src-urdf",
-        type=Path,
-        default=None,
-        help="Base 8-DOF URDF (default: rm75_control asset)",
-    )
-    ap.add_argument("--out-urdf", type=Path, default=Path("data/maps/RM75-probe.urdf"))
-    ap.add_argument(
-        "--reachability-config",
-        type=Path,
-        default=None,
-        help="If set, run rm75 reachability build with patched URDF",
-    )
-    ap.add_argument("--output-map", type=Path, default=Path("data/maps/probe_capability"))
-    ap.add_argument("--mc-samples", type=int, default=None, help="Override MC samples for quick builds")
-    ap.add_argument("--dry-run", action="store_true")
-    args = ap.parse_args(argv)
-
-    root = Path(__file__).resolve().parents[2]  # ird_playground/
-    rm75 = Path(__file__).resolve().parents[3] / "rm75_control"
-    src = args.src_urdf or (
-        rm75 / "rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf"
-    )
-    probe = load_probe_yaml(args.probe if args.probe.is_absolute() else root / args.probe)
-    out_urdf = args.out_urdf if args.out_urdf.is_absolute() else root / args.out_urdf
-    patch_urdf_tcp(src, out_urdf, probe)
-    print(f"patched URDF → {out_urdf}  probe={probe.name}")
-
-    if args.reachability_config is None:
-        return 0
-
-    cfg_path = args.reachability_config
-    if not cfg_path.is_absolute():
-        # allow configs under rm75_control
-        cand = rm75 / cfg_path
-        cfg_path = cand if cand.exists() else root / args.reachability_config
-
-    cmd = [
-        sys.executable,
-        "-m",
-        "rm75_control.tools.reachability.build.cli",
-        "--config",
-        str(cfg_path),
-        "--urdf",
-        str(out_urdf),
-        "--output",
-        str(args.output_map if args.output_map.is_absolute() else root / args.output_map),
-    ]
-    if args.mc_samples is not None:
-        cmd += ["--mc-samples", str(args.mc_samples)]
-    if args.dry_run:
-        cmd.append("--dry-run")
-    print(" ".join(cmd))
-    return subprocess.call(cmd, cwd=str(rm75))
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-```
-
-
-## FILE: `ird_playground/ird_playground/neural/model.py`
+### `ird_playground/neural/model.py`
 
 ```python
-"""Neural IRD point field f_θ(ΔT) → (m margin logit, q comfort)."""
+"""Neural IRD v4: f_θ(p,u) → (reach_logit, margin, q). Natural 5-DoF + u PE."""
 
 from __future__ import annotations
 
@@ -1186,11 +1211,14 @@ except ImportError:  # pragma: no cover
     F = None  # type: ignore
 
 
-def positional_encoding_xyz(xyz: "torch.Tensor", num_freqs: int = 6) -> "torch.Tensor":
-    """Fourier features on translation only; xyz shape (..., 3)."""
-    freqs = (2.0 ** torch.arange(num_freqs, device=xyz.device, dtype=xyz.dtype)) * np.pi
-    xb = xyz.unsqueeze(-1) * freqs
-    return torch.cat([xyz, torch.sin(xb).flatten(-2), torch.cos(xb).flatten(-2)], dim=-1)
+def positional_encoding(x: "torch.Tensor", num_freqs: int) -> "torch.Tensor":
+    freqs = (2.0 ** torch.arange(num_freqs, device=x.device, dtype=x.dtype)) * np.pi
+    xb = x.unsqueeze(-1) * freqs
+    return torch.cat([x, torch.sin(xb).flatten(-2), torch.cos(xb).flatten(-2)], dim=-1)
+
+
+# backward-compat alias
+positional_encoding_xyz = positional_encoding
 
 
 class ResidualSiLUBlock(nn.Module if nn is not None else object):  # type: ignore[misc]
@@ -1206,17 +1234,17 @@ class ResidualSiLUBlock(nn.Module if nn is not None else object):  # type: ignor
 
 
 class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[misc]
-    """Generic point operator; no trajectory / body / rail inputs.
+    """6-D natural [p(3), u(3)] → reach_logit, margin, q.
 
-    Features: [px,py,pz, r1(3), r2(3)] — xyz should be AABB-normalized to [-1,1]
-    before forward (or pass aabb to normalize inside).
+    Fourier PE on position (num_freqs) and tool axis (num_freqs_u).
     """
 
     def __init__(
         self,
         *,
-        in_dim: int = 9,
+        in_dim: int = 6,
         num_freqs: int = 6,
+        num_freqs_u: int = 3,
         hidden: int = 256,
         depth: int = 5,
         tau_m: float = 1.0,
@@ -1225,18 +1253,21 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
         if torch is None:
             raise ImportError("torch is required for NeuralIRDPoint")
         super().__init__()
-        if in_dim != 9:
-            raise ValueError("expected 9-D features (xyz + rot6D)")
+        if in_dim != 6:
+            raise ValueError("expected 6-D features (p + tool axis)")
+        self.in_dim = 6
         self.num_freqs = int(num_freqs)
+        self.num_freqs_u = int(num_freqs_u)
         self.hidden = int(hidden)
         self.depth = int(depth)
         self.tau_m = float(tau_m)
         self.lambda_q = float(lambda_q)
-        pe_xyz = 3 + 3 * 2 * self.num_freqs
-        in_w = pe_xyz + 6
-        self.stem = nn.Linear(in_w, hidden)
+        pe_p = 3 + 3 * 2 * self.num_freqs
+        pe_u = 3 + 3 * 2 * self.num_freqs_u
+        self.stem = nn.Linear(pe_p + pe_u, hidden)
         self.blocks = nn.ModuleList([ResidualSiLUBlock(hidden) for _ in range(max(1, depth - 1))])
-        self.head_m = nn.Linear(hidden, 1)
+        self.head_cls = nn.Linear(hidden, 1)
+        self.head_margin = nn.Linear(hidden, 1)
         self.head_q = nn.Linear(hidden, 1)
         self.register_buffer("aabb_lo", torch.tensor([-1.0, -1.0, -1.0], dtype=torch.float32))
         self.register_buffer("aabb_hi", torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32))
@@ -1247,36 +1278,42 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
 
     def normalize_xyz(self, features: "torch.Tensor") -> "torch.Tensor":
         p = features[..., :3]
-        r6 = features[..., 3:]
+        u = features[..., 3:6]
+        u = u / (u.norm(dim=-1, keepdim=True).clamp_min(1e-6))
         span = (self.aabb_hi - self.aabb_lo).clamp_min(1e-6)
         p_n = 2.0 * (p - self.aabb_lo) / span - 1.0
-        return torch.cat([p_n, r6], dim=-1)
+        return torch.cat([p_n, u], dim=-1)
 
     def encode(self, features: "torch.Tensor") -> "torch.Tensor":
         x = self.normalize_xyz(features)
-        xyz = positional_encoding_xyz(x[..., :3], self.num_freqs)
-        return torch.cat([xyz, x[..., 3:]], dim=-1)
+        p_enc = positional_encoding(x[..., :3], self.num_freqs)
+        u_enc = positional_encoding(x[..., 3:6], self.num_freqs_u)
+        return torch.cat([p_enc, u_enc], dim=-1)
 
-    def forward(self, features: "torch.Tensor") -> tuple["torch.Tensor", "torch.Tensor", "torch.Tensor"]:
-        """Return m (logit/margin), q in [0,1], score = -softplus(-m/τ)+λq."""
+    def forward(
+        self, features: "torch.Tensor"
+    ) -> tuple["torch.Tensor", "torch.Tensor", "torch.Tensor", "torch.Tensor"]:
         h = F.silu(self.stem(self.encode(features)))
         for block in self.blocks:
             h = block(h)
-        m = self.head_m(h)
+        reach_logit = self.head_cls(h)
+        margin = self.head_margin(h)
         q = torch.sigmoid(self.head_q(h))
-        score = -F.softplus(-m / max(self.tau_m, 1e-6)) + self.lambda_q * q
-        return m, q, score
+        score = -F.softplus(-margin / max(self.tau_m, 1e-6)) + self.lambda_q * q
+        return reach_logit, margin, q, score
 
     def score_features(self, features: "torch.Tensor") -> dict[str, "torch.Tensor"]:
-        m, q, score = self.forward(features)
-        p_reach = torch.sigmoid(m)  # soft reachable probability for legacy/IoU
+        reach_logit, margin, q, score = self.forward(features)
+        p_reach = torch.sigmoid(reach_logit)
         return {
-            "m": m,
+            "reach_logit": reach_logit,
+            "m": margin,
+            "margin": margin,
             "q": q,
             "q_comfort": q,
             "score": score,
             "p_reach": p_reach,
-            "d": score,  # legacy alias used by older callers
+            "d": score,
         }
 
 
@@ -1288,11 +1325,10 @@ class PointScore:
     p_reach: float = 0.0
     q_comfort: float = 0.0
     d: float = 0.0
+    reach_logit: float = 0.0
 
 
 class NeuralIRD:
-    """Production wrapper: score(delta_T) + region_score via Region A."""
-
     def __init__(self, model: NeuralIRDPoint, device: str | None = None) -> None:
         if torch is None:
             raise ImportError("torch is required")
@@ -1304,16 +1340,17 @@ class NeuralIRD:
     def load(cls, checkpoint: str | Path, device: str | None = None) -> "NeuralIRD":
         ckpt = torch.load(Path(checkpoint), map_location="cpu", weights_only=False)
         cfg = dict(ckpt.get("model_cfg", {}))
-        aabb = cfg.get("aabb")
         model = NeuralIRDPoint(
-            in_dim=int(cfg.get("in_dim", 9)),
+            in_dim=int(cfg.get("in_dim", 6)),
             num_freqs=int(cfg.get("num_freqs", 6)),
+            num_freqs_u=int(cfg.get("num_freqs_u", 3)),
             hidden=int(cfg.get("hidden", 256)),
             depth=int(cfg.get("depth", 5)),
             tau_m=float(cfg.get("tau_m", 1.0)),
             lambda_q=float(cfg.get("lambda_q", 0.5)),
         )
         model.load_state_dict(ckpt["state_dict"], strict=False)
+        aabb = cfg.get("aabb")
         if aabb is not None:
             model.set_aabb(np.asarray(aabb["lo"]), np.asarray(aabb["hi"]))
         meta = ckpt.get("meta") or {}
@@ -1325,8 +1362,9 @@ class NeuralIRD:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         cfg = model_cfg or {
-            "in_dim": 9,
+            "in_dim": 6,
             "num_freqs": self.model.num_freqs,
+            "num_freqs_u": self.model.num_freqs_u,
             "hidden": self.model.hidden,
             "depth": self.model.depth,
             "tau_m": self.model.tau_m,
@@ -1336,12 +1374,7 @@ class NeuralIRD:
                 "hi": self.model.aabb_hi.detach().cpu().numpy().tolist(),
             },
         }
-        payload = {
-            "state_dict": self.model.state_dict(),
-            "model_cfg": cfg,
-            "meta": meta or {},
-        }
-        torch.save(payload, path)
+        torch.save({"state_dict": self.model.state_dict(), "model_cfg": cfg, "meta": meta or {}}, path)
 
     @torch.no_grad()
     def score_features_np(self, features: np.ndarray) -> dict[str, np.ndarray]:
@@ -1363,13 +1396,13 @@ class NeuralIRD:
             p_reach=float(out["p_reach"][0]),
             q_comfort=float(out["q"][0]),
             d=float(out["score"][0]),
+            reach_logit=float(out["reach_logit"][0]),
         )
 
     def score_batch_delta_T(self, delta_Ts: np.ndarray) -> dict[str, np.ndarray]:
         from ird_playground.probe.se3 import batch_features_from_delta_T
 
-        feats = batch_features_from_delta_T(delta_Ts)
-        return self.score_features_np(feats)
+        return self.score_features_np(batch_features_from_delta_T(delta_Ts))
 
     def region_score(self, **kwargs):
         from ird_playground.region.aggregate import region_score_a
@@ -1377,14 +1410,12 @@ class NeuralIRD:
         return region_score_a(self, **kwargs)
 ```
 
-
-## FILE: `ird_playground/ird_playground/neural/train.py`
+### `ird_playground/neural/train.py`
 
 ```python
-"""Train / eval the generic Neural IRD point field f_θ → (m, q).
+"""Train Neural IRD v4: BCE + masked SmoothL1(margin) + SmoothL1(q|pos).
 
-Loss: λ_cls BCE(σ(m), y) + λ_m margin + λ_q y·L_q + λ_local local consistency.
-No default Eikonal. Hard-neg mining every N epochs.
+Difficulty-aware batches, block-split val, best-by-IoU checkpoints.
 """
 
 from __future__ import annotations
@@ -1396,12 +1427,22 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from ird_playground.ird.export_gt import load_ird_gt, make_synthetic_ird_gt
+from ird_playground.ird.export_gt import (
+    LAYER_BND_NEG,
+    LAYER_BND_POS,
+    LAYER_EXTERIOR,
+    LAYER_INTERIOR,
+    LAYER_JITTER_NEG,
+    LAYER_JITTER_POS,
+    assert_gt_contract,
+    load_ird_gt,
+    make_synthetic_ird_gt,
+)
 from ird_playground.neural.model import NeuralIRD, NeuralIRDPoint
 
 try:
     import torch
-    from torch.utils.data import DataLoader, TensorDataset
+    from torch.utils.data import DataLoader, Dataset, Sampler
 except ImportError:  # pragma: no cover
     torch = None
 
@@ -1410,7 +1451,7 @@ except ImportError:  # pragma: no cover
 class TrainConfig:
     gt_npz: str | None = None
     synthetic_n: int = 8192
-    epochs: int = 200
+    epochs: int = 100
     batch_size: int = 1024
     num_workers: int = 4
     torch_compile: bool = False
@@ -1424,6 +1465,7 @@ class TrainConfig:
     save_freq: int = 25
     val_frac: float = 0.15
     num_freqs: int = 6
+    num_freqs_u: int = 3
     hidden: int = 256
     depth: int = 5
     tau_m: float = 1.0
@@ -1433,15 +1475,23 @@ class TrainConfig:
     checkpoint_dir: str = "data/checkpoints"
     report: str = "data/reports/train_point.json"
     device: str | None = None
-    # loss weights
     lambda_cls: float = 1.0
-    lambda_margin: float = 1.0
-    lambda_q: float = 1.0
-    lambda_local: float = 0.05
+    lambda_margin: float = 0.0
+    lambda_q: float = 0.0
+    lambda_local: float = 0.0
     sigma_local_m: float = 0.06
-    hardneg_every: int = 20
-    hardneg_frac: float = 0.02
-    # pass thresholds
+    hardneg_every: int = 0
+    hardneg_frac: float = 0.0
+    # batch mix: interior / bnd+ / bnd- / jitter / exterior
+    mix_interior: float = 0.15
+    mix_bnd_pos: float = 0.25
+    mix_bnd_neg: float = 0.25
+    mix_jitter_pos: float = 0.10
+    mix_jitter_neg: float = 0.10
+    mix_exterior: float = 0.15
+    # alias for old yaml key "jitter"
+    mix_jitter: float = 0.0
+    val_eval_n: int = 65536
     mae_max: float = 0.35
     spearman_min: float = 0.70
     boundary_iou_min: float = 0.70
@@ -1471,36 +1521,27 @@ def _normalize_device(raw) -> str | None:
     if raw in (None, "null", ""):
         return None
     s = str(raw).strip()
-    if s.upper() == "CUDA":
-        return "cuda"
-    return s
+    return "cuda" if s.upper() == "CUDA" else s
 
 
 def load_train_config(path: str | Path, *, root: Path | None = None) -> TrainConfig:
     cfg_path = Path(path)
     raw = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
     root = root or cfg_path.resolve().parents[1]
-
-    data = dict(raw.get("data") or {})
-    model = dict(raw.get("model") or {})
+    data, model = dict(raw.get("data") or {}), dict(raw.get("model") or {})
     train = dict(raw.get("training") or raw.get("train") or {})
-    loss = dict(raw.get("loss") or {})
-    io = dict(raw.get("io") or {})
-    pas = dict(raw.get("pass") or {})
-    wb = dict(raw.get("wandb") or {})
+    loss, io = dict(raw.get("loss") or {}), dict(raw.get("io") or {})
+    pas, wb = dict(raw.get("pass") or {}), dict(raw.get("wandb") or {})
+    mix = dict(train.get("batch_mix") or raw.get("batch_mix") or {})
 
     gt = data.get("gt_npz")
-    if gt in (None, "null", ""):
+    gt_path = None if gt in (None, "null", "") else _as_path(root, str(gt))
+    if gt_path and not Path(gt_path).exists():
         gt_path = None
-    else:
-        gt_path = _as_path(root, str(gt))
-        if gt_path and not Path(gt_path).exists():
-            gt_path = None
 
     tags = wb.get("tags")
     if tags is not None and not isinstance(tags, list):
         tags = [str(tags)]
-
     lr = train.get("learning_rate", train.get("lr", 3e-4))
 
     return TrainConfig(
@@ -1508,11 +1549,12 @@ def load_train_config(path: str | Path, *, root: Path | None = None) -> TrainCon
         synthetic_n=int(data.get("synthetic_n", 8192)),
         val_frac=float(data.get("val_frac", 0.15)),
         num_freqs=int(model.get("num_freqs", 6)),
+        num_freqs_u=int(model.get("num_freqs_u", 3)),
         hidden=int(model.get("hidden", 256)),
         depth=int(model.get("depth", 5)),
         tau_m=float(model.get("tau_m", 1.0)),
         lambda_q_score=float(model.get("lambda_q", 0.5)),
-        epochs=int(train.get("epochs", 200)),
+        epochs=int(train.get("epochs", 100)),
         batch_size=int(train.get("batch_size", 1024)),
         num_workers=int(train.get("num_workers", 4)),
         torch_compile=bool(train.get("torch_compile", False)),
@@ -1524,14 +1566,21 @@ def load_train_config(path: str | Path, *, root: Path | None = None) -> TrainCon
         log_every_steps=int(train.get("log_every_steps", 10)),
         print_every_steps=int(train.get("print_every_steps", 50)),
         save_freq=int(train.get("save_freq", 25)),
-        hardneg_every=int(train.get("hardneg_every", 20)),
-        hardneg_frac=float(train.get("hardneg_frac", 0.02)),
+        hardneg_every=int(train.get("hardneg_every", 0)),
+        hardneg_frac=float(train.get("hardneg_frac", 0.0)),
         seed=int(train.get("seed", 42)),
         device=_normalize_device(train.get("device")),
+        mix_interior=float(mix.get("interior", 0.15)),
+        mix_bnd_pos=float(mix.get("bnd_pos", 0.25)),
+        mix_bnd_neg=float(mix.get("bnd_neg", 0.25)),
+        mix_jitter_pos=float(mix.get("jitter_pos", mix.get("jitter", 0.20) / 2)),
+        mix_jitter_neg=float(mix.get("jitter_neg", mix.get("jitter", 0.20) / 2)),
+        mix_exterior=float(mix.get("exterior", 0.15)),
+        val_eval_n=int(train.get("val_eval_n", 65536)),
         lambda_cls=float(loss.get("lambda_cls", 1.0)),
-        lambda_margin=float(loss.get("lambda_margin", 1.0)),
-        lambda_q=float(loss.get("lambda_q", 1.0)),
-        lambda_local=float(loss.get("lambda_local", 0.05)),
+        lambda_margin=float(loss.get("lambda_margin", 0.0)),
+        lambda_q=float(loss.get("lambda_q", 0.0)),
+        lambda_local=float(loss.get("lambda_local", 0.0)),
         sigma_local_m=float(loss.get("sigma_local_m", 0.06)),
         checkpoint=str(_as_path(root, io.get("checkpoint", "data/checkpoints/latest.pt"))),
         checkpoint_dir=str(_as_path(root, io.get("checkpoint_dir", "data/checkpoints"))),
@@ -1553,26 +1602,42 @@ def load_train_config(path: str | Path, *, root: Path | None = None) -> TrainCon
     )
 
 
-def _y_key(arrays: dict[str, np.ndarray]) -> str:
-    return "reachable" if "reachable" in arrays else "p_reach"
+def _y_key(a):
+    return "reachable" if "reachable" in a else "p_reach"
 
 
-def _q_key(arrays: dict[str, np.ndarray]) -> str:
-    return "q" if "q" in arrays else "q_comfort"
+def _q_key(a):
+    return "q" if "q" in a else "q_comfort"
 
 
-def _m_key(arrays: dict[str, np.ndarray]) -> str:
-    return "m_gt" if "m_gt" in arrays else "d"
+def _m_key(a):
+    return "m_gt" if "m_gt" in a else "d"
 
 
-def _split(arrays: dict[str, np.ndarray], val_frac: float, seed: int):
+def _block_split(arrays, val_frac, seed):
+    """Split by block_id so duplicate (spatial,orient) cannot leak train→val."""
     n = arrays["features"].shape[0]
-    rng = np.random.default_rng(seed)
-    idx = rng.permutation(n)
-    n_val = max(1, int(n * val_frac))
-    val_idx, tr_idx = idx[:n_val], idx[n_val:]
+    if "block_id" in arrays:
+        blocks = arrays["block_id"]
+        uniq = np.unique(blocks)
+        rng = np.random.default_rng(seed)
+        rng.shuffle(uniq)
+        n_val_b = max(1, int(len(uniq) * val_frac))
+        val_blocks = set(uniq[:n_val_b].tolist())
+        is_val = np.array([int(b) in val_blocks for b in blocks], dtype=bool)
+        val_idx = np.flatnonzero(is_val)
+        tr_idx = np.flatnonzero(~is_val)
+        if tr_idx.size == 0 or val_idx.size == 0:
+            # fallback random
+            idx = rng.permutation(n)
+            n_val = max(1, int(n * val_frac))
+            val_idx, tr_idx = idx[:n_val], idx[n_val:]
+    else:
+        idx = np.random.default_rng(seed).permutation(n)
+        n_val = max(1, int(n * val_frac))
+        val_idx, tr_idx = idx[:n_val], idx[n_val:]
 
-    def _take(ix):
+    def take(ix):
         out = {}
         for k, v in arrays.items():
             if isinstance(v, np.ndarray) and v.ndim >= 1 and v.shape[0] == n:
@@ -1581,7 +1646,97 @@ def _split(arrays: dict[str, np.ndarray], val_frac: float, seed: int):
                 out[k] = v
         return out
 
-    return _take(tr_idx), _take(val_idx)
+    return take(tr_idx), take(val_idx)
+
+
+# keep alias used by older callers
+_split = _block_split
+
+
+class IRDTensorDataset(Dataset if torch is not None else object):  # type: ignore[misc]
+    def __init__(self, arrays: dict, yk: str, mk: str, qk: str):
+        self.x = torch.as_tensor(arrays["features"], dtype=torch.float32)
+        y_raw = arrays.get("y_soft", arrays[yk])
+        self.y = torch.as_tensor(y_raw, dtype=torch.float32)
+        self.m = torch.as_tensor(arrays[mk], dtype=torch.float32)
+        self.q = torch.as_tensor(arrays[qk], dtype=torch.float32)
+        mw = arrays.get("margin_weight")
+        self.mw = torch.as_tensor(
+            mw if mw is not None else np.ones(len(self.y), dtype=np.float32),
+            dtype=torch.float32,
+        )
+        cw = arrays.get("cls_weight")
+        self.cw = torch.as_tensor(
+            cw if cw is not None else np.ones(len(self.y), dtype=np.float32),
+            dtype=torch.float32,
+        )
+        layer = arrays.get("layer_id")
+        self.layer = (
+            torch.as_tensor(layer, dtype=torch.int64)
+            if layer is not None
+            else torch.zeros(len(self.y), dtype=torch.int64)
+        )
+
+    def __len__(self):
+        return int(self.x.shape[0])
+
+    def __getitem__(self, i):
+        return self.x[i], self.y[i], self.m[i], self.q[i], self.mw[i], self.cw[i], self.layer[i]
+
+
+class DifficultyBatchSampler(Sampler if torch is not None else object):  # type: ignore[misc]
+    """Fixed mix: interior / bnd+ / bnd- / jitter / exterior."""
+
+    def __init__(self, layer: np.ndarray, batch_size: int, mix: dict[int, float], *, seed: int = 0, steps: int | None = None):
+        self.batch_size = int(batch_size)
+        self.rng = np.random.default_rng(seed)
+        self.pools = {}
+        for lid in (
+            LAYER_INTERIOR,
+            LAYER_BND_POS,
+            LAYER_BND_NEG,
+            LAYER_JITTER_POS,
+            LAYER_JITTER_NEG,
+            LAYER_EXTERIOR,
+        ):
+            idx = np.flatnonzero(layer == lid)
+            self.pools[lid] = idx if idx.size else np.array([], dtype=np.int64)
+        # remap empty pools to nearest non-empty
+        fallback = np.arange(len(layer), dtype=np.int64)
+        for lid, idx in list(self.pools.items()):
+            if idx.size == 0:
+                self.pools[lid] = fallback
+        weights = {
+            LAYER_INTERIOR: mix.get(LAYER_INTERIOR, 0.15),
+            LAYER_BND_POS: mix.get(LAYER_BND_POS, 0.25),
+            LAYER_BND_NEG: mix.get(LAYER_BND_NEG, 0.25),
+            LAYER_JITTER_POS: mix.get(LAYER_JITTER_POS, 0.10),
+            LAYER_JITTER_NEG: mix.get(LAYER_JITTER_NEG, 0.10),
+            LAYER_EXTERIOR: mix.get(LAYER_EXTERIOR, 0.15),
+        }
+        wsum = sum(weights.values()) or 1.0
+        counts = {k: max(1, int(round(self.batch_size * v / wsum))) for k, v in weights.items()}
+        # fix rounding
+        while sum(counts.values()) > self.batch_size:
+            k = max(counts, key=counts.get)
+            counts[k] -= 1
+        while sum(counts.values()) < self.batch_size:
+            k = max(weights, key=weights.get)
+            counts[k] += 1
+        self.counts = counts
+        n = len(layer)
+        self.steps = int(steps) if steps is not None else max(1, n // self.batch_size)
+
+    def __len__(self):
+        return self.steps
+
+    def __iter__(self):
+        for _ in range(self.steps):
+            batch = []
+            for lid, c in self.counts.items():
+                pool = self.pools[lid]
+                batch.append(self.rng.choice(pool, size=c, replace=True))
+            yield np.concatenate(batch).tolist()
 
 
 def _maybe_init_wandb(cfg: TrainConfig):
@@ -1593,8 +1748,8 @@ def _maybe_init_wandb(cfg: TrainConfig):
         project=cfg.wandb_project,
         entity=cfg.wandb_entity,
         mode=cfg.wandb_mode,
-        name=cfg.wandb_run_name or "neural_ird_mq",
-        tags=cfg.wandb_tags or ["neural_ird", "m_q"],
+        name=cfg.wandb_run_name or "neural_ird_v4",
+        tags=cfg.wandb_tags or ["neural_ird", "v4", "natural_pu"],
         config={k: v for k, v in asdict(cfg).items() if not k.startswith("wandb_")},
     )
 
@@ -1614,132 +1769,187 @@ def _build_scheduler(opt, cfg: TrainConfig, steps_per_epoch: int):
     return torch.optim.lr_scheduler.LambdaLR(opt, lr_lambda), total_steps
 
 
-def _compute_loss(m, q, y, m_gt, q_gt, cfg: TrainConfig, *, local_pair=None):
-    m = m.squeeze(-1)
+def _compute_loss(reach_logit, margin, q, y, m_gt, q_gt, mw, cw, cfg: TrainConfig):
+    reach_logit = reach_logit.squeeze(-1)
+    margin = margin.squeeze(-1)
     q = q.squeeze(-1)
-    p = torch.sigmoid(m)
-    L_cls = torch.nn.functional.binary_cross_entropy(p, y)
-    L_m = torch.nn.functional.mse_loss(m, m_gt)
-    w = y
-    L_q = ((q - q_gt) ** 2 * w).sum() / (w.sum() + 1e-6)
-    L_local = m.new_tensor(0.0)
-    if local_pair is not None:
-        dm_pred, dm_gt, mask = local_pair
-        if mask is not None and mask.any():
-            L_local = torch.nn.functional.mse_loss(dm_pred[mask], dm_gt[mask])
-        elif mask is None:
-            L_local = torch.nn.functional.mse_loss(dm_pred, dm_gt)
-    loss = (
-        cfg.lambda_cls * L_cls
-        + cfg.lambda_margin * L_m
-        + cfg.lambda_q * L_q
-        + cfg.lambda_local * L_local
-    )
+    # unknown samples: cls_weight=0 → excluded from BCE
+    if cw is not None and (cw > 0).any():
+        L_cls = torch.nn.functional.binary_cross_entropy_with_logits(
+            reach_logit, y, weight=cw, reduction="sum"
+        ) / cw.sum().clamp_min(1.0)
+    else:
+        L_cls = torch.nn.functional.binary_cross_entropy_with_logits(reach_logit, y)
+    mask = mw > 0
+    if mask.any() and cfg.lambda_margin > 0:
+        L_m = torch.nn.functional.smooth_l1_loss(margin[mask], m_gt[mask], beta=0.1)
+    else:
+        L_m = margin.new_zeros(())
+    pos = y >= 0.5
+    if pos.any() and cfg.lambda_q > 0:
+        L_q = torch.nn.functional.smooth_l1_loss(q[pos], q_gt[pos], beta=0.1)
+    else:
+        L_q = margin.new_zeros(())
+    loss = cfg.lambda_cls * L_cls + cfg.lambda_margin * L_m + cfg.lambda_q * L_q
     return loss, {
         "L_cls": float(L_cls.detach()),
         "L_m": float(L_m.detach()),
         "L_q": float(L_q.detach()),
-        "L_local": float(L_local.detach()),
+        "L_local": 0.0,
     }
 
 
-def _spatial_local_pair(
-    m: "torch.Tensor",
-    m_gt: "torch.Tensor",
-    xyz: "torch.Tensor",
-    *,
-    sigma_m: float,
-) -> tuple["torch.Tensor", "torch.Tensor", "torch.Tensor"] | None:
-    """Within-batch nearest neighbour in xyz; only pairs with ||Δp|| < sigma_m.
+def _layer_metrics(y: np.ndarray, p: np.ndarray, layer: np.ndarray) -> dict[str, float]:
+    out = {}
+    names = {
+        LAYER_INTERIOR: "interior",
+        LAYER_BND_POS: "bnd_pos",
+        LAYER_BND_NEG: "bnd_neg",
+        LAYER_JITTER_POS: "jitter_pos",
+        LAYER_JITTER_NEG: "jitter_neg",
+        LAYER_EXTERIOR: "exterior",
+    }
+    pred = p >= 0.5
+    gt = y >= 0.5
+    for lid, name in names.items():
+        m = layer == lid
+        if not m.any():
+            continue
+        if lid in (LAYER_INTERIOR, LAYER_BND_POS, LAYER_JITTER_POS):
+            pos = m & gt
+            out[f"{name}_recall"] = float(pred[pos].mean()) if pos.any() else 0.0
+        elif lid in (LAYER_BND_NEG, LAYER_EXTERIOR, LAYER_JITTER_NEG):
+            neg = m & (~gt)
+            out[f"{name}_spec"] = float((~pred[neg]).mean()) if neg.any() else 0.0
+        else:
+            out[f"{name}_acc"] = float((pred[m] == gt[m]).mean())
+    inter = float(np.logical_and(gt, pred).sum())
+    union = float(np.logical_or(gt, pred).sum()) + 1e-9
+    out["iou"] = inter / union
+    out["accuracy"] = float((pred == gt).mean())
+    # threshold-swept IoU + PR-AUC proxy
+    thresholds = np.linspace(0.05, 0.95, 19)
+    ious = []
+    for t in thresholds:
+        yp = p >= t
+        inter_t = float(np.logical_and(gt, yp).sum())
+        union_t = float(np.logical_or(gt, yp).sum()) + 1e-9
+        ious.append(inter_t / union_t)
+    best_i = int(np.argmax(ious))
+    out["best_iou"] = float(ious[best_i])
+    out["best_threshold"] = float(thresholds[best_i])
+    # average precision approx via sorted scores
+    order = np.argsort(-p)
+    y_s = gt[order].astype(np.float64)
+    if y_s.sum() > 0 and (~gt).sum() > 0:
+        tp = np.cumsum(y_s)
+        fp = np.cumsum(1.0 - y_s)
+        prec = tp / np.maximum(tp + fp, 1.0)
+        rec = tp / y_s.sum()
+        # AP = ∫ P dR
+        out["pr_auc"] = float(np.sum((rec[1:] - rec[:-1]) * prec[1:]))
+    else:
+        out["pr_auc"] = 0.0
+    return out
 
-    Returns (Δm_pred, Δm_gt, mask). This is true local consistency — not a
-    random shuffle of the batch.
-    """
-    m = m.squeeze(-1)
-    B = m.shape[0]
-    if B < 2:
-        return None
-    # (B,B) squared distances
-    d2 = torch.cdist(xyz, xyz, p=2).pow(2)
-    d2 = d2 + torch.eye(B, device=xyz.device, dtype=xyz.dtype) * 1e6
-    nn = d2.argmin(dim=1)
-    dist = torch.sqrt(d2.gather(1, nn.unsqueeze(1)).squeeze(1).clamp_min(0.0))
-    mask = dist < float(sigma_m)
-    dm_pred = m - m[nn]
-    dm_gt = m_gt - m_gt[nn]
-    return dm_pred, dm_gt, mask
 
+def _eval_subset(net, arrays, cfg: TrainConfig, seed: int = 0) -> dict[str, float]:
+    n = arrays["features"].shape[0]
+    yk, mk, qk = _y_key(arrays), _m_key(arrays), _q_key(arrays)
+    rng = np.random.default_rng(seed)
+    # Prefer supervised labels only (cls_weight>0); unknowns must not enter IoU.
+    cw_all = arrays.get("cls_weight")
+    supervised = np.flatnonzero(cw_all > 0) if cw_all is not None else np.arange(n)
+    if supervised.size == 0:
+        supervised = np.arange(n)
+    # stratified by layer within supervised pool
+    if "layer_id" in arrays and supervised.size > cfg.val_eval_n:
+        layer_all = arrays["layer_id"]
+        picks = []
+        per = max(1, cfg.val_eval_n // 6)
+        for lid in (
+            LAYER_INTERIOR,
+            LAYER_BND_POS,
+            LAYER_BND_NEG,
+            LAYER_JITTER_POS,
+            LAYER_JITTER_NEG,
+            LAYER_EXTERIOR,
+        ):
+            idx = supervised[layer_all[supervised] == lid]
+            if idx.size == 0:
+                continue
+            picks.append(rng.choice(idx, size=min(per, idx.size), replace=False))
+        idx = np.concatenate(picks) if picks else rng.choice(supervised, size=min(cfg.val_eval_n, supervised.size), replace=False)
+    else:
+        idx = rng.choice(supervised, size=min(cfg.val_eval_n, supervised.size), replace=False)
 
-def _mine_hard_negatives(model, features, y, device, frac: float) -> np.ndarray:
-    """Return indices of high-confidence misclassifications."""
-    model.eval()
-    with torch.no_grad():
-        x = torch.as_tensor(features, dtype=torch.float32, device=device)
-        conf = []
-        for i in range(0, x.shape[0], 4096):
-            m, _, _ = model(x[i : i + 4096])
-            conf.append(torch.sigmoid(m.squeeze(-1)).cpu().numpy())
-        p = np.concatenate(conf, axis=0)
-    y_np = y.astype(np.float64)
-    err = np.abs(p - y_np)
-    # high confidence wrong: large |p-y| and p near 0/1
-    score = err * np.maximum(p, 1.0 - p)
-    n = max(1, int(frac * features.shape[0]))
-    return np.argsort(-score)[:n]
+    feats = arrays["features"][idx]
+    pred = net.score_features_np(feats)
+    # hard reachability for IoU (not soft training target)
+    y = arrays[yk][idx]
+    layer = arrays["layer_id"][idx] if "layer_id" in arrays else np.zeros(len(idx), dtype=np.int32)
+    metrics = _layer_metrics(y, pred["p_reach"], layer)
+    mw = arrays["margin_weight"][idx] if "margin_weight" in arrays else np.ones(len(idx))
+    mask = mw > 0
+    if mask.any():
+        metrics["boundary_margin_mae"] = float(
+            np.mean(np.abs(pred["m"][mask] - arrays[mk][idx][mask]))
+        )
+    else:
+        metrics["boundary_margin_mae"] = 0.0
+    return metrics
 
 
 def train_point_field(cfg: TrainConfig) -> dict:
     if torch is None:
-        raise ImportError("torch required for training")
-
+        raise ImportError("torch required")
     torch.manual_seed(cfg.seed)
     np.random.seed(cfg.seed)
 
-    if cfg.gt_npz:
-        arrays = load_ird_gt(cfg.gt_npz)
-    else:
-        arrays = make_synthetic_ird_gt(cfg.synthetic_n, seed=cfg.seed)
+    arrays = load_ird_gt(cfg.gt_npz) if cfg.gt_npz else make_synthetic_ird_gt(cfg.synthetic_n, seed=cfg.seed)
+    if arrays["features"].shape[1] != 6:
+        raise ValueError(f"expected 6-D features, got {arrays['features'].shape[1]} — regenerate GT")
+    assert_gt_contract(arrays)
 
     yk, qk, mk = _y_key(arrays), _q_key(arrays), _m_key(arrays)
-    train, val = _split(arrays, cfg.val_frac, cfg.seed)
+    train, val = _block_split(arrays, cfg.val_frac, cfg.seed)
     device = torch.device(cfg.device or ("cuda" if torch.cuda.is_available() else "cpu"))
     wb_run = _maybe_init_wandb(cfg)
 
-    aabb_lo = np.asarray(arrays.get("aabb_lo", [-1, -1, -1]), dtype=np.float32).reshape(3)
-    aabb_hi = np.asarray(arrays.get("aabb_hi", [1, 1, 1]), dtype=np.float32).reshape(3)
+    aabb_lo = np.asarray(arrays["aabb_lo"], dtype=np.float32).reshape(3)
+    aabb_hi = np.asarray(arrays["aabb_hi"], dtype=np.float32).reshape(3)
 
-    def _loader(a, shuffle: bool, extra_idx: np.ndarray | None = None):
-        feat = a["features"]
-        y = a[yk]
-        q = a[qk]
-        m = a[mk]
-        if extra_idx is not None and extra_idx.size:
-            feat = np.concatenate([feat, a["features"][extra_idx]], axis=0)
-            y = np.concatenate([y, a[yk][extra_idx]], axis=0)
-            q = np.concatenate([q, a[qk][extra_idx]], axis=0)
-            m = np.concatenate([m, a[mk][extra_idx]], axis=0)
-        ds = TensorDataset(
-            torch.as_tensor(feat, dtype=torch.float32),
-            torch.as_tensor(y, dtype=torch.float32),
-            torch.as_tensor(m, dtype=torch.float32),
-            torch.as_tensor(q, dtype=torch.float32),
-        )
-        return DataLoader(
-            ds,
-            batch_size=cfg.batch_size,
-            shuffle=shuffle,
-            num_workers=int(cfg.num_workers),
-            pin_memory=(device.type == "cuda"),
-        )
-
-    hard_idx: np.ndarray | None = None
-    tr_loader = _loader(train, True)
-    va_loader = _loader(val, False)
-    steps_per_epoch = max(1, len(tr_loader))
+    tr_ds = IRDTensorDataset(train, yk, mk, qk)
+    va_ds = IRDTensorDataset(val, yk, mk, qk)
+    mix = {
+        LAYER_INTERIOR: cfg.mix_interior,
+        LAYER_BND_POS: cfg.mix_bnd_pos,
+        LAYER_BND_NEG: cfg.mix_bnd_neg,
+        LAYER_JITTER_POS: cfg.mix_jitter_pos,
+        LAYER_JITTER_NEG: cfg.mix_jitter_neg,
+        LAYER_EXTERIOR: cfg.mix_exterior,
+    }
+    layer_np = train["layer_id"] if "layer_id" in train else np.zeros(len(tr_ds), dtype=np.int32)
+    steps_per_epoch = max(1, len(tr_ds) // cfg.batch_size)
+    tr_sampler = DifficultyBatchSampler(layer_np, cfg.batch_size, mix, seed=cfg.seed, steps=steps_per_epoch)
+    tr_loader = DataLoader(
+        tr_ds,
+        batch_sampler=tr_sampler,
+        num_workers=int(cfg.num_workers),
+        pin_memory=(device.type == "cuda"),
+    )
+    va_loader = DataLoader(
+        va_ds,
+        batch_size=cfg.batch_size,
+        shuffle=False,
+        num_workers=int(cfg.num_workers),
+        pin_memory=(device.type == "cuda"),
+    )
 
     model = NeuralIRDPoint(
-        in_dim=9,
+        in_dim=6,
         num_freqs=cfg.num_freqs,
+        num_freqs_u=cfg.num_freqs_u,
         hidden=cfg.hidden,
         depth=cfg.depth,
         tau_m=cfg.tau_m,
@@ -1753,27 +1963,34 @@ def train_point_field(cfg: TrainConfig) -> dict:
     scheduler, total_steps = _build_scheduler(opt, cfg, steps_per_epoch)
 
     history = []
-    best_val = float("inf")
-    best_state = None
+    best_iou, best_margin_mae = -1.0, float("inf")
+    best_iou_state, best_margin_state = None, None
     global_step = 0
     ckpt_dir = Path(cfg.checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
-    def _model_cfg() -> dict:
+    def model_cfg():
         return {
-            "in_dim": 9,
+            "in_dim": 6,
             "num_freqs": cfg.num_freqs,
+            "num_freqs_u": cfg.num_freqs_u,
             "hidden": cfg.hidden,
             "depth": cfg.depth,
             "tau_m": cfg.tau_m,
             "lambda_q": cfg.lambda_q_score,
             "aabb": {"lo": aabb_lo.tolist(), "hi": aabb_hi.tolist()},
+            "feature_kind": "natural_pu",
         }
 
-    def _save(path: Path, state) -> None:
+    def clone_state(m):
+        src = m._orig_mod if hasattr(m, "_orig_mod") else m
+        return {k: v.detach().cpu().clone() for k, v in src.state_dict().items()}
+
+    def save(path: Path, state) -> None:
         clean = NeuralIRDPoint(
-            in_dim=9,
+            in_dim=6,
             num_freqs=cfg.num_freqs,
+            num_freqs_u=cfg.num_freqs_u,
             hidden=cfg.hidden,
             depth=cfg.depth,
             tau_m=cfg.tau_m,
@@ -1783,47 +2000,31 @@ def train_point_field(cfg: TrainConfig) -> dict:
         clean.set_aabb(aabb_lo, aabb_hi)
         NeuralIRD(clean, device=str(device)).save(
             path,
-            model_cfg=_model_cfg(),
-            meta={"best_val_loss": best_val, "global_step": global_step, "aabb_lo": aabb_lo, "aabb_hi": aabb_hi},
+            model_cfg=model_cfg(),
+            meta={
+                "best_iou": best_iou,
+                "best_margin_mae": best_margin_mae,
+                "global_step": global_step,
+                "aabb_lo": aabb_lo,
+                "aabb_hi": aabb_hi,
+            },
         )
 
     try:
         for epoch in range(int(cfg.epochs)):
-            hard_idx = None
-            if (
-                cfg.hardneg_every > 0
-                and epoch > 0
-                and epoch % cfg.hardneg_every == 0
-            ):
-                src = model._orig_mod if hasattr(model, "_orig_mod") else model
-                hard_idx = _mine_hard_negatives(
-                    src, train["features"], train[yk], device, cfg.hardneg_frac
-                )
-                print(
-                    f"[hardneg] epoch={epoch} mined {hard_idx.size} examples",
-                    flush=True,
-                )
-            # Rebuild loader each epoch so hard-neg only applies on mining epochs
-            tr_loader = _loader(train, True, extra_idx=hard_idx)
-            steps_per_epoch = max(1, len(tr_loader))
-
             model.train()
-            tr_loss = 0.0
-            n_tr = 0
-            for x, y, m_gt, q_gt in tr_loader:
+            tr_loss = n_tr = 0.0
+            for x, y, m_gt, q_gt, mw, cw, _layer in tr_loader:
                 x = x.to(device)
-                y = y.to(device)
-                m_gt = m_gt.to(device)
-                q_gt = q_gt.to(device)
-                m, q, _ = model(x)
-                local_pair = None
-                if cfg.lambda_local > 0:
-                    local_pair = _spatial_local_pair(
-                        m, m_gt, x[:, :3], sigma_m=cfg.sigma_local_m
-                    )
-                loss, parts = _compute_loss(
-                    m, q, y, m_gt, q_gt, cfg, local_pair=local_pair
+                y, m_gt, q_gt, mw, cw = (
+                    y.to(device),
+                    m_gt.to(device),
+                    q_gt.to(device),
+                    mw.to(device),
+                    cw.to(device),
                 )
+                reach_logit, margin, q, _ = model(x)
+                loss, parts = _compute_loss(reach_logit, margin, q, y, m_gt, q_gt, mw, cw, cfg)
                 opt.zero_grad(set_to_none=True)
                 loss.backward()
                 if cfg.grad_clip_norm and cfg.grad_clip_norm > 0:
@@ -1831,10 +2032,8 @@ def train_point_field(cfg: TrainConfig) -> dict:
                 opt.step()
                 scheduler.step()
                 global_step += 1
-
                 tr_loss += float(loss.item()) * x.shape[0]
                 n_tr += x.shape[0]
-
                 if wb_run is not None and global_step % max(1, cfg.log_every_steps) == 0:
                     import wandb
 
@@ -1844,7 +2043,6 @@ def train_point_field(cfg: TrainConfig) -> dict:
                             "train/L_cls": parts["L_cls"],
                             "train/L_m": parts["L_m"],
                             "train/L_q": parts["L_q"],
-                            "train/L_local": parts["L_local"],
                             "train/lr": float(opt.param_groups[0]["lr"]),
                             "step": global_step,
                         },
@@ -1855,34 +2053,50 @@ def train_point_field(cfg: TrainConfig) -> dict:
                         f"step={global_step}/{total_steps} epoch={epoch} "
                         f"loss={float(loss.item()):.4f} "
                         f"cls={parts['L_cls']:.3f} m={parts['L_m']:.3f} "
-                        f"q={parts['L_q']:.3f} loc={parts['L_local']:.3f} "
-                        f"lr={opt.param_groups[0]['lr']:.2e}"
+                        f"q={parts['L_q']:.3f} lr={opt.param_groups[0]['lr']:.2e}"
                     )
 
             model.eval()
-            va_loss = 0.0
-            n_va = 0
+            va_loss = n_va = 0.0
             with torch.no_grad():
-                for x, y, m_gt, q_gt in va_loader:
+                for x, y, m_gt, q_gt, mw, cw, _layer in va_loader:
                     x = x.to(device)
-                    y = y.to(device)
-                    m_gt = m_gt.to(device)
-                    q_gt = q_gt.to(device)
-                    m, q, _ = model(x)
-                    loss, _ = _compute_loss(m, q, y, m_gt, q_gt, cfg)
+                    y, m_gt, q_gt, mw, cw = (
+                        y.to(device),
+                        m_gt.to(device),
+                        q_gt.to(device),
+                        mw.to(device),
+                        cw.to(device),
+                    )
+                    reach_logit, margin, q, _ = model(x)
+                    loss, _ = _compute_loss(reach_logit, margin, q, y, m_gt, q_gt, mw, cw, cfg)
                     va_loss += float(loss.item()) * x.shape[0]
                     n_va += x.shape[0]
+
+            wrapper = NeuralIRD(
+                model._orig_mod if hasattr(model, "_orig_mod") else model, device=str(device)
+            )
+            val_m = _eval_subset(wrapper, val, cfg, seed=cfg.seed + epoch)
+            val_iou = float(val_m.get("best_iou", val_m["iou"]))
+            bmae = float(val_m.get("boundary_margin_mae", 0.0))
 
             row = {
                 "epoch": epoch,
                 "train_loss": tr_loss / max(n_tr, 1),
                 "val_loss": va_loss / max(n_va, 1),
+                "val_iou": val_iou,
+                "boundary_margin_mae": bmae,
                 "lr": float(opt.param_groups[0]["lr"]),
+                **{f"val_{k}": v for k, v in val_m.items()},
             }
             history.append(row)
             print(
                 f"epoch={epoch} train_loss={row['train_loss']:.4f} "
-                f"val_loss={row['val_loss']:.4f} lr={row['lr']:.2e}"
+                f"val_loss={row['val_loss']:.4f} val_iou={val_iou:.3f} "
+                f"best_iou={float(val_m.get('best_iou', val_iou)):.3f}@"
+                f"{float(val_m.get('best_threshold', 0.5)):.2f} "
+                f"pr_auc={float(val_m.get('pr_auc', 0)):.3f} "
+                f"bnd_m_mae={bmae:.3f} lr={row['lr']:.2e}"
             )
             if wb_run is not None:
                 import wandb
@@ -1892,43 +2106,49 @@ def train_point_field(cfg: TrainConfig) -> dict:
                         "epoch": epoch,
                         "train/loss": row["train_loss"],
                         "val/loss": row["val_loss"],
+                        "val/iou": val_iou,
+                        "val/boundary_margin_mae": bmae,
+                        **{f"val/{k}": v for k, v in val_m.items()},
                         "train/lr_epoch": row["lr"],
                     },
                     step=global_step,
                 )
 
-            state_src = model._orig_mod if hasattr(model, "_orig_mod") else model
-            if row["val_loss"] < best_val:
-                best_val = row["val_loss"]
-                best_state = {k: v.detach().cpu().clone() for k, v in state_src.state_dict().items()}
-                _save(Path(cfg.checkpoint), best_state)
-                _save(ckpt_dir / "best.pt", best_state)
+            current = clone_state(model)
+            save(Path(cfg.checkpoint), current)
+            save(ckpt_dir / "latest.pt", current)
+            if val_iou > best_iou:
+                best_iou = val_iou
+                best_iou_state = current
+                save(ckpt_dir / "best_iou.pt", current)
+                save(ckpt_dir / "best.pt", current)
+            if bmae < best_margin_mae and cfg.lambda_margin > 0:
+                best_margin_mae = bmae
+                best_margin_state = current
+                save(ckpt_dir / "best_margin.pt", current)
+            if cfg.save_freq > 0 and (epoch + 1) % cfg.save_freq == 0:
+                save(ckpt_dir / f"epoch_{epoch+1:04d}.pt", current)
 
-            if cfg.save_freq > 0 and (epoch + 1) % cfg.save_freq == 0 and best_state is not None:
-                _save(ckpt_dir / f"epoch_{epoch+1:04d}.pt", best_state)
-                _save(Path(cfg.checkpoint), best_state)
-
-        if best_state is None:
-            state_src = model._orig_mod if hasattr(model, "_orig_mod") else model
-            best_state = {k: v.detach().cpu().clone() for k, v in state_src.state_dict().items()}
-
+        final_state = best_iou_state or clone_state(model)
         clean = NeuralIRDPoint(
-            in_dim=9,
+            in_dim=6,
             num_freqs=cfg.num_freqs,
+            num_freqs_u=cfg.num_freqs_u,
             hidden=cfg.hidden,
             depth=cfg.depth,
             tau_m=cfg.tau_m,
             lambda_q=cfg.lambda_q_score,
         )
-        clean.load_state_dict(best_state)
+        clean.load_state_dict(final_state)
         clean.set_aabb(aabb_lo, aabb_hi)
         wrapper = NeuralIRD(clean, device=str(device))
         wrapper.save(
             cfg.checkpoint,
-            model_cfg=_model_cfg(),
+            model_cfg=model_cfg(),
             meta={
                 "history_tail": history[-5:],
-                "best_val_loss": best_val,
+                "best_iou": best_iou,
+                "best_margin_mae": best_margin_mae,
                 "n_train": int(train["features"].shape[0]),
                 "global_step": global_step,
                 "aabb_lo": aabb_lo,
@@ -1936,6 +2156,7 @@ def train_point_field(cfg: TrainConfig) -> dict:
             },
         )
         metrics = evaluate_point_field(wrapper, val)
+        metrics.update(_eval_subset(wrapper, val, cfg, seed=cfg.seed))
         if wb_run is not None:
             import wandb
 
@@ -1959,277 +2180,155 @@ def evaluate_point_field(net: NeuralIRD, arrays: dict[str, np.ndarray]) -> dict[
     y_gt = arrays[yk].astype(np.float64)
     p_pr = pred["p_reach"].astype(np.float64)
 
-    mae_m = float(np.mean(np.abs(m_pr - m_gt)))
-    # q MAE on reachable only
     mask = y_gt >= 0.5
+    mw = arrays["margin_weight"].astype(np.float64) if "margin_weight" in arrays else np.ones_like(y_gt)
+    mw_mask = mw > 0
+    mae_m = float(np.mean(np.abs(m_pr[mw_mask] - m_gt[mw_mask]))) if mw_mask.any() else 0.0
     mae_q = float(np.mean(np.abs(q_pr[mask] - q_gt[mask]))) if mask.any() else 0.0
-
     from scipy.stats import spearmanr
 
-    sp_q = spearmanr(q_gt[mask], q_pr[mask]) if mask.sum() > 5 else None
-    gt_b = y_gt >= 0.5
-    pr_b = p_pr >= 0.5
+    sp = spearmanr(q_gt[mask], q_pr[mask]) if mask.sum() > 5 else None
+    gt_b, pr_b = y_gt >= 0.5, p_pr >= 0.5
     inter = float(np.logical_and(gt_b, pr_b).sum())
     union = float(np.logical_or(gt_b, pr_b).sum()) + 1e-9
-
-    # legacy aliases for older dashboards
     score_gt = arrays["d"].astype(np.float64) if "d" in arrays else y_gt * q_gt
-    mae = float(np.mean(np.abs(pred["score"].astype(np.float64) - score_gt)))
-
-    return {
-        "mae": mae,
+    out = {
+        "mae": float(np.mean(np.abs(pred["score"].astype(np.float64) - score_gt))),
         "mae_m": mae_m,
         "mae_q": mae_q,
-        "spearman": float(sp_q.correlation) if sp_q is not None and sp_q.correlation is not None else 0.0,
+        "spearman": float(sp.correlation) if sp is not None and sp.correlation is not None else 0.0,
         "boundary_iou": inter / union,
         "reach_accuracy": float((gt_b == pr_b).mean()),
         "n": int(y_gt.shape[0]),
     }
+    if "layer_id" in arrays:
+        out.update(_layer_metrics(y_gt, p_pr, arrays["layer_id"]))
+    return out
 
 
 def differentiability_smoke(net: NeuralIRD) -> float:
     if torch is None:
         raise ImportError("torch required")
-    x = torch.zeros(1, 9, dtype=torch.float32, device=net.device, requires_grad=True)
+    x = torch.zeros(1, 6, dtype=torch.float32, device=net.device)
     with torch.no_grad():
-        x[0, 3] = 1.0
-        x[0, 7] = 1.0
+        x[0, 5] = 1.0  # tool axis +Z
+        x[0, 0] = 0.2
     x = x.detach().requires_grad_(True)
-    m, q, score = net.model(x)
+    _, _, _, score = net.model(x)
     score.sum().backward()
     assert x.grad is not None
     return float(x.grad.norm().item())
 ```
 
-
-## FILE: `ird_playground/ird_playground/neural/metrics.py`
+### `ird_playground/cli/build_ird_gt.py`
 
 ```python
-"""Eval helpers: regression metrics + optimization-oriented P2 checks."""
+"""Export IRD GT NPZ from a capability map (sampling from YAML)."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import argparse
+from pathlib import Path
 
-import numpy as np
+import yaml
 
-from ird_playground.neural.train import differentiability_smoke, evaluate_point_field
-
-try:
-    import torch
-except ImportError:  # pragma: no cover
-    torch = None
-
-
-@dataclass
-class PassThresholds:
-    mae_max: float = 0.35
-    spearman_min: float = 0.70
-    boundary_iou_min: float = 0.50
-    grad_cosine_min: float = 0.30
-    ascent_improve_min: float = 0.40
-    rail_ad_fd_rel_max: float = 0.25
-    rail_sign_agree_min: float = 0.80
-    region_improve_min: float = 0.40
+from ird_playground.ird.export_gt import (
+    IrdGtConfig,
+    assert_gt_contract,
+    export_ird_gt_from_capability_map,
+    save_ird_gt,
+)
+from ird_playground.ird.capability_io import load_capability_map_dir
+from ird_playground.ird.map_loader import resolve_map_dir
 
 
-def point_field_pass(metrics: dict[str, float], thr: PassThresholds | None = None) -> bool:
-    thr = thr or PassThresholds()
-    checks = [
-        metrics.get("mae", 1e9) <= thr.mae_max,
-        metrics.get("spearman", 0.0) >= thr.spearman_min,
-        metrics.get("boundary_iou", 0.0) >= thr.boundary_iou_min,
-    ]
-    if "grad_cosine_median" in metrics:
-        checks.append(metrics["grad_cosine_median"] >= thr.grad_cosine_min)
-    if "ascent_improve_rate" in metrics:
-        checks.append(metrics["ascent_improve_rate"] >= thr.ascent_improve_min)
-    if "rail_ad_fd_rel" in metrics:
-        checks.append(metrics["rail_ad_fd_rel"] <= thr.rail_ad_fd_rel_max)
-    if "rail_sign_agree" in metrics:
-        checks.append(metrics["rail_sign_agree"] >= thr.rail_sign_agree_min)
-    if "region_improve_rate" in metrics:
-        checks.append(metrics["region_improve_rate"] >= thr.region_improve_min)
-    return all(checks)
+def load_ird_gt_config(path: Path, *, root: Path) -> tuple[Path, Path, IrdGtConfig]:
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    samp = dict(raw.get("sampling") or {})
+    map_dir = Path(raw.get("map_dir", ""))
+    out = Path(raw.get("out", "data/ird/gt_samples.npz"))
+    if not map_dir.is_absolute():
+        map_dir = (root / map_dir).resolve()
+    if not out.is_absolute():
+        out = root / out
+
+    n_int = int(samp.get("n_interior", 700_000))
+    n_bnd = int(samp.get("n_boundary", 800_000))
+    n_ext = int(samp.get("n_exterior", 500_000))
+
+    cfg = IrdGtConfig(
+        n_interior=n_int,
+        n_boundary=n_bnd,
+        n_exterior=n_ext,
+        n_jitter=int(samp.get("n_jitter", 400_000)),
+        max_orients_per_voxel=int(samp.get("max_orients_per_voxel", 28)),
+        hard_negative_frac=float(samp.get("hard_negative_frac", 0.45)),
+        hard_negative_radius_m=float(samp.get("hard_negative_radius_m", 0.06)),
+        sigma_p_m=float(samp.get("sigma_p_m", 0.03)),
+        sigma_r_deg=float(samp.get("sigma_r_deg", 10.0)),
+        m_clip=float(samp.get("m_clip", 3.0)),
+        m_eps=float(samp.get("m_eps", 0.05)),
+        bbox_margin_m=float(samp.get("bbox_margin_m", 0.20)),
+        comfort_from=str(samp.get("comfort_from", "auto")),
+        k_candidates=int(samp.get("k_candidates", 4)),
+        seed=int(samp.get("seed", 0)),
+        orient_knn=int(samp.get("orient_knn", 7)),
+        soft_tau=float(samp.get("soft_tau", 0.05)),
+        unknown_soft_max=float(samp.get("unknown_soft_max", 0.25)),
+        trusted_neg_soft_max=float(samp.get("trusted_neg_soft_max", 0.0)),
+    )
+    return map_dir, out, cfg
 
 
-def grad_cosine_vs_gt(
-    net,
-    arrays: dict[str, np.ndarray],
-    *,
-    n: int = 256,
-    eps: float = 1e-3,
-    seed: int = 0,
-) -> dict[str, float]:
-    """Median cos(∇_xyz m_θ, ∇_xyz m_gt) via central differences on GT labels."""
-    if torch is None:
-        raise ImportError("torch required")
-    rng = np.random.default_rng(seed)
-    feats = arrays["features"]
-    m_gt = arrays["m_gt"] if "m_gt" in arrays else arrays["d"]
-    idx = rng.choice(feats.shape[0], size=min(n, feats.shape[0]), replace=False)
-    cosines = []
-    net.model.eval()
-    for i in idx:
-        f0 = feats[i].astype(np.float32).copy()
-        # GT FD on xyz using nearest neighbours in batch as proxy: local linear
-        # Use network-free FD of interpolated GT is hard; instead FD of m_gt via
-        # finite difference of network GT surrogate: compare AD to FD of the net
-        # against a GT directional proxy from m labels of nearby samples.
-        x = torch.tensor(f0[None, :], dtype=torch.float32, device=net.device, requires_grad=True)
-        m, _, _ = net.model(x)
-        m.sum().backward()
-        g_theta = x.grad[0, :3].detach().cpu().numpy()
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--config", type=Path, default=Path("configs/ird_gt_config.yaml"))
+    ap.add_argument("--map", type=Path, default=None)
+    ap.add_argument("--out", type=Path, default=None)
+    args = ap.parse_args(argv)
 
-        # GT gradient proxy: central FD on xyz using nearby samples' m_gt
-        g_gt = np.zeros(3, dtype=np.float64)
-        for ax in range(3):
-            # find approximate ∂m/∂x via local regression on σ-ball neighbours
-            dxyz = feats[:, :3] - f0[:3]
-            dist = np.linalg.norm(dxyz, axis=1)
-            nb = np.argsort(dist)[1:32]
-            # least-squares fit m ≈ m0 + g·Δx
-            A = dxyz[nb]
-            b = m_gt[nb] - m_gt[i]
-            if A.shape[0] >= 3:
-                sol, *_ = np.linalg.lstsq(A, b, rcond=None)
-                g_gt = sol[:3]
-                break
-        else:
-            # fallback: FD of network score (self-consistency) — skip
-            continue
-        n1 = np.linalg.norm(g_theta) + 1e-12
-        n2 = np.linalg.norm(g_gt) + 1e-12
-        cosines.append(float(np.dot(g_theta, g_gt) / (n1 * n2)))
-    arr = np.asarray(cosines, dtype=np.float64) if cosines else np.array([0.0])
-    return {
-        "grad_cosine_median": float(np.median(arr)),
-        "grad_cosine_mean": float(np.mean(arr)),
-        "grad_cosine_n": float(arr.size),
-    }
+    root = Path(__file__).resolve().parents[2]
+    cfg_path = args.config if args.config.is_absolute() else root / args.config
+    map_dir, out, cfg = load_ird_gt_config(cfg_path, root=root)
+    if args.map is not None:
+        map_dir = resolve_map_dir(args.map if args.map.is_absolute() else root / args.map)
+    else:
+        map_dir = resolve_map_dir(map_dir)
+    if args.out is not None:
+        out = args.out if args.out.is_absolute() else root / args.out
+
+    cm = load_capability_map_dir(map_dir, mmap=True)
+    arrays = export_ird_gt_from_capability_map(cm, cfg)
+    assert_gt_contract(arrays)
+    save_ird_gt(
+        out,
+        arrays,
+        meta={
+            "map_dir": str(map_dir),
+            "config": str(cfg_path),
+            "n_interior": cfg.n_interior,
+            "n_boundary": cfg.n_boundary,
+            "n_exterior": cfg.n_exterior,
+            "n_jitter": cfg.n_jitter,
+            "sigma_p_m": cfg.sigma_p_m,
+            "m_clip": cfg.m_clip,
+            "feature_dim": 6,
+            "seed": cfg.seed,
+            "n_total": int(arrays["features"].shape[0]),
+            "contract": "MC-hit=pos; far soft≈0=trusted neg; near-miss=unknown (cls_weight=0); natural(p,u); face-pair margin/jitter",
+            "feature_kind": "natural_pu",
+            "label_kind": "trusted_soft_unknown",
+        },
+    )
+    print(f"wrote {out}  N={arrays['features'].shape[0]} dim={arrays['features'].shape[1]}")
+    return 0
 
 
-def ascent_gt_improve(
-    net,
-    arrays: dict[str, np.ndarray],
-    *,
-    n: int = 128,
-    step: float = 0.01,
-    seed: int = 0,
-) -> dict[str, float]:
-    """From unreachable points, take one ∇m ascent step; measure GT m improve rate."""
-    if torch is None:
-        raise ImportError("torch required")
-    rng = np.random.default_rng(seed)
-    feats = arrays["features"]
-    y = arrays["reachable"] if "reachable" in arrays else arrays["p_reach"]
-    m_gt = arrays["m_gt"] if "m_gt" in arrays else arrays["d"]
-    unre = np.flatnonzero(y < 0.5)
-    if unre.size == 0:
-        return {"ascent_improve_rate": 1.0, "ascent_n": 0.0}
-    pick = rng.choice(unre, size=min(n, unre.size), replace=False)
-    improved = 0
-    net.model.eval()
-    for i in pick:
-        f0 = feats[i].astype(np.float32).copy()
-        x = torch.tensor(f0[None, :], dtype=torch.float32, device=net.device, requires_grad=True)
-        m, _, _ = net.model(x)
-        m.sum().backward()
-        g = x.grad[0, :3].detach().cpu().numpy()
-        g = g / (np.linalg.norm(g) + 1e-12)
-        f1 = f0.copy()
-        f1[:3] = f1[:3] + step * g
-        # GT improve: nearest neighbour m_gt after move
-        d0 = np.linalg.norm(feats[:, :3] - f0[:3], axis=1)
-        d1 = np.linalg.norm(feats[:, :3] - f1[:3], axis=1)
-        m0 = float(m_gt[i])
-        m1 = float(m_gt[int(np.argmin(d1))])
-        if m1 > m0 + 1e-4:
-            improved += 1
-    return {
-        "ascent_improve_rate": float(improved / max(len(pick), 1)),
-        "ascent_n": float(len(pick)),
-    }
-
-
-def rail_y_ad_vs_fd(
-    net,
-    *,
-    n: int = 32,
-    rail_y: float = 0.0,
-    eps: float = 1e-3,
-    seed: int = 0,
-) -> dict[str, float]:
-    """AD ∂score/∂rail_y vs central FD; also sign agreement."""
-    from ird_playground.ird.query_base import rail_y_grad_ad_fd
-
-    return rail_y_grad_ad_fd(net, n=n, rail_y=rail_y, eps=eps, seed=seed)
-
-
-def region_softmin_improve(
-    net,
-    *,
-    n: int = 24,
-    seed: int = 0,
-) -> dict[str, float]:
-    """Perturb region centre along −∇ softmin(m); count softmin increases."""
-    from ird_playground.probe.se3 import mat4_from_Rt
-    from ird_playground.region.aggregate import region_score_a
-
-    rng = np.random.default_rng(seed)
-    improved = 0
-    for _ in range(n):
-        p = rng.uniform(-0.4, 0.4, size=3)
-        T = mat4_from_Rt(np.eye(3), p)
-        rs0 = region_score_a(net, T_mu=T, num_samples=16, seed=int(rng.integers(0, 1_000_000)))
-        # finite-diff direction on translation via score
-        if torch is None:
-            break
-        # nudge toward higher m_robust by small random search (smoke)
-        best = rs0.m_robust
-        for _k in range(4):
-            dp = rng.normal(scale=0.01, size=3)
-            T2 = mat4_from_Rt(np.eye(3), p + dp)
-            rs1 = region_score_a(net, T_mu=T2, num_samples=16, seed=0)
-            best = max(best, rs1.m_robust)
-        if best > rs0.m_robust + 1e-4:
-            improved += 1
-    return {
-        "region_improve_rate": float(improved / max(n, 1)),
-        "region_n": float(n),
-    }
-
-
-def evaluate_optimization_suite(
-    net,
-    arrays: dict[str, np.ndarray],
-    *,
-    seed: int = 0,
-) -> dict[str, float]:
-    out: dict[str, float] = {}
-    out.update(grad_cosine_vs_gt(net, arrays, seed=seed))
-    out.update(ascent_gt_improve(net, arrays, seed=seed))
-    out.update(rail_y_ad_vs_fd(net, seed=seed))
-    out.update(region_softmin_improve(net, seed=seed))
-    out["grad_norm"] = differentiability_smoke(net)
-    return out
-
-
-__all__ = [
-    "PassThresholds",
-    "ascent_gt_improve",
-    "differentiability_smoke",
-    "evaluate_optimization_suite",
-    "evaluate_point_field",
-    "grad_cosine_vs_gt",
-    "point_field_pass",
-    "rail_y_ad_vs_fd",
-    "region_softmin_improve",
-]
+if __name__ == "__main__":
+    raise SystemExit(main())
 ```
 
-
-## FILE: `ird_playground/ird_playground/cli/train.py`
+### `ird_playground/cli/train.py`
 
 ```python
 """Train generic Neural IRD point field (hyperparams from YAML)."""
@@ -2285,745 +2384,328 @@ if __name__ == "__main__":
     raise SystemExit(main())
 ```
 
-
-## FILE: `ird_playground/ird_playground/cli/eval_point.py`
-
-```python
-"""Evaluate point field vs GT + optimization-oriented P2 checks."""
-
-from __future__ import annotations
-
-import argparse
-import json
-from pathlib import Path
-
-from ird_playground.neural.metrics import (
-    PassThresholds,
-    evaluate_optimization_suite,
-    point_field_pass,
-)
-from ird_playground.ird.export_gt import load_ird_gt, make_synthetic_ird_gt
-from ird_playground.neural.model import NeuralIRD
-from ird_playground.neural.train import evaluate_point_field, load_train_config
-
-
-def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--checkpoint", type=Path, required=True)
-    ap.add_argument("--config", type=Path, default=Path("configs/train_config.yaml"))
-    ap.add_argument("--gt-npz", type=Path, default=None)
-    ap.add_argument("--synthetic-n", type=int, default=2048)
-    ap.add_argument("--skip-opt", action="store_true", help="Skip gradient/rail/region suite")
-    args = ap.parse_args(argv)
-
-    root = Path(__file__).resolve().parents[2]
-    cfg_path = args.config if args.config.is_absolute() else root / args.config
-    train_cfg = load_train_config(cfg_path, root=root) if cfg_path.exists() else None
-
-    ckpt = args.checkpoint if args.checkpoint.is_absolute() else root / args.checkpoint
-    net = NeuralIRD.load(ckpt)
-
-    if args.gt_npz is not None:
-        arrays = load_ird_gt(args.gt_npz if args.gt_npz.is_absolute() else root / args.gt_npz)
-    elif train_cfg is not None and train_cfg.gt_npz:
-        arrays = load_ird_gt(train_cfg.gt_npz)
-    else:
-        arrays = make_synthetic_ird_gt(args.synthetic_n, seed=1)
-
-    metrics = evaluate_point_field(net, arrays)
-    if not args.skip_opt:
-        metrics.update(evaluate_optimization_suite(net, arrays, seed=0))
-
-    thr = PassThresholds(
-        mae_max=train_cfg.mae_max if train_cfg else 0.35,
-        spearman_min=train_cfg.spearman_min if train_cfg else 0.70,
-        boundary_iou_min=train_cfg.boundary_iou_min if train_cfg else 0.70,
-        grad_cosine_min=train_cfg.grad_cosine_min if train_cfg else 0.30,
-        ascent_improve_min=train_cfg.ascent_improve_min if train_cfg else 0.40,
-        rail_ad_fd_rel_max=train_cfg.rail_ad_fd_rel_max if train_cfg else 0.25,
-        rail_sign_agree_min=train_cfg.rail_sign_agree_min if train_cfg else 0.80,
-        region_improve_min=train_cfg.region_improve_min if train_cfg else 0.40,
-    )
-    ok = point_field_pass(metrics, thr)
-    metrics["pass"] = ok
-    metrics["thresholds"] = {
-        "mae_max": thr.mae_max,
-        "spearman_min": thr.spearman_min,
-        "boundary_iou_min": thr.boundary_iou_min,
-        "grad_cosine_min": thr.grad_cosine_min,
-        "ascent_improve_min": thr.ascent_improve_min,
-        "rail_ad_fd_rel_max": thr.rail_ad_fd_rel_max,
-        "rail_sign_agree_min": thr.rail_sign_agree_min,
-        "region_improve_min": thr.region_improve_min,
-    }
-    report = root / "data/reports/eval_point.json"
-    report.parent.mkdir(parents=True, exist_ok=True)
-
-    def _jsonify(obj):
-        if isinstance(obj, dict):
-            return {k: _jsonify(v) for k, v in obj.items()}
-        if isinstance(obj, (bool, str)):
-            return obj
-        if isinstance(obj, (int, float)):
-            return obj
-        if hasattr(obj, "item"):
-            return obj.item()
-        return obj
-
-    payload = _jsonify(metrics)
-    report.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    print(json.dumps(payload, indent=2))
-    return 0 if ok else 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-```
-
-
-## FILE: `ird_playground/ird_playground/probe/se3.py`
+### `rm75_control/.../capability_map.py (pack_bits only)`
 
 ```python
-"""SE(3) helpers: ΔT features, Exp map, 6D rotation encoding."""
+def pack_bits_5dof(bool_matrix: np.ndarray) -> np.ndarray:
+    """(M, n_orient) bool → (M, ceil(n_orient/8)) uint8 little-bit-endian.
 
-from __future__ import annotations
-
-import numpy as np
-from scipy.spatial.transform import Rotation
-
-
-def mat4_from_Rt(R: np.ndarray, t: np.ndarray) -> np.ndarray:
-    T = np.eye(4, dtype=np.float64)
-    T[:3, :3] = np.asarray(R, dtype=np.float64).reshape(3, 3)
-    T[:3, 3] = np.asarray(t, dtype=np.float64).reshape(3)
-    return T
-
-
-def invert_T(T: np.ndarray) -> np.ndarray:
-    T = np.asarray(T, dtype=np.float64)
-    R = T[:3, :3]
-    t = T[:3, 3]
-    Ti = np.eye(4, dtype=np.float64)
-    Ti[:3, :3] = R.T
-    Ti[:3, 3] = -R.T @ t
-    return Ti
-
-
-def delta_T_tcp_inv_base(T_base_tcp: np.ndarray) -> np.ndarray:
-    """ΔT = T_tcp^{-1} T_base = (T_base_tcp)^{-1} when T_base = I in arm-base frame."""
-    return invert_T(T_base_tcp)
-
-
-def rot6d_from_R(R: np.ndarray) -> np.ndarray:
-    """Zhou et al. continuous 6D rotation: first two columns of R."""
-    R = np.asarray(R, dtype=np.float64).reshape(3, 3)
-    return np.concatenate([R[:, 0], R[:, 1]], axis=0)
-
-
-def features_from_delta_T(delta_T: np.ndarray) -> np.ndarray:
-    """(9,) = translation(3) + rot6d(6)."""
-    T = np.asarray(delta_T, dtype=np.float64).reshape(4, 4)
-    return np.concatenate([T[:3, 3], rot6d_from_R(T[:3, :3])], axis=0)
-
-
-def batch_features_from_delta_T(delta_Ts: np.ndarray) -> np.ndarray:
-    """(N,9) from (N,4,4)."""
-    Ts = np.asarray(delta_Ts, dtype=np.float64)
-    if Ts.ndim == 2:
-        return features_from_delta_T(Ts)[None, :]
-    out = np.empty((Ts.shape[0], 9), dtype=np.float64)
-    for i, T in enumerate(Ts):
-        out[i] = features_from_delta_T(T)
-    return out
-
-
-def se3_exp(xi: np.ndarray) -> np.ndarray:
-    """ξ = [δp(3), δω(3)] → SE(3) via scipy Rotation (axis-angle)."""
-    xi = np.asarray(xi, dtype=np.float64).reshape(6)
-    dp, dw = xi[:3], xi[3:]
-    R = Rotation.from_rotvec(dw).as_matrix()
-    return mat4_from_Rt(R, dp)
-
-
-def se3_mul(A: np.ndarray, B: np.ndarray) -> np.ndarray:
-    return np.asarray(A, dtype=np.float64) @ np.asarray(B, dtype=np.float64)
-
-
-def complete_frame_from_tool_axis(tool_axis: np.ndarray) -> np.ndarray:
-    """Build a rotation whose +Z is ``tool_axis`` (Zacharias tool axis = TCP +Z)."""
-    z = np.asarray(tool_axis, dtype=np.float64).reshape(3)
-    z = z / (np.linalg.norm(z) + 1e-12)
-    # Pick a stable tangent.
-    a = np.array([1.0, 0.0, 0.0]) if abs(z[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
-    x = np.cross(a, z)
-    x = x / (np.linalg.norm(x) + 1e-12)
-    y = np.cross(z, x)
-    return np.stack([x, y, z], axis=1)
-```
-
-
-## FILE: `ird_playground/ird_playground/probe/transform.py`
-
-```python
-"""Parameterized link7 → TCP SE(3) probe transform."""
-
-from __future__ import annotations
-
-from dataclasses import dataclass
-from pathlib import Path
-
-import numpy as np
-import yaml
-from scipy.spatial.transform import Rotation
-
-
-@dataclass(frozen=True)
-class ProbeTransform:
-    """Rigid transform from parent (link7) to TCP."""
-
-    name: str
-    translation_m: np.ndarray  # (3,)
-    quaternion_xyzw: np.ndarray  # (4,)
-    parent_frame: str = "link_7"
-    child_frame: str = "tcp"
-
-    def rotation_matrix(self) -> np.ndarray:
-        return Rotation.from_quat(self.quaternion_xyzw).as_matrix()
-
-    def matrix(self) -> np.ndarray:
-        """4×4 T_parent_tcp (TCP pose expressed in parent)."""
-        T = np.eye(4, dtype=np.float64)
-        T[:3, :3] = self.rotation_matrix()
-        T[:3, 3] = self.translation_m
-        return T
-
-    def pose6_xyz_rpy(self, *, euler_order: str = "xyz") -> np.ndarray:
-        """[x,y,z,rx,ry,rz] for RealMan / Pinocchio tcp offset APIs."""
-        if (
-            euler_order == "xyz"
-            and abs(self.quaternion_xyzw[0]) < 1e-9
-            and abs(self.quaternion_xyzw[2]) < 1e-9
-            and abs(abs(self.quaternion_xyzw[1]) - abs(self.quaternion_xyzw[3])) < 1e-6
-        ):
-            rpy = np.array([0.0, 0.5 * np.pi, 0.0])
-        else:
-            rpy = Rotation.from_quat(self.quaternion_xyzw).as_euler(euler_order, degrees=False)
-        return np.concatenate([self.translation_m, rpy]).astype(np.float64)
-
-    def urdf_xyz_rpy(self) -> tuple[str, str]:
-        """Strings for `<origin xyz=... rpy=.../>` (URDF fixed-axis RPY = xyz)."""
-        rpy = self.pose6_xyz_rpy(euler_order="xyz")[3:]
-        xyz = " ".join(f"{v:.8f}" for v in self.translation_m)
-        rpy_s = " ".join(f"{v:.8f}" for v in rpy)
-        return xyz, rpy_s
-
-
-def default_ultrasound_probe() -> ProbeTransform:
-    """Trans_z(0.07)·Rot_y(+π/2)·Trans_z(0.05) composed origin/orientation."""
-    Tz1 = np.eye(4)
-    Tz1[2, 3] = 0.07
-    Ry = np.eye(4)
-    Ry[:3, :3] = Rotation.from_euler("y", 0.5 * np.pi).as_matrix()
-    Tz2 = np.eye(4)
-    Tz2[2, 3] = 0.05
-    T = Tz1 @ Ry @ Tz2
-    quat = Rotation.from_matrix(T[:3, :3]).as_quat()
-    return ProbeTransform(
-        name="ultrasound_probe_default",
-        translation_m=T[:3, 3].copy(),
-        quaternion_xyzw=quat.astype(np.float64),
-    )
-
-
-def load_probe_yaml(path: str | Path) -> ProbeTransform:
-    raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-    t = np.asarray(raw["translation_m"], dtype=np.float64).reshape(3)
-    q = np.asarray(raw["quaternion_xyzw"], dtype=np.float64).reshape(4)
-    q = q / np.linalg.norm(q)
-    return ProbeTransform(
-        name=str(raw.get("name", Path(path).stem)),
-        translation_m=t,
-        quaternion_xyzw=q,
-        parent_frame=str(raw.get("parent_frame", "link_7")),
-        child_frame=str(raw.get("child_frame", "tcp")),
-    )
-
-
-def patch_urdf_tcp(
-    src_urdf: str | Path,
-    dst_urdf: str | Path,
-    probe: ProbeTransform,
-    *,
-    joint_name: str = "link_7_to_tcp",
-    add_probe_visual: bool = False,
-    probe_length_m: float = 0.05,
-    probe_radius_m: float = 0.012,
-) -> Path:
-    """Rewrite the fixed joint origin for ``joint_name`` and write ``dst_urdf``.
-
-    If ``add_probe_visual``, replace an empty ``<link name="tcp" />`` with a short
-    cylinder along TCP +Z so the horizontal mount is visible in PyVista/Genesis.
+    Bit ``k`` inside byte ``b`` corresponds to ``orient_idx = 8*b + k``.
     """
-    import re
-
-    text = Path(src_urdf).read_text(encoding="utf-8")
-    xyz, rpy = probe.urdf_xyz_rpy()
-    pattern = re.compile(
-        rf'(<joint\s+name="{re.escape(joint_name)}"[^>]*>\s*)'
-        r"<origin\s+[^/]*/>",
-        re.DOTALL,
-    )
-    repl = rf'\1<origin xyz="{xyz}" rpy="{rpy}" />'
-    new_text, n = pattern.subn(repl, text, count=1)
-    if n != 1:
-        raise ValueError(f"could not patch joint {joint_name!r} in {src_urdf}")
-
-    if add_probe_visual:
-        half = 0.5 * float(probe_length_m)
-        visual = (
-            '<link name="tcp">\n'
-            "    <visual>\n"
-            f'      <origin xyz="0 0 {half:.6f}" rpy="0 0 0" />\n'
-            "      <geometry>\n"
-            f'        <cylinder length="{float(probe_length_m):.6f}" '
-            f'radius="{float(probe_radius_m):.6f}" />\n'
-            "      </geometry>\n"
-            '      <material name="probe_cyan"><color rgba="0.2 0.75 0.85 1"/></material>\n'
-            "    </visual>\n"
-            "  </link>"
-        )
-        new_text2, n2 = re.subn(
-            r'<link\s+name="tcp"\s*/>',
-            visual,
-            new_text,
-            count=1,
-        )
-        if n2 != 1:
-            # already has a tcp link body — leave geometry as-is
-            pass
-        else:
-            new_text = new_text2
-
-    dst = Path(dst_urdf)
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_text(new_text, encoding="utf-8")
-    return dst
+    if bool_matrix.dtype != np.bool_:
+        bool_matrix = bool_matrix.astype(bool)
+    m, n_orient = bool_matrix.shape
+    n_bytes = (n_orient + 7) // 8
+    padded = np.zeros((m, n_bytes * 8), dtype=bool)
+    padded[:, :n_orient] = bool_matrix
+    packed = np.zeros((m, n_bytes), dtype=np.uint8)
+    for k in range(8):
+        packed |= (padded[:, k::8].astype(np.uint8) << k)
+    return packed
 
 
-def ensure_probe_visual_urdf(
-    *,
-    playground_root: str | Path,
-    probe_yaml: str | Path | None = None,
-    out_name: str = "RM75-probe.genesis.urdf",
-) -> Path:
-    """Genesis-mesh URDF with horizontal ultrasound TCP + cylinder glyph.
+def unpack_bits_5dof(packed: np.ndarray, n_orient: int) -> np.ndarray:
+    """Inverse of :func:`pack_bits_5dof`."""
+    m, n_bytes = packed.shape
+    out = np.zeros((m, n_bytes * 8), dtype=bool)
+    for k in range(8):
+        out[:, k::8] = ((packed >> k) & 1).astype(bool)
+    return out[:, :n_orient]
 
-    Mesh ``filename`` entries are rewritten to absolute paths so the file can
-    live under ``ird_playground/data/maps/`` without breaking PyVista.
-    """
-    import re
 
-    root = Path(playground_root).resolve()
-    rm75 = root.parent / "rm75_control"
-    src = rm75 / "rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.genesis.urdf"
-    if not src.is_file():
-        raise FileNotFoundError(src)
-    yaml_path = Path(probe_yaml) if probe_yaml else root / "configs/probe_default.yaml"
-    if not yaml_path.is_absolute():
-        yaml_path = root / yaml_path
-    probe = load_probe_yaml(yaml_path)
-    out = root / "data/maps" / out_name
-    patch_urdf_tcp(src, out, probe, add_probe_visual=True)
-
-    mesh_root = src.parent
-    text = out.read_text(encoding="utf-8")
-
-    def _abs_mesh(m: re.Match[str]) -> str:
-        rel = m.group(1)
-        if Path(rel).is_absolute():
-            return m.group(0)
-        abs_p = (mesh_root / rel).resolve()
-        return f'filename="{abs_p}"'
-
-    text = re.sub(r'filename="([^"]+)"', _abs_mesh, text)
-    out.write_text(text, encoding="utf-8")
-    return out
+def d_value_from_bitmask(packed: np.ndarray, n_orient: int) -> np.ndarray:
+    """Reachability index D(x) = (# reachable orientations) / n_orient."""
+    counts = np.zeros(packed.shape[0], dtype=np.int32)
+    for k in range(8):
+        counts += ((packed >> k) & 1).sum(axis=1).astype(np.int32)
+    # trim last-byte padding
+    if n_orient % 8 != 0:
+        overshoot = (packed.shape[1] * 8) - n_orient
+        # subtract padding bits (they are always 0 by construction of pack_bits_5dof)
+        del overshoot  # kept as a comment marker; padding is zeros so no correction needed
+    return (counts.astype(np.float32) / float(n_orient)).astype(np.float32)
 ```
 
+### `configs/ird_gt_config.yaml`
 
-## FILE: `ird_playground/ird_playground/region/aggregate.py`
+```yaml
+# IRD GT v5 — MC-hit positives; trusted far negatives; unknown near-misses excluded
+
+map_dir: ../rm75_control/data/reachability/rm75_6f_1p5cm_15deg_coll_probe
+out: data/ird/gt_samples_1p5cm_probe.npz
+
+sampling:
+  n_interior: 300000
+  n_boundary: 800000
+  n_exterior: 400000
+  n_jitter: 400000
+  max_orients_per_voxel: 28
+  hard_negative_frac: 0.50
+  hard_negative_radius_m: 0.06
+  sigma_p_m: 0.03
+  sigma_r_deg: 10.0
+  m_clip: 3.0
+  m_eps: 0.05
+  bbox_margin_m: 0.20
+  comfort_from: auto
+  k_candidates: 4
+  seed: 42
+  orient_knn: 7
+  soft_tau: 0.05
+  unknown_soft_max: 0.25
+  trusted_neg_soft_max: 1.0e-6
+```
+
+### `configs/train_config.yaml`
+
+```yaml
+# train_config.yaml — Neural IRD v5 phase A: cls-only on trusted MC-hit labels
+# Env: cd ird_playground && source env.sh
+
+data:
+  gt_npz: data/ird/gt_samples_1p5cm_probe.npz
+  synthetic_n: 8192
+  val_frac: 0.15
+
+model:
+  num_freqs: 6
+  num_freqs_u: 3
+  hidden: 256
+  depth: 5
+  tau_m: 1.0
+  lambda_q: 0.5
+
+training:
+  seed: 42
+  batch_size: 1024
+  num_workers: 4
+  torch_compile: false
+  epochs: 40
+  save_freq: 10
+  learning_rate: 3.0e-4
+  weight_decay: 1.0e-4
+  warmup_steps: 500
+  min_lr_ratio: 0.01
+  grad_clip_norm: 10.0
+  log_every_steps: 10
+  print_every_steps: 50
+  hardneg_every: 0
+  hardneg_frac: 0.0
+  val_eval_n: 65536
+  device: cuda
+  batch_mix:
+    interior: 0.15
+    bnd_pos: 0.25
+    bnd_neg: 0.25
+    jitter_pos: 0.10
+    jitter_neg: 0.10
+    exterior: 0.15
+
+loss:
+  lambda_cls: 1.0
+  lambda_margin: 0.0
+  lambda_q: 0.0
+  lambda_local: 0.0
+
+io:
+  checkpoint: data/checkpoints/latest.pt
+  checkpoint_dir: data/checkpoints
+  report: data/reports/train_point.json
+
+pass:
+  mae_max: 9.0
+  spearman_min: 0.0
+  boundary_iou_min: 0.70
+  grad_cosine_min: 0.0
+  ascent_improve_min: 0.0
+  rail_ad_fd_rel_max: 1.0
+  rail_sign_agree_min: 0.0
+  region_improve_min: 0.0
+
+wandb:
+  enable: true
+  project: neural-ird-rm75
+  entity: lpei82060-technical-university-of-munich
+  mode: online
+  run_name: neural_ird_v5_cls_trusted
+  tags: [neural_ird, v5, trusted_labels, cls_only]
+```
+
+### `configs/train_cls_only.yaml`
+
+```yaml
+# Alias of train_config.yaml — v5 cls-only on trusted MC-hit labels
+# Prefer: python -m ird_playground.cli.train --config configs/train_config.yaml
+
+data:
+  gt_npz: data/ird/gt_samples_1p5cm_probe.npz
+  synthetic_n: 8192
+  val_frac: 0.15
+
+model:
+  num_freqs: 6
+  num_freqs_u: 3
+  hidden: 256
+  depth: 5
+  tau_m: 1.0
+  lambda_q: 0.5
+
+training:
+  seed: 42
+  batch_size: 1024
+  num_workers: 4
+  torch_compile: false
+  epochs: 40
+  save_freq: 10
+  learning_rate: 3.0e-4
+  weight_decay: 1.0e-4
+  warmup_steps: 500
+  min_lr_ratio: 0.01
+  grad_clip_norm: 10.0
+  log_every_steps: 10
+  print_every_steps: 50
+  hardneg_every: 0
+  hardneg_frac: 0.0
+  val_eval_n: 65536
+  device: cuda
+  batch_mix:
+    interior: 0.15
+    bnd_pos: 0.25
+    bnd_neg: 0.25
+    jitter_pos: 0.10
+    jitter_neg: 0.10
+    exterior: 0.15
+
+loss:
+  lambda_cls: 1.0
+  lambda_margin: 0.0
+  lambda_q: 0.0
+  lambda_local: 0.0
+
+io:
+  checkpoint: data/checkpoints/latest.pt
+  checkpoint_dir: data/checkpoints
+  report: data/reports/train_point.json
+
+pass:
+  mae_max: 9.0
+  spearman_min: 0.0
+  boundary_iou_min: 0.70
+  grad_cosine_min: 0.0
+  ascent_improve_min: 0.0
+  rail_ad_fd_rel_max: 1.0
+  rail_sign_agree_min: 0.0
+  region_improve_min: 0.0
+
+wandb:
+  enable: true
+  project: neural-ird-rm75
+  entity: lpei82060-technical-university-of-munich
+  mode: online
+  run_name: neural_ird_v5_cls_trusted
+  tags: [neural_ird, v5, trusted_labels, cls_only]
+```
+
+### `configs/train_phase_b.yaml`
+
+```yaml
+# Phase B: cls + boundary margin + q (init from best_iou.pt manually if needed)
+
+data:
+  gt_npz: data/ird/gt_samples_1p5cm_probe.npz
+  synthetic_n: 8192
+  val_frac: 0.15
+
+model:
+  num_freqs: 6
+  num_freqs_u: 3
+  hidden: 256
+  depth: 5
+  tau_m: 1.0
+  lambda_q: 0.5
+
+training:
+  seed: 42
+  batch_size: 1024
+  num_workers: 4
+  torch_compile: false
+  epochs: 60
+  save_freq: 10
+  learning_rate: 2.0e-4
+  weight_decay: 1.0e-4
+  warmup_steps: 300
+  min_lr_ratio: 0.01
+  grad_clip_norm: 10.0
+  log_every_steps: 10
+  print_every_steps: 50
+  hardneg_every: 0
+  hardneg_frac: 0.0
+  val_eval_n: 65536
+  device: cuda
+  batch_mix:
+    interior: 0.15
+    bnd_pos: 0.25
+    bnd_neg: 0.25
+    jitter_pos: 0.10
+    jitter_neg: 0.10
+    exterior: 0.15
+
+loss:
+  lambda_cls: 1.0
+  lambda_margin: 0.25
+  lambda_q: 0.1
+  lambda_local: 0.0
+
+io:
+  checkpoint: data/checkpoints/phase_b_latest.pt
+  checkpoint_dir: data/checkpoints
+  report: data/reports/train_phase_b.json
+
+pass:
+  mae_max: 0.35
+  spearman_min: 0.70
+  boundary_iou_min: 0.70
+  grad_cosine_min: 0.30
+  ascent_improve_min: 0.40
+  rail_ad_fd_rel_max: 0.25
+  rail_sign_agree_min: 0.80
+  region_improve_min: 0.40
+
+wandb:
+  enable: true
+  project: neural-ird-rm75
+  entity: lpei82060-technical-university-of-munich
+  mode: online
+  run_name: neural_ird_v5_margin_q
+  tags: [neural_ird, v5, trusted_labels, margin_q]
+```
+
+---
+
+## 5. bit round-trip 验证脚本
 
 ```python
-"""Query-side Region A: anisotropic Exp perturbations + softmin(m) + mean(q)."""
-
-from __future__ import annotations
-
-from dataclasses import dataclass
-
 import numpy as np
-from scipy.stats import qmc
+from ird_playground.ird.capability_io import unpack_bits_5dof
 
-from ird_playground.probe.se3 import se3_exp, se3_mul
+def pack_bits_5dof(bool_matrix):
+    m, n_orient = bool_matrix.shape
+    n_bytes = (n_orient + 7) // 8
+    padded = np.zeros((m, n_bytes * 8), dtype=bool)
+    padded[:, :n_orient] = bool_matrix
+    packed = np.zeros((m, n_bytes), dtype=np.uint8)
+    for k in range(8):
+        packed |= (padded[:, k::8].astype(np.uint8) << k)
+    return packed
 
-
-@dataclass(frozen=True)
-class PositionExtent:
-    tangent_1_m: float = 0.020
-    tangent_2_m: float = 0.010
-    normal_m: float = 0.002
-
-
-@dataclass(frozen=True)
-class OrientationExtent:
-    tilt_tangent_1_deg: float = 8.0
-    tilt_tangent_2_deg: float = 5.0
-    axial_roll_deg: float = 3.0
-
-
-@dataclass
-class RegionScore:
-    score: float
-    m_robust: float
-    q_region: float
-    mean_score: float
-    softmin_score: float
-    coverage: float
-    min_score: float
-    num_samples: int
-
-
-def sobol_unit_cube(n: int, dim: int, *, seed: int = 0) -> np.ndarray:
-    eng = qmc.Sobol(d=dim, scramble=True, seed=seed)
-    m = int(np.ceil(np.log2(max(n, 2))))
-    u = eng.random_base2(m)
-    return u[:n]
-
-
-def sample_anisotropic_xi(
-    position: PositionExtent,
-    orientation: OrientationExtent,
-    num_samples: int,
-    *,
-    seed: int = 0,
-    antithetic: bool = True,
-) -> np.ndarray:
-    """Return (K,6) ξ; if antithetic, pair ξ_{2j}=-ξ_{2j-1}."""
-    if antithetic:
-        n_pair = (num_samples + 1) // 2
-        u = sobol_unit_cube(n_pair, 6, seed=seed)
-        s = 2.0 * u - 1.0
-        # build extents
-        pos = PositionExtent(
-            position.tangent_1_m, position.tangent_2_m, position.normal_m
-        )
-        ori = orientation
-        b1 = np.deg2rad(ori.tilt_tangent_1_deg)
-        b2 = np.deg2rad(ori.tilt_tangent_2_deg)
-        psi = np.deg2rad(ori.axial_roll_deg)
-        dp = np.stack(
-            [s[:, 0] * pos.tangent_1_m, s[:, 1] * pos.tangent_2_m, s[:, 2] * pos.normal_m],
-            axis=1,
-        )
-        dw = np.stack([s[:, 3] * b1, s[:, 4] * b2, s[:, 5] * psi], axis=1)
-        half = np.concatenate([dp, dw], axis=1)
-        paired = np.empty((half.shape[0] * 2, 6), dtype=np.float64)
-        paired[0::2] = half
-        paired[1::2] = -half
-        return paired[:num_samples]
-
-    u = sobol_unit_cube(num_samples, 6, seed=seed)
-    s = 2.0 * u - 1.0
-    dp = np.stack(
-        [
-            s[:, 0] * position.tangent_1_m,
-            s[:, 1] * position.tangent_2_m,
-            s[:, 2] * position.normal_m,
-        ],
-        axis=1,
-    )
-    b1 = np.deg2rad(orientation.tilt_tangent_1_deg)
-    b2 = np.deg2rad(orientation.tilt_tangent_2_deg)
-    psi = np.deg2rad(orientation.axial_roll_deg)
-    dw = np.stack([s[:, 3] * b1, s[:, 4] * b2, s[:, 5] * psi], axis=1)
-    return np.concatenate([dp, dw], axis=1).astype(np.float64)
-
-
-def softmin(values: np.ndarray, tau: float, weights: np.ndarray | None = None) -> float:
-    v = np.asarray(values, dtype=np.float64).reshape(-1)
-    w = np.ones_like(v) if weights is None else np.asarray(weights, dtype=np.float64).reshape(-1)
-    w = w / (w.sum() + 1e-12)
-    tau = max(float(tau), 1e-8)
-    m = v.min()
-    return float(-tau * np.log(np.sum(w * np.exp(-(v - m) / tau)) + 1e-12) + m)
-
-
-def coverage_from_m(m: np.ndarray, m_min: float = 0.0, tau_c: float = 0.5) -> float:
-    z = (np.asarray(m, dtype=np.float64) - m_min) / max(tau_c, 1e-8)
-    return float(np.mean(1.0 / (1.0 + np.exp(-z))))
-
-
-def aggregate_mq(
-    m: np.ndarray,
-    q: np.ndarray,
-    *,
-    tau: float = 0.5,
-    lambda_q: float = 0.5,
-    tau_m_cost: float = 1.0,
-    weights: np.ndarray | None = None,
-) -> RegionScore:
-    """m_robust = softmin(m); q_region = mean(q); score = -softplus(-m_r/τ)+λq."""
-    mv = np.asarray(m, dtype=np.float64).reshape(-1)
-    qv = np.asarray(q, dtype=np.float64).reshape(-1)
-    w = np.ones_like(mv) if weights is None else np.asarray(weights, dtype=np.float64).reshape(-1)
-    w = w / (w.sum() + 1e-12)
-    m_rob = softmin(mv, tau, w)
-    q_reg = float(np.sum(w * qv))
-    # softplus(-m/τ) = log(1+exp(-m/τ))
-    cost_m = float(np.logaddexp(0.0, -m_rob / max(tau_m_cost, 1e-6)))
-    score = -cost_m + float(lambda_q) * q_reg
-    return RegionScore(
-        score=score,
-        m_robust=m_rob,
-        q_region=q_reg,
-        mean_score=float(np.sum(w * mv)),
-        softmin_score=m_rob,
-        coverage=coverage_from_m(mv),
-        min_score=float(mv.min()),
-        num_samples=int(mv.size),
-    )
-
-
-def aggregate_mean_softmin(
-    values: np.ndarray,
-    *,
-    lam: float = 0.6,
-    tau: float = 0.1,
-    d_min: float = 0.3,
-    tau_c: float = 0.05,
-    weights: np.ndarray | None = None,
-) -> RegionScore:
-    """Legacy scalar aggregator (treat values as m)."""
-    return aggregate_mq(values, np.zeros_like(values), tau=tau, lambda_q=0.0, tau_m_cost=1.0, weights=weights)
-
-
-def perturb_center_poses(T_mu: np.ndarray, xi: np.ndarray) -> np.ndarray:
-    T_mu = np.asarray(T_mu, dtype=np.float64).reshape(4, 4)
-    out = np.empty((xi.shape[0], 4, 4), dtype=np.float64)
-    for i, x in enumerate(xi):
-        out[i] = se3_mul(T_mu, se3_exp(x))
-    return out
-
-
-def region_score_a(
-    neural_ird,
-    *,
-    delta_T_center: np.ndarray | None = None,
-    T_mu: np.ndarray | None = None,
-    T_base: np.ndarray | None = None,
-    position_extent: tuple[float, float, float] | PositionExtent = (0.02, 0.01, 0.002),
-    orientation_extent: tuple[float, float, float] | OrientationExtent = (8.0, 5.0, 3.0),
-    aggregation: str = "softmin_m_mean_q",
-    num_samples: int = 32,
-    lam: float = 0.6,
-    tau: float = 0.5,
-    d_min: float = 0.3,
-    lambda_q: float = 0.5,
-    seed: int = 0,
-) -> RegionScore:
-    if isinstance(position_extent, tuple):
-        position_extent = PositionExtent(*position_extent)
-    if isinstance(orientation_extent, tuple):
-        orientation_extent = OrientationExtent(*orientation_extent)
-
-    xi = sample_anisotropic_xi(position_extent, orientation_extent, num_samples, seed=seed)
-
-    if T_mu is not None:
-        T_base = np.eye(4) if T_base is None else np.asarray(T_base, dtype=np.float64)
-        Ts = perturb_center_poses(T_mu, xi)
-        from ird_playground.probe.se3 import invert_T
-
-        dTs = np.stack([invert_T(Tk) @ T_base for Tk in Ts], axis=0)
-    elif delta_T_center is not None:
-        dT0 = np.asarray(delta_T_center, dtype=np.float64).reshape(4, 4)
-        dTs = np.stack([se3_mul(dT0, se3_exp(x)) for x in xi], axis=0)
-    else:
-        raise ValueError("provide delta_T_center or T_mu")
-
-    out = neural_ird.score_batch_delta_T(dTs)
-    m = out.get("m", out.get("d"))
-    q = out.get("q", out.get("q_comfort", np.zeros_like(m)))
-    if aggregation in ("softmin_m_mean_q", "mean_softmin"):
-        return aggregate_mq(m, q, tau=tau, lambda_q=lambda_q)
-    raise ValueError(f"unsupported aggregation {aggregation!r}")
+rng = np.random.default_rng(0)
+bits = rng.random((100, 642)) > 0.8
+packed = pack_bits_5dof(bits)
+assert np.array_equal(bits, unpack_bits_5dof(packed, 642))
+bad = np.packbits(bits.astype(np.uint8), axis=1)  # big-endian default
+print("roundtrip OK; naive packbits mismatch:", float((bits != unpack_bits_5dof(bad, 642)).mean()))
 ```
 
+---
 
-## FILE: `ird_playground/tests/test_core.py`
-
-```python
-"""Unit tests for probe, region A, and neural point field (synthetic GT)."""
-
-from __future__ import annotations
-
-from pathlib import Path
-
-import numpy as np
-import pytest
-
-from ird_playground.probe.se3 import (
-    complete_frame_from_tool_axis,
-    delta_T_tcp_inv_base,
-    features_from_delta_T,
-    mat4_from_Rt,
-    se3_exp,
-)
-from ird_playground.probe.transform import default_ultrasound_probe, load_probe_yaml
-from ird_playground.region.aggregate import (
-    OrientationExtent,
-    PositionExtent,
-    aggregate_mean_softmin,
-    sample_anisotropic_xi,
-    softmin,
-)
-
-
-def test_default_probe_composition():
-    p = default_ultrasound_probe()
-    assert np.allclose(p.translation_m, [0.05, 0.0, 0.07], atol=1e-9)
-    R = p.rotation_matrix()
-    # TCP +Z should align with link7 +X
-    assert np.allclose(R[:, 2], [1.0, 0.0, 0.0], atol=1e-6)
-
-
-def test_probe_yaml_roundtrip(tmp_path):
-    root = tmp_path / "probe.yaml"
-    src = (
-        __import__("pathlib").Path(__file__).resolve().parents[1]
-        / "configs"
-        / "probe_default.yaml"
-    )
-    if not src.exists():
-        pytest.skip("configs/probe_default.yaml missing")
-    p = load_probe_yaml(src)
-    assert p.name.startswith("ultrasound")
-
-
-def test_delta_T_features_dim():
-    R = complete_frame_from_tool_axis([0, 0, 1])
-    T = mat4_from_Rt(R, [0.3, 0.1, 0.2])
-    dT = delta_T_tcp_inv_base(T)
-    f = features_from_delta_T(dT)
-    assert f.shape == (9,)
-
-
-def test_softmin_approaches_min():
-    v = np.array([0.9, 0.2, 0.8])
-    s = softmin(v, tau=1e-4)
-    assert abs(s - 0.2) < 1e-3
-
-
-def test_region_aggregate_not_mean_only():
-    from ird_playground.region.aggregate import aggregate_mq
-
-    v = np.array([1.0, 1.0, 0.0])
-    q = np.array([0.8, 0.7, 0.1])
-    rs = aggregate_mq(v, q, tau=0.05, lambda_q=0.5)
-    assert rs.mean_score > rs.softmin_score
-    assert rs.m_robust == rs.softmin_score
-    assert abs(rs.q_region - float(q.mean())) < 1e-6
-    assert rs.min_score == 0.0
-    # legacy wrapper still exposes softmin < mean
-    rs2 = aggregate_mean_softmin(v, lam=0.6, tau=0.05)
-    assert rs2.softmin_score < rs2.mean_score
-
-
-def test_anisotropic_extents_respect_bounds():
-    xi = sample_anisotropic_xi(
-        PositionExtent(0.02, 0.01, 0.002),
-        OrientationExtent(8.0, 5.0, 3.0),
-        64,
-        seed=0,
-    )
-    assert xi.shape == (64, 6)
-    assert np.max(np.abs(xi[:, 0])) <= 0.02 + 1e-9
-    assert np.max(np.abs(xi[:, 2])) <= 0.002 + 1e-9
-
-
-@pytest.mark.skipif(
-    __import__("importlib").util.find_spec("torch") is None,
-    reason="torch not installed",
-)
-def test_train_synthetic_and_region_a(tmp_path):
-    from ird_playground.neural.model import NeuralIRD
-    from ird_playground.neural.train import TrainConfig, differentiability_smoke, train_point_field
-    from ird_playground.region.aggregate import region_score_a
-
-    ckpt = tmp_path / "m.pt"
-    cfg = TrainConfig(
-        gt_npz=None,
-        synthetic_n=4096,
-        epochs=25,
-        batch_size=256,
-        hidden=128,
-        depth=3,
-        num_freqs=4,
-        warmup_steps=0,
-        lr=3e-3,
-        hardneg_every=0,
-        checkpoint=str(ckpt),
-        seed=0,
-        num_workers=0,
-    )
-    result = train_point_field(cfg)
-    assert ckpt.exists()
-    assert result["val_metrics"]["mae_m"] < 1.5
-    assert result["val_metrics"]["boundary_iou"] > 0.3
-
-    net = NeuralIRD.load(ckpt)
-    g = differentiability_smoke(net)
-    assert g >= 0.0
-
-    T_mu = mat4_from_Rt(np.eye(3), np.array([0.2, 0.0, 0.1]))
-    rs = region_score_a(net, T_mu=T_mu, num_samples=16, seed=0)
-    assert np.isfinite(rs.score)
-    assert np.isfinite(rs.m_robust)
-    assert 0.0 <= rs.q_region <= 1.0
-    assert rs.num_samples == 16
-
-    from ird_playground.ird.query_base import rail_y_grad_ad_fd
-
-    rail = rail_y_grad_ad_fd(net, n=8, seed=0)
-    assert rail["rail_ad_fd_rel"] < 0.5
-    assert rail["rail_sign_agree"] >= 0.5
-
-
-def test_load_neural_point_yaml():
-    from ird_playground.neural.train import load_train_config
-
-    root = Path(__file__).resolve().parents[1]
-    cfg = load_train_config(root / "configs/train_config.yaml", root=root)
-    assert cfg.epochs >= 1
-    assert cfg.hidden >= 64
-    assert cfg.batch_size >= 1
-
-
-def test_ird_viz_gt_only(tmp_path):
-    from ird_playground.ird.export_gt import make_synthetic_ird_gt
-    from ird_playground.viz.ird_compare import features_to_xyz, render_ird_comparison
-
-    arrays = make_synthetic_ird_gt(2000, seed=0)
-    out = tmp_path / "ird.png"
-    render_ird_comparison(
-        xyz=features_to_xyz(arrays["features"]),
-        gt=arrays["d"],
-        pred=None,
-        out_path=out,
-        max_points=1500,
-    )
-    assert out.exists() and out.stat().st_size > 1000
-
-
-def test_se3_exp_identity():
-    T = se3_exp(np.zeros(6))
-    assert np.allclose(T, np.eye(4), atol=1e-9)
-```
+*End of archive.*
