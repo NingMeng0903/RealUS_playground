@@ -1,11 +1,15 @@
-# Phase B: cls + boundary margin + q (after v6 Phase A gate)
+# Phase B: warm-start from Phase A; train margin + q with group LR
+# Requires: data/checkpoints/phase_a/selected.pt
+# cd ird_playground && source env.sh
+# python -m ird_playground.cli.train --config configs/train_phase_b.yaml
+# Prefer: python -m ird_playground.cli.train_ab
 
 data:
   gt_npz: data/ird/gt_samples_1p5cm_probe.npz
-  synthetic_n: 8192
   val_frac: 0.15
 
 model:
+  feature_kind: pu6
   num_freqs: 6
   num_freqs_u: 5
   hidden: 256
@@ -16,28 +20,38 @@ model:
   p_scale_m: 1.0
 
 training:
+  phase: B
+  selection_metric: joint
+
   seed: 42
+  device: cuda
+
+  epochs: 30
   batch_size: 1024
   num_workers: 4
-  torch_compile: false
-  epochs: 60
-  save_freq: 10
+
   learning_rate: 1.0e-4
+  lr_aux_heads: 1.0e-4
+  lr_trunk: 2.0e-5
+  lr_cls_head: 1.0e-5
+
   weight_decay: 1.0e-4
   warmup_steps: 300
   min_lr_ratio: 0.01
   grad_clip_norm: 10.0
-  log_every_steps: 10
-  print_every_steps: 50
-  hardneg_every: 0
-  hardneg_frac: 0.0
+
+  init_checkpoint: data/checkpoints/phase_a/selected.pt
+  freeze_backbone_cls_epochs: 5
+  warm_start_iou_min: 0.80
+
+  joint_w_margin: 0.5
+  joint_w_q_spearman: 0.05
+
+  save_freq: 5
   val_eval_n: 65536
   val_calib_frac: 0.5
   train_hard_y: true
-  device: cuda
-  # Phase B1: warm-start Phase A; freeze trunk+cls, train margin/q heads
-  init_checkpoint: data/checkpoints/best_iou.pt
-  freeze_cls_epochs: 5
+
   batch_mix:
     interior: 0.15
     bnd_pos: 0.25
@@ -49,12 +63,12 @@ training:
 loss:
   lambda_cls: 1.0
   lambda_margin: 0.25
-  lambda_q: 0.1
+  lambda_q: 0.10
   lambda_local: 0.0
 
 io:
-  checkpoint: data/checkpoints/phase_b_latest.pt
-  checkpoint_dir: data/checkpoints
+  checkpoint: data/checkpoints/phase_b/selected.pt
+  checkpoint_dir: data/checkpoints/phase_b
   report: data/reports/train_phase_b.json
 
 pass:
@@ -72,5 +86,10 @@ wandb:
   project: neural-ird-rm75
   entity: lpei82060-technical-university-of-munich
   mode: online
-  run_name: neural_ird_v6_margin_q
-  tags: [neural_ird, v6, stable_support, physical_pe, margin_q]
+  run_name: neural_ird_v6_phase_b_warm
+  tags:
+    - neural_ird
+    - v6
+    - phase_b
+    - warm_start
+    - margin_q

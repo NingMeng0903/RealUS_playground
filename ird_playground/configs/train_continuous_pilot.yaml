@@ -1,0 +1,63 @@
+data:
+  gt_npz: data/ird/continuous_ik_pilot_1mm.npz
+  val_frac: 0.20
+
+model:
+  feature_kind: pu6
+  num_freqs: 5
+  num_freqs_u: 4
+  hidden: 128
+  depth: 3
+  use_physical_pe: true
+  p_scale_m: 1.0
+  # Continuous GT is 1 mm; retain coarse workspace bands and add local bands.
+  p_wavelengths_m: [0.48, 0.24, 0.12, 0.06, 0.03, 0.015, 0.006, 0.003, 0.0015]
+
+training:
+  phase: A
+  selection_metric: iou
+  seed: 42
+  device: cpu
+  epochs: 100
+  early_stop_patience: 12
+  early_stop_min_delta: 0.002
+  batch_size: 256
+  num_workers: 0
+  learning_rate: 0.001
+  warmup_steps: 0
+  min_lr_ratio: 0.05
+  save_freq: 0
+  val_eval_n: 8192
+  val_calib_frac: 0.5
+  train_hard_y: true
+  batch_mix:
+    interior: 0.15
+    bnd_pos: 0.30
+    bnd_neg: 0.30
+    jitter_pos: 0.10
+    jitter_neg: 0.10
+    exterior: 0.05
+
+loss:
+  lambda_cls: 1.0
+  lambda_margin: 0.0
+  lambda_q: 0.0
+
+io:
+  checkpoint: data/checkpoints/continuous_pilot_1mm/selected.pt
+  checkpoint_dir: data/checkpoints/continuous_pilot_1mm
+  report: data/reports/train_continuous_pilot_1mm.json
+
+pass:
+  mae_max: 1.0
+  spearman_min: 0.0
+  boundary_iou_min: 0.70
+  grad_cosine_min: 0.0
+  ascent_improve_min: 0.0
+  rail_ad_fd_rel_max: 0.25
+  rail_sign_agree_min: 0.80
+  region_improve_min: 0.0
+  continuous_boundary_mae_max_m: 0.001
+
+wandb:
+  enable: false

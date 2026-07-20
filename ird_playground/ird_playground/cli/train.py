@@ -14,8 +14,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--config",
         type=Path,
-        default=Path("configs/train_config.yaml"),
-        help="Training YAML (configs/train_config.yaml)",
+        default=Path("configs/train_phase_a.yaml"),
+        help="Training YAML (configs/train_phase_a.yaml or train_phase_b.yaml)",
     )
     ap.add_argument(
         "--gt-npz",

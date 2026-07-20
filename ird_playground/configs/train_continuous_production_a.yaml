@@ -1,0 +1,62 @@
+data:
+  gt_npz: data/ird/continuous_ik_1mm.npz
+  val_frac: 0.20
+
+model:
+  feature_kind: pu6
+  num_freqs: 6
+  num_freqs_u: 5
+  hidden: 256
+  depth: 5
+  use_physical_pe: true
+  p_scale_m: 1.0
+  p_wavelengths_m: [0.48, 0.24, 0.12, 0.06, 0.03, 0.015, 0.006, 0.003, 0.0015]
+
+training:
+  phase: A
+  selection_metric: iou
+  seed: 42
+  device: cpu
+  epochs: 60
+  early_stop_patience: 10
+  early_stop_min_delta: 0.002
+  batch_size: 1024
+  num_workers: 0
+  learning_rate: 0.0005
+  warmup_steps: 100
+  min_lr_ratio: 0.05
+  save_freq: 0
+  val_eval_n: 32768
+  val_calib_frac: 0.5
+  train_hard_y: true
+  batch_mix:
+    interior: 0.15
+    bnd_pos: 0.28
+    bnd_neg: 0.28
+    jitter_pos: 0.12
+    jitter_neg: 0.12
+    exterior: 0.05
+
+loss:
+  lambda_cls: 1.0
+  lambda_margin: 0.0
+  lambda_q: 0.0
+
+io:
+  checkpoint: data/checkpoints/continuous_1mm/phase_a/selected.pt
+  checkpoint_dir: data/checkpoints/continuous_1mm/phase_a
+  report: data/reports/train_continuous_1mm_phase_a.json
+
+pass:
+  mae_max: 1.0
+  spearman_min: 0.0
+  boundary_iou_min: 0.80
+  grad_cosine_min: 0.0
+  ascent_improve_min: 0.0
+  rail_ad_fd_rel_max: 0.25
+  rail_sign_agree_min: 0.80
+  region_improve_min: 0.0
+  continuous_boundary_mae_max_m: 0.001
+
+wandb:
+  enable: false

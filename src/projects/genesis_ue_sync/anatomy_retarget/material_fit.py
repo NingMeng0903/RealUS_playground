@@ -1579,6 +1579,7 @@ def fit_articulated_rest(
     config: dict[str, Any] | None = None,
     subject: bool,
     stage: str,
+    preserve_source_binding: bool = False,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     """Fit rigid anatomy, rebind source frames, then transport soft tissue once."""
     asset.validate()
@@ -2228,6 +2229,12 @@ def fit_articulated_rest(
 
     soft_section_report = {"disabled": True, "reason": "knee_popliteal_pierce"}
 
+    if preserve_source_binding:
+        # Discard legacy regional soft edits first.  The final v71-preserving
+        # rest transport is evaluated once below from the exact Blender
+        # weights and the explicit source-bone material-fit transforms.
+        vertices[~bone_material] = old_vertices[~bone_material]
+
     # Snapshot articulated bind frames before rebind.  Weighted vertex rebind
     # may improve local orientation, but must not drag bind origins off the
     # SMPL-X joints (that caused 13-32 cm anchor drift and detached chains).
@@ -2243,34 +2250,52 @@ def fit_articulated_rest(
             "target_inverse_bind": np.linalg.inv(new_global).astype(np.float32),
         }
     )
-    rebound, rebind_report = rebind_source_rig(
-        interim,
-        source_vertices=old_vertices,
-        target_vertices=vertices,
-        stage=stage,
-        bone_mask=bone_material,
-    )
-    new_global = np.asarray(rebound.target_bind_global, dtype=np.float64)
-    # Rotation-only rebind for independent drivers: keep articulated bind
-    # translation on the SMPL-X joint, adopt rebind orientation only.
-    for bone, mode in enumerate(modes):
-        if _is_follow_mode(mode):
-            continue
-        new_global[bone, :3, 3] = articulated_global[bone, :3, 3]
-        if (
-            mode in {"segment_root", "twist", "rigid_group"}
-            or _is_joint_local_mode(mode)
-            or str(mode).startswith("scapula_")
-        ):
-            # Prefer articulated orientation when the frame was set explicitly
-            # from joint endpoints; rebind only supplies residual spin about it.
-            new_global[bone, :3, :3] = articulated_global[bone, :3, :3]
-    # Re-derive bind_follow children from the corrected parents so toes/patella
-    # stay attached to ankle/knee without independent translation.
-    for bone, mode in enumerate(modes):
-        parent = int(source_parents[bone])
-        if _is_follow_mode(mode) and parent >= 0:
-            new_global[bone] = new_global[parent] @ articulated_local[bone]
+    if preserve_source_binding:
+        # The articulated frames above are constructed from fixed SMPL-X joint
+        # endpoints while retaining the mapped Blender transverse axes and
+        # local hierarchy.  A second fit from moved mesh vertices is ambiguous
+        # for thin/near-planar bones and previously changed rotation centers
+        # after the geometry was already correct.  Keep these explicit frames
+        # authoritative and never infer the rig back from material-fit meshes.
+        rebound = interim
+        new_global = articulated_global.copy()
+        rebind_report = {
+            "stage": str(stage),
+            "backend": "v71_explicit_articulated_frames",
+            "weighted_vertex_rebind_skipped": True,
+            "source_weights_preserved": True,
+            "source_hierarchy_preserved": True,
+            "source_driver_modes_preserved": True,
+        }
+    else:
+        rebound, rebind_report = rebind_source_rig(
+            interim,
+            source_vertices=old_vertices,
+            target_vertices=vertices,
+            stage=stage,
+            bone_mask=bone_material,
+        )
+        new_global = np.asarray(rebound.target_bind_global, dtype=np.float64)
+        # Rotation-only rebind for independent drivers: keep articulated bind
+        # translation on the SMPL-X joint, adopt rebind orientation only.
+        for bone, mode in enumerate(modes):
+            if _is_follow_mode(mode):
+                continue
+            new_global[bone, :3, 3] = articulated_global[bone, :3, 3]
+            if (
+                mode in {"segment_root", "twist", "rigid_group"}
+                or _is_joint_local_mode(mode)
+                or str(mode).startswith("scapula_")
+            ):
+                # Prefer articulated orientation when the frame was set explicitly
+                # from joint endpoints; rebind only supplies residual spin about it.
+                new_global[bone, :3, :3] = articulated_global[bone, :3, :3]
+        # Re-derive bind_follow children from the corrected parents so toes/patella
+        # stay attached to ankle/knee without independent translation.
+        for bone, mode in enumerate(modes):
+            parent = int(source_parents[bone])
+            if _is_follow_mode(mode) and parent >= 0:
+                new_global[bone] = new_global[parent] @ articulated_local[bone]
     new_local = new_global.copy()
     for bone, parent in enumerate(source_parents.tolist()):
         if int(parent) >= 0:
@@ -2281,6 +2306,28 @@ def fit_articulated_rest(
         "anchor_translation_restored": True,
         "bind_follow_rederived": True,
     }
+
+    if preserve_source_binding:
+        # Bone material fitting changed the rest placement of the source rig.
+        # Move thin anatomy through that exact same fixed Blender-weight field;
+        # otherwise the bones move into vessels that remain at the harmonic
+        # location.  This is an offline rest bake using all original sparse
+        # influences—not SMPL-X weights, a station approximation, or an online
+        # collision correction.
+        inherited_soft = _tissue_mask(asset, "vessel")
+        selected_delta = bone_delta[fit_driver_indices[inherited_soft]]
+        blended_delta = np.sum(
+            fit_driver_weights[inherited_soft, :, None, None] * selected_delta,
+            axis=1,
+        )
+        source_soft = old_vertices[inherited_soft]
+        homogeneous = np.concatenate(
+            (source_soft, np.ones((len(source_soft), 1), dtype=np.float64)),
+            axis=1,
+        )
+        vertices[inherited_soft] = np.matmul(
+            blended_delta, homogeneous[:, :, None]
+        )[:, :3, 0]
 
     # Soft already sits on the Blender harmonic field. Material mesh surgery
     # moves bones off that linkage — close the gap with a translation-only field
@@ -2394,5 +2441,29 @@ def fit_articulated_rest(
         }
     )
     result = with_source_driver_coupling(result)
+    if preserve_source_binding:
+        if not np.array_equal(result.driver_indices, asset.driver_indices):
+            raise RuntimeError("material fit changed Blender driver indices")
+        if not np.array_equal(result.driver_weights, asset.driver_weights):
+            raise RuntimeError("material fit changed Blender driver weights")
+        if not np.array_equal(result.source_bone_parents, asset.source_bone_parents):
+            raise RuntimeError("material fit changed Blender source hierarchy")
+        if list(result.source_bone_driver_types or []) != list(
+            asset.source_bone_driver_types or []
+        ):
+            raise RuntimeError("material fit changed source driver modes")
+        report["v71_source_binding_preserved"] = True
+        untouched_nonbone = (~bone_material) & ~_tissue_mask(asset, "vessel")
+        report["v71_unfitted_nonbone_rest_vertices_preserved"] = bool(
+            np.array_equal(
+                np.asarray(result.vertices_rest)[untouched_nonbone],
+                np.asarray(asset.vertices_rest)[untouched_nonbone],
+            )
+        )
+        if not report["v71_unfitted_nonbone_rest_vertices_preserved"]:
+            raise RuntimeError("material fit changed unfitted v71 non-bone geometry")
+        report["v71_thin_anatomy_rest_transport"] = (
+            "vessel_full_blender_weighted_source_bone_delta"
+        )
     result.validate()
     return result, report

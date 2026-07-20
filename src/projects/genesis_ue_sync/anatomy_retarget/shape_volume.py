@@ -1158,6 +1158,7 @@ def apply_subject_beta_shape(
         config=config,
         subject=True,
         stage="subject_beta",
+        preserve_source_binding=True,
     )
     from .soft_constraints import (
         arap_volume_refine,

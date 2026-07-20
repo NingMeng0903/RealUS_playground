@@ -212,11 +212,204 @@ def test_load_neural_point_yaml():
     from ird_playground.neural.train import load_train_config
 
     root = Path(__file__).resolve().parents[1]
-    cfg = load_train_config(root / "configs/train_config.yaml", root=root)
-    assert cfg.epochs >= 1
+    cfg_a = load_train_config(root / "configs/train_phase_a.yaml", root=root)
+    assert cfg_a.phase == "A"
+    assert cfg_a.selection_metric == "iou"
+    assert cfg_a.init_checkpoint is None
+    assert cfg_a.lambda_margin == 0.0 and cfg_a.lambda_q == 0.0
+    assert cfg_a.freeze_backbone_cls_epochs == 0
+    assert cfg_a.feature_kind == "pu6"
+    assert "phase_a" in cfg_a.checkpoint_dir
+
     cfg_b = load_train_config(root / "configs/train_phase_b.yaml", root=root)
+    assert cfg_b.phase == "B"
+    assert cfg_b.selection_metric == "joint"
     assert cfg_b.init_checkpoint is not None
-    assert cfg_b.freeze_cls_epochs >= 1
+    assert cfg_b.freeze_backbone_cls_epochs == 5
+    assert cfg_b.freeze_cls_epochs == 5  # alias
+    assert cfg_b.lambda_margin > 0 and cfg_b.lambda_q > 0
+    assert cfg_b.lr_trunk is not None and cfg_b.lr_cls_head is not None
+    assert cfg_b.warm_start_iou_min == 0.80
+    assert "phase_b" in cfg_b.checkpoint_dir
+
+    cfg_cont = load_train_config(root / "configs/train_continuous_pilot.yaml", root=root)
+    assert cfg_cont.p_wavelengths_m is not None
+    assert min(cfg_cont.p_wavelengths_m) <= 0.0015
+    assert cfg_cont.early_stop_patience == 12
+
+    # missing GT must hard-fail (not silently synthetic)
+    import pytest
+    import yaml
+
+    bad = root / "configs" / "_tmp_bad_gt.yaml"
+    bad.write_text(
+        yaml.dump(
+            {
+                "data": {"gt_npz": "data/ird/does_not_exist.npz"},
+                "training": {"phase": "A"},
+                "loss": {"lambda_cls": 1.0, "lambda_margin": 0.0, "lambda_q": 0.0},
+                "io": {
+                    "checkpoint": "data/checkpoints/phase_a/selected.pt",
+                    "checkpoint_dir": "data/checkpoints/phase_a",
+                    "report": "data/reports/x.json",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    try:
+        with pytest.raises(FileNotFoundError):
+            load_train_config(bad, root=root)
+    finally:
+        bad.unlink(missing_ok=True)
+
+
+def test_source_resolution_gate_uses_capability_manifest(tmp_path):
+    from ird_playground.ird.precision import source_resolution_report
+    import yaml
+
+    map_dir = tmp_path / "map"
+    map_dir.mkdir()
+    (map_dir / "manifest.yaml").write_text(
+        yaml.safe_dump({"grid": {"step_m": 0.015}}), encoding="utf-8"
+    )
+    gt = tmp_path / "gt.npz"
+    gt.touch()
+    gt.with_suffix(".yaml").write_text(
+        yaml.safe_dump({"map_dir": str(map_dir)}), encoding="utf-8"
+    )
+    report = source_resolution_report(gt, target_position_error_m=1.0e-4)
+    assert report["source_resolution_known"] is True
+    assert report["source_boundary_lower_bound_m"] == pytest.approx(0.0075)
+    assert report["source_resolution_pass"] is False
+
+
+def test_source_resolution_gate_uses_continuous_gt_tolerance(tmp_path):
+    from ird_playground.ird.precision import source_resolution_report
+    import yaml
+
+    gt = tmp_path / "continuous.npz"
+    gt.touch()
+    gt.with_suffix(".yaml").write_text(
+        yaml.safe_dump(
+            {
+                "label_kind": "continuous_fk_multiseed_ik_se3_bisection_v1",
+                "physical_boundary_tolerance_m": 2.0e-4,
+                "ik_position_tolerance_m": 5.0e-5,
+            }
+        ),
+        encoding="utf-8",
+    )
+    report = source_resolution_report(gt, target_position_error_m=2.0e-4)
+    assert report["source_resolution_known"] is True
+    assert report["source_resolution_pass"] is True
+    assert report["source_boundary_lower_bound_m"] == pytest.approx(2.0e-4)
+
+
+@pytest.mark.skipif(
+    __import__("importlib").util.find_spec("pinocchio") is None,
+    reason="pinocchio not installed",
+)
+def test_continuous_fk_ik_gt_smoke():
+    from ird_playground.ird.continuous_gt import ContinuousGtConfig, build_continuous_ird_gt
+    from ird_playground.ird.export_gt import assert_gt_contract
+
+    arrays, meta = build_continuous_ird_gt(
+        ContinuousGtConfig(
+            n_fk_interior=8,
+            n_boundary_rays=6,
+            n_random_seeds=1,
+            ray_max_pos_m=0.20,
+            ray_max_rot_deg=20.0,
+            boundary_tol_m=5.0e-4,
+            ik_tol_pos_m=1.0e-4,
+            ik_max_iter=50,
+            seed=3,
+        )
+    )
+    assert_gt_contract(arrays)
+    assert meta["n_boundary_rays_accepted"] > 0
+    assert arrays["label_kind"][0] == 4
+    assert "boundary_id" in arrays and "boundary_signed_m" in arrays
+
+
+def test_feature_spec_and_warm_start_mismatch(tmp_path):
+    import torch
+
+    from ird_playground.neural.feature_spec import make_feature_spec
+    from ird_playground.neural.model import NeuralIRDPoint
+    from ird_playground.neural.train import TrainConfig, validate_phase_config
+
+    assert make_feature_spec("pu6").dim == 6
+    assert make_feature_spec("pu_roll8").dim == 8
+    assert make_feature_spec("pu_roll8").use_roll
+
+    m6 = NeuralIRDPoint(feature_kind="pu6", hidden=64, depth=2)
+    m8 = NeuralIRDPoint(feature_kind="pu_roll8", hidden=64, depth=2)
+    assert m6.in_dim == 6 and m8.in_dim == 8
+    x8 = torch.zeros(2, 8)
+    x8[:, 5] = 1.0
+    x8[:, 6] = 1.0
+    out = m8(x8)
+    assert out[0].shape == (2, 1)
+
+    # architecture mismatch must raise on warm-start load path
+    bad_ck = tmp_path / "bad_hidden.pt"
+    torch.save(
+        {
+            "state_dict": NeuralIRDPoint(feature_kind="pu6", hidden=32, depth=2).state_dict(),
+            "model_cfg": {
+                "in_dim": 6,
+                "feature_kind": "pu6",
+                "num_freqs": 6,
+                "num_freqs_u": 5,
+                "hidden": 32,
+                "depth": 2,
+                "use_physical_pe": True,
+            },
+        },
+        bad_ck,
+    )
+    model = NeuralIRDPoint(feature_kind="pu6", hidden=64, depth=2)
+    blob = torch.load(bad_ck, map_location="cpu", weights_only=False)
+    raised = False
+    try:
+        if blob["model_cfg"]["hidden"] != model.hidden:
+            raise RuntimeError("Warm-start architecture mismatch")
+        model.load_state_dict(blob["state_dict"], strict=True)
+    except RuntimeError:
+        raised = True
+    assert raised
+
+    cfg = TrainConfig(phase="B", init_checkpoint=None, lambda_margin=0.1)
+    try:
+        validate_phase_config(cfg)
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
+
+
+def test_phase_b_freeze_groups():
+    import torch
+
+    from ird_playground.neural.model import NeuralIRDPoint
+
+    model = NeuralIRDPoint(feature_kind="pu6", hidden=64, depth=2)
+    trunk = list(model.stem.parameters())
+    for b in model.blocks:
+        trunk.extend(list(b.parameters()))
+    cls = list(model.head_cls.parameters())
+    aux = list(model.head_margin.parameters()) + list(model.head_q.parameters())
+    for p in trunk + cls:
+        p.requires_grad = False
+    for p in aux:
+        p.requires_grad = True
+    assert not next(model.stem.parameters()).requires_grad
+    assert not next(model.head_cls.parameters()).requires_grad
+    assert next(model.head_margin.parameters()).requires_grad
+    for p in trunk + cls:
+        p.requires_grad = True
+    assert all(p.requires_grad for p in model.stem.parameters())
 
 
 def test_ird_viz_gt_only(tmp_path):

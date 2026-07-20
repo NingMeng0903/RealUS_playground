@@ -1031,6 +1031,14 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--stage1-v35-prealign-shared-bind",
+        action="store_true",
+        help=(
+            "Apply the v35 semantic rest prealign to anatomy, Skin_Glass and "
+            "source bind probes before the shared harmonic field solve."
+        ),
+    )
+    p.add_argument(
         "--refresh-diagnostics",
         action="store_true",
         help="Run slow mesh/SDF diagnostics even when source and shape caches hit.",
@@ -1472,6 +1480,9 @@ def main() -> int:
                 canonical_dir=args.canonical_dir,
                 debug_stage1_dir=args.stage1_debug_dir,
                 boundary_reference=args.stage1_boundary_reference,
+                v35_semantic_prealign_shared_bind=bool(
+                    args.stage1_v35_prealign_shared_bind
+                ),
             )
         if args.fast_publish:
             neutral_articulated_report = {
@@ -1487,6 +1498,7 @@ def main() -> int:
                 config=cfg,
                 subject=False,
                 stage="neutral",
+                preserve_source_binding=True,
             )
         from projects.genesis_ue_sync.anatomy_retarget.soft_constraints import (
             regularize_asset_soft_materials,

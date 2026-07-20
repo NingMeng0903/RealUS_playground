@@ -70,4 +70,3 @@ def test_rebind_infers_unweighted_controller_from_weighted_follower() -> None:
     np.testing.assert_allclose(
         rebound.target_bone_tail[0], rebound.target_bone_head[1], atol=1.0e-6
     )
-

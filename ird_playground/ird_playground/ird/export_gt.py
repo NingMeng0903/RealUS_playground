@@ -653,7 +653,14 @@ def assert_gt_contract(arrays: dict[str, np.ndarray]) -> None:
     x, y, m = arrays["features"], arrays["reachable"], arrays["m_gt"]
     q = arrays["q"]
     lo, hi = arrays["aabb_lo"], arrays["aabb_hi"]
-    assert x.shape[1] == 6
+    if x.shape[1] not in (6, 8):
+        raise AssertionError(f"expected feature dim 6 or 8, got {x.shape[1]}")
+    if "feature_dim" in arrays:
+        declared = int(np.asarray(arrays["feature_dim"]).reshape(-1)[0])
+        if declared != int(x.shape[1]):
+            raise AssertionError(
+                f"feature_dim metadata ({declared}) != features.shape[1] ({x.shape[1]})"
+            )
     assert np.isfinite(x).all() and np.isfinite(m).all() and np.isfinite(q).all()
     cw = arrays.get("cls_weight")
     mw = arrays.get("margin_weight")

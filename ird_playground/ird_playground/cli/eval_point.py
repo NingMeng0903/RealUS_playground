@@ -14,6 +14,7 @@ from ird_playground.neural.metrics import (
 from ird_playground.ird.export_gt import load_ird_gt, make_synthetic_ird_gt
 from ird_playground.neural.model import NeuralIRD
 from ird_playground.neural.train import evaluate_point_field, load_train_config
+from ird_playground.ird.precision import source_resolution_report
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -22,6 +23,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--config", type=Path, default=Path("configs/train_config.yaml"))
     ap.add_argument("--gt-npz", type=Path, default=None)
     ap.add_argument("--synthetic-n", type=int, default=2048)
+    ap.add_argument(
+        "--target-position-error-mm",
+        type=float,
+        default=0.1,
+        help="Physical boundary-localization target used for source-resolution acceptance",
+    )
     ap.add_argument("--skip-opt", action="store_true", help="Skip gradient/rail/region suite")
     args = ap.parse_args(argv)
 
@@ -40,6 +47,19 @@ def main(argv: list[str] | None = None) -> int:
         arrays = make_synthetic_ird_gt(args.synthetic_n, seed=1)
 
     metrics = evaluate_point_field(net, arrays)
+    if args.gt_npz is not None:
+        gt_path = args.gt_npz if args.gt_npz.is_absolute() else root / args.gt_npz
+    elif train_cfg is not None and train_cfg.gt_npz:
+        gt_path = Path(train_cfg.gt_npz)
+    else:
+        gt_path = None
+    if gt_path is not None:
+        metrics.update(
+            source_resolution_report(
+                gt_path,
+                target_position_error_m=float(args.target_position_error_mm) * 1.0e-3,
+            )
+        )
     if not args.skip_opt:
         metrics.update(evaluate_optimization_suite(net, arrays, seed=0))
 
@@ -52,6 +72,9 @@ def main(argv: list[str] | None = None) -> int:
         rail_ad_fd_rel_max=train_cfg.rail_ad_fd_rel_max if train_cfg else 0.25,
         rail_sign_agree_min=train_cfg.rail_sign_agree_min if train_cfg else 0.80,
         region_improve_min=train_cfg.region_improve_min if train_cfg else 0.40,
+        continuous_boundary_mae_max_m=(
+            train_cfg.continuous_boundary_mae_max_m if train_cfg else float("inf")
+        ),
     )
     ok = point_field_pass(metrics, thr)
     metrics["pass"] = ok
@@ -64,6 +87,7 @@ def main(argv: list[str] | None = None) -> int:
         "rail_ad_fd_rel_max": thr.rail_ad_fd_rel_max,
         "rail_sign_agree_min": thr.rail_sign_agree_min,
         "region_improve_min": thr.region_improve_min,
+        "continuous_boundary_mae_max_m": thr.continuous_boundary_mae_max_m,
     }
     report = root / "data/reports/eval_point.json"
     report.parent.mkdir(parents=True, exist_ok=True)

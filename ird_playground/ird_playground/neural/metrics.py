@@ -24,13 +24,21 @@ class PassThresholds:
     rail_ad_fd_rel_max: float = 0.25
     rail_sign_agree_min: float = 0.80
     region_improve_min: float = 0.40
+    continuous_boundary_mae_max_m: float = float("inf")
 
 
 def point_field_pass(metrics: dict[str, float], thr: PassThresholds | None = None) -> bool:
     thr = thr or PassThresholds()
+    # Prefer margin MAE; do not gate on deprecated legacy margin-only score.
+    mae = float(
+        metrics.get(
+            "mae_m",
+            metrics.get("boundary_margin_mae", metrics.get("legacy_score_mae", 1e9)),
+        )
+    )
     checks = [
-        metrics.get("mae", 1e9) <= thr.mae_max,
-        metrics.get("spearman", 0.0) >= thr.spearman_min,
+        mae <= thr.mae_max,
+        metrics.get("spearman", metrics.get("q_spearman", 0.0)) >= thr.spearman_min,
         metrics.get("boundary_iou", 0.0) >= thr.boundary_iou_min,
     ]
     if "grad_cosine_median" in metrics:
@@ -43,7 +51,61 @@ def point_field_pass(metrics: dict[str, float], thr: PassThresholds | None = Non
         checks.append(metrics["rail_sign_agree"] >= thr.rail_sign_agree_min)
     if "region_improve_rate" in metrics:
         checks.append(metrics["region_improve_rate"] >= thr.region_improve_min)
+    if "continuous_boundary_crossing_mae_m" in metrics:
+        checks.append(metrics["continuous_boundary_crossing_mae_m"] <= thr.continuous_boundary_mae_max_m)
+    # Present only for GT-backed acceptance runs.  Unknown provenance is a fail:
+    # smooth interpolation must not be marketed as sub-voxel physical accuracy.
+    if "source_resolution_pass" in metrics:
+        checks.append(bool(metrics["source_resolution_pass"]))
     return all(checks)
+
+
+def continuous_boundary_crossing_error(net, arrays: dict[str, np.ndarray]) -> dict[str, float]:
+    """Zero-logit crossing error on held-out continuous IK boundary pairs.
+
+    Each group contains a verified reachable and unreachable sample at known
+    signed physical offsets from the same SE(3)-bisected boundary.  We linearly
+    interpolate the network logit across that local pair and report where its
+    decision surface falls.  Groups without a straddling prediction are counted
+    as failures rather than hidden by clipping.
+    """
+    if "boundary_id" not in arrays or "boundary_signed_m" not in arrays:
+        return {}
+    bid = np.asarray(arrays["boundary_id"], dtype=np.int64)
+    signed = np.asarray(arrays["boundary_signed_m"], dtype=np.float64)
+    valid = bid >= 0
+    if not valid.any():
+        return {}
+    pred = net.score_features_np(np.asarray(arrays["features"], dtype=np.float32))
+    logits = np.asarray(pred["reach_logit"], dtype=np.float64)
+    errs: list[float] = []
+    straddle = 0
+    for group in np.unique(bid[valid]):
+        ix = np.flatnonzero(bid == group)
+        pos = ix[signed[ix] > 0.0]
+        neg = ix[signed[ix] < 0.0]
+        if pos.size == 0 or neg.size == 0:
+            continue
+        # nearest trusted pair to the IK boundary
+        ip = pos[np.argmin(signed[pos])]
+        inn = neg[np.argmax(signed[neg])]
+        lp, ln = float(logits[ip]), float(logits[inn])
+        sp, sn = float(signed[ip]), float(signed[inn])
+        denom = lp - ln
+        if abs(denom) < 1e-9:
+            errs.append(float("inf"))
+            continue
+        shat = sn + (0.0 - ln) * (sp - sn) / denom
+        if min(lp, ln) <= 0.0 <= max(lp, ln):
+            straddle += 1
+        errs.append(abs(shat))
+    finite = np.asarray([x for x in errs if np.isfinite(x)], dtype=np.float64)
+    return {
+        "continuous_boundary_crossing_mae_m": float(np.mean(finite)) if finite.size else float("inf"),
+        "continuous_boundary_crossing_p95_m": float(np.percentile(finite, 95)) if finite.size else float("inf"),
+        "continuous_boundary_crossing_straddle_rate": float(straddle / max(len(errs), 1)),
+        "continuous_boundary_crossing_n": float(len(errs)),
+    }
 
 
 def grad_cosine_vs_gt(

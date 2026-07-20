@@ -16,7 +16,7 @@ import numpy as np
 
 from .rigged_asset import AnatomyRiggedAsset
 from .anatomy_lbs import with_source_driver_coupling
-from .material_fit import bone_material_mask, cranial_material_mask
+from .material_fit import _fit_source_frames, bone_material_mask, cranial_material_mask
 from .shape_volume import _load_obj, _outside_cage_max_distance, _sample_field, _tet_stiffness
 
 
@@ -28,6 +28,75 @@ _MAX_FINAL_SURFACE_DISTANCE_M = 0.10
 _MAX_BOUNDARY_DISPLACEMENT_M = 0.50
 _MIN_REGISTRATION_PROGRESS_M = 1.0e-7
 _FINE_SHELL_HOMOTOPY = (0.10, 0.25, 0.45, 0.65, 0.82, 1.00)
+_SEMANTIC_PREALIGN_BLEND = 0.25
+
+
+def _semantic_rest_prealign(
+    asset: AnatomyRiggedAsset,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
+    """Evaluate the v35 semantic rest alignment without changing rig authority."""
+    if (
+        asset.source_skin_vertices is None
+        or asset.source_skin_lbs_weights is None
+        or asset.driver_indices is None
+        or asset.driver_weights is None
+        or asset.source_bone_smplx_a is None
+    ):
+        raise RuntimeError(
+            "semantic Stage-1 prealign requires Skin_Glass and the complete source rig"
+        )
+    _target_global, _target_local, source_delta = _fit_source_frames(asset)
+    vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
+    source_indices = np.asarray(asset.driver_indices, dtype=np.int64)
+    source_weights = np.asarray(asset.driver_weights, dtype=np.float64)
+    blended = np.sum(
+        source_weights[..., None, None] * source_delta[source_indices], axis=1
+    )
+    anatomy = np.einsum(
+        "nij,nj->ni",
+        blended,
+        np.concatenate((vertices, np.ones((len(vertices), 1))), axis=1),
+    )[:, :3]
+
+    semantic = np.asarray(asset.source_bone_smplx_a, dtype=np.int64)
+    joint_count = len(asset.joint_names)
+    skin_weights = np.asarray(asset.source_skin_lbs_weights, dtype=np.float64)
+    if skin_weights.shape != (len(asset.source_skin_vertices), joint_count):
+        raise ValueError("Skin_Glass weights must match the SMPL-X joint order")
+    mass = np.bincount(
+        source_indices.reshape(-1),
+        weights=source_weights.reshape(-1),
+        minlength=len(semantic),
+    )
+    semantic_delta = np.tile(np.eye(4, dtype=np.float64), (joint_count, 1, 1))
+    mapped_joint_count = 0
+    for joint in range(joint_count):
+        candidates = np.flatnonzero(semantic == joint)
+        if not len(candidates):
+            continue
+        semantic_delta[joint] = source_delta[candidates[np.argmax(mass[candidates])]]
+        mapped_joint_count += 1
+    skin = np.asarray(asset.source_skin_vertices, dtype=np.float64)
+    skin_blended = np.einsum("nj,jkl->nkl", skin_weights, semantic_delta)
+    skin_aligned = np.einsum(
+        "nij,nj->ni",
+        skin_blended,
+        np.concatenate((skin, np.ones((len(skin), 1))), axis=1),
+    )[:, :3]
+    anatomy_displacement = np.linalg.norm(anatomy - vertices, axis=1)
+    skin_displacement = np.linalg.norm(skin_aligned - skin, axis=1)
+    return anatomy, skin_aligned, source_delta, {
+        "backend": "v35_source_rig_semantic_rest_lbs_v1",
+        "preserves_source_weights": True,
+        "preserves_source_hierarchy": True,
+        "mapped_semantic_joint_count": int(mapped_joint_count),
+        "anatomy_displacement_rms_m": float(
+            np.sqrt(np.mean(anatomy_displacement**2))
+        ),
+        "anatomy_displacement_max_m": float(np.max(anatomy_displacement)),
+        "skin_displacement_rms_m": float(np.sqrt(np.mean(skin_displacement**2))),
+        "skin_displacement_max_m": float(np.max(skin_displacement)),
+    }
 
 
 def _rebind_source_rig_from_volume_field(
@@ -35,6 +104,8 @@ def _rebind_source_rig_from_volume_field(
     *,
     cage: dict[str, np.ndarray],
     field: np.ndarray,
+    semantic_prealign_delta: np.ndarray | None = None,
+    semantic_prealign_blend: float = 0.0,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     """Map source bind frames through the same field as anatomy vertices."""
     source_global = np.asarray(asset.source_bind_global, dtype=np.float64)
@@ -53,6 +124,28 @@ def _rebind_source_rig_from_volume_field(
         ),
         axis=0,
     )
+    if semantic_prealign_delta is not None:
+        prealign_delta = np.asarray(semantic_prealign_delta, dtype=np.float64)
+        if prealign_delta.shape != source_global.shape:
+            raise ValueError("semantic prealign delta must match the source rig")
+        probe_bones = np.concatenate(
+            (
+                np.arange(count, dtype=np.int64),
+                np.repeat(np.arange(count, dtype=np.int64), 3),
+                np.arange(count, dtype=np.int64),
+                np.arange(count, dtype=np.int64),
+            )
+        )
+        homogeneous = np.concatenate(
+            (probes, np.ones((len(probes), 1), dtype=np.float64)), axis=1
+        )
+        prealigned = np.einsum(
+            "nij,nj->ni", prealign_delta[probe_bones], homogeneous
+        )[:, :3]
+        blend = float(semantic_prealign_blend)
+        if not 0.0 <= blend <= 1.0:
+            raise ValueError("semantic prealign blend must be in [0, 1]")
+        probes = probes + blend * (prealigned - probes)
     probe_delta, _outside_count, outside = _sample_field(
         probes, cage=cage, field=field
     )
@@ -96,6 +189,7 @@ def _rebind_source_rig_from_volume_field(
         "probe_count": int(len(probes)),
         "minimum_probe_stretch": minimum_stretch,
         "maximum_probe_stretch": maximum_stretch,
+        "semantic_prealign_blend": float(semantic_prealign_blend),
     }
     metadata["source_rig_rebind"] = [report]
     result = type(asset)(
@@ -1205,6 +1299,7 @@ def apply_source_skin_volume_registration(
     canonical_dir: Path | str,
     debug_stage1_dir: Path | str | None = None,
     boundary_reference: Path | str | None = None,
+    v35_semantic_prealign_shared_bind: bool = False,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     if asset.source_skin_vertices is None or asset.source_skin_faces is None:
         raise RuntimeError("source template lacks Skin_Glass; force source template rebake")
@@ -1245,9 +1340,25 @@ def apply_source_skin_volume_registration(
     source_vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
     source_skin_vertices = np.asarray(asset.source_skin_vertices, dtype=np.float64)
     skin_faces = np.asarray(asset.source_skin_faces, dtype=np.int32)
-    query = source_vertices
-    skin_vertices = source_skin_vertices
-    prealign_report = None
+    prealign_delta: np.ndarray | None = None
+    prealign_blend = 0.0
+    if v35_semantic_prealign_shared_bind:
+        prealigned_vertices, prealigned_skin, prealign_delta, prealign_report = (
+            _semantic_rest_prealign(asset)
+        )
+        prealign_blend = float(_SEMANTIC_PREALIGN_BLEND)
+        query = source_vertices + prealign_blend * (
+            prealigned_vertices - source_vertices
+        )
+        skin_vertices = source_skin_vertices + prealign_blend * (
+            prealigned_skin - source_skin_vertices
+        )
+        prealign_report["blend"] = prealign_blend
+        prealign_report["bind_probes_share_prealign"] = True
+    else:
+        query = source_vertices
+        skin_vertices = source_skin_vertices
+        prealign_report = None
     target_vertices, target_faces, target_weights, body_report = _outer_body_component(
         target_vertices_full, target_faces_full, target_weights_full
     )
@@ -1361,7 +1472,15 @@ def apply_source_skin_volume_registration(
         }
     phase_reports: list[dict[str, Any]] = []
     achieved_fraction = 0.0
-    if boundary_reference is None:
+    if boundary_reference is None and prealign_report is not None:
+        phase_reports.append(
+            {
+                "accepted": True,
+                "skipped": True,
+                "reason": "v35_semantic_prealign_uses_jacobian_safe_inset_shell",
+            }
+        )
+    elif boundary_reference is None:
         # Refine on the *same cage* towards a strictly in-subject target.  This
         # is a boundary-only homotopy, followed by one harmonic volume solve;
         # it never projects or clamps anatomy vertices with an SDF.
@@ -1658,6 +1777,8 @@ def apply_source_skin_volume_registration(
         result,
         cage=cage,
         field=field1,
+        semantic_prealign_delta=prealign_delta,
+        semantic_prealign_blend=prealign_blend,
     )
     result = with_source_driver_coupling(result)
     return result, {

@@ -1,0 +1,18 @@
+# Continuous labels for the task operator. Run offline; artifacts are bounded by
+# the prune command after selecting the final checkpoint.
+out: data/ird/continuous_ik_1mm.npz
+sampling:
+  n_fk_interior: 12000
+  n_boundary_rays: 16000
+  n_random_seeds: 8
+  ray_max_pos_m: 0.16
+  ray_max_rot_deg: 20.0
+  boundary_tol_m: 0.001
+  ik_tol_pos_m: 0.0002
+  ik_tol_rot_rad: 0.001
+  ik_max_iter: 100
+  margin_sigma_p_m: 0.003
+  boundary_offset_m: 0.003
+  exterior_offset_m: 0.012
+  log_every_rays: 100
+  seed: 42

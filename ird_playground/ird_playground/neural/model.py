@@ -67,16 +67,18 @@ class ResidualSiLUBlock(nn.Module if nn is not None else object):  # type: ignor
 
 
 class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[misc]
-    """6-D natural [p(3), u(3)] → reach_logit, margin, q.
+    """Point IRD: [p,u] (6-D) or [p,u,cosα,sinα] (8-D) → reach_logit, margin, q.
 
     Position: physical-wavelength Fourier (default 48…1.5 cm).
     Direction: raw u + num_freqs_u Fourier bands.
+    Optional roll: cos/sin α plus harmonic Fourier bands.
     """
 
     def __init__(
         self,
         *,
-        in_dim: int = 6,
+        in_dim: int | None = None,
+        feature_kind: str = "pu6",
         num_freqs: int = 6,
         num_freqs_u: int = 5,
         hidden: int = 256,
@@ -89,10 +91,19 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
     ) -> None:
         if torch is None:
             raise ImportError("torch is required for NeuralIRDPoint")
+        from ird_playground.neural.feature_spec import make_feature_spec
+
         super().__init__()
-        if in_dim != 6:
-            raise ValueError("expected 6-D features (p + tool axis)")
-        self.in_dim = 6
+        # Prefer feature_kind; allow legacy in_dim=6/8 as a hint when kind omitted.
+        kind = feature_kind
+        if in_dim is not None and feature_kind in ("pu6", "pu"):
+            if int(in_dim) == 8:
+                kind = "pu_roll8"
+            elif int(in_dim) not in (6, 8):
+                raise ValueError(f"unsupported in_dim={in_dim}")
+        self.feature_spec = make_feature_spec(kind)
+        self.in_dim = int(self.feature_spec.dim)
+        self.feature_kind = self.feature_spec.kind
         self.num_freqs = int(num_freqs)
         self.num_freqs_u = int(num_freqs_u)
         self.hidden = int(hidden)
@@ -112,7 +123,11 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
         else:
             pe_p = 3 + 3 * 2 * self.num_freqs
         pe_u = 3 + 3 * 2 * self.num_freqs_u
-        self.stem = nn.Linear(pe_p + pe_u, hidden)
+        pe_roll = 0
+        if self.feature_spec.use_roll:
+            # cosα, sinα + (sin(kα), cos(kα)) per harmonic
+            pe_roll = 2 + 2 * len(self.feature_spec.roll_harmonics)
+        self.stem = nn.Linear(pe_p + pe_u + pe_roll, hidden)
         self.blocks = nn.ModuleList([ResidualSiLUBlock(hidden) for _ in range(max(1, depth - 1))])
         self.head_cls = nn.Linear(hidden, 1)
         self.head_margin = nn.Linear(hidden, 1)
@@ -125,6 +140,11 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
         self.aabb_hi.copy_(torch.as_tensor(hi, dtype=torch.float32).reshape(3))
 
     def encode(self, features: "torch.Tensor") -> "torch.Tensor":
+        if features.shape[-1] != self.in_dim:
+            raise ValueError(
+                f"feature dim mismatch: got {features.shape[-1]}, expected {self.in_dim} "
+                f"(feature_kind={self.feature_kind})"
+            )
         p = features[..., :3]
         u = features[..., 3:6]
         u = u / (u.norm(dim=-1, keepdim=True).clamp_min(1e-6))
@@ -137,7 +157,16 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
             p_n = 2.0 * (p - self.aabb_lo) / span - 1.0
             p_enc = positional_encoding(p_n, self.num_freqs)
         u_enc = positional_encoding(u, self.num_freqs_u)
-        return torch.cat([p_enc, u_enc], dim=-1)
+        parts = [p_enc, u_enc]
+        if self.feature_spec.use_roll:
+            cos_a = features[..., 6:7]
+            sin_a = features[..., 7:8]
+            alpha = torch.atan2(sin_a, cos_a)
+            roll_parts = [cos_a, sin_a]
+            for k in self.feature_spec.roll_harmonics:
+                roll_parts.extend([torch.sin(k * alpha), torch.cos(k * alpha)])
+            parts.append(torch.cat(roll_parts, dim=-1))
+        return torch.cat(parts, dim=-1)
 
     def forward(
         self, features: "torch.Tensor"
@@ -196,8 +225,12 @@ class NeuralIRD:
     def load(cls, checkpoint: str | Path, device: str | None = None) -> "NeuralIRD":
         ckpt = torch.load(Path(checkpoint), map_location="cpu", weights_only=False)
         cfg = dict(ckpt.get("model_cfg", {}))
+        feature_kind = str(cfg.get("feature_kind", "pu6"))
+        if feature_kind in {"natural_pu", "pu"}:
+            feature_kind = "pu6"
         model = NeuralIRDPoint(
             in_dim=int(cfg.get("in_dim", 6)),
+            feature_kind=feature_kind,
             num_freqs=int(cfg.get("num_freqs", 6)),
             num_freqs_u=int(cfg.get("num_freqs_u", 5)),
             hidden=int(cfg.get("hidden", 256)),
@@ -208,7 +241,7 @@ class NeuralIRD:
             p_scale_m=float(cfg.get("p_scale_m", 1.0)),
             use_physical_pe=bool(cfg.get("use_physical_pe", True)),
         )
-        model.load_state_dict(ckpt["state_dict"], strict=False)
+        model.load_state_dict(ckpt["state_dict"], strict=True)
         aabb = cfg.get("aabb")
         if aabb is not None:
             model.set_aabb(np.asarray(aabb["lo"]), np.asarray(aabb["hi"]))
@@ -222,7 +255,8 @@ class NeuralIRD:
         path.parent.mkdir(parents=True, exist_ok=True)
         waves = self.model.p_wavelengths_m.detach().cpu().numpy().tolist()
         cfg = model_cfg or {
-            "in_dim": 6,
+            "in_dim": int(self.model.in_dim),
+            "feature_kind": getattr(self.model, "feature_kind", "pu6"),
             "num_freqs": self.model.num_freqs,
             "num_freqs_u": self.model.num_freqs_u,
             "hidden": self.model.hidden,
