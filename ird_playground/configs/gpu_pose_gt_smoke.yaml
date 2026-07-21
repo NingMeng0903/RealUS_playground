@@ -1,0 +1,10 @@
+out: data/ird/gpu_pose_smoke.npz
+sampling:
+  n_fk_positive: 256
+  n_pose_queries: 256
+  n_ik_seeds: 6
+  batch_size: 128
+  ik_max_iter: 80
+  seed: 42
+  device: cuda
+  log_every_batches: 1

@@ -50,6 +50,7 @@ class TrainConfig:
     print_every_steps: int = 50
     save_freq: int = 25
     val_frac: float = 0.15
+    split_strategy: str = "spatial_block"
     num_freqs: int = 6
     num_freqs_u: int = 5
     hidden: int = 256
@@ -57,8 +58,16 @@ class TrainConfig:
     tau_m: float = 1.0
     lambda_q_score: float = 0.5
     use_physical_pe: bool = True
+    position_encoder: str = "fourier"
+    hash_levels: int = 12
+    hash_features_per_level: int = 2
+    hash_log2_size: int = 18
+    hash_base_resolution: int = 8
+    hash_max_resolution: int = 256
     p_scale_m: float = 1.0
     p_wavelengths_m: list[float] | None = None
+    couple_reach_to_margin: bool = False
+    clearance_logit_scale: float = 3.0
     seed: int = 42
     checkpoint: str = "data/checkpoints/latest.pt"
     checkpoint_dir: str = "data/checkpoints"
@@ -92,6 +101,7 @@ class TrainConfig:
     rail_sign_agree_min: float = 0.80
     region_improve_min: float = 0.40
     continuous_boundary_mae_max_m: float = float("inf")
+    continuous_boundary_angle_mae_max_deg: float = float("inf")
     wandb_enable: bool = False
     wandb_project: str = "neural-ird-rm75"
     wandb_entity: str = "lpei82060-technical-university-of-munich"
@@ -169,6 +179,7 @@ def load_train_config(path: str | Path, *, root: Path | None = None) -> TrainCon
         gt_npz=gt_path,
         synthetic_n=int(data.get("synthetic_n", 8192)),
         val_frac=float(data.get("val_frac", 0.15)),
+        split_strategy=str(data.get("split_strategy", "spatial_block")),
         num_freqs=int(model.get("num_freqs", 6)),
         num_freqs_u=int(model.get("num_freqs_u", 5)),
         hidden=int(model.get("hidden", 256)),
@@ -176,12 +187,20 @@ def load_train_config(path: str | Path, *, root: Path | None = None) -> TrainCon
         tau_m=float(model.get("tau_m", 1.0)),
         lambda_q_score=float(model.get("lambda_q", 0.5)),
         use_physical_pe=bool(model.get("use_physical_pe", True)),
+        position_encoder=str(model.get("position_encoder", "fourier")),
+        hash_levels=int(model.get("hash_levels", 12)),
+        hash_features_per_level=int(model.get("hash_features_per_level", 2)),
+        hash_log2_size=int(model.get("hash_log2_size", 18)),
+        hash_base_resolution=int(model.get("hash_base_resolution", 8)),
+        hash_max_resolution=int(model.get("hash_max_resolution", 256)),
         p_scale_m=float(model.get("p_scale_m", 1.0)),
         p_wavelengths_m=(
             None
             if model.get("p_wavelengths_m") in (None, "null", "")
             else [float(x) for x in model["p_wavelengths_m"]]
         ),
+        couple_reach_to_margin=bool(model.get("couple_reach_to_margin", False)),
+        clearance_logit_scale=float(model.get("clearance_logit_scale", 3.0)),
         feature_kind=str(model.get("feature_kind", train.get("feature_kind", "pu6"))),
         epochs=int(train.get("epochs", 100)),
         batch_size=int(train.get("batch_size", 1024)),
@@ -228,6 +247,7 @@ def load_train_config(path: str | Path, *, root: Path | None = None) -> TrainCon
         rail_sign_agree_min=float(pas.get("rail_sign_agree_min", 0.80)),
         region_improve_min=float(pas.get("region_improve_min", 0.40)),
         continuous_boundary_mae_max_m=float(pas.get("continuous_boundary_mae_max_m", float("inf"))),
+        continuous_boundary_angle_mae_max_deg=float(pas.get("continuous_boundary_angle_mae_max_deg", float("inf"))),
         wandb_enable=bool(wb.get("enable", False)),
         wandb_project=str(wb.get("project", "neural-ird-rm75")),
         wandb_entity=str(wb.get("entity", "lpei82060-technical-university-of-munich")),
@@ -258,18 +278,19 @@ def validate_phase_config(cfg: TrainConfig) -> None:
     if phase not in {"A", "B"}:
         raise ValueError(f"phase must be A or B, got {cfg.phase!r}")
     if phase == "A":
-        if cfg.init_checkpoint is not None:
-            raise ValueError(
-                "Phase A must start from scratch: init_checkpoint must be null"
-            )
         if cfg.freeze_backbone_cls_epochs != 0:
             raise ValueError("Phase A must not freeze the classifier/backbone")
-        if cfg.lambda_margin != 0.0:
-            raise ValueError("Phase A requires lambda_margin=0")
+        if cfg.lambda_margin != 0.0 and not cfg.couple_reach_to_margin:
+            raise ValueError("Phase A requires lambda_margin=0 unless reachability is coupled to clearance")
         if cfg.lambda_q != 0.0:
             raise ValueError("Phase A requires lambda_q=0")
-        if cfg.selection_metric != "iou":
-            raise ValueError("Phase A selection_metric must be 'iou'")
+        if cfg.selection_metric not in {
+            "iou", "pr_auc", "balanced_accuracy", "curve", "balanced_curve",
+        }:
+            raise ValueError(
+                "Phase A selection_metric must be 'iou', 'pr_auc', "
+                "'balanced_accuracy', 'curve', or 'balanced_curve'"
+            )
     if phase == "B":
         if cfg.init_checkpoint is None:
             raise ValueError("Phase B requires Phase A init_checkpoint")
@@ -290,8 +311,32 @@ def checkpoint_selection_score(
     metrics: dict[str, float],
 ) -> float:
     iou = float(metrics.get("iou_calibrated", metrics.get("best_iou", 0.0)))
-    if cfg.phase == "A":
+    if cfg.phase == "A" and cfg.selection_metric == "iou":
         return iou
+    if cfg.selection_metric == "pr_auc":
+        return float(metrics.get("pr_auc", 0.0))
+    if cfg.selection_metric == "balanced_accuracy":
+        return float(metrics.get("balanced_accuracy", 0.0))
+    if cfg.selection_metric == "balanced_curve":
+        balanced = float(metrics.get("balanced_accuracy", 0.0))
+        pos_s = float(metrics.get("continuous_boundary_crossing_straddle_rate_m", 0.0))
+        rot_s = float(metrics.get("continuous_boundary_crossing_straddle_rate_deg", 0.0))
+        pos_d = float(metrics.get("continuous_boundary_direction_agreement_m", 0.0))
+        rot_d = float(metrics.get("continuous_boundary_direction_agreement_deg", 0.0))
+        pos_e = min(float(metrics.get("continuous_boundary_crossing_mae_m", 1.0)) / 0.001, 10.0)
+        rot_e = min(float(metrics.get("continuous_boundary_crossing_mae_deg", 180.0)) / 1.0, 10.0)
+        return (
+            balanced
+            + 0.20 * (pos_d + rot_d)
+            + 0.10 * (pos_s + rot_s)
+            - 0.01 * (pos_e + rot_e)
+        )
+    if cfg.selection_metric == "curve":
+        pos_s = float(metrics.get("continuous_boundary_crossing_straddle_rate_m", 0.0))
+        rot_s = float(metrics.get("continuous_boundary_crossing_straddle_rate_deg", 0.0))
+        pos_e = min(float(metrics.get("continuous_boundary_crossing_mae_m", 1.0)) / 0.01, 10.0)
+        rot_e = min(float(metrics.get("continuous_boundary_crossing_mae_deg", 180.0)) / 5.0, 10.0)
+        return 0.5 * (pos_s + rot_s) - 0.025 * (pos_e + rot_e)
     if cfg.selection_metric == "iou":
         return iou
     if cfg.selection_metric == "margin":
@@ -317,11 +362,46 @@ def _m_key(a):
     return "m_gt" if "m_gt" in a else "d"
 
 
-def _block_split(arrays, val_frac, seed):
-    """Split by block_id so duplicate (spatial,orient) cannot leak train→val."""
+def _block_split(arrays, val_frac, seed, strategy: str = "spatial_block"):
+    """Leakage-safe split for global extrapolation or covered-domain interpolation."""
     n = arrays["features"].shape[0]
-    if "block_id" in arrays:
-        blocks = arrays["block_id"]
+    strategy = str(strategy).lower().strip()
+    if strategy == "pose_group":
+        rng = np.random.default_rng(seed)
+        groups = np.arange(n, dtype=np.int64)
+        if "voxel_id" in arrays and "orient_id" in arrays:
+            voxel = np.asarray(arrays["voxel_id"], dtype=np.int64)
+            orient = np.asarray(arrays["orient_id"], dtype=np.int64)
+            valid = voxel >= 0
+            groups[valid] = voxel[valid] * 1_000_000 + orient[valid]
+            if "block_id" in arrays:
+                block = np.asarray(arrays["block_id"], dtype=np.int64)
+                groups[~valid] = block[~valid] * 1_000_000 + orient[~valid]
+        if "boundary_id" in arrays:
+            boundary_id = np.asarray(arrays["boundary_id"], dtype=np.int64)
+            is_stencil = boundary_id >= 0
+            # Namespace stencil groups away from pose groups and keep each
+            # complete local neighborhood in one side of the split.
+            groups[is_stencil] = np.iinfo(np.int64).min // 2 + boundary_id[is_stencil]
+        uniq = np.unique(groups)
+        rng.shuffle(uniq)
+        n_val_g = max(1, int(len(uniq) * val_frac))
+        is_val = np.isin(groups, uniq[:n_val_g])
+        val_idx = np.flatnonzero(is_val)
+        tr_idx = np.flatnonzero(~is_val)
+    elif strategy == "spatial_block" and "block_id" in arrays:
+        blocks = np.asarray(arrays["block_id"]).copy()
+        # Keep every local clearance curve in one split. The closest sampled
+        # pose to its boundary selects that curve's spatial block.
+        if "boundary_id" in arrays:
+            boundary_id = np.asarray(arrays["boundary_id"])
+            signed_m = np.asarray(arrays.get("boundary_signed_m", np.full(n, np.nan)))
+            signed_r = np.asarray(arrays.get("boundary_signed_rot_deg", np.full(n, np.nan)))
+            signed_abs = np.where(np.isfinite(signed_m), np.abs(signed_m), np.abs(signed_r))
+            for group in np.unique(boundary_id[boundary_id >= 0]):
+                ix = np.flatnonzero(boundary_id == group)
+                anchor = ix[int(np.nanargmin(signed_abs[ix]))]
+                blocks[ix] = blocks[anchor]
         uniq = np.unique(blocks)
         rng = np.random.default_rng(seed)
         rng.shuffle(uniq)
@@ -335,10 +415,12 @@ def _block_split(arrays, val_frac, seed):
             idx = rng.permutation(n)
             n_val = max(1, int(n * val_frac))
             val_idx, tr_idx = idx[:n_val], idx[n_val:]
-    else:
+    elif strategy == "spatial_block":
         idx = np.random.default_rng(seed).permutation(n)
         n_val = max(1, int(n * val_frac))
         val_idx, tr_idx = idx[:n_val], idx[n_val:]
+    else:
+        raise ValueError(f"unsupported split_strategy={strategy!r}")
 
     def take(ix):
         out = {}
@@ -513,7 +595,11 @@ def _compute_loss(reach_logit, margin, q, y, m_gt, q_gt, mw, cw, cfg: TrainConfi
         L_cls = torch.nn.functional.binary_cross_entropy_with_logits(reach_logit, y)
     mask = mw > 0
     if mask.any() and cfg.lambda_margin > 0:
-        L_m = torch.nn.functional.smooth_l1_loss(margin[mask], m_gt[mask], beta=0.1)
+        per_margin = torch.nn.functional.smooth_l1_loss(
+            margin[mask], m_gt[mask], beta=0.1, reduction="none"
+        )
+        weights = mw[mask]
+        L_m = (per_margin * weights).sum() / weights.sum().clamp_min(1.0)
     else:
         L_m = margin.new_zeros(())
     pos = y >= 0.5
@@ -588,6 +674,21 @@ def _best_iou_threshold(y: np.ndarray, p: np.ndarray) -> tuple[float, float]:
     return best_t, best_iou
 
 
+def _best_balanced_threshold(y: np.ndarray, p: np.ndarray) -> tuple[float, float]:
+    gt = y >= 0.5
+    if not gt.any() or gt.all():
+        return 0.5, 0.5
+    best_t, best_bal = 0.5, -1.0
+    for t in np.linspace(0.01, 0.99, 99):
+        pred = p >= t
+        tpr = float(pred[gt].mean())
+        tnr = float((~pred[~gt]).mean())
+        bal = 0.5 * (tpr + tnr)
+        if bal > best_bal:
+            best_bal, best_t = bal, float(t)
+    return best_t, best_bal
+
+
 def _make_fixed_eval_indices(arrays: dict, n_eval: int, seed: int) -> np.ndarray:
     n = arrays["features"].shape[0]
     rng = np.random.default_rng(seed)
@@ -616,7 +717,7 @@ def _make_fixed_eval_indices(arrays: dict, n_eval: int, seed: int) -> np.ndarray
 
 
 def _split_val_blocks(val: dict, frac: float, seed: int) -> tuple[dict, dict]:
-    """Split validation arrays into fixed calibration / test by block_id."""
+    """Split validation into fixed calibration/test sets without local leakage."""
     n = val["features"].shape[0]
 
     def take(ix):
@@ -629,13 +730,17 @@ def _split_val_blocks(val: dict, frac: float, seed: int) -> tuple[dict, dict]:
         return out
 
     if "block_id" in val:
-        blocks = val["block_id"]
-        uniq = np.unique(blocks)
+        groups = np.asarray(val["block_id"], dtype=np.int64).copy()
+        if "boundary_id" in val:
+            boundary_id = np.asarray(val["boundary_id"], dtype=np.int64)
+            is_stencil = boundary_id >= 0
+            groups[is_stencil] = np.iinfo(np.int64).min // 2 + boundary_id[is_stencil]
+        uniq = np.unique(groups)
         rng = np.random.default_rng(seed)
         rng.shuffle(uniq)
         n_cal = max(1, int(len(uniq) * frac))
-        cal_blocks = set(uniq[:n_cal].tolist())
-        is_cal = np.array([int(b) in cal_blocks for b in blocks], dtype=bool)
+        cal_groups = set(uniq[:n_cal].tolist())
+        is_cal = np.array([int(g) in cal_groups for g in groups], dtype=bool)
         cal_idx, test_idx = np.flatnonzero(is_cal), np.flatnonzero(~is_cal)
         if cal_idx.size == 0 or test_idx.size == 0:
             idx = rng.permutation(n)
@@ -727,17 +832,29 @@ def _eval_calib_test(
     calib_pred = net.score_features_np(val_calib["features"][calib_idx])
     y_cal = val_calib[_y_key(val_calib)][calib_idx]
     t_star, calib_best = _best_iou_threshold(y_cal, calib_pred["p_reach"])
+    t_bal, calib_bal = _best_balanced_threshold(y_cal, calib_pred["p_reach"])
 
     # Test @ 0.5
     m05, y_te, p_te = _eval_fixed(net, val_test, test_idx, threshold=0.5)
     # Test @ calibrated
     mcal, _, _ = _eval_fixed(net, val_test, test_idx, threshold=t_star)
+    mbal, y_bal, p_bal = _eval_fixed(net, val_test, test_idx, threshold=t_bal)
+    gt_bal = y_bal >= 0.5
+    pred_bal = p_bal >= t_bal
+    tpr_bal = float(pred_bal[gt_bal].mean()) if gt_bal.any() else 0.0
+    tnr_bal = float((~pred_bal[~gt_bal]).mean()) if (~gt_bal).any() else 0.0
 
     out = {
         "iou_t05": float(m05["iou"]),
         "iou_calibrated": float(mcal["iou"]),
         "val_threshold": float(t_star),
         "calib_best_iou": float(calib_best),
+        "balanced_accuracy": 0.5 * (tpr_bal + tnr_bal),
+        "balanced_threshold": float(t_bal),
+        "calib_best_balanced_accuracy": float(calib_bal),
+        "reachable_recall_balanced": tpr_bal,
+        "unreachable_specificity_balanced": tnr_bal,
+        "iou_balanced_threshold": float(mbal["iou"]),
         "pr_auc": float(m05["pr_auc"]),
         "accuracy": float(m05["accuracy"]),
         "boundary_margin_mae": float(m05["boundary_margin_mae"]),
@@ -786,7 +903,7 @@ def train_point_field(cfg: TrainConfig) -> dict:
     assert_gt_contract(arrays)
 
     yk, qk, mk = _y_key(arrays), _q_key(arrays), _m_key(arrays)
-    train, val = _block_split(arrays, cfg.val_frac, cfg.seed)
+    train, val = _block_split(arrays, cfg.val_frac, cfg.seed, cfg.split_strategy)
     device = torch.device(cfg.device or ("cuda" if torch.cuda.is_available() else "cpu"))
     wb_run = _maybe_init_wandb(cfg)
 
@@ -841,8 +958,16 @@ def train_point_field(cfg: TrainConfig) -> dict:
             tau_m=cfg.tau_m,
             lambda_q=cfg.lambda_q_score,
             use_physical_pe=cfg.use_physical_pe,
+            position_encoder=cfg.position_encoder,
+            hash_levels=cfg.hash_levels,
+            hash_features_per_level=cfg.hash_features_per_level,
+            hash_log2_size=cfg.hash_log2_size,
+            hash_base_resolution=cfg.hash_base_resolution,
+            hash_max_resolution=cfg.hash_max_resolution,
             p_scale_m=cfg.p_scale_m,
             p_wavelengths_m=cfg.p_wavelengths_m,
+            couple_reach_to_margin=cfg.couple_reach_to_margin,
+            clearance_logit_scale=cfg.clearance_logit_scale,
         )
 
     model = _new_model().to(device)
@@ -854,6 +979,8 @@ def train_point_field(cfg: TrainConfig) -> dict:
     def _parameter_groups():
         src = _model_source()
         trunk_params = list(src.stem.parameters())
+        if src.hash_encoder is not None:
+            trunk_params.extend(list(src.hash_encoder.parameters()))
         for block in src.blocks:
             trunk_params.extend(list(block.parameters()))
         cls_params = list(src.head_cls.parameters())
@@ -876,6 +1003,14 @@ def train_point_field(cfg: TrainConfig) -> dict:
             "hidden": cfg.hidden,
             "depth": cfg.depth,
             "use_physical_pe": cfg.use_physical_pe,
+            "position_encoder": cfg.position_encoder,
+            "hash_levels": cfg.hash_levels,
+            "hash_features_per_level": cfg.hash_features_per_level,
+            "hash_log2_size": cfg.hash_log2_size,
+            "hash_base_resolution": cfg.hash_base_resolution,
+            "hash_max_resolution": cfg.hash_max_resolution,
+            "couple_reach_to_margin": cfg.couple_reach_to_margin,
+            "clearance_logit_scale": cfg.clearance_logit_scale,
             "feature_kind": feature_spec.kind,
         }
         for key, expected_value in expected.items():
@@ -899,11 +1034,13 @@ def train_point_field(cfg: TrainConfig) -> dict:
 
         if cfg.phase == "B":
             src = _model_source()
-            src.head_margin.reset_parameters()
+            if not cfg.couple_reach_to_margin:
+                src.head_margin.reset_parameters()
+                torch.nn.init.zeros_(src.head_margin.bias)
             src.head_q.reset_parameters()
-            torch.nn.init.zeros_(src.head_margin.bias)
             torch.nn.init.zeros_(src.head_q.bias)
-            print("[train] reset margin/q heads for Phase B aux warm-up", flush=True)
+            reset = "q only (coupled clearance preserved)" if cfg.couple_reach_to_margin else "margin/q"
+            print(f"[train] reset {reset} for Phase B aux warm-up", flush=True)
 
             warm_wrapper = NeuralIRD(model, device=str(device))
             warm_metrics = _eval_calib_test(
@@ -979,8 +1116,16 @@ def train_point_field(cfg: TrainConfig) -> dict:
             "tau_m": cfg.tau_m,
             "lambda_q": cfg.lambda_q_score,
             "use_physical_pe": cfg.use_physical_pe,
+            "position_encoder": cfg.position_encoder,
+            "hash_levels": cfg.hash_levels,
+            "hash_features_per_level": cfg.hash_features_per_level,
+            "hash_log2_size": cfg.hash_log2_size,
+            "hash_base_resolution": cfg.hash_base_resolution,
+            "hash_max_resolution": cfg.hash_max_resolution,
             "p_wavelengths_m": waves,
             "p_scale_m": cfg.p_scale_m,
+            "couple_reach_to_margin": cfg.couple_reach_to_margin,
+            "clearance_logit_scale": cfg.clearance_logit_scale,
             "aabb": {"lo": aabb_lo.tolist(), "hi": aabb_hi.tolist()},
         }
 
@@ -1081,6 +1226,10 @@ def train_point_field(cfg: TrainConfig) -> dict:
 
             wrapper = NeuralIRD(_model_source(), device=str(device))
             val_m = _eval_calib_test(wrapper, val_calib, val_test, calib_idx, test_idx)
+            if cfg.selection_metric in {"curve", "balanced_curve"}:
+                from ird_playground.neural.metrics import continuous_boundary_crossing_error
+
+                val_m.update(continuous_boundary_crossing_error(wrapper, val))
             train_idx_fixed = _make_fixed_eval_indices(train, min(8192, cfg.val_eval_n // 4), cfg.seed + 99)
             train_m, _, _ = _eval_fixed(wrapper, train, train_idx_fixed, threshold=0.5)
             train_m["pr_auc"] = _pr_auc(
@@ -1258,8 +1407,12 @@ def differentiability_smoke(net: NeuralIRD) -> float:
     x = torch.zeros(1, in_dim, dtype=torch.float32, device=net.device)
     with torch.no_grad():
         x[0, 0] = 0.2
-        x[0, 5] = 1.0
-        if in_dim >= 8:
+        if in_dim == 9:
+            x[0, 3] = 1.0  # first rotation column
+            x[0, 7] = 1.0  # second rotation column
+        else:
+            x[0, 5] = 1.0
+        if in_dim == 8:
             x[0, 6] = 1.0  # cosα
             x[0, 7] = 0.0  # sinα
     x = x.detach().requires_grad_(True)

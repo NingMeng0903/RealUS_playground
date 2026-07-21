@@ -1,0 +1,11 @@
+out: data/ird/gpu_pose_production.npz
+sampling:
+  n_fk_positive: 50000
+  n_pose_queries: 450000
+  n_ik_seeds: 16
+  near_query_fraction: 0.35
+  batch_size: 4096
+  ik_max_iter: 100
+  seed: 42
+  device: cuda
+  log_every_batches: 10

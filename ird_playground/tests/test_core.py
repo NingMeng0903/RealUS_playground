@@ -49,6 +49,19 @@ def test_delta_T_features_dim():
     assert np.allclose(f[3:], R[:, 2], atol=1e-6)
 
 
+def test_delta_T_rot6d_features_retain_full_orientation():
+    from scipy.spatial.transform import Rotation
+    from ird_playground.probe.se3 import rot6d_features_from_delta_T
+
+    R = Rotation.from_euler("xyz", [0.2, -0.4, 0.7]).as_matrix()
+    T = mat4_from_Rt(R, [0.3, 0.1, 0.2])
+    f = rot6d_features_from_delta_T(delta_T_tcp_inv_base(T))
+    assert f.shape == (9,)
+    assert np.allclose(f[:3], T[:3, 3], atol=1e-6)
+    assert np.allclose(f[3:6], R[:, 0], atol=1e-6)
+    assert np.allclose(f[6:9], R[:, 1], atol=1e-6)
+
+
 def test_softmin_approaches_min():
     v = np.array([0.9, 0.2, 0.8])
     s = softmin(v, tau=1e-4)
@@ -100,62 +113,28 @@ def test_optimization_cost_uses_reach_logit():
     __import__("importlib").util.find_spec("torch") is None,
     reason="torch not installed",
 )
-def test_lambda_rail_ad_and_robust_region():
+def test_full_pose_and_rail_query_keep_autograd():
     import torch
-    from ird_playground.ird.query_base import cost_vs_lambda_rail_torch, lambda_rail_grad_ad_fd
+    from ird_playground.ird.query_base import cost_from_tcp_and_rail_torch
     from ird_playground.neural.model import NeuralIRD, NeuralIRDPoint
-    from ird_playground.region.local_region import local_region_cost, make_joint_sobol_ellipsoid_cone
-    from ird_playground.traj.manifold import SyntheticVesselSkinManifold
 
-    model = NeuralIRDPoint(hidden=64, depth=2, num_freqs_u=2, use_physical_pe=False)
-    net = NeuralIRD(model, device="cpu")
-    man = SyntheticVesselSkinManifold()
-
-    g = lambda_rail_grad_ad_fd(net, man, n=6, seed=0)
-    assert g["lambda_ad_fd_rel"] < 0.35
-    assert g["rail_ad_fd_rel"] < 0.35
-
-    lam = torch.tensor(0.15, requires_grad=True)
-    rail = torch.tensor(0.0, requires_grad=True)
-    cost_vs_lambda_rail_torch(net, man, lam, rail)["cost"].backward()
-    assert lam.grad is not None and abs(float(lam.grad)) + abs(float(rail.grad)) > 0
-
-    eps = make_joint_sobol_ellipsoid_cone(32, seed=0, device="cpu")
-    assert eps.shape == (32, 5)
-    assert torch.allclose(eps[0], torch.zeros(5))  # center included
-    N = 8
-    lam_c = torch.linspace(0.05, 0.35, N, requires_grad=True)
-    rail_c = torch.zeros(N, requires_grad=True)
-    out = local_region_cost(net, lam_c, rail_c, man, local_eps=eps)
-    assert out["point_cost"].shape == (N, 32)
+    net = NeuralIRD(
+        NeuralIRDPoint(feature_kind="se3_9d", hidden=32, depth=2, num_freqs_u=1),
+        device="cpu",
+    )
+    T_tcp = torch.eye(4, dtype=torch.float32, requires_grad=True)
+    rail = torch.tensor(0.03, dtype=torch.float32, requires_grad=True)
+    out = cost_from_tcp_and_rail_torch(net, T_tcp, rail)
     out["cost"].backward()
-    assert float(lam_c.grad.abs().sum()) > 0
+    assert out["features"].shape == (9,)
+    assert T_tcp.grad is not None and torch.isfinite(T_tcp.grad).all()
+    assert rail.grad is not None and torch.isfinite(rail.grad)
 
 
 @pytest.mark.skipif(
     __import__("importlib").util.find_spec("torch") is None,
     reason="torch not installed",
 )
-def test_p1_smoke():
-    from ird_playground.neural.model import NeuralIRD, NeuralIRDPoint
-    from ird_playground.traj.manifold import SyntheticVesselSkinManifold
-    from ird_playground.traj.p1_optimize import P1Config, optimize_p1_lambda_rail
-
-    net = NeuralIRD(
-        NeuralIRDPoint(hidden=64, depth=2, num_freqs_u=2, use_physical_pe=False),
-        device="cpu",
-    )
-    man = SyntheticVesselSkinManifold()
-    res = optimize_p1_lambda_rail(
-        net,
-        man,
-        cfg=P1Config(n_ctrl=5, n_knots_eval=12, region_k=16, steps=5, lr=1e-2),
-    )
-    assert len(res["history"]) == 5
-    assert np.isfinite(res["final_loss"])
-    assert res["lambda"].shape == (12,)
-
-
 @pytest.mark.skipif(
     __import__("importlib").util.find_spec("torch") is None,
     reason="torch not installed",
@@ -234,11 +213,11 @@ def test_load_neural_point_yaml():
 
     cfg_cont = load_train_config(root / "configs/train_continuous_pilot.yaml", root=root)
     assert cfg_cont.p_wavelengths_m is not None
-    assert min(cfg_cont.p_wavelengths_m) <= 0.0015
-    assert cfg_cont.early_stop_patience == 12
+    assert min(cfg_cont.p_wavelengths_m) == pytest.approx(0.006)
+    assert cfg_cont.early_stop_patience == 20
+    assert cfg_cont.selection_metric == "curve"
 
     # missing GT must hard-fail (not silently synthetic)
-    import pytest
     import yaml
 
     bad = root / "configs" / "_tmp_bad_gt.yaml"
@@ -318,6 +297,7 @@ def test_continuous_fk_ik_gt_smoke():
         ContinuousGtConfig(
             n_fk_interior=8,
             n_boundary_rays=6,
+            rotation_ray_fraction=0.0,
             n_random_seeds=1,
             ray_max_pos_m=0.20,
             ray_max_rot_deg=20.0,
@@ -328,32 +308,72 @@ def test_continuous_fk_ik_gt_smoke():
         )
     )
     assert_gt_contract(arrays)
-    assert meta["n_boundary_rays_accepted"] > 0
-    assert arrays["label_kind"][0] == 4
+    assert meta["n_position_curves"] > 0
+    assert arrays["label_kind"][0] == 5
     assert "boundary_id" in arrays and "boundary_signed_m" in arrays
+    assert set(np.unique(arrays["clearance_kind"])).issuperset({-1, 0})
+    for boundary_id in np.unique(arrays["boundary_id"]):
+        if boundary_id < 0:
+            continue
+        ix = np.flatnonzero(arrays["boundary_id"] == boundary_id)
+        assert np.unique(arrays["features"][ix], axis=0).shape[0] == len(ix)
 
 
-def test_dmp_task_requires_explicit_calibration(tmp_path):
-    from ird_playground.traj.dmp_task import load_dmp_task_spec, load_task_tcp_poses
-    import yaml
+@pytest.mark.skipif(
+    __import__("importlib").util.find_spec("pinocchio") is None
+    or __import__("importlib").util.find_spec("torch") is None,
+    reason="pinocchio and torch are required",
+)
+def test_torch_rm75_fk_and_batched_ik_match_pinocchio():
+    import pinocchio as pin
+    import torch
+    from ird_playground.ird.continuous_gt import _reachability_modules
+    from ird_playground.ird.torch_kinematics import TorchRM75Kinematics
 
-    traj = tmp_path / "traj.npz"
-    np.savez(
-        traj,
-        s=np.array([0.0, 1.0]),
-        p_target=np.array([[0.0, 0.0, 0.0], [0.1, 0.0, 0.0]]),
-        r_target=np.repeat(np.eye(3)[None, :, :], 2, axis=0),
+    *_, build_locked_rail_model = _reachability_modules()
+    lm = build_locked_rail_model()
+    kin = TorchRM75Kinematics.from_locked_model(lm, dtype=torch.float64)
+    rng = np.random.default_rng(11)
+    Q = lm.q_lower + rng.random((5, 7)) * (lm.q_upper - lm.q_lower)
+    p_t, R_t = kin.fk(torch.as_tensor(Q, dtype=torch.float64))
+    for i, q in enumerate(Q):
+        pin.forwardKinematics(lm.model, lm.data, q)
+        pin.updateFramePlacement(lm.model, lm.data, lm.tcp_id)
+        M = lm.data.oMf[lm.tcp_id]
+        assert np.allclose(p_t[i].numpy(), M.translation, atol=1e-9)
+        assert np.allclose(R_t[i].numpy(), M.rotation, atol=1e-9)
+
+    target_q = torch.as_tensor(Q[:3], dtype=torch.float64)
+    target_p, target_R = kin.fk(target_q)
+    q0 = (target_q + 0.08).clamp(kin.q_lower, kin.q_upper)
+    result = kin.ik_dls(target_p, target_R, q0, max_iter=100)
+    assert bool(result.ok.all())
+
+
+def test_collision_checked_gpu_ik_rejects_colliding_solutions():
+    import torch
+    from ird_playground.ird.torch_kinematics import BatchIkResult, select_collision_free_ik
+
+    class FakeCollisionFilter:
+        def free_mask(self, q):
+            # Candidate is collision-free only when joint 1 is non-negative.
+            return np.asarray(q)[:, 0] >= 0.0
+
+    q = torch.zeros(2, 3, 7)
+    q[0, :, 0] = torch.tensor([-0.2, 0.1, 0.3])
+    q[1, :, 0] = torch.tensor([-0.3, -0.2, -0.1])
+    ok = torch.ones(2, 3, dtype=torch.bool)
+    pos = torch.tensor([[1e-5, 5e-5, 1e-4], [1e-5, 2e-5, 3e-5]])
+    rot = torch.zeros_like(pos)
+    checked = select_collision_free_ik(
+        BatchIkResult(q=q, ok=ok, pos_error_m=pos, rot_error_rad=rot, iterations=1),
+        FakeCollisionFilter(),
     )
-    cfg = tmp_path / "task.yaml"
-    cfg.write_text(yaml.safe_dump({"trajectory_npz": str(traj)}), encoding="utf-8")
-    with pytest.raises(ValueError, match="T_arm_base_from_patient"):
-        load_dmp_task_spec(cfg)
-    cfg.write_text(
-        yaml.safe_dump({"trajectory_npz": str(traj), "T_arm_base_from_patient": np.eye(4).tolist()}),
-        encoding="utf-8",
-    )
-    phase, poses = load_task_tcp_poses(load_dmp_task_spec(cfg))
-    assert phase.shape == (2,) and poses.shape == (2, 4, 4)
+    assert checked.reachable.tolist() == [True, False]
+    assert int(checked.seed_index[0]) == 1
+    assert torch.isnan(checked.q[1]).all()
+
+
 
 
 def test_feature_spec_and_warm_start_mismatch(tmp_path):
@@ -366,6 +386,8 @@ def test_feature_spec_and_warm_start_mismatch(tmp_path):
     assert make_feature_spec("pu6").dim == 6
     assert make_feature_spec("pu_roll8").dim == 8
     assert make_feature_spec("pu_roll8").use_roll
+    assert make_feature_spec("se3_9d").dim == 9
+    assert make_feature_spec("se3_9d").use_rot6d
 
     m6 = NeuralIRDPoint(feature_kind="pu6", hidden=64, depth=2)
     m8 = NeuralIRDPoint(feature_kind="pu_roll8", hidden=64, depth=2)
@@ -433,6 +455,91 @@ def test_phase_b_freeze_groups():
     for p in trunk + cls:
         p.requires_grad = True
     assert all(p.requires_grad for p in model.stem.parameters())
+
+
+def test_coupled_clearance_is_reachability_field():
+    import torch
+    from ird_playground.neural.model import NeuralIRDPoint
+
+    model = NeuralIRDPoint(
+        feature_kind="pu6",
+        hidden=32,
+        depth=2,
+        couple_reach_to_margin=True,
+        clearance_logit_scale=2.5,
+    )
+    x = torch.tensor([[0.2, 0.0, 0.3, 0.0, 0.0, 1.0]])
+    logit, margin, _q, _score = model(x)
+    assert torch.allclose(logit, 2.5 * margin)
+
+
+def test_balanced_curve_selection_and_calibration_split_keep_boundary_groups():
+    from ird_playground.neural.train import (
+        TrainConfig,
+        _split_val_blocks,
+        checkpoint_selection_score,
+        validate_phase_config,
+    )
+
+    cfg = TrainConfig(phase="A", selection_metric="balanced_curve")
+    validate_phase_config(cfg)
+    metrics = {
+        "balanced_accuracy": 0.8,
+        "continuous_boundary_crossing_straddle_rate_m": 0.9,
+        "continuous_boundary_crossing_straddle_rate_deg": 0.7,
+        "continuous_boundary_direction_agreement_m": 0.95,
+        "continuous_boundary_direction_agreement_deg": 0.85,
+        "continuous_boundary_crossing_mae_m": 0.001,
+        "continuous_boundary_crossing_mae_deg": 1.0,
+    }
+    assert checkpoint_selection_score(cfg, metrics) == pytest.approx(1.3)
+
+    boundary_id = np.repeat(np.arange(20, dtype=np.int64), 6)
+    arrays = {
+        "features": np.zeros((len(boundary_id), 9), dtype=np.float32),
+        "block_id": np.tile(np.arange(6, dtype=np.int64), 20),
+        "boundary_id": boundary_id,
+    }
+    calib, test = _split_val_blocks(arrays, 0.5, seed=3)
+    calib_groups = set(calib["boundary_id"].tolist())
+    test_groups = set(test["boundary_id"].tolist())
+    assert calib_groups.isdisjoint(test_groups)
+
+    warm = TrainConfig(
+        phase="A",
+        selection_metric="balanced_curve",
+        init_checkpoint="prior_reachability.pt",
+    )
+    validate_phase_config(warm)
+
+
+def test_hash_grid_point_field_is_continuous_and_differentiable():
+    import torch
+    from ird_playground.neural.model import NeuralIRDPoint
+
+    model = NeuralIRDPoint(
+        feature_kind="se3_9d",
+        position_encoder="hash_grid",
+        hash_levels=3,
+        hash_features_per_level=2,
+        hash_log2_size=8,
+        hash_base_resolution=4,
+        hash_max_resolution=16,
+        hidden=32,
+        depth=2,
+        num_freqs_u=1,
+    )
+    x = torch.tensor(
+        [[0.2, 0.0, 0.3, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0]],
+        requires_grad=True,
+    )
+    margin = model(x)[1]
+    margin.sum().backward()
+    assert x.grad is not None and torch.isfinite(x.grad).all()
+    with torch.no_grad():
+        y0 = model(x)[1]
+        y1 = model(x + torch.tensor([[1e-5, 0, 0, 0, 0, 0, 0, 0, 0.0]]))[1]
+    assert torch.max(torch.abs(y1 - y0)) < 0.1
 
 
 def test_ird_viz_gt_only(tmp_path):

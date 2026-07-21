@@ -1,24 +1,33 @@
 data:
-  gt_npz: data/ird/continuous_ik_1mm.npz
+  gt_npz: data/ird/continuous_ik_curves.npz
   val_frac: 0.20
+  split_strategy: pose_group
 
 model:
-  feature_kind: pu6
+  feature_kind: se3_9d
+  position_encoder: hash_grid
+  hash_levels: 12
+  hash_features_per_level: 2
+  hash_log2_size: 18
+  hash_base_resolution: 8
+  hash_max_resolution: 256
   num_freqs: 6
-  num_freqs_u: 5
+  num_freqs_u: 3
   hidden: 256
   depth: 5
   use_physical_pe: true
   p_scale_m: 1.0
-  p_wavelengths_m: [0.48, 0.24, 0.12, 0.06, 0.03, 0.015, 0.006, 0.003, 0.0015]
+  p_wavelengths_m: [0.48, 0.24, 0.12, 0.06, 0.03, 0.015, 0.006]
+  couple_reach_to_margin: true
+  clearance_logit_scale: 3.0
 
 training:
   phase: A
-  selection_metric: iou
+  selection_metric: curve
   seed: 42
-  device: cpu
+  device: cuda
   epochs: 60
-  early_stop_patience: 10
+  early_stop_patience: 20
   early_stop_min_delta: 0.002
   batch_size: 1024
   num_workers: 0
@@ -39,13 +48,13 @@ training:
 
 loss:
   lambda_cls: 1.0
-  lambda_margin: 0.0
+  lambda_margin: 1.0
   lambda_q: 0.0
 
 io:
-  checkpoint: data/checkpoints/continuous_1mm/phase_a/selected.pt
-  checkpoint_dir: data/checkpoints/continuous_1mm/phase_a
-  report: data/reports/train_continuous_1mm_phase_a.json
+  checkpoint: data/checkpoints/continuous_curves/phase_a/selected.pt
+  checkpoint_dir: data/checkpoints/continuous_curves/phase_a
+  report: data/reports/train_continuous_curves_phase_a.json
 
 pass:
   mae_max: 1.0
@@ -57,6 +66,7 @@ pass:
   rail_sign_agree_min: 0.80
   region_improve_min: 0.0
   continuous_boundary_mae_max_m: 0.001
+  continuous_boundary_angle_mae_max_deg: 1.0
 
 wandb:
   enable: false

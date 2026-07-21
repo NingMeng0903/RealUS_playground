@@ -8,11 +8,18 @@
 data:
   gt_npz: data/ird/gt_samples_1p5cm_probe.npz
   val_frac: 0.15
+  split_strategy: pose_group
 
 model:
   feature_kind: pu6
+  position_encoder: hash_grid
+  hash_levels: 12
+  hash_features_per_level: 2
+  hash_log2_size: 18
+  hash_base_resolution: 8
+  hash_max_resolution: 256
   num_freqs: 6
-  num_freqs_u: 5
+  num_freqs_u: 3
   hidden: 256
   depth: 5
   tau_m: 1.0
@@ -44,7 +51,7 @@ training:
   init_checkpoint: null
   freeze_backbone_cls_epochs: 0
 
-  save_freq: 10
+  save_freq: 0
   val_eval_n: 65536
   val_calib_frac: 0.5
   train_hard_y: true
@@ -79,7 +86,7 @@ pass:
   region_improve_min: 0.0
 
 wandb:
-  enable: true
+  enable: false
   project: neural-ird-rm75
   entity: lpei82060-technical-university-of-munich
   mode: online

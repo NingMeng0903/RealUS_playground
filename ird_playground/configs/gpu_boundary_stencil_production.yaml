@@ -1,0 +1,10 @@
+out: data/ird/gpu_pose_stencils_production.npz
+sampling:
+  base_gt_npz: data/ird/gpu_pose_production.npz
+  n_position_boundaries: 46000
+  n_rotation_boundaries: 46000
+  n_ik_seeds: 12
+  batch_size: 512
+  bisection_iterations: 12
+  device: cuda
+  log_every_batches: 5

@@ -1,8 +1,4 @@
-"""Query-time base pose from rail_y + full SE(3) composition (torch AD).
-
-Optimization variables are (λ, r). T_tcp(λ) must stay a Tensor — never
-np.asarray — so ∂C/∂λ and ∂C/∂r both survive.
-"""
+"""Differentiable relative-pose and rail queries for Neural IRD."""
 
 from __future__ import annotations
 
@@ -98,6 +94,15 @@ def features_from_delta_T_torch(dT: "torch.Tensor") -> "torch.Tensor":
     return torch.cat([p, u], dim=-1)
 
 
+def rot6d_features_from_delta_T_torch(dT: "torch.Tensor") -> "torch.Tensor":
+    """(...,4,4) -> (...,9) full-pose ``[p,R[:,0],R[:,1]]`` features."""
+    R_delta = dT[..., :3, :3]
+    t_delta = dT[..., :3, 3]
+    R_base_tcp = R_delta.transpose(-1, -2)
+    p = -(R_base_tcp @ t_delta.unsqueeze(-1)).squeeze(-1)
+    return torch.cat([p, R_base_tcp[..., :, 0], R_base_tcp[..., :, 1]], dim=-1)
+
+
 def T_base_from_rail_y_torch(
     rail_y: "torch.Tensor",
     *,
@@ -160,7 +165,11 @@ def cost_from_tcp_and_rail_torch(
         T_base = T_base.expand(T_tcp.shape[0], 4, 4)
 
     dT = invert_T_torch(T_tcp) @ T_base
-    feat = features_from_delta_T_torch(dT)
+    feat = (
+        rot6d_features_from_delta_T_torch(dT)
+        if neural_ird.model.feature_spec.use_rot6d
+        else features_from_delta_T_torch(dT)
+    )
     if feat.ndim == 1:
         feat = feat.unsqueeze(0)
         squeeze = True
@@ -220,34 +229,6 @@ def score_vs_rail_y_torch(
     return out["score"]
 
 
-def cost_vs_lambda_rail_torch(
-    neural_ird,
-    manifold,
-    lam: "torch.Tensor",
-    rail: "torch.Tensor",
-    *,
-    T_world_rail: np.ndarray | None = None,
-    T_rail_base0: np.ndarray | None = None,
-    cost_kwargs: dict | None = None,
-) -> dict[str, "torch.Tensor"]:
-    """C(λ, r) with T_tcp = G(λ) from the vessel/skin manifold (full AD)."""
-    if torch is None:
-        raise ImportError("torch required")
-    if hasattr(manifold, "sample_torch"):
-        T_tcp = manifold.sample_torch(lam, dtype=torch.float32, device=neural_ird.device)
-    else:
-        raise TypeError("manifold must implement sample_torch for AD w.r.t. λ")
-    return cost_from_tcp_and_rail_torch(
-        neural_ird,
-        T_tcp,
-        rail,
-        T_world_rail=T_world_rail,
-        T_rail_base0=T_rail_base0,
-        use_optimization_cost=True,
-        cost_kwargs=cost_kwargs,
-    )
-
-
 def rail_y_grad_ad_fd(
     neural_ird,
     *,
@@ -305,62 +286,4 @@ def rail_y_grad_ad_fd(
         "rail_ad_fd_rel": float(np.median(rels)),
         "rail_sign_agree": float(np.mean(signs)),
         "rail_n": float(n),
-    }
-
-
-def lambda_rail_grad_ad_fd(
-    neural_ird,
-    manifold,
-    *,
-    n: int = 16,
-    lam0: float = 0.15,
-    rail0: float = 0.0,
-    eps_lam: float = 1e-3,
-    eps_rail: float = 1e-3,
-    seed: int = 0,
-) -> dict[str, float]:
-    """AD vs FD for ∂C/∂λ and ∂C/∂r on the 2D decision manifold."""
-    if torch is None:
-        raise ImportError("torch required")
-    rng = np.random.default_rng(seed)
-    rel_l, rel_r, sign_l, sign_r = [], [], [], []
-    neural_ird.model.eval()
-    for _ in range(n):
-        lam_v = float(lam0 + rng.uniform(-0.05, 0.05))
-        rail_v = float(rail0 + rng.uniform(-0.05, 0.05))
-        lam = torch.tensor(lam_v, dtype=torch.float32, device=neural_ird.device, requires_grad=True)
-        rail = torch.tensor(rail_v, dtype=torch.float32, device=neural_ird.device, requires_grad=True)
-        c = cost_vs_lambda_rail_torch(neural_ird, manifold, lam, rail)["cost"]
-        c.backward()
-        g_lam_ad = float(lam.grad.item())
-        g_rail_ad = float(rail.grad.item())
-
-        with torch.no_grad():
-            def _c(lv, rv):
-                return float(
-                    cost_vs_lambda_rail_torch(
-                        neural_ird,
-                        manifold,
-                        torch.tensor(lv, dtype=torch.float32, device=neural_ird.device),
-                        torch.tensor(rv, dtype=torch.float32, device=neural_ird.device),
-                    )["cost"].item()
-                )
-
-            g_lam_fd = (_c(lam_v + eps_lam, rail_v) - _c(lam_v - eps_lam, rail_v)) / (2 * eps_lam)
-            g_rail_fd = (_c(lam_v, rail_v + eps_rail) - _c(lam_v, rail_v - eps_rail)) / (2 * eps_rail)
-
-        for g_ad, g_fd, rels, signs in (
-            (g_lam_ad, g_lam_fd, rel_l, sign_l),
-            (g_rail_ad, g_rail_fd, rel_r, sign_r),
-        ):
-            denom = max(abs(g_fd), abs(g_ad), 1e-6)
-            rels.append(abs(g_ad - g_fd) / denom)
-            signs.append(1.0 if np.sign(g_ad) == np.sign(g_fd) or abs(g_fd) < 1e-8 else 0.0)
-
-    return {
-        "lambda_ad_fd_rel": float(np.median(rel_l)),
-        "rail_ad_fd_rel": float(np.median(rel_r)),
-        "lambda_sign_agree": float(np.mean(sign_l)),
-        "rail_sign_agree": float(np.mean(sign_r)),
-        "n": float(n),
     }

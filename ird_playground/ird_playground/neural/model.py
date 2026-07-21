@@ -1,7 +1,7 @@
-"""Neural IRD v6: f_θ(p,u) → (reach_logit, margin, q).
+"""Neural IRD relative-pose field: f_θ(p,R6D) → (clearance, q).
 
-Physical-wavelength Fourier PE on position (independent of AABB span);
-Fourier PE on tool axis.
+Physical-wavelength Fourier PE on position (independent of AABB span) and
+Fourier features on the continuous rotation representation.
 """
 
 from __future__ import annotations
@@ -66,11 +66,85 @@ class ResidualSiLUBlock(nn.Module if nn is not None else object):  # type: ignor
         return F.silu(x + h)
 
 
+class MultiResolutionHashEncoding(nn.Module if nn is not None else object):  # type: ignore[misc]
+    """Local, continuous 3-D hash-grid encoding with trilinear interpolation."""
+
+    _CORNERS = (
+        (0, 0, 0), (0, 0, 1), (0, 1, 0), (0, 1, 1),
+        (1, 0, 0), (1, 0, 1), (1, 1, 0), (1, 1, 1),
+    )
+
+    def __init__(
+        self,
+        *,
+        levels: int = 12,
+        features_per_level: int = 2,
+        log2_hash_size: int = 18,
+        base_resolution: int = 8,
+        max_resolution: int = 256,
+    ) -> None:
+        super().__init__()
+        self.levels = int(levels)
+        self.features_per_level = int(features_per_level)
+        self.hash_size = 1 << int(log2_hash_size)
+        if self.levels <= 0 or self.features_per_level <= 0:
+            raise ValueError("hash levels and features_per_level must be positive")
+        if self.levels == 1:
+            resolutions = [int(base_resolution)]
+        else:
+            growth = np.exp(
+                np.log(float(max_resolution) / float(base_resolution))
+                / float(self.levels - 1)
+            )
+            resolutions = [
+                int(np.floor(float(base_resolution) * growth**i))
+                for i in range(self.levels)
+            ]
+        self.resolution_values = tuple(resolutions)
+        self.register_buffer(
+            "resolutions", torch.tensor(resolutions, dtype=torch.int64), persistent=True
+        )
+        self.register_buffer(
+            "corners",
+            torch.tensor(self._CORNERS, dtype=torch.int64),
+            persistent=False,
+        )
+        self.tables = nn.Parameter(
+            torch.empty(self.levels, self.hash_size, self.features_per_level)
+        )
+        nn.init.uniform_(self.tables, -1.0e-4, 1.0e-4)
+        self.output_dim = self.levels * self.features_per_level + 3
+
+    def _hash(self, ijk: "torch.Tensor") -> "torch.Tensor":
+        x, y, z = ijk.unbind(dim=-1)
+        return ((x * 1) ^ (y * 2654435761) ^ (z * 805459861)) % self.hash_size
+
+    def forward(self, x01: "torch.Tensor") -> "torch.Tensor":
+        shape = x01.shape[:-1]
+        x = x01.reshape(-1, 3).clamp(0.0, 1.0)
+        encoded = [2.0 * x - 1.0]
+        for level in range(self.levels):
+            resolution = self.resolution_values[level]
+            grid = x * float(max(resolution - 1, 1))
+            base = torch.floor(grid).to(torch.int64)
+            frac = grid - base.to(grid.dtype)
+            idx = base[:, None, :] + self.corners[None, :, :]
+            choose = torch.where(
+                self.corners[None, :, :].bool(),
+                frac[:, None, :],
+                1.0 - frac[:, None, :],
+            )
+            weight = choose.prod(dim=-1, keepdim=True)
+            value = (weight * self.tables[level, self._hash(idx)]).sum(dim=1)
+            encoded.append(value)
+        return torch.cat(encoded, dim=-1).reshape(*shape, self.output_dim)
+
+
 class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[misc]
-    """Point IRD: [p,u] (6-D) or [p,u,cosα,sinα] (8-D) → reach_logit, margin, q.
+    """Point IRD over legacy 5-DoF or full 6-DoF relative-pose features.
 
     Position: physical-wavelength Fourier (default 48…1.5 cm).
-    Direction: raw u + num_freqs_u Fourier bands.
+    Orientation: legacy tool axis or full rotation 6D plus Fourier bands.
     Optional roll: cos/sin α plus harmonic Fourier bands.
     """
 
@@ -88,18 +162,28 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
         p_wavelengths_m: tuple[float, ...] | list[float] | None = None,
         p_scale_m: float = 1.0,
         use_physical_pe: bool = True,
+        position_encoder: str = "fourier",
+        hash_levels: int = 12,
+        hash_features_per_level: int = 2,
+        hash_log2_size: int = 18,
+        hash_base_resolution: int = 8,
+        hash_max_resolution: int = 256,
+        couple_reach_to_margin: bool = False,
+        clearance_logit_scale: float = 3.0,
     ) -> None:
         if torch is None:
             raise ImportError("torch is required for NeuralIRDPoint")
         from ird_playground.neural.feature_spec import make_feature_spec
 
         super().__init__()
-        # Prefer feature_kind; allow legacy in_dim=6/8 as a hint when kind omitted.
+        # Prefer feature_kind; allow legacy in_dim as a checkpoint hint.
         kind = feature_kind
         if in_dim is not None and feature_kind in ("pu6", "pu"):
             if int(in_dim) == 8:
                 kind = "pu_roll8"
-            elif int(in_dim) not in (6, 8):
+            elif int(in_dim) == 9:
+                kind = "se3_9d"
+            elif int(in_dim) not in (6, 8, 9):
                 raise ValueError(f"unsupported in_dim={in_dim}")
         self.feature_spec = make_feature_spec(kind)
         self.in_dim = int(self.feature_spec.dim)
@@ -112,17 +196,33 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
         self.lambda_q = float(lambda_q)
         self.p_scale_m = float(p_scale_m)
         self.use_physical_pe = bool(use_physical_pe)
+        self.position_encoder = str(position_encoder).lower().strip()
+        self.couple_reach_to_margin = bool(couple_reach_to_margin)
+        self.clearance_logit_scale = float(clearance_logit_scale)
         waves = tuple(p_wavelengths_m) if p_wavelengths_m is not None else DEFAULT_P_WAVELENGTHS_M
         self.register_buffer(
             "p_wavelengths_m",
             torch.tensor(waves, dtype=torch.float32),
         )
         n_wave = int(self.p_wavelengths_m.numel())
-        if self.use_physical_pe:
+        self.hash_encoder = None
+        if self.position_encoder == "hash_grid":
+            self.hash_encoder = MultiResolutionHashEncoding(
+                levels=hash_levels,
+                features_per_level=hash_features_per_level,
+                log2_hash_size=hash_log2_size,
+                base_resolution=hash_base_resolution,
+                max_resolution=hash_max_resolution,
+            )
+            pe_p = self.hash_encoder.output_dim
+        elif self.position_encoder not in {"fourier", "pe"}:
+            raise ValueError(f"unsupported position_encoder={position_encoder!r}")
+        elif self.use_physical_pe:
             pe_p = 3 + 3 * 2 * n_wave  # p_raw + sin/cos per λ per axis
         else:
             pe_p = 3 + 3 * 2 * self.num_freqs
-        pe_u = 3 + 3 * 2 * self.num_freqs_u
+        orientation_dim = 6 if self.feature_spec.use_rot6d else 3
+        pe_u = orientation_dim + orientation_dim * 2 * self.num_freqs_u
         pe_roll = 0
         if self.feature_spec.use_roll:
             # cosα, sinα + (sin(kα), cos(kα)) per harmonic
@@ -146,9 +246,14 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
                 f"(feature_kind={self.feature_kind})"
             )
         p = features[..., :3]
-        u = features[..., 3:6]
-        u = u / (u.norm(dim=-1, keepdim=True).clamp_min(1e-6))
-        if self.use_physical_pe:
+        orientation = features[..., 3:9] if self.feature_spec.use_rot6d else features[..., 3:6]
+        if not self.feature_spec.use_rot6d:
+            orientation = orientation / orientation.norm(dim=-1, keepdim=True).clamp_min(1e-6)
+        if self.hash_encoder is not None:
+            span = (self.aabb_hi - self.aabb_lo).clamp_min(1e-6)
+            p_01 = (p - self.aabb_lo) / span
+            p_enc = self.hash_encoder(p_01)
+        elif self.use_physical_pe:
             p_enc = physical_position_encoding(
                 p, self.p_wavelengths_m, p_scale_m=self.p_scale_m
             )
@@ -156,7 +261,7 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
             span = (self.aabb_hi - self.aabb_lo).clamp_min(1e-6)
             p_n = 2.0 * (p - self.aabb_lo) / span - 1.0
             p_enc = positional_encoding(p_n, self.num_freqs)
-        u_enc = positional_encoding(u, self.num_freqs_u)
+        u_enc = positional_encoding(orientation, self.num_freqs_u)
         parts = [p_enc, u_enc]
         if self.feature_spec.use_roll:
             cos_a = features[..., 6:7]
@@ -174,8 +279,12 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
         h = F.silu(self.stem(self.encode(features)))
         for block in self.blocks:
             h = block(h)
-        reach_logit = self.head_cls(h)
         margin = self.head_margin(h)
+        reach_logit = (
+            margin * self.clearance_logit_scale
+            if self.couple_reach_to_margin
+            else self.head_cls(h)
+        )
         q = torch.sigmoid(self.head_q(h))
         # Legacy score kept for checkpoint / wandb compat — prefer optimization_cost.
         from ird_playground.neural.cost import legacy_margin_score
@@ -196,7 +305,7 @@ class NeuralIRDPoint(nn.Module if nn is not None else object):  # type: ignore[m
             "q": q,
             "q_comfort": q,
             "score": score,  # deprecated: margin-only
-            "cost": cost,  # preferred for P1 trajectory optimization
+            "cost": cost,
             "p_reach": p_reach,
             "d": score,
         }
@@ -240,6 +349,14 @@ class NeuralIRD:
             p_wavelengths_m=cfg.get("p_wavelengths_m"),
             p_scale_m=float(cfg.get("p_scale_m", 1.0)),
             use_physical_pe=bool(cfg.get("use_physical_pe", True)),
+            position_encoder=str(cfg.get("position_encoder", "fourier")),
+            hash_levels=int(cfg.get("hash_levels", 12)),
+            hash_features_per_level=int(cfg.get("hash_features_per_level", 2)),
+            hash_log2_size=int(cfg.get("hash_log2_size", 18)),
+            hash_base_resolution=int(cfg.get("hash_base_resolution", 8)),
+            hash_max_resolution=int(cfg.get("hash_max_resolution", 256)),
+            couple_reach_to_margin=bool(cfg.get("couple_reach_to_margin", False)),
+            clearance_logit_scale=float(cfg.get("clearance_logit_scale", 3.0)),
         )
         model.load_state_dict(ckpt["state_dict"], strict=True)
         aabb = cfg.get("aabb")
@@ -264,6 +381,14 @@ class NeuralIRD:
             "tau_m": self.model.tau_m,
             "lambda_q": self.model.lambda_q,
             "use_physical_pe": self.model.use_physical_pe,
+            "position_encoder": self.model.position_encoder,
+            "hash_levels": getattr(self.model.hash_encoder, "levels", 12),
+            "hash_features_per_level": getattr(self.model.hash_encoder, "features_per_level", 2),
+            "hash_log2_size": int(np.log2(getattr(self.model.hash_encoder, "hash_size", 1 << 18))),
+            "hash_base_resolution": int(self.model.hash_encoder.resolution_values[0]) if self.model.hash_encoder else 8,
+            "hash_max_resolution": int(self.model.hash_encoder.resolution_values[-1]) if self.model.hash_encoder else 256,
+            "couple_reach_to_margin": self.model.couple_reach_to_margin,
+            "clearance_logit_scale": self.model.clearance_logit_scale,
             "p_wavelengths_m": waves,
             "p_scale_m": self.model.p_scale_m,
             "aabb": {
@@ -282,9 +407,13 @@ class NeuralIRD:
         return {k: v.detach().cpu().numpy().reshape(-1) for k, v in out.items()}
 
     def score(self, delta_T: np.ndarray) -> PointScore:
-        from ird_playground.probe.se3 import features_from_delta_T
+        from ird_playground.probe.se3 import features_from_delta_T, rot6d_features_from_delta_T
 
-        feat = features_from_delta_T(delta_T)
+        feat = (
+            rot6d_features_from_delta_T(delta_T)
+            if self.model.feature_spec.use_rot6d
+            else features_from_delta_T(delta_T)
+        )
         out = self.score_features_np(feat)
         return PointScore(
             m=float(out["m"][0]),
@@ -297,9 +426,17 @@ class NeuralIRD:
         )
 
     def score_batch_delta_T(self, delta_Ts: np.ndarray) -> dict[str, np.ndarray]:
-        from ird_playground.probe.se3 import batch_features_from_delta_T
+        from ird_playground.probe.se3 import (
+            batch_features_from_delta_T,
+            batch_rot6d_features_from_delta_T,
+        )
 
-        return self.score_features_np(batch_features_from_delta_T(delta_Ts))
+        features = (
+            batch_rot6d_features_from_delta_T(delta_Ts)
+            if self.model.feature_spec.use_rot6d
+            else batch_features_from_delta_T(delta_Ts)
+        )
+        return self.score_features_np(features)
 
     def region_score(self, **kwargs):
         from ird_playground.region.aggregate import region_score_a

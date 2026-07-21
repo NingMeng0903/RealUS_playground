@@ -1,0 +1,71 @@
+data:
+  gt_npz: data/ird/gpu_pose_stencils_production.npz
+  val_frac: 0.15
+  split_strategy: pose_group
+
+model:
+  feature_kind: se3_9d
+  position_encoder: hash_grid
+  hash_levels: 10
+  hash_features_per_level: 2
+  hash_log2_size: 17
+  hash_base_resolution: 8
+  hash_max_resolution: 192
+  num_freqs: 4
+  num_freqs_u: 3
+  hidden: 192
+  depth: 4
+  use_physical_pe: true
+  couple_reach_to_margin: false
+  clearance_logit_scale: 3.0
+
+training:
+  phase: A
+  selection_metric: balanced_curve
+  seed: 42
+  device: cuda
+  init_checkpoint: data/checkpoints/gpu_pose_production/selected.pt
+  epochs: 20
+  early_stop_patience: 6
+  early_stop_min_delta: 0.001
+  batch_size: 1024
+  num_workers: 0
+  learning_rate: 0.0001
+  warmup_steps: 100
+  min_lr_ratio: 0.05
+  save_freq: 0
+  val_eval_n: 65536
+  val_calib_frac: 0.5
+  train_hard_y: true
+  batch_mix:
+    interior: 0.25
+    bnd_pos: 0.125
+    bnd_neg: 0.125
+    jitter_pos: 0.125
+    jitter_neg: 0.125
+    exterior: 0.25
+
+loss:
+  lambda_cls: 1.0
+  lambda_margin: 0.0
+  lambda_q: 0.0
+
+io:
+  checkpoint: data/checkpoints/gpu_pose_stencils_production/selected.pt
+  checkpoint_dir: data/checkpoints/gpu_pose_stencils_production
+  report: data/reports/train_gpu_pose_stencils_production.json
+
+pass:
+  mae_max: 0.5
+  spearman_min: 0.0
+  boundary_iou_min: 0.85
+  grad_cosine_min: 0.0
+  ascent_improve_min: 0.0
+  rail_ad_fd_rel_max: 0.10
+  rail_sign_agree_min: 0.95
+  region_improve_min: 0.0
+  continuous_boundary_mae_max_m: 0.001
+  continuous_boundary_angle_mae_max_deg: 1.0
+
+wandb:
+  enable: false

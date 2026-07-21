@@ -1,4 +1,4 @@
-"""Evaluate point field vs GT + optimization-oriented P2 checks."""
+"""Evaluate point field accuracy and differentiability against GT."""
 
 from __future__ import annotations
 
@@ -75,6 +75,9 @@ def main(argv: list[str] | None = None) -> int:
         continuous_boundary_mae_max_m=(
             train_cfg.continuous_boundary_mae_max_m if train_cfg else float("inf")
         ),
+        continuous_boundary_angle_mae_max_deg=(
+            train_cfg.continuous_boundary_angle_mae_max_deg if train_cfg else float("inf")
+        ),
     )
     ok = point_field_pass(metrics, thr)
     metrics["pass"] = ok
@@ -88,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         "rail_sign_agree_min": thr.rail_sign_agree_min,
         "region_improve_min": thr.region_improve_min,
         "continuous_boundary_mae_max_m": thr.continuous_boundary_mae_max_m,
+        "continuous_boundary_angle_mae_max_deg": thr.continuous_boundary_angle_mae_max_deg,
     }
     report = root / "data/reports/eval_point.json"
     report.parent.mkdir(parents=True, exist_ok=True)

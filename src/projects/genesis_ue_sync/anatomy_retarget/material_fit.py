@@ -1642,6 +1642,15 @@ def fit_source_bind_hands(
             current = int(parents[current])
 
     vertices = np.asarray(asset.vertices_rest, dtype=np.float64).copy()
+    source_geometry = (
+        np.asarray(asset.source_bind_vertices, dtype=np.float64)
+        if asset.source_bind_vertices is not None
+        else np.asarray(asset.vertices_rest, dtype=np.float64)
+    )
+    source_anchors = _source_joint_anchors(
+        asset,
+        bind_global=np.asarray(asset.source_rest_global, dtype=np.float64),
+    )
     hand_geometry_mask = np.zeros(len(vertices), dtype=bool)
     target_joints = np.asarray(asset.rest_joints, dtype=np.float64)
     finger_tips = _finger_tip_targets(
@@ -1659,43 +1668,23 @@ def fit_source_bind_hands(
         segment = _hand_mesh_segment(
             str(name),
             joint_names=joint_names,
-            # The source endpoints are replaced by the mesh PCA axis below;
-            # only the semantic target segment is consumed here.
-            source_anchors=target_joints,
+            source_anchors=source_anchors,
             target_joints=target_joints,
             finger_tips=finger_tips,
         )
         if segment is None:
             continue
         start_i, stop_i = int(start), int(stop)
-        _source_a, _source_b, target_a, target_b = segment
+        source_a, source_b, target_a, target_b = segment
         target_a = np.asarray(target_a, dtype=np.float64)
         target_b = np.asarray(target_b, dtype=np.float64)
-        if "distal" in str(name).lower():
-            distal_axis = target_b - target_a
-            target_b -= 0.15 * distal_axis
-        points = vertices[start_i:stop_i]
-        center = np.mean(points, axis=0)
-        _values, vectors = np.linalg.eigh(np.cov((points - center).T))
-        axis = vectors[:, -1]
-        target_axis = target_b - target_a
-        if float(axis @ target_axis) < 0.0:
-            axis = -axis
-        projection = (points - center) @ axis
-        source_a = center + float(np.quantile(projection, 0.02)) * axis
-        source_b = center + float(np.quantile(projection, 0.98)) * axis
-        vertices[start_i:stop_i], _scale, _rotation = uniform_segment_similarity(
-            points,
+        vertices[start_i:stop_i] = shaft_preserving_segment_map(
+            source_geometry[start_i:stop_i],
             source_a=source_a,
             source_b=source_b,
             target_a=target_a,
             target_b=target_b,
         )
-        mapped = vertices[start_i:stop_i]
-        axis = target_b - target_a
-        axis /= max(float(np.linalg.norm(axis)), 1.0e-10)
-        projection = target_a + np.outer((mapped - target_a) @ axis, axis)
-        vertices[start_i:stop_i] = projection + 0.78 * (mapped - projection)
         hand_geometry_mask[start_i:stop_i] = True
         fitted_meshes.append(str(name))
 
@@ -1712,7 +1701,7 @@ def fit_source_bind_hands(
         "triquetrum",
     )
     carpal_report: dict[str, Any] = {}
-    baseline_vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
+    baseline_vertices = source_geometry
     for side, suffix in (("left", "_l"), ("right", "_r")):
         ranges = [
             (int(start), int(stop), str(name))
@@ -1787,11 +1776,19 @@ def fit_source_bind_hands(
         }
 
     interim = type(asset)(
-        **{**asset.__dict__, "vertices_rest": vertices.astype(np.float32)}
+        **{
+            **asset.__dict__,
+            "vertices_rest": source_geometry.astype(np.float32),
+            "target_rest_global": np.asarray(asset.source_bind_global, dtype=np.float32),
+            "target_rest_local": np.asarray(asset.source_rest_local, dtype=np.float32),
+            "target_inverse_bind": np.asarray(asset.source_inverse_bind, dtype=np.float32),
+            "target_bone_head": np.asarray(asset.source_bone_head, dtype=np.float32),
+            "target_bone_tail": np.asarray(asset.source_bone_tail, dtype=np.float32),
+        }
     )
     rebound, local_rebind_report = rebind_source_rig(
         interim,
-        source_vertices=np.asarray(asset.vertices_rest, dtype=np.float64),
+        source_vertices=source_geometry,
         target_vertices=vertices,
         stage=str(stage),
         bone_mask=hand_geometry_mask,
@@ -1838,14 +1835,14 @@ def fit_source_bind_hands(
     report = {
         "stage": str(stage),
         "available": True,
-        "backend": "harmonic_mesh_axis_similarity_plus_direct_joint_coupling",
+        "backend": "blender_source_pivot_shaft_map_plus_direct_joint_coupling",
         "fitted_mesh_count": int(len(fitted_meshes)),
         "fitted_meshes": fitted_meshes,
         "wrist_subtree_bone_count": int(len(hand_subtree)),
         "direct_controller_count": int(len(direct_set)),
         "local_weighted_rebind": local_rebind_report,
-        "hand_bone_radial_scale": 0.78,
-        "distal_tip_inset_ratio": 0.15,
+        "hand_bone_radial_scale": 1.0,
+        "distal_tip_inset_ratio": 0.0,
         "carpal_compound": carpal_report,
         "source_weights_preserved": True,
         "source_hierarchy_preserved": True,
@@ -1942,187 +1939,388 @@ def fit_stage1_rigid_regions(
     *,
     canonical_dir: Path | str,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
-    """Apply the generic 1c1 rigid hand/long-limb fit, then rebind once."""
-    baseline_vertices = np.asarray(asset.vertices_rest, dtype=np.float64).copy()
+    """Fit Blender bone compounds without breaking authored joint contacts."""
+    if asset.source_bind_vertices is None:
+        raise ValueError("compound bone fit requires immutable Blender bind vertices")
+
+    from scipy.spatial import cKDTree
+
+    source = np.asarray(asset.source_bind_vertices, dtype=np.float64)
+    target = np.asarray(asset.vertices_rest, dtype=np.float64)
+    vertices = target.copy()
     hand_fitted, hand_report = fit_source_bind_hands(
         asset,
         canonical_dir=canonical_dir,
-        stage="stage1_rigid_regions_hand",
+        stage="stage1_blender_source_pivot_hands",
     )
-    vertices = np.asarray(hand_fitted.vertices_rest, dtype=np.float64).copy()
-    target_joints = np.asarray(asset.rest_joints, dtype=np.float64)
-    joint_id = {str(name): index for index, name in enumerate(asset.joint_names)}
-    segments = {
-        "humerus": ("shoulder", "elbow"),
-        "radius": ("elbow", "wrist"),
-        "ulna": ("elbow", "wrist"),
-        "femur": ("hip", "knee"),
-    }
-    changed = np.zeros(len(vertices), dtype=bool)
+    ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
+    names = [str(value) for value in asset.source_mesh_names]
+    tissues = [str(value).lower() for value in asset.source_tissues]
     for mesh_name in hand_report["fitted_meshes"]:
-        mesh_at = list(asset.source_mesh_names).index(str(mesh_name))
-        start, stop = (int(value) for value in asset.source_vertex_ranges[mesh_at])
-        changed[start:stop] = True
-    limb_meshes: list[str] = []
-    for (start, stop), name, tissue in zip(
-        asset.source_vertex_ranges, asset.source_mesh_names, asset.source_tissues
-    ):
-        if str(tissue).lower() != "bone":
-            continue
-        lower = str(name).lower()
-        kind = next((token for token in segments if token in lower), None)
-        side = "left" if lower.endswith("_l") else "right" if lower.endswith("_r") else None
-        if kind is None or side is None:
-            continue
-        start_i, stop_i = int(start), int(stop)
-        points = vertices[start_i:stop_i]
-        center = np.mean(points, axis=0)
-        _values, vectors = np.linalg.eigh(np.cov((points - center).T))
-        axis = vectors[:, -1]
-        proximal, distal = segments[kind]
-        target_a = target_joints[joint_id[f"{side}_{proximal}"]]
-        target_b = target_joints[joint_id[f"{side}_{distal}"]]
-        if float(axis @ (target_b - target_a)) < 0.0:
-            axis = -axis
-        projection = (points - center) @ axis
-        source_a = center + float(np.quantile(projection, 0.02)) * axis
-        source_b = center + float(np.quantile(projection, 0.98)) * axis
-        mapped, _scale, _rotation = uniform_segment_similarity(
-            points,
-            source_a=source_a,
-            source_b=source_b,
-            target_a=target_a,
-            target_b=target_b,
+        mesh_index = names.index(str(mesh_name))
+        start, stop = (int(value) for value in ranges[mesh_index])
+        vertices[start:stop] = np.asarray(hand_fitted.vertices_rest)[start:stop]
+
+    def mesh_indices(predicate: Any) -> np.ndarray:
+        selected: list[np.ndarray] = []
+        for (start, stop), name, tissue in zip(ranges, names, tissues):
+            if tissue == "bone" and bool(predicate(name.lower())):
+                selected.append(np.arange(int(start), int(stop), dtype=np.int64))
+        return np.concatenate(selected) if selected else np.zeros(0, dtype=np.int64)
+
+    foot_tokens = (
+        "calcaneus", "talus", "navicular", "cuboid", "cuneiform",
+        "metatarsal", "phalanx_foot",
+    )
+    groups: dict[str, np.ndarray] = {
+        "pelvis": mesh_indices(
+            lambda name: "sacrum" in name or "ilium" in name
+        ),
+    }
+    for side, suffix in (("left", "_l"), ("right", "_r")):
+        side_match = lambda name, suffix=suffix: name.endswith(suffix)
+        groups.update(
+            {
+                f"{side}_shoulder": mesh_indices(
+                    lambda name, side_match=side_match: side_match(name)
+                    and ("clavicle" in name or "scapula" in name)
+                ),
+                f"{side}_upper_arm": mesh_indices(
+                    lambda name, side_match=side_match: side_match(name)
+                    and "humerus" in name
+                ),
+                f"{side}_forearm": mesh_indices(
+                    lambda name, side_match=side_match: side_match(name)
+                    and ("radius" in name or "ulna" in name)
+                ),
+                f"{side}_thigh": mesh_indices(
+                    lambda name, side_match=side_match: side_match(name)
+                    and "femur" in name
+                ),
+                f"{side}_lower_leg": mesh_indices(
+                    lambda name, side_match=side_match: side_match(name)
+                    and any(token in name for token in ("tibia", "fibula", "patella"))
+                ),
+                f"{side}_foot": mesh_indices(
+                    lambda name, side_match=side_match: side_match(name)
+                    and any(token in name for token in foot_tokens)
+                ),
+            }
         )
-        if kind == "humerus":
-            segment_axis = target_b - target_a
-            segment_axis /= max(float(np.linalg.norm(segment_axis)), 1.0e-10)
-            axial = target_a + np.outer((mapped - target_a) @ segment_axis, segment_axis)
-            mapped = axial + 0.83 * (mapped - axial)
-        vertices[start_i:stop_i] = mapped
-        changed[start_i:stop_i] = True
-        limb_meshes.append(str(name))
-
-    lower_leg_scale = float(
-        np.mean(
-            [
-                np.linalg.norm(
-                    target_joints[joint_id[f"{side}_ankle"]]
-                    - target_joints[joint_id[f"{side}_knee"]]
-                )
-                for side in ("left", "right")
-            ]
+    groups = {name: indices for name, indices in groups.items() if len(indices)}
+    def source_contact(
+        parent_name: str, child_name: str
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        parent_points = source[groups[parent_name]]
+        child_points = source[groups[child_name]]
+        distance, nearest = cKDTree(parent_points).query(child_points, k=1)
+        count = min(32, len(child_points))
+        selected = np.argpartition(distance, count - 1)[:count]
+        parent_indices = groups[parent_name][nearest[selected]]
+        child_indices = groups[child_name][selected]
+        return (
+            parent_indices,
+            child_indices,
+            np.mean(source[parent_indices], axis=0),
+            np.mean(source[child_indices], axis=0),
         )
-    )
-    patella_inset = 0.019 * lower_leg_scale
-    patella_meshes: list[str] = []
-    for (start, stop), name, tissue in zip(
-        asset.source_vertex_ranges, asset.source_mesh_names, asset.source_tissues
-    ):
-        lower = str(name).lower()
-        side = "left" if lower.endswith("_l") else "right" if lower.endswith("_r") else None
-        if str(tissue).lower() != "bone" or "patella" not in lower or side is None:
-            continue
-        start_i, stop_i = int(start), int(stop)
-        knee = target_joints[joint_id[f"{side}_knee"]]
-        direction = knee - np.mean(vertices[start_i:stop_i], axis=0)
-        direction /= max(float(np.linalg.norm(direction)), 1.0e-10)
-        vertices[start_i:stop_i] += patella_inset * direction
-        changed[start_i:stop_i] = True
-        patella_meshes.append(str(name))
 
-    from .containment import signed_distance
-    from .shape_volume import _load_obj
-
-    jaw_tokens = (
-        "mandible",
-        "incisor",
-        "canine",
-        "molar",
-        "premolar",
-        "sublingual",
-        "submandibular",
-        "parotid",
-        "duct",
-        "pharynx",
-    )
-    jaw_mask = np.zeros(len(vertices), dtype=bool)
-    for (start, stop), name in zip(asset.source_vertex_ranges, asset.source_mesh_names):
-        if any(token in str(name).lower() for token in jaw_tokens):
-            jaw_mask[int(start) : int(stop)] = True
-    head_neck_scale = float(
-        np.linalg.norm(target_joints[joint_id["head"]] - target_joints[joint_id["neck"]])
-    )
-    jaw_step = 0.0125 * head_neck_scale
-    surface_vertices, surface_faces = _load_obj(
-        Path(canonical_dir) / "smpl_canonical_tpose.obj"
-    )
-    candidates: list[tuple[int, float, np.ndarray]] = []
-    for delta_y in np.arange(0.0, 0.10 * head_neck_scale, jaw_step):
-        for delta_z in np.arange(
-            -0.10 * head_neck_scale,
-            0.0625 * head_neck_scale,
-            jaw_step,
-        ):
-            candidate_signed, _closest, _normal = signed_distance(
-                baseline_vertices[jaw_mask] + np.asarray((0.0, delta_y, delta_z)),
-                surface_vertices,
-                surface_faces,
+    chains: list[tuple[str, str, str]] = []
+    for side in ("left", "right"):
+        chains.extend(
+            (
+                ("pelvis", f"{side}_thigh", f"{side}_hip"),
+                (f"{side}_thigh", f"{side}_lower_leg", f"{side}_knee"),
+                (f"{side}_lower_leg", f"{side}_foot", f"{side}_ankle"),
+                (f"{side}_shoulder", f"{side}_upper_arm", f"{side}_shoulder"),
+                (f"{side}_upper_arm", f"{side}_forearm", f"{side}_elbow"),
             )
-            outside = np.maximum(candidate_signed, 0.0)
-            candidates.append(
-                (
-                    int(np.count_nonzero(outside > 0.0)),
-                    float(np.max(outside)) if len(outside) else 0.0,
-                    np.asarray((0.0, delta_y, delta_z), dtype=np.float64),
+        )
+    interfaces: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {
+        name: [] for name in groups
+    }
+    contact_samples: dict[
+        str, tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+    ] = {}
+    shared_targets: dict[str, np.ndarray] = {}
+    authority_groups = {name for name in ("pelvis",) if name in groups}
+    authority_fit: dict[str, tuple[np.ndarray, float, np.ndarray, np.ndarray]] = {}
+    for group_name in authority_groups:
+        indices = groups[group_name]
+        source_points = source[indices]
+        target_points = target[indices]
+        source_center = np.mean(source_points, axis=0)
+        target_center = np.mean(target_points, axis=0)
+        u_authority, _singular_authority, vt_authority = np.linalg.svd(
+            (source_points - source_center).T @ (target_points - target_center)
+        )
+        rotation_authority = vt_authority.T @ u_authority.T
+        if np.linalg.det(rotation_authority) < 0.0:
+            vt_authority[-1] *= -1.0
+            rotation_authority = vt_authority.T @ u_authority.T
+        rotated_authority = (source_points - source_center) @ rotation_authority.T
+        denominator_authority = float(np.sum((source_points - source_center) ** 2))
+        scale_authority = float(
+            np.clip(
+                np.sum((target_points - target_center) * rotated_authority)
+                / max(denominator_authority, 1.0e-10),
+                0.90,
+                1.05,
+            )
+        )
+        authority_fit[group_name] = (
+            rotation_authority,
+            scale_authority,
+            source_center,
+            target_center,
+        )
+
+    def map_authority_contact(group_name: str, point: np.ndarray) -> np.ndarray:
+        rotation, scale, source_center, target_center = authority_fit[group_name]
+        return target_center + scale * (rotation @ (point - source_center))
+
+    for parent_name, child_name, joint_name in chains:
+        if parent_name not in groups or child_name not in groups:
+            continue
+        parent_indices, child_indices, source_parent, source_child = source_contact(
+            parent_name, child_name
+        )
+        target_parent = np.mean(target[parent_indices], axis=0)
+        target_child = np.mean(target[child_indices], axis=0)
+        if parent_name in authority_groups:
+            shared_contact = map_authority_contact(parent_name, source_parent)
+        elif child_name in authority_groups:
+            shared_contact = map_authority_contact(child_name, source_child)
+        else:
+            shared_contact = 0.5 * (target_parent + target_child)
+        if parent_name not in authority_groups:
+            interfaces[parent_name].append((source_parent, shared_contact))
+        if child_name not in authority_groups:
+            interfaces[child_name].append((source_child, shared_contact))
+        shared_targets[joint_name] = shared_contact
+        contact_samples[joint_name] = (
+            parent_indices,
+            child_indices,
+            source_parent,
+            source_child,
+            shared_contact,
+        )
+
+    source_joint_anchors = _source_joint_anchors(
+        asset,
+        bind_global=np.asarray(asset.source_rest_global, dtype=np.float64),
+    )
+    target_joint_anchors = np.asarray(asset.rest_joints, dtype=np.float64)
+    joint_lookup = {str(name): index for index, name in enumerate(asset.joint_names)}
+    segment_joints: dict[str, tuple[int, int]] = {}
+    single_joint_compounds: dict[str, int] = {}
+    for side in ("left", "right"):
+        segment_joints.update(
+            {
+                f"{side}_upper_arm": (
+                    joint_lookup[f"{side}_shoulder"], joint_lookup[f"{side}_elbow"]
+                ),
+                f"{side}_forearm": (
+                    joint_lookup[f"{side}_elbow"], joint_lookup[f"{side}_wrist"]
+                ),
+                f"{side}_thigh": (
+                    joint_lookup[f"{side}_hip"], joint_lookup[f"{side}_knee"]
+                ),
+                f"{side}_lower_leg": (
+                    joint_lookup[f"{side}_knee"], joint_lookup[f"{side}_ankle"]
+                ),
+            }
+        )
+        single_joint_compounds[f"{side}_shoulder"] = joint_lookup[
+            f"{side}_shoulder"
+        ]
+        single_joint_compounds[f"{side}_foot"] = joint_lookup[f"{side}_ankle"]
+
+    group_fit: dict[str, dict[str, Any]] = {}
+    for group_name, indices in groups.items():
+        src = source[indices]
+        dst = target[indices]
+        src_center = np.mean(src, axis=0)
+        dst_center = np.mean(dst, axis=0)
+        u, _singular, vt = np.linalg.svd(
+            (src - src_center).T @ (dst - dst_center)
+        )
+        rotation = vt.T @ u.T
+        if np.linalg.det(rotation) < 0.0:
+            vt[-1] *= -1.0
+            rotation = vt.T @ u.T
+        rotated = (src - src_center) @ rotation.T
+        denominator = float(np.sum((src - src_center) ** 2))
+        raw_scale = (
+            float(np.sum((dst - dst_center) * rotated)) / denominator
+            if denominator > 1.0e-12
+            else 1.0
+        )
+        cross_scale = float(np.clip(raw_scale, 0.90, 1.05))
+        mapped = dst_center + cross_scale * rotated
+        anchors = interfaces[group_name]
+        if group_name in segment_joints:
+            joint_a, joint_b = segment_joints[group_name]
+            source_a = source_joint_anchors[joint_a]
+            source_b = source_joint_anchors[joint_b]
+            target_a = target_joint_anchors[joint_a]
+            target_b = target_joint_anchors[joint_b]
+            scaled = source_a + cross_scale * (src - source_a)
+            scaled_b = source_a + cross_scale * (source_b - source_a)
+            mapped = shaft_preserving_segment_map(
+                scaled,
+                source_a=source_a,
+                source_b=scaled_b,
+                target_a=target_a,
+                target_b=target_b,
+            )
+            rotation = _rotation_between(scaled_b - source_a, target_b - target_a)
+        elif group_name in single_joint_compounds:
+            joint = single_joint_compounds[group_name]
+            source_anchor = source_joint_anchors[joint]
+            target_anchor = target_joint_anchors[joint]
+            mapped_anchor = dst_center + cross_scale * (
+                rotation @ (source_anchor - src_center)
+            )
+            mapped += target_anchor - mapped_anchor
+        elif len(anchors) >= 2:
+            source_anchors = np.stack([value[0] for value in anchors], axis=0)
+            target_anchors = np.stack([value[1] for value in anchors], axis=0)
+            source_midpoint = np.mean(source_anchors, axis=0)
+            target_midpoint = np.mean(target_anchors, axis=0)
+            u_anchor, _singular_anchor, vt_anchor = np.linalg.svd(
+                (source_anchors - source_midpoint).T
+                @ (target_anchors - target_midpoint)
+            )
+            rotation = vt_anchor.T @ u_anchor.T
+            if np.linalg.det(rotation) < 0.0:
+                vt_anchor[-1] *= -1.0
+                rotation = vt_anchor.T @ u_anchor.T
+            rotated_anchors = (source_anchors - source_midpoint) @ rotation.T
+            anchor_denominator = float(
+                np.sum((source_anchors - source_midpoint) ** 2)
+            )
+            anchor_scale = float(
+                np.clip(
+                    np.sum(
+                        (target_anchors - target_midpoint) * rotated_anchors
+                    )
+                    / max(anchor_denominator, 1.0e-10),
+                    0.85,
+                    1.05,
                 )
             )
-    jaw_delta = min(candidates, key=lambda item: (item[0], item[1]))[2]
-    vertices[jaw_mask] += jaw_delta
-    changed[jaw_mask] = True
-    jaw_center = target_joints[joint_id["jaw"]]
-    for (start, stop), name, tissue in zip(
-        asset.source_vertex_ranges, asset.source_mesh_names, asset.source_tissues
-    ):
-        if str(tissue).lower() != "bone" or "mandible" not in str(name).lower():
+            mapped = target_midpoint + anchor_scale * (
+                (src - source_midpoint) @ rotation.T
+            )
+            cross_scale = anchor_scale
+        elif len(anchors) == 1:
+            source_anchor, target_anchor = anchors[0]
+            mapped_anchor = dst_center + cross_scale * (
+                rotation @ (source_anchor - src_center)
+            )
+            mapped += target_anchor - mapped_anchor
+        vertices[indices] = mapped
+        residual = np.linalg.norm(mapped - dst, axis=1)
+        group_fit[group_name] = {
+            "vertex_count": int(len(indices)),
+            "raw_uniform_scale": float(raw_scale),
+            "cross_section_scale": cross_scale,
+            "target_residual_rms_m": float(np.sqrt(np.mean(residual**2))),
+            "rotation": rotation,
+        }
+    hip_closure_report: dict[str, Any] = {}
+    for side in ("left", "right"):
+        hip_sample = contact_samples.get(f"{side}_hip")
+        knee_sample = contact_samples.get(f"{side}_knee")
+        femur_name = f"{side}_thigh"
+        if hip_sample is None or knee_sample is None or femur_name not in groups:
             continue
-        start_i, stop_i = int(start), int(stop)
-        vertices[start_i:stop_i] = jaw_center + 0.9 * (
-            vertices[start_i:stop_i] - jaw_center
+        hip_parent, hip_child = hip_sample[0], hip_sample[1]
+        knee_parent = knee_sample[0]
+        acetabulum = np.mean(vertices[hip_parent], axis=0)
+        femoral_head = np.mean(vertices[hip_child], axis=0)
+        distal_contact = np.mean(vertices[knee_parent], axis=0)
+        before = float(np.linalg.norm(femoral_head - acetabulum))
+        vertices[groups[femur_name]] = shaft_preserving_segment_map(
+            vertices[groups[femur_name]],
+            source_a=femoral_head,
+            source_b=distal_contact,
+            target_a=acetabulum,
+            target_b=distal_contact,
         )
+        after = float(
+            np.linalg.norm(np.mean(vertices[hip_child], axis=0) - acetabulum)
+        )
+        hip_closure_report[side] = {
+            "pre_surface_gap_m": before,
+            "post_surface_gap_m": after,
+            "distal_knee_anchor_preserved": True,
+        }
+    contact_report: dict[str, Any] = {}
+    for joint_name, sample in contact_samples.items():
+        parent_contact, child_contact, source_parent, source_child, _target_joint = sample
+        target_joint = shared_targets[joint_name]
+        mapped_parent = np.mean(vertices[parent_contact], axis=0)
+        mapped_child = np.mean(vertices[child_contact], axis=0)
+        contact_report[joint_name] = {
+            "source_surface_gap_m": float(np.linalg.norm(source_child - source_parent)),
+            "post_anchor_gap_m": float(np.linalg.norm(mapped_child - mapped_parent)),
+            "parent_to_shared_anchor_m": float(
+                np.linalg.norm(mapped_parent - target_joint)
+            ),
+            "child_to_shared_anchor_m": float(
+                np.linalg.norm(mapped_child - target_joint)
+            ),
+        }
 
     bone_mask = np.zeros(len(vertices), dtype=bool)
-    for (start, stop), tissue in zip(asset.source_vertex_ranges, asset.source_tissues):
-        if str(tissue).lower() == "bone":
+    for (start, stop), tissue in zip(ranges, tissues):
+        if tissue == "bone":
             bone_mask[int(start) : int(stop)] = True
-    interim = type(hand_fitted)(
-        **{**hand_fitted.__dict__, "vertices_rest": vertices.astype(np.float32)}
+    source_frame_asset = type(asset)(
+        **{
+            **asset.__dict__,
+            "vertices_rest": source.astype(np.float32),
+            "target_rest_global": np.asarray(asset.source_bind_global, dtype=np.float32),
+            "target_rest_local": np.asarray(asset.source_rest_local, dtype=np.float32),
+            "target_inverse_bind": np.asarray(asset.source_inverse_bind, dtype=np.float32),
+            "target_bone_head": np.asarray(asset.source_bone_head, dtype=np.float32),
+            "target_bone_tail": np.asarray(asset.source_bone_tail, dtype=np.float32),
+        }
     )
     rebound, rebind_report = rebind_source_rig(
-        interim,
-        source_vertices=baseline_vertices,
+        source_frame_asset,
+        source_vertices=source,
         target_vertices=vertices,
-        stage="stage1_rigid_regions",
+        stage="stage1_blender_compound_chains",
         bone_mask=bone_mask,
         fallback_to_soft=False,
         anchor_joint_local=True,
     )
+    rebound = type(rebound)(
+        **{**rebound.__dict__, "vertices_rest": vertices.astype(np.float32)}
+    )
     metadata = dict(rebound.metadata or {})
     metadata["source_full_local_fk_v2"] = False
+    metadata["source_direct_driver_bones_v1"] = _direct_smplx_hand_controllers(asset)
     result = type(rebound)(**{**rebound.__dict__, "metadata": metadata})
     result = with_source_driver_coupling(result)
     result.validate()
     return result, {
-        "backend": "1c1_mesh_axis_rigid_regions_plus_full_rebind",
+        "backend": "blender_source_compound_chain_fit_v1",
         "hand": hand_report,
-        "long_limb_meshes": limb_meshes,
-        "humerus_radial_scale": 0.83,
-        "patella_meshes": patella_meshes,
-        "patella_inset_ratio": 0.019,
-        "jaw_compound_delta_m": jaw_delta.tolist(),
-        "jaw_bone_scale": 0.9,
-        "changed_vertex_count": int(np.count_nonzero(changed)),
+        "groups": {
+            name: {key: value for key, value in report.items() if key != "rotation"}
+            for name, report in group_fit.items()
+        },
+        "shared_contact_anchors": contact_report,
+        "hip_surface_closure": hip_closure_report,
+        "minimum_cross_section_scale": 0.90,
+        "independent_mesh_fits": False,
+        "changed_vertex_count": int(np.count_nonzero(np.linalg.norm(vertices - target, axis=1))),
         "source_rig_rebind": rebind_report,
+        "source_full_local_fk_v2": False,
         "source_weights_preserved": True,
         "source_hierarchy_preserved": True,
     }

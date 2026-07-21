@@ -1,4 +1,4 @@
-"""Eval helpers: regression metrics + optimization-oriented P2 checks."""
+"""Evaluation helpers for IRD accuracy and gradient quality."""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ class PassThresholds:
     rail_sign_agree_min: float = 0.80
     region_improve_min: float = 0.40
     continuous_boundary_mae_max_m: float = float("inf")
+    continuous_boundary_angle_mae_max_deg: float = float("inf")
 
 
 def point_field_pass(metrics: dict[str, float], thr: PassThresholds | None = None) -> bool:
@@ -53,6 +54,8 @@ def point_field_pass(metrics: dict[str, float], thr: PassThresholds | None = Non
         checks.append(metrics["region_improve_rate"] >= thr.region_improve_min)
     if "continuous_boundary_crossing_mae_m" in metrics:
         checks.append(metrics["continuous_boundary_crossing_mae_m"] <= thr.continuous_boundary_mae_max_m)
+    if "continuous_boundary_crossing_mae_deg" in metrics:
+        checks.append(metrics["continuous_boundary_crossing_mae_deg"] <= thr.continuous_boundary_angle_mae_max_deg)
     # Present only for GT-backed acceptance runs.  Unknown provenance is a fail:
     # smooth interpolation must not be marketed as sub-voxel physical accuracy.
     if "source_resolution_pass" in metrics:
@@ -72,40 +75,52 @@ def continuous_boundary_crossing_error(net, arrays: dict[str, np.ndarray]) -> di
     if "boundary_id" not in arrays or "boundary_signed_m" not in arrays:
         return {}
     bid = np.asarray(arrays["boundary_id"], dtype=np.int64)
-    signed = np.asarray(arrays["boundary_signed_m"], dtype=np.float64)
-    valid = bid >= 0
-    if not valid.any():
-        return {}
     pred = net.score_features_np(np.asarray(arrays["features"], dtype=np.float32))
     logits = np.asarray(pred["reach_logit"], dtype=np.float64)
-    errs: list[float] = []
-    straddle = 0
-    for group in np.unique(bid[valid]):
-        ix = np.flatnonzero(bid == group)
-        pos = ix[signed[ix] > 0.0]
-        neg = ix[signed[ix] < 0.0]
-        if pos.size == 0 or neg.size == 0:
-            continue
-        # nearest trusted pair to the IK boundary
-        ip = pos[np.argmin(signed[pos])]
-        inn = neg[np.argmax(signed[neg])]
-        lp, ln = float(logits[ip]), float(logits[inn])
-        sp, sn = float(signed[ip]), float(signed[inn])
-        denom = lp - ln
-        if abs(denom) < 1e-9:
-            errs.append(float("inf"))
-            continue
-        shat = sn + (0.0 - ln) * (sp - sn) / denom
-        if min(lp, ln) <= 0.0 <= max(lp, ln):
-            straddle += 1
-        errs.append(abs(shat))
-    finite = np.asarray([x for x in errs if np.isfinite(x)], dtype=np.float64)
-    return {
-        "continuous_boundary_crossing_mae_m": float(np.mean(finite)) if finite.size else float("inf"),
-        "continuous_boundary_crossing_p95_m": float(np.percentile(finite, 95)) if finite.size else float("inf"),
-        "continuous_boundary_crossing_straddle_rate": float(straddle / max(len(errs), 1)),
-        "continuous_boundary_crossing_n": float(len(errs)),
-    }
+
+    def evaluate(signed_key: str, suffix: str) -> dict[str, float]:
+        if signed_key not in arrays:
+            return {}
+        signed = np.asarray(arrays[signed_key], dtype=np.float64)
+        valid = (bid >= 0) & np.isfinite(signed)
+        errs: list[float] = []
+        straddle = 0
+        wide_straddle = 0
+        direction_ok = 0
+        n_groups = 0
+        for group in np.unique(bid[valid]):
+            ix = np.flatnonzero((bid == group) & np.isfinite(signed))
+            pos, neg = ix[signed[ix] > 0.0], ix[signed[ix] < 0.0]
+            if pos.size == 0 or neg.size == 0:
+                continue
+            ip, inn = pos[np.argmin(signed[pos])], neg[np.argmax(signed[neg])]
+            lp, ln = float(logits[ip]), float(logits[inn])
+            sp, sn = float(signed[ip]), float(signed[inn])
+            n_groups += 1
+            direction_ok += int(lp > ln)
+            denom = lp - ln
+            if min(lp, ln) <= 0.0 <= max(lp, ln):
+                straddle += 1
+                if abs(denom) >= 1e-9:
+                    shat = sn + (0.0 - ln) * (sp - sn) / denom
+                    errs.append(abs(shat))
+            ip_wide, inn_wide = pos[np.argmax(signed[pos])], neg[np.argmin(signed[neg])]
+            lp_wide, ln_wide = float(logits[ip_wide]), float(logits[inn_wide])
+            wide_straddle += int(min(lp_wide, ln_wide) <= 0.0 <= max(lp_wide, ln_wide))
+        finite = np.asarray(errs, dtype=np.float64)
+        return {
+            f"continuous_boundary_crossing_mae_{suffix}": float(np.mean(finite)) if finite.size else float("inf"),
+            f"continuous_boundary_crossing_p95_{suffix}": float(np.percentile(finite, 95)) if finite.size else float("inf"),
+            f"continuous_boundary_crossing_straddle_rate_{suffix}": float(straddle / max(n_groups, 1)),
+            f"continuous_boundary_wide_straddle_rate_{suffix}": float(wide_straddle / max(n_groups, 1)),
+            f"continuous_boundary_direction_agreement_{suffix}": float(direction_ok / max(n_groups, 1)),
+            f"continuous_boundary_crossing_n_{suffix}": float(n_groups),
+            f"continuous_boundary_crossing_bracketed_n_{suffix}": float(len(errs)),
+        }
+
+    out = evaluate("boundary_signed_m", "m")
+    out.update(evaluate("boundary_signed_rot_deg", "deg"))
+    return out
 
 
 def grad_cosine_vs_gt(

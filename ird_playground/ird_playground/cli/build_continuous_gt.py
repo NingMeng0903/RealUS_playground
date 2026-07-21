@@ -29,7 +29,13 @@ def main(argv: list[str] | None = None) -> int:
     assert_gt_contract(arrays)
     meta["config_path"] = str(config_path)
     save_ird_gt(out, arrays, meta)
-    print(f"wrote {out} N={len(arrays['reachable'])} accepted_rays={meta['n_boundary_rays_accepted']}")
+    accepted = int(
+        meta.get(
+            "n_boundary_rays_accepted",
+            int(meta.get("n_position_curves", 0)) + int(meta.get("n_rotation_curves", 0)),
+        )
+    )
+    print(f"wrote {out} N={len(arrays['reachable'])} accepted_curves={accepted}")
     return 0
 
 

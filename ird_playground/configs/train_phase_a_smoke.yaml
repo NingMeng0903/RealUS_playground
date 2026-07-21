@@ -3,11 +3,18 @@
 data:
   gt_npz: data/ird/gt_samples_1p5cm_probe.npz
   val_frac: 0.15
+  split_strategy: pose_group
 
 model:
   feature_kind: pu6
+  position_encoder: hash_grid
+  hash_levels: 10
+  hash_features_per_level: 2
+  hash_log2_size: 17
+  hash_base_resolution: 8
+  hash_max_resolution: 192
   num_freqs: 6
-  num_freqs_u: 5
+  num_freqs_u: 3
   hidden: 256
   depth: 5
   tau_m: 1.0

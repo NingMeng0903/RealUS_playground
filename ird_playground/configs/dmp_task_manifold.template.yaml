@@ -1,5 +1,0 @@
-# Copy this file into a deployment-specific config after calibration.
-# No identity fallback is allowed: DMP replay lives in patient coordinates.
-trajectory_npz: /media/camp/EXT_DRIVE/Among_US/DMP_playground/output/trajectory_extraction_demo/straight_0deg/trajectory_replay.npz
-pose_key: target
-T_arm_base_from_patient: null

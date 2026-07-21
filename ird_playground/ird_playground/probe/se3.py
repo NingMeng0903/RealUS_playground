@@ -52,6 +52,20 @@ def features_from_delta_T(delta_T: np.ndarray) -> np.ndarray:
     return np.concatenate([p, u], axis=0).astype(np.float64)
 
 
+def rot6d_features_from_delta_T(delta_T: np.ndarray) -> np.ndarray:
+    """Continuous full-pose feature ``[p, R[:,0], R[:,1]]`` from TCP^-1 base.
+
+    Unlike ``[p,u]``, this retains rotation about the tool axis.  The first two
+    rotation columns are a continuous, redundant representation of SO(3).
+    """
+    T = np.asarray(delta_T, dtype=np.float64).reshape(4, 4)
+    R_delta = T[:3, :3]
+    t_delta = T[:3, 3]
+    R_base_tcp = R_delta.T
+    p = -(R_base_tcp @ t_delta)
+    return np.concatenate([p, R_base_tcp[:, 0], R_base_tcp[:, 1]], axis=0)
+
+
 def batch_features_from_delta_T(delta_Ts: np.ndarray) -> np.ndarray:
     """(N,6) from (N,4,4)."""
     Ts = np.asarray(delta_Ts, dtype=np.float64)
@@ -61,6 +75,14 @@ def batch_features_from_delta_T(delta_Ts: np.ndarray) -> np.ndarray:
     for i, T in enumerate(Ts):
         out[i] = features_from_delta_T(T)
     return out
+
+
+def batch_rot6d_features_from_delta_T(delta_Ts: np.ndarray) -> np.ndarray:
+    """Batch version of :func:`rot6d_features_from_delta_T`."""
+    Ts = np.asarray(delta_Ts, dtype=np.float64)
+    if Ts.ndim == 2:
+        return rot6d_features_from_delta_T(Ts)[None, :]
+    return np.stack([rot6d_features_from_delta_T(T) for T in Ts], axis=0)
 
 
 def se3_exp(xi: np.ndarray) -> np.ndarray:
