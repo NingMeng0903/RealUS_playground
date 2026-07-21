@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from ird_playground.ird.continuous_gt import _block_ids, _reachability_modules
+from ird_playground.ird.gt_common import block_ids, reachability_modules
 from ird_playground.ird.export_gt import LAYER_EXTERIOR, LAYER_INTERIOR
 from ird_playground.ird.torch_kinematics import (
     TorchRM75Kinematics,
@@ -125,7 +125,7 @@ def build_gpu_pose_gt(
     (
         _ik_dls, _ik_multi, _SeedPoolConfig, _build_seed_pool,
         _halton, SelfCollisionFilter, build_locked_rail_model,
-    ) = _reachability_modules()
+    ) = reachability_modules()
     rng = np.random.default_rng(cfg.seed)
     torch.manual_seed(cfg.seed)
     lm = build_locked_rail_model()
@@ -261,7 +261,7 @@ def build_gpu_pose_gt(
         "layer_id": layer,
         "voxel_id": np.arange(n_total, dtype=np.int32),
         "orient_id": np.zeros(n_total, dtype=np.int32),
-        "block_id": _block_ids(features, cfg.holdout_block_m),
+        "block_id": block_ids(features, cfg.holdout_block_m),
         "source_pose_id": source_id,
         "pose_delta_translation_m": pose_delta_translation,
         "pose_delta_rotvec_rad": pose_delta_rotvec,

@@ -1,26 +1,16 @@
-from ird_playground.neural.metrics import PassThresholds, point_field_pass
-from ird_playground.neural.model import NeuralIRD, NeuralIRDPoint, PointScore
-from ird_playground.neural.train import (
-    TrainConfig,
-    checkpoint_selection_score,
-    differentiability_smoke,
-    evaluate_point_field,
-    load_train_config,
-    train_point_field,
-    validate_phase_config,
+from ird_playground.neural.signed_field import ReachabilitySDF, SignedReachabilityField
+from ird_playground.neural.train_signed import (
+    SignedTrainConfig,
+    evaluate_signed_field,
+    load_signed_train_config,
+    train_signed_field,
 )
 
 __all__ = [
-    "NeuralIRD",
-    "NeuralIRDPoint",
-    "PassThresholds",
-    "PointScore",
-    "TrainConfig",
-    "checkpoint_selection_score",
-    "differentiability_smoke",
-    "evaluate_point_field",
-    "load_train_config",
-    "point_field_pass",
-    "train_point_field",
-    "validate_phase_config",
+    "ReachabilitySDF",
+    "SignedReachabilityField",
+    "SignedTrainConfig",
+    "evaluate_signed_field",
+    "load_signed_train_config",
+    "train_signed_field",
 ]

@@ -1,20 +1,16 @@
-"""Region aggregation queries over the IRD point field."""
+"""Differentiable robust-region queries over the signed IRD field."""
 
-from ird_playground.region.aggregate import (
-    OrientationExtent,
-    PositionExtent,
-    RegionScore,
-    aggregate_mean_softmin,
-    aggregate_mq,
-    region_score_a,
-    sample_anisotropic_xi,
+from ird_playground.region.operator import (
+    RegionA,
+    RegionAConfig,
+    RegionAResult,
+    base_from_rail_torch,
+    normalized_softmin,
 )
 __all__ = [
-    "OrientationExtent",
-    "PositionExtent",
-    "RegionScore",
-    "aggregate_mean_softmin",
-    "aggregate_mq",
-    "region_score_a",
-    "sample_anisotropic_xi",
+    "RegionA",
+    "RegionAConfig",
+    "RegionAResult",
+    "base_from_rail_torch",
+    "normalized_softmin",
 ]

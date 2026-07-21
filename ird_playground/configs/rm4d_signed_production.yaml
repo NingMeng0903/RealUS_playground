@@ -1,0 +1,36 @@
+build:
+  source_npz: data/ird/gpu_pose_stencils_production.npz
+  auxiliary_npz:
+    - data/ird/gpu_pose_uniform_production.npz
+  output_npz: data/ird/rm4d_signed_production.npz
+  quantile_lo: 0.005
+  quantile_hi: 0.995
+  min_pair_separation_normalized: 0.00001
+
+model:
+  width: 192
+  depth: 5
+  fourier_bands: 3
+  softplus_beta: 20.0
+
+training:
+  seed: 47
+  device: cuda
+  epochs: 30
+  batch_size: 4096
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  val_fraction: 0.15
+  early_stop_patience: 6
+  logit_scale: 3.0
+  normal_batch_max: 512
+
+loss:
+  classification: 1.0
+  signed_value: 4.0
+  normal_direction: 0.10
+  eikonal: 0.0
+
+io:
+  checkpoint: data/checkpoints/rm4d_signed/selected.pt
+  report: data/reports/train_rm4d_signed.json

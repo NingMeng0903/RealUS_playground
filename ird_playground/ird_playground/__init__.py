@@ -1,6 +1,12 @@
-"""Generic Neural IRD point field + query-side region A."""
+"""RM75 signed inverse-reachability field and differentiable Region A."""
 
-from ird_playground.neural.model import NeuralIRD, PointScore
-from ird_playground.region.aggregate import RegionScore
+from ird_playground.neural.signed_field import ReachabilitySDF, SignedReachabilityField
+from ird_playground.region.operator import RegionA, RegionAConfig, RegionAResult
 
-__all__ = ["NeuralIRD", "PointScore", "RegionScore"]
+__all__ = [
+    "ReachabilitySDF",
+    "SignedReachabilityField",
+    "RegionA",
+    "RegionAConfig",
+    "RegionAResult",
+]

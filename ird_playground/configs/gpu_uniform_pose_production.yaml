@@ -1,0 +1,15 @@
+sampling:
+  seed_gt_npz: data/ird/gpu_pose_production.npz
+  output_npz: data/ird/gpu_pose_uniform_production.npz
+  n_queries: 500000
+  n_ik_seeds: 16
+  batch_size: 2048
+  radius_m: 1.2
+  z_min_m: -0.35
+  z_max_m: 1.35
+  horizontal_probe_fraction: 0.20
+  horizontal_tilt_max_deg: 15.0
+  ik_max_iter: 100
+  seed: 83
+  device: cuda
+  log_every_batches: 10

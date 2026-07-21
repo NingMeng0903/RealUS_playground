@@ -43,7 +43,6 @@ from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import (
     save_rigged_asset,
 )
 from projects.genesis_ue_sync.anatomy_retarget.rig_weighted_rest import (
-    blend_tissue_rest_by_smplx_joints,
     merge_tissue_rest_reference,
     reconstruct_rig_weighted_rest,
 )
@@ -1955,42 +1954,26 @@ def main() -> int:
                 rig_weighted_nerve_report["reconstructed_vertex_count"],
             )
     if args.stage1_rigid_region_baseline:
-        regional_tube_asset, regional_tube_report = reconstruct_rig_weighted_rest(
+        # Bone placement and target bind are now final.  Reconstruct every
+        # vessel and nerve once from the immutable Blender sparse weights and
+        # this final 235-bone fit.  Regional blending left the long limb tubes
+        # on a pre-rigid reference, which is why they crossed the correctly
+        # moved bones even though the runtime weights were preserved.
+        asset, regional_tube_report = reconstruct_rig_weighted_rest(
             asset,
             tissues=("vessel", "nerve"),
             fit_tissues=("bone",),
             fallback_to_all_influenced=False,
             rebind=False,
-            topology_smooth_weight=100.0,
-            stage="stage1_post_rigid_regional_tubes",
-        )
-        head_joints = ("neck", "head", "jaw", "left_eye_smplhf", "right_eye_smplhf")
-        hand_joints = tuple(
-            name
-            for name in asset.joint_names
-            if str(name) in {"left_wrist", "right_wrist"}
-            or any(
-                str(name).startswith(f"{side}_{digit}")
-                for side in ("left", "right")
-                for digit in ("index", "middle", "pinky", "ring", "thumb")
-            )
-        )
-        asset, vessel_region_report = blend_tissue_rest_by_smplx_joints(
-            asset,
-            regional_tube_asset,
-            tissues=("vessel",),
-            joint_names=(*head_joints, *hand_joints),
-        )
-        asset, nerve_region_report = blend_tissue_rest_by_smplx_joints(
-            asset,
-            regional_tube_asset,
-            tissues=("nerve",),
-            joint_names=head_joints,
+            topology_smooth_weight=0.0,
+            stage="stage1_final_source_weighted_tubes",
         )
         shape_report["post_rigid_regional_tubes"] = {
             "reconstruction": regional_tube_report,
-            "vessel_blend": vessel_region_report,
-            "nerve_blend": nerve_region_report,
+            "selection": "all_final_source_weighted_tubes",
+            "regional_blend_disabled": True,
+            "reason": "final bone fit is the single rest-space authority",
+            "supersedes_hand_nerve_rbf": bool(args.stage1_hand_nerve_rbf),
         }
     if args.stage1_rigid_region_baseline:
         _accepted_tube_asset, tube_rest_acceptance = (

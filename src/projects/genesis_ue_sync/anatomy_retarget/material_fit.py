@@ -1720,34 +1720,56 @@ def fit_source_bind_hands(
             [np.arange(start, stop, dtype=np.int64) for start, stop, _name in ranges]
         )
         source_carpal = baseline_vertices[carpal_indices]
-        thumb_name = f"_1st_Metacarpal_{'L' if side == 'left' else 'R'}"
-        thumb_range = next(
-            (
-                (int(start), int(stop))
-                for (start, stop), mesh_name in zip(
-                    asset.source_vertex_ranges, asset.source_mesh_names
-                )
-                if str(mesh_name) == thumb_name
-            ),
-            None,
-        )
-        if thumb_range is None:
-            raise RuntimeError(f"missing {thumb_name} for carpal contact inheritance")
-        thumb_start, thumb_stop = thumb_range
-        source_thumb = baseline_vertices[thumb_start:thumb_stop]
-        mapped_thumb = vertices[thumb_start:thumb_stop]
-        contact_distance, contact_thumb = cKDTree(source_thumb).query(
-            source_carpal, k=1
-        )
-        contact_count = min(24, len(source_carpal))
-        contact_carpal = np.argpartition(
-            contact_distance, contact_count - 1
-        )[:contact_count]
-        source_contact = source_carpal[contact_carpal]
-        target_contact = source_contact + (
-            mapped_thumb[contact_thumb[contact_carpal]]
-            - source_thumb[contact_thumb[contact_carpal]]
-        )
+        # A thumb-only contact fit rotates the whole carpal block around one
+        # local point.  That leaves the radial/ulnar carpals outside the hand
+        # when the beta changes.  Use all five metacarpal interfaces instead;
+        # the fitted metacarpals already carry their exact Blender source-pivot
+        # correspondence, so this is one shared hand transform, not a per-
+        # carpal correction.
+        source_contacts: list[np.ndarray] = []
+        target_contacts: list[np.ndarray] = []
+        source_contact_gaps: list[np.ndarray] = []
+        mapped_metacarpals: list[np.ndarray] = []
+        metacarpal_count = 0
+        side_code = "L" if side == "left" else "R"
+        for digit, ordinal in ((1, "st"), (2, "nd"), (3, "rd"), (4, "th"), (5, "th")):
+            metacarpal_name = f"_{digit}{ordinal}_Metacarpal_{side_code}"
+            metacarpal_range = next(
+                (
+                    (int(start), int(stop))
+                    for (start, stop), mesh_name in zip(
+                        asset.source_vertex_ranges, asset.source_mesh_names
+                    )
+                    if str(mesh_name) == metacarpal_name
+                ),
+                None,
+            )
+            if metacarpal_range is None:
+                continue
+            metacarpal_count += 1
+            met_start, met_stop = metacarpal_range
+            source_metacarpal = baseline_vertices[met_start:met_stop]
+            mapped_metacarpal = vertices[met_start:met_stop]
+            mapped_metacarpals.append(mapped_metacarpal)
+            contact_distance, contact_metacarpal = cKDTree(source_metacarpal).query(
+                source_carpal, k=1
+            )
+            source_contact_gaps.append(contact_distance)
+            contact_count = min(24, len(source_carpal))
+            contact_carpal = np.argpartition(
+                contact_distance, contact_count - 1
+            )[:contact_count]
+            source_contact = source_carpal[contact_carpal]
+            target_contact = source_contact + (
+                mapped_metacarpal[contact_metacarpal[contact_carpal]]
+                - source_metacarpal[contact_metacarpal[contact_carpal]]
+            )
+            source_contacts.append(source_contact)
+            target_contacts.append(target_contact)
+        if not source_contacts:
+            raise RuntimeError(f"missing metacarpal contacts for {side} carpal fit")
+        source_contact = np.concatenate(source_contacts, axis=0)
+        target_contact = np.concatenate(target_contacts, axis=0)
         source_center = np.mean(source_contact, axis=0)
         target_center = np.mean(target_contact, axis=0)
         u, _singular, vt = np.linalg.svd(
@@ -1757,8 +1779,19 @@ def fit_source_bind_hands(
         if np.linalg.det(rotation) < 0.0:
             vt[-1] *= -1.0
             rotation = vt.T @ u.T
-        translation = target_center - rotation @ source_center
-        mapped_compound = source_carpal @ rotation.T + translation
+        denominator = float(np.sum((source_contact - source_center) ** 2))
+        raw_scale = (
+            float(
+                np.sum(
+                    (target_contact - target_center)
+                    * ((source_contact - source_center) @ rotation.T)
+                )
+            )
+            / max(denominator, 1.0e-10)
+        )
+        compound_scale = float(np.clip(raw_scale, 0.85, 1.05))
+        translation = target_center - compound_scale * (rotation @ source_center)
+        mapped_compound = compound_scale * (source_carpal @ rotation.T) + translation
         cursor = 0
         for start, stop, name in ranges:
             count = stop - start
@@ -1768,11 +1801,20 @@ def fit_source_bind_hands(
             fitted_meshes.append(name)
         carpal_report[side] = {
             "translation_m": translation.tolist(),
-            "source_thumb_contact_gap_m": float(np.min(contact_distance)),
-            "mapped_thumb_contact_gap_m": float(
-                np.min(cKDTree(mapped_thumb).query(mapped_compound, k=1)[0])
+            "source_metacarpal_contact_gap_m": float(
+                np.min(np.concatenate(source_contact_gaps, axis=0))
             ),
-            "contact_samples": int(contact_count),
+            "mapped_metacarpal_contact_gap_m": float(
+                np.min(
+                    cKDTree(np.concatenate(mapped_metacarpals, axis=0)).query(
+                        mapped_compound, k=1
+                    )[0]
+                )
+            ),
+            "contact_samples": int(len(source_contact)),
+            "metacarpal_count": int(metacarpal_count),
+            "raw_uniform_scale": float(raw_scale),
+            "uniform_scale": float(compound_scale),
         }
 
     interim = type(asset)(
@@ -1999,7 +2041,11 @@ def fit_stage1_rigid_regions(
                 ),
                 f"{side}_lower_leg": mesh_indices(
                     lambda name, side_match=side_match: side_match(name)
-                    and any(token in name for token in ("tibia", "fibula", "patella"))
+                    and any(token in name for token in ("tibia", "fibula"))
+                ),
+                f"{side}_patella": mesh_indices(
+                    lambda name, side_match=side_match: side_match(name)
+                    and "patella" in name
                 ),
                 f"{side}_foot": mesh_indices(
                     lambda name, side_match=side_match: side_match(name)
@@ -2135,7 +2181,17 @@ def fit_stage1_rigid_regions(
             f"{side}_shoulder"
         ]
         single_joint_compounds[f"{side}_foot"] = joint_lookup[f"{side}_ankle"]
+        single_joint_compounds[f"{side}_patella"] = joint_lookup[f"{side}_knee"]
 
+    # These meshes are already represented by the same beta harmonic field as
+    # the target body.  A single correspondence similarity fixes their global
+    # placement while preserving the authored source cross-section; unlike the
+    # old endpoint fit it does not force a left/right source-pivot asymmetry.
+    correspondence_groups = {
+        name
+        for name in groups
+        if name.endswith("_patella")
+    }
     group_fit: dict[str, dict[str, Any]] = {}
     for group_name, indices in groups.items():
         src = source[indices]
@@ -2159,7 +2215,30 @@ def fit_stage1_rigid_regions(
         cross_scale = float(np.clip(raw_scale, 0.90, 1.05))
         mapped = dst_center + cross_scale * rotated
         anchors = interfaces[group_name]
-        if group_name in segment_joints:
+        if group_name in correspondence_groups:
+            correspondence_u, _correspondence_s, correspondence_vt = np.linalg.svd(
+                (src - src_center).T @ (dst - dst_center)
+            )
+            correspondence_rotation = correspondence_vt.T @ correspondence_u.T
+            if np.linalg.det(correspondence_rotation) < 0.0:
+                correspondence_vt[-1] *= -1.0
+                correspondence_rotation = correspondence_vt.T @ correspondence_u.T
+            correspondence_rotated = (src - src_center) @ correspondence_rotation.T
+            correspondence_denominator = float(
+                np.sum((src - src_center) ** 2)
+            )
+            correspondence_scale = float(
+                np.clip(
+                    np.sum((dst - dst_center) * correspondence_rotated)
+                    / max(correspondence_denominator, 1.0e-10),
+                    0.90,
+                    1.05,
+                )
+            )
+            mapped = dst_center + correspondence_scale * correspondence_rotated
+            rotation = correspondence_rotation
+            cross_scale = correspondence_scale
+        elif group_name in segment_joints:
             joint_a, joint_b = segment_joints[group_name]
             source_a = source_joint_anchors[joint_a]
             source_b = source_joint_anchors[joint_b]
@@ -2229,33 +2308,78 @@ def fit_stage1_rigid_regions(
             "target_residual_rms_m": float(np.sqrt(np.mean(residual**2))),
             "rotation": rotation,
         }
-    hip_closure_report: dict[str, Any] = {}
-    for side in ("left", "right"):
-        hip_sample = contact_samples.get(f"{side}_hip")
-        knee_sample = contact_samples.get(f"{side}_knee")
-        femur_name = f"{side}_thigh"
-        if hip_sample is None or knee_sample is None or femur_name not in groups:
-            continue
-        hip_parent, hip_child = hip_sample[0], hip_sample[1]
-        knee_parent = knee_sample[0]
-        acetabulum = np.mean(vertices[hip_parent], axis=0)
-        femoral_head = np.mean(vertices[hip_child], axis=0)
-        distal_contact = np.mean(vertices[knee_parent], axis=0)
-        before = float(np.linalg.norm(femoral_head - acetabulum))
-        vertices[groups[femur_name]] = shaft_preserving_segment_map(
-            vertices[groups[femur_name]],
-            source_a=femoral_head,
-            source_b=distal_contact,
-            target_a=acetabulum,
-            target_b=distal_contact,
+
+    # The harmonic body can be narrower than the authored head while the
+    # mandible and cranial vault must remain one anatomical compound.  Fit the
+    # complete source skull once, then choose the largest uniformly scaled
+    # candidate contained by the subject surface.  This preserves jaw/teeth
+    # proportions and never translates the mandible independently.
+    head_indices = mesh_indices(
+        lambda name: name in {"upper_skull", "skull", "cranium", "mandible", "jaw"}
+    )
+    head_fit_report: dict[str, Any] = {"available": False}
+    if len(head_indices):
+        canonical_root = Path(canonical_dir)
+        target_surface = _load_obj_vertices(
+            canonical_root / "smpl_canonical_tpose.obj"
         )
-        after = float(
-            np.linalg.norm(np.mean(vertices[hip_child], axis=0) - acetabulum)
+        target_faces = np.asarray(
+            np.load(canonical_root / "smpl_canonical_weights.npz", allow_pickle=True)["faces"],
+            dtype=np.int32,
         )
-        hip_closure_report[side] = {
-            "pre_surface_gap_m": before,
-            "post_surface_gap_m": after,
-            "distal_knee_anchor_preserved": True,
+        target_head_surface = _surface_region(
+            canonical_root,
+            list(asset.joint_names),
+            ("head",),
+            subject=True,
+        )
+        source_head_center, target_head_center = _midline_envelope_centers(
+            reference_points=source[head_indices],
+            target_points=target_head_surface,
+            source_anchors=source_joint_anchors,
+            target_joints=target_joint_anchors,
+            joint_names=list(asset.joint_names),
+            center_offset=np.zeros(3, dtype=np.float64),
+        )
+        head_fitted, head_scale, envelope_report = _uniform_envelope_fit(
+            source[head_indices],
+            target_head_surface,
+            reference_points=source[head_indices],
+            scale_multiplier=1.0,
+            center_offset=np.zeros(3, dtype=np.float64),
+            margin=1.0,
+            maximum_scale=1.25,
+            minimum_scale=0.70,
+            scale_mode="median",
+            source_center=source_head_center,
+            target_center=target_head_center,
+        )
+        head_candidate, contained_scale, containment_report = _contained_uniform_candidate(
+            source[head_indices],
+            source_center=source_head_center,
+            target_center=target_head_center,
+            target_surface=target_surface,
+            target_faces=target_faces,
+            desired_scale=head_scale,
+            minimum_scale=0.70,
+            # A zero clearance is intentional here.  The skull is a rigid
+            # compound; a millimetre envelope margin would reject an otherwise
+            # contained candidate at the SMPL-X facial openings and leave the
+            # original, much larger head in place.
+            clearance_m=0.0,
+        )
+        if bool(containment_report.get("candidate_contained")):
+            head_fitted = head_candidate
+            head_scale = contained_scale
+        vertices[head_indices] = head_fitted
+        head_fit_report = {
+            "available": True,
+            "mesh_vertex_count": int(len(head_indices)),
+            "uniform_scale": float(head_scale),
+            "envelope": envelope_report,
+            "contained_candidate": containment_report,
+            "independent_jaw_translation": False,
+            "source_proportions_preserved": True,
         }
     contact_report: dict[str, Any] = {}
     for joint_name, sample in contact_samples.items():
@@ -2264,8 +2388,12 @@ def fit_stage1_rigid_regions(
         mapped_parent = np.mean(vertices[parent_contact], axis=0)
         mapped_child = np.mean(vertices[child_contact], axis=0)
         contact_report[joint_name] = {
-            "source_surface_gap_m": float(np.linalg.norm(source_child - source_parent)),
-            "post_anchor_gap_m": float(np.linalg.norm(mapped_child - mapped_parent)),
+            "source_contact_sample_centroid_gap_m": float(
+                np.linalg.norm(source_child - source_parent)
+            ),
+            "mapped_contact_sample_centroid_gap_m": float(
+                np.linalg.norm(mapped_child - mapped_parent)
+            ),
             "parent_to_shared_anchor_m": float(
                 np.linalg.norm(mapped_parent - target_joint)
             ),
@@ -2315,7 +2443,8 @@ def fit_stage1_rigid_regions(
             for name, report in group_fit.items()
         },
         "shared_contact_anchors": contact_report,
-        "hip_surface_closure": hip_closure_report,
+        "head_compound": head_fit_report,
+        "contact_centroid_metrics_are_not_surface_clearance": True,
         "minimum_cross_section_scale": 0.90,
         "independent_mesh_fits": False,
         "changed_vertex_count": int(np.count_nonzero(np.linalg.norm(vertices - target, axis=1))),

@@ -7,11 +7,11 @@ from pathlib import Path
 
 import numpy as np
 
-from ird_playground.ird.continuous_gt import (
+from ird_playground.ird.gt_common import (
     CLEARANCE_POSITION,
     CLEARANCE_ROTATION,
-    _block_ids,
-    _reachability_modules,
+    block_ids,
+    reachability_modules,
 )
 from ird_playground.ird.export_gt import (
     LAYER_BND_NEG,
@@ -177,7 +177,7 @@ def build_gpu_boundary_stencils(
     (
         _ik, _ikm, _SeedPoolConfig, _seed_pool, _halton,
         SelfCollisionFilter, build_locked_rail_model,
-    ) = _reachability_modules()
+    ) = reachability_modules()
     lm = build_locked_rail_model()
     collision_cfg = GpuPoseGtConfig(
         collision_urdf=cfg.collision_urdf,
@@ -326,7 +326,7 @@ def build_gpu_boundary_stencils(
         "layer_id": stencil["layer_id"],
         "voxel_id": np.arange(n_base, n_base + n_stencil, dtype=np.int32),
         "orient_id": np.zeros(n_stencil, dtype=np.int32),
-        "block_id": _block_ids(stencil["features"], 0.04),
+        "block_id": block_ids(stencil["features"], 0.04),
         "source_pose_id": stencil["source_pose_id"],
         "q": stencil["q"],
         "q_comfort": stencil["q"],
