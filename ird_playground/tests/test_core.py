@@ -333,6 +333,29 @@ def test_continuous_fk_ik_gt_smoke():
     assert "boundary_id" in arrays and "boundary_signed_m" in arrays
 
 
+def test_dmp_task_requires_explicit_calibration(tmp_path):
+    from ird_playground.traj.dmp_task import load_dmp_task_spec, load_task_tcp_poses
+    import yaml
+
+    traj = tmp_path / "traj.npz"
+    np.savez(
+        traj,
+        s=np.array([0.0, 1.0]),
+        p_target=np.array([[0.0, 0.0, 0.0], [0.1, 0.0, 0.0]]),
+        r_target=np.repeat(np.eye(3)[None, :, :], 2, axis=0),
+    )
+    cfg = tmp_path / "task.yaml"
+    cfg.write_text(yaml.safe_dump({"trajectory_npz": str(traj)}), encoding="utf-8")
+    with pytest.raises(ValueError, match="T_arm_base_from_patient"):
+        load_dmp_task_spec(cfg)
+    cfg.write_text(
+        yaml.safe_dump({"trajectory_npz": str(traj), "T_arm_base_from_patient": np.eye(4).tolist()}),
+        encoding="utf-8",
+    )
+    phase, poses = load_task_tcp_poses(load_dmp_task_spec(cfg))
+    assert phase.shape == (2,) and poses.shape == (2, 4, 4)
+
+
 def test_feature_spec_and_warm_start_mismatch(tmp_path):
     import torch
 

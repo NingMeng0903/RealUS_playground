@@ -28,11 +28,15 @@ _MAX_FINAL_SURFACE_DISTANCE_M = 0.10
 _MAX_BOUNDARY_DISPLACEMENT_M = 0.50
 _MIN_REGISTRATION_PROGRESS_M = 1.0e-7
 _FINE_SHELL_HOMOTOPY = (0.10, 0.25, 0.45, 0.65, 0.82, 1.00)
-_SEMANTIC_PREALIGN_BLEND = 0.25
+_SEMANTIC_PREALIGN_CANDIDATES = (0.375, 0.3125, 0.30, 0.25, 0.20, 0.15)
+_SEMANTIC_PREALIGN_MIN_PROBE_STRETCH = 0.80
+_SEMANTIC_PREALIGN_MAX_PROBE_STRETCH = 1.22
 
 
 def _semantic_rest_prealign(
     asset: AnatomyRiggedAsset,
+    *,
+    legacy_frames: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
     """Evaluate the v35 semantic rest alignment without changing rig authority."""
     if (
@@ -45,7 +49,10 @@ def _semantic_rest_prealign(
         raise RuntimeError(
             "semantic Stage-1 prealign requires Skin_Glass and the complete source rig"
         )
-    _target_global, _target_local, source_delta = _fit_source_frames(asset)
+    _target_global, _target_local, source_delta = _fit_source_frames(
+        asset,
+        preserve_same_semantic_offset=not legacy_frames,
+    )
     vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
     source_indices = np.asarray(asset.driver_indices, dtype=np.int64)
     source_weights = np.asarray(asset.driver_weights, dtype=np.float64)
@@ -106,11 +113,22 @@ def _rebind_source_rig_from_volume_field(
     field: np.ndarray,
     semantic_prealign_delta: np.ndarray | None = None,
     semantic_prealign_blend: float = 0.0,
+    from_target_binding: bool = False,
+    stage: str = "stage1_harmonic_volume",
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     """Map source bind frames through the same field as anatomy vertices."""
-    source_global = np.asarray(asset.source_bind_global, dtype=np.float64)
-    source_head = np.asarray(asset.source_bone_head, dtype=np.float64)
-    source_tail = np.asarray(asset.source_bone_tail, dtype=np.float64)
+    source_global = np.asarray(
+        asset.target_bind_global if from_target_binding else asset.source_bind_global,
+        dtype=np.float64,
+    )
+    source_head = np.asarray(
+        asset.target_bone_head if from_target_binding else asset.source_bone_head,
+        dtype=np.float64,
+    )
+    source_tail = np.asarray(
+        asset.target_bone_tail if from_target_binding else asset.source_bone_tail,
+        dtype=np.float64,
+    )
     count = len(source_global)
     epsilon = 1.0e-3
     origins = source_global[:, :3, 3]
@@ -162,6 +180,8 @@ def _rebind_source_rig_from_volume_field(
     target_global[:, :3, 3] = mapped_origin
     minimum_stretch = float("inf")
     maximum_stretch = 0.0
+    minimum_stretch_bone = -1
+    maximum_stretch_bone = -1
     for bone in range(count):
         deformed_basis = (
             mapped_axes[bone] - mapped_origin[bone][None, :]
@@ -172,8 +192,14 @@ def _rebind_source_rig_from_volume_field(
             u[:, -1] *= -1.0
             rotation = u @ vt
         target_global[bone, :3, :3] = rotation
-        minimum_stretch = min(minimum_stretch, float(np.min(singular)))
-        maximum_stretch = max(maximum_stretch, float(np.max(singular)))
+        local_minimum = float(np.min(singular))
+        local_maximum = float(np.max(singular))
+        if local_minimum < minimum_stretch:
+            minimum_stretch = local_minimum
+            minimum_stretch_bone = bone
+        if local_maximum > maximum_stretch:
+            maximum_stretch = local_maximum
+            maximum_stretch_bone = bone
 
     parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
     target_local = target_global.copy()
@@ -184,14 +210,26 @@ def _rebind_source_rig_from_volume_field(
             )
     metadata = dict(asset.metadata or {})
     report = {
-        "stage": "stage1_harmonic_volume",
+        "stage": str(stage),
         "backend": "shared_volume_field_bind_probes_v1",
         "probe_count": int(len(probes)),
         "minimum_probe_stretch": minimum_stretch,
         "maximum_probe_stretch": maximum_stretch,
+        "minimum_probe_stretch_bone": (
+            str(asset.source_bone_names[minimum_stretch_bone])
+            if minimum_stretch_bone >= 0
+            else None
+        ),
+        "maximum_probe_stretch_bone": (
+            str(asset.source_bone_names[maximum_stretch_bone])
+            if maximum_stretch_bone >= 0
+            else None
+        ),
         "semantic_prealign_blend": float(semantic_prealign_blend),
     }
-    metadata["source_rig_rebind"] = [report]
+    history = list(metadata.get("source_rig_rebind") or [])
+    history.append(report)
+    metadata["source_rig_rebind"] = history
     result = type(asset)(
         **{
             **asset.__dict__,
@@ -204,6 +242,8 @@ def _rebind_source_rig_from_volume_field(
         }
     )
     return result, report
+
+
 def _transport_sampled_material(
     query: np.ndarray,
     delta: np.ndarray,
@@ -341,6 +381,56 @@ def _barycentric_surface_map(
         * bary[:, :, None],
         axis=1,
     )
+
+
+def _semantic_skin_surface_correspondence(
+    source_vertices: np.ndarray,
+    guide_vertices: np.ndarray,
+    source_weights: np.ndarray,
+    target_vertices: np.ndarray,
+    target_weights: np.ndarray,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Match skin branches on the target surface by SMPL-X weight semantics."""
+    from scipy.spatial import cKDTree
+
+    source = np.asarray(source_vertices, dtype=np.float64)
+    guide = np.asarray(guide_vertices, dtype=np.float64)
+    source_lbs = np.asarray(source_weights, dtype=np.float64)
+    target = np.asarray(target_vertices, dtype=np.float64)
+    target_lbs = np.asarray(target_weights, dtype=np.float64)
+    if source.shape != guide.shape or source_lbs.shape[0] != len(source):
+        raise ValueError("source skin guide and weights must match source vertices")
+    if target_lbs.shape[0] != len(target) or source_lbs.shape[1] != target_lbs.shape[1]:
+        raise ValueError("source and target skin weights must share the joint order")
+    source_label = np.argmax(source_lbs, axis=1)
+    target_label = np.argmax(target_lbs, axis=1)
+    mapped = np.empty_like(source)
+    fallback = 0
+    matched_counts: dict[str, int] = {}
+    global_tree = cKDTree(target)
+    for joint in np.unique(source_label).tolist():
+        rows = np.flatnonzero(source_label == int(joint))
+        candidates = np.flatnonzero(target_label == int(joint))
+        if not len(candidates):
+            _distance, selected = global_tree.query(guide[rows], k=1)
+            mapped[rows] = target[np.asarray(selected, dtype=np.int64)]
+            fallback += int(len(rows))
+            continue
+        _distance, local = cKDTree(target[candidates]).query(guide[rows], k=1)
+        mapped[rows] = target[candidates[np.asarray(local, dtype=np.int64)]]
+        matched_counts[str(int(joint))] = int(len(rows))
+
+    guide_error = np.linalg.norm(mapped - guide, axis=1)
+    return mapped, {
+        "backend": "dominant_smplx_weight_constrained_surface_v1",
+        "source_vertex_count": int(len(source)),
+        "target_vertex_count": int(len(target)),
+        "matched_joint_count": int(len(matched_counts)),
+        "fallback_vertex_count": int(fallback),
+        "guide_to_target_rms_m": float(np.sqrt(np.mean(guide_error**2))),
+        "guide_to_target_max_m": float(np.max(guide_error)),
+        "vertices_by_joint": matched_counts,
+    }
 
 
 def _outer_body_component(
@@ -1300,7 +1390,10 @@ def apply_source_skin_volume_registration(
     debug_stage1_dir: Path | str | None = None,
     boundary_reference: Path | str | None = None,
     v35_semantic_prealign_shared_bind: bool = False,
+    legacy_weighted_semantic_prealign: bool = False,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    if v35_semantic_prealign_shared_bind and legacy_weighted_semantic_prealign:
+        raise ValueError("continuous and legacy semantic prealign are mutually exclusive")
     if asset.source_skin_vertices is None or asset.source_skin_faces is None:
         raise RuntimeError("source template lacks Skin_Glass; force source template rebake")
     root = Path(canonical_dir)
@@ -1342,26 +1435,60 @@ def apply_source_skin_volume_registration(
     skin_faces = np.asarray(asset.source_skin_faces, dtype=np.int32)
     prealign_delta: np.ndarray | None = None
     prealign_blend = 0.0
+    continuous_prealign_field: np.ndarray | None = None
+    continuous_prealign_cage: dict[str, np.ndarray] | None = None
+    continuous_prealign_stages: list[tuple[dict[str, np.ndarray], np.ndarray]] = []
     if v35_semantic_prealign_shared_bind:
-        prealigned_vertices, prealigned_skin, prealign_delta, prealign_report = (
+        _prealigned_vertices, prealigned_skin, _prealign_delta, prealign_report = (
             _semantic_rest_prealign(asset)
         )
-        prealign_blend = float(_SEMANTIC_PREALIGN_BLEND)
+        semantic_skin_guide = prealigned_skin
+        semantic_skin_full_target = None
+        prealign_report["bind_probes_share_prealign"] = True
+        prealign_report["transport"] = "continuous_skin_boundary_harmonic"
+        query = source_vertices
+        skin_vertices = source_skin_vertices
+    elif legacy_weighted_semantic_prealign:
+        prealigned_vertices, prealigned_skin, prealign_delta, prealign_report = (
+            _semantic_rest_prealign(asset, legacy_frames=True)
+        )
+        # This is the generic v62/e03 correspondence: the complete authored
+        # source-weight field prealigns anatomy and Skin_Glass by the same
+        # fixed fraction before the subject harmonic solve.  It is retained as
+        # a hand-geometry reference; runtime coupling is rebuilt separately.
+        prealign_blend = 0.25
         query = source_vertices + prealign_blend * (
             prealigned_vertices - source_vertices
         )
         skin_vertices = source_skin_vertices + prealign_blend * (
             prealigned_skin - source_skin_vertices
         )
+        semantic_skin_guide = None
+        semantic_skin_full_target = None
+        prealign_report["backend"] = "source_rig_semantic_rest_lbs_v1"
+        prealign_report["driver_skeleton"] = "source_neutral"
         prealign_report["blend"] = prealign_blend
-        prealign_report["bind_probes_share_prealign"] = True
+        prealign_report["transport"] = "weighted_prealign_then_harmonic"
     else:
         query = source_vertices
         skin_vertices = source_skin_vertices
+        semantic_skin_guide = None
+        semantic_skin_full_target = None
         prealign_report = None
     target_vertices, target_faces, target_weights, body_report = _outer_body_component(
         target_vertices_full, target_faces_full, target_weights_full
     )
+    if semantic_skin_guide is not None:
+        semantic_skin_full_target, semantic_surface_report = (
+            _semantic_skin_surface_correspondence(
+                source_skin_vertices,
+                semantic_skin_guide,
+                np.asarray(asset.source_skin_lbs_weights, dtype=np.float64),
+                target_vertices,
+                target_weights,
+            )
+        )
+        prealign_report["semantic_surface_correspondence"] = semantic_surface_report
     coarse_shell_vertices, coarse_shell_faces, coarse_shell_pitch = _coarse_closed_solver_shell(
         target_vertices, target_faces
     )
@@ -1375,10 +1502,11 @@ def apply_source_skin_volume_registration(
     # map is intentionally not used here, because its output can drift away
     # from the target surface despite preserving source-triangle orientation.
     cached_reference: dict[str, np.ndarray] | None = None
-    if boundary_reference is not None:
+    if boundary_reference is not None and prealign_report is not None:
         raise ValueError(
             "a legacy Stage-1 boundary reference cannot be reused after semantic rest prealign"
         )
+    if boundary_reference is not None:
         reference_path = Path(boundary_reference).expanduser().resolve()
         with np.load(reference_path, allow_pickle=False) as reference_data:
             required = {
@@ -1429,6 +1557,156 @@ def apply_source_skin_volume_registration(
         cage=cage,
         context="source Skin_Glass domain",
     )
+    if semantic_skin_full_target is not None:
+        continuous_prealign_cage = {**cage, "nodes": nodes.copy()}
+        boundary_source = _barycentric_surface_map(
+            nodes[boundary], source_skin_vertices, skin_faces, source_skin_vertices
+        )
+        boundary_local_index = np.full(len(nodes), -1, dtype=np.int64)
+        boundary_local_index[boundary] = np.arange(len(boundary), dtype=np.int64)
+        boundary_faces_local = boundary_local_index[
+            np.asarray(cage["boundary_faces"], dtype=np.int64)
+        ]
+        if np.any(boundary_faces_local < 0):
+            raise RuntimeError("cage boundary faces reference non-boundary nodes")
+        selection_attempts: list[dict[str, Any]] = []
+        raw_boundary_displacement = np.zeros((len(boundary), 3), dtype=np.float64)
+        smooth_boundary_displacement = raw_boundary_displacement.copy()
+        continuous_report = {}
+        for candidate_blend in _SEMANTIC_PREALIGN_CANDIDATES:
+            semantic_skin_target = source_skin_vertices + float(candidate_blend) * (
+                semantic_skin_full_target - source_skin_vertices
+            )
+            boundary_target = _barycentric_surface_map(
+                nodes[boundary], source_skin_vertices, skin_faces, semantic_skin_target
+            )
+            candidate_raw = boundary_target - boundary_source
+            candidate_smooth = _smooth_mesh_displacement(
+                candidate_raw,
+                boundary_faces_local,
+                iterations=12,
+            )
+            try:
+                candidate_field, candidate_report = (
+                    _jacobian_safe_harmonic_boundary_field(
+                        nodes,
+                        elements,
+                        boundary,
+                        candidate_smooth,
+                    )
+                )
+            except RuntimeError as exc:
+                selection_attempts.append(
+                    {
+                        "blend": float(candidate_blend),
+                        "accepted": False,
+                        "reason": str(exc),
+                    }
+                )
+                continue
+            _probe_asset, probe_report = _rebind_source_rig_from_volume_field(
+                asset,
+                cage=continuous_prealign_cage,
+                field=candidate_field,
+                stage="stage1_semantic_prealign_probe_gate",
+            )
+            probe_safe = bool(
+                float(probe_report["minimum_probe_stretch"])
+                >= _SEMANTIC_PREALIGN_MIN_PROBE_STRETCH
+                and float(probe_report["maximum_probe_stretch"])
+                <= _SEMANTIC_PREALIGN_MAX_PROBE_STRETCH
+            )
+            selection_attempts.append(
+                {
+                    "blend": float(candidate_blend),
+                    "accepted": probe_safe,
+                    "minimum_probe_stretch": float(
+                        probe_report["minimum_probe_stretch"]
+                    ),
+                    "maximum_probe_stretch": float(
+                        probe_report["maximum_probe_stretch"]
+                    ),
+                }
+            )
+            if not probe_safe:
+                continue
+            prealign_blend = float(candidate_blend)
+            continuous_prealign_field = candidate_field
+            continuous_report = candidate_report
+            raw_boundary_displacement = candidate_raw
+            smooth_boundary_displacement = candidate_smooth
+            break
+        if continuous_prealign_field is None:
+            raise RuntimeError(
+                "no continuous semantic prealign candidate satisfies both "
+                "Jacobian and bind-probe stretch gates"
+            )
+        prealign_report["blend"] = prealign_blend
+        continuous_report["selection_attempts"] = selection_attempts
+        continuous_report["accepted_semantic_fraction"] = 1.0
+        continuous_report["requested_semantic_blend"] = float(
+            _SEMANTIC_PREALIGN_CANDIDATES[0]
+        )
+        continuous_report["effective_semantic_blend"] = prealign_blend
+        continuous_report["probe_stretch_limits"] = {
+            "minimum": _SEMANTIC_PREALIGN_MIN_PROBE_STRETCH,
+            "maximum": _SEMANTIC_PREALIGN_MAX_PROBE_STRETCH,
+        }
+        continuous_report["raw_boundary_displacement_rms_m"] = float(
+            np.sqrt(np.mean(np.sum(raw_boundary_displacement**2, axis=1)))
+        )
+        continuous_report["smoothed_boundary_displacement_rms_m"] = float(
+            np.sqrt(np.mean(np.sum(smooth_boundary_displacement**2, axis=1)))
+        )
+        query_delta, _query_outside_count, query_outside = _sample_field(
+            query,
+            cage=continuous_prealign_cage,
+            field=continuous_prealign_field,
+        )
+        skin_delta, _skin_outside_count, skin_outside = _sample_field(
+            skin_vertices,
+            cage=continuous_prealign_cage,
+            field=continuous_prealign_field,
+        )
+        if np.any(query_outside) or np.any(skin_outside):
+            raise RuntimeError("continuous semantic prealign lost source-cage queries")
+        query = query + query_delta
+        skin_vertices = skin_vertices + skin_delta
+        # Composition must not inherit the first field's nearly-flat elements.
+        # Remeshing the already-mapped closed Skin_Glass resets FEM quality;
+        # anatomy topology, source weights and material coordinates are
+        # untouched and will sample the next field from this new offline cage.
+        cage = _build_source_cage(
+            skin_vertices,
+            skin_faces,
+            root / "source_skin_volume_cage_v24_continuous_semantic_remesh.npz",
+            dilation_iterations=1,
+        )
+        nodes = np.asarray(cage["nodes"], dtype=np.float64)
+        elements = np.asarray(cage["elements"], dtype=np.int32)
+        boundary = np.asarray(cage["boundary"], dtype=np.int64)
+        _remesh_delta, _remesh_outside_count, remesh_outside = _sample_field(
+            query,
+            cage=cage,
+            field=np.zeros_like(nodes),
+        )
+        if np.any(remesh_outside):
+            raise RuntimeError(
+                "continuous semantic remesh excludes mapped anatomy vertices: "
+                f"{int(np.count_nonzero(remesh_outside))}"
+            )
+        continuous_prealign_stages.append(
+            (continuous_prealign_cage, np.asarray(continuous_prealign_field))
+        )
+        prealign_report["continuous_remesh"] = {
+            "backend": "mapped_skin_glass_closed_volume_remesh_v1",
+            "cage_nodes": int(len(nodes)),
+            "cage_tetrahedra": int(len(elements)),
+            "outside_anatomy_vertices": 0,
+        }
+        prealign_report["continuous_volume_field"] = continuous_report
+        prealign_report["anatomy_lbs_applied"] = False
+        prealign_report["per_bone_probe_transform_applied"] = False
     reference_report: dict[str, Any] | None = None
     if boundary_reference is None:
         registered_boundary, coarse_surface_report = _topology_preserving_cage_registration(
@@ -1472,15 +1750,7 @@ def apply_source_skin_volume_registration(
         }
     phase_reports: list[dict[str, Any]] = []
     achieved_fraction = 0.0
-    if boundary_reference is None and prealign_report is not None:
-        phase_reports.append(
-            {
-                "accepted": True,
-                "skipped": True,
-                "reason": "v35_semantic_prealign_uses_jacobian_safe_inset_shell",
-            }
-        )
-    elif boundary_reference is None:
+    if boundary_reference is None:
         # Refine on the *same cage* towards a strictly in-subject target.  This
         # is a boundary-only homotopy, followed by one harmonic volume solve;
         # it never projects or clamps anatomy vertices with an SDF.
@@ -1773,13 +2043,43 @@ def apply_source_skin_volume_registration(
             "metadata": metadata,
         }
     )
-    result, source_rig_report = _rebind_source_rig_from_volume_field(
-        result,
-        cage=cage,
-        field=field1,
-        semantic_prealign_delta=prealign_delta,
-        semantic_prealign_blend=prealign_blend,
-    )
+    if continuous_prealign_field is not None and continuous_prealign_cage is not None:
+        continuous_rebind_reports: list[dict[str, Any]] = []
+        for stage_index, (stage_cage, stage_field) in enumerate(
+            continuous_prealign_stages
+        ):
+            result, stage_rebind_report = _rebind_source_rig_from_volume_field(
+                result,
+                cage=stage_cage,
+                field=stage_field,
+                from_target_binding=stage_index > 0,
+                stage=(
+                    "stage1_continuous_semantic_prealign"
+                    if stage_index == 0
+                    else f"stage1_continuous_semantic_stage_{stage_index}"
+                ),
+            )
+            continuous_rebind_reports.append(stage_rebind_report)
+        result, outer_rebind_report = _rebind_source_rig_from_volume_field(
+            result,
+            cage=cage,
+            field=field1,
+            from_target_binding=True,
+            stage="stage1_subject_outer_harmonic",
+        )
+        source_rig_report = {
+            "backend": "composed_continuous_volume_bind_probes_v1",
+            "continuous_semantic_prealign": continuous_rebind_reports,
+            "subject_outer_harmonic": outer_rebind_report,
+        }
+    else:
+        result, source_rig_report = _rebind_source_rig_from_volume_field(
+            result,
+            cage=cage,
+            field=field1,
+            semantic_prealign_delta=prealign_delta,
+            semantic_prealign_blend=prealign_blend,
+        )
     result = with_source_driver_coupling(result)
     return result, {
         "backend": "stage1_subject_surface_dirichlet_harmonic_v3",

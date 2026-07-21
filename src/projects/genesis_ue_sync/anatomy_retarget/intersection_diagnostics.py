@@ -273,6 +273,68 @@ def tube_bone_intersection_report(asset: Any) -> dict[str, Any]:
     }
 
 
+def enforce_tube_rest_intersection_nonregression(
+    asset: AnatomyRiggedAsset,
+    *,
+    tissues: tuple[str, ...] = ("vessel", "nerve"),
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Accept a reconstructed tube mesh only when final-bone contacts do not grow."""
+    if asset.harmonic_reference_vertices is None:
+        return asset, {"available": False, "reason": "harmonic_reference_missing"}
+    selected_tissues = {str(value).lower() for value in tissues}
+    faces = np.asarray(asset.faces, dtype=np.int64)
+    bone_ranges = [
+        tuple(int(value) for value in vertex_range)
+        for tissue, vertex_range in zip(asset.source_tissues, asset.source_vertex_ranges)
+        if str(tissue).lower() == "bone"
+    ]
+    bone_rows = _face_rows_for_ranges(faces, bone_ranges)
+    harmonic = np.asarray(asset.harmonic_reference_vertices, dtype=np.float64)
+    accepted = np.asarray(asset.vertices_rest, dtype=np.float64).copy()
+    baseline_geometry = harmonic.copy()
+    for start, stop in bone_ranges:
+        baseline_geometry[start:stop] = accepted[start:stop]
+    meshes: dict[str, Any] = {}
+    rejected = 0
+    for name, tissue, vertex_range in zip(
+        asset.source_mesh_names, asset.source_tissues, asset.source_vertex_ranges
+    ):
+        if str(tissue).lower() not in selected_tissues:
+            continue
+        start, stop = (int(value) for value in vertex_range)
+        tube_rows = _face_rows_for_ranges(faces, [(start, stop)])
+        baseline_pairs = _intersection_pairs(
+            baseline_geometry, faces, tube_rows, bone_rows
+        )
+        candidate_geometry = baseline_geometry.copy()
+        candidate_geometry[start:stop] = accepted[start:stop]
+        candidate_pairs = _intersection_pairs(
+            candidate_geometry, faces, tube_rows, bone_rows
+        )
+        reject = len(candidate_pairs) > len(baseline_pairs)
+        if reject:
+            accepted[start:stop] = harmonic[start:stop]
+            rejected += 1
+        meshes[str(name)] = {
+            "harmonic_tube_final_bone_pairs": int(len(baseline_pairs)),
+            "candidate_pairs": int(len(candidate_pairs)),
+            "accepted": bool(not reject),
+        }
+    result = type(asset)(
+        **{**asset.__dict__, "vertices_rest": accepted.astype(np.float32)}
+    )
+    result.validate()
+    return result, {
+        "available": True,
+        "backend": "whole_mesh_exact_intersection_nonregression",
+        "tissues": sorted(selected_tissues),
+        "rejected_mesh_count": int(rejected),
+        "meshes": meshes,
+        "source_weights_preserved": True,
+        "source_hierarchy_preserved": True,
+    }
+
+
 def enforce_station_intersection_nonregression(
     asset: AnatomyRiggedAsset,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:

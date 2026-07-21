@@ -655,6 +655,12 @@ def source_bone_skinning_transforms(
     use_full_source_local_fk = bool(
         (asset.metadata or {}).get("source_full_local_fk_v2", False)
     )
+    direct_driver_bones = {
+        int(value)
+        for value in (asset.metadata or {}).get("source_direct_driver_bones_v1", [])
+    }
+    if any(value < 0 or value >= len(rest_global_bones) for value in direct_driver_bones):
+        raise ValueError("source_direct_driver_bones_v1 contains an invalid bone")
     target_pose_global = joint_global_transforms(
         pose_axis_angle=pose_axis_angle,
         rest_joints=asset.rest_joints,
@@ -684,6 +690,9 @@ def source_bone_skinning_transforms(
             raise ValueError(f"source bone parent {parent} for bone {bi} is not topological")
         if mode == "bind_follow" and parent >= 0:
             posed_global[bi] = posed_global[parent] @ rest_local_bones[bi]
+            continue
+        if bi in direct_driver_bones:
+            posed_global[bi] = driver_frames[bi] @ coupling[bi]
             continue
         if use_full_source_local_fk and parent >= 0:
             # Driver coupling supplies world rotation; Blender's fitted local

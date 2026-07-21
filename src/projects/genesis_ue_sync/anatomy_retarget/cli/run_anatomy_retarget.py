@@ -42,6 +42,14 @@ from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import (
     load_rigged_asset,
     save_rigged_asset,
 )
+from projects.genesis_ue_sync.anatomy_retarget.rig_weighted_rest import (
+    blend_tissue_rest_by_smplx_joints,
+    merge_tissue_rest_reference,
+    reconstruct_rig_weighted_rest,
+)
+from projects.genesis_ue_sync.anatomy_retarget.hand_soft_transport import (
+    transport_hand_soft_rbf,
+)
 from projects.genesis_ue_sync.anatomy_retarget.shape_volume import (
     apply_material_bounded_soft_volume,
     apply_subject_beta_shape,
@@ -54,9 +62,15 @@ from projects.genesis_ue_sync.anatomy_retarget.tube_graph import (
     build_asset_attachment_graphs,
     tube_graph_metrics,
 )
-from projects.genesis_ue_sync.anatomy_retarget.material_fit import fit_articulated_rest
+from projects.genesis_ue_sync.anatomy_retarget.material_fit import (
+    fit_articulated_rest,
+    fit_source_bind_hands,
+    fit_stage1_rigid_regions,
+    merge_fitted_hand_reference,
+)
 from projects.genesis_ue_sync.anatomy_retarget.intersection_diagnostics import (
     enforce_station_intersection_nonregression,
+    enforce_tube_rest_intersection_nonregression,
     tube_bone_intersection_report,
 )
 from projects.genesis_ue_sync.anatomy_retarget.validation_matrix import (
@@ -1032,10 +1046,71 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--stage1-v35-prealign-shared-bind",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Build a weight-semantic Skin_Glass surface correspondence, then "
+            "transport anatomy and source bind probes through the same "
+            "Jacobian-safe continuous fields (default: enabled)."
+        ),
+    )
+    p.add_argument(
+        "--stage1-legacy-weighted-prealign",
         action="store_true",
         help=(
-            "Apply the v35 semantic rest prealign to anatomy, Skin_Glass and "
-            "source bind probes before the shared harmonic field solve."
+            "Use the generic v62/e03 0.25 source-weight semantic prealign "
+            "before harmonic registration. Mutually exclusive with the "
+            "continuous shared-bind prealign."
+        ),
+    )
+    p.add_argument(
+        "--stage1-dual-hand-correspondence",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Generate the v5-style legacy harmonic hand reference from the "
+            "same raw asset, apply the generic 1c1 mesh-axis/carpal fit, and "
+            "merge only hand meshes plus the wrist subtree into the current "
+            "body correspondence."
+        ),
+    )
+    p.add_argument(
+        "--stage1-rigid-region-baseline",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Use the legacy harmonic reference plus generic 1c1 hand, long-"
+            "limb, patella and jaw fitting as the final rigid-anatomy baseline."
+        ),
+    )
+    p.add_argument(
+        "--stage1-hand-nerve-rbf",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "With dual hand correspondence, transport hand-end nerves through "
+            "the beta-scaled fitted hand-bone RBF instead of the default "
+            "Blender-weight reconstruction."
+        ),
+    )
+    p.add_argument(
+        "--stage1-rig-weighted-vessels",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "After harmonic beta fitting, reconstruct vessel rest coordinates "
+            "from immutable Blender source weights and bone-supported local "
+            "similarities, then regularize the correction on each tube mesh."
+        ),
+    )
+    p.add_argument(
+        "--stage1-source-bind-hands",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Refit hand bones from immutable Blender bind geometry to the "
+            "current SMPL-X finger segments and persist direct wrist/finger "
+            "controllers (experimental; default: disabled)."
         ),
     )
     p.add_argument(
@@ -1200,6 +1275,22 @@ def main() -> int:
     started_at = time.perf_counter()
     profile: dict[str, float] = {}
     cfg = _load_config(args.config)
+    if (
+        args.stage1_legacy_weighted_prealign
+        and args.stage1_v35_prealign_shared_bind
+    ):
+        raise ValueError(
+            "--stage1-legacy-weighted-prealign requires "
+            "--no-stage1-v35-prealign-shared-bind"
+        )
+    if args.stage1_legacy_weighted_prealign and args.stage1_dual_hand_correspondence:
+        raise ValueError(
+            "whole-body legacy prealign and dual hand correspondence are mutually exclusive"
+        )
+    if args.stage1_rigid_region_baseline and not args.stage1_dual_hand_correspondence:
+        raise ValueError(
+            "--stage1-rigid-region-baseline requires --stage1-dual-hand-correspondence"
+        )
     if args.stage1_harmonic_only:
         if any(
             value is not None
@@ -1361,6 +1452,7 @@ def main() -> int:
             module_root / "source_skin_volume.py",
             module_root / "shape_volume.py",
             module_root / "material_fit.py",
+            module_root / "hand_soft_transport.py",
             module_root / "quality_gate.py",
         ),
         solver_versions={
@@ -1400,9 +1492,14 @@ def main() -> int:
         module_root / "source_skin_volume.py",
         module_root / "shape_volume.py",
         module_root / "material_fit.py",
+        module_root / "hand_soft_transport.py",
+        module_root / "rig_weighted_rest.py",
         extra=(
             f"schema-{ANATOMY_ASSET_SCHEMA_VERSION}:source-template-v6"
             + (":fast-publish" if args.fast_publish else "")
+            + (":legacy-weighted-prealign" if args.stage1_legacy_weighted_prealign else "")
+            + (":dual-hand-correspondence" if args.stage1_dual_hand_correspondence else "")
+            + (":rigid-region-baseline" if args.stage1_rigid_region_baseline else "")
         ),
     )
     shape_hash = smplx_shape_hash(betas, gender=gender)
@@ -1475,15 +1572,81 @@ def main() -> int:
                 "reason": "1b66307 supplies the verified harmonic soft reference",
             }
         else:
+            raw_source_asset = asset
             asset, source_skin_report = apply_source_skin_volume_registration(
-                asset,
+                raw_source_asset,
                 canonical_dir=args.canonical_dir,
                 debug_stage1_dir=args.stage1_debug_dir,
                 boundary_reference=args.stage1_boundary_reference,
                 v35_semantic_prealign_shared_bind=bool(
                     args.stage1_v35_prealign_shared_bind
                 ),
+                legacy_weighted_semantic_prealign=bool(
+                    args.stage1_legacy_weighted_prealign
+                ),
             )
+            if args.stage1_dual_hand_correspondence:
+                if args.stage1_rig_weighted_vessels:
+                    asset, pre_hand_vessel_report = reconstruct_rig_weighted_rest(
+                        asset,
+                        tissues=("vessel",),
+                        fit_tissues=("bone",),
+                        fallback_to_all_influenced=False,
+                        rebind=False,
+                        topology_smooth_weight=100.0,
+                        stage="stage1_pre_hand_rig_weighted_vessels",
+                    )
+                    source_skin_report["pre_hand_rig_weighted_vessels"] = (
+                        pre_hand_vessel_report
+                    )
+                pre_rigid_tissue_asset = asset
+                legacy_hand_reference, legacy_hand_volume_report = (
+                    apply_source_skin_volume_registration(
+                        raw_source_asset,
+                        canonical_dir=args.canonical_dir,
+                        legacy_weighted_semantic_prealign=True,
+                    )
+                )
+                if args.stage1_rigid_region_baseline:
+                    rigid_asset, rigid_region_report = fit_stage1_rigid_regions(
+                        legacy_hand_reference,
+                        canonical_dir=args.canonical_dir,
+                    )
+                    asset, tissue_layer_report = merge_tissue_rest_reference(
+                        rigid_asset,
+                        pre_rigid_tissue_asset,
+                        tissues=("vessel",),
+                    )
+                    source_skin_report["rigid_region_baseline"] = {
+                        "legacy_volume": legacy_hand_volume_report,
+                        "regional_fit": rigid_region_report,
+                        "pre_rigid_tissue_layer": tissue_layer_report,
+                    }
+                    logging.info(
+                        "rigid region baseline fitted changed_vertices=%s",
+                        rigid_region_report["changed_vertex_count"],
+                    )
+                else:
+                    fitted_hand_reference, fitted_hand_report = fit_source_bind_hands(
+                        legacy_hand_reference,
+                        canonical_dir=args.canonical_dir,
+                        stage="stage1_dual_hand_correspondence",
+                    )
+                    asset, hand_merge_report = merge_fitted_hand_reference(
+                        asset,
+                        fitted_hand_reference,
+                        fitted_meshes=list(fitted_hand_report["fitted_meshes"]),
+                    )
+                    source_skin_report["dual_hand_correspondence"] = {
+                        "legacy_volume": legacy_hand_volume_report,
+                        "regional_fit": fitted_hand_report,
+                        "merge": hand_merge_report,
+                    }
+                    logging.info(
+                        "dual hand correspondence merged meshes=%s subtree_bones=%s",
+                        hand_merge_report["fitted_mesh_count"],
+                        hand_merge_report["wrist_subtree_bone_count"],
+                    )
         if args.fast_publish:
             neutral_articulated_report = {
                 "stage": "neutral",
@@ -1737,6 +1900,114 @@ def main() -> int:
             donor_report["axial_source_bone_count"],
             donor_report["axial_source_vertex_count"],
             donor_report["head_uniform_scale"],
+        )
+    if bool(args.stage1_source_bind_hands):
+        asset, source_bind_hand_report = fit_source_bind_hands(
+            asset,
+            canonical_dir=Path(args.canonical_dir),
+        )
+        shape_report["source_bind_hands"] = source_bind_hand_report
+        logging.info(
+            "source-bind hands fitted meshes=%s direct_controllers=%s",
+            source_bind_hand_report.get("fitted_mesh_count", 0),
+            source_bind_hand_report.get("direct_controller_count", 0),
+        )
+    if bool(args.stage1_rig_weighted_vessels) and not args.stage1_dual_hand_correspondence:
+        asset, rig_weighted_vessel_report = reconstruct_rig_weighted_rest(
+            asset,
+            tissues=("vessel",),
+            fit_tissues=("bone",),
+            fallback_to_all_influenced=False,
+            rebind=False,
+            topology_smooth_weight=100.0,
+            stage="stage1_rig_weighted_vessels",
+        )
+        shape_report["rig_weighted_vessels"] = rig_weighted_vessel_report
+        logging.info(
+            "rig-weighted vessel rest reconstructed vertices=%s fitted_bones=%s",
+            rig_weighted_vessel_report["reconstructed_vertex_count"],
+            rig_weighted_vessel_report["fitted_bones"],
+        )
+    if args.stage1_dual_hand_correspondence:
+        if args.stage1_hand_nerve_rbf:
+            asset, hand_nerve_report = transport_hand_soft_rbf(
+                asset,
+                tissues=("nerve",),
+            )
+            shape_report["hand_nerve_rbf"] = hand_nerve_report
+            logging.info(
+                "hand nerve RBF transported vertices=%s",
+                hand_nerve_report["moved_vertex_count"],
+            )
+        else:
+            asset, rig_weighted_nerve_report = reconstruct_rig_weighted_rest(
+                asset,
+                tissues=("nerve",),
+                fit_tissues=("bone",),
+                fallback_to_all_influenced=False,
+                rebind=False,
+                topology_smooth_weight=100.0,
+                stage="stage1_rig_weighted_nerves",
+            )
+            shape_report["rig_weighted_nerves"] = rig_weighted_nerve_report
+            logging.info(
+                "rig-weighted nerve rest reconstructed vertices=%s",
+                rig_weighted_nerve_report["reconstructed_vertex_count"],
+            )
+    if args.stage1_rigid_region_baseline:
+        regional_tube_asset, regional_tube_report = reconstruct_rig_weighted_rest(
+            asset,
+            tissues=("vessel", "nerve"),
+            fit_tissues=("bone",),
+            fallback_to_all_influenced=False,
+            rebind=False,
+            topology_smooth_weight=100.0,
+            stage="stage1_post_rigid_regional_tubes",
+        )
+        head_joints = ("neck", "head", "jaw", "left_eye_smplhf", "right_eye_smplhf")
+        hand_joints = tuple(
+            name
+            for name in asset.joint_names
+            if str(name) in {"left_wrist", "right_wrist"}
+            or any(
+                str(name).startswith(f"{side}_{digit}")
+                for side in ("left", "right")
+                for digit in ("index", "middle", "pinky", "ring", "thumb")
+            )
+        )
+        asset, vessel_region_report = blend_tissue_rest_by_smplx_joints(
+            asset,
+            regional_tube_asset,
+            tissues=("vessel",),
+            joint_names=(*head_joints, *hand_joints),
+        )
+        asset, nerve_region_report = blend_tissue_rest_by_smplx_joints(
+            asset,
+            regional_tube_asset,
+            tissues=("nerve",),
+            joint_names=head_joints,
+        )
+        shape_report["post_rigid_regional_tubes"] = {
+            "reconstruction": regional_tube_report,
+            "vessel_blend": vessel_region_report,
+            "nerve_blend": nerve_region_report,
+        }
+    if args.stage1_rigid_region_baseline:
+        _accepted_tube_asset, tube_rest_acceptance = (
+            enforce_tube_rest_intersection_nonregression(
+                asset,
+                tissues=("vessel", "nerve"),
+            )
+        )
+        tube_rest_acceptance["advisory_only"] = True
+        tube_rest_acceptance["rejected_geometry_applied"] = False
+        tube_rest_acceptance["reason"] = (
+            "whole-mesh rollback breaks continuous head-to-limb tube routing"
+        )
+        shape_report["tube_rest_intersection_acceptance"] = tube_rest_acceptance
+        logging.info(
+            "tube rest intersection advisory rejected_meshes=%s",
+            tube_rest_acceptance["rejected_mesh_count"],
         )
     target_bind = np.asarray(asset.target_bind_global, dtype=np.float64)
     target_inverse = np.asarray(asset.runtime_inverse_bind, dtype=np.float64)

@@ -347,6 +347,25 @@ def _is_joint_local_mode(mode: str) -> bool:
     return str(mode) in {"joint_local", "direct_joint"}
 
 
+def _direct_smplx_hand_controllers(asset: AnatomyRiggedAsset) -> list[int]:
+    """Independent wrist/finger controls must rotate at their fitted joints."""
+    modes = list(asset.source_bone_driver_types or [])
+    mapped = np.asarray(asset.source_bone_smplx_a, dtype=np.int64)
+    direct: list[int] = []
+    for bone, mode in enumerate(modes):
+        if not _is_joint_local_mode(mode):
+            continue
+        joint = str(asset.joint_names[int(mapped[bone])])
+        side, separator, part = joint.partition("_")
+        if side not in {"left", "right"} or not separator:
+            continue
+        if part == "wrist" or part.startswith(
+            ("thumb", "index", "middle", "ring", "pinky")
+        ):
+            direct.append(int(bone))
+    return direct
+
+
 def _controller(bone: int, parents: np.ndarray, modes: list[str]) -> int:
     current = int(bone)
     while current >= 0 and _is_follow_mode(modes[current]):
@@ -354,12 +373,19 @@ def _controller(bone: int, parents: np.ndarray, modes: list[str]) -> int:
     return int(bone if current < 0 else current)
 
 
-def _source_joint_anchors(asset: AnatomyRiggedAsset) -> np.ndarray:
+def _source_joint_anchors(
+    asset: AnatomyRiggedAsset,
+    *,
+    bind_global: np.ndarray | None = None,
+) -> np.ndarray:
     target = np.asarray(asset.rest_joints, dtype=np.float64)
     anchors = target.copy()
     assigned = np.zeros(len(target), dtype=bool)
     modes = list(asset.source_bone_driver_types or [])
-    global_bind = np.asarray(asset.target_bind_global, dtype=np.float64)
+    global_bind = np.asarray(
+        asset.target_bind_global if bind_global is None else bind_global,
+        dtype=np.float64,
+    )
     for bone, mode in enumerate(modes):
         if _is_follow_mode(mode):
             continue
@@ -425,7 +451,11 @@ def _three_joint_frame(points: np.ndarray, joints: np.ndarray) -> np.ndarray:
     return frame
 
 
-def _fit_source_frames(asset: AnatomyRiggedAsset) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _fit_source_frames(
+    asset: AnatomyRiggedAsset,
+    *,
+    preserve_same_semantic_offset: bool = True,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     old_global = np.asarray(asset.target_bind_global, dtype=np.float64)
     old_local = np.asarray(asset.target_bind_local, dtype=np.float64)
     source_parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
@@ -509,6 +539,20 @@ def _fit_source_frames(asset: AnatomyRiggedAsset) -> tuple[np.ndarray, np.ndarra
             desired = np.eye(4, dtype=np.float64)
             desired[:3, :3] = rotation
             desired[:3, 3] = target_joints[a]
+        if (
+            preserve_same_semantic_offset
+            and parent >= 0
+            and int(asset.source_bone_smplx_a[parent]) == a
+        ):
+            # Several authored helper/twist controllers share one SMPL-X
+            # semantic joint with their parent but occupy distinct points
+            # along the physical segment.  Collapsing every such controller
+            # onto target_joints[a] creates zero local translations and makes
+            # full-local FK fold the tibia, forearm and ankle chains.
+            desired[:3, 3] = (
+                new_global[parent, :3, :3] @ old_local[bone, :3, 3]
+                + new_global[parent, :3, 3]
+            )
         if parent < 0:
             new_global[bone] = desired
         else:
@@ -1572,6 +1616,518 @@ def _override(config: dict[str, Any], group: str) -> tuple[float, np.ndarray]:
     return scale, offset
 
 
+def fit_source_bind_hands(
+    asset: AnatomyRiggedAsset,
+    *,
+    canonical_dir: Path | str,
+    stage: str = "source_bind_hand_refit",
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Refit authored Blender hands without changing the accepted body bake."""
+    direct = _direct_smplx_hand_controllers(asset)
+    direct_set = set(direct)
+    joint_names = list(asset.joint_names)
+    wrist_roots = {
+        bone
+        for bone in direct
+        if joint_names[int(asset.source_bone_smplx_a[bone])].endswith("_wrist")
+    }
+    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    hand_subtree: set[int] = set()
+    for bone in range(len(parents)):
+        current = int(bone)
+        while current >= 0:
+            if current in wrist_roots:
+                hand_subtree.add(int(bone))
+                break
+            current = int(parents[current])
+
+    vertices = np.asarray(asset.vertices_rest, dtype=np.float64).copy()
+    hand_geometry_mask = np.zeros(len(vertices), dtype=bool)
+    target_joints = np.asarray(asset.rest_joints, dtype=np.float64)
+    finger_tips = _finger_tip_targets(
+        Path(canonical_dir),
+        joint_names=joint_names,
+        target_joints=target_joints,
+        subject=True,
+    )
+    fitted_meshes: list[str] = []
+    for (start, stop), name, tissue in zip(
+        asset.source_vertex_ranges, asset.source_mesh_names, asset.source_tissues
+    ):
+        if str(tissue).lower() != "bone":
+            continue
+        segment = _hand_mesh_segment(
+            str(name),
+            joint_names=joint_names,
+            # The source endpoints are replaced by the mesh PCA axis below;
+            # only the semantic target segment is consumed here.
+            source_anchors=target_joints,
+            target_joints=target_joints,
+            finger_tips=finger_tips,
+        )
+        if segment is None:
+            continue
+        start_i, stop_i = int(start), int(stop)
+        _source_a, _source_b, target_a, target_b = segment
+        target_a = np.asarray(target_a, dtype=np.float64)
+        target_b = np.asarray(target_b, dtype=np.float64)
+        if "distal" in str(name).lower():
+            distal_axis = target_b - target_a
+            target_b -= 0.15 * distal_axis
+        points = vertices[start_i:stop_i]
+        center = np.mean(points, axis=0)
+        _values, vectors = np.linalg.eigh(np.cov((points - center).T))
+        axis = vectors[:, -1]
+        target_axis = target_b - target_a
+        if float(axis @ target_axis) < 0.0:
+            axis = -axis
+        projection = (points - center) @ axis
+        source_a = center + float(np.quantile(projection, 0.02)) * axis
+        source_b = center + float(np.quantile(projection, 0.98)) * axis
+        vertices[start_i:stop_i], _scale, _rotation = uniform_segment_similarity(
+            points,
+            source_a=source_a,
+            source_b=source_b,
+            target_a=target_a,
+            target_b=target_b,
+        )
+        mapped = vertices[start_i:stop_i]
+        axis = target_b - target_a
+        axis /= max(float(np.linalg.norm(axis)), 1.0e-10)
+        projection = target_a + np.outer((mapped - target_a) @ axis, axis)
+        vertices[start_i:stop_i] = projection + 0.78 * (mapped - projection)
+        hand_geometry_mask[start_i:stop_i] = True
+        fitted_meshes.append(str(name))
+
+    from scipy.spatial import cKDTree
+
+    carpal_tokens = (
+        "capitate",
+        "hamate",
+        "lunate",
+        "pisiform",
+        "scaphoid",
+        "trapezium",
+        "trapezoid",
+        "triquetrum",
+    )
+    carpal_report: dict[str, Any] = {}
+    baseline_vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
+    for side, suffix in (("left", "_l"), ("right", "_r")):
+        ranges = [
+            (int(start), int(stop), str(name))
+            for (start, stop), name, tissue in zip(
+                asset.source_vertex_ranges,
+                asset.source_mesh_names,
+                asset.source_tissues,
+            )
+            if str(tissue).lower() == "bone"
+            and str(name).lower().endswith(suffix)
+            and any(token in str(name).lower() for token in carpal_tokens)
+        ]
+        if not ranges:
+            continue
+        carpal_indices = np.concatenate(
+            [np.arange(start, stop, dtype=np.int64) for start, stop, _name in ranges]
+        )
+        source_carpal = baseline_vertices[carpal_indices]
+        thumb_name = f"_1st_Metacarpal_{'L' if side == 'left' else 'R'}"
+        thumb_range = next(
+            (
+                (int(start), int(stop))
+                for (start, stop), mesh_name in zip(
+                    asset.source_vertex_ranges, asset.source_mesh_names
+                )
+                if str(mesh_name) == thumb_name
+            ),
+            None,
+        )
+        if thumb_range is None:
+            raise RuntimeError(f"missing {thumb_name} for carpal contact inheritance")
+        thumb_start, thumb_stop = thumb_range
+        source_thumb = baseline_vertices[thumb_start:thumb_stop]
+        mapped_thumb = vertices[thumb_start:thumb_stop]
+        contact_distance, contact_thumb = cKDTree(source_thumb).query(
+            source_carpal, k=1
+        )
+        contact_count = min(24, len(source_carpal))
+        contact_carpal = np.argpartition(
+            contact_distance, contact_count - 1
+        )[:contact_count]
+        source_contact = source_carpal[contact_carpal]
+        target_contact = source_contact + (
+            mapped_thumb[contact_thumb[contact_carpal]]
+            - source_thumb[contact_thumb[contact_carpal]]
+        )
+        source_center = np.mean(source_contact, axis=0)
+        target_center = np.mean(target_contact, axis=0)
+        u, _singular, vt = np.linalg.svd(
+            (source_contact - source_center).T @ (target_contact - target_center)
+        )
+        rotation = vt.T @ u.T
+        if np.linalg.det(rotation) < 0.0:
+            vt[-1] *= -1.0
+            rotation = vt.T @ u.T
+        translation = target_center - rotation @ source_center
+        mapped_compound = source_carpal @ rotation.T + translation
+        cursor = 0
+        for start, stop, name in ranges:
+            count = stop - start
+            vertices[start:stop] = mapped_compound[cursor : cursor + count]
+            cursor += count
+            hand_geometry_mask[start:stop] = True
+            fitted_meshes.append(name)
+        carpal_report[side] = {
+            "translation_m": translation.tolist(),
+            "source_thumb_contact_gap_m": float(np.min(contact_distance)),
+            "mapped_thumb_contact_gap_m": float(
+                np.min(cKDTree(mapped_thumb).query(mapped_compound, k=1)[0])
+            ),
+            "contact_samples": int(contact_count),
+        }
+
+    interim = type(asset)(
+        **{**asset.__dict__, "vertices_rest": vertices.astype(np.float32)}
+    )
+    rebound, local_rebind_report = rebind_source_rig(
+        interim,
+        source_vertices=np.asarray(asset.vertices_rest, dtype=np.float64),
+        target_vertices=vertices,
+        stage=str(stage),
+        bone_mask=hand_geometry_mask,
+        fallback_to_soft=False,
+        anchor_joint_local=True,
+    )
+    rebound_global = np.asarray(rebound.target_bind_global, dtype=np.float64)
+    target_global = np.asarray(asset.target_bind_global, dtype=np.float64).copy()
+    for bone in hand_subtree:
+        target_global[bone] = rebound_global[bone]
+    target_local = target_global.copy()
+    for bone, parent in enumerate(parents.tolist()):
+        if int(parent) >= 0:
+            target_local[bone] = np.linalg.inv(target_global[int(parent)]) @ target_global[bone]
+    target_head = np.asarray(asset.target_bone_head, dtype=np.float64).copy()
+    target_tail = np.asarray(asset.target_bone_tail, dtype=np.float64).copy()
+    rebound_head = np.asarray(rebound.target_bone_head, dtype=np.float64)
+    rebound_tail = np.asarray(rebound.target_bone_tail, dtype=np.float64)
+    for bone in hand_subtree:
+        target_head[bone] = rebound_head[bone]
+        target_tail[bone] = rebound_tail[bone]
+
+    metadata = dict(asset.metadata or {})
+    metadata["source_direct_driver_bones_v1"] = direct
+    result = type(asset)(
+        **{
+            **asset.__dict__,
+            "vertices_rest": vertices.astype(np.float32),
+            "target_rest_global": target_global.astype(np.float32),
+            "target_rest_local": target_local.astype(np.float32),
+            "target_inverse_bind": np.linalg.inv(target_global).astype(np.float32),
+            "target_bone_head": target_head.astype(np.float32),
+            "target_bone_tail": target_tail.astype(np.float32),
+            "metadata": metadata,
+        }
+    )
+    result = with_source_driver_coupling(result)
+    if not np.array_equal(result.driver_indices, asset.driver_indices):
+        raise RuntimeError("source-bind hand refit changed Blender driver indices")
+    if not np.array_equal(result.driver_weights, asset.driver_weights):
+        raise RuntimeError("source-bind hand refit changed Blender driver weights")
+    if not np.array_equal(result.source_bone_parents, asset.source_bone_parents):
+        raise RuntimeError("source-bind hand refit changed Blender hierarchy")
+    report = {
+        "stage": str(stage),
+        "available": True,
+        "backend": "harmonic_mesh_axis_similarity_plus_direct_joint_coupling",
+        "fitted_mesh_count": int(len(fitted_meshes)),
+        "fitted_meshes": fitted_meshes,
+        "wrist_subtree_bone_count": int(len(hand_subtree)),
+        "direct_controller_count": int(len(direct_set)),
+        "local_weighted_rebind": local_rebind_report,
+        "hand_bone_radial_scale": 0.78,
+        "distal_tip_inset_ratio": 0.15,
+        "carpal_compound": carpal_report,
+        "source_weights_preserved": True,
+        "source_hierarchy_preserved": True,
+    }
+    result.validate()
+    return result, report
+
+
+def merge_fitted_hand_reference(
+    body_asset: AnatomyRiggedAsset,
+    hand_asset: AnatomyRiggedAsset,
+    *,
+    fitted_meshes: list[str],
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Merge a same-beta hand correspondence without touching the body rig."""
+    for field in ("faces", "driver_indices", "driver_weights", "source_bone_parents"):
+        if not np.array_equal(getattr(body_asset, field), getattr(hand_asset, field)):
+            raise ValueError(f"hand correspondence {field} differs from body asset")
+    if list(body_asset.source_mesh_names or []) != list(hand_asset.source_mesh_names or []):
+        raise ValueError("hand correspondence mesh order differs from body asset")
+    if not np.allclose(body_asset.rest_joints, hand_asset.rest_joints, atol=1.0e-7):
+        raise ValueError("hand correspondence was baked for a different SMPL-X beta")
+
+    selected_names = set(str(value) for value in fitted_meshes)
+    vertices = np.asarray(body_asset.vertices_rest, dtype=np.float32).copy()
+    merged_vertices = 0
+    for (start, stop), name in zip(
+        body_asset.source_vertex_ranges, body_asset.source_mesh_names
+    ):
+        if str(name) not in selected_names:
+            continue
+        start_i, stop_i = int(start), int(stop)
+        vertices[start_i:stop_i] = np.asarray(hand_asset.vertices_rest)[start_i:stop_i]
+        merged_vertices += stop_i - start_i
+
+    direct = _direct_smplx_hand_controllers(hand_asset)
+    wrist_roots = {
+        bone
+        for bone in direct
+        if str(hand_asset.joint_names[int(hand_asset.source_bone_smplx_a[bone])]).endswith(
+            "_wrist"
+        )
+    }
+    parents = np.asarray(body_asset.source_bone_parents, dtype=np.int64)
+    subtree: list[int] = []
+    for bone in range(len(parents)):
+        current = int(bone)
+        while current >= 0:
+            if current in wrist_roots:
+                subtree.append(int(bone))
+                break
+            current = int(parents[current])
+
+    target_global = np.asarray(body_asset.target_bind_global, dtype=np.float64).copy()
+    target_head = np.asarray(body_asset.target_bone_head, dtype=np.float64).copy()
+    target_tail = np.asarray(body_asset.target_bone_tail, dtype=np.float64).copy()
+    target_global[subtree] = np.asarray(hand_asset.target_bind_global)[subtree]
+    target_head[subtree] = np.asarray(hand_asset.target_bone_head)[subtree]
+    target_tail[subtree] = np.asarray(hand_asset.target_bone_tail)[subtree]
+    target_local = target_global.copy()
+    for bone, parent in enumerate(parents.tolist()):
+        if int(parent) >= 0:
+            target_local[bone] = np.linalg.inv(target_global[int(parent)]) @ target_global[bone]
+    metadata = dict(body_asset.metadata or {})
+    metadata["source_direct_driver_bones_v1"] = direct
+    result = type(body_asset)(
+        **{
+            **body_asset.__dict__,
+            "vertices_rest": vertices,
+            "target_rest_global": target_global.astype(np.float32),
+            "target_rest_local": target_local.astype(np.float32),
+            "target_inverse_bind": np.linalg.inv(target_global).astype(np.float32),
+            "target_bone_head": target_head.astype(np.float32),
+            "target_bone_tail": target_tail.astype(np.float32),
+            "metadata": metadata,
+        }
+    )
+    result = with_source_driver_coupling(result)
+    result.validate()
+    return result, {
+        "backend": "same_beta_hand_mesh_and_wrist_subtree_merge",
+        "fitted_mesh_count": int(len(selected_names)),
+        "merged_vertex_count": int(merged_vertices),
+        "wrist_subtree_bone_count": int(len(subtree)),
+        "direct_controller_count": int(len(direct)),
+        "body_vertices_outside_hand_unchanged": True,
+        "source_weights_preserved": True,
+        "source_hierarchy_preserved": True,
+    }
+
+
+def fit_stage1_rigid_regions(
+    asset: AnatomyRiggedAsset,
+    *,
+    canonical_dir: Path | str,
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Apply the generic 1c1 rigid hand/long-limb fit, then rebind once."""
+    baseline_vertices = np.asarray(asset.vertices_rest, dtype=np.float64).copy()
+    hand_fitted, hand_report = fit_source_bind_hands(
+        asset,
+        canonical_dir=canonical_dir,
+        stage="stage1_rigid_regions_hand",
+    )
+    vertices = np.asarray(hand_fitted.vertices_rest, dtype=np.float64).copy()
+    target_joints = np.asarray(asset.rest_joints, dtype=np.float64)
+    joint_id = {str(name): index for index, name in enumerate(asset.joint_names)}
+    segments = {
+        "humerus": ("shoulder", "elbow"),
+        "radius": ("elbow", "wrist"),
+        "ulna": ("elbow", "wrist"),
+        "femur": ("hip", "knee"),
+    }
+    changed = np.zeros(len(vertices), dtype=bool)
+    for mesh_name in hand_report["fitted_meshes"]:
+        mesh_at = list(asset.source_mesh_names).index(str(mesh_name))
+        start, stop = (int(value) for value in asset.source_vertex_ranges[mesh_at])
+        changed[start:stop] = True
+    limb_meshes: list[str] = []
+    for (start, stop), name, tissue in zip(
+        asset.source_vertex_ranges, asset.source_mesh_names, asset.source_tissues
+    ):
+        if str(tissue).lower() != "bone":
+            continue
+        lower = str(name).lower()
+        kind = next((token for token in segments if token in lower), None)
+        side = "left" if lower.endswith("_l") else "right" if lower.endswith("_r") else None
+        if kind is None or side is None:
+            continue
+        start_i, stop_i = int(start), int(stop)
+        points = vertices[start_i:stop_i]
+        center = np.mean(points, axis=0)
+        _values, vectors = np.linalg.eigh(np.cov((points - center).T))
+        axis = vectors[:, -1]
+        proximal, distal = segments[kind]
+        target_a = target_joints[joint_id[f"{side}_{proximal}"]]
+        target_b = target_joints[joint_id[f"{side}_{distal}"]]
+        if float(axis @ (target_b - target_a)) < 0.0:
+            axis = -axis
+        projection = (points - center) @ axis
+        source_a = center + float(np.quantile(projection, 0.02)) * axis
+        source_b = center + float(np.quantile(projection, 0.98)) * axis
+        mapped, _scale, _rotation = uniform_segment_similarity(
+            points,
+            source_a=source_a,
+            source_b=source_b,
+            target_a=target_a,
+            target_b=target_b,
+        )
+        if kind == "humerus":
+            segment_axis = target_b - target_a
+            segment_axis /= max(float(np.linalg.norm(segment_axis)), 1.0e-10)
+            axial = target_a + np.outer((mapped - target_a) @ segment_axis, segment_axis)
+            mapped = axial + 0.83 * (mapped - axial)
+        vertices[start_i:stop_i] = mapped
+        changed[start_i:stop_i] = True
+        limb_meshes.append(str(name))
+
+    lower_leg_scale = float(
+        np.mean(
+            [
+                np.linalg.norm(
+                    target_joints[joint_id[f"{side}_ankle"]]
+                    - target_joints[joint_id[f"{side}_knee"]]
+                )
+                for side in ("left", "right")
+            ]
+        )
+    )
+    patella_inset = 0.019 * lower_leg_scale
+    patella_meshes: list[str] = []
+    for (start, stop), name, tissue in zip(
+        asset.source_vertex_ranges, asset.source_mesh_names, asset.source_tissues
+    ):
+        lower = str(name).lower()
+        side = "left" if lower.endswith("_l") else "right" if lower.endswith("_r") else None
+        if str(tissue).lower() != "bone" or "patella" not in lower or side is None:
+            continue
+        start_i, stop_i = int(start), int(stop)
+        knee = target_joints[joint_id[f"{side}_knee"]]
+        direction = knee - np.mean(vertices[start_i:stop_i], axis=0)
+        direction /= max(float(np.linalg.norm(direction)), 1.0e-10)
+        vertices[start_i:stop_i] += patella_inset * direction
+        changed[start_i:stop_i] = True
+        patella_meshes.append(str(name))
+
+    from .containment import signed_distance
+    from .shape_volume import _load_obj
+
+    jaw_tokens = (
+        "mandible",
+        "incisor",
+        "canine",
+        "molar",
+        "premolar",
+        "sublingual",
+        "submandibular",
+        "parotid",
+        "duct",
+        "pharynx",
+    )
+    jaw_mask = np.zeros(len(vertices), dtype=bool)
+    for (start, stop), name in zip(asset.source_vertex_ranges, asset.source_mesh_names):
+        if any(token in str(name).lower() for token in jaw_tokens):
+            jaw_mask[int(start) : int(stop)] = True
+    head_neck_scale = float(
+        np.linalg.norm(target_joints[joint_id["head"]] - target_joints[joint_id["neck"]])
+    )
+    jaw_step = 0.0125 * head_neck_scale
+    surface_vertices, surface_faces = _load_obj(
+        Path(canonical_dir) / "smpl_canonical_tpose.obj"
+    )
+    candidates: list[tuple[int, float, np.ndarray]] = []
+    for delta_y in np.arange(0.0, 0.10 * head_neck_scale, jaw_step):
+        for delta_z in np.arange(
+            -0.10 * head_neck_scale,
+            0.0625 * head_neck_scale,
+            jaw_step,
+        ):
+            candidate_signed, _closest, _normal = signed_distance(
+                baseline_vertices[jaw_mask] + np.asarray((0.0, delta_y, delta_z)),
+                surface_vertices,
+                surface_faces,
+            )
+            outside = np.maximum(candidate_signed, 0.0)
+            candidates.append(
+                (
+                    int(np.count_nonzero(outside > 0.0)),
+                    float(np.max(outside)) if len(outside) else 0.0,
+                    np.asarray((0.0, delta_y, delta_z), dtype=np.float64),
+                )
+            )
+    jaw_delta = min(candidates, key=lambda item: (item[0], item[1]))[2]
+    vertices[jaw_mask] += jaw_delta
+    changed[jaw_mask] = True
+    jaw_center = target_joints[joint_id["jaw"]]
+    for (start, stop), name, tissue in zip(
+        asset.source_vertex_ranges, asset.source_mesh_names, asset.source_tissues
+    ):
+        if str(tissue).lower() != "bone" or "mandible" not in str(name).lower():
+            continue
+        start_i, stop_i = int(start), int(stop)
+        vertices[start_i:stop_i] = jaw_center + 0.9 * (
+            vertices[start_i:stop_i] - jaw_center
+        )
+
+    bone_mask = np.zeros(len(vertices), dtype=bool)
+    for (start, stop), tissue in zip(asset.source_vertex_ranges, asset.source_tissues):
+        if str(tissue).lower() == "bone":
+            bone_mask[int(start) : int(stop)] = True
+    interim = type(hand_fitted)(
+        **{**hand_fitted.__dict__, "vertices_rest": vertices.astype(np.float32)}
+    )
+    rebound, rebind_report = rebind_source_rig(
+        interim,
+        source_vertices=baseline_vertices,
+        target_vertices=vertices,
+        stage="stage1_rigid_regions",
+        bone_mask=bone_mask,
+        fallback_to_soft=False,
+        anchor_joint_local=True,
+    )
+    metadata = dict(rebound.metadata or {})
+    metadata["source_full_local_fk_v2"] = False
+    result = type(rebound)(**{**rebound.__dict__, "metadata": metadata})
+    result = with_source_driver_coupling(result)
+    result.validate()
+    return result, {
+        "backend": "1c1_mesh_axis_rigid_regions_plus_full_rebind",
+        "hand": hand_report,
+        "long_limb_meshes": limb_meshes,
+        "humerus_radial_scale": 0.83,
+        "patella_meshes": patella_meshes,
+        "patella_inset_ratio": 0.019,
+        "jaw_compound_delta_m": jaw_delta.tolist(),
+        "jaw_bone_scale": 0.9,
+        "changed_vertex_count": int(np.count_nonzero(changed)),
+        "source_rig_rebind": rebind_report,
+        "source_weights_preserved": True,
+        "source_hierarchy_preserved": True,
+    }
+
+
 def fit_articulated_rest(
     asset: AnatomyRiggedAsset,
     *,
@@ -1609,6 +2165,19 @@ def fit_articulated_rest(
         asset, old_vertices, bone_delta=bone_delta
     )
     source_anchors = _source_joint_anchors(asset)
+    authored_hand_vertices = (
+        np.asarray(asset.source_bind_vertices, dtype=np.float64)
+        if asset.source_bind_vertices is not None
+        else old_vertices
+    )
+    authored_hand_anchors = (
+        _source_joint_anchors(
+            asset,
+            bind_global=np.asarray(asset.source_rest_global, dtype=np.float64),
+        )
+        if asset.source_bind_vertices is not None
+        else source_anchors
+    )
     target_joints = np.asarray(asset.rest_joints, dtype=np.float64).copy()
     source_parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
     modes = list(asset.source_bone_driver_types or [])
@@ -1720,24 +2289,14 @@ def fit_articulated_rest(
             hand_segment = _hand_mesh_segment(
                 str(name),
                 joint_names=asset.joint_names,
-                source_anchors=source_anchors,
+                source_anchors=authored_hand_anchors,
                 target_joints=target_joints,
                 finger_tips=finger_tips,
             )
-            if "1st_metacarpal" in lower:
-                vertices[start_i:stop_i] = _transform_points(
-                    old_vertices[start_i:stop_i], bone_delta[bone]
-                )
-                continue
-            if hand_segment is not None and "metacarpal" in lower:
-                vertices[start_i:stop_i] = _transform_points(
-                    old_vertices[start_i:stop_i], bone_delta[bone]
-                )
-                continue
             if hand_segment is not None:
                 source_a, source_b, target_a, target_b = hand_segment
                 fitted = shaft_preserving_segment_map(
-                    old_vertices[start_i:stop_i],
+                    authored_hand_vertices[start_i:stop_i],
                     source_a=source_a,
                     source_b=source_b,
                     target_a=target_a,
@@ -2397,6 +2956,8 @@ def fit_articulated_rest(
         dtype=np.float64,
     )
     metadata = dict(asset.metadata or {})
+    direct_hand_controllers = _direct_smplx_hand_controllers(asset)
+    metadata["source_direct_driver_bones_v1"] = direct_hand_controllers
     history = list(metadata.get("articulated_rest_fit", []))
     report = {
         "stage": str(stage),
@@ -2423,6 +2984,7 @@ def fit_articulated_rest(
         "source_rig_rebind": rebind_report,
         "anchor_rms_m": float(np.sqrt(np.mean(anchor_error * anchor_error))) if len(anchor_error) else 0.0,
         "anchor_max_m": float(np.max(anchor_error)) if len(anchor_error) else 0.0,
+        "direct_hand_controller_count": int(len(direct_hand_controllers)),
     }
     history.append(report)
     metadata["articulated_rest_fit"] = history

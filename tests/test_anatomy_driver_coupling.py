@@ -14,6 +14,9 @@ from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
     with_source_driver_coupling,
 )
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import AnatomyRiggedAsset
+from projects.genesis_ue_sync.anatomy_retarget.material_fit import (
+    _direct_smplx_hand_controllers,
+)
 
 
 def _chain_asset() -> AnatomyRiggedAsset:
@@ -77,6 +80,12 @@ def _root_pose_delta(rotvec: np.ndarray) -> np.ndarray:
     delta = np.eye(4, dtype=np.float32)
     delta[:3, :3] = axis_angle_to_matrix(np.asarray(rotvec, dtype=np.float32))[0]
     return delta
+
+
+def test_direct_hand_controller_policy_is_semantic_not_index_based() -> None:
+    asset = _chain_asset()
+
+    assert _direct_smplx_hand_controllers(asset) == [2, 3]
 
 
 def _assert_all_bones_follow_delta(asset: AnatomyRiggedAsset, rotvec: np.ndarray) -> None:
@@ -318,6 +327,37 @@ def test_full_source_local_fk_preserves_controller_local_translations() -> None:
             atol=2.0e-6,
             rtol=0.0,
         )
+
+
+def test_explicit_direct_driver_bypasses_full_local_fk_translation() -> None:
+    base = _chain_asset()
+    target = np.asarray(base.source_bind_global, dtype=np.float32).copy()
+    target[3, 0, 3] += np.float32(0.25)
+    target_local = target.copy()
+    for bone, parent in enumerate(np.asarray(base.source_bone_parents).tolist()):
+        if int(parent) >= 0:
+            target_local[bone] = np.linalg.inv(target[int(parent)]) @ target[bone]
+    asset = with_source_driver_coupling(
+        replace(
+            base,
+            target_rest_global=target,
+            target_rest_local=target_local,
+            target_inverse_bind=np.linalg.inv(target).astype(np.float32),
+            metadata={
+                "source_full_local_fk_v2": True,
+                "source_direct_driver_bones_v1": [3],
+            },
+        )
+    )
+    pose = np.zeros((55, 3), dtype=np.float32)
+    pose[2] = np.asarray((0.0, 0.0, 0.6), dtype=np.float32)
+
+    transforms = source_bone_skinning_transforms(asset, pose)
+    posed = np.asarray(transforms) @ target
+    frames = source_bone_driver_frames(asset, pose)
+    desired = frames[3] @ np.asarray(asset.source_driver_coupling)[3]
+
+    np.testing.assert_allclose(posed[3], desired, atol=2.0e-6)
 
 
 def test_mirrored_source_bind_does_not_change_segment_motion() -> None:
