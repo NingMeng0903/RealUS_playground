@@ -1384,6 +1384,12 @@ def run_joint_admittance_phases(
                     scale = 1.0
                     phase_arrived = False
                     prev_pose_cmd = inner.kin.fk_pose(inner.q_cmd)
+                    # Scan-phase debug: throttled state dump for tuning force-hybrid.
+                    _is_scan = bool(phase.label) and (
+                        "scan" in str(phase.label) or "hybrid" in str(phase.label)
+                    )
+                    _scan_log_t = 0.0
+                    _scan_origin_pose = None
                     while True:
                         if stop_check is not None and stop_check():
                             phase_stopped = True
@@ -1530,7 +1536,30 @@ def run_joint_admittance_phases(
                             )
                         if on_step is not None:
                             on_step(phase.label, t_ref, step, pose_pin, f_ext, t_wall)
-    
+
+                        # Scan-phase debug log (throttled ~1 Hz): tool-Y sweep, rail, force.
+                        if _is_scan and (t_wall - _scan_log_t) >= 1.0:
+                            _scan_log_t = t_wall
+                            if _scan_origin_pose is None:
+                                _scan_origin_pose = pose_pin.copy()
+                            dy_cmd_mm = float((pose_cmd[1] - _scan_origin_pose[1]) * 1000.0)
+                            dy_meas_mm = float((pose_pin[1] - _scan_origin_pose[1]) * 1000.0)
+                            rail_cmd_mm = float(inner.q_cmd[0] * 1000.0)
+                            rail_meas_mm = (
+                                float(rail_bridge.measured_m * 1000.0)
+                                if rail_bridge is not None and rail_bridge.enabled
+                                else rail_cmd_mm
+                            )
+                            fz = float(f_ext[2])
+                            print(
+                                f"  [scan t={t_ref:5.1f}s] toolY cmd={dy_cmd_mm:+7.1f} "
+                                f"meas={dy_meas_mm:+7.1f} mm | rail cmd={rail_cmd_mm:6.1f} "
+                                f"meas={rail_meas_mm:6.1f} mm | Fz={fz:+5.2f}N "
+                                f"| track={step.cart_err_mm:5.1f}mm gov={scale:.2f} "
+                                f"σ={step.sigma_min:.3f}",
+                                flush=True,
+                            )
+
                         if phase.wait_until is not None:
                             n_wait = len(inspect.signature(phase.wait_until).parameters)
                             if n_wait >= 2:

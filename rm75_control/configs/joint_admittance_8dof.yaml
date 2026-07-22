@@ -346,14 +346,16 @@ hybrid_motion:
   proactive_press_is_gate: 0.5
 
 # LW100 rail servo (Modbus RTU over USR-TCP232).
-# Open-loop: motor executes WBC q_cmd[0] only (no encoder chase — that overshot to travel).
-# Encoder is SHM/twin display only; WBC keeps its own smooth q_cmd rail state.
+# follow_mode=velocity (default): drive in SPEED mode (FA4=1, FA22=1); bridge closes a
+#   soft position loop and streams FA24 (r/min) continuously — smooth, no CTRG stop-start,
+#   self-correcting, no overshoot. This replicates the pre-motor "controller drives rail".
+# follow_mode=position: legacy Pr P1 incremental segments (point-to-point, trapezoidal).
+# Encoder is SHM/twin display + the position loop; never fed into the WBC.
 # Workflow without limit switches (default):
 #   1) Manually push carriage to -Y end (mechanical 0) before starting controller.
 #   2) zero_mode=current → start pose becomes rail_y=0.
-#   3) home_on_exit=true → on Ctrl-C / exit, open-loop back to 0 then disable.
+#   3) home_on_exit=true → on Ctrl-C / exit, velocity-home back to 0 then disable.
 # Software also clamps targets to [0, inner.rail.travel_m].
-# Optional fixed zero: zero_mode=fixed + counts0=<encoder at end> (same power cycle only).
 hw:
   lw100:
     enabled: true
@@ -365,11 +367,22 @@ hw:
     counts0: 0
     sign: 1
     enable_settle_s: 0.2
-    poll_hz: 30              # encoder read for twin SHM
+    follow_mode: velocity    # velocity | position
+    poll_hz: 50              # velocity loop + encoder read for twin SHM
     deadband_mm: 0.5
     max_speed_rpm: 1200      # matches inner.rail.v_max_m_s=0.20 @ 10 mm/rev
-    preview_s: 3.0           # look-ahead: coalesce WBC ramp into 1–2 long segments
-    max_segment_mm: 800      # = travel; avoid 20 mm stop-start chunks
+    # velocity-follow soft position loop:
+    vel_kp: 6.0              # 1/s
+    vel_ff_gain: 1.0
+    vel_max_m_s: 0.20        # = inner.rail.v_max_m_s
+    vel_deadband_mm: 0.3
+    accel_ms: 50             # FA40
+    decel_ms: 50             # FA41
+    scurve_ms: 20            # FA42
+    # legacy position-mode (follow_mode=position) knobs:
+    preview_s: 3.0
+    commit_mm: 30
+    max_segment_mm: 800
     min_segment_mm: 1.0
     busy_speed_rpm: 1
     home_on_exit: true

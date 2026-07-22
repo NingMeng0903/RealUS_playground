@@ -15,6 +15,11 @@ from rm75_control.hw.lw100.registers import (
     P_FA11_PPR,
     P_FA14_POS_INPUT,
     P_FA20_DRIVE_INHIBIT,
+    P_FA22_SPEED_SRC,
+    P_FA24_INT_SPEED1,
+    P_FA40_ACC_MS,
+    P_FA41_DEC_MS,
+    P_FA42_SCURVE_MS,
     P_FA4_MODE,
     P_FA53_FORCE_ENABLE,
     P_FA60_SOFT_RESET,
@@ -106,6 +111,9 @@ class LW100Drive:
         self._counts_bias: int = 0
         # True after start_position_session(); cleared on disable().
         self._position_session_active: bool = False
+        # True after start_velocity_session(); cleared on disable().
+        self._velocity_session_active: bool = False
+        self._last_rpm_cmd: int = 0
 
     def connect(self) -> RegisterMap:
         self._client.connect()
@@ -266,6 +274,99 @@ class LW100Drive:
         """Set FA4/FA14/FD-0 for internal absolute position (best-effort)."""
         self.configure_internal_mode(incremental=False, steps=steps)
 
+    def configure_velocity_mode(
+        self,
+        *,
+        accel_ms: int = 50,
+        decel_ms: int = 50,
+        scurve_ms: int = 20,
+        steps: list[str] | None = None,
+        force_reset: bool = False,
+    ) -> None:
+        """Set FA4=1 speed mode, FA22=1 internal speed (SP=00 → FA24), accel/decel ramps.
+
+        Streaming FA24 (signed r/min) then gives continuous, smooth velocity
+        following — the servo tracks a live velocity reference with no per-segment
+        accel/decel stop-start (unlike Pr P1 point-to-point). Position is closed
+        in software from the encoder (see ``RailServoBridge`` velocity follow).
+        """
+        log = steps if steps is not None else []
+        if not self.config.configure_mode:
+            self._log(log, "skip velocity mode configure (configure_mode=False)")
+            return
+        desired = (1, 1, 0)  # marker tuple for velocity mode (FA4, FA22, spare)
+        if self._active_mode is None and not force_reset:
+            try:
+                cur_mode = self.read_param(P_FA4_MODE)
+                cur_src = self.read_param(P_FA22_SPEED_SRC)
+                if (cur_mode, cur_src) == (1, 1):
+                    self._active_mode = desired
+                    self._log(log, "velocity mode already live FA4=1 FA22=1 (no soft reset)")
+            except ModbusRtuError:
+                pass
+        writes = [
+            (P_FA4_MODE, 1, "FA4=1 speed control"),
+            (P_FA22_SPEED_SRC, 1, "FA22=1 internal speed (SP=00 → FA24)"),
+            (P_FA24_INT_SPEED1, 0, "FA24=0 initial speed"),
+            (P_FA40_ACC_MS, int(accel_ms), f"FA40={accel_ms}ms accel"),
+            (P_FA41_DEC_MS, int(decel_ms), f"FA41={decel_ms}ms decel"),
+            (P_FA42_SCURVE_MS, int(scurve_ms), f"FA42={scurve_ms}ms S-curve"),
+        ]
+        for param, value, note in writes:
+            try:
+                self.write_param(param, value)
+                self._log(log, f"write {note} @ 0x{self._addr(param):04X}")
+            except ModbusRtuError as exc:
+                self._log(log, f"WARN: {note} failed: {exc}")
+
+        if force_reset or self._active_mode != desired:
+            self.soft_reset(log)
+            for param, value, note in writes:
+                try:
+                    self.write_param(param, value)
+                except ModbusRtuError:
+                    pass
+            self._active_mode = desired
+            self._log(log, "velocity mode active FA4=1 FA22=1")
+        else:
+            self._log(log, "velocity mode already active FA4=1 FA22=1")
+
+    def start_velocity_session(
+        self,
+        *,
+        accel_ms: int = 50,
+        decel_ms: int = 50,
+        scurve_ms: int = 20,
+        steps: list[str] | None = None,
+    ) -> None:
+        """Configure speed mode once, enable, keep SON on for live FA24 streaming."""
+        log = steps if steps is not None else []
+        if self._velocity_session_active:
+            self._log(log, "velocity session already active")
+            return
+        self.configure_velocity_mode(
+            accel_ms=accel_ms, decel_ms=decel_ms, scurve_ms=scurve_ms, steps=log
+        )
+        self.enable_and_settle(log)
+        self._last_rpm_cmd = 0
+        self.set_velocity_rpm(0)
+        self._velocity_session_active = True
+        self._log(log, "velocity session started")
+
+    def set_velocity_rpm(self, rpm: float) -> int:
+        """Write live velocity command FA24 (signed r/min, clamped ±6000)."""
+        r = int(max(-6000, min(6000, round(float(rpm)))))
+        self.write_param(P_FA24_INT_SPEED1, r & 0xFFFF)
+        self._last_rpm_cmd = r
+        return r
+
+    def stop_velocity(self) -> None:
+        """Command zero velocity (best-effort)."""
+        try:
+            self.set_velocity_rpm(0)
+        except ModbusRtuError:
+            pass
+
     def enable(self, steps: list[str] | None = None) -> None:
         """Energize the motor for comms-only control.
 
@@ -295,6 +396,11 @@ class LW100Drive:
 
     def disable(self, steps: list[str] | None = None) -> None:
         log = steps if steps is not None else []
+        if self._velocity_session_active:
+            try:
+                self.set_velocity_rpm(0)
+            except ModbusRtuError:
+                pass
         try:
             self.write_param(P_FC15_DI_FORCE1, 0)
             self.write_param(P_FC18_DI_FORCE4, 0)
@@ -303,6 +409,7 @@ class LW100Drive:
         except ModbusRtuError:
             pass
         self._position_session_active = False
+        self._velocity_session_active = False
 
     def start_position_session(
         self,
@@ -531,6 +638,22 @@ class LW100Drive:
     def read_rail_m(self) -> float:
         """Measured rail position in metres (Genesis ``rail_y``)."""
         return self.read_rail_mm() * 1e-3
+
+    def read_rail_m_fast(self) -> float:
+        """Streaming rail position (metres): ONE Modbus transaction, no double-read.
+
+        ``read_encoder_counts(retries=5)`` re-reads until two transactions agree.
+        While the axis is moving they never agree, so it always burns 5 round-trips
+        (~75–150 ms) → the poll loop drops to ~7–13 Hz and the twin stutters, worst
+        exactly when the rail moves. lo/hi come back in a single Modbus response
+        (no word-tear within a transaction), so a single read is safe for display
+        and the soft position loop.
+        """
+        raw = self._read_encoder_counts_raw(retries=1) + int(self._counts_bias)
+        counts = float(raw - self._counts0)
+        cpr = float(max(self.config.encoder_counts_per_rev, 1))
+        motor_revs = counts / cpr
+        return (motor_revs / float(self.config.gear_ratio)) * float(self.config.lead_mm) * 1e-3
 
     def read_status(self) -> dict[str, int]:
         """Mode / enable params + live speed. Prefer ``read_rail_mm`` for position."""

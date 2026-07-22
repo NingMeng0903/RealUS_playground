@@ -1,10 +1,14 @@
-"""LW100 rail servo bridge: open-loop follow of WBC ``q_cmd[0]``.
+"""LW100 rail servo bridge: continuous velocity-follow of WBC ``q_cmd[0]``.
 
-Design (matches the pre-motor controller path):
-  * WBC remains the sole planner — smooth ``q_cmd[0]`` is never resynced to the encoder.
-  * This bridge only *executes* the command stream as Pr P1 incremental segments.
-  * Encoder is for SHM/twin display and home verification, **not** for WBC feedback
-    and **not** for closed-loop chase (chase caused overshoot to travel limit).
+Design (replicates the pre-motor "controller IK drives rail" smoothness):
+  * WBC remains the sole planner — smooth ``q_cmd[0]`` target is streamed here.
+  * ``follow_mode="velocity"`` (default): drive runs in **speed mode** (FA4=1),
+    and this bridge closes a soft position loop, writing a continuous velocity
+    command (FA24 r/min) every tick. No Pr P1 CTRG segments → no stop-start,
+    no per-segment accel/decel, self-correcting, no overshoot at travel ends.
+  * ``follow_mode="position"``: legacy Pr P1 incremental segments (kept for
+    fallback; inherently point-to-point / trapezoidal per CTRG).
+  * Encoder is for SHM/twin display and the position loop, never fed into the WBC.
 """
 
 from __future__ import annotations
@@ -29,14 +33,28 @@ class RailServoConfig:
     counts0: int = 0
     sign: float = 1.0
     enable_settle_s: float = 0.2
-    poll_hz: float = 30.0
+    poll_hz: float = 50.0
     deadband_mm: float = 0.5
     # Cap segment speed so motor matches controller rail v_max (0.20 m/s → 1200 r/min @ 10 mm/rev).
     max_speed_rpm: int = 1200
     busy_speed_rpm: int = 1
+    # Follow mode: "velocity" = continuous speed-mode servo (smooth, default);
+    #              "position" = legacy Pr P1 incremental segments (stop-start).
+    follow_mode: str = "velocity"
+    # Velocity-follow soft position loop (rail metres):
+    vel_kp: float = 6.0          # 1/s: v_cmd = kp*(target-measured) + v_ff
+    vel_ff_gain: float = 1.0     # feedforward fraction of target velocity
+    vel_max_m_s: float = 0.20    # clamp on commanded rail speed (matches inner.rail.v_max)
+    vel_deadband_mm: float = 0.3 # inside this → command 0 rpm (no dither)
+    accel_ms: int = 50           # FA40 accel time
+    decel_ms: int = 50           # FA41 decel time
+    scurve_ms: int = 20          # FA42 S-curve time
     # Pr P1 does accel/decel per CTRG. Tiny segments → audible stop-start ("一卡一卡").
     # Look-ahead coalesces the WBC ramp into one/few long continuous segments.
     preview_s: float = 3.0
+    # Wait until |target-commanded| reaches this before the first segment on a ramp
+    # (avoids firing 1–2 mm crumbs while the quintic is still near zero velocity).
+    commit_mm: float = 30.0
     # Hard cap on one segment (default = full travel). Keep ≥ travel for smooth moves.
     max_segment_mm: float = 800.0
     min_segment_mm: float = 1.0
@@ -60,6 +78,9 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
     zero_mode = str(hw.get("zero_mode", "current")).strip().lower()
     if zero_mode not in ("current", "fixed"):
         zero_mode = "current"
+    follow_mode = str(hw.get("follow_mode", "velocity")).strip().lower()
+    if follow_mode not in ("velocity", "position"):
+        follow_mode = "velocity"
     return RailServoConfig(
         enabled=bool(hw.get("enabled", False)),
         host=str(hw.get("host", "192.168.0.7")),
@@ -70,11 +91,20 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         counts0=int(hw.get("counts0", 0)),
         sign=float(hw.get("sign", 1.0)),
         enable_settle_s=float(hw.get("enable_settle_s", 0.2)),
-        poll_hz=float(hw.get("poll_hz", 30.0)),
+        poll_hz=float(hw.get("poll_hz", 50.0)),
         deadband_mm=float(hw.get("deadband_mm", 0.5)),
         max_speed_rpm=int(hw.get("max_speed_rpm", default_rpm)),
         busy_speed_rpm=int(hw.get("busy_speed_rpm", 1)),
+        follow_mode=follow_mode,
+        vel_kp=float(hw.get("vel_kp", 6.0)),
+        vel_ff_gain=float(hw.get("vel_ff_gain", 1.0)),
+        vel_max_m_s=float(hw.get("vel_max_m_s", v_max)),
+        vel_deadband_mm=float(hw.get("vel_deadband_mm", 0.3)),
+        accel_ms=int(hw.get("accel_ms", 50)),
+        decel_ms=int(hw.get("decel_ms", 50)),
+        scurve_ms=int(hw.get("scurve_ms", 20)),
         preview_s=float(hw.get("preview_s", 3.0)),
+        commit_mm=float(hw.get("commit_mm", 30.0)),
         max_segment_mm=float(hw.get("max_segment_mm", travel_m * 1000.0)),
         min_segment_mm=float(hw.get("min_segment_mm", 1.0)),
         travel_m=travel_m,
@@ -112,6 +142,7 @@ class RailServoBridge:
         self._tgt_v_m_s = 0.0
         self._last_tgt_m = 0.0
         self._last_tgt_mono = 0.0
+        self._velocity_mode = config.follow_mode == "velocity"
 
     @property
     def measured_m(self) -> float:
@@ -155,12 +186,20 @@ class RailServoBridge:
         )
         self._drive = LW100Drive(drive_cfg)
         self._drive.connect()
-        self._drive.start_position_session(incremental=True)
-        # Best-effort: clear leftover P1 distance (do not fail bring-up on Modbus blip).
-        try:
-            self._drive.clear_p1_command()
-        except ModbusRtuError as exc:
-            print(f"lw100 rail: WARN clear P1: {exc}", flush=True)
+        self._velocity_mode = self.config.follow_mode == "velocity"
+        if self._velocity_mode:
+            self._drive.start_velocity_session(
+                accel_ms=self.config.accel_ms,
+                decel_ms=self.config.decel_ms,
+                scurve_ms=self.config.scurve_ms,
+            )
+        else:
+            self._drive.start_position_session(incremental=True)
+            # Best-effort: clear leftover P1 distance (do not fail bring-up on a blip).
+            try:
+                self._drive.clear_p1_command()
+            except ModbusRtuError as exc:
+                print(f"lw100 rail: WARN clear P1: {exc}", flush=True)
 
         if self.config.zero_mode == "fixed":
             counts0 = int(self.config.counts0)
@@ -184,13 +223,20 @@ class RailServoBridge:
             self._last_tgt_m = measured
             self._last_tgt_mono = time.monotonic()
         self._stop.clear()
-        self._thread = threading.Thread(target=self._worker, name="lw100-rail", daemon=True)
+        worker = self._worker_velocity if self._velocity_mode else self._worker
+        self._thread = threading.Thread(target=worker, name="lw100-rail", daemon=True)
         self._thread.start()
+        mode_note = (
+            f"velocity-follow (kp={self.config.vel_kp}, "
+            f"v_max={self.config.vel_max_m_s:.2f} m/s, FA40/41={self.config.accel_ms}ms)"
+            if self._velocity_mode
+            else "open-loop Pr-P1 follow"
+        )
         print(
             f"lw100 rail: hold @ {measured:+.4f} m ({zero_note}, "
             f"raw={raw} bias={self._drive._counts_bias}, "
             f"travel=[0, {self.config.travel_m:.2f}] m, "
-            f"open-loop follow, home_on_exit={self.config.home_on_exit})",
+            f"{mode_note}, home_on_exit={self.config.home_on_exit})",
             flush=True,
         )
 
@@ -270,6 +316,87 @@ class RailServoBridge:
                 pass
             self._drive = None
 
+    def _mps_to_rpm(self, v_m_s: float) -> float:
+        """Rail linear speed (m/s) → motor r/min (lead mm/rev, direct drive)."""
+        lead = max(float(self.config.lead_mm), 1e-6)
+        return float(v_m_s) * 1000.0 / lead * 60.0
+
+    def _worker_velocity(self) -> None:
+        """Continuous velocity-follow: soft position loop → live FA24 (r/min).
+
+        v_cmd = clamp( kp*(target - measured) + ff*target_vel, ±v_max )
+        Smooth, self-correcting, no CTRG segments. Encoder closes the loop and
+        also feeds SHM/twin. Command 0 inside the deadband to avoid dither.
+        """
+        assert self._drive is not None
+        period = 1.0 / max(float(self.config.poll_hz), 1.0)
+        deadband_m = max(float(self.config.vel_deadband_mm), 0.05) * 1e-3
+        v_max = float(self.config.vel_max_m_s)
+        kp = float(self.config.vel_kp)
+        ff = float(self.config.vel_ff_gain)
+        sign = float(self.config.sign)
+        travel = float(self.config.travel_m)
+        prev_target: float | None = None
+        prev_t = t0_init = time.monotonic()
+        v_ff = 0.0
+        while not self._stop.is_set():
+            t0 = time.monotonic()
+            try:
+                measured = float(self._drive.read_rail_m_fast())
+                with self._lock:
+                    self._measured_m = measured
+                    self._commanded_m = measured  # velocity mode: truth = encoder
+                    target = float(self._target_m)
+                    follow = bool(self._follow_enabled)
+                    speed_cap = self._speed_cap_rpm
+                # Target-velocity feedforward (EMA of dtarget/dt).
+                if prev_target is not None:
+                    dt = t0 - prev_t
+                    if dt > 1e-4:
+                        v_inst = (target - prev_target) / dt
+                        v_ff = 0.5 * v_ff + 0.5 * v_inst
+                prev_target = target
+                prev_t = t0
+
+                if follow:
+                    err = target - measured
+                    if abs(err) <= deadband_m:
+                        v_cmd = 0.0
+                    else:
+                        v_cmd = kp * err + ff * v_ff
+                    # End-stop guard: never drive further past travel limits.
+                    if measured <= 0.0 and v_cmd < 0.0:
+                        v_cmd = 0.0
+                    elif measured >= travel and v_cmd > 0.0:
+                        v_cmd = 0.0
+                    v_cmd = max(-v_max, min(v_max, v_cmd))
+                    rpm = sign * self._mps_to_rpm(v_cmd)
+                    cap = None if speed_cap is None else float(speed_cap)
+                    if cap is not None:
+                        rpm = max(-cap, min(cap, rpm))
+                    self._drive.set_velocity_rpm(rpm)
+                    if self.config.verbose and abs(rpm) > 1.0:
+                        print(
+                            f"lw100 rail: v_follow tgt={target*1000:.1f} "
+                            f"meas={measured*1000:.1f} mm err={err*1000:+.1f} "
+                            f"v={v_cmd:+.3f} m/s → {rpm:+.0f} r/min",
+                            flush=True,
+                        )
+                else:
+                    # Not following yet: ensure motor is commanded to hold (0 speed).
+                    if self._drive._last_rpm_cmd != 0:
+                        self._drive.set_velocity_rpm(0)
+            except ModbusRtuError as exc:
+                if self.config.verbose:
+                    print(f"lw100 rail: modbus error: {exc}", flush=True)
+            except Exception as exc:
+                if self.config.verbose:
+                    print(f"lw100 rail: worker error: {exc}", flush=True)
+            elapsed = time.monotonic() - t0
+            sleep_s = max(0.0, period - elapsed)
+            if self._stop.wait(sleep_s):
+                break
+
     def _segment_time_s(self, step_mm: float, speed_rpm: int) -> float:
         """Estimate segment duration (motion + CTRG overhead)."""
         lead = max(float(self.config.lead_mm), 1e-6)
@@ -322,7 +449,7 @@ class RailServoBridge:
         while not self._stop.is_set():
             t0 = time.monotonic()
             try:
-                measured = float(self._drive.read_rail_m())
+                measured = float(self._drive.read_rail_m_fast())
                 with self._lock:
                     self._measured_m = measured
                     target = float(self._target_m)
@@ -344,6 +471,17 @@ class RailServoBridge:
                     # Also accept a final exact-target correction when settled.
                     if abs(delta_m) < deadband_m:
                         delta_m = target - commanded
+                    err_to_tgt = target - commanded
+                    settled = abs(self._tgt_v_m_s) < 0.01
+                    commit_m = max(float(self.config.commit_mm), 1.0) * 1e-3
+                    # On a ramp, wait until enough error accumulates so look-ahead
+                    # can fire one long segment (not a crumb every poll).
+                    if (
+                        (not settled)
+                        and abs(err_to_tgt) < commit_m
+                        and abs(delta_m) < commit_m
+                    ):
+                        delta_m = 0.0
                     if (not busy) and abs(delta_m) >= max(deadband_m, min_seg_m):
                         step_m = max(-max_seg_m, min(max_seg_m, delta_m))
                         step_mm = step_m * 1000.0

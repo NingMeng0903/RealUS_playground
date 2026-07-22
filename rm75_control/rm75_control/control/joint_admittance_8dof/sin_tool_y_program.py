@@ -726,10 +726,11 @@ def build_sin_tool_y_program(
                 euler_order=inner_cfg.euler_order,
             )
             hybrid_label = "scan"
-            # Pin rail at pose D (scan origin). Coupled QP was recruiting the full
-            # travel for large tool-Y strokes (e.g. 900 mm pp → slam to 800 mm).
-            # Tool-Y sin is arm-only; motor open-loop-follows the pinned q_cmd[0].
-            hybrid_sec = SecondaryPolicy(preset="hold", qdot_ff="off")
+            # COUPLED: let the QP-IK freely distribute the tool-Y sweep between the
+            # rail and the arm (rail slides, arm reaches out) — exactly the old
+            # controller-driven-rail behaviour. The velocity-mode motor just follows
+            # the resulting smooth q_cmd[0]; no rail pinning, no arm-only contortion.
+            hybrid_sec = SecondaryPolicy(preset="track", qdot_ff="off")
             hybrid_gov = GovernorSpec(err_ok_mm=10.0, err_max_mm=40.0)
         specs.append(
             phase_hybrid_track(
