@@ -82,6 +82,16 @@ def main() -> int:
                 if not args.verbose:
                     print(f"  {line}", flush=True)
             verify = position_command_to_mm(res.command, lead_mm=args.lead_mm)
+            try:
+                counts = drive.read_encoder_counts()
+                rail_mm = drive.read_rail_mm()
+                rail_m = drive.read_rail_m()
+                print(
+                    f"encoder: counts={counts}  rail={rail_mm:+.3f} mm ({rail_m:+.5f} m)",
+                    flush=True,
+                )
+            except Exception as exc:
+                print(f"WARN: encoder read failed: {exc}", flush=True)
             print(f"done in {res.elapsed_s:.2f}s  (segment ≈ {verify:+.1f} mm)", flush=True)
     except Exception as exc:
         print(f"FAIL: {exc}", file=sys.stderr, flush=True)

@@ -29,8 +29,14 @@ P_FA72_BAUD = ParamRef("FA", 72)
 P_FA73_PROTO = ParamRef("FA", 73)
 
 # Undocumented monitor block (live-probed on LW100-400W):
-#   0x1000 = motor speed (r/min, signed)
+#   0x1000        = motor speed (r/min, signed)
+#   0x1001/0x1002 = encoder position int32 (lo, hi), +131072 counts per motor rev (17-bit)
+#                   Stable at idle (span ≤2 counts). Prefer idle/double-read snapshots.
+#   0x100C/0x100D = NOT reliable live position (noisy / word-tear); do not use.
 MONITOR_SPEED_RPM = 0x1000
+MONITOR_POS_LO = 0x1001
+MONITOR_POS_HI = 0x1002
+ENCODER_COUNTS_PER_REV_17BIT = 131_072
 P_FC13_POS_COORD_LO = ParamRef("FC", 13)  # set current position coord low 16b — NOT live feedback
 P_FC14_POS_COORD_HI = ParamRef("FC", 14)  # set current position coord high 16b — NOT live feedback
 P_FC15_DI_FORCE1 = ParamRef("FC", 15)

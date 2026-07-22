@@ -2106,6 +2106,7 @@ def main() -> int:
                     ),
                     poses=pose_cases(list(asset.joint_names)),
                     stage=f"stage1_pose_material_clearance_pass{pass_index}",
+                    repair_tissues=("vessel", "nerve", "connective_tissue"),
                     safety_margin_m=0.0045,
                     maximum_edge_ratio=1.15,
                     max_iterations=6,

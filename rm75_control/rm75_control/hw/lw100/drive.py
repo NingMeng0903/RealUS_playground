@@ -8,6 +8,9 @@ from dataclasses import dataclass, field
 from rm75_control.hw.lw100.geometry import PositionCommand, mm_to_position_command
 from rm75_control.hw.lw100.modbus_rtu_tcp import ModbusRtuTcpClient, ModbusRtuTcpConfig, ModbusRtuError
 from rm75_control.hw.lw100.registers import (
+    ENCODER_COUNTS_PER_REV_17BIT,
+    MONITOR_POS_HI,
+    MONITOR_POS_LO,
     MONITOR_SPEED_RPM,
     P_FA11_PPR,
     P_FA14_POS_INPUT,
@@ -62,6 +65,7 @@ class LW100DriveConfig:
     lead_mm: float = 10.0
     gear_ratio: float = 1.0
     pulses_per_rev: int = 10_000
+    encoder_counts_per_rev: int = ENCODER_COUNTS_PER_REV_17BIT
     default_speed_rpm: int = 200
     configure_mode: bool = True
     enable_settle_s: float = ENABLE_SETTLE_S
@@ -93,6 +97,8 @@ class LW100Drive:
         self._map: RegisterMap | None = None
         # Last mode tuple actually activated via FA-60 soft reset.
         self._active_mode: tuple[int, int, int] | None = None
+        # Software home: rail_mm uses (counts - counts0). Call set_rail_zero() at machine home.
+        self._counts0: int = 0
 
     def connect(self) -> RegisterMap:
         self._client.connect()
@@ -373,12 +379,50 @@ class LW100Drive:
         val = int(self._client.read_holding_registers(MONITOR_SPEED_RPM, 1)[0])
         return val - 0x10000 if val >= 0x8000 else val
 
-    def read_status(self) -> dict[str, int]:
-        """Best-effort read of mode / enable-related parameters + live speed.
+    def read_encoder_counts(self, *, retries: int = 5) -> int:
+        """Live encoder position as signed 32-bit counts (monitor 0x1001/0x1002).
 
-        FC-13/FC-14 are coordinate *setters*, not feedback. Use ``read_speed_rpm``
-        or panel d-Pos / d-CPos for motion verification.
+        Live-proved at idle: +1 motor revolution → +``encoder_counts_per_rev``
+        (131072 for 17-bit), span ≤2 counts. Double-read until the lo/hi pair is
+        stable (avoids torn 32-bit samples while moving).
         """
+        last: tuple[int, int] | None = None
+        for _ in range(max(1, retries)):
+            lo, hi = self._client.read_holding_registers(MONITOR_POS_LO, 2)
+            pair = (int(lo) & 0xFFFF, int(hi) & 0xFFFF)
+            if last == pair:
+                v = (pair[1] << 16) | pair[0]
+                return v - (1 << 32) if v >= (1 << 31) else v
+            last = pair
+        assert last is not None
+        v = (last[1] << 16) | last[0]
+        return v - (1 << 32) if v >= (1 << 31) else v
+
+    def set_rail_zero(self, counts: int | None = None) -> int:
+        """Software-home the rail at the current (or given) encoder counts.
+
+        Genesis / twin should call this once at the physical home pose so
+        ``read_rail_m()`` reports 0 there. Returns the stored ``counts0``.
+        """
+        self._counts0 = int(self.read_encoder_counts() if counts is None else counts)
+        return self._counts0
+
+    def read_rail_mm(self) -> float:
+        """Measured rail position in mm from encoder (never from command).
+
+        ``rail_mm = (counts - counts0) / counts_per_rev * lead_mm / gear_ratio``
+        """
+        counts = float(self.read_encoder_counts() - self._counts0)
+        cpr = float(max(self.config.encoder_counts_per_rev, 1))
+        motor_revs = counts / cpr
+        return (motor_revs / float(self.config.gear_ratio)) * float(self.config.lead_mm)
+
+    def read_rail_m(self) -> float:
+        """Measured rail position in metres (Genesis ``rail_y``)."""
+        return self.read_rail_mm() * 1e-3
+
+    def read_status(self) -> dict[str, int]:
+        """Mode / enable params + live speed. Prefer ``read_rail_mm`` for position."""
         out: dict[str, int] = {}
         for param in (
             P_FA4_MODE,
@@ -398,6 +442,10 @@ class LW100Drive:
             out["speed_rpm"] = self.read_speed_rpm()
         except ModbusRtuError:
             out["speed_rpm"] = -1
+        try:
+            out["encoder_counts"] = self.read_encoder_counts()
+        except ModbusRtuError:
+            out["encoder_counts"] = -1
         return out
 
     def setup_modbus_serial(

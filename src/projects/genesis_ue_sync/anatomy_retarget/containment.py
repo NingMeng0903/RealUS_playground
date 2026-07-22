@@ -864,8 +864,12 @@ def bake_soft_tissue_pose_clearance(
     from .anatomy_lbs import source_bone_skinning_transforms
 
     permitted = {str(value).lower() for value in repair_tissues}
-    if not permitted or not permitted.issubset({"vessel", "nerve"}):
-        raise ValueError("pose-clearance bake is restricted to vessel/nerve tissues")
+    if not permitted or not permitted.issubset(
+        {"vessel", "nerve", "connective_tissue"}
+    ):
+        raise ValueError(
+            "pose-clearance bake is restricted to vessel/nerve/connective tissues"
+        )
     original = np.asarray(asset.vertices_rest, dtype=np.float64)
     result = original.copy()
     all_faces = np.asarray(asset.faces, dtype=np.int64).reshape(-1, 3)

@@ -1703,6 +1703,29 @@ def fit_subject_bone_containment(
             moved_bones.add(int(bone))
         return [str(asset.source_bone_names[index]) for index in controllers]
 
+    def anchor_segment_controller(
+        bone_name: str,
+        *,
+        proximal: np.ndarray,
+        distal: np.ndarray,
+    ) -> bool:
+        """Bake an anatomical spatial hinge into a Blender segment control.
+
+        Blender bone heads are authored display endpoints and can be offset
+        from the actual articulation centre.  Runtime rotation must use the
+        subject's official spatial joint, while the Blender hierarchy and
+        vertex weights remain unchanged.
+        """
+        bone_names = list(asset.source_bone_names or [])
+        if bone_name not in bone_names:
+            return False
+        bone = bone_names.index(bone_name)
+        target_global[bone, :3, 3] = np.asarray(proximal, dtype=np.float64)
+        target_head[bone] = np.asarray(proximal, dtype=np.float64)
+        target_tail[bone] = np.asarray(distal, dtype=np.float64)
+        moved_bones.add(int(bone))
+        return True
+
     def containment_metric(points: np.ndarray) -> tuple[int, float]:
         values = signed_distance(points, surface_vertices, surface_faces)[0]
         outside = values > 0.0
@@ -1751,6 +1774,8 @@ def fit_subject_bone_containment(
                 radial_scale = float(shaft_scale) + (1.0 - float(shaft_scale)) * np.clip(
                     1.0 - fraction / 0.25, 0.0, 1.0
                 )
+                distal_blend = np.clip((fraction - 0.75) / 0.25, 0.0, 1.0)
+                radial_scale *= 1.0 - 0.50 * distal_blend
                 return shoulder + axial + radial_scale[:, None] * radial
 
             return mapper
@@ -1760,8 +1785,7 @@ def fit_subject_bone_containment(
         # head remains unscaled at the socket; only the shaft/distal lobe gets
         # a conservative pose reserve.  Requiring zero static escapes avoids
         # hiding a concentrated elbow failure inside the much larger mesh.
-        initial_humerus_outside = containment_metric(vertices[humerus])[0]
-        humerus_distal_extension = 0.75 if initial_humerus_outside else 0.85
+        humerus_distal_extension = 0.0
         selected_humerus_radial = 0.35
         for radial_scale in np.linspace(0.85, 0.35, 11):
             candidate_mapper = make_humerus_mapper(
@@ -1791,16 +1815,35 @@ def fit_subject_bone_containment(
 
         forearm = group_indices(suffix, ("radius", "ulna"))
         forearm_axis = wrist - elbow
-        forearm_axis /= max(float(np.linalg.norm(forearm_axis)), 1.0e-12)
-        forearm_mapper = lambda points: segment_map(
-            points, anchor=elbow, axis=forearm_axis,
-            longitudinal=1.0, radial=0.8, translation=np.zeros(3),
-        )
+        forearm_length = max(float(np.linalg.norm(forearm_axis)), 1.0e-12)
+        forearm_axis /= forearm_length
+        def forearm_mapper(points: np.ndarray) -> np.ndarray:
+            offset = np.asarray(points, dtype=np.float64) - elbow
+            axial_distance = offset @ forearm_axis
+            fraction = axial_distance / forearm_length
+            radial_offset = offset - axial_distance[:, None] * forearm_axis
+            normalized = np.where(fraction < 0.0, 0.0, fraction)
+            proximal_blend = np.clip(fraction / 0.25, 0.0, 1.0)
+            radial_scale = 0.8 * (0.50 + 0.50 * proximal_blend)
+            return (
+                elbow
+                + (normalized * forearm_length)[:, None] * forearm_axis
+                + radial_scale[:, None] * radial_offset
+            )
         vertices[forearm] = forearm_mapper(vertices[forearm])
         forearm_controllers = update_controllers(forearm, forearm_mapper)
+        spatial_elbow_anchor = anchor_segment_controller(
+            f"Forearm_Bone_{'L' if side == 'left' else 'R'}",
+            proximal=elbow,
+            distal=wrist,
+        )
         reports.append({
             "group": f"{side}_forearm",
             "radial_scale": 0.8,
+            "proximal_extension_scale": 0.0,
+            "distal_extension_scale": 1.0,
+            "proximal_radial_taper": 0.5,
+            "spatial_elbow_anchor": spatial_elbow_anchor,
             "controllers": forearm_controllers,
             "final_outside": containment_metric(vertices[forearm]),
         })
@@ -1859,14 +1902,32 @@ def fit_subject_bone_containment(
 
         lower = group_indices(suffix, ("tibia", "fibula"))
         lower_axis = ankle - knee
-        lower_axis /= max(float(np.linalg.norm(lower_axis)), 1.0e-12)
-        selected_radial = 1.0
-        for radial in np.linspace(1.0, 0.25, 16):
-            candidate = segment_map(
-                vertices[lower], anchor=knee, axis=lower_axis,
-                longitudinal=1.0, radial=float(radial), translation=np.zeros(3),
+        lower_length = max(float(np.linalg.norm(lower_axis)), 1.0e-12)
+        lower_axis /= lower_length
+
+        def make_lower_mapper(proximal_radial: float) -> Any:
+            distal_radial = 0.50 * float(proximal_radial)
+
+            def mapper(points: np.ndarray) -> np.ndarray:
+                offset = np.asarray(points, dtype=np.float64) - knee
+                axial_distance = offset @ lower_axis
+                radial_offset = offset - axial_distance[:, None] * lower_axis
+                fraction = axial_distance / lower_length
+                blend = np.clip((fraction - 0.25) / 0.50, 0.0, 1.0)
+                blend = blend * blend * (3.0 - 2.0 * blend)
+                scale = float(proximal_radial) + (
+                    distal_radial - float(proximal_radial)
+                ) * blend
+                return knee + axial_distance[:, None] * lower_axis + scale[:, None] * radial_offset
+
+            return mapper
+
+        selected_radial = 0.35
+        for radial in np.linspace(1.0, 0.35, 14):
+            candidate_mapper = make_lower_mapper(float(radial))
+            outside_count, _outside_max = containment_metric(
+                candidate_mapper(vertices[lower])
             )
-            outside_count, outside_max = containment_metric(candidate)
             selected_radial = float(radial)
             if outside_count == 0:
                 break
@@ -1874,16 +1935,18 @@ def fit_subject_bone_containment(
         # twist/varus because the rigid tibia and blended skin take different
         # paths.  Keep a beta-independent reserve after the widest zero-escape
         # radius has been selected.
-        selected_radial *= 0.75
-        lower_mapper = lambda points, r=selected_radial: segment_map(
-            points, anchor=knee, axis=lower_axis,
-            longitudinal=1.0, radial=r, translation=np.zeros(3),
-        )
+        lower_mapper = make_lower_mapper(selected_radial)
         vertices[lower] = lower_mapper(vertices[lower])
         lower_controllers = update_controllers(lower, lower_mapper)
+        spatial_knee_anchor = anchor_segment_controller(
+            f"Tibia_Bone_{label}", proximal=knee, distal=ankle
+        )
         reports.append({
             "group": f"{side}_lower_leg",
             "radial_scale": selected_radial,
+            "proximal_radial_scale": selected_radial,
+            "distal_radial_scale": 0.50 * selected_radial,
+            "spatial_knee_anchor": spatial_knee_anchor,
             "controllers": lower_controllers,
             "final_outside": containment_metric(vertices[lower]),
         })

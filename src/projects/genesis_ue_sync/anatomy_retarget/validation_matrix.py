@@ -102,21 +102,27 @@ def pose_cases(joint_names: list[str]) -> dict[str, np.ndarray]:
             right_wrist=(0.50, 0.25, -0.10),
         ),
         "pose_full_body_multiaxis": pose(
-            pelvis=(-0.10, 0.25, 1.25),
-            left_hip=(-0.20, -0.25, 0.55),
-            right_hip=(-0.10, 0.20, -0.35),
-            left_knee=(0.70, 0.60, -1.45),
-            right_knee=(0.40, 0.30, 0.20),
-            left_ankle=(0.75, 0.40, 0.30),
-            right_ankle=(0.65, -0.25, -0.45),
-            left_shoulder=(0.35, 0.10, -1.15),
-            right_shoulder=(0.35, -0.45, 1.20),
-            left_elbow=(0.55, -0.55, -0.15),
-            right_elbow=(-0.40, 0.65, 0.05),
-            left_wrist=(0.70, -0.05, 0.25),
-            right_wrist=(0.50, 0.25, -0.10),
-            neck=(-0.32, 0.10, -0.20),
-            head=(0.20, -0.10, 0.20),
+            **{
+                name: rotation
+                for name, rotation in (
+                    ("pelvis", (-0.10, 0.25, 1.25)),
+                    ("left_hip", (-0.20, -0.25, 0.55)),
+                    ("right_hip", (-0.10, 0.20, -0.35)),
+                    ("left_knee", (0.70, 0.60, -1.45)),
+                    ("right_knee", (0.40, 0.30, 0.20)),
+                    ("left_ankle", (0.75, 0.40, 0.30)),
+                    ("right_ankle", (0.65, -0.25, -0.45)),
+                    ("left_shoulder", (0.35, 0.10, -1.15)),
+                    ("right_shoulder", (0.35, -0.45, 1.20)),
+                    ("left_elbow", (0.55, -0.55, -0.15)),
+                    ("right_elbow", (-0.40, 0.65, 0.05)),
+                    ("left_wrist", (0.70, -0.05, 0.25)),
+                    ("right_wrist", (0.50, 0.25, -0.10)),
+                    ("neck", (-0.32, 0.10, -0.20)),
+                    ("head", (0.20, -0.10, 0.20)),
+                )
+                if name in index
+            }
         ),
         "pose_finger_flex": pose(
             **{
