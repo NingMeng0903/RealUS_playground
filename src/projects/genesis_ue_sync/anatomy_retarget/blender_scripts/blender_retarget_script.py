@@ -1514,9 +1514,126 @@ def _animation_driver_count(owner: Any) -> int:
     return int(len(list(getattr(animation, "drivers", ()) or ())))
 
 
+def _source_action_correctives(
+    arm: bpy.types.Object,
+    source_rig: dict[str, Any],
+) -> dict[str, Any]:
+    """Fit reusable patella flexion follow from exact linear Action runs."""
+    names = list(source_rig["source_bone_names"])
+    parents = np.asarray(source_rig["source_bone_parents"], dtype=np.int64)
+    count = len(names)
+    driver = np.full(count, -1, dtype=np.int16)
+    gain = np.zeros(count, dtype=np.float32)
+    axis = np.zeros((count, 3), dtype=np.float32)
+    action = None if arm.animation_data is None else arm.animation_data.action
+    if action is None:
+        return {"driver": driver, "gain": gain, "axis": axis, "runs": []}
+
+    def quaternion_curves(bone_name: str) -> dict[int, Any]:
+        path = f'pose.bones["{bone_name}"].rotation_quaternion'
+        return {
+            int(curve.array_index): curve
+            for curve in action.fcurves
+            if str(curve.data_path) == path
+        }
+
+    fitted_runs: list[dict[str, Any]] = []
+    pending: list[tuple[int, int, int, float]] = []
+    for child, child_name in enumerate(names):
+        if "patella" not in str(child_name).lower():
+            continue
+        ancestor = int(parents[child])
+        while ancestor >= 0 and "knee" not in str(names[ancestor]).lower():
+            ancestor = int(parents[ancestor])
+        if ancestor < 0:
+            continue
+        child_curves = quaternion_curves(child_name)
+        driver_curves = quaternion_curves(names[ancestor])
+        if set(child_curves) != {0, 1, 2, 3} or set(driver_curves) != {0, 1, 2, 3}:
+            continue
+        child_frames = {
+            int(round(point.co[0]))
+            for curve in child_curves.values()
+            for point in curve.keyframe_points
+        }
+        driver_frames = {
+            int(round(point.co[0]))
+            for curve in driver_curves.values()
+            for point in curve.keyframe_points
+        }
+        frames = sorted(child_frames & driver_frames)
+        runs: list[list[int]] = []
+        for frame in frames:
+            if not runs or frame != runs[-1][-1] + 1:
+                runs.append([frame])
+            else:
+                runs[-1].append(frame)
+        child_axis = int(
+            np.argmax(
+                [
+                    max(abs(float(child_curves[index].evaluate(frame))) for frame in frames)
+                    for index in (1, 2, 3)
+                ]
+            )
+        )
+        for run in runs:
+            if len(run) < 3:
+                continue
+            flexion: list[float] = []
+            correction: list[float] = []
+            for frame in run:
+                dq = np.asarray(
+                    [float(driver_curves[index].evaluate(frame)) for index in range(4)]
+                )
+                cq = np.asarray(
+                    [float(child_curves[index].evaluate(frame)) for index in range(4)]
+                )
+                flexion.append(
+                    2.0 * np.arctan2(float(np.linalg.norm(dq[1:])), abs(float(dq[0])))
+                )
+                correction.append(
+                    2.0 * np.arctan2(float(cq[child_axis + 1]), float(cq[0]))
+                )
+            x = np.asarray(flexion, dtype=np.float64)
+            y = np.asarray(correction, dtype=np.float64)
+            denominator = float(x @ x)
+            if denominator <= 1.0e-10:
+                continue
+            run_gain = float((x @ y) / denominator)
+            residual = y - run_gain * x
+            maximum_residual = float(np.max(np.abs(residual)))
+            fitted_runs.append(
+                {
+                    "bone": str(child_name),
+                    "driver_bone": str(names[ancestor]),
+                    "frame_range": [int(run[0]), int(run[-1])],
+                    "gain": run_gain,
+                    "maximum_residual_rad": maximum_residual,
+                }
+            )
+            if maximum_residual <= 1.0e-4:
+                pending.append((child, ancestor, child_axis, run_gain))
+    if pending:
+        common_gain = float(np.median([value[3] for value in pending]))
+        for child, ancestor, child_axis, _run_gain in pending:
+            driver[child] = int(ancestor)
+            gain[child] = np.float32(common_gain)
+            axis[child, child_axis] = np.float32(1.0)
+    return {
+        "driver": driver,
+        "gain": gain,
+        "axis": axis,
+        "runs": fitted_runs,
+        "common_gain": float(np.median(gain[driver >= 0])) if np.any(driver >= 0) else 0.0,
+        "serialized_bones": [names[index] for index in np.flatnonzero(driver >= 0)],
+    }
+
+
 def _source_mechanism_audit(
     arm: bpy.types.Object,
     meshes: list[bpy.types.Object],
+    *,
+    action_correctives: dict[str, Any],
 ) -> dict[str, Any]:
     """Record every Blender mechanism that could add pose-dependent motion."""
     object_constraints = sum(len(obj.constraints) for obj in [arm, *meshes])
@@ -1579,6 +1696,10 @@ def _source_mechanism_audit(
     )
     if preserve_volume_modifiers:
         missing.append("armature_preserve_volume_mode")
+    serialized_action_bones = set(action_correctives.get("serialized_bones", []))
+    missing_action_bones = sorted(keyed_pose_bones - serialized_action_bones)
+    if missing_action_bones:
+        missing.append("action_pose_curves")
     return {
         "armature_modifiers": int(
             sum(modifier.type == "ARMATURE" for obj in meshes for modifier in obj.modifiers)
@@ -1598,11 +1719,18 @@ def _source_mechanism_audit(
         "active_action_keyed_pose_bones": sorted(keyed_pose_bones),
         "nla_strips": nla_strips,
         "pose_source_serialization": {
-            "actions_serialized": False,
+            "actions_serialized": not bool(missing_action_bones),
+            "serialized_corrective_bones": sorted(serialized_action_bones),
+            "unserialized_action_bones": missing_action_bones,
             "reason": (
-                "Action supplies authored pose samples but adds no deformation "
-                "beyond the serialized Armature hierarchy and vertex weights"
+                "Patella linear flexion follow is serialized; remaining Action "
+                "curves are pose examples and are not assumed to be universal"
             ),
+        },
+        "action_corrective_fit": {
+            key: value
+            for key, value in action_correctives.items()
+            if key not in {"driver", "gain", "axis"}
         },
         "serialized": [
             "armature_bone_names",
@@ -1691,6 +1819,7 @@ def main() -> None:
         align=align_context,
         joint_names=joint_names,
     )
+    action_correctives = _source_action_correctives(arm, source_rig)
     source_driver_coupling = _source_driver_coupling(source_rig, canonical)
     registration_reference = (
         np.asarray(diag["raw_vertices"], dtype=np.float32) @ align_context["linear"].T
@@ -1787,6 +1916,15 @@ def main() -> None:
         source_bone_blend=np.asarray(source_rig["source_bone_blend"], dtype=np.float32),
         source_bone_driver_types=np.asarray(source_rig["source_bone_driver_types"], dtype=object),
         source_bone_frame_joints=np.asarray(source_rig["source_bone_frame_joints"], dtype=np.int16),
+        source_bone_corrective_driver=np.asarray(
+            action_correctives["driver"], dtype=np.int16
+        ),
+        source_bone_corrective_gain=np.asarray(
+            action_correctives["gain"], dtype=np.float32
+        ),
+        source_bone_corrective_axis=np.asarray(
+            action_correctives["axis"], dtype=np.float32
+        ),
         source_driver_coupling=source_driver_coupling,
         source_bind_vertices=vertices.astype(np.float32),
         registration_reference=registration_reference,
@@ -1882,7 +2020,11 @@ def main() -> None:
             ],
         },
         "meshes": diag["mesh_audit_records"],
-        "pose_dependent_mechanisms": _source_mechanism_audit(arm, meshes),
+        "pose_dependent_mechanisms": _source_mechanism_audit(
+            arm,
+            meshes,
+            action_correctives=action_correctives,
+        ),
     }
     report = {
         "blend_file": str(bpy.data.filepath),

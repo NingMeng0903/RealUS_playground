@@ -49,7 +49,7 @@ git push -u origin main
 
 ```bash
 git add .
-git commit -m "双 beta 独立候选通过 YA，手、下肢、下颌局部修正均保持 Blender 绑定"
+git commit -m "ird算子，v212 无强平滑版本，还可以，牙齿眼睛不在位置，偶尔有血管传出去，还有就是骨骼联动一般"
 git push -u origin main
 ```
 

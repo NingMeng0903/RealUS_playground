@@ -549,8 +549,29 @@ def source_bone_driver_frames(
     if not np.all(np.isfinite(pose_global)) or not np.all(np.isfinite(rest_global)):
         raise ValueError("source driver joint frames must be finite")
     joint_delta = pose_global @ np.linalg.inv(rest_global)
-    rest_points = np.asarray(asset.rest_joints, dtype=np.float64)
-    pose_points = pose_global[:, :3, 3]
+    official_rest_points = np.asarray(asset.rest_joints, dtype=np.float64)
+    rest_points = np.asarray(
+        asset.source_driver_rest_joints
+        if asset.source_driver_rest_joints is not None
+        else official_rest_points,
+        dtype=np.float64,
+    )
+    # Keep official SMPL-X FK as the motion authority. Anatomical pivots are
+    # fixed rest-space points transported by their corresponding official joint
+    # delta; replacing the FK skeleton itself would move distal hands/feet away
+    # from the posed SMPL-X surface.
+    point_delta = joint_delta.copy()
+    target_parents = np.asarray(asset.parents, dtype=np.int64)
+    for joint, parent in enumerate(target_parents.tolist()):
+        if int(parent) >= 0:
+            # A joint center is positioned by its parent segment before the
+            # joint's own local rotation is applied. Using joint_delta[joint]
+            # would orbit an offset pivot around the old regressed center.
+            point_delta[joint] = joint_delta[int(parent)]
+    pose_points = (
+        np.einsum("bij,bj->bi", point_delta[:, :3, :3], rest_points)
+        + point_delta[:, :3, 3]
+    )
     frames = np.tile(np.eye(4, dtype=np.float64), (bone_count, 1, 1))
     for bone, mode in enumerate(modes):
         if mode == "bind_follow" and int(source_parents[bone]) >= 0:
@@ -593,6 +614,7 @@ def source_bone_driver_frames(
             raise ValueError(f"{mode} source driver {bone} has a degenerate joint mapping")
         else:
             frames[bone] = pose_global[a]
+            frames[bone, :3, 3] = pose_points[a]
         if not np.all(np.isfinite(frames[bone])):
             raise ValueError(f"source driver frame {bone} is non-finite")
         rotation = frames[bone, :3, :3]
@@ -661,6 +683,25 @@ def source_bone_skinning_transforms(
     }
     if any(value < 0 or value >= len(rest_global_bones) for value in direct_driver_bones):
         raise ValueError("source_direct_driver_bones_v1 contains an invalid bone")
+    corrective_driver = np.asarray(
+        asset.source_bone_corrective_driver
+        if asset.source_bone_corrective_driver is not None
+        else np.full(len(rest_global_bones), -1, dtype=np.int32),
+        dtype=np.int64,
+    )
+    corrective_gain = np.asarray(
+        asset.source_bone_corrective_gain
+        if asset.source_bone_corrective_gain is not None
+        else np.zeros(len(rest_global_bones), dtype=np.float32),
+        dtype=np.float64,
+    )
+    corrective_axis = np.asarray(
+        asset.source_bone_corrective_axis
+        if asset.source_bone_corrective_axis is not None
+        else np.zeros((len(rest_global_bones), 3), dtype=np.float32),
+        dtype=np.float64,
+    )
+    input_pose = pose_to_smplx55_axis_angle(pose_axis_angle).astype(np.float64)
     target_pose_global = joint_global_transforms(
         pose_axis_angle=pose_axis_angle,
         rest_joints=asset.rest_joints,
@@ -690,6 +731,24 @@ def source_bone_skinning_transforms(
             raise ValueError(f"source bone parent {parent} for bone {bi} is not topological")
         if mode == "bind_follow" and parent >= 0:
             posed_global[bi] = posed_global[parent] @ rest_local_bones[bi]
+            continue
+        corrective_source = int(corrective_driver[bi])
+        if corrective_source >= 0:
+            if parent < 0 or corrective_source >= len(rest_global_bones):
+                raise ValueError(f"source corrective {bi} has an invalid hierarchy")
+            joint = int(asset.source_bone_smplx_a[corrective_source])
+            if joint < 0 or joint >= len(input_pose):
+                raise ValueError(f"source corrective {bi} has an invalid SMPL-X driver")
+            axis = corrective_axis[bi].copy()
+            axis /= max(float(np.linalg.norm(axis)), 1.0e-12)
+            flexion = float(np.linalg.norm(input_pose[joint]))
+            correction = np.eye(4, dtype=np.float64)
+            correction[:3, :3] = axis_angle_to_matrix(
+                axis * (float(corrective_gain[bi]) * flexion)
+            )[0]
+            posed_global[bi] = (
+                posed_global[parent] @ rest_local_bones[bi] @ correction
+            )
             continue
         if bi in direct_driver_bones:
             posed_global[bi] = driver_frames[bi] @ coupling[bi]
@@ -736,7 +795,7 @@ def source_bone_skinning_transforms(
     ):
         raise ValueError("target inverse bind does not match the fitted bind")
     transforms = posed_global @ inverse_bind
-    neutral_pose = pose_to_smplx55_axis_angle(pose_axis_angle)
+    neutral_pose = input_pose
     if not np.any(neutral_pose):
         if not np.allclose(posed_global, rest_global_bones, atol=2.0e-6, rtol=0.0):
             raise ValueError("neutral source driver coupling does not recover the fitted bind")

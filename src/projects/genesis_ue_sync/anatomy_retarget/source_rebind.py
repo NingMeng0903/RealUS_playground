@@ -193,7 +193,12 @@ def rebind_source_rig(
     if anchor_joint_local:
         smplx_a = np.asarray(asset.source_bone_smplx_a, dtype=np.int64)
         smplx_b = np.asarray(asset.source_bone_smplx_b, dtype=np.int64)
-        target_joints = np.asarray(asset.rest_joints, dtype=np.float64)
+        target_joints = np.asarray(
+            asset.source_driver_rest_joints
+            if asset.source_driver_rest_joints is not None
+            else asset.rest_joints,
+            dtype=np.float64,
+        )
         for bone, mode in enumerate(types):
             parent = int(parents[bone])
             starts_new_segment = bool(

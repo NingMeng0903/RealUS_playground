@@ -23,6 +23,7 @@ from projects.genesis_ue_sync.anatomy_retarget.asset_align import normalize_rigg
 from projects.genesis_ue_sync.anatomy_retarget.blender_retarget_runner import run_retarget
 from projects.genesis_ue_sync.anatomy_retarget.containment import (
     load_body_surface,
+    select_whole_component_harmonic_reference,
     signed_distance,
 )
 from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
@@ -62,6 +63,7 @@ from projects.genesis_ue_sync.anatomy_retarget.tube_graph import (
     tube_graph_metrics,
 )
 from projects.genesis_ue_sync.anatomy_retarget.material_fit import (
+    close_weighted_bone_interfaces,
     fit_articulated_rest,
     fit_source_bind_hands,
     fit_stage1_rigid_regions,
@@ -415,8 +417,7 @@ def _merge_fast_extremity_donor(
         _mesh_mask,
         _rotation_between,
         _surface_region,
-        cranial_material_mask,
-        jaw_material_mask,
+        rigid_head_attachment_mask,
         shaft_preserving_segment_map,
     )
 
@@ -495,7 +496,7 @@ def _merge_fast_extremity_donor(
         ),
     }
 
-    raw_head = cranial_material_mask(donor) | jaw_material_mask(donor)
+    raw_head = rigid_head_attachment_mask(donor)
     head_vertices = np.zeros(len(vertices), dtype=bool)
     head_reference_vertices = np.zeros(len(vertices), dtype=bool)
     for (start, stop), tissue in zip(
@@ -1511,6 +1512,7 @@ def main() -> int:
         module_root / "bone_handles.py",
         module_root / "soft_constraints.py",
         module_root / "soft_follow.py",
+        module_root / "containment.py",
         module_root / "intersection_diagnostics.py",
         module_root / "material_fit.py",
         module_root / "anatomy_lbs.py",
@@ -1611,6 +1613,12 @@ def main() -> int:
                         legacy_hand_reference,
                         canonical_dir=args.canonical_dir,
                     )
+                    rigid_asset, bone_interface_report = (
+                        close_weighted_bone_interfaces(
+                            rigid_asset,
+                            stage="stage1_post_rigid_bone_interfaces",
+                        )
+                    )
                     asset, tissue_layer_report = merge_tissue_rest_reference(
                         rigid_asset,
                         pre_rigid_tissue_asset,
@@ -1619,6 +1627,7 @@ def main() -> int:
                     source_skin_report["rigid_region_baseline"] = {
                         "legacy_volume": legacy_hand_volume_report,
                         "regional_fit": rigid_region_report,
+                        "bone_interfaces": bone_interface_report,
                         "pre_rigid_tissue_layer": tissue_layer_report,
                     }
                     logging.info(
@@ -1966,6 +1975,9 @@ def main() -> int:
             fallback_to_all_influenced=False,
             rebind=False,
             topology_smooth_weight=0.0,
+            surface_vertices=subject_surface[0],
+            surface_faces=subject_surface[1],
+            axis_radial_candidates=True,
             stage="stage1_final_source_weighted_tubes",
         )
         shape_report["post_rigid_regional_tubes"] = {
@@ -1975,6 +1987,21 @@ def main() -> int:
             "reason": "final bone fit is the single rest-space authority",
             "supersedes_hand_nerve_rbf": bool(args.stage1_hand_nerve_rbf),
         }
+        asset, tube_harmonic_selection = select_whole_component_harmonic_reference(
+            asset,
+            surface_vertices=subject_surface[0],
+            surface_faces=subject_surface[1],
+            tissues=("vessel", "nerve"),
+            minimum_improvement_factor=2.0,
+            minimum_source_weighted_maximum_outside_m=0.002,
+        )
+        shape_report["post_rigid_regional_tubes"][
+            "whole_mesh_harmonic_selection"
+        ] = tube_harmonic_selection
+        logging.info(
+            "strong-Pareto harmonic tube selection selected_meshes=%s",
+            tube_harmonic_selection.get("selected_meshes", []),
+        )
     if args.stage1_rigid_region_baseline:
         _accepted_tube_asset, tube_rest_acceptance = (
             enforce_tube_rest_intersection_nonregression(

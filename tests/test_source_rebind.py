@@ -98,6 +98,19 @@ def test_fit_source_frames_preserves_same_semantic_controller_offset() -> None:
     )
 
 
+def test_fit_source_frames_uses_persisted_driver_rest_joint_authority() -> None:
+    asset = _controller_follower_asset()
+    driver_rest = np.asarray(asset.rest_joints).copy()
+    driver_rest[0] = np.asarray((0.25, -0.1, 0.05), dtype=np.float32)
+    asset = AnatomyRiggedAsset(
+        **{**asset.__dict__, "source_driver_rest_joints": driver_rest}
+    )
+
+    fitted_global, _fitted_local, _delta = _fit_source_frames(asset)
+
+    np.testing.assert_allclose(fitted_global[0, :3, 3], driver_rest[0], atol=1.0e-6)
+
+
 def test_semantic_skin_surface_correspondence_does_not_cross_joint_branch() -> None:
     source = np.asarray(((0.0, 0.0, 0.0), (0.0, 0.1, 0.0)), dtype=np.float64)
     guide = np.asarray(((0.9, 0.0, 0.0), (0.1, 0.1, 0.0)), dtype=np.float64)
@@ -111,4 +124,3 @@ def test_semantic_skin_surface_correspondence_does_not_cross_joint_branch() -> N
 
     np.testing.assert_allclose(mapped, target)
     assert report["fallback_vertex_count"] == 0
-

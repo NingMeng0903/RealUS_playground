@@ -8,6 +8,7 @@ import pytest
 from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
     axis_angle_to_matrix,
     build_source_driver_coupling,
+    joint_global_transforms,
     skin_vertices,
     source_bone_driver_frames,
     source_bone_skinning_transforms,
@@ -170,6 +171,70 @@ def test_target_bind_is_runtime_authority_without_mutating_source_bind() -> None
                 target_global[bone],
                 atol=2.0e-6,
             )
+
+
+def test_anatomical_driver_pivot_uses_official_joint_delta() -> None:
+    base = _chain_asset()
+    driver_points = np.asarray(base.rest_joints, dtype=np.float32).copy()
+    driver_points[:, 0] += np.float32(0.2)
+    asset = with_source_driver_coupling(
+        replace(base, source_driver_rest_joints=driver_points)
+    )
+    pose = np.zeros((55, 3), dtype=np.float32)
+    pose[1, 2] = np.float32(0.6)
+    official_pose = joint_global_transforms(
+        pose_axis_angle=pose,
+        rest_joints=base.rest_joints,
+        parents=base.parents,
+    ).astype(np.float64)
+    official_rest = joint_global_transforms(
+        pose_axis_angle=np.zeros((55, 3), dtype=np.float32),
+        rest_joints=base.rest_joints,
+        parents=base.parents,
+    ).astype(np.float64)
+    delta = official_pose @ np.linalg.inv(official_rest)
+    parent = int(base.parents[1])
+    expected = (
+        delta[parent, :3, :3] @ driver_points[1] + delta[parent, :3, 3]
+    )
+
+    frames = source_bone_driver_frames(asset, pose)
+
+    np.testing.assert_allclose(frames[1, :3, 3], expected, atol=2.0e-6)
+    assert np.linalg.norm(frames[1, :3, 3] - official_pose[1, :3, 3]) > 0.05
+
+
+def test_source_bone_flexion_corrective_is_child_local_and_pose_generic() -> None:
+    base = _chain_asset()
+    corrective_driver = np.full(4, -1, dtype=np.int32)
+    corrective_gain = np.zeros(4, dtype=np.float32)
+    corrective_axis = np.zeros((4, 3), dtype=np.float32)
+    corrective_driver[3] = 2
+    corrective_gain[3] = np.float32(0.25)
+    corrective_axis[3, 2] = np.float32(1.0)
+    asset = with_source_driver_coupling(
+        replace(
+            base,
+            source_bone_corrective_driver=corrective_driver,
+            source_bone_corrective_gain=corrective_gain,
+            source_bone_corrective_axis=corrective_axis,
+        )
+    )
+    pose = np.zeros((55, 3), dtype=np.float32)
+    pose[2, 0] = np.float32(0.8)
+
+    transforms = source_bone_skinning_transforms(asset, pose)
+    posed = np.asarray(transforms, dtype=np.float64) @ np.asarray(
+        asset.target_bind_global, dtype=np.float64
+    )
+    actual_local = np.linalg.inv(posed[2]) @ posed[3]
+    expected_local = np.asarray(asset.target_bind_local[3], dtype=np.float64).copy()
+    correction = np.eye(4, dtype=np.float64)
+    correction[:3, :3] = axis_angle_to_matrix(
+        np.asarray((0.0, 0.0, 0.2), dtype=np.float32)
+    )[0]
+
+    np.testing.assert_allclose(actual_local, expected_local @ correction, atol=2.0e-6)
 
 
 @pytest.mark.parametrize("mode", ["segment_root", "rigid_group"])

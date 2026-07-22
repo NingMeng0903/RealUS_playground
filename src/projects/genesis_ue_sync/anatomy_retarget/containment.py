@@ -63,6 +63,337 @@ def signed_distance(
     return np.concatenate(signed_parts), np.concatenate(closest_parts), np.concatenate(normal_parts)
 
 
+def select_whole_component_harmonic_reference(
+    asset: AnatomyRiggedAsset,
+    *,
+    surface_vertices: np.ndarray,
+    surface_faces: np.ndarray,
+    tissues: tuple[str, ...] = ("vessel", "nerve"),
+    minimum_improvement_factor: float = 2.0,
+    minimum_source_weighted_maximum_outside_m: float = 0.002,
+    maximum_dihedral_p99_regression_degrees: float = 5.0,
+    maximum_curvature_p99_ratio: float = 1.05,
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Choose the safer of two existing Stage-1 rest mappings per tube component.
+
+    The source-weighted result remains authoritative unless the immutable
+    harmonic reference improves both outside-vertex count and maximum outside
+    distance by the requested factor.  Selection uses complete topological
+    components, never individual vertices, so connected tube surfaces cannot
+    acquire blend discontinuities.
+    """
+    if minimum_improvement_factor <= 1.0:
+        raise ValueError("minimum_improvement_factor must be greater than one")
+    if minimum_source_weighted_maximum_outside_m < 0.0:
+        raise ValueError(
+            "minimum_source_weighted_maximum_outside_m must be nonnegative"
+        )
+    if maximum_dihedral_p99_regression_degrees < 0.0:
+        raise ValueError("maximum dihedral regression must be nonnegative")
+    if maximum_curvature_p99_ratio < 1.0:
+        raise ValueError("maximum curvature ratio must be at least one")
+    if asset.harmonic_reference_vertices is None:
+        return asset, {"available": False, "reason": "harmonic_reference_missing"}
+    if asset.source_vertex_ranges is None or asset.source_tissues is None:
+        return asset, {"available": False, "reason": "source_mesh_metadata_missing"}
+
+    current = np.asarray(asset.vertices_rest, dtype=np.float64)
+    harmonic = np.asarray(asset.harmonic_reference_vertices, dtype=np.float64)
+    if harmonic.shape != current.shape:
+        raise ValueError("harmonic reference must match final anatomy topology")
+
+    selected_tissues = {str(value).lower() for value in tissues}
+    mesh_records: list[tuple[str, str, int, int]] = []
+    query_parts: list[np.ndarray] = []
+    for name, tissue, vertex_range in zip(
+        asset.source_mesh_names,
+        asset.source_tissues,
+        np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+    ):
+        tissue_name = str(tissue).lower()
+        if tissue_name not in selected_tissues:
+            continue
+        start, stop = (int(value) for value in vertex_range)
+        if stop <= start:
+            continue
+        mesh_records.append((str(name), tissue_name, start, stop))
+        query_parts.append(np.arange(start, stop, dtype=np.int64))
+
+    if not query_parts:
+        return asset, {
+            "available": True,
+            "backend": "whole_component_strong_pareto_rest_containment_v2",
+            "selected_mesh_count": 0,
+            "meshes": {},
+        }
+
+    query_indices = np.concatenate(query_parts)
+    current_signed, _current_closest, _current_normals = signed_distance(
+        current[query_indices], surface_vertices, surface_faces
+    )
+    harmonic_signed, _harmonic_closest, _harmonic_normals = signed_distance(
+        harmonic[query_indices], surface_vertices, surface_faces
+    )
+
+    accepted = current.copy()
+    faces = np.asarray(asset.faces, dtype=np.int64).reshape(-1, 3)
+    meshes: dict[str, Any] = {}
+    selected_meshes: list[str] = []
+    selected_components: list[dict[str, Any]] = []
+    cursor = 0
+    factor = float(minimum_improvement_factor)
+    for name, tissue_name, start, stop in mesh_records:
+        count = stop - start
+        weighted_values = current_signed[cursor : cursor + count]
+        harmonic_values = harmonic_signed[cursor : cursor + count]
+        cursor += count
+        local_faces = faces[
+            np.all((faces >= start) & (faces < stop), axis=1)
+        ] - start
+        if len(local_faces):
+            from scipy import sparse
+            from scipy.sparse.csgraph import connected_components
+
+            local_edges = np.unique(
+                np.sort(
+                    np.concatenate(
+                        (
+                            local_faces[:, (0, 1)],
+                            local_faces[:, (1, 2)],
+                            local_faces[:, (2, 0)],
+                        ),
+                        axis=0,
+                    ),
+                    axis=1,
+                ),
+                axis=0,
+            )
+            adjacency = sparse.coo_matrix(
+                (
+                    np.ones(2 * len(local_edges), dtype=np.float64),
+                    (
+                        np.concatenate((local_edges[:, 0], local_edges[:, 1])),
+                        np.concatenate((local_edges[:, 1], local_edges[:, 0])),
+                    ),
+                ),
+                shape=(count, count),
+            ).tocsr()
+            component_count, component_labels = connected_components(
+                adjacency, directed=False
+            )
+        else:
+            component_count = 1
+            component_labels = np.zeros(count, dtype=np.int32)
+
+        component_reports: list[dict[str, Any]] = []
+        selected_component_count = 0
+        for component_index in range(int(component_count)):
+            component = component_labels == component_index
+            component_weighted = weighted_values[component]
+            component_harmonic = harmonic_values[component]
+            weighted_count = int(np.count_nonzero(component_weighted > 0.0))
+            harmonic_count = int(np.count_nonzero(component_harmonic > 0.0))
+            weighted_max = float(max(0.0, float(np.max(component_weighted))))
+            harmonic_max = float(max(0.0, float(np.max(component_harmonic))))
+            containment_passed = bool(
+                weighted_count > 0
+                and weighted_max
+                > float(minimum_source_weighted_maximum_outside_m)
+                and factor * harmonic_count <= weighted_count
+                and factor * harmonic_max <= weighted_max
+            )
+            shape_metrics: dict[str, Any] = {"available": False}
+            shape_passed = True
+            if containment_passed and len(local_faces):
+                component_faces = local_faces[
+                    np.all(component[local_faces], axis=1)
+                ]
+                component_edges = local_edges[
+                    component[local_edges[:, 0]]
+                    & component[local_edges[:, 1]]
+                ]
+
+                def component_shape(points: np.ndarray) -> dict[str, float]:
+                    triangles = np.asarray(points, dtype=np.float64)[component_faces]
+                    normals = np.cross(
+                        triangles[:, 1] - triangles[:, 0],
+                        triangles[:, 2] - triangles[:, 0],
+                    )
+                    normals /= np.maximum(
+                        np.linalg.norm(normals, axis=1, keepdims=True), 1.0e-12
+                    )
+                    faces_by_edge: dict[tuple[int, int], list[int]] = {}
+                    for face_index, triangle in enumerate(component_faces):
+                        for first, second in (
+                            (triangle[0], triangle[1]),
+                            (triangle[1], triangle[2]),
+                            (triangle[2], triangle[0]),
+                        ):
+                            edge = tuple(sorted((int(first), int(second))))
+                            faces_by_edge.setdefault(edge, []).append(face_index)
+                    adjacent = np.asarray(
+                        [rows for rows in faces_by_edge.values() if len(rows) == 2],
+                        dtype=np.int64,
+                    ).reshape(-1, 2)
+                    if len(adjacent):
+                        cosine = np.clip(
+                            np.einsum(
+                                "ij,ij->i",
+                                normals[adjacent[:, 0]],
+                                normals[adjacent[:, 1]],
+                            ),
+                            -1.0,
+                            1.0,
+                        )
+                        dihedral = np.degrees(np.arccos(cosine))
+                        dihedral_p99 = float(np.quantile(dihedral, 0.99))
+                    else:
+                        dihedral_p99 = 0.0
+
+                    neighbors: list[list[int]] = [
+                        [] for _ in range(len(points))
+                    ]
+                    for first, second in component_edges:
+                        neighbors[int(first)].append(int(second))
+                        neighbors[int(second)].append(int(first))
+                    curvature: list[float] = []
+                    point_array = np.asarray(points, dtype=np.float64)
+                    for vertex_index in np.flatnonzero(component):
+                        local_neighbors = neighbors[int(vertex_index)]
+                        if not local_neighbors:
+                            continue
+                        neighbor_points = point_array[local_neighbors]
+                        local_scale = float(
+                            np.mean(
+                                np.linalg.norm(
+                                    neighbor_points - point_array[vertex_index], axis=1
+                                )
+                            )
+                        )
+                        curvature.append(
+                            float(
+                                np.linalg.norm(
+                                    point_array[vertex_index]
+                                    - np.mean(neighbor_points, axis=0)
+                                )
+                                / max(local_scale, 1.0e-12)
+                            )
+                        )
+                    curvature_p99 = (
+                        float(np.quantile(curvature, 0.99)) if curvature else 0.0
+                    )
+                    return {
+                        "dihedral_degrees_p99": dihedral_p99,
+                        "normalized_curvature_p99": curvature_p99,
+                    }
+
+                weighted_shape = component_shape(current[start:stop])
+                harmonic_shape = component_shape(harmonic[start:stop])
+                shape_passed = bool(
+                    harmonic_shape["dihedral_degrees_p99"]
+                    <= weighted_shape["dihedral_degrees_p99"]
+                    + float(maximum_dihedral_p99_regression_degrees)
+                    and harmonic_shape["normalized_curvature_p99"]
+                    <= weighted_shape["normalized_curvature_p99"]
+                    * float(maximum_curvature_p99_ratio)
+                    + 1.0e-12
+                )
+                shape_metrics = {
+                    "available": True,
+                    "source_weighted": weighted_shape,
+                    "harmonic": harmonic_shape,
+                    "passed": shape_passed,
+                }
+            use_harmonic = bool(containment_passed and shape_passed)
+            if use_harmonic:
+                local_accepted = accepted[start:stop]
+                local_accepted[component] = harmonic[start:stop][component]
+                selected_component_count += 1
+                selected_components.append(
+                    {
+                        "mesh": name,
+                        "component": int(component_index),
+                        "vertex_count": int(np.count_nonzero(component)),
+                    }
+                )
+            component_reports.append(
+                {
+                    "component": int(component_index),
+                    "vertex_count": int(np.count_nonzero(component)),
+                    "source_weighted": {
+                        "outside_vertex_count": weighted_count,
+                        "maximum_outside_distance_m": weighted_max,
+                    },
+                    "harmonic": {
+                        "outside_vertex_count": harmonic_count,
+                        "maximum_outside_distance_m": harmonic_max,
+                    },
+                    "containment_passed": containment_passed,
+                    "shape_nonregression": shape_metrics,
+                    "selection": "harmonic" if use_harmonic else "source_weighted",
+                }
+            )
+        if selected_component_count:
+            selected_meshes.append(name)
+        mesh_selection = (
+            "harmonic"
+            if selected_component_count == int(component_count)
+            else "mixed_components"
+            if selected_component_count
+            else "source_weighted"
+        )
+        meshes[name] = {
+            "tissue": tissue_name,
+            "vertex_count": int(count),
+            "component_count": int(component_count),
+            "selected_component_count": int(selected_component_count),
+            "selection": mesh_selection,
+            "components": component_reports,
+        }
+
+    report = {
+        "available": True,
+        "backend": "whole_component_strong_pareto_rest_containment_v2",
+        "candidates": ["final_source_weighted_rest", "harmonic_volume_reference"],
+        "minimum_improvement_factor": factor,
+        "minimum_source_weighted_maximum_outside_m": float(
+            minimum_source_weighted_maximum_outside_m
+        ),
+        "maximum_dihedral_p99_regression_degrees": float(
+            maximum_dihedral_p99_regression_degrees
+        ),
+        "maximum_curvature_p99_ratio": float(maximum_curvature_p99_ratio),
+        "metrics": ["outside_vertex_count", "maximum_outside_distance_m"],
+        "tissues": sorted(selected_tissues),
+        "selected_mesh_count": int(len(selected_meshes)),
+        "selected_meshes": selected_meshes,
+        "selected_component_count": int(len(selected_components)),
+        "selected_components": selected_components,
+        "meshes": meshes,
+        "pose_specific": False,
+        "whole_topological_component_selection": True,
+        "per_vertex_blending": False,
+        "topology_preserved": True,
+        "source_weights_preserved": True,
+        "source_hierarchy_preserved": True,
+        "source_bind_frames_preserved": True,
+        "driver_coupling_preserved": True,
+    }
+    metadata = dict(asset.metadata or {})
+    history = list(metadata.get("whole_mesh_rest_selection", []))
+    history.append(report)
+    metadata["whole_mesh_rest_selection"] = history
+    result = type(asset)(
+        **{
+            **asset.__dict__,
+            "vertices_rest": accepted.astype(np.float32),
+            "metadata": metadata,
+        }
+    )
+    result.validate()
+    return result, report
+
+
 def _mesh_local_faces(faces: np.ndarray, start: int, stop: int) -> np.ndarray:
     mask = (faces[:, 0] >= start) & (faces[:, 0] < stop)
     selected = faces[mask]

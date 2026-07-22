@@ -59,6 +59,72 @@ def _weighted_similarity_affine(
     return affine, scale, residual
 
 
+def _weighted_axis_radial_affine(
+    source: np.ndarray,
+    target: np.ndarray,
+    weights: np.ndarray,
+    source_axis: np.ndarray,
+    *,
+    minimum_scale: float,
+    maximum_scale: float,
+) -> tuple[np.ndarray, float, float, float]:
+    """Fit separate axial/radial scales without adding shear to a bone map."""
+    uniform_affine, axial_scale, _uniform_residual = _weighted_similarity_affine(
+        source,
+        target,
+        weights,
+        minimum_scale=minimum_scale,
+        maximum_scale=maximum_scale,
+    )
+    axis = np.asarray(source_axis, dtype=np.float64).reshape(3)
+    axis_norm = float(np.linalg.norm(axis))
+    if axis_norm <= 1.0e-8:
+        return uniform_affine, axial_scale, axial_scale, _uniform_residual
+    axis /= axis_norm
+    rotation = uniform_affine[:3, :3] / max(axial_scale, 1.0e-12)
+    weight = np.asarray(weights, dtype=np.float64).reshape(-1)
+    weight /= max(float(np.sum(weight)), 1.0e-12)
+    source_center = np.einsum("n,nj->j", weight, source)
+    target_center = np.einsum("n,nj->j", weight, target)
+    source_offset = source - source_center
+    target_offset = target - target_center
+    rotated = source_offset @ rotation.T
+    target_axis = rotation @ axis
+    source_axial = rotated @ target_axis
+    target_axial = target_offset @ target_axis
+    source_radial = rotated - source_axial[:, None] * target_axis
+    target_radial = target_offset - target_axial[:, None] * target_axis
+    denominator = float(
+        np.einsum("n,nj,nj->", weight, source_radial, source_radial)
+    )
+    radial_scale = (
+        float(
+            np.einsum("n,nj,nj->", weight, source_radial, target_radial)
+        )
+        / denominator
+        if denominator > 1.0e-12
+        else axial_scale
+    )
+    radial_scale = float(np.clip(radial_scale, minimum_scale, maximum_scale))
+    local_scale = radial_scale * np.eye(3, dtype=np.float64) + (
+        axial_scale - radial_scale
+    ) * np.outer(axis, axis)
+    affine = np.eye(4, dtype=np.float64)
+    affine[:3, :3] = rotation @ local_scale
+    affine[:3, 3] = target_center - affine[:3, :3] @ source_center
+    predicted = source @ affine[:3, :3].T + affine[:3, 3]
+    residual = float(
+        np.sqrt(
+            np.einsum(
+                "n,n->",
+                weight,
+                np.sum((predicted - target) ** 2, axis=1),
+            )
+        )
+    )
+    return affine, axial_scale, radial_scale, residual
+
+
 def _tissue_vertex_mask(
     asset: AnatomyRiggedAsset, tissues: Iterable[str]
 ) -> np.ndarray:
@@ -228,6 +294,10 @@ def reconstruct_rig_weighted_rest(
     fallback_to_all_influenced: bool = False,
     rebind: bool = True,
     topology_smooth_weight: float = 0.0,
+    surface_vertices: np.ndarray | None = None,
+    surface_faces: np.ndarray | None = None,
+    axis_radial_candidates: bool = False,
+    minimum_axis_radial_scale_ratio: float = 1.05,
     stage: str = "stage1_rig_weighted_rest",
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     """Replace nonlinear harmonic material warp with source-weighted similarities.
@@ -256,9 +326,13 @@ def reconstruct_rig_weighted_rest(
     fit_mask = _tissue_vertex_mask(asset, fit_tissues)
     output_mask = _tissue_vertex_mask(asset, tissues)
     transforms = np.tile(np.eye(4, dtype=np.float64), (bone_count, 1, 1))
+    axis_radial_transforms = transforms.copy()
     fitted = np.zeros(bone_count, dtype=bool)
+    axis_radial_available = np.zeros(bone_count, dtype=bool)
     scales = np.ones(bone_count, dtype=np.float64)
+    radial_scales = np.ones(bone_count, dtype=np.float64)
     residuals = np.zeros(bone_count, dtype=np.float64)
+    axis_radial_residuals = np.zeros(bone_count, dtype=np.float64)
     for bone in range(bone_count):
         influence = np.sum(np.where(indices == bone, weights, 0.0), axis=1)
         selected = fit_mask & (influence >= float(minimum_weight))
@@ -274,27 +348,50 @@ def reconstruct_rig_weighted_rest(
             maximum_scale=maximum_scale,
         )
         transforms[bone] = transform
+        source_axis = np.asarray(asset.source_bone_tail[bone], dtype=np.float64) - np.asarray(
+            asset.source_bone_head[bone], dtype=np.float64
+        )
+        axis_radial, _axial, radial, axis_radial_residual = (
+            _weighted_axis_radial_affine(
+                source[selected],
+                harmonic[selected],
+                influence[selected],
+                source_axis,
+                minimum_scale=minimum_scale,
+                maximum_scale=maximum_scale,
+            )
+        )
+        axis_radial_transforms[bone] = axis_radial
+        axis_radial_available[bone] = bool(
+            max(scale, radial) / max(min(scale, radial), 1.0e-12)
+            >= float(minimum_axis_radial_scale_ratio)
+        )
         fitted[bone] = True
         scales[bone] = scale
+        radial_scales[bone] = radial
         residuals[bone] = residual
+        axis_radial_residuals[bone] = axis_radial_residual
 
     parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
     modes = list(asset.source_bone_driver_types or [])
-    source_global = np.asarray(asset.source_bind_global, dtype=np.float64)
     # Weightless Blender controllers inherit the fitted map of their closest
     # weighted follower.  Remaining helpers inherit their parent map.
     for bone in range(bone_count - 1, -1, -1):
         parent = int(parents[bone])
         if parent >= 0 and fitted[bone] and not fitted[parent] and modes[bone] == "bind_follow":
             transforms[parent] = transforms[bone]
+            axis_radial_transforms[parent] = axis_radial_transforms[bone]
             scales[parent] = scales[bone]
+            radial_scales[parent] = radial_scales[bone]
             fitted[parent] = True
     for bone in range(bone_count):
         parent = int(parents[bone])
         if fitted[bone] or parent < 0 or not fitted[parent]:
             continue
         transforms[bone] = transforms[parent]
+        axis_radial_transforms[bone] = axis_radial_transforms[parent]
         scales[bone] = scales[parent]
+        radial_scales[bone] = radial_scales[parent]
         fitted[bone] = True
 
     selected_transforms = transforms[indices]
@@ -305,6 +402,122 @@ def reconstruct_rig_weighted_rest(
         "nsij,nj->nsi", selected_transforms, source_h, optimize=True
     )[..., :3]
     reconstructed = np.sum(weights[..., None] * transformed, axis=1)
+    axis_radial_report: dict[str, Any] = {
+        "enabled": bool(axis_radial_candidates),
+        "minimum_scale_ratio": float(minimum_axis_radial_scale_ratio),
+        "candidate_bones": [],
+        "accepted_bones": [],
+        "combined_nonregression_passed": True,
+    }
+    if axis_radial_candidates:
+        if surface_vertices is None or surface_faces is None:
+            raise ValueError(
+                "axis-radial candidate selection requires the subject surface"
+            )
+        from .containment import signed_distance
+
+        output_indices = np.flatnonzero(output_mask)
+        output_lookup = np.full(len(source), -1, dtype=np.int64)
+        output_lookup[output_indices] = np.arange(len(output_indices), dtype=np.int64)
+        base_signed, _closest, _normals = signed_distance(
+            reconstructed[output_indices], surface_vertices, surface_faces
+        )
+        base_outside_count = int(np.count_nonzero(base_signed > 0.0))
+        base_maximum_outside = float(max(0.0, float(np.max(base_signed))))
+        accepted_bones: list[int] = []
+        candidate_records: list[dict[str, Any]] = []
+        for bone in np.flatnonzero(axis_radial_available):
+            influence = np.sum(np.where(indices == bone, weights, 0.0), axis=1)
+            affected = output_mask & (influence > 1.0e-8)
+            if not np.any(affected):
+                continue
+            affected_indices = np.flatnonzero(affected)
+            uniform_points = (
+                source_h[affected_indices]
+                @ transforms[bone, :3, :].T
+            )
+            candidate_points = (
+                source_h[affected_indices]
+                @ axis_radial_transforms[bone, :3, :].T
+            )
+            affected_vertices = reconstructed[affected_indices] + influence[
+                affected_indices, None
+            ] * (candidate_points - uniform_points)
+            candidate_signed, _closest, _normals = signed_distance(
+                affected_vertices, surface_vertices, surface_faces
+            )
+            combined_signed = base_signed.copy()
+            combined_signed[output_lookup[affected_indices]] = candidate_signed
+            outside_count = int(np.count_nonzero(combined_signed > 0.0))
+            maximum_outside = float(max(0.0, float(np.max(combined_signed))))
+            accepted = bool(
+                outside_count <= base_outside_count
+                and maximum_outside <= base_maximum_outside + 1.0e-9
+                and (
+                    outside_count < base_outside_count
+                    or maximum_outside < base_maximum_outside - 1.0e-9
+                )
+            )
+            if accepted:
+                accepted_bones.append(int(bone))
+            candidate_records.append(
+                {
+                    "bone": str(asset.source_bone_names[int(bone)]),
+                    "bone_index": int(bone),
+                    "affected_vertex_count": int(np.count_nonzero(affected)),
+                    "uniform_scale": float(scales[bone]),
+                    "radial_scale": float(radial_scales[bone]),
+                    "uniform_fit_residual_m": float(residuals[bone]),
+                    "axis_radial_fit_residual_m": float(
+                        axis_radial_residuals[bone]
+                    ),
+                    "outside_vertex_count": outside_count,
+                    "maximum_outside_distance_m": maximum_outside,
+                    "accepted": accepted,
+                }
+            )
+
+        selected_transforms = transforms.copy()
+        selected_transforms[accepted_bones] = axis_radial_transforms[accepted_bones]
+        selected = selected_transforms[indices]
+        selected_points = np.einsum(
+            "nsij,nj->nsi", selected, source_h, optimize=True
+        )[..., :3]
+        selected_reconstructed = np.sum(weights[..., None] * selected_points, axis=1)
+        final_signed, _closest, _normals = signed_distance(
+            selected_reconstructed[output_indices], surface_vertices, surface_faces
+        )
+        final_outside_count = int(np.count_nonzero(final_signed > 0.0))
+        final_maximum_outside = float(max(0.0, float(np.max(final_signed))))
+        combined_passed = bool(
+            final_outside_count <= base_outside_count
+            and final_maximum_outside <= base_maximum_outside + 1.0e-9
+        )
+        if combined_passed:
+            reconstructed = selected_reconstructed
+        else:
+            accepted_bones = []
+        axis_radial_report = {
+            "enabled": True,
+            "backend": "per_source_bone_axis_radial_rest_containment_pareto_v1",
+            "minimum_scale_ratio": float(minimum_axis_radial_scale_ratio),
+            "pose_specific": False,
+            "base_outside_vertex_count": base_outside_count,
+            "base_maximum_outside_distance_m": base_maximum_outside,
+            "final_outside_vertex_count": (
+                final_outside_count if combined_passed else base_outside_count
+            ),
+            "final_maximum_outside_distance_m": (
+                final_maximum_outside if combined_passed else base_maximum_outside
+            ),
+            "candidate_bones": candidate_records,
+            "accepted_bones": [
+                str(asset.source_bone_names[bone]) for bone in accepted_bones
+            ],
+            "combined_nonregression_passed": combined_passed,
+            "source_weights_preserved": True,
+            "source_hierarchy_preserved": True,
+        }
     if topology_smooth_weight > 0.0:
         faces = np.asarray(asset.faces, dtype=np.int64)
         for vertex_range, tissue in zip(
@@ -378,6 +591,7 @@ def reconstruct_rig_weighted_rest(
         "fallback_to_all_influenced": bool(fallback_to_all_influenced),
         "source_rig_rebound": bool(rebind),
         "topology_smooth_weight": float(topology_smooth_weight),
+        "axis_radial_candidates": axis_radial_report,
         "rebind": rebind_report,
     }
     history = list(metadata.get("rig_weighted_rest", []))
@@ -395,7 +609,8 @@ def reconstruct_rig_weighted_rest(
             "metadata": metadata,
         }
     )
-    result = with_source_driver_coupling(result)
+    if rebind:
+        result = with_source_driver_coupling(result)
     if not np.array_equal(result.driver_indices, asset.driver_indices):
         raise RuntimeError("rig-weighted reconstruction changed driver indices")
     if not np.array_equal(result.driver_weights, asset.driver_weights):

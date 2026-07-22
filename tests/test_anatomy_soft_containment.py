@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from projects.genesis_ue_sync.anatomy_retarget import source_skin_volume
+from projects.genesis_ue_sync.anatomy_retarget import containment, source_skin_volume
 from projects.genesis_ue_sync.anatomy_retarget.source_skin_volume import (
     _build_source_cage,
     _incremental_harmonic_field,
@@ -175,3 +175,177 @@ def test_query_points_cannot_grow_source_cage(tmp_path: Path) -> None:
         "cache_path",
     )
     assert not (tmp_path / "must_not_exist.npz").exists()
+
+
+def test_whole_mesh_harmonic_selection_requires_strong_pareto_improvement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Fixture(SimpleNamespace):
+        def validate(self) -> None:
+            return None
+
+    # signed_distance is represented directly by x here.  The first tube
+    # improves 4x in count and max distance; the second improves only count.
+    current = np.asarray(
+        (
+            (4.0, 0.0, 0.0),
+            (3.0, 0.0, 0.0),
+            (2.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (4.0, 0.0, 0.0),
+            (3.0, 0.0, 0.0),
+            (2.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (9.0, 0.0, 0.0),
+        ),
+        dtype=np.float32,
+    )
+    harmonic = np.asarray(
+        (
+            (1.0, 0.0, 0.0),
+            (-1.0, 0.0, 0.0),
+            (-2.0, 0.0, 0.0),
+            (-3.0, 0.0, 0.0),
+            (3.0, 0.0, 0.0),
+            (-1.0, 0.0, 0.0),
+            (-2.0, 0.0, 0.0),
+            (-3.0, 0.0, 0.0),
+            (-9.0, 0.0, 0.0),
+        ),
+        dtype=np.float32,
+    )
+    source_weights = np.ones((len(current), 1), dtype=np.float32)
+    asset = Fixture(
+        vertices_rest=current,
+        harmonic_reference_vertices=harmonic,
+        source_vertex_ranges=np.asarray(((0, 4), (4, 8), (8, 9)), dtype=np.int32),
+        source_mesh_names=["StrongArtery", "CountOnlyNerve", "Bone"],
+        source_tissues=["vessel", "nerve", "bone"],
+        faces=np.asarray(
+            ((0, 1, 2), (0, 2, 3), (4, 5, 6), (4, 6, 7)),
+            dtype=np.int32,
+        ),
+        driver_weights=source_weights,
+        metadata={},
+    )
+
+    def fake_signed_distance(
+        points: np.ndarray,
+        _surface_vertices: np.ndarray,
+        _surface_faces: np.ndarray,
+        **_kwargs: object,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        values = np.asarray(points, dtype=np.float64)[:, 0]
+        return values, np.zeros_like(points), np.zeros_like(points)
+
+    monkeypatch.setattr(containment, "signed_distance", fake_signed_distance)
+    selected, report = containment.select_whole_component_harmonic_reference(
+        asset,
+        surface_vertices=np.zeros((3, 3), dtype=np.float64),
+        surface_faces=np.asarray(((0, 1, 2),), dtype=np.int32),
+    )
+
+    np.testing.assert_array_equal(selected.vertices_rest[:4], harmonic[:4])
+    np.testing.assert_array_equal(selected.vertices_rest[4:], current[4:])
+    assert selected.driver_weights is source_weights
+    assert report["selected_meshes"] == ["StrongArtery"]
+    assert report["meshes"]["CountOnlyNerve"]["selection"] == "source_weighted"
+    assert "Bone" not in report["meshes"]
+    assert report["whole_topological_component_selection"] is True
+    assert report["pose_specific"] is False
+
+
+def test_harmonic_selection_never_splits_a_connected_tube_component(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Fixture(SimpleNamespace):
+        def validate(self) -> None:
+            return None
+
+    current = np.asarray(
+        ((4, 0, 0), (3, 0, 0), (2, 0, 0), (4, 0, 0), (3, 0, 0), (2, 0, 0)),
+        dtype=np.float32,
+    )
+    harmonic = np.asarray(
+        ((1, 0, 0), (-1, 0, 0), (-2, 0, 0), (3, 0, 0), (-1, 0, 0), (-2, 0, 0)),
+        dtype=np.float32,
+    )
+    asset = Fixture(
+        vertices_rest=current,
+        harmonic_reference_vertices=harmonic,
+        faces=np.asarray(((0, 1, 2), (3, 4, 5)), dtype=np.int32),
+        source_vertex_ranges=np.asarray(((0, 6),), dtype=np.int32),
+        source_mesh_names=["TwoComponentVein"],
+        source_tissues=["vessel"],
+        metadata={},
+    )
+    monkeypatch.setattr(
+        containment,
+        "signed_distance",
+        lambda points, *_args, **_kwargs: (
+            np.asarray(points, dtype=np.float64)[:, 0],
+            np.zeros_like(points),
+            np.zeros_like(points),
+        ),
+    )
+
+    selected, report = containment.select_whole_component_harmonic_reference(
+        asset,
+        surface_vertices=np.zeros((3, 3)),
+        surface_faces=np.asarray(((0, 1, 2),), dtype=np.int32),
+    )
+
+    np.testing.assert_array_equal(selected.vertices_rest[:3], harmonic[:3])
+    np.testing.assert_array_equal(selected.vertices_rest[3:], current[3:])
+    assert report["selected_component_count"] == 1
+    assert report["meshes"]["TwoComponentVein"]["selection"] == "mixed_components"
+
+
+def test_harmonic_selection_rejects_new_surface_kink(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Fixture(SimpleNamespace):
+        def validate(self) -> None:
+            return None
+
+    current = np.asarray(
+        ((0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0)), dtype=np.float32
+    )
+    harmonic = current.copy()
+    harmonic[3, 2] = 1.0
+    asset = Fixture(
+        vertices_rest=current,
+        harmonic_reference_vertices=harmonic,
+        faces=np.asarray(((0, 1, 2), (1, 3, 2)), dtype=np.int32),
+        source_vertex_ranges=np.asarray(((0, 4),), dtype=np.int32),
+        source_mesh_names=["FoldCandidate"],
+        source_tissues=["vessel"],
+        metadata={},
+    )
+    distances = iter(
+        (
+            np.full(4, 0.01, dtype=np.float64),
+            np.full(4, -0.01, dtype=np.float64),
+        )
+    )
+    monkeypatch.setattr(
+        containment,
+        "signed_distance",
+        lambda points, *_args, **_kwargs: (
+            next(distances),
+            np.zeros_like(points),
+            np.zeros_like(points),
+        ),
+    )
+
+    selected, report = containment.select_whole_component_harmonic_reference(
+        asset,
+        surface_vertices=np.zeros((3, 3)),
+        surface_faces=np.asarray(((0, 1, 2),), dtype=np.int32),
+    )
+
+    np.testing.assert_array_equal(selected.vertices_rest, current)
+    component = report["meshes"]["FoldCandidate"]["components"][0]
+    assert component["containment_passed"] is True
+    assert component["shape_nonregression"]["passed"] is False
+    assert component["selection"] == "source_weighted"

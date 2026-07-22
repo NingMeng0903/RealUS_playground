@@ -133,6 +133,17 @@ class AnatomyRiggedAsset:
     # authority.  Persisting this matrix prevents runtime from inventing a
     # second rest frame from warped mesh vertices.
     source_driver_coupling: np.ndarray | None = None
+    # Optional subject-anatomical pivots for the fixed SMPL-X 55-joint driver.
+    # Official rest_joints still define SMPL-X pose deltas; each delta transports
+    # the corresponding point here so adjacent source bones share one mapped
+    # rotation center without replacing the SMPL-X kinematic chain.
+    source_driver_rest_joints: np.ndarray | None = None
+    # Optional per-source-bone pose corrective. A non-negative driver bone
+    # supplies the mapped SMPL-X joint flexion; gain and local axis define one
+    # reusable child-local rotation (for example the authored patella follow).
+    source_bone_corrective_driver: np.ndarray | None = None
+    source_bone_corrective_gain: np.ndarray | None = None
+    source_bone_corrective_axis: np.ndarray | None = None
     # Subject-fitted source-rig bind used by runtime skinning.  The authored
     # source bind above remains immutable and available for Blender parity.
     target_rest_global: np.ndarray | None = None
@@ -191,6 +202,7 @@ class AnatomyRiggedAsset:
             "source_bone_tail",
             "source_bind_vertices",
             "source_driver_coupling",
+            "source_driver_rest_joints",
             "target_rest_global",
             "target_rest_local",
             "target_inverse_bind",
@@ -308,6 +320,49 @@ class AnatomyRiggedAsset:
             raise ValueError(f"rest_joints must be [{joint_count}, 3], got {rest_joints.shape}")
         if inverse_bind.shape != (joint_count, 4, 4):
             raise ValueError(f"inverse_bind must be [{joint_count}, 4, 4], got {inverse_bind.shape}")
+        if self.source_driver_rest_joints is not None:
+            driver_rest_joints = np.asarray(
+                self.source_driver_rest_joints, dtype=np.float32
+            )
+            if driver_rest_joints.shape != (joint_count, 3):
+                raise ValueError(
+                    "source_driver_rest_joints must match rest_joints"
+                )
+            if not np.all(np.isfinite(driver_rest_joints)):
+                raise ValueError("source_driver_rest_joints contains non-finite values")
+        corrective_values = (
+            self.source_bone_corrective_driver,
+            self.source_bone_corrective_gain,
+            self.source_bone_corrective_axis,
+        )
+        if any(value is not None for value in corrective_values):
+            if not all(value is not None for value in corrective_values):
+                raise ValueError("source bone corrective arrays must be stored together")
+            source_count = len(self.source_bone_names or [])
+            corrective_driver = np.asarray(
+                self.source_bone_corrective_driver, dtype=np.int32
+            )
+            corrective_gain = np.asarray(
+                self.source_bone_corrective_gain, dtype=np.float32
+            )
+            corrective_axis = np.asarray(
+                self.source_bone_corrective_axis, dtype=np.float32
+            )
+            if (
+                corrective_driver.shape != (source_count,)
+                or corrective_gain.shape != (source_count,)
+                or corrective_axis.shape != (source_count, 3)
+            ):
+                raise ValueError("source bone corrective arrays have invalid shapes")
+            active = corrective_driver >= 0
+            if np.any(corrective_driver[active] >= source_count):
+                raise ValueError("source bone corrective driver is invalid")
+            if not np.all(np.isfinite(corrective_gain)) or not np.all(
+                np.isfinite(corrective_axis)
+            ):
+                raise ValueError("source bone corrective arrays contain non-finite values")
+            if np.any(active & (np.linalg.norm(corrective_axis, axis=1) < 1.0e-8)):
+                raise ValueError("active source bone corrective axis is degenerate")
         if faces.size and (int(faces.min()) < 0 or int(faces.max()) >= vertices.shape[0]):
             raise ValueError("faces contain vertex indices outside vertices_rest")
         if not np.all(np.isfinite(vertices)):
@@ -856,6 +911,30 @@ def save_rigged_asset(path: Path | str, asset: AnatomyRiggedAsset) -> Path:
             source_bone_driver_types=np.asarray(asset.source_bone_driver_types, dtype=object),
             source_bone_frame_joints=np.asarray(asset.source_bone_frame_joints, dtype=np.int16),
             source_driver_coupling=np.asarray(asset.source_driver_coupling, dtype=np.float32),
+            source_driver_rest_joints=np.asarray(
+                asset.source_driver_rest_joints
+                if asset.source_driver_rest_joints is not None
+                else asset.rest_joints,
+                dtype=np.float32,
+            ),
+            source_bone_corrective_driver=np.asarray(
+                asset.source_bone_corrective_driver
+                if asset.source_bone_corrective_driver is not None
+                else np.full(len(asset.source_bone_names), -1, dtype=np.int16),
+                dtype=np.int16,
+            ),
+            source_bone_corrective_gain=np.asarray(
+                asset.source_bone_corrective_gain
+                if asset.source_bone_corrective_gain is not None
+                else np.zeros(len(asset.source_bone_names), dtype=np.float32),
+                dtype=np.float32,
+            ),
+            source_bone_corrective_axis=np.asarray(
+                asset.source_bone_corrective_axis
+                if asset.source_bone_corrective_axis is not None
+                else np.zeros((len(asset.source_bone_names), 3), dtype=np.float32),
+                dtype=np.float32,
+            ),
             rigid_component_ids=np.asarray(
                 asset.rigid_component_ids if asset.rigid_component_ids is not None else [], dtype=np.int32
             ),
@@ -1065,6 +1144,26 @@ def load_rigged_asset(path: Path | str, *, validate: bool = True) -> AnatomyRigg
         ),
         source_bone_frame_joints=np.asarray(data["source_bone_frame_joints"], dtype=np.int32),
         source_driver_coupling=np.asarray(data["source_driver_coupling"], dtype=np.float32),
+        source_driver_rest_joints=(
+            np.asarray(data["source_driver_rest_joints"], dtype=np.float32)
+            if "source_driver_rest_joints" in data.files
+            else None
+        ),
+        source_bone_corrective_driver=(
+            np.asarray(data["source_bone_corrective_driver"], dtype=np.int32)
+            if "source_bone_corrective_driver" in data.files
+            else None
+        ),
+        source_bone_corrective_gain=(
+            np.asarray(data["source_bone_corrective_gain"], dtype=np.float32)
+            if "source_bone_corrective_gain" in data.files
+            else None
+        ),
+        source_bone_corrective_axis=(
+            np.asarray(data["source_bone_corrective_axis"], dtype=np.float32)
+            if "source_bone_corrective_axis" in data.files
+            else None
+        ),
         target_rest_global=target_global,
         target_rest_local=target_local,
         target_inverse_bind=np.linalg.inv(target_global).astype(np.float32),

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from projects.genesis_ue_sync.anatomy_retarget import containment, rig_weighted_rest
 from projects.genesis_ue_sync.anatomy_retarget.rig_weighted_rest import (
     _regularize_mesh_displacement,
     _weighted_similarity_affine,
@@ -130,3 +131,77 @@ def test_blend_tissue_rest_by_smplx_joints_uses_authored_sparse_weights() -> Non
     np.testing.assert_array_equal(merged.vertices_rest[2:], 1.0)
     assert report["active_vertex_count"] == 2
     assert report["source_weights_preserved"] is True
+
+
+def test_axis_radial_candidate_is_selected_by_rest_containment(
+    monkeypatch,
+) -> None:
+    class Fixture:
+        def __init__(self, **values: object) -> None:
+            self.__dict__.update(values)
+
+        def validate(self) -> None:
+            return None
+
+    source = np.asarray(
+        (
+            (-1.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (0.0, -1.0, 0.0),
+            (0.0, 1.0, 0.0),
+            (-0.5, 0.6, 0.0),
+            (0.0, 0.6, 0.0),
+            (0.5, 0.6, 0.0),
+        ),
+        dtype=np.float32,
+    )
+    target = source.copy()
+    target[:4, 0] *= 1.2
+    target[:4, 1] *= 0.8
+    identity = np.eye(4, dtype=np.float32)[None]
+    asset = Fixture(
+        source_bind_vertices=source,
+        vertices_rest=target,
+        faces=np.asarray(((0, 1, 2), (1, 3, 2), (4, 5, 6)), dtype=np.int32),
+        driver_indices=np.zeros((len(source), 1), dtype=np.int32),
+        driver_weights=np.ones((len(source), 1), dtype=np.float32),
+        source_vertex_ranges=np.asarray(((0, 4), (4, 7)), dtype=np.int32),
+        source_tissues=["bone", "vessel"],
+        source_bone_names=["AxisBone"],
+        source_bone_parents=np.asarray((-1,), dtype=np.int32),
+        source_bone_driver_types=["direct_smplx"],
+        source_bone_head=np.asarray(((-1.0, 0.0, 0.0),), dtype=np.float32),
+        source_bone_tail=np.asarray(((1.0, 0.0, 0.0),), dtype=np.float32),
+        target_bind_global=identity,
+        target_bind_local=identity,
+        runtime_inverse_bind=identity,
+        target_bone_head=np.asarray(((-1.2, 0.0, 0.0),), dtype=np.float32),
+        target_bone_tail=np.asarray(((1.2, 0.0, 0.0),), dtype=np.float32),
+        metadata={},
+    )
+    monkeypatch.setattr(
+        rig_weighted_rest, "with_source_driver_coupling", lambda value: value
+    )
+    monkeypatch.setattr(
+        containment,
+        "signed_distance",
+        lambda points, *_args, **_kwargs: (
+            np.abs(np.asarray(points)[:, 1]) - 0.5,
+            np.zeros_like(points),
+            np.zeros_like(points),
+        ),
+    )
+
+    selected, report = rig_weighted_rest.reconstruct_rig_weighted_rest(
+        asset,
+        tissues=("vessel",),
+        fit_tissues=("bone",),
+        rebind=False,
+        surface_vertices=np.zeros((3, 3)),
+        surface_faces=np.asarray(((0, 1, 2),), dtype=np.int32),
+        axis_radial_candidates=True,
+    )
+
+    assert report["axis_radial_candidates"]["accepted_bones"] == ["AxisBone"]
+    assert report["axis_radial_candidates"]["combined_nonregression_passed"] is True
+    np.testing.assert_allclose(selected.vertices_rest[4:, 1], 0.48, atol=1.0e-6)

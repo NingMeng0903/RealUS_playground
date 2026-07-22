@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -17,6 +18,7 @@ from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
 )
 from projects.genesis_ue_sync.anatomy_retarget.material_fit import (
     _hand_mesh_segment,
+    rigid_head_attachment_mask,
     shaft_preserving_segment_map,
 )
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import (
@@ -80,6 +82,10 @@ def test_schema_v6_roundtrip_persists_authoritative_bind_and_coupling(tmp_path: 
         assert "target_bind_global" in payload.files
         assert "target_bind_local" in payload.files
         assert "source_driver_coupling" in payload.files
+        assert "source_driver_rest_joints" in payload.files
+        assert "source_bone_corrective_driver" in payload.files
+        assert "source_bone_corrective_gain" in payload.files
+        assert "source_bone_corrective_axis" in payload.files
         assert "source_bone_head_local" in payload.files
         assert "posed_vertices" in payload.files
         assert "pose_cache_vertices" not in payload.files
@@ -91,6 +97,7 @@ def test_schema_v6_roundtrip_persists_authoritative_bind_and_coupling(tmp_path: 
     np.testing.assert_allclose(loaded.source_bone_head, asset.source_bone_head, atol=1.0e-7)
     np.testing.assert_allclose(loaded.target_bind_global, asset.source_bind_global, atol=1.0e-7)
     np.testing.assert_allclose(loaded.target_bone_head, asset.source_bone_head, atol=1.0e-7)
+    np.testing.assert_allclose(loaded.source_driver_rest_joints, asset.rest_joints, atol=1.0e-7)
     assert loaded.coordinate_system == "smplx_y_up_m"
 
 
@@ -205,6 +212,30 @@ def test_distal_phalanx_stops_at_its_skin_tip() -> None:
     )
     assert segment is not None
     np.testing.assert_array_equal(segment[3], target_tip)
+
+
+def test_rigid_head_attachments_follow_exported_blender_subtree() -> None:
+    asset = SimpleNamespace(
+        vertices_rest=np.zeros((4, 3), dtype=np.float32),
+        source_mesh_names=[
+            "Upper_Skull",
+            "Central_Incisor",
+            "Lens_L",
+            "Facial_Nerve",
+        ],
+        source_vertex_ranges=np.asarray(((0, 1), (1, 2), (2, 3), (3, 4))),
+        source_tissues=["bone", "bone", "organ", "nerve"],
+        source_bone_names=["Spine_C1", "Head_Bone", "Jaw_Bone_tip"],
+        source_bone_parents=np.asarray((-1, 0, 1)),
+        driver_indices=np.asarray(((1, 0), (2, 0), (1, 0), (1, 0))),
+        driver_weights=np.asarray(
+            ((1.0, 0.0), (1.0, 0.0), (1.0, 0.0), (0.8, 0.2))
+        ),
+    )
+
+    selected = rigid_head_attachment_mask(asset)
+
+    np.testing.assert_array_equal(selected, (True, True, True, False))
 
 
 def test_shaft_fit_protects_epiphyses_and_cross_section() -> None:

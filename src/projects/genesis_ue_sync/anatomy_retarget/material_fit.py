@@ -460,7 +460,12 @@ def _fit_source_frames(
     old_local = np.asarray(asset.target_bind_local, dtype=np.float64)
     source_parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
     modes = list(asset.source_bone_driver_types or [])
-    target_joints = np.asarray(asset.rest_joints, dtype=np.float64).copy()
+    target_joints = np.asarray(
+        asset.source_driver_rest_joints
+        if asset.source_driver_rest_joints is not None
+        else asset.rest_joints,
+        dtype=np.float64,
+    ).copy()
     source_anchors = _source_joint_anchors(asset)
     raw_frame_joints = getattr(asset, "source_bone_frame_joints", None)
     frame_joints = (
@@ -633,6 +638,357 @@ def _fit_source_frames(
             new_local[bone] = np.linalg.inv(new_global[int(parent)]) @ new_global[bone]
     delta = new_global @ np.linalg.inv(old_global)
     return new_global, new_local, delta
+
+
+def restore_official_limb_reference(
+    asset: AnatomyRiggedAsset,
+    harmonic_reference: AnatomyRiggedAsset,
+    *,
+    joint_offset_tolerance_m: float = 1.0e-5,
+    minimum_mesh_weight: float = 0.5,
+    stage: str = "stage1_official_limb_reference",
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Repair a legacy limb baked around a non-SMPL-X runtime pivot.
+
+    The harmonic reference must be the pre-material-fit asset for the same
+    beta.  Bone meshes and bind frames affected by an offset driver joint are
+    restored together.  Nerve meshes using those frames are transported in
+    bind space, retaining their exact Blender sparse weights and smooth rest
+    topology.
+    """
+    asset.validate()
+    harmonic_reference.validate()
+    for field in (
+        "faces",
+        "driver_indices",
+        "driver_weights",
+        "source_bone_parents",
+        "source_vertex_ranges",
+    ):
+        if not np.array_equal(getattr(asset, field), getattr(harmonic_reference, field)):
+            raise ValueError(f"harmonic limb reference {field} differs from fitted asset")
+    if list(asset.source_mesh_names or []) != list(
+        harmonic_reference.source_mesh_names or []
+    ):
+        raise ValueError("harmonic limb reference mesh order differs from fitted asset")
+    if not np.allclose(asset.rest_joints, harmonic_reference.rest_joints, atol=1.0e-7):
+        raise ValueError("harmonic limb reference was baked for a different SMPL-X beta")
+
+    official = np.asarray(asset.rest_joints, dtype=np.float64)
+    driver_rest = np.asarray(
+        asset.source_driver_rest_joints
+        if asset.source_driver_rest_joints is not None
+        else official,
+        dtype=np.float64,
+    ).copy()
+    original_driver_rest = driver_rest.copy()
+    offset = np.linalg.norm(driver_rest - official, axis=1)
+    displaced_joints = set(
+        int(value)
+        for value in np.flatnonzero(offset > float(joint_offset_tolerance_m))
+    )
+    if not displaced_joints:
+        return asset, {
+            "stage": str(stage),
+            "backend": "same_beta_harmonic_official_limb_rebind_v1",
+            "available": False,
+            "reason": "source driver joints already use official SMPL-X pivots",
+        }
+
+    modes = list(asset.source_bone_driver_types or [])
+    bone_a = np.asarray(asset.source_bone_smplx_a, dtype=np.int64)
+    bone_b = np.asarray(asset.source_bone_smplx_b, dtype=np.int64)
+    affected_bones = {
+        int(bone)
+        for bone, mode in enumerate(modes)
+        if str(mode) in {"segment_root", "twist"}
+        and (
+            int(bone_a[bone]) in displaced_joints
+            or int(bone_b[bone]) in displaced_joints
+        )
+    }
+    if not affected_bones:
+        raise RuntimeError("offset source driver joint has no articulated limb bones")
+
+    old_global = np.asarray(asset.target_bind_global, dtype=np.float64)
+    new_global = old_global.copy()
+    new_head = np.asarray(asset.target_bone_head, dtype=np.float64).copy()
+    new_tail = np.asarray(asset.target_bone_tail, dtype=np.float64).copy()
+    reference_global = np.asarray(
+        harmonic_reference.target_bind_global, dtype=np.float64
+    )
+    for bone in affected_bones:
+        new_global[bone] = reference_global[bone]
+        new_head[bone] = np.asarray(harmonic_reference.target_bone_head)[bone]
+        new_tail[bone] = np.asarray(harmonic_reference.target_bone_tail)[bone]
+
+    frame_delta = new_global @ np.linalg.inv(old_global)
+    identity = np.tile(np.eye(4, dtype=np.float64), (len(new_global), 1, 1))
+    identity[list(affected_bones)] = frame_delta[list(affected_bones)]
+    indices = np.asarray(asset.driver_indices, dtype=np.int64)
+    weights = np.asarray(asset.driver_weights, dtype=np.float64)
+    points_h = np.concatenate(
+        (
+            np.asarray(asset.vertices_rest, dtype=np.float64),
+            np.ones((len(asset.vertices_rest), 1), dtype=np.float64),
+        ),
+        axis=1,
+    )
+    transformed = np.einsum(
+        "nsij,nj->nsi", identity[indices], points_h, optimize=True
+    )[..., :3]
+    bind_transported = np.sum(weights[..., None] * transformed, axis=1)
+    affected_weight = np.sum(
+        weights * np.isin(indices, list(affected_bones)), axis=1
+    )
+
+    vertices = np.asarray(asset.vertices_rest, dtype=np.float64).copy()
+    restored_bone_meshes: list[str] = []
+    transported_nerve_meshes: list[str] = []
+    for vertex_range, mesh_name, tissue in zip(
+        np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+        asset.source_mesh_names,
+        asset.source_tissues,
+    ):
+        start, stop = (int(value) for value in vertex_range)
+        mesh_weight = affected_weight[start:stop]
+        if str(tissue) == "bone" and float(np.mean(mesh_weight)) >= float(
+            minimum_mesh_weight
+        ):
+            vertices[start:stop] = np.asarray(
+                harmonic_reference.vertices_rest, dtype=np.float64
+            )[start:stop]
+            restored_bone_meshes.append(str(mesh_name))
+        elif str(tissue) == "nerve" and np.any(mesh_weight > 1.0e-8):
+            vertices[start:stop] = bind_transported[start:stop]
+            transported_nerve_meshes.append(str(mesh_name))
+
+    for joint in displaced_joints:
+        driver_rest[joint] = official[joint]
+    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    new_local = new_global.copy()
+    for bone, parent in enumerate(parents.tolist()):
+        if int(parent) >= 0:
+            new_local[bone] = np.linalg.inv(new_global[int(parent)]) @ new_global[bone]
+
+    metadata = dict(asset.metadata or {})
+    report = {
+        "stage": str(stage),
+        "backend": "same_beta_harmonic_official_limb_rebind_v1",
+        "available": True,
+        "pose_specific": False,
+        "displaced_joints": [
+            {
+                "joint": str(asset.joint_names[joint]),
+                "removed_offset_m": (
+                    original_driver_rest[joint] - official[joint]
+                ).tolist(),
+                "original_offset_norm_m": float(offset[joint]),
+            }
+            for joint in sorted(displaced_joints)
+        ],
+        "affected_bones": [
+            str(asset.source_bone_names[bone]) for bone in sorted(affected_bones)
+        ],
+        "restored_bone_meshes": restored_bone_meshes,
+        "transported_nerve_meshes": transported_nerve_meshes,
+        "source_weights_preserved": True,
+        "source_hierarchy_preserved": True,
+        "harmonic_reference_same_beta": True,
+    }
+    history = list(metadata.get("official_limb_reference", []))
+    history.append(report)
+    metadata["official_limb_reference"] = history
+    result = type(asset)(
+        **{
+            **asset.__dict__,
+            "vertices_rest": vertices.astype(np.float32),
+            "source_driver_rest_joints": driver_rest.astype(np.float32),
+            "target_rest_global": new_global.astype(np.float32),
+            "target_rest_local": new_local.astype(np.float32),
+            "target_inverse_bind": np.linalg.inv(new_global).astype(np.float32),
+            "target_bone_head": new_head.astype(np.float32),
+            "target_bone_tail": new_tail.astype(np.float32),
+            "metadata": metadata,
+        }
+    )
+    result = with_source_driver_coupling(result)
+    if not np.array_equal(result.driver_indices, asset.driver_indices):
+        raise RuntimeError("official limb rebind changed Blender driver indices")
+    if not np.array_equal(result.driver_weights, asset.driver_weights):
+        raise RuntimeError("official limb rebind changed Blender driver weights")
+    if not np.array_equal(result.source_bone_parents, asset.source_bone_parents):
+        raise RuntimeError("official limb rebind changed Blender hierarchy")
+    result.validate()
+    return result, report
+
+
+def close_weighted_bone_interfaces(
+    asset: AnatomyRiggedAsset,
+    *,
+    minimum_group_weight: float = 0.5,
+    stage: str = "stage1_weighted_bone_interfaces",
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Close a mapped long-bone interface without moving its distal subtree.
+
+    A ``twist -> joint_local`` boundary is a source-rig articulation: geometry
+    on the proximal segment and geometry in the child subtree must meet at the
+    same mapped interface.  The correction is inferred from the authored
+    sparse weights and source rest contact, so it does not depend on mesh names,
+    body beta, or a validation pose.
+    """
+    asset.validate()
+    if asset.source_bind_vertices is None:
+        raise ValueError("joint-interface fitting requires source_bind_vertices")
+    if asset.driver_indices is None or asset.driver_weights is None:
+        raise ValueError("joint-interface fitting requires sparse source weights")
+
+    from scipy.spatial import cKDTree
+
+    source = np.asarray(asset.source_bind_vertices, dtype=np.float64)
+    vertices = np.asarray(asset.vertices_rest, dtype=np.float64).copy()
+    indices = np.asarray(asset.driver_indices, dtype=np.int64)
+    weights = np.asarray(asset.driver_weights, dtype=np.float64)
+    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    modes = list(asset.source_bone_driver_types or [])
+    bone_a = np.asarray(asset.source_bone_smplx_a, dtype=np.int64)
+    bone_b = np.asarray(asset.source_bone_smplx_b, dtype=np.int64)
+    source_anchors = _source_joint_anchors(
+        asset,
+        bind_global=np.asarray(asset.source_rest_global, dtype=np.float64),
+    )
+    target_joints = np.asarray(asset.rest_joints, dtype=np.float64)
+    bone_material = np.zeros(len(vertices), dtype=bool)
+    for vertex_range, tissue in zip(
+        np.asarray(asset.source_vertex_ranges, dtype=np.int64),
+        asset.source_tissues,
+    ):
+        if str(tissue) == "bone":
+            bone_material[int(vertex_range[0]) : int(vertex_range[1])] = True
+    interface_records: list[dict[str, Any]] = []
+
+    for root, mode in enumerate(modes):
+        parent = int(parents[root])
+        if str(mode) != "joint_local" or parent < 0 or str(modes[parent]) != "twist":
+            continue
+        if int(bone_b[parent]) != int(bone_a[root]):
+            continue
+
+        subtree: set[int] = set()
+        for bone in range(len(parents)):
+            current = int(bone)
+            while current >= 0:
+                if current == root:
+                    subtree.add(int(bone))
+                    break
+                current = int(parents[current])
+        segment = {
+            int(bone)
+            for bone in range(len(parents))
+            if int(bone_a[bone]) == int(bone_a[parent])
+            and int(bone_b[bone]) == int(bone_b[parent])
+            and str(modes[bone]) in {"segment_root", "twist", "rigid_group"}
+        }
+        if not subtree or not segment:
+            continue
+
+        proximal_weight = np.sum(weights * np.isin(indices, list(segment)), axis=1)
+        distal_weight = np.sum(weights * np.isin(indices, list(subtree)), axis=1)
+        proximal = bone_material & (proximal_weight >= float(minimum_group_weight))
+        distal = bone_material & (distal_weight >= float(minimum_group_weight))
+        proximal_ids = np.flatnonzero(proximal)
+        distal_ids = np.flatnonzero(distal)
+        if len(proximal_ids) < 3 or len(distal_ids) < 3:
+            continue
+
+        source_distance, _source_nearest = cKDTree(source[distal_ids]).query(
+            source[proximal_ids], k=1
+        )
+        target_distance, target_nearest = cKDTree(vertices[distal_ids]).query(
+            vertices[proximal_ids], k=1
+        )
+        source_gap = float(np.min(source_distance))
+        closest = int(np.argmin(target_distance))
+        target_gap = float(target_distance[closest])
+        proximal_vertex = int(proximal_ids[closest])
+        distal_vertex = int(distal_ids[int(target_nearest[closest])])
+
+        a = int(bone_a[parent])
+        b = int(bone_b[parent])
+        source_length = float(np.linalg.norm(source_anchors[b] - source_anchors[a]))
+        target_length = float(np.linalg.norm(target_joints[b] - target_joints[a]))
+        length_ratio = target_length / max(source_length, 1.0e-10)
+        desired_gap = source_gap * length_ratio
+        shift = np.zeros(3, dtype=np.float64)
+        if target_gap > desired_gap and target_gap > 1.0e-10:
+            direction = vertices[distal_vertex] - vertices[proximal_vertex]
+            direction /= max(float(np.linalg.norm(direction)), 1.0e-12)
+            shift = (target_gap - desired_gap) * direction
+            axis = target_joints[b] - target_joints[a]
+            axis_length = float(np.linalg.norm(axis))
+            axis /= max(axis_length, 1.0e-12)
+            parameter = np.clip(
+                ((vertices[proximal_ids] - target_joints[a]) @ axis)
+                / max(axis_length, 1.0e-12),
+                0.0,
+                1.0,
+            )
+            blend = parameter * parameter * (3.0 - 2.0 * parameter)
+            vertices[proximal_ids] += blend[:, None] * shift
+        interface_records.append(
+            {
+                "joint": str(asset.joint_names[int(bone_a[root])]),
+                "root_bone": str(asset.source_bone_names[root]),
+                "parent_bone": str(asset.source_bone_names[parent]),
+                "segment_bones": [
+                    str(asset.source_bone_names[bone]) for bone in sorted(segment)
+                ],
+                "distal_subtree_bone_count": int(len(subtree)),
+                "source_gap_m": source_gap,
+                "target_gap_before_m": target_gap,
+                "desired_gap_m": desired_gap,
+                "applied_shift_m": shift.tolist(),
+                "affected_vertex_count": int(len(proximal_ids)),
+            }
+        )
+
+    if not interface_records:
+        return asset, {
+            "stage": str(stage),
+            "backend": "weighted_bone_interface_shaft_extension_v1",
+            "available": False,
+            "reason": "no twist-to-joint-local weighted interface found",
+        }
+
+    metadata = dict(asset.metadata or {})
+    report = {
+        "stage": str(stage),
+        "backend": "weighted_bone_interface_shaft_extension_v1",
+        "available": True,
+        "pose_specific": False,
+        "interfaces": interface_records,
+        "source_weights_preserved": True,
+        "source_hierarchy_preserved": True,
+        "bind_frames_preserved": True,
+    }
+    history = list(metadata.get("weighted_bone_interfaces", []))
+    history.append(report)
+    metadata["weighted_bone_interfaces"] = history
+    result = type(asset)(
+        **{
+            **asset.__dict__,
+            "vertices_rest": vertices.astype(np.float32),
+            "metadata": metadata,
+        }
+    )
+    if not np.array_equal(result.driver_indices, asset.driver_indices):
+        raise RuntimeError("joint-interface fitting changed Blender driver indices")
+    if not np.array_equal(result.driver_weights, asset.driver_weights):
+        raise RuntimeError("joint-interface fitting changed Blender driver weights")
+    if not np.array_equal(result.source_bone_parents, asset.source_bone_parents):
+        raise RuntimeError("joint-interface fitting changed Blender hierarchy")
+    result.validate()
+    return result, report
 
 
 def _transform_points(points: np.ndarray, transform: np.ndarray) -> np.ndarray:
@@ -823,6 +1179,58 @@ def jaw_material_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
     indices = np.asarray(asset.driver_indices, dtype=np.int64)
     weights = np.asarray(asset.driver_weights, dtype=np.float64)
     return np.sum(weights * jaw_bone[indices], axis=1) >= 0.5
+
+
+def rigid_head_attachment_mask(
+    asset: AnatomyRiggedAsset,
+    *,
+    minimum_subtree_weight: float = 1.0 - 1.0e-6,
+) -> np.ndarray:
+    """Return whole meshes rigidly authored to the Blender head/jaw subtree.
+
+    Teeth, lenses and other cranial attachments do not have reliable names,
+    but their exported Armature weights are authoritative. Mixed neck vessels,
+    facial nerves and ligaments are deliberately excluded so they retain their
+    continuous sparse-weight LBS.
+    """
+    names = list(asset.source_bone_names or [])
+    ranges = getattr(asset, "source_vertex_ranges", None)
+    if (
+        "Head_Bone" not in names
+        or ranges is None
+        or asset.driver_indices is None
+        or asset.driver_weights is None
+    ):
+        return cranial_material_mask(asset) | jaw_material_mask(asset)
+    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    head = names.index("Head_Bone")
+
+    def descends_from_head(bone: int) -> bool:
+        while bone >= 0:
+            if bone == head:
+                return True
+            bone = int(parents[bone])
+        return False
+
+    head_subtree = np.asarray(
+        [descends_from_head(bone) for bone in range(len(names))], dtype=bool
+    )
+    indices = np.asarray(asset.driver_indices, dtype=np.int64)
+    weights = np.asarray(asset.driver_weights, dtype=np.float64)
+    subtree_weight = np.sum(weights * head_subtree[indices], axis=1)
+    tissues = list(
+        getattr(asset, "source_tissues", None)
+        or [""] * len(asset.source_mesh_names)
+    )
+    result = np.zeros(len(asset.vertices_rest), dtype=bool)
+    excluded_tissues = {"vessel", "nerve", "connective_tissue"}
+    for (start, stop), tissue in zip(ranges, tissues):
+        start_i, stop_i = int(start), int(stop)
+        if stop_i <= start_i or str(tissue).lower() in excluded_tissues:
+            continue
+        if bool(np.all(subtree_weight[start_i:stop_i] >= minimum_subtree_weight)):
+            result[start_i:stop_i] = True
+    return result
 
 
 def bone_material_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
@@ -1652,7 +2060,12 @@ def fit_source_bind_hands(
         bind_global=np.asarray(asset.source_rest_global, dtype=np.float64),
     )
     hand_geometry_mask = np.zeros(len(vertices), dtype=bool)
-    target_joints = np.asarray(asset.rest_joints, dtype=np.float64)
+    target_joints = np.asarray(
+        asset.source_driver_rest_joints
+        if asset.source_driver_rest_joints is not None
+        else asset.rest_joints,
+        dtype=np.float64,
+    )
     finger_tips = _finger_tip_targets(
         Path(canonical_dir),
         joint_names=joint_names,
@@ -1990,6 +2403,7 @@ def fit_stage1_rigid_regions(
     source = np.asarray(asset.source_bind_vertices, dtype=np.float64)
     target = np.asarray(asset.vertices_rest, dtype=np.float64)
     vertices = target.copy()
+    canonical_root = Path(canonical_dir)
     hand_fitted, hand_report = fit_source_bind_hands(
         asset,
         canonical_dir=canonical_dir,
@@ -1998,6 +2412,7 @@ def fit_stage1_rigid_regions(
     ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
     names = [str(value) for value in asset.source_mesh_names]
     tissues = [str(value).lower() for value in asset.source_tissues]
+    joint_lookup = {str(name): index for index, name in enumerate(asset.joint_names)}
     for mesh_name in hand_report["fitted_meshes"]:
         mesh_index = names.index(str(mesh_name))
         start, stop = (int(value) for value in ranges[mesh_index])
@@ -2054,22 +2469,105 @@ def fit_stage1_rigid_regions(
             }
         )
     groups = {name: indices for name, indices in groups.items() if len(indices)}
-    def source_contact(
-        parent_name: str, child_name: str
+    source_joint_anchors = _source_joint_anchors(
+        asset,
+        bind_global=np.asarray(asset.source_rest_global, dtype=np.float64),
+    )
+    group_joint_names: dict[str, tuple[str, ...]] = {
+        "pelvis": ("left_hip", "right_hip"),
+    }
+    for side in ("left", "right"):
+        group_joint_names.update(
+            {
+                f"{side}_shoulder": (f"{side}_shoulder",),
+                f"{side}_upper_arm": (f"{side}_shoulder", f"{side}_elbow"),
+                f"{side}_forearm": (f"{side}_elbow", f"{side}_wrist"),
+                f"{side}_thigh": (f"{side}_hip", f"{side}_knee"),
+                f"{side}_lower_leg": (f"{side}_knee", f"{side}_ankle"),
+                f"{side}_foot": (f"{side}_ankle",),
+            }
+        )
+    joint_candidates: dict[str, list[tuple[str, np.ndarray]]] = {}
+    for group_name, joint_names_for_group in group_joint_names.items():
+        indices = groups.get(group_name)
+        if indices is None or not len(indices):
+            continue
+        src = source[indices]
+        dst = target[indices]
+        src_center, dst_center = np.mean(src, axis=0), np.mean(dst, axis=0)
+        u, _singular, vt = np.linalg.svd(
+            (src - src_center).T @ (dst - dst_center)
+        )
+        rotation = vt.T @ u.T
+        if np.linalg.det(rotation) < 0.0:
+            vt[-1] *= -1.0
+            rotation = vt.T @ u.T
+        rotated = (src - src_center) @ rotation.T
+        scale = float(
+            np.clip(
+                np.sum((dst - dst_center) * rotated)
+                / max(float(np.sum((src - src_center) ** 2)), 1.0e-10),
+                0.90,
+                1.05,
+            )
+        )
+        for joint_name in joint_names_for_group:
+            joint = joint_lookup[joint_name]
+            mapped = dst_center + scale * (
+                rotation @ (source_joint_anchors[joint] - src_center)
+            )
+            joint_candidates.setdefault(joint_name, []).append((group_name, mapped))
+    driver_rest_joints = np.asarray(asset.rest_joints, dtype=np.float64).copy()
+    correspondence_joint_report: dict[str, Any] = {}
+    proposed_joint_centers: dict[str, np.ndarray] = {}
+    for joint_name, candidates in joint_candidates.items():
+        if len(candidates) < 2:
+            continue
+        points = np.stack([point for _group, point in candidates], axis=0)
+        center = np.mean(points, axis=0)
+        official = driver_rest_joints[joint_lookup[joint_name]].copy()
+        spread = float(np.max(np.linalg.norm(points - center, axis=1)))
+        offset = float(np.linalg.norm(center - official))
+        consensus_ratio = spread / max(offset, 1.0e-8)
+        consensus_passed = bool(consensus_ratio <= 0.10)
+        if consensus_passed:
+            proposed_joint_centers[joint_name] = center
+        correspondence_joint_report[joint_name] = {
+            "accepted": False,
+            "consensus_passed": consensus_passed,
+            "candidate_groups": [group for group, _point in candidates],
+            "candidate_spread_m": spread,
+            "official_offset_m": offset,
+            "consensus_ratio": consensus_ratio,
+            "applied_offset_m": np.zeros(3, dtype=np.float64).tolist(),
+        }
+    fit_asset = type(asset)(
+        **{
+            **asset.__dict__,
+            "source_driver_rest_joints": driver_rest_joints.astype(np.float32),
+        }
+    )
+    def source_contact_indices(
+        parent_indices_all: np.ndarray, child_indices_all: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        parent_points = source[groups[parent_name]]
-        child_points = source[groups[child_name]]
+        parent_points = source[parent_indices_all]
+        child_points = source[child_indices_all]
         distance, nearest = cKDTree(parent_points).query(child_points, k=1)
         count = min(32, len(child_points))
         selected = np.argpartition(distance, count - 1)[:count]
-        parent_indices = groups[parent_name][nearest[selected]]
-        child_indices = groups[child_name][selected]
+        parent_indices = parent_indices_all[nearest[selected]]
+        child_indices = child_indices_all[selected]
         return (
             parent_indices,
             child_indices,
             np.mean(source[parent_indices], axis=0),
             np.mean(source[child_indices], axis=0),
         )
+
+    def source_contact(
+        parent_name: str, child_name: str
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        return source_contact_indices(groups[parent_name], groups[child_name])
 
     chains: list[tuple[str, str, str]] = []
     for side in ("left", "right"):
@@ -2152,12 +2650,9 @@ def fit_stage1_rigid_regions(
             shared_contact,
         )
 
-    source_joint_anchors = _source_joint_anchors(
-        asset,
-        bind_global=np.asarray(asset.source_rest_global, dtype=np.float64),
+    target_joint_anchors = np.asarray(
+        fit_asset.source_driver_rest_joints, dtype=np.float64
     )
-    target_joint_anchors = np.asarray(asset.rest_joints, dtype=np.float64)
-    joint_lookup = {str(name): index for index, name in enumerate(asset.joint_names)}
     segment_joints: dict[str, tuple[int, int]] = {}
     single_joint_compounds: dict[str, int] = {}
     for side in ("left", "right"):
@@ -2192,8 +2687,11 @@ def fit_stage1_rigid_regions(
         for name in groups
         if name.endswith("_patella")
     }
-    group_fit: dict[str, dict[str, Any]] = {}
-    for group_name, indices in groups.items():
+    def fit_group(
+        group_name: str,
+        indices: np.ndarray,
+        target_anchors_by_joint: np.ndarray,
+    ) -> tuple[np.ndarray, dict[str, Any]]:
         src = source[indices]
         dst = target[indices]
         src_center = np.mean(src, axis=0)
@@ -2242,8 +2740,8 @@ def fit_stage1_rigid_regions(
             joint_a, joint_b = segment_joints[group_name]
             source_a = source_joint_anchors[joint_a]
             source_b = source_joint_anchors[joint_b]
-            target_a = target_joint_anchors[joint_a]
-            target_b = target_joint_anchors[joint_b]
+            target_a = target_anchors_by_joint[joint_a]
+            target_b = target_anchors_by_joint[joint_b]
             scaled = source_a + cross_scale * (src - source_a)
             scaled_b = source_a + cross_scale * (source_b - source_a)
             mapped = shaft_preserving_segment_map(
@@ -2257,7 +2755,7 @@ def fit_stage1_rigid_regions(
         elif group_name in single_joint_compounds:
             joint = single_joint_compounds[group_name]
             source_anchor = source_joint_anchors[joint]
-            target_anchor = target_joint_anchors[joint]
+            target_anchor = target_anchors_by_joint[joint]
             mapped_anchor = dst_center + cross_scale * (
                 rotation @ (source_anchor - src_center)
             )
@@ -2299,9 +2797,8 @@ def fit_stage1_rigid_regions(
                 rotation @ (source_anchor - src_center)
             )
             mapped += target_anchor - mapped_anchor
-        vertices[indices] = mapped
         residual = np.linalg.norm(mapped - dst, axis=1)
-        group_fit[group_name] = {
+        return mapped, {
             "vertex_count": int(len(indices)),
             "raw_uniform_scale": float(raw_scale),
             "cross_section_scale": cross_scale,
@@ -2309,17 +2806,58 @@ def fit_stage1_rigid_regions(
             "rotation": rotation,
         }
 
-    # The harmonic body can be narrower than the authored head while the
-    # mandible and cranial vault must remain one anatomical compound.  Fit the
-    # complete source skull once, then choose the largest uniformly scaled
-    # candidate contained by the subject surface.  This preserves jaw/teeth
-    # proportions and never translates the mandible independently.
-    head_indices = mesh_indices(
-        lambda name: name in {"upper_skull", "skull", "cranium", "mandible", "jaw"}
+    def fit_all_groups(
+        target_anchors_by_joint: np.ndarray,
+    ) -> dict[str, dict[str, Any]]:
+        reports: dict[str, dict[str, Any]] = {}
+        for group_name, indices in groups.items():
+            mapped, report = fit_group(
+                group_name, indices, target_anchors_by_joint
+            )
+            vertices[indices] = mapped
+            reports[group_name] = report
+        return reports
+
+    # Runtime motion always uses the official SMPL-X joint graph.  A fitted
+    # geometry centroid can be useful diagnostics, but making it a driver pivot
+    # changes the distance to the next official joint under flexion and turns a
+    # rigid limb into a pose-dependent-length segment.
+    target_joint_anchors = np.asarray(asset.rest_joints, dtype=np.float64)
+    group_fit = fit_all_groups(target_joint_anchors)
+    for joint_name in proposed_joint_centers:
+        report = correspondence_joint_report[joint_name]
+        report["accepted"] = False
+        report["acceptance_reason"] = "official_smplx_runtime_joint_authority"
+
+    # Estimate one transform from the cranial vault + mandible, then apply that
+    # exact transform to every mesh rigidly authored to the Blender Head/Jaw
+    # subtree. Teeth and eyes therefore remain attached without changing the
+    # already validated skull envelope; mixed facial nerves and neck vessels
+    # keep their continuous sparse-weight LBS.
+    rigid_head = rigid_head_attachment_mask(asset)
+    roles = list(
+        getattr(asset, "source_mesh_roles", None)
+        or [""] * len(asset.source_mesh_names)
     )
+    head_reference = np.zeros(len(vertices), dtype=bool)
+    for (start, stop), name, tissue, role in zip(ranges, names, tissues, roles):
+        semantic_reference = str(role).lower() in {
+            "cranial_compound",
+            "jaw_compound",
+        }
+        token_fallback = str(name).lower() in {
+            "upper_skull",
+            "skull",
+            "cranium",
+            "mandible",
+            "jaw",
+        }
+        if tissue == "bone" and (semantic_reference or token_fallback):
+            head_reference[int(start) : int(stop)] = True
+    head_indices = np.flatnonzero(head_reference & rigid_head)
+    head_attachment_indices = np.flatnonzero(rigid_head)
     head_fit_report: dict[str, Any] = {"available": False}
     if len(head_indices):
-        canonical_root = Path(canonical_dir)
         target_surface = _load_obj_vertices(
             canonical_root / "smpl_canonical_tpose.obj"
         )
@@ -2371,10 +2909,13 @@ def fit_stage1_rigid_regions(
         if bool(containment_report.get("candidate_contained")):
             head_fitted = head_candidate
             head_scale = contained_scale
-        vertices[head_indices] = head_fitted
+        vertices[head_attachment_indices] = target_head_center + head_scale * (
+            source[head_attachment_indices] - source_head_center
+        )
         head_fit_report = {
             "available": True,
-            "mesh_vertex_count": int(len(head_indices)),
+            "bone_reference_vertex_count": int(len(head_indices)),
+            "rigid_attachment_vertex_count": int(len(head_attachment_indices)),
             "uniform_scale": float(head_scale),
             "envelope": envelope_report,
             "contained_candidate": containment_report,
@@ -2406,9 +2947,9 @@ def fit_stage1_rigid_regions(
     for (start, stop), tissue in zip(ranges, tissues):
         if tissue == "bone":
             bone_mask[int(start) : int(stop)] = True
-    source_frame_asset = type(asset)(
+    source_frame_asset = type(fit_asset)(
         **{
-            **asset.__dict__,
+            **fit_asset.__dict__,
             "vertices_rest": source.astype(np.float32),
             "target_rest_global": np.asarray(asset.source_bind_global, dtype=np.float32),
             "target_rest_local": np.asarray(asset.source_rest_local, dtype=np.float32),
@@ -2431,7 +2972,7 @@ def fit_stage1_rigid_regions(
     )
     metadata = dict(rebound.metadata or {})
     metadata["source_full_local_fk_v2"] = False
-    metadata["source_direct_driver_bones_v1"] = _direct_smplx_hand_controllers(asset)
+    metadata["source_direct_driver_bones_v1"] = _direct_smplx_hand_controllers(fit_asset)
     result = type(rebound)(**{**rebound.__dict__, "metadata": metadata})
     result = with_source_driver_coupling(result)
     result.validate()
@@ -2450,6 +2991,7 @@ def fit_stage1_rigid_regions(
         "changed_vertex_count": int(np.count_nonzero(np.linalg.norm(vertices - target, axis=1))),
         "source_rig_rebind": rebind_report,
         "source_full_local_fk_v2": False,
+        "correspondence_driver_joint_fit": correspondence_joint_report,
         "source_weights_preserved": True,
         "source_hierarchy_preserved": True,
     }
