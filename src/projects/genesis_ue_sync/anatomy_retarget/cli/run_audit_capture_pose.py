@@ -83,11 +83,29 @@ REGION_TOKENS: dict[str, tuple[str, ...]] = {
         "hand", "finger", "phalan", "metacarp", "carpal", "wrist", "thumb", "index", "middle",
         "ring", "pinky", "palmar", "digital", "radial", "ulnar",
     ),
+    "left_hip": (
+        "ilium", "sacrum", "pelvis", "femur", "hip", "sciatic", "femoral",
+    ),
+    "right_hip": (
+        "ilium", "sacrum", "pelvis", "femur", "hip", "sciatic", "femoral",
+    ),
     "left_knee": (
         "femur", "tibia", "fibula", "patella", "knee", "popliteal", "saphen", "peroneal",
     ),
     "right_knee": (
         "femur", "tibia", "fibula", "patella", "knee", "popliteal", "saphen", "peroneal",
+    ),
+    "left_ankle": (
+        "tibia", "fibula", "talus", "calcaneus", "ankle", "peroneal", "tibial",
+    ),
+    "right_ankle": (
+        "tibia", "fibula", "talus", "calcaneus", "ankle", "peroneal", "tibial",
+    ),
+    "left_foot": (
+        "foot", "talus", "calcaneus", "navicular", "cuboid", "cuneiform", "metatarsal", "phalanx",
+    ),
+    "right_foot": (
+        "foot", "talus", "calcaneus", "navicular", "cuboid", "cuneiform", "metatarsal", "phalanx",
     ),
 }
 
@@ -107,8 +125,14 @@ REGION_RADII_M = {
     "right_elbow": 0.10,
     "left_hand": 0.10,
     "right_hand": 0.10,
+    "left_hip": 0.14,
+    "right_hip": 0.14,
     "left_knee": 0.12,
     "right_knee": 0.12,
+    "left_ankle": 0.11,
+    "right_ankle": 0.11,
+    "left_foot": 0.13,
+    "right_foot": 0.13,
 }
 
 
@@ -419,6 +443,18 @@ def _region_joint_names(asset: AnatomyRiggedAsset, region: str) -> list[str]:
         requested = [region]
     elif region.endswith("_knee"):
         requested = [region]
+    elif region.endswith("_hip"):
+        requested = [region]
+    elif region.endswith("_ankle"):
+        requested = [region]
+    elif region.endswith("_foot"):
+        side = region.split("_", 1)[0]
+        requested = [
+            f"{side}_ankle",
+            f"{side}_foot",
+            f"{side}_big_toe",
+            f"{side}_small_toe",
+        ]
     elif region.endswith("_hand"):
         side = region.split("_", 1)[0]
         requested = [f"{side}_wrist"] + [

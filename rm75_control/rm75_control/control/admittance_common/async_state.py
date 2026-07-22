@@ -165,7 +165,12 @@ class RealtimeStateObserver:
     def push_period_ms(self) -> float:
         return float(self.config.cycle) * 5.0
 
-    def start(self) -> None:
+    def start(
+        self,
+        *,
+        retries: int = 3,
+        retry_delay_s: float = 1.0,
+    ) -> None:
         if self._running:
             return
         peer = self._robot_ip or self.config.ip
@@ -200,22 +205,47 @@ class RealtimeStateObserver:
         self._callback_ref = rm_realtime_arm_state_callback_ptr(_on_state)
         self.robot.rm_realtime_arm_state_call_back(self._callback_ref)
 
-        push = rm_realtime_push_config_t(
+        push_on = rm_realtime_push_config_t(
             self.config.cycle,
             True,
             self.config.port,
             self.config.force_coordinate,
             self._target_ip,
         )
-        ret = self.robot.rm_set_realtime_push(push)
-        if ret != 0:
-            raise RuntimeError(
-                f"rm_set_realtime_push failed: {ret} "
-                f"(cycle={self.config.cycle}, port={self.config.port}, "
-                f"ip={self._target_ip!r}, force_coord={self.config.force_coordinate}). "
-                "Ensure robot.thread_mode=2 (triple thread) and firewall allows UDP."
-            )
-        self._running = True
+        push_off = rm_realtime_push_config_t(
+            self.config.cycle,
+            False,
+            self.config.port,
+            self.config.force_coordinate,
+            self._target_ip,
+        )
+
+        last_ret: int | None = None
+        attempts = max(1, int(retries))
+        for attempt in range(attempts):
+            if attempt > 0:
+                try:
+                    self.robot.rm_set_realtime_push(push_off)
+                except Exception:
+                    pass
+                time.sleep(retry_delay_s)
+            ret = self.robot.rm_set_realtime_push(push_on)
+            if ret == 0:
+                self._running = True
+                return
+            last_ret = ret
+            if attempt + 1 < attempts:
+                time.sleep(retry_delay_s)
+
+        raise RuntimeError(
+            f"rm_set_realtime_push failed: {last_ret} "
+            f"(cycle={self.config.cycle}, port={self.config.port}, "
+            f"ip={self._target_ip!r}, force_coord={self.config.force_coordinate}, "
+            f"attempts={attempts}). "
+            "Ensure robot.thread_mode=2 (triple thread), realtime_push.ip is the "
+            "robot-reachable PC address, only one controller owns the session, and "
+            "firewall allows UDP."
+        )
 
     def stop(self) -> None:
         if not self._running:

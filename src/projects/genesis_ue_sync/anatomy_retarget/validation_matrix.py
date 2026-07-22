@@ -72,10 +72,51 @@ def pose_cases(joint_names: list[str]) -> dict[str, np.ndarray]:
         "pose_lower_limb_flex": pose(
             left_hip=(0.65, 0.0, 0.0),
             right_hip=(0.35, 0.0, 0.0),
-            left_knee=(-1.0, 0.0, 0.0),
-            right_knee=(-0.65, 0.0, 0.0),
+            # The fitted SMPL-X captures and the exported Blender knee driver
+            # both use positive local X for anatomical flexion.  The former
+            # negative sign exercised extension and hid the bent-knee failure.
+            left_knee=(1.0, 0.0, 0.0),
+            right_knee=(0.65, 0.0, 0.0),
             left_ankle=(0.25, 0.0, 0.0),
             right_ankle=(0.15, 0.0, 0.0),
+        ),
+        # A hinge-only knee is insufficient for fitted human captures: hip
+        # yaw/roll and knee varus/twist occur together, so the rigid anatomy
+        # and the blended skin see different three-dimensional trajectories.
+        # Keep this deterministic and subject-independent while exercising the
+        # full SO(3) range that exposed the former patella/femur failure.
+        "pose_lower_limb_multiaxis": pose(
+            left_hip=(-0.20, -0.25, 0.55),
+            right_hip=(-0.10, 0.20, -0.35),
+            left_knee=(0.70, 0.60, -1.45),
+            right_knee=(0.40, 0.30, 0.20),
+            left_ankle=(0.75, 0.40, 0.30),
+            right_ankle=(0.65, -0.25, -0.45),
+        ),
+        "pose_upper_limb_multiaxis": pose(
+            left_shoulder=(0.35, 0.10, -1.15),
+            right_shoulder=(0.35, -0.45, 1.20),
+            left_elbow=(0.55, -0.55, -0.15),
+            right_elbow=(-0.40, 0.65, 0.05),
+            left_wrist=(0.70, -0.05, 0.25),
+            right_wrist=(0.50, 0.25, -0.10),
+        ),
+        "pose_full_body_multiaxis": pose(
+            pelvis=(-0.10, 0.25, 1.25),
+            left_hip=(-0.20, -0.25, 0.55),
+            right_hip=(-0.10, 0.20, -0.35),
+            left_knee=(0.70, 0.60, -1.45),
+            right_knee=(0.40, 0.30, 0.20),
+            left_ankle=(0.75, 0.40, 0.30),
+            right_ankle=(0.65, -0.25, -0.45),
+            left_shoulder=(0.35, 0.10, -1.15),
+            right_shoulder=(0.35, -0.45, 1.20),
+            left_elbow=(0.55, -0.55, -0.15),
+            right_elbow=(-0.40, 0.65, 0.05),
+            left_wrist=(0.70, -0.05, 0.25),
+            right_wrist=(0.50, 0.25, -0.10),
+            neck=(-0.32, 0.10, -0.20),
+            head=(0.20, -0.10, 0.20),
         ),
         "pose_finger_flex": pose(
             **{

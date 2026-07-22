@@ -18,7 +18,7 @@ timing:
 realtime_push:
   cycle: 1              # broadcast period = cycle * 5 ms (1 -> 200 Hz)
   port: 8098
-  # ip: auto-detected toward robot.ip; override if multi-NIC
+  ip: "192.168.1.80"    # PC NIC on robot subnet — do not auto-detect on multi-NIC hosts
   force_coordinate: 0   # 0=sensor frame (matches rm_get_force_data force_data)
 
 # Shared-memory state relay for split-process Genesis twin (same host).

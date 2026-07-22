@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
+    _interpolate_rigid,
     axis_angle_to_matrix,
     build_source_driver_coupling,
     joint_global_transforms,
@@ -237,6 +238,102 @@ def test_source_bone_flexion_corrective_is_child_local_and_pose_generic() -> Non
     np.testing.assert_allclose(actual_local, expected_local @ correction, atol=2.0e-6)
 
 
+def test_source_bone_corrective_uses_learned_signed_local_input_axis() -> None:
+    base = _chain_asset()
+    corrective_driver = np.full(4, -1, dtype=np.int32)
+    corrective_gain = np.zeros(4, dtype=np.float32)
+    corrective_axis = np.zeros((4, 3), dtype=np.float32)
+    corrective_input_axis = np.zeros((4, 3), dtype=np.float32)
+    corrective_driver[3] = 2
+    corrective_gain[3] = np.float32(0.25)
+    corrective_axis[3, 2] = np.float32(1.0)
+    corrective_input_axis[3, 0] = np.float32(-1.0)
+    asset = with_source_driver_coupling(
+        replace(
+            base,
+            source_bone_corrective_driver=corrective_driver,
+            source_bone_corrective_gain=corrective_gain,
+            source_bone_corrective_axis=corrective_axis,
+            metadata={
+                **(base.metadata or {}),
+                "source_corrective_input_axes_v1": corrective_input_axis.tolist(),
+            },
+        )
+    )
+
+    off_axis_pose = np.zeros((55, 3), dtype=np.float32)
+    off_axis_pose[2, 1] = np.float32(0.8)
+    off_axis_transforms = source_bone_skinning_transforms(asset, off_axis_pose)
+    off_axis_global = np.asarray(off_axis_transforms, dtype=np.float64) @ np.asarray(
+        asset.target_bind_global, dtype=np.float64
+    )
+    off_axis_local = np.linalg.inv(off_axis_global[2]) @ off_axis_global[3]
+    np.testing.assert_allclose(
+        off_axis_local, asset.target_bind_local[3], atol=2.0e-6
+    )
+
+    flex_pose = np.zeros((55, 3), dtype=np.float32)
+    flex_pose[2, 0] = np.float32(0.8)
+    flex_transforms = source_bone_skinning_transforms(asset, flex_pose)
+    flex_global = np.asarray(flex_transforms, dtype=np.float64) @ np.asarray(
+        asset.target_bind_global, dtype=np.float64
+    )
+    flex_local = np.linalg.inv(flex_global[2]) @ flex_global[3]
+    expected = np.asarray(asset.target_bind_local[3], dtype=np.float64).copy()
+    correction = np.eye(4, dtype=np.float64)
+    correction[:3, :3] = axis_angle_to_matrix(
+        np.asarray((0.0, 0.0, -0.2), dtype=np.float32)
+    )[0]
+    np.testing.assert_allclose(flex_local, expected @ correction, atol=2.0e-6)
+
+
+def test_source_bone_corrective_can_blend_full_proximal_distal_motion() -> None:
+    base = _chain_asset()
+    corrective_driver = np.full(4, -1, dtype=np.int32)
+    corrective_gain = np.zeros(4, dtype=np.float32)
+    corrective_axis = np.zeros((4, 3), dtype=np.float32)
+    corrective_driver[3] = 2
+    corrective_gain[3] = np.float32(0.25)
+    corrective_axis[3, 2] = np.float32(1.0)
+    asset = with_source_driver_coupling(
+        replace(
+            base,
+            source_bone_corrective_driver=corrective_driver,
+            source_bone_corrective_gain=corrective_gain,
+            source_bone_corrective_axis=corrective_axis,
+            metadata={
+                **(base.metadata or {}),
+                "source_corrective_rigid_blend_v2": True,
+            },
+        )
+    )
+    pose = np.zeros((55, 3), dtype=np.float32)
+    pose[2] = np.asarray((0.6, 0.3, -0.2), dtype=np.float32)
+
+    transforms = source_bone_skinning_transforms(asset, pose)
+    posed = np.asarray(transforms, dtype=np.float64) @ np.asarray(
+        asset.target_bind_global, dtype=np.float64
+    )
+    upper_delta = posed[1] @ np.linalg.inv(asset.target_bind_global[1])
+    lower_delta = posed[2] @ np.linalg.inv(asset.target_bind_global[2])
+    expected_delta = _interpolate_rigid(upper_delta, lower_delta, 0.75)
+    corrective_origin = np.asarray(
+        asset.target_bind_global[3, :3, 3], dtype=np.float64
+    )
+    distal_origin = lower_delta[:3, :3] @ corrective_origin + lower_delta[:3, 3]
+    expected_delta[:3, 3] = (
+        distal_origin - expected_delta[:3, :3] @ corrective_origin
+    )
+    expected = expected_delta @ np.asarray(
+        asset.target_bind_global[3], dtype=np.float64
+    )
+
+    np.testing.assert_allclose(posed[3], expected, atol=2.0e-6)
+    np.testing.assert_allclose(
+        posed[3, :3, 3], distal_origin, atol=2.0e-6
+    )
+
+
 @pytest.mark.parametrize("mode", ["segment_root", "rigid_group"])
 def test_segment_and_rigid_group_pure_twist_rotates_attached_bone(mode: str) -> None:
     base = _chain_asset()
@@ -423,6 +520,46 @@ def test_explicit_direct_driver_bypasses_full_local_fk_translation() -> None:
     desired = frames[3] @ np.asarray(asset.source_driver_coupling)[3]
 
     np.testing.assert_allclose(posed[3], desired, atol=2.0e-6)
+
+
+def test_connected_local_fk_preserves_only_authored_connected_links() -> None:
+    base = _chain_asset()
+    connected = replace(
+        base,
+        source_bone_use_connect=np.asarray((0, 1, 0, 1), dtype=np.uint8),
+        metadata={"source_connected_local_fk_v3": True},
+    )
+    asset = with_source_driver_coupling(connected)
+    pose = np.zeros((55, 3), dtype=np.float32)
+    pose[1] = np.asarray((0.42, -0.18, 0.31), dtype=np.float32)
+    transforms = source_bone_skinning_transforms(asset, pose)
+    bind = np.asarray(asset.target_bind_global, dtype=np.float64)
+    posed = np.asarray(transforms, dtype=np.float64) @ bind
+    local_bind = np.asarray(asset.target_bind_local, dtype=np.float64)
+
+    for child in (1, 3):
+        parent = int(asset.source_bone_parents[child])
+        actual_local = np.linalg.inv(posed[parent]) @ posed[child]
+        np.testing.assert_allclose(
+            actual_local[:3, 3], local_bind[child, :3, 3], atol=2.0e-6, rtol=0.0
+        )
+
+
+def test_explicit_local_fk_bone_list_preserves_selected_link() -> None:
+    base = _chain_asset()
+    asset = with_source_driver_coupling(
+        replace(base, metadata={"source_local_fk_bones_v3": [2]})
+    )
+    pose = np.zeros((55, 3), dtype=np.float32)
+    pose[1] = np.asarray((0.42, -0.18, 0.31), dtype=np.float32)
+    transforms = source_bone_skinning_transforms(asset, pose)
+    bind = np.asarray(asset.target_bind_global, dtype=np.float64)
+    posed = np.asarray(transforms, dtype=np.float64) @ bind
+    parent = int(asset.source_bone_parents[2])
+    actual_local = np.linalg.inv(posed[parent]) @ posed[2]
+    np.testing.assert_allclose(
+        actual_local[:3, 3], asset.target_bind_local[2, :3, 3], atol=2.0e-6, rtol=0.0
+    )
 
 
 def test_mirrored_source_bind_does_not_change_segment_motion() -> None:

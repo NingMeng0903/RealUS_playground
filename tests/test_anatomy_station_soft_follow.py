@@ -100,3 +100,22 @@ def test_bone_rotation_moves_station_but_does_not_rotate_vertex_offset() -> None
     # The station moves from (0,1,0) to (-1,0,0), while the authored +X
     # cross-section offset stays +X instead of being rotated into +Y.
     np.testing.assert_allclose(result[0], (-0.8, 0.0, 0.0), atol=1.0e-7)
+
+
+def test_low_station_strength_blends_from_lbs_pose_not_from_rest() -> None:
+    asset = _asset(
+        indices=np.asarray(((0,),)),
+        weights=np.asarray(((1.0,),)),
+        stations=np.asarray(((0.5,),)),
+    )
+    asset.vertices_rest[0] = (0.2, 1.0, 0.0)
+    asset.soft_follow_strength[0] = 0.0
+    lbs_pose = np.asarray(((3.0, 4.0, 5.0),), dtype=np.float64)
+
+    result = apply_station_pose_follow(
+        asset,
+        np.stack((_transform(translation=(0.3, -0.2, 0.1)), _transform())),
+        lbs_pose,
+    )
+
+    np.testing.assert_allclose(result, lbs_pose, atol=1.0e-7)

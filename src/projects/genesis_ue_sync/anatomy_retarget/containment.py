@@ -728,6 +728,356 @@ def repair_soft_tissue_residual_containment(
     return replace(asset, **{field_name: repaired, "metadata": metadata}), report
 
 
+def _skin_lbs_surface(
+    vertices: np.ndarray,
+    weights: np.ndarray,
+    inverse_bind: np.ndarray,
+    rest_joints: np.ndarray,
+    parents: np.ndarray,
+    pose: np.ndarray,
+) -> np.ndarray:
+    """Pose a canonical SMPL-X surface without any anatomy dependency."""
+    from .anatomy_lbs import joint_global_transforms
+
+    global_pose = joint_global_transforms(
+        pose_axis_angle=pose,
+        rest_joints=rest_joints,
+        parents=parents,
+    ).astype(np.float64)
+    transforms = global_pose @ np.asarray(inverse_bind, dtype=np.float64)
+    blended = np.asarray(weights, dtype=np.float64) @ transforms.reshape(
+        len(transforms), 16
+    )
+    blended = blended.reshape(-1, 4, 4)
+    homogeneous = np.concatenate(
+        (
+            np.asarray(vertices, dtype=np.float64),
+            np.ones((len(vertices), 1), dtype=np.float64),
+        ),
+        axis=1,
+    )
+    return np.einsum("nij,nj->ni", blended, homogeneous)[:, :3]
+
+
+def _edge_safe_scale(
+    original: np.ndarray,
+    displacement: np.ndarray,
+    faces: np.ndarray,
+    *,
+    minimum_ratio: float,
+    maximum_ratio: float,
+) -> float:
+    """Largest correction scale that keeps every tube edge well conditioned."""
+    triangles = np.asarray(faces, dtype=np.int64).reshape(-1, 3)
+    if not len(triangles):
+        return 1.0
+    edges = np.unique(
+        np.sort(
+            np.concatenate(
+                (
+                    triangles[:, (0, 1)],
+                    triangles[:, (1, 2)],
+                    triangles[:, (2, 0)],
+                ),
+                axis=0,
+            ),
+            axis=1,
+        ),
+        axis=0,
+    )
+    before = np.linalg.norm(original[edges[:, 1]] - original[edges[:, 0]], axis=1)
+    valid = before > 1.0e-10
+    if not np.any(valid):
+        return 1.0
+
+    def safe(scale: float) -> bool:
+        candidate = original + float(scale) * displacement
+        after = np.linalg.norm(
+            candidate[edges[:, 1]] - candidate[edges[:, 0]], axis=1
+        )
+        ratio = after[valid] / before[valid]
+        # A few source tube triangles contain near-degenerate sub-millimetre
+        # edges.  Letting one such edge freeze a multi-thousand-vertex vessel
+        # defeats the material solve.  The 0.1/99.9 percentiles still constrain
+        # essentially the complete topology; exact extrema remain available in
+        # the post-bake geometry audit.
+        return bool(
+            np.quantile(ratio, 0.001) >= float(minimum_ratio)
+            and np.quantile(ratio, 0.999) <= float(maximum_ratio)
+        )
+
+    if safe(1.0):
+        return 1.0
+    low, high = 0.0, 1.0
+    for _ in range(24):
+        middle = 0.5 * (low + high)
+        if safe(middle):
+            low = middle
+        else:
+            high = middle
+    return float(low)
+
+
+def bake_soft_tissue_pose_clearance(
+    asset: AnatomyRiggedAsset,
+    *,
+    surface_vertices: np.ndarray,
+    surface_faces: np.ndarray,
+    surface_lbs_weights: np.ndarray,
+    surface_inverse_bind: np.ndarray,
+    surface_rest_joints: np.ndarray,
+    surface_parents: np.ndarray,
+    poses: dict[str, np.ndarray],
+    stage: str,
+    repair_tissues: tuple[str, ...] = ("vessel", "nerve"),
+    safety_margin_m: float = 0.0005,
+    correction_cap_m: float = 0.020,
+    maximum_edge_ratio: float = 1.25,
+    max_iterations: int = 4,
+    constraint_weight: float = 100.0,
+    rest_weight: float = 2.0,
+    smooth_weight: float = 40.0,
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Bake pose-robust soft clearance once in material/rest coordinates.
+
+    Violations are measured in a deterministic generic pose suite.  Their
+    inward displacement is pulled back through each vertex's Blender LBS
+    Jacobian, then diffused over the complete connected vessel/nerve component.
+    Runtime remains ordinary source-rig skinning: no surface query, pose cache,
+    Blender process, or pose-specific solve is serialized.
+    """
+    if asset.driver_indices is None or asset.driver_weights is None:
+        raise ValueError("pose-clearance bake requires Blender sparse weights")
+    if asset.source_vertex_ranges is None or asset.source_tissues is None:
+        raise ValueError("pose-clearance bake requires mesh topology metadata")
+    if not poses:
+        raise ValueError("pose-clearance bake requires at least one pose")
+    if not 0.0 < float(correction_cap_m) <= 0.020:
+        raise ValueError("correction_cap_m must be in (0, 0.020]")
+    if not 1.0 <= float(maximum_edge_ratio) <= 1.5:
+        raise ValueError("maximum_edge_ratio must be in [1, 1.5]")
+    if not 1 <= int(max_iterations) <= 6:
+        raise ValueError("max_iterations must be in [1, 6]")
+    if min(float(constraint_weight), float(rest_weight), float(smooth_weight)) <= 0.0:
+        raise ValueError("pose-clearance material weights must be positive")
+
+    from .anatomy_lbs import source_bone_skinning_transforms
+
+    permitted = {str(value).lower() for value in repair_tissues}
+    if not permitted or not permitted.issubset({"vessel", "nerve"}):
+        raise ValueError("pose-clearance bake is restricted to vessel/nerve tissues")
+    original = np.asarray(asset.vertices_rest, dtype=np.float64)
+    result = original.copy()
+    all_faces = np.asarray(asset.faces, dtype=np.int64).reshape(-1, 3)
+    ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64).reshape(-1, 2)
+    tissues = [str(value).lower() for value in asset.source_tissues]
+    names = [str(value) for value in asset.source_mesh_names]
+    indices = np.asarray(asset.driver_indices, dtype=np.int64)
+    weights = np.asarray(asset.driver_weights, dtype=np.float64)
+    selected_parts = [
+        np.arange(int(start), int(stop), dtype=np.int64)
+        for (start, stop), tissue in zip(ranges, tissues)
+        if tissue in permitted and int(stop) > int(start)
+    ]
+    if not selected_parts:
+        return asset, {"stage": str(stage), "available": False, "reason": "no selected tissues"}
+    selected = np.concatenate(selected_parts)
+    selected_lookup = np.full(len(result), -1, dtype=np.int64)
+    selected_lookup[selected] = np.arange(len(selected), dtype=np.int64)
+
+    pose_data: list[tuple[str, np.ndarray, np.ndarray]] = []
+    for pose_name, pose_value in poses.items():
+        pose = np.asarray(pose_value, dtype=np.float32).reshape(len(asset.joint_names), 3)
+        source_transforms = np.asarray(
+            source_bone_skinning_transforms(asset, pose), dtype=np.float64
+        )
+        surface_posed = _skin_lbs_surface(
+            surface_vertices,
+            surface_lbs_weights,
+            surface_inverse_bind,
+            surface_rest_joints,
+            surface_parents,
+            pose,
+        )
+        pose_data.append((str(pose_name), source_transforms, surface_posed))
+
+    cumulative = np.zeros_like(result)
+    component_reports: list[dict[str, Any]] = []
+    iterations_run = 0
+    initial_violations: dict[str, int] = {}
+    for iteration in range(int(max_iterations)):
+        best_severity = np.zeros(len(selected), dtype=np.float64)
+        desired_rest = np.zeros((len(selected), 3), dtype=np.float64)
+        iteration_by_pose: dict[str, int] = {}
+        query_h = np.concatenate(
+            (result[selected], np.ones((len(selected), 1), dtype=np.float64)),
+            axis=1,
+        )
+        for pose_name, transforms, surface_posed in pose_data:
+            chosen = transforms[indices[selected]]
+            blended = np.sum(weights[selected, :, None, None] * chosen, axis=1)
+            posed_query = np.einsum("nij,nj->ni", blended, query_h)[:, :3]
+            values, closest, normals = signed_distance(
+                posed_query, surface_posed, surface_faces
+            )
+            severity = values + float(safety_margin_m)
+            violating = severity > 0.0
+            iteration_by_pose[pose_name] = int(np.count_nonzero(violating))
+            initial_violations.setdefault(pose_name, iteration_by_pose[pose_name])
+            if not np.any(violating):
+                continue
+            target = closest[violating] - float(safety_margin_m) * normals[violating]
+            posed_delta = target - posed_query[violating]
+            linear = blended[violating, :3, :3]
+            determinant = np.linalg.det(linear)
+            stable = np.abs(determinant) > 1.0e-8
+            local_rows = np.flatnonzero(violating)[stable]
+            if not len(local_rows):
+                continue
+            pulled_back = np.linalg.solve(
+                linear[stable], posed_delta[stable, :, None]
+            )[:, :, 0]
+            stronger = severity[local_rows] > best_severity[local_rows]
+            chosen_rows = local_rows[stronger]
+            desired_rest[chosen_rows] = pulled_back[stronger]
+            best_severity[chosen_rows] = severity[chosen_rows]
+        constrained_global = selected[best_severity > 0.0]
+        if not len(constrained_global):
+            iterations_run = iteration
+            break
+
+        moved_this_iteration = 0
+        for mesh_index, ((start, stop), tissue, mesh_name) in enumerate(
+            zip(ranges, tissues, names)
+        ):
+            if tissue not in permitted or int(stop) <= int(start):
+                continue
+            start_i, stop_i = int(start), int(stop)
+            local_faces = _mesh_local_faces(all_faces, start_i, stop_i)
+            for component_index, component in enumerate(
+                _mesh_components(stop_i - start_i, local_faces)
+            ):
+                global_component = start_i + component
+                rows = selected_lookup[global_component]
+                constrained = best_severity[rows] > 0.0
+                if not np.any(constrained):
+                    continue
+                component_face_mask = np.all(np.isin(local_faces, component), axis=1)
+                component_faces_mesh = local_faces[component_face_mask]
+                inverse = np.full(stop_i - start_i, -1, dtype=np.int64)
+                inverse[component] = np.arange(len(component), dtype=np.int64)
+                component_faces = inverse[component_faces_mesh]
+                desired = desired_rest[rows]
+                displacement = _screened_laplacian_displacement(
+                    desired,
+                    constrained,
+                    component_faces,
+                    data_weight=float(constraint_weight),
+                    zero_weight=float(rest_weight),
+                    smooth_weight=float(smooth_weight),
+                )
+                proposed_total = cumulative[global_component] + displacement
+                norm = np.linalg.norm(proposed_total, axis=1)
+                proposed_total *= np.minimum(
+                    1.0,
+                    float(correction_cap_m) / np.maximum(norm, 1.0e-12),
+                )[:, None]
+                # Limit the next material increment from the already accepted
+                # geometry.  Scaling the *total* displacement from the
+                # original rest mesh on every iteration creates a false fixed
+                # point: one short/degenerate edge repeatedly shrinks all
+                # previous progress back to the same 1--3 mm solution even
+                # when a vessel must move farther as a smooth component.
+                proposed_increment = (
+                    proposed_total - cumulative[global_component]
+                )
+                shape_scale = _edge_safe_scale(
+                    result[global_component],
+                    proposed_increment,
+                    component_faces,
+                    minimum_ratio=1.0 / float(maximum_edge_ratio),
+                    maximum_ratio=float(maximum_edge_ratio),
+                )
+                applied = shape_scale * proposed_increment
+                result[global_component] += applied
+                cumulative[global_component] += applied
+                moved_this_iteration += int(
+                    np.count_nonzero(np.linalg.norm(applied, axis=1) > 1.0e-12)
+                )
+                component_reports.append(
+                    {
+                        "iteration": int(iteration),
+                        "mesh": mesh_name,
+                        "mesh_index": int(mesh_index),
+                        "component": int(component_index),
+                        "vertex_count": int(len(component)),
+                        "constrained_vertex_count": int(np.count_nonzero(constrained)),
+                        "edge_safe_scale": float(shape_scale),
+                    }
+                )
+        iterations_run = iteration + 1
+        if moved_this_iteration == 0:
+            break
+
+    final_by_pose: dict[str, dict[str, float | int]] = {}
+    query_h = np.concatenate(
+        (result[selected], np.ones((len(selected), 1), dtype=np.float64)), axis=1
+    )
+    for pose_name, transforms, surface_posed in pose_data:
+        blended = np.sum(
+            weights[selected, :, None, None] * transforms[indices[selected]], axis=1
+        )
+        posed_query = np.einsum("nij,nj->ni", blended, query_h)[:, :3]
+        values, _closest, _normals = signed_distance(
+            posed_query, surface_posed, surface_faces
+        )
+        violating = values > -float(safety_margin_m)
+        final_by_pose[pose_name] = {
+            "margin_violation_count": int(np.count_nonzero(violating)),
+            "outside_count": int(np.count_nonzero(values > 0.0)),
+            "maximum_outside_m": float(max(0.0, float(np.max(values)))),
+        }
+
+    displacement_norm = np.linalg.norm(cumulative, axis=1)
+    report: dict[str, Any] = {
+        "stage": str(stage),
+        "available": True,
+        "backend": "pose_ensemble_inverse_lbs_material_laplacian_v1",
+        "pose_specific_runtime": False,
+        "runtime_surface_queries": False,
+        "training_poses": [name for name, _transforms, _surface in pose_data],
+        "initial_margin_violations_by_pose": initial_violations,
+        "final_by_pose": final_by_pose,
+        "iterations": int(iterations_run),
+        "selected_vertex_count": int(len(selected)),
+        "changed_vertex_count": int(np.count_nonzero(displacement_norm > 1.0e-12)),
+        "mean_changed_displacement_m": float(
+            np.mean(displacement_norm[displacement_norm > 1.0e-12])
+        ) if np.any(displacement_norm > 1.0e-12) else 0.0,
+        "max_displacement_m": float(np.max(displacement_norm)),
+        "correction_cap_m": float(correction_cap_m),
+        "safety_margin_m": float(safety_margin_m),
+        "maximum_edge_ratio": float(maximum_edge_ratio),
+        "constraint_weight": float(constraint_weight),
+        "rest_weight": float(rest_weight),
+        "smooth_weight": float(smooth_weight),
+        "components": component_reports,
+        "source_weights_preserved": True,
+        "source_hierarchy_preserved": True,
+    }
+    metadata = dict(asset.metadata or {})
+    history = list(metadata.get("soft_tissue_pose_clearance", []))
+    history.append(report)
+    metadata["soft_tissue_pose_clearance"] = history
+    baked = replace(
+        asset,
+        vertices_rest=result.astype(np.float32),
+        metadata=metadata,
+    )
+    baked.validate()
+    return baked, report
+
+
 def _fit_similarity(source: np.ndarray, target: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
     from scipy.spatial.transform import Rotation
 

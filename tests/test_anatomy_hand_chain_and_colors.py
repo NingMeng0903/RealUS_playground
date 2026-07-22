@@ -19,6 +19,7 @@ from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
 from projects.genesis_ue_sync.anatomy_retarget.material_fit import (
     _hand_mesh_segment,
     rigid_head_attachment_mask,
+    hyoid_rest_attachment_mask,
     shaft_preserving_segment_map,
 )
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import (
@@ -236,6 +237,25 @@ def test_rigid_head_attachments_follow_exported_blender_subtree() -> None:
     selected = rigid_head_attachment_mask(asset)
 
     np.testing.assert_array_equal(selected, (True, True, True, False))
+
+
+def test_hyoid_rest_attachment_does_not_change_runtime_controller_membership() -> None:
+    asset = SimpleNamespace(
+        vertices_rest=np.zeros((3, 3), dtype=np.float32),
+        source_mesh_names=["Hyoid_Bone", "Upper_Skull", "Larynx"],
+        source_vertex_ranges=np.asarray(((0, 1), (1, 2), (2, 3))),
+        source_tissues=["bone", "bone", "organ"],
+        driver_indices=np.asarray(((2, 1), (3, 0), (2, 0))),
+        driver_weights=np.asarray(((0.6, 0.4), (1.0, 0.0), (1.0, 0.0))),
+    )
+
+    before_indices = asset.driver_indices.copy()
+    before_weights = asset.driver_weights.copy()
+    selected = hyoid_rest_attachment_mask(asset)
+
+    np.testing.assert_array_equal(selected, (True, False, False))
+    np.testing.assert_array_equal(asset.driver_indices, before_indices)
+    np.testing.assert_array_equal(asset.driver_weights, before_weights)
 
 
 def test_shaft_fit_protects_epiphyses_and_cross_section() -> None:

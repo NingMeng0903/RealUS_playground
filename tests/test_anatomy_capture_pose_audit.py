@@ -110,6 +110,8 @@ def test_region_matching_does_not_mix_sides_feet_or_heart() -> None:
     assert not _region_name_matches("_1st_Distal_Phalanx_Foot_L", "left_hand")
     assert not _region_name_matches("Heart", "head_neck")
     assert _region_name_matches("Inner_Ear_L", "head_neck")
+    assert _region_name_matches("Talus_L", "left_ankle")
+    assert _region_name_matches("_1st_Metatarsal_L", "left_foot")
 
 
 def test_capture_audit_reposes_canonical_body_when_capture_betas_differ(tmp_path: Path) -> None:

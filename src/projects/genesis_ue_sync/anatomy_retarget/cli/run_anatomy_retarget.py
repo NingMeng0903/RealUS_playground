@@ -22,6 +22,7 @@ from common.project import project_paths
 from projects.genesis_ue_sync.anatomy_retarget.asset_align import normalize_rigged_asset_file
 from projects.genesis_ue_sync.anatomy_retarget.blender_retarget_runner import run_retarget
 from projects.genesis_ue_sync.anatomy_retarget.containment import (
+    bake_soft_tissue_pose_clearance,
     load_body_surface,
     select_whole_component_harmonic_reference,
     signed_distance,
@@ -64,10 +65,13 @@ from projects.genesis_ue_sync.anatomy_retarget.tube_graph import (
 )
 from projects.genesis_ue_sync.anatomy_retarget.material_fit import (
     close_weighted_bone_interfaces,
+    fit_subject_bone_containment,
     fit_articulated_rest,
     fit_source_bind_hands,
     fit_stage1_rigid_regions,
     merge_fitted_hand_reference,
+    restore_craniocervical_rest_chain,
+    restore_hand_joint_interfaces,
 )
 from projects.genesis_ue_sync.anatomy_retarget.intersection_diagnostics import (
     enforce_station_intersection_nonregression,
@@ -1963,6 +1967,39 @@ def main() -> int:
                 rig_weighted_nerve_report["reconstructed_vertex_count"],
             )
     if args.stage1_rigid_region_baseline:
+        asset, subject_bone_report = fit_subject_bone_containment(
+            asset,
+            surface_vertices=subject_surface[0],
+            surface_faces=subject_surface[1],
+            stage="stage1_subject_bone_containment",
+        )
+        shape_report["subject_bone_containment"] = subject_bone_report
+        logging.info(
+            "subject bone containment fitted groups=%s controllers=%s",
+            len(subject_bone_report.get("groups", [])),
+            subject_bone_report.get("moved_controller_count", 0),
+        )
+        asset, hand_interface_report = restore_hand_joint_interfaces(
+            asset,
+            stage="stage1_hand_joint_interfaces",
+        )
+        shape_report["hand_joint_interfaces"] = hand_interface_report
+        logging.info(
+            "hand spatial joint interfaces fitted count=%s",
+            len(hand_interface_report.get("interfaces", [])),
+        )
+    if args.stage1_rigid_region_baseline:
+        asset, craniocervical_report = restore_craniocervical_rest_chain(
+            asset,
+            stage="stage1_craniocervical_chain",
+        )
+        shape_report["craniocervical_chain"] = craniocervical_report
+        logging.info(
+            "craniocervical chain gap %.3fmm -> %.3fmm",
+            1000.0 * float(craniocervical_report.get("skull_c1_gap_before_m", 0.0)),
+            1000.0 * float(craniocervical_report.get("skull_c1_gap_after_m", 0.0)),
+        )
+    if args.stage1_rigid_region_baseline:
         # Bone placement and target bind are now final.  Reconstruct every
         # vessel and nerve once from the immutable Blender sparse weights and
         # this final 235-bone fit.  Regional blending left the long limb tubes
@@ -2019,6 +2056,69 @@ def main() -> int:
             "tube rest intersection advisory rejected_meshes=%s",
             tube_rest_acceptance["rejected_mesh_count"],
         )
+        canonical_weights_path = Path(args.canonical_dir) / "smpl_canonical_weights.npz"
+        with np.load(canonical_weights_path, allow_pickle=False) as canonical_weights:
+            import trimesh
+
+            canonical_mesh = trimesh.load(
+                Path(args.canonical_dir) / "smpl_canonical_tpose.obj",
+                process=False,
+            )
+            if not isinstance(canonical_mesh, trimesh.Trimesh):
+                canonical_mesh = canonical_mesh.dump(concatenate=True)
+            canonical_faces_full = np.asarray(canonical_mesh.faces, dtype=np.int64)
+            face_components = trimesh.graph.connected_components(
+                canonical_mesh.face_adjacency,
+                nodes=np.arange(len(canonical_faces_full)),
+                min_len=1,
+            )
+            body_face_ids = max(face_components, key=len)
+            body_faces_full = canonical_faces_full[np.asarray(body_face_ids, dtype=np.int64)]
+            body_vertex_ids = np.unique(body_faces_full)
+            body_inverse = np.full(len(canonical_mesh.vertices), -1, dtype=np.int64)
+            body_inverse[body_vertex_ids] = np.arange(len(body_vertex_ids), dtype=np.int64)
+            material_surface_vertices = np.asarray(
+                canonical_mesh.vertices, dtype=np.float64
+            )[body_vertex_ids]
+            material_surface_faces = body_inverse[body_faces_full].astype(np.int32)
+            material_surface_weights = np.asarray(
+                canonical_weights["lbs_weights"], dtype=np.float32
+            )[body_vertex_ids]
+            material_pose_reports: list[dict[str, Any]] = []
+            # Three strongly screened passes converge the static material
+            # field for hinge and multiaxis stress poses while each pass keeps
+            # its own local edge-strain line search.  This remains a one-time
+            # beta bake; runtime performs no surface query or solve.
+            for pass_index in (1, 2, 3):
+                asset, material_pose_report = bake_soft_tissue_pose_clearance(
+                    asset,
+                    surface_vertices=material_surface_vertices,
+                    surface_faces=material_surface_faces,
+                    surface_lbs_weights=material_surface_weights,
+                    surface_inverse_bind=np.asarray(
+                        canonical_weights["inverse_bind"], dtype=np.float32
+                    ),
+                    surface_rest_joints=np.asarray(
+                        canonical_weights["rest_joints"], dtype=np.float32
+                    ),
+                    surface_parents=np.asarray(
+                        canonical_weights["parents"], dtype=np.int32
+                    ),
+                    poses=pose_cases(list(asset.joint_names)),
+                    stage=f"stage1_pose_material_clearance_pass{pass_index}",
+                    safety_margin_m=0.0045,
+                    maximum_edge_ratio=1.15,
+                    max_iterations=6,
+                    constraint_weight=100.0,
+                    rest_weight=1.0,
+                    smooth_weight=400.0,
+                )
+                material_pose_reports.append(material_pose_report)
+        shape_report["pose_material_clearance"] = {
+            "runtime_surface_queries": False,
+            "pose_specific_runtime": False,
+            "passes": material_pose_reports,
+        }
     target_bind = np.asarray(asset.target_bind_global, dtype=np.float64)
     target_inverse = np.asarray(asset.runtime_inverse_bind, dtype=np.float64)
     bind_roundtrip["target_bind_max_matrix_error"] = float(

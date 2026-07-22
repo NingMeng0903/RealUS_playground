@@ -514,7 +514,13 @@ def apply_station_pose_follow(
     rest_handle = station_point(head[ai], mid[ai], tail[ai], si)
     pose_handle = station_point(posed_head[ai], posed_mid[ai], posed_tail[ai], si)
     displacement = np.sum(weights[active, :, None] * (pose_handle - rest_handle), axis=1)
-    result[active] = rest[active] + strength[active, None] * displacement
+    station_candidate = rest[active] + displacement
+    # ``strength`` is the amount of station correction, not the amount of
+    # overall body motion.  Blend from the already evaluated Blender LBS pose;
+    # scaling the absolute station displacement from rest leaves low-strength
+    # vessels near the T-pose while the body moves metres away.
+    alpha = strength[active, None]
+    result[active] += alpha * (station_candidate - result[active])
     return result.astype(np.float32)
 
 

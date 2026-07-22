@@ -677,6 +677,24 @@ def source_bone_skinning_transforms(
     use_full_source_local_fk = bool(
         (asset.metadata or {}).get("source_full_local_fk_v2", False)
     )
+    use_connected_source_local_fk = bool(
+        (asset.metadata or {}).get("source_connected_local_fk_v3", False)
+    )
+    selected_source_local_fk = {
+        int(value)
+        for value in (asset.metadata or {}).get("source_local_fk_bones_v3", [])
+    }
+    if any(
+        value < 0 or value >= len(rest_global_bones)
+        for value in selected_source_local_fk
+    ):
+        raise ValueError("source_local_fk_bones_v3 contains an invalid bone")
+    source_use_connect = np.asarray(
+        asset.source_bone_use_connect
+        if asset.source_bone_use_connect is not None
+        else np.zeros(len(rest_global_bones), dtype=np.uint8),
+        dtype=bool,
+    )
     direct_driver_bones = {
         int(value)
         for value in (asset.metadata or {}).get("source_direct_driver_bones_v1", [])
@@ -700,6 +718,25 @@ def source_bone_skinning_transforms(
         if asset.source_bone_corrective_axis is not None
         else np.zeros((len(rest_global_bones), 3), dtype=np.float32),
         dtype=np.float64,
+    )
+    corrective_input_axis_raw = (asset.metadata or {}).get(
+        "source_corrective_input_axes_v1"
+    )
+    corrective_input_axis = None
+    if corrective_input_axis_raw is not None:
+        corrective_input_axis = np.asarray(
+            corrective_input_axis_raw, dtype=np.float64
+        )
+        if corrective_input_axis.shape != (len(rest_global_bones), 3):
+            raise ValueError(
+                "source_corrective_input_axes_v1 has an invalid shape"
+            )
+        if not np.all(np.isfinite(corrective_input_axis)):
+            raise ValueError(
+                "source_corrective_input_axes_v1 contains non-finite values"
+            )
+    use_corrective_rigid_blend = bool(
+        (asset.metadata or {}).get("source_corrective_rigid_blend_v2", False)
     )
     input_pose = pose_to_smplx55_axis_angle(pose_axis_angle).astype(np.float64)
     target_pose_global = joint_global_transforms(
@@ -739,9 +776,80 @@ def source_bone_skinning_transforms(
             joint = int(asset.source_bone_smplx_a[corrective_source])
             if joint < 0 or joint >= len(input_pose):
                 raise ValueError(f"source corrective {bi} has an invalid SMPL-X driver")
+            if use_corrective_rigid_blend:
+                upper = int(source_parents[corrective_source])
+                if upper < 0:
+                    raise ValueError(
+                        f"source corrective {bi} has no proximal rigid driver"
+                    )
+                upper_delta = (
+                    posed_global[upper] @ np.linalg.inv(rest_global_bones[upper])
+                )
+                lower_delta = (
+                    posed_global[parent] @ np.linalg.inv(rest_global_bones[parent])
+                )
+                # In the authored Action the child-local correction opposes
+                # ``gain`` of the knee rotation already inherited from the
+                # lower leg.  Therefore the absolute patella motion retains
+                # (1-gain) of the complete lower-leg SE(3), including twist
+                # and ab/adduction instead of only a scalar hinge norm.
+                lower_fraction = float(
+                    np.clip(1.0 - float(corrective_gain[bi]), 0.0, 1.0)
+                )
+                blended_delta = _interpolate_rigid(
+                    upper_delta, lower_delta, lower_fraction
+                )
+                # The Blender corrective is a child-local rotation: its
+                # origin is still transported by the lower-leg parent.  A
+                # direct SE(3) interpolation also blends the two pivot
+                # translations and can launch the patella away from the knee
+                # when the femur and tibia rotate about different world-space
+                # centres.  Keep the learned intermediate orientation, but
+                # anchor the corrective's rest origin to the distal transport.
+                corrective_origin = rest_global_bones[bi, :3, 3]
+                distal_origin = (
+                    lower_delta[:3, :3] @ corrective_origin
+                    + lower_delta[:3, 3]
+                )
+                blended_delta[:3, 3] = (
+                    distal_origin
+                    - blended_delta[:3, :3] @ corrective_origin
+                )
+                posed_global[bi] = blended_delta @ rest_global_bones[bi]
+                continue
             axis = corrective_axis[bi].copy()
             axis /= max(float(np.linalg.norm(axis)), 1.0e-12)
-            flexion = float(np.linalg.norm(input_pose[joint]))
+            if corrective_input_axis is None:
+                # Compatibility for assets baked before the source Action's
+                # signed driver axis was serialized.
+                flexion = float(np.linalg.norm(input_pose[joint]))
+            else:
+                input_axis = corrective_input_axis[bi].copy()
+                input_axis_norm = float(np.linalg.norm(input_axis))
+                if input_axis_norm < 1.0e-8:
+                    raise ValueError(
+                        f"source corrective {bi} has a degenerate input axis"
+                    )
+                input_axis /= input_axis_norm
+                driver_parent = int(source_parents[corrective_source])
+                if driver_parent >= 0:
+                    driver_local = (
+                        np.linalg.inv(posed_global[driver_parent])
+                        @ posed_global[corrective_source]
+                    )
+                else:
+                    driver_local = posed_global[corrective_source]
+                driver_basis = (
+                    np.linalg.inv(rest_local_bones[corrective_source, :3, :3])
+                    @ driver_local[:3, :3]
+                )
+                from scipy.spatial.transform import Rotation
+
+                driver_rotvec = Rotation.from_matrix(driver_basis).as_rotvec()
+                # Only the signed flexion component learned from Blender may
+                # activate the child mechanism. Off-axis hip/knee twist must
+                # not be interpreted as patella flexion.
+                flexion = float(driver_rotvec @ input_axis)
             correction = np.eye(4, dtype=np.float64)
             correction[:3, :3] = axis_angle_to_matrix(
                 axis * (float(corrective_gain[bi]) * flexion)
@@ -753,7 +861,14 @@ def source_bone_skinning_transforms(
         if bi in direct_driver_bones:
             posed_global[bi] = driver_frames[bi] @ coupling[bi]
             continue
-        if use_full_source_local_fk and parent >= 0:
+        if (
+            parent >= 0
+            and (
+                use_full_source_local_fk
+                or (use_connected_source_local_fk and bool(source_use_connect[bi]))
+                or bi in selected_source_local_fk
+            )
+        ):
             # Driver coupling supplies world rotation; Blender's fitted local
             # bind remains authoritative for pivots and local translations.
             desired = driver_frames[bi] @ coupling[bi]

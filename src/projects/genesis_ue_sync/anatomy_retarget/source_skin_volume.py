@@ -28,7 +28,20 @@ _MAX_FINAL_SURFACE_DISTANCE_M = 0.10
 _MAX_BOUNDARY_DISPLACEMENT_M = 0.50
 _MIN_REGISTRATION_PROGRESS_M = 1.0e-7
 _FINE_SHELL_HOMOTOPY = (0.10, 0.25, 0.45, 0.65, 0.82, 1.00)
-_SEMANTIC_PREALIGN_CANDIDATES = (0.375, 0.3125, 0.30, 0.25, 0.20, 0.15)
+# The semantic guide is an orientation-preserving initialisation, not the
+# subject-shape solve itself.  Slender/extreme betas can need a smaller first
+# homotopy step even though the later shell registration remains full-strength.
+_SEMANTIC_PREALIGN_CANDIDATES = (
+    0.375,
+    0.3125,
+    0.30,
+    0.25,
+    0.20,
+    0.15,
+    0.125,
+    0.10,
+    0.075,
+)
 _SEMANTIC_PREALIGN_MIN_PROBE_STRETCH = 0.80
 _SEMANTIC_PREALIGN_MAX_PROBE_STRETCH = 1.22
 
@@ -620,10 +633,11 @@ def _build_source_cage(
     vertices: np.ndarray,
     faces: np.ndarray,
     cache_path: Path,
-    *,
-    dilation_iterations: int = 1,
 ) -> dict[str, np.ndarray]:
-    signature = _signature(vertices, faces) + f":dilation={int(dilation_iterations)}"
+    # The material domain is defined exclusively by the authored Skin_Glass.
+    # Keeping the fixed one-voxel margin inside this function prevents callers
+    # from enlarging the domain to accommodate anatomy query points.
+    signature = _signature(vertices, faces)
     if cache_path.is_file():
         data = np.load(cache_path)
         cached = str(np.asarray(data.get("signature", "")).reshape(-1)[0])
@@ -632,9 +646,7 @@ def _build_source_cage(
 
     import tetgen
 
-    surface, pitch = _voxel_union(
-        vertices, faces, dilation_iterations=int(dilation_iterations)
-    )
+    surface, pitch = _voxel_union(vertices, faces, dilation_iterations=1)
     generator = tetgen.TetGen(
         np.asarray(surface.vertices, dtype=np.float64),
         np.asarray(surface.faces, dtype=np.int32),
@@ -792,13 +804,15 @@ def _topology_preserving_cage_registration(
     )
 
     def solve_original_harmonic(boundary_values: np.ndarray) -> np.ndarray:
-        field = np.zeros_like(original)
-        field[boundary] = boundary_values
-        if harmonic_solver is not None:
-            field[interior] = harmonic_solver.solve(
-                np.asarray(-(stiffness[interior][:, boundary] @ boundary_values), dtype=np.float64)
-            )
-        return field
+        return _harmonic_step(
+            original,
+            elements,
+            boundary,
+            boundary_values,
+            interior=interior,
+            stiffness=stiffness,
+            solver=harmonic_solver,
+        )
     # Surface progress is measured against the actual SMPL-X shell even when
     # a semantic correspondence is present.  The latter is a separate
     # Dirichlet objective and cannot be compared numerically to point-to-shell
@@ -954,18 +968,32 @@ def _harmonic_step(
     elements: np.ndarray,
     boundary: np.ndarray,
     boundary_values: np.ndarray,
+    *,
+    interior: np.ndarray | None = None,
+    stiffness: Any | None = None,
+    solver: Any | None = None,
 ) -> np.ndarray:
     from scipy.sparse.linalg import spsolve
 
     field = np.zeros_like(nodes, dtype=np.float64)
     field[boundary] = boundary_values
-    interior = np.setdiff1d(np.arange(len(nodes)), boundary)
-    stiffness = _tet_stiffness(nodes, elements)
+    if interior is None:
+        interior = np.setdiff1d(np.arange(len(nodes)), boundary)
+    else:
+        interior = np.asarray(interior, dtype=np.int64)
+    if stiffness is None:
+        stiffness = _tet_stiffness(nodes, elements)
     if len(interior):
         kii = stiffness[interior][:, interior]
         kib = stiffness[interior][:, boundary]
-        for axis in range(3):
-            field[interior, axis] = spsolve(kii, -(kib @ field[boundary, axis]))
+        right_hand_side = np.asarray(
+            -(kib @ field[boundary]), dtype=np.float64
+        )
+        if solver is not None:
+            field[interior] = solver.solve(right_hand_side)
+        else:
+            for axis in range(3):
+                field[interior, axis] = spsolve(kii, right_hand_side[:, axis])
     return field
 
 
@@ -1541,7 +1569,6 @@ def apply_source_skin_volume_registration(
             skin_vertices,
             skin_faces,
             root / "source_skin_volume_cage_v18_subject_shell_full_domain.npz",
-            dilation_iterations=1,
         )
     nodes = np.asarray(cage["nodes"], dtype=np.float64)
     elements = np.asarray(cage["elements"], dtype=np.int32)
@@ -1639,7 +1666,8 @@ def apply_source_skin_volume_registration(
         if continuous_prealign_field is None:
             raise RuntimeError(
                 "no continuous semantic prealign candidate satisfies both "
-                "Jacobian and bind-probe stretch gates"
+                "Jacobian and bind-probe stretch gates: "
+                f"{json.dumps(selection_attempts, sort_keys=True)}"
             )
         prealign_report["blend"] = prealign_blend
         continuous_report["selection_attempts"] = selection_attempts
@@ -1680,7 +1708,6 @@ def apply_source_skin_volume_registration(
             skin_vertices,
             skin_faces,
             root / "source_skin_volume_cage_v24_continuous_semantic_remesh.npz",
-            dilation_iterations=1,
         )
         nodes = np.asarray(cage["nodes"], dtype=np.float64)
         elements = np.asarray(cage["elements"], dtype=np.int32)
