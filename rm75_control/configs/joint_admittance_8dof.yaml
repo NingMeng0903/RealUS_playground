@@ -345,11 +345,13 @@ hybrid_motion:
   v_r_max_m_s: 0.06
   proactive_press_is_gate: 0.5
 
-# LW100 rail servo (Modbus RTU over USR-TCP232). Encoder feedback drives twin SHM.
+# LW100 rail servo (Modbus RTU over USR-TCP232).
+# Open-loop: motor executes WBC q_cmd[0] only (no encoder chase — that overshot to travel).
+# Encoder is SHM/twin display only; WBC keeps its own smooth q_cmd rail state.
 # Workflow without limit switches (default):
 #   1) Manually push carriage to -Y end (mechanical 0) before starting controller.
 #   2) zero_mode=current → start pose becomes rail_y=0.
-#   3) home_on_exit=true → on Ctrl-C / exit, slow-chase back to 0 then disable.
+#   3) home_on_exit=true → on Ctrl-C / exit, open-loop back to 0 then disable.
 # Software also clamps targets to [0, inner.rail.travel_m].
 # Optional fixed zero: zero_mode=fixed + counts0=<encoder at end> (same power cycle only).
 hw:
@@ -363,13 +365,17 @@ hw:
     counts0: 0
     sign: 1
     enable_settle_s: 0.2
-    poll_hz: 20
+    poll_hz: 30              # encoder read for twin SHM
     deadband_mm: 0.5
-    max_speed_rpm: 2000
+    max_speed_rpm: 1200      # matches inner.rail.v_max_m_s=0.20 @ 10 mm/rev
+    preview_s: 3.0           # look-ahead: coalesce WBC ramp into 1–2 long segments
+    max_segment_mm: 800      # = travel; avoid 20 mm stop-start chunks
+    min_segment_mm: 1.0
     busy_speed_rpm: 1
     home_on_exit: true
     home_speed_rpm: 200
     home_timeout_s: 60
+    verbose: false
 
 startup:
   pose_slot_q_deg: null

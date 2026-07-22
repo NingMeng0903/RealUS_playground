@@ -14,6 +14,7 @@ from projects.genesis_ue_sync.anatomy_retarget.cli.run_anatomy_retarget import (
     _publish_upsert,
 )
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import load_rigged_asset
+from projects.genesis_ue_sync.anatomy_retarget.stage1_contract import stage1_runtime_contract
 
 
 DEFAULT_TRUSTED_ASSET = Path(
@@ -41,8 +42,14 @@ def validate_publishable_asset(path: Path) -> tuple[object, dict[str, object]]:
     asset = load_rigged_asset(asset_path, validate=True)
     metadata = dict(asset.metadata or {})
     failures: list[str] = []
-    if not bool(metadata.get("source_full_local_fk_v2", False)):
-        failures.append("source_full_local_fk_v2 is not enabled")
+    runtime_contract = stage1_runtime_contract(asset)
+    if not bool(runtime_contract.get("passed", False)):
+        failures.append(
+            "Stage-1 runtime contract failed: "
+            f"missing={runtime_contract.get('required_runtime_fields_missing', [])}, "
+            f"pose_cache_absent={runtime_contract.get('pose_cache_absent')}, "
+            f"zero_pose_vertex_error_m={runtime_contract.get('zero_pose_vertex_error_m')}"
+        )
     if asset.source_bind_vertices is None:
         failures.append("source_bind_vertices is missing")
     if asset.source_bone_names is None or len(asset.source_bone_names) != 235:
@@ -86,7 +93,10 @@ def validate_publishable_asset(path: Path) -> tuple[object, dict[str, object]]:
         "source_bones": int(len(asset.source_bone_names)),
         "driver_width": driver_width,
         "t_pose_roundtrip_max_m": roundtrip_max,
-        "source_full_local_fk_v2": True,
+        "runtime_backend": runtime_contract.get("runtime_backend"),
+        "runtime_contract_version": runtime_contract.get("contract_version"),
+        "requires_blender_at_runtime": runtime_contract.get("requires_blender_at_runtime"),
+        "requires_pose_rebake": runtime_contract.get("requires_pose_rebake"),
         "pose_cache_present": False,
     }
 

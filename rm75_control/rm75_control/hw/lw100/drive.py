@@ -49,7 +49,9 @@ FA73_PROTO_8N1 = 3
 
 # After FA-53 software enable, wait for ZSFD before accepting CTRG (manual FD-1 / CTRG §7.2).
 ENABLE_SETTLE_S = 0.2
-CTRG_EDGE_HOLD_S = 0.2
+# Streaming follow needs short CTRG edges; 200 ms/edge limited the rail to ~2.5 Hz
+# and made the twin/controller look stuttery. 20 ms is enough for the DI filter.
+CTRG_EDGE_HOLD_S = 0.02
 # FA4/FA14/FD-0 writes read back immediately but only become *active* after FA-60 soft reset
 # (or power-cycle). Without this, enable/hold works but CTRG/speed commands are ignored.
 SOFT_RESET_RECONNECT_S = 1.5
@@ -381,7 +383,7 @@ class LW100Drive:
     def trigger_p1(self, steps: list[str] | None = None) -> None:
         """Select internal position P1 (POS=000) and pulse CTRG rising edge."""
         log = steps if steps is not None else []
-        hold = max(0.05, float(CTRG_EDGE_HOLD_S))
+        hold = max(0.005, float(CTRG_EDGE_HOLD_S))
         # POS2=0, POS1=0, POS0=0 — CTRG low
         self.write_param(P_FC18_DI_FORCE4, 0)
         time.sleep(hold)

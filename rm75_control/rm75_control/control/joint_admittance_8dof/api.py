@@ -93,6 +93,8 @@ class SecondaryPolicy:
             # the governor (hardware logs: ψ(q0)=72° vs ψ(target)=155° with
             # arm_task ON → joint_err>20° → t_ref frozen).  Rail extension and
             # arm-angle resume at scan entry (preset=track).
+            # COUPLED so the joint plan can carry rail_y (e.g. 0 → center).
+            inner.set_coupled()
             inner.set_arm_task_suppressed(True)
             inner.set_centering_suppressed(True)
             inner.set_manipulability_active(False)

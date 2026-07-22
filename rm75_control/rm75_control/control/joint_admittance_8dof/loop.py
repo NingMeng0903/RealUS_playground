@@ -1137,10 +1137,23 @@ def _expand_q_meas(q_deg_or_rad: np.ndarray, rail_m: float) -> np.ndarray:
     raise ValueError(f"expected 7 or 8 joint values, got {q.size}")
 
 
-def _rail_m_for_feedback(rail_bridge, inner: JointIkController) -> float:
-    """Measured rail for FK/SHM when LW100 bridge is active; else WBC command."""
+def _rail_m_for_init(rail_bridge, inner: JointIkController) -> float:
+    """Seed WBC ``q_cmd[0]`` at task/phase start.
+
+    Use the open-loop command stream (what the motor was told), not the encoder.
+    Encoder feedback in the WBC froze the governor, blocked pose-D arrival, and
+    made force-hybrid unreachable; it also stacked incremental segments to travel.
+    """
     if rail_bridge is not None and rail_bridge.enabled:
-        return float(rail_bridge.measured_m)
+        return float(rail_bridge.commanded_m)
+    return float(inner.q_cmd[0])
+
+
+def _rail_m_for_feedback(_rail_bridge, inner: JointIkController) -> float:
+    """Rail component of ``q_meas`` inside the WBC tick: always ``q_cmd[0]``.
+
+    Motor tracking is open-loop in ``RailServoBridge``; encoder is SHM/twin only.
+    """
     return float(inner.q_cmd[0])
 
 
@@ -1294,7 +1307,7 @@ def run_joint_admittance_phases(
             raise RuntimeError("no joint feedback from robot")
         q0_rad = _expand_q_meas(
             deg2rad(snap0.q_deg),
-            _rail_m_for_feedback(rail_bridge, inner),
+            _rail_m_for_init(rail_bridge, inner),
         )
         # The whole Cartesian loop (inner and outer) uses the Pinocchio tcp
         # frame; Realman FK for the active tool may differ.

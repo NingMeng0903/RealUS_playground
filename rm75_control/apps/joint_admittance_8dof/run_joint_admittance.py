@@ -167,7 +167,12 @@ def _run_controller_service(
 
 
 class _RailPublisher:
-    """Mutable rail source for SHM twin during idle vs active WBC."""
+    """Mutable rail source for SHM twin during idle vs active WBC.
+
+    When the LW100 bridge is enabled, publish **encoder** position (poll_hz)
+    so the twin mirrors the real carriage. WBC itself uses open-loop ``q_cmd[0]``
+    and does not close the loop on this value.
+    """
 
     def __init__(self, default_m: float, bridge: RailServoBridge | None = None) -> None:
         self._default_m = float(default_m)
