@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- RM75-6F on Y-axis prismatic rail (8 DOF): rail_y + joint_1..joint_7.
      Kinematics-only URDF for Pinocchio / WBC.
-     Rail: 50 cm travel (+-25 cm), symmetric limits; arm chain identical to RM75-6F. -->
+     Rail: 80 cm travel (rail_y = 0 at -Y end .. 0.80 at +Y end); arm chain identical to RM75-6F. -->
 <robot name="RM75-6F-8dof">
   <link name="rail_base">
     <inertial>
@@ -18,11 +18,11 @@
     </inertial>
   </link>
   <joint name="rail_y" type="prismatic">
-    <origin xyz="0 0 0" rpy="0 0 0" />
+    <origin xyz="0 -0.4 0" rpy="0 0 0" />
     <parent link="rail_base" />
     <child link="slider_link" />
     <axis xyz="0 1 0" />
-    <limit lower="-0.25" upper="0.25" velocity="0.20" effort="500" />
+    <limit lower="0.0" upper="0.80" velocity="0.20" effort="500" />
   </joint>
   <link name="base_link">
     <inertial>

@@ -174,7 +174,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         lock_vel_eps_m_s=float(r.get("lock_vel_eps_m_s", 0.0)),
         lock_hard_pin=bool(r.get("lock_hard_pin", True)),
         v_max_m_s=(float(r["v_max_m_s"]) if r.get("v_max_m_s") is not None else None),
-        travel_m=float(r.get("travel_m", 0.50)),
+        travel_m=float(r.get("travel_m", 0.80)),
     )
 
     return JointIkConfig(

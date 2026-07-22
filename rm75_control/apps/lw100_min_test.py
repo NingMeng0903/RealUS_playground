@@ -26,7 +26,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lead-mm", type=float, default=10.0, help="1610 screw → 10 mm/rev")
     p.add_argument("--revs", type=int, default=1, help="Incremental P1 motor revolutions per trigger")
     p.add_argument("--speed-rpm", type=int, default=60, help="FD-4 segment speed (keep low for first test)")
-    p.add_argument("--enable-settle-s", type=float, default=1.0, help="Wait after enable before CTRG")
+    p.add_argument("--enable-settle-s", type=float, default=0.2, help="Wait after enable before CTRG")
     p.add_argument("--run", action="store_true", help="Execute on hardware (default: dry-run)")
     p.add_argument("-v", "--verbose", action="store_true")
     return p.parse_args()

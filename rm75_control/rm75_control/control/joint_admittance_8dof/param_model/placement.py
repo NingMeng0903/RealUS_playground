@@ -1,10 +1,10 @@
-"""World placement from base-coordinate calibration (rail_y = 0).
+"""World placement from base-coordinate calibration (rail_y = 0 = -Y end).
 
 The assembly is NOT placed by specifying the frame pose.  Instead the
 user calibrates the **base coordinate** (``base_link`` / ``arm_mount`` origin)
-in world when ``rail_y = 0``, optionally with a small tilt.  The Genesis entity
-pose (``rail_base`` root) is back-solved so rail, slider, frame, and arm all
-follow from the URDF kinematic tree.
+in world when ``rail_y = 0`` (carriage at the -Y end stop), optionally with a
+small tilt.  The Genesis entity pose (``rail_base`` root) is back-solved so rail,
+slider, frame, and arm all follow from the URDF kinematic tree.
 
 Orientation in yaml uses **quaternion** ``base_quat_wxyz`` (Genesis convention:
 w, x, y, z).  ``base_euler_deg`` is accepted as a fallback only when quat is
@@ -20,13 +20,16 @@ from scipy.spatial.transform import Rotation as Rsc
 
 
 def base_offset_in_rail_base(spec: dict[str, Any], layout: dict[str, float]) -> np.ndarray:
-    """``base_link`` origin in ``rail_base`` frame when ``rail_y = 0`` (meters)."""
+    """``base_link`` origin in ``rail_base`` frame when ``rail_y = 0`` (meters).
+
+    ``rail_y = 0``: slider flush against the -Y end-plate inner face.
+    """
     m = float(layout["m"])
     arm = spec["arm_mount"]
     return np.array(
         [
             float(arm["offset_x_mm"]) * m,
-            float(arm["offset_y_mm"]) * m,
+            float(arm["offset_y_mm"]) * m + float(layout["rail_y_origin_y"]),
             float(layout["slider_top_z"]),
         ],
         dtype=np.float64,

@@ -285,9 +285,9 @@ def _cranial_compound_metrics(asset: AnatomyRiggedAsset) -> dict[str, Any]:
     # incorrectly assigns beta-field deformation to the compound fit.
     source = getattr(asset, "harmonic_reference_vertices", None)
     if source is None:
-        source = asset.source_bind_vertices
+        source = getattr(asset, "source_bind_vertices", None)
     if source is None:
-        source = asset.registration_reference
+        source = getattr(asset, "registration_reference", None)
     if source is None:
         return {"available": False, "member_meshes": [], "upper_teeth_meshes": []}
     source = np.asarray(source, dtype=np.float64)

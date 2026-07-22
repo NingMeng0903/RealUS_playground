@@ -35,11 +35,11 @@
     </inertial>
   </link>
   <joint name="rail_y" type="prismatic">
-    <origin xyz="0 0 0" rpy="0 0 0" />
+    <origin xyz="0 -0.4 0" rpy="0 0 0" />
     <parent link="rail_base" />
     <child link="slider_link" />
     <axis xyz="0 1 0" />
-    <limit lower="-0.18" upper="0.18" velocity="0.5" effort="500" />
+    <limit lower="0.0" upper="0.80" velocity="0.5" effort="500" />
   </joint>
   <link name="base_link">
     <inertial>

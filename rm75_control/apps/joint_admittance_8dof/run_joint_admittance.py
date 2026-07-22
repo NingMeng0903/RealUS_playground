@@ -41,6 +41,10 @@ from rm75_control.control.joint_admittance_8dof.loop import (
     JointIkController,
     run_joint_admittance_loop,
 )
+from rm75_control.control.joint_admittance_8dof.hw.rail_servo import (
+    RailServoBridge,
+    parse_rail_servo_config,
+)
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.reference import HoldReference
 from rm75_control.control.joint_admittance_8dof.sin_tool_y_program import (
@@ -63,6 +67,7 @@ def _run_controller_service(
     *,
     hub: PhaseCommandHub,
     rail_m_fn,
+    rail_bridge: RailServoBridge | None = None,
     poll_s: float = 0.05,
     verbose: bool = False,
 ) -> None:
@@ -133,6 +138,7 @@ def _run_controller_service(
                 on_step=_on_step,
                 stop_check=hub.should_stop,
                 verbose=verbose,
+                rail_bridge=rail_bridge,
             )
             if hub.should_stop():
                 hub.set_stopped(cmd_seq)
@@ -154,6 +160,8 @@ def _run_controller_service(
         finally:
             hub.ack(cmd_seq)
             rail_m_fn.reset_idle()
+            if rail_bridge is not None and rail_bridge.enabled:
+                rail_bridge.hold_current()
             if not stop:
                 print("rm75 controller: hot-wait", flush=True)
 
@@ -161,12 +169,15 @@ def _run_controller_service(
 class _RailPublisher:
     """Mutable rail source for SHM twin during idle vs active WBC."""
 
-    def __init__(self, default_m: float) -> None:
+    def __init__(self, default_m: float, bridge: RailServoBridge | None = None) -> None:
         self._default_m = float(default_m)
+        self._bridge = bridge
         self._active_inner: JointIkController | None = None
 
     def reset_idle(self) -> None:
-        if self._active_inner is not None:
+        if self._bridge is not None and self._bridge.enabled:
+            self._default_m = float(self._bridge.measured_m)
+        elif self._active_inner is not None:
             self._default_m = float(self._active_inner.q_cmd[0])
         self._active_inner = None
 
@@ -174,6 +185,8 @@ class _RailPublisher:
         self._active_inner = inner
 
     def __call__(self) -> float:
+        if self._bridge is not None and self._bridge.enabled:
+            return float(self._bridge.measured_m)
         if self._active_inner is not None:
             return float(self._active_inner.q_cmd[0])
         return self._default_m
@@ -213,7 +226,8 @@ def main() -> int:
     relay_hz = float(args.relay_hz) if args.relay_hz is not None else relay_cfg.hz
     dt = float(raw.get("timing", {}).get("dt_ms", 5.0)) / 1000.0
     rail_default_m = float(raw.get("inner", {}).get("rail", {}).get("q_ref_m", 0.0))
-    rail_pub = _RailPublisher(rail_default_m)
+    rail_bridge = RailServoBridge(parse_rail_servo_config(raw))
+    rail_pub = _RailPublisher(rail_default_m, bridge=rail_bridge)
 
     if args.dry_run:
         mode = "hold+CANFD" if args.hold else "controller+hot-wait"
@@ -237,39 +251,42 @@ def main() -> int:
         config=args.config,
         quiet=True,
     ) as sess:
-        if inner is not None:
-            maybe_sync_kin_tcp_from_config(raw=raw, kin=inner.kin, robot=sess.robot)
-        else:
-            maybe_sync_kin_tcp_from_config(
-                raw=raw, kin=RobotKinematics(), robot=sess.robot
-            )
-        bus = RobotStateBus(sess.robot, raw, robot_ip=sess.ip)
-        bus.start()
-
-        if relay_name:
-            relay = StateRelayPublisher(
-                bus,
-                name=relay_name,
-                hz=relay_hz,
-                rail_m_fn=rail_pub,
-            )
-            relay.start()
-            if args.hold:
-                print(
-                    f"rm75 controller: hold @ {relay_hz:.0f} Hz",
-                    flush=True,
-                )
-            else:
-                print(
-                    f"rm75 controller: running @ {relay_hz:.0f} Hz",
-                    flush=True,
-                )
-        elif args.hold:
-            print("rm75 controller: hold (no SHM)", flush=True)
-        else:
-            print("rm75 controller: running (no SHM)", flush=True)
-
         try:
+            if rail_bridge.enabled:
+                rail_bridge.start()
+                rail_pub._default_m = float(rail_bridge.measured_m)
+            if inner is not None:
+                maybe_sync_kin_tcp_from_config(raw=raw, kin=inner.kin, robot=sess.robot)
+            else:
+                maybe_sync_kin_tcp_from_config(
+                    raw=raw, kin=RobotKinematics(), robot=sess.robot
+                )
+            bus = RobotStateBus(sess.robot, raw, robot_ip=sess.ip)
+            bus.start()
+
+            if relay_name:
+                relay = StateRelayPublisher(
+                    bus,
+                    name=relay_name,
+                    hz=relay_hz,
+                    rail_m_fn=rail_pub,
+                )
+                relay.start()
+                if args.hold:
+                    print(
+                        f"rm75 controller: hold @ {relay_hz:.0f} Hz",
+                        flush=True,
+                    )
+                else:
+                    print(
+                        f"rm75 controller: running @ {relay_hz:.0f} Hz",
+                        flush=True,
+                    )
+            elif args.hold:
+                print("rm75 controller: hold (no SHM)", flush=True)
+            else:
+                print("rm75 controller: running (no SHM)", flush=True)
+
             if args.hold:
                 assert inner is not None
                 outer = CartesianTrackOuterLoop(
@@ -294,17 +311,25 @@ def main() -> int:
                     watchdog_timeout_s=float(startup.get("watchdog_timeout_s", 0.1)),
                     state_bus=bus,
                     verbose=args.verbose,
+                    rail_bridge=rail_bridge,
                 )
             else:
                 hub = PhaseCommandHub()
                 _run_controller_service(
-                    sess, bus, raw, hub=hub, rail_m_fn=rail_pub, verbose=args.verbose
+                    sess,
+                    bus,
+                    raw,
+                    hub=hub,
+                    rail_m_fn=rail_pub,
+                    rail_bridge=rail_bridge,
+                    verbose=args.verbose,
                 )
         finally:
             if hub is not None:
                 hub.close()
             if relay is not None:
                 relay.stop()
+            rail_bridge.stop()
     return 0
 
 

@@ -677,8 +677,7 @@ def build_sin_tool_y_program(
         rail0 = float(inner_cfg.rail.q_ref_m if inner_cfg.rail.q_ref_m is not None else 0.0)
         delta_m = sign * float(params.rail_move_cm) * 0.01
         rail_target = rail0 + delta_m
-        half_travel = 0.5 * float(inner_cfg.rail.travel_m)
-        lo, hi = -half_travel, half_travel
+        lo, hi = 0.0, float(inner_cfg.rail.travel_m)
         if not (lo <= rail_target <= hi):
             raise RuntimeError(
                 f"rail target {rail_target * 100:.1f}cm outside travel "
@@ -801,6 +800,7 @@ def execute_sin_tool_y_program(
     on_step: Callable | None = None,
     stop_check: Callable[[], bool] | None = None,
     verbose: bool = True,
+    rail_bridge=None,
 ) -> LoopResult:
     """Run WBC on window A (direct UDP feedback + direct CANFD)."""
     raw = raw if raw is not None else load_yaml(params.config_path)
@@ -825,6 +825,7 @@ def execute_sin_tool_y_program(
         canfd_proxy=None,
         stop_check=stop_check,
         verbose=verbose,
+        rail_bridge=rail_bridge,
     )
 
 

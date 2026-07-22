@@ -48,7 +48,7 @@ FA73_PROTO_8N2 = 0
 FA73_PROTO_8N1 = 3
 
 # After FA-53 software enable, wait for ZSFD before accepting CTRG (manual FD-1 / CTRG §7.2).
-ENABLE_SETTLE_S = 1.0
+ENABLE_SETTLE_S = 0.2
 CTRG_EDGE_HOLD_S = 0.2
 # FA4/FA14/FD-0 writes read back immediately but only become *active* after FA-60 soft reset
 # (or power-cycle). Without this, enable/hold works but CTRG/speed commands are ignored.
@@ -99,6 +99,11 @@ class LW100Drive:
         self._active_mode: tuple[int, int, int] | None = None
         # Software home: rail_mm uses (counts - counts0). Call set_rail_zero() at machine home.
         self._counts0: int = 0
+        # FA-60 soft-reset clears the drive's multi-turn monitor to ~0; bias keeps
+        # host-side counts continuous across that wipe (not across power-loss).
+        self._counts_bias: int = 0
+        # True after start_position_session(); cleared on disable().
+        self._position_session_active: bool = False
 
     def connect(self) -> RegisterMap:
         self._client.connect()
@@ -163,8 +168,17 @@ class LW100Drive:
         Live hardware fact: writes to FA4/FA14/FD-0 read back immediately, but
         motion commands (CTRG, internal speed) are ignored until soft-reset or
         power-cycle. TCP may drop briefly; we reconnect afterward.
+
+        FA-60 also clears the encoder multi-turn monitor (~0). We snapshot counts
+        before/after and accumulate ``_counts_bias`` so ``read_encoder_counts()``
+        stays continuous for the host (power-cycle still loses multi-turn).
         """
         log = steps if steps is not None else []
+        pre = 0
+        try:
+            pre = self._read_encoder_counts_raw()
+        except ModbusRtuError:
+            pass
         self._log(log, "FA-60=1 soft reset (activate mode params)")
         try:
             self.write_param(P_FA60_SOFT_RESET, 1)
@@ -177,6 +191,17 @@ class LW100Drive:
             pass
         self._client.connect()
         self._log(log, "reconnected after soft reset")
+        try:
+            post = self._read_encoder_counts_raw()
+            delta = int(pre) - int(post)
+            if delta != 0:
+                self._counts_bias += delta
+                self._log(
+                    log,
+                    f"encoder bias += {delta} (pre={pre} post={post} bias={self._counts_bias})",
+                )
+        except ModbusRtuError as exc:
+            self._log(log, f"WARN: encoder bias after soft reset failed: {exc}")
 
     def configure_internal_mode(
         self,
@@ -192,6 +217,19 @@ class LW100Drive:
             return
         fd0 = 1 if incremental else 0
         desired = (0, 3, fd0)  # FA4, FA14, FD-0
+        # If drive already has the desired mode, skip FA-60 (avoids wiping multi-turn).
+        if self._active_mode is None and not force_reset:
+            try:
+                cur = (
+                    self.read_param(P_FA4_MODE),
+                    self.read_param(P_FA14_POS_INPUT),
+                    self.read_param(P_FD0_ABS_INC),
+                )
+                if cur == desired:
+                    self._active_mode = desired
+                    self._log(log, f"mode already live FA4/FA14/FD-0={desired} (no soft reset)")
+            except ModbusRtuError:
+                pass
         fd0_note = (
             "FD-0=1 incremental internal position"
             if incremental
@@ -262,6 +300,71 @@ class LW100Drive:
             self._log(log, "SON/CTRG released (FC-15/18=0, FA-53=0)")
         except ModbusRtuError:
             pass
+        self._position_session_active = False
+
+    def start_position_session(
+        self,
+        *,
+        incremental: bool = True,
+        steps: list[str] | None = None,
+    ) -> None:
+        """Configure internal position once, enable, and keep SON on for segment commands.
+
+        Subsequent moves use ``command_inc_mm`` / ``command_abs_mm`` without
+        disable/soft-reset per segment.
+        """
+        log = steps if steps is not None else []
+        if self._position_session_active:
+            self._log(log, "position session already active")
+            return
+        self.configure_internal_mode(incremental=incremental, steps=log)
+        self.enable_and_settle(log)
+        self._position_session_active = True
+        self._log(log, "position session started (incremental=%s)" % incremental)
+
+    def command_inc_mm(
+        self,
+        travel_mm: float,
+        *,
+        speed_rpm: int | None = None,
+        steps: list[str] | None = None,
+    ) -> PositionCommand:
+        """Fire one incremental P1 segment (requires ``start_position_session``)."""
+        if not self._position_session_active:
+            raise RuntimeError("call start_position_session() before command_inc_mm()")
+        log = steps if steps is not None else []
+        ppr = self.read_pulses_per_rev()
+        cmd = mm_to_position_command(
+            travel_mm,
+            lead_mm=self.config.lead_mm,
+            gear_ratio=self.config.gear_ratio,
+            pulses_per_rev=ppr,
+            speed_rpm=speed_rpm or self.config.default_speed_rpm,
+        )
+        self._write_p1_command(cmd, log)
+        self.trigger_p1(log)
+        return cmd
+
+    def clear_p1_command(self, steps: list[str] | None = None) -> None:
+        """Best-effort zero of P1 position fields (no CTRG).
+
+        Speed is left alone: some drives NACK / time out on FD-4=0. Failures here
+        must not abort session bring-up.
+        """
+        log = steps if steps is not None else []
+        try:
+            self.write_param(P_FD2_P1_REVS, 0)
+            self.write_param(P_FD3_P1_PULSES, 0)
+            self._log(log, "P1 cleared (rev=0 pulse=0, no CTRG)")
+        except ModbusRtuError as exc:
+            self._log(log, f"WARN: P1 clear failed: {exc}")
+
+    def is_busy(self, *, speed_threshold_rpm: int = 1) -> bool:
+        """True while the drive reports non-zero segment speed."""
+        try:
+            return abs(self.read_speed_rpm()) > int(speed_threshold_rpm)
+        except ModbusRtuError:
+            return True
 
     def _write_p1_command(self, cmd: PositionCommand, steps: list[str]) -> None:
         # Signed values: manual allows +/-30000 revs and +/-max cnt pulses.
@@ -379,13 +482,8 @@ class LW100Drive:
         val = int(self._client.read_holding_registers(MONITOR_SPEED_RPM, 1)[0])
         return val - 0x10000 if val >= 0x8000 else val
 
-    def read_encoder_counts(self, *, retries: int = 5) -> int:
-        """Live encoder position as signed 32-bit counts (monitor 0x1001/0x1002).
-
-        Live-proved at idle: +1 motor revolution → +``encoder_counts_per_rev``
-        (131072 for 17-bit), span ≤2 counts. Double-read until the lo/hi pair is
-        stable (avoids torn 32-bit samples while moving).
-        """
+    def _read_encoder_counts_raw(self, *, retries: int = 5) -> int:
+        """Drive monitor 0x1001/0x1002 only (no host bias)."""
         last: tuple[int, int] | None = None
         for _ in range(max(1, retries)):
             lo, hi = self._client.read_holding_registers(MONITOR_POS_LO, 2)
@@ -398,11 +496,22 @@ class LW100Drive:
         v = (last[1] << 16) | last[0]
         return v - (1 << 32) if v >= (1 << 31) else v
 
+    def read_encoder_counts(self, *, retries: int = 5) -> int:
+        """Live encoder position as signed 32-bit counts (monitor 0x1001/0x1002).
+
+        Live-proved at idle: +1 motor revolution → +``encoder_counts_per_rev``
+        (131072 for 17-bit). Includes ``_counts_bias`` so FA-60 soft-reset does
+        not jump the host-side position. Power-cycle still loses multi-turn on
+        this drive (17-bit single-turn absolute class).
+        """
+        return self._read_encoder_counts_raw(retries=retries) + int(self._counts_bias)
+
     def set_rail_zero(self, counts: int | None = None) -> int:
         """Software-home the rail at the current (or given) encoder counts.
 
-        Genesis / twin should call this once at the physical home pose so
-        ``read_rail_m()`` reports 0 there. Returns the stored ``counts0``.
+        ``counts`` must be in the same host frame as ``read_encoder_counts()``
+        (includes bias). Fixed YAML ``counts0`` is only valid within one powered
+        session unless the motor has battery-backed multi-turn absolute.
         """
         self._counts0 = int(self.read_encoder_counts() if counts is None else counts)
         return self._counts0

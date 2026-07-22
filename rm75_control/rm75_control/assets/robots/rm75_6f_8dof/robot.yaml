@@ -27,10 +27,10 @@ default_joint_positions:
 rail:
   joint_name: rail_y
   axis: y
-  travel_m: 0.36
-  lower_m: -0.18
-  upper_m: 0.18
-  visual_length_m: 0.60
+  travel_m: 0.80
+  lower_m: 0.0
+  upper_m: 0.80
+  visual_length_m: 0.998
 
 genesis_link_visual_urdf_rgba: {}
 

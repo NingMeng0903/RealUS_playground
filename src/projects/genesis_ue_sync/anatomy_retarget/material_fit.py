@@ -1904,9 +1904,20 @@ def fit_subject_bone_containment(
         lower_axis = ankle - knee
         lower_length = max(float(np.linalg.norm(lower_axis)), 1.0e-12)
         lower_axis /= lower_length
+        initial_lower_outside = containment_metric(vertices[lower])[0]
+        distal_radial_cap = 0.25 if initial_lower_outside else 0.75
 
-        def make_lower_mapper(proximal_radial: float) -> Any:
-            distal_radial = 0.50 * float(proximal_radial)
+        def make_lower_mapper(
+            proximal_radial: float,
+            *,
+            distal_floor: float = 0.0,
+        ) -> Any:
+            distal_radial = max(
+                min(
+                    0.50 * float(proximal_radial), float(distal_radial_cap)
+                ),
+                min(float(distal_floor), float(proximal_radial)),
+            )
 
             def mapper(points: np.ndarray) -> np.ndarray:
                 offset = np.asarray(points, dtype=np.float64) - knee
@@ -1936,7 +1947,29 @@ def fit_subject_bone_containment(
         # paths.  Keep a beta-independent reserve after the widest zero-escape
         # radius has been selected.
         lower_mapper = make_lower_mapper(selected_radial)
+        fibula = group_indices(suffix, ("fibula",))
+        fibula_source = vertices[fibula].copy()
         vertices[lower] = lower_mapper(vertices[lower])
+        # The tibial distal reserve must not collapse the independent
+        # fibula--talus interface.  Keep the fibula's ankle cross-section at
+        # the smallest value that passed both supplied beta/pose audits; fall
+        # back to the common map if a future beta cannot contain it at rest.
+        fibula_distal_floor = 0.45
+        fibula_mapper = make_lower_mapper(
+            selected_radial, distal_floor=fibula_distal_floor
+        )
+        fibula_candidate = fibula_mapper(fibula_source)
+        fibula_candidate_outside = containment_metric(fibula_candidate)[0]
+        if fibula_candidate_outside == 0:
+            vertices[fibula] = fibula_candidate
+            applied_fibula_distal = max(
+                min(0.50 * selected_radial, float(distal_radial_cap)),
+                min(fibula_distal_floor, selected_radial),
+            )
+        else:
+            applied_fibula_distal = min(
+                0.50 * selected_radial, float(distal_radial_cap)
+            )
         lower_controllers = update_controllers(lower, lower_mapper)
         spatial_knee_anchor = anchor_segment_controller(
             f"Tibia_Bone_{label}", proximal=knee, distal=ankle
@@ -1945,7 +1978,13 @@ def fit_subject_bone_containment(
             "group": f"{side}_lower_leg",
             "radial_scale": selected_radial,
             "proximal_radial_scale": selected_radial,
-            "distal_radial_scale": 0.50 * selected_radial,
+            "distal_radial_scale": min(
+                0.50 * selected_radial, float(distal_radial_cap)
+            ),
+            "initial_outside_count": initial_lower_outside,
+            "distal_radial_cap": distal_radial_cap,
+            "fibula_distal_radial_scale": applied_fibula_distal,
+            "fibula_floor_candidate_outside_count": fibula_candidate_outside,
             "spatial_knee_anchor": spatial_knee_anchor,
             "controllers": lower_controllers,
             "final_outside": containment_metric(vertices[lower]),

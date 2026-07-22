@@ -35,7 +35,7 @@ DEFAULT_Q = np.zeros(8, dtype=np.float64)
 # Do not set link_rgba on link_7: its DAE has white + black stripe (mat_0 / mat_2).
 RAIL_BOX_HEIGHT_M = 0.08
 DEFAULT_ROBOT_POS = (0.0, 0.0, RAIL_BOX_HEIGHT_M)
-DEFAULT_RAIL_Y_LIMIT_M = 0.18
+DEFAULT_RAIL_Y_LIMIT_M = 0.80
 
 
 @dataclass
@@ -63,7 +63,8 @@ class RailGenesisScene:
         self.scene = None
         self.robot = None
         self._q_cmd = DEFAULT_Q.copy()
-        self._rail_y_limit = DEFAULT_RAIL_Y_LIMIT_M
+        self._rail_y_lower = 0.0
+        self._rail_y_upper = DEFAULT_RAIL_Y_LIMIT_M
         self._robot_pos = tuple(float(v) for v in self.cfg.robot_pos)
         self._robot_quat: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0)
         self._world_base_pos = np.array(self._robot_pos, dtype=np.float64)
@@ -87,7 +88,8 @@ class RailGenesisScene:
         self._robot_pos = entity["pos"]
         self._robot_quat = entity["quat_wxyz"]
         self._world_base_pos = np.asarray(calib["base_pos_m"], dtype=np.float64)
-        self._rail_y_limit = float(layout["travel"]) / 2.0
+        self._rail_y_lower = 0.0
+        self._rail_y_upper = float(layout["travel"])
 
     def build(self) -> None:
         import genesis as gs
@@ -186,7 +188,7 @@ class RailGenesisScene:
 
     def set_rail_y(self, y_m: float) -> None:
         q = self._q_cmd.copy()
-        q[0] = float(np.clip(y_m, -self._rail_y_limit, self._rail_y_limit))
+        q[0] = float(np.clip(y_m, self._rail_y_lower, self._rail_y_upper))
         self.set_joint_positions(q)
 
     def rail_y(self) -> float:

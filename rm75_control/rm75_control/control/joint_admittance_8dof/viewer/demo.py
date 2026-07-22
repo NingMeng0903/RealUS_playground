@@ -94,7 +94,8 @@ def main() -> int:
 
     print(
         f"RM75-6F-8dof: rail_y={scene.rail_y():+.3f} m "
-        f"(travel +-{scene._rail_y_limit:.3f} m, spec={args.spec if not args.legacy_urdf else 'legacy'})",
+        f"(travel [{scene._rail_y_lower:.3f}, {scene._rail_y_upper:.3f}] m, "
+        f"spec={args.spec if not args.legacy_urdf else 'legacy'})",
         flush=True,
     )
     if scene._calib_spec is not None:

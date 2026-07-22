@@ -5,14 +5,18 @@
 #   - frame protrudes toward -X
 #   - URDF root = rail_base (frame bottom)
 #   - rail_link frame = rail module floor (top of frame); slider_link = slider top center
-#   - world placement from world_calib (base pose at rail_y = 0), NOT frame pose
+#   - world placement from world_calib (base pose at rail_y = 0 = -Y end), NOT frame pose
 # All lengths in millimeters unless noted (meters for world_calib positions).
 slider_rail:
   arm: rm75                      # future: select arm base ("realmanbase")
 
   rail:
-    effective_travel_mm: 600     # usable Y stroke (rail_y limits = +-travel/2)
-    end_overhead_mm: 100          # total rail length = travel + overhead
+    # Usable carriage stroke (rail_y limits = [0, travel]).
+    effective_travel_mm: 800
+    # Extra total length beyond the flush fit (0 = slider face exactly against
+    # each end-plate *inner* face at the travel limits). Rail total length is:
+    #   travel + slider.length_mm + 2 * side_plate_thickness_mm + end_overhead_mm
+    end_overhead_mm: 0
     width_mm: 150                 # rail plate width (X)
     base_plate_thickness_mm: 12   # light metallic gray floor plate
     track_height_mm: 18           # two raised tracks
@@ -23,7 +27,7 @@ slider_rail:
 
   slider:
     width_mm: 160                 # X
-    length_mm: 170                # Y
+    length_mm: 170                # Y (included in rail length so it does not pierce end plates)
     top_to_rail_bottom_mm: 66     # must be > base_plate_thickness + track_height
 
   frame:                          # frame under the rail (derived from rail_base)
@@ -35,7 +39,8 @@ slider_rail:
     offset_y_mm: 0
 
   world_calib:
-    # base_link pose in calibration world @ rail_y = 0; rail_base back-solved (rail fixed in world).
+    # base_link world pose @ rail_y = 0 (-Y end). Rail assembly is back-solved from this;
+    # do NOT add a center-preserving offset — travel grows toward +rail_y only.
     base_pos_m: [0.0, 0.5, 0.266]
     base_quat_wxyz: [0.7071067811865476, 0.0, 0.0, -0.7071067811865476]  # world Z -90 deg
 

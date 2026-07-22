@@ -1137,6 +1137,13 @@ def _expand_q_meas(q_deg_or_rad: np.ndarray, rail_m: float) -> np.ndarray:
     raise ValueError(f"expected 7 or 8 joint values, got {q.size}")
 
 
+def _rail_m_for_feedback(rail_bridge, inner: JointIkController) -> float:
+    """Measured rail for FK/SHM when LW100 bridge is active; else WBC command."""
+    if rail_bridge is not None and rail_bridge.enabled:
+        return float(rail_bridge.measured_m)
+    return float(inner.q_cmd[0])
+
+
 def _joint_plan_err_deg(outer: OuterLoop, t_ref: float, q_meas: np.ndarray) -> float | None:
     """Max |q_ref(t_ref) - q_meas| in deg from the outer loop's joint reference."""
     ref = getattr(outer, "reference", None)
@@ -1239,6 +1246,7 @@ def run_joint_admittance_phases(
     state_bus=None,
     canfd_proxy=None,
     stop_check=None,
+    rail_bridge=None,
 ) -> LoopResult:
     """Run a sequence of ``Phase`` objects on the real robot, one continuous stream.
 
@@ -1284,7 +1292,10 @@ def run_joint_admittance_phases(
         snap0 = async_obs.read()
         if snap0.q_deg is None:
             raise RuntimeError("no joint feedback from robot")
-        q0_rad = _expand_q_meas(deg2rad(snap0.q_deg), inner.q_cmd[0])
+        q0_rad = _expand_q_meas(
+            deg2rad(snap0.q_deg),
+            _rail_m_for_feedback(rail_bridge, inner),
+        )
         # The whole Cartesian loop (inner and outer) uses the Pinocchio tcp
         # frame; Realman FK for the active tool may differ.
         pose0 = inner.kin.fk_pose(q0_rad)
@@ -1338,7 +1349,10 @@ def run_joint_admittance_phases(
                     # Phase origin from the ENCODERS, never from the command integrator.
                     snap = async_obs.read()
                     if snap.q_deg is not None:
-                        q_meas = _expand_q_meas(deg2rad(snap.q_deg), inner.q_cmd[0])
+                        q_meas = _expand_q_meas(
+                            deg2rad(snap.q_deg),
+                            _rail_m_for_feedback(rail_bridge, inner),
+                        )
                     pose_pin = inner.kin.fk_pose(q_meas)
                     if hasattr(phase.outer, "set_origin"):
                         phase.outer.set_origin(pose_pin)
@@ -1376,7 +1390,10 @@ def run_joint_admittance_phases(
                         if snap.pose is not None:
                             pose_rm = snap.pose
                         if snap.q_deg is not None:
-                            q_meas = _expand_q_meas(deg2rad(snap.q_deg), inner.q_cmd[0])
+                            q_meas = _expand_q_meas(
+                            deg2rad(snap.q_deg),
+                            _rail_m_for_feedback(rail_bridge, inner),
+                        )
                             pose_pin = inner.kin.fk_pose(q_meas)
 
                         f_ext = np.zeros(6)
@@ -1441,6 +1458,8 @@ def run_joint_admittance_phases(
                             qdot_ff=qdot_ff,
                             vel_ff=vel_ff_ref,
                         )
+                        if rail_bridge is not None:
+                            rail_bridge.set_target_m(float(inner.q_cmd[0]))
                         outer_err_mm = getattr(phase.outer, "last_err_mm", None)
                         if outer_err_mm is not None:
                             step.cart_err_mm = outer_err_mm
@@ -1576,6 +1595,7 @@ def run_joint_admittance_loop(
     log_csv: str | None = None,
     verbose: bool = True,
     state_bus=None,
+    rail_bridge=None,
 ) -> LoopResult:
     """Single-phase convenience wrapper around ``run_joint_admittance_phases``."""
     phase = Phase(
@@ -1599,4 +1619,5 @@ def run_joint_admittance_loop(
         log_csv=log_csv,
         verbose=verbose,
         state_bus=state_bus,
+        rail_bridge=rail_bridge,
     )

@@ -109,11 +109,20 @@ def main() -> int:
     ap.add_argument("--move-duration-max", type=float, default=5.0)
     ap.add_argument("--move-kp", type=float, default=2.0)
     ap.add_argument("--move-mode", choices=("cartesian", "joint"), default="cartesian")
-    ap.add_argument("--y-pp-cm", type=float, default=16.0)
+    ap.add_argument("--y-pp-cm", type=float, default=16.0,
+                    help="Tool-Y scan peak-to-peak (cm). 90 = 900 mm stroke.")
     ap.add_argument("--max-vel-cm-s", type=float, default=2.0)
     ap.add_argument("--period-s", type=float, default=None)
     ap.add_argument("--desired-z", type=float, default=None)
     ap.add_argument("--scan-duration", type=float, default=30.0)
+    ap.add_argument(
+        "--rail-scan-center",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Plan pose D / scan origin at rail mid-stroke (travel/2), not at rail_y=0. "
+        "Start rail may still be 0 after manual home; move->D carries rail to center. "
+        "Y stroke is then ±(y_pp/2) about the rail-center pose (default: on).",
+    )
     ap.add_argument(
         "--psi-toggle-period",
         type=float,
@@ -211,7 +220,14 @@ def main() -> int:
     kin = RobotKinematics()
     inner_cfg = build_joint_ik_config(raw)
     inner = JointIkController(kin, inner_cfg)
-    rail_m = float(inner_cfg.rail.q_ref_m)
+    travel_m = float(inner_cfg.rail.travel_m)
+    rail_center_m = 0.5 * travel_m
+    rail_plan_m = (
+        rail_center_m
+        if bool(args.rail_scan_center)
+        else float(inner_cfg.rail.q_ref_m if inner_cfg.rail.q_ref_m is not None else 0.0)
+    )
+    rail_m = rail_plan_m
     cbf_on = bool(inner_cfg.qp.collision.enabled)
     if args.verbose:
         print(
@@ -225,6 +241,17 @@ def main() -> int:
     max_vel_m_s = float(args.max_vel_cm_s) * 0.01
     desired_z = args.desired_z if args.desired_z is not None else float(raw.get("force", {}).get("desired_z_n", 0.0))
     enable_force = args.enable_force if args.enable_force is not None else bool(startup.get("enable_force", False))
+
+    # Tool-Y pp about pose D. With --rail-scan-center, D is planned at rail mid-stroke
+    # so the scan is symmetric about the rail center, not about rail_y=0.
+    sym = "center-symmetric, not 0-symmetric" if bool(args.rail_scan_center) else "about rail_y=0 (legacy)"
+    print(
+        f"rail plan: pose D / scan origin at rail_y={rail_plan_m:.3f} m "
+        f"(travel=[0, {travel_m:.2f}] m, center={rail_center_m:.3f} m); "
+        f"tool-Y ±{amplitude_m*1000:.0f} mm about D "
+        f"(pp={args.y_pp_cm:.0f} cm = {2*amplitude_m*1000:.0f} mm; {sym})",
+        flush=True,
+    )
 
     if args.dry_run:
         print("dry-run: controllers built OK, not connecting.", flush=True)
@@ -309,12 +336,21 @@ def main() -> int:
             snap0 = state_bus.read()
             if snap0.q_deg is None:
                 raise RuntimeError("no joint feedback on attach bus")
-            q0_rad = full_q_from_arm(deg2rad(snap0.q_deg), rail_m)
+            rail_start_m = float(getattr(state_bus, "last_rail_m", 0.0))
+            q0_rad = full_q_from_arm(deg2rad(snap0.q_deg), rail_start_m)
         else:
             ret0, st0 = sess.robot.rm_get_current_arm_state()
             if ret0 != 0:
                 raise RuntimeError(f"rm_get_current_arm_state failed: {ret0}")
-            q0_rad = full_q_from_arm(deg2rad(np.asarray(st0["joint"][:7], dtype=float)), rail_m)
+            rail_start_m = 0.0
+            q0_rad = full_q_from_arm(
+                deg2rad(np.asarray(st0["joint"][:7], dtype=float)),
+                rail_start_m,
+            )
+        print(
+            f"  rail start={rail_start_m*1000:.1f} mm → plan D @ {rail_plan_m*1000:.1f} mm",
+            flush=True,
+        )
 
         if args.verbose:
             print(
@@ -461,8 +497,7 @@ def main() -> int:
             )
             delta_m = sign * float(args.rail_move_cm) * 0.01
             rail_target = rail0 + delta_m
-            half_travel = 0.5 * float(inner_cfg.rail.travel_m)
-            lo, hi = -half_travel, half_travel
+            lo, hi = 0.0, float(inner_cfg.rail.travel_m)
             if not (lo <= rail_target <= hi):
                 raise RuntimeError(
                     f"rail target {rail_target * 100:.1f}cm outside travel "

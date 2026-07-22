@@ -34,7 +34,7 @@ class RailLockConfig:
     lock_hard_pin: bool = True     # after QP, pin q_cmd[0] = q_ref every tick
     # Rail speed / geometry (used by planners and safety limits)
     v_max_m_s: float | None = None
-    travel_m: float = 0.50         # ±0.25 m effective travel (500 mm)
+    travel_m: float = 0.80         # [0, travel_m] m (rail_y=0 at -Y end)
 
     def __post_init__(self) -> None:
         if isinstance(self.mode, str):
