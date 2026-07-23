@@ -92,6 +92,11 @@ class RailGenesisScene:
         self._rail_y_upper = float(layout["travel"])
 
     def build(self) -> None:
+        import os
+
+        # Avoid intermittent AssertionError(fast_checksum) when reopening the
+        # viewer after the controller session restarted.
+        os.environ.setdefault("GS_ENABLE_FASTCACHE", "0")
         import genesis as gs
 
         self._gs = gs

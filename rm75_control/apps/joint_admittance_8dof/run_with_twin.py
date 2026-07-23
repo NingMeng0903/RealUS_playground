@@ -55,12 +55,27 @@ def _run_subscribe_loop(
             else:
                 print("rm75 twin: running", flush=True)
             last_session_id = sid
-            twin.sync_once()
+            try:
+                twin.sync_once()
+            except AssertionError as exc:
+                # Genesis/quadrants fastcache can trip after controller restart
+                # while the viewer process is reused / partially stale.
+                print(
+                    f"rm75 twin: Genesis cache glitch ({exc}); "
+                    "continuing (background sync will retry). "
+                    "If it keeps failing: close viewer, rm -rf ~/.cache/quadrants, restart B.",
+                    flush=True,
+                )
 
         time.sleep(0.1)
 
 
 def main() -> int:
+    # Quadrants fastcache can assert on viewer reopen after controller restart.
+    import os
+
+    os.environ.setdefault("GS_ENABLE_FASTCACHE", "0")
+
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument(
         "--subscribe",
@@ -73,6 +88,11 @@ def main() -> int:
     ap.add_argument("--backend", choices=("cpu", "cuda"), default="cuda")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--track-subscribe", type=str, default="", help="ZMQ track overlay (e.g. tcp://127.0.0.1:5598)")
+    ap.add_argument(
+        "--no-track-subscribe",
+        action="store_true",
+        help="Do not subscribe to orange SMPL-X mesh (robot-only twin)",
+    )
     ap.add_argument("--anatomy-subscribe", type=str, default="tcp://127.0.0.1:5601")
     ap.add_argument("--canonical-bind", type=str, default="tcp://127.0.0.1:5599")
     ap.add_argument(
@@ -92,6 +112,10 @@ def main() -> int:
         help="Orange SMPL-X skin opacity (default 120; anatomy draws underneath in solid pass)",
     )
     args = ap.parse_args()
+
+    track_subscribe = ""
+    if not args.no_track_subscribe:
+        track_subscribe = str(args.track_subscribe or os.environ.get("AMONGUS_GENESIS_TRACK_SUBSCRIBE", "")).strip()
 
     if args.dry_run:
         return 0
@@ -122,10 +146,19 @@ def main() -> int:
     print(f"rm75 twin: waiting for {shm_name!r} …", flush=True)
     bus = RelayStateBus(shm_name)
     try:
-        twin = DigitalTwinMirror(bus, scene, hz=args.twin_hz)
+        twin = DigitalTwinMirror(
+            bus,
+            scene,
+            hz=args.twin_hz,
+            rail_extrapolate_s=0.12,
+        )
         twin.start_background()
+        print(
+            f"rm75 twin: rail display extrapolate≤120 ms @ {args.twin_hz:.0f} Hz",
+            flush=True,
+        )
 
-        if args.track_subscribe or args.canonical_human_source in ("fitted", "robot") or args.smplx_npz:
+        if track_subscribe or args.canonical_human_source in ("fitted", "robot") or args.smplx_npz:
             try:
                 from rm75_control.control.joint_admittance_8dof.viewer.human_overlay import (
                     TwinHumanOverlay,
@@ -136,13 +169,13 @@ def main() -> int:
                 overlay = TwinHumanOverlay(
                     scene,
                     TwinHumanOverlayConfig(
-                        track_subscribe=str(args.track_subscribe or "tcp://127.0.0.1:5598"),
+                        track_subscribe=str(track_subscribe or "tcp://127.0.0.1:5598"),
                         anatomy_subscribe=str(args.anatomy_subscribe),
                         canonical_bind=str(args.canonical_bind),
                         canonical_human_source=str(args.canonical_human_source),
                         smplx_npz=args.smplx_npz,
                         track_mesh_rgba=(250, 122, 31, alpha),
-                        enable_track=bool(args.track_subscribe) or args.canonical_human_source == "fitted",
+                        enable_track=bool(track_subscribe) or args.canonical_human_source == "fitted",
                         enable_anatomy=not args.no_anatomy,
                         enable_canonical=args.canonical_human_source in ("fitted", "robot"),
                     ),
@@ -150,7 +183,7 @@ def main() -> int:
                 overlay.set_robot_q_provider(lambda: bus.q_meas_8dof(0.0) if bus.is_live() else None)
                 overlay.start()
                 print(
-                    f"rm75 twin: human overlay track={args.track_subscribe or '-'} "
+                    f"rm75 twin: human overlay track={track_subscribe or '-'} "
                     f"canonical={args.canonical_human_source}",
                     flush=True,
                 )

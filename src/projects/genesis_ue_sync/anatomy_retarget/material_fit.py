@@ -1042,7 +1042,16 @@ def close_weighted_bone_interfaces(
         bind_global=np.asarray(asset.source_rest_global, dtype=np.float64),
     )
     target_joints = np.asarray(asset.rest_joints, dtype=np.float64)
+    driver_points = np.asarray(
+        asset.source_driver_rest_joints
+        if asset.source_driver_rest_joints is not None
+        else asset.rest_joints,
+        dtype=np.float64,
+    ).copy()
     bone_material = np.zeros(len(vertices), dtype=bool)
+    mesh_ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
+    mesh_names = [str(value) for value in asset.source_mesh_names]
+    mesh_tissues = [str(value).lower() for value in asset.source_tissues]
     for vertex_range, tissue in zip(
         np.asarray(asset.source_vertex_ranges, dtype=np.int64),
         asset.source_tissues,
@@ -1053,7 +1062,15 @@ def close_weighted_bone_interfaces(
 
     for root, mode in enumerate(modes):
         parent = int(parents[root])
-        if str(mode) != "joint_local" or parent < 0 or str(modes[parent]) != "twist":
+        if str(mode) not in {"joint_local", "rigid_group"} or parent < 0:
+            continue
+        # Blender often inserts a non-deforming endpoint helper between the
+        # lower-leg twist bone and the rigid foot controller.  It is still the
+        # same authored articulation boundary; walk through bind-follow
+        # helpers instead of requiring the controller to be a direct child.
+        while parent >= 0 and str(modes[parent]) == "bind_follow":
+            parent = int(parents[parent])
+        if parent < 0 or str(modes[parent]) != "twist":
             continue
         if int(bone_b[parent]) != int(bone_a[root]):
             continue
@@ -1119,6 +1136,92 @@ def close_weighted_bone_interfaces(
             )
             blend = parameter * parameter * (3.0 - 2.0 * parameter)
             vertices[proximal_ids] += blend[:, None] * shift
+        fitted_contact = 0.5 * (
+            vertices[proximal_vertex] + vertices[distal_vertex]
+        )
+        pivot_kind: str | None = None
+        lateral_contact_report: dict[str, Any] | None = None
+        if str(mode) == "rigid_group":
+            # At the talocrural joint the tibia is the closest aggregate bone,
+            # but the lateral malleolus/talus interface is what constrains the
+            # foot rotation centre.  Infer that contact symmetrically from the
+            # fitted bone surfaces; no per-bone dimension or pose constant is
+            # involved.
+            joint_name = str(asset.joint_names[b])
+            side_suffix = "_l" if joint_name.startswith("left_") else "_r"
+            lateral_parts: list[np.ndarray] = []
+            articular_parts: list[np.ndarray] = []
+            for (start, stop), name, tissue in zip(
+                mesh_ranges, mesh_names, mesh_tissues
+            ):
+                lowered = name.lower()
+                if tissue != "bone" or not lowered.endswith(side_suffix):
+                    continue
+                ids = np.arange(int(start), int(stop), dtype=np.int64)
+                if "fibula" in lowered:
+                    lateral_parts.append(ids)
+                elif "talus" in lowered:
+                    articular_parts.append(ids)
+            if lateral_parts and articular_parts:
+                lateral = np.concatenate(lateral_parts)
+                articular = np.concatenate(articular_parts)
+                lateral_distance, lateral_nearest = cKDTree(
+                    vertices[articular]
+                ).query(vertices[lateral], k=1)
+                lateral_row = int(np.argmin(lateral_distance))
+                lateral_gap_before = float(lateral_distance[lateral_row])
+                source_lateral_distance, _ = cKDTree(
+                    source[articular]
+                ).query(source[lateral], k=1)
+                desired_lateral_gap = (
+                    float(np.min(source_lateral_distance)) * length_ratio
+                )
+                lateral_shift = np.zeros(3, dtype=np.float64)
+                if lateral_gap_before > desired_lateral_gap:
+                    lateral_vertex = int(lateral[lateral_row])
+                    articular_vertex = int(
+                        articular[int(lateral_nearest[lateral_row])]
+                    )
+                    direction = (
+                        vertices[articular_vertex] - vertices[lateral_vertex]
+                    )
+                    direction /= max(float(np.linalg.norm(direction)), 1.0e-12)
+                    lateral_shift = (
+                        lateral_gap_before - desired_lateral_gap
+                    ) * direction
+                    points = vertices[lateral]
+                    center = np.mean(points, axis=0)
+                    _u, _singular, vh = np.linalg.svd(
+                        points - center, full_matrices=False
+                    )
+                    parameter = (points - center) @ vh[0]
+                    lo, hi = float(np.min(parameter)), float(np.max(parameter))
+                    contact_parameter = float(parameter[lateral_row])
+                    if abs(contact_parameter - lo) <= abs(contact_parameter - hi):
+                        blend = (hi - parameter) / max(hi - lo, 1.0e-12)
+                    else:
+                        blend = (parameter - lo) / max(hi - lo, 1.0e-12)
+                    blend = np.clip(blend, 0.0, 1.0)
+                    blend = blend * blend * (3.0 - 2.0 * blend)
+                    vertices[lateral] += blend[:, None] * lateral_shift
+                    lateral_distance, lateral_nearest = cKDTree(
+                        vertices[articular]
+                    ).query(vertices[lateral], k=1)
+                    lateral_row = int(np.argmin(lateral_distance))
+                fitted_contact = 0.5 * (
+                    vertices[lateral[lateral_row]]
+                    + vertices[articular[int(lateral_nearest[lateral_row])]]
+                )
+                driver_points[b] = fitted_contact
+                pivot_kind = "lateral_malleolus_talus_contact"
+                lateral_contact_report = {
+                    "source_gap_m": float(np.min(source_lateral_distance)),
+                    "gap_before_m": lateral_gap_before,
+                    "desired_gap_m": desired_lateral_gap,
+                    "gap_after_m": float(lateral_distance[lateral_row]),
+                    "axial_end_shift_m": lateral_shift.tolist(),
+                    "cross_section_scale": 1.0,
+                }
         interface_records.append(
             {
                 "joint": str(asset.joint_names[int(bone_a[root])]),
@@ -1132,6 +1235,12 @@ def close_weighted_bone_interfaces(
                 "target_gap_before_m": target_gap,
                 "desired_gap_m": desired_gap,
                 "applied_shift_m": shift.tolist(),
+                "official_joint_m": target_joints[b].tolist(),
+                "fitted_contact_pivot_m": (
+                    fitted_contact.tolist() if pivot_kind is not None else None
+                ),
+                "fitted_contact_pivot_kind": pivot_kind,
+                "lateral_contact": lateral_contact_report,
                 "affected_vertex_count": int(len(proximal_ids)),
             }
         )
@@ -1162,9 +1271,11 @@ def close_weighted_bone_interfaces(
         **{
             **asset.__dict__,
             "vertices_rest": vertices.astype(np.float32),
+            "source_driver_rest_joints": driver_points.astype(np.float32),
             "metadata": metadata,
         }
     )
+    result = with_source_driver_coupling(result)
     if not np.array_equal(result.driver_indices, asset.driver_indices):
         raise RuntimeError("joint-interface fitting changed Blender driver indices")
     if not np.array_equal(result.driver_weights, asset.driver_weights):
@@ -2168,15 +2279,12 @@ def restore_hand_joint_interfaces(
     *,
     stage: str = "stage1_hand_joint_interfaces",
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
-    """Bake anatomical thumb pivots that are not SMPL-X mesh vertices.
+    """Restore fitted thumb contact without changing hard-tissue thickness.
 
-    SMPL-X hand joints are regressed spatial points.  In a changed beta the
-    official ``thumb1`` point can sit several millimetres away from the fitted
-    carpal/metacarpal contact, so rotating both rigid compounds about the raw
-    regressed point opens the joint even though their rest geometry is fitted.
-    Persist the midpoint between that point and the actual fitted contact as
-    the source-driver point.  The official SMPL-X FK rotation remains the
-    motion authority; only its rest-space anatomical pivot is corrected.
+    The runtime spatial authority is official SMPL-X FK.  This pass therefore
+    only closes the fitted carpal/metacarpal surface interface axially; it does
+    not invent an alternative joint pivot and does not radially shrink hand
+    bones.
     """
     from scipy.spatial import cKDTree
 
@@ -2218,8 +2326,6 @@ def restore_hand_joint_interfaces(
         )
         thumb1 = joint[f"{side}_thumb1"]
         thumb2 = joint[f"{side}_thumb2"]
-        pivot_before = driver_points[thumb1].copy()
-        driver_points[thumb1] = 0.5 * (pivot_before + contact)
 
         # Close the sub-0.1 mm rest tolerance excess without changing the
         # shaft, distal articular surface, weights, or controller hierarchy.
@@ -2243,30 +2349,13 @@ def restore_hand_joint_interfaces(
         reports.append({
             "side": side,
             "contact_gap_before_m": float(distance[met_contact]),
-            "official_pivot_m": pivot_before.tolist(),
+            "official_pivot_m": np.asarray(asset.rest_joints[thumb1], dtype=np.float64).tolist(),
             "anatomical_contact_m": contact.tolist(),
-            "baked_driver_pivot_m": driver_points[thumb1].tolist(),
             "proximal_extension_fraction": 0.005,
         })
 
     if not reports:
         return asset, {"stage": str(stage), "available": False, "reason": "hand meshes missing"}
-    fitted_hand_shafts: list[str] = []
-    for (start, stop), name, tissue in zip(ranges, names, tissues):
-        lowered = name.lower()
-        if tissue != "bone" or not any(
-            token in lowered for token in ("metacarpal", "phalanges_hand")
-        ):
-            continue
-        selected = np.arange(int(start), int(stop), dtype=np.int64)
-        points = vertices[selected]
-        center = np.mean(points, axis=0)
-        _u, _singular, vh = np.linalg.svd(points - center, full_matrices=False)
-        axis = vh[0]
-        offset = points - center
-        axial = (offset @ axis)[:, None] * axis
-        vertices[selected] = center + axial + 0.80 * (offset - axial)
-        fitted_hand_shafts.append(name)
     result = type(asset)(**{
         **asset.__dict__,
         "vertices_rest": vertices.astype(np.float32),
@@ -2283,10 +2372,9 @@ def restore_hand_joint_interfaces(
     return result, {
         "stage": str(stage),
         "available": True,
-        "backend": "spatial_joint_contact_pivot_v1",
+        "backend": "axial_thumb_surface_contact_v2",
         "interfaces": reports,
-        "hand_shaft_radial_scale": 0.80,
-        "fitted_hand_shafts": fitted_hand_shafts,
+        "hard_tissue_radial_scale": 1.0,
         "source_weights_preserved": True,
         "source_hierarchy_preserved": True,
     }

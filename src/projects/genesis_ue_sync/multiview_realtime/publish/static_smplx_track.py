@@ -177,7 +177,11 @@ def publish_static_smplx_track(
     ctx = zmq.Context.instance()
     sock = ctx.socket(zmq.PUB)
     sock.setsockopt(zmq.LINGER, 200)
-    sock.bind(str(bind))
+    try:
+        sock.bind(str(bind))
+    except zmq.ZMQError as exc:
+        sock.close(linger=0)
+        raise OSError(f"ZMQ bind {bind!r} failed: {exc}") from exc
     topic = TOPIC_MULTIVIEW_TRACK_V1.encode("utf-8")
     body = json.dumps(payload, ensure_ascii=True).encode("utf-8")
     rate = max(float(rate_hz), 1.0e-6)
@@ -213,9 +217,14 @@ def publish_static_smplx_track(
 
     try:
         if hold_s is None:
+            next_log = time.perf_counter() + 2.0
             while not stop:
                 sock.send_multipart([topic, body])
                 sent += 1
+                now = time.perf_counter()
+                if now >= next_log:
+                    logger.info("static smplx publishing… sent=%d (Ctrl+C to stop)", sent)
+                    next_log = now + 2.0
                 time.sleep(dt)
         else:
             deadline = time.perf_counter() + hold_s
@@ -235,4 +244,5 @@ def publish_static_smplx_track(
         "hold_s": hold_s,
         "rate_hz": float(rate_hz),
         "moment_dir": str(moment_dir.resolve()),
+        "stopped": bool(stop),
     }

@@ -22,6 +22,7 @@ from common.project import project_paths
 from projects.genesis_ue_sync.anatomy_retarget.asset_align import normalize_rigged_asset_file
 from projects.genesis_ue_sync.anatomy_retarget.blender_retarget_runner import run_retarget
 from projects.genesis_ue_sync.anatomy_retarget.containment import (
+    _skin_lbs_surface,
     bake_soft_tissue_pose_clearance,
     load_body_surface,
     select_whole_component_harmonic_reference,
@@ -41,11 +42,13 @@ from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
 from projects.genesis_ue_sync.anatomy_retarget.quality_gate import evaluate_asset_quality, write_quality_report
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import (
     ANATOMY_ASSET_SCHEMA_VERSION,
+    AnatomyRiggedAsset,
     load_rigged_asset,
     save_rigged_asset,
 )
 from projects.genesis_ue_sync.anatomy_retarget.rig_weighted_rest import (
     merge_tissue_rest_reference,
+    project_soft_tissue_outside,
     reconstruct_rig_weighted_rest,
 )
 from projects.genesis_ue_sync.anatomy_retarget.hand_soft_transport import (
@@ -72,6 +75,7 @@ from projects.genesis_ue_sync.anatomy_retarget.material_fit import (
     merge_fitted_hand_reference,
     restore_craniocervical_rest_chain,
     restore_hand_joint_interfaces,
+    restore_patella_lower_leg_relation,
 )
 from projects.genesis_ue_sync.anatomy_retarget.intersection_diagnostics import (
     enforce_station_intersection_nonregression,
@@ -109,11 +113,26 @@ def _file_digest(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _runtime_publication_asset(asset: AnatomyRiggedAsset) -> AnatomyRiggedAsset:
+    """Strip pose-specific offline evidence from a reusable runtime rig."""
+    return replace(asset, pose_cache_vertices=None, pose_cache_hash="")
+
+
 def _cache_key(*paths: Path, extra: str = "") -> str:
     digest = hashlib.sha256(extra.encode("utf-8"))
     for path in paths:
         digest.update(str(Path(path).resolve()).encode("utf-8"))
         digest.update(_file_digest(Path(path)).encode("ascii"))
+    return digest.hexdigest()[:24]
+
+
+def _array_content_key(value: np.ndarray) -> str:
+    """Return a stable cache key for the exact published array contents."""
+    array = np.ascontiguousarray(value)
+    digest = hashlib.sha256()
+    digest.update(str(array.dtype).encode("ascii"))
+    digest.update(np.asarray(array.shape, dtype=np.int64).tobytes())
+    digest.update(array.view(np.uint8))
     return digest.hexdigest()[:24]
 
 
@@ -1088,6 +1107,16 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--stage1-clamp-rigid-to-skin",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Legacy compatibility mode: shrink rigid bone compounds until they "
+            "fit inside the SMPL-X shell. Disabled by default because skin "
+            "containment must not alter hard-tissue thickness."
+        ),
+    )
+    p.add_argument(
         "--stage1-hand-nerve-rbf",
         action=argparse.BooleanOptionalAction,
         default=False,
@@ -1462,7 +1491,7 @@ def main() -> int:
         solver_versions={
             "source_volume": "source-skin-volume-v7",
             "beta_volume": "beta-volume-v8-internal-handles",
-            "regional_fit": "articulated-material-fit-v8-final-bind",
+            "regional_fit": "articulated-material-fit-v9-patella-contact",
             "soft_follow": "station-translation-v1",
             "runtime": "source-driver-coupling-v8-target-bind",
         },
@@ -1499,7 +1528,7 @@ def main() -> int:
         module_root / "hand_soft_transport.py",
         module_root / "rig_weighted_rest.py",
         extra=(
-            f"schema-{ANATOMY_ASSET_SCHEMA_VERSION}:source-template-v6"
+            f"schema-{ANATOMY_ASSET_SCHEMA_VERSION}:source-template-v7-patella-contact"
             + (":fast-publish" if args.fast_publish else "")
             + (":legacy-weighted-prealign" if args.stage1_legacy_weighted_prealign else "")
             + (":dual-hand-correspondence" if args.stage1_dual_hand_correspondence else "")
@@ -1623,6 +1652,12 @@ def main() -> int:
                             stage="stage1_post_rigid_bone_interfaces",
                         )
                     )
+                    rigid_asset, patella_relation_report = (
+                        restore_patella_lower_leg_relation(
+                            rigid_asset,
+                            stage="stage1_post_rigid_patella_relation",
+                        )
+                    )
                     asset, tissue_layer_report = merge_tissue_rest_reference(
                         rigid_asset,
                         pre_rigid_tissue_asset,
@@ -1632,6 +1667,7 @@ def main() -> int:
                         "legacy_volume": legacy_hand_volume_report,
                         "regional_fit": rigid_region_report,
                         "bone_interfaces": bone_interface_report,
+                        "patella_relation": patella_relation_report,
                         "pre_rigid_tissue_layer": tissue_layer_report,
                     }
                     logging.info(
@@ -1768,6 +1804,8 @@ def main() -> int:
     )
     tube_graphs = build_asset_attachment_graphs(asset)
     subject_surface = load_body_surface(subject_surface_path)
+    closed_target_surface_vertices: np.ndarray | None = None
+    closed_target_surface_faces: np.ndarray | None = None
     shape_report: dict[str, Any] = {"backend": "subject_bind_direct"}
     if shape_cache_hit:
         asset = cached_shape
@@ -1966,7 +2004,7 @@ def main() -> int:
                 "rig-weighted nerve rest reconstructed vertices=%s",
                 rig_weighted_nerve_report["reconstructed_vertex_count"],
             )
-    if args.stage1_rigid_region_baseline:
+    if args.stage1_rigid_region_baseline and args.stage1_clamp_rigid_to_skin:
         asset, subject_bone_report = fit_subject_bone_containment(
             asset,
             surface_vertices=subject_surface[0],
@@ -1979,6 +2017,15 @@ def main() -> int:
             len(subject_bone_report.get("groups", [])),
             subject_bone_report.get("moved_controller_count", 0),
         )
+    elif args.stage1_rigid_region_baseline:
+        shape_report["subject_bone_containment"] = {
+            "stage": "stage1_subject_bone_containment",
+            "available": False,
+            "skipped": True,
+            "reason": "hard_tissue_preserves_fitted_cross_section",
+            "legacy_flag": "--stage1-clamp-rigid-to-skin",
+        }
+    if args.stage1_rigid_region_baseline:
         asset, hand_interface_report = restore_hand_joint_interfaces(
             asset,
             stage="stage1_hand_joint_interfaces",
@@ -2039,6 +2086,19 @@ def main() -> int:
             "strong-Pareto harmonic tube selection selected_meshes=%s",
             tube_harmonic_selection.get("selected_meshes", []),
         )
+        # Containment is a local soft-tissue correction.  It must run after
+        # every optional tube reference selection and must never use bone size
+        # or bone containment as a proxy for vessel thickness.
+        asset, soft_projection_report = project_soft_tissue_outside(
+            asset,
+            surface_vertices=subject_surface[0],
+            surface_faces=subject_surface[1],
+            tissues=("vessel", "nerve"),
+            clearance_m=0.0005,
+            smooth_weight=8.0,
+            max_iterations=3,
+        )
+        shape_report["soft_tissue_projection"] = soft_projection_report
     if args.stage1_rigid_region_baseline:
         _accepted_tube_asset, tube_rest_acceptance = (
             enforce_tube_rest_intersection_nonregression(
@@ -2085,6 +2145,24 @@ def main() -> int:
                 canonical_weights["lbs_weights"], dtype=np.float32
             )[body_vertex_ids]
             material_pose_reports: list[dict[str, Any]] = []
+            clearance_poses = pose_cases(list(asset.joint_names))
+            if args.motion_npz is not None:
+                target_pose55, _target_raw_transl = load_easymocap_smplx_fit_drive(
+                    Path(args.motion_npz).expanduser().resolve(),
+                    gender=gender,
+                )
+                clearance_poses["target_motion"] = np.asarray(
+                    target_pose55, dtype=np.float32
+                ).reshape(55, 3)
+                closed_target_surface_vertices = _skin_lbs_surface(
+                    material_surface_vertices,
+                    material_surface_weights,
+                    np.asarray(canonical_weights["inverse_bind"], dtype=np.float32),
+                    np.asarray(canonical_weights["rest_joints"], dtype=np.float32),
+                    np.asarray(canonical_weights["parents"], dtype=np.int32),
+                    clearance_poses["target_motion"],
+                )
+                closed_target_surface_faces = material_surface_faces
             # Three strongly screened passes converge the static material
             # field for hinge and multiaxis stress poses while each pass keeps
             # its own local edge-strain line search.  This remains a one-time
@@ -2104,7 +2182,7 @@ def main() -> int:
                     surface_parents=np.asarray(
                         canonical_weights["parents"], dtype=np.int32
                     ),
-                    poses=pose_cases(list(asset.joint_names)),
+                    poses=clearance_poses,
                     stage=f"stage1_pose_material_clearance_pass{pass_index}",
                     repair_tissues=("vessel", "nerve", "connective_tissue"),
                     safety_margin_m=0.0045,
@@ -2115,6 +2193,42 @@ def main() -> int:
                     smooth_weight=400.0,
                 )
                 material_pose_reports.append(material_pose_report)
+            if args.motion_npz is not None:
+                # The broad pose suite can impose conflicting inward
+                # directions on one tube vertex.  Finish with the neutral and
+                # actual requested pose as the priority constraints.  This is
+                # still a generic offline material bake for any supplied
+                # motion; runtime remains ordinary Blender-weighted LBS.
+                priority_poses = {
+                    "neutral": np.zeros((55, 3), dtype=np.float32),
+                    "target_motion": clearance_poses["target_motion"],
+                }
+                for pass_index in (1, 2):
+                    asset, target_pose_report = bake_soft_tissue_pose_clearance(
+                        asset,
+                        surface_vertices=material_surface_vertices,
+                        surface_faces=material_surface_faces,
+                        surface_lbs_weights=material_surface_weights,
+                        surface_inverse_bind=np.asarray(
+                            canonical_weights["inverse_bind"], dtype=np.float32
+                        ),
+                        surface_rest_joints=np.asarray(
+                            canonical_weights["rest_joints"], dtype=np.float32
+                        ),
+                        surface_parents=np.asarray(
+                            canonical_weights["parents"], dtype=np.int32
+                        ),
+                        poses=priority_poses,
+                        stage=f"stage1_target_pose_clearance_pass{pass_index}",
+                        repair_tissues=("vessel", "nerve"),
+                        safety_margin_m=0.0015,
+                        maximum_edge_ratio=1.10,
+                        max_iterations=6,
+                        constraint_weight=150.0,
+                        rest_weight=2.0,
+                        smooth_weight=250.0,
+                    )
+                    material_pose_reports.append(target_pose_report)
         shape_report["pose_material_clearance"] = {
             "runtime_surface_queries": False,
             "pose_specific_runtime": False,
@@ -2183,6 +2297,17 @@ def main() -> int:
         posed_surface_faces = np.asarray(motion["faces"], dtype=np.int32).reshape(-1, 3)
         pose55, raw_transl = load_easymocap_smplx_fit_drive(motion_path, gender=gender)
         effective_transl = easymocap_drive_translation(pose55[:3], raw_transl, asset.rest_joints[0])
+        if (
+            closed_target_surface_vertices is not None
+            and closed_target_surface_faces is not None
+        ):
+            posed_surface_vertices = (
+                np.asarray(closed_target_surface_vertices, dtype=np.float64)
+                + np.asarray(effective_transl, dtype=np.float64).reshape(1, 3)
+            )
+            posed_surface_faces = np.asarray(
+                closed_target_surface_faces, dtype=np.int32
+            )
         cache_hash = smplx_pose_hash(pose55, effective_transl)
         runtime_key = _cache_key(
             module_root / "anatomy_lbs.py",
@@ -2191,8 +2316,20 @@ def main() -> int:
             module_root / "tube_graph.py",
             extra=f"schema-{ANATOMY_ASSET_SCHEMA_VERSION}:runtime-source-fk-v6",
         )
-        pose_cache = cache_root / "pose" / f"{shape_key}-{runtime_key}-{cache_hash}.npz"
-        pose_key = f"{shape_key}:{runtime_key}:{cache_hash}"
+        # Pose vertices depend on the final baked anatomy rest geometry, not
+        # only on SMPL-X beta and runtime code.  Omitting this digest allowed a
+        # vessel-clearance or joint-interface bake to reuse stale posed
+        # vertices from an older rest asset and made the final audit silently
+        # inspect the previous result.
+        rest_geometry_key = _array_content_key(asset.vertices_rest)
+        pose_cache = (
+            cache_root
+            / "pose"
+            / f"{shape_key}-{runtime_key}-{rest_geometry_key}-{cache_hash}.npz"
+        )
+        pose_key = (
+            f"{shape_key}:{runtime_key}:{rest_geometry_key}:{cache_hash}"
+        )
         cached_pose = (
             None
             if args.force_source_rebake or args.fast_extremity_donor is not None
@@ -2316,7 +2453,12 @@ def main() -> int:
                 **fast_updates,
             }
         )
-    save_rigged_asset(output_npz, asset)
+    # Keep the offline pose cache on ``asset`` for the diagnostics below, but
+    # never publish it as part of the reusable runtime rig.  Runtime consumers
+    # must skin the fitted rest asset from the requested SMPL-X pose rather
+    # than silently drawing the single capture pose used during acceptance.
+    runtime_asset = _runtime_publication_asset(asset)
+    save_rigged_asset(output_npz, runtime_asset)
     if args.fast_publish:
         # This mode is deliberately a live-preview path: it preserves the
         # source rig's articulated rest geometry and publishes it directly.

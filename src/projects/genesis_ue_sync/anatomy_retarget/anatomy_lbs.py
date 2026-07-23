@@ -549,28 +549,31 @@ def source_bone_driver_frames(
     if not np.all(np.isfinite(pose_global)) or not np.all(np.isfinite(rest_global)):
         raise ValueError("source driver joint frames must be finite")
     joint_delta = pose_global @ np.linalg.inv(rest_global)
-    official_rest_points = np.asarray(asset.rest_joints, dtype=np.float64)
-    rest_points = np.asarray(
+    # SMPL-X FK is the spatial authority for every long-bone segment.  Terminal
+    # joint-local/rigid controllers may rotate about a fitted surface-contact
+    # pivot: this preserves an ankle, wrist or digit interface after beta
+    # fitting without changing the effective femur/tibia segment length.
+    rest_points = np.asarray(asset.rest_joints, dtype=np.float64)
+    pose_points = pose_global[:, :3, 3]
+    contact_rest_points = np.asarray(
         asset.source_driver_rest_joints
         if asset.source_driver_rest_joints is not None
-        else official_rest_points,
+        else rest_points,
         dtype=np.float64,
     )
-    # Keep official SMPL-X FK as the motion authority. Anatomical pivots are
-    # fixed rest-space points transported by their corresponding official joint
-    # delta; replacing the FK skeleton itself would move distal hands/feet away
-    # from the posed SMPL-X surface.
-    point_delta = joint_delta.copy()
-    target_parents = np.asarray(asset.parents, dtype=np.int64)
-    for joint, parent in enumerate(target_parents.tolist()):
+    # A joint centre is positioned by its parent segment before the joint's
+    # own local rotation is applied.  Transporting an offset contact point by
+    # the joint's full delta would algebraically cancel through the coupling
+    # matrix and still rotate around the official regressed point.
+    contact_point_delta = joint_delta.copy()
+    for joint, parent in enumerate(np.asarray(asset.parents, dtype=np.int64)):
         if int(parent) >= 0:
-            # A joint center is positioned by its parent segment before the
-            # joint's own local rotation is applied. Using joint_delta[joint]
-            # would orbit an offset pivot around the old regressed center.
-            point_delta[joint] = joint_delta[int(parent)]
-    pose_points = (
-        np.einsum("bij,bj->bi", point_delta[:, :3, :3], rest_points)
-        + point_delta[:, :3, 3]
+            contact_point_delta[joint] = joint_delta[int(parent)]
+    contact_pose_points = (
+        np.einsum(
+            "bij,bj->bi", contact_point_delta[:, :3, :3], contact_rest_points
+        )
+        + contact_point_delta[:, :3, 3]
     )
     frames = np.tile(np.eye(4, dtype=np.float64), (bone_count, 1, 1))
     for bone, mode in enumerate(modes):
@@ -609,12 +612,19 @@ def source_bone_driver_frames(
                 distal_delta=joint_delta[b],
                 twist_alpha=float(blends[bone]) if mode == "twist" else 0.0,
             )
+            if mode == "rigid_group":
+                # Preserve the official FK-derived orientation, but make the
+                # fitted anatomy contact point the rigid rotation centre.
+                delta[:3, 3] = (
+                    contact_pose_points[a]
+                    - delta[:3, :3] @ contact_rest_points[a]
+                )
             frames[bone] = delta @ rest_frame
         elif mode in {"segment_root", "twist"}:
             raise ValueError(f"{mode} source driver {bone} has a degenerate joint mapping")
         else:
             frames[bone] = pose_global[a]
-            frames[bone, :3, 3] = pose_points[a]
+            frames[bone, :3, 3] = contact_pose_points[a]
         if not np.all(np.isfinite(frames[bone])):
             raise ValueError(f"source driver frame {bone} is non-finite")
         rotation = frames[bone, :3, :3]

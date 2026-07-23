@@ -266,6 +266,11 @@ def _joint_surface_gap_limit(label: str) -> float:
         # The source has no cartilage mesh between metacarpal and phalanx;
         # retain its authored bony clearance while still detecting separation.
         return 0.007
+    if label.startswith("thumb_"):
+        # The source similarly has no cartilage volume at the thumb CMC/MCP
+        # interfaces.  Keep a tighter bound than the parallel digits while
+        # allowing the articular surfaces to slide under thumb opposition.
+        return 0.005
     if label.startswith(("elbow_", "wrist_", "knee_", "ankle_", "fibula_")):
         return 0.005
     return ENDPOINT_LIMIT_M
@@ -691,7 +696,8 @@ def _geometry_landmark_diagnostic(
     surface_gap_limit = _joint_surface_gap_limit(label)
     passed = bool(
         fitting_surface_gap_change <= GAP_CHANGE_LIMIT_M
-        and surface_gap_change <= GAP_CHANGE_LIMIT_M
+        and surface_gap <= surface_gap_limit
+        and posed_surface_gap <= surface_gap_limit
     )
     return {
         "available": True,

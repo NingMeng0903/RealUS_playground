@@ -165,6 +165,8 @@ class StateRelayPublisher:
         self._udp_listener = None
         self._last_pub_mono = 0.0
         self._last_good_snap: AsyncStateSnapshot | None = None
+        self._rail_thread: threading.Thread | None = None
+        self._pub_lock = threading.Lock()
 
     @property
     def name(self) -> str:
@@ -201,8 +203,8 @@ class StateRelayPublisher:
         self._udp_listener = _on_udp
         self._bus.observer.add_listener(_on_udp)
 
-        # Real robot: UDP callback publishes every frame — do NOT poll at hz
-        # (logs showed ~2x seq rate: udp + thread both writing, causing beat hitch).
+        # Real robot: UDP callback publishes arm frames; a light rail refresh
+        # thread keeps encoder rail_m at ~50 Hz so the twin does not look ~10 Hz.
         if self._thread is None or not self._thread.is_alive():
             target = (
                 self._run_watchdog
@@ -211,6 +213,11 @@ class StateRelayPublisher:
             )
             self._thread = threading.Thread(target=target, name="state-relay-pub", daemon=True)
             self._thread.start()
+        if self._rail_thread is None or not self._rail_thread.is_alive():
+            self._rail_thread = threading.Thread(
+                target=self._run_rail_refresh, name="state-relay-rail", daemon=True
+            )
+            self._rail_thread.start()
 
     def stop(self) -> None:
         self._stop.set()
@@ -220,6 +227,9 @@ class StateRelayPublisher:
         if self._thread is not None:
             self._thread.join(timeout=2.0)
             self._thread = None
+        if self._rail_thread is not None:
+            self._rail_thread.join(timeout=1.0)
+            self._rail_thread = None
         if self._view is not None:
             try:
                 self._view.header["global_seq"] = np.uint64(0)
@@ -239,13 +249,28 @@ class StateRelayPublisher:
             rail_m = float(self._rail_m_fn())
         except Exception:
             rail_m = 0.0
-        self._seq += 1
-        active = int(self._view.header["active"])
-        inactive = 1 - active
-        _write_slot(self._view.slots[inactive], seq=self._seq, snap=snap, rail_m=rail_m)
-        self._view.header["active"] = np.uint64(inactive)
-        self._view.header["global_seq"] = np.uint64(self._seq)
-        self._last_pub_mono = time.monotonic()
+        with self._pub_lock:
+            self._seq += 1
+            active = int(self._view.header["active"])
+            inactive = 1 - active
+            _write_slot(self._view.slots[inactive], seq=self._seq, snap=snap, rail_m=rail_m)
+            self._view.header["active"] = np.uint64(inactive)
+            self._view.header["global_seq"] = np.uint64(self._seq)
+            self._last_pub_mono = time.monotonic()
+
+    def _run_rail_refresh(self) -> None:
+        """Republish last arm snap with fresh encoder rail @ 50 Hz for twin smoothness."""
+        period = 0.02
+        while not self._stop.wait(period):
+            snap = self._last_good_snap
+            if snap is None or self._view is None:
+                continue
+            if time.monotonic() - self._last_pub_mono < 0.012:
+                continue
+            try:
+                self._publish_snap(snap, source="rail")
+            except Exception:
+                pass
 
     def _publish_once(self) -> None:
         obs = self._bus.observer

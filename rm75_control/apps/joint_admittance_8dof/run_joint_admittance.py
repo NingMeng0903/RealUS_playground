@@ -76,6 +76,14 @@ def _run_controller_service(
 
     def _on_sig(_signum, _frame) -> None:
         nonlocal stop
+        # First action: kill rail velocity so FA24 cannot stay latched while
+        # teardown / home runs. Then request WBC stop so the task loop exits.
+        if rail_bridge is not None and rail_bridge.enabled:
+            rail_bridge.estop()
+        try:
+            hub.request_stop()
+        except Exception:
+            pass
         stop = True
 
     signal.signal(signal.SIGINT, _on_sig)
@@ -101,8 +109,27 @@ def _run_controller_service(
             continue
 
         task_n = hub.task_n
+
+        # Refuse move→D / FA24 until rail Modbus path is hot (or re-armed after panic).
+        if rail_bridge is not None and rail_bridge.enabled:
+            need_rearm = rail_bridge.panicked or not rail_bridge.armed
+            if not rail_bridge.ensure_armed(
+                timeout_s=float(getattr(rail_bridge.config, "arm_timeout_s", 8.0)),
+                rearm=need_rearm,
+            ):
+                hub.set_error(cmd_seq, "rail NOT READY (arming failed)")
+                hub.ack(cmd_seq)
+                print(
+                    f"rm75 controller: task #{task_n} refused — rail NOT READY",
+                    flush=True,
+                )
+                if not stop:
+                    print("rm75 controller: hot-wait", flush=True)
+                continue
+
         hub.set_running(cmd_seq, msg="accepted")
         print(f"rm75 controller: running task #{task_n}", flush=True)
+
         phase_labels: list[str] = []
         tick_counter = [0]
         phase_idx = [0]
@@ -129,6 +156,10 @@ def _run_controller_service(
         try:
             built = build_sin_tool_y_program(params, raw=raw)
             rail_m_fn.set_active(built.inner)
+            if rail_bridge is not None and rail_bridge.enabled:
+                rail_csv = getattr(params, "rail_log_csv", None)
+                if rail_csv:
+                    rail_bridge.enable_log_csv(str(rail_csv))
             result = execute_sin_tool_y_program(
                 sess,
                 bus,
@@ -232,6 +263,11 @@ def main() -> int:
     dt = float(raw.get("timing", {}).get("dt_ms", 5.0)) / 1000.0
     rail_default_m = float(raw.get("inner", {}).get("rail", {}).get("q_ref_m", 0.0))
     rail_bridge = RailServoBridge(parse_rail_servo_config(raw))
+    if args.verbose and rail_bridge.enabled and not rail_bridge.log_csv_path:
+        log_dir = Path(__file__).resolve().parents[1] / "logs" / "rail_servo"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        rail_bridge.enable_log_csv(str(log_dir / f"rail_{ts}.csv"))
     rail_pub = _RailPublisher(rail_default_m, bridge=rail_bridge)
 
     if args.dry_run:

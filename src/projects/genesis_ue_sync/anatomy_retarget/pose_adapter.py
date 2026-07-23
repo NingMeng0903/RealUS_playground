@@ -49,6 +49,7 @@ def easymocap_fit_to_smplx55(
     *,
     gender: str = "male",
     model_path: str | Path | None = None,
+    closed_mouth: bool = True,
 ) -> np.ndarray:
     """Map EasyMocap ``Rh + poses`` to the full [55, 3] SMPL-X pose.
 
@@ -63,12 +64,18 @@ def easymocap_fit_to_smplx55(
     if flat.size == 165:
         full = flat.reshape(SMPLX_RUNTIME_JOINT_COUNT, 3).copy()
         full[0] = root
+        if closed_mouth:
+            full[22] = 0.0
         return full.astype(np.float32)
     if flat.size != 87:
         raise ValueError(f"Expected EasyMocap SMPL-X 87D or full 165D pose, got {flat.size}")
     body22 = flat[:66].reshape(22, 3)
     out[1:22] = body22[1:22]
     out[22:25] = flat[78:87].reshape(3, 3)
+    if closed_mouth:
+        # SMPL-X joint 22 is jaw.  The authored anatomy is closed-mouth and
+        # has no reliable tongue mesh to pose with an open capture jaw.
+        out[22] = 0.0
     resolved = Path(model_path).expanduser().resolve() if model_path is not None else _default_smplx_model_path(gender)
     left_basis, right_basis = _hand_pca_components(str(resolved))
     out[25:40] = (flat[66:72].reshape(1, 6) @ left_basis).reshape(15, 3)
@@ -174,22 +181,27 @@ def pose_to_smplx55_axis_angle(pose: Any) -> np.ndarray:
         out = np.zeros((SMPLX_RUNTIME_JOINT_COUNT, 3), dtype=np.float32)
         n = min(SMPLX_RUNTIME_JOINT_COUNT, int(arr.shape[0]))
         out[:n] = arr[:n]
+        out[22] = 0.0
         return out
     flat = arr.reshape(-1)
     out = np.zeros((SMPLX_RUNTIME_JOINT_COUNT, 3), dtype=np.float32)
     if flat.size == 72:
         smpl = flat.reshape(24, 3)
         out[:22] = smpl[:22]
+        out[22] = 0.0
         return out
     if flat.size == 87:
         # This generic adapter has no separate EasyMocap ``Rh`` argument. Callers
         # that have ``Rh`` should use ``easymocap_fit_to_smplx55`` directly.
         return easymocap_fit_to_smplx55(flat[:3], flat)
     if flat.size == 165:
-        return flat.reshape(SMPLX_RUNTIME_JOINT_COUNT, 3).astype(np.float32)
+        out = flat.reshape(SMPLX_RUNTIME_JOINT_COUNT, 3).astype(np.float32)
+        out[22] = 0.0
+        return out
     if flat.size % 3 == 0:
         rows = flat.reshape(-1, 3)
         n = min(SMPLX_RUNTIME_JOINT_COUNT, int(rows.shape[0]))
         out[:n] = rows[:n]
+        out[22] = 0.0
         return out
     raise ValueError(f"Unsupported pose shape for SMPL-X anatomy drive: {arr.shape}")

@@ -226,6 +226,12 @@ def _selected_meshes(
     out: list[bpy.types.Object] = []
     excluded: list[dict[str, Any]] = []
 
+    def _configured_name(name: str, configured: set[str]) -> bool:
+        """Match an object and Blender's automatic .001 duplicate suffix."""
+        value = str(name)
+        base = value.rsplit(".", 1)[0] if value.rsplit(".", 1)[-1].isdigit() else value
+        return value in configured or base in configured
+
     def _excluded_record(
         obj: bpy.types.Object,
         collections: set[str],
@@ -256,7 +262,7 @@ def _selected_meshes(
         if obj.type != "MESH":
             continue
         collections = set(_collections_for_object(obj))
-        if obj.name in exclude_meshes:
+        if _configured_name(str(obj.name), exclude_meshes):
             excluded.append(
                 _excluded_record(obj, collections, "configured_exclude_mesh")
             )

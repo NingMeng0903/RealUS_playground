@@ -148,6 +148,10 @@ class JointIkStep:
     # Preferred-extension rail task telemetry (COUPLED mode).
     rail_ext_err_m: float = 0.0
     rail_ext_weight: float = 0.0
+    # Debug: how the rail was driven this tick (plan pin vs free QP).
+    rail_vel_pin: float = float("nan")      # m/s hard pin, or NaN if free
+    rail_qdot_ff: float = float("nan")      # plan qdot_ff[0] before strip
+    plan_drives_rail: bool = False
 
 
 class JointIkController:
@@ -442,13 +446,19 @@ class JointIkController:
             self._rail_mode == RailMode.LOCKED
             and self._locked_style == LockedStyle.TCP_FIXED
         )
-        plan_drives_rail = rail_only or tcp_fixed
+        # LOCKED styles always pin rail from the plan. Move phases also pass a
+        # plan_* qdot_ff that includes rail (0→center); without pinning, COUPLED
+        # Cartesian QP yanks rail across travel (hardware log: tgt 743→42→374 mm
+        # on move->D) even though the joint plan is a smooth 0→0.4 m ramp.
+        plan_drives_rail = rail_only or tcp_fixed or qdot_ff is not None
 
         qdot_ff_sec = qdot_ff
         rail_vel_pin: float | None = None
+        rail_qdot_ff_val = float("nan")
         if plan_drives_rail and qdot_ff is not None:
             qdot_ff_arr = np.asarray(qdot_ff, dtype=float)
             v_rail = float(qdot_ff_arr[0])
+            rail_qdot_ff_val = v_rail
             # Strip rail out of the qdot_ff passed to the composer (secondary
             # tasks act only on the arm portion); the rail velocity is imposed
             # via the QP rail-vel pin below and then safety-clamped.
@@ -574,6 +584,11 @@ class JointIkController:
             pos_clamped=rep.pos_clamped,
             rail_ext_err_m=rail_ext_err,
             rail_ext_weight=rail_task_weight,
+            rail_vel_pin=(
+                float(rail_vel_pin) if rail_vel_pin is not None else float("nan")
+            ),
+            rail_qdot_ff=rail_qdot_ff_val,
+            plan_drives_rail=bool(plan_drives_rail),
         )
 
 
@@ -911,6 +926,59 @@ class JointTrackOuterLoop:
         return v_base
 
 
+def _print_move_plan_summary(
+    phase: Phase,
+    *,
+    inner: JointIkController,
+    q_meas: np.ndarray,
+    rail_bridge=None,
+    verbose: bool = True,
+) -> None:
+    """One-line move→D plan summary at phase enter (debug; no control change)."""
+    if not verbose:
+        return
+    label = str(phase.label or "")
+    if not label.startswith("move"):
+        return
+    ref = getattr(phase.outer, "reference", None)
+    if ref is None or not hasattr(ref, "sample_q"):
+        return
+    q0 = np.asarray(getattr(ref, "q_start", q_meas), dtype=float).reshape(-1)
+    qT = np.asarray(getattr(ref, "q_target", q_meas), dtype=float).reshape(-1)
+    dur = float(getattr(ref, "duration_s", 0.0) or 0.0)
+    rail0 = float(q0[0]) if q0.size > 0 else 0.0
+    railT = float(qT[0]) if qT.size > 0 else 0.0
+    dq_rail = abs(railT - rail0)
+    # Quintic smoothstep peak |qdot| = 1.875 · |dq| / T
+    peak_v = (1.875 * dq_rail / dur) if dur > 1e-9 else float("nan")
+    motor_vmax = 0.15
+    if rail_bridge is not None and getattr(rail_bridge, "enabled", False):
+        try:
+            motor_vmax = float(rail_bridge.config.vel_max_m_s)
+        except Exception:
+            pass
+    arm_dq_deg = float(np.rad2deg(np.max(np.abs(wrap_joint_delta(q0, qT)[1:])))) if q0.size >= 8 else float("nan")
+    try:
+        J0 = inner.kin.jacobian(q_meas)
+        sigma0 = float(inner.kin.singular_values(J0).min())
+    except Exception:
+        sigma0 = float("nan")
+    mode = "joint" if hasattr(phase.outer, "last_joint_err_deg") or type(phase.outer).__name__ == "JointTrackOuterLoop" else "cartesian"
+    if type(phase.outer).__name__ == "JointTrackOuterLoop":
+        mode = "joint"
+    elif type(phase.outer).__name__ == "CartesianTrackOuterLoop":
+        mode = "cartesian"
+    over = " OVER_MOTOR" if (np.isfinite(peak_v) and peak_v > motor_vmax + 1e-6) else ""
+    print(
+        f"  move plan: mode={mode} dur={dur:.2f}s | "
+        f"rail {rail0 * 1000:.1f}→{railT * 1000:.1f} mm "
+        f"peak_v={peak_v:.3f} m/s vs motor {motor_vmax:.2f} m/s{over} | "
+        f"arm max|dq|={arm_dq_deg:.1f}deg sigma0={sigma0:.3f} | "
+        f"plan_drives_rail=YES (qdot_ff pin; rail_extension OFF in move)",
+        flush=True,
+    )
+
+
 # ---------------------------------------------------------------------------
 # On-robot orchestration
 # ---------------------------------------------------------------------------
@@ -1035,7 +1103,9 @@ class _TickLogger:
            "qdot_norm", "qdot_max_frac_vmax",
            "qdot_ff_norm", "arm_singularity_smooth", "limit_activation",
            "tcp_jump_mm",
-           "rail_ext_err_m", "rail_ext_w"]
+           "rail_ext_err_m", "rail_ext_w",
+           "rail_target_sent_m", "rail_meas_m",
+           "rail_vel_pin", "plan_drives_rail", "rail_qdot_ff"]
     )
 
     def __init__(self, path: str) -> None:
@@ -1082,6 +1152,7 @@ class _TickLogger:
         governor_scale: float = float("nan"),
         governor_scale_raw: float = float("nan"),
         v_max: np.ndarray | None = None,
+        rail_meas_m: float = float("nan"),
     ) -> None:
         qm = q_meas if q_meas is not None else np.full(8, np.nan)
         ctrl = getattr(outer, "controller", None)
@@ -1100,6 +1171,7 @@ class _TickLogger:
             qdot_max_frac = float(np.max(np.abs(step.qdot) / np.maximum(v_max, 1e-9)))
         else:
             qdot_max_frac = float("nan")
+        rail_sent = float(step.q_send[0]) if step.q_send is not None else float("nan")
         self._q.put(
             [f"{t_wall:.4f}", label, f"{t_ref:.4f}"]
             + [f"{v:.6f}" for v in step.q_send]
@@ -1118,7 +1190,12 @@ class _TickLogger:
                f"{step.qdot_ff_norm:.5f}", f"{step.arm_singularity_smooth:.4f}",
                f"{step.limit_activation:.4f}",
                f"{step.tcp_jump_mm:.3f}",
-               f"{step.rail_ext_err_m:.5f}", f"{step.rail_ext_weight:.4f}"]
+               f"{step.rail_ext_err_m:.5f}", f"{step.rail_ext_weight:.4f}",
+               f"{rail_sent:.6f}",
+               f"{rail_meas_m:.6f}" if np.isfinite(rail_meas_m) else "",
+               f"{step.rail_vel_pin:.6f}" if np.isfinite(step.rail_vel_pin) else "",
+               int(bool(step.plan_drives_rail)),
+               f"{step.rail_qdot_ff:.6f}" if np.isfinite(step.rail_qdot_ff) else ""]
         )
 
     def close(self) -> None:
@@ -1138,14 +1215,14 @@ def _expand_q_meas(q_deg_or_rad: np.ndarray, rail_m: float) -> np.ndarray:
 
 
 def _rail_m_for_init(rail_bridge, inner: JointIkController) -> float:
-    """Seed WBC ``q_cmd[0]`` at task/phase start.
+    """Seed WBC ``q_cmd[0]`` at task/phase start from encoder (measured).
 
-    Use the open-loop command stream (what the motor was told), not the encoder.
-    Encoder feedback in the WBC froze the governor, blocked pose-D arrival, and
-    made force-hybrid unreachable; it also stacked incremental segments to travel.
+    Use measured (encoder), not a stale plan value, so the first
+    ``set_target_m`` is near the true carriage and the soft loop does not
+    slam toward an old q_cmd.
     """
     if rail_bridge is not None and rail_bridge.enabled:
-        return float(rail_bridge.commanded_m)
+        return float(rail_bridge.measured_m)
     return float(inner.q_cmd[0])
 
 
@@ -1367,6 +1444,13 @@ def run_joint_admittance_phases(
                             _rail_m_for_feedback(rail_bridge, inner),
                         )
                     pose_pin = inner.kin.fk_pose(q_meas)
+                    _print_move_plan_summary(
+                        phase,
+                        inner=inner,
+                        q_meas=q_meas,
+                        rail_bridge=rail_bridge,
+                        verbose=verbose,
+                    )
                     if hasattr(phase.outer, "set_origin"):
                         phase.outer.set_origin(pose_pin)
                     if phase.on_enter is not None:
@@ -1479,6 +1563,20 @@ def run_joint_admittance_phases(
                         )
                         if rail_bridge is not None:
                             rail_bridge.set_target_m(float(inner.q_cmd[0]))
+                        # Throttled rail follow debug (move→D + scan) for C iteration.
+                        if (
+                            verbose
+                            and rail_bridge is not None
+                            and rail_bridge.enabled
+                            and now - jump_warn_t >= 0.5
+                        ):
+                            jump_warn_t = now
+                            print(
+                                f"  rail follow tgt={inner.q_cmd[0]*1000:.1f} "
+                                f"meas={rail_bridge.measured_m*1000:.1f} mm "
+                                f"phase={phase.label} t_ref={t_ref:.2f}s",
+                                flush=True,
+                            )
                         outer_err_mm = getattr(phase.outer, "last_err_mm", None)
                         if outer_err_mm is not None:
                             step.cart_err_mm = outer_err_mm
@@ -1486,7 +1584,7 @@ def run_joint_admittance_phases(
                         step.tcp_jump_mm = float(
                             np.linalg.norm(pose_cmd[:3] - prev_pose_cmd[:3]) * 1000.0
                         )
-                        if verbose and step.tcp_jump_mm > 5.0 and now - jump_warn_t >= 0.2:
+                        if verbose and step.tcp_jump_mm > 8.0 and now - jump_warn_t >= 1.0:
                             jump_warn_t = now
                             print(
                                 f"  warn: TCP jump {step.tcp_jump_mm:.1f}mm/tick",
@@ -1527,12 +1625,19 @@ def run_joint_admittance_phases(
                             )
     
                         if logger is not None:
+                            rail_meas = float("nan")
+                            if rail_bridge is not None and rail_bridge.enabled:
+                                try:
+                                    rail_meas = float(rail_bridge.measured_m)
+                                except Exception:
+                                    rail_meas = float("nan")
                             logger.write(
                                 now - total_t0, phase.label, t_ref, step, q_meas, pose_pin, f_ext,
                                 outer=phase.outer,
                                 governor_scale=scale,
                                 governor_scale_raw=raw_scale,
                                 v_max=inner.limits.v_max,
+                                rail_meas_m=rail_meas,
                             )
                         if on_step is not None:
                             on_step(phase.label, t_ref, step, pose_pin, f_ext, t_wall)

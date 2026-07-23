@@ -5,6 +5,9 @@ from dataclasses import replace
 import numpy as np
 
 from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import with_source_driver_coupling
+from projects.genesis_ue_sync.anatomy_retarget.cli.run_anatomy_retarget import (
+    _runtime_publication_asset,
+)
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import AnatomyRiggedAsset
 from projects.genesis_ue_sync.anatomy_retarget.stage1_contract import stage1_runtime_contract
 
@@ -88,3 +91,20 @@ def test_stage1_contract_rejects_pose_cache() -> None:
 
     assert report["passed"] is False
     assert report["pose_cache_absent"] is False
+
+
+def test_runtime_publication_strips_offline_pose_cache() -> None:
+    asset = _stage1_asset()
+    cached = replace(
+        asset,
+        pose_cache_vertices=np.asarray(asset.vertices_rest).copy(),
+        pose_cache_hash="diagnostic-only-cache",
+    )
+
+    published = _runtime_publication_asset(cached)
+
+    assert cached.pose_cache_vertices is not None
+    assert cached.pose_cache_hash == "diagnostic-only-cache"
+    assert published.pose_cache_vertices is None
+    assert published.pose_cache_hash == ""
+    assert stage1_runtime_contract(published)["passed"] is True

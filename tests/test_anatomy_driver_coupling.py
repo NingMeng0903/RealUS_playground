@@ -19,6 +19,10 @@ from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import AnatomyRigged
 from projects.genesis_ue_sync.anatomy_retarget.material_fit import (
     _direct_smplx_hand_controllers,
 )
+from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
+    easymocap_fit_to_smplx55,
+    pose_to_smplx55_axis_angle,
+)
 
 
 def _chain_asset() -> AnatomyRiggedAsset:
@@ -82,6 +86,13 @@ def _root_pose_delta(rotvec: np.ndarray) -> np.ndarray:
     delta = np.eye(4, dtype=np.float32)
     delta[:3, :3] = axis_angle_to_matrix(np.asarray(rotvec, dtype=np.float32))[0]
     return delta
+
+
+def test_closed_mouth_policy_zeroes_smplx_jaw() -> None:
+    full = np.zeros((55, 3), dtype=np.float32)
+    full[22] = (0.0, 0.8, 0.0)
+    assert np.allclose(pose_to_smplx55_axis_angle(full)[22], 0.0)
+    assert np.allclose(easymocap_fit_to_smplx55(np.zeros(3), full.reshape(-1))[22], 0.0)
 
 
 def test_direct_hand_controller_policy_is_semantic_not_index_based() -> None:
@@ -174,7 +185,7 @@ def test_target_bind_is_runtime_authority_without_mutating_source_bind() -> None
             )
 
 
-def test_anatomical_driver_pivot_uses_official_joint_delta() -> None:
+def test_runtime_long_bones_use_official_fk_and_terminal_bones_use_contact_pivots() -> None:
     base = _chain_asset()
     driver_points = np.asarray(base.rest_joints, dtype=np.float32).copy()
     driver_points[:, 0] += np.float32(0.2)
@@ -193,16 +204,19 @@ def test_anatomical_driver_pivot_uses_official_joint_delta() -> None:
         rest_joints=base.rest_joints,
         parents=base.parents,
     ).astype(np.float64)
-    delta = official_pose @ np.linalg.inv(official_rest)
-    parent = int(base.parents[1])
-    expected = (
-        delta[parent, :3, :3] @ driver_points[1] + delta[parent, :3, 3]
-    )
-
     frames = source_bone_driver_frames(asset, pose)
 
-    np.testing.assert_allclose(frames[1, :3, 3], expected, atol=2.0e-6)
-    assert np.linalg.norm(frames[1, :3, 3] - official_pose[1, :3, 3]) > 0.05
+    np.testing.assert_allclose(
+        frames[1, :3, 3], official_pose[1, :3, 3], atol=2.0e-6
+    )
+    parent_delta = official_pose[1] @ np.linalg.inv(official_rest[1])
+    expected_terminal = (
+        parent_delta[:3, :3] @ np.asarray(driver_points[2], dtype=np.float64)
+        + parent_delta[:3, 3]
+    )
+    np.testing.assert_allclose(
+        frames[2, :3, 3], expected_terminal, atol=2.0e-6
+    )
 
 
 def test_source_bone_flexion_corrective_is_child_local_and_pose_generic() -> None:

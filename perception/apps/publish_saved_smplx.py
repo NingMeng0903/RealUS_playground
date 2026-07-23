@@ -97,14 +97,27 @@ def main() -> int:
     except KeyboardInterrupt:
         logging.info("publish stopped")
         return 0
+    except OSError as exc:
+        # Typical: Address already in use — another publisher still on 5598.
+        logging.error("publish bind failed (%s): %s", args.publish_bind, exc)
+        logging.error("kill the other publisher, or pass --publish-bind tcp://127.0.0.1:<port>")
+        return 1
 
-    logging.info(
-        "published kind=%s sent=%s bind=%s moment=%s",
-        diag.get("payload_kind"),
-        diag.get("sent"),
-        diag.get("bind"),
-        diag.get("moment_dir"),
-    )
+    if diag.get("stopped"):
+        logging.info(
+            "publish stopped kind=%s sent=%s bind=%s",
+            diag.get("payload_kind"),
+            diag.get("sent"),
+            diag.get("bind"),
+        )
+    else:
+        logging.info(
+            "published kind=%s sent=%s bind=%s moment=%s",
+            diag.get("payload_kind"),
+            diag.get("sent"),
+            diag.get("bind"),
+            diag.get("moment_dir"),
+        )
     return 0
 
 

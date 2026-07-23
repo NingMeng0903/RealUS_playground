@@ -82,6 +82,7 @@ class SinToolYTaskParams:
     enable_force: bool = False
     log_interval: float = 2.0
     log_csv: str | None = None
+    rail_log_csv: str | None = None
     cartesian_max_lin_vel: float | None = None
     q0_rad: list[float] = field(default_factory=list)
     q_target_rad: list[float] = field(default_factory=list)
@@ -164,6 +165,10 @@ class PhaseCommandHub:
 
     def should_stop(self) -> bool:
         return int(self._ctl["stop_req"]) != 0
+
+    def request_stop(self) -> None:
+        """Ask the running task to exit (Ctrl-C / emergency)."""
+        self._ctl["stop_req"] = np.uint8(1)
 
     @property
     def task_n(self) -> int:

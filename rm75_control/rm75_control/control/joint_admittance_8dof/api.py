@@ -327,7 +327,7 @@ def compute_move_plan(
     peak_joint_v_frac: float = 0.50,
     max_lin_vel_m_s: float = 0.4,
     duration_min_s: float = 2.5,
-    duration_max_s: float = 5.0,
+    duration_max_s: float = 20.0,
     approach_dz_m: float | None = None,
     sigma_ref: float = 0.08,
     euler_order: str = "xyz",

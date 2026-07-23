@@ -876,6 +876,7 @@ def make_task_params_from_args(
         enable_force=bool(enable_force),
         log_interval=float(args.log_interval),
         log_csv=args.log_csv,
+        rail_log_csv=getattr(args, "rail_log_csv", None),
         cartesian_max_lin_vel=args.cartesian_max_lin_vel,
         q0_rad=np.asarray(q0_rad, dtype=float).reshape(-1).tolist(),
         q_target_rad=np.asarray(q_target_rad, dtype=float).reshape(-1).tolist(),

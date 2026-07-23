@@ -19,10 +19,14 @@ class ParamRef:
 
 # Frequently used parameters (LW100 manual ch.7).
 P_FA4_MODE = ParamRef("FA", 4)  # 0=position 1=speed 2=torque 3=pos/speed
-# Speed-mode params (manual §5.2): FA22 speed-cmd source, FA24 internal speed 1 (signed r/min),
-# FA40/41 accel/decel time (ms), FA42 S-curve time (ms).
+# Speed-mode params (manual §5.2): FA22 speed-cmd source, FA23 max speed,
+# FA24 internal speed 1 (signed r/min), FA40/41 accel/decel (ms), FA42 S-curve (ms).
 P_FA22_SPEED_SRC = ParamRef("FA", 22)   # 1=internal speed by SP1/SP2 (SP=00 → FA24)
+P_FA23_MAX_SPEED = ParamRef("FA", 23)   # 0..6000 r/min hard speed ceiling (factory 5000)
 P_FA24_INT_SPEED1 = ParamRef("FA", 24)  # -6000..6000 r/min, live velocity command
+P_FA25_INT_SPEED2 = ParamRef("FA", 25)
+P_FA26_INT_SPEED3 = ParamRef("FA", 26)
+P_FA27_INT_SPEED4 = ParamRef("FA", 27)
 P_FA40_ACC_MS = ParamRef("FA", 40)
 P_FA41_DEC_MS = ParamRef("FA", 41)
 P_FA42_SCURVE_MS = ParamRef("FA", 42)
@@ -31,6 +35,7 @@ P_FA14_POS_INPUT = ParamRef("FA", 14)
 P_FA20_DRIVE_INHIBIT = ParamRef("FA", 20)  # 0=CWL/CCWL inhibit active, 1=ignore (factory 1)
 P_FA53_FORCE_ENABLE = ParamRef("FA", 53)  # 0=SON via DI, 1=software force enable
 P_FA60_SOFT_RESET = ParamRef("FA", 60)  # 1=soft reset (required after mode changes)
+P_FA61_ALARM_CLEAR = ParamRef("FA", 61)  # 1=clear system alarm (Er-01 etc.), then 0
 P_FA71_SLAVE = ParamRef("FA", 71)
 P_FA72_BAUD = ParamRef("FA", 72)
 P_FA73_PROTO = ParamRef("FA", 73)
@@ -47,6 +52,8 @@ ENCODER_COUNTS_PER_REV_17BIT = 131_072
 P_FC13_POS_COORD_LO = ParamRef("FC", 13)  # set current position coord low 16b — NOT live feedback
 P_FC14_POS_COORD_HI = ParamRef("FC", 14)  # set current position coord high 16b — NOT live feedback
 P_FC15_DI_FORCE1 = ParamRef("FC", 15)
+# FC-16 bit1=SP1, bit2=SP2 (manual §7.2.4). SP selects FA24..FA27 in speed mode.
+P_FC16_DI_FORCE2 = ParamRef("FC", 16)
 P_FC18_DI_FORCE4 = ParamRef("FC", 18)
 P_FD0_ABS_INC = ParamRef("FD", 0)
 P_FD2_P1_REVS = ParamRef("FD", 2)

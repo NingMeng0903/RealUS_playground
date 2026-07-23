@@ -16,16 +16,22 @@ from rm75_control.hw.lw100.registers import (
     P_FA14_POS_INPUT,
     P_FA20_DRIVE_INHIBIT,
     P_FA22_SPEED_SRC,
+    P_FA23_MAX_SPEED,
     P_FA24_INT_SPEED1,
+    P_FA25_INT_SPEED2,
+    P_FA26_INT_SPEED3,
+    P_FA27_INT_SPEED4,
     P_FA40_ACC_MS,
     P_FA41_DEC_MS,
     P_FA42_SCURVE_MS,
     P_FA4_MODE,
     P_FA53_FORCE_ENABLE,
     P_FA60_SOFT_RESET,
+    P_FA61_ALARM_CLEAR,
     P_FA72_BAUD,
     P_FA73_PROTO,
     P_FC15_DI_FORCE1,
+    P_FC16_DI_FORCE2,
     P_FC18_DI_FORCE4,
     P_FD0_ABS_INC,
     P_FD2_P1_REVS,
@@ -67,8 +73,9 @@ class LW100DriveConfig:
     host: str = "192.168.0.7"
     port: int = 8234
     slave_id: int = 1
-    timeout_s: float = 1.0
-    retries: int = 2
+    timeout_s: float = 0.15
+    retries: int = 1
+    inter_frame_delay_s: float = 0.002
     lead_mm: float = 10.0
     gear_ratio: float = 1.0
     pulses_per_rev: int = 10_000
@@ -99,6 +106,7 @@ class LW100Drive:
                 slave_id=self.config.slave_id,
                 timeout_s=self.config.timeout_s,
                 retries=self.config.retries,
+                inter_frame_delay_s=self.config.inter_frame_delay_s,
             )
         )
         self._map: RegisterMap | None = None
@@ -114,6 +122,7 @@ class LW100Drive:
         # True after start_velocity_session(); cleared on disable().
         self._velocity_session_active: bool = False
         self._last_rpm_cmd: int = 0
+        self._max_speed_rpm: int = 1200
 
     def connect(self) -> RegisterMap:
         self._client.connect()
@@ -277,40 +286,54 @@ class LW100Drive:
     def configure_velocity_mode(
         self,
         *,
-        accel_ms: int = 50,
-        decel_ms: int = 50,
-        scurve_ms: int = 20,
+        accel_ms: int = 150,
+        decel_ms: int = 150,
+        scurve_ms: int = 50,
+        max_speed_rpm: int = 1200,
         steps: list[str] | None = None,
         force_reset: bool = False,
     ) -> None:
-        """Set FA4=1 speed mode, FA22=1 internal speed (SP=00 → FA24), accel/decel ramps.
+        """Set FA4=1 speed mode, FA22=1 internal speed (SP=00 → FA24), FA23 ceiling.
 
-        Streaming FA24 (signed r/min) then gives continuous, smooth velocity
-        following — the servo tracks a live velocity reference with no per-segment
-        accel/decel stop-start (unlike Pr P1 point-to-point). Position is closed
-        in software from the encoder (see ``RailServoBridge`` velocity follow).
+        Streaming FA24 (signed r/min) gives continuous velocity following — the
+        servo tracks a live velocity reference with no per-segment CTRG
+        stop-start. Position is closed in software from the encoder
+        (``RailServoBridge``).
+
+        After FA-60 soft reset, FA23 / FA24–27 / FA40–42 / FC-16 are rewritten
+        because soft reset must not leave factory FA25=500 etc. active.
         """
         log = steps if steps is not None else []
         if not self.config.configure_mode:
             self._log(log, "skip velocity mode configure (configure_mode=False)")
             return
-        desired = (1, 1, 0)  # marker tuple for velocity mode (FA4, FA22, spare)
+        max_rpm = int(max(1, min(6000, max_speed_rpm)))
+        desired = (1, 1, max_rpm)  # FA4, FA22, FA23 marker
         if self._active_mode is None and not force_reset:
             try:
                 cur_mode = self.read_param(P_FA4_MODE)
                 cur_src = self.read_param(P_FA22_SPEED_SRC)
-                if (cur_mode, cur_src) == (1, 1):
+                cur_max = self.read_param(P_FA23_MAX_SPEED)
+                if (cur_mode, cur_src, cur_max) == (1, 1, max_rpm):
                     self._active_mode = desired
-                    self._log(log, "velocity mode already live FA4=1 FA22=1 (no soft reset)")
+                    self._log(log, f"velocity mode already live FA4=1 FA22=1 FA23={max_rpm} (no soft reset)")
             except ModbusRtuError:
                 pass
         writes = [
             (P_FA4_MODE, 1, "FA4=1 speed control"),
-            (P_FA22_SPEED_SRC, 1, "FA22=1 internal speed (SP=00 → FA24)"),
-            (P_FA24_INT_SPEED1, 0, "FA24=0 initial speed"),
+            (P_FA22_SPEED_SRC, 1, "FA22=1 internal speed (SP selects FA24..27)"),
+            (P_FA23_MAX_SPEED, max_rpm, f"FA23={max_rpm} max speed"),
+            # Factory FA25=500 / FA27=2000: if SP1/SP2 float high we must not leave
+            # a non-zero cruise in unused slots (that caused smooth runaways to travel).
+            (P_FA24_INT_SPEED1, 0, "FA24=0"),
+            (P_FA25_INT_SPEED2, 0, "FA25=0"),
+            (P_FA26_INT_SPEED3, 0, "FA26=0"),
+            (P_FA27_INT_SPEED4, 0, "FA27=0"),
             (P_FA40_ACC_MS, int(accel_ms), f"FA40={accel_ms}ms accel"),
             (P_FA41_DEC_MS, int(decel_ms), f"FA41={decel_ms}ms decel"),
             (P_FA42_SCURVE_MS, int(scurve_ms), f"FA42={scurve_ms}ms S-curve"),
+            # FC-16 bit1=SP1, bit2=SP2 — force both OFF so FA24 is the active slot.
+            (P_FC16_DI_FORCE2, 0, "FC-16=0 (SP1=SP2=OFF → FA24)"),
         ]
         for param, value, note in writes:
             try:
@@ -327,16 +350,17 @@ class LW100Drive:
                 except ModbusRtuError:
                     pass
             self._active_mode = desired
-            self._log(log, "velocity mode active FA4=1 FA22=1")
+            self._log(log, f"velocity mode active FA4=1 FA22=1 FA23={max_rpm} SP=00")
         else:
-            self._log(log, "velocity mode already active FA4=1 FA22=1")
+            self._log(log, f"velocity mode already active FA4=1 FA22=1 FA23={max_rpm}")
 
     def start_velocity_session(
         self,
         *,
-        accel_ms: int = 50,
-        decel_ms: int = 50,
-        scurve_ms: int = 20,
+        accel_ms: int = 150,
+        decel_ms: int = 150,
+        scurve_ms: int = 50,
+        max_speed_rpm: int = 1200,
         steps: list[str] | None = None,
     ) -> None:
         """Configure speed mode once, enable, keep SON on for live FA24 streaming."""
@@ -344,21 +368,127 @@ class LW100Drive:
         if self._velocity_session_active:
             self._log(log, "velocity session already active")
             return
+        self._max_speed_rpm = int(max(1, min(6000, max_speed_rpm)))
         self.configure_velocity_mode(
-            accel_ms=accel_ms, decel_ms=decel_ms, scurve_ms=scurve_ms, steps=log
+            accel_ms=accel_ms,
+            decel_ms=decel_ms,
+            scurve_ms=scurve_ms,
+            max_speed_rpm=self._max_speed_rpm,
+            steps=log,
         )
+        # Er-01 (超速) latches until FA61 / power-cycle; clear before SON.
+        self.clear_alarm(log)
         self.enable_and_settle(log)
         self._last_rpm_cmd = 0
-        self.set_velocity_rpm(0)
+        self.set_velocity_rpm(0, force=True)
         self._velocity_session_active = True
         self._log(log, "velocity session started")
 
-    def set_velocity_rpm(self, rpm: float) -> int:
-        """Write live velocity command FA24 (signed r/min, clamped ±6000)."""
-        r = int(max(-6000, min(6000, round(float(rpm)))))
+    def set_velocity_rpm(self, rpm: float, *, force: bool = False) -> int:
+        """Write live velocity command FA24 (signed r/min).
+
+        Clamped to ±``_max_speed_rpm`` (FA23 software mirror, default 1200).
+        FA25..FA27 are zeroed at session start. SP1/SP2 forced OFF via FC-16 so
+        FA24 is the active slot; writing only FA24 is one Modbus transaction.
+
+        Skips Modbus I/O when the command is unchanged.
+        """
+        cap = int(getattr(self, "_max_speed_rpm", 1200) or 1200)
+        cap = max(1, min(6000, cap))
+        r = int(max(-cap, min(cap, round(float(rpm)))))
+        if (not force) and r == int(self._last_rpm_cmd):
+            return r
         self.write_param(P_FA24_INT_SPEED1, r & 0xFFFF)
         self._last_rpm_cmd = r
         return r
+
+    def emergency_zero_fa24(self) -> bool:
+        """Force FA24=0 even when the streaming client is blocked in ``recv``.
+
+        Closes the main TCP socket (unblocks the worker), opens a short-lived
+        side connection, writes FA24=0, then reconnects the main client.
+        This is what stops latched ~900 r/min runaways when Modbus stalls
+        for many seconds (seen: +1.9 m in ~12 s).
+        """
+        self._last_rpm_cmd = 0
+        try:
+            self._client.close()
+        except Exception:
+            pass
+        cfg = self._client.config
+        side = ModbusRtuTcpClient(
+            ModbusRtuTcpConfig(
+                host=cfg.host,
+                port=cfg.port,
+                slave_id=cfg.slave_id,
+                timeout_s=0.12,
+                retries=2,
+                inter_frame_delay_s=0.002,
+            )
+        )
+        ok = False
+        try:
+            side.connect()
+            try:
+                addr = int(self._addr(P_FA24_INT_SPEED1))
+            except Exception:
+                addr = 24
+            side.write_register(addr, 0)
+            ok = True
+        except Exception:
+            ok = False
+        finally:
+            try:
+                side.close()
+            except Exception:
+                pass
+        try:
+            self._client.connect()
+        except Exception:
+            pass
+        return ok
+
+    def kill_velocity_hard(self, *, attempts: int = 5, disable_on_fail: bool = False) -> bool:
+        """Force FA24=0 with recover retries. Demo-style: do NOT drop SON/enable.
+
+        Er-01 (超速) already disables the drive; calling ``disable()`` here made
+        the axis freewheel and required a full re-enable. Keep enable up unless
+        explicitly requested.
+        """
+        for _ in range(max(1, int(attempts))):
+            try:
+                self.set_velocity_rpm(0, force=True)
+                if int(self._last_rpm_cmd) == 0:
+                    return True
+            except ModbusRtuError:
+                try:
+                    self._client.recover()
+                except Exception:
+                    pass
+        if disable_on_fail:
+            try:
+                self.disable()
+            except Exception:
+                pass
+        return int(getattr(self, "_last_rpm_cmd", 0) or 0) == 0
+
+    def clear_alarm(self, steps: list[str] | None = None) -> None:
+        """Pulse FA61 system-alarm clear (manual ch.6/9: FA61=1 clears Er-xx)."""
+        log = steps if steps is not None else []
+        try:
+            self.write_param(P_FA61_ALARM_CLEAR, 1)
+            time.sleep(0.05)
+            self.write_param(P_FA61_ALARM_CLEAR, 0)
+            self._log(log, "FA61 pulsed (alarm clear)")
+        except ModbusRtuError as exc:
+            self._log(log, f"WARN: FA61 alarm clear failed: {exc}")
+
+    def ensure_velocity_slot_safe(self) -> None:
+        """Re-assert SP=00 and FA25–27=0 (prevents factory FA25=500 runaway)."""
+        self.write_param(P_FC16_DI_FORCE2, 0)
+        self.write_param(P_FA25_INT_SPEED2, 0)
+        self.write_param(P_FA26_INT_SPEED3, 0)
+        self.write_param(P_FA27_INT_SPEED4, 0)
 
     def stop_velocity(self) -> None:
         """Command zero velocity (best-effort)."""

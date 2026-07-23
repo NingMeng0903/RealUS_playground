@@ -38,6 +38,9 @@ rigid_mesh_to_smplx: {}
 exclude_meshes:
   - Body
   - Skin_Glass
+  # The target SMPL-X face is closed-mouth.  Tongue geometry authored for the
+  # source's open mouth would intersect the teeth; omit it at source export.
+  - Tongue
   # Combined cardiovascular duplicate; keep separate Artery/Vein meshes for planning labels.
   - UNCUT_Cardiovascular
 

@@ -106,7 +106,12 @@ def main() -> int:
     ap.add_argument("--move-duration", type=float, default=None)
     ap.add_argument("--move-duration-margin", type=float, default=0.50)
     ap.add_argument("--move-duration-min", type=float, default=2.5)
-    ap.add_argument("--move-duration-max", type=float, default=5.0)
+    ap.add_argument(
+        "--move-duration-max",
+        type=float,
+        default=20.0,
+        help="Cap on auto move duration (s). Was 5s and crushed 13s joint moves into a jerk.",
+    )
     ap.add_argument("--move-kp", type=float, default=2.0)
     ap.add_argument("--move-mode", choices=("cartesian", "joint"), default="cartesian")
     ap.add_argument("--y-pp-cm", type=float, default=16.0,
@@ -201,8 +206,19 @@ def main() -> int:
     )
     ap.add_argument("--enable-force", action="store_true", default=None)
     ap.add_argument("--log-interval", type=float, default=2.0)
-    ap.add_argument("--verbose", "-v", action="store_true", help="Detailed IK / WBC logs")
-    ap.add_argument("--log-csv", type=str, default=None)
+    ap.add_argument("--verbose", "-v", action="store_true", help="Detailed IK / WBC logs + auto CSV")
+    ap.add_argument(
+        "--log-csv",
+        type=str,
+        default=None,
+        help="WBC tick CSV path (A writes it). Default with -v: logs/sin_tool_y/run_<ts>.csv",
+    )
+    ap.add_argument(
+        "--rail-log-csv",
+        type=str,
+        default=None,
+        help="LW100 soft-loop CSV path (A writes it). Default with -v: logs/rail_servo/rail_<ts>.csv",
+    )
     ap.add_argument("--cartesian-max-lin-vel", type=float, default=None)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument(
@@ -211,6 +227,32 @@ def main() -> int:
         help="Own robot TCP/UDP locally (debug only; do not run with window A)",
     )
     args = ap.parse_args()
+
+    if args.verbose and not args.log_csv:
+        log_dir = Path(__file__).resolve().parents[1] / "logs" / "sin_tool_y"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        args.log_csv = str(log_dir / f"run_{ts}.csv")
+    # Pair rail servo CSV with WBC CSV (same timestamp when auto).
+    rail_log_csv = getattr(args, "rail_log_csv", None)
+    if args.verbose and not rail_log_csv:
+        rail_dir = Path(__file__).resolve().parents[1] / "logs" / "rail_servo"
+        rail_dir.mkdir(parents=True, exist_ok=True)
+        if args.log_csv:
+            stem = Path(args.log_csv).stem.replace("run_", "rail_", 1)
+            if stem == Path(args.log_csv).stem:
+                stem = f"rail_{time.strftime('%Y%m%d_%H%M%S')}"
+            rail_log_csv = str(rail_dir / f"{stem}.csv")
+        else:
+            ts = time.strftime("%Y%m%d_%H%M%S")
+            rail_log_csv = str(rail_dir / f"rail_{ts}.csv")
+    args.rail_log_csv = rail_log_csv
+    if args.verbose and float(args.log_interval) >= 1.999:
+        args.log_interval = 0.5
+    if args.log_csv:
+        print(f"debug log CSV (written by window A): {args.log_csv}", flush=True)
+    if args.rail_log_csv:
+        print(f"rail servo CSV (written by window A): {args.rail_log_csv}", flush=True)
 
     raw = load_yaml(args.config)
     startup = raw.get("startup", {})
@@ -439,6 +481,26 @@ def main() -> int:
                 f"max|dq|={plan.meta['max_dq_deg']:.1f}deg)",
                 flush=True,
             )
+        # Rail peak-v vs motor cap (move→D uses plan_drives_rail pin, not free QP).
+        dq_rail = abs(float(q_target_rad[0]) - float(q0_rad[0]))
+        peak_rail_v = (
+            1.875 * dq_rail / float(plan.duration_s)
+            if float(plan.duration_s) > 1e-9
+            else float("nan")
+        )
+        motor_vmax = float(getattr(inner_cfg.rail, "v_max_m_s", 0.20) or 0.20)
+        # Prefer hw soft-loop cap when present.
+        hw_vmax = raw.get("hw", {}).get("lw100", {}) or {}
+        if "vel_max_m_s" in hw_vmax:
+            motor_vmax = float(hw_vmax["vel_max_m_s"])
+        over = " ⚠ OVER motor cap" if peak_rail_v > motor_vmax + 1e-6 else ""
+        print(
+            f"  rail move plan: {float(q0_rad[0])*1000:.1f}→{float(q_target_rad[0])*1000:.1f} mm "
+            f"in {plan.duration_s:.2f}s → peak_v={peak_rail_v:.3f} m/s "
+            f"(motor vel_max={motor_vmax:.2f} m/s){over} | "
+            f"mode={mode_label} (rail pinned to joint plan during move)",
+            flush=True,
+        )
         if args.verbose:
             print(f"  governor joint max: {plan.gov_joint_max_deg:.0f}deg", flush=True)
             print(f"  move mode: {mode_label}", flush=True)
