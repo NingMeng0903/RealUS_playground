@@ -163,6 +163,14 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         k_sigma_boost=float(re_cfg.get("k_sigma_boost", 2.0)),
         k_esc=float(re_cfg.get("k_esc", 0.5)),
         w_sigma_floor=float(re_cfg.get("w_sigma_floor", 1.0)),
+        k_pose=float(re_cfg.get("k_pose", 2.0)),
+        pose_e0_m=float(re_cfg.get("pose_e0_m", 0.005)),
+        pose_e1_m=float(re_cfg.get("pose_e1_m", 0.04)),
+        pose_w_max=float(re_cfg.get("pose_w_max", 4.0)),
+        sigma_guard_enter=float(re_cfg.get("sigma_guard_enter", 0.45)),
+        sigma_guard_exit=float(re_cfg.get("sigma_guard_exit", 0.70)),
+        v_guard_max_m_s=float(re_cfg.get("v_guard_max_m_s", 0.04)),
+        v_lpf_tau_s=float(re_cfg.get("v_lpf_tau_s", 0.12)),
     )
 
     rail = RailLockConfig(
@@ -191,7 +199,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         a_max_arm_rad_s2=a_max_arm,
         a_max_rail_m_s2=a_max_rail,
         position_margin_rad=math.radians(margin_deg),
-        position_margin_rail_m=float(inner.get("position_margin_rail_mm", 5.0)) / 1000.0,
+        position_margin_rail_m=float(inner.get("position_margin_rail_mm", 0.0)) / 1000.0,
         resync_err_rad=math.radians(resync_deg),
         resync_err_rail_m=resync_rail_mm / 1000.0,
         nullspace_d_null=float(inner.get("nullspace_d_null", 0.0)),

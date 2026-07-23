@@ -852,6 +852,14 @@ def audit_capture_pose(
         "smplx_model": None if smplx_model is None else str(smplx_model),
         "source_pose_dimensions": int(motion["source_pose_dimensions"]),
         "pose_hash": smplx_pose_hash(pose55, drive_translation),
+        "effective_jaw_pose_axis_angle": [
+            float(value) for value in pose55[22]
+        ],
+        "effective_jaw_pose_norm_rad": float(np.linalg.norm(pose55[22])),
+        "closed_mouth_runtime_policy": bool(
+            np.allclose(pose55[22], 0.0, atol=1.0e-8, rtol=0.0)
+        ),
+        "closed_jaw_rest": (asset.metadata or {}).get("closed_jaw_rest", []),
         "root_align_offset_m": [float(value) for value in motion["root_align_offset"]],
         "root_align_applied": bool(apply_root_align),
         "drive_translation_m": [float(value) for value in drive_translation],

@@ -64,7 +64,16 @@ class SafetyReport:
 
 
 class SafetyLimiter:
-    """Stateful per-tick clamp: velocity -> acceleration -> position."""
+    """Stateful per-tick clamp: velocity -> acceleration -> position.
+
+    Critical invariant: ``|_dq_prev|`` must never exceed ``v_max * dt``.  A
+    position-margin teleport (e.g. rail at 0 mm with margin=5 mm → snap to
+    5 mm in one tick) used to rewrite ``dq = q_clamped - q_prev`` *after*
+    the velocity clamp, poisoning ``_dq_prev`` to ~1 m/s.  The acceleration
+    limiter then kept the rail command integrating at that fake speed
+    forever (hardware log 200755: +5 mm/tick while ``v_max=0.1``), so the
+    motor at 0.15 m/s fell hundreds of mm behind and the governor froze.
+    """
 
     def __init__(self, limits: SafetyLimits) -> None:
         self.lim = limits
@@ -77,12 +86,13 @@ class SafetyLimiter:
         lim = self.lim
         q_prev = np.asarray(q_prev, dtype=float)
         q_desired = np.asarray(q_desired, dtype=float)
+        dt = float(max(dt, 1e-9))
         dq = q_desired - q_prev
+        dq_max = np.asarray(lim.v_max, dtype=float) * dt
 
         vel_clamped = acc_clamped = pos_clamped = False
 
         # 1) velocity limit
-        dq_max = lim.v_max * dt
         clipped = np.clip(dq, -dq_max, dq_max)
         if not np.allclose(clipped, dq):
             vel_clamped = True
@@ -90,12 +100,18 @@ class SafetyLimiter:
 
         # 2) acceleration limit (change in dq between ticks)
         if lim.a_max is not None and self._dq_prev is not None:
-            ddq_max = lim.a_max * dt * dt
+            ddq_max = np.asarray(lim.a_max, dtype=float) * dt * dt
             ddq = dq - self._dq_prev
             ddq_c = np.clip(ddq, -ddq_max, ddq_max)
             if not np.allclose(ddq_c, ddq):
                 acc_clamped = True
             dq = self._dq_prev + ddq_c
+            # Accel must never re-violate the velocity box (otherwise a
+            # poisoned _dq_prev locks the command at >v_max forever).
+            clipped = np.clip(dq, -dq_max, dq_max)
+            if not np.allclose(clipped, dq):
+                vel_clamped = True
+                dq = clipped
 
         q_safe = q_prev + dq
 
@@ -106,12 +122,26 @@ class SafetyLimiter:
         if not np.allclose(q_clamped, q_safe):
             pos_clamped = True
             dq = q_clamped - q_prev
+            # 4) Re-enforce velocity after a margin snap.  Without this, a
+            # one-tick teleport (0 → margin) becomes next tick's dq_prev and
+            # the accel limiter treats it as a legitimate cruise speed.
+            clipped = np.clip(dq, -dq_max, dq_max)
+            if not np.allclose(clipped, dq):
+                vel_clamped = True
+                dq = clipped
+                q_clamped = q_prev + dq
+                # Stay inside the soft position band even after the re-clip
+                # (may take several ticks to enter from outside).
+                q_clamped = np.clip(q_clamped, lo, hi)
+                dq = q_clamped - q_prev
+                dq = np.clip(dq, -dq_max, dq_max)
+                q_clamped = q_prev + dq
         q_safe = q_clamped
 
-        self._dq_prev = dq
+        self._dq_prev = np.clip(dq, -dq_max, dq_max)
         return SafetyReport(
             q_safe=q_safe,
-            dq=dq,
+            dq=self._dq_prev.copy(),
             vel_clamped=vel_clamped,
             acc_clamped=acc_clamped,
             pos_clamped=pos_clamped,

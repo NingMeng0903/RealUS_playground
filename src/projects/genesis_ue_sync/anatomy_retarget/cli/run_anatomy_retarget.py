@@ -67,15 +67,17 @@ from projects.genesis_ue_sync.anatomy_retarget.tube_graph import (
     tube_graph_metrics,
 )
 from projects.genesis_ue_sync.anatomy_retarget.material_fit import (
+    close_jaw_to_dental_contact,
     close_weighted_bone_interfaces,
     fit_subject_bone_containment,
     fit_articulated_rest,
     fit_source_bind_hands,
     fit_stage1_rigid_regions,
     merge_fitted_hand_reference,
+    rigidly_contain_patellae,
+    select_contained_articular_direct_drivers,
     restore_craniocervical_rest_chain,
     restore_hand_joint_interfaces,
-    restore_patella_lower_leg_relation,
 )
 from projects.genesis_ue_sync.anatomy_retarget.intersection_diagnostics import (
     enforce_station_intersection_nonregression,
@@ -1652,12 +1654,16 @@ def main() -> int:
                             stage="stage1_post_rigid_bone_interfaces",
                         )
                     )
-                    rigid_asset, patella_relation_report = (
-                        restore_patella_lower_leg_relation(
-                            rigid_asset,
-                            stage="stage1_post_rigid_patella_relation",
-                        )
-                    )
+                    # The rigid-region baseline already places the patella
+                    # and retains its authored corrective controller. A
+                    # second lower-leg material remap moved the flexed-side
+                    # patella away from that accepted bind relation.
+                    patella_relation_report = {
+                        "stage": "stage1_post_rigid_patella_relation",
+                        "available": False,
+                        "skipped": True,
+                        "reason": "rigid_region_baseline_is_authoritative",
+                    }
                     asset, tissue_layer_report = merge_tissue_rest_reference(
                         rigid_asset,
                         pre_rigid_tissue_asset,
@@ -2045,6 +2051,52 @@ def main() -> int:
             "craniocervical chain gap %.3fmm -> %.3fmm",
             1000.0 * float(craniocervical_report.get("skull_c1_gap_before_m", 0.0)),
             1000.0 * float(craniocervical_report.get("skull_c1_gap_after_m", 0.0)),
+        )
+    if args.stage1_rigid_region_baseline:
+        asset, closed_jaw_report = close_jaw_to_dental_contact(asset)
+        shape_report["closed_jaw_rest"] = closed_jaw_report
+        logging.info(
+            "closed jaw applied=%s angle=%.3fdeg median_gap=%.3fmm",
+            closed_jaw_report.get("applied", False),
+            float(closed_jaw_report.get("closure_angle_deg", 0.0)),
+            1000.0 * float(closed_jaw_report.get("closed_median_gap_m", 0.0)),
+        )
+        asset, rigid_patella_report = rigidly_contain_patellae(
+            asset,
+            surface_vertices=subject_surface[0],
+            surface_faces=subject_surface[1],
+        )
+        shape_report["rigid_patella_containment"] = rigid_patella_report
+        logging.info(
+            "rigid patella containment fitted sides=%s",
+            len(rigid_patella_report.get("records", [])),
+        )
+    if args.stage1_rigid_region_baseline:
+        # The source-template interface repair is intentionally run before the
+        # beta solve so its contact participates in the fitted bind. Subject
+        # shape transport can nevertheless reopen a surface gap because tibia,
+        # fibula and talus follow different volumetric fields. Restore the same
+        # authored contacts once more after the final hard-tissue fit, before
+        # tubes are reconstructed around those bones. This changes axial ends
+        # only; Blender weights, hierarchy and cross-sections remain untouched.
+        asset, final_bone_interface_report = close_weighted_bone_interfaces(
+            asset,
+            stage="stage1_final_bone_interfaces",
+        )
+        shape_report["final_bone_interfaces"] = final_bone_interface_report
+        logging.info(
+            "final weighted bone interfaces fitted count=%s",
+            len(final_bone_interface_report.get("interfaces", [])),
+        )
+        asset, articular_driver_report = select_contained_articular_direct_drivers(
+            asset,
+            surface_vertices=subject_surface[0],
+            surface_faces=subject_surface[1],
+        )
+        shape_report["articular_driver_selection"] = articular_driver_report
+        logging.info(
+            "articular direct drivers selected count=%s",
+            len(articular_driver_report.get("selected_bones", [])),
         )
     if args.stage1_rigid_region_baseline:
         # Bone placement and target bind are now final.  Reconstruct every

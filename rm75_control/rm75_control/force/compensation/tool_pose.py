@@ -264,7 +264,12 @@ def sync_kin_tcp_from_robot(
     port: int = 8080,
     euler_order: str | None = None,
 ) -> str:
-    """Apply the active RealMan tool frame to Pinocchio ``link_7_to_tcp`` (runtime, no URDF edit)."""
+    """Apply the active RealMan tool frame to Pinocchio ``link_7_to_tcp`` (runtime, no URDF edit).
+
+    Full xyz+rpy is kept: force-hybrid / tool-frame admittance read this so a
+    pendant Ry=90° (etc.) rotates the force axes while the TCP origin (xyz)
+    stays fixed in link_7.
+    """
     if robot is not None:
         name, offset = read_active_tool_offset(robot)
     elif ip:

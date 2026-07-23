@@ -52,6 +52,13 @@ class DigitalTwinMirror:
         self._rail_t = 0.0
         self._rail_sample = 0.0
         self._rail_have = False
+        # Sync-rate probe (measurement only; does not change refresh).
+        self._sync_ok_n = 0
+        self._sync_fail_n = 0
+        self._sync_rail_change_n = 0
+        self._sync_last_rail = float("nan")
+        self._sync_window_t0 = 0.0
+        self._rate_log_period_s = 5.0
 
     @property
     def viewer_closed(self) -> bool:
@@ -83,21 +90,71 @@ class DigitalTwinMirror:
             return self._rail_x + self._rail_v * age
         return self._rail_x + self._rail_v * horizon
 
+    def _note_sync(self, ok: bool, rail_raw: float | None = None) -> None:
+        now = time.monotonic()
+        if self._sync_window_t0 <= 0.0:
+            self._sync_window_t0 = now
+        if ok:
+            self._sync_ok_n += 1
+            if rail_raw is not None and (
+                not (self._sync_last_rail == self._sync_last_rail)
+                or abs(float(rail_raw) - float(self._sync_last_rail)) > 1e-7
+            ):
+                if self._sync_last_rail == self._sync_last_rail:  # not NaN
+                    self._sync_rail_change_n += 1
+                self._sync_last_rail = float(rail_raw)
+        else:
+            self._sync_fail_n += 1
+        elapsed = now - self._sync_window_t0
+        if elapsed >= self._rate_log_period_s:
+            sync_hz = self._sync_ok_n / max(elapsed, 1e-6)
+            rail_hz = self._sync_rail_change_n / max(elapsed, 1e-6)
+            if self._sync_last_rail == self._sync_last_rail:  # finite
+                rail_note = (
+                    f"rail SHM updates {rail_hz:.1f} Hz "
+                    f"(last={self._sync_last_rail * 1000:.1f} mm)"
+                )
+            else:
+                rail_note = f"rail SHM updates {rail_hz:.1f} Hz (no sample yet)"
+            print(
+                f"rm75 twin: sync {sync_hz:.1f} Hz "
+                f"(target={self._hz:.0f}, fail={self._sync_fail_n}) | {rail_note}",
+                flush=True,
+            )
+            self._sync_ok_n = 0
+            self._sync_fail_n = 0
+            self._sync_rail_change_n = 0
+            self._sync_window_t0 = now
+
     def sync_once(self) -> bool:
         if self._viewer_closed:
             return False
         q8 = self._bus.q_meas_8dof(self._rail_m_fn())
         if q8 is None:
+            self._note_sync(False)
             return False
         try:
             q = np.asarray(q8, dtype=float).reshape(-1).copy()
+            rail_raw = float(q[0]) if q.size >= 1 else float("nan")
+            # Reject garbage encoder before rendering (never fly twin to -1474 mm).
+            if q.size >= 1 and (
+                not np.isfinite(rail_raw) or rail_raw < -0.05 or rail_raw > 0.85
+            ):
+                if self._rail_have:
+                    rail_raw = float(self._rail_x)
+                    q[0] = rail_raw
+                else:
+                    self._note_sync(False)
+                    return False
             if q.size >= 1:
                 now = time.monotonic()
                 q[0] = self._extrapolate_rail(float(q[0]), now)
             self._scene.set_joint_positions(q)
             self._scene.step()
+            self._note_sync(True, rail_raw=rail_raw)
         except AssertionError:
             # Genesis/quadrants fastcache race after A restart while B stays up.
+            self._note_sync(False)
             return False
         except Exception as exc:
             if _is_viewer_closed(exc):
@@ -116,7 +173,7 @@ class DigitalTwinMirror:
             try:
                 self.sync_once()
             except Exception:
-                pass
+                self._note_sync(False)
             delay = period - (time.monotonic() - t0)
             if delay > 0.0:
                 self._stop.wait(delay)

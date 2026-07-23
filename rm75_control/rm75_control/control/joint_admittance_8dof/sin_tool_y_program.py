@@ -17,6 +17,7 @@ from rm75_control.control.joint_admittance_8dof.api import (
     GovernorSpec,
     SecondaryPolicy,
     compile_phases,
+    make_srs_move_reference,
     phase_cartesian_goto,
     phase_hold_at_pose,
     phase_hybrid_track,
@@ -96,11 +97,12 @@ def resolve_scan_target_at_d(
 ) -> ScanTargetD:
     """Resolve scan pose D and joint target for the move->D phase.
 
-    ``d_target`` modes:
+    ``d_target`` modes (all produce a Cartesian ``pose_d``; move execution is
+    still ``--move-mode``, default cartesian/SRS):
 
     * ``legacy`` — RealMan active-tool FK + Pin standoff + pose IK (original).
-    * ``joints`` — ``poses.yaml`` ``q_deg`` only; ``pose_d = kin.fk_pose(q)``;
-      no RealMan TCP, no pose IK (for TCP rotation experiments).
+    * ``joints`` — taught ``q_deg`` → ``pose_d = kin.fk_pose(q)`` then Cartesian
+      goto that pose (same q ⇒ same xyz; rpy follows live TCP). Not joint MoveJ.
     * ``kin-fk`` — Pinocchio standoff ``pose_d`` from taught contact frame;
       optional pose IK; never uses ``rm_algo_forward_kinematics``.
     """
@@ -118,7 +120,14 @@ def resolve_scan_target_at_d(
             nullspace_cfg=nullspace_cfg,
         )
     if mode == "joints":
-        return _resolve_scan_target_joints(slot, kin, rail_m=rail_m)
+        travel = 0.80
+        try:
+            travel = float(kin.q_upper[0])
+        except Exception:
+            pass
+        return _resolve_scan_target_joints(
+            slot, kin, rail_m=rail_m, travel_m=travel
+        )
     if mode in {"kin-fk", "kin_fk", "kinfk"}:
         return _resolve_scan_target_kin_fk(
             slot,
@@ -133,18 +142,74 @@ def resolve_scan_target_at_d(
     raise ValueError(f"unknown d_target mode {d_target!r}; use legacy, joints, or kin-fk")
 
 
+def _pick_wellconditioned_rail_m(
+    kin: RobotKinematics,
+    q_arm_rad: np.ndarray,
+    *,
+    travel_m: float,
+    prefer_m: float | None = None,
+    n_samples: int = 21,
+) -> tuple[float, float]:
+    """Pick rail_y that maximizes σ_min for a fixed taught arm posture.
+
+    ``prefer_m`` (e.g. mid-stroke from ``--rail-scan-center``) breaks ties and
+    softly biases toward the caller's prior when σ is nearly flat.
+    Returns ``(y_rail_m, sigma_min)``.
+    """
+    travel = max(float(travel_m), 1e-3)
+    prefer = float(prefer_m) if prefer_m is not None else 0.5 * travel
+    prefer = float(np.clip(prefer, 0.0, travel))
+    best_y = prefer
+    best_sig = -1.0
+    best_score = -1e9
+    q_arm = np.asarray(q_arm_rad, dtype=float).reshape(-1)
+    for i in range(max(3, int(n_samples))):
+        y = travel * i / (n_samples - 1)
+        q = full_q_from_arm(q_arm, float(y))
+        try:
+            sig = float(kin.singular_values(kin.jacobian(q)).min())
+        except Exception:
+            continue
+        # Soft prefer prior: 2 cm of rail ≈ 0.01 of σ_min (tie-break only).
+        score = sig - 0.5 * abs(y - prefer)
+        if score > best_score:
+            best_score = score
+            best_sig = sig
+            best_y = y
+    return float(best_y), float(best_sig)
+
+
 def _resolve_scan_target_joints(
     slot: str,
     kin: RobotKinematics,
     *,
     rail_m: float = 0.0,
+    travel_m: float = 0.80,
+    refine_rail: bool = True,
 ) -> ScanTargetD:
     q_deg, pose_id, _rec = load_slot_joints_only(slot)
-    q_target_rad = full_q_from_arm(deg2rad(q_deg), float(rail_m))
+    q_arm = deg2rad(q_deg)
+    y_rail = float(rail_m)
+    sig_note = ""
+    if refine_rail:
+        y_rail, sig = _pick_wellconditioned_rail_m(
+            kin,
+            q_arm,
+            travel_m=float(travel_m),
+            prefer_m=float(rail_m),
+        )
+        sig_note = f" rail→{y_rail * 1000:.0f}mm (σ_min={sig:.3f}, prefer={float(rail_m) * 1000:.0f}mm)"
+    q_target_rad = full_q_from_arm(q_arm, y_rail)
     pose_d = np.asarray(kin.fk_pose(q_target_rad), dtype=float)
+    off = np.asarray(kin.tcp_offset_pose, dtype=float).reshape(6)
     print(
-        f"D target=joints slot={slot} q_deg={np.round(q_deg, 2).tolist()} "
-        f"pin_tcp z={pose_d[2]:.3f}m (RealMan TCP ignored)",
+        f"D target=joints→Cartesian pose_d=FK(q) slot={slot} "
+        f"q_deg={np.round(q_deg, 2).tolist()} "
+        f"xyz(mm)={np.round(pose_d[:3] * 1000.0, 1).tolist()} "
+        f"rpy(deg)={np.round(np.degrees(pose_d[3:6]), 1).tolist()} "
+        f"| tool_offset xyz(mm)={np.round(off[:3] * 1000.0, 1).tolist()} "
+        f"rpy(deg)={np.round(np.degrees(off[3:6]), 1).tolist()} "
+        f"(same q ⇒ same xyz across TCP rpy; move is Cartesian/SRS){sig_note}",
         flush=True,
     )
     return ScanTargetD(
@@ -154,7 +219,9 @@ def _resolve_scan_target_joints(
         q_target_rad=q_target_rad,
         d_target="joints",
         skip_ik=True,
-        move_mode_hint="joint",
+        # Keep caller --move-mode (default cartesian/SRS).  Pose comes from FK(q);
+        # joint mode is only if the user passes --move-mode joint.
+        move_mode_hint=None,
     )
 
 
@@ -625,13 +692,37 @@ def build_sin_tool_y_program(
 
     q_target_rad = np.asarray(params.q_target_rad, dtype=float).reshape(-1)
     q0_rad = np.asarray(params.q0_rad, dtype=float).reshape(-1)
-    pose_d = np.asarray(params.pose_d, dtype=float).reshape(6)
-    move_ref = JointSmoothMoveReference(
-        kin,
-        q0_rad,
-        q_target_rad,
-        float(params.plan_duration_s),
-    )
+    # Wait/SRS target must be FK(q_target) after TCP sync — raw params.pose_d can
+    # still carry an ArmTip/IK residual orientation that blocks arrival forever
+    # while track_err_mm (position-only) looks fine.
+    pose_d = np.asarray(kin.fk_pose(q_target_rad), dtype=float).reshape(6)
+    pose_in = np.asarray(params.pose_d, dtype=float).reshape(6)
+    dpos = float(np.linalg.norm(pose_d[:3] - pose_in[:3]))
+    if dpos > 0.005:
+        print(
+            f"  build: pose_d←FK(q_target) (|Δpos| vs task pose={dpos * 1000:.1f} mm; "
+            f"TCP z={float(kin.tcp_offset_pose[2]) * 1000:.1f} mm)",
+            flush=True,
+        )
+    move_mode = str(params.plan_move_mode)
+    if move_mode == "joint":
+        move_ref = JointSmoothMoveReference(
+            kin,
+            q0_rad,
+            q_target_rad,
+            float(params.plan_duration_s),
+        )
+        move_duration_s = float(params.plan_duration_s)
+    else:
+        move_ref = make_srs_move_reference(
+            kin,
+            q0_rad,
+            pose_d,
+            q_target_rad,
+            float(params.plan_duration_s),
+            euler_order=inner_cfg.euler_order,
+        )
+        move_duration_s = float(move_ref.duration_s)
 
     force_observer = None
     if params.enable_force and params.scan_duration > 0.0:
@@ -654,9 +745,9 @@ def build_sin_tool_y_program(
             pose_target=pose_d,
             q_target_rad=q_target_rad,
             move_kp=float(params.move_kp),
-            move_mode=str(params.plan_move_mode),
+            move_mode=move_mode,
             max_lin_vel_m_s=max_lin,
-            max_duration_s=float(params.plan_duration_s) * 2.5 + 15.0,
+            max_duration_s=move_duration_s * 2.5 + 15.0,
             gov_joint_max_deg=float(params.plan_gov_joint_max_deg),
             require_arrival=True,
             force_observer=force_observer,

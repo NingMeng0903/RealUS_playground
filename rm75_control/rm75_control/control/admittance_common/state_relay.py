@@ -111,16 +111,25 @@ class _ShmView:
         self._shm.unlink()
 
 
-def _write_slot(slot, *, seq: int, snap: AsyncStateSnapshot, rail_m: float) -> None:
+def _write_slot(
+    slot,
+    *,
+    seq: int,
+    snap: AsyncStateSnapshot,
+    rail_m: float,
+    pose_override: np.ndarray | None = None,
+) -> None:
     slot["seq"] = np.uint64(seq)
     slot["t_s"] = float(snap.t_s)
     if snap.q_deg is not None:
         slot["q_deg"][:] = np.asarray(snap.q_deg, dtype=float)[:7]
-    if snap.pose is not None:
-        slot["pose"][:] = np.asarray(snap.pose, dtype=float)[:6]
+    pose = pose_override if pose_override is not None else snap.pose
+    if pose is not None:
+        slot["pose"][:] = np.asarray(pose, dtype=float)[:6]
     slot["force"][:] = np.asarray(snap.force_raw, dtype=float)[:6]
     slot["rail_m"] = float(rail_m)
-    slot["ok"] = np.uint8(1 if snap.ok and snap.pose is not None and snap.q_deg is not None else 0)
+    has_pose = pose is not None or snap.pose is not None
+    slot["ok"] = np.uint8(1 if snap.ok and has_pose and snap.q_deg is not None else 0)
 
 
 def _read_slot(slot) -> tuple[int, AsyncStateSnapshot, float]:
@@ -151,11 +160,16 @@ class StateRelayPublisher:
         name: str = DEFAULT_RELAY_NAME,
         hz: float = DEFAULT_RELAY_HZ,
         rail_m_fn: Callable[[], float] | None = None,
+        kin: Any | None = None,
     ) -> None:
         self._bus = bus
         self._name = normalize_relay_name(name)
         self._hz = max(float(hz), 1.0)
         self._rail_m_fn = rail_m_fn or (lambda: 0.0)
+        # Optional Pinocchio kinematics: overwrite RealMan UDP pose (often
+        # ArmTip/link_7) with gripper-TCP fk_pose(q, rail).
+        self._kin = kin
+        self._kin_lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._shm: shared_memory.SharedMemory | None = None
@@ -167,6 +181,28 @@ class StateRelayPublisher:
         self._last_good_snap: AsyncStateSnapshot | None = None
         self._rail_thread: threading.Thread | None = None
         self._pub_lock = threading.Lock()
+        # Publish-rate probe (measurement only).
+        self._pub_n = 0
+        self._pub_rail_n = 0
+        self._pub_window_t0 = 0.0
+        self._rate_log_period_s = 5.0
+        self._last_logged_rail = float("nan")
+
+    def set_kin(self, kin: Any | None) -> None:
+        """Hot-swap TCP kinematics used for SHM pose (e.g. after tool sync)."""
+        with self._kin_lock:
+            self._kin = kin
+
+    def _pose_from_kin(self, snap: AsyncStateSnapshot, rail_m: float) -> np.ndarray | None:
+        with self._kin_lock:
+            kin = self._kin
+        if kin is None or snap.q_deg is None:
+            return None
+        try:
+            q8 = expand_q_meas_8dof(snap.q_deg, rail_m)
+            return np.asarray(kin.fk_pose(q8), dtype=float).reshape(6)
+        except Exception:
+            return None
 
     @property
     def name(self) -> str:
@@ -249,14 +285,48 @@ class StateRelayPublisher:
             rail_m = float(self._rail_m_fn())
         except Exception:
             rail_m = 0.0
+        # Never publish garbage encoder (e.g. -1474 mm) into SHM/twin.
+        if not np.isfinite(rail_m) or rail_m < -0.05 or rail_m > 0.85:
+            rail_m = float(self._last_logged_rail) if np.isfinite(self._last_logged_rail) else 0.0
+        pose_override = self._pose_from_kin(snap, rail_m)
         with self._pub_lock:
             self._seq += 1
             active = int(self._view.header["active"])
             inactive = 1 - active
-            _write_slot(self._view.slots[inactive], seq=self._seq, snap=snap, rail_m=rail_m)
+            _write_slot(
+                self._view.slots[inactive],
+                seq=self._seq,
+                snap=snap,
+                rail_m=rail_m,
+                pose_override=pose_override,
+            )
             self._view.header["active"] = np.uint64(inactive)
             self._view.header["global_seq"] = np.uint64(self._seq)
             self._last_pub_mono = time.monotonic()
+            # Rate probe
+            now = self._last_pub_mono
+            if self._pub_window_t0 <= 0.0:
+                self._pub_window_t0 = now
+            self._pub_n += 1
+            if source == "rail":
+                self._pub_rail_n += 1
+            if (
+                not (self._last_logged_rail == self._last_logged_rail)
+                or abs(rail_m - self._last_logged_rail) > 1e-7
+            ):
+                self._last_logged_rail = rail_m
+            elapsed = now - self._pub_window_t0
+            if elapsed >= self._rate_log_period_s:
+                pub_hz = self._pub_n / max(elapsed, 1e-6)
+                rail_hz = self._pub_rail_n / max(elapsed, 1e-6)
+                print(
+                    f"rm75 state-relay: publish {pub_hz:.0f} Hz "
+                    f"(rail-refresh={rail_hz:.0f} Hz, last_rail={rail_m * 1000:.1f} mm)",
+                    flush=True,
+                )
+                self._pub_n = 0
+                self._pub_rail_n = 0
+                self._pub_window_t0 = now
 
     def _run_rail_refresh(self) -> None:
         """Republish last arm snap with fresh encoder rail @ 50 Hz for twin smoothness."""

@@ -191,8 +191,9 @@ class SrsSmoothMoveReference:
         duration_s: float,
         branch_id: int | None = None,
         euler_order: str = "xyz",
+        d_wt: float | None = None,
     ) -> None:
-        from rm75_control.kinematics.srs_ik import branch_from_q, psi_from_q
+        from rm75_control.kinematics.srs_ik import branch_from_q, d_wt_from_kin, psi_from_q
 
         self.kin = kin
         self.q_start = np.asarray(q_start_rad, dtype=float).copy()
@@ -206,6 +207,27 @@ class SrsSmoothMoveReference:
         self.psi_start = float(psi_from_q(q_arm_start))
         self.psi_target = float(psi_target_rad)
         self.euler_order = str(euler_order)
+        self.d_wt = float(d_wt_from_kin(kin) if d_wt is None else d_wt)
+        R_start = Rsc.from_euler(self.euler_order, self.pose_start[3:])
+        R_target = Rsc.from_euler(self.euler_order, self.pose_target[3:])
+        self._R_start = R_start
+        self._delta_rotvec = (R_target * R_start.inv()).as_rotvec()
+        self._last_q = self.q_start.copy()
+
+    def reseed_start(self, q_start_rad: np.ndarray) -> None:
+        """Re-anchor the quintic at live encoders (soft-start, no Cartesian lurch).
+
+        Keeps ``pose_target`` / ``y_target`` / ``psi_target``; recomputes start
+        pose, rail, ψ, and branch lock from ``q_start_rad``.
+        """
+        from rm75_control.kinematics.srs_ik import branch_from_q, psi_from_q
+
+        self.q_start = np.asarray(q_start_rad, dtype=float).copy()
+        self.pose_start = np.asarray(self.kin.fk_pose(self.q_start), dtype=float)
+        self.y_start = float(self.q_start[0])
+        q_arm_start = self.q_start[1:]
+        self.branch_id = int(branch_from_q(q_arm_start))
+        self.psi_start = float(psi_from_q(q_arm_start))
         R_start = Rsc.from_euler(self.euler_order, self.pose_start[3:])
         R_target = Rsc.from_euler(self.euler_order, self.pose_target[3:])
         self._R_start = R_start
@@ -233,6 +255,7 @@ class SrsSmoothMoveReference:
             y_rail=y_s,
             euler_order=self.euler_order,
             check_limits=False,
+            d_wt=self.d_wt,
         )
         q = np.zeros_like(self.q_start)
         q[0] = y_s

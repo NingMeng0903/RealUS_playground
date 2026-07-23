@@ -21,6 +21,7 @@ Task orchestration (window C):
 from __future__ import annotations
 
 import argparse
+import os
 import signal
 import time
 from pathlib import Path
@@ -68,23 +69,39 @@ def _run_controller_service(
     hub: PhaseCommandHub,
     rail_m_fn,
     rail_bridge: RailServoBridge | None = None,
+    relay: StateRelayPublisher | None = None,
     poll_s: float = 0.05,
     verbose: bool = False,
 ) -> None:
     """Hot-wait for window C; run WBC locally on START (direct UDP + CANFD)."""
     stop = False
+    sig_n = 0
 
     def _on_sig(_signum, _frame) -> None:
-        nonlocal stop
-        # First action: kill rail velocity so FA24 cannot stay latched while
-        # teardown / home runs. Then request WBC stop so the task loop exits.
+        nonlocal stop, sig_n
+        sig_n += 1
+        # First action: kill rail (non-blocking) so FA24 cannot stay latched.
         if rail_bridge is not None and rail_bridge.enabled:
-            rail_bridge.estop()
+            try:
+                rail_bridge.estop()
+            except Exception:
+                pass
         try:
             hub.request_stop()
         except Exception:
             pass
         stop = True
+        if sig_n == 1:
+            print(
+                "\nrm75 controller: Ctrl+C — stopping task "
+                "(second Ctrl+C forces exit)",
+                flush=True,
+            )
+            return
+        # Second+ signal: ProxQP / CANFD may hold the GIL for seconds near
+        # singularity — do not wait for a clean Python teardown.
+        print("\nrm75 controller: force exit", flush=True)
+        os._exit(130)
 
     signal.signal(signal.SIGINT, _on_sig)
     signal.signal(signal.SIGTERM, _on_sig)
@@ -156,6 +173,9 @@ def _run_controller_service(
         try:
             built = build_sin_tool_y_program(params, raw=raw)
             rail_m_fn.set_active(built.inner)
+            if relay is not None:
+                # Prefer task kin (synced gripper TCP) for SHM pose publish.
+                relay.set_kin(built.inner.kin)
             if rail_bridge is not None and rail_bridge.enabled:
                 rail_csv = getattr(params, "rail_log_csv", None)
                 if rail_csv:
@@ -192,7 +212,17 @@ def _run_controller_service(
             hub.ack(cmd_seq)
             rail_m_fn.reset_idle()
             if rail_bridge is not None and rail_bridge.enabled:
-                rail_bridge.hold_current()
+                # Prefer non-blocking path if abort already set (Ctrl+C).
+                try:
+                    if stop or rail_bridge._abort.is_set():
+                        rail_bridge.estop()
+                    else:
+                        rail_bridge.hold_current()
+                except Exception:
+                    try:
+                        rail_bridge.estop()
+                    except Exception:
+                        pass
             if not stop:
                 print("rm75 controller: hot-wait", flush=True)
 
@@ -279,9 +309,12 @@ def main() -> int:
     relay: StateRelayPublisher | None = None
     inner: JointIkController | None = None
     hub: PhaseCommandHub | None = None
+    # Long-lived kin for SHM pose: RealMan UDP pose is often ArmTip/link_7
+    # (~220 mm behind gripper TCP). Overwrite with Pinocchio fk_pose.
+    pub_kin = RobotKinematics()
 
     if args.hold:
-        kin = RobotKinematics()
+        kin = pub_kin
         inner_cfg = build_joint_ik_config(raw)
         inner = JointIkController(kin, inner_cfg)
         rail_pub.set_active(inner)
@@ -299,9 +332,7 @@ def main() -> int:
             if inner is not None:
                 maybe_sync_kin_tcp_from_config(raw=raw, kin=inner.kin, robot=sess.robot)
             else:
-                maybe_sync_kin_tcp_from_config(
-                    raw=raw, kin=RobotKinematics(), robot=sess.robot
-                )
+                maybe_sync_kin_tcp_from_config(raw=raw, kin=pub_kin, robot=sess.robot)
             bus = RobotStateBus(sess.robot, raw, robot_ip=sess.ip)
             bus.start()
 
@@ -311,6 +342,7 @@ def main() -> int:
                     name=relay_name,
                     hz=relay_hz,
                     rail_m_fn=rail_pub,
+                    kin=inner.kin if inner is not None else pub_kin,
                 )
                 relay.start()
                 if args.hold:
@@ -363,6 +395,7 @@ def main() -> int:
                     hub=hub,
                     rail_m_fn=rail_pub,
                     rail_bridge=rail_bridge,
+                    relay=relay,
                     verbose=args.verbose,
                 )
         finally:

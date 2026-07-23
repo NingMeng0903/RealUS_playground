@@ -30,6 +30,7 @@ from rm75_control.hw.lw100.registers import (
     P_FA61_ALARM_CLEAR,
     P_FA72_BAUD,
     P_FA73_PROTO,
+    P_FA74_COMM_ERR_ACTION,
     P_FC15_DI_FORCE1,
     P_FC16_DI_FORCE2,
     P_FC18_DI_FORCE4,
@@ -73,7 +74,7 @@ class LW100DriveConfig:
     host: str = "192.168.0.7"
     port: int = 8234
     slave_id: int = 1
-    timeout_s: float = 0.15
+    timeout_s: float = 0.06
     retries: int = 1
     inter_frame_delay_s: float = 0.002
     lead_mm: float = 10.0
@@ -334,6 +335,8 @@ class LW100Drive:
             (P_FA42_SCURVE_MS, int(scurve_ms), f"FA42={scurve_ms}ms S-curve"),
             # FC-16 bit1=SP1, bit2=SP2 — force both OFF so FA24 is the active slot.
             (P_FC16_DI_FORCE2, 0, "FC-16=0 (SP1=SP2=OFF → FA24)"),
+            # Drive-side auto-stop on Modbus faults (host cannot clear FA24 if link dies).
+            (P_FA74_COMM_ERR_ACTION, 1, "FA74=1 alarm+stop on comms error"),
         ]
         for param, value, note in writes:
             try:

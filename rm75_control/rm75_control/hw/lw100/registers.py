@@ -39,6 +39,10 @@ P_FA61_ALARM_CLEAR = ParamRef("FA", 61)  # 1=clear system alarm (Er-01 etc.), th
 P_FA71_SLAVE = ParamRef("FA", 71)
 P_FA72_BAUD = ParamRef("FA", 72)
 P_FA73_PROTO = ParamRef("FA", 73)
+# FA74 通讯错误处置 (LW100 manual §7): 0=continue running on comms fault,
+# 1=alarm and stop.  Required when streaming FA24: a dead TCP link cannot
+# clear FA24=0 from the host, so the drive must self-stop on Modbus errors.
+P_FA74_COMM_ERR_ACTION = ParamRef("FA", 74)
 
 # Undocumented monitor block (live-probed on LW100-400W):
 #   0x1000        = motor speed (r/min, signed)

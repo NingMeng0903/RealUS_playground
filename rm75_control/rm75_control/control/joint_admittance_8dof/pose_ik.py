@@ -50,6 +50,7 @@ from rm75_control.kinematics.srs_ik import (
     Q_LOWER,
     Q_UPPER,
     branch_from_q,
+    d_wt_from_kin,
     psi_from_q,
     srs_ik,
 )
@@ -165,6 +166,7 @@ def _path_reachable(
     *,
     n_samples: int = 10,
     euler_order: str = "xyz",
+    d_wt: float | None = None,
 ) -> bool:
     """True iff srs_ik succeeds at every interior sample of the (pose, ψ, y_rail)
     interpolation.  Endpoints are excluded: they are guaranteed by the seed
@@ -177,7 +179,14 @@ def _path_reachable(
         pose_s = _slerp_pose(pose_seed, pose_target, s, euler_order)
         psi_s = psi_seed + s * (psi_target_unwrapped - psi_seed)
         y_rail_s = y_rail_seed + s * (y_rail_target - y_rail_seed)
-        q_arm = srs_ik(pose_s, psi_s, branch, y_rail=y_rail_s, euler_order=euler_order)
+        q_arm = srs_ik(
+            pose_s,
+            psi_s,
+            branch,
+            y_rail=y_rail_s,
+            euler_order=euler_order,
+            d_wt=d_wt,
+        )
         if q_arm is None:
             return False
     return True
@@ -245,6 +254,7 @@ def resolve_pose_ik_srs(
     psi_seed = psi_from_q(q_arm_seed)
     branch_seed = branch_from_q(q_branch_src[1:])
     psi_home = float(psi_seed if psi_home_rad is None else psi_home_rad)
+    d_wt = float(d_wt_from_kin(kin))
 
     # Candidate ψ grid on (-π, π].  max_psi_swing is measured from ψ_home
     # (the posture attractor), NOT from ψ_seed — so a live q0 at ψ≈72° can
@@ -263,7 +273,7 @@ def resolve_pose_ik_srs(
 
         q_arm = srs_ik(
             pose_target, float(psi), branch_seed,
-            y_rail=y_rail_target, euler_order=euler_order,
+            y_rail=y_rail_target, euler_order=euler_order, d_wt=d_wt,
         )
         if q_arm is None:
             continue
@@ -328,6 +338,7 @@ def resolve_pose_ik_srs(
             y_rail_target=y_rail_target,
             n_samples=int(path_check_samples),
             euler_order=euler_order,
+            d_wt=d_wt,
         ):
             return _report_from(psi, q_arm, sigma_min, path_ok=True)
 

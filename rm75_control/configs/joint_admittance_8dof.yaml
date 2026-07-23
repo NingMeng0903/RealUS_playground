@@ -34,7 +34,8 @@ inner:
   control_frame: tool
   euler_order: xyz
   # On connect / task start: read RealMan active tool (gripper TCP) into Pinocchio
-  # link_7->tcp so FK, WBC Tool-Z, and f_ext rotation match the teach pendant.
+  # link_7->tcp — full xyz+rpy.  Pendant Ry=90° etc. rotates force-hybrid / tool
+  # axes; TCP origin (xyz) is unchanged in link_7.
   sync_tcp_from_robot: true
 
   v_scale: 0.5             # fraction of URDF joint velocity limit
@@ -49,9 +50,10 @@ inner:
   # over-shoot / brake pulses.  Drop to 0.20 if the servo still 'kicks'.
   a_max_rail_m_s2: 0.30    # m/s^2 for the rail
   position_margin_deg: 2.0
-  # Rail position margin in MILLIMETRES (unit-separated: the old scalar
-  # 2 deg margin applied to the prismatic joint stole 35 mm of travel).
-  position_margin_rail_mm: 5.0
+  # Rail hard stops are the motor travel [0, travel_m].  A non-zero margin
+  # teleports q_cmd off the end-stop (0 → margin) at v_max on the first tick
+  # and soft-PD hunts before the plan ever moves — keep 0.
+  position_margin_rail_mm: 0.0
   # Command-lead anti-windup: a QP velocity bound (never a position jump) that
   # stops q_cmd from leading the encoders by more than this much per joint.
   # Some lag during a fast move is normal servo behaviour, not a fault - set
@@ -81,12 +83,9 @@ inner:
     reg: [1.0e-3, 1.0e-2, 1.0e-2, 1.0e-2, 1.0e-2, 5.0e-3, 5.0e-3, 5.0e-3]
     backend: proxqp
     eps_abs: 1.0e-6
-    # Raised 1000 -> 3000: at σ_min < 0.02 the tight-eps solve routinely hit
-    # 1000 and fell back to the loose-eps retry (eps=1e-4).  The looser
-    # solution accepted slack up to 0.5-0.7 rad/s (debug log evidence: Run 1
-    # slack_norm max 0.40, Run 2 max 0.77 at σ<0.05 while Run 3 with σ>0.11
-    # stayed at 0.0002).  3000 iters lets the tight solve converge in the
-    # deep-singular case, keeping slack < 0.01 and killing the visible jitter.
+    # Raised 1000 -> 3000 for deep-σ slack; keep first solve at 3000 but the
+    # ProxQP *retry* is capped at 400 iters in code so a singular tick cannot
+    # hold the GIL for multiple seconds (Ctrl+C appeared dead).
     max_iter: 3000
     warn_on_fail: false
     # Chiaverini 1997 SR damping for nullspace projection.
@@ -187,6 +186,16 @@ inner:
     k_sigma_boost: 2.0     # w_ext boosts up to 3x as σ → 0
     k_esc: 0.5             # σ-escape velocity gain (m/s per unit σ gradient)
     w_sigma_floor: 1.0     # baseline w inside dead zone when σ depressed
+    # move→D pose attractor (preset=move → mode=pose_attract):
+    # primary = soft P to q_target[0]; σ_min is a dead-zoned guardrail only.
+    k_pose: 2.0            # 1/s soft P on (y_target - y_rail)
+    pose_e0_m: 0.005       # settle dead-zone (stop hunting at target)
+    pose_e1_m: 0.04        # full pose-attract weight by 4 cm
+    pose_w_max: 4.0        # ≪ W_task=100
+    sigma_guard_enter: 0.45
+    sigma_guard_exit: 0.70
+    v_guard_max_m_s: 0.04  # guardrail cannot yank rail off the pose path
+    v_lpf_tau_s: 0.12      # macro-micro LPF on desired rail velocity
 
   rail:
     # Two-layer rail mode:
@@ -346,9 +355,15 @@ hybrid_motion:
   proactive_press_is_gate: 0.5
 
 # LW100 rail servo (Modbus RTU over USR-TCP232).
-# Soft CSP via FA24: same WBC→rail path as virtual twin, motor replaces sim.
-# Encoder 0x1001/02 → twin/SHM only; never fed into the WBC.
-# Tuned empty-load: kp=34, kd=0.22, vmax=0.20 (FA23=1200), FA40/41=100 ms, 50 Hz.
+# Soft CSP via FA24: same cascade as apps/lw100_vel_pos_follow_demo.py
+#   WBC q_cmd[0] → soft PD(target − encoder) → FA24; encoder ALSO feeds WBC
+#   q_meas[0] so arm FK/tracking can compensate motor lag/reversal.
+# Tuned empty-load: kp=18, kd=0.22, a_max=0.8, vmax=0.15 (FA23=900), FA40/41=200 ms.
+# Soft faults → HOLD (stay ARMED); hard PANIC only on garbage encoder.
+# Host Modbus: timeout_s≈0.06, retries=1 (never stack into multi-second freezes).
+# Drive: FA74=1 (comms-error → alarm+stop) written at velocity-session arming.
+# USR-TCP232-304 (manual): enable KeepAlive + short 超时重启/无数据重启 on the
+# converter web UI so a dead TCP link is reset without host intervention.
 # Workflow without limit switches:
 #   1) Manually push carriage to -Y end (mechanical 0) before starting controller.
 #   2) zero_mode=current → start pose becomes rail_y=0.
@@ -373,18 +388,22 @@ hw:
     fault_margin_m: 0.05
     poll_hz: 50
     inter_frame_delay_s: 0.0005
-    timeout_s: 0.15
+    timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0
     retries: 1
     deadband_mm: 0.5
     max_speed_rpm: 900       # FA23: 0.15 m/s @ 10 mm/rev (gentler vs Er-01 on move→D)
-    vel_kp: 34.0
+    # Soft CSP via FA24: same cascade as apps/lw100_vel_pos_follow_demo.py
+    # Soft faults (lag / brief Modbus) → HOLD (FA24=0, stay ARMED). Hard PANIC
+    # only on garbage encoder. Do not invent complex re-arm recovery.
+    # Tuned gentler vs overshoot hunting: kp=18, a_max=0.8, vmax=0.15.
+    vel_kp: 18.0
     vel_kd: 0.22
     vel_ff_gain: 1.0
     vel_max_m_s: 0.15
-    vel_amax_m_s2: 1.5
+    vel_amax_m_s2: 0.8
     vel_deadband_mm: 0.02
     target_timeout_s: 0.25
-    encoder_freeze_s: 0.60
+    encoder_freeze_s: 1.0
     encoder_freeze_min_v_m_s: 0.02
     encoder_freeze_min_move_mm: 0.5
     accel_ms: 200            # FA40 — manual: Er-01 if accel too short at start

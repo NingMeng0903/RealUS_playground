@@ -188,15 +188,17 @@ class _ProxQpWbcBackend:
         self.qp.solve()
 
         if not self._solved():
-            # First retry: cold-start + loose eps.  Near-singular Jacobians
-            # push ProxQP over max_iter for the last 1-2 orders of magnitude
-            # of primal residual; a looser tolerance accepts a still-usable
-            # velocity instead of triggering the outer decay.
+            # First retry: cold-start + loose eps + fewer iters.  Near
+            # singularity a second full max_iter=3000 solve can hold the GIL
+            # for seconds and make Ctrl+C appear dead.
             self.qp.settings.initial_guess = (
                 self._px.proxqp.InitialGuess.NO_INITIAL_GUESS
             )
             self.qp.settings.eps_abs = self._eps_loose
+            retry_iters = int(min(max(int(self.cfg.max_iter), 1), 400))
+            self.qp.settings.max_iter = retry_iters
             self.qp.solve()
+            self.qp.settings.max_iter = int(self.cfg.max_iter)
 
         if not self._solved():
             self.fail_count += 1

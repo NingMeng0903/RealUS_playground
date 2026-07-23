@@ -1048,6 +1048,13 @@ def close_weighted_bone_interfaces(
         else asset.rest_joints,
         dtype=np.float64,
     ).copy()
+    target_global = np.asarray(asset.target_bind_global, dtype=np.float64).copy()
+    target_head = np.asarray(asset.target_bone_head, dtype=np.float64).copy()
+    target_tail = np.asarray(asset.target_bone_tail, dtype=np.float64).copy()
+    use_full_local_fk = bool(
+        (asset.metadata or {}).get("source_full_local_fk_v2", False)
+    )
+    rebound_pivot_count = 0
     bone_material = np.zeros(len(vertices), dtype=bool)
     mesh_ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
     mesh_names = [str(value) for value in asset.source_mesh_names]
@@ -1140,16 +1147,19 @@ def close_weighted_bone_interfaces(
             vertices[proximal_vertex] + vertices[distal_vertex]
         )
         pivot_kind: str | None = None
-        lateral_contact_report: dict[str, Any] | None = None
+        articular_contact_report: dict[str, Any] | None = None
         if str(mode) == "rigid_group":
-            # At the talocrural joint the tibia is the closest aggregate bone,
-            # but the lateral malleolus/talus interface is what constrains the
-            # foot rotation centre.  Infer that contact symmetrically from the
-            # fitted bone surfaces; no per-bone dimension or pose constant is
-            # involved.
+            # Restore both load-bearing talocrural interfaces.  Using only the
+            # lateral malleolus can make the aggregate lower-leg/foot gap look
+            # closed while leaving the tibial plafond centimetres above the
+            # talus.  Each source contact supplies its own desired surface gap;
+            # only the contacting axial end moves and cross-sections stay rigid.
             joint_name = str(asset.joint_names[b])
             side_suffix = "_l" if joint_name.startswith("left_") else "_r"
-            lateral_parts: list[np.ndarray] = []
+            proximal_parts: dict[str, list[np.ndarray]] = {
+                "tibia": [],
+                "fibula": [],
+            }
             articular_parts: list[np.ndarray] = []
             for (start, stop), name, tissue in zip(
                 mesh_ranges, mesh_names, mesh_tissues
@@ -1158,70 +1168,105 @@ def close_weighted_bone_interfaces(
                 if tissue != "bone" or not lowered.endswith(side_suffix):
                     continue
                 ids = np.arange(int(start), int(stop), dtype=np.int64)
-                if "fibula" in lowered:
-                    lateral_parts.append(ids)
+                if "tibia" in lowered:
+                    proximal_parts["tibia"].append(ids)
+                elif "fibula" in lowered:
+                    proximal_parts["fibula"].append(ids)
                 elif "talus" in lowered:
                     articular_parts.append(ids)
-            if lateral_parts and articular_parts:
-                lateral = np.concatenate(lateral_parts)
+            if articular_parts and any(proximal_parts.values()):
                 articular = np.concatenate(articular_parts)
-                lateral_distance, lateral_nearest = cKDTree(
-                    vertices[articular]
-                ).query(vertices[lateral], k=1)
-                lateral_row = int(np.argmin(lateral_distance))
-                lateral_gap_before = float(lateral_distance[lateral_row])
-                source_lateral_distance, _ = cKDTree(
-                    source[articular]
-                ).query(source[lateral], k=1)
-                desired_lateral_gap = (
-                    float(np.min(source_lateral_distance)) * length_ratio
-                )
-                lateral_shift = np.zeros(3, dtype=np.float64)
-                if lateral_gap_before > desired_lateral_gap:
-                    lateral_vertex = int(lateral[lateral_row])
-                    articular_vertex = int(
-                        articular[int(lateral_nearest[lateral_row])]
+                fitted_contacts: list[np.ndarray] = []
+                fitted_contact_points: dict[str, np.ndarray] = {}
+                articular_contact_report = {}
+                for part_name, chunks in proximal_parts.items():
+                    if not chunks:
+                        continue
+                    part = np.concatenate(chunks)
+                    distance, nearest = cKDTree(vertices[articular]).query(
+                        vertices[part], k=1
                     )
-                    direction = (
-                        vertices[articular_vertex] - vertices[lateral_vertex]
+                    row = int(np.argmin(distance))
+                    gap_before = float(distance[row])
+                    source_distance, _ = cKDTree(source[articular]).query(
+                        source[part], k=1
                     )
-                    direction /= max(float(np.linalg.norm(direction)), 1.0e-12)
-                    lateral_shift = (
-                        lateral_gap_before - desired_lateral_gap
-                    ) * direction
-                    points = vertices[lateral]
-                    center = np.mean(points, axis=0)
-                    _u, _singular, vh = np.linalg.svd(
-                        points - center, full_matrices=False
+                    source_gap_part = float(np.min(source_distance))
+                    desired_gap_part = source_gap_part * length_ratio
+                    end_shift = np.zeros(3, dtype=np.float64)
+                    if gap_before > desired_gap_part:
+                        part_vertex = int(part[row])
+                        articular_vertex = int(
+                            articular[int(nearest[row])]
+                        )
+                        direction = (
+                            vertices[articular_vertex] - vertices[part_vertex]
+                        )
+                        direction /= max(float(np.linalg.norm(direction)), 1.0e-12)
+                        end_shift = (gap_before - desired_gap_part) * direction
+                        points = vertices[part]
+                        center = np.mean(points, axis=0)
+                        _u, _singular, vh = np.linalg.svd(
+                            points - center, full_matrices=False
+                        )
+                        parameter = (points - center) @ vh[0]
+                        lo, hi = float(np.min(parameter)), float(np.max(parameter))
+                        contact_parameter = float(parameter[row])
+                        if abs(contact_parameter - lo) <= abs(contact_parameter - hi):
+                            blend = (hi - parameter) / max(hi - lo, 1.0e-12)
+                        else:
+                            blend = (parameter - lo) / max(hi - lo, 1.0e-12)
+                        blend = np.clip(blend, 0.0, 1.0)
+                        blend = blend * blend * (3.0 - 2.0 * blend)
+                        vertices[part] += blend[:, None] * end_shift
+                        distance, nearest = cKDTree(vertices[articular]).query(
+                            vertices[part], k=1
+                        )
+                        row = int(np.argmin(distance))
+                    contact = 0.5 * (
+                        vertices[part[row]]
+                        + vertices[articular[int(nearest[row])]]
                     )
-                    parameter = (points - center) @ vh[0]
-                    lo, hi = float(np.min(parameter)), float(np.max(parameter))
-                    contact_parameter = float(parameter[lateral_row])
-                    if abs(contact_parameter - lo) <= abs(contact_parameter - hi):
-                        blend = (hi - parameter) / max(hi - lo, 1.0e-12)
+                    fitted_contacts.append(contact)
+                    fitted_contact_points[part_name] = contact
+                    articular_contact_report[part_name] = {
+                        "source_gap_m": source_gap_part,
+                        "gap_before_m": gap_before,
+                        "desired_gap_m": desired_gap_part,
+                        "gap_after_m": float(distance[row]),
+                        "axial_end_shift_m": end_shift.tolist(),
+                        "cross_section_scale": 1.0,
+                    }
+                if fitted_contacts:
+                    # The tibial plafond is the load-bearing ankle surface;
+                    # use it as the rotational pivot when present. The
+                    # fibula/talus contact remains an independent constraint
+                    # and is still reported, but averaging both surfaces can
+                    # leave the tibia visibly floating under asymmetric pose.
+                    fitted_contact = fitted_contact_points.get("tibia")
+                    if fitted_contact is None:
+                        fitted_contact = np.mean(
+                            np.stack(fitted_contacts, axis=0), axis=0
+                        )
+                    driver_points[b] = fitted_contact
+                    pivot_kind = "talocrural_tibia_load_contact"
+                    if use_full_local_fk:
+                        # Full source-local FK takes child translations from
+                        # the fitted bind, so a driver-point-only correction
+                        # cannot change its rotation centre. Move the complete
+                        # distal frame subtree to the inferred articular pivot;
+                        # inverse-bind compensation keeps zero-pose geometry
+                        # exactly fixed while posed feet rotate at the contact.
+                        pivot_shift = (
+                            fitted_contact - target_global[root, :3, 3]
+                        )
+                        for bone in sorted(subtree):
+                            target_global[bone, :3, 3] += pivot_shift
+                            target_head[bone] += pivot_shift
+                            target_tail[bone] += pivot_shift
+                        rebound_pivot_count += 1
                     else:
-                        blend = (parameter - lo) / max(hi - lo, 1.0e-12)
-                    blend = np.clip(blend, 0.0, 1.0)
-                    blend = blend * blend * (3.0 - 2.0 * blend)
-                    vertices[lateral] += blend[:, None] * lateral_shift
-                    lateral_distance, lateral_nearest = cKDTree(
-                        vertices[articular]
-                    ).query(vertices[lateral], k=1)
-                    lateral_row = int(np.argmin(lateral_distance))
-                fitted_contact = 0.5 * (
-                    vertices[lateral[lateral_row]]
-                    + vertices[articular[int(lateral_nearest[lateral_row])]]
-                )
-                driver_points[b] = fitted_contact
-                pivot_kind = "lateral_malleolus_talus_contact"
-                lateral_contact_report = {
-                    "source_gap_m": float(np.min(source_lateral_distance)),
-                    "gap_before_m": lateral_gap_before,
-                    "desired_gap_m": desired_lateral_gap,
-                    "gap_after_m": float(lateral_distance[lateral_row]),
-                    "axial_end_shift_m": lateral_shift.tolist(),
-                    "cross_section_scale": 1.0,
-                }
+                        pivot_shift = np.zeros(3, dtype=np.float64)
         interface_records.append(
             {
                 "joint": str(asset.joint_names[int(bone_a[root])]),
@@ -1240,7 +1285,15 @@ def close_weighted_bone_interfaces(
                     fitted_contact.tolist() if pivot_kind is not None else None
                 ),
                 "fitted_contact_pivot_kind": pivot_kind,
-                "lateral_contact": lateral_contact_report,
+                "full_local_fk_pivot_shift_m": (
+                    pivot_shift.tolist() if pivot_kind is not None else None
+                ),
+                "articular_contacts": articular_contact_report,
+                "lateral_contact": (
+                    None
+                    if articular_contact_report is None
+                    else articular_contact_report.get("fibula")
+                ),
                 "affected_vertex_count": int(len(proximal_ids)),
             }
         )
@@ -1254,6 +1307,12 @@ def close_weighted_bone_interfaces(
         }
 
     metadata = dict(asset.metadata or {})
+    target_local = target_global.copy()
+    for bone, parent in enumerate(parents.tolist()):
+        if int(parent) >= 0:
+            target_local[bone] = (
+                np.linalg.inv(target_global[int(parent)]) @ target_global[bone]
+            )
     report = {
         "stage": str(stage),
         "backend": "weighted_bone_interface_shaft_extension_v1",
@@ -1262,7 +1321,8 @@ def close_weighted_bone_interfaces(
         "interfaces": interface_records,
         "source_weights_preserved": True,
         "source_hierarchy_preserved": True,
-        "bind_frames_preserved": True,
+        "bind_frames_preserved": bool(rebound_pivot_count == 0),
+        "full_local_fk_articular_pivots_rebound": int(rebound_pivot_count),
     }
     history = list(metadata.get("weighted_bone_interfaces", []))
     history.append(report)
@@ -1272,6 +1332,11 @@ def close_weighted_bone_interfaces(
             **asset.__dict__,
             "vertices_rest": vertices.astype(np.float32),
             "source_driver_rest_joints": driver_points.astype(np.float32),
+            "target_rest_global": target_global.astype(np.float32),
+            "target_rest_local": target_local.astype(np.float32),
+            "target_inverse_bind": np.linalg.inv(target_global).astype(np.float32),
+            "target_bone_head": target_head.astype(np.float32),
+            "target_bone_tail": target_tail.astype(np.float32),
             "metadata": metadata,
         }
     )
@@ -1411,6 +1476,256 @@ def _mesh_mask(asset: AnatomyRiggedAsset, predicate) -> np.ndarray:
     return mask
 
 
+def rigidly_contain_patellae(
+    asset: AnatomyRiggedAsset,
+    *,
+    surface_vertices: np.ndarray,
+    surface_faces: np.ndarray,
+    clearance_m: float = 0.0005,
+    maximum_shift_m: float = 0.012,
+    stage: str = "stage1_rigid_patella_containment",
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Translate each exposed patella as one rigid Blender-controlled body."""
+    asset.validate()
+    import igl
+    from scipy.optimize import differential_evolution
+    from scipy.spatial import cKDTree
+
+    vertices = np.asarray(asset.vertices_rest, dtype=np.float64).copy()
+    target_global = np.asarray(asset.target_rest_global, dtype=np.float64).copy()
+    target_head = np.asarray(asset.target_bone_head, dtype=np.float64).copy()
+    target_tail = np.asarray(asset.target_bone_tail, dtype=np.float64).copy()
+    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    names = list(asset.source_bone_names or [])
+    surface = np.asarray(surface_vertices, dtype=np.float64)
+    faces = np.asarray(surface_faces, dtype=np.int32)
+    records: list[dict[str, Any]] = []
+
+    for side, suffix in (("left", "_l"), ("right", "_r")):
+        patella = _mesh_mask(
+            asset,
+            lambda name, tissue, suffix=suffix: tissue == "bone"
+            and "patella" in name
+            and name.endswith(suffix),
+        )
+        femur = _mesh_mask(
+            asset,
+            lambda name, tissue, suffix=suffix: tissue == "bone"
+            and "femur" in name
+            and name.endswith(suffix),
+        )
+        controller_name = f"Patella_Rotate_{'L' if side == 'left' else 'R'}"
+        if not np.any(patella) or controller_name not in names:
+            continue
+        points = vertices[patella]
+        before = np.asarray(igl.signed_distance(points, surface, faces)[0])
+        outside_before = before > 0.0
+        shift = np.zeros(3, dtype=np.float64)
+        if np.any(outside_before):
+            femur_tree = cKDTree(vertices[femur]) if np.any(femur) else None
+
+            def objective(candidate: np.ndarray) -> float:
+                moved = points + np.asarray(candidate, dtype=np.float64)
+                signed = np.asarray(igl.signed_distance(moved, surface, faces)[0])
+                violation = np.maximum(signed + float(clearance_m), 0.0)
+                collision_penalty = 0.0
+                if femur_tree is not None:
+                    nearest = femur_tree.query(moved, k=1)[0]
+                    collision_penalty = float(
+                        np.mean(np.maximum(float(clearance_m) - nearest, 0.0) ** 2)
+                    )
+                return float(
+                    1.0e7 * np.mean(violation**2)
+                    + 50.0 * np.max(violation)
+                    + 1.0e7 * collision_penalty
+                    + 20.0 * np.dot(candidate, candidate)
+                )
+
+            bound = float(maximum_shift_m)
+            solved = differential_evolution(
+                objective,
+                [(-bound, bound)] * 3,
+                seed=0,
+                popsize=8,
+                maxiter=20,
+                tol=0.01,
+                polish=True,
+                workers=1,
+            )
+            shift = np.asarray(solved.x, dtype=np.float64)
+            vertices[patella] += shift
+
+            root = names.index(controller_name)
+            subtree: list[int] = []
+            for bone in range(len(parents)):
+                current = int(bone)
+                while current >= 0:
+                    if current == root:
+                        subtree.append(int(bone))
+                        break
+                    current = int(parents[current])
+            for bone in subtree:
+                target_global[bone, :3, 3] += shift
+                target_head[bone] += shift
+                target_tail[bone] += shift
+
+        after = np.asarray(
+            igl.signed_distance(vertices[patella], surface, faces)[0]
+        )
+        records.append(
+            {
+                "side": side,
+                "vertex_count": int(np.count_nonzero(patella)),
+                "inside_fraction_before": float(np.mean(before <= 0.0)),
+                "inside_fraction_after": float(np.mean(after <= 0.0)),
+                "max_outside_before_m": float(max(0.0, np.max(before))),
+                "max_outside_after_m": float(max(0.0, np.max(after))),
+                "rigid_shift_m": shift.tolist(),
+                "cross_section_scale": 1.0,
+            }
+        )
+
+    if not records:
+        return asset, {
+            "stage": str(stage),
+            "available": False,
+            "reason": "patella material or controller unavailable",
+        }
+
+    target_local = target_global.copy()
+    for bone, parent in enumerate(parents.tolist()):
+        if int(parent) >= 0:
+            target_local[bone] = (
+                np.linalg.inv(target_global[int(parent)]) @ target_global[bone]
+            )
+    report = {
+        "stage": str(stage),
+        "available": True,
+        "backend": "skin_sdf_rigid_compound_translation_v1",
+        "pose_specific": False,
+        "records": records,
+        "source_weights_preserved": True,
+        "source_hierarchy_preserved": True,
+    }
+    metadata = dict(asset.metadata or {})
+    history = list(metadata.get("rigid_patella_containment", []))
+    history.append(report)
+    metadata["rigid_patella_containment"] = history
+    result = type(asset)(
+        **{
+            **asset.__dict__,
+            "vertices_rest": vertices.astype(np.float32),
+            "target_rest_global": target_global.astype(np.float32),
+            "target_rest_local": target_local.astype(np.float32),
+            "target_inverse_bind": np.linalg.inv(target_global).astype(np.float32),
+            "target_bone_head": target_head.astype(np.float32),
+            "target_bone_tail": target_tail.astype(np.float32),
+            "metadata": metadata,
+        }
+    )
+    result = with_source_driver_coupling(result)
+    if not np.array_equal(result.driver_indices, asset.driver_indices):
+        raise RuntimeError("patella containment changed Blender driver indices")
+    if not np.array_equal(result.driver_weights, asset.driver_weights):
+        raise RuntimeError("patella containment changed Blender driver weights")
+    result.validate()
+    return result, report
+
+
+def select_contained_articular_direct_drivers(
+    asset: AnatomyRiggedAsset,
+    *,
+    surface_vertices: np.ndarray,
+    surface_faces: np.ndarray,
+    minimum_inside_fraction: float = 0.8,
+    stage: str = "stage1_articular_driver_selection",
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Keep an already-contained rigid foot root on its direct Blender driver."""
+    asset.validate()
+    import igl
+
+    names = list(asset.source_bone_names or [])
+    direct = {
+        int(value)
+        for value in (asset.metadata or {}).get("source_direct_driver_bones_v1", [])
+    }
+    driver_points = np.asarray(asset.source_driver_rest_joints, dtype=np.float64).copy()
+    surface = np.asarray(surface_vertices, dtype=np.float64)
+    faces = np.asarray(surface_faces, dtype=np.int32)
+    records: list[dict[str, Any]] = []
+    selected: list[int] = []
+
+    for side, suffix, label in (
+        ("left", "_l", "L"),
+        ("right", "_r", "R"),
+    ):
+        proximal_foot = _mesh_mask(
+            asset,
+            lambda name, tissue, suffix=suffix: tissue == "bone"
+            and any(token in name for token in ("talus", "calcaneus"))
+            and name.endswith(suffix),
+        )
+        root_name = f"Ankle_Rot_{label}"
+        joint_name = f"{side}_ankle"
+        if not np.any(proximal_foot) or root_name not in names:
+            continue
+        signed = np.asarray(
+            igl.signed_distance(
+                np.asarray(asset.vertices_rest, dtype=np.float64)[proximal_foot],
+                surface,
+                faces,
+            )[0]
+        )
+        inside_fraction = float(np.mean(signed <= 0.0))
+        use_direct = bool(inside_fraction >= float(minimum_inside_fraction))
+        root = names.index(root_name)
+        if use_direct:
+            direct.add(int(root))
+            joint = asset.joint_names.index(joint_name)
+            driver_points[joint] = np.asarray(asset.rest_joints[joint], dtype=np.float64)
+            selected.append(int(root))
+        records.append(
+            {
+                "side": side,
+                "root_bone": root_name,
+                "proximal_foot_vertex_count": int(np.count_nonzero(proximal_foot)),
+                "rest_inside_fraction": inside_fraction,
+                "minimum_inside_fraction": float(minimum_inside_fraction),
+                "selected_direct_driver": use_direct,
+            }
+        )
+
+    metadata = dict(asset.metadata or {})
+    metadata["source_direct_driver_bones_v1"] = sorted(direct)
+    report = {
+        "stage": str(stage),
+        "available": bool(records),
+        "backend": "rest_skin_containment_articular_driver_v1",
+        "pose_specific": False,
+        "records": records,
+        "selected_bones": selected,
+        "source_weights_preserved": True,
+        "source_hierarchy_preserved": True,
+    }
+    history = list(metadata.get("articular_driver_selection", []))
+    history.append(report)
+    metadata["articular_driver_selection"] = history
+    result = type(asset)(
+        **{
+            **asset.__dict__,
+            "source_driver_rest_joints": driver_points.astype(np.float32),
+            "metadata": metadata,
+        }
+    )
+    result = with_source_driver_coupling(result)
+    if not np.array_equal(result.driver_indices, asset.driver_indices):
+        raise RuntimeError("articular driver selection changed Blender driver indices")
+    if not np.array_equal(result.driver_weights, asset.driver_weights):
+        raise RuntimeError("articular driver selection changed Blender driver weights")
+    result.validate()
+    return result, report
+
+
 def cranial_material_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
     """All Head_Bone material except the independently articulated jaw.
 
@@ -1474,6 +1789,209 @@ def jaw_material_mask(asset: AnatomyRiggedAsset) -> np.ndarray:
     indices = np.asarray(asset.driver_indices, dtype=np.int64)
     weights = np.asarray(asset.driver_weights, dtype=np.float64)
     return np.sum(weights * jaw_bone[indices], axis=1) >= 0.5
+
+
+def close_jaw_to_dental_contact(
+    asset: AnatomyRiggedAsset,
+    *,
+    maximum_angle_deg: float = 20.0,
+    angle_step_deg: float = 0.25,
+    minimum_median_improvement_m: float = 0.001,
+    stage: str = "stage1_closed_jaw_rest",
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Close an authored open jaw by fitting upper/lower dental contact.
+
+    The hinge, lateral axis and angle all come from the fitted source rig and
+    dental geometry. The resulting rigid delta is baked into the jaw subtree;
+    vertices with mixed head/jaw weights receive the corresponding LBS blend.
+    No SMPL-X jaw pose or model-specific angle is stored at runtime.
+    """
+    asset.validate()
+    bone_names = list(asset.source_bone_names or [])
+    required = {"Head_Bone", "Jaw_Bone_base", "Jaw_Bone_tip"}
+    if not required.issubset(bone_names):
+        return asset, {
+            "stage": str(stage),
+            "available": False,
+            "reason": "authored head/jaw source bones unavailable",
+        }
+    if asset.driver_indices is None or asset.driver_weights is None:
+        raise ValueError("closed-jaw fitting requires Blender sparse weights")
+
+    from scipy.spatial import cKDTree
+    from scipy.spatial.transform import Rotation
+
+    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    head_bone = bone_names.index("Head_Bone")
+    jaw_base = bone_names.index("Jaw_Bone_base")
+    jaw_tip = bone_names.index("Jaw_Bone_tip")
+
+    def descends_from(bone: int, ancestor: int) -> bool:
+        current = int(bone)
+        while current >= 0:
+            if current == int(ancestor):
+                return True
+            current = int(parents[current])
+        return False
+
+    dental_tokens = ("incisor", "canine", "molar", "premolar")
+    lower_chunks: list[np.ndarray] = []
+    upper_chunks: list[np.ndarray] = []
+    for (start, stop), name, tissue, controller in zip(
+        asset.source_vertex_ranges,
+        asset.source_mesh_names,
+        asset.source_tissues,
+        asset.source_mesh_controller_bones,
+    ):
+        lowered = str(name).lower()
+        if str(tissue).lower() != "bone" or not any(
+            token in lowered for token in dental_tokens
+        ):
+            continue
+        ids = np.arange(int(start), int(stop), dtype=np.int64)
+        controller_i = int(controller)
+        if descends_from(controller_i, jaw_tip):
+            lower_chunks.append(ids)
+        elif descends_from(controller_i, head_bone):
+            upper_chunks.append(ids)
+    if not lower_chunks or not upper_chunks:
+        return asset, {
+            "stage": str(stage),
+            "available": False,
+            "reason": "upper/lower dental meshes unavailable",
+        }
+
+    lower = np.concatenate(lower_chunks)
+    upper = np.concatenate(upper_chunks)
+    vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
+    dental = vertices[np.concatenate((lower, upper))]
+    _u, _singular, vh = np.linalg.svd(
+        dental - np.mean(dental, axis=0), full_matrices=False
+    )
+    lateral_axis = np.asarray(vh[0], dtype=np.float64)
+    # Axis sign is arbitrary. Stable orientation makes reports reproducible;
+    # the search itself evaluates both positive and negative rotations.
+    sign_index = int(np.argmax(np.abs(lateral_axis)))
+    if lateral_axis[sign_index] < 0.0:
+        lateral_axis *= -1.0
+    pivot = np.asarray(asset.target_bind_global, dtype=np.float64)[
+        jaw_base, :3, 3
+    ]
+    upper_tree = cKDTree(vertices[upper])
+
+    def dental_metrics(angle_deg: float) -> tuple[float, float, float, np.ndarray]:
+        rotation = Rotation.from_rotvec(
+            np.deg2rad(float(angle_deg)) * lateral_axis
+        ).as_matrix()
+        candidate = (vertices[lower] - pivot) @ rotation.T + pivot
+        distance = upper_tree.query(candidate, k=1)[0]
+        return (
+            float(np.median(distance)),
+            float(np.quantile(distance, 0.01)),
+            float(np.mean(distance)),
+            rotation,
+        )
+
+    limit = abs(float(maximum_angle_deg))
+    step = max(abs(float(angle_step_deg)), 0.05)
+    angles = np.arange(-limit, limit + 0.5 * step, step, dtype=np.float64)
+    baseline_median, baseline_q01, baseline_mean, _identity = dental_metrics(0.0)
+    candidates = [(*dental_metrics(float(angle)), float(angle)) for angle in angles]
+    best_median, best_q01, best_mean, best_rotation, best_angle = min(
+        candidates,
+        key=lambda value: (value[0], value[2], abs(value[4])),
+    )
+    improvement = baseline_median - best_median
+    if improvement < float(minimum_median_improvement_m):
+        return asset, {
+            "stage": str(stage),
+            "available": True,
+            "applied": False,
+            "reason": "dental contact already closed",
+            "baseline_median_gap_m": baseline_median,
+            "best_median_gap_m": best_median,
+            "median_improvement_m": improvement,
+        }
+
+    jaw_subtree = np.asarray(
+        [descends_from(bone, jaw_base) for bone in range(len(bone_names))],
+        dtype=bool,
+    )
+    driver_indices = np.asarray(asset.driver_indices, dtype=np.int64)
+    driver_weights = np.asarray(asset.driver_weights, dtype=np.float64)
+    jaw_weight = np.sum(
+        driver_weights * jaw_subtree[driver_indices], axis=1
+    )
+    fully_rotated = (vertices - pivot) @ best_rotation.T + pivot
+    closed_vertices = vertices + jaw_weight[:, None] * (
+        fully_rotated - vertices
+    )
+
+    closure = np.eye(4, dtype=np.float64)
+    closure[:3, :3] = best_rotation
+    closure[:3, 3] = pivot - best_rotation @ pivot
+    target_global = np.asarray(asset.target_bind_global, dtype=np.float64).copy()
+    target_head = np.asarray(asset.target_bone_head, dtype=np.float64).copy()
+    target_tail = np.asarray(asset.target_bone_tail, dtype=np.float64).copy()
+    for bone in np.flatnonzero(jaw_subtree):
+        target_global[bone] = closure @ target_global[bone]
+        target_head[bone] = best_rotation @ target_head[bone] + closure[:3, 3]
+        target_tail[bone] = best_rotation @ target_tail[bone] + closure[:3, 3]
+    target_local = target_global.copy()
+    for bone, parent in enumerate(parents.tolist()):
+        if int(parent) >= 0:
+            target_local[bone] = (
+                np.linalg.inv(target_global[int(parent)]) @ target_global[bone]
+            )
+
+    report = {
+        "stage": str(stage),
+        "available": True,
+        "applied": True,
+        "backend": "dental_pca_contact_rigid_jaw_subtree_v1",
+        "pose_specific": False,
+        "hinge_bone": "Jaw_Bone_base",
+        "hinge_m": pivot.tolist(),
+        "lateral_axis": lateral_axis.tolist(),
+        "closure_angle_deg": float(best_angle),
+        "lower_dental_vertex_count": int(len(lower)),
+        "upper_dental_vertex_count": int(len(upper)),
+        "baseline_median_gap_m": baseline_median,
+        "closed_median_gap_m": best_median,
+        "baseline_q01_gap_m": baseline_q01,
+        "closed_q01_gap_m": best_q01,
+        "baseline_mean_gap_m": baseline_mean,
+        "closed_mean_gap_m": best_mean,
+        "median_improvement_m": improvement,
+        "jaw_weighted_vertex_count": int(np.count_nonzero(jaw_weight > 1.0e-8)),
+        "source_weights_preserved": True,
+        "source_hierarchy_preserved": True,
+    }
+    metadata = dict(asset.metadata or {})
+    history = list(metadata.get("closed_jaw_rest", []))
+    history.append(report)
+    metadata["closed_jaw_rest"] = history
+    result = type(asset)(
+        **{
+            **asset.__dict__,
+            "vertices_rest": closed_vertices.astype(np.float32),
+            "target_rest_global": target_global.astype(np.float32),
+            "target_rest_local": target_local.astype(np.float32),
+            "target_inverse_bind": np.linalg.inv(target_global).astype(np.float32),
+            "target_bone_head": target_head.astype(np.float32),
+            "target_bone_tail": target_tail.astype(np.float32),
+            "metadata": metadata,
+        }
+    )
+    result = with_source_driver_coupling(result)
+    if not np.array_equal(result.driver_indices, asset.driver_indices):
+        raise RuntimeError("closed-jaw fitting changed Blender driver indices")
+    if not np.array_equal(result.driver_weights, asset.driver_weights):
+        raise RuntimeError("closed-jaw fitting changed Blender driver weights")
+    if not np.array_equal(result.source_bone_parents, asset.source_bone_parents):
+        raise RuntimeError("closed-jaw fitting changed Blender hierarchy")
+    result.validate()
+    return result, report
 
 
 def rigid_head_attachment_mask(
@@ -4125,11 +4643,14 @@ def fit_stage1_rigid_regions(
         **{**rebound.__dict__, "vertices_rest": vertices.astype(np.float32)}
     )
     metadata = dict(rebound.metadata or {})
-    # Preserve local translations only for the connected knee/tibia and
-    # elbow/forearm mechanisms. Other roots keep the SMPL-X spatial driver;
-    # applying full-local FK to the complete re-bound hierarchy makes shoulder
-    # elevation and the cranial compound inherit unrelated source offsets.
-    metadata["source_full_local_fk_v2"] = False
+    # V71's authoritative articulation path keeps every fitted Blender local
+    # translation in parent-before-child FK order.  Disabling this after the
+    # subject-shape rebind made child origins jump back to independent SMPL-X
+    # frames: the straight leg could look plausible while the bent femur,
+    # patella and pelvis chain separated.  The fitted target bind already
+    # contains the subject shape, so retaining its complete local hierarchy
+    # restores Blender linkage without giving up beta adaptation.
+    metadata["source_full_local_fk_v2"] = True
     metadata["source_connected_local_fk_v3"] = False
     metadata["source_local_fk_bones_v3"] = []
     metadata["source_direct_driver_bones_v1"] = _direct_smplx_hand_controllers(fit_asset)
@@ -4150,7 +4671,7 @@ def fit_stage1_rigid_regions(
         "independent_mesh_fits": False,
         "changed_vertex_count": int(np.count_nonzero(np.linalg.norm(vertices - target, axis=1))),
         "source_rig_rebind": rebind_report,
-        "source_full_local_fk_v2": False,
+        "source_full_local_fk_v2": True,
         "source_connected_local_fk_v3": False,
         "source_local_fk_bones_v3": [
             str(fit_asset.source_bone_names[index])

@@ -44,8 +44,11 @@ class ModbusRtuTcpConfig:
     host: str
     port: int = 8234
     slave_id: int = 1
-    timeout_s: float = 1.0
-    retries: int = 2
+    # Poll-budget timeout: a stuck recv must not freeze the 50 Hz rail worker
+    # (or, via GIL / shared fate, the WBC).  Demo-proven ~50–80 ms; 1.0 s was
+    # the root of multi-second FA24 latch runaways.
+    timeout_s: float = 0.06
+    retries: int = 1
     # At 115200, 3.5 RTU chars ≈ 0.3 ms. USR-TCP232 needs a few ms of turnaround.
     # 50 ms was historically used for flaky links but capped the rail loop at ~10 Hz
     # (read+write), which looked like one update per motor revolution in the twin.

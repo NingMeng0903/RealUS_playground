@@ -88,18 +88,22 @@ class SecondaryPolicy:
             psi = self.arm_angle.psi_rad
 
         if self.preset == "move":
-            # Move: the SRS/joint plan owns the posture.  Secondary tasks that
+            # Move: the SRS/joint plan owns the arm posture.  Secondary tasks that
             # chase a fixed ψ_ref or centering target fight the planner and stall
             # the governor (hardware logs: ψ(q0)=72° vs ψ(target)=155° with
-            # arm_task ON → joint_err>20° → t_ref frozen).  Rail extension and
-            # arm-angle resume at scan entry (preset=track).
-            # COUPLED so the joint plan can carry rail_y (e.g. 0 → center).
+            # arm_task ON → joint_err>20° → t_ref frozen).
+            # Rail: COUPLED + pose_attract soft task → q_target[0] (monotone,
+            # settles and stops).  σ_min is a dead-zoned guardrail only — not a
+            # continuous gradient climb (that hunted / oscillated).  Arm-angle
+            # / reach-extension resume at scan entry (preset=track).
             inner.set_coupled()
             inner.set_arm_task_suppressed(True)
             inner.set_centering_suppressed(True)
             inner.set_manipulability_active(False)
-            inner.set_rail_extension_active(False)
+            inner.set_rail_extension_mode("pose_attract")
+            inner.set_rail_extension_active(True)
         elif self.preset == "track":
+            inner.set_plan_drives_rail(False)
             inner.set_manipulability_active(False)
             inner.set_centering_suppressed(False)
             inner.set_arm_task_suppressed(False)
@@ -113,6 +117,7 @@ class SecondaryPolicy:
                 # Preferred-extension coordination: capture d_pref at the
                 # taught (scan-entry) posture, then let the rail proactively
                 # follow the TCP when the arm reaches beyond it.
+                inner.set_rail_extension_mode("reach")
                 inner.capture_rail_extension_ref()
                 inner.set_rail_extension_active(True)
             else:
@@ -123,6 +128,7 @@ class SecondaryPolicy:
             ):
                 self._set_arm_angle_reference(inner, psi)
         elif self.preset == "hold":
+            inner.set_plan_drives_rail(False)
             inner.set_manipulability_active(False)
             # Hold at a taught pose: centering pulls toward q_nominal and
             # fights manual adjustment / force-hybrid positioning.
@@ -249,24 +255,39 @@ def make_srs_move_reference(
 ) -> SrsSmoothMoveReference:
     """Build a branch-locked SRS move reference (Bug 5).
 
+    Target TCP pose is **always** ``kin.fk_pose(q_target)`` after the caller's
+    TCP sync (link_7→tcp offset).  ``pose_target`` is only used as a sanity
+    check — changing grippers must not leave a stale RealMan TCP in the plan.
     Duration is lengthened if joint-rate limits require it
     (:func:`srs_move_duration_s`).
     """
-    from rm75_control.kinematics.srs_ik import psi_from_q
+    from rm75_control.kinematics.srs_ik import d_wt_from_kin, psi_from_q
 
     q_start = np.asarray(q_start_rad, dtype=float)
     q_target = np.asarray(q_target_rad, dtype=float)
+    # Live TCP: FK(q_target) with current link_7→tcp, not a cached pose_d.
+    pose_from_q = np.asarray(kin.fk_pose(q_target), dtype=float).reshape(6)
+    pose_in = np.asarray(pose_target, dtype=float).reshape(6)
+    dpos = float(np.linalg.norm(pose_from_q[:3] - pose_in[:3]))
+    if dpos > 0.005:
+        print(
+            f"  SRS pose_d←FK(q_target) (|Δpos| vs caller pose={dpos * 1000:.1f} mm; "
+            f"TCP offset z={float(kin.tcp_offset_pose[2]) * 1000:.1f} mm)",
+            flush=True,
+        )
     v_max = kin.v_max * 0.5  # match inner v_scale default
     T_rate = srs_move_duration_s(q_start, q_target, max_qdot_rad_s=v_max)
     T = max(float(duration_s), T_rate)
+    d_wt = float(d_wt_from_kin(kin))
     return SrsSmoothMoveReference(
         kin,
         q_start,
-        np.asarray(pose_target, dtype=float),
+        pose_from_q,
         y_rail_target_m=float(q_target[0]),
         psi_target_rad=float(psi_from_q(q_target[1:])),
         duration_s=T,
         euler_order=euler_order,
+        d_wt=d_wt,
     )
 
 
@@ -282,10 +303,14 @@ def attach_srs_move_tracking(
     hook the task keeps ψ_ref frozen at q0 while the planner resolved a
     different ψ at the target — the nullspace fight stalls the governor and
     the move phase never hands off to scan.
+
+    Also pins the rail to the SRS ``y_rail(t)`` plan so tool-Y is not absorbed
+    entirely by the arm when the carriage lags / panics.
     """
     q_target = np.asarray(q_target_rad, dtype=float)
     prev_on_enter = phase.on_enter
     prev_on_tick = phase.on_tick
+    prev_on_exit = phase.on_exit
 
     def _enter() -> None:
         if prev_on_enter is not None:
@@ -294,6 +319,7 @@ def attach_srs_move_tracking(
             inner.centering_task.set_q_target(q_target)
         if inner.arm_task is not None and not inner._arm_task_suppressed:
             inner.arm_task.set_reference(move_ref.psi_start)
+        inner.set_plan_drives_rail(True)
 
     def _tick(t_ref: float, step, q_meas: np.ndarray) -> None:
         if inner.arm_task is not None and not inner._arm_task_suppressed:
@@ -301,8 +327,14 @@ def attach_srs_move_tracking(
         if prev_on_tick is not None:
             prev_on_tick(t_ref, step, q_meas)
 
+    def _exit() -> None:
+        inner.set_plan_drives_rail(False)
+        if prev_on_exit is not None:
+            prev_on_exit()
+
     phase.on_enter = _enter
     phase.on_tick = _tick
+    phase.on_exit = _exit
 
 
 @dataclass
@@ -371,15 +403,45 @@ def make_move_arrived(
     tol_mm: float = 3.0,
     tol_deg: float = 1.5,
     joint_tol_deg: float = 3.0,
+    rail_tol_mm: float = 5.0,
     joint_only: bool = False,
+    require_joints: bool = True,
     euler_order: str = "xyz",
 ) -> Callable[[np.ndarray, np.ndarray], bool]:
-    def _fn(pose_meas: np.ndarray, q_meas: np.ndarray) -> bool:
-        if not joint_only:
-            d_mm, d_deg = pose_distance(pose_meas, pose_target, euler_order)
-            if d_mm > tol_mm or d_deg > tol_deg:
+    """Arrival gate for move→D.
+
+    Cartesian/SRS moves should be pose-primary (``require_joints=False``): the
+    8-DOF nullspace often leaves a few degrees of joint residual while TCP is
+    already on target, and ``max_joint_err_deg`` used to treat rail metres as
+    radians (40 mm ≈ 2.3° toward a false fail).
+    """
+
+    def _joints_ok(q_meas: np.ndarray) -> bool:
+        qa = np.asarray(q_meas, dtype=float).reshape(-1)
+        qt = np.asarray(q_target_rad, dtype=float).reshape(-1)
+        n = int(min(qa.size, qt.size))
+        if n < 1:
+            return False
+        if abs(float(qa[0]) - float(qt[0])) * 1000.0 > float(rail_tol_mm):
+            return False
+        if n > 1:
+            from rm75_control.control.joint_admittance_8dof.model import wrap_joint_delta
+
+            d = wrap_joint_delta(qa[:n], qt[:n])
+            arm_err = float(np.rad2deg(np.max(np.abs(d[1:]))))
+            if arm_err > float(joint_tol_deg):
                 return False
-        return max_joint_err_deg(q_meas, q_target_rad) <= joint_tol_deg
+        return True
+
+    def _fn(pose_meas: np.ndarray, q_meas: np.ndarray) -> bool:
+        if joint_only:
+            return _joints_ok(q_meas)
+        d_mm, d_deg = pose_distance(pose_meas, pose_target, euler_order)
+        if d_mm > tol_mm or d_deg > tol_deg:
+            return False
+        if not require_joints:
+            return True
+        return _joints_ok(q_meas)
 
     return _fn
 
@@ -559,6 +621,10 @@ def phase_cartesian_goto(
                 pose_target,
                 q_target_rad,
                 joint_only=(move_mode == "joint"),
+                # Cartesian/SRS: TCP pose is the goal; joint residual is OK.
+                require_joints=(move_mode == "joint"),
+                tol_mm=5.0 if move_mode == "cartesian" else 3.0,
+                tol_deg=3.0 if move_mode == "cartesian" else 1.5,
             )
             if pose_target is not None and q_target_rad is not None
             else None
@@ -626,6 +692,16 @@ def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], No
 
     def _enter() -> None:
         spec.secondary.apply(ctx.inner, psi_rad=psi)
+        # move→D: soft-attract rail to the target pose's rail coordinate.
+        if (
+            spec.secondary.preset == "move"
+            and spec.q_target_rad is not None
+            and len(np.asarray(spec.q_target_rad).reshape(-1)) > 0
+        ):
+            y_tgt = float(np.asarray(spec.q_target_rad, dtype=float).reshape(-1)[0])
+            ctx.inner.set_rail_pose_target(y_tgt)
+            ctx.inner.set_rail_extension_mode("pose_attract")
+            ctx.inner.set_rail_extension_active(True)
         if spec.mode == TaskMode.LOCKED_MOVE and spec.q_rail_target_m is not None:
             ctx.inner.set_locked(spec.locked_style, q_ref_m=spec.q_rail_target_m)
 
@@ -695,10 +771,23 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_tau_s=gov.tau_s,
             governor_freeze_below=gov.freeze_below,
             governor_release_above=gov.release_above,
+            soft_start_ramp_s=0.3 if spec.secondary.preset == "move" else 0.0,
             qdot_ff_provider=qdot_ff,
             scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
             force_observer=spec.force_observer,
         )
+        # Bug 5: wire ψ_ref(t) + centering when the move plan is SRS (not MoveJ).
+        if (
+            isinstance(spec.move_ref, SrsSmoothMoveReference)
+            and spec.q_target_rad is not None
+        ):
+            attach_srs_move_tracking(
+                phase, ctx.inner, spec.move_ref, spec.q_target_rad
+            )
+            # Soft-start / governor must scale the rail pin — otherwise SRS
+            # y_dot launches at full rate while Cartesian is still ramping and
+            # the LW100 lead-trips (encoder freeze → PANIC → arm-only Y).
+            phase.scale_qdot_ff_with_governor = True
         return CompiledPhase(
             phase=phase,
             label=phase.label,

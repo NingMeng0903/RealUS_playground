@@ -31,6 +31,12 @@
 
 4. **Protocol**: send **Modbus RTU** frames (with CRC16) over TCP — **not** Modbus-TCP (no MBAP header).
 
+5. **Keepalive / dead-link recovery** (USR-TCP232-304 manual §4.4 — required for FA24 streaming):
+   - Enable **KeepAlive** (TCP Server and Client both support it).
+   - Enable **超时重启 / 无数据重启** (`RSTIM`) with a short window (minutes, not the default “one day”) so a hung TCP session resets without power-cycling the converter.
+   - Optional: **CLIENTRST** if the USR is ever run as TCP Client.
+   - On the drive side, joint-admittance arming writes **FA74=1** (comms error → alarm + stop) so a latched FA24 cannot keep spinning when Modbus dies.
+
 ## LW100 control mode (rail)
 
 - `FA4=0` position, `FA14=3` internal position input, `FD-0=0` absolute position.

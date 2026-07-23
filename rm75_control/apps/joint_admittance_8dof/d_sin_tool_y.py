@@ -16,6 +16,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import signal
 import sys
 import time
 from contextlib import nullcontext
@@ -40,6 +42,7 @@ from rm75_control.control.joint_admittance_8dof.api import (
     SecondaryPolicy,
     compile_phases,
     compute_move_plan,
+    make_srs_move_reference,
     phase_cartesian_goto,
     phase_hold_at_pose,
     phase_hybrid_track,
@@ -97,9 +100,12 @@ def main() -> int:
     ap.add_argument(
         "--d-target",
         choices=("legacy", "joints", "kin-fk"),
-        default="legacy",
-        help="move->D calibration: legacy=RealMan TCP+IK; joints=taught q_deg+Pin FK; "
-        "kin-fk=Pin standoff pose+IK, no RealMan TCP",
+        default="joints",
+        help="How to get move→D Cartesian pose_d (execution is still --move-mode, "
+        "default cartesian/SRS — NOT joint MoveJ): "
+        "joints=Pin FK(taught q) → same q gives same xyz, rpy follows live TCP; "
+        "legacy=ArmTip contact + approach_dz along tool-Z + IK; "
+        "kin-fk=Pin standoff + IK",
     )
     ap.add_argument("--approach-dz-mm", type=float, default=0.220 * 1000.0)
     ap.add_argument("--use-force-id-pose", action="store_true")
@@ -404,8 +410,8 @@ def main() -> int:
             )
             if scan_target.d_target in {"joints", "kin-fk"}:
                 print(
-                    "  move->D: RealMan published TCP ignored; "
-                    "scan origin from Pinocchio FK @ taught/planned joints",
+                    "  move->D: pose_d from Pinocchio FK @ taught/planned joints; "
+                    "execution is Cartesian/SRS (not joint MoveJ)",
                     flush=True,
                 )
 
@@ -430,9 +436,12 @@ def main() -> int:
                 flush=True,
             )
 
-        auto_joint = "--move-mode" not in sys.argv
+        # move→D default: cartesian SRS (own srs_ik), not MoveJ.
+        # Auto-fallback to joint is disabled — that caused the early wrong-way TCP path.
+        # Explicit --move-mode joint (or d-target=joints hint) still uses JointSmooth.
+        auto_joint = False
         move_mode = str(args.move_mode)
-        if auto_joint and scan_target.move_mode_hint == "joint":
+        if "--move-mode" not in sys.argv and scan_target.move_mode_hint == "joint":
             move_mode = "joint"
         plan = compute_move_plan(
             kin,
@@ -442,7 +451,7 @@ def main() -> int:
             v_scale=inner_cfg.v_scale,
             duration_s=args.move_duration,
             move_mode=move_mode,
-            auto_select_joint=auto_joint,
+            auto_select_joint=False,
             peak_joint_v_frac=float(args.move_duration_margin),
             max_lin_vel_m_s=max_lin,
             duration_min_s=float(args.move_duration_min),
@@ -451,17 +460,12 @@ def main() -> int:
             sigma_ref=sigma_ref,
             euler_order=inner_cfg.euler_order,
         )
-        mode_label = "joint" if plan.move_mode == "joint" else "cartesian"
-        if auto_joint and plan.move_mode == "joint" and args.move_mode == "cartesian":
+        mode_label = "joint" if plan.move_mode == "joint" else "cartesian/SRS"
+        if plan.move_mode == "cartesian" and plan.meta["max_dq_deg"] > 60.0:
             if args.verbose:
                 print(
-                    f"  auto move mode: joint (max|dq|={plan.meta['max_dq_deg']:.1f}deg > 60deg)",
-                    flush=True,
-                )
-        elif plan.move_mode == "cartesian" and plan.meta["max_dq_deg"] > 60.0:
-            if args.verbose:
-                print(
-                    f"  hint: max|dq|={plan.meta['max_dq_deg']:.1f}deg — try --move-mode joint",
+                    f"  move: cartesian SRS (max|dq|={plan.meta['max_dq_deg']:.1f}deg; "
+                    f"use --move-mode joint only if you want MoveJ)",
                     flush=True,
                 )
 
@@ -498,14 +502,35 @@ def main() -> int:
             f"  rail move plan: {float(q0_rad[0])*1000:.1f}→{float(q_target_rad[0])*1000:.1f} mm "
             f"in {plan.duration_s:.2f}s → peak_v={peak_rail_v:.3f} m/s "
             f"(motor vel_max={motor_vmax:.2f} m/s){over} | "
-            f"mode={mode_label} (rail pinned to joint plan during move)",
+            f"mode={mode_label}",
             flush=True,
         )
         if args.verbose:
             print(f"  governor joint max: {plan.gov_joint_max_deg:.0f}deg", flush=True)
             print(f"  move mode: {mode_label}", flush=True)
 
-        move_ref = JointSmoothMoveReference(kin, q0_rad, q_target_rad, plan.duration_s)
+        if plan.move_mode == "joint":
+            move_ref = JointSmoothMoveReference(
+                kin, q0_rad, q_target_rad, plan.duration_s
+            )
+            move_duration_s = float(plan.duration_s)
+        else:
+            move_ref = make_srs_move_reference(
+                kin,
+                q0_rad,
+                pose_d,
+                q_target_rad,
+                plan.duration_s,
+                euler_order=inner_cfg.euler_order,
+            )
+            move_duration_s = float(move_ref.duration_s)
+            if move_duration_s > float(plan.duration_s) + 1e-6 and args.verbose:
+                print(
+                    f"  SRS duration stretched {plan.duration_s:.2f}s → {move_duration_s:.2f}s "
+                    f"(joint-rate limit)",
+                    flush=True,
+                )
+            plan.duration_s = move_duration_s
         ctx = CompileContext(
             kin=kin,
             inner=inner,
@@ -535,7 +560,7 @@ def main() -> int:
                 move_kp=float(args.move_kp),
                 move_mode=plan.move_mode,
                 max_lin_vel_m_s=max_lin,
-                max_duration_s=plan.duration_s * 2.5 + 15.0,
+                max_duration_s=move_duration_s * 2.5 + 15.0,
                 gov_joint_max_deg=plan.gov_joint_max_deg,
                 require_arrival=True,
                 force_observer=force_observer,
@@ -802,27 +827,51 @@ def main() -> int:
                 "interrupted",
             }
             last_status_msg[0] = ""
-            while True:
-                st = phase_client.read_status()
-                if st is not None and st["status_seq"] == cmd_seq:
-                    msg = str(st["msg"])
-                    status = st["status"]
-                    if (
-                        args.log_interval > 0
-                        and status == PhaseStatus.RUNNING
-                        and msg
-                        and msg not in skip_msgs
-                        and msg != last_status_msg[0]
-                    ):
-                        last_status_msg[0] = msg
-                        print(f"rm75 task: {msg}", flush=True)
-                    if status in (
-                        PhaseStatus.DONE,
-                        PhaseStatus.ERROR,
-                        PhaseStatus.STOPPED,
-                    ):
-                        return status
-                time.sleep(0.05)
+            stop_n = [0]
+
+            def _on_sig(_signum, _frame) -> None:
+                stop_n[0] += 1
+                try:
+                    phase_client.stop()
+                except Exception:
+                    pass
+                if stop_n[0] == 1:
+                    print(
+                        "\nrm75 task: Ctrl+C — stop requested on window A "
+                        "(second Ctrl+C forces exit)",
+                        flush=True,
+                    )
+                    return
+                print("\nrm75 task: force exit", flush=True)
+                os._exit(130)
+
+            prev_int = signal.signal(signal.SIGINT, _on_sig)
+            prev_term = signal.signal(signal.SIGTERM, _on_sig)
+            try:
+                while True:
+                    st = phase_client.read_status()
+                    if st is not None and st["status_seq"] == cmd_seq:
+                        msg = str(st["msg"])
+                        status = st["status"]
+                        if (
+                            args.log_interval > 0
+                            and status == PhaseStatus.RUNNING
+                            and msg
+                            and msg not in skip_msgs
+                            and msg != last_status_msg[0]
+                        ):
+                            last_status_msg[0] = msg
+                            print(f"rm75 task: {msg}", flush=True)
+                        if status in (
+                            PhaseStatus.DONE,
+                            PhaseStatus.ERROR,
+                            PhaseStatus.STOPPED,
+                        ):
+                            return status
+                    time.sleep(0.05)
+            finally:
+                signal.signal(signal.SIGINT, prev_int)
+                signal.signal(signal.SIGTERM, prev_term)
 
         try:
             if attach_mode:

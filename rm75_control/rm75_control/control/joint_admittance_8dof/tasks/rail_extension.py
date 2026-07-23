@@ -1,34 +1,37 @@
-"""Preferred arm-extension rail task: proactive base-arm coordination.
+"""Preferred arm-extension / pose-attract rail task: proactive base-arm coordination.
 
-Mobile-manipulator coordination (Yamamoto & Yun 1994, IEEE TAC): the arm
-serves the Cartesian task, while the base (here: the Y rail) tracks a
-*preferred arm extension* so the arm stays near a well-conditioned posture.
+Two operating modes (selected by the phase preset):
 
-The task is a scalar desired rail velocity plus a *continuously scheduled*
-weight (Chan & Dubey 1995 weighted-least-norm style):
+* ``reach`` (scan / track) — Yamamoto & Yun 1994 preferred arm extension
+  ``e = (y_tcp - y_rail) - d_pref`` plus scan feedforward; σ-escape boosts
+  authority when the arm nears singularity.
+* ``pose_attract`` (move→D) — soft position attractor to the *target pose's*
+  rail coordinate ``y_rail_target = q_target[0]``.  Monotonic, settles and
+  *stops* (no hunting).  σ_min is a *guardrail only*: with dead-zone + rate
+  limit it temporarily pushes along ∂σ/∂y_rail when σ drops below a
+  threshold, then hands control back to the pose attractor.  Continuous
+  gradient climbing is intentionally *not* used (that caused limit cycles).
 
-    e      = (y_tcp - y_rail) - d_pref          # arm extension error (m)
-    v_rail = clip(k_ext * e, +-v_max)
-    w_ext  = w_max * smoothstep((|e| - e0) / (e1 - e0))
-
-Inside the dead zone (|e| < e0) the weight is exactly 0: the rail does not
-wander when the scan fits the arm's reach.
-
-**Rail travel limit:** no hard weight switching.  Over the last
-``limit_margin_m`` before a physical stop (motion direction only), authority
-fades with a C¹ smoothstep so the QP can hand Y velocity to the arm before
-the rail pins.  Hardware logs with a 2 cm linear clip showed w_ext collapsing
-in ~0.4 s at 5 cm/s scan — arm jerk and σ dips.  Pinned-at-limit still yields
-zero desired rail velocity, but the fade window should finish first.
+Macro-micro (Khatib/Seraji): the desired rail velocity is low-pass filtered
+so the rail only absorbs the slow large-displacement component; the arm
+nullspace eats the fast residual.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics, RAIL_INDEX
+from rm75_control.control.joint_admittance_8dof.tasks.rail_goodness import (
+    RailGoodness,
+    SigmaMinGoodness,
+)
+
+
+RailExtMode = Literal["reach", "pose_attract"]
 
 
 def rail_vel_ff_from_reference(
@@ -85,6 +88,18 @@ class RailExtensionConfig:
     # Baseline w that lets the rail act even when the reach error is inside
     # the dead zone (|e| < e0), provided σ is depressed.  Fades with σ.
     w_sigma_floor: float = 1.0
+    # --- move→D pose attractor (primary during preset="move") ---
+    k_pose: float = 2.0          # 1/s soft P on (y_target - y_rail)
+    pose_e0_m: float = 0.005     # settle dead-zone (m); stops hunting at target
+    pose_e1_m: float = 0.04      # full pose-attract weight by this error
+    pose_w_max: float = 4.0      # ≪ W_task=100
+    # σ guardrail (pose_attract): only engages below enter, clears above exit.
+    sigma_guard_enter: float = 0.45
+    sigma_guard_exit: float = 0.70
+    # Cap on guardrail velocity so it cannot yank the rail off the pose path.
+    v_guard_max_m_s: float = 0.04
+    # Macro-micro LPF on the *desired* rail velocity (seconds).
+    v_lpf_tau_s: float = 0.12
 
 
 def _smoothstep01(x: float) -> float:
@@ -95,13 +110,45 @@ def _smoothstep01(x: float) -> float:
 class RailExtensionTask:
     """Callable: q (rad/m) -> (v_rail_des m/s, w_ext) for the WBC QP."""
 
-    def __init__(self, kin: RobotKinematics, cfg: RailExtensionConfig | None = None) -> None:
+    def __init__(
+        self,
+        kin: RobotKinematics,
+        cfg: RailExtensionConfig | None = None,
+        *,
+        goodness: RailGoodness | None = None,
+    ) -> None:
         self.kin = kin
         self.cfg = cfg or RailExtensionConfig()
+        self.goodness: RailGoodness = goodness or SigmaMinGoodness(kin)
         self.d_pref_m: float | None = None
+        self.y_rail_target_m: float | None = None
+        self.mode: RailExtMode = "reach"
         self.last_err_m: float = 0.0
         self.last_weight: float = 0.0
         self.last_limit_saturated: bool = False
+        self._guard_active: bool = False
+        self._v_lpf: float = 0.0
+        self._v_lpf_initialized: bool = False
+
+    def set_mode(self, mode: RailExtMode) -> None:
+        mode_s = str(mode).strip().lower()
+        if mode_s not in ("reach", "pose_attract"):
+            raise ValueError(f"unknown rail extension mode {mode!r}")
+        if mode_s != self.mode:
+            # Reset LPF on mode switch so a scan FF residue does not kick move.
+            self._v_lpf = 0.0
+            self._v_lpf_initialized = False
+            self._guard_active = False
+        self.mode = mode_s  # type: ignore[assignment]
+
+    def set_rail_pose_target(self, y_rail_m: float | None) -> None:
+        """Set / clear the move→D soft attractor target (metres)."""
+        if y_rail_m is None:
+            self.y_rail_target_m = None
+            return
+        lo = float(self.kin.q_lower[RAIL_INDEX])
+        hi = float(self.kin.q_upper[RAIL_INDEX])
+        self.y_rail_target_m = float(np.clip(float(y_rail_m), lo, hi))
 
     def extension(self, q_rad: np.ndarray) -> float:
         """Arm Y-extension: base-frame TCP y minus rail position (m)."""
@@ -117,6 +164,9 @@ class RailExtensionTask:
         self.last_err_m = 0.0
         self.last_weight = 0.0
         self.last_limit_saturated = False
+        self._guard_active = False
+        self._v_lpf = 0.0
+        self._v_lpf_initialized = False
 
     def _limit_saturation(self, q_rail: float, v: float) -> float:
         """Return 0..1 scale; C¹ smoothstep fade before a directional hard stop.
@@ -154,35 +204,106 @@ class RailExtensionTask:
         self.last_limit_saturated = False
         return 1.0
 
-    def __call__(
-        self,
-        q_rad: np.ndarray,
-        *,
-        sigma_scale: float = 1.0,
-        sigma_grad_rail: float = 0.0,
-        vel_ff: np.ndarray | None = None,
-    ) -> tuple[float, float]:
-        """Return ``(v_rail_des, w_ext)`` for the QP.
+    def _macro_lpf(self, v: float, *, dt_s: float | None) -> float:
+        """First-order LPF so the rail only takes the slow (macro) component."""
+        tau = float(self.cfg.v_lpf_tau_s)
+        if tau <= 1e-6 or dt_s is None or dt_s <= 0.0:
+            self._v_lpf = float(v)
+            self._v_lpf_initialized = True
+            return float(v)
+        if not self._v_lpf_initialized:
+            self._v_lpf = float(v)
+            self._v_lpf_initialized = True
+            return float(v)
+        alpha = float(dt_s) / (tau + float(dt_s))
+        self._v_lpf = (1.0 - alpha) * self._v_lpf + alpha * float(v)
+        return float(self._v_lpf)
 
-        Args
-        ----
-        q_rad : current command joint vector.
-        sigma_scale : 1.0 when σ_min is healthy (``≥ sigma_ref``), 0.0 at
-            deep singularity.  This is the σ-health scalar computed by the
-            loop, NOT the raw σ_min.  σ-escape and w-boost fade in as this
-            drops.
-        sigma_grad_rail : ``d σ_min / d y_rail`` under TCP-preservation
-            (:mod:`rm75_control.control.joint_admittance_8dof.solver.sigma_grad`).
-            Sign tells us which rail direction escapes the singularity.
+    def _sigma_guard_velocity(
+        self,
+        *,
+        sigma_scale: float,
+        sigma_grad_rail: float,
+        v_primary: float,
+    ) -> float:
+        """Dead-zoned σ guardrail: engage only when σ is unhealthy.
+
+        Hysteresis (enter/exit) prevents chatter.  Never fights a strong
+        primary attractor (same anti-oppose rule as the old σ-escape).
         """
-        if not self.cfg.enabled:
+        sig = float(np.clip(sigma_scale, 0.0, 1.0))
+        enter = float(self.cfg.sigma_guard_enter)
+        exit_ = float(self.cfg.sigma_guard_exit)
+        if self._guard_active:
+            if sig >= exit_:
+                self._guard_active = False
+        else:
+            if sig < enter:
+                self._guard_active = True
+        if not self._guard_active:
+            return 0.0
+        v_g = float(self.cfg.k_esc) * (1.0 - sig) * float(sigma_grad_rail)
+        v_g = float(np.clip(v_g, -self.cfg.v_guard_max_m_s, self.cfg.v_guard_max_m_s))
+        if v_g * v_primary < 0.0 and abs(v_primary) > 1.0e-4:
+            return 0.0
+        return v_g
+
+    def _call_pose_attract(
+        self,
+        q: np.ndarray,
+        *,
+        sigma_scale: float,
+        sigma_grad_rail: float,
+        dt_s: float | None,
+    ) -> tuple[float, float]:
+        if self.y_rail_target_m is None:
             self.last_err_m = 0.0
             self.last_weight = 0.0
             self.last_limit_saturated = False
             return 0.0, 0.0
+        y = float(q[RAIL_INDEX])
+        err = float(self.y_rail_target_m) - y  # +err → move rail toward target
+        self.last_err_m = err
+        e0 = float(self.cfg.pose_e0_m)
+        e1 = max(float(self.cfg.pose_e1_m), e0 + 1e-6)
+        span = e1 - e0
+        w_pose = float(self.cfg.pose_w_max) * _smoothstep01((abs(err) - e0) / span)
+        v_pose = float(
+            np.clip(self.cfg.k_pose * err, -self.cfg.v_max_m_s, self.cfg.v_max_m_s)
+        )
+        # Inside settle dead-zone: primary is exactly zero (stop hunting).
+        if abs(err) <= e0:
+            v_pose = 0.0
+        v_guard = self._sigma_guard_velocity(
+            sigma_scale=sigma_scale,
+            sigma_grad_rail=sigma_grad_rail,
+            v_primary=v_pose,
+        )
+        v_total = v_pose + v_guard
+        v_total = float(np.clip(v_total, -self.cfg.v_max_m_s, self.cfg.v_max_m_s))
+        v_total = self._macro_lpf(v_total, dt_s=dt_s)
+        lim = self._limit_saturation(y, v_total)
+        self.last_limit_saturated = lim < 1e-6
+        v_total *= lim
+        # Guardrail alone still needs a floor weight so the QP can act when
+        # the pose error is already inside the dead-zone but σ is bad.
+        sig = float(np.clip(sigma_scale, 0.0, 1.0))
+        w_guard = float(self.cfg.w_sigma_floor) * (1.0 - sig) if self._guard_active else 0.0
+        w = (w_pose + w_guard) * lim
+        self.last_weight = w
+        return v_total, w
+
+    def _call_reach(
+        self,
+        q: np.ndarray,
+        *,
+        sigma_scale: float,
+        sigma_grad_rail: float,
+        vel_ff: np.ndarray | None,
+        dt_s: float | None,
+    ) -> tuple[float, float]:
         if self.d_pref_m is None:
-            self.capture_reference(q_rad)
-        q = np.asarray(q_rad, dtype=float)
+            self.capture_reference(q)
         err = self.extension(q) - float(self.d_pref_m)
         span = max(float(self.cfg.e1_m) - float(self.cfg.e0_m), 1e-6)
         # Reach term (unchanged Yamamoto-Yun coordination).
@@ -201,19 +322,22 @@ class RailExtensionTask:
         v_ff *= sig
         # σ-escape: extra rail velocity along the TCP-preserving σ-ascent
         # direction; kicks in even when |err| < e0 (dead zone) if σ drops.
+        # In reach/scan mode this is a soft preference (not a hard guardrail),
+        # but still anti-opposes the primary so it cannot hunt against FF.
         v_escape = float(self.cfg.k_esc) * (1.0 - sig) * float(sigma_grad_rail)
         v_primary = v_ff + v_reach
         if v_escape * v_primary < 0.0 and abs(v_primary) > 1.0e-4:
             v_escape = 0.0
         v_total = v_primary + v_escape
         v = float(np.clip(v_total, -self.cfg.v_max_m_s, self.cfg.v_max_m_s))
+        v = self._macro_lpf(v, dt_s=dt_s)
         # Rail-limit fade (applies to the combined velocity).
         lim = self._limit_saturation(float(q[RAIL_INDEX]), v)
         self.last_limit_saturated = lim < 1e-6
         v *= lim
         thr = float(self.cfg.v_ff_thr_m_s)
-        span = max(float(self.cfg.v_ff_span_m_s), 1e-6)
-        w_ff = float(self.cfg.w_max) * _smoothstep01((abs(v_ff) - thr) / span) * sig
+        span_ff = max(float(self.cfg.v_ff_span_m_s), 1e-6)
+        w_ff = float(self.cfg.w_max) * _smoothstep01((abs(v_ff) - thr) / span_ff) * sig
         # Weight: reach + scan feedforward + σ-baseline floor, then σ-boost.
         w = (w_reach + w_ff + float(self.cfg.w_sigma_floor) * (1.0 - sig)) * lim
         sig_boost = 1.0 + float(self.cfg.k_sigma_boost) * (1.0 - sig)
@@ -221,3 +345,49 @@ class RailExtensionTask:
         self.last_err_m = float(err)
         self.last_weight = w
         return v, w
+
+    def __call__(
+        self,
+        q_rad: np.ndarray,
+        *,
+        sigma_scale: float = 1.0,
+        sigma_grad_rail: float = 0.0,
+        vel_ff: np.ndarray | None = None,
+        dt_s: float | None = None,
+    ) -> tuple[float, float]:
+        """Return ``(v_rail_des, w_ext)`` for the QP.
+
+        Args
+        ----
+        q_rad : current command joint vector.
+        sigma_scale : 1.0 when σ_min is healthy (``≥ sigma_ref``), 0.0 at
+            deep singularity.  This is the σ-health scalar computed by the
+            loop, NOT the raw σ_min.  σ-escape and w-boost fade in as this
+            drops.
+        sigma_grad_rail : ``d σ_min / d y_rail`` under TCP-preservation
+            (:mod:`rm75_control.control.joint_admittance_8dof.solver.sigma_grad`).
+            Sign tells us which rail direction escapes the singularity.
+            Prefer sourcing this from a :class:`RailGoodness` implementation
+            (default: :class:`SigmaMinGoodness`).
+        dt_s : optional control period for the macro-micro LPF.
+        """
+        if not self.cfg.enabled:
+            self.last_err_m = 0.0
+            self.last_weight = 0.0
+            self.last_limit_saturated = False
+            return 0.0, 0.0
+        q = np.asarray(q_rad, dtype=float)
+        if self.mode == "pose_attract":
+            return self._call_pose_attract(
+                q,
+                sigma_scale=sigma_scale,
+                sigma_grad_rail=sigma_grad_rail,
+                dt_s=dt_s,
+            )
+        return self._call_reach(
+            q,
+            sigma_scale=sigma_scale,
+            sigma_grad_rail=sigma_grad_rail,
+            vel_ff=vel_ff,
+            dt_s=dt_s,
+        )

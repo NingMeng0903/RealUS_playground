@@ -51,7 +51,30 @@ import numpy as np
 D_BS: float = 0.2405   # base_link (below rail slide) → S (joint_2 origin) along +Z
 D_SE: float = 0.256    # |S-E| upper arm length
 D_EW: float = 0.210    # |E-W| forearm length
-D_WT: float = 0.3812   # |W-TCP|  (joint_7 offset 0.1612 + link_7→tcp 0.220)
+D_WT_FLANGE: float = 0.1612  # |W→link_7| along flange / tool Z (URDF joint_7)
+D_WT: float = 0.3812   # default |W-TCP| = D_WT_FLANGE + 0.220 (stock gripper)
+
+
+def d_wt_from_tcp_offset(tcp_offset_pose: np.ndarray) -> float:
+    """|W→TCP| from live link_7→tcp offset (m): flange + |Δz| (tool along Z)."""
+    off = np.asarray(tcp_offset_pose, dtype=float).reshape(-1)
+    if off.size < 3:
+        return float(D_WT)
+    z = float(off[2])
+    if abs(z) < 1e-9:
+        z = float(np.linalg.norm(off[:3]))
+    return float(D_WT_FLANGE + abs(z))
+
+
+def d_wt_from_kin(kin) -> float:
+    """|W→TCP| from ``RobotKinematics`` after TCP sync (link_7→tcp frame)."""
+    try:
+        off = np.asarray(kin.tcp_offset_pose, dtype=float).reshape(6)
+        return d_wt_from_tcp_offset(off)
+    except Exception:
+        r = np.asarray(getattr(kin, "_r_link7_tcp", [0.0, 0.0, 0.22]), dtype=float).reshape(3)
+        z = float(r[2]) if abs(float(r[2])) > 1e-9 else float(np.linalg.norm(r))
+        return float(D_WT_FLANGE + abs(z))
 
 # Reference direction for ψ = 0.  Matches _V_REF in tasks/arm_angle.py.
 _V_REF: np.ndarray = np.array([0.0, 0.0, -1.0])
@@ -233,15 +256,22 @@ def branch_from_q(q_arm: np.ndarray) -> int:
     return (b_sh << 2) | (b_el << 1) | b_wr
 
 
-def is_reachable(pose_tcp: np.ndarray, y_rail: float = 0.0, euler_order: str = "xyz") -> bool:
+def is_reachable(
+    pose_tcp: np.ndarray,
+    y_rail: float = 0.0,
+    euler_order: str = "xyz",
+    *,
+    d_wt: float | None = None,
+) -> bool:
     """True iff the TCP pose lies inside the SRS reachable annulus.
 
     Ignores joint limits (those are branch-dependent and are enforced inside
     ``srs_ik``); this is the fast geometric feasibility check for a planner.
     """
+    L = float(D_WT if d_wt is None else d_wt)
     R, p = _pose_to_Rp(pose_tcp, euler_order)
     S = np.array([0.0, float(y_rail), D_BS])
-    W = p - D_WT * R[:, 2]
+    W = p - L * R[:, 2]
     dsw = float(np.linalg.norm(W - S))
     return abs(D_SE - D_EW) + 1e-6 < dsw < D_SE + D_EW - 1e-6
 
@@ -265,6 +295,7 @@ def srs_ik(
     *,
     euler_order: str = "xyz",
     check_limits: bool = True,
+    d_wt: float | None = None,
 ) -> np.ndarray | None:
     """Closed-form IK for (pose_tcp, ψ, branch, y_rail) → q_arm (7-vec, rad).
 
@@ -278,10 +309,14 @@ def srs_ik(
 
     ``branch_id`` encodes 3 discrete choices; see the module docstring.
 
+    ``d_wt`` is |W→TCP| along tool Z.  Pass :func:`d_wt_from_kin` after TCP
+    sync so a changed gripper offset is honoured (default ``D_WT`` = stock 220 mm).
+
     Preconditions
     -------------
     ``euler_order`` must be ``'xyz'`` (matches ``RobotKinematics.fk_pose``).
     """
+    L = float(D_WT if d_wt is None else d_wt)
     R_tcp, p_tcp = _pose_to_Rp(pose_tcp, euler_order)
     branch_id = int(branch_id) & 0b111
     b_sh = (branch_id >> 2) & 1
@@ -292,7 +327,7 @@ def srs_ik(
     S = np.array([0.0, float(y_rail), D_BS], dtype=float)
     # TCP frame Z axis points from W to TCP (verified against the URDF joint
     # chain: link_7 Z at q_7 = 0 equals joint_7 axis; TCP is on that axis).
-    W = p_tcp - D_WT * R_tcp[:, 2]
+    W = p_tcp - L * R_tcp[:, 2]
 
     # --- 2. Elbow angle from law of cosines --------------------------------
     dsw = float(np.linalg.norm(W - S))
@@ -384,6 +419,7 @@ def srs_ik_with_diagnostics(
     *,
     euler_order: str = "xyz",
     check_limits: bool = True,
+    d_wt: float | None = None,
 ) -> SrsSolution | None:
     """Same as ``srs_ik`` but also returns S/E/W/ψ_realised for diagnostics."""
     q_arm = srs_ik(
@@ -393,6 +429,7 @@ def srs_ik_with_diagnostics(
         y_rail=y_rail,
         euler_order=euler_order,
         check_limits=check_limits,
+        d_wt=d_wt,
     )
     if q_arm is None:
         return None
@@ -416,6 +453,9 @@ __all__ = [
     "D_SE",
     "D_EW",
     "D_WT",
+    "D_WT_FLANGE",
+    "d_wt_from_kin",
+    "d_wt_from_tcp_offset",
     "Q_LOWER",
     "Q_UPPER",
     "SrsSolution",

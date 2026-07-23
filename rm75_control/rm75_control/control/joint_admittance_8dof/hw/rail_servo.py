@@ -48,22 +48,22 @@ class RailServoConfig:
     # Encoder outside [-margin, travel+margin] → panic (FA24=0, follow off).
     fault_margin_m: float = 0.05
     # Soft position loop (rail metres) — empty-load 2 min FA24 demo / scan.
-    vel_kp: float = 34.0  # 1/s
+    vel_kp: float = 18.0  # 1/s (was 34 — overshoot hunting tripped soft gates)
     vel_kd: float = 0.22  # s
     vel_ff_gain: float = 1.0
     vel_max_m_s: float = 0.15
-    vel_amax_m_s2: float = 1.5  # host slew; keep mild vs Er-01 on move→D start
+    vel_amax_m_s2: float = 0.8  # softer slew vs Er-01 / host overshoot
     vel_deadband_mm: float = 0.02
     target_timeout_s: float = 0.10  # no fresh set_target → FA24=0
-    # If |v_cmd| stays high but encoder barely moves → FA24=0 + PANIC (stuck feedback).
-    encoder_freeze_s: float = 0.35
+    # Soft lag hold (FA24=0 this tick); does NOT DISARM.
+    encoder_freeze_s: float = 1.0
     encoder_freeze_min_v_m_s: float = 0.02
     encoder_freeze_min_move_mm: float = 0.5
     accel_ms: int = 200  # FA40 — manual: too-short accel → Er-01 超速 at start
     decel_ms: int = 200  # FA41
     scurve_ms: int = 30  # FA42
     travel_m: float = 0.80
-    timeout_s: float = 0.15
+    timeout_s: float = 0.06
     retries: int = 1
     inter_frame_delay_s: float = 0.0005
     home_on_exit: bool = False
@@ -107,21 +107,21 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         max_speed_rpm=int(hw.get("max_speed_rpm", default_rpm)),
         busy_speed_rpm=int(hw.get("busy_speed_rpm", 1)),
         fault_margin_m=float(hw.get("fault_margin_m", 0.05)),
-        vel_kp=float(hw.get("vel_kp", 34.0)),
+        vel_kp=float(hw.get("vel_kp", 18.0)),
         vel_kd=float(hw.get("vel_kd", 0.22)),
         vel_ff_gain=float(hw.get("vel_ff_gain", 1.0)),
         vel_max_m_s=float(hw.get("vel_max_m_s", v_max)),
-        vel_amax_m_s2=float(hw.get("vel_amax_m_s2", 3.0)),
+        vel_amax_m_s2=float(hw.get("vel_amax_m_s2", 0.8)),
         vel_deadband_mm=float(hw.get("vel_deadband_mm", 0.02)),
         target_timeout_s=float(hw.get("target_timeout_s", 0.10)),
-        encoder_freeze_s=float(hw.get("encoder_freeze_s", 0.35)),
+        encoder_freeze_s=float(hw.get("encoder_freeze_s", 1.0)),
         encoder_freeze_min_v_m_s=float(hw.get("encoder_freeze_min_v_m_s", 0.02)),
         encoder_freeze_min_move_mm=float(hw.get("encoder_freeze_min_move_mm", 0.5)),
         accel_ms=int(hw.get("accel_ms", 100)),
         decel_ms=int(hw.get("decel_ms", 100)),
         scurve_ms=int(hw.get("scurve_ms", 20)),
         travel_m=travel_m,
-        timeout_s=float(hw.get("timeout_s", 0.15)),
+        timeout_s=float(hw.get("timeout_s", 0.06)),
         retries=int(hw.get("retries", 1)),
         inter_frame_delay_s=float(hw.get("inter_frame_delay_s", 0.0005)),
         home_on_exit=bool(hw.get("home_on_exit", False)),
@@ -249,6 +249,7 @@ class RailServoBridge:
         self._last_target_rx_mono = 0.0
         self._last_enc_ok_mono = 0.0
         self._last_reject_unarmed_log = 0.0
+        self._last_hold_log = 0.0
         self._safety_thread: threading.Thread | None = None
         self._latch_kill_req = threading.Event()
         self._csv: _RailCsvLogger | None = None
@@ -425,15 +426,26 @@ class RailServoBridge:
     def estop(self) -> None:
         """Signal-safe stop: flags + drop TCP (unblocks Modbus). No Modbus write.
 
-        Writing FA24 from a signal handler while the worker holds/blocks on the
-        link made Ctrl+C hang when the drive was powered off.
+        Must not block in a signal handler: never wait on ``_lock`` (worker may
+        hold it in ``recv``).  Flags + socket close are enough to stop FA24.
         """
         self._abort.set()
         self._stop.set()
         self._latch_kill_req.set()
-        with self._lock:
-            self._follow_enabled = False
-            self._armed = False
+        got = False
+        try:
+            got = bool(self._lock.acquire(blocking=False))
+            if got:
+                self._follow_enabled = False
+                self._armed = False
+        except Exception:
+            pass
+        finally:
+            if got:
+                try:
+                    self._lock.release()
+                except Exception:
+                    pass
         drive = self._drive
         if drive is not None:
             try:
@@ -485,6 +497,28 @@ class RailServoBridge:
                 follow=False,
             )
 
+    def _hold_velocity(self, measured: float, reason: str) -> None:
+        """Soft fault: FA24=0 this tick, stay ARMED so follow resumes next good poll.
+
+        Host-side hunting / brief Modbus lag must not permanently kill the rail —
+        the drive itself is fine; only refuse to keep streaming velocity.
+        """
+        try:
+            drive = self._drive
+            if drive is not None and drive._client._sock is not None:
+                drive.kill_velocity_hard(attempts=1, disable_on_fail=False)
+        except Exception:
+            pass
+        now = time.monotonic()
+        if now - getattr(self, "_last_hold_log", 0.0) >= 1.0:
+            self._last_hold_log = now
+            print(
+                f"lw100 rail: HOLD — {reason} "
+                f"(meas={measured * 1000:.1f} mm; stay ARMED)",
+                flush=True,
+            )
+            self._log_event("HOLD", measured_m=float(measured), armed=True, follow=True)
+
     def start(self) -> None:
         if not self.enabled:
             return
@@ -495,7 +529,9 @@ class RailServoBridge:
             port=self.config.port,
             slave_id=self.config.slave_id,
             timeout_s=self.config.timeout_s,
-            retries=max(2, int(self.config.retries)),
+            # Hot path: exactly 1 attempt.  Inflating retries (old max(2,…))
+            # stacked timeouts into multi-second freezes with FA24 latched.
+            retries=max(1, int(self.config.retries)),
             inter_frame_delay_s=self.config.inter_frame_delay_s,
             lead_mm=self.config.lead_mm,
             enable_settle_s=self.config.enable_settle_s,
@@ -852,52 +888,61 @@ class RailServoBridge:
                 # Safety flag from latch watchdog (no concurrent Modbus there).
                 if self._latch_kill_req.is_set():
                     self._latch_kill_req.clear()
-                    self._drive.kill_velocity_hard()
+                    self._hold_velocity(measured, "FA24 latched without encoder (safety flag)")
                     prev_v_cmd = 0.0
-                    self._trip_panic(
-                        measured,
-                        "FA24 latched without encoder (safety flag)",
-                    )
-                    panic = True
-                    self._log_event("latch_kill", measured_m=measured, panic=True)
+                    v_cmd = 0.0
 
                 # Latched-FA24 watchdog in-worker (same thread as Modbus).
                 last_rpm = int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
                 if abs(last_rpm) > 0 and (t0 - last_enc_ok_t) > latch_watch_s:
-                    self._drive.kill_velocity_hard()
-                    prev_v_cmd = 0.0
-                    self._trip_panic(
+                    self._hold_velocity(
                         measured,
                         f"FA24 latched ({last_rpm} r/min) without encoder "
                         f"for {t0 - last_enc_ok_t:.2f}s",
                     )
-                    panic = True
+                    prev_v_cmd = 0.0
+                    v_cmd = 0.0
 
                 measured = float(self._drive.read_rail_m_fast())
                 last_enc_ok_t = t0
                 self._last_enc_ok_mono = t0
                 mb_fail_n = 0
+                # Snapshot command state under lock; only stamp encoder if sane.
                 with self._lock:
-                    self._measured_m = measured
                     target = float(self._target_m)
                     self._commanded_m = target
                     follow = bool(self._follow_enabled)
-                    panic = bool(self._panic) or panic
+                    panic = bool(self._panic)
                     speed_cap = self._speed_cap_rpm
                     last_rx = float(self._last_target_rx_mono)
                     armed = bool(self._armed)
+                    last_sane = float(self._measured_m)
 
-                if (
-                    not math.isfinite(measured)
-                    or not math.isfinite(target)
-                    or measured < -margin
-                    or measured > travel + margin
-                ):
-                    self._drive.kill_velocity_hard()
-                    self._trip_panic(measured, "invalid encoder/target")
+                if not self._encoder_sane(measured):
+                    # Real garbage encoder → hard stop + disarm (only hard panic left).
+                    self._trip_panic(measured, "invalid encoder (rejected before SHM)")
                     panic = True
                     follow = False
                     armed = False
+                    measured = last_sane  # keep last sane for logging / twin
+                else:
+                    with self._lock:
+                        self._measured_m = measured
+
+                # Over-budget poll: zero FA24 this tick, stay armed.
+                if (not poll_ok) and abs(int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)) > 0:
+                    self._hold_velocity(
+                        measured,
+                        f"poll over-budget dt_wall={dt_wall * 1000:.0f}ms",
+                    )
+                    prev_v_cmd = 0.0
+                    v_cmd = 0.0
+
+                if not math.isfinite(target):
+                    self._hold_velocity(measured, "invalid target")
+                    prev_v_cmd = 0.0
+                    v_cmd = 0.0
+                    follow = False
 
                 # --- Arming gate: no follow until Modbus path is proven hot ---
                 if not armed and not panic and not self._abort.is_set():
@@ -1039,32 +1084,30 @@ class RailServoBridge:
                             freeze_anchor_t = t0
                             moving_without_fb = False
                         elif (t0 - freeze_anchor_t) >= freeze_s:
+                            # Soft hold only — hunting / lag must not DISARM.
                             moving_without_fb = True
-                            self._drive.kill_velocity_hard()
-                            self._trip_panic(
+                            self._hold_velocity(
                                 measured,
-                                f"encoder freeze while cmd={v_cmd:+.3f} m/s "
+                                f"encoder lag while cmd={v_cmd:+.3f} m/s "
                                 f"(Δx<{freeze_dx * 1000:.1f}mm for {freeze_s:.2f}s)",
                             )
-                            panic = True
-                            follow = False
                             v_cmd = 0.0
+                            prev_v_cmd = 0.0
+                            freeze_anchor_t = t0
                     else:
                         freeze_anchor_x = measured
                         freeze_anchor_t = t0
                         moving_without_fb = False
 
-                    # Open-loop travel guard (encoder may lag one tick).
+                    # Open-loop travel guard: zero cmd near ends, do not DISARM.
                     x_pred = measured + v_cmd * dt
                     if x_pred < -margin or x_pred > travel + margin:
-                        self._drive.kill_velocity_hard()
-                        self._trip_panic(
+                        self._hold_velocity(
                             measured,
-                            f"predicted rail OOB x_pred={x_pred * 1000:.1f} mm",
+                            f"predicted rail near end x_pred={x_pred * 1000:.1f} mm",
                         )
-                        panic = True
-                        follow = False
                         v_cmd = 0.0
+                        prev_v_cmd = 0.0
 
                 prev_v_cmd = v_cmd
                 rpm = sign * self._mps_to_rpm(v_cmd)
@@ -1125,25 +1168,27 @@ class RailServoBridge:
                 arm_settle_deadline = None
                 latched = int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
                 prev_v_cmd = 0.0
-                # Don't hammer Modbus when the drive is powered off — back off so
-                # Ctrl+C / stop can land between attempts.
+                # Best-effort FA24=0; never block on reconnect sleeps here.
                 if abs(latched) > 0 and self._drive._client._sock is not None:
                     try:
                         self._drive.kill_velocity_hard(attempts=1, disable_on_fail=False)
                     except Exception:
                         pass
-                if mb_fail_n in (1, 5, 20) or mb_fail_n % 50 == 0:
+                if mb_fail_n in (1, 3, 10) or mb_fail_n % 50 == 0:
                     print(
                         f"lw100 rail: modbus error ({mb_fail_n}x)"
                         f"{' latched-kill' if abs(latched) > 0 else ''}: {exc}",
                         flush=True,
                     )
-                if abs(latched) > 0 and mb_fail_n >= 3:
-                    self._trip_panic(
+                # Consecutive poll failures → zero FA24, stay ARMED (resume on next OK).
+                if mb_fail_n >= 3:
+                    self._hold_velocity(
                         self.measured_m,
-                        f"modbus fault with latched FA24 ({latched} r/min, {mb_fail_n}x)",
+                        f"modbus poll failed {mb_fail_n}x"
+                        + (f" with latched FA24={latched} r/min" if abs(latched) > 0 else ""),
                     )
-                if self._stop.wait(0.25 if mb_fail_n < 10 else 0.5):
+                # Skip / hold: short yield only (never 0.25–0.5 s reconnect sleep).
+                if self._stop.wait(0.02 if mb_fail_n < 5 else 0.05):
                     break
                 continue
             except Exception as exc:
@@ -1154,7 +1199,7 @@ class RailServoBridge:
                 if "NoneType" in str(exc) or "not connected" in str(exc):
                     break
                 print(f"lw100 rail: worker error: {exc}", flush=True)
-                if self._stop.wait(0.2):
+                if self._stop.wait(0.05):
                     break
                 continue
 

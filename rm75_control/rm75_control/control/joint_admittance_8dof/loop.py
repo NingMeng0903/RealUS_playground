@@ -71,9 +71,6 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
     RailExtensionConfig,
     RailExtensionTask,
 )
-from rm75_control.control.joint_admittance_8dof.solver.sigma_grad import (
-    sigma_min_grad_rail,
-)
 from rm75_control.control.joint_admittance_8dof.tasks.secondary_composer import SecondaryComposer
 from rm75_control.control.joint_admittance_8dof.ik_types import saturate_error
 from rm75_control.control.joint_admittance_8dof.utils.safety import (
@@ -110,7 +107,7 @@ class JointIkConfig:
     position_margin_rad: float = 0.017
     # Rail position margin in METRES: the scalar rad margin applied to the
     # prismatic joint stole 2 deg = 35 mm of rail travel.
-    position_margin_rail_m: float = 0.005
+    position_margin_rail_m: float = 0.0
     # Command-lead anti-windup: an extra QP velocity bound (never a position
     # jump) that stops q_cmd from leading the measured q by more than this
     # much per joint - the integrator is simply not allowed to command any
@@ -176,12 +173,21 @@ class JointIkController:
             if self.cfg.rail_extension.enabled
             else None
         )
-        # Preset-gated (api.py): active during track/scan, off during joint
-        # moves (the plan owns the posture) and hold (rail is pinned anyway).
+        # Preset-gated (api.py): pose_attract during move→D; reach during
+        # track/scan; off during hold (rail is pinned anyway).
         self._rail_ext_active = True
         # Bug 2: σ-escape gradient cache — updated every ``_sigma_grad_period``
         # ticks (default 10 → 20 Hz at dt=5 ms).  The gradient is smooth on
         # this timescale (way slower than rail acceleration bandwidth).
+        # Sourced via the pluggable RailGoodness (default: SigmaMinGoodness).
+        from rm75_control.control.joint_admittance_8dof.tasks.rail_goodness import (
+            CachedRailGoodness,
+            SigmaMinGoodness,
+        )
+
+        self._rail_goodness = CachedRailGoodness(
+            SigmaMinGoodness(kin), period_ticks=10
+        )
         self._sigma_grad_rail_cached: float = 0.0
         self._sigma_grad_tick: int = 0
         self._sigma_grad_period: int = 10
@@ -229,11 +235,18 @@ class JointIkController:
         # phase — presets that want to restore "what the yaml asked for"
         # (e.g. track re-coupling after hold@D) must consult this snapshot.
         self._configured_rail_mode: RailMode = self.cfg.rail.mode
+        # When True, SRS (or other) plan owns rail velocity via qdot_ff pin —
+        # prevents the arm alone from absorbing tool-Y when the carriage stalls.
+        self._plan_drives_rail: bool = False
         self._apply_rail_mode_side_effects()
 
     @property
     def rail_mode(self) -> RailMode:
         return self._rail_mode
+
+    def set_plan_drives_rail(self, enabled: bool) -> None:
+        """Pin rail to plan qdot_ff[0] (SRS move→D); clear on scan/hold exit."""
+        self._plan_drives_rail = bool(enabled)
 
     @property
     def configured_rail_mode(self) -> RailMode:
@@ -288,12 +301,22 @@ class JointIkController:
         self._manipulability_active = bool(active) and self.manipulability_task is not None
 
     def set_rail_extension_active(self, active: bool) -> None:
-        """Gate the preferred-extension rail task (COUPLED-mode coordination).
+        """Gate the preferred-extension / pose-attract rail task (COUPLED).
 
-        On during Cartesian track/scan; off during joint-space moves (the
-        plan owns the posture) and hold phases (rail is LOCKED+HOLD anyway).
+        On during move→D (pose_attract → q_target[0]) and Cartesian track/scan
+        (reach → d_pref); off during hold (rail is LOCKED+HOLD anyway).
         """
         self._rail_ext_active = bool(active)
+
+    def set_rail_extension_mode(self, mode: str) -> None:
+        """Select ``reach`` (scan) or ``pose_attract`` (move→D)."""
+        if self.rail_ext_task is not None:
+            self.rail_ext_task.set_mode(mode)  # type: ignore[arg-type]
+
+    def set_rail_pose_target(self, y_rail_m: float | None) -> None:
+        """Soft-attract target for pose_attract mode (metres on the rail)."""
+        if self.rail_ext_task is not None:
+            self.rail_ext_task.set_rail_pose_target(y_rail_m)
 
     def capture_rail_extension_ref(self) -> None:
         """Capture preferred rail extension from the current scan-entry posture."""
@@ -446,25 +469,41 @@ class JointIkController:
             self._rail_mode == RailMode.LOCKED
             and self._locked_style == LockedStyle.TCP_FIXED
         )
-        # LOCKED styles always pin rail from the plan. Move phases also pass a
-        # plan_* qdot_ff that includes rail (0→center); without pinning, COUPLED
-        # Cartesian QP yanks rail across travel (hardware log: tgt 743→42→374 mm
-        # on move->D) even though the joint plan is a smooth 0→0.4 m ramp.
-        plan_drives_rail = rail_only or tcp_fixed or qdot_ff is not None
+        # (A) Command-magnitude safety: the joint feedforward is
+        # ``dq_plan + k·(q_plan − q_cmd)``.  The anchor term is unbounded, and on
+        # the prismatic rail it drove 0.64 m/s commands into a 0.10 m/s joint
+        # (hardware log: rail cmd ran 6.4× v_max → 900 rpm → Er-01 overspeed).
+        # Clamp EVERY feedforward channel to the same v_max the QP box and the
+        # safety layer already enforce, so no plan/anchor can ever request a
+        # velocity the hardware cannot execute — an IK "go to D" now approaches
+        # at the joint speed limit instead of a lurch.
+        if qdot_ff is not None:
+            v_lim_ff = np.asarray(self.safety.lim.v_max, dtype=float)
+            qdot_ff = np.clip(np.asarray(qdot_ff, dtype=float), -v_lim_ff, v_lim_ff)
+
+        # (B) Pin the rail velocity ONLY when the rail is LOCKED (RAIL_ONLY /
+        # TCP_FIXED), or when an SRS move explicitly requests plan ownership
+        # (``set_plan_drives_rail(True)``).  In free COUPLED scan the rail is a
+        # normal QP joint — the plan's rail intent already rides the primary
+        # twist (J·qdot_cmd), so the QP freely allocates tool-Y across rail +
+        # arm.  The old rule pinned the rail whenever a qdot_ff was present,
+        # silently overriding set_coupled() AND bypassing v_max via the QP box.
+        plan_drives_rail = rail_only or tcp_fixed or bool(self._plan_drives_rail)
 
         qdot_ff_sec = qdot_ff
         rail_vel_pin: float | None = None
         rail_qdot_ff_val = float("nan")
-        if plan_drives_rail and qdot_ff is not None:
+        if qdot_ff is not None:
             qdot_ff_arr = np.asarray(qdot_ff, dtype=float)
             v_rail = float(qdot_ff_arr[0])
             rail_qdot_ff_val = v_rail
-            # Strip rail out of the qdot_ff passed to the composer (secondary
-            # tasks act only on the arm portion); the rail velocity is imposed
-            # via the QP rail-vel pin below and then safety-clamped.
+            # Secondary tasks (centering / arm-angle / manipulability) act on the
+            # arm portion only; the rail is either pinned (LOCKED) or freely
+            # allocated by the QP (COUPLED).
             qdot_ff_sec = qdot_ff_arr.copy()
             qdot_ff_sec[0] = 0.0
-            rail_vel_pin = v_rail
+            if plan_drives_rail:
+                rail_vel_pin = v_rail
 
         # Vectorized command-lead anti-windup: arm rad, rail m (units matter).
         resync_vec = np.full(self.kin.nv, float(self.cfg.resync_err_rad))
@@ -492,20 +531,25 @@ class JointIkController:
             sig_scale = 1.0
             if sigma_ref > 1e-9 and sigma_now < sigma_ref:
                 sig_scale = max(sigma_now / sigma_ref, 0.25)
-            # Bug 2: refresh the σ-escape gradient every ``_sigma_grad_period``
-            # ticks (analytical FD, cheap-but-not-free).  Passing 0 means the
-            # σ-escape v-component collapses to the reach term (safe fallback).
+            # Bug 2: refresh the σ-escape / guardrail gradient every
+            # ``_sigma_grad_period`` ticks via the pluggable RailGoodness
+            # (default σ_min).  Passing 0 means the σ-escape v-component
+            # collapses to the reach/pose term (safe fallback).
             self._sigma_grad_tick += 1
             if (
                 self._sigma_grad_tick % self._sigma_grad_period == 0
                 or self._sigma_grad_tick == 1
             ):
-                self._sigma_grad_rail_cached = sigma_min_grad_rail(self.kin, q_prev)
+                _g, self._sigma_grad_rail_cached = self._rail_goodness.refresh(
+                    q_prev, force=True
+                )
+                del _g
             v_ext, w_ext = self.rail_ext_task(
                 q_prev,
                 sigma_scale=sig_scale,
                 sigma_grad_rail=self._sigma_grad_rail_cached,
                 vel_ff=vel_ff,
+                dt_s=float(dt),
             )
             rail_ext_err = self.rail_ext_task.last_err_m
             if w_ext > 0.0:
@@ -543,20 +587,37 @@ class JointIkController:
         self.q_cmd = rep.q_safe
         if dt > 1e-9 and (rep.vel_clamped or rep.acc_clamped or rep.pos_clamped):
             self.core.qdot_prev = rep.dq / dt
-        # RAIL_ONLY: arm was told to freeze (twist~0 and qdot_ff arm portion
-        # empty), so we still enforce the plan's rail position exactly (the
-        # arm QP has no legitimate reason to move the rail in that mode).
-        # TCP_FIXED and COUPLED: DO NOT override — safety.clamp's rail a_max
-        # limit only takes effect when the integrator is allowed to observe
-        # the QP output.  The rail-vel pin in the QP box already forces the
-        # QP to output v_rail; safety.clamp then applies a_max_rail_m_s2 as a
-        # second (protective) rate limit.
-        if rail_only and qdot_ff is not None and dt > 1e-9:
+        # Hard command-lead cap vs encoder (belt-and-suspenders after the
+        # safety margin-teleport bug).  Rail may not run more than
+        # resync_err_rail_m ahead of the measured carriage — otherwise the
+        # motor at 0.15 m/s is chasing a 1 m/s phantom and the governor dies.
+        if q_meas is not None:
+            lead_max = float(self.cfg.resync_err_rail_m)
+            if lead_max > 0.0:
+                q0_meas = float(np.asarray(q_meas, dtype=float)[0])
+                q0_cmd = float(self.q_cmd[0])
+                if q0_cmd > q0_meas + lead_max:
+                    self.q_cmd[0] = q0_meas + lead_max
+                    if dt > 1e-9:
+                        self.core.qdot_prev[0] = (self.q_cmd[0] - q_prev[0]) / dt
+                elif q0_cmd < q0_meas - lead_max:
+                    self.q_cmd[0] = q0_meas - lead_max
+                    if dt > 1e-9:
+                        self.core.qdot_prev[0] = (self.q_cmd[0] - q_prev[0]) / dt
+        # Plan-owned rail (SRS move→D / RAIL_ONLY): integrate q_cmd[0] from
+        # qdot_ff.  Relying on the QP box pin alone was NOT enough — near-zero
+        # pins lost to Cartesian slack and pose_attract, so q_cmd raced to
+        # ~20 mm then plan_anchor yanked it back → soft-PD hunting at start.
+        if plan_drives_rail and qdot_ff is not None and dt > 1e-9:
             v_rail = float(np.asarray(qdot_ff)[0])
-            self.q_cmd[0] = q_prev[0] + v_rail * dt
-            self.q_cmd[1:] = q_prev[1:]
-            self.core.qdot_prev[1:] = 0.0
-            self.core.qdot_prev[0] = v_rail
+            y = float(q_prev[0] + v_rail * dt)
+            y_lo = float(self.limits.q_lower[0])
+            y_hi = float(self.limits.q_upper[0])
+            self.q_cmd[0] = float(np.clip(y, y_lo, y_hi))
+            self.core.qdot_prev[0] = (self.q_cmd[0] - q_prev[0]) / dt
+            if rail_only:
+                self.q_cmd[1:] = q_prev[1:]
+                self.core.qdot_prev[1:] = 0.0
         else:
             self._pin_rail_if_locked_hold()
         qdot_out = r.qdot.copy()
@@ -963,20 +1024,101 @@ def _print_move_plan_summary(
         sigma0 = float(inner.kin.singular_values(J0).min())
     except Exception:
         sigma0 = float("nan")
-    mode = "joint" if hasattr(phase.outer, "last_joint_err_deg") or type(phase.outer).__name__ == "JointTrackOuterLoop" else "cartesian"
+    mode = "cartesian"
     if type(phase.outer).__name__ == "JointTrackOuterLoop":
         mode = "joint"
     elif type(phase.outer).__name__ == "CartesianTrackOuterLoop":
         mode = "cartesian"
     over = " OVER_MOTOR" if (np.isfinite(peak_v) and peak_v > motor_vmax + 1e-6) else ""
+    y_attr = getattr(getattr(inner, "rail_ext_task", None), "y_rail_target_m", None)
+    ext_mode = getattr(getattr(inner, "rail_ext_task", None), "mode", "?")
     print(
         f"  move plan: mode={mode} dur={dur:.2f}s | "
         f"rail {rail0 * 1000:.1f}→{railT * 1000:.1f} mm "
         f"peak_v={peak_v:.3f} m/s vs motor {motor_vmax:.2f} m/s{over} | "
         f"arm max|dq|={arm_dq_deg:.1f}deg sigma0={sigma0:.3f} | "
-        f"plan_drives_rail=YES (qdot_ff pin; rail_extension OFF in move)",
+        f"COUPLED pose_attract→"
+        f"{(float(y_attr) * 1000.0 if y_attr is not None else railT * 1000.0):.1f}mm "
+        f"(mode={ext_mode}; σ guardrail only)",
         flush=True,
     )
+
+
+def _print_tcp_frame_diagnose(
+    inner: JointIkController,
+    *,
+    q_meas: np.ndarray,
+    q_target: np.ndarray | None,
+    phase_label: str,
+    verbose: bool = True,
+) -> None:
+    """Read-only: gripper-TCP fk_pose vs link_7 vs (optional) q_target FK.
+
+    Catches the ~220 mm flange-vs-gripper offset regression: if pose_d / scan
+    origin was built on link_7 instead of the synced gripper TCP, the print
+    shows a ~220 mm Z (or tool-Z) gap between fk_pose and frame_pose(link_7).
+    """
+    if not verbose:
+        return
+    label = str(phase_label or "").lower()
+    if not (
+        label.startswith("move")
+        or "scan" in label
+        or "hybrid" in label
+    ):
+        return
+    q = np.asarray(q_meas, dtype=float).reshape(-1)
+    try:
+        pose_tcp = np.asarray(inner.kin.fk_pose(q), dtype=float).reshape(6)
+        pose_l7 = np.asarray(inner.kin.frame_pose(q, "link_7"), dtype=float).reshape(6)
+    except Exception as exc:
+        print(f"  tcp diagnose: FK failed ({exc})", flush=True)
+        return
+    d_mm = (pose_tcp[:3] - pose_l7[:3]) * 1000.0
+    off = getattr(inner.kin, "tcp_offset_pose", None)
+    off_note = ""
+    if off is not None:
+        try:
+            o = np.asarray(off, dtype=float).reshape(6)
+            off_note = (
+                f" | tool_offset xyz(mm)={np.round(o[:3] * 1000.0, 1).tolist()} "
+                f"rpy(deg)={np.round(np.degrees(o[3:6]), 1).tolist()}"
+            )
+        except Exception:
+            pass
+    print(
+        f"  tcp diagnose [{phase_label}]: "
+        f"gripper-TCP xyz={np.round(pose_tcp[:3] * 1000.0, 1).tolist()} mm | "
+        f"link_7 xyz={np.round(pose_l7[:3] * 1000.0, 1).tolist()} mm | "
+        f"Δ(tcp-l7)={np.round(d_mm, 1).tolist()} mm "
+        f"(|Δ|={float(np.linalg.norm(d_mm)):.1f} mm){off_note}",
+        flush=True,
+    )
+    # Tool offset cache / sync sanity: |Δ| should be ~gripper Z (~220 mm), not ~0.
+    if float(np.linalg.norm(d_mm)) < 5.0:
+        print(
+            "  tcp diagnose WARN: gripper-TCP ≈ link_7 — tool offset may be "
+            "missing/unsynced (force-hybrid will look ~220 mm behind).",
+            flush=True,
+        )
+    print(
+        "  tcp diagnose: position loop uses kin.fk_pose (gripper TCP); "
+        "force uses link_7 → wrench_link7_to_tcp (keep as-is).",
+        flush=True,
+    )
+    if q_target is not None:
+        qt = np.asarray(q_target, dtype=float).reshape(-1)
+        if qt.size == q.size:
+            try:
+                pose_d = np.asarray(inner.kin.fk_pose(qt), dtype=float).reshape(6)
+                print(
+                    f"  tcp diagnose: pose_d=fk_pose(q_target) "
+                    f"xyz={np.round(pose_d[:3] * 1000.0, 1).tolist()} mm "
+                    f"(should be gripper TCP, not flange)",
+                    flush=True,
+                )
+            except Exception:
+                pass
 
 
 # ---------------------------------------------------------------------------
@@ -1076,6 +1218,9 @@ class Phase:
     governor_tau_s: float = 0.2
     governor_freeze_below: float = 0.02
     governor_release_above: float = 0.10
+    # Soft-start ramp on governor scale at phase entry (seconds).  Kill tick-0
+    # speed spikes when a large Cartesian / joint plan error is present.
+    soft_start_ramp_s: float = 0.0
     force_observer: object | None = None     # None -> reuse the loop-level force_observer
     on_enter: object | None = None           # Callable[[], None], fired right after set_origin
     on_exit: object | None = None            # Callable[[], None], fired when phase completes
@@ -1201,7 +1346,7 @@ class _TickLogger:
     def close(self) -> None:
         self._q.put(None)
         self._stop.set()
-        self._worker.join(timeout=10.0)
+        self._worker.join(timeout=1.0)
 
 
 def _expand_q_meas(q_deg_or_rad: np.ndarray, rail_m: float) -> np.ndarray:
@@ -1226,12 +1371,36 @@ def _rail_m_for_init(rail_bridge, inner: JointIkController) -> float:
     return float(inner.q_cmd[0])
 
 
-def _rail_m_for_feedback(_rail_bridge, inner: JointIkController) -> float:
-    """Rail component of ``q_meas`` inside the WBC tick: always ``q_cmd[0]``.
+def _rail_m_for_feedback(rail_bridge, inner: JointIkController) -> float:
+    """Rail component of ``q_meas`` inside the WBC tick: **encoder**, not ``q_cmd``.
 
-    Motor tracking is open-loop in ``RailServoBridge``; encoder is SHM/twin only.
+    Cascade matches ``apps/lw100_vel_pos_follow_demo.py`` (manual §5.2 host
+    soft-position / drive FA24 speed):
+
+    * outer: WBC Cartesian / QP issues a rail *target* ``q_cmd[0]``;
+    * inner: ``RailServoBridge`` soft PD closes ``target − encoder → FA24``
+      (same kp/kd/ff as the tuned demo);
+    * measurement: this helper returns the encoder so FK / tracking error /
+      nullspace see the *real* carriage.  When the motor lags or reverses,
+      the arm can compensate — the old ``q_meas[0]=q_cmd[0]`` open-loop lie
+      made the controller "happy" while the viewer showed the rail hunting.
+
+    Garbage / OOB encoder readings fall back to ``q_cmd[0]`` for one tick
+    (never feed -1474 mm into FK).  No rail bridge → virtual rail = ``q_cmd``.
     """
-    return float(inner.q_cmd[0])
+    if rail_bridge is None or not getattr(rail_bridge, "enabled", False):
+        return float(inner.q_cmd[0])
+    try:
+        meas = float(rail_bridge.measured_m)
+    except Exception:
+        return float(inner.q_cmd[0])
+    sane = getattr(rail_bridge, "_encoder_sane", None)
+    if callable(sane):
+        if not sane(meas):
+            return float(inner.q_cmd[0])
+    elif not (np.isfinite(meas)):
+        return float(inner.q_cmd[0])
+    return meas
 
 
 def _joint_plan_err_deg(outer: OuterLoop, t_ref: float, q_meas: np.ndarray) -> float | None:
@@ -1439,11 +1608,40 @@ def run_joint_admittance_phases(
                     # Phase origin from the ENCODERS, never from the command integrator.
                     snap = async_obs.read()
                     if snap.q_deg is not None:
-                        q_meas = _expand_q_meas(
-                            deg2rad(snap.q_deg),
-                            _rail_m_for_feedback(rail_bridge, inner),
-                        )
+                        # Soft-start reseed wants the *encoder* rail, not q_cmd[0].
+                        rail_seed = _rail_m_for_init(rail_bridge, inner)
+                        q_meas = _expand_q_meas(deg2rad(snap.q_deg), rail_seed)
                     pose_pin = inner.kin.fk_pose(q_meas)
+                    # Soft-start: reseed plan start from live encoders so
+                    # tick-0 Cartesian / joint error is ≈0 (no lurch), then ramp
+                    # governor scale over soft_start_ramp_s.
+                    ref = getattr(phase.outer, "reference", None)
+                    if ref is not None:
+                        try:
+                            q_live = np.asarray(q_meas, dtype=float).reshape(-1)
+                            if hasattr(ref, "reseed_start"):
+                                ref.reseed_start(q_live)
+                                if verbose and str(phase.label or "").startswith("move"):
+                                    print(
+                                        f"  soft-start: reseeded SRS start from encoders "
+                                        f"(rail={q_live[0] * 1000:.1f} mm)",
+                                        flush=True,
+                                    )
+                            elif hasattr(ref, "q_start") and hasattr(ref, "q_target"):
+                                if q_live.size == int(np.asarray(ref.q_start).size):
+                                    ref.q_start = q_live.copy()
+                                    if verbose and str(phase.label or "").startswith("move"):
+                                        print(
+                                            f"  soft-start: reseeded plan q_start from encoders "
+                                            f"(rail={q_live[0] * 1000:.1f} mm)",
+                                            flush=True,
+                                        )
+                        except Exception:
+                            pass
+                    if hasattr(phase.outer, "set_origin"):
+                        phase.outer.set_origin(pose_pin)
+                    if phase.on_enter is not None:
+                        phase.on_enter()
                     _print_move_plan_summary(
                         phase,
                         inner=inner,
@@ -1451,10 +1649,13 @@ def run_joint_admittance_phases(
                         rail_bridge=rail_bridge,
                         verbose=verbose,
                     )
-                    if hasattr(phase.outer, "set_origin"):
-                        phase.outer.set_origin(pose_pin)
-                    if phase.on_enter is not None:
-                        phase.on_enter()
+                    _print_tcp_frame_diagnose(
+                        inner,
+                        q_meas=q_meas,
+                        q_target=getattr(getattr(phase.outer, "reference", None), "q_target", None),
+                        phase_label=str(phase.label or ""),
+                        verbose=verbose,
+                    )
 
                     obs = phase.force_observer if phase.force_observer is not None else force_observer
                     phase_t0 = time.perf_counter()
@@ -1609,6 +1810,10 @@ def run_joint_admittance_phases(
                             joint_err_deg=joint_err_deg,
                         )
                         scale = gov_filter.update(raw_scale, dt)
+                        # Soft-start ramp: first ~0.3s cannot command near-vmax.
+                        ramp_s = float(getattr(phase, "soft_start_ramp_s", 0.0) or 0.0)
+                        if ramp_s > 1e-6:
+                            scale *= float(np.clip(t_wall / ramp_s, 0.0, 1.0))
                         t_ref += dt * scale
     
                         if phase.on_tick is not None:
@@ -1687,10 +1892,23 @@ def run_joint_admittance_phases(
                     if phase.require_arrival and not phase_arrived:
                         err_mm = getattr(phase.outer, "last_err_mm", float("nan"))
                         jq = getattr(phase.outer, "last_joint_err_deg", float("nan"))
+                        d_mm = d_deg = float("nan")
+                        try:
+                            pt = getattr(phase, "pose_target", None)
+                            if pt is None:
+                                ref = getattr(phase.outer, "reference", None)
+                                pt = getattr(ref, "pose_d", None) or getattr(ref, "pose_target", None)
+                            if pt is not None and q_meas is not None:
+                                d_mm, d_deg = pose_distance(
+                                    pose_pin, pt, inner.cfg.euler_order
+                                )
+                        except Exception:
+                            pass
                         print(
                             f"  ERROR: phase {phase.label!r} did not reach target "
                             f"(t_ref={t_ref:.2f}s, wall={t_wall:.1f}s, "
-                            f"track={err_mm:.0f}mm, jq={jq:.1f}deg) "
+                            f"track={err_mm:.0f}mm, poseΔ={d_mm:.1f}mm/{d_deg:.1f}deg, "
+                            f"jq={jq:.1f}deg) "
                             f"— skipping remaining phases",
                             flush=True,
                         )
