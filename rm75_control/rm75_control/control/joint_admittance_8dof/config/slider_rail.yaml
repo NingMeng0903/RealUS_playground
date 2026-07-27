@@ -31,7 +31,9 @@ slider_rail:
     top_to_rail_bottom_mm: 66     # must be > base_plate_thickness + track_height
 
   frame:                          # frame under the rail (derived from rail_base)
-    height_mm: 200
+    # height_mm: auto → from world_calib.base_pos_m[2] so stand meets/penetrates floor.
+    height_mm: auto
+    floor_sink_mm: 10             # bury frame this much into z=0 (no air gap)
     width_mm: 300                 # +X edge flush with rail, extra protrudes -X
 
   arm_mount:                      # base coordinate on slider top (URDF internal)
@@ -41,7 +43,7 @@ slider_rail:
   world_calib:
     # base_link world pose @ rail_y = 0 (-Y end). Rail assembly is back-solved from this;
     # do NOT add a center-preserving offset — travel grows toward +rail_y only.
-    base_pos_m: [0.0, 0.5, 0.266]
+    base_pos_m: [-0.05, 0.5, 0.09]
     base_quat_wxyz: [0.7071067811865476, 0.0, 0.0, -0.7071067811865476]  # world Z -90 deg
 
   colors:                         # rgba 0..1

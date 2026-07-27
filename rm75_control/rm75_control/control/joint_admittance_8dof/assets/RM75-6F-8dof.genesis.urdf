@@ -207,9 +207,28 @@
     <axis xyz="0 0 1" />
     <limit lower="-6.28" upper="6.28" effort="10" velocity="3.14" />
   </joint>
+  <link name="link_8">
+    <inertial>
+      <origin xyz="0.003680 -0.012695 0.076874" rpy="0 0 0" />
+      <mass value="0.4829" />
+      <inertia ixx="0.0004135" ixy="-0.000003908" ixz="0.00003379"
+               iyy="0.0002717" iyz="0.00001544" izz="0.0003621" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/linear_probe.dae" />
+      </geometry>
+    </visual>
+  </link>
+  <joint name="joint_8" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="link_7" />
+    <child link="link_8" />
+  </joint>
   <link name="tcp" />
   <joint name="link_7_to_tcp" type="fixed">
-    <origin xyz="0 0 0.220" rpy="0 0 0" />
+    <origin xyz="0 -0.08 0.06" rpy="0 1.570796327 -1.570796327" />
     <parent link="link_7" />
     <child link="tcp" />
   </joint>

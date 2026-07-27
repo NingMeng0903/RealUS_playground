@@ -226,12 +226,6 @@ def _selected_meshes(
     out: list[bpy.types.Object] = []
     excluded: list[dict[str, Any]] = []
 
-    def _configured_name(name: str, configured: set[str]) -> bool:
-        """Match an object and Blender's automatic .001 duplicate suffix."""
-        value = str(name)
-        base = value.rsplit(".", 1)[0] if value.rsplit(".", 1)[-1].isdigit() else value
-        return value in configured or base in configured
-
     def _excluded_record(
         obj: bpy.types.Object,
         collections: set[str],
@@ -262,7 +256,7 @@ def _selected_meshes(
         if obj.type != "MESH":
             continue
         collections = set(_collections_for_object(obj))
-        if _configured_name(str(obj.name), exclude_meshes):
+        if obj.name in exclude_meshes:
             excluded.append(
                 _excluded_record(obj, collections, "configured_exclude_mesh")
             )
@@ -1524,33 +1518,16 @@ def _source_action_correctives(
     arm: bpy.types.Object,
     source_rig: dict[str, Any],
 ) -> dict[str, Any]:
-    """Audit correlated Action curves without treating a pose as a mechanism.
-
-    An Action is a keyed pose/animation, not a Blender driver or constraint.
-    In the source file the same Action also contains the authored open-mouth
-    example.  A linear correlation between its knee and patella keys therefore
-    must not be replayed as an extra child-axis rotation on top of the exported
-    hierarchy: doing that applies the example pose twice and mistakes off-axis
-    knee motion for flexion.  The exact patella runs are retained only as the
-    relative-motion fraction used by the full proximal/distal rigid blend;
-    other Action curves remain pose examples.
-    """
+    """Fit reusable patella flexion follow from exact linear Action runs."""
     names = list(source_rig["source_bone_names"])
     parents = np.asarray(source_rig["source_bone_parents"], dtype=np.int64)
     count = len(names)
     driver = np.full(count, -1, dtype=np.int16)
     gain = np.zeros(count, dtype=np.float32)
     axis = np.zeros((count, 3), dtype=np.float32)
-    input_axis = np.zeros((count, 3), dtype=np.float32)
     action = None if arm.animation_data is None else arm.animation_data.action
     if action is None:
-        return {
-            "driver": driver,
-            "gain": gain,
-            "axis": axis,
-            "input_axis": input_axis,
-            "runs": [],
-        }
+        return {"driver": driver, "gain": gain, "axis": axis, "runs": []}
 
     def quaternion_curves(bone_name: str) -> dict[int, Any]:
         path = f'pose.bones["{bone_name}"].rotation_quaternion'
@@ -1561,18 +1538,7 @@ def _source_action_correctives(
         }
 
     fitted_runs: list[dict[str, Any]] = []
-    def quaternion_rotvec(values: np.ndarray) -> np.ndarray:
-        quaternion = np.asarray(values, dtype=np.float64).reshape(4)
-        quaternion /= max(float(np.linalg.norm(quaternion)), 1.0e-12)
-        if quaternion[0] < 0.0:
-            quaternion *= -1.0
-        vector_norm = float(np.linalg.norm(quaternion[1:]))
-        if vector_norm < 1.0e-12:
-            return np.zeros(3, dtype=np.float64)
-        angle = 2.0 * np.arctan2(vector_norm, float(quaternion[0]))
-        return quaternion[1:] * (angle / vector_norm)
-
-    pending: list[tuple[int, int, np.ndarray, np.ndarray, float]] = []
+    pending: list[tuple[int, int, int, float]] = []
     for child, child_name in enumerate(names):
         if "patella" not in str(child_name).lower():
             continue
@@ -1602,11 +1568,19 @@ def _source_action_correctives(
                 runs.append([frame])
             else:
                 runs[-1].append(frame)
+        child_axis = int(
+            np.argmax(
+                [
+                    max(abs(float(child_curves[index].evaluate(frame))) for frame in frames)
+                    for index in (1, 2, 3)
+                ]
+            )
+        )
         for run in runs:
             if len(run) < 3:
                 continue
-            driver_rotvecs: list[np.ndarray] = []
-            child_rotvecs: list[np.ndarray] = []
+            flexion: list[float] = []
+            correction: list[float] = []
             for frame in run:
                 dq = np.asarray(
                     [float(driver_curves[index].evaluate(frame)) for index in range(4)]
@@ -1614,62 +1588,44 @@ def _source_action_correctives(
                 cq = np.asarray(
                     [float(child_curves[index].evaluate(frame)) for index in range(4)]
                 )
-                driver_rotvecs.append(quaternion_rotvec(dq))
-                child_rotvecs.append(quaternion_rotvec(cq))
-            driver_vectors = np.asarray(driver_rotvecs, dtype=np.float64)
-            child_vectors = np.asarray(child_rotvecs, dtype=np.float64)
-            driver_peak = int(np.argmax(np.linalg.norm(driver_vectors, axis=1)))
-            child_peak = int(np.argmax(np.linalg.norm(child_vectors, axis=1)))
-            run_input_axis = driver_vectors[driver_peak].copy()
-            run_output_axis = child_vectors[child_peak].copy()
-            input_norm = float(np.linalg.norm(run_input_axis))
-            output_norm = float(np.linalg.norm(run_output_axis))
-            if input_norm <= 1.0e-10 or output_norm <= 1.0e-10:
-                continue
-            run_input_axis /= input_norm
-            run_output_axis /= output_norm
-            x = driver_vectors @ run_input_axis
-            y = child_vectors @ run_output_axis
+                flexion.append(
+                    2.0 * np.arctan2(float(np.linalg.norm(dq[1:])), abs(float(dq[0])))
+                )
+                correction.append(
+                    2.0 * np.arctan2(float(cq[child_axis + 1]), float(cq[0]))
+                )
+            x = np.asarray(flexion, dtype=np.float64)
+            y = np.asarray(correction, dtype=np.float64)
             denominator = float(x @ x)
             if denominator <= 1.0e-10:
                 continue
             run_gain = float((x @ y) / denominator)
-            residual = child_vectors - np.outer(run_gain * x, run_output_axis)
-            maximum_residual = float(np.max(np.linalg.norm(residual, axis=1)))
+            residual = y - run_gain * x
+            maximum_residual = float(np.max(np.abs(residual)))
             fitted_runs.append(
                 {
                     "bone": str(child_name),
                     "driver_bone": str(names[ancestor]),
                     "frame_range": [int(run[0]), int(run[-1])],
                     "gain": run_gain,
-                    "driver_input_axis": run_input_axis.tolist(),
-                    "child_output_axis": run_output_axis.tolist(),
                     "maximum_residual_rad": maximum_residual,
                 }
             )
             if maximum_residual <= 1.0e-4:
-                pending.append(
-                    (child, ancestor, run_input_axis, run_output_axis, run_gain)
-                )
+                pending.append((child, ancestor, child_axis, run_gain))
     if pending:
-        common_gain = float(np.median([value[4] for value in pending]))
-        for child, ancestor, run_input_axis, run_output_axis, _run_gain in pending:
+        common_gain = float(np.median([value[3] for value in pending]))
+        for child, ancestor, child_axis, _run_gain in pending:
             driver[child] = int(ancestor)
             gain[child] = np.float32(common_gain)
-            input_axis[child] = run_input_axis.astype(np.float32)
-            axis[child] = run_output_axis.astype(np.float32)
+            axis[child, child_axis] = np.float32(1.0)
     return {
         "driver": driver,
         "gain": gain,
         "axis": axis,
-        "input_axis": input_axis,
         "runs": fitted_runs,
-        "common_gain": (
-            float(np.median(gain[driver >= 0])) if np.any(driver >= 0) else 0.0
-        ),
+        "common_gain": float(np.median(gain[driver >= 0])) if np.any(driver >= 0) else 0.0,
         "serialized_bones": [names[index] for index in np.flatnonzero(driver >= 0)],
-        "pose_example_bones": [],
-        "classification": "exact_linear_patella_relative_motion_calibration",
     }
 
 
@@ -1742,6 +1698,8 @@ def _source_mechanism_audit(
         missing.append("armature_preserve_volume_mode")
     serialized_action_bones = set(action_correctives.get("serialized_bones", []))
     missing_action_bones = sorted(keyed_pose_bones - serialized_action_bones)
+    if missing_action_bones:
+        missing.append("action_pose_curves")
     return {
         "armature_modifiers": int(
             sum(modifier.type == "ARMATURE" for obj in meshes for modifier in obj.modifiers)
@@ -1761,20 +1719,18 @@ def _source_mechanism_audit(
         "active_action_keyed_pose_bones": sorted(keyed_pose_bones),
         "nla_strips": nla_strips,
         "pose_source_serialization": {
-            "actions_serialized": bool(serialized_action_bones),
-            "action_mechanism_serialization_required": False,
+            "actions_serialized": not bool(missing_action_bones),
             "serialized_corrective_bones": sorted(serialized_action_bones),
-            "pose_example_bones": missing_action_bones,
+            "unserialized_action_bones": missing_action_bones,
             "reason": (
-                "Action keyframes are pose examples, not Blender drivers or "
-                "constraints; runtime linkage comes from the armature hierarchy "
-                "and immutable vertex weights"
+                "Patella linear flexion follow is serialized; remaining Action "
+                "curves are pose examples and are not assumed to be universal"
             ),
         },
         "action_corrective_fit": {
             key: value
             for key, value in action_correctives.items()
-            if key not in {"driver", "gain", "axis", "input_axis"}
+            if key not in {"driver", "gain", "axis"}
         },
         "serialized": [
             "armature_bone_names",
@@ -1987,10 +1943,6 @@ def main() -> None:
                 "driver_weights": "all_source_bone_influences_normalized",
                 "source_influences": "authoritative_raw_blender_vertex_group_csr",
                 "source_full_local_fk_v2": True,
-                "source_corrective_input_axes_v1": action_correctives[
-                    "input_axis"
-                ].tolist(),
-                "source_corrective_rigid_blend_v2": True,
                 "semantic_manifest": str(semantic_manifest_path),
                 "semantic_manifest_version": int(semantic_manifest.version),
                 "semantic_manifest_sha256": semantic_manifest.sha256,

@@ -1,4 +1,4 @@
-# Disabled self-collision pairs for RM75-6F (8 collision geometries).
+# Disabled self-collision pairs for RM75-6F (9 collision geometries, with probe).
 # Format: [geom_object_name_a, geom_object_name_b]
 # Disable kinematic-adjacent pairs (parent/child links).
 
@@ -10,3 +10,4 @@ disabled_pairs:
   - [link_4_0, link_5_0]
   - [link_5_0, link_6_0]
   - [link_6_0, link_7_0]
+  - [link_7_0, link_8_0]

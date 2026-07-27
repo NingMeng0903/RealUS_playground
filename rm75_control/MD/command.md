@@ -139,8 +139,11 @@ cd /media/camp/EXT_DRIVE/RealUS_playground/rm75_control
 source env.sh
 
 # 示例：到 D 后力控 Y 扫描（需 §1 力补偿标定）
+# 默认 --d-target joints：示教 q 不变，pose_d=Pin FK(URDF 探头 TCP)，笛卡尔 SRS 发布
+# （configs 里 sync_tcp_from_robot: false，勿被示教器工具覆盖）
 python apps/joint_admittance_8dof/d_sin_tool_y.py \
   --config configs/joint_admittance_8dof.yaml \
+  --d-target joints --move-mode cartesian \
   --enable-force --desired-z 1.0 \
   --scan-duration 30
 ```

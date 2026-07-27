@@ -3,6 +3,7 @@
 
   source env.sh
   python apps/joint_admittance_8dof/d_sin_tool_y.py --dry-run
+  # same taught q_deg → pose_d = Pin FK under URDF probe TCP → Cartesian SRS
   python apps/joint_admittance_8dof/d_sin_tool_y.py --enable-force --desired-z 3.0 --scan-duration 600
   # move->D by taught joint angles (ignore RealMan TCP; for gripper-Z rotation tests):
   python apps/joint_admittance_8dof/d_sin_tool_y.py \\
@@ -103,7 +104,7 @@ def main() -> int:
         default="joints",
         help="How to get move→D Cartesian pose_d (execution is still --move-mode, "
         "default cartesian/SRS — NOT joint MoveJ): "
-        "joints=Pin FK(taught q) → same q gives same xyz, rpy follows live TCP; "
+        "joints=Pin FK(taught q + j7+90° so ArmTip +X → TCP +Z) → Cartesian SRS; "
         "legacy=ArmTip contact + approach_dz along tool-Z + IK; "
         "kin-fk=Pin standoff + IK",
     )

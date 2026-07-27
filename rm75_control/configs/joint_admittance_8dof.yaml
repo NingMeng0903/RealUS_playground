@@ -33,10 +33,10 @@ state_relay:
 inner:
   control_frame: tool
   euler_order: xyz
-  # On connect / task start: read RealMan active tool (gripper TCP) into Pinocchio
-  # link_7->tcp — full xyz+rpy.  Pendant Ry=90° etc. rotates force-hybrid / tool
-  # axes; TCP origin (xyz) is unchanged in link_7.
-  sync_tcp_from_robot: true
+  # Probe TCP lives in URDF (link_7_to_tcp). Keep false so pose D / sin-Y FK and
+  # Cartesian track use the probe frame (same taught q_deg → new Cartesian).
+  # Set true only when the pendant tool must override Pinocchio (old gripper flow).
+  sync_tcp_from_robot: false
 
   v_scale: 0.5             # fraction of URDF joint velocity limit
   # Acceleration limits are unit-explicit: the old scalar a_max mixed arm

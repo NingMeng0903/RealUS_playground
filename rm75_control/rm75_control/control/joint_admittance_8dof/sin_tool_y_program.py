@@ -8,6 +8,7 @@ from typing import Any, Callable
 
 import numpy as np
 import yaml
+from scipy.spatial.transform import Rotation as Rsc
 
 from rm75_control.control.admittance_common.controller import AdmittanceController
 from rm75_control.control.admittance_common.phase_ipc import SinToolYTaskParams
@@ -101,8 +102,8 @@ def resolve_scan_target_at_d(
     still ``--move-mode``, default cartesian/SRS):
 
     * ``legacy`` — RealMan active-tool FK + Pin standoff + pose IK (original).
-    * ``joints`` — taught ``q_deg`` → ``pose_d = kin.fk_pose(q)`` then Cartesian
-      goto that pose (same q ⇒ same xyz; rpy follows live TCP). Not joint MoveJ.
+    * ``joints`` — taught ``q_deg`` with j7+90° (ArmTip +X → TCP +Z), then fold
+      approach into a world-vertical plane, IK, Cartesian SRS.
     * ``kin-fk`` — Pinocchio standoff ``pose_d`` from taught contact frame;
       optional pose IK; never uses ``rm_algo_forward_kinematics``.
     """
@@ -126,7 +127,13 @@ def resolve_scan_target_at_d(
         except Exception:
             pass
         return _resolve_scan_target_joints(
-            slot, kin, rail_m=rail_m, travel_m=travel
+            slot,
+            kin,
+            rail_m=rail_m,
+            travel_m=travel,
+            qp_cfg=qp_cfg,
+            nullspace_cfg=nullspace_cfg,
+            euler_order=euler_order,
         )
     if mode in {"kin-fk", "kin_fk", "kinfk"}:
         return _resolve_scan_target_kin_fk(
@@ -179,6 +186,82 @@ def _pick_wellconditioned_rail_m(
     return float(best_y), float(best_sig)
 
 
+def _remap_taught_q_armtip_x_to_tcp_z(q_arm_rad: np.ndarray) -> np.ndarray:
+    """Map ArmTip-+X approach teach onto probe TCP-+Z (= ArmTip -Y).
+
+    Slot ``d`` was taught with ArmTip +X oblique-down in the symmetry plane.
+    Probe URDF TCP has +Z = ArmTip -Y, so the same joint vector leaves the tip
+    sideways.  Adding +π/2 on wrist joint 7 is ``R ← R·Rz(+π/2)`` and makes
+    ArmTip -Y (and TCP +Z) inherit the old +X world direction.
+    """
+    q = np.asarray(q_arm_rad, dtype=float).reshape(-1).copy()
+    if q.size < 7:
+        raise ValueError(f"expected 7 arm joints, got {q.size}")
+    q[6] = float(q[6] + 0.5 * np.pi)
+    # Keep a principal value so SRS / limit checks stay sane.
+    q[6] = float(np.arctan2(np.sin(q[6]), np.cos(q[6])))
+    return q
+
+
+def _fold_flange_into_world_vertical_plane(R_l7: np.ndarray) -> tuple[np.ndarray, float]:
+    """Fold link_7 so TCP+Z (= -Y) and flange +Z lie in a world-vertical plane.
+
+    Taught D's ArmTip +X already had ~16° of world-Y lean; j7+90° kept that lean
+    on TCP+Z.  Project approach into a constant-Y vertical plane (normal = ê_y),
+    rebuild a right-handed flange frame with +Z also in that plane.
+    Returns ``(R_l7_new, approach_fold_deg)``.
+    """
+    R = np.asarray(R_l7, dtype=float).reshape(3, 3)
+    ey = np.array([0.0, 1.0, 0.0])
+    # TCP +Z = ArmTip -Y
+    approach = -R[:, 1]
+    n = float(np.linalg.norm(approach))
+    if n < 1e-9:
+        return R.copy(), 0.0
+    approach = approach / n
+    a_proj = approach - (approach @ ey) * ey
+    na = float(np.linalg.norm(a_proj))
+    if na < 1e-9:
+        return R.copy(), 0.0
+    a_proj = a_proj / na
+    fold_deg = float(np.degrees(np.arccos(np.clip(approach @ a_proj, -1.0, 1.0))))
+
+    y_axis = -a_proj  # ArmTip +Y after fold
+    # Flange +Z in the same vertical plane, ⊥ Y; pick the branch near the old Z.
+    z_axis = np.cross(ey, y_axis)
+    nz = float(np.linalg.norm(z_axis))
+    if nz < 1e-9:
+        return R.copy(), fold_deg
+    z_axis = z_axis / nz
+    if float(z_axis @ R[:, 2]) < 0.0:
+        z_axis = -z_axis
+    x_axis = np.cross(y_axis, z_axis)
+    x_axis = x_axis / max(float(np.linalg.norm(x_axis)), 1e-12)
+    # Re-orthogonalize Z in case of drift.
+    z_axis = np.cross(x_axis, y_axis)
+    z_axis = z_axis / max(float(np.linalg.norm(z_axis)), 1e-12)
+    R_new = np.column_stack((x_axis, y_axis, z_axis))
+    return R_new, fold_deg
+
+
+def _tcp_pose_from_link7(
+    kin: RobotKinematics,
+    p_l7: np.ndarray,
+    R_l7: np.ndarray,
+    *,
+    euler_order: str = "xyz",
+) -> np.ndarray:
+    """Compose world TCP pose from link_7 pose and URDF link_7→tcp offset."""
+    R_off = np.asarray(kin._R_link7_tcp, dtype=float).reshape(3, 3)
+    t_off = np.asarray(kin._r_link7_tcp, dtype=float).reshape(3)
+    R_tcp = R_l7 @ R_off
+    p_tcp = np.asarray(p_l7, dtype=float).reshape(3) + R_l7 @ t_off
+    pose = np.zeros(6, dtype=float)
+    pose[:3] = p_tcp
+    pose[3:6] = Rsc.from_matrix(R_tcp).as_euler(euler_order, degrees=False)
+    return pose
+
+
 def _resolve_scan_target_joints(
     slot: str,
     kin: RobotKinematics,
@@ -186,9 +269,12 @@ def _resolve_scan_target_joints(
     rail_m: float = 0.0,
     travel_m: float = 0.80,
     refine_rail: bool = True,
+    qp_cfg=None,
+    nullspace_cfg=None,
+    euler_order: str = "xyz",
 ) -> ScanTargetD:
-    q_deg, pose_id, _rec = load_slot_joints_only(slot)
-    q_arm = deg2rad(q_deg)
+    q_deg_taught, pose_id, _rec = load_slot_joints_only(slot)
+    q_arm = _remap_taught_q_armtip_x_to_tcp_z(deg2rad(q_deg_taught))
     y_rail = float(rail_m)
     sig_note = ""
     if refine_rail:
@@ -199,17 +285,46 @@ def _resolve_scan_target_joints(
             prefer_m=float(rail_m),
         )
         sig_note = f" rail→{y_rail * 1000:.0f}mm (σ_min={sig:.3f}, prefer={float(rail_m) * 1000:.0f}mm)"
-    q_target_rad = full_q_from_arm(q_arm, y_rail)
-    pose_d = np.asarray(kin.fk_pose(q_target_rad), dtype=float)
+    q_seed = full_q_from_arm(q_arm, y_rail)
+
+    Ml7 = kin.frame_placement(q_seed, "link_7")
+    R_fold, fold_deg = _fold_flange_into_world_vertical_plane(Ml7.rotation)
+    pose_d = _tcp_pose_from_link7(
+        kin, Ml7.translation, R_fold, euler_order=euler_order
+    )
+
+    q_target_rad = q_seed
+    ik_note = ""
+    if qp_cfg is not None:
+        q_target_rad, _ok, rep = solve_pose_ik(
+            kin,
+            q_seed,
+            pose_d,
+            qp_cfg=qp_cfg,
+            nullspace_cfg=nullspace_cfg,
+            attractor_q=q_seed,
+        )
+        # Keep Cartesian target as FK of the solved q (consistent with build()).
+        pose_d = np.asarray(kin.fk_pose(q_target_rad), dtype=float)
+        ik_note = (
+            f" IK pos={rep.pos_err_mm:.2f}mm rot={rep.rot_err_deg:.2f}deg"
+        )
+    else:
+        # No QP: still publish the folded Cartesian; SRS will pull toward it.
+        pass
+
+    q_deg = np.rad2deg(q_target_rad[1:])
     off = np.asarray(kin.tcp_offset_pose, dtype=float).reshape(6)
     print(
-        f"D target=joints→Cartesian pose_d=FK(q) slot={slot} "
+        f"D target=joints→Cartesian pose_d slot={slot} "
+        f"taught_q_deg={np.round(q_deg_taught, 2).tolist()} "
+        f"→ j7+90° + foldΔ={fold_deg:.1f}° into world-vertical plane "
         f"q_deg={np.round(q_deg, 2).tolist()} "
         f"xyz(mm)={np.round(pose_d[:3] * 1000.0, 1).tolist()} "
         f"rpy(deg)={np.round(np.degrees(pose_d[3:6]), 1).tolist()} "
         f"| tool_offset xyz(mm)={np.round(off[:3] * 1000.0, 1).tolist()} "
         f"rpy(deg)={np.round(np.degrees(off[3:6]), 1).tolist()} "
-        f"(same q ⇒ same xyz across TCP rpy; move is Cartesian/SRS){sig_note}",
+        f"(Cartesian/SRS){sig_note}{ik_note}",
         flush=True,
     )
     return ScanTargetD(
@@ -219,8 +334,6 @@ def _resolve_scan_target_joints(
         q_target_rad=q_target_rad,
         d_target="joints",
         skip_ik=True,
-        # Keep caller --move-mode (default cartesian/SRS).  Pose comes from FK(q);
-        # joint mode is only if the user passes --move-mode joint.
         move_mode_hint=None,
     )
 

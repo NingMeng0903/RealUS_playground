@@ -32,7 +32,7 @@ from rm75_control.control.joint_admittance_8dof.viewer.tensor_utils import to_nu
 
 DEFAULT_Q = np.zeros(8, dtype=np.float64)
 
-# Do not set link_rgba on link_7: its DAE has white + black stripe (mat_0 / mat_2).
+# link_7 DAE: light-gray body (mat_0) + black stripe (mat_2). Prefer mesh materials.
 RAIL_BOX_HEIGHT_M = 0.08
 DEFAULT_ROBOT_POS = (0.0, 0.0, RAIL_BOX_HEIGHT_M)
 DEFAULT_RAIL_Y_LIMIT_M = 0.80
@@ -143,7 +143,8 @@ class RailGenesisScene:
                 "fixed": True,
                 "merge_fixed_links": False,
                 "decimate": False,
-                "prioritize_urdf_material": True,
+                # False: keep Collada/DAE per-submesh colors (probe + link_7 stripes).
+                "prioritize_urdf_material": False,
             }
             self.robot = self.scene.add_entity(
                 gs.morphs.URDF(**morph_kwargs),

@@ -196,9 +196,28 @@ _ARM_BLOCK = """  <link name="base_link">
     <axis xyz="0 0 1" />
     <limit lower="-6.28" upper="6.28" effort="10" velocity="3.14" />
   </joint>
+  <link name="link_8">
+    <inertial>
+      <origin xyz="0.003680 -0.012695 0.076874" rpy="0 0 0" />
+      <mass value="0.4829" />
+      <inertia ixx="0.0004135" ixy="-0.000003908" ixz="0.00003379"
+               iyy="0.0002717" iyz="0.00001544" izz="0.0003621" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/linear_probe.dae" />
+      </geometry>
+    </visual>
+  </link>
+  <joint name="joint_8" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="link_7" />
+    <child link="link_8" />
+  </joint>
   <link name="tcp" />
   <joint name="link_7_to_tcp" type="fixed">
-    <origin xyz="0 0 0.220" rpy="0 0 0" />
+    <origin xyz="0 -0.08 0.06" rpy="0 1.570796327 -1.570796327" />
     <parent link="link_7" />
     <child link="tcp" />
   </joint>
@@ -225,7 +244,9 @@ DEFAULT_SPEC: dict[str, Any] = {
         "top_to_rail_bottom_mm": 66.0,
     },
     "frame": {
-        "height_mm": 40.0,
+        # "auto" → height from world_calib.base_pos_m[2] so rail_base meets/penetrates floor.
+        "height_mm": "auto",
+        "floor_sink_mm": 10.0,  # penetrate ground by this much (no air gap under frame)
         "width_mm": 220.0,
     },
     "arm_mount": {
@@ -331,6 +352,29 @@ def _box_visual(
     )
 
 
+def _auto_frame_height_m(full: dict[str, Any]) -> float:
+    """Frame height so ``rail_base`` sits on/through the world floor (z=0).
+
+    With world Z up (current calib quat is yaw-only), ``entity_z ≈ base_z - slider_top_z``
+    and ``slider_top_z = frame_h + top_to_rail_bottom``.  Choosing
+
+        frame_h = base_z - top_to_rail_bottom + floor_sink
+
+    yields ``entity_z = -floor_sink`` (flush when sink=0, penetrates when sink>0).
+    """
+    slider = full["slider"]
+    frame = full["frame"]
+    wc = full.get("world_calib") or {}
+    top_to_rail = float(slider["top_to_rail_bottom_mm"]) * 1e-3
+    sink = float(frame.get("floor_sink_mm", 0.0)) * 1e-3
+    base_pos = wc.get("base_pos_m", [0.0, 0.0, top_to_rail])
+    try:
+        base_z = float(base_pos[2])
+    except (TypeError, IndexError, ValueError) as exc:
+        raise SliderRailSpecError(f"world_calib.base_pos_m must be xyz, got {base_pos!r}") from exc
+    return max(0.0, base_z - top_to_rail + sink)
+
+
 def compute_layout(spec: dict[str, Any]) -> dict[str, float]:
     """Resolve derived geometry (meters). Model Z origin = frame bottom.
 
@@ -341,6 +385,10 @@ def compute_layout(spec: dict[str, Any]) -> dict[str, float]:
                      + end_overhead   # optional extra total gap (0 = exact flush)
 
     Joint origin is at the slider-center pose for ``rail_y = 0``.
+
+    Frame height: if ``frame.height_mm`` is ``\"auto\"`` / omitted, it is derived
+    from ``world_calib.base_pos_m[2]`` (+ ``floor_sink_mm``) so the stand does not
+    float above the ground plane.
     """
     full = load_spec(spec) if "rail" not in spec else spec
     rail = full["rail"]
@@ -360,7 +408,11 @@ def compute_layout(spec: dict[str, Any]) -> dict[str, float]:
     side_t = float(rail["side_plate_thickness_mm"]) * m
     side_h = float(rail["side_plate_height_mm"]) * m
 
-    frame_h = float(frame["height_mm"]) * m
+    h_raw = frame.get("height_mm", "auto")
+    if h_raw is None or (isinstance(h_raw, str) and str(h_raw).strip().lower() in ("", "auto")):
+        frame_h = _auto_frame_height_m(full)
+    else:
+        frame_h = float(h_raw) * m
     frame_w = float(frame["width_mm"]) * m
 
     slider_w = float(slider["width_mm"]) * m
@@ -423,14 +475,18 @@ def build_urdf_string(spec: dict | str | Path) -> str:
     dark_rgba = _rgba(colors["dark"])
 
     # Frame: +X face flush with rail +X face -> center shifts toward -X.
-    frame_cx = lay["rail_plus_x_face"] - lay["frame_w"] / 2.0
-    frame_cz = lay["frame_h"] / 2.0
-    frame_visual = _box_visual(
-        size=(lay["frame_w"], lay["rail_len_y"], lay["frame_h"]),
-        center=(frame_cx, 0.0, frame_cz),
-        mat_name="frame_mat",
-        rgba=frame_rgba,
-    )
+    # Skip a zero-thickness box when frame.height_mm == 0 (rail sits on floor).
+    if lay["frame_h"] > 1e-6:
+        frame_cx = lay["rail_plus_x_face"] - lay["frame_w"] / 2.0
+        frame_cz = lay["frame_h"] / 2.0
+        frame_visual = _box_visual(
+            size=(lay["frame_w"], lay["rail_len_y"], lay["frame_h"]),
+            center=(frame_cx, 0.0, frame_cz),
+            mat_name="frame_mat",
+            rgba=frame_rgba,
+        )
+    else:
+        frame_visual = ""
 
     # Deck + tracks fit between end plates (no overlap with black end caps).
     # rail_link frame origin = rail module floor (top of frame); visuals are local Z.
