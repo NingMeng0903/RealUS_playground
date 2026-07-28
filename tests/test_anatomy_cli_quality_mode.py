@@ -11,16 +11,22 @@ from projects.genesis_ue_sync.anatomy_retarget.cli.run_anatomy_retarget import (
 )
 
 
-def test_quality_failure_is_advisory_by_default() -> None:
-    assert not _quality_failure_blocks_publish(passed=False)
+def test_quality_failure_blocks_by_default() -> None:
+    assert _quality_failure_blocks_publish(passed=False)
 
 
-def test_quality_failure_blocks_only_in_strict_mode() -> None:
+def test_quality_failure_blocks_in_compatibility_strict_mode() -> None:
     assert _quality_failure_blocks_publish(passed=False, enforce_quality_gate=True)
 
 
 def test_quality_success_never_blocks_publish() -> None:
     assert not _quality_failure_blocks_publish(passed=True)
+
+
+def test_quality_failure_cannot_be_overridden_by_legacy_flag() -> None:
+    assert _quality_failure_blocks_publish(
+        passed=False, enforce_quality_gate=False
+    )
 
 
 def test_diagnostics_only_requires_explicit_cli_flag(monkeypatch) -> None:

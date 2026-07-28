@@ -92,7 +92,7 @@ def test_closed_loop_stiff_surface_no_bounce():
     from pathlib import Path
 
     dt = 0.005
-    raw = yaml.safe_load(Path("configs/joint_admittance.yaml").read_text())
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     cfg = AdmittanceConfig.from_dict(raw)
     ctrl = AdmittanceController(dt, cfg)
 
@@ -105,7 +105,8 @@ def test_closed_loop_stiff_surface_no_bounce():
         fz = ke_true * max(x, 0.0)
         v = _tick(ctrl, fz=fz, f_des_z=3.0)
         x += v * dt
-        in_c = ctrl._in_contact_latched
+        # Physical contact state, not the controller's enter-only latch.
+        in_c = fz >= cfg.contact_threshold_n
         if in_c != was_contact:
             flips += 1
         was_contact = in_c
@@ -129,7 +130,7 @@ def test_closed_loop_very_hard_surface_no_bounce_cascade():
     from pathlib import Path
 
     dt = 0.005
-    raw = yaml.safe_load(Path("configs/joint_admittance.yaml").read_text())
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     cfg = AdmittanceConfig.from_dict(raw)
     ctrl = AdmittanceController(dt, cfg)
 
@@ -142,7 +143,7 @@ def test_closed_loop_very_hard_surface_no_bounce_cascade():
         fz = ke_true * max(x, 0.0)
         v = _tick(ctrl, fz=fz, f_des_z=3.0)
         x += v * dt
-        in_c = ctrl._in_contact_latched
+        in_c = fz >= cfg.contact_threshold_n
         if in_c != was_contact:
             flips += 1
         was_contact = in_c
@@ -176,7 +177,7 @@ def test_dimeas_5hz_forced_oscillation_inflates_inertia():
     from pathlib import Path
 
     dt = 0.005
-    raw = yaml.safe_load(Path("configs/joint_admittance.yaml").read_text())
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     cfg = AdmittanceConfig.from_dict(raw)
     ctrl = AdmittanceController(dt, cfg)
     ctrl._in_contact_latched = True
@@ -186,6 +187,9 @@ def test_dimeas_5hz_forced_oscillation_inflates_inertia():
     assert abs(m_base - cfg.admittance_mass_z) < 1e-6
 
     import math as _m
+    max_mass = m_base
+    max_dimeas_damping = 0.0
+    max_total_damping = ctrl.damping_z_eff
     for i in range(2000):  # 10 s of forced 5 Hz oscillation on raw fz
         t = i * dt
         fz = 3.0 + 3.0 * _m.sin(2.0 * _m.pi * 5.0 * t)
@@ -196,6 +200,12 @@ def test_dimeas_5hz_forced_oscillation_inflates_inertia():
             np.zeros(6), np.zeros(6), np.zeros(6), f_ext, f_des,
             in_contact=True, f_ext_raw=f_raw,
         )
+        max_mass = max(max_mass, ctrl._m_z_now)
+        max_dimeas_damping = max(
+            max_dimeas_damping,
+            ctrl.damping_dimeas_z,
+        )
+        max_total_damping = max(max_total_damping, ctrl.damping_z_eff)
 
     assert ctrl.instability_index > 0.1, (
         f"5 Hz forced oscillation must raise Iₛ above 0.1, got "
@@ -208,6 +218,9 @@ def test_dimeas_5hz_forced_oscillation_inflates_inertia():
     assert ctrl._m_z_now <= cfg.var_damping_m_max + 1e-6, (
         f"M(t) must be capped at m_max, got {ctrl._m_z_now:.3f}"
     )
+    assert max_mass > m_base + 0.2
+    assert max_dimeas_damping > 0.2
+    assert max_total_damping > cfg.admittance_damping_z
 
 
 def test_dimeas_disabled_leaves_mass_static():
@@ -238,7 +251,7 @@ def test_closed_loop_soft_surface_converges():
     from pathlib import Path
 
     dt = 0.005
-    raw = yaml.safe_load(Path("configs/joint_admittance.yaml").read_text())
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     cfg = AdmittanceConfig.from_dict(raw)
     ctrl = AdmittanceController(dt, cfg)
 
@@ -253,3 +266,87 @@ def test_closed_loop_soft_surface_converges():
     tail = np.asarray(fz_hist[-400:])
     assert abs(tail.mean() - 3.0) < 0.8, f"soft surface: mean {tail.mean():.2f}"
     assert tail.std() < 0.5
+
+
+def test_production_stack_tracks_moving_surface_at_1n_and_5n():
+    """The shipped 8-DoF stack (adaptive K̂e + Dimeas both enabled) must
+    follow a compliant surface in either normal direction without restoring
+    the old target-force-dependent response.
+
+    A constant-velocity surface is deliberately used here: after the
+    transient, the TCP velocity must match it and the residual force bias must
+    remain comparable in press/retract at both 1 N and 5 N.
+    """
+    import yaml
+    from pathlib import Path
+
+    dt = 0.005
+    raw = yaml.safe_load(
+        Path("configs/joint_admittance_8dof.yaml").read_text()
+    )
+    ke_true = 800.0
+    results: dict[tuple[float, float], tuple[float, float]] = {}
+
+    for desired in (1.0, 5.0):
+        for surface_velocity in (-0.01, 0.01):
+            cfg = AdmittanceConfig.from_dict(raw)
+            ctrl = AdmittanceController(dt, cfg)
+            tcp_z = desired / ke_true
+            surface_z = 0.0
+            force_tail: list[float] = []
+            velocity_tail: list[float] = []
+
+            for tick in range(2000):
+                force_z = max(
+                    0.0,
+                    ke_true * (tcp_z - surface_z),
+                )
+                force = np.zeros(6)
+                force[2] = force_z
+                target = np.zeros(6)
+                target[2] = desired
+                pose = np.zeros(6)
+                pose[2] = tcp_z
+                velocity = ctrl.compute_velocity_command(
+                    pose,
+                    pose,
+                    np.zeros(6),
+                    force,
+                    target,
+                    f_ext_raw=force,
+                    dt_actual=dt,
+                    v_tcp_z_actual=velocity_tail[-1]
+                    if velocity_tail
+                    else 0.0,
+                )[2]
+                tcp_z += velocity * dt
+                surface_z += surface_velocity * dt
+                if tick >= 800:
+                    force_tail.append(force_z)
+                    velocity_tail.append(velocity)
+
+            force_arr = np.asarray(force_tail)
+            results[(desired, surface_velocity)] = (
+                float(np.mean(np.abs(force_arr - desired))),
+                float(np.mean(velocity_tail)),
+            )
+
+    assert results[(1.0, -0.01)][0] <= 0.20
+    assert results[(1.0, 0.01)][0] <= 0.20
+    assert results[(5.0, -0.01)][0] <= 0.50
+    assert results[(5.0, 0.01)][0] <= 0.50
+    for desired in (1.0, 5.0):
+        err_negative = results[(desired, -0.01)][0]
+        err_positive = results[(desired, 0.01)][0]
+        assert max(err_negative, err_positive) <= 1.25 * min(
+            err_negative,
+            err_positive,
+        )
+        assert results[(desired, -0.01)][1] == pytest.approx(
+            -0.01,
+            abs=1e-5,
+        )
+        assert results[(desired, 0.01)][1] == pytest.approx(
+            0.01,
+            abs=1e-5,
+        )

@@ -97,13 +97,32 @@ def _dual_quaternion_skin_numpy(
     transforms: np.ndarray,
 ) -> np.ndarray:
     """Skin points with sign-consistent dual-quaternion blending."""
+    real, dual = _dual_quaternion_blend_numpy(indices, weights, transforms)
+    vector = real[:, 1:]
+    points = np.asarray(vertices, dtype=np.float64)
+    twice_cross = 2.0 * np.cross(vector, points)
+    rotated = points + real[:, :1] * twice_cross + np.cross(vector, twice_cross)
+    offset = 2.0 * (
+        real[:, :1] * dual[:, 1:]
+        - dual[:, :1] * vector
+        + np.cross(vector, dual[:, 1:])
+    )
+    return (rotated + offset).astype(np.float32)
+
+
+def _dual_quaternion_blend_numpy(
+    indices: np.ndarray,
+    weights: np.ndarray,
+    transforms: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return normalized real/dual quaternions for fixed material frames."""
     qr = _matrix_quaternions_numpy(transforms)
     translation = np.asarray(transforms, dtype=np.float64)[:, :3, 3]
     qd = 0.5 * np.concatenate(
         (-np.sum(translation * qr[:, 1:], axis=1, keepdims=True),
          qr[:, :1] * translation + np.cross(translation, qr[:, 1:])), axis=1
     )
-    count = int(np.asarray(vertices).reshape(-1, 3).shape[0])
+    count = int(np.asarray(indices).shape[0])
     selected_indices = np.asarray(indices, dtype=np.int64).reshape(count, -1)
     selected_r = qr[selected_indices]
     selected_d = qd[selected_indices]
@@ -115,16 +134,33 @@ def _dual_quaternion_skin_numpy(
     norm = np.maximum(np.linalg.norm(real, axis=1, keepdims=True), 1.0e-12)
     real /= norm
     dual /= norm
-    vector = real[:, 1:]
-    points = np.asarray(vertices, dtype=np.float64)
-    twice_cross = 2.0 * np.cross(vector, points)
-    rotated = points + real[:, :1] * twice_cross + np.cross(vector, twice_cross)
-    offset = 2.0 * (
+    return real, dual
+
+
+def dual_quaternion_material_transforms_numpy(
+    indices: np.ndarray,
+    weights: np.ndarray,
+    transforms: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Evaluate one proper SE(3) frame per pre-baked material group."""
+    real, dual = _dual_quaternion_blend_numpy(indices, weights, transforms)
+    w, x, y, z = (real[:, column] for column in range(4))
+    rotation = np.empty((len(real), 3, 3), dtype=np.float64)
+    rotation[:, 0, 0] = 1.0 - 2.0 * (y * y + z * z)
+    rotation[:, 0, 1] = 2.0 * (x * y - z * w)
+    rotation[:, 0, 2] = 2.0 * (x * z + y * w)
+    rotation[:, 1, 0] = 2.0 * (x * y + z * w)
+    rotation[:, 1, 1] = 1.0 - 2.0 * (x * x + z * z)
+    rotation[:, 1, 2] = 2.0 * (y * z - x * w)
+    rotation[:, 2, 0] = 2.0 * (x * z - y * w)
+    rotation[:, 2, 1] = 2.0 * (y * z + x * w)
+    rotation[:, 2, 2] = 1.0 - 2.0 * (x * x + y * y)
+    translation = 2.0 * (
         real[:, :1] * dual[:, 1:]
-        - dual[:, :1] * vector
-        + np.cross(vector, dual[:, 1:])
+        - dual[:, :1] * real[:, 1:]
+        + np.cross(real[:, 1:], dual[:, 1:])
     )
-    return (rotated + offset).astype(np.float32)
+    return rotation.astype(np.float32), translation.astype(np.float32)
 
 
 def _matrix_quaternions_torch(transforms: Any) -> Any:
@@ -549,28 +585,34 @@ def source_bone_driver_frames(
     if not np.all(np.isfinite(pose_global)) or not np.all(np.isfinite(rest_global)):
         raise ValueError("source driver joint frames must be finite")
     joint_delta = pose_global @ np.linalg.inv(rest_global)
-    official_rest_points = np.asarray(asset.rest_joints, dtype=np.float64)
-    rest_points = np.asarray(
+    # Official SMPL-X joints remain the spatial authority for long-bone
+    # segments.  Subject-fitted contact points are only rotation centres for
+    # terminal rigid/joint-local controllers; using them as segment endpoints
+    # changes effective femur/tibia length and breaks cross-beta reuse.
+    rest_points = np.asarray(asset.rest_joints, dtype=np.float64)
+    pose_points = pose_global[:, :3, 3]
+    contact_rest_points = np.asarray(
         asset.source_driver_rest_joints
         if asset.source_driver_rest_joints is not None
-        else official_rest_points,
+        else rest_points,
         dtype=np.float64,
     )
-    # Keep official SMPL-X FK as the motion authority. Anatomical pivots are
-    # fixed rest-space points transported by their corresponding official joint
-    # delta; replacing the FK skeleton itself would move distal hands/feet away
-    # from the posed SMPL-X surface.
-    point_delta = joint_delta.copy()
-    target_parents = np.asarray(asset.parents, dtype=np.int64)
-    for joint, parent in enumerate(target_parents.tolist()):
+    contact_point_delta = joint_delta.copy()
+    for joint, parent in enumerate(
+        np.asarray(asset.parents, dtype=np.int64).tolist()
+    ):
         if int(parent) >= 0:
-            # A joint center is positioned by its parent segment before the
-            # joint's own local rotation is applied. Using joint_delta[joint]
-            # would orbit an offset pivot around the old regressed center.
-            point_delta[joint] = joint_delta[int(parent)]
-    pose_points = (
-        np.einsum("bij,bj->bi", point_delta[:, :3, :3], rest_points)
-        + point_delta[:, :3, 3]
+            contact_point_delta[joint] = joint_delta[int(parent)]
+    contact_pose_points = (
+        np.einsum(
+            "bij,bj->bi",
+            contact_point_delta[:, :3, :3],
+            contact_rest_points,
+        )
+        + contact_point_delta[:, :3, 3]
+    )
+    use_anatomical_pivots_v7 = bool(
+        (asset.metadata or {}).get("source_anatomical_pivots_v7", False)
     )
     frames = np.tile(np.eye(4, dtype=np.float64), (bone_count, 1, 1))
     for bone, mode in enumerate(modes):
@@ -594,27 +636,52 @@ def source_bone_driver_frames(
                 joint_delta[a, :3, :3] @ rest_frame[:3, 0],
             )
         elif mode in {"segment_root", "rigid_group", "twist"} and a != b:
+            segment_rest_a = rest_points[a]
+            segment_rest_b = rest_points[b]
+            segment_pose_a = pose_points[a]
+            segment_pose_b = pose_points[b]
+            if use_anatomical_pivots_v7 and mode in {
+                "segment_root",
+                "rigid_group",
+            }:
+                # The SMPL-X joint pair remains the orientation/length driver,
+                # while the beta-specific socket is the physical rotation
+                # centre.  The old path rotated a femur around the statistical
+                # SMPL-X hip several centimetres away from the acetabulum.
+                segment_rest_a = contact_rest_points[a]
+                segment_rest_b = segment_rest_a + (
+                    rest_points[b] - rest_points[a]
+                )
+                segment_pose_a = contact_pose_points[a]
+                segment_pose_b = segment_pose_a + (
+                    pose_points[b] - pose_points[a]
+                )
             rest_frame = _segment_frame(
-                rest_points[a],
-                rest_points[b],
+                segment_rest_a,
+                segment_rest_b,
                 bind[bone, :3, 0],
             )
             delta = _endpoint_segment_delta(
-                rest_a=rest_points[a],
-                rest_b=rest_points[b],
-                pose_a=pose_points[a],
-                pose_b=pose_points[b],
+                rest_a=segment_rest_a,
+                rest_b=segment_rest_b,
+                pose_a=segment_pose_a,
+                pose_b=segment_pose_b,
                 rest_reference_x=bind[bone, :3, 0],
                 proximal_delta=joint_delta[a],
                 distal_delta=joint_delta[b],
                 twist_alpha=float(blends[bone]) if mode == "twist" else 0.0,
             )
+            if mode == "rigid_group":
+                delta[:3, 3] = (
+                    contact_pose_points[a]
+                    - delta[:3, :3] @ contact_rest_points[a]
+                )
             frames[bone] = delta @ rest_frame
         elif mode in {"segment_root", "twist"}:
             raise ValueError(f"{mode} source driver {bone} has a degenerate joint mapping")
         else:
             frames[bone] = pose_global[a]
-            frames[bone, :3, 3] = pose_points[a]
+            frames[bone, :3, 3] = contact_pose_points[a]
         if not np.all(np.isfinite(frames[bone])):
             raise ValueError(f"source driver frame {bone} is non-finite")
         rotation = frames[bone, :3, :3]
@@ -677,6 +744,24 @@ def source_bone_skinning_transforms(
     use_full_source_local_fk = bool(
         (asset.metadata or {}).get("source_full_local_fk_v2", False)
     )
+    use_connected_source_local_fk = bool(
+        (asset.metadata or {}).get("source_connected_local_fk_v3", False)
+    )
+    selected_source_local_fk = {
+        int(value)
+        for value in (asset.metadata or {}).get("source_local_fk_bones_v3", [])
+    }
+    if any(
+        value < 0 or value >= len(rest_global_bones)
+        for value in selected_source_local_fk
+    ):
+        raise ValueError("source_local_fk_bones_v3 contains an invalid bone")
+    source_use_connect = np.asarray(
+        asset.source_bone_use_connect
+        if asset.source_bone_use_connect is not None
+        else np.zeros(len(rest_global_bones), dtype=np.uint8),
+        dtype=bool,
+    )
     direct_driver_bones = {
         int(value)
         for value in (asset.metadata or {}).get("source_direct_driver_bones_v1", [])
@@ -700,6 +785,31 @@ def source_bone_skinning_transforms(
         if asset.source_bone_corrective_axis is not None
         else np.zeros((len(rest_global_bones), 3), dtype=np.float32),
         dtype=np.float64,
+    )
+    corrective_input_axis_raw = (asset.metadata or {}).get(
+        "source_corrective_input_axes_v1"
+    )
+    corrective_input_axis = None
+    if corrective_input_axis_raw is not None:
+        corrective_input_axis = np.asarray(
+            corrective_input_axis_raw, dtype=np.float64
+        )
+        if corrective_input_axis.shape != (len(rest_global_bones), 3):
+            raise ValueError(
+                "source_corrective_input_axes_v1 has an invalid shape"
+            )
+        if not np.all(np.isfinite(corrective_input_axis)):
+            raise ValueError(
+                "source_corrective_input_axes_v1 contains non-finite values"
+            )
+    use_corrective_rigid_blend = bool(
+        (asset.metadata or {}).get("source_corrective_rigid_blend_v2", False)
+    )
+    knee_hinge_splines = dict(
+        (asset.metadata or {}).get("source_knee_hinge_splines_v7", {})
+    )
+    patella_splines = dict(
+        (asset.metadata or {}).get("source_patella_splines_v7", {})
     )
     input_pose = pose_to_smplx55_axis_angle(pose_axis_angle).astype(np.float64)
     target_pose_global = joint_global_transforms(
@@ -732,6 +842,69 @@ def source_bone_skinning_transforms(
         if mode == "bind_follow" and parent >= 0:
             posed_global[bi] = posed_global[parent] @ rest_local_bones[bi]
             continue
+        patella = patella_splines.get(str(bi))
+        if patella is not None:
+            reference_bone = int(patella.get("reference_bone", -1))
+            joint = int(patella.get("smplx_joint", -1))
+            if (
+                reference_bone < 0
+                or reference_bone >= bi
+                or joint < 0
+                or joint >= len(input_pose)
+            ):
+                raise ValueError(f"V7 patella spline {bi} has invalid drivers")
+            axis = np.asarray(
+                patella.get("axis_reference_local", []), dtype=np.float64
+            )
+            pivot = np.asarray(
+                patella.get("pivot_reference_local_m", []), dtype=np.float64
+            )
+            if (
+                axis.shape != (3,)
+                or pivot.shape != (3,)
+                or not np.all(np.isfinite(axis))
+                or not np.all(np.isfinite(pivot))
+            ):
+                raise ValueError(f"V7 patella spline {bi} has invalid frame")
+            axis /= max(float(np.linalg.norm(axis)), 1.0e-12)
+            knots = np.radians(
+                np.asarray(patella.get("knots_deg", []), dtype=np.float64)
+            )
+            response = np.radians(
+                np.asarray(patella.get("response_deg", []), dtype=np.float64)
+            )
+            translations = np.asarray(
+                patella.get("translation_reference_local_m", []),
+                dtype=np.float64,
+            )
+            if (
+                knots.ndim != 1
+                or response.shape != knots.shape
+                or translations.shape != (len(knots), 3)
+                or len(knots) < 2
+                or np.any(np.diff(knots) <= 0.0)
+            ):
+                raise ValueError(f"V7 patella spline {bi} has invalid knots")
+            flexion = float(np.linalg.norm(input_pose[joint]))
+            angle = float(np.interp(flexion, knots, response))
+            translation = np.asarray(
+                [
+                    np.interp(flexion, knots, translations[:, axis_index])
+                    for axis_index in range(3)
+                ]
+            )
+            rotation = axis_angle_to_matrix(axis * angle)[0]
+            delta = np.eye(4, dtype=np.float64)
+            delta[:3, :3] = rotation
+            delta[:3, 3] = pivot - rotation @ pivot + translation
+            relative_bind = (
+                np.linalg.inv(rest_global_bones[reference_bone])
+                @ rest_global_bones[bi]
+            )
+            posed_global[bi] = (
+                posed_global[reference_bone] @ delta @ relative_bind
+            )
+            continue
         corrective_source = int(corrective_driver[bi])
         if corrective_source >= 0:
             if parent < 0 or corrective_source >= len(rest_global_bones):
@@ -739,9 +912,67 @@ def source_bone_skinning_transforms(
             joint = int(asset.source_bone_smplx_a[corrective_source])
             if joint < 0 or joint >= len(input_pose):
                 raise ValueError(f"source corrective {bi} has an invalid SMPL-X driver")
+            if use_corrective_rigid_blend:
+                upper = int(source_parents[corrective_source])
+                if upper < 0:
+                    raise ValueError(
+                        f"source corrective {bi} has no proximal rigid driver"
+                    )
+                upper_delta = (
+                    posed_global[upper] @ np.linalg.inv(rest_global_bones[upper])
+                )
+                lower_delta = (
+                    posed_global[parent] @ np.linalg.inv(rest_global_bones[parent])
+                )
+                lower_fraction = float(
+                    np.clip(1.0 - float(corrective_gain[bi]), 0.0, 1.0)
+                )
+                blended_delta = _interpolate_rigid(
+                    upper_delta, lower_delta, lower_fraction
+                )
+                corrective_origin = rest_global_bones[bi, :3, 3]
+                distal_origin = (
+                    lower_delta[:3, :3] @ corrective_origin
+                    + lower_delta[:3, 3]
+                )
+                blended_delta[:3, 3] = (
+                    distal_origin
+                    - blended_delta[:3, :3] @ corrective_origin
+                )
+                posed_global[bi] = blended_delta @ rest_global_bones[bi]
+                continue
             axis = corrective_axis[bi].copy()
             axis /= max(float(np.linalg.norm(axis)), 1.0e-12)
-            flexion = float(np.linalg.norm(input_pose[joint]))
+            if corrective_input_axis is None:
+                flexion = float(np.linalg.norm(input_pose[joint]))
+            else:
+                input_axis = corrective_input_axis[bi].copy()
+                input_axis_norm = float(np.linalg.norm(input_axis))
+                if input_axis_norm < 1.0e-8:
+                    raise ValueError(
+                        f"source corrective {bi} has a degenerate input axis"
+                    )
+                input_axis /= input_axis_norm
+                driver_parent = int(source_parents[corrective_source])
+                if driver_parent >= 0:
+                    driver_local = (
+                        np.linalg.inv(posed_global[driver_parent])
+                        @ posed_global[corrective_source]
+                    )
+                else:
+                    driver_local = posed_global[corrective_source]
+                driver_basis = (
+                    np.linalg.inv(
+                        rest_local_bones[corrective_source, :3, :3]
+                    )
+                    @ driver_local[:3, :3]
+                )
+                from scipy.spatial.transform import Rotation
+
+                driver_rotvec = Rotation.from_matrix(
+                    driver_basis
+                ).as_rotvec()
+                flexion = float(driver_rotvec @ input_axis)
             correction = np.eye(4, dtype=np.float64)
             correction[:3, :3] = axis_angle_to_matrix(
                 axis * (float(corrective_gain[bi]) * flexion)
@@ -750,10 +981,67 @@ def source_bone_skinning_transforms(
                 posed_global[parent] @ rest_local_bones[bi] @ correction
             )
             continue
+        hinge = knee_hinge_splines.get(str(bi))
+        if hinge is not None:
+            if parent < 0:
+                raise ValueError(f"V7 knee hinge {bi} has no source parent")
+            joint = int(hinge.get("smplx_joint", -1))
+            if joint < 0 or joint >= len(input_pose):
+                raise ValueError(f"V7 knee hinge {bi} has an invalid SMPL-X joint")
+            axis = np.asarray(hinge.get("axis_local", []), dtype=np.float64)
+            if axis.shape != (3,) or not np.all(np.isfinite(axis)):
+                raise ValueError(f"V7 knee hinge {bi} has an invalid local axis")
+            axis /= max(float(np.linalg.norm(axis)), 1.0e-12)
+            knots = np.radians(
+                np.asarray(hinge.get("knots_deg", []), dtype=np.float64)
+            )
+            response = np.radians(
+                np.asarray(hinge.get("response_deg", []), dtype=np.float64)
+            )
+            if (
+                knots.ndim != 1
+                or response.shape != knots.shape
+                or len(knots) < 2
+                or np.any(np.diff(knots) <= 0.0)
+            ):
+                raise ValueError(f"V7 knee hinge {bi} has an invalid spline")
+            flexion = float(np.linalg.norm(input_pose[joint]))
+            angle = float(np.interp(flexion, knots, response))
+            translation_knots = np.asarray(
+                hinge.get("translation_local_m", []), dtype=np.float64
+            )
+            if translation_knots.shape != (len(knots), 3):
+                raise ValueError(
+                    f"V7 knee hinge {bi} has invalid translation coefficients"
+                )
+            translation = np.asarray(
+                [
+                    np.interp(flexion, knots, translation_knots[:, axis_index])
+                    for axis_index in range(3)
+                ],
+                dtype=np.float64,
+            )
+            correction = np.eye(4, dtype=np.float64)
+            correction[:3, :3] = axis_angle_to_matrix(axis * angle)[0]
+            correction[:3, 3] = translation
+            posed_global[bi] = (
+                posed_global[parent] @ rest_local_bones[bi] @ correction
+            )
+            continue
         if bi in direct_driver_bones:
             posed_global[bi] = driver_frames[bi] @ coupling[bi]
             continue
-        if use_full_source_local_fk and parent >= 0:
+        if (
+            parent >= 0
+            and (
+                use_full_source_local_fk
+                or (
+                    use_connected_source_local_fk
+                    and bool(source_use_connect[bi])
+                )
+                or bi in selected_source_local_fk
+            )
+        ):
             # Driver coupling supplies world rotation; Blender's fitted local
             # bind remains authoritative for pivots and local translations.
             desired = driver_frames[bi] @ coupling[bi]
@@ -808,6 +1096,7 @@ def skin_vertices(
     pose_axis_angle: Any,
     *,
     transl: Any | None = None,
+    runtime_coefficients: dict[str, np.ndarray] | None = None,
 ) -> np.ndarray:
     asset.validate()
     vertices = np.asarray(asset.vertices_rest, dtype=np.float32).reshape(-1, 3)
@@ -879,6 +1168,15 @@ def skin_vertices(
 
         posed = apply_station_pose_follow(asset, transforms, posed)
         posed = apply_regional_organ_follow(asset, posed)
+    if runtime_coefficients:
+        from .tube_frames_v7 import apply_tube_material_frames_v7
+
+        posed = apply_tube_material_frames_v7(
+            asset,
+            transforms,
+            posed,
+            runtime_coefficients,
+        )
     if transl is not None:
         posed += np.asarray(transl, dtype=np.float32).reshape(1, 3)
     return posed

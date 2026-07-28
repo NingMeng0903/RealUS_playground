@@ -41,6 +41,9 @@ python apps/joint_admittance_8dof/d_sin_tool_y.py \
   --log-csv /tmp/scan.csv
 ```
 
+The single stable TCP-Z force loop and its tuning telemetry are documented in
+[MD/force_tracking.md](MD/force_tracking.md).
+
 ## Project layout
 
 ```

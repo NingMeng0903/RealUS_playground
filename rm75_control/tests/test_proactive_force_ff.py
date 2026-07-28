@@ -11,6 +11,9 @@ from rm75_control.control.admittance_common.controller import (
     AdmittanceConfig,
     AdmittanceController,
 )
+from rm75_control.control.admittance_common.scaling import (
+    scale_admittance_for_desired_z,
+)
 from rm75_control.control.admittance_common.proactive_force_ff import (
     ProactiveFfConfig,
     ProactiveForceIntegrator,
@@ -32,20 +35,46 @@ def test_integrator_bidirectional_press_and_retract():
     assert ff.v_r < -0.01
 
 
-def test_press_side_fades_with_instability_index():
+def test_instability_gates_press_but_keeps_retract_escape_open():
     ff_lo = ProactiveForceIntegrator(ProactiveFfConfig(gain=0.10, leak_s=10.0, press_is_gate=0.5))
     ff_hi = ProactiveForceIntegrator(ProactiveFfConfig(gain=0.10, leak_s=10.0, press_is_gate=0.5))
-    for _ in range(300):
+    ff_retract_lo = ProactiveForceIntegrator(ProactiveFfConfig(gain=0.10, leak_s=10.0, press_is_gate=0.5))
+    ff_retract_hi = ProactiveForceIntegrator(ProactiveFfConfig(gain=0.10, leak_s=10.0, press_is_gate=0.5))
+    for _ in range(50):
         ff_lo.update(2.0, in_contact=True, dt_eff=DT, instability_index=0.0, v_force_z=0.0, v_z_cap=0.10)
-        ff_hi.update(2.0, in_contact=True, dt_eff=DT, instability_index=0.5, v_force_z=0.0, v_z_cap=0.10)
+        ff_hi.update(2.0, in_contact=True, dt_eff=DT, instability_index=0.25, v_force_z=0.0, v_z_cap=0.10)
+        ff_retract_lo.update(-2.0, in_contact=True, dt_eff=DT, instability_index=0.0, v_force_z=0.0, v_z_cap=0.10)
+        ff_retract_hi.update(-2.0, in_contact=True, dt_eff=DT, instability_index=2.0, v_force_z=0.0, v_z_cap=0.10)
     assert ff_hi.v_r < ff_lo.v_r - 1e-6
+    assert ff_retract_hi.v_r == pytest.approx(ff_retract_lo.v_r)
+    assert ff_retract_hi.last_instability_scale == pytest.approx(1.0)
 
 
-def test_retract_unaffected_by_press_is_gate():
-    ff = ProactiveForceIntegrator(ProactiveFfConfig(gain=0.10, leak_s=10.0, press_is_gate=0.1))
-    for _ in range(300):
-        ff.update(-2.0, in_contact=True, dt_eff=DT, instability_index=1.0, v_force_z=0.0, v_z_cap=0.10)
-    assert ff.v_r < -0.02
+@pytest.mark.parametrize(
+    ("instability", "expected_scale"),
+    [(0.10, 1.0), (0.20, 1.0), (0.40, 0.5), (0.60, 0.0), (1.0, 0.0)],
+)
+def test_press_gate_has_noise_floor_and_unchanged_hard_stop(
+    instability: float,
+    expected_scale: float,
+):
+    ff = ProactiveForceIntegrator(
+        ProactiveFfConfig(
+            gain=0.10,
+            leak_s=10.0,
+            press_is_gate_start=0.20,
+            press_is_gate=0.60,
+        )
+    )
+    ff.update(
+        1.0,
+        in_contact=True,
+        dt_eff=DT,
+        instability_index=instability,
+        v_force_z=0.0,
+        v_z_cap=0.10,
+    )
+    assert ff.last_instability_scale == pytest.approx(expected_scale)
 
 
 def test_rising_edge_clears_press_v_r():
@@ -60,6 +89,239 @@ def test_rising_edge_clears_press_v_r():
     ctrl._proactive_ff.v_r = 0.04
     ctrl._update_proactive_v_r(0.0, True, DT, rising_edge=True)
     assert ctrl.v_r_z == pytest.approx(0.0)
+
+
+def test_stable_controller_normalizes_setpoint_and_is_small_signal_symmetric():
+    cfg = AdmittanceConfig(
+        proactive_ff=ProactiveFfConfig(
+            enabled=True,
+            gain=0.10,
+            leak_s=1e6,
+            press_is_gate=0.5,
+        ),
+    )
+
+    def integrate(error: float, desired: float, instability: float) -> float:
+        ctrl = AdmittanceController(DT, cfg)
+        ctrl._in_contact_latched = True
+        ctrl.instability_index = instability
+        for _ in range(100):
+            ctrl._update_proactive_v_r(
+                error,
+                True,
+                DT,
+                rising_edge=False,
+                desired_force_n=desired,
+            )
+        return ctrl.v_r_z
+
+    # Half-scale errors exercise the unsaturated normalized law.  With no
+    # detected instability both signs have exactly the same small-error gain.
+    press_1n = integrate(0.15, 1.0, 0.0)
+    press_5n = integrate(0.375, 5.0, 0.0)
+    retract_1n = integrate(-0.15, 1.0, 0.0)
+    retract_5n = integrate(-0.375, 5.0, 0.0)
+    assert press_5n == pytest.approx(press_1n, rel=1e-9)
+    assert retract_5n == pytest.approx(retract_1n, rel=1e-9)
+    assert retract_1n == pytest.approx(-press_1n, rel=1e-9)
+
+
+def test_same_contact_reversal_discards_old_reference_in_both_directions():
+    cfg = ProactiveFfConfig(
+        gain=0.10,
+        retract_gain=0.10,
+        leak_s=0.3,
+        press_is_gate=0.5,
+        reset_on_reversal=True,
+    )
+    ff = ProactiveForceIntegrator(cfg)
+    for _ in range(100):
+        ff.update(
+            1.0,
+            in_contact=True,
+            dt_eff=DT,
+            instability_index=0.0,
+            v_force_z=0.0,
+            v_z_cap=0.10,
+        )
+    assert ff.v_r > 0.0
+    ff.update(
+        -1.0,
+        in_contact=True,
+        dt_eff=DT,
+        instability_index=2.0,
+        v_force_z=0.0,
+        v_z_cap=0.10,
+    )
+    assert ff.last_reversal_reset is True
+    assert ff.v_r < 0.0
+    assert ff.last_reference_accel_m_s2 < 0.0
+
+    for _ in range(100):
+        ff.update(
+            -1.0,
+            in_contact=True,
+            dt_eff=DT,
+            instability_index=0.0,
+            v_force_z=0.0,
+            v_z_cap=0.10,
+        )
+    assert ff.v_r < 0.0
+    ff.update(
+        1.0,
+        in_contact=True,
+        dt_eff=DT,
+        instability_index=0.0,
+        v_force_z=0.0,
+        v_z_cap=0.10,
+    )
+    assert ff.last_reversal_reset is True
+    assert ff.v_r > 0.0
+
+
+def test_zero_effective_error_leaks_without_false_reversal_reset():
+    ff = ProactiveForceIntegrator(
+        ProactiveFfConfig(leak_s=0.3, reset_on_reversal=True)
+    )
+    ff.v_r = 0.02
+    ff.update(
+        0.0,
+        in_contact=True,
+        dt_eff=DT,
+        instability_index=1.0,
+        v_force_z=0.0,
+        v_z_cap=0.10,
+    )
+    assert ff.last_reversal_reset is False
+    assert 0.0 < ff.v_r < 0.02
+
+
+def test_reference_drive_and_antiwindup_are_bounded_on_both_signs():
+    ff = ProactiveForceIntegrator(
+        ProactiveFfConfig(
+            gain=0.10,
+            retract_gain=0.10,
+            leak_s=1e6,
+            press_drive_max=1.0,
+            retract_drive_max=1.0,
+            v_r_max_m_s=0.06,
+        )
+    )
+    ff.update(
+        -100.0,
+        in_contact=True,
+        dt_eff=DT,
+        instability_index=100.0,
+        v_force_z=0.0,
+        v_z_cap=0.10,
+        desired_force_n=1.0,
+    )
+    assert ff.last_drive == pytest.approx(-1.0)
+    assert ff.last_reference_accel_m_s2 == pytest.approx(-0.10)
+
+    # Outward integration freezes at the force-velocity cap.
+    ff.update(
+        -100.0,
+        in_contact=True,
+        dt_eff=DT,
+        instability_index=100.0,
+        v_force_z=-0.10,
+        v_z_cap=0.10,
+        desired_force_n=1.0,
+    )
+    assert ff.last_reference_accel_m_s2 == pytest.approx(0.0)
+
+
+def test_stable_controller_rising_edge_clears_either_old_direction():
+    ctrl = AdmittanceController(DT, AdmittanceConfig())
+    for old_reference in (-0.04, 0.04):
+        ctrl._proactive_ff.v_r = old_reference
+        ctrl._update_proactive_v_r(
+            0.0,
+            True,
+            DT,
+            rising_edge=True,
+            desired_force_n=2.0,
+        )
+        assert ctrl.v_r_z == pytest.approx(0.0)
+
+
+def test_stable_controller_keeps_2965_parameters_fixed_across_setpoints():
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
+    assert "controller_mode" not in raw["hybrid_motion"]
+    cfg1 = scale_admittance_for_desired_z(raw, 1.0)
+    cfg5 = scale_admittance_for_desired_z(raw, 5.0)
+    assert cfg1.admittance_mass_z == pytest.approx(cfg5.admittance_mass_z)
+    assert cfg1.var_damping_f_max_n == pytest.approx(
+        cfg5.var_damping_f_max_n
+    )
+    assert cfg1.adaptive_ke.bd_max == pytest.approx(cfg5.adaptive_ke.bd_max)
+    ctrl = AdmittanceController(DT, cfg1)
+    assert ctrl.controller_mode == "legacy_symmetric"
+
+
+def test_stable_controller_tracks_moving_surface_at_1n_and_5n_without_bias():
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
+    ke_n_m = 800.0
+    results = {}
+    for desired in (1.0, 5.0):
+        for surface_velocity in (-0.01, 0.01):
+            cfg = scale_admittance_for_desired_z(raw, desired)
+            # Isolate the corrected force-reference dynamics in this linear
+            # contact test. Ke/Dimeas retain their 2965fea implementations and
+            # have their own regression tests.
+            cfg.adaptive_ke.enabled = False
+            cfg.var_damping_enabled = False
+            ctrl = AdmittanceController(DT, cfg)
+            tcp_z = desired / ke_n_m
+            surface_z = 0.0
+            samples = []
+            velocity_samples = []
+            for tick in range(1600):
+                force_z = max(0.0, ke_n_m * (tcp_z - surface_z))
+                force = np.zeros(6)
+                force[2] = force_z
+                target = np.zeros(6)
+                target[2] = desired
+                pose = np.zeros(6)
+                pose[2] = tcp_z
+                velocity = ctrl.compute_velocity_command(
+                    pose,
+                    pose,
+                    np.zeros(6),
+                    force,
+                    target,
+                    f_ext_raw=force,
+                )[2]
+                tcp_z += velocity * DT
+                surface_z += surface_velocity * DT
+                if tick >= 600:
+                    samples.append(force_z)
+                    velocity_samples.append(velocity)
+            results[(desired, surface_velocity)] = (
+                float(np.mean(np.abs(np.asarray(samples) - desired))),
+                float(np.mean(velocity_samples)),
+            )
+
+    assert results[(1.0, -0.01)][0] <= 0.20
+    assert results[(1.0, 0.01)][0] <= 0.20
+    assert results[(5.0, -0.01)][0] <= 0.50
+    assert results[(5.0, 0.01)][0] <= 0.50
+    for desired in (1.0, 5.0):
+        negative_error = results[(desired, -0.01)][0]
+        positive_error = results[(desired, 0.01)][0]
+        assert max(negative_error, positive_error) <= 1.25 * min(
+            negative_error,
+            positive_error,
+        )
+        assert results[(desired, -0.01)][1] == pytest.approx(
+            -0.01,
+            abs=1e-5,
+        )
+        assert results[(desired, 0.01)][1] == pytest.approx(
+            0.01,
+            abs=1e-5,
+        )
 
 
 def _controller(**over) -> AdmittanceController:
@@ -100,10 +362,66 @@ def test_proactive_boosts_velocity_under_sustained_error():
     assert ctrl.v_force_z > 0.08
 
 
+def test_high_instability_cannot_delay_overforce_escape_after_reversal():
+    ctrl = _controller(var_damping_enabled=True)
+    ctrl._in_contact_latched = True
+
+    # Build the exact stale state seen in the hardware logs: positive TCP-Z
+    # velocity and a positive active reference immediately before a fast
+    # over-force push.
+    for _ in range(200):
+        ctrl._m_z_now = 1.0
+        ctrl.instability_index = 0.0
+        ctrl._admittance_z(
+            1.0,
+            True,
+            dt_eff=DT,
+            rising_edge=False,
+            desired_force_n=2.0,
+        )
+    assert ctrl.v_force_z > 0.0
+    assert ctrl.v_r_z > 0.0
+
+    first_tick_reset = False
+    ticks_to_retract = None
+    for tick in range(1, 41):
+        # Is=0.7 is above the configured press gate.  Dimeas mass and damping
+        # remain active, but they may not close the over-force escape branch.
+        ctrl._m_z_now = 3.8
+        ctrl.instability_index = 0.7
+        ctrl._admittance_z(
+            -2.0,
+            True,
+            dt_eff=DT,
+            rising_edge=False,
+            desired_force_n=2.0,
+        )
+        if tick == 1:
+            first_tick_reset = ctrl.force_reference_reversal_reset
+            assert ctrl.v_r_z < 0.0
+            assert ctrl.force_reference_gate_scale == pytest.approx(1.0)
+        if ctrl.v_force_z < 0.0:
+            ticks_to_retract = tick
+            break
+
+    assert first_tick_reset is True
+    assert ticks_to_retract is not None
+    assert ticks_to_retract * DT <= 0.10
+
+
 def test_yaml_proactive_bidirectional_and_headroom():
     raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     hm = raw["hybrid_motion"]
     assert hm["proactive_feedforward"] is True
     assert hm["proactive_retract_only"] is False
+    assert hm["proactive_gain"] == pytest.approx(
+        hm["proactive_retract_gain"]
+    )
+    assert 0.0 <= hm["proactive_press_is_gate_start"] < hm[
+        "proactive_press_is_gate"
+    ]
+    assert hm["proactive_press_drive_max"] == pytest.approx(1.0)
+    assert hm["proactive_retract_drive_max"] == pytest.approx(1.0)
+    assert hm["proactive_reset_on_reversal"] is True
     assert hm["v_r_max_m_s"] < hm["max_vz_tool_m_s"]
     assert "li2022" not in hm

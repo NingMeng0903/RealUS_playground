@@ -1,0 +1,552 @@
+"""Offline V7 reconstruction from immutable V71 joint material domains.
+
+The functions here are used while baking beta response samples, never in the
+pose hot path.  Every probe is a fixed V71 vertex id.
+"""
+
+from __future__ import annotations
+
+from dataclasses import replace
+from typing import Any
+
+import numpy as np
+
+from .anatomy_lbs import with_source_driver_coupling
+from .joint_contact_v7 import (
+    FrozenJointMaterialDomainsV7,
+    fit_sphere_fixed_radius_v7,
+    fit_sphere_v7,
+)
+from .rigged_asset import AnatomyRiggedAsset
+
+
+_SIDES = ("left", "right")
+_SIDE_SUFFIX = {"left": "L", "right": "R"}
+_SMPLX_HIP = {"left": 1, "right": 2}
+_SMPLX_KNEE = {"left": 4, "right": 5}
+_PATELLA_GAIN = {"left": 0.2275, "right": 0.2107}
+
+
+def _smoothstep(value: np.ndarray) -> np.ndarray:
+    x = np.clip(np.asarray(value, dtype=np.float64), 0.0, 1.0)
+    return x * x * (3.0 - 2.0 * x)
+
+
+def _bone_index(asset: AnatomyRiggedAsset, name: str) -> int:
+    try:
+        return list(asset.source_bone_names or []).index(name)
+    except ValueError as exc:
+        raise ValueError(f"V7 reconstruction requires source bone {name!r}") from exc
+
+
+def _mesh_index(asset: AnatomyRiggedAsset, name: str) -> int:
+    try:
+        return list(asset.source_mesh_names).index(name)
+    except ValueError as exc:
+        raise ValueError(f"V7 reconstruction requires source mesh {name!r}") from exc
+
+
+def _mesh_vertices(asset: AnatomyRiggedAsset, name: str) -> np.ndarray:
+    if asset.source_vertex_ranges is None:
+        raise ValueError("V7 reconstruction requires source_vertex_ranges")
+    start, stop = np.asarray(
+        asset.source_vertex_ranges[_mesh_index(asset, name)], dtype=np.int64
+    )
+    return np.arange(int(start), int(stop), dtype=np.int64)
+
+
+def _nearest_distances(points: np.ndarray, target: np.ndarray) -> np.ndarray:
+    try:
+        from scipy.spatial import cKDTree
+
+        return np.asarray(cKDTree(target).query(points, k=1)[0], dtype=np.float64)
+    except Exception:
+        squared = np.sum(
+            (points[:, None, :] - target[None, :, :]) ** 2, axis=2
+        )
+        return np.sqrt(np.min(squared, axis=1))
+
+
+def _contact_band_translation(
+    *,
+    vertices: np.ndarray,
+    domains: FrozenJointMaterialDomainsV7,
+    side: str,
+    target_gap_m: float,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Find the minimum proximal-tibia translation for both condyles."""
+
+    def measurements(translation: np.ndarray) -> np.ndarray:
+        values: list[float] = []
+        for compartment in ("medial", "lateral"):
+            plateau = domains.require(f"{side}/tibial_plateau_{compartment}")
+            condyle = domains.require(f"{side}/femoral_condyle_{compartment}")
+            distance = _nearest_distances(
+                vertices[plateau] + translation[None, :],
+                vertices[condyle],
+            )
+            values.append(float(np.quantile(distance, 0.05)))
+        return np.asarray(values, dtype=np.float64)
+
+    try:
+        from scipy.optimize import least_squares
+
+        solved = least_squares(
+            lambda translation: np.concatenate(
+                (
+                    (measurements(translation) - float(target_gap_m)) / 0.001,
+                    np.asarray(translation, dtype=np.float64) / 0.02 * 0.04,
+                )
+            ),
+            np.zeros(3, dtype=np.float64),
+            bounds=(-0.02, 0.02),
+            max_nfev=256,
+            xtol=1.0e-11,
+            ftol=1.0e-11,
+            gtol=1.0e-11,
+        )
+        translation = np.asarray(solved.x, dtype=np.float64)
+    except Exception:
+        shifts = []
+        for compartment in ("medial", "lateral"):
+            plateau = domains.require(f"{side}/tibial_plateau_{compartment}")
+            condyle = domains.require(f"{side}/femoral_condyle_{compartment}")
+            shifts.append(
+                np.mean(vertices[condyle], axis=0)
+                - np.mean(vertices[plateau], axis=0)
+            )
+        translation = np.clip(
+            0.25 * np.mean(np.stack(shifts), axis=0), -0.02, 0.02
+        )
+    return translation, {
+        "translation_m": translation.tolist(),
+        "q05_before_m": measurements(np.zeros(3)).tolist(),
+        "q05_after_m": measurements(translation).tolist(),
+        "target_gap_m": float(target_gap_m),
+    }
+
+
+def _force_rigid_mesh_driver(
+    asset: AnatomyRiggedAsset,
+    *,
+    mesh_name: str,
+    driver_indices: np.ndarray,
+    driver_weights: np.ndarray,
+) -> None:
+    mesh_index = _mesh_index(asset, mesh_name)
+    if asset.source_mesh_controller_bones is None:
+        raise ValueError("V7 reconstruction requires explicit mesh controllers")
+    controller = int(asset.source_mesh_controller_bones[mesh_index])
+    indices = _mesh_vertices(asset, mesh_name)
+    driver_indices[indices] = controller
+    driver_weights[indices] = 0.0
+    driver_weights[indices, 0] = 1.0
+
+
+def reconstruct_articular_subject_v7(
+    asset: AnatomyRiggedAsset,
+    *,
+    domains: FrozenJointMaterialDomainsV7,
+    knee_target_gap_m: float = 0.0015,
+    patella_target_gap_m: float = 0.002,
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Correct hip/knee/patella rest geometry without scaling articular ends."""
+    asset.validate()
+    domains.validate_topology(asset.vertices_rest, asset.faces)
+    if (
+        asset.source_bone_names is None
+        or asset.target_bind_global is None
+        or asset.target_bind_local is None
+        or asset.runtime_inverse_bind is None
+        or asset.driver_indices is None
+        or asset.driver_weights is None
+    ):
+        raise ValueError("V7 reconstruction requires a schema-v6 source rig")
+
+    vertices = np.asarray(asset.vertices_rest, dtype=np.float64).copy()
+    bind_global = np.asarray(asset.target_bind_global, dtype=np.float64).copy()
+    bone_head = np.asarray(
+        asset.target_bone_head
+        if asset.target_bone_head is not None
+        else asset.source_bone_head,
+        dtype=np.float64,
+    ).copy()
+    bone_tail = np.asarray(
+        asset.target_bone_tail
+        if asset.target_bone_tail is not None
+        else asset.source_bone_tail,
+        dtype=np.float64,
+    ).copy()
+    driver_rest = np.asarray(
+        asset.source_driver_rest_joints
+        if asset.source_driver_rest_joints is not None
+        else asset.rest_joints,
+        dtype=np.float64,
+    ).copy()
+    driver_indices = np.asarray(asset.driver_indices, dtype=np.int32).copy()
+    driver_weights = np.asarray(asset.driver_weights, dtype=np.float64).copy()
+    corrective_gain = np.asarray(
+        asset.source_bone_corrective_gain
+        if asset.source_bone_corrective_gain is not None
+        else np.zeros(len(asset.source_bone_names), dtype=np.float32),
+        dtype=np.float64,
+    ).copy()
+    driver_types = list(asset.source_bone_driver_types or [])
+    if len(driver_types) != len(asset.source_bone_names):
+        raise ValueError("V7 reconstruction requires explicit source driver modes")
+
+    side_reports: dict[str, Any] = {}
+    local_fk: set[int] = set()
+    knee_hinges: dict[str, Any] = {}
+    patella_splines: dict[str, Any] = {}
+    for side in _SIDES:
+        suffix = _SIDE_SUFFIX[side]
+        femur_bone = _bone_index(asset, f"Femur_Rot_{suffix}")
+        knee_bone = _bone_index(asset, f"Knee_Rotate_{suffix}")
+        tibia_bone = _bone_index(asset, f"Tibia_Bone_{suffix}")
+        tibia_twist = _bone_index(asset, f"Tibia_Twist_{suffix}")
+        patella_bone = _bone_index(asset, f"Patella_Rotate_{suffix}")
+
+        head_indices = domains.require(f"{side}/femoral_head")
+        socket_indices = domains.require(f"{side}/acetabulum")
+        head_fit = fit_sphere_v7(vertices[head_indices])
+        if not head_fit["available"]:
+            raise ValueError(f"{side} femoral-head sphere fit failed")
+        socket_fit = fit_sphere_fixed_radius_v7(
+            vertices[socket_indices], radius_m=float(head_fit["radius_m"])
+        )
+        if not socket_fit["available"]:
+            raise ValueError(f"{side} acetabulum sphere fit failed")
+        head_center = np.asarray(head_fit["center"], dtype=np.float64)
+        socket_center = np.asarray(socket_fit["center"], dtype=np.float64)
+        hip_delta = socket_center - head_center
+
+        femur = domains.require(f"{side}/femur")
+        condyles = np.concatenate(
+            (
+                domains.require(f"{side}/femoral_condyle_medial"),
+                domains.require(f"{side}/femoral_condyle_lateral"),
+            )
+        )
+        distal_center = np.mean(vertices[condyles], axis=0)
+        shaft = distal_center - head_center
+        shaft_length = float(np.linalg.norm(shaft))
+        if shaft_length <= 0.1:
+            raise ValueError(f"{side} femur shaft is degenerate")
+        shaft_axis = shaft / shaft_length
+        station = ((vertices[femur] - head_center) @ shaft_axis) / shaft_length
+        proximal_weight = 1.0 - _smoothstep((station - 0.18) / 0.62)
+        vertices[femur] += proximal_weight[:, None] * hip_delta[None, :]
+
+        bind_global[femur_bone, :3, 3] = socket_center
+        bone_head[femur_bone] = socket_center
+        driver_rest[_SMPLX_HIP[side]] = socket_center
+
+        tibia = domains.require(f"{side}/tibia")
+        plateau = np.concatenate(
+            (
+                domains.require(f"{side}/tibial_plateau_medial"),
+                domains.require(f"{side}/tibial_plateau_lateral"),
+            )
+        )
+        knee_translation, knee_report = _contact_band_translation(
+            vertices=vertices,
+            domains=domains,
+            side=side,
+            target_gap_m=float(knee_target_gap_m),
+        )
+        plateau_center = np.mean(vertices[plateau], axis=0)
+        tibia_points = vertices[tibia]
+        distal = tibia_points[
+            int(np.argmax(np.linalg.norm(tibia_points - plateau_center, axis=1)))
+        ]
+        tibia_axis = distal - plateau_center
+        tibia_length = float(np.linalg.norm(tibia_axis))
+        if tibia_length <= 0.1:
+            raise ValueError(f"{side} tibia shaft is degenerate")
+        tibia_axis /= tibia_length
+        tibia_station = (
+            (vertices[tibia] - plateau_center) @ tibia_axis
+        ) / tibia_length
+        plateau_weight = 1.0 - _smoothstep((tibia_station - 0.12) / 0.58)
+        vertices[tibia] += plateau_weight[:, None] * knee_translation[None, :]
+        knee_pivot = np.mean(
+            np.concatenate(
+                (
+                    vertices[condyles],
+                    vertices[plateau],
+                ),
+                axis=0,
+            ),
+            axis=0,
+        )
+        bind_global[knee_bone, :3, 3] = knee_pivot
+        bone_tail[femur_bone] = knee_pivot
+        bone_head[knee_bone] = knee_pivot
+        medial_center = np.mean(
+            vertices[domains.require(f"{side}/femoral_condyle_medial")],
+            axis=0,
+        )
+        lateral_center = np.mean(
+            vertices[domains.require(f"{side}/femoral_condyle_lateral")],
+            axis=0,
+        )
+        hinge_world = lateral_center - medial_center
+        hinge_world /= max(float(np.linalg.norm(hinge_world)), 1.0e-12)
+        hinge_local = bind_global[knee_bone, :3, :3].T @ hinge_world
+        hinge_local /= max(float(np.linalg.norm(hinge_local)), 1.0e-12)
+        # Five-degree samples are still tiny (<1 KiB for both knees) and avoid
+        # interpolating across a narrow condyle contact transition.
+        knot_degrees = np.linspace(0.0, 120.0, 25, dtype=np.float64)
+        translation_local = [np.zeros(3, dtype=np.float64)]
+        for angle_deg in knot_degrees[1:]:
+            angle = float(np.radians(angle_deg))
+            cross = np.asarray(
+                (
+                    (0.0, -hinge_world[2], hinge_world[1]),
+                    (hinge_world[2], 0.0, -hinge_world[0]),
+                    (-hinge_world[1], hinge_world[0], 0.0),
+                ),
+                dtype=np.float64,
+            )
+            rotation = (
+                np.eye(3)
+                + np.sin(angle) * cross
+                + (1.0 - np.cos(angle)) * (cross @ cross)
+            )
+            swept = vertices.copy()
+            swept[plateau] = (
+                (rotation @ (vertices[plateau] - knee_pivot).T).T
+                + knee_pivot
+            )
+            correction_world, _sweep_report = _contact_band_translation(
+                vertices=swept,
+                domains=domains,
+                side=side,
+                target_gap_m=float(knee_target_gap_m),
+            )
+            translation_local.append(
+                bind_global[knee_bone, :3, :3].T @ correction_world
+            )
+        knee_hinges[str(knee_bone)] = {
+            "side": side,
+            "smplx_joint": int(_SMPLX_KNEE[side]),
+            "axis_local": hinge_local.tolist(),
+            "input_mode": "axis_angle_norm",
+            "knots_deg": knot_degrees.tolist(),
+            "response_deg": knot_degrees.tolist(),
+            "translation_local_m": np.asarray(translation_local).tolist(),
+        }
+
+        patella = domains.require(f"{side}/patella")
+        patella_articular = domains.require(f"{side}/patella_articular")
+        trochlea = domains.require(f"{side}/trochlea")
+        distance_matrix = np.linalg.norm(
+            vertices[patella_articular, None, :]
+            - vertices[trochlea][None, :, :],
+            axis=2,
+        )
+        flat_index = int(np.argmin(distance_matrix))
+        patella_index, trochlea_index = np.unravel_index(
+            flat_index, distance_matrix.shape
+        )
+        direction = (
+            vertices[trochlea[trochlea_index]]
+            - vertices[patella_articular[patella_index]]
+        )
+        distance = float(np.linalg.norm(direction))
+        patella_translation = (
+            direction * max(0.0, distance - float(patella_target_gap_m))
+            / max(distance, 1.0e-12)
+        )
+        vertices[patella] += patella_translation
+        bind_global[patella_bone, :3, 3] += patella_translation
+        bone_head[patella_bone] += patella_translation
+        bone_tail[patella_bone] += patella_translation
+        corrective_gain[patella_bone] = _PATELLA_GAIN[side]
+        patella_translation_local = [np.zeros(3, dtype=np.float64)]
+        for angle_deg in knot_degrees[1:]:
+            angle = float(np.radians(angle_deg) * _PATELLA_GAIN[side])
+            cross = np.asarray(
+                (
+                    (0.0, -hinge_world[2], hinge_world[1]),
+                    (hinge_world[2], 0.0, -hinge_world[0]),
+                    (-hinge_world[1], hinge_world[0], 0.0),
+                ),
+                dtype=np.float64,
+            )
+            rotation = (
+                np.eye(3)
+                + np.sin(angle) * cross
+                + (1.0 - np.cos(angle)) * (cross @ cross)
+            )
+            swept_articular = (
+                (
+                    rotation
+                    @ (vertices[patella_articular] - knee_pivot).T
+                ).T
+                + knee_pivot
+            )
+            distance_matrix = np.linalg.norm(
+                swept_articular[:, None, :]
+                - vertices[trochlea][None, :, :],
+                axis=2,
+            )
+            flat_index = int(np.argmin(distance_matrix))
+            articular_index, trochlea_index = np.unravel_index(
+                flat_index, distance_matrix.shape
+            )
+            direction = (
+                vertices[trochlea[trochlea_index]]
+                - swept_articular[articular_index]
+            )
+            distance = float(np.linalg.norm(direction))
+            correction_world = (
+                direction
+                * (distance - float(patella_target_gap_m))
+                / max(distance, 1.0e-12)
+            )
+            patella_translation_local.append(
+                bind_global[femur_bone, :3, :3].T @ correction_world
+            )
+        pivot_local_h = np.concatenate((knee_pivot, np.ones(1)))
+        pivot_reference = (
+            np.linalg.inv(bind_global[femur_bone]) @ pivot_local_h
+        )[:3]
+        patella_splines[str(patella_bone)] = {
+            "side": side,
+            "reference_bone": int(femur_bone),
+            "smplx_joint": int(_SMPLX_KNEE[side]),
+            "axis_reference_local": (
+                bind_global[femur_bone, :3, :3].T @ hinge_world
+            ).tolist(),
+            "pivot_reference_local_m": pivot_reference.tolist(),
+            "knots_deg": knot_degrees.tolist(),
+            "response_deg": (
+                knot_degrees * float(_PATELLA_GAIN[side])
+            ).tolist(),
+            "translation_reference_local_m": np.asarray(
+                patella_translation_local
+            ).tolist(),
+        }
+
+        # Femur follows the pelvis/socket through parent-local FK.
+        # Knee_Rotate receives the SMPL-X knee action once.  Tibia_Bone and
+        # Tibia_Twist then retain their authored child-local offsets; mapping
+        # both independently to the same SMPL-X knee is the double-rotation
+        # bug that made the femur spear the patella in deep flexion.
+        local_fk.update((femur_bone, knee_bone))
+        driver_types[tibia_bone] = "bind_follow"
+        driver_types[tibia_twist] = "bind_follow"
+        driver_rest[_SMPLX_KNEE[side]] = knee_pivot
+        for mesh_name in (
+            f"Femur_{suffix}",
+            f"Tibia_{suffix}",
+            f"Patella_{suffix}",
+        ):
+            _force_rigid_mesh_driver(
+                asset,
+                mesh_name=mesh_name,
+                driver_indices=driver_indices,
+                driver_weights=driver_weights,
+            )
+        final_head = fit_sphere_v7(vertices[head_indices])
+        final_socket = fit_sphere_fixed_radius_v7(
+            vertices[socket_indices], radius_m=float(final_head["radius_m"])
+        )
+        side_reports[side] = {
+            "hip_center_before_m": float(np.linalg.norm(hip_delta)),
+            "hip_center_after_m": float(
+                np.linalg.norm(
+                    np.asarray(final_head["center"])
+                    - np.asarray(final_socket["center"])
+                )
+            ),
+            "femoral_head_radius_change_m": abs(
+                float(final_head["radius_m"]) - float(head_fit["radius_m"])
+            ),
+            "knee": knee_report,
+            "knee_pivot_m": knee_pivot.tolist(),
+            "patella_translation_m": patella_translation.tolist(),
+            "patella_gain": float(_PATELLA_GAIN[side]),
+        }
+
+    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    bind_local = bind_global.copy()
+    for bone, parent in enumerate(parents.tolist()):
+        if int(parent) >= 0:
+            bind_local[bone] = (
+                np.linalg.inv(bind_global[int(parent)]) @ bind_global[bone]
+            )
+    metadata = dict(asset.metadata or {})
+    # V71's useful invariant was not a particular body shape.  It was that
+    # every source child retained its authored parent-local translation while
+    # the controller supplied only the desired orientation.  Later refits
+    # kept independently mapping ankle/wrist/hand descendants to SMPL-X
+    # globals; two neighbouring vessel vertices could therefore be driven by
+    # frames that disagreed by tens of centimetres at the same joint.  Rebuild
+    # the complete fitted hierarchy here.  ``target_bind_local`` was recomputed
+    # above from this beta's corrected global bind, so this inherits linkage,
+    # not V71's body proportions.
+    direct_driver_bones: set[int] = set()
+    metadata.update(
+        {
+            "artifact_schema": 7,
+            "source_full_local_fk_v2": True,
+            "source_connected_local_fk_v3": False,
+            "source_local_fk_bones_v3": [],
+            "source_direct_driver_bones_v1": [],
+            "source_full_local_fk_provenance_v7": {
+                "source_prior": "true_v71_blender_parent_local_bind",
+                "bind_space": "beta_corrected_target_bind_local",
+                "independent_global_child_anchors": False,
+            },
+            "source_anatomical_pivots_v7": True,
+            "source_knee_hinge_splines_v7": knee_hinges,
+            "source_patella_splines_v7": patella_splines,
+            "source_patella_response_v7": {
+                side: {
+                    "knots_deg": [0.0, 30.0, 60.0, 90.0, 120.0],
+                    "gain": float(_PATELLA_GAIN[side]),
+                }
+                for side in _SIDES
+            },
+            "v7_no_scale_to_pass": True,
+        }
+    )
+    corrected = replace(
+        asset,
+        vertices_rest=vertices.astype(np.float32),
+        driver_indices=driver_indices,
+        driver_weights=driver_weights.astype(np.float32),
+        source_driver_rest_joints=driver_rest.astype(np.float32),
+        source_bone_driver_types=driver_types,
+        source_bone_corrective_gain=corrective_gain.astype(np.float32),
+        target_rest_global=bind_global.astype(np.float32),
+        target_rest_local=bind_local.astype(np.float32),
+        target_inverse_bind=np.linalg.inv(bind_global).astype(np.float32),
+        target_bone_head=bone_head.astype(np.float32),
+        target_bone_tail=bone_tail.astype(np.float32),
+        source_driver_coupling=None,
+        pose_cache_vertices=None,
+        pose_cache_hash="",
+        metadata=metadata,
+    )
+    corrected = with_source_driver_coupling(corrected)
+    corrected.validate()
+    passed = all(
+        report["hip_center_after_m"] <= 0.002
+        and report["femoral_head_radius_change_m"] <= 0.001
+        for report in side_reports.values()
+    )
+    return corrected, {
+        "schema_version": 7,
+        "method": "v71_fixed_domains_minimum_articular_correction",
+        "sides": side_reports,
+        "selected_local_fk_bones": sorted(local_fk),
+        "scaled_structures": [],
+        "passed": bool(passed),
+    }
+
+
+__all__ = ["reconstruct_articular_subject_v7"]

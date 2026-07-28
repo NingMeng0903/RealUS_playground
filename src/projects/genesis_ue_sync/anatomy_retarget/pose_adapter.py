@@ -73,8 +73,9 @@ def easymocap_fit_to_smplx55(
     out[1:22] = body22[1:22]
     out[22:25] = flat[78:87].reshape(3, 3)
     if closed_mouth:
-        # SMPL-X joint 22 is jaw.  The authored anatomy is closed-mouth and
-        # has no reliable tongue mesh to pose with an open capture jaw.
+        # SMPL-X joint 22 is jaw.  V7 retains the authored tongue and bakes a
+        # closed-mouth oral compound, so capture jaw motion is intentionally
+        # suppressed unless a caller opts into an open-mouth asset.
         out[22] = 0.0
     resolved = Path(model_path).expanduser().resolve() if model_path is not None else _default_smplx_model_path(gender)
     left_basis, right_basis = _hand_pca_components(str(resolved))

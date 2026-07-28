@@ -156,12 +156,7 @@ hybrid_motion:
   max_acceleration: [1.0, 1.0, 0.8, 2.0, 2.0, 2.0]
   admittance_mass_z: 1.0
   admittance_damping_z: 25.0   # free-space D (adaptive_ke b_d(t) takes over on contact)
-  # ONE press/retract cap on tool-Z, applied identically in and out of
-  # contact. Restored to 0.10 (27c1689 headroom) so the Li 2022 integral
-  # v_r has room to work — the previous 0.05 cap saturated v_r
-  # anti-windup instantly and the retract lag never got the boost the
-  # paper promises. Bounce control is done by the stiff-first K̂_e jump
-  # + Dimeas inertia inflation, NOT by capping the cap.
+  # One press/retract cap, applied identically in both directions.
   max_vz_tool_m_s: 0.10
   # Engagement ramp: tool-Z setpoint ramps from ~contact threshold to full
   # desired_z over this many seconds of latched contact (smooth force start).
@@ -239,12 +234,22 @@ hybrid_motion:
     bd_max: 200.0
     bd_slew_max: 400.0
     ke_slew_max: 1200.0
+  # Same energy-aware force reference as the 8-DoF runtime config.
   proactive_feedforward: true
   proactive_retract_only: false
   proactive_gain: 0.10
+  proactive_retract_gain: 0.10
   proactive_leak_s: 0.3
   v_r_max_m_s: 0.06
-  proactive_press_is_gate: 0.5
+  # Full press authority for the measured non-oscillatory Is noise floor;
+  # fade from 0.20 to the unchanged 0.60 hard stop.
+  proactive_press_is_gate_start: 0.20
+  proactive_press_is_gate: 0.60
+  proactive_press_drive_max: 1.0
+  proactive_retract_drive_max: 1.0
+  proactive_reset_on_reversal: true
+  force_scale_min_n: 0.20
+  force_scale_fraction: 0.15
 
 startup:
   pose_slot_q_deg: null

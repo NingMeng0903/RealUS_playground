@@ -113,6 +113,19 @@ def _cache_key(*paths: Path, extra: str = "") -> str:
     return digest.hexdigest()[:24]
 
 
+def _array_content_key(value: Any) -> str:
+    """Hash exact array content, including dtype and shape."""
+
+    array = np.ascontiguousarray(np.asarray(value))
+    digest = hashlib.sha256()
+    digest.update(array.dtype.str.encode("ascii"))
+    digest.update(
+        json.dumps(list(array.shape), separators=(",", ":")).encode("ascii")
+    )
+    digest.update(array.view(np.uint8).tobytes())
+    return digest.hexdigest()[:24]
+
+
 def _merge_fast_extremity_donor(
     asset: Any,
     donor: Any,
@@ -1084,6 +1097,16 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--stage1-clamp-rigid-to-skin",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Opt in to the legacy rigid-to-skin clamp. It is disabled by "
+            "default because release bones must not be shrunk to pass "
+            "containment."
+        ),
+    )
+    p.add_argument(
         "--stage1-hand-nerve-rbf",
         action=argparse.BooleanOptionalAction,
         default=False,
@@ -1204,8 +1227,8 @@ def parse_args() -> argparse.Namespace:
         "--enforce-quality-gate",
         action="store_true",
         help=(
-            "Strict mode: reject latest.json updates and Genesis publish when quality "
-            "checks fail. By default quality is advisory only."
+            "Compatibility flag. Quality failures always reject latest.json updates "
+            "and Genesis publication."
         ),
     )
     return p.parse_args()
@@ -1219,10 +1242,8 @@ def _parse_rgba(raw: str) -> tuple[float, float, float, float]:
 
 
 def _quality_failure_blocks_publish(*, passed: bool, enforce_quality_gate: bool = False) -> bool:
-    """Quality is advisory unless strict publication mode is requested."""
+    """Fail closed: a failed quality report can never be published."""
 
-    if not bool(enforce_quality_gate):
-        return False
     return not bool(passed)
 
 
@@ -2277,8 +2298,10 @@ def main() -> int:
             stage_dir / "quality_report.json",
             {
                 "schema_version": ANATOMY_ASSET_SCHEMA_VERSION,
-                "passed": True,
-                "failures": [],
+                "passed": False,
+                "failures": [
+                    "fast-publish skipped mandatory release acceptance"
+                ],
                 "warnings": [],
                 "fast_publish": True,
                 "skipped_acceptance": True,
@@ -2288,35 +2311,15 @@ def main() -> int:
             stage_dir,
             output_root=output_root,
             schema_version=ANATOMY_ASSET_SCHEMA_VERSION,
-            passed=True,
-            update_latest=not bool(args.diagnostics_only),
+            passed=False,
+            update_latest=False,
         )
-        if args.diagnostics_only:
-            logging.info(
-                "fast-publish diagnostics-only run preserved at %s; latest.json remains unchanged",
-                run_dir,
-            )
-            return 0
-
-        output_npz = run_dir / "anatomy_rigged.npz"
-        logging.info(
-            "fast-publish retarget ok vertices=%s faces=%s joints=%s output=%s",
-            asset.vertices_rest.shape[0],
-            asset.faces.shape[0],
-            len(asset.joint_names),
-            output_npz,
+        logging.warning(
+            "unverified fast-publish run preserved at %s; latest.json and "
+            "Genesis publication are blocked",
+            run_dir,
         )
-        if args.publish_genesis:
-            sent = _publish_upsert(
-                bind=str(args.publish_bind),
-                model_id=str(args.model_id),
-                asset_npz=output_npz,
-                color_rgba=_parse_rgba(str(args.color_rgba)),
-                duration_s=float(args.publish_duration_s),
-                rate_hz=float(args.publish_rate_hz),
-            )
-            logging.info("published anatomy upsert sent=%s bind=%s", sent, args.publish_bind)
-        return 0
+        return 0 if args.diagnostics_only else 2
 
     mesh_diagnostics = write_mesh_diagnostics(
         asset,
@@ -2576,7 +2579,7 @@ def main() -> int:
     )
     write_quality_report(stage_dir / "quality_report.json", quality)
     if not quality["passed"]:
-        log_failure = logging.error if args.enforce_quality_gate else logging.warning
+        log_failure = logging.error
         for failure in quality["failures"]:
             log_failure("quality: %s", failure)
         if _quality_failure_blocks_publish(
@@ -2595,10 +2598,7 @@ def main() -> int:
             )
             logging.error("failed run diagnostics preserved at %s", failed_dir)
             return 0 if args.diagnostics_only else 2
-        logging.warning(
-            "quality gate failed (%s issues); publishing anyway (use --enforce-quality-gate to block)",
-            len(quality.get("failures", [])),
-        )
+        raise AssertionError("failed quality report reached the publication path")
 
     run_dir = _finalize_run(
         stage_dir,

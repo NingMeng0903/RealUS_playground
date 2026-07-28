@@ -234,6 +234,8 @@ force:
   use_inertia: false
 
 hybrid_motion:
+  # Single force controller: 2965fea dynamics with setpoint-normalized,
+  # energy-aware bidirectional tracking. There is no runtime mode switch.
   # Tool-frame masks — all axis discrimination is tool-frame, so this config
   # supports any spatial trajectory (Y sweep, arc, spline, teleop) as long as
   # force_axes selects the surface-normal tool axis.
@@ -261,12 +263,8 @@ hybrid_motion:
   max_acceleration: [1.0, 1.0, 0.8, 2.0, 2.0, 2.0]
   admittance_mass_z: 1.0
   admittance_damping_z: 25.0   # free-space D (adaptive_ke b_d(t) takes over on contact)
-  # ONE press/retract cap on tool-Z, applied identically in and out of
-  # contact. Restored to 0.10 (27c1689 headroom) so the Li 2022 integral
-  # v_r has room to work — the previous 0.05 cap saturated v_r
-  # anti-windup instantly and the retract lag never got the boost the
-  # paper promises. Bounce control is done by the stiff-first K̂_e jump
-  # + Dimeas inertia inflation, NOT by capping the cap.
+  # One press/retract cap, applied identically in and out of contact.
+  # Bounce control is handled by stiff-first K̂_e + Dimeas inertia.
   max_vz_tool_m_s: 0.10
   # Engagement ramp: tool-Z setpoint ramps from ~contact threshold to full
   # desired_z over this many seconds of latched contact (smooth force start).
@@ -346,13 +344,31 @@ hybrid_motion:
     bd_max: 200.0
     bd_slew_max: 400.0
     ke_slew_max: 1200.0
-  # Leaky ∫F_err proactive v_r: bidirectional chase on force error.
+  # Energy-aware leaky force reference:
+  # - under-force press is normalized and Dimeas-gated (cannot keep injecting
+  #   motion into a contact that is already oscillating);
+  # - over-force retract uses the same small-error gain but is never closed by
+  #   Dimeas (escape/release must remain available);
+  # - an effective-error sign reversal clears only stale v_r, not v_force.
   proactive_feedforward: true
   proactive_retract_only: false
   proactive_gain: 0.10
+  proactive_retract_gain: 0.10
   proactive_leak_s: 0.3
   v_r_max_m_s: 0.06
-  proactive_press_is_gate: 0.5
+  # Normal hand motion/noise often leaves Is≈0.2 without sustained 4–12 Hz
+  # bounce. Keep press authority below the start point, then fade it to zero
+  # at the existing 0.60 hard stop. Dimeas M(t) and critical D remain active
+  # throughout this interval.
+  proactive_press_is_gate_start: 0.20
+  proactive_press_is_gate: 0.60
+  proactive_press_drive_max: 1.0
+  proactive_retract_drive_max: 1.0
+  proactive_reset_on_reversal: true
+  # Same normalized small-error law at 1 N and 5 N.  The 0.10/0.10 N smooth
+  # deadband still rejects sensor noise before this scale is applied.
+  force_scale_min_n: 0.20
+  force_scale_fraction: 0.15
 
 # LW100 rail servo (Modbus RTU over USR-TCP232).
 # Soft CSP via FA24: same cascade as apps/lw100_vel_pos_follow_demo.py

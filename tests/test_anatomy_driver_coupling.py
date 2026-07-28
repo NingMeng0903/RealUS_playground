@@ -17,6 +17,7 @@ from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
 )
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import AnatomyRiggedAsset
 from projects.genesis_ue_sync.anatomy_retarget.material_fit import (
+    _articulation_local_fk_bones,
     _direct_smplx_hand_controllers,
 )
 from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
@@ -99,6 +100,20 @@ def test_direct_hand_controller_policy_is_semantic_not_index_based() -> None:
     asset = _chain_asset()
 
     assert _direct_smplx_hand_controllers(asset) == [2, 3]
+
+
+def test_articulation_local_fk_selects_knee_and_elbow_descendants() -> None:
+    asset = replace(
+        _chain_asset(),
+        source_bone_names=[
+            "Femur_Rot_L",
+            "Knee_Rotate_L",
+            "Tibia_Bone_L",
+            "Patella_Rotate_L",
+        ],
+    )
+
+    assert _articulation_local_fk_bones(asset) == [1, 2]
 
 
 def _assert_all_bones_follow_delta(asset: AnatomyRiggedAsset, rotvec: np.ndarray) -> None:

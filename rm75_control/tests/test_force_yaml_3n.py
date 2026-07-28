@@ -1,4 +1,4 @@
-"""Admittance yaml scaling for multi-N force setpoints (post-cleanup)."""
+"""One physical admittance configuration across force setpoints."""
 
 from __future__ import annotations
 
@@ -21,31 +21,29 @@ def test_yaml_adaptive_ke_enabled():
     assert hm["admittance_mass_z"] <= 1.5
 
 
-def test_var_damping_f_max_scales_with_desired_z():
+def test_physical_parameters_do_not_scale_with_desired_z():
     raw = yaml.safe_load(Path("configs/joint_admittance.yaml").read_text())
     scale = _load_scale_fn()
     cfg1 = scale(raw, 1.0)
     cfg12 = scale(raw, 12.0)
-    assert cfg12.var_damping_f_max_n > cfg1.var_damping_f_max_n * 10.0
-    assert cfg12.adaptive_ke.bd_max > cfg1.adaptive_ke.bd_max
-    assert cfg12.admittance_mass_z > cfg1.admittance_mass_z
+    assert cfg12.var_damping_f_max_n == pytest.approx(cfg1.var_damping_f_max_n)
+    assert cfg12.adaptive_ke.bd_max == pytest.approx(cfg1.adaptive_ke.bd_max)
+    assert cfg12.admittance_mass_z == pytest.approx(cfg1.admittance_mass_z)
 
 
 def test_deadband_fixed_across_desired_z():
     """The force deadband is a sensor-noise quantity and must NOT scale with
     the setpoint: scaling it made a 5 N hold need >0.5 N over-force before any
-    retract authority (the "over-force / heavy damping" hand feel). Only the
-    adaptive-Ke contact learning gate tracks desired_z."""
+    retract authority (the "over-force / heavy damping" hand feel)."""
     raw = yaml.safe_load(Path("configs/joint_admittance.yaml").read_text())
     scale = _load_scale_fn()
     cfg1 = scale(raw, 1.0)
     cfg3 = scale(raw, 3.0)
     assert cfg3.deadband_n == pytest.approx(cfg1.deadband_n)
     assert cfg3.deadband_width_n == pytest.approx(cfg1.deadband_width_n)
-    # contact_force_n still scales but is capped at 0.35 * desired_z (see
-    # scale_admittance_for_desired_z in joint_admittance.api).
-    assert cfg3.adaptive_ke.contact_force_n > cfg1.adaptive_ke.contact_force_n
-    assert cfg3.adaptive_ke.contact_force_n <= 0.35 * 3.0 + 1e-9
+    assert cfg3.adaptive_ke.contact_force_n == pytest.approx(
+        cfg1.adaptive_ke.contact_force_n
+    )
 
 
 def test_f_err_gate_relative_to_setpoint():
@@ -74,6 +72,16 @@ def test_proactive_feedforward_in_yaml():
     hm = raw["hybrid_motion"]
     assert hm["proactive_feedforward"] is True
     assert hm["proactive_retract_only"] is False
+    assert hm["proactive_gain"] == pytest.approx(
+        hm["proactive_retract_gain"]
+    )
+    assert 0.0 <= hm["proactive_press_is_gate_start"] < hm[
+        "proactive_press_is_gate"
+    ]
+    assert hm["proactive_press_is_gate"] > 0.0
+    assert hm["proactive_press_drive_max"] == pytest.approx(1.0)
+    assert hm["proactive_retract_drive_max"] == pytest.approx(1.0)
+    assert hm["proactive_reset_on_reversal"] is True
     assert hm["v_r_max_m_s"] < hm["max_vz_tool_m_s"]
     assert "li2022" not in hm
     assert "proactive_mode" not in hm

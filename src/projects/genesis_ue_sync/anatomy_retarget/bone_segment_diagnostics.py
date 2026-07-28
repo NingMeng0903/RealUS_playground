@@ -247,8 +247,11 @@ GEOMETRY_LANDMARK_MESHES: dict[str, dict[str, tuple[str, ...]]] = {
         "proximal": ("proximal_phalanx_hand", "proximal_phalanges_hand"),
         "distal": ("distal_phalanx_hand", "distal_phalanges_hand"),
     },
-    "knee_left": {"proximal": ("femur",), "distal": ("tibia", "fibula", "patella")},
-    "knee_right": {"proximal": ("femur",), "distal": ("tibia", "fibula", "patella")},
+    # Patella is a separate patellofemoral articulation.  Folding it into the
+    # distal tibiofemoral set lets the closest of three unrelated meshes hide a
+    # detached or intersecting patella.
+    "knee_left": {"proximal": ("femur",), "distal": ("tibia",)},
+    "knee_right": {"proximal": ("femur",), "distal": ("tibia",)},
     "ankle_left": {"proximal": ("tibia", "fibula"), "distal": ("talus", "calcaneus")},
     "ankle_right": {"proximal": ("tibia", "fibula"), "distal": ("talus", "calcaneus")},
     "fibula_knee_left": {"proximal": ("tibia",), "distal": ("fibula",)},
@@ -692,6 +695,8 @@ def _geometry_landmark_diagnostic(
     passed = bool(
         fitting_surface_gap_change <= GAP_CHANGE_LIMIT_M
         and surface_gap_change <= GAP_CHANGE_LIMIT_M
+        and surface_gap <= surface_gap_limit
+        and posed_surface_gap <= surface_gap_limit
     )
     return {
         "available": True,
@@ -922,28 +927,18 @@ def write_bone_segment_diagnostics(
                     if isinstance(latest_fit, dict)
                     else None
                 )
-            if (
-                isinstance(hip_geometry, dict)
-                and hip_geometry.get("femoral_head_to_acetabulum_m")
-                is not None
-            ):
-                center_error = float(
-                    hip_geometry["femoral_head_to_acetabulum_m"]
-                )
-                geometry["femoral_head_to_acetabulum_m"] = center_error
-                geometry["pass"] = bool(
-                    center_error <= ENDPOINT_LIMIT_M
-                    and geometry.get("surface_gap_change_m", float("inf"))
-                    <= GAP_CHANGE_LIMIT_M
-                )
+            if isinstance(hip_geometry, dict):
+                # Preserve the old material-fit value for provenance only.  It
+                # is not an acceptance input because legacy fitting wrote 0.0
+                # immediately after moving the femur to its own estimated
+                # centre.  V7 recomputes the sphere/socket fit from final
+                # fixed-domain vertices.
+                geometry["legacy_fit_report_only"] = dict(hip_geometry)
         result = {
             **controller,
             "controller_probes": controller,
             "geometry_landmarks": geometry,
-            # SMPL-X controllers are kinematic probes, not medical joint
-            # centers.  Their residual remains reported but cannot override a
-            # directly measured proximal/distal geometry gap.
-            "pass": bool(geometry["pass"]),
+            "pass": bool(controller["pass"] and geometry["pass"]),
         }
         joints[label] = result
         if not result["pass"]:

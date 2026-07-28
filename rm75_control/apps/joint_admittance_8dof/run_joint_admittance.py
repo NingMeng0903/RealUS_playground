@@ -194,6 +194,20 @@ def _run_controller_service(
             if hub.should_stop():
                 hub.set_stopped(cmd_seq)
                 print(f"rm75 controller: task #{task_n} stopped", flush=True)
+            elif result.stop_reason:
+                hub.set_error(cmd_seq, result.stop_reason)
+                print(
+                    f"rm75 controller: task #{task_n} safety stop — "
+                    f"{result.stop_reason}",
+                    flush=True,
+                )
+            elif result.stalled:
+                hub.set_error(cmd_seq, "control watchdog fired")
+                print(
+                    f"rm75 controller: task #{task_n} safety stop — "
+                    "control watchdog fired",
+                    flush=True,
+                )
             else:
                 hub.set_done(cmd_seq)
                 print(

@@ -128,7 +128,7 @@ class JointIkConfig:
 class JointIkStep:
     q_send: np.ndarray          # commanded joint position (rad) after clamp
     qdot: np.ndarray            # joint velocity (rad/s)
-    twist_base: np.ndarray      # twist actually applied (base frame)
+    twist_base: np.ndarray      # requested task twist in the base frame
     sigma_min: float
     manip: float
     slack_norm: float
@@ -704,6 +704,9 @@ class AdmittanceOuterLoop:
         current_pose: np.ndarray,
         f_ext: np.ndarray,
         f_ext_raw: np.ndarray | None = None,
+        dt_actual: float | None = None,
+        v_tcp_z_actual: float | None = None,
+        sensor_age_s: float | None = None,
     ) -> np.ndarray:
         ref = self.reference.sample(t_s)
         # Track-axis-only error (tool X/Y + attitude); the force axis (tool-Z)
@@ -724,6 +727,9 @@ class AdmittanceOuterLoop:
             f_ext,
             self.desired_force,
             f_ext_raw=f_ext_raw,
+            dt_actual=dt_actual,
+            v_tcp_z_actual=v_tcp_z_actual,
+            sensor_age_s=sensor_age_s,
         )
 
 
@@ -1167,6 +1173,7 @@ class LoopResult:
     max_jitter_ms: float
     stalled: bool
     stutter_count: int = 0
+    stop_reason: str = ""
 
 
 @dataclass
@@ -1235,15 +1242,30 @@ class _TickLogger:
     """
 
     _HEADER = (
-        ["t_wall_s", "phase", "t_ref_s"]
+        ["t_wall_s", "phase", "controller_mode", "t_ref_s"]
         + [f"q_cmd_{i}" for i in range(0, 8)]
         + [f"q_meas_{i}" for i in range(0, 8)]
         + [f"pose_{a}" for a in ("x", "y", "z", "rx", "ry", "rz")]
+        # ``twist_*`` is retained as a deprecated requested-twist alias for
+        # existing analysis scripts.  The explicit columns remove the old
+        # ambiguity: achieved twist is encoder J(q)qdot, not the QP request.
         + [f"twist_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + [f"twist_requested_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + [f"twist_achieved_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
         + ["track_err_mm", "follow_err_deg", "slack_norm", "n_cbf",
            "vel_clamped", "acc_clamped", "pos_clamped", "fx", "fy", "fz",
-           "instability_idx", "damping_z_eff", "v_force_z", "ke_est",
-           "f_des_z_eff", "v_r_z", "takeover",
+           "instability_idx", "damping_z_eff",
+           "damping_ke_z", "damping_dimeas_z",
+           "v_force_z", "ke_est",
+           "f_des_z_eff", "v_r_z",
+           "force_reference_scale_n", "force_reference_drive",
+           "force_reference_gate_scale",
+           "force_reference_accel_m_s2",
+           "force_reference_reversal_reset",
+           "mass_z_eff", "takeover",
+           "dt_actual_s", "sensor_age_s",
+           "fx_raw_comp", "fy_raw_comp", "fz_raw_comp",
+           "vz_achieved_tool", "contact_present",
            "governor_scale", "governor_scale_raw", "sigma_min",
            "qdot_norm", "qdot_max_frac_vmax",
            "qdot_ff_norm", "arm_singularity_smooth", "limit_activation",
@@ -1298,16 +1320,50 @@ class _TickLogger:
         governor_scale_raw: float = float("nan"),
         v_max: np.ndarray | None = None,
         rail_meas_m: float = float("nan"),
+        dt_actual_s: float = float("nan"),
+        sensor_age_s: float = float("nan"),
+        f_ext_raw: np.ndarray | None = None,
+        twist_achieved_base: np.ndarray | None = None,
+        v_tcp_z_actual: float = float("nan"),
     ) -> None:
         qm = q_meas if q_meas is not None else np.full(8, np.nan)
         ctrl = getattr(outer, "controller", None)
         is_idx = getattr(ctrl, "instability_index", float("nan"))
         d_eff = getattr(ctrl, "damping_z_eff", float("nan"))
+        d_ke = getattr(ctrl, "damping_ke_z", float("nan"))
+        d_dimeas = getattr(ctrl, "damping_dimeas_z", float("nan"))
         v_fz = getattr(ctrl, "v_force_z", float("nan"))
         ke_est = getattr(ctrl, "ke_est", float("nan"))
         f_des_eff = getattr(ctrl, "f_des_z_eff", float("nan"))
         v_r_z = getattr(ctrl, "v_r_z", float("nan"))
+        force_reference_scale = getattr(
+            ctrl, "force_reference_scale_n", float("nan")
+        )
+        force_reference_drive = getattr(
+            ctrl, "force_reference_drive", float("nan")
+        )
+        force_reference_gate = getattr(
+            ctrl, "force_reference_gate_scale", float("nan")
+        )
+        force_reference_accel = getattr(
+            ctrl, "force_reference_accel_m_s2", float("nan")
+        )
+        force_reference_reversal_reset = getattr(
+            ctrl, "force_reference_reversal_reset", False
+        )
+        mass_z_eff = getattr(ctrl, "mass_z_eff", float("nan"))
         takeover = getattr(ctrl, "takeover_active", False)
+        contact_present = getattr(ctrl, "contact_present", False)
+        raw_comp = (
+            np.asarray(f_ext_raw, dtype=float)
+            if f_ext_raw is not None
+            else np.full(6, np.nan)
+        )
+        twist_achieved = (
+            np.asarray(twist_achieved_base, dtype=float)
+            if twist_achieved_base is not None
+            else np.full(6, np.nan)
+        )
         qdot_norm = float(np.linalg.norm(step.qdot))
         # Fraction of the per-joint velocity box actually used (1.0 = saturated
         # on at least one joint) - the clearest signal for "CBF/limits are
@@ -1318,17 +1374,36 @@ class _TickLogger:
             qdot_max_frac = float("nan")
         rail_sent = float(step.q_send[0]) if step.q_send is not None else float("nan")
         self._q.put(
-            [f"{t_wall:.4f}", label, f"{t_ref:.4f}"]
+            [
+                f"{t_wall:.4f}",
+                label,
+                str(getattr(ctrl, "controller_mode", "none")),
+                f"{t_ref:.4f}",
+            ]
             + [f"{v:.6f}" for v in step.q_send]
             + [f"{v:.6f}" for v in qm]
             + [f"{v:.6f}" for v in pose]
             + [f"{v:.5f}" for v in step.twist_base]
+            + [f"{v:.5f}" for v in step.twist_base]
+            + [f"{v:.5f}" for v in twist_achieved]
             + [f"{step.cart_err_mm:.3f}", f"{np.degrees(step.follow_err_rad):.4f}",
                f"{step.slack_norm:.5f}", step.n_cbf_active,
                int(step.vel_clamped), int(step.acc_clamped), int(step.pos_clamped),
                f"{f_ext[0]:.3f}", f"{f_ext[1]:.3f}", f"{f_ext[2]:.3f}",
-               f"{is_idx:.4f}", f"{d_eff:.2f}", f"{v_fz:.5f}", f"{ke_est:.1f}",
-               f"{f_des_eff:.3f}", f"{v_r_z:.5f}", int(bool(takeover)),
+               f"{is_idx:.4f}", f"{d_eff:.2f}",
+               f"{d_ke:.2f}", f"{d_dimeas:.2f}",
+               f"{v_fz:.5f}", f"{ke_est:.1f}",
+               f"{f_des_eff:.3f}", f"{v_r_z:.5f}",
+               f"{force_reference_scale:.4f}",
+               f"{force_reference_drive:.6f}",
+               f"{force_reference_gate:.4f}",
+               f"{force_reference_accel:.6f}",
+               int(bool(force_reference_reversal_reset)),
+               f"{mass_z_eff:.4f}",
+               int(bool(takeover)),
+               f"{dt_actual_s:.6f}", f"{sensor_age_s:.6f}",
+               f"{raw_comp[0]:.3f}", f"{raw_comp[1]:.3f}", f"{raw_comp[2]:.3f}",
+               f"{v_tcp_z_actual:.6f}", int(bool(contact_present)),
                f"{governor_scale:.4f}", f"{governor_scale_raw:.4f}",
                f"{step.sigma_min:.5f}",
                f"{qdot_norm:.5f}", f"{qdot_max_frac:.4f}",
@@ -1596,6 +1671,7 @@ def run_joint_admittance_phases(
             pose_pin = pose0
             jump_warn_t = 0.0
             phase_stopped = False
+            stop_reason = ""
             try:
                 for phase_idx, phase in enumerate(phases):
                     if stop_check is not None and stop_check():
@@ -1660,6 +1736,7 @@ def run_joint_admittance_phases(
                     obs = phase.force_observer if phase.force_observer is not None else force_observer
                     phase_t0 = time.perf_counter()
                     next_tick = phase_t0
+                    last_tick_time = phase_t0
                     t_ref = 0.0
                     gov_filter = GovernorFilter(
                         tau_s=phase.governor_tau_s,
@@ -1675,11 +1752,36 @@ def run_joint_admittance_phases(
                     )
                     _scan_log_t = 0.0
                     _scan_origin_pose = None
+                    # Encoder-derived TCP velocity for diagnostics. Only
+                    # update on a fresh UDP sequence; reusing a frame must not
+                    # create a fake zero-velocity sample.
+                    last_feedback_seq = int(getattr(snap, "seq", 0))
+                    last_feedback_t = float(getattr(snap, "t_s", 0.0))
+                    last_feedback_q = np.asarray(q_meas, dtype=float).copy()
+                    twist_achieved_base = np.zeros(6, dtype=float)
+                    v_tcp_z_actual = 0.0
+                    phase_ctrl = getattr(phase.outer, "controller", None)
+                    if verbose and phase_ctrl is not None:
+                        mode = str(
+                            getattr(phase_ctrl, "controller_mode", "legacy_symmetric")
+                        )
+                        print(
+                            f"  force controller: {mode} "
+                            "(fixed-dt 2965fea+energy-aware tracking)",
+                            flush=True,
+                        )
                     while True:
                         if stop_check is not None and stop_check():
                             phase_stopped = True
                             break
                         now = time.perf_counter()
+                        dt_raw = now - last_tick_time
+                        last_tick_time = now
+                        # The first phase tick occurs immediately after setup;
+                        # use the nominal period rather than a near-zero dt.
+                        if dt_raw < 0.002:
+                            dt_raw = dt
+                        dt_actual = float(np.clip(dt_raw, 0.002, 0.015))
                         next_tick, late_ms = _resync_late_tick(next_tick, now, dt)
                         if late_ms > dt * 1000.0:
                             stutter_count += 1
@@ -1694,11 +1796,45 @@ def run_joint_admittance_phases(
                         if snap.pose is not None:
                             pose_rm = snap.pose
                         if snap.q_deg is not None:
-                            q_meas = _expand_q_meas(
-                            deg2rad(snap.q_deg),
-                            _rail_m_for_feedback(rail_bridge, inner),
-                        )
+                            q_new = _expand_q_meas(
+                                deg2rad(snap.q_deg),
+                                _rail_m_for_feedback(rail_bridge, inner),
+                            )
+                            snap_seq = int(getattr(snap, "seq", 0))
+                            snap_t = float(getattr(snap, "t_s", 0.0))
+                            if (
+                                snap_seq != last_feedback_seq
+                                and snap_t > last_feedback_t
+                            ):
+                                dt_feedback = snap_t - last_feedback_t
+                                if 0.001 <= dt_feedback <= 0.050:
+                                    qdot_meas = (
+                                        wrap_joint_delta(last_feedback_q, q_new)
+                                        / dt_feedback
+                                    )
+                                    twist_achieved_base = (
+                                        inner.kin.jacobian(q_new) @ qdot_meas
+                                    )
+                                    pose_for_velocity = inner.kin.fk_pose(q_new)
+                                    r_velocity = Rsc.from_euler(
+                                        inner.cfg.euler_order,
+                                        pose_for_velocity[3:6],
+                                        degrees=False,
+                                    ).as_matrix()
+                                    v_tcp_z_actual = float(
+                                        (r_velocity.T @ twist_achieved_base[:3])[2]
+                                    )
+                                last_feedback_seq = snap_seq
+                                last_feedback_t = snap_t
+                                last_feedback_q = q_new.copy()
+                            q_meas = q_new
                             pose_pin = inner.kin.fk_pose(q_meas)
+
+                        sensor_age_s = (
+                            max(0.0, time.monotonic() - float(snap.t_s))
+                            if float(getattr(snap, "t_s", 0.0)) > 0.0
+                            else float("inf")
+                        )
 
                         f_ext = np.zeros(6)
                         f_ext_raw = None
@@ -1725,6 +1861,12 @@ def run_joint_admittance_phases(
                             # Unfiltered compensated wrench for the Dimeas index
                             # (the 6 Hz control LPF hides the instability band).
                             sample_kwargs["f_ext_raw"] = f_ext_raw
+                        if "dt_actual" in sample_params:
+                            sample_kwargs["dt_actual"] = dt_actual
+                        if "v_tcp_z_actual" in sample_params:
+                            sample_kwargs["v_tcp_z_actual"] = v_tcp_z_actual
+                        if "sensor_age_s" in sample_params:
+                            sample_kwargs["sensor_age_s"] = sensor_age_s
                         twist = np.asarray(
                             phase.outer.sample(t_ref, pose_pin, f_ext, **sample_kwargs),
                             dtype=float,
@@ -1755,9 +1897,12 @@ def run_joint_admittance_phases(
                             qdot_fb = np.asarray(qdot_fb, dtype=float)
                             qdot_ff = qdot_fb if qdot_ff is None else (qdot_ff + qdot_fb)
                         vel_ff_ref = getattr(phase.outer, "last_vel_ff", None)
+                        # Keep the hardware-proven fixed timing law throughout
+                        # controller, IK limits, governor and reference clock.
+                        control_dt = dt
                         step = inner.update(
                             twist,
-                            dt,
+                            control_dt,
                             q_meas=q_meas,
                             qdot_ff=qdot_ff,
                             vel_ff=vel_ff_ref,
@@ -1809,12 +1954,12 @@ def run_joint_admittance_phases(
                             outer_err_mm=outer_err_mm,
                             joint_err_deg=joint_err_deg,
                         )
-                        scale = gov_filter.update(raw_scale, dt)
+                        scale = gov_filter.update(raw_scale, control_dt)
                         # Soft-start ramp: first ~0.3s cannot command near-vmax.
                         ramp_s = float(getattr(phase, "soft_start_ramp_s", 0.0) or 0.0)
                         if ramp_s > 1e-6:
                             scale *= float(np.clip(t_wall / ramp_s, 0.0, 1.0))
-                        t_ref += dt * scale
+                        t_ref += control_dt * scale
     
                         if phase.on_tick is not None:
                             phase.on_tick(t_ref, step, q_meas)
@@ -1843,6 +1988,11 @@ def run_joint_admittance_phases(
                                 governor_scale_raw=raw_scale,
                                 v_max=inner.limits.v_max,
                                 rail_meas_m=rail_meas,
+                                dt_actual_s=dt_actual,
+                                sensor_age_s=sensor_age_s,
+                                f_ext_raw=f_ext_raw,
+                                twist_achieved_base=twist_achieved_base,
+                                v_tcp_z_actual=v_tcp_z_actual,
                             )
                         if on_step is not None:
                             on_step(phase.label, t_ref, step, pose_pin, f_ext, t_wall)
@@ -1940,6 +2090,7 @@ def run_joint_admittance_phases(
         max_jitter_ms=max_jitter_ms,
         stalled=stalled,
         stutter_count=stutter_count,
+        stop_reason=stop_reason,
     )
 
 

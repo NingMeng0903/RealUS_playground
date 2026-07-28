@@ -366,6 +366,30 @@ def _direct_smplx_hand_controllers(asset: AnatomyRiggedAsset) -> list[int]:
     return direct
 
 
+def _articulation_local_fk_bones(asset: AnatomyRiggedAsset) -> list[int]:
+    """Return the authored elbow/knee descendants whose local pivots are fixed.
+
+    These are articulation children, not independent SMPL-X segment roots.
+    Preserving their fitted parent-local translations retains Blender's
+    Femur->Knee->Tibia and Shoulder->Elbow->Forearm mechanisms without making
+    the complete cranial/shoulder hierarchy inherit unrelated source offsets.
+    """
+
+    prefixes = (
+        "knee_rotate_",
+        "tibia_bone_",
+        "tibia_twist_",
+        "elbow_rot_",
+        "forearm_bone_",
+        "forearm_twist_",
+    )
+    return [
+        int(index)
+        for index, name in enumerate(asset.source_bone_names or [])
+        if str(name).lower().startswith(prefixes)
+    ]
+
+
 def _controller(bone: int, parents: np.ndarray, modes: list[str]) -> int:
     current = int(bone)
     while current >= 0 and _is_follow_mode(modes[current]):
@@ -2971,7 +2995,10 @@ def fit_stage1_rigid_regions(
         **{**rebound.__dict__, "vertices_rest": vertices.astype(np.float32)}
     )
     metadata = dict(rebound.metadata or {})
+    articulation_local_fk = _articulation_local_fk_bones(fit_asset)
     metadata["source_full_local_fk_v2"] = False
+    metadata["source_connected_local_fk_v3"] = False
+    metadata["source_local_fk_bones_v3"] = articulation_local_fk
     metadata["source_direct_driver_bones_v1"] = _direct_smplx_hand_controllers(fit_asset)
     result = type(rebound)(**{**rebound.__dict__, "metadata": metadata})
     result = with_source_driver_coupling(result)
@@ -2991,6 +3018,11 @@ def fit_stage1_rigid_regions(
         "changed_vertex_count": int(np.count_nonzero(np.linalg.norm(vertices - target, axis=1))),
         "source_rig_rebind": rebind_report,
         "source_full_local_fk_v2": False,
+        "source_connected_local_fk_v3": False,
+        "source_local_fk_bones_v3": [
+            str(fit_asset.source_bone_names[index])
+            for index in articulation_local_fk
+        ],
         "correspondence_driver_joint_fit": correspondence_joint_report,
         "source_weights_preserved": True,
         "source_hierarchy_preserved": True,
@@ -3474,6 +3506,18 @@ def fit_articulated_rest(
             lower = str(bone_name).lower()
             if "femur" in lower and (lower.endswith(suffix) or f"{suffix}_" in lower):
                 new_global[bone] = frame_delta @ new_global[bone]
+        post_pair = _femur_head_and_acetabulum(
+            asset, vertices, side=side, target_joints=target_joints
+        )
+        if post_pair is None:
+            post_femoral_head = np.full(3, np.nan, dtype=np.float64)
+            post_acetabulum = np.full(3, np.nan, dtype=np.float64)
+            post_center_error = float("nan")
+        else:
+            post_femoral_head, post_acetabulum = post_pair
+            post_center_error = float(
+                np.linalg.norm(post_femoral_head - post_acetabulum)
+            )
         target_joints[hip_id] = shared_center
         hip_report[side] = {
             "search_prior": "smplx_hip_soft_constraint",
@@ -3485,7 +3529,10 @@ def fit_articulated_rest(
             "acetabulum_to_shared_center_m": float(
                 np.linalg.norm(acetabulum - shared_center)
             ),
-            "femoral_head_to_acetabulum_m": 0.0,
+            "post_fit_femoral_head_m": post_femoral_head.tolist(),
+            "post_fit_acetabulum_m": post_acetabulum.tolist(),
+            "femoral_head_to_acetabulum_m": post_center_error,
+            "measurement": "recomputed_from_final_vertices",
         }
     if hip_report:
         new_local = new_global.copy()
@@ -3826,6 +3873,11 @@ def fit_articulated_rest(
     )
     metadata = dict(asset.metadata or {})
     direct_hand_controllers = _direct_smplx_hand_controllers(asset)
+    metadata["source_full_local_fk_v2"] = False
+    metadata["source_connected_local_fk_v3"] = False
+    metadata["source_local_fk_bones_v3"] = _articulation_local_fk_bones(
+        asset
+    )
     metadata["source_direct_driver_bones_v1"] = direct_hand_controllers
     history = list(metadata.get("articulated_rest_fit", []))
     report = {
