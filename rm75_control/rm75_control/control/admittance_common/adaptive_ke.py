@@ -275,6 +275,7 @@ class EnvironmentStiffnessEstimator:
         instability_index: float = 0.0,
         euler_order: str = "xyz",
         allow_impact_init: bool = True,
+        allow_idle_decay: bool = True,
     ) -> tuple[float, float]:
         """Return (ke_est, bd) after one tick.
 
@@ -287,6 +288,9 @@ class EnvironmentStiffnessEstimator:
         ``allow_impact_init``: caller sets this False on a contact rising
         edge that follows only a brief flicker (turnaround dip), so the
         stiff-first K̂_e jump fires on genuine impacts only.
+        ``allow_idle_decay`` is false when contact is only suspected or the
+        measured normal load is below the reliable-contact floor.  This keeps
+        a low-force flight from being misclassified as quiet soft tissue.
         """
         cfg = self.cfg
         self._mass_z = max(mass_z, 1e-3)
@@ -368,6 +372,7 @@ class EnvironmentStiffnessEstimator:
             and cfg.ke_idle_decay_s > 1e-6
             and self._contact_ticks > max(cfg.settle_ticks, 0)
             and self._f_err_env <= f_err_gate_n
+            and allow_idle_decay
         ):
             self.ke_est += (self.dt / cfg.ke_idle_decay_s) * (
                 max(float(cfg.ke_initial), float(cfg.ke_soft_floor)) - self.ke_est

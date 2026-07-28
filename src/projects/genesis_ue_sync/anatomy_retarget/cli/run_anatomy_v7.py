@@ -22,6 +22,13 @@ from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
     smplx_pose_hash,
 )
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import load_rigged_asset
+from projects.genesis_ue_sync.anatomy_retarget.joint_contact_v7 import (
+    FrozenJointMaterialDomainsV7,
+)
+from projects.genesis_ue_sync.anatomy_retarget.operator_bake_v7 import (
+    build_prepared_bake_data_v7,
+    save_prepared_bake_data_v7,
+)
 from projects.genesis_ue_sync.anatomy_retarget.v7_artifacts import (
     ANATOMY_V7_SCHEMA_VERSION,
     SourceOperatorV7,
@@ -161,12 +168,19 @@ def _add_bake_template(subparsers: Any) -> None:
     parser.add_argument(
         "--bake-data",
         type=Path,
-        required=True,
         help=(
-            "NPZ with beta_* bases and fixed_domain__/joint_spline__/"
-            "contact_envelope__/vessel_avoidance__ arrays"
+            "optional already-prepared NPZ; omit to run the one-time beta/"
+            "material-field bake"
         ),
     )
+    parser.add_argument("--source-reference", type=Path)
+    parser.add_argument("--uncorrected-source-asset", type=Path)
+    parser.add_argument("--fixed-domains", type=Path)
+    parser.add_argument("--template-betas-file", type=Path)
+    parser.add_argument("--canonical-dir", type=Path)
+    parser.add_argument("--cage", type=Path)
+    parser.add_argument("--smplx-model", type=Path)
+    parser.add_argument("--prepared-output", type=Path)
     parser.add_argument("--source-blend", type=Path, required=True)
     parser.add_argument("--blender-version", required=True)
     parser.add_argument("--quality-report", type=Path, required=True)
@@ -222,16 +236,73 @@ def _run_bake_template(args: argparse.Namespace) -> int:
     if not source_blend.is_file() or source_blend.suffix.lower() != ".blend":
         raise ValueError(f"source blend does not exist or is not .blend: {source_blend}")
     source_asset = load_rigged_asset(source_asset_path, validate=True)
-    prepared = _prepared_bake_data(args.bake_data.expanduser().resolve())
+    beta_bake_report: dict[str, Any] | None = None
+    if args.bake_data is not None:
+        prepared_path = args.bake_data.expanduser().resolve()
+        prepared = _prepared_bake_data(prepared_path)
+    else:
+        required = {
+            "--source-reference": args.source_reference,
+            "--uncorrected-source-asset": args.uncorrected_source_asset,
+            "--fixed-domains": args.fixed_domains,
+            "--template-betas-file": args.template_betas_file,
+            "--canonical-dir": args.canonical_dir,
+            "--cage": args.cage,
+            "--smplx-model": args.smplx_model,
+        }
+        missing = [name for name, value in required.items() if value is None]
+        if missing:
+            raise ValueError(
+                "one-time bake-template is missing " + ", ".join(missing)
+            )
+        source_reference_path = args.source_reference.expanduser().resolve()
+        template_beta_path = args.template_betas_file.expanduser().resolve()
+        source_reference = load_rigged_asset(
+            source_reference_path, validate=True
+        )
+        uncorrected_template = load_rigged_asset(
+            args.uncorrected_source_asset.expanduser().resolve(),
+            validate=True,
+        )
+        template_betas = np.asarray(
+            np.load(template_beta_path, allow_pickle=False), dtype=np.float32
+        ).reshape(-1)
+        source_asset, prepared, beta_bake_report = build_prepared_bake_data_v7(
+            corrected_template_asset=source_asset,
+            uncorrected_template_asset=uncorrected_template,
+            source_reference_asset=source_reference,
+            fixed_domains=FrozenJointMaterialDomainsV7.load_json(
+                args.fixed_domains.expanduser().resolve()
+            ),
+            template_betas=template_betas,
+            canonical_dir=args.canonical_dir.expanduser().resolve(),
+            cage_path=args.cage.expanduser().resolve(),
+            smplx_model_path=args.smplx_model.expanduser().resolve(),
+        )
+        prepared_path = (
+            args.prepared_output.expanduser().resolve()
+            if args.prepared_output is not None
+            else args.output.expanduser().resolve().with_suffix(
+                ".prepared.npz"
+            )
+        )
+        save_prepared_bake_data_v7(prepared_path, prepared)
     provenance = {
         "source_asset_digest": rigged_asset_digest(source_asset),
         "source_asset_file_digest": _file_digest(source_asset_path),
         "source_blend_digest": _file_digest(source_blend),
         "blender_version": str(args.blender_version).strip(),
-        "prepared_bake_data_digest": _file_digest(
-            args.bake_data.expanduser().resolve()
-        ),
+        "prepared_bake_data_digest": _file_digest(prepared_path),
     }
+    correction_report = _read_json(
+        args.correction_report.expanduser().resolve(),
+        label="correction report",
+    )
+    if beta_bake_report is not None:
+        correction_report = {
+            **correction_report,
+            "operator_beta_bake_v7": beta_bake_report,
+        }
     operator = SourceOperatorV7(
         template_asset=source_asset,
         beta_vertex_basis=prepared["beta_vertex_basis"],
@@ -244,10 +315,7 @@ def _run_bake_template(args: argparse.Namespace) -> int:
         vessel_avoidance_fields=prepared["vessel_avoidance_fields"],
         runtime_coefficients=prepared["runtime_coefficients"],
         provenance=provenance,
-        correction_report=_read_json(
-            args.correction_report.expanduser().resolve(),
-            label="correction report",
-        ),
+        correction_report=correction_report,
         quality_report=_read_json(
             args.quality_report.expanduser().resolve(), label="quality report"
         ),
@@ -274,7 +342,12 @@ def _run_apply_pose(args: argparse.Namespace) -> int:
     subject = load_subject_asset(args.subject.expanduser().resolve())
     pose, translation = _load_pose(args, subject)
     vertices = apply_subject_pose(
-        subject, pose_axis_angle=pose, transl=translation
+        subject,
+        pose_axis_angle=pose,
+        transl=translation,
+        # load_subject_asset has already verified the exact embedded payload,
+        # decoded it, and run the full structural validation.
+        validate=False,
     )
     output = args.output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)

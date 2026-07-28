@@ -90,10 +90,16 @@ def _mesh_world(
             np.einsum("ij,nj->ni", world[:3, :3], local)
             + world[:3, 3]
         )
+        # The authored anatomy uses quads extensively.  Filtering polygons to
+        # triangles produced an oracle with zero faces, which made signed
+        # contact/penetration envelopes impossible to audit.  Blender's loop
+        # triangles preserve the evaluated vertex IDs while deterministically
+        # triangulating every polygon.
+        mesh.calc_loop_triangles()
         faces = np.asarray(
-            [polygon.vertices[:] for polygon in mesh.polygons if len(polygon.vertices) == 3],
+            [triangle.vertices[:] for triangle in mesh.loop_triangles],
             dtype=np.int32,
-        )
+        ).reshape(-1, 3)
     finally:
         evaluated.to_mesh_clear()
     return vertices.astype(np.float32), faces

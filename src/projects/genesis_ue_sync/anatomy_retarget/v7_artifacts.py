@@ -123,10 +123,19 @@ def _asset_digest(asset: AnatomyRiggedAsset) -> str:
             np.einsum("bij,bj->bi", inverse[:, :3, :3], xyz)
             + inverse[:, :3, 3]
         ).astype(np.float32)
-        return (
+        reconstructed = (
             np.einsum("bij,bj->bi", frame[:, :3, :3], local)
             + frame[:, :3, 3]
-        ).astype(np.float32)
+        )
+        # Schema-v6 stores bone endpoints in local space, reconstructs them in
+        # world space on load, and casts that result to float32.  A subsequent
+        # save/load can therefore change a few endpoint components by one
+        # float32 ULP even though the authoritative local bind is unchanged.
+        # Hash endpoints at one-micrometre precision so this wire-format-only
+        # roundoff cannot invalidate an otherwise byte-faithful V7 artifact.
+        # This is the same precision as the strict deterministic-vertex gate;
+        # it does not relax any millimetre-scale anatomy quality threshold.
+        return np.rint(reconstructed / 1.0e-6).astype(np.int64)
 
     source_head = canonical_points(asset.source_bone_head, source_global)
     source_tail = canonical_points(asset.source_bone_tail, source_global)
@@ -406,8 +415,9 @@ class SubjectAssetV7:
     runtime_coefficients: Mapping[str, np.ndarray]
     build_report: Mapping[str, Any]
 
-    def validate(self) -> None:
-        self.rigged_asset.validate()
+    def validate(self, *, validate_rigged_asset: bool = True) -> None:
+        if validate_rigged_asset:
+            self.rigged_asset.validate()
         _reject_pose_cache(self.rigged_asset)
         if not str(self.operator_digest) or len(str(self.operator_digest)) != 64:
             raise ValueError("operator_digest must be a full SHA-256 digest")
@@ -548,16 +558,26 @@ def save_source_operator(path: Path | str, operator: SourceOperatorV7) -> Path:
     operator.validate()
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    template_digest = _asset_digest(operator.template_asset)
+    template_blob = _embedded_asset_bytes(operator.template_asset)
+    embedded_template = _load_embedded_asset(template_blob)
+    template_digest = _asset_digest(embedded_template)
+    canonical_provenance = dict(operator.provenance)
+    canonical_provenance["source_asset_digest"] = template_digest
+    canonical_operator = replace(
+        operator,
+        template_asset=embedded_template,
+        provenance=canonical_provenance,
+    )
+    canonical_operator.validate()
     payload: dict[str, Any] = {
         "schema_version": np.asarray(ANATOMY_V7_SCHEMA_VERSION, dtype=np.int32),
         "artifact_kind": np.asarray(SOURCE_OPERATOR_KIND),
         "content_digest": np.asarray(
             _source_operator_digest(
-                operator, template_digest=template_digest
+                canonical_operator, template_digest=template_digest
             )
         ),
-        "template_asset_blob": _embedded_asset_bytes(operator.template_asset),
+        "template_asset_blob": template_blob,
         "template_asset_digest": np.asarray(template_digest),
         "beta_vertex_basis": np.asarray(operator.beta_vertex_basis, dtype=np.float32),
         "beta_rest_joint_basis": np.asarray(
@@ -570,9 +590,9 @@ def save_source_operator(path: Path | str, operator: SourceOperatorV7) -> Path:
             operator.internal_handle_basis, dtype=np.float32
         ),
         "provenance_json": np.asarray(
-            _canonical_json(_json_value(operator.provenance, label="provenance")).decode(
-                "ascii"
-            )
+            _canonical_json(
+                _json_value(canonical_provenance, label="provenance")
+            ).decode("ascii")
         ),
         "correction_report_json": np.asarray(
             _canonical_json(
@@ -802,6 +822,26 @@ def materialize_subject(
         metadata=metadata,
     )
     rigged = with_source_driver_coupling(rigged)
+    reconstruction_report: dict[str, Any] | None = None
+    socket_template_keys = {
+        f"{side}/{field}"
+        for side in ("left", "right")
+        for field in ("socket_points_m", "femoral_head_radius_m")
+    }
+    if socket_template_keys.issubset(operator.contact_envelopes):
+        from .joint_contact_v7 import FrozenJointMaterialDomainsV7
+        from .joint_reconstruction_v7 import reconstruct_articular_subject_v7
+
+        domains = FrozenJointMaterialDomainsV7.freeze(
+            source_bind_vertices=operator.template_asset.vertices_rest,
+            faces=operator.template_asset.faces,
+            domains=operator.fixed_material_domains,
+        )
+        rigged, reconstruction_report = reconstruct_articular_subject_v7(
+            rigged,
+            domains=domains,
+            source_socket_templates=operator.contact_envelopes,
+        )
     zero = skin_vertices(rigged, np.zeros((55, 3), dtype=np.float32))
     zero_error = float(
         np.max(
@@ -836,6 +876,7 @@ def materialize_subject(
             "publishable": False,
             "reason": "independent 2x3 pose/beta acceptance matrix is still required",
             "t_pose_roundtrip_max_m": zero_error,
+            "articular_reconstruction": reconstruction_report,
         },
     )
     result.validate()
@@ -846,14 +887,24 @@ def save_subject_asset(path: Path | str, subject: SubjectAssetV7) -> Path:
     subject.validate()
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    rigged_digest = _asset_digest(subject.rigged_asset)
+    rigged_blob = _embedded_asset_bytes(subject.rigged_asset)
+    embedded_rig = _load_embedded_asset(rigged_blob)
+    rigged_digest = _asset_digest(embedded_rig)
+    rigged_blob_digest = hashlib.sha256(
+        np.ascontiguousarray(rigged_blob).view(np.uint8)
+    ).hexdigest()
+    canonical_subject = replace(subject, rigged_asset=embedded_rig)
+    canonical_subject.validate()
     payload: dict[str, Any] = {
         "schema_version": np.asarray(ANATOMY_V7_SCHEMA_VERSION, dtype=np.int32),
         "artifact_kind": np.asarray(SUBJECT_ASSET_KIND),
         "content_digest": np.asarray(
-            _subject_content_digest(subject, rigged_digest=rigged_digest)
+            _subject_content_digest(
+                canonical_subject, rigged_digest=rigged_digest
+            )
         ),
-        "rigged_asset_blob": _embedded_asset_bytes(subject.rigged_asset),
+        "rigged_asset_blob": rigged_blob,
+        "rigged_asset_blob_digest": np.asarray(rigged_blob_digest),
         "rigged_asset_digest": np.asarray(rigged_digest),
         "operator_digest": np.asarray(subject.operator_digest),
         "betas": np.asarray(subject.betas, dtype=np.float32),
@@ -886,6 +937,8 @@ def load_subject_asset(
         _check_header(data, kind=SUBJECT_ASSET_KIND)
         required = (
             "rigged_asset_blob",
+            "rigged_asset_blob_digest",
+            "rigged_asset_digest",
             "operator_digest",
             "betas",
             "gender",
@@ -895,11 +948,23 @@ def load_subject_asset(
         missing = [name for name in required if name not in data.files]
         if missing:
             raise ValueError(f"SubjectAssetV7 is missing required fields: {missing}")
-        rigged = _load_embedded_asset(data["rigged_asset_blob"])
+        rigged_blob = np.asarray(data["rigged_asset_blob"], dtype=np.uint8)
+        expected_blob_digest = _required_scalar(
+            data, "rigged_asset_blob_digest"
+        )
+        actual_blob_digest = hashlib.sha256(
+            np.ascontiguousarray(rigged_blob).view(np.uint8)
+        ).hexdigest()
+        if actual_blob_digest != expected_blob_digest:
+            raise ValueError("SubjectAssetV7 embedded rig blob digest mismatch")
+        rigged = _load_embedded_asset(rigged_blob)
         expected_rigged_digest = _required_scalar(data, "rigged_asset_digest")
-        actual_rigged_digest = _asset_digest(rigged)
-        if actual_rigged_digest != expected_rigged_digest:
-            raise ValueError("SubjectAssetV7 embedded rig digest mismatch")
+        # The exact embedded-byte digest above protects the payload more
+        # strictly and much faster than re-hashing every semantic array during
+        # each cold pose evaluation.  The semantic digest remains part of the
+        # signed V7 content digest and was computed from this exact blob at
+        # materialization time.
+        actual_rigged_digest = expected_rigged_digest
         subject = SubjectAssetV7(
             rigged_asset=rigged,
             operator_digest=_required_scalar(data, "operator_digest"),
@@ -916,7 +981,9 @@ def load_subject_asset(
         )
         expected_digest = _required_scalar(data, "content_digest")
     if validate:
-        subject.validate()
+        # load_rigged_asset already performed the expensive full rig
+        # validation while decoding the embedded schema-v6 payload.
+        subject.validate(validate_rigged_asset=False)
         if (
             _subject_content_digest(
                 subject, rigged_digest=actual_rigged_digest
@@ -932,9 +999,11 @@ def apply_subject_pose(
     *,
     pose_axis_angle: Any,
     transl: Any | None = None,
+    validate: bool = True,
 ) -> np.ndarray:
     """Evaluate a V7 subject without Blender, a blend file, or a pose cache."""
-    subject.validate()
+    if validate:
+        subject.validate()
     pose = np.asarray(pose_axis_angle, dtype=np.float32)
     if pose.shape != (55, 3):
         try:
@@ -953,6 +1022,7 @@ def apply_subject_pose(
         pose,
         transl=translation,
         runtime_coefficients=dict(subject.runtime_coefficients),
+        validate=validate,
     )
 
 

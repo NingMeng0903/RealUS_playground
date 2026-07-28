@@ -1262,6 +1262,19 @@ class _TickLogger:
            "force_reference_gate_scale",
            "force_reference_accel_m_s2",
            "force_reference_reversal_reset",
+           "force_reference_fast_clear",
+           "force_fast_z",
+           "retract_guard_armed",
+           "retract_fast_hold",
+           "retract_fast_stop_count",
+           "retract_fast_rearm_count",
+           "force_task_latched",
+           "physical_contact_state",
+           "physical_contact_acquire_event",
+           "physical_contact_loss_event",
+           "physical_contact_reacquire_event",
+           "physical_contact_low_timer_s",
+           "physical_contact_high_timer_s",
            "mass_z_eff", "takeover",
            "dt_actual_s", "sensor_age_s",
            "fx_raw_comp", "fy_raw_comp", "fz_raw_comp",
@@ -1351,6 +1364,40 @@ class _TickLogger:
         force_reference_reversal_reset = getattr(
             ctrl, "force_reference_reversal_reset", False
         )
+        force_reference_fast_clear = getattr(
+            ctrl, "force_reference_fast_clear", False
+        )
+        force_fast_z = getattr(ctrl, "force_fast_z", float("nan"))
+        retract_guard_armed = getattr(ctrl, "retract_guard_armed", False)
+        retract_fast_hold = getattr(ctrl, "retract_fast_hold", False)
+        retract_fast_stop_count = getattr(
+            ctrl, "retract_fast_stop_count", 0
+        )
+        retract_fast_rearm_count = getattr(
+            ctrl, "retract_fast_rearm_count", 0
+        )
+        force_task_latched = getattr(ctrl, "force_task_latched", False)
+        physical_contact_state = getattr(ctrl, "physical_contact_state", "")
+        physical_contact_acquire_event = getattr(
+            ctrl, "physical_contact_acquire_event", False
+        )
+        physical_contact_loss_event = getattr(
+            ctrl, "physical_contact_loss_event", False
+        )
+        physical_contact_reacquire_event = getattr(
+            ctrl, "physical_contact_reacquire_event", False
+        )
+        physical_contact_tracker = getattr(ctrl, "_physical_contact", None)
+        physical_contact_low_timer = getattr(
+            ctrl,
+            "physical_contact_low_timer_s",
+            getattr(physical_contact_tracker, "low_timer_s", float("nan")),
+        )
+        physical_contact_high_timer = getattr(
+            ctrl,
+            "physical_contact_high_timer_s",
+            getattr(physical_contact_tracker, "high_timer_s", float("nan")),
+        )
         mass_z_eff = getattr(ctrl, "mass_z_eff", float("nan"))
         takeover = getattr(ctrl, "takeover_active", False)
         contact_present = getattr(ctrl, "contact_present", False)
@@ -1399,6 +1446,19 @@ class _TickLogger:
                f"{force_reference_gate:.4f}",
                f"{force_reference_accel:.6f}",
                int(bool(force_reference_reversal_reset)),
+               int(bool(force_reference_fast_clear)),
+               f"{force_fast_z:.3f}",
+               int(bool(retract_guard_armed)),
+               int(bool(retract_fast_hold)),
+               int(retract_fast_stop_count),
+               int(retract_fast_rearm_count),
+               int(bool(force_task_latched)),
+               str(physical_contact_state),
+               int(bool(physical_contact_acquire_event)),
+               int(bool(physical_contact_loss_event)),
+               int(bool(physical_contact_reacquire_event)),
+               f"{physical_contact_low_timer:.6f}",
+               f"{physical_contact_high_timer:.6f}",
                f"{mass_z_eff:.4f}",
                int(bool(takeover)),
                f"{dt_actual_s:.6f}", f"{sensor_age_s:.6f}",

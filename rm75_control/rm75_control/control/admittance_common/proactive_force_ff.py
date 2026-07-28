@@ -119,6 +119,7 @@ class ProactiveForceIntegrator:
         self.last_instability_scale = 1.0
         self.last_reference_accel_m_s2 = 0.0
         self.last_reversal_reset = False
+        self.last_fast_retract_clear = False
 
     def update(
         self,
@@ -130,6 +131,7 @@ class ProactiveForceIntegrator:
         v_force_z: float,
         v_z_cap: float,
         desired_force_n: float = 0.0,
+        retract_fast_hold: bool = False,
     ) -> float:
         cfg = self.cfg
         if not cfg.enabled:
@@ -138,7 +140,17 @@ class ProactiveForceIntegrator:
             self.last_instability_scale = 1.0
             self.last_reference_accel_m_s2 = 0.0
             self.last_reversal_reset = False
+            self.last_fast_retract_clear = False
             return 0.0
+
+        self.last_fast_retract_clear = False
+        # The raw-force veto is a safety correction and must still remove a
+        # stale retracting reference when the trajectory governor has frozen
+        # its reference clock (dt_eff == 0).  It does not advance any
+        # integrator state.
+        if retract_fast_hold and self.v_r < 0.0:
+            self.v_r = 0.0
+            self.last_fast_retract_clear = True
         if dt_eff <= 0.0:
             return self.v_r
 
@@ -169,10 +181,16 @@ class ProactiveForceIntegrator:
         self.last_instability_scale = 1.0
         self.last_reference_accel_m_s2 = 0.0
         self.last_reversal_reset = False
+        # The fast raw-force path is a one-way veto only.  It may remove an
+        # already negative active reference when the raw force has fallen
+        # ahead of the delayed 6 Hz control force, but it cannot command a
+        # press and it never clears the passive admittance velocity.
 
         has_effective_error = in_contact and abs(eff) > 1e-12
         integrate = has_effective_error
         if integrate and cfg.retract_only and eff > 0.0:
+            integrate = False
+        if integrate and retract_fast_hold and eff < 0.0:
             integrate = False
 
         # Do not let the previous direction spend 0.2--0.5 s fighting a new

@@ -1,8 +1,11 @@
-"""Install linear_probe assets: visual DAE is a direct copy (no re-export).
+"""Install probe45 assets: visual DAE is a direct copy (no re-export).
 
 The user supplies a Blender-decimated Collada at SRC_DAE. Do NOT decimate /
 re-export the visual mesh (that was destroying outer faces). Only build a
 low-poly collision STL for QP-IK CBF.
+
+Colors: after copy, retune Collada diffuse to match the linear_probe palette
+(converter / blue parts → soft blue).
 
 Run:
   /media/camp/EXT_DRIVE/blender/blender --background --python \\
@@ -12,6 +15,7 @@ Run:
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -19,9 +23,9 @@ from pathlib import Path
 import bpy  # type: ignore
 
 REPO = Path(__file__).resolve().parents[1]
-SRC_DAE = Path("/home/camp/Desktop/New Folder/trans/linear_probe.dae")
+SRC_DAE = Path("/home/camp/Desktop/New Folder/trans/probe45.dae")
 OUT_DIR = REPO / "rm75_control" / "assets" / "robots" / "rm75_6f_8dof" / "meshes"
-OUT_VIS = OUT_DIR / "linear_probe.dae"
+OUT_VIS = OUT_DIR / "probe45.dae"
 OUT_VIS_VIEWER = (
     REPO
     / "rm75_control"
@@ -29,14 +33,60 @@ OUT_VIS_VIEWER = (
     / "joint_admittance_8dof"
     / "assets"
     / "meshes"
-    / "linear_probe.dae"
+    / "probe45.dae"
 )
-OUT_COL = OUT_DIR / "collision" / "linear_probe.stl"
-MANIFEST = OUT_DIR / "collision" / "linear_probe_manifest.json"
+OUT_COL = OUT_DIR / "collision" / "probe45.stl"
+MANIFEST = OUT_DIR / "collision" / "probe45_manifest.json"
 
 EXCLUDE_EXACT = {"Cube", "link_8", "Camera", "Light", "Default"}
 COLLISION_TARGET_TRIS = 500
 DECIMATE_RATIO_FLOOR = 0.01
+
+# Match previous linear_probe.dae tuned palette; blues include 40° converter.
+COLOR_BY_MAT_SUBSTR = [
+    ("Hard_Textured_Plastic_Blue__2_001", "0.55 0.72 0.90 1"),
+    ("Hard_Textured_Plastic_Blue__2", "0.55 0.72 0.90 1"),
+    ("Hard_Textured_Plastic_Red__2_001", "0.90 0.55 0.32 1"),
+    ("Hard_Textured_Plastic_Red__2", "0.92 0.62 0.38 1"),
+    ("Hard_Textured_Plastic_Black", "0.24 0.24 0.24 1"),
+    ("Hard_Rough_Plastic_Grey", "0.82 0.825 0.835 1"),
+    ("Hard_Rough_Plastic_White", "1 1 1 1"),
+    ("Glass_Light_Frost_Grey", "0.86 0.86 0.87 1"),
+    ("Anodized_Aluminum_Brushed_90", "0.90 0.90 0.91 1"),
+]
+
+
+def _retune_dae_colors(path: Path) -> None:
+    text = path.read_text(encoding="utf-8")
+    mat_eff = dict(
+        re.findall(
+            r'<material[^>]*id="([^"]+)"[^>]*>\s*<instance_effect url="#([^"]+)"',
+            text,
+        )
+    )
+    eff_color: dict[str, str] = {}
+    for mid, eid in mat_eff.items():
+        for key, rgba in COLOR_BY_MAT_SUBSTR:
+            if key in mid:
+                eff_color[eid] = rgba
+                break
+
+    def repl_effect(m: re.Match[str]) -> str:
+        full = m.group(0)
+        eid = m.group(1)
+        if eid not in eff_color:
+            return full
+        rgba = eff_color[eid]
+        full2, _n = re.subn(
+            r"(<diffuse>\s*<color[^>]*>)[^<]+(</color>)",
+            rf"\g<1>{rgba}\2",
+            full,
+            count=1,
+        )
+        return full2
+
+    text2 = re.sub(r'<effect id="([^"]+)"[^>]*>[\s\S]*?</effect>', repl_effect, text)
+    path.write_text(text2, encoding="utf-8")
 
 
 def _clear_scene() -> None:
@@ -109,25 +159,27 @@ def main() -> int:
         raise FileNotFoundError(SRC_DAE)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    # Visual: byte-for-byte copy of user DAE (no secondary Blender export).
+    # Visual: copy then retune diffuse (do not Blender-reexport visual).
     shutil.copy2(SRC_DAE, OUT_VIS)
+    _retune_dae_colors(OUT_VIS)
     OUT_VIS_VIEWER.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(SRC_DAE, OUT_VIS_VIEWER)
+    shutil.copy2(OUT_VIS, OUT_VIS_VIEWER)
 
     col = _build_collision_stl()
     report = {
         "src": str(SRC_DAE),
         "visual_dae": str(OUT_VIS),
-        "visual_viewer_copy": str(OUT_VIS_VIEWER),
-        "visual_bytes": OUT_VIS.stat().st_size,
-        "visual_note": "direct copy; no decimate / re-export",
         "collision_stl": str(OUT_COL),
-        "collision": col,
+        **col,
     }
-    MANIFEST.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    MANIFEST.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"export_linear_probe_meshes failed: {exc}", file=sys.stderr)
+        raise

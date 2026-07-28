@@ -275,6 +275,79 @@ def test_idle_decay_in_steady_contact():
     )
 
 
+def test_allow_idle_decay_false_freezes_stiff_first_estimate():
+    """A low-load/suspect episode must not look like quiet soft tissue.
+
+    At a 1 N setpoint the free-space residual can leave |f_err| below the
+    legacy 1.2 N envelope.  The physical-contact caller therefore needs an
+    explicit idle-decay veto until reliable load-bearing contact returns.
+    """
+    cfg = AdaptiveKeConfig(
+        enabled=True,
+        zeta=1.0,
+        ke_initial=80.0,
+        ke_impact_initial=1500.0,
+        ke_idle_decay_s=0.20,
+        f_err_gate_n=1.2,
+        bd_slew_max=1e6,
+        gate_lateral_velocity=False,
+        gate_df_spike=False,
+        settle_ticks=0,
+        dx_threshold_m=1.0,  # no ΔF/Δx learning: isolate idle decay
+    )
+    est = EnvironmentStiffnessEstimator(cfg, dt=0.005, mass_z=1.0)
+    pose = np.zeros(6)
+    est.update(
+        0.2,
+        pose,
+        in_contact=True,
+        mass_z=1.0,
+        v_force_z=0.0,
+        v_lateral_m_s=0.0,
+        f_err_z=0.8,
+        f_des_z=1.0,
+        allow_impact_init=True,
+        allow_idle_decay=False,
+    )
+    ke_stiff_first = est.ke_est
+    assert ke_stiff_first == cfg.ke_impact_initial
+
+    for _ in range(400):  # 2 s = 10 idle-decay time constants
+        est.update(
+            0.2,
+            pose,
+            in_contact=True,
+            mass_z=1.0,
+            v_force_z=0.0,
+            v_lateral_m_s=0.0,
+            f_err_z=0.8,
+            f_des_z=1.0,
+            allow_impact_init=False,
+            allow_idle_decay=False,
+        )
+    assert est.ke_est == ke_stiff_first, (
+        "allow_idle_decay=False must preserve stiff-first K̂_e even when "
+        "the 1 N error envelope would otherwise permit idle decay"
+    )
+
+    # Prove the test exercises the idle-decay path: opening the gate must now
+    # make the same estimator relax rapidly toward the soft floor.
+    for _ in range(400):
+        est.update(
+            0.2,
+            pose,
+            in_contact=True,
+            mass_z=1.0,
+            v_force_z=0.0,
+            v_lateral_m_s=0.0,
+            f_err_z=0.8,
+            f_des_z=1.0,
+            allow_impact_init=False,
+            allow_idle_decay=True,
+        )
+    assert est.ke_est < 0.5 * ke_stiff_first
+
+
 def test_idle_decay_frozen_by_f_err_envelope():
     """During an over-force transient (|f_err|_env > gate) the idle decay
     must FREEZE — dropping K̂_e mid-transient would drop b_d and worsen the

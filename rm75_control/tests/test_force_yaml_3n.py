@@ -87,6 +87,21 @@ def test_proactive_feedforward_in_yaml():
     assert "proactive_mode" not in hm
 
 
+def test_contact_rearm_and_fast_crossing_guard_enabled():
+    raw = yaml.safe_load(Path("configs/joint_admittance.yaml").read_text())
+    hm = raw["hybrid_motion"]
+    physical = hm["physical_contact"]
+    fast = hm["fast_retract_guard"]
+
+    assert physical["enabled"] is True
+    assert physical["exit_n"] < physical["enter_n"] < physical["hard_enter_n"]
+    assert physical["exit_confirm_s"] >= 0.1
+    assert fast["enabled"] is True
+    assert fast["stop_margin_n"] > 0.0
+    assert fast["rearm_margin_n"] > fast["stop_margin_n"]
+    assert fast["max_sensor_age_s"] <= 0.020
+
+
 def test_yaml_unified_vz_cap():
     """scan-jitter-fix §2a: the send-path cap max_velocity[2] must equal the
     admittance state cap max_vz_tool_m_s, so the state can never wind up past

@@ -808,6 +808,9 @@ def source_bone_skinning_transforms(
     knee_hinge_splines = dict(
         (asset.metadata or {}).get("source_knee_hinge_splines_v7", {})
     )
+    tibia_glide_splines = dict(
+        (asset.metadata or {}).get("source_tibia_glide_splines_v7", {})
+    )
     patella_splines = dict(
         (asset.metadata or {}).get("source_patella_splines_v7", {})
     )
@@ -839,6 +842,42 @@ def source_bone_skinning_transforms(
         parent = int(source_parents[bi])
         if parent >= bi or parent < -1:
             raise ValueError(f"source bone parent {parent} for bone {bi} is not topological")
+        tibia_glide = tibia_glide_splines.get(str(bi))
+        if tibia_glide is not None:
+            if parent < 0:
+                raise ValueError(f"V7 tibia glide {bi} has no source parent")
+            joint = int(tibia_glide.get("smplx_joint", -1))
+            knots = np.radians(
+                np.asarray(tibia_glide.get("knots_deg", []), dtype=np.float64)
+            )
+            translations = np.asarray(
+                tibia_glide.get("translation_parent_local_m", []),
+                dtype=np.float64,
+            )
+            if (
+                joint < 0
+                or joint >= len(input_pose)
+                or knots.ndim != 1
+                or len(knots) < 2
+                or translations.shape != (len(knots), 3)
+                or np.any(np.diff(knots) <= 0.0)
+            ):
+                raise ValueError(f"V7 tibia glide {bi} has invalid coefficients")
+            flexion = float(np.linalg.norm(input_pose[joint]))
+            translation = np.asarray(
+                [
+                    np.interp(flexion, knots, translations[:, axis_index])
+                    for axis_index in range(3)
+                ],
+                dtype=np.float64,
+            )
+            maximum = float(tibia_glide.get("maximum_translation_m", 0.0005))
+            if float(np.linalg.norm(translation)) > maximum + 1.0e-7:
+                raise ValueError(f"V7 tibia glide {bi} exceeds its baked bound")
+            posed_local = np.asarray(rest_local_bones[bi], dtype=np.float64).copy()
+            posed_local[:3, 3] += translation
+            posed_global[bi] = posed_global[parent] @ posed_local
+            continue
         if mode == "bind_follow" and parent >= 0:
             posed_global[bi] = posed_global[parent] @ rest_local_bones[bi]
             continue
@@ -1097,8 +1136,10 @@ def skin_vertices(
     *,
     transl: Any | None = None,
     runtime_coefficients: dict[str, np.ndarray] | None = None,
+    validate: bool = True,
 ) -> np.ndarray:
-    asset.validate()
+    if validate:
+        asset.validate()
     vertices = np.asarray(asset.vertices_rest, dtype=np.float32).reshape(-1, 3)
     if asset.source_bone_names is not None:
         transforms = source_bone_skinning_transforms(asset, pose_axis_angle)

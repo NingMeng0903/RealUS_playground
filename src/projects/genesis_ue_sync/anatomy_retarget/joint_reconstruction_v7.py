@@ -7,7 +7,7 @@ pose hot path.  Every probe is a fixed V71 vertex id.
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any
+from typing import Any, Mapping
 
 import numpy as np
 
@@ -143,11 +143,153 @@ def _force_rigid_mesh_driver(
     driver_weights[indices, 0] = 1.0
 
 
+def _socket_neighbourhood_displacement(
+    *,
+    faces: np.ndarray,
+    mesh_indices: np.ndarray,
+    core_indices: np.ndarray,
+    core_displacement: np.ndarray,
+    ring_count: int = 4,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Diffuse a fixed socket correction over a small immutable pelvis ring."""
+    mesh = np.asarray(mesh_indices, dtype=np.int64)
+    core = np.asarray(core_indices, dtype=np.int64)
+    local_by_global = np.full(int(np.max(mesh)) + 1, -1, dtype=np.int64)
+    local_by_global[mesh] = np.arange(len(mesh), dtype=np.int64)
+    triangles = np.asarray(faces, dtype=np.int64)
+    triangles = triangles[np.all(np.isin(triangles, mesh), axis=1)]
+    edges = np.concatenate(
+        (
+            triangles[:, (0, 1)],
+            triangles[:, (1, 2)],
+            triangles[:, (2, 0)],
+        ),
+        axis=0,
+    )
+    edges = local_by_global[edges]
+    adjacency: list[set[int]] = [set() for _ in range(len(mesh))]
+    for first, second in edges.tolist():
+        adjacency[int(first)].add(int(second))
+        adjacency[int(second)].add(int(first))
+    displacement = np.zeros((len(mesh), 3), dtype=np.float64)
+    assigned = np.zeros(len(mesh), dtype=bool)
+    core_local = local_by_global[core]
+    displacement[core_local] = np.asarray(core_displacement, dtype=np.float64)
+    assigned[core_local] = True
+    frontier = set(int(value) for value in core_local.tolist())
+    for ring in range(1, int(ring_count) + 1):
+        next_frontier: set[int] = set()
+        for vertex in frontier:
+            next_frontier.update(
+                neighbour
+                for neighbour in adjacency[vertex]
+                if not assigned[neighbour]
+            )
+        if not next_frontier:
+            break
+        weight = float((ring_count + 1 - ring) / (ring_count + 1))
+        for vertex in next_frontier:
+            previous = [
+                neighbour
+                for neighbour in adjacency[vertex]
+                if assigned[neighbour]
+            ]
+            if previous:
+                displacement[vertex] = (
+                    weight * np.mean(displacement[previous], axis=0)
+                )
+        assigned[list(next_frontier)] = True
+        frontier = next_frontier
+    return mesh[assigned], displacement[assigned]
+
+
+def _restore_socket_template_v7(
+    *,
+    asset: AnatomyRiggedAsset,
+    source_socket_points: np.ndarray,
+    source_head_radius_m: float,
+    vertices: np.ndarray,
+    domains: FrozenJointMaterialDomainsV7,
+    side: str,
+) -> dict[str, Any]:
+    """Restore V71 socket shape at the current beta/head scale and pelvis pose."""
+    suffix = _SIDE_SUFFIX[side]
+    head = domains.require(f"{side}/femoral_head")
+    socket = domains.require(f"{side}/acetabulum")
+    source_points = np.asarray(source_socket_points, dtype=np.float64)
+    if source_points.shape != (len(socket), 3) or not np.all(
+        np.isfinite(source_points)
+    ):
+        raise ValueError(f"{side} V71 socket template has an invalid shape")
+    source_radius = float(source_head_radius_m)
+    if not np.isfinite(source_radius) or source_radius <= 0.0:
+        raise ValueError(f"{side} V71 femoral-head radius is invalid")
+    source_socket = fit_sphere_fixed_radius_v7(
+        source_points, radius_m=source_radius
+    )
+    subject_head = fit_sphere_v7(vertices[head])
+    subject_socket = fit_sphere_fixed_radius_v7(
+        vertices[socket], radius_m=float(subject_head["radius_m"])
+    )
+    if not all(
+        item["available"]
+        for item in (source_socket, subject_head, subject_socket)
+    ):
+        raise ValueError(f"{side} source socket template sphere fit failed")
+    source_centered = (
+        source_points
+        - np.asarray(source_socket["center"], dtype=np.float64)
+    )
+    subject_centered = (
+        vertices[socket]
+        - np.asarray(subject_socket["center"], dtype=np.float64)
+    )
+    u, _singular, vt = np.linalg.svd(source_centered.T @ subject_centered)
+    rotation = vt.T @ u.T
+    if float(np.linalg.det(rotation)) < 0.0:
+        vt[-1] *= -1.0
+        rotation = vt.T @ u.T
+    radius_scale = float(subject_head["radius_m"]) / max(source_radius, 1.0e-12)
+    target = (
+        np.asarray(subject_socket["center"], dtype=np.float64)
+        + radius_scale * source_centered @ rotation.T
+    )
+    core_displacement = target - vertices[socket]
+    ilium = _mesh_vertices(asset, f"Ilium_{suffix}")
+    affected, displacement = _socket_neighbourhood_displacement(
+        faces=asset.faces,
+        mesh_indices=ilium,
+        core_indices=socket,
+        core_displacement=core_displacement,
+    )
+    vertices[affected] += displacement
+    final_socket = fit_sphere_fixed_radius_v7(
+        vertices[socket], radius_m=float(subject_head["radius_m"])
+    )
+    return {
+        "source": "true_v71_fixed_material_socket",
+        "radius_scale": radius_scale,
+        "core_vertex_count": int(len(socket)),
+        "transition_vertex_count": int(len(affected) - len(socket)),
+        "maximum_displacement_m": float(
+            np.max(np.linalg.norm(displacement, axis=1))
+        ),
+        "rms_displacement_m": float(
+            np.sqrt(np.mean(np.sum(displacement * displacement, axis=1)))
+        ),
+        "sphere_residual_before_m": float(subject_socket["rms_residual_m"]),
+        "sphere_residual_after_m": float(final_socket["rms_residual_m"]),
+        "whole_pelvis_scaled": False,
+    }
+
+
 def reconstruct_articular_subject_v7(
     asset: AnatomyRiggedAsset,
     *,
     domains: FrozenJointMaterialDomainsV7,
-    knee_target_gap_m: float = 0.0015,
+    source_reference: AnatomyRiggedAsset | None = None,
+    source_socket_templates: Mapping[str, np.ndarray] | None = None,
+    knee_target_gap_m: float = 0.0010,
     patella_target_gap_m: float = 0.002,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     """Correct hip/knee/patella rest geometry without scaling articular ends."""
@@ -198,7 +340,9 @@ def reconstruct_articular_subject_v7(
     side_reports: dict[str, Any] = {}
     local_fk: set[int] = set()
     knee_hinges: dict[str, Any] = {}
+    tibia_glides: dict[str, Any] = {}
     patella_splines: dict[str, Any] = {}
+    socket_reports: dict[str, Any] = {}
     for side in _SIDES:
         suffix = _SIDE_SUFFIX[side]
         femur_bone = _bone_index(asset, f"Femur_Rot_{suffix}")
@@ -206,6 +350,54 @@ def reconstruct_articular_subject_v7(
         tibia_bone = _bone_index(asset, f"Tibia_Bone_{suffix}")
         tibia_twist = _bone_index(asset, f"Tibia_Twist_{suffix}")
         patella_bone = _bone_index(asset, f"Patella_Rotate_{suffix}")
+
+        if source_reference is not None:
+            if (
+                len(source_reference.vertices_rest) != len(asset.vertices_rest)
+                or not np.array_equal(source_reference.faces, asset.faces)
+                or list(source_reference.source_mesh_names)
+                != list(asset.source_mesh_names)
+            ):
+                raise ValueError(
+                    "V7 source socket template topology does not match subject"
+                )
+            reference_head = fit_sphere_v7(
+                np.asarray(source_reference.vertices_rest)[
+                    domains.require(f"{side}/femoral_head")
+                ]
+            )
+            if not reference_head["available"]:
+                raise ValueError(f"{side} V71 femoral-head template fit failed")
+            socket_reports[side] = _restore_socket_template_v7(
+                asset=asset,
+                source_socket_points=np.asarray(source_reference.vertices_rest)[
+                    domains.require(f"{side}/acetabulum")
+                ],
+                source_head_radius_m=float(reference_head["radius_m"]),
+                vertices=vertices,
+                domains=domains,
+                side=side,
+            )
+        elif source_socket_templates is not None:
+            points_key = f"{side}/socket_points_m"
+            radius_key = f"{side}/femoral_head_radius_m"
+            if points_key not in source_socket_templates or radius_key not in source_socket_templates:
+                raise ValueError(f"{side} V71 socket template coefficients are missing")
+            socket_reports[side] = _restore_socket_template_v7(
+                asset=asset,
+                source_socket_points=source_socket_templates[points_key],
+                source_head_radius_m=float(
+                    np.asarray(source_socket_templates[radius_key]).reshape(-1)[0]
+                ),
+                vertices=vertices,
+                domains=domains,
+                side=side,
+            )
+        else:
+            socket_reports[side] = {
+                "source": "subject_existing_socket",
+                "available": False,
+            }
 
         head_indices = domains.require(f"{side}/femoral_head")
         socket_indices = domains.require(f"{side}/acetabulum")
@@ -298,7 +490,24 @@ def reconstruct_articular_subject_v7(
         # Five-degree samples are still tiny (<1 KiB for both knees) and avoid
         # interpolating across a narrow condyle contact transition.
         knot_degrees = np.linspace(0.0, 120.0, 25, dtype=np.float64)
-        translation_local = [np.zeros(3, dtype=np.float64)]
+        # Keep the authored Femur->Knee_Rotate translation exact.  An earlier
+        # prototype put a noisy nearest-contact translation (up to 12.7 mm)
+        # on the hinge itself.  That made the contact diagnostic pass by
+        # physically disconnecting the knee pivot from the femur.  The compact
+        # V7 hinge therefore contains rotation only; the 1 mm rest corridor
+        # supplies enough margin for the accepted rolling contact sweep.
+        translation_local = np.zeros((len(knot_degrees), 3), dtype=np.float64)
+        knee_hinges[str(knee_bone)] = {
+            "side": side,
+            "smplx_joint": int(_SMPLX_KNEE[side]),
+            "axis_local": hinge_local.tolist(),
+            "input_mode": "axis_angle_norm",
+            "knots_deg": knot_degrees.tolist(),
+            "response_deg": knot_degrees.tolist(),
+            "translation_local_m": translation_local.tolist(),
+            "pivot_translation_locked": True,
+        }
+        glide_local = [np.zeros(3, dtype=np.float64)]
         for angle_deg in knot_degrees[1:]:
             angle = float(np.radians(angle_deg))
             cross = np.asarray(
@@ -325,17 +534,35 @@ def reconstruct_articular_subject_v7(
                 side=side,
                 target_gap_m=float(knee_target_gap_m),
             )
-            translation_local.append(
-                bind_global[knee_bone, :3, :3].T @ correction_world
+            magnitude = float(np.linalg.norm(correction_world))
+            if magnitude > 0.001:
+                correction_world *= 0.001 / magnitude
+            posed_knee_rotation = (
+                rotation @ bind_global[knee_bone, :3, :3]
             )
-        knee_hinges[str(knee_bone)] = {
+            glide_local.append(
+                posed_knee_rotation.T @ correction_world
+            )
+        glide_local_array = np.asarray(glide_local, dtype=np.float64)
+        # Remove nearest-surface knot jitter without enlarging the strict
+        # 0.5 mm local-FK translation budget.
+        if len(glide_local_array) > 2:
+            padded = np.pad(glide_local_array, ((1, 1), (0, 0)), mode="edge")
+            glide_local_array = (
+                padded[:-2] + 2.0 * padded[1:-1] + padded[2:]
+            ) / 4.0
+            glide_local_array[0] = 0.0
+            norm = np.linalg.norm(glide_local_array, axis=1)
+            active = norm > 0.001
+            glide_local_array[active] *= (
+                0.001 / norm[active]
+            )[:, None]
+        tibia_glides[str(tibia_bone)] = {
             "side": side,
             "smplx_joint": int(_SMPLX_KNEE[side]),
-            "axis_local": hinge_local.tolist(),
-            "input_mode": "axis_angle_norm",
             "knots_deg": knot_degrees.tolist(),
-            "response_deg": knot_degrees.tolist(),
-            "translation_local_m": np.asarray(translation_local).tolist(),
+            "translation_parent_local_m": glide_local_array.tolist(),
+            "maximum_translation_m": 0.001,
         }
 
         patella = domains.require(f"{side}/patella")
@@ -478,6 +705,14 @@ def reconstruct_articular_subject_v7(
             bind_local[bone] = (
                 np.linalg.inv(bind_global[int(parent)]) @ bind_global[bone]
             )
+    # The legacy refit also left target_bone_head/tail several centimetres
+    # away from the fitted bind origins (notably Tibia_Twist->Ankle).  Station
+    # material coordinates use these endpoints, while FK uses target bind
+    # matrices, so the two representations must describe the same skeleton.
+    bind_origins = bind_global[:, :3, 3]
+    endpoint_shift = bind_origins - bone_head
+    bone_head = bind_origins.copy()
+    bone_tail += endpoint_shift
     metadata = dict(asset.metadata or {})
     # V71's useful invariant was not a particular body shape.  It was that
     # every source child retained its authored parent-local translation while
@@ -503,6 +738,7 @@ def reconstruct_articular_subject_v7(
             },
             "source_anatomical_pivots_v7": True,
             "source_knee_hinge_splines_v7": knee_hinges,
+            "source_tibia_glide_splines_v7": tibia_glides,
             "source_patella_splines_v7": patella_splines,
             "source_patella_response_v7": {
                 side: {
@@ -543,6 +779,7 @@ def reconstruct_articular_subject_v7(
         "schema_version": 7,
         "method": "v71_fixed_domains_minimum_articular_correction",
         "sides": side_reports,
+        "socket_template": socket_reports,
         "selected_local_fk_bones": sorted(local_fk),
         "scaled_structures": [],
         "passed": bool(passed),

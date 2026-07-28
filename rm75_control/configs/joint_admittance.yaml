@@ -141,9 +141,19 @@ hybrid_motion:
   pos_err_deadband_m: 0.0005
   pos_correction_max_m_s: 0.08
   system_delay_s: 0.015
-  # fz-only enter-only contact latch: lateral scan shear must not flip contact.
+  # TCP-Z-only force-task latch: lateral scan shear cannot start force mode.
+  # Once entered it remains active until controller reset.
   contact_threshold_n: 0.8
   contact_use_fz_only: true
+  # Load-bearing contact is tracked separately so a confirmed flight can
+  # re-arm stiff-first without ending the force task or restarting its ramp.
+  physical_contact:
+    enabled: true
+    enter_n: 0.80
+    hard_enter_n: 1.50
+    exit_n: 0.35
+    enter_confirm_s: 0.010
+    exit_confirm_s: 0.100
   # Noise-rejection deadband — a FIXED sensor-noise quantity, never scaled
   # with desired_z (scaling it made a 5 N hold need >0.5 N over-force before
   # any retract authority: the "over-force / heavy damping" hand feel).
@@ -250,6 +260,19 @@ hybrid_motion:
   proactive_reset_on_reversal: true
   force_scale_min_n: 0.20
   force_scale_fraction: 0.15
+  # Fast raw force only vetoes a stale negative active reference after a
+  # confirmed low-side target crossing; passive over-force escape is untouched.
+  fast_retract_guard:
+    enabled: true
+    cutoff_hz: 20.0
+    stop_margin_n: 0.25
+    stop_margin_fraction: 0.05
+    rearm_margin_n: 0.45
+    rearm_margin_fraction: 0.10
+    stop_confirm_s: 0.015
+    rearm_confirm_s: 0.010
+    min_hold_s: 0.025
+    max_sensor_age_s: 0.020
 
 startup:
   pose_slot_q_deg: null
