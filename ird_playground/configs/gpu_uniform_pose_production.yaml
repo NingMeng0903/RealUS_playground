@@ -1,4 +1,5 @@
 sampling:
+  robot_spec: configs/robot_probe45.yaml
   seed_gt_npz: data/ird/gpu_pose_production.npz
   output_npz: data/ird/gpu_pose_uniform_production.npz
   n_queries: 500000

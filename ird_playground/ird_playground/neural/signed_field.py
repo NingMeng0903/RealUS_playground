@@ -16,6 +16,10 @@ except ImportError:  # pragma: no cover
     F = None  # type: ignore
 
 from ird_playground.ird.canonical import canonical_from_world_torch
+from ird_playground.ird.robot_model import (
+    RobotModelSpec,
+    assert_robot_contract_compatible,
+)
 
 
 class SmoothResidualBlock(nn.Module if nn is not None else object):  # type: ignore[misc]
@@ -81,17 +85,32 @@ class SignedReachabilityField(nn.Module if nn is not None else object):  # type:
     def forward(self, canonical: "torch.Tensor") -> "torch.Tensor":
         return self.forward_normalized(self.normalize(canonical))
 
-    def score_world(self, T_tcp_world: "torch.Tensor", T_base_world: "torch.Tensor") -> "torch.Tensor":
-        return self(canonical_from_world_torch(T_tcp_world, T_base_world))
+    def score_world(self, T_tcp_world: "torch.Tensor", T_axis_world: "torch.Tensor") -> "torch.Tensor":
+        """Score a TCP pose relative to the physical J1-axis world transform."""
+        return self(canonical_from_world_torch(T_tcp_world, T_axis_world))
 
 
 class ReachabilitySDF:
-    def __init__(self, model: SignedReachabilityField, device: str | None = None) -> None:
+    def __init__(
+        self,
+        model: SignedReachabilityField,
+        device: str | None = None,
+        *,
+        meta: dict | None = None,
+    ) -> None:
         self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
         self.model = model.to(self.device).eval()
+        self.meta = dict(meta or {})
 
     @classmethod
-    def load(cls, path: str | Path, device: str | None = None) -> "ReachabilitySDF":
+    def load(
+        cls,
+        path: str | Path,
+        device: str | None = None,
+        *,
+        expected_robot: RobotModelSpec | None = None,
+        allow_stale: bool = False,
+    ) -> "ReachabilitySDF":
         blob = torch.load(Path(path), map_location="cpu", weights_only=False)
         cfg = blob["model_config"]
         model = SignedReachabilityField(
@@ -103,7 +122,16 @@ class ReachabilitySDF:
             input_scale=np.asarray(cfg["input_scale"], dtype=np.float32),
         )
         model.load_state_dict(blob["state_dict"])
-        return cls(model, device=device)
+        meta = dict(blob.get("meta") or {})
+        recorded = meta.get("robot_contract")
+        if recorded is None:
+            recorded = dict(meta.get("dataset_meta") or {}).get("robot_contract")
+        assert_robot_contract_compatible(
+            recorded,
+            expected_robot,
+            allow_stale=allow_stale,
+        )
+        return cls(model, device=device, meta=meta)
 
     def save(self, path: str | Path, *, meta: dict | None = None) -> None:
         path = Path(path)

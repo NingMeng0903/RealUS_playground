@@ -6,12 +6,17 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import numpy as np
+import yaml
 
 from ird_playground.ird.gt_common import (
     CLEARANCE_POSITION,
     CLEARANCE_ROTATION,
     block_ids,
     reachability_modules,
+)
+from ird_playground.ird.robot_model import (
+    assert_robot_contract_compatible,
+    load_robot_model_spec,
 )
 from ird_playground.ird.export_gt import (
     LAYER_BND_NEG,
@@ -52,6 +57,7 @@ class GpuBoundaryStencilConfig:
     collision_urdf: str | None = None
     collision_pairs: str | None = None
     collision_security_margin_m: float = 0.0
+    robot_spec: str | None = None
     seed: int = 43
     device: str = "cuda"
     log_every_batches: int = 5
@@ -173,19 +179,32 @@ def build_gpu_boundary_stencils(
     if not base_path.is_absolute():
         base_path = Path(__file__).resolve().parents[2] / base_path
     base = load_ird_gt(base_path)
+    spec = load_robot_model_spec(cfg.robot_spec)
+    base_manifest_path = base_path.with_suffix(".yaml")
+    base_manifest = (
+        yaml.safe_load(base_manifest_path.read_text(encoding="utf-8")) or {}
+        if base_manifest_path.is_file()
+        else {}
+    )
+    assert_robot_contract_compatible(base_manifest.get("robot_contract"), spec)
     rng = np.random.default_rng(cfg.seed)
     (
         _ik, _ikm, _SeedPoolConfig, _seed_pool, _halton,
         SelfCollisionFilter, build_locked_rail_model,
     ) = reachability_modules()
-    lm = build_locked_rail_model()
+    lm = build_locked_rail_model(
+        spec.kinematics_urdf,
+        rail_locked_at_m=spec.rail_locked_at_m,
+        tcp_frame=spec.tcp_frame,
+    )
     collision_cfg = GpuPoseGtConfig(
         collision_urdf=cfg.collision_urdf,
         collision_pairs=cfg.collision_pairs,
         collision_security_margin_m=cfg.collision_security_margin_m,
+        robot_spec=cfg.robot_spec,
     )
     collision_filter, collision_urdf, collision_pairs = _probe_collision_filter(
-        collision_cfg, lm, SelfCollisionFilter
+        collision_cfg, lm, SelfCollisionFilter, spec=spec
     )
     kin = TorchRM75Kinematics.from_locked_model(lm, device=cfg.device)
     q_pool_np = base["q_best"][base["reachable"] > 0.5]
@@ -357,6 +376,7 @@ def build_gpu_boundary_stencils(
         "collision_urdf": str(collision_urdf),
         "collision_pairs": str(collision_pairs),
         "collision_contract": "every positive stencil pose has a collision-free IK solution",
+        "robot_contract": spec.to_manifest(),
         "config": asdict(cfg),
     }
     return combined, meta

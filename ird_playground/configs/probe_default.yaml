@@ -1,20 +1,16 @@
-# Default ultrasound probe TCP relative to link7.
-#
-# Chain (body-fixed, right-multiply):
-#   Trans_z(0.07) · Rot_y(+pi/2) · Trans_z(0.05)
-# TCP origin ≈ (0.05, 0, 0.07) in link7; TCP +Z = link7 +X.
+# Physical probe45 TCP relative to link_7. These values mirror the authoritative
+# RM75-6F-8dof URDF and are kept only for tools that require a standalone TCP
+# transform. Normal visualization and kinematics load the URDF directly.
 
-name: ultrasound_probe_default
+name: probe45_physical
 parent_frame: link_7
 child_frame: tcp
 
-# Translation of the composed TCP origin in parent (link7), metres.
-translation_m: [0.05, 0.0, 0.07]
+# Translation of the calibrated TCP origin in link_7, metres.
+translation_m: [0.0, -0.01523, 0.12135]
 
-# Orientation as quaternion xyzw of TCP axes in parent.
-# Rot_y(+90°) maps parent +X → child +Z, parent +Z → child -X, +Y → +Y.
-# SciPy Rotation.from_euler('y', 90, degrees=True).as_quat() → [0, 0.70710678, 0, 0.70710678]
-quaternion_xyzw: [0.0, 0.7071067811865476, 0.0, 0.7071067811865476]
+# Quaternion xyzw equivalent of URDF fixed-axis RPY below.
+quaternion_xyzw: [0.3005338943198456, 0.2960053515874162, -0.6363912481840898, 0.6458067740673322]
 
-# Equivalent Euler for URDF patch / RealMan tool offset (xyz order, radians).
-euler_xyz_rad: [0.0, 1.5707963267948966, 0.0]
+# Authoritative URDF fixed-axis RPY, radians.
+euler_xyz_rad: [0.017732743, 0.870791073, -1.547861183]

@@ -6,7 +6,12 @@ import torch
 from ird_playground.ird.canonical import canonical_invariants_torch
 from ird_playground.ird.torch_kinematics import so3_exp
 from ird_playground.neural.signed_field import SignedReachabilityField
+from ird_playground.neural.train_signed import _split_indices
 from ird_playground.region.operator import RegionA, RegionAConfig
+from ird_playground.region.trajectory_operator import (
+    TrajectoryTaskConfig,
+    TrajectoryTaskOperator,
+)
 
 
 def test_canonical_embedding_is_common_yaw_and_tcp_roll_invariant():
@@ -71,3 +76,57 @@ def test_region_a_extents_follow_medical_frame_b_t_n():
     assert np.max(np.abs(offsets[:, 0])) <= 0.004
     assert np.max(np.abs(offsets[:, 1])) <= 0.003
     assert np.max(np.abs(offsets[:, 2])) <= 0.002
+
+
+def test_validation_split_keeps_source_pose_groups_disjoint():
+    boundary = np.full(12, -1, dtype=np.int64)
+    source = np.repeat(np.arange(4, dtype=np.int64), 3)
+    train, val = _split_indices(boundary, 0.25, seed=4, source_pose_id=source)
+    train_sources = set(source[train].tolist())
+    val_sources = set(source[val].tolist())
+    assert train_sources.isdisjoint(val_sources)
+    assert train_sources | val_sources == set(source.tolist())
+
+
+def test_trajectory_partial_task_keeps_angle_and_uncertainty_semantics_separate():
+    class RotationSensitiveField:
+        def score_world(self, tcp, axis):
+            del axis
+            return tcp[..., 0, 0] + 0.1 * tcp[..., 0, 3]
+
+    region_cfg = RegionAConfig(
+        tangent_m=0.0,
+        binormal_m=0.0,
+        normal_m=0.0,
+        cone_half_angle_deg=0.0,
+        samples=4,
+        seed=3,
+    )
+    common = dict(
+        angle_half_range_deg=30.0,
+        angle_samples=3,
+        angle_axis_local=(0.0, 0.0, 1.0),
+        uncertainty_aggregation="robust",
+    )
+    select = TrajectoryTaskOperator(
+        TrajectoryTaskConfig(**common, angle_aggregation="select"),
+        region_config=region_cfg,
+    )
+    robust = TrajectoryTaskOperator(
+        TrajectoryTaskConfig(**common, angle_aggregation="robust"),
+        region_config=region_cfg,
+    )
+    xyz = torch.tensor(
+        [[0.2, 0.0, 0.3], [0.3, 0.0, 0.3]], requires_grad=True
+    )
+    T = torch.eye(4).repeat(2, 1, 1)
+    T = torch.cat((torch.cat((T[:, :3, :3], xyz[..., None]), dim=-1), T[:, 3:4]), dim=-2)
+    axis = torch.eye(4)
+    selected = select(RotationSensitiveField(), T, axis)
+    required = robust(RotationSensitiveField(), T, axis)
+    assert selected.candidate_clearance.shape == (2, 3)
+    assert selected.scenario_clearance.shape == (2, 3, 4)
+    assert torch.all(selected.best_angle_index == 1)
+    assert torch.all(selected.waypoint_clearance > required.waypoint_clearance)
+    selected.trajectory_clearance.backward()
+    assert xyz.grad is not None and torch.isfinite(xyz.grad).all()

@@ -1,5 +1,6 @@
 out: data/ird/gpu_pose_stencils_smoke.npz
 sampling:
+  robot_spec: configs/robot_probe45.yaml
   base_gt_npz: data/ird/gpu_pose_production.npz
   n_position_boundaries: 16
   n_rotation_boundaries: 16

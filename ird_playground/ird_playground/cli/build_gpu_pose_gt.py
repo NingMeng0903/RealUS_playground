@@ -19,7 +19,11 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(__file__).resolve().parents[2]
     config_path = args.config if args.config.is_absolute() else root / args.config
     raw = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
-    cfg = GpuPoseGtConfig(**dict(raw.get("sampling") or {}))
+    sampling = dict(raw.get("sampling") or {})
+    for key in ("robot_spec", "collision_urdf", "collision_pairs"):
+        if key in sampling and not Path(sampling[key]).is_absolute():
+            sampling[key] = str(root / sampling[key])
+    cfg = GpuPoseGtConfig(**sampling)
     arrays, meta = build_gpu_pose_gt(cfg)
     assert_gt_contract(arrays)
     out = args.out or Path(raw.get("out", "data/ird/gpu_pose_gt.npz"))

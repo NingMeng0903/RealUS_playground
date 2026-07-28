@@ -51,6 +51,11 @@ def base_from_rail_torch(
     *,
     axis: int = 1,
 ) -> "torch.Tensor":
+    """Move a rail-fixed reference frame by the raw URDF rail coordinate.
+
+    For RM4D v2, ``T_rail_base0`` should be ``T_rail_j1_axis`` at
+    ``rail_y=0``. The historical parameter name is retained for callers.
+    """
     eye = torch.eye(4, dtype=rail.dtype, device=rail.device)
     if rail.ndim == 0:
         move = eye.clone()
@@ -105,9 +110,9 @@ class RegionA(nn.Module if nn is not None else object):  # type: ignore[misc]
         upper = torch.cat((R, p[..., None]), dim=-1)
         return torch.cat((upper, bottom), dim=-2)
 
-    def forward(self, field, T_tcp_world: "torch.Tensor", T_base_world: "torch.Tensor") -> RegionAResult:
+    def forward(self, field, T_tcp_world: "torch.Tensor", T_axis_world: "torch.Tensor") -> RegionAResult:
         samples = self.perturb_tcp(T_tcp_world)
-        clearance = field.score_world(samples, T_base_world[..., None, :, :])
+        clearance = field.score_world(samples, T_axis_world[..., None, :, :])
         robust = normalized_softmin(clearance, self.config.softmin_tau, dim=-1)
         return RegionAResult(
             robust_clearance=robust,
@@ -127,8 +132,10 @@ class RegionA(nn.Module if nn is not None else object):  # type: ignore[misc]
         T_rail_base0: "torch.Tensor",
         rail_axis: int = 1,
     ) -> RegionAResult:
-        base = base_from_rail_torch(rail, T_world_rail, T_rail_base0, axis=rail_axis)
-        return self(field, T_tcp_world, base)
+        axis_world = base_from_rail_torch(
+            rail, T_world_rail, T_rail_base0, axis=rail_axis
+        )
+        return self(field, T_tcp_world, axis_world)
 
 
 __all__ = ["RegionA", "RegionAConfig", "RegionAResult", "base_from_rail_torch", "normalized_softmin"]

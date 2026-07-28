@@ -13,7 +13,7 @@ gravity_base: [0.0, 0.0, -9.80665]
 filtfilt_cutoff_hz: 2.5
 identify_mass_bias_only: true
 
-# Verified on force_id_cartesian.npz (601 samples) + live static:
+# Verified on multi-pose force_id logs + live static:
 #   m_fit = +0.997 kg,  live m = +1.10 kg,  Fz_raw ≈ +10.5 N
 #   hold-out compensation RMS: force 0.219 N, moment 0.015 Nm
 # Equivalent combos (same RMS): flip all 6, or Rz180 offset — not needed if using above.

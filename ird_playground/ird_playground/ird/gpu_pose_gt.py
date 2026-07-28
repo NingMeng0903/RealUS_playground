@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 import numpy as np
 
 from ird_playground.ird.gt_common import block_ids, reachability_modules
+from ird_playground.ird.robot_model import RobotModelSpec, load_robot_model_spec
 from ird_playground.ird.export_gt import LAYER_EXTERIOR, LAYER_INTERIOR
 from ird_playground.ird.torch_kinematics import (
     TorchRM75Kinematics,
@@ -39,6 +40,7 @@ class GpuPoseGtConfig:
     collision_security_margin_m: float = 0.0
     collision_urdf: str | None = None
     collision_pairs: str | None = None
+    robot_spec: str | None = None
     holdout_block_m: float = 0.04
     m_eps: float = 1.0e-3
     seed: int = 42
@@ -58,14 +60,26 @@ class GpuPoseGtConfig:
             raise ValueError("near_query_fraction must lie in [0,1]")
 
 
-def _probe_collision_filter(cfg: GpuPoseGtConfig, lm, SelfCollisionFilter):
-    rm_root = Path(__file__).resolve().parents[3] / "rm75_control"
-    collision_urdf = Path(cfg.collision_urdf) if cfg.collision_urdf else (
-        rm_root / "data/urdf_patched/RM75-horizontal_probe.collision.urdf"
-    )
-    collision_pairs = Path(cfg.collision_pairs) if cfg.collision_pairs else (
-        rm_root / "data/urdf_patched/collision_pairs_probe.yaml"
-    )
+def _robot_spec_for_cfg(cfg: GpuPoseGtConfig) -> RobotModelSpec:
+    spec = load_robot_model_spec(cfg.robot_spec)
+    if cfg.collision_urdf:
+        spec = replace(spec, collision_urdf=Path(cfg.collision_urdf).resolve())
+    if cfg.collision_pairs:
+        spec = replace(spec, collision_pairs=Path(cfg.collision_pairs).resolve())
+    spec.validate()
+    return spec
+
+
+def _probe_collision_filter(
+    cfg: GpuPoseGtConfig,
+    lm,
+    SelfCollisionFilter,
+    *,
+    spec: RobotModelSpec | None = None,
+):
+    spec = spec or _robot_spec_for_cfg(cfg)
+    collision_urdf = spec.collision_urdf
+    collision_pairs = spec.collision_pairs
     return SelfCollisionFilter(
         kin_urdf=lm.urdf_path,
         collision_urdf=collision_urdf,
@@ -128,9 +142,14 @@ def build_gpu_pose_gt(
     ) = reachability_modules()
     rng = np.random.default_rng(cfg.seed)
     torch.manual_seed(cfg.seed)
-    lm = build_locked_rail_model()
+    spec = _robot_spec_for_cfg(cfg)
+    lm = build_locked_rail_model(
+        spec.kinematics_urdf,
+        rail_locked_at_m=spec.rail_locked_at_m,
+        tcp_frame=spec.tcp_frame,
+    )
     collision_filter, collision_urdf, collision_pairs = _probe_collision_filter(
-        cfg, lm, SelfCollisionFilter
+        cfg, lm, SelfCollisionFilter, spec=spec
     )
     kin = TorchRM75Kinematics.from_locked_model(lm, device=cfg.device)
 
@@ -148,7 +167,7 @@ def build_gpu_pose_gt(
     out_layer: list[np.ndarray] = [
         np.full(cfg.n_fk_positive, LAYER_INTERIOR, dtype=np.int32)
     ]
-    out_source: list[np.ndarray] = [np.full(cfg.n_fk_positive, -1, dtype=np.int64)]
+    out_source: list[np.ndarray] = [np.arange(cfg.n_fk_positive, dtype=np.int64)]
     n_reachable_query = 0
     source_schedule = np.resize(
         np.arange(cfg.n_fk_positive, dtype=np.int64), cfg.n_pose_queries
@@ -296,6 +315,7 @@ def build_gpu_pose_gt(
         "rail_locked_at_m": lm.rail_locked_at_m,
         "collision_urdf": str(collision_urdf),
         "collision_pairs": str(collision_pairs),
+        "robot_contract": spec.to_manifest(),
         "collision_contract": (
             "FK positives filtered; IK positive iff at least one converged "
             "candidate is collision-free under the robot+probe model"

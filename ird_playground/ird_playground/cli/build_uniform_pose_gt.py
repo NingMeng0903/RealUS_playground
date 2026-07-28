@@ -22,7 +22,7 @@ def main(argv: list[str] | None = None) -> int:
     path = args.config if args.config.is_absolute() else root / args.config
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     data = dict(raw.get("sampling") or {})
-    for key in ("seed_gt_npz", "output_npz"):
+    for key in ("seed_gt_npz", "output_npz", "robot_spec"):
         if key in data and not Path(data[key]).is_absolute():
             data[key] = str(root / data[key])
     cfg = UniformPoseGtConfig(**data)

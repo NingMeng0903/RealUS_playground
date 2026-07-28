@@ -1,5 +1,6 @@
 out: data/ird/gpu_pose_pilot.npz
 sampling:
+  robot_spec: configs/robot_probe45.yaml
   n_fk_positive: 20000
   n_pose_queries: 30000
   n_ik_seeds: 12

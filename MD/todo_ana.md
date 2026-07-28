@@ -393,3 +393,9 @@ baked leg entry 上复现并定位到更具体的一层：
 `local_fk.{left,right}/Femur_Rot>Knee_Rotate`（自证已拆除）与
 `local_fk_arms` 六条链；`vessel.topology` 不再出现在失败里，因为它现在是真比出来的
 通过。V7 项目测试 61 passed。
+
+## 本轮产物更新
+- `acceptance_matrix_v7.json`、`runtime_perf_v7.json` 已按修正后的门与 §6 形式重新生成
+  （84 条 failures，`publishable=false`）。
+- **证据包尚未重新生成**，`evidence_manifest_v7.json` 与 60 张图仍对应旧矩阵；且
+  `vessel_centerline` 图本身与门不同源（32.18° vs 67.09°），需与图生成路径一并修。

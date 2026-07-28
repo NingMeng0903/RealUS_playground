@@ -22,8 +22,9 @@ def main(argv: list[str] | None = None) -> int:
     path = args.config if args.config.is_absolute() else root / args.config
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     sampling = dict(raw.get("sampling") or {})
-    if "base_gt_npz" in sampling and not Path(sampling["base_gt_npz"]).is_absolute():
-        sampling["base_gt_npz"] = str(root / sampling["base_gt_npz"])
+    for key in ("base_gt_npz", "robot_spec", "collision_urdf", "collision_pairs"):
+        if key in sampling and not Path(sampling[key]).is_absolute():
+            sampling[key] = str(root / sampling[key])
     arrays, meta = build_gpu_boundary_stencils(GpuBoundaryStencilConfig(**sampling))
     assert_gt_contract(arrays)
     out = Path(raw.get("out", "data/ird/gpu_pose_stencils.npz"))

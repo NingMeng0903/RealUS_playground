@@ -18,7 +18,7 @@ def main(argv: list[str] | None = None) -> int:
     path = args.config if args.config.is_absolute() else root / args.config
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     build = dict(raw.get("build") or {})
-    for key in ("source_npz", "output_npz"):
+    for key in ("source_npz", "output_npz", "robot_spec"):
         if key in build and not Path(build[key]).is_absolute():
             build[key] = str(root / build[key])
     if "auxiliary_npz" in build:

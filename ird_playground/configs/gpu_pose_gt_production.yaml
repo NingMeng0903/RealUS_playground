@@ -9,3 +9,4 @@ sampling:
   seed: 42
   device: cuda
   log_every_batches: 10
+  robot_spec: configs/robot_probe45.yaml

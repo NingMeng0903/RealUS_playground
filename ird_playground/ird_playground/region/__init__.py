@@ -14,3 +14,10 @@ __all__ = [
     "base_from_rail_torch",
     "normalized_softmin",
 ]
+from ird_playground.region.trajectory_operator import (
+    TrajectoryTaskConfig,
+    TrajectoryTaskOperator,
+    TrajectoryTaskResult,
+)
+
+__all__ = ["TrajectoryTaskConfig", "TrajectoryTaskOperator", "TrajectoryTaskResult"]

@@ -114,15 +114,39 @@ def _subset_training_arrays(
     }
 
 
-def _split_indices(boundary_id: np.ndarray, fraction: float, seed: int) -> tuple[np.ndarray, np.ndarray]:
+def _split_indices(
+    boundary_id: np.ndarray,
+    fraction: float,
+    seed: int,
+    source_pose_id: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Group validation rows by source pose, then by boundary group."""
     rng = np.random.default_rng(seed)
     is_val = np.zeros(len(boundary_id), dtype=bool)
-    base = np.flatnonzero(boundary_id < 0)
-    is_val[rng.choice(base, size=max(1, int(len(base) * fraction)), replace=False)] = True
-    groups = np.unique(boundary_id[boundary_id >= 0])
+    source = (
+        np.full(len(boundary_id), -1, dtype=np.int64)
+        if source_pose_id is None
+        else np.asarray(source_pose_id, dtype=np.int64)
+    )
+    grouped_sources = np.unique(source[source >= 0])
+    rng.shuffle(grouped_sources)
+    if len(grouped_sources):
+        val_sources = grouped_sources[: max(1, int(len(grouped_sources) * fraction))]
+        is_val[source >= 0] = np.isin(source[source >= 0], val_sources)
+
+    base = np.flatnonzero((boundary_id < 0) & (source < 0))
+    if len(base):
+        count = max(1, int(len(base) * fraction))
+        is_val[rng.choice(base, size=min(count, len(base)), replace=False)] = True
+
+    unresolved_boundary = (boundary_id >= 0) & (source < 0)
+    groups = np.unique(boundary_id[unresolved_boundary])
     rng.shuffle(groups)
-    val_groups = groups[: max(1, int(len(groups) * fraction))]
-    is_val[boundary_id >= 0] = np.isin(boundary_id[boundary_id >= 0], val_groups)
+    if len(groups):
+        val_groups = groups[: max(1, int(len(groups) * fraction))]
+        is_val[unresolved_boundary] = np.isin(
+            boundary_id[unresolved_boundary], val_groups
+        )
     return np.flatnonzero(~is_val), np.flatnonzero(is_val)
 
 
@@ -211,7 +235,12 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
         max_boundary_groups=cfg.max_boundary_groups,
         seed=cfg.seed + 1000,
     )
-    tr_idx, va_idx = _split_indices(arrays["boundary_id"], cfg.val_fraction, cfg.seed)
+    tr_idx, va_idx = _split_indices(
+        arrays["boundary_id"],
+        cfg.val_fraction,
+        cfg.seed,
+        arrays.get("source_pose_id"),
+    )
     device = torch.device(cfg.device)
     torch.manual_seed(cfg.seed)
     rng = np.random.default_rng(cfg.seed)
@@ -314,6 +343,7 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
         meta={
             "training_config": asdict(cfg),
             "dataset_meta": dataset_meta,
+            "robot_contract": dataset_meta.get("robot_contract"),
             "metrics": final_metrics,
             "selection_score": best_score,
         },

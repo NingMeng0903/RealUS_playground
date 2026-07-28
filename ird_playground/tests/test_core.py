@@ -12,10 +12,13 @@ from ird_playground.probe.transform import default_ultrasound_probe, load_probe_
 
 def test_default_probe_and_yaml_contract():
     probe = default_ultrasound_probe()
-    assert np.allclose(probe.translation_m, [0.05, 0.0, 0.07], atol=1.0e-9)
-    assert np.allclose(probe.rotation_matrix()[:, 2], [1.0, 0.0, 0.0], atol=1.0e-6)
+    assert np.allclose(probe.translation_m, [0.0, -0.01523, 0.12135], atol=1.0e-9)
+    assert np.isclose(
+        np.degrees(np.arccos(probe.rotation_matrix()[2, 2])), 49.9002404,
+        atol=1.0e-6,
+    )
     path = Path(__file__).resolve().parents[1] / "configs/probe_default.yaml"
-    assert load_probe_yaml(path).name.startswith("ultrasound")
+    assert load_probe_yaml(path).name == "probe45_physical"
 
 
 @pytest.mark.skipif(

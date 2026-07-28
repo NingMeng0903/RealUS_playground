@@ -161,6 +161,62 @@ def test_straight_leg_fallback_uses_driver_rotation():
     assert twist < 1.0e-9
 
 
+def test_bent_bind_leg_does_not_twist_the_femur_near_its_bind_pose():
+    """A bind leg that is not straight must still fade the twist in from zero.
+
+    The real anatomy's bind femur axis and shank sit 16.4 deg apart on the left
+    and 10.3 deg on the right. Measuring flexion from a straight leg puts that
+    bind pose above the fade band, so the twist arrives at full strength on the
+    first degree of drive: a 0.5 deg knee input twisted the femur -34.9 deg about
+    its own shaft and dragged the trochlea 63.6 mm off the patella. Flexion is
+    therefore measured as an excursion away from the bind angle.
+    """
+    H0 = np.zeros(3, dtype=np.float64)
+    K0 = np.asarray((0.0, -0.40, 0.0), dtype=np.float64)
+    # Bind shank carries a 16 degree bend, as the authored anatomy does.
+    bend = np.radians(16.0)
+    A0 = K0 + 0.40 * np.asarray(
+        (0.0, -np.cos(bend), np.sin(bend)), dtype=np.float64
+    )
+    R_bind = np.eye(3, dtype=np.float64)
+    hinge_local = np.asarray((1.0, 0.0, 0.0), dtype=np.float64)
+    d0 = _unit(K0 - H0)
+
+    # Drive axis tilted well off the authored hinge, which is what makes the
+    # closed-form twist large and is the situation the SMPL-X drive presents.
+    drive_axis = _unit(
+        Rotation.from_rotvec(d0 * np.radians(50.0)).as_matrix() @ hinge_local
+    )
+    for drive_deg in (0.25, 0.5, 1.0, 2.0):
+        rotation = Rotation.from_rotvec(
+            drive_axis * np.radians(drive_deg)
+        ).as_matrix()
+        R_femur, _theta, _raw, _hinge = solve_leg_hinge_v1(
+            hip=H0,
+            knee=K0,
+            ankle=K0 + rotation @ (A0 - K0),
+            bind_hip=H0,
+            bind_knee=K0,
+            bind_ankle=A0,
+            bind_femur_rotation=R_bind,
+            hinge_axis_femur_local=hinge_local,
+            driver_femur_rotation=R_bind,
+            blend_lo_deg=5.0,
+            blend_hi_deg=15.0,
+        )
+        axial_twist_deg = abs(
+            float(
+                np.degrees(
+                    np.dot(Rotation.from_matrix(R_femur).as_rotvec(), d0)
+                )
+            )
+        )
+        assert axial_twist_deg < 1.0e-6, (
+            f"{drive_deg} deg of drive injected {axial_twist_deg:.3f} deg of "
+            "femoral twist near the bind pose"
+        )
+
+
 def test_blend_region_is_c1_continuous():
     H0 = np.zeros(3, dtype=np.float64)
     K0 = np.asarray((0.0, -0.40, 0.0), dtype=np.float64)

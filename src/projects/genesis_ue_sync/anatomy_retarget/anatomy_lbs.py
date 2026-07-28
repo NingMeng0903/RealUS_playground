@@ -306,8 +306,16 @@ def _skin_vertices_cuda(
 
 
 def axis_angle_to_matrix(axis_angle: np.ndarray) -> np.ndarray:
-    rows = np.asarray(axis_angle, dtype=np.float32).reshape(-1, 3)
-    out = np.tile(np.eye(3, dtype=np.float32), (rows.shape[0], 1, 1))
+    # The trigonometry below already runs in double; only the storage was float32,
+    # which cost ~1e-7 of orthogonality per joint before it was ever accumulated.
+    # Honour a float64 input so callers that chain these matrices can stay exact.
+    dtype = (
+        np.float64
+        if np.asarray(axis_angle).dtype == np.float64
+        else np.float32
+    )
+    rows = np.asarray(axis_angle, dtype=dtype).reshape(-1, 3)
+    out = np.tile(np.eye(3, dtype=dtype), (rows.shape[0], 1, 1))
     angles = np.linalg.norm(rows, axis=1)
     for idx, angle in enumerate(angles.tolist()):
         if float(angle) < 1.0e-8:
@@ -323,7 +331,7 @@ def axis_angle_to_matrix(axis_angle: np.ndarray) -> np.ndarray:
                 [y * x * one_c + z * s, c + y * y * one_c, y * z * one_c - x * s],
                 [z * x * one_c - y * s, z * y * one_c + x * s, c + z * z * one_c],
             ],
-            dtype=np.float32,
+            dtype=dtype,
         )
     return out
 
@@ -335,13 +343,17 @@ def joint_global_transforms(
     parents: np.ndarray,
 ) -> np.ndarray:
     pose = pose_to_smplx55_axis_angle(pose_axis_angle)
-    joints = np.asarray(rest_joints, dtype=np.float32).reshape(-1, 3)
+    joints = np.asarray(rest_joints, dtype=np.float64).reshape(-1, 3)
     pa = np.asarray(parents, dtype=np.int32).reshape(-1)
     n = min(int(joints.shape[0]), int(pa.shape[0]), int(pose.shape[0]))
-    rot = axis_angle_to_matrix(pose[:n])
-    out = np.tile(np.eye(4, dtype=np.float32), (n, 1, 1))
+    # Accumulate in float64. A finger sits about ten products deep in this chain,
+    # and in float32 the orthogonality drift reached 1.04e-6 on a captured pose --
+    # just past the 1e-6 rigid-frame guard downstream, so the runtime hard-failed
+    # on a legitimate pose depending on where the drift happened to land.
+    rot = axis_angle_to_matrix(np.asarray(pose[:n], dtype=np.float64))
+    out = np.tile(np.eye(4, dtype=np.float64), (n, 1, 1))
     for idx in range(n):
-        local = np.eye(4, dtype=np.float32)
+        local = np.eye(4, dtype=np.float64)
         local[:3, :3] = rot[idx]
         if idx == 0 or int(pa[idx]) < 0:
             local[:3, 3] = joints[idx]
@@ -741,12 +753,20 @@ def solve_leg_hinge_v1(
     hyperextension (``theta_raw < 0``) is clamped to 0 for ``theta_applied`` and
     callers should record the clamp.
 
-    Near-straight the shank cone is ill-conditioned — every ``phi`` solves the
-    constraint about equally well — so ``phi`` is faded in with a smoothstep
-    across ``[blend_lo_deg, blend_hi_deg]`` and the femur simply keeps the
-    driver attitude below that band.  If the drive asks for a shank the hinge
-    cannot reach at any twist, ``phi`` takes the closest approach rather than
-    failing, and the unreachable remainder shows up as ankle error downstream.
+    ``phi`` tracks the azimuth of the drive shank about the femur axis, so its
+    sensitivity scales as ``1 / sin(flexion)``: near the bind pose a degree of
+    drive demands several degrees of twist, and twisting the femur that far drags
+    the trochlea off the patella.  ``phi`` is therefore faded in with a smoothstep
+    over how far the leg has flexed *away from its bind angle*
+    (``[blend_lo_deg, blend_hi_deg]``), keeping the driver attitude near bind and
+    absorbing the axis mismatch only in deep flexion where the sensitivity is
+    bounded.  Measuring that excursion from a straight leg instead would leave the
+    fade permanently open, because the bind femur axis and shank are already
+    16.4 deg apart on the left and 10.3 deg on the right.
+
+    If the drive asks for a shank the hinge cannot reach at any twist, ``phi``
+    takes the closest approach rather than failing, and the unreachable remainder
+    shows up as ankle error downstream.
     """
     from scipy.spatial.transform import Rotation
 
@@ -795,6 +815,15 @@ def solve_leg_hinge_v1(
     flex_deg = float(
         np.degrees(np.arccos(float(np.clip(np.dot(d, shank_dir), -1.0, 1.0))))
     )
+    # Flexion has to be measured against the bind leg, not against a straight
+    # one. This anatomy's bind femur axis and shank already sit 16.4 deg apart on
+    # the left and 10.3 deg on the right, so an absolute flex_deg starts above the
+    # fade band and the fade is wide open at the bind pose: the twist then arrives
+    # at full strength on the first degree of drive.
+    bind_flex_deg = float(
+        np.degrees(np.arccos(float(np.clip(np.dot(d0, s0), -1.0, 1.0))))
+    )
+    flex_excursion_deg = abs(flex_deg - bind_flex_deg)
 
     # Driver attitude with the long axis locked onto the posed femur ray; this
     # is the phi = 0 reference, so direction_error stays ~0 at every flexion.
@@ -844,9 +873,9 @@ def solve_leg_hinge_v1(
             for sign in (1.0, -1.0)
         ]
         phi = min(candidates, key=abs)
-    if flex_deg < float(blend_hi_deg):
+    if flex_excursion_deg < float(blend_hi_deg):
         phi *= _smoothstep01(
-            (flex_deg - float(blend_lo_deg))
+            (flex_excursion_deg - float(blend_lo_deg))
             / (float(blend_hi_deg) - float(blend_lo_deg))
         )
 

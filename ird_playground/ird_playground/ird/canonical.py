@@ -48,22 +48,56 @@ def canonical_invariants_torch(
     return torch.stack((pz, uz, radial, dot, cross), dim=-1)
 
 
-def canonical_from_se3_features_torch(features: "torch.Tensor") -> "torch.Tensor":
+def pose_in_axis_frame_torch(
+    position_root_tcp: "torch.Tensor",
+    rotation_root_tcp: "torch.Tensor",
+    T_root_axis: "torch.Tensor",
+) -> tuple["torch.Tensor", "torch.Tensor"]:
+    """Express a root-frame TCP pose in the physical J1-axis frame."""
+    T = T_root_axis.to(
+        dtype=position_root_tcp.dtype,
+        device=position_root_tcp.device,
+    )
+    Ra = T[..., :3, :3]
+    pa = T[..., :3, 3]
+    R_axis_tcp = Ra.transpose(-1, -2) @ rotation_root_tcp
+    p_axis_tcp = (
+        Ra.transpose(-1, -2) @ (position_root_tcp - pa).unsqueeze(-1)
+    ).squeeze(-1)
+    return p_axis_tcp, R_axis_tcp
+
+
+def canonical_from_se3_features_torch(
+    features: "torch.Tensor",
+    T_root_axis: "torch.Tensor | None" = None,
+) -> "torch.Tensor":
     if features.shape[-1] != 9:
         raise ValueError(f"expected se3_9d features, got shape {tuple(features.shape)}")
-    return canonical_invariants_torch(features[..., :3], rotation_from_6d_torch(features[..., 3:9]))
+    p = features[..., :3]
+    R = rotation_from_6d_torch(features[..., 3:9])
+    if T_root_axis is not None:
+        p, R = pose_in_axis_frame_torch(p, R, T_root_axis)
+    return canonical_invariants_torch(p, R)
 
 
-def canonical_from_se3_features(features: np.ndarray, *, batch_size: int = 262_144) -> np.ndarray:
+def canonical_from_se3_features(
+    features: np.ndarray,
+    *,
+    T_root_axis: np.ndarray | None = None,
+    batch_size: int = 262_144,
+) -> np.ndarray:
     """NumPy batch wrapper used while preparing offline GT."""
     if torch is None:
         raise ImportError("torch required")
     x = np.asarray(features, dtype=np.float32)
     out = []
+    axis = None if T_root_axis is None else torch.as_tensor(
+        np.asarray(T_root_axis, dtype=np.float32)
+    )
     with torch.no_grad():
         for start in range(0, len(x), batch_size):
             t = torch.from_numpy(x[start : start + batch_size])
-            out.append(canonical_from_se3_features_torch(t).numpy())
+            out.append(canonical_from_se3_features_torch(t, axis).numpy())
     return np.concatenate(out, axis=0).astype(np.float32)
 
 
@@ -83,9 +117,10 @@ def base_to_tcp_from_world_torch(
 
 def canonical_from_world_torch(
     T_tcp_world: "torch.Tensor",
-    T_base_world: "torch.Tensor",
+    T_axis_world: "torch.Tensor",
 ) -> "torch.Tensor":
-    p, R = base_to_tcp_from_world_torch(T_tcp_world, T_base_world)
+    """Encode a world TCP pose relative to the physical J1-axis frame."""
+    p, R = base_to_tcp_from_world_torch(T_tcp_world, T_axis_world)
     return canonical_invariants_torch(p, R)
 
 
@@ -96,5 +131,6 @@ __all__ = [
     "canonical_from_se3_features_torch",
     "canonical_from_world_torch",
     "canonical_invariants_torch",
+    "pose_in_axis_frame_torch",
     "rotation_from_6d_torch",
 ]

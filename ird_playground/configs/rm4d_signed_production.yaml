@@ -6,6 +6,7 @@ build:
   quantile_lo: 0.005
   quantile_hi: 0.995
   min_pair_separation_normalized: 0.00001
+  robot_spec: configs/robot_probe45.yaml
 
 model:
   width: 192

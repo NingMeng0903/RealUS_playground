@@ -11,6 +11,7 @@ from scipy.spatial.transform import Rotation
 
 from ird_playground.ird.gpu_pose_gt import GpuPoseGtConfig, _features, _probe_collision_filter
 from ird_playground.ird.gt_common import reachability_modules
+from ird_playground.ird.robot_model import load_robot_model_spec
 from ird_playground.ird.torch_kinematics import TorchRM75Kinematics, select_collision_free_ik, so3_exp
 from ird_playground.probe.transform import default_ultrasound_probe
 
@@ -31,6 +32,7 @@ class UniformPoseGtConfig:
     seed: int = 83
     device: str = "cuda"
     log_every_batches: int = 10
+    robot_spec: str | None = None
 
 
 def _unit_vectors(rng: np.random.Generator, n: int) -> np.ndarray:
@@ -46,10 +48,18 @@ def build_uniform_pose_gt(cfg: UniformPoseGtConfig) -> tuple[dict[str, np.ndarra
     seed_data = np.load(cfg.seed_gt_npz, allow_pickle=False)
     q_pool_np = seed_data["q_best"][seed_data["reachable"] > 0.5]
     q_pool_np = q_pool_np[np.any(q_pool_np != 0.0, axis=1)].astype(np.float32)
+    spec = load_robot_model_spec(cfg.robot_spec)
     *_, SelfCollisionFilter, build_locked_rail_model = reachability_modules()
-    locked = build_locked_rail_model()
+    locked = build_locked_rail_model(
+        spec.kinematics_urdf,
+        rail_locked_at_m=spec.rail_locked_at_m,
+        tcp_frame=spec.tcp_frame,
+    )
     collision_filter, collision_urdf, collision_pairs = _probe_collision_filter(
-        GpuPoseGtConfig(), locked, SelfCollisionFilter
+        GpuPoseGtConfig(robot_spec=cfg.robot_spec),
+        locked,
+        SelfCollisionFilter,
+        spec=spec,
     )
     kin = TorchRM75Kinematics.from_locked_model(locked, device=cfg.device)
     q_pool = torch.as_tensor(q_pool_np, device=kin.device)
@@ -114,6 +124,7 @@ def build_uniform_pose_gt(cfg: UniformPoseGtConfig) -> tuple[dict[str, np.ndarra
         "n_unreachable": cfg.n_queries - reachable_count,
         "collision_urdf": str(collision_urdf),
         "collision_pairs": str(collision_pairs),
+        "robot_contract": spec.to_manifest(),
         "config": asdict(cfg),
     }
     return arrays, meta

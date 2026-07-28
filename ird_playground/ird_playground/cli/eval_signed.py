@@ -13,6 +13,7 @@ import yaml
 from ird_playground.ird.canonical import rotation_from_6d_torch
 from ird_playground.ird.gpu_pose_gt import GpuPoseGtConfig, _probe_collision_filter
 from ird_playground.ird.gt_common import reachability_modules
+from ird_playground.ird.robot_model import load_robot_model_spec
 from ird_playground.ird.torch_kinematics import TorchRM75Kinematics, so3_log
 from ird_playground.neural.signed_field import ReachabilitySDF
 from ird_playground.neural.train_signed import (
@@ -42,6 +43,7 @@ def _region_pair_direction(
     signed_key: str,
     n: int,
     seed: int,
+    T_axis_root: torch.Tensor,
 ) -> float:
     bid = source["boundary_id"]
     signed = source[signed_key]
@@ -55,9 +57,8 @@ def _region_pair_direction(
     pick = rng.choice(len(ip), size=min(n, len(ip)), replace=False)
     Tp = _pose_matrices(source["features"][ip[pick]], field.device)
     Tn = _pose_matrices(source["features"][inn[pick]], field.device)
-    base = torch.eye(4, device=field.device)
-    sp = region(field.model, Tp, base).robust_clearance
-    sn = region(field.model, Tn, base).robust_clearance
+    sp = region(field.model, Tp, T_axis_root).robust_clearance
+    sn = region(field.model, Tn, T_axis_root).robust_clearance
     return float((sp > sn).float().mean().item())
 
 
@@ -66,6 +67,7 @@ def _ad_fd_audit(
     region: RegionA,
     features: np.ndarray,
     *,
+    T_axis_root: torch.Tensor,
     n: int = 24,
     eps: float = 1.0e-3,
     seed: int = 3,
@@ -73,25 +75,25 @@ def _ad_fd_audit(
     rng = np.random.default_rng(seed)
     ids = rng.choice(len(features), size=min(n, len(features)), replace=False)
     rail_rel, tcp_rel, finite = [], [], []
-    eye = torch.eye(4, device=field.device)
+    axis = T_axis_root
     for i in ids:
         base_pose = _pose_matrices(features[i : i + 1], field.device)[0]
         xyz = base_pose[:3, 3].detach().clone().requires_grad_(True)
         T = torch.cat((torch.cat((base_pose[:3, :3], xyz[:, None]), dim=1), base_pose[3:4]), dim=0)
         rail = torch.tensor(0.0, device=field.device, requires_grad=True)
         value = region.query_tcp_rail(
-            field.model, T, rail, T_world_rail=eye, T_rail_base0=eye
+            field.model, T, rail, T_world_rail=torch.eye(4, device=field.device), T_rail_base0=axis
         ).robust_clearance
         g_xyz, g_rail = torch.autograd.grad(value, (xyz, rail))
         with torch.no_grad():
-            rp = region.query_tcp_rail(field.model, T, rail + eps, T_world_rail=eye, T_rail_base0=eye).robust_clearance
-            rm = region.query_tcp_rail(field.model, T, rail - eps, T_world_rail=eye, T_rail_base0=eye).robust_clearance
+            rp = region.query_tcp_rail(field.model, T, rail + eps, T_world_rail=torch.eye(4, device=field.device), T_rail_base0=axis).robust_clearance
+            rm = region.query_tcp_rail(field.model, T, rail - eps, T_world_rail=torch.eye(4, device=field.device), T_rail_base0=axis).robust_clearance
             rail_fd = (rp - rm) / (2.0 * eps)
             Tplus, Tminus = T.clone(), T.clone()
             Tplus[0, 3] += eps
             Tminus[0, 3] -= eps
-            xp = region(field.model, Tplus, eye).robust_clearance
-            xm = region(field.model, Tminus, eye).robust_clearance
+            xp = region(field.model, Tplus, axis).robust_clearance
+            xm = region(field.model, Tminus, axis).robust_clearance
             x_fd = (xp - xm) / (2.0 * eps)
         rail_rel.append(float(torch.abs(g_rail - rail_fd) / torch.maximum(torch.maximum(torch.abs(g_rail), torch.abs(rail_fd)), torch.tensor(1.0e-5, device=field.device))))
         tcp_rel.append(float(torch.abs(g_xyz[0] - x_fd) / torch.maximum(torch.maximum(torch.abs(g_xyz[0]), torch.abs(x_fd)), torch.tensor(1.0e-5, device=field.device))))
@@ -150,34 +152,51 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--config", type=Path, default=Path("configs/rm4d_signed_production.yaml"))
     ap.add_argument("--checkpoint", type=Path, default=None)
     ap.add_argument("--region-pairs", type=int, default=512)
+    ap.add_argument("--allow-stale-checkpoint", action="store_true")
     args = ap.parse_args(argv)
     root = Path(__file__).resolve().parents[2]
     cfg_path = args.config if args.config.is_absolute() else root / args.config
     cfg = load_signed_train_config(cfg_path, root=root)
     raw_cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+    robot_spec_path = raw_cfg.get("build", {}).get("robot_spec")
+    if robot_spec_path is not None and not Path(robot_spec_path).is_absolute():
+        robot_spec_path = root / robot_spec_path
+    robot_spec = load_robot_model_spec(robot_spec_path)
     source_path = Path(raw_cfg["build"]["source_npz"])
     if not source_path.is_absolute():
         source_path = root / source_path
     ckpt = args.checkpoint or Path(cfg.checkpoint)
     if not ckpt.is_absolute():
         ckpt = root / ckpt
-    field = ReachabilitySDF.load(ckpt)
+    field = ReachabilitySDF.load(
+        ckpt,
+        expected_robot=robot_spec,
+        allow_stale=args.allow_stale_checkpoint,
+    )
+    T_axis_root = torch.as_tensor(
+        robot_spec.root_to_j1_axis(), dtype=torch.float32, device=field.device
+    )
     gt_npz = np.load(cfg.gt_npz, allow_pickle=False)
     arrays = {k: gt_npz[k] for k in gt_npz.files if k != "meta_json"}
-    _, val_idx = _split_indices(arrays["boundary_id"], cfg.val_fraction, cfg.seed)
+    _, val_idx = _split_indices(
+        arrays["boundary_id"],
+        cfg.val_fraction,
+        cfg.seed,
+        arrays.get("source_pose_id"),
+    )
     metrics = evaluate_signed_field(field, arrays, val_idx)
     source_npz = np.load(source_path, allow_pickle=False)
     source = {k: source_npz[k] for k in source_npz.files}
     val_groups = np.unique(arrays["boundary_id"][val_idx][arrays["boundary_id"][val_idx] >= 0])
     region = RegionA(RegionAConfig(samples=64, seed=17)).to(field.device)
     metrics["region_direction_agreement_m"] = _region_pair_direction(
-        field, region, source, val_groups, 0, "boundary_signed_m", args.region_pairs, 10
+        field, region, source, val_groups, 0, "boundary_signed_m", args.region_pairs, 10, T_axis_root
     )
     metrics["region_direction_agreement_deg"] = _region_pair_direction(
-        field, region, source, val_groups, 1, "boundary_signed_rot_deg", args.region_pairs, 11
+        field, region, source, val_groups, 1, "boundary_signed_rot_deg", args.region_pairs, 11, T_axis_root
     )
     source_interior = source["features"][(source["boundary_id"] < 0) & (source["reachable"] > 0.5)]
-    metrics.update(_ad_fd_audit(field, region, source_interior))
+    metrics.update(_ad_fd_audit(field, region, source_interior, T_axis_root=T_axis_root))
     metrics.update(_geometry_audit(source))
     metrics["pass"] = bool(
         metrics["balanced_accuracy"] >= 0.90

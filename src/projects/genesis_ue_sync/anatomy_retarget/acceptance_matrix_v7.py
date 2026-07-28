@@ -175,6 +175,44 @@ def synthetic_knee_sweep_poses_v7(
     return poses
 
 
+def capture_interpolated_sweep_poses_v7(
+    *,
+    capture: MatrixPoseSpecV7,
+    count: int = 13,
+) -> list[MatrixPoseSpecV7]:
+    """Sweep from rest into a captured pose, keeping the capture's whole attitude.
+
+    ``synthetic_knee_sweep_poses_v7`` writes the knee joints and leaves every
+    other joint, the hips included, at exactly zero.  No capture presents that
+    configuration, and it is the one that trips the leg solve, so a trajectory
+    measured there says little about the retarget on real drive.  Scaling the
+    captured axis-angle by ``t`` instead keeps every joint in the capture's own
+    proportion at every sample -- and because each joint rotates about a fixed
+    axis, ``t * axis_angle`` is the slerp from identity to that joint's captured
+    rotation, not an approximation of it.
+
+    Flexion coverage is therefore bounded by whatever the capture reached.
+    """
+    if int(count) < 2:
+        raise ValueError("sweep count must be at least 2")
+    target = np.asarray(capture.pose_axis_angle, dtype=np.float64).reshape(55, 3)
+    target_transl = np.asarray(capture.transl, dtype=np.float64).reshape(3)
+    poses: list[MatrixPoseSpecV7] = []
+    for index, t in enumerate(
+        np.linspace(0.0, 1.0, int(count), dtype=np.float64)
+    ):
+        scaled = (target * float(t)).astype(np.float32)
+        poses.append(
+            MatrixPoseSpecV7(
+                label=f"capture_sweep_{index:02d}_{float(t) * 100.0:.0f}pct",
+                pose_axis_angle=scaled,
+                transl=(target_transl * float(t)).astype(np.float32),
+                source=f"interpolated:{capture.label}",
+            )
+        )
+    return poses
+
+
 def body_surface_for_cell_v7(
     *,
     subject: SubjectAssetV7,
@@ -569,14 +607,25 @@ def _run_subject_sweep(
     thresholds: JointContactThresholdsV7,
     contact_tables: Mapping[str, np.ndarray],
     sweep_count: int,
+    capture: MatrixPoseSpecV7 | None = None,
 ) -> dict[str, Any]:
     subject = subject_spec.subject
     asset = subject.rigged_asset
     rest = np.asarray(asset.vertices_rest, dtype=np.float64)
     faces = np.asarray(asset.faces)
-    sweep_poses = synthetic_knee_sweep_poses_v7(count=int(sweep_count))
+    if capture is None:
+        sweep_poses = synthetic_knee_sweep_poses_v7(count=int(sweep_count))
+    else:
+        sweep_poses = capture_interpolated_sweep_poses_v7(
+            capture=capture, count=int(sweep_count)
+        )
+    # Flexion is the magnitude of the left knee rotation, not its X component:
+    # a captured knee does not rotate about the SMPL-X X axis alone.
     flexion_rad = np.asarray(
-        [float(pose.pose_axis_angle[4, 0]) for pose in sweep_poses],
+        [
+            float(np.linalg.norm(np.asarray(pose.pose_axis_angle)[4]))
+            for pose in sweep_poses
+        ],
         dtype=np.float64,
     )
     candidate_frames: list[np.ndarray] = []
@@ -806,14 +855,31 @@ def run_acceptance_matrix_v7(
                 vertices_dir=vertices_path,
                 source_topology_digest=source_topology_digest,
             )
-        sweeps[subject_spec.label] = _run_subject_sweep(
-            subject_spec=subject_spec,
-            domains=domains,
-            law=law,
-            thresholds=limits,
-            contact_tables=tables,
-            sweep_count=int(sweep_count),
-        )
+        # One sweep per captured pose, so the trajectory is judged on the drive
+        # the captures actually present rather than on a knee-only pose.
+        captures = [pose for pose in poses if pose.source != "synthetic"]
+        if not captures:
+            # Fail closed rather than substituting the knee-only synthetic sweep,
+            # which never presents the drive a capture does.
+            sweeps[f"{subject_spec.label}/no_capture"] = {
+                "available": False,
+                "passed": False,
+                "failures": ["no_captured_pose"],
+                "reason": (
+                    "no captured pose was supplied, so the trajectory sweep has "
+                    "no real drive to interpolate"
+                ),
+            }
+        for capture in captures:
+            sweeps[f"{subject_spec.label}/{capture.label}"] = _run_subject_sweep(
+                subject_spec=subject_spec,
+                domains=domains,
+                law=law,
+                thresholds=limits,
+                contact_tables=tables,
+                sweep_count=int(sweep_count),
+                capture=capture,
+            )
         del tables
 
     if determinism_cell is None:

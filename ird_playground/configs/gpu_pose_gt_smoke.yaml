@@ -1,5 +1,6 @@
 out: data/ird/gpu_pose_smoke.npz
 sampling:
+  robot_spec: configs/robot_probe45.yaml
   n_fk_positive: 256
   n_pose_queries: 256
   n_ik_seeds: 6

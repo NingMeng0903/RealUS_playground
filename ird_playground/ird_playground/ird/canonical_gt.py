@@ -5,13 +5,16 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-import hashlib
 import json
 import numpy as np
 import yaml
 
 from ird_playground.ird.canonical import canonical_from_se3_features
 from ird_playground.ird.export_gt import load_ird_gt
+from ird_playground.ird.robot_model import (
+    assert_robot_contract_compatible,
+    load_robot_model_spec,
+)
 
 
 @dataclass(frozen=True)
@@ -22,6 +25,7 @@ class CanonicalGtConfig:
     quantile_lo: float = 0.005
     quantile_hi: float = 0.995
     min_pair_separation_normalized: float = 1.0e-5
+    robot_spec: str | None = None
 
 
 def _nearest_side_indices(boundary_id: np.ndarray, signed: np.ndarray, positive: bool) -> tuple[np.ndarray, np.ndarray]:
@@ -36,15 +40,36 @@ def _nearest_side_indices(boundary_id: np.ndarray, signed: np.ndarray, positive:
 def build_canonical_gt(cfg: CanonicalGtConfig) -> tuple[dict[str, np.ndarray], dict]:
     source = Path(cfg.source_npz)
     arrays = load_ird_gt(source)
-    canonical = canonical_from_se3_features(arrays["features"])
+    spec = load_robot_model_spec(cfg.robot_spec)
+    T_root_axis = spec.root_to_j1_axis()
+    canonical = canonical_from_se3_features(
+        arrays["features"], T_root_axis=T_root_axis
+    )
+    source_manifest_path = source.with_suffix(".yaml")
+    source_manifest = (
+        yaml.safe_load(source_manifest_path.read_text(encoding="utf-8")) or {}
+        if source_manifest_path.is_file()
+        else {}
+    )
+    assert_robot_contract_compatible(source_manifest.get("robot_contract"), spec)
     auxiliary = []
     for raw_path in cfg.auxiliary_npz:
         path = Path(raw_path)
         data = np.load(path, allow_pickle=False)
+        auxiliary_meta = (
+            json.loads(str(data["meta_json"].item()))
+            if "meta_json" in data.files
+            else {}
+        )
+        assert_robot_contract_compatible(
+            auxiliary_meta.get("robot_contract"), spec
+        )
         auxiliary.append(
             (
                 path,
-                canonical_from_se3_features(data["features"]),
+                canonical_from_se3_features(
+                    data["features"], T_root_axis=T_root_axis
+                ),
                 np.asarray(data["reachable"], dtype=np.float32),
             )
         )
@@ -100,6 +125,9 @@ def build_canonical_gt(cfg: CanonicalGtConfig) -> tuple[dict[str, np.ndarray], d
     aux_n = sum(len(item[1]) for item in auxiliary)
     aux_canonical = [item[1].astype(np.float32) for item in auxiliary]
     aux_y = [item[2] for item in auxiliary]
+    source_pose_id = np.asarray(
+        arrays.get("source_pose_id", np.full(len(canonical), -1)), dtype=np.int64
+    )
     out = {
         "canonical": np.concatenate((canonical, center_canonical.astype(np.float32), *aux_canonical)),
         "reachable": np.concatenate((np.asarray(arrays["reachable"], dtype=np.float32), np.full(center_count, 0.5, dtype=np.float32), *aux_y)),
@@ -113,24 +141,18 @@ def build_canonical_gt(cfg: CanonicalGtConfig) -> tuple[dict[str, np.ndarray], d
         "clearance_kind": np.concatenate((kind, center_kind.astype(np.int8), np.full(aux_n, -1, dtype=np.int8))),
         "boundary_signed_m": np.concatenate((signed_m, center_signed_m, np.full(aux_n, np.nan, dtype=np.float32))),
         "boundary_signed_rot_deg": np.concatenate((signed_deg, center_signed_deg, np.full(aux_n, np.nan, dtype=np.float32))),
+        "source_pose_id": np.concatenate(
+            (
+                source_pose_id,
+                source_pose_id[ip[monotonic]],
+                np.full(aux_n, -1, dtype=np.int64),
+            )
+        ),
         "input_center": center,
         "input_scale": scale,
     }
-    source_manifest_path = source.with_suffix(".yaml")
-    source_manifest = (
-        yaml.safe_load(source_manifest_path.read_text(encoding="utf-8")) or {}
-        if source_manifest_path.is_file()
-        else {}
-    )
-    collision_urdf = Path(source_manifest.get("collision_urdf", ""))
-    collision_pairs = Path(source_manifest.get("collision_pairs", ""))
-    probe_config = Path(__file__).resolve().parents[2] / "configs/probe_default.yaml"
-
-    def digest(path: Path) -> str | None:
-        return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
-
     meta = {
-        "representation": "rm4d_continuous_invariant_embedding_v1",
+        "representation": "rm4d_j1_axis_continuous_embedding_v2",
         "intrinsic_dimension": 4,
         "embedding_dimension": 5,
         "features": ["p_z_m", "approach_z", "p_xy_radius_m", "p_xy_dot_approach_xy_m", "p_xy_cross_approach_xy_m"],
@@ -143,12 +165,8 @@ def build_canonical_gt(cfg: CanonicalGtConfig) -> tuple[dict[str, np.ndarray], d
         "n_boundary_groups": int(np.unique(bid[st]).size),
         "n_oriented_groups": int(len(valid_groups)),
         "collision_contract": source_manifest.get("collision_contract"),
-        "collision_urdf": str(collision_urdf) if collision_urdf.is_file() else None,
-        "collision_urdf_sha256": digest(collision_urdf),
-        "collision_pairs": str(collision_pairs) if collision_pairs.is_file() else None,
-        "collision_pairs_sha256": digest(collision_pairs),
-        "probe_config": str(probe_config),
-        "probe_config_sha256": digest(probe_config),
+        "canonical_frame": "physical_joint_1_axis",
+        "robot_contract": spec.to_manifest(),
         "config": asdict(cfg),
     }
     return out, meta

@@ -1,0 +1,12 @@
+schema: realman_robot_contract_v1
+
+kinematics_urdf: ../../rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf
+collision_urdf: ../../rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf
+collision_pairs: ../../rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml
+
+root_frame: rail_base
+rail_joint: rail_y
+rail_locked_at_m: 0.0
+j1_joint: joint_1
+tcp_frame: tcp
+tcp_joint: link_7_to_tcp

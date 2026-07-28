@@ -52,19 +52,15 @@ class ProbeTransform:
 
 
 def default_ultrasound_probe() -> ProbeTransform:
-    """Trans_z(0.07)·Rot_y(+π/2)·Trans_z(0.05) composed origin/orientation."""
-    Tz1 = np.eye(4)
-    Tz1[2, 3] = 0.07
-    Ry = np.eye(4)
-    Ry[:3, :3] = Rotation.from_euler("y", 0.5 * np.pi).as_matrix()
-    Tz2 = np.eye(4)
-    Tz2[2, 3] = 0.05
-    T = Tz1 @ Ry @ Tz2
-    quat = Rotation.from_matrix(T[:3, :3]).as_quat()
+    """Calibrated physical probe45 TCP from the authoritative RM75 URDF."""
+    translation = np.asarray([0.0, -0.01523, 0.12135], dtype=np.float64)
+    rotation = Rotation.from_euler(
+        "xyz", [0.017732743, 0.870791073, -1.547861183]
+    )
     return ProbeTransform(
-        name="ultrasound_probe_default",
-        translation_m=T[:3, 3].copy(),
-        quaternion_xyzw=quat.astype(np.float64),
+        name="probe45_physical",
+        translation_m=translation,
+        quaternion_xyzw=rotation.as_quat().astype(np.float64),
     )
 
 
@@ -149,10 +145,12 @@ def ensure_probe_visual_urdf(
     probe_yaml: str | Path | None = None,
     out_name: str = "RM75-probe.genesis.urdf",
 ) -> Path:
-    """Genesis-mesh URDF with horizontal ultrasound TCP + cylinder glyph.
+    """Copy the physical-probe Genesis URDF with absolute mesh paths.
 
     Mesh ``filename`` entries are rewritten to absolute paths so the file can
     live under ``ird_playground/data/maps/`` without breaking PyVista.
+    An explicit ``probe_yaml`` enables legacy TCP-patch experiments; the
+    default path preserves the authoritative URDF TCP and probe45 mesh.
     """
     import re
 
@@ -161,12 +159,15 @@ def ensure_probe_visual_urdf(
     src = rm75 / "rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.genesis.urdf"
     if not src.is_file():
         raise FileNotFoundError(src)
-    yaml_path = Path(probe_yaml) if probe_yaml else root / "configs/probe_default.yaml"
-    if not yaml_path.is_absolute():
-        yaml_path = root / yaml_path
-    probe = load_probe_yaml(yaml_path)
     out = root / "data/maps" / out_name
-    patch_urdf_tcp(src, out, probe, add_probe_visual=True)
+    if probe_yaml is None:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    else:
+        yaml_path = Path(probe_yaml)
+        if not yaml_path.is_absolute():
+            yaml_path = root / yaml_path
+        patch_urdf_tcp(src, out, load_probe_yaml(yaml_path), add_probe_visual=False)
 
     mesh_root = src.parent
     text = out.read_text(encoding="utf-8")
