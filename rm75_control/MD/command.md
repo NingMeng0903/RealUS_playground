@@ -269,7 +269,8 @@ python apps/force_compensation/force_monitor.py --10p-only
 | `--rail-move-dir +y` / `-y` | 滑轨方向 |
 | `--enable-force` | 扫描阶段力控（需 §1 标定） |
 | `--desired-z 1.0` | 目标 Fz (N) |
-| `--log-interval 2` | attach 模式下相位切换日志间隔（0=关闭） |
+| `--log-interval 2` | attach 模式下相位切换日志间隔（默认 0=关闭） |
+| `--log-csv /path/run.csv` | 可选 WBC tick CSV（默认不写） |
 | `--verbose` / `-v` | IK 细节、move 时长估算等 |
 | `--d-target legacy` | 默认：RealMan 活动 TCP + Pin standoff + pose IK |
 | `--d-target joints` | 仅用 `poses.yaml` 示教关节角；`pose_d = Pin FK(q)`；忽略 RealMan TCP |

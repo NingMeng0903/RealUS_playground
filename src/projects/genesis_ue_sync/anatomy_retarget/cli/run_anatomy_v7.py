@@ -189,6 +189,17 @@ def _add_bake_template(subparsers: Any) -> None:
     parser.set_defaults(handler=_run_bake_template)
 
 
+def _add_bake_patella_oracle(subparsers: Any) -> None:
+    parser = subparsers.add_parser(
+        "bake-patella-oracle",
+        help="freeze the canonical patella response from the V71 Action export",
+    )
+    parser.add_argument("--action-oracle", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--report", type=Path)
+    parser.set_defaults(handler=_run_bake_patella_oracle)
+
+
 def _add_materialize_beta(subparsers: Any) -> None:
     parser = subparsers.add_parser(
         "materialize-beta",
@@ -199,6 +210,11 @@ def _add_materialize_beta(subparsers: Any) -> None:
     beta_group.add_argument("--betas", type=float, nargs=10)
     beta_group.add_argument("--betas-file", type=Path)
     parser.add_argument("--gender", default="male")
+    parser.add_argument(
+        "--patella-oracle",
+        type=Path,
+        help="frozen patella oracle; omit only to reproduce a pre-oracle candidate",
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.set_defaults(handler=_run_materialize_beta)
 
@@ -219,12 +235,77 @@ def _add_apply_pose(subparsers: Any) -> None:
     parser.set_defaults(handler=_run_apply_pose)
 
 
+def _add_diagnose_matrix(subparsers: Any) -> None:
+    parser = subparsers.add_parser(
+        "diagnose-matrix",
+        help="run the fail-closed V7 acceptance matrix over subjects × poses",
+    )
+    parser.add_argument("--operator", type=Path)
+    parser.add_argument(
+        "--subject",
+        action="append",
+        required=True,
+        dest="subjects",
+        metavar="LABEL=PATH",
+        help="repeatable subject LABEL=PATH (at least one)",
+    )
+    parser.add_argument(
+        "--pose",
+        action="append",
+        required=True,
+        dest="poses",
+        metavar="LABEL=PATH|LABEL=zero",
+        help="repeatable pose LABEL=PATH or LABEL=zero (at least one)",
+    )
+    parser.add_argument("--domains", type=Path, required=True)
+    parser.add_argument("--patella-oracle", type=Path, required=True)
+    parser.add_argument("--action-oracle", type=Path)
+    parser.add_argument("--sweep-count", type=int, default=13)
+    parser.add_argument("--vertices-dir", type=Path)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.set_defaults(handler=_run_diagnose_matrix)
+
+
+def _add_evidence_pack(subparsers: Any) -> None:
+    parser = subparsers.add_parser(
+        "evidence-pack",
+        help="generate the V7 acceptance evidence PNG pack with JSON sidecars",
+    )
+    parser.add_argument("--operator", type=Path, required=True)
+    parser.add_argument(
+        "--subject",
+        action="append",
+        required=True,
+        dest="subjects",
+        metavar="LABEL=PATH",
+        help="repeatable subject LABEL=PATH (at least one)",
+    )
+    parser.add_argument(
+        "--pose",
+        action="append",
+        required=True,
+        dest="poses",
+        metavar="LABEL=PATH|LABEL=zero",
+        help="repeatable pose LABEL=PATH or LABEL=zero (at least one)",
+    )
+    parser.add_argument("--domains", type=Path, required=True)
+    parser.add_argument("--patella-oracle", type=Path, required=True)
+    parser.add_argument("--posed-dir", type=Path)
+    parser.add_argument("--sweep-count", type=int, default=13)
+    parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--manifest", type=Path)
+    parser.set_defaults(handler=_run_evidence_pack)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
     _add_bake_template(subparsers)
+    _add_bake_patella_oracle(subparsers)
     _add_materialize_beta(subparsers)
     _add_apply_pose(subparsers)
+    _add_diagnose_matrix(subparsers)
+    _add_evidence_pack(subparsers)
     return parser
 
 
@@ -325,10 +406,70 @@ def _run_bake_template(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_bake_patella_oracle(args: argparse.Namespace) -> int:
+    from projects.genesis_ue_sync.anatomy_retarget.patella_oracle_v7 import (
+        extract_patella_law_v7,
+        save_patella_oracle_v7,
+    )
+
+    action = args.action_oracle.expanduser().resolve()
+    if not action.is_file():
+        raise ValueError(f"V71 action oracle does not exist: {action}")
+    law = extract_patella_law_v7(action)
+    output = save_patella_oracle_v7(args.output.expanduser().resolve(), law)
+    summary = {
+        "schema_version": ANATOMY_V7_SCHEMA_VERSION,
+        "artifact": "AnatomyPatellaOracleV7",
+        "content_digest": law.content_digest(),
+        "action_source_digest": law.action_source_digest,
+        "action_frame_count": int(law.action_frame_count),
+        "sides": {
+            side: {
+                "response_slope": float(law.response_slope[side]),
+                "response_max_residual_deg": float(
+                    law.response_max_residual_deg[side]
+                ),
+                "keyed_frame_count": int(law.keyed_frame_count[side]),
+                "observed_max_flexion_deg": float(
+                    law.observed_max_flexion_deg[side]
+                ),
+                "penetration_envelope_m": float(law.penetration_envelope_m[side]),
+            }
+            for side in ("left", "right")
+        },
+        "corridor_m": [float(law.corridor_min_m), float(law.corridor_max_m)],
+    }
+    if args.report is not None:
+        report_path = args.report.expanduser().resolve()
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(
+            json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
+        )
+    print(f"AnatomyPatellaOracleV7 {law.content_digest()} -> {output}")
+    return 0
+
+
+def _load_patella_law(args: argparse.Namespace) -> Any | None:
+    path = getattr(args, "patella_oracle", None)
+    if path is None:
+        return None
+    from projects.genesis_ue_sync.anatomy_retarget.patella_oracle_v7 import (
+        load_patella_oracle_v7,
+    )
+
+    resolved = Path(path).expanduser().resolve()
+    if not resolved.is_file():
+        raise ValueError(f"patella oracle does not exist: {resolved}")
+    return load_patella_oracle_v7(resolved)
+
+
 def _run_materialize_beta(args: argparse.Namespace) -> int:
     operator = load_source_operator(args.operator.expanduser().resolve())
     subject = materialize_subject(
-        operator, betas=_load_betas(args), gender=str(args.gender)
+        operator,
+        betas=_load_betas(args),
+        gender=str(args.gender),
+        patella_law=_load_patella_law(args),
     )
     output = save_subject_asset(args.output.expanduser().resolve(), subject)
     print(
@@ -366,6 +507,164 @@ def _run_apply_pose(args: argparse.Namespace) -> int:
     print(
         f"AnatomyPoseEvaluationV7 subject={subject.content_digest()} "
         f"pose={pose_digest} -> {output}"
+    )
+    return 0
+
+
+def _run_diagnose_matrix(args: argparse.Namespace) -> int:
+    from projects.genesis_ue_sync.anatomy_retarget.acceptance_matrix_v7 import (
+        _json_ready,
+        load_matrix_pose_v7,
+        load_matrix_subject_v7,
+        parse_label_value_pair,
+        run_acceptance_matrix_v7,
+    )
+    from projects.genesis_ue_sync.anatomy_retarget.patella_oracle_v7 import (
+        load_patella_oracle_v7,
+    )
+
+    from projects.genesis_ue_sync.anatomy_retarget.vessel_gates_v7 import (
+        vessel_topology_digest_v7,
+    )
+
+    operator_digest = ""
+    source_topology_digest: str | None = None
+    if args.operator is not None:
+        operator = load_source_operator(args.operator.expanduser().resolve())
+        operator_digest = str(operator.content_digest())
+        # Independent reference for the vessel topology gate: the pre-beta
+        # template's own tube selection, not the materialized subject's.
+        source_topology_digest = vessel_topology_digest_v7(operator.template_asset)
+
+    subjects = []
+    for raw in args.subjects:
+        label, value = parse_label_value_pair(raw)
+        subjects.append(load_matrix_subject_v7(label, value))
+
+    poses = []
+    for raw in args.poses:
+        label, value = parse_label_value_pair(raw)
+        poses.append(load_matrix_pose_v7(label, value))
+
+    domains_path = args.domains.expanduser().resolve()
+    if not domains_path.is_file():
+        raise ValueError(f"fixed domains do not exist: {domains_path}")
+    oracle_path = args.patella_oracle.expanduser().resolve()
+    if not oracle_path.is_file():
+        raise ValueError(f"patella oracle does not exist: {oracle_path}")
+
+    report = run_acceptance_matrix_v7(
+        subjects=subjects,
+        poses=poses,
+        domains=FrozenJointMaterialDomainsV7.load_json(domains_path),
+        law=load_patella_oracle_v7(oracle_path),
+        action_oracle_path=(
+            None
+            if args.action_oracle is None
+            else args.action_oracle.expanduser().resolve()
+        ),
+        operator_digest=operator_digest,
+        source_topology_digest=source_topology_digest,
+        sweep_count=int(args.sweep_count),
+        vertices_dir=(
+            None
+            if args.vertices_dir is None
+            else args.vertices_dir.expanduser().resolve()
+        ),
+    )
+
+    for cell_key, cell in report["cells"].items():
+        status = "PASS" if cell.get("passed") else "FAIL"
+        failures = ",".join(cell.get("failures") or []) or "-"
+        print(f"{status} {cell_key} {failures}")
+
+    output = args.output.expanduser().resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(_json_ready(report), indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    print(f"AcceptanceMatrixV7 passed={report['passed']} -> {output}")
+    return 0
+
+
+def _run_evidence_pack(args: argparse.Namespace) -> int:
+    import shlex
+    import sys
+
+    from projects.genesis_ue_sync.anatomy_retarget.acceptance_matrix_v7 import (
+        _json_ready,
+        load_matrix_pose_v7,
+        load_matrix_subject_v7,
+        parse_label_value_pair,
+    )
+    from projects.genesis_ue_sync.anatomy_retarget.evidence_pack_v7 import (
+        generate_evidence_pack_v7,
+    )
+    from projects.genesis_ue_sync.anatomy_retarget.patella_oracle_v7 import (
+        load_patella_oracle_v7,
+    )
+
+    operator_path = args.operator.expanduser().resolve()
+    if not operator_path.is_file():
+        raise ValueError(f"source operator does not exist: {operator_path}")
+    operator = load_source_operator(operator_path)
+    operator_digest = str(operator.content_digest())
+
+    subjects = []
+    for raw in args.subjects:
+        label, value = parse_label_value_pair(raw)
+        subjects.append(load_matrix_subject_v7(label, value))
+
+    poses = []
+    for raw in args.poses:
+        label, value = parse_label_value_pair(raw)
+        poses.append(load_matrix_pose_v7(label, value))
+
+    domains_path = args.domains.expanduser().resolve()
+    if not domains_path.is_file():
+        raise ValueError(f"fixed domains do not exist: {domains_path}")
+    oracle_path = args.patella_oracle.expanduser().resolve()
+    if not oracle_path.is_file():
+        raise ValueError(f"patella oracle does not exist: {oracle_path}")
+
+    command = " ".join(shlex.quote(part) for part in sys.argv)
+    manifest = generate_evidence_pack_v7(
+        subjects=subjects,
+        poses=poses,
+        domains=FrozenJointMaterialDomainsV7.load_json(domains_path),
+        law=load_patella_oracle_v7(oracle_path),
+        operator_digest=operator_digest,
+        output_dir=args.output_dir.expanduser().resolve(),
+        posed_dir=(
+            None
+            if args.posed_dir is None
+            else args.posed_dir.expanduser().resolve()
+        ),
+        sweep_count=int(args.sweep_count),
+        command=command,
+    )
+
+    for item in manifest["files"]:
+        print(item["png"])
+    for missing in manifest["missing_views"]:
+        print(
+            "MISSING "
+            f"{missing['beta']}/{missing['pose']}/{missing['view']}: "
+            f"{missing['reason']}"
+        )
+
+    if args.manifest is not None:
+        manifest_path = args.manifest.expanduser().resolve()
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(
+            json.dumps(_json_ready(manifest), indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+
+    print(
+        f"EvidencePackV7 complete={manifest['complete']} "
+        f"files={manifest['generated_file_count']} -> {manifest['output_dir']}"
     )
     return 0
 

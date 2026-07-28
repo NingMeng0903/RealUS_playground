@@ -80,7 +80,7 @@ class SinToolYTaskParams:
     rail_move_mode: str = "rail_only"
     rail_move_dir: str = "+y"
     enable_force: bool = False
-    log_interval: float = 2.0
+    log_interval: float = 0.0
     log_csv: str | None = None
     rail_log_csv: str | None = None
     cartesian_max_lin_vel: float | None = None

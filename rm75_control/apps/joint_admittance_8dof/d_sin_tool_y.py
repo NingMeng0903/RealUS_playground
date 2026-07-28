@@ -212,19 +212,24 @@ def main() -> int:
         help="Rail travel direction for --rail-move-cm",
     )
     ap.add_argument("--enable-force", action="store_true", default=None)
-    ap.add_argument("--log-interval", type=float, default=2.0)
-    ap.add_argument("--verbose", "-v", action="store_true", help="Detailed IK / WBC logs + auto CSV")
+    ap.add_argument(
+        "--log-interval",
+        type=float,
+        default=0.0,
+        help="Attach-mode phase status print interval (s); 0=off (default)",
+    )
+    ap.add_argument("--verbose", "-v", action="store_true", help="Detailed IK / WBC logs")
     ap.add_argument(
         "--log-csv",
         type=str,
         default=None,
-        help="WBC tick CSV path (A writes it). Default with -v: logs/sin_tool_y/run_<ts>.csv",
+        help="Optional WBC tick CSV path (A writes it when set)",
     )
     ap.add_argument(
         "--rail-log-csv",
         type=str,
         default=None,
-        help="LW100 soft-loop CSV path (A writes it). Default with -v: logs/rail_servo/rail_<ts>.csv",
+        help="Optional LW100 soft-loop CSV path (A writes it when set)",
     )
     ap.add_argument("--cartesian-max-lin-vel", type=float, default=None)
     ap.add_argument("--dry-run", action="store_true")
@@ -235,27 +240,6 @@ def main() -> int:
     )
     args = ap.parse_args()
 
-    if args.verbose and not args.log_csv:
-        log_dir = Path(__file__).resolve().parents[1] / "logs" / "sin_tool_y"
-        log_dir.mkdir(parents=True, exist_ok=True)
-        ts = time.strftime("%Y%m%d_%H%M%S")
-        args.log_csv = str(log_dir / f"run_{ts}.csv")
-    # Pair rail servo CSV with WBC CSV (same timestamp when auto).
-    rail_log_csv = getattr(args, "rail_log_csv", None)
-    if args.verbose and not rail_log_csv:
-        rail_dir = Path(__file__).resolve().parents[1] / "logs" / "rail_servo"
-        rail_dir.mkdir(parents=True, exist_ok=True)
-        if args.log_csv:
-            stem = Path(args.log_csv).stem.replace("run_", "rail_", 1)
-            if stem == Path(args.log_csv).stem:
-                stem = f"rail_{time.strftime('%Y%m%d_%H%M%S')}"
-            rail_log_csv = str(rail_dir / f"{stem}.csv")
-        else:
-            ts = time.strftime("%Y%m%d_%H%M%S")
-            rail_log_csv = str(rail_dir / f"rail_{ts}.csv")
-    args.rail_log_csv = rail_log_csv
-    if args.verbose and float(args.log_interval) >= 1.999:
-        args.log_interval = 0.5
     if args.log_csv:
         print(f"debug log CSV (written by window A): {args.log_csv}", flush=True)
     if args.rail_log_csv:

@@ -732,6 +732,7 @@ def materialize_subject(
     *,
     betas: Any,
     gender: str,
+    patella_law: Any | None = None,
 ) -> SubjectAssetV7:
     operator.validate()
     operator_digest = _source_operator_digest(
@@ -841,8 +842,24 @@ def materialize_subject(
             rigged,
             domains=domains,
             source_socket_templates=operator.contact_envelopes,
+            patella_law=patella_law,
         )
-    zero = skin_vertices(rigged, np.zeros((55, 3), dtype=np.float32))
+    from .tube_frames_v7 import rebase_tube_material_frames_v7
+
+    coefficients = rebase_tube_material_frames_v7(
+        rigged,
+        {
+            name: np.asarray(value).copy()
+            for name, value in operator.runtime_coefficients.items()
+        },
+    )
+    # The round-trip has to go through the same call apply-pose uses, tube frames
+    # included; skinning without them let a 24.5 mm identity-pose vessel snap pass.
+    zero = skin_vertices(
+        rigged,
+        np.zeros((55, 3), dtype=np.float32),
+        runtime_coefficients=coefficients,
+    )
     zero_error = float(
         np.max(
             np.linalg.norm(
@@ -867,15 +884,17 @@ def materialize_subject(
             np.asarray(operator.internal_handle_basis, dtype=np.float64),
             axes=(0, 0),
         ).astype(np.float32),
-        runtime_coefficients={
-            name: np.asarray(value).copy()
-            for name, value in operator.runtime_coefficients.items()
-        },
+        runtime_coefficients=coefficients,
         build_report={
             "structural_validation_passed": True,
             "publishable": False,
             "reason": "independent 2x3 pose/beta acceptance matrix is still required",
             "t_pose_roundtrip_max_m": zero_error,
+            "patella_oracle_digest": (
+                str(patella_law.content_digest())
+                if patella_law is not None
+                else ""
+            ),
             "articular_reconstruction": reconstruction_report,
         },
     )

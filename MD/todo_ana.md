@@ -251,3 +251,145 @@ V71 局部联动。
 
 只有独立 ACCEPT 后才发布
 任一门失败继续迭代；当前 latest 保持不动。
+---
+
+# 2026-07-28 rebuild_003 实测状态（全部数字自行重算，未读 metadata pass）
+
+候选：`outputs/anatomy_retarget/v7_candidates/rebuild_003/`，`publishable=false`，`latest_asset` 未动。
+
+## 已通过（2×3 矩阵，六个 cell 全部）
+- controller / local-FK 三门：从最终 posed bone matrices 重算，全部 pass。
+- 髋：`center_error≈2.3e-8 m`、`radius_change≈5.7e-10 m`，同心且半径守恒。
+- 膝：四个胫股间隙在 0–3 mm 走廊内（剖面图 0.93–2.14 mm）。
+- 刚性：股骨/胫骨/髌骨边长比 0.99989–1.00011。
+- 肘、逐根肋骨两端连接：pass（`sternal_target_source=costal_cartilage+sternum`）。
+- 血管 topology 哈希与固定截面：`radius_edge_ratio_max_abs_change=0.31%`（限 5%）。
+- 确定性：重复 apply-pose 顶点最大差 `0.0 m`。
+
+## 隔离性能（屏蔽 bpy/bmesh/mathutils 导入，单进程冷启动）
+- `materialize-beta` 7.20 s/beta（一次性）。
+- `apply-pose` 冷启动 0.524 s，热 0.505 s，394,770 顶点，subject 载入 0.400 s。达到 ≤1 s 目标。
+
+## 仍然失败（发布阻断，未做任何门槛放宽）
+1. `vessel.containment`（六个 cell）：骨架本身在 T-pose 就超出 SMPL-X 体表 69.6 mm，参考体表无效 → 属于源资产与 SMPL-X 体型的整体拟合缺陷，不是血管层问题。
+2. `vessel.bone_penetration`（四个 posed cell）：rest 状态已有 90.04 mm 穿透，posing 再增加 16.9 mm，1328 个顶点增量 >0.5 mm。rest 基线属源缺陷，增量属 retarget 缺陷。
+3. `vessel.centerline`（四个 posed cell）：最差 Spinal_Cord 67.1°（限 5°）。改用配对逐样本比较后灵敏度提高，真实折角暴露。
+4. `compound.skull_brain`：`inside_ratio=0.944`、`max_outside=14.3 mm`，但 `added_outside_m=0.0` → 纯 rest 源缺陷（`blocker_kind=source_authoring`）。
+5. `compound.oral_cavity`：源资产无舌头网格，按规范记为 publish blocker，不伪造保留。
+6. synthetic knee sweep：`trajectory/left`、`trajectory/right`（髌骨 vs 冻结 oracle，rms 4.7–6.6 mm，方向误差 8.0–11.5°），以及每个 beta 一个间隙分室边际超限（3.07/3.10 mm vs 3.0 mm）。
+
+## 本轮移除的自证路径
+- 删除 `_apply_femoral_head_driver_attitude_v1`：它只把冻结的股骨头顶点绕头心旋回 SMPL-X driver 姿态，头/颈边界因此被拉伸，sweep 中股骨边长比达到 0.207–2.886（局部骨头变细/变粗的直接来源），却让髋 clearance 分布看起来没变。
+- 髋门不再以 clearance 中位数/q95 变化判定：非球头在非球髋臼内刚性转动必然重分布 clearance，该判据只能靠形变骨头满足。改为判定同心度、半径守恒、抬离（max separation）和 clearance 崩塌（新增 `clearance_min_drop_m`，限 1 mm），分布量仅记录。
+- 血管中心线改为按测地 bin 的连通分股取心线，并对 rest/posed 同一样本做配对差分，避免大 rest 折角掩盖真实新增折角。
+
+---
+
+# 独立盲审 REJECT 后的修正（本轮）
+
+盲审独立复算矩阵，结果与提交的 `acceptance_matrix_v7.json` 逐字段一致（同样的
+failures / thresholds / subjects / reason），`publishable=false` 成立。真正的问题
+不在已失败的门，而在**通过的门里有五个按构造不可能失败**。以下是已修正的与已确认
+但未修正的。
+
+## 已修正：构造性自证门
+
+1. **血管 topology 门自己比自己**。`vessel_gates_v7.py` 曾写
+   `reference_digest = faces_digest` 再判 `faces_digest == reference_digest`，
+   源模板从未被载入，报告却把两个相同摘要并排打印成"已核验一致"。现改为由调用方从
+   operator 的 pre-beta `template_asset` 算出 `reference_faces_digest` 传入
+   （新增 `vessel_topology_digest_v7`），未传入即 `available=false` 判失败。
+   实测 template 与两个 subject 摘要均为
+   `1f279c1cedbec0a02555fa3844ca8885e549463eb1dcdde3f46e8dae2df14975`，
+   拓扑确实保持——但这次是真比出来的。
+
+2. **膝 local-FK 拿候选自己当参考**。`_observe_local_link` 里
+   `auth_angle = on_axis`，授权角就是候选自己测出的 on-axis 角，参考旋转因此是被测
+   量的函数；`"response_error_deg": 0.0` 是硬编码字面量。剩下真正被判的只有 off-axis
+   残差，而运行时构造上就把它压到 1e-7~2.6e-6°。按 §2.2.3 现记
+   `available=false`，`flexion_deg` / `off_axis_residual_deg` 仍照实记录。
+
+3. **肘 local-FK 测了又丢弃（潜在假 ACCEPT，本轮最危险的一条）**。`_ARM_LINK_SPECS`
+   找的是 `Humerus_Rot` / `Ulna_Bone` / `Radius_Bone`，源 rig 里都不存在，六条链全报
+   "bone is absent"；而 `local_fk_arms` 既不进 cell 的 `failures` 也不进 `passed`
+   合取。也就是说血管与复合门一旦修好，矩阵会在六条必需链全部不可用的情况下报
+   `passed=true`。现按源 rig 实名接上
+   `Shoulder_Rotate > Elbow_Rot > Forearm_Bone > Forearm_Twist`，并并入判定。
+   接上后立刻暴露真实缺陷：`Forearm_Bone>Forearm_Twist`（尺骨→桡骨，规范授权角为 0
+   刚性）在 posed cell 实测 **30.75° 左 / 21.70° 右** 旋转误差。
+   另外 `evaluate_local_fk_gate_v7` 此前只按 rotation 是否为 None 间接失败，现显式
+   以 `available` 判定，并把 §4.2 要求的四项补充记录写进 `items`。
+
+## 已修正：§6 性能报告形式不合规
+
+旧 `runtime_perf_v7.json` 的 `determinism_max_vertex_delta_m: 0.0` 是同一进程内重复
+调用得出的（§6 明文禁止），没有 `vertex_checksum`、没有 isolated cold start 标注、
+没有进程隔离说明，`blender_blocked: true` 是硬编码字面量，`apply_pose.cold_seconds
+= 0.524 s` 还把 §6 计入限值的 0.400 s 资产载入排除在外，`materialize_beta 7.198 s`
+也复现不出来。`scripts/measure_v7_runtime_v7.py` 已重写为只驱动规范自己的入口
+`cli.run_v7_isolated_perf`、每次测量一个全新进程，并新增按字节的 `vertex_digest`
+（原 `vertex_checksum` 只是浮点求和，抵消性误差不会暴露）。
+
+实测（三个独立冷启动进程）：
+- `apply-pose` 冷启动 **0.751 / 0.754 / 0.754 s**（含 0.390 s 资产载入 + 0.365 s 求解，
+  394,770 顶点），限 1.0 s → pass。与盲审独立测得的 0.783 s 同量级。
+- 跨进程确定性：三次 `vertex_digest` 逐位相同
+  （`f25f8015…`，`vertex_checksum = -326991.40036946005`，与盲审一致）→ pass。
+- `materialize-beta` 隔离冷启动 **4.66 s**（盲审 4.93 s），此前报的 7.198 s 不成立。
+- `blender_blocked` 改为读入口的 `bpy_importable` 探测结果。
+
+## 已确认未修正：leg hinge 解的真实运行时缺陷（当前首要阻断）
+
+盲审的机制判断是对的，我用 `scripts/probe_hinge_twist_conditioning_v7.py` 在真实
+baked leg entry 上复现并定位到更具体的一层：
+
+- 驱动轴与授权铰轴一致时，解是精确的：phi=0、theta 逐度跟随、ankle 误差 0。大扭转
+  完全来自授权轴与 SMPL-X drive 的夹角（规范 §4.6-A 记的 53.3°/85.4°）。
+- **保护性 fade 实际上是死代码。** 解里的 `flex_deg` 是股骨方向与 bone→ankle 段的
+  夹角，而 bind 姿态下它本来就不是 0：左 **16.419°**、右 **10.316°**（生理股骨角）。
+  fade 带是 `[5°, 15°]`，所以左腿在零驱动时 fade 就已全开，phi 从第一度起按全强度施加；
+  右腿只被部分衰减。这个 guard 是按一个静息值已达 10–16° 的量校准的。
+- 后果（左腿，53.3° 轴偏）：drive 0.5° → 股骨轴向扭转 2.92°；drive 5° → 28.52°；
+  之后饱和在约 52.6°（≈轴偏本身）。且在 drive 0.5°–10° 区间 `theta` 一直被 clamp 到 0，
+  ankle 落点差 3.07–24.17 mm——近伸直区解剖根本不跟随 drive。盲审在完整运行时上测到
+  同一现象：0.5° 膝输入 → 股骨自轴扭转 −34.9°、滑车沟位移 63.6 mm，这正是髌骨轨迹
+  4.7–6.6 mm RMS（限 2 mm）的来源。
+- 更上游的疑点：授权铰轴本身与经股骨髁轴（transepicondylar，解剖屈膝轴）差
+  **22.46–25.96°**（`fk_observation_v7.py` 已算出 `epicondylar_axis_error_deg`，但没有
+  与任何限值比较，`joint_contact_v7.py` 里 `knee_axis_error_deg = 2.0` 在 `src/`、
+  `tests/`、`scripts/` 中零引用）。所以"让股骨扭 52° 去迁就 drive 平面"很可能是在补偿
+  一个本身就错的授权轴，而不是正确的解。修 leg IK 之前必须先定轴。
+
+## 已确认未修正：其余盲审发现
+
+- **烘焙期形变对门不可见**：门的基线是烘焙后的 rest，而关节重建相对纯 beta 预测最多
+  移动 66.80 mm（左股骨头）；髋臼烘焙期边长比左 0.87970–0.87971、右
+  0.87755–0.87756（min 等于 max 到五位小数，即 12.03%/12.24% 的纯均匀缩小），
+  而 `build_report.articular_reconstruction` 仍报 `whole_pelvis_scaled: False`、
+  `scaled_structures: []`，与 §4.3 冲突。所有运行时刚性数字都是相对这个已形变基线测的。
+- **髋同心度是构造恒等式**：`fit_sphere_fixed_radius_v7(socket, radius=head_radius)`
+  从四个不同初始球心出发都返回股骨头球心，`center_error_vs_head` 恒为 0.0000 mm。
+  `hip_section` 图印 "centre offset=0.00 mm" 并把两球画成完全重合，因此它无法佐证
+  §4.3。
+- **刚性门是算术恒等式**：`_force_rigid_mesh_driver` 把整块 mesh 的权重压成单骨 1.0，
+  单骨单位权重必然逐顶点同一刚性变换，边长只差 float32 舍入（实测最差 1.000111，
+  限 ±0.01/±0.02）。这是权重矩阵的性质，不是解剖的性质。
+- **复合门探针不是冻结域**：`fixed_joint_domains_v7.json` 只有 24 个腿部域，肘与肋端
+  探针按候选自身 rest mesh 最近点逐 cell 重选，与 R1 冲突（虽是 rest 基准且确定性）。
+- **24 根肋骨里 21 个胸骨端被自动放过**：`_rib_end_metrics` 返回
+  `pass = not attached or increase <= limit`，rest 距离超阈的端点不受判定
+  （已在报告里以 `ungated_sternal_ends` 披露，最大未判增量 0.385 mm，不改变结论，但
+  §4.5 的逐根两端要求未被强制）。
+- **证据图与门不同源**：`vessel_centerline` 图印 Δmax = 32.18°，同一 cell 同一组件门报
+  67.09°，因为图自己跑了一套 centerline 采样而不是门的测地分箱实现。同一份发布里
+  同名指标两个数。
+- §5-F 记的中心线状态（"只剩 Spinal_Cord +39.13° 与 Sacral_Nerves_L +6.03° 失败"）与
+  实际不符：17 个组件里 10 个失败，Spinal_Cord 为 +67.09°/+92.74°，
+  Lumbar_Nerves_L 也在失败名单里。叙述把失败低估约 2 倍。
+
+## 修正后的矩阵状态
+
+`passed=false`、`publishable=false` 不变，但失败清单变得更诚实：新增
+`local_fk.{left,right}/Femur_Rot>Knee_Rotate`（自证已拆除）与
+`local_fk_arms` 六条链；`vessel.topology` 不再出现在失败里，因为它现在是真比出来的
+通过。V7 项目测试 61 passed。

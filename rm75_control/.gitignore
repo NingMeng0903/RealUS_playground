@@ -27,7 +27,11 @@ env/
 
 # Force compensation: regenerated locally (collection / identification)
 data/force_compensation/logs/*.npz
+data/force_compensation/logs/*.log
 data/force_compensation/logs/force_id_phi.json
+
+# Scan / rail debug CSV (opt-in via --log-csv)
+apps/logs/
 
 # Legacy velocity-admittance npz captures
 data/velocity_admittance/logs/*.npz

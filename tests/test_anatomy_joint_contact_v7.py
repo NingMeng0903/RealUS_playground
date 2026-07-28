@@ -205,6 +205,71 @@ def test_final_vertices_override_no_metric_and_bad_hip_cannot_self_certify() -> 
     assert not report["passed"]
 
 
+def test_rigidly_rotated_aspherical_head_passes_the_hip_gate() -> None:
+    """Articulation redistributes clearance; only deforming the bone avoids it."""
+    _report, vertices, faces, domains, controller, local_fk, trajectory = (
+        _good_report()
+    )
+    head = domains.require("left/femoral_head")
+    center = vertices[domains.require("left/acetabulum")].mean(axis=0)
+    angle = np.radians(20.0)
+    rotation = np.asarray(
+        [
+            [np.cos(angle), -np.sin(angle), 0.0],
+            [np.sin(angle), np.cos(angle), 0.0],
+            [0.0, 0.0, 1.0],
+        ],
+        dtype=np.float64,
+    )
+    rotated = vertices.copy()
+    rotated[head] = (rotation @ (vertices[head] - center).T).T + center
+
+    report = diagnose_joint_contact_v7(
+        domains,
+        reference_vertices=vertices,
+        final_vertices=rotated,
+        faces=faces,
+        controller_observations=controller,
+        local_fk_observations=local_fk,
+        trajectory_vertices=trajectory,
+        oracle_trajectory_vertices=trajectory,
+    )
+    hip = report["gates"]["geometry"]["hips"]["left"]
+    # Larger than the 1 mm median change the gate used to reject.
+    assert hip["clearance_median_change_m"] > 0.002
+    assert hip["center_error_m"] < 1.0e-9
+    assert hip["radius_change_m"] < 1.0e-9
+    assert hip["clearance_min_drop_m"] == pytest.approx(0.0)
+    assert hip["pass"]
+
+
+def test_head_crashing_into_the_socket_still_fails_the_hip_gate() -> None:
+    _report, vertices, faces, domains, controller, local_fk, trajectory = (
+        _good_report()
+    )
+    head = domains.require("left/femoral_head")
+    crashed = vertices.copy()
+    # Drive one head vertex out toward the socket wall. The least-squares sphere
+    # centre and radius barely move, so only the clearance collapse is left to
+    # catch it.
+    crashed[head[2], 1] += 0.0018
+
+    report = diagnose_joint_contact_v7(
+        domains,
+        reference_vertices=vertices,
+        final_vertices=crashed,
+        faces=faces,
+        controller_observations=controller,
+        local_fk_observations=local_fk,
+        trajectory_vertices=trajectory,
+        oracle_trajectory_vertices=trajectory,
+    )
+    hip = report["gates"]["geometry"]["hips"]["left"]
+    assert hip["clearance_min_drop_m"] > 0.001
+    assert not hip["pass"]
+    assert not report["passed"]
+
+
 def test_patella_is_not_masked_by_a_good_tibia() -> None:
     _report, vertices, faces, domains, controller, local_fk, trajectory = (
         _good_report()

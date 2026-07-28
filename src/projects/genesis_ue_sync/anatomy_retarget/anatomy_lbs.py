@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import weakref
-from typing import Any
+from typing import Any, Mapping
 
 import numpy as np
 
@@ -511,6 +511,397 @@ def _source_rest_local(asset: AnatomyRiggedAsset) -> np.ndarray:
     raise ValueError("schema-v6 source rig is missing target_bind_local")
 
 
+def _smoothstep01(value: float) -> float:
+    x = float(np.clip(value, 0.0, 1.0))
+    return x * x * (3.0 - 2.0 * x)
+
+
+def _assert_proper_rotation(
+    matrix: np.ndarray,
+    label: str,
+    *,
+    atol: float = 1.0e-9,
+) -> np.ndarray:
+    """Fail closed unless ``matrix`` is a proper orthonormal rotation."""
+    rotation = np.asarray(matrix, dtype=np.float64).reshape(3, 3)
+    if not np.all(np.isfinite(rotation)):
+        raise ValueError(f"{label} is non-finite")
+    determinant = float(np.linalg.det(rotation))
+    if determinant <= 0.0:
+        raise ValueError(f"{label} is not a proper rotation (det <= 0)")
+    if not np.isclose(determinant, 1.0, atol=max(atol, 1.0e-6), rtol=0.0):
+        raise ValueError(f"{label} determinant {determinant} is not near 1")
+    if not np.allclose(
+        rotation.T @ rotation, np.eye(3, dtype=np.float64), atol=atol, rtol=0.0
+    ):
+        raise ValueError(f"{label} is not orthonormal to {atol}")
+    return rotation
+
+
+def _as_proper_rotation(matrix: np.ndarray, label: str) -> np.ndarray:
+    """Nearest proper rotation for authored/driver inputs (SVD polar factor)."""
+    rotation = np.asarray(matrix, dtype=np.float64).reshape(3, 3)
+    if not np.all(np.isfinite(rotation)):
+        raise ValueError(f"{label} is non-finite")
+    try:
+        return _assert_proper_rotation(rotation, label, atol=1.0e-6)
+    except ValueError:
+        u, _singular, vt = np.linalg.svd(rotation)
+        projected = u @ vt
+        if float(np.linalg.det(projected)) < 0.0:
+            u = u.copy()
+            u[:, -1] *= -1.0
+            projected = u @ vt
+        return _assert_proper_rotation(projected, label, atol=1.0e-9)
+
+
+def _normalize_vector(vector: np.ndarray, label: str) -> np.ndarray:
+    value = np.asarray(vector, dtype=np.float64).reshape(3)
+    if not np.all(np.isfinite(value)):
+        raise ValueError(f"{label} is non-finite")
+    norm = float(np.linalg.norm(value))
+    if norm <= 1.0e-12:
+        raise ValueError(f"{label} is degenerate")
+    return value / norm
+
+
+def _gram_schmidt_perp(axis: np.ndarray, primary: np.ndarray, label: str) -> np.ndarray:
+    """Return the unit component of ``axis`` orthogonal to unit ``primary``."""
+    residual = np.asarray(axis, dtype=np.float64).reshape(3) - (
+        float(np.dot(axis, primary)) * primary
+    )
+    return _normalize_vector(residual, label)
+
+
+def _orthonormal_frame(primary: np.ndarray, secondary: np.ndarray, label: str) -> np.ndarray:
+    """Build columns ``[primary, secondary_perp, primary x secondary_perp]``."""
+    first = _normalize_vector(primary, f"{label} primary")
+    second = _gram_schmidt_perp(secondary, first, f"{label} secondary")
+    third = np.cross(first, second)
+    third = _normalize_vector(third, f"{label} third")
+    second = np.cross(third, first)
+    frame = np.stack((first, second, third), axis=1)
+    return _assert_proper_rotation(frame, f"{label} frame")
+
+
+def _slerp_rotation(ra: np.ndarray, rb: np.ndarray, alpha: float) -> np.ndarray:
+    """Geodesic interpolation from ``ra`` to ``rb`` (quaternion slerp)."""
+    from scipy.spatial.transform import Rotation
+
+    t = float(np.clip(alpha, 0.0, 1.0))
+    ra = _as_proper_rotation(ra, "slerp ra")
+    rb = _as_proper_rotation(rb, "slerp rb")
+    delta = Rotation.from_matrix(ra.T @ rb).as_rotvec()
+    out = ra @ Rotation.from_rotvec(t * delta).as_matrix()
+    return _as_proper_rotation(out, "slerp result")
+
+
+def _validate_leg_hinge_solve_entry_v1(
+    entry: Mapping[str, Any],
+    *,
+    side: str,
+    bone_count: int,
+    joint_count: int,
+) -> dict[str, Any]:
+    """Fail-closed parse of one ``source_leg_hinge_solve_v1`` side entry."""
+    if not isinstance(entry, Mapping):
+        raise ValueError(f"source_leg_hinge_solve_v1[{side!r}] must be a mapping")
+    required = (
+        "femur_bone",
+        "knee_bone",
+        "ankle_bone",
+        "smplx_hip",
+        "smplx_knee",
+        "smplx_ankle",
+        "hinge_axis_femur_local",
+        "femoral_head_femur_local",
+        "femoral_head_vertex_indices",
+        "hinge_axis_sign",
+        "blend_lo_deg",
+        "blend_hi_deg",
+    )
+    missing = [name for name in required if name not in entry]
+    if missing:
+        raise ValueError(
+            f"source_leg_hinge_solve_v1[{side!r}] missing fields: {missing}"
+        )
+    femur_bone = int(entry["femur_bone"])
+    knee_bone = int(entry["knee_bone"])
+    ankle_bone = int(entry["ankle_bone"])
+    hip_j = int(entry["smplx_hip"])
+    knee_j = int(entry["smplx_knee"])
+    ankle_j = int(entry["smplx_ankle"])
+    axis = np.asarray(entry["hinge_axis_femur_local"], dtype=np.float64).reshape(-1)
+    head_local = np.asarray(
+        entry["femoral_head_femur_local"], dtype=np.float64
+    ).reshape(-1)
+    hinge_sign = int(entry["hinge_axis_sign"])
+    blend_lo = float(entry["blend_lo_deg"])
+    blend_hi = float(entry["blend_hi_deg"])
+    if (
+        femur_bone < 0
+        or femur_bone >= bone_count
+        or knee_bone < 0
+        or knee_bone >= bone_count
+        or ankle_bone < 0
+        or ankle_bone >= bone_count
+        or len({femur_bone, knee_bone, ankle_bone}) != 3
+    ):
+        raise ValueError(
+            f"source_leg_hinge_solve_v1[{side!r}] has invalid bone indices"
+        )
+    if (
+        hip_j < 0
+        or knee_j < 0
+        or ankle_j < 0
+        or hip_j >= joint_count
+        or knee_j >= joint_count
+        or ankle_j >= joint_count
+        or len({hip_j, knee_j, ankle_j}) != 3
+    ):
+        raise ValueError(
+            f"source_leg_hinge_solve_v1[{side!r}] has invalid SMPL-X joints"
+        )
+    if axis.shape != (3,) or not np.all(np.isfinite(axis)):
+        raise ValueError(
+            f"source_leg_hinge_solve_v1[{side!r}] hinge axis is invalid"
+        )
+    if head_local.shape != (3,) or not np.all(np.isfinite(head_local)):
+        raise ValueError(
+            f"source_leg_hinge_solve_v1[{side!r}] femoral head local is invalid"
+        )
+    head_indices = np.asarray(
+        entry.get("femoral_head_vertex_indices", []), dtype=np.int64
+    ).reshape(-1)
+    if head_indices.size < 4 or np.any(head_indices < 0):
+        raise ValueError(
+            f"source_leg_hinge_solve_v1[{side!r}] femoral head indices are invalid"
+        )
+    if hinge_sign not in (-1, 1):
+        raise ValueError(
+            f"source_leg_hinge_solve_v1[{side!r}] hinge_axis_sign must be ±1"
+        )
+    if not np.isfinite(blend_lo) or not np.isfinite(blend_hi) or blend_hi <= blend_lo:
+        raise ValueError(
+            f"source_leg_hinge_solve_v1[{side!r}] blend thresholds are invalid"
+        )
+    axis = _normalize_vector(axis, f"source_leg_hinge_solve_v1[{side!r}] hinge axis")
+    return {
+        "femur_bone": femur_bone,
+        "knee_bone": knee_bone,
+        "ankle_bone": ankle_bone,
+        "smplx_hip": hip_j,
+        "smplx_knee": knee_j,
+        "smplx_ankle": ankle_j,
+        "hinge_axis_femur_local": axis,
+        "femoral_head_femur_local": np.asarray(head_local, dtype=np.float64),
+        "femoral_head_vertex_indices": head_indices.astype(np.int64),
+        "hinge_axis_sign": hinge_sign,
+        "blend_lo_deg": blend_lo,
+        "blend_hi_deg": blend_hi,
+    }
+
+
+def solve_leg_hinge_v1(
+    *,
+    hip: np.ndarray,
+    knee: np.ndarray,
+    ankle: np.ndarray,
+    bind_hip: np.ndarray,
+    bind_knee: np.ndarray,
+    bind_ankle: np.ndarray | None = None,
+    bind_femur_rotation: np.ndarray,
+    hinge_axis_femur_local: np.ndarray,
+    driver_femur_rotation: np.ndarray,
+    blend_lo_deg: float = 5.0,
+    blend_hi_deg: float = 15.0,
+) -> tuple[np.ndarray, float, float, np.ndarray]:
+    """Two-segment leg IK with a single authored knee hinge.
+
+    Returns ``(femur_posed_rotation, theta_applied_rad, theta_raw_rad,
+    hinge_axis_world)``.
+
+    The leg is exactly determined: the femur is a 3-DoF ball joint pinned at the
+    acetabulum and the knee is a 1-DoF hinge about the *authored* axis, giving
+    four unknowns for the four constraints imposed by the SMPL-X knee and ankle
+    directions.  So both drive targets are reachable without ever bending the
+    knee off its anatomical axis:
+
+    1. Two femur DoF put the femur long axis on the posed hip→knee ray.
+    2. The remaining femur DoF — twist ``phi`` about that ray — swings the
+       authored hinge until the SMPL-X shank lies on the cone the hinge can
+       reach, i.e. until ``dot(shank, hinge) `` equals its bind value.  Solved in
+       closed form and taken on the branch nearest the driver, so ``phi`` is the
+       least twist that makes the ankle reachable.
+    3. The knee hinge angle ``theta`` then lands the shank on the SMPL-X ankle
+       exactly.
+
+    ``theta`` is signed so positive flexes the tibia posteriorly (the authored
+    ``hinge_axis_femur_local`` already carries that orientation).  Straight is 0;
+    hyperextension (``theta_raw < 0``) is clamped to 0 for ``theta_applied`` and
+    callers should record the clamp.
+
+    Near-straight the shank cone is ill-conditioned — every ``phi`` solves the
+    constraint about equally well — so ``phi`` is faded in with a smoothstep
+    across ``[blend_lo_deg, blend_hi_deg]`` and the femur simply keeps the
+    driver attitude below that band.  If the drive asks for a shank the hinge
+    cannot reach at any twist, ``phi`` takes the closest approach rather than
+    failing, and the unreachable remainder shows up as ankle error downstream.
+    """
+    from scipy.spatial.transform import Rotation
+
+    H = np.asarray(hip, dtype=np.float64).reshape(3)
+    K = np.asarray(knee, dtype=np.float64).reshape(3)
+    A = np.asarray(ankle, dtype=np.float64).reshape(3)
+    H0 = np.asarray(bind_hip, dtype=np.float64).reshape(3)
+    K0 = np.asarray(bind_knee, dtype=np.float64).reshape(3)
+    R_bind = _as_proper_rotation(bind_femur_rotation, "bind femur rotation")
+    R_driver = _as_proper_rotation(driver_femur_rotation, "driver femur rotation")
+    h0_local = _normalize_vector(
+        hinge_axis_femur_local, "hinge axis femur-local"
+    )
+    d0 = _normalize_vector(K0 - H0, "bind femur direction")
+    h0 = _normalize_vector(R_bind @ h0_local, "bind hinge world")
+    if bind_ankle is None:
+        # No authored shank: assume the ideal knee whose shank is perpendicular
+        # to its hinge.
+        s0 = _normalize_vector(
+            np.cross(h0, np.cross(d0, h0)), "bind shank fallback"
+        )
+    else:
+        s0 = _normalize_vector(
+            np.asarray(bind_ankle, dtype=np.float64).reshape(3) - K0,
+            "bind shank direction",
+        )
+    # The hinge preserves this cone half-angle between shank and axis.
+    cone = float(np.dot(s0, h0))
+
+    femur_vec = K - H
+    thigh_len = float(np.linalg.norm(femur_vec))
+    if thigh_len <= 1.0e-12:
+        raise ValueError("leg hinge solve has a degenerate posed femur")
+    d = femur_vec / thigh_len
+    bone_len = float(np.linalg.norm(K0 - H0))
+    if bone_len <= 1.0e-12:
+        raise ValueError("leg hinge solve has a degenerate bind femur")
+    # Rigid bone knee lands on the SMPL-X femur ray at the authored length.
+    K_bone = H + bone_len * d
+    shank_from_bone = A - K_bone
+    shank_from_bone_len = float(np.linalg.norm(shank_from_bone))
+    if shank_from_bone_len <= 1.0e-12:
+        raise ValueError("leg hinge solve has a degenerate bone→ankle segment")
+    shank_dir = shank_from_bone / shank_from_bone_len
+
+    flex_deg = float(
+        np.degrees(np.arccos(float(np.clip(np.dot(d, shank_dir), -1.0, 1.0))))
+    )
+
+    # Driver attitude with the long axis locked onto the posed femur ray; this
+    # is the phi = 0 reference, so direction_error stays ~0 at every flexion.
+    d_driver = _normalize_vector(
+        R_driver @ R_bind.T @ d0, "driver femur direction"
+    )
+    align_axis = np.cross(d_driver, d)
+    align_norm = float(np.linalg.norm(align_axis))
+    if align_norm <= 1.0e-12:
+        R_driver_aligned = R_driver
+    else:
+        align = Rotation.from_rotvec(
+            align_axis
+            * (
+                float(np.arctan2(align_norm, float(np.dot(d_driver, d))))
+                / align_norm
+            )
+        ).as_matrix()
+        R_driver_aligned = _as_proper_rotation(
+            align @ R_driver, "driver direction aligned"
+        )
+
+    # Twist phi about d that brings the authored hinge onto the shank cone:
+    #   dot(shank, Rot(d, phi) @ h_driver) = cone
+    # Splitting the hinge into its axial and radial parts about d turns this
+    # into P*cos(phi) + Q*sin(phi) = r.
+    h_driver = _normalize_vector(
+        R_driver_aligned @ h0_local, "driver hinge world"
+    )
+    axial = float(np.dot(h_driver, d))
+    radial = h_driver - axial * d
+    shank_axial = float(np.dot(shank_dir, d))
+    shank_radial = shank_dir - shank_axial * d
+    P = float(np.dot(shank_radial, radial))
+    Q = float(np.dot(shank_radial, np.cross(d, radial)))
+    r = cone - axial * shank_axial
+    amplitude = float(np.hypot(P, Q))
+    if amplitude <= 1.0e-12:
+        phi = 0.0
+    else:
+        psi = float(np.arctan2(Q, P))
+        ratio = float(np.clip(r / amplitude, -1.0, 1.0))
+        offset = float(np.arccos(ratio))
+        # Two branches; take the one that twists the femur least.
+        candidates = [
+            float(np.remainder(psi + sign * offset + np.pi, 2.0 * np.pi) - np.pi)
+            for sign in (1.0, -1.0)
+        ]
+        phi = min(candidates, key=abs)
+    if flex_deg < float(blend_hi_deg):
+        phi *= _smoothstep01(
+            (flex_deg - float(blend_lo_deg))
+            / (float(blend_hi_deg) - float(blend_lo_deg))
+        )
+
+    R_femur = _as_proper_rotation(
+        Rotation.from_rotvec(d * phi).as_matrix() @ R_driver_aligned,
+        "hinge femur rotation",
+    )
+    hinge_world = _normalize_vector(R_femur @ h0_local, "posed hinge world")
+
+    # Knee angle taking the femur-carried bind shank onto the posed shank.
+    carried = _normalize_vector(
+        R_femur @ R_bind.T @ s0, "carried shank direction"
+    )
+    u = carried - float(np.dot(carried, hinge_world)) * hinge_world
+    v = shank_dir - float(np.dot(shank_dir, hinge_world)) * hinge_world
+    if float(np.linalg.norm(u)) <= 1.0e-12 or float(np.linalg.norm(v)) <= 1.0e-12:
+        theta_raw = 0.0
+    else:
+        theta_raw = float(
+            np.arctan2(
+                float(np.dot(hinge_world, np.cross(u, v))),
+                float(np.dot(u, v)),
+            )
+        )
+    theta_applied = float(max(theta_raw, 0.0))
+    return R_femur, theta_applied, theta_raw, hinge_world
+
+
+def _femur_pose_about_head(
+    *,
+    parent_global: np.ndarray,
+    bind_local: np.ndarray,
+    femur_rotation_world: np.ndarray,
+    head_femur_local: np.ndarray,
+    head_target_world: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Build posed local/global femur transforms rotating about the head centre.
+
+    The fitted femoral-head centre stays at ``head_target_world``; the bone
+    origin is placed at ``head_target - R @ head_local``.
+    """
+    R = _as_proper_rotation(femur_rotation_world, "femur world rotation")
+    head_local = np.asarray(head_femur_local, dtype=np.float64).reshape(3)
+    head_target = np.asarray(head_target_world, dtype=np.float64).reshape(3)
+    origin = head_target - R @ head_local
+    posed_global = np.eye(4, dtype=np.float64)
+    posed_global[:3, :3] = R
+    posed_global[:3, 3] = origin
+    posed_local = np.linalg.inv(parent_global) @ posed_global
+    # Preserve the bind local scale/homogeneous row; only rotation+origin change.
+    del bind_local  # rotation about head fully replaces the bind local pose
+    return posed_local, posed_global
+
+
+
 def source_bone_driver_frames(
     asset: AnatomyRiggedAsset,
     pose_axis_angle: Any,
@@ -711,11 +1102,11 @@ def with_source_driver_coupling(asset: AnatomyRiggedAsset) -> AnatomyRiggedAsset
     return type(asset)(**{**asset.__dict__, "source_driver_coupling": coupling})
 
 
-def source_bone_skinning_transforms(
+def source_bone_posed_global(
     asset: AnatomyRiggedAsset,
     pose_axis_angle: Any,
 ) -> np.ndarray:
-    """Solve the source rig once, in parent-before-child local FK order.
+    """Solve posed global source-bone matrices once, parent-before-child.
 
     Schema-v6 stores one controller-to-bind coupling for every independently
     driven source bone.  Authored bind_follow children retain their exact
@@ -814,6 +1205,14 @@ def source_bone_skinning_transforms(
     patella_splines = dict(
         (asset.metadata or {}).get("source_patella_splines_v7", {})
     )
+    # The v7 spline drove the patella relative to the femur with the V71
+    # tibia-local gain, so the patella under-rotated by roughly a factor of
+    # four and its tibia-local translation moved by tens of millimetres in
+    # deep flexion.  The v8 response restores the authored chain: the patella
+    # is an ordinary child of Tibia_Bone with a rotation-only local driver.
+    patella_responses = dict(
+        (asset.metadata or {}).get("source_patella_v71_response_v8", {})
+    )
     input_pose = pose_to_smplx55_axis_angle(pose_axis_angle).astype(np.float64)
     target_pose_global = joint_global_transforms(
         pose_axis_angle=pose_axis_angle,
@@ -838,10 +1237,185 @@ def source_bone_skinning_transforms(
         or np.any(np.abs(np.linalg.det(coupling[:, :3, :3])) <= 1.0e-10)
     ):
         raise ValueError("schema-v6 source driver coupling is not invertible affine")
+    # Per-side hinge-constrained leg solve.  Provenance lives in
+    # ``source_leg_hinge_solve_v1``; malformed entries fail closed.
+    leg_solve_raw = (asset.metadata or {}).get("source_leg_hinge_solve_v1", {})
+    if leg_solve_raw is None:
+        leg_solve_raw = {}
+    if not isinstance(leg_solve_raw, dict):
+        raise ValueError("source_leg_hinge_solve_v1 must be a mapping")
+    leg_femur_rotation: dict[int, np.ndarray] = {}
+    leg_femur_head_local: dict[int, np.ndarray] = {}
+    leg_femur_head_target: dict[int, np.ndarray] = {}
+    leg_knee_theta: dict[int, float] = {}
+    leg_knee_theta_raw: dict[int, float] = {}
+    leg_knee_axis_world: dict[int, np.ndarray] = {}
+    leg_flexion_by_joint: dict[int, float] = {}
+    pose_points = target_pose_global[:, :3, 3]
+    joint_count = int(pose_points.shape[0])
+    # Anatomical contact pivots (socket / knee pivot) posed by the same parent
+    # deltas as ``source_bone_driver_frames``.  The femur origin lives on these
+    # points, not on the raw SMPL-X joint centres (which can sit several cm off).
+    contact_rest_points = np.asarray(
+        asset.source_driver_rest_joints
+        if asset.source_driver_rest_joints is not None
+        else asset.rest_joints,
+        dtype=np.float64,
+    )
+    contact_point_delta = target_joint_delta.copy()
+    for joint, parent_j in enumerate(
+        np.asarray(asset.parents, dtype=np.int64).tolist()
+    ):
+        if int(parent_j) >= 0:
+            contact_point_delta[joint] = target_joint_delta[int(parent_j)]
+    contact_pose_points = (
+        np.einsum(
+            "bij,bj->bi",
+            contact_point_delta[:, :3, :3],
+            contact_rest_points,
+        )
+        + contact_point_delta[:, :3, 3]
+    )
+    # Zero pose must recover the fitted bind exactly.  Rest-joint H/K/A are not
+    # perfectly colinear, so a geometric hinge solve would invent a nonzero
+    # femur twist on the neutral sample; skip it when the SMPL-X pose is zero.
+    run_leg_solve = bool(np.any(input_pose))
+    if run_leg_solve:
+        for side, raw_entry in leg_solve_raw.items():
+            entry = _validate_leg_hinge_solve_entry_v1(
+                raw_entry,
+                side=str(side),
+                bone_count=len(rest_global_bones),
+                joint_count=joint_count,
+            )
+            femur_bone = int(entry["femur_bone"])
+            knee_bone = int(entry["knee_bone"])
+            ankle_bone = int(entry["ankle_bone"])
+            hip_j = int(entry["smplx_hip"])
+            knee_j = int(entry["smplx_knee"])
+            ankle_j = int(entry["smplx_ankle"])
+            # Same segment endpoints as the anatomical-pivots femur driver:
+            # origin on the socket, distal offset preserves the SMPL-X vector.
+            hip = contact_pose_points[hip_j]
+            knee = hip + (pose_points[knee_j] - pose_points[hip_j])
+            ankle = knee + (pose_points[ankle_j] - pose_points[knee_j])
+            driver_desired = driver_frames[femur_bone] @ coupling[femur_bone]
+            R_femur, theta, theta_raw, hinge_axis_world = solve_leg_hinge_v1(
+                hip=hip,
+                knee=knee,
+                ankle=ankle,
+                bind_hip=rest_global_bones[femur_bone, :3, 3],
+                bind_knee=rest_global_bones[knee_bone, :3, 3],
+                bind_ankle=rest_global_bones[ankle_bone, :3, 3],
+                bind_femur_rotation=rest_global_bones[femur_bone, :3, :3],
+                hinge_axis_femur_local=entry["hinge_axis_femur_local"],
+                driver_femur_rotation=driver_desired[:3, :3],
+                blend_lo_deg=float(entry["blend_lo_deg"]),
+                blend_hi_deg=float(entry["blend_hi_deg"]),
+            )
+            if femur_bone in leg_femur_rotation or knee_bone in leg_knee_theta:
+                raise ValueError(
+                    f"source_leg_hinge_solve_v1[{side!r}] reuses a femur/knee bone"
+                )
+            if knee_j in leg_flexion_by_joint:
+                raise ValueError(
+                    f"source_leg_hinge_solve_v1[{side!r}] reuses SMPL-X knee {knee_j}"
+                )
+            leg_femur_rotation[femur_bone] = R_femur
+            leg_femur_head_local[femur_bone] = np.asarray(
+                entry["femoral_head_femur_local"], dtype=np.float64
+            )
+            # Head target is the posed socket / contact hip (bind femur origin
+            # was placed on the acetabulum centre at reconstruction).
+            leg_femur_head_target[femur_bone] = np.asarray(hip, dtype=np.float64)
+            leg_knee_theta[knee_bone] = float(theta)
+            leg_knee_theta_raw[knee_bone] = float(theta_raw)
+            leg_knee_axis_world[knee_bone] = np.asarray(
+                hinge_axis_world, dtype=np.float64
+            )
+            # Signed anatomical flexion (clamped); patella/tibia use this with
+            # the same below-zero policy as PatellaOracleLawV7.response_rad.
+            leg_flexion_by_joint[knee_j] = float(theta)
+    else:
+        # Still fail-closed on malformed provenance even for the neutral sample.
+        for side, raw_entry in leg_solve_raw.items():
+            _validate_leg_hinge_solve_entry_v1(
+                raw_entry,
+                side=str(side),
+                bone_count=len(rest_global_bones),
+                joint_count=joint_count,
+            )
     for bi, mode in enumerate(modes):
         parent = int(source_parents[bi])
         if parent >= bi or parent < -1:
             raise ValueError(f"source bone parent {parent} for bone {bi} is not topological")
+        if bi in leg_femur_rotation:
+            if parent < 0:
+                raise ValueError(f"leg hinge femur {bi} has no source parent")
+            _posed_local, posed_global[bi] = _femur_pose_about_head(
+                parent_global=posed_global[parent],
+                bind_local=rest_local_bones[bi],
+                femur_rotation_world=leg_femur_rotation[bi],
+                head_femur_local=leg_femur_head_local[bi],
+                head_target_world=leg_femur_head_target[bi],
+            )
+            continue
+        response = patella_responses.get(str(bi))
+        if response is not None:
+            # Placed ahead of bind_follow on purpose: the authored patella is a
+            # driven child, and silently treating it as a rigid follower is the
+            # failure that let the femur sweep through the patella.
+            if parent < 0:
+                raise ValueError(f"V7 patella response {bi} has no source parent")
+            joint = int(response.get("smplx_joint", -1))
+            axis = np.asarray(response.get("axis_local", []), dtype=np.float64)
+            knots = np.radians(
+                np.asarray(response.get("knots_deg", []), dtype=np.float64)
+            )
+            angles = np.radians(
+                np.asarray(response.get("response_deg", []), dtype=np.float64)
+            )
+            translations = np.asarray(
+                response.get("translation_parent_local_m", []), dtype=np.float64
+            )
+            if (
+                joint < 0
+                or joint >= len(input_pose)
+                or axis.shape != (3,)
+                or not np.all(np.isfinite(axis))
+                or knots.ndim != 1
+                or len(knots) < 2
+                or angles.shape != knots.shape
+                or translations.shape != (len(knots), 3)
+                or np.any(np.diff(knots) <= 0.0)
+            ):
+                raise ValueError(f"V7 patella response {bi} has invalid coefficients")
+            axis = axis / max(float(np.linalg.norm(axis)), 1.0e-12)
+            if joint in leg_flexion_by_joint:
+                flexion = float(leg_flexion_by_joint[joint])
+            else:
+                flexion = float(np.linalg.norm(input_pose[joint]))
+            # Match PatellaOracleLawV7.response_rad: clamp hyperextension to 0,
+            # then look up the baked signed response (no extra re-signing).
+            flexion_lookup = float(max(flexion, 0.0))
+            angle = float(np.interp(flexion_lookup, knots, angles))
+            translation = np.asarray(
+                [
+                    np.interp(flexion_lookup, knots, translations[:, axis_index])
+                    for axis_index in range(3)
+                ],
+                dtype=np.float64,
+            )
+            maximum = float(response.get("maximum_translation_m", 0.005))
+            if float(np.linalg.norm(translation)) > maximum + 1.0e-7:
+                raise ValueError(f"V7 patella response {bi} exceeds its baked bound")
+            posed_local = np.asarray(rest_local_bones[bi], dtype=np.float64).copy()
+            posed_local[:3, 3] += translation
+            posed_local[:3, :3] = (
+                posed_local[:3, :3] @ axis_angle_to_matrix(axis * angle)[0]
+            )
+            posed_global[bi] = posed_global[parent] @ posed_local
+            continue
         tibia_glide = tibia_glide_splines.get(str(bi))
         if tibia_glide is not None:
             if parent < 0:
@@ -863,7 +1437,10 @@ def source_bone_skinning_transforms(
                 or np.any(np.diff(knots) <= 0.0)
             ):
                 raise ValueError(f"V7 tibia glide {bi} has invalid coefficients")
-            flexion = float(np.linalg.norm(input_pose[joint]))
+            if joint in leg_flexion_by_joint:
+                flexion = float(max(float(leg_flexion_by_joint[joint]), 0.0))
+            else:
+                flexion = float(np.linalg.norm(input_pose[joint]))
             translation = np.asarray(
                 [
                     np.interp(flexion, knots, translations[:, axis_index])
@@ -924,7 +1501,10 @@ def source_bone_skinning_transforms(
                 or np.any(np.diff(knots) <= 0.0)
             ):
                 raise ValueError(f"V7 patella spline {bi} has invalid knots")
-            flexion = float(np.linalg.norm(input_pose[joint]))
+            if joint in leg_flexion_by_joint:
+                flexion = float(max(float(leg_flexion_by_joint[joint]), 0.0))
+            else:
+                flexion = float(np.linalg.norm(input_pose[joint]))
             angle = float(np.interp(flexion, knots, response))
             translation = np.asarray(
                 [
@@ -983,7 +1563,10 @@ def source_bone_skinning_transforms(
             axis = corrective_axis[bi].copy()
             axis /= max(float(np.linalg.norm(axis)), 1.0e-12)
             if corrective_input_axis is None:
-                flexion = float(np.linalg.norm(input_pose[joint]))
+                if joint in leg_flexion_by_joint:
+                    flexion = float(max(float(leg_flexion_by_joint[joint]), 0.0))
+                else:
+                    flexion = float(np.linalg.norm(input_pose[joint]))
             else:
                 input_axis = corrective_input_axis[bi].copy()
                 input_axis_norm = float(np.linalg.norm(input_axis))
@@ -1044,8 +1627,36 @@ def source_bone_skinning_transforms(
                 or np.any(np.diff(knots) <= 0.0)
             ):
                 raise ValueError(f"V7 knee hinge {bi} has an invalid spline")
-            flexion = float(np.linalg.norm(input_pose[joint]))
-            angle = float(np.interp(flexion, knots, response))
+            if bi in leg_knee_theta:
+                # Anatomical flexion already clamped to >= 0 by the solve.
+                theta = float(leg_knee_theta[bi])
+                flexion = float(max(theta, 0.0))
+                # Identity response spline: applied angle equals anatomical flexion.
+                angle = float(np.interp(flexion, knots, response))
+                # The IK solved theta about the authored hinge carried by the
+                # posed femur; rotate about exactly that axis so the shank lands
+                # on the drive.  It must agree with the baked spline axis —
+                # a mismatch means the two bakes disagree on the hinge.
+                solved = _normalize_vector(
+                    (
+                        posed_global[parent][:3, :3]
+                        @ rest_local_bones[bi, :3, :3]
+                    ).T
+                    @ leg_knee_axis_world[bi],
+                    f"V7 knee hinge {bi} solved axis",
+                )
+                if float(np.dot(solved, axis)) < np.cos(np.radians(1.0)):
+                    raise ValueError(
+                        f"V7 knee hinge {bi} spline axis disagrees with the "
+                        "leg solve hinge axis"
+                    )
+                axis = solved
+            elif joint in leg_flexion_by_joint:
+                flexion = float(max(float(leg_flexion_by_joint[joint]), 0.0))
+                angle = float(np.interp(flexion, knots, response))
+            else:
+                flexion = float(np.linalg.norm(input_pose[joint]))
+                angle = float(np.interp(flexion, knots, response))
             translation_knots = np.asarray(
                 hinge.get("translation_local_m", []), dtype=np.float64
             )
@@ -1111,6 +1722,27 @@ def source_bone_skinning_transforms(
             posed_global[bi] = posed_global[parent] @ posed_local
             continue
         posed_global[bi] = driver_frames[bi] @ coupling[bi]
+    return posed_global.astype(np.float64)
+
+
+def source_bone_skinning_transforms(
+    asset: AnatomyRiggedAsset,
+    pose_axis_angle: Any,
+) -> np.ndarray:
+    """Solve the source rig once, in parent-before-child local FK order.
+
+    Schema-v6 stores one controller-to-bind coupling for every independently
+    driven source bone.  Authored bind_follow children retain their exact
+    Blender local bind.  No mesh-derived rebind or translation restoration is
+    performed at runtime.
+
+    The femur is skinned by the same transform that carries its children.  An
+    earlier revision skinned it with the SMPL-X driver rotation while the knee
+    pivot followed the hinge solve; the condyles then sat up to 54 mm away from
+    the tibial plateau they articulate with.
+    """
+    posed_global = source_bone_posed_global(asset, pose_axis_angle)
+    rest_global_bones = np.asarray(asset.target_bind_global, dtype=np.float64)
     inverse_bind = np.asarray(asset.runtime_inverse_bind, dtype=np.float64)
     if inverse_bind.shape != rest_global_bones.shape or not np.all(np.isfinite(inverse_bind)):
         raise ValueError("schema-v6 target inverse bind is invalid")
@@ -1121,9 +1753,9 @@ def source_bone_skinning_transforms(
         rtol=0.0,
     ):
         raise ValueError("target inverse bind does not match the fitted bind")
-    transforms = posed_global @ inverse_bind
-    neutral_pose = input_pose
-    if not np.any(neutral_pose):
+    input_pose = pose_to_smplx55_axis_angle(pose_axis_angle).astype(np.float64)
+    transforms = np.asarray(posed_global, dtype=np.float64) @ inverse_bind
+    if not np.any(input_pose):
         if not np.allclose(posed_global, rest_global_bones, atol=2.0e-6, rtol=0.0):
             raise ValueError("neutral source driver coupling does not recover the fitted bind")
         transforms = np.tile(np.eye(4, dtype=np.float64), (len(rest_global_bones), 1, 1))

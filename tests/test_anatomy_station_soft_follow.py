@@ -4,6 +4,7 @@ import numpy as np
 
 from projects.genesis_ue_sync.anatomy_retarget.soft_follow import (
     apply_station_pose_follow,
+    effective_follow_modes,
     station_point,
 )
 
@@ -119,3 +120,48 @@ def test_low_station_strength_blends_from_lbs_pose_not_from_rest() -> None:
     )
 
     np.testing.assert_allclose(result, lbs_pose, atol=1.0e-7)
+
+
+def _mesh_asset(*, tissues, modes) -> SimpleNamespace:
+    count = len(tissues)
+    asset = _asset(
+        indices=np.zeros((count, 1), dtype=np.int16),
+        weights=np.ones((count, 1), dtype=np.float32),
+        stations=np.full((count, 1), 0.5, dtype=np.float32),
+    )
+    asset.source_tissues = list(tissues)
+    asset.source_mesh_follow_modes = list(modes)
+    asset.source_vertex_ranges = np.asarray(
+        [(i, i + 1) for i in range(count)], dtype=np.int64
+    )
+    return asset
+
+
+def test_bridging_tissue_reads_back_as_lbs_over_a_stale_station_bake() -> None:
+    asset = _mesh_asset(
+        tissues=("vessel", "connective_tissue", "bone"),
+        modes=("station_translation", "station_translation", "final_bind_lbs"),
+    )
+    assert effective_follow_modes(asset) == [
+        "station_translation",
+        "final_bind_lbs",
+        "final_bind_lbs",
+    ]
+
+
+def test_bridging_tissue_keeps_its_lbs_pose_instead_of_a_station_translation() -> None:
+    asset = _mesh_asset(
+        tissues=("vessel", "connective_tissue"),
+        modes=("station_translation", "station_translation"),
+    )
+    lbs_pose = np.asarray(((0.0, 0.0, 0.0), (7.0, 8.0, 9.0)), dtype=np.float64)
+
+    result = apply_station_pose_follow(
+        asset,
+        np.stack((_transform(translation=(0.3, -0.2, 0.1)), _transform())),
+        lbs_pose,
+    )
+
+    # The vessel is still station-translated; the cartilage keeps its LBS pose.
+    np.testing.assert_allclose(result[0], (0.3, -0.2, 0.1), atol=1.0e-7)
+    np.testing.assert_allclose(result[1], lbs_pose[1], atol=1.0e-7)

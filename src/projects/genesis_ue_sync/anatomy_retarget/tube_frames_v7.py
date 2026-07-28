@@ -95,10 +95,48 @@ def _topology_hash(asset: AnatomyRiggedAsset) -> str:
     return digest.hexdigest()
 
 
+def _smooth_group_weights(
+    dense: np.ndarray,
+    *,
+    labels: np.ndarray,
+    edges: np.ndarray,
+    iterations: int,
+) -> np.ndarray:
+    """Average patch weights with their neighbours along the tube.
+
+    The authored skin weights are close to binary per driving bone, so adjacent
+    patches can hand off from one bone to the next in a single step.  Posing
+    then bends the tube at that hand-off instead of along it, which reads as a
+    kink in the centreline.  Averaging over patch adjacency spreads the hand-off
+    across several patches; it is bake-time only and leaves the runtime gather
+    and the identity pose unchanged.
+    """
+    if iterations <= 0 or not len(edges):
+        return dense
+    pairs = labels[np.asarray(edges, dtype=np.int64)]
+    pairs = pairs[pairs[:, 0] != pairs[:, 1]]
+    if not len(pairs):
+        return dense
+    group_count = int(dense.shape[0])
+    smoothed = dense
+    for _ in range(int(iterations)):
+        neighbour_sum = np.zeros_like(smoothed)
+        np.add.at(neighbour_sum, pairs[:, 0], smoothed[pairs[:, 1]])
+        np.add.at(neighbour_sum, pairs[:, 1], smoothed[pairs[:, 0]])
+        degree = np.zeros(group_count, dtype=np.float64)
+        np.add.at(degree, pairs[:, 0], 1.0)
+        np.add.at(degree, pairs[:, 1], 1.0)
+        blended = smoothed + neighbour_sum
+        smoothed = blended / np.maximum(1.0 + degree, 1.0)[:, None]
+    total = smoothed.sum(axis=1, keepdims=True)
+    return smoothed / np.maximum(total, 1.0e-12)
+
+
 def bake_tube_material_frames_v7(
     asset: AnatomyRiggedAsset,
     *,
     short_edge_quantile: float = 0.50,
+    weight_smoothing_iterations: int = 3,
 ) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
     """Bake fixed tube patches and their source-rig material coordinates."""
     asset.validate()
@@ -170,6 +208,12 @@ def bake_tube_material_frames_v7(
                 local_weights[:, slot],
             )
         dense /= np.maximum(counts[:, None], 1.0)
+        dense = _smooth_group_weights(
+            dense,
+            labels=labels,
+            edges=edges,
+            iterations=int(weight_smoothing_iterations),
+        )
         order = np.argsort(-dense, axis=1)[:, :influence_count]
         weights = np.take_along_axis(dense, order, axis=1)
         weights /= np.maximum(weights.sum(axis=1, keepdims=True), 1.0e-12)
@@ -203,6 +247,7 @@ def bake_tube_material_frames_v7(
             "material_group_size_max": int(np.max(counts)),
             "short_edge_threshold_m": threshold,
             "fixed_cross_section_edge_count": int(len(selected_short)),
+            "weight_smoothing_iterations": int(weight_smoothing_iterations),
         }
         group_offset += group_count
         tube_vertex_offset += len(local)
@@ -240,6 +285,47 @@ def bake_tube_material_frames_v7(
         "meshes": reports,
     }
     return coefficients, report
+
+
+def rebase_tube_material_frames_v7(
+    asset: AnatomyRiggedAsset,
+    coefficients: Mapping[str, np.ndarray],
+) -> dict[str, np.ndarray]:
+    """Re-anchor baked tube patches onto this subject's rest geometry.
+
+    The group partition, its driver weights and the fixed cross-section edges are
+    topological and stay exactly as baked.  The group centroids and per-vertex
+    offsets are geometry, so carrying the operator-time values into a subject
+    whose rest surface moved (beta shaping plus the articular reconstruction)
+    makes the identity pose snap every tube back onto the operator rest.  That
+    was worth up to 24.5 mm on the arteries and sacral nerves, and it stayed
+    invisible because the round-trip check skinned without the tube path.
+    """
+    result = {name: np.asarray(value).copy() for name, value in coefficients.items()}
+    if not has_tube_material_frames_v7(result):
+        return result
+    rest = np.asarray(asset.vertices_rest, dtype=np.float64)
+    vertex_ids = np.asarray(result[f"{_PREFIX}vertex_ids"], dtype=np.int64).reshape(-1)
+    groups = np.asarray(result[f"{_PREFIX}group_ids"], dtype=np.int64).reshape(-1)
+    center_count = int(len(np.asarray(result[f"{_PREFIX}group_centers_m"]).reshape(-1, 3)))
+    if (
+        len(vertex_ids) != len(groups)
+        or np.any(vertex_ids < 0)
+        or np.any(vertex_ids >= len(rest))
+        or np.any(groups < 0)
+        or np.any(groups >= center_count)
+    ):
+        raise ValueError("cannot rebase invalid V7 tube material-frame coefficients")
+    local = rest[vertex_ids]
+    counts = np.bincount(groups, minlength=center_count).astype(np.float64)
+    if np.any(counts <= 0.0):
+        raise ValueError("V7 tube material groups must all be populated")
+    centers = np.zeros((center_count, 3), dtype=np.float64)
+    np.add.at(centers, groups, local)
+    centers /= counts[:, None]
+    result[f"{_PREFIX}group_centers_m"] = centers.astype(np.float32)
+    result[f"{_PREFIX}local_offsets_m"] = (local - centers[groups]).astype(np.float32)
+    return result
 
 
 def has_tube_material_frames_v7(coefficients: Mapping[str, np.ndarray]) -> bool:
@@ -356,5 +442,6 @@ __all__ = [
     "apply_tube_material_frames_v7",
     "bake_tube_material_frames_v7",
     "has_tube_material_frames_v7",
+    "rebase_tube_material_frames_v7",
     "tube_material_frame_metrics_v7",
 ]

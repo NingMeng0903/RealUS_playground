@@ -15,8 +15,36 @@ import numpy as np
 from .rigged_asset import AnatomyRiggedAsset
 
 
-STATION_TISSUES = {"vessel", "nerve", "connective_tissue"}
+STATION_TISSUES = {"vessel", "nerve"}
 ORGAN_TISSUES = {"organ", "heart"}
+# Ligaments and costal cartilage bridge two bones and carry authored per-bone
+# weights across that bridge; translation-only stations drop the rotation that
+# keeps both attachments seated, so they follow the inherited skin weights.
+BRIDGING_TISSUES = {"connective_tissue"}
+
+
+def effective_follow_modes(asset: AnatomyRiggedAsset) -> list[str] | None:
+    """Resolve per-mesh follow modes, with tissue policy overriding the bake.
+
+    ``source_mesh_follow_modes`` is a cache of the tissue policy, so operators
+    baked before a policy change would otherwise keep posing the old way.  The
+    tissue is authoritative: bridging tissue baked as ``station_translation``
+    reads back as ``final_bind_lbs`` so its authored per-bone weights carry the
+    rotation that keeps both attachments seated.
+    """
+    modes = getattr(asset, "source_mesh_follow_modes", None)
+    if modes is None:
+        return None
+    tissues = getattr(asset, "source_tissues", None)
+    if tissues is None or len(tissues) != len(modes):
+        return [str(mode) for mode in modes]
+    return [
+        "final_bind_lbs"
+        if str(mode) == "station_translation"
+        and str(tissue).lower() in BRIDGING_TISSUES
+        else str(mode)
+        for mode, tissue in zip(modes, tissues)
+    ]
 
 
 def station_point(
@@ -441,6 +469,11 @@ def bake_station_soft_follow(
             }
         else:
             mesh_modes.append("final_bind_lbs")
+            if tissue_name in BRIDGING_TISSUES:
+                reports[str(mesh_name)] = {
+                    "mode": "final_bind_lbs_bridging",
+                    "tissue": tissue_name,
+                }
     result = type(asset)(
         **{
             **asset.__dict__,
@@ -484,7 +517,7 @@ def apply_station_pose_follow(
     stations = np.asarray(asset.soft_follow_stations, dtype=np.float64)
     strength = np.asarray(asset.soft_follow_strength, dtype=np.float64)
     station_mask = np.ones(len(rest), dtype=bool)
-    follow_modes = getattr(asset, "source_mesh_follow_modes", None)
+    follow_modes = effective_follow_modes(asset)
     vertex_ranges = getattr(asset, "source_vertex_ranges", None)
     if follow_modes is not None and vertex_ranges is not None:
         station_mask[:] = False
@@ -526,11 +559,12 @@ def apply_station_pose_follow(
 
 def apply_regional_organ_follow(asset: AnatomyRiggedAsset, posed: np.ndarray) -> np.ndarray:
     """Replace per-vertex organ blending by one polar-rigid map per organ."""
-    if asset.source_mesh_follow_modes is None or asset.source_vertex_ranges is None:
+    follow_modes = effective_follow_modes(asset)
+    if follow_modes is None or asset.source_vertex_ranges is None:
         return posed
     result = np.asarray(posed, dtype=np.float64).copy()
     rest = np.asarray(asset.vertices_rest, dtype=np.float64)
-    for mode, (start, stop) in zip(asset.source_mesh_follow_modes, asset.source_vertex_ranges):
+    for mode, (start, stop) in zip(follow_modes, asset.source_vertex_ranges):
         if str(mode) != "organ_regional":
             continue
         start_i, stop_i = int(start), int(stop)

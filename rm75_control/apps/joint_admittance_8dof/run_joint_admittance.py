@@ -307,11 +307,6 @@ def main() -> int:
     dt = float(raw.get("timing", {}).get("dt_ms", 5.0)) / 1000.0
     rail_default_m = float(raw.get("inner", {}).get("rail", {}).get("q_ref_m", 0.0))
     rail_bridge = RailServoBridge(parse_rail_servo_config(raw))
-    if args.verbose and rail_bridge.enabled and not rail_bridge.log_csv_path:
-        log_dir = Path(__file__).resolve().parents[1] / "logs" / "rail_servo"
-        log_dir.mkdir(parents=True, exist_ok=True)
-        ts = time.strftime("%Y%m%d_%H%M%S")
-        rail_bridge.enable_log_csv(str(log_dir / f"rail_{ts}.csv"))
     rail_pub = _RailPublisher(rail_default_m, bridge=rail_bridge)
 
     if args.dry_run:
