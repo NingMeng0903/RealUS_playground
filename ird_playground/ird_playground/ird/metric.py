@@ -70,6 +70,32 @@ def se3_distance_m_torch(
     )
 
 
+def unit_speed_eikonal_loss(
+    grad_wrt_normalized_chart: "torch.Tensor",
+    *,
+    target_slope: "torch.Tensor | None" = None,
+    beta: float = 0.2,
+) -> "torch.Tensor":
+    """Eikonal residual for clearance labelled in declared-metric metres.
+
+    Gradients are taken w.r.t. the *normalized* 9-D flange chart used by the
+    network.  When ``target_slope`` is provided (boundary stencil pairs), match
+    that empirical speed; otherwise enforce unit speed (``||∇f|| ≈ 1``), which
+    is the correct condition when ``f`` approximates a metre-valued EDT/stencil
+    distance under the declared metric.
+    """
+    if torch is None:
+        raise ImportError("torch required")
+    import torch.nn.functional as F
+
+    speed = torch.linalg.vector_norm(grad_wrt_normalized_chart, dim=-1)
+    if target_slope is None:
+        target = torch.ones_like(speed)
+    else:
+        target = target_slope
+    return F.smooth_l1_loss(speed, target, beta=float(beta))
+
+
 __all__ = [
     "CM_PER_DEG",
     "LAMBDA_M_PER_RAD",
@@ -77,4 +103,5 @@ __all__ = [
     "metric_manifest",
     "se3_distance_m",
     "se3_distance_m_torch",
+    "unit_speed_eikonal_loss",
 ]

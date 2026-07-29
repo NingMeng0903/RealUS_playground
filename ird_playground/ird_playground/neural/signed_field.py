@@ -24,6 +24,56 @@ from ird_playground.ird.robot_model import (
     assert_robot_contract_compatible,
 )
 
+NEAR_AXIS_R_M = 0.05
+
+
+def compute_input_stats(
+    canonical: np.ndarray,
+    *,
+    quantile_lo: float = 0.005,
+    quantile_hi: float = 0.995,
+    min_scale: float = 1.0e-4,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Fit Fourier-normalization center/scale from training chart rows.
+
+    Defaults of ``center=0``, ``scale=1`` scramble metre and dimensionless
+    channels under ``sin(π·2^k·x)`` and are forbidden for training.
+    """
+    x = np.asarray(canonical, dtype=np.float64)
+    if x.ndim != 2 or x.shape[-1] != FLANGE_CANONICAL_DIM:
+        raise ValueError(
+            f"expected (*, {FLANGE_CANONICAL_DIM}) flange chart, got {x.shape}"
+        )
+    if x.shape[0] == 0:
+        raise ValueError("cannot fit input stats on an empty chart array")
+    lo = np.quantile(x, quantile_lo, axis=0)
+    hi = np.quantile(x, quantile_hi, axis=0)
+    center = (0.5 * (lo + hi)).astype(np.float32)
+    scale = np.maximum(0.5 * (hi - lo), min_scale).astype(np.float32)
+    assert_fitted_normalization(center, scale)
+    return center, scale
+
+
+def assert_fitted_normalization(
+    input_center: np.ndarray,
+    input_scale: np.ndarray,
+    *,
+    atol: float = 1.0e-8,
+) -> None:
+    """Raise if center/scale look like the forbidden identity defaults."""
+    center = np.asarray(input_center, dtype=np.float64).reshape(-1)
+    scale = np.asarray(input_scale, dtype=np.float64).reshape(-1)
+    if center.size != FLANGE_CANONICAL_DIM or scale.size != FLANGE_CANONICAL_DIM:
+        raise ValueError(
+            f"expected {FLANGE_CANONICAL_DIM}-D center/scale, "
+            f"got {center.size}/{scale.size}"
+        )
+    if np.allclose(center, 0.0, atol=atol) and np.allclose(scale, 1.0, atol=atol):
+        raise ValueError(
+            "input_center/input_scale must be computed from training data stats; "
+            "defaults of 0/1 are forbidden"
+        )
+
 
 class SmoothResidualBlock(nn.Module if nn is not None else object):  # type: ignore[misc]
     def __init__(self, width: int, beta: float) -> None:
@@ -192,4 +242,10 @@ class ReachabilitySDF:
         return np.concatenate(out)
 
 
-__all__ = ["ReachabilitySDF", "SignedReachabilityField"]
+__all__ = [
+    "NEAR_AXIS_R_M",
+    "ReachabilitySDF",
+    "SignedReachabilityField",
+    "assert_fitted_normalization",
+    "compute_input_stats",
+]

@@ -1,4 +1,4 @@
-"""Build RM4D invariant signed-field GT from collision-checked pose samples."""
+"""Build flange-chart signed-field GT from collision-checked pose / stencil samples."""
 
 from __future__ import annotations
 
@@ -18,18 +18,23 @@ def main(argv: list[str] | None = None) -> int:
     path = args.config if args.config.is_absolute() else root / args.config
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     build = dict(raw.get("build") or {})
-    for key in ("source_npz", "output_npz", "robot_spec"):
-        if key in build and not Path(build[key]).is_absolute():
+    for key in ("source_npz", "output_npz", "robot_spec", "edt_npz"):
+        if key in build and build[key] is not None and not Path(str(build[key])).is_absolute():
             build[key] = str(root / build[key])
     if "auxiliary_npz" in build:
         build["auxiliary_npz"] = tuple(
             str(Path(p) if Path(p).is_absolute() else root / p)
             for p in build["auxiliary_npz"]
         )
+    allowed = {f.name for f in CanonicalGtConfig.__dataclass_fields__.values()}
+    build = {k: v for k, v in build.items() if k in allowed}
     cfg = CanonicalGtConfig(**build)
     arrays, meta = build_canonical_gt(cfg)
     save_canonical_gt(cfg.output_npz, arrays, meta)
-    print(f"wrote {cfg.output_npz} N={meta['n']} groups={meta['n_boundary_groups']} oriented={meta['n_oriented_groups']}")
+    print(
+        f"wrote {cfg.output_npz} N={meta['n']} groups={meta['n_boundary_groups']} "
+        f"oriented={meta['n_oriented_groups']} dim={meta['embedding_dimension']}"
+    )
     return 0
 
 

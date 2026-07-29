@@ -1,6 +1,11 @@
 """Differentiable robust-region queries over the signed IRD field."""
 
-from ird_playground.region.direction_lobe import DirectionLobeResult, direction_lobe
+from ird_playground.region.direction_lobe import (
+    DirectionLobeResult,
+    ascend_direction,
+    chart_from_direction,
+    direction_lobe,
+)
 from ird_playground.region.operator import (
     RegionA,
     RegionAConfig,
@@ -33,7 +38,9 @@ __all__ = [
     "TrajectoryTaskConfig",
     "TrajectoryTaskOperator",
     "TrajectoryTaskResult",
+    "ascend_direction",
     "base_from_rail_torch",
+    "chart_from_direction",
     "direction_lobe",
     "normalized_softmin",
     "rail_inverse_query",

@@ -1,7 +1,10 @@
 build:
+  # Prefer production stencil when ready; smoke stencil is the interim near-field source.
   source_npz: data/ird/gpu_pose_stencils_production.npz
   auxiliary_npz:
     - data/ird/gpu_pose_uniform_production.npz
+  edt_npz: data/maps/flange_sdf_production.npz
+  far_field_sdf_weight: 0.25
   output_npz: data/ird/rm4d_signed_production.npz
   quantile_lo: 0.005
   quantile_hi: 0.995
@@ -25,12 +28,18 @@ training:
   early_stop_patience: 6
   logit_scale: 3.0
   normal_batch_max: 512
+  report_near_axis: true
+  near_axis_r_m: 0.05
+  # Optional group-holdout before train/val: "block" (workspace) or "orbit" (joint).
+  # external_test_mode: block
+  # external_test_fraction: 0.1
 
 loss:
   classification: 1.0
   signed_value: 4.0
   normal_direction: 0.10
-  eikonal: 0.0
+  # Declared-metric Eikonal (unit speed on SDF rows + slope match on stencil pairs).
+  eikonal: 0.05
 
 io:
   checkpoint: data/checkpoints/rm4d_signed/selected.pt

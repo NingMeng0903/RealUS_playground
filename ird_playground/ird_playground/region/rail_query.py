@@ -1,10 +1,12 @@
-"""Rail inverse query: pick the rail coordinate that maximizes soft waypoint clearance."""
+"""Rail inverse query: batched softmin clearance over rail candidates.
+
+Returns per-rail multi-waypoint softmin margins and a soft-selected rail that
+remains differentiable w.r.t. continuous rail coordinates.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-
-import numpy as np
 
 try:
     import torch
@@ -18,6 +20,7 @@ from ird_playground.region.operator import base_from_rail_torch, normalized_soft
 class RailQueryResult:
     clearance_per_rail: "torch.Tensor"
     best_rail: "torch.Tensor"
+    soft_rail: "torch.Tensor"
     best_clearance: "torch.Tensor"
     waypoint_clearance: "torch.Tensor"
 
@@ -33,40 +36,54 @@ def rail_inverse_query(
     rail_axis: int = 1,
     tau: float = 0.15,
 ) -> RailQueryResult:
-    """Soft-select a rail coordinate by waypoint softmin clearance."""
+    """Soft-select a rail coordinate by waypoint softmin clearance.
+
+    Parameters
+    ----------
+    T_tcp_world_waypoints
+        ``[..., W, 4, 4]`` TCP poses (or a single ``[4, 4]`` / ``[W, 4, 4]``).
+    rail_candidates
+        ``[R]`` rail coordinates. Gradients flow through continuous rails when
+        ``T_axis_base_fn`` (or the default SE(3) rail map) is differentiable.
+    """
     if torch is None:
         raise ImportError("torch required")
     rails = rail_candidates.to(dtype=T_tcp_world_waypoints.dtype, device=T_tcp_world_waypoints.device)
     if rails.ndim == 0:
         rails = rails.reshape(1)
-    n_rail = rails.shape[0]
-    n_waypoint = T_tcp_world_waypoints.shape[-3] if T_tcp_world_waypoints.ndim >= 3 else 1
-    if T_tcp_world_waypoints.ndim == 3:
-        waypoints = T_tcp_world_waypoints
-    else:
+    if T_tcp_world_waypoints.ndim == 2:
         waypoints = T_tcp_world_waypoints.unsqueeze(-3)
-    per_rail = []
-    per_waypoint = []
-    for rail in rails:
-        axis_world = T_axis_base_fn(rail) if callable(T_axis_base_fn) else base_from_rail_torch(
-            rail, T_world_rail, T_rail_base0, axis=rail_axis
+    else:
+        waypoints = T_tcp_world_waypoints
+    n_wp = waypoints.shape[-3]
+
+    if callable(T_axis_base_fn):
+        axes = torch.stack([T_axis_base_fn(r) for r in rails], dim=0)
+    else:
+        axes = base_from_rail_torch(
+            rails, T_world_rail, T_rail_base0, axis=rail_axis
         )
-        if hasattr(field, "score_world"):
-            scores = field.score_world(waypoints, axis_world.unsqueeze(-3))
-        else:
-            raise TypeError("field must expose score_world()")
-        wp = normalized_softmin(scores, tau, dim=-1)
-        per_waypoint.append(wp)
-        per_rail.append(normalized_softmin(wp, tau, dim=-1))
-    clearance_per_rail = torch.stack(per_rail, dim=-1)
-    waypoint_clearance = torch.stack(per_waypoint, dim=-2)
+    # axes: [R, 4, 4] → broadcast onto waypoints [..., W, 4, 4] as [..., R, W, 4, 4]
+    wp = waypoints.unsqueeze(-4).expand(*waypoints.shape[:-3], rails.shape[0], n_wp, 4, 4)
+    ax = axes.to(dtype=waypoints.dtype, device=waypoints.device)
+    lead = wp.shape[:-4]
+    ax = ax.view(*([1] * len(lead)), rails.shape[0], 1, 4, 4).expand(*lead, rails.shape[0], n_wp, 4, 4)
+    if not hasattr(field, "score_world"):
+        raise TypeError("field must expose score_world()")
+    scores = field.score_world(wp, ax)
+    # scores: [..., R, W] — keep per-waypoint margins; softmin over W for the rail score.
+    waypoint_clearance = scores
+    clearance_per_rail = normalized_softmin(scores, tau, dim=-1)
     best_idx = clearance_per_rail.argmax(dim=-1)
-    gather = best_idx
-    best_rail = rails[gather]
-    best_clearance = clearance_per_rail.gather(-1, gather.unsqueeze(-1)).squeeze(-1)
+    best_rail = rails[best_idx]
+    best_clearance = clearance_per_rail.gather(-1, best_idx.unsqueeze(-1)).squeeze(-1)
+    # Soft rail keeps a differentiable path for continuous rail optimisation.
+    weights = torch.softmax(clearance_per_rail / max(float(tau), 1.0e-6), dim=-1)
+    soft_rail = (weights * rails).sum(dim=-1)
     return RailQueryResult(
         clearance_per_rail=clearance_per_rail,
         best_rail=best_rail,
+        soft_rail=soft_rail,
         best_clearance=best_clearance,
         waypoint_clearance=waypoint_clearance,
     )

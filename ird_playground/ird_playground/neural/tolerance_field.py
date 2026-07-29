@@ -14,13 +14,23 @@ except ImportError:  # pragma: no cover
     F = None  # type: ignore
 
 from ird_playground.ird.canonical import FLANGE_CANONICAL_DIM
-from ird_playground.neural.signed_field import SmoothResidualBlock
+from ird_playground.neural.signed_field import (
+    SmoothResidualBlock,
+    assert_fitted_normalization,
+    compute_input_stats,
+)
 
 RHO_DIM = 9
 
 
 class ToleranceConditionedField(nn.Module if nn is not None else object):  # type: ignore[misc]
-    """MLP over flange 9-D chart + tolerance descriptor ``rho`` (9-D)."""
+    """MLP over flange 9-D chart + tolerance descriptor ``rho`` (9-D).
+
+    ``rho`` packs box radii (b/t/n), cone half-angle, roll interval, free /
+    uncertain flags, and CVaR level.  Phase-4 nested set-query operators are
+    the intended distillation teacher; until that lands, train with the
+    ``rho_zero_consistency_loss`` hook so ``F(c, 0) ≈ f(c)``.
+    """
 
     def __init__(
         self,
@@ -33,6 +43,7 @@ class ToleranceConditionedField(nn.Module if nn is not None else object):  # typ
         input_scale: np.ndarray | None = None,
         rho_center: np.ndarray | None = None,
         rho_scale: np.ndarray | None = None,
+        require_fitted_chart_stats: bool = False,
     ) -> None:
         if torch is None:
             raise ImportError("torch required")
@@ -51,8 +62,16 @@ class ToleranceConditionedField(nn.Module if nn is not None else object):  # typ
             if input_scale is None
             else np.asarray(input_scale, dtype=np.float32)
         )
+        if require_fitted_chart_stats:
+            assert_fitted_normalization(center, scale)
         rho_c = np.zeros(RHO_DIM, dtype=np.float32) if rho_center is None else np.asarray(rho_center, dtype=np.float32)
         rho_s = np.ones(RHO_DIM, dtype=np.float32) if rho_scale is None else np.asarray(rho_scale, dtype=np.float32)
+        if center.size != FLANGE_CANONICAL_DIM or scale.size != FLANGE_CANONICAL_DIM:
+            raise ValueError(
+                f"tolerance field expects {FLANGE_CANONICAL_DIM}-D chart center/scale"
+            )
+        if rho_c.size != RHO_DIM or rho_s.size != RHO_DIM:
+            raise ValueError(f"rho center/scale must be {RHO_DIM}-D")
         self.register_buffer("input_center", torch.as_tensor(center).reshape(FLANGE_CANONICAL_DIM))
         self.register_buffer("input_scale", torch.as_tensor(scale).reshape(FLANGE_CANONICAL_DIM).clamp_min(1.0e-6))
         self.register_buffer("rho_center", torch.as_tensor(rho_c).reshape(RHO_DIM))
@@ -90,6 +109,11 @@ class ToleranceConditionedField(nn.Module if nn is not None else object):  # typ
             h = block(h)
         return self.head(h).squeeze(-1)
 
+    def forward_rho_zero(self, canonical: "torch.Tensor") -> "torch.Tensor":
+        """Evaluate ``F(c, ρ=0)`` — must match the base field under the consistency loss."""
+        rho0 = canonical.new_zeros((*canonical.shape[:-1], RHO_DIM))
+        return self.forward(canonical, rho0)
+
 
 def build_rho_descriptor(
     *,
@@ -116,4 +140,47 @@ def build_rho_descriptor(
     )
 
 
-__all__ = ["RHO_DIM", "ToleranceConditionedField", "build_rho_descriptor"]
+def zero_rho(batch: int | tuple[int, ...] = 1) -> "torch.Tensor":
+    """Batch of zero tolerance descriptors."""
+    if torch is None:
+        raise ImportError("torch required")
+    shape = (batch, RHO_DIM) if isinstance(batch, int) else (*batch, RHO_DIM)
+    return torch.zeros(shape, dtype=torch.float32)
+
+
+def rho_zero_consistency_loss(
+    tolerance_field: "ToleranceConditionedField",
+    base_scores: "torch.Tensor",
+    canonical: "torch.Tensor",
+    *,
+    beta: float = 0.1,
+) -> "torch.Tensor":
+    """Penalize ``F(c, ρ=0) − f(c)``.
+
+    ``base_scores`` is the teacher clearance ``f(c)`` (detached or live).  Full
+    set-query distillation arrives with Phase 4; this hook keeps the zero-
+    tolerance slice aligned with the base field in the meantime.
+    """
+    if torch is None:
+        raise ImportError("torch required")
+    pred = tolerance_field.forward_rho_zero(canonical)
+    if pred.shape != base_scores.shape:
+        raise ValueError(
+            f"base_scores shape {tuple(base_scores.shape)} != F(c,0) shape {tuple(pred.shape)}"
+        )
+    return F.smooth_l1_loss(pred, base_scores, beta=float(beta))
+
+
+def fit_tolerance_chart_stats(canonical: np.ndarray, **kwargs) -> tuple[np.ndarray, np.ndarray]:
+    """Convenience wrapper so callers never ship 0/1 chart defaults."""
+    return compute_input_stats(canonical, **kwargs)
+
+
+__all__ = [
+    "RHO_DIM",
+    "ToleranceConditionedField",
+    "build_rho_descriptor",
+    "fit_tolerance_chart_stats",
+    "rho_zero_consistency_loss",
+    "zero_rho",
+]

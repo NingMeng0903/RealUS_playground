@@ -1,0 +1,44 @@
+# Smoke signed-field pack: smoke stencil near-field + production/smoke EDT far-field.
+build:
+  source_npz: data/ird/gpu_pose_stencils_smoke.npz
+  auxiliary_npz:
+    - data/ird/gpu_pose_uniform_smoke.npz
+  edt_npz: data/maps/flange_sdf_smoke.npz
+  far_field_sdf_weight: 0.25
+  output_npz: data/ird/rm4d_signed_smoke.npz
+  quantile_lo: 0.005
+  quantile_hi: 0.995
+  min_pair_separation_normalized: 0.00001
+  robot_spec: configs/robot_probe45.yaml
+
+model:
+  width: 64
+  depth: 2
+  fourier_bands: 2
+  softplus_beta: 20.0
+
+training:
+  seed: 7
+  device: cpu
+  epochs: 2
+  batch_size: 256
+  learning_rate: 0.001
+  weight_decay: 0.0
+  val_fraction: 0.2
+  early_stop_patience: 6
+  logit_scale: 3.0
+  normal_batch_max: 64
+  report_near_axis: true
+  near_axis_r_m: 0.05
+  max_global_rows: 2048
+  max_boundary_groups: 32
+
+loss:
+  classification: 1.0
+  signed_value: 1.0
+  normal_direction: 0.05
+  eikonal: 0.05
+
+io:
+  checkpoint: data/checkpoints/rm4d_signed_smoke/selected.pt
+  report: data/reports/train_rm4d_signed_smoke.json

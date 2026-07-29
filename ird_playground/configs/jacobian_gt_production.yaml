@@ -1,0 +1,11 @@
+# Optional YAML for Phase-5 Jacobian GT dump.
+build:
+  source_npz: data/ird/gpu_pose_production.npz
+  output_npz: data/ird/jacobian_gt_production.npz
+  robot_spec: configs/robot_probe45.yaml
+  max_samples: 50000
+  seed: 47
+  batch_size: 2048
+  device: cpu
+  require_reachable: true
+  require_collision_free: true

@@ -1,4 +1,11 @@
-"""Differentiable partial-task reachability aggregation along a trajectory."""
+"""Differentiable partial-task reachability aggregation along a trajectory.
+
+The offline SRS labeler models **point** reachability only (any surviving ψ on
+a fixed branch). Path residual — controller ``require_path=True`` interior IK —
+and continuous arm-angle ψ selection live here: ψ enters the nested outer max
+alongside beam-roll angle candidates. Pose-only fields ignore ψ; callers that
+expose ``score_world_psi`` get joint ψ optimisation for free.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +23,7 @@ except ImportError:  # pragma: no cover
 
 from ird_playground.ird.torch_kinematics import so3_exp
 from ird_playground.region.operator import RegionA, RegionAConfig, normalized_softmin
+from ird_playground.region.set_query import normalized_softmax_like_max
 
 
 def so3_log_batch(R: "torch.Tensor") -> "torch.Tensor":
@@ -72,6 +80,11 @@ class TrajectoryTaskConfig:
     coverage_tau: float = 0.15
     n_path: int = 4
     path_tau: float = 0.15
+    # Continuous SRS arm angle ψ — free variable in the outer max. The labeler
+    # is intentionally point-only; path + ψ residuals are handled here.
+    psi_half_range_rad: float = 0.0
+    psi_samples: int = 1
+    psi_tau: float = 0.10
 
 
 @dataclass
@@ -86,6 +99,9 @@ class TrajectoryTaskResult:
     worst_waypoint_index: "torch.Tensor"
     best_angle_index: "torch.Tensor"
     angle_offsets_rad: "torch.Tensor"
+    psi_clearance: "torch.Tensor"
+    best_psi_index: "torch.Tensor"
+    psi_offsets_rad: "torch.Tensor"
 
 
 class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: ignore[misc]
@@ -129,7 +145,23 @@ class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: 
         )
         self.register_buffer("angle_offsets_rad", angles, persistent=True)
         self.register_buffer("angle_rotvec_local", angles[:, None] * axis[None, :], persistent=True)
+        n_psi = max(1, int(self.config.psi_samples))
+        if n_psi == 1 or float(self.config.psi_half_range_rad) <= 0.0:
+            psi = torch.zeros(n_psi, dtype=torch.float32)
+        else:
+            psi = torch.linspace(
+                -float(self.config.psi_half_range_rad),
+                float(self.config.psi_half_range_rad),
+                n_psi,
+            )
+        self.register_buffer("psi_offsets_rad", psi, persistent=True)
         self.region = RegionA(region_config)
+
+    @staticmethod
+    def _score_world(field, T_tcp_world, T_axis_world, psi: "torch.Tensor | None"):
+        if psi is not None and hasattr(field, "score_world_psi"):
+            return field.score_world_psi(T_tcp_world, T_axis_world, psi)
+        return field.score_world(T_tcp_world, T_axis_world)
 
     @staticmethod
     def _interpolate_se3(
@@ -238,68 +270,130 @@ class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: 
         *,
         angle_probabilities: "torch.Tensor | None" = None,
     ) -> TrajectoryTaskResult:
-        candidates = self._with_local_rotation(T_tcp_world, self.angle_rotvec_local)
-        scenarios = self.region.perturb_tcp(candidates)
-        axis = T_axis_world[..., None, None, :, :]
-        clearance = field.score_world(scenarios, axis)
-        candidate = self._aggregate(
-            clearance,
-            self.config.uncertainty_aggregation,
-            dim=-1,
-            tau=self.config.uncertainty_tau,
-            cvar_fraction=self.config.uncertainty_cvar_fraction,
-        )
-        waypoint = self._aggregate(
-            candidate,
-            self.config.angle_aggregation,
-            dim=-1,
-            tau=self.config.angle_tau,
-            cvar_fraction=self.config.angle_cvar_fraction,
-            probabilities=angle_probabilities,
-        )
-        path_T = self._path_samples(T_tcp_world, self.config.n_path)
-        if path_T.shape[-4] > 0:
-            path_candidates = self._with_local_rotation(path_T, self.angle_rotvec_local)
-            path_scenarios = self.region.perturb_tcp(path_candidates)
-            path_axis = self._path_axis(T_axis_world, T_tcp_world.shape[-3])
-            path_scores = field.score_world(path_scenarios, path_axis)
-            path_scenario = self._aggregate(
-                path_scores,
+        psi_vals = self.psi_offsets_rad.to(dtype=T_tcp_world.dtype, device=T_tcp_world.device)
+        n_psi = int(psi_vals.shape[0])
+        use_psi = n_psi > 1 and hasattr(field, "score_world_psi")
+
+        def _evaluate(psi_value: "torch.Tensor | None"):
+            candidates = self._with_local_rotation(T_tcp_world, self.angle_rotvec_local)
+            scenarios = self.region.perturb_tcp(candidates)
+            axis = T_axis_world[..., None, None, :, :]
+            clearance = self._score_world(field, scenarios, axis, psi_value)
+            candidate = self._aggregate(
+                clearance,
                 self.config.uncertainty_aggregation,
                 dim=-1,
                 tau=self.config.uncertainty_tau,
                 cvar_fraction=self.config.uncertainty_cvar_fraction,
             )
-            path_angle = self._aggregate(
-                path_scenario,
+            waypoint = self._aggregate(
+                candidate,
                 self.config.angle_aggregation,
                 dim=-1,
                 tau=self.config.angle_tau,
                 cvar_fraction=self.config.angle_cvar_fraction,
                 probabilities=angle_probabilities,
             )
-            path_clearance = normalized_softmin(
-                path_angle, self.config.path_tau, dim=-1
+            path_T = self._path_samples(T_tcp_world, self.config.n_path)
+            if path_T.shape[-4] > 0:
+                path_candidates = self._with_local_rotation(path_T, self.angle_rotvec_local)
+                path_scenarios = self.region.perturb_tcp(path_candidates)
+                path_axis = self._path_axis(T_axis_world, T_tcp_world.shape[-3])
+                path_scores = self._score_world(field, path_scenarios, path_axis, psi_value)
+                path_scenario = self._aggregate(
+                    path_scores,
+                    self.config.uncertainty_aggregation,
+                    dim=-1,
+                    tau=self.config.uncertainty_tau,
+                    cvar_fraction=self.config.uncertainty_cvar_fraction,
+                )
+                path_angle = self._aggregate(
+                    path_scenario,
+                    self.config.angle_aggregation,
+                    dim=-1,
+                    tau=self.config.angle_tau,
+                    cvar_fraction=self.config.angle_cvar_fraction,
+                    probabilities=angle_probabilities,
+                )
+                path_clearance = normalized_softmin(
+                    path_angle, self.config.path_tau, dim=-1
+                )
+                terms = torch.cat((waypoint, path_clearance), dim=-1)
+            else:
+                path_clearance = waypoint.new_zeros(*waypoint.shape[:-1], 0)
+                terms = waypoint
+            trajectory = self._reduce_trajectory(terms)
+            coverage = torch.sigmoid(
+                clearance / max(self.config.coverage_tau, 1.0e-6)
+            ).mean(dim=(-1, -2))
+            return TrajectoryTaskResult(
+                trajectory_clearance=trajectory,
+                waypoint_clearance=waypoint,
+                path_clearance=path_clearance,
+                candidate_clearance=candidate,
+                scenario_clearance=clearance,
+                waypoint_coverage=coverage,
+                trajectory_coverage=coverage.mean(dim=-1),
+                worst_waypoint_index=waypoint.argmin(dim=-1),
+                best_angle_index=candidate.argmax(dim=-1),
+                angle_offsets_rad=self.angle_offsets_rad,
+                psi_clearance=trajectory.unsqueeze(-1),
+                best_psi_index=trajectory.new_zeros(trajectory.shape, dtype=torch.long),
+                psi_offsets_rad=self.psi_offsets_rad,
             )
-            terms = torch.cat((waypoint, path_clearance), dim=-1)
+
+        if not use_psi:
+            result = _evaluate(None)
+            if n_psi > 1:
+                # Pose-only field: ψ samples share the same clearance; outer max
+                # is a soft identity so the API still exposes a free ψ axis.
+                psi_clearance = result.trajectory_clearance.unsqueeze(-1).expand(
+                    *result.trajectory_clearance.shape, n_psi
+                )
+                trajectory = normalized_softmax_like_max(
+                    psi_clearance, self.config.psi_tau, dim=-1
+                )
+                return TrajectoryTaskResult(
+                    trajectory_clearance=trajectory,
+                    waypoint_clearance=result.waypoint_clearance,
+                    path_clearance=result.path_clearance,
+                    candidate_clearance=result.candidate_clearance,
+                    scenario_clearance=result.scenario_clearance,
+                    waypoint_coverage=result.waypoint_coverage,
+                    trajectory_coverage=result.trajectory_coverage,
+                    worst_waypoint_index=result.worst_waypoint_index,
+                    best_angle_index=result.best_angle_index,
+                    angle_offsets_rad=result.angle_offsets_rad,
+                    psi_clearance=psi_clearance,
+                    best_psi_index=psi_clearance.argmax(dim=-1),
+                    psi_offsets_rad=self.psi_offsets_rad,
+                )
+            return result
+
+        per_psi = [_evaluate(psi_vals[i]) for i in range(n_psi)]
+        psi_clearance = torch.stack([r.trajectory_clearance for r in per_psi], dim=-1)
+        trajectory = normalized_softmax_like_max(psi_clearance, self.config.psi_tau, dim=-1)
+        best_psi_index = psi_clearance.argmax(dim=-1)
+        # Diagnostics from the (batch-wise) best ψ; for non-scalar batches take ψ 0
+        # structural fields — callers that need per-ψ tensors use psi_clearance.
+        if best_psi_index.ndim == 0:
+            chosen = per_psi[int(best_psi_index.item())]
         else:
-            path_clearance = waypoint.new_zeros(*waypoint.shape[:-1], 0)
-            terms = waypoint
-        trajectory = self._reduce_trajectory(terms)
-        coverage = torch.sigmoid(
-            clearance / max(self.config.coverage_tau, 1.0e-6)
-        ).mean(dim=(-1, -2))
+            chosen = per_psi[0]
         return TrajectoryTaskResult(
             trajectory_clearance=trajectory,
-            waypoint_clearance=waypoint,
-            path_clearance=path_clearance,
-            candidate_clearance=candidate,
-            scenario_clearance=clearance,
-            waypoint_coverage=coverage,
-            trajectory_coverage=coverage.mean(dim=-1),
-            worst_waypoint_index=waypoint.argmin(dim=-1),
-            best_angle_index=candidate.argmax(dim=-1),
+            waypoint_clearance=chosen.waypoint_clearance,
+            path_clearance=chosen.path_clearance,
+            candidate_clearance=chosen.candidate_clearance,
+            scenario_clearance=chosen.scenario_clearance,
+            waypoint_coverage=chosen.waypoint_coverage,
+            trajectory_coverage=chosen.trajectory_coverage,
+            worst_waypoint_index=chosen.worst_waypoint_index,
+            best_angle_index=chosen.best_angle_index,
             angle_offsets_rad=self.angle_offsets_rad,
+            psi_clearance=psi_clearance,
+            best_psi_index=best_psi_index,
+            psi_offsets_rad=self.psi_offsets_rad,
         )
 
 

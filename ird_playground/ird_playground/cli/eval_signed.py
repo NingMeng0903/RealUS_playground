@@ -153,6 +153,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--checkpoint", type=Path, default=None)
     ap.add_argument("--region-pairs", type=int, default=512)
     ap.add_argument("--allow-stale-checkpoint", action="store_true")
+    ap.add_argument(
+        "--report-near-axis",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Report accuracy restricted to flange chart r < 5 cm (default: on).",
+    )
     args = ap.parse_args(argv)
     root = Path(__file__).resolve().parents[2]
     cfg_path = args.config if args.config.is_absolute() else root / args.config
@@ -182,9 +188,15 @@ def main(argv: list[str] | None = None) -> int:
         arrays["boundary_id"],
         cfg.val_fraction,
         cfg.seed,
-        arrays.get("source_pose_id"),
+        arrays["source_pose_id"],
     )
-    metrics = evaluate_signed_field(field, arrays, val_idx)
+    metrics = evaluate_signed_field(
+        field,
+        arrays,
+        val_idx,
+        report_near_axis=bool(args.report_near_axis),
+        near_axis_r_m=cfg.near_axis_r_m,
+    )
     source_npz = np.load(source_path, allow_pickle=False)
     source = {k: source_npz[k] for k in source_npz.files}
     val_groups = np.unique(arrays["boundary_id"][val_idx][arrays["boundary_id"][val_idx] >= 0])

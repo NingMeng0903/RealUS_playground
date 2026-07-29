@@ -85,5 +85,15 @@ def test_signed_production_config_loads():
         )
     cfg = load_signed_train_config(root / "configs/rm4d_signed_production.yaml", root=root)
     assert cfg.lambda_signed_value == 4.0
-    assert cfg.lambda_eikonal == 0.0
+    assert cfg.lambda_eikonal > 0.0
     assert Path(cfg.gt_npz).is_file()
+
+
+def test_signed_smoke_config_defaults():
+    from ird_playground.ird.canonical_gt import CanonicalGtConfig
+    import yaml
+
+    root = Path(__file__).resolve().parents[1]
+    raw = yaml.safe_load((root / "configs/rm4d_signed_smoke.yaml").read_text())
+    assert float(raw["loss"]["eikonal"]) > 0.0
+    assert CanonicalGtConfig.__dataclass_fields__["edt_npz"] is not None
