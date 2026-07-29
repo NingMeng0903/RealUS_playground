@@ -116,20 +116,19 @@ class AnatomyAssetRegistry:
         transl: Any | None = None,
         shape_hash: str = "",
     ) -> bool:
-        """Draw only assets baked for the incoming SMPL-X body shape."""
+        """Draw registered assets and report body-shape mismatches."""
         incoming = str(shape_hash or "")
         drawn = False
         for model_id, drawer in list(self._drawers.items()):
             expected = str((drawer.asset.metadata or {}).get("shape_hash", ""))
             if incoming and expected and incoming != expected:
-                logger.error(
-                    "anatomy drive rejected model_id=%s shape_hash=%s asset_shape_hash=%s",
+                logger.warning(
+                    "anatomy shape mismatch ignored model_id=%s "
+                    "shape_hash=%s asset_shape_hash=%s",
                     model_id,
                     incoming,
                     expected,
                 )
-                drawer.clear_node()
-                continue
             drawn = bool(drawer.draw(pose_axis_angle, transl=transl)) or drawn
         return drawn
 

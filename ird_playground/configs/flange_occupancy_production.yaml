@@ -1,0 +1,19 @@
+# Production FK fill for the 5-D flange occupancy tensor.
+# Run after disk budget allows (≥1e7 collision-free draws; prefer 5e7–1e8).
+#
+#   python -m ird_playground.cli.build_flange_tensor \
+#     --config configs/flange_occupancy_production.yaml
+#
+# Then EDT:
+#   python -m ird_playground.cli.build_flange_edt \
+#     --occupancy data/maps/flange_occupancy_production.npz \
+#     --out data/maps/flange_sdf_production.npz
+sampling:
+  output_npz: data/maps/flange_occupancy_production.npz
+  n_samples: 10000000
+  batch_size: 65536
+  step_m: 0.03
+  step_deg: 12.0
+  seed: 41
+  device: cpu
+  require_collision_free: true

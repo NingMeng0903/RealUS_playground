@@ -15,7 +15,7 @@ from typing import Any, Mapping
 import numpy as np
 
 from .anatomy_lbs import with_source_driver_coupling
-from .articular_fit_v8 import calibrate_ankle_roll_glide_v8
+from .articular_fit_v8 import calibrate_coupled_joint_roll_glide_v8
 from .mechanism_v8 import (
     V71ParentLocalFKV8,
     build_ba9_head_selection_v8,
@@ -25,6 +25,7 @@ from .rigged_asset import AnatomyRiggedAsset
 from .reference_fit_v8 import compose_unified_reference_template_v8
 from .v7_artifacts import SourceOperatorV7, rigged_asset_digest
 from .v8_artifacts import SourceOperatorV8
+from .vessel_route_v8 import bake_vessel_route_v8
 
 
 _OBSOLETE_RUNTIME_KEYS = frozenset(
@@ -35,6 +36,7 @@ _OBSOLETE_RUNTIME_KEYS = frozenset(
         "source_patella_splines_v7",
         "source_patella_v71_response_v8",
         "source_patella_response_v7",
+        "source_ankle_roll_glide_v8",
         "patella_oracle",
         "patella_oracle_v7",
         "patella_oracle_digest",
@@ -138,6 +140,18 @@ def merge_v71_authority_v8(
         name: copy.deepcopy(getattr(v71_source, name))
         for name in _V71_AUTHORITY_FIELDS
     }
+    runtime_metadata = sanitize_v8_runtime_metadata(v71_source.metadata or {})
+    product_metadata = dict(fitted_product.metadata or {})
+    for key in (
+        "hidden_mesh_names_v1",
+        "v8_unified_reference_fit",
+        "v8_reference_beta_origin",
+        "v8_reference_field_authority",
+        "v8_nonshrunk_bone_authority",
+        "v8_foot_compound_authority",
+    ):
+        if key in product_metadata:
+            runtime_metadata[key] = copy.deepcopy(product_metadata[key])
     replacements.update(
         {
             "runtime_driver_indices_compressed": None,
@@ -151,12 +165,23 @@ def merge_v71_authority_v8(
             "source_mesh_follow_modes": None,
             "pose_cache_vertices": None,
             "pose_cache_hash": "",
-            "metadata": sanitize_v8_runtime_metadata(v71_source.metadata or {}),
+            "metadata": runtime_metadata,
         }
     )
     # The target bind and anatomical driver pivots are beta-fit product data.
     # Authored source local matrices above remain immutable V71 provenance.
     merged = replace(fitted_product, **replacements)
+    # The many-segment cervical chain remains parent-local, while the three
+    # independently driven anchors recover their SMPL-X global virtual
+    # joints.  This prevents accumulated neck translations from separating
+    # C1/C2, skull, jaw, and teeth without weakening FK elsewhere.
+    merged_metadata = dict(merged.metadata or {})
+    bone_names = list(merged.source_bone_names or ())
+    merged_metadata["source_direct_driver_bones_v1"] = [
+        bone_names.index(name)
+        for name in ("Spine_C7", "Head_Bone", "Jaw_Bone_base")
+    ]
+    merged = replace(merged, metadata=merged_metadata)
     merged = with_source_driver_coupling(merged)
     merged.validate()
     V71ParentLocalFKV8(
@@ -307,6 +332,8 @@ def build_selective_source_operator_v8(
     continuous_product: AnatomyRiggedAsset | None = None,
     foot_product: AnatomyRiggedAsset | None = None,
     reference_betas: Any | None = None,
+    vessel_skin_vertices: Any | None = None,
+    vessel_skin_faces: Any | None = None,
     algorithm_version: str = "selective-v8.1",
     oracle_version: str = "contact-independent-v8.1",
     correction_version: str = "ba9-head-v8.1",
@@ -314,6 +341,15 @@ def build_selective_source_operator_v8(
     """Assemble L0 without copying V7 pose-time mechanisms or verdicts."""
     unified_report: dict[str, Any] | None = None
     unified_coefficients: dict[str, np.ndarray] = {}
+    vessel_route_report: dict[str, Any] = {
+        "available": False,
+        "passed": False,
+        "reason": "canonical subject skin was not supplied",
+    }
+    if (vessel_skin_vertices is None) != (vessel_skin_faces is None):
+        raise ValueError(
+            "vessel_skin_vertices and vessel_skin_faces must be supplied together"
+        )
     if any(
         value is not None
         for value in (
@@ -345,23 +381,45 @@ def build_selective_source_operator_v8(
         template = merge_v71_authority_v8(composed, v71_source)
     else:
         template = merge_v71_authority_v8(v7_operator.template_asset, v71_source)
+    # The source-weighted reconstruction must use the restored original V71
+    # 14-slot Armature field.  The route changes vessel rest coordinates only;
+    # final whole-bone geometry, bind matrices, and runtime FK stay untouched.
+    if vessel_skin_vertices is not None:
+        template, vessel_route_report = bake_vessel_route_v8(
+            template,
+            skin_vertices=np.asarray(vessel_skin_vertices, dtype=np.float64),
+            skin_faces=np.asarray(vessel_skin_faces, dtype=np.int32),
+        )
     domains = build_frozen_domains_v8(template, v7_operator.fixed_material_domains)
-    ankle_domain_keys = {
+    coupled_joint_domain_keys = {
         f"ankle/{side}/{part}.{partition}"
         for side in ("left", "right")
         for part in ("tibia", "fibula", "talus")
         for partition in ("fit", "validation")
     }
-    if ankle_domain_keys.issubset(domains):
-        template, ankle_roll_glide_report = calibrate_ankle_roll_glide_v8(
+    coupled_joint_domain_keys.update(
+        {
+            f"{side}/{part}.{partition}"
+            for side in ("left", "right")
+            for part in (
+                "femoral_condyle_medial",
+                "femoral_condyle_lateral",
+                "tibial_plateau_medial",
+                "tibial_plateau_lateral",
+            )
+            for partition in ("fit", "validation")
+        }
+    )
+    if coupled_joint_domain_keys.issubset(domains):
+        template, coupled_joint_report = calibrate_coupled_joint_roll_glide_v8(
             template,
             domains=domains,
         )
         template = with_source_driver_coupling(template)
     else:
-        ankle_roll_glide_report = {
+        coupled_joint_report = {
             "available": False,
-            "reason": "operator lacks bilateral frozen ankle domains",
+            "reason": "operator lacks bilateral frozen knee/ankle domains",
         }
     mechanism = {
         "v71.parents": np.asarray(template.source_bone_parents, dtype=np.int32),
@@ -421,7 +479,8 @@ def build_selective_source_operator_v8(
             "obsolete_pose_paths_absent": True,
             "tongue": "missing; release blocker",
             "unified_reference_fit": unified_report,
-            "ankle_roll_glide": ankle_roll_glide_report,
+            "coupled_knee_ankle_roll_glide": coupled_joint_report,
+            "vessel_route_v8": vessel_route_report,
         },
         quality_report={
             "publishable": False,

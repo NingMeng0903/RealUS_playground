@@ -8,6 +8,7 @@ from typing import Any, Mapping
 
 import numpy as np
 
+from .coupled_joint_v8 import evaluate_coupled_rbf_response_v8
 from .pose_adapter import pose_to_smplx55_axis_angle
 from .rigged_asset import SOURCE_DRIVER_MODES, AnatomyRiggedAsset
 
@@ -1242,8 +1243,16 @@ def source_bone_posed_global(
     patella_responses = dict(
         (asset.metadata or {}).get("source_patella_v71_response_v8", {})
     )
-    ankle_roll_glide = dict(
+    legacy_ankle_roll_glide = dict(
         (asset.metadata or {}).get("source_ankle_roll_glide_v8", {})
+    )
+    if legacy_ankle_roll_glide:
+        raise ValueError(
+            "source_ankle_roll_glide_v8 is obsolete: independent-axis "
+            "translation sums are not valid for composite rotations"
+        )
+    coupled_joint_responses = dict(
+        (asset.metadata or {}).get("source_coupled_joint_response_v8", {})
     )
     input_pose = pose_to_smplx55_axis_angle(pose_axis_angle).astype(np.float64)
     target_pose_global = joint_global_transforms(
@@ -1710,58 +1719,51 @@ def source_bone_posed_global(
                 posed_global[parent] @ rest_local_bones[bi] @ correction
             )
             continue
-        ankle_response = ankle_roll_glide.get(str(bi))
-        if ankle_response is not None:
+        coupled_response = coupled_joint_responses.get(str(bi))
+        if coupled_response is not None:
             if parent < 0:
-                raise ValueError(f"V8 ankle response {bi} has no source parent")
-            joint = int(ankle_response.get("smplx_joint", -1))
-            knots = np.asarray(
-                ankle_response.get("axis_knots_rad", []),
+                raise ValueError(f"V8 coupled response {bi} has no source parent")
+            joint = int(coupled_response.get("smplx_joint", -1))
+            pivot_bind = np.asarray(
+                coupled_response.get("anatomical_pivot_target_bind_m", []),
                 dtype=np.float64,
             )
-            translations = np.asarray(
-                ankle_response.get("axis_translation_parent_local_m", []),
+            pivot_local = np.asarray(
+                coupled_response.get("anatomical_pivot_parent_local_m", []),
                 dtype=np.float64,
             )
+            if joint < 0 or joint >= len(input_pose):
+                raise ValueError(
+                    f"V8 coupled response {bi} has an invalid SMPL-X joint"
+                )
             if (
-                joint < 0
-                or joint >= len(input_pose)
-                or knots.ndim != 2
-                or knots.shape[0] != 3
-                or knots.shape[1] < 3
-                or translations.shape != (3, knots.shape[1], 3)
-                or not np.all(np.isfinite(knots))
-                or not np.all(np.isfinite(translations))
-                or np.any(np.diff(knots, axis=1) <= 0.0)
-            ):
-                raise ValueError(f"V8 ankle response {bi} has invalid coefficients")
-            rotvec = np.asarray(input_pose[joint], dtype=np.float64)
-            translation = np.sum(
-                np.asarray(
-                    [
-                        [
-                            np.interp(
-                                rotvec[axis],
-                                knots[axis],
-                                translations[axis, :, component],
-                            )
-                            for component in range(3)
-                        ]
-                        for axis in range(3)
-                    ],
-                    dtype=np.float64,
-                ),
-                axis=0,
-            )
-            maximum = float(ankle_response.get("maximum_translation_m", 0.024))
-            if (
-                not np.isfinite(maximum)
-                or maximum <= 0.0
-                or float(np.linalg.norm(translation)) > maximum + 1.0e-7
+                coupled_response.get("pivot_mapping")
+                != "smplx_axis_angle_state_to_frozen_anatomical_parent_local"
+                or pivot_bind.shape != (3,)
+                or pivot_local.shape != (3,)
+                or not np.all(np.isfinite(pivot_bind))
+                or not np.all(np.isfinite(pivot_local))
+                or not np.allclose(
+                    pivot_bind,
+                    rest_global_bones[bi, :3, 3],
+                    atol=2.0e-6,
+                    rtol=0.0,
+                )
+                or not np.allclose(
+                    pivot_local,
+                    rest_local_bones[bi, :3, 3],
+                    atol=2.0e-6,
+                    rtol=0.0,
+                )
             ):
                 raise ValueError(
-                    f"V8 ankle response {bi} exceeds its baked translation bound"
+                    f"V8 coupled response {bi} has an invalid anatomical pivot mapping"
                 )
+            rotvec = np.asarray(input_pose[joint], dtype=np.float64)
+            translation = evaluate_coupled_rbf_response_v8(
+                coupled_response,
+                rotvec,
+            )
             desired = driver_frames[bi] @ coupling[bi]
             posed_local = np.asarray(rest_local_bones[bi], dtype=np.float64).copy()
             posed_local[:3, :3] = (

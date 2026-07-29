@@ -1,10 +1,10 @@
 sampling:
   robot_spec: configs/robot_probe45.yaml
-  seed_gt_npz: data/ird/gpu_pose_production.npz
-  output_npz: data/ird/gpu_pose_uniform_production.npz
-  n_queries: 500000
-  n_ik_seeds: 16
-  batch_size: 512
+  seed_gt_npz: data/ird/gpu_pose_smoke.npz
+  output_npz: data/ird/gpu_pose_uniform_smoke.npz
+  n_queries: 512
+  n_ik_seeds: 8
+  batch_size: 128
   radius_m: 1.2
   z_min_m: -0.35
   z_max_m: 1.35
@@ -13,5 +13,5 @@ sampling:
   ik_max_iter: 100
   seed: 83
   device: cuda
-  log_every_batches: 10
+  log_every_batches: 1
   default_branch_id: 0

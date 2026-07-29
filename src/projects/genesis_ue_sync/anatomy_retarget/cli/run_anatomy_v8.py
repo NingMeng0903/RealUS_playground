@@ -114,6 +114,7 @@ if (
 
 import numpy as np
 
+from projects.genesis_ue_sync.anatomy_retarget.containment import load_body_surface
 from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import smplx_pose_hash
 from projects.genesis_ue_sync.anatomy_retarget.operator_bake_v8 import (
     build_selective_source_operator_v8,
@@ -373,6 +374,10 @@ def _run_bake_selective_operator(args: argparse.Namespace) -> int:
         "v71_source_file_digest": _file_digest(v71_path),
         "reference_manifest_file_digest": _file_digest(reference_path),
     }
+    if args.vessel_skin_obj is not None:
+        input_digests["vessel_skin_obj_file_digest"] = _file_digest(
+            args.vessel_skin_obj.expanduser().resolve()
+        )
     unified_paths = (
         args.fitted_product,
         args.continuous_product,
@@ -452,6 +457,11 @@ def _run_bake_selective_operator(args: argparse.Namespace) -> int:
         if args.reference_betas is None
         else np.load(args.reference_betas.expanduser().resolve(), allow_pickle=False)
     )
+    vessel_skin_vertices, vessel_skin_faces = (
+        (None, None)
+        if args.vessel_skin_obj is None
+        else load_body_surface(args.vessel_skin_obj.expanduser().resolve())
+    )
     reference = validate_reference_manifest(
         _read_json(
             reference_path,
@@ -469,6 +479,8 @@ def _run_bake_selective_operator(args: argparse.Namespace) -> int:
         continuous_product=continuous_product,
         foot_product=foot_product,
         reference_betas=reference_betas,
+        vessel_skin_vertices=vessel_skin_vertices,
+        vessel_skin_faces=vessel_skin_faces,
         algorithm_version=args.algorithm_version,
         oracle_version=args.oracle_version,
         correction_version=args.correction_version,
@@ -804,6 +816,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--reference-betas",
         type=Path,
         help="ten float beta values corresponding to --continuous-product",
+    )
+    selective.add_argument(
+        "--vessel-skin-obj",
+        type=Path,
+        help=(
+            "exact canonical subject SMPL-X T-pose surface used for the "
+            "offline skin-containment and final-bone-clearance vessel bake"
+        ),
     )
     selective.add_argument("--algorithm-version", default="selective-v8.2")
     selective.add_argument("--oracle-version", default="contact-independent-v8.1")

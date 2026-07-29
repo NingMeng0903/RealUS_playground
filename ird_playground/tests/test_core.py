@@ -78,6 +78,11 @@ def test_signed_production_config_loads():
     from ird_playground.neural.train_signed import load_signed_train_config
 
     root = Path(__file__).resolve().parents[1]
+    gt = root / "data/ird/rm4d_signed_production.npz"
+    if not gt.is_file():
+        pytest.skip(
+            "rm4d_signed_production.npz archived pending Phase-3 regen after flange GT rebuild"
+        )
     cfg = load_signed_train_config(root / "configs/rm4d_signed_production.yaml", root=root)
     assert cfg.lambda_signed_value == 4.0
     assert cfg.lambda_eikonal == 0.0

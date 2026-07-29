@@ -37,6 +37,8 @@ _FOOT_TOKENS = (
 )
 
 _PRODUCT_AXIAL_BONES = {
+    "C1_Atlas",
+    "C2_Axis",
     "Upper_Skull",
     "Mandible",
     "Hyoid_Bone",
@@ -46,6 +48,13 @@ _PRODUCT_AXIAL_BONES = {
     "Scapula_R",
     "Sternum",
 }
+
+_TOOTH_TOKENS = (
+    "canine",
+    "incisor",
+    "molar",
+    "premolar",
+)
 
 
 def _same_topology(*assets: AnatomyRiggedAsset) -> bool:
@@ -77,7 +86,11 @@ def _mesh_vertex_mask(
 def _is_axial_product_bone(name: str) -> bool:
     if name in _PRODUCT_AXIAL_BONES:
         return True
+    if name.startswith("Disc"):
+        return True
     if name.startswith("Rib_"):
+        return True
+    if any(token in name.lower() for token in _TOOTH_TOKENS):
         return True
     if len(name) >= 2 and name[0] in {"C", "T", "L"} and name[1:].isdigit():
         return True
@@ -331,6 +344,15 @@ def compose_unified_reference_template_v8(
             "v8_reference_field_authority": "continuous_product",
             "v8_nonshrunk_bone_authority": "fitted_product",
             "v8_foot_compound_authority": "clean_762_product",
+            # No independently licensed Tongue mesh exists in this topology.
+            # Hide the sublingual soft structures in Genesis so they are not
+            # mistaken for a tongue or shown intersecting a closed mouth.
+            "hidden_mesh_names_v1": [
+                "Sublingual_Ducts_L",
+                "Sublingual_Ducts_R",
+                "Sublingual_Gland_L",
+                "Sublingual_Gland_R",
+            ],
         }
     )
     local = _global_to_local(target_global, parents)

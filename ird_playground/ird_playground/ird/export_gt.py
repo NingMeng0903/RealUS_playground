@@ -638,9 +638,17 @@ def export_ird_gt_from_capability_map(
 def save_ird_gt(path: str | Path, arrays: dict[str, np.ndarray], meta: dict | None = None) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(path, **arrays)
+    # Write to a marked incomplete path, then atomically rename so a crash
+    # never leaves a half-written production npz looking complete.
+    # np.savez_compressed appends ".npz" unless the target already ends with it.
+    partial = path.with_name(path.stem + ".partial.npz")
+    np.savez_compressed(partial, **arrays)
+    partial.replace(path)
     if meta is not None:
-        path.with_suffix(".yaml").write_text(yaml.safe_dump(meta, sort_keys=False), encoding="utf-8")
+        yaml_path = path.with_suffix(".yaml")
+        yaml_partial = yaml_path.with_name(yaml_path.stem + ".partial.yaml")
+        yaml_partial.write_text(yaml.safe_dump(meta, sort_keys=False), encoding="utf-8")
+        yaml_partial.replace(yaml_path)
     return path
 
 

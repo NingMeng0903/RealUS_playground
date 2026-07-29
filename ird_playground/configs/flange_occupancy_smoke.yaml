@@ -1,0 +1,10 @@
+# Smoke build of the 5-D flange occupancy tensor (FK positives only).
+sampling:
+  output_npz: data/maps/flange_occupancy_smoke.npz
+  n_samples: 200000
+  batch_size: 16384
+  step_m: 0.03
+  step_deg: 12.0
+  seed: 41
+  device: cpu
+  require_collision_free: true

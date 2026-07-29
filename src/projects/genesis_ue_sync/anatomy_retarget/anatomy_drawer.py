@@ -126,9 +126,25 @@ class AnatomyLbsDrawer:
         show_connective = bool((self.asset.metadata or {}).get("show_connective_tissue", False))
         # Vessels on by default (Artery/Vein). Opt out with metadata show_vessels=false.
         show_vessels = bool((self.asset.metadata or {}).get("show_vessels", True))
-        for (start, stop), tissue in zip(self.asset.source_vertex_ranges, self.asset.source_tissues):
+        hidden_mesh_names = {
+            str(value)
+            for value in (self.asset.metadata or {}).get(
+                "hidden_mesh_names_v1", []
+            )
+        }
+        mesh_names = list(
+            self.asset.source_mesh_names
+            or [""] * len(self.asset.source_tissues)
+        )
+        for (start, stop), tissue, mesh_name in zip(
+            self.asset.source_vertex_ranges,
+            self.asset.source_tissues,
+            mesh_names,
+        ):
             tissue_key = str(tissue)
-            if tissue_key == "connective_tissue" and not show_connective:
+            if str(mesh_name) in hidden_mesh_names:
+                hidden[int(start) : int(stop)] = True
+            elif tissue_key == "connective_tissue" and not show_connective:
                 hidden[int(start) : int(stop)] = True
             elif tissue_key == "vessel" and not show_vessels:
                 hidden[int(start) : int(stop)] = True

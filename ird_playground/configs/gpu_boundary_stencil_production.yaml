@@ -2,10 +2,13 @@ out: data/ird/gpu_pose_stencils_production.npz
 sampling:
   robot_spec: configs/robot_probe45.yaml
   base_gt_npz: data/ird/gpu_pose_production.npz
+  # Bounded by available pure TCP pairs in production pose GT (pos=48268, rot=38637).
   n_position_boundaries: 46000
-  n_rotation_boundaries: 46000
+  n_rotation_boundaries: 38000
+  metric_offsets_m: [0.001, 0.003, 0.006, 0.010]
   n_ik_seeds: 12
-  batch_size: 512
+  batch_size: 64
   bisection_iterations: 12
   device: cuda
-  log_every_batches: 5
+  log_every_batches: 2
+  default_branch_id: 0
