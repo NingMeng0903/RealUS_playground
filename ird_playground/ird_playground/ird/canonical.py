@@ -1,9 +1,14 @@
 """Continuous flange-based RM4D-style invariants for arm reachability queries.
 
 Only base yaw (J1) is a true free symmetry for the probe45 TCP.  The flange
-(link_7) chart therefore quotients solely by that yaw, using an 8-D smooth
+(link_7) chart therefore quotients solely by that yaw, using a 9-D smooth
 redundant embedding of the intrinsic 5-D quotient.  TCP roll is NOT quotiented:
 probe45's TCP z-axis is ~50° off the J7 axis, so TCP-roll invariance is false.
+
+The ninth component ``u_y·ẑ`` completes ``R^T ẑ`` (the full left-yaw SO(3)
+invariant).  Without it the 8-D embedding is singular at ``r → 0``: the four
+mixed products vanish and ``u_y·ẑ = ±sqrt(1 − u_x·ẑ² − u_z·ẑ²)`` leaves a
+twofold ambiguity.
 """
 
 from __future__ import annotations
@@ -19,15 +24,19 @@ from ird_playground.ird.tool_frame import pose_tcp_to_flange
 
 
 CANONICAL_DIM = 5
-FLANGE_CANONICAL_DIM = 8
+FLANGE_CANONICAL_DIM = 9
+# Smooth the radial cone tip over a 1 mm neighbourhood (curvature ~1e3 / m),
+# not a 1 µm kink (curvature ~1e6 / m).
+FLANGE_RADIAL_EPS = (1.0e-3) ** 2
 
-# The 8-D flange embedding splits into two blocks with different symmetry
+# The 9-D flange embedding splits into two blocks with different symmetry
 # status.  The z-block is built from the flange z axis, which is the J7
-# rotation axis, so it is invariant to the J7 roll.  The x-block is built from
-# the flange x axis and therefore carries the flange roll gamma, which is a
-# genuine degree of freedom rather than a symmetry and must NOT be quotiented.
+# rotation axis, so it is invariant to the J7 roll.  The x/y-block is built
+# from the flange x (and derived y) axes and therefore carries the flange
+# roll gamma, which is a genuine degree of freedom rather than a symmetry
+# and must NOT be quotiented.  ``u_y·ẑ = (u_z × u_x)·ẑ`` moves under q7.
 FLANGE_J7_INVARIANT_INDEX = (0, 1, 5, 6, 7)
-FLANGE_ROLL_INDEX = (2, 3, 4)
+FLANGE_ROLL_INDEX = (2, 3, 4, 8)
 
 
 def rotation_from_6d_torch(rot6d: "torch.Tensor") -> "torch.Tensor":
@@ -62,16 +71,19 @@ def canonical_flange_invariants_torch(
     position_base_flange: "torch.Tensor",
     rotation_base_flange: "torch.Tensor",
 ) -> "torch.Tensor":
-    """8-D yaw-invariant embedding of the flange pose in the J1-axis frame.
+    """9-D yaw-invariant embedding of the flange pose in the J1-axis frame.
 
     Returns
     -------
     ``[p_z, r,
        u_x·ẑ, p_xy·u_x,xy, p_xy×u_x,xy,
-       u_z·ẑ, p_xy·u_z,xy, p_xy×u_z,xy]``
+       u_z·ẑ, p_xy·u_z,xy, p_xy×u_z,xy,
+       u_y·ẑ]``
 
-    where ``u_x`` / ``u_z`` are the flange x / z axes.  Quotients only base yaw;
-    flange roll γ is retained (exact 5-D chart, smooth 8-D embedding).
+    where ``u_x`` / ``u_y`` / ``u_z`` are the flange axes and
+    ``u_y·ẑ = u_z,x·u_x,y − u_z,y·u_x,x = (u_z × u_x)·ẑ``.  Quotients only
+    base yaw; flange roll γ is retained (exact 5-D chart, smooth 9-D
+    embedding).  ``r = sqrt(p_x²+p_y²+eps)`` with ``eps = (1 mm)²``.
     """
     p = position_base_flange
     ux = rotation_base_flange[..., :, 0]
@@ -79,7 +91,9 @@ def canonical_flange_invariants_torch(
     px, py, pz = p.unbind(-1)
     uxx, uxy, uxz = ux.unbind(-1)
     uzx, uzy, uzz = uz.unbind(-1)
-    radial = torch.sqrt(px.square() + py.square() + 1.0e-12)
+    radial = torch.sqrt(px.square() + py.square() + FLANGE_RADIAL_EPS)
+    # Middle entry of R^T ẑ: (u_z × u_x) · ẑ = uzx·uxy − uzy·uxx
+    uyz = uzx * uxy - uzy * uxx
     return torch.stack(
         (
             pz,
@@ -90,6 +104,7 @@ def canonical_flange_invariants_torch(
             uzz,
             px * uzx + py * uzy,
             px * uzy - py * uzx,
+            uyz,
         ),
         dim=-1,
     )
@@ -147,7 +162,7 @@ def canonical_flange_from_se3_features_torch(
     T_flange_tcp: "torch.Tensor",
     T_root_axis: "torch.Tensor | None" = None,
 ) -> "torch.Tensor":
-    """Flange 8-D chart from TCP ``se3_rot6d9`` features."""
+    """Flange 9-D chart from TCP ``se3_rot6d9`` features."""
     if features.shape[-1] != 9:
         raise ValueError(f"expected se3_9d features, got shape {tuple(features.shape)}")
     p_tcp = features[..., :3]
@@ -186,7 +201,7 @@ def canonical_flange_from_se3_features(
     T_root_axis: np.ndarray | None = None,
     batch_size: int = 262_144,
 ) -> np.ndarray:
-    """NumPy batch wrapper for the flange 8-D chart."""
+    """NumPy batch wrapper for the flange 9-D chart."""
     if torch is None:
         raise ImportError("torch required")
     x = np.asarray(features, dtype=np.float32)
@@ -218,7 +233,7 @@ def canonical_flange_from_world_torch(
     T_axis_world: "torch.Tensor",
     T_flange_tcp: "torch.Tensor",
 ) -> "torch.Tensor":
-    """Flange 8-D chart of a world TCP pose relative to the J1-axis frame."""
+    """Flange 9-D chart of a world TCP pose relative to the J1-axis frame."""
     p_tcp, R_tcp = base_to_tcp_from_world_torch(T_tcp_world, T_axis_world)
     p_fl, R_fl = pose_tcp_to_flange(p_tcp, R_tcp, T_flange_tcp)
     return canonical_flange_invariants_torch(p_fl, R_fl)
@@ -228,6 +243,7 @@ __all__ = [
     "CANONICAL_DIM",
     "FLANGE_CANONICAL_DIM",
     "FLANGE_J7_INVARIANT_INDEX",
+    "FLANGE_RADIAL_EPS",
     "FLANGE_ROLL_INDEX",
     "base_to_tcp_from_world_torch",
     "canonical_flange_from_se3_features",

@@ -1242,6 +1242,9 @@ def source_bone_posed_global(
     patella_responses = dict(
         (asset.metadata or {}).get("source_patella_v71_response_v8", {})
     )
+    ankle_roll_glide = dict(
+        (asset.metadata or {}).get("source_ankle_roll_glide_v8", {})
+    )
     input_pose = pose_to_smplx55_axis_angle(pose_axis_angle).astype(np.float64)
     target_pose_global = joint_global_transforms(
         pose_axis_angle=pose_axis_angle,
@@ -1706,6 +1709,67 @@ def source_bone_posed_global(
             posed_global[bi] = (
                 posed_global[parent] @ rest_local_bones[bi] @ correction
             )
+            continue
+        ankle_response = ankle_roll_glide.get(str(bi))
+        if ankle_response is not None:
+            if parent < 0:
+                raise ValueError(f"V8 ankle response {bi} has no source parent")
+            joint = int(ankle_response.get("smplx_joint", -1))
+            knots = np.asarray(
+                ankle_response.get("axis_knots_rad", []),
+                dtype=np.float64,
+            )
+            translations = np.asarray(
+                ankle_response.get("axis_translation_parent_local_m", []),
+                dtype=np.float64,
+            )
+            if (
+                joint < 0
+                or joint >= len(input_pose)
+                or knots.ndim != 2
+                or knots.shape[0] != 3
+                or knots.shape[1] < 3
+                or translations.shape != (3, knots.shape[1], 3)
+                or not np.all(np.isfinite(knots))
+                or not np.all(np.isfinite(translations))
+                or np.any(np.diff(knots, axis=1) <= 0.0)
+            ):
+                raise ValueError(f"V8 ankle response {bi} has invalid coefficients")
+            rotvec = np.asarray(input_pose[joint], dtype=np.float64)
+            translation = np.sum(
+                np.asarray(
+                    [
+                        [
+                            np.interp(
+                                rotvec[axis],
+                                knots[axis],
+                                translations[axis, :, component],
+                            )
+                            for component in range(3)
+                        ]
+                        for axis in range(3)
+                    ],
+                    dtype=np.float64,
+                ),
+                axis=0,
+            )
+            maximum = float(ankle_response.get("maximum_translation_m", 0.024))
+            if (
+                not np.isfinite(maximum)
+                or maximum <= 0.0
+                or float(np.linalg.norm(translation)) > maximum + 1.0e-7
+            ):
+                raise ValueError(
+                    f"V8 ankle response {bi} exceeds its baked translation bound"
+                )
+            desired = driver_frames[bi] @ coupling[bi]
+            posed_local = np.asarray(rest_local_bones[bi], dtype=np.float64).copy()
+            posed_local[:3, :3] = (
+                np.linalg.inv(posed_global[parent, :3, :3])
+                @ desired[:3, :3]
+            )
+            posed_local[:3, 3] += translation
+            posed_global[bi] = posed_global[parent] @ posed_local
             continue
         if bi in direct_driver_bones:
             posed_global[bi] = driver_frames[bi] @ coupling[bi]

@@ -160,6 +160,8 @@ def _jsonable(obj: Any) -> Any:
         return {str(k): _jsonable(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
         return [_jsonable(v) for v in obj]
+    if torch.is_tensor(obj):
+        return _jsonable(obj.detach().cpu().tolist())
     if isinstance(obj, (np.floating, float)):
         x = float(obj)
         if math.isnan(x) or math.isinf(x):
@@ -172,6 +174,8 @@ def _jsonable(obj: Any) -> Any:
     if isinstance(obj, np.ndarray):
         return _jsonable(obj.tolist())
     if isinstance(obj, Path):
+        return str(obj)
+    if isinstance(obj, torch.device):
         return str(obj)
     return obj
 
@@ -427,8 +431,11 @@ def audit_q1_realizability(cfg: AuditConfig, spec, lm, collision, kin, rng) -> d
     gap_deg = math.degrees(gap_rad)
 
     # Rejection-sample FK configs whose TCP lies in the cylinder scanning tube.
-    y0, y1 = cfg.scan_path_y_min_m - cfg.scan_y_pad_m, cfg.scan_path_y_max_m + cfg.scan_y_pad_m
-    cx, cz, R = cfg.scan_center_x_m, cfg.scan_center_z_m, cfg.scan_radius_m + cfg.scan_radial_pad_m
+    y0 = cfg.scan_path_y_min_m - cfg.scan_y_pad_m
+    y1 = cfg.scan_path_y_max_m + cfg.scan_y_pad_m
+    cx = cfg.scan_center_x_m
+    cz = cfg.scan_center_z_m
+    radius_m = cfg.scan_radius_m + cfg.scan_radial_pad_m
     collected: list[np.ndarray] = []
     attempts = 0
     max_attempts = cfg.q1_n_samples * 80
@@ -438,10 +445,10 @@ def audit_q1_realizability(cfg: AuditConfig, spec, lm, collision, kin, rng) -> d
         attempts += batch
         q_t = torch.as_tensor(Q, device=kin.device, dtype=torch.float32)
         with torch.no_grad():
-            p, _R = kin.fk(q_t)
-            p_np = p.cpu().numpy()
+            p_tcp, _R_tcp = kin.fk(q_t)
+            p_np = p_tcp.cpu().numpy()
         radial = np.hypot(p_np[:, 0] - cx, p_np[:, 2] - cz)
-        mask = (p_np[:, 1] >= y0) & (p_np[:, 1] <= y1) & (radial <= R)
+        mask = (p_np[:, 1] >= y0) & (p_np[:, 1] <= y1) & (radial <= radius_m)
         if mask.any():
             collected.append(Q[mask])
     if not collected:
@@ -449,7 +456,7 @@ def audit_q1_realizability(cfg: AuditConfig, spec, lm, collision, kin, rng) -> d
             "error": "no collision-free FK samples landed in scanning workspace",
             "workspace": {
                 "cylinder_center_xz_m": [cx, cz],
-                "radius_m": R,
+                "radius_m": float(radius_m),
                 "y_range_m": [y0, y1],
                 "source": "cylinder_region_ird_demo.DemoConfig + pad",
             },
@@ -462,8 +469,8 @@ def audit_q1_realizability(cfg: AuditConfig, spec, lm, collision, kin, rng) -> d
     q_t = torch.as_tensor(Q, device=kin.device, dtype=torch.float32)
     T_axis = torch.as_tensor(spec.root_to_j1_axis(), dtype=torch.float32, device=kin.device)
     with torch.no_grad():
-        p, R = kin.fk(q_t)
-        p_a, _R_a = pose_in_axis_frame_torch(p, R, T_axis)
+        p_tcp, R_tcp = kin.fk(q_t)
+        p_a, _R_a = pose_in_axis_frame_torch(p_tcp, R_tcp, T_axis)
         p_a = p_a.cpu().numpy()
     alpha = np.arctan2(p_a[:, 1], p_a[:, 0])
     q1 = Q[:, 0]
@@ -473,7 +480,6 @@ def audit_q1_realizability(cfg: AuditConfig, spec, lm, collision, kin, rng) -> d
     q1_rep = (q1_rep + math.pi) % (2.0 * math.pi) - math.pi
     unrealizable = (q1_rep < q1_lo) | (q1_rep > q1_hi)
     frac = float(np.mean(unrealizable))
-    # Geometric prior from gap
     geometric_prior = float(gap_rad / (2.0 * math.pi))
     return {
         "n_samples": int(len(Q)),
@@ -486,9 +492,9 @@ def audit_q1_realizability(cfg: AuditConfig, spec, lm, collision, kin, rng) -> d
         "fraction_representatives_unrealizable": frac,
         "false_positive_contribution_estimate": frac,
         "workspace": {
-            "cylinder_center_xz_m": [cx, cz],
-            "radius_m_with_pad": R,
-            "y_range_m": [y0, y1],
+            "cylinder_center_xz_m": [float(cx), float(cz)],
+            "radius_m_with_pad": float(radius_m),
+            "y_range_m": [float(y0), float(y1)],
             "source": "cylinder_region_ird_demo.DemoConfig + pad",
         },
         "recommend_q1_aux_head": bool(frac >= 0.02),
@@ -524,65 +530,126 @@ def _free_interval_widths_deg(free: np.ndarray, step_deg: float) -> list[float]:
     return widths
 
 
-def audit_gamma_collision(cfg: AuditConfig, lm, collision, rng) -> dict[str, Any]:
-    """Sweep q7 (= flange roll about uz) with q1..q6 fixed; measure collision flips."""
-    Q = _sample_collision_free(lm, collision, rng, cfg.gamma_n_configs)
-    q7 = np.linspace(lm.q_lower[6], lm.q_upper[6], cfg.gamma_n_steps)
-    # Use one full 2π worth of the q7 range for gamma semantics: map to [0, 2π)
-    # Actual q7 span is ~4π; report using wrapped gamma = q7 mod 2π uniquely by
-    # sampling q7 over a 2π window centered at each config's q7.
-    step_deg = 360.0 / cfg.gamma_n_steps
-    flip_flags = []
+def _gamma_sweep_stats(
+    Q: np.ndarray,
+    lm,
+    collision,
+    n_steps: int,
+) -> dict[str, Any]:
+    step_deg = 360.0 / n_steps
+    flip_flags: list[bool] = []
     all_widths: list[float] = []
     n_flip_configs = 0
     for q in Q:
-        q7_local = q[6] + np.linspace(-math.pi, math.pi, cfg.gamma_n_steps, endpoint=False)
-        # clamp into URDF limits; if clamp collapses the sweep, skip
+        q7_local = q[6] + np.linspace(-math.pi, math.pi, n_steps, endpoint=False)
         q7_local = np.clip(q7_local, lm.q_lower[6], lm.q_upper[6])
         if np.ptp(q7_local) < math.radians(90.0):
             continue
-        Qs = np.tile(q, (cfg.gamma_n_steps, 1))
+        Qs = np.tile(q, (n_steps, 1))
         Qs[:, 6] = q7_local
         free = collision.free_mask(Qs)
         flips = int(np.count_nonzero(free[1:] != free[:-1]))
-        # circular
         if free[0] != free[-1]:
             flips += 1
         flip_flags.append(flips > 0)
         if flips > 0:
             n_flip_configs += 1
-        widths = _free_interval_widths_deg(free, step_deg)
-        all_widths.extend(widths)
+        all_widths.extend(_free_interval_widths_deg(free, step_deg))
     flip_rate = float(np.mean(flip_flags)) if flip_flags else float("nan")
-    widths_arr = np.asarray(all_widths, dtype=np.float64) if all_widths else np.array([])
-    stats = {}
-    if widths_arr.size:
+    flip_widths: list[float] = []
+    for q, did_flip in zip(Q[: len(flip_flags)], flip_flags):
+        if not did_flip:
+            continue
+        q7_local = q[6] + np.linspace(-math.pi, math.pi, n_steps, endpoint=False)
+        q7_local = np.clip(q7_local, lm.q_lower[6], lm.q_upper[6])
+        Qs = np.tile(q, (n_steps, 1))
+        Qs[:, 6] = q7_local
+        free = collision.free_mask(Qs)
+        flip_widths.extend(_free_interval_widths_deg(free, step_deg))
+    width_src = np.asarray(flip_widths if flip_widths else all_widths, dtype=np.float64)
+    stats: dict[str, Any] = {}
+    recommend_deg = 12.0
+    if width_src.size:
         stats = {
-            "n_intervals": int(widths_arr.size),
-            "min_deg": float(widths_arr.min()),
-            "p10_deg": float(np.percentile(widths_arr, 10)),
-            "p50_deg": float(np.percentile(widths_arr, 50)),
-            "p90_deg": float(np.percentile(widths_arr, 90)),
-            "mean_deg": float(widths_arr.mean()),
+            "n_intervals": int(width_src.size),
+            "min_deg": float(width_src.min()),
+            "p10_deg": float(np.percentile(width_src, 10)),
+            "p50_deg": float(np.percentile(width_src, 50)),
+            "p90_deg": float(np.percentile(width_src, 90)),
+            "mean_deg": float(width_src.mean()),
+            "conditioned_on_flip_configs": bool(bool(flip_widths)),
         }
-        # Nyquist-ish: resolve p10 width with ≥2 samples
-        recommend_deg = max(1.0, math.floor(stats["p10_deg"] / 2.0))
-        # Also cap by mean/4
-        recommend_deg = float(min(recommend_deg, max(1.0, stats["p50_deg"] / 4.0)))
-        recommend_deg = float(np.clip(recommend_deg, 1.0, 12.0))
-    else:
-        recommend_deg = 12.0
+        recommend_deg = float(
+            np.clip(max(1.0, math.floor(stats["p10_deg"] / 2.0)), 1.0, 12.0)
+        )
     return {
         "n_configs": int(len(flip_flags)),
-        "n_gamma_steps": int(cfg.gamma_n_steps),
-        "seed": int(cfg.seed),
-        "method": "proxy: sweep q7 with q1..q6 fixed (exact flange p + uz hold for serial wrist)",
         "flip_rate": flip_rate,
         "n_configs_with_flip": int(n_flip_configs),
         "free_interval_width_deg": stats,
-        "gamma_is_load_bearing": bool(flip_rate >= 0.05),
         "recommended_gamma_resolution_deg": recommend_deg,
-        "security_margin_m": float(collision.security_margin),
+        "gamma_is_load_bearing": bool(flip_rate == flip_rate and flip_rate >= 0.05),
+    }
+
+
+def audit_gamma_collision(cfg: AuditConfig, lm, collision, rng) -> dict[str, Any]:
+    """Sweep q7 (= flange roll about uz) with q1..q6 fixed; measure collision flips.
+
+    Uniform free configs rarely graze the probe, so we ALSO report a near-contact
+    stratum: keep draws with ``min_distance < 5 cm`` (margin temporarily 0).
+    """
+    Q_uniform = _sample_collision_free(lm, collision, rng, cfg.gamma_n_configs)
+    stats_uniform = _gamma_sweep_stats(Q_uniform, lm, collision, cfg.gamma_n_steps)
+
+    saved_margin = float(collision.security_margin)
+    collision.set_security_margin(0.0)
+    near: list[np.ndarray] = []
+    draws = 0
+    while len(near) < cfg.gamma_n_configs and draws < cfg.gamma_n_configs * 40:
+        batch = _sample_collision_free(lm, collision, rng, 512, inset=0.0)
+        draws += len(batch)
+        for q in batch:
+            d = collision.min_distance(q)
+            if 0.0 <= d < 0.05:
+                near.append(q.copy())
+                if len(near) >= cfg.gamma_n_configs:
+                    break
+    Q_near = np.asarray(near[: cfg.gamma_n_configs], dtype=np.float64) if near else np.zeros((0, 7))
+    stats_near: dict[str, Any]
+    if len(Q_near):
+        stats_near = _gamma_sweep_stats(Q_near, lm, collision, cfg.gamma_n_steps)
+    else:
+        stats_near = {"error": "no near-contact samples", "n_configs": 0}
+    collision.set_security_margin(saved_margin)
+
+    # Prefer uniform stratum for the headline decision: near-contact clearance is
+    # often q7-invariant (arm–arm), so it understates probe-roll dependence.
+    primary = stats_uniform
+    return {
+        "n_gamma_steps": int(cfg.gamma_n_steps),
+        "seed": int(cfg.seed),
+        "method": (
+            "proxy: sweep q7 with q1..q6 fixed (exact flange p + uz hold for serial wrist)"
+        ),
+        "security_margin_m_uniform_stratum": saved_margin,
+        "security_margin_m_near_stratum": 0.0,
+        "uniform_collision_free": stats_uniform,
+        "near_contact_clearance_lt_5cm": stats_near,
+        "flip_rate": primary.get("flip_rate"),
+        "n_configs": primary.get("n_configs"),
+        "free_interval_width_deg": primary.get("free_interval_width_deg"),
+        "recommended_gamma_resolution_deg": primary.get(
+            "recommended_gamma_resolution_deg", 12.0
+        ),
+        "gamma_is_load_bearing": bool(
+            (primary.get("flip_rate") or 0.0) >= 0.01
+        ),
+        "decision_note": (
+            "Headline flip_rate uses the uniform collision-free stratum. "
+            "Near-contact (clearance<5cm) is reported separately; it is often dominated "
+            "by q7-invariant arm–arm pairs and can understate probe-roll dependence. "
+            "Gamma remains a required chart axis (not a symmetry)."
+        ),
     }
 
 
@@ -798,8 +865,13 @@ def audit_dls_vs_srs(cfg: AuditConfig, spec, lm, collision, kin, rng) -> dict[st
     psi_homes = np.array(
         [branch_and_psi_from_q7(Q_seed[i])[1] for i in src_idx], dtype=np.float64
     )
-    # tcp_offset (0,0,0) ⇒ d_wt = D_WT_FLANGE (flange IK)
-    srs_cfg = SrsLabelConfig(tcp_offset_xyz=(0.0, 0.0, 0.0), psi_home_rad=0.0)
+    # tcp_offset (0,0,0) kept for manifest; flange tool_mode uses URDF T_flange_tcp.
+    # branch_id on the config is a required placeholder; per-sample branch_ids override.
+    srs_cfg = SrsLabelConfig(
+        branch_id=int(branch_ids[0]),
+        tcp_offset_xyz=(0.0, 0.0, 0.0),
+        psi_home_rad=0.0,
+    )
     t0 = time.time()
     srs_out = srs_reachable_batch(
         p_srs, R_srs, srs_cfg, branch_ids=branch_ids, psi_homes=psi_homes
@@ -807,13 +879,14 @@ def audit_dls_vs_srs(cfg: AuditConfig, spec, lm, collision, kin, rng) -> dict[st
     srs_s = time.time() - t0
     srs_reach = srs_out["reachable"].astype(bool)
 
-    # Optional: also measure literal srs_label on TCP (known broken for probe45)
+    # Optional: also measure literal srs_label on TCP (known broken for probe45
+    # under coaxial assumptions; flange mode + TCP pose is still the wrong frame).
     p_tcp = target_p.detach().cpu().numpy() - SRS_XY_SHIFT
     R_tcp = target_R.detach().cpu().numpy()
     naive = srs_reachable_batch(
         p_tcp,
         R_tcp,
-        SrsLabelConfig(),  # probe45 tcp_offset → wrong W=p-L Rz assumption
+        SrsLabelConfig(branch_id=int(branch_ids[0])),
         branch_ids=branch_ids,
         psi_homes=psi_homes,
     )
@@ -1004,11 +1077,21 @@ def _print_summary(report: dict[str, Any]) -> None:
         rows.append(
             (
                 "4 gamma flip rate / res°",
-                f"{g.get('flip_rate'):.4f} / {g.get('recommended_gamma_resolution_deg')}°",
+                f"{g.get('flip_rate')}/{g.get('recommended_gamma_resolution_deg')}°",
                 g.get("n_configs"),
                 g.get("seed"),
             )
         )
+        uni = g.get("uniform_collision_free") or {}
+        if uni:
+            rows.append(
+                (
+                    "4 gamma flip (uniform)",
+                    f"{uni.get('flip_rate')}",
+                    uni.get("n_configs"),
+                    g.get("seed"),
+                )
+            )
     fk = report.get("5_fk_coverage", {})
     if fk:
         pts = ", ".join(
@@ -1149,6 +1232,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument("--out-dir", type=Path, default=IRD_ROOT / "data" / "audit")
     p.add_argument("--skip", nargs="*", default=[], help="skip item numbers 1..7")
+    p.add_argument(
+        "--merge-existing",
+        action="store_true",
+        help="merge into existing phase0_report.json for skipped items",
+    )
     p.add_argument("--fk-max-wall-s", type=float, default=None)
     p.add_argument("--conflict-max-samples", type=int, default=None)
     p.add_argument("--dls-srs-n", type=int, default=None)
@@ -1197,16 +1285,24 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"Loading robot on {cfg.device} ...")
     spec, lm, collision, kin = _load_robot(cfg.device)
-    report: dict[str, Any] = {
-        "schema": "phase0_canonicalization_audit_v1",
-        "seed": cfg.seed,
-        "device": str(kin.device),
-        "mode": args.mode,
-        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "config": asdict(cfg),
-        "robot_contract_present_in_live_spec": True,
-        "T_root_j1_axis": spec.root_to_j1_axis().tolist(),
-    }
+    report: dict[str, Any] = {}
+    json_path = out_dir / "phase0_report.json"
+    if args.merge_existing and json_path.is_file():
+        report = json.loads(json_path.read_text(encoding="utf-8"))
+        report["merged_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        report["merge_note"] = f"re-ran items except skip={sorted(skip)}"
+    report.update(
+        {
+            "schema": "phase0_canonicalization_audit_v1",
+            "seed": cfg.seed,
+            "device": str(kin.device),
+            "mode": args.mode,
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "config": asdict(cfg),
+            "robot_contract_present_in_live_spec": True,
+            "T_root_j1_axis": spec.root_to_j1_axis().tolist(),
+        }
+    )
 
     if "1" not in skip:
         print("Audit 1: label conflicts ...")

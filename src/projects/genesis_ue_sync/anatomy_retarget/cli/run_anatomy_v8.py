@@ -373,6 +373,38 @@ def _run_bake_selective_operator(args: argparse.Namespace) -> int:
         "v71_source_file_digest": _file_digest(v71_path),
         "reference_manifest_file_digest": _file_digest(reference_path),
     }
+    unified_paths = (
+        args.fitted_product,
+        args.continuous_product,
+        args.foot_product,
+        args.reference_betas,
+    )
+    if any(path is not None for path in unified_paths):
+        if not all(path is not None for path in unified_paths):
+            raise ValueError(
+                "--fitted-product, --continuous-product, --foot-product, and "
+                "--reference-betas must be supplied together"
+            )
+        input_digests.update(
+            {
+                "fitted_product_digest": (
+                    _file_digest(args.fitted_product.expanduser().resolve())
+                    if args.fitted_product.expanduser().resolve().is_file()
+                    else _file_digest(
+                        args.fitted_product.expanduser().resolve() / "manifest.json"
+                    )
+                ),
+                "continuous_product_file_digest": _file_digest(
+                    args.continuous_product.expanduser().resolve()
+                ),
+                "foot_product_file_digest": _file_digest(
+                    args.foot_product.expanduser().resolve()
+                ),
+                "reference_betas_file_digest": _file_digest(
+                    args.reference_betas.expanduser().resolve()
+                ),
+            }
+        )
     if (output_path / "manifest.json").is_file():
         manifest = read_artifact_manifest(output_path)
         audit = _read_json(
@@ -397,6 +429,29 @@ def _run_bake_selective_operator(args: argparse.Namespace) -> int:
         raise ValueError("existing V8 operator cache entry has different inputs")
     v7_operator = load_source_operator_v7(v7_path)
     v71_source = load_rigged_asset(v71_path, validate=True)
+    fitted_product = None
+    if args.fitted_product is not None:
+        fitted_path = args.fitted_product.expanduser().resolve()
+        fitted_product = (
+            load_rigged_asset(fitted_path)
+            if fitted_path.is_file()
+            else load_subject_runtime(fitted_path).rigged_asset
+        )
+    continuous_product = (
+        None
+        if args.continuous_product is None
+        else load_rigged_asset(args.continuous_product.expanduser().resolve())
+    )
+    foot_product = (
+        None
+        if args.foot_product is None
+        else load_rigged_asset(args.foot_product.expanduser().resolve())
+    )
+    reference_betas = (
+        None
+        if args.reference_betas is None
+        else np.load(args.reference_betas.expanduser().resolve(), allow_pickle=False)
+    )
     reference = validate_reference_manifest(
         _read_json(
             reference_path,
@@ -410,6 +465,10 @@ def _run_bake_selective_operator(args: argparse.Namespace) -> int:
         v71_source=v71_source,
         reference_manifest=reference,
         runtime_coefficients=tube_coupling_pack_to_runtime_fields_v8(tube_pack),
+        fitted_product=fitted_product,
+        continuous_product=continuous_product,
+        foot_product=foot_product,
+        reference_betas=reference_betas,
         algorithm_version=args.algorithm_version,
         oracle_version=args.oracle_version,
         correction_version=args.correction_version,
@@ -726,6 +785,26 @@ def build_parser() -> argparse.ArgumentParser:
     selective.add_argument("--v7-operator", type=Path, required=True)
     selective.add_argument("--v71-source", type=Path, required=True)
     selective.add_argument("--reference-manifest", type=Path, required=True)
+    selective.add_argument(
+        "--fitted-product",
+        type=Path,
+        help="b5ff subject asset/directory supplying non-shrunk bones and hip bind",
+    )
+    selective.add_argument(
+        "--continuous-product",
+        type=Path,
+        help="user-verified continuous fitted product used as the L0 beta origin",
+    )
+    selective.add_argument(
+        "--foot-product",
+        type=Path,
+        help="clean 762 product supplying the full-size foot compound",
+    )
+    selective.add_argument(
+        "--reference-betas",
+        type=Path,
+        help="ten float beta values corresponding to --continuous-product",
+    )
     selective.add_argument("--algorithm-version", default="selective-v8.2")
     selective.add_argument("--oracle-version", default="contact-independent-v8.1")
     selective.add_argument(

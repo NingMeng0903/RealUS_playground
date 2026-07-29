@@ -20,7 +20,7 @@ RHO_DIM = 9
 
 
 class ToleranceConditionedField(nn.Module if nn is not None else object):  # type: ignore[misc]
-    """MLP over flange 8-D chart + tolerance descriptor ``rho`` (9-D)."""
+    """MLP over flange 9-D chart + tolerance descriptor ``rho`` (9-D)."""
 
     def __init__(
         self,
@@ -78,12 +78,12 @@ class ToleranceConditionedField(nn.Module if nn is not None else object):  # typ
             parts.extend((torch.sin(phase), torch.cos(phase)))
         return torch.cat(parts, dim=-1)
 
-    def forward(self, canonical_8d: "torch.Tensor", rho: "torch.Tensor") -> "torch.Tensor":
-        if canonical_8d.shape[-1] != FLANGE_CANONICAL_DIM:
+    def forward(self, canonical: "torch.Tensor", rho: "torch.Tensor") -> "torch.Tensor":
+        if canonical.shape[-1] != FLANGE_CANONICAL_DIM:
             raise ValueError(f"expected {FLANGE_CANONICAL_DIM}-D canonical chart")
         if rho.shape[-1] != RHO_DIM:
             raise ValueError(f"expected {RHO_DIM}-D rho descriptor")
-        x = self.encode_canonical(self.normalize_canonical(canonical_8d))
+        x = self.encode_canonical(self.normalize_canonical(canonical))
         r = self.normalize_rho(rho)
         h = F.softplus(self.stem(torch.cat((x, r), dim=-1)), beta=self.softplus_beta)
         for block in self.blocks:

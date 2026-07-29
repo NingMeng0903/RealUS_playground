@@ -15,12 +15,14 @@ from typing import Any, Mapping
 import numpy as np
 
 from .anatomy_lbs import with_source_driver_coupling
+from .articular_fit_v8 import calibrate_ankle_roll_glide_v8
 from .mechanism_v8 import (
     V71ParentLocalFKV8,
     build_ba9_head_selection_v8,
     topology_digest_v8,
 )
 from .rigged_asset import AnatomyRiggedAsset
+from .reference_fit_v8 import compose_unified_reference_template_v8
 from .v7_artifacts import SourceOperatorV7, rigged_asset_digest
 from .v8_artifacts import SourceOperatorV8
 
@@ -254,6 +256,28 @@ def build_frozen_domains_v8(
             result[f"elbow/{label}/{part}.fit"] = fit
             result[f"elbow/{label}/{part}.validation"] = validation
 
+        tibia = _mesh_ids(asset, f"Tibia_{side}")
+        fibula = _mesh_ids(asset, f"Fibula_{side}")
+        talus = _mesh_ids(asset, f"Talus_{side}")
+        ankle_interface = {
+            "tibia": _near_interface(
+                vertices, tibia, talus, fraction=0.15
+            ),
+            "fibula": _near_interface(
+                vertices, fibula, talus, fraction=0.20
+            ),
+            "talus": _near_interface(
+                vertices,
+                talus,
+                np.concatenate((tibia, fibula)),
+                fraction=0.30,
+            ),
+        }
+        for part, ids in ankle_interface.items():
+            fit, validation = _split_spatial_domain(vertices, ids)
+            result[f"ankle/{label}/{part}.fit"] = fit
+            result[f"ankle/{label}/{part}.validation"] = validation
+
     for number in range(1, 13):
         for side in ("L", "R"):
             name = f"Rib_{number}{side}"
@@ -279,13 +303,66 @@ def build_selective_source_operator_v8(
     v71_source: AnatomyRiggedAsset,
     reference_manifest: Mapping[str, Any],
     runtime_coefficients: Mapping[str, np.ndarray],
+    fitted_product: AnatomyRiggedAsset | None = None,
+    continuous_product: AnatomyRiggedAsset | None = None,
+    foot_product: AnatomyRiggedAsset | None = None,
+    reference_betas: Any | None = None,
     algorithm_version: str = "selective-v8.1",
     oracle_version: str = "contact-independent-v8.1",
     correction_version: str = "ba9-head-v8.1",
 ) -> SourceOperatorV8:
     """Assemble L0 without copying V7 pose-time mechanisms or verdicts."""
-    template = merge_v71_authority_v8(v7_operator.template_asset, v71_source)
+    unified_report: dict[str, Any] | None = None
+    unified_coefficients: dict[str, np.ndarray] = {}
+    if any(
+        value is not None
+        for value in (
+            fitted_product,
+            continuous_product,
+            foot_product,
+            reference_betas,
+        )
+    ):
+        if (
+            fitted_product is None
+            or
+            continuous_product is None
+            or foot_product is None
+            or reference_betas is None
+        ):
+            raise ValueError(
+                "fitted_product, continuous_product, foot_product, and "
+                "reference_betas must be supplied together"
+            )
+        composed, unified_coefficients, unified_report = (
+            compose_unified_reference_template_v8(
+                fitted_product=fitted_product,
+                continuous_product=continuous_product,
+                foot_product=foot_product,
+                reference_betas=reference_betas,
+            )
+        )
+        template = merge_v71_authority_v8(composed, v71_source)
+    else:
+        template = merge_v71_authority_v8(v7_operator.template_asset, v71_source)
     domains = build_frozen_domains_v8(template, v7_operator.fixed_material_domains)
+    ankle_domain_keys = {
+        f"ankle/{side}/{part}.{partition}"
+        for side in ("left", "right")
+        for part in ("tibia", "fibula", "talus")
+        for partition in ("fit", "validation")
+    }
+    if ankle_domain_keys.issubset(domains):
+        template, ankle_roll_glide_report = calibrate_ankle_roll_glide_v8(
+            template,
+            domains=domains,
+        )
+        template = with_source_driver_coupling(template)
+    else:
+        ankle_roll_glide_report = {
+            "available": False,
+            "reason": "operator lacks bilateral frozen ankle domains",
+        }
     mechanism = {
         "v71.parents": np.asarray(template.source_bone_parents, dtype=np.int32),
         "v71.rest_local": np.asarray(template.source_rest_local, dtype=np.float32),
@@ -298,6 +375,7 @@ def build_selective_source_operator_v8(
         "v71.bone_inherit_scale": np.asarray(
             template.source_bone_inherit_scale, dtype=np.uint8
         ),
+        **unified_coefficients,
     }
     operator = SourceOperatorV8(
         template_asset=template,
@@ -332,6 +410,7 @@ def build_selective_source_operator_v8(
             "v71_source_digest": rigged_asset_digest(v71_source),
             "original_armature_slots": 14,
             "source_full_local_fk_v2": True,
+            "unified_reference_fit": unified_report is not None,
         },
         correction_report={
             "passed": False,
@@ -341,6 +420,8 @@ def build_selective_source_operator_v8(
             "obsolete_pose_path_count_removed": len(_OBSOLETE_RUNTIME_KEYS),
             "obsolete_pose_paths_absent": True,
             "tongue": "missing; release blocker",
+            "unified_reference_fit": unified_report,
+            "ankle_roll_glide": ankle_roll_glide_report,
         },
         quality_report={
             "publishable": False,

@@ -193,13 +193,18 @@ class SrsSmoothMoveReference:
         euler_order: str = "xyz",
         d_wt: float | None = None,
     ) -> None:
-        from rm75_control.kinematics.srs_ik import branch_from_q, d_wt_from_kin, psi_from_q
+        from rm75_control.kinematics.srs_ik import (
+            branch_from_q,
+            d_wt_from_kin,
+            flange_tcp_from_kin,
+            psi_from_q,
+        )
 
         self.kin = kin
         self.q_start = np.asarray(q_start_rad, dtype=float).copy()
         self.pose_start = np.asarray(self.kin.fk_pose(self.q_start), dtype=float)
         self.pose_target = np.asarray(pose_target, dtype=float).copy()
-        self.y_start = float(self.q_start[0])
+        self.y_start = float(self.q_start[0])  # prismatic joint value
         self.y_target = float(y_rail_target_m)
         self.duration_s = float(duration_s)
         q_arm_start = self.q_start[1:]
@@ -208,6 +213,7 @@ class SrsSmoothMoveReference:
         self.psi_target = float(psi_target_rad)
         self.euler_order = str(euler_order)
         self.d_wt = float(d_wt_from_kin(kin) if d_wt is None else d_wt)
+        self._R_flange_tcp, self._t_flange_tcp = flange_tcp_from_kin(kin)
         R_start = Rsc.from_euler(self.euler_order, self.pose_start[3:])
         R_target = Rsc.from_euler(self.euler_order, self.pose_target[3:])
         self._R_start = R_start
@@ -243,25 +249,26 @@ class SrsSmoothMoveReference:
         return pose
 
     def _q_at(self, s: float) -> np.ndarray:
-        from rm75_control.kinematics.srs_ik import srs_ik
+        from rm75_control.kinematics.srs_ik import shoulder_y_from_q_rail, srs_ik
 
         pose_s = self._pose_at(s)
         psi_s = self.psi_start + s * (self.psi_target - self.psi_start)
-        y_s = self.y_start + s * (self.y_target - self.y_start)
+        q_rail_s = self.y_start + s * (self.y_target - self.y_start)
         q_arm = srs_ik(
             pose_s,
             psi_s,
             self.branch_id,
-            y_rail=y_s,
+            y_rail=shoulder_y_from_q_rail(q_rail_s),
             euler_order=self.euler_order,
             check_limits=False,
-            d_wt=self.d_wt,
+            R_flange_tcp=self._R_flange_tcp,
+            t_flange_tcp=self._t_flange_tcp,
         )
         q = np.zeros_like(self.q_start)
-        q[0] = y_s
+        q[0] = q_rail_s
         if q_arm is None:
             q = self._last_q.copy()
-            q[0] = y_s
+            q[0] = q_rail_s
         else:
             q[1:] = q_arm
             self._last_q = q.copy()

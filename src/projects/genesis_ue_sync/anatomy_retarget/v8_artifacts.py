@@ -27,7 +27,10 @@ from .anatomy_lbs import (
     skin_vertices,
     with_source_driver_coupling,
 )
-from .articular_fit_v8 import reconstruct_hip_compounds_v8
+from .articular_fit_v8 import (
+    reconstruct_hip_compounds_v8,
+    reconstruct_knee_ankle_compounds_v8,
+)
 from .mechanism_v8 import reject_obsolete_mechanism_config_v8
 from .rigged_asset import AnatomyRiggedAsset
 from .tube_frames_v8 import (
@@ -664,18 +667,25 @@ def materialize_subject(
     operator.validate()
     beta = _validate_beta(betas)
     template = operator.template_asset
+    beta_origin = np.asarray(
+        operator.mechanism_coefficients.get(
+            "unified_fit.beta_origin", np.zeros(10, dtype=np.float32)
+        ),
+        dtype=np.float64,
+    ).reshape(10)
+    beta_delta = beta.astype(np.float64) - beta_origin
     vertices = np.asarray(template.vertices_rest, dtype=np.float64) + np.tensordot(
-        beta.astype(np.float64),
+        beta_delta,
         np.asarray(operator.beta_vertex_basis, dtype=np.float64),
         axes=(0, 0),
     )
     rest_joints = np.asarray(template.rest_joints, dtype=np.float64) + np.tensordot(
-        beta.astype(np.float64),
+        beta_delta,
         np.asarray(operator.beta_rest_joint_basis, dtype=np.float64),
         axes=(0, 0),
     )
     bind_twists = np.tensordot(
-        beta.astype(np.float64),
+        beta_delta,
         np.asarray(operator.beta_bind_twist_basis, dtype=np.float64),
         axes=(0, 0),
     )
@@ -765,6 +775,29 @@ def materialize_subject(
             "available": False,
             "reason": "operator lacks the complete bilateral V8 hip domains",
         }
+    knee_ankle_domain_keys = {
+        key
+        for side in ("left", "right")
+        for key in (
+            f"{side}/femoral_condyle_medial.fit",
+            f"{side}/femoral_condyle_lateral.fit",
+            f"{side}/tibial_plateau_medial.fit",
+            f"{side}/tibial_plateau_lateral.fit",
+            f"ankle/{side}/tibia.fit",
+            f"ankle/{side}/fibula.fit",
+            f"ankle/{side}/talus.fit",
+        )
+    }
+    if knee_ankle_domain_keys.issubset(operator.fixed_material_domains):
+        rigged, knee_ankle_report = reconstruct_knee_ankle_compounds_v8(
+            rigged,
+            domains=operator.fixed_material_domains,
+        )
+    else:
+        knee_ankle_report = {
+            "available": False,
+            "reason": "operator lacks bilateral frozen V8 knee/ankle domains",
+        }
     rigged = with_source_driver_coupling(rigged)
     offsets, indices, weights = _compile_skinning_csr(rigged)
     operator_digest = operator.runtime_digest(validate=False)
@@ -809,7 +842,7 @@ def materialize_subject(
         correction_version=operator.correction_version,
         cache_key=key,
         internal_handle_displacements=np.tensordot(
-            beta.astype(np.float64),
+            beta_delta,
             np.asarray(operator.internal_handle_basis, dtype=np.float64),
             axes=(0, 0),
         ).astype(np.float32),
@@ -823,6 +856,7 @@ def materialize_subject(
             "reason": "independent V8 matrix and legal tongue gates are required",
             "obsolete_pose_paths_absent": True,
             "hip_articular_fit": hip_report,
+            "knee_ankle_articular_fit": knee_ankle_report,
             "tube_coupling": tube_report,
         },
     )

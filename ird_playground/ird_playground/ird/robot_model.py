@@ -58,25 +58,41 @@ def _joint_nodes(path: Path) -> dict[str, ET.Element]:
 
 
 def _links_not_moved_by(urdf_path: Path, joint_name: str) -> set[str]:
-    """Links whose pose is independent of ``joint_name`` (its proper ancestors)."""
+    """Links whose pose is independent of ``joint_name``.
+
+    Returns the complement of the subtree rooted at ``child_of(joint_name)``:
+    ``all_links − subtree(child)``.  Ancestor-only walks miss side branches
+    under the root (e.g. a ``cable_carrier`` hanging off ``rail_base``), which
+    are exactly the world-fixed collision geometries the yaw-quotient forbids.
+
+    Mimic joints are not parsed; a mimic-of-``joint_name`` hanging off
+    ``base_link`` would be flagged conservatively (safe direction).
+    """
     root = ET.parse(urdf_path).getroot()
-    parent_of: dict[str, str] = {}
+    all_links = {str(node.get("name")) for node in root.findall("link") if node.get("name")}
+    children_of: dict[str, list[str]] = {name: [] for name in all_links}
     child_of_joint: dict[str, str] = {}
     for node in root.findall("joint"):
         parent = node.find("parent")
         child = node.find("child")
         if parent is None or child is None:
             continue
-        parent_of[str(child.get("link"))] = str(parent.get("link"))
-        child_of_joint[str(node.get("name"))] = str(child.get("link"))
+        parent_name = str(parent.get("link"))
+        child_name = str(child.get("link"))
+        children_of.setdefault(parent_name, []).append(child_name)
+        child_of_joint[str(node.get("name"))] = child_name
     if joint_name not in child_of_joint:
         raise ValueError(f"joint {joint_name!r} not found in {urdf_path}")
-    static: set[str] = set()
-    cursor = parent_of.get(child_of_joint[joint_name])
-    while cursor is not None:
-        static.add(cursor)
-        cursor = parent_of.get(cursor)
-    return static
+    moved_root = child_of_joint[joint_name]
+    subtree: set[str] = set()
+    stack = [moved_root]
+    while stack:
+        link = stack.pop()
+        if link in subtree:
+            continue
+        subtree.add(link)
+        stack.extend(children_of.get(link, ()))
+    return all_links - subtree
 
 
 def _links_with_collision(urdf_path: Path) -> set[str]:

@@ -566,15 +566,380 @@ def reconstruct_hip_compounds_v8(
     return result, report
 
 
+def reconstruct_knee_ankle_compounds_v8(
+    asset: AnatomyRiggedAsset,
+    *,
+    domains: Mapping[str, np.ndarray],
+    target_surface_gap_m: float = 0.0015,
+    maximum_platform_shift_m: float = 0.025,
+    search_steps: int = 101,
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Fit each complete shank between the knee surfaces and fixed ankle.
+
+    The proximal platform is advanced toward the frozen femoral-condyle
+    surfaces while the distal tibia/talus interface remains fixed.  Tibia and
+    fibula receive one shared whole-bone affine; the same affine transports the
+    shank target-bind frames.  The ankle subtree keeps its global bind and is
+    reconnected by recomputing the single parent-local chain.
+    """
+
+    from scipy.spatial import cKDTree
+
+    asset.validate()
+    if (
+        asset.target_bone_head is None
+        or asset.target_bone_tail is None
+        or asset.target_bind_global is None
+        or asset.source_bone_names is None
+        or asset.source_bone_parents is None
+    ):
+        raise ValueError("V8 knee/ankle reconstruction requires target FK authority")
+    if search_steps < 3:
+        raise ValueError("search_steps must be at least three")
+    vertices = np.asarray(asset.vertices_rest, dtype=np.float64).copy()
+    target_head = np.asarray(asset.target_bone_head, dtype=np.float64).copy()
+    target_tail = np.asarray(asset.target_bone_tail, dtype=np.float64).copy()
+    target_global = np.asarray(asset.target_bind_global, dtype=np.float64).copy()
+    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    bone_names = list(asset.source_bone_names)
+    report: dict[str, Any] = {
+        "schema_version": 8,
+        "method": "whole_shank_surface_gap_to_fixed_ankle_v8",
+        "target_surface_gap_m": float(target_surface_gap_m),
+        "uses_validation_for_fit": False,
+        "sides": {},
+    }
+
+    for side, suffix, effector in (
+        ("left", "L", "eff16"),
+        ("right", "R", "eff74"),
+    ):
+        tibia_ids = _mesh_vertex_ids(asset, f"Tibia_{suffix}")
+        fibula_ids = _mesh_vertex_ids(asset, f"Fibula_{suffix}")
+        medial_condyle = np.asarray(
+            domains[f"{side}/femoral_condyle_medial.fit"], dtype=np.int64
+        )
+        lateral_condyle = np.asarray(
+            domains[f"{side}/femoral_condyle_lateral.fit"], dtype=np.int64
+        )
+        medial_platform = np.asarray(
+            domains[f"{side}/tibial_plateau_medial.fit"], dtype=np.int64
+        )
+        lateral_platform = np.asarray(
+            domains[f"{side}/tibial_plateau_lateral.fit"], dtype=np.int64
+        )
+        distal_tibia = np.asarray(
+            domains[f"ankle/{side}/tibia.fit"], dtype=np.int64
+        )
+        required = (
+            medial_condyle,
+            lateral_condyle,
+            medial_platform,
+            lateral_platform,
+            distal_tibia,
+        )
+        if any(len(ids) < 4 for ids in required):
+            raise ValueError(f"{side} knee/ankle frozen fit domains are incomplete")
+
+        source_platform = np.mean(
+            vertices[np.concatenate((medial_platform, lateral_platform))], axis=0
+        )
+        condyle_center = np.mean(
+            vertices[np.concatenate((medial_condyle, lateral_condyle))], axis=0
+        )
+        source_distal = np.mean(vertices[distal_tibia], axis=0)
+        proximal_direction = condyle_center - source_platform
+        direction_norm = float(np.linalg.norm(proximal_direction))
+        if direction_norm <= 1.0e-8:
+            raise ValueError(f"{side} knee platform/condyle direction is degenerate")
+        proximal_direction /= direction_norm
+        medial_tree = cKDTree(vertices[medial_condyle])
+        lateral_tree = cKDTree(vertices[lateral_condyle])
+
+        best: tuple[
+            float, float, float, float, TibiaFibulaWholeBoneFitV8
+        ] | None = None
+        for shift in np.linspace(
+            0.0, float(maximum_platform_shift_m), int(search_steps)
+        ):
+            fitted = fit_tibia_fibula_to_platform_v8(
+                tibia_vertices=vertices[tibia_ids],
+                fibula_vertices=vertices[fibula_ids],
+                current_platform_center=source_platform,
+                current_distal_endpoint=source_distal,
+                target_platform_center=source_platform
+                + float(shift) * proximal_direction,
+            )
+            mapped_medial = apply_whole_bone_affine_v8(
+                vertices[medial_platform], fitted.fit
+            )
+            mapped_lateral = apply_whole_bone_affine_v8(
+                vertices[lateral_platform], fitted.fit
+            )
+            medial_gap = float(medial_tree.query(mapped_medial)[0].min())
+            lateral_gap = float(lateral_tree.query(mapped_lateral)[0].min())
+            objective = (
+                (medial_gap - float(target_surface_gap_m)) ** 2
+                + (lateral_gap - float(target_surface_gap_m)) ** 2
+            )
+            candidate = (
+                objective,
+                float(shift),
+                medial_gap,
+                lateral_gap,
+                fitted,
+            )
+            if best is None or candidate[:4] < best[:4]:
+                best = candidate
+        if best is None:
+            raise AssertionError("knee platform search produced no candidate")
+        _objective, shift, medial_gap, lateral_gap, fitted = best
+        axial_scale = float(fitted.fit.axial_scale)
+        if not 0.90 <= axial_scale <= 1.10:
+            raise ValueError(
+                f"{side} whole-shank axial scale {axial_scale:.6f} "
+                "is outside [0.90, 1.10]"
+            )
+        vertices[tibia_ids] = fitted.tibia_vertices
+        vertices[fibula_ids] = fitted.fibula_vertices
+
+        transformed_bones = np.asarray(
+            [
+                bone_names.index(f"Tibia_Bone_{suffix}"),
+                bone_names.index(f"Tibia_Twist_{suffix}"),
+                bone_names.index(effector),
+            ],
+            dtype=np.int64,
+        )
+        bind = update_target_bind_with_whole_bone_fit_v8(
+            target_bone_head=target_head,
+            target_bone_tail=target_tail,
+            target_rest_global=target_global,
+            parents=parents,
+            transformed_bone_indices=transformed_bones,
+            fit=fitted.fit,
+        )
+        target_head = np.asarray(bind.target_bone_head, dtype=np.float64)
+        target_tail = np.asarray(bind.target_bone_tail, dtype=np.float64)
+        target_global = np.asarray(bind.target_rest_global, dtype=np.float64)
+        report["sides"][side] = {
+            "platform_shift_m": shift,
+            "fit_medial_gap_m": medial_gap,
+            "fit_lateral_gap_m": lateral_gap,
+            "axial_scale": axial_scale,
+            "radial_scales": [1.0, 1.0],
+            "distal_anchor_m": source_distal.tolist(),
+            "transformed_bones": [
+                bone_names[index] for index in transformed_bones.tolist()
+            ],
+            "affine": fitted.affine.tolist(),
+        }
+
+    target_local = _global_to_local(target_global, parents)
+    metadata = dict(asset.metadata or {})
+    metadata["v8_whole_shank_knee_ankle_fit"] = report
+    result = replace(
+        asset,
+        vertices_rest=vertices.astype(np.float32),
+        target_bone_head=target_head.astype(np.float32),
+        target_bone_tail=target_tail.astype(np.float32),
+        target_rest_global=target_global.astype(np.float32),
+        target_rest_local=target_local.astype(np.float32),
+        target_inverse_bind=np.linalg.inv(target_global).astype(np.float32),
+        source_driver_coupling=None,
+        metadata=metadata,
+    )
+    result.validate()
+    return result, report
+
+
+def calibrate_ankle_roll_glide_v8(
+    asset: AnatomyRiggedAsset,
+    *,
+    domains: Mapping[str, np.ndarray],
+    target_surface_gap_m: float = 0.0015,
+    maximum_translation_m: float = 0.012,
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Bake a small whole-foot translation law from frozen contact surfaces.
+
+    The law moves the complete ankle/foot subtree in parent-local coordinates;
+    it never projects talus vertices or changes foot topology.  Fit domains
+    determine the coefficients and disjoint validation domains measure them.
+    """
+
+    from scipy.optimize import minimize
+    from scipy.spatial import cKDTree
+
+    from .anatomy_lbs import source_bone_posed_global, skin_vertices
+
+    names = list(asset.source_bone_names or ())
+    metadata = dict(asset.metadata or {})
+    metadata.pop("source_ankle_roll_glide_v8", None)
+    base = replace(asset, metadata=metadata)
+    knot_angles_deg = np.asarray(
+        (-60.0, -30.0, 0.0, 30.0, 60.0), dtype=np.float64
+    )
+    validation_rotvecs: list[np.ndarray] = []
+    for axis in range(3):
+        for angle in (-45.0, -15.0, 15.0, 45.0):
+            value = np.zeros(3, dtype=np.float64)
+            value[axis] = np.radians(angle)
+            validation_rotvecs.append(value)
+    report: dict[str, Any] = {
+        "available": True,
+        "fit_uses_validation_vertices": False,
+        "whole_foot_translation_only": True,
+        "sides": {},
+    }
+    responses: dict[str, Any] = {}
+    for side, suffix, joint in (("left", "L", 7), ("right", "R", 8)):
+        ankle_bone = names.index(f"Ankle_Rot_{suffix}")
+        parent = int(np.asarray(asset.source_bone_parents)[ankle_bone])
+        fit_ids = {
+            part: np.asarray(
+                domains[f"ankle/{side}/{part}.fit"], dtype=np.int64
+            )
+            for part in ("tibia", "fibula", "talus")
+        }
+        validation_ids = {
+            part: np.asarray(
+                domains[f"ankle/{side}/{part}.validation"], dtype=np.int64
+            )
+            for part in ("tibia", "fibula", "talus")
+        }
+        axis_translations = np.zeros(
+            (3, len(knot_angles_deg), 3), dtype=np.float64
+        )
+        fit_gaps: list[list[float]] = []
+        for axis in range(3):
+            for knot_index, angle_deg in enumerate(knot_angles_deg):
+                if angle_deg == 0.0:
+                    continue
+                rotvec = np.zeros(3, dtype=np.float64)
+                rotvec[axis] = np.radians(angle_deg)
+                pose = np.zeros((55, 3), dtype=np.float32)
+                pose[joint] = rotvec.astype(np.float32)
+                posed = skin_vertices(base, pose, validate=False)
+                tibia = np.asarray(
+                    posed[fit_ids["tibia"]], dtype=np.float64
+                )
+                fibula = np.asarray(
+                    posed[fit_ids["fibula"]], dtype=np.float64
+                )
+                talus = np.asarray(
+                    posed[fit_ids["talus"]], dtype=np.float64
+                )
+
+                def objective(raw_translation: Any) -> float:
+                    translation = np.asarray(raw_translation, dtype=np.float64)
+                    shifted = talus + translation
+                    tree = cKDTree(shifted)
+                    gaps = (
+                        float(tree.query(tibia)[0].min()),
+                        float(tree.query(fibula)[0].min()),
+                    )
+                    return float(
+                        sum(
+                            (gap - float(target_surface_gap_m)) ** 2
+                            for gap in gaps
+                        )
+                        + 0.02 * float(np.dot(translation, translation))
+                    )
+
+                solved = minimize(
+                    objective,
+                    np.zeros(3, dtype=np.float64),
+                    method="Powell",
+                    bounds=[
+                        (-maximum_translation_m, maximum_translation_m)
+                    ] * 3,
+                    options={
+                        "maxiter": 80,
+                        "xtol": 1.0e-7,
+                        "ftol": 1.0e-12,
+                    },
+                )
+                translation_world = np.asarray(solved.x, dtype=np.float64)
+                if (
+                    not solved.success
+                    or not np.all(np.isfinite(translation_world))
+                    or float(np.linalg.norm(translation_world))
+                    > float(maximum_translation_m) + 1.0e-7
+                ):
+                    raise ValueError(
+                        f"{side} ankle roll-glide calibration failed"
+                    )
+                posed_bones = source_bone_posed_global(base, pose)
+                axis_translations[axis, knot_index] = (
+                    posed_bones[parent, :3, :3].T @ translation_world
+                )
+                shifted = talus + translation_world
+                tree = cKDTree(shifted)
+                fit_gaps.append(
+                    [
+                        float(tree.query(tibia)[0].min()),
+                        float(tree.query(fibula)[0].min()),
+                    ]
+                )
+        response = {
+            "smplx_joint": joint,
+            "axis_knots_rad": np.tile(
+                np.radians(knot_angles_deg), (3, 1)
+            ).tolist(),
+            "axis_translation_parent_local_m": axis_translations.tolist(),
+            "maximum_translation_m": float(maximum_translation_m * 2.0),
+        }
+        responses[str(ankle_bone)] = response
+        candidate_metadata = {
+            **metadata,
+            "source_ankle_roll_glide_v8": {str(ankle_bone): response},
+        }
+        candidate = replace(base, metadata=candidate_metadata)
+        validation_gaps: list[list[float]] = []
+        for rotvec in validation_rotvecs:
+            pose = np.zeros((55, 3), dtype=np.float32)
+            pose[joint] = rotvec.astype(np.float32)
+            posed = skin_vertices(candidate, pose, validate=False)
+            talus = np.asarray(
+                posed[validation_ids["talus"]], dtype=np.float64
+            )
+            tree = cKDTree(talus)
+            validation_gaps.append(
+                [
+                    float(
+                        tree.query(posed[validation_ids["tibia"]])[0].min()
+                    ),
+                    float(
+                        tree.query(posed[validation_ids["fibula"]])[0].min()
+                    ),
+                ]
+            )
+        report["sides"][side] = {
+            "ankle_bone": ankle_bone,
+            "smplx_joint": joint,
+            "training_sample_count": int(3 * (len(knot_angles_deg) - 1)),
+            "validation_sample_count": len(validation_rotvecs),
+            "fit_max_gap_m": float(np.max(fit_gaps)),
+            "validation_max_gap_m": float(np.max(validation_gaps)),
+            "coefficient_norm": float(np.linalg.norm(axis_translations)),
+        }
+    metadata["source_ankle_roll_glide_v8"] = responses
+    result = replace(base, metadata=metadata)
+    result.validate()
+    return result, report
+
+
 __all__ = [
     "ArticularWholeBoneFitV8",
     "TargetBindUpdateV8",
     "TibiaFibulaWholeBoneFitV8",
     "apply_fit_to_meshes_v8",
     "apply_whole_bone_affine_v8",
+    "calibrate_ankle_roll_glide_v8",
     "fit_femur_to_acetabulum_v8",
     "fit_tibia_fibula_to_platform_v8",
     "reconstruct_hip_compounds_v8",
+    "reconstruct_knee_ankle_compounds_v8",
     "update_target_bind_with_whole_bone_fit_v8",
     "whole_bone_affine_matrix_v8",
 ]

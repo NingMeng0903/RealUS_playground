@@ -30,7 +30,7 @@ def test_canonical_embedding_is_common_yaw_and_tcp_roll_invariant():
 
 def test_signed_field_is_smooth_and_differentiable():
     model = SignedReachabilityField(width=32, depth=2, fourier_bands=2)
-    x = torch.tensor([[0.1, 0.7, 0.4, -0.1, 0.2]], requires_grad=True)
+    x = torch.tensor([[0.1, 0.7, 0.4, -0.1, 0.2, 0.5, 0.0, -0.3, 0.6]], requires_grad=True)
     y = model(x)
     y.sum().backward()
     assert x.grad is not None

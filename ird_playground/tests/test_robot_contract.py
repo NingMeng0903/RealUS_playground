@@ -178,3 +178,94 @@ def test_tool_frame_matches_pinocchio_flange_to_tcp_placement():
         T_flange = model.data.oMf[flange_id].homogeneous
         T_tcp = model.data.oMf[model.tcp_id].homogeneous
         assert np.allclose(T_flange @ tool, T_tcp, atol=1.0e-9)
+
+
+def test_axis_counterexample_8d_ambiguity_resolved_by_9d():
+    """On the J1 axis the old 8-D embedding collides; 9-D separates the orbits.
+
+    Constructed pair: identical ``(p_z, r, u_x·ẑ, u_z·ẑ)`` and zero mixed
+    products, but opposite ``u_y·ẑ``.  Orbit distance is large while the
+    truncated 8-D embedding difference is exactly zero.
+    """
+    torch = pytest.importorskip("torch")
+    from ird_playground.ird.canonical import (
+        FLANGE_CANONICAL_DIM,
+        FLANGE_RADIAL_EPS,
+        canonical_flange_invariants_torch,
+    )
+
+    def rotation_with_third_row(third_row: np.ndarray) -> np.ndarray:
+        n = np.asarray(third_row, dtype=np.float64)
+        n = n / np.linalg.norm(n)
+        tmp = np.array([1.0, 0.0, 0.0]) if abs(n[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
+        r0 = tmp - n * np.dot(tmp, n)
+        r0 = r0 / np.linalg.norm(r0)
+        r1 = np.cross(n, r0)  # r0 × r1 = n  → right-handed rows
+        return np.stack((r0, r1, n), axis=0)
+
+    a, b = 0.3, 0.8
+    c = float(np.sqrt(max(0.0, 1.0 - a * a - b * b)))
+    R_a = rotation_with_third_row(np.array([a, b, c]))
+    R_b = rotation_with_third_row(np.array([a, -b, c]))
+    p = np.array([0.0, 0.0, 0.35], dtype=np.float64)
+
+    p_t = torch.as_tensor(np.stack((p, p)), dtype=torch.float64)
+    R_t = torch.as_tensor(np.stack((R_a, R_b)), dtype=torch.float64)
+    emb = canonical_flange_invariants_torch(p_t, R_t).numpy()
+    assert emb.shape[-1] == FLANGE_CANONICAL_DIM
+
+    emb8_a, emb8_b = emb[0, :8], emb[1, :8]
+    assert float(np.max(np.abs(emb8_a - emb8_b))) == pytest.approx(0.0, abs=1e-12)
+    assert abs(float(emb[0, 8] - emb[1, 8])) > 0.5
+    assert float(emb[0, 8]) == pytest.approx(b, abs=1e-9)
+    assert float(emb[1, 8]) == pytest.approx(-b, abs=1e-9)
+
+    # Finite derivative of r = sqrt(px²+py²+eps) at the axis tip.
+    p0 = torch.tensor([[0.0, 0.0, 0.35]], dtype=torch.float64, requires_grad=True)
+    R0 = torch.as_tensor(R_a[None], dtype=torch.float64)
+    e0 = canonical_flange_invariants_torch(p0, R0)
+    e0[0, 1].backward()
+    assert p0.grad is not None
+    assert torch.isfinite(p0.grad).all()
+    # At px=py=0, ∂r/∂p = 0 and r = sqrt(eps).
+    assert float(e0[0, 1].detach()) == pytest.approx(np.sqrt(FLANGE_RADIAL_EPS), rel=0, abs=1e-12)
+    assert float(torch.linalg.vector_norm(p0.grad[0, :2])) < 1e-9
+
+
+def test_collision_guard_rejects_side_branch_under_rail_base(tmp_path):
+    """Subtree-complement guard must catch gantry-like side-branch collisions.
+
+    An ancestor-only walk would silently allow a ``cable_carrier`` hanging off
+    ``rail_base``; the complement of ``joint_1``'s subtree must reject it.
+    ``base_link`` remains whitelisted.
+    """
+    import shutil
+    import xml.etree.ElementTree as ET
+
+    from ird_playground.ird.robot_model import RobotModelSpec
+
+    spec = RobotModelSpec.default_probe45()
+    mutated = tmp_path / "side_branch.collision.urdf"
+    shutil.copy(spec.collision_urdf, mutated)
+    root = ET.parse(mutated).getroot()
+    carrier = ET.SubElement(root, "link", {"name": "cable_carrier"})
+    coll = ET.SubElement(carrier, "collision")
+    geom = ET.SubElement(coll, "geometry")
+    ET.SubElement(geom, "box", {"size": "0.05 0.05 0.05"})
+    joint = ET.SubElement(root, "joint", {"name": "rail_to_cable_carrier", "type": "fixed"})
+    ET.SubElement(joint, "parent", {"link": "rail_base"})
+    ET.SubElement(joint, "child", {"link": "cable_carrier"})
+    ET.SubElement(joint, "origin", {"xyz": "0.3 0 0", "rpy": "0 0 0"})
+    ET.ElementTree(root).write(mutated, encoding="unicode")
+
+    bad = RobotModelSpec(
+        kinematics_urdf=spec.kinematics_urdf,
+        collision_urdf=mutated,
+        collision_pairs=spec.collision_pairs,
+    )
+    with pytest.raises(ValueError, match="cable_carrier"):
+        bad.assert_base_yaw_invariant_collision_model()
+
+    # Whitelist still exempts base_link on the stock collision URDF.
+    spec.assert_base_yaw_invariant_collision_model()
+
