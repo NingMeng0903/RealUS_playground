@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- RM75-6F-8dof collision URDF: rail (no collision) + arm mesh collision. -->
 <robot name="RM75-6F-8dof">
+  <!-- Rail / gantry links carry NO collision geometry on purpose: they are world
+       fixed and would break the base-yaw symmetry that the RM4D flange quotient
+       chart relies on. Environment collision belongs in the runtime controller. -->
   <link name="rail_base">
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0" />

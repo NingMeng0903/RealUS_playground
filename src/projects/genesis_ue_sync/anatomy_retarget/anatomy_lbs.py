@@ -1797,6 +1797,8 @@ def skin_vertices(
     *,
     transl: Any | None = None,
     runtime_coefficients: dict[str, np.ndarray] | None = None,
+    runtime_tube_pack: Any | None = None,
+    runtime_tube_pack_validated: bool = False,
     validate: bool = True,
 ) -> np.ndarray:
     if validate:
@@ -1820,17 +1822,39 @@ def skin_vertices(
         # measured a different runtime from CPU tests.
         posed = _skin_vertices_cuda(asset, transforms, None)
     else:
+        homo = np.concatenate(
+            [vertices, np.ones((vertices.shape[0], 1), dtype=np.float32)],
+            axis=1,
+        )
         if asset.driver_indices is not None and asset.driver_weights is not None:
-            selected = transforms[np.asarray(asset.driver_indices, dtype=np.int64)]
-            blended = np.sum(
-                selected
-                * np.asarray(asset.driver_weights, dtype=np.float32)[
-                    ..., None, None
-                ],
-                axis=1,
-            )
             dqs_indices = np.asarray(asset.driver_indices, dtype=np.int64)
             dqs_weights = np.asarray(asset.driver_weights, dtype=np.float32)
+            # Authored anatomy is overwhelmingly rigid: on the V71 asset about
+            # 81% of vertices have exactly one non-zero Armature influence.
+            # Gathering [N,14,4,4] for those rows wasted hundreds of MB and
+            # dominated resident pose latency.  Keep the exact matrix-LBS
+            # result while evaluating the single-weight rows directly.
+            single = (
+                np.abs(dqs_weights[:, 0] - 1.0) <= 1.0e-7
+            ) & np.all(np.abs(dqs_weights[:, 1:]) <= 1.0e-12, axis=1)
+            posed = np.empty((len(vertices), 3), dtype=np.float32)
+            if np.any(single):
+                direct = transforms[dqs_indices[single, 0], :3, :]
+                posed[single] = np.matmul(
+                    direct, homo[single, :, None]
+                )[:, :, 0]
+            multiple = ~single
+            if np.any(multiple):
+                selected = transforms[dqs_indices[multiple]]
+                blended_multiple = np.sum(
+                    selected
+                    * dqs_weights[multiple, ..., None, None],
+                    axis=1,
+                )
+                posed[multiple] = np.matmul(
+                    blended_multiple[:, :3, :],
+                    homo[multiple, :, None],
+                )[:, :, 0]
         else:
             weights = _dense_asset_weights(asset)
             joint_count = min(transforms.shape[0], weights.shape[1])
@@ -1843,13 +1867,9 @@ def skin_vertices(
             dqs_indices, dqs_weights = sparse_driver_weights(
                 weights[:, :joint_count]
             )
-        homo = np.concatenate(
-            [vertices, np.ones((vertices.shape[0], 1), dtype=np.float32)],
-            axis=1,
-        )
-        posed = np.matmul(blended, homo[:, :, None])[:, :3, 0].astype(
-            np.float32
-        )
+            posed = np.matmul(blended, homo[:, :, None])[:, :3, 0].astype(
+                np.float32
+            )
         soft_mask = _soft_tissue_vertex_mask(asset)
         if _dqs_requested() and np.any(soft_mask):
             posed[soft_mask] = _dual_quaternion_skin_numpy(
@@ -1870,7 +1890,35 @@ def skin_vertices(
 
         posed = apply_station_pose_follow(asset, transforms, posed)
         posed = apply_regional_organ_follow(asset, posed)
-    if runtime_coefficients:
+    if runtime_tube_pack is not None:
+        from .tube_frames_v8 import apply_tube_coupling_v8
+
+        posed = apply_tube_coupling_v8(
+            asset,
+            transforms,
+            posed,
+            runtime_tube_pack,
+            runtime_fields=runtime_coefficients,
+            validate_live=not bool(runtime_tube_pack_validated),
+        )
+    elif runtime_coefficients and any(
+        str(name).startswith("tube_coupling_v8.")
+        for name in runtime_coefficients
+    ):
+        from .tube_frames_v8 import (
+            apply_tube_coupling_v8,
+            tube_coupling_pack_from_runtime_fields_v8,
+        )
+
+        pack = tube_coupling_pack_from_runtime_fields_v8(runtime_coefficients)
+        posed = apply_tube_coupling_v8(
+            asset,
+            transforms,
+            posed,
+            pack,
+            runtime_fields=runtime_coefficients,
+        )
+    elif runtime_coefficients:
         from .tube_frames_v7 import apply_tube_material_frames_v7
 
         posed = apply_tube_material_frames_v7(

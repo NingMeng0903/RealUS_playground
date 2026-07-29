@@ -1,9 +1,9 @@
-"""Continuous RM4D-style invariants for arm reachability queries.
+"""Continuous flange-based RM4D-style invariants for arm reachability queries.
 
-The first and last RM75 joints are effectively periodic.  Reachability is
-therefore invariant to a common yaw of the base/TCP and, up to the separately
-audited probe-collision correction, to TCP roll.  The five values below form a
-smooth redundant embedding of the intrinsic four-dimensional quotient space.
+Only base yaw (J1) is a true free symmetry for the probe45 TCP.  The flange
+(link_7) chart therefore quotients solely by that yaw, using an 8-D smooth
+redundant embedding of the intrinsic 5-D quotient.  TCP roll is NOT quotiented:
+probe45's TCP z-axis is ~50° off the J7 axis, so TCP-roll invariance is false.
 """
 
 from __future__ import annotations
@@ -15,8 +15,19 @@ try:
 except ImportError:  # pragma: no cover
     torch = None  # type: ignore
 
+from ird_playground.ird.tool_frame import pose_tcp_to_flange
+
 
 CANONICAL_DIM = 5
+FLANGE_CANONICAL_DIM = 8
+
+# The 8-D flange embedding splits into two blocks with different symmetry
+# status.  The z-block is built from the flange z axis, which is the J7
+# rotation axis, so it is invariant to the J7 roll.  The x-block is built from
+# the flange x axis and therefore carries the flange roll gamma, which is a
+# genuine degree of freedom rather than a symmetry and must NOT be quotiented.
+FLANGE_J7_INVARIANT_INDEX = (0, 1, 5, 6, 7)
+FLANGE_ROLL_INDEX = (2, 3, 4)
 
 
 def rotation_from_6d_torch(rot6d: "torch.Tensor") -> "torch.Tensor":
@@ -32,11 +43,10 @@ def canonical_invariants_torch(
     position_base_tcp: "torch.Tensor",
     rotation_base_tcp: "torch.Tensor",
 ) -> "torch.Tensor":
-    """Map a base-to-TCP pose to a smooth yaw/roll-invariant embedding.
+    """Legacy TCP chart ``[p_z, u_z, ||p_xy||, p_xy·u_xy, p_xy×u_xy]``.
 
-    Returns ``[p_z, u_z, ||p_xy||, p_xy dot u_xy, p_xy cross u_xy]``, where
-    ``u`` is the TCP approach axis.  These values are invariant to a common
-    rotation around the robot base z axis and avoid RM4D's atan2 pole.
+    Kept for audits and reverse regression tests.  Do NOT use for new training:
+    with probe45 this chart is not invariant to q7.
     """
     p = position_base_tcp
     u = rotation_base_tcp[..., :, 2]
@@ -48,57 +58,60 @@ def canonical_invariants_torch(
     return torch.stack((pz, uz, radial, dot, cross), dim=-1)
 
 
+def canonical_flange_invariants_torch(
+    position_base_flange: "torch.Tensor",
+    rotation_base_flange: "torch.Tensor",
+) -> "torch.Tensor":
+    """8-D yaw-invariant embedding of the flange pose in the J1-axis frame.
+
+    Returns
+    -------
+    ``[p_z, r,
+       u_x·ẑ, p_xy·u_x,xy, p_xy×u_x,xy,
+       u_z·ẑ, p_xy·u_z,xy, p_xy×u_z,xy]``
+
+    where ``u_x`` / ``u_z`` are the flange x / z axes.  Quotients only base yaw;
+    flange roll γ is retained (exact 5-D chart, smooth 8-D embedding).
+    """
+    p = position_base_flange
+    ux = rotation_base_flange[..., :, 0]
+    uz = rotation_base_flange[..., :, 2]
+    px, py, pz = p.unbind(-1)
+    uxx, uxy, uxz = ux.unbind(-1)
+    uzx, uzy, uzz = uz.unbind(-1)
+    radial = torch.sqrt(px.square() + py.square() + 1.0e-12)
+    return torch.stack(
+        (
+            pz,
+            radial,
+            uxz,
+            px * uxx + py * uxy,
+            px * uxy - py * uxx,
+            uzz,
+            px * uzx + py * uzy,
+            px * uzy - py * uzx,
+        ),
+        dim=-1,
+    )
+
+
 def pose_in_axis_frame_torch(
-    position_root_tcp: "torch.Tensor",
-    rotation_root_tcp: "torch.Tensor",
+    position_root: "torch.Tensor",
+    rotation_root: "torch.Tensor",
     T_root_axis: "torch.Tensor",
 ) -> tuple["torch.Tensor", "torch.Tensor"]:
-    """Express a root-frame TCP pose in the physical J1-axis frame."""
+    """Express a root-frame pose in the physical J1-axis frame."""
     T = T_root_axis.to(
-        dtype=position_root_tcp.dtype,
-        device=position_root_tcp.device,
+        dtype=position_root.dtype,
+        device=position_root.device,
     )
     Ra = T[..., :3, :3]
     pa = T[..., :3, 3]
-    R_axis_tcp = Ra.transpose(-1, -2) @ rotation_root_tcp
-    p_axis_tcp = (
-        Ra.transpose(-1, -2) @ (position_root_tcp - pa).unsqueeze(-1)
+    R_axis = Ra.transpose(-1, -2) @ rotation_root
+    p_axis = (
+        Ra.transpose(-1, -2) @ (position_root - pa).unsqueeze(-1)
     ).squeeze(-1)
-    return p_axis_tcp, R_axis_tcp
-
-
-def canonical_from_se3_features_torch(
-    features: "torch.Tensor",
-    T_root_axis: "torch.Tensor | None" = None,
-) -> "torch.Tensor":
-    if features.shape[-1] != 9:
-        raise ValueError(f"expected se3_9d features, got shape {tuple(features.shape)}")
-    p = features[..., :3]
-    R = rotation_from_6d_torch(features[..., 3:9])
-    if T_root_axis is not None:
-        p, R = pose_in_axis_frame_torch(p, R, T_root_axis)
-    return canonical_invariants_torch(p, R)
-
-
-def canonical_from_se3_features(
-    features: np.ndarray,
-    *,
-    T_root_axis: np.ndarray | None = None,
-    batch_size: int = 262_144,
-) -> np.ndarray:
-    """NumPy batch wrapper used while preparing offline GT."""
-    if torch is None:
-        raise ImportError("torch required")
-    x = np.asarray(features, dtype=np.float32)
-    out = []
-    axis = None if T_root_axis is None else torch.as_tensor(
-        np.asarray(T_root_axis, dtype=np.float32)
-    )
-    with torch.no_grad():
-        for start in range(0, len(x), batch_size):
-            t = torch.from_numpy(x[start : start + batch_size])
-            out.append(canonical_from_se3_features_torch(t, axis).numpy())
-    return np.concatenate(out, axis=0).astype(np.float32)
+    return p_axis, R_axis
 
 
 def base_to_tcp_from_world_torch(
@@ -115,18 +128,112 @@ def base_to_tcp_from_world_torch(
     return p, R
 
 
+def canonical_from_se3_features_torch(
+    features: "torch.Tensor",
+    T_root_axis: "torch.Tensor | None" = None,
+) -> "torch.Tensor":
+    """Legacy TCP chart from ``se3_rot6d9`` features."""
+    if features.shape[-1] != 9:
+        raise ValueError(f"expected se3_9d features, got shape {tuple(features.shape)}")
+    p = features[..., :3]
+    R = rotation_from_6d_torch(features[..., 3:9])
+    if T_root_axis is not None:
+        p, R = pose_in_axis_frame_torch(p, R, T_root_axis)
+    return canonical_invariants_torch(p, R)
+
+
+def canonical_flange_from_se3_features_torch(
+    features: "torch.Tensor",
+    T_flange_tcp: "torch.Tensor",
+    T_root_axis: "torch.Tensor | None" = None,
+) -> "torch.Tensor":
+    """Flange 8-D chart from TCP ``se3_rot6d9`` features."""
+    if features.shape[-1] != 9:
+        raise ValueError(f"expected se3_9d features, got shape {tuple(features.shape)}")
+    p_tcp = features[..., :3]
+    R_tcp = rotation_from_6d_torch(features[..., 3:9])
+    if T_root_axis is not None:
+        p_tcp, R_tcp = pose_in_axis_frame_torch(p_tcp, R_tcp, T_root_axis)
+    p_fl, R_fl = pose_tcp_to_flange(p_tcp, R_tcp, T_flange_tcp)
+    return canonical_flange_invariants_torch(p_fl, R_fl)
+
+
+def canonical_from_se3_features(
+    features: np.ndarray,
+    *,
+    T_root_axis: np.ndarray | None = None,
+    batch_size: int = 262_144,
+) -> np.ndarray:
+    """NumPy batch wrapper used while preparing offline GT (legacy TCP chart)."""
+    if torch is None:
+        raise ImportError("torch required")
+    x = np.asarray(features, dtype=np.float32)
+    out = []
+    axis = None if T_root_axis is None else torch.as_tensor(
+        np.asarray(T_root_axis, dtype=np.float32)
+    )
+    with torch.no_grad():
+        for start in range(0, len(x), batch_size):
+            t = torch.from_numpy(x[start : start + batch_size])
+            out.append(canonical_from_se3_features_torch(t, axis).numpy())
+    return np.concatenate(out, axis=0).astype(np.float32)
+
+
+def canonical_flange_from_se3_features(
+    features: np.ndarray,
+    T_flange_tcp: np.ndarray,
+    *,
+    T_root_axis: np.ndarray | None = None,
+    batch_size: int = 262_144,
+) -> np.ndarray:
+    """NumPy batch wrapper for the flange 8-D chart."""
+    if torch is None:
+        raise ImportError("torch required")
+    x = np.asarray(features, dtype=np.float32)
+    tool = torch.as_tensor(np.asarray(T_flange_tcp, dtype=np.float32))
+    axis = None if T_root_axis is None else torch.as_tensor(
+        np.asarray(T_root_axis, dtype=np.float32)
+    )
+    out = []
+    with torch.no_grad():
+        for start in range(0, len(x), batch_size):
+            t = torch.from_numpy(x[start : start + batch_size])
+            out.append(
+                canonical_flange_from_se3_features_torch(t, tool, axis).numpy()
+            )
+    return np.concatenate(out, axis=0).astype(np.float32)
+
+
 def canonical_from_world_torch(
     T_tcp_world: "torch.Tensor",
     T_axis_world: "torch.Tensor",
 ) -> "torch.Tensor":
-    """Encode a world TCP pose relative to the physical J1-axis frame."""
+    """Legacy TCP chart of a world TCP pose relative to the J1-axis frame."""
     p, R = base_to_tcp_from_world_torch(T_tcp_world, T_axis_world)
     return canonical_invariants_torch(p, R)
 
 
+def canonical_flange_from_world_torch(
+    T_tcp_world: "torch.Tensor",
+    T_axis_world: "torch.Tensor",
+    T_flange_tcp: "torch.Tensor",
+) -> "torch.Tensor":
+    """Flange 8-D chart of a world TCP pose relative to the J1-axis frame."""
+    p_tcp, R_tcp = base_to_tcp_from_world_torch(T_tcp_world, T_axis_world)
+    p_fl, R_fl = pose_tcp_to_flange(p_tcp, R_tcp, T_flange_tcp)
+    return canonical_flange_invariants_torch(p_fl, R_fl)
+
+
 __all__ = [
     "CANONICAL_DIM",
+    "FLANGE_CANONICAL_DIM",
+    "FLANGE_J7_INVARIANT_INDEX",
+    "FLANGE_ROLL_INDEX",
     "base_to_tcp_from_world_torch",
+    "canonical_flange_from_se3_features",
+    "canonical_flange_from_se3_features_torch",
+    "canonical_flange_from_world_torch",
+    "canonical_flange_invariants_torch",
     "canonical_from_se3_features",
     "canonical_from_se3_features_torch",
     "canonical_from_world_torch",

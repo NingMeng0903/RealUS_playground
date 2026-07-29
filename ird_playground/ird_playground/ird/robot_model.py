@@ -12,7 +12,12 @@ import yaml
 from scipy.spatial.transform import Rotation
 
 
+from ird_playground.ird.metric import LAMBDA_M_PER_RAD, metric_manifest
+from ird_playground.ird.tool_frame import ToolFrame
+
+
 ROBOT_CONTRACT_SCHEMA = "realman_robot_contract_v1"
+DEFAULT_COLLISION_SECURITY_MARGIN_M = 0.01  # align with runtime CBF d_safe
 
 
 def _sha256(path: Path) -> str:
@@ -52,6 +57,37 @@ def _joint_nodes(path: Path) -> dict[str, ET.Element]:
     }
 
 
+def _links_not_moved_by(urdf_path: Path, joint_name: str) -> set[str]:
+    """Links whose pose is independent of ``joint_name`` (its proper ancestors)."""
+    root = ET.parse(urdf_path).getroot()
+    parent_of: dict[str, str] = {}
+    child_of_joint: dict[str, str] = {}
+    for node in root.findall("joint"):
+        parent = node.find("parent")
+        child = node.find("child")
+        if parent is None or child is None:
+            continue
+        parent_of[str(child.get("link"))] = str(parent.get("link"))
+        child_of_joint[str(node.get("name"))] = str(child.get("link"))
+    if joint_name not in child_of_joint:
+        raise ValueError(f"joint {joint_name!r} not found in {urdf_path}")
+    static: set[str] = set()
+    cursor = parent_of.get(child_of_joint[joint_name])
+    while cursor is not None:
+        static.add(cursor)
+        cursor = parent_of.get(cursor)
+    return static
+
+
+def _links_with_collision(urdf_path: Path) -> set[str]:
+    root = ET.parse(urdf_path).getroot()
+    return {
+        str(node.get("name"))
+        for node in root.findall("link")
+        if node.find("collision") is not None
+    }
+
+
 def _mesh_hashes(urdf_path: Path) -> dict[str, str]:
     root = ET.parse(urdf_path).getroot()
     hashes: dict[str, str] = {}
@@ -80,6 +116,12 @@ class RobotModelSpec:
     rail_joint: str = "rail_y"
     rail_locked_at_m: float = 0.0
     j1_joint: str = "joint_1"
+    flange_frame: str = "link_7"
+    collision_security_margin_m: float = DEFAULT_COLLISION_SECURITY_MARGIN_M
+    metric_lambda_m_per_rad: float = LAMBDA_M_PER_RAD
+    # World-fixed links allowed to carry collision geometry because they are
+    # (nominally) axisymmetric about the J1 axis.
+    yaw_invariant_static_links: tuple[str, ...] = ("base_link",)
 
     @classmethod
     def default_probe45(cls) -> "RobotModelSpec":
@@ -113,6 +155,16 @@ class RobotModelSpec:
             rail_joint=str(raw.get("rail_joint", "rail_y")),
             rail_locked_at_m=float(raw.get("rail_locked_at_m", 0.0)),
             j1_joint=str(raw.get("j1_joint", "joint_1")),
+            flange_frame=str(raw.get("flange_frame", "link_7")),
+            collision_security_margin_m=float(
+                raw.get(
+                    "collision_security_margin_m",
+                    DEFAULT_COLLISION_SECURITY_MARGIN_M,
+                )
+            ),
+            metric_lambda_m_per_rad=float(
+                raw.get("metric_lambda_m_per_rad", LAMBDA_M_PER_RAD)
+            ),
         )
 
     def validate(self) -> None:
@@ -121,12 +173,12 @@ class RobotModelSpec:
                 raise FileNotFoundError(path)
         kin = _joint_nodes(self.kinematics_urdf)
         collision = _joint_nodes(self.collision_urdf)
-        for name in (self.rail_joint, self.j1_joint, self.tcp_joint):
+        for name in (self.rail_joint, self.j1_joint, self.tcp_joint, "joint_7"):
             if name not in kin:
                 raise ValueError(f"joint {name!r} missing from {self.kinematics_urdf}")
             if name not in collision:
                 raise ValueError(f"joint {name!r} missing from {self.collision_urdf}")
-        for name in (self.rail_joint, self.j1_joint, self.tcp_joint):
+        for name in (self.rail_joint, self.j1_joint, self.tcp_joint, "joint_7"):
             a = _origin_matrix(kin[name].find("origin"))
             b = _origin_matrix(collision[name].find("origin"))
             if not np.allclose(a, b, atol=1.0e-9):
@@ -143,7 +195,35 @@ class RobotModelSpec:
             raise ValueError(
                 f"rail_locked_at_m={self.rail_locked_at_m} outside [{lo}, {hi}]"
             )
+        if self.collision_security_margin_m < 0.0:
+            raise ValueError("collision_security_margin_m must be >= 0")
+        self.assert_base_yaw_invariant_collision_model()
         _mesh_hashes(self.collision_urdf)
+
+    def assert_base_yaw_invariant_collision_model(self) -> None:
+        """Reject world-fixed collision geometry that would break the yaw quotient.
+
+        The flange chart quotients base yaw, which is only a symmetry when every
+        collision body either rotates with ``joint_1`` or is axisymmetric about
+        the J1 axis. ``base_link`` is the one allowed exception (it is nominally
+        axisymmetric; the residual violation is quantified by the Phase 0 audit).
+        Rail / gantry / environment geometry must live in the runtime controller.
+        """
+        static = _links_not_moved_by(self.collision_urdf, self.j1_joint)
+        offending = sorted(
+            (static & _links_with_collision(self.collision_urdf))
+            - set(self.yaw_invariant_static_links)
+        )
+        if offending:
+            raise ValueError(
+                "collision URDF puts collision geometry on world-fixed links "
+                f"{offending}, which breaks the base-yaw symmetry required by the "
+                "RM4D flange quotient chart; model environment collision in the "
+                "runtime controller instead"
+            )
+
+    def tool_frame(self) -> ToolFrame:
+        return ToolFrame.from_urdf(self.kinematics_urdf, joint_name=self.tcp_joint)
 
     def rail_limits_m(self) -> tuple[float, float]:
         joint = _joint_nodes(self.kinematics_urdf)[self.rail_joint]
@@ -212,6 +292,7 @@ class RobotModelSpec:
     def to_manifest(self) -> dict:
         self.validate()
         rail_lo, rail_hi = self.rail_limits_m()
+        tool = self.tool_frame()
         return {
             "schema": ROBOT_CONTRACT_SCHEMA,
             "kinematics_urdf": str(self.kinematics_urdf.resolve()),
@@ -223,12 +304,19 @@ class RobotModelSpec:
             "collision_mesh_sha256": _mesh_hashes(self.collision_urdf),
             "tcp_frame": self.tcp_frame,
             "tcp_joint": self.tcp_joint,
+            "flange_frame": self.flange_frame,
             "root_frame": self.root_frame,
             "rail_joint": self.rail_joint,
             "rail_locked_at_m": self.rail_locked_at_m,
             "rail_limits_m": [rail_lo, rail_hi],
             "j1_joint": self.j1_joint,
             "T_root_j1_axis": self.root_to_j1_axis().tolist(),
+            "T_flange_tcp": tool.T_flange_tcp.tolist(),
+            "tool_frame": tool.to_manifest(),
+            "collision_security_margin_m": self.collision_security_margin_m,
+            "metric": metric_manifest(lambda_m_per_rad=self.metric_lambda_m_per_rad),
+            "collision_scope": "arm_body_self_collision_only",
+            "yaw_invariant_static_links": list(self.yaw_invariant_static_links),
         }
 
 

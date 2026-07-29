@@ -18,6 +18,25 @@ from ird_playground.ird.torch_kinematics import so3_exp
 from ird_playground.region.operator import RegionA, RegionAConfig, normalized_softmin
 
 
+def so3_log_batch(R: "torch.Tensor") -> "torch.Tensor":
+    """Batch SO(3) logarithm."""
+    trace = R[..., 0, 0] + R[..., 1, 1] + R[..., 2, 2]
+    cos_theta = ((trace - 1.0) * 0.5).clamp(-1.0 + 1e-7, 1.0 - 1e-7)
+    theta = torch.acos(cos_theta)
+    vee = torch.stack(
+        [
+            R[..., 2, 1] - R[..., 1, 2],
+            R[..., 0, 2] - R[..., 2, 0],
+            R[..., 1, 0] - R[..., 0, 1],
+        ],
+        dim=-1,
+    )
+    sin_theta = torch.sin(theta)
+    factor = theta / (2.0 * sin_theta.clamp_min(1e-7))
+    factor = torch.where(theta < 1e-4, 0.5 + theta * theta / 12.0, factor)
+    return factor.unsqueeze(-1) * vee
+
+
 Aggregation = Literal["select", "robust", "expectation", "cvar"]
 TrajectoryAggregation = Literal["softmin", "cvar", "min"]
 
@@ -51,12 +70,15 @@ class TrajectoryTaskConfig:
     trajectory_tau: float = 0.15
     trajectory_cvar_fraction: float = 0.10
     coverage_tau: float = 0.15
+    n_path: int = 4
+    path_tau: float = 0.15
 
 
 @dataclass
 class TrajectoryTaskResult:
     trajectory_clearance: "torch.Tensor"
     waypoint_clearance: "torch.Tensor"
+    path_clearance: "torch.Tensor"
     candidate_clearance: "torch.Tensor"
     scenario_clearance: "torch.Tensor"
     waypoint_coverage: "torch.Tensor"
@@ -74,12 +96,13 @@ class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: 
     1. Position/orientation error scenarios are reduced for each angle candidate.
     2. Angle candidates are selected, robustly required, or averaged according
        to their task semantics.
-    3. Per-waypoint margins are reduced across the trajectory.
+    3. Interior samples of each segment are reduced into a per-segment path
+       margin, because the controller requires the whole interpolated path to
+       be solvable and not merely its endpoints.
+    4. Waypoint and segment margins are reduced together into one scalar.
 
-    The current 5-D RM4D field is insensitive to pure TCP roll. Roll candidates
-    become physically meaningful with a roll-aware residual/full-pose field;
-    until then this operator still supports tilt candidates and exposes roll
-    for downstream exact IK and collision validation.
+    Roll candidates are physically meaningful under the flange chart, which
+    quotients only the base yaw and therefore keeps the flange roll explicit.
     """
 
     def __init__(
@@ -107,6 +130,70 @@ class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: 
         self.register_buffer("angle_offsets_rad", angles, persistent=True)
         self.register_buffer("angle_rotvec_local", angles[:, None] * axis[None, :], persistent=True)
         self.region = RegionA(region_config)
+
+    @staticmethod
+    def _interpolate_se3(
+        T0: "torch.Tensor",
+        T1: "torch.Tensor",
+        alpha: "torch.Tensor",
+    ) -> "torch.Tensor":
+        """Linear translation + SO(3) geodesic interpolation."""
+        p0 = T0[..., :3, 3]
+        p1 = T1[..., :3, 3]
+        R0 = T0[..., :3, :3]
+        R1 = T1[..., :3, :3]
+        p = (1.0 - alpha) * p0 + alpha * p1
+        dR = R0.transpose(-1, -2) @ R1
+        dw = so3_log_batch(dR)
+        R = R0 @ so3_exp(alpha * dw)
+        bottom = torch.zeros(*p.shape[:-1], 1, 4, dtype=p.dtype, device=p.device)
+        bottom[..., 0, 3] = 1.0
+        upper = torch.cat((R, p[..., None]), dim=-1)
+        return torch.cat((upper, bottom), dim=-2)
+
+    @staticmethod
+    def _path_samples(
+        T_tcp_world: "torch.Tensor",
+        n_path: int,
+    ) -> "torch.Tensor":
+        """Interior samples per segment, shaped ``[..., W-1, n_path, 4, 4]``."""
+        n_path = max(int(n_path), 0)
+        if T_tcp_world.ndim < 3 or T_tcp_world.shape[-3] < 2 or n_path < 1:
+            return T_tcp_world.new_zeros(*T_tcp_world.shape[:-3], 0, n_path, 4, 4)
+        t0 = T_tcp_world[..., :-1, :, :]
+        t1 = T_tcp_world[..., 1:, :, :]
+        alpha = torch.linspace(
+            1.0 / (n_path + 1),
+            n_path / (n_path + 1),
+            n_path,
+            dtype=T_tcp_world.dtype,
+            device=T_tcp_world.device,
+        )
+        segments = [
+            TrajectoryTaskOperator._interpolate_se3(t0, t1, a) for a in alpha
+        ]
+        return torch.stack(segments, dim=-3)
+
+    @staticmethod
+    def _path_axis(
+        T_axis_world: "torch.Tensor", n_waypoints: int
+    ) -> "torch.Tensor":
+        """Broadcast the axis frame onto ``[..., W-1, n_path, A, S]`` scores.
+
+        A per-waypoint axis stack is trimmed to its segment starts; a single
+        shared frame is broadcast as is.
+        """
+        axis = T_axis_world
+        if axis.ndim >= 3 and axis.shape[-3] == n_waypoints:
+            axis = axis[..., :-1, :, :]
+        return axis[..., None, None, None, :, :]
+
+    def _reduce_trajectory(self, values: "torch.Tensor") -> "torch.Tensor":
+        if self.config.trajectory_aggregation == "softmin":
+            return normalized_softmin(values, self.config.trajectory_tau, dim=-1)
+        if self.config.trajectory_aggregation == "cvar":
+            return lower_cvar(values, self.config.trajectory_cvar_fraction, dim=-1)
+        return values.amin(dim=-1)
 
     @staticmethod
     def _with_local_rotation(
@@ -170,22 +257,42 @@ class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: 
             cvar_fraction=self.config.angle_cvar_fraction,
             probabilities=angle_probabilities,
         )
-        if self.config.trajectory_aggregation == "softmin":
-            trajectory = normalized_softmin(
-                waypoint, self.config.trajectory_tau, dim=-1
+        path_T = self._path_samples(T_tcp_world, self.config.n_path)
+        if path_T.shape[-4] > 0:
+            path_candidates = self._with_local_rotation(path_T, self.angle_rotvec_local)
+            path_scenarios = self.region.perturb_tcp(path_candidates)
+            path_axis = self._path_axis(T_axis_world, T_tcp_world.shape[-3])
+            path_scores = field.score_world(path_scenarios, path_axis)
+            path_scenario = self._aggregate(
+                path_scores,
+                self.config.uncertainty_aggregation,
+                dim=-1,
+                tau=self.config.uncertainty_tau,
+                cvar_fraction=self.config.uncertainty_cvar_fraction,
             )
-        elif self.config.trajectory_aggregation == "cvar":
-            trajectory = lower_cvar(
-                waypoint, self.config.trajectory_cvar_fraction, dim=-1
+            path_angle = self._aggregate(
+                path_scenario,
+                self.config.angle_aggregation,
+                dim=-1,
+                tau=self.config.angle_tau,
+                cvar_fraction=self.config.angle_cvar_fraction,
+                probabilities=angle_probabilities,
             )
+            path_clearance = normalized_softmin(
+                path_angle, self.config.path_tau, dim=-1
+            )
+            terms = torch.cat((waypoint, path_clearance), dim=-1)
         else:
-            trajectory = waypoint.amin(dim=-1)
+            path_clearance = waypoint.new_zeros(*waypoint.shape[:-1], 0)
+            terms = waypoint
+        trajectory = self._reduce_trajectory(terms)
         coverage = torch.sigmoid(
             clearance / max(self.config.coverage_tau, 1.0e-6)
         ).mean(dim=(-1, -2))
         return TrajectoryTaskResult(
             trajectory_clearance=trajectory,
             waypoint_clearance=waypoint,
+            path_clearance=path_clearance,
             candidate_clearance=candidate,
             scenario_clearance=clearance,
             waypoint_coverage=coverage,

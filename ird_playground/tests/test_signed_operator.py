@@ -88,6 +88,92 @@ def test_validation_split_keeps_source_pose_groups_disjoint():
     assert train_sources | val_sources == set(source.tolist())
 
 
+def test_trajectory_path_term_catches_unreachable_segment_interior():
+    """Endpoints reachable but the segment interior is not must be rejected.
+
+    The controller validates the whole interpolated path, so a field that only
+    scores waypoints would happily hand over a trajectory that cannot be
+    executed. The interior sample here sits at y=0, where the field dips.
+    """
+
+    class InteriorDipField:
+        def score_world(self, tcp, axis):
+            del axis
+            y = tcp[..., 1, 3]
+            return torch.abs(y) - 0.05
+
+    region_cfg = RegionAConfig(
+        tangent_m=0.0,
+        binormal_m=0.0,
+        normal_m=0.0,
+        cone_half_angle_deg=0.0,
+        samples=2,
+        seed=5,
+    )
+    common = dict(angle_half_range_deg=0.0, angle_samples=1, trajectory_aggregation="min")
+    with_path = TrajectoryTaskOperator(
+        TrajectoryTaskConfig(**common, n_path=1), region_config=region_cfg
+    )
+    without_path = TrajectoryTaskOperator(
+        TrajectoryTaskConfig(**common, n_path=0), region_config=region_cfg
+    )
+
+    xyz = torch.tensor([[0.3, -0.2, 0.3], [0.3, 0.2, 0.3]], requires_grad=True)
+    eye = torch.eye(4).repeat(2, 1, 1)
+    T = torch.cat(
+        (torch.cat((eye[:, :3, :3], xyz[..., None]), dim=-1), eye[:, 3:4]), dim=-2
+    )
+    axis = torch.eye(4)
+
+    checked = with_path(InteriorDipField(), T, axis)
+    unchecked = without_path(InteriorDipField(), T, axis)
+
+    assert checked.path_clearance.shape == (1,)
+    assert unchecked.path_clearance.shape == (0,)
+    # Both waypoints sit at |y| = 0.2 so the waypoint-only margin is positive.
+    assert torch.all(unchecked.waypoint_clearance > 0.0)
+    assert float(unchecked.trajectory_clearance.detach()) > 0.0
+    # The midpoint sits at y = 0, so the path term must veto the trajectory.
+    assert float(checked.path_clearance[0].detach()) < 0.0
+    assert float(checked.trajectory_clearance.detach()) < 0.0
+    checked.trajectory_clearance.backward()
+    assert xyz.grad is not None and torch.isfinite(xyz.grad).all()
+
+
+def test_trajectory_path_term_handles_per_waypoint_axis_and_batching():
+    class AxisAwareField:
+        def score_world(self, tcp, axis):
+            return tcp[..., 2, 3] - axis[..., 2, 3]
+
+    region_cfg = RegionAConfig(
+        tangent_m=0.0,
+        binormal_m=0.0,
+        normal_m=0.0,
+        cone_half_angle_deg=0.0,
+        samples=3,
+        seed=7,
+    )
+    operator = TrajectoryTaskOperator(
+        TrajectoryTaskConfig(angle_samples=3, n_path=2), region_config=region_cfg
+    )
+
+    batch, n_way = 2, 4
+    T = torch.eye(4).repeat(batch, n_way, 1, 1)
+    T[..., 2, 3] = torch.linspace(0.2, 0.5, n_way)
+    axis = torch.eye(4).repeat(batch, n_way, 1, 1)
+
+    result = operator(AxisAwareField(), T, axis)
+    assert result.waypoint_clearance.shape == (batch, n_way)
+    assert result.path_clearance.shape == (batch, n_way - 1)
+    assert result.trajectory_clearance.shape == (batch,)
+    assert torch.isfinite(result.trajectory_clearance).all()
+
+    shared_axis = torch.eye(4)
+    shared = operator(AxisAwareField(), T, shared_axis)
+    assert shared.path_clearance.shape == (batch, n_way - 1)
+    assert torch.allclose(shared.path_clearance, result.path_clearance, atol=1.0e-6)
+
+
 def test_trajectory_partial_task_keeps_angle_and_uncertainty_semantics_separate():
     class RotationSensitiveField:
         def score_world(self, tcp, axis):
