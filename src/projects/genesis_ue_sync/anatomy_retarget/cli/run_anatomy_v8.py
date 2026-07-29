@@ -118,17 +118,12 @@ from projects.genesis_ue_sync.anatomy_retarget.containment import load_body_surf
 from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import smplx_pose_hash
 from projects.genesis_ue_sync.anatomy_retarget.operator_bake_v8 import (
     build_selective_source_operator_v8,
-    merge_v71_authority_v8,
 )
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import load_rigged_asset
 from projects.genesis_ue_sync.anatomy_retarget.release_v8 import (
     atomic_publish_latest_v8,
     file_digest_v8,
     write_evidence_pack_v8,
-)
-from projects.genesis_ue_sync.anatomy_retarget.tube_frames_v8 import (
-    bake_tube_coupling_v8,
-    tube_coupling_pack_to_runtime_fields_v8,
 )
 from projects.genesis_ue_sync.anatomy_retarget.v8_artifacts import (
     ANATOMY_V8_SCHEMA_VERSION,
@@ -468,13 +463,11 @@ def _run_bake_selective_operator(args: argparse.Namespace) -> int:
             label="V8 reference manifest",
         )
     )
-    merged = merge_v71_authority_v8(v7_operator.template_asset, v71_source)
-    tube_pack, tube_report = bake_tube_coupling_v8(merged)
     operator = build_selective_source_operator_v8(
         v7_operator=v7_operator,
         v71_source=v71_source,
         reference_manifest=reference,
-        runtime_coefficients=tube_coupling_pack_to_runtime_fields_v8(tube_pack),
+        runtime_coefficients={},
         fitted_product=fitted_product,
         continuous_product=continuous_product,
         foot_product=foot_product,
@@ -492,7 +485,8 @@ def _run_bake_selective_operator(args: argparse.Namespace) -> int:
     output = save_source_operator(output_path, operator)
     print(
         f"SourceOperatorV8 selective runtime={operator.runtime_digest()} "
-        f"tube={tube_report['backend']} publishable=false -> {output}"
+        "tube=final_template_rest publishable=false "
+        f"-> {output}"
     )
     return 0
 

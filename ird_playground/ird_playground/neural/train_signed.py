@@ -24,6 +24,7 @@ from ird_playground.neural.signed_field import (
     SignedReachabilityField,
     assert_fitted_normalization,
     compute_input_stats,
+    compute_support_box,
 )
 
 # External holdout modes.  ``orbit`` prefers an explicit ``orbit_id`` column;
@@ -58,6 +59,13 @@ class SignedTrainConfig:
     lambda_signed_value: float = 1.0
     lambda_normal_direction: float = 0.25
     lambda_eikonal: float = 0.05
+    lambda_straddle: float = 0.0
+    straddle_margin: float = 0.05
+    sdf_target_scale: float = 1.0
+    near_band_abs: float = 0.25
+    near_band_boost: float = 1.0
+    boundary_sample_boost: float = 1.0
+    resume_checkpoint: str | None = None
     max_global_rows: int | None = None
     max_boundary_groups: int | None = None
     report_near_axis: bool = True
@@ -102,6 +110,17 @@ def load_signed_train_config(path: str | Path, *, root: Path | None = None) -> S
         lambda_signed_value=float(loss.get("signed_value", 1.0)),
         lambda_normal_direction=float(loss.get("normal_direction", 0.25)),
         lambda_eikonal=float(loss.get("eikonal", 0.05)),
+        lambda_straddle=float(loss.get("straddle", 0.0)),
+        straddle_margin=float(loss.get("straddle_margin", 0.05)),
+        sdf_target_scale=float(loss.get("sdf_target_scale", 1.0)),
+        near_band_abs=float(loss.get("near_band_abs", train.get("near_band_abs", 0.25))),
+        near_band_boost=float(loss.get("near_band_boost", train.get("near_band_boost", 1.0))),
+        boundary_sample_boost=float(train.get("boundary_sample_boost", 1.0)),
+        resume_checkpoint=(
+            None
+            if train.get("resume_checkpoint") in (None, "null", "")
+            else resolve(str(train["resume_checkpoint"]))
+        ),
         max_global_rows=(None if train.get("max_global_rows") in (None, "null") else int(train["max_global_rows"])),
         max_boundary_groups=(None if train.get("max_boundary_groups") in (None, "null") else int(train["max_boundary_groups"])),
         report_near_axis=bool(train.get("report_near_axis", True)),
@@ -262,6 +281,73 @@ def _side_indices(boundary_id: np.ndarray, signed: np.ndarray, positive: bool, n
     return groups, idx[first]
 
 
+def _epoch_order(
+    tr_idx: np.ndarray,
+    boundary_id: np.ndarray,
+    rng: np.random.Generator,
+    *,
+    boundary_sample_boost: float,
+) -> np.ndarray:
+    """Sample one epoch of row ids, optionally oversampling boundary rows."""
+    if boundary_sample_boost <= 1.0 + 1.0e-9:
+        return rng.permutation(tr_idx)
+    weights = np.ones(len(tr_idx), dtype=np.float64)
+    weights[boundary_id[tr_idx] >= 0] *= float(boundary_sample_boost)
+    weights /= weights.sum()
+    return rng.choice(tr_idx, size=len(tr_idx), replace=True, p=weights)
+
+
+def _straddle_hinge_loss(
+    pred: "torch.Tensor",
+    boundary_id: "torch.Tensor",
+    signed: "torch.Tensor",
+    *,
+    margin: float,
+) -> "torch.Tensor":
+    """Push same-group opposite sides across zero (softplus hinge)."""
+    valid = (boundary_id >= 0) & torch.isfinite(signed) & (signed != 0)
+    if int(valid.sum().item()) < 2:
+        return pred.new_zeros(())
+    bid = boundary_id[valid]
+    p = pred[valid]
+    s = signed[valid]
+    _, inv = torch.unique(bid, return_inverse=True)
+    g = int(inv.max().item()) + 1
+    pos = s > 0
+    neg = s < 0
+    pos_min = p.new_full((g,), 1.0e6)
+    neg_max = p.new_full((g,), -1.0e6)
+    if bool(pos.any()):
+        pos_min.scatter_reduce_(0, inv[pos], p[pos], reduce="amin", include_self=True)
+    if bool(neg.any()):
+        neg_max.scatter_reduce_(0, inv[neg], p[neg], reduce="amax", include_self=True)
+    has_pos = p.new_zeros((g,))
+    has_neg = p.new_zeros((g,))
+    if bool(pos.any()):
+        has_pos.scatter_add_(0, inv[pos], torch.ones(int(pos.sum().item()), device=p.device, dtype=p.dtype))
+    if bool(neg.any()):
+        has_neg.scatter_add_(0, inv[neg], torch.ones(int(neg.sum().item()), device=p.device, dtype=p.dtype))
+    both = (has_pos > 0) & (has_neg > 0)
+    if not bool(both.any()):
+        return pred.new_zeros(())
+    return (
+        F.softplus(margin - pos_min[both]) + F.softplus(margin + neg_max[both])
+    ).mean()
+
+
+def _near_band_multiplier(
+    sdf_target: "torch.Tensor",
+    boundary_id: "torch.Tensor",
+    *,
+    near_band_abs: float,
+    near_band_boost: float,
+) -> "torch.Tensor":
+    if near_band_boost <= 1.0 + 1.0e-9:
+        return torch.ones_like(sdf_target)
+    near = (torch.abs(sdf_target) <= near_band_abs) | (boundary_id >= 0)
+    return torch.where(near, sdf_target.new_full((), near_band_boost), sdf_target.new_ones(()))
+
+
 def evaluate_signed_field(
     field: ReachabilitySDF,
     arrays: dict[str, np.ndarray],
@@ -414,14 +500,38 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
     device = torch.device(cfg.device)
     torch.manual_seed(cfg.seed)
     rng = np.random.default_rng(cfg.seed)
+    tool = None
+    contract = dataset_meta.get("robot_contract") if isinstance(dataset_meta, dict) else None
+    if isinstance(contract, dict) and contract.get("T_flange_tcp") is not None:
+        tool = np.asarray(contract["T_flange_tcp"], dtype=np.float32)
+    support_lo, support_hi = compute_support_box(arrays["canonical"][tr_idx])
     model = SignedReachabilityField(
         width=cfg.width,
         depth=cfg.depth,
-        fourier_bands=cfg.fourier_bands,
         softplus_beta=cfg.softplus_beta,
+        fourier_bands=cfg.fourier_bands,
         input_center=input_center,
         input_scale=input_scale,
+        T_flange_tcp=tool,
+        support_lo=support_lo,
+        support_hi=support_hi,
     ).to(device)
+    if cfg.resume_checkpoint is not None:
+        resume_path = Path(cfg.resume_checkpoint)
+        if not resume_path.is_file():
+            raise FileNotFoundError(resume_path)
+        blob = torch.load(resume_path, map_location=device, weights_only=False)
+        state = blob["state_dict"] if isinstance(blob, dict) and "state_dict" in blob else blob
+        filtered = {
+            k: v
+            for k, v in state.items()
+            if k not in {"input_center", "input_scale", "support_lo", "support_hi"}
+        }
+        missing, unexpected = model.load_state_dict(filtered, strict=False)
+        print(
+            f"resume <- {resume_path} missing={len(missing)} unexpected={len(unexpected)}",
+            flush=True,
+        )
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate, weight_decay=cfg.weight_decay)
     supervised_train = arrays.get("classification_weight", np.ones(len(arrays["reachable"]), dtype=np.float32))[tr_idx] > 0
     pos = arrays["reachable"][tr_idx][supervised_train] > 0.5
@@ -432,10 +542,21 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
     history = []
     checkpoint = Path(cfg.checkpoint)
     checkpoint.parent.mkdir(parents=True, exist_ok=True)
+    signed_m = np.asarray(arrays.get("boundary_signed_m", np.full(len(arrays["canonical"]), np.nan)), dtype=np.float32)
+    signed_deg = np.asarray(
+        arrays.get("boundary_signed_rot_deg", np.full(len(arrays["canonical"]), np.nan)),
+        dtype=np.float32,
+    )
+    signed_pair = np.where(np.isfinite(signed_m), signed_m, signed_deg).astype(np.float32)
 
     for epoch in range(cfg.epochs):
-        order = rng.permutation(tr_idx)
-        totals = np.zeros(5, dtype=np.float64)
+        order = _epoch_order(
+            tr_idx,
+            arrays["boundary_id"],
+            rng,
+            boundary_sample_boost=cfg.boundary_sample_boost,
+        )
+        totals = np.zeros(6, dtype=np.float64)
         batches = 0
         model.train()
         for start in range(0, len(order), cfg.batch_size):
@@ -443,12 +564,33 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
             canonical = torch.as_tensor(arrays["canonical"][ids], device=device)
             xn = model.normalize(canonical).detach().requires_grad_(True)
             target_y = torch.as_tensor(arrays["reachable"][ids], device=device)
-            classification_weight = torch.as_tensor(arrays.get("classification_weight", np.ones(len(arrays["reachable"]), dtype=np.float32))[ids], device=device)
+            classification_weight = torch.as_tensor(
+                arrays.get("classification_weight", np.ones(len(arrays["reachable"]), dtype=np.float32))[ids],
+                device=device,
+            )
             target_sdf = torch.as_tensor(arrays["sdf_target"][ids], device=device)
             sdf_weight = torch.as_tensor(arrays["sdf_weight"][ids], device=device)
             normal = torch.as_tensor(arrays["normal"][ids], device=device)
             normal_weight = torch.as_tensor(arrays["normal_weight"][ids], device=device)
             slope = torch.as_tensor(arrays["normal_slope"][ids], device=device)
+            if cfg.sdf_target_scale != 1.0:
+                scale = float(cfg.sdf_target_scale)
+                target_sdf = target_sdf * scale
+                slope = slope * scale
+            bid = torch.as_tensor(arrays["boundary_id"][ids], device=device)
+            signed = torch.as_tensor(signed_pair[ids], device=device)
+            if cfg.sdf_target_scale != 1.0:
+                # Straddle hinge uses the same units as network predictions.
+                signed = signed * float(cfg.sdf_target_scale)
+            band = _near_band_multiplier(
+                target_sdf,
+                bid,
+                near_band_abs=cfg.near_band_abs * float(cfg.sdf_target_scale),
+                near_band_boost=cfg.near_band_boost,
+            )
+            classification_weight = classification_weight * band
+            sdf_weight = sdf_weight * band
+            normal_weight = normal_weight * band
             pred = model.forward_normalized(xn)
             per_cls = F.binary_cross_entropy_with_logits(
                 cfg.logit_scale * pred,
@@ -484,17 +626,30 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
                 if eikonal_terms
                 else pred.new_zeros(())
             )
+            straddle = (
+                _straddle_hinge_loss(pred, bid, signed, margin=cfg.straddle_margin)
+                if cfg.lambda_straddle > 0.0
+                else pred.new_zeros(())
+            )
             loss = (
                 cfg.lambda_classification * cls
                 + cfg.lambda_signed_value * sdf
                 + cfg.lambda_normal_direction * normal_loss
                 + cfg.lambda_eikonal * eikonal
+                + cfg.lambda_straddle * straddle
             )
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 10.0)
             optimizer.step()
-            totals += [float(loss.detach()), float(cls.detach()), float(sdf.detach()), float(normal_loss.detach()), float(eikonal.detach())]
+            totals += [
+                float(loss.detach()),
+                float(cls.detach()),
+                float(sdf.detach()),
+                float(normal_loss.detach()),
+                float(eikonal.detach()),
+                float(straddle.detach()),
+            ]
             batches += 1
         field = ReachabilitySDF(model, device=str(device))
         metrics = evaluate_signed_field(
@@ -505,7 +660,17 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
             near_axis_r_m=cfg.near_axis_r_m,
         )
         score = _selection(metrics)
-        row = {"epoch": epoch, "loss": float(totals[0] / batches), "classification_loss": float(totals[1] / batches), "signed_loss": float(totals[2] / batches), "normal_loss": float(totals[3] / batches), "eikonal_loss": float(totals[4] / batches), "selection_score": score, **metrics}
+        row = {
+            "epoch": epoch,
+            "loss": float(totals[0] / batches),
+            "classification_loss": float(totals[1] / batches),
+            "signed_loss": float(totals[2] / batches),
+            "normal_loss": float(totals[3] / batches),
+            "eikonal_loss": float(totals[4] / batches),
+            "straddle_loss": float(totals[5] / batches),
+            "selection_score": score,
+            **metrics,
+        }
         history.append(row)
         near_msg = ""
         if cfg.report_near_axis and "near_axis_r_lt_5cm_accuracy" in metrics:
@@ -513,8 +678,8 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
         print(
             f"epoch={epoch} loss={row['loss']:.4f} bal={metrics['balanced_accuracy']:.3f} "
             f"dir_m={metrics.get('direction_agreement_m',0):.3f} dir_deg={metrics.get('direction_agreement_deg',0):.3f} "
-            f"wide_m={metrics.get('wide_straddle_rate_m',0):.3f} wide_deg={metrics.get('wide_straddle_rate_deg',0):.3f} "
-            f"eik={row['eikonal_loss']:.4f} sel={score:.3f}{near_msg}",
+            f"strict_m={metrics.get('strict_straddle_rate_m',0):.3f} wide_m={metrics.get('wide_straddle_rate_m',0):.3f} "
+            f"str={row['straddle_loss']:.4f} eik={row['eikonal_loss']:.4f} sel={score:.3f}{near_msg}",
             flush=True,
         )
         if score > best_score + 1.0e-4:

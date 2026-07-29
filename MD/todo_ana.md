@@ -399,3 +399,491 @@ baked leg entry 上复现并定位到更具体的一层：
   （84 条 failures，`publishable=false`）。
 - **证据包尚未重新生成**，`evidence_manifest_v7.json` 与 60 张图仍对应旧矩阵；且
   `vessel_centerline` 图本身与门不同源（32.18° vs 67.09°），需与图生成路径一并修。
+
+---
+
+# 2026-07-29 V8.10 腿部中心线、口腔显示与血管联动修复计划
+
+## 一、当前判断
+
+这轮 Genesis 人工反馈已经把优先级明确下来：
+
+- 头骨基本可接受。下一版不再改头骨整体拟合，只处理口腔中穿过牙齿的舌状组织显示。
+- 当前血管的拓扑、穿洞关系、靠近皮肤时的压缩感和骨骼跟随需要冻结。禁止重新跑会改变
+  整条路径或把骨骼缩小给血管让路的全量优化。
+- 骨盆的父子联动目前基本正确。最大问题是股骨干、胫骨/腓骨和踝足 compound 相对
+  SMPL-X 人体中心线有横向或角度偏移。
+- 默认不通过移动整个骨盆修腿。只有左右髋误差能被同一个很小的 pelvis SE(3) 解释时，
+  才允许启用 pelvis correction。
+- `HEAD=cb3d5de` 没有新的 anatomy 源码改动。当前实际候选仍以
+  `outputs/anatomy_retarget/v8_candidates/rebuild_012` 和 Genesis 实测为准。
+- `rebuild_012` 的版本标记为
+  `unified-head-neck-vessel-coupled-v8.9 / coupled-contact-v8.2 /
+  continuous-head-source-vessel-v8.4`。
+
+当前实测说明腿部偏心不是单个参数没调好，而是“解剖接触点、人体中心线和真实骨长”
+三套约束互不兼容：
+
+- BA9 两个 subject 与 `rebuild_012` 都是 `394770` 顶点、`782856` 三角面，faces、
+  mesh names 和 vertex ranges 完全一致。因此 BA9 可以提供同顶点的视觉中心线参考，
+  但不能提供运行时 FK。
+- 213712 上，BA9 左右股骨解剖轴与 SMPL-X hip-knee 方向约差
+  `1.05° / 1.51°`；`rebuild_012` 约差 `8.44° / 8.83°`。足轴约从
+  `3.30° / 5.32°` 回退到 `9.47° / 9.55°`。
+- `rebuild_012` 股骨头/髋臼 compound 相对 SMPL-X hip 的左右误差不是共同平移：
+  两个 beta 的 common norm 约 `20.3-20.6 mm`，differential norm 约
+  `55.7-55.8 mm`，主要是左右相反的横向误差。移动整个骨盆不能修复。
+- 当前左股骨解剖长度比 SMPL-X hip-knee station 短约 `25.8-26.5 mm`，右侧短约
+  `6.4-7.2 mm`；小腿平台到 mortise 的长度也比 SMPL-X knee-ankle station 短约
+  `12.6-15.3 mm`。
+- 当前股骨 axial scale 约 `0.9992-1.0011`，但小腿 axial scale 已到
+  `1.0278-1.0310`；L0 足部 similarity fit 仍使用 `0.95087 / 0.94028`。
+
+所以“固定股骨头、精确落到原始 SMPL-X 膝/踝、只做 unit-scale SE(3)”不能同时成立。
+V8.10 必须把视觉中心线修复与关节/bind frame 修复拆开：前者使用固定关节端面的
+cross-section rigid transport，后者只在长度兼容时才允许 unit-scale SE(3)。禁止为了
+让 raw SMPL-X endpoints 同时命中而再次缩放骨头。
+
+## 二、当前关节和联动由什么决定
+
+| 部位 | 当前权威 | 当前问题 | V8.10 权威 |
+|---|---|---|---|
+| SMPL-X 动作 | 55 点 `rest_joints` 和 pose axis-angle | 适合给动作状态和大方向，不是解剖骨最终位置 | 保留为动作和肢体方向输入 |
+| 解剖 bind/FK | 235 根 V71 层级、`target_bind_global/local` | 多个后处理使用不同局部基准 | 仍是运行时唯一 parent-local FK 权威 |
+| 骨盆 | beta bind、髋臼域、V71 层级 | 当前整体联动基本正确 | 默认冻结；只接受严格 common-mode correction |
+| 髋 | 股骨头/髋臼固定域和 `Femur_Rot.target_bone_head` | socket 正确不等于股骨干在大腿中心 | socket 决定 pivot，SMPL-X/body station 决定大腿方向 |
+| 股骨 | 股骨头到髁中心的 whole-femur affine | socket、真实骨长和 body centerline 不能由一个刚体同时命中 | 头心/髁固定接触；中段 cross-section transport；frame 仅在长度兼容时做 SE(3) |
+| 膝/小腿 | 髁/平台 gap 搜索，踝端固定 | 只保证局部 gap，当前会把小腿拉长约 3% | 平台/mortise 固定接触；中段 transport；可行时才更新 rigid frame |
+| 踝/足 | 胫腓距骨域和 Talus/Calcaneus/Metatarsal similarity | ankle、foot station 不统一，L0 已缩足 | mortise + 足纵轴统一成一个 rigid compound frame |
+| 血管/神经 | V71 235 bone、14-slot 权重、strict matrix LBS | 当前视觉可保留；L0 tube rest pack 烘焙顺序错误 | 冻结拓扑/权重；仅真实 bone-frame correction 预搬运 route |
+
+`ba9c5e41683e06b27319a2ca022916489db48698` 本身只改 publish CLI，不能作为算法源码。
+旧 `v251/v252 v232l2` 资产只作为“长骨在肢体中心”的几何和截图参考。V71 继续提供真正
+的 235 骨层级、parent-local FK 和 14-slot 权重，禁止复制 BA9 的旧运行时骨架。
+
+## 三、V8.10 的硬约束
+
+1. 所有新增 bone-frame correction 都是相对 `rebuild_012` L1 baseline 的 `SE(3)`：
+   `det(R)=+1`，三个 singular value 均为 1，不允许 uniform、axial 或 radial scale。
+   视觉中心线 transport 的每个截面也只允许平移和旋转，不允许改变截面尺度。
+2. 不独立把相邻子骨骼锚到 SMPL-X global joint。只生成一条完整 parent-local 链。
+3. SMPL-X joint 只提供动作状态、腿部方向和 beta 相关 station，不直接覆盖解剖 bind
+   origin。
+4. 当前血管/神经的 faces、source ranges、vertex IDs、material edges、14-slot indices
+   和 weights 必须 byte-exact 不变。
+5. 不重新调用 `bake_vessel_route_v8`，不重新做整条 vessel route，不允许缩骨换 clearance。
+6. 口腔组织只做 Genesis draw exclusion，不从资产删除顶点，不影响蒙皮或拓扑。
+7. `rebuild_013` 生成 Genesis preview 后立即暂停；人工确认前不做 trusted latest。
+
+## 四、建立三套互不混淆的腿部 station
+
+V8.10 必须同时保存“解剖接触 landmark”“SMPL-X driver station”和“人体截面中心线”。
+只用骨头自身 landmark 会把当前偏心轴重新定义成正确轴；只用 SMPL-X joint 又会破坏
+股骨头、髁、平台和踝 mortise 的真实连接。
+
+### 4.1 解剖 landmark
+
+每个 beta 从固定材料域计算并冻结：
+
+- 髋：股骨头球心、髋臼球心。
+- 股骨远端：内外侧髁中心、髁间轴和两髁中点。
+- 膝：内外侧胫骨平台中心、平台中点和平台横轴。
+- 踝：胫骨远端、腓骨远端和距骨域形成的 ankle mortise center/frame。
+- 足：距骨中心、跟骨中心、第一/第二跖骨前足 station 和足纵轴。
+
+这些 landmark 决定关节 pivot、内外侧方向、接触 gap 和 compound roll，不决定整条腿在
+人体包络里的横向位置。
+
+### 4.2 SMPL-X driver station 与长度兼容报告
+
+快速版使用 beta-specific SMPL-X `rest_joints` 提供动作方向：
+
+- thigh direction：`hip -> knee`。
+- shank direction：`knee -> ankle`。
+- foot direction：`ankle -> foot`。
+
+这些 raw joint 坐标不直接覆盖解剖 bind origin。每段必须先报告：
+
+- `anatomical_length_m`；
+- `smplx_station_length_m`；
+- `axial_residual_m`；
+- unit-scale two-endpoint solve 的最小残差。
+
+若 residual 超过门槛，该段禁止做“同时命中两端”的 bone-frame correction。允许继续做
+固定端面的中心线 transport，因此长度不兼容不会让整个 `rebuild_013` 在生成 preview
+之前直接终止。
+
+### 4.3 人体截面中心线
+
+对当前 beta 的 SMPL-X/body surface 冻结：
+
+- 大腿 25%、50%、75% 三个截面中心。
+- 小腿 25%、50%、75% 三个截面中心。
+- 踝和前足截面中心。
+
+BA9 与当前 topology 完全一致，因此可用相同 vertex bins 提取旧版股骨/胫骨中心线。
+BA9 只提供“Genesis 曾经看起来居中”的方向和相对 offset 参考；最终 target station
+由 body 截面、当前解剖端点和 BA9 reference 共同决定，不复制 BA9 的半径、骨长或 bind。
+
+为避免只对一个 subject 有效，L0 operator 保存紧凑的 beta station basis 和冻结的 bin
+定义，不保存某一个 beta 的最终 correction。
+
+## 五、骨盆 common-mode 判定
+
+默认 `pelvis_correction = identity`。不允许凭 Genesis 视觉把整个骨盆向某侧平移。
+
+离线计算：
+
+- 左右髋臼中心相对 body hip station 的误差 `e_L / e_R`。
+- `common = (e_L + e_R) / 2`。
+- `differential = (e_L - e_R) / 2`。
+- 由左右髋臼和骶骨/骨盆中线 station 拟合一个 unit-scale pelvis SE(3)。
+
+只有同时满足下列条件才允许产生 pelvis correction：
+
+- 左右髋误差能由同一个刚体变换解释，拟合后每侧残差 `<=2 mm`。
+- 左右 differential `<=2 mm`，不存在一侧向内、一侧向外的局部错误。
+- correction 平移 `<=5 mm`、旋转 `<=2°`。
+- 骶骨、脊柱、肋骨和主血管的相对连接无回归。
+
+任一条件失败都保持骨盆不动，判定为左右 femur local frame 或 mesh centerline 问题。
+当前两个 beta 的 differential 都约 `56 mm`，已经明确不满足 common-mode 门。因此
+`rebuild_013` 固定 `pelvis_correction = identity`，只输出诊断；最早到
+`rebuild_014` 且新数据通过上述门时才重新考虑 pelvis correction。
+
+## 六、拆分中心线 transport 与 bone-frame correction
+
+`rebuild_013` 的快速路径先把当前 `rebuild_012` L1 股骨/小腿 articular 结果作为尺寸和
+接触基线，不重新从 BA9 或更早产品重拟合整条腿。足部是明确例外：从 clean foot product
+保留原尺寸，只做 rigid fit。在 `materialize_subject()` 的当前髋、膝/踝 reconstruction
+之后、`with_source_driver_coupling()` 和 `bake_tube_coupling_v8()` 之前，新增
+`repair_leg_centerline_v8()`。
+
+该 pass 输出两个互相独立的结果：
+
+- `centerline_transport`：只改骨 mesh rest geometry，不改关节 pivot 或 bind。
+- `bone_frame_corrections`：只有长度兼容时才产生的 unit-scale `C_bone`。
+
+### 6.1 先做 unit-scale 可行性判定
+
+每侧分别计算股骨头-髁、平台-mortise、mortise-前足的 source/target 长度和最小刚体残差。
+
+- 两端残差 `<=3 mm` 才允许该段进入 bone-frame correction。
+- 残差更大时，`C_bone = identity`，保留当前 V71 parent-local bind 和接触 pivot。
+- 禁止在这里调用 axial/uniform/radial scale fallback。
+
+当前两个 beta 的股骨和小腿 raw SMPL-X endpoint residual 已明显超门，预计它们走
+centerline-only 路径；这不是整个候选失败。足部主要是 frame/roll 问题，可独立做 rigid
+compound correction。
+
+### 6.2 股骨和小腿的固定端面中心线 transport
+
+股骨固定：
+
+- 股骨头和股骨颈核心域；
+- 内外侧髁和滑车关节域。
+
+小腿固定：
+
+- 内外侧胫骨平台；
+- 胫骨远端、腓骨远端和 ankle mortise 关节域。
+
+对两个固定端面之间的 mesh：
+
+1. 使用冻结 topology/material bins 建立纵向坐标 `s`。
+2. 从 body 25%/50%/75% 截面和 BA9 对应 bins 得到 target centerline。
+3. 每个截面只计算平移和必要的刚体 roll，不改变截面半径或面积。
+4. 用 C2 权重沿 `s` 插值，固定域权重严格为 0；不得移动股骨头、髁、平台或 mortise。
+5. 左右腿独立求解，不共享固定 offset。
+
+该 transport 只修改 `Femur`、`Tibia`、`Fibula` 的 rest mesh 顶点。由于 bind、pivot 和
+FK 不变，当前骨盆联动、膝/踝 parent-local 链和血管 runtime frame 默认保持不变。它解决
+的是“骨 mesh 不在腿中部”，不伪装成关节 retarget。
+
+### 6.3 可行段的 bone-frame correction
+
+若某段通过 6.1：
+
+1. 用解剖长轴、内外侧横轴和 body station 构成 source/target 右手 frame。
+2. 计算唯一 unit-scale `C_bone`。
+3. 对完整 mesh、对应 bind frame 和其必须共同移动的子树应用同一个 correction。
+4. 不允许 child 再接受第二个 SMPL-X global anchor。
+
+股骨或小腿未通过长度门时，不允许为了“看起来更靠近 joint”移动它们的 pivot；只保留
+6.2 的 mesh centerline transport。
+
+### 6.4 踝和足
+
+1. 以 ankle mortise 为 pivot。
+2. 用距骨、跟骨和前足 station 构造 foot frame。
+3. 对 `Ankle_Rot` 完整子树和全部足骨 mesh 使用一个 unit-scale SE(3)。
+4. 删除 `reference_fit_v8.py` 当前 `_proper_similarity()` 对足部产生的
+   `0.95087 / 0.94028` scale，改为 rigid Kabsch fit。
+5. rigid fit 不能同时命中全部 controls 时保留足骨尺寸、报告 residual 并出 A/B preview，
+   禁止通过缩足自动通过。
+
+### 6.5 髌骨和完整 FK
+
+- `Patella_Rotate` 保持 V71 的真实 parent-local driver 关系，不独立锚定 SMPL-X knee。
+- 纯 centerline transport 不移动 Patella rest frame。
+- 若父级存在真实 `C_bone`，Patella 和对应 response 随 parent frame 一次搬运。
+- 所有 target global frame 更新完成后，只调用一次 `_global_to_local()` 重建完整 local
+  chain，并重算 inverse bind。
+
+## 七、correction 必须传播到全部运行时权威
+
+纯 `centerline_transport` 只更新选中的 bone mesh rest vertices，以下运行时字段必须
+bit-exact 不变：
+
+- `target_bone_head/tail`；
+- `target_rest_global/local`；
+- `target_inverse_bind`；
+- `source_driver_coupling`；
+- coupled RBF coefficients。
+
+只有 6.1 通过并实际生成 `C_bone = G_new @ inverse(G_old)` 时，才在一个事务内更新：
+
+- bone mesh rest vertices；
+- `target_bone_head/tail`；
+- `target_rest_global`；
+- 由新 global 一次重建的 `target_rest_local`；
+- `target_inverse_bind`；
+- compound metadata 中的 anatomical pivot；
+- coupled RBF 的 parent-local translation coefficients。
+
+当前 `reconstruct_knee_ankle_compounds_v8()` 只刷新 pivot，没有变换
+`rbf_weights_parent_local_m` / `rbf_values_parent_local_m`。V8.10 必须根据旧、新 parent
+frame 和该 response 所属 correction，把每个 translation vector 变换到新 parent-local
+坐标。不能只改 pivot 后继续使用旧坐标系的 glide/roll 系数。
+
+所有 geometry/frame correction 完成后只调用一次 `with_source_driver_coupling()`。
+零姿态必须严格 identity，pose 时仍由 V71 235 骨 parent-local FK 和 SMPL-X driver
+rotation 驱动。
+
+## 八、血管/神经冻结和同 frame 跟随
+
+当前冻结基线：
+
+- tube vertex count：`55337`；
+- material edge count：`165659`；
+- mesh count：`17`；
+- topology digest：
+  `765293284200c8d3a88204ce71c547aa767544092d1246ef02fd9a56ddf33ff5`；
+- domain digest：
+  `1e99d47507868fd6e5aa8394d6454147639607a507338d12ac4181a9bec317a0`；
+- weight digest：
+  `9e7e2f6ad8f9f451405fddcf01970b4b2dde588ecf18c72e083273215acd64ff`。
+
+这些 topology/domain/weight 数据必须 byte-exact 保持。纯 centerline transport 不改变
+bone frame，因此 tube rest coordinates 和 rest/content digest 也应保持。只有真实
+`C_bone` 影响到 tube vertex 时，rest/content digest 才允许确定性变化。
+
+### 8.1 预搬运
+
+以当前成功的 vessel/nerve route 为 rest 基线：
+
+1. 只收集 `C_bone != identity` 的受影响 tube vertices；纯 mesh transport 不搬血管。
+2. 对这些顶点读取原始 14-slot bone indices/weights，使用对应的 unit-scale `C_bone`
+   对 rest route 做一次离线 weighted rigid transport。
+3. 优先用现有 dual-quaternion helper 做这一次离线预搬运，避免多个旋转矩阵线性混合
+   导致截面缩塌。
+4. pose-time backend 不改，仍使用当前
+   `strict_matrix_lbs_14slot_v8` 固定矩阵求值。
+5. 不改变 faces、ranges、vertex IDs、edges、indices 或 weights。
+
+若 DQ 预搬运后的 edge/cross-section 回归超过 5%，立即回退该腿 correction；不重跑整条
+route，也不缩骨。
+
+centerline-only 分支预期 route 顶点差为 0，只重新测新的 bone clearance。只有 correction
+后出现局部 skin/bone clearance 回归时，才允许对受影响腿部分支做
+一次小范围离线 residual。该 residual 不改变拓扑、权重和分支连接，运行时仍无 KD-tree、
+graph solve 或 collision solve。
+
+### 8.2 修复 stale L0 tube pack
+
+`run_anatomy_v8.py` 当前在 unified compose、vessel route 和最终 template 形成之前，就对
+`merged` 烘焙 L0 tube pack。`rebuild_012` 持久化 pack 因此与最终 template 不一致；
+最终 55337 个 tube rest vertex 全部不匹配，RMS 约 `32.2 mm`、最大约 `117.8 mm`。
+
+V8.10 必须改为：
+
+1. 完成最终 L0 template；
+2. 完成所有 L0 rigid reference correction；
+3. 再从最终 `operator.template_asset` 烘焙 tube pack；
+4. L1 beta 和 leg correction 完成后，再从最终 subject rest asset 烘焙 subject tube pack。
+
+最终 template 只读重烘的正确 parent baseline rest digest 是
+`50825b335838838e2cfd925a55e87f4646bf44e945ba47c9104e6f64c70cac00`。
+新增测试必须证明 L0 和 L1 零姿态都通过 exact rest authentication。
+
+当前 route audit 本身不是绝对通过状态，因此 `rebuild_013` 使用相对 non-regression：
+
+- skin inside fraction `>=0.99696756`；
+- skin maximum outside `<=3.7799 mm`；
+- bone penetration maximum `<=3.8166 mm`；
+- clearance violation count `<=436`；
+- 每个 pose 的 tube material edge max change `<=5%`。
+
+不能为了追绝对 gate 破坏这次已经确认可接受的视觉结果。更严格的绝对 route 优化只能
+在 `rebuild_014` 人工确认后另行决定。
+
+## 九、口腔中舌状组织的显示策略
+
+实际 `rebuild_012` source manifest 没有独立 `Tongue`、舌肌或 muscle tissue mesh。
+按 `tongue/lingual/gloss/muscle` 搜索只找到：
+
+- `Sublingual_Ducts_L/R`；
+- `Sublingual_Gland_L/R`。
+
+这四项已经在 `hidden_mesh_names_v1` 中 draw-only 隐藏。因此 Genesis 中仍穿过牙齿的
+“舌头组织”不能再靠搜索 `Tongue` 名称解决。牙区附近仍有 `Pharynx`、
+`UNCUT_Digestive_Tract`、Submandibular duct/gland 等候选软组织，必须先做 isolate
+preview 确认。
+
+V8.10 建立 `oral_visibility_policy_v2`：
+
+1. 保留当前四个 sublingual mesh 的隐藏。
+2. 对牙齿相交的剩余软组织生成 isolate render 和 mesh/face 清单。
+3. 若穿牙部分不是独立 mesh，冻结 `hidden_face_ids_v2`，只从 Genesis draw list 排除
+   口腔内的对应 connected face domain。
+4. 不删除资产顶点，不整块隐藏 `Pharynx` 或 `UNCUT_Digestive_Tract`，除非 isolate
+   preview 证明整块就是需要移除的组织。
+5. 保留 skull、Mandible、upper/lower teeth、Hyoid_Bone 和合法口腔结构。
+
+旧 gate 把“没有合法 Tongue mesh”无条件记成 release blocker，这与当前明确的
+`no_tongue_display` 产品策略冲突。V8.10 改为条件门：若策略要求显示舌头，原有
+provenance/license gate 继续生效；若策略明确不显示舌头，则使用 oral visibility gate：
+
+- `tongue_asset_present=false` 可以是合法状态；
+- hidden face IDs 不得出现在 Genesis draw list；
+- 32 个牙 mesh 的 `11384` 个 face 必须全部保留；
+- Mandible 的 `4254` 个 face 必须全部保留；
+- Hyoid 的 `448` 个 face 必须全部保留；
+- closed-mouth preview 中不得再有软组织穿过上下牙。
+
+## 十、rebuild_013：快速中心线修复候选
+
+只做本轮用户可见问题，包含：
+
+- 口腔 isolate preview 和 `oral_visibility_policy_v2`。
+- L0 足部 similarity scale 改为 rigid fit。
+- beta-specific anatomical、driver 和 body-section stations。
+- common-mode pelvis 诊断，`pelvis_correction` 固定为 identity。
+- 左右 femur/shank 固定端面的 cross-section rigid centerline transport。
+- 足部 unit-scale rigid compound correction。
+- 只有通过长度兼容门的段才同步更新 bind、parent-local FK、inverse bind 和 coupled RBF。
+- 只有真实 bone-frame correction 才预搬运 vessel/nerve route；centerline-only 分支保持
+  tube rest bit-exact。
+- 修复 L0/L1 tube pack 烘焙顺序。
+- 213328 和 213712 的 T-pose，以及 Genesis 当前重点 pose preview。
+- 髋、膝、踝局部剖面和腿部中心线 overlay。
+
+生成后立即暂停，人工重点检查：
+
+- 股骨干是否穿过大腿中部。
+- 股骨头是否仍完整落在髋臼窝。
+- 膝屈曲时股骨是否新增刺入髌骨。
+- 胫骨/腓骨是否穿过小腿中部。
+- ankle mortise、距骨、跟骨和前足方向是否符合 SMPL-X station。
+- 骨盆、骶骨和脊柱是否保持当前联动。
+- 血管拓扑、穿洞、贴皮肤压缩和骨骼跟随是否保持。
+- 口腔软组织是否完全不再穿牙，牙齿、下颌和舌骨是否完整。
+
+## 十一、rebuild_014：人工确认后的严格验收
+
+仅在 `rebuild_013` Genesis 人工确认后执行：
+
+- 固化 station/correction 到 L0 SourceOperator。
+- 两个 beta 分别生成 L1 SubjectRuntimePack。
+- 跑 `2 beta x (T-pose + 213328 pose + 213712 pose)`。
+- 跑髋、膝、踝 `0-120°` sweep 和复合三轴 pose。
+- 回归躯干、肘、骶骨、脊柱、肋骨和主血管。
+- 生成局部剖面、body centerline、bone axis、signed penetration 和 vessel regression 图。
+- 重测 cold bake、hot bake、L1 miss/hit 和 pose latency。
+- 启动新的独立 agent，只给规范、候选和输入，不给“已经修了什么”，做盲审。
+
+## 十二、验收标准
+
+- 股骨头心到髋臼中心误差 `<=2 mm`。
+- 25%/50%/75% 截面 transport 后到其冻结 target station 的残差 `<=3 mm`，并且相对
+  BA9 Genesis 可接受中心线不出现新增横向回归。
+- 膝和踝表面 gap `0-3 mm`。
+- 无新增股骨-髌骨、股骨髁-胫骨平台 signed penetration `>0.5 mm`。
+- 所有 bone-frame correction scale 精确为 1。
+- centerline transport 的固定关节域位移 `<=0.5 mm`，截面面积/半径变化 `<=1%`，
+  local edge change q99 `<=3%`、max `<=5%`。
+- 相对 `rebuild_012` L1 baseline 的股骨和小腿长度不变；足骨保持 clean foot product
+  原尺寸。raw SMPL-X 长度残差只决定 frame correction 是否可用，不触发自动缩放。
+- 完整 parent-local FK 保持，零姿态 skinning transform 为 identity。
+- coupled RBF 的 pivot 和 parent-local translation coefficients 使用同一个新 frame。
+- tube topology/domain/weight digest 与冻结基线完全一致。
+- tube edge/cross-section 变化 `<=5%`，skin/clearance 不低于当前成功基线。
+- oral hidden faces 不在 draw list，牙齿、Mandible、Hyoid face count 完全保持。
+- `2x3` 矩阵证明同一个 operator 学到 beta-dependent 联动关系，不是某个 beta 的固定位置。
+- `rebuild_013` 的 pelvis correction 必须为 identity。
+- 任一 vessel 回归优先回退对应 leg correction；禁止重新缩骨或破坏 vessel topology。
+- 独立盲审和 Genesis 人工确认都完成前，不更新 trusted latest。
+
+## 十三、最小代码改动边界
+
+- `reference_fit_v8.py`：足部 similarity 改为 rigid SE(3)，写入口腔 visibility metadata。
+- `articular_fit_v8.py`：新增 station/length feasibility report、
+  `repair_leg_centerline_v8()` 和条件式 RBF frame transport；保留当前 L1 articular
+  结果作为快速版尺寸/接触基线。
+- `v8_artifacts.py`：在当前 hip/knee-ankle reconstruction 后、driver coupling 和 tube
+  bake 前调用 centerline/frame pass。
+- `anatomy_lbs.py` / `coupled_joint_v8.py`：复用或新增明确的 parent-local response
+  transport helper。
+- `tube_frames_v8.py`：增加离线 tube rest correction 和 final-rest authentication。
+- `cli/run_anatomy_v8.py`：把 L0 tube pack 烘焙移动到最终 operator template 之后。
+- `anatomy_drawer.py`：支持 `hidden_face_ids_v2` 并验证 draw-list exclusion。
+- `validation_matrix_v8.py` / `release_v8.py`：把强制 Tongue provenance blocker 改为
+  oral visibility policy。
+- 测试：新增 SE(3) feasibility、固定端面、截面尺度/edge、骨长、common-mode pelvis、
+  station error、条件式 RBF frame transport、tube exact digest/rest auth、口腔 draw
+  preservation 和 2x3 regression。
+
+## 十四、长度不兼容后的约束修订：mixed-anchor projected chain
+
+213328/213712 的真实资产复核证明，不能再把 raw SMPL-X 两端点同时命中作为
+`rebuild_013` 的发布条件：
+
+- 左股骨解剖长度比 SMPL-X hip-knee 短约 `26.56-27.26 mm`，右侧短约
+  `7.81-8.63 mm`。
+- 小腿解剖长度比 SMPL-X knee-ankle 短约 `12.86-15.86 mm`。
+- 任意 unit-scale SE(3) 都保持长度，因此无法同时命中上述两端。
+- 现有端点固定的逐顶点 rotation field 在真实股骨过渡区产生
+  `208-214%` q99、`222-243%` 最大 edge strain，必须废弃。
+
+`rebuild_013` 改用保长、全段刚体的 mixed-anchor projected chain：
+
+1. 股骨使用 `distal_anchor`。固定当前髁/膝 station，取 SMPL-X
+   `hip -> knee` 的方向，以真实股骨长度反投影股骨头。整根股骨只接受同一个
+   unit-scale SE(3)，不再弯曲股骨干。
+2. 胫骨和腓骨使用共享的 `proximal_anchor`。固定最终胫骨平台 station，取
+   SMPL-X `knee -> ankle` 的方向，以真实小腿长度投影 ankle mortise。
+3. 足部使用投影后的 mortise 作为 `proximal_anchor`，只做 rigid direction/roll fit，
+   不使用 similarity scale。
+4. pelvis root、Sacrum、Spine 和骨盆中线保持 identity。左右股骨头与髋臼的剩余冲突
+   写入 `hip_station_unreachable_with_fixed_socket`，只能由后续 bilateral local
+   socket/head station 修正处理，禁止移动整个骨盆。
+5. 所有 global bind 更新结束后只重建一次完整 parent-local chain。运行时继续使用
+   当前闭式 leg hinge solve：SMPL-X 提供 pose rotation/direction，解剖 local bind
+   提供固定长度和 translation，因此不增加逐帧迭代或 IK 优化。
+
+新的验收语义：
+
+- `<=3 mm` 只约束股骨干、小腿和足部相对 body centerline 的径向误差。
+- SMPL-X 与解剖骨长的轴向残差必须完整报告，但不触发缩骨、拉骨或整段失败。
+- 股骨髁、胫骨平台和 foot mortise 的选定 anchor 漂移 `<=0.5 mm`。
+- 全段 correction 必须满足 `det(R)=1`、scale `=1`，完整骨 mesh 的 edge length
+  在数值精度内不变。
+- 股骨头-髋臼接触误差继续单独报告。若与 body centerline 不能同时达到门限，
+  `rebuild_013` 必须标记为未受信候选并等待 Genesis A/B 检查，不能伪造通过。
+- 股骨禁止使用 `proximal_anchor`：真实数据会把膝自由端推到约 `55-57 mm` 误差。
+- 小腿 projected free ankle 对 raw SMPL-X ankle 的预期残差约 `6.27-8.01 mm`；
+  这是保长链的合法轴向/端点残差，不是 uniform scale 的理由。
+
+BA9/v251 仅保留为 centerline audit 和 Genesis A/B 参考，不再提供 beta-linear
+逐顶点 rotvec、bind、FK、权重或强制两端目标。血管 rest route、拓扑和 14-slot
+权重保持不变；只运输 parent-local frame/RBF 坐标并在最终 rest 后重新认证 tube pack。

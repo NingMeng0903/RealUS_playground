@@ -102,6 +102,41 @@ def calibrated_ird_clearance(raw_score: float, conformal_threshold: float) -> fl
     return float(raw_score) - float(conformal_threshold)
 
 
+def load_conformal_threshold(path: str | None) -> float:
+    """Load ``m_safe`` / ``threshold`` from a conformal JSON; 0.0 if missing."""
+    if not path:
+        return 0.0
+    from pathlib import Path
+
+    p = Path(path)
+    if not p.is_file():
+        return 0.0
+    import json
+
+    data = json.loads(p.read_text(encoding="utf-8"))
+    return float(data.get("m_safe", data.get("threshold", 0.0)))
+
+
+def precheck_config_from_conformal(
+    path: str | None,
+    *,
+    base: PrecheckConfig | None = None,
+) -> PrecheckConfig:
+    """Return a PrecheckConfig with conformal_threshold filled from JSON."""
+    cfg = base or PrecheckConfig()
+    thr = load_conformal_threshold(path)
+    return PrecheckConfig(
+        clearance_margin=cfg.clearance_margin,
+        conformal_threshold=thr,
+        collision_min_distance_m=cfg.collision_min_distance_m,
+        fail_closed_without_ird=cfg.fail_closed_without_ird,
+        require_srs=cfg.require_srs,
+        psi_step_rad=cfg.psi_step_rad,
+        max_psi_swing_rad=cfg.max_psi_swing_rad,
+        branch_id=cfg.branch_id,
+    )
+
+
 def _pose6_matrix(pose6: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     from scipy.spatial.transform import Rotation as Rsc
 
@@ -348,7 +383,9 @@ __all__ = [
     "WaypointPrecheck",
     "assert_trajectory_precheck",
     "calibrated_ird_clearance",
+    "load_conformal_threshold",
     "make_field_clearance_fn",
+    "precheck_config_from_conformal",
     "resolve_srs_waypoint",
     "try_import_ird",
     "validate_tcp_rail_trajectory",

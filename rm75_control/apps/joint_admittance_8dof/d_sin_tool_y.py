@@ -111,8 +111,13 @@ def main() -> int:
     ap.add_argument("--approach-dz-mm", type=float, default=0.220 * 1000.0)
     ap.add_argument("--use-force-id-pose", action="store_true")
     ap.add_argument("--move-duration", type=float, default=None)
-    ap.add_argument("--move-duration-margin", type=float, default=0.50)
-    ap.add_argument("--move-duration-min", type=float, default=2.5)
+    ap.add_argument(
+        "--move-duration-margin",
+        type=float,
+        default=0.80,
+        help="Peak joint-speed fraction of (v_max·v_scale) used to size auto T (was 0.50).",
+    )
+    ap.add_argument("--move-duration-min", type=float, default=1.5)
     ap.add_argument(
         "--move-duration-max",
         type=float,
@@ -293,7 +298,7 @@ def main() -> int:
     robot_cfg = raw.get("robot", {})
     hm_cfg = raw.get("hybrid_motion", {})
     track_axes = np.asarray(hm_cfg.get("track_axes", [1, 1, 0, 1, 1, 1]), dtype=float)
-    max_lin = float(args.cartesian_max_lin_vel) if args.cartesian_max_lin_vel is not None else 0.4
+    max_lin = float(args.cartesian_max_lin_vel) if args.cartesian_max_lin_vel is not None else 0.65
     sigma_ref = float(inner_cfg.qp.sr_damping.sigma_ref)
 
     local_bus: RobotStateBus | None = None
@@ -507,8 +512,17 @@ def main() -> int:
                 q_target_rad,
                 plan.duration_s,
                 euler_order=inner_cfg.euler_order,
+                v_scale=inner_cfg.v_scale,
             )
             move_duration_s = float(move_ref.duration_s)
+            if args.verbose:
+                dpsi = float(move_ref.psi_target - move_ref.psi_start)
+                print(
+                    f"  SRS ψ {np.degrees(move_ref.psi_start):.1f}deg → "
+                    f"{np.degrees(move_ref.psi_target):.1f}deg "
+                    f"(Δ={np.degrees(dpsi):+.1f}deg shortest-arc)",
+                    flush=True,
+                )
             if move_duration_s > float(plan.duration_s) + 1e-6 and args.verbose:
                 print(
                     f"  SRS duration stretched {plan.duration_s:.2f}s → {move_duration_s:.2f}s "
@@ -821,13 +835,28 @@ def main() -> int:
                 except Exception:
                     pass
                 if stop_n[0] == 1:
+                    pid = 0
+                    try:
+                        pid = int(phase_client.hub_pid())
+                    except Exception:
+                        pass
                     print(
-                        "\nrm75 task: Ctrl+C — stop requested on window A "
-                        "(second Ctrl+C forces exit)",
+                        "\nrm75 task: Ctrl+C — stop requested on window A"
+                        + (f" (pid={pid})" if pid > 1 else "")
+                        + "; if A is stuck in ProxQP, second Ctrl+C SIGKILLs it",
                         flush=True,
                     )
                     return
-                print("\nrm75 task: force exit", flush=True)
+                killed = False
+                try:
+                    killed = bool(phase_client.force_kill_hub())
+                except Exception:
+                    killed = False
+                print(
+                    "\nrm75 task: force exit"
+                    + (" — SIGKILL window A" if killed else " — could not SIGKILL window A"),
+                    flush=True,
+                )
                 os._exit(130)
 
             prev_int = signal.signal(signal.SIGINT, _on_sig)

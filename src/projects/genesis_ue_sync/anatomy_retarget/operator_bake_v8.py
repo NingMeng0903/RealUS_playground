@@ -23,6 +23,10 @@ from .mechanism_v8 import (
 )
 from .rigged_asset import AnatomyRiggedAsset
 from .reference_fit_v8 import compose_unified_reference_template_v8
+from .tube_frames_v8 import (
+    bake_tube_coupling_v8,
+    tube_coupling_pack_to_runtime_fields_v8,
+)
 from .v7_artifacts import SourceOperatorV7, rigged_asset_digest
 from .v8_artifacts import SourceOperatorV8
 from .vessel_route_v8 import bake_vessel_route_v8
@@ -144,6 +148,9 @@ def merge_v71_authority_v8(
     product_metadata = dict(fitted_product.metadata or {})
     for key in (
         "hidden_mesh_names_v1",
+        "hidden_mesh_names_v2",
+        "hidden_face_ids_v2",
+        "oral_visibility_policy_v2",
         "v8_unified_reference_fit",
         "v8_reference_beta_origin",
         "v8_reference_field_authority",
@@ -421,6 +428,26 @@ def build_selective_source_operator_v8(
             "available": False,
             "reason": "operator lacks bilateral frozen knee/ankle domains",
         }
+    final_runtime_coefficients = {
+        str(name): np.asarray(value).copy()
+        for name, value in runtime_coefficients.items()
+        if not str(name).startswith("tube_coupling_v8.")
+    }
+    has_tube_material = any(
+        str(tissue).strip().lower() in {"vessel", "nerve"}
+        for tissue in (template.source_tissues or ())
+    )
+    if has_tube_material:
+        tube_pack, tube_coupling_report = bake_tube_coupling_v8(template)
+        final_runtime_coefficients.update(
+            tube_coupling_pack_to_runtime_fields_v8(tube_pack)
+        )
+    else:
+        tube_coupling_report = {
+            "available": False,
+            "passed": False,
+            "reason": "final L0 template contains no vessel or nerve material",
+        }
     mechanism = {
         "v71.parents": np.asarray(template.source_bone_parents, dtype=np.int32),
         "v71.rest_local": np.asarray(template.source_rest_local, dtype=np.float32),
@@ -453,10 +480,7 @@ def build_selective_source_operator_v8(
             name: np.asarray(value).copy()
             for name, value in v7_operator.contact_envelopes.items()
         },
-        runtime_coefficients={
-            name: np.asarray(value).copy()
-            for name, value in runtime_coefficients.items()
-        },
+        runtime_coefficients=final_runtime_coefficients,
         reference_manifest=reference_manifest,
         algorithm_version=algorithm_version,
         oracle_version=oracle_version,
@@ -481,6 +505,7 @@ def build_selective_source_operator_v8(
             "unified_reference_fit": unified_report,
             "coupled_knee_ankle_roll_glide": coupled_joint_report,
             "vessel_route_v8": vessel_route_report,
+            "tube_coupling_final_rest_v810": tube_coupling_report,
         },
         quality_report={
             "publishable": False,

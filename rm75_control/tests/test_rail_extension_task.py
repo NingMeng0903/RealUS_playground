@@ -171,15 +171,26 @@ def test_feedforward_weight_in_dead_zone_during_scan():
     assert w_ff > 0.5
 
 
-def test_sigma_escape_sign_guard_blocks_opposing_escape():
-    """σ-escape is zeroed when it would fight the primary (ff + reach) direction."""
+def test_sigma_escape_anti_oppose_only_when_healthy():
+    """Opposing σ-escape is blocked only when σ is healthy (≥ sigma_guard_enter).
+
+    Below enter, escape must be allowed to fight reach/FF so the rail can
+    pull the arm out of a bad region.
+    """
     task, _ = _task(e0_m=0.01, e1_m=0.06, k_ff=1.0, k_esc=0.5)
-    task.capture_reference(Q_D)
+    q = Q_D.copy()
+    q[0] = 0.40  # mid-travel so -Y escape is not limit-saturated
+    task.reset(q)
+    task.capture_reference(q)
     vel_ff = np.zeros(6)
     vel_ff[1] = 0.04
-    v, _ = task(Q_D, sigma_scale=0.5, sigma_grad_rail=-1.0, vel_ff=vel_ff)
-    assert v > 0.0
-    assert v < 0.08
+    # sigma_scale=0.5 ≥ enter(0.45): anti-oppose → escape zeroed, v follows +FF
+    v_blocked, _ = task(q, sigma_scale=0.5, sigma_grad_rail=-1.0, vel_ff=vel_ff)
+    assert v_blocked > 0.0
+    # sigma_scale=0.2 < enter: escape wins against FF → net rail velocity flips
+    v_free, _ = task(q, sigma_scale=0.2, sigma_grad_rail=-1.0, vel_ff=vel_ff)
+    assert v_free < 0.0
+    assert v_free < v_blocked
 
 
 def test_sigma_grad_activates_escape_velocity_in_dead_zone():

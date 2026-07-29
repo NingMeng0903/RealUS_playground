@@ -40,6 +40,45 @@ def test_signed_field_is_smooth_and_differentiable():
     assert torch.max(torch.abs(y2 - y)) < 1.0e-2
 
 
+def test_support_guard_is_inert_inside_and_conservative_outside():
+    dim = 9
+    center = np.zeros(dim, dtype=np.float32)
+    scale = np.full(dim, 0.5, dtype=np.float32)
+    model = SignedReachabilityField(
+        width=32,
+        depth=2,
+        fourier_bands=1,
+        input_center=center,
+        input_scale=scale,
+        support_lo=np.full(dim, -1.0, dtype=np.float32),
+        support_hi=np.full(dim, 1.0, dtype=np.float32),
+        guard_weight=8.0,
+    )
+    assert model.has_support_box
+    assert not torch.equal(model.support_lo, model.support_hi)
+
+    inside = torch.zeros(1, dim)
+    inside[0, 0] = 0.4
+    assert float(model.support_distance(inside)) == 0.0
+    assert torch.allclose(model.guarded_forward(inside), model(inside))
+
+    outside = torch.zeros(1, dim, requires_grad=True)
+    with torch.no_grad():
+        outside[0, 0] = 4.0
+    guarded = model.guarded_forward(outside)
+    with torch.no_grad():
+        assert float(guarded) < float(model(outside)) - 1.0
+    guarded.sum().backward()
+    assert float(outside.grad[0, 0]) < 0.0
+
+
+def test_support_guard_absent_box_is_a_no_op():
+    model = SignedReachabilityField(width=16, depth=2, fourier_bands=1)
+    assert not model.has_support_box
+    x = torch.full((2, 9), 9.0)
+    assert torch.allclose(model.guarded_forward(x), model(x))
+
+
 def test_region_a_preserves_tcp_and_rail_autograd():
     model = SignedReachabilityField(width=32, depth=2, fourier_bands=1)
     region = RegionA(RegionAConfig(samples=16, seed=2))

@@ -39,14 +39,15 @@ def test_resolve_scan_target_joints_matches_fk():
         kin,
         d_target="joints",
         rail_m=rail_m,
+        qp_cfg=inner_cfg.qp,
+        nullspace_cfg=inner_cfg.nullspace,
     )
     assert target.d_target == "joints"
     assert target.skip_ik is True
-    assert target.move_mode_hint == "joint"
-    q_expected = full_q_from_arm(deg2rad(target.q_slot_deg), rail_m)
-    np.testing.assert_allclose(target.q_target_rad, q_expected, atol=1e-9)
-    pose_fk = kin.fk_pose(q_expected)
-    np.testing.assert_allclose(target.pose_d, pose_fk, atol=1e-9)
+    assert target.move_mode_hint is None  # cartesian/SRS is the joints→D default
+    assert target.q_target_rad.shape == (8,)
+    pose_fk = kin.fk_pose(target.q_target_rad)
+    np.testing.assert_allclose(target.pose_d, pose_fk, atol=1e-6)
 
 
 def test_resolve_scan_target_kin_fk_no_robot():

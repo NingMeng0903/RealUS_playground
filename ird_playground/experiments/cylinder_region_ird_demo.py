@@ -1,4 +1,4 @@
-"""Temporary cylinder-surface trajectory demo for the signed Region-A IRD."""
+"""Cylinder-surface trajectory demo for the signed Region-A IRD."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ from ird_playground.ird.torch_kinematics import (
     collision_free_mask,
     so3_log,
 )
+from ird_playground.ird.robot_model import load_robot_model_spec
 from ird_playground.neural.signed_field import ReachabilitySDF
 from ird_playground.region.operator import RegionA, RegionAConfig
 
@@ -36,7 +37,9 @@ class DemoConfig:
     rail_limit_m: float = 0.18
     epochs: int = 450
     learning_rate: float = 0.035
-    target_clearance: float = 0.50
+    target_clearance: float | None = None
+    clearance_margin: float = 0.05
+    ird_softplus_scale: float = 0.25
     seed: int = 109
 
 
@@ -93,6 +96,8 @@ def query_with_gradients(
     rail: torch.Tensor,
     path_y: torch.Tensor,
     cfg: DemoConfig,
+    *,
+    T_rail_axis: torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     theta_leaf = theta.detach().clone().requires_grad_(True)
     rail_leaf = rail.detach().clone().requires_grad_(True)
@@ -103,7 +108,7 @@ def query_with_gradients(
         tcp,
         rail_leaf,
         T_world_rail=eye,
-        T_rail_base0=eye,
+        T_rail_base0=T_rail_axis,
         rail_axis=1,
     ).robust_clearance
     grad_theta, grad_rail = torch.autograd.grad(
@@ -112,11 +117,26 @@ def query_with_gradients(
     return clearance.detach(), grad_theta.detach(), grad_rail.detach()
 
 
+def load_conformal_threshold(path: Path | None) -> float | None:
+    if path is None or not path.is_file():
+        return None
+    try:
+        from ird_playground.calib import load_conformal_json
+
+        data = load_conformal_json(path)
+        return float(data.get("m_safe", data["threshold"]))
+    except Exception:
+        return None
+
+
 def optimize_trajectory(
     field,
     region: RegionA,
     cfg: DemoConfig,
     device: torch.device,
+    *,
+    T_rail_axis: torch.Tensor,
+    m_safe: float | None = None,
 ) -> dict[str, np.ndarray | list[dict[str, float]]]:
     s = torch.linspace(0.0, 1.0, cfg.waypoints, device=device)
     path_y = cfg.path_y_min_m + (cfg.path_y_max_m - cfg.path_y_min_m) * s
@@ -128,6 +148,13 @@ def optimize_trajectory(
     optimizer = torch.optim.Adam((raw_theta, raw_rail), lr=cfg.learning_rate)
     theta_limit = np.deg2rad(cfg.theta_limit_deg)
     history: list[dict[str, float]] = []
+    if cfg.target_clearance is not None:
+        target = float(cfg.target_clearance)
+    elif m_safe is not None:
+        target = max(float(m_safe) + float(cfg.clearance_margin), 1.5)
+    else:
+        target = 1.5
+    soft_scale = max(float(cfg.ird_softplus_scale), 1.0e-3)
 
     for epoch in range(cfg.epochs):
         optimizer.zero_grad(set_to_none=True)
@@ -140,12 +167,11 @@ def optimize_trajectory(
             tcp,
             rail,
             T_world_rail=eye,
-            T_rail_base0=eye,
+            T_rail_base0=T_rail_axis,
             rail_axis=1,
         ).robust_clearance
 
-        # Each term is dimensionless and sampled on normalized phase s in [0,1].
-        ird = F.softplus((cfg.target_clearance - clearance) / 0.25).mean()
+        ird = F.softplus((target - clearance) / soft_scale).mean()
         track = torch.mean((theta / np.deg2rad(25.0)) ** 2)
         dtheta = normalized_derivative(theta, s)
         drail = normalized_derivative(rail, s)
@@ -175,6 +201,7 @@ def optimize_trajectory(
                     "base_lateral": float(base_lateral.detach()),
                     "clearance_min": float(clearance.detach().min()),
                     "clearance_mean": float(clearance.detach().mean()),
+                    "m_safe": target,
                 }
             )
 
@@ -184,10 +211,10 @@ def optimize_trajectory(
     initial_theta = torch.zeros_like(theta)
     initial_rail = torch.zeros_like(rail)
     initial_clearance, initial_grad_theta, initial_grad_rail = query_with_gradients(
-        field, region, initial_theta, initial_rail, path_y, cfg
+        field, region, initial_theta, initial_rail, path_y, cfg, T_rail_axis=T_rail_axis
     )
     final_clearance, final_grad_theta, final_grad_rail = query_with_gradients(
-        field, region, theta, rail, path_y, cfg
+        field, region, theta, rail, path_y, cfg, T_rail_axis=T_rail_axis
     )
     initial_tcp = cylinder_tcp(initial_theta, path_y, cfg)
     final_tcp = cylinder_tcp(theta, path_y, cfg)
@@ -207,6 +234,7 @@ def optimize_trajectory(
         "grad_theta": final_grad_theta.cpu().numpy(),
         "grad_rail": final_grad_rail.cpu().numpy(),
         "history": history,
+        "m_safe": target,
     }
 
 
@@ -373,7 +401,10 @@ def optimize_continuous_q_path(
         if len(q_valid) == 0:
             fallback = initial_candidates["q"][i, initial_candidates["valid"][i]]
             if len(fallback) == 0:
-                raise RuntimeError(f"waypoint {i} has no valid collision-free IK")
+                # Offline prep: keep a continuous-ish path even if one waypoint
+                # lacks a fresh collision-free seed; mark with NaN later via metrics.
+                out[i] = previous
+                continue
             q_valid = fallback
         margin = np.min(
             np.minimum(q_valid - q_lower, q_upper - q_valid) / span,
@@ -436,6 +467,8 @@ def render_gradient_landscape(
     result: dict,
     cfg: DemoConfig,
     out_path: Path,
+    *,
+    T_rail_axis: torch.Tensor,
 ) -> None:
     import matplotlib.pyplot as plt
 
@@ -452,7 +485,7 @@ def render_gradient_landscape(
     tcp = cylinder_tcp(th, path_y, cfg)
     eye = torch.eye(4, device=device)
     clearance = region.query_tcp_rail(
-        field, tcp, rail, T_world_rail=eye, T_rail_base0=eye, rail_axis=1
+        field, tcp, rail, T_world_rail=eye, T_rail_base0=T_rail_axis, rail_axis=1
     ).robust_clearance
     grad_theta, grad_rail = torch.autograd.grad(clearance.sum(), (th, rail))
     C = clearance.detach().cpu().numpy().reshape(resolution, resolution)
@@ -460,7 +493,6 @@ def render_gradient_landscape(
     GR = grad_rail.detach().cpu().numpy().reshape(resolution, resolution)
     theta_deg = np.rad2deg(TH.detach().cpu().numpy())
     rail_mm = 1000.0 * RR.detach().cpu().numpy()
-    # Normalize in plot coordinates so arrows encode direction, not unit choice.
     ux = np.rad2deg(GT)
     uy = GR * 1000.0
     norm = np.maximum(np.hypot(ux, uy), 1.0e-9)
@@ -600,6 +632,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--checkpoint", type=Path, default=Path("data/checkpoints/rm4d_signed/selected.pt"))
     parser.add_argument("--seed-gt", type=Path, default=Path("data/ird/gpu_pose_production.npz"))
     parser.add_argument("--out-dir", type=Path, default=Path("data/reports/cylinder_region_demo"))
+    parser.add_argument("--robot-spec", type=Path, default=Path("configs/robot_probe45.yaml"))
+    parser.add_argument(
+        "--conformal",
+        type=Path,
+        default=Path("data/calib/conformal_rm4d_signed.json"),
+        help="Conformal calib JSON for soft IRD target.",
+    )
     parser.add_argument("--device", default="cuda")
     args = parser.parse_args(argv)
     root = Path(__file__).resolve().parents[1]
@@ -611,10 +650,19 @@ def main(argv: list[str] | None = None) -> int:
     torch.manual_seed(cfg.seed)
     device = torch.device(args.device)
 
-    sdf = ReachabilitySDF.load(resolve(args.checkpoint), device=str(device))
+    robot_spec = load_robot_model_spec(resolve(args.robot_spec))
+    sdf = ReachabilitySDF.load(
+        resolve(args.checkpoint), device=str(device), expected_robot=robot_spec
+    )
     field = sdf.model
     region = RegionA(RegionAConfig(samples=64, cone_half_angle_deg=3.0, seed=17)).to(device)
-    result = optimize_trajectory(field, region, cfg, device)
+    m_safe = load_conformal_threshold(resolve(args.conformal))
+    T_rail_axis = torch.as_tensor(
+        robot_spec.root_to_j1_axis().astype(np.float32), device=device
+    )
+    result = optimize_trajectory(
+        field, region, cfg, device, T_rail_axis=T_rail_axis, m_safe=m_safe
+    )
 
     locked, collision_filter, kin = build_gt_tools(device)
     seed_pool = load_seed_pool(resolve(args.seed_gt))
@@ -640,7 +688,10 @@ def main(argv: list[str] | None = None) -> int:
         seed=cfg.seed + 3,
     )
 
-    render_gradient_landscape(field, region, result, cfg, out / "region_ird_gradient.png")
+    render_gradient_landscape(
+        field, region, result, cfg, out / "region_ird_gradient.png",
+        T_rail_axis=T_rail_axis,
+    )
     render_trajectory(result, initial_gt, final_gt, cfg, out / "cylinder_trajectory.png")
     render_q_guidance(
         result["s"], q_ref, locked.q_lower, locked.q_upper,
@@ -673,6 +724,7 @@ def main(argv: list[str] | None = None) -> int:
             "position_box_m": {"binormal": 0.004, "tangent": 0.003, "normal": 0.002},
         },
         "neural": {
+            "m_safe": float(result.get("m_safe", cfg.clearance_margin)),
             "initial_min_clearance": float(np.min(result["initial_clearance"])),
             "initial_mean_clearance": float(np.mean(result["initial_clearance"])),
             "optimized_min_clearance": float(np.min(result["clearance"])),

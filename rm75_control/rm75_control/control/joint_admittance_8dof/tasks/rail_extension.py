@@ -228,9 +228,10 @@ class RailExtensionTask:
     ) -> float:
         """Dead-zoned σ guardrail: engage only when σ is unhealthy.
 
-        Hysteresis (enter/exit) prevents chatter.  Never fights a strong
-        primary attractor (same anti-oppose rule as the old σ-escape).
+        Hysteresis (enter/exit) prevents chatter.  Once engaged, escape is
+        never anti-opposed against the primary (low-σ recovery must win).
         """
+        del v_primary  # retained in signature for call-site compatibility
         sig = float(np.clip(sigma_scale, 0.0, 1.0))
         enter = float(self.cfg.sigma_guard_enter)
         exit_ = float(self.cfg.sigma_guard_exit)
@@ -244,8 +245,6 @@ class RailExtensionTask:
             return 0.0
         v_g = float(self.cfg.k_esc) * (1.0 - sig) * float(sigma_grad_rail)
         v_g = float(np.clip(v_g, -self.cfg.v_guard_max_m_s, self.cfg.v_guard_max_m_s))
-        if v_g * v_primary < 0.0 and abs(v_primary) > 1.0e-4:
-            return 0.0
         return v_g
 
     def _call_pose_attract(
@@ -326,7 +325,15 @@ class RailExtensionTask:
         # but still anti-opposes the primary so it cannot hunt against FF.
         v_escape = float(self.cfg.k_esc) * (1.0 - sig) * float(sigma_grad_rail)
         v_primary = v_ff + v_reach
-        if v_escape * v_primary < 0.0 and abs(v_primary) > 1.0e-4:
+        # Anti-oppose only when σ is healthy.  Below sigma_guard_enter the
+        # escape must be allowed to fight reach/FF (otherwise the rail stays
+        # pinned while the arm goes singular).
+        enter = float(self.cfg.sigma_guard_enter)
+        if (
+            sig >= enter
+            and v_escape * v_primary < 0.0
+            and abs(v_primary) > 1.0e-4
+        ):
             v_escape = 0.0
         v_total = v_primary + v_escape
         v = float(np.clip(v_total, -self.cfg.v_max_m_s, self.cfg.v_max_m_s))

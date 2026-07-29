@@ -61,6 +61,22 @@ def test_phase_ipc_stop_while_idle():
         hub.close()
 
 
+def test_phase_ipc_owner_pid_and_force_kill_self_guard():
+    hub = PhaseCommandHub(ctl_name="test_phase_ctl_pid", payload_name="test_phase_payload_pid")
+    client = PhaseCommandClient(
+        ctl_name="test_phase_ctl_pid", payload_name="test_phase_payload_pid"
+    )
+    try:
+        client.wait_for_hub(timeout_s=1.0)
+        assert client.hub_pid() == int(hub._ctl["owner_pid"])
+        assert client.hub_pid() > 1
+        # Hub runs in this process: force_kill_hub must refuse self-kill.
+        assert client.force_kill_hub() is False
+    finally:
+        client.close()
+        hub.close()
+
+
 def test_subscriber_exit_keeps_hub_alive():
     hub = PhaseCommandHub(ctl_name="test_phase_ctl3", payload_name="test_phase_payload3")
     client = PhaseCommandClient(ctl_name="test_phase_ctl3", payload_name="test_phase_payload3")

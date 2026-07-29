@@ -244,9 +244,10 @@ def _run_controller_service(
 class _RailPublisher:
     """Mutable rail source for SHM twin during idle vs active WBC.
 
-    When the LW100 bridge is enabled, publish **encoder** position (poll_hz)
-    so the twin mirrors the real carriage. WBC itself uses open-loop ``q_cmd[0]``
-    and does not close the loop on this value.
+    Active task: publish WBC ``q_cmd[0]`` so the twin tracks the plan at the
+    UDP publish rate (~200 Hz) instead of the Modbus encoder poll (~8–13 Hz),
+    which otherwise stair-steps / jitter near 0.  Idle: encoder when LW100 is
+    up, else the last held default.
     """
 
     def __init__(self, default_m: float, bridge: RailServoBridge | None = None) -> None:
@@ -265,10 +266,10 @@ class _RailPublisher:
         self._active_inner = inner
 
     def __call__(self) -> float:
-        if self._bridge is not None and self._bridge.enabled:
-            return float(self._bridge.measured_m)
         if self._active_inner is not None:
             return float(self._active_inner.q_cmd[0])
+        if self._bridge is not None and self._bridge.enabled:
+            return float(self._bridge.measured_m)
         return self._default_m
 
 

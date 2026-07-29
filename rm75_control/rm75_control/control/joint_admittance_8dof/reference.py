@@ -28,6 +28,20 @@ import math
 import numpy as np
 from scipy.spatial.transform import Rotation as Rsc
 
+# Hard-coded: consecutive primary-sample SRS IK failures before aborting a move.
+# Not a yaml knob — mid-path None used to silently hold last_q and freeze the robot.
+_SRS_IK_FAIL_STREAK_LIMIT = 5
+
+
+def _wrap_pi(a: float) -> float:
+    """Map angle to (-π, π]."""
+    return float((float(a) + np.pi) % (2.0 * np.pi) - np.pi)
+
+
+def _unwrap_psi_shortest(psi_start: float, psi_target: float) -> float:
+    """Target ψ unwrapped so linear interp takes the shortest signed arc."""
+    return float(psi_start) + _wrap_pi(float(psi_target) - float(psi_start))
+
 from rm75_control.control.admittance_common.reference import MotionReference
 
 
@@ -169,12 +183,13 @@ class SrsSmoothMoveReference:
     reference makes the Cartesian PATH straight-line in tool position + slerp
     in tool orientation, while the redundant DOF (ψ) is quintic-interpolated
     between start and target ψ.  Every tick, closed-form ``srs_ik`` yields
-    q_ref(t) on the branch of ``q_start``, so:
+    q_ref(t) on the branch of ``q_start`` when reachable; otherwise a wrapped
+    joint geodesic toward ``q_target`` seeds ``qdot_ff`` / plan-anchor only
+    (``sample()`` stays Cartesian — not a MoveJ mode switch).
 
     * primary-task tracking is a pure line-slerp (no jitter from IK residuals),
-    * ψ transitions are C^2-smooth and constrained by the planner's max-swing,
-    * no J1/J4 flip mid-move (branch is locked; :func:`branch_from_q` on
-      ``q_start`` fixes the elbow/wrist configuration for the whole segment).
+    * ψ transitions are C^2-smooth shortest-arc,
+    * mid-path analytic holes do not abort when ``q_target`` is known.
 
     The loop drives ``inner.arm_task.set_reference(sample_psi(t))`` every tick
     so the arm-angle secondary task tracks the ψ trajectory continuously.
@@ -192,6 +207,7 @@ class SrsSmoothMoveReference:
         branch_id: int | None = None,
         euler_order: str = "xyz",
         d_wt: float | None = None,
+        q_target_rad: np.ndarray | None = None,
     ) -> None:
         from rm75_control.kinematics.srs_ik import (
             branch_from_q,
@@ -210,7 +226,12 @@ class SrsSmoothMoveReference:
         q_arm_start = self.q_start[1:]
         self.branch_id = int(branch_id) if branch_id is not None else int(branch_from_q(q_arm_start))
         self.psi_start = float(psi_from_q(q_arm_start))
-        self.psi_target = float(psi_target_rad)
+        # Keep the principal-value target for diagnostics / reseeds, but
+        # interpolate via the shortest signed arc (149.7°→-175.3° is ~35°,
+        # not ~325°).  Linear (psi_tgt - psi_start) without wrap was the
+        # usual mid-move SRS stall after a J1 ~180° twist.
+        self.psi_target_raw = float(psi_target_rad)
+        self.psi_target = _unwrap_psi_shortest(self.psi_start, self.psi_target_raw)
         self.euler_order = str(euler_order)
         self.d_wt = float(d_wt_from_kin(kin) if d_wt is None else d_wt)
         self._R_flange_tcp, self._t_flange_tcp = flange_tcp_from_kin(kin)
@@ -219,12 +240,34 @@ class SrsSmoothMoveReference:
         self._R_start = R_start
         self._delta_rotvec = (R_target * R_start.inv()).as_rotvec()
         self._last_q = self.q_start.copy()
+        self._ik_fail_streak = 0
+        # Joint geodesic seed for qdot_ff when analytic SRS has a hole.
+        self.q_target: np.ndarray | None = (
+            np.asarray(q_target_rad, dtype=float).copy()
+            if q_target_rad is not None
+            else None
+        )
+        self._refresh_joint_delta()
+
+    def _refresh_joint_delta(self) -> None:
+        from rm75_control.control.joint_admittance_8dof.model import wrap_joint_delta
+
+        if self.q_target is None:
+            self._dq_joint = None
+            return
+        self._dq_joint = wrap_joint_delta(self.q_start, self.q_target)
+
+    def _q_joint_at(self, s: float) -> np.ndarray:
+        """Wrapped joint geodesic q_start → q_target at smoothstep fraction s."""
+        if self._dq_joint is None:
+            raise RuntimeError("SrsSmoothMoveReference: q_target required for joint geodesic")
+        return self.q_start + float(s) * self._dq_joint
 
     def reseed_start(self, q_start_rad: np.ndarray) -> None:
         """Re-anchor the quintic at live encoders (soft-start, no Cartesian lurch).
 
-        Keeps ``pose_target`` / ``y_target`` / ``psi_target``; recomputes start
-        pose, rail, ψ, and branch lock from ``q_start_rad``.
+        Keeps ``pose_target`` / ``y_target`` / ``psi_target`` / ``q_target``;
+        recomputes start pose, rail, ψ, branch lock, and joint geodesic.
         """
         from rm75_control.kinematics.srs_ik import branch_from_q, psi_from_q
 
@@ -234,11 +277,14 @@ class SrsSmoothMoveReference:
         q_arm_start = self.q_start[1:]
         self.branch_id = int(branch_from_q(q_arm_start))
         self.psi_start = float(psi_from_q(q_arm_start))
+        self.psi_target = _unwrap_psi_shortest(self.psi_start, self.psi_target_raw)
         R_start = Rsc.from_euler(self.euler_order, self.pose_start[3:])
         R_target = Rsc.from_euler(self.euler_order, self.pose_target[3:])
         self._R_start = R_start
         self._delta_rotvec = (R_target * R_start.inv()).as_rotvec()
         self._last_q = self.q_start.copy()
+        self._ik_fail_streak = 0
+        self._refresh_joint_delta()
 
     def _pose_at(self, s: float) -> np.ndarray:
         pos = self.pose_start[:3] + s * (self.pose_target[:3] - self.pose_start[:3])
@@ -248,7 +294,7 @@ class SrsSmoothMoveReference:
         pose[3:] = R_at.as_euler(self.euler_order)
         return pose
 
-    def _q_at(self, s: float) -> np.ndarray:
+    def _q_at(self, s: float, *, track_fail: bool = False) -> np.ndarray:
         from rm75_control.kinematics.srs_ik import shoulder_y_from_q_rail, srs_ik
 
         pose_s = self._pose_at(s)
@@ -267,23 +313,41 @@ class SrsSmoothMoveReference:
         q = np.zeros_like(self.q_start)
         q[0] = q_rail_s
         if q_arm is None:
+            # Prefer joint-geodesic qdot_ff (industry posture seed) over abort /
+            # freeze when a goal config is known.  pose_d stays Cartesian.
+            if self.q_target is not None:
+                if track_fail:
+                    self._ik_fail_streak = 0
+                q = self._q_joint_at(s)
+                self._last_q = q.copy()
+                return q
+            if track_fail:
+                self._ik_fail_streak += 1
+                if self._ik_fail_streak >= _SRS_IK_FAIL_STREAK_LIMIT:
+                    raise RuntimeError(
+                        f"SRS mid-path IK failed {_SRS_IK_FAIL_STREAK_LIMIT} consecutive "
+                        f"samples (s={s:.3f}, branch={self.branch_id}). "
+                        "Pass q_target for joint-geodesic qdot_ff, or re-teach pose D."
+                    )
             q = self._last_q.copy()
             q[0] = q_rail_s
         else:
+            if track_fail:
+                self._ik_fail_streak = 0
             q[1:] = q_arm
             self._last_q = q.copy()
         return q
 
     def sample_q(self, t_s: float) -> tuple[np.ndarray, np.ndarray]:
         s, _ds_dt = smoothstep_scalar(t_s, self.duration_s)
-        q = self._q_at(s)
+        q = self._q_at(s, track_fail=True)
         # qdot_ff via central-diff on the smoothstep clock so the loop's
         # Phase.qdot_ff_provider gets a consistent (q, qdot) pair even at t=0/T.
         h = 1.0e-3
         s_plus, _ = smoothstep_scalar(min(t_s + h, self.duration_s), self.duration_s)
         s_minus, _ = smoothstep_scalar(max(t_s - h, 0.0), self.duration_s)
-        q_plus = self._q_at(s_plus)
-        q_minus = self._q_at(s_minus)
+        q_plus = self._q_at(s_plus, track_fail=False)
+        q_minus = self._q_at(s_minus, track_fail=False)
         denom = max(1e-9, (min(t_s + h, self.duration_s) - max(t_s - h, 0.0)))
         qdot = (q_plus - q_minus) / denom
         return q, qdot

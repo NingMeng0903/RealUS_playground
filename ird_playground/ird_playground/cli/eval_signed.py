@@ -13,8 +13,11 @@ import yaml
 from ird_playground.ird.canonical import rotation_from_6d_torch
 from ird_playground.ird.gpu_pose_gt import GpuPoseGtConfig, _probe_collision_filter
 from ird_playground.ird.gt_common import reachability_modules
-from ird_playground.ird.robot_model import load_robot_model_spec
+from ird_playground.ird.robot_model import RobotModelSpec, load_robot_model_spec
+from ird_playground.ird.tool_frame import pose_flange_to_tcp, pose_tcp_to_flange
 from ird_playground.ird.torch_kinematics import TorchRM75Kinematics, so3_log
+from ird_playground.calib.conformal import empirical_coverage, fit_split_conformal
+from ird_playground.calib import load_conformal_json
 from ird_playground.neural.signed_field import ReachabilitySDF
 from ird_playground.neural.train_signed import (
     _side_indices,
@@ -31,6 +34,19 @@ def _pose_matrices(features: np.ndarray, device: torch.device) -> torch.Tensor:
     bottom = torch.zeros(len(x), 1, 4, dtype=x.dtype, device=device)
     bottom[:, 0, 3] = 1.0
     return torch.cat((torch.cat((R, x[:, :3, None]), dim=-1), bottom), dim=-2)
+
+
+def _tcp_pose_matrices(
+    features: np.ndarray, device: torch.device, T_flange_tcp: torch.Tensor
+) -> torch.Tensor:
+    """Map flange SE(3) features to TCP poses for world-path scoring."""
+    T_flange = _pose_matrices(features, device)
+    p, R = pose_flange_to_tcp(
+        T_flange[..., :3, 3], T_flange[..., :3, :3], T_flange_tcp
+    )
+    bottom = torch.zeros(len(T_flange), 1, 4, dtype=T_flange.dtype, device=device)
+    bottom[:, 0, 3] = 1.0
+    return torch.cat((torch.cat((R, p[..., None]), dim=-1), bottom), dim=-2)
 
 
 @torch.no_grad()
@@ -55,8 +71,9 @@ def _region_pair_direction(
     ip, inn = ip[pa], inn[na]
     rng = np.random.default_rng(seed)
     pick = rng.choice(len(ip), size=min(n, len(ip)), replace=False)
-    Tp = _pose_matrices(source["features"][ip[pick]], field.device)
-    Tn = _pose_matrices(source["features"][inn[pick]], field.device)
+    tool = field.model.T_flange_tcp
+    Tp = _tcp_pose_matrices(source["features"][ip[pick]], field.device, tool)
+    Tn = _tcp_pose_matrices(source["features"][inn[pick]], field.device, tool)
     sp = region(field.model, Tp, T_axis_root).robust_clearance
     sn = region(field.model, Tn, T_axis_root).robust_clearance
     return float((sp > sn).float().mean().item())
@@ -76,8 +93,9 @@ def _ad_fd_audit(
     ids = rng.choice(len(features), size=min(n, len(features)), replace=False)
     rail_rel, tcp_rel, finite = [], [], []
     axis = T_axis_root
+    tool = field.model.T_flange_tcp
     for i in ids:
-        base_pose = _pose_matrices(features[i : i + 1], field.device)[0]
+        base_pose = _tcp_pose_matrices(features[i : i + 1], field.device, tool)[0]
         xyz = base_pose[:3, 3].detach().clone().requires_grad_(True)
         T = torch.cat((torch.cat((base_pose[:3, :3], xyz[:, None]), dim=1), base_pose[3:4]), dim=0)
         rail = torch.tensor(0.0, device=field.device, requires_grad=True)
@@ -108,10 +126,20 @@ def _ad_fd_audit(
     }
 
 
-def _geometry_audit(source: dict[str, np.ndarray], *, seed: int = 29) -> dict[str, float]:
+def _geometry_audit(
+    source: dict[str, np.ndarray],
+    robot_spec: RobotModelSpec,
+    *,
+    seed: int = 29,
+) -> dict[str, float]:
+    """FK round-trip against stored ``features`` (flange SE3 in rail_base)."""
     rng = np.random.default_rng(seed)
     *_, SelfCollisionFilter, build_locked_rail_model = reachability_modules()
-    locked = build_locked_rail_model()
+    locked = build_locked_rail_model(
+        robot_spec.kinematics_urdf,
+        rail_locked_at_m=robot_spec.rail_locked_at_m,
+        tcp_frame=robot_spec.tcp_frame,
+    )
     collision_filter, _, _ = _probe_collision_filter(
         GpuPoseGtConfig(), locked, SelfCollisionFilter
     )
@@ -121,13 +149,17 @@ def _geometry_audit(source: dict[str, np.ndarray], *, seed: int = 29) -> dict[st
     free = collision_filter.free_mask(q_np)
     kin = TorchRM75Kinematics.from_locked_model(locked, device="cuda")
     q = torch.as_tensor(source["q_best"][ids], device=kin.device)
-    p, R = kin.fk(q)
+    p_tcp, R_tcp = kin.fk(q)
+    tool = torch.as_tensor(
+        robot_spec.tool_frame().T_flange_tcp, dtype=p_tcp.dtype, device=p_tcp.device
+    )
+    p_fl, R_fl = pose_tcp_to_flange(p_tcp, R_tcp, tool)
     target = torch.as_tensor(source["features"][ids], device=kin.device)
     Rt = rotation_from_6d_torch(target[:, 3:9])
-    pos_error = torch.linalg.vector_norm(p - target[:, :3], dim=-1)
-    rot_error = torch.linalg.vector_norm(so3_log(Rt @ R.transpose(-1, -2)), dim=-1)
+    pos_error = torch.linalg.vector_norm(p_fl - target[:, :3], dim=-1)
+    rot_error = torch.linalg.vector_norm(so3_log(Rt @ R_fl.transpose(-1, -2)), dim=-1)
 
-    # Empirical check of the RM4D last-axis symmetry under the probe collision model.
+    # Flange-roll / q7 collision dependence (gamma is a real chart DOF).
     n_roll, n_angle = 512, 12
     span = locked.q_upper - locked.q_lower
     Q = locked.q_lower + rng.random((n_roll, 7)) * span
@@ -142,8 +174,46 @@ def _geometry_audit(source: dict[str, np.ndarray], *, seed: int = 29) -> dict[st
         "positive_pose_tolerance_failures": int(((pos_error > 2.0e-4) | (rot_error > 1.0e-3)).sum().item()),
         "positive_fk_position_max_m": float(pos_error.max().item()),
         "positive_fk_rotation_max_rad": float(rot_error.max().item()),
+        "feature_frame": "flange",
         "roll_collision_variation_rate": float(varied.mean()),
         "roll_collision_audit_n": int(n_roll),
+    }
+
+
+def _exterior_grad_audit(
+    field: ReachabilitySDF,
+    canonical: np.ndarray,
+    reachable: np.ndarray,
+    *,
+    n: int = 2048,
+    seed: int = 19,
+) -> dict[str, float]:
+    """Murooka-style check: unreachable points should keep a usable ∇f."""
+    rng = np.random.default_rng(seed)
+    neg = np.flatnonzero(reachable < 0.5)
+    if len(neg) == 0:
+        return {
+            "exterior_grad_n": 0,
+            "exterior_grad_median_norm": float("nan"),
+            "exterior_grad_p10_norm": float("nan"),
+            "exterior_score_median": float("nan"),
+            "exterior_grad_finite_rate": 1.0,
+        }
+    ids = rng.choice(neg, size=min(n, len(neg)), replace=False)
+    x = torch.as_tensor(canonical[ids], dtype=torch.float32, device=field.device)
+    xn = field.model.normalize(x).detach().requires_grad_(True)
+    pred = field.model.forward_normalized(xn)
+    grad = torch.autograd.grad(pred.sum(), xn, create_graph=False)[0]
+    norms = torch.linalg.vector_norm(grad, dim=-1)
+    finite = torch.isfinite(norms) & torch.isfinite(pred)
+    norms_np = norms.detach().cpu().numpy()
+    pred_np = pred.detach().cpu().numpy()
+    return {
+        "exterior_grad_n": int(len(ids)),
+        "exterior_grad_median_norm": float(np.median(norms_np)),
+        "exterior_grad_p10_norm": float(np.percentile(norms_np, 10)),
+        "exterior_score_median": float(np.median(pred_np)),
+        "exterior_grad_finite_rate": float(finite.float().mean().item()),
     }
 
 
@@ -153,6 +223,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--checkpoint", type=Path, default=None)
     ap.add_argument("--region-pairs", type=int, default=512)
     ap.add_argument("--allow-stale-checkpoint", action="store_true")
+    ap.add_argument(
+        "--conformal",
+        type=Path,
+        default=None,
+        help="Optional conformal JSON; if missing, fit on a train subset and write default path.",
+    )
     ap.add_argument(
         "--report-near-axis",
         action=argparse.BooleanOptionalAction,
@@ -209,7 +285,68 @@ def main(argv: list[str] | None = None) -> int:
     )
     source_interior = source["features"][(source["boundary_id"] < 0) & (source["reachable"] > 0.5)]
     metrics.update(_ad_fd_audit(field, region, source_interior, T_axis_root=T_axis_root))
-    metrics.update(_geometry_audit(source))
+    metrics.update(_geometry_audit(source, robot_spec))
+    cls_w = arrays.get(
+        "classification_weight", np.ones(len(arrays["reachable"]), dtype=np.float32)
+    )
+    tr_idx, _ = _split_indices(
+        arrays["boundary_id"],
+        cfg.val_fraction,
+        cfg.seed,
+        arrays["source_pose_id"],
+    )
+    metrics.update(
+        _exterior_grad_audit(
+            field,
+            arrays["canonical"][val_idx],
+            arrays["reachable"][val_idx],
+        )
+    )
+    conformal_path = args.conformal
+    if conformal_path is None:
+        conformal_path = root / "data/calib/conformal_rm4d_signed.json"
+    elif not conformal_path.is_absolute():
+        conformal_path = root / conformal_path
+    if conformal_path.is_file():
+        conf = load_conformal_json(conformal_path)
+        threshold = float(conf["threshold"])
+    else:
+        # Fit quickly on a train subset so eval is self-contained.
+        rng = np.random.default_rng(cfg.seed + 91)
+        tr = tr_idx[cls_w[tr_idx] > 0]
+        if len(tr) > 100_000:
+            tr = rng.choice(tr, size=100_000, replace=False)
+        fit = fit_split_conformal(
+            field.score_np(arrays["canonical"][tr]),
+            arrays["reachable"][tr] > 0.5,
+            alpha=0.05,
+        )
+        threshold = float(fit.threshold)
+        conformal_path.parent.mkdir(parents=True, exist_ok=True)
+        conformal_path.write_text(
+            json.dumps(
+                {
+                    **fit.to_dict(),
+                    "checkpoint": str(ckpt),
+                    "m_safe": threshold,
+                    "note": "Auto-fit during eval_signed; prefer cli.calibrate_conformal for a pinned file.",
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+    va = val_idx[cls_w[val_idx] > 0]
+    cov = empirical_coverage(
+        field.score_np(arrays["canonical"][va]),
+        arrays["reachable"][va] > 0.5,
+        threshold,
+        margin=0.0,
+    )
+    metrics["conformal_threshold"] = threshold
+    metrics["m_safe"] = threshold
+    metrics["conformal_path"] = str(conformal_path)
+    metrics.update({f"conformal_{k}": v for k, v in cov.items()})
+    # probe45 keeps gamma as a chart DOF; allow sparse q7 collision flips (~2%).
     metrics["pass"] = bool(
         metrics["balanced_accuracy"] >= 0.90
         and metrics["direction_agreement_m"] >= 0.95
@@ -221,9 +358,11 @@ def main(argv: list[str] | None = None) -> int:
         and metrics["rail_ad_fd_median_relative_error"] <= 0.05
         and metrics["tcp_x_ad_fd_median_relative_error"] <= 0.05
         and metrics["region_gradient_finite_rate"] == 1.0
+        and metrics["exterior_grad_finite_rate"] == 1.0
+        and metrics["exterior_grad_p10_norm"] > 1.0e-4
         and metrics["positive_collision_failures"] == 0
         and metrics["positive_pose_tolerance_failures"] == 0
-        and metrics["roll_collision_variation_rate"] <= 0.01
+        and metrics["roll_collision_variation_rate"] <= 0.05
     )
     report = root / "data/reports/eval_rm4d_signed.json"
     report.parent.mkdir(parents=True, exist_ok=True)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 from pathlib import Path
 from typing import Any
@@ -98,6 +99,150 @@ def _vertex_colors_for_asset(
     return colors
 
 
+def _reviewed_hidden_face_ids_v2(
+    asset: AnatomyRiggedAsset,
+    *,
+    faces: np.ndarray,
+    metadata: dict[str, Any],
+) -> np.ndarray:
+    raw = np.asarray(metadata.get("hidden_face_ids_v2", []))
+    if not raw.size:
+        return np.zeros(0, dtype=np.int64)
+    if raw.dtype.kind not in {"i", "u"}:
+        raise ValueError("hidden_face_ids_v2 must contain integer face indices")
+    face_ids = raw.astype(np.int64, copy=False).reshape(-1)
+    if np.any(face_ids < 0) or np.any(face_ids >= len(faces)):
+        raise ValueError("hidden_face_ids_v2 contains an invalid face index")
+    if len(np.unique(face_ids)) != len(face_ids):
+        raise ValueError("hidden_face_ids_v2 contains duplicate face indices")
+    if not np.array_equal(face_ids, np.sort(face_ids)):
+        raise ValueError("hidden_face_ids_v2 must be sorted")
+
+    policy = metadata.get("oral_visibility_policy_v2")
+    if not isinstance(policy, dict):
+        raise ValueError(
+            "hidden_face_ids_v2 requires oral_visibility_policy_v2 metadata"
+        )
+    if int(policy.get("hidden_face_count", -1)) != len(face_ids):
+        raise ValueError("oral visibility hidden face count disagrees with draw list")
+    expected_digest = str(policy.get("hidden_face_ids_sha256", ""))
+    digest = hashlib.sha256(
+        np.ascontiguousarray(face_ids, dtype="<i4").tobytes()
+    ).hexdigest()
+    if not expected_digest or digest != expected_digest:
+        raise ValueError("oral visibility hidden face digest disagrees with draw list")
+
+    reviewed_names = [
+        str(value)
+        for value in policy.get("hidden_face_source_mesh_names", [])
+    ]
+    expected_counts = {
+        str(name): int(value)
+        for name, value in dict(
+            policy.get("hidden_face_counts_by_mesh", {})
+        ).items()
+    }
+    if not reviewed_names or set(reviewed_names) != set(expected_counts):
+        raise ValueError("oral visibility reviewed face domains are incomplete")
+    if (
+        asset.source_vertex_ranges is None
+        or asset.source_tissues is None
+        or not asset.source_mesh_names
+    ):
+        raise ValueError(
+            "reviewed hidden faces require complete source mesh metadata"
+        )
+    mesh_names = list(asset.source_mesh_names)
+    ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64).reshape(-1, 2)
+    tissues = list(asset.source_tissues)
+    if len(ranges) != len(mesh_names) or len(tissues) != len(mesh_names):
+        raise ValueError("reviewed hidden face source metadata is incomplete")
+
+    reviewed_face_mask = np.zeros(len(faces), dtype=bool)
+    actual_counts: dict[str, int] = {}
+    for mesh_name in reviewed_names:
+        try:
+            mesh_index = mesh_names.index(mesh_name)
+        except ValueError as exc:
+            raise ValueError(
+                f"reviewed hidden face mesh {mesh_name!r} is missing"
+            ) from exc
+        if str(tissues[mesh_index]).strip().lower() != "organ":
+            raise ValueError(
+                f"reviewed hidden face mesh {mesh_name!r} is not organ tissue"
+            )
+        start, stop = (int(value) for value in ranges[mesh_index])
+        mesh_face_mask = np.all(
+            (faces >= start) & (faces < stop),
+            axis=1,
+        )
+        reviewed_face_mask |= mesh_face_mask
+        actual_counts[mesh_name] = int(
+            np.count_nonzero(mesh_face_mask[face_ids])
+        )
+    if not np.all(reviewed_face_mask[face_ids]):
+        raise ValueError(
+            "hidden_face_ids_v2 includes a face outside reviewed organ domains"
+        )
+    if actual_counts != expected_counts:
+        raise ValueError("oral visibility per-mesh face counts changed")
+
+    hidden_mesh_names_v2 = {
+        str(value) for value in metadata.get("hidden_mesh_names_v2", [])
+    }
+    reviewed_whole_mesh_names = {
+        str(name)
+        for name in dict(
+            policy.get("hidden_whole_mesh_face_counts", {})
+        )
+    }
+    if hidden_mesh_names_v2 != reviewed_whole_mesh_names:
+        raise ValueError("oral visibility whole-mesh exclusions changed")
+    return face_ids
+
+
+def render_faces_for_asset_v2(asset: AnatomyRiggedAsset) -> np.ndarray:
+    """Return the Genesis draw list after reviewed tissue exclusions."""
+
+    faces = np.asarray(asset.faces, dtype=np.int32)
+    metadata = dict(asset.metadata or {})
+    excluded_faces = np.zeros(len(faces), dtype=bool)
+    face_ids = _reviewed_hidden_face_ids_v2(
+        asset,
+        faces=faces,
+        metadata=metadata,
+    )
+    if len(face_ids):
+        excluded_faces[face_ids] = True
+    if asset.source_vertex_ranges is None or asset.source_tissues is None:
+        return faces[~excluded_faces]
+    hidden = np.zeros(len(asset.vertices_rest), dtype=bool)
+    show_connective = bool(metadata.get("show_connective_tissue", False))
+    show_vessels = bool(metadata.get("show_vessels", True))
+    hidden_mesh_names = {
+        str(value)
+        for key in ("hidden_mesh_names_v1", "hidden_mesh_names_v2")
+        for value in metadata.get(key, [])
+    }
+    mesh_names = list(
+        asset.source_mesh_names or [""] * len(asset.source_tissues)
+    )
+    for (start, stop), tissue, mesh_name in zip(
+        asset.source_vertex_ranges,
+        asset.source_tissues,
+        mesh_names,
+    ):
+        tissue_key = str(tissue)
+        if str(mesh_name) in hidden_mesh_names:
+            hidden[int(start) : int(stop)] = True
+        elif tissue_key == "connective_tissue" and not show_connective:
+            hidden[int(start) : int(stop)] = True
+        elif tissue_key == "vessel" and not show_vessels:
+            hidden[int(start) : int(stop)] = True
+    excluded_faces |= np.any(hidden[faces], axis=1)
+    return faces[~excluded_faces]
+
+
 class AnatomyLbsDrawer:
     def __init__(
         self,
@@ -119,36 +264,7 @@ class AnatomyLbsDrawer:
 
     def _render_faces(self) -> np.ndarray:
         """Hide optional tissue layers without deleting them from the asset."""
-        faces = np.asarray(self.asset.faces, dtype=np.int32)
-        if self.asset.source_vertex_ranges is None or self.asset.source_tissues is None:
-            return faces
-        hidden = np.zeros(len(self.asset.vertices_rest), dtype=bool)
-        show_connective = bool((self.asset.metadata or {}).get("show_connective_tissue", False))
-        # Vessels on by default (Artery/Vein). Opt out with metadata show_vessels=false.
-        show_vessels = bool((self.asset.metadata or {}).get("show_vessels", True))
-        hidden_mesh_names = {
-            str(value)
-            for value in (self.asset.metadata or {}).get(
-                "hidden_mesh_names_v1", []
-            )
-        }
-        mesh_names = list(
-            self.asset.source_mesh_names
-            or [""] * len(self.asset.source_tissues)
-        )
-        for (start, stop), tissue, mesh_name in zip(
-            self.asset.source_vertex_ranges,
-            self.asset.source_tissues,
-            mesh_names,
-        ):
-            tissue_key = str(tissue)
-            if str(mesh_name) in hidden_mesh_names:
-                hidden[int(start) : int(stop)] = True
-            elif tissue_key == "connective_tissue" and not show_connective:
-                hidden[int(start) : int(stop)] = True
-            elif tissue_key == "vessel" and not show_vessels:
-                hidden[int(start) : int(stop)] = True
-        return faces[~np.any(hidden[faces], axis=1)]
+        return render_faces_for_asset_v2(self.asset)
 
     @classmethod
     def from_npz(

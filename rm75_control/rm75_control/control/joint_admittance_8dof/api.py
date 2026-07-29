@@ -130,8 +130,8 @@ class SecondaryPolicy:
         elif self.preset == "hold":
             inner.set_plan_drives_rail(False)
             inner.set_manipulability_active(False)
-            # Hold at a taught pose: centering pulls toward q_nominal and
-            # fights manual adjustment / force-hybrid positioning.
+            # Hold at a taught pose: keep centering off so it does not fight
+            # force-hybrid settle (scan uses preset=track with q_target=D).
             inner.set_centering_suppressed(True)
             # Keep arm_angle (swivel psi) active so the QP stays on the
             # intended elbow branch.
@@ -252,6 +252,7 @@ def make_srs_move_reference(
     duration_s: float,
     *,
     euler_order: str = "xyz",
+    v_scale: float = 0.75,
 ) -> SrsSmoothMoveReference:
     """Build a branch-locked SRS move reference (Bug 5).
 
@@ -275,7 +276,7 @@ def make_srs_move_reference(
             f"TCP offset z={float(kin.tcp_offset_pose[2]) * 1000:.1f} mm)",
             flush=True,
         )
-    v_max = kin.v_max * 0.5  # match inner v_scale default
+    v_max = kin.v_max * float(v_scale)
     T_rate = srs_move_duration_s(q_start, q_target, max_qdot_rad_s=v_max)
     T = max(float(duration_s), T_rate)
     d_wt = float(d_wt_from_kin(kin))
@@ -288,6 +289,7 @@ def make_srs_move_reference(
         duration_s=T,
         euler_order=euler_order,
         d_wt=d_wt,
+        q_target_rad=q_target,
     )
 
 
@@ -356,9 +358,9 @@ def compute_move_plan(
     move_mode: Literal["joint", "cartesian"] = "cartesian",
     auto_select_joint: bool = True,
     joint_auto_threshold_deg: float = 60.0,
-    peak_joint_v_frac: float = 0.50,
-    max_lin_vel_m_s: float = 0.4,
-    duration_min_s: float = 2.5,
+    peak_joint_v_frac: float = 0.80,
+    max_lin_vel_m_s: float = 0.65,
+    duration_min_s: float = 1.5,
     duration_max_s: float = 20.0,
     approach_dz_m: float | None = None,
     sigma_ref: float = 0.08,
@@ -668,6 +670,7 @@ def phase_hybrid_track(
     psi_rad_on_enter: float | None = None,
     governor: GovernorSpec | None = None,
     secondary: SecondaryPolicy | None = None,
+    q_target_rad: np.ndarray | None = None,
 ) -> JointPhaseSpec:
     arm = ArmAngleSpec(psi_rad=psi_rad_on_enter) if psi_rad_on_enter is not None else None
     sec = secondary or SecondaryPolicy(preset="track", arm_angle=arm, qdot_ff="off")
@@ -682,6 +685,7 @@ def phase_hybrid_track(
         psi_rad_on_enter=psi_rad_on_enter,
         secondary=sec,
         governor=governor or GovernorSpec(err_ok_mm=10.0, err_max_mm=40.0),
+        q_target_rad=q_target_rad,
     )
 
 
@@ -692,6 +696,17 @@ def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], No
 
     def _enter() -> None:
         spec.secondary.apply(ctx.inner, psi_rad=psi)
+        # Scan/track: attract nullspace toward taught/planned pose D joints
+        # (sin_d), not the yaml generic q_nominal — otherwise the arm drifts
+        # toward a unrelated "comfortable" posture and looks like weird IK.
+        if (
+            not ctx.inner._centering_suppressed
+            and spec.q_target_rad is not None
+            and len(np.asarray(spec.q_target_rad).reshape(-1)) > 0
+        ):
+            ctx.inner.centering_task.set_q_target(
+                np.asarray(spec.q_target_rad, dtype=float).reshape(-1)
+            )
         # move→D: soft-attract rail to the target pose's rail coordinate.
         if (
             spec.secondary.preset == "move"

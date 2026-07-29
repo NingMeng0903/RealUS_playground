@@ -35,6 +35,7 @@ from rm75_control.control.joint_admittance_8dof.model import (
     RAIL_INDEX,
     RobotKinematics,
     full_q_from_arm,
+    max_joint_err_deg,
     pose_error,
 )
 from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfig, QpIkController
@@ -381,12 +382,14 @@ def resolve_pose_ik_for_move(
     planner_weights: PlannerGoalWeights | None = None,
     euler_order: str = "xyz",
 ) -> tuple[np.ndarray, bool, PoseIkReport, bool]:
-    """Move-aware SRS IK: live q0 path + taught slot branch.
+    """Move-aware SRS IK: live q0 path + branch from slot only when nearby.
 
     Returns ``(q_target, ok, report, use_srs_move_ref)``.
 
     * ``q_seed=q0`` for path reachability (actual move start).
-    * ``q_branch_seed=q_slot`` for elbow/wrist branch at pose D.
+    * ``q_branch_seed``: taught slot when |dq| is small; live ``q0`` when the
+      start is far from the slot (large-range move) so we do not lock an
+      opposite elbow/wrist manifold that path-check then abandons.
     * ``psi_home`` defaults to ψ(q0) unless yaml overrides.
 
     If the full path check fails (common when q0 is far from the taught
@@ -398,6 +401,11 @@ def resolve_pose_ik_for_move(
     q_slot = np.asarray(q_slot_rad, dtype=float)
     psi_live = float(psi_from_q(q0[1:]))
     psi_home = float(psi_live if psi_home_rad is None else psi_home_rad)
+    # Far from taught slot: keep the live elbow/wrist branch.  Using the slot
+    # branch here is the usual source of "weird twisted" large-range IK.
+    branch_seed = (
+        q0 if max_joint_err_deg(q0, q_slot) > 45.0 else q_slot
+    )
     common = dict(
         pose_target=pose_target,
         y_rail_target=y_rail_target,
@@ -407,7 +415,7 @@ def resolve_pose_ik_for_move(
         psi_hard_upper_rad=psi_hard_upper_rad,
         planner_weights=planner_weights,
         euler_order=euler_order,
-        q_branch_seed=q_slot,
+        q_branch_seed=branch_seed,
     )
     try:
         q_tgt, ok, rep = resolve_pose_ik_srs(kin, q_seed=q0, require_path=True, **common)

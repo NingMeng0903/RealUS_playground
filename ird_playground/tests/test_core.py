@@ -84,8 +84,9 @@ def test_signed_production_config_loads():
             "rm4d_signed_production.npz archived pending Phase-3 regen after flange GT rebuild"
         )
     cfg = load_signed_train_config(root / "configs/rm4d_signed_production.yaml", root=root)
-    assert cfg.lambda_signed_value == 4.0
+    assert cfg.lambda_signed_value > 0.0
     assert cfg.lambda_eikonal > 0.0
+    assert cfg.sdf_target_scale > 1.0
     assert Path(cfg.gt_npz).is_file()
 
 

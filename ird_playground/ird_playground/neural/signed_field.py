@@ -54,6 +54,18 @@ def compute_input_stats(
     return center, scale
 
 
+def compute_support_box(canonical: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Axis-aligned min/max of training chart rows (query support)."""
+    x = np.asarray(canonical, dtype=np.float64)
+    if x.ndim != 2 or x.shape[-1] != FLANGE_CANONICAL_DIM:
+        raise ValueError(
+            f"expected (*, {FLANGE_CANONICAL_DIM}) flange chart, got {x.shape}"
+        )
+    if x.shape[0] == 0:
+        raise ValueError("cannot fit a support box on an empty chart array")
+    return x.min(axis=0).astype(np.float32), x.max(axis=0).astype(np.float32)
+
+
 def assert_fitted_normalization(
     input_center: np.ndarray,
     input_scale: np.ndarray,
@@ -100,6 +112,9 @@ class SignedReachabilityField(nn.Module if nn is not None else object):  # type:
         input_center: np.ndarray | None = None,
         input_scale: np.ndarray | None = None,
         T_flange_tcp: np.ndarray | None = None,
+        support_lo: np.ndarray | None = None,
+        support_hi: np.ndarray | None = None,
+        guard_weight: float = 8.0,
     ) -> None:
         if torch is None:
             raise ImportError("torch required")
@@ -107,6 +122,7 @@ class SignedReachabilityField(nn.Module if nn is not None else object):  # type:
         self.width = int(width)
         self.depth = int(depth)
         self.fourier_bands = int(fourier_bands)
+        self.guard_weight = float(guard_weight)
         self.softplus_beta = float(softplus_beta)
         center = (
             np.zeros(FLANGE_CANONICAL_DIM, dtype=np.float32)
@@ -132,6 +148,19 @@ class SignedReachabilityField(nn.Module if nn is not None else object):  # type:
         )
         tool = np.eye(4, dtype=np.float32) if T_flange_tcp is None else np.asarray(T_flange_tcp, dtype=np.float32)
         self.register_buffer("T_flange_tcp", torch.as_tensor(tool).reshape(4, 4))
+        for name, value in (("support_lo", support_lo), ("support_hi", support_hi)):
+            box = (
+                np.full(FLANGE_CANONICAL_DIM, np.nan, dtype=np.float32)
+                if value is None
+                else np.array(value, dtype=np.float32)
+            )
+            if box.size != FLANGE_CANONICAL_DIM:
+                raise ValueError(
+                    f"{name} must have {FLANGE_CANONICAL_DIM} entries, got {box.size}"
+                )
+            self.register_buffer(
+                name, torch.as_tensor(box).reshape(FLANGE_CANONICAL_DIM).clone()
+            )
         encoded_dim = FLANGE_CANONICAL_DIM * (1 + 2 * self.fourier_bands)
         self.stem = nn.Linear(encoded_dim, self.width)
         self.blocks = nn.ModuleList(
@@ -163,10 +192,39 @@ class SignedReachabilityField(nn.Module if nn is not None else object):  # type:
             )
         return self.forward_normalized(self.normalize(canonical))
 
-    def score_world(self, T_tcp_world: "torch.Tensor", T_axis_world: "torch.Tensor") -> "torch.Tensor":
-        """Score a TCP pose via the 9-D flange chart in the J1-axis frame."""
-        return self(
-            canonical_flange_from_world_torch(T_tcp_world, T_axis_world, self.T_flange_tcp)
+    @property
+    def has_support_box(self) -> bool:
+        return bool(
+            torch.isfinite(self.support_lo).all() and torch.isfinite(self.support_hi).all()
+        )
+
+    def support_distance(
+        self, canonical: "torch.Tensor", *, eps: float = 1.0e-3
+    ) -> "torch.Tensor":
+        """Smooth normalized distance from the training support box (0 inside)."""
+        if not self.has_support_box:
+            return canonical.new_zeros(canonical.shape[:-1])
+        x = self.normalize(canonical)
+        lo = self.normalize(self.support_lo)
+        hi = self.normalize(self.support_hi)
+        outside = F.relu(lo - x) + F.relu(x - hi)
+        return torch.sqrt((outside * outside).sum(dim=-1) + eps * eps) - eps
+
+    def guarded_forward(self, canonical: "torch.Tensor") -> "torch.Tensor":
+        """Clearance with a conservative exterior penalty outside the support."""
+        clearance = self(canonical)
+        if self.guard_weight == 0.0 or not self.has_support_box:
+            return clearance
+        return clearance - self.guard_weight * self.support_distance(canonical)
+
+    def score_world(
+        self, T_tcp_world: "torch.Tensor", T_axis_world: "torch.Tensor"
+    ) -> "torch.Tensor":
+        """Score a TCP pose on the flange chart in the J1-axis frame."""
+        return self.guarded_forward(
+            canonical_flange_from_world_torch(
+                T_tcp_world, T_axis_world, self.T_flange_tcp
+            )
         )
 
 class ReachabilitySDF:
@@ -192,6 +250,24 @@ class ReachabilitySDF:
     ) -> "ReachabilitySDF":
         blob = torch.load(Path(path), map_location="cpu", weights_only=False)
         cfg = blob["model_config"]
+        tool_cfg = cfg.get("T_flange_tcp")
+        tool = (
+            np.asarray(tool_cfg, dtype=np.float32)
+            if tool_cfg is not None
+            else None
+        )
+        if expected_robot is not None:
+            tool_urdf = np.asarray(expected_robot.tool_frame().T_flange_tcp, dtype=np.float32)
+            if tool is None or np.allclose(tool, np.eye(4, dtype=np.float32), atol=1.0e-8):
+                tool = tool_urdf
+        support = {
+            name: (
+                np.asarray(cfg[name], dtype=np.float32)
+                if cfg.get(name) is not None
+                else None
+            )
+            for name in ("support_lo", "support_hi")
+        }
         model = SignedReachabilityField(
             width=int(cfg["width"]),
             depth=int(cfg["depth"]),
@@ -199,13 +275,17 @@ class ReachabilitySDF:
             softplus_beta=float(cfg["softplus_beta"]),
             input_center=np.asarray(cfg["input_center"], dtype=np.float32),
             input_scale=np.asarray(cfg["input_scale"], dtype=np.float32),
-            T_flange_tcp=(
-                np.asarray(cfg["T_flange_tcp"], dtype=np.float32)
-                if cfg.get("T_flange_tcp") is not None
-                else None
-            ),
+            T_flange_tcp=tool,
+            guard_weight=float(cfg.get("guard_weight", 8.0)),
+            **support,
         )
-        model.load_state_dict(blob["state_dict"])
+        state = dict(blob["state_dict"])
+        if tool is not None:
+            state.pop("T_flange_tcp", None)
+        for name, value in support.items():
+            if value is not None:
+                state.pop(name, None)
+        model.load_state_dict(state, strict=False)
         meta = dict(blob.get("meta") or {})
         recorded = meta.get("robot_contract")
         if recorded is None:
@@ -229,8 +309,17 @@ class ReachabilitySDF:
             "input_scale": self.model.input_scale.detach().cpu().tolist(),
             "T_flange_tcp": self.model.T_flange_tcp.detach().cpu().tolist(),
             "canonical_dim": int(self.model.input_center.numel()),
+            "guard_weight": float(self.model.guard_weight),
         }
+        if self.model.has_support_box:
+            cfg["support_lo"] = self.model.support_lo.detach().cpu().tolist()
+            cfg["support_hi"] = self.model.support_hi.detach().cpu().tolist()
         torch.save({"state_dict": self.model.state_dict(), "model_config": cfg, "meta": meta or {}}, path)
+
+    def score_world(
+        self, T_tcp_world: "torch.Tensor", T_axis_world: "torch.Tensor"
+    ) -> "torch.Tensor":
+        return self.model.score_world(T_tcp_world, T_axis_world)
 
     @torch.no_grad()
     def score_np(self, canonical: np.ndarray, *, batch_size: int = 131_072) -> np.ndarray:
@@ -248,4 +337,5 @@ __all__ = [
     "SignedReachabilityField",
     "assert_fitted_normalization",
     "compute_input_stats",
+    "compute_support_box",
 ]

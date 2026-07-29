@@ -666,6 +666,256 @@ class WholeBoneRestFitV8:
         return self.target_head + (value - self.source_head) @ self.linear.T
 
 
+@dataclass(frozen=True)
+class ProjectedStationRestFitV810:
+    """One unit-scale rigid segment projected onto a driver direction."""
+
+    anchor: str
+    source_a: np.ndarray
+    source_b: np.ndarray
+    driver_a: np.ndarray
+    driver_b: np.ndarray
+    target_a: np.ndarray
+    target_b: np.ndarray
+    rotation: np.ndarray
+    translation: np.ndarray
+    affine: np.ndarray
+    source_length_m: float
+    driver_length_m: float
+    driver_length_residual_m: float
+    free_endpoint_residual_m: np.ndarray
+    free_endpoint_residual_norm_m: float
+    scale: float = 1.0
+
+    def __post_init__(self) -> None:
+        anchor = str(self.anchor).strip().lower()
+        if anchor not in {"proximal", "distal"}:
+            raise ValueError("projected station anchor must be 'proximal' or 'distal'")
+
+        points: dict[str, np.ndarray] = {}
+        for name in (
+            "source_a",
+            "source_b",
+            "driver_a",
+            "driver_b",
+            "target_a",
+            "target_b",
+        ):
+            value = np.asarray(getattr(self, name), dtype=np.float64).reshape(3)
+            if not np.all(np.isfinite(value)):
+                raise ValueError(f"{name} must be finite")
+            points[name] = value
+
+        rotation = _proper_rotation(
+            self.rotation,
+            label="projected station rotation",
+        )
+        translation = np.asarray(self.translation, dtype=np.float64).reshape(3)
+        if not np.all(np.isfinite(translation)):
+            raise ValueError("projected station translation must be finite")
+        affine = np.asarray(self.affine, dtype=np.float64)
+        if affine.shape != (4, 4) or not np.all(np.isfinite(affine)):
+            raise ValueError("projected station affine must be finite [4, 4]")
+        if not np.allclose(affine[3], (0.0, 0.0, 0.0, 1.0), atol=1.0e-12):
+            raise ValueError("projected station affine has an invalid bottom row")
+        expected_affine = np.eye(4, dtype=np.float64)
+        expected_affine[:3, :3] = rotation
+        expected_affine[:3, 3] = translation
+        if not np.allclose(
+            affine,
+            expected_affine,
+            atol=1.0e-12,
+            rtol=0.0,
+        ):
+            raise ValueError("projected station affine disagrees with R/t")
+
+        source_length = float(
+            np.linalg.norm(points["source_b"] - points["source_a"])
+        )
+        driver_length = float(
+            np.linalg.norm(points["driver_b"] - points["driver_a"])
+        )
+        if source_length <= 1.0e-8 or driver_length <= 1.0e-8:
+            raise ValueError("projected station endpoints must be non-degenerate")
+        if not math.isclose(
+            float(self.source_length_m),
+            source_length,
+            abs_tol=1.0e-10,
+            rel_tol=0.0,
+        ):
+            raise ValueError("projected station source length is inconsistent")
+        if not math.isclose(
+            float(self.driver_length_m),
+            driver_length,
+            abs_tol=1.0e-10,
+            rel_tol=0.0,
+        ):
+            raise ValueError("projected station driver length is inconsistent")
+        length_residual = driver_length - source_length
+        if not math.isclose(
+            float(self.driver_length_residual_m),
+            length_residual,
+            abs_tol=1.0e-10,
+            rel_tol=0.0,
+        ):
+            raise ValueError("projected station length residual is inconsistent")
+        if not math.isclose(
+            float(self.scale),
+            1.0,
+            abs_tol=1.0e-12,
+            rel_tol=0.0,
+        ):
+            raise ValueError("projected station scale must be exactly one")
+
+        source = np.stack((points["source_a"], points["source_b"]))
+        mapped = source @ rotation.T + translation
+        target = np.stack((points["target_a"], points["target_b"]))
+        if not np.allclose(mapped, target, atol=1.0e-9, rtol=0.0):
+            raise ValueError("projected station R/t does not map its endpoints")
+        target_length = float(
+            np.linalg.norm(points["target_b"] - points["target_a"])
+        )
+        if not math.isclose(
+            target_length,
+            source_length,
+            abs_tol=1.0e-10,
+            rel_tol=0.0,
+        ):
+            raise ValueError("projected station changed anatomical length")
+
+        if anchor == "proximal":
+            anchor_error = points["target_a"] - points["driver_a"]
+            expected_residual = points["target_b"] - points["driver_b"]
+        else:
+            anchor_error = points["target_b"] - points["driver_b"]
+            expected_residual = points["target_a"] - points["driver_a"]
+        if float(np.linalg.norm(anchor_error)) > 1.0e-10:
+            raise ValueError("projected station did not preserve its anchor")
+        residual = np.asarray(
+            self.free_endpoint_residual_m,
+            dtype=np.float64,
+        ).reshape(3)
+        if not np.allclose(
+            residual,
+            expected_residual,
+            atol=1.0e-10,
+            rtol=0.0,
+        ):
+            raise ValueError("projected station free-endpoint residual is inconsistent")
+        residual_norm = float(np.linalg.norm(residual))
+        if not math.isclose(
+            float(self.free_endpoint_residual_norm_m),
+            residual_norm,
+            abs_tol=1.0e-10,
+            rel_tol=0.0,
+        ):
+            raise ValueError("projected station residual norm is inconsistent")
+
+        object.__setattr__(self, "anchor", anchor)
+        for name, value in points.items():
+            object.__setattr__(self, name, _readonly(value, np.float64))
+        object.__setattr__(self, "rotation", _readonly(rotation, np.float64))
+        object.__setattr__(
+            self,
+            "translation",
+            _readonly(translation, np.float64),
+        )
+        object.__setattr__(self, "affine", _readonly(affine, np.float64))
+        object.__setattr__(
+            self,
+            "free_endpoint_residual_m",
+            _readonly(residual, np.float64),
+        )
+        object.__setattr__(self, "source_length_m", source_length)
+        object.__setattr__(self, "driver_length_m", driver_length)
+        object.__setattr__(
+            self,
+            "driver_length_residual_m",
+            length_residual,
+        )
+        object.__setattr__(
+            self,
+            "free_endpoint_residual_norm_m",
+            residual_norm,
+        )
+        object.__setattr__(self, "scale", 1.0)
+
+    def apply(self, points: Any) -> np.ndarray:
+        value = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+        if not np.all(np.isfinite(value)):
+            raise ValueError("projected station points must be finite")
+        return value @ self.rotation.T + self.translation
+
+
+def fit_projected_station_rest_v810(
+    source_a: Any,
+    source_b: Any,
+    driver_a: Any,
+    driver_b: Any,
+    *,
+    anchor: str,
+) -> ProjectedStationRestFitV810:
+    """Project one anatomical segment onto a driver ray without scaling it."""
+
+    source_start = np.asarray(source_a, dtype=np.float64).reshape(3)
+    source_end = np.asarray(source_b, dtype=np.float64).reshape(3)
+    driver_start = np.asarray(driver_a, dtype=np.float64).reshape(3)
+    driver_end = np.asarray(driver_b, dtype=np.float64).reshape(3)
+    for name, value in (
+        ("source_a", source_start),
+        ("source_b", source_end),
+        ("driver_a", driver_start),
+        ("driver_b", driver_end),
+    ):
+        if not np.all(np.isfinite(value)):
+            raise ValueError(f"{name} must be finite")
+
+    source_axis = source_end - source_start
+    driver_axis = driver_end - driver_start
+    source_length = float(np.linalg.norm(source_axis))
+    driver_length = float(np.linalg.norm(driver_axis))
+    if source_length <= 1.0e-8 or driver_length <= 1.0e-8:
+        raise ValueError("projected station endpoints must be non-degenerate")
+    driver_direction = driver_axis / driver_length
+    rotation = _rotation_from_to(source_axis, driver_axis)
+
+    selected_anchor = str(anchor).strip().lower()
+    if selected_anchor == "proximal":
+        target_start = driver_start.copy()
+        target_end = target_start + source_length * driver_direction
+        translation = target_start - rotation @ source_start
+        free_residual = target_end - driver_end
+    elif selected_anchor == "distal":
+        target_end = driver_end.copy()
+        target_start = target_end - source_length * driver_direction
+        translation = target_end - rotation @ source_end
+        free_residual = target_start - driver_start
+    else:
+        raise ValueError("projected station anchor must be 'proximal' or 'distal'")
+
+    affine = np.eye(4, dtype=np.float64)
+    affine[:3, :3] = rotation
+    affine[:3, 3] = translation
+    return ProjectedStationRestFitV810(
+        anchor=selected_anchor,
+        source_a=source_start,
+        source_b=source_end,
+        driver_a=driver_start,
+        driver_b=driver_end,
+        target_a=target_start,
+        target_b=target_end,
+        rotation=rotation,
+        translation=translation,
+        affine=affine,
+        source_length_m=source_length,
+        driver_length_m=driver_length,
+        driver_length_residual_m=driver_length - source_length,
+        free_endpoint_residual_m=free_residual,
+        free_endpoint_residual_norm_m=float(np.linalg.norm(free_residual)),
+        scale=1.0,
+    )
+
+
 def fit_whole_bone_rest_v8(
     *,
     source_head: Any,
@@ -1040,6 +1290,7 @@ __all__ = [
     "FrozenMaterialDomainV8",
     "FrozenMaterialDomainsV8",
     "HeadCompoundSelectionV8",
+    "ProjectedStationRestFitV810",
     "StationThicknessMetricsV8",
     "TongueProvenanceV8",
     "UniformHeadTransformV8",
@@ -1049,6 +1300,7 @@ __all__ = [
     "axis_rotation_v8",
     "build_ba9_head_selection_v8",
     "coupled_fixed_length_limb_v8",
+    "fit_projected_station_rest_v810",
     "fit_whole_bone_rest_v8",
     "pose_elbow_v8",
     "pose_hip_common_pivot_v8",

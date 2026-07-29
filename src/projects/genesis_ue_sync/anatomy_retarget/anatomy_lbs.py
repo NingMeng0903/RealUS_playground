@@ -1018,6 +1018,21 @@ def source_bone_driver_frames(
         else rest_points,
         dtype=np.float64,
     )
+    use_anatomical_guide_fk_v810 = bool(
+        (asset.metadata or {}).get("source_anatomical_guide_fk_v810", False)
+    )
+    guide_pose_points: np.ndarray | None = None
+    if use_anatomical_guide_fk_v810:
+        if asset.source_driver_rest_joints is None:
+            raise ValueError(
+                "source_anatomical_guide_fk_v810 requires driver rest joints"
+            )
+        guide_pose_global = joint_global_transforms(
+            pose_axis_angle=pose_axis_angle,
+            rest_joints=contact_rest_points,
+            parents=asset.parents,
+        ).astype(np.float64)
+        guide_pose_points = guide_pose_global[:, :3, 3]
     contact_point_delta = joint_delta.copy()
     for joint, parent in enumerate(
         np.asarray(asset.parents, dtype=np.int64).tolist()
@@ -1032,8 +1047,11 @@ def source_bone_driver_frames(
         )
         + contact_point_delta[:, :3, 3]
     )
+    if guide_pose_points is not None:
+        contact_pose_points = guide_pose_points
     use_anatomical_pivots_v7 = bool(
         (asset.metadata or {}).get("source_anatomical_pivots_v7", False)
+        or use_anatomical_guide_fk_v810
     )
     frames = np.tile(np.eye(4, dtype=np.float64), (bone_count, 1, 1))
     for bone, mode in enumerate(modes):
@@ -1070,13 +1088,17 @@ def source_bone_driver_frames(
                 # centre.  The old path rotated a femur around the statistical
                 # SMPL-X hip several centimetres away from the acetabulum.
                 segment_rest_a = contact_rest_points[a]
-                segment_rest_b = segment_rest_a + (
-                    rest_points[b] - rest_points[a]
-                )
                 segment_pose_a = contact_pose_points[a]
-                segment_pose_b = segment_pose_a + (
-                    pose_points[b] - pose_points[a]
-                )
+                if use_anatomical_guide_fk_v810:
+                    segment_rest_b = contact_rest_points[b]
+                    segment_pose_b = contact_pose_points[b]
+                else:
+                    segment_rest_b = segment_rest_a + (
+                        rest_points[b] - rest_points[a]
+                    )
+                    segment_pose_b = segment_pose_a + (
+                        pose_points[b] - pose_points[a]
+                    )
             rest_frame = _segment_frame(
                 segment_rest_a,
                 segment_rest_b,
@@ -1303,6 +1325,21 @@ def source_bone_posed_global(
         else asset.rest_joints,
         dtype=np.float64,
     )
+    use_anatomical_guide_fk_v810 = bool(
+        (asset.metadata or {}).get("source_anatomical_guide_fk_v810", False)
+    )
+    guide_pose_points: np.ndarray | None = None
+    if use_anatomical_guide_fk_v810:
+        if asset.source_driver_rest_joints is None:
+            raise ValueError(
+                "source_anatomical_guide_fk_v810 requires driver rest joints"
+            )
+        guide_pose_global = joint_global_transforms(
+            pose_axis_angle=pose_axis_angle,
+            rest_joints=contact_rest_points,
+            parents=asset.parents,
+        ).astype(np.float64)
+        guide_pose_points = guide_pose_global[:, :3, 3]
     contact_point_delta = target_joint_delta.copy()
     for joint, parent_j in enumerate(
         np.asarray(asset.parents, dtype=np.int64).tolist()
@@ -1317,6 +1354,8 @@ def source_bone_posed_global(
         )
         + contact_point_delta[:, :3, 3]
     )
+    if guide_pose_points is not None:
+        contact_pose_points = guide_pose_points
     # Zero pose must recover the fitted bind exactly.  Rest-joint H/K/A are not
     # perfectly colinear, so a geometric hinge solve would invent a nonzero
     # femur twist on the neutral sample; skip it when the SMPL-X pose is zero.
@@ -1335,11 +1374,16 @@ def source_bone_posed_global(
             hip_j = int(entry["smplx_hip"])
             knee_j = int(entry["smplx_knee"])
             ankle_j = int(entry["smplx_ankle"])
-            # Same segment endpoints as the anatomical-pivots femur driver:
-            # origin on the socket, distal offset preserves the SMPL-X vector.
-            hip = contact_pose_points[hip_j]
-            knee = hip + (pose_points[knee_j] - pose_points[hip_j])
-            ankle = knee + (pose_points[ankle_j] - pose_points[knee_j])
+            if guide_pose_points is not None:
+                hip = guide_pose_points[hip_j]
+                knee = guide_pose_points[knee_j]
+                ankle = guide_pose_points[ankle_j]
+            else:
+                # Legacy anatomical-pivot mode keeps the socket origin but
+                # inherits raw SMPL-X segment vectors.
+                hip = contact_pose_points[hip_j]
+                knee = hip + (pose_points[knee_j] - pose_points[hip_j])
+                ankle = knee + (pose_points[ankle_j] - pose_points[knee_j])
             driver_desired = driver_frames[femur_bone] @ coupling[femur_bone]
             R_femur, theta, theta_raw, hinge_axis_world = solve_leg_hinge_v1(
                 hip=hip,

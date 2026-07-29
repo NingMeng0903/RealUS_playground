@@ -38,7 +38,7 @@ inner:
   # Set true only when the pendant tool must override Pinocchio (old gripper flow).
   sync_tcp_from_robot: false
 
-  v_scale: 0.5             # fraction of URDF joint velocity limit
+  v_scale: 0.75            # fraction of URDF joint velocity limit (was 0.5; move→D felt sluggish)
   # Acceleration limits are unit-explicit: the old scalar a_max mixed arm
   # rad/s^2 with the rail's m/s^2 and gave the prismatic joint no effective
   # accel bound (20 m/s^2 = 0 -> 0.2 m/s in 10 ms = no limit at all).
@@ -137,8 +137,8 @@ inner:
     k_limit: 2.0
     activation: 0.85
     weights: [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    # Comfortable RM75 posture (rail=0, J1=0, J2=-45, J3=0, J4=90, J5=0, J6=45, J7=0).
-    # Nullspace centering attractor during scan/track — independent of taught D.
+    # Fallback attractor only (used before a phase sets q_target).
+    # Scan/track on_enter overrides this with taught/planned pose D (sin_d).
     q_nominal_deg: [0.0, 0.0, -45.0, 0.0, 90.0, 0.0, 45.0, 0.0]
     # Move-phase nullspace: ascend Yoshikawa μ instead of centering (see
     # manipulability_task.py).  Enabled by d_sin_tool_y move_enter().

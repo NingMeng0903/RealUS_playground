@@ -98,7 +98,7 @@ class JointIkConfig:
     # extension, keeping the arm away from stretched-singular postures.
     rail_extension: RailExtensionConfig = field(default_factory=RailExtensionConfig)
     # safety
-    v_scale: float = 0.5               # fraction of URDF joint velocity limit allowed
+    v_scale: float = 0.75               # fraction of URDF joint velocity limit allowed
     # Acceleration limits are UNIT-SEPARATED: rail is m/s^2, arm is rad/s^2.
     # A single scalar mixed the two and gave the prismatic joint a de-facto
     # 20 m/s^2 limit (0 -> 0.2 m/s in 10 ms — no accel limit at all).
@@ -558,6 +558,16 @@ class JointIkController:
             elif self.rail_ext_task.last_limit_saturated and sigma_now < sigma_ref:
                 # Rail cannot help further: escape arm singularities in the
                 # nullspace instead of straightening the arm.
+                manip_for_saturation = True
+
+            # One-policy low-σ: whenever σ is unhealthy during COUPLED rail
+            # coordination, ascend μ in the nullspace (not only at rail travel
+            # limits).  Gated on centering being active so move/hold presets
+            # (centering suppressed) keep planner-owned posture.
+            if (
+                sigma_now < sigma_ref
+                and not self._centering_suppressed
+            ):
                 manip_for_saturation = True
 
         r = self.core.step(

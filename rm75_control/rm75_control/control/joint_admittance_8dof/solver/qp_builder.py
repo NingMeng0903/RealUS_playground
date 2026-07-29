@@ -138,8 +138,9 @@ class _ProxQpWbcBackend:
         # a full-stop fallback; typical converged residuals are already
         # 1e-5..1e-4 in this regime.
         self._eps_loose = max(self._eps_tight * 100.0, 1.0e-4)
+        self._max_iter = int(cfg.max_iter)
         self.qp.settings.eps_abs = self._eps_tight
-        self.qp.settings.max_iter = cfg.max_iter
+        self.qp.settings.max_iter = self._max_iter
         self.qp.settings.initial_guess = (
             proxsuite.proxqp.InitialGuess.WARM_START_WITH_PREVIOUS_RESULT
         )
@@ -195,10 +196,10 @@ class _ProxQpWbcBackend:
                 self._px.proxqp.InitialGuess.NO_INITIAL_GUESS
             )
             self.qp.settings.eps_abs = self._eps_loose
-            retry_iters = int(min(max(int(self.cfg.max_iter), 1), 400))
+            retry_iters = int(min(max(int(self._max_iter), 1), 400))
             self.qp.settings.max_iter = retry_iters
             self.qp.solve()
-            self.qp.settings.max_iter = int(self.cfg.max_iter)
+            self.qp.settings.max_iter = int(self._max_iter)
 
         if not self._solved():
             self.fail_count += 1

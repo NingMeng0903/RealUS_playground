@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import signal
 import time
 from dataclasses import asdict, dataclass, field
 from enum import IntEnum
@@ -34,6 +36,7 @@ _CTL_DTYPE = np.dtype(
         ("payload_len", "<u4"),
         ("t_status_mono", "<f8"),
         ("stop_req", "u1"),
+        ("owner_pid", "<u4"),
         ("msg", "S96"),
     ]
 )
@@ -137,6 +140,7 @@ class PhaseCommandHub:
         self._ctl["ack_seq"] = np.uint64(0)
         self._ctl["payload_len"] = np.uint32(0)
         self._ctl["stop_req"] = np.uint8(0)
+        self._ctl["owner_pid"] = np.uint32(os.getpid())
         self.set_idle()
 
     def poll(self) -> tuple[PhaseCmd, int, SinToolYTaskParams | None] | None:
@@ -304,6 +308,30 @@ class PhaseCommandClient:
             return
         self._ctl["stop_req"] = np.uint8(1)
 
+    def hub_pid(self) -> int:
+        """Window A PID published in ctl SHM (0 if unavailable)."""
+        if not self._ensure():
+            return 0
+        try:
+            return int(self._ctl["owner_pid"])
+        except (OSError, ValueError, KeyError):
+            return 0
+
+    def force_kill_hub(self) -> bool:
+        """SIGKILL window A when it is stuck holding the GIL (ProxQP / Modbus).
+
+        Soft ``stop()`` only sets ``stop_req``; A cannot observe it while a
+        native ProxQP solve holds the interpreter lock for seconds.
+        """
+        pid = self.hub_pid()
+        if pid <= 1 or pid == os.getpid():
+            return False
+        try:
+            os.kill(pid, signal.SIGKILL)
+            return True
+        except (ProcessLookupError, PermissionError, OSError):
+            return False
+
     def read_status(self) -> dict[str, Any] | None:
         if not self._ensure():
             return None
@@ -316,6 +344,7 @@ class PhaseCommandClient:
                 "ticks": int(self._ctl["ticks"]),
                 "msg": msg_bytes.decode("utf-8", errors="replace"),
                 "t_status_mono": float(self._ctl["t_status_mono"]),
+                "owner_pid": int(self._ctl["owner_pid"]),
             }
         except (OSError, ValueError):
             self._reset()

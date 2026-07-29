@@ -31,6 +31,11 @@ from .articular_fit_v8 import (
     reconstruct_hip_compounds_v8,
     reconstruct_knee_ankle_compounds_v8,
 )
+from .leg_centerline_v810 import (
+    apply_leg_centerline_v810,
+    has_leg_centerline_v810,
+    reconstruct_leg_centerline_compounds_v810,
+)
 from .mechanism_v8 import reject_obsolete_mechanism_config_v8
 from .rigged_asset import AnatomyRiggedAsset
 from .tube_frames_v8 import (
@@ -753,6 +758,7 @@ def materialize_subject(
         pose_cache_hash="",
         metadata=metadata,
     )
+    v810_leg = has_leg_centerline_v810(operator.mechanism_coefficients)
     hip_domain_keys = {
         f"{side}/{name}.{partition}"
         for side in ("left", "right")
@@ -765,16 +771,6 @@ def materialize_subject(
         )
         for partition in ("fit", "validation")
     }
-    if hip_domain_keys.issubset(operator.fixed_material_domains):
-        rigged, hip_report = reconstruct_hip_compounds_v8(
-            rigged,
-            domains=operator.fixed_material_domains,
-        )
-    else:
-        hip_report = {
-            "available": False,
-            "reason": "operator lacks the complete bilateral V8 hip domains",
-        }
     knee_ankle_domain_keys = {
         key
         for side in ("left", "right")
@@ -788,16 +784,74 @@ def materialize_subject(
             f"ankle/{side}/talus.fit",
         )
     }
-    if knee_ankle_domain_keys.issubset(operator.fixed_material_domains):
-        rigged, knee_ankle_report = reconstruct_knee_ankle_compounds_v8(
-            rigged,
-            domains=operator.fixed_material_domains,
-        )
+    if v810_leg:
+        if (
+            hip_domain_keys.issubset(operator.fixed_material_domains)
+            and knee_ankle_domain_keys.issubset(operator.fixed_material_domains)
+        ):
+            rigged, leg_compound_report = reconstruct_leg_centerline_compounds_v810(
+                rigged,
+                domains=operator.fixed_material_domains,
+            )
+            hip_report = {
+                "available": True,
+                "method": "unit_scale_v810",
+                "sides": {
+                    side: leg_compound_report["sides"][side]["femur"]
+                    for side in ("left", "right")
+                },
+            }
+            knee_ankle_report = {
+                "available": True,
+                "method": "unit_scale_v810",
+                "sides": {
+                    side: leg_compound_report["sides"][side]["shank"]
+                    for side in ("left", "right")
+                },
+            }
+        else:
+            hip_report = {
+                "available": False,
+                "reason": "operator lacks the complete V8.10 hip domains",
+            }
+            knee_ankle_report = {
+                "available": False,
+                "reason": "operator lacks the complete V8.10 knee/ankle domains",
+            }
+            leg_compound_report = {
+                "available": False,
+                "reason": "operator lacks the complete V8.10 leg domains",
+            }
     else:
-        knee_ankle_report = {
+        if hip_domain_keys.issubset(operator.fixed_material_domains):
+            rigged, hip_report = reconstruct_hip_compounds_v8(
+                rigged,
+                domains=operator.fixed_material_domains,
+            )
+        else:
+            hip_report = {
+                "available": False,
+                "reason": "operator lacks the complete bilateral V8 hip domains",
+            }
+        if knee_ankle_domain_keys.issubset(operator.fixed_material_domains):
+            rigged, knee_ankle_report = reconstruct_knee_ankle_compounds_v8(
+                rigged,
+                domains=operator.fixed_material_domains,
+            )
+        else:
+            knee_ankle_report = {
+                "available": False,
+                "reason": "operator lacks bilateral frozen V8 knee/ankle domains",
+            }
+        leg_compound_report = {
             "available": False,
-            "reason": "operator lacks bilateral frozen V8 knee/ankle domains",
+            "reason": "operator does not select the V8.10 leg compound path",
         }
+    rigged, leg_centerline_report = apply_leg_centerline_v810(
+        rigged,
+        betas=beta,
+        coefficients=operator.mechanism_coefficients,
+    )
     rigged = with_source_driver_coupling(rigged)
     offsets, indices, weights = _compile_skinning_csr(rigged)
     operator_digest = operator.runtime_digest(validate=False)
@@ -857,6 +911,8 @@ def materialize_subject(
             "obsolete_pose_paths_absent": True,
             "hip_articular_fit": hip_report,
             "knee_ankle_articular_fit": knee_ankle_report,
+            "leg_compounds_v810": leg_compound_report,
+            "leg_centerline_v810": leg_centerline_report,
             "tube_coupling": tube_report,
         },
     )
