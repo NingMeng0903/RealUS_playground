@@ -181,6 +181,7 @@ class ProactiveForceIntegrator:
                 v_force_z=v_force_z,
                 v_z_cap=v_z_cap,
                 ke_hat=ke_hat,
+                desired_force_n=desired_force_n,
             )
         else:
             self._update_fixed(
@@ -300,17 +301,22 @@ class ProactiveForceIntegrator:
         v_force_z: float,
         v_z_cap: float,
         ke_hat: float,
+        desired_force_n: float = 0.0,
     ) -> None:
         cfg = self.cfg
         ke_hat = max(float(ke_hat), 1e-6)
         ke_floor = max(float(cfg.ke_floor_ff), 1e-6)
         tau = max(float(cfg.tau_ff_s), 1e-6)
-        # Over-force retract: use full K̂e so the same Newton asks for a tiny
-        # displacement on stiff tissue (anti-bounce).
-        # Press / under-force chase: always use ke_floor so surface tracking
-        # keeps bandwidth. Dimeas press_is_gate already attenuates press when
-        # Iₛ is high; using full K̂e *and* the gate double-starves recovery.
-        if float(eff) < 0.0:
+        # Over-force retract:
+        # * hand guidance (desired≈0) always uses ke_floor (symmetric feel);
+        # * force tracking uses full K̂e only while Iₛ shows ringing, otherwise
+        #   ke_floor so quiet retract is not ~10× weaker than press.
+        hand_guidance = abs(float(desired_force_n)) < 1e-6
+        if (
+            float(eff) < 0.0
+            and not hand_guidance
+            and float(instability_index) > float(cfg.press_is_gate_start)
+        ):
             ke = max(ke_hat, ke_floor)
         else:
             ke = ke_floor

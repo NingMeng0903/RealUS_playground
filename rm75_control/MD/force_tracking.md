@@ -53,15 +53,12 @@ cap_retract = clip((f_pred - f_keep)/budget · v_ref, v_min, v_z_cap)
 `Fdes ≈ 0`（手推导引）时不夹回撤，避免把轻阻尼手感夹死。
 `t_react_s` 与 `force.causal_fc_hz=10` 对齐（约 30 ms）。
 
-## 调参要点
+## 手感与接触（结构，不是拧旋钮）
 
-| 手感问题 | 先动 |
-|---|---|
-| 越推越顶（desired=0） | `damping_base_z`、确认 `f_err_gate_floor_n≥3`、barrier 在 Fdes=0 旁路 |
-| 下探随目标力变快 | `seek_vz_m_s` / `seek_force_sat_n` |
-| 硬面弹跳 | `damping_beta_e_edot`、`force_barrier.v_ref_m_s`、`tau_ff_s`、`m_u` |
-| 软面追不上 | `ke_floor_ff`、`tau_ff_s`↓、`damping_alpha_e`↓ |
-| 换表面再接触过冲 | `contact_release_*`、`desired_force_ramp_s` |
+- **慢推恒力、快推变沉**：旧的 `β·e·ė` 在 `desired=0` 时会把人手推力当成“误差发散”。现在手导只保留 `damping_base_z`。
+- **回退沉**：过力回撤曾用全量 `K̂e` 归一化，前馈比压入弱 ~10×。现在仅在 `Iₛ` 共振时用全量 Ke；安静回撤与手导都用 `ke_floor`。
+- **接触小振**：不再用上升沿硬刹。寻面时按 `|fz|/contact_threshold` **连续收压入帽**，到阈值阈值大约还剩 25% 寻面速度。
+
 
 质量、Dimeas 力尺度和阻尼上限不随运行时目标力改变。
 

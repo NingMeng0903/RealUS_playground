@@ -98,6 +98,11 @@ class AdmittanceConfig:
     edot_lpf_s: float = 0.02
     seek_vz_m_s: float = 0.015
     seek_force_sat_n: float = 1.0
+    # Soft-brake / post-impact boost.  Defaults off: continuous approach
+    # braking via |fz|/contact_threshold replaces rising-edge jumps.
+    impact_vz_m_s: float = 0.0
+    impact_damping_extra: float = 0.0
+    impact_damping_s: float = 0.0
     proactive_ff: ProactiveFfConfig = field(default_factory=ProactiveFfConfig)
     force_barrier: ForceBarrierConfig = field(default_factory=ForceBarrierConfig)
     pos_err_deadband_m: float = 0.0
@@ -171,6 +176,9 @@ class AdmittanceConfig:
             edot_lpf_s=float(c.get("edot_lpf_s", 0.02)),
             seek_vz_m_s=float(c.get("seek_vz_m_s", 0.015)),
             seek_force_sat_n=float(c.get("seek_force_sat_n", 1.0)),
+            impact_vz_m_s=float(c.get("impact_vz_m_s", 0.0)),
+            impact_damping_extra=float(c.get("impact_damping_extra", 0.0)),
+            impact_damping_s=float(c.get("impact_damping_s", 0.0)),
             proactive_ff=ProactiveFfConfig.from_dict(c),
             force_barrier=ForceBarrierConfig.from_dict(c),
             pos_err_deadband_m=float(c.get("pos_err_deadband_m", 0.0)),
@@ -638,7 +646,19 @@ class AdmittanceController:
             + cfg.var_damping_lambda * self.instability_index
         )
 
-    def _trend_damping(self, eff: float, dt_eff: float) -> float:
+    def _trend_damping(
+        self,
+        eff: float,
+        dt_eff: float,
+        *,
+        desired_force_n: float = 0.0,
+    ) -> float:
+        """Low fixed base; expansion terms only for resonant force tracking.
+
+        Hand guidance (desired≈0) and quiet contact keep ``b_base`` — the
+        β·e·ė term otherwise treats a fast operator push as "diverging error"
+        and is exactly the "快顶阻尼大" feel.
+        """
         cfg = self.cfg
         if dt_eff > 0.0:
             raw_dot = (eff - self._eff_prev) / dt_eff
@@ -646,12 +666,14 @@ class AdmittanceController:
             alpha = min(1.0, dt_eff / tau)
             self._eff_dot += alpha * (raw_dot - self._eff_dot)
         self._eff_prev = float(eff)
-        bd = (
-            float(cfg.damping_base_z)
-            + float(cfg.damping_alpha_e) * abs(eff)
-            + float(cfg.damping_beta_e_edot)
-            * max(0.0, eff * self._eff_dot)
-        )
+        bd = float(cfg.damping_base_z)
+        # Hand guidance (desired≈0): pure Keemink transparency — α/β would
+        # treat a fast operator push as diverging error ("快顶阻尼大").
+        if abs(float(desired_force_n)) > 1e-6:
+            bd += float(cfg.damping_alpha_e) * abs(eff)
+            bd += float(cfg.damping_beta_e_edot) * max(
+                0.0, eff * self._eff_dot
+            )
         if cfg.damping_max_z > 0.0:
             bd = min(bd, float(cfg.damping_max_z))
         return max(bd, 0.0)
@@ -703,7 +725,11 @@ class AdmittanceController:
                 )
             self.damping_trend_z = float(cfg.damping_base_z)
         else:
-            damping_trend = self._trend_damping(eff, dt_eff)
+            damping_trend = self._trend_damping(
+                eff,
+                dt_eff,
+                desired_force_n=desired_force_n,
+            )
             self.damping_trend_z = damping_trend
             damping_target = damping_trend + damping_dimeas
             if cfg.damping_max_z > 0.0:
@@ -730,6 +756,8 @@ class AdmittanceController:
             in_contact=in_contact,
             v_z_cap=v_z_cap,
             seek_vz_m_s=cfg.seek_vz_m_s,
+            dt_eff=dt_eff,
+            contact_enter_n=cfg.contact_threshold_n,
         )
         self.cap_press_z = float(cap_press)
         self.cap_retract_z = float(cap_retract)

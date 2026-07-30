@@ -864,7 +864,6 @@ def calibrate_coupled_joint_roll_glide_v8(
         fit_gaps: list[list[float]] = []
         rejected_samples: list[dict[str, Any]] = []
         improved_sample_count = 0
-        solver_failure_count = 0
         # The guide chain is the positional authority.  A coupled response is
         # permitted to add a bounded slide only when it improves the frozen
         # contact objective over that guide-only baseline.  Powell's status is
@@ -973,28 +972,11 @@ def calibrate_coupled_joint_roll_glide_v8(
                 if candidate_is_finite and candidate_is_bounded
                 else float("inf")
             )
-            accepted = bool(
-                solved.success
-                and candidate_is_bounded
-                and np.isfinite(candidate_objective)
-                and candidate_objective
-                < zero_objective - objective_improvement_tolerance
-            )
-            if accepted:
-                translation_world = candidate_translation
-                improved_sample_count += 1
-            else:
-                translation_world = np.zeros(3, dtype=np.float64)
-                if not solved.success:
-                    solver_failure_count += 1
-                if not candidate_is_finite:
-                    reason = "nonfinite_solver_result"
-                elif not candidate_is_bounded:
-                    reason = "translation_exceeds_bound"
-                elif not solved.success:
-                    reason = "solver_did_not_converge"
-                else:
-                    reason = "does_not_improve_guide_baseline"
+            if (
+                not solved.success
+                or not candidate_is_bounded
+                or not np.isfinite(candidate_objective)
+            ):
                 candidate_gaps = (
                     [
                         float(
@@ -1007,13 +989,44 @@ def calibrate_coupled_joint_roll_glide_v8(
                     if candidate_is_bounded
                     else None
                 )
+                raise ValueError(
+                    f"{side} {kind} coupled calibration failed: "
+                    f"sample={sample_index} rotvec_rad="
+                    f"{np.asarray(rotvec, dtype=np.float64).round(7).tolist()} "
+                    f"success={bool(solved.success)} "
+                    f"status={int(getattr(solved, 'status', -1))} "
+                    f"message={str(getattr(solved, 'message', ''))!r} "
+                    f"zero_objective={float(zero_objective):.9g} "
+                    f"candidate_objective={float(candidate_objective):.9g} "
+                    f"zero_fit_gaps_m={np.asarray(zero_gaps).round(7).tolist()} "
+                    f"candidate_fit_gaps_m={None if candidate_gaps is None else np.asarray(candidate_gaps).round(7).tolist()} "
+                    f"translation_m={candidate_translation.round(7).tolist()} "
+                    f"translation_norm_m={float(np.linalg.norm(candidate_translation)):.9g}"
+                )
+            accepted = bool(
+                candidate_objective
+                < zero_objective - objective_improvement_tolerance
+            )
+            if accepted:
+                translation_world = candidate_translation
+                improved_sample_count += 1
+            else:
+                translation_world = np.zeros(3, dtype=np.float64)
+                candidate_gaps = [
+                    float(
+                        fixed_trees[index]
+                        .query(mobile[index] + candidate_translation)[0]
+                        .min()
+                    )
+                    for index in range(2)
+                ]
                 rejected_samples.append(
                     {
                         "sample_index": int(sample_index),
                         "rotvec_rad": np.asarray(
                             rotvec, dtype=np.float64
                         ).tolist(),
-                        "reason": reason,
+                        "reason": "does_not_improve_guide_baseline",
                         "solver_success": bool(solved.success),
                         "solver_status": int(getattr(solved, "status", -1)),
                         "solver_message": str(getattr(solved, "message", "")),
@@ -1023,8 +1036,6 @@ def calibrate_coupled_joint_roll_glide_v8(
                         "candidate_fit_gaps_m": candidate_gaps,
                         "candidate_translation_m": (
                             candidate_translation.tolist()
-                            if candidate_is_bounded
-                            else None
                         ),
                     }
                 )
@@ -1119,7 +1130,6 @@ def calibrate_coupled_joint_roll_glide_v8(
                 len(states) - 1 - improved_sample_count
             ),
             "rbf_improved_sample_count": int(improved_sample_count),
-            "solver_failure_sample_count": int(solver_failure_count),
             "rejected_samples": rejected_samples,
             "objective_improvement_tolerance": objective_improvement_tolerance,
             "moves_complete_subtree": True,

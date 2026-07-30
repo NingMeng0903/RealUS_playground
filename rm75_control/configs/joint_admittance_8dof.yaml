@@ -279,13 +279,19 @@ hybrid_motion:
   # to restore the old Keemink critical-damping path for A/B.
   damping_law: trend
   damping_base_z: 15.0
-  damping_alpha_e: 1.5
-  damping_beta_e_edot: 3.0
-  damping_max_z: 400.0
+  # α/β active only while tracking a nonzero setpoint. Hand guidance
+  # (desired≈0) stays at damping_base_z for transparency.
+  damping_alpha_e: 1.0
+  damping_beta_e_edot: 2.5
+  damping_max_z: 200.0
   edot_lpf_s: 0.02
-  # Free-space seek speed independent of desired force (f_err saturates).
-  seek_vz_m_s: 0.015
+  # Free-space seek; press cap closes continuously as |fz|→contact_threshold.
+  seek_vz_m_s: 0.012
   seek_force_sat_n: 1.0
+  # Discrete impact jumps disabled — continuous approach brake replaces them.
+  impact_vz_m_s: 0.0
+  impact_damping_extra: 0.0
+  impact_damping_s: 0.0
   # Absolute tool-Z ceiling (force barrier applies tighter press/retract caps).
   max_vz_tool_m_s: 0.10
   # Engagement ramp: re-armed every contact episode (release clears timer).
@@ -301,6 +307,10 @@ hybrid_motion:
     v_ref_m_s: 0.05
     v_min_retract_m_s: 0.002
     fdot_lpf_s: 0.040
+    # Cap slew only when arm_impact_slew() is armed (optional); approach
+    # braking is continuous via |fz|/contact_threshold.
+    cap_slew_m_s2: 0.50
+    cap_close_slew_m_s2: 0.80
   # Dimeas & Aspragathos 2016 variable-INERTIA channel on tool-Z.
   # Table 2: inertia adaptation is ~5× better than damping-only on operator
   # effort — d_u is ZERO; m_u carries the oscillation suppression.

@@ -51,12 +51,12 @@ class DemoConfig:
     control_points: int = 11
     # Locked dual-case placement (TaskCone tip±45×roll±30), Y-span 40 cm.
     # Vessel above/oblique (+oz,+ox) → nearest on UPPER skin (θ≈+50°), not bottom.
-    # Mid/late path: nearest C*<target → must twist within the upper chart.
-    ellipse_center_x_m: float = 0.460
-    ellipse_center_z_m: float = 0.120
-    semi_axis_x_m: float = 0.13
+    # Early: nearest C* ok (rail recovers); mid/late: C*<target → must twist.
+    ellipse_center_x_m: float = 0.478
+    ellipse_center_z_m: float = 0.080
+    semi_axis_x_m: float = 0.14
     semi_axis_z_m: float = 0.08
-    vessel_offset_x_m: float = 0.100
+    vessel_offset_x_m: float = 0.110
     vessel_offset_z_m: float = 0.020
     # Extruded cylinder length along world-Y = 40 cm.
     path_y_min_m: float = 0.00
