@@ -176,6 +176,7 @@ def test_uniform_head_compound_fit_preserves_rig_and_protected_soft_material() -
         asset,
         surface_vertices=surface_vertices,
         surface_faces=surface_faces,
+        target_center_m=np.mean(before[compound], axis=0),
     )
 
     assert report["outside_count"] == 0
@@ -240,4 +241,10 @@ def test_head_compound_fit_rejects_clearance_that_costs_more_than_three_percent(
             asset,
             surface_vertices=surface_vertices,
             surface_faces=surface_faces,
+            target_center_m=np.mean(
+                np.asarray(asset.vertices_rest, dtype=np.float64)[
+                    cranial_material_mask(asset) & rigid_head_attachment_mask(asset)
+                ],
+                axis=0,
+            ),
         )

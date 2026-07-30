@@ -624,7 +624,16 @@ def build_selective_source_operator_v8(
         volume_registration_report = {
             **volume_registration_report,
             "available": True,
-            "passed": True,
+            # The harmonic map has completed here, but it has not yet been
+            # checked against the exact saved subject in rest and capture
+            # poses.  Do not turn that missing geometry evidence into a green
+            # publish contract merely because topology and weights survived.
+            "passed": False,
+            "capture_audit_required": True,
+            "reason": (
+                "exact rest and capture containment audit is required after "
+                "subject materialization"
+            ),
             "topology_preserved": True,
             "source_weights_preserved": True,
             "protected_rigid_material": True,

@@ -53,6 +53,35 @@ _V71_LEG_COMPOUND_ROOT_NAMES_V1 = {
         "toes_prefix": "Toes_Rotate_R",
     },
 }
+_V71_LEG_RUNTIME_DRIVER_SEMANTICS_V811 = {
+    "left": {
+        "femur": ("left_hip", "segment_root"),
+        "knee": ("left_knee", "segment_root"),
+        "shank": ("left_knee", "segment_root"),
+        "ankle": ("left_ankle", "rigid_group"),
+        "arch": ("left_foot", "joint_local"),
+    },
+    "right": {
+        "femur": ("right_hip", "segment_root"),
+        "knee": ("right_knee", "segment_root"),
+        "shank": ("right_knee", "segment_root"),
+        "ankle": ("right_ankle", "rigid_group"),
+        "arch": ("right_foot", "joint_local"),
+    },
+}
+_V71_LEG_RUNTIME_STATION_LABELS_V811 = (
+    "femur",
+    "knee",
+    "shank",
+    "ankle",
+    "arch",
+)
+_SELECTIVE_RUNTIME_LEGACY_KEYS_V811 = (
+    "source_leg_hinge_solve_v1",
+    "source_knee_hinge_splines_v7",
+    "source_tibia_glide_splines_v7",
+    "source_patella_v71_response_v8",
+)
 _SMPLX_HAND_CONTROLLER_PARTS_V4 = frozenset(
     (
         "wrist",
@@ -511,6 +540,187 @@ def validate_source_fk_asset_policy_v8(
     return policy
 
 
+def _is_source_descendant_v811(
+    child: int,
+    ancestor: int,
+    parents: Sequence[int],
+) -> bool:
+    """Return whether a source bone is inside one specific parent chain."""
+
+    cursor = int(child)
+    visited: set[int] = set()
+    while cursor >= 0:
+        if cursor == int(ancestor):
+            return True
+        if cursor >= len(parents) or cursor in visited:
+            return False
+        visited.add(cursor)
+        cursor = int(parents[cursor])
+    return False
+
+
+def selective_leg_runtime_roots_v811(asset: Any) -> dict[int, int]:
+    """Resolve the selective V71 guide-driven leg roots for runtime FK.
+
+    Legacy full-FK packs deliberately return an empty mapping so their
+    read-only pose replay remains unchanged.  New V71 selective packs must
+    prove that their metadata names a complete anatomical chain, that each
+    active controller drives the expected SMPL-X station, and that the
+    authored source hierarchy actually connects the declared chain.
+    """
+
+    metadata = dict(getattr(asset, "metadata", None) or {})
+    if metadata.get(SOURCE_FK_POLICY_KEY_V4) != SELECTIVE_AUTHORITY_FK_POLICY_V4:
+        return {}
+
+    names = tuple(str(name) for name in (getattr(asset, "source_bone_names", None) or ()))
+    validate_source_fk_asset_policy_v8(asset, require_selective=True)
+    if len(names) != 235:
+        # Small synthetic rigs may exercise the general selective contract,
+        # but the fixed V71 leg semantics only apply to the production rig.
+        return {}
+    if metadata.get("source_anatomical_guide_fk_v810") is not True:
+        raise ValueError(
+            "selective V71 runtime leg authority requires "
+            "source_anatomical_guide_fk_v810=true"
+        )
+    if getattr(asset, "source_driver_rest_joints", None) is None:
+        raise ValueError(
+            "selective V71 runtime leg authority requires anatomical guide joints"
+        )
+    legacy = [
+        key for key in _SELECTIVE_RUNTIME_LEGACY_KEYS_V811 if metadata.get(key)
+    ]
+    if legacy:
+        raise ValueError(
+            "selective V71 runtime leg authority forbids legacy leg solvers: "
+            f"{legacy}"
+        )
+
+    raw_parents = getattr(asset, "source_bone_parents", None)
+    raw_mapped = getattr(asset, "source_bone_smplx_a", None)
+    raw_modes = getattr(asset, "source_bone_driver_types", None)
+    joint_names = tuple(str(name) for name in (getattr(asset, "joint_names", None) or ()))
+    if raw_parents is None or raw_mapped is None or raw_modes is None:
+        raise ValueError(
+            "selective V71 runtime leg authority requires source hierarchy and drivers"
+        )
+    try:
+        parents = tuple(int(value) for value in raw_parents)
+        mapped = tuple(int(value) for value in raw_mapped)
+        modes = tuple(str(value) for value in raw_modes)
+    except (TypeError, ValueError) as error:
+        raise ValueError(
+            "selective V71 runtime leg authority has invalid source driver data"
+        ) from error
+    if (
+        len(parents) != len(names)
+        or len(mapped) != len(names)
+        or len(modes) != len(names)
+    ):
+        raise ValueError(
+            "selective V71 runtime leg authority source driver lengths disagree"
+        )
+
+    roots = metadata.get("source_leg_compound_roots_v1")
+    if not isinstance(roots, Mapping):
+        raise ValueError(
+            "selective V71 runtime leg authority requires a complete leg chain"
+        )
+    local = set(
+        _validated_bone_list(
+            metadata,
+            "source_local_fk_bones_v3",
+            bone_count=len(names),
+        )
+    )
+    direct = set(
+        _validated_bone_list(
+            metadata,
+            "source_direct_driver_bones_v1",
+            bone_count=len(names),
+        )
+    )
+    runtime_roots: dict[int, int] = {}
+    for side in ("left", "right"):
+        entry = roots.get(side)
+        if not isinstance(entry, Mapping):
+            raise ValueError(
+                "selective V71 runtime leg authority requires bilateral leg chains"
+            )
+        resolved: dict[str, int] = {}
+        for label in _V71_LEG_RUNTIME_STATION_LABELS_V811:
+            try:
+                bone = int(entry[label])
+            except (KeyError, TypeError, ValueError) as error:
+                raise ValueError(
+                    "selective V71 runtime leg authority has an incomplete "
+                    f"{side} station chain"
+                ) from error
+            expected_joint, expected_mode = _V71_LEG_RUNTIME_DRIVER_SEMANTICS_V811[
+                side
+            ][label]
+            if (
+                bone < 0
+                or bone >= len(names)
+                or mapped[bone] < 0
+                or mapped[bone] >= len(joint_names)
+                or joint_names[mapped[bone]] != expected_joint
+                or modes[bone] != expected_mode
+            ):
+                raise ValueError(
+                    "selective V71 runtime leg authority has an invalid "
+                    f"{side}.{label} driver"
+                )
+            if bone in runtime_roots:
+                raise ValueError(
+                    "selective V71 runtime leg authority reuses a station root"
+                )
+            resolved[label] = bone
+            runtime_roots[bone] = mapped[bone]
+
+        for parent_label, child_label in zip(
+            _V71_LEG_RUNTIME_STATION_LABELS_V811,
+            _V71_LEG_RUNTIME_STATION_LABELS_V811[1:],
+            strict=True,
+        ):
+            if not _is_source_descendant_v811(
+                resolved[child_label], resolved[parent_label], parents
+            ):
+                raise ValueError(
+                    "selective V71 runtime leg authority has a disconnected "
+                    f"{side} {parent_label}/{child_label} chain"
+                )
+        toe_roots = entry.get("toes")
+        if not isinstance(toe_roots, (list, tuple)) or not toe_roots:
+            raise ValueError(
+                "selective V71 runtime leg authority requires toe-chain roots"
+            )
+        for raw_toe in toe_roots:
+            toe = int(raw_toe)
+            if (
+                toe < 0
+                or toe >= len(names)
+                or modes[toe] != "bind_follow"
+                or not _is_source_descendant_v811(toe, resolved["arch"], parents)
+            ):
+                raise ValueError(
+                    "selective V71 runtime leg authority has an invalid "
+                    f"{side} toe-chain root"
+                )
+        for label in ("knee", "shank"):
+            if resolved[label] not in local:
+                raise ValueError(
+                    "selective V71 runtime leg authority requires local FK for "
+                    f"{side}.{label}"
+                )
+        if set(resolved.values()) & direct:
+            raise ValueError(
+                "selective V71 runtime leg roots may not be direct hand drivers"
+            )
+    return runtime_roots
+
+
 __all__ = [
     "LEGACY_FULL_LOCAL_FK_POLICY",
     "SELECTIVE_AUTHORITY_FK_POLICY_V4",
@@ -519,6 +729,7 @@ __all__ = [
     "build_selective_fk_metadata_v4",
     "direct_smplx_hand_controllers_v4",
     "leg_compound_roots_v1",
+    "selective_leg_runtime_roots_v811",
     "validate_source_fk_asset_policy_v8",
     "validate_source_fk_policy_v8",
 ]
