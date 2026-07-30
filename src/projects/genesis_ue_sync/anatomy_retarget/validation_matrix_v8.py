@@ -28,6 +28,7 @@ from .acceptance_v8 import (
 from .anatomy_lbs import joint_global_transforms, source_bone_posed_global
 from .containment import signed_distance
 from .fk_policy_v8 import validate_source_fk_asset_policy_v8
+from .leg_centerline_v810 import _foot_chain_digest_v1
 from .pose_adapter import smplx_pose_hash
 from .tube_frames_v8 import (
     tube_coupling_pack_from_runtime_fields_v8,
@@ -342,7 +343,16 @@ def _foot_chain_gate_v811(subject: SubjectRuntimePackV8) -> tuple[bool, dict[str
         failures.append("schema_version")
     if chain.get("method") != "multi_station_rigid_foot_chain_v811":
         failures.append("method")
-    if not _digest(chain.get("content_digest", "")):
+    expected_chain = dict(chain)
+    stored_digest = expected_chain.pop("content_digest", "")
+    try:
+        digest_matches = (
+            _digest(stored_digest)
+            and str(stored_digest) == _foot_chain_digest_v1(expected_chain)
+        )
+    except (TypeError, ValueError):
+        digest_matches = False
+    if not digest_matches:
         failures.append("content_digest")
     sides = chain.get("sides")
     if not isinstance(sides, Mapping) or set(sides) != {"left", "right"}:
@@ -360,6 +370,78 @@ def _foot_chain_gate_v811(subject: SubjectRuntimePackV8) -> tuple[bool, dict[str
         maximum_station_residual = max(maximum_station_residual, residual)
         if not np.isfinite(residual) or residual > 0.002:
             failures.append(f"{side}.station_residual")
+        named_station_residuals: list[float] = []
+        stations = entry.get("stations") if isinstance(entry, Mapping) else None
+        if not isinstance(stations, Mapping) or set(stations) != {
+            "ankle",
+            "arch",
+            "forefoot",
+        }:
+            failures.append(f"{side}.stations")
+        else:
+            for station_name in ("ankle", "arch", "forefoot"):
+                station = stations.get(station_name)
+                if not isinstance(station, Mapping):
+                    failures.append(f"{side}.{station_name}.schema")
+                    continue
+                vectors: dict[str, np.ndarray] = {}
+                for field in ("source_m", "target_m", "mapped_geometry_m"):
+                    try:
+                        vector = np.asarray(station.get(field), dtype=np.float64).reshape(3)
+                    except (TypeError, ValueError):
+                        failures.append(f"{side}.{station_name}.{field}")
+                        continue
+                    if not np.all(np.isfinite(vector)):
+                        failures.append(f"{side}.{station_name}.{field}")
+                        continue
+                    vectors[field] = vector
+                station_residual = _finite_float(station.get("residual_m"))
+                maximum_station_residual = max(
+                    maximum_station_residual, station_residual
+                )
+                if not np.isfinite(station_residual) or station_residual > 0.002:
+                    failures.append(f"{side}.{station_name}.residual")
+                else:
+                    named_station_residuals.append(station_residual)
+                if {
+                    "target_m",
+                    "mapped_geometry_m",
+                }.issubset(vectors):
+                    measured_residual = float(
+                        np.linalg.norm(
+                            vectors["mapped_geometry_m"] - vectors["target_m"]
+                        )
+                    )
+                    if not np.isfinite(station_residual) or not np.isclose(
+                        station_residual,
+                        measured_residual,
+                        atol=1.0e-7,
+                        rtol=0.0,
+                    ):
+                        failures.append(f"{side}.{station_name}.residual_consistency")
+            if named_station_residuals and (
+                not np.isfinite(residual)
+                or not np.isclose(
+                    residual,
+                    max(named_station_residuals),
+                    atol=1.0e-7,
+                    rtol=0.0,
+                )
+            ):
+                failures.append(f"{side}.station_residual_consistency")
+        target_arch = (
+            entry.get("target_arch_construction")
+            if isinstance(entry, Mapping)
+            else None
+        )
+        if not isinstance(target_arch, Mapping) or not (
+            target_arch.get("method")
+            == "ankle_guided_unit_so3_source_arch_offset_v811"
+            and target_arch.get("authority")
+            == "smplx_ankle_and_forefoot_guides_with_source_anatomical_arch_offset"
+            and target_arch.get("smplx_arch_joint_available") is False
+        ):
+            failures.append(f"{side}.target_arch_authority")
         meshes = entry.get("per_mesh") if isinstance(entry, Mapping) else None
         if not isinstance(meshes, list) or not meshes:
             failures.append(f"{side}.per_mesh")
@@ -372,6 +454,7 @@ def _foot_chain_gate_v811(subject: SubjectRuntimePackV8) -> tuple[bool, dict[str
             maximum = _finite_float(item.get("rigid_maximum_error_m"))
             determinant = _finite_float(item.get("det_rotation"))
             scale = _finite_float(item.get("scale", 1.0))
+            segment = item.get("station_segment")
             maximum_rms = max(maximum_rms, rms)
             maximum_error = max(maximum_error, maximum)
             if not np.isfinite(rms) or rms > 0.0005:
@@ -382,6 +465,8 @@ def _foot_chain_gate_v811(subject: SubjectRuntimePackV8) -> tuple[bool, dict[str
                 failures.append(f"{side}.{item.get('mesh', 'mesh')}.det")
             if not np.isfinite(scale) or abs(scale - 1.0) > 1.0e-7:
                 failures.append(f"{side}.{item.get('mesh', 'mesh')}.scale")
+            if segment not in {"ankle_arch", "arch_forefoot"}:
+                failures.append(f"{side}.{item.get('mesh', 'mesh')}.segment")
     return not failures, {
         "available": True,
         "pass": not failures,

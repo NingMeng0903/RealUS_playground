@@ -434,10 +434,63 @@ def validate_evidence_manifest_v8(
     return manifest
 
 
+def _required_matrix_labels_v8(
+    acceptance_spec: Mapping[str, Any],
+) -> tuple[tuple[str, ...], tuple[str, ...], set[str]]:
+    """Resolve the acceptance spec's non-optional subject x pose matrix."""
+
+    required = acceptance_spec.get("required_matrix")
+    if not isinstance(required, Mapping):
+        raise ValueError("acceptance specification lacks required_matrix")
+    raw_subjects = required.get("subjects")
+    raw_poses = required.get("poses")
+    if not isinstance(raw_subjects, list) or not isinstance(raw_poses, list):
+        raise ValueError("acceptance required_matrix must contain subject and pose lists")
+    subjects = tuple(str(value) for value in raw_subjects)
+    poses = tuple(str(value) for value in raw_poses)
+    if (
+        not subjects
+        or not poses
+        or any(not value.strip() for value in subjects + poses)
+        or len(set(subjects)) != len(subjects)
+        or len(set(poses)) != len(poses)
+    ):
+        raise ValueError("acceptance required_matrix contains invalid labels")
+    return subjects, poses, {
+        f"{subject}/{pose}" for subject in subjects for pose in poses
+    }
+
+
+def _validate_required_matrix_coverage_v8(
+    validation: Mapping[str, Any],
+    *,
+    acceptance_spec: Mapping[str, Any],
+    cells: Mapping[str, Any],
+) -> None:
+    """Reject a report that omits any acceptance-required matrix case."""
+
+    subjects, poses, required_cells = _required_matrix_labels_v8(acceptance_spec)
+    missing = sorted(required_cells - {str(label) for label in cells})
+    if missing:
+        raise ValueError(
+            "validation report lacks required matrix cells: " + ", ".join(missing)
+        )
+    report_subjects = validation.get("subjects")
+    report_poses = validation.get("poses")
+    if (
+        not isinstance(report_subjects, list)
+        or not isinstance(report_poses, list)
+        or not set(subjects).issubset(str(value) for value in report_subjects)
+        or not set(poses).issubset(str(value) for value in report_poses)
+    ):
+        raise ValueError("validation report does not identify the required matrix")
+
+
 def validate_release_report_v8(
     validation: Mapping[str, Any],
     *,
     operator: SourceOperatorV8,
+    acceptance_spec: Mapping[str, Any],
 ) -> None:
     operator_digest = operator.runtime_digest()
     operator_audit_digest = operator.audit_digest(runtime_digest=operator_digest)
@@ -459,6 +512,11 @@ def validate_release_report_v8(
     cells = validation.get("cells")
     if not isinstance(cells, dict) or not cells:
         raise ValueError("validation report contains no matrix cells")
+    _validate_required_matrix_coverage_v8(
+        validation,
+        acceptance_spec=acceptance_spec,
+        cells=cells,
+    )
     for label, cell in cells.items():
         if (
             not isinstance(cell, dict)
@@ -616,16 +674,21 @@ def atomic_publish_latest_v8(
     evidence_path = Path(evidence_manifest_path).expanduser().resolve()
     acceptance_path = Path(acceptance_spec_path).expanduser().resolve()
     validation = _read_object(validation_path, label="validation report")
-    validate_release_report_v8(validation, operator=operator)
-    operator_digest = operator.runtime_digest(validate=False)
-    operator_audit_digest = operator.audit_digest(runtime_digest=operator_digest)
-    validation_digest = file_digest_v8(validation_path)
     acceptance_digest = str(validation["acceptance_spec_digest"])
     if (
         not acceptance_path.is_file()
         or file_digest_v8(acceptance_path) != acceptance_digest
     ):
         raise ValueError("acceptance specification digest mismatch")
+    acceptance_spec = _read_object(acceptance_path, label="acceptance specification")
+    validate_release_report_v8(
+        validation,
+        operator=operator,
+        acceptance_spec=acceptance_spec,
+    )
+    operator_digest = operator.runtime_digest(validate=False)
+    operator_audit_digest = operator.audit_digest(runtime_digest=operator_digest)
+    validation_digest = file_digest_v8(validation_path)
     evidence = validate_evidence_manifest_v8(
         evidence_path,
         operator_runtime_digest=operator_digest,

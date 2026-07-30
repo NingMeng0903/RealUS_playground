@@ -27,7 +27,18 @@ from projects.genesis_ue_sync.anatomy_retarget.release_v8 import (
 
 
 _OPERATOR_DIGEST = "a" * 64
-_SPEC_BYTES = b'{"schema_version":8,"spec":"acceptance-v8"}\n'
+_MATRIX_SUBJECTS = ("213328", "213712")
+_MATRIX_POSES = ("tpose", "213328", "213712")
+_MATRIX_CELLS = tuple(
+    f"{subject}/{pose}"
+    for subject in _MATRIX_SUBJECTS
+    for pose in _MATRIX_POSES
+)
+_SPEC_BYTES = (
+    b'{"schema_version":8,"spec":"acceptance-v8","required_matrix":'
+    b'{"subjects":["213328","213712"],"poses":'
+    b'["tpose","213328","213712"]}}\n'
+)
 
 
 def _selective_runtime_asset() -> SimpleNamespace:
@@ -137,6 +148,8 @@ def _validation(
         "operator_runtime_digest": _OPERATOR_DIGEST,
         "operator_audit_digest": "c" * 64,
         "acceptance_spec_digest": file_digest_v8(spec),
+        "subjects": list(_MATRIX_SUBJECTS),
+        "poses": list(_MATRIX_POSES),
         "measured_passed": bool(publishable),
         "publishable": bool(publishable),
         "release_blockers": [] if publishable else ["legal_tongue_asset_missing"],
@@ -171,11 +184,12 @@ def _validation(
             },
         },
         "cells": {
-            "subject/pose": {
+            label: {
                 "passed": True,
                 "vertex_sha256": hashlib.sha256(vertices.tobytes()).hexdigest(),
                 "bone_matrix_sha256": "b" * 64,
             }
+            for label in _MATRIX_CELLS
         },
     }
     path.write_text(json.dumps(report, sort_keys=True) + "\n", encoding="utf-8")
@@ -189,7 +203,10 @@ def _evidence(tmp_path: Path, validation: Path, spec: Path) -> Path:
         operator_runtime_digest=_OPERATOR_DIGEST,
         validation_report_path=validation,
         acceptance_spec_digest=file_digest_v8(spec),
-        cells={"subject/pose": {"vertices": vertices, "faces": faces}},
+        cells={
+            label: {"vertices": vertices, "faces": faces}
+            for label in _MATRIX_CELLS
+        },
     )
 
 
@@ -300,7 +317,7 @@ def test_evidence_uses_one_array_identity_and_detects_file_tampering(
         validation_report_digest=file_digest_v8(validation),
         acceptance_spec_digest=file_digest_v8(spec),
     )
-    sidecar_path = manifest_path.parent / manifest["cells"]["subject/pose"]["sidecar"]
+    sidecar_path = manifest_path.parent / manifest["cells"][_MATRIX_CELLS[0]]["sidecar"]
     sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
     assert set(sidecar["files"]) == {"npz", "ply", "png"}
     with np.load(
@@ -343,7 +360,10 @@ def test_render_dependency_failure_leaves_no_partial_evidence(
             operator_runtime_digest=_OPERATOR_DIGEST,
             validation_report_path=validation,
             acceptance_spec_digest=file_digest_v8(spec),
-            cells={"subject/pose": {"vertices": vertices, "faces": faces}},
+            cells={
+                label: {"vertices": vertices, "faces": faces}
+                for label in _MATRIX_CELLS
+            },
         )
     assert not target.exists()
 
@@ -367,6 +387,26 @@ def test_publish_rejects_current_nonpublishable_candidate_without_update(
             review_paths=[tmp_path / "one.json", tmp_path / "two.json"],
         )
     assert not latest.exists()
+
+
+def test_publish_rejects_a_missing_required_matrix_case(tmp_path: Path) -> None:
+    spec = tmp_path / "acceptance.json"
+    spec.write_bytes(_SPEC_BYTES)
+    validation = tmp_path / "validation.json"
+    report = _validation(validation, spec, publishable=True)
+    report["cells"].pop("213712/213712")
+    validation.write_text(json.dumps(report, sort_keys=True) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="lacks required matrix cells"):
+        atomic_publish_latest_v8(
+            latest_path=tmp_path / "latest.json",
+            operator_path=tmp_path / "operator",
+            operator=_PublishableOperator(),
+            validation_report_path=validation,
+            evidence_manifest_path=tmp_path / "missing-evidence.json",
+            acceptance_spec_path=spec,
+            review_paths=[tmp_path / "one.json", tmp_path / "two.json"],
+        )
 
 
 def test_publish_rejects_a_bare_v811_boolean_gate(tmp_path: Path) -> None:

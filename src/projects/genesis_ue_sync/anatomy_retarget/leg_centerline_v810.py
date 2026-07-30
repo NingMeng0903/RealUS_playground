@@ -44,12 +44,24 @@ _FOOT_TOKENS = (
     "cuneiform",
     "metatarsal",
     "phalanx_foot",
+    "phalanges_foot",
 )
 _FOOT_ARCH_TOKENS_V811 = (
     "navicular",
     "cuboid",
     "cuneiform",
 )
+_FOOT_PROXIMAL_TOKENS_V811 = (
+    "talus",
+    "calcaneus",
+    *_FOOT_ARCH_TOKENS_V811,
+)
+_FOOT_DISTAL_TOKENS_V811 = (
+    "metatarsal",
+    "phalanx_foot",
+    "phalanges_foot",
+)
+_FOOT_STATION_RESIDUAL_LIMIT_M_V811 = 0.002
 
 
 def _foot_chain_digest_v1(value: Mapping[str, Any]) -> str:
@@ -169,6 +181,19 @@ def _foot_bone_meshes(
     return result
 
 
+def _foot_mesh_station_segment_v811(mesh_name: str) -> int:
+    """Return the anatomical branch used to place one rigid foot mesh."""
+
+    normalized = str(mesh_name).strip().lower()
+    proximal = any(token in normalized for token in _FOOT_PROXIMAL_TOKENS_V811)
+    distal = any(token in normalized for token in _FOOT_DISTAL_TOKENS_V811)
+    if proximal == distal:
+        raise ValueError(
+            f"V8.11 cannot assign foot-chain segment for mesh {mesh_name!r}"
+        )
+    return 0 if proximal else 1
+
+
 def _map_foot_stations_rigid_v811(
     points: np.ndarray,
     *,
@@ -179,6 +204,7 @@ def _map_foot_stations_rigid_v811(
     target_arch: np.ndarray,
     target_forefoot: np.ndarray,
     rotation: np.ndarray,
+    source_segment_indices: np.ndarray | int | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Map points through an ankle, arch, forefoot chain without scaling.
 
@@ -204,6 +230,10 @@ def _map_foot_stations_rigid_v811(
         raise ValueError("V8.11 foot station rotation must be a proper unit-scale SO(3)")
     source_stations = np.stack((source_a, source_h, source_f))
     target_stations = np.stack((target_a, target_h, target_f))
+    if not np.all(np.isfinite(source_stations)) or not np.all(
+        np.isfinite(target_stations)
+    ):
+        raise ValueError("V8.11 foot chain stations must be finite")
     source_segments = np.diff(source_stations, axis=0)
     target_segments = np.diff(target_stations, axis=0)
     source_length_sq = np.einsum("ij,ij->i", source_segments, source_segments)
@@ -211,18 +241,47 @@ def _map_foot_stations_rigid_v811(
     if np.any(source_length_sq <= 1.0e-12) or np.any(target_length_sq <= 1.0e-12):
         raise ValueError("V8.11 foot chain contains a degenerate station segment")
 
-    # Project onto both infinite station lines.  Keeping the winning local
-    # coordinate unclamped preserves the calcaneal and toe extensions beyond
-    # the endpoint stations while the closest segment selects the arch split.
+    # Select the closest finite segment, but keep the winning local coordinate
+    # unclamped.  This keeps calcaneal and toe extensions while preventing a
+    # distal metatarsal from selecting an unrelated infinite station line.
     relative = values[:, None, :] - source_stations[None, :2, :]
     local = np.einsum("vsi,si->vs", relative, source_segments) / source_length_sq
     projected = (
         source_stations[None, :2, :]
         + local[:, :, None] * source_segments[None, :, :]
     )
-    radial = values[:, None, :] - projected
-    radial_norm_sq = np.einsum("vsi,vsi->vs", radial, radial)
-    selected = np.argmin(radial_norm_sq, axis=1)
+    closest = (
+        source_stations[None, :2, :]
+        + np.clip(local, 0.0, 1.0)[:, :, None] * source_segments[None, :, :]
+    )
+    distance_to_segment = values[:, None, :] - closest
+    distance_to_segment_sq = np.einsum(
+        "vsi,vsi->vs", distance_to_segment, distance_to_segment
+    )
+    if source_segment_indices is None:
+        selected = np.argmin(distance_to_segment_sq, axis=1)
+    else:
+        raw_indices = np.asarray(source_segment_indices, dtype=np.float64)
+        if raw_indices.ndim == 0:
+            raw_indices = np.full(len(values), float(raw_indices))
+        else:
+            raw_indices = raw_indices.reshape(-1)
+        if (
+            raw_indices.shape != (len(values),)
+            or not np.all(np.isfinite(raw_indices))
+            or not np.allclose(
+                raw_indices,
+                np.round(raw_indices),
+                atol=0.0,
+                rtol=0.0,
+            )
+        ):
+            raise ValueError(
+                "V8.11 foot-chain segment indices must be one integer per point"
+            )
+        selected = np.asarray(np.round(raw_indices), dtype=np.int64)
+        if np.any(selected < 0) or np.any(selected >= len(source_segments)):
+            raise ValueError("V8.11 foot-chain segment index is outside the chain")
     rows = np.arange(len(values), dtype=np.int64)
     local_selected = local[rows, selected]
     source_projected = projected[rows, selected]
@@ -252,29 +311,112 @@ def _foot_arch_station_v811(
         asset.vertices_rest if vertices is None else vertices,
         dtype=np.float64,
     )
+    ranges_value = getattr(asset, "source_vertex_ranges", None)
+    tissues_value = getattr(asset, "source_tissues", None)
+    if ranges_value is None or tissues_value is None:
+        raise ValueError(
+            "V8.11 arch station requires source mesh ranges and tissue semantics"
+        )
     selected: list[np.ndarray] = []
     mesh_names: list[str] = []
+    domain_meshes: dict[str, list[str]] = {
+        token: [] for token in _FOOT_ARCH_TOKENS_V811
+    }
     names = list(asset.source_mesh_names or ())
-    tissues = list(asset.source_tissues or ())
-    ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
+    tissues = list(tissues_value)
+    ranges = np.asarray(ranges_value, dtype=np.int64)
     for name, tissue, (start, stop) in zip(names, tissues, ranges, strict=True):
         normalized = str(name).strip().lower()
+        matched_domains = [
+            token for token in _FOOT_ARCH_TOKENS_V811 if token in normalized
+        ]
         if (
             str(tissue).strip().lower() == "bone"
             and str(name).endswith(f"_{suffix}")
-            and any(token in normalized for token in _FOOT_ARCH_TOKENS_V811)
+            and matched_domains
         ):
+            if (
+                int(start) < 0
+                or int(stop) <= int(start)
+                or int(stop) > len(values)
+            ):
+                raise ValueError(
+                    f"V8.11 arch mesh {name!r} has an invalid vertex range"
+                )
             selected.append(np.arange(int(start), int(stop), dtype=np.int64))
             mesh_names.append(str(name))
-    if not selected:
+            for token in matched_domains:
+                domain_meshes[token].append(str(name))
+    missing_domains = [
+        token for token, meshes in domain_meshes.items() if not meshes
+    ]
+    if missing_domains:
         raise ValueError(
-            f"V8.11 found no {suffix} navicular/cuboid/cuneiform arch meshes"
+            f"V8.11 missing {suffix} arch mesh domains: {missing_domains}"
         )
     ids = np.unique(np.concatenate(selected))
-    return np.mean(values[ids], axis=0), {
+    station = np.mean(values[ids], axis=0)
+    if not np.all(np.isfinite(station)):
+        raise ValueError("V8.11 arch station is not finite")
+    return station, {
         "method": "navicular_cuboid_cuneiform_arch_station_v811",
         "mesh_names": mesh_names,
+        "required_domains": list(_FOOT_ARCH_TOKENS_V811),
+        "domain_meshes": domain_meshes,
         "vertex_count": int(len(ids)),
+    }
+
+
+def _target_foot_arch_station_v811(
+    *,
+    source_ankle: np.ndarray,
+    source_arch: np.ndarray,
+    target_ankle: np.ndarray,
+    target_forefoot: np.ndarray,
+    rotation: np.ndarray,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Infer a target arch from the two available SMPL-X foot guides.
+
+    SMPL-X has ankle and foot action stations but no arch joint.  The ankle
+    guide and its unit SO(3) transport therefore anchor the source anatomical
+    arch, while the SMPL-X forefoot guide determines the distal chain segment.
+    """
+
+    source_a = np.asarray(source_ankle, dtype=np.float64).reshape(3)
+    source_h = np.asarray(source_arch, dtype=np.float64).reshape(3)
+    target_a = np.asarray(target_ankle, dtype=np.float64).reshape(3)
+    target_f = np.asarray(target_forefoot, dtype=np.float64).reshape(3)
+    proper = np.asarray(rotation, dtype=np.float64).reshape(3, 3)
+    if (
+        not np.all(np.isfinite(proper))
+        or not np.allclose(proper.T @ proper, np.eye(3), atol=1.0e-7, rtol=0.0)
+        or not np.isclose(np.linalg.det(proper), 1.0, atol=1.0e-7, rtol=0.0)
+    ):
+        raise ValueError("V8.11 foot station rotation must be a proper unit-scale SO(3)")
+    if not np.all(
+        np.isfinite(np.stack((source_a, source_h, target_a, target_f)))
+    ):
+        raise ValueError("V8.11 target arch construction requires finite stations")
+    source_offset = source_h - source_a
+    source_length = float(np.linalg.norm(source_offset))
+    if source_length <= 1.0e-6:
+        raise ValueError("V8.11 source ankle-to-arch station is degenerate")
+    target_arch = target_a + source_offset @ proper.T
+    target_distal_length = float(np.linalg.norm(target_f - target_arch))
+    if target_distal_length <= 1.0e-6:
+        raise ValueError("V8.11 target arch-to-forefoot station is degenerate")
+    return target_arch, {
+        "method": "ankle_guided_unit_so3_source_arch_offset_v811",
+        "authority": (
+            "smplx_ankle_and_forefoot_guides_with_source_anatomical_arch_offset"
+        ),
+        "smplx_arch_joint_available": False,
+        "source_ankle_to_arch_length_m": source_length,
+        "target_ankle_to_arch_length_m": float(
+            np.linalg.norm(target_arch - target_a)
+        ),
+        "target_arch_to_forefoot_length_m": target_distal_length,
+        "rotation_determinant": float(np.linalg.det(proper)),
     }
 
 
@@ -1578,7 +1720,7 @@ def reconstruct_leg_centerline_compounds_v810(
     domains: Mapping[str, np.ndarray],
     femur_max_abs_axial_strain: float = 0.12,
     shank_max_abs_axial_strain: float = 0.08,
-    maximum_joint_residual_m: float = 0.005,
+    maximum_joint_residual_m: float = 0.002,
     femur_cap_fraction: float = 0.10,
     shank_cap_fraction: float = 0.125,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
@@ -1915,6 +2057,10 @@ def reconstruct_leg_centerline_compounds_v810(
             asset,
             suffix=suffix,
         )
+        old_arch, source_arch_report = _foot_arch_station_v811(
+            asset,
+            suffix=suffix,
+        )
         requested_foot = raw_smplx[foot_joint]
         rotation_a = _proper_direction_rotation(
             np.stack(
@@ -1929,6 +2075,13 @@ def reconstruct_leg_centerline_compounds_v810(
                     requested_foot - target_a,
                 )
             ),
+        )
+        target_arch, target_arch_report = _target_foot_arch_station_v811(
+            source_ankle=old_a_mesh,
+            source_arch=old_arch,
+            target_ankle=target_a,
+            target_forefoot=requested_foot,
+            rotation=rotation_a,
         )
         correction_a_geometry = rigid(rotation_a, old_a_mesh, target_a)
         correction_a_bind = rigid(rotation_a, old_a_bind, target_a)
@@ -1959,13 +2112,17 @@ def reconstruct_leg_centerline_compounds_v810(
         for mesh_name, mesh_ids in _foot_bone_meshes(asset, suffix=suffix):
             source_mesh = vertices[mesh_ids].copy()
             source_center = np.mean(source_mesh, axis=0)
+            source_segment = _foot_mesh_station_segment_v811(mesh_name)
             mapped_center, station = _map_foot_stations_rigid_v811(
                 source_center[None, :],
                 source_ankle=old_a_mesh,
+                source_arch=old_arch,
                 source_forefoot=old_foot,
                 target_ankle=target_a,
+                target_arch=target_arch,
                 target_forefoot=requested_foot,
                 rotation=rotation_a,
+                source_segment_indices=np.asarray((source_segment,), dtype=np.int64),
             )
             mesh_transform = rigid(
                 rotation_a,
@@ -1988,6 +2145,9 @@ def reconstruct_leg_centerline_compounds_v810(
                 {
                     "mesh": mesh_name,
                     "vertex_count": int(len(mesh_ids)),
+                    "station_segment": (
+                        "ankle_arch" if source_segment == 0 else "arch_forefoot"
+                    ),
                     "station_parameter": float(station[0]),
                     "source_center_m": source_center.tolist(),
                     "target_center_m": mapped_center[0].tolist(),
@@ -2051,8 +2211,10 @@ def reconstruct_leg_centerline_compounds_v810(
             mapped_origin, _station = _map_foot_stations_rigid_v811(
                 source_origin[None, :],
                 source_ankle=old_a_mesh,
+                source_arch=old_arch,
                 source_forefoot=old_foot,
                 target_ankle=target_a,
+                target_arch=target_arch,
                 target_forefoot=requested_foot,
                 rotation=rotation_a,
             )
@@ -2066,12 +2228,57 @@ def reconstruct_leg_centerline_compounds_v810(
         guide_joints[hip_joint] = target_h
         guide_joints[knee_joint] = target_k
         guide_joints[ankle_joint] = target_a
+        mapped_ankle_station = np.mean(vertices[mortise_ids], axis=0)
+        mapped_arch_station, mapped_arch_report = _foot_arch_station_v811(
+            asset,
+            suffix=suffix,
+            vertices=vertices,
+        )
         mapped_foot_station, mapped_foot_report = _foot_station_v810(
             asset,
             suffix=suffix,
             vertices=vertices,
         )
         guide_joints[foot_joint] = requested_foot
+        foot_stations = {
+            "ankle": {
+                "source_m": old_a_mesh.tolist(),
+                "target_m": target_a.tolist(),
+                "mapped_geometry_m": mapped_ankle_station.tolist(),
+                "residual_m": float(
+                    np.linalg.norm(mapped_ankle_station - target_a)
+                ),
+                "source_domain": "ankle_mortise_fixed_material_domains",
+            },
+            "arch": {
+                "source_m": old_arch.tolist(),
+                "target_m": target_arch.tolist(),
+                "mapped_geometry_m": mapped_arch_station.tolist(),
+                "residual_m": float(
+                    np.linalg.norm(mapped_arch_station - target_arch)
+                ),
+                "source_domain": source_arch_report[
+                    "method"
+                ],
+            },
+            "forefoot": {
+                "source_m": old_foot.tolist(),
+                "target_m": requested_foot.tolist(),
+                "mapped_geometry_m": mapped_foot_station.tolist(),
+                "residual_m": float(
+                    np.linalg.norm(mapped_foot_station - requested_foot)
+                ),
+                "source_domain": foot_station_report["method"],
+            },
+        }
+        foot_station_residual = max(
+            float(entry["residual_m"]) for entry in foot_stations.values()
+        )
+        if foot_station_residual > _FOOT_STATION_RESIDUAL_LIMIT_M_V811:
+            raise ValueError(
+                f"{side} V8.11 foot-chain station residual exceeds "
+                f"{_FOOT_STATION_RESIDUAL_LIMIT_M_V811 * 1000.0:.3f} mm"
+            )
 
         femur_edges = _mesh_edges(asset, femur_ids)
         shank_edges = _mesh_edges(asset, shank_ids)
@@ -2175,15 +2382,17 @@ def reconstruct_leg_centerline_compounds_v810(
             },
             "foot": {
                 **foot_station_report,
+                "source_arch_report": source_arch_report,
+                "target_arch_construction": target_arch_report,
+                "mapped_arch_report": mapped_arch_report,
                 "mapped_station_report": mapped_foot_report,
                 "method": "multi_station_rigid_foot_chain_v811",
                 "requested_smplx_station_m": requested_foot.tolist(),
                 "guide_station_m": guide_joints[foot_joint].tolist(),
                 "mapped_geometry_station_m": mapped_foot_station.tolist(),
-                "station_residual_m": float(
-                    np.linalg.norm(mapped_foot_station - requested_foot)
-                ),
-                "station_residual_role": "normalized_station_chain_without_bone_scale",
+                "station_residual_m": foot_station_residual,
+                "station_residual_role": "measured_post_transport_domain_centroids",
+                "stations": foot_stations,
                 "pose_rotation_authority": f"smplx_joint_{foot_joint}",
                 "rest_pivot_authority": "smplx_forefoot_station",
                 "det_rotation": float(np.linalg.det(rotation_a)),
@@ -2293,9 +2502,40 @@ def reconstruct_leg_centerline_compounds_v810(
                 "station_residual_m": float(
                     report["sides"][side]["foot"]["station_residual_m"]
                 ),
+                "stations": {
+                    station: {
+                        "source_m": report["sides"][side]["foot"]["stations"][
+                            station
+                        ]["source_m"],
+                        "target_m": report["sides"][side]["foot"]["stations"][
+                            station
+                        ]["target_m"],
+                        "mapped_geometry_m": report["sides"][side]["foot"][
+                            "stations"
+                        ][station]["mapped_geometry_m"],
+                        "residual_m": float(
+                            report["sides"][side]["foot"]["stations"][
+                                station
+                            ]["residual_m"]
+                        ),
+                    }
+                    for station in ("ankle", "arch", "forefoot")
+                },
+                "target_arch_construction": {
+                    "method": report["sides"][side]["foot"][
+                        "target_arch_construction"
+                    ]["method"],
+                    "authority": report["sides"][side]["foot"][
+                        "target_arch_construction"
+                    ]["authority"],
+                    "smplx_arch_joint_available": report["sides"][side][
+                        "foot"
+                    ]["target_arch_construction"]["smplx_arch_joint_available"],
+                },
                 "per_mesh": [
                     {
                         "mesh": str(item["mesh"]),
+                        "station_segment": str(item["station_segment"]),
                         "station_parameter": float(item["station_parameter"]),
                         "rigid_rms_error_m": float(item["rigid_rms_error_m"]),
                         "rigid_maximum_error_m": float(

@@ -1,9 +1,19 @@
-"""Ellipse-skin + eccentric vessel harmonic-style projection with task-cone IRD.
+"""Ellipse-skin dual-case IRD demo: rail-recoverable vs must-twist.
 
-Synthetic analogue of Among_US (θ, h, d): path_y / h is a fixed linear sweep;
-contact is (θ, h, d=0) on the ellipse; probe looks inward toward the vessel;
-θ(s) and rail(s) balance nearest-stick + smoothness + hinge reachability
-(task-cone tip±45° × roll±30° best; IRD only pulls when below m_safe).
+Synthetic analogue of Among_US (θ, h, d=0): fixed Y-sweep on ellipse skin,
+probe inward to the vessel. Local task-cone IRD (tip±45° × roll±30° softmax-best)
+is queried about each TCP; the (θ,rail) background therefore moves with path_y.
+
+One nearest path exhibits two regimes along s:
+
+* Phase A (rail-recoverable): fixed nearest θ is reachable once rail slides
+  (nullspace-connected). Baseline rail=0 fails; QP-IK guidance recovers without
+  twisting the skin angle. Rail is not a disconnected half-track.
+* Phase B (must-twist): even max_rail at nearest θ stays under target — globally
+  no solution on the nearest projection; θ must twist on the skin.
+
+At most arm-configuration branch jumps may appear; continuous QP-IK guidance
+handles those. Do not treat rail motion as a "false reachability" trap.
 """
 
 from __future__ import annotations
@@ -45,33 +55,37 @@ from ird_playground.region.task_cone import TaskConeConfig, TaskConeReachability
 @dataclass(frozen=True)
 class DemoConfig:
     waypoints: int = 81
-    control_points: int = 9
-    # Placement: tip±45° task-cone best stays high on nearest early,
-    # then dips below m_safe near the far end so IRD hinge only twists late.
-    ellipse_center_x_m: float = 0.30
-    ellipse_center_z_m: float = 0.12
+    control_points: int = 11
+    # Locked dual-case placement (TaskCone tip±45×roll±30 + cone-GT screen):
+    # early: C0 dips while C* stays high — rail nullspace recovers (cone-GT A* ≫ A0);
+    # late: C* < 0 while twist restores — must twist (cone-GT B*≈0, B_twist high).
+    ellipse_center_x_m: float = 0.28
+    ellipse_center_z_m: float = 0.14
     semi_axis_x_m: float = 0.13
     semi_axis_z_m: float = 0.08
-    # Vessel parallel to Y, eccentric in XZ so nearest ≠ θ=0 harmonic.
-    vessel_offset_x_m: float = 0.050
-    vessel_offset_z_m: float = 0.035
-    path_y_min_m: float = -0.12
-    path_y_max_m: float = 0.24
+    vessel_offset_x_m: float = 0.070
+    vessel_offset_z_m: float = 0.015
+    path_y_min_m: float = 0.05
+    path_y_max_m: float = 0.40
     theta_limit_deg: float = 40.0
     rail_limit_m: float = 0.18
     epochs: int = 450
     learning_rate: float = 0.035
     target_clearance: float | None = None
     clearance_margin: float = 0.05
-    # Sharper soft-hinge: deficit ≈ 0 (and ∇≈0) once clearance ≥ target.
     ird_softplus_scale: float = 0.12
-    # Loss balance: stick to nearest while feasible; IRD only when under target.
-    w_ird: float = 1.25
-    w_nearest: float = 1.00
-    w_continuity: float = 0.45
+    # Prefer nearest θ while rail can recover; IRD hinge forces twist only in Phase B.
+    w_ird: float = 1.50
+    w_nearest: float = 1.60
+    w_continuity: float = 0.35
     w_curvature: float = 0.02
-    w_rail_anchor: float = 0.08
+    w_rail_anchor: float = 0.015
     seed: int = 109
+    # Soft hints for phase-weighted loss (diagnostics use data-driven split).
+    phase_a_s_max: float = 0.55
+    phase_b_s_min: float = 0.80
+    rail_probe_samples: int = 17
+    theta_probe_samples: int = 13
 
 
 def vessel_xz(cfg: DemoConfig) -> tuple[float, float]:
@@ -234,6 +248,213 @@ def query_with_gradients(
     return clearance.detach(), grad_theta.detach(), grad_rail.detach()
 
 
+def resolve_clearance_target(cfg: DemoConfig, m_safe: float | None) -> float:
+    if cfg.target_clearance is not None:
+        return float(cfg.target_clearance)
+    if m_safe is not None:
+        return max(float(m_safe) + float(cfg.clearance_margin), 1.5)
+    return 1.5
+
+
+def probe_nearest_rail_and_twist(
+    field,
+    region: TaskConeReachability,
+    cfg: DemoConfig,
+    path_y: np.ndarray,
+    *,
+    T_rail_axis: torch.Tensor,
+    th_near: float | None = None,
+) -> dict[str, np.ndarray]:
+    """Per-waypoint C(rail=0), max_rail at θ_near, and max_{θ,rail} twist probe."""
+    device = T_rail_axis.device
+    path_y = np.asarray(path_y, dtype=np.float64).reshape(-1)
+    th_near = float(nearest_theta_rad(cfg) if th_near is None else th_near)
+    rails = np.linspace(-cfg.rail_limit_m, cfg.rail_limit_m, int(cfg.rail_probe_samples))
+    thetas = np.linspace(
+        -np.deg2rad(cfg.theta_limit_deg),
+        np.deg2rad(cfg.theta_limit_deg),
+        int(cfg.theta_probe_samples),
+    )
+    n = len(path_y)
+    C0 = np.zeros(n, dtype=np.float64)
+    C_star = np.zeros(n, dtype=np.float64)
+    rail_star = np.zeros(n, dtype=np.float64)
+    C_twist = np.zeros(n, dtype=np.float64)
+    theta_twist = np.zeros(n, dtype=np.float64)
+    rail_twist = np.zeros(n, dtype=np.float64)
+    eye = torch.eye(4, device=device)
+    i0 = int(np.argmin(np.abs(rails)))
+    with torch.no_grad():
+        for i, py in enumerate(path_y):
+            th_r = torch.full((len(rails),), th_near, device=device, dtype=torch.float32)
+            py_r = torch.full((len(rails),), float(py), device=device, dtype=torch.float32)
+            rr = torch.as_tensor(rails, device=device, dtype=torch.float32)
+            c_r = region.query_tcp_rail(
+                field,
+                ellipse_surface_tcp(th_r, py_r, cfg),
+                rr,
+                T_world_rail=eye,
+                T_rail_base0=T_rail_axis,
+                rail_axis=1,
+            ).best_clearance.detach().cpu().numpy()
+            C0[i] = float(c_r[i0])
+            j = int(np.argmax(c_r))
+            C_star[i] = float(c_r[j])
+            rail_star[i] = float(rails[j])
+
+            TH, RR = np.meshgrid(thetas, rails, indexing="ij")
+            th_g = torch.as_tensor(TH.ravel(), device=device, dtype=torch.float32)
+            rr_g = torch.as_tensor(RR.ravel(), device=device, dtype=torch.float32)
+            py_g = torch.full_like(th_g, float(py))
+            c_g = region.query_tcp_rail(
+                field,
+                ellipse_surface_tcp(th_g, py_g, cfg),
+                rr_g,
+                T_world_rail=eye,
+                T_rail_base0=T_rail_axis,
+                rail_axis=1,
+            ).best_clearance.detach().cpu().numpy()
+            k = int(np.argmax(c_g))
+            C_twist[i] = float(c_g[k])
+            theta_twist[i] = float(TH.ravel()[k])
+            rail_twist[i] = float(RR.ravel()[k])
+    return {
+        "C0": C0,
+        "C_star": C_star,
+        "rail_star_m": rail_star,
+        "C_twist": C_twist,
+        "theta_twist_rad": theta_twist,
+        "rail_twist_m": rail_twist,
+        "theta_near_rad": np.full(n, th_near, dtype=np.float64),
+    }
+
+
+def label_dual_phases(
+    s: np.ndarray,
+    probe: dict[str, np.ndarray],
+    *,
+    target: float,
+    cfg: DemoConfig,
+) -> dict[str, np.ndarray | dict[str, float | int | str]]:
+    """Label rail-recoverable (A) vs must-twist (B) on the nearest path.
+
+    Split is data-driven: first waypoint where ``C*(θ_near) < target`` starts
+    Phase B. Phase A is the preceding rail-recoverable / rail0-fail segment.
+    """
+    s = np.asarray(s, dtype=np.float64)
+    C0 = np.asarray(probe["C0"], dtype=np.float64)
+    C_star = np.asarray(probe["C_star"], dtype=np.float64)
+    C_twist = np.asarray(probe["C_twist"], dtype=np.float64)
+    th_near = float(np.asarray(probe["theta_near_rad"]).reshape(-1)[0])
+    th_tw = np.asarray(probe["theta_twist_rad"], dtype=np.float64)
+    rail_star = np.asarray(probe["rail_star_m"], dtype=np.float64)
+
+    rail_recoverable = C_star >= float(target)
+    # Strong "no rail solution" for narrative: neural best-rail goes non-positive.
+    requires_twist = C_star < float(target)
+    hard_unreachable = C_star < 0.0
+    twist_helps = requires_twist & (C_twist >= float(target))
+    rail0_fail = C0 < float(target)
+
+    tw_idx = np.where(requires_twist)[0]
+    split = int(tw_idx[0]) if len(tw_idx) else len(s)
+    split_s = float(s[min(split, len(s) - 1)])
+
+    phase_a = np.zeros(len(s), dtype=bool)
+    phase_a[:split] = rail_recoverable[:split] & rail0_fail[:split]
+    phase_b = twist_helps & hard_unreachable
+    # If hard-negative B is empty, fall back to all twist_helps in the suffix.
+    if not np.any(phase_b) and np.any(twist_helps):
+        phase_b = twist_helps.copy()
+
+    labels = np.full(len(s), "ok_at_rail0", dtype=object)
+    labels[rail_recoverable & rail0_fail] = "rail_recoverable"
+    labels[requires_twist & (C_twist >= float(target))] = "requires_twist"
+    labels[requires_twist & (C_twist < float(target))] = "unreachable_even_twist"
+
+    th_dev = np.rad2deg(np.abs(th_tw - th_near))
+    summary = {
+        "target_clearance": float(target),
+        "split_s": split_s,
+        "split_index": split,
+        "n_rail_recoverable": int(rail_recoverable.sum()),
+        "n_requires_twist": int(requires_twist.sum()),
+        "n_hard_unreachable_Cstar_lt0": int(hard_unreachable.sum()),
+        "n_twist_helps": int(twist_helps.sum()),
+        "n_phase_a": int(phase_a.sum()),
+        "n_phase_b": int(phase_b.sum()),
+        "phase_a_mean_abs_rail_star_m": float(np.abs(rail_star[phase_a]).mean()) if phase_a.any() else 0.0,
+        "phase_b_mean_abs_twist_deg": float(th_dev[phase_b].mean()) if phase_b.any() else 0.0,
+        "note": (
+            "Phase A: nearest θ reachable by sliding rail (nullspace-connected); "
+            "QP-IK guidance. Phase B: max_rail at nearest θ still fails — twist θ. "
+            "Rail track is connected; at most arm-config branch jumps — not a "
+            "false half-track reachability trap."
+        ),
+    }
+    return {
+        "labels": labels,
+        "rail_recoverable": rail_recoverable,
+        "requires_twist": requires_twist,
+        "hard_unreachable": hard_unreachable,
+        "twist_helps": twist_helps,
+        "rail0_fail": rail0_fail,
+        "phase_a": phase_a,
+        "phase_b": phase_b,
+        "split_index": split,
+        "summary": summary,
+    }
+
+
+def audit_task_cone_gt(
+    tcp_world: np.ndarray,
+    rail_m: np.ndarray,
+    region: TaskConeReachability,
+    *,
+    kin,
+    collision_filter,
+    seed_pool: np.ndarray,
+    seed: int,
+    n_orient: int = 16,
+    n_seeds: int = 12,
+    waypoint_stride: int = 4,
+) -> dict[str, float | int | list[int]]:
+    """Pointwise IK success if ANY tip×roll free sample is collision-free solvable."""
+    tcp = np.asarray(tcp_world, dtype=np.float32)
+    rail = np.asarray(rail_m, dtype=np.float32).reshape(-1)
+    ids = np.arange(0, len(tcp), max(int(waypoint_stride), 1), dtype=np.int64)
+    if ids[-1] != len(tcp) - 1:
+        ids = np.concatenate((ids, np.array([len(tcp) - 1], dtype=np.int64)))
+    device = region.rotation_offsets_local.device
+    T = torch.as_tensor(tcp[ids], device=device, dtype=torch.float32)
+    with torch.no_grad():
+        samples = region.free_tcp_samples(T).detach().cpu().numpy()
+    n_wp, n_k = samples.shape[:2]
+    rng = np.random.default_rng(seed)
+    keep = rng.choice(n_k, size=min(int(n_orient), n_k), replace=False)
+    flat = samples[:, keep].reshape(-1, 4, 4)
+    rails = np.repeat(rail[ids], len(keep))
+    candidates = solve_candidates(
+        flat,
+        rails,
+        kin=kin,
+        collision_filter=collision_filter,
+        seed_pool=seed_pool,
+        n_seeds=int(n_seeds),
+        seed=seed,
+    )
+    ok = np.any(candidates["valid"], axis=1).reshape(n_wp, len(keep))
+    reachable = np.any(ok, axis=1)
+    return {
+        "audited_waypoints": int(n_wp),
+        "orientations_per_waypoint": int(len(keep)),
+        "reachable_waypoints": int(reachable.sum()),
+        "reachable_fraction": float(reachable.mean()),
+        "waypoint_ids": ids.tolist(),
+        "reachable_mask": reachable.astype(np.uint8).tolist(),
+    }
+
+
 def optimize_trajectory(
     field,
     region: TaskConeReachability,
@@ -247,48 +468,53 @@ def optimize_trajectory(
     path_y = cfg.path_y_min_m + (cfg.path_y_max_m - cfg.path_y_min_m) * s
     basis = torch.as_tensor(bspline_basis(s.cpu().numpy(), cfg.control_points), device=device)
     theta_limit = np.deg2rad(cfg.theta_limit_deg)
-    # Start at geometric nearest-skin azimuth (the "nearest projection" baseline).
-    th0 = float(np.clip(nearest_theta_rad(cfg) / max(theta_limit, 1.0e-8), -0.999, 0.999))
-    raw_theta = torch.nn.Parameter(
-        torch.full((cfg.control_points,), float(np.arctanh(th0)), device=device)
-    )
-    raw_rail = torch.nn.Parameter(torch.zeros(cfg.control_points, device=device))
-    optimizer = torch.optim.Adam((raw_theta, raw_rail), lr=cfg.learning_rate)
-    history: list[dict[str, float]] = []
-    if cfg.target_clearance is not None:
-        target = float(cfg.target_clearance)
-    elif m_safe is not None:
-        target = max(float(m_safe) + float(cfg.clearance_margin), 1.5)
-    else:
-        target = 1.5
-    soft_scale = max(float(cfg.ird_softplus_scale), 1.0e-3)
     th_nearest = float(nearest_theta_rad(cfg))
+    # θ = θ_near + Δθ(s); start at zero delta so Phase A stays on nearest until IRD forces twist.
+    raw_dtheta = torch.nn.Parameter(torch.zeros(cfg.control_points, device=device))
+    raw_rail = torch.nn.Parameter(torch.zeros(cfg.control_points, device=device))
+    # Bias rail toward +side so Phase A can recover without twisting θ.
+    with torch.no_grad():
+        bias = torch.linspace(0.55, 0.95, cfg.control_points, device=device)
+        raw_rail.copy_(torch.atanh(bias.clamp(-0.999, 0.999)))
+    optimizer = torch.optim.Adam((raw_dtheta, raw_rail), lr=cfg.learning_rate)
+    history: list[dict[str, float]] = []
+    target = resolve_clearance_target(cfg, m_safe)
+    soft_scale = max(float(cfg.ird_softplus_scale), 1.0e-3)
     th_near_t = torch.full_like(s, th_nearest)
-    # Normalize nearest deviation by ~15° so unit-ish cost when off by that much.
-    nearest_scale = np.deg2rad(15.0)
+    nearest_scale = np.deg2rad(12.0)
+    # Control-point weights: early Δθ control points stay near 0; late ones free for twist.
+    cp_s = torch.linspace(0.0, 1.0, cfg.control_points, device=device)
+    cp_nearest_w = torch.ones(cfg.control_points, device=device)
+    cp_nearest_w = torch.where(cp_s <= float(cfg.phase_a_s_max), cp_nearest_w * 3.0, cp_nearest_w)
+    cp_nearest_w = torch.where(cp_s >= float(cfg.phase_b_s_min), cp_nearest_w * 0.25, cp_nearest_w)
+    # Sample weights along the path (same idea).
+    phase_w = torch.ones_like(s)
+    phase_w = torch.where(s <= float(cfg.phase_a_s_max), phase_w * 2.0, phase_w)
+    phase_w = torch.where(s >= float(cfg.phase_b_s_min), phase_w * 0.40, phase_w)
 
     for epoch in range(cfg.epochs):
         optimizer.zero_grad(set_to_none=True)
-        theta = basis @ (theta_limit * torch.tanh(raw_theta))
+        dtheta = basis @ (theta_limit * torch.tanh(raw_dtheta))
+        theta = th_near_t + dtheta
+        # Keep absolute θ inside chart limits.
+        theta = torch.clamp(theta, -theta_limit, theta_limit)
         rail = basis @ (cfg.rail_limit_m * torch.tanh(raw_rail))
         tcp = ellipse_surface_tcp(theta, path_y, cfg)
         eye = torch.eye(4, device=device)
         clearance = region.query_tcp_rail(
             field, tcp, rail, T_world_rail=eye, T_rail_base0=T_rail_axis, rail_axis=1
         ).best_clearance
-        # Soft hinge: ~0 (and tiny ∇) once C ≥ target; grows only when under.
         ird_point = F.softplus((target - clearance) / soft_scale)
         ird = ird_point.mean() + 0.75 * ird_point.amax()
-        # Stick to geometric nearest projection (not θ=0 harmonic).
-        nearest = torch.mean(((theta - th_near_t) / nearest_scale) ** 2)
-        dtheta = normalized_derivative(theta, s)
+        nearest = torch.mean(phase_w * ((dtheta) / nearest_scale) ** 2)
+        nearest = nearest + torch.mean(cp_nearest_w * (torch.tanh(raw_dtheta) ** 2))
+        dtheta_s = normalized_derivative(theta, s)
         drail = normalized_derivative(rail, s)
-        continuity = torch.mean((dtheta / 0.9) ** 2) + torch.mean((drail / 0.65) ** 2)
-        curvature = torch.mean(torch.diff(dtheta) ** 2) + torch.mean(
+        continuity = torch.mean((dtheta_s / 0.9) ** 2) + torch.mean((drail / 0.65) ** 2)
+        curvature = torch.mean(torch.diff(dtheta_s) ** 2) + torch.mean(
             (torch.diff(drail) / 0.25) ** 2
         )
-        # Mild rail anchor at nearest baseline (rail=0); path_y follow is optional comfort.
-        rail_anchor = torch.mean((rail / 0.08) ** 2)
+        rail_anchor = torch.mean((rail / 0.18) ** 2)
         loss = (
             float(cfg.w_ird) * ird
             + float(cfg.w_nearest) * nearest
@@ -311,18 +537,18 @@ def optimize_trajectory(
                     "clearance_min": float(clearance.detach().min()),
                     "clearance_mean": float(clearance.detach().mean()),
                     "theta_dev_nearest_deg_rms": float(
-                        torch.sqrt(torch.mean((theta - th_near_t) ** 2)).detach()
-                        * (180.0 / np.pi)
+                        torch.sqrt(torch.mean(dtheta ** 2)).detach() * (180.0 / np.pi)
                     ),
                     "m_safe": target,
                 }
             )
 
     with torch.no_grad():
-        theta = basis @ (theta_limit * torch.tanh(raw_theta))
+        dtheta = basis @ (theta_limit * torch.tanh(raw_dtheta))
+        theta = torch.clamp(th_near_t + dtheta, -theta_limit, theta_limit)
         rail = basis @ (cfg.rail_limit_m * torch.tanh(raw_rail))
     # Nearest-projection baseline: fixed nearest θ, rail locked at 0.
-    initial_theta = torch.full_like(theta, float(nearest_theta_rad(cfg)))
+    initial_theta = torch.full_like(theta, th_nearest)
     initial_rail = torch.zeros_like(rail)
     initial_clearance, initial_grad_theta, initial_grad_rail = query_with_gradients(
         field, region, initial_theta, initial_rail, path_y, cfg, T_rail_axis=T_rail_axis
@@ -706,9 +932,9 @@ def render_u_band_cone_reachability(
         "aggregation": "softmax_best",
         "panels": stats,
         "note": (
-            "Color = tip±45° × roll±30° softmax-best about local skin TCP; "
-            "same operator as θ/rail optimization. (θ,rail) field videos share "
-            "background at fixed path_y by decision-landscape definition."
+            "Color = tip±45° × roll±30° softmax-best about each local skin TCP "
+            "(moves with the trajectory). Same operator as θ/rail optimization. "
+            "Not a global workspace IRD."
         ),
     }
 
@@ -750,24 +976,26 @@ def render_trajectory(
 
     s = result["s"]
     ax2 = fig.add_subplot(222)
-    ax2.plot(s, result["initial_clearance"], color="#546e7a", label="Nearest")
+    ax2.plot(s, result["initial_clearance"], color="#546e7a", label="Nearest @ rail=0")
     ax2.plot(s, result["clearance"], color="#00a86b", label="Optimized")
+    ax2.axhline(float(result.get("m_safe", 1.5)), color="#c62828", ls="--", lw=1.0, label="target")
     ax2.axhline(0.0, color="black", linewidth=1.2)
     ax2.set_xlabel("normalized phase")
     ax2.set_ylabel("task-cone best")
-    ax2.set_title("Neural IRD (task cone)")
-    ax2.legend()
+    ax2.set_title("Neural IRD (local tip±45×roll±30)")
+    ax2.legend(fontsize=8)
 
     ax3 = fig.add_subplot(223)
-    ax3.plot(s, np.rad2deg(result["theta_rad"]), color="#00796b")
+    ax3.plot(s, np.rad2deg(result["initial_theta_rad"]), color="#90a4ae", lw=1.5, label="nearest")
+    ax3.plot(s, np.rad2deg(result["theta_rad"]), color="#00796b", lw=2.0, label="optimized")
     ax3.set_xlabel("normalized phase")
-    ax3.set_ylabel("surface angle (deg)", color="#00796b")
-    ax3.tick_params(axis="y", labelcolor="#00796b")
+    ax3.set_ylabel("surface angle (deg)")
+    ax3.legend(fontsize=8)
     ax3b = ax3.twinx()
-    ax3b.plot(s, 1000.0 * result["rail_m"], color="#ef6c00")
+    ax3b.plot(s, 1000.0 * result["rail_m"], color="#ef6c00", lw=1.8)
     ax3b.set_ylabel("rail (mm)", color="#ef6c00")
     ax3b.tick_params(axis="y", labelcolor="#ef6c00")
-    ax3.set_title("Surface and Rail")
+    ax3.set_title("Surface angle + rail (A: rail; B: twist)")
 
     ax4 = fig.add_subplot(224)
     ax4.plot(s, result["initial_grad_theta"], color="#607d8b", label="dC/dθ nearest")
@@ -806,7 +1034,7 @@ def render_controls_vs_s(result: dict, out_path: Path) -> None:
 
 
 def _field_axis_bounds(result: dict, cfg: DemoConfig) -> tuple[float, float, float, float]:
-    """Shared (θ_deg, rail_mm) window covering nearest + optimized paths."""
+    """(θ_deg, rail_mm) window covering nearest + optimized paths and full limits."""
     th = np.concatenate(
         (
             np.rad2deg(np.asarray(result["initial_theta_rad"], dtype=np.float64)),
@@ -814,7 +1042,7 @@ def _field_axis_bounds(result: dict, cfg: DemoConfig) -> tuple[float, float, flo
         )
     )
     th_min = float(min(-cfg.theta_limit_deg, float(th.min()) - 5.0))
-    th_max = float(max(12.0, float(th.max()) + 5.0))
+    th_max = float(max(cfg.theta_limit_deg, float(th.max()) + 5.0))
     rail_mm = 1000.0 * float(cfg.rail_limit_m)
     return th_min, th_max, -rail_mm, rail_mm
 
@@ -842,11 +1070,12 @@ def render_field_video(
     fps: int = 12,
     quiver_stride: int = 3,
 ) -> Path:
-    """Animate (θ, rail) task-cone-best field + visual steepest-ascent arrows.
+    """Animate local task-cone-best field C(θ, rail | path_y(s)).
 
-    Background is ``C_task(θ, rail | path_y(s))`` (shared by nearest/optimized). Quiver
-    directions are axis-span normalized so they point toward higher clearance in
-    the *plot* plane (deg × mm), not raw ∂C/∂rail_mm which otherwise looks vertical.
+    Background is recomputed every frame about the TCP at that path_y — tip±45°
+    × roll±30° softmax-best — so the IRD landscape moves with the trajectory.
+    Quiver directions are axis-span normalized toward higher clearance in the
+    plot plane (deg × mm).
     """
     import imageio.v2 as imageio
     import matplotlib.pyplot as plt
@@ -1015,7 +1244,7 @@ def render_field_videos(
     *,
     T_rail_axis: torch.Tensor,
 ) -> dict[str, str]:
-    """Nearest + optimized path overlays on the shared (θ,rail|path_y) landscape."""
+    """Nearest + optimized overlays; each frame recomputes local task-cone IRD at path_y(s)."""
     device = next(field.parameters()).device
     s = np.asarray(result["s"], dtype=np.float64)
     path_y = np.asarray(result["path_y_m"], dtype=np.float64)
@@ -1091,11 +1320,87 @@ def render_field_videos(
         "legacy_alias": str(legacy),
         "theta_deg_window": [th_min, th_max],
         "note": (
-            "Background C(θ,rail|path_y) is shared. Quiver = axis-normalized steepest ascent "
-            "toward higher clearance. θ window covers both nearest and optimized paths."
+            "Each frame recomputes C_task(θ,rail|path_y(s)) with tip±45°×roll±30° "
+            "about the local TCP — background moves with the trajectory. Nearest vs "
+            "optimized videos differ only by path overlay. Quiver = axis-normalized "
+            "steepest ascent. θ window covers both paths."
         ),
     }
 
+
+
+def render_dual_phase_diagnostics(
+    result: dict,
+    probe: dict[str, np.ndarray],
+    phases: dict,
+    *,
+    target: float,
+    out_path: Path,
+) -> None:
+    """C0 / C* / C_opt along s with Phase A/B shading + control response."""
+    import matplotlib.pyplot as plt
+
+    s = np.asarray(result["s"], dtype=np.float64)
+    fig, axes = plt.subplots(3, 1, figsize=(10.5, 9.0), dpi=160, sharex=True)
+
+    def _shade(ax):
+        for mask, color, label in (
+            (phases["phase_a"], "#fff3e0", "Phase A rail-recoverable"),
+            (phases["phase_b"], "#e3f2fd", "Phase B must-twist"),
+        ):
+            if not np.any(mask):
+                continue
+            # Shade contiguous runs.
+            idx = np.where(mask)[0]
+            starts = [idx[0]]
+            for a, b in zip(idx[:-1], idx[1:]):
+                if b != a + 1:
+                    starts.append(b)
+            ends = []
+            for a, b in zip(idx[:-1], idx[1:]):
+                if b != a + 1:
+                    ends.append(a)
+            ends.append(idx[-1])
+            for k, (i0, i1) in enumerate(zip(starts, ends)):
+                ax.axvspan(
+                    s[i0], s[i1], color=color, alpha=0.55,
+                    label=label if k == 0 else None, zorder=0,
+                )
+
+    ax = axes[0]
+    _shade(ax)
+    ax.plot(s, probe["C0"], color="#90a4ae", lw=1.8, label="C(θ_near, rail=0)")
+    ax.plot(s, probe["C_star"], color="#ef6c00", lw=2.0, label="C*(θ_near, best rail)")
+    ax.plot(s, result["clearance"], color="#00a86b", lw=2.4, label="C optimized")
+    ax.axhline(float(target), color="#c62828", ls="--", lw=1.2, label=f"target={target:.2f}")
+    ax.axhline(0.0, color="black", lw=0.8)
+    ax.set_ylabel("task-cone best")
+    ax.set_title("Dual-case IRD: rail recovers Phase A; twist required in Phase B")
+    ax.legend(fontsize=8, ncol=2, loc="lower left")
+
+    ax = axes[1]
+    _shade(ax)
+    ax.plot(s, np.rad2deg(result["initial_theta_rad"]), color="#90a4ae", lw=1.6, label="θ nearest")
+    ax.plot(s, np.rad2deg(result["theta_rad"]), color="#00796b", lw=2.2, label="θ optimized")
+    ax.plot(
+        s, np.rad2deg(probe["theta_twist_rad"]), color="#1565c0", ls=":", lw=1.4,
+        label="θ* coarse twist probe",
+    )
+    ax.set_ylabel("surface angle (deg)")
+    ax.legend(fontsize=8, ncol=3)
+
+    ax = axes[2]
+    _shade(ax)
+    ax.plot(s, 1000.0 * result["initial_rail_m"], color="#90a4ae", lw=1.6, label="rail=0 baseline")
+    ax.plot(s, 1000.0 * probe["rail_star_m"], color="#ef6c00", lw=2.0, label="rail* @ θ_near")
+    ax.plot(s, 1000.0 * result["rail_m"], color="#00a86b", lw=2.2, label="rail optimized")
+    ax.axhline(0.0, color="black", lw=0.8)
+    ax.set_ylabel("rail (mm)")
+    ax.set_xlabel("normalized phase s")
+    ax.legend(fontsize=8, ncol=3)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
 
 
 def render_q_guidance(
@@ -1181,40 +1486,191 @@ def main(argv: list[str] | None = None) -> int:
 
     gt_region = RegionA(RegionAConfig(samples=64, cone_half_angle_deg=3.0, seed=17)).to(device)
     m_safe = load_conformal_threshold(resolve(args.conformal))
+    target = resolve_clearance_target(cfg, m_safe)
     result = optimize_trajectory(
         field, task_cone, cfg, device, T_rail_axis=T_rail_axis, m_safe=m_safe
     )
 
+    # Dual-case probe on the nearest projection (before / independent of optimization).
+    probe = probe_nearest_rail_and_twist(
+        field, task_cone, cfg, result["path_y_m"], T_rail_axis=T_rail_axis,
+        th_near=float(nearest_theta_rad(cfg)),
+    )
+    phases = label_dual_phases(result["s"], probe, target=target, cfg=cfg)
+    phase_a = np.asarray(phases["phase_a"], dtype=bool)
+    phase_b = np.asarray(phases["phase_b"], dtype=bool)
+
     locked, collision_filter, kin = build_gt_tools(device)
     seed_pool = load_seed_pool(resolve(args.seed_gt))
-    initial_candidates = solve_candidates(
-        result["initial_tcp"], result["initial_rail_m"], kin=kin,
-        collision_filter=collision_filter, seed_pool=seed_pool, n_seeds=48, seed=cfg.seed,
+
+    # Three TCP/rail paths for GT + QP-IK contrast.
+    tcp_near = np.asarray(result["initial_tcp"], dtype=np.float32)
+    rail0 = np.asarray(result["initial_rail_m"], dtype=np.float32)
+    rail_star = np.asarray(probe["rail_star_m"], dtype=np.float32)
+    tcp_opt = np.asarray(result["tcp"], dtype=np.float32)
+    rail_opt = np.asarray(result["rail_m"], dtype=np.float32)
+
+    cand_rail0 = solve_candidates(
+        tcp_near, rail0, kin=kin, collision_filter=collision_filter,
+        seed_pool=seed_pool, n_seeds=48, seed=cfg.seed,
     )
-    final_candidates = solve_candidates(
-        result["tcp"], result["rail_m"], kin=kin,
-        collision_filter=collision_filter, seed_pool=seed_pool, n_seeds=48, seed=cfg.seed + 1,
+    cand_rail_star = solve_candidates(
+        tcp_near, rail_star, kin=kin, collision_filter=collision_filter,
+        seed_pool=seed_pool, n_seeds=48, seed=cfg.seed + 11,
     )
-    initial_gt = np.any(initial_candidates["valid"], axis=1)
-    final_gt = np.any(final_candidates["valid"], axis=1)
-    baseline_q = lowest_error_path(final_candidates)
-    q_ref = optimize_continuous_q_path(
-        result["tcp"], result["rail_m"], final_candidates,
-        kin=kin, collision_filter=collision_filter, seed_pool=seed_pool,
-        seed=cfg.seed + 2,
+    cand_opt = solve_candidates(
+        tcp_opt, rail_opt, kin=kin, collision_filter=collision_filter,
+        seed_pool=seed_pool, n_seeds=48, seed=cfg.seed + 1,
     )
+    gt_rail0 = np.any(cand_rail0["valid"], axis=1)
+    gt_rail_star = np.any(cand_rail_star["valid"], axis=1)
+    gt_opt = np.any(cand_opt["valid"], axis=1)
+
+    # Task-cone GT (matches planning operator): any tip×roll sample solvable.
+    cone_gt_rail0 = audit_task_cone_gt(
+        tcp_near, rail0, task_cone, kin=kin, collision_filter=collision_filter,
+        seed_pool=seed_pool, seed=cfg.seed + 20, waypoint_stride=5,
+    )
+    cone_gt_rail_star = audit_task_cone_gt(
+        tcp_near, rail_star, task_cone, kin=kin, collision_filter=collision_filter,
+        seed_pool=seed_pool, seed=cfg.seed + 21, waypoint_stride=5,
+    )
+    cone_gt_opt = audit_task_cone_gt(
+        tcp_opt, rail_opt, task_cone, kin=kin, collision_filter=collision_filter,
+        seed_pool=seed_pool, seed=cfg.seed + 22, waypoint_stride=5,
+    )
+
+    def _tcp_with_cone_ik_fallback(tcp_nom: np.ndarray, rail: np.ndarray, seed: int) -> np.ndarray:
+        """Prefer nominal TCP; if no IK seed works, swap in a solvable tip×roll sample."""
+        out = np.asarray(tcp_nom, dtype=np.float32).copy()
+        device = task_cone.rotation_offsets_local.device
+        T = torch.as_tensor(out, device=device, dtype=torch.float32)
+        with torch.no_grad():
+            samples = task_cone.free_tcp_samples(T).detach().cpu().numpy()
+        n_wp, n_k = samples.shape[:2]
+        # Evaluate a modest orientation subset per waypoint.
+        rng = np.random.default_rng(seed)
+        keep = rng.choice(n_k, size=min(12, n_k), replace=False)
+        for i in range(n_wp):
+            cand = solve_candidates(
+                samples[i, keep],
+                np.full(len(keep), float(rail[i]), dtype=np.float32),
+                kin=kin,
+                collision_filter=collision_filter,
+                seed_pool=seed_pool,
+                n_seeds=8,
+                seed=seed + i,
+            )
+            ok = np.any(cand["valid"], axis=1)
+            if np.any(ok):
+                # Prefer lowest pos error among valid orientations.
+                score = np.where(
+                    ok,
+                    cand["pos_error_m"].min(axis=1),
+                    np.inf,
+                )
+                out[i] = samples[i, keep[int(np.argmin(score))]]
+        return out
+
+    tcp_near_guided = _tcp_with_cone_ik_fallback(tcp_near, rail_star, cfg.seed + 30)
+    cand_rail_star_guided = solve_candidates(
+        tcp_near_guided, rail_star, kin=kin, collision_filter=collision_filter,
+        seed_pool=seed_pool, n_seeds=48, seed=cfg.seed + 31,
+    )
+    tcp_opt_guided = _tcp_with_cone_ik_fallback(tcp_opt, rail_opt, cfg.seed + 40)
+    cand_opt_guided = solve_candidates(
+        tcp_opt_guided, rail_opt, kin=kin, collision_filter=collision_filter,
+        seed_pool=seed_pool, n_seeds=48, seed=cfg.seed + 41,
+    )
+
+    def _safe_continuous(tcp, rail, cand, seed: int):
+        try:
+            # If waypoint 0 has no seed, shift to first solvable waypoint then pad.
+            valid0 = np.any(cand["valid"], axis=1)
+            if not valid0[0]:
+                good = np.where(valid0)[0]
+                if len(good) == 0:
+                    raise RuntimeError("no waypoint has valid IK")
+                i0 = int(good[0])
+                cand_tail = {
+                    "q": cand["q"][i0:],
+                    "valid": cand["valid"][i0:],
+                    "pos_error_m": cand["pos_error_m"][i0:],
+                    "rot_error_rad": cand["rot_error_rad"][i0:],
+                }
+                q_tail = optimize_continuous_q_path(
+                    tcp[i0:], rail[i0:], cand_tail,
+                    kin=kin, collision_filter=collision_filter,
+                    seed_pool=seed_pool, seed=seed,
+                )
+                q = np.repeat(q_tail[:1], len(tcp), axis=0)
+                q[i0:] = q_tail
+            else:
+                q = optimize_continuous_q_path(
+                    tcp, rail, cand, kin=kin, collision_filter=collision_filter,
+                    seed_pool=seed_pool, seed=seed,
+                )
+            metrics = q_metrics(q, locked.q_lower, locked.q_upper)
+            metrics.update(validate_q_path(q, tcp, rail, kin, collision_filter))
+            return q, metrics, None
+        except Exception as exc:  # noqa: BLE001 — demo contrast must not abort
+            return None, {"error": str(exc)}, str(exc)
+
+    q_rail0, metrics_rail0, err_rail0 = _safe_continuous(
+        tcp_near, rail0, cand_rail0, cfg.seed + 2
+    )
+    q_rail_star, metrics_rail_star, err_rail_star = _safe_continuous(
+        tcp_near_guided, rail_star, cand_rail_star_guided, cfg.seed + 12
+    )
+    baseline_q = lowest_error_path(cand_opt_guided)
+    q_ref, metrics_opt, err_opt = _safe_continuous(
+        tcp_opt_guided, rail_opt, cand_opt_guided, cfg.seed + 3
+    )
+    if q_ref is None:
+        q_ref = baseline_q
+        metrics_opt = q_metrics(q_ref, locked.q_lower, locked.q_upper)
+
     region_gt = audit_region_gt(
-        result["tcp"], result["rail_m"], region=gt_region, kin=kin,
+        tcp_opt, rail_opt, region=gt_region, kin=kin,
         collision_filter=collision_filter, seed_pool=seed_pool,
-        seed=cfg.seed + 3,
+        seed=cfg.seed + 4,
     )
+
+    # Phase-wise neural / angle assertions.
+    th_near = float(nearest_theta_rad(cfg))
+    th_opt = np.asarray(result["theta_rad"], dtype=np.float64)
+    th_dev_deg = np.rad2deg(np.abs(th_opt - th_near))
+    rail_opt_abs = np.abs(np.asarray(result["rail_m"], dtype=np.float64))
+    assertions = {
+        "phase_a_present": bool(phase_a.any()),
+        "phase_b_present": bool(phase_b.any()),
+        "phase_a_max_abs_theta_dev_deg": float(th_dev_deg[phase_a].max()) if phase_a.any() else 0.0,
+        "phase_a_mean_abs_rail_m": float(rail_opt_abs[phase_a].mean()) if phase_a.any() else 0.0,
+        "phase_b_max_abs_theta_dev_deg": float(th_dev_deg[phase_b].max()) if phase_b.any() else 0.0,
+        "phase_b_mean_C_star": float(probe["C_star"][phase_b].mean()) if phase_b.any() else 0.0,
+        "phase_b_mean_C_opt": float(np.asarray(result["clearance"])[phase_b].mean()) if phase_b.any() else 0.0,
+        "phase_a_theta_mostly_nearest": bool(
+            (not phase_a.any()) or float(th_dev_deg[phase_a].max()) < 12.0
+        ),
+        "phase_b_twists": bool(
+            (not phase_b.any()) or float(th_dev_deg[phase_b].max()) >= 8.0
+        ),
+        "semantics": (
+            "Phase A: rail nullspace recovers nearest TCP (QP-IK guidance). "
+            "Phase B: max_rail at nearest θ fails — must twist. "
+            "Rail track is connected; at most arm-config branch jumps."
+        ),
+    }
 
     proj_meta = render_cross_section(cfg, result, out / "ellipse_section_projection.png")
     render_gradient_landscape(
         field, task_cone, result, cfg, out / "region_ird_gradient.png", T_rail_axis=T_rail_axis
     )
-    render_trajectory(result, initial_gt, final_gt, cfg, out / "ellipse_trajectory.png")
+    render_trajectory(result, gt_rail0, gt_opt, cfg, out / "ellipse_trajectory.png")
     render_controls_vs_s(result, out / "trajectory_controls_vs_s.png")
+    render_dual_phase_diagnostics(
+        result, probe, phases, target=target, out_path=out / "dual_phase_diagnostics.png"
+    )
     u_band_meta = render_u_band_cone_reachability(
         field, task_cone, result, cfg, out / "u_band_cone_reachability.png", T_rail_axis=T_rail_axis
     )
@@ -1228,28 +1684,77 @@ def main(argv: list[str] | None = None) -> int:
         result["s"], q_ref, locked.q_lower, locked.q_upper,
         baseline_q, out / "qpik_joint_guidance.png",
     )
+    # Contrast: continuous IK step sizes for rail0 / rail* / optimized.
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(10, 4.2), dpi=160)
+    q_span = locked.q_upper - locked.q_lower
+    s_np = np.asarray(result["s"], dtype=np.float64)
+    for q_arr, color, label in (
+        (q_rail0, "#90a4ae", "nearest+rail0"),
+        (q_rail_star, "#ef6c00", "nearest+rail* (guidance)"),
+        (q_ref, "#00897b", "optimized θ+rail"),
+    ):
+        if q_arr is None:
+            continue
+        step = np.linalg.norm(np.diff(q_arr, axis=0) / q_span, axis=1)
+        ax.plot(s_np[1:], step, color=color, lw=1.8, label=label)
+    ax.set_xlabel("normalized phase s")
+    ax.set_ylabel("normalized joint step")
+    ax.set_title("QP-IK continuity contrast (rail recovers A; twist recovers B)")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(out / "qpik_continuity_contrast.png", bbox_inches="tight")
+    plt.close(fig)
 
     np.savez_compressed(
         out / "qpik_guidance.npz",
         s=np.asarray(result["s"], dtype=np.float32),
-        T_tcp_world=np.asarray(result["tcp"], dtype=np.float32),
-        rail_y=np.asarray(result["rail_m"], dtype=np.float32),
-        initial_rail_y=np.asarray(result["initial_rail_m"], dtype=np.float32),
+        T_tcp_world=tcp_opt,
+        rail_y=rail_opt,
+        initial_rail_y=rail0,
+        rail_star_y=rail_star.astype(np.float32),
         q_ref=q_ref,
+        q_rail0=np.asarray(q_rail0 if q_rail0 is not None else np.full_like(q_ref, np.nan), dtype=np.float32),
+        q_rail_star=np.asarray(
+            q_rail_star if q_rail_star is not None else np.full_like(q_ref, np.nan), dtype=np.float32
+        ),
         robust_clearance=np.asarray(result["clearance"], dtype=np.float32),
-        surface_theta_rad=np.asarray(result["theta_rad"], dtype=np.float32),
+        C0=probe["C0"].astype(np.float32),
+        C_star=probe["C_star"].astype(np.float32),
+        C_twist=probe["C_twist"].astype(np.float32),
+        surface_theta_rad=th_opt.astype(np.float32),
         initial_surface_theta_rad=np.asarray(result["initial_theta_rad"], dtype=np.float32),
         path_y_m=np.asarray(result["path_y_m"], dtype=np.float32),
         h=np.asarray(result["h"], dtype=np.float32),
+        phase_a=phase_a.astype(np.uint8),
+        phase_b=phase_b.astype(np.uint8),
+        gt_rail0=gt_rail0.astype(np.uint8),
+        gt_rail_star=gt_rail_star.astype(np.uint8),
+        gt_optimized=gt_opt.astype(np.uint8),
     )
-    baseline_metrics = q_metrics(baseline_q, locked.q_lower, locked.q_upper)
-    q_ref_metrics = q_metrics(q_ref, locked.q_lower, locked.q_upper)
-    q_ref_metrics.update(
-        validate_q_path(q_ref, result["tcp"], result["rail_m"], kin, collision_filter)
-    )
+
+    def _frac(mask_gt: np.ndarray, mask_phase: np.ndarray) -> float | None:
+        if not np.any(mask_phase):
+            return None
+        return float(mask_gt[mask_phase].mean())
+
     summary = {
         "config": asdict(cfg),
         "projection": proj_meta,
+        "dual_case": {
+            **phases["summary"],
+            "assertions": assertions,
+            "probe": {
+                "C0_min": float(probe["C0"].min()),
+                "C_star_min": float(probe["C_star"].min()),
+                "C_twist_min": float(probe["C_twist"].min()),
+                "max_abs_rail_star_m": float(np.abs(probe["rail_star_m"]).max()),
+                "max_abs_twist_from_nearest_deg": float(
+                    np.max(np.rad2deg(np.abs(probe["theta_twist_rad"] - th_near)))
+                ),
+            },
+        },
         "region": {
             "operator": "TaskConeReachability",
             "tip_half_angle_deg": 45.0,
@@ -1257,23 +1762,23 @@ def main(argv: list[str] | None = None) -> int:
             "samples": 64,
             "aggregation": "softmax_best",
             "loss": {
-                "ird": "softplus hinge on (m_safe - C); ~0 when feasible",
-                "nearest": "quadratic stick to geometric nearest θ, rail→0",
+                "ird": "softplus hinge on (target - C); ~0 when feasible",
+                "nearest": "phase-weighted stick to geometric nearest θ",
                 "continuity": "path derivatives of θ(s), rail(s)",
                 "note": (
-                    "Prefer nearest + smooth; IRD only pulls when under target — "
-                    "twist grows only where nearest becomes unreachable."
+                    "Phase A: stick to nearest + slide rail (nullspace). "
+                    "Phase B: IRD hinge twists θ because max_rail at nearest fails."
                 ),
             },
             "note": (
-                "Optimization uses tip×roll free-set softmax (best in task cone), "
-                "not RegionA 3° softmin. At fixed path_y the (θ,rail) field video "
-                "background is the shared decision landscape — identical for nearest "
-                "and optimized overlays; only the path marker differs."
+                "Local tip±45°×roll±30° task-cone about each TCP; field background "
+                "recomputes with path_y(s). Not a global IRD. Rail is nullspace-"
+                "connected — no false half-track reachability trap."
             ),
         },
         "neural": {
             "m_safe": float(result["m_safe"]),
+            "target_clearance": float(target),
             "initial_min_clearance": float(np.min(result["initial_clearance"])),
             "initial_mean_clearance": float(np.mean(result["initial_clearance"])),
             "initial_end_clearance": float(result["initial_clearance"][-1]),
@@ -1281,45 +1786,79 @@ def main(argv: list[str] | None = None) -> int:
             "optimized_mean_clearance": float(np.mean(result["clearance"])),
             "optimized_end_clearance": float(result["clearance"][-1]),
             "optimized_p10_clearance": float(np.percentile(result["clearance"], 10)),
-            "max_abs_dev_from_nearest_deg": float(
-                np.max(np.abs(np.rad2deg(np.asarray(result["theta_rad"]) - nearest_theta_rad(cfg))))
-            ),
-            "rms_dev_from_nearest_deg": float(
-                np.sqrt(np.mean((np.rad2deg(np.asarray(result["theta_rad"]) - nearest_theta_rad(cfg))) ** 2))
-            ),
-            "max_abs_rail_m": float(np.max(np.abs(result["rail_m"]))),
+            "max_abs_dev_from_nearest_deg": float(th_dev_deg.max()),
+            "rms_dev_from_nearest_deg": float(np.sqrt(np.mean(th_dev_deg ** 2))),
+            "max_abs_rail_m": float(rail_opt_abs.max()),
+            "phase_a_max_abs_theta_dev_deg": assertions["phase_a_max_abs_theta_dev_deg"],
+            "phase_b_max_abs_theta_dev_deg": assertions["phase_b_max_abs_theta_dev_deg"],
         },
         "u_band_cone_reachability": u_band_meta,
         "gt": {
             "ik_seeds": 48,
-            "initial_reachable": int(initial_gt.sum()),
-            "optimized_reachable": int(final_gt.sum()),
-            "waypoints": int(len(final_gt)),
-            "initial_reachable_fraction": float(initial_gt.mean()),
-            "optimized_reachable_fraction": float(final_gt.mean()),
+            "nearest_rail0_reachable": int(gt_rail0.sum()),
+            "nearest_rail_star_reachable": int(gt_rail_star.sum()),
+            "optimized_reachable": int(gt_opt.sum()),
+            "waypoints": int(len(gt_opt)),
+            "nearest_rail0_fraction": float(gt_rail0.mean()),
+            "nearest_rail_star_fraction": float(gt_rail_star.mean()),
+            "optimized_reachable_fraction": float(gt_opt.mean()),
+            "phase_a_rail0_fraction": _frac(gt_rail0, phase_a),
+            "phase_a_rail_star_fraction": _frac(gt_rail_star, phase_a),
+            "phase_b_rail_star_fraction": _frac(gt_rail_star, phase_b),
+            "phase_b_optimized_fraction": _frac(gt_opt, phase_b),
+            "task_cone_gt": {
+                "nearest_rail0": cone_gt_rail0,
+                "nearest_rail_star": cone_gt_rail_star,
+                "optimized": cone_gt_opt,
+                "note": (
+                    "IK success if any tip±45°×roll±30° free sample is solvable — "
+                    "matches the planning IRD operator (exact nominal TCP GT is harsher)."
+                ),
+            },
             "robot_plus_probe_self_collision_checked": True,
             "optimized_region_audit": region_gt,
+            "note": (
+                "rail0: baseline locked rail. rail*: best rail at fixed nearest θ "
+                "(Phase A recovery via guidance). optimized: twisted path."
+            ),
         },
         "q_guidance": {
-            "lowest_error_ik": baseline_metrics,
-            "comfort_continuity_ik": q_ref_metrics,
+            "nearest_rail0": metrics_rail0,
+            "nearest_rail_star": metrics_rail_star,
+            "optimized": metrics_opt,
+            "errors": {
+                "nearest_rail0": err_rail0,
+                "nearest_rail_star": err_rail_star,
+                "optimized": err_opt,
+            },
+            "note": (
+                "A1 nearest+rail0 may fail continuity; A2 nearest+rail* shows QP-IK "
+                "guidance recovers Phase A without twisting; B optimized recovers Phase B."
+            ),
         },
+        "field_videos": video_files,
         "optimization_history": result["history"],
         "files": {
             "section": str(out / "ellipse_section_projection.png"),
             "gradient": str(out / "region_ird_gradient.png"),
             "trajectory": str(out / "ellipse_trajectory.png"),
             "controls_vs_s": str(out / "trajectory_controls_vs_s.png"),
+            "dual_phase": str(out / "dual_phase_diagnostics.png"),
             "u_band_cone": str(out / "u_band_cone_reachability.png"),
             "field_video_nearest": video_files.get("nearest", ""),
             "field_video_optimized": video_files.get("optimized", ""),
             "field_video": str(out / "region_ird_field_along_s.mp4"),
             "q_guidance": str(out / "qpik_joint_guidance.png"),
+            "qpik_contrast": str(out / "qpik_continuity_contrast.png"),
+            "qpik_npz": str(out / "qpik_guidance.npz"),
         },
     }
     report = out / "summary.json"
     report.write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    print(json.dumps({k: summary[k] for k in ("projection", "neural", "gt", "q_guidance")}, indent=2))
+    print(json.dumps(
+        {k: summary[k] for k in ("dual_case", "neural", "gt", "q_guidance")},
+        indent=2,
+    ))
     print(f"report -> {report}")
     return 0
 

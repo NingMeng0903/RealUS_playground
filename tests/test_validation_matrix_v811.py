@@ -4,6 +4,9 @@ from types import SimpleNamespace
 
 import numpy as np
 
+from projects.genesis_ue_sync.anatomy_retarget.leg_centerline_v810 import (
+    _foot_chain_digest_v1,
+)
 from projects.genesis_ue_sync.anatomy_retarget.validation_matrix_v8 import (
     MatrixBodySurfaceV811,
     _foot_chain_gate_v811,
@@ -18,20 +21,48 @@ _DIGEST = "a" * 64
 def _foot_chain(schema_version: object = 1) -> dict[str, object]:
     mesh = {
         "mesh": "foot",
+        "station_segment": "arch_forefoot",
         "rigid_rms_error_m": 0.0,
         "rigid_maximum_error_m": 0.0,
         "det_rotation": 1.0,
         "scale": 1.0,
     }
-    return {
+    stations = {
+        name: {
+            "source_m": [0.0, 0.0, 0.0],
+            "target_m": [0.0, 0.0, 0.0],
+            "mapped_geometry_m": [0.0, 0.0, 0.0],
+            "residual_m": 0.0,
+        }
+        for name in ("ankle", "arch", "forefoot")
+    }
+    target_arch = {
+        "method": "ankle_guided_unit_so3_source_arch_offset_v811",
+        "authority": (
+            "smplx_ankle_and_forefoot_guides_with_source_anatomical_arch_offset"
+        ),
+        "smplx_arch_joint_available": False,
+    }
+    chain = {
         "schema_version": schema_version,
         "method": "multi_station_rigid_foot_chain_v811",
-        "content_digest": _DIGEST,
         "sides": {
-            "left": {"station_residual_m": 0.0, "per_mesh": [mesh]},
-            "right": {"station_residual_m": 0.0, "per_mesh": [mesh]},
+            "left": {
+                "station_residual_m": 0.0,
+                "stations": {name: dict(value) for name, value in stations.items()},
+                "target_arch_construction": dict(target_arch),
+                "per_mesh": [dict(mesh)],
+            },
+            "right": {
+                "station_residual_m": 0.0,
+                "stations": {name: dict(value) for name, value in stations.items()},
+                "target_arch_construction": dict(target_arch),
+                "per_mesh": [dict(mesh)],
+            },
         },
     }
+    chain["content_digest"] = _foot_chain_digest_v1(chain)
+    return chain
 
 
 def _subject(chain: dict[str, object]) -> SimpleNamespace:
@@ -116,6 +147,40 @@ def test_foot_chain_gate_turns_malformed_schema_into_failed_evidence() -> None:
 
     assert passed is False
     assert "schema_version" in report["failures"]
+
+
+def test_foot_chain_gate_rejects_a_named_station_over_two_millimetres() -> None:
+    chain = _foot_chain()
+    arch = chain["sides"]["left"]["stations"]["arch"]
+    arch["mapped_geometry_m"] = [0.0021, 0.0, 0.0]
+    arch["residual_m"] = 0.0021
+
+    passed, report = _foot_chain_gate_v811(_subject(chain))
+
+    assert passed is False
+    assert "left.arch.residual" in report["failures"]
+
+
+def test_foot_chain_gate_rejects_a_false_summary_residual() -> None:
+    chain = _foot_chain()
+    arch = chain["sides"]["left"]["stations"]["arch"]
+    arch["mapped_geometry_m"] = [0.001, 0.0, 0.0]
+    arch["residual_m"] = 0.001
+
+    passed, report = _foot_chain_gate_v811(_subject(chain))
+
+    assert passed is False
+    assert "left.station_residual_consistency" in report["failures"]
+
+
+def test_foot_chain_gate_recomputes_the_content_digest() -> None:
+    chain = _foot_chain()
+    chain["sides"]["left"]["per_mesh"][0]["mesh"] = "other-foot"
+
+    passed, report = _foot_chain_gate_v811(_subject(chain))
+
+    assert passed is False
+    assert "content_digest" in report["failures"]
 
 
 def test_v811_route_requires_vessel_and_nerve_and_never_raises_on_bad_counts() -> None:

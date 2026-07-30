@@ -14,9 +14,11 @@ from projects.genesis_ue_sync.anatomy_retarget.leg_centerline_v810 import (
     _CENTERLINE_EDGE_Q99_LIMIT,
     _apply_rigid_segment_rotation_v810,
     _apply_swept_segment_centerline_v810,
+    _foot_arch_station_v811,
     _map_foot_stations_rigid_v811,
     _foot_station_v810,
     _proximal_mesh_cap_ids,
+    _target_foot_arch_station_v811,
     has_leg_centerline_v810,
     reconstruct_leg_centerline_compounds_v810,
     transport_coupled_rbf_parent_frames_v810,
@@ -363,10 +365,77 @@ def test_foot_station_uses_talus_calcaneus_and_forefoot_meshes() -> None:
     assert report["forefoot_vertex_count"] == 4
 
 
+def test_foot_arch_station_requires_all_anatomical_midfoot_domains() -> None:
+    vertices = np.asarray(
+        (
+            (0.0, -0.08, 0.00),
+            (0.0, -0.10, 0.00),
+            (0.02, -0.11, 0.01),
+            (0.02, -0.13, 0.01),
+            (-0.02, -0.12, 0.02),
+            (-0.02, -0.14, 0.02),
+        ),
+        dtype=np.float64,
+    )
+    asset = SimpleNamespace(
+        vertices_rest=vertices,
+        source_mesh_names=[
+            "Navicular_L",
+            "Cuboid_L",
+            "Medial_Cuneiform_L",
+        ],
+        source_tissues=["bone", "bone", "bone"],
+        source_vertex_ranges=np.asarray(((0, 2), (2, 4), (4, 6)), dtype=np.int32),
+    )
+
+    station, report = _foot_arch_station_v811(asset, suffix="L")
+
+    np.testing.assert_allclose(station, np.mean(vertices, axis=0), atol=1.0e-12)
+    assert report["required_domains"] == ["navicular", "cuboid", "cuneiform"]
+    assert report["domain_meshes"]["navicular"] == ["Navicular_L"]
+    assert report["domain_meshes"]["cuboid"] == ["Cuboid_L"]
+    assert report["domain_meshes"]["cuneiform"] == ["Medial_Cuneiform_L"]
+
+    missing = SimpleNamespace(
+        vertices_rest=vertices[:4],
+        source_mesh_names=["Navicular_L", "Medial_Cuneiform_L"],
+        source_tissues=["bone", "bone"],
+        source_vertex_ranges=np.asarray(((0, 2), (2, 4)), dtype=np.int32),
+    )
+    with pytest.raises(ValueError, match="missing L arch mesh domains"):
+        _foot_arch_station_v811(missing, suffix="L")
+
+
+def test_target_arch_is_ankle_guided_unit_so3_source_offset() -> None:
+    source_ankle = np.asarray((0.0, 0.0, 0.0))
+    source_arch = np.asarray((0.0, -0.10, 0.02))
+    target_ankle = np.asarray((1.0, 2.0, 3.0))
+    target_forefoot = np.asarray((1.35, 2.0, 3.0))
+    rotation = _rotation_z(np.pi / 2.0)
+
+    target_arch, report = _target_foot_arch_station_v811(
+        source_ankle=source_ankle,
+        source_arch=source_arch,
+        target_ankle=target_ankle,
+        target_forefoot=target_forefoot,
+        rotation=rotation,
+    )
+
+    np.testing.assert_allclose(
+        target_arch,
+        target_ankle + (source_arch - source_ankle) @ rotation.T,
+        atol=1.0e-12,
+    )
+    assert report["smplx_arch_joint_available"] is False
+    assert report["rotation_determinant"] == pytest.approx(1.0, abs=1.0e-12)
+
+
 def test_multi_station_foot_chain_keeps_each_mesh_strictly_rigid() -> None:
     source_ankle = np.asarray((0.0, 0.0, 0.0))
+    source_arch = np.asarray((0.0, -0.10, 0.02))
     source_forefoot = np.asarray((0.0, -0.20, 0.0))
     target_ankle = np.asarray((1.0, 2.0, 3.0))
+    target_arch = np.asarray((1.10, 2.0, 3.02))
     target_forefoot = np.asarray((1.35, 2.0, 3.0))
     rotation = _rotation_z(np.pi / 2.0)
 
@@ -381,8 +450,10 @@ def test_multi_station_foot_chain_keeps_each_mesh_strictly_rigid() -> None:
     target_centers, station_parameters = _map_foot_stations_rigid_v811(
         source_centers,
         source_ankle=source_ankle,
+        source_arch=source_arch,
         source_forefoot=source_forefoot,
         target_ankle=target_ankle,
+        target_arch=target_arch,
         target_forefoot=target_forefoot,
         rotation=rotation,
     )
@@ -418,16 +489,27 @@ def test_multi_station_foot_chain_keeps_each_mesh_strictly_rigid() -> None:
                 )
 
     endpoints, endpoint_stations = _map_foot_stations_rigid_v811(
-        np.stack((source_ankle, source_forefoot)),
+        np.stack((source_ankle, source_arch, source_forefoot)),
         source_ankle=source_ankle,
+        source_arch=source_arch,
         source_forefoot=source_forefoot,
         target_ankle=target_ankle,
+        target_arch=target_arch,
         target_forefoot=target_forefoot,
         rotation=rotation,
     )
     np.testing.assert_allclose(endpoints[0], target_ankle, atol=1.0e-12)
-    np.testing.assert_allclose(endpoints[1], target_forefoot, atol=1.0e-12)
-    np.testing.assert_allclose(endpoint_stations, (0.0, 1.0), atol=1.0e-12)
+    np.testing.assert_allclose(endpoints[1], target_arch, atol=1.0e-12)
+    np.testing.assert_allclose(endpoints[2], target_forefoot, atol=1.0e-12)
+    source_first_length = np.linalg.norm(source_arch - source_ankle)
+    source_total_length = source_first_length + np.linalg.norm(
+        source_forefoot - source_arch
+    )
+    np.testing.assert_allclose(
+        endpoint_stations,
+        (0.0, source_first_length / source_total_length, 1.0),
+        atol=1.0e-12,
+    )
 
 
 def test_multi_station_foot_chain_rejects_nonrigid_rotation() -> None:
@@ -435,8 +517,10 @@ def test_multi_station_foot_chain_rejects_nonrigid_rotation() -> None:
         _map_foot_stations_rigid_v811(
             np.asarray(((0.0, -0.10, 0.0),), dtype=np.float64),
             source_ankle=np.asarray((0.0, 0.0, 0.0)),
+            source_arch=np.asarray((0.0, -0.10, 0.0)),
             source_forefoot=np.asarray((0.0, -0.20, 0.0)),
             target_ankle=np.asarray((1.0, 2.0, 3.0)),
+            target_arch=np.asarray((1.0, 2.1, 3.0)),
             target_forefoot=np.asarray((1.0, 2.2, 3.0)),
             rotation=np.diag(np.asarray((1.0, 1.02, 1.0))),
         )

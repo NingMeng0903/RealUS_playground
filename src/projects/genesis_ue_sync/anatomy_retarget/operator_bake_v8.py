@@ -28,7 +28,10 @@ from .mechanism_v8 import (
     build_ba9_head_selection_v8,
     topology_digest_v8,
 )
-from .head_compound_v8 import fit_head_compound_v1
+from .head_compound_v8 import (
+    fit_head_compound_v1,
+    frozen_smplx_head_target_center_v1,
+)
 from .rigged_asset import AnatomyRiggedAsset
 from .reference_fit_v8 import compose_unified_reference_template_v8
 from .tube_frames_v8 import (
@@ -469,6 +472,45 @@ def _constraint_surface_v811(
     return load_body_surface(canonical_surface)
 
 
+def _canonical_head_target_center_v811(
+    template: AnatomyRiggedAsset,
+    *,
+    source_skin_volume_dir: Any,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Load the exact canonical SMPL-X head envelope used for V8.11 fitting."""
+
+    root = Path(source_skin_volume_dir)
+    surface, _faces = load_body_surface(root / "smpl_canonical_tpose.obj")
+    weights_path = root / "smpl_canonical_weights.npz"
+    try:
+        with np.load(weights_path, allow_pickle=False) as data:
+            weights = np.asarray(data["lbs_weights"], dtype=np.float32)
+            canonical_names = np.asarray(data["joint_names"]).reshape(-1)
+    except (KeyError, OSError, ValueError) as exc:
+        raise ValueError(
+            "V8.11 canonical head envelope requires smpl_canonical_weights.npz "
+            "with lbs_weights and joint_names"
+        ) from exc
+    template_names = tuple(str(name) for name in template.joint_names)
+    resolved_names = tuple(
+        item.decode("utf-8") if isinstance(item, (bytes, np.bytes_)) else str(item)
+        for item in canonical_names.tolist()
+    )
+    if template_names != resolved_names:
+        raise ValueError(
+            "V8.11 canonical head envelope joint order does not match the template"
+        )
+    center, report = frozen_smplx_head_target_center_v1(
+        surface,
+        lbs_weights=weights,
+        joint_names=canonical_names,
+    )
+    return center, {
+        **report,
+        "canonical_joint_order_matched": True,
+    }
+
+
 def build_selective_source_operator_v8(
     *,
     v7_operator: SourceOperatorV7,
@@ -599,13 +641,24 @@ def build_selective_source_operator_v8(
     head_surface_vertices = vessel_skin_vertices
     head_surface_faces = vessel_skin_faces
     if head_surface_vertices is not None and head_surface_faces is not None:
+        if source_skin_volume_dir is None:
+            raise ValueError(
+                "V8.11 head compound fitting requires the canonical source-skin "
+                "volume directory"
+            )
+        head_target_center, head_target_report = _canonical_head_target_center_v811(
+            template,
+            source_skin_volume_dir=source_skin_volume_dir,
+        )
         template, head_compound_report = fit_head_compound_v1(
             template,
             surface_vertices=np.asarray(head_surface_vertices, dtype=np.float64),
             surface_faces=np.asarray(head_surface_faces, dtype=np.int32),
+            target_center_m=head_target_center,
         )
         head_compound_report = {
             **head_compound_report,
+            "target_center_evidence": head_target_report,
             "available": True,
             "passed": True,
         }

@@ -160,18 +160,69 @@ def _maximum_inside_scale(
     return float(low), count, maximum
 
 
+def frozen_smplx_head_target_center_v1(
+    surface_vertices: Any,
+    *,
+    lbs_weights: Any,
+    joint_names: Any,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Measure the frozen SMPL-X head-envelope centre from its LBS domain."""
+
+    surface = np.asarray(surface_vertices, dtype=np.float64).reshape(-1, 3)
+    weights = np.asarray(lbs_weights, dtype=np.float64)
+    raw_names = np.asarray(joint_names).reshape(-1).tolist()
+    names = tuple(
+        item.decode("utf-8") if isinstance(item, (bytes, np.bytes_)) else str(item)
+        for item in raw_names
+    )
+    if (
+        len(surface) < 32
+        or weights.shape != (len(surface), len(names))
+        or not np.all(np.isfinite(surface))
+        or not np.all(np.isfinite(weights))
+        or "head" not in names
+    ):
+        raise ValueError("frozen SMPL-X head envelope inputs are invalid")
+    head_joint = int(names.index("head"))
+    mass = weights[:, head_joint]
+    positive = mass[mass > 0.0]
+    threshold = (
+        max(0.15, float(np.quantile(positive, 0.35)))
+        if len(positive)
+        else 0.15
+    )
+    selected_ids = np.flatnonzero(mass >= threshold)
+    if len(selected_ids) < 32:
+        selected_ids = np.argsort(-mass)[: max(32, len(surface) // 50)]
+    selected = surface[selected_ids]
+    lower, upper = np.quantile(selected, (0.01, 0.99), axis=0)
+    center = 0.5 * (lower + upper)
+    if not np.all(np.isfinite(center)):
+        raise ValueError("frozen SMPL-X head envelope centre is not finite")
+    return center, {
+        "method": "canonical_smplx_head_lbs_envelope_v811",
+        "joint_name": "head",
+        "joint_index": head_joint,
+        "vertex_count": int(len(selected_ids)),
+        "weight_threshold": float(threshold),
+        "center_m": center.tolist(),
+    }
+
+
 def fit_head_compound_v1(
     asset: AnatomyRiggedAsset,
     *,
     surface_vertices: Any,
     surface_faces: Any,
+    target_center_m: Any,
     clearance_m: float = _CLEARANCE_M,
     maximum_target_scale_loss: float = _MAX_TARGET_SCALE_LOSS,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     """Scale skull/brain/upper-teeth material uniformly inside SMPL-X.
 
-    The current retarget already has the head centred correctly.  Deliberately
-    preserve that centre rather than inventing a pose-dependent head offset.
+    The operator supplies the frozen SMPL-X head-envelope centre.  The fit
+    preserves the existing rigid-compound centre and fails rather than hiding
+    a placement error behind a pose-dependent translation or a smaller skull.
     """
 
     asset.validate()
@@ -197,6 +248,15 @@ def fit_head_compound_v1(
     vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
     points = vertices[compound]
     center = np.mean(points, axis=0)
+    target_center = np.asarray(target_center_m, dtype=np.float64).reshape(3)
+    if not np.all(np.isfinite(target_center)):
+        raise ValueError("head compound target centre must be finite")
+    center_drift = float(np.linalg.norm(center - target_center))
+    if center_drift > 0.001:
+        raise ValueError(
+            "head compound centre drift exceeds 1.000 mm relative to the "
+            "frozen SMPL-X head envelope"
+        )
     target_scale, _target_count, _target_maximum = _maximum_inside_scale(
         points,
         center=center,
@@ -259,7 +319,8 @@ def fit_head_compound_v1(
         "maximum_target_scale_loss": float(maximum_target_scale_loss),
         "clearance_m": float(clearance_m),
         "center_m": center.tolist(),
-        "center_drift_m": 0.0,
+        "target_center_m": target_center.tolist(),
+        "center_drift_m": center_drift,
         "vertex_count": int(np.count_nonzero(compound)),
         "head_bone_count": int(np.count_nonzero(bone_mask)),
         "outside_count": int(outside_count),
@@ -297,4 +358,8 @@ def fit_head_compound_v1(
     return result, report
 
 
-__all__ = ["HEAD_COMPOUND_SCHEMA_V1", "fit_head_compound_v1"]
+__all__ = [
+    "HEAD_COMPOUND_SCHEMA_V1",
+    "fit_head_compound_v1",
+    "frozen_smplx_head_target_center_v1",
+]
