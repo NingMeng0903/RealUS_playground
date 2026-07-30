@@ -1,10 +1,6 @@
 # Disabled self-collision pairs for RM75-6F (9 collision geometries, with probe).
 # Format: [geom_object_name_a, geom_object_name_b]
 # Disable kinematic-adjacent pairs (parent/child links).
-#
-# NOTE: only arm-body geometry participates. Rail/gantry and any world-fixed
-# obstacle must stay out of this model -- they do not rotate with joint_1 and
-# would break the base-yaw symmetry the RM4D flange quotient chart depends on.
 
 disabled_pairs:
   - [base_link_0, link_1_0]

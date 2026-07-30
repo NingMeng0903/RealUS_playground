@@ -10,12 +10,11 @@ Tool-Z force axis:
 
     M(t) * v_dot + D(t) * (v - v_r) = F_des - F_ext
 
-The controller retains the original enter-only *force-task* latch, stiff-first
+The controller retains the original enter-only contact latch, stiff-first
 environment-stiffness estimator, critical-damping adaptation, Dimeas variable
-inertia, engagement ramp, and one symmetric TCP-Z velocity cap.  A separate
-load-bearing contact state may declare a real flight and re-arm stiff-first
-without ending the force task.  The force direction remains the TCP/tool Z
-axis supplied by the existing RealMan TCP synchronisation path.
+inertia, engagement ramp, and one symmetric TCP-Z velocity cap.  The force
+direction remains the TCP/tool Z axis supplied by the existing RealMan TCP
+synchronisation path.
 """
 
 from __future__ import annotations
@@ -30,14 +29,6 @@ from scipy.spatial.transform import Rotation as Rsc
 from rm75_control.control.admittance_common.adaptive_ke import (
     AdaptiveKeConfig,
     EnvironmentStiffnessEstimator,
-)
-from rm75_control.control.admittance_common.contact_state import (
-    PhysicalContactConfig,
-    PhysicalContactTracker,
-)
-from rm75_control.control.admittance_common.fast_retract_guard import (
-    FastRetractGuard,
-    FastRetractGuardConfig,
 )
 from rm75_control.control.admittance_common.pose_math import pose_error, wrap_pi
 from rm75_control.control.admittance_common.proactive_force_ff import (
@@ -76,9 +67,6 @@ class AdmittanceConfig:
     system_delay_s: float = 0.015
     contact_threshold_n: float = 0.5
     contact_use_fz_only: bool = True
-    physical_contact: PhysicalContactConfig = field(
-        default_factory=PhysicalContactConfig
-    )
     deadband_n: float = 0.3
     deadband_width_n: float = 0.2
     max_velocity: np.ndarray = field(
@@ -93,9 +81,6 @@ class AdmittanceConfig:
     admittance_mass_z: float = 3.0
     admittance_damping_z: float = 60.0
     proactive_ff: ProactiveFfConfig = field(default_factory=ProactiveFfConfig)
-    fast_retract_guard: FastRetractGuardConfig = field(
-        default_factory=FastRetractGuardConfig
-    )
     pos_err_deadband_m: float = 0.0
     pos_correction_max_m_s: float = 0.0
     adaptive_ke: AdaptiveKeConfig = field(default_factory=AdaptiveKeConfig)
@@ -140,7 +125,6 @@ class AdmittanceConfig:
             system_delay_s=float(c.get("system_delay_s", 0.015)),
             contact_threshold_n=float(c.get("contact_threshold_n", 0.5)),
             contact_use_fz_only=bool(c.get("contact_use_fz_only", True)),
-            physical_contact=PhysicalContactConfig.from_dict(raw),
             deadband_n=float(c.get("deadband_n", 0.3)),
             deadband_width_n=float(c.get("deadband_width_n", 0.2)),
             max_velocity=np.asarray(
@@ -157,7 +141,6 @@ class AdmittanceConfig:
             admittance_mass_z=float(c.get("admittance_mass_z", 3.0)),
             admittance_damping_z=float(c.get("admittance_damping_z", 60.0)),
             proactive_ff=ProactiveFfConfig.from_dict(c),
-            fast_retract_guard=FastRetractGuardConfig.from_dict(raw),
             pos_err_deadband_m=float(c.get("pos_err_deadband_m", 0.0)),
             pos_correction_max_m_s=float(
                 c.get("pos_correction_max_m_s", 0.0)
@@ -192,17 +175,7 @@ class AdmittanceController:
         self.controller_mode = "legacy_symmetric"
         self.last_v_cmd = np.zeros(6)
         self._in_contact_latched = False
-        self.force_task_latched = False
         self.contact_present = False
-        self.physical_contact_state = PhysicalContactTracker.FREE
-        self.physical_contact_loss_event = False
-        self.physical_contact_reacquire_event = False
-        self.physical_contact_acquire_event = False
-        self.physical_contact_low_timer_s = 0.0
-        self.physical_contact_high_timer_s = 0.0
-        self._physical_contact = PhysicalContactTracker(
-            self.cfg.physical_contact
-        )
         self.time_scale = 1.0
         self.v_force_z = 0.0
         self.v_r_z = 0.0
@@ -212,15 +185,6 @@ class AdmittanceController:
         self.force_reference_gate_scale = 1.0
         self.force_reference_accel_m_s2 = 0.0
         self.force_reference_reversal_reset = False
-        self.force_reference_fast_clear = False
-        self._fast_retract_guard = FastRetractGuard(
-            self.cfg.fast_retract_guard
-        )
-        self.force_fast_z = float("nan")
-        self.retract_guard_armed = False
-        self.retract_fast_hold = False
-        self.retract_fast_stop_count = 0
-        self.retract_fast_rearm_count = 0
         self._contact_time_s = 0.0
         self._d_z_smooth = float(self.cfg.admittance_damping_z)
         self.f_des_z_eff = 0.0
@@ -265,15 +229,7 @@ class AdmittanceController:
 
     def reset(self, *, clear_velocity: bool = False) -> None:
         self._in_contact_latched = False
-        self.force_task_latched = False
         self.contact_present = False
-        self.physical_contact_state = PhysicalContactTracker.FREE
-        self.physical_contact_loss_event = False
-        self.physical_contact_reacquire_event = False
-        self.physical_contact_acquire_event = False
-        self.physical_contact_low_timer_s = 0.0
-        self.physical_contact_high_timer_s = 0.0
-        self._physical_contact.reset()
         self.v_force_z = 0.0
         self.v_r_z = 0.0
         self._proactive_ff.reset()
@@ -282,13 +238,6 @@ class AdmittanceController:
         self.force_reference_gate_scale = 1.0
         self.force_reference_accel_m_s2 = 0.0
         self.force_reference_reversal_reset = False
-        self.force_reference_fast_clear = False
-        self._fast_retract_guard.reset()
-        self.force_fast_z = float("nan")
-        self.retract_guard_armed = False
-        self.retract_fast_hold = False
-        self.retract_fast_stop_count = 0
-        self.retract_fast_rearm_count = 0
         self._contact_time_s = 0.0
         self._d_z_smooth = float(self.cfg.admittance_damping_z)
         self.f_des_z_eff = 0.0
@@ -320,6 +269,21 @@ class AdmittanceController:
             cap = min(cap, max_velocity_z)
         return max(cap, 0.0)
 
+    def _contact_signal_n(self, f_ext: np.ndarray) -> float:
+        force = np.asarray(f_ext[:3], dtype=float)
+        if self.cfg.contact_use_fz_only:
+            return abs(float(force[2]))
+        return float(np.linalg.norm(force))
+
+    def _update_contact_latched(self, f_ext: np.ndarray) -> bool:
+        if self._in_contact_latched:
+            return True
+        if self._contact_signal_n(f_ext) >= float(
+            self.cfg.contact_threshold_n
+        ):
+            self._in_contact_latched = True
+        return self._in_contact_latched
+
     def _update_proactive_v_r(
         self,
         eff: float,
@@ -328,7 +292,6 @@ class AdmittanceController:
         *,
         rising_edge: bool,
         desired_force_n: float = 0.0,
-        retract_fast_hold: bool = False,
     ) -> float:
         # Clear either sign on a new contact episode. Keeping a retract-only
         # residue was one source of the previous press/retract asymmetry.
@@ -342,7 +305,6 @@ class AdmittanceController:
             v_force_z=self.v_force_z,
             v_z_cap=self._v_z_cap(),
             desired_force_n=desired_force_n,
-            retract_fast_hold=retract_fast_hold,
         )
         self.force_reference_scale_n = float(
             self._proactive_ff.last_force_scale_n
@@ -356,9 +318,6 @@ class AdmittanceController:
         )
         self.force_reference_reversal_reset = bool(
             self._proactive_ff.last_reversal_reset
-        )
-        self.force_reference_fast_clear = bool(
-            self._proactive_ff.last_fast_retract_clear
         )
         return self.v_r_z
 
@@ -393,13 +352,9 @@ class AdmittanceController:
         v_tcp_z_actual: float | None = None,
         sensor_age_s: float | None = None,
     ) -> np.ndarray:
-        # The hardware-proven admittance dynamics retain the nominal fixed dt.
-        # Wall-clock dt is used only by contact/fast-force confirmation timers.
-        del v_tcp_z_actual
-        if dt_actual is not None and np.isfinite(dt_actual):
-            dt_contact = float(np.clip(dt_actual, 0.0025, 0.020))
-        else:
-            dt_contact = float(self.dt)
+        # dt_actual, v_tcp_z_actual and sensor_age_s remain accepted for
+        # telemetry/API compatibility. The stable 2965fea loop uses fixed dt.
+        del dt_actual, v_tcp_z_actual, sensor_age_s
         cfg = self.cfg
         r_mat = Rsc.from_euler(
             cfg.euler_order,
@@ -462,51 +417,24 @@ class AdmittanceController:
         f_ext = np.asarray(f_ext, dtype=float)
         f_des = np.asarray(desired_force, dtype=float)
         f_ext_z = float(f_ext[2])
+        was_latched = self._in_contact_latched
+        if in_contact is None:
+            in_contact = self._update_contact_latched(f_ext)
+        else:
+            in_contact = bool(in_contact)
+            self._in_contact_latched = in_contact
+        self.contact_present = bool(in_contact)
+
+        dt_eff = self.dt * self.time_scale
+        if in_contact:
+            self._contact_time_s += dt_eff
+        rising_edge = bool(in_contact) and not was_latched
+
         raw_z = (
             float(f_ext_raw[2])
             if f_ext_raw is not None
             else f_ext_z
         )
-        normal_sign = 1.0 if float(f_des[2]) >= 0.0 else -1.0
-        if in_contact is None:
-            contact_update = self._physical_contact.update(
-                normal_sign * f_ext_z,
-                normal_sign * raw_z,
-                dt_s=dt_contact,
-            )
-            if contact_update.acquired:
-                self._in_contact_latched = True
-        else:
-            physical_override = bool(in_contact)
-            if physical_override:
-                # The force task is enter-only.  Even an explicit physical
-                # contact override cannot end it; only reset() starts a new
-                # task/ramp episode.
-                self._in_contact_latched = True
-            contact_update = self._physical_contact.force_state(
-                physical_override
-            )
-        force_task_active = bool(self._in_contact_latched)
-        physical_contact = bool(contact_update.present)
-        self.force_task_latched = force_task_active
-        self.contact_present = physical_contact
-        self.physical_contact_state = str(contact_update.state)
-        self.physical_contact_loss_event = bool(contact_update.lost)
-        self.physical_contact_reacquire_event = bool(
-            contact_update.reacquired
-        )
-        self.physical_contact_acquire_event = bool(contact_update.acquired)
-        self.physical_contact_low_timer_s = float(
-            self._physical_contact.low_timer_s
-        )
-        self.physical_contact_high_timer_s = float(
-            self._physical_contact.high_timer_s
-        )
-
-        dt_eff = self.dt * self.time_scale
-        if force_task_active:
-            self._contact_time_s += dt_eff
-        rising_edge = bool(contact_update.acquired)
         self._update_instability_index(raw_z)
 
         mass_z = (
@@ -527,7 +455,7 @@ class AdmittanceController:
             self.ke_est, self.adaptive_bd = self._ke_estimator.update(
                 f_ext_z,
                 current_pose,
-                in_contact=physical_contact,
+                in_contact=bool(in_contact),
                 mass_z=self._m_z_now,
                 v_force_z=self.v_force_z,
                 v_lateral_m_s=v_lateral_m_s,
@@ -536,29 +464,16 @@ class AdmittanceController:
                 instability_index=self.instability_index,
                 euler_order=cfg.euler_order,
                 allow_impact_init=rising_edge,
-                allow_idle_decay=(
-                    self.physical_contact_state
-                    == PhysicalContactTracker.CONTACT
-                    and normal_sign * f_ext_z
-                    >= float(cfg.adaptive_ke.contact_force_n)
-                ),
             )
             self.zeta_eff = self._ke_estimator.zeta_eff
 
         v_force_tool = np.zeros(6, dtype=float)
         v_force_tool[2] = self._admittance_z(
             f_err_z,
-            force_task_active,
+            bool(in_contact),
             dt_eff=dt_eff,
             rising_edge=rising_edge,
             desired_force_n=f_des_z,
-            raw_force_z=(
-                normal_sign * raw_z
-                if f_ext_raw is not None
-                else None
-            ),
-            dt_contact=dt_contact,
-            sensor_age_s=sensor_age_s,
         )
         v_cmd_tool, v_cmd_base = self.fuse_tool_sleeve(
             v_pos_base,
@@ -662,9 +577,6 @@ class AdmittanceController:
         dt_eff: float,
         rising_edge: bool,
         desired_force_n: float = 0.0,
-        raw_force_z: float | None = None,
-        dt_contact: float | None = None,
-        sensor_age_s: float | None = None,
     ) -> float:
         cfg = self.cfg
         eff = smooth_deadband_eff(
@@ -688,12 +600,7 @@ class AdmittanceController:
                 damping_target,
                 float(cfg.adaptive_ke.bd_max),
             )
-        if rising_edge and damping_target > self._d_z_smooth:
-            # Stiff-first is an impact guard, so its upward damping transition
-            # must survive the controller's normal smoothing layer.  Downward
-            # changes remain smooth and v_force_z is deliberately continuous.
-            self._d_z_smooth = damping_target
-        elif dt_eff > 0.0:
+        if dt_eff > 0.0:
             tau_d = 0.025 if self.instability_index > 0.5 else 0.10
             blend = min(1.0, dt_eff / tau_d)
             self._d_z_smooth += blend * (
@@ -707,31 +614,12 @@ class AdmittanceController:
         self.damping_z_eff = float(damping)
 
         v_z_cap = self._v_z_cap()
-        retract_fast_hold = self._fast_retract_guard.update(
-            raw_force_n=raw_force_z,
-            desired_force_n=desired_force_n,
-            filtered_eff_n=eff,
-            active_reference_m_s=self.v_r_z,
-            dt_s=self.dt if dt_contact is None else dt_contact,
-            sensor_age_s=sensor_age_s,
-            instability_index=self.instability_index,
-        )
-        self.force_fast_z = float(self._fast_retract_guard.fast_force_n)
-        self.retract_guard_armed = bool(self._fast_retract_guard.armed)
-        self.retract_fast_hold = bool(retract_fast_hold)
-        self.retract_fast_stop_count = int(
-            self._fast_retract_guard.stop_count
-        )
-        self.retract_fast_rearm_count = int(
-            self._fast_retract_guard.rearm_count
-        )
         v_reference = self._update_proactive_v_r(
             eff,
             in_contact,
             dt_eff,
             rising_edge=rising_edge,
             desired_force_n=desired_force_n,
-            retract_fast_hold=retract_fast_hold,
         )
         velocity = self.v_force_z + (dt_eff / mass_z) * (
             eff - damping * (self.v_force_z - v_reference)

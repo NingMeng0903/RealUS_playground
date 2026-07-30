@@ -15,7 +15,6 @@ from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
 )
 from projects.genesis_ue_sync.anatomy_retarget.leg_centerline_v810 import (
     LEG_CENTERLINE_SCHEMA_VERSION_V810,
-    build_leg_centerline_coefficients_v810,
 )
 from projects.genesis_ue_sync.anatomy_retarget.reference_fit_v8 import (
     apply_v810_reference_policies,
@@ -25,6 +24,7 @@ from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import (
 )
 from projects.genesis_ue_sync.anatomy_retarget.tube_frames_v8 import (
     bake_tube_coupling_v8,
+    tube_coupling_pack_from_runtime_fields_v8,
     tube_coupling_pack_to_runtime_fields_v8,
 )
 from projects.genesis_ue_sync.anatomy_retarget.v7_artifacts import (
@@ -32,7 +32,6 @@ from projects.genesis_ue_sync.anatomy_retarget.v7_artifacts import (
 )
 from projects.genesis_ue_sync.anatomy_retarget.v8_artifacts import (
     load_source_operator,
-    materialize_subject,
     save_source_operator,
 )
 
@@ -50,18 +49,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--operator", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--foot-product", type=Path, required=True)
-    parser.add_argument("--beta-a", type=Path, required=True)
-    parser.add_argument("--reference-a", type=Path, required=True)
-    parser.add_argument("--beta-b", type=Path, required=True)
-    parser.add_argument("--reference-b", type=Path, required=True)
-    parser.add_argument("--gender", default="male")
     parser.add_argument(
         "--algorithm-version",
-        default="leg-centerline-oral-vessel-v8.10",
+        default="contact-first-joint-chain-v8.10",
     )
     parser.add_argument(
         "--oracle-version",
-        default="contact-independent-v8.10",
+        default="smplx-joint-contact-chain-v8.10",
     )
     parser.add_argument(
         "--correction-version",
@@ -84,50 +78,33 @@ def main() -> int:
         foot_product=foot_product,
     )
     template = with_source_driver_coupling(template)
-    preliminary_mechanism = {
-        str(name): np.asarray(value).copy()
-        for name, value in operator.mechanism_coefficients.items()
-    }
-    preliminary_mechanism[
-        "leg_centerline_v810.schema_version"
-    ] = np.asarray([LEG_CENTERLINE_SCHEMA_VERSION_V810], dtype=np.int32)
-    preliminary = replace(
-        operator,
-        template_asset=template,
-        mechanism_coefficients=preliminary_mechanism,
-        provenance={
-            **dict(operator.provenance),
-            "source_asset_digest": rigged_asset_digest(template),
-        },
-    )
-    preliminary.validate()
-    beta_a_path = args.beta_a.expanduser().resolve()
-    beta_b_path = args.beta_b.expanduser().resolve()
-    beta_a = np.asarray(np.load(beta_a_path, allow_pickle=False), dtype=np.float32)
-    beta_b = np.asarray(np.load(beta_b_path, allow_pickle=False), dtype=np.float32)
-    source_a = materialize_subject(
-        preliminary,
-        betas=beta_a,
-        gender=args.gender,
-    ).rigged_asset
-    source_b = materialize_subject(
-        preliminary,
-        betas=beta_b,
-        gender=args.gender,
-    ).rigged_asset
-    reference_a_path = args.reference_a.expanduser().resolve()
-    reference_b_path = args.reference_b.expanduser().resolve()
-    reference_a = load_rigged_asset(reference_a_path)
-    reference_b = load_rigged_asset(reference_b_path)
-    leg_coefficients, leg_report = build_leg_centerline_coefficients_v810(
-        samples=(
-            (beta_a, source_a, reference_a),
-            (beta_b, source_b, reference_b),
-        ),
-        domains=operator.fixed_material_domains,
-    )
 
     tube_pack, tube_report = bake_tube_coupling_v8(template)
+    parent_tube_pack = tube_coupling_pack_from_runtime_fields_v8(
+        operator.runtime_coefficients
+    )
+    frozen_digest_match = {
+        "topology": (
+            tube_pack.topology_digest == parent_tube_pack.topology_digest
+        ),
+        "domain": tube_pack.domain_digest == parent_tube_pack.domain_digest,
+        "weight": tube_pack.weight_digest == parent_tube_pack.weight_digest,
+    }
+    if not all(frozen_digest_match.values()):
+        raise ValueError(
+            "V8.10 L0 tube pack changed a frozen topology/domain/weight digest"
+        )
+    tube_report = {
+        **tube_report,
+        "final_template_rest_authentication": {
+            "parent_rest_digest": parent_tube_pack.rest_digest,
+            "template_rest_digest": tube_pack.rest_digest,
+            "topology_digest": tube_pack.topology_digest,
+            "domain_digest": tube_pack.domain_digest,
+            "weight_digest": tube_pack.weight_digest,
+            "frozen_digest_match": frozen_digest_match,
+        },
+    }
     runtime_coefficients = {
         str(name): np.asarray(value).copy()
         for name, value in operator.runtime_coefficients.items()
@@ -138,7 +115,9 @@ def main() -> int:
         str(name): np.asarray(value).copy()
         for name, value in operator.mechanism_coefficients.items()
     }
-    mechanism_coefficients.update(leg_coefficients)
+    mechanism_coefficients[
+        "leg_centerline_v810.schema_version"
+    ] = np.asarray([LEG_CENTERLINE_SCHEMA_VERSION_V810], dtype=np.int32)
     provenance = {
         **dict(operator.provenance),
         "source_asset_digest": rigged_asset_digest(template),
@@ -148,10 +127,14 @@ def main() -> int:
         "v810_parent_operator_audit_digest": operator.audit_digest(),
         "v810_template_digest": rigged_asset_digest(template),
         "v810_foot_product_file_digest": _file_digest(foot_path),
-        "v810_beta_a_file_digest": _file_digest(beta_a_path),
-        "v810_reference_a_file_digest": _file_digest(reference_a_path),
-        "v810_beta_b_file_digest": _file_digest(beta_b_path),
-        "v810_reference_b_file_digest": _file_digest(reference_b_path),
+    }
+    leg_report = {
+        "schema_version": LEG_CENTERLINE_SCHEMA_VERSION_V810,
+        "method": "single_pass_contact_first_joint_chain_v810",
+        "calibration_reference": "none_beta_specific_materialize",
+        "ba9_used_for_coefficients": False,
+        "runtime_station_module": False,
+        "pelvis_correction": "identity",
     }
     correction_report = {
         **dict(operator.correction_report),
@@ -186,7 +169,7 @@ def main() -> int:
     print(
         "SourceOperatorV8 V8.10 "
         f"runtime={upgraded.runtime_digest(validate=False)} "
-        f"vertices={leg_report['vertex_count']} "
+        "leg=single-pass-contact-chain "
         f"tube={tube_report.get('backend')} publishable=false -> {saved}"
     )
     return 0

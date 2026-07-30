@@ -35,7 +35,6 @@ from rm75_control.control.joint_admittance_8dof.model import (
     RAIL_INDEX,
     RobotKinematics,
     full_q_from_arm,
-    max_joint_err_deg,
     pose_error,
 )
 from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfig, QpIkController
@@ -51,9 +50,8 @@ from rm75_control.kinematics.srs_ik import (
     Q_LOWER,
     Q_UPPER,
     branch_from_q,
-    flange_tcp_from_kin,
+    d_wt_from_kin,
     psi_from_q,
-    shoulder_y_from_q_rail,
     srs_ik,
 )
 
@@ -163,19 +161,16 @@ def _path_reachable(
     psi_seed: float,
     psi_target: float,
     branch: int,
-    y_shoulder_seed: float,
-    y_shoulder_target: float,
+    y_rail_seed: float,
+    y_rail_target: float,
     *,
     n_samples: int = 10,
     euler_order: str = "xyz",
-    R_flange_tcp: np.ndarray | None = None,
-    t_flange_tcp: np.ndarray | None = None,
+    d_wt: float | None = None,
 ) -> bool:
-    """True iff srs_ik succeeds at every interior sample of the (pose, ψ, y) path.
-
-    ``y_shoulder_*`` are shoulder world-Y in the pose frame (see ``srs_ik``
-    docstring), not prismatic joint values.  Endpoints are excluded: they are
-    guaranteed by the seed and by the enumeration itself.
+    """True iff srs_ik succeeds at every interior sample of the (pose, ψ, y_rail)
+    interpolation.  Endpoints are excluded: they are guaranteed by the seed
+    (feasibility already verified for the seed) and by the enumeration itself.
     """
     # Unwrap ψ so linear interpolation goes the short way and does not cross ±π.
     psi_target_unwrapped = psi_seed + _wrap_pi(psi_target - psi_seed)
@@ -183,15 +178,14 @@ def _path_reachable(
         s = i / (n_samples + 1)                           # 1/(n+1) ... n/(n+1)
         pose_s = _slerp_pose(pose_seed, pose_target, s, euler_order)
         psi_s = psi_seed + s * (psi_target_unwrapped - psi_seed)
-        y_s = y_shoulder_seed + s * (y_shoulder_target - y_shoulder_seed)
+        y_rail_s = y_rail_seed + s * (y_rail_target - y_rail_seed)
         q_arm = srs_ik(
             pose_s,
             psi_s,
             branch,
-            y_rail=y_s,
+            y_rail=y_rail_s,
             euler_order=euler_order,
-            R_flange_tcp=R_flange_tcp,
-            t_flange_tcp=t_flange_tcp,
+            d_wt=d_wt,
         )
         if q_arm is None:
             return False
@@ -253,17 +247,14 @@ def resolve_pose_ik_srs(
     )
     if q_branch_src.size != 8:
         raise ValueError(f"q_branch_seed must be 8-vec, got size {q_branch_src.size}")
-    # Prismatic joint values (for full_q_from_arm) vs shoulder world-Y (for srs_ik).
-    q_rail_seed = float(q_seed[RAIL_INDEX])
-    q_rail_target = float(q_seed[RAIL_INDEX] if y_rail_target is None else y_rail_target)
-    y_shoulder_seed = shoulder_y_from_q_rail(q_rail_seed)
-    y_shoulder_target = shoulder_y_from_q_rail(q_rail_target)
+    y_rail_seed = float(q_seed[RAIL_INDEX])
+    y_rail_target = float(q_seed[RAIL_INDEX] if y_rail_target is None else y_rail_target)
 
     pose_seed = kin.fk_pose(q_seed)
     psi_seed = psi_from_q(q_arm_seed)
     branch_seed = branch_from_q(q_branch_src[1:])
     psi_home = float(psi_seed if psi_home_rad is None else psi_home_rad)
-    R_flange_tcp, t_flange_tcp = flange_tcp_from_kin(kin)
+    d_wt = float(d_wt_from_kin(kin))
 
     # Candidate ψ grid on (-π, π].  max_psi_swing is measured from ψ_home
     # (the posture attractor), NOT from ψ_seed — so a live q0 at ψ≈72° can
@@ -281,17 +272,12 @@ def resolve_pose_ik_srs(
             continue
 
         q_arm = srs_ik(
-            pose_target,
-            float(psi),
-            branch_seed,
-            y_rail=y_shoulder_target,
-            euler_order=euler_order,
-            R_flange_tcp=R_flange_tcp,
-            t_flange_tcp=t_flange_tcp,
+            pose_target, float(psi), branch_seed,
+            y_rail=y_rail_target, euler_order=euler_order, d_wt=d_wt,
         )
         if q_arm is None:
             continue
-        q_full = full_q_from_arm(q_arm, rail_m=q_rail_target)
+        q_full = full_q_from_arm(q_arm, rail_m=y_rail_target)
         J = kin.jacobian(q_full)
         sigma_min = float(kin.singular_values(J).min())
         score = _goal_score(q_arm, q_full, float(psi), psi_home, sigma_min, kin, weights)
@@ -313,7 +299,7 @@ def resolve_pose_ik_srs(
         *,
         path_ok: bool,
     ) -> tuple[np.ndarray, bool, PoseIkReport]:
-        q_full = full_q_from_arm(q_arm, rail_m=q_rail_target)
+        q_full = full_q_from_arm(q_arm, rail_m=y_rail_target)
         pose_ach = kin.fk_pose(q_full)
         err = pose_error(pose_target, pose_ach, euler_order)
         pos_err_m = float(np.linalg.norm(err[:3]))
@@ -348,12 +334,11 @@ def resolve_pose_ik_srs(
             psi_seed=psi_seed,
             psi_target=psi,
             branch=branch_seed,
-            y_shoulder_seed=y_shoulder_seed,
-            y_shoulder_target=y_shoulder_target,
+            y_rail_seed=y_rail_seed,
+            y_rail_target=y_rail_target,
             n_samples=int(path_check_samples),
             euler_order=euler_order,
-            R_flange_tcp=R_flange_tcp,
-            t_flange_tcp=t_flange_tcp,
+            d_wt=d_wt,
         ):
             return _report_from(psi, q_arm, sigma_min, path_ok=True)
 
@@ -382,14 +367,12 @@ def resolve_pose_ik_for_move(
     planner_weights: PlannerGoalWeights | None = None,
     euler_order: str = "xyz",
 ) -> tuple[np.ndarray, bool, PoseIkReport, bool]:
-    """Move-aware SRS IK: live q0 path + branch from slot only when nearby.
+    """Move-aware SRS IK: live q0 path + taught slot branch.
 
     Returns ``(q_target, ok, report, use_srs_move_ref)``.
 
     * ``q_seed=q0`` for path reachability (actual move start).
-    * ``q_branch_seed``: taught slot when |dq| is small; live ``q0`` when the
-      start is far from the slot (large-range move) so we do not lock an
-      opposite elbow/wrist manifold that path-check then abandons.
+    * ``q_branch_seed=q_slot`` for elbow/wrist branch at pose D.
     * ``psi_home`` defaults to ψ(q0) unless yaml overrides.
 
     If the full path check fails (common when q0 is far from the taught
@@ -401,11 +384,6 @@ def resolve_pose_ik_for_move(
     q_slot = np.asarray(q_slot_rad, dtype=float)
     psi_live = float(psi_from_q(q0[1:]))
     psi_home = float(psi_live if psi_home_rad is None else psi_home_rad)
-    # Far from taught slot: keep the live elbow/wrist branch.  Using the slot
-    # branch here is the usual source of "weird twisted" large-range IK.
-    branch_seed = (
-        q0 if max_joint_err_deg(q0, q_slot) > 45.0 else q_slot
-    )
     common = dict(
         pose_target=pose_target,
         y_rail_target=y_rail_target,
@@ -415,7 +393,7 @@ def resolve_pose_ik_for_move(
         psi_hard_upper_rad=psi_hard_upper_rad,
         planner_weights=planner_weights,
         euler_order=euler_order,
-        q_branch_seed=branch_seed,
+        q_branch_seed=q_slot,
     )
     try:
         q_tgt, ok, rep = resolve_pose_ik_srs(kin, q_seed=q0, require_path=True, **common)

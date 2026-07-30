@@ -91,9 +91,16 @@ class VelocityBoxConstraints:
             a = lim.a_max * dt
             a_lo = np.maximum(lo, qdot_prev - a)
             a_hi = np.minimum(hi, qdot_prev + a)
-            ok = a_lo <= a_hi
-            lo = np.where(ok, a_lo, lo)
-            hi = np.where(ok, a_hi, hi)
+            # Always apply accel staging: when a_lo>a_hi the accel box is
+            # empty against higher-priority bounds — project to the midpoint
+            # of the conflict rather than silently skipping a_max (which left
+            # unbounded jerk after a position/damper squeeze).
+            crossed_a = a_lo > a_hi
+            mid_a = 0.5 * (a_lo + a_hi)
+            a_lo = np.where(crossed_a, mid_a, a_lo)
+            a_hi = np.where(crossed_a, mid_a, a_hi)
+            lo = a_lo
+            hi = a_hi
 
         # Vectorised command-lead damper: resync_err is either scalar (legacy;
         # arm-only, radians) or an nv-vector with per-joint bounds — arm rad
@@ -152,7 +159,15 @@ def build_wbc_inequalities(
     u[:nv] = hi_box
 
     n_active = cbf.jacobian.shape[0]
-    for i in range(n_active):
-        C[nv + i, :nv] = cbf.jacobian[i]
-        l[nv + i] = cbf.lower[i]
+    if cbf.slot_index is not None and cbf.slot_index.size == n_active:
+        for k in range(n_active):
+            i = int(cbf.slot_index[k])
+            if i < 0 or i >= max_cbf_rows:
+                continue
+            C[nv + i, :nv] = cbf.jacobian[k]
+            l[nv + i] = cbf.lower[k]
+    else:
+        for i in range(min(n_active, max_cbf_rows)):
+            C[nv + i, :nv] = cbf.jacobian[i]
+            l[nv + i] = cbf.lower[i]
     return C, l, u

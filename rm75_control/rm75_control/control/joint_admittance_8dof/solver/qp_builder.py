@@ -33,7 +33,10 @@ from rm75_control.control.joint_admittance_8dof.ik_types import (
     sr_damping_lambda,
 )
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
-from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import build_cbf_rows
+from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import (
+    CbfSlotTracker,
+    build_cbf_rows,
+)
 from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
     VelocityBoxConstraints,
     build_wbc_inequalities,
@@ -78,6 +81,9 @@ class QpConfig:
     backend: str = "proxqp"
     eps_abs: float = 1e-6
     max_iter: int = 200
+    # Clamp applied in ProxQP backend so a yaml typo (e.g. 3000) cannot freeze
+    # the 200 Hz loop for seconds near singularities / CBF.
+    max_iter_cap: int = 400
     euler_order: str = "xyz"
     collision: CollisionConfig = field(default_factory=CollisionConfig)
     # Chiaverini 1997 SR damping for nullspace projection.
@@ -118,6 +124,9 @@ class QpConfig:
     limit_damper_band_rad: float = 0.15      # arm joints 1..7 (rad)
     limit_damper_band_rail_m: float = 0.05   # rail joint 0 (metres)
     warn_on_fail: bool = True
+    # On ProxQP failure: qdot ← fail_qdot_decay * qdot_prev (not a hard 0.5
+    # chop — that was a one-tick jerk when the solver hiccupped).
+    fail_qdot_decay: float = 0.85
 
 
 class _ProxQpWbcBackend:
@@ -138,7 +147,11 @@ class _ProxQpWbcBackend:
         # a full-stop fallback; typical converged residuals are already
         # 1e-5..1e-4 in this regime.
         self._eps_loose = max(self._eps_tight * 100.0, 1.0e-4)
-        self._max_iter = int(cfg.max_iter)
+        # Store max_iter locally — do NOT keep self.cfg (retry must not touch it).
+        # Cap for realtime: yaml historically had 3000 and a single failed tick
+        # could hold the GIL for >10 s (looks like mid-MoveJ freeze, no fault).
+        cap = int(getattr(cfg, "max_iter_cap", 400) or 400)
+        self._max_iter = int(min(max(int(cfg.max_iter), 1), max(cap, 1)))
         self.qp.settings.eps_abs = self._eps_tight
         self.qp.settings.max_iter = self._max_iter
         self.qp.settings.initial_guess = (
@@ -184,6 +197,7 @@ class _ProxQpWbcBackend:
                     self._px.proxqp.InitialGuess.WARM_START_WITH_PREVIOUS_RESULT
                 )
             self.qp.settings.eps_abs = self._eps_tight
+            self.qp.settings.max_iter = self._max_iter
             self.qp.update(H=H, g=g, A=A, b=b, C=C, l=lo, u=hi)
 
         self.qp.solve()
@@ -280,6 +294,7 @@ class QpIkController:
         self.collision = collision
         if self.collision_cfg.enabled and self.collision is None:
             self.collision = CollisionModel(kin.model)
+        self._cbf_slots = CbfSlotTracker(max_pairs=self._max_cbf)
         self.qdot_prev = np.zeros(kin.nv, dtype=float)
         self._m_diag_lpf: np.ndarray | None = None
         self._task_scale_lpf: float = 1.0
@@ -459,11 +474,18 @@ class QpIkController:
             rail_vel_pin_m_s=rail_vel_pin_m_s,
         )
         if self.collision is not None and self.collision_cfg.enabled:
-            cbf = build_cbf_rows(self.collision, self.kin, q_prev, self.collision_cfg)
+            cbf = build_cbf_rows(
+                self.collision,
+                self.kin,
+                q_prev,
+                self.collision_cfg,
+                tracker=self._cbf_slots,
+            )
         else:
             from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import CbfRows
 
             cbf = CbfRows(jacobian=np.zeros((0, nv)), lower=np.zeros(0))
+            self._cbf_slots = CbfSlotTracker(max_pairs=self._max_cbf)
 
         C, lo, hi = build_wbc_inequalities(
             nv, ns, lo_box, hi_box, cbf, self._max_cbf
@@ -479,11 +501,10 @@ class QpIkController:
             np.ascontiguousarray(hi),
         )
         if x is None:
-            # Solver failure: decay the previous velocity instead of a hard
-            # qdot=0 (which was a one-tick full stop mid-motion - a jerk the
-            # drivers see as a discontinuity).  The decayed command stays
-            # inside the previous tick's feasible box by construction.
-            qdot = 0.5 * self.qdot_prev
+            # Solver failure: exponential decay of previous velocity.  A hard
+            # qdot=0 (or 0.5 chop) is a one-tick jerk; α≈0.85 keeps motion
+            # continuous while still settling within ~30 ticks at 200 Hz.
+            qdot = float(self.cfg.fail_qdot_decay) * self.qdot_prev
             slack = np.zeros(ns, dtype=float)
         else:
             qdot = x[:nv]

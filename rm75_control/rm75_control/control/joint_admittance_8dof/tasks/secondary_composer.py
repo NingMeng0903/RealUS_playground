@@ -147,16 +147,15 @@ class SecondaryComposer:
 
         qdot_soft = np.zeros_like(q)
         rail_hold = self.rail_lock is not None and self.rail_lock.active
-        # Centering and manipulability are additive.  The old if/elif replaced
-        # the Liegeois attractor with ∇μ whenever manip was armed — exactly
-        # when σ dips and the arm most needs to unwind toward q_nominal.
-        # Rail is excluded from both soft pushes (rail_lock / rail_ext own it).
-        if not centering_suppressed:
-            qdot_soft = self.centering(q)
+        # Rail is a base translation: ∂μ/∂q0 is analytically zero, but the FD
+        # gradient in ManipulabilityTask can produce small numerical residuals
+        # that get unit-normalised to k_mu.  Always exclude rail from the
+        # manipulability push — its purpose is to escape ARM singularities,
+        # never to be a stealth rail driver behind the primary QP's back.
         if manipulability_active and self.manipulability is not None:
-            qdot_soft = qdot_soft + self.manipulability(
-                q, sigma_min=sigma_min, exclude_rail=True
-            )
+            qdot_soft = self.manipulability(q, sigma_min=sigma_min, exclude_rail=True)
+        elif not centering_suppressed:
+            qdot_soft = self.centering(q)
         if rail_hold:
             qdot_soft = qdot_soft + self.rail_lock(q)
 
@@ -177,9 +176,11 @@ class SecondaryComposer:
         # Near σ≈0 attenuate centering/manip/damping — NOT arm_angle.
         # Disabled during COUPLED rail-extension scan: rail carries base
         # translation, centering keeps arm posture (Yamamoto & Yun split).
-        # Fade only the soft (centering+manip) stack; do not gate on manip flag
-        # alone or centering would be muted whenever low-σ manip is armed.
-        if centering_sigma_fade and sigma_min < sigma_ref:
+        if (
+            centering_sigma_fade
+            and not manipulability_active
+            and sigma_min < sigma_ref
+        ):
             fade = sigma_min / max(sigma_ref, 1e-6)
             qdot_soft = qdot_soft * fade
 

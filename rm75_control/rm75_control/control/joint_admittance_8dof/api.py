@@ -38,6 +38,8 @@ from rm75_control.control.joint_admittance_8dof.reference import (
     JointSmoothMoveReference,
     RailSmoothMoveReference,
     SrsSmoothMoveReference,
+    StreamingCartesianVelocityReference,
+    StreamingJointReference,
     auto_rail_move_duration_s,
     srs_move_duration_s,
 )
@@ -45,8 +47,10 @@ from rm75_control.control.joint_admittance_8dof.reference import (
 
 class TaskMode(str, Enum):
     JOINT_RESET = "joint_reset"
+    JOINT_STREAM = "joint_stream"
     CARTESIAN_GOTO = "cartesian_goto"
     CARTESIAN_TRACK = "cartesian_track"
+    CARTESIAN_VELOCITY = "cartesian_velocity"
     HYBRID_TRACK = "hybrid_track"
     # LOCKED_MOVE == plan drives the rail while the top-level mode is LOCKED;
     # the substyle (RAIL_ONLY vs TCP_FIXED) is carried on JointPhaseSpec.
@@ -130,8 +134,8 @@ class SecondaryPolicy:
         elif self.preset == "hold":
             inner.set_plan_drives_rail(False)
             inner.set_manipulability_active(False)
-            # Hold at a taught pose: keep centering off so it does not fight
-            # force-hybrid settle (scan uses preset=track with q_target=D).
+            # Hold at a taught pose: centering pulls toward q_nominal and
+            # fights manual adjustment / force-hybrid positioning.
             inner.set_centering_suppressed(True)
             # Keep arm_angle (swivel psi) active so the QP stays on the
             # intended elbow branch.
@@ -160,7 +164,12 @@ class SecondaryPolicy:
     def make_qdot_ff_provider(
         self,
         inner: JointIkController,
-        move_ref: JointSmoothMoveReference | SrsSmoothMoveReference | None,
+        move_ref: (
+            JointSmoothMoveReference
+            | SrsSmoothMoveReference
+            | StreamingJointReference
+            | None
+        ),
     ) -> Callable[[float], np.ndarray] | None:
         if self.qdot_ff == "off" or move_ref is None:
             return None
@@ -177,7 +186,7 @@ class SecondaryPolicy:
 
             def _anchor_ff(t: float) -> np.ndarray:
                 q_plan, dq_plan = move_ref.sample_q(t)
-                return dq_plan + 1.0 * (q_plan - inner.q_cmd)
+                return dq_plan + 1.0 * wrap_joint_delta(inner.q_cmd, q_plan)
 
             return _anchor_ff
         return None
@@ -206,8 +215,13 @@ class JointPhaseSpec:
     require_arrival: bool = False
     force_observer: Any = None
     scale_qdot_ff_with_governor: bool = True
-    # Move / goto (joint_reset, cartesian_goto)
-    move_ref: JointSmoothMoveReference | SrsSmoothMoveReference | None = None
+    # Move / goto / joint stream
+    move_ref: (
+        JointSmoothMoveReference
+        | SrsSmoothMoveReference
+        | StreamingJointReference
+        | None
+    ) = None
     pose_target: np.ndarray | None = None
     q_target_rad: np.ndarray | None = None
     move_kp: float = 2.0
@@ -239,7 +253,12 @@ class CompiledPhase:
     phase: Phase
     label: str
     outer: Any = None
-    move_ref: JointSmoothMoveReference | SrsSmoothMoveReference | None = None
+    move_ref: (
+        JointSmoothMoveReference
+        | SrsSmoothMoveReference
+        | StreamingJointReference
+        | None
+    ) = None
     rail_ref: RailSmoothMoveReference | None = None
     reference: MotionReferenceSource | None = None
 
@@ -252,7 +271,6 @@ def make_srs_move_reference(
     duration_s: float,
     *,
     euler_order: str = "xyz",
-    v_scale: float = 0.75,
 ) -> SrsSmoothMoveReference:
     """Build a branch-locked SRS move reference (Bug 5).
 
@@ -276,7 +294,7 @@ def make_srs_move_reference(
             f"TCP offset z={float(kin.tcp_offset_pose[2]) * 1000:.1f} mm)",
             flush=True,
         )
-    v_max = kin.v_max * float(v_scale)
+    v_max = kin.v_max * 0.5  # match inner v_scale default
     T_rate = srs_move_duration_s(q_start, q_target, max_qdot_rad_s=v_max)
     T = max(float(duration_s), T_rate)
     d_wt = float(d_wt_from_kin(kin))
@@ -289,8 +307,40 @@ def make_srs_move_reference(
         duration_s=T,
         euler_order=euler_order,
         d_wt=d_wt,
-        q_target_rad=q_target,
     )
+
+
+def attach_joint_move_rail(
+    phase: Phase,
+    inner: JointIkController,
+) -> None:
+    """Pin rail velocity to the joint-space MoveJ plan (same idea as SRS).
+
+    Without this, preset=move enables COUPLED ``pose_attract`` while the arm
+    follows ``JointSmoothMoveReference`` — the soft rail task fights the plan
+    FF, the carriage barely moves, TCP swings through collision, and ProxQP
+    can stall the GIL for seconds (hardware: 16 s wall gap mid-MoveJ).
+    """
+    prev_on_enter = phase.on_enter
+    prev_on_exit = phase.on_exit
+
+    def _enter() -> None:
+        if prev_on_enter is not None:
+            prev_on_enter()
+        # Own the rail; kill pose_attract so it cannot oppose plan qdot[0].
+        inner.set_rail_extension_active(False)
+        inner.set_plan_drives_rail(True)
+        # Skip Cartesian ProxQP during MoveJ (industrial joint PTP).
+        inner.set_direct_joint_ptp(True)
+
+    def _exit() -> None:
+        inner.set_direct_joint_ptp(False)
+        inner.set_plan_drives_rail(False)
+        if prev_on_exit is not None:
+            prev_on_exit()
+
+    phase.on_enter = _enter
+    phase.on_exit = _exit
 
 
 def attach_srs_move_tracking(
@@ -358,9 +408,9 @@ def compute_move_plan(
     move_mode: Literal["joint", "cartesian"] = "cartesian",
     auto_select_joint: bool = True,
     joint_auto_threshold_deg: float = 60.0,
-    peak_joint_v_frac: float = 0.80,
-    max_lin_vel_m_s: float = 0.65,
-    duration_min_s: float = 1.5,
+    peak_joint_v_frac: float = 0.50,
+    max_lin_vel_m_s: float = 0.4,
+    duration_min_s: float = 2.5,
     duration_max_s: float = 20.0,
     approach_dz_m: float | None = None,
     sigma_ref: float = 0.08,
@@ -517,6 +567,76 @@ def phase_rail_reposition(
     )
 
 
+def phase_joint_stream(
+    stream_ref: StreamingJointReference,
+    *,
+    label: str = "joint_stream",
+    move_kp: float = 2.0,
+    duration_s: float | None = None,
+    max_duration_s: float | None = None,
+    gov_joint_max_deg: float = 90.0,
+    force_observer: Any = None,
+) -> JointPhaseSpec:
+    """Continuous joint-position servo (set ``stream_ref.set_q`` each tick).
+
+    Unlike MoveJ PTP, there is no timed smoothstep — arm+rail track the live
+    ``q_target`` until ``duration_s`` / external stop.  Uses direct joint PTP.
+    """
+    q_tgt = np.asarray(stream_ref.q_target, dtype=float)
+    return JointPhaseSpec(
+        mode=TaskMode.JOINT_STREAM,
+        label=label,
+        move_ref=stream_ref,
+        pose_target=np.asarray(stream_ref.kin.fk_pose(q_tgt), dtype=float).reshape(6),
+        q_target_rad=q_tgt,
+        move_kp=float(move_kp),
+        move_mode="joint",
+        duration_s=duration_s,
+        max_duration_s=max_duration_s,
+        require_arrival=False,
+        force_observer=force_observer,
+        secondary=SecondaryPolicy(preset="move", qdot_ff="plan_joint"),
+        governor=GovernorSpec(
+            err_max_mm=0.0,
+            joint_err_ok_deg=15.0,
+            joint_err_max_deg=float(gov_joint_max_deg),
+        ),
+        scale_qdot_ff_with_governor=False,
+        wait_until=None,
+    )
+
+
+def phase_cartesian_velocity(
+    twist_ref: StreamingCartesianVelocityReference,
+    *,
+    label: str = "movev",
+    duration_s: float | None = None,
+    max_duration_s: float | None = None,
+    max_lin_vel_m_s: float = 0.4,
+    force_observer: Any = None,
+) -> JointPhaseSpec:
+    """Cartesian velocity mode (MoveV): live ``twist_ref.set_twist`` (base frame).
+
+    Pose PD gain is zero — primary command is ``vel_ff``.  The reference
+    integrates pose so diagnostics stay consistent.
+    """
+    return JointPhaseSpec(
+        mode=TaskMode.CARTESIAN_VELOCITY,
+        label=label,
+        reference=twist_ref,
+        duration_s=duration_s,
+        max_duration_s=max_duration_s,
+        move_kp=0.0,
+        max_lin_vel_m_s=float(max_lin_vel_m_s),
+        require_arrival=False,
+        force_observer=force_observer,
+        secondary=SecondaryPolicy(preset="track", qdot_ff="off"),
+        governor=GovernorSpec(err_max_mm=0.0, joint_err_max_deg=0.0),
+        scale_qdot_ff_with_governor=False,
+        wait_until=None,
+    )
+
+
 def phase_joint_reset(
     move_ref: JointSmoothMoveReference,
     *,
@@ -594,7 +714,11 @@ def phase_cartesian_goto(
         qdot_ff="plan_joint" if move_mode == "joint" else "plan_anchor",
     )
     gov = (
-        GovernorSpec(err_max_mm=0.0, joint_err_max_deg=gov_joint_max_deg)
+        GovernorSpec(
+            err_max_mm=0.0,
+            joint_err_ok_deg=12.0,
+            joint_err_max_deg=max(float(gov_joint_max_deg), 60.0),
+        )
         if move_mode == "joint"
         else GovernorSpec(
             err_ok_mm=10.0,
@@ -670,7 +794,6 @@ def phase_hybrid_track(
     psi_rad_on_enter: float | None = None,
     governor: GovernorSpec | None = None,
     secondary: SecondaryPolicy | None = None,
-    q_target_rad: np.ndarray | None = None,
 ) -> JointPhaseSpec:
     arm = ArmAngleSpec(psi_rad=psi_rad_on_enter) if psi_rad_on_enter is not None else None
     sec = secondary or SecondaryPolicy(preset="track", arm_angle=arm, qdot_ff="off")
@@ -685,7 +808,6 @@ def phase_hybrid_track(
         psi_rad_on_enter=psi_rad_on_enter,
         secondary=sec,
         governor=governor or GovernorSpec(err_ok_mm=10.0, err_max_mm=40.0),
-        q_target_rad=q_target_rad,
     )
 
 
@@ -696,17 +818,6 @@ def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], No
 
     def _enter() -> None:
         spec.secondary.apply(ctx.inner, psi_rad=psi)
-        # Scan/track: attract nullspace toward taught/planned pose D joints
-        # (sin_d), not the yaml generic q_nominal — otherwise the arm drifts
-        # toward a unrelated "comfortable" posture and looks like weird IK.
-        if (
-            not ctx.inner._centering_suppressed
-            and spec.q_target_rad is not None
-            and len(np.asarray(spec.q_target_rad).reshape(-1)) > 0
-        ):
-            ctx.inner.centering_task.set_q_target(
-                np.asarray(spec.q_target_rad, dtype=float).reshape(-1)
-            )
         # move→D: soft-attract rail to the target pose's rail coordinate.
         if (
             spec.secondary.preset == "move"
@@ -741,7 +852,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
     ff_ref = spec.rail_ref if spec.mode == TaskMode.LOCKED_MOVE else spec.move_ref
     qdot_ff = spec.secondary.make_qdot_ff_provider(ctx.inner, ff_ref)
 
-    if spec.mode in (TaskMode.JOINT_RESET, TaskMode.CARTESIAN_GOTO):
+    if spec.mode in (TaskMode.JOINT_RESET, TaskMode.JOINT_STREAM, TaskMode.CARTESIAN_GOTO):
         if spec.move_ref is None:
             raise ValueError(f"{spec.mode}: move_ref is required")
         v_max_scaled = ctx.kin.v_max * ctx.v_scale
@@ -770,6 +881,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
                     euler_order=ctx.euler_order,
                 ),
             )
+        is_stream = spec.mode == TaskMode.JOINT_STREAM
         phase = Phase(
             outer=outer,
             label=spec.label or spec.mode.value,
@@ -786,11 +898,19 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_tau_s=gov.tau_s,
             governor_freeze_below=gov.freeze_below,
             governor_release_above=gov.release_above,
-            soft_start_ramp_s=0.3 if spec.secondary.preset == "move" else 0.0,
+            soft_start_ramp_s=(
+                0.0 if is_stream else (0.3 if spec.secondary.preset == "move" else 0.0)
+            ),
             qdot_ff_provider=qdot_ff,
             scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
             force_observer=spec.force_observer,
         )
+        if spec.move_mode == "joint":
+            attach_joint_move_rail(phase, ctx.inner)
+            # PTP soft-start scales the rail pin with t_ref; streaming keeps
+            # the live setpoint authority (caller owns rate limiting).
+            if not is_stream:
+                phase.scale_qdot_ff_with_governor = True
         # Bug 5: wire ψ_ref(t) + centering when the move plan is SRS (not MoveJ).
         if (
             isinstance(spec.move_ref, SrsSmoothMoveReference)
@@ -857,9 +977,9 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             rail_ref=spec.rail_ref,
         )
 
-    if spec.mode == TaskMode.CARTESIAN_TRACK:
+    if spec.mode in (TaskMode.CARTESIAN_TRACK, TaskMode.CARTESIAN_VELOCITY):
         if spec.reference is None:
-            raise ValueError("cartesian_track: reference is required")
+            raise ValueError(f"{spec.mode}: reference is required")
         outer = CartesianTrackOuterLoop(
             spec.reference,
             CartesianTrackConfig(
@@ -888,6 +1008,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_freeze_below=gov.freeze_below,
             governor_release_above=gov.release_above,
             force_observer=spec.force_observer,
+            scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
         )
         return CompiledPhase(
             phase=phase,

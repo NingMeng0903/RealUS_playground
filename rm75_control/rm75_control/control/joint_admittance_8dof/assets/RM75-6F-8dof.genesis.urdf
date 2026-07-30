@@ -217,18 +217,18 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/probe45.dae" />
+        <mesh filename="meshes/linear_probe.dae" />
       </geometry>
     </visual>
   </link>
   <joint name="joint_8" type="fixed">
-    <origin xyz="0 0 0" rpy="0 0 3.141592654" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
     <parent link="link_7" />
     <child link="link_8" />
   </joint>
   <link name="tcp" />
   <joint name="link_7_to_tcp" type="fixed">
-    <origin xyz="0 -0.01523 0.12135" rpy="0.017732743 0.870791073 -1.547861183" />
+    <origin xyz="0 -0.08 0.06" rpy="0 1.570796327 -1.570796327" />
     <parent link="link_7" />
     <child link="tcp" />
   </joint>

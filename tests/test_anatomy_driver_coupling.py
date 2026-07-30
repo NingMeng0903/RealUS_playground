@@ -234,6 +234,46 @@ def test_runtime_long_bones_use_official_fk_and_terminal_bones_use_contact_pivot
     )
 
 
+def test_v810_anatomical_guide_fk_drives_segment_origin_and_direction() -> None:
+    base = _chain_asset()
+    guide_rest = np.asarray(base.rest_joints, dtype=np.float32).copy()
+    guide_rest[1] = (0.20, 1.00, 0.00)
+    guide_rest[2] = (0.20, 2.45, 0.10)
+    guide_rest[3] = (0.20, 3.20, 0.25)
+    metadata = {
+        **dict(base.metadata or {}),
+        "source_anatomical_guide_fk_v810": True,
+    }
+    asset = with_source_driver_coupling(
+        replace(
+            base,
+            source_driver_rest_joints=guide_rest,
+            metadata=metadata,
+        )
+    )
+    pose = np.zeros((55, 3), dtype=np.float32)
+    pose[1, 2] = np.float32(0.45)
+    guide_pose = joint_global_transforms(
+        pose_axis_angle=pose,
+        rest_joints=guide_rest,
+        parents=asset.parents,
+    ).astype(np.float64)
+    frames = source_bone_driver_frames(asset, pose)
+
+    np.testing.assert_allclose(
+        frames[1, :3, 3],
+        guide_pose[1, :3, 3],
+        atol=2.0e-6,
+    )
+    expected_direction = guide_pose[2, :3, 3] - guide_pose[1, :3, 3]
+    expected_direction /= np.linalg.norm(expected_direction)
+    np.testing.assert_allclose(
+        frames[1, :3, 1],
+        expected_direction,
+        atol=2.0e-6,
+    )
+
+
 def test_source_bone_flexion_corrective_is_child_local_and_pose_generic() -> None:
     base = _chain_asset()
     corrective_driver = np.full(4, -1, dtype=np.int32)

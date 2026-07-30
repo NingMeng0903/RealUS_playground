@@ -2,8 +2,9 @@
 
 This is intentionally narrower than the release specification: every metric
 implemented here is recomputed from final vertices, frozen material IDs and
-bone matrices.  Missing action/tongue/signed-contact evidence stays
-``available=false`` and therefore blocks publication.
+bone matrices.  Missing action/signed-contact evidence stays
+``available=false`` and therefore blocks publication.  V8.10 explicitly
+supports a reviewed no-tongue draw policy in place of a tongue asset.
 """
 
 from __future__ import annotations
@@ -82,6 +83,177 @@ def _ids(domains: Mapping[str, np.ndarray], *names: str) -> np.ndarray:
             [np.asarray(domains[name], dtype=np.int64).reshape(-1) for name in names]
         )
     )
+
+
+def _oral_visibility_policy_gate_v810(asset: Any) -> dict[str, Any]:
+    """Authenticate the reviewed draw-only no-tongue policy."""
+
+    metadata = dict(asset.metadata or {})
+    policy = metadata.get("oral_visibility_policy_v2")
+    if not isinstance(policy, dict):
+        return {
+            "available": False,
+            "pass": False,
+            "reason": "oral_visibility_policy_v2 metadata is absent",
+        }
+    if (
+        int(policy.get("schema_version", -1)) != 2
+        or policy.get("policy") != "no_tongue_display"
+        or policy.get("tongue_asset_present") is not False
+    ):
+        return {
+            "available": False,
+            "pass": False,
+            "reason": "oral_visibility_policy_v2 contract is invalid",
+        }
+    if (
+        asset.source_vertex_ranges is None
+        or asset.source_mesh_names is None
+        or asset.source_tissues is None
+    ):
+        return {
+            "available": False,
+            "pass": False,
+            "reason": "oral visibility validation requires source mesh metadata",
+        }
+
+    faces = np.asarray(asset.faces, dtype=np.int64).reshape(-1, 3)
+    mesh_names = [str(name) for name in asset.source_mesh_names]
+    ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64).reshape(-1, 2)
+    tissues = [str(value) for value in asset.source_tissues]
+    if len(mesh_names) != len(ranges) or len(mesh_names) != len(tissues):
+        return {
+            "available": False,
+            "pass": False,
+            "reason": "oral visibility source mesh metadata is inconsistent",
+        }
+
+    hidden_face_raw = np.asarray(metadata.get("hidden_face_ids_v2", []))
+    if hidden_face_raw.dtype.kind not in {"i", "u"}:
+        return {
+            "available": True,
+            "pass": False,
+            "reason": "hidden_face_ids_v2 must contain integer face ids",
+        }
+    hidden_face_ids = hidden_face_raw.astype(np.int64, copy=False).reshape(-1)
+    if (
+        np.any(hidden_face_ids < 0)
+        or np.any(hidden_face_ids >= len(faces))
+        or len(np.unique(hidden_face_ids)) != len(hidden_face_ids)
+        or not np.array_equal(hidden_face_ids, np.sort(hidden_face_ids))
+    ):
+        return {
+            "available": True,
+            "pass": False,
+            "reason": "hidden_face_ids_v2 is not a sorted unique valid domain",
+        }
+    hidden_face_digest = hashlib.sha256(
+        np.ascontiguousarray(hidden_face_ids, dtype="<i4").tobytes()
+    ).hexdigest()
+    if (
+        len(hidden_face_ids) != int(policy.get("hidden_face_count", -1))
+        or hidden_face_digest != str(policy.get("hidden_face_ids_sha256", ""))
+    ):
+        return {
+            "available": True,
+            "pass": False,
+            "reason": "hidden face count or digest differs from reviewed policy",
+        }
+
+    hidden_mesh_names = [str(name) for name in metadata.get("hidden_mesh_names_v2", [])]
+    if hidden_mesh_names != [
+        str(name) for name in policy.get("hidden_mesh_names_v2", [])
+    ]:
+        return {
+            "available": True,
+            "pass": False,
+            "reason": "hidden whole-mesh names differ from reviewed policy",
+        }
+
+    def mesh_face_ids(mesh_name: str) -> np.ndarray:
+        try:
+            index = mesh_names.index(mesh_name)
+        except ValueError:
+            return np.zeros(0, dtype=np.int64)
+        start, stop = (int(value) for value in ranges[index])
+        return np.flatnonzero(
+            np.all((faces >= start) & (faces < stop), axis=1)
+        )
+
+    hidden_counts = {
+        name: int(len(mesh_face_ids(name))) for name in hidden_mesh_names
+    }
+    expected_hidden_counts = {
+        str(name): int(value)
+        for name, value in dict(
+            policy.get("hidden_whole_mesh_face_counts", {})
+        ).items()
+    }
+    if hidden_counts != expected_hidden_counts:
+        return {
+            "available": True,
+            "pass": False,
+            "reason": "hidden whole-mesh face counts differ from reviewed policy",
+        }
+
+    expected_domain_counts = {
+        str(name): int(value)
+        for name, value in dict(policy.get("hidden_face_counts_by_mesh", {})).items()
+    }
+    domain_counts = {
+        name: int(
+            len(np.intersect1d(hidden_face_ids, mesh_face_ids(name), assume_unique=True))
+        )
+        for name in expected_domain_counts
+    }
+    if domain_counts != expected_domain_counts:
+        return {
+            "available": True,
+            "pass": False,
+            "reason": "reviewed connected face-domain counts changed",
+        }
+
+    expected_preserved = {
+        str(name): int(value)
+        for name, value in dict(policy.get("preserve_face_counts", {})).items()
+    }
+    preserved = {
+        name: int(len(mesh_face_ids(name))) for name in expected_preserved
+    }
+    tooth_names = [
+        name
+        for name, tissue in zip(mesh_names, tissues)
+        if tissue.strip().lower() == "bone"
+        and any(
+            token in name.lower()
+            for token in ("canine", "incisor", "molar", "premolar")
+        )
+    ]
+    tooth_face_count = int(
+        sum(len(mesh_face_ids(name)) for name in tooth_names)
+    )
+    passed = bool(
+        preserved == expected_preserved
+        and len(tooth_names) == int(policy.get("tooth_mesh_count", -1))
+        and tooth_face_count == int(policy.get("tooth_face_count", -1))
+    )
+    return {
+        "available": True,
+        "pass": passed,
+        "policy": "no_tongue_display",
+        "selection_method": policy.get("selection_method"),
+        "hidden_face_count": int(len(hidden_face_ids)),
+        "hidden_whole_mesh_face_count": int(sum(hidden_counts.values())),
+        "tooth_mesh_count": int(len(tooth_names)),
+        "tooth_face_count": tooth_face_count,
+        "preserved_face_counts": preserved,
+        "topology_changed": False,
+        **(
+            {}
+            if passed
+            else {"reason": "required teeth or oral structures are not preserved"}
+        ),
+    }
 
 
 def _cell(
@@ -240,11 +412,9 @@ def _cell(
         "pass": False,
         "reason": "V8 beta-specific 0-120 degree trochlear trajectory is not baked",
     }
-    gates["tongue/provenance_and_contact"] = {
-        "available": False,
-        "pass": False,
-        "reason": "licensed tongue topology/provenance is absent",
-    }
+    gates["tongue/oral_visibility_policy_v2"] = (
+        _oral_visibility_policy_gate_v810(subject.rigged_asset)
+    )
     conjunction = require_available_gates(gates)
     bones = source_bone_posed_global(subject.rigged_asset, pose.pose_axis_angle)
     return {
@@ -290,7 +460,6 @@ def run_validation_matrix_v8(
         release_blockers.append("v71_clean_reproduction_missing")
     release_blockers.extend(
         (
-            "legal_tongue_asset_missing",
             "blender_v71_tube_action_vertices_missing",
             "signed_triangle_contact_gate_missing",
         )

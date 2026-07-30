@@ -16,15 +16,6 @@ from rm75_control.control.admittance_common.controller import (
     AdmittanceConfig,
     AdmittanceController,
 )
-from rm75_control.control.admittance_common.contact_state import (
-    PhysicalContactConfig,
-    PhysicalContactTracker,
-    PhysicalContactUpdate,
-)
-from rm75_control.control.admittance_common.fast_retract_guard import (
-    FastRetractGuard,
-    FastRetractGuardConfig,
-)
 from rm75_control.control.admittance_common.observer import (
     CompensatedForceObserver,
     ForceObserverConfig,
@@ -48,14 +39,9 @@ __all__ = [
     "AsyncStateSnapshot",
     "CompensatedForceObserver",
     "EnvironmentStiffnessEstimator",
-    "FastRetractGuard",
-    "FastRetractGuardConfig",
     "ForceObserverConfig",
     "MotionReference",
     "MotionReferenceSource",
-    "PhysicalContactConfig",
-    "PhysicalContactTracker",
-    "PhysicalContactUpdate",
     "RealtimePushConfig",
     "RealtimeStateObserver",
     "RobotStateBus",

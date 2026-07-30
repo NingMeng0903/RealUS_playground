@@ -887,3 +887,51 @@ provenance/license gate 继续生效；若策略明确不显示舌头，则使�
 BA9/v251 仅保留为 centerline audit 和 Genesis A/B 参考，不再提供 beta-linear
 逐顶点 rotvec、bind、FK、权重或强制两端目标。血管 rest route、拓扑和 14-slot
 权重保持不变；只运输 parent-local frame/RBF 坐标并在最终 rest 后重新认证 tube pack。
+
+## 十五、长度与宽度都不兼容后的最终快速路径：morphology adapter + guide FK
+
+`mixed-anchor projected chain` 仍不能同时满足髋臼接触和大腿视觉中心线。真实数据已经
+证明这不是调一个 pivot 可以解决的问题：
+
+- BA9 左右股骨头相对当前髋臼约有 `64-76 mm` 的分离；它能作为中心线参考，不能作为
+  合法髋关节 rest pose。
+- 当前股骨保持髋臼接触时，BA9 对应的五个 shaft station 横向差约从近端
+  `50-58 mm` 逐步降到远端 `9-11 mm`。
+- 股骨/小腿的 raw SMPL-X 长度残差分别约 `26 mm` 和 `13-15 mm`。因此“关节接触、
+  BA9 中心线、原骨长、全段刚体”四项无法同时成立。
+
+V8.10 不再把 raw SMPL-X 世界关节点当解剖端点，而采用两层模型：
+
+1. **解剖 guide skeleton**：髋臼/股骨头、髁/平台、mortise 和足部 station 决定
+   beta-specific `H/K/A/F` rest joints。每段保留自身解剖长度和 parent-local hierarchy。
+2. **SMPL-X motion skeleton**：只提供 pelvis root motion 和各关节 local rotation。
+   同一组 pose axis-angle 在 guide rest joints 上再跑一次 55-joint FK；禁止把 raw
+   SMPL-X posed translation 复制回解剖链。
+
+这使 Blender 与 SMPL-X 的宽度、腿长不一致变成冻结的 pelvis-local morphology offset，
+而不是每帧 IK 误差。运行时仍由 V71 的 235 骨 FK、原 14-slot 权重和 coupled response
+求值；新增的一次 55-joint guide FK 是固定矩阵运算，不做迭代。
+
+离线 rest geometry 使用可选的 **cap-preserving axial adapter**：
+
+- 只有用户明确要求 raw H/K/A/F station 同时命中时，才允许在 shaft 上吸收长度残差。
+- 股骨头/颈核心、髁/滑车、胫骨平台和 ankle mortise 是刚性 cap；横截面尺度保持 1。
+- 位移只沿段轴，用低峰值 C1/C2 profile 分布到 shaft，运行时 bind matrix 仍是
+  `det(R)=1, scale=1`。
+- 这不是 uniform bone shrink。股骨约 `26 mm` 的残差意味着约 `7%` 平均轴向适配，
+  数学上不可消除；横截面、关节面和骨宽不得随之缩小。
+- 以标量 `lambda` 选择满足 axial Jacobian、局部 edge strain 和血管回归门的最大幅度。
+  未吸收的长度写入 `remaining_station_residual_m`，禁止静默兜底。
+
+默认 `rebuild_013` 选择 **contact-first guide mode**：
+
+- pelvis frame、Ilium、Sacrum、Spine 和当前髋臼 rest geometry 不动；
+- 不采用把左右 Ilium 各自内移约 `60 mm` 的候选；
+- 股骨头/髋臼与膝踝接触优先，BA9/body centerline 是带应变上限的软目标；
+- 足部继续只做 rigid fit；
+- vessel rest route、拓扑和权重保持不变，只在 bind frame 改变时运输局部坐标。
+
+验收必须分别报告 radial centerline residual、raw SMPL-X axial residual、contact residual
+和 adapter strain，不能再用一个 `<=3 mm` 数字假装四类约束可以同时满足。若 Genesis
+仍要求完全复现 BA9 的近端中心线，则必须单独批准 pelvic-width morphology；这会改变
+髂骨形状，不能伪装成 pelvis SE(3) 或“无缩放”修复。

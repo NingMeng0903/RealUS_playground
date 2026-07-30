@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- RM75-6F-8dof collision URDF: rail (no collision) + arm mesh collision. -->
 <robot name="RM75-6F-8dof">
-  <!-- Rail / gantry links carry NO collision geometry on purpose: they are world
-       fixed and would break the base-yaw symmetry that the RM4D flange quotient
-       chart relies on. Environment collision belongs in the runtime controller. -->
   <link name="rail_base">
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0" />
@@ -19,11 +16,11 @@
     </inertial>
   </link>
   <joint name="rail_y" type="prismatic">
-    <origin xyz="0 -0.4 0" rpy="0 0 0" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
     <parent link="rail_base" />
     <child link="slider_link" />
     <axis xyz="0 1 0" />
-    <limit lower="0.0" upper="0.80" velocity="0.20" effort="500" />
+    <limit lower="-0.25" upper="0.25" velocity="0.20" effort="500" />
   </joint>
   <joint name="arm_mount" type="fixed">
     <origin xyz="0 0 0" rpy="0 0 0" />
@@ -213,18 +210,18 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/collision/probe45.stl" />
+        <mesh filename="meshes/collision/linear_probe.stl" />
       </geometry>
     </collision>
   </link>
   <joint name="joint_8" type="fixed">
-    <origin xyz="0 0 0" rpy="0 0 3.141592654" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
     <parent link="link_7" />
     <child link="link_8" />
   </joint>
 <link name="tcp" />
   <joint name="link_7_to_tcp" type="fixed">
-    <origin xyz="0 -0.01523 0.12135" rpy="0.017732743 0.870791073 -1.547861183" />
+    <origin xyz="0 -0.08 0.06" rpy="0 1.570796327 -1.570796327" />
     <parent link="link_7" />
     <child link="tcp" />
   </joint>

@@ -66,10 +66,7 @@ class DigitalTwinMirror:
 
     def _extrapolate_rail(self, rail_meas: float, now: float) -> float:
         """Constant-velocity hold between SHM encoder updates (≤ rail_extrapolate_s)."""
-        # Quantize to 0.1 mm so encoder LSB chatter at mechanical zero does not
-        # invent a velocity and make the twin jitter.
-        quant = 1.0e-4
-        x = round(float(rail_meas) / quant) * quant
+        x = float(rail_meas)
         if not self._rail_have:
             self._rail_x = x
             self._rail_sample = x
@@ -78,7 +75,7 @@ class DigitalTwinMirror:
             self._rail_have = True
             return x
 
-        if abs(x - self._rail_sample) > quant * 0.5:
+        if abs(x - self._rail_sample) > 1e-7:
             dt = max(now - self._rail_t, 1e-4)
             v_inst = (x - self._rail_x) / dt
             self._rail_v = 0.5 * self._rail_v + 0.5 * v_inst
@@ -87,9 +84,11 @@ class DigitalTwinMirror:
             self._rail_t = now
             return x
 
-        # No real motion: kill residual velocity so hold does not drift/jitter.
-        self._rail_v = 0.0
-        return self._rail_x
+        age = now - self._rail_t
+        horizon = self._rail_extrapolate_s
+        if age <= horizon:
+            return self._rail_x + self._rail_v * age
+        return self._rail_x + self._rail_v * horizon
 
     def _note_sync(self, ok: bool, rail_raw: float | None = None) -> None:
         now = time.monotonic()
@@ -97,16 +96,13 @@ class DigitalTwinMirror:
             self._sync_window_t0 = now
         if ok:
             self._sync_ok_n += 1
-            if rail_raw is not None:
-                quant = 1.0e-4
-                rr = round(float(rail_raw) / quant) * quant
-                if (
-                    not (self._sync_last_rail == self._sync_last_rail)
-                    or abs(rr - float(self._sync_last_rail)) > quant * 0.5
-                ):
-                    if self._sync_last_rail == self._sync_last_rail:  # not NaN
-                        self._sync_rail_change_n += 1
-                    self._sync_last_rail = rr
+            if rail_raw is not None and (
+                not (self._sync_last_rail == self._sync_last_rail)
+                or abs(float(rail_raw) - float(self._sync_last_rail)) > 1e-7
+            ):
+                if self._sync_last_rail == self._sync_last_rail:  # not NaN
+                    self._sync_rail_change_n += 1
+                self._sync_last_rail = float(rail_raw)
         else:
             self._sync_fail_n += 1
         elapsed = now - self._sync_window_t0

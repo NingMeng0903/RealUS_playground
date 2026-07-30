@@ -14,6 +14,9 @@ from projects.genesis_ue_sync.anatomy_retarget.anatomy_drawer import (
 from projects.genesis_ue_sync.anatomy_retarget.reference_fit_v8 import (
     _oral_visibility_policy_v2,
 )
+from projects.genesis_ue_sync.anatomy_retarget.validation_matrix_v8 import (
+    _oral_visibility_policy_gate_v810,
+)
 from projects.genesis_ue_sync.anatomy_retarget.v8_artifacts import (
     load_source_operator,
 )
@@ -246,3 +249,48 @@ def test_rebuild_012_draw_list_preserves_reviewed_oral_structures() -> None:
     assert np.count_nonzero(
         ~excluded[_mesh_face_ids(asset, "UNCUT_Digestive_Tract")]
     ) == 17494
+
+
+def test_v810_acceptance_uses_reviewed_no_tongue_draw_policy() -> None:
+    asset = _real_asset()
+    policy = _oral_visibility_policy_v2(asset)
+    metadata = dict(asset.metadata or {})
+    metadata.update(
+        {
+            "oral_visibility_policy_v2": policy,
+            "hidden_mesh_names_v2": policy["hidden_mesh_names_v2"],
+            "hidden_face_ids_v2": policy["hidden_face_ids_v2"],
+        }
+    )
+    gate = _oral_visibility_policy_gate_v810(
+        replace(asset, metadata=metadata)
+    )
+
+    assert gate["available"] is True
+    assert gate["pass"] is True
+    assert gate["topology_changed"] is False
+    assert gate["tooth_mesh_count"] == 32
+    assert gate["tooth_face_count"] == 11384
+    assert gate["preserved_face_counts"]["Mandible"] == 4254
+    assert gate["preserved_face_counts"]["Hyoid_Bone"] == 448
+
+
+def test_v810_acceptance_rejects_missing_or_tampered_visibility_policy() -> None:
+    asset = _synthetic_asset()
+    missing = SimpleNamespace(**{**vars(asset), "metadata": {}})
+    assert _oral_visibility_policy_gate_v810(missing)["available"] is False
+
+    tampered_metadata = dict(asset.metadata)
+    tampered_metadata["hidden_face_ids_v2"] = [1]
+    tampered_metadata["oral_visibility_policy_v2"] = {
+        **tampered_metadata["oral_visibility_policy_v2"],
+        "schema_version": 2,
+        "policy": "no_tongue_display",
+        "tongue_asset_present": False,
+    }
+    tampered = SimpleNamespace(
+        **{**vars(asset), "metadata": tampered_metadata}
+    )
+    gate = _oral_visibility_policy_gate_v810(tampered)
+    assert gate["available"] is True
+    assert gate["pass"] is False

@@ -26,6 +26,7 @@ __all__ = [
     "phase_hybrid_track",
     "compute_move_plan",
     "scale_admittance_for_desired_z",
+    "WbcArm",
 ]
 
 
@@ -65,4 +66,8 @@ def __getattr__(name: str):
         from rm75_control.control.joint_admittance_8dof import api
 
         return getattr(api, name)
+    if name == "WbcArm":
+        from rm75_control.control.joint_admittance_8dof.wbc_arm import WbcArm
+
+        return WbcArm
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

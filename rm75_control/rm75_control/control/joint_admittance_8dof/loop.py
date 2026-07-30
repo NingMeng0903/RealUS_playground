@@ -98,7 +98,7 @@ class JointIkConfig:
     # extension, keeping the arm away from stretched-singular postures.
     rail_extension: RailExtensionConfig = field(default_factory=RailExtensionConfig)
     # safety
-    v_scale: float = 0.75               # fraction of URDF joint velocity limit allowed
+    v_scale: float = 0.5               # fraction of URDF joint velocity limit allowed
     # Acceleration limits are UNIT-SEPARATED: rail is m/s^2, arm is rad/s^2.
     # A single scalar mixed the two and gave the prismatic joint a de-facto
     # 20 m/s^2 limit (0 -> 0.2 m/s in 10 ms — no accel limit at all).
@@ -238,6 +238,9 @@ class JointIkController:
         # When True, SRS (or other) plan owns rail velocity via qdot_ff pin —
         # prevents the arm alone from absorbing tool-Y when the carriage stalls.
         self._plan_drives_rail: bool = False
+        # Industrial MoveJ: integrate joint plan (+fb) with safety boxes only —
+        # skip Cartesian ProxQP equality (near-σ that path freezes the GIL).
+        self._direct_joint_ptp: bool = False
         self._apply_rail_mode_side_effects()
 
     @property
@@ -247,6 +250,10 @@ class JointIkController:
     def set_plan_drives_rail(self, enabled: bool) -> None:
         """Pin rail to plan qdot_ff[0] (SRS move→D); clear on scan/hold exit."""
         self._plan_drives_rail = bool(enabled)
+
+    def set_direct_joint_ptp(self, enabled: bool) -> None:
+        """Enable joint-space PTP (no Cartesian ProxQP primary)."""
+        self._direct_joint_ptp = bool(enabled)
 
     @property
     def configured_rail_mode(self) -> RailMode:
@@ -481,6 +488,58 @@ class JointIkController:
             v_lim_ff = np.asarray(self.safety.lim.v_max, dtype=float)
             qdot_ff = np.clip(np.asarray(qdot_ff, dtype=float), -v_lim_ff, v_lim_ff)
 
+        # Industrial MoveJ: track the joint plan directly.  Cartesian ProxQP
+        # equality near σ dips commanded 2–3× plan rate then stalled the GIL
+        # for seconds (CSV: multi-second wall gaps mid-movej→d).
+        if self._direct_joint_ptp and qdot_ff is not None:
+            qdot_cmd = np.asarray(qdot_ff, dtype=float).copy()
+            q_next = q_prev + qdot_cmd * dt
+            rep = self.safety.clamp(q_prev, q_next, dt)
+            self.q_cmd = rep.q_safe
+            if dt > 1e-9:
+                self.core.qdot_prev = (self.q_cmd - q_prev) / dt
+            else:
+                self.core.qdot_prev = qdot_cmd
+            if q_meas is not None:
+                lead_max = float(self.cfg.resync_err_rail_m)
+                if lead_max > 0.0:
+                    q0_meas = float(np.asarray(q_meas, dtype=float)[0])
+                    q0_cmd = float(self.q_cmd[0])
+                    if q0_cmd > q0_meas + lead_max:
+                        self.q_cmd[0] = q0_meas + lead_max
+                        if dt > 1e-9:
+                            self.core.qdot_prev[0] = (self.q_cmd[0] - q_prev[0]) / dt
+                    elif q0_cmd < q0_meas - lead_max:
+                        self.q_cmd[0] = q0_meas - lead_max
+                        if dt > 1e-9:
+                            self.core.qdot_prev[0] = (self.q_cmd[0] - q_prev[0]) / dt
+            J = self.kin.jacobian(q_prev)
+            sigma = self.kin.singular_values(J)
+            sigma_min = float(sigma.min())
+            self.last_sigma_min = sigma_min
+            qdot_out = self.core.qdot_prev.copy()
+            return JointIkStep(
+                q_send=self.q_cmd.copy(),
+                qdot=qdot_out,
+                twist_base=twist_base,
+                sigma_min=sigma_min,
+                manip=float(np.prod(sigma)),
+                slack_norm=0.0,
+                n_cbf_active=0,
+                follow_err_rad=follow_err,
+                qdot_ff_norm=float(np.linalg.norm(qdot_ff)),
+                arm_singularity_smooth=1.0,
+                limit_activation=0.0,
+                vel_clamped=rep.vel_clamped,
+                acc_clamped=rep.acc_clamped,
+                pos_clamped=rep.pos_clamped,
+                rail_ext_err_m=0.0,
+                rail_ext_weight=0.0,
+                rail_vel_pin=float(qdot_ff[0]),
+                rail_qdot_ff=float(qdot_ff[0]),
+                plan_drives_rail=True,
+            )
+
         # (B) Pin the rail velocity ONLY when the rail is LOCKED (RAIL_ONLY /
         # TCP_FIXED), or when an SRS move explicitly requests plan ownership
         # (``set_plan_drives_rail(True)``).  In free COUPLED scan the rail is a
@@ -558,16 +617,6 @@ class JointIkController:
             elif self.rail_ext_task.last_limit_saturated and sigma_now < sigma_ref:
                 # Rail cannot help further: escape arm singularities in the
                 # nullspace instead of straightening the arm.
-                manip_for_saturation = True
-
-            # One-policy low-σ: whenever σ is unhealthy during COUPLED rail
-            # coordination, ascend μ in the nullspace (not only at rail travel
-            # limits).  Gated on centering being active so move/hold presets
-            # (centering suppressed) keep planner-owned posture.
-            if (
-                sigma_now < sigma_ref
-                and not self._centering_suppressed
-            ):
                 manip_for_saturation = True
 
         r = self.core.step(
@@ -1272,19 +1321,6 @@ class _TickLogger:
            "force_reference_gate_scale",
            "force_reference_accel_m_s2",
            "force_reference_reversal_reset",
-           "force_reference_fast_clear",
-           "force_fast_z",
-           "retract_guard_armed",
-           "retract_fast_hold",
-           "retract_fast_stop_count",
-           "retract_fast_rearm_count",
-           "force_task_latched",
-           "physical_contact_state",
-           "physical_contact_acquire_event",
-           "physical_contact_loss_event",
-           "physical_contact_reacquire_event",
-           "physical_contact_low_timer_s",
-           "physical_contact_high_timer_s",
            "mass_z_eff", "takeover",
            "dt_actual_s", "sensor_age_s",
            "fx_raw_comp", "fy_raw_comp", "fz_raw_comp",
@@ -1374,40 +1410,6 @@ class _TickLogger:
         force_reference_reversal_reset = getattr(
             ctrl, "force_reference_reversal_reset", False
         )
-        force_reference_fast_clear = getattr(
-            ctrl, "force_reference_fast_clear", False
-        )
-        force_fast_z = getattr(ctrl, "force_fast_z", float("nan"))
-        retract_guard_armed = getattr(ctrl, "retract_guard_armed", False)
-        retract_fast_hold = getattr(ctrl, "retract_fast_hold", False)
-        retract_fast_stop_count = getattr(
-            ctrl, "retract_fast_stop_count", 0
-        )
-        retract_fast_rearm_count = getattr(
-            ctrl, "retract_fast_rearm_count", 0
-        )
-        force_task_latched = getattr(ctrl, "force_task_latched", False)
-        physical_contact_state = getattr(ctrl, "physical_contact_state", "")
-        physical_contact_acquire_event = getattr(
-            ctrl, "physical_contact_acquire_event", False
-        )
-        physical_contact_loss_event = getattr(
-            ctrl, "physical_contact_loss_event", False
-        )
-        physical_contact_reacquire_event = getattr(
-            ctrl, "physical_contact_reacquire_event", False
-        )
-        physical_contact_tracker = getattr(ctrl, "_physical_contact", None)
-        physical_contact_low_timer = getattr(
-            ctrl,
-            "physical_contact_low_timer_s",
-            getattr(physical_contact_tracker, "low_timer_s", float("nan")),
-        )
-        physical_contact_high_timer = getattr(
-            ctrl,
-            "physical_contact_high_timer_s",
-            getattr(physical_contact_tracker, "high_timer_s", float("nan")),
-        )
         mass_z_eff = getattr(ctrl, "mass_z_eff", float("nan"))
         takeover = getattr(ctrl, "takeover_active", False)
         contact_present = getattr(ctrl, "contact_present", False)
@@ -1456,19 +1458,6 @@ class _TickLogger:
                f"{force_reference_gate:.4f}",
                f"{force_reference_accel:.6f}",
                int(bool(force_reference_reversal_reset)),
-               int(bool(force_reference_fast_clear)),
-               f"{force_fast_z:.3f}",
-               int(bool(retract_guard_armed)),
-               int(bool(retract_fast_hold)),
-               int(retract_fast_stop_count),
-               int(retract_fast_rearm_count),
-               int(bool(force_task_latched)),
-               str(physical_contact_state),
-               int(bool(physical_contact_acquire_event)),
-               int(bool(physical_contact_loss_event)),
-               int(bool(physical_contact_reacquire_event)),
-               f"{physical_contact_low_timer:.6f}",
-               f"{physical_contact_high_timer:.6f}",
                f"{mass_z_eff:.4f}",
                int(bool(takeover)),
                f"{dt_actual_s:.6f}", f"{sensor_age_s:.6f}",

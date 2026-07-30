@@ -32,7 +32,6 @@ from .articular_fit_v8 import (
     reconstruct_knee_ankle_compounds_v8,
 )
 from .leg_centerline_v810 import (
-    apply_leg_centerline_v810,
     has_leg_centerline_v810,
     reconstruct_leg_centerline_compounds_v810,
 )
@@ -822,6 +821,7 @@ def materialize_subject(
                 "available": False,
                 "reason": "operator lacks the complete V8.10 leg domains",
             }
+        leg_centerline_report = dict(leg_compound_report)
     else:
         if hip_domain_keys.issubset(operator.fixed_material_domains):
             rigged, hip_report = reconstruct_hip_compounds_v8(
@@ -847,11 +847,36 @@ def materialize_subject(
             "available": False,
             "reason": "operator does not select the V8.10 leg compound path",
         }
-    rigged, leg_centerline_report = apply_leg_centerline_v810(
-        rigged,
-        betas=beta,
-        coefficients=operator.mechanism_coefficients,
+        leg_centerline_report = dict(leg_compound_report)
+    compound_bind_bone_count = int(
+        leg_compound_report.get(
+            "moved_bind_bone_count",
+            sum(
+                int(
+                    leg_compound_report.get("sides", {})
+                    .get(side, {})
+                    .get("shank", {})
+                    .get("moved_bind_bone_count", 0)
+                )
+                for side in ("left", "right")
+            ),
+        )
     )
+    if leg_centerline_report.get("available", False):
+        leg_centerline_report = {
+            **leg_centerline_report,
+            "centerline_stage_changes_bind_frames": bool(
+                leg_centerline_report.get("changes_bind_frames", False)
+            ),
+            "compound_stage_changes_bind_frames": bool(
+                compound_bind_bone_count
+            ),
+            "compound_stage_moved_bind_bone_count": compound_bind_bone_count,
+            "changes_bind_frames": bool(
+                compound_bind_bone_count
+                or leg_centerline_report.get("changes_bind_frames", False)
+            ),
+        }
     rigged = with_source_driver_coupling(rigged)
     offsets, indices, weights = _compile_skinning_csr(rigged)
     operator_digest = operator.runtime_digest(validate=False)
@@ -876,6 +901,51 @@ def materialize_subject(
     )
     if has_tube_material:
         tube_pack, tube_report = bake_tube_coupling_v8(rigged)
+        parent_has_tube_pack = any(
+            str(name).startswith("tube_coupling_v8.")
+            for name in operator.runtime_coefficients
+        )
+        if parent_has_tube_pack:
+            parent_tube_pack = tube_coupling_pack_from_runtime_fields_v8(
+                operator.runtime_coefficients
+            )
+            frozen_digest_match = {
+                "topology": (
+                    tube_pack.topology_digest
+                    == parent_tube_pack.topology_digest
+                ),
+                "domain": (
+                    tube_pack.domain_digest == parent_tube_pack.domain_digest
+                ),
+                "weight": (
+                    tube_pack.weight_digest == parent_tube_pack.weight_digest
+                ),
+            }
+            if not all(frozen_digest_match.values()):
+                raise ValueError(
+                    "V8.10 final-rest tube pack changed a frozen "
+                    "topology/domain/weight digest"
+                )
+            tube_report = {
+                **tube_report,
+                "final_rest_authentication": {
+                    "available": True,
+                    "parent_rest_digest": parent_tube_pack.rest_digest,
+                    "subject_rest_digest": tube_pack.rest_digest,
+                    "topology_digest": tube_pack.topology_digest,
+                    "domain_digest": tube_pack.domain_digest,
+                    "weight_digest": tube_pack.weight_digest,
+                    "frozen_digest_match": frozen_digest_match,
+                },
+            }
+        else:
+            tube_report = {
+                **tube_report,
+                "final_rest_authentication": {
+                    "available": False,
+                    "reason": "operator contains no authenticated parent tube pack",
+                },
+            }
         subject_runtime_coefficients.update(
             tube_coupling_pack_to_runtime_fields_v8(tube_pack)
         )

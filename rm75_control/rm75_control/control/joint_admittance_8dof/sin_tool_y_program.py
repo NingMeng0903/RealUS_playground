@@ -18,8 +18,6 @@ from rm75_control.control.joint_admittance_8dof.api import (
     GovernorSpec,
     SecondaryPolicy,
     compile_phases,
-    make_srs_move_reference,
-    phase_cartesian_goto,
     phase_hold_at_pose,
     phase_hybrid_track,
     phase_rail_reposition,
@@ -39,13 +37,10 @@ from rm75_control.control.joint_admittance_8dof.model import (
 )
 from rm75_control.control.joint_admittance_8dof.reference import (
     HoldReference,
-    JointSmoothMoveReference,
     SinToolYReference,
 )
-from rm75_control.control.joint_admittance_8dof.pose_ik import (
-    resolve_pose_ik_for_move,
-    solve_pose_ik,
-)
+from rm75_control.control.joint_admittance_8dof.wbc_arm import WbcArm
+from rm75_control.control.joint_admittance_8dof.pose_ik import solve_pose_ik
 from rm75_control.control.joint_admittance_8dof.tasks.arm_angle import _wrap_pi
 from rm75_control.force.compensation import excitation as ex
 from rm75_control.force.compensation.id_config import load_config as load_force_id_config
@@ -802,7 +797,7 @@ def build_sin_tool_y_program(
     max_lin = (
         float(params.cartesian_max_lin_vel)
         if params.cartesian_max_lin_vel is not None
-        else 0.65
+        else 0.4
     )
     rail_m = float(inner_cfg.rail.q_ref_m)
 
@@ -821,50 +816,32 @@ def build_sin_tool_y_program(
             flush=True,
         )
     move_mode = str(params.plan_move_mode)
-    if move_mode == "cartesian":
-        # Path check is advisory only — stay on Cartesian/SRS.  Shortest-arc
-        # ψ unwrap in SrsSmoothMoveReference is what keeps large J1 twists
-        # from walking the long ψ road; do not force MoveJ here.
-        _q_chk, _ok_chk, _rep_chk, use_srs = resolve_pose_ik_for_move(
-            kin,
-            q0_rad,
-            q_target_rad,
-            pose_d,
-            y_rail_target=float(q_target_rad[0]),
-            euler_order=inner_cfg.euler_order,
-        )
-        del _q_chk, _ok_chk, _rep_chk
-        if not use_srs:
-            print(
-                "  move: SRS path holes from live q0 — keeping cartesian/SRS; "
-                "joint-geodesic qdot_ff when analytic IK is None (not MoveJ)",
-                flush=True,
-            )
+    # Industrial split: PTP → joint; scan/track → Cartesian.  No mid-flight
+    # detect-and-switch — mode is chosen once by the caller (--move-mode).
     if move_mode == "joint":
-        move_ref = JointSmoothMoveReference(
+        move_phase = WbcArm.make_movej_phase(
             kin,
             q0_rad,
             q_target_rad,
-            float(params.plan_duration_s),
+            duration_s=float(params.plan_duration_s),
+            label=f"movej->{params.slot}",
+            move_kp=float(params.move_kp),
+            gov_joint_max_deg=float(params.plan_gov_joint_max_deg),
+            force_observer=None,
         )
-        move_duration_s = float(params.plan_duration_s)
     else:
-        move_ref = make_srs_move_reference(
+        move_phase = WbcArm.make_movel_phase(
             kin,
             q0_rad,
             pose_d,
             q_target_rad,
-            float(params.plan_duration_s),
+            duration_s=float(params.plan_duration_s),
+            label=f"movel->{params.slot}",
+            move_kp=float(params.move_kp),
+            max_lin_vel_m_s=max_lin,
+            gov_joint_max_deg=float(params.plan_gov_joint_max_deg),
+            force_observer=None,
             euler_order=inner_cfg.euler_order,
-            v_scale=inner_cfg.v_scale,
-        )
-        move_duration_s = float(move_ref.duration_s)
-        dpsi = float(move_ref.psi_target - move_ref.psi_start)
-        print(
-            f"  SRS ψ {np.degrees(move_ref.psi_start):.1f}deg → "
-            f"{np.degrees(move_ref.psi_target):.1f}deg "
-            f"(Δ={np.degrees(dpsi):+.1f}deg shortest-arc)",
-            flush=True,
         )
 
     force_observer = None
@@ -872,6 +849,7 @@ def build_sin_tool_y_program(
         from rm75_control.control.admittance_common.observer import CompensatedForceObserver
 
         force_observer = CompensatedForceObserver.from_yaml(raw)
+        move_phase.force_observer = force_observer
 
     ctx = CompileContext(
         kin=kin,
@@ -881,21 +859,7 @@ def build_sin_tool_y_program(
         v_scale=inner_cfg.v_scale,
     )
 
-    specs = [
-        phase_cartesian_goto(
-            move_ref,
-            label=f"move->{params.slot}",
-            pose_target=pose_d,
-            q_target_rad=q_target_rad,
-            move_kp=float(params.move_kp),
-            move_mode=move_mode,
-            max_lin_vel_m_s=max_lin,
-            max_duration_s=move_duration_s * 2.5 + 15.0,
-            gov_joint_max_deg=float(params.plan_gov_joint_max_deg),
-            require_arrival=True,
-            force_observer=force_observer,
-        ),
-    ]
+    specs = [move_phase]
 
     if params.hold_at_d_s > 0.0:
         specs.append(
@@ -977,7 +941,6 @@ def build_sin_tool_y_program(
                 psi_rad_on_enter=psi,
                 secondary=hybrid_sec,
                 governor=hybrid_gov,
-                q_target_rad=q_target_rad,
             )
         )
 

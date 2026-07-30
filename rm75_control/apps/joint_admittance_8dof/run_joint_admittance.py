@@ -244,10 +244,9 @@ def _run_controller_service(
 class _RailPublisher:
     """Mutable rail source for SHM twin during idle vs active WBC.
 
-    Active task: publish WBC ``q_cmd[0]`` so the twin tracks the plan at the
-    UDP publish rate (~200 Hz) instead of the Modbus encoder poll (~8–13 Hz),
-    which otherwise stair-steps / jitter near 0.  Idle: encoder when LW100 is
-    up, else the last held default.
+    When the LW100 bridge is enabled, publish **encoder** position (poll_hz)
+    so the twin mirrors the real carriage. WBC itself uses open-loop ``q_cmd[0]``
+    and does not close the loop on this value.
     """
 
     def __init__(self, default_m: float, bridge: RailServoBridge | None = None) -> None:
@@ -266,10 +265,10 @@ class _RailPublisher:
         self._active_inner = inner
 
     def __call__(self) -> float:
-        if self._active_inner is not None:
-            return float(self._active_inner.q_cmd[0])
         if self._bridge is not None and self._bridge.enabled:
             return float(self._bridge.measured_m)
+        if self._active_inner is not None:
+            return float(self._active_inner.q_cmd[0])
         return self._default_m
 
 
@@ -308,6 +307,11 @@ def main() -> int:
     dt = float(raw.get("timing", {}).get("dt_ms", 5.0)) / 1000.0
     rail_default_m = float(raw.get("inner", {}).get("rail", {}).get("q_ref_m", 0.0))
     rail_bridge = RailServoBridge(parse_rail_servo_config(raw))
+    if args.verbose and rail_bridge.enabled and not rail_bridge.log_csv_path:
+        log_dir = Path(__file__).resolve().parents[1] / "logs" / "rail_servo"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        rail_bridge.enable_log_csv(str(log_dir / f"rail_{ts}.csv"))
     rail_pub = _RailPublisher(rail_default_m, bridge=rail_bridge)
 
     if args.dry_run:

@@ -2,13 +2,13 @@
 
 Used by :class:`RailExtensionTask` as a singularity / reachability guardrail
 (and, in scan mode, as a soft preference).  Default implementation is σ_min
-(Yoshikawa / SVD of J).  Swap in ``RegionARailGoodness`` (IRD RegionA adapter)
-when ``ird_playground`` is installed — the rail task does not change.
+(Yoshikawa / SVD of J).  Swap in ``ird_playground.region.RegionA`` later by
+implementing the same protocol — the rail task does not change.
 """
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 import numpy as np
 
@@ -47,88 +47,6 @@ class SigmaMinGoodness:
 
     def dg_dy_rail(self, q_rad: np.ndarray) -> float:
         return float(sigma_min_grad_rail(self.kin, np.asarray(q_rad, dtype=float)))
-
-
-class RegionARailGoodness:
-    """Thin optional adapter: IRD ``RegionA`` robust clearance as rail goodness.
-
-    Imports ``ird_playground`` lazily so ``rm75_control`` still loads without
-    IRD installed.  ``dg_dy_rail`` is a finite-difference under rail motion
-    (RegionA re-bases the axis frame via ``query_tcp_rail``).
-    """
-
-    def __init__(
-        self,
-        kin: RobotKinematics,
-        field: Any,
-        *,
-        region_a: Any | None = None,
-        T_world_rail: np.ndarray | None = None,
-        T_rail_base0: np.ndarray | None = None,
-        fd_eps_m: float = 1.0e-4,
-        device: str = "cpu",
-    ) -> None:
-        try:
-            import torch
-            from ird_playground.region.operator import RegionA, RegionAConfig
-        except ImportError as exc:  # pragma: no cover
-            raise ImportError(
-                "RegionARailGoodness requires ird_playground (optional dependency)"
-            ) from exc
-        self._torch = torch
-        self.kin = kin
-        self.field = field
-        self.region_a = region_a or RegionA(RegionAConfig())
-        self.T_world_rail = (
-            np.eye(4, dtype=np.float64)
-            if T_world_rail is None
-            else np.asarray(T_world_rail, dtype=np.float64).reshape(4, 4)
-        )
-        self.T_rail_base0 = (
-            np.eye(4, dtype=np.float64)
-            if T_rail_base0 is None
-            else np.asarray(T_rail_base0, dtype=np.float64).reshape(4, 4)
-        )
-        self.fd_eps_m = float(fd_eps_m)
-        self.device = device
-
-    def _pose_tensor(self, q_rad: np.ndarray):
-        pose = self.kin.fk_pose(np.asarray(q_rad, dtype=float))
-        from scipy.spatial.transform import Rotation as Rsc
-
-        T = np.eye(4, dtype=np.float64)
-        T[:3, 3] = pose[:3]
-        T[:3, :3] = Rsc.from_euler(
-            self.kin.euler_order, pose[3:6], degrees=False
-        ).as_matrix()
-        return self._torch.as_tensor(T, dtype=self._torch.float32, device=self.device)
-
-    def g(self, q_rad: np.ndarray) -> float:
-        q = np.asarray(q_rad, dtype=float)
-        rail = float(q[0])
-        T_tcp = self._pose_tensor(q)
-        Tw = self._torch.as_tensor(
-            self.T_world_rail, dtype=self._torch.float32, device=self.device
-        )
-        Tb = self._torch.as_tensor(
-            self.T_rail_base0, dtype=self._torch.float32, device=self.device
-        )
-        rail_t = self._torch.as_tensor(rail, dtype=self._torch.float32, device=self.device)
-        with self._torch.no_grad():
-            result = self.region_a.query_tcp_rail(
-                self.field, T_tcp, rail_t, T_world_rail=Tw, T_rail_base0=Tb
-            )
-            val = result.robust_clearance
-        return float(np.asarray(val.detach().cpu()).reshape(-1)[0])
-
-    def dg_dy_rail(self, q_rad: np.ndarray) -> float:
-        q = np.asarray(q_rad, dtype=float).copy()
-        eps = self.fd_eps_m
-        q_hi = q.copy()
-        q_lo = q.copy()
-        q_hi[0] += eps
-        q_lo[0] -= eps
-        return (self.g(q_hi) - self.g(q_lo)) / (2.0 * eps)
 
 
 class CachedRailGoodness:

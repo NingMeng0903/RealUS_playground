@@ -38,7 +38,7 @@ inner:
   # Set true only when the pendant tool must override Pinocchio (old gripper flow).
   sync_tcp_from_robot: false
 
-  v_scale: 0.75            # fraction of URDF joint velocity limit (was 0.5; move→D felt sluggish)
+  v_scale: 0.8             # fraction of URDF joint velocity limit
   # Acceleration limits are unit-explicit: the old scalar a_max mixed arm
   # rad/s^2 with the rail's m/s^2 and gave the prismatic joint no effective
   # accel bound (20 m/s^2 = 0 -> 0.2 m/s in 10 ms = no limit at all).
@@ -86,7 +86,7 @@ inner:
     # Raised 1000 -> 3000 for deep-σ slack; keep first solve at 3000 but the
     # ProxQP *retry* is capped at 400 iters in code so a singular tick cannot
     # hold the GIL for multiple seconds (Ctrl+C appeared dead).
-    max_iter: 3000
+    max_iter: 400             # realtime ProxQP cap (was 3000; long solves freeze MoveJ)
     warn_on_fail: false
     # Chiaverini 1997 SR damping for nullspace projection.
     sr_damping:
@@ -137,8 +137,8 @@ inner:
     k_limit: 2.0
     activation: 0.85
     weights: [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    # Fallback attractor only (used before a phase sets q_target).
-    # Scan/track on_enter overrides this with taught/planned pose D (sin_d).
+    # Comfortable RM75 posture (rail=0, J1=0, J2=-45, J3=0, J4=90, J5=0, J6=45, J7=0).
+    # Nullspace centering attractor during scan/track — independent of taught D.
     q_nominal_deg: [0.0, 0.0, -45.0, 0.0, 90.0, 0.0, 45.0, 0.0]
     # Move-phase nullspace: ascend Yoshikawa μ instead of centering (see
     # manipulability_task.py).  Enabled by d_sin_tool_y move_enter().
@@ -248,20 +248,9 @@ hybrid_motion:
   pos_err_deadband_m: 0.0005
   pos_correction_max_m_s: 0.08
   system_delay_s: 0.015
-  # TCP-Z-only force-task latch: lateral scan shear cannot start force mode.
-  # Once entered it remains active until controller reset.
+  # fz-only enter-only contact latch: lateral scan shear must not flip contact.
   contact_threshold_n: 0.8
   contact_use_fz_only: true
-  # The force task remains latched after first contact so a moving surface is
-  # always chased. This separate load-bearing state only re-arms stiff-first
-  # after a confirmed flight; it never ends the scan or disables force.
-  physical_contact:
-    enabled: true
-    enter_n: 0.80             # compensated raw/filtered TCP-Z force
-    hard_enter_n: 1.50        # a clear impact can acquire in one tick
-    exit_n: 0.35              # above the ~0.15 N live free-space residual
-    enter_confirm_s: 0.010    # reject isolated raw-force spikes
-    exit_confirm_s: 0.100     # short 4–12 Hz troughs remain one contact
   # Noise-rejection deadband — a FIXED sensor-noise quantity, never scaled
   # with desired_z (scaling it made a 5 N hold need >0.5 N over-force before
   # any retract authority: the "over-force / heavy damping" hand feel).
@@ -380,21 +369,6 @@ hybrid_motion:
   # deadband still rejects sensor noise before this scale is applied.
   force_scale_min_n: 0.20
   force_scale_fraction: 0.15
-  # 6 Hz filtered force remains the passive-admittance input. A median-3,
-  # 20 Hz raw-force path may only clear/hold stale negative active v_r after
-  # raw force crosses below Fdes-stop_margin while the delayed 6 Hz force
-  # still asks for retraction. It cannot press or disable passive escape.
-  fast_retract_guard:
-    enabled: true
-    cutoff_hz: 20.0
-    stop_margin_n: 0.25
-    stop_margin_fraction: 0.05
-    rearm_margin_n: 0.45
-    rearm_margin_fraction: 0.10
-    stop_confirm_s: 0.015
-    rearm_confirm_s: 0.010
-    min_hold_s: 0.025
-    max_sensor_age_s: 0.020
 
 # LW100 rail servo (Modbus RTU over USR-TCP232).
 # Soft CSP via FA24: same cascade as apps/lw100_vel_pos_follow_demo.py

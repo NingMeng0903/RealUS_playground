@@ -17,10 +17,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from rm75_control.control.joint_admittance_8dof.model import (
-    RobotKinematics,
-    wrap_joint_delta,
-)
+from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 
 
 @dataclass
@@ -70,11 +67,11 @@ class JointCenteringTask:
         )
 
     def set_q_target(self, q_rad: np.ndarray | None = None) -> None:
-        """Override the centering attractor.
+        """Override the centering attractor (e.g. move-phase plan target).
 
-        ``None`` restores the yaml ``q_nominal_deg`` default.  Scan/track
-        phases should pass taught/planned pose D (``q_target`` / sin_d joints)
-        so nullspace pulls back to the scan posture, not a generic home.
+        ``None`` restores the yaml ``q_nominal_deg`` default (comfortable
+        posture).  Taught scan pose D is NOT the centering target — only the
+        Cartesian + ψ tasks hold TCP at D; nullspace pulls toward nominal.
         """
         if q_rad is None:
             self.q_target = self._q_target_default.copy()
@@ -91,11 +88,8 @@ class JointCenteringTask:
         cfg = self.cfg
         q = np.asarray(q_rad, dtype=float)
 
-        # Shortest-path error on revolute joints (rail stays linear).  Without
-        # wrap, J1 at +π with nominal 0 looks like a full-range error in the
-        # wrong direction once q wanders past ±π equivalence.
-        err = wrap_joint_delta(self.q_target, q)
-        u_target = err / self.half
+        # gradient-descent centering toward q_target (nominal posture, or geometric mid)
+        u_target = (q - self.q_target) / self.half
         qdot0 = -cfg.k_center * self.w * u_target
 
         # smooth limit repulsion beyond activation band - always relative to the

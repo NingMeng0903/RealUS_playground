@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-SUBJECT_SOLVER_VERSION = "whole-bone-hip-v8.4-clean-bundle"
+SUBJECT_SOLVER_VERSION = "contact-first-leg-v8.10-frozen-route"
 
 
 __all__ = ["SUBJECT_SOLVER_VERSION"]

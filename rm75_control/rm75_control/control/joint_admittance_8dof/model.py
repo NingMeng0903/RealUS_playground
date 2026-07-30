@@ -98,7 +98,7 @@ def auto_move_duration_s(
     v_max_rad_s: np.ndarray,
     peak_joint_v_frac: float = 0.50,
     max_lin_vel_m_s: float = 0.4,
-    peak_lin_v_frac: float = 0.55,
+    peak_lin_v_frac: float = 0.35,
     duration_min_s: float = 2.5,
     duration_max_s: float = 20.0,
     approach_dz_m: float | None = None,

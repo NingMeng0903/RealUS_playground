@@ -471,6 +471,7 @@ def render_gradient_landscape(
     T_rail_axis: torch.Tensor,
 ) -> None:
     import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
 
     device = next(field.parameters()).device
     resolution = 51
@@ -493,31 +494,64 @@ def render_gradient_landscape(
     GR = grad_rail.detach().cpu().numpy().reshape(resolution, resolution)
     theta_deg = np.rad2deg(TH.detach().cpu().numpy())
     rail_mm = 1000.0 * RR.detach().cpu().numpy()
+    # Plot-space gradient so arrow direction matches the drawn axes.
     ux = np.rad2deg(GT)
     uy = GR * 1000.0
-    norm = np.maximum(np.hypot(ux, uy), 1.0e-9)
+    mag = np.hypot(ux, uy)
 
     fig, ax = plt.subplots(figsize=(9, 7.5), dpi=170)
     contour = ax.contourf(theta_deg, rail_mm, C, levels=36, cmap="RdYlBu")
     ax.contour(theta_deg, rail_mm, C, levels=[0.0], colors="black", linewidths=1.8)
+    ax.contour(
+        theta_deg, rail_mm, C,
+        levels=np.linspace(float(C.min()), float(C.max()), 9)[1:-1],
+        colors="#455a64", linewidths=0.5, alpha=0.45,
+    )
+
+    # Length ∝ √|∇|; keep weak arrows short instead of dropping them (empty
+    # patches near local peaks are otherwise mistaken for missing data).
     stride = 3
+    ux_s = ux[::stride, ::stride]
+    uy_s = uy[::stride, ::stride]
+    mag_s = np.maximum(mag[::stride, ::stride], 1.0e-12)
+    ref = max(float(np.percentile(mag, 90)), 1.0e-6)
+    scale = np.clip(np.sqrt(mag_s / ref), 0.12, 1.0)
+    u = (ux_s / mag_s) * scale
+    v = (uy_s / mag_s) * scale
     ax.quiver(
-        theta_deg[::stride, ::stride], rail_mm[::stride, ::stride],
-        ux[::stride, ::stride] / norm[::stride, ::stride],
-        uy[::stride, ::stride] / norm[::stride, ::stride],
-        color="#202020", alpha=0.72, scale=24,
+        theta_deg[::stride, ::stride],
+        rail_mm[::stride, ::stride],
+        u,
+        v,
+        color="#202020",
+        alpha=0.75,
+        scale=18,
+        width=0.0035,
+        pivot="mid",
     )
+
     mid = len(result["s"]) // 2
-    ax.scatter([0.0], [0.0], c="white", edgecolor="black", s=90, label="Initial", zorder=5)
-    ax.scatter(
-        [np.rad2deg(result["theta_rad"][mid])],
-        [1000.0 * result["rail_m"][mid]],
-        c="#00e676", edgecolor="black", s=100, label="Optimized", zorder=5,
-    )
+    th0 = np.rad2deg(np.asarray(result.get("initial_theta_rad", np.zeros_like(result["theta_rad"]))))
+    r0 = 1000.0 * np.asarray(result.get("initial_rail_m", np.zeros_like(result["rail_m"])))
+    th1 = np.rad2deg(np.asarray(result["theta_rad"]))
+    r1 = 1000.0 * np.asarray(result["rail_m"])
+    ax.plot(th0, r0, color="#78909c", linewidth=2.0, label="Initial path", zorder=6)
+    ax.plot(th1, r1, color="#1b5e20", linewidth=2.4, label="Optimized path", zorder=6)
+    ax.scatter(th0[0], r0[0], c="white", edgecolor="black", s=70, zorder=7)
+    ax.scatter(th1[0], r1[0], c="#00e676", edgecolor="black", s=80, zorder=7)
+    ax.scatter(th1[mid], r1[mid], c="#00e676", edgecolor="black", s=40, marker="s", zorder=7)
+    ax.scatter(th1[-1], r1[-1], c="#00e676", edgecolor="black", s=70, marker="^", zorder=7)
     ax.set_xlabel("surface angle (deg)")
     ax.set_ylabel("rail (mm)")
-    ax.set_title("Region-A IRD Gradient")
-    ax.legend(loc="upper right")
+    ax.set_title("Region-A IRD field + full path")
+    ax.legend(
+        handles=[
+            Line2D([0], [0], color="#78909c", lw=2.0, label="Initial θ(s), rail(s)"),
+            Line2D([0], [0], color="#1b5e20", lw=2.4, label="Optimized θ(s), rail(s)"),
+            Line2D([0], [0], color="#202020", lw=1.2, label="Local ∇ (len∝|∇|)"),
+        ],
+        loc="upper right",
+    )
     fig.colorbar(contour, ax=ax, label="robust clearance")
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
@@ -591,6 +625,133 @@ def render_trajectory(
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
+
+
+def render_controls_vs_s(result: dict, out_path: Path) -> None:
+    """Per-phase optimized surface angle / rail / clearance along s∈[0,1]."""
+    import matplotlib.pyplot as plt
+
+    s = np.asarray(result["s"])
+    fig, axes = plt.subplots(3, 1, figsize=(9, 8), dpi=160, sharex=True)
+    axes[0].plot(s, np.rad2deg(result["theta_rad"]), color="#00796b", lw=2.2)
+    axes[0].axhline(0.0, color="black", lw=0.8)
+    axes[0].set_ylabel("surface angle (deg)")
+    axes[0].set_title("Optimized controls along normalized trajectory")
+    axes[1].plot(s, 1000.0 * np.asarray(result["rail_m"]), color="#ef6c00", lw=2.2)
+    axes[1].axhline(0.0, color="black", lw=0.8)
+    axes[1].set_ylabel("rail (mm)")
+    axes[2].plot(s, np.asarray(result["clearance"]), color="#1565c0", lw=2.2)
+    axes[2].axhline(0.0, color="black", lw=1.0)
+    axes[2].set_ylabel("robust clearance")
+    axes[2].set_xlabel("normalized phase s")
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+
+
+def render_field_video(
+    field,
+    region: RegionA,
+    result: dict,
+    cfg: DemoConfig,
+    out_path: Path,
+    *,
+    T_rail_axis: torch.Tensor,
+    resolution: int = 41,
+    fps: int = 12,
+) -> Path:
+    """Animate (θ, rail) Region-A clearance as path_y(s) advances along the cylinder."""
+    import imageio.v2 as imageio
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+
+    device = next(field.parameters()).device
+    s = np.asarray(result["s"], dtype=np.float64)
+    path_y = np.asarray(result["path_y_m"], dtype=np.float64)
+    theta = np.asarray(result["theta_rad"], dtype=np.float64)
+    rail = np.asarray(result["rail_m"], dtype=np.float64)
+    clearance_path = np.asarray(result["clearance"], dtype=np.float64)
+    th_deg_path = np.rad2deg(theta)
+    rail_mm_path = 1000.0 * rail
+
+    theta_axis = torch.linspace(
+        -np.deg2rad(cfg.theta_limit_deg), np.deg2rad(12.0), resolution, device=device
+    )
+    rail_axis = torch.linspace(-cfg.rail_limit_m, cfg.rail_limit_m, resolution, device=device)
+    TH, RR = torch.meshgrid(theta_axis, rail_axis, indexing="xy")
+    th_flat = TH.reshape(-1)
+    rail_flat = RR.reshape(-1)
+    eye = torch.eye(4, device=device)
+    theta_deg = np.rad2deg(TH.detach().cpu().numpy())
+    rail_mm = 1000.0 * RR.detach().cpu().numpy()
+
+    # Fixed color scale across frames from a few probe slices.
+    probe_ids = np.unique(np.linspace(0, len(s) - 1, num=min(9, len(s)), dtype=int))
+    probe_vals = []
+    with torch.no_grad():
+        for i in probe_ids:
+            py = torch.full_like(th_flat, float(path_y[i]))
+            tcp = cylinder_tcp(th_flat, py, cfg)
+            probe_vals.append(
+                region.query_tcp_rail(
+                    field, tcp, rail_flat, T_world_rail=eye,
+                    T_rail_base0=T_rail_axis, rail_axis=1,
+                ).robust_clearance.detach().cpu().numpy()
+            )
+    vmin = float(np.min(probe_vals))
+    vmax = float(np.max(probe_vals))
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    frames: list[np.ndarray] = []
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 5.2), dpi=120)
+    canvas = FigureCanvasAgg(fig)
+    ax, axr = axes
+    with torch.no_grad():
+        for i, (si, py_i) in enumerate(zip(s, path_y)):
+            py = torch.full_like(th_flat, float(py_i))
+            tcp = cylinder_tcp(th_flat, py, cfg)
+            C = region.query_tcp_rail(
+                field, tcp, rail_flat, T_world_rail=eye,
+                T_rail_base0=T_rail_axis, rail_axis=1,
+            ).robust_clearance.detach().cpu().numpy().reshape(resolution, resolution)
+
+            ax.clear()
+            axr.clear()
+            im = ax.contourf(
+                theta_deg, rail_mm, C, levels=28, cmap="RdYlBu", vmin=vmin, vmax=vmax
+            )
+            ax.contour(theta_deg, rail_mm, C, levels=[0.0], colors="black", linewidths=1.6)
+            ax.plot(th_deg_path, rail_mm_path, color="#1b5e20", lw=2.0, label="path θ(s),rail(s)")
+            ax.scatter(
+                [th_deg_path[i]], [rail_mm_path[i]],
+                c="#00e676", edgecolor="black", s=90, zorder=5, label="current",
+            )
+            ax.set_xlabel("surface angle (deg)")
+            ax.set_ylabel("rail (mm)")
+            ax.set_title(f"Region-A field @ s={si:.2f}  path_y={py_i:+.3f} m")
+            ax.legend(loc="upper right", fontsize=8)
+
+            axr.plot(s, clearance_path, color="#90a4ae", lw=1.5)
+            axr.plot(s[: i + 1], clearance_path[: i + 1], color="#1565c0", lw=2.2)
+            axr.scatter([si], [clearance_path[i]], c="#00e676", edgecolor="black", s=60, zorder=5)
+            axr.axhline(0.0, color="black", lw=1.0)
+            axr.set_xlim(0.0, 1.0)
+            axr.set_xlabel("normalized phase s")
+            axr.set_ylabel("robust clearance")
+            axr.set_title(f"clearance(s)  now={clearance_path[i]:+.2f}")
+
+            if i == 0:
+                fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="robust clearance")
+            fig.tight_layout()
+            canvas.draw()
+            buf = np.asarray(canvas.buffer_rgba())
+            frames.append(buf[:, :, :3].copy())
+            print(f"[field-video] frame {i + 1}/{len(s)}", flush=True)
+
+    plt.close(fig)
+    imageio.mimwrite(out_path, frames, fps=fps, codec="libx264", quality=8)
+    return out_path
 
 
 def render_q_guidance(
@@ -693,6 +854,11 @@ def main(argv: list[str] | None = None) -> int:
         T_rail_axis=T_rail_axis,
     )
     render_trajectory(result, initial_gt, final_gt, cfg, out / "cylinder_trajectory.png")
+    render_controls_vs_s(result, out / "trajectory_controls_vs_s.png")
+    render_field_video(
+        field, region, result, cfg, out / "region_ird_field_along_s.mp4",
+        T_rail_axis=T_rail_axis,
+    )
     render_q_guidance(
         result["s"], q_ref, locked.q_lower, locked.q_upper,
         baseline_q, out / "qpik_joint_guidance.png",
@@ -704,9 +870,12 @@ def main(argv: list[str] | None = None) -> int:
         s=np.asarray(result["s"], dtype=np.float32),
         T_tcp_world=tcp,
         rail_y=np.asarray(result["rail_m"], dtype=np.float32),
+        initial_rail_y=np.asarray(result["initial_rail_m"], dtype=np.float32),
         q_ref=q_ref,
         robust_clearance=np.asarray(result["clearance"], dtype=np.float32),
         surface_theta_rad=np.asarray(result["theta_rad"], dtype=np.float32),
+        initial_surface_theta_rad=np.asarray(result["initial_theta_rad"], dtype=np.float32),
+        path_y_m=np.asarray(result["path_y_m"], dtype=np.float32),
         orientation_cone_half_angle_deg=np.asarray(3.0, dtype=np.float32),
     )
     baseline_metrics = q_metrics(baseline_q, locked.q_lower, locked.q_upper)

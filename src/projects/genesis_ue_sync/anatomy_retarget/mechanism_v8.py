@@ -68,6 +68,12 @@ _LEGACY_SHRINK_KEYS = frozenset(
         "femur_joint_lobe_scale",
     }
 )
+_AXIAL_STRAIN_LIMITS_V810 = MappingProxyType(
+    {
+        "femur": 0.12,
+        "shank": 0.08,
+    }
+)
 
 
 def _readonly(value: Any, dtype: Any | None = None) -> np.ndarray:
@@ -664,6 +670,332 @@ class WholeBoneRestFitV8:
     def apply(self, points: Any) -> np.ndarray:
         value = np.asarray(points, dtype=np.float64).reshape(-1, 3)
         return self.target_head + (value - self.source_head) @ self.linear.T
+
+
+@dataclass(frozen=True)
+class CapPreservingAxialRestResultV810:
+    """Result and analytic strain report for one axial rest adaptation."""
+
+    vertices: np.ndarray
+    displacement: np.ndarray
+    axial_parameter: np.ndarray
+    phi: np.ndarray
+    profile_derivative: np.ndarray
+    axial_jacobian: np.ndarray
+    axial_strain: np.ndarray
+    axis_direction: np.ndarray
+    source_length_m: float
+    requested_delta_m: float
+    applied_delta_m: float
+    remaining_residual_m: float
+    segment: str
+    proximal_cap_fraction: float
+    distal_cap_fraction: float
+    max_abs_axial_strain: float
+    profile_peak_slope: float
+    minimum_axial_jacobian: float
+    maximum_axial_jacobian: float
+    maximum_abs_applied_strain: float
+    cross_section_scale: float = 1.0
+
+    def __post_init__(self) -> None:
+        vertices = np.asarray(self.vertices, dtype=np.float64).reshape(-1, 3)
+        displacement = np.asarray(
+            self.displacement,
+            dtype=np.float64,
+        ).reshape(-1, 3)
+        if vertices.shape != displacement.shape or not len(vertices):
+            raise ValueError("axial rest result requires matching non-empty vertices")
+        arrays: dict[str, np.ndarray] = {}
+        for name in (
+            "axial_parameter",
+            "phi",
+            "profile_derivative",
+            "axial_jacobian",
+            "axial_strain",
+        ):
+            value = np.asarray(getattr(self, name), dtype=np.float64).reshape(-1)
+            if len(value) != len(vertices):
+                raise ValueError(f"{name} must have one value per vertex")
+            arrays[name] = value
+        if (
+            not np.all(np.isfinite(vertices))
+            or not np.all(np.isfinite(displacement))
+            or any(not np.all(np.isfinite(value)) for value in arrays.values())
+        ):
+            raise ValueError("axial rest result must be finite")
+        if np.any(arrays["axial_parameter"] < 0.0) or np.any(
+            arrays["axial_parameter"] > 1.0
+        ):
+            raise ValueError("axial parameters must lie in [0, 1]")
+        if np.any(arrays["phi"] < 0.0) or np.any(arrays["phi"] > 1.0):
+            raise ValueError("axial profile values must lie in [0, 1]")
+        if np.any(arrays["profile_derivative"] < 0.0):
+            raise ValueError("axial profile must be monotone")
+        if not np.allclose(
+            arrays["axial_jacobian"],
+            1.0 + arrays["axial_strain"],
+            atol=1.0e-12,
+            rtol=0.0,
+        ):
+            raise ValueError("axial Jacobian and strain are inconsistent")
+
+        direction = _unit(self.axis_direction, label="axial rest target axis")
+        scalar_names = (
+            "source_length_m",
+            "requested_delta_m",
+            "applied_delta_m",
+            "remaining_residual_m",
+            "proximal_cap_fraction",
+            "distal_cap_fraction",
+            "max_abs_axial_strain",
+            "profile_peak_slope",
+            "minimum_axial_jacobian",
+            "maximum_axial_jacobian",
+            "maximum_abs_applied_strain",
+            "cross_section_scale",
+        )
+        scalars = {name: float(getattr(self, name)) for name in scalar_names}
+        if any(not math.isfinite(value) for value in scalars.values()):
+            raise ValueError("axial rest scalar report must be finite")
+        if scalars["source_length_m"] <= 1.0e-8:
+            raise ValueError("axial rest source length must be positive")
+        if not math.isclose(
+            scalars["requested_delta_m"],
+            scalars["applied_delta_m"] + scalars["remaining_residual_m"],
+            abs_tol=1.0e-12,
+            rel_tol=0.0,
+        ):
+            raise ValueError("axial rest applied delta and residual are inconsistent")
+        if scalars["minimum_axial_jacobian"] <= 0.0:
+            raise ValueError("axial rest mapping must have a positive Jacobian")
+        if (
+            scalars["maximum_axial_jacobian"]
+            < scalars["minimum_axial_jacobian"]
+            or scalars["maximum_abs_applied_strain"] < 0.0
+        ):
+            raise ValueError("axial rest analytic strain report is invalid")
+        if not math.isclose(
+            scalars["cross_section_scale"],
+            1.0,
+            abs_tol=1.0e-12,
+            rel_tol=0.0,
+        ):
+            raise ValueError("axial rest cross-section scale must be one")
+
+        segment = str(self.segment).strip().lower()
+        if segment not in _AXIAL_STRAIN_LIMITS_V810:
+            raise ValueError("axial rest segment must be 'femur' or 'shank'")
+        object.__setattr__(self, "vertices", _readonly(vertices, np.float64))
+        object.__setattr__(
+            self,
+            "displacement",
+            _readonly(displacement, np.float64),
+        )
+        for name, value in arrays.items():
+            object.__setattr__(self, name, _readonly(value, np.float64))
+        object.__setattr__(
+            self,
+            "axis_direction",
+            _readonly(direction, np.float64),
+        )
+        object.__setattr__(self, "segment", segment)
+        for name, value in scalars.items():
+            object.__setattr__(self, name, value)
+
+
+def _low_peak_axial_profile_v810(
+    axial_parameter: np.ndarray,
+    *,
+    proximal_cap_fraction: float,
+    distal_cap_fraction: float,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """Evaluate a C2 profile with two truly rigid end caps.
+
+    Each cap is followed by an equally wide smootherstep derivative ramp.  The
+    remaining shaft uses the lowest constant derivative that integrates to one.
+    Consequently every point in the proximal cap has ``phi=0`` and every point
+    in the distal cap has ``phi=1``; only the shaft absorbs axial strain.
+    """
+
+    parameter = np.asarray(axial_parameter, dtype=np.float64).reshape(-1)
+    proximal_fraction = float(proximal_cap_fraction)
+    distal_fraction = float(distal_cap_fraction)
+    if (
+        not math.isfinite(proximal_fraction)
+        or not math.isfinite(distal_fraction)
+        or proximal_fraction <= 0.0
+        or distal_fraction <= 0.0
+        or 2.0 * (proximal_fraction + distal_fraction) >= 1.0
+    ):
+        raise ValueError(
+            "axial cap fractions must be finite, positive, and leave a shaft "
+            "between their C2 transition zones"
+        )
+
+    # Integral(smootherstep(t), t=0..1) = 1/2.  The two half ramps and
+    # constant-slope shaft therefore have this effective unit length.
+    effective_length = 1.0 - 1.5 * (
+        proximal_fraction + distal_fraction
+    )
+    peak = 1.0 / effective_length
+    phi = np.zeros_like(parameter)
+    derivative = np.zeros_like(parameter)
+
+    left_ramp_start = proximal_fraction
+    left_ramp_stop = 2.0 * proximal_fraction
+    right_ramp_start = 1.0 - 2.0 * distal_fraction
+    right_ramp_stop = 1.0 - distal_fraction
+
+    def smootherstep(value: np.ndarray) -> np.ndarray:
+        return value**3 * (value * (value * 6.0 - 15.0) + 10.0)
+
+    def smootherstep_integral(value: np.ndarray) -> np.ndarray:
+        return value**6 - 3.0 * value**5 + 2.5 * value**4
+
+    left_ramp = (parameter > left_ramp_start) & (
+        parameter < left_ramp_stop
+    )
+    left_t = (
+        parameter[left_ramp] - left_ramp_start
+    ) / proximal_fraction
+    phi[left_ramp] = (
+        peak
+        * proximal_fraction
+        * smootherstep_integral(left_t)
+    )
+    derivative[left_ramp] = peak * smootherstep(left_t)
+
+    core = (parameter >= left_ramp_stop) & (
+        parameter <= right_ramp_start
+    )
+    left_ramp_area = 0.5 * proximal_fraction
+    phi[core] = peak * (
+        left_ramp_area + parameter[core] - left_ramp_stop
+    )
+    derivative[core] = peak
+
+    right_ramp = (parameter > right_ramp_start) & (
+        parameter < right_ramp_stop
+    )
+    right_t = (
+        parameter[right_ramp] - right_ramp_start
+    ) / distal_fraction
+    core_length = right_ramp_start - left_ramp_stop
+    right_integral = right_t - smootherstep_integral(right_t)
+    phi[right_ramp] = peak * (
+        left_ramp_area
+        + core_length
+        + distal_fraction * right_integral
+    )
+    derivative[right_ramp] = peak * (
+        1.0 - smootherstep(right_t)
+    )
+
+    distal_cap = parameter >= right_ramp_stop
+    phi[distal_cap] = 1.0
+    phi = np.clip(phi, 0.0, 1.0)
+    return phi, derivative, peak
+
+
+def apply_cap_preserving_axial_rest_v810(
+    vertices: Any,
+    *,
+    proximal: Any,
+    distal: Any,
+    target_length_delta_m: float,
+    axial_parameter: Any,
+    segment: str = "femur",
+    proximal_cap_fraction: float = 0.10,
+    distal_cap_fraction: float = 0.10,
+    max_abs_axial_strain: float | None = None,
+) -> CapPreservingAxialRestResultV810:
+    """Apply a bounded axial delta without changing any cross-section scale.
+
+    The default maximum absolute axial strain is 0.12 for ``femur`` and 0.08
+    for ``shank``.  The requested length delta is clipped analytically against
+    that limit, and the unapplied part is returned as ``remaining_residual_m``.
+    """
+
+    points = np.asarray(vertices, dtype=np.float64).reshape(-1, 3)
+    parameter = np.asarray(axial_parameter, dtype=np.float64).reshape(-1)
+    if not len(points) or len(parameter) != len(points):
+        raise ValueError("axial rest adapter requires one lambda per vertex")
+    if not np.all(np.isfinite(points)) or not np.all(np.isfinite(parameter)):
+        raise ValueError("axial rest vertices and lambda must be finite")
+    if np.any(parameter < 0.0) or np.any(parameter > 1.0):
+        raise ValueError("axial rest lambda must lie in [0, 1]")
+
+    proximal_point = np.asarray(proximal, dtype=np.float64).reshape(3)
+    distal_point = np.asarray(distal, dtype=np.float64).reshape(3)
+    if not np.all(np.isfinite(proximal_point)) or not np.all(
+        np.isfinite(distal_point)
+    ):
+        raise ValueError("axial rest endpoints must be finite")
+    axis = distal_point - proximal_point
+    source_length = float(np.linalg.norm(axis))
+    if source_length <= 1.0e-8:
+        raise ValueError("axial rest endpoints must be non-degenerate")
+    direction = axis / source_length
+
+    requested_delta = float(target_length_delta_m)
+    if not math.isfinite(requested_delta):
+        raise ValueError("axial rest target length delta must be finite")
+    selected_segment = str(segment).strip().lower()
+    if selected_segment not in _AXIAL_STRAIN_LIMITS_V810:
+        raise ValueError("axial rest segment must be 'femur' or 'shank'")
+    phi, profile_derivative, peak_slope = _low_peak_axial_profile_v810(
+        parameter,
+        proximal_cap_fraction=proximal_cap_fraction,
+        distal_cap_fraction=distal_cap_fraction,
+    )
+
+    strain_limit = (
+        _AXIAL_STRAIN_LIMITS_V810[selected_segment]
+        if max_abs_axial_strain is None
+        else float(max_abs_axial_strain)
+    )
+    if (
+        not math.isfinite(strain_limit)
+        or strain_limit < 0.0
+        or strain_limit >= 1.0
+    ):
+        raise ValueError(
+            "max_abs_axial_strain must be finite and lie in [0, 1)"
+        )
+    delta_limit = strain_limit * source_length / peak_slope
+    applied_delta = float(np.clip(requested_delta, -delta_limit, delta_limit))
+
+    peak_signed_strain = applied_delta * peak_slope / source_length
+    minimum_axial_jacobian = 1.0 + min(0.0, peak_signed_strain)
+    maximum_axial_jacobian = 1.0 + max(0.0, peak_signed_strain)
+
+    axial_strain = applied_delta * profile_derivative / source_length
+    axial_jacobian = 1.0 + axial_strain
+    displacement = applied_delta * phi[:, None] * direction[None, :]
+    return CapPreservingAxialRestResultV810(
+        vertices=points + displacement,
+        displacement=displacement,
+        axial_parameter=parameter,
+        phi=phi,
+        profile_derivative=profile_derivative,
+        axial_jacobian=axial_jacobian,
+        axial_strain=axial_strain,
+        axis_direction=direction,
+        source_length_m=source_length,
+        requested_delta_m=requested_delta,
+        applied_delta_m=applied_delta,
+        remaining_residual_m=requested_delta - applied_delta,
+        segment=selected_segment,
+        proximal_cap_fraction=float(proximal_cap_fraction),
+        distal_cap_fraction=float(distal_cap_fraction),
+        max_abs_axial_strain=strain_limit,
+        profile_peak_slope=peak_slope,
+        minimum_axial_jacobian=minimum_axial_jacobian,
+        maximum_axial_jacobian=maximum_axial_jacobian,
+        maximum_abs_applied_strain=abs(peak_signed_strain),
+        cross_section_scale=1.0,
+    )
 
 
 @dataclass(frozen=True)
@@ -1286,6 +1618,7 @@ def topology_digest_v8(vertices: Any, faces: Any) -> str:
 __all__ = [
     "ANATOMY_V8_SCHEMA_VERSION",
     "V71_SOURCE_BONE_COUNT",
+    "CapPreservingAxialRestResultV810",
     "CoupledLimbPoseV8",
     "FrozenMaterialDomainV8",
     "FrozenMaterialDomainsV8",
@@ -1296,6 +1629,7 @@ __all__ = [
     "UniformHeadTransformV8",
     "V71ParentLocalFKV8",
     "WholeBoneRestFitV8",
+    "apply_cap_preserving_axial_rest_v810",
     "apply_head_compound_rest_v8",
     "axis_rotation_v8",
     "build_ba9_head_selection_v8",

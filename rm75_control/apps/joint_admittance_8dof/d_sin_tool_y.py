@@ -3,8 +3,10 @@
 
   source env.sh
   python apps/joint_admittance_8dof/d_sin_tool_y.py --dry-run
-  # same taught q_deg → pose_d = Pin FK under URDF probe TCP → Cartesian SRS
+  # same taught q_deg → pose_d = Pin FK; default MoveJ (WbcArm) then force scan
   python apps/joint_admittance_8dof/d_sin_tool_y.py --enable-force --desired-z 3.0 --scan-duration 600
+  # explicit MoveL/SRS instead of MoveJ:
+  python apps/joint_admittance_8dof/d_sin_tool_y.py --move-mode cartesian --enable-force --desired-z 1.0
   # move->D by taught joint angles (ignore RealMan TCP; for gripper-Z rotation tests):
   python apps/joint_admittance_8dof/d_sin_tool_y.py \\
       --d-target joints --move-mode joint --enable-force --desired-z 1.0 \\
@@ -19,7 +21,6 @@ from __future__ import annotations
 import argparse
 import os
 import signal
-import sys
 import time
 from contextlib import nullcontext
 from dataclasses import dataclass
@@ -43,8 +44,6 @@ from rm75_control.control.joint_admittance_8dof.api import (
     SecondaryPolicy,
     compile_phases,
     compute_move_plan,
-    make_srs_move_reference,
-    phase_cartesian_goto,
     phase_hold_at_pose,
     phase_hybrid_track,
     phase_rail_reposition,
@@ -59,6 +58,7 @@ from rm75_control.control.joint_admittance_8dof.sin_tool_y_program import (
     plan_q_toggle_at_pose,
     resolve_scan_target_at_d,
 )
+from rm75_control.control.joint_admittance_8dof.wbc_arm import WbcArm
 from rm75_control.control.joint_admittance_8dof.model import (
     RobotKinematics,
     deg2rad,
@@ -68,7 +68,6 @@ from rm75_control.control.joint_admittance_8dof.model import (
     rad2deg,
 )
 from rm75_control.control.joint_admittance_8dof.reference import (
-    JointSmoothMoveReference,
     SinToolYReference,
     HoldReference,
 )
@@ -111,13 +110,8 @@ def main() -> int:
     ap.add_argument("--approach-dz-mm", type=float, default=0.220 * 1000.0)
     ap.add_argument("--use-force-id-pose", action="store_true")
     ap.add_argument("--move-duration", type=float, default=None)
-    ap.add_argument(
-        "--move-duration-margin",
-        type=float,
-        default=0.80,
-        help="Peak joint-speed fraction of (v_max·v_scale) used to size auto T (was 0.50).",
-    )
-    ap.add_argument("--move-duration-min", type=float, default=1.5)
+    ap.add_argument("--move-duration-margin", type=float, default=0.50)
+    ap.add_argument("--move-duration-min", type=float, default=2.5)
     ap.add_argument(
         "--move-duration-max",
         type=float,
@@ -125,7 +119,10 @@ def main() -> int:
         help="Cap on auto move duration (s). Was 5s and crushed 13s joint moves into a jerk.",
     )
     ap.add_argument("--move-kp", type=float, default=2.0)
-    ap.add_argument("--move-mode", choices=("cartesian", "joint"), default="cartesian")
+    ap.add_argument("--move-mode", choices=("cartesian", "joint"), default="joint",
+                    help="PTP to D: joint=MoveJ (default, industrial PTP); "
+                         "cartesian=MoveL/SRS. Scan/track always Cartesian. "
+                         "No auto detect-and-switch.")
     ap.add_argument("--y-pp-cm", type=float, default=16.0,
                     help="Tool-Y scan peak-to-peak (cm). 90 = 900 mm stroke.")
     ap.add_argument("--max-vel-cm-s", type=float, default=2.0)
@@ -217,24 +214,19 @@ def main() -> int:
         help="Rail travel direction for --rail-move-cm",
     )
     ap.add_argument("--enable-force", action="store_true", default=None)
-    ap.add_argument(
-        "--log-interval",
-        type=float,
-        default=0.0,
-        help="Attach-mode phase status print interval (s); 0=off (default)",
-    )
-    ap.add_argument("--verbose", "-v", action="store_true", help="Detailed IK / WBC logs")
+    ap.add_argument("--log-interval", type=float, default=2.0)
+    ap.add_argument("--verbose", "-v", action="store_true", help="Detailed IK / WBC logs + auto CSV")
     ap.add_argument(
         "--log-csv",
         type=str,
         default=None,
-        help="Optional WBC tick CSV path (A writes it when set)",
+        help="WBC tick CSV path (A writes it). Default with -v: logs/sin_tool_y/run_<ts>.csv",
     )
     ap.add_argument(
         "--rail-log-csv",
         type=str,
         default=None,
-        help="Optional LW100 soft-loop CSV path (A writes it when set)",
+        help="LW100 soft-loop CSV path (A writes it). Default with -v: logs/rail_servo/rail_<ts>.csv",
     )
     ap.add_argument("--cartesian-max-lin-vel", type=float, default=None)
     ap.add_argument("--dry-run", action="store_true")
@@ -245,6 +237,27 @@ def main() -> int:
     )
     args = ap.parse_args()
 
+    if args.verbose and not args.log_csv:
+        log_dir = Path(__file__).resolve().parents[1] / "logs" / "sin_tool_y"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        args.log_csv = str(log_dir / f"run_{ts}.csv")
+    # Pair rail servo CSV with WBC CSV (same timestamp when auto).
+    rail_log_csv = getattr(args, "rail_log_csv", None)
+    if args.verbose and not rail_log_csv:
+        rail_dir = Path(__file__).resolve().parents[1] / "logs" / "rail_servo"
+        rail_dir.mkdir(parents=True, exist_ok=True)
+        if args.log_csv:
+            stem = Path(args.log_csv).stem.replace("run_", "rail_", 1)
+            if stem == Path(args.log_csv).stem:
+                stem = f"rail_{time.strftime('%Y%m%d_%H%M%S')}"
+            rail_log_csv = str(rail_dir / f"{stem}.csv")
+        else:
+            ts = time.strftime("%Y%m%d_%H%M%S")
+            rail_log_csv = str(rail_dir / f"rail_{ts}.csv")
+    args.rail_log_csv = rail_log_csv
+    if args.verbose and float(args.log_interval) >= 1.999:
+        args.log_interval = 0.5
     if args.log_csv:
         print(f"debug log CSV (written by window A): {args.log_csv}", flush=True)
     if args.rail_log_csv:
@@ -298,7 +311,7 @@ def main() -> int:
     robot_cfg = raw.get("robot", {})
     hm_cfg = raw.get("hybrid_motion", {})
     track_axes = np.asarray(hm_cfg.get("track_axes", [1, 1, 0, 1, 1, 1]), dtype=float)
-    max_lin = float(args.cartesian_max_lin_vel) if args.cartesian_max_lin_vel is not None else 0.65
+    max_lin = float(args.cartesian_max_lin_vel) if args.cartesian_max_lin_vel is not None else 0.4
     sigma_ref = float(inner_cfg.qp.sr_damping.sigma_ref)
 
     local_bus: RobotStateBus | None = None
@@ -401,7 +414,7 @@ def main() -> int:
             if scan_target.d_target in {"joints", "kin-fk"}:
                 print(
                     "  move->D: pose_d from Pinocchio FK @ taught/planned joints; "
-                    "execution is Cartesian/SRS (not joint MoveJ)",
+                    f"execution follows --move-mode ({args.move_mode})",
                     flush=True,
                 )
 
@@ -426,13 +439,12 @@ def main() -> int:
                 flush=True,
             )
 
-        # move→D default: cartesian SRS (own srs_ik), not MoveJ.
-        # Auto-fallback to joint is disabled — that caused the early wrong-way TCP path.
-        # Explicit --move-mode joint (or d-target=joints hint) still uses JointSmooth.
+        # Industrial split (ABB/KUKA/Fanuc style):
+        #   move→D PTP  → joint space (default --move-mode joint)
+        #   scan/track  → Cartesian / hybrid
+        # No runtime detect-and-switch between MoveJ/MoveL.
         auto_joint = False
         move_mode = str(args.move_mode)
-        if "--move-mode" not in sys.argv and scan_target.move_mode_hint == "joint":
-            move_mode = "joint"
         plan = compute_move_plan(
             kin,
             q0_rad,
@@ -450,14 +462,9 @@ def main() -> int:
             sigma_ref=sigma_ref,
             euler_order=inner_cfg.euler_order,
         )
-        mode_label = "joint" if plan.move_mode == "joint" else "cartesian/SRS"
-        if plan.move_mode == "cartesian" and plan.meta["max_dq_deg"] > 60.0:
-            if args.verbose:
-                print(
-                    f"  move: cartesian SRS (max|dq|={plan.meta['max_dq_deg']:.1f}deg; "
-                    f"use --move-mode joint only if you want MoveJ)",
-                    flush=True,
-                )
+        mode_label = "MoveJ (joint PTP)" if plan.move_mode == "joint" else "MoveL/SRS (Cartesian)"
+        if args.verbose:
+            print(f"  move mode: {mode_label} (explicit --move-mode {move_mode})", flush=True)
 
         if not plan.meta.get("user_override"):
             if args.verbose:
@@ -497,32 +504,46 @@ def main() -> int:
         )
         if args.verbose:
             print(f"  governor joint max: {plan.gov_joint_max_deg:.0f}deg", flush=True)
-            print(f"  move mode: {mode_label}", flush=True)
+
+        force_observer = None
+        psi_center = None
+        psi_left = None
+        psi_right = None
+        q_toggle_center = None
+        q_toggle_left = None
+        q_toggle_right = None
+        if enable_force and args.scan_duration > 0.0:
+            from rm75_control.control.admittance_common.observer import CompensatedForceObserver
+
+            force_observer = CompensatedForceObserver.from_yaml(raw)
 
         if plan.move_mode == "joint":
-            move_ref = JointSmoothMoveReference(
-                kin, q0_rad, q_target_rad, plan.duration_s
+            move_phase = WbcArm.make_movej_phase(
+                kin,
+                q0_rad,
+                q_target_rad,
+                duration_s=float(plan.duration_s),
+                label=f"movej->{args.slot}",
+                move_kp=float(args.move_kp),
+                gov_joint_max_deg=plan.gov_joint_max_deg,
+                force_observer=force_observer,
             )
             move_duration_s = float(plan.duration_s)
         else:
-            move_ref = make_srs_move_reference(
+            move_phase = WbcArm.make_movel_phase(
                 kin,
                 q0_rad,
                 pose_d,
                 q_target_rad,
-                plan.duration_s,
+                duration_s=float(plan.duration_s),
+                label=f"movel->{args.slot}",
+                move_kp=float(args.move_kp),
+                max_lin_vel_m_s=max_lin,
+                gov_joint_max_deg=plan.gov_joint_max_deg,
+                force_observer=force_observer,
                 euler_order=inner_cfg.euler_order,
-                v_scale=inner_cfg.v_scale,
             )
-            move_duration_s = float(move_ref.duration_s)
-            if args.verbose:
-                dpsi = float(move_ref.psi_target - move_ref.psi_start)
-                print(
-                    f"  SRS ψ {np.degrees(move_ref.psi_start):.1f}deg → "
-                    f"{np.degrees(move_ref.psi_target):.1f}deg "
-                    f"(Δ={np.degrees(dpsi):+.1f}deg shortest-arc)",
-                    flush=True,
-                )
+            move_duration_s = float(move_phase.move_ref.duration_s)
             if move_duration_s > float(plan.duration_s) + 1e-6 and args.verbose:
                 print(
                     f"  SRS duration stretched {plan.duration_s:.2f}s → {move_duration_s:.2f}s "
@@ -538,33 +559,7 @@ def main() -> int:
             v_scale=inner_cfg.v_scale,
         )
 
-        force_observer = None
-        psi_center = None
-        psi_left = None
-        psi_right = None
-        q_toggle_center = None
-        q_toggle_left = None
-        q_toggle_right = None
-        if enable_force and args.scan_duration > 0.0:
-            from rm75_control.control.admittance_common.observer import CompensatedForceObserver
-
-            force_observer = CompensatedForceObserver.from_yaml(raw)
-
-        specs = [
-            phase_cartesian_goto(
-                move_ref,
-                label=f"move->{args.slot}",
-                pose_target=pose_d,
-                q_target_rad=q_target_rad,
-                move_kp=float(args.move_kp),
-                move_mode=plan.move_mode,
-                max_lin_vel_m_s=max_lin,
-                max_duration_s=move_duration_s * 2.5 + 15.0,
-                gov_joint_max_deg=plan.gov_joint_max_deg,
-                require_arrival=True,
-                force_observer=force_observer,
-            ),
-        ]
+        specs = [move_phase]
 
         if args.hold_at_d_s > 0.0:
             specs.append(
@@ -835,28 +830,13 @@ def main() -> int:
                 except Exception:
                     pass
                 if stop_n[0] == 1:
-                    pid = 0
-                    try:
-                        pid = int(phase_client.hub_pid())
-                    except Exception:
-                        pass
                     print(
-                        "\nrm75 task: Ctrl+C — stop requested on window A"
-                        + (f" (pid={pid})" if pid > 1 else "")
-                        + "; if A is stuck in ProxQP, second Ctrl+C SIGKILLs it",
+                        "\nrm75 task: Ctrl+C — stop requested on window A "
+                        "(second Ctrl+C forces exit)",
                         flush=True,
                     )
                     return
-                killed = False
-                try:
-                    killed = bool(phase_client.force_kill_hub())
-                except Exception:
-                    killed = False
-                print(
-                    "\nrm75 task: force exit"
-                    + (" — SIGKILL window A" if killed else " — could not SIGKILL window A"),
-                    flush=True,
-                )
+                print("\nrm75 task: force exit", flush=True)
                 os._exit(130)
 
             prev_int = signal.signal(signal.SIGINT, _on_sig)

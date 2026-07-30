@@ -28,20 +28,6 @@ import math
 import numpy as np
 from scipy.spatial.transform import Rotation as Rsc
 
-# Hard-coded: consecutive primary-sample SRS IK failures before aborting a move.
-# Not a yaml knob — mid-path None used to silently hold last_q and freeze the robot.
-_SRS_IK_FAIL_STREAK_LIMIT = 5
-
-
-def _wrap_pi(a: float) -> float:
-    """Map angle to (-π, π]."""
-    return float((float(a) + np.pi) % (2.0 * np.pi) - np.pi)
-
-
-def _unwrap_psi_shortest(psi_start: float, psi_target: float) -> float:
-    """Target ψ unwrapped so linear interp takes the shortest signed arc."""
-    return float(psi_start) + _wrap_pi(float(psi_target) - float(psi_start))
-
 from rm75_control.control.admittance_common.reference import MotionReference
 
 
@@ -183,13 +169,12 @@ class SrsSmoothMoveReference:
     reference makes the Cartesian PATH straight-line in tool position + slerp
     in tool orientation, while the redundant DOF (ψ) is quintic-interpolated
     between start and target ψ.  Every tick, closed-form ``srs_ik`` yields
-    q_ref(t) on the branch of ``q_start`` when reachable; otherwise a wrapped
-    joint geodesic toward ``q_target`` seeds ``qdot_ff`` / plan-anchor only
-    (``sample()`` stays Cartesian — not a MoveJ mode switch).
+    q_ref(t) on the branch of ``q_start``, so:
 
     * primary-task tracking is a pure line-slerp (no jitter from IK residuals),
-    * ψ transitions are C^2-smooth shortest-arc,
-    * mid-path analytic holes do not abort when ``q_target`` is known.
+    * ψ transitions are C^2-smooth and constrained by the planner's max-swing,
+    * no J1/J4 flip mid-move (branch is locked; :func:`branch_from_q` on
+      ``q_start`` fixes the elbow/wrist configuration for the whole segment).
 
     The loop drives ``inner.arm_task.set_reference(sample_psi(t))`` every tick
     so the arm-angle secondary task tracks the ψ trajectory continuously.
@@ -207,67 +192,40 @@ class SrsSmoothMoveReference:
         branch_id: int | None = None,
         euler_order: str = "xyz",
         d_wt: float | None = None,
-        q_target_rad: np.ndarray | None = None,
+        max_ik_fail_streak: int = 5,
     ) -> None:
-        from rm75_control.kinematics.srs_ik import (
-            branch_from_q,
-            d_wt_from_kin,
-            flange_tcp_from_kin,
-            psi_from_q,
-        )
+        from rm75_control.kinematics.srs_ik import branch_from_q, d_wt_from_kin, psi_from_q
 
         self.kin = kin
         self.q_start = np.asarray(q_start_rad, dtype=float).copy()
         self.pose_start = np.asarray(self.kin.fk_pose(self.q_start), dtype=float)
         self.pose_target = np.asarray(pose_target, dtype=float).copy()
-        self.y_start = float(self.q_start[0])  # prismatic joint value
+        self.y_start = float(self.q_start[0])
         self.y_target = float(y_rail_target_m)
         self.duration_s = float(duration_s)
         q_arm_start = self.q_start[1:]
         self.branch_id = int(branch_id) if branch_id is not None else int(branch_from_q(q_arm_start))
         self.psi_start = float(psi_from_q(q_arm_start))
-        # Keep the principal-value target for diagnostics / reseeds, but
-        # interpolate via the shortest signed arc (149.7°→-175.3° is ~35°,
-        # not ~325°).  Linear (psi_tgt - psi_start) without wrap was the
-        # usual mid-move SRS stall after a J1 ~180° twist.
-        self.psi_target_raw = float(psi_target_rad)
-        self.psi_target = _unwrap_psi_shortest(self.psi_start, self.psi_target_raw)
+        self.psi_target = float(psi_target_rad)
+        # Shortest-arc unwrap so ψ does not travel the long way around ±π.
+        self.psi_delta = float(
+            (self.psi_target - self.psi_start + np.pi) % (2.0 * np.pi) - np.pi
+        )
         self.euler_order = str(euler_order)
         self.d_wt = float(d_wt_from_kin(kin) if d_wt is None else d_wt)
-        self._R_flange_tcp, self._t_flange_tcp = flange_tcp_from_kin(kin)
         R_start = Rsc.from_euler(self.euler_order, self.pose_start[3:])
         R_target = Rsc.from_euler(self.euler_order, self.pose_target[3:])
         self._R_start = R_start
         self._delta_rotvec = (R_target * R_start.inv()).as_rotvec()
         self._last_q = self.q_start.copy()
         self._ik_fail_streak = 0
-        # Joint geodesic seed for qdot_ff when analytic SRS has a hole.
-        self.q_target: np.ndarray | None = (
-            np.asarray(q_target_rad, dtype=float).copy()
-            if q_target_rad is not None
-            else None
-        )
-        self._refresh_joint_delta()
-
-    def _refresh_joint_delta(self) -> None:
-        from rm75_control.control.joint_admittance_8dof.model import wrap_joint_delta
-
-        if self.q_target is None:
-            self._dq_joint = None
-            return
-        self._dq_joint = wrap_joint_delta(self.q_start, self.q_target)
-
-    def _q_joint_at(self, s: float) -> np.ndarray:
-        """Wrapped joint geodesic q_start → q_target at smoothstep fraction s."""
-        if self._dq_joint is None:
-            raise RuntimeError("SrsSmoothMoveReference: q_target required for joint geodesic")
-        return self.q_start + float(s) * self._dq_joint
+        self._max_ik_fail_streak = int(max(1, max_ik_fail_streak))
 
     def reseed_start(self, q_start_rad: np.ndarray) -> None:
         """Re-anchor the quintic at live encoders (soft-start, no Cartesian lurch).
 
-        Keeps ``pose_target`` / ``y_target`` / ``psi_target`` / ``q_target``;
-        recomputes start pose, rail, ψ, branch lock, and joint geodesic.
+        Keeps ``pose_target`` / ``y_target`` / ``psi_target``; recomputes start
+        pose, rail, ψ, and branch lock from ``q_start_rad``.
         """
         from rm75_control.kinematics.srs_ik import branch_from_q, psi_from_q
 
@@ -277,14 +235,15 @@ class SrsSmoothMoveReference:
         q_arm_start = self.q_start[1:]
         self.branch_id = int(branch_from_q(q_arm_start))
         self.psi_start = float(psi_from_q(q_arm_start))
-        self.psi_target = _unwrap_psi_shortest(self.psi_start, self.psi_target_raw)
+        self.psi_delta = float(
+            (self.psi_target - self.psi_start + np.pi) % (2.0 * np.pi) - np.pi
+        )
         R_start = Rsc.from_euler(self.euler_order, self.pose_start[3:])
         R_target = Rsc.from_euler(self.euler_order, self.pose_target[3:])
         self._R_start = R_start
         self._delta_rotvec = (R_target * R_start.inv()).as_rotvec()
         self._last_q = self.q_start.copy()
         self._ik_fail_streak = 0
-        self._refresh_joint_delta()
 
     def _pose_at(self, s: float) -> np.ndarray:
         pos = self.pose_start[:3] + s * (self.pose_target[:3] - self.pose_start[:3])
@@ -294,60 +253,52 @@ class SrsSmoothMoveReference:
         pose[3:] = R_at.as_euler(self.euler_order)
         return pose
 
-    def _q_at(self, s: float, *, track_fail: bool = False) -> np.ndarray:
-        from rm75_control.kinematics.srs_ik import shoulder_y_from_q_rail, srs_ik
+    def _q_at(self, s: float) -> np.ndarray:
+        from rm75_control.kinematics.srs_ik import srs_ik
 
         pose_s = self._pose_at(s)
-        psi_s = self.psi_start + s * (self.psi_target - self.psi_start)
-        q_rail_s = self.y_start + s * (self.y_target - self.y_start)
+        psi_s = self.psi_start + s * self.psi_delta
+        y_s = self.y_start + s * (self.y_target - self.y_start)
         q_arm = srs_ik(
             pose_s,
             psi_s,
             self.branch_id,
-            y_rail=shoulder_y_from_q_rail(q_rail_s),
+            y_rail=y_s,
             euler_order=self.euler_order,
             check_limits=False,
-            R_flange_tcp=self._R_flange_tcp,
-            t_flange_tcp=self._t_flange_tcp,
+            d_wt=self.d_wt,
         )
         q = np.zeros_like(self.q_start)
-        q[0] = q_rail_s
+        q[0] = y_s
         if q_arm is None:
-            # Prefer joint-geodesic qdot_ff (industry posture seed) over abort /
-            # freeze when a goal config is known.  pose_d stays Cartesian.
-            if self.q_target is not None:
-                if track_fail:
-                    self._ik_fail_streak = 0
-                q = self._q_joint_at(s)
-                self._last_q = q.copy()
-                return q
-            if track_fail:
-                self._ik_fail_streak += 1
-                if self._ik_fail_streak >= _SRS_IK_FAIL_STREAK_LIMIT:
-                    raise RuntimeError(
-                        f"SRS mid-path IK failed {_SRS_IK_FAIL_STREAK_LIMIT} consecutive "
-                        f"samples (s={s:.3f}, branch={self.branch_id}). "
-                        "Pass q_target for joint-geodesic qdot_ff, or re-teach pose D."
-                    )
+            self._ik_fail_streak += 1
+            if self._ik_fail_streak >= self._max_ik_fail_streak:
+                raise RuntimeError(
+                    f"SrsSmoothMoveReference: srs_ik returned None for "
+                    f"{self._ik_fail_streak} consecutive samples "
+                    f"(s={s:.3f}, branch={self.branch_id}, "
+                    f"psi={np.degrees(psi_s):.1f}deg). "
+                    f"Refusing silent joint hold (would freeze TCP governor). "
+                    f"Use joint PTP recovery for cross-branch moves."
+                )
             q = self._last_q.copy()
-            q[0] = q_rail_s
+            q[0] = y_s
         else:
-            if track_fail:
-                self._ik_fail_streak = 0
+            self._ik_fail_streak = 0
             q[1:] = q_arm
             self._last_q = q.copy()
         return q
 
     def sample_q(self, t_s: float) -> tuple[np.ndarray, np.ndarray]:
         s, _ds_dt = smoothstep_scalar(t_s, self.duration_s)
-        q = self._q_at(s, track_fail=True)
+        q = self._q_at(s)
         # qdot_ff via central-diff on the smoothstep clock so the loop's
         # Phase.qdot_ff_provider gets a consistent (q, qdot) pair even at t=0/T.
         h = 1.0e-3
         s_plus, _ = smoothstep_scalar(min(t_s + h, self.duration_s), self.duration_s)
         s_minus, _ = smoothstep_scalar(max(t_s - h, 0.0), self.duration_s)
-        q_plus = self._q_at(s_plus, track_fail=False)
-        q_minus = self._q_at(s_minus, track_fail=False)
+        q_plus = self._q_at(s_plus)
+        q_minus = self._q_at(s_minus)
         denom = max(1e-9, (min(t_s + h, self.duration_s) - max(t_s - h, 0.0)))
         qdot = (q_plus - q_minus) / denom
         return q, qdot
@@ -370,7 +321,7 @@ class SrsSmoothMoveReference:
 
     def sample_psi(self, t_s: float) -> float:
         s, _ = smoothstep_scalar(t_s, self.duration_s)
-        return float(self.psi_start + s * (self.psi_target - self.psi_start))
+        return float(self.psi_start + s * self.psi_delta)
 
     def set_origin(self, pose0: np.ndarray) -> None:
         del pose0  # q_start anchors this reference
@@ -520,3 +471,126 @@ class SinToolYReference:
         vel = np.zeros(6, dtype=float)
         vel[:3] = r_mat @ np.array([0.0, vy, 0.0])
         return MotionReference(pose_d=pose, vel_ff=vel, t_ref=t_s)
+
+
+class StreamingJointReference:
+    """Live joint-position setpoint for continuous joint servo (not a PTP segment).
+
+    Caller updates ``set_q`` / ``set_q_deg`` every control epoch; the phase loop
+    tracks ``q_target`` with the same MoveJ stack (direct joint integrate +
+    rail coupling).  ``sample_q`` returns ``(q_target, 0)`` — motion comes from
+    the joint tracking / ``plan_joint`` feedback, not a timed smoothstep.
+    """
+
+    def __init__(self, kin, q0_rad: np.ndarray) -> None:
+        self.kin = kin
+        q0 = np.asarray(q0_rad, dtype=float).reshape(-1).copy()
+        if q0.size != int(kin.nv):
+            raise ValueError(f"q0 size {q0.size} != kin.nv={kin.nv}")
+        self.q_start = q0.copy()
+        self.q_target = q0.copy()
+        self.duration_s = float("inf")
+
+    def set_q(self, q_rad: np.ndarray) -> None:
+        q = np.asarray(q_rad, dtype=float).reshape(-1)
+        if q.size != self.q_target.size:
+            raise ValueError(f"q size {q.size} != {self.q_target.size}")
+        self.q_target = q.copy()
+
+    def set_q_deg(self, joint: list[float] | np.ndarray) -> None:
+        """Industrial list: ``[rail_mm, j1..j7 °]`` or 7-arm ° (rail unchanged)."""
+        j = np.asarray(joint, dtype=float).reshape(-1)
+        q = self.q_target.copy()
+        if j.size == q.size:
+            q[0] = float(j[0]) * 0.001
+            q[1:] = np.deg2rad(j[1:])
+        elif j.size == q.size - 1:
+            q[1:] = np.deg2rad(j)
+        else:
+            raise ValueError(f"joint size {j.size} != {q.size} or {q.size - 1}")
+        self.q_target = q
+
+    def reseed_start(self, q_start_rad: np.ndarray) -> None:
+        q = np.asarray(q_start_rad, dtype=float).reshape(-1).copy()
+        self.q_start = q.copy()
+        self.q_target = q.copy()
+
+    def sample_q(self, t_s: float) -> tuple[np.ndarray, np.ndarray]:
+        del t_s
+        q = self.q_target.copy()
+        return q, np.zeros_like(q)
+
+    def sample(self, t_s: float) -> MotionReference:
+        q, qdot = self.sample_q(t_s)
+        pose = self.kin.fk_pose(q)
+        vel = self.kin.jacobian(q) @ qdot
+        return MotionReference(pose, vel, t_ref=t_s)
+
+    def done(self, t_s: float) -> bool:
+        del t_s
+        return False
+
+
+class StreamingCartesianVelocityReference:
+    """Live Cartesian twist setpoint (MoveV-style open-loop velocity).
+
+    ``set_twist`` accepts a base-frame twist ``[vx,vy,vz,wx,wy,wz]``.
+    ``pose_d`` is integrated from the twist so the track outer loop's pose PD
+    (if any) does not fight the velocity command; pure velocity uses ``k_task=0``.
+    """
+
+    def __init__(self, *, euler_order: str = "xyz") -> None:
+        self.euler_order = str(euler_order)
+        self._pose_d: np.ndarray | None = None
+        self._twist = np.zeros(6, dtype=float)
+        self._t_prev: float | None = None
+
+    def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
+        self._pose_d = np.asarray(pose0, dtype=float).reshape(6).copy()
+        self._t_prev = float(t_s) if t_s is not None else None
+
+    def set_twist(self, twist_base: np.ndarray | list[float]) -> None:
+        self._twist = np.asarray(twist_base, dtype=float).reshape(6).copy()
+
+    def set_twist_tool(
+        self,
+        twist_tool: np.ndarray | list[float],
+        pose: np.ndarray,
+    ) -> None:
+        """Set twist expressed in the tool frame at ``pose`` (converted to base)."""
+        from scipy.spatial.transform import Rotation as Rsc
+
+        tw = np.asarray(twist_tool, dtype=float).reshape(6)
+        R = Rsc.from_euler(self.euler_order, np.asarray(pose, dtype=float)[3:6]).as_matrix()
+        out = np.zeros(6, dtype=float)
+        out[:3] = R @ tw[:3]
+        out[3:6] = R @ tw[3:6]
+        self._twist = out
+
+    def stop(self) -> None:
+        self._twist[:] = 0.0
+
+    def sample(self, t_s: float) -> MotionReference:
+        if self._pose_d is None:
+            raise RuntimeError("StreamingCartesianVelocityReference.set_origin required")
+        t = float(t_s)
+        if self._t_prev is not None:
+            dt = t - float(self._t_prev)
+            if dt > 0.0:
+                self._pose_d = self._pose_d.copy()
+                self._pose_d[:3] = self._pose_d[:3] + self._twist[:3] * dt
+                w = self._twist[3:6]
+                wn = float(np.linalg.norm(w))
+                if wn > 1e-12:
+                    from scipy.spatial.transform import Rotation as Rsc
+
+                    R0 = Rsc.from_euler(self.euler_order, self._pose_d[3:6])
+                    dR = Rsc.from_rotvec(w * dt)
+                    self._pose_d[3:6] = (dR * R0).as_euler(self.euler_order)
+        self._t_prev = t
+        return MotionReference(
+            pose_d=self._pose_d.copy(),
+            vel_ff=self._twist.copy(),
+            t_ref=t,
+        )
+
