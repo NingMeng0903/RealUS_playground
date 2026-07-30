@@ -59,12 +59,17 @@ def test_f_err_gate_relative_to_setpoint():
         EnvironmentStiffnessEstimator,
     )
 
-    cfg = AdaptiveKeConfig(f_err_gate_n=1.2, f_err_gate_frac=0.35)
+    cfg = AdaptiveKeConfig(
+        f_err_gate_n=1.2,
+        f_err_gate_frac=0.35,
+        f_err_gate_floor_n=3.0,
+    )
     est = EnvironmentStiffnessEstimator(cfg, dt=0.005, mass_z=1.0)
-    # Small setpoint: the absolute noise floor dominates.
-    assert est._f_err_gate_eff_n(1.0) == pytest.approx(1.2)
-    # Large setpoint: the relative term takes over (0.35 * 5 = 1.75 > 1.2).
-    assert est._f_err_gate_eff_n(5.0) == pytest.approx(1.75)
+    # Low/zero setpoint: the floor eliminates the old 1.2 N hand-push freeze.
+    assert est._f_err_gate_eff_n(0.0) == pytest.approx(3.0)
+    assert est._f_err_gate_eff_n(1.0) == pytest.approx(3.0)
+    # Large setpoint: the relative term takes over (0.35 * 12 = 4.2 > 3.0).
+    assert est._f_err_gate_eff_n(12.0) == pytest.approx(4.2)
 
 
 def test_proactive_feedforward_in_yaml():
@@ -87,19 +92,21 @@ def test_proactive_feedforward_in_yaml():
     assert "proactive_mode" not in hm
 
 
-def test_contact_rearm_and_fast_crossing_guard_enabled():
-    raw = yaml.safe_load(Path("configs/joint_admittance.yaml").read_text())
+def test_contact_release_and_force_barrier_enabled_in_8dof_yaml():
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     hm = raw["hybrid_motion"]
-    physical = hm["physical_contact"]
-    fast = hm["fast_retract_guard"]
-
-    assert physical["enabled"] is True
-    assert physical["exit_n"] < physical["enter_n"] < physical["hard_enter_n"]
-    assert physical["exit_confirm_s"] >= 0.1
-    assert fast["enabled"] is True
-    assert fast["stop_margin_n"] > 0.0
-    assert fast["rearm_margin_n"] > fast["stop_margin_n"]
-    assert fast["max_sensor_age_s"] <= 0.020
+    assert hm["contact_release_n"] < hm["contact_threshold_n"]
+    assert hm["contact_release_ticks"] >= 5
+    barrier = hm["force_barrier"]
+    assert barrier["enabled"] is True
+    assert barrier["t_react_s"] > 0.0
+    assert barrier["budget_min_n"] > 0.0
+    assert barrier["budget_frac"] > 0.0
+    assert hm["damping_law"] == "trend"
+    assert hm["var_damping_d_u"] == 0.0
+    assert hm["proactive_gain_mode"] == "ke_normalized"
+    assert hm["seek_vz_m_s"] > 0.0
+    assert raw["force"]["causal_fc_hz"] == pytest.approx(10.0)
 
 
 def test_yaml_unified_vz_cap():

@@ -1178,6 +1178,7 @@ def _selective_leg_root_pose_v811(
     _assert_proper_rotation(
         desired[:3, :3],
         f"selective V71 leg root {bone} driver/coupling rotation",
+        atol=2.0e-6,
     )
     response = coupled_joint_responses.get(str(bone))
     if response is None:

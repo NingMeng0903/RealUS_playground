@@ -109,8 +109,11 @@ def test_connected_route_reduces_bone_penetration_without_point_clipping(
     final_signed, _closest, _normals = vessel_route_v8.signed_distance(
         routed, bone_vertices, bone_faces
     )
-    assert float(np.min(final_signed)) > float(np.min(initial_signed)) + 0.02
+    # The V8.11 guard accepts the useful part of the connected correction but
+    # refuses the older, much larger rubber-tube distortion.
+    assert float(np.min(final_signed)) > float(np.min(initial_signed)) + 0.005
     assert report["bone_maximum_penetration_m"] < -float(np.min(initial_signed))
+    assert report["edge_relative_change_q99"] <= 0.05
     # Unconstrained end rings move as part of the connected field.  An
     # independent closest-point clip would leave them exactly unchanged.
     displacement = np.linalg.norm(routed - vertices, axis=1)
@@ -182,6 +185,7 @@ def test_route_fails_when_inside_physical_skin_but_inside_margin(
         max_iterations=1,
         skin_margin_m=0.00025,
         maximum_component_displacement_m=0.0,
+        local_skin_cleanup_max_iterations=0,
     )
 
     assert report["skin_outside_count"] == 0
@@ -189,3 +193,110 @@ def test_route_fails_when_inside_physical_skin_but_inside_margin(
     assert report["skin_maximum_clearance_violation_m"] > 0.0
     assert report["passed"] is False
     assert report["publishable"] is False
+
+
+def test_local_skin_cleanup_accepts_connected_laplacian_containment(
+    monkeypatch: object,
+) -> None:
+    def plane_distance(
+        points: np.ndarray,
+        _surface_vertices: np.ndarray,
+        _surface_faces: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        xyz = np.asarray(points, dtype=np.float64)
+        signed = xyz[:, 0]
+        normals = np.tile(np.asarray((1.0, 0.0, 0.0)), (len(xyz), 1))
+        return signed, xyz - signed[:, None] * normals, normals
+
+    monkeypatch.setattr(vessel_route_v8, "signed_distance", plane_distance)
+    vertices = np.asarray(
+        ((0.01, 0.0, 0.0), (0.01, 1.0, 0.0), (0.01, 1.0, 1.0), (0.01, 0.0, 1.0)),
+        dtype=np.float64,
+    )
+    faces = np.asarray(((0, 1, 2), (0, 2, 3)), dtype=np.int32)
+    component = VesselComponentV8(
+        mesh_name="PlaneTube",
+        vertex_ids=np.arange(len(vertices), dtype=np.int32),
+        local_faces=faces,
+    )
+
+    routed, report = route_vessel_vertices_v8(
+        vertices,
+        [component],
+        skin_vertices=np.zeros((3, 3), dtype=np.float64),
+        skin_faces=np.asarray(((0, 1, 2),), dtype=np.int32),
+        collision_surfaces=[],
+        # Keep the first route stage stationary so this exercises only the
+        # historical local-projection replacement.
+        max_iterations=1,
+        maximum_component_displacement_m=0.0,
+    )
+
+    assert report["local_skin_cleanup"]["accepted"] is True
+    assert report["skin_outside_count"] == 0
+    assert report["skin_clearance_violation_count"] == 0
+    assert report["bone_clearance_violation_count"] == 0
+    assert report["edge_relative_change_q99"] <= 0.05
+    assert report["passed"] is True
+    assert np.all(routed[:, 0] < -0.00025)
+
+
+def test_local_skin_cleanup_rejects_skin_fix_that_enters_bone(
+    monkeypatch: object,
+) -> None:
+    def skin_and_bone_plane_distance(
+        points: np.ndarray,
+        surface_vertices: np.ndarray,
+        _surface_faces: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        xyz = np.asarray(points, dtype=np.float64)
+        normals = np.tile(np.asarray((1.0, 0.0, 0.0)), (len(xyz), 1))
+        # The bone marker has an otherwise harmless z=-1 vertex.  Its bounds
+        # still cover the candidate tube so the route's real broadphase runs.
+        if float(surface_vertices[0, 2]) == -1.0:
+            return np.zeros(len(xyz), dtype=np.float64), xyz.copy(), normals
+        signed = xyz[:, 0]
+        return signed, xyz - signed[:, None] * normals, normals
+
+    monkeypatch.setattr(
+        vessel_route_v8,
+        "signed_distance",
+        skin_and_bone_plane_distance,
+    )
+    vertices = np.asarray(
+        ((0.01, 0.0, 0.0), (0.01, 1.0, 0.0), (0.01, 1.0, 1.0), (0.01, 0.0, 1.0)),
+        dtype=np.float64,
+    )
+    faces = np.asarray(((0, 1, 2), (0, 2, 3)), dtype=np.int32)
+    component = VesselComponentV8(
+        mesh_name="BlockedPlaneTube",
+        vertex_ids=np.arange(len(vertices), dtype=np.int32),
+        local_faces=faces,
+    )
+    skin_vertices = np.asarray(((0.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+    bone_vertices = np.asarray(((0.0, 0.0, -1.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+
+    routed, report = route_vessel_vertices_v8(
+        vertices,
+        [component],
+        skin_vertices=skin_vertices,
+        skin_faces=np.asarray(((0, 1, 2),), dtype=np.int32),
+        collision_surfaces=[
+            CollisionSurfaceV8(
+                "BlockingBone",
+                bone_vertices,
+                np.asarray(((0, 1, 2),), dtype=np.int32),
+            )
+        ],
+        max_iterations=1,
+        maximum_component_displacement_m=0.0,
+    )
+
+    cleanup = report["local_skin_cleanup"]
+    assert cleanup["attempted"] is True
+    assert cleanup["accepted"] is False
+    assert cleanup["candidate_gate"]["skin_outside_count"] == 0
+    assert cleanup["candidate_gate"]["bone_clearance_violation_count"] == len(vertices)
+    np.testing.assert_array_equal(routed, vertices.astype(np.float32))
+    assert report["skin_outside_count"] == len(vertices)
+    assert report["passed"] is False

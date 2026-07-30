@@ -1,19 +1,12 @@
-"""Ellipse-skin dual-case IRD demo: rail-recoverable vs must-twist.
+"""Ellipse-skin IRD demo with rm75 8-DOF QP-IK rail allocation.
 
 Synthetic analogue of Among_US (θ, h, d=0): fixed Y-sweep on ellipse skin,
 probe inward to the vessel. Local task-cone IRD (tip±45° × roll±30° softmax-best)
-is queried about each TCP; the (θ,rail) background therefore moves with path_y.
+is queried about each TCP; the (θ,rail) background moves with path_y.
 
-One nearest path exhibits two regimes along s:
-
-* Phase A (rail-recoverable): fixed nearest θ is reachable once rail slides
-  (nullspace-connected). Baseline rail=0 fails; QP-IK guidance recovers without
-  twisting the skin angle. Rail is not a disconnected half-track.
-* Phase B (must-twist): even max_rail at nearest θ stays under target — globally
-  no solution on the nearest projection; θ must twist on the skin.
-
-At most arm-configuration branch jumps may appear; continuous QP-IK guidance
-handles those. Do not treat rail motion as a "false reachability" trap.
+Rail is raw URDF ``rail_y ∈ [0, 0.8]`` m. On the nearest path, rail is allocated
+by rm75 8-DOF ``solve_pose_ik`` (Escande slack-QP / ProxQP nullspace) — the same
+logic as the live controller — not locked at 0 or clipped to ±0.18.
 """
 
 from __future__ import annotations
@@ -56,18 +49,20 @@ from ird_playground.region.task_cone import TaskConeConfig, TaskConeReachability
 class DemoConfig:
     waypoints: int = 81
     control_points: int = 11
-    # Locked dual-case placement (TaskCone tip±45×roll±30).
-    # Rail is raw URDF rail_y ∈ [rail_min, rail_max] (see robot contract / README),
-    # allocated on the nearest path by rm75 8-DOF QP-IK nullspace — not locked at 0.
-    ellipse_center_x_m: float = 0.28
-    ellipse_center_z_m: float = 0.14
+    # Locked dual-case placement (TaskCone tip±45×roll±30), Y-span 40 cm.
+    # Vessel above/oblique (+oz,+ox) → nearest on UPPER skin (θ≈+50°), not bottom.
+    # Mid/late path: nearest C*<target → must twist within the upper chart.
+    ellipse_center_x_m: float = 0.460
+    ellipse_center_z_m: float = 0.120
     semi_axis_x_m: float = 0.13
     semi_axis_z_m: float = 0.08
-    vessel_offset_x_m: float = 0.070
-    vessel_offset_z_m: float = 0.015
-    path_y_min_m: float = 0.05
+    vessel_offset_x_m: float = 0.100
+    vessel_offset_z_m: float = 0.020
+    # Extruded cylinder length along world-Y = 40 cm.
+    path_y_min_m: float = 0.00
     path_y_max_m: float = 0.40
-    theta_limit_deg: float = 40.0
+    # Chart covers upper / upper-oblique nearest (~50°) plus twist room.
+    theta_limit_deg: float = 60.0
     # Absolute URDF rail_y window (not a ±half-travel chart).
     rail_min_m: float = 0.0
     rail_max_m: float = 0.8
@@ -79,16 +74,16 @@ class DemoConfig:
     target_clearance: float | None = None
     clearance_margin: float = 0.05
     ird_softplus_scale: float = 0.12
-    # Prefer nearest θ while rail can recover; IRD hinge forces twist only in Phase B.
-    w_ird: float = 1.50
-    w_nearest: float = 1.60
-    w_continuity: float = 0.35
-    w_curvature: float = 0.02
-    w_rail_anchor: float = 0.015
+    # Prefer nearest on upper skin while rail recovers; IRD hinge twists in Phase B.
+    w_ird: float = 1.80
+    w_nearest: float = 1.20
+    w_continuity: float = 0.25
+    w_curvature: float = 0.015
+    w_rail_anchor: float = 0.30
     seed: int = 109
     # Soft hints for phase-weighted loss (diagnostics use data-driven split).
     phase_a_s_max: float = 0.55
-    phase_b_s_min: float = 0.80
+    phase_b_s_min: float = 0.70
     rail_probe_samples: int = 17
     theta_probe_samples: int = 13
 
@@ -569,6 +564,20 @@ def audit_task_cone_gt(
     }
 
 
+def fit_rail_raw_from_path(
+    rail_m: np.ndarray,
+    basis: np.ndarray | torch.Tensor,
+    cfg: DemoConfig,
+    device: torch.device,
+) -> torch.Tensor:
+    """Least-squares B-spline fit of absolute rail_y → tanh raw control points."""
+    B = np.asarray(basis if not torch.is_tensor(basis) else basis.detach().cpu().numpy(), dtype=np.float64)
+    r = np.asarray(rail_m, dtype=np.float64).reshape(-1)
+    cp, *_ = np.linalg.lstsq(B, r, rcond=None)
+    cp = np.clip(cp, float(cfg.rail_min_m), float(cfg.rail_max_m))
+    return encode_rail_raw(torch.as_tensor(cp, device=device, dtype=torch.float32), cfg)
+
+
 def optimize_trajectory(
     field,
     region: TaskConeReachability,
@@ -577,21 +586,32 @@ def optimize_trajectory(
     *,
     T_rail_axis: torch.Tensor,
     m_safe: float | None = None,
+    rail_ref_m: np.ndarray | None = None,
 ) -> dict:
     s = torch.linspace(0.0, 1.0, cfg.waypoints, device=device)
     path_y = cfg.path_y_min_m + (cfg.path_y_max_m - cfg.path_y_min_m) * s
-    basis = torch.as_tensor(bspline_basis(s.cpu().numpy(), cfg.control_points), device=device)
+    basis_np = bspline_basis(s.cpu().numpy(), cfg.control_points)
+    basis = torch.as_tensor(basis_np, device=device)
     theta_limit = np.deg2rad(cfg.theta_limit_deg)
     th_nearest = float(nearest_theta_rad(cfg))
-    # θ = θ_near + Δθ(s); start at zero delta so Phase A stays on nearest until IRD forces twist.
+    # θ = wrap(θ_near + Δθ(s)); |Δθ|≤theta_limit. No absolute clamp — that would
+    # trap θ_near≈π near the ±π wall and block twisting to the IRD peak.
     raw_dtheta = torch.nn.Parameter(torch.zeros(cfg.control_points, device=device))
-    # Start rail near mid-stroke; QP-IK will set the nearest-path rail separately.
-    raw_rail = torch.nn.Parameter(
-        encode_rail_raw(
-            torch.full((cfg.control_points,), float(cfg.rail_nominal_m), device=device),
-            cfg,
+    # Init / anchor rail to 8DOF QP-IK allocation when provided (not mid-stroke lock).
+    if rail_ref_m is None:
+        rail_ref = np.full(cfg.waypoints, float(cfg.rail_nominal_m), dtype=np.float64)
+        raw_rail = torch.nn.Parameter(
+            encode_rail_raw(
+                torch.full((cfg.control_points,), float(cfg.rail_nominal_m), device=device),
+                cfg,
+            )
         )
-    )
+    else:
+        rail_ref = np.asarray(rail_ref_m, dtype=np.float64).reshape(-1)
+        if len(rail_ref) != cfg.waypoints:
+            raise ValueError("rail_ref_m length must match waypoints")
+        raw_rail = torch.nn.Parameter(fit_rail_raw_from_path(rail_ref, basis_np, cfg, device))
+    rail_ref_t = torch.as_tensor(rail_ref, device=device, dtype=torch.float32)
     optimizer = torch.optim.Adam((raw_dtheta, raw_rail), lr=cfg.learning_rate)
     history: list[dict[str, float]] = []
     target = resolve_clearance_target(cfg, m_safe)
@@ -608,14 +628,18 @@ def optimize_trajectory(
     phase_w = torch.where(s <= float(cfg.phase_a_s_max), phase_w * 2.0, phase_w)
     phase_w = torch.where(s >= float(cfg.phase_b_s_min), phase_w * 0.40, phase_w)
 
+    def _decode_theta(raw: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        dtheta = basis @ (theta_limit * torch.tanh(raw))
+        # θ = θ_near + Δθ with |Δθ|≤limit (no absolute ±limit clamp — that would
+        # eject upper-oblique nearest ~50° when limit is 60°).
+        th = th_near_t + dtheta
+        th = torch.atan2(torch.sin(th), torch.cos(th))
+        return th, dtheta
+
     for epoch in range(cfg.epochs):
         optimizer.zero_grad(set_to_none=True)
-        dtheta = basis @ (theta_limit * torch.tanh(raw_dtheta))
-        theta = th_near_t + dtheta
-        # Keep absolute θ inside chart limits.
-        theta = torch.clamp(theta, -theta_limit, theta_limit)
+        theta, dtheta = _decode_theta(raw_dtheta)
         rail = basis @ decode_rail_raw(raw_rail, cfg)
-        # Keep rail inside URDF travel (decode already maps into [min,max] via tanh).
         tcp = ellipse_surface_tcp(theta, path_y, cfg)
         eye = torch.eye(4, device=device)
         clearance = region.query_tcp_rail(
@@ -631,8 +655,9 @@ def optimize_trajectory(
         curvature = torch.mean(torch.diff(dtheta_s) ** 2) + torch.mean(
             (torch.diff(drail) / 0.25) ** 2
         )
+        # Stick to QP-IK rail when feasible; only IRD hinge should pull away.
         rail_anchor = torch.mean(
-            ((rail - float(cfg.rail_nominal_m)) / max(rail_half_span_m(cfg), 1.0e-6)) ** 2
+            ((rail - rail_ref_t) / max(0.08, 1.0e-6)) ** 2
         )
         loss = (
             float(cfg.w_ird) * ird
@@ -658,17 +683,19 @@ def optimize_trajectory(
                     "theta_dev_nearest_deg_rms": float(
                         torch.sqrt(torch.mean(dtheta ** 2)).detach() * (180.0 / np.pi)
                     ),
+                    "rail_dev_ref_rms_m": float(
+                        torch.sqrt(torch.mean((rail - rail_ref_t) ** 2)).detach()
+                    ),
                     "m_safe": target,
                 }
             )
 
     with torch.no_grad():
-        dtheta = basis @ (theta_limit * torch.tanh(raw_dtheta))
-        theta = torch.clamp(th_near_t + dtheta, -theta_limit, theta_limit)
+        theta, dtheta = _decode_theta(raw_dtheta)
         rail = basis @ decode_rail_raw(raw_rail, cfg)
-    # Nearest-projection TCP at fixed θ; rail filled later by 8-DOF QP-IK allocation.
+    # Nearest-projection TCP at fixed θ; rail filled by caller with 8-DOF QP-IK.
     initial_theta = torch.full_like(theta, th_nearest)
-    initial_rail = torch.full_like(rail, float(cfg.rail_nominal_m))
+    initial_rail = torch.as_tensor(rail_ref, device=device, dtype=torch.float32)
     initial_clearance, initial_grad_theta, initial_grad_rail = query_with_gradients(
         field, region, initial_theta, initial_rail, path_y, cfg, T_rail_axis=T_rail_axis
     )
@@ -683,6 +710,7 @@ def optimize_trajectory(
         "theta_rad": theta.cpu().numpy(),
         "initial_rail_m": initial_rail.cpu().numpy(),
         "rail_m": rail.cpu().numpy(),
+        "rail_ref_m": rail_ref.astype(np.float64),
         "initial_tcp": ellipse_surface_tcp(initial_theta, path_y, cfg).detach().cpu().numpy(),
         "tcp": ellipse_surface_tcp(theta, path_y, cfg).detach().cpu().numpy(),
         "initial_clearance": initial_clearance.cpu().numpy(),
@@ -698,7 +726,6 @@ def optimize_trajectory(
 
 def render_cross_section(cfg: DemoConfig, result: dict, out_path: Path) -> dict:
     import matplotlib.pyplot as plt
-    from matplotlib.lines import Line2D
 
     a, b = cfg.semi_axis_x_m, cfg.semi_axis_z_m
     cx, cz = cfg.ellipse_center_x_m, cfg.ellipse_center_z_m
@@ -718,26 +745,39 @@ def render_cross_section(cfg: DemoConfig, result: dict, out_path: Path) -> dict:
     harm0 = harmonic_skin_from_theta_np(0.0, cfg)
     nearest, vessel = nearest_skin_from_vessel_np(cfg)
 
-    fig, ax = plt.subplots(figsize=(8.5, 7.5), dpi=160)
+    fig, ax = plt.subplots(figsize=(7.2, 6.2), dpi=160)
     if np.isfinite(D).any():
         levels = np.linspace(0.0, 1.0, 11)
         cs = ax.contourf(X, Z, D, levels=levels, cmap="YlGnBu", alpha=0.85)
         ax.contour(X, Z, D, levels=levels, colors="#455a64", linewidths=0.4, alpha=0.5)
-        fig.colorbar(cs, ax=ax, label="analytic d")
-    ax.plot(ex, ez, color="#37474f", lw=2.2, label="ellipse skin")
-    ax.scatter([cx], [cz], c="#90a4ae", s=40, label="ellipse center")
-    ax.scatter([vx], [vz], c="#c62828", s=70, zorder=5, label="vessel")
-    ax.plot([vx, harm0[0]], [vz, harm0[1]], color="#1565c0", lw=1.8, linestyle="--")
-    ax.scatter([harm0[0]], [harm0[1]], c="#1565c0", s=55, zorder=5, label="d=0 @ θ=0")
-    ax.plot([vx, harm[0]], [vz, harm[1]], color="#2e7d32", lw=2.0)
-    ax.scatter([harm[0]], [harm[1]], c="#00e676", edgecolor="black", s=70, zorder=6, label="d=0 @ θ_opt(mid)")
-    ax.plot([vx, nearest[0]], [vz, nearest[1]], color="#ef6c00", lw=1.8, linestyle=":")
-    ax.scatter([nearest[0]], [nearest[1]], c="#ef6c00", s=55, zorder=5, label="nearest skin")
+        fig.colorbar(cs, ax=ax, label=r"$d$")
+    ax.plot(ex, ez, color="#37474f", lw=2.0, label="skin")
+    ax.scatter([cx], [cz], c="#90a4ae", s=36, label="center", zorder=4)
+    ax.scatter([vx], [vz], c="#c62828", s=55, zorder=5, label="vessel")
+    ax.plot([vx, harm0[0]], [vz, harm0[1]], color="#1565c0", lw=1.6, linestyle="--")
+    ax.scatter([harm0[0]], [harm0[1]], c="#1565c0", s=48, zorder=5, label=r"$\theta=0$")
+    ax.plot([vx, harm[0]], [vz, harm[1]], color="#2e7d32", lw=1.8)
+    ax.scatter(
+        [harm[0]], [harm[1]], c="#00e676", edgecolor="black", s=58, zorder=6, label="optimized"
+    )
+    ax.plot([vx, nearest[0]], [vz, nearest[1]], color="#ef6c00", lw=1.6, linestyle=":")
+    ax.scatter([nearest[0]], [nearest[1]], c="#ef6c00", s=48, zorder=5, label="nearest")
     ax.set_aspect("equal")
-    ax.set_xlabel("world x (m)")
-    ax.set_ylabel("world z (m)")
-    ax.set_title("Ellipse section: harmonic d=0 vs nearest")
-    ax.legend(loc="upper right", fontsize=8)
+    ax.set_xlabel(r"$x$ (m)")
+    ax.set_ylabel(r"$z$ (m)")
+    ax.set_title("Cross-section")
+    # Legend outside axes so upper-right markers stay visible.
+    handles, labels = ax.get_legend_handles_labels()
+    fig.legend(
+        handles,
+        labels,
+        loc="upper center",
+        bbox_to_anchor=(0.48, -0.01),
+        ncol=3,
+        fontsize=9,
+        frameon=False,
+    )
+    fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
 
@@ -1615,41 +1655,41 @@ def main(argv: list[str] | None = None) -> int:
     gt_region = RegionA(RegionAConfig(samples=64, cone_half_angle_deg=3.0, seed=17)).to(device)
     m_safe = load_conformal_threshold(resolve(args.conformal))
     target = resolve_clearance_target(cfg, m_safe)
-    result = optimize_trajectory(
-        field, task_cone, cfg, device, T_rail_axis=T_rail_axis, m_safe=m_safe
-    )
 
-    # Nearest path rail = rm75 8-DOF QP-IK nullspace allocation (absolute URDF rail_y).
-    print("[qpik-8dof] allocating rail on nearest TCP path…", flush=True)
-    qpik_near = allocate_qpik_8dof_path(result["initial_tcp"], cfg=cfg)
-    result["initial_rail_m"] = np.asarray(qpik_near["rail_m"], dtype=np.float64)
-    result["qpik_nearest"] = qpik_near
-    # Re-score nearest clearance at QP-IK rail (not mid-stroke placeholder).
+    # 1) Nearest TCP path at fixed θ.
+    s0 = np.linspace(0.0, 1.0, cfg.waypoints)
+    path_y0 = cfg.path_y_min_m + (cfg.path_y_max_m - cfg.path_y_min_m) * s0
+    th_near = float(nearest_theta_rad(cfg))
     with torch.no_grad():
-        th0 = torch.as_tensor(result["initial_theta_rad"], device=device, dtype=torch.float32)
-        rr0 = torch.as_tensor(result["initial_rail_m"], device=device, dtype=torch.float32)
-        py0 = torch.as_tensor(result["path_y_m"], device=device, dtype=torch.float32)
-        eye = torch.eye(4, device=device)
-        result["initial_clearance"] = (
-            task_cone.query_tcp_rail(
-                field,
-                ellipse_surface_tcp(th0, py0, cfg),
-                rr0,
-                T_world_rail=eye,
-                T_rail_base0=T_rail_axis,
-                rail_axis=1,
-            )
-            .best_clearance.detach()
-            .cpu()
-            .numpy()
-        )
+        tcp_near0 = ellipse_surface_tcp(
+            torch.full((cfg.waypoints,), th_near, device=device),
+            torch.as_tensor(path_y0, device=device, dtype=torch.float32),
+            cfg,
+        ).detach().cpu().numpy()
+
+    # 2) 8DOF QP-IK allocates absolute rail_y on nearest TCP (nullspace).
+    print("[qpik-8dof] allocating rail on nearest TCP path…", flush=True)
+    qpik_near = allocate_qpik_8dof_path(tcp_near0, cfg=cfg)
     print(
         f"[qpik-8dof] nearest rail {qpik_near['rail_min_m']:.3f}→{qpik_near['rail_max_m']:.3f}m "
         f"(Δ={qpik_near['rail_delta_m']:.3f}m) ok_frac={qpik_near['ok_fraction']:.2f}",
         flush=True,
     )
 
-    # Dual-case probe on the nearest projection (before / independent of optimization).
+    # 3) Optimize θ/rail starting from QP-IK rail (not mid-stroke lock).
+    result = optimize_trajectory(
+        field,
+        task_cone,
+        cfg,
+        device,
+        T_rail_axis=T_rail_axis,
+        m_safe=m_safe,
+        rail_ref_m=np.asarray(qpik_near["rail_m"], dtype=np.float64),
+    )
+    result["qpik_nearest"] = qpik_near
+    # initial_rail_m already = QP-IK ref inside optimize_trajectory.
+
+    # Dual-case probe on the nearest projection.
     probe = probe_nearest_rail_and_twist(
         field, task_cone, cfg, result["path_y_m"], T_rail_axis=T_rail_axis,
         th_near=float(nearest_theta_rad(cfg)),
@@ -1933,8 +1973,9 @@ def main(argv: list[str] | None = None) -> int:
             },
             "note": (
                 "Local tip±45°×roll±30° task-cone about each TCP; field background "
-                "recomputes with path_y(s). Not a global IRD. Rail is nullspace-"
-                "connected — no false half-track reachability trap."
+                "recomputes with path_y(s). Rail axis is absolute URDF rail_y∈[0,0.8]. "
+                "Nearest path rail comes from rm75 8-DOF ProxQP IK (nullspace), not a "
+                "locked ±0.18 chart."
             ),
         },
         "neural": {

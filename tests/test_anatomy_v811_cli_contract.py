@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
 import pytest
 
+from projects.genesis_ue_sync.anatomy_retarget.cli import run_anatomy_v8
 from projects.genesis_ue_sync.anatomy_retarget.cli.run_anatomy_v8 import (
     _load_tube_corrective_pose_samples,
+    _matrix_body_surfaces,
     _v811_summary_text,
     build_parser,
 )
@@ -146,3 +149,116 @@ def test_validate_matrix_accepts_labeled_beta_specific_body_surfaces() -> None:
     )
 
     assert parsed.body_surfaces == ["reference=canonical-beta"]
+
+
+def test_matrix_body_surface_loader_requires_canonical_beta_provenance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "canonical"
+    root.mkdir()
+    betas = np.linspace(-0.25, 0.25, 10, dtype=np.float32)
+    digest = "a" * 64
+    (root / "source_manifest.json").write_text(
+        json.dumps({"source": "capture-213328", "betas": betas.tolist()}),
+        encoding="utf-8",
+    )
+    (root / "smpl_canonical_tpose.obj").write_text(
+        "\n".join(
+            (
+                "v -1 -1 -1",
+                "v 1 -1 -1",
+                "v 0 1 -1",
+                "v 0 0 1",
+                "f 1 2 3",
+                "f 1 4 2",
+                "f 2 4 3",
+                "f 3 4 1",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    np.savez(
+        root / "smpl_canonical_weights.npz",
+        lbs_weights=np.pad(
+            np.ones((4, 1), dtype=np.float32), ((0, 0), (0, 54))
+        ),
+        rest_joints=np.zeros((55, 3), dtype=np.float32),
+        parents=np.asarray((-1,) + (0,) * 54, dtype=np.int32),
+        inverse_bind=np.tile(np.eye(4, dtype=np.float32), (55, 1, 1)),
+    )
+    monkeypatch.setattr(
+        run_anatomy_v8,
+        "_source_skin_volume_digest",
+        lambda _root: digest,
+    )
+
+    loaded = _matrix_body_surfaces([f"reference={root}"])["reference"]
+
+    np.testing.assert_array_equal(loaded.canonical_betas, betas)
+    assert loaded.canonical_source_identity == "capture-213328"
+    assert loaded.canonical_manifest_digest is not None
+
+
+def test_matrix_body_surface_loader_reindexes_lbs_with_outer_component(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "canonical"
+    root.mkdir()
+    (root / "source_manifest.json").write_text(
+        json.dumps({"betas": [0.0] * 10}), encoding="utf-8"
+    )
+    (root / "smpl_canonical_tpose.obj").write_text(
+        "\n".join(
+            (
+                "v -1 -1 -1",
+                "v 1 -1 -1",
+                "v 0 1 -1",
+                "v 0 0 1",
+                "v 4 4 4",
+                "v 5 4 4",
+                "v 4 5 4",
+                "v 4 4 5",
+                "f 1 2 3",
+                "f 1 4 2",
+                "f 2 4 3",
+                "f 3 4 1",
+                "f 5 6 7",
+                "f 5 8 6",
+                "f 6 8 7",
+                "f 7 8 5",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    weights = np.zeros((8, 55), dtype=np.float32)
+    weights[:4, 1] = 1.0
+    weights[4:, 2] = 1.0
+    np.savez(
+        root / "smpl_canonical_weights.npz",
+        lbs_weights=weights,
+        rest_joints=np.zeros((55, 3), dtype=np.float32),
+        parents=np.asarray((-1,) + (0,) * 54, dtype=np.int32),
+        inverse_bind=np.tile(np.eye(4, dtype=np.float32), (55, 1, 1)),
+    )
+    monkeypatch.setattr(run_anatomy_v8, "_source_skin_volume_digest", lambda _root: "a" * 64)
+
+    loaded = _matrix_body_surfaces([f"reference={root}"])["reference"]
+
+    assert loaded.vertices.shape == (4, 3)
+    assert loaded.lbs_weights.shape == (4, 55)
+    np.testing.assert_array_equal(loaded.lbs_weights[:, 1], np.ones(4))
+    np.testing.assert_array_equal(loaded.lbs_weights[:, 2], np.zeros(4))
+
+
+def test_matrix_body_surface_loader_rejects_missing_source_manifest(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "canonical"
+    root.mkdir()
+
+    with pytest.raises(ValueError, match="canonical provenance"):
+        _matrix_body_surfaces([f"reference={root}"])

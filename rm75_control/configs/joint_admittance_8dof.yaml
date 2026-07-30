@@ -232,7 +232,9 @@ force:
   phi_source: phi_recommended
   fc_hz: 6.0
   min_samples: 22
-  causal_fc_hz: 6.0
+  # Keemink 2018 Guideline 2 / Eq.(11): lower force-LPF group delay reduces
+  # the virtual-mass passivity floor. 10 Hz ≈ half the previous 6 Hz delay.
+  causal_fc_hz: 10.0
   causal_order: 2
   causal_history: 5
   # Inertia compensation off: on the joint stream it injected command-side
@@ -240,8 +242,8 @@ force:
   use_inertia: false
 
 hybrid_motion:
-  # Single force controller: 2965fea dynamics with setpoint-normalized,
-  # energy-aware bidirectional tracking. There is no runtime mode switch.
+  # Low baseline damping + Dimeas variable INERTIA + Ke-normalized proactive
+  # FF + force-space velocity damper. Implicit-Euler discrete admittance.
   # Tool-frame masks — all axis discrimination is tool-frame, so this config
   # supports any spatial trajectory (Y sweep, arc, spline, teleop) as long as
   # force_axes selects the surface-normal tool axis.
@@ -254,125 +256,115 @@ hybrid_motion:
   pos_err_deadband_m: 0.0005
   pos_correction_max_m_s: 0.08
   system_delay_s: 0.015
-  # fz-only enter-only contact latch: lateral scan shear must not flip contact.
+  # fz-only enter-only contact latch + hysteretic release that re-arms ramp.
+  # Require a real gap (~200 ms below 0.25 N), not a single tracking dip.
   contact_threshold_n: 0.8
   contact_use_fz_only: true
+  contact_release_n: 0.25
+  contact_release_ticks: 40
   # Noise-rejection deadband — a FIXED sensor-noise quantity, never scaled
   # with desired_z (scaling it made a 5 N hold need >0.5 N over-force before
   # any retract authority: the "over-force / heavy damping" hand feel).
-  deadband_n: 0.10
-  deadband_width_n: 0.10
+  deadband_n: 0.05
+  deadband_width_n: 0.05
   # Tool-frame velocity/acceleration caps. Tangential X == Y (trajectory-
   # agnostic); tool-Z equals max_vz_tool_m_s below (single vz authority —
   # scan-jitter-fix §2a: two disagreeing caps caused admittance-state windup).
   max_velocity: [0.22, 0.22, 0.10, 0.6, 0.6, 0.6]
   max_acceleration: [1.0, 1.0, 0.8, 2.0, 2.0, 2.0]
   admittance_mass_z: 1.0
-  admittance_damping_z: 25.0   # free-space D (adaptive_ke b_d(t) takes over on contact)
-  # One press/retract cap, applied identically in and out of contact.
-  # Bounce control is handled by stiff-first K̂_e + Dimeas inertia.
+  admittance_damping_z: 25.0   # legacy free-space seed (ke_critical path only)
+  # Trend damping (default): low fixed base + |e| and expanding-error terms.
+  # Dimeas contributes via inertia only (d_u=0). Set damping_law: ke_critical
+  # to restore the old Keemink critical-damping path for A/B.
+  damping_law: trend
+  damping_base_z: 15.0
+  damping_alpha_e: 1.5
+  damping_beta_e_edot: 3.0
+  damping_max_z: 400.0
+  edot_lpf_s: 0.02
+  # Free-space seek speed independent of desired force (f_err saturates).
+  seek_vz_m_s: 0.015
+  seek_force_sat_n: 1.0
+  # Absolute tool-Z ceiling (force barrier applies tighter press/retract caps).
   max_vz_tool_m_s: 0.10
-  # Engagement ramp: tool-Z setpoint ramps from ~contact threshold to full
-  # desired_z over this many seconds of latched contact (smooth force start).
-  desired_force_ramp_s: 1.0
-  # Dimeas & Aspragathos 2016 variable-INERTIA channel on tool-Z. The
-  # instability index Iₛ is an HP-filtered raw-force energy ratio (5–20 Hz
-  # contact-resonance band). M(t) = admittance_mass_z + m_u·Iₛ capped at
-  # m_max; a small residual D bump d_u·Iₛ rides on top of the adaptive b_d.
-  # Table 2 in the paper: inertia adaptation is ~5× better than damping-only
-  # on operator effort, so d_u is kept small and m_u carries the load.
+  # Engagement ramp: re-armed every contact episode (release clears timer).
+  desired_force_ramp_s: 0.5
+  # Force-space Faverjon velocity damper (does NOT use K̂e — estimator is
+  # often stale at steady contact where |Δx| < dx_threshold).
+  force_barrier:
+    enabled: true
+    t_react_s: 0.030          # synced with causal_fc_hz=10 (~half of 6 Hz delay)
+    budget_min_n: 0.5
+    budget_frac: 0.4
+    f_keep_n: 0.5
+    v_ref_m_s: 0.05
+    v_min_retract_m_s: 0.002
+    fdot_lpf_s: 0.040
+  # Dimeas & Aspragathos 2016 variable-INERTIA channel on tool-Z.
+  # Table 2: inertia adaptation is ~5× better than damping-only on operator
+  # effort — d_u is ZERO; m_u carries the oscillation suppression.
   var_damping_enabled: true
   var_damping_omega_c_hz: 2.5
-  # Iₛ final-stage EWMA smoothing. Dimeas & Aspragathos 2016 tune λ=0.99 at
-  # their 1 kHz loop rate -> τ=-Ts/ln(λ)≈0.0995 s. The previous 0.998 at our
-  # 200 Hz rate gave τ≈2.5 s (25x slower than the paper): bounce_2n.csv
-  # 6.5-7 Hz episodes showed Iₛ eventually crossing the gate but only after
-  # fz had already built to 5-6 N. 0.951 = exp(-dt/0.1) reproduces the
-  # paper's ~0.1 s equivalent bandwidth at 200 Hz.
+  # Iₛ final-stage EWMA: 0.951 = exp(-dt/0.1) ≈ paper's 0.1 s at 200 Hz.
   var_damping_lambda: 0.951
   var_damping_f_max_n: 7.0
-  var_damping_d_u: 2.0
+  var_damping_d_u: 0.0
   var_damping_m_u: 4.0
-  # Dimeas & Aspragathos 2016 Eq. (8): md = md_min + m_u·Iₛ. Iₛ is the
-  # paper's Eq. (5) UNBOUNDED leaky accumulator (its own Sec. 4.1: "not
-  # bounded by 1 ... increases exponentially in proportion to the
-  # magnitude of the oscillation"), so md is unbounded in the paper's own
-  # law too — there is no "natural bound" to derive a cap from. This is
-  # purely our own hardware safety limit (virtual-mass authority); Keemink
-  # b_d = 2ζ√(m·Ke) at m=5, Ke≈1500 is ~156 (under bd_max=200), so damping
-  # doesn't hit its own cap first when this one engages.
   var_damping_m_max: 5.0
   var_damping_dc_alpha: 0.02
   adaptive_ke:
-    # Asymmetric-λ EWMA of |ΔF/Δx| (Duan et al. 2018 eq. 14, with the
-    # 27c1689 asymmetric-forgetting bias toward stiffer estimates) on the
-    # normal (tool-Z) admittance axis; Keemink 2018 §III.C critical damping
-    # b_d = 2·ζ·sqrt(m_d · K̂_e).
+    # K̂e now primarily normalises proactive FF gain (1/(Ke·τ)); critical
+    # damping is only consumed when damping_law: ke_critical.
     enabled: true
     zeta: 0.9
-    # ke_initial is the SEED at reset() and the target for the soft
-    # idle/detach decays. On a contact rising edge K̂_e JUMPS UP to
-    # ke_impact_initial (stiff-first, safe overdamped-at-impact) and then
-    # learns down on soft surfaces via ΔF/Δx. A previous refactor's
-    # "hold-last-K̂_e" without stiff-first grew unbounded (72 → 1866 in
-    # 50 s on scan_v5); a hard reset to a low seed on every re-impact
-    # under-damped every bounce cycle. The two-branch design (impact jump
-    # + soft decay) matches the hardware-tested 27c1689 behaviour.
     ke_initial: 80.0
     ke_min: 40.0
     ke_max: 2500.0
     ke_impact_initial: 1500.0
-    ke_forgetting: 0.995         # slow forget (surface softens)
-    ke_forgetting_inc: 0.88      # fast track  (surface stiffens)
-    ke_idle_decay_s: 2.0         # steady-contact decay toward ke_initial
-    # Phase B1: idle decay target = max(ke_initial, ke_soft_floor) so chase
-    # bandwidth on soft tissue does not pull b_d down to the ~16 N·s/m band.
+    ke_forgetting: 0.995
+    ke_forgetting_inc: 0.88
+    ke_idle_decay_s: 2.0
     ke_soft_floor: 300.0
-    ke_detach_decay_s: 1.0       # out-of-contact decay (keeps 95 % across a 50 ms bounce)
+    ke_detach_decay_s: 1.0
     displacement_source: admittance
     dx_threshold_m: 0.00008
     contact_force_n: 0.8
-    settle_ticks: 10             # hold K̂_e after contact-latch first-impact transient
-    # Direction-agnostic tangential-speed gate: |v_lat| = ||R_tool^T v_pos_base_xy||.
-    # Any sweep direction (Y, X, arc, spline, teleop) gates learning the same way.
+    settle_ticks: 10
     gate_lateral_velocity: true
     lateral_vel_gate_m_s: 0.02
     gate_df_spike: true
     df_spike_n: 4.0
-    # Effective |f_err| gate = max(f_err_gate_n, f_err_gate_frac * f_des_z):
-    # the absolute value is the small-setpoint noise floor, the fraction keeps
-    # the steady/transient judgement self-similar at any setpoint. A fixed
-    # 1.2 N gate at a 5 N hold froze K̂_e at ke_impact_initial (b_d ~70+) and
-    # made the retract feel heavily damped.
     f_err_gate_n: 1.2
     f_err_gate_frac: 0.35
+    # Floor so desired_z→0 never collapses the gate to 1.2 N (hand-push freeze).
+    f_err_gate_floor_n: 3.0
+    # Idle decay freezes on Dimeas Iₛ, not on |f_err| (hand push ≠ oscillation).
+    idle_decay_is_gate: 0.15
     bd_min: 25.0
     bd_max: 200.0
     bd_slew_max: 400.0
     ke_slew_max: 1200.0
-  # Energy-aware leaky force reference:
-  # - under-force press is normalized and Dimeas-gated (cannot keep injecting
-  #   motion into a contact that is already oscillating);
-  # - over-force retract uses the same small-error gain but is never closed by
-  #   Dimeas (escape/release must remain available);
-  # - an effective-error sign reversal clears only stale v_r, not v_force.
+  # Yanan Li proactive reference: default gain_mode=ke_normalized so the same
+  # Newton of force error asks for far less motion on a stiff surface.
+  # gain_mode: fixed restores the legacy setpoint-normalized integrator.
   proactive_feedforward: true
   proactive_retract_only: false
+  proactive_gain_mode: ke_normalized
+  tau_ff_s: 0.20
+  ke_floor_ff: 80.0
+  tau_track_s: 0.08
+  alpha_leak: 2.0
+  # Legacy fixed-mode gains (used only when gain_mode: fixed).
   proactive_gain: 0.10
   proactive_retract_gain: 0.10
   proactive_leak_s: 0.3
   v_r_max_m_s: 0.06
-  # Normal hand motion/noise often leaves Is≈0.2 without sustained 4–12 Hz
-  # bounce. Keep press authority below the start point, then fade it to zero
-  # at the existing 0.60 hard stop. Dimeas M(t) and critical D remain active
-  # throughout this interval.
   proactive_press_is_gate_start: 0.20
   proactive_press_is_gate: 0.60
   proactive_press_drive_max: 1.0
   proactive_retract_drive_max: 1.0
   proactive_reset_on_reversal: true
-  # Same normalized small-error law at 1 N and 5 N.  The 0.10/0.10 N smooth
-  # deadband still rejects sensor noise before this scale is applied.
   force_scale_min_n: 0.20
   force_scale_fraction: 0.15
 

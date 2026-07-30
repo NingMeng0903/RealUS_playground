@@ -11,6 +11,7 @@ from rm75_control.control.admittance_common.controller import (
     AdmittanceConfig,
     AdmittanceController,
 )
+from rm75_control.control.admittance_common.force_barrier import ForceBarrierConfig
 from rm75_control.control.admittance_common.scaling import (
     scale_admittance_for_desired_z,
 )
@@ -24,7 +25,7 @@ DT = 0.005
 
 def test_integrator_bidirectional_press_and_retract():
     ff = ProactiveForceIntegrator(
-        ProactiveFfConfig(enabled=True, retract_only=False, gain=0.10, leak_s=10.0)
+        ProactiveFfConfig(enabled=True, retract_only=False, gain_mode="fixed", gain=0.10, leak_s=10.0)
     )
     for _ in range(200):
         ff.update(1.0, in_contact=True, dt_eff=DT, instability_index=0.0, v_force_z=0.0, v_z_cap=0.10)
@@ -36,10 +37,10 @@ def test_integrator_bidirectional_press_and_retract():
 
 
 def test_instability_gates_press_but_keeps_retract_escape_open():
-    ff_lo = ProactiveForceIntegrator(ProactiveFfConfig(gain=0.10, leak_s=10.0, press_is_gate=0.5))
-    ff_hi = ProactiveForceIntegrator(ProactiveFfConfig(gain=0.10, leak_s=10.0, press_is_gate=0.5))
-    ff_retract_lo = ProactiveForceIntegrator(ProactiveFfConfig(gain=0.10, leak_s=10.0, press_is_gate=0.5))
-    ff_retract_hi = ProactiveForceIntegrator(ProactiveFfConfig(gain=0.10, leak_s=10.0, press_is_gate=0.5))
+    ff_lo = ProactiveForceIntegrator(ProactiveFfConfig(gain_mode="fixed", gain=0.10, leak_s=10.0, press_is_gate=0.5))
+    ff_hi = ProactiveForceIntegrator(ProactiveFfConfig(gain_mode="fixed", gain=0.10, leak_s=10.0, press_is_gate=0.5))
+    ff_retract_lo = ProactiveForceIntegrator(ProactiveFfConfig(gain_mode="fixed", gain=0.10, leak_s=10.0, press_is_gate=0.5))
+    ff_retract_hi = ProactiveForceIntegrator(ProactiveFfConfig(gain_mode="fixed", gain=0.10, leak_s=10.0, press_is_gate=0.5))
     for _ in range(50):
         ff_lo.update(2.0, in_contact=True, dt_eff=DT, instability_index=0.0, v_force_z=0.0, v_z_cap=0.10)
         ff_hi.update(2.0, in_contact=True, dt_eff=DT, instability_index=0.25, v_force_z=0.0, v_z_cap=0.10)
@@ -60,6 +61,7 @@ def test_press_gate_has_noise_floor_and_unchanged_hard_stop(
 ):
     ff = ProactiveForceIntegrator(
         ProactiveFfConfig(
+            gain_mode="fixed",
             gain=0.10,
             leak_s=10.0,
             press_is_gate_start=0.20,
@@ -81,7 +83,7 @@ def test_rising_edge_clears_press_v_r():
     ctrl = AdmittanceController(
         DT,
         AdmittanceConfig(
-            proactive_ff=ProactiveFfConfig(enabled=True),
+            proactive_ff=ProactiveFfConfig(enabled=True, gain_mode="fixed"),
             adaptive_ke=AdmittanceConfig().adaptive_ke,
         ),
     )
@@ -95,6 +97,7 @@ def test_stable_controller_normalizes_setpoint_and_is_small_signal_symmetric():
     cfg = AdmittanceConfig(
         proactive_ff=ProactiveFfConfig(
             enabled=True,
+            gain_mode="fixed",
             gain=0.10,
             leak_s=1e6,
             press_is_gate=0.5,
@@ -128,6 +131,7 @@ def test_stable_controller_normalizes_setpoint_and_is_small_signal_symmetric():
 
 def test_same_contact_reversal_discards_old_reference_in_both_directions():
     cfg = ProactiveFfConfig(
+        gain_mode="fixed",
         gain=0.10,
         retract_gain=0.10,
         leak_s=0.3,
@@ -181,7 +185,12 @@ def test_same_contact_reversal_discards_old_reference_in_both_directions():
 
 def test_zero_effective_error_leaks_without_false_reversal_reset():
     ff = ProactiveForceIntegrator(
-        ProactiveFfConfig(leak_s=0.3, reset_on_reversal=True)
+        ProactiveFfConfig(
+            gain_mode="fixed",
+            leak_s=0.3,
+            reset_on_reversal=True,
+            alpha_leak=0.0,
+        )
     )
     ff.v_r = 0.02
     ff.update(
@@ -199,9 +208,11 @@ def test_zero_effective_error_leaks_without_false_reversal_reset():
 def test_reference_drive_and_antiwindup_are_bounded_on_both_signs():
     ff = ProactiveForceIntegrator(
         ProactiveFfConfig(
+            gain_mode="fixed",
             gain=0.10,
             retract_gain=0.10,
             leak_s=1e6,
+            alpha_leak=0.0,
             press_drive_max=1.0,
             retract_drive_max=1.0,
             v_r_max_m_s=0.06,
@@ -337,10 +348,16 @@ def _controller(**over) -> AdmittanceController:
         proactive_ff=ProactiveFfConfig(
             enabled=True,
             retract_only=False,
+            gain_mode="fixed",
             gain=0.10,
             leak_s=0.3,
+            alpha_leak=0.0,
             v_r_max_m_s=0.06,
         ),
+        force_barrier=ForceBarrierConfig(enabled=False),
+        damping_law="ke_critical",
+        seek_vz_m_s=0.0,
+        seek_force_sat_n=0.0,
     )
     kw.update(over)
     cfg = AdmittanceConfig(**kw)

@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
 from projects.genesis_ue_sync.anatomy_retarget.articular_fit_v8 import (
     apply_fit_to_meshes_v8,
     apply_whole_bone_affine_v8,
+    calibrate_coupled_joint_roll_glide_v8,
     fit_femur_to_acetabulum_v8,
     fit_tibia_fibula_to_platform_v8,
     update_target_bind_with_whole_bone_fit_v8,
@@ -216,4 +220,119 @@ def test_bind_update_rejects_duplicate_or_non_parent_ordered_selection() -> None
             parents=(-1, 1),
             transformed_bone_indices=(0,),
             fit=fit,
+        )
+
+
+@dataclass(frozen=True)
+class _CoupledCalibrationAsset:
+    vertices_rest: np.ndarray
+    rest_joints: np.ndarray
+    source_bone_names: tuple[str, ...]
+    source_bone_parents: np.ndarray
+    target_bind_global: np.ndarray
+    target_rest_local: np.ndarray
+    metadata: dict[str, object]
+
+    def validate(self) -> None:
+        return None
+
+
+def test_coupled_glide_rejects_a_successful_solver_result_that_worsens_guide_contact(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Guide stations remain authoritative when a bounded solve is worse."""
+
+    from projects.genesis_ue_sync.anatomy_retarget import anatomy_lbs
+
+    names = (
+        "Root",
+        "Tibia_Bone_L",
+        "Ankle_Rot_L",
+        "Tibia_Bone_R",
+        "Ankle_Rot_R",
+    )
+    transforms = np.tile(np.eye(4, dtype=np.float64), (len(names), 1, 1))
+    asset = _CoupledCalibrationAsset(
+        # The mobile/fixed pairs begin at the 1.5 mm contact target.  A 9 mm
+        # x-axis glide therefore makes every contact objective worse.
+        vertices_rest=np.asarray(
+            (
+                (0.0, 0.0, 0.0),
+                (0.0, 0.0, 0.010),
+                (0.0015, 0.0, 0.0),
+                (0.0015, 0.0, 0.010),
+            ),
+            dtype=np.float32,
+        ),
+        rest_joints=np.zeros((55, 3), dtype=np.float32),
+        source_bone_names=names,
+        source_bone_parents=np.asarray((-1, 0, 1, 0, 3), dtype=np.int32),
+        target_bind_global=transforms,
+        target_rest_local=transforms.copy(),
+        metadata={},
+    )
+    domains: dict[str, np.ndarray] = {}
+    for side in ("left", "right"):
+        domains.update(
+            {
+                f"{side}/tibial_plateau_medial.fit": np.asarray((0,)),
+                f"{side}/tibial_plateau_lateral.fit": np.asarray((1,)),
+                f"{side}/femoral_condyle_medial.fit": np.asarray((2,)),
+                f"{side}/femoral_condyle_lateral.fit": np.asarray((3,)),
+                f"{side}/tibial_plateau_medial.validation": np.asarray((0,)),
+                f"{side}/tibial_plateau_lateral.validation": np.asarray((1,)),
+                f"{side}/femoral_condyle_medial.validation": np.asarray((2,)),
+                f"{side}/femoral_condyle_lateral.validation": np.asarray((3,)),
+                f"ankle/{side}/talus.fit": np.asarray((0,)),
+                f"ankle/{side}/tibia.fit": np.asarray((2,)),
+                f"ankle/{side}/fibula.fit": np.asarray((3,)),
+                f"ankle/{side}/talus.validation": np.asarray((1,)),
+                f"ankle/{side}/tibia.validation": np.asarray((2,)),
+                f"ankle/{side}/fibula.validation": np.asarray((3,)),
+            }
+        )
+
+    monkeypatch.setattr(
+        anatomy_lbs,
+        "skin_vertices",
+        lambda current, pose, validate=False: np.asarray(
+            current.vertices_rest, dtype=np.float32
+        ),
+    )
+    monkeypatch.setattr(
+        anatomy_lbs,
+        "source_bone_posed_global",
+        lambda current, pose: np.tile(np.eye(4), (len(names), 1, 1)),
+    )
+    monkeypatch.setattr(
+        "scipy.optimize.minimize",
+        lambda *args, **kwargs: SimpleNamespace(
+            x=np.asarray((1.0, 0.0, 0.0)),
+            success=True,
+            status=0,
+            message="synthetic bounded but worse result",
+        ),
+    )
+
+    result, report = calibrate_coupled_joint_roll_glide_v8(
+        asset,
+        domains=domains,
+    )
+
+    for side in ("left", "right"):
+        for kind in ("knee", "ankle"):
+            entry = report["sides"][side][kind]
+            assert entry["rbf_improved_sample_count"] == 0
+            assert entry["guide_baseline_only_sample_count"] == 54
+            assert entry["rejected_samples"]
+            assert {
+                sample["reason"] for sample in entry["rejected_samples"]
+            } == {"does_not_improve_guide_baseline"}
+
+    responses = result.metadata["source_coupled_joint_response_v8"]
+    for response in responses.values():
+        np.testing.assert_allclose(
+            np.asarray(response["rbf_values_parent_local_m"]),
+            0.0,
+            atol=1.0e-12,
         )

@@ -1329,6 +1329,7 @@ class _TickLogger:
            "vel_clamped", "acc_clamped", "pos_clamped", "fx", "fy", "fz",
            "instability_idx", "damping_z_eff",
            "damping_ke_z", "damping_dimeas_z",
+           "damping_trend_z",
            "v_force_z", "ke_est",
            "f_des_z_eff", "v_r_z",
            "force_reference_scale_n", "force_reference_drive",
@@ -1339,6 +1340,7 @@ class _TickLogger:
            "dt_actual_s", "sensor_age_s",
            "fx_raw_comp", "fy_raw_comp", "fz_raw_comp",
            "vz_achieved_tool", "contact_present",
+           "cap_press_z", "cap_retract_z", "f_dot_z",
            "governor_scale", "governor_scale_raw", "sigma_min",
            "qdot_norm", "qdot_max_frac_vmax",
            "qdot_ff_norm", "arm_singularity_smooth", "limit_activation",
@@ -1405,6 +1407,7 @@ class _TickLogger:
         d_eff = getattr(ctrl, "damping_z_eff", float("nan"))
         d_ke = getattr(ctrl, "damping_ke_z", float("nan"))
         d_dimeas = getattr(ctrl, "damping_dimeas_z", float("nan"))
+        d_trend = getattr(ctrl, "damping_trend_z", float("nan"))
         v_fz = getattr(ctrl, "v_force_z", float("nan"))
         ke_est = getattr(ctrl, "ke_est", float("nan"))
         f_des_eff = getattr(ctrl, "f_des_z_eff", float("nan"))
@@ -1427,6 +1430,9 @@ class _TickLogger:
         mass_z_eff = getattr(ctrl, "mass_z_eff", float("nan"))
         takeover = getattr(ctrl, "takeover_active", False)
         contact_present = getattr(ctrl, "contact_present", False)
+        cap_press_z = getattr(ctrl, "cap_press_z", float("nan"))
+        cap_retract_z = getattr(ctrl, "cap_retract_z", float("nan"))
+        f_dot_z = getattr(ctrl, "f_dot_z", float("nan"))
         raw_comp = (
             np.asarray(f_ext_raw, dtype=float)
             if f_ext_raw is not None
@@ -1465,6 +1471,7 @@ class _TickLogger:
                f"{f_ext[0]:.3f}", f"{f_ext[1]:.3f}", f"{f_ext[2]:.3f}",
                f"{is_idx:.4f}", f"{d_eff:.2f}",
                f"{d_ke:.2f}", f"{d_dimeas:.2f}",
+               f"{d_trend:.2f}",
                f"{v_fz:.5f}", f"{ke_est:.1f}",
                f"{f_des_eff:.3f}", f"{v_r_z:.5f}",
                f"{force_reference_scale:.4f}",
@@ -1477,6 +1484,7 @@ class _TickLogger:
                f"{dt_actual_s:.6f}", f"{sensor_age_s:.6f}",
                f"{raw_comp[0]:.3f}", f"{raw_comp[1]:.3f}", f"{raw_comp[2]:.3f}",
                f"{v_tcp_z_actual:.6f}", int(bool(contact_present)),
+               f"{cap_press_z:.6f}", f"{cap_retract_z:.6f}", f"{f_dot_z:.4f}",
                f"{governor_scale:.4f}", f"{governor_scale_raw:.4f}",
                f"{step.sigma_min:.5f}",
                f"{qdot_norm:.5f}", f"{qdot_max_frac:.4f}",

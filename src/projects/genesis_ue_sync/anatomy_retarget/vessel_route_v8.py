@@ -40,6 +40,7 @@ _DEFAULT_COLLISION_BONE_TOKENS = (
     "metacarpal",
     "phalanges_hand",
 )
+_LOCAL_SKIN_CLEANUP_SLACK_M = 1.0e-7
 
 
 @dataclass(frozen=True)
@@ -233,11 +234,11 @@ def _screened_component_solve(
     return np.asarray(splu(system.tocsc()).solve(rhs), dtype=np.float64)
 
 
-def _edge_lengths(vertices: np.ndarray, faces: np.ndarray) -> np.ndarray:
+def _mesh_edges(faces: np.ndarray) -> np.ndarray:
     triangles = np.asarray(faces, dtype=np.int64).reshape(-1, 3)
     if not len(triangles):
-        return np.zeros(0, dtype=np.float64)
-    edges = np.unique(
+        return np.empty((0, 2), dtype=np.int64)
+    return np.unique(
         np.sort(
             np.concatenate(
                 (
@@ -251,8 +252,63 @@ def _edge_lengths(vertices: np.ndarray, faces: np.ndarray) -> np.ndarray:
         ),
         axis=0,
     )
+
+
+def _edge_lengths(vertices: np.ndarray, faces: np.ndarray) -> np.ndarray:
+    edges = _mesh_edges(faces)
+    if not len(edges):
+        return np.zeros(0, dtype=np.float64)
     points = np.asarray(vertices, dtype=np.float64)
     return np.linalg.norm(points[edges[:, 1]] - points[edges[:, 0]], axis=1)
+
+
+def _strain_limited_component_step(
+    reference_vertices: np.ndarray,
+    current_vertices: np.ndarray,
+    proposed_step: np.ndarray,
+    faces: np.ndarray,
+    *,
+    maximum_edge_relative_change_q99: float,
+) -> tuple[np.ndarray, float]:
+    """Scale one connected correction until the V8.11 tube-strain gate holds."""
+
+    reference = np.asarray(reference_vertices, dtype=np.float64)
+    current = np.asarray(current_vertices, dtype=np.float64)
+    step = np.asarray(proposed_step, dtype=np.float64)
+    limit = float(maximum_edge_relative_change_q99)
+    edges = _mesh_edges(faces)
+    if not len(edges) or not np.any(step):
+        return step, 1.0
+    reference_lengths = np.linalg.norm(
+        reference[edges[:, 1]] - reference[edges[:, 0]], axis=1
+    )
+
+    def strain(candidate: np.ndarray) -> float:
+        candidate_lengths = np.linalg.norm(
+            candidate[edges[:, 1]] - candidate[edges[:, 0]], axis=1
+        )
+        relative = np.abs(candidate_lengths - reference_lengths) / np.maximum(
+            reference_lengths, 1.0e-8
+        )
+        return float(np.quantile(relative, 0.99))
+
+    if strain(current + step) <= limit:
+        return step, 1.0
+    # The current geometry is guaranteed by the preceding commit to be within
+    # the same contract.  A bounded bisection is enough here because this is
+    # an offline candidate generator, never a runtime deformation path.
+    if strain(current) > limit:
+        return np.zeros_like(step), 0.0
+    low = 0.0
+    high = 1.0
+    for _ in range(12):
+        middle = 0.5 * (low + high)
+        middle_strain = strain(current + middle * step)
+        if middle_strain <= limit:
+            low = middle
+        else:
+            high = middle
+    return low * step, low
 
 
 def _bone_constraint_field(
@@ -352,6 +408,303 @@ def _constraint_fields(
     }
 
 
+def _component_edge_change_report(
+    reference_vertices: np.ndarray,
+    candidate_vertices: np.ndarray,
+    components: Sequence[VesselComponentV8],
+) -> tuple[float, float, list[dict[str, Any]]]:
+    """Measure topology change against the pre-route rest geometry."""
+
+    reference = np.asarray(reference_vertices, dtype=np.float64)
+    candidate = np.asarray(candidate_vertices, dtype=np.float64)
+    relative_parts: list[np.ndarray] = []
+    records: list[dict[str, Any]] = []
+    for component in components:
+        ids = np.asarray(component.vertex_ids, dtype=np.int64)
+        before = _edge_lengths(reference[ids], component.local_faces)
+        after = _edge_lengths(candidate[ids], component.local_faces)
+        relative = (
+            np.abs(after - before) / np.maximum(before, 1.0e-8)
+            if len(before)
+            else np.zeros(0, dtype=np.float64)
+        )
+        relative_parts.append(relative)
+        records.append(
+            {
+                "mesh": component.mesh_name,
+                "vertex_count": int(len(ids)),
+                "face_count": int(len(component.local_faces)),
+                "edge_relative_change_q99": (
+                    float(np.quantile(relative, 0.99)) if len(relative) else 0.0
+                ),
+            }
+        )
+    relative = (
+        np.concatenate(relative_parts)
+        if relative_parts
+        else np.zeros(0, dtype=np.float64)
+    )
+    return (
+        float(np.quantile(relative, 0.99)) if len(relative) else 0.0,
+        float(np.max(relative)) if len(relative) else 0.0,
+        records,
+    )
+
+
+def _route_constraint_snapshot(
+    vertices: np.ndarray,
+    *,
+    reference_vertices: np.ndarray,
+    all_ids: np.ndarray,
+    components: Sequence[VesselComponentV8],
+    skin_vertices: np.ndarray,
+    skin_faces: np.ndarray,
+    collision_surfaces: Sequence[CollisionSurfaceV8],
+    skin_margin_m: float,
+    bone_clearance_m: float,
+    broadphase_padding_m: float,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Evaluate the exact offline containment contract for a route candidate."""
+
+    selected = np.asarray(vertices, dtype=np.float64)[all_ids]
+    _desired, _weights, fields = _constraint_fields(
+        selected,
+        skin_vertices=np.asarray(skin_vertices, dtype=np.float64),
+        skin_faces=np.asarray(skin_faces, dtype=np.int32),
+        collision_surfaces=collision_surfaces,
+        skin_margin_m=float(skin_margin_m),
+        bone_clearance_m=float(bone_clearance_m),
+        broadphase_padding_m=float(broadphase_padding_m),
+    )
+    skin_signed = np.asarray(fields["skin_signed"], dtype=np.float64)
+    skin_clearance_violation = np.asarray(
+        fields["skin_violation"], dtype=np.float64
+    )
+    bone_violation = np.asarray(fields["bone_violation"], dtype=np.float64)
+    outside = skin_signed > 0.0
+    edge_q99, edge_max, component_records = _component_edge_change_report(
+        reference_vertices,
+        vertices,
+        components,
+    )
+    skin_clearance_violation_count = int(
+        np.count_nonzero(skin_clearance_violation > 0.0)
+    )
+    bone_clearance_violation_count = int(np.count_nonzero(bone_violation > 0.0))
+    maximum_skin_clearance_violation_m = float(np.max(skin_clearance_violation))
+    bone_penetration = np.maximum(
+        0.0, bone_violation - float(bone_clearance_m)
+    )
+    snapshot = {
+        "skin_inside_fraction": float(np.mean(~outside)),
+        "skin_outside_count": int(np.count_nonzero(outside)),
+        "skin_maximum_outside_m": (
+            float(np.max(skin_signed[outside])) if np.any(outside) else 0.0
+        ),
+        "skin_clearance_violation_count": skin_clearance_violation_count,
+        "skin_maximum_clearance_violation_m": maximum_skin_clearance_violation_m,
+        "bone_clearance_violation_count": bone_clearance_violation_count,
+        "bone_maximum_penetration_m": float(np.max(bone_penetration)),
+        "edge_relative_change_q99": edge_q99,
+        "edge_relative_change_max": edge_max,
+        "components": component_records,
+    }
+    snapshot["passed"] = bool(
+        snapshot["skin_outside_count"] == 0
+        and skin_clearance_violation_count == 0
+        and bone_clearance_violation_count == 0
+        and edge_q99 <= 0.05
+    )
+    return snapshot, fields
+
+
+def _compact_route_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Keep cleanup provenance useful without duplicating every mesh record."""
+
+    return {
+        key: snapshot[key]
+        for key in (
+            "passed",
+            "skin_outside_count",
+            "skin_maximum_outside_m",
+            "skin_clearance_violation_count",
+            "skin_maximum_clearance_violation_m",
+            "bone_clearance_violation_count",
+            "bone_maximum_penetration_m",
+            "edge_relative_change_q99",
+            "edge_relative_change_max",
+        )
+    }
+
+
+def _local_normal_laplacian_skin_cleanup(
+    vertices: np.ndarray,
+    *,
+    reference_vertices: np.ndarray,
+    all_ids: np.ndarray,
+    components: Sequence[VesselComponentV8],
+    skin_vertices: np.ndarray,
+    skin_faces: np.ndarray,
+    collision_surfaces: Sequence[CollisionSurfaceV8],
+    skin_margin_m: float,
+    bone_clearance_m: float,
+    broadphase_padding_m: float,
+    max_iterations: int,
+    smooth_weight: float,
+    maximum_component_displacement_m: float,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Try the historical jelly-style skin repair behind the V8.11 gates.
+
+    The old projector was useful because it moved connected tube surfaces
+    along the skin normal after the rigid anatomy was final.  It did not have
+    a bone-clearance or topology-strain acceptance contract, so it cannot be
+    applied directly.  This version remains an offline, connected Laplacian
+    solve and adopts the candidate only if the exact skin, bone, and q99 edge
+    gates all pass together.
+    """
+
+    starting = np.asarray(vertices, dtype=np.float64)
+    before, _before_fields = _route_constraint_snapshot(
+        starting,
+        reference_vertices=reference_vertices,
+        all_ids=all_ids,
+        components=components,
+        skin_vertices=skin_vertices,
+        skin_faces=skin_faces,
+        collision_surfaces=collision_surfaces,
+        skin_margin_m=skin_margin_m,
+        bone_clearance_m=bone_clearance_m,
+        broadphase_padding_m=broadphase_padding_m,
+    )
+    if before["skin_clearance_violation_count"] == 0:
+        return starting.astype(np.float32), {
+            "backend": "local_normal_projection_laplacian_v2_bone_gated",
+            "attempted": False,
+            "accepted": False,
+            "reason": "skin_cleanup_not_needed",
+            "pre_gate": _compact_route_snapshot(before),
+        }
+    if int(max_iterations) == 0 or float(maximum_component_displacement_m) == 0.0:
+        return starting.astype(np.float32), {
+            "backend": "local_normal_projection_laplacian_v2_bone_gated",
+            "attempted": False,
+            "accepted": False,
+            "reason": "skin_cleanup_disabled",
+            "pre_gate": _compact_route_snapshot(before),
+        }
+
+    candidate = starting.copy()
+    component_reports: list[dict[str, Any]] = []
+    for component in components:
+        ids = np.asarray(component.vertex_ids, dtype=np.int64)
+        initial = candidate[ids].copy()
+        local = initial.copy()
+        before_signed, _before_closest, _before_normals = signed_distance(
+            local,
+            skin_vertices,
+            skin_faces,
+        )
+        capped = False
+        completed_iterations = 0
+        for _iteration in range(int(max_iterations)):
+            signed, _closest, normals = signed_distance(
+                local,
+                skin_vertices,
+                skin_faces,
+            )
+            violation = np.maximum(0.0, signed + float(skin_margin_m))
+            if not np.any(violation > 0.0):
+                break
+            # This is I + lambda L smoothing of the normal displacement seed,
+            # exactly the connected-material mechanism used by the old local
+            # projector.  There is no individual vertex clipping at runtime.
+            # Solve a hair inside the contracted shell rather than on its
+            # floating-point boundary.  Without this offline slack, a
+            # mathematically exact solve can reappear as a 1e-19 m violation
+            # after float32 asset serialization.
+            seed = -(
+                violation + _LOCAL_SKIN_CLEANUP_SLACK_M
+            )[:, None] * normals
+            correction = _screened_component_solve(
+                seed,
+                np.ones(len(local), dtype=np.float64),
+                component.local_faces,
+                zero_weight=1.0,
+                smooth_weight=float(smooth_weight),
+            )
+            trial = local + correction
+            total = trial - initial
+            maximum = float(np.max(np.linalg.norm(total, axis=1)))
+            if maximum > float(maximum_component_displacement_m):
+                local = initial + total * (
+                    float(maximum_component_displacement_m) / maximum
+                )
+                capped = True
+                completed_iterations += 1
+                break
+            local = trial
+            completed_iterations += 1
+        after_signed, _after_closest, _after_normals = signed_distance(
+            local,
+            skin_vertices,
+            skin_faces,
+        )
+        candidate[ids] = local
+        component_reports.append(
+            {
+                "mesh": component.mesh_name,
+                "vertex_count": int(len(ids)),
+                "iterations": completed_iterations,
+                "capped": capped,
+                "skin_clearance_violation_before": int(
+                    np.count_nonzero(
+                        np.asarray(before_signed) + float(skin_margin_m) > 0.0
+                    )
+                ),
+                "skin_clearance_violation_after": int(
+                    np.count_nonzero(
+                        np.asarray(after_signed) + float(skin_margin_m) > 0.0
+                    )
+                ),
+                "maximum_displacement_m": float(
+                    np.max(np.linalg.norm(local - initial, axis=1))
+                ),
+            }
+        )
+
+    after, _after_fields = _route_constraint_snapshot(
+        candidate,
+        reference_vertices=reference_vertices,
+        all_ids=all_ids,
+        components=components,
+        skin_vertices=skin_vertices,
+        skin_faces=skin_faces,
+        collision_surfaces=collision_surfaces,
+        skin_margin_m=skin_margin_m,
+        bone_clearance_m=bone_clearance_m,
+        broadphase_padding_m=broadphase_padding_m,
+    )
+    accepted = bool(after["passed"])
+    return (candidate if accepted else starting).astype(np.float32), {
+        "backend": "local_normal_projection_laplacian_v2_bone_gated",
+        "attempted": True,
+        "accepted": accepted,
+        "reason": (
+            "candidate_satisfies_skin_bone_and_edge_gates"
+            if accepted
+            else "candidate_failed_strict_skin_bone_or_edge_gate"
+        ),
+        "max_iterations": int(max_iterations),
+        "smooth_weight": float(smooth_weight),
+        "maximum_component_displacement_m": float(
+            maximum_component_displacement_m
+        ),
+        "pre_gate": _compact_route_snapshot(before),
+        "candidate_gate": _compact_route_snapshot(after),
+        "components": component_reports,
+    }
+
+
 def route_vessel_vertices_v8(
     vertices: np.ndarray,
     components: Sequence[VesselComponentV8],
@@ -366,6 +719,10 @@ def route_vessel_vertices_v8(
     zero_weight: float = 8.0,
     smooth_weight: float = 12.0,
     maximum_component_displacement_m: float = 0.030,
+    maximum_edge_relative_change_q99: float = 0.05,
+    local_skin_cleanup_max_iterations: int = 8,
+    local_skin_cleanup_smooth_weight: float = 8.0,
+    local_skin_cleanup_maximum_component_displacement_m: float = 0.080,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     """Solve an offline, topology-preserving vessel route.
 
@@ -379,6 +736,16 @@ def route_vessel_vertices_v8(
         raise ValueError("max_iterations must be in [1, 16]")
     if skin_margin_m < 0.0 or bone_clearance_m < 0.0:
         raise ValueError("clearance margins must be nonnegative")
+    if not 0 <= int(local_skin_cleanup_max_iterations) <= 16:
+        raise ValueError("local_skin_cleanup_max_iterations must be in [0, 16]")
+    if local_skin_cleanup_smooth_weight < 0.0:
+        raise ValueError("local_skin_cleanup_smooth_weight must be nonnegative")
+    if local_skin_cleanup_maximum_component_displacement_m < 0.0:
+        raise ValueError(
+            "local_skin_cleanup_maximum_component_displacement_m must be nonnegative"
+        )
+    if maximum_edge_relative_change_q99 < 0.0:
+        raise ValueError("maximum_edge_relative_change_q99 must be nonnegative")
     original = np.asarray(vertices, dtype=np.float64)
     result = original.copy()
     all_ids = np.unique(
@@ -391,13 +758,6 @@ def route_vessel_vertices_v8(
     lookup = np.full(len(result), -1, dtype=np.int64)
     lookup[all_ids] = np.arange(len(all_ids), dtype=np.int64)
     cumulative = np.zeros((len(all_ids), 3), dtype=np.float64)
-    initial_lengths = {
-        index: _edge_lengths(
-            original[np.asarray(component.vertex_ids, dtype=np.int64)],
-            component.local_faces,
-        )
-        for index, component in enumerate(components)
-    }
     iteration_reports: list[dict[str, Any]] = []
     for iteration in range(int(max_iterations)):
         selected = result[all_ids]
@@ -449,12 +809,39 @@ def route_vessel_vertices_v8(
         # A fixed half step keeps simultaneous skin/bone constraints stable;
         # repeated global iterations converge without per-vertex line searches.
         proposed *= 0.5
+        strain_guarded: list[dict[str, Any]] = []
+        for component in components:
+            global_ids = np.asarray(component.vertex_ids, dtype=np.int64)
+            ids = lookup[global_ids]
+            limited, factor = _strain_limited_component_step(
+                original[global_ids],
+                result[global_ids],
+                proposed[ids],
+                component.local_faces,
+                maximum_edge_relative_change_q99=float(
+                    maximum_edge_relative_change_q99
+                ),
+            )
+            proposed[ids] = limited
+            if factor < 1.0:
+                strain_guarded.append(
+                    {
+                        "mesh": component.mesh_name,
+                        "step_scale": float(factor),
+                    }
+                )
+        iteration_reports[-1]["strain_guarded_component_count"] = int(
+            len(strain_guarded)
+        )
+        iteration_reports[-1]["strain_guarded_components"] = strain_guarded
         result[all_ids] += proposed
         cumulative += proposed
 
-    final_points = result[all_ids]
-    _desired, _weights, final_fields = _constraint_fields(
-        final_points,
+    pre_cleanup, _pre_cleanup_fields = _route_constraint_snapshot(
+        result,
+        reference_vertices=original,
+        all_ids=all_ids,
+        components=components,
         skin_vertices=np.asarray(skin_vertices, dtype=np.float64),
         skin_faces=np.asarray(skin_faces, dtype=np.int32),
         collision_surfaces=collision_surfaces,
@@ -462,94 +849,81 @@ def route_vessel_vertices_v8(
         bone_clearance_m=float(bone_clearance_m),
         broadphase_padding_m=float(broadphase_padding_m),
     )
-    skin_signed = np.asarray(final_fields["skin_signed"], dtype=np.float64)
-    skin_clearance_violation = np.asarray(
-        final_fields["skin_violation"], dtype=np.float64
-    )
-    bone_violation = np.asarray(final_fields["bone_violation"], dtype=np.float64)
-    displacement = np.linalg.norm(cumulative, axis=1)
-    edge_relative_parts: list[np.ndarray] = []
-    component_records: list[dict[str, Any]] = []
-    for index, component in enumerate(components):
-        ids = np.asarray(component.vertex_ids, dtype=np.int64)
-        before = initial_lengths[index]
-        after = _edge_lengths(result[ids], component.local_faces)
-        relative = (
-            np.abs(after - before) / np.maximum(before, 1.0e-8)
-            if len(before)
-            else np.zeros(0, dtype=np.float64)
+    if pre_cleanup["skin_clearance_violation_count"]:
+        result, local_skin_cleanup = _local_normal_laplacian_skin_cleanup(
+            result,
+            reference_vertices=original,
+            all_ids=all_ids,
+            components=components,
+            skin_vertices=np.asarray(skin_vertices, dtype=np.float64),
+            skin_faces=np.asarray(skin_faces, dtype=np.int32),
+            collision_surfaces=collision_surfaces,
+            skin_margin_m=float(skin_margin_m),
+            bone_clearance_m=float(bone_clearance_m),
+            broadphase_padding_m=float(broadphase_padding_m),
+            max_iterations=int(local_skin_cleanup_max_iterations),
+            smooth_weight=float(local_skin_cleanup_smooth_weight),
+            maximum_component_displacement_m=float(
+                local_skin_cleanup_maximum_component_displacement_m
+            ),
         )
-        edge_relative_parts.append(relative)
-        component_records.append(
-            {
-                "mesh": component.mesh_name,
-                "vertex_count": int(len(ids)),
-                "face_count": int(len(component.local_faces)),
-                "edge_relative_change_q99": (
-                    float(np.quantile(relative, 0.99)) if len(relative) else 0.0
-                ),
-            }
-        )
-    edge_relative = (
-        np.concatenate(edge_relative_parts)
-        if edge_relative_parts
-        else np.zeros(0, dtype=np.float64)
+    else:
+        local_skin_cleanup = {
+            "backend": "local_normal_projection_laplacian_v2_bone_gated",
+            "attempted": False,
+            "accepted": False,
+            "reason": "route_already_satisfies_skin_shell",
+            "pre_gate": _compact_route_snapshot(pre_cleanup),
+        }
+    final_snapshot, final_fields = _route_constraint_snapshot(
+        result,
+        reference_vertices=original,
+        all_ids=all_ids,
+        components=components,
+        skin_vertices=np.asarray(skin_vertices, dtype=np.float64),
+        skin_faces=np.asarray(skin_faces, dtype=np.int32),
+        collision_surfaces=collision_surfaces,
+        skin_margin_m=float(skin_margin_m),
+        bone_clearance_m=float(bone_clearance_m),
+        broadphase_padding_m=float(broadphase_padding_m),
     )
-    outside = skin_signed > 0.0
-    # `outside` is kept as the physical skin-surface diagnostic.  The route
-    # contract is stricter: every point must also be at least skin_margin_m
-    # inside that surface, so use the same contracted-shell field that drove
-    # the solver for the final acceptance gate.
-    skin_clearance_violation_count = int(
-        np.count_nonzero(skin_clearance_violation > 0.0)
-    )
-    maximum_skin_clearance_violation_m = float(
-        np.max(skin_clearance_violation)
-    )
-    bone_penetration = np.maximum(
-        0.0, bone_violation - float(bone_clearance_m)
-    )
-    inside_fraction = float(np.mean(~outside))
-    max_outside = float(np.max(skin_signed[outside])) if np.any(outside) else 0.0
-    max_bone_penetration = float(np.max(bone_penetration))
-    edge_q99 = (
-        float(np.quantile(edge_relative, 0.99)) if len(edge_relative) else 0.0
-    )
-    bone_clearance_violation_count = int(
-        np.count_nonzero(bone_violation > 0.0)
-    )
-    passed = bool(
-        not np.any(outside)
-        and skin_clearance_violation_count == 0
-        and bone_clearance_violation_count == 0
-        and edge_q99 <= 0.05
-    )
+    displacement = np.linalg.norm(result[all_ids] - original[all_ids], axis=1)
     return result.astype(np.float32), {
-        "backend": "connected_screened_laplacian_skin_bone_route_v8",
-        "passed": passed,
-        "publishable": passed,
+        "backend": "connected_screened_laplacian_skin_bone_route_v8.11",
+        "passed": bool(final_snapshot["passed"]),
+        "publishable": bool(final_snapshot["passed"]),
         "skin_margin_m": float(skin_margin_m),
         "bone_clearance_m": float(bone_clearance_m),
+        "maximum_edge_relative_change_q99": float(
+            maximum_edge_relative_change_q99
+        ),
         "vertex_count": int(len(all_ids)),
         "component_count": int(len(components)),
         "iterations": iteration_reports,
-        "skin_inside_fraction": inside_fraction,
-        "skin_outside_count": int(np.count_nonzero(outside)),
-        "skin_maximum_outside_m": max_outside,
-        "skin_clearance_violation_count": skin_clearance_violation_count,
-        "skin_maximum_clearance_violation_m": maximum_skin_clearance_violation_m,
-        "bone_clearance_violation_count": bone_clearance_violation_count,
-        "bone_maximum_penetration_m": max_bone_penetration,
+        "local_skin_cleanup": local_skin_cleanup,
+        "skin_inside_fraction": final_snapshot["skin_inside_fraction"],
+        "skin_outside_count": final_snapshot["skin_outside_count"],
+        "skin_maximum_outside_m": final_snapshot["skin_maximum_outside_m"],
+        "skin_clearance_violation_count": final_snapshot[
+            "skin_clearance_violation_count"
+        ],
+        "skin_maximum_clearance_violation_m": final_snapshot[
+            "skin_maximum_clearance_violation_m"
+        ],
+        "bone_clearance_violation_count": final_snapshot[
+            "bone_clearance_violation_count"
+        ],
+        "bone_maximum_penetration_m": final_snapshot[
+            "bone_maximum_penetration_m"
+        ],
         "mean_displacement_m": float(np.mean(displacement)),
         "maximum_displacement_m": float(np.max(displacement)),
-        "edge_relative_change_q99": edge_q99,
-        "edge_relative_change_max": (
-            float(np.max(edge_relative)) if len(edge_relative) else 0.0
-        ),
+        "edge_relative_change_q99": final_snapshot["edge_relative_change_q99"],
+        "edge_relative_change_max": final_snapshot["edge_relative_change_max"],
         "source_weights_preserved": True,
         "topology_preserved": True,
         "runtime_collision_solve": False,
-        "components": component_records,
+        "components": final_snapshot["components"],
         "bone_surfaces": final_fields["bone"]["surfaces"],
     }
 

@@ -128,10 +128,12 @@ def test_idle_decay_soft_floor_disabled_when_zero():
 
 
 def test_var_damping_d_target_respects_bd_max_when_is_unbounded():
+    # Legacy ke_critical path still clamps Dimeas damping through bd_max.
     ctrl = _controller(
         var_damping_enabled=True,
         var_damping_d_u=2.0,
         admittance_damping_z=25.0,
+        damping_law="ke_critical",
     )
     ctrl.cfg.adaptive_ke.bd_max = 50.0
     ctrl._in_contact_latched = True
@@ -147,3 +149,25 @@ def test_var_damping_d_target_respects_bd_max_when_is_unbounded():
             rising_edge=False,
         )
     assert ctrl.damping_z_eff <= 50.0 + 1e-6
+
+
+def test_trend_damping_respects_damping_max_z_when_is_unbounded():
+    ctrl = _controller(
+        var_damping_enabled=True,
+        var_damping_d_u=2.0,
+        damping_law="trend",
+        damping_base_z=15.0,
+        damping_max_z=40.0,
+        damping_alpha_e=0.0,
+        damping_beta_e_edot=0.0,
+    )
+    ctrl._in_contact_latched = True
+    ctrl.instability_index = 100.0
+    for _ in range(50):
+        ctrl._admittance_z(
+            0.0,
+            True,
+            dt_eff=DT,
+            rising_edge=False,
+        )
+    assert ctrl.damping_z_eff <= 40.0 + 1e-6

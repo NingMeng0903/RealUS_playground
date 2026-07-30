@@ -34,6 +34,7 @@ from .tube_frames_v8 import (
     tube_coupling_pack_from_runtime_fields_v8,
     tube_material_edge_metrics_v8,
 )
+from .vessel_route_v8 import collision_surfaces_v8, vessel_components_v8
 from .v8_artifacts import (
     SourceOperatorV8,
     SubjectRuntimePackV8,
@@ -142,6 +143,12 @@ class MatrixBodySurfaceV811:
     parents: np.ndarray
     inverse_bind: np.ndarray
     source: str
+    # These fields come only from the canonical source_manifest.json.  The
+    # shell geometry and its 55-joint LBS arrays are not enough to identify a
+    # shape: a synthetic surface can satisfy those structural checks.
+    canonical_betas: np.ndarray | None = None
+    canonical_manifest_digest: str | None = None
+    canonical_source_identity: str | None = None
 
     def validate(self) -> None:
         vertices = np.asarray(self.vertices, dtype=np.float64)
@@ -175,6 +182,80 @@ class MatrixBodySurfaceV811:
             parents[1:] >= np.arange(1, 55, dtype=np.int64)
         ):
             raise ValueError("V8.11 body surface parents are not topological")
+
+
+def _normalized_betas_v811(value: Any, *, label: str) -> np.ndarray:
+    """Return the exact float32 beta identity used by V8.11 artifacts."""
+
+    try:
+        betas = np.asarray(value, dtype=np.float32).reshape(-1)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label} must contain exactly 10 finite values") from exc
+    if betas.shape != (10,) or not np.all(np.isfinite(betas)):
+        raise ValueError(f"{label} must contain exactly 10 finite values")
+    # Keep this in step with SubjectRuntimePackV8's closed support domain so a
+    # direct matrix helper caller cannot create an impossible identity.
+    if np.any(np.abs(betas) > 3.0):
+        raise ValueError(f"{label} must stay inside the closed support domain [-3, 3]")
+    return np.ascontiguousarray(betas, dtype=np.float32)
+
+
+def _beta_digest_v811(betas: np.ndarray) -> str:
+    digest = hashlib.sha256(b"MatrixBodySurfaceV811Betas\\0")
+    digest.update(np.ascontiguousarray(betas, dtype=np.float32).tobytes())
+    return digest.hexdigest()
+
+
+def _body_surface_beta_provenance_v811(
+    surface: MatrixBodySurfaceV811,
+    *,
+    subject_betas: Any | None,
+) -> tuple[bool, dict[str, Any]]:
+    """Authenticate a canonical shell against the exact L1 beta vector."""
+
+    if surface.canonical_betas is None:
+        return False, {
+            "available": False,
+            "pass": False,
+            "reason": "canonical source_manifest beta provenance is missing",
+        }
+    if not _digest(surface.canonical_manifest_digest):
+        return False, {
+            "available": False,
+            "pass": False,
+            "reason": "canonical source_manifest digest is missing or invalid",
+        }
+    if subject_betas is None:
+        return False, {
+            "available": False,
+            "pass": False,
+            "reason": "subject beta identity is missing",
+        }
+    try:
+        canonical = _normalized_betas_v811(
+            surface.canonical_betas,
+            label="canonical source_manifest betas",
+        )
+        subject = _normalized_betas_v811(subject_betas, label="subject betas")
+    except ValueError as exc:
+        return False, {"available": False, "pass": False, "reason": str(exc)}
+    if not np.array_equal(canonical, subject):
+        return False, {
+            "available": False,
+            "pass": False,
+            "reason": "canonical source_manifest betas do not match this subject",
+            "canonical_beta_digest": _beta_digest_v811(canonical),
+            "subject_beta_digest": _beta_digest_v811(subject),
+            "canonical_manifest_digest": str(surface.canonical_manifest_digest),
+        }
+    return True, {
+        "available": True,
+        "pass": True,
+        "canonical_beta_digest": _beta_digest_v811(canonical),
+        "subject_beta_digest": _beta_digest_v811(subject),
+        "canonical_manifest_digest": str(surface.canonical_manifest_digest),
+        "canonical_source_identity": str(surface.canonical_source_identity or ""),
+    }
 
 
 def _hand_foot_bone_regions_v811(asset: Any) -> dict[str, np.ndarray]:
@@ -253,6 +334,7 @@ def _hand_foot_bone_containment_gate_v811(
     vertices: np.ndarray,
     *,
     body_surface: MatrixBodySurfaceV811 | None,
+    subject_betas: Any | None = None,
     pose_axis_angle: np.ndarray,
     transl: np.ndarray,
 ) -> dict[str, Any]:
@@ -264,6 +346,14 @@ def _hand_foot_bone_containment_gate_v811(
             "pass": False,
             "reason": "beta-specific canonical SMPL-X body surface is missing",
         }
+    provenance_ok, provenance = _body_surface_beta_provenance_v811(
+        body_surface,
+        subject_betas=(
+            getattr(asset, "betas", None) if subject_betas is None else subject_betas
+        ),
+    )
+    if not provenance_ok:
+        return provenance
     try:
         subject_joints = np.asarray(asset.rest_joints, dtype=np.float64)
         subject_parents = np.asarray(asset.parents, dtype=np.int64)
@@ -324,6 +414,175 @@ def _hand_foot_bone_containment_gate_v811(
         "maximum_outside_m": float(maximum_outside),
         "regions": per_region,
         "surface_source": body_surface.source,
+        "beta_provenance": provenance,
+    }
+
+
+def _tube_containment_gate_v811(
+    asset: Any,
+    vertices: np.ndarray,
+    *,
+    body_surface: MatrixBodySurfaceV811 | None,
+    subject_betas: Any,
+    pose_axis_angle: np.ndarray,
+    transl: np.ndarray,
+    skin_margin_m: float = 0.00025,
+    bone_clearance_m: float = 0.00025,
+    broadphase_padding_m: float = 0.004,
+) -> dict[str, Any]:
+    """Recompute final posed vessel/nerve containment for one matrix cell.
+
+    The operator route report is an L0 bake record.  The leg-chain materializer
+    subsequently updates rigid bones and inverse binds, so that record alone
+    cannot prove that the final L1 rest or an evaluated capture pose retains
+    tube clearance.  This diagnostic deliberately queries the final vertices
+    only during offline matrix validation; resident pose evaluation stays
+    entirely matrix based.
+    """
+
+    if body_surface is None:
+        return {
+            "available": False,
+            "pass": False,
+            "reason": "beta-specific canonical SMPL-X body surface is missing",
+        }
+    provenance_ok, provenance = _body_surface_beta_provenance_v811(
+        body_surface,
+        subject_betas=subject_betas,
+    )
+    if not provenance_ok:
+        return provenance
+    try:
+        subject_joints = np.asarray(asset.rest_joints, dtype=np.float64)
+        subject_parents = np.asarray(asset.parents, dtype=np.int64)
+        final = np.asarray(vertices, dtype=np.float64)
+        if (
+            subject_joints.shape != (55, 3)
+            or subject_parents.shape != (55,)
+            or not np.allclose(
+                body_surface.rest_joints,
+                subject_joints,
+                atol=1.0e-6,
+                rtol=0.0,
+            )
+            or not np.array_equal(body_surface.parents, subject_parents)
+        ):
+            return {
+                "available": False,
+                "pass": False,
+                "reason": "body surface does not match this subject's SMPL-X beta skeleton",
+            }
+        if final.shape != np.asarray(asset.vertices_rest).shape or not np.all(
+            np.isfinite(final)
+        ):
+            return {
+                "available": False,
+                "pass": False,
+                "reason": "posed anatomy is invalid",
+            }
+        components = vessel_components_v8(asset, tissues=("vessel", "nerve"))
+        tube_ids = np.unique(
+            np.concatenate(
+                [
+                    np.asarray(component.vertex_ids, dtype=np.int64)
+                    for component in components
+                ]
+            )
+        )
+        if not len(tube_ids):
+            return {
+                "available": False,
+                "pass": False,
+                "reason": "vessel/nerve tube domain is empty",
+            }
+        body_vertices = _posed_body_surface_v811(
+            body_surface,
+            pose_axis_angle,
+            transl,
+        )
+        skin_signed, _closest, _normal = signed_distance(
+            final[tube_ids],
+            body_vertices,
+            np.asarray(body_surface.faces, dtype=np.int32),
+        )
+        skin_signed = np.asarray(skin_signed, dtype=np.float64)
+        outside = skin_signed > 0.0
+        shell_violation = skin_signed > -float(skin_margin_m)
+
+        # Keep the same broadphase and signed-distance convention as the L0
+        # route.  Build collision surfaces from final posed bones so L1 bind
+        # changes cannot hide behind a pre-materialization report.
+        posed_asset = type("_PosedAsset", (), {})()
+        posed_asset.__dict__.update(vars(asset))
+        posed_asset.vertices_rest = final
+        collision = collision_surfaces_v8(posed_asset)
+        bone_violation = np.zeros(len(tube_ids), dtype=bool)
+        maximum_bone_penetration_m = 0.0
+        per_bone: list[dict[str, Any]] = []
+        points = final[tube_ids]
+        for surface in collision:
+            low = np.min(surface.vertices, axis=0) - float(broadphase_padding_m)
+            high = np.max(surface.vertices, axis=0) + float(broadphase_padding_m)
+            candidates = np.flatnonzero(
+                np.all((points >= low) & (points <= high), axis=1)
+            )
+            if not len(candidates):
+                continue
+            signed, _closest, _normal = signed_distance(
+                points[candidates],
+                surface.vertices,
+                surface.faces,
+            )
+            signed = np.asarray(signed, dtype=np.float64)
+            violated = signed < float(bone_clearance_m)
+            bone_violation[candidates[violated]] = True
+            penetration = np.maximum(0.0, -signed)
+            maximum_bone_penetration_m = max(
+                maximum_bone_penetration_m,
+                float(np.max(penetration)) if len(penetration) else 0.0,
+            )
+            if np.any(violated):
+                per_bone.append(
+                    {
+                        "name": surface.name,
+                        "candidate_count": int(len(candidates)),
+                        "clearance_violation_count": int(np.count_nonzero(violated)),
+                        "maximum_penetration_m": float(np.max(penetration)),
+                    }
+                )
+    except (TypeError, ValueError, np.linalg.LinAlgError) as exc:
+        return {"available": False, "pass": False, "reason": str(exc)}
+
+    outside_count = int(np.count_nonzero(outside))
+    shell_violation_count = int(np.count_nonzero(shell_violation))
+    bone_violation_count = int(np.count_nonzero(bone_violation))
+    return {
+        "available": True,
+        "pass": bool(
+            outside_count == 0
+            and shell_violation_count == 0
+            and bone_violation_count == 0
+        ),
+        "vertex_count": int(len(tube_ids)),
+        "component_count": int(len(components)),
+        "skin_margin_m": float(skin_margin_m),
+        "bone_clearance_m": float(bone_clearance_m),
+        "skin_outside_count": outside_count,
+        "skin_maximum_outside_m": (
+            float(np.max(skin_signed[outside])) if outside_count else 0.0
+        ),
+        "skin_clearance_violation_count": shell_violation_count,
+        "skin_maximum_clearance_violation_m": (
+            float(np.max(skin_signed[shell_violation] + float(skin_margin_m)))
+            if shell_violation_count
+            else 0.0
+        ),
+        "bone_clearance_violation_count": bone_violation_count,
+        "bone_maximum_penetration_m": maximum_bone_penetration_m,
+        "collision_surface_count": int(len(collision)),
+        "collision_violations": per_bone,
+        "surface_source": body_surface.source,
+        "beta_provenance": provenance,
     }
 
 
@@ -524,6 +783,18 @@ def _v811_contract_gate(
         source_rig_rebind = (
             source_rig_rebind if isinstance(source_rig_rebind, Mapping) else {}
         )
+        source_prewrap = volume.get("source_soft_prewrap")
+        source_prewrap = (
+            source_prewrap if isinstance(source_prewrap, Mapping) else {}
+        )
+        source_prewrap_exact = bool(
+            source_prewrap.get("backend")
+            == "source_skin_local_normal_projection_laplacian_v811"
+            and source_prewrap.get("strict_passed") is True
+            and source_prewrap.get("topology_preserved") is True
+            and source_prewrap.get("source_weights_preserved") is True
+            and source_prewrap.get("protected_vertices_preserved") is True
+        )
         volume_exact = bool(
             _finite_int(volume.get("schema_version", -1)) == 1
             and volume.get("artifact_kind") == "SourceSkinVolumeRegistrationV811"
@@ -537,11 +808,15 @@ def _v811_contract_gate(
             and volume.get("nonsoft_material_preserved") is True
             and volume.get("rigid_hard_protection_preserved") is True
             and source_rig_rebind.get("rebound") is False
+            and source_prewrap_exact
         )
         checks["source_skin_volume_v811"]["pass"] = bool(
             checks["source_skin_volume_v811"]["pass"] and volume_exact
         )
         checks["source_skin_volume_v811"]["strict_semantic_transport"] = volume_exact
+        checks["source_skin_volume_v811"]["source_skin_prewrap"] = (
+            source_prewrap_exact
+        )
         if not checks["source_skin_volume_v811"]["pass"]:
             failures.append("source_skin_volume_v811:semantic_transport")
 
@@ -985,6 +1260,15 @@ def _cell(
         subject.rigged_asset,
         final,
         body_surface=body_surface,
+        subject_betas=subject.betas,
+        pose_axis_angle=pose.pose_axis_angle,
+        transl=pose.transl,
+    )
+    gates["containment/tube_final"] = _tube_containment_gate_v811(
+        subject.rigged_asset,
+        final,
+        body_surface=body_surface,
+        subject_betas=subject.betas,
         pose_axis_angle=pose.pose_axis_angle,
         transl=pose.transl,
     )

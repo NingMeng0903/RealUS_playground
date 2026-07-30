@@ -105,6 +105,11 @@ class AdaptiveKeConfig:
     # the retract felt heavily damped.
     f_err_gate_n: float = 1.2
     f_err_gate_frac: float = 0.35
+    # Absolute floor so desired_z→0 never collapses the gate to 1.2 N
+    # (hand push then freezes learning+idle decay and locks Ke at impact).
+    f_err_gate_floor_n: float = 3.0
+    # Idle decay freezes when Dimeas Iₛ exceeds this (oscillation present).
+    idle_decay_is_gate: float = 0.15
     # Hold K̂_e (no learning) this many ticks after contact acquisition so
     # the first-impact transient doesn't dominate the estimator.
     settle_ticks: int = 10
@@ -147,6 +152,8 @@ class AdaptiveKeConfig:
             df_spike_n=float(a.get("df_spike_n", 4.0)),
             f_err_gate_n=float(a.get("f_err_gate_n", 1.2)),
             f_err_gate_frac=float(a.get("f_err_gate_frac", 0.35)),
+            f_err_gate_floor_n=float(a.get("f_err_gate_floor_n", 3.0)),
+            idle_decay_is_gate=float(a.get("idle_decay_is_gate", 0.15)),
             settle_ticks=int(a.get("settle_ticks", 10)),
         )
 
@@ -233,14 +240,19 @@ class EnvironmentStiffnessEstimator:
         return self._x_adm
 
     def _f_err_gate_eff_n(self, f_des_z: float) -> float:
-        """Setpoint-relative |f_err| gate with a small-force noise floor.
+        """Setpoint-relative |f_err| gate with a floor at low/zero setpoints.
 
-        max(f_err_gate_n, f_err_gate_frac·|f_des_z|) keeps the "steady vs
-        transient" judgement self-similar at any desired force instead of
-        freezing K̂_e whenever the setpoint outgrows a fixed absolute gate.
+        max(f_err_gate_n, f_err_gate_frac·|f_des_z|, f_err_gate_floor_n) keeps
+        the "steady vs transient" judgement self-similar and prevents the
+        gate from collapsing to ~1.2 N when desired_z→0 (which froze K̂_e at
+        impact and made hand-push feel heavily damped).
         """
         cfg = self.cfg
-        return max(float(cfg.f_err_gate_n), float(cfg.f_err_gate_frac) * abs(f_des_z))
+        return max(
+            float(cfg.f_err_gate_n),
+            float(cfg.f_err_gate_frac) * abs(f_des_z),
+            float(cfg.f_err_gate_floor_n),
+        )
 
     def _should_update_ke(
         self,
@@ -357,17 +369,14 @@ class EnvironmentStiffnessEstimator:
 
         # Stiff-first closure (idle decay): steady tracking with no ΔF/Δx
         # update this tick lets the impact-initialised K̂_e relax toward
-        # ke_initial so the press regains bandwidth to chase a receding
-        # surface. Gated by |f_err| envelope (over-force transient) AND faded
-        # by the Dimeas Iₛ: a building contact resonance must freeze the
-        # decay even while its force ripple is still inside the (setpoint-
-        # relative) |f_err| gate, otherwise b_d releases mid-bounce on a
-        # hard surface.
+        # ke_soft_floor so proactive FF regains bandwidth on soft tissue.
+        # Freeze only on Dimeas Iₛ (contact resonance), not on |f_err| —
+        # a large force error from hand push must not lock Ke at impact.
         if (
             not learned
             and cfg.ke_idle_decay_s > 1e-6
             and self._contact_ticks > max(cfg.settle_ticks, 0)
-            and self._f_err_env <= f_err_gate_n
+            and float(instability_index) <= float(cfg.idle_decay_is_gate)
         ):
             self.ke_est += (self.dt / cfg.ke_idle_decay_s) * (
                 max(float(cfg.ke_initial), float(cfg.ke_soft_floor)) - self.ke_est

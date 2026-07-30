@@ -526,6 +526,38 @@ def test_multi_station_foot_chain_rejects_nonrigid_rotation() -> None:
         )
 
 
+def test_multi_station_foot_chain_keeps_distal_extensions_rigid() -> None:
+    source_ankle = np.asarray((0.0, 0.0, 0.0), dtype=np.float64)
+    source_arch = np.asarray((0.0, -0.10, 0.0), dtype=np.float64)
+    source_forefoot = np.asarray((0.0, -0.20, 0.0), dtype=np.float64)
+    target_ankle = np.asarray((1.0, 2.0, 3.0), dtype=np.float64)
+    target_arch = np.asarray((1.0, 1.90, 3.0), dtype=np.float64)
+    # The target distal segment is deliberately longer than the source one.
+    # A toe past the forefoot must not inherit that extra length.
+    target_forefoot = np.asarray((1.0, 1.65, 3.0), dtype=np.float64)
+    rotation = _rotation_z(np.pi / 2.0)
+    toe_center = np.asarray(((0.012, -0.28, 0.004),), dtype=np.float64)
+
+    mapped, parameters = _map_foot_stations_rigid_v811(
+        toe_center,
+        source_ankle=source_ankle,
+        source_arch=source_arch,
+        source_forefoot=source_forefoot,
+        target_ankle=target_ankle,
+        target_arch=target_arch,
+        target_forefoot=target_forefoot,
+        rotation=rotation,
+        source_segment_indices=np.asarray((1,), dtype=np.int64),
+    )
+
+    assert parameters[0] > 1.0
+    np.testing.assert_allclose(
+        mapped[0],
+        target_forefoot + (toe_center[0] - source_forefoot) @ rotation.T,
+        atol=1.0e-12,
+    )
+
+
 def test_proximal_fibula_cap_selects_only_the_near_end() -> None:
     y = np.linspace(0.0, -0.40, 100, dtype=np.float64)
     vertices = np.stack((np.zeros_like(y), y, np.zeros_like(y)), axis=1)

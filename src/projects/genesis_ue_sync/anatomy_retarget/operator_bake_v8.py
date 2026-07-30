@@ -148,6 +148,31 @@ def _same_topology(first: AnatomyRiggedAsset, second: AnatomyRiggedAsset) -> boo
     )
 
 
+def _has_anatomical_leg_guide_v810(asset: AnatomyRiggedAsset) -> bool:
+    """Recognize the persisted bilateral hip-to-forefoot guide stations."""
+
+    guide = getattr(asset, "source_driver_rest_joints", None)
+    names = tuple(str(name) for name in (asset.joint_names or ()))
+    if guide is None or len(names) != 55:
+        return False
+    values = np.asarray(guide, dtype=np.float64)
+    if values.shape != (55, 3) or not np.all(np.isfinite(values)):
+        return False
+    required = (
+        ("left_hip", "left_knee", "left_ankle", "left_foot"),
+        ("right_hip", "right_knee", "right_ankle", "right_foot"),
+    )
+    try:
+        for chain in required:
+            ids = [names.index(name) for name in chain]
+            segments = np.linalg.norm(np.diff(values[ids], axis=0), axis=1)
+            if np.any(segments <= 1.0e-5):
+                return False
+    except ValueError:
+        return False
+    return True
+
+
 def merge_v71_authority_v8(
     fitted_product: AnatomyRiggedAsset,
     v71_source: AnatomyRiggedAsset,
@@ -182,6 +207,18 @@ def merge_v71_authority_v8(
         "v8_reference_field_authority",
         "v8_nonshrunk_bone_authority",
         "v8_foot_compound_authority",
+        # A continuous product may carry a previously baked soft-only volume
+        # field.  Keep its provenance while replacing all source-rig authority
+        # from V71 below; the actual reuse path independently checks the
+        # canonical rest skeleton and soft vertex domain.
+        "source_skin_volume_registration",
+        "stage1_preserves_blender_source_binding",
+        "stage1_subject_driver_skeleton",
+        "stage1_capture_audit_required",
+        "shape_hash",
+        # The guide stations, rather than arbitrary Blender child offsets,
+        # anchor the hip/knee/ankle/forefoot chain at runtime.
+        "source_anatomical_guide_fk_v810",
     ):
         if key in product_metadata:
             runtime_metadata[key] = copy.deepcopy(product_metadata[key])
@@ -213,6 +250,12 @@ def merge_v71_authority_v8(
         merged.metadata,
         extra_direct_bone_names=("Spine_C7", "Head_Bone", "Jaw_Bone_base"),
     )
+    if not _has_anatomical_leg_guide_v810(merged):
+        raise ValueError(
+            "V8.11 selective migration requires complete bilateral "
+            "anatomical hip/knee/ankle/foot guide stations"
+        )
+    merged_metadata["source_anatomical_guide_fk_v810"] = True
     merged = replace(merged, metadata=merged_metadata)
     merged = with_source_driver_coupling(merged)
     merged.validate()
@@ -456,6 +499,90 @@ def _soft_volume_beta_basis_v811(
     return result, report
 
 
+def _prebaked_soft_volume_reference_v811(
+    template: AnatomyRiggedAsset,
+    *,
+    source_skin_volume_dir: Any,
+) -> dict[str, Any] | None:
+    """Authenticate a prior continuous soft-volume field for V8.11 reuse.
+
+    Some known-good reference products already contain the offline harmonic
+    transport that kept vessels and nerves within the body.  Re-running that
+    field against their *source* Skin_Glass is incorrect: their soft vertices
+    are now in the target frame while Skin_Glass remains source-frame input.
+    Reuse is deliberately narrow: only an exact canonical skeleton and an
+    unchanged soft transport domain are accepted; hard tissue is never reused
+    as a geometry or bind authority.
+    """
+
+    metadata = dict(template.metadata or {})
+    backend = str(metadata.get("source_skin_volume_registration", ""))
+    if backend != "stage1_subject_surface_dirichlet_harmonic_v3":
+        return None
+    reference = getattr(template, "harmonic_reference_vertices", None)
+    if reference is None:
+        return None
+    vertices = np.asarray(template.vertices_rest, dtype=np.float32)
+    reference_vertices = np.asarray(reference, dtype=np.float32)
+    if (
+        reference_vertices.shape != vertices.shape
+        or not np.all(np.isfinite(reference_vertices))
+        or not np.all(np.isfinite(vertices))
+    ):
+        return None
+    root = Path(source_skin_volume_dir)
+    weights_path = root / "smpl_canonical_weights.npz"
+    if not weights_path.is_file():
+        raise ValueError(
+            "V8.11 soft-volume reference reuse requires "
+            "smpl_canonical_weights.npz"
+        )
+    try:
+        with np.load(weights_path, allow_pickle=False) as data:
+            canonical_joints = np.asarray(data["rest_joints"], dtype=np.float32)
+    except (KeyError, OSError, ValueError) as exc:
+        raise ValueError(
+            "V8.11 soft-volume reference reuse requires canonical rest_joints"
+        ) from exc
+    subject_joints = np.asarray(template.rest_joints, dtype=np.float32)
+    if canonical_joints.shape != subject_joints.shape or not np.array_equal(
+        canonical_joints, subject_joints
+    ):
+        return None
+    soft = soft_volume_transport_mask_v811(template)
+    protected = ~soft
+    if not np.any(soft):
+        return None
+    digest = hashlib.sha256(b"prebaked-soft-volume-reference-v811\0")
+    for values in (
+        np.asarray(soft, dtype=np.uint8),
+        np.ascontiguousarray(reference_vertices[soft]),
+        np.ascontiguousarray(canonical_joints),
+    ):
+        digest.update(np.ascontiguousarray(values).tobytes())
+    return {
+        "schema_version": 1,
+        "artifact_kind": "SourceSkinVolumeRegistrationV811",
+        "backend": "prebaked_continuous_soft_volume_reference_v811",
+        "available": True,
+        "passed": False,
+        "reason": "exact rest and capture containment audit is required after subject materialization",
+        "capture_audit_required": True,
+        "canonical_rest_joint_match": True,
+        "source_harmonic_backend": backend,
+        "final_soft_vertices_differ_from_stage1_reference": bool(
+            not np.array_equal(reference_vertices[soft], vertices[soft])
+        ),
+        "soft_volume_transport_vertices": int(np.count_nonzero(soft)),
+        "protected_material_vertices": int(np.count_nonzero(protected)),
+        "topology_preserved": True,
+        "source_weights_preserved": True,
+        "protected_rigid_material": True,
+        "runtime_volume_query": False,
+        "content_digest": digest.hexdigest(),
+    }
+
+
 def _constraint_surface_v811(
     vessel_skin_vertices: Any | None,
     vessel_skin_faces: Any | None,
@@ -545,6 +672,7 @@ def build_selective_source_operator_v8(
         "passed": False,
         "reason": "canonical source-skin volume directory was not supplied",
     }
+    reused_prebaked_soft_volume = False
     head_compound_report: dict[str, Any] = {
         "available": False,
         "passed": False,
@@ -607,37 +735,43 @@ def build_selective_source_operator_v8(
         original_faces = np.asarray(template.faces).copy()
         original_indices = np.asarray(template.driver_indices).copy()
         original_weights = np.asarray(template.driver_weights).copy()
-        template, volume_registration_report = apply_source_skin_volume_registration(
+        volume_registration_report = _prebaked_soft_volume_reference_v811(
             template,
-            canonical_dir=source_skin_volume_dir,
-            preserve_protected_material=True,
-            rebind_source_rig=False,
+            source_skin_volume_dir=source_skin_volume_dir,
         )
-        if (
-            not np.array_equal(template.faces, original_faces)
-            or not np.array_equal(template.driver_indices, original_indices)
-            or not np.array_equal(template.driver_weights, original_weights)
-        ):
-            raise RuntimeError(
-                "V8.11 soft volume registration changed topology or source weights"
+        reused_prebaked_soft_volume = volume_registration_report is not None
+        if volume_registration_report is None:
+            template, volume_registration_report = apply_source_skin_volume_registration(
+                template,
+                canonical_dir=source_skin_volume_dir,
+                preserve_protected_material=True,
+                rebind_source_rig=False,
             )
-        volume_registration_report = {
-            **volume_registration_report,
-            "available": True,
-            # The harmonic map has completed here, but it has not yet been
-            # checked against the exact saved subject in rest and capture
-            # poses.  Do not turn that missing geometry evidence into a green
-            # publish contract merely because topology and weights survived.
-            "passed": False,
-            "capture_audit_required": True,
-            "reason": (
-                "exact rest and capture containment audit is required after "
-                "subject materialization"
-            ),
-            "topology_preserved": True,
-            "source_weights_preserved": True,
-            "protected_rigid_material": True,
-        }
+            if (
+                not np.array_equal(template.faces, original_faces)
+                or not np.array_equal(template.driver_indices, original_indices)
+                or not np.array_equal(template.driver_weights, original_weights)
+            ):
+                raise RuntimeError(
+                    "V8.11 soft volume registration changed topology or source weights"
+                )
+            volume_registration_report = {
+                **volume_registration_report,
+                "available": True,
+                # The harmonic map has completed here, but it has not yet been
+                # checked against the exact saved subject in rest and capture
+                # poses.  Do not turn that missing geometry evidence into a green
+                # publish contract merely because topology and weights survived.
+                "passed": False,
+                "capture_audit_required": True,
+                "reason": (
+                    "exact rest and capture containment audit is required after "
+                    "subject materialization"
+                ),
+                "topology_preserved": True,
+                "source_weights_preserved": True,
+                "protected_rigid_material": True,
+            }
     # The required canonical volume directory already owns the frozen SMPL-X
     # shell.  Reuse it for both head fitting and the vessel/nerve route when a
     # separate audit surface was not supplied; otherwise a nominal V8.11 bake
@@ -649,7 +783,17 @@ def build_selective_source_operator_v8(
     )
     head_surface_vertices = vessel_skin_vertices
     head_surface_faces = vessel_skin_faces
-    if head_surface_vertices is not None and head_surface_faces is not None:
+    if reused_prebaked_soft_volume:
+        # The historical continuous field is being used to recover soft-tube
+        # containment.  Do not silently refit its already reviewed head while
+        # investigating legs/feet; head fit remains an explicit release gate.
+        head_compound_report = {
+            "available": False,
+            "passed": False,
+            "reason": "head compound fit deferred while validating reused soft-volume reference",
+            "deferred": True,
+        }
+    elif head_surface_vertices is not None and head_surface_faces is not None:
         if source_skin_volume_dir is None:
             raise ValueError(
                 "V8.11 head compound fitting requires the canonical source-skin "

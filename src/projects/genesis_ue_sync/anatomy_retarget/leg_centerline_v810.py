@@ -241,9 +241,12 @@ def _map_foot_stations_rigid_v811(
     if np.any(source_length_sq <= 1.0e-12) or np.any(target_length_sq <= 1.0e-12):
         raise ValueError("V8.11 foot chain contains a degenerate station segment")
 
-    # Select the closest finite segment, but keep the winning local coordinate
-    # unclamped.  This keeps calcaneal and toe extensions while preventing a
-    # distal metatarsal from selecting an unrelated infinite station line.
+    # Select the closest finite segment.  A mesh center can legitimately lie
+    # outside its selected segment: calcaneal geometry extends behind the
+    # ankle and phalanges extend beyond the metatarsal station.  Do not
+    # extrapolate the *length mismatch* of a target segment into those rigid
+    # extensions.  It moves a toe by the target/source segment ratio a second
+    # time and was the direct cause of the 100 mm-class V8.11 foot escape.
     relative = values[:, None, :] - source_stations[None, :2, :]
     local = np.einsum("vsi,si->vs", relative, source_segments) / source_length_sq
     projected = (
@@ -291,6 +294,18 @@ def _map_foot_stations_rigid_v811(
         + local_selected[:, None] * target_segments[selected]
         + source_radial @ proper.T
     )
+    below = local_selected < 0.0
+    above = local_selected > 1.0
+    if np.any(below):
+        starts = source_stations[selected[below]]
+        target_starts = target_stations[selected[below]]
+        mapped[below] = target_starts + (
+            values[below] - starts
+        ) @ proper.T
+    if np.any(above):
+        ends = source_stations[selected[above] + 1]
+        target_ends = target_stations[selected[above] + 1]
+        mapped[above] = target_ends + (values[above] - ends) @ proper.T
     source_lengths = np.sqrt(source_length_sq)
     cumulative = np.asarray((0.0, source_lengths[0]), dtype=np.float64)
     parameter = (

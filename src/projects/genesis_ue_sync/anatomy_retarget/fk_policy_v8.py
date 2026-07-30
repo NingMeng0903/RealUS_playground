@@ -680,7 +680,7 @@ def selective_leg_runtime_roots_v811(asset: Any) -> dict[int, int]:
             runtime_roots[bone] = mapped[bone]
 
         for parent_label, child_label in zip(
-            _V71_LEG_RUNTIME_STATION_LABELS_V811,
+            _V71_LEG_RUNTIME_STATION_LABELS_V811[:-1],
             _V71_LEG_RUNTIME_STATION_LABELS_V811[1:],
             strict=True,
         ):

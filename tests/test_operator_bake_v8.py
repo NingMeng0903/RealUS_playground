@@ -8,6 +8,7 @@ import pytest
 from projects.genesis_ue_sync.anatomy_retarget import operator_bake_v8
 from projects.genesis_ue_sync.anatomy_retarget.operator_bake_v8 import (
     _constraint_surface_v811,
+    _has_anatomical_leg_guide_v810,
     _soft_volume_beta_basis_v811,
     sanitize_v8_runtime_metadata,
 )
@@ -17,6 +18,7 @@ def test_runtime_metadata_removes_every_old_leg_and_patella_path() -> None:
     cleaned = sanitize_v8_runtime_metadata(
         {
             "source_full_local_fk_v2": True,
+            "source_anatomical_guide_fk_v810": True,
             "source_leg_hinge_solve_v1": {"left": 1},
             "source_knee_hinge_splines_v7": {"left": 2},
             "nested": {
@@ -39,6 +41,7 @@ def test_runtime_metadata_removes_every_old_leg_and_patella_path() -> None:
     assert cleaned["unrelated"] == 5
     assert cleaned["source_fk_policy_v4"] == "selective_authority"
     assert cleaned["source_full_local_fk_v2"] is False
+    assert cleaned["source_anatomical_guide_fk_v810"] is True
     assert cleaned["disable_soft_follow"] is True
 
 
@@ -110,3 +113,33 @@ def test_v811_soft_beta_basis_excludes_rigid_cranial_organs() -> None:
     np.testing.assert_array_equal(basis[:, :2], 0.0)
     np.testing.assert_array_equal(basis[:, 2], 1.0)
     assert report["soft_vertex_count"] == 1
+
+
+def test_v811_anatomical_leg_guide_requires_complete_non_degenerate_chains() -> None:
+    names = [f"joint_{index}" for index in range(55)]
+    for index, name in enumerate(
+        (
+            "left_hip",
+            "left_knee",
+            "left_ankle",
+            "left_foot",
+            "right_hip",
+            "right_knee",
+            "right_ankle",
+            "right_foot",
+        )
+    ):
+        names[index] = name
+    stations = np.zeros((55, 3), dtype=np.float32)
+    stations[:4, 1] = (0.0, -0.4, -0.8, -1.0)
+    stations[4:8, 0] = 0.2
+    stations[4:8, 1] = (0.0, -0.4, -0.8, -1.0)
+    asset = SimpleNamespace(
+        joint_names=names,
+        source_driver_rest_joints=stations,
+    )
+
+    assert _has_anatomical_leg_guide_v810(asset) is True
+
+    asset.source_driver_rest_joints[2] = asset.source_driver_rest_joints[1]
+    assert _has_anatomical_leg_guide_v810(asset) is False

@@ -275,20 +275,17 @@ def test_idle_decay_in_steady_contact():
     )
 
 
-def test_allow_idle_decay_false_freezes_stiff_first_estimate():
-    """A low-load/suspect episode must not look like quiet soft tissue.
-
-    At a 1 N setpoint the free-space residual can leave |f_err| below the
-    legacy 1.2 N envelope.  The physical-contact caller therefore needs an
-    explicit idle-decay veto until reliable load-bearing contact returns.
-    """
+def test_high_instability_freezes_stiff_first_estimate():
+    """Idle decay is gated by Dimeas Iₛ, not by |f_err| hand push."""
     cfg = AdaptiveKeConfig(
         enabled=True,
         zeta=1.0,
         ke_initial=80.0,
         ke_impact_initial=1500.0,
         ke_idle_decay_s=0.20,
+        idle_decay_is_gate=0.15,
         f_err_gate_n=1.2,
+        f_err_gate_floor_n=3.0,
         bd_slew_max=1e6,
         gate_lateral_velocity=False,
         gate_df_spike=False,
@@ -306,8 +303,8 @@ def test_allow_idle_decay_false_freezes_stiff_first_estimate():
         v_lateral_m_s=0.0,
         f_err_z=0.8,
         f_des_z=1.0,
+        instability_index=1.0,
         allow_impact_init=True,
-        allow_idle_decay=False,
     )
     ke_stiff_first = est.ke_est
     assert ke_stiff_first == cfg.ke_impact_initial
@@ -322,16 +319,13 @@ def test_allow_idle_decay_false_freezes_stiff_first_estimate():
             v_lateral_m_s=0.0,
             f_err_z=0.8,
             f_des_z=1.0,
+            instability_index=1.0,
             allow_impact_init=False,
-            allow_idle_decay=False,
         )
     assert est.ke_est == ke_stiff_first, (
-        "allow_idle_decay=False must preserve stiff-first K̂_e even when "
-        "the 1 N error envelope would otherwise permit idle decay"
+        "Iₛ above idle_decay_is_gate must preserve stiff-first K̂_e"
     )
 
-    # Prove the test exercises the idle-decay path: opening the gate must now
-    # make the same estimator relax rapidly toward the soft floor.
     for _ in range(400):
         est.update(
             0.2,
@@ -342,25 +336,23 @@ def test_allow_idle_decay_false_freezes_stiff_first_estimate():
             v_lateral_m_s=0.0,
             f_err_z=0.8,
             f_des_z=1.0,
+            instability_index=0.0,
             allow_impact_init=False,
-            allow_idle_decay=True,
         )
     assert est.ke_est < 0.5 * ke_stiff_first
 
 
-def test_idle_decay_frozen_by_f_err_envelope():
-    """During an over-force transient (|f_err|_env > gate) the idle decay
-    must FREEZE — dropping K̂_e mid-transient would drop b_d and worsen the
-    overshoot. Peak-hold envelope on |f_err| (~0.3 s release) means a single
-    zero-crossing during an oscillation doesn't unlock the decay.
-    """
+def test_idle_decay_not_frozen_by_hand_push_force_error():
+    """Hand push (|f_err| large, Iₛ quiet) must still allow soft-tissue decay."""
     cfg = AdaptiveKeConfig(
         enabled=True,
         zeta=1.0,
         ke_initial=80.0,
         ke_impact_initial=1500.0,
-        ke_idle_decay_s=2.0,
+        ke_idle_decay_s=0.20,
+        idle_decay_is_gate=0.15,
         f_err_gate_n=1.0,
+        f_err_gate_floor_n=3.0,
         bd_slew_max=1e6,
         gate_lateral_velocity=False,
         gate_df_spike=False,
@@ -374,15 +366,16 @@ def test_idle_decay_frozen_by_f_err_envelope():
         v_force_z=0.0, v_lateral_m_s=0.0, allow_impact_init=True,
     )
     ke_after_impact = est.ke_est
-    for _ in range(400):  # 2 s with |f_err|=2 (well above 1 N gate)
+    for _ in range(400):  # 2 s with |f_err|=2 but quiet Iₛ
         est.update(
             5.0, pose, in_contact=True, mass_z=1.0,
             v_force_z=0.0, v_lateral_m_s=0.0, f_err_z=2.0,
+            instability_index=0.0,
             allow_impact_init=False,
         )
-    assert est.ke_est > 0.9 * ke_after_impact, (
-        "over-force gate must freeze idle decay; "
-        f"K̂_e dropped from {ke_after_impact} to {est.ke_est} during an over-force transient"
+    assert est.ke_est < 0.5 * ke_after_impact, (
+        "quiet Iₛ must allow idle decay even with large hand-push |f_err|; "
+        f"K̂_e stayed at {est.ke_est} (was {ke_after_impact})"
     )
 
 

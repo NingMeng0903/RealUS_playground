@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from types import SimpleNamespace
 
 import numpy as np
@@ -7,15 +8,18 @@ import numpy as np
 from projects.genesis_ue_sync.anatomy_retarget.leg_centerline_v810 import (
     _foot_chain_digest_v1,
 )
+from projects.genesis_ue_sync.anatomy_retarget import validation_matrix_v8
 from projects.genesis_ue_sync.anatomy_retarget.validation_matrix_v8 import (
     MatrixBodySurfaceV811,
     _foot_chain_gate_v811,
     _hand_foot_bone_containment_gate_v811,
+    _tube_containment_gate_v811,
     _v811_contract_gate,
 )
 
 
 _DIGEST = "a" * 64
+_BODY_BETAS = np.zeros(10, dtype=np.float32)
 
 
 def _foot_chain(schema_version: object = 1) -> dict[str, object]:
@@ -108,6 +112,13 @@ def _complete_correction(route: dict[str, object]) -> dict[str, object]:
             "nonsoft_material_preserved": True,
             "rigid_hard_protection_preserved": True,
             "source_rig_rebind": {"rebound": False},
+            "source_soft_prewrap": {
+                "backend": "source_skin_local_normal_projection_laplacian_v811",
+                "strict_passed": True,
+                "topology_preserved": True,
+                "source_weights_preserved": True,
+                "protected_vertices_preserved": True,
+            },
         },
         "source_skin_volume_beta_basis_v1": {
             "available": True,
@@ -236,7 +247,37 @@ def test_v811_volume_requires_rigid_hard_protection_evidence() -> None:
     assert result["checks"]["source_skin_volume_v811"]["pass"] is False
 
 
-def _body_surface() -> MatrixBodySurfaceV811:
+def test_v811_volume_rejects_unverified_source_skin_prewrap() -> None:
+    route = {
+        "available": True,
+        "passed": True,
+        "tissues": ["vessel", "nerve"],
+        "skin_outside_count": 0,
+        "bone_clearance_violation_count": 0,
+        "edge_relative_change_q99": 0.0,
+        "skin_margin_m": 0.00025,
+        "bone_clearance_m": 0.00025,
+        "source_reconstruction": {"skipped": True},
+    }
+    correction = _complete_correction(route)
+    correction["source_skin_volume_v811"]["source_soft_prewrap"][
+        "strict_passed"
+    ] = False
+    operator = SimpleNamespace(
+        template_asset=_selective_asset(),
+        correction_report=correction,
+    )
+    matrix_subject = SimpleNamespace(label="reference", subject=_subject(_foot_chain()))
+
+    result = _v811_contract_gate(operator, [matrix_subject])
+
+    assert result["pass"] is False
+    assert result["checks"]["source_skin_volume_v811"]["source_skin_prewrap"] is False
+
+
+def _body_surface(
+    *, canonical_betas: np.ndarray | None = _BODY_BETAS
+) -> MatrixBodySurfaceV811:
     vertices = np.asarray(
         (
             (-1.0, -1.0, -1.0),
@@ -278,6 +319,9 @@ def _body_surface() -> MatrixBodySurfaceV811:
         parents=np.asarray((-1,) + (0,) * 54, dtype=np.int32),
         inverse_bind=inverse,
         source="synthetic-cube",
+        canonical_betas=canonical_betas,
+        canonical_manifest_digest=_DIGEST,
+        canonical_source_identity="synthetic-test-canonical",
     )
 
 
@@ -297,6 +341,7 @@ def test_v811_hard_hand_foot_gate_rejects_half_millimetre_surface_crossing() -> 
         asset,
         np.asarray(((0.0, 0.0, 0.0), (1.0006, 0.0, 0.0)), dtype=np.float32),
         body_surface=_body_surface(),
+        subject_betas=_BODY_BETAS,
         pose_axis_angle=pose,
         transl=np.zeros(3, dtype=np.float32),
     )
@@ -310,8 +355,164 @@ def test_v811_hard_hand_foot_gate_rejects_half_millimetre_surface_crossing() -> 
         asset,
         np.asarray(((0.0, 0.0, 0.0), (0.9996, 0.0, 0.0)), dtype=np.float32),
         body_surface=_body_surface(),
+        subject_betas=_BODY_BETAS,
         pose_axis_angle=pose,
         transl=np.zeros(3, dtype=np.float32),
     )
 
     assert accepted["pass"] is True
+    assert accepted["beta_provenance"]["canonical_manifest_digest"] == _DIGEST
+
+
+def test_v811_hard_hand_foot_gate_requires_matching_canonical_beta_provenance() -> None:
+    asset = SimpleNamespace(
+        vertices_rest=np.zeros((2, 3), dtype=np.float32),
+        source_vertex_ranges=np.asarray(((0, 1), (1, 2)), dtype=np.int32),
+        source_tissues=("bone", "bone"),
+        source_mesh_names=("Metacarpal_L", "Talus_R"),
+        source_sides=("left", "right"),
+        rest_joints=np.zeros((55, 3), dtype=np.float32),
+        parents=np.asarray((-1,) + (0,) * 54, dtype=np.int32),
+    )
+    posed = np.zeros((2, 3), dtype=np.float32)
+    pose = np.zeros((55, 3), dtype=np.float32)
+
+    missing = _hand_foot_bone_containment_gate_v811(
+        asset,
+        posed,
+        body_surface=replace(_body_surface(), canonical_betas=None),
+        subject_betas=_BODY_BETAS,
+        pose_axis_angle=pose,
+        transl=np.zeros(3, dtype=np.float32),
+    )
+    missing_subject = _hand_foot_bone_containment_gate_v811(
+        asset,
+        posed,
+        body_surface=_body_surface(),
+        pose_axis_angle=pose,
+        transl=np.zeros(3, dtype=np.float32),
+    )
+    mismatched_betas = _BODY_BETAS.copy()
+    mismatched_betas[0] = np.float32(0.1)
+    mismatched = _hand_foot_bone_containment_gate_v811(
+        asset,
+        posed,
+        body_surface=_body_surface(canonical_betas=mismatched_betas),
+        subject_betas=_BODY_BETAS,
+        pose_axis_angle=pose,
+        transl=np.zeros(3, dtype=np.float32),
+    )
+
+    assert missing["available"] is False
+    assert missing["pass"] is False
+    assert "beta provenance" in missing["reason"]
+    assert missing_subject["available"] is False
+    assert missing_subject["pass"] is False
+    assert "subject beta identity" in missing_subject["reason"]
+    assert mismatched["available"] is False
+    assert mismatched["pass"] is False
+    assert "do not match" in mismatched["reason"]
+
+
+def _tube_gate_asset() -> SimpleNamespace:
+    """Minimal final-L1 layout: one tube point and one named bone surface."""
+
+    return SimpleNamespace(
+        vertices_rest=np.asarray(
+            (
+                (0.0, 0.0, 0.0),
+                (-0.10, -0.10, -0.10),
+                (0.10, -0.10, -0.10),
+                (0.0, 0.10, -0.10),
+                (0.0, 0.0, 0.10),
+            ),
+            dtype=np.float32,
+        ),
+        faces=np.asarray(
+            (
+                (1, 3, 2),
+                (1, 2, 4),
+                (1, 4, 3),
+                (2, 3, 4),
+            ),
+            dtype=np.int32,
+        ),
+        source_vertex_ranges=np.asarray(((0, 1), (1, 5)), dtype=np.int32),
+        source_tissues=("nerve", "bone"),
+        source_mesh_names=("SyntheticNerve", "Femur_L"),
+        source_sides=("left", "left"),
+        rest_joints=np.zeros((55, 3), dtype=np.float32),
+        parents=np.asarray((-1,) + (0,) * 54, dtype=np.int32),
+    )
+
+
+def test_v811_final_tube_gate_rejects_post_materialization_bone_collision(
+    monkeypatch: object,
+) -> None:
+    """An L0 route report cannot hide a bone moved by the final leg chain."""
+
+    def signed_distance(
+        points: np.ndarray,
+        surface_vertices: np.ndarray,
+        _surface_faces: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        # The canonical cube is always safe; the named Femur surface encloses
+        # the nerve.  This deliberately models an L1-only collision.
+        signed = np.full(
+            len(points),
+            -0.010 if len(surface_vertices) == 8 else -0.001,
+            dtype=np.float64,
+        )
+        normals = np.tile(np.asarray((1.0, 0.0, 0.0)), (len(points), 1))
+        return signed, np.asarray(points, dtype=np.float64), normals
+
+    monkeypatch.setattr(validation_matrix_v8, "signed_distance", signed_distance)
+    pose = np.zeros((55, 3), dtype=np.float32)
+    report = _tube_containment_gate_v811(
+        _tube_gate_asset(),
+        _tube_gate_asset().vertices_rest,
+        body_surface=_body_surface(),
+        subject_betas=_BODY_BETAS,
+        pose_axis_angle=pose,
+        transl=np.zeros(3, dtype=np.float32),
+    )
+
+    assert report["available"] is True
+    assert report["skin_outside_count"] == 0
+    assert report["bone_clearance_violation_count"] == 1
+    assert report["pass"] is False
+    assert report["collision_violations"][0]["name"] == "Femur_L"
+
+
+def test_v811_final_tube_gate_accepts_clear_final_geometry(
+    monkeypatch: object,
+) -> None:
+    def signed_distance(
+        points: np.ndarray,
+        surface_vertices: np.ndarray,
+        _surface_faces: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        signed = np.full(
+            len(points),
+            -0.010 if len(surface_vertices) == 8 else 0.001,
+            dtype=np.float64,
+        )
+        normals = np.tile(np.asarray((1.0, 0.0, 0.0)), (len(points), 1))
+        return signed, np.asarray(points, dtype=np.float64), normals
+
+    monkeypatch.setattr(validation_matrix_v8, "signed_distance", signed_distance)
+    asset = _tube_gate_asset()
+    report = _tube_containment_gate_v811(
+        asset,
+        asset.vertices_rest,
+        body_surface=_body_surface(),
+        subject_betas=_BODY_BETAS,
+        pose_axis_angle=np.zeros((55, 3), dtype=np.float32),
+        transl=np.zeros(3, dtype=np.float32),
+    )
+
+    assert report["available"] is True
+    assert report["skin_outside_count"] == 0
+    assert report["skin_clearance_violation_count"] == 0
+    assert report["bone_clearance_violation_count"] == 0
+    assert report["pass"] is True

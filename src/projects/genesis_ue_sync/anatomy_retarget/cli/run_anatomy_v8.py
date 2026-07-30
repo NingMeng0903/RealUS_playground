@@ -165,6 +165,10 @@ from projects.genesis_ue_sync.anatomy_retarget.v7_artifacts import (
     load_source_operator as load_source_operator_v7,
     rigged_asset_digest,
 )
+from projects.genesis_ue_sync.anatomy_retarget.shape_volume import _load_obj
+from projects.genesis_ue_sync.anatomy_retarget.source_skin_volume import (
+    _outer_body_component,
+)
 from projects.genesis_ue_sync.anatomy_retarget.validation_matrix_v8 import (
     MatrixBodySurfaceV811,
     MatrixPoseV8,
@@ -214,6 +218,38 @@ def _source_skin_volume_digest(path: Path) -> str:
         digest.update(_file_digest(candidate).encode("ascii"))
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def _weighted_outer_body_surface_v811(
+    path: Path,
+    *,
+    lbs_weights: Any,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return the external canonical body and its matching LBS rows.
+
+    Canonical SMPL-X OBJ files include eyeball components.  The matrix
+    containment surface must exclude them, but dropping those vertices without
+    dropping the corresponding rows of ``lbs_weights`` would corrupt pose-time
+    LBS.  Use the same component selection as the protected volume bake so the
+    surface, faces, and weights have one shared vertex index space.
+    """
+
+    vertices, faces = _load_obj(path)
+    weights = np.asarray(lbs_weights, dtype=np.float32)
+    if weights.shape != (len(vertices), 55):
+        raise ValueError(
+            "canonical SMPL-X LBS weights do not match the full OBJ vertex set"
+        )
+    body_vertices, body_faces, body_weights, _report = _outer_body_component(
+        vertices,
+        faces,
+        weights,
+    )
+    return (
+        np.asarray(body_vertices, dtype=np.float32),
+        np.asarray(body_faces, dtype=np.int32),
+        np.asarray(body_weights, dtype=np.float32),
+    )
 
 
 def _v811_summary_text(manifest: Mapping[str, Any]) -> str:
@@ -775,7 +811,30 @@ def _matrix_body_surfaces(
         root = Path(source).expanduser().resolve()
         if not root.is_dir():
             raise ValueError(f"body surface directory does not exist: {root}")
-        vertices, faces = load_body_surface(root / "smpl_canonical_tpose.obj")
+        manifest_path = root / "source_manifest.json"
+        if not manifest_path.is_file():
+            raise ValueError(
+                f"body surface directory lacks canonical provenance: {manifest_path}"
+            )
+        manifest = _read_json(manifest_path, label="canonical source_manifest")
+        try:
+            canonical_betas = np.asarray(
+                manifest.get("betas"), dtype=np.float32
+            ).reshape(-1)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"canonical source_manifest betas are invalid: {manifest_path}"
+            ) from exc
+        if canonical_betas.shape != (10,) or not np.all(
+            np.isfinite(canonical_betas)
+        ):
+            raise ValueError(
+                f"canonical source_manifest must contain exactly 10 finite betas: {manifest_path}"
+            )
+        if np.any(np.abs(canonical_betas) > 3.0):
+            raise ValueError(
+                f"canonical source_manifest betas exceed the V8.11 support domain: {manifest_path}"
+            )
         weights_path = root / "smpl_canonical_weights.npz"
         if not weights_path.is_file():
             raise ValueError(f"body surface directory lacks {weights_path.name}: {root}")
@@ -786,14 +845,25 @@ def _matrix_body_surfaces(
                 raise ValueError(
                     f"body surface weights lack required arrays: {missing}"
                 )
+            vertices, faces, body_weights = _weighted_outer_body_surface_v811(
+                root / "smpl_canonical_tpose.obj",
+                lbs_weights=data["lbs_weights"],
+            )
             result[label] = MatrixBodySurfaceV811(
                 vertices=np.asarray(vertices, dtype=np.float32),
                 faces=np.asarray(faces, dtype=np.int32),
-                lbs_weights=np.asarray(data["lbs_weights"], dtype=np.float32),
+                lbs_weights=body_weights,
                 rest_joints=np.asarray(data["rest_joints"], dtype=np.float32),
                 parents=np.asarray(data["parents"], dtype=np.int32),
                 inverse_bind=np.asarray(data["inverse_bind"], dtype=np.float32),
                 source=f"sha256:{_source_skin_volume_digest(root)}",
+                canonical_betas=np.ascontiguousarray(
+                    canonical_betas, dtype=np.float32
+                ),
+                canonical_manifest_digest=_file_digest(manifest_path),
+                canonical_source_identity=(
+                    str(manifest.get("source", "")).strip() or None
+                ),
             )
         result[label].validate()
     return result
