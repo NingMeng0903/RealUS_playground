@@ -98,6 +98,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         fail_qdot_decay=float(c.get("fail_qdot_decay", 0.85)),
         max_solve_ms=float(c.get("max_solve_ms", 8.0)),
         twist_sigma_floor=float(c.get("twist_sigma_floor", 0.08)),
+        sigma_escape_ref_scale=float(c.get("sigma_escape_ref_scale", 2.0)),
     )
     if reg_arr is not None:
         qp_kwargs["reg"] = reg_arr

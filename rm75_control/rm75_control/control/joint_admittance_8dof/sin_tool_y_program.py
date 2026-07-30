@@ -891,10 +891,12 @@ def build_sin_tool_y_program(
         desired_force[2] = float(params.desired_z)
         psi = None if params.psi_tgt is None or not np.isfinite(params.psi_tgt) else float(params.psi_tgt)
         if params.scan_hybrid_hold:
+            # TCP force hold (no Y sin), but keep rail COUPLED + reach so
+            # σ-escape / preferred-extension can still slide the carriage.
             hybrid_ref: HoldReference | SinToolYReference = HoldReference()
             hybrid_label = "hybrid@D"
             hybrid_sec = SecondaryPolicy(
-                preset="hold",
+                preset="track",
                 arm_angle=ArmAngleSpec(psi_rad=psi) if psi is not None else None,
                 qdot_ff="off",
             )

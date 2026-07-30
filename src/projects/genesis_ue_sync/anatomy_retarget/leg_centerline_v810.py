@@ -20,7 +20,6 @@ from .acceptance_v8 import fit_sphere, fit_sphere_center_fixed_radius
 from .anatomy_lbs import (
     _dual_quaternion_skin_numpy,
     dual_quaternion_material_transforms_numpy,
-    with_source_driver_coupling,
 )
 from .mechanism_v8 import (
     apply_cap_preserving_axial_rest_v810,
@@ -63,7 +62,6 @@ _FOOT_DISTAL_TOKENS_V811 = (
     "phalanges_foot",
 )
 _FOOT_STATION_RESIDUAL_LIMIT_M_V811 = 0.002
-_HIP_AUTHORITY_MAX_RESIDUAL_M_V811 = 0.002
 
 
 def _foot_chain_digest_v1(value: Mapping[str, Any]) -> str:
@@ -106,165 +104,6 @@ def _global_to_local(global_frames: np.ndarray, parents: np.ndarray) -> np.ndarr
         if parent >= 0:
             local[bone] = np.linalg.inv(frames[parent]) @ frames[bone]
     return local
-
-
-def enforce_smplx_hip_authority_v811(
-    asset: AnatomyRiggedAsset,
-) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
-    """Reframe femur runtime pivots at the frozen SMPL-X hip stations.
-
-    A fitted acetabulum can remain useful geometry evidence, but it cannot
-    replace the hip station that drives the source rig.  In particular, the
-    socket centre must never be written back into ``source_driver_rest_joints``
-    or used as the ``Femur_Rot_*`` bind origin.  Reframing only the runtime
-    bones leaves the already-baked hard geometry untouched while keeping the
-    14-slot LBS rest state exact after coupling is rebuilt.
-    """
-
-    asset.validate()
-    if (
-        asset.target_bind_global is None
-        or asset.target_bone_head is None
-        or asset.target_bone_tail is None
-        or asset.source_bone_names is None
-        or asset.source_bone_parents is None
-    ):
-        raise ValueError("V8.11 hip authority requires complete target FK")
-
-    rest_joints = np.asarray(asset.rest_joints, dtype=np.float64)
-    if rest_joints.shape != (55, 3) or not np.all(np.isfinite(rest_joints)):
-        raise ValueError("V8.11 hip authority requires 55 finite SMPL-X joints")
-    guide = np.asarray(
-        asset.source_driver_rest_joints
-        if asset.source_driver_rest_joints is not None
-        else rest_joints,
-        dtype=np.float64,
-    ).copy()
-    if guide.shape != rest_joints.shape or not np.all(np.isfinite(guide)):
-        raise ValueError("V8.11 hip authority has invalid driver rest joints")
-
-    target_global = np.asarray(asset.target_bind_global, dtype=np.float64).copy()
-    target_head = np.asarray(asset.target_bone_head, dtype=np.float64).copy()
-    target_tail = np.asarray(asset.target_bone_tail, dtype=np.float64).copy()
-    bone_names = list(asset.source_bone_names)
-    parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
-    if (
-        target_global.shape != (len(bone_names), 4, 4)
-        or target_head.shape != (len(bone_names), 3)
-        or target_tail.shape != (len(bone_names), 3)
-    ):
-        raise ValueError("V8.11 hip authority has incompatible target FK arrays")
-
-    sides: dict[str, dict[str, Any]] = {}
-    invalidated_responses: list[str] = []
-    for side, suffix, hip_joint in (
-        ("left", "L", 1),
-        ("right", "R", 2),
-    ):
-        bone_name = f"Femur_Rot_{suffix}"
-        if bone_name not in bone_names:
-            raise ValueError(f"V8.11 hip authority is missing {bone_name!r}")
-        bone = bone_names.index(bone_name)
-        hip = rest_joints[hip_joint]
-        old_bind = target_global[bone].copy()
-        old_head = target_head[bone].copy()
-        old_tail = target_tail[bone].copy()
-        rotation = old_bind[:3, :3]
-        if (
-            not np.allclose(rotation.T @ rotation, np.eye(3), atol=1.0e-6, rtol=0.0)
-            or not np.isclose(np.linalg.det(rotation), 1.0, atol=1.0e-6, rtol=0.0)
-        ):
-            raise ValueError(f"V8.11 hip authority found non-rigid {bone_name} bind")
-        tail_offset = old_tail - old_head
-        if float(np.linalg.norm(tail_offset)) <= 1.0e-8:
-            raise ValueError(f"V8.11 hip authority found a zero-length {bone_name}")
-
-        target_global[bone, :3, 3] = hip
-        target_head[bone] = hip
-        target_tail[bone] = hip + tail_offset
-        guide_before = guide[hip_joint].copy()
-        guide[hip_joint] = hip
-        invalidated_responses.append(str(bone))
-        sides[side] = {
-            "hip_joint": int(hip_joint),
-            "femur_bone": int(bone),
-            "authority": "frozen_smplx_hip_station",
-            "smplx_hip_m": hip.tolist(),
-            "previous_bind_origin_m": old_bind[:3, 3].tolist(),
-            "previous_bind_to_smplx_hip_m": float(
-                np.linalg.norm(old_bind[:3, 3] - hip)
-            ),
-            "previous_guide_to_smplx_hip_m": float(
-                np.linalg.norm(guide_before - hip)
-            ),
-            "final_bind_to_smplx_hip_m": float(
-                np.linalg.norm(target_global[bone, :3, 3] - hip)
-            ),
-            "final_head_to_smplx_hip_m": float(
-                np.linalg.norm(target_head[bone] - hip)
-            ),
-            "tail_length_m": float(np.linalg.norm(tail_offset)),
-            "rotation_det": float(np.linalg.det(rotation)),
-        }
-        if (
-            sides[side]["final_bind_to_smplx_hip_m"]
-            > _HIP_AUTHORITY_MAX_RESIDUAL_M_V811
-            or sides[side]["final_head_to_smplx_hip_m"]
-            > _HIP_AUTHORITY_MAX_RESIDUAL_M_V811
-        ):
-            raise AssertionError("V8.11 hip authority reframe did not reach SMPL-X hip")
-
-    metadata = dict(asset.metadata or {})
-    raw_responses = metadata.get("source_coupled_joint_response_v8")
-    removed_responses: list[str] = []
-    if isinstance(raw_responses, Mapping):
-        responses = {str(key): value for key, value in raw_responses.items()}
-        for bone in invalidated_responses:
-            if bone in responses:
-                responses.pop(bone)
-                removed_responses.append(bone)
-        if responses:
-            metadata["source_coupled_joint_response_v8"] = responses
-        else:
-            metadata.pop("source_coupled_joint_response_v8", None)
-    elif raw_responses is not None:
-        metadata.pop("source_coupled_joint_response_v8", None)
-        removed_responses = list(invalidated_responses)
-
-    target_local = _global_to_local(target_global, parents)
-    report = {
-        "schema_version": 1,
-        "method": "smplx_hip_runtime_reframe_v811",
-        "geometry_authority": "unchanged_fitted_hard_geometry",
-        "runtime_authority": "frozen_smplx_hip_station",
-        "maximum_runtime_residual_m": _HIP_AUTHORITY_MAX_RESIDUAL_M_V811,
-        "sides": sides,
-        "coupled_response": {
-            "invalidated_femur_bones": invalidated_responses,
-            "removed_response_bones": removed_responses,
-            "recalibration_required": bool(removed_responses),
-        },
-    }
-    metadata["hip_station_authority_v811"] = report
-    if removed_responses:
-        metadata["source_coupled_joint_response_v8_recalibration_required"] = {
-            "reason": "femur_runtime_pivot_reframed_to_smplx_hip_v811",
-            "bones": removed_responses,
-        }
-    result = replace(
-        asset,
-        source_driver_rest_joints=guide.astype(np.float32),
-        target_rest_global=target_global.astype(np.float32),
-        target_rest_local=target_local.astype(np.float32),
-        target_inverse_bind=np.linalg.inv(target_global).astype(np.float32),
-        target_bone_head=target_head.astype(np.float32),
-        target_bone_tail=target_tail.astype(np.float32),
-        source_driver_coupling=None,
-        metadata=metadata,
-    )
-    result = with_source_driver_coupling(result)
-    result.validate()
-    return result, report
 
 
 def _descendant_mask(
@@ -1902,11 +1741,10 @@ def reconstruct_leg_centerline_compounds_v810(
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     """Solve one connected H-K-A-F chain and transport frozen tube weights.
 
-    SMPL-X supplies the runtime hip, knee, ankle and foot action stations.
-    The anatomical socket remains a hard-geometry fit diagnostic only; it
-    cannot replace the hip pivot used by the source rig.  Length mismatch is
-    absorbed once, offline, by a cap-rigid C2 field through the femur and
-    shank shafts; every pose-time frame remains unit-scale SE(3).
+    SMPL-X supplies the desired knee, ankle and foot action stations.  The
+    anatomical socket remains the hip authority.  Length mismatch is absorbed
+    once, offline, by a cap-rigid C2 field through the femur and shank shafts;
+    every pose-time frame remains unit-scale SE(3).
     """
 
     asset.validate()
@@ -2034,8 +1872,7 @@ def reconstruct_leg_centerline_compounds_v810(
         "runtime": "one_anatomical_guide_fk_plus_v71_parent_local_fk",
         "uniform_or_radial_bone_scale": False,
         "joint_authority": {
-            "hip_rest_pivot": "frozen_smplx_hip_station_v811",
-            "hip_geometry_fit": "fitted_anatomical_acetabulum_diagnostic_only",
+            "hip_rest_pivot": "fitted_anatomical_acetabulum",
             "knee_action_station": "smplx_knee",
             "ankle_action_station": "smplx_ankle",
             "foot_pose_rotation": "smplx_foot",
@@ -2120,19 +1957,63 @@ def reconstruct_leg_centerline_compounds_v810(
         )
         if not socket_fit.get("available", False):
             raise ValueError(f"{side} V8.10 hip socket fit is unavailable")
+        head_validation_fit = fit_sphere(vertices[head_validation_ids])
+        if not head_validation_fit.get("available", False):
+            raise ValueError(
+                f"{side} V8.10 hip validation sphere fit is unavailable"
+            )
+        socket_validation_fit = fit_sphere_center_fixed_radius(
+            vertices[socket_validation_ids],
+            radius_m=float(head_validation_fit["radius_m"]),
+            initial_center=head_validation_fit["center"],
+        )
+        if not socket_validation_fit.get("available", False):
+            raise ValueError(
+                f"{side} V8.10 hip validation socket fit is unavailable"
+            )
+
         old_h_mesh = np.asarray(head_fit["center"], dtype=np.float64)
+        old_h_validation = np.asarray(
+            head_validation_fit["center"],
+            dtype=np.float64,
+        )
         old_h_bind = target_head_before[femur_bone]
         old_k_mesh = np.mean(vertices[condyle_ids], axis=0)
         old_platform = np.mean(vertices[platform_ids], axis=0)
         old_a_mesh = np.mean(vertices[mortise_ids], axis=0)
         old_k_bind = target_head_before[tibia_bone]
         old_a_bind = target_head_before[ankle_bone]
-        # The source rig must rotate around the SMPL-X/142 hip station.  The
-        # acetabular sphere fit below is retained only as a geometry audit;
-        # feeding it back here used to introduce a 57--60 mm pivot conflict.
-        target_h = raw_smplx[hip_joint].copy()
+        socket_fit_center = np.asarray(
+            socket_fit["center"],
+            dtype=np.float64,
+        )
+        socket_validation_center = np.asarray(
+            socket_validation_fit["center"],
+            dtype=np.float64,
+        )
+        target_h = socket_fit_center.copy()
         requested_k = raw_smplx[knee_joint]
         requested_a = raw_smplx[ankle_joint]
+        for _ in range(4):
+            provisional_fit = fit_projected_station_rest_v810(
+                old_h_mesh,
+                old_k_mesh,
+                target_h,
+                requested_k,
+                anchor="proximal",
+            )
+            validation_equivalent_target = (
+                socket_validation_center
+                - provisional_fit.rotation
+                @ (old_h_validation - old_h_mesh)
+            )
+            updated_target_h = 0.5 * (
+                socket_fit_center + validation_equivalent_target
+            )
+            if np.linalg.norm(updated_target_h - target_h) <= 1.0e-10:
+                target_h = updated_target_h
+                break
+            target_h = updated_target_h
 
         femur_fit = fit_projected_station_rest_v810(
             old_h_mesh,
@@ -2481,7 +2362,7 @@ def reconstruct_leg_centerline_compounds_v810(
                 "foot": foot_joint,
             },
             "hip": {
-                "authority": "fitted_socket_geometry_diagnostic_only",
+                "authority": "balanced_fixed_radius_socket_fit_validation_domains",
                 "target_m": target_h.tolist(),
                 "raw_smplx_m": raw_smplx[hip_joint].tolist(),
                 "raw_smplx_residual_m": float(
@@ -2701,11 +2582,6 @@ def reconstruct_leg_centerline_compounds_v810(
         source_driver_coupling=None,
         metadata=metadata,
     )
-    result, hip_authority_report = enforce_smplx_hip_authority_v811(result)
-    report["hip_station_authority_v811"] = hip_authority_report
-    final_metadata = dict(result.metadata or {})
-    final_metadata["leg_compounds_v810"] = report
-    result = replace(result, metadata=final_metadata)
     result.validate()
     return result, report
 
@@ -2930,9 +2806,7 @@ def apply_leg_centerline_v810(
         raw_shank_length = float(
             np.linalg.norm(raw_smplx[ankle_joint] - raw_smplx[knee_joint])
         )
-        # The fitted head/socket relationship is a geometry audit.  It must
-        # never replace the 142/SMPL-X hip station that drives the femur root.
-        guide_joints[hip_joint] = raw_smplx[hip_joint]
+        guide_joints[hip_joint] = moved_head
         guide_joints[knee_joint] = knee_station
 
         joint_descendants = _joint_descendant_mask(
@@ -2947,9 +2821,7 @@ def apply_leg_centerline_v810(
         foot_offset = foot_station - guide_joints[foot_joint]
         guide_joints[foot_descendants] += foot_offset
         guide_joints[foot_joint] = foot_station
-        guide_thigh_length = float(
-            np.linalg.norm(knee_station - guide_joints[hip_joint])
-        )
+        guide_thigh_length = float(np.linalg.norm(knee_station - moved_head))
         guide_shank_length = float(np.linalg.norm(ankle_station - knee_station))
 
         side_reports[side] = {
@@ -3017,7 +2889,7 @@ def apply_leg_centerline_v810(
         "method": "beta_linear_cap_fixed_swept_centerline_guide_fk_v810",
         "pelvis_correction": "identity",
         "pelvic_width_morphology": "disabled_contact_first",
-        "changes_bind_frames": True,
+        "changes_bind_frames": False,
         "changes_vessel_route": False,
         "changes_vessel_rest_vertices": False,
         "centerline_only": True,
@@ -3043,11 +2915,6 @@ def apply_leg_centerline_v810(
         source_driver_coupling=None,
         metadata=metadata,
     )
-    result, hip_authority_report = enforce_smplx_hip_authority_v811(result)
-    report["hip_station_authority_v811"] = hip_authority_report
-    final_metadata = dict(result.metadata or {})
-    final_metadata["leg_centerline_v810"] = report
-    result = replace(result, metadata=final_metadata)
     result.validate()
     return result, report
 
@@ -3057,7 +2924,6 @@ __all__ = [
     "apply_leg_centerline_v810",
     "build_leg_centerline_coefficients_v810",
     "has_leg_centerline_v810",
-    "enforce_smplx_hip_authority_v811",
     "leg_centerline_delta_v810",
     "reconstruct_leg_centerline_compounds_v810",
     "transport_coupled_rbf_parent_frames_v810",

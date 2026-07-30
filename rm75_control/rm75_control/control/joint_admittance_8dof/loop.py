@@ -417,13 +417,19 @@ class JointIkController:
         *,
         manipulability_active: bool | None = None,
         centering_sigma_fade: bool = True,
+        sigma_min: float | None = None,
     ) -> np.ndarray:
         qdot0 = self.secondary.compose(
             q,
             qdot_ff,
             self.core.qdot_prev,
             arm_suppressed=self._arm_task_suppressed,
-            sigma_min=self.last_sigma_min,
+            # Prefer this tick's σ when the caller already computed it: the
+            # ∇μ fade is the fastest escape channel and a one-tick-stale σ
+            # delays it by exactly the interval it is meant to win.
+            sigma_min=(
+                self.last_sigma_min if sigma_min is None else float(sigma_min)
+            ),
             sigma_ref=self.cfg.qp.sr_damping.sigma_ref,
             centering_suppressed=self._centering_suppressed,
             centering_sigma_fade=centering_sigma_fade,
@@ -467,11 +473,19 @@ class JointIkController:
         q_rot = q_meas if q_meas is not None else q_prev
         twist_base = self._twist_to_base(twist, q_rot)
 
-        # Soften Cartesian (incl. force) before the QP when already near
-        # singularity.  Slack QP absorbs infeasible twists — it does NOT stop
-        # force-hybrid from driving the elbow straight; attenuating v_cmd
-        # lets rail-extension / ∇μ ascent reclaim the nullspace.
+        # Two-threshold singularity policy.  ``sigma_ref`` is the *brake*:
+        # below it the Cartesian (incl. force) twist is attenuated so the
+        # slack QP stops force-hybrid from driving the elbow straight.
+        # ``sigma_escape_ref`` (default 2·σ_ref) is the *avoidance* onset, and
+        # it must lead the brake — the rail is accel-limited to 0.3 m/s² and
+        # needs ~0.17 s of lead to reach a useful escape speed, so an escape
+        # that starts at the same σ as the brake always arrives after the arm
+        # has already gone stiff.  Raising σ_ref itself instead was tried and
+        # regressed (braking on 100 % of ticks, σ hovers ~0.08-0.12 at D).
         sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
+        sigma_escape_ref = sigma_ref * float(
+            getattr(self.cfg.qp, "sigma_escape_ref_scale", 2.0)
+        )
         J_pre = self.kin.jacobian(q_prev)
         sigma_pre = float(self.kin.singular_values(J_pre).min())
         if sigma_ref > 1e-9 and sigma_pre < sigma_ref:
@@ -597,11 +611,24 @@ class JointIkController:
             and self._rail_mode == RailMode.COUPLED
         ):
             sigma_now = float(sigma_pre)
-            # Keep rail-extension authority below the (possibly softened)
-            # Cartesian task so the QP never inverts priorities near σ dips.
+            # Two σ-health scalars, both 1.0 when healthy and → 0 at σ→0:
+            #   sig_scale  vs σ_ref        — fades the scan feedforward, i.e.
+            #                                "stop scanning, we are in trouble"
+            #   sig_escape vs σ_escape_ref — drives the escape velocity, the
+            #                                w_sigma_floor baseline and the
+            #                                w-boost, i.e. "start getting out"
+            # Keeping them separate is what makes avoidance proactive without
+            # also throttling a healthy scan.  The escape scalar is NOT floored
+            # at 0.25 any more: that capped the rail's authority at 75 % of
+            # k_esc / 2.5x of w_max exactly at σ→0, where the invariant
+            # w_max·(1 + k_sigma_boost) = 6 ≪ W_task = 100 already guarantees
+            # the QP preference order slack > rail > free-arm.
             sig_scale = 1.0
             if sigma_ref > 1e-9 and sigma_now < sigma_ref:
                 sig_scale = max(sigma_now / sigma_ref, 0.25)
+            sig_escape = 1.0
+            if sigma_escape_ref > 1e-9 and sigma_now < sigma_escape_ref:
+                sig_escape = max(sigma_now / sigma_escape_ref, 0.0)
             # Bug 2: refresh the σ-escape / guardrail gradient every
             # ``_sigma_grad_period`` ticks via the pluggable RailGoodness
             # (default σ_min).  Passing 0 means the σ-escape v-component
@@ -618,6 +645,7 @@ class JointIkController:
             v_ext, w_ext = self.rail_ext_task(
                 q_prev,
                 sigma_scale=sig_scale,
+                sigma_escape_scale=sig_escape,
                 sigma_grad_rail=self._sigma_grad_rail_cached,
                 vel_ff=vel_ff,
                 dt_s=float(dt),
@@ -630,7 +658,9 @@ class JointIkController:
             # depressed — not only when the rail hits a travel stop.  Force
             # retract with ext_err≈0 still collapsed the elbow while rail
             # recruitment alone was too weak (hardware: σ→0, 4.7 s freeze).
-            if sigma_ref > 1e-9 and sigma_now < sigma_ref:
+            # Uses the escape threshold: ∇μ ascent is the one channel that can
+            # act instantly, so it must be armed before the brake bites.
+            if sigma_escape_ref > 1e-9 and sigma_now < sigma_escape_ref:
                 manip_for_saturation = True
 
         r = self.core.step(
@@ -644,6 +674,7 @@ class JointIkController:
                 centering_sigma_fade=not (
                     self._rail_ext_active and self._rail_mode == RailMode.COUPLED
                 ),
+                sigma_min=sigma_pre,
             ),
             q_meas=q_meas,
             resync_err=resync_vec,

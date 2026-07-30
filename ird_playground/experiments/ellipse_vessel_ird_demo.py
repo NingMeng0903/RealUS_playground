@@ -478,7 +478,7 @@ def allocate_qpik_8dof_path(
             qp_cfg=ik_cfg.qp,
             nullspace_cfg=ik_cfg.nullspace,
             max_iters=300,
-            pos_tol_m=2.0e-3,
+            pos_tol_m=0.5e-3,
             rot_tol_rad=0.03,
         )
         q_path[i] = q

@@ -18,9 +18,6 @@ from projects.genesis_ue_sync.anatomy_retarget.canonical_export import (
 from projects.genesis_ue_sync.anatomy_retarget.fk_policy_v8 import (
     build_selective_fk_metadata_v4,
 )
-from projects.genesis_ue_sync.anatomy_retarget.leg_centerline_v810 import (
-    enforce_smplx_hip_authority_v811,
-)
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import AnatomyRiggedAsset
 
 
@@ -326,83 +323,3 @@ def test_selective_v71_leg_roots_use_guide_frames_without_parent_translation() -
     assert np.linalg.norm(
         legacy_parent_accumulated[:3, 3] - posed[knee, :3, 3]
     ) > 0.001
-
-
-def test_v811_hip_authority_overrides_a_70mm_socket_bind_without_losing_coupling() -> None:
-    """A fitted socket must never become the V71/SMPL-X femur pivot."""
-
-    asset = _v71_selective_leg_asset()
-    # The shared selective fixture keeps all SMPL-X joints as roots because
-    # its other tests only exercise source FK.  The production helper validates
-    # serialized assets, so make this regression's SMPL-X tree topological.
-    smplx_parents = np.zeros(55, dtype=np.int32)
-    smplx_parents[0] = -1
-    asset = replace(asset, parents=smplx_parents)
-    zero = np.zeros((55, 3), dtype=np.float32)
-    joint_ids = {name: index for index, name in enumerate(asset.joint_names)}
-    bone_ids = {name: index for index, name in enumerate(asset.source_bone_names or ())}
-    before_tail_vectors: dict[str, np.ndarray] = {}
-    for side, suffix in (("left", "L"), ("right", "R")):
-        hip_joint = joint_ids[f"{side}_hip"]
-        femur = bone_ids[f"Femur_Rot_{suffix}"]
-        # The fixture's guide/bind mimics an acetabular fit displaced by 70 mm.
-        assert np.linalg.norm(
-            asset.source_driver_rest_joints[hip_joint] - asset.rest_joints[hip_joint]
-        ) > 0.060
-        assert np.linalg.norm(
-            asset.target_bind_global[femur, :3, 3] - asset.rest_joints[hip_joint]
-        ) > 0.060
-        before_tail_vectors[side] = (
-            np.asarray(asset.target_bone_tail[femur], dtype=np.float64)
-            - np.asarray(asset.target_bone_head[femur], dtype=np.float64)
-        )
-
-    corrected, report = enforce_smplx_hip_authority_v811(asset)
-
-    expected_local = _global_to_local(
-        np.asarray(corrected.target_bind_global, dtype=np.float64),
-        np.asarray(corrected.source_bone_parents, dtype=np.int64),
-    )
-    np.testing.assert_allclose(corrected.target_bind_local, expected_local, atol=2.0e-6)
-    np.testing.assert_allclose(
-        np.asarray(corrected.target_inverse_bind, dtype=np.float64)
-        @ np.asarray(corrected.target_bind_global, dtype=np.float64),
-        np.tile(np.eye(4), (len(bone_ids), 1, 1)),
-        atol=2.0e-6,
-    )
-
-    driver_frames = source_bone_driver_frames(corrected, zero)
-    posed = source_bone_posed_global(corrected, zero)
-    coupling = np.asarray(corrected.source_driver_coupling, dtype=np.float64)
-    for side, suffix in (("left", "L"), ("right", "R")):
-        hip_joint = joint_ids[f"{side}_hip"]
-        femur = bone_ids[f"Femur_Rot_{suffix}"]
-        hip = np.asarray(corrected.rest_joints[hip_joint], dtype=np.float64)
-        np.testing.assert_allclose(
-            corrected.source_driver_rest_joints[hip_joint], hip, atol=2.0e-6
-        )
-        np.testing.assert_allclose(
-            corrected.target_bind_global[femur, :3, 3], hip, atol=2.0e-6
-        )
-        np.testing.assert_allclose(
-            corrected.target_bone_head[femur], hip, atol=2.0e-6
-        )
-        np.testing.assert_allclose(
-            corrected.target_bone_tail[femur] - corrected.target_bone_head[femur],
-            before_tail_vectors[side],
-            atol=2.0e-6,
-        )
-        np.testing.assert_allclose(
-            driver_frames[femur] @ coupling[femur],
-            corrected.target_bind_global[femur],
-            atol=2.0e-6,
-        )
-        np.testing.assert_allclose(
-            posed[femur], corrected.target_bind_global[femur], atol=2.0e-6
-        )
-        side_report = report["sides"][side]
-        assert side_report["previous_bind_to_smplx_hip_m"] > 0.060
-        assert side_report["previous_guide_to_smplx_hip_m"] > 0.060
-        assert side_report["final_bind_to_smplx_hip_m"] <= 0.002
-        assert side_report["final_head_to_smplx_hip_m"] <= 0.002
-        assert side_report["rotation_det"] == pytest.approx(1.0, abs=2.0e-6)

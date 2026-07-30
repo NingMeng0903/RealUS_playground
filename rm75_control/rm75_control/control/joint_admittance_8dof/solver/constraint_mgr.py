@@ -12,6 +12,34 @@ from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import Cb
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 
 
+def _collapse_to(
+    lo: np.ndarray,
+    hi: np.ndarray,
+    keep_lo: np.ndarray,
+    keep_hi: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Resolve an empty ``[lo, hi]`` by projecting onto ``[keep_lo, keep_hi]``.
+
+    ``lo > hi`` means the stage just applied is infeasible against the
+    higher-priority interval ``[keep_lo, keep_hi]``.  The requested value is
+    whichever endpoint caused the crossing (``lo`` when the new stage pushed
+    the floor up, ``hi`` when it pushed the ceiling down); clamping it back
+    into the priority interval keeps the intent of the lower-priority stage
+    while guaranteeing the returned box is always executable.
+
+    Rows that are already feasible are returned untouched.
+    """
+    crossed = lo > hi
+    if not np.any(crossed):
+        return lo, hi
+    # ``lo`` rose above ``hi``: the new stage wants at least ``lo``.
+    # Otherwise ``hi`` fell below ``lo``: the new stage wants at most ``hi``.
+    want = np.where(lo > keep_hi, lo, hi)
+    # ``+ 0.0`` normalises -0.0 so a collapsed box compares as lo == hi.
+    pinned = np.clip(want, keep_lo, keep_hi) + 0.0
+    return np.where(crossed, pinned, lo), np.where(crossed, pinned, hi)
+
+
 class VelocityBoxConstraints:
     def __init__(
         self,
@@ -49,6 +77,16 @@ class VelocityBoxConstraints:
         # transient accel/resync conflict silently drop the resync bound
         # (or worse, both) for the rest of the move, which is exactly what
         # let the command lead run away unbounded instead of saturating.
+        #
+        # When a stage IS infeasible against the previous one, the conflict is
+        # resolved by PROJECTING onto the higher-priority interval (see
+        # ``_collapse_to``), never by averaging the two.  An unclamped midpoint
+        # silently inverts the documented priority: at the rail's 0 m end stop
+        # it produced lo == hi == +0.925 m/s against v_max = 0.16 m/s (a forced
+        # 6x over-speed the servo answers with Er-01), and an inbound rail
+        # arriving at the stop was pinned at a negative velocity - i.e. forced
+        # to keep driving INTO the stop - because a_max could not decelerate
+        # inside the damper band.
         lo = -lim.v_max.copy()
         hi = lim.v_max.copy()
 
@@ -62,9 +100,8 @@ class VelocityBoxConstraints:
         # +-v_max and 0 in a single tick and chattered against the soft
         # centering / arm-angle tasks whenever the nullspace parked a joint on
         # the threshold.  The ramp is continuous in q and always keeps 0
-        # inside the box.  Applied BEFORE the position look-ahead stage so a
-        # margin-overshoot recovery (position stage collapsing the box onto a
-        # push-back velocity) keeps priority over the damper.
+        # inside the box.  The damper never restricts motion AWAY from a
+        # limit, so it can never block a margin recovery.
         band = np.broadcast_to(self.damper_band_rad, q.shape)
         if np.any(band > 1e-9):
             b = np.maximum(band, 1e-9)
@@ -76,31 +113,34 @@ class VelocityBoxConstraints:
             hi = np.minimum(hi, lim.v_max * d_hi)
             lo = np.maximum(lo, -lim.v_max * d_lo)
 
-        p_lo = (lim.q_lower + m - q) / dt
-        p_hi = (lim.q_upper - m - q) / dt
-        lo = np.maximum(lo, p_lo)
-        hi = np.minimum(hi, p_hi)
-        crossed = lo > hi
-        if np.any(crossed):
-            mid = 0.5 * (lo + hi)
-            lo = np.where(crossed, mid, lo)
-            hi = np.where(crossed, mid, hi)
+        # v_max + damper is the *executable envelope*: every later stage is
+        # projected back into it, so the returned box can never ask for a
+        # velocity the joint cannot run or one that points into a hard stop.
+        v_lo, v_hi = lo, hi
 
         if lim.a_max is not None and qdot_prev is not None:
             qdot_prev = np.asarray(qdot_prev, dtype=float)
             a = lim.a_max * dt
-            a_lo = np.maximum(lo, qdot_prev - a)
-            a_hi = np.minimum(hi, qdot_prev + a)
-            # Always apply accel staging: when a_lo>a_hi the accel box is
-            # empty against higher-priority bounds — project to the midpoint
-            # of the conflict rather than silently skipping a_max (which left
-            # unbounded jerk after a position/damper squeeze).
-            crossed_a = a_lo > a_hi
-            mid_a = 0.5 * (a_lo + a_hi)
-            a_lo = np.where(crossed_a, mid_a, a_lo)
-            a_hi = np.where(crossed_a, mid_a, a_hi)
-            lo = a_lo
-            hi = a_hi
+            # a_max is secondary: honour it whenever it intersects the
+            # envelope, drop it when it does not.  A rail decelerating into an
+            # end stop cannot brake inside the damper band at a_max_rail
+            # (0.3 m/s^2 needs ~17 mm from 0.1 m/s, band is 20 mm), so the
+            # intersection goes empty exactly there — and "keep the envelope"
+            # is the only safe answer.
+            a_lo = np.maximum(v_lo, qdot_prev - a)
+            a_hi = np.minimum(v_hi, qdot_prev + a)
+            lo, hi = _collapse_to(a_lo, a_hi, v_lo, v_hi)
+
+        # Position look-ahead, applied last so a margin recovery ramps up
+        # under a_max instead of stepping to v_max.  Inside the margin the
+        # push-back ``p_lo`` is margin/dt, routinely tens of times v_max: it
+        # is a direction, not an achievable speed, so it is clamped into the
+        # box the earlier stages left.
+        p_lo = (lim.q_lower + m - q) / dt
+        p_hi = (lim.q_upper - m - q) / dt
+        lo, hi = _collapse_to(
+            np.maximum(lo, p_lo), np.minimum(hi, p_hi), lo, hi
+        )
 
         # Vectorised command-lead damper: resync_err is either scalar (legacy;
         # arm-only, radians) or an nv-vector with per-joint bounds — arm rad
@@ -123,6 +163,9 @@ class VelocityBoxConstraints:
                 lo_new = np.where(lo < 0.0, lo * d_lo, lo)
                 hi = np.where(active, hi_new, hi)
                 lo = np.where(active, lo_new, lo)
+                # Scaling a one-sided box toward 0 can push a bound past the
+                # other one; keep the interval non-empty.
+                lo, hi = _collapse_to(lo, hi, v_lo, v_hi)
 
         if rail_vel_pin_m_s is not None:
             v = float(rail_vel_pin_m_s)

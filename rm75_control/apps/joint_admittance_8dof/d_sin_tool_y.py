@@ -181,7 +181,10 @@ def main() -> int:
     ap.add_argument(
         "--hybrid-hold-at-d",
         action="store_true",
-        help="At D: force-position hold (no Y sin scan); use with psi toggle demo",
+        help=(
+            "At D: force-position hold (no Y sin scan); rail stays COUPLED "
+            "so σ-escape can slide the carriage"
+        ),
     )
     ap.add_argument(
         "--hold-s",
@@ -605,10 +608,11 @@ def main() -> int:
             desired_force = np.zeros(6)
             desired_force[2] = desired_z
             if args.hybrid_hold_at_d:
+                # Force hold at D (no Y sin); rail stays COUPLED for σ-escape.
                 hybrid_ref = HoldReference()
                 hybrid_label = "hybrid@D"
                 hybrid_sec = SecondaryPolicy(
-                    preset="hold",
+                    preset="track",
                     arm_angle=ArmAngleSpec(psi_rad=psi_tgt) if psi_tgt is not None else None,
                     qdot_ff="off",
                 )
@@ -640,7 +644,8 @@ def main() -> int:
             )
             if args.hybrid_hold_at_d:
                 print(
-                    f"hybrid@D: hold TCP Fz={desired_z:.1f}N {args.scan_duration:.0f}s",
+                    f"hybrid@D: hold TCP Fz={desired_z:.1f}N {args.scan_duration:.0f}s "
+                    f"(rail COUPLED + reach)",
                     flush=True,
                 )
             else:

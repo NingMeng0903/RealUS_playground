@@ -16,7 +16,7 @@ from rm75_control.control.joint_admittance_8dof.loop import (
 )
 
 
-def test_force_log_has_energy_aware_reference_and_barrier_telemetry(tmp_path):
+def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     path = tmp_path / "force.csv"
     logger = _TickLogger(str(path))
     step = JointIkStep(
@@ -36,9 +36,19 @@ def test_force_log_has_energy_aware_reference_and_barrier_telemetry(tmp_path):
 
     outer = Outer()
     outer.controller = controller
-    controller.cap_press_z = 0.012
-    controller.cap_retract_z = 0.034
-    controller.contact_present = True
+    controller.force_reference_fast_clear = True
+    controller.force_fast_z = 1.234
+    controller.retract_guard_armed = True
+    controller.retract_fast_hold = True
+    controller.retract_fast_stop_count = 2
+    controller.retract_fast_rearm_count = 3
+    controller.force_task_latched = True
+    controller.physical_contact_state = "suspect_loss"
+    controller.physical_contact_acquire_event = True
+    controller.physical_contact_loss_event = False
+    controller.physical_contact_reacquire_event = True
+    controller.physical_contact_low_timer_s = 0.012
+    controller.physical_contact_high_timer_s = 0.034
     logger.write(
         0.0,
         "scan",
@@ -66,14 +76,35 @@ def test_force_log_has_energy_aware_reference_and_barrier_telemetry(tmp_path):
     assert "force_reference_gate_scale" in header
     assert "force_reference_accel_m_s2" in header
     assert "force_reference_reversal_reset" in header
-    assert "damping_trend_z" not in header
-    assert "f_dot_z" not in header
-    assert "cap_press_z" in header
-    assert "cap_retract_z" in header
-    assert "contact_present" in header
+    assert "force_reference_fast_clear" in header
+    assert "force_fast_z" in header
+    assert "retract_guard_armed" in header
+    assert "retract_fast_hold" in header
+    assert "retract_fast_stop_count" in header
+    assert "retract_fast_rearm_count" in header
+    assert "force_task_latched" in header
+    assert "physical_contact_state" in header
+    assert "physical_contact_acquire_event" in header
+    assert "physical_contact_loss_event" in header
+    assert "physical_contact_reacquire_event" in header
+    assert "physical_contact_low_timer_s" in header
+    assert "physical_contact_high_timer_s" in header
+    assert "mass_z_eff" in header
+    assert "damping_ke_z" in header
+    assert "damping_dimeas_z" in header
     assert "vz_achieved_tool" in header
-    values = dict(zip(header, rows[1]))
-    assert values["cap_press_z"] == "0.012000"
-    assert values["cap_retract_z"] == "0.034000"
-    assert values["contact_present"] == "1"
-    assert values["vz_achieved_tool"] == "0.002000"
+
+    values = dict(zip(header, rows[1], strict=True))
+    assert values["force_reference_fast_clear"] == "1"
+    assert values["force_fast_z"] == "1.234"
+    assert values["retract_guard_armed"] == "1"
+    assert values["retract_fast_hold"] == "1"
+    assert values["retract_fast_stop_count"] == "2"
+    assert values["retract_fast_rearm_count"] == "3"
+    assert values["force_task_latched"] == "1"
+    assert values["physical_contact_state"] == "suspect_loss"
+    assert values["physical_contact_acquire_event"] == "1"
+    assert values["physical_contact_loss_event"] == "0"
+    assert values["physical_contact_reacquire_event"] == "1"
+    assert values["physical_contact_low_timer_s"] == "0.012000"
+    assert values["physical_contact_high_timer_s"] == "0.034000"

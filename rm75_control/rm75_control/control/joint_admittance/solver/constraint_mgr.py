@@ -62,15 +62,21 @@ class VelocityBoxConstraints:
             hi = np.minimum(hi, lim.v_max * d_hi)
             lo = np.maximum(lo, -lim.v_max * d_lo)
 
+        # Inside the margin the push-back ``p_lo`` is margin/dt, which is well
+        # above v_max (0.017 rad / 5 ms = 3.4 rad/s vs v_max 2.5): it is a
+        # direction, not an achievable speed.  Averaging it with v_max — as
+        # this did — returns a box the joint cannot execute; clamp instead.
+        v_lo, v_hi = lo, hi
         p_lo = (lim.q_lower + m - q) / dt
         p_hi = (lim.q_upper - m - q) / dt
         lo = np.maximum(lo, p_lo)
         hi = np.minimum(hi, p_hi)
         crossed = lo > hi
         if np.any(crossed):
-            mid = 0.5 * (lo + hi)
-            lo = np.where(crossed, mid, lo)
-            hi = np.where(crossed, mid, hi)
+            want = np.where(lo > v_hi, lo, hi)
+            pinned = np.clip(want, v_lo, v_hi) + 0.0
+            lo = np.where(crossed, pinned, lo)
+            hi = np.where(crossed, pinned, hi)
 
         if lim.a_max is not None and qdot_prev is not None:
             qdot_prev = np.asarray(qdot_prev, dtype=float)

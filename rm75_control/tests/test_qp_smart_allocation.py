@@ -40,6 +40,12 @@ Q_ARM_SINGULAR_XSTRETCH = np.array(
     [0.0, np.pi / 2 - 0.1, 0.0, 0.15, 0.0, 0.15, 0.0], dtype=float
 )
 
+# Rail parked mid-travel.  These tests ask "does the QP recruit the rail", so
+# the carriage has to be free to move both ways: rail travel is [0, 0.80] m
+# (it used to be ±0.25 about 0), which turned the old rail=0 fixture into a
+# hard end stop where the velocity box is pinned and the answer is forced.
+RAIL_MID_M = 0.40
+
 
 def _make_ctrl(kin: RobotKinematics) -> QpIkController:
     """Production-like weighting: W_task (100/50) far above rail-ext w_max."""
@@ -61,7 +67,7 @@ def kin() -> RobotKinematics:
 
 def test_singular_pose_is_deeply_ill_conditioned(kin: RobotKinematics) -> None:
     """Sanity: the pose we chose really is near-singular and rail column is +Y."""
-    q_full = full_q_from_arm(Q_ARM_SINGULAR_XSTRETCH)
+    q_full = full_q_from_arm(Q_ARM_SINGULAR_XSTRETCH, rail_m=RAIL_MID_M)
     J = kin.jacobian(q_full)
     sigma = kin.singular_values(J)
     assert sigma.min() < 0.05, f"pose not singular enough: sigma_min={sigma.min():.4f}"
@@ -78,7 +84,7 @@ def test_singular_pose_is_deeply_ill_conditioned(kin: RobotKinematics) -> None:
 # and hold slack near zero (tracking preserved 100 %).
 # ---------------------------------------------------------------------------
 def test_qp_uses_rail_when_singular_and_feasible(kin: RobotKinematics) -> None:
-    q_full = full_q_from_arm(Q_ARM_SINGULAR_XSTRETCH)
+    q_full = full_q_from_arm(Q_ARM_SINGULAR_XSTRETCH, rail_m=RAIL_MID_M)
     ctrl = _make_ctrl(kin)
     ctrl.reset(q_full)
     v_cmd = np.array([0.0, 0.02, 0.0, 0.0, 0.0, 0.0])  # 2 cm/s along +Y
@@ -102,7 +108,7 @@ def test_qp_uses_rail_when_singular_and_feasible(kin: RobotKinematics) -> None:
 # waste rail motion on a direction the rail can't fix.
 # ---------------------------------------------------------------------------
 def test_qp_accepts_slack_when_no_rail_can_help(kin: RobotKinematics) -> None:
-    q_full = full_q_from_arm(Q_ARM_SINGULAR_XSTRETCH)
+    q_full = full_q_from_arm(Q_ARM_SINGULAR_XSTRETCH, rail_m=RAIL_MID_M)
     ctrl = _make_ctrl(kin)
     ctrl.reset(q_full)
     v_cmd = np.array([0.02, 0.0, 0.0, 0.0, 0.0, 0.0])  # 2 cm/s along +X
@@ -130,7 +136,7 @@ def test_qp_accepts_slack_when_no_rail_can_help(kin: RobotKinematics) -> None:
 # The QP should now use *more* rail (closer to the hint) and keep slack tiny.
 # ---------------------------------------------------------------------------
 def test_qp_rail_hint_pulls_rail_toward_hinted_velocity(kin: RobotKinematics) -> None:
-    q_full = full_q_from_arm(Q_ARM_SINGULAR_XSTRETCH)
+    q_full = full_q_from_arm(Q_ARM_SINGULAR_XSTRETCH, rail_m=RAIL_MID_M)
     ctrl = _make_ctrl(kin)
     ctrl.reset(q_full)
     v_cmd = np.array([0.0, 0.02, 0.0, 0.0, 0.0, 0.0])
@@ -148,7 +154,7 @@ def test_qp_rail_hint_pulls_rail_toward_hinted_velocity(kin: RobotKinematics) ->
 # i.e. the rail is not driven off just because the hint says so.
 # ---------------------------------------------------------------------------
 def test_qp_rail_hint_does_not_move_rail_on_orthogonal_twist(kin: RobotKinematics) -> None:
-    q_full = full_q_from_arm(Q_ARM_SINGULAR_XSTRETCH)
+    q_full = full_q_from_arm(Q_ARM_SINGULAR_XSTRETCH, rail_m=RAIL_MID_M)
     ctrl = _make_ctrl(kin)
     ctrl.reset(q_full)
     v_cmd = np.array([0.02, 0.0, 0.0, 0.0, 0.0, 0.0])
@@ -174,7 +180,7 @@ def test_task_hierarchy_cartesian_beats_rail_soft_cost(kin: RobotKinematics) -> 
     q_arm = np.array(
         [-0.949552, 0.095255, 0.646858, 1.469911, 0.502701, 0.666503, -0.338137]
     )
-    q_full = full_q_from_arm(q_arm)
+    q_full = full_q_from_arm(q_arm, rail_m=RAIL_MID_M)
     ctrl = _make_ctrl(kin)
     ctrl.reset(q_full)
     v_cmd = np.array([0.0, 0.02, 0.0, 0.0, 0.0, 0.0])

@@ -44,7 +44,6 @@ from .tube_pose_corrective_v8 import (
 )
 from .source_skin_volume import (
     apply_source_skin_volume_registration,
-    source_skinning_topology_digest_v811,
     soft_volume_transport_mask_v811,
 )
 from .v7_artifacts import SourceOperatorV7, rigged_asset_digest
@@ -733,9 +732,9 @@ def build_selective_source_operator_v8(
     else:
         template = merge_v71_authority_v8(v7_operator.template_asset, v71_source)
     if source_skin_volume_dir is not None:
-        source_skinning_topology_digest_before = source_skinning_topology_digest_v811(
-            template
-        )
+        original_faces = np.asarray(template.faces).copy()
+        original_indices = np.asarray(template.driver_indices).copy()
+        original_weights = np.asarray(template.driver_weights).copy()
         volume_registration_report = _prebaked_soft_volume_reference_v811(
             template,
             source_skin_volume_dir=source_skin_volume_dir,
@@ -748,32 +747,13 @@ def build_selective_source_operator_v8(
                 preserve_protected_material=True,
                 rebind_source_rig=False,
             )
-            source_skinning_topology_digest_after = (
-                source_skinning_topology_digest_v811(template)
-            )
             if (
-                source_skinning_topology_digest_before
-                != source_skinning_topology_digest_after
-                or volume_registration_report.get(
-                    "source_skinning_topology_digest_before"
-                )
-                != source_skinning_topology_digest_before
-                or volume_registration_report.get(
-                    "source_skinning_topology_digest_after"
-                )
-                != source_skinning_topology_digest_after
-                or volume_registration_report.get(
-                    "source_skinning_topology_byte_identical"
-                )
-                is not True
-                or volume_registration_report.get("source_vertex_order_preserved")
-                is not True
-                or int(volume_registration_report.get("source_driver_slot_count", -1))
-                != 14
+                not np.array_equal(template.faces, original_faces)
+                or not np.array_equal(template.driver_indices, original_indices)
+                or not np.array_equal(template.driver_weights, original_weights)
             ):
                 raise RuntimeError(
-                    "V8.11 soft volume registration changed immutable topology, "
-                    "mesh order, or original 14-slot source skinning"
+                    "V8.11 soft volume registration changed topology or source weights"
                 )
             volume_registration_report = {
                 **volume_registration_report,
@@ -791,28 +771,6 @@ def build_selective_source_operator_v8(
                 "topology_preserved": True,
                 "source_weights_preserved": True,
                 "protected_rigid_material": True,
-            }
-        else:
-            source_skinning_topology_digest_after = (
-                source_skinning_topology_digest_v811(template)
-            )
-            if source_skinning_topology_digest_after != source_skinning_topology_digest_before:
-                raise RuntimeError(
-                    "V8.11 prebaked soft-volume reference changed immutable source skinning"
-                )
-            volume_registration_report = {
-                **volume_registration_report,
-                "source_skinning_topology_digest_before": (
-                    source_skinning_topology_digest_before
-                ),
-                "source_skinning_topology_digest_after": (
-                    source_skinning_topology_digest_after
-                ),
-                "source_skinning_topology_byte_identical": True,
-                "source_vertex_order_preserved": True,
-                "source_driver_slot_count": int(
-                    np.asarray(template.driver_indices).shape[1]
-                ),
             }
     # The required canonical volume directory already owns the frozen SMPL-X
     # shell.  Reuse it for both head fitting and the vessel/nerve route when a

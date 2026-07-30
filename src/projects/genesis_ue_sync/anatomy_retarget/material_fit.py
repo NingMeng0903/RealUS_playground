@@ -2612,7 +2612,7 @@ def fit_stage1_rigid_regions(
     ] = {}
     shared_targets: dict[str, np.ndarray] = {}
     authority_groups = {name for name in ("pelvis",) if name in groups}
-    authority_fit: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
+    authority_fit: dict[str, tuple[np.ndarray, float, np.ndarray, np.ndarray]] = {}
     for group_name in authority_groups:
         indices = groups[group_name]
         source_points = source[indices]
@@ -2626,15 +2626,26 @@ def fit_stage1_rigid_regions(
         if np.linalg.det(rotation_authority) < 0.0:
             vt_authority[-1] *= -1.0
             rotation_authority = vt_authority.T @ u_authority.T
+        rotated_authority = (source_points - source_center) @ rotation_authority.T
+        denominator_authority = float(np.sum((source_points - source_center) ** 2))
+        scale_authority = float(
+            np.clip(
+                np.sum((target_points - target_center) * rotated_authority)
+                / max(denominator_authority, 1.0e-10),
+                0.90,
+                1.05,
+            )
+        )
         authority_fit[group_name] = (
             rotation_authority,
+            scale_authority,
             source_center,
             target_center,
         )
 
     def map_authority_contact(group_name: str, point: np.ndarray) -> np.ndarray:
-        rotation, source_center, target_center = authority_fit[group_name]
-        return target_center + rotation @ (point - source_center)
+        rotation, scale, source_center, target_center = authority_fit[group_name]
+        return target_center + scale * (rotation @ (point - source_center))
 
     for parent_name, child_name, joint_name in chains:
         if parent_name not in groups or child_name not in groups:
@@ -2691,10 +2702,10 @@ def fit_stage1_rigid_regions(
         single_joint_compounds[f"{side}_foot"] = joint_lookup[f"{side}_ankle"]
         single_joint_compounds[f"{side}_patella"] = joint_lookup[f"{side}_knee"]
 
-    # The harmonic field is only a placement reference here.  It must not
-    # change a bone's transverse or uniform scale: those historic similarities
-    # were the source of the visibly thin femora and deformed forearms.
-    # Long-bone length mismatch is handled separately by the axial-only map.
+    # These meshes are already represented by the same beta harmonic field as
+    # the target body.  A single correspondence similarity fixes their global
+    # placement while preserving the authored source cross-section; unlike the
+    # old endpoint fit it does not force a left/right source-pivot asymmetry.
     correspondence_groups = {
         name
         for name in groups
@@ -2723,8 +2734,8 @@ def fit_stage1_rigid_regions(
             if denominator > 1.0e-12
             else 1.0
         )
-        cross_scale = 1.0
-        mapped = dst_center + rotated
+        cross_scale = float(np.clip(raw_scale, 0.90, 1.05))
+        mapped = dst_center + cross_scale * rotated
         anchors = interfaces[group_name]
         if group_name in correspondence_groups:
             correspondence_u, _correspondence_s, correspondence_vt = np.linalg.svd(
@@ -2735,23 +2746,36 @@ def fit_stage1_rigid_regions(
                 correspondence_vt[-1] *= -1.0
                 correspondence_rotation = correspondence_vt.T @ correspondence_u.T
             correspondence_rotated = (src - src_center) @ correspondence_rotation.T
-            mapped = dst_center + correspondence_rotated
+            correspondence_denominator = float(
+                np.sum((src - src_center) ** 2)
+            )
+            correspondence_scale = float(
+                np.clip(
+                    np.sum((dst - dst_center) * correspondence_rotated)
+                    / max(correspondence_denominator, 1.0e-10),
+                    0.90,
+                    1.05,
+                )
+            )
+            mapped = dst_center + correspondence_scale * correspondence_rotated
             rotation = correspondence_rotation
-            cross_scale = 1.0
+            cross_scale = correspondence_scale
         elif group_name in segment_joints:
             joint_a, joint_b = segment_joints[group_name]
             source_a = source_joint_anchors[joint_a]
             source_b = source_joint_anchors[joint_b]
             target_a = target_anchors_by_joint[joint_a]
             target_b = target_anchors_by_joint[joint_b]
+            scaled = source_a + cross_scale * (src - source_a)
+            scaled_b = source_a + cross_scale * (source_b - source_a)
             mapped = shaft_preserving_segment_map(
-                src,
+                scaled,
                 source_a=source_a,
-                source_b=source_b,
+                source_b=scaled_b,
                 target_a=target_a,
                 target_b=target_b,
             )
-            rotation = _rotation_between(source_b - source_a, target_b - target_a)
+            rotation = _rotation_between(scaled_b - source_a, target_b - target_a)
         elif group_name in single_joint_compounds:
             joint = single_joint_compounds[group_name]
             source_anchor = source_joint_anchors[joint]
@@ -2773,10 +2797,24 @@ def fit_stage1_rigid_regions(
             if np.linalg.det(rotation) < 0.0:
                 vt_anchor[-1] *= -1.0
                 rotation = vt_anchor.T @ u_anchor.T
-            mapped = target_midpoint + (
+            rotated_anchors = (source_anchors - source_midpoint) @ rotation.T
+            anchor_denominator = float(
+                np.sum((source_anchors - source_midpoint) ** 2)
+            )
+            anchor_scale = float(
+                np.clip(
+                    np.sum(
+                        (target_anchors - target_midpoint) * rotated_anchors
+                    )
+                    / max(anchor_denominator, 1.0e-10),
+                    0.85,
+                    1.05,
+                )
+            )
+            mapped = target_midpoint + anchor_scale * (
                 (src - source_midpoint) @ rotation.T
             )
-            cross_scale = 1.0
+            cross_scale = anchor_scale
         elif len(anchors) == 1:
             source_anchor, target_anchor = anchors[0]
             mapped_anchor = dst_center + cross_scale * (
@@ -2788,8 +2826,6 @@ def fit_stage1_rigid_regions(
             "vertex_count": int(len(indices)),
             "raw_uniform_scale": float(raw_scale),
             "cross_section_scale": cross_scale,
-            "uniform_scale": 1.0,
-            "scale_policy": "unit_scale_hard_bone_v811",
             "target_residual_rms_m": float(np.sqrt(np.mean(residual**2))),
             "rotation": rotation,
         }
@@ -2977,8 +3013,7 @@ def fit_stage1_rigid_regions(
         "shared_contact_anchors": contact_report,
         "head_compound": head_fit_report,
         "contact_centroid_metrics_are_not_surface_clearance": True,
-        "minimum_cross_section_scale": 1.0,
-        "hard_bone_scale_policy": "unit_scale_hard_bone_v811",
+        "minimum_cross_section_scale": 0.90,
         "independent_mesh_fits": False,
         "changed_vertex_count": int(np.count_nonzero(np.linalg.norm(vertices - target, axis=1))),
         "source_rig_rebind": rebind_report,
