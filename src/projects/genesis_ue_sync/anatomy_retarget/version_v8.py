@@ -1,9 +1,17 @@
-"""Small dependency-free schema-v8 cache identity constants."""
+"""Small dependency-free schema-v8.11 cache identity constants."""
 
 from __future__ import annotations
 
 
-SUBJECT_SOLVER_VERSION = "contact-first-leg-v8.10-frozen-route"
+SOURCE_OPERATOR_ALGORITHM_VERSION = "contact-first-joint-chain-v8.11"
+SOURCE_OPERATOR_ORACLE_VERSION = "smplx-joint-contact-chain-v8.11"
+SOURCE_OPERATOR_CORRECTION_VERSION = "selective-fk-volume-corrective-v8.11"
+SUBJECT_SOLVER_VERSION = "selective-fk-foot-tube-v8.11"
 
 
-__all__ = ["SUBJECT_SOLVER_VERSION"]
+__all__ = [
+    "SOURCE_OPERATOR_ALGORITHM_VERSION",
+    "SOURCE_OPERATOR_CORRECTION_VERSION",
+    "SOURCE_OPERATOR_ORACLE_VERSION",
+    "SUBJECT_SOLVER_VERSION",
+]

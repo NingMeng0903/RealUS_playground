@@ -521,9 +521,11 @@ def _merge_fast_extremity_donor(
             head_reference_vertices[start_i:stop_i] = True
             if str(tissue).lower() == "bone":
                 head_vertices[start_i:stop_i] = True
-    # Head is a single fe99 compound.  Mixing a rescaled skull with an
-    # independently harmonic brain/eyes produced the visible concentric
-    # layers, so restore every cranial component and its bind unchanged.
+    # Head is one rigid donor compound.  Its clearance fit is intentionally
+    # deferred to the V8.11 offline operator, where the frozen SMPL-X shell is
+    # available.  This legacy fast path must never smuggle in the historical
+    # 0.70 shrink: preserving the donor geometry is preferable to silently
+    # generating a visibly undersized skull.
     donor_head_vertices = np.asarray(donor.vertices_rest, dtype=np.float64)[
         head_reference_vertices
     ]
@@ -532,27 +534,8 @@ def _merge_fast_extremity_donor(
     )
     source_center = 0.5 * (source_lo + source_hi)
     target_center = source_center.copy()
-    head_scale = 0.70
-    vertices[head_reference_vertices] = source_center + head_scale * (
-        donor_head_vertices - source_center
-    )
-    head_bones = np.asarray(
-        [
-            any(token in str(name).lower() for token in ("head_bone", "jaw_bone"))
-            for name in donor.source_bone_names
-        ],
-        dtype=bool,
-    )
-    for bone, parent in enumerate(parents):
-        if int(parent) >= 0 and head_bones[int(parent)]:
-            head_bones[bone] = True
-    for values in (target_head, target_tail):
-        values[head_bones] = source_center + head_scale * (
-            values[head_bones] - source_center
-        )
-    target_global[head_bones, :3, 3] = source_center + head_scale * (
-        target_global[head_bones, :3, 3] - source_center
-    )
+    head_scale = 1.0
+    vertices[head_reference_vertices] = donor_head_vertices
 
     # Keep the ef58024 all-harmonic vessel/nerve result untouched.  The former
     # direct affine-weight residual and large nearest-surface SDF projection
@@ -581,6 +564,11 @@ def _merge_fast_extremity_donor(
             "disable_soft_follow": True,
             "soft_follow_scope": "disabled_use_blender_lbs",
             "head_uniform_scale": head_scale,
+            "head_compound_fit_v1": {
+                "available": False,
+                "passed": False,
+                "reason": "legacy_fast_donor_preserves_unscaled_head_v811_operator_required",
+            },
             "soft_bone_residual_follow": False,
             "soft_surface_sdf": "disabled",
         }
@@ -1925,7 +1913,7 @@ def main() -> int:
             ),
         }
         logging.info(
-            "fast material donor merged axial_bones=%s axial_vertices=%s head_scale=%.4f",
+            "fast material donor merged axial_bones=%s axial_vertices=%s head_uniform_scale=%.4f",
             donor_report["axial_source_bone_count"],
             donor_report["axial_source_vertex_count"],
             donor_report["head_uniform_scale"],

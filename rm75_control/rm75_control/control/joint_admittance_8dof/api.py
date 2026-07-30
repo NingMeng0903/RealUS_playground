@@ -102,7 +102,9 @@ class SecondaryPolicy:
                 inner.capture_rail_extension_ref()
                 inner.set_rail_extension_active(True)
             else:
-                inner.set_locked(LockedStyle.HOLD)
+                inner.set_locked(
+                    LockedStyle.HOLD, q_ref_m=float(inner.q_cmd[0])
+                )
                 inner.set_rail_extension_active(False)
             if psi is not None and inner.arm_task is not None:
                 self._set_arm_angle_reference(inner, psi)
@@ -115,7 +117,9 @@ class SecondaryPolicy:
             # Keep arm_angle (swivel psi) active so the QP stays on the
             # intended elbow branch.
             inner.set_arm_task_suppressed(False)
-            inner.set_locked(LockedStyle.HOLD)
+            # Pin rail at current pose (movej→D leaves q_cmd[0]≈0.4m).
+            # Never inherit yaml q_ref_m: 0.0 — that yanks the carriage home.
+            inner.set_locked(LockedStyle.HOLD, q_ref_m=float(inner.q_cmd[0]))
             inner.set_rail_extension_active(False)
             if psi is not None and inner.arm_task is not None:
                 self._set_arm_angle_reference(inner, psi)

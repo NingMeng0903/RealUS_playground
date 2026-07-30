@@ -42,7 +42,8 @@ EXCLUDE_EXACT = {"Cube", "link_8", "Camera", "Light", "Default"}
 COLLISION_TARGET_TRIS = 500
 DECIMATE_RATIO_FLOOR = 0.01
 
-# Match previous linear_probe.dae tuned palette; blues include 40° converter.
+# Probe Grey ~0.82; camera Black = slightly deeper gray; glass = white.
+# Blues include 40° converter.
 COLOR_BY_MAT_SUBSTR = [
     ("Hard_Textured_Plastic_Blue__2_001", "0.55 0.72 0.90 1"),
     ("Hard_Textured_Plastic_Blue__2", "0.55 0.72 0.90 1"),
@@ -51,8 +52,9 @@ COLOR_BY_MAT_SUBSTR = [
     ("Hard_Textured_Plastic_Black", "0.24 0.24 0.24 1"),
     ("Hard_Rough_Plastic_Grey", "0.82 0.825 0.835 1"),
     ("Hard_Rough_Plastic_White", "1 1 1 1"),
-    ("Glass_Light_Frost_Grey", "0.86 0.86 0.87 1"),
-    ("Anodized_Aluminum_Brushed_90", "0.90 0.90 0.91 1"),
+    ("Glass_Light_Frost_Grey", "1 1 1 1"),
+    # Camera = Anodized Aluminum (mesh_011); slightly deeper gray than probe Grey.
+    ("Anodized_Aluminum_Brushed_90", "0.70 0.70 0.72 1"),
 ]
 
 

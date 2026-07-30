@@ -11,6 +11,9 @@ from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
     with_source_driver_coupling,
 )
 from projects.genesis_ue_sync.anatomy_retarget.cli.run_anatomy_v8 import main
+from projects.genesis_ue_sync.anatomy_retarget.fk_policy_v8 import (
+    build_selective_fk_metadata_v4,
+)
 from projects.genesis_ue_sync.anatomy_retarget.rigged_asset import (
     AnatomyRiggedAsset,
     save_rigged_asset,
@@ -42,7 +45,7 @@ def _rig() -> AnatomyRiggedAsset:
     local_bind = global_bind.copy()
     for index in range(1, 4):
         local_bind[index] = np.linalg.inv(global_bind[index - 1]) @ global_bind[index]
-    return with_source_driver_coupling(
+    rig = with_source_driver_coupling(
         AnatomyRiggedAsset(
             vertices_rest=joints
             + np.asarray((0.01, 0.0, 0.0), dtype=np.float32),
@@ -93,10 +96,13 @@ def _rig() -> AnatomyRiggedAsset:
                 dtype=np.int32,
             ),
             metadata={
-                "source_full_local_fk_v2": True,
                 "source_blender_report": {"blend_file": "/offline/source.blend"},
             },
         )
+    )
+    return replace(
+        rig,
+        metadata=build_selective_fk_metadata_v4(rig, rig.metadata),
     )
 
 
@@ -152,9 +158,11 @@ def test_runtime_digest_excludes_audit_text_but_audit_digest_tracks_it() -> None
 
 def test_v8_fails_closed_on_fk_and_legacy_joint_metadata() -> None:
     operator = _operator()
+    assert operator.template_asset.metadata["source_fk_policy_v4"] == "selective_authority"
+    assert operator.template_asset.metadata["source_full_local_fk_v2"] is False
     bad_fk_rig = replace(
         operator.template_asset,
-        metadata={**operator.template_asset.metadata, "source_full_local_fk_v2": False},
+        metadata={**operator.template_asset.metadata, "source_full_local_fk_v2": True},
     )
     with pytest.raises(ValueError, match="source_full_local_fk_v2"):
         replace(operator, template_asset=bad_fk_rig).validate()
@@ -251,6 +259,18 @@ def test_directory_bundles_roundtrip_mmap_and_detect_tampering(tmp_path) -> None
     )
     subject_path = save_subject_runtime(tmp_path / "subject", subject)
     assert not list(subject_path.rglob("*.npz"))
+    subject_manifest = json.loads(
+        (subject_path / "manifest.json").read_text(encoding="utf-8")
+    )
+    summary = subject_manifest["v811_summary"]
+    assert summary["versions"]["solver"] == "selective-fk-foot-tube-v8.11"
+    assert {
+        "fk",
+        "foot_chain_stations_v1_digest",
+        "volume",
+        "head",
+        "tube_pose_corrective",
+    } <= set(summary)
     loaded_subject = load_subject_runtime(subject_path)
     assert isinstance(loaded_subject.betas, np.memmap)
     assert loaded_subject.runtime_digest() == subject.runtime_digest()

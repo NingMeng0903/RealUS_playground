@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -13,14 +14,24 @@ from projects.genesis_ue_sync.anatomy_retarget.leg_centerline_v810 import (
     _CENTERLINE_EDGE_Q99_LIMIT,
     _apply_rigid_segment_rotation_v810,
     _apply_swept_segment_centerline_v810,
+    _map_foot_stations_rigid_v811,
     _foot_station_v810,
     _proximal_mesh_cap_ids,
     has_leg_centerline_v810,
     reconstruct_leg_centerline_compounds_v810,
     transport_coupled_rbf_parent_frames_v810,
 )
+from projects.genesis_ue_sync.anatomy_retarget.fk_policy_v8 import (
+    SELECTIVE_AUTHORITY_FK_POLICY_V4,
+)
 from projects.genesis_ue_sync.anatomy_retarget.mechanism_v8 import (
     fit_projected_station_rest_v810,
+)
+from projects.genesis_ue_sync.anatomy_retarget.version_v8 import (
+    SOURCE_OPERATOR_ALGORITHM_VERSION,
+    SOURCE_OPERATOR_CORRECTION_VERSION,
+    SOURCE_OPERATOR_ORACLE_VERSION,
+    SUBJECT_SOLVER_VERSION,
 )
 
 
@@ -352,6 +363,85 @@ def test_foot_station_uses_talus_calcaneus_and_forefoot_meshes() -> None:
     assert report["forefoot_vertex_count"] == 4
 
 
+def test_multi_station_foot_chain_keeps_each_mesh_strictly_rigid() -> None:
+    source_ankle = np.asarray((0.0, 0.0, 0.0))
+    source_forefoot = np.asarray((0.0, -0.20, 0.0))
+    target_ankle = np.asarray((1.0, 2.0, 3.0))
+    target_forefoot = np.asarray((1.35, 2.0, 3.0))
+    rotation = _rotation_z(np.pi / 2.0)
+
+    source_centers = np.asarray(
+        (
+            (0.015, -0.02, 0.004),
+            (-0.010, -0.10, -0.006),
+            (0.012, -0.18, 0.003),
+        ),
+        dtype=np.float64,
+    )
+    target_centers, station_parameters = _map_foot_stations_rigid_v811(
+        source_centers,
+        source_ankle=source_ankle,
+        source_forefoot=source_forefoot,
+        target_ankle=target_ankle,
+        target_forefoot=target_forefoot,
+        rotation=rotation,
+    )
+
+    assert np.all(np.diff(station_parameters) > 0.0)
+    assert np.linalg.det(rotation) == pytest.approx(1.0, abs=1.0e-12)
+    np.testing.assert_allclose(rotation.T @ rotation, np.eye(3), atol=1.0e-12)
+
+    mesh_offsets = np.asarray(
+        (
+            (-0.008, 0.0, 0.0),
+            (0.008, 0.0, 0.0),
+            (0.0, 0.005, 0.005),
+            (0.0, -0.005, -0.005),
+        ),
+        dtype=np.float64,
+    )
+    for source_center, target_center in zip(
+        source_centers, target_centers, strict=True
+    ):
+        source_mesh = source_center + mesh_offsets
+        target_mesh = target_center + mesh_offsets @ rotation.T
+        np.testing.assert_allclose(
+            np.mean(target_mesh, axis=0), target_center, atol=1.0e-12
+        )
+        for first in range(len(mesh_offsets)):
+            for second in range(first + 1, len(mesh_offsets)):
+                assert np.linalg.norm(
+                    target_mesh[first] - target_mesh[second]
+                ) == pytest.approx(
+                    np.linalg.norm(source_mesh[first] - source_mesh[second]),
+                    abs=1.0e-12,
+                )
+
+    endpoints, endpoint_stations = _map_foot_stations_rigid_v811(
+        np.stack((source_ankle, source_forefoot)),
+        source_ankle=source_ankle,
+        source_forefoot=source_forefoot,
+        target_ankle=target_ankle,
+        target_forefoot=target_forefoot,
+        rotation=rotation,
+    )
+    np.testing.assert_allclose(endpoints[0], target_ankle, atol=1.0e-12)
+    np.testing.assert_allclose(endpoints[1], target_forefoot, atol=1.0e-12)
+    np.testing.assert_allclose(endpoint_stations, (0.0, 1.0), atol=1.0e-12)
+
+
+def test_multi_station_foot_chain_rejects_nonrigid_rotation() -> None:
+    with pytest.raises(ValueError, match="proper unit-scale SO\\(3\\)"):
+        _map_foot_stations_rigid_v811(
+            np.asarray(((0.0, -0.10, 0.0),), dtype=np.float64),
+            source_ankle=np.asarray((0.0, 0.0, 0.0)),
+            source_forefoot=np.asarray((0.0, -0.20, 0.0)),
+            target_ankle=np.asarray((1.0, 2.0, 3.0)),
+            target_forefoot=np.asarray((1.0, 2.2, 3.0)),
+            rotation=np.diag(np.asarray((1.0, 1.02, 1.0))),
+        )
+
+
 def test_proximal_fibula_cap_selects_only_the_near_end() -> None:
     y = np.linspace(0.0, -0.40, 100, dtype=np.float64)
     vertices = np.stack((np.zeros_like(y), y, np.zeros_like(y)), axis=1)
@@ -382,6 +472,44 @@ def test_rebuild_013_materializes_one_contact_chain_pass(
     subject_path = candidate / "subject_213328"
     if not operator_path.is_dir() or not subject_path.is_dir():
         pytest.skip("rebuild_013 integration assets are unavailable")
+
+    # This integration fixture predates V8.11.  Do not deserialize it: legacy
+    # full-FK/cache packs are only supported for read-only pose compatibility.
+    subject_manifest = json.loads(
+        (subject_path / "manifest.json").read_text(encoding="utf-8")
+    )
+    if subject_manifest.get("subject_solver_version") != SUBJECT_SOLVER_VERSION:
+        pytest.skip("rebuild_013 is a legacy V8.10 subject cache fixture")
+
+    operator_manifest = json.loads(
+        (operator_path / "manifest.json").read_text(encoding="utf-8")
+    )
+    current_operator_versions = (
+        operator_manifest.get("algorithm_version")
+        == SOURCE_OPERATOR_ALGORITHM_VERSION
+        and operator_manifest.get("oracle_version")
+        == SOURCE_OPERATOR_ORACLE_VERSION
+        and operator_manifest.get("correction_version")
+        == SOURCE_OPERATOR_CORRECTION_VERSION
+    )
+    template_rig = operator_manifest.get("template_rig", {})
+    template_json_fields = (
+        template_rig.get("json_fields", {})
+        if isinstance(template_rig, dict)
+        else {}
+    )
+    metadata = (
+        template_json_fields.get("metadata", {})
+        if isinstance(template_json_fields, dict)
+        else {}
+    )
+    selective_fk = (
+        metadata.get("source_fk_policy_v4")
+        == SELECTIVE_AUTHORITY_FK_POLICY_V4
+        and metadata.get("source_full_local_fk_v2") is False
+    )
+    if not current_operator_versions or not selective_fk:
+        pytest.skip("rebuild_013 is a legacy V8.10/full-FK cache fixture")
 
     operator = v8_artifacts.load_source_operator(operator_path)
     baseline = v8_artifacts.load_subject_runtime(subject_path)

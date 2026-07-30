@@ -156,3 +156,36 @@ def test_route_reports_fail_closed_when_constraints_conflict(
         report["skin_outside_count"] > 0
         or report["bone_maximum_penetration_m"] > 0.001
     )
+
+
+def test_route_fails_when_inside_physical_skin_but_inside_margin(
+    monkeypatch: object,
+) -> None:
+    _install_analytic_sphere_distance(monkeypatch)
+    skin_vertices, skin_faces = _sphere_marker(2.0)
+    # This point is physically inside the skin but only 0.1 mm from it.  The
+    # zero displacement cap leaves the violated contracted-shell constraint
+    # observable in the final report.
+    vertices = np.asarray(((1.9999, 0.0, 0.0),), dtype=np.float64)
+    component = VesselComponentV8(
+        mesh_name="NearSkinNerve",
+        vertex_ids=np.asarray((0,), dtype=np.int32),
+        local_faces=np.empty((0, 3), dtype=np.int32),
+    )
+
+    _routed, report = route_vessel_vertices_v8(
+        vertices,
+        [component],
+        skin_vertices=skin_vertices,
+        skin_faces=skin_faces,
+        collision_surfaces=[],
+        max_iterations=1,
+        skin_margin_m=0.00025,
+        maximum_component_displacement_m=0.0,
+    )
+
+    assert report["skin_outside_count"] == 0
+    assert report["skin_clearance_violation_count"] == 1
+    assert report["skin_maximum_clearance_violation_m"] > 0.0
+    assert report["passed"] is False
+    assert report["publishable"] is False

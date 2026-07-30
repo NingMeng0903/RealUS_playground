@@ -1909,6 +1909,8 @@ def skin_vertices(
     runtime_coefficients: dict[str, np.ndarray] | None = None,
     runtime_tube_pack: Any | None = None,
     runtime_tube_pack_validated: bool = False,
+    runtime_tube_pose_corrective_pack: Any | None = None,
+    runtime_tube_pose_corrective_pack_validated: bool = False,
     validate: bool = True,
 ) -> np.ndarray:
     if validate:
@@ -2000,6 +2002,7 @@ def skin_vertices(
 
         posed = apply_station_pose_follow(asset, transforms, posed)
         posed = apply_regional_organ_follow(asset, posed)
+    tube_coupling_applied = False
     if runtime_tube_pack is not None:
         from .tube_frames_v8 import apply_tube_coupling_v8
 
@@ -2011,6 +2014,7 @@ def skin_vertices(
             runtime_fields=runtime_coefficients,
             validate_live=not bool(runtime_tube_pack_validated),
         )
+        tube_coupling_applied = True
     elif runtime_coefficients and any(
         str(name).startswith("tube_coupling_v8.")
         for name in runtime_coefficients
@@ -2028,7 +2032,16 @@ def skin_vertices(
             pack,
             runtime_fields=runtime_coefficients,
         )
+        tube_coupling_applied = True
     elif runtime_coefficients:
+        has_corrective = any(
+            str(name).startswith("tube_pose_corrective_v1.")
+            for name in runtime_coefficients
+        )
+        if has_corrective:
+            raise ValueError(
+                "tube_pose_corrective_v1 requires authoritative tube_coupling_v8"
+            )
         from .tube_frames_v7 import apply_tube_material_frames_v7
 
         posed = apply_tube_material_frames_v7(
@@ -2036,6 +2049,54 @@ def skin_vertices(
             transforms,
             posed,
             runtime_coefficients,
+        )
+    if runtime_tube_pose_corrective_pack is not None:
+        if not tube_coupling_applied:
+            raise ValueError(
+                "tube_pose_corrective_v1 requires authoritative tube_coupling_v8"
+            )
+        if asset.driver_indices is None or asset.driver_weights is None:
+            raise ValueError(
+                "tube_pose_corrective_v1 requires original 14-slot Armature weights"
+            )
+        from .tube_pose_corrective_v8 import apply_tube_pose_corrective_v1
+
+        posed = apply_tube_pose_corrective_v1(
+            posed,
+            runtime_tube_pose_corrective_pack,
+            pose_axis_angle=pose_axis_angle,
+            source_transforms=transforms,
+            driver_indices=asset.driver_indices,
+            driver_weights=asset.driver_weights,
+            validate_pack=not bool(runtime_tube_pose_corrective_pack_validated),
+        )
+    elif runtime_coefficients and any(
+        str(name).startswith("tube_pose_corrective_v1.")
+        for name in runtime_coefficients
+    ):
+        if not tube_coupling_applied:
+            raise ValueError(
+                "tube_pose_corrective_v1 requires authoritative tube_coupling_v8"
+            )
+        if asset.driver_indices is None or asset.driver_weights is None:
+            raise ValueError(
+                "tube_pose_corrective_v1 requires original 14-slot Armature weights"
+            )
+        from .tube_pose_corrective_v8 import (
+            apply_tube_pose_corrective_v1,
+            tube_pose_corrective_pack_from_runtime_fields_v1,
+        )
+
+        corrective = tube_pose_corrective_pack_from_runtime_fields_v1(
+            runtime_coefficients
+        )
+        posed = apply_tube_pose_corrective_v1(
+            posed,
+            corrective,
+            pose_axis_angle=pose_axis_angle,
+            source_transforms=transforms,
+            driver_indices=asset.driver_indices,
+            driver_weights=asset.driver_weights,
         )
     if transl is not None:
         posed += np.asarray(transl, dtype=np.float32).reshape(1, 3)

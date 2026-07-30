@@ -397,6 +397,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--pose-label", type=str, default=None)
     parser.add_argument("--scale", type=float, default=None,
                         help="excitation amplitude scale (overrides collect.scale in yaml)")
+    parser.add_argument(
+        "--backend",
+        choices=("wbc", "vendor"),
+        default="wbc",
+        help="wbc: A/B/C vendor pose-CANFD + D WBC (no movev handoff); vendor: full official",
+    )
     args = parser.parse_args(argv)
 
     cfg = load_config(args.config)
@@ -411,10 +417,16 @@ def main(argv: list[str] | None = None) -> int:
         dry_run(cfg)
         return 0
 
+    if args.backend == "wbc":
+        from rm75_control.force.compensation.collection_wbc import run_collection
+
+        run_collection(cfg)
+        return 0
+
     c = cfg.collect
     seq = c.sequence
     slots = {s: load_slot(cfg, s) for s in set(seq) | {c.return_home}}
-    print(f"Collect {' → '.join(seq)} → {c.return_home}")
+    print(f"Collect {' → '.join(seq)} → {c.return_home} [vendor backend]")
     if c.scale != 1.0:
         print(f"  excitation scale: {c.scale}", flush=True)
     for s in seq:
@@ -431,6 +443,16 @@ def main(argv: list[str] | None = None) -> int:
 
     with RobotSession(config=CONFIG_ROBOT) as bot:
         require_tool_frame(bot.robot, required=cfg.required_tool_frame)
+        # Re-load slots with robot so pose_base is interpreted in calib tool frame.
+        from rm75_control.force.compensation.tool_pose import poses_calib_tool_frame
+        from rm75_control.force.compensation import excitation as ex
+
+        poses_data = ex.load_poses_yaml(cfg.poses_yaml)
+        calib_tool = poses_calib_tool_frame(poses_data)
+        slots = {
+            s: load_slot(cfg, s, robot=bot.robot, calib_tool=calib_tool)
+            for s in set(seq) | {c.return_home}
+        }
         saved = []
         for slot in seq:
             q_tgt, pose_tgt, rec = slots[slot]

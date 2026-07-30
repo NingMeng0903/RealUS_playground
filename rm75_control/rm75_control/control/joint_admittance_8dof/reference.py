@@ -473,6 +473,38 @@ class SinToolYReference:
         return MotionReference(pose_d=pose, vel_ff=vel, t_ref=t_s)
 
 
+class StreamingPoseReference:
+    """Live Cartesian pose setpoint for continuous track (``set_pose``).
+
+    Used by force-ID cartesian excitation to stream ``pose0 + delta(t)`` without
+    vendor pose-CANFD.  ``set_origin`` seeds the pose; ``set_pose`` updates it
+    every tick.
+    """
+
+    def __init__(self, pose0: np.ndarray | None = None) -> None:
+        self._pose = (
+            None
+            if pose0 is None
+            else np.asarray(pose0, dtype=float).reshape(6).copy()
+        )
+
+    def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
+        del t_s
+        self._pose = np.asarray(pose0, dtype=float).reshape(6).copy()
+
+    def set_pose(self, pose: np.ndarray | list[float]) -> None:
+        self._pose = np.asarray(pose, dtype=float).reshape(6).copy()
+
+    def sample(self, t_s: float) -> MotionReference:
+        if self._pose is None:
+            raise RuntimeError("StreamingPoseReference.set_origin / set_pose required")
+        return MotionReference(
+            pose_d=self._pose.copy(),
+            vel_ff=np.zeros(6, dtype=float),
+            t_ref=float(t_s),
+        )
+
+
 class StreamingJointReference:
     """Live joint setpoint for continuous servo (``set_q`` / ``set_q_deg``)."""
 

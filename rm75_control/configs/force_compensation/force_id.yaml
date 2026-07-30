@@ -24,7 +24,7 @@ collect:
   movev_quiescent_consecutive: 10
   quiescent_warmup_frames: 25
   quiescent_reject_step_mm: 2.0
-  pre_movev_settle_s: 1.5
+  pre_movev_settle_s: 0.5
   post_handoff_zero_s: 1.0
 
   cartesian:

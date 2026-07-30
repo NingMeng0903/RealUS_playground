@@ -25,7 +25,9 @@ from .acceptance_v8 import (
     rigid_compound_gate,
     topology_digest,
 )
-from .anatomy_lbs import source_bone_posed_global
+from .anatomy_lbs import joint_global_transforms, source_bone_posed_global
+from .containment import signed_distance
+from .fk_policy_v8 import validate_source_fk_asset_policy_v8
 from .pose_adapter import smplx_pose_hash
 from .tube_frames_v8 import (
     tube_coupling_pack_from_runtime_fields_v8,
@@ -36,6 +38,517 @@ from .v8_artifacts import (
     SubjectRuntimePackV8,
     apply_subject_pose,
 )
+
+
+def _digest(value: Any) -> bool:
+    text = str(value)
+    return len(text) == 64 and all(character in "0123456789abcdef" for character in text)
+
+
+def _finite_float(value: Any, fallback: float = np.inf) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return float(fallback)
+    return number if np.isfinite(number) else float(fallback)
+
+
+def _finite_int(value: Any, fallback: int = -1) -> int:
+    """Convert an offline count/schema field without letting bad reports abort.
+
+    Matrix validation is evidence collection.  A malformed JSON report must
+    become a failed gate, not prevent the caller from writing a nonpublishable
+    report that explains the missing evidence.
+    """
+
+    number = _finite_float(value, fallback=float("nan"))
+    if not np.isfinite(number) or number != np.floor(number):
+        return int(fallback)
+    return int(number)
+
+
+def _tissue_set(value: Any) -> set[str] | None:
+    """Return normalized report tissues, or ``None`` for malformed input."""
+
+    if not isinstance(value, (list, tuple, set, frozenset)):
+        return None
+    return {str(tissue).strip().lower() for tissue in value}
+
+
+def _report_passed(
+    value: Any,
+    *,
+    name: str,
+    require_digest: bool = False,
+) -> tuple[bool, dict[str, Any]]:
+    """Normalize one offline V8.11 report into fail-closed release evidence."""
+
+    if not isinstance(value, Mapping):
+        return False, {"available": False, "pass": False, "reason": f"{name} report missing"}
+    passed = value.get("passed", value.get("pass")) is True
+    available = value.get("available", True) is True
+    digest_ok = not require_digest or _digest(value.get("content_digest", ""))
+    result = {
+        "available": bool(available),
+        "pass": bool(available and passed and digest_ok),
+        "content_digest": value.get("content_digest"),
+    }
+    if not result["pass"]:
+        if not available:
+            result["reason"] = str(value.get("reason", f"{name} is unavailable"))
+        elif not passed:
+            result["reason"] = str(value.get("reason", f"{name} did not pass"))
+        else:
+            result["reason"] = f"{name} lacks a valid content digest"
+    return bool(result["pass"]), result
+
+
+_HAND_BONE_NAME_TOKENS_V811 = (
+    "hand",
+    "wrist",
+    "carpal",
+    "metacarp",
+    "finger",
+    "thumb",
+    "triquetr",
+    "pisiform",
+    "hamate",
+    "capitate",
+    "scaphoid",
+    "lunate",
+    "trapez",
+)
+_FOOT_BONE_NAME_TOKENS_V811 = (
+    "foot",
+    "ankle",
+    "talus",
+    "calcaneus",
+    "metatars",
+    "navicular",
+    "cuboid",
+    "cuneiform",
+)
+
+
+@dataclass(frozen=True)
+class MatrixBodySurfaceV811:
+    """One beta-specific SMPL-X surface plus its frozen LBS definition."""
+
+    vertices: np.ndarray
+    faces: np.ndarray
+    lbs_weights: np.ndarray
+    rest_joints: np.ndarray
+    parents: np.ndarray
+    inverse_bind: np.ndarray
+    source: str
+
+    def validate(self) -> None:
+        vertices = np.asarray(self.vertices, dtype=np.float64)
+        faces = np.asarray(self.faces, dtype=np.int64)
+        weights = np.asarray(self.lbs_weights, dtype=np.float64)
+        joints = np.asarray(self.rest_joints, dtype=np.float64)
+        parents = np.asarray(self.parents, dtype=np.int64).reshape(-1)
+        inverse = np.asarray(self.inverse_bind, dtype=np.float64)
+        if (
+            vertices.ndim != 2
+            or vertices.shape[1:] != (3,)
+            or len(vertices) < 4
+            or not np.all(np.isfinite(vertices))
+            or faces.ndim != 2
+            or faces.shape[1:] != (3,)
+            or not len(faces)
+            or np.any(faces < 0)
+            or np.any(faces >= len(vertices))
+            or weights.shape != (len(vertices), 55)
+            or not np.all(np.isfinite(weights))
+            or np.any(weights < 0.0)
+            or not np.allclose(weights.sum(axis=1), 1.0, atol=1.0e-5, rtol=0.0)
+            or joints.shape != (55, 3)
+            or parents.shape != (55,)
+            or inverse.shape != (55, 4, 4)
+            or not np.all(np.isfinite(joints))
+            or not np.all(np.isfinite(inverse))
+        ):
+            raise ValueError("V8.11 body surface arrays are invalid")
+        if int(parents[0]) != -1 or np.any(parents[1:] < 0) or np.any(
+            parents[1:] >= np.arange(1, 55, dtype=np.int64)
+        ):
+            raise ValueError("V8.11 body surface parents are not topological")
+
+
+def _hand_foot_bone_regions_v811(asset: Any) -> dict[str, np.ndarray]:
+    """Resolve every named hand/foot bone mesh without geometry heuristics."""
+
+    ranges = getattr(asset, "source_vertex_ranges", None)
+    tissues = getattr(asset, "source_tissues", None)
+    names = getattr(asset, "source_mesh_names", None)
+    sides = getattr(asset, "source_sides", None)
+    count = len(np.asarray(getattr(asset, "vertices_rest"), dtype=np.float64))
+    if ranges is None or tissues is None or names is None:
+        return {}
+    spans = np.asarray(ranges, dtype=np.int64).reshape(-1, 2)
+    if len(spans) != len(tissues) or len(spans) != len(names):
+        return {}
+    if sides is None or len(sides) != len(spans):
+        sides = ("") * len(spans)
+    regions: dict[str, list[np.ndarray]] = {}
+    for (start, stop), tissue, name, raw_side in zip(
+        spans, tissues, names, sides, strict=True
+    ):
+        lo, hi = int(start), int(stop)
+        if lo < 0 or hi <= lo or hi > count or str(tissue).strip().lower() != "bone":
+            continue
+        normalized = str(name).strip().lower()
+        if any(token in normalized for token in _HAND_BONE_NAME_TOKENS_V811):
+            kind = "hand"
+        elif any(token in normalized for token in _FOOT_BONE_NAME_TOKENS_V811):
+            kind = "foot"
+        else:
+            continue
+        side = str(raw_side).strip().lower()
+        if side not in {"left", "right"}:
+            if normalized.endswith("_l") or "_l_" in normalized:
+                side = "left"
+            elif normalized.endswith("_r") or "_r_" in normalized:
+                side = "right"
+            else:
+                side = "center"
+        regions.setdefault(f"{side}/{kind}", []).append(
+            np.arange(lo, hi, dtype=np.int64)
+        )
+    return {
+        label: np.unique(np.concatenate(indices)).astype(np.int64)
+        for label, indices in regions.items()
+        if indices
+    }
+
+
+def _posed_body_surface_v811(
+    surface: MatrixBodySurfaceV811,
+    pose_axis_angle: np.ndarray,
+    transl: np.ndarray,
+) -> np.ndarray:
+    """Pose an external canonical SMPL-X shell with its own frozen LBS."""
+
+    surface.validate()
+    pose_global = joint_global_transforms(
+        pose_axis_angle=pose_axis_angle,
+        rest_joints=surface.rest_joints,
+        parents=surface.parents,
+    ).astype(np.float64)
+    transforms = pose_global @ np.asarray(surface.inverse_bind, dtype=np.float64)
+    vertices = np.asarray(surface.vertices, dtype=np.float64)
+    transformed = np.einsum(
+        "jab,vb->vja", transforms[:, :3, :3], vertices, optimize=True
+    ) + transforms[None, :, :3, 3]
+    posed = np.einsum(
+        "vj,vja->va", surface.lbs_weights, transformed, optimize=True
+    )
+    return posed + np.asarray(transl, dtype=np.float64).reshape(3)
+
+
+def _hand_foot_bone_containment_gate_v811(
+    asset: Any,
+    vertices: np.ndarray,
+    *,
+    body_surface: MatrixBodySurfaceV811 | None,
+    pose_axis_angle: np.ndarray,
+    transl: np.ndarray,
+) -> dict[str, Any]:
+    """Fail if any selected hard hand/foot vertex is >0.5 mm outside SMPL-X."""
+
+    if body_surface is None:
+        return {
+            "available": False,
+            "pass": False,
+            "reason": "beta-specific canonical SMPL-X body surface is missing",
+        }
+    try:
+        subject_joints = np.asarray(asset.rest_joints, dtype=np.float64)
+        subject_parents = np.asarray(asset.parents, dtype=np.int64)
+        if (
+            subject_joints.shape != (55, 3)
+            or subject_parents.shape != (55,)
+            or not np.allclose(
+                body_surface.rest_joints,
+                subject_joints,
+                atol=1.0e-6,
+                rtol=0.0,
+            )
+            or not np.array_equal(body_surface.parents, subject_parents)
+        ):
+            return {
+                "available": False,
+                "pass": False,
+                "reason": "body surface does not match this subject's SMPL-X beta skeleton",
+            }
+        body_vertices = _posed_body_surface_v811(
+            body_surface, pose_axis_angle, transl
+        )
+    except (TypeError, ValueError) as exc:
+        return {"available": False, "pass": False, "reason": str(exc)}
+    regions = _hand_foot_bone_regions_v811(asset)
+    if not regions:
+        return {
+            "available": False,
+            "pass": False,
+            "reason": "hand/foot bone mesh semantics are missing",
+        }
+    final = np.asarray(vertices, dtype=np.float64)
+    if final.shape != np.asarray(asset.vertices_rest).shape or not np.all(
+        np.isfinite(final)
+    ):
+        return {"available": False, "pass": False, "reason": "posed anatomy is invalid"}
+    per_region: dict[str, dict[str, Any]] = {}
+    outside_total = 0
+    maximum_outside = -np.inf
+    for label, ids in sorted(regions.items()):
+        signed, _closest, _normal = signed_distance(
+            final[ids], body_vertices, np.asarray(body_surface.faces, dtype=np.int32)
+        )
+        outside = np.asarray(signed, dtype=np.float64) > 0.0005
+        outside_total += int(np.count_nonzero(outside))
+        maximum = float(np.max(signed))
+        maximum_outside = max(maximum_outside, maximum)
+        per_region[label] = {
+            "vertex_count": int(len(ids)),
+            "outside_count": int(np.count_nonzero(outside)),
+            "maximum_outside_m": maximum,
+        }
+    return {
+        "available": True,
+        "pass": outside_total == 0,
+        "maximum_allowed_outside_m": 0.0005,
+        "outside_count": int(outside_total),
+        "maximum_outside_m": float(maximum_outside),
+        "regions": per_region,
+        "surface_source": body_surface.source,
+    }
+
+
+def _foot_chain_gate_v811(subject: SubjectRuntimePackV8) -> tuple[bool, dict[str, Any]]:
+    """Validate the exact V8.11 multi-station rigid-foot report at L1."""
+
+    report = dict(subject.audit_report or {}).get("leg_centerline_v810", {})
+    if not isinstance(report, Mapping):
+        return False, {"available": False, "pass": False, "reason": "leg centerline report missing"}
+    chain = report.get("foot_chain_stations_v1")
+    if not isinstance(chain, Mapping):
+        chain = dict(subject.rigged_asset.metadata or {}).get("foot_chain_stations_v1")
+    if not isinstance(chain, Mapping):
+        return False, {"available": False, "pass": False, "reason": "foot_chain_stations_v1 missing"}
+    failures: list[str] = []
+    if _finite_int(chain.get("schema_version", -1)) != 1:
+        failures.append("schema_version")
+    if chain.get("method") != "multi_station_rigid_foot_chain_v811":
+        failures.append("method")
+    if not _digest(chain.get("content_digest", "")):
+        failures.append("content_digest")
+    sides = chain.get("sides")
+    if not isinstance(sides, Mapping) or set(sides) != {"left", "right"}:
+        failures.append("bilateral_sides")
+        sides = {}
+    maximum_station_residual = 0.0
+    maximum_rms = 0.0
+    maximum_error = 0.0
+    for side in ("left", "right"):
+        entry = sides.get(side, {}) if isinstance(sides, Mapping) else {}
+        if not isinstance(entry, Mapping):
+            failures.append(f"{side}.schema")
+            entry = {}
+        residual = _finite_float(entry.get("station_residual_m"))
+        maximum_station_residual = max(maximum_station_residual, residual)
+        if not np.isfinite(residual) or residual > 0.002:
+            failures.append(f"{side}.station_residual")
+        meshes = entry.get("per_mesh") if isinstance(entry, Mapping) else None
+        if not isinstance(meshes, list) or not meshes:
+            failures.append(f"{side}.per_mesh")
+            continue
+        for item in meshes:
+            if not isinstance(item, Mapping):
+                failures.append(f"{side}.mesh_schema")
+                continue
+            rms = _finite_float(item.get("rigid_rms_error_m"))
+            maximum = _finite_float(item.get("rigid_maximum_error_m"))
+            determinant = _finite_float(item.get("det_rotation"))
+            scale = _finite_float(item.get("scale", 1.0))
+            maximum_rms = max(maximum_rms, rms)
+            maximum_error = max(maximum_error, maximum)
+            if not np.isfinite(rms) or rms > 0.0005:
+                failures.append(f"{side}.{item.get('mesh', 'mesh')}.rms")
+            if not np.isfinite(maximum) or maximum > 0.001:
+                failures.append(f"{side}.{item.get('mesh', 'mesh')}.maximum")
+            if not np.isfinite(determinant) or abs(determinant - 1.0) > 1.0e-5:
+                failures.append(f"{side}.{item.get('mesh', 'mesh')}.det")
+            if not np.isfinite(scale) or abs(scale - 1.0) > 1.0e-7:
+                failures.append(f"{side}.{item.get('mesh', 'mesh')}.scale")
+    return not failures, {
+        "available": True,
+        "pass": not failures,
+        "maximum_station_residual_m": maximum_station_residual,
+        "maximum_procrustes_rms_m": maximum_rms,
+        "maximum_procrustes_error_m": maximum_error,
+        "failures": failures,
+        "content_digest": chain.get("content_digest"),
+    }
+
+
+def _v811_contract_gate(
+    operator: SourceOperatorV8,
+    subjects: Sequence[MatrixSubjectV8],
+) -> dict[str, Any]:
+    """Join every V8.11 offline contract without trusting a publish flag.
+
+    The gate intentionally checks only frozen reports/digests and L1 geometry
+    reports.  It does not rerun volume, surface, graph, or collision work in a
+    matrix process, which keeps the resident path matrix-only.
+    """
+
+    checks: dict[str, Any] = {}
+    failures: list[str] = []
+    try:
+        validate_source_fk_asset_policy_v8(
+            operator.template_asset, require_selective=True
+        )
+        checks["selective_fk"] = {"available": True, "pass": True}
+    except ValueError as exc:
+        checks["selective_fk"] = {"available": True, "pass": False, "reason": str(exc)}
+        failures.append("selective_fk")
+
+    correction = (
+        dict(operator.correction_report)
+        if isinstance(operator.correction_report, Mapping)
+        else {}
+    )
+    for key, label, require_digest in (
+        ("source_skin_volume_v811", "protected soft volume", True),
+        ("source_skin_volume_beta_basis_v1", "soft beta basis", True),
+        ("head_compound_fit_v1", "head compound", True),
+        ("tube_pose_corrective_v1", "tube pose corrective", True),
+    ):
+        passed, check = _report_passed(
+            correction.get(key), name=label, require_digest=require_digest
+        )
+        checks[key] = check
+        if not passed:
+            failures.append(key)
+
+    volume = correction.get("source_skin_volume_v811")
+    if isinstance(volume, Mapping):
+        source_rig_rebind = volume.get("source_rig_rebind")
+        source_rig_rebind = (
+            source_rig_rebind if isinstance(source_rig_rebind, Mapping) else {}
+        )
+        volume_exact = bool(
+            _finite_int(volume.get("schema_version", -1)) == 1
+            and volume.get("artifact_kind") == "SourceSkinVolumeRegistrationV811"
+            and volume.get("anatomy_transport")
+            == "soft_material_only_volume_field_v811"
+            and _tissue_set(volume.get("soft_volume_tissues"))
+            == {"vessel", "nerve", "organ", "heart", "connective_tissue"}
+            and volume.get("topology_preserved") is True
+            and volume.get("source_weights_preserved") is True
+            and volume.get("protected_material_preserved") is True
+            and volume.get("nonsoft_material_preserved") is True
+            and volume.get("rigid_hard_protection_preserved") is True
+            and source_rig_rebind.get("rebound") is False
+        )
+        checks["source_skin_volume_v811"]["pass"] = bool(
+            checks["source_skin_volume_v811"]["pass"] and volume_exact
+        )
+        checks["source_skin_volume_v811"]["strict_semantic_transport"] = volume_exact
+        if not checks["source_skin_volume_v811"]["pass"]:
+            failures.append("source_skin_volume_v811:semantic_transport")
+
+    head = correction.get("head_compound_fit_v1")
+    if isinstance(head, Mapping):
+        head_exact = bool(
+            _finite_int(head.get("outside_count", -1)) == 0
+            and _finite_float(head.get("center_drift_m")) <= 0.001
+            and _finite_float(head.get("target_scale_loss")) <= 0.03
+            and _finite_float(head.get("clearance_m")) >= 0.0015
+            and _finite_float(head.get("uniform_scale")) > 0.0
+            and _finite_float(head.get("robust_target_scale")) > 0.0
+            and head.get("nonuniform_scale") is False
+        )
+        checks["head_compound_fit_v1"]["pass"] = bool(
+            checks["head_compound_fit_v1"]["pass"] and head_exact
+        )
+        checks["head_compound_fit_v1"]["containment_and_uniformity"] = head_exact
+        if not checks["head_compound_fit_v1"]["pass"]:
+            failures.append("head_compound_fit_v1:containment")
+
+    corrective = correction.get("tube_pose_corrective_v1")
+    if isinstance(corrective, Mapping):
+        corrective_exact = bool(
+            corrective.get("schema") == "tube_pose_corrective_v1"
+            and _finite_int(corrective.get("sample_count", 0)) >= 3
+            and _finite_int(corrective.get("vertex_count", 0)) > 0
+            and _finite_int(corrective.get("driver_joint_count", 0)) > 0
+            and corrective.get("runtime_spatial_query") is False
+            and corrective.get("runtime_graph_solve") is False
+            and corrective.get("runtime_collision") is False
+        )
+        checks["tube_pose_corrective_v1"]["pass"] = bool(
+            checks["tube_pose_corrective_v1"]["pass"] and corrective_exact
+        )
+        checks["tube_pose_corrective_v1"]["runtime_matrix_only"] = corrective_exact
+        if not checks["tube_pose_corrective_v1"]["pass"]:
+            failures.append("tube_pose_corrective_v1:runtime_contract")
+
+    route = correction.get("vessel_route_v8")
+    route_ok, route_check = _report_passed(
+        route, name="vessel and nerve route", require_digest=False
+    )
+    if isinstance(route, Mapping):
+        source_reconstruction = route.get("source_reconstruction")
+        source_reconstruction = (
+            source_reconstruction
+            if isinstance(source_reconstruction, Mapping)
+            else {}
+        )
+        exact = (
+            _tissue_set(route.get("tissues")) == {"vessel", "nerve"}
+            and _finite_int(route.get("skin_outside_count", -1)) == 0
+            and _finite_int(route.get("bone_clearance_violation_count", -1)) == 0
+            and _finite_float(route.get("edge_relative_change_q99")) <= 0.05
+            and abs(_finite_float(route.get("skin_margin_m")) - 0.00025)
+            <= 1.0e-9
+            and abs(_finite_float(route.get("bone_clearance_m")) - 0.00025)
+            <= 1.0e-9
+            and source_reconstruction.get("skipped") is True
+        )
+        route_check["outside_count"] = route.get("skin_outside_count")
+        route_check["bone_clearance_violation_count"] = route.get(
+            "bone_clearance_violation_count"
+        )
+        route_check["edge_relative_change_q99"] = route.get(
+            "edge_relative_change_q99"
+        )
+        route_check["tissues"] = route.get("tissues")
+        route_check["skin_margin_m"] = route.get("skin_margin_m")
+        route_check["bone_clearance_m"] = route.get("bone_clearance_m")
+        route_check["source_reconstruction_skipped"] = source_reconstruction.get(
+            "skipped"
+        )
+        route_check["pass"] = bool(route_ok and exact)
+        route_ok = bool(route_check["pass"])
+    checks["vessel_nerve_route"] = route_check
+    if not route_ok:
+        failures.append("vessel_nerve_route")
+
+    for subject in subjects:
+        passed, foot_check = _foot_chain_gate_v811(subject.subject)
+        checks[f"foot_chain/{subject.label}"] = foot_check
+        if not passed:
+            failures.append(f"foot_chain/{subject.label}")
+
+    return {
+        "available": True,
+        "pass": not failures,
+        "checks": checks,
+        "failures": failures,
+    }
 
 
 @dataclass(frozen=True)
@@ -51,6 +564,7 @@ class MatrixSubjectV8:
     label: str
     path: Path
     subject: SubjectRuntimePackV8
+    body_surface: MatrixBodySurfaceV811 | None = None
 
 
 def _joint_gap(
@@ -261,6 +775,7 @@ def _cell(
     operator: SourceOperatorV8,
     subject: SubjectRuntimePackV8,
     pose: MatrixPoseV8,
+    body_surface: MatrixBodySurfaceV811 | None,
 ) -> dict[str, Any]:
     started = time.perf_counter()
     final = np.asarray(
@@ -381,6 +896,13 @@ def _cell(
         tube_pack,
         runtime_fields=subject.runtime_coefficients,
     )
+    gates["containment/hand_foot_hard"] = _hand_foot_bone_containment_gate_v811(
+        subject.rigged_asset,
+        final,
+        body_surface=body_surface,
+        pose_axis_angle=pose.pose_axis_angle,
+        transl=pose.transl,
+    )
     gates["fk/v71_action"] = {
         "available": False,
         "pass": False,
@@ -450,7 +972,10 @@ def run_validation_matrix_v8(
             raise ValueError("all V8 subjects must belong to the supplied operator")
         for pose in poses:
             cells[f"{subject_spec.label}/{pose.label}"] = _cell(
-                operator=operator, subject=subject_spec.subject, pose=pose
+                operator=operator,
+                subject=subject_spec.subject,
+                pose=pose,
+                body_surface=subject_spec.body_surface,
             )
     references = operator.reference_manifest["references"]
     release_blockers: list[str] = []
@@ -458,6 +983,44 @@ def run_validation_matrix_v8(
         release_blockers.append("ba9_head_clean_reproduction_missing")
     if references["v71_mechanism"].get("clean_reproduction") is not True:
         release_blockers.append("v71_clean_reproduction_missing")
+    v811_contracts = _v811_contract_gate(operator, subjects)
+    if v811_contracts["pass"] is not True:
+        release_blockers.append("v811_offline_contracts_incomplete")
+    release_gates = {
+        "provenance": {
+            "available": True,
+            "pass": bool(
+                references["ba9_head"].get("clean_reproduction") is True
+                and references["v71_mechanism"].get("clean_reproduction") is True
+            ),
+        },
+        "tongue": {
+            "available": False,
+            "pass": False,
+            "reason": "independent legal tongue provenance gate is pending",
+        },
+        "tube": {
+            "available": bool(
+                v811_contracts["checks"]
+                .get("vessel_nerve_route", {})
+                .get("available", False)
+            ),
+            "pass": bool(
+                v811_contracts["checks"]
+                .get("vessel_nerve_route", {})
+                .get("pass", False)
+            ),
+        },
+        "signed_contacts": {
+            "available": False,
+            "pass": False,
+            "reason": "signed point-to-triangle and triangle intersection pass pending",
+        },
+        "v811_contracts": v811_contracts,
+    }
+    for name, gate in release_gates.items():
+        if gate.get("pass") is not True:
+            release_blockers.append(f"release_gate:{name}")
     release_blockers.extend(
         (
             "blender_v71_tube_action_vertices_missing",
@@ -477,10 +1040,12 @@ def run_validation_matrix_v8(
         "measured_passed": all(cell["passed"] for cell in cells.values()),
         "publishable": not release_blockers,
         "release_blockers": release_blockers,
+        "release_gates": release_gates,
     }
 
 
 __all__ = [
+    "MatrixBodySurfaceV811",
     "MatrixPoseV8",
     "MatrixSubjectV8",
     "run_validation_matrix_v8",

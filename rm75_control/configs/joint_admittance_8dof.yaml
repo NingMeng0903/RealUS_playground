@@ -210,6 +210,8 @@ inner:
     #     locked_style: tcp_fixed   plan drives rail, arm QP holds TCP
     mode: coupled              # scan: rail joins QP (set locked for pin-only scan)
     locked_style: hold
+    # Planning default (rail at -Y end). HOLD without an explicit q_ref captures
+    # live q_cmd[0] — this value must NOT be treated as the hybrid@D lock target.
     q_ref_m: 0.0
     # HOLD-only lock knobs:
     lock_gain: 200.0

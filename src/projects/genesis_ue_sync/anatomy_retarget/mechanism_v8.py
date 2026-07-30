@@ -26,6 +26,8 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
+from .fk_policy_v8 import validate_source_fk_policy_v8
+
 
 ANATOMY_V8_SCHEMA_VERSION = 8
 V71_SOURCE_BONE_COUNT = 235
@@ -609,8 +611,11 @@ class V71ParentLocalFKV8:
         if not np.allclose(weights.sum(axis=1), 1.0, atol=1.0e-5, rtol=0.0):
             raise ValueError("V71 Armature weights must sum to one")
         metadata = dict(self.metadata)
-        if metadata.get("source_full_local_fk_v2") is not True:
-            raise ValueError("V8 requires source_full_local_fk_v2=true")
+        validate_source_fk_policy_v8(
+            metadata,
+            bone_count=count,
+            bone_names=names,
+        )
         reject_obsolete_mechanism_config_v8(metadata)
         object.__setattr__(self, "bone_names", names)
         object.__setattr__(self, "parents", _readonly(parents, np.int32))

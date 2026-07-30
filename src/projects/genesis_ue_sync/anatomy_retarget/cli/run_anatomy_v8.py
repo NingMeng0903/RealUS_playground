@@ -9,7 +9,7 @@ import json
 import sys
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 
 def _early_file_sha256(path: Path) -> str:
@@ -93,7 +93,21 @@ def _early_materialize_cache_hit(argv: list[str]) -> bool:
     cache_key = str(subject.get("cache_key", ""))
     if len(cache_key) != 64 or any(char not in "0123456789abcdef" for char in cache_key):
         return False
-    print(f"SubjectRuntimePackV8 cache-hit {cache_key} -> {output}")
+    raw_summary = subject.get("v811_summary", {})
+    summary = (
+        raw_summary if isinstance(raw_summary, dict) else {}
+    )
+    print(
+        f"SubjectRuntimePackV8 cache-hit {cache_key} "
+        "v811_summary="
+        + json.dumps(
+            summary,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + f" -> {output}"
+    )
     return True
 
 
@@ -142,11 +156,17 @@ from projects.genesis_ue_sync.anatomy_retarget.v8_artifacts import (
     subject_cache_key,
     validate_reference_manifest,
 )
+from projects.genesis_ue_sync.anatomy_retarget.version_v8 import (
+    SOURCE_OPERATOR_ALGORITHM_VERSION,
+    SOURCE_OPERATOR_CORRECTION_VERSION,
+    SOURCE_OPERATOR_ORACLE_VERSION,
+)
 from projects.genesis_ue_sync.anatomy_retarget.v7_artifacts import (
     load_source_operator as load_source_operator_v7,
     rigged_asset_digest,
 )
 from projects.genesis_ue_sync.anatomy_retarget.validation_matrix_v8 import (
+    MatrixBodySurfaceV811,
     MatrixPoseV8,
     MatrixSubjectV8,
     run_validation_matrix_v8,
@@ -167,6 +187,135 @@ def _file_digest(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _source_skin_volume_digest(path: Path) -> str:
+    """Digest only canonical volume inputs, never its mutable solver cache."""
+
+    root = path.expanduser().resolve()
+    if not root.is_dir():
+        raise ValueError(f"source skin volume directory does not exist: {root}")
+    required = (
+        "smpl_canonical_tpose.obj",
+        "smpl_canonical_weights.npz",
+    )
+    optional = ("source_skin_volume_beta_basis_v1.npz",)
+    digest = hashlib.sha256(b"source-skin-volume-v811-inputs\0")
+    for relative in required + optional:
+        candidate = root / relative
+        if relative in required and not candidate.is_file():
+            raise ValueError(
+                f"source skin volume directory lacks required input: {candidate}"
+            )
+        if not candidate.is_file():
+            continue
+        digest.update(relative.encode("ascii"))
+        digest.update(b"\0")
+        digest.update(_file_digest(candidate).encode("ascii"))
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _v811_summary_text(manifest: Mapping[str, Any]) -> str:
+    """Serialize the persisted V8.11 summary for CLI audit logs."""
+
+    summary = manifest.get("v811_summary", {})
+    if not isinstance(summary, dict):
+        summary = {}
+    return json.dumps(
+        summary,
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _load_tube_corrective_pose_samples(
+    paths: list[Path] | None,
+) -> dict[str, np.ndarray]:
+    """Load auditable offline corrective samples from repeatable NPZ inputs.
+
+    Every input uses rest-local displacement relative to strict tube LBS.  The
+    layout is intentionally explicit so the corrective can never silently
+    depend on Blender evaluated geometry at runtime.
+    """
+
+    if not paths:
+        raise ValueError("V8.11 requires --tube-corrective-pose inputs")
+    poses: list[np.ndarray] = []
+    displacements: list[np.ndarray] = []
+    shared_ids: np.ndarray | None = None
+    shared_joints: np.ndarray | None = None
+    for raw_path in paths:
+        path = raw_path.expanduser().resolve()
+        if not path.is_file() or path.suffix.lower() != ".npz":
+            raise ValueError(
+                "each --tube-corrective-pose must be an existing .npz file"
+            )
+        with np.load(path, allow_pickle=False) as data:
+            pose_key = "pose_axis_angle" if "pose_axis_angle" in data.files else "pose"
+            displacement_key = (
+                "local_displacement_samples_m"
+                if "local_displacement_samples_m" in data.files
+                else "local_displacements_m"
+            )
+            required = {pose_key, displacement_key, "vertex_ids", "driver_joint_ids"}
+            missing = sorted(required - set(data.files))
+            if missing:
+                raise ValueError(
+                    f"{path} lacks tube corrective arrays: {missing}"
+                )
+            pose = np.asarray(data[pose_key], dtype=np.float32)
+            local = np.asarray(data[displacement_key], dtype=np.float32)
+            vertex_ids = np.asarray(data["vertex_ids"], dtype=np.int32).reshape(-1)
+            driver_joint_ids = np.asarray(
+                data["driver_joint_ids"], dtype=np.int16
+            ).reshape(-1)
+        if pose.shape == (55, 3):
+            pose = pose[None, ...]
+        if pose.ndim != 3 or pose.shape[1:] != (55, 3):
+            raise ValueError(f"{path} pose_axis_angle must be [S,55,3]")
+        if local.shape == (len(vertex_ids), 3):
+            local = local[None, ...]
+        if local.shape != (len(pose), len(vertex_ids), 3):
+            raise ValueError(
+                f"{path} local displacement must be [S,V,3] for its pose and vertex ids"
+            )
+        if not np.all(np.isfinite(pose)) or not np.all(np.isfinite(local)):
+            raise ValueError(f"{path} tube corrective arrays contain non-finite values")
+        if shared_ids is None:
+            shared_ids = vertex_ids
+            shared_joints = driver_joint_ids
+        elif not np.array_equal(shared_ids, vertex_ids) or not np.array_equal(
+            shared_joints, driver_joint_ids
+        ):
+            raise ValueError(
+                "all --tube-corrective-pose inputs must use identical vertex_ids "
+                "and driver_joint_ids"
+            )
+        poses.append(pose)
+        displacements.append(local)
+    assert shared_ids is not None and shared_joints is not None
+    combined_pose = np.concatenate(poses, axis=0)
+    combined_local = np.concatenate(displacements, axis=0)
+    nonneutral = np.linalg.norm(combined_pose, axis=(1, 2)) > 1.0e-7
+    neutral = ~nonneutral
+    if int(np.count_nonzero(nonneutral)) < 2:
+        raise ValueError(
+            "V8.11 tube corrective requires at least two non-neutral capture poses"
+        )
+    if not np.any(neutral):
+        raise ValueError(
+            "V8.11 tube corrective requires an explicit T-pose sample with zero rotation"
+        )
+    if len(np.unique(combined_pose[nonneutral].reshape(np.count_nonzero(nonneutral), -1), axis=0)) < 2:
+        raise ValueError("tube corrective capture poses must include two distinct poses")
+    return {
+        "pose_axis_angle_samples": combined_pose,
+        "local_displacement_samples_m": combined_local,
+        "vertex_ids": shared_ids,
+        "driver_joint_ids": shared_joints,
+    }
 
 
 def _read_json(path: Path, *, label: str) -> dict[str, Any]:
@@ -364,10 +513,23 @@ def _run_bake_selective_operator(args: argparse.Namespace) -> int:
     output_path = args.output.expanduser().resolve()
     if not v7_path.is_file() or not v71_path.is_file():
         raise ValueError("V7 operator and V71 source assets must both exist")
+    source_skin_volume_dir = args.source_skin_volume_dir.expanduser().resolve()
+    tube_corrective = _load_tube_corrective_pose_samples(
+        list(args.tube_corrective_poses)
+    )
     input_digests = {
         "v7_operator_file_digest": _file_digest(v7_path),
         "v71_source_file_digest": _file_digest(v71_path),
         "reference_manifest_file_digest": _file_digest(reference_path),
+        "source_skin_volume_digest": _source_skin_volume_digest(
+            source_skin_volume_dir
+        ),
+        "tube_corrective_pose_file_digests": {
+            str(path.expanduser().resolve()): _file_digest(
+                path.expanduser().resolve()
+            )
+            for path in args.tube_corrective_poses
+        },
     }
     if args.vessel_skin_obj is not None:
         input_digests["vessel_skin_obj_file_digest"] = _file_digest(
@@ -474,6 +636,15 @@ def _run_bake_selective_operator(args: argparse.Namespace) -> int:
         reference_betas=reference_betas,
         vessel_skin_vertices=vessel_skin_vertices,
         vessel_skin_faces=vessel_skin_faces,
+        source_skin_volume_dir=source_skin_volume_dir,
+        tube_corrective_pose_axis_angle_samples=tube_corrective[
+            "pose_axis_angle_samples"
+        ],
+        tube_corrective_local_displacement_samples_m=tube_corrective[
+            "local_displacement_samples_m"
+        ],
+        tube_corrective_vertex_ids=tube_corrective["vertex_ids"],
+        tube_corrective_driver_joint_ids=tube_corrective["driver_joint_ids"],
         algorithm_version=args.algorithm_version,
         oracle_version=args.oracle_version,
         correction_version=args.correction_version,
@@ -483,9 +654,11 @@ def _run_bake_selective_operator(args: argparse.Namespace) -> int:
         provenance={**operator.provenance, **input_digests},
     )
     output = save_source_operator(output_path, operator)
+    summary = _v811_summary_text(read_artifact_manifest(output))
     print(
         f"SourceOperatorV8 selective runtime={operator.runtime_digest()} "
         "tube=final_template_rest publishable=false "
+        f"v811_summary={summary} "
         f"-> {output}"
     )
     return 0
@@ -525,7 +698,10 @@ def _run_materialize_beta(args: argparse.Namespace) -> int:
             != operator_manifest.get("runtime_digest")
         ):
             raise ValueError("existing subject cache entry has the wrong cache key")
-        print(f"SubjectRuntimePackV8 cache-hit {key} -> {target}")
+        print(
+            f"SubjectRuntimePackV8 cache-hit {key} "
+            f"v811_summary={_v811_summary_text(cached_manifest)} -> {target}"
+        )
         return 0
     # Materialization performs the full structural validation and recomputes
     # the L0 runtime digest.  Avoid doing the same large rig digest twice in
@@ -538,9 +714,10 @@ def _run_materialize_beta(args: argparse.Namespace) -> int:
     if subject.cache_key != key:
         raise AssertionError("manifest preflight and materializer cache keys disagree")
     output = save_subject_runtime(target, subject)
+    summary = _v811_summary_text(read_artifact_manifest(output))
     print(
         f"SubjectRuntimePackV8 runtime={subject.runtime_digest()} "
-        f"cache_key={key} publishable=false -> {output}"
+        f"cache_key={key} publishable=false v811_summary={summary} -> {output}"
     )
     return 0
 
@@ -585,17 +762,70 @@ def _labeled_source(value: str, *, label: str) -> tuple[str, str]:
     return name, source
 
 
-def _matrix_subjects(values: list[str]) -> list[MatrixSubjectV8]:
+def _matrix_body_surfaces(
+    values: list[str],
+) -> dict[str, MatrixBodySurfaceV811]:
+    """Load beta-specific canonical surfaces for offline hard-bone gates."""
+
+    result: dict[str, MatrixBodySurfaceV811] = {}
+    for value in values:
+        label, source = _labeled_source(value, label="body surface")
+        if label in result:
+            raise ValueError(f"duplicate body surface label {label!r}")
+        root = Path(source).expanduser().resolve()
+        if not root.is_dir():
+            raise ValueError(f"body surface directory does not exist: {root}")
+        vertices, faces = load_body_surface(root / "smpl_canonical_tpose.obj")
+        weights_path = root / "smpl_canonical_weights.npz"
+        if not weights_path.is_file():
+            raise ValueError(f"body surface directory lacks {weights_path.name}: {root}")
+        with np.load(weights_path, allow_pickle=False) as data:
+            required = {"lbs_weights", "rest_joints", "parents", "inverse_bind"}
+            missing = sorted(required - set(data.files))
+            if missing:
+                raise ValueError(
+                    f"body surface weights lack required arrays: {missing}"
+                )
+            result[label] = MatrixBodySurfaceV811(
+                vertices=np.asarray(vertices, dtype=np.float32),
+                faces=np.asarray(faces, dtype=np.int32),
+                lbs_weights=np.asarray(data["lbs_weights"], dtype=np.float32),
+                rest_joints=np.asarray(data["rest_joints"], dtype=np.float32),
+                parents=np.asarray(data["parents"], dtype=np.int32),
+                inverse_bind=np.asarray(data["inverse_bind"], dtype=np.float32),
+                source=f"sha256:{_source_skin_volume_digest(root)}",
+            )
+        result[label].validate()
+    return result
+
+
+def _matrix_subjects(
+    values: list[str],
+    *,
+    body_surfaces: Mapping[str, MatrixBodySurfaceV811] | None = None,
+) -> list[MatrixSubjectV8]:
     result: list[MatrixSubjectV8] = []
     seen: set[str] = set()
+    surfaces = dict(body_surfaces or {})
     for value in values:
         label, source = _labeled_source(value, label="subject")
         if label in seen:
             raise ValueError(f"duplicate subject label {label!r}")
         path = Path(source).expanduser().resolve()
         subject = load_subject_runtime(path)
-        result.append(MatrixSubjectV8(label=label, path=path, subject=subject))
+        result.append(
+            MatrixSubjectV8(
+                label=label,
+                path=path,
+                subject=subject,
+                body_surface=surfaces.pop(label, None),
+            )
+        )
         seen.add(label)
+    if surfaces:
+        raise ValueError(
+            f"body surfaces do not match supplied subjects: {sorted(surfaces)}"
+        )
     return result
 
 
@@ -652,7 +882,10 @@ def _matrix_poses(values: list[str]) -> list[MatrixPoseV8]:
 def _run_validate_matrix(args: argparse.Namespace) -> int:
     operator_path = args.operator.expanduser().resolve()
     operator = load_source_operator(operator_path)
-    subjects = _matrix_subjects(args.subjects)
+    subjects = _matrix_subjects(
+        args.subjects,
+        body_surfaces=_matrix_body_surfaces(list(args.body_surfaces or [])),
+    )
     poses = _matrix_poses(args.poses)
     report = run_validation_matrix_v8(
         operator=operator, subjects=subjects, poses=poses
@@ -668,6 +901,12 @@ def _run_validate_matrix(args: argparse.Namespace) -> int:
     )
     report["subject_runtime_digests"] = {
         item.label: item.subject.runtime_digest() for item in subjects
+    }
+    report["body_surface_sources"] = {
+        item.label: (
+            None if item.body_surface is None else item.body_surface.source
+        )
+        for item in subjects
     }
     report["pose_sources"] = {item.label: item.source for item in poses}
     output = args.output.expanduser().resolve()
@@ -792,6 +1031,26 @@ def build_parser() -> argparse.ArgumentParser:
     selective.add_argument("--v71-source", type=Path, required=True)
     selective.add_argument("--reference-manifest", type=Path, required=True)
     selective.add_argument(
+        "--source-skin-volume-dir",
+        type=Path,
+        required=True,
+        help=(
+            "canonical SMPL-X volume inputs used once for protected soft-tissue "
+            "registration and beta-basis provenance"
+        ),
+    )
+    selective.add_argument(
+        "--tube-corrective-pose",
+        action="append",
+        required=True,
+        dest="tube_corrective_poses",
+        type=Path,
+        help=(
+            "offline NPZ with pose_axis_angle, local_displacement_samples_m, "
+            "vertex_ids, and driver_joint_ids; repeat for T-pose and captures"
+        ),
+    )
+    selective.add_argument(
         "--fitted-product",
         type=Path,
         help="b5ff subject asset/directory supplying non-shrunk bones and hip bind",
@@ -819,10 +1078,14 @@ def build_parser() -> argparse.ArgumentParser:
             "offline skin-containment and final-bone-clearance vessel bake"
         ),
     )
-    selective.add_argument("--algorithm-version", default="selective-v8.2")
-    selective.add_argument("--oracle-version", default="contact-independent-v8.1")
     selective.add_argument(
-        "--correction-version", default="ba9-head-whole-bone-hip-v8.2"
+        "--algorithm-version", default=SOURCE_OPERATOR_ALGORITHM_VERSION
+    )
+    selective.add_argument(
+        "--oracle-version", default=SOURCE_OPERATOR_ORACLE_VERSION
+    )
+    selective.add_argument(
+        "--correction-version", default=SOURCE_OPERATOR_CORRECTION_VERSION
     )
     selective.add_argument("--output", type=Path, required=True)
     selective.set_defaults(handler=_run_bake_selective_operator)
@@ -869,6 +1132,16 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         dest="poses",
         metavar="LABEL=PATH|LABEL=zero",
+    )
+    validate.add_argument(
+        "--body-surface",
+        action="append",
+        dest="body_surfaces",
+        metavar="LABEL=CANONICAL_DIR",
+        help=(
+            "beta-specific canonical SMPL-X directory for the subject's hard "
+            "hand/foot containment gate; absence fails that gate"
+        ),
     )
     validate.add_argument("--acceptance-spec", type=Path, required=True)
     validate.add_argument("--output", type=Path, required=True)

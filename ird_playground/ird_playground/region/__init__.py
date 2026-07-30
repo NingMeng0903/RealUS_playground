@@ -20,6 +20,11 @@ from ird_playground.region.set_query import (
     SetQueryResult,
     rockafellar_uryasev_cvar,
 )
+from ird_playground.region.task_cone import (
+    TaskConeConfig,
+    TaskConeReachability,
+    TaskConeResult,
+)
 from ird_playground.region.trajectory_operator import (
     TrajectoryTaskConfig,
     TrajectoryTaskOperator,
@@ -35,6 +40,9 @@ __all__ = [
     "SetQueryConfig",
     "SetQueryOperator",
     "SetQueryResult",
+    "TaskConeConfig",
+    "TaskConeReachability",
+    "TaskConeResult",
     "TrajectoryTaskConfig",
     "TrajectoryTaskOperator",
     "TrajectoryTaskResult",

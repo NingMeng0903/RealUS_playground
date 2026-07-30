@@ -19,6 +19,7 @@ from typing import Any, Mapping
 
 import numpy as np
 
+from .fk_policy_v8 import validate_source_fk_asset_policy_v8
 from .rigged_asset import AnatomyRiggedAsset
 
 
@@ -104,9 +105,8 @@ def reject_v7_tube_fields_v8(
         raise ValueError("V8 rejects all tube_frame_v7 fields")
 
 
-def _require_full_local_fk(asset: AnatomyRiggedAsset) -> None:
-    if (asset.metadata or {}).get("source_full_local_fk_v2") is not True:
-        raise ValueError("V8 tube coupling requires source_full_local_fk_v2=true")
+def _require_supported_fk_policy(asset: AnatomyRiggedAsset) -> None:
+    validate_source_fk_asset_policy_v8(asset)
 
 
 def _unique_edges(faces: np.ndarray) -> np.ndarray:
@@ -560,7 +560,7 @@ def bake_tube_coupling_v8(
     runtime_fields: Mapping[str, Any] | None = None,
 ) -> tuple[TubeCouplingPackV8, dict[str, Any]]:
     """Freeze the subject tube domain and its exact authored 14-slot weights."""
-    _require_full_local_fk(asset)
+    _require_supported_fk_policy(asset)
     reject_v7_tube_fields_v8(asset, runtime_fields)
     if len(asset.source_bone_names or []) != SOURCE_BONE_COUNT_V8:
         raise ValueError("V8 tube coupling requires exactly 235 source bones")
@@ -609,7 +609,7 @@ def _validate_live_asset(
     runtime_fields: Mapping[str, Any] | None,
 ) -> None:
     pack.validate()
-    _require_full_local_fk(asset)
+    _require_supported_fk_policy(asset)
     reject_v7_tube_fields_v8(asset, runtime_fields)
     if len(asset.source_bone_names or []) != SOURCE_BONE_COUNT_V8:
         raise ValueError("V8 tube coupling requires exactly 235 source bones")

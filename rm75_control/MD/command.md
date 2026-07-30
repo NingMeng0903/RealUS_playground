@@ -202,9 +202,10 @@ python apps/joint_admittance_8dof/check_fk_once.py --subscribe rm75_state
 
 ### 前置
 
-1. 示教器 / Web UI 将**当前工具坐标系**设为 **Arm_Tip**（与 `poses.yaml` 中 `pose_tool_frame` 一致）。
+1. 示教器 / Web UI 将**当前工具坐标系**设为 **Arm_Tip**（与 `poses.yaml` 中 `pose_tool_frame` 一致）；未设则入口直接 `SystemExit`。
 2. 末端勿碰外物；六维力传感器工作正常。
-3. 若需更新某位姿，先保存再标定：
+3. **先停 window A**（导纳扫查进程）：标定默认走本机 8DOF WBC，全程只发 `rm_movej_canfd`，与 window A 抢臂会冲突。
+4. 若需更新某位姿，先保存再标定：
 
 ```bash
 python apps/force_compensation/force_calibrate.py --save-pose a   # 或 b / c / d
@@ -212,8 +213,12 @@ python apps/force_compensation/force_calibrate.py --save-pose a   # 或 b / c / 
 
 ### 完整标定（采集 A→B→C→D→A + 拟合 φ）
 
+默认 `--backend wbc`：A/B/C 官方 pose-CANFD；D 全程 `rm_movej_canfd`（关节激励 + Arm_Tip 上 `twist→J⁺` 开环实现 burst，10ms 直通），**不**走 ProxQP / 官方 movev handoff。进度条单行刷新。
+
 ```bash
 python apps/force_compensation/force_calibrate.py
+# 旧官方 CANFD（含 D 段 movev handoff，易 DER）:
+python apps/force_compensation/force_calibrate.py --backend vendor
 ```
 
 ### 仅预览采集流程（不连真机写 npz）

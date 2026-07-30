@@ -364,7 +364,8 @@ class JointIkController:
         if q_ref_m is not None:
             self.rail_task.set_reference(q_ref_m)
         elif mode == RailMode.LOCKED and self._locked_style == LockedStyle.HOLD:
-            self.rail_task.reset(self.q_cmd)
+            # HOLD without explicit ref = pin at current command (never yaml 0.0).
+            self.rail_task.set_reference(float(self.q_cmd[0]))
         self._apply_rail_mode_side_effects()
 
     def set_coupled(self) -> None:

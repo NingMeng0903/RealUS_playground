@@ -9,6 +9,9 @@ from pathlib import Path
 
 import numpy as np
 
+from projects.genesis_ue_sync.anatomy_retarget.fk_policy_v8 import (
+    validate_source_fk_asset_policy_v8,
+)
 from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import smplx_pose_hash
 from projects.genesis_ue_sync.anatomy_retarget.v8_artifacts import (
     ANATOMY_V8_SCHEMA_VERSION,
@@ -58,8 +61,7 @@ def main(argv: list[str] | None = None) -> int:
     # Keep the pose path's invariant check constant-time; the full composite
     # schema/runtime digest is independently recomputed by validation/evidence.
     metadata = dict(subject.rigged_asset.metadata or {})
-    if metadata.get("source_full_local_fk_v2") is not True:
-        raise ValueError("pose runtime requires source_full_local_fk_v2=true")
+    validate_source_fk_asset_policy_v8(subject.rigged_asset)
     if (
         subject.rigged_asset.pose_cache_vertices is not None
         or str(subject.rigged_asset.pose_cache_hash)

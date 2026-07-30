@@ -55,8 +55,9 @@ class RailLockTask:
         self.q_ref = self.cfg.q_ref_m
 
     def reset(self, q_rad: np.ndarray) -> None:
-        if self.q_ref is None:
-            self.q_ref = float(np.asarray(q_rad, dtype=float)[RAIL_INDEX])
+        # Always re-capture: yaml may seed q_ref_m=0.0 as a placeholder, and HOLD
+        # without an explicit ref means "hold where we are now".
+        self.q_ref = float(np.asarray(q_rad, dtype=float)[RAIL_INDEX])
 
     def set_reference(self, q_ref_m: float) -> None:
         self.q_ref = float(q_ref_m)

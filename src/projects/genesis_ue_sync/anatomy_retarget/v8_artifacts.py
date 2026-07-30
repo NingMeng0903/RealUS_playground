@@ -27,6 +27,11 @@ from .anatomy_lbs import (
     skin_vertices,
     with_source_driver_coupling,
 )
+from .fk_policy_v8 import (
+    LEGACY_FULL_LOCAL_FK_POLICY,
+    validate_source_fk_asset_policy_v8,
+    validate_source_fk_policy_v8,
+)
 from .articular_fit_v8 import (
     reconstruct_hip_compounds_v8,
     reconstruct_knee_ankle_compounds_v8,
@@ -42,6 +47,12 @@ from .tube_frames_v8 import (
     bake_tube_coupling_v8,
     tube_coupling_pack_from_runtime_fields_v8,
     tube_coupling_pack_to_runtime_fields_v8,
+)
+from .tube_pose_corrective_v8 import (
+    TubePoseCorrectivePackV1,
+    has_tube_pose_corrective_v1,
+    tube_pose_corrective_pack_from_runtime_fields_v1,
+    tube_pose_corrective_pack_to_runtime_fields_v1,
 )
 from .v7_artifacts import rigged_asset_digest
 from .version_v8 import SUBJECT_SOLVER_VERSION
@@ -65,6 +76,176 @@ _BANNED_V7_RUNTIME_MARKERS = (
     "anatomypatellaoraclev7",
     "patella_oracle_v7",
 )
+
+
+def _has_tube_coupling_v8(runtime_coefficients: Mapping[str, Any]) -> bool:
+    return any(
+        str(name).startswith("tube_coupling_v8.")
+        for name in runtime_coefficients
+    )
+
+
+def _validate_tube_pose_corrective_domain_v1(
+    corrective: TubePoseCorrectivePackV1,
+    tube_pack: TubeCouplingPackV8,
+    *,
+    label: str,
+) -> None:
+    """Require the sparse corrective domain to be contained in tube LBS data."""
+    corrective_ids = np.asarray(corrective.vertex_ids, dtype=np.int64)
+    tube_ids = np.asarray(tube_pack.vertex_ids, dtype=np.int64)
+    locations = np.searchsorted(tube_ids, corrective_ids)
+    valid = (locations < len(tube_ids)) & (
+        tube_ids[np.minimum(locations, len(tube_ids) - 1)] == corrective_ids
+    )
+    if not np.all(valid):
+        raise ValueError(
+            f"{label} tube pose corrective vertex_ids are outside the frozen tube domain"
+        )
+
+
+def _runtime_tube_packs_v8(
+    runtime_coefficients: Mapping[str, Any], *, label: str
+) -> tuple[TubeCouplingPackV8 | None, TubePoseCorrectivePackV1 | None]:
+    """Restore the coupled LBS and optional sparse corrective as one contract."""
+    tube_pack = (
+        tube_coupling_pack_from_runtime_fields_v8(runtime_coefficients)
+        if _has_tube_coupling_v8(runtime_coefficients)
+        else None
+    )
+    corrective = (
+        tube_pose_corrective_pack_from_runtime_fields_v1(runtime_coefficients)
+        if has_tube_pose_corrective_v1(runtime_coefficients)
+        else None
+    )
+    if corrective is not None:
+        if tube_pack is None:
+            raise ValueError(f"{label} tube pose corrective requires tube_coupling_v8")
+        _validate_tube_pose_corrective_domain_v1(
+            corrective, tube_pack, label=label
+        )
+    return tube_pack, corrective
+
+
+def _digest_leaves_v811(value: Any, *, prefix: str = "") -> dict[str, str]:
+    """Collect only SHA-256 leaves for a compact, human-readable summary."""
+    if _is_digest(value):
+        return {prefix or "content_digest": str(value)}
+    if not isinstance(value, Mapping):
+        return {}
+    result: dict[str, str] = {}
+    for key in sorted(value, key=str):
+        child_prefix = f"{prefix}.{key}" if prefix else str(key)
+        result.update(_digest_leaves_v811(value[key], prefix=child_prefix))
+    return result
+
+
+def _matching_digest_leaves_v811(
+    value: Mapping[str, Any], *tokens: str
+) -> dict[str, str]:
+    selected = {
+        str(key): child
+        for key, child in value.items()
+        if any(token in str(key).lower() for token in tokens)
+    }
+    return _digest_leaves_v811(selected)
+
+
+def _fk_manifest_summary_v811(asset: AnatomyRiggedAsset) -> dict[str, Any]:
+    metadata = dict(asset.metadata or {})
+    return {
+        "source_fk_policy_v4": metadata.get("source_fk_policy_v4"),
+        "source_full_local_fk_v2": metadata.get("source_full_local_fk_v2"),
+    }
+
+
+def _operator_manifest_summary_v811(operator: "SourceOperatorV8") -> dict[str, Any]:
+    provenance = dict(operator.provenance or {})
+    correction = dict(operator.correction_report or {})
+    references = dict(operator.reference_manifest.get("references", {}))
+    _tube_pack, corrective = _runtime_tube_packs_v8(
+        operator.runtime_coefficients, label="operator manifest summary"
+    )
+    tube_correction = _matching_digest_leaves_v811(
+        correction, "tube", "corrective"
+    )
+    if corrective is not None:
+        tube_correction["runtime_fields.content_digest"] = corrective.content_digest()
+    return {
+        "schema": "v8.11",
+        "versions": {
+            "algorithm": operator.algorithm_version,
+            "oracle": operator.oracle_version,
+            "correction": operator.correction_version,
+        },
+        "fk": _fk_manifest_summary_v811(operator.template_asset),
+        "volume": {
+            "provenance_digests": _matching_digest_leaves_v811(
+                provenance, "volume"
+            ),
+            "correction_digests": _matching_digest_leaves_v811(
+                correction, "volume"
+            ),
+        },
+        "head": {
+            "provenance_digests": {
+                **_matching_digest_leaves_v811(provenance, "head"),
+                **_digest_leaves_v811(
+                    {"ba9_head": references.get("ba9_head", {})}
+                ),
+            },
+            "correction_digests": _matching_digest_leaves_v811(
+                correction, "head"
+            ),
+        },
+        "tube_pose_corrective": {
+            "provenance_digests": _matching_digest_leaves_v811(
+                provenance, "tube", "corrective"
+            ),
+            "correction_digests": tube_correction,
+        },
+    }
+
+
+def _subject_manifest_summary_v811(subject: "SubjectRuntimePackV8") -> dict[str, Any]:
+    metadata = dict(subject.rigged_asset.metadata or {})
+    audit = dict(subject.audit_report or {})
+    inherited = audit.get("v811_operator_summary")
+    inherited = inherited if isinstance(inherited, Mapping) else {}
+    foot_chain = metadata.get("foot_chain_stations_v1")
+    foot_digest = (
+        str(foot_chain.get("content_digest"))
+        if isinstance(foot_chain, Mapping) and _is_digest(foot_chain.get("content_digest"))
+        else None
+    )
+    _tube_pack, corrective = _runtime_tube_packs_v8(
+        subject.runtime_coefficients, label="subject manifest summary"
+    )
+    return {
+        "schema": "v8.11",
+        "versions": {
+            "algorithm": subject.algorithm_version,
+            "oracle": subject.oracle_version,
+            "correction": subject.correction_version,
+            "solver": SUBJECT_SOLVER_VERSION,
+        },
+        "fk": _fk_manifest_summary_v811(subject.rigged_asset),
+        "foot_chain_stations_v1_digest": foot_digest,
+        "volume": inherited.get("volume", {}),
+        "head": inherited.get("head", {}),
+        "tube_pose_corrective_v1_digest": (
+            None if corrective is None else corrective.content_digest()
+        ),
+        "tube_pose_corrective": inherited.get("tube_pose_corrective", {}),
+    }
+
+
+def _validate_manifest_summary_v811(
+    manifest: Mapping[str, Any], expected: Mapping[str, Any], *, label: str
+) -> None:
+    """Authenticate an optional V8.11 summary without rejecting old bundles."""
+    if "v811_summary" in manifest and manifest.get("v811_summary") != expected:
+        raise ValueError(f"{label} V8.11 manifest summary mismatch")
 
 
 def _canonical_json(value: Any) -> bytes:
@@ -301,8 +482,7 @@ class SourceOperatorV8:
         ):
             raise ValueError("schema-v8 forbids pose-specific vertex caches")
         metadata = dict(self.template_asset.metadata or {})
-        if metadata.get("source_full_local_fk_v2") is not True:
-            raise ValueError("source_full_local_fk_v2 must be explicitly true")
+        validate_source_fk_asset_policy_v8(self.template_asset)
         reject_obsolete_mechanism_config_v8(metadata)
         reject_obsolete_mechanism_config_v8(
             {
@@ -376,6 +556,9 @@ class SourceOperatorV8:
             label="runtime_coefficients",
             allow_empty=True,
         )
+        _runtime_tube_packs_v8(
+            self.runtime_coefficients, label="SourceOperatorV8 runtime coefficients"
+        )
         validate_reference_manifest(self.reference_manifest)
         _validate_version(self.algorithm_version, label="algorithm_version")
         _validate_version(self.oracle_version, label="oracle_version")
@@ -445,7 +628,7 @@ class SourceOperatorV8:
         return self.runtime_digest()
 
 
-def subject_cache_key(
+def _subject_cache_key_for_solver_version(
     *,
     operator_runtime_digest: str,
     betas: Any,
@@ -454,6 +637,7 @@ def subject_cache_key(
     oracle_version: str,
     correction_version: str,
     reference_digest: str,
+    subject_solver_version: str,
 ) -> str:
     beta = _validate_beta(betas)
     for label, value in (
@@ -477,9 +661,34 @@ def subject_cache_key(
             "correction_version": _validate_version(
                 correction_version, label="correction_version"
             ),
-            "subject_solver_version": SUBJECT_SOLVER_VERSION,
+            "subject_solver_version": _validate_version(
+                subject_solver_version, label="subject_solver_version"
+            ),
             "reference_digest": reference_digest,
         },
+    )
+
+
+def subject_cache_key(
+    *,
+    operator_runtime_digest: str,
+    betas: Any,
+    gender: str,
+    algorithm_version: str,
+    oracle_version: str,
+    correction_version: str,
+    reference_digest: str,
+) -> str:
+    """Return the current V8.11-only subject cache identity."""
+    return _subject_cache_key_for_solver_version(
+        operator_runtime_digest=operator_runtime_digest,
+        betas=betas,
+        gender=gender,
+        algorithm_version=algorithm_version,
+        oracle_version=oracle_version,
+        correction_version=correction_version,
+        reference_digest=reference_digest,
+        subject_solver_version=SUBJECT_SOLVER_VERSION,
     )
 
 
@@ -502,13 +711,23 @@ class SubjectRuntimePackV8:
     skinning_csr_indices: np.ndarray
     skinning_csr_weights: np.ndarray
     audit_report: Mapping[str, Any]
+    # This is populated only by ``load_subject_runtime`` for an authenticated
+    # legacy full-FK bundle.  It is intentionally not serialized: current
+    # writers reject legacy assets and every new subject uses V8.11.
+    cache_solver_version: str | None = SUBJECT_SOLVER_VERSION
 
     def validate(self, *, validate_rigged_asset: bool = True) -> None:
         if validate_rigged_asset:
             self.rigged_asset.validate()
         metadata = dict(self.rigged_asset.metadata or {})
-        if metadata.get("source_full_local_fk_v2") is not True:
-            raise ValueError("source_full_local_fk_v2 must be explicitly true")
+        fk_policy = validate_source_fk_asset_policy_v8(self.rigged_asset)
+        if (
+            self.cache_solver_version != SUBJECT_SOLVER_VERSION
+            and fk_policy != LEGACY_FULL_LOCAL_FK_POLICY
+        ):
+            raise ValueError(
+                "only legacy full-FK subjects may use a legacy cache solver version"
+            )
         reject_obsolete_mechanism_config_v8(metadata)
         reject_obsolete_mechanism_config_v8(
             {"runtime_coefficients": self.runtime_coefficients}
@@ -531,17 +750,27 @@ class SubjectRuntimePackV8:
         ):
             raise ValueError("SubjectRuntimePackV8 contains an offline Blender dependency")
         beta = _validate_beta(self.betas)
-        expected_key = subject_cache_key(
-            operator_runtime_digest=self.operator_runtime_digest,
-            betas=beta,
-            gender=self.gender,
-            algorithm_version=self.algorithm_version,
-            oracle_version=self.oracle_version,
-            correction_version=self.correction_version,
-            reference_digest=self.reference_digest,
-        )
-        if self.cache_key != expected_key:
-            raise ValueError("subject cache_key does not match its complete runtime identity")
+        if self.cache_solver_version is None:
+            # This is reachable only from the legacy read-only loader when an
+            # old bundle omitted the solver marker.  Its runtime digest still
+            # authenticates the stored key below; current assets never use it.
+            if not _is_digest(self.cache_key):
+                raise ValueError("legacy subject cache_key must be a SHA-256 digest")
+        else:
+            expected_key = _subject_cache_key_for_solver_version(
+                operator_runtime_digest=self.operator_runtime_digest,
+                betas=beta,
+                gender=self.gender,
+                algorithm_version=self.algorithm_version,
+                oracle_version=self.oracle_version,
+                correction_version=self.correction_version,
+                reference_digest=self.reference_digest,
+                subject_solver_version=self.cache_solver_version,
+            )
+            if self.cache_key != expected_key:
+                raise ValueError(
+                    "subject cache_key does not match its complete runtime identity"
+                )
         handles = np.asarray(self.internal_handle_displacements)
         if handles.ndim != 2 or handles.shape[1] != 3 or not np.all(np.isfinite(handles)):
             raise ValueError("internal_handle_displacements must be finite [H,3]")
@@ -549,6 +778,10 @@ class SubjectRuntimePackV8:
             self.runtime_coefficients,
             label="runtime_coefficients",
             allow_empty=True,
+        )
+        _runtime_tube_packs_v8(
+            self.runtime_coefficients,
+            label="SubjectRuntimePackV8 runtime coefficients",
         )
         offsets = np.asarray(self.skinning_csr_offsets, dtype=np.int64).reshape(-1)
         indices = np.asarray(self.skinning_csr_indices, dtype=np.int64).reshape(-1)
@@ -669,6 +902,10 @@ def materialize_subject(
 ) -> SubjectRuntimePackV8:
     """Create L1 without invoking V7 articular reconstruction or Blender."""
     operator.validate()
+    validate_source_fk_asset_policy_v8(
+        operator.template_asset,
+        require_selective=True,
+    )
     beta = _validate_beta(betas)
     template = operator.template_asset
     beta_origin = np.asarray(
@@ -734,12 +971,17 @@ def materialize_subject(
         {
             "artifact_schema": ANATOMY_V8_SCHEMA_VERSION,
             "artifact_kind": SUBJECT_RUNTIME_KIND,
-            "source_full_local_fk_v2": True,
             "pose_cache_forbidden": True,
             "requires_blender_at_runtime": False,
             "requires_blend_file_at_runtime": False,
             "v8_joint_mechanism_version": operator.algorithm_version,
         }
+    )
+    validate_source_fk_policy_v8(
+        metadata,
+        bone_count=len(template.source_bone_names or ()),
+        bone_names=template.source_bone_names,
+        require_selective=True,
     )
     rigged = replace(
         template,
@@ -890,10 +1132,14 @@ def materialize_subject(
         correction_version=operator.correction_version,
         reference_digest=reference_digest,
     )
+    parent_tube_pack, parent_tube_corrective = _runtime_tube_packs_v8(
+        operator.runtime_coefficients, label="operator runtime coefficients"
+    )
     subject_runtime_coefficients = {
         name: np.asarray(value).copy()
         for name, value in operator.runtime_coefficients.items()
         if not str(name).startswith("tube_coupling_v8.")
+        and not str(name).startswith("tube_pose_corrective_v1.")
     }
     has_tube_material = any(
         str(tissue).strip().lower() in {"vessel", "nerve"}
@@ -901,14 +1147,7 @@ def materialize_subject(
     )
     if has_tube_material:
         tube_pack, tube_report = bake_tube_coupling_v8(rigged)
-        parent_has_tube_pack = any(
-            str(name).startswith("tube_coupling_v8.")
-            for name in operator.runtime_coefficients
-        )
-        if parent_has_tube_pack:
-            parent_tube_pack = tube_coupling_pack_from_runtime_fields_v8(
-                operator.runtime_coefficients
-            )
+        if parent_tube_pack is not None:
             frozen_digest_match = {
                 "topology": (
                     tube_pack.topology_digest
@@ -949,7 +1188,47 @@ def materialize_subject(
         subject_runtime_coefficients.update(
             tube_coupling_pack_to_runtime_fields_v8(tube_pack)
         )
+        if parent_tube_corrective is not None:
+            _validate_tube_pose_corrective_domain_v1(
+                parent_tube_corrective,
+                tube_pack,
+                label="materialized subject",
+            )
+            subject_runtime_coefficients.update(
+                tube_pose_corrective_pack_to_runtime_fields_v1(
+                    parent_tube_corrective
+                )
+            )
+            tube_report = {
+                **tube_report,
+                "pose_corrective": {
+                    "available": True,
+                    "schema": "tube_pose_corrective_v1",
+                    "vertex_count": int(parent_tube_corrective.vertex_count),
+                    "component_count": int(
+                        parent_tube_corrective.component_count
+                    ),
+                    "rbf_center_count": int(parent_tube_corrective.center_count),
+                    "maximum_displacement_m": float(
+                        parent_tube_corrective.maximum_displacement_m
+                    ),
+                    "content_digest": parent_tube_corrective.content_digest(),
+                    "domain": "ordered_subset_of_tube_coupling_v8",
+                },
+            }
+        else:
+            tube_report = {
+                **tube_report,
+                "pose_corrective": {
+                    "available": False,
+                    "reason": "operator contains no tube_pose_corrective_v1 pack",
+                },
+            }
     else:
+        if parent_tube_corrective is not None:
+            raise ValueError(
+                "operator tube pose corrective requires vessel or nerve material"
+            )
         tube_report = {
             "available": False,
             "passed": False,
@@ -984,6 +1263,9 @@ def materialize_subject(
             "leg_compounds_v810": leg_compound_report,
             "leg_centerline_v810": leg_centerline_report,
             "tube_coupling": tube_report,
+            # Carry the L0 summaries into the L1 manifest so a subject can be
+            # audited without relying on a separately located operator file.
+            "v811_operator_summary": _operator_manifest_summary_v811(operator),
         },
     )
     subject.validate()
@@ -1016,37 +1298,36 @@ class ResidentPoseEvaluatorV8:
     tube_pack: TubeCouplingPackV8 | None = field(
         default=None, init=False, repr=False
     )
+    tube_pose_corrective_pack: TubePoseCorrectivePackV1 | None = field(
+        default=None, init=False, repr=False
+    )
 
     def __post_init__(self) -> None:
         if self.validate:
             self.subject.validate()
-        if any(
-            str(name).startswith("tube_coupling_v8.")
-            for name in self.subject.runtime_coefficients
-        ):
-            self.tube_pack = tube_coupling_pack_from_runtime_fields_v8(
-                self.subject.runtime_coefficients
-            )
-            if self.validate:
-                # Direct callers pay topology/rest/weight authentication once.
-                # A loader invoked with validate=True has already authenticated
-                # every rig/pack array against the subject runtime digest, so
-                # apply_subject_pose(validate=False) may skip this duplicate
-                # full-topology pass.
-                from .tube_frames_v8 import apply_tube_coupling_v8
+        self.tube_pack, self.tube_pose_corrective_pack = _runtime_tube_packs_v8(
+            self.subject.runtime_coefficients,
+            label="ResidentPoseEvaluatorV8 runtime coefficients",
+        )
+        if self.tube_pack is not None and self.validate:
+            # Direct callers pay topology/rest/weight authentication once.  A
+            # loader invoked with validate=True has already authenticated every
+            # rig/pack array against the subject runtime digest, so pose calls
+            # can skip this duplicate full-topology pass.
+            from .tube_frames_v8 import apply_tube_coupling_v8
 
-                identity = np.tile(
-                    np.eye(4, dtype=np.float64),
-                    (len(self.subject.rigged_asset.source_bone_names or []), 1, 1),
-                )
-                apply_tube_coupling_v8(
-                    self.subject.rigged_asset,
-                    identity,
-                    np.asarray(self.subject.rigged_asset.vertices_rest),
-                    self.tube_pack,
-                    runtime_fields=self.subject.runtime_coefficients,
-                    validate_live=True,
-                )
+            identity = np.tile(
+                np.eye(4, dtype=np.float64),
+                (len(self.subject.rigged_asset.source_bone_names or []), 1, 1),
+            )
+            apply_tube_coupling_v8(
+                self.subject.rigged_asset,
+                identity,
+                np.asarray(self.subject.rigged_asset.vertices_rest),
+                self.tube_pack,
+                runtime_fields=self.subject.runtime_coefficients,
+                validate_live=True,
+            )
 
     def apply_pose(self, pose_axis_angle: Any, transl: Any | None = None) -> np.ndarray:
         pose = np.asarray(pose_axis_angle, dtype=np.float32)
@@ -1068,6 +1349,10 @@ class ResidentPoseEvaluatorV8:
             runtime_coefficients=dict(self.subject.runtime_coefficients),
             runtime_tube_pack=self.tube_pack,
             runtime_tube_pack_validated=self.tube_pack is not None,
+            runtime_tube_pose_corrective_pack=self.tube_pose_corrective_pack,
+            runtime_tube_pose_corrective_pack_validated=(
+                self.tube_pose_corrective_pack is not None
+            ),
             validate=False,
         )
 
@@ -1238,6 +1523,10 @@ def _atomic_bundle(output: Path, writer: Any) -> Path:
 
 def save_source_operator(path: Path | str, operator: SourceOperatorV8) -> Path:
     operator.validate()
+    validate_source_fk_asset_policy_v8(
+        operator.template_asset,
+        require_selective=True,
+    )
     runtime_digest = operator.runtime_digest(validate=False)
     audit_digest = operator.audit_digest(runtime_digest=runtime_digest)
 
@@ -1282,6 +1571,7 @@ def save_source_operator(path: Path | str, operator: SourceOperatorV8) -> Path:
                 "reference_digest": reference_manifest_digest(
                     operator.reference_manifest
                 ),
+                "v811_summary": _operator_manifest_summary_v811(operator),
             },
         )
 
@@ -1339,6 +1629,11 @@ def load_source_operator(
     )
     if validate:
         operator.validate()
+        _validate_manifest_summary_v811(
+            manifest,
+            _operator_manifest_summary_v811(operator),
+            label="SourceOperatorV8",
+        )
         runtime_digest = operator.runtime_digest(validate=False)
         if runtime_digest != manifest.get("runtime_digest"):
             raise ValueError("SourceOperatorV8 runtime digest mismatch")
@@ -1352,6 +1647,10 @@ def load_source_operator(
 
 def save_subject_runtime(path: Path | str, subject: SubjectRuntimePackV8) -> Path:
     subject.validate()
+    validate_source_fk_asset_policy_v8(
+        subject.rigged_asset,
+        require_selective=True,
+    )
     runtime_digest = subject.runtime_digest(validate=False)
     audit_digest = subject.audit_digest(runtime_digest=runtime_digest)
 
@@ -1387,6 +1686,7 @@ def save_subject_runtime(path: Path | str, subject: SubjectRuntimePackV8) -> Pat
                 "subject_solver_version": SUBJECT_SOLVER_VERSION,
                 "runtime_rig": runtime_rig,
                 "arrays": arrays,
+                "v811_summary": _subject_manifest_summary_v811(subject),
             },
         )
 
@@ -1394,20 +1694,35 @@ def save_subject_runtime(path: Path | str, subject: SubjectRuntimePackV8) -> Pat
 
 
 def load_subject_runtime(
-    path: Path | str, *, validate: bool = True, mmap: bool = True
+    path: Path | str,
+    *,
+    validate: bool = True,
+    mmap: bool = True,
+    allow_legacy_readonly: bool = True,
 ) -> SubjectRuntimePackV8:
     root = Path(path).resolve()
     manifest = read_artifact_manifest(root)
     if manifest.get("artifact_kind") != SUBJECT_RUNTIME_KIND:
         raise ValueError(f"expected {SUBJECT_RUNTIME_KIND}")
-    if manifest.get("subject_solver_version") != SUBJECT_SOLVER_VERSION:
-        raise ValueError(
-            "SubjectRuntimePackV8 subject solver version is stale or missing"
-        )
     rig_entry = manifest.get("runtime_rig")
     if not isinstance(rig_entry, dict):
         raise ValueError("SubjectRuntimePackV8 is missing runtime_rig")
     rigged = _load_flat_rig(root, rig_entry, mmap=mmap)
+    solver_is_current = (
+        manifest.get("subject_solver_version") == SUBJECT_SOLVER_VERSION
+    )
+    legacy_cache_solver_version: str | None = None
+    if not solver_is_current:
+        policy = validate_source_fk_asset_policy_v8(rigged)
+        if (
+            not allow_legacy_readonly
+            or policy != LEGACY_FULL_LOCAL_FK_POLICY
+        ):
+            raise ValueError(
+                "SubjectRuntimePackV8 subject solver version is stale or missing"
+            )
+        raw_legacy_solver = str(manifest.get("subject_solver_version", "")).strip()
+        legacy_cache_solver_version = raw_legacy_solver or None
     arrays = manifest.get("arrays")
     if not isinstance(arrays, dict):
         raise ValueError("SubjectRuntimePackV8 is missing arrays")
@@ -1438,10 +1753,20 @@ def load_subject_runtime(
             root, arrays.get("skinning_csr_weights", {}), mmap=mmap
         ),
         audit_report=audit.get("audit_report", {}),
+        cache_solver_version=(
+            SUBJECT_SOLVER_VERSION
+            if solver_is_current
+            else legacy_cache_solver_version
+        ),
     )
     if validate:
         # load_rigged_asset already performed its full validation.
         subject.validate(validate_rigged_asset=False)
+        _validate_manifest_summary_v811(
+            manifest,
+            _subject_manifest_summary_v811(subject),
+            label="SubjectRuntimePackV8",
+        )
         runtime_digest = subject.runtime_digest(validate=False)
         if runtime_digest != manifest.get("runtime_digest"):
             raise ValueError("SubjectRuntimePackV8 runtime digest mismatch")

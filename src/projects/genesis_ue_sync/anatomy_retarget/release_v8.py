@@ -13,6 +13,7 @@ from typing import Any, Mapping
 
 import numpy as np
 
+from .fk_policy_v8 import validate_source_fk_asset_policy_v8
 from .v8_artifacts import SourceOperatorV8
 
 
@@ -20,9 +21,19 @@ EVIDENCE_KIND_V8 = "AnatomyEvidencePackV8"
 REVIEW_KIND_V8 = "AnatomyIndependentReviewV8"
 LATEST_KIND_V8 = "AnatomyTrustedLatestV8"
 REQUIRED_RELEASE_GATES_V8 = frozenset(
-    ("provenance", "tongue", "tube", "signed_contacts")
+    ("provenance", "tongue", "tube", "signed_contacts", "v811_contracts")
 )
 REQUIRED_REVIEW_ROLES_V8 = frozenset(("geometry", "runtime_performance"))
+_REQUIRED_V811_CONTRACT_CHECKS = frozenset(
+    (
+        "selective_fk",
+        "source_skin_volume_v811",
+        "source_skin_volume_beta_basis_v1",
+        "head_compound_fit_v1",
+        "tube_pose_corrective_v1",
+        "vessel_nerve_route",
+    )
+)
 
 
 def file_digest_v8(path: Path | str) -> str:
@@ -46,6 +57,41 @@ def canonical_json_bytes_v8(value: Any) -> bytes:
 def _is_digest(value: Any) -> bool:
     text = str(value)
     return len(text) == 64 and all(char in "0123456789abcdef" for char in text)
+
+
+def _require_v811_contract_checks(gate: Mapping[str, Any]) -> None:
+    """Reject a bare V8.11 pass flag with no component evidence."""
+
+    checks = gate.get("checks")
+    if not isinstance(checks, Mapping):
+        raise ValueError("V8.11 release gate lacks contract checks")
+    missing = sorted(_REQUIRED_V811_CONTRACT_CHECKS - set(checks))
+    if missing:
+        raise ValueError(f"V8.11 release gate lacks checks: {missing}")
+    foot_checks = [
+        value
+        for name, value in checks.items()
+        if str(name).startswith("foot_chain/")
+    ]
+    if not foot_checks:
+        raise ValueError("V8.11 release gate lacks a foot-chain check")
+    for name in _REQUIRED_V811_CONTRACT_CHECKS:
+        check = checks[name]
+        if (
+            not isinstance(check, Mapping)
+            or check.get("available") is not True
+            or check.get("pass") is not True
+        ):
+            raise ValueError(f"V8.11 contract check {name!r} is unavailable or failed")
+    if any(
+        not isinstance(check, Mapping)
+        or check.get("available") is not True
+        or check.get("pass") is not True
+        for check in foot_checks
+    ):
+        raise ValueError("V8.11 foot-chain contract check is unavailable or failed")
+    if gate.get("failures") != []:
+        raise ValueError("V8.11 release gate still reports contract failures")
 
 
 def _read_object(path: Path | str, *, label: str) -> dict[str, Any]:
@@ -435,6 +481,7 @@ def validate_release_report_v8(
             or gate.get("pass") is not True
         ):
             raise ValueError(f"release gate {name!r} is unavailable or failed")
+    _require_v811_contract_checks(release_gates["v811_contracts"])
 
     references = operator.reference_manifest.get("references", {})
     ba9 = references.get("ba9_head", {})
@@ -460,9 +507,12 @@ def validate_release_report_v8(
         len(asset.source_bone_names or []) != 235
         or asset.driver_indices is None
         or np.asarray(asset.driver_indices).shape[1:] != (14,)
-        or (asset.metadata or {}).get("source_full_local_fk_v2") is not True
     ):
         raise ValueError("operator lacks the complete V71 235-bone/14-slot runtime")
+    validate_source_fk_asset_policy_v8(
+        asset,
+        require_selective=True,
+    )
 
 
 def review_signed_payload_v8(review: Mapping[str, Any]) -> bytes:
@@ -613,6 +663,9 @@ def atomic_publish_latest_v8(
         "evidence_manifest": str(evidence_path),
         "evidence_manifest_digest": evidence_digest,
         "acceptance_spec_digest": acceptance_digest,
+        # Preserve the audited V8.11 component evidence in the trusted-latest
+        # record rather than leaving it only in an external matrix file.
+        "v811_contracts": validation["release_gates"]["v811_contracts"],
         "acceptance_spec": str(acceptance_path),
         "reviews": [
             {

@@ -9,6 +9,8 @@ L0/L1; pose-time evaluation remains the existing 235-bone parent-local FK.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import replace
 from typing import Any, Mapping, Sequence
 
@@ -43,6 +45,21 @@ _FOOT_TOKENS = (
     "metatarsal",
     "phalanx_foot",
 )
+_FOOT_ARCH_TOKENS_V811 = (
+    "navicular",
+    "cuboid",
+    "cuneiform",
+)
+
+
+def _foot_chain_digest_v1(value: Mapping[str, Any]) -> str:
+    payload = json.dumps(
+        value,
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("ascii")
+    return hashlib.sha256(b"foot-chain-stations-v1\0" + payload).hexdigest()
 
 
 def _mesh_vertex_ids(asset: AnatomyRiggedAsset, mesh_name: str) -> np.ndarray:
@@ -123,12 +140,154 @@ def _foot_bone_vertex_ids(
     return np.unique(np.concatenate(selected))
 
 
+def _foot_bone_meshes(
+    asset: AnatomyRiggedAsset,
+    *,
+    suffix: str,
+) -> list[tuple[str, np.ndarray]]:
+    """Return disjoint foot-bone mesh domains for rigid station transport."""
+
+    result: list[tuple[str, np.ndarray]] = []
+    names = list(asset.source_mesh_names or ())
+    tissues = list(asset.source_tissues or ())
+    ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
+    for name, tissue, (start, stop) in zip(names, tissues, ranges, strict=True):
+        lower = str(name).lower()
+        if (
+            str(tissue).strip().lower() == "bone"
+            and str(name).endswith(f"_{suffix}")
+            and any(token in lower for token in _FOOT_TOKENS)
+        ):
+            result.append(
+                (
+                    str(name),
+                    np.arange(int(start), int(stop), dtype=np.int64),
+                )
+            )
+    if not result:
+        raise ValueError(f"V8.10 found no {suffix} foot bone meshes")
+    return result
+
+
+def _map_foot_stations_rigid_v811(
+    points: np.ndarray,
+    *,
+    source_ankle: np.ndarray,
+    source_arch: np.ndarray,
+    source_forefoot: np.ndarray,
+    target_ankle: np.ndarray,
+    target_arch: np.ndarray,
+    target_forefoot: np.ndarray,
+    rotation: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Map points through an ankle, arch, forefoot chain without scaling.
+
+    The two segments deliberately retain independent normalized coordinates.
+    This lets the offline fit distribute an incompatible SMPL-X foot length at
+    the arch rather than applying one implicit scale to every foot bone.  Each
+    caller still applies one proper rigid transform per source mesh.
+    """
+
+    values = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+    source_a = np.asarray(source_ankle, dtype=np.float64).reshape(3)
+    source_h = np.asarray(source_arch, dtype=np.float64).reshape(3)
+    source_f = np.asarray(source_forefoot, dtype=np.float64).reshape(3)
+    target_a = np.asarray(target_ankle, dtype=np.float64).reshape(3)
+    target_h = np.asarray(target_arch, dtype=np.float64).reshape(3)
+    target_f = np.asarray(target_forefoot, dtype=np.float64).reshape(3)
+    proper = np.asarray(rotation, dtype=np.float64).reshape(3, 3)
+    if (
+        not np.all(np.isfinite(proper))
+        or not np.allclose(proper.T @ proper, np.eye(3), atol=1.0e-7, rtol=0.0)
+        or not np.isclose(np.linalg.det(proper), 1.0, atol=1.0e-7, rtol=0.0)
+    ):
+        raise ValueError("V8.11 foot station rotation must be a proper unit-scale SO(3)")
+    source_stations = np.stack((source_a, source_h, source_f))
+    target_stations = np.stack((target_a, target_h, target_f))
+    source_segments = np.diff(source_stations, axis=0)
+    target_segments = np.diff(target_stations, axis=0)
+    source_length_sq = np.einsum("ij,ij->i", source_segments, source_segments)
+    target_length_sq = np.einsum("ij,ij->i", target_segments, target_segments)
+    if np.any(source_length_sq <= 1.0e-12) or np.any(target_length_sq <= 1.0e-12):
+        raise ValueError("V8.11 foot chain contains a degenerate station segment")
+
+    # Project onto both infinite station lines.  Keeping the winning local
+    # coordinate unclamped preserves the calcaneal and toe extensions beyond
+    # the endpoint stations while the closest segment selects the arch split.
+    relative = values[:, None, :] - source_stations[None, :2, :]
+    local = np.einsum("vsi,si->vs", relative, source_segments) / source_length_sq
+    projected = (
+        source_stations[None, :2, :]
+        + local[:, :, None] * source_segments[None, :, :]
+    )
+    radial = values[:, None, :] - projected
+    radial_norm_sq = np.einsum("vsi,vsi->vs", radial, radial)
+    selected = np.argmin(radial_norm_sq, axis=1)
+    rows = np.arange(len(values), dtype=np.int64)
+    local_selected = local[rows, selected]
+    source_projected = projected[rows, selected]
+    source_radial = values - source_projected
+    mapped = (
+        target_stations[selected]
+        + local_selected[:, None] * target_segments[selected]
+        + source_radial @ proper.T
+    )
+    source_lengths = np.sqrt(source_length_sq)
+    cumulative = np.asarray((0.0, source_lengths[0]), dtype=np.float64)
+    parameter = (
+        cumulative[selected] + local_selected * source_lengths[selected]
+    ) / float(np.sum(source_lengths))
+    return mapped, parameter
+
+
+def _foot_arch_station_v811(
+    asset: AnatomyRiggedAsset,
+    *,
+    suffix: str,
+    vertices: np.ndarray | None = None,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Return the explicit midfoot station from navicular/cuboid/cuneiforms."""
+
+    values = np.asarray(
+        asset.vertices_rest if vertices is None else vertices,
+        dtype=np.float64,
+    )
+    selected: list[np.ndarray] = []
+    mesh_names: list[str] = []
+    names = list(asset.source_mesh_names or ())
+    tissues = list(asset.source_tissues or ())
+    ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
+    for name, tissue, (start, stop) in zip(names, tissues, ranges, strict=True):
+        normalized = str(name).strip().lower()
+        if (
+            str(tissue).strip().lower() == "bone"
+            and str(name).endswith(f"_{suffix}")
+            and any(token in normalized for token in _FOOT_ARCH_TOKENS_V811)
+        ):
+            selected.append(np.arange(int(start), int(stop), dtype=np.int64))
+            mesh_names.append(str(name))
+    if not selected:
+        raise ValueError(
+            f"V8.11 found no {suffix} navicular/cuboid/cuneiform arch meshes"
+        )
+    ids = np.unique(np.concatenate(selected))
+    return np.mean(values[ids], axis=0), {
+        "method": "navicular_cuboid_cuneiform_arch_station_v811",
+        "mesh_names": mesh_names,
+        "vertex_count": int(len(ids)),
+    }
+
+
 def _foot_station_v810(
     asset: AnatomyRiggedAsset,
     *,
     suffix: str,
+    vertices: np.ndarray | None = None,
 ) -> tuple[np.ndarray, dict[str, Any]]:
-    vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
+    vertices = np.asarray(
+        asset.vertices_rest if vertices is None else vertices,
+        dtype=np.float64,
+    )
     talus_ids = _mesh_vertex_ids(asset, f"Talus_{suffix}")
     calcaneus_ids = _mesh_vertex_ids(asset, f"Calcaneus_{suffix}")
     metatarsal_ids: list[np.ndarray] = []
@@ -1796,10 +1955,50 @@ def reconstruct_leg_centerline_compounds_v810(
             requested_length_delta_m=shank_fit.driver_length_residual_m,
             strain_limit=shank_max_abs_axial_strain,
         )
-        vertices[foot_ids] = (
-            vertices[foot_ids] @ correction_a_geometry[:3, :3].T
-            + correction_a_geometry[:3, 3]
-        )
+        foot_mesh_reports: list[dict[str, Any]] = []
+        for mesh_name, mesh_ids in _foot_bone_meshes(asset, suffix=suffix):
+            source_mesh = vertices[mesh_ids].copy()
+            source_center = np.mean(source_mesh, axis=0)
+            mapped_center, station = _map_foot_stations_rigid_v811(
+                source_center[None, :],
+                source_ankle=old_a_mesh,
+                source_forefoot=old_foot,
+                target_ankle=target_a,
+                target_forefoot=requested_foot,
+                rotation=rotation_a,
+            )
+            mesh_transform = rigid(
+                rotation_a,
+                source_center,
+                mapped_center[0],
+            )
+            vertices[mesh_ids] = (
+                source_mesh @ mesh_transform[:3, :3].T
+                + mesh_transform[:3, 3]
+            )
+            recovered = (
+                source_mesh @ mesh_transform[:3, :3].T
+                + mesh_transform[:3, 3]
+            )
+            rigidity_error = np.linalg.norm(
+                vertices[mesh_ids] - recovered,
+                axis=1,
+            )
+            foot_mesh_reports.append(
+                {
+                    "mesh": mesh_name,
+                    "vertex_count": int(len(mesh_ids)),
+                    "station_parameter": float(station[0]),
+                    "source_center_m": source_center.tolist(),
+                    "target_center_m": mapped_center[0].tolist(),
+                    "rigid_rms_error_m": float(
+                        np.sqrt(np.mean(rigidity_error * rigidity_error))
+                    ),
+                    "rigid_maximum_error_m": float(np.max(rigidity_error)),
+                    "det_rotation": float(np.linalg.det(mesh_transform[:3, :3])),
+                    "scale": 1.0,
+                }
+            )
         vertices[patella_ids] = (
             vertices[patella_ids] @ correction_k_geometry[:3, :3].T
             + correction_k_geometry[:3, 3]
@@ -1844,17 +2043,35 @@ def reconstruct_leg_centerline_compounds_v810(
                 correction_a_bind,
                 np.clip(value, 0.0, 1.0),
             )[0]
-        bind_correction_by_bone[ankle_subtree] = correction_a_bind
+        for bone in np.flatnonzero(ankle_subtree):
+            if int(bone) == ankle_bone:
+                bind_correction_by_bone[bone] = correction_a_bind
+                continue
+            source_origin = old_global[bone, :3, 3]
+            mapped_origin, _station = _map_foot_stations_rigid_v811(
+                source_origin[None, :],
+                source_ankle=old_a_mesh,
+                source_forefoot=old_foot,
+                target_ankle=target_a,
+                target_forefoot=requested_foot,
+                rotation=rotation_a,
+            )
+            bind_correction_by_bone[bone] = rigid(
+                rotation_a,
+                source_origin,
+                mapped_origin[0],
+            )
         bind_correction_by_bone[patella_bone] = correction_k_bind
 
         guide_joints[hip_joint] = target_h
         guide_joints[knee_joint] = target_k
         guide_joints[ankle_joint] = target_a
-        mapped_foot_station = (
-            old_foot @ correction_a_geometry[:3, :3].T
-            + correction_a_geometry[:3, 3]
+        mapped_foot_station, mapped_foot_report = _foot_station_v810(
+            asset,
+            suffix=suffix,
+            vertices=vertices,
         )
-        guide_joints[foot_joint] = mapped_foot_station
+        guide_joints[foot_joint] = requested_foot
 
         femur_edges = _mesh_edges(asset, femur_ids)
         shank_edges = _mesh_edges(asset, shank_ids)
@@ -1958,20 +2175,20 @@ def reconstruct_leg_centerline_compounds_v810(
             },
             "foot": {
                 **foot_station_report,
-                "method": "rigid_ankle_foot_compound_v810",
+                "mapped_station_report": mapped_foot_report,
+                "method": "multi_station_rigid_foot_chain_v811",
                 "requested_smplx_station_m": requested_foot.tolist(),
                 "guide_station_m": guide_joints[foot_joint].tolist(),
                 "mapped_geometry_station_m": mapped_foot_station.tolist(),
                 "station_residual_m": float(
                     np.linalg.norm(mapped_foot_station - requested_foot)
                 ),
-                "station_residual_role": (
-                    "rigid_foot_length_mismatch_not_scaled_away"
-                ),
+                "station_residual_role": "normalized_station_chain_without_bone_scale",
                 "pose_rotation_authority": f"smplx_joint_{foot_joint}",
-                "rest_pivot_authority": "mapped_anatomical_forefoot_station",
+                "rest_pivot_authority": "smplx_forefoot_station",
                 "det_rotation": float(np.linalg.det(rotation_a)),
                 "scale": 1.0,
+                "per_mesh_rigid_fit": foot_mesh_reports,
             },
         }
 
@@ -2057,8 +2274,47 @@ def reconstruct_leg_centerline_compounds_v810(
             > 1.0e-10
         )
     )
+    foot_chain = {
+        "schema_version": 1,
+        "method": "multi_station_rigid_foot_chain_v811",
+        "sides": {
+            side: {
+                "joint_ids": {
+                    name: int(value)
+                    for name, value in report["sides"][side]["joint_ids"].items()
+                    if name in {"ankle", "foot"}
+                },
+                "requested_smplx_station_m": report["sides"][side]["foot"][
+                    "requested_smplx_station_m"
+                ],
+                "mapped_geometry_station_m": report["sides"][side]["foot"][
+                    "mapped_geometry_station_m"
+                ],
+                "station_residual_m": float(
+                    report["sides"][side]["foot"]["station_residual_m"]
+                ),
+                "per_mesh": [
+                    {
+                        "mesh": str(item["mesh"]),
+                        "station_parameter": float(item["station_parameter"]),
+                        "rigid_rms_error_m": float(item["rigid_rms_error_m"]),
+                        "rigid_maximum_error_m": float(
+                            item["rigid_maximum_error_m"]
+                        ),
+                        "det_rotation": float(item["det_rotation"]),
+                        "scale": float(item["scale"]),
+                    }
+                    for item in report["sides"][side]["foot"]["per_mesh_rigid_fit"]
+                ],
+            }
+            for side in ("left", "right")
+        },
+    }
+    foot_chain["content_digest"] = _foot_chain_digest_v1(foot_chain)
+    report["foot_chain_stations_v1"] = foot_chain
     metadata["source_anatomical_guide_fk_v810"] = True
     metadata["leg_compounds_v810"] = report
+    metadata["foot_chain_stations_v1"] = foot_chain
     result = replace(
         asset,
         vertices_rest=vertices.astype(np.float32),

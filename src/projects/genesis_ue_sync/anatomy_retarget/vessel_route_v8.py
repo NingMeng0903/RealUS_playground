@@ -463,6 +463,9 @@ def route_vessel_vertices_v8(
         broadphase_padding_m=float(broadphase_padding_m),
     )
     skin_signed = np.asarray(final_fields["skin_signed"], dtype=np.float64)
+    skin_clearance_violation = np.asarray(
+        final_fields["skin_violation"], dtype=np.float64
+    )
     bone_violation = np.asarray(final_fields["bone_violation"], dtype=np.float64)
     displacement = np.linalg.norm(cumulative, axis=1)
     edge_relative_parts: list[np.ndarray] = []
@@ -493,6 +496,16 @@ def route_vessel_vertices_v8(
         else np.zeros(0, dtype=np.float64)
     )
     outside = skin_signed > 0.0
+    # `outside` is kept as the physical skin-surface diagnostic.  The route
+    # contract is stricter: every point must also be at least skin_margin_m
+    # inside that surface, so use the same contracted-shell field that drove
+    # the solver for the final acceptance gate.
+    skin_clearance_violation_count = int(
+        np.count_nonzero(skin_clearance_violation > 0.0)
+    )
+    maximum_skin_clearance_violation_m = float(
+        np.max(skin_clearance_violation)
+    )
     bone_penetration = np.maximum(
         0.0, bone_violation - float(bone_clearance_m)
     )
@@ -502,25 +515,30 @@ def route_vessel_vertices_v8(
     edge_q99 = (
         float(np.quantile(edge_relative, 0.99)) if len(edge_relative) else 0.0
     )
+    bone_clearance_violation_count = int(
+        np.count_nonzero(bone_violation > 0.0)
+    )
     passed = bool(
-        inside_fraction >= 0.999
-        and max_outside <= 0.005
-        and max_bone_penetration <= 0.001
+        not np.any(outside)
+        and skin_clearance_violation_count == 0
+        and bone_clearance_violation_count == 0
         and edge_q99 <= 0.05
     )
     return result.astype(np.float32), {
         "backend": "connected_screened_laplacian_skin_bone_route_v8",
         "passed": passed,
         "publishable": passed,
+        "skin_margin_m": float(skin_margin_m),
+        "bone_clearance_m": float(bone_clearance_m),
         "vertex_count": int(len(all_ids)),
         "component_count": int(len(components)),
         "iterations": iteration_reports,
         "skin_inside_fraction": inside_fraction,
         "skin_outside_count": int(np.count_nonzero(outside)),
         "skin_maximum_outside_m": max_outside,
-        "bone_clearance_violation_count": int(
-            np.count_nonzero(bone_violation > 0.0)
-        ),
+        "skin_clearance_violation_count": skin_clearance_violation_count,
+        "skin_maximum_clearance_violation_m": maximum_skin_clearance_violation_m,
+        "bone_clearance_violation_count": bone_clearance_violation_count,
         "bone_maximum_penetration_m": max_bone_penetration,
         "mean_displacement_m": float(np.mean(displacement)),
         "maximum_displacement_m": float(np.max(displacement)),
@@ -541,7 +559,7 @@ def bake_vessel_route_v8(
     *,
     skin_vertices: np.ndarray,
     skin_faces: np.ndarray,
-    tissues: Iterable[str] = ("vessel",),
+    tissues: Iterable[str] = ("vessel", "nerve"),
     collision_bone_tokens: Sequence[str] = _DEFAULT_COLLISION_BONE_TOKENS,
     reconstruct_source_weighted: bool = True,
     **route_kwargs: Any,
@@ -585,6 +603,7 @@ def bake_vessel_route_v8(
     metadata = dict(routed_input.metadata or {})
     report = {
         **route_report,
+        "tissues": sorted({str(value).strip().lower() for value in tissues}),
         "source_reconstruction": reconstruction_report,
         "collision_surface_count": int(len(collision)),
         "collision_bone_tokens": list(collision_bone_tokens),

@@ -62,6 +62,25 @@ def test_rail_lock_capture_on_reset():
     assert abs(qdot[0]) < 1e-9
 
 
+def test_rail_lock_reset_overwrites_yaml_seed():
+    """Yaml may seed q_ref_m=0.0; reset must still capture live rail."""
+    task = RailLockTask(
+        RailLockConfig(
+            mode=RailMode.LOCKED,
+            locked_style=LockedStyle.HOLD,
+            q_ref_m=0.0,
+            lock_gain=10.0,
+        )
+    )
+    assert task.q_ref == 0.0
+    q = np.zeros(8)
+    q[0] = 0.404
+    task.reset(q)
+    assert abs(float(task.q_ref) - 0.404) < 1e-12
+    qdot = task(q)
+    assert abs(qdot[0]) < 1e-9
+
+
 def test_rail_mode_enum_values():
     """RailMode is a two-value top-level enum; RELIEF has been removed."""
     assert set(RailMode) == {RailMode.COUPLED, RailMode.LOCKED}

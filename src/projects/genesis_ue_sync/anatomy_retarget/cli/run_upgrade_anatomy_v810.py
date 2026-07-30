@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Upgrade a reviewed V8 operator into the untrusted V8.10 rebuild candidate."""
+"""Upgrade a reviewed V8 operator into the untrusted V8.11 candidate."""
 
 from __future__ import annotations
 
@@ -34,6 +34,11 @@ from projects.genesis_ue_sync.anatomy_retarget.v8_artifacts import (
     load_source_operator,
     save_source_operator,
 )
+from projects.genesis_ue_sync.anatomy_retarget.version_v8 import (
+    SOURCE_OPERATOR_ALGORITHM_VERSION,
+    SOURCE_OPERATOR_CORRECTION_VERSION,
+    SOURCE_OPERATOR_ORACLE_VERSION,
+)
 
 
 def _file_digest(path: Path) -> str:
@@ -51,15 +56,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--foot-product", type=Path, required=True)
     parser.add_argument(
         "--algorithm-version",
-        default="contact-first-joint-chain-v8.10",
+        default=SOURCE_OPERATOR_ALGORITHM_VERSION,
     )
     parser.add_argument(
         "--oracle-version",
-        default="smplx-joint-contact-chain-v8.10",
+        default=SOURCE_OPERATOR_ORACLE_VERSION,
     )
     parser.add_argument(
         "--correction-version",
-        default="rebuild-013-centerline-v8.10",
+        default=SOURCE_OPERATOR_CORRECTION_VERSION,
     )
     return parser.parse_args()
 
