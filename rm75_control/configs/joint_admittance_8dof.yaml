@@ -87,6 +87,10 @@ inner:
     # ProxQP *retry* is capped at 400 iters in code so a singular tick cannot
     # hold the GIL for multiple seconds (Ctrl+C appeared dead).
     max_iter: 400             # realtime ProxQP cap (was 3000; long solves freeze MoveJ)
+    max_iter_cap: 400
+    max_solve_ms: 8.0         # skip retry if first attempt already burned wall budget
+    fail_qdot_decay: 0.85
+    twist_sigma_floor: 0.08   # scale Cartesian/force twist when σ < sigma_ref
     warn_on_fail: false
     # Chiaverini 1997 SR damping for nullspace projection.
     sr_damping:

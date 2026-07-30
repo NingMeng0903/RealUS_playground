@@ -1,9 +1,4 @@
-"""High-level phase API for joint_admittance: TaskMode specs, SecondaryPolicy, compile to Phase.
-
-Four capabilities map to factory functions; ``compile_phase`` / ``compile_phases`` turn
-``JointPhaseSpec`` into the existing ``Phase`` + ``OuterLoop`` objects used by
-``run_joint_admittance_phases``.
-"""
+"""Phase factories + compile: JointPhaseSpec → runtime Phase for the 8-DOF loop."""
 
 from __future__ import annotations
 
@@ -13,7 +8,7 @@ from typing import Any, Callable, Literal
 
 import numpy as np
 
-from rm75_control.control.admittance_common.controller import AdmittanceConfig, AdmittanceController
+from rm75_control.control.admittance_common.controller import AdmittanceController
 from rm75_control.control.admittance_common.reference import MotionReferenceSource
 from rm75_control.control.joint_admittance_8dof.loop import (
     AdmittanceOuterLoop,
@@ -29,7 +24,6 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedSty
 from rm75_control.control.joint_admittance_8dof.model import (
     RobotKinematics,
     auto_move_duration_s,
-    max_joint_err_deg,
     pose_distance,
     wrap_joint_delta,
 )
@@ -62,18 +56,15 @@ class ArmAngleSpec:
     """Arm-angle nullspace target applied on phase entry (scan/handoff)."""
 
     psi_rad: float | None = None
-    set_on_enter: bool = True
 
 
 @dataclass
 class SecondaryPolicy:
     """Nullspace / secondary-task preset exposed per phase."""
 
-    preset: Literal["off", "move", "track", "hold", "custom"] = "track"
+    preset: Literal["off", "move", "track", "hold"] = "track"
     arm_angle: ArmAngleSpec | None = None
-    centering: bool | None = None
-    manipulability: bool | None = None
-    qdot_ff: Literal["off", "plan", "plan_joint", "plan_anchor"] = "off"
+    qdot_ff: Literal["off", "plan", "plan_joint"] = "off"
 
     def _set_arm_angle_reference(
         self,
@@ -92,14 +83,7 @@ class SecondaryPolicy:
             psi = self.arm_angle.psi_rad
 
         if self.preset == "move":
-            # Move: the SRS/joint plan owns the arm posture.  Secondary tasks that
-            # chase a fixed ψ_ref or centering target fight the planner and stall
-            # the governor (hardware logs: ψ(q0)=72° vs ψ(target)=155° with
-            # arm_task ON → joint_err>20° → t_ref frozen).
-            # Rail: COUPLED + pose_attract soft task → q_target[0] (monotone,
-            # settles and stops).  σ_min is a dead-zoned guardrail only — not a
-            # continuous gradient climb (that hunted / oscillated).  Arm-angle
-            # / reach-extension resume at scan entry (preset=track).
+            # Plan owns posture; suppress secondary fights with the planner.
             inner.set_coupled()
             inner.set_arm_task_suppressed(True)
             inner.set_centering_suppressed(True)
@@ -111,25 +95,16 @@ class SecondaryPolicy:
             inner.set_manipulability_active(False)
             inner.set_centering_suppressed(False)
             inner.set_arm_task_suppressed(False)
-            # Respect the CONFIGURED (yaml) rail mode: COUPLED lets the QP
-            # move the rail during scan/track; LOCKED+HOLD pins it (legacy
-            # scan behaviour).  Must read the immutable snapshot — the live
-            # cfg.rail.mode is mutated by every set_locked() call, so after a
-            # hold@D phase it read LOCKED and the scan never re-coupled.
+            # Use yaml rail mode snapshot (live cfg.rail.mode is mutated by locks).
             if inner.configured_rail_mode == RailMode.COUPLED:
                 inner.set_coupled()
-                # Preferred-extension coordination: capture d_pref at the
-                # taught (scan-entry) posture, then let the rail proactively
-                # follow the TCP when the arm reaches beyond it.
                 inner.set_rail_extension_mode("reach")
                 inner.capture_rail_extension_ref()
                 inner.set_rail_extension_active(True)
             else:
                 inner.set_locked(LockedStyle.HOLD)
                 inner.set_rail_extension_active(False)
-            if psi is not None and inner.arm_task is not None and (
-                self.arm_angle is None or self.arm_angle.set_on_enter
-            ):
+            if psi is not None and inner.arm_task is not None:
                 self._set_arm_angle_reference(inner, psi)
         elif self.preset == "hold":
             inner.set_plan_drives_rail(False)
@@ -142,24 +117,13 @@ class SecondaryPolicy:
             inner.set_arm_task_suppressed(False)
             inner.set_locked(LockedStyle.HOLD)
             inner.set_rail_extension_active(False)
-            if psi is not None and inner.arm_task is not None and (
-                self.arm_angle is None or self.arm_angle.set_on_enter
-            ):
+            if psi is not None and inner.arm_task is not None:
                 self._set_arm_angle_reference(inner, psi)
         elif self.preset == "off":
             inner.set_arm_task_suppressed(True)
             inner.set_centering_suppressed(True)
             inner.set_manipulability_active(False)
             inner.set_rail_extension_active(False)
-
-        if self.centering is not None:
-            inner.set_centering_suppressed(not self.centering)
-        if self.manipulability is not None:
-            inner.set_manipulability_active(bool(self.manipulability))
-        if self.arm_angle is not None and self.preset == "custom":
-            inner.set_arm_task_suppressed(not self.arm_angle.set_on_enter)
-            if psi is not None and inner.arm_task is not None and self.arm_angle.set_on_enter:
-                self._set_arm_angle_reference(inner, psi)
 
     def make_qdot_ff_provider(
         self,
@@ -182,13 +146,6 @@ class SecondaryPolicy:
                 return dq_plan + 1.0 * wrap_joint_delta(inner.q_cmd, q_plan)
 
             return _joint_ff
-        if self.qdot_ff == "plan_anchor":
-
-            def _anchor_ff(t: float) -> np.ndarray:
-                q_plan, dq_plan = move_ref.sample_q(t)
-                return dq_plan + 1.0 * wrap_joint_delta(inner.q_cmd, q_plan)
-
-            return _anchor_ff
         return None
 
 
@@ -232,7 +189,6 @@ class JointPhaseSpec:
     reference: MotionReferenceSource | None = None
     controller: AdmittanceController | None = None
     desired_force: np.ndarray | None = None
-    psi_rad_on_enter: float | None = None
     # Locked-move (LOCKED + RAIL_ONLY / TCP_FIXED): external plan drives rail
     rail_ref: RailSmoothMoveReference | None = None
     locked_style: LockedStyle = LockedStyle.RAIL_ONLY
@@ -314,23 +270,15 @@ def attach_joint_move_rail(
     phase: Phase,
     inner: JointIkController,
 ) -> None:
-    """Pin rail velocity to the joint-space MoveJ plan (same idea as SRS).
-
-    Without this, preset=move enables COUPLED ``pose_attract`` while the arm
-    follows ``JointSmoothMoveReference`` — the soft rail task fights the plan
-    FF, the carriage barely moves, TCP swings through collision, and ProxQP
-    can stall the GIL for seconds (hardware: 16 s wall gap mid-MoveJ).
-    """
+    """Pin rail to the joint plan and enable direct joint PTP (no Cartesian QP)."""
     prev_on_enter = phase.on_enter
     prev_on_exit = phase.on_exit
 
     def _enter() -> None:
         if prev_on_enter is not None:
             prev_on_enter()
-        # Own the rail; kill pose_attract so it cannot oppose plan qdot[0].
         inner.set_rail_extension_active(False)
         inner.set_plan_drives_rail(True)
-        # Skip Cartesian ProxQP during MoveJ (industrial joint PTP).
         inner.set_direct_joint_ptp(True)
 
     def _exit() -> None:
@@ -405,9 +353,7 @@ def compute_move_plan(
     *,
     v_scale: float,
     duration_s: float | None = None,
-    move_mode: Literal["joint", "cartesian"] = "cartesian",
-    auto_select_joint: bool = True,
-    joint_auto_threshold_deg: float = 60.0,
+    move_mode: Literal["joint", "cartesian"] = "joint",
     peak_joint_v_frac: float = 0.50,
     max_lin_vel_m_s: float = 0.4,
     duration_min_s: float = 2.5,
@@ -416,7 +362,7 @@ def compute_move_plan(
     sigma_ref: float = 0.08,
     euler_order: str = "xyz",
 ) -> MovePlan:
-    """Duration, outer move_mode, and joint governor cap for a point-to-point leg."""
+    """Duration and joint governor cap for an explicit PTP mode (no auto-switch)."""
     auto_duration, meta = auto_move_duration_s(
         kin,
         q0_rad,
@@ -434,15 +380,11 @@ def compute_move_plan(
     )
     max_dq_deg = float(meta["max_dq_deg"])
     gov_joint_max_deg = float(np.clip(1.15 * max_dq_deg, 25.0, 90.0))
-    resolved_mode = move_mode
-    if auto_select_joint and move_mode == "cartesian" and max_dq_deg > joint_auto_threshold_deg:
-        resolved_mode = "joint"
     duration = float(duration_s) if duration_s is not None else auto_duration
     meta["user_override"] = duration_s is not None
-    meta["auto_select_joint"] = auto_select_joint
     return MovePlan(
         duration_s=duration,
-        move_mode=resolved_mode,
+        move_mode=move_mode,
         gov_joint_max_deg=gov_joint_max_deg,
         meta=meta,
     )
@@ -460,13 +402,7 @@ def make_move_arrived(
     require_joints: bool = True,
     euler_order: str = "xyz",
 ) -> Callable[[np.ndarray, np.ndarray], bool]:
-    """Arrival gate for move→D.
-
-    Cartesian/SRS moves should be pose-primary (``require_joints=False``): the
-    8-DOF nullspace often leaves a few degrees of joint residual while TCP is
-    already on target, and ``max_joint_err_deg`` used to treat rail metres as
-    radians (40 mm ≈ 2.3° toward a false fail).
-    """
+    """Arrival gate for move→D (pose and/or joint tolerances)."""
 
     def _joints_ok(q_meas: np.ndarray) -> bool:
         qa = np.asarray(q_meas, dtype=float).reshape(-1)
@@ -577,11 +513,7 @@ def phase_joint_stream(
     gov_joint_max_deg: float = 90.0,
     force_observer: Any = None,
 ) -> JointPhaseSpec:
-    """Continuous joint-position servo (set ``stream_ref.set_q`` each tick).
-
-    Unlike MoveJ PTP, there is no timed smoothstep — arm+rail track the live
-    ``q_target`` until ``duration_s`` / external stop.  Uses direct joint PTP.
-    """
+    """Continuous joint-position servo via live ``stream_ref.set_q``."""
     q_tgt = np.asarray(stream_ref.q_target, dtype=float)
     return JointPhaseSpec(
         mode=TaskMode.JOINT_STREAM,
@@ -615,11 +547,7 @@ def phase_cartesian_velocity(
     max_lin_vel_m_s: float = 0.4,
     force_observer: Any = None,
 ) -> JointPhaseSpec:
-    """Cartesian velocity mode (MoveV): live ``twist_ref.set_twist`` (base frame).
-
-    Pose PD gain is zero — primary command is ``vel_ff``.  The reference
-    integrates pose so diagnostics stay consistent.
-    """
+    """Cartesian velocity mode: live ``twist_ref.set_twist`` (base frame, k_task=0)."""
     return JointPhaseSpec(
         mode=TaskMode.CARTESIAN_VELOCITY,
         label=label,
@@ -634,40 +562,6 @@ def phase_cartesian_velocity(
         governor=GovernorSpec(err_max_mm=0.0, joint_err_max_deg=0.0),
         scale_qdot_ff_with_governor=False,
         wait_until=None,
-    )
-
-
-def phase_joint_reset(
-    move_ref: JointSmoothMoveReference,
-    *,
-    label: str = "joint_reset",
-    pose_target: np.ndarray | None = None,
-    q_target_rad: np.ndarray | None = None,
-    move_kp: float = 2.0,
-    max_duration_s: float | None = None,
-    gov_joint_max_deg: float = 25.0,
-    require_arrival: bool = True,
-    force_observer: Any = None,
-) -> JointPhaseSpec:
-    return JointPhaseSpec(
-        mode=TaskMode.JOINT_RESET,
-        label=label,
-        move_ref=move_ref,
-        pose_target=pose_target,
-        q_target_rad=q_target_rad,
-        move_kp=move_kp,
-        move_mode="joint",
-        max_duration_s=max_duration_s,
-        require_arrival=require_arrival,
-        force_observer=force_observer,
-        secondary=SecondaryPolicy(preset="move", qdot_ff="plan_joint"),
-        governor=GovernorSpec(err_max_mm=0.0, joint_err_max_deg=gov_joint_max_deg),
-        scale_qdot_ff_with_governor=False,
-        wait_until=(
-            make_move_arrived(pose_target, q_target_rad, joint_only=True)
-            if pose_target is not None and q_target_rad is not None
-            else None
-        ),
     )
 
 
@@ -711,7 +605,7 @@ def phase_cartesian_goto(
 ) -> JointPhaseSpec:
     sec = SecondaryPolicy(
         preset="move",
-        qdot_ff="plan_joint" if move_mode == "joint" else "plan_anchor",
+        qdot_ff="plan_joint",
     )
     gov = (
         GovernorSpec(
@@ -769,6 +663,7 @@ def phase_cartesian_track(
     psi_rad_on_enter: float | None = None,
     governor: GovernorSpec | None = None,
 ) -> JointPhaseSpec:
+    arm = ArmAngleSpec(psi_rad=psi_rad_on_enter) if psi_rad_on_enter is not None else None
     return JointPhaseSpec(
         mode=TaskMode.CARTESIAN_TRACK,
         label=label,
@@ -777,8 +672,7 @@ def phase_cartesian_track(
         move_kp=move_kp,
         max_lin_vel_m_s=max_lin_vel_m_s,
         wait_until=wait_until,
-        psi_rad_on_enter=psi_rad_on_enter,
-        secondary=SecondaryPolicy(preset="track", qdot_ff="off"),
+        secondary=SecondaryPolicy(preset="track", arm_angle=arm, qdot_ff="off"),
         governor=governor or GovernorSpec(err_ok_mm=10.0, err_max_mm=40.0),
     )
 
@@ -795,8 +689,9 @@ def phase_hybrid_track(
     governor: GovernorSpec | None = None,
     secondary: SecondaryPolicy | None = None,
 ) -> JointPhaseSpec:
-    arm = ArmAngleSpec(psi_rad=psi_rad_on_enter) if psi_rad_on_enter is not None else None
-    sec = secondary or SecondaryPolicy(preset="track", arm_angle=arm, qdot_ff="off")
+    sec = secondary or SecondaryPolicy(preset="track", qdot_ff="off")
+    if psi_rad_on_enter is not None and sec.arm_angle is None:
+        sec.arm_angle = ArmAngleSpec(psi_rad=psi_rad_on_enter)
     return JointPhaseSpec(
         mode=TaskMode.HYBRID_TRACK,
         label=label,
@@ -805,15 +700,14 @@ def phase_hybrid_track(
         desired_force=np.asarray(desired_force, dtype=float),
         duration_s=duration_s,
         force_observer=force_observer,
-        psi_rad_on_enter=psi_rad_on_enter,
         secondary=sec,
         governor=governor or GovernorSpec(err_ok_mm=10.0, err_max_mm=40.0),
     )
 
 
 def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], None] | None:
-    psi = spec.psi_rad_on_enter
-    if spec.secondary.arm_angle is not None and spec.secondary.arm_angle.psi_rad is not None:
+    psi = None
+    if spec.secondary.arm_angle is not None:
         psi = spec.secondary.arm_angle.psi_rad
 
     def _enter() -> None:

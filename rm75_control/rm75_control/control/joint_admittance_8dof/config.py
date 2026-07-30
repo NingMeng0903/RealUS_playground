@@ -94,6 +94,10 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         mass_reg_lpf_tau_s=float(c.get("mass_reg_lpf_tau_s", 0.2)),
         task_weight_min_frac=float(c.get("task_weight_min_frac", 0.05)),
         task_weight_lpf_tau_s=float(c.get("task_weight_lpf_tau_s", 0.25)),
+        max_iter_cap=int(c.get("max_iter_cap", 400)),
+        fail_qdot_decay=float(c.get("fail_qdot_decay", 0.85)),
+        max_solve_ms=float(c.get("max_solve_ms", 8.0)),
+        twist_sigma_floor=float(c.get("twist_sigma_floor", 0.08)),
     )
     if reg_arr is not None:
         qp_kwargs["reg"] = reg_arr

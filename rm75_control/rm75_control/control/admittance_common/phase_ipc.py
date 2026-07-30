@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields as dc_fields
 from enum import IntEnum
 from multiprocessing import shared_memory
 from typing import Any
@@ -56,31 +56,26 @@ class PhaseStatus(IntEnum):
 
 @dataclass
 class SinToolYTaskParams:
-    """Serializable task descriptor (C plans, A executes)."""
+    """Serializable task descriptor (C plans, A executes).
+
+    Only fields consumed by ``build_sin_tool_y_program`` / window A.
+    C-only CLI knobs (approach_dz, move_duration*, hold_s, log_interval, …)
+    stay on argparse and are not shipped over IPC.
+    """
 
     config_path: str
     slot: str = "d"
-    approach_dz_mm: float = 0.0
-    use_force_id_pose: bool = False
-    move_duration: float | None = None
-    move_duration_margin: float = 0.50
-    move_duration_min: float = 2.5
-    move_duration_max: float = 5.0
     move_kp: float = 2.0
-    move_mode: str = "cartesian"
-    auto_joint: bool = True
     y_pp_cm: float = 16.0
     max_vel_cm_s: float = 2.0
     period_s: float | None = None
     desired_z: float = 0.0
     scan_duration: float = 30.0
-    hold_s: float = 0.0
     hold_at_d_s: float = 0.0
     rail_move_cm: float = 0.0
     rail_move_mode: str = "rail_only"
     rail_move_dir: str = "+y"
     enable_force: bool = False
-    log_interval: float = 2.0
     log_csv: str | None = None
     rail_log_csv: str | None = None
     cartesian_max_lin_vel: float | None = None
@@ -88,12 +83,11 @@ class SinToolYTaskParams:
     q_target_rad: list[float] = field(default_factory=list)
     pose_d: list[float] = field(default_factory=list)
     plan_duration_s: float = 0.0
-    plan_move_mode: str = "cartesian"
+    plan_move_mode: str = "joint"
     plan_gov_joint_max_deg: float = 0.0
-    plan_meta: dict[str, float] = field(default_factory=dict)
     psi_tgt: float | None = None
     psi_toggle_period_s: float = 0.0
-    psi_side_offset_rad: float = 1.580525773858965  # 90.5 deg fallback each side
+    psi_side_offset_rad: float = 1.580525773858965  # 90.5 deg
     psi_left_rad: float | None = None
     psi_right_rad: float | None = None
     psi_filter_alpha: float = 0.02
@@ -108,7 +102,9 @@ class SinToolYTaskParams:
 
     @classmethod
     def from_json(cls, text: str) -> SinToolYTaskParams:
-        return cls(**json.loads(text))
+        raw = json.loads(text)
+        known = {f.name for f in dc_fields(cls)}
+        return cls(**{k: v for k, v in raw.items() if k in known})
 
 
 def _encode_msg(text: str) -> bytes:

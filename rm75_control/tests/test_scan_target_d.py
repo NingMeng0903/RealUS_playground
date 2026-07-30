@@ -43,8 +43,6 @@ def test_resolve_scan_target_joints_matches_fk():
         nullspace_cfg=inner_cfg.nullspace,
     )
     assert target.d_target == "joints"
-    assert target.skip_ik is True
-    assert target.move_mode_hint is None  # cartesian/SRS is the joints→D default
     assert target.q_target_rad.shape == (8,)
     pose_fk = kin.fk_pose(target.q_target_rad)
     np.testing.assert_allclose(target.pose_d, pose_fk, atol=1e-6)
@@ -68,7 +66,6 @@ def test_resolve_scan_target_kin_fk_no_robot():
         nullspace_cfg=inner_cfg.nullspace,
     )
     assert target.d_target == "kin-fk"
-    assert target.skip_ik is True
     assert target.pose_d.shape == (6,)
     err_mm = np.linalg.norm(kin.fk_pose(target.q_target_rad)[:3] - target.pose_d[:3]) * 1000.0
     assert err_mm < 5.0

@@ -474,13 +474,7 @@ class SinToolYReference:
 
 
 class StreamingJointReference:
-    """Live joint-position setpoint for continuous joint servo (not a PTP segment).
-
-    Caller updates ``set_q`` / ``set_q_deg`` every control epoch; the phase loop
-    tracks ``q_target`` with the same MoveJ stack (direct joint integrate +
-    rail coupling).  ``sample_q`` returns ``(q_target, 0)`` — motion comes from
-    the joint tracking / ``plan_joint`` feedback, not a timed smoothstep.
-    """
+    """Live joint setpoint for continuous servo (``set_q`` / ``set_q_deg``)."""
 
     def __init__(self, kin, q0_rad: np.ndarray) -> None:
         self.kin = kin
@@ -532,12 +526,7 @@ class StreamingJointReference:
 
 
 class StreamingCartesianVelocityReference:
-    """Live Cartesian twist setpoint (MoveV-style open-loop velocity).
-
-    ``set_twist`` accepts a base-frame twist ``[vx,vy,vz,wx,wy,wz]``.
-    ``pose_d`` is integrated from the twist so the track outer loop's pose PD
-    (if any) does not fight the velocity command; pure velocity uses ``k_task=0``.
-    """
+    """Live base-frame twist for MoveV (``set_twist`` / ``stop``)."""
 
     def __init__(self, *, euler_order: str = "xyz") -> None:
         self.euler_order = str(euler_order)

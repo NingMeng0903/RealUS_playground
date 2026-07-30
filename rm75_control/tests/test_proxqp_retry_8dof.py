@@ -16,18 +16,11 @@ from rm75_control.control.joint_admittance_8dof.solver.qp_builder import (
     QpIkController,
     _ProxQpWbcBackend,
 )
-from rm75_control.control.joint_admittance_8dof.tasks.manipulability_task import (
-    ManipulabilityTaskConfig,
-)
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 
 Q_HOME = full_q_from_arm(
     np.deg2rad([5.0, -30.0, 10.0, 60.0, -5.0, 45.0, 0.0]), 0.4
 )
-Q_ARM_SINGULAR = np.array(
-    [0.0, np.pi / 2 - 0.1, 0.0, 0.15, 0.0, 0.15, 0.0], dtype=float
-)
-
 
 def test_proxqp_retry_uses_stored_max_iter_not_cfg():
     kin = RobotKinematics()
@@ -76,90 +69,6 @@ def test_proxqp_retry_uses_stored_max_iter_not_cfg():
     assert np.isfinite(r.qdot).all()
     assert int(backend.qp.settings.max_iter) == int(backend._max_iter)
     assert n_solved["n"] >= 2  # first fail + retry check
-
-
-@pytest.mark.skip(reason="out of scope for QPIK jerk/recovery plan (no manip β changes)")
-def test_low_sigma_scan_enables_manipulability():
-    """COUPLED scan (centering on): σ < sigma_ref forces manipulability_active."""
-    kin = RobotKinematics()
-    cfg = JointIkConfig(
-        qp=QpConfig(
-            task_weight=np.array([100.0, 100.0, 100.0, 50.0, 50.0, 50.0]),
-            collision=CollisionConfig(enabled=False),
-            warn_on_fail=False,
-        ),
-        manipulability=ManipulabilityTaskConfig(k_mu=0.8),
-    )
-    ctrl = JointIkController(kin, cfg)
-    q_sing = full_q_from_arm(Q_ARM_SINGULAR, 0.4)
-    sigma = float(kin.singular_values(kin.jacobian(q_sing)).min())
-    assert sigma < float(cfg.qp.sr_damping.sigma_ref)
-
-    ctrl.reset(q_sing)
-    ctrl.set_coupled()
-    ctrl.set_centering_suppressed(False)
-    ctrl.set_manipulability_active(False)
-    ctrl.set_rail_extension_mode("reach")
-    ctrl.capture_rail_extension_ref()
-    ctrl.set_rail_extension_active(True)
-
-    captured: dict = {}
-    real_secondary = ctrl._secondary
-
-    def _spy(q, qdot_ff=None, **kwargs):
-        captured.update(kwargs)
-        return real_secondary(q, qdot_ff, **kwargs)
-
-    ctrl._secondary = _spy  # type: ignore[method-assign]
-    try:
-        ctrl.update(np.zeros(6), q_meas=q_sing)
-    finally:
-        ctrl._secondary = real_secondary  # type: ignore[method-assign]
-
-    assert captured.get("manipulability_active") is True
-
-
-@pytest.mark.skip(reason="out of scope for QPIK jerk/recovery plan (no manip β changes)")
-def test_centering_survives_when_manip_armed():
-    """Low-σ manip must not replace the joint attractor (J1 unwind)."""
-    from rm75_control.control.joint_admittance_8dof.tasks.nullspace_task import (
-        JointCenteringTask,
-        NullspaceTaskConfig,
-    )
-    from rm75_control.control.joint_admittance_8dof.tasks.manipulability_task import (
-        ManipulabilityTask,
-    )
-    from rm75_control.control.joint_admittance_8dof.tasks.secondary_composer import (
-        SecondaryComposer,
-    )
-
-    kin = RobotKinematics()
-    q_nom = np.zeros(kin.nv)
-    q_nom[1] = 0.0
-    cfg = NullspaceTaskConfig(
-        k_center=1.0,
-        k_limit=0.0,
-        q_nominal_rad=q_nom,
-        weights=np.ones(kin.nv),
-    )
-    centering = JointCenteringTask.from_kinematics(kin, cfg)
-    manip = ManipulabilityTask(kin, ManipulabilityTaskConfig(k_mu=0.8))
-    composer = SecondaryComposer(centering, None, manipulability=manip, max_qdot_frac=0.0)
-    q = q_nom.copy()
-    q[1] = np.deg2rad(170.0)  # twisted J1
-    qdot = composer.compose(
-        q,
-        None,
-        None,
-        arm_suppressed=True,
-        centering_suppressed=False,
-        manipulability_active=True,
-        centering_sigma_fade=False,
-        sigma_min=0.05,
-        sigma_ref=0.08,
-    )
-    # Centering alone wants −J1; combined stack must still unwind J1.
-    assert qdot[1] < -0.05
 
 
 def test_srs_midpath_ik_none_raises_after_streak(monkeypatch):
@@ -236,8 +145,8 @@ def test_direct_joint_ptp_skips_proxqp():
     assert abs(float(r.qdot[0]) - 0.05) < 1e-6 or abs(float(r.rail_vel_pin) - 0.05) < 1e-6
 
 
-def test_plan_anchor_wraps_revolute_delta():
-    """plan_anchor must use wrap_joint_delta (J1 ~180° must not take long way)."""
+def test_plan_joint_wraps_revolute_delta():
+    """plan_joint must use wrap_joint_delta (J1 ~180° must not take long way)."""
     from rm75_control.control.joint_admittance_8dof.api import SecondaryPolicy
     from rm75_control.control.joint_admittance_8dof.reference import (
         JointSmoothMoveReference,
@@ -254,9 +163,7 @@ def test_plan_anchor_wraps_revolute_delta():
             self.q_cmd = q0.copy()
 
     inner = _Inner()
-    ff = SecondaryPolicy(qdot_ff="plan_anchor").make_qdot_ff_provider(inner, ref)
+    ff = SecondaryPolicy(qdot_ff="plan_joint").make_qdot_ff_provider(inner, ref)
     assert ff is not None
-    # At t=0, q_plan≈q0 → small ff; advance plan and keep q_cmd at start.
     qdot = ff(2.0)
-    # Shortest-arc pull on J1 should be positive (~toward +170°), not −190°.
     assert qdot[1] > 0.0

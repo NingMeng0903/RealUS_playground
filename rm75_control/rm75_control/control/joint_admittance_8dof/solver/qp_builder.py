@@ -127,6 +127,13 @@ class QpConfig:
     # On ProxQP failure: qdot ← fail_qdot_decay * qdot_prev (not a hard 0.5
     # chop — that was a one-tick jerk when the solver hiccupped).
     fail_qdot_decay: float = 0.85
+    # Hard wall-clock budget for one ProxQP attempt+retry (ms).  Exceeding
+    # this skips the retry and returns fail — prevents GIL freezes of
+    # multiple seconds near σ→0 that starve the rail Modbus loop (PANIC).
+    max_solve_ms: float = 8.0
+    # Below this σ_min, Cartesian twist (incl. force) is scaled down so
+    # nullspace escape / rail recruitment can win over force-driven collapse.
+    twist_sigma_floor: float = 0.08
 
 
 class _ProxQpWbcBackend:
@@ -164,6 +171,7 @@ class _ProxQpWbcBackend:
         # thousands of identical lines and itself starve the control loop.
         self._warn_every = 25
         self._warn_seen = 0
+        self._max_solve_s = max(1.0e-3, float(getattr(cfg, "max_solve_ms", 8.0)) * 1.0e-3)
 
     def _status(self):
         return self.qp.results.info.status
@@ -181,6 +189,8 @@ class _ProxQpWbcBackend:
         lo: np.ndarray,
         hi: np.ndarray,
     ) -> np.ndarray:
+        import time as _time
+
         if not self._initialized:
             self.qp.init(H, g, A, b, C, lo, hi)
             self._initialized = True
@@ -200,20 +210,27 @@ class _ProxQpWbcBackend:
             self.qp.settings.max_iter = self._max_iter
             self.qp.update(H=H, g=g, A=A, b=b, C=C, l=lo, u=hi)
 
+        t0 = _time.perf_counter()
         self.qp.solve()
+        elapsed = _time.perf_counter() - t0
 
         if not self._solved():
-            # First retry: cold-start + loose eps + fewer iters.  Near
-            # singularity a second full max_iter=3000 solve can hold the GIL
-            # for seconds and make Ctrl+C appear dead.
-            self.qp.settings.initial_guess = (
-                self._px.proxqp.InitialGuess.NO_INITIAL_GUESS
-            )
-            self.qp.settings.eps_abs = self._eps_loose
-            retry_iters = int(min(max(int(self._max_iter), 1), 400))
-            self.qp.settings.max_iter = retry_iters
-            self.qp.solve()
-            self.qp.settings.max_iter = int(self._max_iter)
+            # First retry: cold-start + loose eps + fewer iters.  Skip the
+            # retry if the first attempt already burned the wall budget —
+            # near σ→0 a second full solve can hold the GIL for seconds
+            # (rail Modbus starves → encoder freeze → PANIC; Ctrl+C feels dead).
+            remaining = self._max_solve_s - elapsed
+            if remaining > 1.0e-3:
+                self.qp.settings.initial_guess = (
+                    self._px.proxqp.InitialGuess.NO_INITIAL_GUESS
+                )
+                self.qp.settings.eps_abs = self._eps_loose
+                retry_iters = int(
+                    min(max(int(self._max_iter), 1), 200, max(int(remaining / 0.00005), 20))
+                )
+                self.qp.settings.max_iter = retry_iters
+                self.qp.solve()
+                self.qp.settings.max_iter = int(self._max_iter)
 
         if not self._solved():
             self.fail_count += 1
@@ -326,8 +343,8 @@ class QpIkController:
     def backend_name(self) -> str:
         return type(self.backend).__name__.replace("_", "").replace("Backend", "").lower()
 
-    def reset(self, q0_rad: np.ndarray) -> None:
-        del q0_rad
+    def reset(self, q0_rad: np.ndarray | None = None) -> None:
+        del q0_rad  # QP state is velocity history / LPF only
         self.qdot_prev = np.zeros(self.kin.nv, dtype=float)
         self._m_diag_lpf = None
         self._task_scale_lpf = 1.0
@@ -501,10 +518,15 @@ class QpIkController:
             np.ascontiguousarray(hi),
         )
         if x is None:
-            # Solver failure: exponential decay of previous velocity.  A hard
-            # qdot=0 (or 0.5 chop) is a one-tick jerk; α≈0.85 keeps motion
-            # continuous while still settling within ~30 ticks at 200 Hz.
-            qdot = float(self.cfg.fail_qdot_decay) * self.qdot_prev
+            # Solver failure: exponential decay of previous velocity.  Near
+            # σ→0 decay harder — keeping a large qdot_prev is what drove the
+            # elbow straight in force-hybrid retract before the next tick
+            # burned seconds in ProxQP.
+            decay = float(self.cfg.fail_qdot_decay)
+            sigma_ref = float(self.cfg.sr_damping.sigma_ref)
+            if sigma_ref > 1e-9 and sigma_min < sigma_ref:
+                decay = min(decay, 0.4)
+            qdot = decay * self.qdot_prev
             slack = np.zeros(ns, dtype=float)
         else:
             qdot = x[:nv]

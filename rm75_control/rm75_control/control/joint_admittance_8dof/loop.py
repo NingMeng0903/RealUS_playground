@@ -332,7 +332,7 @@ class JointIkController:
 
     def reset(self, q0_rad: np.ndarray) -> None:
         self.q_cmd = np.asarray(q0_rad, dtype=float).copy()
-        self.core.reset(self.q_cmd)
+        self.core.reset()
         self.safety.reset(self.q_cmd)
         if self.arm_task is not None:
             self.arm_task.reset(self.q_cmd)
@@ -466,6 +466,22 @@ class JointIkController:
         q_rot = q_meas if q_meas is not None else q_prev
         twist_base = self._twist_to_base(twist, q_rot)
 
+        # Soften Cartesian (incl. force) before the QP when already near
+        # singularity.  Slack QP absorbs infeasible twists — it does NOT stop
+        # force-hybrid from driving the elbow straight; attenuating v_cmd
+        # lets rail-extension / ∇μ ascent reclaim the nullspace.
+        sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
+        J_pre = self.kin.jacobian(q_prev)
+        sigma_pre = float(self.kin.singular_values(J_pre).min())
+        if sigma_ref > 1e-9 and sigma_pre < sigma_ref:
+            floor = float(getattr(self.cfg.qp, "twist_sigma_floor", 0.08))
+            twist_scale = max(float(sigma_pre / sigma_ref), floor)
+            # Below half σ_ref, square the scale so force retract cannot
+            # keep collapsing posture while σ→0.
+            if sigma_pre < 0.5 * sigma_ref:
+                twist_scale = max(twist_scale * twist_scale, 0.5 * floor)
+            twist_base = twist_base * twist_scale
+
         # Rail mode dispatch (top-level + substyle)
         locked_hold = self.is_locked_hold
         rail_only = (
@@ -488,9 +504,7 @@ class JointIkController:
             v_lim_ff = np.asarray(self.safety.lim.v_max, dtype=float)
             qdot_ff = np.clip(np.asarray(qdot_ff, dtype=float), -v_lim_ff, v_lim_ff)
 
-        # Industrial MoveJ: track the joint plan directly.  Cartesian ProxQP
-        # equality near σ dips commanded 2–3× plan rate then stalled the GIL
-        # for seconds (CSV: multi-second wall gaps mid-movej→d).
+        # Industrial MoveJ: integrate joint plan (+fb); skip Cartesian ProxQP.
         if self._direct_joint_ptp and qdot_ff is not None:
             qdot_cmd = np.asarray(qdot_ff, dtype=float).copy()
             q_next = q_prev + qdot_cmd * dt
@@ -581,10 +595,7 @@ class JointIkController:
             and self._rail_ext_active
             and self._rail_mode == RailMode.COUPLED
         ):
-            sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
-            sigma_now = float(
-                self.kin.singular_values(self.kin.jacobian(q_prev)).min()
-            )
+            sigma_now = float(sigma_pre)
             # Keep rail-extension authority below the (possibly softened)
             # Cartesian task so the QP never inverts priorities near σ dips.
             sig_scale = 1.0
@@ -614,9 +625,11 @@ class JointIkController:
             if w_ext > 0.0:
                 rail_task_vel = v_ext
                 rail_task_weight = w_ext
-            elif self.rail_ext_task.last_limit_saturated and sigma_now < sigma_ref:
-                # Rail cannot help further: escape arm singularities in the
-                # nullspace instead of straightening the arm.
+            # Escape arm singularities in the nullspace whenever σ is
+            # depressed — not only when the rail hits a travel stop.  Force
+            # retract with ext_err≈0 still collapsed the elbow while rail
+            # recruitment alone was too weak (hardware: σ→0, 4.7 s freeze).
+            if sigma_ref > 1e-9 and sigma_now < sigma_ref:
                 manip_for_saturation = True
 
         r = self.core.step(

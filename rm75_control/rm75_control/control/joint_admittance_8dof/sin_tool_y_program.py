@@ -65,8 +65,6 @@ class ScanTargetD:
     pose_id: np.ndarray
     q_target_rad: np.ndarray
     d_target: str
-    skip_ik: bool = False
-    move_mode_hint: str | None = None
 
 
 def load_slot_joints_only(slot: str) -> tuple[np.ndarray, np.ndarray, dict]:
@@ -331,8 +329,6 @@ def _resolve_scan_target_joints(
         pose_id=pose_id,
         q_target_rad=q_target_rad,
         d_target="joints",
-        skip_ik=True,
-        move_mode_hint=None,
     )
 
 
@@ -384,8 +380,6 @@ def _resolve_scan_target_kin_fk(
         pose_id=pose_id,
         q_target_rad=q_target_rad,
         d_target="kin-fk",
-        skip_ik=True,
-        move_mode_hint=None,
     )
 
 
@@ -469,8 +463,6 @@ def _resolve_scan_target_legacy(
         pose_id=pose_id,
         q_target_rad=q_target_rad,
         d_target="legacy",
-        skip_ik=True,
-        move_mode_hint=None,
     )
 
 
@@ -773,7 +765,6 @@ class BuiltSinToolYProgram:
     compiled: list
     inner: JointIkController
     kin: RobotKinematics
-    track_axes: np.ndarray
     force_observer: Any
 
 
@@ -792,8 +783,6 @@ def build_sin_tool_y_program(
     )
     inner_cfg = build_joint_ik_config(raw)
     inner = JointIkController(kin, inner_cfg)
-    hm_cfg = raw.get("hybrid_motion", {})
-    track_axes = np.asarray(hm_cfg.get("track_axes", [1, 1, 0, 1, 1, 1]), dtype=float)
     max_lin = (
         float(params.cartesian_max_lin_vel)
         if params.cartesian_max_lin_vel is not None
@@ -816,8 +805,6 @@ def build_sin_tool_y_program(
             flush=True,
         )
     move_mode = str(params.plan_move_mode)
-    # Industrial split: PTP → joint; scan/track → Cartesian.  No mid-flight
-    # detect-and-switch — mode is chosen once by the caller (--move-mode).
     if move_mode == "joint":
         move_phase = WbcArm.make_movej_phase(
             kin,
@@ -987,7 +974,6 @@ def build_sin_tool_y_program(
         compiled=compiled,
         inner=inner,
         kin=kin,
-        track_axes=track_axes,
         force_observer=force_observer,
     )
 
@@ -1040,7 +1026,6 @@ def make_task_params_from_args(
     pose_d: np.ndarray,
     plan,
     psi_tgt: float | None,
-    auto_joint: bool,
     desired_z: float,
     enable_force: bool,
     psi_left_rad: float | None = None,
@@ -1052,27 +1037,17 @@ def make_task_params_from_args(
     return SinToolYTaskParams(
         config_path=config_path,
         slot=str(args.slot),
-        approach_dz_mm=float(args.approach_dz_mm),
-        use_force_id_pose=bool(args.use_force_id_pose),
-        move_duration=args.move_duration,
-        move_duration_margin=float(args.move_duration_margin),
-        move_duration_min=float(args.move_duration_min),
-        move_duration_max=float(args.move_duration_max),
         move_kp=float(args.move_kp),
-        move_mode=str(args.move_mode),
-        auto_joint=bool(auto_joint),
         y_pp_cm=float(args.y_pp_cm),
         max_vel_cm_s=float(args.max_vel_cm_s),
         period_s=args.period_s,
         desired_z=float(desired_z),
         scan_duration=float(args.scan_duration),
-        hold_s=float(args.hold_s),
         hold_at_d_s=float(args.hold_at_d_s),
         rail_move_cm=float(args.rail_move_cm),
         rail_move_mode=str(args.rail_move_mode),
         rail_move_dir=str(args.rail_move_dir),
         enable_force=bool(enable_force),
-        log_interval=float(args.log_interval),
         log_csv=args.log_csv,
         rail_log_csv=getattr(args, "rail_log_csv", None),
         cartesian_max_lin_vel=args.cartesian_max_lin_vel,
@@ -1082,7 +1057,6 @@ def make_task_params_from_args(
         plan_duration_s=float(plan.duration_s),
         plan_move_mode=str(plan.move_mode),
         plan_gov_joint_max_deg=float(plan.gov_joint_max_deg),
-        plan_meta={k: float(v) for k, v in plan.meta.items() if isinstance(v, (int, float))},
         psi_tgt=psi_tgt,
         psi_toggle_period_s=float(getattr(args, "psi_toggle_period", 0.0) or 0.0),
         psi_side_offset_rad=np.deg2rad(

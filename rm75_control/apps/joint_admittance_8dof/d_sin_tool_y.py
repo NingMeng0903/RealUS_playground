@@ -439,11 +439,7 @@ def main() -> int:
                 flush=True,
             )
 
-        # Industrial split (ABB/KUKA/Fanuc style):
-        #   move→D PTP  → joint space (default --move-mode joint)
-        #   scan/track  → Cartesian / hybrid
-        # No runtime detect-and-switch between MoveJ/MoveL.
-        auto_joint = False
+        # PTP mode is explicit (--move-mode); scan/track stays Cartesian/hybrid.
         move_mode = str(args.move_mode)
         plan = compute_move_plan(
             kin,
@@ -453,7 +449,6 @@ def main() -> int:
             v_scale=inner_cfg.v_scale,
             duration_s=args.move_duration,
             move_mode=move_mode,
-            auto_select_joint=False,
             peak_joint_v_frac=float(args.move_duration_margin),
             max_lin_vel_m_s=max_lin,
             duration_min_s=float(args.move_duration_min),
@@ -462,9 +457,9 @@ def main() -> int:
             sigma_ref=sigma_ref,
             euler_order=inner_cfg.euler_order,
         )
-        mode_label = "MoveJ (joint PTP)" if plan.move_mode == "joint" else "MoveL/SRS (Cartesian)"
+        mode_label = "MoveJ" if plan.move_mode == "joint" else "MoveL/SRS"
         if args.verbose:
-            print(f"  move mode: {mode_label} (explicit --move-mode {move_mode})", flush=True)
+            print(f"  move mode: {mode_label} (--move-mode {move_mode})", flush=True)
 
         if not plan.meta.get("user_override"):
             if args.verbose:
@@ -744,7 +739,6 @@ def main() -> int:
             pose_d=pose_d,
             plan=plan,
             psi_tgt=psi_tgt,
-            auto_joint=auto_joint,
             desired_z=desired_z,
             enable_force=enable_force,
             psi_left_rad=psi_left,

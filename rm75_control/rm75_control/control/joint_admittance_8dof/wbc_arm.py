@@ -98,13 +98,11 @@ class WbcArm:
         self._client = phase_client
         self.kin = kin or RobotKinematics()
         self.default_timeout_s = float(default_timeout_s)
-        self._owns_client = phase_client is None
 
     def connect(self, *, timeout_s: float = 30.0) -> int:
         """Attach to window A phase IPC hub. Returns 0 on success, -1 on failure."""
         if self._client is None:
             self._client = PhaseCommandClient()
-            self._owns_client = True
         try:
             self._client.wait_for_hub(timeout_s=timeout_s)
             return OK
@@ -501,9 +499,7 @@ class WbcArm:
             pose_d,
             v_scale=_v_to_scale(v),
             move_mode=move_mode,  # type: ignore[arg-type]
-            auto_select_joint=False,
         )
-        # Faster v → shorter duration (already via v_scale); keep plan.
         return plan
 
     def _make_move_params(
@@ -516,14 +512,12 @@ class WbcArm:
         move_mode: str,
         v: int,
     ) -> SinToolYTaskParams:
+        del v  # speed already baked into plan.duration_s via v_scale
         return SinToolYTaskParams(
             config_path=self.config_path,
             slot="wbc_arm",
-            move_mode=move_mode,
-            auto_joint=False,
             scan_duration=0.0,
             hold_at_d_s=0.0,
-            hold_s=0.0,
             rail_move_cm=0.0,
             enable_force=False,
             q0_rad=np.asarray(q0_rad, dtype=float).reshape(-1).tolist(),
@@ -532,13 +526,7 @@ class WbcArm:
             plan_duration_s=float(plan.duration_s),
             plan_move_mode=move_mode,
             plan_gov_joint_max_deg=float(plan.gov_joint_max_deg),
-            plan_meta={
-                k: float(val)
-                for k, val in plan.meta.items()
-                if isinstance(val, (int, float))
-            },
             move_kp=2.0,
-            move_duration_margin=float(_v_to_scale(v)),
         )
 
     def _submit(
