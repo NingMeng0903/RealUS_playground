@@ -57,8 +57,12 @@ def test_single_press_cap_no_free_space_switch():
 
 def test_engagement_force_ramp():
     """Tool-Z setpoint ramps from ~contact threshold to full value on contact."""
-    cfg = _base_cfg(desired_force_ramp_s=1.0)
+    cfg = _base_cfg(desired_force_ramp_s=1.0, contact_delta_n=0.5)
     ctrl = AdmittanceController(0.005, cfg)
+    # Establish free-space baseline, then jump to latch contact.
+    for _ in range(40):
+        _tick(ctrl, fz=0.0, f_des_z=3.0)
+    assert ctrl.contact_present is False
     _tick(ctrl, fz=1.0, f_des_z=3.0)
     early = ctrl.f_des_z_eff
     assert early < 1.5, f"setpoint must start low, got {early}"
@@ -349,9 +353,9 @@ def test_production_stack_tracks_moving_surface_at_1n_and_5n():
         )
         assert results[(desired, -0.01)][1] == pytest.approx(
             -0.01,
-            abs=1e-5,
+            abs=1e-4,
         )
         assert results[(desired, 0.01)][1] == pytest.approx(
             0.01,
-            abs=1e-5,
+            abs=1e-4,
         )

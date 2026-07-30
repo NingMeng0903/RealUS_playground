@@ -1,4 +1,4 @@
-"""Hysteretic tool-Z contact latch with per-contact force ramp re-arm."""
+"""Hysteretic tool-Z contact latch on sudden force increase vs baseline."""
 
 from __future__ import annotations
 
@@ -17,15 +17,16 @@ DT = 0.005
 
 def _controller(**over) -> AdmittanceController:
     kw = dict(
+        contact_delta_n=0.5,
         contact_threshold_n=0.8,
-        contact_release_n=0.3,
+        contact_release_n=0.25,
         contact_release_ticks=5,
         contact_use_fz_only=True,
+        contact_baseline_tau_s=0.05,
         deadband_n=0.0,
         deadband_width_n=0.0,
         desired_force_ramp_s=0.5,
         seek_vz_m_s=0.015,
-        seek_force_sat_n=1.0,
         force_barrier=ForceBarrierConfig(enabled=False),
         proactive_ff=ProactiveFfConfig(enabled=False),
         var_damping_enabled=False,
@@ -52,15 +53,31 @@ def _tick(ctrl: AdmittanceController, fz: float, f_des: float = 2.0) -> None:
     )
 
 
-def test_contact_latches_above_threshold():
+def _warm_baseline(ctrl: AdmittanceController, fz: float = 0.45, ticks: int = 40) -> None:
+    for _ in range(ticks):
+        _tick(ctrl, fz=fz)
+
+
+def test_constant_bias_does_not_latch():
     ctrl = _controller()
+    _warm_baseline(ctrl, fz=0.45)
     assert ctrl.contact_present is False
-    _tick(ctrl, fz=1.0)
+    for _ in range(100):
+        _tick(ctrl, fz=0.45)
+    assert ctrl.contact_present is False
+
+
+def test_contact_latches_on_sudden_increase():
+    ctrl = _controller()
+    _warm_baseline(ctrl, fz=0.45)
+    assert ctrl.contact_present is False
+    _tick(ctrl, fz=0.45 + 0.55)  # delta 0.55 >= contact_delta_n 0.5
     assert ctrl.contact_present is True
 
 
-def test_release_requires_consecutive_low_force_ticks():
-    ctrl = _controller(contact_release_ticks=5, contact_release_n=0.3)
+def test_release_requires_consecutive_near_baseline_ticks():
+    ctrl = _controller(contact_release_ticks=5, contact_release_n=0.25)
+    _warm_baseline(ctrl, fz=0.0)
     _tick(ctrl, fz=1.0)
     assert ctrl.contact_present is True
     for _ in range(4):
@@ -71,11 +88,12 @@ def test_release_requires_consecutive_low_force_ticks():
 
 
 def test_brief_force_dip_does_not_release_contact():
-    ctrl = _controller(contact_release_ticks=5, contact_release_n=0.3)
+    ctrl = _controller(contact_release_ticks=5, contact_release_n=0.25)
+    _warm_baseline(ctrl, fz=0.0)
     _tick(ctrl, fz=1.0)
     for _ in range(3):
         _tick(ctrl, fz=0.1)
-    _tick(ctrl, fz=1.0)  # recovers before release_ticks
+    _tick(ctrl, fz=1.0)
     assert ctrl.contact_present is True
     for _ in range(10):
         _tick(ctrl, fz=0.1)
@@ -85,16 +103,11 @@ def test_brief_force_dip_does_not_release_contact():
 def test_release_resets_force_ramp_and_proactive_reference():
     ctrl = _controller(
         contact_release_ticks=3,
-        contact_release_n=0.3,
+        contact_release_n=0.25,
         desired_force_ramp_s=1.0,
-        proactive_ff=ProactiveFfConfig(
-            enabled=True,
-            gain_mode="fixed",
-            gain=0.10,
-            leak_s=1e6,
-            alpha_leak=0.0,
-        ),
+        proactive_ff=ProactiveFfConfig(enabled=True),
     )
+    _warm_baseline(ctrl, fz=0.0)
     for _ in range(300):
         _tick(ctrl, fz=1.5, f_des=3.0)
     assert ctrl.f_des_z_eff == 3.0
@@ -103,7 +116,6 @@ def test_release_resets_force_ramp_and_proactive_reference():
         _tick(ctrl, fz=0.05, f_des=3.0)
     assert ctrl.contact_present is False
     assert ctrl.v_r_z == 0.0
-    # Re-engage: ramp must restart from near the contact threshold.
     _tick(ctrl, fz=1.0, f_des=3.0)
     assert ctrl.contact_present is True
     assert ctrl.f_des_z_eff < 1.5

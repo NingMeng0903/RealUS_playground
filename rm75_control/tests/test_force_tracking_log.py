@@ -36,10 +36,8 @@ def test_force_log_has_energy_aware_reference_and_barrier_telemetry(tmp_path):
 
     outer = Outer()
     outer.controller = controller
-    controller.damping_trend_z = 18.5
     controller.cap_press_z = 0.012
     controller.cap_retract_z = 0.034
-    controller.f_dot_z = -12.5
     controller.contact_present = True
     logger.write(
         0.0,
@@ -68,16 +66,14 @@ def test_force_log_has_energy_aware_reference_and_barrier_telemetry(tmp_path):
     assert "force_reference_gate_scale" in header
     assert "force_reference_accel_m_s2" in header
     assert "force_reference_reversal_reset" in header
-    assert "damping_trend_z" in header
+    assert "damping_trend_z" not in header
+    assert "f_dot_z" not in header
     assert "cap_press_z" in header
     assert "cap_retract_z" in header
-    assert "f_dot_z" in header
     assert "contact_present" in header
     assert "vz_achieved_tool" in header
     values = dict(zip(header, rows[1]))
-    assert values["damping_trend_z"] == "18.50"
     assert values["cap_press_z"] == "0.012000"
     assert values["cap_retract_z"] == "0.034000"
-    assert values["f_dot_z"] == "-12.5000"
     assert values["contact_present"] == "1"
     assert values["vz_achieved_tool"] == "0.002000"

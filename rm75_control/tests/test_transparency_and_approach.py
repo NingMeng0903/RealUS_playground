@@ -133,6 +133,34 @@ def test_approach_speed_decoupled_from_desired_force():
     assert abs(values.mean() - cfg.seek_vz_m_s) / cfg.seek_vz_m_s <= 0.10
 
 
+def test_approach_speed_invariant_to_free_air_bias():
+    """0.45 N constant sensor bias must not change free-space descent rate."""
+    cfg = _production_config()
+    speeds = []
+    for bias in (0.0, 0.45):
+        ctrl = AdmittanceController(DT, cfg)
+        samples = []
+        for _ in range(200):
+            force = np.zeros(6)
+            force[2] = bias
+            target = np.zeros(6)
+            target[2] = 2.0
+            samples.append(
+                ctrl.compute_velocity_command(
+                    POSE,
+                    POSE,
+                    np.zeros(6),
+                    force,
+                    target,
+                    f_ext_raw=force,
+                    dt_actual=DT,
+                )[2]
+            )
+        assert ctrl.contact_present is False
+        speeds.append(float(np.mean(samples[-50:])))
+    assert abs(speeds[1] - speeds[0]) / max(abs(speeds[0]), 1e-9) <= 0.05
+
+
 def test_first_contact_peak_near_desired_plus_budget():
     """Seek→impact on a stiff spring should not grossly overshoot f_des+budget."""
     cfg = _production_config()

@@ -1,7 +1,15 @@
 """Force-space Faverjon velocity damper (press / retract caps).
 
-Predicts ``f + ḟ·t_react`` and limits tool-Z speed so force stays inside
-``[f_keep, f_des + budget]``. Caps do not use ``K̂e`` (often stale at contact).
+Maps Faverjon & Tournassoud 1987 eq. (6) into force space:
+
+    ḋ ≥ −ξ (d − d_s) / (d_i − d_s)    for d ≤ d_i
+
+with ``d = F_max − F_z``. Caps use only measured force (no ḟ prediction).
+
+Free-space press ceiling is ``seek_vz_m_s`` (bias-immune approach).
+In contact the ceiling rises to ``v_z_cap`` so under-force chase is not
+seek-starved (same split as the pre-alignment controller, without the
+free-space |fz| brake or ḟ term).
 """
 
 from __future__ import annotations
@@ -12,13 +20,11 @@ from dataclasses import dataclass
 @dataclass
 class ForceBarrierConfig:
     enabled: bool = True
-    t_react_s: float = 0.030
     budget_min_n: float = 0.5
     budget_frac: float = 0.4
     f_keep_n: float = 0.5
     v_ref_m_s: float = 0.05
     v_min_retract_m_s: float = 0.002
-    fdot_lpf_s: float = 0.040
 
     @classmethod
     def from_dict(cls, raw: dict) -> ForceBarrierConfig:
@@ -27,82 +33,52 @@ class ForceBarrierConfig:
             b = {}
         return cls(
             enabled=bool(b.get("enabled", True)),
-            t_react_s=float(b.get("t_react_s", 0.030)),
             budget_min_n=float(b.get("budget_min_n", 0.5)),
             budget_frac=float(b.get("budget_frac", 0.4)),
             f_keep_n=float(b.get("f_keep_n", 0.5)),
             v_ref_m_s=float(b.get("v_ref_m_s", 0.05)),
             v_min_retract_m_s=float(b.get("v_min_retract_m_s", 0.002)),
-            fdot_lpf_s=float(b.get("fdot_lpf_s", 0.040)),
         )
 
 
 class ForceSpaceVelocityDamper:
     def __init__(self, cfg: ForceBarrierConfig) -> None:
         self.cfg = cfg
-        self.f_dot_z = 0.0
-        self._f_prev: float | None = None
         self.cap_press_z = 0.0
         self.cap_retract_z = 0.0
-        self.f_pred_z = 0.0
 
     def reset(self) -> None:
-        self.f_dot_z = 0.0
-        self._f_prev = None
         self.cap_press_z = 0.0
         self.cap_retract_z = 0.0
-        self.f_pred_z = 0.0
-
-    def update_fdot(self, f_z: float, dt_eff: float) -> float:
-        if dt_eff <= 0.0:
-            return self.f_dot_z
-        if self._f_prev is None:
-            self._f_prev = float(f_z)
-            self.f_dot_z = 0.0
-            return self.f_dot_z
-        raw = (float(f_z) - self._f_prev) / dt_eff
-        self._f_prev = float(f_z)
-        tau = max(float(self.cfg.fdot_lpf_s), 1e-6)
-        alpha = min(1.0, dt_eff / tau)
-        self.f_dot_z += alpha * (raw - self.f_dot_z)
-        return self.f_dot_z
 
     def caps(
         self,
         *,
         f_z: float,
         f_des_z: float,
-        in_contact: bool,
         v_z_cap: float,
         seek_vz_m_s: float,
-        contact_enter_n: float = 0.8,
+        in_contact: bool = False,
     ) -> tuple[float, float]:
         cfg = self.cfg
         v_hi = max(float(v_z_cap), 0.0)
+        seek = max(float(seek_vz_m_s), 0.0)
+        if v_hi > 0.0 and seek > 0.0:
+            seek = min(seek, v_hi)
+        # Task-layer ceiling only: seek in free space, full vz cap in contact.
+        press_ceiling = v_hi if in_contact or seek <= 0.0 else seek
+        if press_ceiling <= 0.0:
+            press_ceiling = v_hi
+
         if not cfg.enabled:
-            self.cap_press_z = v_hi
+            self.cap_press_z = press_ceiling if press_ceiling > 0.0 else v_hi
             self.cap_retract_z = v_hi
-            self.f_pred_z = float(f_z)
             return self.cap_press_z, self.cap_retract_z
 
-        if not in_contact:
-            seek = max(float(seek_vz_m_s), 0.0)
-            if v_hi > 0.0:
-                seek = min(seek, v_hi) if seek > 0.0 else v_hi
-            enter = max(float(contact_enter_n), 1e-6)
-            if seek > 0.0:
-                # Close press as |fz| → latch threshold; keep ≥25% seek.
-                frac = 0.25 + 0.75 * max(0.0, 1.0 - abs(float(f_z)) / enter)
-                seek *= frac
-            self.cap_press_z = seek if seek > 0.0 else v_hi
-            self.cap_retract_z = v_hi
-            self.f_pred_z = float(f_z)
-            return self.cap_press_z, self.cap_retract_z
-
+        # Hand guidance: no force setpoint → no force-space constraint.
         if abs(float(f_des_z)) < 1e-6:
             self.cap_press_z = v_hi
             self.cap_retract_z = v_hi
-            self.f_pred_z = float(f_z)
             return self.cap_press_z, self.cap_retract_z
 
         budget = max(
@@ -110,17 +86,16 @@ class ForceSpaceVelocityDamper:
             float(cfg.budget_frac) * abs(float(f_des_z)),
             1e-6,
         )
-        f_pred = float(f_z) + self.f_dot_z * max(float(cfg.t_react_s), 0.0)
-        self.f_pred_z = f_pred
         v_ref = max(float(cfg.v_ref_m_s), 0.0)
+        f_max = float(f_des_z) + budget
 
-        cap_press = max(0.0, ((float(f_des_z) + budget) - f_pred) / budget * v_ref)
-        if v_hi > 0.0:
-            cap_press = min(cap_press, v_hi)
+        cap_press = max(0.0, (f_max - float(f_z)) / budget * v_ref)
+        if press_ceiling > 0.0:
+            cap_press = min(cap_press, press_ceiling)
 
         cap_retract = max(
             float(cfg.v_min_retract_m_s),
-            (f_pred - float(cfg.f_keep_n)) / budget * v_ref,
+            (float(f_z) - float(cfg.f_keep_n)) / budget * v_ref,
         )
         if v_hi > 0.0:
             cap_retract = min(cap_retract, v_hi)

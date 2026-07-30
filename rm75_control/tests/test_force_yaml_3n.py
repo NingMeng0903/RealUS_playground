@@ -73,40 +73,35 @@ def test_f_err_gate_relative_to_setpoint():
 
 
 def test_proactive_feedforward_in_yaml():
-    raw = yaml.safe_load(Path("configs/joint_admittance.yaml").read_text())
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     hm = raw["hybrid_motion"]
     assert hm["proactive_feedforward"] is True
     assert hm["proactive_retract_only"] is False
-    assert hm["proactive_gain"] == pytest.approx(
-        hm["proactive_retract_gain"]
-    )
-    assert 0.0 <= hm["proactive_press_is_gate_start"] < hm[
-        "proactive_press_is_gate"
-    ]
-    assert hm["proactive_press_is_gate"] > 0.0
-    assert hm["proactive_press_drive_max"] == pytest.approx(1.0)
-    assert hm["proactive_retract_drive_max"] == pytest.approx(1.0)
+    assert hm["proactive_gain_mode"] == "ke_normalized"
+    assert hm["tau_ff_s"] > 0.0
+    assert hm["ke_floor_ff"] > 0.0
+    assert hm["proactive_leak_s"] > 0.0
     assert hm["proactive_reset_on_reversal"] is True
     assert hm["v_r_max_m_s"] < hm["max_vz_tool_m_s"]
-    assert "li2022" not in hm
-    assert "proactive_mode" not in hm
 
 
 def test_contact_release_and_force_barrier_enabled_in_8dof_yaml():
     raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     hm = raw["hybrid_motion"]
-    assert hm["contact_release_n"] < hm["contact_threshold_n"]
-    assert hm["contact_release_ticks"] >= 5
+    assert hm["contact_delta_n"] > 0.0
+    assert hm["contact_release_n"] < hm["contact_delta_n"]
+    assert hm["contact_release_ticks"] >= 10
     barrier = hm["force_barrier"]
     assert barrier["enabled"] is True
-    assert barrier["t_react_s"] > 0.0
+    assert "t_react_s" not in barrier
+    assert "fdot_lpf_s" not in barrier
     assert barrier["budget_min_n"] > 0.0
-    assert barrier["budget_frac"] > 0.0
     assert hm["damping_law"] == "trend"
+    assert hm["damping_alpha_e"] > 0.0
     assert hm["var_damping_d_u"] == 0.0
-    assert hm["proactive_gain_mode"] == "ke_normalized"
     assert hm["seek_vz_m_s"] > 0.0
     assert raw["force"]["causal_fc_hz"] == pytest.approx(10.0)
+    assert raw["force"]["causal_order"] == 2
 
 
 def test_yaml_unified_vz_cap():

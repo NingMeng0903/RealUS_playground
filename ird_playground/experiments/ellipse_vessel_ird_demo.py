@@ -86,12 +86,19 @@ class DemoConfig:
     w_rail_anchor: float = 0.08
     seed: int = 109
     # Soft hints for phase-weighted loss (diagnostics use data-driven split).
+    # Parallel cylinder (yaw=0): ignore these for θ — symmetry ⇒ constant θ*.
     phase_a_s_max: float = 0.25
     phase_b_s_min: float = 0.35
     rail_probe_samples: int = 17
     theta_probe_samples: int = 13
-    # U-band half-width (deg): keep narrow so nearest vs opt patches separate.
-    u_band_theta_half_width_deg: float = 10.0
+    # U-band half-width (deg) about each path's θ(s).
+    u_band_theta_half_width_deg: float = 25.0
+    # Extrusion yaw about +Z (deg). 0 ⇒ generators ‖ rail; 20° breaks Y-symmetry
+    # so nearest clearance can fall along the path while opt varies θ(s).
+    cylinder_yaw_deg: float = 20.0
+    # Tip-side peak used to warm-start Δθ (constant when ‖ rail).
+    theta_peak_warmstart_deg: float = -12.0
+    w_theta_flat: float = 2.0
 
 
 def rail_half_span_m(cfg: DemoConfig) -> float:
@@ -117,6 +124,49 @@ def vessel_xz(cfg: DemoConfig) -> tuple[float, float]:
         float(cfg.ellipse_center_x_m + cfg.vessel_offset_x_m),
         float(cfg.ellipse_center_z_m + cfg.vessel_offset_z_m),
     )
+
+
+def extrusion_pivot_y(cfg: DemoConfig) -> float:
+    return 0.5 * (float(cfg.path_y_min_m) + float(cfg.path_y_max_m))
+
+
+def cylinder_yaw_rad(cfg: DemoConfig) -> float:
+    return float(np.deg2rad(float(getattr(cfg, "cylinder_yaw_deg", 0.0))))
+
+
+def body_xy_to_world(
+    x_body: torch.Tensor | np.ndarray,
+    y_body: torch.Tensor | np.ndarray,
+    cfg: DemoConfig,
+) -> tuple[torch.Tensor | np.ndarray, torch.Tensor | np.ndarray]:
+    """Rotate extrusion about +Z through (cx, y_pivot). body-Y = extrusion param."""
+    psi = cylinder_yaw_rad(cfg)
+    c, s = float(np.cos(psi)), float(np.sin(psi))
+    cx = float(cfg.ellipse_center_x_m)
+    yp = extrusion_pivot_y(cfg)
+    if isinstance(x_body, np.ndarray):
+        dx = x_body - cx
+        dy = y_body - yp
+        return cx + c * dx - s * dy, yp + s * dx + c * dy
+    dx = x_body - cx
+    dy = y_body - yp
+    return cx + c * dx - s * dy, yp + s * dx + c * dy
+
+
+def extrusion_tangent_world(cfg: DemoConfig, *, like: torch.Tensor) -> torch.Tensor:
+    """World unit tangent of the yawed extrusion (body +Y)."""
+    psi = cylinder_yaw_rad(cfg)
+    t = torch.zeros(*like.shape, 3, dtype=like.dtype, device=like.device)
+    t[..., 0] = -float(np.sin(psi))
+    t[..., 1] = float(np.cos(psi))
+    return t
+
+
+def vessel_polyline_world(cfg: DemoConfig, n: int = 40) -> np.ndarray:
+    u = np.linspace(cfg.path_y_min_m, cfg.path_y_max_m, n)
+    vx, vz = vessel_xz(cfg)
+    xw, yw = body_xy_to_world(np.full_like(u, vx), u, cfg)
+    return np.stack((xw, yw, np.full_like(u, vz)), axis=-1)
 
 
 def nearest_theta_rad(cfg: DemoConfig) -> float:
@@ -155,7 +205,11 @@ def skin_point_from_theta(
     path_y: torch.Tensor,
     cfg: DemoConfig,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Harmonic-style d=0 map: ray from vessel along θ onto the ellipse."""
+    """Harmonic-style d=0 map: ray from vessel along θ onto the ellipse.
+
+    ``path_y`` is the extrusion parameter in the body frame (‖ generators before yaw).
+    World pose applies ``cylinder_yaw_deg`` about +Z through the ellipse mid-station.
+    """
     vx, vz = vessel_xz(cfg)
     st, ct = torch.sin(theta), torch.cos(theta)
     # θ=0 points toward +Z (up); matches vessel offset along +Z.
@@ -163,13 +217,13 @@ def skin_point_from_theta(
     ox = theta.new_full(theta.shape, vx)
     oz = theta.new_full(theta.shape, vz)
     t = ray_ellipse_intersection_t(ox, oz, dir_x, dir_z, cfg)
-    p = torch.stack((ox + t * dir_x, path_y, oz + t * dir_z), dim=-1)
+    x_b = ox + t * dir_x
+    z_b = oz + t * dir_z
+    x_w, y_w = body_xy_to_world(x_b, path_y, cfg)
+    p = torch.stack((x_w, y_w, z_b), dim=-1)
+    vx_w, vy_w = body_xy_to_world(theta.new_full(theta.shape, vx), path_y, cfg)
     vessel = torch.stack(
-        (
-            theta.new_full(theta.shape, vx),
-            path_y,
-            theta.new_full(theta.shape, vz),
-        ),
+        (vx_w, vy_w, theta.new_full(theta.shape, vz)),
         dim=-1,
     )
     return p, vessel
@@ -180,12 +234,11 @@ def ellipse_surface_tcp(
     path_y: torch.Tensor,
     cfg: DemoConfig,
 ) -> torch.Tensor:
-    """TCP on ellipse skin; columns [binormal, tangent(+Y), inward→vessel]."""
+    """TCP on ellipse skin; columns [binormal, tangent(extrusion), inward→vessel]."""
     p, vessel = skin_point_from_theta(theta, path_y, cfg)
     inward = vessel - p
     inward = inward / torch.linalg.vector_norm(inward, dim=-1, keepdim=True).clamp_min(1.0e-8)
-    tangent = torch.zeros_like(inward)
-    tangent[..., 1] = 1.0
+    tangent = extrusion_tangent_world(cfg, like=theta)
     binormal = torch.cross(tangent, inward, dim=-1)
     binormal = binormal / torch.linalg.vector_norm(binormal, dim=-1, keepdim=True).clamp_min(1.0e-8)
     # Re-orthogonalize inward against (binormal, tangent).
@@ -239,11 +292,21 @@ def nearest_skin_from_vessel_np(cfg: DemoConfig, *, n_phi: int = 1440) -> tuple[
     return np.array([qx[i], qz[i]], dtype=np.float64), np.array([vx, vz], dtype=np.float64)
 
 
+def skin_xz_body_from_theta(theta_rad: float, cfg: DemoConfig) -> np.ndarray:
+    """Body-frame skin (x,z) for cross-section plots — before cylinder yaw."""
+    th = torch.tensor([float(theta_rad)], dtype=torch.float32)
+    vx, vz = vessel_xz(cfg)
+    st, ct = torch.sin(th), torch.cos(th)
+    ox = th.new_full(th.shape, vx)
+    oz = th.new_full(th.shape, vz)
+    t = ray_ellipse_intersection_t(ox, oz, st, ct, cfg)
+    x_b = float((ox + t * st)[0])
+    z_b = float((oz + t * ct)[0])
+    return np.array([x_b, z_b], dtype=np.float64)
+
+
 def harmonic_skin_from_theta_np(theta_rad: float, cfg: DemoConfig) -> np.ndarray:
-    th = torch.tensor([theta_rad], dtype=torch.float32)
-    py = torch.zeros(1, dtype=torch.float32)
-    p, _ = skin_point_from_theta(th, py, cfg)
-    return p[0, [0, 2]].detach().cpu().numpy().astype(np.float64)
+    return skin_xz_body_from_theta(theta_rad, cfg)
 
 
 def query_with_gradients(
@@ -600,9 +663,13 @@ def optimize_trajectory(
     basis = torch.as_tensor(basis_np, device=device)
     theta_limit = np.deg2rad(cfg.theta_limit_deg)
     th_nearest = float(nearest_theta_rad(cfg))
-    # θ = wrap(θ_near + Δθ(s)); |Δθ|≤theta_limit. No absolute clamp — that would
-    # trap θ_near≈π near the ±π wall and block twisting to the IRD peak.
-    raw_dtheta = torch.nn.Parameter(torch.zeros(cfg.control_points, device=device))
+    # Parallel to rail (yaw≈0): Y-translation symmetry ⇒ θ*(s) must be constant.
+    parallel = abs(float(getattr(cfg, "cylinder_yaw_deg", 0.0))) < 1.0e-3
+    # θ = wrap(θ_near + Δθ); parallel uses one scalar Δθ, else a free B-spline.
+    if parallel:
+        raw_dtheta = torch.nn.Parameter(torch.zeros(1, device=device))
+    else:
+        raw_dtheta = torch.nn.Parameter(torch.zeros(cfg.control_points, device=device))
     # Init / anchor rail to 8DOF QP-IK allocation when provided (not mid-stroke lock).
     if rail_ref_m is None:
         rail_ref = np.full(cfg.waypoints, float(cfg.rail_nominal_m), dtype=np.float64)
@@ -624,34 +691,30 @@ def optimize_trajectory(
     soft_scale = max(float(cfg.ird_softplus_scale), 1.0e-3)
     th_near_t = torch.full_like(s, th_nearest)
     nearest_scale = np.deg2rad(12.0)
-    # Control-point weights: early Δθ control points stay near 0; late ones free for twist.
-    cp_s = torch.linspace(0.0, 1.0, cfg.control_points, device=device)
-    cp_nearest_w = torch.ones(cfg.control_points, device=device)
-    cp_nearest_w = torch.where(cp_s <= float(cfg.phase_a_s_max), cp_nearest_w * 3.0, cp_nearest_w)
-    cp_nearest_w = torch.where(cp_s >= float(cfg.phase_b_s_min), cp_nearest_w * 0.25, cp_nearest_w)
-    # Sample weights along the path (same idea).
-    phase_w = torch.ones_like(s)
-    phase_w = torch.where(s <= float(cfg.phase_a_s_max), phase_w * 2.0, phase_w)
-    phase_w = torch.where(s >= float(cfg.phase_b_s_min), phase_w * 0.40, phase_w)
+    if parallel:
+        # Uniform weights — no early stick / late free that would invent a ramp.
+        cp_nearest_w = torch.ones(1, device=device)
+        phase_w = torch.ones_like(s)
+    else:
+        # Yawed extrusion: θ*(s) may vary; keep weak uniform nearest stick.
+        cp_nearest_w = torch.ones(cfg.control_points, device=device)
+        phase_w = torch.ones_like(s)
 
     def _decode_theta(raw: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        dtheta = basis @ (theta_limit * torch.tanh(raw))
-        # θ = θ_near + Δθ with |Δθ|≤limit (no absolute ±limit clamp — that would
-        # eject upper-oblique nearest ~50° when limit is 60°).
+        if parallel:
+            dtheta = (theta_limit * torch.tanh(raw[0])).expand_as(s)
+        else:
+            dtheta = basis @ (theta_limit * torch.tanh(raw))
         th = th_near_t + dtheta
         th = torch.atan2(torch.sin(th), torch.cos(th))
         return th, dtheta
 
-    # Warm-start hard toward tip-side peak (~-15°) so U-band corridors separate.
+    # Warm-start: constant Δθ toward tip-side peak (no s-ramp — that broke ‖-rail symmetry).
     with torch.no_grad():
-        th_peak = np.deg2rad(-15.0)
+        th_peak = np.deg2rad(float(getattr(cfg, "theta_peak_warmstart_deg", -12.0)))
         delta = (th_peak - th_nearest + np.pi) % (2.0 * np.pi) - np.pi
-        frac = (cp_s / max(float(cp_s[-1]), 1.0e-6)).clamp(0.0, 1.0)
-        # Earlier onset of twist for a longer blue corridor.
-        frac = ((frac - 0.15) / 0.85).clamp(0.0, 1.0)
-        frac = frac * frac * (3.0 - 2.0 * frac)
-        u = (frac * float(delta) / max(theta_limit, 1.0e-6)).clamp(-0.99, 0.99)
-        raw_dtheta.copy_(torch.atanh(u))
+        u = float(np.clip(delta / max(theta_limit, 1.0e-6), -0.99, 0.99))
+        raw_dtheta.fill_(float(np.arctanh(u)))
 
     for epoch in range(cfg.epochs):
         optimizer.zero_grad(set_to_none=True)
@@ -673,16 +736,20 @@ def optimize_trajectory(
         curvature = torch.mean(torch.diff(dtheta_s) ** 2) + torch.mean(
             (torch.diff(drail) / 0.25) ** 2
         )
+        # Explicit flatness for ‖-rail: keep θ(s) constant (symmetry).
+        theta_flat = torch.mean((dtheta_s / 0.35) ** 2)
         # Stick to QP-IK rail when feasible; only IRD hinge should pull away.
         rail_anchor = torch.mean(
             ((rail - rail_ref_t) / max(0.08, 1.0e-6)) ** 2
         )
+        w_flat = float(getattr(cfg, "w_theta_flat", 2.0)) if parallel else 0.0
         loss = (
             float(cfg.w_ird) * ird
             + float(cfg.w_nearest) * nearest
             + float(cfg.w_continuity) * continuity
             + float(cfg.w_curvature) * curvature
             + float(cfg.w_rail_anchor) * rail_anchor
+            + w_flat * theta_flat
         )
         loss.backward()
         optimizer.step()
@@ -696,15 +763,20 @@ def optimize_trajectory(
                     "continuity": float(continuity.detach()),
                     "curvature": float(curvature.detach()),
                     "rail_anchor": float(rail_anchor.detach()),
+                    "theta_flat": float(theta_flat.detach()),
                     "clearance_min": float(clearance.detach().min()),
                     "clearance_mean": float(clearance.detach().mean()),
                     "theta_dev_nearest_deg_rms": float(
                         torch.sqrt(torch.mean(dtheta ** 2)).detach() * (180.0 / np.pi)
                     ),
+                    "theta_span_deg": float(
+                        (theta.detach().max() - theta.detach().min()) * (180.0 / np.pi)
+                    ),
                     "rail_dev_ref_rms_m": float(
                         torch.sqrt(torch.mean((rail - rail_ref_t) ** 2)).detach()
                     ),
                     "m_safe": target,
+                    "parallel_cylinder": float(parallel),
                 }
             )
 
@@ -739,6 +811,8 @@ def optimize_trajectory(
         "grad_rail": final_grad_rail.cpu().numpy(),
         "history": history,
         "m_safe": target,
+        "parallel_cylinder": bool(parallel),
+        "cylinder_yaw_deg": float(getattr(cfg, "cylinder_yaw_deg", 0.0)),
     }
 
 
@@ -789,12 +863,17 @@ def render_cross_section(cfg: DemoConfig, result: dict, out_path: Path) -> dict:
         color="#bf360c",
         arrowprops=dict(arrowstyle="->", color="#bf360c", lw=1.2),
     )
+    # Fit limits to skin + markers so nothing is clipped.
+    xs_m = np.array([cx, vx, harm0[0], harm[0], nearest[0], *ex])
+    zs_m = np.array([cz, vz, harm0[1], harm[1], nearest[1], *ez])
+    pad_x = 0.04 * max(float(xs_m.max() - xs_m.min()), 1.0e-3)
+    pad_z = 0.04 * max(float(zs_m.max() - zs_m.min()), 1.0e-3)
+    ax.set_xlim(float(xs_m.min() - pad_x), float(xs_m.max() + pad_x))
+    ax.set_ylim(float(zs_m.min() - pad_z), float(zs_m.max() + pad_z))
     ax.set_aspect("equal")
     ax.set_xlabel(r"$x$ (m)")
     ax.set_ylabel(r"$z$ (m)")
-    tip = float(cfg.tip_half_angle_deg) if hasattr(cfg, "tip_half_angle_deg") else 20.0
-    roll = float(cfg.roll_half_range_deg) if hasattr(cfg, "roll_half_range_deg") else 20.0
-    ax.set_title(rf"Upper cross-section  (IRD tip$\pm${tip:.0f}$^\circ\times$roll$\pm${roll:.0f}$^\circ$)")
+    ax.set_title("Upper cross-section (body frame)")
     # Legend outside axes so upper-right markers stay visible.
     handles, labels = ax.get_legend_handles_labels()
     fig.legend(
@@ -884,7 +963,7 @@ def render_gradient_landscape(
     ax.scatter(th1[-1], r1[-1], c="#00e676", edgecolor="black", s=70, marker="^", zorder=7)
     ax.set_xlabel("surface angle (deg)")
     ax.set_ylabel("rail (mm)")
-    ax.set_title("Task-cone best IRD + path")
+    ax.set_title("Reachability field and path")
     ax.legend(
         handles=[
             Line2D([0], [0], color="#78909c", lw=2.0, label="Nearest θ(s), rail(s)"),
@@ -900,31 +979,24 @@ def render_gradient_landscape(
 def _draw_ellipse_shell(ax, cfg: DemoConfig, *, alpha: float = 0.18) -> None:
     """Opaque-enough ellipse shell + meridian/ring wireframe so the surface reads."""
     phi = np.linspace(-np.pi, np.pi, 96)
-    y = np.linspace(cfg.path_y_min_m, cfg.path_y_max_m, 40)
-    PH, YY = np.meshgrid(phi, y)
-    XX = cfg.ellipse_center_x_m + cfg.semi_axis_x_m * np.sin(PH)
-    ZZ = cfg.ellipse_center_z_m + cfg.semi_axis_z_m * np.cos(PH)
-    ax.plot_surface(XX, YY, ZZ, color="#90a4ae", alpha=alpha, linewidth=0, shade=True)
-    # End rings + a few stations.
-    for yi in np.linspace(cfg.path_y_min_m, cfg.path_y_max_m, 7):
-        ax.plot(
-            cfg.ellipse_center_x_m + cfg.semi_axis_x_m * np.sin(phi),
-            np.full_like(phi, yi),
-            cfg.ellipse_center_z_m + cfg.semi_axis_z_m * np.cos(phi),
-            color="#455a64",
-            lw=0.9,
-            alpha=0.85,
-        )
-    # Longitudinal generators (make eccentricity obvious).
+    u = np.linspace(cfg.path_y_min_m, cfg.path_y_max_m, 40)
+    PH, UU = np.meshgrid(phi, u)
+    XB = cfg.ellipse_center_x_m + cfg.semi_axis_x_m * np.sin(PH)
+    ZB = cfg.ellipse_center_z_m + cfg.semi_axis_z_m * np.cos(PH)
+    XX, YY = body_xy_to_world(XB, UU, cfg)
+    ax.plot_surface(XX, YY, ZB, color="#90a4ae", alpha=alpha, linewidth=0, shade=True)
+    # End rings + a few stations (body-u = const).
+    for ui in np.linspace(cfg.path_y_min_m, cfg.path_y_max_m, 7):
+        xb = cfg.ellipse_center_x_m + cfg.semi_axis_x_m * np.sin(phi)
+        zb = cfg.ellipse_center_z_m + cfg.semi_axis_z_m * np.cos(phi)
+        xw, yw = body_xy_to_world(xb, np.full_like(phi, ui), cfg)
+        ax.plot(xw, yw, zb, color="#455a64", lw=0.9, alpha=0.85)
+    # Longitudinal generators (make eccentricity / yaw obvious).
     for ph in np.linspace(-np.pi, np.pi, 12, endpoint=False):
-        ax.plot(
-            np.full_like(y, cfg.ellipse_center_x_m + cfg.semi_axis_x_m * np.sin(ph)),
-            y,
-            np.full_like(y, cfg.ellipse_center_z_m + cfg.semi_axis_z_m * np.cos(ph)),
-            color="#607d8b",
-            lw=0.7,
-            alpha=0.7,
-        )
+        xb = np.full_like(u, cfg.ellipse_center_x_m + cfg.semi_axis_x_m * np.sin(ph))
+        zb = np.full_like(u, cfg.ellipse_center_z_m + cfg.semi_axis_z_m * np.cos(ph))
+        xw, yw = body_xy_to_world(xb, u, cfg)
+        ax.plot(xw, yw, zb, color="#607d8b", lw=0.7, alpha=0.7)
 
 
 def sample_skin_u_band(
@@ -1028,10 +1100,12 @@ def render_u_band_cone_reachability(
     path_y = np.asarray(result["path_y_m"], dtype=np.float64)
     path_near = np.asarray(result["initial_tcp"][:, :3, 3], dtype=np.float64)
     path_opt = np.asarray(result["tcp"][:, :3, 3], dtype=np.float64)
-    half_w = float(getattr(cfg, "u_band_theta_half_width_deg", 12.0))
+    half_w = float(getattr(cfg, "u_band_theta_half_width_deg", 25.0))
+    rail_near = np.asarray(result["initial_rail_m"], dtype=np.float64)
+    rail_opt = np.asarray(result["rail_m"], dtype=np.float64)
     panels = [
-        ("A nearest", np.asarray(result["initial_theta_rad"], dtype=np.float64), np.asarray(result["initial_rail_m"], dtype=np.float64), path_near, "#e65100"),
-        ("B optimized (twisted)", np.asarray(result["theta_rad"], dtype=np.float64), np.asarray(result["rail_m"], dtype=np.float64), path_opt, "#00c853"),
+        ("Nearest", np.asarray(result["initial_theta_rad"], dtype=np.float64), rail_near, path_near, "#e65100"),
+        ("Optimized", np.asarray(result["theta_rad"], dtype=np.float64), rail_opt, path_opt, "#00c853"),
     ]
     fig = plt.figure(figsize=(14.5, 6.0), dpi=160)
     cmap = plt.colormaps["RdYlBu"]
@@ -1070,6 +1144,9 @@ def render_u_band_cone_reachability(
                 "fraction_positive": float((values > 0.0).mean()),
                 "theta_mean_deg": float(np.rad2deg(theta_c.mean())),
                 "theta_span_deg": float(np.rad2deg(theta_c.max() - theta_c.min())),
+                "rail_min_m": float(rail_c.min()),
+                "rail_max_m": float(rail_c.max()),
+                "rail_delta_m": float(rail_c.max() - rail_c.min()),
             }
             panel_values.append(values)
             panel_pts.append(pts)
@@ -1084,15 +1161,42 @@ def render_u_band_cone_reachability(
     vmin, vmax = target_c - spread, target_c + spread
 
     def _lift_path(xyz: np.ndarray, amount: float = 0.014) -> np.ndarray:
+        # Lift along the local skin→outward normal in the cross-section plane
+        # (perpendicular to the yawed extrusion tangent).
+        psi = cylinder_yaw_rad(cfg)
+        tx, ty = -np.sin(psi), np.cos(psi)
+        path_u = np.asarray(result["path_y_m"], dtype=np.float64)
+        # Match each path sample to nearest extrusion station for vessel anchor.
+        u_of = np.interp(
+            np.linspace(0.0, 1.0, len(xyz)),
+            np.linspace(0.0, 1.0, len(path_u)),
+            path_u,
+        )
         vx, vz = vessel_xz(cfg)
-        out = xyz.copy()
-        radial = out.copy()
-        radial[:, 0] -= vx
-        radial[:, 2] -= vz
-        radial[:, 1] = 0.0
+        vx_w, vy_w = body_xy_to_world(np.full_like(u_of, vx), u_of, cfg)
+        vessel = np.stack((vx_w, vy_w, np.full_like(u_of, vz)), axis=-1)
+        radial = xyz - vessel
+        # Remove component along extrusion.
+        along = radial[:, 0] * tx + radial[:, 1] * ty
+        radial = radial - np.stack((along * tx, along * ty, np.zeros_like(along)), axis=-1)
         nrm = np.linalg.norm(radial, axis=1, keepdims=True)
         nrm = np.maximum(nrm, 1.0e-8)
-        return out + amount * (radial / nrm)
+        return xyz + amount * (radial / nrm)
+
+    # Shared world AABB + equal metric box aspect (1 m on each axis matches visually).
+    vline0 = vessel_polyline_world(cfg, n=40)
+    xyz_all = [vline0, *panel_pts, *[p for p, _ in panel_paths]]
+    cloud = np.concatenate(xyz_all, axis=0)
+    lo = cloud.min(axis=0)
+    hi = cloud.max(axis=0)
+    pad = 0.02
+    lo = lo - pad
+    hi = hi + pad
+    # Cubic limits so set_box_aspect(1,1,1) ⇒ isotropic scale.
+    center = 0.5 * (lo + hi)
+    half = 0.5 * float(np.max(hi - lo))
+    lim_lo = center - half
+    lim_hi = center + half
 
     scatters = []
     for col, (title, pts, values, (path_xyz, path_color)) in enumerate(
@@ -1100,9 +1204,8 @@ def render_u_band_cone_reachability(
     ):
         ax = fig.add_subplot(1, 2, col + 1, projection="3d")
         _draw_ellipse_shell(ax, cfg, alpha=0.14)
-        vx, vz = vessel_xz(cfg)
-        yline = np.linspace(cfg.path_y_min_m, cfg.path_y_max_m, 40)
-        ax.plot(np.full_like(yline, vx), yline, np.full_like(yline, vz), color="#b71c1c", lw=1.8, label="vessel")
+        vline = vline0
+        ax.plot(vline[:, 0], vline[:, 1], vline[:, 2], color="#b71c1c", lw=1.8, label="vessel")
         sc = ax.scatter(
             pts[:, 0], pts[:, 1], pts[:, 2],
             c=values, cmap=cmap, s=18, vmin=vmin, vmax=vmax, alpha=0.9, depthshade=False,
@@ -1120,12 +1223,14 @@ def render_u_band_cone_reachability(
             [xyz[-1, 0]], [xyz[-1, 1]], [xyz[-1, 2]],
             c=path_color, s=36, marker="o", edgecolors="white", linewidths=0.8, zorder=22,
         )
-        th_mean = stats[title]["theta_mean_deg"]
         ax.set_xlabel("x (m)"); ax.set_ylabel("y (m)"); ax.set_zlabel("z (m)")
-        ax.set_title(f"{title}\nθ≈{th_mean:.0f}°  band±{half_w:.0f}°", fontsize=11)
+        ax.set_xlim(float(lim_lo[0]), float(lim_hi[0]))
+        ax.set_ylim(float(lim_lo[1]), float(lim_hi[1]))
+        ax.set_zlim(float(lim_lo[2]), float(lim_hi[2]))
+        ax.set_box_aspect((1.0, 1.0, 1.0))
+        ax.set_title(title, fontsize=12)
         ax.legend(loc="upper left", fontsize=8)
         ax.view_init(elev=22, azim=-72)
-        ax.set_box_aspect((1.35, 2.0, 1.0))
         ax_h = fig.add_axes([0.10 + 0.48 * col, 0.12, 0.10, 0.22])
         ax_h.hist(values, bins=24, color="#546e7a", alpha=0.85)
         ax_h.axvline(0.0, color="black", lw=0.8)
@@ -1134,17 +1239,8 @@ def render_u_band_cone_reachability(
         ax_h.tick_params(labelsize=6)
 
     cax = fig.add_axes([0.92, 0.22, 0.015, 0.55])
-    fig.colorbar(
-        scatters[-1],
-        cax=cax,
-        label=f"task-cone best (red < target={target_c:.1f} < blue)",
-    )
-    fig.suptitle(
-        rf"U-band IRD  tip$\pm${cfg.tip_half_angle_deg:.0f}$^\circ\times$"
-        rf"roll$\pm${cfg.roll_half_range_deg:.0f}$^\circ$  — twist moves corridor red→blue",
-        fontsize=12,
-        y=0.98,
-    )
+    fig.colorbar(scatters[-1], cax=cax, label="clearance")
+    fig.suptitle("Skin-corridor reachability", fontsize=13, y=0.98)
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
     return {
@@ -1175,12 +1271,8 @@ def render_trajectory(
     fig = plt.figure(figsize=(15, 10), dpi=160)
     ax = fig.add_subplot(221, projection="3d")
     _draw_ellipse_shell(ax, cfg, alpha=0.20)
-    vx, vz = vessel_xz(cfg)
-    y = np.linspace(cfg.path_y_min_m, cfg.path_y_max_m, 35)
-    ax.plot(
-        np.full_like(y, vx), y, np.full_like(y, vz),
-        color="#c62828", lw=2.0, label="vessel",
-    )
+    vline = vessel_polyline_world(cfg, n=35)
+    ax.plot(vline[:, 0], vline[:, 1], vline[:, 2], color="#c62828", lw=2.0, label="vessel")
     p0 = result["initial_tcp"][:, :3, 3]
     p1 = result["tcp"][:, :3, 3]
     ax.plot(*p0.T, color="#546e7a", linewidth=2.2, label="Nearest")
@@ -1412,7 +1504,9 @@ def render_field_video(
             width=0.0030,
             pivot="tail",
         )
-        ax.plot(th_deg_path, rail_mm_path, color=path_color, lw=2.2)
+        ax.plot(th_deg_path, rail_mm_path, color=path_color, lw=2.2, zorder=4)
+        ax.axhline(rail_mm_path[i], color=path_color, lw=0.9, ls=":", alpha=0.7, zorder=3)
+        ax.axvline(th_deg_path[i], color=path_color, lw=0.9, ls=":", alpha=0.45, zorder=3)
         ax.scatter(
             [th_deg_path[i]], [rail_mm_path[i]],
             c=current_color, edgecolor="black", s=90, zorder=5,
@@ -1439,25 +1533,18 @@ def render_field_video(
         ax.set_xlim(float(th_deg_min), float(th_deg_max))
         ax.set_ylim(float(rail_mm_min), float(rail_mm_max))
         ax.set_xlabel("surface angle (deg)")
-        ax.set_ylabel("URDF rail_y (mm)")
-        tip = float(getattr(cfg, "tip_half_angle_deg", 20.0))
-        roll = float(getattr(cfg, "roll_half_range_deg", 20.0))
-        ax.set_title(
-            f"{title_prefix}  s={si:.2f}  path_y={py_i:+.3f}m"
-            f"  tip±{tip:.0f}°×roll±{roll:.0f}°\n"
-            f"task-cone best  arrows→higher C  |∇|={gm:.2f}",
-            fontsize=10,
-        )
+        ax.set_ylabel("rail (mm)")
+        ax.set_title(f"{title_prefix}  ($s={si:.2f}$)", fontsize=11)
         axr.plot(s, clearance_path, color="#90a4ae", lw=1.5)
         axr.plot(s[: i + 1], clearance_path[: i + 1], color="#1565c0", lw=2.2)
         axr.scatter([si], [clearance_path[i]], c=current_color, edgecolor="black", s=60, zorder=5)
         axr.axhline(0.0, color="black", lw=1.0)
         axr.set_xlim(0.0, 1.0)
-        axr.set_xlabel("normalized phase s")
-        axr.set_ylabel("task-cone best")
-        axr.set_title(f"path clearance  now={clearance_path[i]:+.2f}")
+        axr.set_xlabel("normalized phase $s$")
+        axr.set_ylabel("clearance")
+        axr.set_title(f"clearance $= {clearance_path[i]:+.2f}$")
         if colorbar is None:
-            colorbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="task-cone best")
+            colorbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="clearance")
         fig.tight_layout()
         canvas.draw()
         frames.append(np.asarray(canvas.buffer_rgba())[:, :, :3].copy())
@@ -1526,7 +1613,7 @@ def render_field_videos(
         theta_key="initial_theta_rad",
         rail_key="initial_rail_m",
         clearance_key="initial_clearance",
-        title_prefix="nearest+8DOF-QP-IK",
+        title_prefix="Nearest",
         path_color="#ef6c00",
         current_color="#ff6d00",
         **common,
@@ -1536,7 +1623,7 @@ def render_field_videos(
         theta_key="theta_rad",
         rail_key="rail_m",
         clearance_key="clearance",
-        title_prefix="optimized",
+        title_prefix="Optimized",
         path_color="#1b5e20",
         current_color="#00e676",
         **common,
@@ -1572,7 +1659,7 @@ def render_dual_phase_diagnostics(
     target: float,
     out_path: Path,
 ) -> None:
-    """C0 / C* / C_opt along s with Phase A/B shading + control response."""
+    """Nearest vs optimized clearance / θ / rail along the path."""
     import matplotlib.pyplot as plt
 
     s = np.asarray(result["s"], dtype=np.float64)
@@ -1580,8 +1667,8 @@ def render_dual_phase_diagnostics(
 
     def _shade(ax):
         for mask, color, label in (
-            (phases["phase_a"], "#fff3e0", "Phase A rail-recoverable"),
-            (phases["phase_b"], "#e3f2fd", "Phase B must-twist"),
+            (phases["phase_a"], "#fff3e0", "rail-recoverable"),
+            (phases["phase_b"], "#e3f2fd", "requires twist"),
         ):
             if not np.any(mask):
                 continue
@@ -1604,35 +1691,90 @@ def render_dual_phase_diagnostics(
 
     ax = axes[0]
     _shade(ax)
-    ax.plot(s, probe["C0"], color="#90a4ae", lw=1.8, label="C(θ_near, rail_nominal)")
-    ax.plot(s, probe["C_star"], color="#546e7a", lw=1.6, ls="--", label="C*(θ_near, best rail grid)")
-    ax.plot(s, result["initial_clearance"], color="#ef6c00", lw=2.0, label="C(θ_near, 8DOF QP-IK rail)")
-    ax.plot(s, result["clearance"], color="#00a86b", lw=2.4, label="C optimized")
-    ax.axhline(float(target), color="#c62828", ls="--", lw=1.2, label=f"target={target:.2f}")
+    ax.plot(s, result["initial_clearance"], color="#ef6c00", lw=2.0, label="nearest")
+    ax.plot(s, result["clearance"], color="#00a86b", lw=2.4, label="optimized")
+    ax.axhline(float(target), color="#c62828", ls="--", lw=1.2, label="target")
     ax.axhline(0.0, color="black", lw=0.8)
-    ax.set_ylabel("task-cone best")
-    ax.set_title(r"Dual-case IRD (tip$\pm$20$^\circ\times$roll$\pm$20$^\circ$): nearest fails $\rightarrow$ twist")
-    ax.legend(fontsize=8, ncol=2, loc="lower left")
+    ax.set_ylabel("clearance")
+    ax.set_title("Reachability along the path")
+    ax.legend(fontsize=9, loc="lower left")
 
     ax = axes[1]
     _shade(ax)
-    ax.plot(s, np.rad2deg(result["initial_theta_rad"]), color="#90a4ae", lw=1.6, label="θ nearest")
-    ax.plot(s, np.rad2deg(result["theta_rad"]), color="#00796b", lw=2.2, label="θ optimized")
-    ax.plot(
-        s, np.rad2deg(probe["theta_twist_rad"]), color="#1565c0", ls=":", lw=1.4,
-        label="θ* coarse twist probe",
-    )
-    ax.set_ylabel("surface angle (deg)")
-    ax.legend(fontsize=8, ncol=3)
+    ax.plot(s, np.rad2deg(result["initial_theta_rad"]), color="#90a4ae", lw=1.8, label="nearest")
+    ax.plot(s, np.rad2deg(result["theta_rad"]), color="#00796b", lw=2.2, label="optimized")
+    ax.set_ylabel(r"surface angle $\theta$ (deg)")
+    ax.legend(fontsize=9)
 
     ax = axes[2]
     _shade(ax)
-    ax.plot(s, 1000.0 * result["initial_rail_m"], color="#ef6c00", lw=2.0, label="nearest 8DOF QP-IK rail")
-    ax.plot(s, 1000.0 * probe["rail_star_m"], color="#90a4ae", ls="--", lw=1.4, label="rail* grid @ θ_near")
-    ax.plot(s, 1000.0 * result["rail_m"], color="#00a86b", lw=2.2, label="rail optimized")
-    ax.set_ylabel("URDF rail_y (mm)")
-    ax.set_xlabel("normalized phase s")
-    ax.legend(fontsize=8, ncol=2)
+    ax.plot(s, 1000.0 * result["initial_rail_m"], color="#ef6c00", lw=2.0, label="nearest")
+    ax.plot(s, 1000.0 * result["rail_m"], color="#00a86b", lw=2.2, label="optimized")
+    ax.set_ylabel("rail (mm)")
+    ax.set_xlabel(r"normalized phase $s$")
+    ax.legend(fontsize=9)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+
+
+def render_optimized_q_path(
+    s: np.ndarray,
+    q_ref: np.ndarray,
+    q_lower: np.ndarray,
+    q_upper: np.ndarray,
+    out_path: Path,
+    *,
+    ok: np.ndarray | None = None,
+    pos_err_mm: np.ndarray | None = None,
+    title: str = "Optimized joint path",
+) -> None:
+    """Plot 8-DOF ProxQP solution q(s) for the optimized TCP (rail + arm)."""
+    import matplotlib.pyplot as plt
+
+    s = np.asarray(s, dtype=np.float64)
+    q = np.asarray(q_ref, dtype=np.float64)
+    lo = np.asarray(q_lower, dtype=np.float64).reshape(-1)
+    hi = np.asarray(q_upper, dtype=np.float64).reshape(-1)
+    mid = 0.5 * (lo + hi)
+    half = np.maximum(0.5 * (hi - lo), 1.0e-9)
+    qn = (q - mid) / half
+
+    fig, axes = plt.subplots(3, 1, figsize=(10.5, 9.0), dpi=160, sharex=True)
+
+    ax = axes[0]
+    ax.plot(s, 1000.0 * q[:, 0], color="#ef6c00", lw=2.2, label="rail")
+    ax.set_ylabel("rail (mm)")
+    ax.set_title(title)
+    ax.legend(fontsize=9, loc="best")
+    if ok is not None:
+        ok_b = np.asarray(ok, dtype=bool)
+        if np.any(~ok_b):
+            ax.scatter(s[~ok_b], 1000.0 * q[~ok_b, 0], c="#c62828", s=18, zorder=5, label="IK fail")
+            ax.legend(fontsize=9, loc="best")
+
+    ax = axes[1]
+    for j in range(1, min(8, q.shape[1])):
+        ax.plot(s, qn[:, j], lw=1.6, label=f"J{j}")
+    ax.axhline(1.0, color="black", lw=0.8, ls="--")
+    ax.axhline(-1.0, color="black", lw=0.8, ls="--")
+    ax.set_ylabel("normalized joint")
+    ax.legend(ncol=7, fontsize=8, loc="upper right")
+
+    ax = axes[2]
+    step = np.linalg.norm(np.diff(qn, axis=0), axis=1)
+    ax.plot(s[1:], step, color="#00695c", lw=2.0, label=r"$\|\Delta q\|$")
+    if pos_err_mm is not None:
+        ax2 = ax.twinx()
+        ax2.plot(s, np.asarray(pos_err_mm), color="#90a4ae", lw=1.4, label="pos. err.")
+        ax2.set_ylabel("position error (mm)", color="#607d8b")
+        lines, labels = ax.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax.legend(lines + lines2, labels + labels2, fontsize=8, loc="upper right")
+    else:
+        ax.legend(fontsize=9)
+    ax.set_ylabel(r"normalized $\|\Delta q\|$")
+    ax.set_xlabel(r"normalized phase $s$")
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
@@ -1646,29 +1788,8 @@ def render_q_guidance(
     baseline: np.ndarray,
     out_path: Path,
 ) -> None:
-    import matplotlib.pyplot as plt
-
-    mid = 0.5 * (q_lower + q_upper)
-    half = 0.5 * (q_upper - q_lower)
-    qn = (q_ref - mid) / half
-    fig, axes = plt.subplots(2, 1, figsize=(11, 8), dpi=160, sharex=True)
-    for j in range(7):
-        axes[0].plot(s, qn[:, j], label=f"J{j + 1}")
-    axes[0].axhline(1.0, color="black", linewidth=0.8, linestyle="--")
-    axes[0].axhline(-1.0, color="black", linewidth=0.8, linestyle="--")
-    axes[0].set_ylabel("normalized joint position")
-    axes[0].set_title("QP-IK Joint Guide")
-    axes[0].legend(ncol=7, fontsize=8)
-    base_step = np.linalg.norm(np.diff(baseline, axis=0) / (q_upper - q_lower), axis=1)
-    opt_step = np.linalg.norm(np.diff(q_ref, axis=0) / (q_upper - q_lower), axis=1)
-    axes[1].plot(s[1:], base_step, color="#90a4ae", label="lowest-error IK")
-    axes[1].plot(s[1:], opt_step, color="#00897b", label="continuous comfort IK")
-    axes[1].set_xlabel("normalized phase")
-    axes[1].set_ylabel("normalized joint step")
-    axes[1].legend()
-    fig.tight_layout()
-    fig.savefig(out_path, bbox_inches="tight")
-    plt.close(fig)
+    """Legacy wrapper — prefer :func:`render_optimized_q_path`."""
+    render_optimized_q_path(s, q_ref, q_lower, q_upper, out_path)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1760,6 +1881,33 @@ def main(argv: list[str] | None = None) -> int:
     )
     result["qpik_nearest"] = qpik_near
     # initial_rail_m already = QP-IK ref inside optimize_trajectory.
+
+    # 4) Re-allocate rail on the *twisted* TCP with the same 8DOF QP-IK — both
+    # panels then use real nullspace rail(s), not a free IRD-only rail curve.
+    print("[qpik-8dof] allocating rail on optimized TCP path…", flush=True)
+    qpik_opt = allocate_qpik_8dof_path(
+        np.asarray(result["tcp"], dtype=np.float64),
+        cfg=cfg,
+        q_seed=np.asarray(qpik_near["q_ref"][0], dtype=np.float64),
+    )
+    print(
+        f"[qpik-8dof] optimized rail {qpik_opt['rail_min_m']:.3f}→{qpik_opt['rail_max_m']:.3f}m "
+        f"(Δ={qpik_opt['rail_delta_m']:.3f}m) ok_frac={qpik_opt['ok_fraction']:.2f}",
+        flush=True,
+    )
+    result["qpik_optimized"] = qpik_opt
+    result["rail_m"] = np.asarray(qpik_opt["rail_m"], dtype=np.float32)
+    with torch.no_grad():
+        eye = torch.eye(4, device=device)
+        c_opt = task_cone.query_tcp_rail(
+            field,
+            torch.as_tensor(result["tcp"], device=device, dtype=torch.float32),
+            torch.as_tensor(result["rail_m"], device=device, dtype=torch.float32),
+            T_world_rail=eye,
+            T_rail_base0=T_rail_axis,
+            rail_axis=1,
+        ).best_clearance
+    result["clearance"] = c_opt.detach().cpu().numpy()
 
     # Dual-case probe on the nearest projection.
     probe = probe_nearest_rail_and_twist(
@@ -1957,6 +2105,18 @@ def main(argv: list[str] | None = None) -> int:
         result["s"], q_ref, locked.q_lower, locked.q_upper,
         baseline_q, out / "qpik_joint_guidance.png",
     )
+    # Canonical optimized q: 8DOF ProxQP on twisted TCP (source of rail_m).
+    q_opt_8dof = np.asarray(qpik_opt["q_ref"], dtype=np.float32)
+    render_optimized_q_path(
+        result["s"],
+        q_opt_8dof,
+        np.asarray(qpik_opt["q_lower"]),
+        np.asarray(qpik_opt["q_upper"]),
+        out / "optimized_joint_path.png",
+        ok=np.asarray(qpik_opt["ok"]),
+        pos_err_mm=np.asarray(qpik_opt["pos_err_mm"]),
+        title="Optimized joint path (8-DOF ProxQP)",
+    )
     # Contrast: rail allocation — locked mid vs 8DOF QP-IK vs optimized.
     import matplotlib.pyplot as plt
 
@@ -1982,7 +2142,11 @@ def main(argv: list[str] | None = None) -> int:
         rail_nominal_y=rail_nominal,
         rail_star_y=rail_star.astype(np.float32),
         q_ref=q_ref,
+        q_optimized_8dof=q_opt_8dof,
         q_nearest_8dof=q_rail_star,
+        qpik_optimized_ok=np.asarray(qpik_opt["ok"], dtype=np.uint8),
+        qpik_optimized_pos_err_mm=np.asarray(qpik_opt["pos_err_mm"], dtype=np.float32),
+        qpik_optimized_rot_err_deg=np.asarray(qpik_opt["rot_err_deg"], dtype=np.float32),
         q_rail0=np.asarray(q_rail0 if q_rail0 is not None else np.full((len(s_np), 7), np.nan), dtype=np.float32),
         robust_clearance=np.asarray(result["clearance"], dtype=np.float32),
         C0=probe["C0"].astype(np.float32),
@@ -2126,6 +2290,7 @@ def main(argv: list[str] | None = None) -> int:
             "field_video_optimized": video_files.get("optimized", ""),
             "field_video": str(out / "region_ird_field_along_s.mp4"),
             "q_guidance": str(out / "qpik_joint_guidance.png"),
+            "optimized_joint_path": str(out / "optimized_joint_path.png"),
             "qpik_contrast": str(out / "qpik_continuity_contrast.png"),
             "qpik_npz": str(out / "qpik_guidance.npz"),
         },

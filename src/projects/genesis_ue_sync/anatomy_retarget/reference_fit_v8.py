@@ -37,6 +37,37 @@ _FOOT_TOKENS = (
     "phalanges_foot",
 )
 
+# These meshes are the hard appendicular products whose transverse dimensions
+# must survive reference composition.  Long bones may receive an explicitly
+# bounded axial endpoint adaptation later in the pipeline, but they may never
+# be made thin by a similarity fit.
+_HARD_LONG_BONE_TOKENS = (
+    "femur",
+    "tibia",
+    "fibula",
+    "humerus",
+    "radius",
+    "ulna",
+)
+_HARD_LONG_BONE_JOINT_SEGMENTS_V811 = {
+    "Femur_L": ("left_hip", "left_knee"),
+    "Femur_R": ("right_hip", "right_knee"),
+    "Tibia_L": ("left_knee", "left_ankle"),
+    "Tibia_R": ("right_knee", "right_ankle"),
+    "Fibula_L": ("left_knee", "left_ankle"),
+    "Fibula_R": ("right_knee", "right_ankle"),
+    "Humerus_L": ("left_shoulder", "left_elbow"),
+    "Humerus_R": ("right_shoulder", "right_elbow"),
+    "Radius_L": ("left_elbow", "left_wrist"),
+    "Radius_R": ("right_elbow", "right_wrist"),
+    "Ulna_L": ("left_elbow", "left_wrist"),
+    "Ulna_R": ("right_elbow", "right_wrist"),
+}
+_HARD_APPENDICULAR_TRANSVERSE_TOLERANCE = 0.005
+_HARD_RIGID_SCALE_TOLERANCE = 0.005
+_HARD_RIGID_RMS_LIMIT_M = 0.001
+_HARD_RIGID_MAXIMUM_LIMIT_M = 0.002
+
 _PRODUCT_AXIAL_BONES = {
     "C1_Atlas",
     "C2_Axis",
@@ -206,6 +237,329 @@ def _mesh_vertex_mask(
     return result
 
 
+def _proper_rigid_fit(
+    source: np.ndarray,
+    target: np.ndarray,
+) -> tuple[float, float, float]:
+    """Return similarity scale and residuals after the best proper rotation."""
+
+    source_points = np.asarray(source, dtype=np.float64).reshape(-1, 3)
+    target_points = np.asarray(target, dtype=np.float64).reshape(-1, 3)
+    if source_points.shape != target_points.shape or len(source_points) < 4:
+        raise ValueError("hard-product mesh proof requires matching point sets")
+    source_center = np.mean(source_points, axis=0)
+    target_center = np.mean(target_points, axis=0)
+    source_centered = source_points - source_center
+    target_centered = target_points - target_center
+    left, _singular, right = np.linalg.svd(source_centered.T @ target_centered)
+    rotation = right.T @ left.T
+    if np.linalg.det(rotation) < 0.0:
+        right[-1] *= -1.0
+        rotation = right.T @ left.T
+    rotated = source_centered @ rotation.T
+    denominator = float(np.sum(source_centered * source_centered))
+    if denominator <= 1.0e-12:
+        raise ValueError("hard-product mesh proof has a degenerate source mesh")
+    scale = float(np.sum(target_centered * rotated) / denominator)
+    residual = np.linalg.norm(target_centered - rotated, axis=1)
+    return (
+        scale,
+        float(np.sqrt(np.mean(residual * residual))),
+        float(np.max(residual)),
+    )
+
+
+def _transverse_radius_rms(points: np.ndarray) -> float:
+    """Measure a long bone's cross-section independently of axial length."""
+
+    values = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+    if len(values) < 4:
+        raise ValueError("hard-product long-bone proof requires four vertices")
+    centered = values - np.mean(values, axis=0)
+    _left, singular, axes = np.linalg.svd(centered, full_matrices=False)
+    if len(singular) != 3 or singular[0] <= 1.0e-10:
+        raise ValueError("hard-product long-bone proof has a degenerate axis")
+    axis = axes[0]
+    transverse = centered - np.outer(centered @ axis, axis)
+    radius = float(np.sqrt(np.mean(np.sum(transverse * transverse, axis=1))))
+    if radius <= 1.0e-10:
+        raise ValueError("hard-product long-bone proof has a degenerate cross-section")
+    return radius
+
+
+def hard_appendicular_product_proof_v811(
+    asset: AnatomyRiggedAsset,
+    *,
+    product_label: str,
+) -> dict[str, Any]:
+    """Prove that a hard input was not shrunk before V8.11 composition.
+
+    Historical continuous-volume products can be contained only because their
+    bone meshes were included in a harmonic field.  Their vertex order and
+    weights are still useful provenance, but their transformed hard geometry
+    must never become V8.11's bone authority.  This gate checks source-bind to
+    product geometry rather than trusting a metadata scale field.
+    """
+
+    asset.validate()
+    if asset.source_bind_vertices is None:
+        raise ValueError(
+            f"{product_label} lacks immutable source_bind_vertices for hard proof"
+        )
+    if asset.source_vertex_ranges is None or asset.source_tissues is None:
+        raise ValueError(
+            f"{product_label} lacks mesh ranges/tissues for hard proof"
+        )
+    source = np.asarray(asset.source_bind_vertices, dtype=np.float64)
+    target = np.asarray(asset.vertices_rest, dtype=np.float64)
+    ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64).reshape(-1, 2)
+    meshes: list[dict[str, Any]] = []
+    failures: list[str] = []
+    for (start, stop), mesh_name, tissue in zip(
+        ranges,
+        asset.source_mesh_names,
+        asset.source_tissues,
+        strict=True,
+    ):
+        name = str(mesh_name)
+        lower = name.lower()
+        if str(tissue).strip().lower() != "bone" or _is_axial_product_bone(name):
+            continue
+        begin, end = int(start), int(stop)
+        if begin < 0 or end > len(source) or end <= begin:
+            raise ValueError(f"{product_label} has an invalid mesh range for {name}")
+        scale, rigid_rms, rigid_maximum = _proper_rigid_fit(
+            source[begin:end], target[begin:end]
+        )
+        long_bone = any(token in lower for token in _HARD_LONG_BONE_TOKENS)
+        foot_bone = any(token in lower for token in _FOOT_TOKENS)
+        transverse_scale = None
+        if long_bone:
+            transverse_scale = float(
+                _transverse_radius_rms(target[begin:end])
+                / _transverse_radius_rms(source[begin:end])
+            )
+            passed = bool(
+                abs(transverse_scale - 1.0)
+                <= _HARD_APPENDICULAR_TRANSVERSE_TOLERANCE
+            )
+        else:
+            # Feet, patellae, and hand bones do not have one trustworthy long
+            # axis; each one must remain a complete rigid component instead.
+            passed = bool(
+                abs(scale - 1.0) <= _HARD_RIGID_SCALE_TOLERANCE
+                and rigid_rms <= _HARD_RIGID_RMS_LIMIT_M
+                and rigid_maximum <= _HARD_RIGID_MAXIMUM_LIMIT_M
+            )
+        entry = {
+            "mesh": name,
+            "vertex_count": int(end - begin),
+            "long_bone": long_bone,
+            "foot_bone": foot_bone,
+            "similarity_scale": scale,
+            "transverse_scale": transverse_scale,
+            "rigid_rms_error_m": rigid_rms,
+            "rigid_maximum_error_m": rigid_maximum,
+            "pass": passed,
+        }
+        meshes.append(entry)
+        if not passed:
+            failures.append(name)
+    if not meshes:
+        raise ValueError(f"{product_label} has no appendicular bone meshes for hard proof")
+    return {
+        "schema_version": 1,
+        "method": "source_bind_transverse_and_rigid_hard_product_proof_v811",
+        "product_label": str(product_label),
+        "mesh_count": len(meshes),
+        "transverse_scale_tolerance": _HARD_APPENDICULAR_TRANSVERSE_TOLERANCE,
+        "rigid_scale_tolerance": _HARD_RIGID_SCALE_TOLERANCE,
+        "rigid_rms_limit_m": _HARD_RIGID_RMS_LIMIT_M,
+        "rigid_maximum_limit_m": _HARD_RIGID_MAXIMUM_LIMIT_M,
+        "meshes": meshes,
+        "failures": failures,
+        "passed": not failures,
+    }
+
+
+def restore_unit_hard_product_v811(
+    anchor_product: AnatomyRiggedAsset,
+) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
+    """Restore authored hard geometry in the fitted product's target frames.
+
+    Products such as the 142 reference contain useful subject bind/pivot
+    frames, but their hard meshes were passed through an older all-material
+    volume field.  Recover every non-axial bone from the immutable Blender
+    bind vertices and move each mesh by its declared controller's SE(3).  This
+    deliberately uses the product only as a frame authority, never as a hard
+    geometry authority.
+    """
+
+    anchor_product.validate()
+    required = {
+        "source_bind_vertices": anchor_product.source_bind_vertices,
+        "source_vertex_ranges": anchor_product.source_vertex_ranges,
+        "source_tissues": anchor_product.source_tissues,
+        "source_mesh_controller_bones": anchor_product.source_mesh_controller_bones,
+        "source_bone_names": anchor_product.source_bone_names,
+        "source_bind_global": anchor_product.source_bind_global,
+        "target_bind_global": anchor_product.target_bind_global,
+        "joint_names": anchor_product.joint_names,
+        "rest_joints": anchor_product.rest_joints,
+    }
+    missing = [name for name, value in required.items() if value is None]
+    if missing:
+        raise ValueError(
+            "V8.11 hard restoration requires complete immutable bind data: "
+            f"{missing}"
+        )
+
+    source_vertices = np.asarray(
+        anchor_product.source_bind_vertices, dtype=np.float64
+    )
+    vertices = np.asarray(anchor_product.vertices_rest, dtype=np.float64).copy()
+    ranges = np.asarray(
+        anchor_product.source_vertex_ranges, dtype=np.int64
+    ).reshape(-1, 2)
+    controllers = np.asarray(
+        anchor_product.source_mesh_controller_bones, dtype=np.int64
+    ).reshape(-1)
+    source_frames = np.asarray(
+        anchor_product.source_bind_global, dtype=np.float64
+    )
+    target_frames = np.asarray(
+        anchor_product.target_bind_global, dtype=np.float64
+    )
+    names = list(anchor_product.source_mesh_names or ())
+    tissues = list(anchor_product.source_tissues or ())
+    joint_names = list(anchor_product.joint_names or ())
+    rest_joints = np.asarray(anchor_product.rest_joints, dtype=np.float64)
+    if not (
+        len(ranges) == len(controllers) == len(names) == len(tissues)
+    ):
+        raise ValueError("V8.11 hard restoration mesh metadata is inconsistent")
+    if source_vertices.shape != vertices.shape:
+        raise ValueError("V8.11 immutable and fitted vertex arrays do not match")
+    if source_frames.shape != target_frames.shape or source_frames.shape[1:] != (
+        4,
+        4,
+    ):
+        raise ValueError("V8.11 source and target bind frames do not match")
+
+    restored_meshes: list[dict[str, Any]] = []
+    restored_mask = np.zeros(len(vertices), dtype=bool)
+    for mesh_index, ((start, stop), mesh_name, tissue, controller) in enumerate(
+        zip(ranges, names, tissues, controllers, strict=True)
+    ):
+        if str(tissue).strip().lower() != "bone" or _is_axial_product_bone(
+            str(mesh_name)
+        ):
+            continue
+        bone = int(controller)
+        if bone < 0 or bone >= len(source_frames):
+            raise ValueError(
+                f"V8.11 hard mesh {mesh_name!r} has invalid controller {bone}"
+            )
+        begin, end = int(start), int(stop)
+        if begin < 0 or end > len(vertices) or end <= begin:
+            raise ValueError(
+                f"V8.11 hard mesh {mesh_name!r} has an invalid vertex range"
+            )
+        transform = target_frames[bone] @ np.linalg.inv(source_frames[bone])
+        rotation = transform[:3, :3]
+        determinant = float(np.linalg.det(rotation))
+        orthogonality_error = float(
+            np.max(np.abs(rotation.T @ rotation - np.eye(3)))
+        )
+        if (
+            not np.all(np.isfinite(transform))
+            or orthogonality_error > 1.0e-5
+            or abs(determinant - 1.0) > 1.0e-5
+        ):
+            raise ValueError(
+                f"V8.11 target bind for hard mesh {mesh_name!r} is not SE(3)"
+            )
+        vertices[begin:end] = (
+            source_vertices[begin:end] @ rotation.T + transform[:3, 3]
+        )
+        axial_authority = "immutable_source_bind"
+        if str(mesh_name) in _HARD_LONG_BONE_JOINT_SEGMENTS_V811:
+            joint_a, joint_b = _HARD_LONG_BONE_JOINT_SEGMENTS_V811[str(mesh_name)]
+            if joint_a not in joint_names or joint_b not in joint_names:
+                raise ValueError(
+                    f"V8.11 long bone {mesh_name!r} is missing its SMPL-X segment"
+                )
+            origin = rest_joints[joint_names.index(joint_a)]
+            axis = rest_joints[joint_names.index(joint_b)] - origin
+            length = float(np.linalg.norm(axis))
+            if not np.isfinite(length) or length <= 1.0e-8:
+                raise ValueError(
+                    f"V8.11 long bone {mesh_name!r} has a degenerate joint segment"
+                )
+            axis /= length
+            rigid_points = vertices[begin:end].copy()
+            # The old all-material field contains the useful subject-specific
+            # longitudinal stationing but damaged the cross-section.  Retain
+            # only its scalar coordinate along the official joint axis; every
+            # transverse coordinate remains the restored Blender source value.
+            anchor_axial = (
+                np.asarray(anchor_product.vertices_rest, dtype=np.float64)[begin:end]
+                - origin
+            ) @ axis
+            rigid_axial = (rigid_points - origin) @ axis
+            vertices[begin:end] = rigid_points + (
+                anchor_axial - rigid_axial
+            )[:, None] * axis
+            axial_authority = "fitted_product_longitudinal_coordinate_only"
+        restored_mask[begin:end] = True
+        restored_meshes.append(
+            {
+                "mesh_index": int(mesh_index),
+                "mesh": str(mesh_name),
+                "controller_bone": str(anchor_product.source_bone_names[bone]),
+                "vertex_count": int(end - begin),
+                "det_rotation": determinant,
+                "orthogonality_error": orthogonality_error,
+                "scale": 1.0,
+                "transverse_authority": "immutable_blender_source_bind_vertices",
+                "axial_authority": axial_authority,
+            }
+        )
+    if not restored_meshes:
+        raise ValueError("V8.11 hard restoration found no appendicular meshes")
+
+    metadata = dict(anchor_product.metadata or {})
+    metadata["v8_unit_hard_restoration_v811"] = {
+        "schema_version": 1,
+        "method": "source_bind_transverse_plus_fitted_longitudinal_v811",
+        "target_frame_authority": "fitted_product_target_bind",
+        "hard_geometry_authority": "immutable_blender_source_bind_vertices",
+        "mesh_count": int(len(restored_meshes)),
+        "vertex_count": int(np.count_nonzero(restored_mask)),
+        "scale": 1.0,
+    }
+    restored = replace(
+        anchor_product,
+        vertices_rest=vertices.astype(np.float32),
+        metadata=metadata,
+    )
+    proof = hard_appendicular_product_proof_v811(
+        restored,
+        product_label="restored_fitted_product",
+    )
+    if not proof["passed"]:
+        raise RuntimeError(
+            "V8.11 source-bind hard restoration failed its own unit-geometry "
+            f"proof: {proof['failures']}"
+        )
+    report = {
+        **metadata["v8_unit_hard_restoration_v811"],
+        "meshes": restored_meshes,
+        "hard_product_proof": proof,
+    }
+    return restored, report
+
+
 def _is_axial_product_bone(name: str) -> bool:
     if name in _PRODUCT_AXIAL_BONES:
         return True
@@ -258,13 +612,16 @@ def _hard_appendicular_bind_mask(
         "Shoulder_Rotate_L",
         "Shoulder_Rotate_R",
     )
-    missing = [root for root in roots if root not in names]
+    direct = ("Hip_bone",)
+    missing = [root for root in (*direct, *roots) if root not in names]
     if missing:
         raise ValueError(
             "unified V8 reference is missing appendicular bind roots: "
             f"{missing}"
         )
     result = np.zeros(len(names), dtype=bool)
+    for bone_name in direct:
+        result[names.index(bone_name)] = True
     for root in roots:
         result |= _descendants(names, parents, root)
     return result
@@ -627,6 +984,27 @@ def compose_unified_reference_template_v8(
         raise ValueError(
             "unified V8 reference composition requires identical frozen topology"
         )
+    fitted_product, hard_restoration_report = restore_unit_hard_product_v811(
+        fitted_product
+    )
+    fitted_hard_proof = hard_appendicular_product_proof_v811(
+        fitted_product,
+        product_label="fitted_product",
+    )
+    if not fitted_hard_proof["passed"]:
+        raise ValueError(
+            "V8.11 rejects fitted_product with non-unit hard appendicular "
+            f"geometry: {fitted_hard_proof['failures']}"
+        )
+    foot_hard_proof = hard_appendicular_product_proof_v811(
+        foot_product,
+        product_label="foot_product",
+    )
+    if not foot_hard_proof["passed"]:
+        raise ValueError(
+            "V8.11 rejects foot_product with non-unit hard appendicular "
+            f"geometry: {foot_hard_proof['failures']}"
+        )
     beta_origin = np.asarray(reference_betas, dtype=np.float32).reshape(-1)
     if beta_origin.shape != (10,) or not np.all(np.isfinite(beta_origin)):
         raise ValueError("reference_betas must contain ten finite values")
@@ -736,6 +1114,11 @@ def compose_unified_reference_template_v8(
             "v8_nonshrunk_bone_authority": "fitted_product",
             "v8_appendicular_bind_authority": "fitted_product",
             "v8_foot_compound_authority": "clean_762_product",
+            "v8_hard_product_proof_v811": {
+                "fitted_product": fitted_hard_proof,
+                "foot_product": foot_hard_proof,
+            },
+            "v8_unit_hard_restoration_v811": hard_restoration_report,
             "oral_visibility_policy_v2": oral_visibility,
             "hidden_mesh_names_v2": oral_visibility["hidden_mesh_names_v2"],
             "hidden_face_ids_v2": oral_visibility["hidden_face_ids_v2"],
@@ -775,6 +1158,11 @@ def compose_unified_reference_template_v8(
         "nonshrunk_bone_vertex_count": int(np.count_nonzero(nonshrunk_bones)),
         "foot_vertex_count": int(np.count_nonzero(foot_vertex_mask)),
         "foot_alignment": foot_reports,
+        "hard_product_proof_v811": {
+            "fitted_product": fitted_hard_proof,
+            "foot_product": foot_hard_proof,
+        },
+        "unit_hard_restoration_v811": hard_restoration_report,
         "l1_vertex_splice": False,
         "pose_specific_reference": False,
     }

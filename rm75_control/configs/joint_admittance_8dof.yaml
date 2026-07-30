@@ -232,8 +232,8 @@ force:
   phi_source: phi_recommended
   fc_hz: 6.0
   min_samples: 22
-  # Keemink 2018 Guideline 2 / Eq.(11): lower force-LPF group delay reduces
-  # the virtual-mass passivity floor. 10 Hz ≈ half the previous 6 Hz delay.
+  # 7dde980 feel: 10 Hz / order-2 (smoother hand force). Keep below the
+  # virtual-mass passivity floor; raise only if phase lag reappears.
   causal_fc_hz: 10.0
   causal_order: 2
   causal_history: 5
@@ -242,24 +242,27 @@ force:
   use_inertia: false
 
 hybrid_motion:
-  # Tool-Z force admittance: trend damping + Dimeas inertia + Ke-normalized FF
-  # + force-space barrier. force_axes / track_axes / kp_pos are tool-frame.
+  # Partial restore of 7dde980 feel: trend damping + Ke-normalized FF with
+  # leak/gates. Keep Δ-baseline contact (bias-immune) and pure Faverjon caps
+  # (no free-space |fz| brake, no ḟ prediction).
   force_axes: [0, 0, 1, 0, 0, 0]
   track_axes: [1, 1, 0, 1, 1, 1]
   kp_pos: [2.0, 2.0, 0.0, 1.5, 1.5, 1.5]
   pos_err_deadband_m: 0.0005
   pos_correction_max_m_s: 0.08
   system_delay_s: 0.015
-  contact_threshold_n: 0.8
+  contact_delta_n: 0.5
+  contact_threshold_n: 0.8   # ramp seed / legacy alias only
   contact_use_fz_only: true
   contact_release_n: 0.25
   contact_release_ticks: 40
+  contact_baseline_tau_s: 0.25
   deadband_n: 0.05
   deadband_width_n: 0.05
   max_velocity: [0.22, 0.22, 0.10, 0.6, 0.6, 0.6]
   max_acceleration: [1.0, 1.0, 0.8, 2.0, 2.0, 2.0]
   admittance_mass_z: 1.0
-  admittance_damping_z: 25.0   # ke_critical free-space seed only
+  admittance_damping_z: 25.0
   damping_law: trend
   damping_base_z: 15.0
   damping_alpha_e: 1.0          # tracking only; hand guidance uses base
@@ -272,13 +275,11 @@ hybrid_motion:
   desired_force_ramp_s: 0.5
   force_barrier:
     enabled: true
-    t_react_s: 0.030
     budget_min_n: 0.5
     budget_frac: 0.4
     f_keep_n: 0.5
     v_ref_m_s: 0.05
     v_min_retract_m_s: 0.002
-    fdot_lpf_s: 0.040
   var_damping_enabled: true
   var_damping_omega_c_hz: 2.5
   var_damping_lambda: 0.951

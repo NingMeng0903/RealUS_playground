@@ -147,19 +147,17 @@ def test_var_damping_d_target_respects_bd_max_when_is_unbounded():
             True,
             dt_eff=DT,
             rising_edge=False,
+            desired_force_n=3.0,
         )
     assert ctrl.damping_z_eff <= 50.0 + 1e-6
 
 
-def test_trend_damping_respects_damping_max_z_when_is_unbounded():
+def test_fixed_damping_plus_dimeas_stays_near_base_when_d_u_zero():
     ctrl = _controller(
         var_damping_enabled=True,
-        var_damping_d_u=2.0,
-        damping_law="trend",
+        var_damping_d_u=0.0,
+        damping_law="fixed",
         damping_base_z=15.0,
-        damping_max_z=40.0,
-        damping_alpha_e=0.0,
-        damping_beta_e_edot=0.0,
     )
     ctrl._in_contact_latched = True
     ctrl.instability_index = 100.0
@@ -169,5 +167,26 @@ def test_trend_damping_respects_damping_max_z_when_is_unbounded():
             True,
             dt_eff=DT,
             rising_edge=False,
+            desired_force_n=3.0,
         )
-    assert ctrl.damping_z_eff <= 40.0 + 1e-6
+    assert ctrl.damping_z_eff == pytest.approx(15.0, abs=0.5)
+
+
+def test_trend_damping_hand_push_stays_on_base():
+    """desired=0 must not engage α/β — transparency (7dde980)."""
+    ctrl = _controller(
+        damping_law="trend",
+        damping_base_z=15.0,
+        damping_alpha_e=1.0,
+        damping_beta_e_edot=2.5,
+        var_damping_enabled=False,
+    )
+    for _ in range(50):
+        ctrl._admittance_z(
+            2.0,
+            True,
+            dt_eff=DT,
+            rising_edge=False,
+            desired_force_n=0.0,
+        )
+    assert ctrl.damping_z_eff == pytest.approx(15.0, abs=0.5)

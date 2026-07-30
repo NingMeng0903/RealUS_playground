@@ -2,8 +2,9 @@
 
     M v̇ + D (v − v_r) = F_des − F_ext
 
-``damping_law``: ``trend`` (default) or ``ke_critical``. Proactive ``v_r``
-defaults to Ke-normalized gain; force-space barrier caps press/retract.
+``damping_law``: ``trend`` (default, 7dde980 hand/hold feel) or
+``ke_critical``. Proactive ``v_r`` is Ke-normalized with leak/gates.
+Force-space barrier is pure Faverjon (no ḟ); contact latch is Δ-baseline.
 """
 
 from __future__ import annotations
@@ -58,10 +59,13 @@ class AdmittanceConfig:
     kp_pos: np.ndarray = field(default_factory=lambda: np.zeros(6))
     track_axes: np.ndarray = field(default_factory=lambda: np.ones(6))
     system_delay_s: float = 0.015
+    # Absolute threshold kept for ramp seed / backward compat; latch uses delta.
     contact_threshold_n: float = 0.5
+    contact_delta_n: float = 0.5
     contact_use_fz_only: bool = True
     contact_release_n: float = 0.3
     contact_release_ticks: int = 5
+    contact_baseline_tau_s: float = 0.25
     deadband_n: float = 0.3
     deadband_width_n: float = 0.2
     max_velocity: np.ndarray = field(
@@ -75,7 +79,7 @@ class AdmittanceConfig:
     desired_force_ramp_s: float = 0.5
     admittance_mass_z: float = 3.0
     admittance_damping_z: float = 60.0
-    damping_law: str = "trend"  # trend | ke_critical
+    damping_law: str = "trend"  # trend | ke_critical | fixed
     damping_base_z: float = 15.0
     damping_alpha_e: float = 1.5
     damping_beta_e_edot: float = 3.0
@@ -112,6 +116,8 @@ class AdmittanceConfig:
                 c.get("open_loop_scan", traj.get("open_loop", False)),
             )
         )
+        thr = float(c.get("contact_threshold_n", 0.5))
+        law = str(c.get("damping_law", "trend")).lower()
         return cls(
             euler_order=str(frames.get("euler_order", "xyz")),
             control_frame=str(
@@ -127,10 +133,12 @@ class AdmittanceConfig:
                 dtype=float,
             ),
             system_delay_s=float(c.get("system_delay_s", 0.015)),
-            contact_threshold_n=float(c.get("contact_threshold_n", 0.5)),
+            contact_threshold_n=thr,
+            contact_delta_n=float(c.get("contact_delta_n", thr)),
             contact_use_fz_only=bool(c.get("contact_use_fz_only", True)),
             contact_release_n=float(c.get("contact_release_n", 0.3)),
             contact_release_ticks=int(c.get("contact_release_ticks", 5)),
+            contact_baseline_tau_s=float(c.get("contact_baseline_tau_s", 0.25)),
             deadband_n=float(c.get("deadband_n", 0.3)),
             deadband_width_n=float(c.get("deadband_width_n", 0.2)),
             max_velocity=np.asarray(
@@ -146,7 +154,7 @@ class AdmittanceConfig:
             desired_force_ramp_s=float(c.get("desired_force_ramp_s", 0.5)),
             admittance_mass_z=float(c.get("admittance_mass_z", 3.0)),
             admittance_damping_z=float(c.get("admittance_damping_z", 60.0)),
-            damping_law=str(c.get("damping_law", "trend")).lower(),
+            damping_law=law,
             damping_base_z=float(
                 c.get("damping_base_z", c.get("admittance_damping_z", 15.0))
             ),
@@ -193,6 +201,8 @@ class AdmittanceController:
         self._in_contact_latched = False
         self._release_count = 0
         self.contact_present = False
+        self._fz_baseline = 0.0
+        self._baseline_ready = False
         self.time_scale = 1.0
         self.v_force_z = 0.0
         self.v_r_z = 0.0
@@ -228,7 +238,6 @@ class AdmittanceController:
         self._eff_dot = 0.0
         self.cap_press_z = 0.0
         self.cap_retract_z = 0.0
-        self.f_dot_z = 0.0
         self._init_hp_filter()
 
     def _init_hp_filter(self) -> None:
@@ -255,6 +264,8 @@ class AdmittanceController:
         self._in_contact_latched = False
         self._release_count = 0
         self.contact_present = False
+        self._fz_baseline = 0.0
+        self._baseline_ready = False
         self.v_force_z = 0.0
         self.v_r_z = 0.0
         self._proactive_ff.reset()
@@ -281,7 +292,6 @@ class AdmittanceController:
         self._eff_dot = 0.0
         self.cap_press_z = 0.0
         self.cap_retract_z = 0.0
-        self.f_dot_z = 0.0
         self._hp_zi.fill(0.0)
         self._ke_estimator.reset()
         self.ke_est = self._ke_estimator.ke_est
@@ -302,27 +312,49 @@ class AdmittanceController:
         return max(cap, 0.0)
 
     def _contact_signal_n(self, f_ext: np.ndarray) -> float:
+        """Raw force magnitude used for baseline update."""
         force = np.asarray(f_ext[:3], dtype=float)
         if self.cfg.contact_use_fz_only:
-            return abs(float(force[2]))
+            return float(force[2])
         return float(np.linalg.norm(force))
 
-    def _update_contact_latched(self, f_ext: np.ndarray) -> bool:
-        """Hysteretic contact latch; release re-arms the force ramp."""
+    def _update_contact_latched(self, f_ext: np.ndarray, dt_eff: float) -> bool:
+        """Hysteretic latch on sudden force increase vs free-space baseline.
+
+        Bruyninckx & De Schutter 1996 Fig. 2: contact is a change-based
+        termination, not an absolute force level. Baseline starts at 0 and
+        adapts only while free; a constant free-air bias below
+        ``contact_delta_n`` never latches.
+        """
         signal = self._contact_signal_n(f_ext)
-        enter_n = float(self.cfg.contact_threshold_n)
-        release_n = min(float(self.cfg.contact_release_n), enter_n)
+        delta_n = max(float(self.cfg.contact_delta_n), 1e-6)
+        release_n = min(float(self.cfg.contact_release_n), delta_n)
         release_ticks = max(int(self.cfg.contact_release_ticks), 1)
 
+        if not self._baseline_ready:
+            # Assume unloaded free space until quiet samples adapt the EWMA.
+            self._fz_baseline = 0.0
+            self._baseline_ready = True
+
         if not self._in_contact_latched:
-            self._release_count = 0
-            if signal >= enter_n:
+            if abs(float(signal) - self._fz_baseline) >= delta_n:
                 self._in_contact_latched = True
                 self._contact_time_s = 0.0
                 self._proactive_ff.reset()
+                self._release_count = 0
+                return self._in_contact_latched
+
+            # Adapt baseline only in the quiet free-space band so a slow
+            # re-approach cannot drag the baseline up and mask the jump.
+            if abs(float(signal)) < delta_n and dt_eff > 0.0:
+                tau = max(float(self.cfg.contact_baseline_tau_s), 1e-3)
+                alpha = min(1.0, dt_eff / tau)
+                self._fz_baseline += alpha * (float(signal) - self._fz_baseline)
+            self._release_count = 0
             return self._in_contact_latched
 
-        if signal < release_n:
+        # In contact: release when back near baseline for long enough.
+        if abs(float(signal) - self._fz_baseline) < release_n:
             self._release_count += 1
             if self._release_count >= release_ticks:
                 self._in_contact_latched = False
@@ -464,8 +496,9 @@ class AdmittanceController:
         f_des = np.asarray(desired_force, dtype=float)
         f_ext_z = float(f_ext[2])
         was_latched = self._in_contact_latched
+        dt_eff = self.dt * self.time_scale
         if in_contact is None:
-            in_contact = self._update_contact_latched(f_ext)
+            in_contact = self._update_contact_latched(f_ext, dt_eff)
         else:
             in_contact = bool(in_contact)
             if in_contact and not was_latched:
@@ -474,7 +507,6 @@ class AdmittanceController:
             self._in_contact_latched = in_contact
         self.contact_present = bool(in_contact)
 
-        dt_eff = self.dt * self.time_scale
         if in_contact:
             self._contact_time_s += dt_eff
         rising_edge = bool(in_contact) and not was_latched
@@ -485,7 +517,6 @@ class AdmittanceController:
             else f_ext_z
         )
         self._update_instability_index(raw_z)
-        self.f_dot_z = self._force_barrier.update_fdot(f_ext_z, dt_eff)
 
         mass_z = (
             cfg.admittance_mass_z
@@ -533,7 +564,6 @@ class AdmittanceController:
             v_force_tool,
             r_mat,
         )
-        # Force-barrier already capped tool-Z; keep a hard absolute ceiling.
         v_z_cap = self._v_z_cap()
         if v_z_cap > 0.0:
             v_cmd_tool[2] = float(
@@ -591,6 +621,11 @@ class AdmittanceController:
         return float(f_eff)
 
     def _update_instability_index(self, f_z: float) -> None:
+        """Dimeas & Aspragathos 2016 eq. (5): I_s = I_ω I_frms + λ I_s.
+
+        DC gain 1/(1−λ) is intentional so sustained oscillation accumulates.
+        f_max must be sensor/task scale (paper: 30 N), not the setpoint.
+        """
         cfg = self.cfg
         if not cfg.var_damping_enabled:
             self.instability_index = 0.0
@@ -630,7 +665,10 @@ class AdmittanceController:
         *,
         desired_force_n: float = 0.0,
     ) -> float:
-        """``b_base`` (+ α/β only while tracking a nonzero setpoint)."""
+        """``b_base`` (+ α/β only while tracking a nonzero setpoint).
+
+        Hand guidance (desired=0) stays on ``damping_base_z`` for transparency.
+        """
         cfg = self.cfg
         if dt_eff > 0.0:
             raw_dot = (eff - self._eff_prev) / dt_eff
@@ -683,7 +721,7 @@ class AdmittanceController:
         )
         self.damping_dimeas_z = damping_dimeas
 
-        if cfg.damping_law == "ke_critical":
+        if cfg.damping_law == "ke_critical" and abs(float(desired_force_n)) > 1e-6:
             damping_target = damping_ke + damping_dimeas
             if cfg.adaptive_ke.bd_max > 0.0:
                 damping_target = min(
@@ -691,7 +729,11 @@ class AdmittanceController:
                     float(cfg.adaptive_ke.bd_max),
                 )
             self.damping_trend_z = float(cfg.damping_base_z)
+        elif cfg.damping_law == "fixed":
+            damping_target = float(cfg.damping_base_z) + damping_dimeas
+            self.damping_trend_z = float(cfg.damping_base_z)
         else:
+            # trend (7dde980): light hand feel, α/β only while force-tracking.
             damping_trend = self._trend_damping(
                 eff,
                 dt_eff,
@@ -720,10 +762,9 @@ class AdmittanceController:
         cap_press, cap_retract = self._force_barrier.caps(
             f_z=f_ext_z,
             f_des_z=desired_force_n,
-            in_contact=in_contact,
             v_z_cap=v_z_cap,
             seek_vz_m_s=cfg.seek_vz_m_s,
-            contact_enter_n=cfg.contact_threshold_n,
+            in_contact=in_contact,
         )
         self.cap_press_z = float(cap_press)
         self.cap_retract_z = float(cap_retract)
