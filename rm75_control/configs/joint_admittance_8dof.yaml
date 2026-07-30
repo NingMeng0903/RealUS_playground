@@ -242,81 +242,45 @@ force:
   use_inertia: false
 
 hybrid_motion:
-  # Low baseline damping + Dimeas variable INERTIA + Ke-normalized proactive
-  # FF + force-space velocity damper. Implicit-Euler discrete admittance.
-  # Tool-frame masks — all axis discrimination is tool-frame, so this config
-  # supports any spatial trajectory (Y sweep, arc, spline, teleop) as long as
-  # force_axes selects the surface-normal tool axis.
+  # Tool-Z force admittance: trend damping + Dimeas inertia + Ke-normalized FF
+  # + force-space barrier. force_axes / track_axes / kp_pos are tool-frame.
   force_axes: [0, 0, 1, 0, 0, 0]
   track_axes: [1, 1, 0, 1, 1, 1]
-  # Tool-frame PBAC: v = vel_ff + kp*err (De Schutter 1988).
-  # Tangential X and Y gains are equal so a diagonal / arc / spline path is
-  # not biased along one tool axis. Trajectory-agnostic (see plan §4).
   kp_pos: [2.0, 2.0, 0.0, 1.5, 1.5, 1.5]
   pos_err_deadband_m: 0.0005
   pos_correction_max_m_s: 0.08
   system_delay_s: 0.015
-  # fz-only enter-only contact latch + hysteretic release that re-arms ramp.
-  # Require a real gap (~200 ms below 0.25 N), not a single tracking dip.
   contact_threshold_n: 0.8
   contact_use_fz_only: true
   contact_release_n: 0.25
   contact_release_ticks: 40
-  # Noise-rejection deadband — a FIXED sensor-noise quantity, never scaled
-  # with desired_z (scaling it made a 5 N hold need >0.5 N over-force before
-  # any retract authority: the "over-force / heavy damping" hand feel).
   deadband_n: 0.05
   deadband_width_n: 0.05
-  # Tool-frame velocity/acceleration caps. Tangential X == Y (trajectory-
-  # agnostic); tool-Z equals max_vz_tool_m_s below (single vz authority —
-  # scan-jitter-fix §2a: two disagreeing caps caused admittance-state windup).
   max_velocity: [0.22, 0.22, 0.10, 0.6, 0.6, 0.6]
   max_acceleration: [1.0, 1.0, 0.8, 2.0, 2.0, 2.0]
   admittance_mass_z: 1.0
-  admittance_damping_z: 25.0   # legacy free-space seed (ke_critical path only)
-  # Trend damping (default): low fixed base + |e| and expanding-error terms.
-  # Dimeas contributes via inertia only (d_u=0). Set damping_law: ke_critical
-  # to restore the old Keemink critical-damping path for A/B.
+  admittance_damping_z: 25.0   # ke_critical free-space seed only
   damping_law: trend
   damping_base_z: 15.0
-  # α/β active only while tracking a nonzero setpoint. Hand guidance
-  # (desired≈0) stays at damping_base_z for transparency.
-  damping_alpha_e: 1.0
+  damping_alpha_e: 1.0          # tracking only; hand guidance uses base
   damping_beta_e_edot: 2.5
   damping_max_z: 200.0
   edot_lpf_s: 0.02
-  # Free-space seek; press cap closes continuously as |fz|→contact_threshold.
   seek_vz_m_s: 0.012
   seek_force_sat_n: 1.0
-  # Discrete impact jumps disabled — continuous approach brake replaces them.
-  impact_vz_m_s: 0.0
-  impact_damping_extra: 0.0
-  impact_damping_s: 0.0
-  # Absolute tool-Z ceiling (force barrier applies tighter press/retract caps).
   max_vz_tool_m_s: 0.10
-  # Engagement ramp: re-armed every contact episode (release clears timer).
   desired_force_ramp_s: 0.5
-  # Force-space Faverjon velocity damper (does NOT use K̂e — estimator is
-  # often stale at steady contact where |Δx| < dx_threshold).
   force_barrier:
     enabled: true
-    t_react_s: 0.030          # synced with causal_fc_hz=10 (~half of 6 Hz delay)
+    t_react_s: 0.030
     budget_min_n: 0.5
     budget_frac: 0.4
     f_keep_n: 0.5
     v_ref_m_s: 0.05
     v_min_retract_m_s: 0.002
     fdot_lpf_s: 0.040
-    # Cap slew only when arm_impact_slew() is armed (optional); approach
-    # braking is continuous via |fz|/contact_threshold.
-    cap_slew_m_s2: 0.50
-    cap_close_slew_m_s2: 0.80
-  # Dimeas & Aspragathos 2016 variable-INERTIA channel on tool-Z.
-  # Table 2: inertia adaptation is ~5× better than damping-only on operator
-  # effort — d_u is ZERO; m_u carries the oscillation suppression.
   var_damping_enabled: true
   var_damping_omega_c_hz: 2.5
-  # Iₛ final-stage EWMA: 0.951 = exp(-dt/0.1) ≈ paper's 0.1 s at 200 Hz.
   var_damping_lambda: 0.951
   var_damping_f_max_n: 7.0
   var_damping_d_u: 0.0
@@ -324,8 +288,6 @@ hybrid_motion:
   var_damping_m_max: 5.0
   var_damping_dc_alpha: 0.02
   adaptive_ke:
-    # K̂e now primarily normalises proactive FF gain (1/(Ke·τ)); critical
-    # damping is only consumed when damping_law: ke_critical.
     enabled: true
     zeta: 0.9
     ke_initial: 80.0
@@ -347,17 +309,12 @@ hybrid_motion:
     df_spike_n: 4.0
     f_err_gate_n: 1.2
     f_err_gate_frac: 0.35
-    # Floor so desired_z→0 never collapses the gate to 1.2 N (hand-push freeze).
     f_err_gate_floor_n: 3.0
-    # Idle decay freezes on Dimeas Iₛ, not on |f_err| (hand push ≠ oscillation).
     idle_decay_is_gate: 0.15
     bd_min: 25.0
     bd_max: 200.0
     bd_slew_max: 400.0
     ke_slew_max: 1200.0
-  # Yanan Li proactive reference: default gain_mode=ke_normalized so the same
-  # Newton of force error asks for far less motion on a stiff surface.
-  # gain_mode: fixed restores the legacy setpoint-normalized integrator.
   proactive_feedforward: true
   proactive_retract_only: false
   proactive_gain_mode: ke_normalized
@@ -365,7 +322,6 @@ hybrid_motion:
   ke_floor_ff: 80.0
   tau_track_s: 0.08
   alpha_leak: 2.0
-  # Legacy fixed-mode gains (used only when gain_mode: fixed).
   proactive_gain: 0.10
   proactive_retract_gain: 0.10
   proactive_leak_s: 0.3

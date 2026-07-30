@@ -31,7 +31,6 @@ def _damper(**over) -> ForceSpaceVelocityDamper:
 
 def test_press_cap_tightens_when_predicted_force_exceeds_budget():
     barrier = _damper()
-    # Rising force toward an already-saturated press prediction.
     for f in (2.0, 2.5, 3.0, 3.5):
         barrier.update_fdot(f, DT)
     cap_press, cap_retract = barrier.caps(
@@ -57,7 +56,6 @@ def test_retract_cap_limits_escape_speed_near_keep_force():
         seek_vz_m_s=0.015,
     )
     assert cap_retract <= 0.10
-    # Near keep force the retract budget is small → slow escape.
     assert cap_retract < 0.05
 
 
@@ -89,60 +87,6 @@ def test_disabled_barrier_passes_full_cap():
     assert cap_retract == pytest.approx(0.08)
 
 
-def test_press_cap_slew_prevents_one_tick_hard_stop():
-    barrier = _damper(cap_slew_m_s2=0.40, fdot_lpf_s=0.005)
-    # Establish a free-space seek cap, then jump into over-force contact.
-    barrier.caps(
-        f_z=0.0,
-        f_des_z=1.0,
-        in_contact=False,
-        v_z_cap=0.10,
-        seek_vz_m_s=0.015,
-        dt_eff=DT,
-    )
-    assert barrier.cap_press_z == pytest.approx(0.015)
-    # Instant over-force prediction would ask for cap_press=0; slew must
-    # leave residual press room on the first contact tick.
-    barrier.arm_impact_slew(0.10)
-    for f in (1.0, 1.5, 2.0, 2.5):
-        barrier.update_fdot(f, DT)
-    cap_press, _ = barrier.caps(
-        f_z=2.5,
-        f_des_z=1.0,
-        in_contact=True,
-        v_z_cap=0.10,
-        seek_vz_m_s=0.015,
-        dt_eff=DT,
-    )
-    assert cap_press > 0.009
-    # After enough ticks it may reach zero, but not in one sample.
-    for _ in range(80):
-        barrier.update_fdot(2.5, DT)
-        cap_press, _ = barrier.caps(
-            f_z=2.5,
-            f_des_z=1.0,
-            in_contact=True,
-            v_z_cap=0.10,
-            seek_vz_m_s=0.015,
-            dt_eff=DT,
-        )
-    assert cap_press <= 0.003
-
-    # Outside the impact window, caps snap to the target immediately.
-    barrier.arm_impact_slew(0.0)
-    barrier.cap_press_z = 0.015
-    barrier.update_fdot(3.0, DT)
-    cap_press, _ = barrier.caps(
-        f_z=3.0,
-        f_des_z=1.0,
-        in_contact=True,
-        v_z_cap=0.10,
-        seek_vz_m_s=0.015,
-        dt_eff=DT,
-    )
-    assert cap_press == pytest.approx(0.0)
-
-
 def test_continuous_approach_brake_closes_with_force():
     """Press cap falls smoothly as |fz| rises toward the contact threshold."""
     barrier = _damper()
@@ -154,7 +98,6 @@ def test_continuous_approach_brake_closes_with_force():
             in_contact=False,
             v_z_cap=0.10,
             seek_vz_m_s=0.012,
-            dt_eff=DT,
             contact_enter_n=0.8,
         )
         caps.append(cap_press)
@@ -163,14 +106,10 @@ def test_continuous_approach_brake_closes_with_force():
     assert all(caps[i] >= caps[i + 1] - 1e-12 for i in range(len(caps) - 1))
 
 
-def test_contact_rising_edge_soft_brakes_seek_velocity():
-    """Optional discrete impact_vz still works when explicitly enabled."""
+def test_near_contact_brakes_seek_via_approach_cap():
     from rm75_control.control.admittance_common.controller import (
         AdmittanceConfig,
         AdmittanceController,
-    )
-    from rm75_control.control.admittance_common.force_barrier import (
-        ForceBarrierConfig,
     )
     from rm75_control.control.admittance_common.proactive_force_ff import (
         ProactiveFfConfig,
@@ -184,11 +123,8 @@ def test_contact_rising_edge_soft_brakes_seek_velocity():
         deadband_width_n=0.0,
         seek_vz_m_s=0.015,
         seek_force_sat_n=1.0,
-        impact_vz_m_s=0.008,
-        impact_damping_extra=0.0,
-        impact_damping_s=0.0,
         desired_force_ramp_s=0.0,
-        force_barrier=ForceBarrierConfig(enabled=True, cap_slew_m_s2=0.0),
+        force_barrier=ForceBarrierConfig(enabled=True),
         proactive_ff=ProactiveFfConfig(enabled=False),
         var_damping_enabled=False,
         damping_alpha_e=0.0,
@@ -209,7 +145,6 @@ def test_contact_rising_edge_soft_brakes_seek_velocity():
             f_ext_raw=force,
             dt_actual=DT,
         )
-    # Near-contact force already brakes via continuous approach.
     force = np.zeros(6)
     force[2] = 0.7
     target = np.zeros(6)

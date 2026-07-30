@@ -240,6 +240,36 @@ def _descendants(
     return result
 
 
+def _hard_appendicular_bind_mask(
+    names: list[str],
+    parents: Any,
+) -> np.ndarray:
+    """Return hard limb roots whose bind frames must match their geometry.
+
+    Restoring a non-shrunk humerus/forearm mesh while retaining a different
+    continuous-product bind frame leaves the elbow mesh and its runtime pivot
+    in separate coordinate systems.  The leg roots already used one authority;
+    arms need the same rule through the hand subtrees.
+    """
+
+    roots = (
+        "Femur_Rot_L",
+        "Femur_Rot_R",
+        "Shoulder_Rotate_L",
+        "Shoulder_Rotate_R",
+    )
+    missing = [root for root in roots if root not in names]
+    if missing:
+        raise ValueError(
+            "unified V8 reference is missing appendicular bind roots: "
+            f"{missing}"
+        )
+    result = np.zeros(len(names), dtype=bool)
+    for root in roots:
+        result |= _descendants(names, parents, root)
+    return result
+
+
 def _global_to_local(global_bind: Any, parents: Any) -> np.ndarray:
     global_array = np.asarray(global_bind, dtype=np.float64).reshape(-1, 4, 4)
     parent_array = np.asarray(parents, dtype=np.int64).reshape(-1)
@@ -624,13 +654,10 @@ def compose_unified_reference_template_v8(
         continuous_product.target_bone_tail, dtype=np.float64
     ).copy()
 
-    # The current hip/leg bind remains authoritative.  Arm long-bone geometry
-    # is non-shrunk, but its parent chain starts at the continuous clavicle so
-    # the collar/shoulder connection is not collapsed back to the midline.
-    fitted_bind_mask = (
-        _descendants(names, parents, "Femur_Rot_L")
-        | _descendants(names, parents, "Femur_Rot_R")
-    )
+    # Each restored hard limb mesh and its bind/pivot frames come from the same
+    # product.  Keeping the old continuous arm frames here was enough to put a
+    # correctly sized elbow mesh around the wrong runtime joint.
+    fitted_bind_mask = _hard_appendicular_bind_mask(names, parents)
     target_global[fitted_bind_mask] = np.asarray(
         fitted_product.target_bind_global, dtype=np.float64
     )[fitted_bind_mask]
@@ -707,6 +734,7 @@ def compose_unified_reference_template_v8(
             "v8_reference_beta_origin": beta_origin.tolist(),
             "v8_reference_field_authority": "continuous_product",
             "v8_nonshrunk_bone_authority": "fitted_product",
+            "v8_appendicular_bind_authority": "fitted_product",
             "v8_foot_compound_authority": "clean_762_product",
             "oral_visibility_policy_v2": oral_visibility,
             "hidden_mesh_names_v2": oral_visibility["hidden_mesh_names_v2"],

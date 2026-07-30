@@ -59,6 +59,100 @@ _SOURCE_SOFT_PREWRAP_FINAL_ITERATIONS = 5
 _SOURCE_SOFT_PREWRAP_EDGE_Q99_LIMIT = 0.05
 
 
+def _digest_raw_array_v811(
+    digest: "hashlib._Hash",
+    *,
+    name: str,
+    value: Any,
+) -> None:
+    """Append an array without normalizing its dtype or slot layout."""
+
+    digest.update(b"array\0")
+    digest.update(str(name).encode("utf-8"))
+    digest.update(b"\0")
+    if value is None:
+        digest.update(b"none\0")
+        return
+    array = np.asarray(value)
+    if array.dtype.hasobject:
+        raise ValueError(f"{name} must not use an object dtype")
+    digest.update(b"present\0")
+    digest.update(np.asarray((array.ndim,), dtype="<i8").tobytes())
+    digest.update(np.asarray(array.shape, dtype="<i8").tobytes())
+    digest.update(array.dtype.str.encode("ascii"))
+    digest.update(b"\0")
+    digest.update(np.ascontiguousarray(array).tobytes())
+
+
+def _digest_string_sequence_v811(
+    digest: "hashlib._Hash",
+    *,
+    name: str,
+    value: Any,
+) -> None:
+    """Append ordered source-mesh metadata with unambiguous text boundaries."""
+
+    digest.update(b"strings\0")
+    digest.update(str(name).encode("utf-8"))
+    digest.update(b"\0")
+    if value is None:
+        digest.update(b"none\0")
+        return
+    values = list(value)
+    digest.update(b"present\0")
+    digest.update(np.asarray((len(values),), dtype="<i8").tobytes())
+    for item in values:
+        text = (
+            item.decode("utf-8")
+            if isinstance(item, (bytes, np.bytes_))
+            else str(item)
+        )
+        encoded = text.encode("utf-8")
+        digest.update(np.asarray((len(encoded),), dtype="<i8").tobytes())
+        digest.update(encoded)
+
+
+def source_skinning_topology_digest_v811(asset: AnatomyRiggedAsset) -> str:
+    """Digest immutable topology and original Blender 14-slot skinning.
+
+    The protected V8.11 volume step may change only the coordinates of its
+    soft-domain vertices.  It must preserve raw serialized array dtypes and
+    bytes, not merely numerically equal casted values.  Mesh ranges, names and
+    tissue ordering are included so a matching face array cannot conceal a
+    vertex-to-mesh permutation.
+    """
+
+    required = (
+        "faces",
+        "driver_indices",
+        "driver_weights",
+        "source_vertex_ranges",
+        "source_mesh_names",
+        "source_tissues",
+    )
+    missing = [name for name in required if getattr(asset, name, None) is None]
+    if missing:
+        raise ValueError(
+            "V8.11 source skinning topology requires " + ", ".join(missing)
+        )
+    digest = hashlib.sha256(b"source-skinning-topology-v811\0")
+    for name in (
+        "faces",
+        "driver_indices",
+        "driver_weights",
+        "source_vertex_ranges",
+        "source_bind_vertices",
+    ):
+        _digest_raw_array_v811(digest, name=name, value=getattr(asset, name, None))
+    for name in ("source_mesh_names", "source_tissues"):
+        _digest_string_sequence_v811(
+            digest,
+            name=name,
+            value=getattr(asset, name, None),
+        )
+    return digest.hexdigest()
+
+
 def _volume_transport_digest_v811(
     asset: AnatomyRiggedAsset,
     transport_domain: np.ndarray,
@@ -1839,6 +1933,13 @@ def apply_source_skin_volume_registration(
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     if v35_semantic_prealign_shared_bind and legacy_weighted_semantic_prealign:
         raise ValueError("continuous and legacy semantic prealign are mutually exclusive")
+    source_skinning_topology_digest_before = source_skinning_topology_digest_v811(
+        asset
+    )
+    source_driver_indices = np.asarray(asset.driver_indices)
+    if source_driver_indices.ndim != 2:
+        raise ValueError("V8.11 source driver indices must be a rank-2 array")
+    source_driver_slot_count = int(source_driver_indices.shape[1])
     if asset.source_skin_vertices is None or asset.source_skin_faces is None:
         raise RuntimeError("source template lacks Skin_Glass; force source template rebake")
     root = Path(canonical_dir)
@@ -2591,6 +2692,22 @@ def apply_source_skin_volume_registration(
             semantic_prealign_blend=prealign_blend,
         )
     result = with_source_driver_coupling(result)
+    source_skinning_topology_digest_after = source_skinning_topology_digest_v811(
+        result
+    )
+    source_skinning_topology_byte_identical = bool(
+        source_skinning_topology_digest_before
+        == source_skinning_topology_digest_after
+    )
+    source_vertex_order_preserved = bool(
+        source_skinning_topology_byte_identical
+        and len(np.asarray(result.vertices_rest)) == len(np.asarray(asset.vertices_rest))
+    )
+    if not source_skinning_topology_byte_identical or not source_vertex_order_preserved:
+        raise RuntimeError(
+            "source skin volume registration changed immutable topology, mesh order, "
+            "or original Blender skinning payload"
+        )
     report = {
         "schema_version": 1,
         "artifact_kind": "SourceSkinVolumeRegistrationV811",
@@ -2614,6 +2731,15 @@ def apply_source_skin_volume_registration(
             np.count_nonzero(soft_volume_tissue_domain)
         ),
         "soft_volume_transport_vertices": int(np.count_nonzero(soft_volume_domain)),
+        "source_skinning_topology_digest_before": (
+            source_skinning_topology_digest_before
+        ),
+        "source_skinning_topology_digest_after": source_skinning_topology_digest_after,
+        "source_skinning_topology_byte_identical": (
+            source_skinning_topology_byte_identical
+        ),
+        "source_vertex_order_preserved": source_vertex_order_preserved,
+        "source_driver_slot_count": source_driver_slot_count,
         "rigid_hard_protection_preserved": bool(preserve_protected_material),
         "soft_volume_tissues": sorted(_SOFT_VOLUME_TISSUES_V811),
         "anatomy_transport": (

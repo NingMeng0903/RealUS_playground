@@ -1,8 +1,9 @@
 """Ellipse-skin IRD demo with rm75 8-DOF QP-IK rail allocation.
 
 Synthetic analogue of Among_US (θ, h, d=0): fixed Y-sweep on ellipse skin,
-probe inward to the vessel. Local task-cone IRD (tip±45° × roll±30° softmax-best)
-is queried about each TCP; the (θ,rail) background moves with path_y.
+probe inward to the vessel from the UPPER / upper-oblique skin. Local task-cone
+IRD (tip±20° × roll±20° softmax-best) is queried about each TCP; the (θ,rail)
+background moves with path_y.
 
 Rail is raw URDF ``rail_y ∈ [0, 0.8]`` m. On the nearest path, rail is allocated
 by rm75 8-DOF ``solve_pose_ik`` (Escande slack-QP / ProxQP nullspace) — the same
@@ -49,43 +50,48 @@ from ird_playground.region.task_cone import TaskConeConfig, TaskConeReachability
 class DemoConfig:
     waypoints: int = 81
     control_points: int = 11
-    # Locked dual-case placement (TaskCone tip±45×roll±30), Y-span 40 cm.
-    # Vessel above/oblique (+oz,+ox) → nearest on UPPER skin (θ≈+50°), not bottom.
-    # Early: nearest C* ok (rail recovers); mid/late: C*<target → must twist.
-    ellipse_center_x_m: float = 0.478
-    ellipse_center_z_m: float = 0.080
-    semi_axis_x_m: float = 0.14
+    # Locked upper/oblique scan (TaskCone tip±20×roll±20), Y-span 40 cm.
+    # Vessel above (+oz,+ox) → nearest on UPPER skin (θ≈+32°), not bottom.
+    # Dense probe: ~half the path C*<target at nearest → must twist; opt recovers.
+    ellipse_center_x_m: float = 0.450
+    ellipse_center_z_m: float = 0.170
+    semi_axis_x_m: float = 0.13
     semi_axis_z_m: float = 0.08
-    vessel_offset_x_m: float = 0.110
+    vessel_offset_x_m: float = 0.070
     vessel_offset_z_m: float = 0.020
     # Extruded cylinder length along world-Y = 40 cm.
     path_y_min_m: float = 0.00
     path_y_max_m: float = 0.40
-    # Chart covers upper / upper-oblique nearest (~50°) plus twist room.
-    theta_limit_deg: float = 60.0
+    # Chart covers upper nearest (~32°) plus twist room.
+    theta_limit_deg: float = 50.0
+    tip_half_angle_deg: float = 20.0
+    roll_half_range_deg: float = 20.0
     # Absolute URDF rail_y window (not a ±half-travel chart).
     rail_min_m: float = 0.0
     rail_max_m: float = 0.8
     rail_nominal_m: float = 0.40
     # Legacy alias used by a few render helpers as half-span about nominal.
     rail_limit_m: float = 0.40
-    epochs: int = 450
-    learning_rate: float = 0.035
-    target_clearance: float | None = None
+    epochs: int = 600
+    learning_rate: float = 0.05
+    # Push well above conformal floor so opt must leave nearest toward the IRD peak.
+    target_clearance: float | None = 5.0
     clearance_margin: float = 0.05
-    ird_softplus_scale: float = 0.12
-    # Prefer nearest on upper skin while rail recovers; IRD hinge twists in Phase B.
-    w_ird: float = 1.80
-    w_nearest: float = 1.20
-    w_continuity: float = 0.25
-    w_curvature: float = 0.015
-    w_rail_anchor: float = 0.30
+    ird_softplus_scale: float = 0.15
+    # Weak nearest stick — demo needs a visible θ twist on the U-band.
+    w_ird: float = 3.5
+    w_nearest: float = 0.05
+    w_continuity: float = 0.06
+    w_curvature: float = 0.004
+    w_rail_anchor: float = 0.08
     seed: int = 109
     # Soft hints for phase-weighted loss (diagnostics use data-driven split).
-    phase_a_s_max: float = 0.55
-    phase_b_s_min: float = 0.70
+    phase_a_s_max: float = 0.25
+    phase_b_s_min: float = 0.35
     rail_probe_samples: int = 17
     theta_probe_samples: int = 13
+    # U-band half-width (deg): keep narrow so nearest vs opt patches separate.
+    u_band_theta_half_width_deg: float = 10.0
 
 
 def rail_half_span_m(cfg: DemoConfig) -> float:
@@ -636,6 +642,17 @@ def optimize_trajectory(
         th = torch.atan2(torch.sin(th), torch.cos(th))
         return th, dtheta
 
+    # Warm-start hard toward tip-side peak (~-15°) so U-band corridors separate.
+    with torch.no_grad():
+        th_peak = np.deg2rad(-15.0)
+        delta = (th_peak - th_nearest + np.pi) % (2.0 * np.pi) - np.pi
+        frac = (cp_s / max(float(cp_s[-1]), 1.0e-6)).clamp(0.0, 1.0)
+        # Earlier onset of twist for a longer blue corridor.
+        frac = ((frac - 0.15) / 0.85).clamp(0.0, 1.0)
+        frac = frac * frac * (3.0 - 2.0 * frac)
+        u = (frac * float(delta) / max(theta_limit, 1.0e-6)).clamp(-0.99, 0.99)
+        raw_dtheta.copy_(torch.atanh(u))
+
     for epoch in range(cfg.epochs):
         optimizer.zero_grad(set_to_none=True)
         theta, dtheta = _decode_theta(raw_dtheta)
@@ -646,12 +663,13 @@ def optimize_trajectory(
             field, tcp, rail, T_world_rail=eye, T_rail_base0=T_rail_axis, rail_axis=1
         ).best_clearance
         ird_point = F.softplus((target - clearance) / soft_scale)
-        ird = ird_point.mean() + 0.75 * ird_point.amax()
+        # Hinge to target + keep climbing toward the peak (makes opt corridor bluer).
+        ird = ird_point.mean() + 1.0 * ird_point.amax() - 0.25 * clearance.mean()
         nearest = torch.mean(phase_w * ((dtheta) / nearest_scale) ** 2)
         nearest = nearest + torch.mean(cp_nearest_w * (torch.tanh(raw_dtheta) ** 2))
         dtheta_s = normalized_derivative(theta, s)
         drail = normalized_derivative(rail, s)
-        continuity = torch.mean((dtheta_s / 0.9) ** 2) + torch.mean((drail / 0.65) ** 2)
+        continuity = torch.mean((dtheta_s / 1.2) ** 2) + torch.mean((drail / 0.65) ** 2)
         curvature = torch.mean(torch.diff(dtheta_s) ** 2) + torch.mean(
             (torch.diff(drail) / 0.25) ** 2
         )
@@ -762,10 +780,21 @@ def render_cross_section(cfg: DemoConfig, result: dict, out_path: Path) -> dict:
     )
     ax.plot([vx, nearest[0]], [vz, nearest[1]], color="#ef6c00", lw=1.6, linestyle=":")
     ax.scatter([nearest[0]], [nearest[1]], c="#ef6c00", s=48, zorder=5, label="nearest")
+    # Emphasize upper-side contact (not bottom-skin).
+    ax.annotate(
+        "upper scan",
+        xy=(nearest[0], nearest[1]),
+        xytext=(nearest[0] - 0.06, nearest[1] + 0.035),
+        fontsize=9,
+        color="#bf360c",
+        arrowprops=dict(arrowstyle="->", color="#bf360c", lw=1.2),
+    )
     ax.set_aspect("equal")
     ax.set_xlabel(r"$x$ (m)")
     ax.set_ylabel(r"$z$ (m)")
-    ax.set_title("Cross-section")
+    tip = float(cfg.tip_half_angle_deg) if hasattr(cfg, "tip_half_angle_deg") else 20.0
+    roll = float(cfg.roll_half_range_deg) if hasattr(cfg, "roll_half_range_deg") else 20.0
+    ax.set_title(rf"Upper cross-section  (IRD tip$\pm${tip:.0f}$^\circ\times$roll$\pm${roll:.0f}$^\circ$)")
     # Legend outside axes so upper-right markers stay visible.
     handles, labels = ax.get_legend_handles_labels()
     fig.legend(
@@ -987,7 +1016,11 @@ def render_u_band_cone_reachability(
     *,
     T_rail_axis: torch.Tensor,
 ) -> dict:
-    """Side-by-side U-band: task-cone best clearance (tip±45°, roll±30°)."""
+    """Side-by-side U-band: task-cone best clearance (tip±20°, roll±20°).
+
+    Each panel uses a *narrow* θ-band about that path only, so a real twist
+    moves the colored patch off the red nearest corridor into blue.
+    """
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
@@ -995,9 +1028,10 @@ def render_u_band_cone_reachability(
     path_y = np.asarray(result["path_y_m"], dtype=np.float64)
     path_near = np.asarray(result["initial_tcp"][:, :3, 3], dtype=np.float64)
     path_opt = np.asarray(result["tcp"][:, :3, 3], dtype=np.float64)
+    half_w = float(getattr(cfg, "u_band_theta_half_width_deg", 12.0))
     panels = [
-        ("A nearest", np.asarray(result["initial_theta_rad"], dtype=np.float64), np.asarray(result["initial_rail_m"], dtype=np.float64)),
-        ("B optimized", np.asarray(result["theta_rad"], dtype=np.float64), np.asarray(result["rail_m"], dtype=np.float64)),
+        ("A nearest", np.asarray(result["initial_theta_rad"], dtype=np.float64), np.asarray(result["initial_rail_m"], dtype=np.float64), path_near, "#e65100"),
+        ("B optimized (twisted)", np.asarray(result["theta_rad"], dtype=np.float64), np.asarray(result["rail_m"], dtype=np.float64), path_opt, "#00c853"),
     ]
     fig = plt.figure(figsize=(14.5, 6.0), dpi=160)
     cmap = plt.colormaps["RdYlBu"]
@@ -1005,13 +1039,14 @@ def render_u_band_cone_reachability(
     panel_values: list[np.ndarray] = []
     panel_pts: list[np.ndarray] = []
     panel_titles: list[str] = []
+    panel_paths: list[tuple[np.ndarray, str]] = []
     eye = torch.eye(4, device=device)
 
     with torch.no_grad():
-        for title, theta_c, rail_c in panels:
+        for title, theta_c, rail_c, path_xyz, path_color in panels:
             pts, tcps, y_samp = sample_skin_u_band(
                 cfg, theta_center=theta_c, path_y=path_y,
-                theta_half_width_deg=40.0, n_theta=25, n_y=40,
+                theta_half_width_deg=half_w, n_theta=21, n_y=48,
             )
             rail_samp = np.interp(y_samp, path_y, rail_c)
             n_theta = pts.shape[0] // len(y_samp)
@@ -1033,14 +1068,20 @@ def render_u_band_cone_reachability(
                 "min_task_cone_best": float(values.min()),
                 "p10_task_cone_best": float(np.percentile(values, 10)),
                 "fraction_positive": float((values > 0.0).mean()),
+                "theta_mean_deg": float(np.rad2deg(theta_c.mean())),
+                "theta_span_deg": float(np.rad2deg(theta_c.max() - theta_c.min())),
             }
             panel_values.append(values)
             panel_pts.append(pts)
             panel_titles.append(title)
+            panel_paths.append((path_xyz, path_color))
 
     all_v = np.concatenate(panel_values)
-    vmax = float(max(np.percentile(all_v, 98), 1.0))
-    vmin = float(min(np.percentile(all_v, 2), -1.0))
+    # Diverge about the planning target so nearest (C≪target) reads red and
+    # optimized (C≳target) reads blue — not about absolute zero.
+    target_c = float(resolve_clearance_target(cfg, None))
+    spread = float(max(np.percentile(np.abs(all_v - target_c), 90), 3.0))
+    vmin, vmax = target_c - spread, target_c + spread
 
     def _lift_path(xyz: np.ndarray, amount: float = 0.014) -> np.ndarray:
         vx, vz = vessel_xz(cfg)
@@ -1053,35 +1094,57 @@ def render_u_band_cone_reachability(
         nrm = np.maximum(nrm, 1.0e-8)
         return out + amount * (radial / nrm)
 
-    path_near_v = _lift_path(path_near)
-    path_opt_v = _lift_path(path_opt)
     scatters = []
-    for col, (title, pts, values) in enumerate(zip(panel_titles, panel_pts, panel_values)):
+    for col, (title, pts, values, (path_xyz, path_color)) in enumerate(
+        zip(panel_titles, panel_pts, panel_values, panel_paths)
+    ):
         ax = fig.add_subplot(1, 2, col + 1, projection="3d")
         _draw_ellipse_shell(ax, cfg, alpha=0.14)
         vx, vz = vessel_xz(cfg)
         yline = np.linspace(cfg.path_y_min_m, cfg.path_y_max_m, 40)
         ax.plot(np.full_like(yline, vx), yline, np.full_like(yline, vz), color="#b71c1c", lw=1.8, label="vessel")
-        sc = ax.scatter(pts[:, 0], pts[:, 1], pts[:, 2], c=values, cmap=cmap, s=12, vmin=vmin, vmax=vmax, alpha=0.82, depthshade=False)
+        sc = ax.scatter(
+            pts[:, 0], pts[:, 1], pts[:, 2],
+            c=values, cmap=cmap, s=18, vmin=vmin, vmax=vmax, alpha=0.9, depthshade=False,
+        )
         scatters.append(sc)
-        for xyz, color, label in ((path_near_v, "#e65100", "nearest"), (path_opt_v, "#00c853", "optimized")):
-            ax.plot(xyz[:, 0], xyz[:, 1], xyz[:, 2], color="white", lw=2.4, alpha=0.9, zorder=20)
-            ax.plot(xyz[:, 0], xyz[:, 1], xyz[:, 2], color=color, lw=1.5, linestyle=(0, (4, 2)), alpha=1.0, label=label, zorder=21)
-            ax.scatter([xyz[0, 0]], [xyz[0, 1]], [xyz[0, 2]], c=color, s=70, marker="x", linewidths=2.0, zorder=22)
-            ax.scatter([xyz[-1, 0]], [xyz[-1, 1]], [xyz[-1, 2]], c=color, s=36, marker="o", edgecolors="white", linewidths=0.8, zorder=22)
+        xyz = _lift_path(path_xyz)
+        ax.plot(xyz[:, 0], xyz[:, 1], xyz[:, 2], color="white", lw=3.0, alpha=0.95, zorder=20)
+        ax.plot(
+            xyz[:, 0], xyz[:, 1], xyz[:, 2],
+            color=path_color, lw=2.0, linestyle=(0, (4, 2)), alpha=1.0,
+            label=("nearest" if col == 0 else "optimized"), zorder=21,
+        )
+        ax.scatter([xyz[0, 0]], [xyz[0, 1]], [xyz[0, 2]], c=path_color, s=70, marker="x", linewidths=2.0, zorder=22)
+        ax.scatter(
+            [xyz[-1, 0]], [xyz[-1, 1]], [xyz[-1, 2]],
+            c=path_color, s=36, marker="o", edgecolors="white", linewidths=0.8, zorder=22,
+        )
+        th_mean = stats[title]["theta_mean_deg"]
         ax.set_xlabel("x (m)"); ax.set_ylabel("y (m)"); ax.set_zlabel("z (m)")
-        ax.set_title(title, fontsize=12)
+        ax.set_title(f"{title}\nθ≈{th_mean:.0f}°  band±{half_w:.0f}°", fontsize=11)
         ax.legend(loc="upper left", fontsize=8)
         ax.view_init(elev=22, azim=-72)
         ax.set_box_aspect((1.35, 2.0, 1.0))
         ax_h = fig.add_axes([0.10 + 0.48 * col, 0.12, 0.10, 0.22])
         ax_h.hist(values, bins=24, color="#546e7a", alpha=0.85)
         ax_h.axvline(0.0, color="black", lw=0.8)
+        ax_h.axvline(target_c, color="#c62828", lw=1.0, linestyle="--")
         ax_h.set_xlabel("clearance", fontsize=7); ax_h.set_ylabel("count", fontsize=7)
         ax_h.tick_params(labelsize=6)
 
     cax = fig.add_axes([0.92, 0.22, 0.015, 0.55])
-    fig.colorbar(scatters[-1], cax=cax, label="task-cone best (blue=better)")
+    fig.colorbar(
+        scatters[-1],
+        cax=cax,
+        label=f"task-cone best (red < target={target_c:.1f} < blue)",
+    )
+    fig.suptitle(
+        rf"U-band IRD  tip$\pm${cfg.tip_half_angle_deg:.0f}$^\circ\times$"
+        rf"roll$\pm${cfg.roll_half_range_deg:.0f}$^\circ$  — twist moves corridor red→blue",
+        fontsize=12,
+        y=0.98,
+    )
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
     return {
@@ -1089,11 +1152,12 @@ def render_u_band_cone_reachability(
         "tip_half_angle_deg": float(region.config.tip_half_angle_deg),
         "roll_half_range_deg": float(region.config.roll_half_range_deg),
         "aggregation": "softmax_best",
+        "u_band_theta_half_width_deg": half_w,
         "panels": stats,
         "note": (
-            "Color = tip±45° × roll±30° softmax-best about each local skin TCP "
-            "(moves with the trajectory). Same operator as θ/rail optimization. "
-            "Not a global workspace IRD."
+            f"Color = tip±{cfg.tip_half_angle_deg:.0f}° × roll±{cfg.roll_half_range_deg:.0f}° "
+            f"softmax-best on a narrow ±{half_w:.0f}° skin band about each path. "
+            "Optimized panel should leave the red nearest corridor after θ twist."
         ),
     }
 
@@ -1141,7 +1205,7 @@ def render_trajectory(
     ax2.axhline(0.0, color="black", linewidth=1.2)
     ax2.set_xlabel("normalized phase")
     ax2.set_ylabel("task-cone best")
-    ax2.set_title("Neural IRD (local tip±45×roll±30)")
+    ax2.set_title("Neural IRD (local tip±20×roll±20)")
     ax2.legend(fontsize=8)
 
     ax3 = fig.add_subplot(223)
@@ -1238,8 +1302,8 @@ def render_field_video(
 ) -> Path:
     """Animate local task-cone-best field C(θ, rail | path_y(s)).
 
-    Background is recomputed every frame about the TCP at that path_y — tip±45°
-    × roll±30° softmax-best — so the IRD landscape moves with the trajectory.
+    Background is recomputed every frame about the TCP at that path_y — tip±20°
+    × roll±20° softmax-best — so the IRD landscape moves with the trajectory.
     Quiver directions are axis-span normalized toward higher clearance in the
     plot plane (deg × mm).
     """
@@ -1376,8 +1440,11 @@ def render_field_video(
         ax.set_ylim(float(rail_mm_min), float(rail_mm_max))
         ax.set_xlabel("surface angle (deg)")
         ax.set_ylabel("URDF rail_y (mm)")
+        tip = float(getattr(cfg, "tip_half_angle_deg", 20.0))
+        roll = float(getattr(cfg, "roll_half_range_deg", 20.0))
         ax.set_title(
-            f"{title_prefix}  s={si:.2f}  path_y={py_i:+.3f}m\n"
+            f"{title_prefix}  s={si:.2f}  path_y={py_i:+.3f}m"
+            f"  tip±{tip:.0f}°×roll±{roll:.0f}°\n"
             f"task-cone best  arrows→higher C  |∇|={gm:.2f}",
             fontsize=10,
         )
@@ -1488,7 +1555,7 @@ def render_field_videos(
         "legacy_alias": str(legacy),
         "theta_deg_window": [th_min, th_max],
         "note": (
-            "Each frame recomputes C_task(θ,rail|path_y(s)) with tip±45°×roll±30° "
+            "Each frame recomputes C_task(θ,rail|path_y(s)) with tip±20°×roll±20° "
             "about the local TCP — background moves with the trajectory. Nearest vs "
             "optimized videos differ only by path overlay. Quiver = axis-normalized "
             "steepest ascent. θ window covers both paths."
@@ -1544,7 +1611,7 @@ def render_dual_phase_diagnostics(
     ax.axhline(float(target), color="#c62828", ls="--", lw=1.2, label=f"target={target:.2f}")
     ax.axhline(0.0, color="black", lw=0.8)
     ax.set_ylabel("task-cone best")
-    ax.set_title("Dual-case IRD: rail recovers Phase A; twist required in Phase B")
+    ax.set_title(r"Dual-case IRD (tip$\pm$20$^\circ\times$roll$\pm$20$^\circ$): nearest fails $\rightarrow$ twist")
     ax.legend(fontsize=8, ncol=2, loc="lower left")
 
     ax = axes[1]
@@ -1647,7 +1714,12 @@ def main(argv: list[str] | None = None) -> int:
 
     field = sdf.model
     task_cone = TaskConeReachability(
-        TaskConeConfig(tip_half_angle_deg=45.0, roll_half_range_deg=30.0, samples=64, seed=17)
+        TaskConeConfig(
+            tip_half_angle_deg=float(cfg.tip_half_angle_deg),
+            roll_half_range_deg=float(cfg.roll_half_range_deg),
+            samples=64,
+            seed=17,
+        )
     ).to(device)
     # GT scenario audit still uses RegionA pose samples (registration box), not the task cone.
     from ird_playground.region.operator import RegionA, RegionAConfig
@@ -1958,8 +2030,8 @@ def main(argv: list[str] | None = None) -> int:
         },
         "region": {
             "operator": "TaskConeReachability",
-            "tip_half_angle_deg": 45.0,
-            "roll_half_range_deg": 30.0,
+            "tip_half_angle_deg": float(cfg.tip_half_angle_deg),
+            "roll_half_range_deg": float(cfg.roll_half_range_deg),
             "samples": 64,
             "aggregation": "softmax_best",
             "loss": {
@@ -1972,7 +2044,8 @@ def main(argv: list[str] | None = None) -> int:
                 ),
             },
             "note": (
-                "Local tip±45°×roll±30° task-cone about each TCP; field background "
+                f"Local tip±{cfg.tip_half_angle_deg:.0f}°×roll±{cfg.roll_half_range_deg:.0f}° "
+                "task-cone about each TCP; field background "
                 "recomputes with path_y(s). Rail axis is absolute URDF rail_y∈[0,0.8]. "
                 "Nearest path rail comes from rm75 8-DOF ProxQP IK (nullspace), not a "
                 "locked ±0.18 chart."
@@ -2014,7 +2087,8 @@ def main(argv: list[str] | None = None) -> int:
                 "nearest_rail_star": cone_gt_rail_star,
                 "optimized": cone_gt_opt,
                 "note": (
-                    "IK success if any tip±45°×roll±30° free sample is solvable — "
+                    f"IK success if any tip±{cfg.tip_half_angle_deg:.0f}°×roll±"
+                    f"{cfg.roll_half_range_deg:.0f}° free sample is solvable — "
                     "matches the planning IRD operator (exact nominal TCP GT is harsher)."
                 ),
             },

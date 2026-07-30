@@ -30,6 +30,7 @@ from .containment import signed_distance
 from .fk_policy_v8 import validate_source_fk_asset_policy_v8
 from .leg_centerline_v810 import _foot_chain_digest_v1
 from .pose_adapter import smplx_pose_hash
+from .source_skin_volume import source_skinning_topology_digest_v811
 from .tube_frames_v8 import (
     tube_coupling_pack_from_runtime_fields_v8,
     tube_material_edge_metrics_v8,
@@ -795,6 +796,23 @@ def _v811_contract_gate(
             and source_prewrap.get("source_weights_preserved") is True
             and source_prewrap.get("protected_vertices_preserved") is True
         )
+        try:
+            template_skinning_digest = source_skinning_topology_digest_v811(
+                operator.template_asset
+            )
+        except (TypeError, ValueError):
+            template_skinning_digest = None
+        source_skinning_exact = bool(
+            _digest(volume.get("source_skinning_topology_digest_before", ""))
+            and _digest(volume.get("source_skinning_topology_digest_after", ""))
+            and volume.get("source_skinning_topology_digest_before")
+            == volume.get("source_skinning_topology_digest_after")
+            and volume.get("source_skinning_topology_digest_after")
+            == template_skinning_digest
+            and volume.get("source_skinning_topology_byte_identical") is True
+            and volume.get("source_vertex_order_preserved") is True
+            and _finite_int(volume.get("source_driver_slot_count", -1)) == 14
+        )
         volume_exact = bool(
             _finite_int(volume.get("schema_version", -1)) == 1
             and volume.get("artifact_kind") == "SourceSkinVolumeRegistrationV811"
@@ -809,6 +827,7 @@ def _v811_contract_gate(
             and volume.get("rigid_hard_protection_preserved") is True
             and source_rig_rebind.get("rebound") is False
             and source_prewrap_exact
+            and source_skinning_exact
         )
         checks["source_skin_volume_v811"]["pass"] = bool(
             checks["source_skin_volume_v811"]["pass"] and volume_exact
@@ -816,6 +835,9 @@ def _v811_contract_gate(
         checks["source_skin_volume_v811"]["strict_semantic_transport"] = volume_exact
         checks["source_skin_volume_v811"]["source_skin_prewrap"] = (
             source_prewrap_exact
+        )
+        checks["source_skin_volume_v811"]["immutable_source_skinning"] = (
+            source_skinning_exact
         )
         if not checks["source_skin_volume_v811"]["pass"]:
             failures.append("source_skin_volume_v811:semantic_transport")

@@ -8,6 +8,7 @@ from projects.genesis_ue_sync.anatomy_retarget.source_skin_volume import (
     _prewrap_soft_material_to_source_skin_v811,
     _sample_transport_field_v811,
     rigid_hard_protection_mask_v811,
+    source_skinning_topology_digest_v811,
     soft_volume_material_mask_v811,
     soft_volume_transport_mask_v811,
 )
@@ -126,6 +127,52 @@ def test_volume_sampling_skips_protected_vertices_outside_the_soft_domain(
         np.asarray(((0.0, 0.0, 0.0), (1.0, 1.0, 1.0), (0.0, 0.0, 0.0))),
     )
     np.testing.assert_array_equal(outside, np.zeros(3, dtype=bool))
+
+
+def test_source_skinning_topology_digest_is_byte_exact_for_14_slot_payload() -> None:
+    values = {
+        "vertices_rest": np.zeros((4, 3), dtype=np.float32),
+        "faces": np.asarray(((0, 1, 2), (0, 2, 3)), dtype=np.int32),
+        "driver_indices": np.zeros((4, 14), dtype=np.int16),
+        "driver_weights": np.full((4, 14), 1.0 / 14.0, dtype=np.float32),
+        "source_vertex_ranges": np.asarray(((0, 4),), dtype=np.int32),
+        "source_mesh_names": ("Vessel",),
+        "source_tissues": ("vessel",),
+        "source_bind_vertices": np.arange(12, dtype=np.float32).reshape(4, 3),
+    }
+    original = SimpleNamespace(**values)
+    exact_copy = SimpleNamespace(
+        **{
+            name: value.copy() if isinstance(value, np.ndarray) else value
+            for name, value in values.items()
+        }
+    )
+    changed_index_dtype = SimpleNamespace(
+        **{
+            **values,
+            "driver_indices": values["driver_indices"].astype(np.int32),
+        }
+    )
+    changed_weight_byte = SimpleNamespace(
+        **{
+            **values,
+            "driver_weights": values["driver_weights"].copy(),
+        }
+    )
+    changed_weight_byte.driver_weights[0, 0] += np.float32(0.001)
+    changed_face_order = SimpleNamespace(
+        **{
+            **values,
+            "faces": values["faces"][::-1].copy(),
+        }
+    )
+
+    expected = source_skinning_topology_digest_v811(original)
+
+    assert source_skinning_topology_digest_v811(exact_copy) == expected
+    assert source_skinning_topology_digest_v811(changed_index_dtype) != expected
+    assert source_skinning_topology_digest_v811(changed_weight_byte) != expected
+    assert source_skinning_topology_digest_v811(changed_face_order) != expected
 
 
 def test_prebaked_soft_volume_reference_requires_exact_canonical_soft_domain(

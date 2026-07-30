@@ -1,24 +1,9 @@
-"""Energy-aware leaky force-error reference for the tool-Z ``v_r`` slot.
-
-This is an engineering complement to the 2nd-order admittance loop:
+"""Leaky / Ke-normalized force-error reference for tool-Z ``v_r``.
 
     M · v̇ + D · (v − v_r) = F_err
 
-It keeps the hardware-tested short-memory structure.  Two gain modes:
-
-* ``fixed`` — setpoint-normalized drive (legacy, equal small-error gain);
-* ``ke_normalized`` — Li-2022-style ``v_r_target = e / (K̂e · τ)`` so the same
-  Newton of force error asks for far less motion on a stiff surface.
-
-Directional safety is unchanged:
-
-* ``eff > 0`` presses farther into the surface and can inject contact energy,
-  so Dimeas attenuates this branch as high-frequency instability rises;
-* ``eff < 0`` releases an over-force contact, so Dimeas must not suppress the
-  escape direction.
-
-Guards: leaky decay, |v_r| caps, press-only energy gate, reversal reset,
-Åström anti-windup, and optional Li amplitude-coupled leakage.
+``gain_mode``: ``ke_normalized`` (default, ``e/(K̂e·τ)``) or ``fixed``.
+Press branch is gated by Dimeas Iₛ; retract is not.
 """
 
 from __future__ import annotations
@@ -32,7 +17,6 @@ import numpy as np
 class ProactiveFfConfig:
     enabled: bool = True
     retract_only: bool = False
-    # Small-error normalized gains [m/s²] for ``gain_mode=fixed``.
     gain: float = 0.10
     retract_gain: float = 0.10
     leak_s: float = 0.3
@@ -44,12 +28,10 @@ class ProactiveFfConfig:
     press_drive_max: float = 1.0
     retract_drive_max: float = 1.0
     reset_on_reversal: bool = True
-    # ``fixed`` = legacy setpoint-normalized; ``ke_normalized`` = 1/(Ke·τ).
-    gain_mode: str = "ke_normalized"
+    gain_mode: str = "ke_normalized"  # ke_normalized | fixed
     tau_ff_s: float = 0.20
     ke_floor_ff: float = 80.0
     tau_track_s: float = 0.08
-    # Extra Li-style amplitude-coupled leakage on |v_r| (0 disables).
     alpha_leak: float = 2.0
 
     @classmethod
@@ -165,10 +147,8 @@ class ProactiveForceIntegrator:
             self.v_r = 0.0
             self.last_reversal_reset = True
 
-        # Linear leak toward zero.
         if cfg.leak_s > 1e-6:
             self.v_r -= (dt_eff / cfg.leak_s) * self.v_r
-        # Li-style amplitude-coupled leakage: stronger when |v_r| is large.
         if cfg.alpha_leak > 0.0:
             self.v_r -= dt_eff * cfg.alpha_leak * abs(self.v_r) * self.v_r
 
@@ -307,10 +287,7 @@ class ProactiveForceIntegrator:
         ke_hat = max(float(ke_hat), 1e-6)
         ke_floor = max(float(cfg.ke_floor_ff), 1e-6)
         tau = max(float(cfg.tau_ff_s), 1e-6)
-        # Over-force retract:
-        # * hand guidance (desired≈0) always uses ke_floor (symmetric feel);
-        # * force tracking uses full K̂e only while Iₛ shows ringing, otherwise
-        #   ke_floor so quiet retract is not ~10× weaker than press.
+        # Quiet retract / hand guidance use ke_floor; ringing uses full K̂e.
         hand_guidance = abs(float(desired_force_n)) < 1e-6
         if (
             float(eff) < 0.0

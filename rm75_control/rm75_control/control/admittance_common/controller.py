@@ -1,23 +1,9 @@
-"""Stable tool-frame force/motion decoupling and trajectory tracking.
+"""Tool-Z force admittance (implicit Euler) + XY/attitude PBAC.
 
-Tool-Z force axis (stiffness-free mass–damper):
+    M v̇ + D (v − v_r) = F_des − F_ext
 
-    M(t) * v_dot + D(t) * (v - v_r) = F_des - F_ext
-
-Discretised with **implicit Euler** so the denominator ``M + D·Δt`` supplies
-numerical damping and a low baseline ``D`` remains stable on stiff surfaces.
-
-Damping law (``damping_law``):
-
-* ``trend`` (default) — ``D = D_base + α|e| + β·max(0, e·ė)``; Dimeas
-  contributes only through variable **inertia** (``m_u·I_s``);
-* ``ke_critical`` — legacy Keemink critical damping from ``adaptive_ke``.
-
-Yanan Li proactive reference ``v_r`` is retained; default gain mode is
-``ke_normalized`` (same Newton → smaller motion on stiff tissue).  A
-force-space Faverjon velocity damper caps press/retract without relying on
-``K̂e``.  Contact latch is enter-only with a hysteretic release that
-re-arms the engagement ramp every contact episode.
+``damping_law``: ``trend`` (default) or ``ke_critical``. Proactive ``v_r``
+defaults to Ke-normalized gain; force-space barrier caps press/retract.
 """
 
 from __future__ import annotations
@@ -89,8 +75,7 @@ class AdmittanceConfig:
     desired_force_ramp_s: float = 0.5
     admittance_mass_z: float = 3.0
     admittance_damping_z: float = 60.0
-    # ``trend`` | ``ke_critical``
-    damping_law: str = "trend"
+    damping_law: str = "trend"  # trend | ke_critical
     damping_base_z: float = 15.0
     damping_alpha_e: float = 1.5
     damping_beta_e_edot: float = 3.0
@@ -98,11 +83,6 @@ class AdmittanceConfig:
     edot_lpf_s: float = 0.02
     seek_vz_m_s: float = 0.015
     seek_force_sat_n: float = 1.0
-    # Soft-brake / post-impact boost.  Defaults off: continuous approach
-    # braking via |fz|/contact_threshold replaces rising-edge jumps.
-    impact_vz_m_s: float = 0.0
-    impact_damping_extra: float = 0.0
-    impact_damping_s: float = 0.0
     proactive_ff: ProactiveFfConfig = field(default_factory=ProactiveFfConfig)
     force_barrier: ForceBarrierConfig = field(default_factory=ForceBarrierConfig)
     pos_err_deadband_m: float = 0.0
@@ -176,9 +156,6 @@ class AdmittanceConfig:
             edot_lpf_s=float(c.get("edot_lpf_s", 0.02)),
             seek_vz_m_s=float(c.get("seek_vz_m_s", 0.015)),
             seek_force_sat_n=float(c.get("seek_force_sat_n", 1.0)),
-            impact_vz_m_s=float(c.get("impact_vz_m_s", 0.0)),
-            impact_damping_extra=float(c.get("impact_damping_extra", 0.0)),
-            impact_damping_s=float(c.get("impact_damping_s", 0.0)),
             proactive_ff=ProactiveFfConfig.from_dict(c),
             force_barrier=ForceBarrierConfig.from_dict(c),
             pos_err_deadband_m=float(c.get("pos_err_deadband_m", 0.0)),
@@ -331,7 +308,7 @@ class AdmittanceController:
         return float(np.linalg.norm(force))
 
     def _update_contact_latched(self, f_ext: np.ndarray) -> bool:
-        """Enter-only latch with hysteretic release that re-arms the ramp."""
+        """Hysteretic contact latch; release re-arms the force ramp."""
         signal = self._contact_signal_n(f_ext)
         enter_n = float(self.cfg.contact_threshold_n)
         release_n = min(float(self.cfg.contact_release_n), enter_n)
@@ -653,12 +630,7 @@ class AdmittanceController:
         *,
         desired_force_n: float = 0.0,
     ) -> float:
-        """Low fixed base; expansion terms only for resonant force tracking.
-
-        Hand guidance (desired≈0) and quiet contact keep ``b_base`` — the
-        β·e·ė term otherwise treats a fast operator push as "diverging error"
-        and is exactly the "快顶阻尼大" feel.
-        """
+        """``b_base`` (+ α/β only while tracking a nonzero setpoint)."""
         cfg = self.cfg
         if dt_eff > 0.0:
             raw_dot = (eff - self._eff_prev) / dt_eff
@@ -667,8 +639,6 @@ class AdmittanceController:
             self._eff_dot += alpha * (raw_dot - self._eff_dot)
         self._eff_prev = float(eff)
         bd = float(cfg.damping_base_z)
-        # Hand guidance (desired≈0): pure Keemink transparency — α/β would
-        # treat a fast operator push as diverging error ("快顶阻尼大").
         if abs(float(desired_force_n)) > 1e-6:
             bd += float(cfg.damping_alpha_e) * abs(eff)
             bd += float(cfg.damping_beta_e_edot) * max(
@@ -694,15 +664,12 @@ class AdmittanceController:
             cfg.deadband_n,
             cfg.deadband_width_n,
         )
-        # Free-space seek: saturate force drive so approach speed is
-        # independent of desired force magnitude.
         if not in_contact and cfg.seek_force_sat_n > 0.0:
             sat = float(cfg.seek_force_sat_n)
             eff = float(np.clip(eff, -sat, sat))
 
         mass_z = max(float(self._m_z_now), 1e-3)
 
-        # Always compute critical-damping telemetry (legacy comparator).
         if cfg.adaptive_ke.enabled and in_contact:
             damping_ke = float(self.adaptive_bd)
         else:
@@ -756,7 +723,6 @@ class AdmittanceController:
             in_contact=in_contact,
             v_z_cap=v_z_cap,
             seek_vz_m_s=cfg.seek_vz_m_s,
-            dt_eff=dt_eff,
             contact_enter_n=cfg.contact_threshold_n,
         )
         self.cap_press_z = float(cap_press)
@@ -771,7 +737,6 @@ class AdmittanceController:
         )
 
         eff_v = self._force_barrier.clamp_eff(eff, damping)
-        # Implicit Euler: v = (M v + dt (e + D v_r)) / (M + D dt)
         if dt_eff > 0.0:
             velocity = (
                 mass_z * self.v_force_z

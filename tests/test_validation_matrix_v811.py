@@ -9,6 +9,9 @@ from projects.genesis_ue_sync.anatomy_retarget.leg_centerline_v810 import (
     _foot_chain_digest_v1,
 )
 from projects.genesis_ue_sync.anatomy_retarget import validation_matrix_v8
+from projects.genesis_ue_sync.anatomy_retarget.source_skin_volume import (
+    source_skinning_topology_digest_v811,
+)
 from projects.genesis_ue_sync.anatomy_retarget.validation_matrix_v8 import (
     MatrixBodySurfaceV811,
     _foot_chain_gate_v811,
@@ -79,6 +82,13 @@ def _subject(chain: dict[str, object]) -> SimpleNamespace:
 def _selective_asset() -> SimpleNamespace:
     return SimpleNamespace(
         source_bone_names=(),
+        faces=np.empty((0, 3), dtype=np.int32),
+        driver_indices=np.zeros((1, 14), dtype=np.int16),
+        driver_weights=np.ones((1, 14), dtype=np.float32),
+        source_vertex_ranges=np.asarray(((0, 1),), dtype=np.int32),
+        source_mesh_names=("Vessel",),
+        source_tissues=("vessel",),
+        source_bind_vertices=np.zeros((1, 3), dtype=np.float32),
         metadata={
             "source_fk_policy_v4": "selective_authority",
             "source_full_local_fk_v2": False,
@@ -91,6 +101,9 @@ def _selective_asset() -> SimpleNamespace:
 
 
 def _complete_correction(route: dict[str, object]) -> dict[str, object]:
+    source_skinning_digest = source_skinning_topology_digest_v811(
+        _selective_asset()
+    )
     return {
         "source_skin_volume_v811": {
             "available": True,
@@ -108,6 +121,11 @@ def _complete_correction(route: dict[str, object]) -> dict[str, object]:
             ],
             "topology_preserved": True,
             "source_weights_preserved": True,
+            "source_skinning_topology_digest_before": source_skinning_digest,
+            "source_skinning_topology_digest_after": source_skinning_digest,
+            "source_skinning_topology_byte_identical": True,
+            "source_vertex_order_preserved": True,
+            "source_driver_slot_count": 14,
             "protected_material_preserved": True,
             "nonsoft_material_preserved": True,
             "rigid_hard_protection_preserved": True,
@@ -273,6 +291,34 @@ def test_v811_volume_rejects_unverified_source_skin_prewrap() -> None:
 
     assert result["pass"] is False
     assert result["checks"]["source_skin_volume_v811"]["source_skin_prewrap"] is False
+
+
+def test_v811_volume_requires_byte_exact_source_skinning_evidence() -> None:
+    route = {
+        "available": True,
+        "passed": True,
+        "tissues": ["vessel", "nerve"],
+        "skin_outside_count": 0,
+        "bone_clearance_violation_count": 0,
+        "edge_relative_change_q99": 0.0,
+        "skin_margin_m": 0.00025,
+        "bone_clearance_m": 0.00025,
+        "source_reconstruction": {"skipped": True},
+    }
+    correction = _complete_correction(route)
+    correction["source_skin_volume_v811"][
+        "source_skinning_topology_digest_after"
+    ] = "b" * 64
+    operator = SimpleNamespace(
+        template_asset=_selective_asset(),
+        correction_report=correction,
+    )
+    matrix_subject = SimpleNamespace(label="reference", subject=_subject(_foot_chain()))
+
+    result = _v811_contract_gate(operator, [matrix_subject])
+
+    assert result["pass"] is False
+    assert result["checks"]["source_skin_volume_v811"]["immutable_source_skinning"] is False
 
 
 def _body_surface(
