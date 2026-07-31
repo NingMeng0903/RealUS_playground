@@ -27,8 +27,9 @@ class ForceObserverConfig:
     poll_hz: float = 100.0
     # Causal online estimator (Keemink 2018 G2: keep filter order low and the
     # cutoff high to avoid the phase lag that destabilises the marginally passive
-    # virtual-inertia model). Order 2 Butterworth realised as a persistent biquad.
-    causal_fc_hz: float = 6.0
+    # virtual-inertia model). 10 Hz / order-2 ≈ half the 6 Hz group delay
+    # (Keemink G2); keep below the virtual-mass passivity floor.
+    causal_fc_hz: float = 10.0
     causal_order: int = 2
     causal_history: int = 5
 
@@ -173,7 +174,7 @@ class CompensatedForceObserver:
                 min_samples=int(f.get("min_samples", 35)),
                 use_inertia=bool(f.get("use_inertia", False)),
                 poll_hz=poll_hz,
-                causal_fc_hz=float(f.get("causal_fc_hz", 6.0)),
+                causal_fc_hz=float(f.get("causal_fc_hz", 10.0)),
                 causal_order=int(f.get("causal_order", 2)),
                 causal_history=int(f.get("causal_history", 5)),
             )

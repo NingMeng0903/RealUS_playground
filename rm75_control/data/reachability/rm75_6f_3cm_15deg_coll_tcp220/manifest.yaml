@@ -1,0 +1,36 @@
+schema_version: '1.0'
+urdf_path: data/urdf_patched/RM75-tcp220.urdf
+urdf_sha256: b65ae62e53657716eedbc3dc1530b715db367c2a686948e0a46aa551eea95932
+tcp_frame: tcp
+git_sha: e9f56c69b32f2d27aeb3da171849740812908366
+build_wall_s: 8.630312544992194
+mc_samples: 2000000
+ik_refined: false
+with_roll: false
+extra:
+  mc_wall_s: 8.288178804999916
+  workers: 8
+  reachable_radius_m: 1.2
+  self_collision: true
+  ik_refine_stats: null
+grid:
+  origin_m:
+  - -1.1
+  - -1.1
+  - -0.3
+  step_m: 0.03
+  shape:
+  - 74
+  - 74
+  - 57
+orientations:
+  kind: icosphere
+  n: 642
+  subdiv: 3
+roll: null
+layout:
+  n_orient: 642
+  n_roll: 0
+counts:
+  n_reachable_voxels: 85238
+  n_grid_voxels: 312132

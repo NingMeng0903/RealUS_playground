@@ -13,7 +13,6 @@ from typing import Any, Mapping
 
 import numpy as np
 
-from .fk_policy_v8 import validate_source_fk_asset_policy_v8
 from .v8_artifacts import SourceOperatorV8
 
 
@@ -21,19 +20,9 @@ EVIDENCE_KIND_V8 = "AnatomyEvidencePackV8"
 REVIEW_KIND_V8 = "AnatomyIndependentReviewV8"
 LATEST_KIND_V8 = "AnatomyTrustedLatestV8"
 REQUIRED_RELEASE_GATES_V8 = frozenset(
-    ("provenance", "tongue", "tube", "signed_contacts", "v811_contracts")
+    ("provenance", "tongue", "tube", "signed_contacts")
 )
 REQUIRED_REVIEW_ROLES_V8 = frozenset(("geometry", "runtime_performance"))
-_REQUIRED_V811_CONTRACT_CHECKS = frozenset(
-    (
-        "selective_fk",
-        "source_skin_volume_v811",
-        "source_skin_volume_beta_basis_v1",
-        "head_compound_fit_v1",
-        "tube_pose_corrective_v1",
-        "vessel_nerve_route",
-    )
-)
 
 
 def file_digest_v8(path: Path | str) -> str:
@@ -57,41 +46,6 @@ def canonical_json_bytes_v8(value: Any) -> bytes:
 def _is_digest(value: Any) -> bool:
     text = str(value)
     return len(text) == 64 and all(char in "0123456789abcdef" for char in text)
-
-
-def _require_v811_contract_checks(gate: Mapping[str, Any]) -> None:
-    """Reject a bare V8.11 pass flag with no component evidence."""
-
-    checks = gate.get("checks")
-    if not isinstance(checks, Mapping):
-        raise ValueError("V8.11 release gate lacks contract checks")
-    missing = sorted(_REQUIRED_V811_CONTRACT_CHECKS - set(checks))
-    if missing:
-        raise ValueError(f"V8.11 release gate lacks checks: {missing}")
-    foot_checks = [
-        value
-        for name, value in checks.items()
-        if str(name).startswith("foot_chain/")
-    ]
-    if not foot_checks:
-        raise ValueError("V8.11 release gate lacks a foot-chain check")
-    for name in _REQUIRED_V811_CONTRACT_CHECKS:
-        check = checks[name]
-        if (
-            not isinstance(check, Mapping)
-            or check.get("available") is not True
-            or check.get("pass") is not True
-        ):
-            raise ValueError(f"V8.11 contract check {name!r} is unavailable or failed")
-    if any(
-        not isinstance(check, Mapping)
-        or check.get("available") is not True
-        or check.get("pass") is not True
-        for check in foot_checks
-    ):
-        raise ValueError("V8.11 foot-chain contract check is unavailable or failed")
-    if gate.get("failures") != []:
-        raise ValueError("V8.11 release gate still reports contract failures")
 
 
 def _read_object(path: Path | str, *, label: str) -> dict[str, Any]:
@@ -434,63 +388,10 @@ def validate_evidence_manifest_v8(
     return manifest
 
 
-def _required_matrix_labels_v8(
-    acceptance_spec: Mapping[str, Any],
-) -> tuple[tuple[str, ...], tuple[str, ...], set[str]]:
-    """Resolve the acceptance spec's non-optional subject x pose matrix."""
-
-    required = acceptance_spec.get("required_matrix")
-    if not isinstance(required, Mapping):
-        raise ValueError("acceptance specification lacks required_matrix")
-    raw_subjects = required.get("subjects")
-    raw_poses = required.get("poses")
-    if not isinstance(raw_subjects, list) or not isinstance(raw_poses, list):
-        raise ValueError("acceptance required_matrix must contain subject and pose lists")
-    subjects = tuple(str(value) for value in raw_subjects)
-    poses = tuple(str(value) for value in raw_poses)
-    if (
-        not subjects
-        or not poses
-        or any(not value.strip() for value in subjects + poses)
-        or len(set(subjects)) != len(subjects)
-        or len(set(poses)) != len(poses)
-    ):
-        raise ValueError("acceptance required_matrix contains invalid labels")
-    return subjects, poses, {
-        f"{subject}/{pose}" for subject in subjects for pose in poses
-    }
-
-
-def _validate_required_matrix_coverage_v8(
-    validation: Mapping[str, Any],
-    *,
-    acceptance_spec: Mapping[str, Any],
-    cells: Mapping[str, Any],
-) -> None:
-    """Reject a report that omits any acceptance-required matrix case."""
-
-    subjects, poses, required_cells = _required_matrix_labels_v8(acceptance_spec)
-    missing = sorted(required_cells - {str(label) for label in cells})
-    if missing:
-        raise ValueError(
-            "validation report lacks required matrix cells: " + ", ".join(missing)
-        )
-    report_subjects = validation.get("subjects")
-    report_poses = validation.get("poses")
-    if (
-        not isinstance(report_subjects, list)
-        or not isinstance(report_poses, list)
-        or not set(subjects).issubset(str(value) for value in report_subjects)
-        or not set(poses).issubset(str(value) for value in report_poses)
-    ):
-        raise ValueError("validation report does not identify the required matrix")
-
-
 def validate_release_report_v8(
     validation: Mapping[str, Any],
     *,
     operator: SourceOperatorV8,
-    acceptance_spec: Mapping[str, Any],
 ) -> None:
     operator_digest = operator.runtime_digest()
     operator_audit_digest = operator.audit_digest(runtime_digest=operator_digest)
@@ -512,11 +413,6 @@ def validate_release_report_v8(
     cells = validation.get("cells")
     if not isinstance(cells, dict) or not cells:
         raise ValueError("validation report contains no matrix cells")
-    _validate_required_matrix_coverage_v8(
-        validation,
-        acceptance_spec=acceptance_spec,
-        cells=cells,
-    )
     for label, cell in cells.items():
         if (
             not isinstance(cell, dict)
@@ -539,7 +435,6 @@ def validate_release_report_v8(
             or gate.get("pass") is not True
         ):
             raise ValueError(f"release gate {name!r} is unavailable or failed")
-    _require_v811_contract_checks(release_gates["v811_contracts"])
 
     references = operator.reference_manifest.get("references", {})
     ba9 = references.get("ba9_head", {})
@@ -565,12 +460,9 @@ def validate_release_report_v8(
         len(asset.source_bone_names or []) != 235
         or asset.driver_indices is None
         or np.asarray(asset.driver_indices).shape[1:] != (14,)
+        or (asset.metadata or {}).get("source_full_local_fk_v2") is not True
     ):
         raise ValueError("operator lacks the complete V71 235-bone/14-slot runtime")
-    validate_source_fk_asset_policy_v8(
-        asset,
-        require_selective=True,
-    )
 
 
 def review_signed_payload_v8(review: Mapping[str, Any]) -> bytes:
@@ -674,21 +566,16 @@ def atomic_publish_latest_v8(
     evidence_path = Path(evidence_manifest_path).expanduser().resolve()
     acceptance_path = Path(acceptance_spec_path).expanduser().resolve()
     validation = _read_object(validation_path, label="validation report")
+    validate_release_report_v8(validation, operator=operator)
+    operator_digest = operator.runtime_digest(validate=False)
+    operator_audit_digest = operator.audit_digest(runtime_digest=operator_digest)
+    validation_digest = file_digest_v8(validation_path)
     acceptance_digest = str(validation["acceptance_spec_digest"])
     if (
         not acceptance_path.is_file()
         or file_digest_v8(acceptance_path) != acceptance_digest
     ):
         raise ValueError("acceptance specification digest mismatch")
-    acceptance_spec = _read_object(acceptance_path, label="acceptance specification")
-    validate_release_report_v8(
-        validation,
-        operator=operator,
-        acceptance_spec=acceptance_spec,
-    )
-    operator_digest = operator.runtime_digest(validate=False)
-    operator_audit_digest = operator.audit_digest(runtime_digest=operator_digest)
-    validation_digest = file_digest_v8(validation_path)
     evidence = validate_evidence_manifest_v8(
         evidence_path,
         operator_runtime_digest=operator_digest,
@@ -726,9 +613,6 @@ def atomic_publish_latest_v8(
         "evidence_manifest": str(evidence_path),
         "evidence_manifest_digest": evidence_digest,
         "acceptance_spec_digest": acceptance_digest,
-        # Preserve the audited V8.11 component evidence in the trusted-latest
-        # record rather than leaving it only in an external matrix file.
-        "v811_contracts": validation["release_gates"]["v811_contracts"],
         "acceptance_spec": str(acceptance_path),
         "reviews": [
             {

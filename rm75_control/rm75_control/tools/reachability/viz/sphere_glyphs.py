@@ -212,24 +212,49 @@ def _span_from_bounds(bounds: list[float]) -> float:
     return float(max(bounds[1] - bounds[0], bounds[3] - bounds[2], bounds[5] - bounds[4]))
 
 
-def _camera_oblique_45(focus: np.ndarray, span: float) -> list:
-    """Paper left: 45° azimuth from +X/+Y quadrant (mirrored vs prior -Y view)."""
+def _camera_oblique_45(focus: np.ndarray, span: float, *, cut_axis: str = "y") -> list:
+    """Paper left: 45° view of the kept hemisphere (cut face toward camera)."""
     d = max(span * 1.55, 1.8)
+    # Approach from the empty half so the cut face is visible.
+    if cut_axis == "x":
+        eye = (
+            float(focus[0] - d * 0.707),
+            float(focus[1] - d * 0.707),
+            float(focus[2] + d * 0.48),
+        )
+    else:
+        eye = (
+            float(focus[0] - d * 0.707),
+            float(focus[1] - d * 0.707),
+            float(focus[2] + d * 0.48),
+        )
+    return [eye, tuple(float(x) for x in focus), (0.0, 0.0, 1.0)]
+
+
+def _camera_front_cut(focus: np.ndarray, span: float, *, cut_axis: str = "y") -> list:
+    """Paper right: orthographic view looking onto the halfspace cut face.
+
+    For a sagittal cut ``x>=0`` the camera sits on −X so the arm lies in the
+    middle of the circular section (Zacharias Fig. 3 style). The old ``y`` cut
+    put the robot on the rim of the dome.
+    """
+    d = max(span * 1.35, 1.6)
+    if cut_axis == "x":
+        return [
+            (float(focus[0] - d), float(focus[1]), float(focus[2])),
+            tuple(float(x) for x in focus),
+            (0.0, 0.0, 1.0),
+        ]
     return [
-        (float(focus[0] - d * 0.707), float(focus[1] - d * 0.707), float(focus[2] + d * 0.48)),
+        (float(focus[0]), float(focus[1] - d), float(focus[2])),
         tuple(float(x) for x in focus),
         (0.0, 0.0, 1.0),
     ]
 
 
 def _camera_front_y(focus: np.ndarray, span: float) -> list:
-    """Paper right: orthographic front view along −Y."""
-    d = max(span * 1.35, 1.6)
-    return [
-        (float(focus[0]), float(focus[1] - d), float(focus[2])),
-        tuple(float(x) for x in focus),
-        (0.0, 0.0, 1.0),
-    ]
+    """Backward-compatible alias: front view onto a ``y`` cut."""
+    return _camera_front_cut(focus, span, cut_axis="y")
 
 
 def _camera_for_slice(axis: str, val: float, focus_z: float = 0.45) -> list:
@@ -266,6 +291,7 @@ def _render_panel_from_glyphs(
     panel_size: tuple[int, int],
     background: str,
     radius_m: float | None = None,
+    base_pose_world=None,
 ) -> np.ndarray:
     off_screen = os.environ.get("PYVISTA_OFF_SCREEN", "true").lower() in {"1", "true", "yes"}
     focus = _focus_from_bounds(bounds)
@@ -286,7 +312,9 @@ def _render_panel_from_glyphs(
     pl = pv.Plotter(off_screen=off_screen, window_size=panel_size)
     pl.set_background(background)
     try:
-        scene = build_robot_pv(robot_urdf, q_full=q_full)
+        scene = build_robot_pv(
+            robot_urdf, q_full=q_full, base_pose_world=base_pose_world
+        )
         add_robot_to_plotter(pl, scene, use_dae_colors=True, opacity=1.0, on_top=False)
     except Exception as e:  # pragma: no cover
         print(f"[render_slice] robot skipped: {e}")
@@ -322,6 +350,7 @@ def _render_single_panel(
     d: np.ndarray | None = None,
     bounds: list[float] | None = None,
     parallel_scale: float | None = None,
+    base_pose_world=None,
 ) -> tuple[np.ndarray, np.ndarray]:
     axis, _, val_s = plane.partition("=")
     axis = axis.strip().lower()
@@ -351,6 +380,7 @@ def _render_single_panel(
         cmap=cmap, clim_bar=clim_bar, opacity=opacity,
         view=view, panel_size=panel_size, background=background,
         radius_m=sphere_radius_m,
+        base_pose_world=base_pose_world,
     )
     return img, d_display
 
@@ -504,8 +534,15 @@ def render_capability_cross_sections(
     n_color_levels: int = ZACHARIAS_COLOR_LEVELS,
     bar_max: float = ZACHARIAS_COLORBAR_MAX,
     fixed_camera: bool = True,
+    display_offset: np.ndarray | None = None,
+    base_pose_world=None,
 ) -> Path:
-    """Zacharias Fig 3 — hemispherical half (y>=0), oblique + front, shared scale."""
+    """Zacharias Fig 3 — hemispherical half (y>=plane), oblique + front, shared scale.
+
+    ``display_offset`` shifts voxel centres into a display frame (e.g. cancel rail
+    Y so the shoulder sits at the origin). ``base_pose_world`` places the robot in
+    that same frame (defaults to a pure translation by ``display_offset``).
+    """
     radius = _resolve_sphere_radius(cm, sphere_radius_m)
     cmap = make_zacharias_d_cmap_discrete(n_color_levels)
 
@@ -519,7 +556,21 @@ def render_capability_cross_sections(
     if centres.shape[0] == 0:
         raise RuntimeError(f"no voxels in half-space {plane} (y>=0 hemisphere)")
 
-    bounds = _bounds_from_grid(cm) if fixed_camera else _bounds_from_centres(centres)
+    offset = np.zeros(3, dtype=np.float64)
+    if display_offset is not None:
+        offset = np.asarray(display_offset, dtype=np.float64).reshape(3)
+        centres = centres + offset[None, :]
+
+    if base_pose_world is None and np.any(np.abs(offset) > 1e-12):
+        import pinocchio as pin
+
+        base_pose_world = pin.SE3(np.eye(3), offset)
+
+    # After a display shift, bounds must follow the shifted cloud (not raw grid).
+    if fixed_camera and display_offset is None:
+        bounds = _bounds_from_grid(cm)
+    else:
+        bounds = _bounds_from_centres(centres)
     parallel_scale = _span_from_bounds(bounds) * 0.58
 
     panel_w = max(1000, int(size[0] * 0.34))
@@ -531,6 +582,7 @@ def render_capability_cross_sections(
         n_color_levels=n_color_levels, bar_max=bar_max, cmap=cmap,
         opacity=opacity, panel_size=panel_size, background=background,
         centres=centres, d=d, bounds=bounds, parallel_scale=parallel_scale,
+        base_pose_world=base_pose_world,
     )
 
     img_left, d_left = _render_single_panel(view="oblique45", **shared)
@@ -569,14 +621,19 @@ def render_reachability_index(
     n_color_levels: int = ZACHARIAS_COLOR_LEVELS,
     bar_max: float = ZACHARIAS_COLORBAR_MAX,
     fixed_camera: bool = True,
+    plane: str = "y=0.0",
+    display_offset: np.ndarray | None = None,
+    base_pose_world=None,
 ) -> Path:
     if view == "cross":
         return render_capability_cross_sections(
             cm, out_path,
+            plane=plane,
             robot_urdf=robot_urdf, d_min=d_min, sphere_radius_m=sphere_radius_m,
             q_full=q_full, background=background, size=size, transparent=transparent,
             clim=clim, clim_auto=clim_auto, opacity=opacity,
             n_color_levels=n_color_levels, bar_max=bar_max, fixed_camera=fixed_camera,
+            display_offset=display_offset, base_pose_world=base_pose_world,
         )
 
     cmap = cmap or make_zacharias_d_cmap_discrete(n_color_levels)

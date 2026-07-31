@@ -1,0 +1,54 @@
+\contentsline {section}{\numberline {1}问题陈述与经典 IRD}{3}{section.1}%
+\contentsline {subsection}{\numberline {1.1}可达性与逆可达性}{3}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}IRDPLAYGROUND 实际计算的内容}{3}{subsection.1.2}%
+\contentsline {section}{\numberline {2}文献对应：各篇贡献了什么}{3}{section.2}%
+\contentsline {paragraph}{Murooka 的可微可达图。}{3}{section*.2}%
+\contentsline {paragraph}{RM4D 对称性。}{3}{section*.3}%
+\contentsline {paragraph}{Chiu 的任务相容性。}{4}{section*.4}%
+\contentsline {section}{\numberline {3}坐标系、导轨基座与 flange 图卡}{4}{section.3}%
+\contentsline {subsection}{\numberline {3.1}世界位姿与相对位姿}{4}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}导轨诱导的轴坐标系}{4}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}TCP 到 flange}{4}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}九维 yaw 不变 flange 嵌入}{5}{subsection.3.4}%
+\contentsline {paragraph}{各分量含义。}{5}{section*.5}%
+\contentsline {paragraph}{对称性陈述。}{5}{section*.6}%
+\contentsline {section}{\numberline {4}有符号可达场}{5}{section.4}%
+\contentsline {subsection}{\numberline {4.1}定义}{5}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}输入归一化与傅里叶特征}{6}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}网络结构}{6}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}支撑域守卫}{6}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}世界系打分（IRD 点查询）}{6}{subsection.4.5}%
+\contentsline {section}{\numberline {5}声明的 SE(3) 度量与训练目标}{6}{section.5}%
+\contentsline {subsection}{\numberline {5.1}度量}{6}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Stencil 监督}{7}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}损失函数}{7}{subsection.5.3}%
+\contentsline {paragraph}{分类（符号）。}{7}{section*.7}%
+\contentsline {paragraph}{有符号值（幅度）。}{7}{section*.8}%
+\contentsline {paragraph}{边界法向对齐。}{7}{section*.9}%
+\contentsline {paragraph}{可选 Eikonal（生产中关闭）。}{7}{section*.10}%
+\contentsline {paragraph}{总和。}{7}{section*.11}%
+\contentsline {section}{\numberline {6}可微集合查询}{7}{section.6}%
+\contentsline {subsection}{\numberline {6.1}局部位姿扰动}{8}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}归一化 softmin 与 softmax}{8}{subsection.6.2}%
+\contentsline {paragraph}{隐式权重（梯度结构）。}{8}{section*.12}%
+\contentsline {subsection}{\numberline {6.3}Region A：不确定盒 $\times $ 小锥（softmin）}{8}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}任务锥：tip $\times $ roll 自由集（softmax）}{9}{subsection.6.4}%
+\contentsline {subsection}{\numberline {6.5}嵌套自由 $\times $ 不确定查询（SetQuery）}{9}{subsection.6.5}%
+\contentsline {paragraph}{Rockafellar--Uryasev 下尾 CVaR。}{9}{section*.13}%
+\contentsline {paragraph}{实现中的归约。}{10}{section*.14}%
+\contentsline {section}{\numberline {7}为何 IRD 梯度存在且有用}{10}{section.7}%
+\contentsline {subsection}{\numberline {7.1}IRD 点查询上的链式法则}{10}{subsection.7.1}%
+\contentsline {paragraph}{几何解读。}{10}{section*.15}%
+\contentsline {subsection}{\numberline {7.2}条件锥查询的梯度}{10}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}血管表面例子 $(\theta ,y)$}{10}{subsection.7.3}%
+\contentsline {section}{\numberline {8}轨迹算子与在线更新}{10}{section.8}%
+\contentsline {subsection}{\numberline {8.1}聚合顺序}{10}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}SE(3) 路径插值}{11}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}逐路点与路径裕度}{11}{subsection.8.3}%
+\contentsline {subsection}{\numberline {8.4}为何景观随轨迹更新}{11}{subsection.8.4}%
+\contentsline {subsection}{\numberline {8.5}典型优化目标}{11}{subsection.8.5}%
+\contentsline {section}{\numberline {9}端到端交换图}{11}{section.9}%
+\contentsline {section}{\numberline {10}范围、保证与非目标}{12}{section.10}%
+\contentsline {section}{\numberline {11}符号表}{12}{section.11}%
+\contentsline {section}{\numberline {12}参考文献}{12}{section.12}%
+\contentsline {section}{\numberline {A}代码与公式对照}{13}{appendix.A}%

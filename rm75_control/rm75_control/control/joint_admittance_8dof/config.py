@@ -210,4 +210,9 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         nullspace_d_null=float(inner.get("nullspace_d_null", 0.0)),
         nullspace_d_null_adaptive=float(inner.get("nullspace_d_null_adaptive", 1.0)),
         nullspace_max_qdot_frac=float(inner.get("nullspace_max_qdot_frac", 0.2)),
+        centering_recovery_gain=float(inner.get("centering_recovery_gain", 3.0)),
+        centering_recovery_max_qdot_frac=float(
+            inner.get("centering_recovery_max_qdot_frac", 0.35)
+        ),
+        centering_recovery_tol=float(inner.get("centering_recovery_tol", 0.12)),
     )

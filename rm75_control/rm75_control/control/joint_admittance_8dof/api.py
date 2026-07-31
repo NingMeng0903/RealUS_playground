@@ -333,6 +333,11 @@ def attach_srs_move_tracking(
 
     def _exit() -> None:
         inner.set_plan_drives_rail(False)
+        # q_target is temporarily the SRS move destination so the move can
+        # resolve its elbow branch.  Cartesian scan/track must return to the
+        # configured comfortable posture attractor; otherwise the D-point
+        # IK solution silently becomes the long-lived scan posture target.
+        inner.centering_task.set_q_target(None)
         if prev_on_exit is not None:
             prev_on_exit()
 
@@ -956,4 +961,3 @@ def compile_phases(
 
 
 from rm75_control.control.admittance_common.scaling import scale_admittance_for_desired_z
-

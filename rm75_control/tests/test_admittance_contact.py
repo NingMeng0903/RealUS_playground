@@ -189,7 +189,6 @@ def test_dimeas_5hz_forced_oscillation_inflates_inertia():
     import math as _m
     max_mass = m_base
     max_dimeas_damping = 0.0
-    max_total_damping = ctrl.damping_z_eff
     for i in range(2000):  # 10 s of forced 5 Hz oscillation on raw fz
         t = i * dt
         fz = 3.0 + 3.0 * _m.sin(2.0 * _m.pi * 5.0 * t)
@@ -205,7 +204,6 @@ def test_dimeas_5hz_forced_oscillation_inflates_inertia():
             max_dimeas_damping,
             ctrl.damping_dimeas_z,
         )
-        max_total_damping = max(max_total_damping, ctrl.damping_z_eff)
 
     assert ctrl.instability_index > 0.1, (
         f"5 Hz forced oscillation must raise Iₛ above 0.1, got "
@@ -219,8 +217,10 @@ def test_dimeas_5hz_forced_oscillation_inflates_inertia():
         f"M(t) must be capped at m_max, got {ctrl._m_z_now:.3f}"
     )
     assert max_mass > m_base + 0.2
-    assert max_dimeas_damping > 0.2
-    assert max_total_damping > cfg.admittance_damping_z
+    # Production uses the low-effort Dimeas variant: instability raises
+    # virtual inertia only, never an extra damping channel.
+    assert max_dimeas_damping == pytest.approx(0.0)
+    assert cfg.var_damping_d_u == pytest.approx(0.0)
 
 
 def test_dimeas_disabled_leaves_mass_static():

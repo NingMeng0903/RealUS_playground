@@ -134,6 +134,8 @@ class SecondaryComposer:
         centering_suppressed: bool = False,
         manipulability_active: bool = False,
         centering_sigma_fade: bool = True,
+        centering_gain_scale: float = 1.0,
+        max_qdot_frac_override: float | None = None,
     ) -> np.ndarray:
         q = np.asarray(q_rad, dtype=float)
         cfg = self.centering.cfg
@@ -155,7 +157,7 @@ class SecondaryComposer:
         if manipulability_active and self.manipulability is not None:
             qdot_soft = self.manipulability(q, sigma_min=sigma_min, exclude_rail=True)
         elif not centering_suppressed:
-            qdot_soft = self.centering(q)
+            qdot_soft = float(max(centering_gain_scale, 0.0)) * self.centering(q)
         if rail_hold:
             qdot_soft = qdot_soft + self.rail_lock(q)
 
@@ -166,8 +168,13 @@ class SecondaryComposer:
             qdot_soft = qdot_soft - d_eff * np.asarray(qdot_prev, dtype=float)
 
         # Per-joint magnitude cap on the soft tasks (see module docstring).
-        if self.v_max is not None and self.max_qdot_frac > 0.0:
-            cap = self.max_qdot_frac * self.v_max
+        cap_frac = (
+            self.max_qdot_frac
+            if max_qdot_frac_override is None
+            else float(max_qdot_frac_override)
+        )
+        if self.v_max is not None and cap_frac > 0.0:
+            cap = cap_frac * self.v_max
             qdot_soft = np.clip(qdot_soft, -cap, cap)
 
         if not rail_hold:

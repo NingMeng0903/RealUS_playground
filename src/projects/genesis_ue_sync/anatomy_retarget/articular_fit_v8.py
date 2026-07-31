@@ -862,15 +862,6 @@ def calibrate_coupled_joint_roll_glide_v8(
             states = np.concatenate((states, prescribed), axis=0)
         translations_local = np.zeros_like(states)
         fit_gaps: list[list[float]] = []
-        rejected_samples: list[dict[str, Any]] = []
-        improved_sample_count = 0
-        # The guide chain is the positional authority.  A coupled response is
-        # permitted to add a bounded slide only when it improves the frozen
-        # contact objective over that guide-only baseline.  Powell's status is
-        # not itself a physical acceptance criterion: a bound-hugging result
-        # can report success while moving an already aligned ankle away from
-        # both contact probes.
-        objective_improvement_tolerance = 1.0e-14
         for sample_index, rotvec in enumerate(states):
             if float(np.linalg.norm(rotvec)) <= 1.0e-12:
                 pose = np.zeros((55, 3), dtype=np.float32)
@@ -932,19 +923,9 @@ def calibrate_coupled_joint_roll_glide_v8(
                     + 0.02 * float(np.dot(translation, translation))
                 )
 
-            zero_raw = np.zeros(3, dtype=np.float64)
-            zero_objective = objective(zero_raw)
-            zero_gaps = [
-                float(
-                    fixed_trees[index]
-                    .query(mobile[index])[0]
-                    .min()
-                )
-                for index in range(2)
-            ]
             solved = minimize(
                 objective,
-                zero_raw,
+                np.zeros(3, dtype=np.float64),
                 method="Powell",
                 bounds=[(-3.0, 3.0)] * 3,
                 options={
@@ -953,92 +934,14 @@ def calibrate_coupled_joint_roll_glide_v8(
                     "ftol": 1.0e-12,
                 },
             )
-            solved_raw = np.asarray(solved.x, dtype=np.float64)
-            candidate_is_finite = bool(
-                solved_raw.shape == (3,) and np.all(np.isfinite(solved_raw))
-            )
-            candidate_translation = (
-                parameter_to_translation(solved_raw)
-                if candidate_is_finite
-                else np.full(3, np.nan, dtype=np.float64)
-            )
-            candidate_is_bounded = bool(
-                np.all(np.isfinite(candidate_translation))
-                and float(np.linalg.norm(candidate_translation))
-                <= float(maximum_translation_m) + 1.0e-7
-            )
-            candidate_objective = (
-                objective(solved_raw)
-                if candidate_is_finite and candidate_is_bounded
-                else float("inf")
-            )
+            translation_world = parameter_to_translation(solved.x)
             if (
                 not solved.success
-                or not candidate_is_bounded
-                or not np.isfinite(candidate_objective)
+                or not np.all(np.isfinite(translation_world))
+                or float(np.linalg.norm(translation_world))
+                > float(maximum_translation_m) + 1.0e-7
             ):
-                candidate_gaps = (
-                    [
-                        float(
-                            fixed_trees[index]
-                            .query(mobile[index] + candidate_translation)[0]
-                            .min()
-                        )
-                        for index in range(2)
-                    ]
-                    if candidate_is_bounded
-                    else None
-                )
-                raise ValueError(
-                    f"{side} {kind} coupled calibration failed: "
-                    f"sample={sample_index} rotvec_rad="
-                    f"{np.asarray(rotvec, dtype=np.float64).round(7).tolist()} "
-                    f"success={bool(solved.success)} "
-                    f"status={int(getattr(solved, 'status', -1))} "
-                    f"message={str(getattr(solved, 'message', ''))!r} "
-                    f"zero_objective={float(zero_objective):.9g} "
-                    f"candidate_objective={float(candidate_objective):.9g} "
-                    f"zero_fit_gaps_m={np.asarray(zero_gaps).round(7).tolist()} "
-                    f"candidate_fit_gaps_m={None if candidate_gaps is None else np.asarray(candidate_gaps).round(7).tolist()} "
-                    f"translation_m={candidate_translation.round(7).tolist()} "
-                    f"translation_norm_m={float(np.linalg.norm(candidate_translation)):.9g}"
-                )
-            accepted = bool(
-                candidate_objective
-                < zero_objective - objective_improvement_tolerance
-            )
-            if accepted:
-                translation_world = candidate_translation
-                improved_sample_count += 1
-            else:
-                translation_world = np.zeros(3, dtype=np.float64)
-                candidate_gaps = [
-                    float(
-                        fixed_trees[index]
-                        .query(mobile[index] + candidate_translation)[0]
-                        .min()
-                    )
-                    for index in range(2)
-                ]
-                rejected_samples.append(
-                    {
-                        "sample_index": int(sample_index),
-                        "rotvec_rad": np.asarray(
-                            rotvec, dtype=np.float64
-                        ).tolist(),
-                        "reason": "does_not_improve_guide_baseline",
-                        "solver_success": bool(solved.success),
-                        "solver_status": int(getattr(solved, "status", -1)),
-                        "solver_message": str(getattr(solved, "message", "")),
-                        "zero_objective": float(zero_objective),
-                        "candidate_objective": float(candidate_objective),
-                        "zero_fit_gaps_m": zero_gaps,
-                        "candidate_fit_gaps_m": candidate_gaps,
-                        "candidate_translation_m": (
-                            candidate_translation.tolist()
-                        ),
-                    }
-                )
+                raise ValueError(f"{side} {kind} coupled calibration failed")
             posed_bones = source_bone_posed_global(base, pose)
             translations_local[sample_index] = (
                 posed_bones[parent, :3, :3].T @ translation_world
@@ -1126,12 +1029,6 @@ def calibrate_coupled_joint_roll_glide_v8(
                     else np.asarray(response["rbf_values_parent_local_m"])
                 )
             ),
-            "guide_baseline_only_sample_count": int(
-                len(states) - 1 - improved_sample_count
-            ),
-            "rbf_improved_sample_count": int(improved_sample_count),
-            "rejected_samples": rejected_samples,
-            "objective_improvement_tolerance": objective_improvement_tolerance,
             "moves_complete_subtree": True,
             "preserves_mesh_topology": True,
         }

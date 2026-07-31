@@ -3,7 +3,7 @@
 This test intentionally includes two delays that are absent from the simpler
 algebraic-spring unit tests:
 
-* the production second-order 6 Hz causal force low-pass;
+* the production second-order 10 Hz causal force low-pass;
 * a three-tick (15 ms at 200 Hz) command-to-TCP velocity delay.
 
 The environment is a unilateral *tangent-stiffness* spring.  On a 300→2500
@@ -42,7 +42,7 @@ from rm75_control.control.admittance_common.controller import (
 
 DT_S = 0.005
 FS_HZ = 1.0 / DT_S
-FORCE_LPF_HZ = 6.0
+FORCE_LPF_HZ = 10.0
 COMMAND_DELAY_S = 0.015
 COMMAND_DELAY_TICKS = round(COMMAND_DELAY_S / DT_S)
 TRANSITION_TIMES_S = (4.0, 8.0)

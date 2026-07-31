@@ -1,0 +1,1280 @@
+% =============================================================================
+%  Differentiable Inverse Reachability Operator for RM75
+%  Complete mathematical exposition of the IRDPLAYGROUND design
+% =============================================================================
+% Overleaf / local: Compiler = pdfLaTeX
+%   pdflatex ird_operator_mathematics.tex
+% Do NOT use fontspec / Noto CJK here (English-only).
+% Chinese version: ird_operator_mathematics_zh.tex  (XeLaTeX + ctex)
+% =============================================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{microtype}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{cleveref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  citecolor=blue!50!black,
+  urlcolor=blue!60!black
+}
+
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+\newtheorem{proposition}{Proposition}
+
+\newcommand{\SE}{\mathrm{SE}}
+\newcommand{\SO}{\mathrm{SO}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Tcp}{T_{\mathrm{tcp}}}
+\newcommand{\Taxis}{T_{\mathrm{axis}}}
+\newcommand{\Tfl}{T_{\mathrm{flange}}}
+\newcommand{\softmin}{\operatorname{softmin}}
+\newcommand{\softmax}{\operatorname{softmax}}
+\newcommand{\CVaR}{\mathrm{CVaR}}
+\newcommand{\LogSumExp}{\operatorname{LogSumExp}}
+
+\title{Differentiable Inverse Reachability for RM75:\\
+Complete Mathematical Design of the IRDPLAYGROUND Operator}
+\author{IRDPLAYGROUND technical note}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This note gives a self-contained mathematical account of the inverse
+reachability (IRD) operator implemented in \texttt{ird\_playground}.
+The operator answers a narrower question than classical discrete IRD tables:
+given a medically valid tool-centre-point (TCP) pose and a rail-induced robot
+base (J1-axis) frame, what smooth direction increases collision-checked arm
+reachability, optionally under a local position/orientation region?
+We relate the design to four foundational papers
+(Vahrenkamp et~al.\ 2013; Rudorfer 2024/RM4D; Murooka et~al.\ 2025; Chiu 1988),
+derive every aggregation formula used in code, and explain why automatic
+differentiation yields usable IRD gradients, why conditional queries over
+local pose cones are well-defined, and why the same field supports
+trajectory-parameter updates without retraining.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% -----------------------------------------------------------------------------
+\section{Problem statement and classical IRD}
+\label{sec:problem}
+
+\subsection{Reachability and inverse reachability}
+\label{sec:classical}
+
+Let the robot configuration be \(q\in\mathcal{Q}\subset\R^{n}\) and let
+forward kinematics map configurations to TCP poses
+\begin{equation}
+\label{eq:fk}
+  \mathrm{FK}:\mathcal{Q}\to\SE(3),\qquad
+  q\mapsto \Tcp(q).
+\end{equation}
+Here \(\SE(3)\) is the special Euclidean group of rigid poses
+(rotation \(R\in\SO(3)\) and translation \(p\in\R^{3}\)).
+
+\begin{definition}[Binary reachability]
+A pose \(r\in\SE(3)\) is \emph{reachable} if there exists a collision-free
+configuration \(q\) with \(\mathrm{FK}(q)=r\) (within IK tolerance) and joint
+limits satisfied. Write
+\begin{equation}
+\label{eq:binary-reach}
+  \mathcal{R}
+  \;=\;
+  \bigl\{\, r\in\SE(3)
+  \;\big|\;
+  \exists\, q\in\mathcal{Q}_{\mathrm{free}}:
+  \mathrm{FK}(q)=r
+  \,\bigr\}.
+\end{equation}
+\end{definition}
+
+A classical \emph{reachability distribution} (RD) of Vahrenkamp et~al.\
+(2013) stores, in a voxelisation of workspace relative to a fixed robot base,
+a quality score such as the measure of joint configurations that map into
+that voxel. An \emph{inverse reachability distribution} (IRD) inverts the same
+data: given a fixed TCP (e.g.\ a grasp), it yields a distribution over
+candidate base poses for which that TCP would be reachable.
+
+Formally, if \(t_{i}=\Tcp_{i}^{-1}\) denotes a base-to-TCP sample stored in the
+RD, then for a world TCP \(p\in\SE(3)\) the corresponding candidate base pose
+is
+\begin{equation}
+\label{eq:ird-inversion}
+  b_{i}(p) \;=\; p\, t_{i}^{-1}
+  \;\in\;\SE(3)
+\end{equation}
+(with optional projection onto \(\SE(2)\) for planar base placement).
+The IRD score of \(b_{i}(p)\) is inherited from the RD quality of \(t_{i}\).
+This is an offline discrete table lookup.
+
+\subsection{What IRDPLAYGROUND computes instead}
+\label{sec:our-question}
+
+Our first-stage operator does \emph{not} replace multi-seed IK or final
+collision validation. It answers:
+
+\begin{quote}
+For a medically valid TCP pose \(\Tcp\) and a rail-induced J1-axis frame
+\(\Taxis\), what smooth direction increases collision-checked arm
+reachability clearance, including under a local position/orientation
+uncertainty or task region?
+\end{quote}
+
+Denote the decision variables of interest by \(x\) (rail coordinate, TCP yaw
+on a vessel surface, trajectory control points, \ldots). We construct a scalar
+\begin{equation}
+\label{eq:operator-goal}
+  C(x)
+  \;=\;
+  \mathcal{A}\bigl[\, f\bigl(c(\Tcp(x),\Taxis(x))\bigr)\,\bigr]
+\end{equation}
+where:
+\begin{itemize}[leftmargin=1.4em]
+  \item \(c(\cdot)\) is a smooth RM4D-style chart (Section~\ref{sec:chart});
+  \item \(f\) is a learned signed clearance field (Section~\ref{sec:field});
+  \item \(\mathcal{A}\) is a differentiable set aggregator
+        (Region~A, TaskCone, SetQuery, or Trajectory;
+        Sections~\ref{sec:region}--\ref{sec:traj}).
+\end{itemize}
+Gradient-based updates use \(\nabla_{x} C\) from automatic differentiation
+through the entire Torch graph.
+
+% -----------------------------------------------------------------------------
+\section{Paper map: what each reference contributes}
+\label{sec:papers}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}llp{6.6cm}@{}}
+\toprule
+Paper & Core idea absorbed & Where it appears \\
+\midrule
+Vahrenkamp et~al.\ 2013
+  & IRD = fix TCP, score base poses
+  & \(\Tcp\) fixed (or slowly varying); query via \(\Taxis(y_{\mathrm{rail}})\) \\
+Rudorfer RM4D 2024
+  & Quotient common yaw/roll symmetries $\to\sim$4D map shared by RM \& IRD
+  & Flange chart \(c\); only base yaw quotiented for probe45 \\
+Murooka et~al.\ 2025
+  & Differentiable reachability map \(f_{R}(r)\) for optimisation;
+    classifiers can have flat exterior gradients
+  & Single-output signed clearance; boundary stencils; AD through queries \\
+Chiu 1988
+  & Postures should match task transmission requirements
+  & Tip$\times$roll / uncertainty cones encode task-compatible free or
+    uncertain sets inside \(C\) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Murooka's differentiable reachability map.}
+Murooka et~al.\ define a scalar \(f_{R}(r)\) with
+\begin{equation}
+\label{eq:murooka}
+  f_{R}(r)\ge 0 \text{ if reachable},\qquad
+  f_{R}(r)< 0 \text{ otherwise},
+\end{equation}
+trained as a smooth binary classifier (e.g.\ softplus logistic loss). When
+\(f_{R}\) is continuous and differentiable w.r.t.\ task coordinates, the
+gradient \(\partial f_{R}/\partial r\) can enter trajectory optimisation
+without repeated IK. They also note that a pure decision function may become
+nearly constant far outside the reachable set, yielding uninformative
+gradients. Our design follows the same sign convention but supervises an
+explicit signed clearance with local collision-checked stencils and boundary
+normals, so that \(\nabla f\) remains informative near the frontier
+(Section~\ref{sec:training}).
+
+\paragraph{RM4D symmetry.}
+Rudorfer observes that for many 6-/7-axis arms, reachability is approximately
+invariant to base yaw about gravity and to TCP roll about the last joint,
+reducing an \(\SE(3)\) query to an intrinsic 4-D quotient. We adopt the
+dimensionality-reduction spirit but enforce only the symmetries that hold for
+RM75 with the probe45 tool: base (J1) yaw is a true free symmetry; TCP/flange
+roll is \emph{not}, because the TCP \(z\)-axis is offset by \(\sim 50^{\circ}\)
+from the J7 axis.
+
+\paragraph{Chiu's task compatibility.}
+Chiu measures how well a posture's velocity/force ellipsoids align with a
+task. We do not compute Yoshikawa indices online; instead we encode task
+freedom (large tip$\times$roll cone) and medical uncertainty (tiny box$\times$cone)
+as set queries over \(f\), so that \(C\) is a task-conditioned reachability
+margin.
+
+% -----------------------------------------------------------------------------
+\section{Frames, rail base, and the flange chart}
+\label{sec:chart}
+
+\subsection{World poses and relative pose}
+\label{sec:frames}
+
+A homogeneous pose is written
+\begin{equation}
+\label{eq:pose-matrix}
+  T
+  \;=\;
+  \begin{bmatrix}
+    R & p \\
+    0^{\mathsf T} & 1
+  \end{bmatrix}
+  \in\SE(3),
+  \qquad
+  R\in\SO(3),\; p\in\R^{3}.
+\end{equation}
+Given world TCP \(\Tcp^{W}\) and world J1-axis frame \(\Taxis^{W}\), the TCP
+expressed in the axis frame is
+\begin{equation}
+\label{eq:relative-pose}
+\begin{aligned}
+  R_{\mathrm{axis\leftarrow tcp}}
+  &=
+  (R_{\mathrm{axis}}^{W})^{\mathsf T}\, R_{\mathrm{tcp}}^{W},
+  \\
+  p_{\mathrm{axis\leftarrow tcp}}
+  &=
+  (R_{\mathrm{axis}}^{W})^{\mathsf T}
+  \bigl(p_{\mathrm{tcp}}^{W}-p_{\mathrm{axis}}^{W}\bigr).
+\end{aligned}
+\end{equation}
+\emph{Interpretation.}
+Equation~\eqref{eq:relative-pose} is the group product
+\((\Taxis^{W})^{-1}\Tcp^{W}\). All reachability queries are posed in this
+relative frame, which is exactly the IRD viewpoint: move the base/axis and
+the relative TCP changes even if the world TCP is fixed.
+
+\subsection{Rail-induced axis frame}
+\label{sec:rail}
+
+For a linear rail along local axis \(e_{a}\) (code default \(a=1\), i.e.\ \(y\)),
+\begin{equation}
+\label{eq:rail-base}
+  \Taxis^{W}(y)
+  \;=\;
+  T_{\mathrm{world\leftarrow rail}}\;
+  \underbrace{
+    \begin{bmatrix}
+      I_{3} & y\, e_{a} \\
+      0^{\mathsf T} & 1
+    \end{bmatrix}
+  }_{\text{pure translation by rail coordinate }y}\;
+  T_{\mathrm{rail\leftarrow axis}}(y{=}0).
+\end{equation}
+\emph{Interpretation.}
+\(y\) is the raw URDF rail coordinate. Differentiating
+\eqref{eq:rail-base} w.r.t.\ \(y\) moves only the axis origin along the rail;
+rotation is constant. This is the primitive that turns ``IRD w.r.t.\ base
+placement'' into ``IRD w.r.t.\ one scalar rail DoF''.
+
+\subsection{TCP to flange}
+\label{sec:tcp-flange}
+
+Let \(T_{\mathrm{flange\leftarrow tcp}}\) be the fixed tool transform from
+URDF. Flange (link\_7) pose in the axis frame is
+\begin{equation}
+\label{eq:tcp-to-flange}
+  \bigl(p_{\mathrm{fl}},R_{\mathrm{fl}}\bigr)
+  \;=\;
+  \mathrm{compose}\bigl(
+    (p_{\mathrm{tcp}},R_{\mathrm{tcp}}),\;
+    T_{\mathrm{flange\leftarrow tcp}}
+  \bigr).
+\end{equation}
+We score flange geometry rather than TCP geometry so that the chart axes
+align with the J7 rotation axis (needed for the invariant / roll split below).
+
+\subsection{Nine-dimensional yaw-invariant flange embedding}
+\label{sec:9d}
+
+Write flange position \(p=(p_{x},p_{y},p_{z})\) and flange axes
+\(u_{x},u_{y},u_{z}\) (columns of \(R_{\mathrm{fl}}\)). Define the radial
+smoothed distance
+\begin{equation}
+\label{eq:radial}
+  r
+  \;=\;
+  \sqrt{p_{x}^{2}+p_{y}^{2}+\varepsilon},
+  \qquad
+  \varepsilon=(10^{-3}\,\mathrm{m})^{2}.
+\end{equation}
+The chart is the map
+\begin{equation}
+\label{eq:chart}
+  c(p,R)
+  \;=\;
+  \begin{pmatrix}
+    p_{z}\\
+    r\\
+    u_{x}\!\cdot\!\hat z\\
+    p_{xy}\!\cdot\! u_{x,xy}\\
+    p_{xy}\!\times\! u_{x,xy}\\
+    u_{z}\!\cdot\!\hat z\\
+    p_{xy}\!\cdot\! u_{z,xy}\\
+    p_{xy}\!\times\! u_{z,xy}\\
+    u_{y}\!\cdot\!\hat z
+  \end{pmatrix}
+  \in\R^{9},
+\end{equation}
+where \(p_{xy}=(p_{x},p_{y})\), \(u_{\cdot,xy}\) is the \(xy\)-projection of an
+axis, \(\hat z=(0,0,1)\), the 2-D ``cross'' is the scalar
+\(p_{x}u_{y}-p_{y}u_{x}\), and
+\begin{equation}
+\label{eq:uyz}
+  u_{y}\!\cdot\!\hat z
+  \;=\;
+  (u_{z}\times u_{x})\!\cdot\!\hat z
+  \;=\;
+  u_{z,x}\,u_{x,y}-u_{z,y}\,u_{x,x}.
+\end{equation}
+
+\paragraph{Why each component.}
+\begin{itemize}[leftmargin=1.4em]
+  \item \(p_{z}\): height along the J1 axis (invariant to yaw about \(\hat z\)).
+  \item \(r\): cylindrical radius; \(\varepsilon\) removes the kink of
+        \(\sqrt{p_{x}^{2}+p_{y}^{2}}\) at the axis (curvature \(\sim 10^{3}/\mathrm{m}\)
+        instead of \(\sim 10^{6}/\mathrm{m}\)).
+  \item Components involving \(u_{z}\): J7-invariant block
+        (indices \(\{0,1,5,6,7\}\) in code), because spinning about J7 rotates
+        \(u_{x},u_{y}\) but not \(u_{z}\).
+  \item Components involving \(u_{x}\) and \(u_{y}\!\cdot\!\hat z\):
+        \emph{roll-carrying} block. They retain flange roll \(\gamma\), which
+        is a genuine DoF for probe45 and must not be quotiented.
+  \item The ninth entry \(u_{y}\!\cdot\!\hat z\) completes \(R^{\mathsf T}\hat z\).
+        Without it, as \(r\to 0\) the mixed products vanish and a twofold
+        ambiguity remains in reconstructing orientation about the axis.
+\end{itemize}
+
+\paragraph{Symmetry statement.}
+If \(R_{z}(\alpha)\) is a rotation about the J1 axis applied simultaneously to
+base and (equivalently) to the relative flange pose, then
+\begin{equation}
+\label{eq:yaw-invariance}
+  c\bigl(R_{z}(\alpha)\,p,\; R_{z}(\alpha)\,R\bigr)
+  \;=\;
+  c(p,R).
+\end{equation}
+Thus \(c\) embeds the intrinsic quotient
+\(\SE(3)/\mathrm{Yaw}_{J1}\) smoothly into \(\R^{9}\) (redundant coordinates
+of an intrinsic 5-D flange chart after quotienting only yaw).
+
+\begin{remark}[Legacy 5-D TCP chart]
+An older embedding
+\(c_{\mathrm{TCP}}=[p_{z},\,u_{z}\!\cdot\!\hat z,\,\|p_{xy}\|,\,
+p_{xy}\!\cdot\!u_{xy},\,p_{xy}\times u_{xy}]\)
+quotiented both yaw and TCP roll. For probe45 this is incorrect and is kept
+only for audits.
+\end{remark}
+
+% -----------------------------------------------------------------------------
+\section{Signed reachability field}
+\label{sec:field}
+
+\subsection{Definition}
+\label{sec:field-def}
+
+\begin{definition}[Signed clearance field]
+The network \(f_{\theta}:\R^{9}\to\R\) approximates a signed reachability
+clearance on the flange chart:
+\begin{equation}
+\label{eq:sign-convention}
+  f_{\theta}(c)
+  \;
+  \begin{cases}
+    >0 & \text{reachable (positive margin)},\\
+    =0 & \text{approximate boundary},\\
+    <0 & \text{unreachable}.
+  \end{cases}
+\end{equation}
+\end{definition}
+This matches Murooka's sign pattern~\eqref{eq:murooka} but the \emph{magnitude}
+is trained to track a collision-checked local distance in a declared metric
+(Section~\ref{sec:metric}), not merely a classification margin.
+
+\subsection{Input normalisation and Fourier features}
+\label{sec:fourier}
+
+Training chart rows determine centre \(\mu\in\R^{9}\) and scale \(\sigma\in\R^{9}\)
+(quantile mid-range). Normalised inputs are
+\begin{equation}
+\label{eq:normalize}
+  \tilde c
+  \;=\;
+  \frac{c-\mu}{\sigma}
+  \qquad
+  \text{(elementwise)}.
+\end{equation}
+Fourier features with \(B\) bands (\(B{=}3\) by default) are
+\begin{equation}
+\label{eq:fourier}
+  \Phi(\tilde c)
+  \;=\;
+  \Bigl[
+    \tilde c,\;
+    \sin(\pi 2^{0}\tilde c),\;
+    \cos(\pi 2^{0}\tilde c),\;
+    \ldots,\;
+    \sin(\pi 2^{B-1}\tilde c),\;
+    \cos(\pi 2^{B-1}\tilde c)
+  \Bigr]
+  \in\R^{9(1+2B)}.
+\end{equation}
+\emph{Interpretation.}
+Metres and dimensionless orientation channels have incompatible dynamic
+ranges; without~\eqref{eq:normalize}, \(\sin(\pi 2^{k}x)\) would scramble
+them. Fourier lifting helps represent sharp reachable/unreachable transitions
+without a spatial hash grid (the previous model memorised boundary samples).
+
+\subsection{Network architecture}
+\label{sec:mlp}
+
+Let \(\mathrm{softplus}_{\beta}(z)=\beta^{-1}\log(1+e^{\beta z})\). The field is
+a residual MLP with Softplus activations and a linear scalar head:
+\begin{equation}
+\label{eq:mlp}
+\begin{aligned}
+  h_{0}
+  &=
+  \mathrm{softplus}_{\beta}\bigl(W_{0}\Phi(\tilde c)+b_{0}\bigr),
+  \\
+  h_{\ell+1}
+  &=
+  \mathrm{softplus}_{\beta}\bigl(
+    h_{\ell}+W_{\ell}^{(2)}\,
+    \mathrm{softplus}_{\beta}(W_{\ell}^{(1)}h_{\ell}+b_{\ell}^{(1)})
+    +b_{\ell}^{(2)}
+  \bigr),
+  \\
+  f_{\theta}(c)
+  &=
+  w^{\mathsf T}h_{L}+b.
+\end{aligned}
+\end{equation}
+Softplus (unlike ReLU) is \(C^{\infty}\) with nowhere-vanishing derivative for
+finite inputs, which is desirable when \(\nabla_{c}f\) is used as a guidance
+direction.
+
+\subsection{Support guard}
+\label{sec:guard}
+
+Let \([\underline c,\overline c]\) be the axis-aligned box of training chart
+rows. After normalisation, a smooth exterior distance is
+\begin{equation}
+\label{eq:support-dist}
+  d_{\mathrm{supp}}(c)
+  \;=\;
+  \sqrt{
+    \bigl\|
+      \mathrm{ReLU}(\underline{\tilde c}-\tilde c)
+      +
+      \mathrm{ReLU}(\tilde c-\overline{\tilde c})
+    \bigr\|_{2}^{2}
+    +\epsilon^{2}
+  }
+  -\epsilon,
+\end{equation}
+and the guarded score is
+\begin{equation}
+\label{eq:guarded}
+  \tilde f(c)
+  \;=\;
+  f_{\theta}(c)
+  -
+  \lambda_{g}\, d_{\mathrm{supp}}(c),
+  \qquad
+  \lambda_{g}=8\text{ (default)}.
+\end{equation}
+\emph{Interpretation.}
+Outside the training support, \(\tilde f\) is pulled negative so optimisation
+is discouraged from extrapolating into unlabelled chart regions.
+
+\subsection{World scoring (the IRD point query)}
+\label{sec:score-world}
+
+\begin{equation}
+\label{eq:score-world}
+  F(\Tcp^{W},\Taxis^{W})
+  \;=\;
+  \tilde f\Bigl(
+    c\bigl(
+      \mathrm{flange}\bigl(
+        (\Taxis^{W})^{-1}\Tcp^{W}
+      \bigr)
+    \bigr)
+  \Bigr).
+\end{equation}
+\emph{Interpretation.}
+Fix \(\Tcp^{W}\) and vary \(\Taxis^{W}(y)\) via~\eqref{eq:rail-base}: then
+\(F\) is precisely a smooth IRD score of the rail/base placement. Fix the
+axis and vary \(\Tcp^{W}\): then \(F\) is a smooth forward reachability score.
+One field serves both views because of the relative chart~\eqref{eq:chart}.
+
+% -----------------------------------------------------------------------------
+\section{Declared SE(3) metric and training targets}
+\label{sec:training}
+
+\subsection{Metric}
+\label{sec:metric}
+
+Boundary labels use the weighted distance that equates \(1\,\mathrm{cm}\) of
+translation with \(1^{\circ}\) of rotation:
+\begin{equation}
+\label{eq:lambda-metric}
+  \lambda
+  \;=\;
+  \frac{0.01\,\mathrm{m}}{1^{\circ}\text{ in radians}}
+  \;=\;
+  \frac{0.01}{\pi/180}
+  \;\approx\;
+  0.5730\,\mathrm{m/rad}.
+\end{equation}
+For a translational increment \(\Delta p\in\R^{3}\) (metres) and rotational
+increment \(\Delta\omega\in\R^{3}\) (radians, rotation-vector / so(3) coordinates),
+\begin{equation}
+\label{eq:se3-distance}
+  d(\Delta p,\Delta\omega)
+  \;=\;
+  \sqrt{
+    \|\Delta p\|_{2}^{2}
+    +
+    \lambda^{2}\,\|\Delta\omega\|_{2}^{2}
+  }.
+\end{equation}
+\emph{Interpretation.}
+This is \emph{not} the bi-invariant \(\SE(3)\) geodesic; it is a declared
+chart-friendly metric used to place stencil samples and to interpret
+clearance in ``metres''.
+
+\subsection{Stencil supervision}
+\label{sec:stencil}
+
+Around collision-checked boundary centres one evaluates exact reachable /
+unreachable labels at offsets
+\begin{equation}
+\label{eq:stencil-offsets}
+  \pm 1,3,6,10\,\mathrm{mm}
+  \quad\text{and}\quad
+  \pm 1,3,5^{\circ},
+\end{equation}
+plus explicit zero-valued bisected boundary centres. These provide targets
+\(s^{\star}(c)\) for the signed value of \(f_{\theta}(c)\).
+
+\subsection{Losses}
+\label{sec:losses}
+
+Let \(\{(c_{i},y_{i},s_{i}^{\star},n_{i})\}_{i}\) be a minibatch with binary
+label \(y_{i}\in\{0,1\}\), SDF target \(s_{i}^{\star}\), and (when available)
+unit boundary normal \(n_{i}\) in normalised chart coordinates.
+
+\paragraph{Classification (sign).}
+\begin{equation}
+\label{eq:loss-cls}
+  \mathcal{L}_{\mathrm{cls}}
+  \;=\;
+  \frac{
+    \sum_{i} w_{i}^{\mathrm{cls}}\,
+    \ell_{\mathrm{BCE}}\bigl(\alpha f_{\theta}(c_{i}),\, y_{i}\bigr)
+  }{
+    \sum_{i} w_{i}^{\mathrm{cls}}
+  },
+\end{equation}
+where \(\alpha\) is a logit scale (default \(3\)) and
+\(\ell_{\mathrm{BCE}}\) is binary cross-entropy with logits.
+\emph{Interpretation.}
+Enforces Murooka-style sign correctness~\eqref{eq:sign-convention}.
+
+\paragraph{Signed value (magnitude).}
+On rows with SDF weight \(w_{i}^{\mathrm{sdf}}>0\),
+\begin{equation}
+\label{eq:loss-sdf}
+  \mathcal{L}_{\mathrm{sdf}}
+  \;=\;
+  \mathrm{SmoothL1}_{\beta=0.1}
+  \bigl(f_{\theta}(c_{i}),\, s_{i}^{\star}\bigr).
+\end{equation}
+\emph{Interpretation.}
+Makes \(|f|\) meaningful as clearance, not an arbitrary classifier margin.
+
+\paragraph{Boundary normal alignment.}
+With \(\tilde c\) requiring grad,
+\begin{equation}
+\label{eq:loss-normal}
+  \mathcal{L}_{\mathrm{n}}
+  \;=\;
+  \mathbb{E}_{i}\Bigl[
+    1
+    -
+    \frac{
+      \nabla_{\tilde c}f_{\theta}(c_{i})
+      \;\cdot\;
+      n_{i}
+    }{
+      \|\nabla_{\tilde c}f_{\theta}(c_{i})\|\,\|n_{i}\|
+    }
+  \Bigr].
+\end{equation}
+\emph{Interpretation.}
+Cosine loss aligns the field gradient with the collision-checked crossing
+direction. This is why \(\nabla F\) points toward increasing reachability
+near the frontier rather than along arbitrary level sets.
+
+\paragraph{Optional Eikonal (disabled in production).}
+\begin{equation}
+\label{eq:loss-eikonal}
+  \mathcal{L}_{\mathrm{Eik}}
+  \;=\;
+  \mathrm{SmoothL1}\bigl(
+    \|\nabla_{\tilde c}f\|,\;
+    v^{\star}
+  \bigr),
+\end{equation}
+with \(v^{\star}=1\) or an empirical stencil slope. Workspace-normalised
+mixed units make a universal unit-speed prior poorly conditioned; production
+relies on~\eqref{eq:loss-sdf}--\eqref{eq:loss-normal} instead.
+
+\paragraph{Total.}
+\begin{equation}
+\label{eq:loss-total}
+  \mathcal{L}
+  \;=\;
+  \lambda_{\mathrm{cls}}\mathcal{L}_{\mathrm{cls}}
+  +
+  \lambda_{\mathrm{sdf}}\mathcal{L}_{\mathrm{sdf}}
+  +
+  \lambda_{\mathrm{n}}\mathcal{L}_{\mathrm{n}}
+  +
+  \lambda_{\mathrm{Eik}}\mathcal{L}_{\mathrm{Eik}}
+  +
+  \cdots
+\end{equation}
+
+\begin{remark}[Why not a classifier alone?]
+A classifier can achieve high accuracy while being nearly constant for
+\(c\) deep in the unreachable region, so \(\nabla_{x}F\approx 0\) exactly
+when an optimiser most needs a recovery direction (Murooka's caveat). Signed
+stencil values plus normal alignment keep a usable slope across the boundary
+band.
+\end{remark}
+
+% -----------------------------------------------------------------------------
+\section{Differentiable set queries}
+\label{sec:region}
+
+All set queries share the pattern: sample poses about a nominal TCP, score
+each with~\eqref{eq:score-world}, reduce with a smooth aggregator.
+
+\subsection{Local pose perturbation}
+\label{sec:perturb}
+
+In the medical TCP frame with columns \([b,t,n]\) (binormal, tangent, normal),
+a position offset \(\delta p_{\mathrm{loc}}\in\R^{3}\) and rotation vector
+\(\delta\omega_{\mathrm{loc}}\in\R^{3}\) produce
+\begin{equation}
+\label{eq:perturb}
+\begin{aligned}
+  p'
+  &=
+  p + R\,\delta p_{\mathrm{loc}},
+  \\
+  R'
+  &=
+  R\;\operatorname{Exp}(\delta\omega_{\mathrm{loc}}),
+\end{aligned}
+\end{equation}
+where \(\operatorname{Exp}:\R^{3}\to\SO(3)\) is the Rodrigues map
+\begin{equation}
+\label{eq:rodrigues}
+  \operatorname{Exp}(\omega)
+  \;=\;
+  I
+  +
+  \frac{\sin\theta}{\theta}[\hat\omega]
+  +
+  \frac{1-\cos\theta}{\theta^{2}}[\hat\omega]^{2},
+  \qquad
+  \theta=\|\omega\|,
+\end{equation}
+and \([\hat\omega]\) is the skew-symmetric matrix of the unit axis
+(with the usual \(\theta\to 0\) limit \(I+[\omega]\)).
+
+\subsection{Normalised softmin and softmax}
+\label{sec:soft}
+
+For a vector \(v\in\R^{K}\) and temperature \(\tau>0\),
+\begin{equation}
+\label{eq:logsumexp}
+  \LogSumExp(v)
+  \;=\;
+  \log\sum_{k=1}^{K} e^{v_{k}}.
+\end{equation}
+The \emph{normalised softmin} used for robust aggregation is
+\begin{equation}
+\label{eq:softmin}
+  \softmin_{\tau}(v)
+  \;=\;
+  -\tau\Bigl(
+    \LogSumExp(-v/\tau)
+    -
+    \log K
+  \Bigr).
+\end{equation}
+\emph{Why the \(\log K\) term?}
+If \(v_{k}\equiv a\) for all \(k\), then
+\(\LogSumExp(-v/\tau)=\log K - a/\tau\), hence
+\(\softmin_{\tau}(v)=a\). A constant field is unchanged; without
+\(\log K\), softmin would shift by \(-\tau\log K\).
+
+The \emph{normalised softmax-like maximum} is
+\begin{equation}
+\label{eq:softmax}
+  \softmax_{\tau}(v)
+  \;=\;
+  \tau\Bigl(
+    \LogSumExp(v/\tau)
+    -
+    \log K
+  \Bigr).
+\end{equation}
+Same constant-preserving property for maxima.
+
+\paragraph{Implicit weights (gradient structure).}
+Differentiating~\eqref{eq:softmin} gives
+\begin{equation}
+\label{eq:softmin-grad}
+  \frac{\partial\softmin_{\tau}(v)}{\partial v_{k}}
+  \;=\;
+  \frac{e^{-v_{k}/\tau}}{\sum_{j}e^{-v_{j}/\tau}}
+  \;=\;
+  \pi_{k}^{\mathrm{min}}(v),
+\end{equation}
+i.e.\ a Gibbs distribution concentrated on the \emph{smallest} entries.
+For~\eqref{eq:softmax},
+\begin{equation}
+\label{eq:softmax-grad}
+  \frac{\partial\softmax_{\tau}(v)}{\partial v_{k}}
+  \;=\;
+  \frac{e^{v_{k}/\tau}}{\sum_{j}e^{v_{j}/\tau}}
+  \;=\;
+  \pi_{k}^{\mathrm{max}}(v),
+\end{equation}
+concentrated on the \emph{largest} entries. Thus robust queries backpropagate
+into worst-case samples; task-free queries backpropagate into best-case
+samples.
+
+\subsection{Region A: uncertainty box \(\times\) small cone (softmin)}
+\label{sec:region-a}
+
+\begin{definition}[Region A]
+Default extents: binormal \(4\,\mathrm{mm}\), tangent \(3\,\mathrm{mm}\),
+normal \(2\,\mathrm{mm}\); orientation cone half-angle \(\beta=3^{\circ}\);
+\(K=64\) fixed scrambled Sobol samples including the nominal pose.
+\end{definition}
+
+Position half-samples use a joint 5-D Sobol sequence \(u\in(0,1)^{5}\):
+\begin{equation}
+\label{eq:region-pos}
+  \delta p
+  \;=\;
+  (2u_{1:3}-1)\odot
+  (b,t,n)_{\mathrm{extent}},
+\end{equation}
+and orientation samples are uniform in solid angle inside the cone,
+\begin{equation}
+\label{eq:region-ori}
+\begin{aligned}
+  \cos\rho
+  &=
+  1-u_{4}\bigl(1-\cos\beta\bigr),
+  \\
+  \rho
+  &=
+  \arccos(\cos\rho),
+  \\
+  \phi
+  &=
+  2\pi u_{5},
+  \\
+  \delta\omega
+  &=
+  (\rho\cos\phi,\;\rho\sin\phi,\;0),
+\end{aligned}
+\end{equation}
+then antisymmetrised \(\{\,0,\,\pm\text{half samples}\,\}\) to length \(K\).
+The Region~A clearance is
+\begin{equation}
+\label{eq:region-a}
+  C_{\mathrm{A}}(\Tcp,\Taxis)
+  \;=\;
+  \softmin_{\tau}
+  \Bigl\{
+    F\bigl(\Tcp(\delta_{k}),\,\Taxis\bigr)
+  \Bigr\}_{k=1}^{K},
+  \qquad
+  \tau=0.15.
+\end{equation}
+\emph{Interpretation.}
+\(C_{\mathrm{A}}\) is a smooth lower envelope over a medically motivated
+uncertainty set \(U\). Increasing \(C_{\mathrm{A}}\) improves the worst
+likely pose under small registration / contact error. Coverage diagnostics
+use \(\frac{1}{K}\sum_{k}\sigma(F_{k}/\tau)\).
+
+\subsection{Task cone: tip \(\times\) roll free set (softmax)}
+\label{sec:task-cone}
+
+Ultrasound contact often permits a large tip tilt and probe roll as
+\emph{controller-chosen} free variables, not as uncertainty.
+
+\begin{definition}[TaskCone]
+Tip half-angle \(\beta_{\mathrm{tip}}\) (e.g.\ \(20^{\circ}\)--\(45^{\circ}\)),
+roll half-range \(\gamma_{\max}\) (e.g.\ \(20^{\circ}\)--\(30^{\circ}\)),
+\(K\) Sobol samples in \((\rho,\phi,\gamma)\).
+\end{definition}
+\begin{equation}
+\label{eq:task-cone-sample}
+\begin{aligned}
+  \cos\rho
+  &=
+  1-u_{1}\bigl(1-\cos\beta_{\mathrm{tip}}\bigr),
+  \\
+  \phi
+  &=
+  2\pi u_{2},
+  \\
+  \gamma
+  &=
+  (2u_{3}-1)\gamma_{\max},
+  \\
+  \delta\omega
+  &=
+  (\rho\cos\phi,\;\rho\sin\phi,\;\gamma).
+\end{aligned}
+\end{equation}
+Position is held fixed (contact point prescribed). The task clearance is
+\begin{equation}
+\label{eq:task-cone}
+  C_{\mathrm{task}}(\Tcp,\Taxis)
+  \;=\;
+  \softmax_{\tau}
+  \Bigl\{
+    F\bigl(\Tcp(\eta_{k}),\,\Taxis\bigr)
+  \Bigr\}_{k=1}^{K},
+  \qquad
+  \tau=0.20.
+\end{equation}
+\emph{Interpretation.}
+Opposite of Region~A: \(C_{\mathrm{task}}\) asks whether \emph{some}
+tip$\times$roll choice makes the arm comfortable. Gradients push the base/rail
+toward placements that admit a high-clearance free pose inside the cone.
+This is the Chiu-style ``match the posture set to the task'' idea, expressed
+as a reachability margin rather than an ellipsoid index.
+
+\subsection{Nested free \(\times\) uncertain query (SetQuery)}
+\label{sec:set-query}
+
+The general Phase-4 semantic is
+\begin{equation}
+\label{eq:nested-semantic}
+  C_{\mathrm{set}}(T)
+  \;=\;
+  \max_{\eta\in D_{\mathrm{free}}}
+  \;
+  \underbrace{
+    \CVaR_{\alpha}\text{ or }\softmin
+  }_{\delta\in U}
+  \;
+  F\bigl(c(T(\eta,\delta))\bigr).
+\end{equation}
+Batch scores have shape \([N,K_{\mathrm{free}},K_{\mathrm{unc}}]\).
+Reduce the uncertain axis first, then take a smooth max over free variables.
+
+\paragraph{Rockafellar--Uryasev lower-tail CVaR.}
+For clearance values (higher better), lower-tail CVaR at level \(\alpha\) is
+\begin{equation}
+\label{eq:cvar}
+  \CVaR_{\alpha}(X)
+  \;=\;
+  \min_{t\in\R}
+  \Biggl\{
+    t
+    +
+    \frac{1}{1-\alpha}\,
+    \mathbb{E}\bigl[(t-X)_{+}\bigr]
+  \Biggr\}.
+\end{equation}
+\emph{Interpretation.}
+\(t\) plays the role of a VaR threshold; the expectation penalises shortfalls
+below \(t\). Empirically the optimum lies in the sample set, so code evaluates
+the objective at every sample value and takes a hard or soft min over those
+candidate \(t\)'s. This is more statistically stable than a pure softmin when
+\(K_{\mathrm{unc}}\) is moderate.
+
+\paragraph{Implemented reduction.}
+\begin{equation}
+\label{eq:set-query}
+\begin{aligned}
+  g(\eta)
+  &=
+  \CVaR_{\alpha}\bigl\{F(T(\eta,\delta_{j}))\bigr\}_{j}
+  \quad\text{or}\quad
+  \softmin_{\tau}\{\ldots\},
+  \\
+  C_{\mathrm{set}}
+  &=
+  \softmax_{\tau}\bigl\{g(\eta_{i})\bigr\}_{i}.
+\end{aligned}
+\end{equation}
+
+% -----------------------------------------------------------------------------
+\section{Why IRD gradients exist and are useful}
+\label{sec:gradients}
+
+\subsection{Chain rule through the IRD point query}
+\label{sec:chain}
+
+Consider rail coordinate \(y\) with fixed world TCP. Then
+\begin{equation}
+\label{eq:chain-rail}
+  \frac{\mathrm{d}F}{\mathrm{d}y}
+  \;=\;
+  \frac{\partial\tilde f}{\partial c}\;
+  \frac{\partial c}{\partial (p,R)}\;
+  \frac{\partial (p,R)}{\partial \Taxis}\;
+  \frac{\mathrm{d}\Taxis}{\mathrm{d}y}.
+\end{equation}
+Every factor is implemented with Torch ops (\(\operatorname{Exp}\), matrix
+products, \(\sqrt{\,\cdot+\varepsilon}\), Softplus MLP), so
+\(\mathrm{d}F/\mathrm{d}y\) is exact up to floating-point error. Empirical
+AD-vs-FD median relative error on rail and TCP-\(x\) is on the order of
+\(10^{-4}\).
+
+\paragraph{Geometric reading.}
+\(\partial c/\partial(p,R)\) converts a spatial twist of the relative flange
+pose into chart coordinates. \(\partial\tilde f/\partial c\) is trained to
+align with the outward reachable normal near the boundary
+(Eq.~\eqref{eq:loss-normal}). Hence \(\mathrm{d}F/\mathrm{d}y>0\) means
+``moving the carriage in the \(+y\) direction increases predicted clearance''.
+
+\subsection{Gradients of conditional cone queries}
+\label{sec:cond-grad}
+
+For Region~A,
+\begin{equation}
+\label{eq:grad-region}
+  \nabla_{x} C_{\mathrm{A}}
+  \;=\;
+  \sum_{k=1}^{K}
+  \pi_{k}^{\mathrm{min}}\,
+  \nabla_{x} F\bigl(\Tcp(\delta_{k};x),\,\Taxis(x)\bigr).
+\end{equation}
+For TaskCone,
+\begin{equation}
+\label{eq:grad-task}
+  \nabla_{x} C_{\mathrm{task}}
+  \;=\;
+  \sum_{k=1}^{K}
+  \pi_{k}^{\mathrm{max}}\,
+  \nabla_{x} F\bigl(\Tcp(\eta_{k};x),\,\Taxis(x)\bigr).
+\end{equation}
+\emph{Interpretation of ``conditional IRD gradient''.}
+The condition is the set \(U\) or \(D_{\mathrm{free}}\). The scalar \(C\) is
+the set-aggregated clearance. Its gradient w.r.t.\ base/rail/path parameters
+is a \emph{weighted average of point-IRD gradients} at the sampled local
+poses, with weights~\eqref{eq:softmin-grad} or~\eqref{eq:softmax-grad}.
+No discrete voxel argmax is required.
+
+\subsection{Vessel-surface example \((\theta,y)\)}
+\label{sec:vessel-grad}
+
+On an elliptical vessel, TCP position is tied to surface angle \(\theta\) and
+path abscissa \(s\), while rail \(y\) sets the base. Demo code forms
+\begin{equation}
+\label{eq:demo-query}
+  C(s;\theta,y)
+  \;=\;
+  C_{\mathrm{task}}\bigl(
+    \Tcp(\theta,s),\,
+    \Taxis(y)
+  \bigr)
+\end{equation}
+and extracts
+\begin{equation}
+\label{eq:demo-grads}
+  \frac{\partial C}{\partial\theta},
+  \qquad
+  \frac{\partial C}{\partial y}
+\end{equation}
+by \(\mathtt{torch.autograd.grad}\). Quiver plots of these components are
+literal visualisations of the conditional IRD vector field on the
+\((\theta,y)\) planning plane.
+
+% -----------------------------------------------------------------------------
+\section{Trajectory operator and online updates}
+\label{sec:traj}
+
+\subsection{Aggregation order}
+\label{sec:agg-order}
+
+Given waypoints \(\{\Tcp^{(\ell)}\}_{\ell=1}^{W}\) and a (shared or
+per-waypoint) axis frame, the trajectory operator applies, in order:
+\begin{enumerate}[leftmargin=1.6em]
+  \item \textbf{Uncertainty / Region~A scenarios} for each approximate-angle
+        candidate;
+  \item \textbf{Angle aggregation} (\(\softmax\) select, \(\softmin\) robust,
+        mean, or CVaR);
+  \item \textbf{Path residuals}: interior SE(3) samples on each segment;
+  \item \textbf{Trajectory reduction}: softmin / CVaR / hard min over
+        waypoint and path margins.
+\end{enumerate}
+
+\subsection{SE(3) path interpolation}
+\label{sec:se3-interp}
+
+On a segment from \(T_{0}\) to \(T_{1}\), for \(\alpha\in(0,1)\),
+\begin{equation}
+\label{eq:se3-interp}
+\begin{aligned}
+  p(\alpha)
+  &=
+  (1-\alpha)p_{0}+\alpha p_{1},
+  \\
+  R(\alpha)
+  &=
+  R_{0}\,
+  \operatorname{Exp}\bigl(
+    \alpha\,\operatorname{Log}(R_{0}^{\mathsf T}R_{1})
+  \bigr).
+\end{aligned}
+\end{equation}
+\emph{Interpretation.}
+Translations move linearly; orientations follow the geodesic in \(\SO(3)\).
+Controllers that require the whole interpolated path to be IK-feasible need
+these interior samples: endpoint reachability alone is insufficient.
+
+\subsection{Per-waypoint and path margins}
+\label{sec:path-margin}
+
+Let \(A\) index angle candidates and \(S\) index Region~A scenarios. After
+scoring,
+\begin{equation}
+\label{eq:waypoint-clearance}
+\begin{aligned}
+  g_{\ell,a}
+  &=
+  \mathcal{A}_{S}\bigl[F(T^{(\ell)}_{a,s})\bigr],
+  \\
+  C_{\ell}
+  &=
+  \mathcal{A}_{A}\bigl[g_{\ell,a}\bigr],
+\end{aligned}
+\end{equation}
+and for interior path samples \(C^{\mathrm{path}}_{m}\) similarly. The scalar
+trajectory clearance is
+\begin{equation}
+\label{eq:traj-clearance}
+  C_{\mathrm{traj}}
+  \;=\;
+  \softmin_{\tau}
+  \Bigl[
+    \{C_{\ell}\}_{\ell=1}^{W}
+    \;\cup\;
+    \{C^{\mathrm{path}}_{m}\}_{m}
+  \Bigr]
+\end{equation}
+(or CVaR / hard min). Optional SRS arm angle \(\psi\) enters as an outer
+\(\softmax\) over \(\psi\)-conditioned fields when exposed.
+
+\subsection{Why the landscape updates with the trajectory}
+\label{sec:why-update}
+
+The network \(f_{\theta}\) is trained once in the flange chart and then frozen.
+A trajectory is only a curve \(x\mapsto(\Tcp(x),\Taxis(x))\). Because:
+\begin{enumerate}[leftmargin=1.6em]
+  \item \(c\) depends on the \emph{relative} pose~\eqref{eq:relative-pose};
+  \item cone samples are expressed in the \emph{current} TCP body frame
+        \eqref{eq:perturb};
+  \item aggregators~\eqref{eq:softmin}--\eqref{eq:softmax} are memoryless
+        functions of the current sample scores;
+\end{enumerate}
+re-evaluating \(C_{\mathrm{task}}(s)\) or \(C_{\mathrm{traj}}(x)\) at a new
+path automatically yields a new IRD landscape and new gradients
+\(\nabla_{x}C\) \emph{without} modifying \(\theta\).
+
+\subsection{Typical optimisation objective}
+\label{sec:opt}
+
+Ellipse-vessel demos minimise a hinge toward a conformal clearance target
+\(m^{\star}\) plus regularisers:
+\begin{equation}
+\label{eq:opt-loss}
+\begin{aligned}
+  \ell_{\mathrm{IRD}}
+  &=
+  \frac{1}{W}\sum_{\ell}
+  \mathrm{softplus}\!\Bigl(\frac{m^{\star}-C_{\ell}}{\sigma}\Bigr)
+  +
+  \max_{\ell}\mathrm{softplus}\!\Bigl(\frac{m^{\star}-C_{\ell}}{\sigma}\Bigr)
+  -
+  \kappa\,\overline{C},
+  \\
+  \ell
+  &=
+  w_{\mathrm{IRD}}\,\ell_{\mathrm{IRD}}
+  +
+  w_{\mathrm{near}}\,\ell_{\mathrm{nearest}}
+  +
+  w_{\mathrm{cont}}\,\ell_{\mathrm{continuity}}
+  +
+  \cdots
+\end{aligned}
+\end{equation}
+\emph{Interpretation.}
+\(\mathrm{softplus}((m^{\star}-C)/\sigma)\) is a smooth one-sided penalty:
+inactive when \(C\ge m^{\star}\), rising when clearance falls below target.
+The extra \(-\kappa\overline{C}\) term continues to reward climbing toward
+IRD peaks even after the hinge is satisfied. Continuity penalties keep
+\(\theta(s)\) and \(y(s)\) smooth. Gradient descent on~\eqref{eq:opt-loss}
+is exactly ``update the trajectory using conditional IRD gradients''.
+
+% -----------------------------------------------------------------------------
+\section{End-to-end commutative diagram}
+\label{sec:diagram}
+
+\[
+\begin{array}{c}
+x
+\;\xrightarrow{\;\text{kinematics / rail}\;}
+(\Tcp(x),\Taxis(x))
+\;\xrightarrow{\;\text{local samples}\;}
+\{T_{k}(x)\}
+\\[0.6em]
+\xrightarrow{\;\eqref{eq:relative-pose}+\eqref{eq:chart}\;}
+\{c_{k}\}
+\;\xrightarrow{\;\tilde f\;}
+\{F_{k}\}
+\;\xrightarrow{\;\mathcal{A}\;}
+C(x)
+\;\xrightarrow{\;\nabla\;}
+\nabla_{x}C
+\end{array}
+\]
+
+\begin{proposition}[Single autograd tape]
+If every arrow above is implemented with elementary differentiable maps, then
+\(\nabla_{x}C\) exists almost everywhere and coincides with the analytic
+chain rule. Discrete IRD voxel lookups break the tape at the table index;
+the neural field does not.
+\end{proposition}
+
+% -----------------------------------------------------------------------------
+\section{Scope, guarantees, and non-goals}
+\label{sec:scope}
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Guidance, not certificate.}
+        Held-out boundary errors are sub-millimetre when bracketed, but the
+        field is an optimisation-direction operator. Hard feasibility still
+        requires final multi-seed IK and collision checking.
+  \item \textbf{Symmetry approximation.}
+        Only J1 yaw is exact; residual probe-roll collision differences are
+        rare and rejected downstream.
+  \item \textbf{No branch / continuous \(\psi\) in the point field.}
+        Offline labels are point reachability. Path residuals and continuous
+        arm-angle selection live in the trajectory operator.
+  \item \textbf{Not a full patient-trajectory planner by itself.}
+        Region~A / TaskCone / TrajectoryTask are query layers over the point
+        field; application demos add geometric path parameterisations and
+        loss terms.
+\end{itemize}
+
+% -----------------------------------------------------------------------------
+\section{Symbol table}
+\label{sec:symbols}
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Symbol & Meaning \\
+\midrule
+\(\Tcp,\Taxis\) & World TCP pose; world J1-axis pose \\
+\(c\in\R^{9}\) & Yaw-invariant flange chart \\
+\(f_{\theta},\tilde f\) & Signed field; support-guarded field \\
+\(F\) & World point score~\eqref{eq:score-world} \\
+\(C_{\mathrm{A}},C_{\mathrm{task}},C_{\mathrm{set}},C_{\mathrm{traj}}\) &
+  Aggregated clearances \\
+\(y\) & Rail coordinate \\
+\(\delta,\eta\) & Uncertainty sample; free (task) sample \\
+\(\tau\) & Softmin/softmax temperature \\
+\(\lambda\) & Translation--rotation metric scale~\eqref{eq:lambda-metric} \\
+\(\pi^{\mathrm{min}},\pi^{\mathrm{max}}\) & Softmin / softmax weights \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% -----------------------------------------------------------------------------
+\section{References}
+\label{sec:refs}
+
+\begin{enumerate}[leftmargin=1.6em]
+  \item N.~Vahrenkamp, T.~Asfour, and R.~Dillmann,
+        ``Robot placement based on reachability inversion,'' ICRA 2013.
+  \item M.~Rudorfer,
+        ``RM4D: A Combined Reachability and Inverse Reachability Map for
+        Common 6-/7-axis Robot Arms by Dimensionality Reduction to 4D,''
+        ICRA 2025 / arXiv:2410.06968.
+  \item M.~Murooka et~al.,
+        ``Learning Differentiable Reachability Maps for Optimization-based
+        Humanoid Motion Generation,'' Humanoids 2025 / arXiv:2508.11275.
+  \item S.~L.~Chiu,
+        ``Task Compatibility of Manipulator Postures,''
+        International Journal of Robotics Research, 1988.
+  \item Internal design note:
+        \texttt{ird\_playground/docs/rm4d\_signed\_ird\_design.md}.
+\end{enumerate}
+
+\appendix
+\section{Code $\leftrightarrow$ equation map}
+\label{sec:code-map}
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Equation & Primary module \\
+\midrule
+\eqref{eq:rail-base}
+  & \texttt{region/operator.py::base\_from\_rail\_torch} \\
+\eqref{eq:chart}
+  & \texttt{ird/canonical.py::canonical\_flange\_invariants\_torch} \\
+\eqref{eq:score-world}
+  & \texttt{neural/signed\_field.py::score\_world} \\
+\eqref{eq:softmin}--\eqref{eq:softmax}
+  & \texttt{region/operator.py}, \texttt{region/set\_query.py} \\
+\eqref{eq:region-a}
+  & \texttt{region/operator.py::RegionA} \\
+\eqref{eq:task-cone}
+  & \texttt{region/task\_cone.py::TaskConeReachability} \\
+\eqref{eq:nested-semantic}--\eqref{eq:set-query}
+  & \texttt{region/set\_query.py::SetQueryOperator} \\
+\eqref{eq:se3-interp}--\eqref{eq:traj-clearance}
+  & \texttt{region/trajectory\_operator.py} \\
+\eqref{eq:loss-cls}--\eqref{eq:loss-total}
+  & \texttt{neural/train\_signed.py} \\
+\eqref{eq:opt-loss}
+  & \texttt{experiments/ellipse\_vessel\_ird\_demo.py} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

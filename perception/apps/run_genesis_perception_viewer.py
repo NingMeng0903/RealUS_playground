@@ -23,10 +23,7 @@ from pathlib import Path
 class PerceptionViewerConfig:
     track_subscribe: str = "tcp://127.0.0.1:5598"
     anatomy_subscribe: str = "tcp://127.0.0.1:5601"
-<<<<<<< Updated upstream
-=======
     planning_root: Path | None = None
->>>>>>> Stashed changes
     anatomy_transparent_alpha: float = 0.35
     track_mesh_rgba: tuple[int, int, int, int] = (250, 122, 31, 120)
     spawn_robot: bool = True
@@ -82,8 +79,6 @@ class PerceptionViewerOverlay:
         except Exception as exc:
             logging.warning("anatomy overlay unavailable: %s", exc)
 
-<<<<<<< Updated upstream
-=======
         if self._cfg.planning_root is not None:
             try:
                 from projects.genesis_ue_sync.anatomy_retarget.planning_overlay import PlanningOverlayDrawer
@@ -93,8 +88,6 @@ class PerceptionViewerOverlay:
                 self._planning.reload_if_changed(force=True)
             except Exception as exc:
                 logging.warning("planning overlay unavailable: %s", exc)
-
->>>>>>> Stashed changes
     def poll_once(self) -> None:
         if self._track is not None:
             try:
@@ -146,8 +139,6 @@ def main() -> int:
     )
     ap.add_argument("--track-subscribe", type=str, default="tcp://127.0.0.1:5598")
     ap.add_argument("--anatomy-subscribe", type=str, default="tcp://127.0.0.1:5601")
-<<<<<<< Updated upstream
-=======
     ap.add_argument(
         "--show-vessel-planning",
         action="store_true",
@@ -159,7 +150,6 @@ def main() -> int:
         default=None,
         help="Override vessel-planning export root (requires --show-vessel-planning)",
     )
->>>>>>> Stashed changes
     ap.add_argument("--anatomy-alpha", type=float, default=0.35)
     ap.add_argument(
         "--track-mesh-alpha",
@@ -198,10 +188,7 @@ def main() -> int:
     cfg = PerceptionViewerConfig(
         track_subscribe=str(args.track_subscribe),
         anatomy_subscribe=str(args.anatomy_subscribe),
-<<<<<<< Updated upstream
-=======
         planning_root=planning_root,
->>>>>>> Stashed changes
         anatomy_transparent_alpha=float(args.anatomy_alpha),
         track_mesh_rgba=(250, 122, 31, max(0, min(255, int(args.track_mesh_alpha)))),
         spawn_robot=True,

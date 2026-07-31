@@ -1,0 +1,38 @@
+# Faster capability map for mount-compare figures (probe45 TCP).
+# Same grid as the other mounts; fewer MC samples so a viz map finishes quickly.
+# Replace with the production coll_probe45 config for publication-quality D(x).
+
+urdf_path: rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf
+tcp_frame: tcp
+rail_locked_at_m: 0.0
+
+grid:
+  origin_m: [-1.10, -1.10, -0.30]
+  step_m: 0.03
+  shape: [74, 74, 57]
+
+orient:
+  kind: icosphere
+  subdiv: 3
+
+roll:
+  enabled: false
+  step_deg: 15.0
+
+mode: mc
+
+mc:
+  n_samples: 400_000
+  batch: 8_000
+  seed: 0
+  self_collision: true
+  collision_urdf: rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf
+  collision_pairs: rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml
+
+ik:
+  enabled: false
+
+workers: 8
+reachable_radius_m: 1.20
+output_dir: data/reachability/rm75_6f_3cm_15deg_coll_probe45
+progress: true

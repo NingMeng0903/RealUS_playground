@@ -1,0 +1,37 @@
+# Vertical stock TCP: link_7 → tcp = Trans_z(0.220 m), acoustic/tool +Z = flange +Z.
+# Same grid as coll / horizontal-probe maps for cross-mount colour comparison.
+
+urdf_path: data/urdf_patched/RM75-tcp220.urdf
+tcp_frame: tcp
+rail_locked_at_m: 0.0
+
+grid:
+  origin_m: [-1.10, -1.10, -0.30]
+  step_m: 0.03
+  shape: [74, 74, 57]
+
+orient:
+  kind: icosphere
+  subdiv: 3
+
+roll:
+  enabled: false
+  step_deg: 15.0
+
+mode: mc
+
+mc:
+  n_samples: 2_000_000
+  batch: 8_000
+  seed: 0
+  self_collision: true
+  collision_urdf: data/urdf_patched/RM75-tcp220.collision.urdf
+  collision_pairs: data/urdf_patched/collision_pairs_tcp220.yaml
+
+ik:
+  enabled: false
+
+workers: 8
+reachable_radius_m: 1.20
+output_dir: data/reachability/rm75_6f_3cm_15deg_coll_tcp220
+progress: true

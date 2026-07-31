@@ -689,8 +689,11 @@ class _TickLogger:
         + [f"twist_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
         + ["track_err_mm", "follow_err_deg", "slack_norm", "n_cbf",
            "vel_clamped", "acc_clamped", "pos_clamped", "fx", "fy", "fz",
-           "instability_idx", "damping_z_eff", "v_force_z", "ke_est",
+           "instability_idx", "instability_idx_raw", "instability_idx_active",
+           "damping_z_eff", "v_force_z", "ke_est",
            "f_des_z_eff", "v_r_z", "takeover",
+           "force_pred_z", "force_dot_z", "cap_press_z", "cap_retract_z",
+           "ke_update_gated", "ke_dx_m", "ke_df_n", "ke_update_count",
            "governor_scale", "governor_scale_raw", "sigma_min",
            "qdot_norm", "qdot_max_frac_vmax",
            "qdot_ff_norm", "arm_singularity_smooth", "limit_activation"]
@@ -744,12 +747,22 @@ class _TickLogger:
         qm = q_meas if q_meas is not None else np.full(7, np.nan)
         ctrl = getattr(outer, "controller", None)
         is_idx = getattr(ctrl, "instability_index", float("nan"))
+        is_idx_raw = getattr(ctrl, "instability_index_raw", float("nan"))
         d_eff = getattr(ctrl, "damping_z_eff", float("nan"))
         v_fz = getattr(ctrl, "v_force_z", float("nan"))
         ke_est = getattr(ctrl, "ke_est", float("nan"))
         f_des_eff = getattr(ctrl, "f_des_z_eff", float("nan"))
         v_r_z = getattr(ctrl, "v_r_z", float("nan"))
         takeover = getattr(ctrl, "takeover_active", False)
+        force_pred_z = getattr(ctrl, "force_pred_z", float("nan"))
+        force_dot_z = getattr(ctrl, "force_dot_z", float("nan"))
+        cap_press_z = getattr(ctrl, "cap_press_z", float("nan"))
+        cap_retract_z = getattr(ctrl, "cap_retract_z", float("nan"))
+        ke_tracker = getattr(ctrl, "_ke_estimator", None)
+        ke_update_gated = getattr(ke_tracker, "update_gated", False)
+        ke_dx_m = getattr(ke_tracker, "last_dx_m", float("nan"))
+        ke_df_n = getattr(ke_tracker, "last_df_n", float("nan"))
+        ke_update_count = getattr(ke_tracker, "update_count", 0)
         qdot_norm = float(np.linalg.norm(step.qdot))
         # Fraction of the per-joint velocity box actually used (1.0 = saturated
         # on at least one joint) - the clearest signal for "CBF/limits are
@@ -768,8 +781,13 @@ class _TickLogger:
                f"{step.slack_norm:.5f}", step.n_cbf_active,
                int(step.vel_clamped), int(step.acc_clamped), int(step.pos_clamped),
                f"{f_ext[0]:.3f}", f"{f_ext[1]:.3f}", f"{f_ext[2]:.3f}",
-               f"{is_idx:.4f}", f"{d_eff:.2f}", f"{v_fz:.5f}", f"{ke_est:.1f}",
+               f"{is_idx:.4f}", f"{is_idx_raw:.4f}", f"{is_idx:.4f}",
+               f"{d_eff:.2f}", f"{v_fz:.5f}", f"{ke_est:.1f}",
                f"{f_des_eff:.3f}", f"{v_r_z:.5f}", int(bool(takeover)),
+               f"{force_pred_z:.4f}", f"{force_dot_z:.4f}",
+               f"{cap_press_z:.6f}", f"{cap_retract_z:.6f}",
+               int(bool(ke_update_gated)), f"{ke_dx_m:.8f}", f"{ke_df_n:.5f}",
+               int(ke_update_count),
                f"{governor_scale:.4f}", f"{governor_scale_raw:.4f}",
                f"{step.sigma_min:.5f}",
                f"{qdot_norm:.5f}", f"{qdot_max_frac:.4f}",

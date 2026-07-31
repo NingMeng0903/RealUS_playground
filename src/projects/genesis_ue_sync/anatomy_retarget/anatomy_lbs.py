@@ -9,7 +9,6 @@ from typing import Any, Mapping
 import numpy as np
 
 from .coupled_joint_v8 import evaluate_coupled_rbf_response_v8
-from .fk_policy_v8 import selective_leg_runtime_roots_v811
 from .pose_adapter import pose_to_smplx55_axis_angle
 from .rigged_asset import SOURCE_DRIVER_MODES, AnatomyRiggedAsset
 
@@ -1155,57 +1154,6 @@ def with_source_driver_coupling(asset: AnatomyRiggedAsset) -> AnatomyRiggedAsset
     return type(asset)(**{**asset.__dict__, "source_driver_coupling": coupling})
 
 
-def _selective_leg_root_pose_v811(
-    *,
-    bone: int,
-    driver_joint: int,
-    driver_frames: np.ndarray,
-    coupling: np.ndarray,
-    source_parents: np.ndarray,
-    posed_global: np.ndarray,
-    input_pose: np.ndarray,
-    coupled_joint_responses: Mapping[str, Any],
-) -> np.ndarray:
-    """Pose one V71 leg station root without inheriting parent translation.
-
-    The driver frame already carries the anatomical guide station and the
-    SMPL-X rotation.  Coupling preserves the fitted Blender bind/roll.  A
-    calibrated RBF may add only its declared parent-coordinate slide; it
-    never restores the parent's bind-local translation path.
-    """
-
-    desired = np.asarray(driver_frames[bone] @ coupling[bone], dtype=np.float64)
-    _assert_proper_rotation(
-        desired[:3, :3],
-        f"selective V71 leg root {bone} driver/coupling rotation",
-        atol=2.0e-6,
-    )
-    response = coupled_joint_responses.get(str(bone))
-    if response is None:
-        return desired
-    if not isinstance(response, Mapping):
-        raise ValueError(f"V8 coupled response {bone} must be a mapping")
-    parent = int(source_parents[bone])
-    if parent < 0:
-        raise ValueError(f"V8 coupled leg root {bone} has no source parent")
-    if int(response.get("smplx_joint", -1)) != int(driver_joint):
-        raise ValueError(
-            f"V8 coupled leg root {bone} does not match its SMPL-X station"
-        )
-    if response.get("pivot_mapping") != (
-        "smplx_axis_angle_state_to_frozen_anatomical_parent_local"
-    ):
-        raise ValueError(f"V8 coupled leg root {bone} has invalid pivot mapping")
-    translation = evaluate_coupled_rbf_response_v8(
-        dict(response),
-        np.asarray(input_pose[driver_joint], dtype=np.float64),
-    )
-    # Translation is expressed in the already-posed parent coordinates.  Do
-    # not add the parent origin or its rest-local offset a second time.
-    desired[:3, 3] += posed_global[parent, :3, :3] @ translation
-    return desired
-
-
 def source_bone_posed_global(
     asset: AnatomyRiggedAsset,
     pose_axis_angle: Any,
@@ -1219,7 +1167,6 @@ def source_bone_posed_global(
     """
     if asset.source_bone_names is None:
         raise ValueError("source bone transforms require an anatomy schema-v6 rig")
-    selective_leg_root_joints = selective_leg_runtime_roots_v811(asset)
     driver_frames = source_bone_driver_frames(asset, pose_axis_angle)
     modes = list(asset.source_bone_driver_types or [])
     if len(modes) != len(asset.source_bone_names):
@@ -1409,10 +1356,6 @@ def source_bone_posed_global(
     )
     if guide_pose_points is not None:
         contact_pose_points = guide_pose_points
-    if selective_leg_root_joints and guide_pose_points is None:
-        raise ValueError(
-            "selective V71 runtime leg authority requires posed anatomical guides"
-        )
     # Zero pose must recover the fitted bind exactly.  Rest-joint H/K/A are not
     # perfectly colinear, so a geometric hinge solve would invent a nonzero
     # femur twist on the neutral sample; skip it when the SMPL-X pose is zero.
@@ -1491,18 +1434,6 @@ def source_bone_posed_global(
         parent = int(source_parents[bi])
         if parent >= bi or parent < -1:
             raise ValueError(f"source bone parent {parent} for bone {bi} is not topological")
-        if bi in selective_leg_root_joints:
-            posed_global[bi] = _selective_leg_root_pose_v811(
-                bone=bi,
-                driver_joint=selective_leg_root_joints[bi],
-                driver_frames=driver_frames,
-                coupling=coupling,
-                source_parents=source_parents,
-                posed_global=posed_global,
-                input_pose=input_pose,
-                coupled_joint_responses=coupled_joint_responses,
-            )
-            continue
         if bi in leg_femur_rotation:
             if parent < 0:
                 raise ValueError(f"leg hinge femur {bi} has no source parent")
@@ -1978,8 +1909,6 @@ def skin_vertices(
     runtime_coefficients: dict[str, np.ndarray] | None = None,
     runtime_tube_pack: Any | None = None,
     runtime_tube_pack_validated: bool = False,
-    runtime_tube_pose_corrective_pack: Any | None = None,
-    runtime_tube_pose_corrective_pack_validated: bool = False,
     validate: bool = True,
 ) -> np.ndarray:
     if validate:
@@ -2071,7 +2000,6 @@ def skin_vertices(
 
         posed = apply_station_pose_follow(asset, transforms, posed)
         posed = apply_regional_organ_follow(asset, posed)
-    tube_coupling_applied = False
     if runtime_tube_pack is not None:
         from .tube_frames_v8 import apply_tube_coupling_v8
 
@@ -2083,7 +2011,6 @@ def skin_vertices(
             runtime_fields=runtime_coefficients,
             validate_live=not bool(runtime_tube_pack_validated),
         )
-        tube_coupling_applied = True
     elif runtime_coefficients and any(
         str(name).startswith("tube_coupling_v8.")
         for name in runtime_coefficients
@@ -2101,16 +2028,7 @@ def skin_vertices(
             pack,
             runtime_fields=runtime_coefficients,
         )
-        tube_coupling_applied = True
     elif runtime_coefficients:
-        has_corrective = any(
-            str(name).startswith("tube_pose_corrective_v1.")
-            for name in runtime_coefficients
-        )
-        if has_corrective:
-            raise ValueError(
-                "tube_pose_corrective_v1 requires authoritative tube_coupling_v8"
-            )
         from .tube_frames_v7 import apply_tube_material_frames_v7
 
         posed = apply_tube_material_frames_v7(
@@ -2118,54 +2036,6 @@ def skin_vertices(
             transforms,
             posed,
             runtime_coefficients,
-        )
-    if runtime_tube_pose_corrective_pack is not None:
-        if not tube_coupling_applied:
-            raise ValueError(
-                "tube_pose_corrective_v1 requires authoritative tube_coupling_v8"
-            )
-        if asset.driver_indices is None or asset.driver_weights is None:
-            raise ValueError(
-                "tube_pose_corrective_v1 requires original 14-slot Armature weights"
-            )
-        from .tube_pose_corrective_v8 import apply_tube_pose_corrective_v1
-
-        posed = apply_tube_pose_corrective_v1(
-            posed,
-            runtime_tube_pose_corrective_pack,
-            pose_axis_angle=pose_axis_angle,
-            source_transforms=transforms,
-            driver_indices=asset.driver_indices,
-            driver_weights=asset.driver_weights,
-            validate_pack=not bool(runtime_tube_pose_corrective_pack_validated),
-        )
-    elif runtime_coefficients and any(
-        str(name).startswith("tube_pose_corrective_v1.")
-        for name in runtime_coefficients
-    ):
-        if not tube_coupling_applied:
-            raise ValueError(
-                "tube_pose_corrective_v1 requires authoritative tube_coupling_v8"
-            )
-        if asset.driver_indices is None or asset.driver_weights is None:
-            raise ValueError(
-                "tube_pose_corrective_v1 requires original 14-slot Armature weights"
-            )
-        from .tube_pose_corrective_v8 import (
-            apply_tube_pose_corrective_v1,
-            tube_pose_corrective_pack_from_runtime_fields_v1,
-        )
-
-        corrective = tube_pose_corrective_pack_from_runtime_fields_v1(
-            runtime_coefficients
-        )
-        posed = apply_tube_pose_corrective_v1(
-            posed,
-            corrective,
-            pose_axis_angle=pose_axis_angle,
-            source_transforms=transforms,
-            driver_indices=asset.driver_indices,
-            driver_weights=asset.driver_weights,
         )
     if transl is not None:
         posed += np.asarray(transl, dtype=np.float32).reshape(1, 3)

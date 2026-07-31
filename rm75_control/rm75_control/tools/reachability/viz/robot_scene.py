@@ -2,12 +2,14 @@
 
 Walks the URDF ``VISUAL`` geometry model with Pinocchio, computes each link's
 world-frame placement at ``q_full``, loads meshes via trimesh (Collada / STL /
-OBJ all covered) and stacks them into a PyVista ``MultiBlock`` so the caller
-can drop it into any plotter with a single ``add_mesh`` call.
+OBJ all covered) and stacks them into a PyVista ``MultiBlock``.
 
-By default each link keeps the **DAE material colour** (``main_color`` from
-the Collada PBR material). Pass ``use_dae_colors=False`` for the uniform grey
-fallback used in some schematic views.
+Collada arm meshes are multi-material Scenes. Loading with ``force="mesh"``
+merges them into a single grey surface — we instead expand each Scene geometry
+and keep its PBR ``baseColorFactor`` / ``main_color``.
+
+Paper mount-compare figures skip the rail extrusion and probe/TCP head meshes,
+and draw a cylinder at the true ``tcp`` frame instead.
 """
 
 from __future__ import annotations
@@ -30,6 +32,13 @@ _DEFAULT_VISUAL_URDF = (
     / "RM75-6F-8dof.genesis.urdf"
 )
 
+# Substrings matched against Pinocchio visual object names (case-insensitive).
+DEFAULT_SKIP_VISUAL_SUBSTRINGS: tuple[str, ...] = (
+    "rail_visual",
+    "link_8",
+    "probe",
+)
+
 
 @dataclass
 class RobotPvScene:
@@ -37,54 +46,107 @@ class RobotPvScene:
     mesh_block: pv.MultiBlock
     n_visuals: int
     link_colors: list[str] = field(default_factory=list)
+    tcp_pose_world: pin.SE3 | None = None
+
+
+def _rgba_to_hex(rgba) -> str | None:
+    if rgba is None:
+        return None
+    rgb = np.asarray(rgba, dtype=np.float64).reshape(-1)[:3]
+    if rgb.max() <= 1.0 + 1.0e-6:
+        rgb = np.clip(rgb * 255.0, 0, 255)
+    return f"#{int(rgb[0]):02x}{int(rgb[1]):02x}{int(rgb[2]):02x}"
+
+
+def _color_from_material(mat) -> str | None:
+    if mat is None:
+        return None
+    for attr in ("baseColorFactor", "main_color"):
+        hex_c = _rgba_to_hex(getattr(mat, attr, None))
+        if hex_c is not None:
+            return hex_c
+    return None
 
 
 def _color_from_trimesh(tm) -> str | None:
     vis = getattr(tm, "visual", None)
     mat = getattr(vis, "material", None) if vis is not None else None
-    if mat is None:
-        return None
-    mc = getattr(mat, "main_color", None)
-    if mc is None:
-        return None
-    rgb = np.asarray(mc, dtype=np.uint8).reshape(-1)[:3]
-    return f"#{int(rgb[0]):02x}{int(rgb[1]):02x}{int(rgb[2]):02x}"
+    return _color_from_material(mat)
 
 
-def _mesh_from_geom_object(go: pin.GeometryObject) -> tuple[pv.PolyData | None, str | None]:
-    """Turn a Pinocchio VISUAL GeometryObject into a PolyData + optional DAE colour."""
+def _pv_from_trimesh(tm) -> pv.PolyData | None:
+    if tm is None or not hasattr(tm, "vertices"):
+        return None
+    return pv.wrap(tm)
+
+
+def _meshes_from_path(mesh_path: str) -> list[tuple[pv.PolyData, str | None]]:
+    """Load a path as one or more (mesh, hex colour) pairs.
+
+    Collada files arrive as ``trimesh.Scene`` graphs. Submesh vertices are in
+    local geometry space; the shared scene-graph transform (often a 90° axis
+    flip from Collada Y-up) **must** be applied or every link looks exploded
+    relative to the URDF joint frames.
+    """
+    import trimesh
+
+    loaded = trimesh.load(mesh_path, force=None)
+    out: list[tuple[pv.PolyData, str | None]] = []
+    if isinstance(loaded, trimesh.Scene):
+        for node_name in loaded.graph.nodes_geometry:
+            T, geom_name = loaded.graph.get(node_name)
+            geom = loaded.geometry[geom_name]
+            if geom is None or not hasattr(geom, "vertices"):
+                continue
+            # Copy before transform so cached scene geometries stay pristine.
+            geom = geom.copy()
+            geom.apply_transform(np.asarray(T, dtype=np.float64))
+            pd = _pv_from_trimesh(geom)
+            if pd is None:
+                continue
+            out.append((pd, _color_from_trimesh(geom)))
+        return out
+    pd = _pv_from_trimesh(loaded)
+    if pd is None:
+        return []
+    return [(pd, _color_from_trimesh(loaded))]
+
+
+def _mesh_from_geom_object(go: pin.GeometryObject) -> list[tuple[pv.PolyData, str | None]]:
+    """Turn a Pinocchio VISUAL GeometryObject into one or more PolyData + colours."""
     mesh_path = str(go.meshPath)
-    link_color: str | None = None
     if mesh_path and mesh_path != "BOX" and Path(mesh_path).exists():
-        import trimesh
-
-        tm = trimesh.load(mesh_path, force="mesh")
-        if tm is None or not hasattr(tm, "vertices"):
-            return None, None
-        link_color = _color_from_trimesh(tm)
-        pd = pv.wrap(tm)
+        parts = _meshes_from_path(mesh_path)
         s = np.asarray(getattr(go, "meshScale", np.ones(3)), dtype=float).reshape(3)
         if not np.allclose(s, 1.0):
-            pd.points = pd.points * s[None, :]
-        return pd, link_color
+            scaled = []
+            for pd, col in parts:
+                pd2 = pd.copy()
+                pd2.points = pd2.points * s[None, :]
+                scaled.append((pd2, col))
+            return scaled
+        return parts
 
     geom = getattr(go, "geometry", None)
     if geom is None:
-        return None, None
+        return []
     node_type = getattr(geom, "getNodeType", lambda: None)()
     name = str(node_type) if node_type is not None else type(geom).__name__
 
     if "BOX" in name.upper() or type(geom).__name__.startswith("Box"):
         halfside = np.asarray(geom.halfSide, dtype=float)
-        return pv.Box(bounds=(-halfside[0], halfside[0], -halfside[1], halfside[1], -halfside[2], halfside[2])), "#888888"
+        return [(
+            pv.Box(bounds=(-halfside[0], halfside[0], -halfside[1], halfside[1], -halfside[2], halfside[2])),
+            "#888888",
+        )]
     if "CYL" in name.upper() or type(geom).__name__.startswith("Cyl"):
         radius = float(getattr(geom, "radius", 0.02))
         length = float(getattr(geom, "halfLength", 0.05)) * 2.0
-        return pv.Cylinder(radius=radius, height=length, direction=(0.0, 0.0, 1.0)), "#888888"
+        return [(pv.Cylinder(radius=radius, height=length, direction=(0.0, 0.0, 1.0)), "#888888")]
     if "SPH" in name.upper() or type(geom).__name__.startswith("Sph"):
         radius = float(getattr(geom, "radius", 0.02))
-        return pv.Sphere(radius=radius), "#888888"
-    return None, None
+        return [(pv.Sphere(radius=radius), "#888888")]
+    return []
 
 
 def _apply_se3(pd: pv.PolyData, M: pin.SE3) -> pv.PolyData:
@@ -96,14 +158,27 @@ def _apply_se3(pd: pv.PolyData, M: pin.SE3) -> pv.PolyData:
     return out
 
 
+def _should_skip(name: str, skip_substrings: tuple[str, ...] | None) -> bool:
+    if not skip_substrings:
+        return False
+    low = name.lower()
+    return any(s.lower() in low for s in skip_substrings)
+
+
 def build_robot_pv(
     urdf_path: str | Path | None = None,
     q_full: np.ndarray | None = None,
     *,
     base_pose_world: pin.SE3 | None = None,
     color: str | None = None,
+    skip_visual_substrings: tuple[str, ...] | None = DEFAULT_SKIP_VISUAL_SUBSTRINGS,
 ) -> RobotPvScene:
-    """Return a MultiBlock of link visuals at joint config ``q_full``."""
+    """Return a MultiBlock of link visuals at joint config ``q_full``.
+
+    By default skips rail extrusion visuals and probe/TCP-head meshes
+    (``rail_visual``, ``link_8``, ``probe``). Pass
+    ``skip_visual_substrings=()`` to keep everything.
+    """
     urdf = Path(urdf_path) if urdf_path is not None else _DEFAULT_VISUAL_URDF
     if not urdf.exists():
         raise FileNotFoundError(f"URDF not found: {urdf}")
@@ -119,22 +194,91 @@ def build_robot_pv(
     gdata = gm.createData()
     data = model.createData()
     pin.forwardKinematics(model, data, q_full)
+    pin.updateFramePlacements(model, data)
     pin.updateGeometryPlacements(model, data, gm, gdata)
 
     block = pv.MultiBlock()
     colors: list[str] = []
     for i, go in enumerate(gm.geometryObjects):
-        pd, link_color = _mesh_from_geom_object(go)
-        if pd is None:
+        if _should_skip(str(go.name), skip_visual_substrings):
+            continue
+        parts = _mesh_from_geom_object(go)
+        if not parts:
             continue
         M_world = gdata.oMg[i]
-        pd_world = _apply_se3(pd, M_world)
-        if base_pose_world is not None:
-            pd_world = _apply_se3(pd_world, base_pose_world)
-        block.append(pd_world, name=go.name)
-        colors.append(link_color or ZACHARIAS_ROBOT_GRAY)
+        for j, (pd, link_color) in enumerate(parts):
+            pd_world = _apply_se3(pd, M_world)
+            if base_pose_world is not None:
+                pd_world = _apply_se3(pd_world, base_pose_world)
+            block.append(pd_world, name=f"{go.name}_{j}")
+            colors.append(link_color or ZACHARIAS_ROBOT_GRAY)
 
-    return RobotPvScene(urdf_path=urdf, mesh_block=block, n_visuals=len(block), link_colors=colors)
+    tcp_pose = None
+    if model.existFrame("tcp"):
+        tcp_pose = data.oMf[model.getFrameId("tcp")].copy()
+        if base_pose_world is not None:
+            tcp_pose = base_pose_world * tcp_pose
+
+    return RobotPvScene(
+        urdf_path=urdf,
+        mesh_block=block,
+        n_visuals=len(block),
+        link_colors=colors,
+        tcp_pose_world=tcp_pose,
+    )
+
+
+def tcp_cylinder_marker(
+    tcp_pose_world: pin.SE3,
+    *,
+    radius_m: float = 0.012,
+    height_m: float = 0.100,
+    color: str = "#1b5e20",
+) -> tuple[pv.PolyData, str]:
+    """Cylinder along tool −Z with the **distal tip** on the TCP frame origin.
+
+    Tool +Z points out of the tip; the shaft therefore occupies
+    ``[tcp − height·ẑ, tcp]`` so the outermost end sits on TCP (not the
+    flange-facing end).
+    """
+    R = np.asarray(tcp_pose_world.rotation, dtype=np.float64)
+    p = np.asarray(tcp_pose_world.translation, dtype=np.float64).reshape(3)
+    z_hat = R @ np.array([0.0, 0.0, 1.0])
+    height = float(height_m)
+    # Center is halfway back along −Z from TCP → distal tip lands on ``p``.
+    center = p - 0.5 * height * z_hat
+    cyl = pv.Cylinder(
+        center=tuple(center),
+        direction=tuple(z_hat),
+        radius=float(radius_m),
+        height=height,
+        resolution=48,
+    )
+    return cyl, color
+
+
+def add_tcp_marker_to_plotter(
+    pl: pv.Plotter,
+    scene: RobotPvScene,
+    *,
+    radius_m: float = 0.012,
+    height_m: float = 0.100,
+    color: str = "#1b5e20",
+) -> None:
+    if scene.tcp_pose_world is None:
+        return
+    cyl, col = tcp_cylinder_marker(
+        scene.tcp_pose_world, radius_m=radius_m, height_m=height_m, color=color
+    )
+    pl.add_mesh(
+        cyl,
+        color=col,
+        opacity=1.0,
+        smooth_shading=True,
+        ambient=0.35,
+        diffuse=0.7,
+        name="tcp_cylinder",
+    )
 
 
 def add_rest_pose_annotation(
@@ -167,8 +311,9 @@ def add_robot_to_plotter(
     show_edges: bool = False,
     use_dae_colors: bool = True,
     on_top: bool = False,
+    show_tcp_marker: bool = True,
 ) -> None:
-    """Add robot meshes; default preserves per-link DAE ``main_color``."""
+    """Add robot meshes; default preserves per-submesh DAE colours + TCP cylinder."""
     for i, name in enumerate(scene.mesh_block.keys()):
         mesh_color = scene.link_colors[i] if use_dae_colors and i < len(scene.link_colors) else color
         mesh = scene.mesh_block[i].copy()
@@ -193,3 +338,5 @@ def add_robot_to_plotter(
                     vtk_prop.SetPolygonOffsetUnits(-4.0)
             except Exception:
                 pass
+    if show_tcp_marker:
+        add_tcp_marker_to_plotter(pl, scene)

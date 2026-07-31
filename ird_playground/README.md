@@ -70,3 +70,27 @@ The result retains per-waypoint margins, per-angle margins, all sampled
 scenario scores, coverage, the worst waypoint and the best angle index. This
 is the interface intended for SMPL-X surface-path optimization; it avoids
 hiding failure locations behind one trajectory scalar.
+
+## Mount compare figures (RM + IRD × 3)
+
+Paper-style **reachability map** and **global IRD** for three TCP mounts
+(probe45 / vertical 220 mm / horizontal probe):
+
+```bash
+cd /media/camp/EXT_DRIVE/RealUS_playground
+source ird_playground/env.sh
+export PYTHONPATH="$PWD/ird_playground:$PYTHONPATH"
+export PYVISTA_OFF_SCREEN=true
+
+# Build missing capability maps first (from rm75_control), e.g.:
+#   source rm75_control/env.sh
+#   python scripts/build_coll_map.py --config configs/reachability/rm75_6f_3cm_15deg_coll_probe45.yaml
+#   python scripts/build_coll_map.py --config configs/reachability/rm75_6f_3cm_15deg_coll_tcp220.yaml
+
+python -m ird_playground.cli.viz_mount_compare \
+  --config configs/mount_compare.yaml \
+  --skip-missing
+```
+
+Outputs six PNGs under `data/reports/mount_compare/`:
+`{probe45,tcp220,horizontal}_{reachability,ird}.png`.

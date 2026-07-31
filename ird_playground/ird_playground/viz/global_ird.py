@@ -457,7 +457,7 @@ def _render_ird_panels_with_posed_robot(
             pl, glyphs, cmap=cmap, clim_bar=clim_bar, opacity=1.0,
             centres=centres, radius_m=radius_m,
         )
-        pl.add_mesh(pv.Sphere(radius=0.018, center=(0, 0, 0)), color="#111111")
+        # TCP cylinder comes from add_robot_to_plotter (show_tcp_marker=True).
         _cam(pl)
         _setup_paper_lights(pl)
         img = np.asarray(pl.screenshot(return_img=True, window_size=panel_size))

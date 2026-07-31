@@ -72,11 +72,21 @@ class JointCenteringTask:
         ``None`` restores the yaml ``q_nominal_deg`` default (comfortable
         posture).  Taught scan pose D is NOT the centering target — only the
         Cartesian + ψ tasks hold TCP at D; nullspace pulls toward nominal.
+        For the 8-DOF controller this accepts all eight coordinates at runtime,
+        but a zero rail weight means the attractor acts on the seven arm joints
+        only.  RAIL pose remains owned by ``set_rail_pose_target()``.
         """
         if q_rad is None:
             self.q_target = self._q_target_default.copy()
         else:
-            self.q_target = np.asarray(q_rad, dtype=float).copy()
+            target = np.asarray(q_rad, dtype=float).reshape(-1)
+            if target.shape != self.q_target.shape:
+                raise ValueError(
+                    f"q target shape {target.shape} != {self.q_target.shape}"
+                )
+            if not np.all(np.isfinite(target)):
+                raise ValueError("q target must contain only finite values")
+            self.q_target = target.copy()
 
     @classmethod
     def from_kinematics(

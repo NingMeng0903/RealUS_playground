@@ -1,0 +1,37 @@
+# Three TCP mounts → six paper figures (reachability map + global IRD each).
+#
+# Mounts:
+#   probe45   — current physical ultrasound probe (RM75-6F-8dof.urdf)
+#   tcp220    — vertical stock tool, link_7 +Z @ 220 mm
+#   horizontal — patched horizontal probe URDF
+#
+# Shared clim/bar so colours are comparable across the six PNGs.
+
+schema: mount_compare_v1
+
+style:
+  clim: [0.0, 0.18]
+  bar_max: 18.0
+  n_color_levels: 8
+  d_min: 0.02
+  figsize: [3200, 1100]
+
+# Paths are relative to the RealUS_playground repo root unless absolute.
+mounts:
+  - id: probe45
+    title: "probe45 (current)"
+    map_dir: rm75_control/data/reachability/rm75_6f_3cm_15deg_coll_probe45
+    robot_urdf: rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.genesis.urdf
+  - id: tcp220
+    title: "vertical TCP 220 mm"
+    # Must be the coll_tcp220 map (same 2M MC + self-collision as other mounts).
+    # Do NOT fall back to legacy rm75_6f_3cm_15deg — that is probe45 TCP @ 10M, no coll.
+    map_dir: rm75_control/data/reachability/rm75_6f_3cm_15deg_coll_tcp220
+    robot_urdf: rm75_control/data/urdf_patched/RM75-tcp220.genesis.urdf
+  - id: horizontal
+    title: "horizontal probe"
+    map_dir: rm75_control/data/reachability/rm75_6f_3cm_15deg_coll_probe
+    robot_urdf: rm75_control/data/urdf_patched/RM75-horizontal_probe.genesis.urdf
+
+io:
+  out_dir: ird_playground/data/reports/mount_compare

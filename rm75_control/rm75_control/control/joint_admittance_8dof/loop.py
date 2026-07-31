@@ -122,6 +122,13 @@ class JointIkConfig:
     # cap the centering gradient from a far-from-nominal posture (straight arm)
     # commanded rad/s-scale self-motion while the Cartesian task was soft.
     nullspace_max_qdot_frac: float = 0.2
+    # After an actual singularity escape, keep a stronger posture pull until
+    # the arm is close to the active YAML/runtime target.  This is latched by
+    # the escape event, rather than being a short pulse that can expire before
+    # the Cartesian nullspace has enough freedom to recover the posture.
+    centering_recovery_gain: float = 3.0
+    centering_recovery_max_qdot_frac: float = 0.35
+    centering_recovery_tol: float = 0.12
 
 
 @dataclass
@@ -227,6 +234,8 @@ class JointIkController:
         )
         self.last_secondary_norm: float = 0.0
         self.last_sigma_min: float = float(self.cfg.qp.sr_damping.sigma_ref)
+        self._singularity_escape_seen: bool = False
+        self._centering_recovery_active: bool = False
         self._rail_mode: RailMode = self.cfg.rail.mode
         self._locked_style: LockedStyle = self.cfg.rail.locked_style
         # Snapshot of the CONFIGURED (yaml) rail mode.  _apply_rail_mode_side_
@@ -339,7 +348,38 @@ class JointIkController:
         self.rail_task.reset(self.q_cmd)
         if self.rail_ext_task is not None:
             self.rail_ext_task.reset(self.q_cmd)
+        self._singularity_escape_seen = False
+        self._centering_recovery_active = False
         self._apply_rail_mode_side_effects()
+
+    def _centering_recovery_scale(
+        self,
+        q: np.ndarray,
+        sigma_min: float,
+        sigma_escape_ref: float,
+    ) -> float:
+        """Latch strong posture recovery after leaving the singularity zone."""
+        if sigma_escape_ref > 1e-9 and sigma_min < sigma_escape_ref:
+            self._singularity_escape_seen = True
+            self._centering_recovery_active = False
+            return 1.0
+
+        if not self._singularity_escape_seen:
+            self._centering_recovery_active = False
+            return 1.0
+
+        target_error = np.abs(
+            (np.asarray(q, dtype=float) - self.centering_task.q_target)
+            / self.centering_task.half
+        )
+        weighted_error = float(np.max(target_error * self.centering_task.w))
+        if weighted_error <= max(float(self.cfg.centering_recovery_tol), 0.0):
+            self._singularity_escape_seen = False
+            self._centering_recovery_active = False
+            return 1.0
+
+        self._centering_recovery_active = True
+        return max(float(self.cfg.centering_recovery_gain), 1.0)
 
     def set_rail_mode(
         self,
@@ -418,6 +458,8 @@ class JointIkController:
         manipulability_active: bool | None = None,
         centering_sigma_fade: bool = True,
         sigma_min: float | None = None,
+        centering_gain_scale: float = 1.0,
+        max_qdot_frac_override: float | None = None,
     ) -> np.ndarray:
         qdot0 = self.secondary.compose(
             q,
@@ -438,6 +480,8 @@ class JointIkController:
                 if manipulability_active is None
                 else manipulability_active
             ),
+            centering_gain_scale=centering_gain_scale,
+            max_qdot_frac_override=max_qdot_frac_override,
         )
         self.last_secondary_norm = float(np.linalg.norm(qdot0))
         return qdot0
@@ -488,6 +532,9 @@ class JointIkController:
         )
         J_pre = self.kin.jacobian(q_prev)
         sigma_pre = float(self.kin.singular_values(J_pre).min())
+        centering_gain_scale = self._centering_recovery_scale(
+            q_prev, sigma_pre, sigma_escape_ref
+        )
         if sigma_ref > 1e-9 and sigma_pre < sigma_ref:
             floor = float(getattr(self.cfg.qp, "twist_sigma_floor", 0.08))
             twist_scale = max(float(sigma_pre / sigma_ref), floor)
@@ -604,7 +651,11 @@ class JointIkController:
         rail_task_vel: float | None = None
         rail_task_weight = 0.0
         rail_ext_err = 0.0
-        manip_for_saturation = self._manipulability_active
+        # Once sigma has recovered from an escape, posture recovery takes the
+        # nullspace slot even if a move preset left the manipulability flag on.
+        manip_for_saturation = (
+            self._manipulability_active and not self._centering_recovery_active
+        )
         if (
             self.rail_ext_task is not None
             and self._rail_ext_active
@@ -675,6 +726,12 @@ class JointIkController:
                     self._rail_ext_active and self._rail_mode == RailMode.COUPLED
                 ),
                 sigma_min=sigma_pre,
+                centering_gain_scale=centering_gain_scale,
+                max_qdot_frac_override=(
+                    self.cfg.centering_recovery_max_qdot_frac
+                    if self._centering_recovery_active
+                    else None
+                ),
             ),
             q_meas=q_meas,
             resync_err=resync_vec,
@@ -1358,7 +1415,8 @@ class _TickLogger:
         + [f"twist_achieved_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
         + ["track_err_mm", "follow_err_deg", "slack_norm", "n_cbf",
            "vel_clamped", "acc_clamped", "pos_clamped", "fx", "fy", "fz",
-           "instability_idx", "damping_z_eff",
+           "instability_idx", "instability_idx_raw", "instability_idx_active",
+           "damping_z_eff",
            "damping_ke_z", "damping_dimeas_z",
            "v_force_z", "ke_est",
            "f_des_z_eff", "v_r_z",
@@ -1370,7 +1428,8 @@ class _TickLogger:
            "dt_actual_s", "sensor_age_s",
            "fx_raw_comp", "fy_raw_comp", "fz_raw_comp",
            "vz_achieved_tool", "contact_present",
-           "cap_press_z", "cap_retract_z",
+           "force_pred_z", "force_dot_z", "cap_press_z", "cap_retract_z",
+           "ke_update_gated", "ke_dx_m", "ke_df_n", "ke_update_count",
            "governor_scale", "governor_scale_raw", "sigma_min",
            "qdot_norm", "qdot_max_frac_vmax",
            "qdot_ff_norm", "arm_singularity_smooth", "limit_activation",
@@ -1434,6 +1493,7 @@ class _TickLogger:
         qm = q_meas if q_meas is not None else np.full(8, np.nan)
         ctrl = getattr(outer, "controller", None)
         is_idx = getattr(ctrl, "instability_index", float("nan"))
+        is_idx_raw = getattr(ctrl, "instability_index_raw", float("nan"))
         d_eff = getattr(ctrl, "damping_z_eff", float("nan"))
         d_ke = getattr(ctrl, "damping_ke_z", float("nan"))
         d_dimeas = getattr(ctrl, "damping_dimeas_z", float("nan"))
@@ -1461,6 +1521,13 @@ class _TickLogger:
         contact_present = getattr(ctrl, "contact_present", False)
         cap_press_z = getattr(ctrl, "cap_press_z", float("nan"))
         cap_retract_z = getattr(ctrl, "cap_retract_z", float("nan"))
+        force_pred_z = getattr(ctrl, "force_pred_z", float("nan"))
+        force_dot_z = getattr(ctrl, "force_dot_z", float("nan"))
+        ke_tracker = getattr(ctrl, "_ke_estimator", None)
+        ke_update_gated = getattr(ke_tracker, "update_gated", False)
+        ke_dx_m = getattr(ke_tracker, "last_dx_m", float("nan"))
+        ke_df_n = getattr(ke_tracker, "last_df_n", float("nan"))
+        ke_update_count = getattr(ke_tracker, "update_count", 0)
         raw_comp = (
             np.asarray(f_ext_raw, dtype=float)
             if f_ext_raw is not None
@@ -1497,7 +1564,8 @@ class _TickLogger:
                f"{step.slack_norm:.5f}", step.n_cbf_active,
                int(step.vel_clamped), int(step.acc_clamped), int(step.pos_clamped),
                f"{f_ext[0]:.3f}", f"{f_ext[1]:.3f}", f"{f_ext[2]:.3f}",
-               f"{is_idx:.4f}", f"{d_eff:.2f}",
+               f"{is_idx:.4f}", f"{is_idx_raw:.4f}", f"{is_idx:.4f}",
+               f"{d_eff:.2f}",
                f"{d_ke:.2f}", f"{d_dimeas:.2f}",
                f"{v_fz:.5f}", f"{ke_est:.1f}",
                f"{f_des_eff:.3f}", f"{v_r_z:.5f}",
@@ -1511,7 +1579,10 @@ class _TickLogger:
                f"{dt_actual_s:.6f}", f"{sensor_age_s:.6f}",
                f"{raw_comp[0]:.3f}", f"{raw_comp[1]:.3f}", f"{raw_comp[2]:.3f}",
                f"{v_tcp_z_actual:.6f}", int(bool(contact_present)),
+               f"{force_pred_z:.4f}", f"{force_dot_z:.4f}",
                f"{cap_press_z:.6f}", f"{cap_retract_z:.6f}",
+               int(bool(ke_update_gated)), f"{ke_dx_m:.8f}", f"{ke_df_n:.5f}",
+               int(ke_update_count),
                f"{governor_scale:.4f}", f"{governor_scale_raw:.4f}",
                f"{step.sigma_min:.5f}",
                f"{qdot_norm:.5f}", f"{qdot_max_frac:.4f}",

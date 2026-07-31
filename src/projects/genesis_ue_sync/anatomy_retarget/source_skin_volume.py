@@ -16,12 +16,7 @@ import numpy as np
 
 from .rigged_asset import AnatomyRiggedAsset
 from .anatomy_lbs import with_source_driver_coupling
-from .containment import signed_distance
-from .material_fit import (
-    _fit_source_frames,
-    cranial_material_mask,
-    rigid_head_attachment_mask,
-)
+from .material_fit import _fit_source_frames, bone_material_mask, cranial_material_mask
 from .shape_volume import _load_obj, _outside_cage_max_distance, _sample_field, _tet_stiffness
 
 
@@ -49,160 +44,6 @@ _SEMANTIC_PREALIGN_CANDIDATES = (
 )
 _SEMANTIC_PREALIGN_MIN_PROBE_STRETCH = 0.80
 _SEMANTIC_PREALIGN_MAX_PROBE_STRETCH = 1.22
-_SOFT_VOLUME_TISSUES_V811 = frozenset(
-    {"vessel", "nerve", "organ", "heart", "connective_tissue"}
-)
-_SOURCE_SOFT_PREWRAP_CLEARANCE_M = 0.00025
-_SOURCE_SOFT_PREWRAP_SMOOTH_WEIGHT = 8.0
-_SOURCE_SOFT_PREWRAP_MAX_ITERATIONS = 3
-_SOURCE_SOFT_PREWRAP_FINAL_ITERATIONS = 5
-_SOURCE_SOFT_PREWRAP_EDGE_Q99_LIMIT = 0.05
-
-
-def _volume_transport_digest_v811(
-    asset: AnatomyRiggedAsset,
-    transport_domain: np.ndarray,
-    protected_domain: np.ndarray,
-) -> str:
-    """Digest both the moved soft domain and frozen hard protection domain."""
-
-    digest = hashlib.sha256(b"source-skin-volume-registration-v811\0")
-    arrays = (
-        np.asarray(transport_domain, dtype=np.uint8),
-        np.asarray(protected_domain, dtype=np.uint8),
-        np.asarray(asset.vertices_rest, dtype=np.float32)[transport_domain],
-        np.asarray(asset.vertices_rest, dtype=np.float32)[protected_domain],
-        np.asarray(asset.faces, dtype=np.int32),
-        np.asarray(asset.driver_indices, dtype=np.int32),
-        np.asarray(asset.driver_weights, dtype=np.float32),
-        np.asarray(asset.rest_joints, dtype=np.float32),
-        np.asarray(asset.inverse_bind, dtype=np.float32),
-    )
-    for array in arrays:
-        packed = np.ascontiguousarray(array)
-        digest.update(np.asarray(packed.shape, dtype=np.int64).tobytes())
-        digest.update(packed.dtype.str.encode("ascii"))
-        digest.update(packed.tobytes())
-    return digest.hexdigest()
-
-
-def soft_volume_material_mask_v811(asset: AnatomyRiggedAsset) -> np.ndarray:
-    """Return tissue-eligible vertices before hard-compound protection.
-
-    The harmonic field is a useful topology-preserving transport for thin
-    anatomy, but it is not a replacement for the authored source rig.  In
-    particular it must never drift arbitrary unclassified meshes.  The
-    craniocerebral protection domain is resolved separately from the source
-    bone hierarchy because the brain is intentionally labelled ``organ``.
-    """
-
-    count = int(len(np.asarray(asset.vertices_rest)))
-    ranges = asset.source_vertex_ranges
-    tissues = asset.source_tissues
-    if ranges is None or tissues is None:
-        raise ValueError(
-            "V8.11 source-skin volume transport requires mesh tissue metadata"
-        )
-    spans = np.asarray(ranges, dtype=np.int64).reshape(-1, 2)
-    if len(spans) != len(tissues):
-        raise ValueError("source mesh ranges and tissues do not match")
-    mask = np.zeros(count, dtype=bool)
-    for (start, stop), tissue in zip(spans, tissues, strict=True):
-        lo = int(start)
-        hi = int(stop)
-        if lo < 0 or hi < lo or hi > count:
-            raise ValueError("source mesh range is outside anatomy vertices")
-        if str(tissue).strip().lower() in _SOFT_VOLUME_TISSUES_V811:
-            mask[lo:hi] = True
-    return mask
-
-
-def rigid_hard_protection_mask_v811(asset: AnatomyRiggedAsset) -> np.ndarray:
-    """Return bone plus the rigid skull/brain/upper-teeth protection domain.
-
-    Tissue labels alone cannot distinguish a movable organ from the brain.
-    The latter is part of the rigid head compound when it is wholly attached
-    to the Blender head subtree.  This exact mask is shared by the volume
-    registration and beta-basis bake so neither path can quietly move it.
-    """
-
-    count = int(len(np.asarray(asset.vertices_rest)))
-    ranges = getattr(asset, "source_vertex_ranges", None)
-    tissues = getattr(asset, "source_tissues", None)
-    if ranges is None or tissues is None:
-        raise ValueError("V8.11 hard protection requires mesh tissue metadata")
-    spans = np.asarray(ranges, dtype=np.int64).reshape(-1, 2)
-    if len(spans) != len(tissues):
-        raise ValueError("source mesh ranges and tissues do not match")
-    bone = np.zeros(count, dtype=bool)
-    for (start, stop), tissue in zip(spans, tissues, strict=True):
-        lo = int(start)
-        hi = int(stop)
-        if lo < 0 or hi < lo or hi > count:
-            raise ValueError("source mesh range is outside anatomy vertices")
-        if str(tissue).strip().lower() == "bone":
-            bone[lo:hi] = True
-
-    # Tiny structural tests sometimes carry only tissue metadata.  A real
-    # anatomy asset always has this hierarchy, and without it no head subtree
-    # can be inferred safely.
-    if any(
-        getattr(asset, field, None) is None
-        for field in (
-            "source_bone_names",
-            "source_bone_parents",
-            "driver_indices",
-            "driver_weights",
-            "source_mesh_names",
-        )
-    ):
-        return bone
-    cranial = np.asarray(cranial_material_mask(asset), dtype=bool)
-    rigid_head = np.asarray(rigid_head_attachment_mask(asset), dtype=bool)
-    if cranial.shape != (count,) or rigid_head.shape != (count,):
-        raise ValueError("V8.11 cranial protection masks do not match topology")
-    return bone | (cranial & rigid_head)
-
-
-def soft_volume_transport_mask_v811(asset: AnatomyRiggedAsset) -> np.ndarray:
-    """Return the only vertices a V8.11 source-skin field may move."""
-
-    soft = soft_volume_material_mask_v811(asset)
-    hard = rigid_hard_protection_mask_v811(asset)
-    if soft.shape != hard.shape:
-        raise ValueError("V8.11 soft and hard transport masks do not match")
-    return soft & ~hard
-
-
-def _sample_transport_field_v811(
-    values: np.ndarray,
-    *,
-    cage: dict[str, np.ndarray],
-    field: np.ndarray,
-    transport_mask: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Sample a volume field only where V8.11 permits soft transport.
-
-    Protected hard tissue deliberately remains in its authored fitted frame.
-    Requiring it to lie inside a Skin_Glass tetrahedral cage before skipping
-    its displacement made the protected-volume mode unusable for legitimate
-    full-size feet and other rigid compounds that extend past that cage.
-    """
-
-    points = np.asarray(values, dtype=np.float64)
-    mask = np.asarray(transport_mask, dtype=bool).reshape(-1)
-    if points.ndim != 2 or points.shape[1] != 3 or mask.shape != (len(points),):
-        raise ValueError("V8.11 volume transport sample domain is invalid")
-    delta = np.zeros_like(points)
-    outside = np.zeros(len(points), dtype=bool)
-    if not np.any(mask):
-        return delta, outside
-    sampled, _outside_count, selected_outside = _sample_field(
-        points[mask], cage=cage, field=field
-    )
-    delta[mask] = sampled
-    outside[mask] = np.asarray(selected_outside, dtype=bool)
-    return delta, outside
 
 
 def _semantic_rest_prealign(
@@ -1480,7 +1321,14 @@ def _section_residual_regularizer(
         joints,
         parents,
     )
-    eligible = soft_volume_transport_mask_v811(asset)
+    eligible = np.zeros(len(output), dtype=bool)
+    for (start, stop), tissue in zip(
+        asset.source_vertex_ranges,
+        asset.source_tissues,
+    ):
+        if str(tissue) != "bone":
+            eligible[int(start) : int(stop)] = True
+    eligible &= ~cranial_material_mask(asset)
     local_scale = scales[assignment]
     desired = (local_scale[:, None] - 1.0) * (output - centers)
     desired[~eligible] = 0.0
@@ -1491,7 +1339,7 @@ def _section_residual_regularizer(
         asset.source_vertex_ranges,
         asset.source_tissues,
     ):
-        if str(tissue).strip().lower() not in _SOFT_VOLUME_TISSUES_V811:
+        if str(tissue) == "bone":
             continue
         start, stop = (int(value) for value in start_stop)
         local_faces = all_faces[
@@ -1512,7 +1360,6 @@ def _section_residual_regularizer(
         output[start:stop] = refined
         arap_reports[str(mesh_name)] = arap_report
     displacement = np.linalg.norm(output - mapped_vertices, axis=1)
-    output[~eligible] = np.asarray(mapped_vertices, dtype=np.float64)[~eligible]
     return output, {
         "minimum_section_scale": (
             float(np.min(local_scale[eligible])) if np.any(eligible) else 1.0
@@ -1564,268 +1411,6 @@ def _raise_outside_query_error(
     )
 
 
-def _mesh_local_faces_v811(
-    faces: np.ndarray,
-    start: int,
-    stop: int,
-) -> np.ndarray:
-    triangles = np.asarray(faces, dtype=np.int64).reshape(-1, 3)
-    selected = triangles[np.all((triangles >= start) & (triangles < stop), axis=1)]
-    return selected - int(start)
-
-
-def _mesh_edge_lengths_v811(vertices: np.ndarray, faces: np.ndarray) -> np.ndarray:
-    triangles = np.asarray(faces, dtype=np.int64).reshape(-1, 3)
-    if not len(triangles):
-        return np.zeros(0, dtype=np.float64)
-    edges = np.unique(
-        np.sort(
-            np.concatenate(
-                (
-                    triangles[:, (0, 1)],
-                    triangles[:, (1, 2)],
-                    triangles[:, (2, 0)],
-                ),
-                axis=0,
-            ),
-            axis=1,
-        ),
-        axis=0,
-    )
-    points = np.asarray(vertices, dtype=np.float64)
-    return np.linalg.norm(points[edges[:, 1]] - points[edges[:, 0]], axis=1)
-
-
-def _regularize_source_soft_displacement_v811(
-    displacement: np.ndarray,
-    faces: np.ndarray,
-    *,
-    smooth_weight: float,
-) -> np.ndarray:
-    """Diffuse one source-skin normal correction across a connected mesh."""
-
-    from scipy.sparse import coo_matrix, eye
-    from scipy.sparse.linalg import spsolve
-
-    delta = np.asarray(displacement, dtype=np.float64).reshape(-1, 3)
-    triangles = np.asarray(faces, dtype=np.int64).reshape(-1, 3)
-    if smooth_weight <= 0.0 or not len(triangles):
-        return delta.copy()
-    edges = np.unique(
-        np.sort(
-            np.concatenate(
-                (
-                    triangles[:, (0, 1)],
-                    triangles[:, (1, 2)],
-                    triangles[:, (2, 0)],
-                ),
-                axis=0,
-            ),
-            axis=1,
-        ),
-        axis=0,
-    )
-    rows = np.concatenate((edges[:, 0], edges[:, 1]))
-    columns = np.concatenate((edges[:, 1], edges[:, 0]))
-    adjacency = coo_matrix(
-        (np.ones(len(rows)), (rows, columns)), shape=(len(delta), len(delta))
-    ).tocsr()
-    adjacency.data[:] = 1.0
-    degree = np.asarray(adjacency.sum(axis=1)).reshape(-1)
-    laplacian = coo_matrix(
-        (degree, (np.arange(len(delta)), np.arange(len(delta)))),
-        shape=adjacency.shape,
-    ).tocsr() - adjacency
-    system = eye(len(delta), format="csr") + float(smooth_weight) * laplacian
-    return np.column_stack(
-        [spsolve(system, delta[:, axis]) for axis in range(3)]
-    )
-
-
-def _prewrap_soft_material_to_source_skin_v811(
-    asset: AnatomyRiggedAsset,
-    *,
-    transport_mask: np.ndarray,
-    clearance_m: float = _SOURCE_SOFT_PREWRAP_CLEARANCE_M,
-    smooth_weight: float = _SOURCE_SOFT_PREWRAP_SMOOTH_WEIGHT,
-    max_iterations: int = _SOURCE_SOFT_PREWRAP_MAX_ITERATIONS,
-) -> tuple[np.ndarray, dict[str, Any]]:
-    """Bring movable soft material into its authored Skin_Glass cage.
-
-    Some legacy source templates put long tube branches outside Skin_Glass,
-    which makes a harmonic volume map undefined before it has a chance to
-    transport them to SMPL-X.  This is the old local-normal/Laplacian idea,
-    but it is limited to the V8.11 soft transport domain.  It never touches a
-    hard vertex, faces, source weights, or bind matrices.  The report keeps
-    the 5% edge-strain requirement as a hard gate before the expensive volume
-    solve.  A legacy source that only fits through large jelly deformation is
-    reported explicitly instead of being silently materialized.
-    """
-
-    if asset.source_vertex_ranges is None or asset.source_tissues is None:
-        raise ValueError("source-skin prewrap requires mesh ranges and tissues")
-    if asset.source_skin_vertices is None or asset.source_skin_faces is None:
-        raise ValueError("source-skin prewrap requires Skin_Glass")
-    if int(max_iterations) < 1:
-        raise ValueError("source-skin prewrap max_iterations must be positive")
-    if clearance_m < 0.0 or smooth_weight < 0.0:
-        raise ValueError("source-skin prewrap clearance and smoothing are nonnegative")
-
-    original = np.asarray(asset.vertices_rest, dtype=np.float64)
-    vertices = original.copy()
-    movable = np.asarray(transport_mask, dtype=bool)
-    if movable.shape != (len(vertices),):
-        raise ValueError("source-skin prewrap transport mask does not match vertices")
-    skin_vertices = np.asarray(asset.source_skin_vertices, dtype=np.float64)
-    skin_faces = np.asarray(asset.source_skin_faces, dtype=np.int32)
-    all_faces = np.asarray(asset.faces, dtype=np.int64)
-    reports: list[dict[str, Any]] = []
-    edge_parts: list[np.ndarray] = []
-    physical_outside_before = 0
-    physical_outside_after = 0
-    shell_violation_before = 0
-    shell_violation_after = 0
-    protected_residual = 0
-
-    for name, tissue, (start, stop) in zip(
-        asset.source_mesh_names,
-        asset.source_tissues,
-        np.asarray(asset.source_vertex_ranges, dtype=np.int64),
-        strict=True,
-    ):
-        lo = int(start)
-        hi = int(stop)
-        eligible = movable[lo:hi]
-        if not np.any(eligible):
-            continue
-        local_reference = original[lo:hi]
-        local = vertices[lo:hi].copy()
-        local_faces = _mesh_local_faces_v811(all_faces, lo, hi)
-        before_signed, _before_closest, _before_normals = signed_distance(
-            local,
-            skin_vertices,
-            skin_faces,
-        )
-        before_active = (before_signed + float(clearance_m) > 0.0) & eligible
-        if not np.any(before_active):
-            continue
-        physical_outside_before += int(
-            np.count_nonzero((before_signed > 0.0) & eligible)
-        )
-        shell_violation_before += int(np.count_nonzero(before_active))
-        iterations = 0
-        for _iteration in range(int(max_iterations)):
-            signed, _closest, normals = signed_distance(local, skin_vertices, skin_faces)
-            active = (signed + float(clearance_m) > 0.0) & eligible
-            if not np.any(active):
-                break
-            seed = np.zeros_like(local)
-            seed[active] = -(
-                signed[active] + float(clearance_m) + 1.0e-7
-            )[:, None] * normals[active]
-            correction = _regularize_source_soft_displacement_v811(
-                seed,
-                local_faces,
-                smooth_weight=float(smooth_weight),
-            )
-            correction[~eligible] = 0.0
-            local += correction
-            iterations += 1
-        # The smooth solve supplies the material-scale correction.  The final
-        # one-sided cleanup is only an offline source-cage Dirichlet boundary
-        # condition and its topology strain is measured below before publish.
-        for _iteration in range(_SOURCE_SOFT_PREWRAP_FINAL_ITERATIONS):
-            signed, _closest, normals = signed_distance(local, skin_vertices, skin_faces)
-            active = (signed + float(clearance_m) > 0.0) & eligible
-            if not np.any(active):
-                break
-            local[active] -= (
-                signed[active] + float(clearance_m) + 1.0e-7
-            )[:, None] * normals[active]
-        after_signed, _after_closest, _after_normals = signed_distance(
-            local,
-            skin_vertices,
-            skin_faces,
-        )
-        after_active = (after_signed + float(clearance_m) > 0.0) & eligible
-        physical_outside_after += int(
-            np.count_nonzero((after_signed > 0.0) & eligible)
-        )
-        shell_violation_after += int(np.count_nonzero(after_active))
-        before_lengths = _mesh_edge_lengths_v811(local_reference, local_faces)
-        after_lengths = _mesh_edge_lengths_v811(local, local_faces)
-        relative = (
-            np.abs(after_lengths - before_lengths)
-            / np.maximum(before_lengths, 1.0e-8)
-            if len(before_lengths)
-            else np.zeros(0, dtype=np.float64)
-        )
-        edge_parts.append(relative)
-        vertices[lo:hi] = local
-        reports.append(
-            {
-                "mesh": str(name),
-                "tissue": str(tissue),
-                "vertex_count": int(len(local)),
-                "eligible_vertex_count": int(np.count_nonzero(eligible)),
-                "iterations": iterations,
-                "physical_outside_before": int(
-                    np.count_nonzero((before_signed > 0.0) & eligible)
-                ),
-                "physical_outside_after": int(
-                    np.count_nonzero((after_signed > 0.0) & eligible)
-                ),
-                "shell_violation_before": int(np.count_nonzero(before_active)),
-                "shell_violation_after": int(np.count_nonzero(after_active)),
-                "edge_relative_change_q99": (
-                    float(np.quantile(relative, 0.99)) if len(relative) else 0.0
-                ),
-                "edge_relative_change_max": (
-                    float(np.max(relative)) if len(relative) else 0.0
-                ),
-                "displacement_p99_m": float(
-                    np.quantile(np.linalg.norm(local - local_reference, axis=1), 0.99)
-                ),
-            }
-        )
-
-    edge_relative = (
-        np.concatenate(edge_parts)
-        if edge_parts
-        else np.zeros(0, dtype=np.float64)
-    )
-    edge_q99 = float(np.quantile(edge_relative, 0.99)) if len(edge_relative) else 0.0
-    return vertices.astype(np.float32), {
-        "backend": "source_skin_local_normal_projection_laplacian_v811",
-        "required": bool(shell_violation_before),
-        "attempted": bool(shell_violation_before),
-        "clearance_m": float(clearance_m),
-        "smooth_weight": float(smooth_weight),
-        "max_iterations": int(max_iterations),
-        "soft_transport_vertex_count": int(np.count_nonzero(movable)),
-        "physical_outside_before": physical_outside_before,
-        "physical_outside_after": physical_outside_after,
-        "shell_violation_before": shell_violation_before,
-        "shell_violation_after": shell_violation_after,
-        "protected_residual_count": protected_residual,
-        "edge_relative_change_q99": edge_q99,
-        "edge_relative_change_max": (
-            float(np.max(edge_relative)) if len(edge_relative) else 0.0
-        ),
-        "strict_passed": bool(
-            shell_violation_after == 0
-            and protected_residual == 0
-            and edge_q99 <= _SOURCE_SOFT_PREWRAP_EDGE_Q99_LIMIT
-        ),
-        "topology_preserved": True,
-        "source_weights_preserved": True,
-        "protected_vertices_preserved": bool(
-            np.array_equal(vertices[~movable], original[~movable])
-        ),
-        "meshes": reports,
-    }
-
-
 def apply_source_skin_volume_registration(
     asset: AnatomyRiggedAsset,
     *,
@@ -1834,8 +1419,6 @@ def apply_source_skin_volume_registration(
     boundary_reference: Path | str | None = None,
     v35_semantic_prealign_shared_bind: bool = False,
     legacy_weighted_semantic_prealign: bool = False,
-    preserve_protected_material: bool = False,
-    rebind_source_rig: bool = True,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     if v35_semantic_prealign_shared_bind and legacy_weighted_semantic_prealign:
         raise ValueError("continuous and legacy semantic prealign are mutually exclusive")
@@ -1878,40 +1461,6 @@ def apply_source_skin_volume_registration(
     source_vertices = np.asarray(asset.vertices_rest, dtype=np.float64)
     source_skin_vertices = np.asarray(asset.source_skin_vertices, dtype=np.float64)
     skin_faces = np.asarray(asset.source_skin_faces, dtype=np.int32)
-    protected = rigid_hard_protection_mask_v811(asset)
-    soft_volume_tissue_domain = soft_volume_material_mask_v811(asset)
-    soft_volume_domain = soft_volume_transport_mask_v811(asset)
-    source_soft_prewrap_report: dict[str, Any] = {
-        "backend": "source_skin_local_normal_projection_laplacian_v811",
-        "required": False,
-        "attempted": False,
-        "strict_passed": True,
-        "reason": "protected_soft_transport_not_requested",
-        "topology_preserved": True,
-        "source_weights_preserved": True,
-        "protected_vertices_preserved": True,
-    }
-    if preserve_protected_material and not (
-        v35_semantic_prealign_shared_bind or legacy_weighted_semantic_prealign
-    ):
-        source_vertices, source_soft_prewrap_report = (
-            _prewrap_soft_material_to_source_skin_v811(
-                asset,
-                transport_mask=soft_volume_domain,
-            )
-        )
-        if not source_soft_prewrap_report["strict_passed"]:
-            raise RuntimeError(
-                "source Skin_Glass soft prewrap cannot satisfy the V8.11 "
-                "containment/edge contract: "
-                f"shell_before={source_soft_prewrap_report['shell_violation_before']}, "
-                f"shell_after={source_soft_prewrap_report['shell_violation_after']}, "
-                f"edge_q99={source_soft_prewrap_report['edge_relative_change_q99']:.6f}"
-            )
-    elif preserve_protected_material:
-        source_soft_prewrap_report["reason"] = (
-            "semantic_prealign_owns_source_coordinates"
-        )
     prealign_delta: np.ndarray | None = None
     prealign_blend = 0.0
     continuous_prealign_field: np.ndarray | None = None
@@ -1974,11 +1523,7 @@ def apply_source_skin_volume_registration(
     shell_vertices, shell_faces, shell_pitch = _closed_solver_shell(
         target_vertices, target_faces
     )
-    transport_query_mask = (
-        soft_volume_domain
-        if preserve_protected_material
-        else np.ones(len(query), dtype=bool)
-    )
+    protected = bone_material_mask(asset) | cranial_material_mask(asset)
     # Skin_Glass is the only authored closed source domain that contains all
     # anatomy vertices.  Do not replace it with an expanded SMPL shell: that
     # loses hands/feet and invalidates harmonic sampling.  The old ARAP skin
@@ -2028,11 +1573,8 @@ def apply_source_skin_volume_registration(
     nodes = np.asarray(cage["nodes"], dtype=np.float64)
     elements = np.asarray(cage["elements"], dtype=np.int32)
     boundary = np.asarray(cage["boundary"], dtype=np.int64)
-    _preflight_delta, preflight_outside = _sample_transport_field_v811(
-        query,
-        cage=cage,
-        field=np.zeros_like(nodes),
-        transport_mask=transport_query_mask,
+    _preflight_delta, _outside_count, preflight_outside = _sample_field(
+        query, cage=cage, field=np.zeros_like(nodes)
     )
     _raise_outside_query_error(
         asset,
@@ -2144,11 +1686,10 @@ def apply_source_skin_volume_registration(
         continuous_report["smoothed_boundary_displacement_rms_m"] = float(
             np.sqrt(np.mean(np.sum(smooth_boundary_displacement**2, axis=1)))
         )
-        query_delta, query_outside = _sample_transport_field_v811(
+        query_delta, _query_outside_count, query_outside = _sample_field(
             query,
             cage=continuous_prealign_cage,
             field=continuous_prealign_field,
-            transport_mask=transport_query_mask,
         )
         skin_delta, _skin_outside_count, skin_outside = _sample_field(
             skin_vertices,
@@ -2171,11 +1712,10 @@ def apply_source_skin_volume_registration(
         nodes = np.asarray(cage["nodes"], dtype=np.float64)
         elements = np.asarray(cage["elements"], dtype=np.int32)
         boundary = np.asarray(cage["boundary"], dtype=np.int64)
-        _remesh_delta, remesh_outside = _sample_transport_field_v811(
+        _remesh_delta, _remesh_outside_count, remesh_outside = _sample_field(
             query,
             cage=cage,
             field=np.zeros_like(nodes),
-            transport_mask=transport_query_mask,
         )
         if np.any(remesh_outside):
             raise RuntimeError(
@@ -2380,12 +1920,7 @@ def apply_source_skin_volume_registration(
         "coarse_surface_max_m": float(coarse_surface_report.get("final_surface_max_m", 0.0)),
         "semantic_harmonic": deformation_report,
     }
-    delta, outside_mask = _sample_transport_field_v811(
-        query,
-        cage=cage,
-        field=field1,
-        transport_mask=transport_query_mask,
-    )
+    delta, outside_count, outside_mask = _sample_field(query, cage=cage, field=field1)
     _raise_outside_query_error(
         asset,
         query=query,
@@ -2395,16 +1930,6 @@ def apply_source_skin_volume_registration(
         context="registered source Skin_Glass domain",
     )
     mapped = query + delta
-    if preserve_protected_material:
-        # V8.11 keeps every non-transport material in its fitted rest frame.
-        # The tissue-eligible set is vessels, nerves, organs, heart and
-        # connective tissue, minus the rigid craniocerebral compound.  Skin
-        # Glass and unclassified meshes are therefore never moved either.
-        mapped[~soft_volume_domain] = source_vertices[~soft_volume_domain]
-        if not np.array_equal(mapped[protected], source_vertices[protected]):
-            raise RuntimeError(
-                "V8.11 source-skin volume changed the rigid hard protection domain"
-            )
     skin_delta, _skin_outside_count, skin_outside = _sample_field(
         skin_vertices, cage=cage, field=field1,
     )
@@ -2421,8 +1946,7 @@ def apply_source_skin_volume_registration(
         "disabled": True,
         "reason": "one_shot_multiboundary_harmonic_transport",
     }
-    movable = soft_volume_domain if preserve_protected_material else ~protected
-    soft_norm = np.linalg.norm(mapped[movable] - query[movable], axis=1)
+    soft_norm = np.linalg.norm(mapped[~protected] - query[~protected], axis=1)
     if soft_norm.size:
         soft_rms = float(np.sqrt(np.mean(soft_norm * soft_norm)))
         soft_max = float(np.max(soft_norm))
@@ -2450,7 +1974,10 @@ def apply_source_skin_volume_registration(
         raise RuntimeError(
             f"source skin harmonic field is near-degenerate: min Jacobian ratio {minimum_jacobian_ratio:.6f}"
         )
-    soft_gate = soft_volume_domain
+    soft_gate = np.zeros(len(mapped), dtype=bool)
+    for (start, stop), tissue in zip(asset.source_vertex_ranges, asset.source_tissues):
+        if str(tissue).lower() in {"vessel", "nerve", "organ"}:
+            soft_gate[int(start) : int(stop)] = True
     # Full-resolution signed distance against a 105k-face solver shell is a
     # diagnostic, not part of the field solve.  It can exceed practical host
     # memory for the 395k-vertex asset.  The publish path therefore defers
@@ -2473,9 +2000,6 @@ def apply_source_skin_volume_registration(
         },
         "actual_stage1_field": {
             "all_material_vertices": int(len(mapped)),
-            "transport_query_vertex_count": int(
-                np.count_nonzero(transport_query_mask)
-            ),
             "solver_shell_outside_count": int(np.count_nonzero(shell_outside)),
             "solver_shell_outside_soft_count": int(np.count_nonzero(shell_outside & soft_gate)),
             "subject_outside_soft_count": int(np.count_nonzero(gated_outside)),
@@ -2530,7 +2054,6 @@ def apply_source_skin_volume_registration(
             "stage1_fine_shell_homotopy": list(_FINE_SHELL_HOMOTOPY),
             "stage1_same_cage_boundary_reference": reference_report,
             "stage1_semantic_rest_prealign": prealign_report,
-            "stage1_source_soft_prewrap": source_soft_prewrap_report,
             "stage1_capture_audit_required": bool(deferred_containment),
             "stage1_subject_driver_skeleton": {
                 "source": "smpl_canonical_weights.npz",
@@ -2547,13 +2070,7 @@ def apply_source_skin_volume_registration(
             "metadata": metadata,
         }
     )
-    if not rebind_source_rig:
-        source_rig_report = {
-            "backend": "protected_rigid_source_bind_v811",
-            "rebound": False,
-            "reason": "bones and cranial compounds are excluded from soft transport",
-        }
-    elif continuous_prealign_field is not None and continuous_prealign_cage is not None:
+    if continuous_prealign_field is not None and continuous_prealign_cage is not None:
         continuous_rebind_reports: list[dict[str, Any]] = []
         for stage_index, (stage_cage, stage_field) in enumerate(
             continuous_prealign_stages
@@ -2591,9 +2108,7 @@ def apply_source_skin_volume_registration(
             semantic_prealign_blend=prealign_blend,
         )
     result = with_source_driver_coupling(result)
-    report = {
-        "schema_version": 1,
-        "artifact_kind": "SourceSkinVolumeRegistrationV811",
+    return result, {
         "backend": "stage1_subject_surface_dirichlet_harmonic_v3",
         "cage_nodes": int(len(nodes)),
         "cage_tetrahedra": int(len(elements)),
@@ -2602,7 +2117,7 @@ def apply_source_skin_volume_registration(
         "removed_degenerate_tetrahedra": int(
             np.asarray(cage["removed_degenerate_tetrahedra"]).reshape(-1)[0]
         ),
-        "outside_query_count": int(np.count_nonzero(outside_mask)),
+        "outside_query_count": int(outside_count),
         "outside_protected_material_count": 0,
         "outside_soft_material_count": 0,
         "diagnostic_inverted_tetrahedra": 0,
@@ -2610,20 +2125,7 @@ def apply_source_skin_volume_registration(
         "soft_displacement_rms_m": soft_rms,
         "soft_displacement_max_m": soft_max,
         "protected_material_vertices": int(np.count_nonzero(protected)),
-        "soft_volume_material_vertices": int(
-            np.count_nonzero(soft_volume_tissue_domain)
-        ),
-        "soft_volume_transport_vertices": int(np.count_nonzero(soft_volume_domain)),
-        "rigid_hard_protection_preserved": bool(preserve_protected_material),
-        "soft_volume_tissues": sorted(_SOFT_VOLUME_TISSUES_V811),
-        "anatomy_transport": (
-            "soft_material_only_volume_field_v811"
-            if preserve_protected_material
-            else "all_material_volume_field_applied_before_bone_fit"
-        ),
-        "protected_material_preserved": bool(preserve_protected_material),
-        "nonsoft_material_preserved": bool(preserve_protected_material),
-        "source_soft_prewrap": source_soft_prewrap_report,
+        "anatomy_transport": "all_material_volume_field_applied_before_bone_fit",
         "semantic_rest_prealign": prealign_report,
         "source_rig_rebind": source_rig_report,
         "section_residual_regularizer": section_report,
@@ -2638,7 +2140,3 @@ def apply_source_skin_volume_registration(
         **stage1_report,
         **surface_report,
     }
-    report["content_digest"] = _volume_transport_digest_v811(
-        result, soft_volume_domain, protected
-    )
-    return result, report
