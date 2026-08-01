@@ -217,6 +217,10 @@ def render_global_ird(
     title: str = "Global IRD",
     n_color_levels: int = PROBE_COMPARE_N_LEVELS,
     bar_max: float = PROBE_COMPARE_BAR_MAX,
+    camera_bounds: tuple[float, ...] | list[float] | None = None,
+    camera_focus: tuple[float, ...] | None = None,
+    parallel_scale: float | None = None,
+    oblique_span: float | None = None,
 ) -> Path:
     """Dual-panel IRD figure (base positions in TCP frame).
 
@@ -288,29 +292,35 @@ def render_global_ird(
         root = Path(__file__).resolve().parents[2]
         robot_urdf = ensure_probe_visual_urdf(playground_root=root)
 
-    # Place robot so TCP frame = world origin (full chain visible around IRD cloud).
+    # Place robot so TCP frame = world origin (full arm stays in frame).
     q_full, base_pose = _pose_robot_tcp_at_origin(robot_urdf)
     scene = build_robot_pv(robot_urdf, q_full=q_full, base_pose_world=base_pose)
-    rob_pts = []
-    for i in range(len(scene.mesh_block)):
-        rob_pts.append(np.asarray(scene.mesh_block[i].points, dtype=np.float64))
-    rob_xyz = np.concatenate(rob_pts, axis=0) if rob_pts else xyz
-    bounds = _bounds_from_centres(np.vstack([xyz, rob_xyz]), pad=0.10)
-    parallel_scale = _span_from_bounds(bounds) * 0.58
-
+    if camera_bounds is not None:
+        bounds = [float(v) for v in camera_bounds]
+    else:
+        rob_pts = []
+        for i in range(len(scene.mesh_block)):
+            rob_pts.append(np.asarray(scene.mesh_block[i].points, dtype=np.float64))
+        rob_xyz = np.concatenate(rob_pts, axis=0) if rob_pts else xyz
+        bounds = _bounds_from_centres(np.vstack([xyz, rob_xyz]), pad=0.10)
+    if parallel_scale is None:
+        parallel_scale = _span_from_bounds(bounds) * 0.58
     # Monkey-patch panel render to use our base_pose (sphere_glyphs only passes q_full).
     img_left, img_right = _render_ird_panels_with_posed_robot(
         glyphs=glyphs,
         centres=xyz,
         radius_m=radius,
         bounds=bounds,
-        parallel_scale=parallel_scale,
+        parallel_scale=float(parallel_scale),
         robot_urdf=robot_urdf,
         q_full=q_full,
         base_pose_world=base_pose,
         cmap=cmap,
         clim_bar=clim_bar,
         size=size,
+        camera_focus=camera_focus,
+        oblique_span=oblique_span,
+        cut_axis=halfspace_axis,
     )
 
     out_path = Path(out_path)
@@ -353,6 +363,10 @@ def render_global_ird_from_capability(
     size: tuple[int, int] = (3200, 1100),
     n_color_levels: int = PROBE_COMPARE_N_LEVELS,
     bar_max: float = PROBE_COMPARE_BAR_MAX,
+    camera_bounds: tuple[float, ...] | list[float] | None = None,
+    camera_focus: tuple[float, ...] | None = None,
+    parallel_scale: float | None = None,
+    oblique_span: float | None = None,
 ) -> Path:
     """Capability-style neat lattice query + global IRD pose (TCP at origin)."""
     step = float(step_m if step_m is not None else cm.grid.step_m)
@@ -375,6 +389,10 @@ def render_global_ird_from_capability(
         size=size,
         n_color_levels=n_color_levels,
         bar_max=bar_max,
+        camera_bounds=camera_bounds,
+        camera_focus=camera_focus,
+        parallel_scale=parallel_scale,
+        oblique_span=oblique_span,
     )
 
 
@@ -414,6 +432,9 @@ def _render_ird_panels_with_posed_robot(
     cmap,
     clim_bar: tuple[float, float],
     size: tuple[int, int],
+    camera_focus: tuple[float, ...] | None = None,
+    oblique_span: float | None = None,
+    cut_axis: str = "y",
 ):
     import os
 
@@ -422,7 +443,7 @@ def _render_ird_panels_with_posed_robot(
     from rm75_control.tools.reachability.viz.robot_scene import add_robot_to_plotter, build_robot_pv
     from rm75_control.tools.reachability.viz.sphere_glyphs import (
         _add_paper_sphere_glyphs,
-        _camera_front_y,
+        _camera_front_cut,
         _camera_oblique_45,
         _focus_from_bounds,
         _setup_paper_lights,
@@ -433,21 +454,23 @@ def _render_ird_panels_with_posed_robot(
     panel_w = max(1000, int(size[0] * 0.34))
     panel_h = max(700, int(size[1]))
     panel_size = (panel_w, panel_h)
-    focus = _focus_from_bounds(bounds)
-    span = _span_from_bounds(bounds)
+    focus = (
+        np.asarray(camera_focus, dtype=np.float64).reshape(3)
+        if camera_focus is not None
+        else _focus_from_bounds(bounds)
+    )
+    span = float(oblique_span) if oblique_span is not None else _span_from_bounds(bounds)
     scene = build_robot_pv(robot_urdf, q_full=q_full, base_pose_world=base_pose_world)
 
     def _one(view: str):
         def _cam(pl: pv.Plotter) -> None:
-            pl.reset_camera(bounds=bounds)
             if view == "oblique45":
-                pl.camera_position = _camera_oblique_45(focus, span)
-                pl.camera.parallel_projection = False
+                pl.camera_position = _camera_oblique_45(focus, span, cut_axis=cut_axis)
             else:
-                pl.camera_position = _camera_front_y(focus, span)
-                pl.camera.parallel_projection = True
-                pl.camera.parallel_scale = float(parallel_scale)
-                pl.camera.zoom(1.05)
+                pl.camera_position = _camera_front_cut(focus, span, cut_axis=cut_axis)
+            pl.camera.parallel_projection = True
+            pl.camera.parallel_scale = float(parallel_scale)
+            pl.camera.zoom(1.0)
 
         pl = pv.Plotter(off_screen=off_screen, window_size=panel_size)
         pl.set_background("white")

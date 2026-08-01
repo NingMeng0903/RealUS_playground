@@ -35,7 +35,8 @@
     </inertial>
   </link>
   <joint name="rail_y" type="prismatic">
-    <origin xyz="0 -0.4 0" rpy="0 0 0" />
+    <!-- Match kinematics URDF (map frame): base at y=0 when rail locked. -->
+    <origin xyz="0 0 0" rpy="0 0 0" />
     <parent link="rail_base" />
     <child link="slider_link" />
     <axis xyz="0 1 0" />

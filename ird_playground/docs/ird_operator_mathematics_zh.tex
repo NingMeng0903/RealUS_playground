@@ -56,8 +56,8 @@ IRDPLAYGROUND 算子的完整数学设计}
 该算子回答的问题比经典离散 IRD 表更窄：在给定医学上合法的工具中心点（TCP）位姿、
 以及由导轨诱导的机器人基座（J1 轴）坐标系时，哪一个光滑方向能提高经过碰撞校验的
 机械臂可达裕度（clearance），并可选择地在局部位置/姿态区域内成立？
-我们将设计与四篇基础文献相对应
-（Vahrenkamp 等 2013；Rudorfer 2024/RM4D；Murooka 等 2025；Chiu 1988），
+我们将设计与五篇基础文献相对应
+（Zacharias 等 2013；Vahrenkamp 等 2013；Rudorfer 2024/RM4D；Murooka 等 2025；Chiu 1988），
 推导代码中使用的每一个聚合公式，并解释为何自动微分能给出可用的 IRD 梯度、
 为何对局部姿态锥的条件查询良定义，以及为何同一场无需重训练即可支持轨迹参数更新。
 \end{abstract}
@@ -96,8 +96,10 @@ IRDPLAYGROUND 算子的完整数学设计}
 \end{equation}
 \end{definition}
 
-Vahrenkamp 等（2013）的经典\emph{可达分布}（RD）在相对固定机器人基座的工作空间
-体素化中存储质量分数，例如映射到该体素的关节构型测度。
+Zacharias 等（2013）的\emph{capability map} 在相对固定基座的工作空间体素上
+给出可达指数（及方向结构），用以分析机械臂工作空间。
+Vahrenkamp 等（2013）的经典\emph{可达分布}（RD）在类似体素化中存储质量分数，
+例如映射到该体素的关节构型测度。
 \emph{逆可达分布}（IRD）对同一数据取逆：给定固定 TCP（例如抓取），
 得到使该 TCP 可达的候选基座位姿分布。
 
@@ -142,6 +144,225 @@ Vahrenkamp 等（2013）的经典\emph{可达分布}（RD）在相对固定机�
 基于梯度的更新使用贯穿整条 Torch 计算图的自动微分 \(\nabla_{x} C\)。
 
 % -----------------------------------------------------------------------------
+\section{设计叙事：从 IRD 约束到有姿态查询}
+\label{sec:narrative}
+
+本节按\emph{依赖顺序}把整条设计说清楚：先有哪些硬约束，再为何要商空间、为何只消 J1、IRD 如何落到导轨一维、为何必须用法兰 9 维图卡、算子如何分层、用了哪些技巧，最后给出带 tip$\times$roll 姿态时\emph{必须按序}执行的旋转与查询步骤。后文各节给出对应公式与实现细节；此处保证思路连贯。
+
+\subsection{IRD 在本问题中的约束}
+\label{sec:ird-constraints}
+
+经典 IRD（Vahrenkamp 等）回答：\emph{TCP 固定时，基座放在哪里更好}。
+对本超声扫描设定，同一问题被下列约束收窄：
+
+\begin{enumerate}[leftmargin=1.6em]
+  \item \textbf{任务 TCP 半固定。}
+        接触点由解剖/规划给出；允许的自由度主要是 tip 倾斜与探头 roll
+        （控制器可选），以及医学配准带来的\emph{小}位置/姿态不确定
+        （不可选、必须扛住）。
+  \item \textbf{基座不是平面自由。}
+        臂装在直线导轨上，基座位姿不能在 \(\SE(2)\) 上任取，
+        只剩导轨坐标 \(y\)（再加锁定的 rail 几何）。
+  \item \textbf{查询必须相对基座。}
+        世界 TCP 不动而导轨一滑，相对臂的几何就变；因此可达性必须对
+        \(T_{\mathrm{axis\leftarrow tcp}}=(\Taxis)^{-1}\Tcp\) 陈述，
+        而不能只存世界系表。
+  \item \textbf{碰撞与限位计入 clearance。}
+        场要逼近经自碰/环境碰与关节限位校验后的有符号裕度，
+        而非纯运动学二值可达。
+  \item \textbf{一阶段引导，非终局。}
+        算子输出光滑 \(C(x)\) 与 \(\nabla C\)，用于挪导轨/扭姿态；
+        最终仍以多种子 IK + 硬碰撞为准。
+\end{enumerate}
+
+在这些约束下，「IRD」不再是平面上的基座热图，而变成：
+\emph{在固定（或缓变）TCP 下，沿导轨一维 \(y\)（以及任务姿态样本）的条件可达场}。
+
+\subsection{什么是商空间}
+\label{sec:what-quotient}
+
+相对 flange 位姿 \(g\in\SE(3)\) 有 6 个自由度。若存在连续对称群 \(G\) 作用在
+\(g\) 上，且可达 clearance 对整条轨道近似恒定，则不必对每个群元素各存一份数据：
+把轨道上的点\emph{等同}，得到商空间 \(\SE(3)/G\)。直观上，商空间里的一点
+\([g]\) 表示「去掉已知对称之后还剩下的几何」。
+
+对本臂，取 \(G=\mathrm{Yaw}_{J1}\)：绕竖直 J1 轴同时旋转位置与姿态
+（式~\eqref{eq:yaw-action}）。同一轨道上的位姿在相对轴系下描述的是同一臂--任务几何，
+只是整体绕重力转了一圈。商空间
+\[
+  \mathcal{Q}=\SE(3)/\mathrm{Yaw}_{J1}
+\]
+的固有维数是 \(6-1=5\)（式~\eqref{eq:quotient-dim}）。
+训练与查询都在 \([g]\) 上进行，等价于\emph{消除}这一维冗余，而不是忽略物理自由度。
+
+\subsection{为什么只能消除 J1，不能连 roll 一起商掉}
+\label{sec:why-only-j1}
+
+Rudorfer 的 RM4D 对许多 6/7 轴臂近似商掉\emph{基座 yaw}与\emph{末轴 roll}，
+得到约 4 维图。本系统只强制第一条：
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{J1 yaw 是真对称。}
+        竖直转轴 + 相对轴系表达后，绕重力整体旋转不改变碰撞拓扑与关节相对几何
+        （在锁定导轨、忽略环境非旋转对称物的近似下）。消除它可压缩样本、
+        让前向 RM 与逆向 IRD 共用一场。
+  \item \textbf{Flange / TCP roll 对 probe45 不是对称。}
+        探头声学轴相对 J7 偏置约 \(50^{\circ}\)。绕法兰 \(z\) 的 roll 会改变
+        探头扫过的体积与自碰包络，可达 clearance 随之变。
+        若像遗留 5 维 TCP 图卡那样把 roll 也商掉，不同真实任务姿态会被错误等同。
+  \item \textbf{导轨平移不是 yaw。}
+        沿 \(e_{a}\) 滑动改变柱半径/相对高度，落在不同的 \([g]\) 上；
+        商掉 J1 \emph{不会}消掉导轨自由度。
+\end{itemize}
+
+因此：商空间是 5 维而非 4 维；roll 必须留在图卡里，供 tip$\times$roll 查询区分。
+
+\subsection{IRD 如何在 J1 / 导轨上表示}
+\label{sec:ird-on-j1}
+
+把「基座放置」参数化为轴系 \(\Taxis^{W}(y)\)（式~\eqref{eq:rail-base}）：
+\(y\) 只产生沿轨纯平移，姿态因子固定。固定世界 TCP 时，
+\[
+  y \;\mapsto\; T_{\mathrm{axis\leftarrow flange}}(y)
+  \;\mapsto\; [g(y)]\in\mathcal{Q}
+  \;\mapsto\; c(g(y))\in\R^{9}
+  \;\mapsto\; f_{\theta}(c)
+\]
+就是\emph{导轨 IRD 切片} \(C_{\mathrm{rail}}(y)\)（式~\eqref{eq:rail-ird}）。
+换言之：IRD 不再对平面基座离散查表，而对 J1 轴系的一维族做相对查询；
+J1 yaw 已由商空间消掉，不必再扫基座朝向。优化 \(\partial C/\partial y\)
+即「沿导轨往 clearance 更好的站位走」。
+
+\subsection{为什么必须是 flange 上的 9 维嵌入}
+\label{sec:why-flange-9d}
+
+固有对象是 \([g]\in\mathcal{Q}\)（5 维），但网络需要 \(\R^{n}\) 上的光滑输入。
+
+\begin{enumerate}[leftmargin=1.6em]
+  \item \textbf{为何 flange 而非 TCP。}
+        图卡要把「绕末轴转不动的量」与「携带 roll 的量」分开；
+        这些轴应与 J7（link\_7）对齐。TCP 因工具偏置与 J7 不共线，
+        在 TCP 上做同样拆分会把 roll 泄漏进「不变」通道。
+  \item \textbf{为何不能直接用 5 个最小坐标。}
+        欧拉角 / 方位角在轴上奇异、有分支切割；AD 与边界 stencil 会炸。
+  \item \textbf{为何冗余到 9 维。}
+        式~\eqref{eq:chart} 用柱坐标 \(+\varepsilon\)、J7 不变块、roll 携带块，
+        以及补全 \(R^{\mathsf T}\hat z\) 的第九分量，把 \(\mathcal{Q}\)
+        \emph{光滑嵌入} \(\R^{9}\)。对 yaw 轨道恒定（式~\eqref{eq:yaw-invariance}），
+        对 roll 敏感；多出的维是冗余不是新物理自由度。
+\end{enumerate}
+
+场定义为 \(f_{\theta}:\R^{9}\to\R\)（有符号 clearance）。同一场既服务
+「前向：轴系固定看 TCP」也服务「逆向：TCP 固定看 \(y\)」，因为输入永远是相对图卡 \(c\)。
+
+\subsection{算子如何分层设计}
+\label{sec:operator-layers}
+
+设计按三层叠起来，上层绝不改下层几何约定：
+
+\begin{center}
+\begin{tabular}{@{}llp{5.8cm}@{}}
+\toprule
+层 & 对象 & 作用 \\
+\midrule
+几何层
+  & \(\Tcp^{W},\,\Taxis^{W}(y),\,c\)
+  & 相对位姿、导轨、TCP\(\to\)flange、9 维商嵌入 \\
+场层
+  & \(f_{\theta}(c)\)
+  & 单点有符号 clearance（归一化、傅里叶、残差 MLP、支撑域守卫） \\
+查询层 \(\mathcal{A}\)
+  & Region~A / TaskCone / SetQuery / Trajectory
+  & 对\emph{位姿样本集}做 softmin（鲁棒）、softmax（选优）或 mean（锥期望）等聚合 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+决策变量 \(x\)（\(y\)、血管角、轨迹控制点\ldots）只通过几何层进入 \(c\)，
+再经 \(f\) 与 \(\mathcal{A}\) 得到标量 \(C(x)\)。整图可微，故
+\(\nabla_{x}C\) 可直接用于一阶段引导。
+
+\subsection{关键技巧（保证可微、可泛化、语义正确）}
+\label{sec:tricks}
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{相对查询}：IRD 语义落在 \((\Taxis)^{-1}\Tcp\)，导轨运动不必重训。
+  \item \textbf{只商真对称}：仅 J1 yaw；probe45 roll 留在图卡。
+  \item \textbf{冗余光滑图卡}：9 维嵌入避开轴奇异；\(\varepsilon\) 缓和 \(r\) 尖点。
+  \item \textbf{有符号 clearance + 边界 stencil}：避免纯分类器在域外梯度变 flat
+        （Murooka 警告）。
+  \item \textbf{归一化 + 傅里叶特征}：米制与姿态通道同尺度，锐利可达边界可表示。
+  \item \textbf{Softplus MLP}：\(C^{\infty}\)，导数处处可用。
+  \item \textbf{支撑域守卫}：训练盒外惩罚，抑制乱外推。
+  \item \textbf{聚合语义分立}：不确定用 softmin/CVaR（最坏/下尾）；
+        任务 tip$\times$roll 用 softmax（存在性选优）、mean
+        （式~\eqref{eq:mean}；锥上期望）或大 \(\tau\) 的 soft\(*\)；
+        嵌套时先不确定、后自由。
+  \item \textbf{轨迹按序聚合}：场景 \(\to\) 角度 \(\to\) 路径内部点 \(\to\) 全轨迹 softmin
+        （第~\ref{sec:agg-order}~节），顺序不能颠倒，否则梯度语义错位。
+\end{itemize}
+
+\subsection{带 tip$\times$roll 姿态时的分步查询（必须按序）}
+\label{sec:tip-roll-pipeline}
+
+超声允许在接触点附近改变 tip 与 roll。实现中局部角增量写在\emph{医学 TCP 本体}
+\(\{b,t,n\}\) 下：\(\delta\omega=(\rho\cos\phi,\,\rho\sin\phi,\,\gamma)\)
+（式~\eqref{eq:task-cone-sample}）。从名义 TCP 到标量 \(C\) 的步骤\emph{固定如下}；
+任一步对调都会使相对位姿或 roll 语义错误。
+
+\begin{enumerate}[leftmargin=1.6em]
+  \item \textbf{名义世界 TCP。}
+        取医学接触位姿 \(T_{\mathrm{tcp}}^{W(0)}\)（位置即接触点；姿态为名义法向/探头架）。
+  \item \textbf{导轨 \(\to\) 轴系。}
+        由决策 \(y\) 按~\eqref{eq:rail-base} 构造 \(\Taxis^{W}(y)\)
+        （仅平移，姿态因子固定）。
+  \item \textbf{采样 tip$\times$roll 旋转增量（本体坐标）。}
+        在锥内抽 \((\rho,\phi,\gamma)\)，组成 \(\delta\omega_{k}\in\R^{3}\)。
+        此处旋转尚未乘到世界系；仍是 TCP 体坐标下的 \(\mathfrak{so}(3)\) 矢量。
+  \item \textbf{右乘指数映射（顺序固定）。}
+        \[
+          R_{k}
+          \;=\;
+          R_{\mathrm{tcp}}^{(0)}\,
+          \operatorname{Exp}(\delta\omega_{k}),
+          \qquad
+          p_{k}
+          \;=\;
+          p_{\mathrm{tcp}}^{(0)}.
+        \]
+        即 \(T_{k}=T^{(0)}\cdot\operatorname{Exp}(\widehat{\delta\omega}_{k})\)：
+        \emph{先}名义姿态，\emph{再}在本体下施加 tip/roll。
+        不可改成 \(\operatorname{Exp}(\delta\omega)\,R^{(0)}\)（左乘变成世界系倾斜，语义不同）。
+        位置保持接触点不变。
+  \item \textbf{相对轴系。}
+        \(T_{\mathrm{axis\leftarrow tcp},k}
+        =(\Taxis^{W}(y))^{-1}T_{k}\)（式~\eqref{eq:relative-group}）。
+  \item \textbf{TCP \(\to\) flange。}
+        常安装变换~\eqref{eq:tcp-to-flange}，得到 \(g_{k}=(p_{\mathrm{fl}},R_{\mathrm{fl}})_{k}\)。
+  \item \textbf{商嵌入。}
+        \(c_{k}=c(g_{k})\in\R^{9}\)（对 J1 yaw 不变，对刚施加的 roll/tip 敏感）。
+  \item \textbf{场评估。}
+        \(F_{k}=f_{\theta}(c_{k})\)（或守卫后的 \(\tilde f\)）。
+  \item \textbf{按查询语义聚合（仍不可乱序）。}
+        \begin{itemize}[leftmargin=1.2em]
+          \item 纯 TaskCone：\(C=\softmax_{\tau}\{F_{k}\}\)（选最好的 tip$\times$roll），
+                或 \(C=C_{\mathrm{mean}}\)（式~\eqref{eq:task-cone-mean}；锥上期望 / 均匀平均）。
+          \item 若外层还有 Region~A 不确定：对每个自由样本 \(\eta_{k}\) 先对不确定
+                \(\delta_{j}\) 做 softmin/CVaR，再对 \(k\) 做 softmax / mean
+                （式~\eqref{eq:set-query}：\emph{先不确定，后自由}）。
+          \item 轨迹：再对外层路点/路径点做 softmin（第~\ref{sec:agg-order}~节）。
+        \end{itemize}
+  \item \textbf{反传。}
+        \(\partial C/\partial y\)、\(\partial C/\partial\theta\) 等经同一顺序的计算图回传；
+        打乱旋转左右乘或聚合顺序会使梯度指向错误的几何自由度。
+\end{enumerate}
+
+一句话串起来：
+\emph{IRD 约束把基座收到导轨 \(y\)；商空间只消 J1 yaw；9 维 flange 图卡光滑表示剩下的 5 维；
+场给单点 clearance；查询层按「旋转右乘 \(\to\) 相对 \(\to\) flange \(\to\) \(c\) \(\to\) \(f\) \(\to\) 规定聚合序」
+处理 tip$\times$roll。}
+
+% -----------------------------------------------------------------------------
 \section{文献对应：各篇贡献了什么}
 \label{sec:papers}
 
@@ -151,6 +372,9 @@ Vahrenkamp 等（2013）的经典\emph{可达分布}（RD）在相对固定机�
 \toprule
 文献 & 吸收的核心思想 & 在实现中的落点 \\
 \midrule
+Zacharias 等 2013
+  & Capability map：体素可达指数（及方向结构）
+  & 离线 capability map；Zacharias 风格球 glyph 出图 \\
 Vahrenkamp 等 2013
   & IRD = 固定 TCP，对基座位姿打分
   & \(\Tcp\) 固定（或缓变）；经 \(\Taxis(y_{\mathrm{rail}})\) 查询 \\
@@ -199,6 +423,26 @@ Chiu 度量姿态的速度/力椭球与任务的对齐程度。我们不在线�
 \section{坐标系、导轨基座与 flange 图卡}
 \label{sec:chart}
 
+本节是算子的几何骨架：世界 TCP 与导轨坐标如何变成 yaw 不变的 flange 特征向量。
+整条链路为
+\begin{equation}
+\label{eq:pipeline}
+  \bigl(\Tcp^{W},\, y\bigr)
+  \;\xrightarrow{\;\eqref{eq:rail-base}\;}
+  \Taxis^{W}(y)
+  \;\xrightarrow{\;\eqref{eq:relative-pose}\;}
+  T_{\mathrm{axis\leftarrow tcp}}
+  \;\xrightarrow{\;\eqref{eq:tcp-to-flange}\;}
+  (p_{\mathrm{fl}},R_{\mathrm{fl}})
+  \;\xrightarrow{\;\eqref{eq:chart}\;}
+  c\in\R^{9}
+  \;\xrightarrow{\;f_{\theta}\;}
+  \text{clearance}.
+\end{equation}
+经典 IRD 对固定 TCP 给候选\emph{基座}打分。此处基座被约束在导轨上，
+自由放置变量塌缩为标量 \(y\)；下文的相对变换与商图卡把这 1 维放置
+变成对单一训练场的查询。
+
 \subsection{世界位姿与相对位姿}
 \label{sec:frames}
 
@@ -232,8 +476,27 @@ TCP 在轴坐标系下表示为
 \end{equation}
 \emph{解释。}
 式~\eqref{eq:relative-pose} 即群乘积 \((\Taxis^{W})^{-1}\Tcp^{W}\)。
+等价地，把两者都看成 \(\SE(3)\) 元素时，
+\begin{equation}
+\label{eq:relative-group}
+  T_{\mathrm{axis\leftarrow tcp}}
+  \;=\;
+  (\Taxis^{W})^{-1}\,\Tcp^{W}
+  \;=\;
+  \begin{bmatrix}
+    R_{\mathrm{axis\leftarrow tcp}} & p_{\mathrm{axis\leftarrow tcp}} \\
+    0^{\mathsf T} & 1
+  \end{bmatrix}.
+\end{equation}
 所有可达查询都在该相对坐标系下提出，这正是 IRD 视角：移动基座/轴系时，
-即使世界 TCP 固定，相对 TCP 也会改变。
+即使世界 TCP 固定，相对 TCP 也会改变。反之，若坚持用世界系 TCP 表，
+导轨一滑就要重算可达性；相对乘积把该运动吸收为
+\(T_{\mathrm{axis\leftarrow tcp}}\) 的变化。
+
+\paragraph{为何用轴坐标系，而不只用 \texttt{base\_link}。}
+在 J1 轴系里，绕重力的 yaw 表现为对位置与姿态的同时旋转。
+在该系下打分，使后文的 yaw 商作用~\eqref{eq:yaw-action} 成为干净的群作用，
+而不是导轨偏置与 joint-1 角的混杂。
 
 \subsection{导轨诱导的轴坐标系}
 \label{sec:rail}
@@ -254,13 +517,44 @@ TCP 在轴坐标系下表示为
 \end{equation}
 \emph{解释。}
 \(y\) 是 URDF 原始导轨坐标。对~\eqref{eq:rail-base} 关于 \(y\) 求导
-只沿导轨移动轴原点；旋转不变。这是把「相对基座放置的 IRD」
-变成「相对单个导轨自由度的 IRD」的原语。
+只沿导轨移动轴原点；旋转不变：
+\begin{equation}
+\label{eq:rail-jacobian}
+  \frac{\partial p_{\mathrm{axis}}^{W}}{\partial y}
+  \;=\;
+  R_{\mathrm{world\leftarrow rail}}\, e_{a},
+  \qquad
+  \frac{\partial R_{\mathrm{axis}}^{W}}{\partial y}
+  \;=\;
+  0.
+\end{equation}
+这是把「相对 \(\SE(2)/\SE(3)\) 自由基座放置的 IRD」变成
+「相对单个导轨自由度的 IRD」的原语。
+把 \(\Taxis^{W}(y)\) 代入~\eqref{eq:relative-pose}（\(\Tcp^{W}\) 固定）
+得到曲线 \(y\mapsto T_{\mathrm{axis\leftarrow tcp}}(y)\subset\SE(3)\)；
+再与图卡~\eqref{eq:chart} 及场 \(f_{\theta}\) 复合，即得\emph{导轨 IRD 切片}
+\begin{equation}
+\label{eq:rail-ird}
+  C_{\mathrm{rail}}(y)
+  \;=\;
+  f_{\theta}\bigl(
+    c\bigl(T_{\mathrm{axis\leftarrow flange}}(y)\bigr)
+  \bigr)
+\end{equation}
+（可选地先做 TCP\(\to\)flange 与集合聚合）。梯度
+\(\partial C_{\mathrm{rail}}/\partial y\) 指向更好的导轨停靠点，
+无需在平面基座上铺离散 IRD 表。
+
+\paragraph{固定因子。}
+\(T_{\mathrm{world\leftarrow rail}}\) 把导轨放进房间；
+\(T_{\mathrm{rail\leftarrow axis}}(y{=}0)\) 是臂在滑块上的锁定安装。
+查询时二者都不依赖决策变量 \(y\)；只有中间的纯平移依赖 \(y\)。
 
 \subsection{TCP 到 flange}
 \label{sec:tcp-flange}
 
-设 \(T_{\mathrm{flange\leftarrow tcp}}\) 为 URDF 固定工具变换。
+设 \(T_{\mathrm{flange\leftarrow tcp}}\) 为 URDF 固定工具变换
+（给定安装恒定：probe45、tcp220、horizontal、\ldots）。
 轴坐标系下 flange（link\_7）位姿为
 \begin{equation}
 \label{eq:tcp-to-flange}
@@ -269,24 +563,187 @@ TCP 在轴坐标系下表示为
   \mathrm{compose}\bigl(
     (p_{\mathrm{tcp}},R_{\mathrm{tcp}}),\;
     T_{\mathrm{flange\leftarrow tcp}}
-  \bigr).
+  \bigr),
 \end{equation}
+即 \(T_{\mathrm{axis\leftarrow flange}}
+= T_{\mathrm{axis\leftarrow tcp}}\,
+T_{\mathrm{tcp\leftarrow flange}}\)，其中
+\(T_{\mathrm{tcp\leftarrow flange}}
+= T_{\mathrm{flange\leftarrow tcp}}^{-1}\) 来自运动学链。
 我们对 flange 几何而非 TCP 几何打分，使图卡坐标轴与 J7 转轴对齐
-（下文不变量 / roll 分组需要）。
+（下文不变量 / roll 分组需要）。不同安装只改变常数工具变换；
+重新生成样本后可用同一图卡 \(c\) 与（再）训练的场。
+
+\subsection{对 J1 yaw 取商：何物被等同}
+\label{sec:quotient}
+
+前面已得到轴系下的相对 TCP。商空间与 9 维嵌入针对的是\emph{法兰}
+（link\_7）相对位姿，而不是直接对 TCP：TCP 先经常工具变换接到 flange
+（式~\eqref{eq:tcp-to-flange}），原因见本节末与~\ref{sec:why-flange-not-tcp}。
+
+记轴坐标系下相对 flange 位姿
+\begin{equation}
+\label{eq:g-def}
+  g
+  \;=\;
+  (p,R)
+  \;=\;
+  T_{\mathrm{axis\leftarrow flange}}
+  \;\in\;
+  \SE(3),
+\end{equation}
+其中
+\begin{itemize}[leftmargin=1.4em]
+  \item \(p\in\R^{3}\)：法兰原点在轴系中的位置；
+  \item \(R\in\SO(3)\)：法兰姿态；其列向量记为
+        \(u_{x},u_{y},u_{z}\in\R^{3}\)（法兰本体 \(x,y,z\) 轴在轴系中的方向）；
+  \item \(T_{\mathrm{axis\leftarrow flange}}\)：由
+        \(T_{\mathrm{axis\leftarrow tcp}}\) 与固定
+        \(T_{\mathrm{tcp\leftarrow flange}}\) 复合得到
+        （查询时 TCP 已知，故 \(g\) 已知）。
+\end{itemize}
+
+绕 J1/\(\hat z\) 的同时 yaw 作用为
+\begin{equation}
+\label{eq:yaw-action}
+  \alpha\cdot g
+  \;=\;
+  \bigl(R_{z}(\alpha)\,p,\; R_{z}(\alpha)\,R\bigr),
+  \qquad
+  R_{z}(\alpha)
+  \;=\;
+  \begin{bmatrix}
+    \cos\alpha & -\sin\alpha & 0 \\
+    \sin\alpha & \cos\alpha & 0 \\
+    0 & 0 & 1
+  \end{bmatrix}.
+\end{equation}
+其中
+\begin{itemize}[leftmargin=1.4em]
+  \item \(\alpha\in[0,2\pi)\)：绕竖直轴（轴系 \(\hat z\)，与 J1 同向）的转角；
+        \emph{不是}导轨坐标 \(y\)，也\emph{不是}网络输入里的独立特征；
+  \item \(R_{z}(\alpha)\)：绕 \(\hat z\) 的平面旋转矩阵；
+  \item \(\alpha\cdot g\)：把同一相对几何整体绕重力转 \(\alpha\) 后得到的位姿
+        （位置与姿态同步左乘 \(R_{z}\)）。
+\end{itemize}
+对竖直 J1 的 RM75，这（近似）是经碰撞校验可达性的自由对称：
+一旦量都相对轴系表达，绕重力整体旋转臂+任务并不产生新的运动学情形。
+
+\(g\) 的 \emph{yaw 轨道} 为
+\begin{equation}
+\label{eq:yaw-orbit}
+  \mathcal{O}(g)
+  \;=\;
+  \{\,\alpha\cdot g \;:\; \alpha\in[0,2\pi)\,\}.
+\end{equation}
+其中 \(\mathcal{O}(g)\) 是所有「与 \(g\) 只差一个绝对朝向」的位姿集合。
+
+\emph{商空间}
+\begin{equation}
+\label{eq:quotient-def}
+  \mathcal{Q}
+  \;=\;
+  \SE(3)/\mathrm{Yaw}_{J1}
+  \;=\;
+  \bigl\{\, [g]
+  \;\big|\;
+  g\sim \alpha\cdot g
+  \,\bigr\}
+\end{equation}
+其中
+\begin{itemize}[leftmargin=1.4em]
+  \item \(\mathrm{Yaw}_{J1}\)：由 \(\{\alpha\mapsto R_{z}(\alpha)\}\) 生成的一维对称群；
+  \item \(g\sim \alpha\cdot g\)：等价关系「同属一条 yaw 轨道」；
+  \item \([g]\in\mathcal{Q}\)：轨道 \(\mathcal{O}(g)\) 作为单个点
+        （描述可达性时只区分不同的 \([g]\)，不区分轨道内不同的 \(\alpha\)）；
+  \item \(\mathcal{Q}\)：所有等价类构成的空间（读作「去掉 J1 绝对 yaw 后的相对位姿空间」）。
+\end{itemize}
+维数：\(\dim\SE(3)=6\)，一个连续对称，故
+\begin{equation}
+\label{eq:quotient-dim}
+  \dim\mathcal{Q}
+  \;=\;
+  5,
+\end{equation}
+其中 \(5\) 为\emph{固有}维数（柱坐标约化后的平移不变量，加上去掉 yaw 后
+两个独立姿态自由度；绕 J7 的 flange roll 仍然保留在 \(\mathcal{Q}\) 里）。
+
+\paragraph{我们\emph{不}商掉什么。}
+RM4D 对许多原厂法兰还商掉 TCP/工具 roll，得到固有 4 维图。
+对 probe45，声学轴相对 J7 倾斜约 \(50^{\circ}\)，绕 flange \(z\) 的 roll
+会改变碰撞与工作空间足迹。这些位姿在~\eqref{eq:yaw-action} 下仍属
+\emph{不同}轨道，必须可区分——因此是 5 维商，而非 4 维。
+
+\paragraph{与导轨坐标的关系。}
+导轨映射 \(y\mapsto g(y)=T_{\mathrm{axis\leftarrow flange}}(y)\) 是
+\(\SE(3)\) 中的曲线。落到商空间后成为 \(y\mapsto [g(y)]\in\mathcal{Q}\)。
+其中 \(y\) 仍是 URDF 导轨坐标；商掉的是 \(\alpha\)（朝向），不是 \(y\)。
+不同 \(y\) 仅在退化情形落到同一轨道；正常使用下导轨运动改变
+\([g]\) 中编码的柱半径/高度或相对航向，而这正是导轨 IRD
+标量~\eqref{eq:rail-ird} 应当看到的。沿 \(e_{a}\) 的平移不是
+\(\mathrm{Yaw}_{J1}\) 作用。
+
+\subsection{为什么图卡用 flange 的 \(u_{x},u_{y},u_{z}\)，而不是 TCP}
+\label{sec:why-flange-not-tcp}
+
+查询入口仍是医学/任务 \textbf{TCP}：tip$\times$roll 采样、Region~A、轨迹路点
+都在 \(T_{\mathrm{tcp}}^{W}\) 上操作。进入场之前固定做一步
+\begin{equation}
+\label{eq:tcp-then-flange}
+  T_{\mathrm{tcp}}^{\mathrm{axis}}
+  \;\xrightarrow{\;T_{\mathrm{flange\leftarrow tcp}}\;}
+  g
+  \;=\;
+  T_{\mathrm{axis\leftarrow flange}},
+\end{equation}
+其中 \(T_{\mathrm{flange\leftarrow tcp}}\) 由 URDF 安装决定（probe45 / tcp220 /
+horizontal 各不相同，但对给定安装是常数）。
+
+图卡里的 \(u_{x},u_{y},u_{z}\) 是 \textbf{flange} 姿态 \(R_{\mathrm{fl}}\) 的列，
+原因：
+\begin{itemize}[leftmargin=1.4em]
+  \item J7 绕法兰 \(z\)（\(u_{z}\)）转；要把「J7 转不动的块」和「携带 roll 的块」
+        拆开，坐标轴必须与 link\_7 对齐。
+  \item TCP 因工具偏置与 J7 不共线；若对 TCP 的列做同样拆分，roll 会泄漏进
+        「不变」通道，probe45 上错误。
+  \item TCP 并未丢弃：它经~\eqref{eq:tcp-then-flange} 唯一决定 \(g\)；
+        换安装只改常数工具变换，图卡形式不变。
+\end{itemize}
 
 \subsection{九维 yaw 不变 flange 嵌入}
 \label{sec:9d}
 
-记 flange 位置 \(p=(p_{x},p_{y},p_{z})\) 与 flange 轴
-\(u_{x},u_{y},u_{z}\)（\(R_{\mathrm{fl}}\) 的列）。定义径向光滑距离
+固有 5 维流形本身并不给网络一份全局光滑的欧氏输入。
+用欧拉角或极小 5 元组作图卡会引入奇异（万向锁、分支切割、J1 轴上方位角无定义）。
+因此我们构造\emph{冗余光滑嵌入}
+\begin{equation}
+\label{eq:embedding-goal}
+  c:\mathcal{Q}\longrightarrow\R^{9},
+\end{equation}
+其中 \(c\) 把每个等价类 \([g]\) 映成 \(\R^{9}\) 中一点；要求对 yaw 轨道恒定、
+能区分 flange roll，并在 \(p_{xy}\to 0\) 时仍（经下文轻度径向正则后）保持 \(C^{\infty}\)。
+
+对给定 \(g=(p,R)\)，记
+\begin{equation}
+\label{eq:flange-axes}
+  R
+  \;=\;
+  \bigl[\,u_{x}\;\; u_{y}\;\; u_{z}\,\bigr],
+  \qquad
+  p=(p_{x},p_{y},p_{z}),
+\end{equation}
+其中 \(u_{x},u_{y},u_{z}\) 为法兰本体轴在\emph{轴坐标系}中的单位方向
+（不是 TCP 轴；TCP 已在上一步折进 \(g\)）。定义径向光滑距离
 \begin{equation}
 \label{eq:radial}
   r
   \;=\;
   \sqrt{p_{x}^{2}+p_{y}^{2}+\varepsilon},
   \qquad
-  \varepsilon=(10^{-3}\,\mathrm{m})^{2}.
+  \varepsilon=(10^{-3}\,\mathrm{m})^{2},
 \end{equation}
+其中 \(r\) 是法兰原点到 J1 轴的柱半径，\(\varepsilon\) 避免 \(r=0\) 处导数爆炸。
+
 图卡映射为
 \begin{equation}
 \label{eq:chart}
@@ -305,16 +762,24 @@ TCP 在轴坐标系下表示为
   \end{pmatrix}
   \in\R^{9},
 \end{equation}
-其中 \(p_{xy}=(p_{x},p_{y})\)，\(u_{\cdot,xy}\) 为轴的 \(xy\) 投影，
-\(\hat z=(0,0,1)\)，二维「叉积」为标量 \(p_{x}u_{y}-p_{y}u_{x}\)，且
+其中
+\begin{itemize}[leftmargin=1.4em]
+  \item \(p_{xy}=(p_{x},p_{y})\)：水平面内的位置；
+  \item \(u_{\cdot,xy}\)：对应法兰轴的 \(xy\) 投影；
+  \item \(\hat z=(0,0,1)\)：轴系竖直单位向量（J1 方向）；
+  \item 二维「叉积」\(p_{xy}\times u_{xy}:=p_{x}u_{y}-p_{y}u_{x}\)（标量）；
+  \item 点积 / 叉积项合起来编码「水平朝向相对位置径向」的 yaw 不变量。
+\end{itemize}
+且
 \begin{equation}
 \label{eq:uyz}
   u_{y}\!\cdot\!\hat z
   \;=\;
   (u_{z}\times u_{x})\!\cdot\!\hat z
   \;=\;
-  u_{z,x}\,u_{x,y}-u_{z,y}\,u_{x,x}.
+  u_{z,x}\,u_{x,y}-u_{z,y}\,u_{x,x},
 \end{equation}
+其中末式用 \(u_{z}\perp u_{x}\) 与右手系补全第九分量，避免近轴姿态二义性。
 
 \paragraph{各分量含义。}
 \begin{itemize}[leftmargin=1.4em]
@@ -332,23 +797,38 @@ TCP 在轴坐标系下表示为
         若无此项，当 \(r\to 0\) 时混合积消失，绕轴姿态重建留下二歧义。
 \end{itemize}
 
-\paragraph{对称性陈述。}
-若 \(R_{z}(\alpha)\) 是同时作用于基座（等价地作用于相对 flange 位姿）的
-绕 J1 轴旋转，则
+\paragraph{对称性 / 嵌入陈述。}
+若 \(R_{z}(\alpha)\) 按~\eqref{eq:yaw-action} 作用，则
 \begin{equation}
 \label{eq:yaw-invariance}
   c\bigl(R_{z}(\alpha)\,p,\; R_{z}(\alpha)\,R\bigr)
   \;=\;
   c(p,R).
 \end{equation}
-因此 \(c\) 把固有商 \(\SE(3)/\mathrm{Yaw}_{J1}\) 光滑嵌入 \(\R^{9}\)
-（仅商掉 yaw 后固有 5 维 flange 图卡的冗余坐标）。
+故 \(c\) 通过商空间分解：\(c(g)=c(\alpha\cdot g)\)，可视为映射
+\(\mathcal{Q}\to\R^{9}\)。像是 \(\R^{9}\) 中的 5 维子流形（计及径向光滑化）；
+多出的四个坐标是换取光滑性与简易 MLP 输入的冗余，不是四个额外物理自由度。
+
+\paragraph{变换小结。}
+固定世界 TCP 与导轨站位 \(y\) 时，拼起来为：
+\begin{enumerate}[leftmargin=1.4em]
+  \item 由~\eqref{eq:rail-base} 形成 \(\Taxis^{W}(y)\)（1 维基座放置）。
+  \item 相对 TCP：\(T_{\mathrm{axis\leftarrow tcp}}
+        =(\Taxis^{W}(y))^{-1}\Tcp^{W}\)~\eqref{eq:relative-group}。
+  \item 经常数安装变换~\eqref{eq:tcp-to-flange} 得到相对 flange。
+  \item 商特征 \(c\in\R^{9}\)~\eqref{eq:chart}：对 J1 yaw 不变，对 flange roll 敏感。
+  \item Clearance \(f_{\theta}(c)\)；可选 Region~A / TaskCone / 轨迹聚合器
+        作用于 \(c\)（或 \(y\) 与任务角）的样本。
+\end{enumerate}
+步骤 1--2 是导轨上的 IRD 降维；步骤 3--4 是面向 probe45 的 RM4D 风格商嵌入；
+步骤 5 是学到的有符号场。
 
 \begin{remark}[遗留的 5 维 TCP 图卡]
 更早的嵌入
 \(c_{\mathrm{TCP}}=[p_{z},\,u_{z}\!\cdot\!\hat z,\,\|p_{xy}\|,\,
 p_{xy}\!\cdot\!u_{xy},\,p_{xy}\times u_{xy}]\)
-同时商掉了 yaw 与 TCP roll。对 probe45 这不正确，仅保留用于审计。
+同时商掉了 yaw 与 TCP roll（两种对称后固有 4 维）。
+对 probe45 这不正确，仅保留用于审计。
 \end{remark}
 
 % -----------------------------------------------------------------------------
@@ -628,6 +1108,34 @@ Softplus（不同于 ReLU）在有限输入上是 \(C^{\infty}\) 且导数处处
 有符号 stencil 值加法向对齐在边界带上保持可用斜率。
 \end{remark}
 
+\subsection{\texorpdfstring{单点查询 $f_{\theta}$ 的可用性证据}{单点查询 f 的可用性证据}}
+\label{sec:field-accuracy}
+
+表~\ref{tab:f-usable} 汇总证明 \(f_{\theta}\) 可作为优化方向算子的生产检查
+（\texttt{rm4d\_signed\_production}）。完整指标见
+\texttt{docs/rm4d\_signed\_ird\_design.md}。
+
+\begin{table}[ht]
+\centering
+\caption{\(f_{\theta}\) 的精度。}
+\label{tab:f-usable}
+\begin{tabular}{@{}l r@{}}
+\hline\hline
+量 & 数值 \\
+\hline
+平衡准确率 & \(97.64\%\) \\
+位置方向一致率 & \(99.96\%\) \\
+旋转方向一致率 & \(99.97\%\) \\
+独立网格准确率 & \(99.17\%\) \\
+导轨 AD--FD 相对误差 & \(0.0098\%\) \\
+TCP \(x\) AD--FD 相对误差 & \(0.0101\%\) \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+符号一致支撑单点查询；方向一致与 AD--FD 一致说明 \(\nabla F\) 可用。
+硬可行性仍需最终含碰撞的 IK。
+
 % -----------------------------------------------------------------------------
 \section{可微集合查询}
 \label{sec:region}
@@ -728,7 +1236,39 @@ Softplus（不同于 ReLU）在有限输入上是 \(C^{\infty}\) 且导数处处
   \pi_{k}^{\mathrm{max}}(v),
 \end{equation}
 集中在\emph{最大}分量。因此鲁棒查询把梯度回传到最差样本；
-任务自由查询把梯度回传到最佳样本。
+任务自由的 softmax 查询把梯度回传到最佳样本。
+
+\paragraph{均值（锥上期望）。}
+当把角度看成 tip$\times$roll 锥上的分布 \(\mu(\mathrm{d}\eta)\)
+（在采样测度下均匀，或用 Sobol 求积）时，自然的软聚合是期望而非软极值：
+\begin{equation}
+\label{eq:mean}
+  C_{\mathrm{mean}}
+  \;=\;
+  \operatorname{mean}(v)
+  \;=\;
+  \frac{1}{K}\sum_{k=1}^{K} v_{k}
+  \;\approx\;
+  \mathbb{E}_{\eta\sim\mu}\bigl[F\bigl(T(\eta),\,\Taxis\bigr)\bigr].
+\end{equation}
+其梯度权重均匀，
+\begin{equation}
+\label{eq:mean-grad}
+  \frac{\partial C_{\mathrm{mean}}}{\partial v_{k}}
+  \;=\;
+  \frac{1}{K},
+  \qquad
+  \nabla_{x} C_{\mathrm{mean}}
+  \;=\;
+  \frac{1}{K}\sum_{k=1}^{K}
+  \nabla_{x} F\bigl(T(\eta_{k}),\,\Taxis(x)\bigr).
+\end{equation}
+\emph{与 softmin/softmax 的关系。}
+当 \(\tau\to\infty\) 时，\eqref{eq:softmin} 与~\eqref{eq:softmax}
+都会变平并趋向样本均值（在常数保持归一化下）。
+因此 mean 是「对不确定 / 自由角度取平均」的诚实极限：
+每个样本对更新方向贡献相同，而不像 softmin（质量集中在最差）或
+softmax（质量集中在最好）。
 
 \subsection{\texorpdfstring{Region A：不确定盒 $\times$ 小锥（softmin）}{Region A：不确定盒 x 小锥（softmin）}}
 \label{sec:region-a}
@@ -786,11 +1326,12 @@ Region~A clearance 为
 提高 \(C_{\mathrm{A}}\) 即改善小配准/接触误差下最坏可能位姿。
 覆盖率诊断使用 \(\frac{1}{K}\sum_{k}\sigma(F_{k}/\tau)\)。
 
-\subsection{\texorpdfstring{任务锥：tip $\times$ roll 自由集（softmax）}{任务锥：tip x roll 自由集（softmax）}}
+\subsection{\texorpdfstring{任务锥：tip $\times$ roll 自由集（softmax 或 mean）}{任务锥：tip x roll 自由集（softmax 或 mean）}}
 \label{sec:task-cone}
 
-超声接触常允许较大 tip 倾斜与探头 roll，它们是\emph{控制器可选}的自由变量，
-而非不确定量。
+超声接触常允许较大 tip 倾斜与探头 roll。它们可以是\emph{控制器可选}的自由变量，
+同一套样本也可在 tip$\times$roll 被视为\emph{不确定}（或希望整锥平均变好、而非只抬最好点）时
+改用均值聚合。
 
 \begin{definition}[TaskCone]
 Tip 半角 \(\beta_{\mathrm{tip}}\)（例如 \(20^{\circ}\)--\(45^{\circ}\)），
@@ -817,22 +1358,36 @@ roll 半程 \(\gamma_{\max}\)（例如 \(20^{\circ}\)--\(30^{\circ}\)），
   (\rho\cos\phi,\;\rho\sin\phi,\;\gamma).
 \end{aligned}
 \end{equation}
-位置固定（接触点给定）。任务 clearance 为
+位置固定（接触点给定）。记 \(v_{k}=F\bigl(\Tcp(\eta_{k}),\,\Taxis\bigr)\)。
+两种常用聚合为
 \begin{equation}
 \label{eq:task-cone}
   C_{\mathrm{task}}(\Tcp,\Taxis)
   \;=\;
   \softmax_{\tau}
-  \Bigl\{
-    F\bigl(\Tcp(\eta_{k}),\,\Taxis\bigr)
-  \Bigr\}_{k=1}^{K},
+  \{v_{k}\}_{k=1}^{K},
   \qquad
-  \tau=0.20.
+  \tau=0.20,
 \end{equation}
+以及锥上期望~\eqref{eq:mean}，
+\begin{equation}
+\label{eq:task-cone-mean}
+  C_{\mathrm{mean}}(\Tcp,\Taxis)
+  \;=\;
+  \mathbb{E}_{\eta\sim\mu}
+  \bigl[
+    F\bigl(\Tcp(\eta),\,\Taxis\bigr)
+  \bigr]
+  \;\approx\;
+  \frac{1}{K}\sum_{k=1}^{K} v_{k},
+\end{equation}
+更新方向见~\eqref{eq:mean-grad}。
 \emph{解释。}
-与 Region~A 相反：\(C_{\mathrm{task}}\) 询问是否\emph{存在} tip$\times$roll
-选择使手臂舒适。梯度把基座/导轨推向锥内存在高 clearance 自由位姿的放置。
-这是 Chiu 式「让姿态集合匹配任务」的思想，但用可达裕度而非椭球指标表达。
+与 Region~A 相反：softmax 的 \(C_{\mathrm{task}}\) 询问是否\emph{存在}
+tip$\times$roll 选择使手臂舒适；mean 的 \(C_{\mathrm{mean}}\) 询问锥在\emph{平均意义}上
+有多好，并对每个样本等权反传。tip$\times$roll 是控制器自由时选 softmax；
+角度真不确定或希望抬高整锥时选 mean（或 softmin/CVaR）。
+二者都是 Chiu 式「让姿态集合匹配任务」的思想，但用可达裕度而非椭球指标表达。
 
 \subsection{\texorpdfstring{嵌套自由 $\times$ 不确定查询（SetQuery）}{嵌套自由 x 不确定查询（SetQuery）}}
 \label{sec:set-query}
@@ -927,7 +1482,7 @@ Phase-4 一般语义为
   \pi_{k}^{\mathrm{min}}\,
   \nabla_{x} F\bigl(\Tcp(\delta_{k};x),\,\Taxis(x)\bigr).
 \end{equation}
-对 TaskCone，
+对 TaskCone（softmax），
 \begin{equation}
 \label{eq:grad-task}
   \nabla_{x} C_{\mathrm{task}}
@@ -936,11 +1491,115 @@ Phase-4 一般语义为
   \pi_{k}^{\mathrm{max}}\,
   \nabla_{x} F\bigl(\Tcp(\eta_{k};x),\,\Taxis(x)\bigr).
 \end{equation}
+对锥均值~\eqref{eq:task-cone-mean}，
+\begin{equation}
+\label{eq:grad-mean}
+  \nabla_{x} C_{\mathrm{mean}}
+  \;=\;
+  \frac{1}{K}\sum_{k=1}^{K}
+  \nabla_{x} F\bigl(\Tcp(\eta_{k};x),\,\Taxis(x)\bigr).
+\end{equation}
 \emph{「条件 IRD 梯度」的解释。}
 条件即集合 \(U\) 或 \(D_{\mathrm{free}}\)。标量 \(C\) 是集合聚合后的 clearance。
 其对基座/导轨/路径参数的梯度，是采样局部位姿处\emph{点 IRD 梯度的加权平均}，
-权重为~\eqref{eq:softmin-grad} 或~\eqref{eq:softmax-grad}。
+权重为~\eqref{eq:softmin-grad}、\eqref{eq:softmax-grad}，
+或~\eqref{eq:mean-grad} 的均匀 \(1/K\)。
 无需离散体素 \(\arg\max\)。
+
+\subsection{从单点 clearance 到条件查询与优化方向（串讲）}
+\label{sec:agg-to-grad}
+
+本节把~\ref{sec:task-cone}--\ref{sec:cond-grad} 收成一条直觉链。
+\emph{训练只学} \(f_{\theta}(c)\)（单点）；\emph{推理时}才用 \(\mathcal{A}\) 做区域/角度查询，
+再用自动微分得到优化方向。
+
+\paragraph{Step 1 --- 单点查询。}
+固定名义 TCP 与导轨坐标 \(y\)，对某一个具体位姿 \(T\)：
+\begin{equation}
+\label{eq:point-clearance}
+  v
+  \;=\;
+  F(T,\Taxis(y))
+  \;=\;
+  f_{\theta}\bigl(c(T,\Taxis(y))\bigr)
+  \;\in\;
+  \R.
+\end{equation}
+\(v\) 即该点的有符号 clearance；此处\emph{没有}角度集合，也\emph{没有}方向向量。
+
+\paragraph{Step 2 --- 区域/角度 $=$ 多样本 $+$ 聚合。}
+以 TaskCone 为例（允许 tip$\times$roll）。在锥内采 \(K\) 个增量 \(\eta_{k}\)，
+得到位姿 \(T_{k}=\Tcp(\eta_{k})\)，再逐个做单点查询：
+\begin{equation}
+\label{eq:task-pipe}
+\begin{aligned}
+  v_{k}
+  &=
+  F\bigl(T_{k},\,\Taxis(y)\bigr),
+  \qquad
+  k=1,\ldots,K,
+  \\
+  C_{\mathrm{task}}(y)
+  &=
+  \softmax_{\tau}(v_{1},\ldots,v_{K})
+  \;\approx\;
+  \text{「锥里最好的那个」有多好},
+  \\
+  C_{\mathrm{mean}}(y)
+  &=
+  \tfrac{1}{K}\sum_{k} v_{k}
+  \;\approx\;
+  \text{「整锥平均」有多好}.
+\end{aligned}
+\end{equation}
+Region~A 同理，将 \(\softmax\) 换成 \(\softmin\)（偏最差）。
+因此：
+\[
+  \text{区域/角度查询}
+  \;=\;
+  \text{多个单点 }f\text{ 查询}
+  \;+\;
+  \softmin/\softmax/\mathrm{mean}
+  \quad\text{（无单独的区域网络）}.
+\]
+
+\paragraph{Step 3 --- 优化方向 $=$ 标量 $C$ 对决策变量的梯度。}
+决策变量例如导轨 \(y\)（或血管角 \(\theta\)）。计算图为
+\begin{equation}
+\label{eq:opt-chain}
+  y
+  \;\to\;
+  \Taxis(y)
+  \;\to\;
+  \{T_{k}\}
+  \;\to\;
+  \{c_{k}\}
+  \;\to\;
+  \{v_{k}=f_{\theta}(c_{k})\}
+  \;\to\;
+  C=\mathcal{A}(v).
+\end{equation}
+自动微分给出
+\begin{equation}
+\label{eq:opt-grad-y}
+  \frac{\partial C}{\partial y}
+  \;=\;
+  \sum_{k=1}^{K}
+  \frac{\partial C}{\partial v_{k}}\,
+  \frac{\partial v_{k}}{\partial y},
+\end{equation}
+其中 \(\partial C/\partial v_{k}\) 即~\eqref{eq:softmin-grad} 或~\eqref{eq:softmax-grad}
+的权重 \(\pi_{k}\)，或~\eqref{eq:mean-grad} 的均匀 \(1/K\)：
+\begin{itemize}[leftmargin=1.4em]
+  \item \(\softmin\)：权重大的是\emph{最差点} \(\Rightarrow\) 梯度主要改善最差；
+  \item \(\softmax\)：权重大的是\emph{最好点} \(\Rightarrow\) 梯度主要抬高
+        「已有好姿态」或把好区域移向当前放置；
+  \item \(\mathrm{mean}\)：每个样本等权 \(\Rightarrow\) 抬高锥平均
+        （式~\eqref{eq:grad-mean}）。
+\end{itemize}
+图上的箭头 / 更新步长是 \(\partial C/\partial y\)（或 \(\partial C/\partial\theta\)），
+\emph{不是}把每个点 clearance「自带的方向」拼起来；每个点只有标量 \(v_{k}\)，
+方向来自整条链对决策变量的求导（式~\eqref{eq:grad-task}、\eqref{eq:demo-grads}）。
 
 \subsection{\texorpdfstring{血管表面例子 $(\theta,y)$}{血管表面例子 (theta, y)}}
 \label{sec:vessel-grad}
@@ -1043,7 +1702,7 @@ Phase-4 一般语义为
 \begin{enumerate}[leftmargin=1.6em]
   \item \(c\) 依赖\emph{相对}位姿~\eqref{eq:relative-pose}；
   \item 锥样本表达在\emph{当前} TCP 体坐标系~\eqref{eq:perturb} 中；
-  \item 聚合器~\eqref{eq:softmin}--\eqref{eq:softmax} 是当前样本分数的无记忆函数；
+  \item 聚合器~\eqref{eq:softmin}--\eqref{eq:mean} 是当前样本分数的无记忆函数；
 \end{enumerate}
 在新路径上重新评估 \(C_{\mathrm{task}}(s)\) 或 \(C_{\mathrm{traj}}(x)\)
 会自动得到新的 IRD 景观与新梯度 \(\nabla_{x}C\)，\emph{无需}修改 \(\theta\)。
@@ -1140,10 +1799,11 @@ C(x)
 \(c\in\R^{9}\) & yaw 不变 flange 图卡 \\
 \(f_{\theta},\tilde f\) & 有符号场；支撑域守卫后的场 \\
 \(F\) & 世界点分数~\eqref{eq:score-world} \\
-\(C_{\mathrm{A}},C_{\mathrm{task}},C_{\mathrm{set}},C_{\mathrm{traj}}\) &
+\(C_{\mathrm{A}},C_{\mathrm{task}},C_{\mathrm{mean}},C_{\mathrm{set}},C_{\mathrm{traj}}\) &
   聚合后的 clearance \\
 \(y\) & 导轨坐标 \\
 \(\delta,\eta\) & 不确定样本；自由（任务）样本 \\
+\(\mu\) & tip$\times$roll 锥上分布~\eqref{eq:mean} \\
 \(\tau\) & softmin/softmax 温度 \\
 \(\lambda\) & 平移--旋转度量尺度~\eqref{eq:lambda-metric} \\
 \(\pi^{\mathrm{min}},\pi^{\mathrm{max}}\) & softmin / softmax 权重 \\
@@ -1156,6 +1816,9 @@ C(x)
 \label{sec:refs}
 
 \begin{enumerate}[leftmargin=1.6em]
+  \item F.~Zacharias, C.~Borst, S.~Wolf, and G.~Hirzinger,
+        ``The capability map: A tool to analyze robot arm workspaces,''
+        International Journal of Humanoid Robotics, 2013.
   \item N.~Vahrenkamp, T.~Asfour, and R.~Dillmann,
         ``Robot placement based on reachability inversion,'' ICRA 2013.
   \item M.~Rudorfer,
@@ -1189,12 +1852,14 @@ C(x)
   & \texttt{ird/canonical.py::canonical\_flange\_invariants\_torch} \\
 \eqref{eq:score-world}
   & \texttt{neural/signed\_field.py::score\_world} \\
-\eqref{eq:softmin}--\eqref{eq:softmax}
-  & \texttt{region/operator.py}, \texttt{region/set\_query.py} \\
+\eqref{eq:softmin}--\eqref{eq:mean-grad}
+  & \texttt{region/operator.py}, \texttt{region/set\_query.py},
+    \texttt{region/trajectory\_operator.py} \\
 \eqref{eq:region-a}
   & \texttt{region/operator.py::RegionA} \\
-\eqref{eq:task-cone}
-  & \texttt{region/task\_cone.py::TaskConeReachability} \\
+\eqref{eq:task-cone}--\eqref{eq:task-cone-mean}
+  & \texttt{region/task\_cone.py::TaskConeReachability}
+    （\texttt{mean\_clearance}；优化用 mean 聚合） \\
 \eqref{eq:nested-semantic}--\eqref{eq:set-query}
   & \texttt{region/set\_query.py::SetQueryOperator} \\
 \eqref{eq:se3-interp}--\eqref{eq:traj-clearance}

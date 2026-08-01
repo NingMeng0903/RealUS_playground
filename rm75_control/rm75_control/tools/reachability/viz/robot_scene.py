@@ -228,6 +228,32 @@ def build_robot_pv(
     )
 
 
+def estimate_tcp_shaft_height_m(urdf_path: str | Path, *, fallback: float = 0.10) -> float:
+    """Flange→TCP length used as the green marker shaft (tip on TCP)."""
+    try:
+        model = pin.buildModelFromUrdf(str(urdf_path))
+        data = model.createData()
+        q = pin.neutral(model)
+        pin.forwardKinematics(model, data, q)
+        pin.updateFramePlacements(model, data)
+        if not model.existFrame("tcp"):
+            return float(fallback)
+        t_tcp = np.asarray(data.oMf[model.getFrameId("tcp")].translation, dtype=np.float64)
+        # Prefer link_7 frame if present; else joint_7 placement.
+        if model.existFrame("link_7"):
+            t_flange = np.asarray(data.oMf[model.getFrameId("link_7")].translation, dtype=np.float64)
+        elif model.existJointName("joint_7"):
+            t_flange = np.asarray(data.oMi[model.getJointId("joint_7")].translation, dtype=np.float64)
+        else:
+            return float(fallback)
+        dist = float(np.linalg.norm(t_tcp - t_flange))
+        if not np.isfinite(dist) or dist < 1e-3:
+            return float(fallback)
+        return float(np.clip(dist * 0.95, 0.06, 0.22))
+    except Exception:
+        return float(fallback)
+
+
 def tcp_cylinder_marker(
     tcp_pose_world: pin.SE3,
     *,
@@ -262,13 +288,14 @@ def add_tcp_marker_to_plotter(
     scene: RobotPvScene,
     *,
     radius_m: float = 0.012,
-    height_m: float = 0.100,
+    height_m: float | None = None,
     color: str = "#1b5e20",
 ) -> None:
     if scene.tcp_pose_world is None:
         return
+    h = float(height_m) if height_m is not None else estimate_tcp_shaft_height_m(scene.urdf_path)
     cyl, col = tcp_cylinder_marker(
-        scene.tcp_pose_world, radius_m=radius_m, height_m=height_m, color=color
+        scene.tcp_pose_world, radius_m=radius_m, height_m=h, color=color
     )
     pl.add_mesh(
         cyl,

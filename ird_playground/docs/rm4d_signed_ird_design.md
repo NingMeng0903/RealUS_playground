@@ -164,14 +164,19 @@ python -m ird_playground.cli.viz_signed_ird
 
 ## References
 
-- M. Murooka et al., "Learning Differentiable Reachability Maps for
-  Optimization-based Humanoid Motion Generation," Humanoids 2025,
-  [arXiv:2508.11275](https://arxiv.org/abs/2508.11275).
+- F. Zacharias, C. Borst, S. Wolf, and G. Hirzinger, "The capability map: A
+  tool to analyze robot arm workspaces," International Journal of Humanoid
+  Robotics, 2013.
+- N. Vahrenkamp, T. Asfour, and R. Dillmann, "Robot placement based on
+  reachability inversion," ICRA 2013.
 - M. Rudorfer, "RM4D: A Combined Reachability and Inverse Reachability Map for
   Common 6-/7-axis Robot Arms by Dimensionality Reduction to 4D," ICRA 2025,
   [arXiv:2410.06968](https://arxiv.org/abs/2410.06968).
-- N. Vahrenkamp, T. Asfour, and R. Dillmann, "Robot placement based on
-  reachability inversion," ICRA 2013.
+- M. Murooka et al., "Learning Differentiable Reachability Maps for
+  Optimization-based Humanoid Motion Generation," Humanoids 2025,
+  [arXiv:2508.11275](https://arxiv.org/abs/2508.11275).
+- S. L. Chiu, "Task Compatibility of Manipulator Postures," International
+  Journal of Robotics Research, 1988.
 - M. Koptev, N. Figueroa, and A. Billard, "Neural Joint Space Implicit Signed
   Distance Functions for Reactive Robot Manipulator Control," RA-L 2023,
   DOI `10.1109/LRA.2022.3227860`.

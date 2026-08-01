@@ -213,43 +213,29 @@ def _span_from_bounds(bounds: list[float]) -> float:
 
 
 def _camera_oblique_45(focus: np.ndarray, span: float, *, cut_axis: str = "y") -> list:
-    """Paper left: 45° view of the kept hemisphere (cut face toward camera)."""
-    d = max(span * 1.55, 1.8)
-    # Approach from the empty half so the cut face is visible.
+    """Paper left: look at the cut face from 45° so the dome opens to the right.
+
+    Cut is ``y=0`` (keep ``y>=0``). Camera sits in the empty half, 45° off the
+    face normal (−Y) toward −X — flat cut reads slanted; solid half opens right.
+    """
+    d = max(float(span), 1.8)
+    fx, fy, fz = (float(focus[0]), float(focus[1]), float(focus[2]))
     if cut_axis == "x":
-        eye = (
-            float(focus[0] - d * 0.707),
-            float(focus[1] - d * 0.707),
-            float(focus[2] + d * 0.48),
-        )
+        # 45° off −X normal toward −Y
+        eye = (fx - d * 0.707, fy - d * 0.707, fz + d * 0.22)
     else:
-        eye = (
-            float(focus[0] - d * 0.707),
-            float(focus[1] - d * 0.707),
-            float(focus[2] + d * 0.48),
-        )
-    return [eye, tuple(float(x) for x in focus), (0.0, 0.0, 1.0)]
+        # 45° off −Y normal toward −X  →  eye in (−X, −Y) quadrant
+        eye = (fx - d * 0.707, fy - d * 0.707, fz + d * 0.22)
+    return [eye, (fx, fy, fz), (0.0, 0.0, 1.0)]
 
 
 def _camera_front_cut(focus: np.ndarray, span: float, *, cut_axis: str = "y") -> list:
-    """Paper right: orthographic view looking onto the halfspace cut face.
-
-    For a sagittal cut ``x>=0`` the camera sits on −X so the arm lies in the
-    middle of the circular section (Zacharias Fig. 3 style). The old ``y`` cut
-    put the robot on the rim of the dome.
-    """
-    d = max(span * 1.35, 1.6)
+    """Paper right: orthographic view onto the cut face (face-on)."""
+    d = max(float(span), 1.8)
+    fx, fy, fz = (float(focus[0]), float(focus[1]), float(focus[2]))
     if cut_axis == "x":
-        return [
-            (float(focus[0] - d), float(focus[1]), float(focus[2])),
-            tuple(float(x) for x in focus),
-            (0.0, 0.0, 1.0),
-        ]
-    return [
-        (float(focus[0]), float(focus[1] - d), float(focus[2])),
-        tuple(float(x) for x in focus),
-        (0.0, 0.0, 1.0),
-    ]
+        return [(fx - d, fy, fz), (fx, fy, fz), (0.0, 0.0, 1.0)]
+    return [(fx, fy - d, fz), (fx, fy, fz), (0.0, 0.0, 1.0)]
 
 
 def _camera_front_y(focus: np.ndarray, span: float) -> list:
@@ -292,21 +278,28 @@ def _render_panel_from_glyphs(
     background: str,
     radius_m: float | None = None,
     base_pose_world=None,
+    cut_axis: str = "y",
+    camera_focus: np.ndarray | None = None,
+    oblique_span: float | None = None,
 ) -> np.ndarray:
     off_screen = os.environ.get("PYVISTA_OFF_SCREEN", "true").lower() in {"1", "true", "yes"}
-    focus = _focus_from_bounds(bounds)
-    span = _span_from_bounds(bounds)
+    focus = (
+        np.asarray(camera_focus, dtype=np.float64).reshape(3)
+        if camera_focus is not None
+        else _focus_from_bounds(bounds)
+    )
+    span = float(oblique_span) if oblique_span is not None else _span_from_bounds(bounds)
 
     def _apply_camera(pl: pv.Plotter) -> None:
-        pl.reset_camera(bounds=bounds)
+        # Do not reset_camera — it fights the locked mount-compare framing.
         if view == "oblique45":
-            pl.camera_position = _camera_oblique_45(focus, span)
-            pl.camera.parallel_projection = False
+            pl.camera_position = _camera_oblique_45(focus, span, cut_axis=cut_axis)
         else:
-            pl.camera_position = _camera_front_y(focus, span)
-            pl.camera.parallel_projection = True
-            pl.camera.parallel_scale = float(parallel_scale)
-            pl.camera.zoom(1.05)
+            pl.camera_position = _camera_front_cut(focus, span, cut_axis=cut_axis)
+        # Both panels: parallel projection, identical scale → same arm size/place.
+        pl.camera.parallel_projection = True
+        pl.camera.parallel_scale = float(parallel_scale)
+        pl.camera.zoom(1.0)
 
     # Single pass: robot + spheres share the depth buffer so foreground spheres occlude the arm.
     pl = pv.Plotter(off_screen=off_screen, window_size=panel_size)
@@ -351,6 +344,9 @@ def _render_single_panel(
     bounds: list[float] | None = None,
     parallel_scale: float | None = None,
     base_pose_world=None,
+    cut_axis: str = "y",
+    camera_focus: np.ndarray | None = None,
+    oblique_span: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     axis, _, val_s = plane.partition("=")
     axis = axis.strip().lower()
@@ -381,6 +377,9 @@ def _render_single_panel(
         view=view, panel_size=panel_size, background=background,
         radius_m=sphere_radius_m,
         base_pose_world=base_pose_world,
+        cut_axis=cut_axis,
+        camera_focus=camera_focus,
+        oblique_span=oblique_span,
     )
     return img, d_display
 
@@ -536,12 +535,15 @@ def render_capability_cross_sections(
     fixed_camera: bool = True,
     display_offset: np.ndarray | None = None,
     base_pose_world=None,
+    camera_bounds: tuple[float, ...] | list[float] | None = None,
+    camera_focus: tuple[float, ...] | np.ndarray | None = None,
+    parallel_scale: float | None = None,
+    oblique_span: float | None = None,
 ) -> Path:
-    """Zacharias Fig 3 — hemispherical half (y>=plane), oblique + front, shared scale.
+    """Zacharias Fig 3 — Y-hemisphere, 45° oblique (cut toward right) + front.
 
-    ``display_offset`` shifts voxel centres into a display frame (e.g. cancel rail
-    Y so the shoulder sits at the origin). ``base_pose_world`` places the robot in
-    that same frame (defaults to a pure translation by ``display_offset``).
+    Optional ``camera_*`` / ``parallel_scale`` / ``oblique_span`` lock framing so
+    every mount-compare figure puts the arm at the same size and place.
     """
     radius = _resolve_sphere_radius(cm, sphere_radius_m)
     cmap = make_zacharias_d_cmap_discrete(n_color_levels)
@@ -566,12 +568,21 @@ def render_capability_cross_sections(
 
         base_pose_world = pin.SE3(np.eye(3), offset)
 
-    # After a display shift, bounds must follow the shifted cloud (not raw grid).
-    if fixed_camera and display_offset is None:
+    if camera_bounds is not None:
+        bounds = [float(v) for v in camera_bounds]
+    elif fixed_camera and display_offset is None:
         bounds = _bounds_from_grid(cm)
     else:
         bounds = _bounds_from_centres(centres)
-    parallel_scale = _span_from_bounds(bounds) * 0.58
+
+    if parallel_scale is None:
+        parallel_scale = _span_from_bounds(bounds) * 0.58
+    focus = (
+        np.asarray(camera_focus, dtype=np.float64).reshape(3)
+        if camera_focus is not None
+        else _focus_from_bounds(bounds)
+    )
+    ospan = float(oblique_span) if oblique_span is not None else _span_from_bounds(bounds)
 
     panel_w = max(1000, int(size[0] * 0.34))
     panel_h = max(700, int(size[1]))
@@ -581,8 +592,11 @@ def render_capability_cross_sections(
         robot_urdf=robot_urdf, q_full=q_full, clim_data=clim_data,
         n_color_levels=n_color_levels, bar_max=bar_max, cmap=cmap,
         opacity=opacity, panel_size=panel_size, background=background,
-        centres=centres, d=d, bounds=bounds, parallel_scale=parallel_scale,
+        centres=centres, d=d, bounds=bounds, parallel_scale=float(parallel_scale),
         base_pose_world=base_pose_world,
+        cut_axis=axis,
+        camera_focus=focus,
+        oblique_span=ospan,
     )
 
     img_left, d_left = _render_single_panel(view="oblique45", **shared)
@@ -624,6 +638,10 @@ def render_reachability_index(
     plane: str = "y=0.0",
     display_offset: np.ndarray | None = None,
     base_pose_world=None,
+    camera_bounds: tuple[float, ...] | list[float] | None = None,
+    camera_focus: tuple[float, ...] | np.ndarray | None = None,
+    parallel_scale: float | None = None,
+    oblique_span: float | None = None,
 ) -> Path:
     if view == "cross":
         return render_capability_cross_sections(
@@ -634,6 +652,8 @@ def render_reachability_index(
             clim=clim, clim_auto=clim_auto, opacity=opacity,
             n_color_levels=n_color_levels, bar_max=bar_max, fixed_camera=fixed_camera,
             display_offset=display_offset, base_pose_world=base_pose_world,
+            camera_bounds=camera_bounds, camera_focus=camera_focus,
+            parallel_scale=parallel_scale, oblique_span=oblique_span,
         )
 
     cmap = cmap or make_zacharias_d_cmap_discrete(n_color_levels)

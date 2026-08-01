@@ -1288,6 +1288,111 @@ def source_bone_posed_global(
         parents=asset.parents,
     ).astype(np.float64)
     target_joint_delta = target_pose_global @ np.linalg.inv(target_rest_global)
+    functional_pivot_specs: dict[
+        int, tuple[np.ndarray, np.ndarray, np.ndarray, int, int]
+    ] = {}
+    functional_metadata = (asset.metadata or {}).get(
+        "functional_joint_frames_v8"
+    )
+    if isinstance(functional_metadata, dict):
+        try:
+            frame_centers = np.asarray(
+                functional_metadata["centers_m"], dtype=np.float64
+            ).reshape(-1, 3)
+            frame_axes = np.asarray(
+                functional_metadata["axes"], dtype=np.float64
+            ).reshape(-1, 3, 3)
+            station_offsets = np.asarray(
+                functional_metadata["station_to_anatomical"],
+                dtype=np.float64,
+            ).reshape(-1, 4, 4)
+            functional_joints = np.asarray(
+                functional_metadata["smplx_joint_ids"], dtype=np.int64
+            ).reshape(-1)
+            functional_bones = np.asarray(
+                functional_metadata["controller_bone_ids"], dtype=np.int64
+            ).reshape(-1)
+            proximal_bones = np.asarray(
+                functional_metadata["proximal_bone_ids"], dtype=np.int64
+            ).reshape(-1)
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(
+                f"functional_joint_frames_v8 metadata is invalid: {exc}"
+            ) from exc
+        count = len(frame_centers)
+        if not (
+            frame_axes.shape == (count, 3, 3)
+            and station_offsets.shape == (count, 4, 4)
+            and functional_joints.shape == (count,)
+            and functional_bones.shape == (count,)
+            and proximal_bones.shape == (count,)
+            and np.all(np.isfinite(frame_centers))
+            and np.all(np.isfinite(frame_axes))
+            and np.all(np.isfinite(station_offsets))
+        ):
+            raise ValueError("functional_joint_frames_v8 arrays disagree")
+        # Blender control origins are often virtual hinges.  Each major limb
+        # controller therefore receives the SMPL-X action through the baked
+        # station-to-anatomical SE(3) offset, while descendants still use the
+        # authored parent-local FK until the next functional controller.
+        for frame_index in range(count):
+            joint = int(functional_joints[frame_index])
+            bone = int(functional_bones[frame_index])
+            if (
+                joint < 0
+                or joint >= len(target_pose_global)
+                or bone < 0
+                or bone >= len(rest_global_bones)
+            ):
+                raise ValueError(
+                    "functional wrist frame references an invalid joint/bone"
+                )
+            functional_pivot_specs[bone] = (
+                frame_centers[frame_index],
+                frame_axes[frame_index],
+                station_offsets[frame_index],
+                joint,
+                int(proximal_bones[frame_index]),
+            )
+
+    def functional_pivot_transform(
+        bone: int,
+        parent: int,
+    ) -> np.ndarray | None:
+        spec = functional_pivot_specs.get(int(bone))
+        if spec is None:
+            return None
+        center, axes, offset, joint, proximal_bone = spec
+        anatomical_rest = np.eye(4, dtype=np.float64)
+        anatomical_rest[:3, :3] = axes
+        anatomical_rest[:3, 3] = center
+        anatomical_pose = target_pose_global[joint] @ offset
+        if proximal_bone < 0 or proximal_bone >= len(rest_global_bones):
+            raise ValueError("functional joint has an invalid proximal carrier")
+        # A SMPL-X station supplies joint orientation, but its local rotation
+        # must not rotate the station-to-surface offset.  The physical center
+        # is fixed to the proximal anatomy (socket, condyles or joint plate),
+        # so it is transported by the source bone that carries the frozen
+        # proximal contact-surface weights.  This preserves Blender virtual
+        # hinges without treating a helper origin as an anatomical endpoint.
+        # Applying the local joint rotation to this 40--60 mm offset makes a
+        # ball head orbit the station and causes large pose-dependent
+        # penetration.
+        if proximal_bone < bone:
+            proximal_pose = posed_global[proximal_bone]
+        else:
+            proximal_pose = driver_frames[proximal_bone] @ coupling[proximal_bone]
+        proximal_delta = proximal_pose @ np.linalg.inv(
+            rest_global_bones[proximal_bone]
+        )
+        anatomical_pose[:3, 3] = (
+            proximal_delta[:3, :3] @ center + proximal_delta[:3, 3]
+        )
+        return (
+            anatomical_pose
+            @ np.linalg.inv(anatomical_rest)
+            @ rest_global_bones[bone]
+        )
     if coupling.shape != rest_global_bones.shape or not np.all(np.isfinite(coupling)):
         raise ValueError("schema-v6 source driver coupling is invalid")
     if (
@@ -1434,6 +1539,38 @@ def source_bone_posed_global(
         parent = int(source_parents[bi])
         if parent >= bi or parent < -1:
             raise ValueError(f"source bone parent {parent} for bone {bi} is not topological")
+        functional = functional_pivot_transform(bi, parent)
+        if functional is not None:
+            coupled_response = coupled_joint_responses.get(str(bi))
+            if coupled_response is not None:
+                joint = int(coupled_response.get("smplx_joint", -1))
+                if parent < 0 or joint < 0 or joint >= len(input_pose):
+                    raise ValueError(
+                        f"functional RBF response {bi} has an invalid parent/joint"
+                    )
+                translation_local = evaluate_coupled_rbf_response_v8(
+                    coupled_response,
+                    np.asarray(input_pose[joint], dtype=np.float64),
+                )
+                functional = np.asarray(functional, dtype=np.float64).copy()
+                translation_frame = str(
+                    coupled_response.get("translation_frame", "source_parent_pose")
+                )
+                if translation_frame == "smplx_joint_pose":
+                    translation_world = (
+                        target_pose_global[joint, :3, :3] @ translation_local
+                    )
+                elif translation_frame == "source_parent_pose":
+                    translation_world = (
+                        posed_global[parent, :3, :3] @ translation_local
+                    )
+                else:
+                    raise ValueError(
+                        f"unsupported coupled RBF translation frame {translation_frame!r}"
+                    )
+                functional[:3, 3] += translation_world
+            posed_global[bi] = functional
+            continue
         if bi in leg_femur_rotation:
             if parent < 0:
                 raise ValueError(f"leg hinge femur {bi} has no source parent")

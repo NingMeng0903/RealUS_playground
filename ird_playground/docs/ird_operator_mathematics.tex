@@ -60,8 +60,9 @@ The operator answers a narrower question than classical discrete IRD tables:
 given a medically valid tool-centre-point (TCP) pose and a rail-induced robot
 base (J1-axis) frame, what smooth direction increases collision-checked arm
 reachability, optionally under a local position/orientation region?
-We relate the design to four foundational papers
-(Vahrenkamp et~al.\ 2013; Rudorfer 2024/RM4D; Murooka et~al.\ 2025; Chiu 1988),
+We relate the design to five foundational papers
+(Zacharias et~al.\ 2013; Vahrenkamp et~al.\ 2013; Rudorfer 2024/RM4D;
+Murooka et~al.\ 2025; Chiu 1988),
 derive every aggregation formula used in code, and explain why automatic
 differentiation yields usable IRD gradients, why conditional queries over
 local pose cones are well-defined, and why the same field supports
@@ -104,12 +105,15 @@ limits satisfied. Write
 \end{equation}
 \end{definition}
 
+The \emph{capability map} of Zacharias et~al.\ (2013) analyses a robot arm
+workspace by assigning each workspace voxel a reachability index (and related
+directional structure) relative to a fixed base.
 A classical \emph{reachability distribution} (RD) of Vahrenkamp et~al.\
-(2013) stores, in a voxelisation of workspace relative to a fixed robot base,
-a quality score such as the measure of joint configurations that map into
-that voxel. An \emph{inverse reachability distribution} (IRD) inverts the same
-data: given a fixed TCP (e.g.\ a grasp), it yields a distribution over
-candidate base poses for which that TCP would be reachable.
+(2013) stores, in a similar voxelisation, a quality score such as the measure
+of joint configurations that map into that voxel.
+An \emph{inverse reachability distribution} (IRD) inverts the same data:
+given a fixed TCP (e.g.\ a grasp), it yields a distribution over candidate
+base poses for which that TCP would be reachable.
 
 Formally, if \(t_{i}=\Tcp_{i}^{-1}\) denotes a base-to-TCP sample stored in the
 RD, then for a world TCP \(p\in\SE(3)\) the corresponding candidate base pose
@@ -156,6 +160,268 @@ Gradient-based updates use \(\nabla_{x} C\) from automatic differentiation
 through the entire Torch graph.
 
 % -----------------------------------------------------------------------------
+\section{Design narrative: from IRD constraints to oriented queries}
+\label{sec:narrative}
+
+This section tells the design in \emph{dependency order}: which hard constraints
+define the IRD here; what a quotient space is; why only J1 may be eliminated;
+how IRD lives on the rail / J1 axis; why a flange 9-D embedding is required;
+how the operator is layered; which tricks keep it differentiable and
+semantically correct; and finally the \emph{mandatory ordered} rotation and
+lookup steps when tip$\times$roll freedom is present. Later sections supply
+formulae; this one keeps the reasoning continuous.
+
+\subsection{IRD constraints in this problem}
+\label{sec:ird-constraints}
+
+Classical IRD (Vahrenkamp et~al.) asks: \emph{with the TCP fixed, where should
+the base sit?} For ultrasound scanning the same question is narrowed by:
+
+\begin{enumerate}[leftmargin=1.6em]
+  \item \textbf{Task TCP is semi-fixed.}
+        The contact point comes from anatomy/planning. Allowed freedom is mainly
+        tip tilt and probe roll (controller-choosable), plus \emph{small}
+        pose uncertainty from medical registration (not choosable; must be
+        robustified).
+  \item \textbf{The base is not free in the plane.}
+        The arm rides a linear rail, so base pose is not free in \(\SE(2)\);
+        only the rail coordinate \(y\) remains (plus locked rail geometry).
+  \item \textbf{Queries must be relative to the base.}
+        A fixed world TCP with a sliding rail changes the geometry seen by the
+        arm; reachability must be stated on
+        \(T_{\mathrm{axis\leftarrow tcp}}=(\Taxis)^{-1}\Tcp\), not on a
+        world-only table.
+  \item \textbf{Clearance includes collision and limits.}
+        The field approximates a signed margin after self-/environment
+        collision and joint-limit checks, not pure kinematic binary reachability.
+  \item \textbf{First-stage guidance, not the final answer.}
+        The operator returns a smooth \(C(x)\) and \(\nabla C\) to move the
+        rail / twist pose; multi-seed IK with hard collision remains decisive.
+\end{enumerate}
+
+Under these constraints, ``IRD'' is no longer a planar base heatmap but a
+\emph{conditional reachability field along the one-dimensional rail family
+\(y\) (and over task-orientation samples) for a fixed or slowly varying TCP}.
+
+\subsection{What a quotient space is}
+\label{sec:what-quotient}
+
+A relative flange pose \(g\in\SE(3)\) has six degrees of freedom. If a
+continuous symmetry group \(G\) acts on \(g\) and clearance is approximately
+constant on each orbit, there is no need to store every group element:
+identify points on the same orbit to obtain the quotient \(\SE(3)/G\).
+Intuitively, a point \([g]\) is ``the geometry that remains after removing a
+known symmetry''.
+
+Here \(G=\mathrm{Yaw}_{J1}\): simultaneous rotation of position and orientation
+about the vertical J1 axis (Eq.~\eqref{eq:yaw-action}). Poses on one orbit
+describe the same arm--task geometry in the axis frame, only spun about
+gravity. The quotient
+\[
+  \mathcal{Q}=\SE(3)/\mathrm{Yaw}_{J1}
+\]
+has intrinsic dimension \(6-1=5\) (Eq.~\eqref{eq:quotient-dim}). Training and
+queries run on \([g]\), which \emph{eliminates} that redundant dimension rather
+than discarding a physical DoF.
+
+\subsection{Why only J1 may be eliminated}
+\label{sec:why-only-j1}
+
+Rudorfer's RM4D approximately quotients both \emph{base yaw} and \emph{wrist
+roll} for many 6-/7-axis arms, yielding a \(\sim\)4-D map. This system enforces
+only the first:
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{J1 yaw is a true symmetry.}
+        With a vertical axis and relative axis-frame quantities, a global spin
+        about gravity does not change collision topology or relative joint
+        geometry (under locked rail, ignoring strongly non-revolute
+        environment clutter). Eliminating it compresses samples and lets one
+        field serve forward RM and inverse IRD.
+  \item \textbf{Flange / TCP roll is not a symmetry for probe45.}
+        The acoustic axis is offset by \(\sim 50^{\circ}\) from J7. Roll about
+        flange \(z\) changes the swept probe volume and self-collision
+        envelope, hence clearance. Quotienting roll as in the legacy 5-D TCP
+        chart would falsely identify distinct task poses.
+  \item \textbf{Rail translation is not yaw.}
+        Sliding along \(e_{a}\) changes cylindrical radius/height and lands on
+        a different \([g]\); quotienting J1 does \emph{not} remove the rail DoF.
+\end{itemize}
+
+Thus the quotient is 5-D, not 4-D; roll must remain in the chart so tip$\times$roll
+queries can tell poses apart.
+
+\subsection{How IRD is represented on J1 / the rail}
+\label{sec:ird-on-j1}
+
+Base placement is parameterised by the axis frame \(\Taxis^{W}(y)\)
+(Eq.~\eqref{eq:rail-base}): \(y\) produces a pure rail translation with fixed
+orientation factors. For fixed world TCP,
+\[
+  y \;\mapsto\; T_{\mathrm{axis\leftarrow flange}}(y)
+  \;\mapsto\; [g(y)]\in\mathcal{Q}
+  \;\mapsto\; c(g(y))\in\R^{9}
+  \;\mapsto\; f_{\theta}(c)
+\]
+is the \emph{rail IRD slice} \(C_{\mathrm{rail}}(y)\) (Eq.~\eqref{eq:rail-ird}).
+In other words, IRD is a relative query along the one-parameter family of J1
+axis frames, not a discrete table over planar bases; J1 yaw is already removed
+by the quotient, so base heading need not be scanned. Optimising
+\(\partial C/\partial y\) means ``slide the rail toward better clearance''.
+
+\subsection{Why a flange 9-D embedding is required}
+\label{sec:why-flange-9d}
+
+The intrinsic object is \([g]\in\mathcal{Q}\) (5-D), but the network needs a
+smooth Euclidean input.
+
+\begin{enumerate}[leftmargin=1.6em]
+  \item \textbf{Why flange, not TCP.}
+        The chart must split quantities invariant to the last joint from
+        roll-carrying ones; those axes should align with J7 (link\_7). The TCP
+        is not coaxial with J7 under the tool offset, so the same split on TCP
+        leaks roll into ``invariant'' channels.
+  \item \textbf{Why not five minimal coordinates.}
+        Euler / azimuth charts are singular on-axis and branch-cut; AD and
+        boundary stencils break.
+  \item \textbf{Why redundant nine dimensions.}
+        Eq.~\eqref{eq:chart} uses cylindrical \((p_{z},r)\) with \(\varepsilon\),
+        a J7-invariant block, a roll-carrying block, and a ninth component
+        completing \(R^{\mathsf T}\hat z\), smoothly embedding \(\mathcal{Q}\)
+        into \(\R^{9}\). It is constant on yaw orbits
+        (Eq.~\eqref{eq:yaw-invariance}) and sensitive to roll; extra coordinates
+        are redundancy, not new physics.
+\end{enumerate}
+
+The field is \(f_{\theta}:\R^{9}\to\R\) (signed clearance). The same field
+serves ``forward: fixed axis, vary TCP'' and ``inverse: fixed TCP, vary \(y\)''
+because the input is always the relative chart \(c\).
+
+\subsection{How the operator is layered}
+\label{sec:operator-layers}
+
+Three layers stack; upper layers never rewrite lower geometry conventions:
+
+\begin{center}
+\begin{tabular}{@{}llp{5.8cm}@{}}
+\toprule
+Layer & Object & Role \\
+\midrule
+Geometry
+  & \(\Tcp^{W},\,\Taxis^{W}(y),\,c\)
+  & Relative pose, rail, TCP\(\to\)flange, 9-D quotient embedding \\
+Field
+  & \(f_{\theta}(c)\)
+  & Pointwise signed clearance (normalise, Fourier, residual MLP, support guard) \\
+Query \(\mathcal{A}\)
+  & Region~A / TaskCone / SetQuery / Trajectory
+  & Aggregate over \emph{sets} of poses (softmin / softmax / mean) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Decision variables \(x\) (\(y\), vessel angle, trajectory controls, \ldots) enter
+only through geometry into \(c\), then through \(f\) and \(\mathcal{A}\) into
+the scalar \(C(x)\). The whole graph is differentiable, so \(\nabla_{x}C\) is
+available for first-stage guidance.
+
+\subsection{Key tricks}
+\label{sec:tricks}
+
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Relative queries:} IRD semantics live on \((\Taxis)^{-1}\Tcp\);
+        rail motion needs no retraining.
+  \item \textbf{Quotient only true symmetries:} J1 yaw only; probe45 roll stays.
+  \item \textbf{Redundant smooth chart:} 9-D embedding avoids axis singularities;
+        \(\varepsilon\) softens the \(r\) kink.
+  \item \textbf{Signed clearance + boundary stencils:} avoids flat exterior
+        gradients of pure classifiers (Murooka's caveat).
+  \item \textbf{Normalisation + Fourier features:} metric and orientation
+        channels share scale; sharp reachable frontiers are representable.
+  \item \textbf{Softplus MLP:} \(C^{\infty}\) with nowhere-vanishing derivatives.
+  \item \textbf{Support-domain guard:} penalise outside the training box.
+  \item \textbf{Split aggregation semantics:} uncertainty \(\to\) softmin/CVaR;
+        tip$\times$roll freedom \(\to\) softmax (best-of), mean
+        (Eq.~\eqref{eq:mean}; cone expectation), or large-\(\tau\) soft\(*\);
+        nested queries reduce uncertainty \emph{before} freedom.
+  \item \textbf{Trajectory reduction order:} scenarios \(\to\) angles \(\to\) path
+        interiors \(\to\) full-trajectory softmin (Section~\ref{sec:agg-order});
+        reversing order flips gradient meaning.
+\end{itemize}
+
+\subsection{Ordered tip$\times$roll query pipeline (must not be reordered)}
+\label{sec:tip-roll-pipeline}
+
+Ultrasound may change tip and roll about a fixed contact point. Local angular
+increments live in the \emph{medical TCP body} \(\{b,t,n\}\):
+\(\delta\omega=(\rho\cos\phi,\,\rho\sin\phi,\,\gamma)\)
+(Eq.~\eqref{eq:task-cone-sample}). From a nominal TCP to the scalar \(C\) the
+steps are \emph{fixed} as follows; swapping any step corrupts relative pose or
+roll semantics.
+
+\begin{enumerate}[leftmargin=1.6em]
+  \item \textbf{Nominal world TCP.}
+        Take the medical contact pose \(T_{\mathrm{tcp}}^{W(0)}\) (position =
+        contact; orientation = nominal normal/holder).
+  \item \textbf{Rail \(\to\) axis frame.}
+        Build \(\Taxis^{W}(y)\) from the decision \(y\) via~\eqref{eq:rail-base}
+        (translation only; orientation factors fixed).
+  \item \textbf{Sample tip$\times$roll increments (body coordinates).}
+        Draw \((\rho,\phi,\gamma)\) in the cone; form \(\delta\omega_{k}\in\R^{3}\).
+        These are still \(\mathfrak{so}(3)\) vectors in the TCP body---not yet
+        multiplied into the world frame.
+  \item \textbf{Right-multiply the exponential (order fixed).}
+        \[
+          R_{k}
+          \;=\;
+          R_{\mathrm{tcp}}^{(0)}\,
+          \operatorname{Exp}(\delta\omega_{k}),
+          \qquad
+          p_{k}
+          \;=\;
+          p_{\mathrm{tcp}}^{(0)}.
+        \]
+        Equivalently \(T_{k}=T^{(0)}\cdot\operatorname{Exp}(\widehat{\delta\omega}_{k})\):
+        \emph{first} the nominal orientation, \emph{then} tip/roll in the body.
+        Do not use \(\operatorname{Exp}(\delta\omega)\,R^{(0)}\) (left multiply =
+        world-frame tilt, different meaning). Position stays at the contact point.
+  \item \textbf{Express relative to the axis.}
+        \(T_{\mathrm{axis\leftarrow tcp},k}
+        =(\Taxis^{W}(y))^{-1}T_{k}\) (Eq.~\eqref{eq:relative-group}).
+  \item \textbf{TCP \(\to\) flange.}
+        Constant mount transform~\eqref{eq:tcp-to-flange} yields
+        \(g_{k}=(p_{\mathrm{fl}},R_{\mathrm{fl}})_{k}\).
+  \item \textbf{Quotient embedding.}
+        \(c_{k}=c(g_{k})\in\R^{9}\) (invariant to J1 yaw; sensitive to the tip/roll
+        just applied).
+  \item \textbf{Field evaluation.}
+        \(F_{k}=f_{\theta}(c_{k})\) (or guarded \(\tilde f\)).
+  \item \textbf{Aggregate by query semantics (still ordered).}
+        \begin{itemize}[leftmargin=1.2em]
+          \item Pure TaskCone: \(C=\softmax_{\tau}\{F_{k}\}\) (best tip$\times$roll),
+                or \(C=C_{\mathrm{mean}}\) (Eq.~\eqref{eq:task-cone-mean}; cone
+                expectation / uniform average).
+          \item If Region~A uncertainty wraps freedom: for each free sample
+                \(\eta_{k}\), softmin/CVaR over uncertain \(\delta_{j}\) first,
+                then softmax / mean over \(k\) (Eq.~\eqref{eq:set-query}:
+                \emph{uncertainty before freedom}).
+          \item Trajectories: softmin over waypoints/path samples next
+                (Section~\ref{sec:agg-order}).
+        \end{itemize}
+  \item \textbf{Backpropagation.}
+        \(\partial C/\partial y\), \(\partial C/\partial\theta\), \ldots\ flow through
+        the same ordered graph; swapping left/right multiply or aggregation
+        order aims gradients at the wrong geometric DoF.
+\end{enumerate}
+
+In one line:
+\emph{IRD constraints collapse the base to rail \(y\); the quotient removes only
+J1 yaw; the 9-D flange chart smoothly represents the remaining 5-D; the field
+scores points; the query layer handles tip$\times$roll by
+``right-multiply rotations \(\to\) relative \(\to\) flange \(\to\) \(c\) \(\to\) \(f\) \(\to\)
+prescribed aggregation order''.}
+
+% -----------------------------------------------------------------------------
 \section{Paper map: what each reference contributes}
 \label{sec:papers}
 
@@ -165,6 +431,9 @@ through the entire Torch graph.
 \toprule
 Paper & Core idea absorbed & Where it appears \\
 \midrule
+Zacharias et~al.\ 2013
+  & Capability map: voxel reachability index (+ directional structure)
+  & Offline capability maps; Zacharias-style sphere-glyph figures \\
 Vahrenkamp et~al.\ 2013
   & IRD = fix TCP, score base poses
   & \(\Tcp\) fixed (or slowly varying); query via \(\Taxis(y_{\mathrm{rail}})\) \\
@@ -220,6 +489,27 @@ margin.
 \section{Frames, rail base, and the flange chart}
 \label{sec:chart}
 
+This section is the geometric backbone of the operator: how a world TCP and a
+rail coordinate become a yaw-invariant flange feature vector. The chain is
+\begin{equation}
+\label{eq:pipeline}
+  \bigl(\Tcp^{W},\, y\bigr)
+  \;\xrightarrow{\;\eqref{eq:rail-base}\;}
+  \Taxis^{W}(y)
+  \;\xrightarrow{\;\eqref{eq:relative-pose}\;}
+  T_{\mathrm{axis\leftarrow tcp}}
+  \;\xrightarrow{\;\eqref{eq:tcp-to-flange}\;}
+  (p_{\mathrm{fl}},R_{\mathrm{fl}})
+  \;\xrightarrow{\;\eqref{eq:chart}\;}
+  c\in\R^{9}
+  \;\xrightarrow{\;f_{\theta}\;}
+  \text{clearance}.
+\end{equation}
+Classical IRD scores candidate \emph{bases} for a fixed TCP. Here the base is
+constrained to a rail, so the free placement variable collapses to the scalar
+\(y\); the relative transform and the quotient chart below turn that 1-D
+placement into a query on a single trained field.
+
 \subsection{World poses and relative pose}
 \label{sec:frames}
 
@@ -253,9 +543,30 @@ expressed in the axis frame is
 \end{equation}
 \emph{Interpretation.}
 Equation~\eqref{eq:relative-pose} is the group product
-\((\Taxis^{W})^{-1}\Tcp^{W}\). All reachability queries are posed in this
-relative frame, which is exactly the IRD viewpoint: move the base/axis and
-the relative TCP changes even if the world TCP is fixed.
+\((\Taxis^{W})^{-1}\Tcp^{W}\). Equivalently, if both poses are written as
+elements of \(\SE(3)\),
+\begin{equation}
+\label{eq:relative-group}
+  T_{\mathrm{axis\leftarrow tcp}}
+  \;=\;
+  (\Taxis^{W})^{-1}\,\Tcp^{W}
+  \;=\;
+  \begin{bmatrix}
+    R_{\mathrm{axis\leftarrow tcp}} & p_{\mathrm{axis\leftarrow tcp}} \\
+    0^{\mathsf T} & 1
+  \end{bmatrix}.
+\end{equation}
+All reachability queries are posed in this relative frame, which is exactly
+the IRD viewpoint: move the base/axis and the relative TCP changes even if
+the world TCP is fixed. Conversely, a pure world-frame TCP table would
+recompute reachability whenever the rail slides; the relative product
+absorbs that motion into a change of \(T_{\mathrm{axis\leftarrow tcp}}\) only.
+
+\paragraph{Why the axis frame, not ``base\_link'' alone.}
+The J1 axis frame is the natural body in which yaw about gravity acts as a
+left (or simultaneous) rotation of position and orientation. Scoring in that
+frame makes the subsequent yaw quotient~\eqref{eq:yaw-action} a clean group
+action rather than a mixture of rail offset and joint-1 angle.
 
 \subsection{Rail-induced axis frame}
 \label{sec:rail}
@@ -277,14 +588,48 @@ For a linear rail along local axis \(e_{a}\) (code default \(a=1\), i.e.\ \(y\))
 \emph{Interpretation.}
 \(y\) is the raw URDF rail coordinate. Differentiating
 \eqref{eq:rail-base} w.r.t.\ \(y\) moves only the axis origin along the rail;
-rotation is constant. This is the primitive that turns ``IRD w.r.t.\ base
-placement'' into ``IRD w.r.t.\ one scalar rail DoF''.
+rotation is constant:
+\begin{equation}
+\label{eq:rail-jacobian}
+  \frac{\partial p_{\mathrm{axis}}^{W}}{\partial y}
+  \;=\;
+  R_{\mathrm{world\leftarrow rail}}\, e_{a},
+  \qquad
+  \frac{\partial R_{\mathrm{axis}}^{W}}{\partial y}
+  \;=\;
+  0.
+\end{equation}
+This is the primitive that turns ``IRD w.r.t.\ free base placement in
+\(\SE(2)\) or \(\SE(3)\)'' into ``IRD w.r.t.\ one scalar rail DoF''.
+Substituting \(\Taxis^{W}(y)\) into~\eqref{eq:relative-pose} with fixed
+\(\Tcp^{W}\) yields a curve
+\(y\mapsto T_{\mathrm{axis\leftarrow tcp}}(y)\) in \(\SE(3)\); composing with
+the chart~\eqref{eq:chart} and the field \(f_{\theta}\) produces the
+\emph{rail IRD slice}
+\begin{equation}
+\label{eq:rail-ird}
+  C_{\mathrm{rail}}(y)
+  \;=\;
+  f_{\theta}\bigl(
+    c\bigl(T_{\mathrm{axis\leftarrow flange}}(y)\bigr)
+  \bigr)
+\end{equation}
+(optionally after TCP\(\to\)flange and set aggregation). Gradients
+\(\partial C_{\mathrm{rail}}/\partial y\) then point toward better rail
+stations without a discrete IRD table over planar bases.
+
+\paragraph{Fixed factors.}
+\(T_{\mathrm{world\leftarrow rail}}\) places the rail in the room;
+\(T_{\mathrm{rail\leftarrow axis}}(y{=}0)\) is the locked-rail mount of the
+arm on the slider. Neither depends on the decision variable \(y\) at query
+time; only the middle translation does.
 
 \subsection{TCP to flange}
 \label{sec:tcp-flange}
 
 Let \(T_{\mathrm{flange\leftarrow tcp}}\) be the fixed tool transform from
-URDF. Flange (link\_7) pose in the axis frame is
+URDF (constant for a given mount: probe45, tcp220, horizontal, \ldots).
+Flange (link\_7) pose in the axis frame is
 \begin{equation}
 \label{eq:tcp-to-flange}
   \bigl(p_{\mathrm{fl}},R_{\mathrm{fl}}\bigr)
@@ -292,16 +637,199 @@ URDF. Flange (link\_7) pose in the axis frame is
   \mathrm{compose}\bigl(
     (p_{\mathrm{tcp}},R_{\mathrm{tcp}}),\;
     T_{\mathrm{flange\leftarrow tcp}}
-  \bigr).
+  \bigr),
 \end{equation}
+i.e.\ \(T_{\mathrm{axis\leftarrow flange}}
+= T_{\mathrm{axis\leftarrow tcp}}\,
+T_{\mathrm{tcp\leftarrow flange}}\) with
+\(T_{\mathrm{tcp\leftarrow flange}}
+= T_{\mathrm{flange\leftarrow tcp}}^{-1}\) as stored in the kinematic chain.
 We score flange geometry rather than TCP geometry so that the chart axes
-align with the J7 rotation axis (needed for the invariant / roll split below).
+align with the J7 rotation axis (needed for the invariant / roll split
+below). Different mounts change only the constant tool transform; the same
+chart \(c\) and (re)trained field apply once samples are regenerated.
+
+\subsection{Quotient by J1 yaw: what is being identified}
+\label{sec:quotient}
+
+The previous subsections already give the relative TCP in the axis frame.
+The quotient and 9-D embedding act on the \emph{flange} (link\_7) relative
+pose, not directly on the TCP: the TCP is mapped through the fixed tool
+transform first (Eq.~\eqref{eq:tcp-to-flange}); see the end of this
+subsection and~\ref{sec:why-flange-not-tcp}.
+
+Write the relative flange pose in the axis frame as
+\begin{equation}
+\label{eq:g-def}
+  g
+  \;=\;
+  (p,R)
+  \;=\;
+  T_{\mathrm{axis\leftarrow flange}}
+  \;\in\;
+  \SE(3),
+\end{equation}
+where
+\begin{itemize}[leftmargin=1.4em]
+  \item \(p\in\R^{3}\) is the flange origin in the axis frame;
+  \item \(R\in\SO(3)\) is the flange orientation, with columns
+        \(u_{x},u_{y},u_{z}\in\R^{3}\) (flange body axes expressed in the
+        axis frame);
+  \item \(T_{\mathrm{axis\leftarrow flange}}\) is obtained by composing
+        \(T_{\mathrm{axis\leftarrow tcp}}\) with the fixed
+        \(T_{\mathrm{tcp\leftarrow flange}}\) (at query time the TCP is
+        known, hence \(g\) is known).
+\end{itemize}
+
+Simultaneous yaw about the J1/\(\hat z\) axis acts by
+\begin{equation}
+\label{eq:yaw-action}
+  \alpha\cdot g
+  \;=\;
+  \bigl(R_{z}(\alpha)\,p,\; R_{z}(\alpha)\,R\bigr),
+  \qquad
+  R_{z}(\alpha)
+  \;=\;
+  \begin{bmatrix}
+    \cos\alpha & -\sin\alpha & 0 \\
+    \sin\alpha & \cos\alpha & 0 \\
+    0 & 0 & 1
+  \end{bmatrix}.
+\end{equation}
+where
+\begin{itemize}[leftmargin=1.4em]
+  \item \(\alpha\in[0,2\pi)\) is the rotation angle about the vertical axis
+        (axis-frame \(\hat z\), aligned with J1)---\emph{not} the rail
+        coordinate \(y\), and \emph{not} an independent network feature;
+  \item \(R_{z}(\alpha)\) is planar rotation about \(\hat z\);
+  \item \(\alpha\cdot g\) is the same relative geometry spun by \(\alpha\)
+        about gravity (position and orientation both left-multiplied by
+        \(R_{z}\)).
+\end{itemize}
+For RM75 with a vertical J1, this is (approximately) a free symmetry of
+collision-checked reachability: rotating the whole arm+task about gravity
+does not create a new kinematic situation once quantities are expressed
+relative to the axis.
+
+The \emph{yaw orbit} of \(g\) is
+\begin{equation}
+\label{eq:yaw-orbit}
+  \mathcal{O}(g)
+  \;=\;
+  \{\,\alpha\cdot g \;:\; \alpha\in[0,2\pi)\,\},
+\end{equation}
+where \(\mathcal{O}(g)\) is the set of all poses that differ from \(g\) only
+by absolute heading about \(\hat z\).
+
+The \emph{quotient space}
+\begin{equation}
+\label{eq:quotient-def}
+  \mathcal{Q}
+  \;=\;
+  \SE(3)/\mathrm{Yaw}_{J1}
+  \;=\;
+  \bigl\{\, [g]
+  \;\big|\;
+  g\sim \alpha\cdot g
+  \,\bigr\}
+\end{equation}
+where
+\begin{itemize}[leftmargin=1.4em]
+  \item \(\mathrm{Yaw}_{J1}\) is the one-dimensional symmetry group generated
+        by \(\{\alpha\mapsto R_{z}(\alpha)\}\);
+  \item \(g\sim \alpha\cdot g\) is the equivalence ``same yaw orbit'';
+  \item \([g]\in\mathcal{Q}\) is the orbit \(\mathcal{O}(g)\) as a single
+        point (reachability distinguishes different \([g]\), not different
+        \(\alpha\) inside one orbit);
+  \item \(\mathcal{Q}\) is the space of all such classes (``relative pose
+        space after removing absolute J1 yaw'').
+\end{itemize}
+Dimension count: \(\dim\SE(3)=6\), one continuous symmetry, so
+\begin{equation}
+\label{eq:quotient-dim}
+  \dim\mathcal{Q}
+  \;=\;
+  5,
+\end{equation}
+where \(5\) is the \emph{intrinsic} dimension (translational invariants after
+cylindrical reduction, plus two independent orientation degrees once yaw is
+removed; flange roll about J7 remains inside \(\mathcal{Q}\)).
+
+\paragraph{What we do \emph{not} quotient.}
+RM4D further quotients TCP/tool roll for many stock flanges, reaching an
+intrinsic 4-D map. For probe45 the acoustic axis is tilted \(\sim 50^{\circ}\)
+from J7, so roll about the flange \(z\)-axis changes the collision and
+workspace footprint. Those poses lie on \emph{different} orbits under
+\eqref{eq:yaw-action} only and must remain distinguishable---hence a 5-D
+quotient, not 4-D.
+
+\paragraph{Relation to the rail coordinate.}
+The rail map \(y\mapsto g(y)=T_{\mathrm{axis\leftarrow flange}}(y)\) is a
+curve in \(\SE(3)\). Pass to the quotient and the curve becomes
+\(y\mapsto [g(y)]\in\mathcal{Q}\).
+Here \(y\) is still the URDF rail coordinate; what is quotiented is
+\(\alpha\) (heading), not \(y\). Distinct \(y\) can land on the same orbit
+only in degenerate cases; in normal use rail motion changes the cylindrical
+radius/height or relative heading encoded in \([g]\), which is exactly what
+the IRD-along-rail scalar~\eqref{eq:rail-ird} should see. Translation along
+\(e_{a}\) is not a \(\mathrm{Yaw}_{J1}\) action.
+
+\subsection{Why the chart uses flange axes \(u_{x},u_{y},u_{z}\), not TCP}
+\label{sec:why-flange-not-tcp}
+
+The query entry point remains the medical/task \textbf{TCP}: tip$\times$roll
+samples, Region~A, and trajectory waypoints all operate on
+\(T_{\mathrm{tcp}}^{W}\). Immediately before the field we apply the fixed step
+\begin{equation}
+\label{eq:tcp-then-flange}
+  T_{\mathrm{tcp}}^{\mathrm{axis}}
+  \;\xrightarrow{\;T_{\mathrm{flange\leftarrow tcp}}\;}
+  g
+  \;=\;
+  T_{\mathrm{axis\leftarrow flange}},
+\end{equation}
+where \(T_{\mathrm{flange\leftarrow tcp}}\) is mount-dependent (probe45 /
+tcp220 / horizontal) but constant for a given mount.
+
+The chart vectors \(u_{x},u_{y},u_{z}\) are columns of the \textbf{flange}
+orientation \(R_{\mathrm{fl}}\), because:
+\begin{itemize}[leftmargin=1.4em]
+  \item J7 spins about flange \(z\) (\(u_{z}\)); splitting a J7-invariant
+        block from a roll-carrying block requires axes aligned with link\_7.
+  \item The TCP is not coaxial with J7 under the tool offset; doing the same
+        split on TCP columns leaks roll into ``invariant'' channels (wrong for
+        probe45).
+  \item The TCP is not discarded: it uniquely determines \(g\)
+        via~\eqref{eq:tcp-then-flange}; changing the mount only changes the
+        constant tool transform, not the form of \(c\).
+\end{itemize}
 
 \subsection{Nine-dimensional yaw-invariant flange embedding}
 \label{sec:9d}
 
-Write flange position \(p=(p_{x},p_{y},p_{z})\) and flange axes
-\(u_{x},u_{y},u_{z}\) (columns of \(R_{\mathrm{fl}}\)). Define the radial
+An intrinsic 5-D manifold does not by itself give a network a globally
+smooth Euclidean input. Charts with Euler angles or a minimal 5-tuple
+introduce singularities (gimbal lock, branch cuts, undefined azimuth on the
+J1 axis). We therefore construct a \emph{redundant smooth embedding}
+\begin{equation}
+\label{eq:embedding-goal}
+  c:\mathcal{Q}\longrightarrow\R^{9},
+\end{equation}
+where \(c\) maps each class \([g]\) to a point in \(\R^{9}\), constant on yaw
+orbits, sensitive to flange roll, and \(C^{\infty}\) (after the mild radial
+regularisation below) even as \(p_{xy}\to 0\).
+
+For a given \(g=(p,R)\), write
+\begin{equation}
+\label{eq:flange-axes}
+  R
+  \;=\;
+  \bigl[\,u_{x}\;\; u_{y}\;\; u_{z}\,\bigr],
+  \qquad
+  p=(p_{x},p_{y},p_{z}),
+\end{equation}
+where \(u_{x},u_{y},u_{z}\) are the flange body axes in the \emph{axis frame}
+(not TCP axes; the TCP was folded into \(g\) above). Define the radial
 smoothed distance
 \begin{equation}
 \label{eq:radial}
@@ -309,8 +837,11 @@ smoothed distance
   \;=\;
   \sqrt{p_{x}^{2}+p_{y}^{2}+\varepsilon},
   \qquad
-  \varepsilon=(10^{-3}\,\mathrm{m})^{2}.
+  \varepsilon=(10^{-3}\,\mathrm{m})^{2},
 \end{equation}
+where \(r\) is the cylindrical radius from the J1 axis to the flange origin
+and \(\varepsilon\) prevents a derivative blow-up at \(r=0\).
+
 The chart is the map
 \begin{equation}
 \label{eq:chart}
@@ -329,17 +860,29 @@ The chart is the map
   \end{pmatrix}
   \in\R^{9},
 \end{equation}
-where \(p_{xy}=(p_{x},p_{y})\), \(u_{\cdot,xy}\) is the \(xy\)-projection of an
-axis, \(\hat z=(0,0,1)\), the 2-D ``cross'' is the scalar
-\(p_{x}u_{y}-p_{y}u_{x}\), and
+where
+\begin{itemize}[leftmargin=1.4em]
+  \item \(p_{xy}=(p_{x},p_{y})\) is the horizontal position;
+  \item \(u_{\cdot,xy}\) is the \(xy\)-projection of the corresponding flange
+        axis;
+  \item \(\hat z=(0,0,1)\) is the vertical unit vector in the axis frame
+        (J1 direction);
+  \item the 2-D ``cross'' \(p_{xy}\times u_{xy}:=p_{x}u_{y}-p_{y}u_{x}\) is a
+        scalar;
+  \item the dot/cross terms encode yaw-invariant ``heading relative to the
+        horizontal radial direction''.
+\end{itemize}
+and
 \begin{equation}
 \label{eq:uyz}
   u_{y}\!\cdot\!\hat z
   \;=\;
   (u_{z}\times u_{x})\!\cdot\!\hat z
   \;=\;
-  u_{z,x}\,u_{x,y}-u_{z,y}\,u_{x,x}.
+  u_{z,x}\,u_{x,y}-u_{z,y}\,u_{x,x},
 \end{equation}
+where the last identity uses \(u_{z}\perp u_{x}\) and the right-handed frame
+to complete the ninth component and remove a near-axis orientation ambiguity.
 
 \paragraph{Why each component.}
 \begin{itemize}[leftmargin=1.4em]
@@ -358,25 +901,44 @@ axis, \(\hat z=(0,0,1)\), the 2-D ``cross'' is the scalar
         ambiguity remains in reconstructing orientation about the axis.
 \end{itemize}
 
-\paragraph{Symmetry statement.}
-If \(R_{z}(\alpha)\) is a rotation about the J1 axis applied simultaneously to
-base and (equivalently) to the relative flange pose, then
+\paragraph{Symmetry / embedding statement.}
+If \(R_{z}(\alpha)\) acts as in~\eqref{eq:yaw-action}, then
 \begin{equation}
 \label{eq:yaw-invariance}
   c\bigl(R_{z}(\alpha)\,p,\; R_{z}(\alpha)\,R\bigr)
   \;=\;
   c(p,R).
 \end{equation}
-Thus \(c\) embeds the intrinsic quotient
-\(\SE(3)/\mathrm{Yaw}_{J1}\) smoothly into \(\R^{9}\) (redundant coordinates
-of an intrinsic 5-D flange chart after quotienting only yaw).
+Hence \(c\) factors through the quotient:
+\(c(g)=c(\alpha\cdot g)\), and we may view \(c\) as a map
+\(\mathcal{Q}\to\R^{9}\). The image is a 5-dimensional submanifold (up to the
+radial smoothing) sitting in \(\R^{9}\); the four ``extra'' coordinates are
+redundancy that buys smoothness and an easy MLP input, not four extra
+physical degrees of freedom.
+
+\paragraph{Conversion summary.}
+Putting the pieces together for a fixed world TCP and rail station \(y\):
+\begin{enumerate}[leftmargin=1.4em]
+  \item Form \(\Taxis^{W}(y)\) by~\eqref{eq:rail-base} (1-D base placement).
+  \item Relative TCP: \(T_{\mathrm{axis\leftarrow tcp}}
+        =(\Taxis^{W}(y))^{-1}\Tcp^{W}\)~\eqref{eq:relative-group}.
+  \item Relative flange via the constant mount
+        transform~\eqref{eq:tcp-to-flange}.
+  \item Quotient feature \(c\in\R^{9}\)~\eqref{eq:chart}, invariant to J1 yaw,
+        sensitive to flange roll.
+  \item Clearance \(f_{\theta}(c)\); optional Region~A / TaskCone / trajectory
+        aggregators act on samples of \(c\) (or of \(y\) and task angles).
+\end{enumerate}
+Steps 1--2 are the IRD-on-rail reduction; steps 3--4 are the
+RM4D-inspired quotient embedding specialised to probe45; step 5 is the
+learned signed field.
 
 \begin{remark}[Legacy 5-D TCP chart]
 An older embedding
 \(c_{\mathrm{TCP}}=[p_{z},\,u_{z}\!\cdot\!\hat z,\,\|p_{xy}\|,\,
 p_{xy}\!\cdot\!u_{xy},\,p_{xy}\times u_{xy}]\)
-quotiented both yaw and TCP roll. For probe45 this is incorrect and is kept
-only for audits.
+quotiented both yaw and TCP roll (intrinsic 4-D after both symmetries).
+For probe45 this is incorrect and is kept only for audits.
 \end{remark}
 
 % -----------------------------------------------------------------------------
@@ -669,6 +1231,36 @@ stencil values plus normal alignment keep a usable slope across the boundary
 band.
 \end{remark}
 
+\subsection{Held-out accuracy of point queries \(f_{\theta}\)}
+\label{sec:field-accuracy}
+
+Table~\ref{tab:f-usable} summarises the production checks that establish
+\(f_{\theta}\) as a usable optimization-direction operator
+(\texttt{rm4d\_signed\_production}). Full metrics are in
+\texttt{docs/rm4d\_signed\_ird\_design.md}.
+
+\begin{table}[ht]
+\centering
+\caption{Accuracy of \(f_{\theta}\).}
+\label{tab:f-usable}
+\begin{tabular}{@{}l r@{}}
+\hline\hline
+Quantity & Value \\
+\hline
+Balanced accuracy & \(97.64\%\) \\
+Positional direction agreement & \(99.96\%\) \\
+Rotational direction agreement & \(99.97\%\) \\
+Independent-grid accuracy & \(99.17\%\) \\
+Rail AD--FD relative error & \(0.0098\%\) \\
+TCP \(x\) AD--FD relative error & \(0.0101\%\) \\
+\hline\hline
+\end{tabular}
+\end{table}
+
+Sign agreement supports point queries; direction agreement and AD--FD
+agreement show that \(\nabla F\) is a usable update direction. Hard
+feasibility still requires final IK with collision checking.
+
 % -----------------------------------------------------------------------------
 \section{Differentiable set queries}
 \label{sec:region}
@@ -771,8 +1363,41 @@ For~\eqref{eq:softmax},
   \pi_{k}^{\mathrm{max}}(v),
 \end{equation}
 concentrated on the \emph{largest} entries. Thus robust queries backpropagate
-into worst-case samples; task-free queries backpropagate into best-case
+into worst-case samples; task-free softmax queries backpropagate into best-case
 samples.
+
+\paragraph{Mean (cone expectation).}
+When angles are treated as a distribution \(\mu(\mathrm{d}\eta)\) on the tip$\times$roll
+cone (uniform in the sampling measure, or Sobol quadrature), the natural soft
+aggregate is the expectation rather than a soft extremum:
+\begin{equation}
+\label{eq:mean}
+  C_{\mathrm{mean}}
+  \;=\;
+  \operatorname{mean}(v)
+  \;=\;
+  \frac{1}{K}\sum_{k=1}^{K} v_{k}
+  \;\approx\;
+  \mathbb{E}_{\eta\sim\mu}\bigl[F\bigl(T(\eta),\,\Taxis\bigr)\bigr].
+\end{equation}
+Its gradient weights are uniform,
+\begin{equation}
+\label{eq:mean-grad}
+  \frac{\partial C_{\mathrm{mean}}}{\partial v_{k}}
+  \;=\;
+  \frac{1}{K},
+  \qquad
+  \nabla_{x} C_{\mathrm{mean}}
+  \;=\;
+  \frac{1}{K}\sum_{k=1}^{K}
+  \nabla_{x} F\bigl(T(\eta_{k}),\,\Taxis(x)\bigr).
+\end{equation}
+\emph{Relation to softmin/softmax.}
+As \(\tau\to\infty\), both~\eqref{eq:softmin} and~\eqref{eq:softmax} flatten
+toward the sample mean (up to the constant-preserving normalisation).
+Mean is therefore the honest ``average over uncertain / free angles'' limit:
+every sample contributes equally to the update direction, unlike softmin
+(mass on the worst) or softmax (mass on the best).
 
 \subsection{Region A: uncertainty box \(\times\) small cone (softmin)}
 \label{sec:region-a}
@@ -831,11 +1456,14 @@ uncertainty set \(U\). Increasing \(C_{\mathrm{A}}\) improves the worst
 likely pose under small registration / contact error. Coverage diagnostics
 use \(\frac{1}{K}\sum_{k}\sigma(F_{k}/\tau)\).
 
-\subsection{Task cone: tip \(\times\) roll free set (softmax)}
+\subsection{Task cone: tip \(\times\) roll free set (softmax or mean)}
 \label{sec:task-cone}
 
 Ultrasound contact often permits a large tip tilt and probe roll as
-\emph{controller-chosen} free variables, not as uncertainty.
+\emph{controller-chosen} free variables, not as uncertainty. The same sample
+set also supports a mean aggregator when tip$\times$roll is treated as
+\emph{uncertain} (or when the placement should improve the whole cone, not
+only its best pose).
 
 \begin{definition}[TaskCone]
 Tip half-angle \(\beta_{\mathrm{tip}}\) (e.g.\ \(20^{\circ}\)--\(45^{\circ}\)),
@@ -862,24 +1490,39 @@ roll half-range \(\gamma_{\max}\) (e.g.\ \(20^{\circ}\)--\(30^{\circ}\)),
   (\rho\cos\phi,\;\rho\sin\phi,\;\gamma).
 \end{aligned}
 \end{equation}
-Position is held fixed (contact point prescribed). The task clearance is
+Position is held fixed (contact point prescribed). Write
+\(v_{k}=F\bigl(\Tcp(\eta_{k}),\,\Taxis\bigr)\). Two common aggregates are
 \begin{equation}
 \label{eq:task-cone}
   C_{\mathrm{task}}(\Tcp,\Taxis)
   \;=\;
   \softmax_{\tau}
-  \Bigl\{
-    F\bigl(\Tcp(\eta_{k}),\,\Taxis\bigr)
-  \Bigr\}_{k=1}^{K},
+  \{v_{k}\}_{k=1}^{K},
   \qquad
-  \tau=0.20.
+  \tau=0.20,
 \end{equation}
+and the cone expectation~\eqref{eq:mean},
+\begin{equation}
+\label{eq:task-cone-mean}
+  C_{\mathrm{mean}}(\Tcp,\Taxis)
+  \;=\;
+  \mathbb{E}_{\eta\sim\mu}
+  \bigl[
+    F\bigl(\Tcp(\eta),\,\Taxis\bigr)
+  \bigr]
+  \;\approx\;
+  \frac{1}{K}\sum_{k=1}^{K} v_{k},
+\end{equation}
+with update direction~\eqref{eq:mean-grad}.
 \emph{Interpretation.}
-Opposite of Region~A: \(C_{\mathrm{task}}\) asks whether \emph{some}
-tip$\times$roll choice makes the arm comfortable. Gradients push the base/rail
-toward placements that admit a high-clearance free pose inside the cone.
-This is the Chiu-style ``match the posture set to the task'' idea, expressed
-as a reachability margin rather than an ellipsoid index.
+Opposite of Region~A: softmax \(C_{\mathrm{task}}\) asks whether \emph{some}
+tip$\times$roll choice makes the arm comfortable. Mean \(C_{\mathrm{mean}}\)
+asks how good the cone is \emph{on average} and backpropagates equally into
+every sample. Choose softmax when tip$\times$roll is controller freedom;
+choose mean (or softmin/CVaR) when angles are truly uncertain or the
+placement should raise the whole cone. Both express the Chiu-style
+``match the posture set to the task'' idea as a reachability margin rather
+than an ellipsoid index.
 
 \subsection{Nested free \(\times\) uncertain query (SetQuery)}
 \label{sec:set-query}
@@ -979,7 +1622,7 @@ For Region~A,
   \pi_{k}^{\mathrm{min}}\,
   \nabla_{x} F\bigl(\Tcp(\delta_{k};x),\,\Taxis(x)\bigr).
 \end{equation}
-For TaskCone,
+For TaskCone (softmax),
 \begin{equation}
 \label{eq:grad-task}
   \nabla_{x} C_{\mathrm{task}}
@@ -988,12 +1631,121 @@ For TaskCone,
   \pi_{k}^{\mathrm{max}}\,
   \nabla_{x} F\bigl(\Tcp(\eta_{k};x),\,\Taxis(x)\bigr).
 \end{equation}
+For the cone mean~\eqref{eq:task-cone-mean},
+\begin{equation}
+\label{eq:grad-mean}
+  \nabla_{x} C_{\mathrm{mean}}
+  \;=\;
+  \frac{1}{K}\sum_{k=1}^{K}
+  \nabla_{x} F\bigl(\Tcp(\eta_{k};x),\,\Taxis(x)\bigr).
+\end{equation}
 \emph{Interpretation of ``conditional IRD gradient''.}
 The condition is the set \(U\) or \(D_{\mathrm{free}}\). The scalar \(C\) is
 the set-aggregated clearance. Its gradient w.r.t.\ base/rail/path parameters
 is a \emph{weighted average of point-IRD gradients} at the sampled local
-poses, with weights~\eqref{eq:softmin-grad} or~\eqref{eq:softmax-grad}.
+poses, with weights~\eqref{eq:softmin-grad},~\eqref{eq:softmax-grad},
+or the uniform \(1/K\) of~\eqref{eq:mean-grad}.
 No discrete voxel argmax is required.
+
+\subsection{From point clearances to conditional queries and update directions}
+\label{sec:agg-to-grad}
+
+This subsection chains~\ref{sec:task-cone}--\ref{sec:cond-grad} into one
+intuitive pipeline. \emph{Training} fits only \(f_{\theta}(c)\) (pointwise);
+\emph{inference} uses \(\mathcal{A}\) for region/angle queries, then automatic
+differentiation for the update direction.
+
+\paragraph{Step 1 --- Point query.}
+With a nominal TCP and rail coordinate \(y\), a single pose \(T\) scores as
+\begin{equation}
+\label{eq:point-clearance}
+  v
+  \;=\;
+  F(T,\Taxis(y))
+  \;=\;
+  f_{\theta}\bigl(c(T,\Taxis(y))\bigr)
+  \;\in\;
+  \R.
+\end{equation}
+Here \(v\) is signed clearance at that pose: \emph{no} angle set and \emph{no}
+direction vector yet.
+
+\paragraph{Step 2 --- Region/angle $=$ many points $+$ aggregation.}
+For TaskCone (free tip$\times$roll), draw \(K\) increments \(\eta_{k}\) in the
+cone, form poses \(T_{k}=\Tcp(\eta_{k})\), and evaluate pointwise:
+\begin{equation}
+\label{eq:task-pipe}
+\begin{aligned}
+  v_{k}
+  &=
+  F\bigl(T_{k},\,\Taxis(y)\bigr),
+  \qquad
+  k=1,\ldots,K,
+  \\
+  C_{\mathrm{task}}(y)
+  &=
+  \softmax_{\tau}(v_{1},\ldots,v_{K})
+  \;\approx\;
+  \text{how good the best pose in the cone is},
+  \\
+  C_{\mathrm{mean}}(y)
+  &=
+  \tfrac{1}{K}\sum_{k} v_{k}
+  \;\approx\;
+  \text{how good the cone is on average}.
+\end{aligned}
+\end{equation}
+Region~A is the same with \(\softmin\) (worst-case). Thus
+\[
+  \text{region/angle query}
+  \;=\;
+  \text{many pointwise }f\text{ queries}
+  \;+\;
+  \softmin/\softmax/\mathrm{mean}
+  \quad\text{(no separate region network)}.
+\]
+
+\paragraph{Step 3 --- Update direction $=$ gradient of the scalar $C$.}
+Let the decision variable be rail \(y\) (or vessel angle \(\theta\)). The
+computational graph is
+\begin{equation}
+\label{eq:opt-chain}
+  y
+  \;\to\;
+  \Taxis(y)
+  \;\to\;
+  \{T_{k}\}
+  \;\to\;
+  \{c_{k}\}
+  \;\to\;
+  \{v_{k}=f_{\theta}(c_{k})\}
+  \;\to\;
+  C=\mathcal{A}(v).
+\end{equation}
+Automatic differentiation yields
+\begin{equation}
+\label{eq:opt-grad-y}
+  \frac{\partial C}{\partial y}
+  \;=\;
+  \sum_{k=1}^{K}
+  \frac{\partial C}{\partial v_{k}}\,
+  \frac{\partial v_{k}}{\partial y},
+\end{equation}
+where \(\partial C/\partial v_{k}\) is the softmin/softmax weight \(\pi_{k}\)
+from~\eqref{eq:softmin-grad} or~\eqref{eq:softmax-grad}, or the uniform
+\(1/K\) of~\eqref{eq:mean-grad}:
+\begin{itemize}[leftmargin=1.4em]
+  \item \(\softmin\): mass on the \emph{worst} sample \(\Rightarrow\) improve the worst;
+  \item \(\softmax\): mass on the \emph{best} sample \(\Rightarrow\) raise an already
+        good pose or move the placement toward a good region;
+  \item \(\mathrm{mean}\): equal weight on every sample \(\Rightarrow\) raise the
+        cone average (Eq.~\eqref{eq:grad-mean}).
+\end{itemize}
+Quiver arrows / update steps are \(\partial C/\partial y\) (or
+\(\partial C/\partial\theta\)); they are \emph{not} a collage of per-point
+``direction features''. Each point only has a scalar \(v_{k}\); the direction
+is the derivative of \(C\) w.r.t.\ the decision variable
+(Eqs.~\eqref{eq:grad-task},~\eqref{eq:demo-grads}).
 
 \subsection{Vessel-surface example \((\theta,y)\)}
 \label{sec:vessel-grad}
@@ -1105,7 +1857,7 @@ A trajectory is only a curve \(x\mapsto(\Tcp(x),\Taxis(x))\). Because:
   \item \(c\) depends on the \emph{relative} pose~\eqref{eq:relative-pose};
   \item cone samples are expressed in the \emph{current} TCP body frame
         \eqref{eq:perturb};
-  \item aggregators~\eqref{eq:softmin}--\eqref{eq:softmax} are memoryless
+  \item aggregators~\eqref{eq:softmin}--\eqref{eq:mean} are memoryless
         functions of the current sample scores;
 \end{enumerate}
 re-evaluating \(C_{\mathrm{task}}(s)\) or \(C_{\mathrm{traj}}(x)\) at a new
@@ -1212,10 +1964,11 @@ Symbol & Meaning \\
 \(c\in\R^{9}\) & Yaw-invariant flange chart \\
 \(f_{\theta},\tilde f\) & Signed field; support-guarded field \\
 \(F\) & World point score~\eqref{eq:score-world} \\
-\(C_{\mathrm{A}},C_{\mathrm{task}},C_{\mathrm{set}},C_{\mathrm{traj}}\) &
+\(C_{\mathrm{A}},C_{\mathrm{task}},C_{\mathrm{mean}},C_{\mathrm{set}},C_{\mathrm{traj}}\) &
   Aggregated clearances \\
 \(y\) & Rail coordinate \\
 \(\delta,\eta\) & Uncertainty sample; free (task) sample \\
+\(\mu\) & Distribution on tip$\times$roll cone~\eqref{eq:mean} \\
 \(\tau\) & Softmin/softmax temperature \\
 \(\lambda\) & Translation--rotation metric scale~\eqref{eq:lambda-metric} \\
 \(\pi^{\mathrm{min}},\pi^{\mathrm{max}}\) & Softmin / softmax weights \\
@@ -1228,6 +1981,9 @@ Symbol & Meaning \\
 \label{sec:refs}
 
 \begin{enumerate}[leftmargin=1.6em]
+  \item F.~Zacharias, C.~Borst, S.~Wolf, and G.~Hirzinger,
+        ``The capability map: A tool to analyze robot arm workspaces,''
+        International Journal of Humanoid Robotics, 2013.
   \item N.~Vahrenkamp, T.~Asfour, and R.~Dillmann,
         ``Robot placement based on reachability inversion,'' ICRA 2013.
   \item M.~Rudorfer,
@@ -1259,12 +2015,14 @@ Equation & Primary module \\
   & \texttt{ird/canonical.py::canonical\_flange\_invariants\_torch} \\
 \eqref{eq:score-world}
   & \texttt{neural/signed\_field.py::score\_world} \\
-\eqref{eq:softmin}--\eqref{eq:softmax}
-  & \texttt{region/operator.py}, \texttt{region/set\_query.py} \\
+\eqref{eq:softmin}--\eqref{eq:mean-grad}
+  & \texttt{region/operator.py}, \texttt{region/set\_query.py},
+    \texttt{region/trajectory\_operator.py} \\
 \eqref{eq:region-a}
   & \texttt{region/operator.py::RegionA} \\
-\eqref{eq:task-cone}
-  & \texttt{region/task\_cone.py::TaskConeReachability} \\
+\eqref{eq:task-cone}--\eqref{eq:task-cone-mean}
+  & \texttt{region/task\_cone.py::TaskConeReachability}
+    (\texttt{mean\_clearance}; mean as opt.\ aggregate) \\
 \eqref{eq:nested-semantic}--\eqref{eq:set-query}
   & \texttt{region/set\_query.py::SetQueryOperator} \\
 \eqref{eq:se3-interp}--\eqref{eq:traj-clearance}

@@ -22,6 +22,12 @@ from ird_playground.viz.viz_style import (
     PROBE_COMPARE_CLIM,
     PROBE_COMPARE_D_MIN,
     PROBE_COMPARE_N_LEVELS,
+    MOUNT_COMPARE_BOUNDS,
+    MOUNT_COMPARE_FOCUS,
+    MOUNT_COMPARE_IRD_BOUNDS,
+    MOUNT_COMPARE_IRD_FOCUS,
+    MOUNT_COMPARE_OBLIQUE_SPAN,
+    MOUNT_COMPARE_PARALLEL_SCALE,
 )
 
 
@@ -47,6 +53,7 @@ class MountCompareConfig:
     mounts: tuple[MountSpec, ...]
     style: MountCompareStyle
     out_dir: Path
+    repo_root: Path
 
 
 def _resolve(path: str | Path, *, root: Path) -> Path:
@@ -110,7 +117,9 @@ def load_mount_compare_config(
         str(io.get("out_dir", "ird_playground/data/reports/mount_compare")),
         root=root,
     )
-    return MountCompareConfig(mounts=tuple(mounts), style=style, out_dir=out_dir)
+    return MountCompareConfig(
+        mounts=tuple(mounts), style=style, out_dir=out_dir, repo_root=root,
+    )
 
 
 def _load_capability_map(map_dir: Path):
@@ -154,6 +163,19 @@ def prepare_robot_urdf(robot_urdf: Path, *, cache_dir: Path) -> Path:
     return _abs_mesh_urdf(robot_urdf, cached)
 
 
+def _base_link_y(robot_urdf: Path) -> float:
+    """``base_link`` Y at neutral (rail locked) in the URDF root frame."""
+    import pinocchio as pin
+
+    model = pin.buildModelFromUrdf(str(robot_urdf))
+    data = model.createData()
+    pin.forwardKinematics(model, data, pin.neutral(model))
+    pin.updateFramePlacements(model, data)
+    if model.existFrame("base_link"):
+        return float(data.oMf[model.getFrameId("base_link")].translation[1])
+    return float(data.oMi[1].translation[1])
+
+
 def base_link_y_centering(robot_urdf: Path):
     """Display offset that puts ``base_link`` on the Y=0 rail plane.
 
@@ -164,19 +186,54 @@ def base_link_y_centering(robot_urdf: Path):
     Returns ``(display_offset, shoulder_y_in_map_frame)``.
     """
     import numpy as np
-    import pinocchio as pin
 
-    model = pin.buildModelFromUrdf(str(robot_urdf))
-    data = model.createData()
-    q = pin.neutral(model)
-    pin.forwardKinematics(model, data, q)
-    pin.updateFramePlacements(model, data)
-    if model.existFrame("base_link"):
-        y = float(data.oMf[model.getFrameId("base_link")].translation[1])
-    else:
-        y = float(data.oMi[1].translation[1])
+    y = _base_link_y(robot_urdf)
     offset = np.array([0.0, -y, 0.0], dtype=np.float64)
     return offset, y
+
+
+def _map_build_urdf(map_dir: Path, *, repo_root: Path) -> Path | None:
+    """URDF used to build the capability map (manifest), if resolvable."""
+    import yaml
+
+    man_path = map_dir / "manifest.yaml"
+    if not man_path.is_file():
+        return None
+    man = yaml.safe_load(man_path.read_text(encoding="utf-8")) or {}
+    rel = man.get("urdf_path")
+    if not rel:
+        return None
+    p = Path(str(rel))
+    if p.is_file():
+        return p.resolve()
+    for root in (repo_root, repo_root / "rm75_control"):
+        cand = (root / p).resolve()
+        if cand.is_file():
+            return cand
+    return None
+
+
+def cut_plane_for_mount(
+    map_dir: Path,
+    viz_urdf: Path,
+    *,
+    repo_root: Path,
+):
+    """Y-cut through the map-frame shoulder; viz arm parked on the same plane.
+
+    Cut Y must come from the **map build** URDF (manifest), not the genesis viz
+    URDF — horizontal kinematics use ``rail_y`` origin at 0 while an outdated
+    genesis copy still has ``-0.4``, which shoved the cut to the cloud rim.
+    """
+    import numpy as np
+    import pinocchio as pin
+
+    map_urdf = _map_build_urdf(map_dir, repo_root=repo_root)
+    cut_y = _base_link_y(map_urdf) if map_urdf is not None else _base_link_y(viz_urdf)
+    viz_y = _base_link_y(viz_urdf)
+    display_offset = np.array([0.0, -cut_y, 0.0], dtype=np.float64)
+    base_pose_world = pin.SE3(np.eye(3), np.array([0.0, -viz_y, 0.0], dtype=np.float64))
+    return display_offset, cut_y, base_pose_world
 
 
 def render_mount_pair(
@@ -185,6 +242,7 @@ def render_mount_pair(
     out_dir: Path,
     style: MountCompareStyle,
     robot_urdf: Path,
+    repo_root: Path | None = None,
 ) -> dict[str, Path]:
     """Write ``{id}_reachability.png`` and ``{id}_ird.png``."""
     from ird_playground.viz.rm75_ns import ensure_rm75_namespace
@@ -199,8 +257,13 @@ def render_mount_pair(
     rm_path = out_dir / f"{mount.id}_reachability.png"
     ird_path = out_dir / f"{mount.id}_ird.png"
 
-    # Cut hemisphere through the shoulder and shift display so arm is centred.
-    display_offset, shoulder_y = base_link_y_centering(robot_urdf)
+    # Classic Zacharias Y-hemisphere after shoulder centering; locked camera so
+    # every mount puts the arm at the same size and place. Left = 45° onto the
+    # cut (opening toward the right); right = orthographic onto the cut face.
+    root = repo_root or Path(__file__).resolve().parents[3]
+    display_offset, cut_y, base_pose_world = cut_plane_for_mount(
+        mount.map_dir, robot_urdf, repo_root=root,
+    )
     render_reachability_index(
         cm,
         rm_path,
@@ -213,8 +276,13 @@ def render_mount_pair(
         bar_max=style.bar_max,
         view="cross",
         fixed_camera=True,
-        plane=f"y={shoulder_y}",
+        plane=f"y={cut_y}",
         display_offset=display_offset,
+        base_pose_world=base_pose_world,
+        camera_bounds=MOUNT_COMPARE_BOUNDS,
+        camera_focus=MOUNT_COMPARE_FOCUS,
+        parallel_scale=MOUNT_COMPARE_PARALLEL_SCALE,
+        oblique_span=MOUNT_COMPARE_OBLIQUE_SPAN,
     )
     render_global_ird_from_capability(
         cm,
@@ -227,6 +295,10 @@ def render_mount_pair(
         size=style.figsize,
         n_color_levels=style.n_color_levels,
         bar_max=style.bar_max,
+        camera_bounds=MOUNT_COMPARE_IRD_BOUNDS,
+        camera_focus=MOUNT_COMPARE_IRD_FOCUS,
+        parallel_scale=MOUNT_COMPARE_PARALLEL_SCALE,
+        oblique_span=MOUNT_COMPARE_OBLIQUE_SPAN,
     )
     return {"reachability": rm_path, "ird": ird_path}
 
@@ -253,7 +325,11 @@ def render_mount_compare(
             )
         robot = prepare_robot_urdf(mount.robot_urdf, cache_dir=cache)
         paths = render_mount_pair(
-            mount, out_dir=config.out_dir, style=config.style, robot_urdf=robot
+            mount,
+            out_dir=config.out_dir,
+            style=config.style,
+            robot_urdf=robot,
+            repo_root=config.repo_root,
         )
         report[mount.id] = {
             "status": "ok",

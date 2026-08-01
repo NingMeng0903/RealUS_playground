@@ -1,11 +1,10 @@
-"""Bone-chain, joint-anchor, and ligament classification diagnostics.
+"""Bone-chain, functional-pivot, and ligament classification diagnostics.
 
 The original report only compared a mesh skinned with all of its weights with
-the same mesh moved by its dominant bone.  That is a useful rigidity metric,
-but it cannot detect two rigid components that have both moved away from their
-shared joint.  The joint diagnostics below therefore operate on the Blender
-bind bone endpoints and compare their posed shared anchor with the posed
-SMPL-X joint.
+the same mesh moved by its dominant bone.  Blender endpoints remain useful
+debug probes, but many are virtual hinges rather than anatomical landmarks.
+Acceptance therefore uses frozen contact surfaces and baked functional frames;
+endpoint distances are explicitly report-only.
 """
 
 from __future__ import annotations
@@ -263,15 +262,12 @@ GEOMETRY_LANDMARK_MESHES: dict[str, dict[str, tuple[str, ...]]] = {
 
 def _joint_surface_gap_limit(label: str) -> float:
     """Acceptance limits from the anatomy plan, independent of SMPL-X probes."""
-    if label.startswith(("hip_", "shoulder_")):
-        return 0.003
-    if label.startswith("index_"):
-        # The source has no cartilage mesh between metacarpal and phalanx;
-        # retain its authored bony clearance while still detecting separation.
-        return 0.007
-    if label.startswith(("elbow_", "wrist_", "knee_", "ankle_", "fibula_")):
+    if label.startswith("fibula_"):
+        # This vertex-only proxy spans the proximal tibiofibular/syndesmosis
+        # surfaces.  Its release gate is the signed-triangle clearance; keep
+        # the legacy 5 mm sample bound report-only until that evidence exists.
         return 0.005
-    return ENDPOINT_LIMIT_M
+    return 0.003
 
 
 def _mesh_slice(asset: AnatomyRiggedAsset, name: str) -> slice | None:
@@ -471,6 +467,141 @@ def _side_matches(name: str, label: str) -> bool:
     if label.endswith("_right"):
         return name.endswith("_r") or "_r_" in name or "right" in name
     return True
+
+
+def _functional_joint_diagnostic(
+    asset: AnatomyRiggedAsset,
+    *,
+    label: str,
+    source_transforms: np.ndarray,
+    pose_global: np.ndarray,
+    translation: np.ndarray,
+) -> dict[str, Any]:
+    metadata = dict(asset.metadata or {}).get("functional_joint_frames_v8")
+    if not isinstance(metadata, dict):
+        return {
+            "available": False,
+            "pass": False,
+            "reason": "functional_joint_frames_v8 metadata is absent",
+        }
+    frame_name = {
+        "thumb_proximal_left": "left_thumb1",
+        "thumb_proximal_right": "right_thumb1",
+    }.get(str(label), "_".join(reversed(str(label).split("_", 1))))
+    ordered = (
+        "left_hip",
+        "right_hip",
+        "left_knee",
+        "right_knee",
+        "left_ankle",
+        "right_ankle",
+        "left_shoulder",
+        "right_shoulder",
+        "left_elbow",
+        "right_elbow",
+        "left_wrist",
+        "right_wrist",
+        "left_thumb1",
+        "right_thumb1",
+    )
+    if frame_name not in ordered:
+        return {
+            "available": False,
+            "pass": False,
+            "reason": "joint has no major-limb functional frame",
+        }
+    index = ordered.index(frame_name)
+    try:
+        centers = np.asarray(metadata["centers_m"], dtype=np.float64).reshape(-1, 3)
+        axes = np.asarray(metadata["axes"], dtype=np.float64).reshape(-1, 3, 3)
+        validation_centers = np.asarray(
+            metadata["validation_centers_m"], dtype=np.float64
+        ).reshape(-1, 3)
+        validation_axes = np.asarray(
+            metadata["validation_axes"], dtype=np.float64
+        ).reshape(-1, 3, 3)
+        offsets = np.asarray(
+            metadata["station_to_anatomical"], dtype=np.float64
+        ).reshape(-1, 4, 4)
+        joint_ids = np.asarray(metadata["smplx_joint_ids"], dtype=np.int64).reshape(-1)
+        controller_ids = np.asarray(
+            metadata["controller_bone_ids"], dtype=np.int64
+        ).reshape(-1)
+        proximal_ids = np.asarray(
+            metadata["proximal_bone_ids"], dtype=np.int64
+        ).reshape(-1)
+        center = centers[index]
+        axis = axes[index, :, 0]
+        validation_axis = validation_axes[index, :, 0]
+        joint_id = int(joint_ids[index])
+        controller_id = int(controller_ids[index])
+        proximal_id = int(proximal_ids[index])
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
+        return {
+            "available": False,
+            "pass": False,
+            "reason": f"invalid functional frame metadata: {exc}",
+        }
+    if (
+        controller_id < 0
+        or controller_id >= len(source_transforms)
+        or joint_id < 0
+        or joint_id >= len(pose_global)
+        or proximal_id < 0
+        or proximal_id >= len(source_transforms)
+    ):
+        return {
+            "available": False,
+            "pass": False,
+            "reason": "functional frame references an invalid controller or joint",
+        }
+    fit_validation_center_error = float(
+        np.linalg.norm(center - validation_centers[index])
+    )
+    fit_validation_axis_error = _undirected_angle_deg(axis, validation_axis)
+    actual_center = (
+        source_transforms[controller_id, :3, :3] @ center
+        + source_transforms[controller_id, :3, 3]
+        + translation
+    )
+    actual_axis = source_transforms[controller_id, :3, :3] @ axis
+    expected_center = (
+        source_transforms[proximal_id, :3, :3] @ center
+        + source_transforms[proximal_id, :3, 3]
+        + translation
+    )
+    expected_axis = (
+        pose_global[joint_id, :3, :3]
+        @ offsets[index, :3, :3]
+        @ np.asarray((1.0, 0.0, 0.0), dtype=np.float64)
+    )
+    pivot_error = float(np.linalg.norm(actual_center - expected_center))
+    posed_axis_error = _undirected_angle_deg(actual_axis, expected_axis)
+    passed = bool(
+        fit_validation_center_error <= ENDPOINT_LIMIT_M
+        and fit_validation_axis_error <= AXIS_LIMIT_DEG
+        and pivot_error <= ENDPOINT_LIMIT_M
+        and posed_axis_error <= AXIS_LIMIT_DEG
+    )
+    return {
+        "available": True,
+        "pass": passed,
+        "frame_name": frame_name,
+        "authority": "frozen_contact_center_plus_v71_functional_axis",
+        "smplx_role": "orientation_station_with_frozen_material_carried_center",
+        "proximal_material_carrier": str(asset.source_bone_names[proximal_id]),
+        "fit_validation_center_error_m": fit_validation_center_error,
+        "fit_validation_axis_error_deg": fit_validation_axis_error,
+        "posed_pivot_error_m": pivot_error,
+        "posed_axis_error_deg": posed_axis_error,
+        "pose_gate_applicable": True,
+        "maximum_center_error_m": ENDPOINT_LIMIT_M,
+        "maximum_axis_error_deg": AXIS_LIMIT_DEG,
+        "anatomical_center_rest_m": center.tolist(),
+        "smplx_station_pose_m": pose_global[joint_id, :3, 3].tolist(),
+        "anatomical_center_pose_m": actual_center.tolist(),
+        "expected_center_pose_m": expected_center.tolist(),
+    }
 
 
 def _geometry_landmark_diagnostic(
@@ -898,6 +1029,13 @@ def write_bone_segment_diagnostics(
             posed_smplx_joints=posed_smplx_joints,
             translation=translation,
         )
+        functional = _functional_joint_diagnostic(
+            asset,
+            label=label,
+            source_transforms=np.asarray(source_transforms, dtype=np.float64),
+            pose_global=pose_global,
+            translation=translation,
+        )
         if label in {"hip_left", "hip_right"}:
             metadata = asset.metadata or {}
             fit_metadata = metadata.get("articulated_rest_fit")
@@ -937,8 +1075,13 @@ def write_bone_segment_diagnostics(
         result = {
             **controller,
             "controller_probes": controller,
+            "controller_probe_policy": "report_only_virtual_hinge_debug",
+            "functional_frame": functional,
             "geometry_landmarks": geometry,
-            "pass": bool(controller["pass"] and geometry["pass"]),
+            "pass": bool(
+                geometry["pass"]
+                and (functional["pass"] if functional["available"] else True)
+            ),
         }
         joints[label] = result
         if not result["pass"]:
@@ -997,9 +1140,9 @@ def write_bone_segment_diagnostics(
         "failures": failures,
         "pass_requires": [
             "geometry_landmarks",
-            "left_right_hip_landmarks",
+            "functional_joint_frames_when_available",
             "joint_gap_change",
-            "joint_axes",
+            "v71_functional_axes",
             "head_orientation",
             "rigidity",
         ],

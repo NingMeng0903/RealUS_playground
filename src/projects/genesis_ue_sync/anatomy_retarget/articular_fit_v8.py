@@ -785,6 +785,7 @@ def calibrate_coupled_joint_roll_glide_v8(
     domains: Mapping[str, np.ndarray],
     target_surface_gap_m: float = 0.0015,
     maximum_translation_m: float = 0.012,
+    runtime_maximum_translation_m: float | None = None,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:
     """Bake bilateral knee and ankle response fields over full 3-D states.
 
@@ -798,11 +799,17 @@ def calibrate_coupled_joint_roll_glide_v8(
     from scipy.optimize import minimize
     from scipy.spatial import cKDTree
 
-    from .anatomy_lbs import source_bone_posed_global, skin_vertices
+    from .anatomy_lbs import (
+        joint_global_transforms,
+        source_bone_posed_global,
+        skin_vertices,
+    )
     from .coupled_joint_v8 import (
         bake_coupled_rbf_response_v8,
         coupled_state_centers_v8,
     )
+    from .containment import signed_distance
+    from .intersection_diagnostics import _intersection_pairs
 
     names = list(asset.source_bone_names or ())
     metadata = dict(asset.metadata or {})
@@ -814,6 +821,10 @@ def calibrate_coupled_joint_roll_glide_v8(
         5: ((-2.88, -8.42, 3.00), (19.26, 16.18, 10.39)),
         7: ((40.77, 21.23, 17.04), (33.25, -14.14, -32.43)),
         8: ((24.55, -5.50, 11.98), (38.92, 22.80, -5.31)),
+        18: ((31.10932, -28.74581, -6.46487), (-13.08293, -43.51114, 115.82116)),
+        19: ((-18.62223, 33.18943, 1.71696), (-35.19617, 64.19797, -110.93806)),
+        20: ((40.11, -2.23, 14.55), (-19.44, 13.49, 6.94)),
+        21: ((27.04, 13.08, -3.05), (-44.70, -5.19, -36.41)),
     }
     report: dict[str, Any] = {
         "available": True,
@@ -827,6 +838,13 @@ def calibrate_coupled_joint_roll_glide_v8(
     }
     responses: dict[str, Any] = {}
     parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+    runtime_maximum = (
+        float(maximum_translation_m) * 1.35
+        if runtime_maximum_translation_m is None
+        else float(runtime_maximum_translation_m)
+    )
+    if runtime_maximum + 1.0e-12 < float(maximum_translation_m):
+        raise ValueError("runtime RBF bound cannot be smaller than the solve bound")
 
     def solve_response(
         *,
@@ -862,6 +880,100 @@ def calibrate_coupled_joint_roll_glide_v8(
             states = np.concatenate((states, prescribed), axis=0)
         translations_local = np.zeros_like(states)
         fit_gaps: list[list[float]] = []
+        accepted_samples = 0
+        rejected_optimizer_samples = 0
+        objective_improvements: list[float] = []
+        prescribed_start = len(states) - len(prescribed)
+
+        def exact_triangle_domains() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+            faces = np.asarray(asset.faces, dtype=np.int64)
+            ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
+            mesh_names = list(asset.source_mesh_names or ())
+            tissues = list(asset.source_tissues or ())
+            fixed_mask = np.zeros(len(faces), dtype=bool)
+            mobile_mask = np.zeros(len(faces), dtype=bool)
+            if kind == "wrist":
+                fixed_tokens = ("radius", "ulna")
+                mobile_tokens = ("carpal", "scaphoid", "lunate")
+            elif kind == "elbow":
+                fixed_tokens = ("humerus",)
+                mobile_tokens = ("radius", "ulna")
+            else:
+                raise AssertionError("exact triangle domains require wrist or elbow")
+            side_suffix = f"_{suffix.lower()}"
+            for mesh_name, tissue, (start, stop) in zip(
+                mesh_names, tissues, ranges.tolist()
+            ):
+                lower = str(mesh_name).lower()
+                if str(tissue).strip().lower() != "bone" or not lower.endswith(
+                    side_suffix
+                ):
+                    continue
+                rows = np.all(
+                    (faces >= int(start)) & (faces < int(stop)), axis=1
+                )
+                if any(token in lower for token in fixed_tokens):
+                    fixed_mask |= rows
+                if any(token in lower for token in mobile_tokens):
+                    mobile_mask |= rows
+            fixed_rows = np.flatnonzero(fixed_mask)
+            mobile_rows = np.flatnonzero(mobile_mask)
+            if not len(fixed_rows) or not len(mobile_rows):
+                raise ValueError(
+                    f"{side} {kind} exact triangle domains are empty"
+                )
+            return (
+                fixed_rows,
+                mobile_rows,
+                np.unique(faces[mobile_rows].reshape(-1)),
+            )
+
+        exact_domains = (
+            exact_triangle_domains() if kind in {"wrist", "elbow"} else None
+        )
+
+        def compact_mesh(
+            xyz: np.ndarray, face_rows: np.ndarray
+        ) -> tuple[np.ndarray, np.ndarray]:
+            selected = np.asarray(asset.faces, dtype=np.int64)[face_rows]
+            used, inverse = np.unique(selected.reshape(-1), return_inverse=True)
+            return xyz[used], inverse.reshape(-1, 3)
+
+        def exact_metric(
+            posed_vertices: np.ndarray,
+            translation_world: np.ndarray,
+        ) -> tuple[float, int]:
+            if exact_domains is None:
+                raise AssertionError(
+                    "exact metric used for a non-wrist/non-elbow joint"
+                )
+            fixed_rows, mobile_rows, mobile_vertices = exact_domains
+            trial = np.asarray(posed_vertices, dtype=np.float64).copy()
+            trial[mobile_vertices] += np.asarray(
+                translation_world, dtype=np.float64
+            )
+            intersections = _intersection_pairs(
+                trial,
+                np.asarray(asset.faces, dtype=np.int64),
+                fixed_rows,
+                mobile_rows,
+            )
+            fixed_vertices, fixed_faces = compact_mesh(trial, fixed_rows)
+            mobile_xyz, mobile_faces = compact_mesh(trial, mobile_rows)
+            fixed_signed, _closest, _normals = signed_distance(
+                fixed_vertices, mobile_xyz, mobile_faces
+            )
+            mobile_signed, _closest, _normals = signed_distance(
+                mobile_xyz, fixed_vertices, fixed_faces
+            )
+            depth = float(
+                max(
+                    0.0,
+                    float(np.max(-fixed_signed)),
+                    float(np.max(-mobile_signed)),
+                )
+            )
+            return depth, int(len(intersections))
         for sample_index, rotvec in enumerate(states):
             if float(np.linalg.norm(rotvec)) <= 1.0e-12:
                 pose = np.zeros((55, 3), dtype=np.float32)
@@ -892,6 +1004,59 @@ def calibrate_coupled_joint_roll_glide_v8(
                 np.asarray(posed[mobile_fit_ids[0]], dtype=np.float64),
                 np.asarray(posed[mobile_fit_ids[1]], dtype=np.float64),
             )
+
+            if kind in {"wrist", "elbow"}:
+                zero_metric = exact_metric(
+                    np.asarray(posed, dtype=np.float64), np.zeros(3)
+                )
+                translation_world = np.zeros(3, dtype=np.float64)
+                best_metric = zero_metric
+                if sample_index >= prescribed_start:
+                    exact_search_maximum = max(0.0, runtime_maximum - 1.0e-5)
+                    directions: list[np.ndarray] = []
+                    for values in np.ndindex(3, 3, 3):
+                        direction = np.asarray(values, dtype=np.float64) - 1.0
+                        norm = float(np.linalg.norm(direction))
+                        if norm > 0.0:
+                            directions.append(direction / norm)
+                    for fraction in (0.5, 0.75, 1.0):
+                        for direction in directions:
+                            candidate_translation = (
+                                fraction * exact_search_maximum * direction
+                            )
+                            metric = exact_metric(
+                                np.asarray(posed, dtype=np.float64),
+                                candidate_translation,
+                            )
+                            if metric < best_metric:
+                                best_metric = metric
+                                translation_world = candidate_translation
+                improvement = float(zero_metric[0] - best_metric[0])
+                if improvement > 1.0e-14:
+                    accepted_samples += 1
+                else:
+                    translation_world = np.zeros(3, dtype=np.float64)
+                    improvement = 0.0
+                objective_improvements.append(improvement)
+                joint_pose_global = joint_global_transforms(
+                    pose_axis_angle=pose,
+                    rest_joints=base.rest_joints,
+                    parents=base.parents,
+                ).astype(np.float64)
+                translations_local[sample_index] = (
+                    joint_pose_global[joint, :3, :3].T @ translation_world
+                )
+                fit_gaps.append(
+                    [
+                        float(
+                            fixed_trees[index]
+                            .query(mobile[index] + translation_world)[0]
+                            .min()
+                        )
+                        for index in range(2)
+                    ]
+                )
+                continue
 
             def parameter_to_translation(raw_value: Any) -> np.ndarray:
                 raw = np.asarray(raw_value, dtype=np.float64)
@@ -935,13 +1100,28 @@ def calibrate_coupled_joint_roll_glide_v8(
                 },
             )
             translation_world = parameter_to_translation(solved.x)
-            if (
-                not solved.success
-                or not np.all(np.isfinite(translation_world))
-                or float(np.linalg.norm(translation_world))
-                > float(maximum_translation_m) + 1.0e-7
-            ):
-                raise ValueError(f"{side} {kind} coupled calibration failed")
+            zero_objective = objective(np.zeros(3, dtype=np.float64))
+            solved_objective = objective(solved.x)
+            solved_is_valid = bool(
+                solved.success
+                and np.all(np.isfinite(translation_world))
+                and float(np.linalg.norm(translation_world))
+                <= float(maximum_translation_m) + 1.0e-7
+                and np.isfinite(solved_objective)
+            )
+            improvement = (
+                float(zero_objective - solved_objective)
+                if solved_is_valid
+                else 0.0
+            )
+            if improvement <= 1.0e-14:
+                translation_world = np.zeros(3, dtype=np.float64)
+                improvement = 0.0
+                if not solved_is_valid:
+                    rejected_optimizer_samples += 1
+            else:
+                accepted_samples += 1
+            objective_improvements.append(improvement)
             posed_bones = source_bone_posed_global(base, pose)
             translations_local[sample_index] = (
                 posed_bones[parent, :3, :3].T @ translation_world
@@ -962,12 +1142,18 @@ def calibrate_coupled_joint_roll_glide_v8(
             smplx_joint=joint,
             joint_kind=kind,
             support_radius_rad=np.radians(float(support_radius_deg)),
-            maximum_translation_m=float(maximum_translation_m) * 1.35,
+            maximum_translation_m=runtime_maximum,
+            kernel_width=12.0 if kind in {"wrist", "elbow"} else 8.0,
         )
         target_bind = np.asarray(asset.target_bind_global, dtype=np.float64)
         target_local = np.asarray(asset.target_rest_local, dtype=np.float64)
         response.update(
             {
+                "translation_frame": (
+                    "smplx_joint_pose"
+                    if kind in {"wrist", "elbow"}
+                    else "source_parent_pose"
+                ),
                 "state_joint_rest_m": np.asarray(
                     asset.rest_joints[joint], dtype=np.float64
                 ).tolist(),
@@ -1020,6 +1206,16 @@ def calibrate_coupled_joint_roll_glide_v8(
             "mixed_axis_training_sample_count": int(len(states) - 13),
             "prescribed_composite_state_count": int(len(prescribed)),
             "validation_sample_count": len(validation_gaps),
+            "accepted_contact_improving_sample_count": int(accepted_samples),
+            "rejected_optimizer_sample_count": int(rejected_optimizer_samples),
+            "minimum_accepted_objective_improvement": float(
+                min(
+                    (value for value in objective_improvements if value > 0.0),
+                    default=0.0,
+                )
+            ),
+            "solve_translation_limit_m": float(maximum_translation_m),
+            "runtime_translation_limit_m": runtime_maximum,
             "fit_max_gap_m": float(np.max(fit_gaps)),
             "validation_max_gap_m": float(np.max(validation_gaps)),
             "coefficient_norm": float(
@@ -1122,11 +1318,89 @@ def calibrate_coupled_joint_roll_glide_v8(
             fixed_validation_ids=ankle_validation_fixed,
             support_radius_deg=75.0,
         )
+        elbow_fit_mobile = (
+            np.asarray(domains[f"elbow/{side}/radius.fit"], dtype=np.int64),
+            np.asarray(domains[f"elbow/{side}/ulna.fit"], dtype=np.int64),
+        )
+        elbow_fit_fixed = (
+            np.asarray(domains[f"elbow/{side}/humerus.fit"], dtype=np.int64),
+            np.asarray(domains[f"elbow/{side}/humerus.fit"], dtype=np.int64),
+        )
+        elbow_validation_mobile = (
+            np.asarray(
+                domains[f"elbow/{side}/radius.validation"], dtype=np.int64
+            ),
+            np.asarray(
+                domains[f"elbow/{side}/ulna.validation"], dtype=np.int64
+            ),
+        )
+        elbow_validation_fixed = (
+            np.asarray(
+                domains[f"elbow/{side}/humerus.validation"], dtype=np.int64
+            ),
+            np.asarray(
+                domains[f"elbow/{side}/humerus.validation"], dtype=np.int64
+            ),
+        )
+        elbow_bone, elbow_response, elbow_report = solve_response(
+            side=side,
+            suffix=suffix,
+            kind="elbow",
+            joint=18 if side == "left" else 19,
+            driven_bone_name=f"Forearm_Bone_{suffix}",
+            mobile_fit_ids=elbow_fit_mobile,
+            fixed_fit_ids=elbow_fit_fixed,
+            mobile_validation_ids=elbow_validation_mobile,
+            fixed_validation_ids=elbow_validation_fixed,
+            support_radius_deg=145.0,
+        )
+        wrist_fit_mobile = (
+            np.asarray(domains[f"wrist/{side}/carpals.fit"], dtype=np.int64),
+            np.asarray(domains[f"wrist/{side}/carpals.fit"], dtype=np.int64),
+        )
+        wrist_fit_fixed = (
+            np.asarray(domains[f"wrist/{side}/radius.fit"], dtype=np.int64),
+            np.asarray(domains[f"wrist/{side}/ulna.fit"], dtype=np.int64),
+        )
+        wrist_validation_mobile = (
+            np.asarray(
+                domains[f"wrist/{side}/carpals.validation"], dtype=np.int64
+            ),
+            np.asarray(
+                domains[f"wrist/{side}/carpals.validation"], dtype=np.int64
+            ),
+        )
+        wrist_validation_fixed = (
+            np.asarray(
+                domains[f"wrist/{side}/radius.validation"], dtype=np.int64
+            ),
+            np.asarray(
+                domains[f"wrist/{side}/ulna.validation"], dtype=np.int64
+            ),
+        )
+        wrist_bone, wrist_response, wrist_report = solve_response(
+            side=side,
+            suffix=suffix,
+            kind="wrist",
+            joint=20 if side == "left" else 21,
+            driven_bone_name=(
+                "Wrist_Rotate_L" if side == "left" else "Wrist_Rotate_R1"
+            ),
+            mobile_fit_ids=wrist_fit_mobile,
+            fixed_fit_ids=wrist_fit_fixed,
+            mobile_validation_ids=wrist_validation_mobile,
+            fixed_validation_ids=wrist_validation_fixed,
+            support_radius_deg=100.0,
+        )
         responses[str(knee_bone)] = knee_response
         responses[str(ankle_bone)] = ankle_response
+        responses[str(elbow_bone)] = elbow_response
+        responses[str(wrist_bone)] = wrist_response
         report["sides"][side] = {
             "knee": knee_report,
             "ankle": ankle_report,
+            "elbow": elbow_report,
+            "wrist": wrist_report,
         }
     metadata["source_coupled_joint_response_v8"] = responses
     result = replace(base, metadata=metadata)
