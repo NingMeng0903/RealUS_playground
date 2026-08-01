@@ -345,9 +345,6 @@ def _controller(**over) -> AdmittanceController:
     kw.update(over)
     cfg = AdmittanceConfig(**kw)
     cfg.adaptive_ke.enabled = False
-    # These tests exercise the proactive reference dynamics in isolation;
-    # force-space cap behavior has dedicated tests in test_fast_retract_guard.
-    cfg.force_barrier.enabled = False
     return AdmittanceController(DT, cfg)
 
 
@@ -355,14 +352,14 @@ def test_proactive_boosts_velocity_under_sustained_error():
     ctrl = _controller()
     ctrl._in_contact_latched = True
     for _ in range(400):
-        ctrl._update_proactive_v_r(
+        ctrl._admittance_z(
             2.0,
             True,
-            DT,
+            dt_eff=DT,
             rising_edge=False,
-            desired_force_n=3.0,
         )
     assert ctrl.v_r_z > 0.015
+    assert ctrl.v_force_z > 0.08
 
 
 def test_high_instability_cannot_delay_overforce_escape_after_reversal():
@@ -398,8 +395,6 @@ def test_high_instability_cannot_delay_overforce_escape_after_reversal():
             dt_eff=DT,
             rising_edge=False,
             desired_force_n=2.0,
-            f_ext_z=4.0,
-            f_barrier_z=4.0,
         )
         if tick == 1:
             first_tick_reset = ctrl.force_reference_reversal_reset

@@ -49,7 +49,7 @@ git push -u origin main
 
 ```bash
 git add .
-git commit -m "V8 的 L1 "
+git commit -m "删除力标定没必要的 D2stage"
 git push -u origin main
 ```
 

@@ -16,10 +16,6 @@ import numpy as np
 
 from .anatomy_lbs import with_source_driver_coupling
 from .articular_fit_v8 import calibrate_coupled_joint_roll_glide_v8
-from .functional_joint_v8 import (
-    build_functional_joint_frames_v8,
-    build_pelvis_harmonic_cage_v8,
-)
 from .mechanism_v8 import (
     V71ParentLocalFKV8,
     build_ba9_head_selection_v8,
@@ -260,25 +256,6 @@ def _near_interface(
     return np.sort(first_ids[np.argsort(distance)[:count]]).astype(np.int32)
 
 
-def _mesh_ids_matching(
-    asset: AnatomyRiggedAsset,
-    *,
-    suffix: str,
-    tokens: tuple[str, ...],
-) -> np.ndarray:
-    selected = [
-        _mesh_ids(asset, str(name))
-        for name in (asset.source_mesh_names or ())
-        if str(name).endswith(f"_{suffix}")
-        and any(token in str(name).lower() for token in tokens)
-    ]
-    if not selected:
-        raise ValueError(
-            f"required {suffix} mesh group with tokens {tokens!r} is missing"
-        )
-    return np.unique(np.concatenate(selected)).astype(np.int32)
-
-
 def build_frozen_domains_v8(
     asset: AnatomyRiggedAsset,
     legacy_joint_domains: Mapping[str, np.ndarray],
@@ -288,23 +265,15 @@ def build_frozen_domains_v8(
     result: dict[str, np.ndarray] = {}
     for name, ids in legacy_joint_domains.items():
         selected = np.asarray(ids, dtype=np.int32).reshape(-1)
-        domain_name = str(name)
-        if domain_name.endswith((".fit", ".validation")):
-            # V8 operators already carry immutable, disjoint material
-            # partitions.  Re-baking a candidate from one of those operators
-            # must preserve the IDs instead of recursively creating
-            # ``.fit.fit`` domains and changing the validation oracle.
-            result[domain_name] = selected.copy()
-        elif len(selected) >= 8:
+        if len(selected) >= 8:
             fit, validation = _split_spatial_domain(vertices, selected)
-            result[f"{domain_name}.fit"] = fit
-            result[f"{domain_name}.validation"] = validation
+            result[f"{name}.fit"] = fit
+            result[f"{name}.validation"] = validation
         else:
-            result[domain_name] = selected
+            result[str(name)] = selected
 
     for side in ("L", "R"):
         humerus = _mesh_ids(asset, f"Humerus_{side}")
-        scapula = _mesh_ids(asset, f"Scapula_{side}")
         ulna = _mesh_ids(asset, f"Ulna_{side}")
         radius = _mesh_ids(asset, f"Radius_{side}")
         forearm = np.concatenate((ulna, radius))
@@ -318,124 +287,6 @@ def build_frozen_domains_v8(
             fit, validation = _split_spatial_domain(vertices, ids)
             result[f"elbow/{label}/{part}.fit"] = fit
             result[f"elbow/{label}/{part}.validation"] = validation
-
-        shoulder_interface = {
-            "humerus": _near_interface(
-                vertices, humerus, scapula, fraction=0.20
-            ),
-            "scapula": _near_interface(
-                vertices, scapula, humerus, fraction=0.12
-            ),
-        }
-        for part, ids in shoulder_interface.items():
-            fit, validation = _split_spatial_domain(vertices, ids)
-            result[f"shoulder/{label}/{part}.fit"] = fit
-            result[f"shoulder/{label}/{part}.validation"] = validation
-        humeral_head = _near_interface(
-            vertices, humerus, scapula, fraction=0.12
-        )
-        fit, validation = _split_spatial_domain(vertices, humeral_head)
-        result[f"shoulder/{label}/humeral_head.fit"] = fit
-        result[f"shoulder/{label}/humeral_head.validation"] = validation
-
-        carpals = _mesh_ids_matching(
-            asset,
-            suffix=side,
-            tokens=(
-                "scaphoid",
-                "lunate",
-                "triquetr",
-                "pisiform",
-                "trapezium",
-                "trapezoid",
-                "capitate",
-                "hamate",
-            ),
-        )
-        wrist_interface = {
-            "radius": _near_interface(
-                vertices, radius, carpals, fraction=0.16
-            ),
-            "ulna": _near_interface(vertices, ulna, carpals, fraction=0.16),
-            "carpals": _near_interface(
-                vertices,
-                carpals,
-                np.concatenate((radius, ulna)),
-                fraction=0.28,
-            ),
-        }
-        for part, ids in wrist_interface.items():
-            fit, validation = _split_spatial_domain(vertices, ids)
-            result[f"wrist/{label}/{part}.fit"] = fit
-            result[f"wrist/{label}/{part}.validation"] = validation
-
-        for digit, ordinal in enumerate(
-            ("1st", "2nd", "3rd", "4th", "5th"), start=1
-        ):
-            metacarpal = _mesh_ids(asset, f"_{ordinal}_Metacarpal_{side}")
-            proximal = _mesh_ids(
-                asset, f"_{ordinal}_Proximal_Phalanges_Hand_{side}"
-            )
-            middle_name = f"_{ordinal}_Intermediate_Phalanges_Hand_{side}"
-            middle = (
-                _mesh_ids(asset, middle_name)
-                if middle_name in (asset.source_mesh_names or ())
-                else np.zeros(0, dtype=np.int32)
-            )
-            distal = _mesh_ids(
-                asset, f"_{ordinal}_Distal_Phalanges_Hand_{side}"
-            )
-            hand_interfaces = {
-                "metacarpal_mcp": _near_interface(
-                    vertices, metacarpal, proximal, fraction=0.20
-                ),
-                "proximal_mcp": _near_interface(
-                    vertices, proximal, metacarpal, fraction=0.20
-                ),
-            }
-            if digit == 1:
-                hand_interfaces.update(
-                    {
-                        "carpals_cmc": _near_interface(
-                            vertices, carpals, metacarpal, fraction=0.12
-                        ),
-                        "metacarpal_cmc": _near_interface(
-                            vertices, metacarpal, carpals, fraction=0.20
-                        ),
-                    }
-                )
-            if len(middle):
-                hand_interfaces.update(
-                    {
-                        "proximal_pip": _near_interface(
-                            vertices, proximal, middle, fraction=0.20
-                        ),
-                        "middle_pip": _near_interface(
-                            vertices, middle, proximal, fraction=0.22
-                        ),
-                        "middle_dip": _near_interface(
-                            vertices, middle, distal, fraction=0.22
-                        ),
-                        "distal_dip": _near_interface(
-                            vertices, distal, middle, fraction=0.22
-                        ),
-                    }
-                )
-            else:
-                hand_interfaces.update(
-                    {
-                        "proximal_ip": _near_interface(
-                            vertices, proximal, distal, fraction=0.22
-                        ),
-                        "distal_ip": _near_interface(
-                            vertices, distal, proximal, fraction=0.22
-                        ),
-                    }
-                )
-            for part, ids in hand_interfaces.items():
-                fit, validation = _split_spatial_domain(vertices, ids)
-                result[f"hand/{label}/digit{digit}/{part}.fit"] = fit
-                result[f"hand/{label}/digit{digit}/{part}.validation"] = validation
 
         tibia = _mesh_ids(asset, f"Tibia_{side}")
         fibula = _mesh_ids(asset, f"Fibula_{side}")
@@ -547,14 +398,6 @@ def build_selective_source_operator_v8(
             skin_faces=np.asarray(vessel_skin_faces, dtype=np.int32),
         )
     domains = build_frozen_domains_v8(template, v7_operator.fixed_material_domains)
-    functional_frames = build_functional_joint_frames_v8(
-        template,
-        domains=domains,
-    )
-    pelvis_cage_fields, pelvis_cage_report = build_pelvis_harmonic_cage_v8(
-        template,
-        domains=domains,
-    )
     coupled_joint_domain_keys = {
         f"ankle/{side}/{part}.{partition}"
         for side in ("left", "right")
@@ -617,8 +460,6 @@ def build_selective_source_operator_v8(
         "v71.bone_inherit_scale": np.asarray(
             template.source_bone_inherit_scale, dtype=np.uint8
         ),
-        **functional_frames.coefficient_fields(),
-        **pelvis_cage_fields,
         **unified_coefficients,
     }
     operator = SourceOperatorV8(
@@ -663,8 +504,6 @@ def build_selective_source_operator_v8(
             "tongue": "missing; release blocker",
             "unified_reference_fit": unified_report,
             "coupled_knee_ankle_roll_glide": coupled_joint_report,
-            "functional_joint_frames_v8": dict(functional_frames.report),
-            "pelvis_harmonic_cage_v8": pelvis_cage_report,
             "vessel_route_v8": vessel_route_report,
             "tube_coupling_final_rest_v810": tube_coupling_report,
         },

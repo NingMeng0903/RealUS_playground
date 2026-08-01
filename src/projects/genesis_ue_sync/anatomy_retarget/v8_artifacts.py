@@ -31,12 +31,6 @@ from .articular_fit_v8 import (
     reconstruct_hip_compounds_v8,
     reconstruct_knee_ankle_compounds_v8,
 )
-from .functional_joint_v8 import (
-    align_hip_ball_centers_v814,
-    apply_pelvis_harmonic_cage_v8,
-    build_functional_joint_frames_v8,
-    functional_frame_fields_v8,
-)
 from .leg_centerline_v810 import (
     has_leg_centerline_v810,
     reconstruct_leg_centerline_compounds_v810,
@@ -763,11 +757,6 @@ def materialize_subject(
         pose_cache_hash="",
         metadata=metadata,
     )
-    rigged, pelvis_cage_report = apply_pelvis_harmonic_cage_v8(
-        rigged,
-        template_asset=template,
-        coefficients=operator.mechanism_coefficients,
-    )
     v810_leg = has_leg_centerline_v810(operator.mechanism_coefficients)
     hip_domain_keys = {
         f"{side}/{name}.{partition}"
@@ -888,35 +877,6 @@ def materialize_subject(
                 or leg_centerline_report.get("changes_bind_frames", False)
             ),
         }
-    frame_fields = functional_frame_fields_v8(operator.mechanism_coefficients)
-    if frame_fields:
-        rigged, hip_ball_center_report = align_hip_ball_centers_v814(
-            rigged,
-            domains=operator.fixed_material_domains,
-        )
-        subject_functional_frames = build_functional_joint_frames_v8(
-            rigged,
-            domains=operator.fixed_material_domains,
-        )
-        subject_frame_fields = subject_functional_frames.coefficient_fields()
-        frame_metadata = {
-            str(name).removeprefix("functional_joint_v8."): np.asarray(
-                value
-            ).tolist()
-            for name, value in subject_frame_fields.items()
-        }
-        rigged = replace(
-            rigged,
-            metadata={
-                **dict(rigged.metadata or {}),
-                "functional_joint_frames_v8": frame_metadata,
-            },
-        )
-    else:
-        hip_ball_center_report = {
-            "available": False,
-            "reason": "operator has no V8 functional joint frame fields",
-        }
     rigged = with_source_driver_coupling(rigged)
     offsets, indices, weights = _compile_skinning_csr(rigged)
     operator_digest = operator.runtime_digest(validate=False)
@@ -1023,15 +983,6 @@ def materialize_subject(
             "knee_ankle_articular_fit": knee_ankle_report,
             "leg_compounds_v810": leg_compound_report,
             "leg_centerline_v810": leg_centerline_report,
-            "pelvis_harmonic_cage_v8": pelvis_cage_report,
-            "hip_ball_center_v814": hip_ball_center_report,
-            "functional_joint_frames_v8": {
-                "available": bool(frame_fields),
-                "frame_count": int(
-                    len(frame_fields.get("centers_m", np.zeros((0, 3))))
-                ),
-                "smplx_joint_role": "motion_station_not_literal_bone_endpoint",
-            },
             "tube_coupling": tube_report,
         },
     )

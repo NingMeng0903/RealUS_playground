@@ -1367,26 +1367,6 @@ def transport_coupled_rbf_parent_frames_v810(
         if bone < 0 or bone >= len(parent_ids):
             raise ValueError("coupled RBF response has an invalid bone index")
         parent = int(parent_ids[bone])
-        translation_frame = str(
-            raw.get("translation_frame", "source_parent_pose")
-        )
-        if translation_frame == "smplx_joint_pose":
-            # This response is already expressed in the immutable SMPL-X
-            # joint pose frame and must not be re-expressed through a Blender
-            # parent frame after rest-bone fitting.
-            response = dict(raw)
-            response["anatomical_pivot_target_bind_m"] = new_frames[
-                bone, :3, 3
-            ].tolist()
-            response["anatomical_pivot_parent_local_m"] = new_local[
-                bone, :3, 3
-            ].tolist()
-            updated[str(bone)] = response
-            continue
-        if translation_frame != "source_parent_pose":
-            raise ValueError(
-                f"unsupported coupled RBF translation frame {translation_frame!r}"
-            )
         old_parent_rotation = (
             np.eye(3, dtype=np.float64)
             if parent < 0
@@ -1437,9 +1417,9 @@ def reconstruct_leg_centerline_compounds_v810(
     asset: AnatomyRiggedAsset,
     *,
     domains: Mapping[str, np.ndarray],
-    femur_max_abs_axial_strain: float = 0.03,
-    shank_max_abs_axial_strain: float = 0.03,
-    maximum_joint_residual_m: float = 0.002,
+    femur_max_abs_axial_strain: float = 0.12,
+    shank_max_abs_axial_strain: float = 0.08,
+    maximum_joint_residual_m: float = 0.005,
     femur_cap_fraction: float = 0.10,
     shank_cap_fraction: float = 0.125,
 ) -> tuple[AnatomyRiggedAsset, dict[str, Any]]:

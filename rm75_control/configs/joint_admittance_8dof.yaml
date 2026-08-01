@@ -91,12 +91,7 @@ inner:
     max_solve_ms: 8.0         # skip retry if first attempt already burned wall budget
     fail_qdot_decay: 0.85
     twist_sigma_floor: 0.08   # scale Cartesian/force twist when σ < sigma_ref
-    # Avoidance starts at sigma_escape_ref_scale * sigma_ref, the brake still
-    # at sigma_ref.  Sharing one threshold is what kept "轨道避让" late: at D
-    # σ_min sits at ~0.08-0.12, so rail σ-escape and ∇μ ascent only armed once
-    # the twist was already being cut to 8%, and the rail (a_max 0.3 m/s^2)
-    # needs ~0.17 s to reach a useful speed.  Raising sigma_ref instead brakes
-    # on 100% of ticks — that was tried and reverted.
+    # Start rail/posture avoidance before the Cartesian brake threshold.
     sigma_escape_ref_scale: 2.0
     warn_on_fail: false
     # Chiaverini 1997 SR damping for nullspace projection.
@@ -166,9 +161,7 @@ inner:
   # opens (N -> I); without this cap the centering gradient from a straight
   # arm drove rad/s-scale self-motion while the Cartesian task was soft.
   nullspace_max_qdot_frac: 0.2
-  # Once sigma has recovered from an escape, keep pulling the seven arm joints
-  # toward the active runtime/YAML posture until their normalized error is
-  # small. RAIL remains excluded by nullspace.weights[0] and the QP rail guard.
+  # Keep recovering the active posture after singularity escape.
   centering_recovery_gain: 3.0
   centering_recovery_max_qdot_frac: 0.35
   centering_recovery_tol: 0.12
@@ -223,8 +216,6 @@ inner:
     #     locked_style: tcp_fixed   plan drives rail, arm QP holds TCP
     mode: coupled              # scan: rail joins QP (set locked for pin-only scan)
     locked_style: hold
-    # Planning default (rail at -Y end). HOLD without an explicit q_ref captures
-    # live q_cmd[0] — this value must NOT be treated as the hybrid@D lock target.
     q_ref_m: 0.0
     # HOLD-only lock knobs:
     lock_gain: 200.0
@@ -245,9 +236,7 @@ force:
   phi_source: phi_recommended
   fc_hz: 6.0
   min_samples: 22
-  # Feel transplant (7dde980): Keemink G2 — 10 Hz ≈ half the 6 Hz group delay,
-  # below the virtual-mass passivity floor. Architecture stays 2965fea.
-  causal_fc_hz: 10.0
+  causal_fc_hz: 6.0
   causal_order: 2
   causal_history: 5
   # Inertia compensation off: on the joint stream it injected command-side
@@ -255,14 +244,11 @@ force:
   use_inertia: false
 
 hybrid_motion:
-  # Single force controller: implicit-Euler admittance with setpoint-normalized,
+  # Single force controller: 2965fea dynamics with setpoint-normalized,
   # energy-aware bidirectional tracking. There is no runtime mode switch.
   # Tool-frame masks — all axis discrimination is tool-frame, so this config
   # supports any spatial trajectory (Y sweep, arc, spline, teleop) as long as
   # force_axes selects the surface-normal tool axis.
-  #
-  # Stability structure from 7dde980: contact hysteresis, setpoint-independent
-  # seek, force-space velocity damping, light trend damping, and Dimeas inertia.
   force_axes: [0, 0, 1, 0, 0, 0]
   track_axes: [1, 1, 0, 1, 1, 1]
   # Tool-frame PBAC: v = vel_ff + kp*err (De Schutter 1988).
@@ -272,74 +258,59 @@ hybrid_motion:
   pos_err_deadband_m: 0.0005
   pos_correction_max_m_s: 0.08
   system_delay_s: 0.015
-  # Fz-only hysteretic contact state: lateral scan shear must not flip contact.
+  # fz-only enter-only contact latch: lateral scan shear must not flip contact.
   contact_threshold_n: 0.8
   contact_use_fz_only: true
-  contact_release_n: 0.25
-  contact_release_ticks: 40
-  # Noise-rejection deadband — FIXED sensor-noise quantity, never scaled with
-  # desired_z. 0.05 (was 0.10): same idea as the smooth pass — less "dead"
-  # before retract authority without changing the law.
-  deadband_n: 0.05
-  deadband_width_n: 0.05
+  # Noise-rejection deadband — a FIXED sensor-noise quantity, never scaled
+  # with desired_z (scaling it made a 5 N hold need >0.5 N over-force before
+  # any retract authority: the "over-force / heavy damping" hand feel).
+  deadband_n: 0.10
+  deadband_width_n: 0.10
   # Tool-frame velocity/acceleration caps. Tangential X == Y (trajectory-
   # agnostic); tool-Z equals max_vz_tool_m_s below (single vz authority —
   # scan-jitter-fix §2a: two disagreeing caps caused admittance-state windup).
   max_velocity: [0.22, 0.22, 0.10, 0.6, 0.6, 0.6]
   max_acceleration: [1.0, 1.0, 0.8, 2.0, 2.0, 2.0]
   admittance_mass_z: 1.0
-  admittance_damping_z: 25.0   # ke_critical fallback / telemetry
-  # Light tracking-trend law avoids the heavy hand feel of large global D.
-  damping_law: trend
-  damping_base_z: 15.0
-  damping_alpha_e: 1.0
-  damping_beta_e_edot: 2.5
-  damping_max_z: 200.0
-  edot_lpf_s: 0.02
-  # Free-space approach is independent of desired force.
-  seek_vz_m_s: 0.012
-  seek_force_sat_n: 1.0
+  admittance_damping_z: 25.0   # fixed normal damping in and out of contact
   # One press/retract cap, applied identically in and out of contact.
-  # Bounce control is handled by stiff-first K̂_e + Dimeas inertia.
+  # Bounce control is handled by Dimeas variable inertia, not adaptive D.
   max_vz_tool_m_s: 0.10
   # Engagement ramp: tool-Z setpoint ramps from ~contact threshold to full
   # desired_z over this many seconds of latched contact (smooth force start).
-  desired_force_ramp_s: 0.5
-  force_barrier:
-    enabled: true
-    t_react_s: 0.030
-    # 1-5 N production range: predicted-force budget is F_des + 1 N.
-    budget_min_n: 1.0
-    budget_frac: 0.20
-    f_keep_n: 0.5
-    v_ref_m_s: 0.05
-    v_min_retract_m_s: 0.002
-    fdot_lpf_s: 0.040
-  # Dimeas & Aspragathos 2016 variable-INERTIA on tool-Z.
-  # Activation idea transplanted: inflate M with Iₛ (m_u), keep d_u=0 so hand
-  # push does not feel progressively heavier (damping stays on Ke-critical /
-  # free-space D). Bounce still lifts mass; operator effort does not.
+  desired_force_ramp_s: 1.0
+  # Dimeas & Aspragathos 2016 variable-INERTIA channel on tool-Z. The
+  # instability index Iₛ is an HP-filtered raw-force energy ratio. Use the
+  # low-effort Dimeas branch: Iₛ changes virtual inertia only; normal damping
+  # stays at admittance_damping_z instead of growing with hand speed.
   var_damping_enabled: true
+  # Stable hand guidance is mainly below 2 Hz, while the hardware log's
+  # elastic-contact resonance is about 4.9 Hz.  Dimeas selects the crossover
+  # between those bands; 3.5 Hz also matches the paper's experimental split.
   var_damping_omega_c_hz: 3.5
   # Iₛ final-stage EWMA smoothing. Dimeas & Aspragathos 2016 tune λ=0.99 at
-  # their 1 kHz loop rate -> τ=-Ts/ln(λ)≈0.0995 s. 0.951 = exp(-dt/0.1)
-  # reproduces the paper's ~0.1 s equivalent bandwidth at 200 Hz.
+  # their 1 kHz loop rate -> τ=-Ts/ln(λ)≈0.0995 s. The previous 0.998 at our
+  # 200 Hz rate gave τ≈2.5 s (25x slower than the paper): bounce_2n.csv
+  # 6.5-7 Hz episodes showed Iₛ eventually crossing the gate but only after
+  # fz had already built to 5-6 N. 0.951 = exp(-dt/0.1) reproduces the
+  # paper's ~0.1 s equivalent bandwidth at 200 Hz.
   var_damping_lambda: 0.951
   var_damping_f_max_n: 7.0
   var_damping_d_u: 0.0
   var_damping_m_u: 4.0
-  # Hardware safety cap on virtual mass (paper leaves md unbounded).
+  # The paper leaves the accumulated Iₛ and resulting mass unbounded; this is
+  # the hardware safety cap on virtual-mass authority.
   var_damping_m_max: 5.0
   var_damping_dc_alpha: 0.02
-  # Raw Iₛ keeps accumulating. Only the control activation is smoothly
-  # dead-zoned from floor to 2*floor, so sub-threshold history is not erased.
-  var_damping_is_floor: 0.28
   adaptive_ke:
     # Asymmetric-λ EWMA of |ΔF/Δx| (Duan et al. 2018 eq. 14, with the
     # 27c1689 asymmetric-forgetting bias toward stiffer estimates) on the
     # normal (tool-Z) admittance axis; Keemink 2018 §III.C critical damping
     # b_d = 2·ζ·sqrt(m_d · K̂_e).
-    enabled: true
+    # K_e from commanded displacement is unreliable on moving tissue and made
+    # D = 2*zeta*sqrt(M*K_e) stay at 80-145 Ns/m. Keep the estimator out of
+    # the control gain; Dimeas variable inertia handles contact resonance.
+    enabled: false
     zeta: 0.9
     # ke_initial is the SEED at reset() and the target for the soft
     # idle/detach decays. On a contact rising edge K̂_e JUMPS UP to
@@ -377,7 +348,6 @@ hybrid_motion:
     # made the retract feel heavily damped.
     f_err_gate_n: 1.2
     f_err_gate_frac: 0.35
-    idle_decay_is_gate: 0.15
     bd_min: 25.0
     bd_max: 200.0
     bd_slew_max: 400.0
@@ -396,7 +366,7 @@ hybrid_motion:
   v_r_max_m_s: 0.06
   # Normal hand motion/noise often leaves Is≈0.2 without sustained 4–12 Hz
   # bounce. Keep press authority below the start point, then fade it to zero
-  # at the existing 0.60 hard stop. Dimeas M(t) and critical D remain active
+  # at the existing 0.60 hard stop. Dimeas M(t) and fixed D remain active
   # throughout this interval.
   proactive_press_is_gate_start: 0.20
   proactive_press_is_gate: 0.60

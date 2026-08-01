@@ -105,9 +105,6 @@ class AdaptiveKeConfig:
     # the retract felt heavily damped.
     f_err_gate_n: float = 1.2
     f_err_gate_frac: float = 0.35
-    # Freeze the steady-contact downward decay while the raw Dimeas index
-    # indicates a developing contact resonance.
-    idle_decay_is_gate: float = 0.15
     # Hold K̂_e (no learning) this many ticks after contact acquisition so
     # the first-impact transient doesn't dominate the estimator.
     settle_ticks: int = 10
@@ -150,7 +147,6 @@ class AdaptiveKeConfig:
             df_spike_n=float(a.get("df_spike_n", 4.0)),
             f_err_gate_n=float(a.get("f_err_gate_n", 1.2)),
             f_err_gate_frac=float(a.get("f_err_gate_frac", 0.35)),
-            idle_decay_is_gate=float(a.get("idle_decay_is_gate", 0.15)),
             settle_ticks=int(a.get("settle_ticks", 10)),
         )
 
@@ -373,18 +369,15 @@ class EnvironmentStiffnessEstimator:
         # Stiff-first closure (idle decay): steady tracking with no ΔF/Δx
         # update this tick lets the impact-initialised K̂_e relax toward
         # ke_initial so the press regains bandwidth to chase a receding
-        # surface. Gated by |f_err| envelope (over-force transient) AND faded
-        # by the Dimeas Iₛ: a building contact resonance must freeze the
-        # decay even while its force ripple is still inside the (setpoint-
-        # relative) |f_err| gate, otherwise b_d releases mid-bounce on a
-        # hard surface.
+        # surface. The force-error envelope gates transient samples. Dimeas
+        # independently raises virtual inertia; coupling its index into this
+        # decay kept K_e and velocity-dependent damping high after hand pushes.
         if (
             not learned
             and allow_idle_decay
             and cfg.ke_idle_decay_s > 1e-6
             and self._contact_ticks > max(cfg.settle_ticks, 0)
             and self._f_err_env <= f_err_gate_n
-            and float(instability_index) <= float(cfg.idle_decay_is_gate)
         ):
             self.ke_est += (self.dt / cfg.ke_idle_decay_s) * (
                 max(float(cfg.ke_initial), float(cfg.ke_soft_floor)) - self.ke_est

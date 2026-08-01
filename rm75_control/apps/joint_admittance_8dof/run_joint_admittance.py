@@ -21,6 +21,7 @@ Task orchestration (window C):
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import signal
 import time
@@ -66,6 +67,7 @@ def _run_controller_service(
     bus: RobotStateBus,
     raw: dict,
     *,
+    config_path: Path | None = None,
     hub: PhaseCommandHub,
     rail_m_fn,
     rail_bridge: RailServoBridge | None = None,
@@ -171,7 +173,22 @@ def _run_controller_service(
                 )
 
         try:
-            built = build_sin_tool_y_program(params, raw=raw)
+            # Window A is long-lived while force-controller tuning happens in
+            # YAML. Re-read it for every submitted task so Window C cannot
+            # silently run a controller snapshot left over from daemon start.
+            task_raw = load_yaml(config_path) if config_path is not None else raw
+            if config_path is not None:
+                digest = hashlib.sha256(config_path.read_bytes()).hexdigest()[:12]
+                hm = task_raw.get("hybrid_motion", {})
+                adaptive_ke = hm.get("adaptive_ke", {})
+                print(
+                    "rm75 controller: task config "
+                    f"sha256={digest} D_z={float(hm.get('admittance_damping_z', 0.0)):.3g} "
+                    f"adaptive_ke={bool(adaptive_ke.get('enabled', False))} "
+                    f"Dimeas={bool(hm.get('var_damping_enabled', False))}",
+                    flush=True,
+                )
+            built = build_sin_tool_y_program(params, raw=task_raw)
             rail_m_fn.set_active(built.inner)
             if relay is not None:
                 # Prefer task kin (synced gripper TCP) for SHM pose publish.
@@ -184,7 +201,7 @@ def _run_controller_service(
                 sess,
                 bus,
                 params,
-                raw=raw,
+                raw=task_raw,
                 built=built,
                 on_step=_on_step,
                 stop_check=hub.should_stop,
@@ -406,6 +423,7 @@ def main() -> int:
                     sess,
                     bus,
                     raw,
+                    config_path=args.config,
                     hub=hub,
                     rail_m_fn=rail_pub,
                     rail_bridge=rail_bridge,

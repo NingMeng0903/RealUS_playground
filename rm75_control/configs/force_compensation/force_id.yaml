@@ -1,5 +1,10 @@
 # Force compensation: apps/force_compensation/force_calibrate.py
 # Prerequisite: active tool = Arm_Tip in Web UI.
+#
+# Soft-tissue bounce retune (2026-08-01): restore rank-rich pose_d joint
+# excitation that b632324 thinned (amps/duration). Velocity-burst stage was
+# removed from the collector; richer joint motion is the supported path to
+# keep mass/COM identifiable. Fit keys that id_config still reads are restored.
 
 poses_yaml: poses.yaml
 required_tool_frame: Arm_Tip
@@ -26,6 +31,7 @@ collect:
       c: 32.0
     amp_mm: [4.0, 4.0, 2.0]
     amp_mm_slots:
+      # pose_a TCP ~horizontal: X-dominant linear + large Rx (gravity→Fx) at this pose.
       a: [4.5, 2.5, 1.5]
       b: [3.5, 3.0, 2.0]
       c: [4.5, 4.0, 2.5]
@@ -43,21 +49,27 @@ collect:
       - [0.24, 0.31]
 
   pose_d:
-    joint_duration_s: 30.0
-    joint_amp_deg: [5.0, 4.0, 4.0, 8.0, 10.0, 8.0, 16.0]
-    joint_max_delta_deg: [6.0, 6.0, 6.0, 10.0, 12.0, 10.0, 18.0]
+    # Richer joint excitation (pre-b632324 amps/duration). Current collector
+    # has no velocity_burst stage; do not add burst keys here.
+    joint_duration_s: 45.0
+    joint_amp_deg: [10.0, 8.0, 8.0, 14.0, 16.0, 14.0, 32.0]
+    joint_max_delta_deg: [12.0, 12.0, 12.0, 18.0, 20.0, 18.0, 35.0]
     joint_freqs_hz:
-      - [0.11, 0.17]
-      - [0.10, 0.15]
-      - [0.10, 0.14]
-      - [0.18, 0.25]
-      - [0.19, 0.26]
-      - [0.18, 0.24]
-      - [0.16, 0.23]
+      - [0.14, 0.21]
+      - [0.13, 0.19]
+      - [0.12, 0.18]
+      - [0.22, 0.31]
+      - [0.24, 0.33]
+      - [0.23, 0.30]
+      - [0.20, 0.29]
 
 fit:
   force_sensor: configs/force_sensor.yaml
   holdout_frac: 0.2
+  alpha_percentile: 70.0
+  min_burst_rows: 300
+  min_high_alpha_rows: 150
+  inertia_r_max_m: 0.12
   npz_slots: [a, b, c, d]
   phi_output: force_id_phi.json
   phi_recommended_key: phi_10
