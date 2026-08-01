@@ -1,7 +1,4 @@
-# Force compensation pipeline
-# Library: rm75_control.force.compensation
-# Entry: apps/force_compensation/force_calibrate.py, force_monitor.py
-#
+# Force compensation: apps/force_compensation/force_calibrate.py
 # Prerequisite: active tool = Arm_Tip in Web UI.
 
 poses_yaml: poses.yaml
@@ -19,13 +16,6 @@ collect:
   warmup_s: 3.0
   follow: false
   cartesian_ramp_down_s: 2.5
-  movev_settle_frames: 50
-  movev_quiescent_mm: 0.25
-  movev_quiescent_consecutive: 10
-  quiescent_warmup_frames: 25
-  quiescent_reject_step_mm: 2.0
-  pre_movev_settle_s: 0.5
-  post_handoff_zero_s: 1.0
 
   cartesian:
     duration_s: 30.0
@@ -36,7 +26,6 @@ collect:
       c: 32.0
     amp_mm: [4.0, 4.0, 2.0]
     amp_mm_slots:
-      # pose_a TCP ~horizontal: X-dominant linear + large Rx (gravity→Fx) at this pose.
       a: [4.5, 2.5, 1.5]
       b: [3.5, 3.0, 2.0]
       c: [4.5, 4.0, 2.5]
@@ -54,37 +43,24 @@ collect:
       - [0.24, 0.31]
 
   pose_d:
-    # Phase 0: joint 45s. Phase 1: pose_d_vel_burst 45s (enter_movev_session handoff).
-    joint_duration_s: 45.0
-    burst_duration_s: 45.0
-    joint_amp_deg: [10.0, 8.0, 8.0, 14.0, 16.0, 14.0, 32.0]
-    joint_max_delta_deg: [12.0, 12.0, 12.0, 18.0, 20.0, 18.0, 35.0]
+    joint_duration_s: 30.0
+    joint_amp_deg: [5.0, 4.0, 4.0, 8.0, 10.0, 8.0, 16.0]
+    joint_max_delta_deg: [6.0, 6.0, 6.0, 10.0, 12.0, 10.0, 18.0]
     joint_freqs_hz:
-      - [0.14, 0.21]
-      - [0.13, 0.19]
-      - [0.12, 0.18]
-      - [0.22, 0.31]
-      - [0.24, 0.33]
-      - [0.23, 0.30]
-      - [0.20, 0.29]
-    velocity_burst:
-      profile: pose_d_vel_burst
-      # base wx→wy→wz; peak angle ≈ amp_deg_s / (360*freq_hz) deg per tone
-      amp_deg_s: 18.0
-      freqs_hz: [0.22]
-      ramp_down_s: 4.0
-      follow: false
+      - [0.11, 0.17]
+      - [0.10, 0.15]
+      - [0.10, 0.14]
+      - [0.18, 0.25]
+      - [0.19, 0.26]
+      - [0.18, 0.24]
+      - [0.16, 0.23]
 
 fit:
   force_sensor: configs/force_sensor.yaml
   holdout_frac: 0.2
-  alpha_percentile: 70.0
-  min_burst_rows: 300
-  min_high_alpha_rows: 150
-  inertia_r_max_m: 0.12
   npz_slots: [a, b, c, d]
   phi_output: force_id_phi.json
-  phi_recommended_key: phi_burst
+  phi_recommended_key: phi_10
 
 monitor:
   poll_ms: 50.0
@@ -93,4 +69,4 @@ monitor:
   min_samples: 35
   refresh_hz: 12.0
   phi_source: phi_recommended
-  use_inertia: true
+  use_inertia: false

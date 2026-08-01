@@ -31,9 +31,6 @@ def _collect_argv(args: argparse.Namespace) -> list[str]:
         argv += ["--save-pose", args.save_pose]
     if args.pose_label:
         argv += ["--pose-label", args.pose_label]
-    backend = getattr(args, "backend", "wbc")
-    if backend:
-        argv += ["--backend", str(backend)]
     return argv
 
 
@@ -51,13 +48,11 @@ def main() -> int:
     parser.add_argument("--save-pose", type=str, default=None, metavar="SLOT")
     parser.add_argument("--pose-label", type=str, default=None)
     parser.add_argument("--identify-only", action="store_true", help="skip collection, fit existing npz")
-    parser.add_argument("--scale", type=float, default=None,
-                        help="excitation amplitude scale (e.g. 0.65 if collision/limit during b/c)")
     parser.add_argument(
-        "--backend",
-        choices=("wbc", "vendor"),
-        default="wbc",
-        help="collection backend: wbc (default: A/B/C vendor + D WBC) or vendor",
+        "--scale",
+        type=float,
+        default=None,
+        help="excitation amplitude scale (e.g. 0.65 if collision/limit during b/c)",
     )
     args = parser.parse_args()
 
