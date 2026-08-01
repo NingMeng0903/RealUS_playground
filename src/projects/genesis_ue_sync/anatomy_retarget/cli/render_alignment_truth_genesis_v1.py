@@ -33,6 +33,7 @@ from projects.genesis_ue_sync.anatomy_retarget.pose_map_v1 import (
 )
 from projects.genesis_ue_sync.anatomy_retarget.smplx_body_surface_v7 import (
     load_smplx_model_v7,
+    require_frozen_smplx_male_v7,
     smplx_body_surface_v7,
 )
 from projects.genesis_ue_sync.anatomy_retarget.v8_artifacts import (
@@ -240,7 +241,7 @@ def main(argv: list[str] | None = None) -> int:
     calibration = load_anatomical_calibration_v1(
         args.calibration.resolve(), operator=operator, required_scope="lower_chain"
     )
-    model_path = args.smplx_model.resolve()
+    model_path, model_sha = require_frozen_smplx_male_v7(args.smplx_model)
     model = load_smplx_model_v7(model_path)
     capture = args.capture.resolve()
     with np.load(capture, allow_pickle=False) as data:
@@ -255,7 +256,7 @@ def main(argv: list[str] | None = None) -> int:
         subject_label=args.subject_label,
         capture_sha256=_sha(capture),
         smplx_model=model,
-        smplx_model_sha256=_sha(model_path),
+        smplx_model_sha256=model_sha,
     )
     asset = materialize_subject(operator, betas=betas, gender="male").rigged_asset
     pose_map = build_pose_map_v1(
@@ -281,6 +282,8 @@ def main(argv: list[str] | None = None) -> int:
         "publishable": False,
         "trusted_latest_updated": False,
         "vessel_repair_started": False,
+        "smplx_gender": "male",
+        "smplx_model_sha256": model_sha,
     }
     for pose_name, pose in (
         ("tpose", np.zeros((55, 3), dtype=np.float32)),

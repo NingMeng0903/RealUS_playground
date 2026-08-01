@@ -166,12 +166,10 @@ def test_closed_loop_very_hard_surface_no_bounce_cascade():
     assert tail.std() < 0.6, f"force still oscillating (std {tail.std():.2f})"
 
 
-def test_dimeas_5hz_forced_oscillation_inflates_inertia():
-    """A 5 Hz forced fz oscillation (in the contact-resonance band that
-    ``_update_instability_index``'s HP-filter targets) must raise the
-    Dimeas Iₛ index and, via M(t) = m₀ + m_u·Iₛ, inflate the effective
-    virtual mass. Direct guard against the scan_v5.csv 5 Hz limit cycle
-    that a controller with the inertia channel deleted let stand.
+def test_optional_dimeas_5hz_forced_oscillation_inflates_inertia():
+    """When explicitly enabled, a 5 Hz forced oscillation must raise I_s and
+    inflate virtual mass. Production can disable this optional channel for a
+    hardware A/B without deleting the implementation.
     """
     import yaml
     from pathlib import Path
@@ -179,6 +177,7 @@ def test_dimeas_5hz_forced_oscillation_inflates_inertia():
     dt = 0.005
     raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     cfg = AdmittanceConfig.from_dict(raw)
+    cfg.var_damping_enabled = True
     ctrl = AdmittanceController(dt, cfg)
     ctrl._in_contact_latched = True
 
@@ -242,6 +241,16 @@ def test_dimeas_disabled_leaves_mass_static():
         )
     assert ctrl.instability_index == 0.0
     assert abs(ctrl._m_z_now - cfg.admittance_mass_z) < 1e-9
+
+
+def test_production_ab_keeps_normal_mass_fixed():
+    import yaml
+    from pathlib import Path
+
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
+    cfg = AdmittanceConfig.from_dict(raw)
+    assert cfg.var_damping_enabled is False
+    assert cfg.admittance_mass_z == pytest.approx(1.0)
 
 
 def test_closed_loop_soft_surface_converges():

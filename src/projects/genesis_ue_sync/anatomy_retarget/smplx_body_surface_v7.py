@@ -8,6 +8,7 @@ subject beta and pose without a second solver.
 
 from __future__ import annotations
 
+import hashlib
 import pickle
 from pathlib import Path
 from typing import Any, Mapping
@@ -16,8 +17,27 @@ import numpy as np
 
 
 SMPLX_BODY_SURFACE_SCHEMA_VERSION = 7
+FROZEN_SMPLX_MALE_SHA256 = (
+    "af7ebc82e44cf098598685474c0592049ddfaca8e850feb0c2b88343f9aacee3"
+)
 _NUM_JOINTS = 55
 _NUM_SHAPE_BETAS = 10
+
+
+def require_frozen_smplx_male_v7(model_path: Path | str) -> tuple[Path, str]:
+    """Resolve and authenticate the male SMPL-X model used by this capture set."""
+    path = Path(model_path).expanduser().resolve()
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    actual = digest.hexdigest()
+    if actual != FROZEN_SMPLX_MALE_SHA256:
+        raise ValueError(
+            "this capture/retarget workflow requires the frozen SMPLX_MALE.pkl; "
+            f"got sha256={actual} from {path}"
+        )
+    return path, actual
 
 
 def _as_float64_array(value: Any, *, label: str) -> np.ndarray:

@@ -299,6 +299,8 @@ def _pelvis_cage_v1(
     sacrum_points = points[ids_by_name["Sacrum"]]
     fixed_anchor_counts: dict[str, Any] = {}
     harmonic_residuals: dict[str, float] = {}
+    field_gradient_stats: dict[str, Any] = {}
+    bounded_solver_stats: dict[str, Any] = {}
     all_faces = np.asarray(asset.faces, dtype=np.int64)
     for side, mesh_name in (("left", "Ilium_L"), ("right", "Ilium_R")):
         ids = ids_by_name[mesh_name]
@@ -348,7 +350,7 @@ def _pelvis_cage_v1(
             ),
             axis=0,
         )
-        from scipy.sparse import coo_matrix, diags
+        from scipy.sparse import coo_matrix, diags, identity
         from scipy.sparse.linalg import spsolve
 
         edge_length = np.linalg.norm(
@@ -370,13 +372,43 @@ def _pelvis_cage_v1(
         unknown = ~boundary
         boundary_values = socket_mask.astype(np.float64)
         weight = boundary_values.copy()
-        lhs = laplacian[unknown][:, unknown]
-        rhs = -(laplacian[unknown][:, boundary] @ boundary_values[boundary])
-        weight[unknown] = np.asarray(spsolve(lhs, rhs), dtype=np.float64)
-        weight = np.clip(weight, 0.0, 1.0)
+        laplacian_unknown = laplacian[:, unknown]
+        laplacian_boundary = laplacian[:, boundary]
+        lhs = laplacian_unknown.T @ laplacian_unknown
+        lhs = lhs + 1.0e-12 * identity(lhs.shape[0], format="csr")
+        boundary_term = laplacian_boundary @ boundary_values[boundary]
+        rhs = -(laplacian_unknown.T @ boundary_term)
+        unconstrained = np.asarray(spsolve(lhs, rhs), dtype=np.float64)
+        weight[unknown] = np.clip(unconstrained, 0.0, 1.0)
+        unclipped_weight = weight.copy()
+        unclipped_weight[unknown] = unconstrained
+        bounded_solver_stats[side] = {
+            "success": True,
+            "iterations": 1,
+            "objective": float(
+                0.5
+                * np.dot(
+                    laplacian_unknown @ weight[unknown] + boundary_term,
+                    laplacian_unknown @ weight[unknown] + boundary_term,
+                )
+            ),
+        }
         harmonic_residuals[side] = float(
             np.max(np.abs((laplacian @ weight)[unknown]))
         )
+        edge_weight_delta = np.abs(weight[edges[:, 0]] - weight[edges[:, 1]])
+        worst_edge = edges[int(np.argmax(edge_weight_delta))]
+        field_gradient_stats[side] = {
+            "edge_weight_delta_p99": float(np.quantile(edge_weight_delta, 0.99)),
+            "edge_weight_delta_max": float(np.max(edge_weight_delta)),
+            "unclipped_weight_min": float(np.min(unclipped_weight)),
+            "unclipped_weight_max": float(np.max(unclipped_weight)),
+            "clipped_vertex_count": int(
+                np.count_nonzero((unclipped_weight < 0.0) | (unclipped_weight > 1.0))
+            ),
+            "worst_edge_socket_flags": socket_mask[worst_edge].astype(int).tolist(),
+            "worst_edge_fixed_flags": fixed_mask[worst_edge].astype(int).tolist(),
+        }
         mapped[rows, 0] += (target[0] - source[0]) * weight
         fixed_anchor_counts[side] = {
             "pubic_vertex_count": int(np.count_nonzero(pubic_mask)),
@@ -384,16 +416,106 @@ def _pelvis_cage_v1(
             "fixed_union_vertex_count": int(np.count_nonzero(fixed_mask)),
             "socket_rigid_vertex_count": int(np.count_nonzero(socket_mask)),
         }
-    displacement = mapped - points[ilium_ids]
+    desired_displacement = mapped - points[ilium_ids]
+    ilium_mask = np.zeros(len(points), dtype=bool)
+    ilium_mask[ilium_ids] = True
+    ilium_faces_global = all_faces[np.all(ilium_mask[all_faces], axis=1)]
+    ilium_lookup = {
+        int(vertex): index for index, vertex in enumerate(ilium_ids.tolist())
+    }
+    ilium_faces = np.asarray(
+        [
+            [ilium_lookup[int(vertex)] for vertex in face]
+            for face in ilium_faces_global.tolist()
+        ],
+        dtype=np.int64,
+    )
+    ilium_edges = np.unique(
+        np.sort(
+            np.concatenate(
+                (
+                    ilium_faces[:, (0, 1)],
+                    ilium_faces[:, (1, 2)],
+                    ilium_faces[:, (2, 0)],
+                ),
+                axis=0,
+            ),
+            axis=1,
+        ),
+        axis=0,
+    )
+    local_source = points[ilium_ids]
+    source_edge_length = np.linalg.norm(
+        local_source[ilium_edges[:, 0]] - local_source[ilium_edges[:, 1]], axis=1
+    )
+    source_cross = np.cross(
+        local_source[ilium_faces[:, 1]] - local_source[ilium_faces[:, 0]],
+        local_source[ilium_faces[:, 2]] - local_source[ilium_faces[:, 0]],
+    )
+    source_area2 = np.linalg.norm(source_cross, axis=1)
+
+    def shape_metrics(factor: float) -> dict[str, float | bool]:
+        candidate = local_source + float(factor) * desired_displacement
+        candidate_edge_length = np.linalg.norm(
+            candidate[ilium_edges[:, 0]] - candidate[ilium_edges[:, 1]], axis=1
+        )
+        edge_relative = np.abs(
+            candidate_edge_length / np.maximum(source_edge_length, 1.0e-12) - 1.0
+        )
+        candidate_cross = np.cross(
+            candidate[ilium_faces[:, 1]] - candidate[ilium_faces[:, 0]],
+            candidate[ilium_faces[:, 2]] - candidate[ilium_faces[:, 0]],
+        )
+        area_ratio = np.linalg.norm(candidate_cross, axis=1) / np.maximum(
+            source_area2, 1.0e-12
+        )
+        orientation = np.einsum("ij,ij->i", source_cross, candidate_cross)
+        result = {
+            "edge_relative_change_p99": float(np.quantile(edge_relative, 0.99)),
+            "edge_relative_change_max": float(np.max(edge_relative)),
+            "triangle_area_ratio_min": float(np.min(area_ratio)),
+            "triangle_area_ratio_max": float(np.max(area_ratio)),
+            "orientation_flip_count": int(np.count_nonzero(orientation <= 0.0)),
+        }
+        result["passed"] = bool(
+            result["edge_relative_change_p99"] <= 0.15
+            and result["edge_relative_change_max"] <= 0.30
+            and result["triangle_area_ratio_min"] >= 0.50
+            and result["triangle_area_ratio_max"] <= 1.50
+            and result["orientation_flip_count"] == 0
+        )
+        return result
+
+    requested_shape = shape_metrics(1.0)
+    amplitude = 1.0
+    if not requested_shape["passed"]:
+        lower, upper = 0.0, 1.0
+        for _iteration in range(24):
+            middle = 0.5 * (lower + upper)
+            if shape_metrics(middle)["passed"]:
+                lower = middle
+            else:
+                upper = middle
+        amplitude = 0.999 * lower
+    displacement = amplitude * desired_displacement
+    mapped = local_source + displacement
+    applied_scale_x = 1.0 - amplitude * (1.0 - scale_x)
+    applied_shape = shape_metrics(amplitude)
     report = {
-        "method": "bounded_graph_harmonic_socket_field_with_fixed_pubic_si_anchors_v3",
-        "scale_x": scale_x,
+        "method": "shape_limited_graph_biharmonic_socket_field_with_fixed_pubic_si_anchors_v5",
+        "requested_scale_x": scale_x,
+        "scale_x": applied_scale_x,
+        "shape_limited_amplitude": amplitude,
+        "requested_shape_metrics": requested_shape,
+        "applied_shape_metrics": applied_shape,
         "source_half_width_m": source_half,
         "target_half_width_unclamped_m": target_half,
-        "applied_half_width_m": scale_x * source_half,
+        "applied_half_width_m": applied_scale_x * source_half,
         "rigid_socket_radius_m": rigid_radius_m,
         "fixed_anchors": fixed_anchor_counts,
         "harmonic_residual_max_by_side": harmonic_residuals,
+        "bounded_solver_by_side": bounded_solver_stats,
+        "field_gradient_by_side": field_gradient_stats,
         "maximum_displacement_m": float(np.max(np.linalg.norm(displacement, axis=1))),
         "vertex_count": int(len(ilium_ids)),
         "sacrum_included": False,
@@ -740,6 +862,18 @@ def build_lower_chain_rest_fit_v1(
         target[0] = source_mid_x + sign * pelvis_scale_x * source_half_width
         target_hips[side] = target
 
+    pelvis_ids, pelvis_vertices, pelvis_displacements, pelvis_cage_report = _pelvis_cage_v1(
+        vertices_prefit,
+        asset,
+        source_hips=source_hips,
+        target_hips=target_hips,
+    )
+    pelvis_scale_x = float(pelvis_cage_report["scale_x"])
+    for side, sign in (("left", 1.0), ("right", -1.0)):
+        target_hips[side][0] = (
+            source_mid_x + sign * pelvis_scale_x * source_half_width
+        )
+
     for side_index, side in enumerate(("left", "right")):
         chain = skin_chains[side]
         ids = chain["ids"]
@@ -826,12 +960,6 @@ def build_lower_chain_rest_fit_v1(
 
     mesh_policy, mesh_groups = _mesh_policy(asset)
     C_bone = _bone_transforms(asset, side_transforms)
-    pelvis_ids, pelvis_vertices, pelvis_displacements, pelvis_cage_report = _pelvis_cage_v1(
-        vertices_prefit,
-        asset,
-        source_hips=source_hips,
-        target_hips=target_hips,
-    )
     active_chain_groups = [
         ids for name, ids in mesh_groups.items() if not name.endswith("_foot")
     ]

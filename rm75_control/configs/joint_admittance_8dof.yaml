@@ -283,7 +283,10 @@ hybrid_motion:
   # instability index Iₛ is an HP-filtered raw-force energy ratio. Use the
   # low-effort Dimeas branch: Iₛ changes virtual inertia only; normal damping
   # stays at admittance_damping_z instead of growing with hand speed.
-  var_damping_enabled: true
+  # Hardware A/B (run_20260801_231927): with fixed D=25, raising M to 5 kg
+  # delayed velocity reversal after release and prolonged the measured
+  # 4.4-5.5 Hz tail. Keep M fixed at admittance_mass_z for the next run.
+  var_damping_enabled: false
   # Stable hand guidance is mainly below 2 Hz, while the hardware log's
   # elastic-contact resonance is about 4.9 Hz.  Dimeas selects the crossover
   # between those bands; 3.5 Hz also matches the paper's experimental split.

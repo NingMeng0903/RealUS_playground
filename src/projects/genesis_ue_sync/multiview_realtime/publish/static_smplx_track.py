@@ -79,6 +79,13 @@ def build_static_track_payload(
 ) -> dict[str, Any]:
     moment_dir = Path(moment_dir)
     ts = int(time.time_ns() if timestamp_ns is None else timestamp_ns)
+    gender = str(gender).strip().lower()
+
+    if str(publish_kind) == "smplx_mesh" and gender != "male":
+        raise ValueError(
+            "Terminal-8 SMPL-X mesh publication is frozen to gender=male; "
+            f"got {gender!r}"
+        )
 
     if str(publish_kind) == "smpl_pose":
         smpl_npz = np.load(moment_dir / "smplx_result.npz")

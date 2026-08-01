@@ -532,6 +532,7 @@ def main() -> int:
                     duration_s=float(publish_duration_s),
                     rate_hz=float(publish_rate_hz),
                     publish_kind=str(args.publish_kind),
+                    gender=str(args.gender),
                 )
                 summary["genesis_publish"] = pub_diag
                 logging.info(

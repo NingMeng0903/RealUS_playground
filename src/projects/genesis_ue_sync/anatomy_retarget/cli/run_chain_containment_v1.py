@@ -17,6 +17,7 @@ from projects.genesis_ue_sync.anatomy_retarget.chain_containment_v1 import (
 )
 from projects.genesis_ue_sync.anatomy_retarget.smplx_body_surface_v7 import (
     load_smplx_model_v7,
+    require_frozen_smplx_male_v7,
     smplx_body_surface_v7,
 )
 from projects.genesis_ue_sync.anatomy_retarget.v8_artifacts import (
@@ -52,9 +53,8 @@ def main(argv: list[str] | None = None) -> int:
     calibration = load_anatomical_calibration_v1(
         args.calibration.resolve(), operator=operator, required_scope="lower_chain"
     )
-    model_path = args.smplx_model.resolve()
+    model_path, model_sha = require_frozen_smplx_male_v7(args.smplx_model)
     model = load_smplx_model_v7(model_path)
-    model_sha = _sha(model_path)
     captures = {
         "213328": args.capture_213328.resolve(),
         "213712": args.capture_213712.resolve(),
@@ -87,6 +87,8 @@ def main(argv: list[str] | None = None) -> int:
         "publishable": False,
         "trusted_latest_updated": False,
         "vessel_repair_started": False,
+        "smplx_gender": "male",
+        "smplx_model_sha256": model_sha,
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(

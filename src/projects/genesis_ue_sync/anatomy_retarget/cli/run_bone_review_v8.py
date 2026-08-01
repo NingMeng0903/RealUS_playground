@@ -26,6 +26,7 @@ from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
 )
 from projects.genesis_ue_sync.anatomy_retarget.smplx_body_surface_v7 import (
     load_smplx_model_v7,
+    require_frozen_smplx_male_v7,
 )
 from projects.genesis_ue_sync.anatomy_retarget.v8_artifacts import (
     load_source_operator,
@@ -41,7 +42,7 @@ DEFAULT_BASELINE = REPO_ROOT / "outputs/anatomy_retarget/v8_candidates/rebuild_0
 DEFAULT_OUTPUT = REPO_ROOT / "outputs/anatomy_retarget/v8_candidates/rebuild_014_bone_review"
 DEFAULT_SMPLX_MODEL = (
     REPO_ROOT
-    / "ref_code_library/EasyMocap/data/smplx/smplx/SMPLX_NEUTRAL.pkl"
+    / "ref_code_library/EasyMocap/data/smplx/smplx/SMPLX_MALE.pkl"
 )
 CAPTURES = {
     "213328": REPO_ROOT / "smplx_outputs/20260713_213328/moment_0000/smplx_result.npz",
@@ -75,7 +76,7 @@ def _capture_pose(
         pose = easymocap_fit_to_smplx55(
             data["Rh"],
             data["poses"],
-            gender="neutral",
+            gender="male",
             model_path=model_path,
         )
         translation = easymocap_drive_translation(
@@ -170,7 +171,7 @@ def _run_render(args: argparse.Namespace) -> int:
     candidate_manifest = json.loads(candidate_manifest_path.read_text(encoding="utf-8"))
     baseline_path = Path(str(candidate_manifest["baseline"])).expanduser().resolve()
     baseline_operator = load_source_operator(baseline_path)
-    model_path = args.smplx_model.expanduser().resolve()
+    model_path, model_sha256 = require_frozen_smplx_male_v7(args.smplx_model)
     body_model = load_smplx_model_v7(model_path)
     selected = None
     if args.only_cell:
@@ -235,14 +236,21 @@ def _run_render(args: argparse.Namespace) -> int:
                 )
             )
     if selected is None:
-        manifest = write_bone_review_pack_manifest_v8(
+        manifest_path = write_bone_review_pack_manifest_v8(
             output_dir=output / "bone_review_pack_v8",
             operator_runtime_digest=operator.runtime_digest(validate=False),
             operator_manifest=operator_path / "manifest.json",
             cells=cells,
             sweeps=sweeps,
         )
-        print(f"BoneReviewPackV8 cells={len(cells)} publishable=false -> {manifest}")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["smplx_gender"] = "male"
+        manifest["smplx_model_sha256"] = model_sha256
+        _write_json(manifest_path, manifest)
+        print(
+            f"BoneReviewPackV8 cells={len(cells)} publishable=false -> "
+            f"{manifest_path}"
+        )
     else:
         print(f"BoneReviewCellV8 complete -> {selected[0]}/{selected[1]}")
     return 0
