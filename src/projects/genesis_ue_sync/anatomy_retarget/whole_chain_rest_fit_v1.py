@@ -28,6 +28,7 @@ from .anatomical_calibration_v1 import (
 from .chain_rest_fit_v1 import (
     ChainRestFitSubjectV1,
     _blend_rigid_same_rotation,
+    _centerline_endpoints,
     _global_to_local,
     _mesh_policy,
     _pivot_rotation,
@@ -48,6 +49,32 @@ UPPER_NAMES = (
     "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
     "left_wrist", "right_wrist",
 )
+
+
+def _direction_with_orthogonal_endpoint(
+    direction: np.ndarray,
+    *,
+    longitudinal_axis: int,
+    endpoint_delta: np.ndarray,
+    span_m: float,
+) -> np.ndarray:
+    """Preserve length while matching skin-centre endpoint coordinates."""
+
+    source = np.asarray(direction, dtype=np.float64)
+    source /= np.linalg.norm(source)
+    axis = int(longitudinal_axis)
+    if axis < 0 or axis > 2:
+        raise ValueError("longitudinal axis must be x, y, or z")
+    result = np.zeros(3, dtype=np.float64)
+    orthogonal = [index for index in range(3) if index != axis]
+    requested = np.asarray(endpoint_delta, dtype=np.float64)[orthogonal] / float(span_m)
+    magnitude = float(np.linalg.norm(requested))
+    if magnitude > 0.25:
+        requested *= 0.25 / magnitude
+    result[orthogonal] = requested
+    longitudinal = np.sqrt(max(0.0, 1.0 - float(np.dot(requested, requested))))
+    result[axis] = np.copysign(longitudinal, source[axis])
+    return result
 
 
 def _array_digest(value: Any) -> str:
@@ -219,16 +246,28 @@ def build_whole_chain_rest_fit_v1(
         )
         upper_centerlines[side_index, 0] = humerus_centers
         upper_centerlines[side_index, 1] = forearm_centers
+        _humerus_proximal, humerus_distal = _centerline_endpoints(humerus_centers)
+        forearm_proximal, _forearm_distal = _centerline_endpoints(forearm_centers)
         shoulder = prefit_frames[lookup[f"{side}_shoulder"], :3, 3]
         elbow = prefit_frames[lookup[f"{side}_elbow"], :3, 3]
         wrist = prefit_frames[lookup[f"{side}_wrist"], :3, 3]
         humerus_span = float(np.linalg.norm(elbow - shoulder))
         forearm_span = float(np.linalg.norm(wrist - elbow))
-        humerus_direction, elbow_constraint = _station_ray_direction(
+        _station_humerus_direction, elbow_constraint = _station_ray_direction(
             preferred=np.asarray(humerus_report["direction"]),
             proximal_target=shoulder,
             span_m=humerus_span,
             station=anatomical_targets[f"{side}_elbow"],
+        )
+        elbow_skin_target = (
+            0.5 * (humerus_distal + forearm_proximal)
+            + upper_translation
+        )
+        humerus_direction = _direction_with_orthogonal_endpoint(
+            elbow - shoulder,
+            longitudinal_axis=0,
+            endpoint_delta=elbow_skin_target - shoulder,
+            span_m=humerus_span,
         )
         humerus_rotation = _shortest_arc_rotation(elbow - shoulder, humerus_direction)
         humerus_transform = _pivot_rotation(shoulder, shoulder, humerus_rotation)
@@ -266,6 +305,7 @@ def build_whole_chain_rest_fit_v1(
             "elbow_prefit_m": elbow.tolist(),
             "wrist_prefit_m": wrist.tolist(),
             "elbow_target_m": elbow_target.tolist(),
+            "skin_centerline_elbow_target_m": elbow_skin_target.tolist(),
             "wrist_target_m": wrist_target.tolist(),
             "mapped_anatomical_elbow_target_m": anatomical_targets[f"{side}_elbow"].tolist(),
             "mapped_anatomical_wrist_target_m": anatomical_targets[f"{side}_wrist"].tolist(),
@@ -277,6 +317,7 @@ def build_whole_chain_rest_fit_v1(
             "forearm_axial_scale": axial_scale,
             "elbow_station_constraint": elbow_constraint,
             "wrist_station_constraint": wrist_constraint,
+            "humerus_target_direction": humerus_direction.tolist(),
         }
 
     # The fitted pivot uses both sides of each joint, while controller weights

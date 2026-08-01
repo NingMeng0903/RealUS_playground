@@ -283,10 +283,13 @@ hybrid_motion:
   # instability index Iₛ is an HP-filtered raw-force energy ratio. Use the
   # low-effort Dimeas branch: Iₛ changes virtual inertia only; normal damping
   # stays at admittance_damping_z instead of growing with hand speed.
-  # Hardware A/B (run_20260801_231927): with fixed D=25, raising M to 5 kg
-  # delayed velocity reversal after release and prolonged the measured
-  # 4.4-5.5 Hz tail. Keep M fixed at admittance_mass_z for the next run.
-  var_damping_enabled: false
+  # Hardware A/B result:
+  # - run_20260801_231927: M inflation made release feel heavy;
+  # - run_20260801_234916: disabling the detector also removed proactive-press
+  #   gating, increasing 4-12 Hz events from 5 to 19 and letting |v_r| sit near
+  #   30 mm/s for 21.7% of the scan.
+  # Keep the detector for press-feedforward gating, but do not adapt M or D.
+  var_damping_enabled: true
   # Stable hand guidance is mainly below 2 Hz, while the hardware log's
   # elastic-contact resonance is about 4.9 Hz.  Dimeas selects the crossover
   # between those bands; 3.5 Hz also matches the paper's experimental split.
@@ -300,7 +303,7 @@ hybrid_motion:
   var_damping_lambda: 0.951
   var_damping_f_max_n: 7.0
   var_damping_d_u: 0.0
-  var_damping_m_u: 4.0
+  var_damping_m_u: 0.0
   # The paper leaves the accumulated Iₛ and resulting mass unbounded; this is
   # the hardware safety cap on virtual-mass authority.
   var_damping_m_max: 5.0

@@ -178,6 +178,7 @@ def test_optional_dimeas_5hz_forced_oscillation_inflates_inertia():
     raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     cfg = AdmittanceConfig.from_dict(raw)
     cfg.var_damping_enabled = True
+    cfg.var_damping_m_u = 4.0
     ctrl = AdmittanceController(dt, cfg)
     ctrl._in_contact_latched = True
 
@@ -243,14 +244,16 @@ def test_dimeas_disabled_leaves_mass_static():
     assert abs(ctrl._m_z_now - cfg.admittance_mass_z) < 1e-9
 
 
-def test_production_ab_keeps_normal_mass_fixed():
+def test_production_detector_keeps_normal_mass_fixed():
     import yaml
     from pathlib import Path
 
     raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     cfg = AdmittanceConfig.from_dict(raw)
-    assert cfg.var_damping_enabled is False
+    assert cfg.var_damping_enabled is True
     assert cfg.admittance_mass_z == pytest.approx(1.0)
+    assert cfg.var_damping_m_u == pytest.approx(0.0)
+    assert cfg.var_damping_d_u == pytest.approx(0.0)
 
 
 def test_closed_loop_soft_surface_converges():
