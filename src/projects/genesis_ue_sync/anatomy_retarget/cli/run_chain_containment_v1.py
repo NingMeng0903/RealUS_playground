@@ -51,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
         raise FileExistsError(f"refusing to overwrite containment report: {output}")
     operator = load_source_operator(args.operator.resolve(), mmap=True)
     calibration = load_anatomical_calibration_v1(
-        args.calibration.resolve(), operator=operator, required_scope="lower_chain"
+        args.calibration.resolve(), operator=operator, required_scope="full_main_chain"
     )
     model_path, model_sha = require_frozen_smplx_male_v7(args.smplx_model)
     model = load_smplx_model_v7(model_path)

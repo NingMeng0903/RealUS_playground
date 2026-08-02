@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+import hashlib
 import json
 import numpy as np
 import time
@@ -18,6 +19,11 @@ except ImportError:  # pragma: no cover
     F = None  # type: ignore
 
 from ird_playground.ird.metric import unit_speed_eikonal_loss
+from ird_playground.ird.splits import (
+    FiveWaySplitConfig,
+    assert_split_disjoint,
+    five_way_split_indices,
+)
 from ird_playground.neural.signed_field import (
     NEAR_AXIS_R_M,
     ReachabilitySDF,
@@ -58,13 +64,18 @@ class SignedTrainConfig:
     lambda_classification: float = 1.0
     lambda_signed_value: float = 1.0
     lambda_normal_direction: float = 0.25
-    lambda_eikonal: float = 0.05
+    lambda_boundary_slope: float = 0.05
+    lambda_generic_eikonal: float = 0.0
     lambda_straddle: float = 0.0
     straddle_margin: float = 0.05
     sdf_target_scale: float = 1.0
     near_band_abs: float = 0.25
     near_band_boost: float = 1.0
     boundary_sample_boost: float = 1.0
+    paired_boundary_groups: int = 256
+    zero_calibration_fraction: float = 0.05
+    safety_calibration_fraction: float = 0.05
+    test_fraction: float = 0.10
     resume_checkpoint: str | None = None
     max_global_rows: int | None = None
     max_boundary_groups: int | None = None
@@ -109,13 +120,20 @@ def load_signed_train_config(path: str | Path, *, root: Path | None = None) -> S
         lambda_classification=float(loss.get("classification", 1.0)),
         lambda_signed_value=float(loss.get("signed_value", 1.0)),
         lambda_normal_direction=float(loss.get("normal_direction", 0.25)),
-        lambda_eikonal=float(loss.get("eikonal", 0.05)),
+        lambda_boundary_slope=float(
+            loss.get("boundary_slope", loss.get("eikonal", 0.05))
+        ),
+        lambda_generic_eikonal=float(loss.get("generic_eikonal", 0.0)),
         lambda_straddle=float(loss.get("straddle", 0.0)),
         straddle_margin=float(loss.get("straddle_margin", 0.05)),
         sdf_target_scale=float(loss.get("sdf_target_scale", 1.0)),
         near_band_abs=float(loss.get("near_band_abs", train.get("near_band_abs", 0.25))),
         near_band_boost=float(loss.get("near_band_boost", train.get("near_band_boost", 1.0))),
         boundary_sample_boost=float(train.get("boundary_sample_boost", 1.0)),
+        paired_boundary_groups=int(train.get("paired_boundary_groups", 256)),
+        zero_calibration_fraction=float(train.get("zero_calibration_fraction", 0.05)),
+        safety_calibration_fraction=float(train.get("safety_calibration_fraction", 0.05)),
+        test_fraction=float(train.get("test_fraction", 0.10)),
         resume_checkpoint=(
             None
             if train.get("resume_checkpoint") in (None, "null", "")
@@ -297,6 +315,76 @@ def _epoch_order(
     return rng.choice(tr_idx, size=len(tr_idx), replace=True, p=weights)
 
 
+def paired_epoch_batches(
+    tr_idx: np.ndarray,
+    boundary_id: np.ndarray,
+    reachable: np.ndarray,
+    rng: np.random.Generator,
+    *,
+    batch_size: int,
+    groups_per_batch: int = 256,
+    sample_origin: np.ndarray | None = None,
+) -> list[np.ndarray]:
+    """Build batches containing complete boundary groups plus stratified globals."""
+    tr = np.asarray(tr_idx, dtype=np.int64)
+    bid = np.asarray(boundary_id, dtype=np.int64)
+    y = np.asarray(reachable, dtype=np.float32)
+    if batch_size < 1 or groups_per_batch < 1:
+        raise ValueError("batch_size and groups_per_batch must be positive")
+    boundary_rows = tr[bid[tr] >= 0]
+    groups = np.unique(bid[boundary_rows])
+    rng.shuffle(groups)
+    rows_by_group = {int(group): boundary_rows[bid[boundary_rows] == group] for group in groups}
+    for group, rows in rows_by_group.items():
+        if not ((y[rows] > 0.5).any() and (y[rows] < 0.5).any()):
+            raise ValueError(f"boundary group {group} lacks a positive/negative pair")
+
+    global_rows = tr[bid[tr] < 0]
+    origin = (
+        np.zeros(len(bid), dtype=np.int8)
+        if sample_origin is None
+        else np.asarray(sample_origin, dtype=np.int8)
+    )
+    strata: list[np.ndarray] = []
+    for source_kind in np.unique(origin[global_rows]).tolist():
+        source_rows = global_rows[origin[global_rows] == source_kind]
+        for label in (False, True):
+            rows = source_rows[(y[source_rows] > 0.5) == label]
+            if len(rows):
+                strata.append(rows)
+    stratum_weights = np.asarray([len(rows) for rows in strata], dtype=np.float64)
+    if stratum_weights.size:
+        stratum_weights /= stratum_weights.sum()
+
+    if not len(groups):
+        order = rng.permutation(tr)
+        return [order[start : start + batch_size] for start in range(0, len(order), batch_size)]
+
+    batches = []
+    for start in range(0, len(groups), groups_per_batch):
+        selected_groups = groups[start : start + groups_per_batch]
+        paired = np.concatenate([rows_by_group[int(group)] for group in selected_groups])
+        if len(paired) > batch_size:
+            raise ValueError(
+                f"{len(selected_groups)} complete groups require {len(paired)} rows, "
+                f"exceeding batch_size={batch_size}"
+            )
+        n_fill = batch_size - len(paired)
+        fill_parts = []
+        if n_fill and strata:
+            raw_counts = stratum_weights * n_fill
+            counts = np.floor(raw_counts).astype(int)
+            for index in np.argsort(raw_counts - counts)[::-1][: n_fill - counts.sum()]:
+                counts[index] += 1
+            for rows, count in zip(strata, counts, strict=True):
+                if count:
+                    fill_parts.append(rng.choice(rows, size=int(count), replace=count > len(rows)))
+        ids = np.concatenate((paired, *fill_parts)) if fill_parts else paired
+        rng.shuffle(ids)
+        batches.append(ids)
+    return batches
+
+
 def _straddle_hinge_loss(
     pred: "torch.Tensor",
     boundary_id: "torch.Tensor",
@@ -355,8 +443,9 @@ def evaluate_signed_field(
     *,
     report_near_axis: bool = True,
     near_axis_r_m: float = NEAR_AXIS_R_M,
+    zero_bias: float = 0.0,
 ) -> dict[str, float]:
-    pred = field.score_np(arrays["canonical"][idx])
+    pred = field.score_np(arrays["canonical"][idx]) - float(zero_bias)
     supervised = arrays.get("classification_weight", np.ones(len(arrays["reachable"]), dtype=np.float32))[idx] > 0
     y = arrays["reachable"][idx][supervised] > 0.5
     positive = pred[supervised] >= 0.0
@@ -446,15 +535,24 @@ def _resolve_input_normalization(
     arrays: dict[str, np.ndarray],
     train_idx: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
-    if "input_center" in arrays and "input_scale" in arrays:
-        center = np.asarray(arrays["input_center"], dtype=np.float32).reshape(-1)
-        scale = np.asarray(arrays["input_scale"], dtype=np.float32).reshape(-1)
-        try:
-            assert_fitted_normalization(center, scale)
-            return center, scale
-        except ValueError:
-            pass
+    # Dataset-level statistics include held-out rows and are descriptive only.
     return compute_input_stats(arrays["canonical"][train_idx])
+
+
+def _sha256_file(path: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _split_fingerprint(splits: dict[str, np.ndarray], source: np.ndarray) -> str:
+    digest = hashlib.sha256()
+    for name in sorted(splits):
+        digest.update(name.encode("ascii"))
+        digest.update(np.asarray(source[splits[name]], dtype="<i8").tobytes())
+    return digest.hexdigest()
 
 
 def train_signed_field(cfg: SignedTrainConfig) -> dict:
@@ -490,12 +588,19 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
         }
         source_pose_id = require_source_pose_id(arrays)
 
-    tr_idx, va_idx = _split_indices(
+    splits = five_way_split_indices(
         arrays["boundary_id"],
-        cfg.val_fraction,
-        cfg.seed,
         source_pose_id,
+        seed=cfg.seed,
+        config=FiveWaySplitConfig(
+            selection_fraction=cfg.val_fraction,
+            zero_calibration_fraction=cfg.zero_calibration_fraction,
+            safety_calibration_fraction=cfg.safety_calibration_fraction,
+            test_fraction=cfg.test_fraction,
+        ),
     )
+    assert_split_disjoint(splits, source_pose_id)
+    tr_idx, va_idx = splits["train"], splits["selection"]
     input_center, input_scale = _resolve_input_normalization(arrays, tr_idx)
     device = torch.device(cfg.device)
     torch.manual_seed(cfg.seed)
@@ -549,18 +654,31 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
     )
     signed_pair = np.where(np.isfinite(signed_m), signed_m, signed_deg).astype(np.float32)
 
+    if cfg.lambda_generic_eikonal > 0.0:
+        raise ValueError(
+            "generic_eikonal must remain zero until a metric-correct quotient "
+            "Jacobian implementation is selected"
+        )
+
     for epoch in range(cfg.epochs):
-        order = _epoch_order(
+        epoch_batches = paired_epoch_batches(
             tr_idx,
             arrays["boundary_id"],
+            arrays["reachable"],
             rng,
-            boundary_sample_boost=cfg.boundary_sample_boost,
+            batch_size=cfg.batch_size,
+            groups_per_batch=cfg.paired_boundary_groups,
+            sample_origin=arrays.get("sample_origin"),
         )
-        totals = np.zeros(6, dtype=np.float64)
+        totals = np.zeros(7, dtype=np.float64)
         batches = 0
+        paired_groups_seen = 0
+        paired_batches_active = 0
         model.train()
-        for start in range(0, len(order), cfg.batch_size):
-            ids = order[start : start + cfg.batch_size]
+        for ids in epoch_batches:
+            local_groups = np.unique(arrays["boundary_id"][ids][arrays["boundary_id"][ids] >= 0])
+            paired_groups_seen += len(local_groups)
+            paired_batches_active += int(len(local_groups) > 0)
             canonical = torch.as_tensor(arrays["canonical"][ids], device=device)
             xn = model.normalize(canonical).detach().requires_grad_(True)
             target_y = torch.as_tensor(arrays["reachable"][ids], device=device)
@@ -604,28 +722,17 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
             nids = torch.nonzero(normal_weight > 0, as_tuple=False).flatten()
             if len(nids) > cfg.normal_batch_max:
                 nids = nids[torch.randperm(len(nids), device=device)[: cfg.normal_batch_max]]
-            eikonal_terms = []
+            boundary_slope = pred.new_zeros(())
             if len(nids):
                 grad_all = torch.autograd.grad(pred[nids].sum(), xn, create_graph=True)[0]
                 grad = grad_all[nids]
                 normal_loss = (1.0 - F.cosine_similarity(grad, normal[nids], dim=-1, eps=1.0e-8)).mean()
-                eikonal_terms.append(
-                    unit_speed_eikonal_loss(grad, target_slope=slope[nids], beta=0.2)
+                boundary_slope = unit_speed_eikonal_loss(
+                    grad, target_slope=slope[nids], beta=0.2
                 )
             else:
                 normal_loss = pred.new_zeros(())
-            # Declared-metric unit-speed prior on far/near SDF-supervised rows.
-            sids = torch.nonzero(smask, as_tuple=False).flatten()
-            if cfg.lambda_eikonal > 0.0 and len(sids):
-                if len(sids) > cfg.normal_batch_max:
-                    sids = sids[torch.randperm(len(sids), device=device)[: cfg.normal_batch_max]]
-                grad_sdf = torch.autograd.grad(pred[sids].sum(), xn, create_graph=True)[0][sids]
-                eikonal_terms.append(unit_speed_eikonal_loss(grad_sdf, target_slope=None, beta=0.2))
-            eikonal = (
-                torch.stack(eikonal_terms).mean()
-                if eikonal_terms
-                else pred.new_zeros(())
-            )
+            generic_eikonal = pred.new_zeros(())
             straddle = (
                 _straddle_hinge_loss(pred, bid, signed, margin=cfg.straddle_margin)
                 if cfg.lambda_straddle > 0.0
@@ -635,7 +742,8 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
                 cfg.lambda_classification * cls
                 + cfg.lambda_signed_value * sdf
                 + cfg.lambda_normal_direction * normal_loss
-                + cfg.lambda_eikonal * eikonal
+                + cfg.lambda_boundary_slope * boundary_slope
+                + cfg.lambda_generic_eikonal * generic_eikonal
                 + cfg.lambda_straddle * straddle
             )
             optimizer.zero_grad(set_to_none=True)
@@ -647,7 +755,8 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
                 float(cls.detach()),
                 float(sdf.detach()),
                 float(normal_loss.detach()),
-                float(eikonal.detach()),
+                float(boundary_slope.detach()),
+                float(generic_eikonal.detach()),
                 float(straddle.detach()),
             ]
             batches += 1
@@ -666,8 +775,11 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
             "classification_loss": float(totals[1] / batches),
             "signed_loss": float(totals[2] / batches),
             "normal_loss": float(totals[3] / batches),
-            "eikonal_loss": float(totals[4] / batches),
-            "straddle_loss": float(totals[5] / batches),
+            "boundary_slope_loss": float(totals[4] / batches),
+            "generic_eikonal_loss": float(totals[5] / batches),
+            "straddle_loss": float(totals[6] / batches),
+            "paired_groups_seen": int(paired_groups_seen),
+            "straddle_active_batch_fraction": float(paired_batches_active / batches),
             "selection_score": score,
             **metrics,
         }
@@ -679,7 +791,9 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
             f"epoch={epoch} loss={row['loss']:.4f} bal={metrics['balanced_accuracy']:.3f} "
             f"dir_m={metrics.get('direction_agreement_m',0):.3f} dir_deg={metrics.get('direction_agreement_deg',0):.3f} "
             f"strict_m={metrics.get('strict_straddle_rate_m',0):.3f} wide_m={metrics.get('wide_straddle_rate_m',0):.3f} "
-            f"str={row['straddle_loss']:.4f} eik={row['eikonal_loss']:.4f} sel={score:.3f}{near_msg}",
+            f"str={row['straddle_loss']:.4f} slope={row['boundary_slope_loss']:.4f} "
+            f"eik={row['generic_eikonal_loss']:.4f} pairs={paired_groups_seen} "
+            f"sel={score:.3f}{near_msg}",
             flush=True,
         )
         if score > best_score + 1.0e-4:
@@ -703,6 +817,13 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
         report_near_axis=cfg.report_near_axis,
         near_axis_r_m=cfg.near_axis_r_m,
     )
+    dataset_sha256 = _sha256_file(cfg.gt_npz)
+    split_fingerprint = _split_fingerprint(splits, source_pose_id)
+    sampler_schema = {
+        "name": "complete_boundary_groups_stratified_global_v1",
+        "groups_per_batch": cfg.paired_boundary_groups,
+        "batch_size": cfg.batch_size,
+    }
     field.save(
         checkpoint,
         meta={
@@ -714,6 +835,13 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
             "q1_aux_head": False,
             "input_center": input_center.tolist(),
             "input_scale": input_scale.tolist(),
+            "artifact_schema": "ird_signed_field_v2",
+            "dataset_sha256": dataset_sha256,
+            "split_fingerprint": split_fingerprint,
+            "sampler": sampler_schema,
+            "metric_schema": dataset_meta.get("metric"),
+            "output_scale": cfg.sdf_target_scale,
+            "calibration_schema": "ird_clearance_calibration_v2",
         },
     )
     result = {
@@ -722,6 +850,10 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
         "history": history,
         "n_train": int(len(tr_idx)),
         "n_val": int(len(va_idx)),
+        "split_counts": {name: int(len(idx)) for name, idx in splits.items()},
+        "dataset_sha256": dataset_sha256,
+        "split_fingerprint": split_fingerprint,
+        "sampler": sampler_schema,
         "n_total": int(len(arrays["boundary_id"])),
         "n_global": int((arrays["boundary_id"] < 0).sum()),
         "n_boundary_groups": int(np.unique(arrays["boundary_id"][arrays["boundary_id"] >= 0]).size),
@@ -741,7 +873,9 @@ __all__ = [
     "SignedTrainConfig",
     "evaluate_signed_field",
     "external_holdout_indices",
+    "five_way_split_indices",
     "load_signed_train_config",
+    "paired_epoch_batches",
     "require_source_pose_id",
     "train_signed_field",
 ]

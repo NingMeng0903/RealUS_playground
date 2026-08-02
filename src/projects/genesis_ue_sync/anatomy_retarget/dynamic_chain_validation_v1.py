@@ -87,7 +87,7 @@ def _nonbone_ids(asset: Any) -> np.ndarray:
         [
             np.arange(int(start), int(stop), dtype=np.int64)
             for tissue, (start, stop) in zip(asset.source_tissues, ranges.tolist())
-            if str(tissue).strip().lower() != "bone"
+            if str(tissue).strip().lower() not in {"bone", "vessel", "nerve"}
         ]
     )
 
@@ -236,6 +236,7 @@ def synthetic_chain_sweeps_v1() -> dict[str, np.ndarray]:
         ("knee", (4, 5), (0.0, 30.0, 60.0, 90.0, 120.0)),
         ("ankle", (7, 8), (-20.0, 0.0, 20.0)),
         ("elbow", (18, 19), (0.0, 70.0, 140.0)),
+        ("wrist", (20, 21), (-45.0, 0.0, 45.0)),
         ("shoulder", (16, 17), (0.0, 60.0, 120.0)),
     )
     for family, joints, values in recipes:

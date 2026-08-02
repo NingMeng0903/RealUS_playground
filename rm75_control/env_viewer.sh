@@ -4,6 +4,15 @@
 #   source env_viewer.sh
 #   python -m rm75_control.control.joint_admittance_8dof.viewer.demo --show-viewer
 
+# A terminal can retain an unreachable cwd after the external drive is
+# reconnected or a parent directory is replaced.  Conda and Python may then
+# report unrelated shared-library failures before the viewer starts.
+if ! pwd -P >/dev/null 2>&1; then
+  echo "viewer env: current directory is unavailable; switching to /tmp" >&2
+  cd /tmp 2>/dev/null || return 1 2>/dev/null || exit 1
+  export OLDPWD=/tmp
+fi
+
 GENESIS_ENV="/media/camp/EXT_DRIVE/envs/genesis"
 
 if [ ! -d "${GENESIS_ENV}/bin" ]; then

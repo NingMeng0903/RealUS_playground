@@ -46,7 +46,7 @@ from projects.genesis_ue_sync.anatomy_retarget.whole_chain_rest_fit_v1 import (
 
 
 COLORS = {
-    "skin": (0.90, 0.58, 0.43, 0.20),
+    "skin": (0.90, 0.58, 0.43, 0.18),
     "baseline": (0.12, 0.34, 0.96, 0.70),
     "candidate": (0.93, 0.88, 0.72, 1.0),
     "candidate_translucent": (0.93, 0.88, 0.72, 0.30),
@@ -98,13 +98,13 @@ def _outside_faces(
     import igl
 
     bone_ids = np.flatnonzero(bone_mask)
-    signed, _face, _closest, _normal = igl.signed_distance(
-        np.asarray(vertices, dtype=np.float64)[bone_ids],
+    winding = igl.winding_number(
         np.asarray(skin, dtype=np.float64),
         np.asarray(skin_faces, dtype=np.int32),
+        np.asarray(vertices, dtype=np.float64)[bone_ids],
     )
     outside = np.zeros(len(vertices), dtype=bool)
-    outside[bone_ids] = np.asarray(signed).reshape(-1) > 0.0
+    outside[bone_ids] = np.abs(np.asarray(winding).reshape(-1)) < 0.5
     triangles = _faces(faces, bone_mask)
     return triangles[np.any(outside[triangles], axis=1)]
 
@@ -239,7 +239,7 @@ def main(argv: list[str] | None = None) -> int:
     output.mkdir(parents=True)
     operator = load_source_operator(args.operator.resolve(), mmap=True)
     calibration = load_anatomical_calibration_v1(
-        args.calibration.resolve(), operator=operator, required_scope="lower_chain"
+        args.calibration.resolve(), operator=operator, required_scope="full_main_chain"
     )
     model_path, model_sha = require_frozen_smplx_male_v7(args.smplx_model)
     model = load_smplx_model_v7(model_path)
@@ -308,8 +308,8 @@ def main(argv: list[str] | None = None) -> int:
             candidate,
             _outside_faces(candidate, asset.faces, bone_mask, skin, skin_faces),
         )
-        vessel_path = _export(assets / "vessels.obj", baseline, vessel_faces)
-        nerve_path = _export(assets / "nerves.obj", baseline, nerve_faces)
+        vessel_path = _export(assets / "vessels.obj", candidate, vessel_faces)
+        nerve_path = _export(assets / "nerves.obj", candidate, nerve_faces)
         layers = {
             "baseline_skin": [
                 ("skin", skin_path, COLORS["skin"]),

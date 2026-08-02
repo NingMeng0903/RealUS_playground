@@ -30,6 +30,8 @@ ANATOMICAL_CALIBRATION_SCHEMA_VERSION = 1
 ANATOMICAL_CALIBRATION_KIND = "AnatomicalCalibrationV1"
 COORDINATE_SYSTEM = "smplx_y_up_m"
 MATRIX_CONVENTION = "column_vector_left_multiply"
+FULL_MAIN_CHAIN_SCOPE = "full_main_chain"
+LOWER_CHAIN_SCOPE = "lower_chain"
 
 MOTION_MODES = (
     "bind_follow",
@@ -286,6 +288,20 @@ def _augment_upper_domains(
             fit, validation = _spatial_split(vertices, ids)
             result[f"calibration/{side}/wrist/{part}.fit"] = fit
             result[f"calibration/{side}/wrist/{part}.validation"] = validation
+
+        # The elbow and wrist share the forearm transverse direction.  Small
+        # articular caps are appropriate for pivot fitting, but their centroid
+        # difference amplifies sub-millimetre sampling noise into several
+        # degrees of hinge-axis error.  Independent, interleaved whole-bone
+        # domains provide the ISB-style radius/ulna transverse axis while the
+        # frozen articular caps continue to define the joint centres.
+        for part, mesh_name in (
+            ("radius", f"Radius_{suffix}"),
+            ("ulna", f"Ulna_{suffix}"),
+        ):
+            fit, validation = _spatial_split(vertices, _mesh_ids(asset, mesh_name))
+            result[f"calibration/{side}/forearm_axis/{part}.fit"] = fit
+            result[f"calibration/{side}/forearm_axis/{part}.validation"] = validation
     return result
 
 
@@ -447,10 +463,26 @@ def _measure_frames(
             transverse = opposite - origins[index]
             longitudinal = origins[by_name[f"{spec.side}_elbow"]] - origins[index]
         elif spec.kind == "elbow":
-            transverse = points[1] - points[2]
+            transverse = _mean(
+                vertices,
+                domains,
+                f"calibration/{spec.side}/forearm_axis/radius.{partition}",
+            ) - _mean(
+                vertices,
+                domains,
+                f"calibration/{spec.side}/forearm_axis/ulna.{partition}",
+            )
             longitudinal = origins[by_name[f"{spec.side}_wrist"]] - origins[index]
         else:
-            transverse = points[0] - points[1]
+            transverse = _mean(
+                vertices,
+                domains,
+                f"calibration/{spec.side}/forearm_axis/radius.{partition}",
+            ) - _mean(
+                vertices,
+                domains,
+                f"calibration/{spec.side}/forearm_axis/ulna.{partition}",
+            )
             longitudinal = origins[index] - origins[by_name[f"{spec.side}_elbow"]]
         frames[index] = _proper_frame(origins[index], transverse, longitudinal)
     return frames, widths, details
@@ -854,7 +886,9 @@ def check_anatomical_calibration_v1(
         "passed": passed,
         "passed_lower_chain": passed_lower,
         "passed_upper_chain": passed_upper,
-        "accepted_scope": "full" if passed else "lower_chain" if passed_lower else "none",
+        "accepted_scope": (
+            FULL_MAIN_CHAIN_SCOPE if passed else LOWER_CHAIN_SCOPE if passed_lower else "none"
+        ),
         "calibration_digest": _calibration_content_digest(calibration),
         "source_checks": source_checks,
         "array_checks": array_checks,
@@ -899,12 +933,14 @@ def save_anatomical_calibration_v1(
     *,
     operator: SourceOperatorV8 | None = None,
     checker_report: Mapping[str, Any] | None = None,
-    accepted_scope: str = "full",
+    accepted_scope: str = FULL_MAIN_CHAIN_SCOPE,
 ) -> Path:
     calibration.validate()
     calibration_digest = _calibration_content_digest(calibration)
-    if accepted_scope not in {"full", "lower_chain"}:
-        raise ValueError("accepted_scope must be 'full' or 'lower_chain'")
+    if accepted_scope not in {FULL_MAIN_CHAIN_SCOPE, LOWER_CHAIN_SCOPE}:
+        raise ValueError(
+            "accepted_scope must be 'full_main_chain' or 'lower_chain'"
+        )
     complete = False
     if checker_report is not None:
         if operator is None:
@@ -912,7 +948,9 @@ def save_anatomical_calibration_v1(
         independent_report = check_anatomical_calibration_v1(
             calibration, operator=operator
         )
-        expected_pass_key = "passed" if accepted_scope == "full" else "passed_lower_chain"
+        expected_pass_key = (
+            "passed" if accepted_scope == FULL_MAIN_CHAIN_SCOPE else "passed_lower_chain"
+        )
         if (
             checker_report.get("artifact_kind") != "AnatomicalCalibrationCheckV1"
             or int(checker_report.get("schema_version", -1))
@@ -923,7 +961,11 @@ def save_anatomical_calibration_v1(
             or not all(bool(value) for value in dict(checker_report.get("source_checks", {})).values())
             or not all(bool(value) for value in dict(checker_report.get("array_checks", {})).values())
             or checker_report.get("accepted_scope")
-            not in ({"full"} if accepted_scope == "full" else {"full", "lower_chain"})
+            not in (
+                {FULL_MAIN_CHAIN_SCOPE}
+                if accepted_scope == FULL_MAIN_CHAIN_SCOPE
+                else {FULL_MAIN_CHAIN_SCOPE, LOWER_CHAIN_SCOPE}
+            )
             or independent_report.get("calibration_digest") != calibration_digest
             or not bool(independent_report.get(expected_pass_key, False))
             or checker_report.get("source_checks") != independent_report.get("source_checks")
@@ -991,7 +1033,7 @@ def load_anatomical_calibration_v1(
     *,
     operator: SourceOperatorV8 | None = None,
     require_complete: bool = True,
-    required_scope: str = "full",
+    required_scope: str = FULL_MAIN_CHAIN_SCOPE,
 ) -> AnatomicalCalibrationV1:
     root = Path(path).resolve()
     manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
@@ -1004,17 +1046,21 @@ def load_anatomical_calibration_v1(
         or manifest.get("publishable") is not False
     ):
         raise ValueError("invalid anatomical calibration manifest contract")
-    if required_scope not in {"full", "lower_chain"}:
-        raise ValueError("required_scope must be 'full' or 'lower_chain'")
+    if required_scope not in {FULL_MAIN_CHAIN_SCOPE, LOWER_CHAIN_SCOPE}:
+        raise ValueError(
+            "required_scope must be 'full_main_chain' or 'lower_chain'"
+        )
     if require_complete:
         if operator is None:
             raise ValueError("strict calibration load requires the frozen operator trust root")
         accepted_scope = str(manifest.get("accepted_scope", ""))
-        scope_ok = accepted_scope == "full" or (
-            required_scope == "lower_chain" and accepted_scope == "lower_chain"
+        scope_ok = accepted_scope == FULL_MAIN_CHAIN_SCOPE or (
+            required_scope == LOWER_CHAIN_SCOPE and accepted_scope == LOWER_CHAIN_SCOPE
         )
         report = manifest.get("checker_report")
-        pass_key = "passed" if required_scope == "full" else "passed_lower_chain"
+        pass_key = (
+            "passed" if required_scope == FULL_MAIN_CHAIN_SCOPE else "passed_lower_chain"
+        )
         if (
             manifest.get("complete") is not True
             or not scope_ok
@@ -1108,7 +1154,9 @@ def load_anatomical_calibration_v1(
         independent_report = check_anatomical_calibration_v1(
             calibration, operator=operator
         )
-        pass_key = "passed" if required_scope == "full" else "passed_lower_chain"
+        pass_key = (
+            "passed" if required_scope == FULL_MAIN_CHAIN_SCOPE else "passed_lower_chain"
+        )
         stored_report = manifest["checker_report"]
         if (
             not bool(independent_report.get(pass_key, False))
@@ -1126,6 +1174,8 @@ def load_anatomical_calibration_v1(
 __all__ = [
     "ANATOMICAL_CALIBRATION_KIND",
     "ANATOMICAL_CALIBRATION_SCHEMA_VERSION",
+    "FULL_MAIN_CHAIN_SCOPE",
+    "LOWER_CHAIN_SCOPE",
     "AnatomicalCalibrationV1",
     "JOINT_SPECS",
     "build_anatomical_calibration_v1",

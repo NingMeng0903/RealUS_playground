@@ -45,7 +45,7 @@ def rockafellar_uryasev_cvar(
     For clearance values (higher is better) the robust aggregate is the
     lower-tail expectation::
 
-        CVaR_α(X) = min_t  t + 1/(1-α) E[(t - X)_+]
+        LCVaR_α(X) = max_t  t - 1/α E[(t - X)_+]
 
     Empirically the optimal ``t`` lies in the sample set, so the objective is
     evaluated at every sample and reduced with a hard or soft min.
@@ -58,12 +58,12 @@ def rockafellar_uryasev_cvar(
     x = values.movedim(dim, -1)
     t = x.unsqueeze(-1)
     v = x.unsqueeze(-2)
-    obj = t.squeeze(-1) + torch.relu(t - v).mean(dim=-1) / (1.0 - alpha)
+    obj = t.squeeze(-1) - torch.relu(t - v).mean(dim=-1) / alpha
     if soft_tau is None or float(soft_tau) <= 0.0:
-        return obj.amin(dim=-1)
+        return obj.amax(dim=-1)
     tau = max(float(soft_tau), 1.0e-6)
     n = obj.shape[-1]
-    return -tau * (torch.logsumexp(-obj / tau, dim=-1) - np.log(float(n)))
+    return tau * (torch.logsumexp(obj / tau, dim=-1) - np.log(float(n)))
 
 
 def normalized_softmax_like_max(values: "torch.Tensor", tau: float, dim: int = -1) -> "torch.Tensor":
@@ -93,6 +93,10 @@ class SetQueryResult:
     free_clearance: "torch.Tensor"
     nested_scores: "torch.Tensor"
     beta_offsets_rad: "torch.Tensor"
+    free_weights: "torch.Tensor"
+    best_free_index: "torch.Tensor"
+    selected_beta_rad: "torch.Tensor"
+    selected_position_offset_local: "torch.Tensor"
 
 
 class SetQueryOperator(nn.Module if nn is not None else object):  # type: ignore[misc]
@@ -190,11 +194,22 @@ class SetQueryOperator(nn.Module if nn is not None else object):  # type: ignore
         else:
             free_clearance = normalized_softmin(nested_scores, self.config.tau, dim=-1)
         clearance = normalized_softmax_like_max(free_clearance, self.config.tau, dim=-1)
+        free_weights = torch.softmax(
+            free_clearance / max(float(self.config.tau), 1.0e-6), dim=-1
+        )
+        best_free = free_clearance.argmax(dim=-1)
+        n_beta = len(self.beta_offsets_rad)
+        position_index = torch.div(best_free, n_beta, rounding_mode="floor")
+        beta_index = best_free.remainder(n_beta)
         return SetQueryResult(
             clearance=clearance,
             free_clearance=free_clearance,
             nested_scores=nested_scores,
             beta_offsets_rad=self.beta_offsets_rad,
+            free_weights=free_weights,
+            best_free_index=best_free,
+            selected_beta_rad=self.beta_offsets_rad[beta_index],
+            selected_position_offset_local=self.free_offsets_local[position_index],
         )
 
 

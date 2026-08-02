@@ -182,6 +182,7 @@ def _empty_stencil_fields() -> dict[str, list[np.ndarray]]:
             "branch_ids",
             "psi",
             "psi_homes",
+            "boundary_features",
         )
     }
 
@@ -200,6 +201,7 @@ def _append_stencil_batch(
     branch_ids,
     psi,
     psi_homes,
+    boundary_features,
     *,
     near_band_m: float,
 ):
@@ -229,6 +231,7 @@ def _append_stencil_batch(
     fields["branch_ids"].append(branch_ids.astype(np.int32))
     fields["psi"].append(psi.astype(np.float32))
     fields["psi_homes"].append(psi_homes.astype(np.float32))
+    fields["boundary_features"].append(boundary_features.astype(np.float32))
 
 
 def _label_tcp_batch(
@@ -394,6 +397,11 @@ def build_gpu_boundary_stencils(
             t_boundary = 0.5 * (lo + hi)
             p_boundary = source_p + t_boundary[:, None] * delta_p
             R_boundary = so3_exp(t_boundary[:, None] * delta_w) @ source_R
+            boundary_features = (
+                _flange_se3_features(p_boundary, R_boundary, T_flange_tcp_t)
+                .cpu()
+                .numpy()
+            )
 
             # Arc-length parameter: Δt = δ_m / ray_m along the SE(3) geodesic.
             signed_values = np.asarray(
@@ -453,6 +461,7 @@ def build_gpu_boundary_stencils(
                     branch_ids[keep],
                     psi[keep],
                     psi_homes[keep],
+                    boundary_features[keep],
                     near_band_m=near_band_m,
                 )
             accepted[kind] += int(keep.sum())
@@ -506,6 +515,7 @@ def build_gpu_boundary_stencils(
         "boundary_signed_m": stencil["signed_m"],
         "boundary_signed_rot_deg": stencil["signed_deg"],
         "clearance_kind": stencil["kind"],
+        "boundary_features": stencil["boundary_features"],
         "branch_ids": stencil["branch_ids"],
         "psi": stencil["psi"],
         "psi_homes": stencil["psi_homes"],
@@ -517,6 +527,10 @@ def build_gpu_boundary_stencils(
                 combined[key] = np.full(n_base, -1, dtype=values.dtype)
             elif key in ("psi", "psi_homes"):
                 combined[key] = np.full(n_base, np.nan, dtype=np.float32)
+            elif key == "boundary_features":
+                combined[key] = np.full(
+                    (n_base, values.shape[1]), np.nan, dtype=np.float32
+                )
             else:
                 continue
         combined[key] = np.concatenate([combined[key], values], axis=0)
@@ -551,6 +565,7 @@ def build_gpu_boundary_stencils(
         "T_flange_tcp": tool.T_flange_tcp.tolist(),
         "metric": metric_manifest(lambda_m_per_rad=spec.metric_lambda_m_per_rad),
         "metric_offsets_m": list(metric_offsets),
+        "boundary_pose_schema": "on_manifold_flange_se3_bisection_v1",
         "m_gt_units": "metres_declared_se3_metric",
         "collision_contract": (
             "every positive stencil pose has an SRS+collision-free arm solution "

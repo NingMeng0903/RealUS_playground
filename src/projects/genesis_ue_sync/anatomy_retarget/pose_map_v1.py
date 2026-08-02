@@ -241,12 +241,12 @@ def pose_whole_chain_vertices(
     pose_axis_angle: Any,
     include_tube_transport_preview: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Pose the complete anatomy while keeping tube rest transport shadow-only.
+    """Pose the complete anatomy from its single transported target rest.
 
     Unmodified bones are still dynamic: "keep 142" means preserving their
     rest geometry and controller behavior, not freezing their vertices in the
-    neutral pose.  Tubes use the frozen 142 pose path unless the caller asks
-    for the one-shot future transport preview.
+    neutral pose.  Tubes were transported exactly once while building the
+    candidate and always follow target FK/LBS here.
     """
 
     rest = np.asarray(value.vertices_final, dtype=np.float64).copy()
@@ -268,14 +268,7 @@ def pose_whole_chain_vertices(
     )
     tube_mask = np.zeros(len(rest), dtype=bool)
     tube_mask[tube_ids] = True
-    if include_tube_transport_preview:
-        transported = _weighted_rest_correction(
-            value.vertices_prefit,
-            source_asset.driver_indices,
-            source_asset.driver_weights,
-            value.C_bone,
-        )
-        rest[tube_ids] = transported[tube_ids]
+    del include_tube_transport_preview
     posed_global = apply_pose_map_global(
         pose_map, source_asset=source_asset, pose_axis_angle=pose_axis_angle
     )
@@ -296,8 +289,7 @@ def pose_whole_chain_vertices(
     )
     posed = source_posed
     posed[bone_ids] = posed_all[bone_ids]
-    if include_tube_transport_preview:
-        posed[tube_mask] = posed_all[tube_mask]
+    posed[tube_mask] = posed_all[tube_mask]
     return posed.astype(np.float32), posed_global
 
 

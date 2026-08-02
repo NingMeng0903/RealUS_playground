@@ -30,6 +30,10 @@ from ird_playground.region.trajectory_operator import (
     TrajectoryTaskOperator,
     TrajectoryTaskResult,
 )
+from ird_playground.region.conditional_query import (
+    ConditionalQueryResult,
+    conditional_candidate_query,
+)
 
 __all__ = [
     "DirectionLobeResult",
@@ -46,6 +50,7 @@ __all__ = [
     "TrajectoryTaskConfig",
     "TrajectoryTaskOperator",
     "TrajectoryTaskResult",
+    "ConditionalQueryResult",
     "ascend_direction",
     "base_from_rail_torch",
     "chart_from_direction",
@@ -53,4 +58,5 @@ __all__ = [
     "normalized_softmin",
     "rail_inverse_query",
     "rockafellar_uryasev_cvar",
+    "conditional_candidate_query",
 ]

@@ -25,7 +25,7 @@ from src.projects.genesis_ue_sync.anatomy_retarget.whole_chain_rest_fit_v1 impor
 ROOT = Path(__file__).resolve().parents[1]
 OPERATOR = ROOT / "outputs/anatomy_retarget/v8_candidates/rebuild_012/source_operator_v8"
 CALIBRATION = (
-    ROOT / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_004"
+    ROOT / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_005"
     / "anatomical_calibration_v1"
 )
 MODEL = ROOT / "ref_code_library/EasyMocap/data/smplx/smplx/SMPLX_MALE.pkl"
@@ -45,7 +45,7 @@ def matrix():
         pytest.skip("frozen whole-chain inputs are unavailable")
     operator = load_source_operator(OPERATOR, mmap=True)
     calibration = load_anatomical_calibration_v1(
-        CALIBRATION, operator=operator, required_scope="lower_chain"
+        CALIBRATION, operator=operator, required_scope="full_main_chain"
     )
     model = load_smplx_model_v7(MODEL)
     model_sha = _sha(MODEL)
@@ -84,8 +84,13 @@ def test_two_beta_whole_chain_uses_one_sparse_lbs_authority(matrix) -> None:
         assert all(report["exact_checks"].values())
         assert report["invariants"]["protected_girdles_byte_exact"] is True
         assert report["invariants"]["pelvis_cage_bounded"] is True
-        assert report["invariants"]["tube_vertices_byte_exact"] is True
-        assert report["invariants"]["node3_transport_application_count"] == 0
+        assert report["invariants"]["tube_rest_transport_exact"] is True
+        assert report["invariants"]["tube_transport_application_count"] == 1
+        for cap in report["upper_rigid_caps"].values():
+            assert cap["pass"] is True
+            assert cap["kabsch_rms_m"] <= 0.0005
+            assert cap["kabsch_max_m"] <= 0.001
+            assert max(abs(scale - 1.0) for scale in cap["radial_scales"]) <= 1.0e-4
 
 
 def test_upper_anatomical_targets_are_independent_hard_gates(matrix) -> None:
@@ -98,13 +103,13 @@ def test_upper_anatomical_targets_are_independent_hard_gates(matrix) -> None:
             assert "mapped_frozen_offset_target_to_axis_m" in metric
 
 
-def test_tube_transport_is_preview_only(matrix) -> None:
+def test_tube_transport_is_applied_once_to_candidate_rest(matrix) -> None:
     _values, reports = matrix
     for report in reports.values():
-        preview = report["future_tube_transport_preview"]
-        assert preview["application_count"] == 1
-        assert preview["persisted_to_candidate"] is False
-        assert preview["max_displacement_m"] > 0.0
+        transport = report["tube_rest_transport"]
+        assert transport["application_count"] == 1
+        assert transport["persisted_to_candidate"] is True
+        assert transport["max_displacement_m"] > 0.0
 
 
 def test_terminal_hands_keep_142_rest_geometry_and_global_bind(matrix) -> None:

@@ -32,26 +32,16 @@ gradient.
 
 ## Representation
 
-RM75 has J1 limits of approximately `+/-178 deg` and J7 limits of
-approximately `+/-360 deg`. A 2,000-configuration audit with 16 J7 values per
-configuration found numerically zero TCP position/axis change and only 0.05%
-self-collision-label variation. This supports the RM4D symmetry assumptions for
-the primary guidance field.
+The task-audited symmetry is common J1 yaw. Because J1 is limited to about
+`+/-177.96 deg`, it is an approximation rather than an unconditional group
+action; the unused two-degree seam is outside the scan distribution. There is
+no seam-coverage gate or fallback. Final SQP/IK applies the true joint limits.
 
-Instead of RM4D's pole-sensitive `atan2` coordinates, the implementation uses
-a smooth redundant embedding of the intrinsic 4-D quotient space:
-
-```text
-[p_z,
- approach_z,
- ||p_xy||,
- p_xy dot approach_xy,
- p_xy cross approach_xy]
-```
-
-These features are invariant to common base yaw and TCP axial roll. Probe-roll
-collision differences remain a rare approximation error and must be rejected
-by final multi-seed IK plus collision validation.
+Quotienting one pose dimension leaves the intrinsic 5-D space
+`SE(3)/Yaw_J1`. The production representation is a smooth redundant 9-D flange
+embedding. It avoids azimuth branch cuts, remains well behaved near the J1
+axis, and retains flange/probe roll. Nine dimensions are an engineering choice,
+not a claim that every valid implementation must use exactly nine coordinates.
 
 ## Training Target
 
@@ -65,10 +55,11 @@ Training uses:
 - explicit zero-valued bisected boundary centers;
 - boundary normal alignment.
 
-An Eikonal term was tested and disabled. Workspace-normalized coordinates mix
-meters and orientation invariants, so a unit gradient norm was not physically
-well-defined and dominated the useful signed-value loss. Direction and scale
-are instead supervised directly by collision-checked local stencils.
+Empirical boundary direction and slope are supervised independently. Generic
+Eikonal is disabled: a target norm of one in normalized redundant 9-D
+coordinates is dimensionally incorrect. It may only be enabled after a tested
+quotient-Jacobian metric derives the physical target; disabling it never
+disables empirical stencil slope supervision.
 
 ## Region A
 
@@ -87,67 +78,60 @@ field evaluation, and aggregation all remain in one Torch graph.
 
 ## Production Evidence
 
-Source data:
-
-- 500,000 collision-checked poses sampled around collision-free FK centers;
-- 500,000 independent uniform full-workspace poses, including 20% horizontal-
-  probe-like orientations;
-- 642,074 local boundary stencil poses;
-- 91,738 held-together boundary groups;
-- 1,733,608 canonical rows in total: 1,000,000 global rows and 733,608
-  boundary/zero-boundary rows.
-
-Held-out acceptance metrics:
+The current immutable baseline contains 1,755,822 canonical rows and 83,984
+boundary groups. Its held-out report is
+`data/reports/eval_rm4d_signed.json`; these numbers are a baseline for the new
+paired-sampler ablation, not a completed high-precision claim.
 
 | Metric | Result |
 | --- | ---: |
-| Balanced accuracy | 97.64% |
-| Reachable recall | 97.64% |
-| Unreachable specificity | 97.65% |
-| Position direction agreement | 99.96% |
-| Rotation direction agreement | 99.97% |
-| Position strict `+/-1 mm` straddle | 53.58% |
-| Position wide straddle | 97.14% |
-| Rotation strict `+/-1 deg` straddle | 93.79% |
-| Rotation wide straddle | 99.07% |
-| Position bracketed crossing MAE / P95 | 0.453 / 0.928 mm |
-| Rotation bracketed crossing MAE / P95 | 0.191 / 0.601 deg |
-| Region A direction agreement, position / rotation | 99.80% / 100% |
-| Rail AD-vs-FD median relative error | 0.0098% |
-| TCP-x AD-vs-FD median relative error | 0.0101% |
+| Balanced accuracy | 90.38% |
+| Reachable recall | 91.94% |
+| Unreachable specificity | 88.82% |
+| Position direction agreement | 99.80% |
+| Rotation direction agreement | 99.58% |
+| Position strict straddle | 23.91% |
+| Position wide straddle | 90.79% |
+| Rotation strict straddle | 10.28% |
+| Rotation wide straddle | 70.44% |
+| Position bracketed crossing P95 | 0.953 mm |
+| Rotation bracketed crossing P95 | 0.0955 deg |
+| Rail AD-vs-FD median relative error | 0.0139% |
+| TCP-x AD-vs-FD median relative error | 0.0074% |
 | Independent positive `q_best` collision failures (10,000 audit) | 0 |
 | Independent positive pose-tolerance failures (10,000 audit) | 0 |
 | J7 roll collision-label variation (512 x 12 audit) | 0% |
 
-The original 0.1 mm aspiration was not achieved. The demonstrated held-out
-position boundary error is sub-millimeter when bracketed, with P95 below 1 mm.
-Strict `+/-1 mm` zero straddling is 53.6%. This metric asks whether predictions
-at both ends of a 2 mm bracket have opposite signs; it is not absolute position
-accuracy. The field is accepted as an optimization-direction operator, not as
-a sub-millimeter feasibility certificate.
+Direction and AD correctness are already strong. The weak metrics are zero
+placement, strict straddling and near-axis coverage; crossing error only counts
+already bracketed pairs and must not be presented as whole-boundary accuracy.
+The field remains guidance rather than a feasibility certificate.
 
 ### Scale and independent visualization
 
-A fixed 20-epoch scale ablation showed that reducing the original data to
-one-half or one-quarter degraded both balanced accuracy and boundary coverage.
-The 500,000-row original scale reached 93.45% balanced accuracy and 94.16%
-position wide-straddle coverage. Adding 500,000 independently uniform poses
-was more valuable than duplicating the original FK-neighborhood distribution:
-the current model reaches 97.64% balanced accuracy and 97.14% position
-wide-straddle coverage. Therefore, the current 1.73M-row dataset is the minimum
-recommended production split. Expanding toward 2M global poses and roughly
-200k boundary groups is reasonable only if a new held-out ablation shows a
-material gain; sample count alone does not fix coverage bias.
+Training now uses five source-disjoint roles, complete 8/9-row boundary groups,
+on-manifold SE(3) zero poses, train-only normalization, independent zero-bias
+calibration and an unreachable-only false-accept threshold. The online network
+stays `192x5`; any larger teacher is distilled back to this student.
 
-The horizontal-probe IRD visualization is independent of the training rows. A
-`31^3` full-pose grid is solved with multi-seed GPU IK and robot-plus-probe
-self-collision, then the neural field is evaluated at the same positions. On
-29,791 points the neural result has 99.17% accuracy, 98.88% balanced accuracy,
-0.81% false-positive rate, and 1.43% false-negative rate. The gradient slice
-plots autograd of neural clearance with respect to base position; black is the
-neural zero boundary and green dashed is the collision-checked GT boundary.
-This validates neural IRD for smooth guidance. Hard feasibility still requires
-final IK and collision checking.
+Final-test metrics are opened only after calibration and are hash-linked to the
+dataset and checkpoint. Legacy checkpoints/calibration files require an
+explicit stale-audit flag and cannot silently enter production evaluation.
+
+## 8-DOF local trajectory optimisation
+
+The planning variable is `q_i=[rail_i,j1_i,...,j7_i]`; rail has no duplicate
+copy. An explicit six-dimensional task offset represents soft nominal pose and
+rotation inside a hard medical envelope. IRD ranks rail/task warm starts, then
+Pinocchio and ProxSuite lift them to a continuous joint path. HPP-FCL
+witness-point gradients, world-frame patient/bed constraints, true limits and
+adaptive segment checks determine validity. The lowest-cost local solution is
+returned only when every hard validator and the scaled KKT threshold pass.
+
+TCP arc length initially sets time at a maximum of `0.02 m/s`. Ruckig may only slow
+the path for rail/joint limits. The output supplies pose and joint references,
+feedforward velocities, rail and contact normal to the existing QP-IK and
+force-position controller; torque dynamics are outside v1.
 
 ## Reproduction
 

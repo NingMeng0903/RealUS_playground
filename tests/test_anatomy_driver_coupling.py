@@ -12,6 +12,7 @@ from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
     joint_global_transforms,
     skin_vertices,
     source_bone_driver_frames,
+    source_bone_posed_global,
     source_bone_skinning_transforms,
     with_source_driver_coupling,
 )
@@ -198,6 +199,59 @@ def test_target_bind_is_runtime_authority_without_mutating_source_bind() -> None
                 target_global[bone],
                 atol=2.0e-6,
             )
+
+
+def test_whole_chain_preview_transfers_source_local_basis_to_target_bind() -> None:
+    source = with_source_driver_coupling(_chain_asset())
+    target_global = np.asarray(source.target_bind_global, dtype=np.float32).copy()
+    target_global[1:, 0, 3] += np.asarray((0.03, 0.05, 0.08), dtype=np.float32)
+    target_local = target_global.copy()
+    for bone, parent in enumerate(np.asarray(source.source_bone_parents).tolist()):
+        if int(parent) >= 0:
+            target_local[bone] = (
+                np.linalg.inv(target_global[int(parent)]) @ target_global[bone]
+            )
+    preview = replace(
+        source,
+        target_rest_global=target_global,
+        target_rest_local=target_local,
+        target_inverse_bind=np.linalg.inv(target_global).astype(np.float32),
+        metadata={
+            **(source.metadata or {}),
+            "whole_chain_source_bind_global": np.asarray(
+                source.target_bind_global, dtype=np.float32
+            ).tolist(),
+        },
+    )
+    pose = np.zeros((55, 3), dtype=np.float32)
+    pose[0] = np.asarray((0.12, -0.08, 0.19), dtype=np.float32)
+    pose[1] = np.asarray((0.0, 0.0, 0.45), dtype=np.float32)
+    source_global = source_bone_posed_global(source, pose)
+    source_bind_local = np.asarray(source.target_bind_local, dtype=np.float64)
+    source_pose_local = source_global.copy()
+    parents = np.asarray(source.source_bone_parents, dtype=np.int64)
+    for bone, parent in enumerate(parents.tolist()):
+        if int(parent) >= 0:
+            source_pose_local[bone] = (
+                np.linalg.inv(source_global[int(parent)]) @ source_global[bone]
+            )
+    expected_local = target_local @ (
+        np.linalg.inv(source_bind_local) @ source_pose_local
+    )
+    expected_global = expected_local.copy()
+    for bone, parent in enumerate(parents.tolist()):
+        if int(parent) >= 0:
+            expected_global[bone] = expected_global[int(parent)] @ expected_local[bone]
+
+    actual = source_bone_posed_global(preview, pose)
+
+    np.testing.assert_allclose(actual, expected_global, atol=2.0e-6, rtol=0.0)
+    np.testing.assert_allclose(
+        source_bone_posed_global(preview, np.zeros((55, 3), dtype=np.float32)),
+        target_global,
+        atol=2.0e-6,
+        rtol=0.0,
+    )
 
 
 def test_runtime_long_bones_use_official_fk_and_terminal_bones_use_contact_pivots() -> None:

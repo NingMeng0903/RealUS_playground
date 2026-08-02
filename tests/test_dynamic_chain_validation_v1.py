@@ -33,7 +33,7 @@ from src.projects.genesis_ue_sync.anatomy_retarget.whole_chain_rest_fit_v1 impor
 ROOT = Path(__file__).resolve().parents[1]
 OPERATOR = ROOT / "outputs/anatomy_retarget/v8_candidates/rebuild_012/source_operator_v8"
 CALIBRATION = (
-    ROOT / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_004"
+    ROOT / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_005"
     / "anatomical_calibration_v1"
 )
 ORACLE = (
@@ -57,7 +57,7 @@ def reports():
         pytest.skip("frozen dynamic matrix inputs are unavailable")
     operator = load_source_operator(OPERATOR, mmap=True)
     calibration = load_anatomical_calibration_v1(
-        CALIBRATION, operator=operator, required_scope="lower_chain"
+        CALIBRATION, operator=operator, required_scope="full_main_chain"
     )
     model = load_smplx_model_v7(MODEL)
     model_sha = _sha(MODEL)
@@ -102,12 +102,14 @@ def reports():
 
 def test_sweep_recipe_is_the_frozen_requested_matrix() -> None:
     sweeps = synthetic_chain_sweeps_v1()
-    assert len(sweeps) == 14
+    assert len(sweeps) == 17
     assert {name for name in sweeps if name.startswith("knee_")} == {
         "knee_+0deg", "knee_+30deg", "knee_+60deg", "knee_+90deg", "knee_+120deg"
     }
     assert "ankle_-20deg" in sweeps
     assert "elbow_+140deg" in sweeps
+    assert "wrist_-45deg" in sweeps
+    assert "wrist_+45deg" in sweeps
     assert "shoulder_+120deg" in sweeps
 
 

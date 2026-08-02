@@ -78,12 +78,6 @@ class DemoConfig:
     target_clearance: float | None = 5.0
     clearance_margin: float = 0.05
     ird_softplus_scale: float = 0.15
-    # Weak nearest stick — demo needs a visible θ twist on the U-band.
-    w_ird: float = 3.5
-    w_nearest: float = 0.05
-    w_continuity: float = 0.06
-    w_curvature: float = 0.004
-    w_rail_anchor: float = 0.08
     seed: int = 109
     # Soft hints for phase-weighted loss (diagnostics use data-driven split).
     # Parallel cylinder (yaw=0): ignore these for θ — symmetry ⇒ constant θ*.
@@ -98,7 +92,6 @@ class DemoConfig:
     cylinder_yaw_deg: float = 20.0
     # Tip-side peak used to warm-start Δθ (constant when ‖ rail).
     theta_peak_warmstart_deg: float = -12.0
-    w_theta_flat: float = 2.0
 
 
 def rail_half_span_m(cfg: DemoConfig) -> float:
@@ -117,6 +110,19 @@ def decode_rail_raw(raw: torch.Tensor, cfg: DemoConfig) -> torch.Tensor:
     mid = 0.5 * (float(cfg.rail_min_m) + float(cfg.rail_max_m))
     half = rail_half_span_m(cfg)
     return mid + half * torch.tanh(raw)
+
+
+def waypoint_cliff(values: torch.Tensor, s: torch.Tensor) -> torch.Tensor:
+    """Lift absolute segment slopes to waypoints without changing path length."""
+    segment = torch.abs(normalized_derivative(values, s))
+    if segment.numel() == 0:
+        return torch.zeros_like(values)
+    cliff = torch.empty_like(values)
+    cliff[0] = segment[0]
+    cliff[-1] = segment[-1]
+    if values.numel() > 2:
+        cliff[1:-1] = torch.maximum(segment[:-1], segment[1:])
+    return cliff
 
 
 def vessel_xz(cfg: DemoConfig) -> tuple[float, float]:
@@ -433,6 +439,8 @@ def allocate_qpik_8dof_path(
     cfg: DemoConfig,
     q_seed: np.ndarray | None = None,
     yaml_path: Path | None = None,
+    pos_tol_m: float = 0.5e-3,
+    rot_tol_rad: float = 0.03,
 ) -> dict[str, np.ndarray | list | float]:
     """Chain rm75 8-DOF ProxQP IK along a TCP path; rail_y is allocated in nullspace.
 
@@ -478,8 +486,8 @@ def allocate_qpik_8dof_path(
             qp_cfg=ik_cfg.qp,
             nullspace_cfg=ik_cfg.nullspace,
             max_iters=300,
-            pos_tol_m=0.5e-3,
-            rot_tol_rad=0.03,
+            pos_tol_m=float(pos_tol_m),
+            rot_tol_rad=float(rot_tol_rad),
         )
         q_path[i] = q
         rail[i] = float(q[0])
@@ -504,6 +512,119 @@ def allocate_qpik_8dof_path(
         "rail_delta_m": float(rail.max() - rail.min()),
         "q_lower": kin.q_lower.astype(np.float32),
         "q_upper": kin.q_upper.astype(np.float32),
+    }
+
+
+def require_valid_qpik_path(report: dict[str, np.ndarray | list | float], *, name: str) -> None:
+    """Fail closed: never promote a partially converged QP-IK path to a demo result."""
+    ok = np.asarray(report.get("ok", []), dtype=bool)
+    if ok.size == 0 or not bool(np.all(ok)):
+        failed = int(ok.size - int(ok.sum())) if ok.size else -1
+        raise RuntimeError(
+            f"{name} QP-IK path is invalid: {failed} waypoint(s) failed; "
+            "no fallback/copy path or success artifacts will be produced"
+        )
+    if not np.isfinite(np.asarray(report["q_ref"], dtype=float)).all():
+        raise RuntimeError(f"{name} QP-IK path contains non-finite joint values")
+
+
+def require_hard_validated_qpik_path(
+    report: dict,
+    tcp_world: np.ndarray,
+    kin,
+    collision_filter,
+    *,
+    name: str,
+) -> dict[str, float | int]:
+    """Validate the exact rendered rail+7R path, fail-closed."""
+    require_valid_qpik_path(report, name=name)
+    q = np.asarray(report["q_ref"], dtype=np.float64)
+    lo = np.asarray(report["q_lower"], dtype=np.float64)
+    hi = np.asarray(report["q_upper"], dtype=np.float64)
+    if np.any(q < lo - 1.0e-9) or np.any(q > hi + 1.0e-9):
+        raise RuntimeError(f"{name} violates rail/joint limits")
+    metrics = validate_q_path(
+        q[:, 1:], np.asarray(tcp_world, dtype=np.float32),
+        np.asarray(report["rail_m"], dtype=np.float32), kin, collision_filter,
+    )
+    if metrics["max_fk_position_error_m"] > 5.0e-4 or metrics["max_fk_rotation_error_rad"] > np.deg2rad(1.0):
+        raise RuntimeError(f"{name} fails FK tolerance: {metrics}")
+    if int(metrics["collision_failures"]) != 0:
+        raise RuntimeError(f"{name} has collision failures: {metrics}")
+    return metrics
+
+
+def select_constrained_task_path(
+    field,
+    task_cone: TaskConeReachability,
+    tcp_midline: np.ndarray,
+    rail_m: np.ndarray,
+    *,
+    T_rail_axis: torch.Tensor,
+    target_clearance: float = 5.0,
+) -> dict[str, np.ndarray]:
+    """Select a continuous tip/roll path while preserving the task surface.
+
+    Every candidate keeps the ellipse contact position fixed and rotates only
+    inside the configured task cone about the vessel-pointing midline.  A
+    dimensionless dynamic program balances normalized score deficit against
+    normalized angular change.  Score deficit is automatically emphasized at
+    reachability cliffs, avoiding phase-specific hand-tuned weights.
+    """
+    device = next(field.parameters()).device
+    tcp = torch.as_tensor(tcp_midline, dtype=torch.float32, device=device)
+    rail = torch.as_tensor(rail_m, dtype=torch.float32, device=device)
+    with torch.no_grad():
+        query = task_cone.query_tcp_rail(
+            field,
+            tcp,
+            rail,
+            T_world_rail=torch.eye(4, dtype=tcp.dtype, device=device),
+            T_rail_base0=T_rail_axis,
+            rail_axis=1,
+        )
+    scores = query.sample_clearance.detach().cpu().numpy().astype(np.float64)
+    candidates = query.sample_tcp.detach().cpu().numpy().astype(np.float64)
+    offsets = task_cone.rotation_offsets_local.detach().cpu().numpy().astype(np.float64)
+    best_score = scores.max(axis=1)
+    deficit = best_score[:, None] - scores
+    positive = deficit[deficit > 1.0e-12]
+    deficit_scale = float(np.percentile(positive, 90)) if positive.size else 1.0
+    deficit = deficit / max(deficit_scale, 1.0e-9)
+    cliff = np.abs(np.gradient(best_score))
+    cliff_scale = float(np.percentile(cliff[cliff > 0.0], 90)) if np.any(cliff > 0.0) else 1.0
+    priority = cliff / max(cliff_scale, 1.0e-9)
+    # In already-safe regions, minimize deviation from the nominal zero offset.
+    target = float(target_clearance)
+    zero_index = int(np.argmin(np.linalg.norm(offsets, axis=1)))
+    nominal_cost = np.linalg.norm(offsets - offsets[zero_index], axis=1)
+    data_cost = (1.0 + priority[:, None]) * deficit
+    zero_clearance = scores[:, zero_index]
+    data_cost[(best_score >= target) & (zero_clearance >= target)] = nominal_cost[None, :]
+
+    angular_change = np.linalg.norm(offsets[:, None, :] - offsets[None, :, :], axis=-1)
+    angular_scale = float(np.percentile(angular_change[angular_change > 0.0], 90))
+    transition = angular_change / max(angular_scale, 1.0e-9)
+    n_waypoints, n_candidates = scores.shape
+    cost = np.empty((n_waypoints, n_candidates), dtype=np.float64)
+    parent = np.zeros((n_waypoints, n_candidates), dtype=np.int64)
+    cost[0] = data_cost[0]
+    for i in range(1, n_waypoints):
+        total = cost[i - 1][:, None] + transition
+        parent[i] = np.argmin(total, axis=0)
+        cost[i] = data_cost[i] + total[parent[i], np.arange(n_candidates)]
+    indices = np.empty(n_waypoints, dtype=np.int64)
+    indices[-1] = int(np.argmin(cost[-1]))
+    for i in range(n_waypoints - 1, 0, -1):
+        indices[i - 1] = parent[i, indices[i]]
+    row = np.arange(n_waypoints)
+    return {
+        "tcp": candidates[row, indices].astype(np.float32),
+        "rotvec_local": offsets[indices].astype(np.float32),
+        "indices": indices.astype(np.int32),
+        "clearance": scores[row, indices].astype(np.float32),
+        "weights": query.free_weights.detach().cpu().numpy().astype(np.float32),
+        "reachability_priority": priority.astype(np.float32),
     }
 
 
@@ -690,7 +811,8 @@ def optimize_trajectory(
     target = resolve_clearance_target(cfg, m_safe)
     soft_scale = max(float(cfg.ird_softplus_scale), 1.0e-3)
     th_near_t = torch.full_like(s, th_nearest)
-    nearest_scale = np.deg2rad(12.0)
+    theta_scale = max(theta_limit, 1.0e-6)
+    rail_scale = max(float(cfg.rail_max_m - cfg.rail_min_m), 1.0e-6)
     if parallel:
         # Uniform weights — no early stick / late free that would invent a ramp.
         cp_nearest_w = torch.ones(1, device=device)
@@ -726,31 +848,33 @@ def optimize_trajectory(
             field, tcp, rail, T_world_rail=eye, T_rail_base0=T_rail_axis, rail_axis=1
         ).best_clearance
         ird_point = F.softplus((target - clearance) / soft_scale)
-        # Hinge to target + keep climbing toward the peak (makes opt corridor bluer).
-        ird = ird_point.mean() + 1.0 * ird_point.amax() - 0.25 * clearance.mean()
-        nearest = torch.mean(phase_w * ((dtheta) / nearest_scale) ** 2)
-        nearest = nearest + torch.mean(cp_nearest_w * (torch.tanh(raw_dtheta) ** 2))
-        dtheta_s = normalized_derivative(theta, s)
-        drail = normalized_derivative(rail, s)
-        continuity = torch.mean((dtheta_s / 1.2) ** 2) + torch.mean((drail / 0.65) ** 2)
-        curvature = torch.mean(torch.diff(dtheta_s) ** 2) + torch.mean(
-            (torch.diff(drail) / 0.25) ** 2
+        # Data-driven emphasis where the conditional field changes abruptly.
+        cliff = waypoint_cliff(clearance, s).detach()
+        cliff_scale = torch.quantile(cliff, 0.90).clamp_min(1.0e-6)
+        reachability_priority = 1.0 + cliff / cliff_scale
+        ird = torch.sum(reachability_priority * ird_point) / torch.sum(reachability_priority)
+        ird = ird + ird_point.amax()
+        nearest = torch.mean(phase_w * (dtheta / theta_scale) ** 2)
+        nearest = 0.5 * (
+            nearest + torch.mean(cp_nearest_w * torch.tanh(raw_dtheta) ** 2)
         )
-        # Explicit flatness for ‖-rail: keep θ(s) constant (symmetry).
-        theta_flat = torch.mean((dtheta_s / 0.35) ** 2)
+        dtheta_segment = torch.diff(theta) / theta_scale
+        drail_segment = torch.diff(rail) / rail_scale
+        continuity = 0.5 * (
+            torch.mean(dtheta_segment**2) + torch.mean(drail_segment**2)
+        )
+        curvature = 0.5 * (
+            torch.mean(torch.diff(dtheta_segment) ** 2)
+            + torch.mean(torch.diff(drail_segment) ** 2)
+        )
         # Stick to QP-IK rail when feasible; only IRD hinge should pull away.
-        rail_anchor = torch.mean(
-            ((rail - rail_ref_t) / max(0.08, 1.0e-6)) ** 2
-        )
-        w_flat = float(getattr(cfg, "w_theta_flat", 2.0)) if parallel else 0.0
-        loss = (
-            float(cfg.w_ird) * ird
-            + float(cfg.w_nearest) * nearest
-            + float(cfg.w_continuity) * continuity
-            + float(cfg.w_curvature) * curvature
-            + float(cfg.w_rail_anchor) * rail_anchor
-            + w_flat * theta_flat
-        )
+        rail_anchor = torch.mean(((rail - rail_ref_t) / rail_scale) ** 2)
+        # Lexicographic gate: reachability dominates until the worst waypoint
+        # clears the target; closeness/smoothness then pull the path back toward
+        # the nominal manifold without phase-specific hand-tuned weights.
+        feasible_gate = torch.sigmoid((clearance.detach().amin() - target) / soft_scale)
+        regularity = torch.stack((nearest, continuity, curvature, rail_anchor)).mean()
+        loss = ird + feasible_gate * regularity
         loss.backward()
         optimizer.step()
         if epoch % 10 == 0 or epoch == cfg.epochs - 1:
@@ -763,7 +887,8 @@ def optimize_trajectory(
                     "continuity": float(continuity.detach()),
                     "curvature": float(curvature.detach()),
                     "rail_anchor": float(rail_anchor.detach()),
-                    "theta_flat": float(theta_flat.detach()),
+                    "feasible_gate": float(feasible_gate.detach()),
+                    "reachability_priority_max": float(reachability_priority.max()),
                     "clearance_min": float(clearance.detach().min()),
                     "clearance_mean": float(clearance.detach().mean()),
                     "theta_dev_nearest_deg_rms": float(
@@ -1277,6 +1402,9 @@ def render_trajectory(
     p1 = result["tcp"][:, :3, 3]
     ax.plot(*p0.T, color="#546e7a", linewidth=2.2, label="Nearest")
     ax.plot(*p1.T, color="#00a86b", linewidth=3.0, label="Optimized")
+    if "projected_tcp" in result:
+        p_proj = np.asarray(result["projected_tcp"], dtype=float)[:, :3, 3]
+        ax.plot(*p_proj.T, color="#1565c0", linewidth=3.2, label="Validated projection")
     if np.any(~initial_gt):
         ax.scatter(*p0[~initial_gt].T, c="#d32f2f", s=18, label="Nearest GT fail")
     if np.any(~final_gt):
@@ -1505,6 +1633,9 @@ def render_field_video(
             pivot="tail",
         )
         ax.plot(th_deg_path, rail_mm_path, color=path_color, lw=2.2, zorder=4)
+        if "projection_rail_m" in result:
+            projection_rail = 1000.0 * np.asarray(result["projection_rail_m"], dtype=float)
+            ax.plot(th_deg_path, projection_rail, color="#1565c0", lw=2.8, zorder=5)
         ax.axhline(rail_mm_path[i], color=path_color, lw=0.9, ls=":", alpha=0.7, zorder=3)
         ax.axvline(th_deg_path[i], color=path_color, lw=0.9, ls=":", alpha=0.45, zorder=3)
         ax.scatter(
@@ -1813,6 +1944,12 @@ def main(argv: list[str] | None = None) -> int:
     np.random.seed(cfg.seed)
     torch.manual_seed(cfg.seed)
     device = torch.device(args.device)
+    if device.type != "cuda" or not torch.cuda.is_available():
+        raise RuntimeError(
+            "GPU-only ellipse demo: CUDA is unavailable in this process. "
+            "The Torch wheel is CUDA-enabled, but the NVIDIA device is not "
+            "passed into this sandbox; do not silently run a CPU substitute."
+        )
 
     # Checkpoint hashes may lag local URDF/mesh edits; allow_stale for this synthetic demo.
     try:
@@ -1863,6 +2000,9 @@ def main(argv: list[str] | None = None) -> int:
     # 2) 8DOF QP-IK allocates absolute rail_y on nearest TCP (nullspace).
     print("[qpik-8dof] allocating rail on nearest TCP path…", flush=True)
     qpik_near = allocate_qpik_8dof_path(tcp_near0, cfg=cfg)
+    qpik_near["projection"] = False
+    if not np.all(np.asarray(qpik_near["ok"], dtype=bool)):
+        print("[qpik-8dof] nearest path is diagnostic only; using its rail as a warm start", flush=True)
     print(
         f"[qpik-8dof] nearest rail {qpik_near['rail_min_m']:.3f}→{qpik_near['rail_max_m']:.3f}m "
         f"(Δ={qpik_near['rail_delta_m']:.3f}m) ok_frac={qpik_near['ok_fraction']:.2f}",
@@ -1882,31 +2022,68 @@ def main(argv: list[str] | None = None) -> int:
     result["qpik_nearest"] = qpik_near
     # initial_rail_m already = QP-IK ref inside optimize_trajectory.
 
-    # 4) Re-allocate rail on the *twisted* TCP with the same 8DOF QP-IK — both
-    # panels then use real nullspace rail(s), not a free IRD-only rail curve.
-    print("[qpik-8dof] allocating rail on optimized TCP path…", flush=True)
-    qpik_opt = allocate_qpik_8dof_path(
+    # 4) Select a continuous tip/roll sequence inside the bounded task cone.
+    # Contact position remains on the ellipse section and the nominal midline
+    # still points to the vessel; only the allowed local orientation changes.
+    selected_task = select_constrained_task_path(
+        field,
+        task_cone,
         np.asarray(result["tcp"], dtype=np.float64),
+        np.asarray(result["rail_m"], dtype=np.float64),
+        T_rail_axis=T_rail_axis,
+        target_clearance=target,
+    )
+    print("[qpik-8dof] allocating rail/joints on constrained tip-roll path…", flush=True)
+    qpik_opt = allocate_qpik_8dof_path(
+        np.asarray(selected_task["tcp"], dtype=np.float64),
         cfg=cfg,
         q_seed=np.asarray(qpik_near["q_ref"][0], dtype=np.float64),
     )
+    qpik_opt["projection"] = True
+    require_valid_qpik_path(qpik_opt, name="constrained optimized")
+    locked, collision_filter, kin = build_gt_tools(device)
+    blue_hard_metrics = require_hard_validated_qpik_path(
+        qpik_opt,
+        np.asarray(selected_task["tcp"], dtype=np.float32),
+        kin,
+        collision_filter,
+        name="validated blue projection",
+    )
+    selected_rotvec = np.asarray(selected_task["rotvec_local"], dtype=float)
+    qpik_opt["projection_validation"] = {
+        "valid": True,
+        "hard_validation": blue_hard_metrics,
+        "task_manifold": "ellipse section contact; nominal midline points to vessel",
+        "tip_limit_deg": float(cfg.tip_half_angle_deg),
+        "roll_limit_deg": float(cfg.roll_half_range_deg),
+        "max_selected_tip_deg": float(np.rad2deg(np.linalg.norm(selected_rotvec[:, :2], axis=1)).max()),
+        "max_selected_roll_deg": float(np.rad2deg(np.abs(selected_rotvec[:, 2])).max()),
+        "adaptive_priority": "normalized IRD score cliff + normalized candidate deficit",
+    }
     print(
         f"[qpik-8dof] optimized rail {qpik_opt['rail_min_m']:.3f}→{qpik_opt['rail_max_m']:.3f}m "
         f"(Δ={qpik_opt['rail_delta_m']:.3f}m) ok_frac={qpik_opt['ok_fraction']:.2f}",
         flush=True,
     )
     result["qpik_optimized"] = qpik_opt
+    result["task_selection"] = selected_task
+    result["tcp"] = np.asarray(selected_task["tcp"], dtype=np.float32)
     result["rail_m"] = np.asarray(qpik_opt["rail_m"], dtype=np.float32)
+    result["projected_tcp"] = np.asarray(selected_task["tcp"], dtype=np.float32)
+    result["projection_rail_m"] = np.asarray(qpik_opt["rail_m"], dtype=np.float32)
     with torch.no_grad():
         eye = torch.eye(4, device=device)
-        c_opt = task_cone.query_tcp_rail(
-            field,
-            torch.as_tensor(result["tcp"], device=device, dtype=torch.float32),
+        from ird_playground.region.operator import base_from_rail_torch
+
+        axis_opt = base_from_rail_torch(
             torch.as_tensor(result["rail_m"], device=device, dtype=torch.float32),
-            T_world_rail=eye,
-            T_rail_base0=T_rail_axis,
-            rail_axis=1,
-        ).best_clearance
+            eye,
+            T_rail_axis,
+            axis=1,
+        )
+        c_opt = field.score_world(
+            torch.as_tensor(result["tcp"], device=device, dtype=torch.float32), axis_opt
+        )
     result["clearance"] = c_opt.detach().cpu().numpy()
 
     # Dual-case probe on the nearest projection.
@@ -1921,7 +2098,6 @@ def main(argv: list[str] | None = None) -> int:
     # Assertion core: early Phase A should stay near nearest; late pre-split may pre-twist.
     phase_a_core = phase_a & (s_arr <= float(cfg.phase_a_s_max))
 
-    locked, collision_filter, kin = build_gt_tools(device)
     seed_pool = load_seed_pool(resolve(args.seed_gt))
 
     # Three TCP/rail paths for GT + QP-IK contrast.
@@ -2177,6 +2353,7 @@ def main(argv: list[str] | None = None) -> int:
             **phases["summary"],
             "nearest_8dof_qpik": {
                 "ok_fraction": float(qpik_near["ok_fraction"]),
+                "projection": bool(qpik_near.get("projection", False)),
                 "rail_min_m": float(qpik_near["rail_min_m"]),
                 "rail_max_m": float(qpik_near["rail_max_m"]),
                 "rail_delta_m": float(qpik_near["rail_delta_m"]),
@@ -2264,6 +2441,8 @@ def main(argv: list[str] | None = None) -> int:
                 ),
             },
         "q_guidance": {
+            "projection_used": bool(qpik_opt.get("projection", False)),
+            "projection_validation": qpik_opt.get("projection_validation", {}),
             "nearest_rail_nominal": metrics_rail0,
             "nearest_8dof_qpik": metrics_rail_star,
             "optimized": metrics_opt,

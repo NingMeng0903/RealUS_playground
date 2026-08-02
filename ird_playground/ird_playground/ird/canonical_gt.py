@@ -27,6 +27,7 @@ from ird_playground.ird.robot_model import (
     assert_robot_contract_compatible,
     load_robot_model_spec,
 )
+from ird_playground.ird.torch_kinematics import so3_exp, so3_log
 from ird_playground.map.build_flange_tensor import CHART_NAMES, flange_pose_to_chart
 from ird_playground.neural.signed_field import compute_input_stats
 
@@ -93,6 +94,37 @@ def _flange_canonical_from_arrays(
     return canonical_flange_from_se3_features(
         features, eye, T_root_axis=T_root_axis
     )
+
+
+def interpolate_boundary_features(
+    negative_features: np.ndarray,
+    positive_features: np.ndarray,
+    negative_signed: np.ndarray,
+    positive_signed: np.ndarray,
+) -> np.ndarray:
+    """Interpolate an SE(3) stencil pair to its signed zero crossing."""
+    if torch is None:
+        raise ImportError("torch required")
+    neg = np.asarray(negative_features, dtype=np.float32)
+    pos = np.asarray(positive_features, dtype=np.float32)
+    sn = np.asarray(negative_signed, dtype=np.float64).reshape(-1)
+    sp = np.asarray(positive_signed, dtype=np.float64).reshape(-1)
+    if neg.shape != pos.shape or neg.ndim != 2 or neg.shape[1] != 9:
+        raise ValueError("boundary features must both have shape (N, 9)")
+    if np.any(sn >= 0.0) or np.any(sp <= 0.0):
+        raise ValueError("boundary interpolation requires negative/positive sides")
+    alpha = (-sn / np.maximum(sp - sn, 1.0e-12)).astype(np.float32)
+    with torch.no_grad():
+        nf = torch.from_numpy(neg)
+        pf = torch.from_numpy(pos)
+        a = torch.from_numpy(alpha)
+        position = nf[:, :3] + a[:, None] * (pf[:, :3] - nf[:, :3])
+        r_neg = rotation_from_6d_torch(nf[:, 3:9])
+        r_pos = rotation_from_6d_torch(pf[:, 3:9])
+        rotation = so3_exp(a[:, None] * so3_log(r_pos @ r_neg.transpose(-1, -2))) @ r_neg
+        return torch.cat(
+            (position, rotation[:, :, 0], rotation[:, :, 1]), dim=-1
+        ).numpy()
 
 
 def _features_to_chart5(
@@ -261,9 +293,33 @@ def build_canonical_gt(cfg: CanonicalGtConfig) -> tuple[dict[str, np.ndarray], d
     slope_row[st] = group_slope[bid[st]]
     normal_weight[st] = (group_slope[bid[st]] > 0).astype(np.float32)
 
-    center_canonical = 0.5 * (canonical[ip[monotonic]] + canonical[inn[monotonic]])
-    center_kind = kind[ip[monotonic]]
     center_count = len(valid_groups)
+    boundary_features = arrays.get("boundary_features")
+    center_features = None
+    if center_count and boundary_features is not None:
+        candidate = np.asarray(boundary_features)[ip[monotonic]]
+        if np.isfinite(candidate).all():
+            center_features = candidate
+    if center_count and center_features is None:
+        if "features" not in arrays:
+            raise KeyError(
+                "features or boundary_features is required for on-manifold zero supervision"
+            )
+        center_features = interpolate_boundary_features(
+            np.asarray(arrays["features"])[inn[monotonic]],
+            np.asarray(arrays["features"])[ip[monotonic]],
+            signed[inn[monotonic]],
+            signed[ip[monotonic]],
+        )
+    center_canonical = (
+        _flange_canonical_from_arrays(
+            {"features": center_features},
+            T_root_axis=T_root_axis,
+        )
+        if center_count
+        else np.zeros((0, FLANGE_CANONICAL_DIM), dtype=np.float32)
+    )
+    center_kind = kind[ip[monotonic]]
     center_normal = group_normal[valid_groups]
     center_slope = group_slope[valid_groups]
     center_signed_m = np.where(center_kind == 0, 0.0, np.nan).astype(np.float32)
@@ -286,7 +342,18 @@ def build_canonical_gt(cfg: CanonicalGtConfig) -> tuple[dict[str, np.ndarray], d
     aux_n = sum(len(item[1]) for item in auxiliary)
     aux_canonical = [item[1].astype(np.float32) for item in auxiliary]
     aux_y = [item[2] for item in auxiliary]
-    aux_source = [item[3] for item in auxiliary]
+    next_source_id = int(source_pose_id[source_pose_id >= 0].max(initial=-1)) + 1
+    aux_source = []
+    for _, aux_chart, _, raw_source in auxiliary:
+        raw_source = np.asarray(raw_source, dtype=np.int64)
+        mapped = np.empty(len(aux_chart), dtype=np.int64)
+        for value in np.unique(raw_source[raw_source >= 0]).tolist():
+            mapped[raw_source == value] = next_source_id
+            next_source_id += 1
+        missing = np.flatnonzero(raw_source < 0)
+        mapped[missing] = np.arange(next_source_id, next_source_id + len(missing))
+        next_source_id += len(missing)
+        aux_source.append(mapped)
     block_id = np.asarray(
         arrays.get("block_id", np.full(len(canonical), -1)), dtype=np.int64
     )
@@ -367,6 +434,13 @@ def build_canonical_gt(cfg: CanonicalGtConfig) -> tuple[dict[str, np.ndarray], d
                 np.full(aux_n, -1, dtype=np.int64),
             )
         ),
+        "sample_origin": np.concatenate(
+            (
+                np.zeros(len(canonical), dtype=np.int8),
+                np.ones(center_count, dtype=np.int8),
+                *(np.full(len(item), 2, dtype=np.int8) for item in aux_canonical),
+            )
+        ),
         "input_center": center,
         "input_scale": scale,
     }
@@ -403,6 +477,8 @@ def build_canonical_gt(cfg: CanonicalGtConfig) -> tuple[dict[str, np.ndarray], d
         "n_auxiliary": aux_n,
         "auxiliary_npz": [str(item[0].resolve()) for item in auxiliary],
         "n_zero_boundary": center_count,
+        "zero_boundary_schema": "on_manifold_se3_interpolation_v1",
+        "source_id_schema": "namespaced_source_or_unique_aux_v1",
         "n_boundary_groups": int(np.unique(bid[st]).size) if st.any() else 0,
         "n_oriented_groups": int(len(valid_groups)),
         "collision_contract": source_manifest.get("collision_contract"),
@@ -429,4 +505,9 @@ def save_canonical_gt(path: str | Path, arrays: dict[str, np.ndarray], meta: dic
     np.savez_compressed(path, **payload)
 
 
-__all__ = ["CanonicalGtConfig", "build_canonical_gt", "save_canonical_gt"]
+__all__ = [
+    "CanonicalGtConfig",
+    "build_canonical_gt",
+    "interpolate_boundary_features",
+    "save_canonical_gt",
+]

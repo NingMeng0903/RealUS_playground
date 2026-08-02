@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import numpy as np
@@ -42,6 +43,22 @@ def validate_publishable_asset(path: Path) -> tuple[object, dict[str, object]]:
     asset = load_rigged_asset(asset_path, validate=True)
     metadata = dict(asset.metadata or {})
     failures: list[str] = []
+    evidence: dict[str, object] = {}
+    for filename in ("run_status.json", "quality_report.json"):
+        evidence_path = asset_path.parent / filename
+        if not evidence_path.is_file():
+            continue
+        try:
+            report = json.loads(evidence_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            failures.append(f"{filename} is unreadable: {exc}")
+            continue
+        evidence[filename] = report
+        if not isinstance(report, dict) or report.get("passed") is not True:
+            failures.append(
+                f"{filename} explicitly refuses publication: "
+                f"state={report.get('state') if isinstance(report, dict) else None!r}"
+            )
     runtime_contract = stage1_runtime_contract(asset)
     if not bool(runtime_contract.get("passed", False)):
         failures.append(
@@ -98,6 +115,7 @@ def validate_publishable_asset(path: Path) -> tuple[object, dict[str, object]]:
         "requires_blender_at_runtime": runtime_contract.get("requires_blender_at_runtime"),
         "requires_pose_rebake": runtime_contract.get("requires_pose_rebake"),
         "pose_cache_present": False,
+        "quality_evidence": sorted(evidence),
     }
 
 

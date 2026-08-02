@@ -74,6 +74,59 @@ def _axis_angle_to_rotation(axis_angle: np.ndarray) -> np.ndarray:
     )
 
 
+def _smplx_joint_kinematics_v7(
+    model: Mapping[str, np.ndarray],
+    *,
+    betas: Any,
+    pose_axis_angle: Any,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return shaped rest joints, posed globals, and rest-to-pose transforms."""
+
+    beta = np.asarray(betas, dtype=np.float64).reshape(-1)
+    pose = np.asarray(pose_axis_angle, dtype=np.float64).reshape(_NUM_JOINTS, 3)
+    if beta.size < _NUM_SHAPE_BETAS or not np.all(
+        np.isfinite(beta[:_NUM_SHAPE_BETAS])
+    ):
+        raise ValueError("betas must provide ten finite shape coefficients")
+    if not np.all(np.isfinite(pose)):
+        raise ValueError("pose_axis_angle contains a non-finite value")
+
+    v_template = np.asarray(model["v_template"], dtype=np.float64)
+    shapedirs = np.asarray(model["shapedirs"], dtype=np.float64)
+    j_regressor = np.asarray(model["J_regressor"], dtype=np.float64)
+    parents = np.asarray(model["kintree_parents"], dtype=np.int64).reshape(-1)
+    v_shaped = v_template + np.einsum(
+        "vks,s->vk",
+        shapedirs[:, :, :_NUM_SHAPE_BETAS],
+        beta[:_NUM_SHAPE_BETAS],
+    )
+    joints = j_regressor @ v_shaped
+    rotations = np.stack(
+        [_axis_angle_to_rotation(pose[index]) for index in range(_NUM_JOINTS)],
+        axis=0,
+    )
+    posed_global = np.zeros((_NUM_JOINTS, 4, 4), dtype=np.float64)
+    for index in range(_NUM_JOINTS):
+        local = np.eye(4, dtype=np.float64)
+        local[:3, :3] = rotations[index]
+        parent = int(parents[index])
+        local[:3, 3] = (
+            joints[index]
+            if parent < 0
+            else joints[index] - joints[parent]
+        )
+        posed_global[index] = (
+            local if parent < 0 else posed_global[parent] @ local
+        )
+
+    rest_to_pose = np.zeros_like(posed_global)
+    for index in range(_NUM_JOINTS):
+        rest = np.eye(4, dtype=np.float64)
+        rest[:3, 3] = joints[index]
+        rest_to_pose[index] = posed_global[index] @ np.linalg.inv(rest)
+    return joints, posed_global, rest_to_pose
+
+
 def load_smplx_model_v7(model_path: Path | str) -> dict[str, np.ndarray]:
     """Load a chumpy-free SMPL-X pickle into the arrays needed for numpy LBS."""
     path = Path(model_path).expanduser().resolve()

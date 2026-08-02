@@ -49,7 +49,7 @@ git push -u origin main
 
 ```bash
 git add .
-git commit -m "删除力标定没必要的 D2stage"
+git commit -m "备份IRD"
 git push -u origin main
 ```
 

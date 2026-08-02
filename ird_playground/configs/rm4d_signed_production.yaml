@@ -30,12 +30,17 @@ training:
   report_near_axis: true
   near_axis_r_m: 0.05
   boundary_sample_boost: 2.5
+  paired_boundary_groups: 256
+  zero_calibration_fraction: 0.05
+  safety_calibration_fraction: 0.05
+  test_fraction: 0.10
 
 loss:
   classification: 1.0
   signed_value: 6.0
   normal_direction: 0.35
-  eikonal: 0.12
+  boundary_slope: 0.12
+  generic_eikonal: 0.0
   straddle: 1.5
   straddle_margin: 0.25
   sdf_target_scale: 100.0

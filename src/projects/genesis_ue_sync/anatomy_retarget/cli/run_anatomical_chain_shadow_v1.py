@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from projects.genesis_ue_sync.anatomy_retarget.anatomical_calibration_v1 import (
+    FULL_MAIN_CHAIN_SCOPE,
     build_anatomical_calibration_v1,
     check_anatomical_calibration_v1,
     load_anatomical_calibration_v1,
@@ -66,14 +67,14 @@ def _calibrate(args: argparse.Namespace) -> int:
         calibration,
         operator=operator,
         checker_report=report,
-        accepted_scope="lower_chain",
+        accepted_scope=FULL_MAIN_CHAIN_SCOPE,
     )
     print(
         f"AnatomicalCalibrationV1 passed={str(report['passed']).lower()} "
         f"joints={report['joint_count']} seconds={report['elapsed_seconds']:.3f} "
         f"-> {output}"
     )
-    return 0 if report["passed_lower_chain"] else 1
+    return 0 if report["passed"] else 1
 
 
 def _check(args: argparse.Namespace) -> int:
@@ -82,7 +83,7 @@ def _check(args: argparse.Namespace) -> int:
         args.calibration,
         operator=operator,
         require_complete=True,
-        required_scope="lower_chain",
+        required_scope=FULL_MAIN_CHAIN_SCOPE,
     )
     report = check_anatomical_calibration_v1(calibration, operator=operator)
     _write_json(args.output_json.expanduser().resolve(), report)
@@ -90,7 +91,7 @@ def _check(args: argparse.Namespace) -> int:
         f"AnatomicalCalibrationCheckV1 passed={str(report['passed']).lower()} "
         f"joints={report['joint_count']} -> {args.output_json}"
     )
-    return 0 if report["passed_lower_chain"] else 1
+    return 0 if report["passed"] else 1
 
 
 def build_parser() -> argparse.ArgumentParser:

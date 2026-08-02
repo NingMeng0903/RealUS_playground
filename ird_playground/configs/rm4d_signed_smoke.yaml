@@ -37,7 +37,8 @@ loss:
   classification: 1.0
   signed_value: 1.0
   normal_direction: 0.05
-  eikonal: 0.05
+  boundary_slope: 0.05
+  generic_eikonal: 0.0
 
 io:
   checkpoint: data/checkpoints/rm4d_signed_smoke/selected.pt

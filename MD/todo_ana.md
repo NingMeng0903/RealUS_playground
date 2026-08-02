@@ -34,9 +34,8 @@
 
 ### 2.1 回退和范围清理
 
-- 生产 retarget 核心已恢复为 142 内容，下列文件与
+- 生产 retarget 核心先恢复为 142 内容；当前除 `anatomy_lbs.py` 外，下列冻结文件仍与
   `142ece5f0bc646978ae3e8c9add76deea71c26a2` 逐文件一致：
-  - `anatomy_lbs.py`
   - `articular_fit_v8.py`
   - `bone_segment_diagnostics.py`
   - `leg_centerline_v810.py`
@@ -44,6 +43,9 @@
   - `v8_artifacts.py`
   - `version_v8.py`
   - `tests/test_leg_centerline_v810.py`
+- `anatomy_lbs.py` 后续只新增 metadata gated 的 whole-chain preview basis 搬运；普通
+  schema-6 资产不含 `whole_chain_source_bind_global` 时仍走 142 原路径。该分支用于把
+  shadow candidate 正确送入 Genesis，不等于把候选接入 trusted production。
 - 未完成的 V8.15 chain 实验已清理；没有把它接入 runtime。
 - 用户工作区的 `rm75_control`、Blender addon、`MD/GITHUB.md` 等修改不属于本任务，
   必须继续原样保留。
@@ -1185,3 +1187,308 @@ overview 中下肢太小。右 knee lateral 等视图 foreground 偏满，但关
 global supervisor 检查是否偏离“系统整链而非局部死扣”；implementation supervisor 检查
 `Cβ`、Node 2 tube application count、strict loader/schema 与性能。收到结论、生成改良的新目录
 并通过独立图审前，不进入 Node 3。
+
+### 2026-08-02 02:36 CST — Male provenance 纠正与 full-main-chain shadow
+
+本节追加并覆盖此前“两个 capture 使用 `SMPLX_NEUTRAL.pkl`”的判断；旧记录保留作为失败
+路径证据，不删除历史。对 capture 保存顶点重新做同 beta/pose NumPy forward 后，确认两组都
+必须使用 `SMPLX_MALE.pkl`：
+
+```text
+male SHA    af7ebc82e44cf098598685474c0592049ddfaca8e850feb0c2b88343f9aacee3
+neutral SHA 5b0279321ea9bd3cec5541c03b1f1c9ab9d197896943035c3abeef47f699bc5e
+
+213328: male RMS 0.049 mm, neutral RMS 7.43 mm
+213712: male RMS 0.049 mm, neutral RMS 14.79 mm
+```
+
+因此旧 `node2_001/002/003` 和 neutral `node4` 全部进入显式 invalidation 清单，只作失败
+证据。whole-chain CLI、checker、manifest 和 loader 固定 `smplx_gender=male`；loader 在读取
+NPZ 前即拒绝 neutral SHA。142 production retarget 核心未整仓回退，冻结核心仍与
+`142ece5f0bc646978ae3e8c9add76deea71c26a2` 一致；只删除了
+`whole_chain_rest_fit_v1.py` 中无效的局部肘部实验。
+
+新的 source calibration 为：
+
+```text
+chain_retarget_v1_node1_005/anatomical_calibration_v1
+calibration digest 7c4aeab695dabefb7623e861d9e5c19fe2db7edb3a7556ef86f52a24d5c13582
+accepted_scope full_main_chain
+```
+
+whole-chain consumer 现在必须显式 `required_scope=full_main_chain`；旧 lower-only
+`node1_004` 无法进入 builder/checker/render。肘和腕的 pivot 仍由冻结关节面拟合，横轴改为
+fit/validation 零交集的全桡骨/尺骨表面共识轴，避免小端帽质心噪声。12/12 关节独立通过：
+左右 elbow/wrist 轴误差 `1.452/1.422 deg`，最大 hinge 仍为右踝 `2.747 deg`，最大 upper
+center 重现为左肩 `2.684 mm`，hip head/socket 均 `<2 mm`。独立 supervisor 重跑 Blender
+oracle `271/271` 后给 Node 1 full-main-chain GO。
+
+上肢 rest fit 还修正了 142 左肘源姿态不对称：只有当 male skin 两段面积加权中心线共识与
+冻结 anatomical target 的正交分量差超过 `0.25 * elbow width` 时才替换该分量。两 beta
+仅左侧 `y` 触发；右侧保持 142 local basis。该规则把 upper-main area-weighted inside 提高到
+约 `0.99593`，并保持动态权威，不是单骨碰撞/SDF 搜索。
+
+完整不可发布候选：
+
+```text
+outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node2_004
+matrix manifest SHA 9e7db47b2b331232da50e2cdbd292f1197e19a2a21c98afe0728eee2907bce96
+213328 subject manifest a8bf5e863ed9c993aa5e235ea67da294099a8f1346a6e32846d8aa0a933ecd81
+213712 subject manifest 18ae6f56c9db939980945fefe6cb12d5bd348ff3d1532318ad64e0319bdddfd3
+```
+
+每个 beta 的 build 约 `5.0 s`。固定矩阵含 T-pose、两条 recorded pose 和 17 个 joint
+sweep（含 wrist `-45/0/+45 deg`），共 20 cells；最大 pivot regression
+`0.555/0.549 mm`，最大 hinge axis regression `2.658/2.641 deg`。GWN + exact
+point-to-triangle + source-area weighting 的 lower/upper inside 分别为
+`0.98459/0.99593` 与 `0.98610/0.99593`。zero-pose max error 约 `5.97e-8 m`。
+
+17 个 vessel/nerve mesh（55,337 vertices）只使用原 14-slot indices/weights 和同一
+`C_bone` 做一次 rest transport；之后直接走 target parent-local FK/LBS。manifest 固定 235
+controller、14-slot、mesh/range/topology/weight digests，application count 恰为 1；没有
+reroute、投影、改权重或 containment repair。候选保持 `publishable=false`、
+`trusted_latest_updated=false`、`vessel_repair_started=false`。
+
+Genesis 独立图包正在写入 `chain_retarget_v1_node4_003`。图审通过后本骨骼阶段立即停止，
+只交用户验收；不因剩余单条血管穿模继续修改骨骼。
+
+### 2026-08-02 — Node 4 Genesis reviewer 修正与阶段停止点
+
+上一版 `node4_005` 的独立视觉审查结论为 `needs_rerender`，不是 solver 失败：采集姿态
+中的 station marker 仍使用 T-pose 坐标，导致 residual red line 跨越多个局部 ROI；同时
+骨骼和 tubes 混在同一渲染层，深屈膝、踝和腕容易被管线/对侧肢体遮挡。
+
+本次只修 reviewer，不改 candidate、`B_final`、`C_bone`、parent-local FK、Blender
+14-slot weights 或 tube transport：
+
+* `smplx_body_surface_v7.py` 新增只读的 SMPL-X joint kinematics helper；station offset
+  先在 shaped rest joint 上定义，再由同一 pose 的 SMPL-X rest-to-pose matrix 搬运，保持
+  station 到 joint 的固定偏移，不再把 T-pose marker 画进 captured pose。
+* `render_whole_chain_dynamic_genesis_v1.py` 固定输出 `bones_only` 和 `bones_tubes` 两层；
+  局部相机使用冻结 142 validation anatomical frame 的 transverse/longitudinal/normal，
+  每个主链关节输出 AP/lateral/oblique/axial；每个 RGB/depth/segmentation 记录独立
+  camera digest 和全局 camera-manifest digest。
+* Genesis/Numba/Quadrants 的缓存显式放在 `/tmp/anatomy_qd_cache`、
+  `/tmp/anatomy_numba_cache`、`/tmp/anatomy_mpl_cache`；`import genesis` 与完整 PTY
+  渲染均已验证成功，避免依赖不可写的默认 `/home/camp/.cache`。
+
+新增不可覆盖图包：
+
+```text
+outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node4_007/
+  whole_chain_dynamic_genesis_review_v2/
+```
+
+该包为 2 beta × 3 pose × 2 review modes，包含 1,236 PNG、612 float32 depth、612
+segmentation 和 12 contact sheets；manifest schema `2` 固定：
+`smplx_gender=male`、male SHA `af7ebc82...acee3`、`publishable=false`、
+`trusted_latest_updated=false`、`vessel_repair_started=false`。候选仍位于：
+
+```text
+outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node2_004
+```
+
+监督结论：provenance、full calibration、T-pose rest-fit、rebind/pose、235-controller /
+14-slot / 17-tube single transport 五个技术 shadow gate 为 GO；Genesis visual gate 在
+独立人工验收前保持 NO-GO/pending。bones-only 图已足以检查骨-骨咬合，bones+tubes 图仅
+用于确认联动和单次 transport，不把任何残余单条血管穿模当成骨骼阶段失败。到此停止本阶段，
+不更新 `trusted/latest`，不启动 vessel containment/reroute 或软组织 harmonic solve。
+
+### 2026-08-02 — Twin 错误发布纠正与 exact-pose candidate preview
+
+此前给人工验收的 Twin 命令错误发布了旧 production schema-6 工件
+`latest_asset/.../7c6c8c.../anatomy_rigged.npz`，而不是 `node2_004`。该旧 run 的
+`run_status.json` 明确为 `passed=false`、`aborted_before_quality_completion`，其旧
+rest-align anchor RMS/max 为 `57.1/172.9 mm`；Twin 中的大幅错位不能用于评价新
+whole-chain candidate。`node2_004` 的 `passed=true` 只代表 shadow 自动矩阵通过，manifest
+仍固定 `publishable=false`，此前没有 production schema-6 publisher 接口。
+
+新增只读 live preview adapter：`run_publish_v8_candidate_preview.py` 可用
+`--whole-chain-subject` 加载并重新认证 male model、full calibration 和 candidate。导出的
+schema-6 保存 `vertices_final/B_final/target_local_bind/inverse_bind`，并把 `B_prefit` 作为
+preview-only source motion bind；runtime 严格执行
+`142 source posed local basis -> candidate target local bind -> parent-local FK`。它不使用
+pose cache，也不增加 IK/SDF/second solver，metadata 固定 `whole_chain_live_pose_map=true`、
+`v8_publishable=false`，不更新 `trusted/latest`。213712 preview：
+
+```text
+outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node2_004/
+  subject_213712/whole_chain_live_genesis_preview.npz
+shape hash 34deaeada36cdc4a505d
+vertices 394770, all finite, pose cache absent
+```
+
+与候选权威 `pose_whole_chain_vertices()` 的全顶点一致性：T-pose RMS/max
+`7.95e-9/1.21e-7 m`；pose_213328 `6.54e-8/3.72e-7 m`；pose_213712
+`6.60e-8/3.58e-7 m`。因此 Twin schema-6 preview 与 shadow validator 使用的是同一动态
+结果，不是一次姿态截图。
+
+同时 `run_publish_trusted_anatomy.py` 现在读取同目录 `run_status.json` 和
+`quality_report.json` 并 fail closed；旧 `7c6c8c...` 与失败的 `d17304...` 均已实测拒绝。
+
+推荐启动命令（Genesis conda 环境）：
+
+```bash
+QD_OFFLINE_CACHE_FILE_PATH=/tmp/anatomy_qd_cache \
+NUMBA_CACHE_DIR=/tmp/anatomy_numba_cache \
+MPLCONFIGDIR=/tmp/anatomy_mpl_cache \
+PYTHONPATH=.:src /media/camp/EXT_DRIVE/envs/genesis/bin/python -m \
+projects.genesis_ue_sync.anatomy_retarget.cli.render_whole_chain_dynamic_genesis_v1 \
+  --operator outputs/anatomy_retarget/v8_candidates/rebuild_012/source_operator_v8 \
+  --calibration outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_005/anatomical_calibration_v1 \
+  --oracle outputs/anatomy_retarget/v7_candidates/blender_link_oracle_v7_full_001/blender_link_oracle_v7.npz \
+  --smplx-model ref_code_library/EasyMocap/data/smplx/smplx/SMPLX_MALE.pkl \
+  --capture-213328 smplx_outputs/20260713_213328/moment_0000/smplx_result.npz \
+  --capture-213712 smplx_outputs/20260713_213712/moment_0000/smplx_result.npz \
+  --output outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node4_007/whole_chain_dynamic_genesis_review_v2 \
+  --backend cpu
+```
+
+### 2026-08-02 — 最终复跑、preview 身份与研究依据
+
+本轮在不改 solver 的前提下重新执行两组聚焦回归：
+
+```text
+oracle/calibration/rest-fit/pose-map/dynamic/containment/male provenance
+30 passed in 151.73 s
+
+runtime driver coupling / publish fail-closed
+35 passed, 1 skipped in 1.14 s
+```
+
+`run_publish_v8_candidate_preview.py` 重新认证并导出的 213712 schema-6 preview 与现有
+`whole_chain_live_genesis_preview.npz` 逐字节一致，SHA-256 均为：
+
+```text
+59f9478a309b194d7a6ab504dd5b2cd3e2f46d8eefca82d963f968a3c21687a7
+```
+
+在本机临时 ZMQ 端口 `15601` 的发布 smoke 也完成：重新认证/导出后发送 3 次
+`anatomy_asset_v1 upsert`，进程返回 0。正式人工验收仍使用 anatomy SUB `5601`。
+
+因此 Genesis/Twin 人工验收必须加载该 preview；不得再加载旧的 `7c6c8c...` aborted
+production 资产。普通 142 schema-6 runtime 行为保持原路径；只有 metadata 明确包含
+`whole_chain_source_bind_global` 的 preview 才执行 source-local basis 到 target-local bind
+的搬运。preview 仍为 `v8_publishable=false`，不更新 `trusted/latest`。
+
+方案不是从零臆造，方法边界对应以下已发表工作：
+
+* Keller et al., *SKEL: From Skin to Skeleton: Toward Biomechanically Accurate 3D Digital
+  Humans*, ACM TOG / SIGGRAPH Asia 2023：把表面人体参数与具有生物力学语义的骨架分开，
+  支持本方案不把 SMPL-X artist joint 直接等同于医学关节中心。
+* Allen, Curless and Popovic, *The Space of Human Body Shapes: Reconstruction and
+  Parameterization from Range Scans*, ACM TOG / SIGGRAPH 2003：参数化体型对应不能简化为
+  单一全局比例，支持当前两 beta 独立 materialize 和分段轴向适配。
+* Ali-Hamadi et al., *Anatomy Transfer*, ACM TOG / SIGGRAPH Asia 2013：先建立可靠的
+  外形对应和内部解剖映射，再求软组织层；对应当前“骨骼先验收，血管/软组织后置”。
+* Baran and Popovic, *Automatic Rigging and Animation of 3D Characters*, ACM TOG /
+  SIGGRAPH 2007：骨架层级、嵌入和蒙皮权重是共同约束，不能逐关节独立吸附后丢掉原 rig
+  拓扑；对应冻结 235-controller parent-local hierarchy 和原 14-slot LBS。
+* Jacobson et al., *Bounded Biharmonic Weights for Real-Time Deformation*, ACM TOG /
+  SIGGRAPH 2011：若后续确需 pelvis/local cage，只允许有界、局部、预计算的平滑权重；
+  不采用 pose-time 全身调和场或“果冻式”自由变形。
+* Grood and Suntay, *A Joint Coordinate System for the Clinical Description of
+  Three-Dimensional Motions: Application to the Knee*, Journal of Biomechanical
+  Engineering, 1983：关节应按解剖轴和相对运动描述，而不是要求虚拟 hinge 落在骨 mesh
+  或 raw skinning station 上；对应独立拟合 pivot/axis 和 station offset 校准。
+
+这些引用只约束设计选择，不作为候选通过证据；通过证据仍是冻结 Blender oracle、独立
+validation domains、两 beta × 三姿态/关节 sweep 数值检查和 Genesis 半透明局部图审。
+
+### 2026-08-02 — 骨骼阶段封板结论
+
+最终状态：`accepted_for_user_genesis_review`。
+
+* `node4_007` 的 12 张 contact sheet、1,236 PNG、612 depth、612 segmentation 均存在且
+  无空文件；代表性 whole/local 图未复现旧 `7c6c8c...` 的全局姿态错位。
+* T-pose 与两个 recorded pose 中，髋球窝保持就位；膝、踝、肩、肘、腕的骨链连续，
+  手足保持 rigid compound，未见股骨头脱窝、肋骨爆炸或长骨整体变细。
+* 少数 lateral/axial tile 有对侧肢体或近景骨遮挡，但同一关节的 AP/oblique 仍可判断；
+  这是 live Genesis 人工审查的非阻塞展示限制，不再回写 solver。
+* bones+tubes 只证明 17 个 tube 随同一 parent-local FK/LBS 联动且 rest transport 恰好一次；
+  不宣称血管全部 containment，也不处理单条血管穿模。
+* 候选保持 `publishable=false`、`trusted_latest_updated=false`。至此停止骨骼代码迭代，
+  等待用户在 Genesis 中验收；未收到用户明确接受前，不启动 vessel/nerve/soft-tissue 阶段。
+
+### 2026-08-02 — Genesis 失效 cwd 启动修复
+
+用户启动 Twin 时先出现 `getcwd: cannot access parent directories`，随后 Torch 报
+`libtorch_cpu.so` 无法加载。使用同一 Genesis Python 从稳定目录 `/tmp` 实测可正常导入
+Torch `2.12.0+cu126`，且 Twin 的完整 CUDA 参数 `--dry-run` 通过；这不是 candidate/schema
+或 baked 权重错误。
+
+`rm75_control/env_viewer.sh` 现在会在终端当前目录已删除、外盘重连后不可达等情况下自动
+切换到 `/tmp`，再激活 Genesis 环境。用“进入临时目录、删除该目录、source env”方式复现
+通过，只输出一条明确恢复提示。正式验收仍只加载 SHA-256
+`59f9478a309b194d7a6ab504dd5b2cd3e2f46d8eefca82d963f968a3c21687a7` 的
+`whole_chain_live_genesis_preview.npz`。
+
+### 2026-08-02 — Dynamic Main-Chain V2 contract checkpoint
+
+本轮没有继续消费失败的 V2.6 station/core-chain solver。`dynamic_main_chain_retarget_v2.py`
+已恢复为稳定 V2.3 语义：`B_prefit`/142 parent-local bind 是主链运动权威，只允许四个
+terminal root 做 bounded local SE(3)，不改 235 hierarchy、14-slot baked weights、faces 或
+publisher；未生成新的 solver candidate。
+
+新增只读合同与矩阵：
+
+```text
+src/projects/genesis_ue_sync/anatomy_retarget/terminal_containment_contract_v2.py
+src/projects/genesis_ue_sync/anatomy_retarget/cli/run_terminal_containment_feasibility_v2.py
+outputs/anatomy_retarget/v8_candidates/chain_retarget_v2_contract_002/
+  terminal_containment_feasibility_v2.json
+contract digest: 38ed96811c27aab33c7cd8c9569e422452de87d440023ef1fa7477984ef9e71f
+```
+
+合同区域固定为：完整 hand、hindfoot/midfoot/metatarsal (`foot_major`) 作为 SMPL-X
+posed-skin containment 候选 gate；toe phalanges 只做同一 ankle rigid transform 下的拓扑/刚性
+完整性和 Genesis report-only；lower/upper core 排除 terminal subtree。fit 和 checker 使用
+相同的 vertex IDs，并记录每个 foot mesh 的 digest。
+
+两组 beta × `{tpose, pose_213328, pose_213712}` 的只读复算使用 Male SHA
+`af7ebc82e44cf098598685474c0592049ddfaca8e850feb0c2b88343f9aacee3`，对照 142 baseline 和
+已保存的 `chain_retarget_v2_node2_003`。结果说明旧硬门不可直接沿用：
+
+* hand candidate 多数为 `0.98+`，动态断链已经明显减少；
+* `foot_major` candidate 约 `0.92–0.98`，按 supervisor 冻结为 aggregate `0.90`、`15 mm`
+  外露上限，并要求 12 个 major-foot mesh 各自 `inside_fraction >= 0.60`；
+* upper core 按左右独立 `0.95`、`20 mm` 绝对门；lower core 不再伪装成绝对解剖 containment，
+  改为相对 142 的 bounded-regression（delta `>= -0.005`、外露回退 `<=2 mm`、宽松爆炸门）；
+* toe phalanges 约 `0.02–0.74`，证明完整五趾 `0.98` 对单一 ankle rigid compound 是结构性
+  不可达，不能继续用“整脚 inside fraction”验收；
+* `baseline_142_is_report_only` 已替换为 per-region baseline role：仅 lower core 使用 baseline
+  作为 gate reference，其余区域 baseline 只作诊断；六个 beta×pose cell 的 revised validator
+  均通过。候选仍为 shadow、`publishable=false`，不发布、不启动血管/神经修复。
+
+supervisor 对 revised contract 给出 GO；下一步才允许基于该合同实现 posed-skin core-chain
+solver。以上矩阵和 6-cell validator 是合同/候选 shadow 证据，不是 production acceptance；
+`node2_001..006` 和 `node4_007` 继续保留为失败/人工审查证据。
+
+### 2026-08-02 — V2 candidate and GPU Genesis review
+
+按 revised contract 生成的新 shadow candidate：
+
+```text
+outputs/anatomy_retarget/v8_candidates/chain_retarget_v2_node2_008
+```
+
+两组 subject 均保存完成，`DynamicMainChainMatrixV2 passed=true`；每个 subject 的
+`tpose/pose_213328/pose_213712` revised validator 均通过。该候选仍严格保持
+`publishable=false`、`trusted_latest_updated=false`、`vessel_repair_started=false`，没有进入
+production schema-6 或 trusted/latest。
+
+Genesis renderer 新增 `--whole-chain-subject-root`，现在直接读取 V2 NPZ，不再内部重建旧 V1；
+否则会出现“图看的是另一个候选”的审查错误。GPU 图包：
+
+```text
+outputs/anatomy_retarget/v8_candidates/chain_retarget_v2_node4_008/
+  whole_chain_dynamic_genesis_review_v3
+```
+
+该图包由宿主机 RTX 4080 Laptop GPU、driver `580.173.02`、Torch CUDA `12.6`、Genesis
+`--backend cuda` 生成，包含两 beta、三姿态、`bones_only` 和 `bones_tubes`，manifest
+`WholeChainDynamicGenesisReviewV1`、2 subjects、`publishable=false`。sandbox 内无法看见
+GPU，所以之前 CPU 试跑的残留图已删除，不作为验收依据。
+
+当前停止点：等待独立视觉 agent 审核 `node4_008` 的动作姿态局部图（尤其两侧 ankle/wrist、
+hip/knee 和完整 hand/foot）；不因血管穿模启动 vessel reroute 或软组织 harmonic solve。

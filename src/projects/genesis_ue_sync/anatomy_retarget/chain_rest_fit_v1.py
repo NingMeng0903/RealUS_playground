@@ -641,10 +641,9 @@ def _bone_transforms(asset: Any, side_transforms: Mapping[str, np.ndarray]) -> n
         # influences on one rigid correction.
         result[tibia + 1] = shank_distal
         result[tibia + 2] = shank_distal
-        # The 142 foot compound is already contained by the SMPL-X skin.
-        # Keep its rest/bind byte-exact and let the shank meet the frozen ankle
-        # pivot; moving the whole terminal compound caused 10-30 mm toe
-        # exposure even though its internal topology stayed rigid.
+        # Keep the 142 terminal compound unchanged in V1.  V2 owns any
+        # multi-pose hand/foot correction so this legacy builder remains
+        # reproducible and cannot silently change terminal bind semantics.
         result[patella] = femur
     return result
 

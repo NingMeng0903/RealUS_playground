@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -16,16 +17,23 @@ from ird_playground.ird.gt_common import reachability_modules
 from ird_playground.ird.robot_model import RobotModelSpec, load_robot_model_spec
 from ird_playground.ird.tool_frame import pose_flange_to_tcp, pose_tcp_to_flange
 from ird_playground.ird.torch_kinematics import TorchRM75Kinematics, so3_log
-from ird_playground.calib.conformal import empirical_coverage, fit_split_conformal
-from ird_playground.calib import load_conformal_json
+from ird_playground.calib import false_acceptance_report, load_conformal_json
+from ird_playground.ird.splits import FiveWaySplitConfig, five_way_split_indices
 from ird_playground.neural.signed_field import ReachabilitySDF
 from ird_playground.neural.train_signed import (
     _side_indices,
-    _split_indices,
     evaluate_signed_field,
     load_signed_train_config,
 )
 from ird_playground.region.operator import RegionA, RegionAConfig
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _pose_matrices(features: np.ndarray, device: torch.device) -> torch.Tensor:
@@ -260,18 +268,41 @@ def main(argv: list[str] | None = None) -> int:
     )
     gt_npz = np.load(cfg.gt_npz, allow_pickle=False)
     arrays = {k: gt_npz[k] for k in gt_npz.files if k != "meta_json"}
-    _, val_idx = _split_indices(
+    splits = five_way_split_indices(
         arrays["boundary_id"],
-        cfg.val_fraction,
-        cfg.seed,
         arrays["source_pose_id"],
+        seed=cfg.seed,
+        config=FiveWaySplitConfig(
+            cfg.val_fraction,
+            cfg.zero_calibration_fraction,
+            cfg.safety_calibration_fraction,
+            cfg.test_fraction,
+        ),
     )
+    val_idx = splits["test"]
+    conformal_path = args.conformal
+    if conformal_path is None:
+        conformal_path = root / "data/calib/conformal_rm4d_signed.json"
+    elif not conformal_path.is_absolute():
+        conformal_path = root / conformal_path
+    if not conformal_path.is_file():
+        raise FileNotFoundError(
+            f"independent calibration is required before final evaluation: {conformal_path}"
+        )
+    conf = load_conformal_json(conformal_path)
+    if conf.get("checkpoint_sha256") != _sha256(ckpt):
+        raise ValueError("calibration/checkpoint fingerprint mismatch")
+    if conf.get("dataset_sha256") != _sha256(Path(cfg.gt_npz)):
+        raise ValueError("calibration/dataset fingerprint mismatch")
+    zero_bias = float(conf["zero_bias"])
+    safety_threshold = float(conf["safety_threshold"])
     metrics = evaluate_signed_field(
         field,
         arrays,
         val_idx,
         report_near_axis=bool(args.report_near_axis),
         near_axis_r_m=cfg.near_axis_r_m,
+        zero_bias=zero_bias,
     )
     source_npz = np.load(source_path, allow_pickle=False)
     source = {k: source_npz[k] for k in source_npz.files}
@@ -289,12 +320,6 @@ def main(argv: list[str] | None = None) -> int:
     cls_w = arrays.get(
         "classification_weight", np.ones(len(arrays["reachable"]), dtype=np.float32)
     )
-    tr_idx, _ = _split_indices(
-        arrays["boundary_id"],
-        cfg.val_fraction,
-        cfg.seed,
-        arrays["source_pose_id"],
-    )
     metrics.update(
         _exterior_grad_audit(
             field,
@@ -302,57 +327,27 @@ def main(argv: list[str] | None = None) -> int:
             arrays["reachable"][val_idx],
         )
     )
-    conformal_path = args.conformal
-    if conformal_path is None:
-        conformal_path = root / "data/calib/conformal_rm4d_signed.json"
-    elif not conformal_path.is_absolute():
-        conformal_path = root / conformal_path
-    if conformal_path.is_file():
-        conf = load_conformal_json(conformal_path)
-        threshold = float(conf["threshold"])
-    else:
-        # Fit quickly on a train subset so eval is self-contained.
-        rng = np.random.default_rng(cfg.seed + 91)
-        tr = tr_idx[cls_w[tr_idx] > 0]
-        if len(tr) > 100_000:
-            tr = rng.choice(tr, size=100_000, replace=False)
-        fit = fit_split_conformal(
-            field.score_np(arrays["canonical"][tr]),
-            arrays["reachable"][tr] > 0.5,
-            alpha=0.05,
-        )
-        threshold = float(fit.threshold)
-        conformal_path.parent.mkdir(parents=True, exist_ok=True)
-        conformal_path.write_text(
-            json.dumps(
-                {
-                    **fit.to_dict(),
-                    "checkpoint": str(ckpt),
-                    "m_safe": threshold,
-                    "note": "Auto-fit during eval_signed; prefer cli.calibrate_conformal for a pinned file.",
-                },
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
     va = val_idx[cls_w[val_idx] > 0]
-    cov = empirical_coverage(
-        field.score_np(arrays["canonical"][va]),
+    safety_report = false_acceptance_report(
+        field.score_np(arrays["canonical"][va]) - zero_bias,
         arrays["reachable"][va] > 0.5,
-        threshold,
-        margin=0.0,
+        safety_threshold,
     )
-    metrics["conformal_threshold"] = threshold
-    metrics["m_safe"] = threshold
-    metrics["conformal_path"] = str(conformal_path)
-    metrics.update({f"conformal_{k}": v for k, v in cov.items()})
-    # probe45 keeps gamma as a chart DOF; allow sparse q7 collision flips (~2%).
+    metrics["zero_bias"] = zero_bias
+    metrics["safety_threshold"] = safety_threshold
+    metrics["m_safe"] = zero_bias + safety_threshold
+    metrics["calibration_path"] = str(conformal_path)
+    metrics.update({f"safety_{key}": value for key, value in safety_report.items()})
     metrics["pass"] = bool(
-        metrics["balanced_accuracy"] >= 0.90
-        and metrics["direction_agreement_m"] >= 0.95
-        and metrics["direction_agreement_deg"] >= 0.95
+        metrics["balanced_accuracy"] >= 0.8988
+        and metrics["direction_agreement_m"] >= 0.99
+        and metrics["direction_agreement_deg"] >= 0.99
         and metrics["crossing_p95_m"] <= 0.001
-        and metrics["crossing_p95_deg"] <= 1.0
+        and metrics["crossing_p95_deg"] <= 0.2
+        and metrics["strict_straddle_rate_m"] >= 0.339
+        and metrics["strict_straddle_rate_deg"] >= 0.203
+        and metrics["wide_straddle_rate_m"] >= 0.887
+        and metrics["wide_straddle_rate_deg"] >= 0.684
         and metrics["region_direction_agreement_m"] >= 0.90
         and metrics["region_direction_agreement_deg"] >= 0.90
         and metrics["rail_ad_fd_median_relative_error"] <= 0.05
@@ -363,6 +358,7 @@ def main(argv: list[str] | None = None) -> int:
         and metrics["positive_collision_failures"] == 0
         and metrics["positive_pose_tolerance_failures"] == 0
         and metrics["roll_collision_variation_rate"] <= 0.05
+        and metrics["safety_false_accept_rate_upper"] <= float(conf["alpha"])
     )
     report = root / "data/reports/eval_rm4d_signed.json"
     report.parent.mkdir(parents=True, exist_ok=True)

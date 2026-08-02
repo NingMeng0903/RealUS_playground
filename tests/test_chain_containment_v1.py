@@ -28,7 +28,7 @@ from src.projects.genesis_ue_sync.anatomy_retarget.whole_chain_rest_fit_v1 impor
 ROOT = Path(__file__).resolve().parents[1]
 OPERATOR = ROOT / "outputs/anatomy_retarget/v8_candidates/rebuild_012/source_operator_v8"
 CALIBRATION = (
-    ROOT / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_004"
+    ROOT / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_005"
     / "anatomical_calibration_v1"
 )
 MODEL = ROOT / "ref_code_library/EasyMocap/data/smplx/smplx/SMPLX_MALE.pkl"
@@ -44,7 +44,7 @@ def test_terminal_containment_is_exactly_restored_to_142() -> None:
         pytest.skip("frozen containment inputs are unavailable")
     operator = load_source_operator(OPERATOR, mmap=True)
     calibration = load_anatomical_calibration_v1(
-        CALIBRATION, operator=operator, required_scope="lower_chain"
+        CALIBRATION, operator=operator, required_scope="full_main_chain"
     )
     model = load_smplx_model_v7(MODEL)
     with np.load(CAPTURE, allow_pickle=False) as data:
@@ -66,6 +66,11 @@ def test_terminal_containment_is_exactly_restored_to_142() -> None:
         value, asset=asset, skin_vertices=skin, skin_faces=faces
     )
     assert report["skin_frame_translation_applied"] is False
+    assert report["inside_method"] == "generalized_winding_number_abs_ge_0.5"
+    assert report["distance_method"] == "exact_point_to_triangle"
+    assert report["statistics_weighting"] == "source_mesh_vertex_area"
+    for name in ("lower_main", "upper_main"):
+        assert report["regions"][name]["candidate"]["inside_fraction"] >= 0.98
     assert report["terminal_rest_byte_exact"] == {
         "terminal_hand": True,
         "terminal_foot": True,

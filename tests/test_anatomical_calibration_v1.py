@@ -22,6 +22,9 @@ from src.projects.genesis_ue_sync.anatomy_retarget.blender_link_oracle_v7 import
 from src.projects.genesis_ue_sync.anatomy_retarget.v8_artifacts import (
     load_source_operator,
 )
+from src.projects.genesis_ue_sync.anatomy_retarget.whole_chain_rest_fit_v1 import (
+    build_whole_chain_rest_fit_v1,
+)
 
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -48,10 +51,10 @@ def _real_calibration():
 def test_source_calibration_is_independent_and_preserves_virtual_pivots() -> None:
     operator, calibration = _real_calibration()
     report = check_anatomical_calibration_v1(calibration, operator=operator)
-    assert report["passed"] is False
+    assert report["passed"] is True
     assert report["passed_lower_chain"] is True
-    assert report["passed_upper_chain"] is False
-    assert report["accepted_scope"] == "lower_chain"
+    assert report["passed_upper_chain"] is True
+    assert report["accepted_scope"] == "full_main_chain"
     assert report["joint_count"] == len(JOINT_SPECS) == 12
     assert calibration.build_report["vertices_changed"] is False
     assert calibration.build_report["bind_changed"] is False
@@ -187,7 +190,9 @@ def test_full_scope_load_rejects_lower_chain_only_artifact(tmp_path: Path) -> No
         accepted_scope="lower_chain",
     )
     with pytest.raises(ValueError, match="incomplete for the required scope"):
-        load_anatomical_calibration_v1(output, operator=operator)
+        load_anatomical_calibration_v1(
+            output, operator=operator, required_scope="full_main_chain"
+        )
 
 
 def test_forged_checker_dictionary_cannot_authorize_artifact(tmp_path: Path) -> None:
@@ -218,4 +223,21 @@ def test_forged_checker_dictionary_cannot_authorize_artifact(tmp_path: Path) -> 
             operator=operator,
             checker_report=fake_report,
             accepted_scope="lower_chain",
+        )
+
+
+def test_whole_chain_builder_rejects_non_male_before_model_use() -> None:
+    operator, calibration = _real_calibration()
+    with pytest.raises(ValueError, match="smplx_gender=male"):
+        build_whole_chain_rest_fit_v1(
+            operator,
+            calibration,
+            betas=np.zeros(10),
+            subject_label="invalid",
+            capture_sha256="0" * 64,
+            smplx_model={},
+            smplx_model_sha256=(
+                "af7ebc82e44cf098598685474c0592049ddfaca8e850feb0c2b88343f9aacee3"
+            ),
+            gender="neutral",
         )

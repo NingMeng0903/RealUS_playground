@@ -34,7 +34,7 @@ from src.projects.genesis_ue_sync.anatomy_retarget.whole_chain_rest_fit_v1 impor
 ROOT = Path(__file__).resolve().parents[1]
 OPERATOR = ROOT / "outputs/anatomy_retarget/v8_candidates/rebuild_012/source_operator_v8"
 CALIBRATION = (
-    ROOT / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_004"
+    ROOT / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_005"
     / "anatomical_calibration_v1"
 )
 ORACLE = (
@@ -59,7 +59,7 @@ def matrix():
         pytest.skip("frozen PoseMapV1 inputs are unavailable")
     operator = load_source_operator(OPERATOR, mmap=True)
     calibration = load_anatomical_calibration_v1(
-        CALIBRATION, operator=operator, required_scope="lower_chain"
+        CALIBRATION, operator=operator, required_scope="full_main_chain"
     )
     model = load_smplx_model_v7(MODEL)
     model_sha = _sha(MODEL)
@@ -119,7 +119,7 @@ def test_zero_pose_reconstructs_the_complete_candidate_rest(matrix) -> None:
         )
 
 
-def test_recorded_pose_moves_unmodified_142_bones_and_keeps_tubes_on_142_path(matrix) -> None:
+def test_recorded_pose_moves_bones_and_tubes_on_target_path(matrix) -> None:
     _calibration, values = matrix
     for value, asset, pose_map, pose in values.values():
         posed, global_matrices = pose_whole_chain_vertices(
@@ -139,7 +139,7 @@ def test_recorded_pose_moves_unmodified_142_bones_and_keeps_tubes_on_142_path(ma
         )
         assert float(np.max(pelvis_delta)) > 1.0e-3
 
-        preview, _ = pose_whole_chain_vertices(
+        second, _ = pose_whole_chain_vertices(
             value,
             pose_map,
             source_asset=asset,
@@ -153,7 +153,14 @@ def test_recorded_pose_moves_unmodified_142_bones_and_keeps_tubes_on_142_path(ma
                 if str(tissue).strip().lower() in {"vessel", "nerve"}
             ]
         )
-        assert float(np.max(np.linalg.norm(preview[tube_ids] - posed[tube_ids], axis=1))) > 0.0
+        np.testing.assert_array_equal(second[tube_ids], posed[tube_ids])
+        assert float(
+            np.max(
+                np.linalg.norm(
+                    posed[tube_ids] - value.vertices_final[tube_ids], axis=1
+                )
+            )
+        ) > 0.0
 
 
 def test_new_bind_changes_only_the_bind_not_the_142_local_pose_basis(matrix) -> None:

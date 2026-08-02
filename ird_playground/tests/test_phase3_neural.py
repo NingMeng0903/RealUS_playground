@@ -7,6 +7,9 @@ import pytest
 import torch
 
 from ird_playground.calib.conformal import (
+    false_acceptance_report,
+    fit_unreachable_safety_threshold,
+    fit_zero_bias,
     calibrated_clearance,
     empirical_coverage,
     fit_split_conformal,
@@ -92,6 +95,20 @@ def test_split_conformal_threshold_and_coverage():
     assert cov["coverage_reachable"] >= 0.7
 
 
+def test_independent_zero_and_unreachable_calibration():
+    zero = fit_zero_bias(np.array([0.09, 0.10, 0.11]), bootstrap_samples=50, seed=2)
+    assert zero.zero_bias == pytest.approx(0.10)
+    unreachable = np.linspace(-1.0, 0.2, 100)
+    safety = fit_unreachable_safety_threshold(unreachable, alpha=0.05)
+    assert safety.safety_threshold >= np.quantile(unreachable, 0.94)
+    report = false_acceptance_report(
+        np.r_[unreachable, [0.5, 0.6]],
+        np.r_[np.zeros(100, dtype=bool), np.ones(2, dtype=bool)],
+        safety.safety_threshold,
+    )
+    assert report["false_accept_rate_upper"] >= report["false_accept_rate"]
+
+
 def test_tolerance_rho_zero_consistency_loss_finite():
     center = np.linspace(-0.2, 0.5, FLANGE_CANONICAL_DIM).astype(np.float32)
     scale = np.full(FLANGE_CANONICAL_DIM, 0.3, dtype=np.float32)
@@ -119,11 +136,11 @@ def test_tolerance_rho_zero_consistency_loss_finite():
     assert torch.isfinite(y).all()
 
 
-def test_unit_speed_eikonal_and_near_axis_eval_hook():
+def test_empirical_boundary_slope_and_near_axis_eval_hook():
     g = torch.tensor([[3.0, 4.0], [0.0, 1.0]], requires_grad=False)
-    loss = unit_speed_eikonal_loss(g, target_slope=None)
-    # ||(3,4)||=5 → |5-1|, ||(0,1)||=1 → 0; smooth_l1 mean > 0
-    assert float(loss) > 0.0
+    target = torch.tensor([5.0, 1.0]) * 100.0
+    loss = unit_speed_eikonal_loss(g * 100.0, target_slope=target)
+    assert float(loss) == pytest.approx(0.0)
 
     center = np.linspace(-0.1, 0.4, FLANGE_CANONICAL_DIM).astype(np.float32)
     scale = np.full(FLANGE_CANONICAL_DIM, 0.25, dtype=np.float32)

@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import os
 import weakref
+from dataclasses import replace
 from typing import Any, Mapping
 
 import numpy as np
 
 from .coupled_joint_v8 import evaluate_coupled_rbf_response_v8
 from .pose_adapter import pose_to_smplx55_axis_angle
-from .rigged_asset import SOURCE_DRIVER_MODES, AnatomyRiggedAsset
+from .rigged_asset import (
+    SOURCE_DRIVER_MODES,
+    AnatomyRiggedAsset,
+    source_global_from_local,
+)
 
 
 _CUDA_ASSET_CACHE: dict[
@@ -1167,6 +1172,58 @@ def source_bone_posed_global(
     """
     if asset.source_bone_names is None:
         raise ValueError("source bone transforms require an anatomy schema-v6 rig")
+    preview_source_global_raw = (asset.metadata or {}).get(
+        "whole_chain_source_bind_global"
+    )
+    if preview_source_global_raw is not None:
+        parents = np.asarray(asset.source_bone_parents, dtype=np.int64)
+        source_global = np.asarray(
+            preview_source_global_raw, dtype=np.float64
+        )
+        if source_global.shape != (len(parents), 4, 4):
+            raise ValueError(
+                "whole-chain preview source bind must match source bones"
+            )
+        if not np.all(np.isfinite(source_global)) or not np.allclose(
+            source_global[:, 3, :],
+            np.asarray((0.0, 0.0, 0.0, 1.0)),
+            atol=1.0e-6,
+            rtol=0.0,
+        ):
+            raise ValueError("whole-chain preview source bind is invalid")
+        source_local = source_global.copy()
+        for bone, parent in enumerate(parents.tolist()):
+            if int(parent) >= 0:
+                source_local[bone] = (
+                    np.linalg.inv(source_global[int(parent)]) @ source_global[bone]
+                )
+        source_asset = replace(
+            asset,
+            target_rest_global=source_global.astype(np.float32),
+            target_rest_local=source_local.astype(np.float32),
+            target_inverse_bind=np.linalg.inv(source_global).astype(np.float32),
+            metadata={
+                **(asset.metadata or {}),
+                "whole_chain_source_bind_global": None,
+            },
+        )
+        source_posed_global = source_bone_posed_global(
+            source_asset, pose_axis_angle
+        )
+        source_posed_local = source_posed_global.copy()
+        for bone, parent in enumerate(parents.tolist()):
+            if int(parent) >= 0:
+                source_posed_local[bone] = (
+                    np.linalg.inv(source_posed_global[int(parent)])
+                    @ source_posed_global[bone]
+                )
+        local_basis = np.linalg.inv(source_local) @ source_posed_local
+        target_local_pose = (
+            np.asarray(asset.target_bind_local, dtype=np.float64) @ local_basis
+        )
+        return source_global_from_local(
+            target_local_pose, parents
+        ).astype(np.float64)
     driver_frames = source_bone_driver_frames(asset, pose_axis_angle)
     modes = list(asset.source_bone_driver_types or [])
     if len(modes) != len(asset.source_bone_names):

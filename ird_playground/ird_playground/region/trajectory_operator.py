@@ -22,7 +22,12 @@ except ImportError:  # pragma: no cover
     nn = None  # type: ignore
 
 from ird_playground.ird.torch_kinematics import so3_exp
-from ird_playground.region.operator import RegionA, RegionAConfig, normalized_softmin
+from ird_playground.region.operator import (
+    RegionA,
+    RegionAConfig,
+    base_from_rail_torch,
+    normalized_softmin,
+)
 from ird_playground.region.set_query import normalized_softmax_like_max
 
 
@@ -102,6 +107,9 @@ class TrajectoryTaskResult:
     psi_clearance: "torch.Tensor"
     best_psi_index: "torch.Tensor"
     psi_offsets_rad: "torch.Tensor"
+    angle_weights: "torch.Tensor"
+    selected_angle_rad: "torch.Tensor"
+    selected_psi_rad: "torch.Tensor"
 
 
 class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: ignore[misc]
@@ -208,17 +216,38 @@ class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: 
 
     @staticmethod
     def _path_axis(
-        T_axis_world: "torch.Tensor", n_waypoints: int
+        T_axis_world: "torch.Tensor", n_waypoints: int, n_path: int
     ) -> "torch.Tensor":
-        """Broadcast the axis frame onto ``[..., W-1, n_path, A, S]`` scores.
-
-        A per-waypoint axis stack is trimmed to its segment starts; a single
-        shared frame is broadcast as is.
-        """
+        """Interpolate per-waypoint axes with the same path parameters as TCP."""
         axis = T_axis_world
         if axis.ndim >= 3 and axis.shape[-3] == n_waypoints:
-            axis = axis[..., :-1, :, :]
+            axis = TrajectoryTaskOperator._path_samples(axis, n_path)
+            return axis[..., None, None, :, :]
         return axis[..., None, None, None, :, :]
+
+    @staticmethod
+    def _path_rail_axis(
+        rail_waypoints: "torch.Tensor",
+        n_path: int,
+        T_world_rail: "torch.Tensor",
+        T_rail_axis0: "torch.Tensor",
+        rail_axis: int,
+    ) -> "torch.Tensor":
+        alpha = torch.linspace(
+            1.0 / (n_path + 1),
+            n_path / (n_path + 1),
+            n_path,
+            dtype=rail_waypoints.dtype,
+            device=rail_waypoints.device,
+        )
+        rail = (
+            rail_waypoints[..., :-1, None] * (1.0 - alpha)
+            + rail_waypoints[..., 1:, None] * alpha
+        )
+        axis = base_from_rail_torch(
+            rail, T_world_rail, T_rail_axis0, axis=rail_axis
+        )
+        return axis[..., None, None, :, :]
 
     def _reduce_trajectory(self, values: "torch.Tensor") -> "torch.Tensor":
         if self.config.trajectory_aggregation == "softmin":
@@ -269,7 +298,19 @@ class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: 
         T_axis_world: "torch.Tensor",
         *,
         angle_probabilities: "torch.Tensor | None" = None,
+        rail_waypoints: "torch.Tensor | None" = None,
+        T_world_rail: "torch.Tensor | None" = None,
+        T_rail_axis0: "torch.Tensor | None" = None,
+        rail_axis: int = 1,
     ) -> TrajectoryTaskResult:
+        if rail_waypoints is not None:
+            if T_world_rail is None or T_rail_axis0 is None:
+                raise ValueError("rail interpolation requires both rail transforms")
+            if rail_waypoints.shape[-1] != T_tcp_world.shape[-3]:
+                raise ValueError("rail_waypoints must have one value per TCP waypoint")
+            T_axis_world = base_from_rail_torch(
+                rail_waypoints, T_world_rail, T_rail_axis0, axis=rail_axis
+            )
         psi_vals = self.psi_offsets_rad.to(dtype=T_tcp_world.dtype, device=T_tcp_world.device)
         n_psi = int(psi_vals.shape[0])
         use_psi = n_psi > 1 and hasattr(field, "score_world_psi")
@@ -298,7 +339,19 @@ class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: 
             if path_T.shape[-4] > 0:
                 path_candidates = self._with_local_rotation(path_T, self.angle_rotvec_local)
                 path_scenarios = self.region.perturb_tcp(path_candidates)
-                path_axis = self._path_axis(T_axis_world, T_tcp_world.shape[-3])
+                path_axis = (
+                    self._path_rail_axis(
+                        rail_waypoints,
+                        self.config.n_path,
+                        T_world_rail,
+                        T_rail_axis0,
+                        rail_axis,
+                    )
+                    if rail_waypoints is not None
+                    else self._path_axis(
+                        T_axis_world, T_tcp_world.shape[-3], self.config.n_path
+                    )
+                )
                 path_scores = self._score_world(field, path_scenarios, path_axis, psi_value)
                 path_scenario = self._aggregate(
                     path_scores,
@@ -326,6 +379,10 @@ class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: 
             coverage = torch.sigmoid(
                 clearance / max(self.config.coverage_tau, 1.0e-6)
             ).mean(dim=(-1, -2))
+            angle_weights = torch.softmax(
+                candidate / max(self.config.angle_tau, 1.0e-6), dim=-1
+            )
+            best_angle = candidate.argmax(dim=-1)
             return TrajectoryTaskResult(
                 trajectory_clearance=trajectory,
                 waypoint_clearance=waypoint,
@@ -335,11 +392,14 @@ class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: 
                 waypoint_coverage=coverage,
                 trajectory_coverage=coverage.mean(dim=-1),
                 worst_waypoint_index=waypoint.argmin(dim=-1),
-                best_angle_index=candidate.argmax(dim=-1),
+                best_angle_index=best_angle,
                 angle_offsets_rad=self.angle_offsets_rad,
                 psi_clearance=trajectory.unsqueeze(-1),
                 best_psi_index=trajectory.new_zeros(trajectory.shape, dtype=torch.long),
                 psi_offsets_rad=self.psi_offsets_rad,
+                angle_weights=angle_weights,
+                selected_angle_rad=self.angle_offsets_rad[best_angle],
+                selected_psi_rad=trajectory.new_zeros(trajectory.shape),
             )
 
         if not use_psi:
@@ -367,6 +427,9 @@ class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: 
                     psi_clearance=psi_clearance,
                     best_psi_index=psi_clearance.argmax(dim=-1),
                     psi_offsets_rad=self.psi_offsets_rad,
+                    angle_weights=result.angle_weights,
+                    selected_angle_rad=result.selected_angle_rad,
+                    selected_psi_rad=self.psi_offsets_rad[psi_clearance.argmax(dim=-1)],
                 )
             return result
 
@@ -394,6 +457,9 @@ class TrajectoryTaskOperator(nn.Module if nn is not None else object):  # type: 
             psi_clearance=psi_clearance,
             best_psi_index=best_psi_index,
             psi_offsets_rad=self.psi_offsets_rad,
+            angle_weights=chosen.angle_weights,
+            selected_angle_rad=chosen.selected_angle_rad,
+            selected_psi_rad=self.psi_offsets_rad[best_psi_index],
         )
 
 

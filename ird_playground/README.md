@@ -16,12 +16,49 @@ the physical `probe45` TCP.
   a collision certificate. Final paths still require exact full-pose IK and
   collision checks.
 
-The calibrated probe TCP is not aligned with J7: its origin is 15.23 mm from
-the J7 axis and TCP +Z is about 49.9 degrees from it. Therefore the 5-D field
-can guide position plus acoustic-axis tasks, but it cannot represent
-longitudinal/transverse probe roll by itself. Use roll as an explicit task
-variable and validate it with full-pose IK/collision, or train a roll-aware
-residual/full-pose field.
+The intrinsic quotient is 5-D, but the production network uses a smooth,
+redundant 9-D flange embedding. It removes only common J1 yaw and retains
+probe roll, including the calibrated probe45 offset. J1's `+/-177.96 deg`
+limit makes this a task-audited approximate symmetry; final joint validation
+always applies the true limit and no seam fallback is used.
+
+## Continuous Dynamic Guidance
+
+`ird_playground.optimization.DifferentiableTrajectoryEnergy` exposes a batched,
+solver-independent trajectory energy over cubic task-spline controls
+`[theta, tip_x, tip_y, roll, rail]`. The frozen IRD score and the dynamic
+obstacle SDF are separate channels; obstacle updates never rewrite raw IRD.
+The forward graph stays continuous, while closed-form SRS whole-path DP and
+exact robot checks remain outside the guidance graph as final certification.
+
+The GPU-only moving-obstacle demos are:
+
+```bash
+python experiments/moving_obstacle_u_band_demo.py --device cuda
+python experiments/diffusion_guidance_foundation_demo.py --device cuda
+python experiments/finalize_moving_obstacle_artifacts.py \
+  --out-dir data/reports/moving_obstacle_u_band --clean
+```
+
+Their artifacts are written to `data/reports/moving_obstacle_u_band/`. Each
+video frame re-queries a local U-band centered on the current TCP with the
+current rail axis; the obstacle moves independently and supplies a red
+ellipsoid-SDF halo. Only the first and last spline controls are fixed to the
+medical reference. Every interior control remains differentiable, and every
+optimizer step recomputes pose, orientation, rail-axis IRD, angular aggregation
+and obstacle distance from the current controls. The reference supplies the
+medical projection rule, not a cached heatmap or active-set mask.
+The current manifest-linked GPU run passes 30 warm end-to-end trials with
+P50/P95 `4.288/4.564 s`, minimum raw IRD `6.393`, and exact dense TCP-to-
+ellipsoid margin `6.189 mm`. It uses a `3 mm` hard certificate, `5 mm`
+planning margin, and a shorter `2 mm` transition. Its obstacle score rises
+from zero to the IRD safety score across that transition, so the repulsive
+gradient is strong near the edge and hands back to raw IRD outside the compact band.
+The no-learning foundation recovers
+`37/48` noisy proposals and reports every failed basin cell.
+Production field balanced accuracy is still `90.38%`, so
+these demos prove the planning/guidance architecture, not the `>=95%` field
+release target.
 
 ## Rebuild
 
@@ -46,8 +83,10 @@ python -m ird_playground.cli.build_uniform_pose_gt \
 python -m ird_playground.cli.build_canonical_gt \
   --config configs/rm4d_signed_production.yaml
 
-# 5. Train and evaluate. Validation is grouped by source_pose_id.
+# 5. Train, independently calibrate, then open the final test split once.
 python -m ird_playground.cli.train_signed \
+  --config configs/rm4d_signed_production.yaml
+python -m ird_playground.cli.calibrate_conformal \
   --config configs/rm4d_signed_production.yaml
 python -m ird_playground.cli.eval_signed \
   --config configs/rm4d_signed_production.yaml
@@ -67,9 +106,22 @@ and separates three reductions that must not be conflated:
 3. Whole trajectory: soft-min, CVaR, or exact minimum.
 
 The result retains per-waypoint margins, per-angle margins, all sampled
-scenario scores, coverage, the worst waypoint and the best angle index. This
+scenario scores, coverage, recoverable angle/psi choices and weights. This
 is the interface intended for SMPL-X surface-path optimization; it avoids
 hiding failure locations behind one trajectory scalar.
+
+## 8-DOF trajectory planning
+
+`ird_playground.optimization` implements an offline local SQP over
+`q=[rail,j1..j7]` and explicit soft task-pose offsets. IRD ranks task/rail warm
+starts; Pinocchio FK/Jacobians, ProxSuite, HPP-FCL witness-point gradients and
+independent world-frame constraints determine the joint lift. Results are
+fail-closed and include `T_tcp_ref`, `q_ref`, `qdot_ff`, rail reference,
+contact normals, KKT residual and every hard-validation margin.
+
+Timing starts from TCP arc length at a maximum of `0.02 m/s`; Ruckig may slow it to
+meet joint/rail velocity and acceleration limits. The result feeds the existing
+QP-IK/force-position controller and does not add torque dynamics to its loop.
 
 ## Mount compare figures (RM + IRD × 3)
 

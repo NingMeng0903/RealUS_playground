@@ -85,7 +85,8 @@ def test_signed_production_config_loads():
         )
     cfg = load_signed_train_config(root / "configs/rm4d_signed_production.yaml", root=root)
     assert cfg.lambda_signed_value > 0.0
-    assert cfg.lambda_eikonal > 0.0
+    assert cfg.lambda_boundary_slope > 0.0
+    assert cfg.lambda_generic_eikonal == 0.0
     assert cfg.sdf_target_scale > 1.0
     assert Path(cfg.gt_npz).is_file()
 
@@ -96,5 +97,55 @@ def test_signed_smoke_config_defaults():
 
     root = Path(__file__).resolve().parents[1]
     raw = yaml.safe_load((root / "configs/rm4d_signed_smoke.yaml").read_text())
-    assert float(raw["loss"]["eikonal"]) > 0.0
+    assert float(raw["loss"]["boundary_slope"]) > 0.0
+    assert float(raw["loss"]["generic_eikonal"]) == 0.0
     assert CanonicalGtConfig.__dataclass_fields__["edt_npz"] is not None
+
+
+def test_task_cone_returns_recoverable_selected_pose_and_weights():
+    import torch
+
+    from ird_playground.region.task_cone import TaskConeConfig, TaskConeReachability
+
+    class FakeField:
+        def score_world(self, tcp, axis):
+            del axis
+            return tcp[..., 0, 0] + 0.2 * tcp[..., 1, 0]
+
+    cone = TaskConeReachability(
+        TaskConeConfig(tip_half_angle_deg=20.0, roll_half_range_deg=15.0, samples=16)
+    )
+    tcp = torch.eye(4).repeat(3, 1, 1)
+    axis = torch.eye(4).repeat(3, 1, 1)
+    result = cone(FakeField(), tcp, axis)
+    assert result.sample_tcp.shape == (3, 16, 4, 4)
+    assert result.free_weights.shape == (3, 16)
+    assert torch.allclose(result.free_weights.sum(dim=-1), torch.ones(3))
+    rows = torch.arange(3)
+    assert torch.allclose(result.selected_tcp, result.sample_tcp[rows, result.best_index])
+    assert torch.allclose(
+        result.selected_rotvec_local,
+        cone.rotation_offsets_local[result.best_index],
+    )
+    base, conditioned = cone.query_conditioned(
+        FakeField(),
+        tcp,
+        axis,
+        torch.full((3, 16), 0.1),
+        nearest_cost=torch.arange(16, dtype=torch.float32).expand(3, -1),
+        clearance_target=-1.0,
+    )
+    assert base.sample_clearance.shape == (3, 16)
+    assert conditioned.valid.tolist() == [True, True, True]
+
+
+def test_waypoint_cliff_lifts_segment_slopes_to_both_adjacent_waypoints():
+    import torch
+
+    from experiments.ellipse_vessel_ird_demo import waypoint_cliff
+
+    s = torch.linspace(0.0, 1.0, 5)
+    values = torch.tensor([0.0, 0.0, 2.0, 2.0, 2.0])
+    cliff = waypoint_cliff(values, s)
+    assert cliff.shape == values.shape
+    assert torch.allclose(cliff, torch.tensor([0.0, 8.0, 8.0, 0.0, 0.0]))

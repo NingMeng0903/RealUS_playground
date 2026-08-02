@@ -1,41 +1,40 @@
-"""Fit split-conformal clearance threshold for the signed IRD field.
-
-Writes ``threshold`` (ρ) so conservative clearance is ``score − ρ``.
-Optimization / precheck should require ``score ≥ ρ`` (or calibrated ≥ 0).
-"""
+"""Fit independent geometric-zero and one-sided false-accept calibration."""
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
 import numpy as np
 import yaml
 
-from ird_playground.calib.conformal import (
-    empirical_coverage,
-    fit_split_conformal,
+from ird_playground.calib import (
+    false_acceptance_report,
+    fit_unreachable_safety_threshold,
+    fit_zero_bias,
 )
 from ird_playground.ird.robot_model import load_robot_model_spec
+from ird_playground.ird.splits import FiveWaySplitConfig, five_way_split_indices
 from ird_playground.neural.signed_field import ReachabilitySDF
-from ird_playground.neural.train_signed import (
-    _split_indices,
-    load_signed_train_config,
-    require_source_pose_id,
-)
+from ird_playground.neural.train_signed import load_signed_train_config, require_source_pose_id
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--config", type=Path, default=Path("configs/rm4d_signed_production.yaml"))
     ap.add_argument("--checkpoint", type=Path, default=None)
-    ap.add_argument("--alpha", type=float, default=0.05, help="Miscoverage level (default 5%).")
-    ap.add_argument(
-        "--output",
-        type=Path,
-        default=Path("data/calib/conformal_rm4d_signed.json"),
-    )
+    ap.add_argument("--alpha", type=float, default=0.05)
+    ap.add_argument("--output", type=Path, default=Path("data/calib/conformal_rm4d_signed.json"))
     ap.add_argument("--allow-stale-checkpoint", action="store_true")
     args = ap.parse_args(argv)
 
@@ -52,51 +51,76 @@ def main(argv: list[str] | None = None) -> int:
     if not ckpt.is_absolute():
         ckpt = root / ckpt
     field = ReachabilitySDF.load(
-        ckpt,
-        expected_robot=robot_spec,
-        allow_stale=args.allow_stale_checkpoint,
+        ckpt, expected_robot=robot_spec, allow_stale=args.allow_stale_checkpoint
     )
 
-    gt = np.load(cfg.gt_npz, allow_pickle=False)
-    arrays = {k: gt[k] for k in gt.files if k != "meta_json"}
+    gt_path = Path(cfg.gt_npz)
+    gt = np.load(gt_path, allow_pickle=False)
+    meta = json.loads(str(gt["meta_json"].item())) if "meta_json" in gt.files else {}
+    if meta.get("zero_boundary_schema") != "on_manifold_se3_interpolation_v1":
+        raise ValueError("dataset lacks independently encoded on-manifold zero poses")
+    arrays = {key: gt[key] for key in gt.files if key != "meta_json"}
     source = require_source_pose_id(arrays)
-    tr_idx, va_idx = _split_indices(
-        arrays["boundary_id"], cfg.val_fraction, cfg.seed, source
+    splits = five_way_split_indices(
+        arrays["boundary_id"],
+        source,
+        seed=cfg.seed,
+        config=FiveWaySplitConfig(
+            selection_fraction=cfg.val_fraction,
+            zero_calibration_fraction=cfg.zero_calibration_fraction,
+            safety_calibration_fraction=cfg.safety_calibration_fraction,
+            test_fraction=cfg.test_fraction,
+        ),
     )
-    cls_w = arrays.get("classification_weight", np.ones(len(arrays["reachable"]), dtype=np.float32))
-    # Fit on train supervised rows; report coverage on val.
-    tr = tr_idx[cls_w[tr_idx] > 0]
-    va = va_idx[cls_w[va_idx] > 0]
-    # Cap calib size for speed while keeping coverage stable.
-    rng = np.random.default_rng(cfg.seed + 91)
-    if len(tr) > 200_000:
-        tr = rng.choice(tr, size=200_000, replace=False)
 
-    scores_tr = field.score_np(arrays["canonical"][tr])
-    y_tr = arrays["reachable"][tr] > 0.5
-    result = fit_split_conformal(scores_tr, y_tr, alpha=float(args.alpha))
+    zero_idx = splits["zero_calibration"]
+    zero_mask = (
+        (arrays["boundary_id"][zero_idx] >= 0)
+        & (arrays["classification_weight"][zero_idx] == 0)
+        & np.isclose(arrays["sdf_target"][zero_idx], 0.0)
+    )
+    zero_rows = zero_idx[zero_mask]
+    zero_result = fit_zero_bias(
+        field.score_np(arrays["canonical"][zero_rows]), seed=cfg.seed + 91
+    )
 
-    scores_va = field.score_np(arrays["canonical"][va])
-    y_va = arrays["reachable"][va] > 0.5
-    cov = empirical_coverage(scores_va, y_va, result.threshold, margin=0.0)
+    safety_idx = splits["safety_calibration"]
+    safety_mask = (
+        (arrays["classification_weight"][safety_idx] > 0)
+        & (arrays["reachable"][safety_idx] < 0.5)
+    )
+    safety_rows = safety_idx[safety_mask]
+    safety_scores = field.score_np(arrays["canonical"][safety_rows]) - zero_result.zero_bias
+    safety_result = fit_unreachable_safety_threshold(safety_scores, alpha=args.alpha)
+
+    test_idx = splits["test"]
+    test_idx = test_idx[arrays["classification_weight"][test_idx] > 0]
+    test_scores = field.score_np(arrays["canonical"][test_idx]) - zero_result.zero_bias
+    test_report = false_acceptance_report(
+        test_scores,
+        arrays["reachable"][test_idx] > 0.5,
+        safety_result.safety_threshold,
+    )
 
     out = {
-        **result.to_dict(),
+        "schema": "ird_clearance_calibration_v2",
+        **zero_result.to_dict(),
+        **safety_result.to_dict(),
+        "threshold": safety_result.safety_threshold,
+        "m_safe": zero_result.zero_bias + safety_result.safety_threshold,
         "checkpoint": str(ckpt),
-        "m_safe": float(result.threshold),
-        "note": "Require raw score >= m_safe, or use calibrated_clearance = score - threshold >= 0.",
-        "val_coverage": cov,
-        "n_fit": int(len(tr)),
-        "n_val": int(len(va)),
-        "sdf_target_scale": float(
-            (raw_cfg.get("loss") or {}).get("sdf_target_scale", 1.0)
-        ),
+        "checkpoint_sha256": _sha256(ckpt),
+        "dataset": str(gt_path),
+        "dataset_sha256": _sha256(gt_path),
+        "split_seed": cfg.seed,
+        "test_report": test_report,
+        "output_scale": cfg.sdf_target_scale,
+        "metric": meta.get("metric"),
     }
     output = args.output if args.output.is_absolute() else root / args.output
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(out, indent=2), encoding="utf-8")
     print(json.dumps(out, indent=2))
-    print(f"wrote -> {output}")
     return 0
 
 

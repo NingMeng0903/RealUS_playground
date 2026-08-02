@@ -115,7 +115,7 @@ An \emph{inverse reachability distribution} (IRD) inverts the same data:
 given a fixed TCP (e.g.\ a grasp), it yields a distribution over candidate
 base poses for which that TCP would be reachable.
 
-Formally, if \(t_{i}=\Tcp_{i}^{-1}\) denotes a base-to-TCP sample stored in the
+Formally, if \(t_{i}=T_{\mathrm{tcp},i}^{-1}\) denotes a base-to-TCP sample stored in the
 RD, then for a world TCP \(p\in\SE(3)\) the corresponding candidate base pose
 is
 \begin{equation}
@@ -165,9 +165,9 @@ through the entire Torch graph.
 
 This section tells the design in \emph{dependency order}: which hard constraints
 define the IRD here; what a quotient space is; why only J1 may be eliminated;
-how IRD lives on the rail / J1 axis; why a flange 9-D embedding is required;
+how IRD lives on the rail / J1 axis; why a flange 9-D embedding is selected;
 how the operator is layered; which tricks keep it differentiable and
-semantically correct; and finally the \emph{mandatory ordered} rotation and
+semantically correct; and finally the \emph{ordered} rotation and
 lookup steps when tip$\times$roll freedom is present. Later sections supply
 formulae; this one keeps the reasoning continuous.
 
@@ -232,7 +232,7 @@ roll} for many 6-/7-axis arms, yielding a \(\sim\)4-D map. This system enforces
 only the first:
 
 \begin{itemize}[leftmargin=1.4em]
-  \item \textbf{J1 yaw is a true symmetry.}
+  \item \textbf{J1 yaw is a task-audited approximate symmetry.}
         With a vertical axis and relative axis-frame quantities, a global spin
         about gravity does not change collision topology or relative joint
         geometry (under locked rail, ignoring strongly non-revolute
@@ -269,7 +269,7 @@ axis frames, not a discrete table over planar bases; J1 yaw is already removed
 by the quotient, so base heading need not be scanned. Optimising
 \(\partial C/\partial y\) means ``slide the rail toward better clearance''.
 
-\subsection{Why a flange 9-D embedding is required}
+\subsection{Why a flange 9-D embedding is selected}
 \label{sec:why-flange-9d}
 
 The intrinsic object is \([g]\in\mathcal{Q}\) (5-D), but the network needs a
@@ -284,7 +284,7 @@ smooth Euclidean input.
   \item \textbf{Why not five minimal coordinates.}
         Euler / azimuth charts are singular on-axis and branch-cut; AD and
         boundary stencils break.
-  \item \textbf{Why redundant nine dimensions.}
+  \item \textbf{Why redundant nine dimensions in production.}
         Eq.~\eqref{eq:chart} uses cylindrical \((p_{z},r)\) with \(\varepsilon\),
         a J7-invariant block, a roll-carrying block, and a ninth component
         completing \(R^{\mathsf T}\hat z\), smoothly embedding \(\mathcal{Q}\)
@@ -1193,6 +1193,19 @@ Cosine loss aligns the field gradient with the collision-checked crossing
 direction. This is why \(\nabla F\) points toward increasing reachability
 near the frontier rather than along arbitrary level sets.
 
+\paragraph{Empirical boundary slope (production loss).}
+\begin{equation}
+\label{eq:loss-boundary-slope}
+  \mathcal{L}_{\mathrm{boundary\text{-}slope}}
+  = \mathbb{E}_{(c^-,c^+,\Delta c)}
+    \left[\left(
+      \frac{f(c^+)-f(c^-)}{\|c^+-c^-\|_2+\epsilon}
+      - \widehat{s}_{\mathrm{stencil}}
+    \right)^2\right].
+\end{equation}
+This preserves measured stencil direction and slope as independent
+supervision; it is not an Eikonal prior.
+
 \paragraph{Optional Eikonal (disabled in production).}
 \begin{equation}
 \label{eq:loss-eikonal}
@@ -1217,6 +1230,8 @@ relies on~\eqref{eq:loss-sdf}--\eqref{eq:loss-normal} instead.
   \lambda_{\mathrm{sdf}}\mathcal{L}_{\mathrm{sdf}}
   +
   \lambda_{\mathrm{n}}\mathcal{L}_{\mathrm{n}}
+  +
+  \lambda_{\mathrm{boundary\text{-}slope}}\mathcal{L}_{\mathrm{boundary\text{-}slope}}
   +
   \lambda_{\mathrm{Eik}}\mathcal{L}_{\mathrm{Eik}}
   +
@@ -1247,12 +1262,17 @@ Table~\ref{tab:f-usable} summarises the production checks that establish
 \hline\hline
 Quantity & Value \\
 \hline
-Balanced accuracy & \(97.64\%\) \\
-Positional direction agreement & \(99.96\%\) \\
-Rotational direction agreement & \(99.97\%\) \\
-Independent-grid accuracy & \(99.17\%\) \\
-Rail AD--FD relative error & \(0.0098\%\) \\
-TCP \(x\) AD--FD relative error & \(0.0101\%\) \\
+Balanced accuracy (frozen baseline) & \(90.38\%\) \\
+Reachable recall & \(91.94\%\) \\
+Unreachable specificity & \(88.82\%\) \\
+Positional direction agreement & \(99.80\%\) \\
+Rotational direction agreement & \(99.58\%\) \\
+Position strict / wide straddle & \(23.91\% / 90.79\%\) \\
+Rotation strict / wide straddle & \(10.28\% / 70.44\%\) \\
+Position crossing P95 & \(0.953\,\mathrm{mm}\) \\
+Rotation crossing P95 & \(0.0955\,\mathrm{deg}\) \\
+Rail AD--FD median relative error & \(0.0139\%\) \\
+TCP \(x\) AD--FD median relative error & \(0.0074\%\) \\
 \hline\hline
 \end{tabular}
 \end{table}
@@ -1549,19 +1569,20 @@ For clearance values (higher better), lower-tail CVaR at level \(\alpha\) is
 \label{eq:cvar}
   \CVaR_{\alpha}(X)
   \;=\;
-  \min_{t\in\R}
+  \max_{t\in\R}
   \Biggl\{
     t
-    +
-    \frac{1}{1-\alpha}\,
+    -
+    \frac{1}{\alpha}\,
     \mathbb{E}\bigl[(t-X)_{+}\bigr]
   \Biggr\}.
 \end{equation}
 \emph{Interpretation.}
 \(t\) plays the role of a VaR threshold; the expectation penalises shortfalls
 below \(t\). Empirically the optimum lies in the sample set, so code evaluates
-the objective at every sample value and takes a hard or soft min over those
-candidate \(t\)'s. This is more statistically stable than a pure softmin when
+the objective at every sample value and takes a hard or soft maximum over those
+candidate \(t\)'s, consistent with the auxiliary maximisation. This is more
+statistically stable than a pure softmin when
 \(K_{\mathrm{unc}}\) is moderate.
 
 \paragraph{Implemented reduction.}
@@ -1900,6 +1921,27 @@ IRD peaks even after the hinge is satisfied. Continuity penalties keep
 \(\theta(s)\) and \(y(s)\) smooth. Gradient descent on~\eqref{eq:opt-loss}
 is exactly ``update the trajectory using conditional IRD gradients''.
 
+\subsection{Fail-closed 8-DOF trajectory SQP}
+\label{sec:trajectory-sqp}
+
+The production planner lifts IRD warm starts with one robot variable per
+waypoint, \(q_i=[y_i,q_{1i},\ldots,q_{7i}]\in\mathbb{R}^{8}\), and no duplicate
+rail variable. A six-dimensional offset \(z_i\) gives the soft nominal target
+\(T_i(z_i)=\exp(\widehat z_i)T_i^{\rm nom}\). The objective combines pose error,
+normalised-\(s\) first/second differences, limit margin, singularity and early
+IRD-margin terms. Hard constraints are \(\mathrm{FK}(q_i)=T_i(z_i)\), medical
+position/rotation bands, true rail/joint limits, collision distance, world
+patient/bed/contact constraints and adaptive interior segment samples.
+Pinocchio Jacobians, ProxSuite subproblems and HPP-FCL witness-point gradients
+are finite-difference audited. Only a path with every hard validator passing,
+FK error at most \(0.5\,\mathrm{mm}/1^\circ\), and scaled KKT residual at most
+\(10^{-3}\) is returned; otherwise the API returns \texttt{valid=false} with no
+substitute path. TCP arc length seeds time at no more than \(0.02\,\mathrm{m/s}\);
+Ruckig may only slow it. The result supplies pose, Cartesian feedforward,
+rail/joint references, joint feedforward and contact normals to the existing
+QP-IK/force-position controller. IRD remains guidance, not a feasibility
+certificate.
+
 % -----------------------------------------------------------------------------
 \section{End-to-end commutative diagram}
 \label{sec:diagram}
@@ -1940,15 +1982,16 @@ the neural field does not.
         field is an optimisation-direction operator. Hard feasibility still
         requires final multi-seed IK and collision checking.
   \item \textbf{Symmetry approximation.}
-        Only J1 yaw is exact; residual probe-roll collision differences are
-        rare and rejected downstream.
+        J1 yaw is a task-audited approximation because of the finite
+        \(\pm177.96^\circ\) limit; the unused seam lies outside this scan task,
+        and final SQP always enforces the true limit.
   \item \textbf{No branch / continuous \(\psi\) in the point field.}
         Offline labels are point reachability. Path residuals and continuous
         arm-angle selection live in the trajectory operator.
-  \item \textbf{Not a full patient-trajectory planner by itself.}
-        Region~A / TaskCone / TrajectoryTask are query layers over the point
-        field; application demos add geometric path parameterisations and
-        loss terms.
+  \item \textbf{The field is not the planner.}
+        Region~A / TaskCone / TrajectoryTask provide query layers; the separate
+        \texttt{ird\_playground.optimization} package performs the fail-closed
+        rail+7R joint lift and hard validation.
 \end{itemize}
 
 % -----------------------------------------------------------------------------

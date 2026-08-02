@@ -23,13 +23,16 @@ from .anatomical_calibration_v1 import (
     AnatomicalCalibrationV1,
     JOINT_SPECS,
     _calibration_content_digest,
+    check_anatomical_calibration_v1,
     _measure_frames,
 )
 from .chain_rest_fit_v1 import (
     ChainRestFitSubjectV1,
+    _content_digest,
     _blend_rigid_same_rotation,
     _centerline_endpoints,
     _global_to_local,
+    _kabsch_shape_error,
     _mesh_policy,
     _pivot_rotation,
     _sha256,
@@ -39,42 +42,28 @@ from .chain_rest_fit_v1 import (
     _weighted_rest_correction,
     build_lower_chain_rest_fit_v1,
 )
-from .smplx_body_surface_v7 import smplx_body_surface_v7
+from .smplx_body_surface_v7 import FROZEN_SMPLX_MALE_SHA256, smplx_body_surface_v7
+from .blender_link_oracle_v7 import EXPECTED_ORACLE_SHA256
 from .v8_artifacts import SourceOperatorV8, materialize_subject
 
 
 WHOLE_CHAIN_SCHEMA_VERSION = 1
 WHOLE_CHAIN_KIND = "WholeChainRestFitSubjectV1"
+WHOLE_CHAIN_MATRIX_KIND = "WholeChainRestFitMatrixV1"
+BASELINE_COMMIT = "142ece5f0bc646978ae3e8c9add76deea71c26a2"
+COORDINATE_SYSTEM = "smplx_y_up_m"
+MATRIX_CONVENTION = "column_vector_left_multiply"
+FROZEN_CAPTURE_SHA256 = {
+    "213328": "c7a6c3783dc7b764e1f8013ab0a8a45d0380b81c97ac929f67c7a5a526eecbc1",
+    "213712": "9887848b7b086d71a875beea50b1d7c7819a11c7b67996fe0d83f451da79b689",
+}
+INVALIDATED_SMPLX_MODEL_SHA256 = {
+    "5b0279321ea9bd3cec5541c03b1f1c9ab9d197896943035c3abeef47f699bc5e",
+}
 UPPER_NAMES = (
     "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
     "left_wrist", "right_wrist",
 )
-
-
-def _direction_with_orthogonal_endpoint(
-    direction: np.ndarray,
-    *,
-    longitudinal_axis: int,
-    endpoint_delta: np.ndarray,
-    span_m: float,
-) -> np.ndarray:
-    """Preserve length while matching skin-centre endpoint coordinates."""
-
-    source = np.asarray(direction, dtype=np.float64)
-    source /= np.linalg.norm(source)
-    axis = int(longitudinal_axis)
-    if axis < 0 or axis > 2:
-        raise ValueError("longitudinal axis must be x, y, or z")
-    result = np.zeros(3, dtype=np.float64)
-    orthogonal = [index for index in range(3) if index != axis]
-    requested = np.asarray(endpoint_delta, dtype=np.float64)[orthogonal] / float(span_m)
-    magnitude = float(np.linalg.norm(requested))
-    if magnitude > 0.25:
-        requested *= 0.25 / magnitude
-    result[orthogonal] = requested
-    longitudinal = np.sqrt(max(0.0, 1.0 - float(np.dot(requested, requested))))
-    result[axis] = np.copysign(longitudinal, source[axis])
-    return result
 
 
 def _array_digest(value: Any) -> str:
@@ -165,10 +154,8 @@ def _assign_upper_corrections(
         result[elbow] = humerus
         result[forearm] = proximal
         result[twist] = _blend_rigid_same_rotation(proximal, distal, 0.5)
-        # The complete 142 wrist/hand compound is already inside the SMPL-X
-        # skin.  Keep those controller global binds unchanged; the new local
-        # bind below absorbs the changed forearm parent while preserving the
-        # original Blender hierarchy and pose linkage.
+        # V1 freezes the terminal hand bind.  Multi-pose terminal-frame
+        # fitting is implemented only by the V2 builder.
     return result
 
 
@@ -184,6 +171,17 @@ def build_whole_chain_rest_fit_v1(
     gender: str = "male",
 ) -> ChainRestFitSubjectV1:
     started = time.perf_counter()
+    if str(gender).strip().lower() != "male":
+        raise ValueError("whole-chain rest fit is frozen to smplx_gender=male")
+    if str(smplx_model_sha256) != FROZEN_SMPLX_MALE_SHA256:
+        raise ValueError("whole-chain rest fit requires the authenticated male model")
+    calibration_report = check_anatomical_calibration_v1(
+        calibration, operator=operator
+    )
+    if not calibration_report["passed"]:
+        raise ValueError(
+            "whole-chain rest fit requires a passing full_main_chain calibration"
+        )
     lower = build_lower_chain_rest_fit_v1(
         operator,
         calibration,
@@ -197,7 +195,7 @@ def build_whole_chain_rest_fit_v1(
     subject = materialize_subject(operator, betas=betas, gender=gender)
     asset = subject.rigged_asset
     prefit = np.asarray(lower.vertices_prefit, dtype=np.float64)
-    prefit_frames, _widths, _details = _measure_frames(
+    prefit_frames, prefit_widths, _details = _measure_frames(
         prefit, calibration.domains, calibration.joint_domain_bases, partition="fit"
     )
     beta = np.asarray(betas, dtype=np.float64).reshape(10)
@@ -246,28 +244,35 @@ def build_whole_chain_rest_fit_v1(
         )
         upper_centerlines[side_index, 0] = humerus_centers
         upper_centerlines[side_index, 1] = forearm_centers
-        _humerus_proximal, humerus_distal = _centerline_endpoints(humerus_centers)
-        forearm_proximal, _forearm_distal = _centerline_endpoints(forearm_centers)
+        _humerus_proximal, humerus_distal = _centerline_endpoints(
+            humerus_centers
+        )
+        forearm_proximal, _forearm_distal = _centerline_endpoints(
+            forearm_centers
+        )
+        centerline_elbow = (
+            0.5 * (humerus_distal + forearm_proximal)
+            + upper_translation
+        )
         shoulder = prefit_frames[lookup[f"{side}_shoulder"], :3, 3]
         elbow = prefit_frames[lookup[f"{side}_elbow"], :3, 3]
         wrist = prefit_frames[lookup[f"{side}_wrist"], :3, 3]
         humerus_span = float(np.linalg.norm(elbow - shoulder))
         forearm_span = float(np.linalg.norm(wrist - elbow))
-        _station_humerus_direction, elbow_constraint = _station_ray_direction(
+        elbow_station_target = anatomical_targets[f"{side}_elbow"].copy()
+        centerline_tolerance = 0.25 * float(
+            prefit_widths[lookup[f"{side}_elbow"]]
+        )
+        corrected_components: list[str] = []
+        for axis, label in ((1, "y"), (2, "z")):
+            if abs(centerline_elbow[axis] - elbow_station_target[axis]) > centerline_tolerance:
+                elbow_station_target[axis] = centerline_elbow[axis]
+                corrected_components.append(label)
+        humerus_direction, elbow_constraint = _station_ray_direction(
             preferred=np.asarray(humerus_report["direction"]),
             proximal_target=shoulder,
             span_m=humerus_span,
-            station=anatomical_targets[f"{side}_elbow"],
-        )
-        elbow_skin_target = (
-            0.5 * (humerus_distal + forearm_proximal)
-            + upper_translation
-        )
-        humerus_direction = _direction_with_orthogonal_endpoint(
-            elbow - shoulder,
-            longitudinal_axis=0,
-            endpoint_delta=elbow_skin_target - shoulder,
-            span_m=humerus_span,
+            station=elbow_station_target,
         )
         humerus_rotation = _shortest_arc_rotation(elbow - shoulder, humerus_direction)
         humerus_transform = _pivot_rotation(shoulder, shoulder, humerus_rotation)
@@ -305,7 +310,10 @@ def build_whole_chain_rest_fit_v1(
             "elbow_prefit_m": elbow.tolist(),
             "wrist_prefit_m": wrist.tolist(),
             "elbow_target_m": elbow_target.tolist(),
-            "skin_centerline_elbow_target_m": elbow_skin_target.tolist(),
+            "centerline_elbow_direction_target_m": centerline_elbow.tolist(),
+            "bounded_elbow_station_target_m": elbow_station_target.tolist(),
+            "centerline_component_tolerance_m": centerline_tolerance,
+            "centerline_corrected_components": corrected_components,
             "wrist_target_m": wrist_target.tolist(),
             "mapped_anatomical_elbow_target_m": anatomical_targets[f"{side}_elbow"].tolist(),
             "mapped_anatomical_wrist_target_m": anatomical_targets[f"{side}_wrist"].tolist(),
@@ -317,7 +325,6 @@ def build_whole_chain_rest_fit_v1(
             "forearm_axial_scale": axial_scale,
             "elbow_station_constraint": elbow_constraint,
             "wrist_station_constraint": wrist_constraint,
-            "humerus_target_direction": humerus_direction.tolist(),
         }
 
     # The fitted pivot uses both sides of each joint, while controller weights
@@ -387,14 +394,24 @@ def build_whole_chain_rest_fit_v1(
         ids for name, ids in upper_groups.items() if not name.endswith("_hand")
     ]
     upper_ids = np.unique(np.concatenate(active_upper_groups)).astype(np.int32)
+    ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
+    tissue = np.asarray(asset.source_tissues).astype(str)
+    tube_ids = np.concatenate(
+        [
+            np.arange(int(start), int(stop), dtype=np.int32)
+            for label, (start, stop) in zip(tissue.tolist(), ranges.tolist())
+            if str(label).strip().lower() in {"vessel", "nerve"}
+        ]
+    )
     moved = np.unique(
-        np.concatenate([np.asarray(lower.moved_vertex_ids), upper_ids])
+        np.concatenate([np.asarray(lower.moved_vertex_ids), upper_ids, tube_ids])
     ).astype(np.int32)
     corrected = _weighted_rest_correction(
         prefit, asset.driver_indices, asset.driver_weights, corrections
     )
     vertices_final = np.asarray(lower.vertices_final, dtype=np.float64).copy()
     vertices_final[upper_ids] = corrected[upper_ids]
+    vertices_final[tube_ids] = corrected[tube_ids]
     B_prefit = np.asarray(asset.target_bind_global, dtype=np.float64)
     B_final = corrections @ B_prefit
     parents = np.asarray(asset.source_bone_parents, dtype=np.int32)
@@ -422,8 +439,10 @@ def build_whole_chain_rest_fit_v1(
             "moved_vertex_count": int(len(moved)),
             "pelvis_vertices_changed": True,
             "scapula_clavicle_vertices_changed": False,
-            "terminal_hand_policy": "copy_142_rest_and_bind",
-            "tube_vertices_changed": False,
+            "terminal_hand_policy": "rigid_compound_distal_forearm_rebase_v2",
+            "tube_vertices_changed": True,
+            "tube_transport_application_count": 1,
+            "tube_transport_vertex_count": int(len(tube_ids)),
             "vessel_repair_started": False,
             "publishable": False,
             "elapsed_seconds": float(time.perf_counter() - started),
@@ -569,6 +588,45 @@ def check_whole_chain_rest_fit_v1(
             "limit_m": limit,
             "joint_width_m": float(widths[index]),
         }
+    rigid_cap_metrics: dict[str, Any] = {}
+    for side in ("left", "right"):
+        cap_bases = (
+            f"calibration/{side}/shoulder/humerus",
+            f"elbow/{side}/humerus",
+            f"elbow/{side}/radius",
+            f"elbow/{side}/ulna",
+            f"calibration/{side}/wrist/radius",
+            f"calibration/{side}/wrist/ulna",
+        )
+        for base in cap_bases:
+            ids = np.unique(
+                np.concatenate(
+                    (
+                        calibration.domains[f"{base}.fit"],
+                        calibration.domains[f"{base}.validation"],
+                    )
+                )
+            ).astype(np.int64)
+            source = np.asarray(value.vertices_prefit)[ids]
+            target = np.asarray(value.vertices_final)[ids]
+            rms_cap, max_cap = _kabsch_shape_error(source, target)
+            source_singular = np.linalg.svd(
+                source - np.mean(source, axis=0), compute_uv=False
+            )
+            target_singular = np.linalg.svd(
+                target - np.mean(target, axis=0), compute_uv=False
+            )
+            radial_scales = target_singular[1:] / source_singular[1:]
+            rigid_cap_metrics[base] = {
+                "pass": bool(
+                    rms_cap <= 0.0005
+                    and max_cap <= 0.001
+                    and np.max(np.abs(radial_scales - 1.0)) <= 1.0e-4
+                ),
+                "kabsch_rms_m": rms_cap,
+                "kabsch_max_m": max_cap,
+                "radial_scales": radial_scales.tolist(),
+            }
     invariants = {
         "zero_pose_sparse_lbs_reproduction": bool(rms <= 1.0e-6 and maximum <= 1.0e-5),
         "other_vertices_byte_exact": bool(
@@ -587,24 +645,27 @@ def check_whole_chain_rest_fit_v1(
                 )
             ) <= 0.030
         ),
-        "tube_vertices_byte_exact": bool(
-            np.array_equal(value.vertices_final[tube], value.vertices_prefit[tube])
+        "tube_rest_transport_exact": bool(
+            np.array_equal(
+                value.vertices_final[tube], reconstructed[tube].astype(np.float32)
+            )
         ),
         "topology_exact": bool(np.array_equal(value.faces, asset.faces)),
         "hierarchy_exact": bool(
             np.array_equal(value.bone_parents, asset.source_bone_parents)
         ),
-        "node3_transport_application_count": 0,
+        "tube_transport_application_count": 1,
     }
     passed = bool(
         all(exact.values())
         and all(
             bool(metric)
             for name, metric in invariants.items()
-            if name != "node3_transport_application_count"
+            if name != "tube_transport_application_count"
         )
-        and invariants["node3_transport_application_count"] == 0
+        and invariants["tube_transport_application_count"] == 1
         and all(metric["pass"] for metric in upper_metrics.values())
+        and all(metric["pass"] for metric in rigid_cap_metrics.values())
         and float(expected.build_report["elapsed_seconds"]) <= 30.0
     )
     return {
@@ -615,10 +676,11 @@ def check_whole_chain_rest_fit_v1(
         "exact_checks": exact,
         "invariants": invariants,
         "upper_joints": upper_metrics,
+        "upper_rigid_caps": rigid_cap_metrics,
         "zero_pose_reproduction": {"rms_m": rms, "max_m": maximum},
-        "future_tube_transport_preview": {
+        "tube_rest_transport": {
             "application_count": 1,
-            "persisted_to_candidate": False,
+            "persisted_to_candidate": True,
             "rms_displacement_m": float(np.sqrt(np.mean(tube_delta**2))),
             "max_displacement_m": float(np.max(tube_delta)),
         },
@@ -632,9 +694,34 @@ def save_whole_chain_rest_fit_v1(
     path: Path | str,
     value: ChainRestFitSubjectV1,
     *,
-    checker_report: Mapping[str, Any],
+    operator: SourceOperatorV8,
+    calibration: AnatomicalCalibrationV1,
+    smplx_model: Mapping[str, np.ndarray],
+    smplx_model_sha256: str,
+    capture_sha256s: Mapping[str, str],
+    blender_oracle_sha256: str,
+    validation_reports: Mapping[str, Mapping[str, Any]],
 ) -> Path:
-    if not checker_report.get("passed"):
+    value.validate()
+    if str(smplx_model_sha256) != FROZEN_SMPLX_MALE_SHA256:
+        raise ValueError("refusing to save a non-male whole-chain rest fit")
+    if dict(capture_sha256s) != FROZEN_CAPTURE_SHA256:
+        raise ValueError("whole-chain candidate requires both frozen capture digests")
+    if str(blender_oracle_sha256) != EXPECTED_ORACLE_SHA256:
+        raise ValueError("whole-chain candidate Blender oracle digest mismatch")
+    checker_report = check_whole_chain_rest_fit_v1(
+        value,
+        operator=operator,
+        calibration=calibration,
+        smplx_model=smplx_model,
+        smplx_model_sha256=smplx_model_sha256,
+    )
+    required_reports = {"pose_map", "dynamic", "containment"}
+    if (
+        not checker_report.get("passed")
+        or set(validation_reports) != required_reports
+        or not all(bool(report.get("passed")) for report in validation_reports.values())
+    ):
         raise ValueError("refusing to save a failing whole-chain rest fit")
     output = Path(path).resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -653,20 +740,64 @@ def save_whole_chain_rest_fit_v1(
         arrays["schema_version"] = np.asarray([WHOLE_CHAIN_SCHEMA_VERSION], dtype=np.int32)
         npz = temporary / "whole_chain_rest_fit_subject_v1.npz"
         np.savez_compressed(npz, **arrays)
+        checker_json = json.dumps(
+            checker_report, sort_keys=True, separators=(",", ":"), allow_nan=False
+        ).encode("utf-8")
+        asset = operator.template_asset
+        tissues = np.char.lower(
+            np.char.strip(np.asarray(asset.source_tissues).astype(str))
+        )
+        ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
+        tube_mesh = np.isin(tissues, ("vessel", "nerve"))
         manifest = {
             "schema_version": WHOLE_CHAIN_SCHEMA_VERSION,
             "artifact_kind": WHOLE_CHAIN_KIND,
+            "coordinate_system": COORDINATE_SYSTEM,
+            "matrix_convention": MATRIX_CONVENTION,
+            "unit_scale_m": 1.0,
+            "baseline_commit": BASELINE_COMMIT,
             "npz": npz.name,
             "npz_sha256": _sha256(npz),
             "subject_label": value.subject_label,
+            "content_digest": _content_digest(value),
+            "cache_key": _content_digest(value),
             "source_operator_digest": value.source_operator_digest,
             "calibration_digest": value.calibration_digest,
+            "source_subject_digest": value.source_subject_digest,
             "smplx_model_sha256": value.smplx_model_sha256,
+            "smplx_gender": "male",
             "capture_sha256": value.capture_sha256,
+            "capture_sha256s": dict(capture_sha256s),
+            "blender_oracle_sha256": str(blender_oracle_sha256),
             "array_digests": {name: _array_digest(field) for name, field in arrays.items()},
             "build_report": value.build_report,
             "checker_report": dict(checker_report),
+            "checker_digest": hashlib.sha256(checker_json).hexdigest(),
+            "validation_reports": {
+                name: dict(report) for name, report in validation_reports.items()
+            },
+            "rig_contract": {
+                "controller_count": int(len(asset.source_bone_names)),
+                "driver_slot_count": int(np.asarray(asset.driver_indices).shape[1]),
+                "tube_mesh_count": int(np.count_nonzero(tube_mesh)),
+                "tube_vertex_count": int(np.sum(ranges[tube_mesh, 1] - ranges[tube_mesh, 0])),
+                "bone_names_digest": _array_digest(np.asarray(asset.source_bone_names)),
+                "bone_parents_digest": _array_digest(asset.source_bone_parents),
+                "mesh_names_digest": _array_digest(np.asarray(asset.source_mesh_names)),
+                "mesh_ranges_digest": _array_digest(ranges),
+                "faces_digest": _array_digest(asset.faces),
+                "driver_indices_digest": _array_digest(asset.driver_indices),
+                "driver_weights_digest": _array_digest(asset.driver_weights),
+            },
+            "invalidated_model_sha256": sorted(INVALIDATED_SMPLX_MODEL_SHA256),
+            "invalidated_artifacts": [
+                "chain_retarget_v1_node2_001",
+                "chain_retarget_v1_node2_002",
+                "chain_retarget_v1_node2_003",
+                "chain_retarget_v1_node4_001",
+            ],
             "complete": True,
+            "accepted_scope": "full_main_chain_shadow",
             "publishable": False,
             "trusted_latest_updated": False,
             "vessel_repair_started": False,
@@ -682,10 +813,129 @@ def save_whole_chain_rest_fit_v1(
     return output
 
 
+def load_whole_chain_rest_fit_v1(
+    path: Path | str,
+    *,
+    operator: SourceOperatorV8,
+    calibration: AnatomicalCalibrationV1,
+    smplx_model: Mapping[str, np.ndarray],
+    smplx_model_sha256: str,
+    recheck: bool = True,
+) -> ChainRestFitSubjectV1:
+    root = Path(path).resolve()
+    manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+    model_sha = str(manifest.get("smplx_model_sha256", ""))
+    if model_sha in INVALIDATED_SMPLX_MODEL_SHA256:
+        raise ValueError("whole-chain artifact uses an explicitly invalidated neutral model")
+    if (
+        int(manifest.get("schema_version", -1)) != WHOLE_CHAIN_SCHEMA_VERSION
+        or manifest.get("artifact_kind") != WHOLE_CHAIN_KIND
+        or manifest.get("coordinate_system") != COORDINATE_SYSTEM
+        or manifest.get("matrix_convention") != MATRIX_CONVENTION
+        or float(manifest.get("unit_scale_m", -1.0)) != 1.0
+        or manifest.get("baseline_commit") != BASELINE_COMMIT
+        or manifest.get("smplx_gender") != "male"
+        or model_sha != FROZEN_SMPLX_MALE_SHA256
+        or model_sha != str(smplx_model_sha256)
+        or manifest.get("capture_sha256s") != FROZEN_CAPTURE_SHA256
+        or manifest.get("blender_oracle_sha256") != EXPECTED_ORACLE_SHA256
+        or manifest.get("accepted_scope") != "full_main_chain_shadow"
+        or manifest.get("complete") is not True
+        or manifest.get("publishable") is not False
+        or manifest.get("trusted_latest_updated") is not False
+        or manifest.get("vessel_repair_started") is not False
+    ):
+        raise ValueError("invalid whole-chain rest-fit manifest contract")
+    checker = manifest.get("checker_report")
+    validations = manifest.get("validation_reports")
+    checker_json = json.dumps(
+        checker, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
+    if (
+        not isinstance(checker, dict)
+        or not checker.get("passed")
+        or hashlib.sha256(checker_json).hexdigest() != manifest.get("checker_digest")
+        or not isinstance(validations, dict)
+        or set(validations) != {"pose_map", "dynamic", "containment"}
+        or not all(bool(report.get("passed")) for report in validations.values())
+    ):
+        raise ValueError("whole-chain checker bundle is incomplete")
+    contract = manifest.get("rig_contract", {})
+    asset = operator.template_asset
+    ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
+    tissues = np.char.lower(np.char.strip(np.asarray(asset.source_tissues).astype(str)))
+    tube_mesh = np.isin(tissues, ("vessel", "nerve"))
+    expected_contract = {
+        "controller_count": int(len(asset.source_bone_names)),
+        "driver_slot_count": int(np.asarray(asset.driver_indices).shape[1]),
+        "tube_mesh_count": int(np.count_nonzero(tube_mesh)),
+        "tube_vertex_count": int(np.sum(ranges[tube_mesh, 1] - ranges[tube_mesh, 0])),
+        "bone_names_digest": _array_digest(np.asarray(asset.source_bone_names)),
+        "bone_parents_digest": _array_digest(asset.source_bone_parents),
+        "mesh_names_digest": _array_digest(np.asarray(asset.source_mesh_names)),
+        "mesh_ranges_digest": _array_digest(ranges),
+        "faces_digest": _array_digest(asset.faces),
+        "driver_indices_digest": _array_digest(asset.driver_indices),
+        "driver_weights_digest": _array_digest(asset.driver_weights),
+    }
+    if contract != expected_contract or contract.get("controller_count") != 235 or contract.get("driver_slot_count") != 14 or contract.get("tube_mesh_count") != 17 or contract.get("tube_vertex_count") != 55337:
+        raise ValueError("whole-chain rig/topology contract mismatch")
+    npz = root / str(manifest["npz"])
+    if _sha256(npz) != manifest.get("npz_sha256"):
+        raise ValueError("whole-chain rest-fit NPZ digest mismatch")
+    with np.load(npz, allow_pickle=False) as data:
+        value = ChainRestFitSubjectV1(
+            source_operator_digest=str(manifest["source_operator_digest"]),
+            calibration_digest=str(manifest["calibration_digest"]),
+            source_subject_digest=str(manifest["source_subject_digest"]),
+            smplx_model_sha256=model_sha,
+            capture_sha256=str(manifest["capture_sha256"]),
+            subject_label=str(manifest["subject_label"]),
+            betas=np.asarray(data["betas"], dtype=np.float64),
+            vertices_prefit=np.asarray(data["vertices_prefit"], dtype=np.float32),
+            vertices_final=np.asarray(data["vertices_final"], dtype=np.float32),
+            faces=np.asarray(data["faces"], dtype=np.int32),
+            bone_parents=np.asarray(data["bone_parents"], dtype=np.int32),
+            B_prefit=np.asarray(data["B_prefit"], dtype=np.float64),
+            B_final=np.asarray(data["B_final"], dtype=np.float64),
+            C_bone=np.asarray(data["C_bone"], dtype=np.float64),
+            target_local_bind=np.asarray(data["target_local_bind"], dtype=np.float64),
+            inverse_bind=np.asarray(data["inverse_bind"], dtype=np.float64),
+            prefit_anatomical_frames=np.asarray(data["prefit_anatomical_frames"], dtype=np.float64),
+            final_anatomical_frames=np.asarray(data["final_anatomical_frames"], dtype=np.float64),
+            smplx_joints_tpose=np.asarray(data["smplx_joints_tpose"], dtype=np.float64),
+            station_frame_translation=np.asarray(data["station_frame_translation"], dtype=np.float64),
+            centerline_points=np.asarray(data["centerline_points"], dtype=np.float64),
+            mesh_policy=np.asarray(data["mesh_policy"]).copy(),
+            moved_vertex_ids=np.asarray(data["moved_vertex_ids"], dtype=np.int32),
+            pelvis_cage_vertex_ids=np.asarray(data["pelvis_cage_vertex_ids"], dtype=np.int32),
+            pelvis_cage_displacements=np.asarray(data["pelvis_cage_displacements"], dtype=np.float64),
+            build_report=dict(manifest.get("build_report", {})),
+        )
+    value.validate()
+    if manifest.get("content_digest") != _content_digest(value) or manifest.get("cache_key") != manifest.get("content_digest"):
+        raise ValueError("whole-chain rest-fit content digest mismatch")
+    if recheck:
+        report = check_whole_chain_rest_fit_v1(
+            value,
+            operator=operator,
+            calibration=calibration,
+            smplx_model=smplx_model,
+            smplx_model_sha256=smplx_model_sha256,
+        )
+        if not report.get("passed"):
+            raise ValueError("whole-chain rest-fit failed trust-root revalidation")
+    return value
+
+
 __all__ = [
     "WHOLE_CHAIN_KIND",
     "WHOLE_CHAIN_SCHEMA_VERSION",
+    "BASELINE_COMMIT",
+    "FROZEN_CAPTURE_SHA256",
+    "INVALIDATED_SMPLX_MODEL_SHA256",
     "build_whole_chain_rest_fit_v1",
     "check_whole_chain_rest_fit_v1",
+    "load_whole_chain_rest_fit_v1",
     "save_whole_chain_rest_fit_v1",
 ]

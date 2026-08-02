@@ -25,6 +25,36 @@ from ird_playground.region.trajectory_operator import (
     TrajectoryTaskConfig,
     TrajectoryTaskOperator,
 )
+from ird_playground.region.conditional_query import conditional_candidate_query
+
+
+def test_conditional_query_uses_nearest_safe_reachable_candidate_and_has_gradients():
+    clearance = torch.tensor([[8.0, 7.0, 6.0]], requires_grad=True)
+    obstacle = torch.tensor([[-0.01, 0.03, 0.04]], requires_grad=True)
+    nearest = torch.tensor([[0.0, 0.2, 0.1]])
+    result = conditional_candidate_query(
+        clearance,
+        obstacle,
+        nearest_cost=nearest,
+        clearance_target=5.0,
+        safe_distance=0.01,
+    )
+    assert result.valid.tolist() == [True]
+    assert result.selected_index.tolist() == [2]
+    result.aggregate_clearance.sum().backward()
+    assert torch.isfinite(clearance.grad).all()
+    assert torch.isfinite(obstacle.grad).all()
+
+
+def test_conditional_query_fails_closed_when_obstacle_blocks_every_candidate():
+    result = conditional_candidate_query(
+        torch.tensor([[9.0, 8.0]]),
+        torch.tensor([[-0.1, -0.2]]),
+        clearance_target=5.0,
+        safe_distance=0.01,
+    )
+    assert result.valid.tolist() == [False]
+    assert not torch.isfinite(result.aggregate_clearance).any()
 
 
 class _LinearChartField:

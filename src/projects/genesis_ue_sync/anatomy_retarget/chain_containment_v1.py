@@ -11,19 +11,43 @@ from .chain_rest_fit_v1 import ChainRestFitSubjectV1
 
 INSIDE_FRACTION_TOLERANCE = 1.0e-9
 MAX_OUTSIDE_REGRESSION_M = 0.0005
+MAIN_CHAIN_INSIDE_FRACTION_MIN = 0.98
 
 
 def _signed_distance(points: np.ndarray, skin: np.ndarray, faces: np.ndarray) -> np.ndarray:
     import igl
 
-    signed, _face, _closest, _normal = igl.signed_distance(
-        np.asarray(points, dtype=np.float64),
+    query = np.asarray(points, dtype=np.float64)
+    winding = np.asarray(
+        igl.winding_number(
+            np.asarray(skin, dtype=np.float64),
+            np.asarray(faces, dtype=np.int32),
+            query,
+        ),
+        dtype=np.float64,
+    ).reshape(-1)
+    squared, _face, _closest = igl.point_mesh_squared_distance(
+        query,
         np.asarray(skin, dtype=np.float64),
         np.asarray(faces, dtype=np.int32),
     )
-    result = np.asarray(signed, dtype=np.float64).reshape(-1)
+    distance = np.sqrt(np.maximum(0.0, np.asarray(squared, dtype=np.float64)))
+    inside = np.abs(winding) >= 0.5
+    result = np.where(inside, -distance, distance)
     if len(result) != len(points) or not np.all(np.isfinite(result)):
-        raise ValueError("SMPL-X signed-distance query returned invalid values")
+        raise ValueError("SMPL-X winding/distance query returned invalid values")
+    return result
+
+
+def _vertex_areas(vertices: np.ndarray, faces: np.ndarray) -> np.ndarray:
+    triangles = np.asarray(vertices, dtype=np.float64)[np.asarray(faces, dtype=np.int64)]
+    triangle_area = 0.5 * np.linalg.norm(
+        np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0]),
+        axis=1,
+    )
+    result = np.zeros(len(vertices), dtype=np.float64)
+    for column in range(3):
+        np.add.at(result, np.asarray(faces)[:, column], triangle_area / 3.0)
     return result
 
 
@@ -77,12 +101,22 @@ def _region_ids(value: ChainRestFitSubjectV1, asset: Any) -> dict[str, np.ndarra
     return result
 
 
-def _summary(values: np.ndarray) -> dict[str, Any]:
+def _summary(values: np.ndarray, area_weights: np.ndarray) -> dict[str, Any]:
     signed = np.asarray(values, dtype=np.float64)
+    weights = np.asarray(area_weights, dtype=np.float64)
+    if (
+        weights.shape != signed.shape
+        or np.any(weights < 0.0)
+        or not np.sum(weights) > 0.0
+    ):
+        raise ValueError("containment area weights are invalid")
     outside = signed > 0.0
+    inside_fraction_area = float(np.sum(weights[~outside]) / np.sum(weights))
     return {
         "vertex_count": int(len(signed)),
-        "inside_fraction": float(np.mean(~outside)),
+        "inside_fraction": inside_fraction_area,
+        "inside_fraction_vertex": float(np.mean(~outside)),
+        "surface_area_weight_sum_m2": float(np.sum(weights)),
         "outside_count": int(np.count_nonzero(outside)),
         "max_outside_m": float(max(0.0, float(np.max(signed)))),
         "outside_p95_m": float(
@@ -103,6 +137,7 @@ def evaluate_rest_containment_v1(
     """Compare candidate and frozen 142 bones against the same SMPL-X skin."""
 
     regions = _region_ids(value, asset)
+    vertex_areas = _vertex_areas(value.vertices_prefit, value.faces)
     bone_ids = regions["all_bones"]
     baseline_signed = _signed_distance(
         np.asarray(value.vertices_prefit)[bone_ids], skin_vertices, skin_faces
@@ -117,19 +152,29 @@ def evaluate_rest_containment_v1(
         rows = lookup[ids]
         if np.any(rows < 0):
             raise ValueError(f"{name} contains non-bone vertices")
-        baseline = _summary(baseline_signed[rows])
-        candidate = _summary(candidate_signed[rows])
+        baseline = _summary(baseline_signed[rows], vertex_areas[ids])
+        candidate = _summary(candidate_signed[rows], vertex_areas[ids])
         inside_delta = candidate["inside_fraction"] - baseline["inside_fraction"]
         outside_delta = candidate["max_outside_m"] - baseline["max_outside_m"]
+        minimum_inside = (
+            MAIN_CHAIN_INSIDE_FRACTION_MIN
+            if name in {"lower_main", "upper_main"}
+            else None
+        )
         metrics[name] = {
             "pass": bool(
                 inside_delta >= -INSIDE_FRACTION_TOLERANCE
                 and outside_delta <= MAX_OUTSIDE_REGRESSION_M
+                and (
+                    minimum_inside is None
+                    or candidate["inside_fraction"] >= minimum_inside
+                )
             ),
             "baseline_142": baseline,
             "candidate": candidate,
             "inside_fraction_delta": float(inside_delta),
             "max_outside_regression_m": float(outside_delta),
+            "minimum_inside_fraction": minimum_inside,
         }
     terminal_exact = {
         name: bool(
@@ -153,8 +198,8 @@ def evaluate_rest_containment_v1(
         ):
             continue
         rows = lookup[ids]
-        baseline = _summary(baseline_signed[rows])
-        candidate = _summary(candidate_signed[rows])
+        baseline = _summary(baseline_signed[rows], vertex_areas[ids])
+        candidate = _summary(candidate_signed[rows], vertex_areas[ids])
         changed_meshes[str(mesh_name)] = {
             "inside_fraction_delta": float(
                 candidate["inside_fraction"] - baseline["inside_fraction"]
@@ -207,10 +252,14 @@ def evaluate_rest_containment_v1(
         "terminal_rest_byte_exact": terminal_exact,
         "skin_frame_translation_applied": False,
         "same_skin_used_for_baseline_and_candidate": True,
+        "inside_method": "generalized_winding_number_abs_ge_0.5",
+        "distance_method": "exact_point_to_triangle",
         "signed_distance_convention": "negative_inside",
+        "statistics_weighting": "source_mesh_vertex_area",
         "thresholds": {
             "inside_fraction_regression": INSIDE_FRACTION_TOLERANCE,
             "max_outside_regression_m": MAX_OUTSIDE_REGRESSION_M,
+            "main_chain_inside_fraction_min": MAIN_CHAIN_INSIDE_FRACTION_MIN,
         },
         "publishable": False,
     }

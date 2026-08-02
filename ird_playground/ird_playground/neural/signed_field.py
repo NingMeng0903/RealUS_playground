@@ -287,6 +287,21 @@ class ReachabilitySDF:
                 state.pop(name, None)
         model.load_state_dict(state, strict=False)
         meta = dict(blob.get("meta") or {})
+        if not allow_stale:
+            required = {
+                "artifact_schema": "ird_signed_field_v2",
+                "calibration_schema": "ird_clearance_calibration_v2",
+            }
+            for key, expected in required.items():
+                if meta.get(key) != expected:
+                    raise ValueError(
+                        f"checkpoint {path} has incompatible {key}={meta.get(key)!r}; "
+                        f"expected {expected!r}. Rebuild it or pass allow_stale=True "
+                        "for an explicit legacy audit."
+                    )
+            for key in ("dataset_sha256", "split_fingerprint", "sampler", "metric_schema", "output_scale"):
+                if key not in meta:
+                    raise ValueError(f"checkpoint {path} missing required metadata {key!r}")
         recorded = meta.get("robot_contract")
         if recorded is None:
             recorded = dict(meta.get("dataset_meta") or {}).get("robot_contract")

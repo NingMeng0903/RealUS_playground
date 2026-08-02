@@ -147,7 +147,7 @@ Vahrenkamp 等（2013）的经典\emph{可达分布}（RD）在类似体素化�
 \section{设计叙事：从 IRD 约束到有姿态查询}
 \label{sec:narrative}
 
-本节按\emph{依赖顺序}把整条设计说清楚：先有哪些硬约束，再为何要商空间、为何只消 J1、IRD 如何落到导轨一维、为何必须用法兰 9 维图卡、算子如何分层、用了哪些技巧，最后给出带 tip$\times$roll 姿态时\emph{必须按序}执行的旋转与查询步骤。后文各节给出对应公式与实现细节；此处保证思路连贯。
+本节按\emph{依赖顺序}把整条设计说清楚：先有哪些硬约束，再为何要商空间、为何只消 J1、IRD 如何落到导轨一维、为何生产实现选用法兰 9 维图卡、算子如何分层、用了哪些技巧，最后给出带 tip$\times$roll 姿态时按序执行的旋转与查询步骤。后文各节给出对应公式与实现细节；此处保证思路连贯。
 
 \subsection{IRD 在本问题中的约束}
 \label{sec:ird-constraints}
@@ -202,7 +202,7 @@ Rudorfer 的 RM4D 对许多 6/7 轴臂近似商掉\emph{基座 yaw}与\emph{末�
 得到约 4 维图。本系统只强制第一条：
 
 \begin{itemize}[leftmargin=1.4em]
-  \item \textbf{J1 yaw 是真对称。}
+  \item \textbf{J1 yaw 是经任务审计的近似对称。}
         竖直转轴 + 相对轴系表达后，绕重力整体旋转不改变碰撞拓扑与关节相对几何
         （在锁定导轨、忽略环境非旋转对称物的近似下）。消除它可压缩样本、
         让前向 RM 与逆向 IRD 共用一场。
@@ -233,7 +233,7 @@ Rudorfer 的 RM4D 对许多 6/7 轴臂近似商掉\emph{基座 yaw}与\emph{末�
 J1 yaw 已由商空间消掉，不必再扫基座朝向。优化 \(\partial C/\partial y\)
 即「沿导轨往 clearance 更好的站位走」。
 
-\subsection{为什么必须是 flange 上的 9 维嵌入}
+\subsection{为什么生产实现选用 flange 上的 9 维嵌入}
 \label{sec:why-flange-9d}
 
 固有对象是 \([g]\in\mathcal{Q}\)（5 维），但网络需要 \(\R^{n}\) 上的光滑输入。
@@ -245,7 +245,7 @@ J1 yaw 已由商空间消掉，不必再扫基座朝向。优化 \(\partial C/\p
         在 TCP 上做同样拆分会把 roll 泄漏进「不变」通道。
   \item \textbf{为何不能直接用 5 个最小坐标。}
         欧拉角 / 方位角在轴上奇异、有分支切割；AD 与边界 stencil 会炸。
-  \item \textbf{为何冗余到 9 维。}
+  \item \textbf{为何生产中冗余到 9 维。}
         式~\eqref{eq:chart} 用柱坐标 \(+\varepsilon\)、J7 不变块、roll 携带块，
         以及补全 \(R^{\mathsf T}\hat z\) 的第九分量，把 \(\mathcal{Q}\)
         \emph{光滑嵌入} \(\R^{9}\)。对 yaw 轨道恒定（式~\eqref{eq:yaw-invariance}），
@@ -287,7 +287,7 @@ J1 yaw 已由商空间消掉，不必再扫基座朝向。优化 \(\partial C/\p
 
 \begin{itemize}[leftmargin=1.4em]
   \item \textbf{相对查询}：IRD 语义落在 \((\Taxis)^{-1}\Tcp\)，导轨运动不必重训。
-  \item \textbf{只商真对称}：仅 J1 yaw；probe45 roll 留在图卡。
+  \item \textbf{只商经任务审计的对称}：仅 J1 yaw；probe45 roll 留在图卡。
   \item \textbf{冗余光滑图卡}：9 维嵌入避开轴奇异；\(\varepsilon\) 缓和 \(r\) 尖点。
   \item \textbf{有符号 clearance + 边界 stencil}：避免纯分类器在域外梯度变 flat
         （Murooka 警告）。
@@ -1073,6 +1073,18 @@ Softplus（不同于 ReLU）在有限输入上是 \(C^{\infty}\) 且导数处处
 余弦损失使场梯度与碰撞校验穿越方向对齐。这就是为何 \(\nabla F\)
 在边界附近指向可达性增加，而非沿任意等值线。
 
+\paragraph{经验边界斜率（生产损失）。}
+\begin{equation}
+\label{eq:loss-boundary-slope}
+  \mathcal{L}_{\mathrm{boundary\text{-}slope}}
+  = \mathbb{E}_{(c^-,c^+,\Delta c)}
+    \left[\left(
+      \frac{f(c^+)-f(c^-)}{\|c^+-c^-\|_2+\epsilon}
+      - \widehat{s}_{\mathrm{stencil}}
+    \right)^2\right].
+\end{equation}
+该项独立保留实测 stencil 的方向与斜率监督，不是 Eikonal 先验。
+
 \paragraph{可选 Eikonal（生产中关闭）。}
 \begin{equation}
 \label{eq:loss-eikonal}
@@ -1096,6 +1108,8 @@ Softplus（不同于 ReLU）在有限输入上是 \(C^{\infty}\) 且导数处处
   \lambda_{\mathrm{sdf}}\mathcal{L}_{\mathrm{sdf}}
   +
   \lambda_{\mathrm{n}}\mathcal{L}_{\mathrm{n}}
+  +
+  \lambda_{\mathrm{boundary\text{-}slope}}\mathcal{L}_{\mathrm{boundary\text{-}slope}}
   +
   \lambda_{\mathrm{Eik}}\mathcal{L}_{\mathrm{Eik}}
   +
@@ -1123,12 +1137,17 @@ Softplus（不同于 ReLU）在有限输入上是 \(C^{\infty}\) 且导数处处
 \hline\hline
 量 & 数值 \\
 \hline
-平衡准确率 & \(97.64\%\) \\
-位置方向一致率 & \(99.96\%\) \\
-旋转方向一致率 & \(99.97\%\) \\
-独立网格准确率 & \(99.17\%\) \\
-导轨 AD--FD 相对误差 & \(0.0098\%\) \\
-TCP \(x\) AD--FD 相对误差 & \(0.0101\%\) \\
+冻结基线平衡准确率 & \(90.38\%\) \\
+可达召回率 & \(91.94\%\) \\
+不可达特异度 & \(88.82\%\) \\
+位置方向一致率 & \(99.80\%\) \\
+旋转方向一致率 & \(99.58\%\) \\
+位置严格/宽松 straddle & \(23.91\% / 90.79\%\) \\
+旋转严格/宽松 straddle & \(10.28\% / 70.44\%\) \\
+位置 crossing P95 & \(0.953\,\mathrm{mm}\) \\
+旋转 crossing P95 & \(0.0955\,\mathrm{deg}\) \\
+导轨 AD--FD 中位相对误差 & \(0.0139\%\) \\
+TCP \(x\) AD--FD 中位相对误差 & \(0.0074\%\) \\
 \hline\hline
 \end{tabular}
 \end{table}
@@ -1414,18 +1433,18 @@ Phase-4 一般语义为
 \label{eq:cvar}
   \CVaR_{\alpha}(X)
   \;=\;
-  \min_{t\in\R}
+  \max_{t\in\R}
   \Biggl\{
     t
-    +
-    \frac{1}{1-\alpha}\,
+    -
+    \frac{1}{\alpha},
     \mathbb{E}\bigl[(t-X)_{+}\bigr]
   \Biggr\}.
 \end{equation}
 \emph{解释。}
 \(t\) 扮演 VaR 阈值；期望惩罚低于 \(t\) 的短缺。
 经验上最优 \(t\) 落在样本集中，故代码对每个样本值评估目标，再对这些候选
-\(t\) 取硬或软最小值。当 \(K_{\mathrm{unc}}\) 中等时，这比纯 softmin 更统计稳定。
+\(t\) 取硬或软最大值（与辅助最大化一致）。当 \(K_{\mathrm{unc}}\) 中等时，这比纯 softmin 更统计稳定。
 
 \paragraph{实现中的归约。}
 \begin{equation}
@@ -1741,6 +1760,22 @@ Region~A 同理，将 \(\softmax\) 换成 \(\softmin\)（偏最差）。
 连续性惩罚保持 \(\theta(s)\) 与 \(y(s)\) 光滑。对~\eqref{eq:opt-loss}
 做梯度下降，正是「用条件 IRD 梯度更新轨迹」。
 
+\subsection{Fail-closed 的 8-DOF 轨迹 SQP}
+\label{sec:trajectory-sqp}
+
+生产规划器用每个路点唯一的机器人变量
+\(q_i=[y_i,q_{1i},\ldots,q_{7i}]\in\mathbb{R}^{8}\)，不复制第二份 rail 变量；
+六维偏移 \(z_i\) 形成软名义目标 \(T_i(z_i)=\exp(\widehat z_i)T_i^{\rm nom}\)。
+目标包含位姿误差、归一化 \(s\) 下的一阶/二阶平滑、限位余量、奇异性和早期
+IRD 裕度。硬约束包括 \(\mathrm{FK}(q_i)=T_i(z_i)\)、医学位置/姿态带、真实
+导轨与关节限位、碰撞距离、世界系患者/床/接触约束以及自适应段内采样。
+Pinocchio Jacobian、ProxSuite 子问题和 HPP-FCL witness 点梯度均作有限差分审计。
+只有全部硬验证通过、FK 误差不超过 \(0.5\,\mathrm{mm}/1^\circ\)、缩放 KKT 残差
+不超过 \(10^{-3}\) 才返回；否则 API 返回 \texttt{valid=false}，不复制或替换轨迹。
+TCP 弧长以不超过 \(0.02\,\mathrm{m/s}\) 生成初始时间，Ruckig 只能减速；结果把
+位姿、笛卡尔前馈、导轨/关节参考、关节前馈和接触法向交给现有 QP-IK/力位控制器。
+IRD 只是引导，不是最终可行性证书。
+
 % -----------------------------------------------------------------------------
 \section{端到端交换图}
 \label{sec:diagram}
@@ -1778,12 +1813,13 @@ C(x)
         留出边界误差在括号化时可达亚毫米，但该场是优化方向算子。
         硬可行性仍需最终多种子 IK 与碰撞检查。
   \item \textbf{对称近似。}
-        仅 J1 yaw 精确；残余探头 roll 碰撞差异少见，由下游拒绝。
+        J1 yaw 因 \(\pm177.96^\circ\) 有限限位而只是任务审计近似；不用的接缝在本扫描
+        任务之外，最终 SQP 始终施加真实限位。
   \item \textbf{点场中无分支 / 连续 \(\psi\)。}
         离线标签是点可达性。路径残差与连续臂角选择在轨迹算子中处理。
-  \item \textbf{本身不是完整患者轨迹规划器。}
-        Region~A / TaskCone / TrajectoryTask 是点场上的查询层；
-        应用 demo 另加几何路径参数化与损失项。
+  \item \textbf{场本身不是规划器。}
+        Region~A / TaskCone / TrajectoryTask 提供查询层；独立的
+        \texttt{ird\_playground.optimization} 包负责 fail-closed 的 rail+7R joint lift 与硬验证。
 \end{itemize}
 
 % -----------------------------------------------------------------------------
