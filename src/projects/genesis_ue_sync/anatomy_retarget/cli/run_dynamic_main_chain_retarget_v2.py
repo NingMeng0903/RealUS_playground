@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Build exact saved Male Dynamic Main-Chain Retarget V2 subjects."""
+"""DEPRECATED archaeological CLI — not part of the V7 authority path.
+
+Authority remains chain_retarget_v7_node2_001. Coupled-knee SE3 attempts were
+deleted after image-red failure. Do not import this into the main path.
+"""
 
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -55,6 +60,12 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    print(
+        "WARNING: run_dynamic_main_chain_retarget_v2 is DEPRECATED. "
+        "Authority is chain_retarget_v7_node2_001; coupled-knee path deleted.",
+        file=sys.stderr,
+        flush=True,
+    )
     args = _parser().parse_args(argv)
     output = args.output.expanduser().resolve()
     if output.exists():

@@ -115,9 +115,10 @@ class RealtimeStateObserver:
     def _store_snap(self, snap: AsyncStateSnapshot) -> None:
         with self._lock:
             inactive = 1 - self._active
+            self._seq += 1
+            snap.seq = int(self._seq)
             self._slots[inactive] = snap
             self._active = inactive
-            self._seq += 1
         for fn in self._listeners:
             try:
                 fn(snap)

@@ -31,6 +31,7 @@ import yaml
 
 from rm75_control.control.admittance_common.phase_ipc import PhaseCmd, PhaseCommandHub, PhaseStatus
 from rm75_control.control.admittance_common.state_bus import RobotStateBus
+from rm75_control.control.admittance_common.observer import CompensatedForceObserver
 from rm75_control.control.admittance_common.state_relay import (
     StateRelayPublisher,
     parse_state_relay_config,
@@ -365,6 +366,10 @@ def main() -> int:
                     rail_m_fn=rail_pub,
                     kin=inner.kin if inner is not None else pub_kin,
                 )
+                try:
+                    relay.set_force_observer(CompensatedForceObserver.from_yaml(raw))
+                except Exception:
+                    pass
                 relay.start()
                 if args.hold:
                     print(

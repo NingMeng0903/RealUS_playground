@@ -227,7 +227,15 @@ class _ForceExtShm:
     def attach_reader(self) -> bool:
         with self._lock:
             if self._arr is not None and self._shm is not None:
-                return True
+                try:
+                    if int(self._arr["session_id"]) != 0:
+                        return True
+                except (OSError, ValueError):
+                    pass
+                # Dead/stale segment (A restarted): drop and re-attach.
+                self._arr = None
+                close_attached_shm(self._shm)
+                self._shm = None
             try:
                 self._shm = attach_named_shm(self._name)
                 if self._shm.size < F_EXT_SHM_SIZE:
@@ -235,7 +243,13 @@ class _ForceExtShm:
                     self._shm = None
                     return False
                 self._arr = np.ndarray((), dtype=_F_EXT_DTYPE, buffer=self._shm.buf)
-                return int(self._arr["session_id"]) != 0
+                if int(self._arr["session_id"]) == 0:
+                    # Publisher not live yet — do not cache a dead mapping.
+                    self._arr = None
+                    close_attached_shm(self._shm)
+                    self._shm = None
+                    return False
+                return True
             except (FileNotFoundError, ValueError, OSError):
                 self._arr = None
                 self._shm = None
@@ -252,14 +266,17 @@ class _ForceExtShm:
         with self._lock:
             if self._arr is None:
                 return False, 0, float("nan"), np.full(6, np.nan)
-            if int(self._arr["session_id"]) == 0 or not bool(self._arr["ok"]):
-                return False, int(self._arr["seq"]), float(self._arr["t_s"]), np.full(6, np.nan)
-            return (
-                True,
-                int(self._arr["seq"]),
-                float(self._arr["t_s"]),
-                np.asarray(self._arr["f_ext"], dtype=float).copy(),
-            )
+            try:
+                sid = int(self._arr["session_id"])
+                ok_flag = bool(self._arr["ok"])
+                seq = int(self._arr["seq"])
+                t_s = float(self._arr["t_s"])
+                f_ext = np.asarray(self._arr["f_ext"], dtype=float).copy()
+            except (OSError, ValueError):
+                return False, 0, float("nan"), np.full(6, np.nan)
+            if sid == 0 or not ok_flag:
+                return False, seq, t_s, np.full(6, np.nan)
+            return True, seq, t_s, f_ext
 
 
 def f_ext_shm_has_publisher(name: str = DEFAULT_F_EXT_NAME) -> bool:
@@ -305,7 +322,8 @@ class ForceExtBus:
         return float(self._last_t_s)
 
     def ensure_attached(self, *, force: bool = False) -> bool:
-        del force
+        if force:
+            self._shm.detach_reader()
         return self._shm.attach_reader()
 
     def stop(self) -> None:
@@ -316,6 +334,10 @@ class ForceExtBus:
             self._last_ok = False
             return False, 0, float("nan"), np.full(6, np.nan)
         ok, seq, t_s, f_ext = self._shm.read()
+        # A restarted under the same name: session went to 0 or mapping died.
+        if not ok:
+            self.ensure_attached(force=True)
+            ok, seq, t_s, f_ext = self._shm.read()
         self._last_ok = bool(ok)
         self._last_seq = int(seq)
         self._last_t_s = float(t_s)
@@ -360,20 +382,79 @@ class StateRelayPublisher:
         self._pub_window_t0 = 0.0
         self._rate_log_period_s = 5.0
         self._last_logged_rail = float("nan")
-        # Compensated wrench lives on a separate SHM so rm75_state layout
-        # stays binary-compatible with the twin (rail_m must not shift).
+        # Compensated wrench on a separate SHM (rm75_state layout unchanged).
         self._f_ext_shm = _ForceExtShm(f_ext_name_for_relay(self._name))
+        # Task set_f_ext wins; idle uses CompensatedForceObserver → TCP.
+        self._task_f_ext_mono = 0.0
+        self._task_f_ext_hold_s = 0.05
+        self._force_obs: Any | None = None
+        self._force_t0: float | None = None
+        self._last_idle_force_seq = -1
 
     def set_kin(self, kin: Any | None) -> None:
         """Hot-swap TCP kinematics used for SHM pose (e.g. after tool sync)."""
         with self._kin_lock:
             self._kin = kin
 
+    def set_force_observer(self, observer: Any | None) -> None:
+        """Attach gravity/sign compensator for idle ``rm75_f_ext`` publish."""
+        self._force_obs = observer
+        self._force_t0 = None
+        self._last_idle_force_seq = -1
+
     def set_f_ext(self, f_ext: np.ndarray | None) -> None:
         """Publish controller-compensated tool wrench on ``rm75_f_ext``."""
         if f_ext is None:
             return
+        self._task_f_ext_mono = time.monotonic()
         self._f_ext_shm.publish(f_ext)
+
+    def _idle_publish_f_ext(
+        self,
+        snap: AsyncStateSnapshot,
+        rail_m: float,
+        *,
+        source: str,
+        pub_seq: int,
+    ) -> None:
+        """Publish TCP compensated wrench while no task is writing f_ext."""
+        if (
+            time.monotonic() - float(self._task_f_ext_mono)
+            <= float(self._task_f_ext_hold_s)
+        ):
+            return
+        if source == "rail":
+            return
+        obs = self._force_obs
+        if obs is None or snap.force_raw is None or snap.q_deg is None:
+            return
+        key = int(pub_seq)
+        if key == int(self._last_idle_force_seq):
+            return
+        with self._kin_lock:
+            kin = self._kin
+        if kin is None:
+            return
+        try:
+            q8 = expand_q_meas_8dof(snap.q_deg, rail_m)
+            pose_l7 = (
+                np.asarray(kin.frame_pose(q8, "link_7"), dtype=float).reshape(6)
+                if hasattr(kin, "frame_pose")
+                else np.asarray(snap.pose, dtype=float).reshape(6)
+            )
+            if self._force_t0 is None:
+                self._force_t0 = time.monotonic()
+            t_obs = time.monotonic() - float(self._force_t0)
+            _signed, f_ext = obs.update(t_obs, pose_l7, snap.force_raw)
+            if hasattr(kin, "wrench_link7_to_tcp"):
+                f_ext = kin.wrench_link7_to_tcp(f_ext)
+            fr = np.asarray(f_ext, dtype=float).reshape(-1)
+            if fr.size < 3 or not np.all(np.isfinite(fr[:3])):
+                return
+            self._last_idle_force_seq = key
+            self._f_ext_shm.publish(fr, t_s=float(snap.t_s))
+        except Exception:
+            pass
 
     def _pose_from_kin(self, snap: AsyncStateSnapshot, rail_m: float) -> np.ndarray | None:
         with self._kin_lock:
@@ -504,6 +585,9 @@ class StateRelayPublisher:
                 self._pub_n = 0
                 self._pub_rail_n = 0
                 self._pub_window_t0 = now
+        self._idle_publish_f_ext(
+            snap, rail_m, source=source, pub_seq=int(self._seq)
+        )
 
     def _run_rail_refresh(self) -> None:
         """Republish last arm snap with fresh encoder rail @ 50 Hz for twin smoothness."""

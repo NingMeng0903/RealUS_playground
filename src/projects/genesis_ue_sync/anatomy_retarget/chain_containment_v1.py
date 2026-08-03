@@ -15,28 +15,39 @@ MAIN_CHAIN_INSIDE_FRACTION_MIN = 0.98
 
 
 def _signed_distance(points: np.ndarray, skin: np.ndarray, faces: np.ndarray) -> np.ndarray:
+    return _signed_distance_details(points, skin, faces)[0]
+
+
+def _signed_distance_details(
+    points: np.ndarray,
+    skin_vertices: np.ndarray,
+    skin_faces: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return (signed_distance, closest_points, outward_gradient)."""
+
     import igl
 
     query = np.asarray(points, dtype=np.float64)
-    winding = np.asarray(
-        igl.winding_number(
-            np.asarray(skin, dtype=np.float64),
-            np.asarray(faces, dtype=np.int32),
-            query,
-        ),
-        dtype=np.float64,
-    ).reshape(-1)
-    squared, _face, _closest = igl.point_mesh_squared_distance(
-        query,
-        np.asarray(skin, dtype=np.float64),
-        np.asarray(faces, dtype=np.int32),
-    )
+    skin = np.asarray(skin_vertices, dtype=np.float64)
+    faces = np.asarray(skin_faces, dtype=np.int32)
+    winding = np.asarray(igl.winding_number(skin, faces, query)).reshape(-1)
+    squared, _face, closest = igl.point_mesh_squared_distance(query, skin, faces)
     distance = np.sqrt(np.maximum(0.0, np.asarray(squared, dtype=np.float64)))
     inside = np.abs(winding) >= 0.5
-    result = np.where(inside, -distance, distance)
-    if len(result) != len(points) or not np.all(np.isfinite(result)):
-        raise ValueError("SMPL-X winding/distance query returned invalid values")
-    return result
+    signed = np.where(inside, -distance, distance)
+    direction = query - np.asarray(closest, dtype=np.float64)
+    norm = np.linalg.norm(direction, axis=1)
+    gradient = np.zeros_like(direction)
+    valid = norm > 1.0e-10
+    gradient[valid] = direction[valid] / norm[valid, None]
+    gradient[inside] *= -1.0
+    if not (
+        len(signed) == len(query)
+        and np.all(np.isfinite(signed))
+        and np.all(np.isfinite(gradient))
+    ):
+        raise ValueError("signed-distance query returned invalid values")
+    return signed, np.asarray(closest, dtype=np.float64), gradient
 
 
 def _vertex_areas(vertices: np.ndarray, faces: np.ndarray) -> np.ndarray:

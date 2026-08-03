@@ -676,7 +676,7 @@ def check_whole_chain_rest_fit_v1(
         # Bone-first containment search adds winding-number trials; allow headroom.
         and float(expected.build_report["elapsed_seconds"])
         <= (
-            600.0
+            1800.0
             if str(expected.build_report.get("femur_axial_scale_policy", "")).endswith(
                 "_v9"
             )

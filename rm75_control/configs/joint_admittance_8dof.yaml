@@ -175,65 +175,90 @@ force:
   use_inertia: false
 
 hybrid_motion:
-  # Single force controller (2965fea): tool-frame masks, no runtime mode switch.
-  force_axes: [0, 0, 1, 0, 0, 0]
-  track_axes: [1, 1, 0, 1, 1, 1]
-  # Tool-frame PBAC: v = vel_ff + kp*err (De Schutter 1988); X==Y tangential.
-  kp_pos: [2.0, 2.0, 0.0, 1.5, 1.5, 1.5]
+  force_axes:
+  - 0
+  - 0
+  - 1
+  - 0
+  - 0
+  - 0
+  track_axes:
+  - 1
+  - 1
+  - 0
+  - 1
+  - 1
+  - 1
+  kp_pos:
+  - 2.0
+  - 2.0
+  - 0.0
+  - 1.5
+  - 1.5
+  - 1.5
   pos_err_deadband_m: 0.0005
   pos_correction_max_m_s: 0.08
   system_delay_s: 0.015
-  # Signed compression + enter/exit hysteresis (tool +z press = +force).
   contact_threshold_n: 0.8
-  contact_enter_n: 0.8
-  contact_enter_ticks: 3
-  contact_release_n: 0.30
-  contact_release_ticks: 8
   contact_use_fz_only: true
-  # Fixed sensor-noise deadband (never scale with desired_z).
-  deadband_n: 0.10
-  deadband_width_n: 0.10
-  # Caps: tangential X==Y; tool-Z retract room 0.05, press via max_vz_tool.
-  max_velocity: [0.22, 0.22, 0.05, 0.6, 0.6, 0.6]
-  max_acceleration: [1.0, 1.0, 0.8, 2.0, 2.0, 2.0]
-  force_accel_press_m_s2: 0.8
-  force_accel_retract_m_s2: 2.0
-  admittance_mass_z: 2.5
-  admittance_damping_z: 50.0   # fixed D (Duan: do not adapt M for bounce)
-  max_vz_tool_m_s: 0.03
-  seek_vz_m_s: 0.03
-  # Rate-limit f_des: rise = |f_des|/ramp_s (1 N @ 1 s → 1 N/s).
-  desired_force_ramp_s: 1.0
-  desired_force_fall_n_s: 4.0
-  # Iₛ kept for logs/gates; mass inflation frozen (m_u=0).
+  physical_contact:
+    enabled: true
+    enter_n: 0.8
+    hard_enter_n: 1.5
+    exit_n: 0.35
+    enter_confirm_s: 0.01
+    exit_confirm_s: 0.1
+  # Tight band so DOB + v_r can hold a smooth constant force.
+  deadband_n: 0.05
+  deadband_width_n: 0.08
+  max_velocity:
+  - 0.22
+  - 0.22
+  - 0.1
+  - 0.6
+  - 0.6
+  - 0.6
+  max_acceleration:
+  - 1.0
+  - 1.0
+  - 0.8
+  - 2.0
+  - 2.0
+  - 2.0
+  # Low baseline MD for light feel + fast under/over-force chase.
+  # Chatter: short-lived ΔD_hf(Is). Steady offset: force_dob. Not sticky Ke·D.
+  admittance_mass_z: 1.0
+  admittance_damping_z: 25.0
+  max_vz_tool_m_s: 0.08
+  desired_force_ramp_s: 0.8
   var_damping_enabled: true
-  var_damping_omega_c_hz: 3.5
+  var_damping_omega_c_hz: 2.5
   var_damping_lambda: 0.951
   var_damping_f_max_n: 7.0
-  var_damping_d_u: 0.0
-  var_damping_m_u: 0.0
-  var_damping_m_max: 5.0
+  # ΔD_hf amplitude (primary chatter dissipation); M bump is secondary.
+  var_damping_d_u: 90.0
+  var_damping_m_u: 1.5
+  var_damping_m_max: 3.0
   var_damping_dc_alpha: 0.02
-  force_barrier:
+  var_damping_hf_attack_s: 0.02
+  var_damping_hf_hold_s: 0.18
+  var_damping_hf_release_s: 0.12
+  var_damping_hf_on: 0.30
+  var_damping_hf_off: 0.15
+  var_damping_hf_err_n: 0.8
+  recontact_vz_cap_m_s: 0.008
+  recontact_hold_s: 0.22
+  force_dob:
     enabled: true
-    t_react_s: 0.030
-    budget_min_n: 1.0
-    budget_frac: 0.20
-    f_keep_n: 0.5
-    v_ref_m_s: 0.05
-    v_min_retract_m_s: 0.002
-    fdot_lpf_s: 0.040
-  # Anti-windup / sensor gating.
-  force_dt_min_s: 0.002
-  force_dt_max_s: 0.015
-  velocity_backcalc_tau_s: 0.03
-  time_scale_decay_tau_s: 0.04
-  time_scale_decay_below: 0.20
-  sensor_age_block_press_s: 0.025
-  sensor_age_zero_normal_s: 0.050
+    ki: 8.0
+    leak_s: 0.4
+    u_max_n: 1.5
+    freeze_is: 0.45
+    reset_on_reversal: true
   adaptive_ke:
-    # Off: K̂_e unreliable on moving tissue. Keys kept for A/B re-enable.
-    enabled: false
+    enabled: true
+    # Observe Ke / impact burst only — do not hold high critical D in steady contact.
+    drive_damping: false
     zeta: 0.9
     ke_initial: 80.0
     ke_min: 40.0
@@ -242,10 +267,10 @@ hybrid_motion:
     ke_forgetting: 0.995
     ke_forgetting_inc: 0.88
     ke_idle_decay_s: 2.0
-    ke_soft_floor: 300.0
+    ke_soft_floor: 120.0
     ke_detach_decay_s: 1.0
     displacement_source: admittance
-    dx_threshold_m: 0.00008
+    dx_threshold_m: 8.0e-05
     contact_force_n: 0.8
     settle_ticks: 10
     gate_lateral_velocity: true
@@ -255,30 +280,35 @@ hybrid_motion:
     f_err_gate_n: 1.2
     f_err_gate_frac: 0.35
     bd_min: 25.0
-    bd_max: 200.0
+    bd_max: 180.0
     bd_slew_max: 400.0
     ke_slew_max: 1200.0
-  # Phase 1: disable proactive press energy injection on hard contact.
-  proactive_feedforward: false
+  proactive_feedforward: true
   proactive_retract_only: false
-  proactive_gain: 0.10
-  proactive_retract_gain: 0.10
-  proactive_leak_s: 0.3
+  # Faster under-force chase; stronger over-force escape; no Is gate on press.
+  proactive_gain: 0.18
+  proactive_retract_gain: 0.24
+  proactive_leak_s: 0.25
   v_r_max_m_s: 0.06
-  # Fade press authority for Is∈[start, gate]; Dimeas M(t) + fixed D stay active.
-  proactive_press_is_gate_start: 0.20
-  proactive_press_is_gate: 0.60
-  proactive_press_drive_max: 1.0
-  proactive_retract_drive_max: 1.0
+  proactive_gate_press_on_is: false
+  proactive_press_is_gate_start: 0.2
+  proactive_press_is_gate: 0.6
+  proactive_press_drive_max: 1.2
+  proactive_retract_drive_max: 1.4
   proactive_reset_on_reversal: true
-  # Same normalized small-error law across setpoints (deadband rejects noise first).
-  force_scale_min_n: 0.20
-  force_scale_fraction: 0.15
-
-# LW100 rail servo (Modbus RTU over USR-TCP232).
-# Soft CSP: WBC q_cmd[0] → soft PD → FA24; encoder feeds WBC q_meas[0].
-# Soft faults → HOLD; hard PANIC only on garbage encoder. OOB targets rejected.
-# Workflow: manually seat carriage at -Y, zero_mode=current, home_on_exit=false.
+  force_scale_min_n: 0.15
+  force_scale_fraction: 0.12
+  fast_retract_guard:
+    enabled: true
+    cutoff_hz: 20.0
+    stop_margin_n: 0.25
+    stop_margin_fraction: 0.05
+    rearm_margin_n: 0.45
+    rearm_margin_fraction: 0.1
+    stop_confirm_s: 0.015
+    rearm_confirm_s: 0.01
+    min_hold_s: 0.025
+    max_sensor_age_s: 0.02
 hw:
   lw100:
     enabled: true
@@ -288,7 +318,8 @@ hw:
     lead_mm: 10.0
     zero_mode: current
     counts0: 0
-    sign: 1
+    # Host rail_y ↔ motor: -1 flips FA24 RPM (+ encoder map in rail_servo).
+    sign: -1
     enable_settle_s: 0.3
     # Cold start: prove worker Modbus read+FA24=0 before any set_target / move→D.
     arm_good_reads: 30          # ~0.6 s @ 50 Hz consecutive healthy polls

@@ -33,6 +33,7 @@ class RailServoConfig:
     # "current": rail_y=0 at start pose (manual pre-home). "fixed": use counts0.
     zero_mode: str = "current"
     counts0: int = 0
+    # +1 / -1: maps host rail_y (+Y) ↔ motor RPM and encoder metres together.
     sign: float = 1.0
     enable_settle_s: float = 0.2
     # Cold-start arming: worker must prove Modbus read+FA24=0 healthy before follow.
@@ -294,6 +295,10 @@ class RailServoBridge:
             self._csv.write(event=event, **kwargs)
         except Exception:
             pass
+
+    def _encode_rail_m(self, drive_m: float) -> float:
+        """Drive encoder metres → host ``rail_y`` (applies ``sign``)."""
+        return float(self.config.sign) * float(drive_m)
 
     @property
     def measured_m(self) -> float:
@@ -580,7 +585,7 @@ class RailServoBridge:
         # Pre-check encoder before worker; follow stays off until ARMED.
         samples: list[float] = []
         for _ in range(8):
-            samples.append(float(self._drive.read_rail_m_fast()))
+            samples.append(self._encode_rail_m(self._drive.read_rail_m_fast()))
             time.sleep(0.02)
         measured = float(samples[-1])
         if not self._encoder_sane(measured):
@@ -903,7 +908,7 @@ class RailServoBridge:
                     prev_v_cmd = 0.0
                     v_cmd = 0.0
 
-                measured = float(self._drive.read_rail_m_fast())
+                measured = self._encode_rail_m(self._drive.read_rail_m_fast())
                 last_enc_ok_t = t0
                 self._last_enc_ok_mono = t0
                 mb_fail_n = 0

@@ -108,6 +108,9 @@ class AdaptiveKeConfig:
     # Hold K̂_e (no learning) this many ticks after contact acquisition so
     # the first-impact transient doesn't dominate the estimator.
     settle_ticks: int = 10
+    # When False, critical-damping b_d is kept for telemetry / impact burst
+    # only; steady tool-Z damping stays at D0 + short-lived ΔD_hf.
+    drive_damping: bool = True
 
     @classmethod
     def from_dict(cls, raw: dict, parent: dict) -> AdaptiveKeConfig:
@@ -148,6 +151,7 @@ class AdaptiveKeConfig:
             f_err_gate_n=float(a.get("f_err_gate_n", 1.2)),
             f_err_gate_frac=float(a.get("f_err_gate_frac", 0.35)),
             settle_ticks=int(a.get("settle_ticks", 10)),
+            drive_damping=bool(a.get("drive_damping", True)),
         )
 
 
@@ -173,9 +177,6 @@ class EnvironmentStiffnessEstimator:
         self._in_contact = False
         self._update_gated = False
         self._contact_ticks = 0
-        self.last_dx_m = 0.0
-        self.last_df_n = 0.0
-        self.update_count = 0
         # |f_err| envelope (peak-hold with ~0.3 s release) gating the idle
         # decay: an oscillation crosses f_err=0 twice per cycle, so the
         # instantaneous |f_err| under-reports over-force by ~100 %.
@@ -192,9 +193,6 @@ class EnvironmentStiffnessEstimator:
         self._in_contact = False
         self._update_gated = False
         self._contact_ticks = 0
-        self.last_dx_m = 0.0
-        self.last_df_n = 0.0
-        self.update_count = 0
         self._f_err_env = 0.0
 
     def _critical_bd(self, mass_z: float) -> float:
@@ -289,12 +287,14 @@ class EnvironmentStiffnessEstimator:
         speed, direction-agnostic — see module docstring.
         ``f_des_z`` is the (ramped) tool-Z force setpoint; it sizes the
         relative |f_err| gate (see ``_f_err_gate_eff_n``).
-        ``instability_index`` is the raw Dimeas Iₛ contact-resonance index.
-        ``allow_idle_decay`` lets callers veto the quiet-contact decay when
-        their physical-contact state is uncertain.
+        ``instability_index`` is the Dimeas Iₛ (contact-resonance detector);
+        passed through for telemetry; idle decay is gated by |f_err| only.
         ``allow_impact_init``: caller sets this False on a contact rising
         edge that follows only a brief flicker (turnaround dip), so the
         stiff-first K̂_e jump fires on genuine impacts only.
+        ``allow_idle_decay`` is false when contact is only suspected or the
+        measured normal load is below the reliable-contact floor.  This keeps
+        a low-force flight from being misclassified as quiet soft tissue.
         """
         cfg = self.cfg
         self._mass_z = max(mass_z, 1e-3)
@@ -350,8 +350,6 @@ class EnvironmentStiffnessEstimator:
         elif self._have_prev:
             df = f_ext_z - self._last_f_z
             dx = x - self._last_x
-            self.last_df_n = float(df)
-            self.last_dx_m = float(dx)
             gated = not self._should_update_ke(
                 f_ext_z, f_err_z, v_lateral_m_s, df, f_err_gate_n
             )
@@ -364,20 +362,21 @@ class EnvironmentStiffnessEstimator:
                 ke_target = lam * self.ke_est + (1.0 - lam) * ke_inst
                 self.ke_est = self._slew_ke(ke_target)
                 learned = True
-                self.update_count += 1
 
         # Stiff-first closure (idle decay): steady tracking with no ΔF/Δx
         # update this tick lets the impact-initialised K̂_e relax toward
         # ke_initial so the press regains bandwidth to chase a receding
-        # surface. The force-error envelope gates transient samples. Dimeas
-        # independently raises virtual inertia; coupling its index into this
-        # decay kept K_e and velocity-dependent damping high after hand pushes.
+        # surface. Gated by |f_err| envelope (over-force transient) AND faded
+        # by the Dimeas Iₛ: a building contact resonance must freeze the
+        # decay even while its force ripple is still inside the (setpoint-
+        # relative) |f_err| gate, otherwise b_d releases mid-bounce on a
+        # hard surface.
         if (
             not learned
-            and allow_idle_decay
             and cfg.ke_idle_decay_s > 1e-6
             and self._contact_ticks > max(cfg.settle_ticks, 0)
             and self._f_err_env <= f_err_gate_n
+            and allow_idle_decay
         ):
             self.ke_est += (self.dt / cfg.ke_idle_decay_s) * (
                 max(float(cfg.ke_initial), float(cfg.ke_soft_floor)) - self.ke_est

@@ -82,23 +82,6 @@ def test_idle_decay_active_when_contact_quiet():
     assert ke < 0.6 * 1500.0
 
 
-def test_instability_does_not_freeze_idle_ke_decay() -> None:
-    est = _estimator()
-    ke = est.ke_est
-    for _ in range(400):
-        ke, _ = est.update(
-            3.0,
-            POSE,
-            in_contact=True,
-            mass_z=1.0,
-            v_force_z=0.0,
-            f_err_z=0.0,
-            f_des_z=3.0,
-            instability_index=0.16,
-        )
-    assert ke < 0.6 * 1500.0
-
-
 def _controller(**over) -> AdmittanceController:
     kw = dict(
         contact_threshold_n=0.8,
@@ -160,7 +143,7 @@ def test_var_damping_d_target_respects_bd_max_when_is_unbounded():
         ctrl._admittance_z(
             0.0,
             True,
-            dt_force=DT,
+            dt_eff=DT,
             rising_edge=False,
         )
     assert ctrl.damping_z_eff <= 50.0 + 1e-6

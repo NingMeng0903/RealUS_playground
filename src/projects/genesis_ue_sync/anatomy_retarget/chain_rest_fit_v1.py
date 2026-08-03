@@ -973,6 +973,7 @@ def _select_femur_embed_v9(
     bone_count: int,
     femur_vertex_ids: np.ndarray,
     patella_vertex_ids: np.ndarray,
+    shank_vertex_ids: np.ndarray,
     skin: np.ndarray,
     skin_faces: np.ndarray,
     faces: np.ndarray,
@@ -1000,20 +1001,24 @@ def _select_femur_embed_v9(
 
     femur_ids = np.asarray(femur_vertex_ids, dtype=np.int64)
     patella_ids = np.asarray(patella_vertex_ids, dtype=np.int64)
-    # Subsample femur only. Always keep every patella vertex — a uniform stride
-    # over concatenated [femur|patella] can drop the entire patella group and
-    # falsely report flex_outside≈0 while Patella still pokes 10+ mm.
-    if len(femur_ids) > 350:
-        step = max(1, len(femur_ids) // 350)
-        femur_sample = femur_ids[::step]
-    else:
-        femur_sample = femur_ids
+    shank_ids = np.asarray(shank_vertex_ids, dtype=np.int64)
+    # Primary probe = femur+patella (V9 knee gate). Shank is scored separately so
+    # we never trade femur containment for tibia/fibula.
+    def _subsample(ids: np.ndarray, budget: int) -> np.ndarray:
+        if len(ids) <= budget:
+            return ids
+        step = max(1, len(ids) // budget)
+        return ids[::step]
+
+    femur_sample = _subsample(femur_ids, 280)
+    shank_sample = _subsample(shank_ids, 160)
     if len(patella_ids):
-        probe_sample = np.unique(np.concatenate([femur_sample, patella_ids]))
+        probe_fp = np.unique(np.concatenate([femur_sample, patella_ids]))
         probe_ids = np.unique(np.concatenate([femur_ids, patella_ids]))
     else:
-        probe_sample = femur_sample
+        probe_fp = femur_sample
         probe_ids = femur_ids
+    probe_sample = probe_fp  # used for fast shortlist tpose score
     ref_viol, ref_gaps = _knee_gap_contact_violation_m(
         domains=domains, vertices=vertices_prefit, side=side
     )
@@ -1053,7 +1058,7 @@ def _select_femur_embed_v9(
 
     prelim: list[dict[str, Any]] = []
     for scale in np.asarray(scales, dtype=np.float64).tolist():
-        if not 0.90 <= float(scale) <= 1.05:
+        if not 0.88 <= float(scale) <= 1.05:
             continue
         for pitch in np.asarray(pitch_deg, dtype=np.float64).tolist():
             for coronal in np.asarray(coronal_deg, dtype=np.float64).tolist():
@@ -1134,11 +1139,33 @@ def _select_femur_embed_v9(
             abs(float(row["pitch_deg"])) + abs(float(row["coronal_deg"])),
         )
     )
-    shortlist = prelim[:24]
+    shortlist = prelim[:36]
     best: dict[str, Any] | None = None
     trials = []
+    # Prefit flexed gap is the linkage oracle: axial shrink must not open the hinge.
+    prefit_flex_viol = 0.0
+    prefit_flex_gaps: dict[str, float] = {}
+    if use_flex:
+        assert g_src_flex is not None
+        b_pref = b_prefit
+        g_pref = g_src_flex @ inv_b_prefit @ b_pref
+        tf_pref = g_pref @ np.linalg.inv(b_pref)
+        flexed_prefit = _weighted_rest_correction(
+            vertices_prefit, driver_indices, driver_weights, tf_pref
+        )
+        prefit_flex_viol, prefit_flex_gaps = _knee_gap_contact_violation_m(
+            domains=domains,
+            vertices=flexed_prefit,
+            side=side,
+            gap_max_m=0.020,
+            reference_gaps=None,
+            gap_change_max_m=1.0,  # no change term vs self
+        )
     for row in shortlist:
         flex_outside = float(row["tpose_outside_m"])
+        flex_shank = 0.0
+        flex_contact = 0.0
+        flex_gaps = dict(row["knee_gaps_m"])
         if use_flex:
             assert g_src_flex is not None and skin_flex is not None
             assert skin_faces_flex is not None
@@ -1148,24 +1175,56 @@ def _select_femur_embed_v9(
             flexed = _weighted_rest_correction(
                 row["rest"], driver_indices, driver_weights, transforms
             )
-            flex_outside = _group_outside(
-                flexed, skin_v=skin_flex, skin_f=skin_faces_flex, ids=probe_sample
+            flex_contact, flex_gaps = _knee_gap_contact_violation_m(
+                domains=domains,
+                vertices=flexed,
+                side=side,
+                gap_max_m=0.020,
+                reference_gaps=prefit_flex_gaps,
+                gap_change_max_m=0.005,
             )
+            # Hard reject: axial shrink that detonates the flexed hinge.
+            if flex_contact > max(0.025, float(prefit_flex_viol) + 0.010):
+                trials.append(
+                    {
+                        "scale": row["scale"],
+                        "pitch_deg": row["pitch_deg"],
+                        "coronal_deg": row["coronal_deg"],
+                        "rejected": "flex_linkage_opened",
+                        "flex_contact_violation_m": float(flex_contact),
+                        "prefit_flex_contact_violation_m": float(prefit_flex_viol),
+                        "flex_knee_gaps_m": flex_gaps,
+                    }
+                )
+                continue
+            flex_outside = _group_outside(
+                flexed, skin_v=skin_flex, skin_f=skin_faces_flex, ids=probe_fp
+            )
+            if len(shank_sample):
+                flex_shank = _group_outside(
+                    flexed, skin_v=skin_flex, skin_f=skin_faces_flex, ids=shank_sample
+                )
         trial = {
             "scale": row["scale"],
             "pitch_deg": row["pitch_deg"],
             "coronal_deg": row["coronal_deg"],
             "contact_violation_m": row["contact_violation_m"],
             "knee_gaps_m": row["knee_gaps_m"],
+            "flex_contact_violation_m": float(flex_contact),
+            "flex_knee_gaps_m": flex_gaps,
             "tpose_max_outside_m": row["tpose_outside_m"],
             "flex_max_outside_m": float(flex_outside),
+            "flex_shank_outside_m": float(flex_shank),
             "shank_axial_scale": row["shank_scale"],
             "knee_target_m": row["knee_target"].tolist(),
         }
         trials.append(trial)
+        # Seat flexed hinge FIRST, then rest seat, then containment, then |s-1|.
         key = (
+            float(flex_contact),
             float(row["contact_violation_m"]),
             float(flex_outside),
+            float(flex_shank),
             float(row["tpose_outside_m"]),
             abs(float(row["scale"]) - 1.0),
             abs(float(row["pitch_deg"])) + abs(float(row["coronal_deg"])),
@@ -1175,9 +1234,32 @@ def _select_femur_embed_v9(
                 "key": key,
                 "row": row,
                 "flex_outside": float(flex_outside),
+                "flex_shank": float(flex_shank),
+                "flex_contact": float(flex_contact),
+                "flex_gaps": flex_gaps,
             }
+    if best is None:
+        # Fall back to nearest-to-1 scale with best rest contact (never open hinge).
+        prelim.sort(
+            key=lambda row: (
+                abs(float(row["scale"]) - 1.0),
+                float(row["contact_violation_m"]),
+                float(row["tpose_outside_m"]),
+            )
+        )
+        row0 = prelim[0]
+        best = {
+            "key": (0.0, float(row0["contact_violation_m"]), 0.0, 0.0, float(row0["tpose_outside_m"]), abs(float(row0["scale"]) - 1.0), 0.0),
+            "row": row0,
+            "flex_outside": float(row0["tpose_outside_m"]),
+            "flex_shank": 0.0,
+            "flex_contact": float(prefit_flex_viol),
+            "flex_gaps": prefit_flex_gaps,
+        }
     assert best is not None
     row = best["row"]
+    best_flex_contact = float(best.get("flex_contact", 0.0))
+    best_flex_gaps = dict(best.get("flex_gaps") or row.get("knee_gaps_m") or {})
     # Re-score the femur-only winner on the full probe before patella inset so
     # the baseline is not an under-sampled false zero.
     best_patella = np.asarray(row["proximal"], dtype=np.float64)
@@ -1261,6 +1343,16 @@ def _select_femur_embed_v9(
                 flexed = _weighted_rest_correction(
                     rest, driver_indices, driver_weights, transforms
                 )
+                flex_contact, _fg = _knee_gap_contact_violation_m(
+                    domains=domains,
+                    vertices=flexed,
+                    side=side,
+                    gap_max_m=0.020,
+                    reference_gaps=prefit_flex_gaps,
+                    gap_change_max_m=0.005,
+                )
+                if flex_contact > best_flex_contact + 5.0e-4:
+                    continue
                 flex_out = _group_outside(
                     flexed, skin_v=skin_flex, skin_f=skin_faces_flex, ids=probe_ids
                 )
@@ -1271,6 +1363,7 @@ def _select_femur_embed_v9(
                     rest, skin_v=skin, skin_f=skin_faces, ids=probe_ids
                 )
                 key = (
+                    float(flex_contact),
                     float(contact_viol),
                     float(flex_out),
                     float(pat_out),
@@ -1278,6 +1371,7 @@ def _select_femur_embed_v9(
                     float(shift),
                 )
                 cur = (
+                    float(best_flex_contact),
                     float(row["contact_violation_m"]),
                     float(best_flex),
                     float(best_patella_out),
@@ -1291,6 +1385,7 @@ def _select_femur_embed_v9(
                     best_tpose = float(tpose_out)
                     best_patella_shift = float(shift)
                     best_patella_dir = direction.tolist()
+                    best_flex_contact = float(flex_contact)
                     row = {
                         **row,
                         "rest": rest,
@@ -1317,14 +1412,23 @@ def _select_femur_embed_v9(
             best_patella_out = _group_outside(
                 flexed, skin_v=skin_flex, skin_f=skin_faces_flex, ids=patella_ids
             )
+    # Do NOT walk axial scale down after selection: shrinking Femur_Rot to chase
+    # outside previously opened the flexed condyle–plateau hinge (~64mm gap).
+    # Containment residuals are accepted over broken linkage (plan: seat first).
+    refine_trials: list[dict[str, Any]] = []
     report = {
         "method": "seat_then_inside_embed_v9",
         "trials_shortlist": trials,
+        "scale_refine_trials": refine_trials,
         "selected_scale": float(row["scale"]),
         "selected_pitch_deg": float(row["pitch_deg"]),
         "selected_coronal_deg": float(row["coronal_deg"]),
         "selected_contact_violation_m": float(row["contact_violation_m"]),
         "selected_knee_gaps_m": row["knee_gaps_m"],
+        "selected_flex_contact_violation_m": float(best_flex_contact),
+        "selected_flex_knee_gaps_m": best_flex_gaps,
+        "prefit_flex_contact_violation_m": float(prefit_flex_viol),
+        "prefit_flex_knee_gaps_m": prefit_flex_gaps,
         "selected_tpose_outside_m": float(tpose_full),
         "selected_flex_outside_m": float(flex_full),
         "selected_flex_patella_outside_m": float(best_patella_out),
@@ -1334,6 +1438,7 @@ def _select_femur_embed_v9(
         "flex_pose_used": bool(use_flex),
         "candidate_count": int(len(prelim)),
         "shortlist_count": int(len(shortlist)),
+        "linkage_policy": "reject_scale_that_opens_flex_condyle_plateau",
     }
     return (
         float(row["scale"]),
@@ -1657,7 +1762,7 @@ def build_lower_chain_rest_fit_v1(
             embed_search,
         ) = _select_femur_embed_v9(
             side=side,
-            scales=np.linspace(0.90, 1.03, 14),
+            scales=np.linspace(0.88, 1.03, 16),
             pitch_deg=np.asarray((-4.0, -2.0, 0.0, 2.0, 4.0), dtype=np.float64),
             coronal_deg=np.asarray((-3.0, 0.0, 3.0), dtype=np.float64),
             hip_source=hip_source,
@@ -1679,6 +1784,7 @@ def build_lower_chain_rest_fit_v1(
             bone_count=len(bone_names),
             femur_vertex_ids=mesh_groups[f"{side}_femur"],
             patella_vertex_ids=mesh_groups[f"{side}_patella"],
+            shank_vertex_ids=mesh_groups[f"{side}_shank"],
             skin=skin,
             skin_faces=faces,
             faces=np.asarray(asset.faces, dtype=np.int32),

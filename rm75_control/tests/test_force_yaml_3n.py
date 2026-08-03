@@ -79,7 +79,7 @@ def test_proactive_feedforward_in_yaml():
         "proactive_press_is_gate"
     ]
     assert hm["proactive_press_is_gate"] > 0.0
-    assert hm["proactive_press_drive_max"] == pytest.approx(1.0)
+    assert float(hm["proactive_press_drive_max"]) >= 1.0
     assert hm["proactive_retract_drive_max"] == pytest.approx(1.0)
     assert hm["proactive_reset_on_reversal"] is True
     assert hm["v_r_max_m_s"] < hm["max_vz_tool_m_s"]

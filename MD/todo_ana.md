@@ -8,6 +8,44 @@
 当前阶段：骨骼 rest/bind + parent-local pose。血管/神经只验证联动与拓扑不变量。  
 所有候选 `publishable=false`，不得更新 `trusted/latest`。
 
+### 0.0 合成路径重置（2026-08-03 深夜）
+
+**底座（禁止再拆）**：V7 whole-chain + 冻 Blender 14-slot LBS + `pose_map_v1` right-multiply + 铰链 gap 门。  
+**权威**：`outputs/anatomy_retarget/v8_candidates/chain_retarget_v7_node2_001`。**不升** `trusted/latest`。
+
+**已失败并删除（代码 + v9 产物）**：耦合膝 v1（软 gap）/ v2（硬约束 SE3）；mainchain corrective PCA 小网；对应 slim review。v2 曾数字双门 ACCEPT，但 `left_knee_ap` outside heatmap **仍红** → 按图审口径失败；数字 ACCEPT ≠ 过关。共享平移收益见顶（~4 mm），不再开 `coupled_knee_v3`。
+
+**已弃用（禁复活）**：V4 PackC、V8/V9 轴向缩骨主路径、SKEL 肢长硬锚、独立多组 SE3、PCA 小网、SE3 耦合膝。
+
+**Phase K（暂停算法迭代）**：清场完成；下一轮另开，不做本轮实现。
+
+**Phase H（膝图审过后再开）**：腕根绝对皮内（非相对 142）。**BEDLAM peak**=`out_of_support` 诊断。手口径：`copy_142_terminal` ≠ 已修好。
+
+#### 文献可迁移 / 禁搬
+
+| 论文 | 可迁移 | 禁搬 |
+|------|--------|------|
+| [OSSO (CVPR 2022)](https://osso.is.tue.mpg.de/) | 皮→骨放置先验；软组织厚度场思路 | OSSO 骨网格 ≠ Blender 235 解剖 |
+| [SKEL (SA 2023)](https://skel.is.tue.mpg.de/) | 关节位置驱动肢段（非独立 SE3） | 已试「SKEL 肢长硬锚」outside 更差 → 禁复活 |
+| [SKEL-J](https://inria.hal.science/hal-04698470v1/document) | 有界 `ΔJ` 关节中心偏移改股/胫相对长度、保座合 | 仍是 SKEL 网格体系；不可替换 Blender 网格 |
+
+下一轮候选（仅笔记）：用 OSSO/SKEL 回归的 **knee/hip 关节中心** 作 Blender 段端目标（SKEL-J 式有界 `ΔJ`），铰链 gap 硬门 + absolute outside + 图审；实现仍冻 Blender LBS + right-multiply + V7。
+
+#### 0.0.1 多方向 tournament（2026-08-03 深夜）
+
+产物：`outputs/anatomy_retarget/v9_candidates/knee_direction_tournament_v1/`（`matrix_manifest.json` + `slim/`）。
+
+| 方向 | Contact | Outside (mm) | 图审 AP | 判决 |
+|------|---------|--------------|---------|------|
+| baseline_v7 | pass | 18.9 | 仍红 | 权威 |
+| weight_refit | pass | 18.9→17.1 | 仍红 | **唯一数字双门+有增益**；图未过，不升权威 |
+| inward_shared_t | pass | ≈0 | 同 V7 | no-op |
+| patella_only | pass | ≈0 | 同 V7 | no-op |
+| delta_j_centerline | FAIL gap | 18.9→11.1 | 仍红 | outside 最好但铰链开 → REJECT |
+| v8_existing | FAIL gap | 18.9→12.4 | 仍红 | 同族 REJECT |
+
+**结论**：暂无可选数字候选 = `weight_refit`（弱）；**无图审通过者**。权威仍 V7。
+
 ---
 
 ## 零、现状树 / 版本判决（2026-08-03 双审）
@@ -145,9 +183,11 @@ outputs/anatomy_retarget/v8_candidates/v7_vs_v6_knee_proof_001/                 
 | 屈膝股骨/髁 | outside_heatmap 仍有红块；髁前偏皮缘 | **blocking 膝残差未消** |
 | BEDLAM 下肢帧膝 | 髁/关节仍偏外 | 同族问题 |
 | 肘 | 连续、无 V4 爆炸 | 可用（Pack B 级缝隙可接受） |
-| 手 | 骨在皮内，无整指 collapse | V6 门通过，可用 |
+| 手 | capture 抽查无 collapse；**BEDLAM 手未真正修好**（仅相对 142 不回归门） | **勿称已通过**；known gap |
 | `full_anatomy` 全身 | 脏器/血管/神经可见 | 出图目标完成 |
 | Pack C V4 | 已否决爆炸 | 不回归 |
+
+> **口径更正（2026-08-03 深夜）**：V6 `terminal_pose_regression` “手可用”≠ BEDLAM 绝对皮内。手仍是 `copy_142_terminal_hand` 冻结。耦合膝 v1/v2 已删（数字过、图红失败）。权威钉 V7；Phase K 暂停，见 §0.0。
 
 ### 0.11 2026-08-03 V8 bone-first（SKEL 顺序）— 膝仍未过
 
@@ -183,6 +223,36 @@ outputs/anatomy_retarget/v8_candidates/v7_vs_v6_knee_proof_001/                 
 1. 有界 `s∈[0.97,1.03]` 吃不下 mesh−解剖段 ≈32 mm。
 2. 只缩 `Femur_Rot` 不重建髁–平台接触 / 屈膝嵌入（Pinocchio/SKEL 的 inside+locate 未做全）。
 3. 硬门 `min_outside_improve_m=0.5mm` 过松，不能代理目视验收。
+
+### 0.12 2026-08-03 V9 seat+inside embed — **用户否决：股胫铰链断开**
+
+**用户当场指出（`full_anatomy/left_knee_ap`）**：屈膝股–胫衔接明显坏掉（髁–平台开裂/错位），不是“可接受的小穿出”。
+
+**定量对账（pose_213328 左膝）**
+
+| | rest medial gap | **flex medial gap** |
+|---|---|---|
+| V7 | ≈3.1 mm | ≈18.0 mm |
+| V9（scale≈0.922） | ≈2.9 mm | **≈64.4 mm**（炸开） |
+
+根因：只优化 rest 座合 + Femur/Patella outside，轴向缩 `Femur_Rot` 在 **right-multiply 屈膝** 下把髁–平台铰链拉开。数字门（Femur/Patella outside=0）**不能**代理联动验收。
+
+**已改（进行中）**
+
+1. Embed 目标改为：**屈膝 contact violation 第一**；rest 第二；outside 第三。
+2. 硬拒绝：相对 prefit 屈膝 gap 恶化 >10 mm / 绝对 >25 mm 的 scale。
+3. **废除**选中后再向下走 scale 的 refine（正是开裂来源）。
+4. Shadow 接触门增加 flexed vs V7 不回退。
+5. `publishable=false`；**pose 权威仍 V7**。
+
+**双审（对本轮出图）**
+
+- GROK：`reject_for_broken_knee_linkage`（同意用户）。
+- LUNA 先前 `accept_with_known_residual` **作废**——未把股胫开裂当 blocking。
+
+**下一步**
+
+在屈膝座合不差于 V7 的前提下再谈皮内；缩骨若开铰链则宁可 outside 残差。
 
 ---
 

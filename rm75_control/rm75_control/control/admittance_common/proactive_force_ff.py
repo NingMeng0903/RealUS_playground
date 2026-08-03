@@ -51,6 +51,10 @@ class ProactiveFfConfig:
     # over-force escape and is deliberately not gated.
     press_is_gate_start: float = 0.0
     press_is_gate: float = 0.5
+    # When False, under-force press chase is never closed by Dimeas Iₛ
+    # (over-force retract was already ungated). Chatter dissipation is left
+    # to short-lived ΔD_hf in the passive admittance layer.
+    gate_press_on_is: bool = True
     force_scale_min_n: float = 0.30
     force_scale_fraction: float = 0.15
     press_drive_max: float = 1.0
@@ -82,6 +86,12 @@ class ProactiveFfConfig:
                 )
             ),
             press_is_gate=float(p.get("press_is_gate", p.get("proactive_press_is_gate", 0.5))),
+            gate_press_on_is=bool(
+                p.get(
+                    "gate_press_on_is",
+                    p.get("proactive_gate_press_on_is", True),
+                )
+            ),
             force_scale_min_n=float(p.get("force_scale_min_n", 0.30)),
             force_scale_fraction=float(p.get("force_scale_fraction", 0.15)),
             press_drive_max=float(
@@ -119,6 +129,7 @@ class ProactiveForceIntegrator:
         self.last_instability_scale = 1.0
         self.last_reference_accel_m_s2 = 0.0
         self.last_reversal_reset = False
+        self.last_fast_retract_clear = False
 
     def update(
         self,
@@ -130,6 +141,7 @@ class ProactiveForceIntegrator:
         v_force_z: float,
         v_z_cap: float,
         desired_force_n: float = 0.0,
+        retract_fast_hold: bool = False,
     ) -> float:
         cfg = self.cfg
         if not cfg.enabled:
@@ -138,7 +150,17 @@ class ProactiveForceIntegrator:
             self.last_instability_scale = 1.0
             self.last_reference_accel_m_s2 = 0.0
             self.last_reversal_reset = False
+            self.last_fast_retract_clear = False
             return 0.0
+
+        self.last_fast_retract_clear = False
+        # The raw-force veto is a safety correction and must still remove a
+        # stale retracting reference when the trajectory governor has frozen
+        # its reference clock (dt_eff == 0).  It does not advance any
+        # integrator state.
+        if retract_fast_hold and self.v_r < 0.0:
+            self.v_r = 0.0
+            self.last_fast_retract_clear = True
         if dt_eff <= 0.0:
             return self.v_r
 
@@ -169,10 +191,16 @@ class ProactiveForceIntegrator:
         self.last_instability_scale = 1.0
         self.last_reference_accel_m_s2 = 0.0
         self.last_reversal_reset = False
+        # The fast raw-force path is a one-way veto only.  It may remove an
+        # already negative active reference when the raw force has fallen
+        # ahead of the delayed 6 Hz control force, but it cannot command a
+        # press and it never clears the passive admittance velocity.
 
         has_effective_error = in_contact and abs(eff) > 1e-12
         integrate = has_effective_error
         if integrate and cfg.retract_only and eff > 0.0:
+            integrate = False
+        if integrate and retract_fast_hold and eff < 0.0:
             integrate = False
 
         # Do not let the previous direction spend 0.2--0.5 s fighting a new
@@ -196,7 +224,11 @@ class ProactiveForceIntegrator:
                 step = cfg.retract_gain * drive
             else:
                 step = cfg.gain * drive
-            if step > 0.0 and cfg.press_is_gate > 1e-9:
+            if (
+                step > 0.0
+                and cfg.gate_press_on_is
+                and cfg.press_is_gate > 1e-9
+            ):
                 gate_stop = max(float(cfg.press_is_gate), 1e-9)
                 gate_start = float(
                     np.clip(cfg.press_is_gate_start, 0.0, gate_stop)

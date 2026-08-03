@@ -12,9 +12,6 @@ from rm75_control.control.hybrid_motion.controller import AdmittanceConfig, Admi
 def _base_cfg(**over) -> AdmittanceConfig:
     kw = dict(
         contact_threshold_n=0.8,
-        contact_enter_ticks=1,
-        contact_release_n=0.25,
-        contact_release_ticks=40,
         contact_use_fz_only=True,
         admittance_mass_z=1.0,
         admittance_damping_z=25.0,
@@ -24,13 +21,11 @@ def _base_cfg(**over) -> AdmittanceConfig:
         max_velocity=np.array([0.2, 0.2, 0.05, 0.5, 0.5, 0.5]),
         desired_force_ramp_s=0.0,
         var_damping_enabled=False,
-        seek_vz_m_s=0.0,
     )
     kw.update(over)
     cfg = AdmittanceConfig(**kw)
     cfg.proactive_ff = ProactiveFfConfig(enabled=False)
     cfg.adaptive_ke.enabled = False
-    cfg.force_barrier.enabled = False
     return cfg
 
 
@@ -158,24 +153,25 @@ def test_closed_loop_very_hard_surface_no_bounce_cascade():
     # A "bounce cascade" is dozens of contact flips per second (scan_v5 had
     # 142 flips in 45s ≈ 3/s). Post-fix we accept a few initial bounces
     # while K̂_e is learning, then contact must stay latched.
-    assert flips <= 16, (
+    assert flips <= 12, (
         f"bounce cascade: {flips} contact flips in 15s (scan_v5 had 142 in 45s). "
-        "Dimeas inertia + single vz cap must keep re-impact damped."
+        "Stiff-first K̂_e + Dimeas inertia + single vz cap must keep re-impact damped."
     )
-    # Very-hard-surface first-impact peak: Dimeas M inflation trades a slightly
-    # higher first peak (~8.5–9 N at 20 kN/m) for stopping bounce cascades.
-    # Still below scan_v5's 9.4 N (~3.1×) and far below the hardware 18 N peak.
-    assert np.max(np.asarray(fz_hist)) < 9.0, (
+    # Very-hard-surface first-impact peak: acceptable up to ~2.7× setpoint
+    # (still well inside the safe envelope, whereas scan_v5 saw 9.4 N ≈ 3.1×).
+    assert np.max(np.asarray(fz_hist)) < 8.0, (
         f"impact overshoot too large: {np.max(fz_hist):.2f} N"
     )
     assert abs(tail.mean() - 3.0) < 0.8, f"force did not settle at 3N (mean {tail.mean():.2f})"
     assert tail.std() < 0.6, f"force still oscillating (std {tail.std():.2f})"
 
 
-def test_optional_dimeas_5hz_forced_oscillation_inflates_inertia():
-    """When explicitly enabled, a 5 Hz forced oscillation must raise I_s and
-    inflate virtual mass. Production can disable this optional channel for a
-    hardware A/B without deleting the implementation.
+def test_dimeas_5hz_forced_oscillation_inflates_inertia():
+    """A 5 Hz forced fz oscillation (in the contact-resonance band that
+    ``_update_instability_index``'s HP-filter targets) must raise the
+    Dimeas Iₛ index and, via M(t) = m₀ + m_u·Iₛ, inflate the effective
+    virtual mass. Direct guard against the scan_v5.csv 5 Hz limit cycle
+    that a controller with the inertia channel deleted let stand.
     """
     import yaml
     from pathlib import Path
@@ -183,8 +179,6 @@ def test_optional_dimeas_5hz_forced_oscillation_inflates_inertia():
     dt = 0.005
     raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     cfg = AdmittanceConfig.from_dict(raw)
-    cfg.var_damping_enabled = True
-    cfg.var_damping_m_u = 4.0
     ctrl = AdmittanceController(dt, cfg)
     ctrl._in_contact_latched = True
 
@@ -195,6 +189,7 @@ def test_optional_dimeas_5hz_forced_oscillation_inflates_inertia():
     import math as _m
     max_mass = m_base
     max_dimeas_damping = 0.0
+    max_total_damping = ctrl.damping_z_eff
     for i in range(2000):  # 10 s of forced 5 Hz oscillation on raw fz
         t = i * dt
         fz = 3.0 + 3.0 * _m.sin(2.0 * _m.pi * 5.0 * t)
@@ -210,6 +205,7 @@ def test_optional_dimeas_5hz_forced_oscillation_inflates_inertia():
             max_dimeas_damping,
             ctrl.damping_dimeas_z,
         )
+        max_total_damping = max(max_total_damping, ctrl.damping_z_eff)
 
     assert ctrl.instability_index > 0.1, (
         f"5 Hz forced oscillation must raise Iₛ above 0.1, got "
@@ -223,10 +219,8 @@ def test_optional_dimeas_5hz_forced_oscillation_inflates_inertia():
         f"M(t) must be capped at m_max, got {ctrl._m_z_now:.3f}"
     )
     assert max_mass > m_base + 0.2
-    # Production uses the low-effort Dimeas variant: instability raises
-    # virtual inertia only, never an extra damping channel.
-    assert max_dimeas_damping == pytest.approx(0.0)
-    assert cfg.var_damping_d_u == pytest.approx(0.0)
+    assert max_dimeas_damping > 0.2
+    assert max_total_damping > cfg.admittance_damping_z
 
 
 def test_dimeas_disabled_leaves_mass_static():
@@ -248,51 +242,6 @@ def test_dimeas_disabled_leaves_mass_static():
         )
     assert ctrl.instability_index == 0.0
     assert abs(ctrl._m_z_now - cfg.admittance_mass_z) < 1e-9
-
-
-def test_production_detector_freezes_mass_inflation():
-    """Phase-1 yaml: Iₛ may rise, but m_u=0 keeps virtual mass fixed."""
-    import yaml
-    from pathlib import Path
-
-    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
-    cfg = AdmittanceConfig.from_dict(raw)
-    assert cfg.var_damping_enabled is True
-    assert cfg.admittance_mass_z == pytest.approx(2.5)
-    assert cfg.var_damping_m_u == pytest.approx(0.0)
-    assert cfg.var_damping_d_u == pytest.approx(0.0)
-    assert cfg.admittance_damping_z == pytest.approx(50.0)
-
-
-def test_production_m_u_zero_keeps_mass_static_under_oscillation():
-    """Shipped m_u=0: 5 Hz force oscillation must not inflate mass_z_eff."""
-    import math as _m
-    import yaml
-    from pathlib import Path
-
-    dt = 0.005
-    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
-    cfg = AdmittanceConfig.from_dict(raw)
-    ctrl = AdmittanceController(dt, cfg)
-    m0 = float(cfg.admittance_mass_z)
-    for i in range(2000):
-        t = i * dt
-        fz = 3.0 + 3.0 * _m.sin(2.0 * _m.pi * 5.0 * t)
-        f_ext = np.zeros(6)
-        f_ext[2] = fz
-        f_des = np.zeros(6)
-        f_des[2] = 3.0
-        ctrl.compute_velocity_command(
-            np.zeros(6),
-            np.zeros(6),
-            np.zeros(6),
-            f_ext,
-            f_des,
-            in_contact=True,
-            f_ext_raw=f_ext,
-        )
-    assert ctrl.instability_index > 0.1
-    assert ctrl.mass_z_eff == pytest.approx(m0, abs=1e-9)
 
 
 def test_closed_loop_soft_surface_converges():
@@ -320,12 +269,13 @@ def test_closed_loop_soft_surface_converges():
 
 
 def test_production_stack_tracks_moving_surface_at_1n_and_5n():
-    """Phase-1 fixed-D stack must track surface velocity; force bias may be
-    larger than adaptive-B methods (Duan Phase 2) until damping adapts.
+    """The shipped 8-DoF stack (adaptive K̂e + Dimeas both enabled) must
+    follow a compliant surface in either normal direction without restoring
+    the old target-force-dependent response.
 
-    A constant-velocity surface is used: after the transient, TCP velocity
-    must match it. Absolute force error bounds are relaxed vs. the old
-    low-D / variable-M baseline.
+    A constant-velocity surface is deliberately used here: after the
+    transient, the TCP velocity must match it and the residual force bias must
+    remain comparable in press/retract at both 1 N and 5 N.
     """
     import yaml
     from pathlib import Path
@@ -340,6 +290,9 @@ def test_production_stack_tracks_moving_surface_at_1n_and_5n():
     for desired in (1.0, 5.0):
         for surface_velocity in (-0.01, 0.01):
             cfg = AdmittanceConfig.from_dict(raw)
+            # Surface-velocity match uses the passive+proactive chase; DOB is
+            # covered separately for steady-force bias rejection.
+            cfg.force_dob.enabled = False
             ctrl = AdmittanceController(dt, cfg)
             tcp_z = desired / ke_true
             surface_z = 0.0
@@ -381,16 +334,22 @@ def test_production_stack_tracks_moving_surface_at_1n_and_5n():
                 float(np.mean(velocity_tail)),
             )
 
-    assert results[(1.0, -0.01)][0] <= 0.85
-    assert results[(1.0, 0.01)][0] <= 0.85
-    assert results[(5.0, -0.01)][0] <= 0.85
-    assert results[(5.0, 0.01)][0] <= 0.85
+    assert results[(1.0, -0.01)][0] <= 0.20
+    assert results[(1.0, 0.01)][0] <= 0.20
+    assert results[(5.0, -0.01)][0] <= 0.50
+    assert results[(5.0, 0.01)][0] <= 0.50
     for desired in (1.0, 5.0):
+        err_negative = results[(desired, -0.01)][0]
+        err_positive = results[(desired, 0.01)][0]
+        assert max(err_negative, err_positive) <= 1.25 * min(
+            err_negative,
+            err_positive,
+        )
         assert results[(desired, -0.01)][1] == pytest.approx(
             -0.01,
-            abs=5e-4,
+            abs=2e-4,
         )
         assert results[(desired, 0.01)][1] == pytest.approx(
             0.01,
-            abs=5e-4,
+            abs=2e-4,
         )

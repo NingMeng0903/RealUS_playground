@@ -46,10 +46,15 @@ class _FakeObserver:
     def read(self):
         with self._lock:
             self._seq += 1
+            force = getattr(
+                self,
+                "_force",
+                np.array([0.0, 0.0, 1.5, 0.0, 0.0, 0.0]),
+            )
             snap = AsyncStateSnapshot(
                 pose=np.array([0.1, 0.2, 0.3, 0.0, 0.0, 0.0]),
                 q_deg=self._q_deg.copy(),
-                force_raw=np.array([0.0, 0.0, 1.5, 0.0, 0.0, 0.0]),
+                force_raw=np.asarray(force, dtype=float).copy(),
                 t_s=time.monotonic(),
                 ok=True,
                 seq=self._seq,
@@ -170,7 +175,69 @@ def test_expand_q_matches_relay_rail():
     assert direct[0] == pytest.approx(0.07)
 
 
+class _FakeForceObs:
+    def __init__(self, wrench: np.ndarray) -> None:
+        self.wrench = np.asarray(wrench, dtype=float)
+        self.n = 0
+
+    def update(self, t_s, pose_l7, force_raw):
+        del t_s, pose_l7, force_raw
+        self.n += 1
+        return np.zeros(6), self.wrench.copy()
+
+    def ready_causal(self) -> bool:
+        return self.n >= 2
+
+
+class _FakeKin:
+    def frame_pose(self, q8, frame: str):
+        del q8, frame
+        return np.zeros(6)
+
+    def wrench_link7_to_tcp(self, wrench):
+        return np.asarray(wrench, dtype=float).copy()
+
+    def fk_pose(self, q8):
+        del q8
+        return np.array([0.1, 0.2, 0.3, 0.0, 0.0, 0.0])
+
+
+def test_idle_f_ext_uses_compensator_not_raw(relay_name):
+    """Idle viz must not publish raw sensor Z (tool-weight jump when C stops)."""
+    from rm75_control.control.admittance_common.state_relay import (
+        ForceExtBus,
+        f_ext_name_for_relay,
+    )
+
+    obs = _FakeObserver()
+    # Raw sensor looks like ~3.5 N tool weight on Z.
+    obs._force = np.array([0.0, 0.0, 3.5, 0.0, 0.0, 0.0])
+    bus = RobotStateBus(None, observer=obs)
+    pub = StateRelayPublisher(
+        bus, name=relay_name, hz=200.0, rail_m_fn=lambda: 0.0, kin=_FakeKin()
+    )
+    pub.set_force_observer(_FakeForceObs(np.array([0.0, 0.0, 0.4, 0.0, 0.0, 0.0])))
+    pub.start()
+    try:
+        # Drive a few UDP-style publishes with advancing seq.
+        for _ in range(4):
+            snap = obs.read()
+            # Simulate pre-fix UDP snaps that always carried seq=0.
+            snap.seq = 0
+            pub._publish_snap(snap, source="udp")
+        fbus = ForceExtBus(name=f_ext_name_for_relay(relay_name))
+        ok, seq, _t, f_ext = fbus.read()
+        assert ok
+        assert seq >= 4  # must keep publishing even when snap.seq stays 0
+        assert f_ext[2] == pytest.approx(0.4)
+        assert f_ext[2] != pytest.approx(3.5)
+        fbus.stop()
+    finally:
+        pub.stop()
+
+
 def test_f_ext_on_separate_shm_does_not_shift_rail(relay_name):
+
     from rm75_control.control.admittance_common.state_relay import (
         ForceExtBus,
         f_ext_name_for_relay,
