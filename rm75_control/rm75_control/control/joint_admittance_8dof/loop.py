@@ -458,9 +458,15 @@ class JointIkController:
         manipulability_active: bool | None = None,
         centering_sigma_fade: bool = True,
         sigma_min: float | None = None,
+        sigma_escape_ref: float | None = None,
         centering_gain_scale: float = 1.0,
         max_qdot_frac_override: float | None = None,
     ) -> np.ndarray:
+        sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
+        if sigma_escape_ref is None:
+            sigma_escape_ref = sigma_ref * float(
+                getattr(self.cfg.qp, "sigma_escape_ref_scale", 1.25)
+            )
         qdot0 = self.secondary.compose(
             q,
             qdot_ff,
@@ -472,7 +478,8 @@ class JointIkController:
             sigma_min=(
                 self.last_sigma_min if sigma_min is None else float(sigma_min)
             ),
-            sigma_ref=self.cfg.qp.sr_damping.sigma_ref,
+            sigma_ref=sigma_ref,
+            sigma_escape_ref=float(sigma_escape_ref),
             centering_suppressed=self._centering_suppressed,
             centering_sigma_fade=centering_sigma_fade,
             manipulability_active=(
@@ -528,7 +535,7 @@ class JointIkController:
         # regressed (braking on 100 % of ticks, σ hovers ~0.08-0.12 at D).
         sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
         sigma_escape_ref = sigma_ref * float(
-            getattr(self.cfg.qp, "sigma_escape_ref_scale", 2.0)
+            getattr(self.cfg.qp, "sigma_escape_ref_scale", 1.25)
         )
         J_pre = self.kin.jacobian(q_prev)
         sigma_pre = float(self.kin.singular_values(J_pre).min())
@@ -711,7 +718,13 @@ class JointIkController:
             # recruitment alone was too weak (hardware: σ→0, 4.7 s freeze).
             # Uses the escape threshold: ∇μ ascent is the one channel that can
             # act instantly, so it must be armed before the brake bites.
-            if sigma_escape_ref > 1e-9 and sigma_now < sigma_escape_ref:
+            # Skip while centering recovery is latched: otherwise 3× centering
+            # fights full ∇μ and produces scan hesitation / TCP jitter.
+            if (
+                sigma_escape_ref > 1e-9
+                and sigma_now < sigma_escape_ref
+                and not self._centering_recovery_active
+            ):
                 manip_for_saturation = True
 
         r = self.core.step(
@@ -726,6 +739,7 @@ class JointIkController:
                     self._rail_ext_active and self._rail_mode == RailMode.COUPLED
                 ),
                 sigma_min=sigma_pre,
+                sigma_escape_ref=sigma_escape_ref,
                 centering_gain_scale=centering_gain_scale,
                 max_qdot_frac_override=(
                     self.cfg.centering_recovery_max_qdot_frac
@@ -1209,83 +1223,6 @@ def _print_move_plan_summary(
         f"(mode={ext_mode}; σ guardrail only)",
         flush=True,
     )
-
-
-def _print_tcp_frame_diagnose(
-    inner: JointIkController,
-    *,
-    q_meas: np.ndarray,
-    q_target: np.ndarray | None,
-    phase_label: str,
-    verbose: bool = True,
-) -> None:
-    """Read-only: gripper-TCP fk_pose vs link_7 vs (optional) q_target FK.
-
-    Catches the ~220 mm flange-vs-gripper offset regression: if pose_d / scan
-    origin was built on link_7 instead of the synced gripper TCP, the print
-    shows a ~220 mm Z (or tool-Z) gap between fk_pose and frame_pose(link_7).
-    """
-    if not verbose:
-        return
-    label = str(phase_label or "").lower()
-    if not (
-        label.startswith("move")
-        or "scan" in label
-        or "hybrid" in label
-    ):
-        return
-    q = np.asarray(q_meas, dtype=float).reshape(-1)
-    try:
-        pose_tcp = np.asarray(inner.kin.fk_pose(q), dtype=float).reshape(6)
-        pose_l7 = np.asarray(inner.kin.frame_pose(q, "link_7"), dtype=float).reshape(6)
-    except Exception as exc:
-        print(f"  tcp diagnose: FK failed ({exc})", flush=True)
-        return
-    d_mm = (pose_tcp[:3] - pose_l7[:3]) * 1000.0
-    off = getattr(inner.kin, "tcp_offset_pose", None)
-    off_note = ""
-    if off is not None:
-        try:
-            o = np.asarray(off, dtype=float).reshape(6)
-            off_note = (
-                f" | tool_offset xyz(mm)={np.round(o[:3] * 1000.0, 1).tolist()} "
-                f"rpy(deg)={np.round(np.degrees(o[3:6]), 1).tolist()}"
-            )
-        except Exception:
-            pass
-    print(
-        f"  tcp diagnose [{phase_label}]: "
-        f"gripper-TCP xyz={np.round(pose_tcp[:3] * 1000.0, 1).tolist()} mm | "
-        f"link_7 xyz={np.round(pose_l7[:3] * 1000.0, 1).tolist()} mm | "
-        f"Δ(tcp-l7)={np.round(d_mm, 1).tolist()} mm "
-        f"(|Δ|={float(np.linalg.norm(d_mm)):.1f} mm){off_note}",
-        flush=True,
-    )
-    # Tool offset cache / sync sanity: |Δ| should be ~gripper Z (~220 mm), not ~0.
-    if float(np.linalg.norm(d_mm)) < 5.0:
-        print(
-            "  tcp diagnose WARN: gripper-TCP ≈ link_7 — tool offset may be "
-            "missing/unsynced (force-hybrid will look ~220 mm behind).",
-            flush=True,
-        )
-    print(
-        "  tcp diagnose: position loop uses kin.fk_pose (gripper TCP); "
-        "force uses link_7 → wrench_link7_to_tcp (keep as-is).",
-        flush=True,
-    )
-    if q_target is not None:
-        qt = np.asarray(q_target, dtype=float).reshape(-1)
-        if qt.size == q.size:
-            try:
-                pose_d = np.asarray(inner.kin.fk_pose(qt), dtype=float).reshape(6)
-                print(
-                    f"  tcp diagnose: pose_d=fk_pose(q_target) "
-                    f"xyz={np.round(pose_d[:3] * 1000.0, 1).tolist()} mm "
-                    f"(should be gripper TCP, not flange)",
-                    flush=True,
-                )
-            except Exception:
-                pass
 
 
 # ---------------------------------------------------------------------------
@@ -1904,13 +1841,6 @@ def run_joint_admittance_phases(
                         rail_bridge=rail_bridge,
                         verbose=verbose,
                     )
-                    _print_tcp_frame_diagnose(
-                        inner,
-                        q_meas=q_meas,
-                        q_target=getattr(getattr(phase.outer, "reference", None), "q_target", None),
-                        phase_label=str(phase.label or ""),
-                        verbose=verbose,
-                    )
 
                     obs = phase.force_observer if phase.force_observer is not None else force_observer
                     phase_t0 = time.perf_counter()
@@ -1925,12 +1855,6 @@ def run_joint_admittance_phases(
                     scale = 1.0
                     phase_arrived = False
                     prev_pose_cmd = inner.kin.fk_pose(inner.q_cmd)
-                    # Scan-phase debug: throttled state dump for tuning force-hybrid.
-                    _is_scan = bool(phase.label) and (
-                        "scan" in str(phase.label) or "hybrid" in str(phase.label)
-                    )
-                    _scan_log_t = 0.0
-                    _scan_origin_pose = None
                     # Encoder-derived TCP velocity for diagnostics. Only
                     # update on a fresh UDP sequence; reusing a frame must not
                     # create a fake zero-velocity sample.
@@ -2088,20 +2012,6 @@ def run_joint_admittance_phases(
                         )
                         if rail_bridge is not None:
                             rail_bridge.set_target_m(float(inner.q_cmd[0]))
-                        # Throttled rail follow debug (move→D + scan) for C iteration.
-                        if (
-                            verbose
-                            and rail_bridge is not None
-                            and rail_bridge.enabled
-                            and now - jump_warn_t >= 0.5
-                        ):
-                            jump_warn_t = now
-                            print(
-                                f"  rail follow tgt={inner.q_cmd[0]*1000:.1f} "
-                                f"meas={rail_bridge.measured_m*1000:.1f} mm "
-                                f"phase={phase.label} t_ref={t_ref:.2f}s",
-                                flush=True,
-                            )
                         outer_err_mm = getattr(phase.outer, "last_err_mm", None)
                         if outer_err_mm is not None:
                             step.cart_err_mm = outer_err_mm
@@ -2175,29 +2085,6 @@ def run_joint_admittance_phases(
                             )
                         if on_step is not None:
                             on_step(phase.label, t_ref, step, pose_pin, f_ext, t_wall)
-
-                        # Scan-phase debug log (throttled ~1 Hz): tool-Y sweep, rail, force.
-                        if _is_scan and (t_wall - _scan_log_t) >= 1.0:
-                            _scan_log_t = t_wall
-                            if _scan_origin_pose is None:
-                                _scan_origin_pose = pose_pin.copy()
-                            dy_cmd_mm = float((pose_cmd[1] - _scan_origin_pose[1]) * 1000.0)
-                            dy_meas_mm = float((pose_pin[1] - _scan_origin_pose[1]) * 1000.0)
-                            rail_cmd_mm = float(inner.q_cmd[0] * 1000.0)
-                            rail_meas_mm = (
-                                float(rail_bridge.measured_m * 1000.0)
-                                if rail_bridge is not None and rail_bridge.enabled
-                                else rail_cmd_mm
-                            )
-                            fz = float(f_ext[2])
-                            print(
-                                f"  [scan t={t_ref:5.1f}s] toolY cmd={dy_cmd_mm:+7.1f} "
-                                f"meas={dy_meas_mm:+7.1f} mm | rail cmd={rail_cmd_mm:6.1f} "
-                                f"meas={rail_meas_mm:6.1f} mm | Fz={fz:+5.2f}N "
-                                f"| track={step.cart_err_mm:5.1f}mm gov={scale:.2f} "
-                                f"σ={step.sigma_min:.3f}",
-                                flush=True,
-                            )
 
                         if phase.wait_until is not None:
                             n_wait = len(inspect.signature(phase.wait_until).parameters)

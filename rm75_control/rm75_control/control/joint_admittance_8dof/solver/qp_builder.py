@@ -134,16 +134,10 @@ class QpConfig:
     # Below this σ_min, Cartesian twist (incl. force) is scaled down so
     # nullspace escape / rail recruitment can win over force-driven collapse.
     twist_sigma_floor: float = 0.08
-    # σ at which *avoidance* (rail σ-escape + ∇μ ascent) starts, as a multiple
-    # of ``sr_damping.sigma_ref``.  Avoidance and the twist brake used to share
-    # sigma_ref, which made the whole singularity story purely reactive: at D
-    # σ_min sits at ~0.08-0.12 with σ_ref = 0.08, so nothing moved until σ had
-    # already collapsed, and then the brake (down to 8 % twist) and the escape
-    # fired on the same tick — the arm went stiff while the rail, limited to
-    # a_max_rail = 0.3 m/s^2, needed ~0.17 s just to reach 5 cm/s.  Raising
-    # sigma_ref itself was tried and made it worse: it brakes 100 % of ticks.
-    # Avoidance must lead the brake, so it gets its own (earlier) threshold.
-    sigma_escape_ref_scale: float = 2.0
+    # Avoidance onset = sigma_ref * scale.  Must lead the twist brake (>1) so
+    # rail/∇μ can accelerate before Cartesian is clamped, but stay below the
+    # healthy-D band (σ≈0.11–0.13) — 2.0 kept D permanently escaping.
+    sigma_escape_ref_scale: float = 1.25
 
 
 class _ProxQpWbcBackend:

@@ -25,7 +25,7 @@ from src.projects.genesis_ue_sync.anatomy_retarget.whole_chain_rest_fit_v1 impor
 ROOT = Path(__file__).resolve().parents[1]
 OPERATOR = ROOT / "outputs/anatomy_retarget/v8_candidates/rebuild_012/source_operator_v8"
 CALIBRATION = (
-    ROOT / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_005"
+    ROOT / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_006"
     / "anatomical_calibration_v1"
 )
 MODEL = ROOT / "ref_code_library/EasyMocap/data/smplx/smplx/SMPLX_MALE.pkl"

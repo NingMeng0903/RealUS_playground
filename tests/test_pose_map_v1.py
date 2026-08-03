@@ -34,7 +34,7 @@ from src.projects.genesis_ue_sync.anatomy_retarget.whole_chain_rest_fit_v1 impor
 ROOT = Path(__file__).resolve().parents[1]
 OPERATOR = ROOT / "outputs/anatomy_retarget/v8_candidates/rebuild_012/source_operator_v8"
 CALIBRATION = (
-    ROOT / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_005"
+    ROOT / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_006"
     / "anatomical_calibration_v1"
 )
 ORACLE = (
@@ -91,7 +91,7 @@ def matrix():
     return calibration, values
 
 
-def test_two_beta_pose_map_is_single_authority_parent_local(matrix) -> None:
+def test_two_beta_pose_map_is_single_authority_right_multiply(matrix) -> None:
     calibration, values = matrix
     for value, asset, pose_map, _pose in values.values():
         report = check_pose_map_v1(pose_map, value, source_asset=asset)
@@ -100,11 +100,47 @@ def test_two_beta_pose_map_is_single_authority_parent_local(matrix) -> None:
             pose_map.controller_motion_modes, calibration.controller_motion_modes
         )
         assert len(pose_map.controller_motion_modes) == 235
-        assert report["parent_local_mapping_only"] is True
+        assert report["pose_composition"] == "right_multiply_bind"
         assert report["pose_time_search"] is False
         assert report["forbidden_global_modes"] == []
         assert max(report["functional_axis_split_error_deg"]) <= 3.0
 
+
+def test_posed_terminal_hands_match_142_materialize(matrix) -> None:
+    from src.projects.genesis_ue_sync.anatomy_retarget.terminal_pose_regression_v6 import (
+        evaluate_terminal_pose_regression_v6,
+    )
+    from src.projects.genesis_ue_sync.anatomy_retarget.smplx_body_surface_v7 import (
+        load_smplx_model_v7,
+    )
+
+    _calibration, values = matrix
+    model = load_smplx_model_v7(MODEL)
+    for value, asset, pose_map, pose in values.values():
+        report = evaluate_terminal_pose_regression_v6(
+            value,
+            pose_map,
+            asset=asset,
+            smplx_model=model,
+            poses={
+                "tpose": np.zeros((55, 3), dtype=np.float32),
+                "pose_capture": pose,
+            },
+        )
+        assert report["passed"] is True, json.dumps(
+            {
+                "hard_failures": report["hard_failures"],
+                "cells": {
+                    name: {
+                        "delta": cell["hand_foot_mean_delta"],
+                        "collapse": len(cell["collapse_failures"]),
+                    }
+                    for name, cell in report["cells"].items()
+                },
+            },
+            indent=2,
+            sort_keys=True,
+        )
 
 def test_zero_pose_reconstructs_the_complete_candidate_rest(matrix) -> None:
     _calibration, values = matrix
@@ -163,40 +199,41 @@ def test_recorded_pose_moves_bones_and_tubes_on_target_path(matrix) -> None:
         ) > 0.0
 
 
-def test_new_bind_changes_only_the_bind_not_the_142_local_pose_basis(matrix) -> None:
+def test_right_multiply_keeps_identity_bind_bones_on_142_globals(matrix) -> None:
+    """Bones with B_target==B_source must pose exactly as the 142 source globals."""
+
     _calibration, values = matrix
-    for _value, asset, pose_map, pose in values.values():
+    for value, asset, pose_map, pose in values.values():
         target_global = apply_pose_map_global(
             pose_map, source_asset=asset, pose_axis_angle=pose
         )
-        source_global = apply_pose_map_global(
-            type(pose_map)(
-                **{
-                    **pose_map.__dict__,
-                    "target_bind_global": pose_map.source_bind_global,
-                    "target_bind_local": pose_map.source_bind_local,
-                    "target_inverse_bind": np.linalg.inv(pose_map.source_bind_global),
-                    "change_of_bind_basis": np.tile(
-                        np.eye(4), (len(pose_map.bone_names), 1, 1)
-                    ),
-                }
-            ),
-            source_asset=asset,
-            pose_axis_angle=pose,
+        from src.projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
+            source_bone_posed_global,
         )
-        target_local = np.empty_like(target_global)
-        source_local = np.empty_like(source_global)
-        for bone, parent in enumerate(pose_map.bone_parents.tolist()):
-            target_local[bone] = (
-                target_global[bone]
-                if parent < 0
-                else np.linalg.inv(target_global[parent]) @ target_global[bone]
+
+        source_global = source_bone_posed_global(asset, pose)
+        identity_bones = np.where(
+            np.all(
+                np.isclose(
+                    pose_map.target_bind_global,
+                    pose_map.source_bind_global,
+                    atol=1.0e-8,
+                    rtol=0.0,
+                ),
+                axis=(1, 2),
             )
-            source_local[bone] = (
-                source_global[bone]
-                if parent < 0
-                else np.linalg.inv(source_global[parent]) @ source_global[bone]
+        )[0]
+        assert len(identity_bones) > 100
+        np.testing.assert_allclose(
+            target_global[identity_bones],
+            source_global[identity_bones],
+            atol=3.0e-6,
+            rtol=0.0,
+        )
+        # Wrist terminals stay on the copy-142 bind, so they must match source.
+        names = [str(name) for name in pose_map.bone_names.tolist()]
+        for wrist in ("Wrist_Rotate_L", "Wrist_Rotate_R1"):
+            index = names.index(wrist)
+            np.testing.assert_allclose(
+                target_global[index], source_global[index], atol=3.0e-6, rtol=0.0
             )
-        target_basis = np.linalg.inv(pose_map.target_bind_local) @ target_local
-        source_basis = np.linalg.inv(pose_map.source_bind_local) @ source_local
-        np.testing.assert_allclose(target_basis, source_basis, atol=3.0e-6, rtol=0.0)

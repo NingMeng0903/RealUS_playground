@@ -140,7 +140,7 @@ source env.sh
 
 # 示例：到 D 后力控 Y 扫描（需 §1 力补偿标定）
 # 默认 --d-target joints：示教 q 不变，pose_d=Pin FK(URDF 探头 TCP)，笛卡尔 SRS 发布
-# （configs 里 sync_tcp_from_robot: false，勿被示教器工具覆盖）
+# （configs 默认 sync_tcp_from_robot: true，力混合方向跟示教器当前工具）
 python apps/joint_admittance_8dof/d_sin_tool_y.py \
   --config configs/joint_admittance_8dof.yaml \
   --d-target joints --move-mode cartesian \

@@ -103,3 +103,178 @@ def test_recovery_gain_is_arm_only_and_raises_the_soft_velocity_cap() -> None:
     assert recovery[0] == pytest.approx(0.0)
     assert np.max(np.abs(normal[1:])) == pytest.approx(0.2)
     assert np.max(np.abs(recovery[1:])) == pytest.approx(0.35)
+
+
+class _FakeManip:
+    """Unit ∇μ along +J5 so we can see centering still pull −J5 toward 0."""
+
+    def __call__(self, q, *, sigma_min=1.0, exclude_rail=True):
+        out = np.zeros_like(q, dtype=float)
+        out[5] = 0.5  # push wrist further positive (toward flip)
+        return out
+
+
+def test_manip_active_still_keeps_centering_pull_on_wrist() -> None:
+    """Escape-zone ∇μ must ADD to centering, never replace the attractor."""
+    task = _task()
+    composer = SecondaryComposer(
+        task,
+        None,
+        manipulability=_FakeManip(),
+        v_max=np.ones(8) * 10.0,
+        max_qdot_frac=1.0,
+    )
+    # J5 at +120deg-ish with q_nominal=0 → centering alone wants negative qdot[5].
+    q = np.zeros(8)
+    q[5] = np.deg2rad(120.0)
+    center_only = composer.compose(
+        q, None, None, arm_suppressed=True, manipulability_active=False
+    )
+    blended = composer.compose(
+        q, None, None, arm_suppressed=True, manipulability_active=True
+    )
+    assert center_only[5] < 0.0
+    # Attractive component still present: blend is not pure +0.5 manip.
+    assert blended[5] < 0.5
+    # And not identical to center-only (manip added).
+    assert blended[5] > center_only[5]
+
+
+def test_centering_yields_to_manip_in_escape_band() -> None:
+    """When manip is on below σ_escape_ref, only centering is σ-scaled."""
+    task = _task()
+    composer = SecondaryComposer(
+        task,
+        None,
+        manipulability=_FakeManip(),
+        v_max=np.ones(8) * 10.0,
+        max_qdot_frac=1.0,
+    )
+    q = np.zeros(8)
+    q[5] = np.deg2rad(120.0)
+    sigma_escape_ref = 0.10
+    sigma_min = 0.05  # yield = 0.5
+    center_only = composer.compose(
+        q, None, None, arm_suppressed=True, manipulability_active=False
+    )
+    healthy = composer.compose(
+        q,
+        None,
+        None,
+        arm_suppressed=True,
+        manipulability_active=True,
+        sigma_min=1.0,
+        sigma_escape_ref=sigma_escape_ref,
+    )
+    yielded = composer.compose(
+        q,
+        None,
+        None,
+        arm_suppressed=True,
+        manipulability_active=True,
+        sigma_min=sigma_min,
+        sigma_escape_ref=sigma_escape_ref,
+    )
+    # Healthy σ: no yield — same as prior additive blend.
+    assert healthy[5] == pytest.approx(center_only[5] + 0.5)
+    # Escape band: centering halved, manip still +0.5.
+    assert yielded[5] == pytest.approx(0.5 * center_only[5] + 0.5)
+
+
+def test_centering_yield_floor_keeps_anti_flip_attractor() -> None:
+    """Yield never drops below 0.25 so the wrist attractor cannot vanish."""
+    task = _task()
+    composer = SecondaryComposer(
+        task,
+        None,
+        manipulability=_FakeManip(),
+        v_max=np.ones(8) * 10.0,
+        max_qdot_frac=1.0,
+    )
+    q = np.zeros(8)
+    q[5] = np.deg2rad(120.0)
+    center_only = composer.compose(
+        q, None, None, arm_suppressed=True, manipulability_active=False
+    )
+    deep = composer.compose(
+        q,
+        None,
+        None,
+        arm_suppressed=True,
+        manipulability_active=True,
+        sigma_min=0.01,
+        sigma_escape_ref=0.10,
+    )
+    assert deep[5] == pytest.approx(0.25 * center_only[5] + 0.5)
+    # Floor still leaves a negative centering pull against +manip.
+    assert deep[5] < 0.5
+
+
+def test_j6_centering_not_yielded_in_escape_band() -> None:
+    """J6 keeps full pull toward nominal during escape; proximal joints yield.
+
+    |J6|≈0 is wrist singularity; yielding J6 with the rest let scans jitter
+    when the wrist went straight (hw run_20260803_151521).
+    """
+    task = JointCenteringTask(
+        np.array([0.0] + [-2.0] * 7),
+        np.array([0.8] + [2.0] * 7),
+        NullspaceTaskConfig(
+            k_center=1.0,
+            k_limit=0.0,
+            weights=np.array([0.0, 1.0, 1.0, 1.0, 1.0, 2.5, 2.5, 1.0]),
+            q_nominal_rad=np.deg2rad(
+                np.array([0.0, 0.0, -45.0, 0.0, 90.0, 0.0, 45.0, 0.0])
+            ),
+        ),
+    )
+    composer = SecondaryComposer(
+        task,
+        None,
+        manipulability=_FakeManip(),
+        v_max=np.ones(8) * 10.0,
+        max_qdot_frac=1.0,
+    )
+    q = np.deg2rad(np.array([0.0, 0.0, -45.0, 0.0, 90.0, 0.0, 5.0, 0.0]))
+    center_only = composer.compose(
+        q, None, None, arm_suppressed=True, manipulability_active=False
+    )
+    assert center_only[6] > 0.0  # pull J6 5° → 45°
+    yielded = composer.compose(
+        q,
+        None,
+        None,
+        arm_suppressed=True,
+        manipulability_active=True,
+        sigma_min=0.05,
+        sigma_escape_ref=0.10,
+    )
+    # J6 full centering (manip does not touch index 6 in _FakeManip).
+    assert yielded[6] == pytest.approx(center_only[6])
+    # Proximal J4 still σ-yielded (half at σ=0.05 / 0.10).
+    assert yielded[4] == pytest.approx(0.5 * center_only[4])
+
+
+def test_recovery_policy_does_not_force_manip_while_latched() -> None:
+    """Mirrors loop.py: centering recovery owns nullspace; do not force ∇μ on.
+
+    Inline condition under test (kept here so a refactor that re-enables the
+    fight is caught without spinning up the full WBC):
+        force_manip = (sigma < escape_ref) and (not centering_recovery_active)
+    """
+    sigma_escape_ref = 0.10
+    sigma_now = 0.05
+    centering_recovery_active = True
+    force_manip = (
+        sigma_escape_ref > 1e-9
+        and sigma_now < sigma_escape_ref
+        and not centering_recovery_active
+    )
+    assert force_manip is False
+    centering_recovery_active = False
+    force_manip = (
+        sigma_escape_ref > 1e-9
+        and sigma_now < sigma_escape_ref
+        and not centering_recovery_active
+    )
+    assert force_manip is True

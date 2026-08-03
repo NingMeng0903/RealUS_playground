@@ -617,7 +617,7 @@ def attach_hybrid_posture_toggle(
     q_left: np.ndarray,
     q_right: np.ndarray,
     period_s: float,
-    verbose: bool = True,
+    verbose: bool = False,
     filter_alpha: float = 0.02,
     ramp_duration_s: float = 4.0,
     k_center_scale: float = 2.5,
@@ -692,7 +692,7 @@ def attach_scan_psi_toggle(
     psi_left: float,
     psi_right: float,
     period_s: float,
-    verbose: bool = True,
+    verbose: bool = False,
     filter_alpha: float = 0.01,
     ramp_duration_s: float = 4.0,
     k_psi_scale: float = 0.35,
@@ -989,7 +989,7 @@ def execute_sin_tool_y_program(
     built: BuiltSinToolYProgram | None = None,
     on_step: Callable | None = None,
     stop_check: Callable[[], bool] | None = None,
-    verbose: bool = True,
+    verbose: bool = False,
     rail_bridge=None,
 ) -> LoopResult:
     """Run WBC on window A (direct UDP feedback + direct CANFD)."""

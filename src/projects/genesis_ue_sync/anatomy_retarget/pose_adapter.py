@@ -168,12 +168,31 @@ def load_easymocap_smplx_fit_drive(
     return pose55, Th
 
 
+def smplh156_to_smplx55(pose156: Any) -> np.ndarray:
+    """Map SMPL-H axis-angle (52*3=156) to SMPL-X runtime [55, 3].
+
+    SMPL-H layout is body22 + left_hand15 + right_hand15.  SMPL-X inserts three
+    face joints (jaw/leye/reye) after the body block; those stay zero here.
+    """
+    flat = np.asarray(pose156, dtype=np.float32).reshape(-1)
+    if flat.size != 156:
+        raise ValueError(f"Expected SMPL-H 156D pose, got {flat.size}")
+    joints = flat.reshape(52, 3)
+    out = np.zeros((SMPLX_RUNTIME_JOINT_COUNT, 3), dtype=np.float32)
+    out[:22] = joints[:22]
+    out[25:40] = joints[22:37]
+    out[40:55] = joints[37:52]
+    out[22] = 0.0
+    return out
+
+
 def pose_to_smplx55_axis_angle(pose: Any) -> np.ndarray:
     """Return a [55, 3] SMPL-X runtime pose from common axis-angle layouts.
 
     Supported inputs:
     - 72D SMPL axis-angle: copy root + first 21 body joints, ignore SMPL hand end joints.
     - 87D EasyMocap SMPL-X: decode body, face and both six-component hand PCA vectors.
+    - 156D SMPL-H full axis-angle: body22 + hands30, face joints zero-padded.
     - 165D SMPL-X full axis-angle: reshape directly to 55 joints.
     - [J, 3] arrays: copy up to 55 joints.
     """
@@ -195,6 +214,8 @@ def pose_to_smplx55_axis_angle(pose: Any) -> np.ndarray:
         # This generic adapter has no separate EasyMocap ``Rh`` argument. Callers
         # that have ``Rh`` should use ``easymocap_fit_to_smplx55`` directly.
         return easymocap_fit_to_smplx55(flat[:3], flat)
+    if flat.size == 156:
+        return smplh156_to_smplx55(flat)
     if flat.size == 165:
         out = flat.reshape(SMPLX_RUNTIME_JOINT_COUNT, 3).astype(np.float32)
         out[22] = 0.0

@@ -363,7 +363,7 @@ def compute_move_plan(
     v_scale: float,
     duration_s: float | None = None,
     move_mode: Literal["joint", "cartesian"] = "joint",
-    peak_joint_v_frac: float = 0.50,
+    peak_joint_v_frac: float = 0.80,
     max_lin_vel_m_s: float = 0.4,
     duration_min_s: float = 2.5,
     duration_max_s: float = 20.0,

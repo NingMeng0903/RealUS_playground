@@ -61,6 +61,9 @@ COLORS = {
     "bones_translucent": (0.93, 0.88, 0.72, 0.35),
     "outside": (1.0, 0.05, 0.02, 1.0),
     "near": (1.0, 0.45, 0.05, 0.95),
+    "organs": (0.72, 0.22, 0.20, 0.55),
+    "heart": (0.86, 0.12, 0.18, 0.70),
+    "connective": (0.34, 0.78, 0.58, 0.35),
 }
 
 
@@ -244,23 +247,48 @@ def _render_modes(
     skin_faces: np.ndarray,
     frames: np.ndarray,
     backend: str,
+    camera_names: list[str] | tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     bone_mask = _mask(asset, {"bone"})
     vessel_mask = _mask(asset, {"vessel"})
     nerve_mask = _mask(asset, {"nerve"})
+    organ_mask = _mask(asset, {"organ"})
+    heart_mask = _mask(asset, {"heart"})
+    connective_mask = _mask(asset, {"connective_tissue"})
     bone_faces = _faces(asset.faces, bone_mask)
     vessel_faces = _faces(asset.faces, vessel_mask)
     nerve_faces = _faces(asset.faces, nerve_mask)
+    organ_faces = _faces(asset.faces, organ_mask)
+    heart_faces = _faces(asset.faces, heart_mask)
+    connective_faces = _faces(asset.faces, connective_mask)
     outside_faces = _outside_faces(
         vertices, asset.faces, bone_mask, skin, skin_faces
     )
     cameras = _camera_manifest(skin, frames)
+    if camera_names is not None:
+        missing = [name for name in camera_names if name not in cameras]
+        if missing:
+            raise KeyError(f"requested cameras missing from manifest: {missing}")
+        cameras = {name: cameras[name] for name in camera_names}
     assets = output / "mesh_assets"
     skin_path = _export(assets / "skin.obj", skin, skin_faces)
     bones_path = _export(assets / "bones.obj", vertices, bone_faces)
     outside_path = _export(assets / "outside.obj", vertices, outside_faces)
     vessel_path = _export(assets / "vessels.obj", vertices, vessel_faces)
     nerve_path = _export(assets / "nerves.obj", vertices, nerve_faces)
+
+    def _maybe_export(name: str, faces: np.ndarray) -> Path | None:
+        if len(np.asarray(faces)) == 0:
+            return None
+        return _export(assets / f"{name}.obj", vertices, faces)
+
+    organ_path = _maybe_export("organs", organ_faces)
+    heart_path = _maybe_export("heart", heart_faces)
+    connective_path = _maybe_export("connective", connective_faces)
+
+    def _entities(*items: tuple[str, Path | None, tuple[float, ...]]) -> list:
+        return [(name, path, color) for name, path, color in items if path is not None]
+
     layers = {
         "bones_only": [
             ("skin", skin_path, COLORS["skin"]),
@@ -277,6 +305,15 @@ def _render_modes(
             ("vessels", vessel_path, COLORS["vessels"]),
             ("nerves", nerve_path, COLORS["nerves"]),
         ],
+        "full_anatomy": _entities(
+            ("skin", skin_path, (0.90, 0.58, 0.43, 0.06)),
+            ("bones", bones_path, COLORS["bones"]),
+            ("organs", organ_path, COLORS["organs"]),
+            ("heart", heart_path, COLORS["heart"]),
+            ("connective", connective_path, COLORS["connective"]),
+            ("vessels", vessel_path, COLORS["vessels"]),
+            ("nerves", nerve_path, COLORS["nerves"]),
+        ),
     }
     report: dict[str, Any] = {
         "camera_manifest": cameras,
@@ -294,7 +331,12 @@ def _render_modes(
         )
     sheet_paths = []
     sheet_labels = []
-    for layer_name in ("bones_only", "outside_heatmap", "bones_tubes"):
+    for layer_name in (
+        "bones_only",
+        "outside_heatmap",
+        "bones_tubes",
+        "full_anatomy",
+    ):
         sheet = Path(report["layers"][layer_name]["contact_sheet"])
         sheet_paths.append(sheet)
         sheet_labels.append(layer_name)
@@ -302,6 +344,7 @@ def _render_modes(
     _contact_sheet(sheet_paths, sheet_labels, summary, {})
     report["three_layer_contact_sheet"] = str(summary)
     report["three_layer_contact_sheet_sha256"] = _sha256(summary)
+    report["review_layer_names"] = list(layers.keys())
     return report
 
 

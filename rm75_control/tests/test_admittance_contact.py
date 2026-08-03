@@ -157,9 +157,10 @@ def test_closed_loop_very_hard_surface_no_bounce_cascade():
         f"bounce cascade: {flips} contact flips in 15s (scan_v5 had 142 in 45s). "
         "Dimeas inertia + single vz cap must keep re-impact damped."
     )
-    # Very-hard-surface first-impact peak: acceptable up to ~2.7× setpoint
-    # (still well inside the safe envelope, whereas scan_v5 saw 9.4 N ≈ 3.1×).
-    assert np.max(np.asarray(fz_hist)) < 8.0, (
+    # Very-hard-surface first-impact peak: Dimeas M inflation trades a slightly
+    # higher first peak (~8.5–9 N at 20 kN/m) for stopping bounce cascades.
+    # Still below scan_v5's 9.4 N (~3.1×) and far below the hardware 18 N peak.
+    assert np.max(np.asarray(fz_hist)) < 9.0, (
         f"impact overshoot too large: {np.max(fz_hist):.2f} N"
     )
     assert abs(tail.mean() - 3.0) < 0.8, f"force did not settle at 3N (mean {tail.mean():.2f})"
@@ -244,15 +245,16 @@ def test_dimeas_disabled_leaves_mass_static():
     assert abs(ctrl._m_z_now - cfg.admittance_mass_z) < 1e-9
 
 
-def test_production_detector_keeps_normal_mass_fixed():
+def test_production_detector_inflates_mass_not_damping():
+    """Dimeas channel: Iₛ raises virtual mass; damping gain stays zero."""
     import yaml
     from pathlib import Path
 
     raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     cfg = AdmittanceConfig.from_dict(raw)
     assert cfg.var_damping_enabled is True
-    assert cfg.admittance_mass_z == pytest.approx(1.0)
-    assert cfg.var_damping_m_u == pytest.approx(0.0)
+    assert cfg.admittance_mass_z == pytest.approx(1.5)
+    assert cfg.var_damping_m_u == pytest.approx(3.0)
     assert cfg.var_damping_d_u == pytest.approx(0.0)
 
 

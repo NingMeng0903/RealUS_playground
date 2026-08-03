@@ -51,14 +51,21 @@ def test_dead_zone_zero_weight():
 def test_direction_and_saturation():
     """err > 0 (TCP ahead of the rail) -> rail chases +Y; velocity capped."""
     task, _ = _task(k_ext=1.0, v_max_m_s=0.08, e0_m=0.05, e1_m=0.15)
+    q = Q_D.copy()
+    q[0] = 0.40  # mid-travel so -Y chase is not limit-saturated at rail=0
+    task.reset(q)
     _force_err(task, 0.20)  # beyond e1
-    v, w = task(Q_D)
+    # _force_err captures at Q_D (rail=0); re-pin pref error at mid-travel q.
+    task.capture_reference(q)
+    task.d_pref_m = float(task.d_pref_m) - 0.20
+    v, w = task(q)
     assert v > 0.0
     assert abs(v - 0.08) < 1e-12  # capped at v_max
     assert abs(w - task.cfg.w_max) < 1e-12  # full authority
     # Symmetric for negative error.
-    _force_err(task, -0.20)
-    v, w = task(Q_D)
+    task.capture_reference(q)
+    task.d_pref_m = float(task.d_pref_m) + 0.20
+    v, w = task(q)
     assert v < 0.0
     assert abs(w - task.cfg.w_max) < 1e-12
 
@@ -229,16 +236,31 @@ def test_qp_consumes_rail_task():
             collision=CollisionConfig(enabled=False),
         ),
     )
-    ctrl.reset(Q_D)
+    # Q_D sits near σ_ref (~0.08) with probe TCP — rail motion then leaks into
+    # TCP because σ-adaptive W_task softens.  Use a mid-travel, bent-elbow
+    # posture so the test checks hierarchy, not singularity recovery.
+    q = np.array(
+        [0.4, -0.905938, 1.117987, 0.459109, 1.775407, -0.342094, 1.06775, 0.749873]
+    )
+    ctrl.reset(q)
     # Weighted task: rail follows v_des (TCP held by the primary equality).
     r = ctrl.step(
-        Q_D, np.zeros(6), 0.005, rail_task_vel_m_s=0.05, rail_task_weight=1.5
+        q, np.zeros(6), 0.005, rail_task_vel_m_s=0.05, rail_task_weight=1.5
     )
     assert r.qdot[0] > 0.025, r.qdot[0]
     # TCP stays: the Cartesian rows dominate, arm compensates the rail.
-    v_tcp = kin.jacobian(Q_D) @ r.qdot
+    v_tcp = kin.jacobian(q) @ r.qdot
     assert np.linalg.norm(v_tcp[:3]) < 0.005, v_tcp
-    # Zero weight: rail does not move.
-    ctrl.reset(Q_D)
-    r = ctrl.step(Q_D, np.zeros(6), 0.005, rail_task_vel_m_s=0.05, rail_task_weight=0.0)
+    # Zero weight: rail does not move.  Fresh solver — ProxQP warm-start after
+    # the weighted step can leave a residual qdot on the prismatic joint.
+    ctrl0 = QpIkController(
+        kin,
+        limits,
+        QpConfig(
+            task_weight=np.array([100.0, 100.0, 100.0, 50.0, 50.0, 50.0]),
+            collision=CollisionConfig(enabled=False),
+        ),
+    )
+    ctrl0.reset(q)
+    r = ctrl0.step(q, np.zeros(6), 0.005, rail_task_vel_m_s=0.05, rail_task_weight=0.0)
     assert abs(r.qdot[0]) < 1e-4, r.qdot[0]

@@ -245,15 +245,42 @@ def _direction_with_axis_endpoint(
 ) -> np.ndarray:
     """Set one endpoint coordinate without changing the orthogonal ray plane."""
 
+    return _direction_with_axes_endpoint(
+        direction,
+        endpoint_deltas={int(axis): float(endpoint_delta)},
+        span_m=float(span_m),
+    )
+
+
+def _direction_with_axes_endpoint(
+    direction: np.ndarray,
+    *,
+    endpoint_deltas: Mapping[int, float],
+    span_m: float,
+) -> np.ndarray:
+    """Set one or more endpoint axes without changing the free ray plane."""
+
     result = np.asarray(direction, dtype=np.float64).copy()
     result /= np.linalg.norm(result)
-    component = float(np.clip(endpoint_delta / span_m, -0.25, 0.25))
-    result[int(axis)] = 0.0
+    components: dict[int, float] = {}
+    for axis, delta in endpoint_deltas.items():
+        axis_i = int(axis)
+        if axis_i < 0 or axis_i > 2:
+            raise ValueError("endpoint axis must be 0, 1, or 2")
+        components[axis_i] = float(np.clip(float(delta) / float(span_m), -0.25, 0.25))
+    if not components:
+        return result
+    for axis_i in components:
+        result[axis_i] = 0.0
     orthogonal_norm = float(np.linalg.norm(result))
     if orthogonal_norm <= 1.0e-8:
-        raise ValueError("station direction is degenerate outside the constrained axis")
-    result *= np.sqrt(max(0.0, 1.0 - component * component)) / orthogonal_norm
-    result[int(axis)] = component
+        raise ValueError("station direction is degenerate outside the constrained axes")
+    constrained_sq = float(sum(value * value for value in components.values()))
+    if constrained_sq >= 1.0:
+        raise ValueError("endpoint constraints leave no free direction component")
+    result *= np.sqrt(max(0.0, 1.0 - constrained_sq)) / orthogonal_norm
+    for axis_i, component in components.items():
+        result[axis_i] = component
     return result
 
 
@@ -623,7 +650,12 @@ def _bone_transforms(asset: Any, side_transforms: Mapping[str, np.ndarray]) -> n
     result = np.tile(np.eye(4, dtype=np.float64), (len(names), 1, 1))
     for side in ("left", "right"):
         suffix = "L" if side == "left" else "R"
-        femur = side_transforms[f"{side}_femur"]
+        if f"{side}_femur_proximal" in side_transforms:
+            femur_proximal = side_transforms[f"{side}_femur_proximal"]
+            femur_distal = side_transforms[f"{side}_femur_distal"]
+        else:
+            femur_proximal = side_transforms[f"{side}_femur"]
+            femur_distal = side_transforms[f"{side}_femur"]
         shank_proximal = side_transforms[f"{side}_shank_proximal"]
         shank_distal = side_transforms[f"{side}_shank_distal"]
         femur_start = names.index(f"Femur_Rot_{suffix}")
@@ -631,8 +663,8 @@ def _bone_transforms(asset: Any, side_transforms: Mapping[str, np.ndarray]) -> n
         tibia = names.index(f"Tibia_Bone_{suffix}")
         ankle = names.index(f"Ankle_Rot_{suffix}")
         patella = names.index(f"Patella_Rotate_{suffix}")
-        result[femur_start] = femur
-        result[knee] = femur
+        result[femur_start] = femur_proximal
+        result[knee] = femur_distal
         result[tibia] = shank_proximal
         # The distal articular cap is weighted by Tibia_Twist and Ankle_Rot.
         # Giving those controllers different rest corrections makes the cap a
@@ -644,7 +676,8 @@ def _bone_transforms(asset: Any, side_transforms: Mapping[str, np.ndarray]) -> n
         # Keep the 142 terminal compound unchanged in V1.  V2 owns any
         # multi-pose hand/foot correction so this legacy builder remains
         # reproducible and cannot silently change terminal bind semantics.
-        result[patella] = femur
+        # Femur/knee/patella share one rest correction (skinning unity).
+        result[patella] = femur_distal
     return result
 
 
@@ -892,19 +925,41 @@ def build_lower_chain_rest_fit_v1(
             span_m=femur_span,
             station=station_joints[ids[1]],
         )
-        knee_skin_x = 0.5 * float(
-            chain["femur_endpoints"][1][0] + chain["shank_endpoints"][0][0]
-        ) + float(station_frame_translation[0])
+        knee_skin = 0.5 * (
+            np.asarray(chain["femur_endpoints"][1], dtype=np.float64)
+            + np.asarray(chain["shank_endpoints"][0], dtype=np.float64)
+        ) + station_frame_translation
         source_femur_direction = (knee - hip_source) / femur_span
+        # Prefer beta-specific skin centerline direction (full 3D), then apply the
+        # existing coronal (X) endpoint pull.  Sagittal is carried by the skin
+        # preferred ray itself — a second Z endpoint clip previously regressed
+        # Patella_R under shared-rigid femur skinning.
+        preferred_unit = femur_preferred / np.linalg.norm(femur_preferred)
+        if float(np.dot(preferred_unit, source_femur_direction)) < 0.0:
+            preferred_unit = -preferred_unit
         femur_direction = _direction_with_axis_endpoint(
-            source_femur_direction,
+            preferred_unit,
             axis=0,
-            endpoint_delta=knee_skin_x - hip_target[0],
+            endpoint_delta=float(knee_skin[0] - hip_target[0]),
             span_m=femur_span,
         )
         femur_rotation = _shortest_arc_rotation(knee - hip_source, femur_direction)
-        femur_transform = _pivot_rotation(hip_source, hip_target, femur_rotation)
-        knee_target = femur_rotation @ (knee - hip_source) + hip_target
+        # Projected skin span is recorded for diagnostics.  True axial scale would
+        # require splitting Femur_Rot/Knee_Rotate and breaks patella skinning unity.
+        projected_span = float(np.dot(knee_skin - hip_target, femur_direction))
+        if projected_span <= 1.0e-6:
+            requested_femur_scale = 1.0
+            target_femur_span = femur_span
+        else:
+            requested_femur_scale = projected_span / femur_span
+            target_femur_span = femur_span
+        # Requested skin span is report-only: shared-rigid femur cannot apply axial
+        # scale without splitting controllers.  Do not fail the build on request.
+        femur_scale = 1.0
+        knee_target = hip_target + femur_direction * target_femur_span
+        femur_shared = _pivot_rotation(hip_source, hip_target, femur_rotation)
+        femur_proximal = femur_shared
+        femur_distal = femur_shared
         _station_shank_direction, ankle_constraint = _station_ray_direction(
             preferred=shank_preferred,
             proximal_target=knee_target,
@@ -926,7 +981,10 @@ def build_lower_chain_rest_fit_v1(
         shank_rotation = _shortest_arc_rotation(ankle - knee, shank_direction)
         shank_proximal = _pivot_rotation(knee, knee_target, shank_rotation)
         shank_distal = _pivot_rotation(ankle, ankle_target, shank_rotation)
-        side_transforms[f"{side}_femur"] = femur_transform
+        side_transforms[f"{side}_femur_proximal"] = femur_proximal
+        side_transforms[f"{side}_femur_distal"] = femur_distal
+        # Legacy single-key consumers (report / older call sites).
+        side_transforms[f"{side}_femur"] = femur_proximal
         side_transforms[f"{side}_shank_proximal"] = shank_proximal
         side_transforms[f"{side}_shank_distal"] = shank_distal
         centerline_report[side] = {
@@ -939,11 +997,14 @@ def build_lower_chain_rest_fit_v1(
             "hip_socket_fit_center_m": hip_anchors[side]["socket"].tolist(),
             "knee_prefit_m": knee.tolist(),
             "knee_target_m": knee_target.tolist(),
-            "skin_centerline_knee_target_x_m": knee_skin_x,
+            "skin_centerline_knee_target_m": knee_skin.tolist(),
+            "skin_centerline_knee_target_x_m": float(knee_skin[0]),
+            "skin_centerline_knee_target_z_m": float(knee_skin[2]),
             "skin_centerline_ankle_target_x_m": ankle_skin_x,
             "femur_rotation_deg": _rotation_angle_deg(femur_rotation),
             "shank_rotation_deg": _rotation_angle_deg(shank_rotation),
             "femur_span_m": femur_span,
+            "femur_target_span_m": target_femur_span,
             "shank_span_m": shank_span,
             "shank_target_span_m": target_shank_span,
             "shank_axial_scale": shank_scale,
@@ -954,7 +1015,10 @@ def build_lower_chain_rest_fit_v1(
             "ankle_station_constraint": ankle_constraint,
             "femur_target_direction": femur_direction.tolist(),
             "shank_target_direction": shank_direction.tolist(),
-            "femur_length_scale": 1.0,
+            "femur_length_scale": femur_scale,
+            "femur_requested_skin_scale": requested_femur_scale,
+            "femur_endpoint_axes": [0],
+            "femur_direction_source": "skin_centerline_preferred_plus_coronal_endpoint",
         }
 
     mesh_policy, mesh_groups = _mesh_policy(asset)
@@ -1029,7 +1093,17 @@ def build_lower_chain_rest_fit_v1(
             "pelvis_vertices_changed": True,
             "acetabulum_policy": "rigid_local_cap_inside_bounded_pelvis_cage",
             "pelvis_cage": pelvis_cage_report,
-            "femur_length_scale": 1.0,
+            "femur_length_scale": {
+                side: float(centerline_report[side]["femur_length_scale"])
+                for side in ("left", "right")
+            },
+            "femur_axial_scale_policy": "multi_axis_centerline_shared_rigid_femur_v7",
+            "femur_endpoint_axes": [0],
+            "femur_direction_source": "skin_centerline_preferred_plus_coronal_endpoint",
+            "femur_requested_skin_scale": {
+                side: float(centerline_report[side]["femur_requested_skin_scale"])
+                for side in ("left", "right")
+            },
             "shank_axial_scale_by_side": {
                 side: float(centerline_report[side]["shank_axial_scale"])
                 for side in ("left", "right")

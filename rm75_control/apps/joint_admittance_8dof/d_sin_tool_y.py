@@ -110,7 +110,13 @@ def main() -> int:
     ap.add_argument("--approach-dz-mm", type=float, default=0.220 * 1000.0)
     ap.add_argument("--use-force-id-pose", action="store_true")
     ap.add_argument("--move-duration", type=float, default=None)
-    ap.add_argument("--move-duration-margin", type=float, default=0.50)
+    ap.add_argument(
+        "--move-duration-margin",
+        type=float,
+        default=0.80,
+        help="Peak joint speed fraction of (URDF·v_scale) used to size auto "
+             "move duration (was 0.50; higher = faster move→D).",
+    )
     ap.add_argument("--move-duration-min", type=float, default=2.5)
     ap.add_argument(
         "--move-duration-max",
@@ -733,7 +739,7 @@ def main() -> int:
                 period_s=float(args.psi_toggle_period),
                 filter_alpha=float(args.psi_toggle_alpha),
                 ramp_duration_s=float(args.psi_ramp_s),
-                verbose=True,
+                verbose=bool(args.verbose),
             )
 
         task_params = make_task_params_from_args(

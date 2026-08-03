@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OPERATOR_PATH = ROOT / "outputs/anatomy_retarget/v8_candidates/rebuild_012/source_operator_v8"
 CALIBRATION_PATH = (
     ROOT
-    / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_005"
+    / "outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_006"
     / "anatomical_calibration_v1"
 )
 MODEL_PATH = ROOT / "ref_code_library/EasyMocap/data/smplx/smplx/SMPLX_MALE.pkl"

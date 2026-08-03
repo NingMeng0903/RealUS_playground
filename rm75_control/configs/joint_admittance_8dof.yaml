@@ -33,10 +33,10 @@ state_relay:
 inner:
   control_frame: tool
   euler_order: xyz
-  # Probe TCP lives in URDF (link_7_to_tcp). Keep false so pose D / sin-Y FK and
-  # Cartesian track use the probe frame (same taught q_deg → new Cartesian).
-  # Set true only when the pendant tool must override Pinocchio (old gripper flow).
-  sync_tcp_from_robot: false
+  # Read RealMan active tool (teach pendant / Web UI) into Pinocchio link_7→tcp.
+  # Force-hybrid / tool-Z follow the upper-computer TCP. Set false only to pin
+  # the baked URDF probe frame and ignore pendant tool changes.
+  sync_tcp_from_robot: true
 
   v_scale: 0.8             # fraction of URDF joint velocity limit
   # Acceleration limits are unit-explicit: the old scalar a_max mixed arm
@@ -91,8 +91,10 @@ inner:
     max_solve_ms: 8.0         # skip retry if first attempt already burned wall budget
     fail_qdot_decay: 0.85
     twist_sigma_floor: 0.08   # scale Cartesian/force twist when σ < sigma_ref
-    # Start rail/posture avoidance before the Cartesian brake threshold.
-    sigma_escape_ref_scale: 2.0
+    # Avoidance onset as a multiple of sigma_ref.  2.0 → escape@0.16 kept pose D
+    # (σ≈0.11–0.13) permanently in the escape band and felt sluggish.  1.25 →
+    # escape@0.10: healthy scan at D, escape still leads the 0.08 twist brake.
+    sigma_escape_ref_scale: 1.25
     warn_on_fail: false
     # Chiaverini 1997 SR damping for nullspace projection.
     sr_damping:
@@ -139,10 +141,12 @@ inner:
     max_pairs: 8
 
   nullspace:
-    k_center: 1.0
+    k_center: 1.5
     k_limit: 2.0
     activation: 0.85
-    weights: [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    # Index 5 = J5: resist flip when escape-zone ∇μ is also active.
+    # Index 6 = J6: prefer nominal 45° (wrist away from |J6|≈0).
+    weights: [0.0, 1.0, 1.0, 1.0, 1.0, 2.5, 2.5, 1.0]
     # Comfortable RM75 posture (rail=0, J1=0, J2=-45, J3=0, J4=90, J5=0, J6=45, J7=0).
     # Nullspace centering attractor during scan/track — independent of taught D.
     q_nominal_deg: [0.0, 0.0, -45.0, 0.0, 90.0, 0.0, 45.0, 0.0]
@@ -228,8 +232,9 @@ inner:
     travel_m: 0.80            # [0, 0.80] m
 
 frames:
+  # Prefer inner.control_frame / inner.euler_order; this block only supplies
+  # euler_order fallback for older loaders.
   euler_order: xyz
-  control_frame: tool
 
 force:
   desired_z_n: 1.0
@@ -271,7 +276,7 @@ hybrid_motion:
   # scan-jitter-fix §2a: two disagreeing caps caused admittance-state windup).
   max_velocity: [0.22, 0.22, 0.10, 0.6, 0.6, 0.6]
   max_acceleration: [1.0, 1.0, 0.8, 2.0, 2.0, 2.0]
-  admittance_mass_z: 1.0
+  admittance_mass_z: 1.5
   admittance_damping_z: 25.0   # fixed normal damping in and out of contact
   # One press/retract cap, applied identically in and out of contact.
   # Bounce control is handled by Dimeas variable inertia, not adaptive D.
@@ -280,15 +285,9 @@ hybrid_motion:
   # desired_z over this many seconds of latched contact (smooth force start).
   desired_force_ramp_s: 1.0
   # Dimeas & Aspragathos 2016 variable-INERTIA channel on tool-Z. The
-  # instability index Iₛ is an HP-filtered raw-force energy ratio. Use the
-  # low-effort Dimeas branch: Iₛ changes virtual inertia only; normal damping
-  # stays at admittance_damping_z instead of growing with hand speed.
-  # Hardware A/B result:
-  # - run_20260801_231927: M inflation made release feel heavy;
-  # - run_20260801_234916: disabling the detector also removed proactive-press
-  #   gating, increasing 4-12 Hz events from 5 to 19 and letting |v_r| sit near
-  #   30 mm/s for 21.7% of the scan.
-  # Keep the detector for press-feedforward gating, but do not adapt M or D.
+  # instability index Iₛ is an HP-filtered raw-force energy ratio. Inflate M
+  # with Iₛ (not D) so hard-contact bounce raises virtual mass while hand
+  # guidance stays on fixed admittance_damping_z. Iₛ also gates proactive FF.
   var_damping_enabled: true
   # Stable hand guidance is mainly below 2 Hz, while the hardware log's
   # elastic-contact resonance is about 4.9 Hz.  Dimeas selects the crossover
@@ -302,56 +301,34 @@ hybrid_motion:
   # paper's ~0.1 s equivalent bandwidth at 200 Hz.
   var_damping_lambda: 0.951
   var_damping_f_max_n: 7.0
-  var_damping_d_u: 0.0
-  var_damping_m_u: 0.0
+  var_damping_d_u: 0.0           # do not inflate damping with Iₛ (Dimeas)
+  var_damping_m_u: 3.0           # M = mass_z + m_u·Iₛ (hard-contact anti-bounce)
   # The paper leaves the accumulated Iₛ and resulting mass unbounded; this is
   # the hardware safety cap on virtual-mass authority.
   var_damping_m_max: 5.0
   var_damping_dc_alpha: 0.02
   adaptive_ke:
-    # Asymmetric-λ EWMA of |ΔF/Δx| (Duan et al. 2018 eq. 14, with the
-    # 27c1689 asymmetric-forgetting bias toward stiffer estimates) on the
-    # normal (tool-Z) admittance axis; Keemink 2018 §III.C critical damping
-    # b_d = 2·ζ·sqrt(m_d · K̂_e).
-    # K_e from commanded displacement is unreliable on moving tissue and made
-    # D = 2*zeta*sqrt(M*K_e) stay at 80-145 Ns/m. Keep the estimator out of
-    # the control gain; Dimeas variable inertia handles contact resonance.
+    # Off: K̂_e from commanded Δx is unreliable on moving tissue. Dimeas M(t)
+    # + fixed admittance_damping_z handle contact. Keys kept for A/B re-enable.
     enabled: false
     zeta: 0.9
-    # ke_initial is the SEED at reset() and the target for the soft
-    # idle/detach decays. On a contact rising edge K̂_e JUMPS UP to
-    # ke_impact_initial (stiff-first, safe overdamped-at-impact) and then
-    # learns down on soft surfaces via ΔF/Δx. A previous refactor's
-    # "hold-last-K̂_e" without stiff-first grew unbounded (72 → 1866 in
-    # 50 s on scan_v5); a hard reset to a low seed on every re-impact
-    # under-damped every bounce cycle. The two-branch design (impact jump
-    # + soft decay) matches the hardware-tested 27c1689 behaviour.
     ke_initial: 80.0
     ke_min: 40.0
     ke_max: 2500.0
     ke_impact_initial: 1500.0
-    ke_forgetting: 0.995         # slow forget (surface softens)
-    ke_forgetting_inc: 0.88      # fast track  (surface stiffens)
-    ke_idle_decay_s: 2.0         # steady-contact decay toward ke_initial
-    # Phase B1: idle decay target = max(ke_initial, ke_soft_floor) so chase
-    # bandwidth on soft tissue does not pull b_d down to the ~16 N·s/m band.
+    ke_forgetting: 0.995
+    ke_forgetting_inc: 0.88
+    ke_idle_decay_s: 2.0
     ke_soft_floor: 300.0
-    ke_detach_decay_s: 1.0       # out-of-contact decay (keeps 95 % across a 50 ms bounce)
+    ke_detach_decay_s: 1.0
     displacement_source: admittance
     dx_threshold_m: 0.00008
     contact_force_n: 0.8
-    settle_ticks: 10             # hold K̂_e after contact-latch first-impact transient
-    # Direction-agnostic tangential-speed gate: |v_lat| = ||R_tool^T v_pos_base_xy||.
-    # Any sweep direction (Y, X, arc, spline, teleop) gates learning the same way.
+    settle_ticks: 10
     gate_lateral_velocity: true
     lateral_vel_gate_m_s: 0.02
     gate_df_spike: true
     df_spike_n: 4.0
-    # Effective |f_err| gate = max(f_err_gate_n, f_err_gate_frac * f_des_z):
-    # the absolute value is the small-setpoint noise floor, the fraction keeps
-    # the steady/transient judgement self-similar at any setpoint. A fixed
-    # 1.2 N gate at a 5 N hold froze K̂_e at ke_impact_initial (b_d ~70+) and
-    # made the retract feel heavily damped.
     f_err_gate_n: 1.2
     f_err_gate_frac: 0.35
     bd_min: 25.0
@@ -447,11 +424,9 @@ hw:
     verbose: false
 
 startup:
-  pose_slot_q_deg: null
-  duration_s: 20.0
-  move_speed: 20
-  reference: hold
+  # Used by window A / C bring-up (not 6-DOF pose_slot).
   enable_force: false
   follow: true
+  move_speed: 20
   realtime: false
   watchdog_timeout_s: 0.1

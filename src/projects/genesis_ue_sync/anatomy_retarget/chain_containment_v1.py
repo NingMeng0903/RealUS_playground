@@ -75,10 +75,35 @@ def _region_ids(value: ChainRestFitSubjectV1, asset: Any) -> dict[str, np.ndarra
             np.char.startswith(policies, "rigid_left_")
             | np.char.startswith(policies, "rigid_right_")
         )
+        & (policies != "local_preserve_terminal_lbs")
         & (policies != "copy_142_terminal_foot"),
         "upper_main": bone & np.char.startswith(policies, "sparse_lbs_"),
-        "terminal_hand": bone & (policies == "copy_142_terminal_hand"),
-        "terminal_foot": bone & (policies == "copy_142_terminal_foot"),
+        "terminal_hand": bone
+        & (
+            (policies == "local_preserve_terminal_lbs")
+            | (policies == "copy_142_terminal_hand")
+        )
+        & (
+            (np.char.find(lower, "metacarp") >= 0)
+            | (np.char.find(lower, "hand") >= 0)
+            | (np.char.find(lower, "phalan") >= 0)
+        )
+        & (np.char.find(lower, "foot") < 0),
+        "terminal_foot": bone
+        & (
+            (policies == "local_preserve_terminal_lbs")
+            | (policies == "copy_142_terminal_foot")
+        )
+        & (
+            (np.char.find(lower, "metatars") >= 0)
+            | (np.char.find(lower, "calcane") >= 0)
+            | (np.char.find(lower, "talus") >= 0)
+            | (np.char.find(lower, "foot") >= 0)
+            | (
+                (np.char.find(lower, "phalan") >= 0)
+                & (np.char.find(lower, "foot") >= 0)
+            )
+        ),
     }
     # Mesh-policy labels are authoritative.  These name checks fail closed if
     # an older candidate omitted explicit terminal labels.
@@ -213,10 +238,10 @@ def evaluate_rest_containment_v1(
     return {
         "schema_version": 1,
         "artifact_kind": "ChainRestContainmentV1",
-        "passed": bool(
-            all(metric["pass"] for metric in metrics.values())
-            and all(terminal_exact.values())
-        ),
+        # Terminal hands/feet use local-preserving bind transport + LBS, so rest
+        # geometry is intentionally not byte-equal to frozen 142.  Pass still
+        # requires per-region containment non-regression vs the same 142 baseline.
+        "passed": bool(all(metric["pass"] for metric in metrics.values())),
         "regions": metrics,
         "changed_bone_meshes": changed_meshes,
         "solver_targets": {

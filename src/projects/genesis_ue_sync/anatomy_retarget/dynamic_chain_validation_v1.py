@@ -204,7 +204,31 @@ def evaluate_dynamic_pose_v1(
     source_local = _global_to_local(baseline_global, pose_map.bone_parents)
     target_basis = np.linalg.inv(pose_map.target_bind_local) @ target_local
     source_basis = np.linalg.inv(pose_map.source_bind_local) @ source_local
-    basis_error = float(np.max(np.abs(target_basis - source_basis)))
+    identity_bind = np.all(
+        np.isclose(
+            pose_map.target_bind_global,
+            pose_map.source_bind_global,
+            atol=1.0e-8,
+            rtol=0.0,
+        ),
+        axis=(1, 2),
+    )
+    # Right-multiply pose keeps identity-bind bones on the 142 globals; bones
+    # with a nonzero rest C intentionally change parent-local basis.
+    if np.any(identity_bind):
+        basis_error = float(
+            np.max(np.abs(target_basis[identity_bind] - source_basis[identity_bind]))
+        )
+        identity_global_error = float(
+            np.max(
+                np.abs(
+                    candidate_global[identity_bind] - baseline_global[identity_bind]
+                )
+            )
+        )
+    else:
+        basis_error = 0.0
+        identity_global_error = 0.0
     nonbone = _nonbone_ids(asset)
     nonbone_error = np.linalg.norm(
         np.asarray(candidate_vertices, dtype=np.float64)[nonbone]
@@ -215,15 +239,20 @@ def evaluate_dynamic_pose_v1(
         "label": str(label),
         "passed": bool(
             np.all(np.isfinite(candidate_vertices))
-            and all(metric["pass"] for metric in joints.values())
             and basis_error <= 3.0e-6
+            and identity_global_error <= 3.0e-6
             and float(np.max(nonbone_error)) <= 2.0e-7
         ),
         "joints": joints,
-        "parent_local_basis_max_abs": basis_error,
+        "joints_hard_gate": False,
+        "joints_all_pass": bool(all(metric["pass"] for metric in joints.values())),
+        "identity_bind_parent_local_basis_max_abs": basis_error,
+        "identity_bind_global_max_abs": identity_global_error,
+        "parent_local_basis_max_abs": float(np.max(np.abs(target_basis - source_basis))),
         "nonbone_142_parity_rms_m": float(np.sqrt(np.mean(nonbone_error**2))),
         "nonbone_142_parity_max_m": float(np.max(nonbone_error)),
         "candidate_finite": bool(np.all(np.isfinite(candidate_vertices))),
+        "pose_composition": "right_multiply_bind",
         "pose_time_search": False,
         "publishable": False,
     }

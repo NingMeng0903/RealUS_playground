@@ -223,14 +223,23 @@ def apply_pose_map_global(
     source_asset: Any,
     pose_axis_angle: Any,
 ) -> np.ndarray:
-    """Map the one 142 pose solution into the new bind in parent-local space."""
+    """Map the one 142 pose solution into the new bind.
+
+    Use the global right-multiply change of bind
+    ``G' = G_source @ inv(B_source) @ B_target``.
+
+    Parent-local ``target_bind_local @ inv(source_bind_local) @ source_posed_local``
+    FK breaks when ancestors have ``C≠I`` but terminals keep copy-142 binds
+    (wrist parent-local is rebased while finger verts stay on the old bind).
+    Right-multiply keeps terminal bones with ``B_target==B_source`` identical to
+    the 142 posed globals, which is required for posed hand/foot containment.
+    """
 
     pose_map.validate()
     baseline_global = source_bone_posed_global(source_asset, pose_axis_angle)
-    baseline_local = _global_to_local(baseline_global, pose_map.bone_parents)
-    local_basis = np.linalg.inv(pose_map.source_bind_local) @ baseline_local
-    target_local_pose = pose_map.target_bind_local @ local_basis
-    return _fk(target_local_pose, pose_map.bone_parents)
+    source_bind = np.asarray(pose_map.source_bind_global, dtype=np.float64)
+    target_bind = np.asarray(pose_map.target_bind_global, dtype=np.float64)
+    return baseline_global @ np.linalg.inv(source_bind) @ target_bind
 
 
 def pose_whole_chain_vertices(
@@ -340,7 +349,8 @@ def check_pose_map_v1(
         "zero_pose_matrix_max_abs": float(matrix_error),
         "zero_pose_vertex_rms_m": float(np.sqrt(np.mean(vertex_error**2))),
         "zero_pose_vertex_max_m": float(np.max(vertex_error)),
-        "parent_local_mapping_only": True,
+        "parent_local_mapping_only": False,
+        "pose_composition": "right_multiply_bind",
         "source_pose_authority": "frozen_142_source_bone_posed_global",
         "pose_time_search": False,
         "elapsed_seconds": float(time.perf_counter() - started),

@@ -24,7 +24,8 @@
 | 身份 | 路径/提交 | 角色 |
 |---|---|---|
 | 分支起点 | `31133af` | 联动基线；T-pose 可看；带 pose 穿出；**非**最终 pose 解 |
-| 继承 rest/bind | `chain_retarget_v1_node2_004` | 双审通过：V5 唯一 rest/bind 权威 |
+| 当前 pose 权威 | `chain_retarget_v7_node2_001` | V6 right-multiply + V7 股骨中心线方向；膝 PackB 残差仍在 |
+| 继承 rest/bind | `chain_retarget_v1_node2_004` | 双审通过：主链 rest/bind 合同 |
 | 失败 WIP | 未提交 V4 + `chain_retarget_v4_node2_*` | quarantine；禁止 production import |
 | 负例 | `29e1072` | 细骨硬塞；不重建 |
 
@@ -73,6 +74,64 @@ outputs/anatomy_retarget/v8_candidates/stage1_baseline_compare_20260803_full/
   `outputs/anatomy_retarget/v8_candidates/chain_retarget_v5_node4_001/independent_genesis_review_v5/`  
   （几何与对照 Pack B 同权威；含 `review_decision.json` 与 6 张 three-layer handoff）。
 - Global supervisor：**GO** — 停止骨骼代码迭代，等待用户 Genesis 验收；`publishable=false`。
+
+### 0.8 2026-08-03 V6：posed 手指退步修复 + 多样 pose 矩阵（GROK + LUNA）
+
+**根因（相对 Pack B / V5）**：`pose_map_v1` 的 parent-local FK 在肩/肘 `C≠I`、手仍 `copy_142` 时把 wrist parent-local rebase，导致任意 pose 手指大穿出（T-pose 仍 OK）。  
+尝试 local-preserving terminal LBS 后左手随大臂校正移出 SMPLX；**统一修法改为** `G' = G_src @ inv(B_src) @ B_tgt`（right-multiply），手足仍 `copy_142` rest/bind，无 pose 分块切换。
+
+**工件**
+
+```text
+outputs/anatomy_retarget/v8_candidates/chain_retarget_v6_node2_001/          # 两 beta shadow
+outputs/anatomy_retarget/v8_candidates/amass_bedlam_retarget_matrix_v6_001/ # 4×9 矩阵（Among_US 只读）
+outputs/anatomy_retarget/v8_candidates/v6_joint_spot_genesis_001/           # 肘/膝/手/腕/踝抽查
+outputs/anatomy_retarget/v8_candidates/CLEANUP_MANIFEST_20260803.json
+```
+
+**自动门**
+
+- V6 terminal vs 142：`pose_213328` / `tpose` 手足以 `area_inside` 均值差 ≈ 0，无 >0.9→<0.5 collapse。
+- AMASS/BEDLAM 矩阵：`passed=true`，4 beta × 9 pose；极端角钳到耦合 RBF 75° support。
+- `publishable=false`；未更新 `trusted/latest`；未启血管。
+
+**对用户指出的 Pack C `left_elbow_ap`（V4）**
+
+- Pack C：关节爆炸/骨出皮 — **已确认否决**，V6 不复现。
+- V6 肘/膝：与 Pack B 同族残差（关节端小间隙、偏皮缘），**不是** V4 联动崩坏。
+- 双审（GROK + [LUNA](c968cad2-d0f7-491d-8dd5-e58a2c9aab62)）：`accept_with_known_packB_residuals`；blocking=none。
+
+### 0.9 2026-08-03 V7：膝 rest 方向 + 全组织矩阵出图（GROK + LUNA）
+
+**用户三缺口 → 本轮交付**
+
+1. **AMASS/BEDLAM 有图了**：`amass_bedlam_matrix_v7_genesis_001/`（4 beta × 9 pose，~2776 PNG；含 `full_anatomy`）。
+2. **全组织层**：`_render_modes` 新增 `full_anatomy`（bone+organ+heart+connective+vessel+nerve）；`bones_tubes` 仍仅细管对照。
+3. **膝 refit**：股骨方向改为 skin-centerline preferred + 冠状 X endpoint；Femur/Knee/Patella **共享刚性**（禁止拆 proximal/distal，否则 Patella_R 相对 142 大回退）。干轴缩放只记录 `femur_requested_skin_scale`，**不应用**（skinning unity）。无关节硬编码偏置。
+
+**工件**
+
+```text
+outputs/anatomy_retarget/v8_candidates/chain_retarget_v7_node2_001/
+outputs/anatomy_retarget/v8_candidates/amass_bedlam_retarget_matrix_v7_001/     # JSON 门 passed=true
+outputs/anatomy_retarget/v8_candidates/amass_bedlam_matrix_v7_genesis_001/      # 矩阵 Genesis 图
+outputs/anatomy_retarget/v8_candidates/v7_joint_spot_genesis_001/
+outputs/anatomy_retarget/v8_candidates/v6_knee_residual_before_v7_001/          # PackB/V6 现状
+outputs/anatomy_retarget/v8_candidates/v7_vs_v6_knee_proof_001/                 # V6↔V7 膝对照
+```
+
+**自动门**
+
+- V7 shadow：rest/pose_map/dynamic/containment/terminal/knee_vs_142 均过。
+- AMASS/BEDLAM 矩阵（挂 V7 shadow）：`passed=true`，failures=[]。
+- `publishable=false`；未启血管 reroute。
+
+**双审（GROK + [LUNA](5d3fe006-fba9-4ff8-8c74-a5d92d034ede)）**
+
+- `full_anatomy`：**可见**脏器/血管/神经（全身 AP/PA）。
+- 屈膝股骨外露 vs V6：**similar**（未实质消掉 Pack B 髁前残差）。
+- LUNA 裁决：`reject`（作为“膝修复完成”）；本轮 **审查/出图目标完成**，**膝几何修复未完成**。
+- 下一步（未开干）：需在不破坏 patella skinning unity 的前提下引入可验收的股骨/髁 containment 目标（仍禁止硬编码关节偏置与 vessel reroute）。
 
 ---
 
