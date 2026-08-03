@@ -21,7 +21,6 @@ Task orchestration (window C):
 from __future__ import annotations
 
 import argparse
-import hashlib
 import os
 import signal
 import time
@@ -177,17 +176,6 @@ def _run_controller_service(
             # YAML. Re-read it for every submitted task so Window C cannot
             # silently run a controller snapshot left over from daemon start.
             task_raw = load_yaml(config_path) if config_path is not None else raw
-            if config_path is not None:
-                digest = hashlib.sha256(config_path.read_bytes()).hexdigest()[:12]
-                hm = task_raw.get("hybrid_motion", {})
-                adaptive_ke = hm.get("adaptive_ke", {})
-                print(
-                    "rm75 controller: task config "
-                    f"sha256={digest} D_z={float(hm.get('admittance_damping_z', 0.0)):.3g} "
-                    f"adaptive_ke={bool(adaptive_ke.get('enabled', False))} "
-                    f"Dimeas={bool(hm.get('var_damping_enabled', False))}",
-                    flush=True,
-                )
             built = build_sin_tool_y_program(params, raw=task_raw)
             rail_m_fn.set_active(built.inner)
             if relay is not None:

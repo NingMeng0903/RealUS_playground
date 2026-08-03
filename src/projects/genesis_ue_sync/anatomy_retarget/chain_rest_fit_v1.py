@@ -175,6 +175,36 @@ def _pivot_rotation(pivot_source: np.ndarray, pivot_target: np.ndarray, rotation
     return result
 
 
+def _axial_scaled_pivot_rotation(
+    pivot_source: np.ndarray,
+    pivot_target: np.ndarray,
+    rotation: np.ndarray,
+    *,
+    source_axis: np.ndarray,
+    scale: float,
+) -> np.ndarray:
+    """Rigid pivot plus BSM-style axial scale about ``source_axis``.
+
+    The 142 Femur mesh is weighted almost entirely to Femur_Rot, so a
+    proximal/distal controller split cannot shrink the bone.  Axial scale on
+    the Femur_Rot correction is the per-bone ``s`` that actually moves mesh.
+    """
+
+    axis = np.asarray(source_axis, dtype=np.float64).reshape(3)
+    axis_norm = float(np.linalg.norm(axis))
+    if axis_norm <= 1.0e-12:
+        raise ValueError("axial scale axis is degenerate")
+    unit = axis / axis_norm
+    scale_m = np.eye(3, dtype=np.float64) + (float(scale) - 1.0) * np.outer(unit, unit)
+    linear = np.asarray(rotation, dtype=np.float64) @ scale_m
+    result = np.eye(4, dtype=np.float64)
+    result[:3, :3] = linear
+    result[:3, 3] = np.asarray(pivot_target, dtype=np.float64) - linear @ np.asarray(
+        pivot_source, dtype=np.float64
+    )
+    return result
+
+
 def _station_ray_direction(
     *, preferred: np.ndarray, proximal_target: np.ndarray,
     span_m: float, station: np.ndarray, centerline_axis: int | None = None,
@@ -676,9 +706,190 @@ def _bone_transforms(asset: Any, side_transforms: Mapping[str, np.ndarray]) -> n
         # Keep the 142 terminal compound unchanged in V1.  V2 owns any
         # multi-pose hand/foot correction so this legacy builder remains
         # reproducible and cannot silently change terminal bind semantics.
-        # Femur/knee/patella share one rest correction (skinning unity).
-        result[patella] = femur_distal
+        # Femur/knee may use proximal/distal for bounded axial shaft scale
+        # (BSM-style). Patella stays on the proximal map so condyle/patella
+        # skinning unity is preserved (distal-only patella previously collapsed).
+        result[patella] = femur_proximal
     return result
+
+
+def _femur_group_outside_m(
+    vertices: np.ndarray,
+    *,
+    faces: np.ndarray,
+    skin: np.ndarray,
+    skin_faces: np.ndarray,
+    vertex_ids: np.ndarray,
+) -> float:
+    """Max approximate outside depth of selected bone vertices vs SMPL-X skin."""
+
+    import igl
+    from scipy.spatial import cKDTree
+
+    ids = np.asarray(vertex_ids, dtype=np.int64)
+    if len(ids) == 0:
+        return 0.0
+    winding = igl.winding_number(
+        np.asarray(skin, dtype=np.float64),
+        np.asarray(skin_faces, dtype=np.int32),
+        np.asarray(vertices, dtype=np.float64)[ids],
+    )
+    inside = np.abs(np.asarray(winding).reshape(-1)) >= 0.5
+    outside_ids = ids[~inside]
+    if len(outside_ids) == 0:
+        return 0.0
+    tree = cKDTree(np.asarray(skin, dtype=np.float64))
+    dists, _ = tree.query(np.asarray(vertices, dtype=np.float64)[outside_ids], k=1)
+    return float(np.max(dists))
+
+
+def _select_bone_first_femur_scale(
+    *,
+    scales: np.ndarray,
+    hip_source: np.ndarray,
+    hip_target: np.ndarray,
+    knee_source: np.ndarray,
+    femur_direction: np.ndarray,
+    femur_span: float,
+    femur_rotation: np.ndarray,
+    vertices_prefit: np.ndarray,
+    driver_indices: np.ndarray,
+    driver_weights: np.ndarray,
+    femur_controller: int,
+    knee_controller: int,
+    patella_controller: int,
+    bone_count: int,
+    femur_vertex_ids: np.ndarray,
+    patella_vertex_ids: np.ndarray,
+    skin: np.ndarray,
+    skin_faces: np.ndarray,
+    faces: np.ndarray,
+    bind_global_prefit: np.ndarray | None = None,
+    source_posed_global_flex: np.ndarray | None = None,
+    skin_flex: np.ndarray | None = None,
+    skin_faces_flex: np.ndarray | None = None,
+) -> tuple[float, float, np.ndarray, np.ndarray, dict[str, Any]]:
+    """Pick bounded axial scale minimizing T-pose + flexed femur/patella outside.
+
+    Bone-first: the anatomical segment length is ``femur_span``; scale adjusts
+    the distal knee placement along the already-chosen anatomic direction so the
+    template bone fits inside the body surface (SKEL-style inside objective),
+    not so the bone matches a skin-centerline length oracle.
+    """
+
+    probe_ids = np.unique(
+        np.concatenate(
+            [
+                np.asarray(femur_vertex_ids, dtype=np.int64),
+                np.asarray(patella_vertex_ids, dtype=np.int64),
+            ]
+        )
+    )
+    use_flex = (
+        bind_global_prefit is not None
+        and source_posed_global_flex is not None
+        and skin_flex is not None
+        and skin_faces_flex is not None
+    )
+    b_prefit = (
+        np.asarray(bind_global_prefit, dtype=np.float64)
+        if bind_global_prefit is not None
+        else None
+    )
+    inv_b_prefit = np.linalg.inv(b_prefit) if b_prefit is not None else None
+    g_src_flex = (
+        np.asarray(source_posed_global_flex, dtype=np.float64)
+        if source_posed_global_flex is not None
+        else None
+    )
+    best: dict[str, Any] | None = None
+    trials = []
+    for scale in np.asarray(scales, dtype=np.float64).tolist():
+        if not 0.97 <= float(scale) <= 1.03:
+            continue
+        knee_target = hip_target + femur_direction * (femur_span * float(scale))
+        # Femur mesh is Femur_Rot-weighted: axial scale lives on the proximal map.
+        proximal = _axial_scaled_pivot_rotation(
+            hip_source,
+            hip_target,
+            femur_rotation,
+            source_axis=(knee_source - hip_source),
+            scale=float(scale),
+        )
+        distal = _pivot_rotation(knee_source, knee_target, femur_rotation)
+        corrections = np.tile(np.eye(4, dtype=np.float64), (int(bone_count), 1, 1))
+        corrections[int(femur_controller)] = proximal
+        corrections[int(knee_controller)] = distal
+        corrections[int(patella_controller)] = proximal
+        rest = _weighted_rest_correction(
+            vertices_prefit, driver_indices, driver_weights, corrections
+        )
+        tpose_outside = _femur_group_outside_m(
+            rest,
+            faces=faces,
+            skin=skin,
+            skin_faces=skin_faces,
+            vertex_ids=probe_ids,
+        )
+        flex_outside = float(tpose_outside)
+        if use_flex:
+            assert b_prefit is not None and inv_b_prefit is not None
+            assert g_src_flex is not None and skin_flex is not None
+            assert skin_faces_flex is not None
+            b_tgt = corrections @ b_prefit
+            # Right-multiply composition (V6): G' = G_src @ inv(B_src) @ B_tgt.
+            g_tgt = g_src_flex @ inv_b_prefit @ b_tgt
+            transforms = g_tgt @ np.linalg.inv(b_tgt)
+            flexed = _weighted_rest_correction(
+                rest, driver_indices, driver_weights, transforms
+            )
+            flex_outside = _femur_group_outside_m(
+                flexed,
+                faces=faces,
+                skin=skin_flex,
+                skin_faces=skin_faces_flex,
+                vertex_ids=probe_ids,
+            )
+        trial = {
+            "scale": float(scale),
+            "tpose_max_outside_m": float(tpose_outside),
+            "flex_max_outside_m": float(flex_outside),
+            "max_outside_m": float(flex_outside),
+            "knee_target_m": knee_target.tolist(),
+        }
+        trials.append(trial)
+        # Prefer lower flexed outside, then T-pose, then scale nearest 1.0.
+        key = (
+            float(flex_outside),
+            float(tpose_outside),
+            abs(float(scale) - 1.0),
+            float(scale),
+        )
+        if best is None or key < best["key"]:
+            best = {
+                "key": key,
+                "scale": float(scale),
+                "outside": float(flex_outside),
+                "tpose_outside": float(tpose_outside),
+                "proximal": proximal,
+                "distal": distal,
+                "knee_target": knee_target,
+            }
+    if best is None:
+        raise ValueError("femur bone-first scale search produced no candidates")
+    return (
+        float(best["scale"]),
+        float(best["outside"]),
+        np.asarray(best["proximal"], dtype=np.float64),
+        np.asarray(best["distal"], dtype=np.float64),
+        {
+            "trials": trials,
+            "selected_scale": float(best["scale"]),
+            "selected_flex_outside_m": float(best["outside"]),
+            "selected_tpose_outside_m": float(best["tpose_outside"]),
+            "flex_pose_used": bool(use_flex),
+        },
+    )
 
 
 def _rotation_angle_deg(rotation: np.ndarray) -> float:
@@ -794,6 +1005,7 @@ def build_lower_chain_rest_fit_v1(
     smplx_model: Mapping[str, np.ndarray],
     smplx_model_sha256: str,
     gender: str = "male",
+    containment_pose_axis_angle: Any | None = None,
 ) -> ChainRestFitSubjectV1:
     started = time.perf_counter()
     operator.validate()
@@ -906,6 +1118,23 @@ def build_lower_chain_rest_fit_v1(
             source_mid_x + sign * pelvis_scale_x * source_half_width
         )
 
+    mesh_policy, mesh_groups = _mesh_policy(asset)
+    bone_names = list(asset.source_bone_names or ())
+    bind_global_prefit = np.asarray(asset.target_bind_global, dtype=np.float64)
+    source_posed_global_flex = None
+    skin_flex = None
+    skin_faces_flex = None
+    if containment_pose_axis_angle is not None:
+        from .anatomy_lbs import source_bone_posed_global
+
+        flex_pose = np.asarray(containment_pose_axis_angle, dtype=np.float32).reshape(
+            55, 3
+        )
+        source_posed_global_flex = source_bone_posed_global(asset, flex_pose)
+        skin_flex, skin_faces_flex = smplx_body_surface_v7(
+            smplx_model, betas=beta, pose_axis_angle=flex_pose
+        )
+
     for side_index, side in enumerate(("left", "right")):
         chain = skin_chains[side]
         ids = chain["ids"]
@@ -944,22 +1173,44 @@ def build_lower_chain_rest_fit_v1(
             span_m=femur_span,
         )
         femur_rotation = _shortest_arc_rotation(knee - hip_source, femur_direction)
-        # Projected skin span is recorded for diagnostics.  True axial scale would
-        # require splitting Femur_Rot/Knee_Rotate and breaks patella skinning unity.
+        # Skin-projection scale is diagnostic only (not the bone length oracle).
         projected_span = float(np.dot(knee_skin - hip_target, femur_direction))
         if projected_span <= 1.0e-6:
             requested_femur_scale = 1.0
-            target_femur_span = femur_span
         else:
             requested_femur_scale = projected_span / femur_span
-            target_femur_span = femur_span
-        # Requested skin span is report-only: shared-rigid femur cannot apply axial
-        # scale without splitting controllers.  Do not fail the build on request.
-        femur_scale = 1.0
+        # Bone-first (SKEL/BSM-style): anatomical segment length is femur_span;
+        # bounded axial scale serves T-pose containment, not skin-centerline length.
+        suffix = "L" if side == "left" else "R"
+        femur_scale, femur_tpose_outside, femur_proximal, femur_distal, scale_search = (
+            _select_bone_first_femur_scale(
+                scales=np.linspace(0.97, 1.03, 13),
+                hip_source=hip_source,
+                hip_target=hip_target,
+                knee_source=knee,
+                femur_direction=femur_direction,
+                femur_span=femur_span,
+                femur_rotation=femur_rotation,
+                vertices_prefit=vertices_prefit,
+                driver_indices=np.asarray(asset.driver_indices),
+                driver_weights=np.asarray(asset.driver_weights),
+                femur_controller=bone_names.index(f"Femur_Rot_{suffix}"),
+                knee_controller=bone_names.index(f"Knee_Rotate_{suffix}"),
+                patella_controller=bone_names.index(f"Patella_Rotate_{suffix}"),
+                bone_count=len(bone_names),
+                femur_vertex_ids=mesh_groups[f"{side}_femur"],
+                patella_vertex_ids=mesh_groups[f"{side}_patella"],
+                skin=skin,
+                skin_faces=faces,
+                faces=np.asarray(asset.faces, dtype=np.int32),
+                bind_global_prefit=bind_global_prefit,
+                source_posed_global_flex=source_posed_global_flex,
+                skin_flex=skin_flex,
+                skin_faces_flex=skin_faces_flex,
+            )
+        )
+        target_femur_span = femur_span * float(femur_scale)
         knee_target = hip_target + femur_direction * target_femur_span
-        femur_shared = _pivot_rotation(hip_source, hip_target, femur_rotation)
-        femur_proximal = femur_shared
-        femur_distal = femur_shared
         _station_shank_direction, ankle_constraint = _station_ray_direction(
             preferred=shank_preferred,
             proximal_target=knee_target,
@@ -1017,11 +1268,15 @@ def build_lower_chain_rest_fit_v1(
             "shank_target_direction": shank_direction.tolist(),
             "femur_length_scale": femur_scale,
             "femur_requested_skin_scale": requested_femur_scale,
+            "femur_tpose_outside_m": float(femur_tpose_outside),
+            "femur_bone_first_scale_search": scale_search,
+            "anatomical_femur_span_m": femur_span,
+            "applied_bone_scale": femur_scale,
             "femur_endpoint_axes": [0],
-            "femur_direction_source": "skin_centerline_preferred_plus_coronal_endpoint",
+            "femur_direction_source": "anatomical_segment_plus_skin_direction_coronal_endpoint",
+            "femur_axial_scale_policy": "bounded_per_bone_axial_containment_v8",
         }
 
-    mesh_policy, mesh_groups = _mesh_policy(asset)
     C_bone = _bone_transforms(asset, side_transforms)
     active_chain_groups = [
         ids for name, ids in mesh_groups.items() if not name.endswith("_foot")
@@ -1085,7 +1340,7 @@ def build_lower_chain_rest_fit_v1(
         build_report={
             "schema_version": CHAIN_REST_FIT_SCHEMA_VERSION,
             "artifact_kind": CHAIN_REST_FIT_KIND,
-            "method": "bounded_pelvis_cage_and_sparse_lbs_skin_centerline_v3",
+            "method": "bounded_pelvis_cage_and_bone_first_femur_axial_v8",
             "beta_prefit_source": "frozen_142_materialize_subject",
             "raw_smplx_joint_translation_target": False,
             "station_frame_mapping": "per_beta_bilateral_hip_midpoint_report_only",
@@ -1097,11 +1352,19 @@ def build_lower_chain_rest_fit_v1(
                 side: float(centerline_report[side]["femur_length_scale"])
                 for side in ("left", "right")
             },
-            "femur_axial_scale_policy": "multi_axis_centerline_shared_rigid_femur_v7",
+            "femur_axial_scale_policy": "bounded_per_bone_axial_containment_v8",
             "femur_endpoint_axes": [0],
-            "femur_direction_source": "skin_centerline_preferred_plus_coronal_endpoint",
+            "femur_direction_source": "anatomical_segment_plus_skin_direction_coronal_endpoint",
             "femur_requested_skin_scale": {
                 side: float(centerline_report[side]["femur_requested_skin_scale"])
+                for side in ("left", "right")
+            },
+            "femur_tpose_outside_m": {
+                side: float(centerline_report[side]["femur_tpose_outside_m"])
+                for side in ("left", "right")
+            },
+            "applied_bone_scale": {
+                side: float(centerline_report[side]["applied_bone_scale"])
                 for side in ("left", "right")
             },
             "shank_axial_scale_by_side": {

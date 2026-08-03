@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from rm75_control.control.joint_admittance_8dof.model import RobotKinematics, deg2rad, full_q_from_arm
-from rm75_control.control.joint_admittance_8dof.validation import pose_diff
+from rm75_control.control.joint_admittance_8dof.model import (
+    RobotKinematics,
+    deg2rad,
+    full_q_from_arm,
+    pose_distance,
+)
 
 
 def test_apply_link7_to_tcp_offset_updates_fk():
@@ -15,6 +19,6 @@ def test_apply_link7_to_tcp_offset_updates_fk():
     offset = np.array([0.0, 0.0, 0.220, 0.0, 1.5707963, 0.0])
     kin.apply_link7_to_tcp_offset(offset)
     pose1 = kin.fk_pose(q)
-    _, d_rot = pose_diff(pose0, pose1, kin.euler_order)
+    _, d_rot = pose_distance(pose0, pose1, kin.euler_order)
     assert d_rot > 89.0
     np.testing.assert_allclose(kin.tcp_offset_pose, offset, atol=1e-9)

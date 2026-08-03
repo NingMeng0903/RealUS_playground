@@ -29,7 +29,6 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from rm75_control.control.admittance_common.controller import AdmittanceController
 from rm75_control.control.admittance_common.phase_ipc import PhaseCommandClient, PhaseStatus
 from rm75_control.control.admittance_common.state_bus import RobotStateBus
 from rm75_control.control.admittance_common.state_relay import (
@@ -37,42 +36,23 @@ from rm75_control.control.admittance_common.state_relay import (
     parse_state_relay_config,
     relay_shm_has_publisher,
 )
-from rm75_control.control.joint_admittance_8dof.api import (
-    ArmAngleSpec,
-    CompileContext,
-    GovernorSpec,
-    SecondaryPolicy,
-    compile_phases,
-    compute_move_plan,
-    phase_hold_at_pose,
-    phase_hybrid_track,
-    phase_rail_reposition,
-    scale_admittance_for_desired_z,
-)
+from rm75_control.control.joint_admittance_8dof.api import compute_move_plan
 from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
-from rm75_control.control.joint_admittance_8dof.loop import JointIkController, run_joint_admittance_phases
+from rm75_control.control.joint_admittance_8dof.loop import JointIkController
 from rm75_control.control.joint_admittance_8dof.sin_tool_y_program import (
-    attach_hybrid_posture_toggle,
+    execute_sin_tool_y_program,
     make_task_params_from_args,
     plan_psi_toggle_sides,
     plan_q_toggle_at_pose,
     resolve_scan_target_at_d,
 )
-from rm75_control.control.joint_admittance_8dof.wbc_arm import WbcArm
 from rm75_control.control.joint_admittance_8dof.model import (
     RobotKinematics,
     deg2rad,
     full_q_from_arm,
-    max_joint_err_deg,
-    pose_track_error_mm_deg,
     rad2deg,
 )
-from rm75_control.control.joint_admittance_8dof.reference import (
-    SinToolYReference,
-    HoldReference,
-)
 from rm75_control.core.session import RobotSession
-from rm75_control.force.compensation import excitation as ex
 from rm75_control.force.compensation.tool_pose import maybe_sync_kin_tcp_from_config
 
 
@@ -99,16 +79,18 @@ def main() -> int:
     ap.add_argument("--slot", type=str, default="d")
     ap.add_argument(
         "--d-target",
-        choices=("legacy", "joints", "kin-fk"),
+        choices=("joints",),
         default="joints",
-        help="How to get move→D Cartesian pose_d (execution is still --move-mode, "
-        "default cartesian/SRS — NOT joint MoveJ): "
-        "joints=Pin FK(taught q + j7+90° so ArmTip +X → TCP +Z) → Cartesian SRS; "
-        "legacy=ArmTip contact + approach_dz along tool-Z + IK; "
-        "kin-fk=Pin standoff + IK",
+        help="Move→D target source (joints only): taught q + j7+90° so ArmTip +X → "
+        "TCP +Z, then Pin FK / pose IK. Execution follows --move-mode "
+        "(joint MoveJ or cartesian/SRS).",
     )
-    ap.add_argument("--approach-dz-mm", type=float, default=0.220 * 1000.0)
-    ap.add_argument("--use-force-id-pose", action="store_true")
+    ap.add_argument(
+        "--approach-dz-mm",
+        type=float,
+        default=0.220 * 1000.0,
+        help="Standoff used only to size auto move duration (not for pose_d).",
+    )
     ap.add_argument("--move-duration", type=float, default=None)
     ap.add_argument(
         "--move-duration-margin",
@@ -267,15 +249,14 @@ def main() -> int:
     args.rail_log_csv = rail_log_csv
     if args.verbose and float(args.log_interval) >= 1.999:
         args.log_interval = 0.5
-    if args.log_csv:
+    if args.verbose and args.log_csv:
         print(f"debug log CSV (written by window A): {args.log_csv}", flush=True)
-    if args.rail_log_csv:
+    if args.verbose and args.rail_log_csv:
         print(f"rail servo CSV (written by window A): {args.rail_log_csv}", flush=True)
 
     raw = load_yaml(args.config)
     startup = raw.get("startup", {})
     relay_cfg = parse_state_relay_config(raw)
-    dt = float(raw.get("timing", {}).get("dt_ms", 5.0)) / 1000.0
 
     kin = RobotKinematics()
     inner_cfg = build_joint_ik_config(raw)
@@ -288,38 +269,15 @@ def main() -> int:
         else float(inner_cfg.rail.q_ref_m if inner_cfg.rail.q_ref_m is not None else 0.0)
     )
     rail_m = rail_plan_m
-    cbf_on = bool(inner_cfg.qp.collision.enabled)
-    if args.verbose:
-        print(
-            f"8-DOF WBC dt={dt*1000:.0f}ms v={inner_cfg.v_scale} "
-            f"rail={inner_cfg.rail.mode.value}+{inner_cfg.rail.locked_style.value} "
-            f"collision={'ON' if cbf_on else 'OFF'}",
-            flush=True,
-        )
 
-    amplitude_m = float(args.y_pp_cm) * 0.01 / 2.0
-    max_vel_m_s = float(args.max_vel_cm_s) * 0.01
     desired_z = args.desired_z if args.desired_z is not None else float(raw.get("force", {}).get("desired_z_n", 0.0))
     enable_force = args.enable_force if args.enable_force is not None else bool(startup.get("enable_force", False))
-
-    # Tool-Y pp about pose D. With --rail-scan-center, D is planned at rail mid-stroke
-    # so the scan is symmetric about the rail center, not about rail_y=0.
-    sym = "center-symmetric, not 0-symmetric" if bool(args.rail_scan_center) else "about rail_y=0 (legacy)"
-    print(
-        f"rail plan: pose D / scan origin at rail_y={rail_plan_m:.3f} m "
-        f"(travel=[0, {travel_m:.2f}] m, center={rail_center_m:.3f} m); "
-        f"tool-Y ±{amplitude_m*1000:.0f} mm about D "
-        f"(pp={args.y_pp_cm:.0f} cm = {2*amplitude_m*1000:.0f} mm; {sym})",
-        flush=True,
-    )
 
     if args.dry_run:
         print("dry-run: controllers built OK, not connecting.", flush=True)
         return 0
 
     robot_cfg = raw.get("robot", {})
-    hm_cfg = raw.get("hybrid_motion", {})
-    track_axes = np.asarray(hm_cfg.get("track_axes", [1, 1, 0, 1, 1, 1]), dtype=float)
     max_lin = float(args.cartesian_max_lin_vel) if args.cartesian_max_lin_vel is not None else 0.4
     sigma_ref = float(inner_cfg.qp.sr_damping.sigma_ref)
 
@@ -378,18 +336,12 @@ def main() -> int:
         scan_target = resolve_scan_target_at_d(
             args.slot,
             kin,
-            d_target=str(args.d_target),
-            approach_dz_m=float(args.approach_dz_mm) * 0.001,
-            use_force_id_pose=bool(args.use_force_id_pose),
             euler_order=inner_cfg.euler_order,
             rail_m=rail_m,
-            robot=sess.robot,
             qp_cfg=inner_cfg.qp,
             nullspace_cfg=inner_cfg.nullspace,
         )
-        q_slot_deg = scan_target.q_slot_deg
         pose_d = scan_target.pose_d
-        q_slot_rad = full_q_from_arm(deg2rad(q_slot_deg), rail_m)
         q_target_rad = np.asarray(scan_target.q_target_rad, dtype=float)
 
         if attach_mode:
@@ -407,46 +359,9 @@ def main() -> int:
                 deg2rad(np.asarray(st0["joint"][:7], dtype=float)),
                 rail_start_m,
             )
-        print(
-            f"  rail start={rail_start_m*1000:.1f} mm → plan D @ {rail_plan_m*1000:.1f} mm",
-            flush=True,
-        )
-
-        if args.verbose:
-            print(
-                f"  d-target={scan_target.d_target} q_target(arm)="
-                f"{np.round(rad2deg(q_target_rad[1:]), 2).tolist()} deg  "
-                f"max|dq_slot|={max_joint_err_deg(q_slot_rad, q_target_rad):.1f}deg  "
-                f"pose_d z={pose_d[2]:.3f}m",
-                flush=True,
-            )
-            if scan_target.d_target in {"joints", "kin-fk"}:
-                print(
-                    "  move->D: pose_d from Pinocchio FK @ taught/planned joints; "
-                    f"execution follows --move-mode ({args.move_mode})",
-                    flush=True,
-                )
-
-        if max_joint_err_deg(q0_rad, q_target_rad) <= 3.0:
-            print(
-                "  note: arm already at pose D (|dq|<3deg) — move phase exits immediately",
-                flush=True,
-            )
-            if args.scan_duration <= 0 and args.hold_s <= 0:
-                print(
-                    "  tip: add --hold-s 60 to keep state relay up for Genesis FK comparison",
-                    flush=True,
-                )
-
         psi_tgt = None
         if inner.arm_task is not None:
-            psi_start = inner.arm_task.arm_angle(q0_rad)
             psi_tgt = inner.arm_task.arm_angle(q_target_rad)
-            print(
-                f"  arm-angle psi {np.degrees(psi_start):.1f}deg -> "
-                f"{np.degrees(psi_tgt):.1f}deg (scan @ D)",
-                flush=True,
-            )
 
         # PTP mode is explicit (--move-mode); scan/track stays Cartesian/hybrid.
         move_mode = str(args.move_mode)
@@ -466,281 +381,54 @@ def main() -> int:
             sigma_ref=sigma_ref,
             euler_order=inner_cfg.euler_order,
         )
-        mode_label = "MoveJ" if plan.move_mode == "joint" else "MoveL/SRS"
-        if args.verbose:
-            print(f"  move mode: {mode_label} (--move-mode {move_mode})", flush=True)
 
-        if not plan.meta.get("user_override"):
-            if args.verbose:
-                print(
-                    f"  move duration: {plan.duration_s:.2f}s (auto: "
-                    f"joint={plan.meta['from_joints_s']:.2f}s "
-                    f"tcp={plan.meta['from_tcp_s']:.2f}s "
-                    f"max|dq|={plan.meta['max_dq_deg']:.1f}deg tcp={plan.meta['tcp_mm']:.0f}mm "
-                    f"σ0={plan.meta['sigma0']:.3f})",
-                    flush=True,
-                )
-        elif args.verbose:
-            print(
-                f"  move duration: {plan.duration_s:.2f}s (user override, "
-                f"max|dq|={plan.meta['max_dq_deg']:.1f}deg)",
-                flush=True,
-            )
-        # Rail peak-v vs motor cap (move→D uses plan_drives_rail pin, not free QP).
-        dq_rail = abs(float(q_target_rad[0]) - float(q0_rad[0]))
-        peak_rail_v = (
-            1.875 * dq_rail / float(plan.duration_s)
-            if float(plan.duration_s) > 1e-9
-            else float("nan")
-        )
-        motor_vmax = float(getattr(inner_cfg.rail, "v_max_m_s", 0.20) or 0.20)
-        # Prefer hw soft-loop cap when present.
-        hw_vmax = raw.get("hw", {}).get("lw100", {}) or {}
-        if "vel_max_m_s" in hw_vmax:
-            motor_vmax = float(hw_vmax["vel_max_m_s"])
-        over = " ⚠ OVER motor cap" if peak_rail_v > motor_vmax + 1e-6 else ""
-        print(
-            f"  rail move plan: {float(q0_rad[0])*1000:.1f}→{float(q_target_rad[0])*1000:.1f} mm "
-            f"in {plan.duration_s:.2f}s → peak_v={peak_rail_v:.3f} m/s "
-            f"(motor vel_max={motor_vmax:.2f} m/s){over} | "
-            f"mode={mode_label}",
-            flush=True,
-        )
-        if args.verbose:
-            print(f"  governor joint max: {plan.gov_joint_max_deg:.0f}deg", flush=True)
-
-        force_observer = None
-        psi_center = None
         psi_left = None
         psi_right = None
-        q_toggle_center = None
         q_toggle_left = None
         q_toggle_right = None
-        if enable_force and args.scan_duration > 0.0:
-            from rm75_control.control.admittance_common.observer import CompensatedForceObserver
-
-            force_observer = CompensatedForceObserver.from_yaml(raw)
-
-        if plan.move_mode == "joint":
-            move_phase = WbcArm.make_movej_phase(
+        if args.scan_duration > 0.0 and args.psi_toggle_period > 0.0:
+            if psi_tgt is None and inner.arm_task is None:
+                raise RuntimeError("--psi-toggle-period requires arm_angle task (psi at D)")
+            q_toggle_center, q_toggle_left, q_toggle_right = plan_q_toggle_at_pose(
                 kin,
-                q0_rad,
-                q_target_rad,
-                duration_s=float(plan.duration_s),
-                label=f"movej->{args.slot}",
-                move_kp=float(args.move_kp),
-                gov_joint_max_deg=plan.gov_joint_max_deg,
-                force_observer=force_observer,
-            )
-            move_duration_s = float(plan.duration_s)
-        else:
-            move_phase = WbcArm.make_movel_phase(
-                kin,
-                q0_rad,
                 pose_d,
                 q_target_rad,
-                duration_s=float(plan.duration_s),
-                label=f"movel->{args.slot}",
-                move_kp=float(args.move_kp),
-                max_lin_vel_m_s=max_lin,
-                gov_joint_max_deg=plan.gov_joint_max_deg,
-                force_observer=force_observer,
-                euler_order=inner_cfg.euler_order,
+                q0_rad,
+                qp_cfg=inner_cfg.qp,
+                nullspace_cfg=inner_cfg.nullspace,
             )
-            move_duration_s = float(move_phase.move_ref.duration_s)
-            if move_duration_s > float(plan.duration_s) + 1e-6 and args.verbose:
-                print(
-                    f"  SRS duration stretched {plan.duration_s:.2f}s → {move_duration_s:.2f}s "
-                    f"(joint-rate limit)",
-                    flush=True,
-                )
-            plan.duration_s = move_duration_s
-        ctx = CompileContext(
-            kin=kin,
-            inner=inner,
-            euler_order=inner_cfg.euler_order,
-            control_frame=inner_cfg.control_frame,
-            v_scale=inner_cfg.v_scale,
-        )
-
-        specs = [move_phase]
-
-        if args.hold_at_d_s > 0.0:
-            specs.append(
-                phase_hold_at_pose(
-                    args.hold_at_d_s,
-                    label="hold@D",
-                    force_observer=force_observer,
-                )
-            )
-            print(f"hold: {args.hold_at_d_s:.0f}s @ D (rail locked)", flush=True)
-
-        if args.rail_move_cm > 0.0:
-            sign = 1.0 if args.rail_move_dir == "+y" else -1.0
-            rail0 = float(
-                inner_cfg.rail.q_ref_m if inner_cfg.rail.q_ref_m is not None else 0.0
-            )
-            delta_m = sign * float(args.rail_move_cm) * 0.01
-            rail_target = rail0 + delta_m
-            lo, hi = 0.0, float(inner_cfg.rail.travel_m)
-            if not (lo <= rail_target <= hi):
-                raise RuntimeError(
-                    f"rail target {rail_target * 100:.1f}cm outside travel "
-                    f"[{lo * 100:.0f}, {hi * 100:.0f}]cm"
-                )
-            q_rail_start = full_q_from_arm(q_target_rad, rail_m=rail0)
-            rail_style = str(args.rail_move_mode)
-            specs.append(
-                phase_rail_reposition(
-                    rail_target,
-                    q_rail_start,
-                    kin,
-                    label=f"rail{args.rail_move_dir}{args.rail_move_cm:.0f}cm_{rail_style}",
-                    style=rail_style,
-                    force_observer=force_observer,
-                    v_max_m_s=inner_cfg.rail.v_max_m_s,
-                )
-            )
-            print(
-                f"rail: {rail_style} {args.rail_move_dir} {args.rail_move_cm:.0f}cm "
-                f"({rail0 * 100:.1f} -> {rail_target * 100:.1f} cm)",
-                flush=True,
-            )
-
-        if args.scan_duration > 0.0:
-            if not enable_force:
-                print("force: off (--enable-force to hold Fz)", flush=True)
-            outer_ctrl = AdmittanceController(dt, scale_admittance_for_desired_z(raw, desired_z))
-            desired_force = np.zeros(6)
-            desired_force[2] = desired_z
-            if args.hybrid_hold_at_d:
-                # Force hold at D (no Y sin); rail stays COUPLED for σ-escape.
-                hybrid_ref = HoldReference()
-                hybrid_label = "hybrid@D"
-                hybrid_sec = SecondaryPolicy(
-                    preset="track",
-                    arm_angle=ArmAngleSpec(psi_rad=psi_tgt) if psi_tgt is not None else None,
-                    qdot_ff="off",
-                )
-                hybrid_gov = GovernorSpec(err_ok_mm=15.0, err_max_mm=80.0)
-            else:
-                hybrid_ref = SinToolYReference(
-                    amplitude_m,
-                    period_s=args.period_s,
-                    max_vel_m_s=None if args.period_s is not None else max_vel_m_s,
-                    soft_start=True,
-                    ramp_s=2.0,
-                    euler_order=inner_cfg.euler_order,
-                )
-                hybrid_label = "scan"
-                hybrid_sec = SecondaryPolicy(preset="track", qdot_ff="off")
-                hybrid_gov = GovernorSpec(err_ok_mm=10.0, err_max_mm=40.0)
-            specs.append(
-                phase_hybrid_track(
-                    hybrid_ref,
-                    outer_ctrl,
-                    desired_force=desired_force,
-                    label=hybrid_label,
-                    duration_s=args.scan_duration,
-                    force_observer=force_observer,
-                    psi_rad_on_enter=psi_tgt,
-                    secondary=hybrid_sec,
-                    governor=hybrid_gov,
-                )
-            )
-            if args.hybrid_hold_at_d:
-                print(
-                    f"hybrid@D: hold TCP Fz={desired_z:.1f}N {args.scan_duration:.0f}s "
-                    f"(rail COUPLED + reach)",
-                    flush=True,
-                )
-            else:
-                print(
-                    f"scan: Y {args.y_pp_cm:.0f}cmpp Fz={desired_z:.1f}N {args.scan_duration:.0f}s",
-                    flush=True,
-                )
-            if args.psi_toggle_period > 0.0:
-                if psi_tgt is None and inner.arm_task is None:
-                    raise RuntimeError("--psi-toggle-period requires arm_angle task (psi at D)")
-                q_toggle_center, q_toggle_left, q_toggle_right = plan_q_toggle_at_pose(
-                    kin,
-                    pose_d,
-                    q_target_rad,
+            if inner.arm_task is not None and psi_tgt is not None:
+                _psi_center, psi_left, psi_right = plan_psi_toggle_sides(
+                    inner,
                     q0_rad,
+                    psi_tgt,
+                    side_offset_rad=np.deg2rad(float(args.psi_side_offset_deg)),
+                    psi_left_rad=(
+                        np.deg2rad(float(args.psi_left_deg))
+                        if args.psi_left_deg is not None
+                        else None
+                    ),
+                    psi_right_rad=(
+                        np.deg2rad(float(args.psi_right_deg))
+                        if args.psi_right_deg is not None
+                        else None
+                    ),
+                    psi_live_left=not args.no_psi_live_left,
+                    kin=kin,
+                    pose_d=pose_d,
+                    q_center_rad=q_target_rad,
                     qp_cfg=inner_cfg.qp,
                     nullspace_cfg=inner_cfg.nullspace,
                 )
-                if inner.arm_task is not None and psi_tgt is not None:
-                    psi_center, psi_left, psi_right = plan_psi_toggle_sides(
-                        inner,
-                        q0_rad,
-                        psi_tgt,
-                        side_offset_rad=np.deg2rad(float(args.psi_side_offset_deg)),
-                        psi_left_rad=(
-                            np.deg2rad(float(args.psi_left_deg))
-                            if args.psi_left_deg is not None
-                            else None
-                        ),
-                        psi_right_rad=(
-                            np.deg2rad(float(args.psi_right_deg))
-                            if args.psi_right_deg is not None
-                            else None
-                        ),
-                        psi_live_left=not args.no_psi_live_left,
-                        kin=kin,
-                        pose_d=pose_d,
-                        q_center_rad=q_target_rad,
-                        qp_cfg=inner_cfg.qp,
-                        nullspace_cfg=inner_cfg.nullspace,
-                    )
-                dq_l = rad2deg(q_toggle_left[1:] - q_toggle_center[1:])
-                dq_r = rad2deg(q_toggle_right[1:] - q_toggle_center[1:])
-                max_l = float(np.max(np.abs(dq_l)))
-                max_r = float(np.max(np.abs(dq_r)))
-                print(
-                    f"  posture toggle (joint IK@D): "
-                    f"max|dq| left={max_l:.1f}deg right={max_r:.1f}deg",
-                    flush=True,
-                )
-                if max_l < 15.0 and args.psi_left_deg is None:
-                    print(
-                        "  WARN: left Δq < 15deg — park arm in LEFT teach pose, "
-                        "then submit (q0 read at task start, before move->D)",
-                        flush=True,
-                    )
-                print(
-                    f"    left  Δq deg: {np.round(dq_l, 1).tolist()}",
-                    flush=True,
-                )
-                print(
-                    f"    right Δq deg: {np.round(dq_r, 1).tolist()}",
-                    flush=True,
-                )
-                if psi_center is not None:
-                    print(
-                        f"    ψ center/left/right: "
-                        f"{np.degrees(psi_center):+.1f} / {np.degrees(psi_left):+.1f} / "
-                        f"{np.degrees(psi_right):+.1f}  "
-                        f"every {args.psi_toggle_period:.0f}s ramp={args.psi_ramp_s:.1f}s",
-                        flush=True,
-                    )
-
-        compiled = compile_phases(specs, ctx)
-        phases = [c.phase for c in compiled]
-        by_label = {c.label: c for c in compiled}
-
-        if args.psi_toggle_period > 0.0 and args.scan_duration > 0.0:
-            attach_hybrid_posture_toggle(
-                phases,
-                inner,
-                q_center=q_toggle_center,
-                q_left=q_toggle_left,
-                q_right=q_toggle_right,
-                period_s=float(args.psi_toggle_period),
-                filter_alpha=float(args.psi_toggle_alpha),
-                ramp_duration_s=float(args.psi_ramp_s),
-                verbose=bool(args.verbose),
+            max_l = float(
+                np.max(np.abs(rad2deg(q_toggle_left[1:] - q_toggle_center[1:])))
             )
+            if max_l < 15.0 and args.psi_left_deg is None:
+                print(
+                    "  WARN: left Δq < 15deg — park arm in LEFT teach pose, "
+                    "then submit (q0 read at task start, before move->D)",
+                    flush=True,
+                )
 
         task_params = make_task_params_from_args(
             args,
@@ -759,60 +447,7 @@ def main() -> int:
             tcp_offset_pose=kin.tcp_offset_pose,
         )
 
-        t_last_print = [0.0]
         last_status_msg = [""]
-
-        def on_step(label: str, t_phase: float, step, pose, f_ext, t_wall: float = float("nan")) -> None:
-            if args.log_interval <= 0:
-                return
-            now = time.perf_counter()
-            if now - t_last_print[0] < args.log_interval:
-                return
-            t_last_print[0] = now
-            cp = by_label.get(label)
-            if cp is None:
-                return
-            if cp.move_ref is not None:
-                q_ref, _ = cp.move_ref.sample_q(t_phase)
-                pose_ref = kin.fk_pose(q_ref)
-                jdeg = getattr(cp.outer, "last_joint_err_deg", float("nan"))
-                extra = f" jq={jdeg:.1f}deg" if np.isfinite(jdeg) else ""
-                tw = f" wall={t_wall:.1f}s" if np.isfinite(t_wall) else ""
-            elif cp.reference is not None:
-                ref = cp.reference.sample(t_phase)
-                pose_ref = ref.pose_d
-                extra = ""
-                tw = f" wall={t_wall:.1f}s" if np.isfinite(t_wall) else ""
-            elif cp.rail_ref is not None:
-                q_ref, _ = cp.rail_ref.sample_q(t_phase)
-                pose_ref = None
-                extra = f" rail_y={q_ref[0] * 1000:.1f}mm"
-                tw = f" wall={t_wall:.1f}s" if np.isfinite(t_wall) else ""
-            else:
-                return
-            if pose_ref is None:
-                err_mm = float(getattr(cp.outer, "last_err_mm", 0.0))
-                err_deg = 0.0
-            else:
-                err_mm, err_deg = pose_track_error_mm_deg(
-                    pose_ref,
-                    pose,
-                    track_axes=track_axes,
-                    euler_order=inner_cfg.euler_order,
-                )
-            qdot_frac = float(np.max(np.abs(step.qdot) / np.maximum(inner.limits.v_max, 1e-9)))
-            rail_mm = float(inner.q_cmd[0]) * 1000.0
-            print(
-                f"{label}{tw} plan={t_phase:.1f}s "
-                f"track_xy={err_mm:.1f}mm rot={err_deg:.1f}deg Fz={f_ext[2]:+.1f}N "
-                f"rail_cmd={rail_mm:.1f}mm "
-                f"slack={step.slack_norm:.3f} follow={np.degrees(step.follow_err_rad):.2f}deg "
-                f"cbf={step.n_cbf_active} sigma_min={step.sigma_min:.3f} "
-                f"vfrac={qdot_frac:.2f} "
-                f"clamp={'V' if step.vel_clamped else ''}{'A' if step.acc_clamped else ''}{'P' if step.pos_clamped else ''}"
-                f"{extra if cp.move_ref is not None else ''}",
-                flush=True,
-            )
 
         def _poll_attach_status(cmd_seq: int) -> PhaseStatus:
             assert phase_client is not None
@@ -886,21 +521,12 @@ def main() -> int:
                 else:
                     print("rm75 task: done", flush=True)
             else:
-                run_joint_admittance_phases(
+                execute_sin_tool_y_program(
                     sess,
-                    phases,
-                    inner,
-                    q_start_deg=None,
-                    dt=dt,
-                    follow=bool(startup.get("follow", True)),
-                    move_speed=int(startup.get("move_speed", 20)),
-                    realtime=bool(startup.get("realtime", False)),
-                    watchdog_timeout_s=float(startup.get("watchdog_timeout_s", 0.1)),
-                    on_step=on_step,
-                    log_csv=args.log_csv,
-                    state_bus=state_bus,
-                    canfd_proxy=None,
-                    verbose=args.verbose,
+                    state_bus,
+                    task_params,
+                    raw=raw,
+                    verbose=bool(args.verbose),
                 )
             if args.hold_s > 0:
                 print(

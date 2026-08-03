@@ -1,25 +1,7 @@
-"""One-shot pose inverse kinematics for the 8-DOF stack.
+"""One-shot pose IK for the 8-DOF stack (no vendor rm_algo_inverse_kinematics).
 
-Two entry points:
-
-* :func:`resolve_pose_ik_srs` — SRS closed-form IK + 1-D ψ enumeration + path
-  reachability check.  Preferred: analytical, no QP iterations, jointly
-  selects the swivel branch that is closest to a global ``psi_home`` while
-  avoiding singularities/limits/wrist locks.  Fails loud on unreachable
-  poses (``UnreachablePathError``) so the caller re-teaches instead of
-  silently degrading.
-
-* :func:`solve_pose_ik` — legacy iterative WBC IK (retained for
-  backward-compat; still used by tools/reachability scripts).  This is the
-  "gradient-descent-of-pose-error via slack QP" path; when ``attractor_q``
-  is ``None`` (its new default) it uses ``q_seed`` as the centering target
-  so the resolved posture stays on the teach branch rather than being
-  pulled toward a yaml zero.
-
-Planning-only helpers: they resolve ``q_target`` for a desired TCP pose
-without any vendor ``rm_algo_inverse_kinematics`` call — this is the ONLY
-IK path allowed for large point-to-point moves (see MD/debug.md
-architecture constraint: no black-box vendor IK, ever).
+``resolve_pose_ik_srs``: preferred closed-form SRS + ψ enum + path check.
+``solve_pose_ik``: legacy iterative WBC IK for tools / reachability scripts.
 """
 
 from __future__ import annotations
@@ -57,11 +39,7 @@ from rm75_control.kinematics.srs_ik import (
 
 
 class UnreachablePathError(RuntimeError):
-    """Raised when no ψ candidate produces a globally reachable path from
-    (pose_seed, ψ_seed) to (pose_target, ψ_target).  This is deliberately a
-    hard failure: silently accepting an "almost feasible" plan is what caused
-    the mid-move singularity stalls we are trying to eliminate.
-    """
+    """No ψ candidate yields a globally reachable path (fail loud; re-teach)."""
 
 
 @dataclass
@@ -325,7 +303,7 @@ def resolve_pose_ik_srs(
         score, psi, q_arm, sigma_min = top_k[0]
         return _report_from(psi, q_arm, sigma_min, path_ok=False)
 
-    # Bug 7a: path reachability check on the top-K candidates.
+    # Path reachability check on the top-K candidates.
     for score, psi, q_arm, sigma_min in top_k:
         if _path_reachable(
             kin,
@@ -353,58 +331,6 @@ def resolve_pose_ik_srs(
     )
 
 
-def resolve_pose_ik_for_move(
-    kin: RobotKinematics,
-    q0_rad: np.ndarray,
-    q_slot_rad: np.ndarray,
-    pose_target: np.ndarray,
-    *,
-    y_rail_target: float | None = None,
-    psi_home_rad: float | None = None,
-    max_psi_swing_rad: float = 150.0 * np.pi / 180.0,
-    psi_hard_lower_rad: float | None = None,
-    psi_hard_upper_rad: float | None = None,
-    planner_weights: PlannerGoalWeights | None = None,
-    euler_order: str = "xyz",
-) -> tuple[np.ndarray, bool, PoseIkReport, bool]:
-    """Move-aware SRS IK: live q0 path + taught slot branch.
-
-    Returns ``(q_target, ok, report, use_srs_move_ref)``.
-
-    * ``q_seed=q0`` for path reachability (actual move start).
-    * ``q_branch_seed=q_slot`` for elbow/wrist branch at pose D.
-    * ``psi_home`` defaults to ψ(q0) unless yaml overrides.
-
-    If the full path check fails (common when q0 is far from the taught
-    slot, e.g. home → D), falls back to goal-only IK and signals
-    ``use_srs_move_ref=False`` so the caller uses joint interpolation
-    instead of :class:`SrsSmoothMoveReference`.
-    """
-    q0 = np.asarray(q0_rad, dtype=float)
-    q_slot = np.asarray(q_slot_rad, dtype=float)
-    psi_live = float(psi_from_q(q0[1:]))
-    psi_home = float(psi_live if psi_home_rad is None else psi_home_rad)
-    common = dict(
-        pose_target=pose_target,
-        y_rail_target=y_rail_target,
-        psi_home_rad=psi_home,
-        max_psi_swing_rad=max_psi_swing_rad,
-        psi_hard_lower_rad=psi_hard_lower_rad,
-        psi_hard_upper_rad=psi_hard_upper_rad,
-        planner_weights=planner_weights,
-        euler_order=euler_order,
-        q_branch_seed=q_slot,
-    )
-    try:
-        q_tgt, ok, rep = resolve_pose_ik_srs(kin, q_seed=q0, require_path=True, **common)
-        return q_tgt, ok, rep, True
-    except UnreachablePathError:
-        q_tgt, ok, rep = resolve_pose_ik_srs(
-            kin, q_seed=q0, require_path=False, **common
-        )
-        return q_tgt, ok, rep, False
-
-
 def solve_pose_ik(
     kin: RobotKinematics,
     q_seed: np.ndarray,
@@ -422,17 +348,9 @@ def solve_pose_ik(
     attractor_q: np.ndarray | None = None,
     trace: list[dict] | None = None,
 ) -> tuple[np.ndarray, bool, PoseIkReport]:
-    """Iterative WBC IK (legacy path): ``q_seed`` -> ``q`` with fk(q) ≈ pose_target.
+    """Iterative WBC IK (legacy): ``q_seed`` → ``q`` with fk(q) ≈ pose_target.
 
-    Each iteration feeds ``v_cmd = k_gain · saturate(pose_error)`` to the QP.
-
-    ``attractor_q`` sets the ``JointCenteringTask`` target for the nullspace
-    pull.  When ``None`` (the new default), we use ``q_seed`` itself — this
-    matches Bug 4 of the SRS+Rail fix: the old default read
-    ``nullspace_cfg.q_nominal_rad`` which was all-zeros in yaml and pulled the
-    IK toward a straight arm (J4 → 0, σ_min → 0).  Prefer
-    :func:`resolve_pose_ik_srs` when you have SRS geometry (all 8-DOF-stack
-    call sites do).
+    ``attractor_q=None`` centers on ``q_seed`` (not yaml zeros). Prefer SRS IK.
     """
     cfg = qp_cfg or QpConfig()
     limits = SafetyLimits.from_kinematics(kin, v_scale=0.9, a_max=50.0)
@@ -440,12 +358,7 @@ def solve_pose_ik(
 
     task: JointCenteringTask | None = None
     if nullspace_cfg is not None:
-        # Attractor selection (Bug 4 Step A):
-        #   attractor_q explicit    → use it verbatim
-        #   attractor_q None        → use q_seed (the teach posture)
-        # Only fall through to nullspace_cfg.q_nominal_rad if the caller
-        # cleared attractor_q AND the config still has an explicit q_nominal.
-        # yaml default of ``q_nominal_deg: null`` (Bug 4) means q_seed wins.
+        # Default attractor is q_seed (teach posture), not yaml q_nominal zeros.
         target = np.asarray(
             attractor_q if attractor_q is not None else q_seed,
             dtype=float,

@@ -7,8 +7,6 @@ collision CBF / admittance / rail coupling).
 
 Also exposes:
   * ``algo_fk`` / ``algo_ik`` — kinematics
-  * ``make_joint_stream_phase`` + ``joint_servo_set`` — live joint position servo
-  * ``make_movev_phase`` + ``movev_set`` — Cartesian velocity (MoveV)
 
 Typical use (window C → window A phase IPC)::
 
@@ -16,13 +14,6 @@ Typical use (window C → window A phase IPC)::
     arm.connect()
     tag = arm.movej(q_deg, v=20, r=0, connect=0, block=1)
     # then start force scan / movel explicitly — no auto distance switch
-
-Streaming (in-process phase list, not one-shot IPC)::
-
-    spec, h = WbcArm.make_joint_stream_phase(kin, q0)
-    arm.joint_servo_set(h, q_cmd_deg)
-    spec_v, hv = WbcArm.make_movev_phase()
-    arm.movev_set(hv, [0.01, 0, 0, 0, 0, 0])
 """
 
 from __future__ import annotations
@@ -44,15 +35,9 @@ from rm75_control.control.joint_admittance_8dof.api import (
     compute_move_plan,
     make_srs_move_reference,
     phase_cartesian_goto,
-    phase_cartesian_velocity,
-    phase_joint_stream,
 )
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
-from rm75_control.control.joint_admittance_8dof.reference import (
-    JointSmoothMoveReference,
-    StreamingCartesianVelocityReference,
-    StreamingJointReference,
-)
+from rm75_control.control.joint_admittance_8dof.reference import JointSmoothMoveReference
 
 _LOG = logging.getLogger(__name__)
 
@@ -249,60 +234,6 @@ class WbcArm:
         pose = np.asarray(self.kin.fk_pose(q), dtype=float).reshape(6)
         return OK, pose.tolist()
 
-    @staticmethod
-    def make_joint_stream_phase(
-        kin: RobotKinematics,
-        q0_rad: np.ndarray,
-        *,
-        label: str = "joint_stream",
-        move_kp: float = 2.0,
-        duration_s: float | None = None,
-        max_duration_s: float | None = None,
-        force_observer: Any = None,
-    ) -> tuple[Any, StreamingJointReference]:
-        """Build continuous joint-position servo phase + live handle.
-
-        Update targets with ``handle.set_q(q_rad)`` / ``handle.set_q_deg(...)``.
-        Compose into a phase list and run on window A (in-process), not via
-        one-shot IPC ``movej``.
-        """
-        ref = StreamingJointReference(kin, q0_rad)
-        spec = phase_joint_stream(
-            ref,
-            label=label,
-            move_kp=float(move_kp),
-            duration_s=duration_s,
-            max_duration_s=max_duration_s,
-            force_observer=force_observer,
-        )
-        return spec, ref
-
-    @staticmethod
-    def make_movev_phase(
-        *,
-        label: str = "movev",
-        duration_s: float | None = None,
-        max_duration_s: float | None = None,
-        max_lin_vel_m_s: float = 0.4,
-        euler_order: str = "xyz",
-        force_observer: Any = None,
-    ) -> tuple[Any, StreamingCartesianVelocityReference]:
-        """Build Cartesian velocity (MoveV) phase + live twist handle.
-
-        After phase enter, call ``handle.set_twist([vx,vy,vz,wx,wy,wz])`` in the
-        base frame (m/s, rad/s), or ``handle.stop()``.
-        """
-        ref = StreamingCartesianVelocityReference(euler_order=euler_order)
-        spec = phase_cartesian_velocity(
-            ref,
-            label=label,
-            duration_s=duration_s,
-            max_duration_s=max_duration_s,
-            max_lin_vel_m_s=float(max_lin_vel_m_s),
-            force_observer=force_observer,
-        )
-        return spec, ref
-
     # ------------------------------------------------------------------ motion
     def movej(
         self,
@@ -413,49 +344,6 @@ class WbcArm:
         return self.movej(
             q_list, v, r, connect, block, q0_deg=self._rad_to_joint_list(q0), timeout_s=timeout_s
         )
-
-    def movev_set(
-        self,
-        handle: StreamingCartesianVelocityReference,
-        twist: list[float] | np.ndarray,
-        *,
-        frame: str = "base",
-        pose: list[float] | np.ndarray | None = None,
-    ) -> int:
-        """Update a live MoveV handle (in-process streaming; not IPC).
-
-        Args:
-            handle: from ``make_movev_phase``.
-            twist: ``[vx,vy,vz,wx,wy,wz]``.
-            frame: ``base`` or ``tool`` (tool needs ``pose``).
-        """
-        try:
-            if frame == "tool":
-                if pose is None:
-                    return ERR_PARAM
-                handle.set_twist_tool(twist, pose)
-            else:
-                handle.set_twist(twist)
-        except Exception:
-            return ERR_PARAM
-        return OK
-
-    def joint_servo_set(
-        self,
-        handle: StreamingJointReference,
-        joint: list[float] | np.ndarray,
-        *,
-        q_deg: bool = True,
-    ) -> int:
-        """Update a live joint-stream handle (in-process; not IPC)."""
-        try:
-            if q_deg:
-                handle.set_q_deg(joint)
-            else:
-                handle.set_q(joint)
-        except Exception:
-            return ERR_PARAM
-        return OK
 
     # ------------------------------------------------------------------ helpers
     def _rad_to_joint_list(self, q_rad: np.ndarray) -> list[float]:

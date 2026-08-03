@@ -169,6 +169,7 @@ def build_whole_chain_rest_fit_v1(
     smplx_model: Mapping[str, np.ndarray],
     smplx_model_sha256: str,
     gender: str = "male",
+    containment_pose_axis_angle: Any | None = None,
 ) -> ChainRestFitSubjectV1:
     started = time.perf_counter()
     if str(gender).strip().lower() != "male":
@@ -191,6 +192,7 @@ def build_whole_chain_rest_fit_v1(
         smplx_model=smplx_model,
         smplx_model_sha256=smplx_model_sha256,
         gender=gender,
+        containment_pose_axis_angle=containment_pose_axis_angle,
     )
     subject = materialize_subject(operator, betas=betas, gender=gender)
     asset = subject.rigged_asset
@@ -429,7 +431,7 @@ def build_whole_chain_rest_fit_v1(
         {
             "schema_version": WHOLE_CHAIN_SCHEMA_VERSION,
             "artifact_kind": WHOLE_CHAIN_KIND,
-            "method": "full_main_chain_right_multiply_pose_v7_femur_axial",
+            "method": "full_main_chain_right_multiply_pose_v8_bone_first_femur",
             "accepted_scope": "full_main_chain_shadow",
             "upper_station_frame_translation_m": upper_translation.tolist(),
             "upper_centerlines": report,
@@ -441,7 +443,8 @@ def build_whole_chain_rest_fit_v1(
             "scapula_clavicle_vertices_changed": False,
             "terminal_hand_policy": "copy_142_terminal_hand",
             "pose_map_composition": "right_multiply_bind_v6",
-            "femur_axial_scale_policy": "multi_axis_centerline_shared_rigid_femur_v7",
+            "femur_axial_scale_policy": "bounded_per_bone_axial_containment_v8",
+            "containment_pose_used": containment_pose_axis_angle is not None,
             "tube_vertices_changed": True,
             "tube_transport_application_count": 1,
             "tube_transport_vertex_count": int(len(tube_ids)),
@@ -474,6 +477,7 @@ def check_whole_chain_rest_fit_v1(
     calibration: AnatomicalCalibrationV1,
     smplx_model: Mapping[str, np.ndarray],
     smplx_model_sha256: str,
+    containment_pose_axis_angle: Any | None = None,
 ) -> dict[str, Any]:
     started = time.perf_counter()
     expected = build_whole_chain_rest_fit_v1(
@@ -484,6 +488,7 @@ def check_whole_chain_rest_fit_v1(
         capture_sha256=value.capture_sha256,
         smplx_model=smplx_model,
         smplx_model_sha256=smplx_model_sha256,
+        containment_pose_axis_angle=containment_pose_axis_angle,
     )
     exact_fields = (
         "vertices_prefit", "vertices_final", "faces", "bone_parents", "B_prefit",
@@ -668,7 +673,13 @@ def check_whole_chain_rest_fit_v1(
         and invariants["tube_transport_application_count"] == 1
         and all(metric["pass"] for metric in upper_metrics.values())
         and all(metric["pass"] for metric in rigid_cap_metrics.values())
-        and float(expected.build_report["elapsed_seconds"]) <= 30.0
+        # Bone-first containment search adds winding-number trials; allow headroom.
+        and float(expected.build_report["elapsed_seconds"])
+        <= (
+            180.0
+            if bool(expected.build_report.get("containment_pose_used"))
+            else 30.0
+        )
     )
     return {
         "schema_version": WHOLE_CHAIN_SCHEMA_VERSION,
@@ -703,6 +714,7 @@ def save_whole_chain_rest_fit_v1(
     capture_sha256s: Mapping[str, str],
     blender_oracle_sha256: str,
     validation_reports: Mapping[str, Mapping[str, Any]],
+    containment_pose_axis_angle: Any | None = None,
 ) -> Path:
     value.validate()
     if str(smplx_model_sha256) != FROZEN_SMPLX_MALE_SHA256:
@@ -717,6 +729,7 @@ def save_whole_chain_rest_fit_v1(
         calibration=calibration,
         smplx_model=smplx_model,
         smplx_model_sha256=smplx_model_sha256,
+        containment_pose_axis_angle=containment_pose_axis_angle,
     )
     required_reports = {"pose_map", "dynamic", "containment"}
     if (

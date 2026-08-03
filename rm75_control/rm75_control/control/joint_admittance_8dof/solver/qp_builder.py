@@ -88,11 +88,7 @@ class QpConfig:
     collision: CollisionConfig = field(default_factory=CollisionConfig)
     # Chiaverini 1997 SR damping for nullspace projection.
     sr_damping: SrDampingConfig = field(default_factory=SrDampingConfig)
-    # σ-adaptive primary-task weight (Chiaverini-style): as σ_min ↘, scale
-    # W_task toward task_weight_min_frac so the slack absorbs infeasible
-    # v_cmd instead of saturating qdot with near-zero TCP motion.  LPF on the
-    # scale avoids the bang-bang chatter that motivated the (over-broad) Bug 1
-    # removal — only the primary cost softens; rail_extension / reg stay put.
+    # Soften W_task as σ_min drops so slack absorbs infeasible twists.
     task_weight_min_frac: float = 0.05
     task_weight_lpf_tau_s: float = 0.25
     # Weight QP reg by diag(M(q)) for dynamics-consistent nullspace resolution.

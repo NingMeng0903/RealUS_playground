@@ -25,6 +25,7 @@
 |---|---|---|
 | 分支起点 | `31133af` | 联动基线；T-pose 可看；带 pose 穿出；**非**最终 pose 解 |
 | 当前 pose 权威 | `chain_retarget_v7_node2_001` | V6 right-multiply + V7 股骨中心线方向；膝 PackB 残差仍在 |
+| V8 试修（膝未过） | `chain_retarget_v8_node2_001` | bone-first 有界轴向尺度；**目视仍出皮 + 髁胫衔接差**；不得升权威 |
 | 继承 rest/bind | `chain_retarget_v1_node2_004` | 双审通过：主链 rest/bind 合同 |
 | 失败 WIP | 未提交 V4 + `chain_retarget_v4_node2_*` | quarantine；禁止 production import |
 | 负例 | `29e1072` | 细骨硬塞；不重建 |
@@ -132,6 +133,56 @@ outputs/anatomy_retarget/v8_candidates/v7_vs_v6_knee_proof_001/                 
 - 屈膝股骨外露 vs V6：**similar**（未实质消掉 Pack B 髁前残差）。
 - LUNA 裁决：`reject`（作为“膝修复完成”）；本轮 **审查/出图目标完成**，**膝几何修复未完成**。
 - 下一步（未开干）：需在不破坏 patella skinning unity 的前提下引入可验收的股骨/髁 containment 目标（仍禁止硬编码关节偏置与 vessel reroute）。
+
+### 0.10 2026-08-03 空间清理 + GROK 审图（修膝前）
+
+**磁盘**：`v8_candidates` 11G → **249M**（约释放 10.6G）。大包已抽成 `review_slim_20260803/` 后删除（见 `CLEANUP_MANIFEST_20260803_space.json`）。保留：`rebuild_012`、`node1_006`、`node2_004`、`v6/v7` shadow、矩阵 JSON。
+
+**GROK 审图结论（slim 包）**
+
+| 部位 | 状态 | 判定 |
+|---|---|---|
+| 屈膝股骨/髁 | outside_heatmap 仍有红块；髁前偏皮缘 | **blocking 膝残差未消** |
+| BEDLAM 下肢帧膝 | 髁/关节仍偏外 | 同族问题 |
+| 肘 | 连续、无 V4 爆炸 | 可用（Pack B 级缝隙可接受） |
+| 手 | 骨在皮内，无整指 collapse | V6 门通过，可用 |
+| `full_anatomy` 全身 | 脏器/血管/神经可见 | 出图目标完成 |
+| Pack C V4 | 已否决爆炸 | 不回归 |
+
+### 0.11 2026-08-03 V8 bone-first（SKEL 顺序）— 膝仍未过
+
+**做了什么（对齐 SKEL/OSSO/Pinocchio 顺序，非皮长同比）**
+
+1. 诊断：解剖髋–膝段 ≈0.373 m，股骨 mesh 轴长 ≈0.405–0.408 m（**长约 32–35 mm**）；T-pose outside≈0，屈膝仍戳皮。
+2. 实现：Node1 解剖段定长；`Femur_Rot` 上 BSM 式有界轴向尺度 `s∈[0.97,1.03]`（142 股骨权重几乎全在 `Femur_Rot`，拆 Knee 远端**不动 mesh**）；T-pose+`pose_213328` 最小化 outside；Patella 跟近端。
+3. Shadow：`chain_retarget_v8_node2_001`（门：rest / terminal / knee_vs_142 / vs-V7 outside↓ / 解剖帧）。
+4. Slim 对照：`review_slim_20260803/v8_vs_v7/` + `bone_first_diag/`。
+
+**自动门数字（不能当“修好了”）**
+
+| | V7 | V8 |
+|---|---|---|
+| 213328 `applied_bone_scale` | 1.0 / 1.0 | **0.98** / 1.0 |
+| 屈膝 worst outside | ≈22.9 mm | ≈18.6 mm（↓≈4.3 mm） |
+| 手足 terminal | pass | pass |
+
+**目视（用户当场否决，GROK+LUNA 同意）**
+
+- 屈膝髁/髌：**仍明显出皮**（outside_heatmap 大红块仍在）。
+- 股–胫：**衔接不对**——关节面间隙/错位，不像正常髁–平台接触；有界缩骨没有修关节嵌入。
+- ±3% 轴向尺度相对 32 mm mesh 超长只是擦边，**物理上不够**消髁戳皮。
+
+**双审**
+
+- GROK：`reject`（作为膝修复完成）。
+- LUNA（[944c9d02](944c9d02-8e0c-44b2-a9ab-75bfc721383c)）：`accept_with_known_knee_residual` 仅指“相对 V7 有毫米级下降”；**不得**写成 knee fixed。用户图审更严：**仍出皮 + 衔接坏** → 记为 **`rejected_for_knee_fix`**。
+- `publishable=false`；**pose 权威仍停在 V7**。
+
+**根因（下一步方向，未开干）**
+
+1. 有界 `s∈[0.97,1.03]` 吃不下 mesh−解剖段 ≈32 mm。
+2. 只缩 `Femur_Rot` 不重建髁–平台接触 / 屈膝嵌入（Pinocchio/SKEL 的 inside+locate 未做全）。
+3. 硬门 `min_outside_improve_m=0.5mm` 过松，不能代理目视验收。
 
 ---
 

@@ -1,20 +1,6 @@
-"""Stable tool-frame force/motion decoupling and trajectory tracking.
+"""Tool-frame force/motion decoupling (2965fea): PBAC track + admittance on force axes.
 
-This is the hardware-proven ``2965fea`` controller with a narrowly scoped
-force-tracking correction: the proactive reference uses a setpoint-normalized
-force error, clears stale reference motion on force-error reversal, and keeps
-the over-force escape direction open while Dimeas gates only motion that
-presses farther into an oscillating contact.
-
-Tool-Z force axis:
-
-    M(t) * v_dot + D(t) * (v - v_r) = F_des - F_ext
-
-The controller retains the original enter-only contact latch, stiff-first
-environment-stiffness estimator, critical-damping adaptation, Dimeas variable
-inertia, engagement ramp, and one symmetric TCP-Z velocity cap.  The force
-direction remains the TCP/tool Z axis supplied by the existing RealMan TCP
-synchronisation path.
+Tool-Z: M(t)·v̇ + D(t)·(v − v_r) = F_des − F_ext. Dimeas gates press only.
 """
 
 from __future__ import annotations

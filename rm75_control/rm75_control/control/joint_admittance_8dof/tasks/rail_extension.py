@@ -72,21 +72,12 @@ class RailExtensionConfig:
     # Fade the task to zero within this distance (m) of a rail travel limit
     # when the desired velocity points into the limit.
     limit_margin_m: float = 0.08
-    # Bug 2: σ-escape.  When σ_min ↘ the rail should BOOST authority (not
-    # cut it — the old ``w *= sigma_scale`` was backwards) and add a
-    # non-reaching velocity component along the TCP-preserving σ-ascent
-    # direction so the rail acts even inside the reach dead zone.
-    #
-    # Invariant kept by callers: ``w_max * (1 + k_sigma_boost) ≪ W_task``
-    # (default 1.5 * 3 = 4.5 vs W_task = 100 in yaml → 22:1 ratio).  This is
-    # what keeps the QP preference order  ``slack > rail > free-arm``
-    # untouched even during σ dips (§3 test 1 & 2 in the plan pin this).
+    # σ-escape: boost rail weight and add non-reach velocity along σ ascent
+    # when σ_min dips. Keep w_max*(1+k_sigma_boost) ≪ W_task.
     k_sigma_boost: float = 2.0
-    # k_esc [m/s per unit σ]: scales the σ-escape velocity component.
-    # sigma_grad_rail has units 1/m, so k_esc·(1-sig)·grad has units of m/s.
+    # Escape velocity scale [m/s per unit σ].
     k_esc: float = 0.5
-    # Baseline w that lets the rail act even when the reach error is inside
-    # the dead zone (|e| < e0), provided σ is depressed.  Fades with σ.
+    # Baseline weight when reach error is in the dead zone but σ is low.
     w_sigma_floor: float = 1.0
     # --- move→D pose attractor (primary during preset="move") ---
     k_pose: float = 2.0          # 1/s soft P on (y_target - y_rail)

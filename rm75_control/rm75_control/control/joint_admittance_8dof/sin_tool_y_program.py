@@ -45,26 +45,17 @@ from rm75_control.control.joint_admittance_8dof.tasks.arm_angle import _wrap_pi
 from rm75_control.force.compensation import excitation as ex
 from rm75_control.force.compensation.id_config import load_config as load_force_id_config
 from rm75_control.force.compensation.paths import CONFIG_ID
-from rm75_control.force.compensation.tool_pose import (
-    DEFAULT_SCAN_APPROACH_DZ_M,
-    get_active_tool_name,
-    maybe_sync_kin_tcp_from_config,
-    poses_calib_tool_frame,
-    slot_scan_approach_pose_kin,
-)
-
-MAX_POSE_KIN_DRIFT_MM = 25.0
+from rm75_control.force.compensation.tool_pose import maybe_sync_kin_tcp_from_config
 
 
 @dataclass
 class ScanTargetD:
-    """Planned move->D target independent of RealMan published TCP (optional modes)."""
+    """Planned move->D target from taught joints (Pinocchio FK / pose IK)."""
 
     q_slot_deg: np.ndarray
     pose_d: np.ndarray
     pose_id: np.ndarray
     q_target_rad: np.ndarray
-    d_target: str
 
 
 def load_slot_joints_only(slot: str) -> tuple[np.ndarray, np.ndarray, dict]:
@@ -83,66 +74,31 @@ def resolve_scan_target_at_d(
     slot: str,
     kin: RobotKinematics,
     *,
-    d_target: str = "legacy",
-    approach_dz_m: float = DEFAULT_SCAN_APPROACH_DZ_M,
-    use_force_id_pose: bool = False,
     euler_order: str = "xyz",
     rail_m: float = 0.0,
-    robot=None,
     qp_cfg=None,
     nullspace_cfg=None,
 ) -> ScanTargetD:
     """Resolve scan pose D and joint target for the move->D phase.
 
-    ``d_target`` modes (all produce a Cartesian ``pose_d``; move execution is
-    still ``--move-mode``, default cartesian/SRS):
-
-    * ``legacy`` — RealMan active-tool FK + Pin standoff + pose IK (original).
-    * ``joints`` — taught ``q_deg`` with j7+90° (ArmTip +X → TCP +Z), then fold
-      approach into a world-vertical plane, IK, Cartesian SRS.
-    * ``kin-fk`` — Pinocchio standoff ``pose_d`` from taught contact frame;
-      optional pose IK; never uses ``rm_algo_forward_kinematics``.
+    Joints-only: taught ``q_deg`` with j7+90° (ArmTip +X → TCP +Z), fold
+    approach into a world-vertical plane, optional pose IK. Move execution is
+    still ``--move-mode`` (joint MoveJ or cartesian/SRS).
     """
-    mode = str(d_target).strip().lower()
-    if mode == "legacy":
-        return _resolve_scan_target_legacy(
-            slot,
-            kin,
-            approach_dz_m=approach_dz_m,
-            use_force_id_pose=use_force_id_pose,
-            euler_order=euler_order,
-            rail_m=rail_m,
-            robot=robot,
-            qp_cfg=qp_cfg,
-            nullspace_cfg=nullspace_cfg,
-        )
-    if mode == "joints":
-        travel = 0.80
-        try:
-            travel = float(kin.q_upper[0])
-        except Exception:
-            pass
-        return _resolve_scan_target_joints(
-            slot,
-            kin,
-            rail_m=rail_m,
-            travel_m=travel,
-            qp_cfg=qp_cfg,
-            nullspace_cfg=nullspace_cfg,
-            euler_order=euler_order,
-        )
-    if mode in {"kin-fk", "kin_fk", "kinfk"}:
-        return _resolve_scan_target_kin_fk(
-            slot,
-            kin,
-            approach_dz_m=approach_dz_m,
-            use_force_id_pose=use_force_id_pose,
-            euler_order=euler_order,
-            rail_m=rail_m,
-            qp_cfg=qp_cfg,
-            nullspace_cfg=nullspace_cfg,
-        )
-    raise ValueError(f"unknown d_target mode {d_target!r}; use legacy, joints, or kin-fk")
+    travel = 0.80
+    try:
+        travel = float(kin.q_upper[0])
+    except Exception:
+        pass
+    return _resolve_scan_target_joints(
+        slot,
+        kin,
+        rail_m=rail_m,
+        travel_m=travel,
+        qp_cfg=qp_cfg,
+        nullspace_cfg=nullspace_cfg,
+        euler_order=euler_order,
+    )
 
 
 def _pick_wellconditioned_rail_m(
@@ -272,27 +228,24 @@ def _resolve_scan_target_joints(
     q_deg_taught, pose_id, _rec = load_slot_joints_only(slot)
     q_arm = _remap_taught_q_armtip_x_to_tcp_z(deg2rad(q_deg_taught))
     y_rail = float(rail_m)
-    sig_note = ""
     if refine_rail:
-        y_rail, sig = _pick_wellconditioned_rail_m(
+        y_rail, _sig = _pick_wellconditioned_rail_m(
             kin,
             q_arm,
             travel_m=float(travel_m),
             prefer_m=float(rail_m),
         )
-        sig_note = f" rail→{y_rail * 1000:.0f}mm (σ_min={sig:.3f}, prefer={float(rail_m) * 1000:.0f}mm)"
     q_seed = full_q_from_arm(q_arm, y_rail)
 
     Ml7 = kin.frame_placement(q_seed, "link_7")
-    R_fold, fold_deg = _fold_flange_into_world_vertical_plane(Ml7.rotation)
+    R_fold, _fold_deg = _fold_flange_into_world_vertical_plane(Ml7.rotation)
     pose_d = _tcp_pose_from_link7(
         kin, Ml7.translation, R_fold, euler_order=euler_order
     )
 
     q_target_rad = q_seed
-    ik_note = ""
     if qp_cfg is not None:
-        q_target_rad, _ok, rep = solve_pose_ik(
+        q_target_rad, _ok, _rep = solve_pose_ik(
             kin,
             q_seed,
             pose_d,
@@ -302,168 +255,18 @@ def _resolve_scan_target_joints(
         )
         # Keep Cartesian target as FK of the solved q (consistent with build()).
         pose_d = np.asarray(kin.fk_pose(q_target_rad), dtype=float)
-        ik_note = (
-            f" IK pos={rep.pos_err_mm:.2f}mm rot={rep.rot_err_deg:.2f}deg"
-        )
     else:
         # No QP: still publish the folded Cartesian; SRS will pull toward it.
         pass
 
     q_deg = np.rad2deg(q_target_rad[1:])
-    off = np.asarray(kin.tcp_offset_pose, dtype=float).reshape(6)
-    print(
-        f"D target=joints→Cartesian pose_d slot={slot} "
-        f"taught_q_deg={np.round(q_deg_taught, 2).tolist()} "
-        f"→ j7+90° + foldΔ={fold_deg:.1f}° into world-vertical plane "
-        f"q_deg={np.round(q_deg, 2).tolist()} "
-        f"xyz(mm)={np.round(pose_d[:3] * 1000.0, 1).tolist()} "
-        f"rpy(deg)={np.round(np.degrees(pose_d[3:6]), 1).tolist()} "
-        f"| tool_offset xyz(mm)={np.round(off[:3] * 1000.0, 1).tolist()} "
-        f"rpy(deg)={np.round(np.degrees(off[3:6]), 1).tolist()} "
-        f"(Cartesian/SRS){sig_note}{ik_note}",
-        flush=True,
-    )
     return ScanTargetD(
         q_slot_deg=q_deg,
         pose_d=pose_d,
         pose_id=pose_id,
         q_target_rad=q_target_rad,
-        d_target="joints",
     )
 
-
-def _resolve_scan_target_kin_fk(
-    slot: str,
-    kin: RobotKinematics,
-    *,
-    approach_dz_m: float,
-    use_force_id_pose: bool,
-    euler_order: str,
-    rail_m: float,
-    qp_cfg,
-    nullspace_cfg,
-) -> ScanTargetD:
-    q_deg, pose_id, _rec = load_slot_joints_only(slot)
-    q_slot_rad = full_q_from_arm(deg2rad(q_deg), float(rail_m))
-    if use_force_id_pose:
-        pose_d = np.asarray(kin.fk_pose(q_slot_rad), dtype=float)
-    else:
-        pose_d = slot_scan_approach_pose_kin(
-            kin,
-            pose_id,
-            q_deg,
-            approach_dz_m=approach_dz_m,
-            euler_order=euler_order,
-            rail_m=rail_m,
-        )
-    q_target_rad, _ok, rep = solve_pose_ik(
-        kin,
-        q_slot_rad,
-        pose_d,
-        qp_cfg=qp_cfg,
-        nullspace_cfg=nullspace_cfg,
-        attractor_q=q_slot_rad,
-    )
-    if rep.pos_err_mm > 5.0 or rep.rot_err_deg > 2.0 or not rep.within_limits:
-        raise RuntimeError(
-            f"kin-fk pose IK did not converge: pos={rep.pos_err_mm:.2f}mm, "
-            f"rot={rep.rot_err_deg:.2f}deg, within_limits={rep.within_limits}"
-        )
-    print(
-        f"D target=kin-fk dz={approach_dz_m * 1000:.0f}mm pin_tcp z={pose_d[2]:.3f}m "
-        "(RealMan TCP ignored)",
-        flush=True,
-    )
-    return ScanTargetD(
-        q_slot_deg=q_deg,
-        pose_d=pose_d,
-        pose_id=pose_id,
-        q_target_rad=q_target_rad,
-        d_target="kin-fk",
-    )
-
-
-def _resolve_scan_target_legacy(
-    slot: str,
-    kin: RobotKinematics,
-    *,
-    approach_dz_m: float,
-    use_force_id_pose: bool,
-    euler_order: str,
-    rail_m: float,
-    robot,
-    qp_cfg,
-    nullspace_cfg,
-) -> ScanTargetD:
-    from rm75_control.force.compensation.collection import load_slot
-    from rm75_control.force.compensation.tool_pose import pose_kin_vs_active_drift_mm
-
-    fid = load_force_id_config(CONFIG_ID)
-    poses_data = ex.load_poses_yaml(fid.poses_yaml)
-    calib_tool = poses_calib_tool_frame(poses_data)
-    active = get_active_tool_name(robot) if robot is not None else ""
-
-    q_deg, fk_pose, rec = load_slot(fid, slot, robot, calib_tool=calib_tool)
-    pose_id = np.asarray(rec["pose_base"], dtype=float)
-
-    if use_force_id_pose:
-        pose_d = fk_pose.copy()
-    else:
-        pose_d = slot_scan_approach_pose_kin(
-            kin,
-            pose_id,
-            q_deg,
-            approach_dz_m=approach_dz_m,
-            euler_order=euler_order,
-            rail_m=rail_m,
-        )
-        if robot is not None and active and calib_tool and active != calib_tool:
-            d_mm = pose_kin_vs_active_drift_mm(
-                robot,
-                pose_d,
-                pose_id,
-                q_deg,
-                approach_dz_m=approach_dz_m,
-                calib_tool=calib_tool,
-                euler_order=euler_order,
-            )
-            if d_mm > MAX_POSE_KIN_DRIFT_MM:
-                raise RuntimeError(
-                    f"pose D Pinocchio-tcp vs Realman {active!r} drift {d_mm:.1f}mm > "
-                    f"{MAX_POSE_KIN_DRIFT_MM:.0f}mm safety bound"
-                )
-            if d_mm > 5.0:
-                print(
-                    f"warn: D pose Pinocchio vs Realman {active!r} {d_mm:.1f}mm "
-                    "(loop tracks Pinocchio tcp)",
-                    flush=True,
-                )
-    tool_note = f"tool={active!r}" if active else "tool=Pin-tcp"
-    if active and calib_tool and active != calib_tool:
-        tool_note += " (contact Arm_Tip teach, +dz Pin tcp @ q)"
-    print(f"D target=legacy dz={approach_dz_m * 1000:.0f}mm {tool_note} z={pose_d[2]:.3f}", flush=True)
-
-    q_slot_rad = full_q_from_arm(deg2rad(q_deg), float(rail_m))
-    q_target_rad, _ok, rep = solve_pose_ik(
-        kin,
-        q_slot_rad,
-        pose_d,
-        qp_cfg=qp_cfg,
-        nullspace_cfg=nullspace_cfg,
-        attractor_q=q_slot_rad,
-    )
-    if rep.pos_err_mm > 5.0 or rep.rot_err_deg > 2.0 or not rep.within_limits:
-        raise RuntimeError(
-            f"pose IK did not converge: pos={rep.pos_err_mm:.2f}mm, "
-            f"rot={rep.rot_err_deg:.2f}deg, within_limits={rep.within_limits}"
-        )
-    return ScanTargetD(
-        q_slot_deg=q_deg,
-        pose_d=pose_d,
-        pose_id=pose_id,
-        q_target_rad=q_target_rad,
-        d_target="legacy",
-    )
 
 
 def load_yaml(path: Path | str) -> dict:
@@ -657,12 +460,10 @@ def attach_hybrid_posture_toggle(
         bucket = int(t_ref / period_s)
         if bucket != toggle_state["last_bucket"]:
             toggle_state["last_bucket"] = bucket
-            target, tag = _q_for_bucket(bucket)
+            target, _tag = _q_for_bucket(bucket)
             toggle_state["ramp_from"] = toggle_state["current_q"].copy()
             toggle_state["ramp_to"] = target.copy()
             toggle_state["ramp_t0"] = t_ref
-            if verbose:
-                print(f"  posture ramp start @ {t_ref:.1f}s -> {tag} over {ramp_s:.1f}s", flush=True)
 
         dt_ramp = t_ref - toggle_state["ramp_t0"]
         u = float(np.clip(dt_ramp / ramp_s, 0.0, 1.0))
@@ -726,16 +527,10 @@ def attach_scan_psi_toggle(
         bucket = int(t_ref / period_s)
         if bucket != toggle_state["last_bucket"]:
             toggle_state["last_bucket"] = bucket
-            target, tag = _target_for_bucket(bucket)
+            target, _tag = _target_for_bucket(bucket)
             toggle_state["ramp_from"] = toggle_state["current_psi"]
             toggle_state["ramp_to"] = target
             toggle_state["ramp_t0"] = t_ref
-            if verbose:
-                print(
-                    f"  psi ramp start @ {t_ref:.1f}s -> {np.degrees(target):+.1f}deg ({tag}) "
-                    f"over {ramp_s:.1f}s",
-                    flush=True,
-                )
 
         dt_ramp = t_ref - toggle_state["ramp_t0"]
         u = float(np.clip(dt_ramp / ramp_s, 0.0, 1.0))
@@ -796,14 +591,6 @@ def build_sin_tool_y_program(
     # still carry an ArmTip/IK residual orientation that blocks arrival forever
     # while track_err_mm (position-only) looks fine.
     pose_d = np.asarray(kin.fk_pose(q_target_rad), dtype=float).reshape(6)
-    pose_in = np.asarray(params.pose_d, dtype=float).reshape(6)
-    dpos = float(np.linalg.norm(pose_d[:3] - pose_in[:3]))
-    if dpos > 0.005:
-        print(
-            f"  build: pose_d←FK(q_target) (|Δpos| vs task pose={dpos * 1000:.1f} mm; "
-            f"TCP z={float(kin.tcp_offset_pose[2]) * 1000:.1f} mm)",
-            flush=True,
-        )
     move_mode = str(params.plan_move_mode)
     if move_mode == "joint":
         move_phase = WbcArm.make_movej_phase(

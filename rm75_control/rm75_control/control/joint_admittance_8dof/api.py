@@ -32,8 +32,6 @@ from rm75_control.control.joint_admittance_8dof.reference import (
     JointSmoothMoveReference,
     RailSmoothMoveReference,
     SrsSmoothMoveReference,
-    StreamingCartesianVelocityReference,
-    StreamingJointReference,
     auto_rail_move_duration_s,
     srs_move_duration_s,
 )
@@ -41,10 +39,8 @@ from rm75_control.control.joint_admittance_8dof.reference import (
 
 class TaskMode(str, Enum):
     JOINT_RESET = "joint_reset"
-    JOINT_STREAM = "joint_stream"
     CARTESIAN_GOTO = "cartesian_goto"
     CARTESIAN_TRACK = "cartesian_track"
-    CARTESIAN_VELOCITY = "cartesian_velocity"
     HYBRID_TRACK = "hybrid_track"
     # LOCKED_MOVE == plan drives the rail while the top-level mode is LOCKED;
     # the substyle (RAIL_ONLY vs TCP_FIXED) is carried on JointPhaseSpec.
@@ -60,7 +56,7 @@ class ArmAngleSpec:
 
 @dataclass
 class SecondaryPolicy:
-    """Nullspace / secondary-task preset exposed per phase."""
+    """Nullspace / secondary-task preset: off | move | track | hold."""
 
     preset: Literal["off", "move", "track", "hold"] = "track"
     arm_angle: ArmAngleSpec | None = None
@@ -95,7 +91,7 @@ class SecondaryPolicy:
             inner.set_manipulability_active(False)
             inner.set_centering_suppressed(False)
             inner.set_arm_task_suppressed(False)
-            # Use yaml rail mode snapshot (live cfg.rail.mode is mutated by locks).
+            # Restore yaml rail mode (live cfg.rail.mode is mutated by locks).
             if inner.configured_rail_mode == RailMode.COUPLED:
                 inner.set_coupled()
                 inner.set_rail_extension_mode("reach")
@@ -111,14 +107,10 @@ class SecondaryPolicy:
         elif self.preset == "hold":
             inner.set_plan_drives_rail(False)
             inner.set_manipulability_active(False)
-            # Hold at a taught pose: centering pulls toward q_nominal and
-            # fights manual adjustment / force-hybrid positioning.
+            # Suppress centering (fights teach/force hold); keep arm_angle branch.
             inner.set_centering_suppressed(True)
-            # Keep arm_angle (swivel psi) active so the QP stays on the
-            # intended elbow branch.
             inner.set_arm_task_suppressed(False)
-            # Pin rail at current pose (movej→D leaves q_cmd[0]≈0.4m).
-            # Never inherit yaml q_ref_m: 0.0 — that yanks the carriage home.
+            # Pin rail at current q_cmd[0] (never yaml q_ref_m=0.0).
             inner.set_locked(LockedStyle.HOLD, q_ref_m=float(inner.q_cmd[0]))
             inner.set_rail_extension_active(False)
             if psi is not None and inner.arm_task is not None:
@@ -132,12 +124,7 @@ class SecondaryPolicy:
     def make_qdot_ff_provider(
         self,
         inner: JointIkController,
-        move_ref: (
-            JointSmoothMoveReference
-            | SrsSmoothMoveReference
-            | StreamingJointReference
-            | None
-        ),
+        move_ref: JointSmoothMoveReference | SrsSmoothMoveReference | None,
     ) -> Callable[[float], np.ndarray] | None:
         if self.qdot_ff == "off" or move_ref is None:
             return None
@@ -176,13 +163,8 @@ class JointPhaseSpec:
     require_arrival: bool = False
     force_observer: Any = None
     scale_qdot_ff_with_governor: bool = True
-    # Move / goto / joint stream
-    move_ref: (
-        JointSmoothMoveReference
-        | SrsSmoothMoveReference
-        | StreamingJointReference
-        | None
-    ) = None
+    # Move / goto
+    move_ref: JointSmoothMoveReference | SrsSmoothMoveReference | None = None
     pose_target: np.ndarray | None = None
     q_target_rad: np.ndarray | None = None
     move_kp: float = 2.0
@@ -213,12 +195,7 @@ class CompiledPhase:
     phase: Phase
     label: str
     outer: Any = None
-    move_ref: (
-        JointSmoothMoveReference
-        | SrsSmoothMoveReference
-        | StreamingJointReference
-        | None
-    ) = None
+    move_ref: JointSmoothMoveReference | SrsSmoothMoveReference | None = None
     rail_ref: RailSmoothMoveReference | None = None
     reference: MotionReferenceSource | None = None
 
@@ -232,28 +209,13 @@ def make_srs_move_reference(
     *,
     euler_order: str = "xyz",
 ) -> SrsSmoothMoveReference:
-    """Build a branch-locked SRS move reference (Bug 5).
-
-    Target TCP pose is **always** ``kin.fk_pose(q_target)`` after the caller's
-    TCP sync (link_7→tcp offset).  ``pose_target`` is only used as a sanity
-    check — changing grippers must not leave a stale RealMan TCP in the plan.
-    Duration is lengthened if joint-rate limits require it
-    (:func:`srs_move_duration_s`).
-    """
+    """Build a branch-locked SRS move reference (plan pose = FK(q_target))."""
     from rm75_control.kinematics.srs_ik import d_wt_from_kin, psi_from_q
 
     q_start = np.asarray(q_start_rad, dtype=float)
     q_target = np.asarray(q_target_rad, dtype=float)
-    # Live TCP: FK(q_target) with current link_7→tcp, not a cached pose_d.
+    # Plan uses live FK(q_target), not a cached pose_target.
     pose_from_q = np.asarray(kin.fk_pose(q_target), dtype=float).reshape(6)
-    pose_in = np.asarray(pose_target, dtype=float).reshape(6)
-    dpos = float(np.linalg.norm(pose_from_q[:3] - pose_in[:3]))
-    if dpos > 0.005:
-        print(
-            f"  SRS pose_d←FK(q_target) (|Δpos| vs caller pose={dpos * 1000:.1f} mm; "
-            f"TCP offset z={float(kin.tcp_offset_pose[2]) * 1000:.1f} mm)",
-            flush=True,
-        )
     v_max = kin.v_max * 0.5  # match inner v_scale default
     T_rate = srs_move_duration_s(q_start, q_target, max_qdot_rad_s=v_max)
     T = max(float(duration_s), T_rate)
@@ -301,16 +263,7 @@ def attach_srs_move_tracking(
     move_ref: SrsSmoothMoveReference,
     q_target_rad: np.ndarray,
 ) -> None:
-    """Wire ψ_ref(t) + centering target for move phases (Bug 3 + Bug 5).
-
-    Bug 3 re-enabled ``arm_task`` during ``preset='move'`` but without this
-    hook the task keeps ψ_ref frozen at q0 while the planner resolved a
-    different ψ at the target — the nullspace fight stalls the governor and
-    the move phase never hands off to scan.
-
-    Also pins the rail to the SRS ``y_rail(t)`` plan so tool-Y is not absorbed
-    entirely by the arm when the carriage lags / panics.
-    """
+    """Wire ψ_ref(t) + centering for SRS move; pin rail to y_rail(t) plan."""
     q_target = np.asarray(q_target_rad, dtype=float)
     prev_on_enter = phase.on_enter
     prev_on_tick = phase.on_tick
@@ -333,10 +286,7 @@ def attach_srs_move_tracking(
 
     def _exit() -> None:
         inner.set_plan_drives_rail(False)
-        # q_target is temporarily the SRS move destination so the move can
-        # resolve its elbow branch.  Cartesian scan/track must return to the
-        # configured comfortable posture attractor; otherwise the D-point
-        # IK solution silently becomes the long-lived scan posture target.
+        # Restore yaml posture attractor (do not keep D-point as scan target).
         inner.centering_task.set_q_target(None)
         if prev_on_exit is not None:
             prev_on_exit()
@@ -468,11 +418,7 @@ def phase_rail_reposition(
     force_observer: Any = None,
     v_max_m_s: float | None = None,
 ) -> JointPhaseSpec:
-    """Smoothstep rail_y to ``q_target_m``; re-lock at target on phase exit.
-
-    ``style`` picks the LOCKED sub-style: RAIL_ONLY freezes the arm and slides
-    the rail alone; TCP_FIXED has the arm QP compensate so TCP stays put.
-    """
+    """Smoothstep rail_y to ``q_target_m`` (RAIL_ONLY or TCP_FIXED)."""
     if isinstance(style, str):
         style = LockedStyle(style)
     if style not in (LockedStyle.RAIL_ONLY, LockedStyle.TCP_FIXED):
@@ -489,9 +435,7 @@ def phase_rail_reposition(
             peak_v_frac=1.0,
         )
     rail_ref = RailSmoothMoveReference(q_start, float(q_target_m), float(duration_s))
-    # "off" keeps secondary tasks (centering, arm-angle, manipulability) idle so
-    # they don't fight the rail-compensation IK during the reposition — those
-    # tasks pull the arm toward posture goals unrelated to holding TCP.
+    # Suppress secondary posture tasks during rail reposition.
     sec = SecondaryPolicy(preset="off", qdot_ff="plan")
     return JointPhaseSpec(
         mode=TaskMode.LOCKED_MOVE,
@@ -512,68 +456,6 @@ def phase_rail_reposition(
     )
 
 
-def phase_joint_stream(
-    stream_ref: StreamingJointReference,
-    *,
-    label: str = "joint_stream",
-    move_kp: float = 2.0,
-    duration_s: float | None = None,
-    max_duration_s: float | None = None,
-    gov_joint_max_deg: float = 90.0,
-    force_observer: Any = None,
-) -> JointPhaseSpec:
-    """Continuous joint-position servo via live ``stream_ref.set_q``."""
-    q_tgt = np.asarray(stream_ref.q_target, dtype=float)
-    return JointPhaseSpec(
-        mode=TaskMode.JOINT_STREAM,
-        label=label,
-        move_ref=stream_ref,
-        pose_target=np.asarray(stream_ref.kin.fk_pose(q_tgt), dtype=float).reshape(6),
-        q_target_rad=q_tgt,
-        move_kp=float(move_kp),
-        move_mode="joint",
-        duration_s=duration_s,
-        max_duration_s=max_duration_s,
-        require_arrival=False,
-        force_observer=force_observer,
-        secondary=SecondaryPolicy(preset="move", qdot_ff="plan_joint"),
-        governor=GovernorSpec(
-            err_max_mm=0.0,
-            joint_err_ok_deg=15.0,
-            joint_err_max_deg=float(gov_joint_max_deg),
-        ),
-        scale_qdot_ff_with_governor=False,
-        wait_until=None,
-    )
-
-
-def phase_cartesian_velocity(
-    twist_ref: StreamingCartesianVelocityReference,
-    *,
-    label: str = "movev",
-    duration_s: float | None = None,
-    max_duration_s: float | None = None,
-    max_lin_vel_m_s: float = 0.4,
-    force_observer: Any = None,
-) -> JointPhaseSpec:
-    """Cartesian velocity mode: live ``twist_ref.set_twist`` (base frame, k_task=0)."""
-    return JointPhaseSpec(
-        mode=TaskMode.CARTESIAN_VELOCITY,
-        label=label,
-        reference=twist_ref,
-        duration_s=duration_s,
-        max_duration_s=max_duration_s,
-        move_kp=0.0,
-        max_lin_vel_m_s=float(max_lin_vel_m_s),
-        require_arrival=False,
-        force_observer=force_observer,
-        secondary=SecondaryPolicy(preset="track", qdot_ff="off"),
-        governor=GovernorSpec(err_max_mm=0.0, joint_err_max_deg=0.0),
-        scale_qdot_ff_with_governor=False,
-        wait_until=None,
-    )
-
-
 def phase_hold_at_pose(
     duration_s: float,
     *,
@@ -581,11 +463,7 @@ def phase_hold_at_pose(
     move_kp: float = 1.0,
     force_observer: Any = None,
 ) -> JointPhaseSpec:
-    """Hold current TCP pose for ``duration_s`` (rail locked via preset hold).
-
-    ``move_kp`` defaults to 1.0 (softer than scan) so a light manual nudge
-    does not immediately saturate the inner QP before teach-follow engages.
-    """
+    """Hold current TCP pose for ``duration_s`` (rail locked via preset hold)."""
     return JointPhaseSpec(
         mode=TaskMode.CARTESIAN_TRACK,
         label=label,
@@ -661,31 +539,6 @@ def phase_cartesian_goto(
     )
 
 
-def phase_cartesian_track(
-    reference: MotionReferenceSource,
-    *,
-    label: str = "cartesian_track",
-    duration_s: float | None = None,
-    move_kp: float = 2.0,
-    max_lin_vel_m_s: float = 0.4,
-    wait_until: Callable[..., bool] | None = None,
-    psi_rad_on_enter: float | None = None,
-    governor: GovernorSpec | None = None,
-) -> JointPhaseSpec:
-    arm = ArmAngleSpec(psi_rad=psi_rad_on_enter) if psi_rad_on_enter is not None else None
-    return JointPhaseSpec(
-        mode=TaskMode.CARTESIAN_TRACK,
-        label=label,
-        reference=reference,
-        duration_s=duration_s,
-        move_kp=move_kp,
-        max_lin_vel_m_s=max_lin_vel_m_s,
-        wait_until=wait_until,
-        secondary=SecondaryPolicy(preset="track", arm_angle=arm, qdot_ff="off"),
-        governor=governor or GovernorSpec(err_ok_mm=10.0, err_max_mm=40.0),
-    )
-
-
 def phase_hybrid_track(
     reference: MotionReferenceSource,
     controller: AdmittanceController,
@@ -755,7 +608,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
     ff_ref = spec.rail_ref if spec.mode == TaskMode.LOCKED_MOVE else spec.move_ref
     qdot_ff = spec.secondary.make_qdot_ff_provider(ctx.inner, ff_ref)
 
-    if spec.mode in (TaskMode.JOINT_RESET, TaskMode.JOINT_STREAM, TaskMode.CARTESIAN_GOTO):
+    if spec.mode in (TaskMode.JOINT_RESET, TaskMode.CARTESIAN_GOTO):
         if spec.move_ref is None:
             raise ValueError(f"{spec.mode}: move_ref is required")
         v_max_scaled = ctx.kin.v_max * ctx.v_scale
@@ -784,7 +637,6 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
                     euler_order=ctx.euler_order,
                 ),
             )
-        is_stream = spec.mode == TaskMode.JOINT_STREAM
         phase = Phase(
             outer=outer,
             label=spec.label or spec.mode.value,
@@ -801,20 +653,15 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_tau_s=gov.tau_s,
             governor_freeze_below=gov.freeze_below,
             governor_release_above=gov.release_above,
-            soft_start_ramp_s=(
-                0.0 if is_stream else (0.3 if spec.secondary.preset == "move" else 0.0)
-            ),
+            soft_start_ramp_s=(0.3 if spec.secondary.preset == "move" else 0.0),
             qdot_ff_provider=qdot_ff,
             scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
             force_observer=spec.force_observer,
         )
         if spec.move_mode == "joint":
             attach_joint_move_rail(phase, ctx.inner)
-            # PTP soft-start scales the rail pin with t_ref; streaming keeps
-            # the live setpoint authority (caller owns rate limiting).
-            if not is_stream:
-                phase.scale_qdot_ff_with_governor = True
-        # Bug 5: wire ψ_ref(t) + centering when the move plan is SRS (not MoveJ).
+            phase.scale_qdot_ff_with_governor = True
+        # Wire ψ_ref(t) + centering when the move plan is SRS.
         if (
             isinstance(spec.move_ref, SrsSmoothMoveReference)
             and spec.q_target_rad is not None
@@ -822,9 +669,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             attach_srs_move_tracking(
                 phase, ctx.inner, spec.move_ref, spec.q_target_rad
             )
-            # Soft-start / governor must scale the rail pin — otherwise SRS
-            # y_dot launches at full rate while Cartesian is still ramping and
-            # the LW100 lead-trips (encoder freeze → PANIC → arm-only Y).
+            # Governor must scale the rail pin (avoid full-rate y_dot at soft-start).
             phase.scale_qdot_ff_with_governor = True
         return CompiledPhase(
             phase=phase,
@@ -880,7 +725,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             rail_ref=spec.rail_ref,
         )
 
-    if spec.mode in (TaskMode.CARTESIAN_TRACK, TaskMode.CARTESIAN_VELOCITY):
+    if spec.mode == TaskMode.CARTESIAN_TRACK:
         if spec.reference is None:
             raise ValueError(f"{spec.mode}: reference is required")
         outer = CartesianTrackOuterLoop(

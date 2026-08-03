@@ -317,13 +317,6 @@ class StateRelayPublisher:
                 self._last_logged_rail = rail_m
             elapsed = now - self._pub_window_t0
             if elapsed >= self._rate_log_period_s:
-                pub_hz = self._pub_n / max(elapsed, 1e-6)
-                rail_hz = self._pub_rail_n / max(elapsed, 1e-6)
-                print(
-                    f"rm75 state-relay: publish {pub_hz:.0f} Hz "
-                    f"(rail-refresh={rail_hz:.0f} Hz, last_rail={rail_m * 1000:.1f} mm)",
-                    flush=True,
-                )
                 self._pub_n = 0
                 self._pub_rail_n = 0
                 self._pub_window_t0 = now

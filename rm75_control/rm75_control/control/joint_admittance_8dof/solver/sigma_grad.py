@@ -1,27 +1,8 @@
-"""Analytical / semi-analytical σ_min gradient for the rail coordinator.
+"""TCP-preserving directional derivative of σ_min w.r.t. rail translation.
 
-The plan (Bug 2) asks for ``∂σ_min/∂y_rail`` so the rail-extension task can
-add a *σ-escape* velocity component that kicks in inside the reach dead zone
-whenever the arm approaches a singularity.
-
-A subtlety: for our 8-DOF ``J = [J_rail | J_arm]`` the rail is a pure y-translation
-of the base and pinocchio's world-frame Jacobian is **exactly independent of
-``q_rail``** (verified empirically: ``‖J(q)-J(q + δ·e_rail)‖ = 0``).  So the naive
-``∂σ_min/∂q_rail = u_min^T ∂J/∂q_rail v_min`` is identically zero and would leave
-the σ-escape term inert.
-
-The physically meaningful quantity is a *directional* derivative under
-TCP-preservation: if the rail moves by ``δy``, the arm must move by
-``δq_arm = -J_arm^+ · e_rail · δy`` to keep the TCP fixed in world.  Under that
-coordinated move the full-configuration ``σ_min`` DOES change, and its slope in
-that direction is a well-defined "if I recruit the rail, how much does the
-arm's conditioning improve?" quantity — exactly what the σ-escape term wants.
-
-We compute it by central-difference on the coordinated move (2 Jacobians per
-sample) rather than an 8-column analytical Hessian.  Cache callers should
-re-evaluate at a modest rate (e.g. every 10 ticks — the RM75 tick is 200 Hz,
-so the gradient updates at 20 Hz which is way above the rail acceleration
-bandwidth).
+World-frame J is independent of q_rail here, so ∂σ/∂q_rail is zero.  Instead
+move rail by δy with arm δq_arm = -J_arm⁺ e_rail δy (hold TCP); σ under that
+coordinated move is what σ-escape needs.  Central difference, 2 Jacobians.
 """
 
 from __future__ import annotations

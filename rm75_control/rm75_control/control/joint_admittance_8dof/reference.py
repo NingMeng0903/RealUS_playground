@@ -1,24 +1,7 @@
-"""Motion references for the joint-admittance loop.
+"""Motion references for the joint-admittance loop (pure kinematics / scipy).
 
-Re-uses admittance_common.MotionReference so any existing MotionReferenceSource
-(demo trajectories, planners) is equally usable with the joint-space loop.
-
-Provided here, self-contained (no robot handle needed - pure kinematics/scipy):
-
-* HoldReference          - hold the start pose (bring-up default).
-* JointSmoothMoveReference - smoothstep interpolation IN JOINT SPACE from q_start
-  to q_target (from our pose_ik.solve_pose_ik, NOT vendor IK).  Exposed to the
-  loop as FK/J(q_ref) Cartesian references via sample(), plus sample_q() whose
-  qdot goes to Phase.qdot_ff_provider (nullspace feedforward).
-* SrsSmoothMoveReference - Bug-5 replacement for JointSmoothMoveReference in
-  ``phase_cartesian_goto``: quintic smoothstep in (pose, ψ) space with the
-  SRS branch locked to q_start; each tick calls ``srs_ik`` to get q(t) with
-  guaranteed branch consistency (no J1 flip mid-move).  Also exposes
-  ``sample_psi(t)`` so the loop can drive ``inner.arm_task.set_reference``
-  every tick and the arm-angle task tracks ψ_ref(t) continuously.
-* SinToolYReference      - tool-frame Y sinusoid about a fixed origin (analogue
-  of the tmp/Velocity_Admittance BuiltinTrajectorySource "sin_tool_y" mode, but
-  computed directly instead of via robot.rm_algo_pose_move).
+HoldReference, JointSmoothMoveReference, SrsSmoothMoveReference (branch-locked
+quintic in pose/ψ), RailSmoothMoveReference, SinToolYReference.
 """
 
 from __future__ import annotations
@@ -32,11 +15,7 @@ from rm75_control.control.admittance_common.reference import MotionReference
 
 
 class HoldReference:
-    """Hold the start pose: pose_d = pose0, vel_ff = 0 (bring-up default).
-
-    With force enabled and force_axes = tool-Z, this yields a pure constant-force
-    hold - the safest first on-robot test of the cascade.
-    """
+    """Hold the start pose: pose_d = pose0, vel_ff = 0."""
 
     def __init__(self) -> None:
         self._pose0: np.ndarray | None = None
@@ -51,22 +30,7 @@ class HoldReference:
 
 
 def smoothstep_scalar(t_s: float, duration_s: float) -> tuple[float, float]:
-    """Quintic smoothstep s(u) in [0, 1] and ds/dt, u = clip(t/T, 0, 1).
-
-    Uses the C² Perlin/quintic form s = 10u³ − 15u⁴ + 6u⁵ instead of the
-    classic cubic 3u² − 2u³.  Both are monotone with s(0)=0, s(1)=1,
-    s'(0)=s'(1)=0, but only the quintic also has s''(0)=s''(1)=0 — no
-    acceleration step at either endpoint.
-
-    The cubic form's s''(1) = −6/T² injected a 6°/s² peak deceleration
-    burst into qdot_plan at plan end which the QP saw as a jerk step; on
-    long joint moves through a σ dip, the arm couldn't fully decelerate
-    within one accel-box tick and the TCP crossed the target by ~5–10 mm
-    before PD pulled it back.  Quintic removes that pattern for free (no
-    peak-velocity or peak-accel penalty — quintic peak qdot = 15/8·|dq|/T
-    vs cubic 3/2·|dq|/T, only 25% higher, still miles under v_max on this
-    arm).
-    """
+    """Quintic smoothstep s(u), ds/dt with s''(0)=s''(1)=0 (C² endpoints)."""
     if duration_s <= 0.0:
         return 1.0, 0.0
     u = float(np.clip(t_s / duration_s, 0.0, 1.0))
@@ -81,19 +45,9 @@ def smoothstep_scalar(t_s: float, duration_s: float) -> tuple[float, float]:
 
 
 class JointSmoothMoveReference:
-    """Smoothstep move in JOINT SPACE (q_start -> q_target), exposed as a Cartesian
-    MotionReferenceSource via FK/Jacobian - i.e. the "free-planned, natural motion"
-    analogue of MoveJ (smooth joint interpolation, whatever curved Cartesian path
-    that implies), rather than a forced Cartesian straight line.
+    """Joint-space smoothstep (q_start→q_target) exposed via FK/J as Cartesian ref.
 
-    Feeding (pose(t), vel_ff(t) = J(q(t)) @ qdot(t)) into the QP inner loop
-    makes it track a target that is EXACTLY consistent with smooth joint motion,
-    so the resulting q_cmd closely follows q(t) itself - the tracking correction
-    only has to cancel small linearization residuals, not fight a Cartesian
-    constraint.  Requires q_target to already be resolved via
-    ``pose_ik.solve_pose_ik`` (self-developed WBC iterative IK - NEVER the
-    vendor ``rm_algo_inverse_kinematics``) - this class itself does no IK, it
-    only interpolates.
+    Does no IK — interpolate a pre-resolved ``q_target`` only.
     """
 
     def __init__(
@@ -113,8 +67,7 @@ class JointSmoothMoveReference:
         del pose0
 
     def sample_q(self, t_s: float) -> tuple[np.ndarray, np.ndarray]:
-        """Joint-space (q_ref(t), qdot_ff(t)); qdot_ff feeds the QP nullspace via
-        Phase.qdot_ff_provider so the redundant DOF follows this smoothstep."""
+        """Joint-space (q_ref(t), qdot_ff(t)) for Phase.qdot_ff_provider."""
         from rm75_control.control.joint_admittance_8dof.model import wrap_joint_delta
 
         s, ds_dt = smoothstep_scalar(t_s, self.duration_s)
@@ -124,8 +77,7 @@ class JointSmoothMoveReference:
         return q, qdot
 
     def sample(self, t_s: float) -> MotionReference:
-        """Cartesian (pose, vel_ff) view via FK/Jacobian - feed through
-        CartesianTrackOuterLoop; pair with qdot_ff_provider for nullspace tracking."""
+        """Cartesian (pose, vel_ff) via FK/Jacobian."""
         q, qdot = self.sample_q(t_s)
         pose = self.kin.fk_pose(q)
         vel = self.kin.jacobian(q) @ qdot
@@ -143,13 +95,7 @@ def srs_move_duration_s(
     peak_v_frac: float = 0.60,
     duration_min_s: float = 0.5,
 ) -> float:
-    """Auto quintic duration bounded by per-joint rate limits.
-
-    Quintic smoothstep peak speed on joint i is ``1.875·|dq_i|/T``.  We size T
-    so no joint exceeds ``peak_v_frac · max_qdot_i`` at the mid-move peak, then
-    take the worst-case joint as the binding constraint (a proper safety
-    envelope, matching the plan's Bug-5 note ``T_i ≥ 1.875·|dq_i|/v_max_i``).
-    """
+    """Auto duration so quintic peak ``1.875·|dq|/T`` stays under ``peak_v_frac·v_max``."""
     from rm75_control.control.joint_admittance_8dof.model import wrap_joint_delta
 
     dq = np.abs(wrap_joint_delta(q_start_rad, q_target_rad))
@@ -163,21 +109,9 @@ def srs_move_duration_s(
 
 
 class SrsSmoothMoveReference:
-    """Quintic smoothstep move in (pose, ψ, y_rail) space with SRS branch lock.
+    """Branch-locked quintic in (pose, ψ, y_rail); each tick ``srs_ik`` on q_start branch.
 
-    Unlike :class:`JointSmoothMoveReference` (pure linear joint interp), this
-    reference makes the Cartesian PATH straight-line in tool position + slerp
-    in tool orientation, while the redundant DOF (ψ) is quintic-interpolated
-    between start and target ψ.  Every tick, closed-form ``srs_ik`` yields
-    q_ref(t) on the branch of ``q_start``, so:
-
-    * primary-task tracking is a pure line-slerp (no jitter from IK residuals),
-    * ψ transitions are C^2-smooth and constrained by the planner's max-swing,
-    * no J1/J4 flip mid-move (branch is locked; :func:`branch_from_q` on
-      ``q_start`` fixes the elbow/wrist configuration for the whole segment).
-
-    The loop drives ``inner.arm_task.set_reference(sample_psi(t))`` every tick
-    so the arm-angle secondary task tracks the ψ trajectory continuously.
+    Cartesian path is line+slerp; ψ is C²-smooth; no mid-move J1/J4 flip.
     """
 
     def __init__(
@@ -222,11 +156,7 @@ class SrsSmoothMoveReference:
         self._max_ik_fail_streak = int(max(1, max_ik_fail_streak))
 
     def reseed_start(self, q_start_rad: np.ndarray) -> None:
-        """Re-anchor the quintic at live encoders (soft-start, no Cartesian lurch).
-
-        Keeps ``pose_target`` / ``y_target`` / ``psi_target``; recomputes start
-        pose, rail, ψ, and branch lock from ``q_start_rad``.
-        """
+        """Re-anchor start from live encoders; keep pose/y/ψ targets."""
         from rm75_control.kinematics.srs_ik import branch_from_q, psi_from_q
 
         self.q_start = np.asarray(q_start_rad, dtype=float).copy()
@@ -393,16 +323,7 @@ def sin_y_motion(
     soft_start: bool,
     ramp_s: float = 2.0,
 ) -> tuple[float, float]:
-    """(dy, vy) of the sinusoid, with a C1-consistent soft start.
-
-    The soft start is a TIME WARP tau(t): tau_dot ramps 0 -> 1 as
-    sin(pi*t/(2*ramp_s)), so dy = A*sin(omega*tau) and vy = dy/dt stay exactly
-    consistent (vy = A*omega*cos(omega*tau) * tau_dot).  Scaling only the
-    velocity while leaving the position on the unwarped clock (the old
-    behaviour) made pose_d and vel_ff contradict each other for the first
-    ramp_s seconds - the tracking loop had to serve the whole initial
-    transient from feedback (~15 mm error spikes on hardware).
-    """
+    """(dy, vy) with C1 soft start via time-warp tau(t) (pose/vel stay consistent)."""
     if soft_start and ramp_s > 0.0:
         if t_s < ramp_s:
             # tau(t) = int_0^t sin(pi*u/(2*ramp)) du
@@ -420,13 +341,7 @@ def sin_y_motion(
 
 
 class SinToolYReference:
-    """Tool-frame Y sinusoid about a fixed origin (orientation held constant).
-
-    origin is set once via ``set_origin`` (e.g. pose D once the arm has arrived);
-    pose = origin + R(origin) @ [0, amplitude*sin(wt), 0], matching a pure
-    tool-frame translation delta (equivalent to rm_algo_pose_move with a
-    translation-only delta in tool frame, computed directly - no robot RPC).
-    """
+    """Tool-frame Y sinusoid about a fixed origin (orientation held)."""
 
     def __init__(
         self,
@@ -471,115 +386,4 @@ class SinToolYReference:
         vel = np.zeros(6, dtype=float)
         vel[:3] = r_mat @ np.array([0.0, vy, 0.0])
         return MotionReference(pose_d=pose, vel_ff=vel, t_ref=t_s)
-
-
-class StreamingJointReference:
-    """Live joint setpoint for continuous servo (``set_q`` / ``set_q_deg``)."""
-
-    def __init__(self, kin, q0_rad: np.ndarray) -> None:
-        self.kin = kin
-        q0 = np.asarray(q0_rad, dtype=float).reshape(-1).copy()
-        if q0.size != int(kin.nv):
-            raise ValueError(f"q0 size {q0.size} != kin.nv={kin.nv}")
-        self.q_start = q0.copy()
-        self.q_target = q0.copy()
-        self.duration_s = float("inf")
-
-    def set_q(self, q_rad: np.ndarray) -> None:
-        q = np.asarray(q_rad, dtype=float).reshape(-1)
-        if q.size != self.q_target.size:
-            raise ValueError(f"q size {q.size} != {self.q_target.size}")
-        self.q_target = q.copy()
-
-    def set_q_deg(self, joint: list[float] | np.ndarray) -> None:
-        """Industrial list: ``[rail_mm, j1..j7 °]`` or 7-arm ° (rail unchanged)."""
-        j = np.asarray(joint, dtype=float).reshape(-1)
-        q = self.q_target.copy()
-        if j.size == q.size:
-            q[0] = float(j[0]) * 0.001
-            q[1:] = np.deg2rad(j[1:])
-        elif j.size == q.size - 1:
-            q[1:] = np.deg2rad(j)
-        else:
-            raise ValueError(f"joint size {j.size} != {q.size} or {q.size - 1}")
-        self.q_target = q
-
-    def reseed_start(self, q_start_rad: np.ndarray) -> None:
-        q = np.asarray(q_start_rad, dtype=float).reshape(-1).copy()
-        self.q_start = q.copy()
-        self.q_target = q.copy()
-
-    def sample_q(self, t_s: float) -> tuple[np.ndarray, np.ndarray]:
-        del t_s
-        q = self.q_target.copy()
-        return q, np.zeros_like(q)
-
-    def sample(self, t_s: float) -> MotionReference:
-        q, qdot = self.sample_q(t_s)
-        pose = self.kin.fk_pose(q)
-        vel = self.kin.jacobian(q) @ qdot
-        return MotionReference(pose, vel, t_ref=t_s)
-
-    def done(self, t_s: float) -> bool:
-        del t_s
-        return False
-
-
-class StreamingCartesianVelocityReference:
-    """Live base-frame twist for MoveV (``set_twist`` / ``stop``)."""
-
-    def __init__(self, *, euler_order: str = "xyz") -> None:
-        self.euler_order = str(euler_order)
-        self._pose_d: np.ndarray | None = None
-        self._twist = np.zeros(6, dtype=float)
-        self._t_prev: float | None = None
-
-    def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
-        self._pose_d = np.asarray(pose0, dtype=float).reshape(6).copy()
-        self._t_prev = float(t_s) if t_s is not None else None
-
-    def set_twist(self, twist_base: np.ndarray | list[float]) -> None:
-        self._twist = np.asarray(twist_base, dtype=float).reshape(6).copy()
-
-    def set_twist_tool(
-        self,
-        twist_tool: np.ndarray | list[float],
-        pose: np.ndarray,
-    ) -> None:
-        """Set twist expressed in the tool frame at ``pose`` (converted to base)."""
-        from scipy.spatial.transform import Rotation as Rsc
-
-        tw = np.asarray(twist_tool, dtype=float).reshape(6)
-        R = Rsc.from_euler(self.euler_order, np.asarray(pose, dtype=float)[3:6]).as_matrix()
-        out = np.zeros(6, dtype=float)
-        out[:3] = R @ tw[:3]
-        out[3:6] = R @ tw[3:6]
-        self._twist = out
-
-    def stop(self) -> None:
-        self._twist[:] = 0.0
-
-    def sample(self, t_s: float) -> MotionReference:
-        if self._pose_d is None:
-            raise RuntimeError("StreamingCartesianVelocityReference.set_origin required")
-        t = float(t_s)
-        if self._t_prev is not None:
-            dt = t - float(self._t_prev)
-            if dt > 0.0:
-                self._pose_d = self._pose_d.copy()
-                self._pose_d[:3] = self._pose_d[:3] + self._twist[:3] * dt
-                w = self._twist[3:6]
-                wn = float(np.linalg.norm(w))
-                if wn > 1e-12:
-                    from scipy.spatial.transform import Rotation as Rsc
-
-                    R0 = Rsc.from_euler(self.euler_order, self._pose_d[3:6])
-                    dR = Rsc.from_rotvec(w * dt)
-                    self._pose_d[3:6] = (dR * R0).as_euler(self.euler_order)
-        self._t_prev = t
-        return MotionReference(
-            pose_d=self._pose_d.copy(),
-            vel_ff=self._twist.copy(),
-            t_ref=t,
-        )
 
