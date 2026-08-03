@@ -108,6 +108,8 @@ class AdmittanceConfig:
     var_damping_hf_attack_s: float = 0.02
     var_damping_hf_hold_s: float = 0.15
     var_damping_hf_release_s: float = 0.12
+    # Faster dump when |e_f| > hf_err (hand release / chase, not chatter hold).
+    var_damping_hf_release_fast_s: float = 0.04
     var_damping_hf_on: float = 0.25
     var_damping_hf_off: float = 0.12
     # Only add ΔD_hf near the force setpoint so large under/over-force
@@ -116,6 +118,10 @@ class AdmittanceConfig:
     # Temporary press-speed limit after DETACHED → RECONTACT.
     recontact_vz_cap_m_s: float = 0.008
     recontact_hold_s: float = 0.20
+    # Soften under-force chase / DOB when tool-XY speed is near a scan turnaround.
+    force_lateral_soft_m_s: float = 0.006
+    force_lateral_full_m_s: float = 0.018
+    force_lateral_gain_floor: float = 0.35
     force_dob: ForceDobConfig = field(default_factory=ForceDobConfig)
 
     @classmethod
@@ -194,6 +200,9 @@ class AdmittanceConfig:
             var_damping_hf_release_s=float(
                 c.get("var_damping_hf_release_s", 0.12)
             ),
+            var_damping_hf_release_fast_s=float(
+                c.get("var_damping_hf_release_fast_s", 0.04)
+            ),
             var_damping_hf_on=float(c.get("var_damping_hf_on", 0.25)),
             var_damping_hf_off=float(c.get("var_damping_hf_off", 0.12)),
             var_damping_hf_err_n=float(
@@ -203,6 +212,15 @@ class AdmittanceConfig:
                 c.get("recontact_vz_cap_m_s", 0.008)
             ),
             recontact_hold_s=float(c.get("recontact_hold_s", 0.20)),
+            force_lateral_soft_m_s=float(
+                c.get("force_lateral_soft_m_s", 0.006)
+            ),
+            force_lateral_full_m_s=float(
+                c.get("force_lateral_full_m_s", 0.018)
+            ),
+            force_lateral_gain_floor=float(
+                c.get("force_lateral_gain_floor", 0.35)
+            ),
             force_dob=ForceDobConfig.from_dict(c),
         )
 
@@ -276,6 +294,8 @@ class AdmittanceController:
         self._recontact_timer_s = 0.0
         self._force_dob = ForceDisturbanceObserver(self.cfg.force_dob)
         self.u_dob_z = 0.0
+        # Arm lateral chase softener only after real tool-XY scan motion.
+        self._lat_soften_hold_s = 0.0
         self._init_hp_filter()
 
     def _init_hp_filter(self) -> None:
@@ -342,6 +362,7 @@ class AdmittanceController:
         self._recontact_timer_s = 0.0
         self._force_dob.reset()
         self.u_dob_z = 0.0
+        self._lat_soften_hold_s = 0.0
         self._hp_zi.fill(0.0)
         self._ke_estimator.reset()
         self.ke_est = self._ke_estimator.ke_est
@@ -418,11 +439,42 @@ class AdmittanceController:
         else:
             target = 0.0
             tau = max(float(cfg.var_damping_hf_release_s), 1e-4)
+            # Hand-release / large force error: dump ΔD faster than the
+            # chatter-hold release so retract does not feel sticky.
+            if abs(float(abs_eff_n)) > float(cfg.var_damping_hf_err_n):
+                tau = min(tau, max(float(cfg.var_damping_hf_release_fast_s), 1e-4))
         blend = min(1.0, dt_eff / tau)
         self._delta_d_hf += blend * (target - self._delta_d_hf)
         if not self._hf_active and abs(self._delta_d_hf) < 1e-3:
             self._delta_d_hf = 0.0
         return float(self._delta_d_hf)
+
+    def _lateral_chase_scale(
+        self,
+        v_lateral_m_s: float,
+        *,
+        dt_s: float = 0.0,
+    ) -> float:
+        """1 at full scan speed → ``force_lateral_gain_floor`` near turnaround.
+
+        Softening arms only after sustained tool-XY motion (a real scan).  Pure
+        force-hold / Z-surface tracking keeps full under-force chase.
+        """
+        cfg = self.cfg
+        soft = max(float(cfg.force_lateral_soft_m_s), 0.0)
+        full = max(float(cfg.force_lateral_full_m_s), soft + 1e-6)
+        floor = float(np.clip(cfg.force_lateral_gain_floor, 0.0, 1.0))
+        v_lat = float(v_lateral_m_s)
+        if v_lat >= 0.5 * full:
+            # Keep softener armed through short end-dwells.
+            self._lat_soften_hold_s = max(self._lat_soften_hold_s, 1.0)
+        if dt_s > 0.0 and self._lat_soften_hold_s > 0.0:
+            self._lat_soften_hold_s = max(0.0, self._lat_soften_hold_s - dt_s)
+        if self._lat_soften_hold_s <= 0.0:
+            return 1.0
+        u = float(np.clip((v_lat - soft) / (full - soft), 0.0, 1.0))
+        blend = u * u * (3.0 - 2.0 * u)
+        return float(floor + (1.0 - floor) * blend)
 
     def _update_proactive_v_r(
         self,
@@ -433,6 +485,7 @@ class AdmittanceController:
         rising_edge: bool,
         desired_force_n: float = 0.0,
         retract_fast_hold: bool = False,
+        chase_scale: float = 1.0,
     ) -> float:
         # Clear either sign on a new contact episode. Keeping a retract-only
         # residue was one source of the previous press/retract asymmetry.
@@ -447,6 +500,7 @@ class AdmittanceController:
             v_z_cap=self._v_z_cap(),
             desired_force_n=desired_force_n,
             retract_fast_hold=retract_fast_hold,
+            chase_scale=chase_scale,
         )
         self.force_reference_scale_n = float(
             self._proactive_ff.last_force_scale_n
@@ -636,6 +690,9 @@ class AdmittanceController:
         v_lateral_m_s = float(
             np.linalg.norm((r_mat.T @ v_pos_base[:3])[:2])
         )
+        chase_scale = self._lateral_chase_scale(
+            v_lateral_m_s, dt_s=dt_contact
+        )
         if cfg.adaptive_ke.enabled:
             self.ke_est, self.adaptive_bd = self._ke_estimator.update(
                 f_ext_z,
@@ -672,6 +729,7 @@ class AdmittanceController:
             ),
             dt_contact=dt_contact,
             sensor_age_s=sensor_age_s,
+            chase_scale=chase_scale,
         )
         v_cmd_tool, v_cmd_base = self.fuse_tool_sleeve(
             v_pos_base,
@@ -780,6 +838,7 @@ class AdmittanceController:
         raw_force_z: float | None = None,
         dt_contact: float | None = None,
         sensor_age_s: float | None = None,
+        chase_scale: float = 1.0,
     ) -> float:
         cfg = self.cfg
         eff = smooth_deadband_eff(
@@ -860,12 +919,14 @@ class AdmittanceController:
             rising_edge=rising_edge,
             desired_force_n=desired_force_n,
             retract_fast_hold=retract_fast_hold,
+            chase_scale=chase_scale,
         )
         self.u_dob_z = self._force_dob.update(
             eff,
             dt_eff=dt_eff,
             in_contact=in_contact,
             instability_index=self.instability_index,
+            chase_scale=chase_scale,
         )
         drive = float(eff) + float(self.u_dob_z)
         if dt_eff <= 0.0:

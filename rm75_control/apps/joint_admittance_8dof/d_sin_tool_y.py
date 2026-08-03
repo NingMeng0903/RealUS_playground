@@ -113,8 +113,25 @@ def main() -> int:
                          "No auto detect-and-switch.")
     ap.add_argument("--y-pp-cm", type=float, default=16.0,
                     help="Tool-Y scan peak-to-peak (cm). 90 = 900 mm stroke.")
-    ap.add_argument("--max-vel-cm-s", type=float, default=2.0)
+    ap.add_argument(
+        "--max-vel-cm-s",
+        type=float,
+        default=1.5,
+        help="Peak tool-Y speed (cm/s). Default 1.5 (was 2.0) for softer turnarounds.",
+    )
     ap.add_argument("--period-s", type=float, default=None)
+    ap.add_argument(
+        "--scan-profile",
+        choices=("quintic_dwell", "sine"),
+        default="quintic_dwell",
+        help="Y scan shape: quintic_dwell=C2 ends + short dwell (default); sine=classic.",
+    )
+    ap.add_argument(
+        "--scan-dwell-s",
+        type=float,
+        default=0.20,
+        help="End dwell for quintic_dwell profile (s). Ignored for sine.",
+    )
     ap.add_argument("--desired-z", type=float, default=None)
     ap.add_argument("--scan-duration", type=float, default=30.0)
     ap.add_argument(

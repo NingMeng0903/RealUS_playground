@@ -54,7 +54,8 @@ inner:
     max_iter_cap: 400
     max_solve_ms: 8.0         # skip retry if first attempt already burned wall budget
     fail_qdot_decay: 0.85
-    twist_sigma_floor: 0.08   # scale Cartesian/force twist when σ < sigma_ref
+    twist_sigma_floor: 0.25   # keep ≥25% scan twist near σ (was 0.08 → felt stuck)
+    twist_scale_lpf_tau_s: 0.08  # smooth σ-brake so it is not a 1–2 tick punch
     # Avoidance onset vs sigma_ref (escape must lead the twist brake).
     sigma_escape_ref_scale: 1.25
     warn_on_fail: false
@@ -64,8 +65,9 @@ inner:
       sigma_ref: 0.08
       sigma_floor: 1.0e-6
     # Soften W_task toward task_weight_min_frac as σ_min drops (LPF-smoothed).
-    task_weight_min_frac: 0.05
-    task_weight_lpf_tau_s: 0.25
+    # Was 0.05: near σ the QP nearly dropped Cartesian → scan hitch.
+    task_weight_min_frac: 0.22
+    task_weight_lpf_tau_s: 0.15
     # Mass-weighted reg: reg[i] *= max(diag(M)[i], mass_reg_floor).
     use_mass_weighted_reg: true
     mass_reg_floor: 0.05
@@ -100,6 +102,9 @@ inner:
       k_mu: 0.8
       eps_rad: 5.0e-4
       sigma_fade_ref: 0.12
+      # Soft-norm floor: hard unit-norm turns tiny FD noise into ±k_mu kicks.
+      grad_norm_floor: 0.02
+      qdot_lpf_tau_s: 0.08
 
   # Viscous damping on composed secondary qdot (1/s); scales up near limits.
   nullspace_d_null: 0.5
@@ -110,6 +115,10 @@ inner:
   centering_recovery_gain: 3.0
   centering_recovery_max_qdot_frac: 0.35
   centering_recovery_tol: 0.12
+  # Hysteresis: leave escape only above enter·scale (enter=σ_ref·1.25).
+  centering_recovery_exit_scale: 1.35
+  # Soft-ramp 1→3× recovery so J1/J2 do not step when σ chatters.
+  centering_recovery_blend_tau_s: 0.25
 
   arm_angle:
     enabled: true
@@ -208,9 +217,9 @@ hybrid_motion:
     exit_n: 0.35
     enter_confirm_s: 0.01
     exit_confirm_s: 0.1
-  # Tight band so DOB + v_r can hold a smooth constant force.
-  deadband_n: 0.05
-  deadband_width_n: 0.08
+  # Slightly wider band: blunt single-tick contact dips without sticky D.
+  deadband_n: 0.08
+  deadband_width_n: 0.10
   max_velocity:
   - 0.22
   - 0.22
@@ -243,6 +252,7 @@ hybrid_motion:
   var_damping_hf_attack_s: 0.02
   var_damping_hf_hold_s: 0.18
   var_damping_hf_release_s: 0.12
+  var_damping_hf_release_fast_s: 0.04  # dump ΔD on hand-release / large |e_f|
   var_damping_hf_on: 0.30
   var_damping_hf_off: 0.15
   var_damping_hf_err_n: 0.8
@@ -255,6 +265,10 @@ hybrid_motion:
     u_max_n: 1.5
     freeze_is: 0.45
     reset_on_reversal: true
+  # Soften under-force chase near scan turnaround (tool-XY slow).
+  force_lateral_soft_m_s: 0.006
+  force_lateral_full_m_s: 0.018
+  force_lateral_gain_floor: 0.35
   adaptive_ke:
     enabled: true
     # Observe Ke / impact burst only — do not hold high critical D in steady contact.
@@ -286,17 +300,21 @@ hybrid_motion:
   proactive_feedforward: true
   proactive_retract_only: false
   # Faster under-force chase; stronger over-force escape; no Is gate on press.
-  proactive_gain: 0.18
-  proactive_retract_gain: 0.24
+  proactive_gain: 0.24
+  proactive_retract_gain: 0.30
   proactive_leak_s: 0.25
   v_r_max_m_s: 0.06
   proactive_gate_press_on_is: false
   proactive_press_is_gate_start: 0.2
   proactive_press_is_gate: 0.6
+  # Soften press when Is high (never hard-kill); slew-limit rising v_r.
+  proactive_press_is_soft_floor: 0.45
+  proactive_press_is_soft_stop: 0.85
+  proactive_press_slew_max_m_s2: 0.35
   proactive_press_drive_max: 1.2
   proactive_retract_drive_max: 1.4
   proactive_reset_on_reversal: true
-  force_scale_min_n: 0.15
+  force_scale_min_n: 0.18
   force_scale_fraction: 0.12
   fast_retract_guard:
     enabled: true

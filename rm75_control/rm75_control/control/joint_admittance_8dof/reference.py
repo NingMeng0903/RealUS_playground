@@ -315,6 +315,13 @@ def sin_period_for_peak_vel(amplitude_m: float, max_vel_m_s: float) -> float:
     return 2.0 * math.pi * amplitude_m / max_vel_m_s
 
 
+def quintic_move_s_for_peak_vel(amplitude_m: float, max_vel_m_s: float) -> float:
+    """Half-stroke duration so quintic peak speed 1.875·(2A)/T equals ``max_vel``."""
+    if amplitude_m <= 0.0 or max_vel_m_s <= 0.0:
+        return 1.0
+    return float(1.875 * (2.0 * amplitude_m) / max_vel_m_s)
+
+
 def sin_y_motion(
     t_s: float,
     amplitude_m: float,
@@ -340,8 +347,57 @@ def sin_y_motion(
     return dy, vy
 
 
+def _unit_quintic_dwell_profile(
+    t_s: float,
+    move_s: float,
+    dwell_s: float,
+) -> tuple[float, float]:
+    """Periodic unit scan in [-1, 1]: quintic cruise, zero vel/accel at ends + dwell."""
+    move_s = max(float(move_s), 1e-3)
+    dwell_s = max(float(dwell_s), 0.0)
+    half = move_s + dwell_s
+    cycle = 2.0 * half
+    tau = float(t_s) % cycle
+    if tau < move_s:
+        s, ds = smoothstep_scalar(tau, move_s)
+        return -1.0 + 2.0 * s, 2.0 * ds
+    if tau < move_s + dwell_s:
+        return 1.0, 0.0
+    tau_back = tau - move_s - dwell_s
+    if tau_back < move_s:
+        s, ds = smoothstep_scalar(tau_back, move_s)
+        return 1.0 - 2.0 * s, -2.0 * ds
+    return -1.0, 0.0
+
+
+def quintic_dwell_y_motion(
+    t_s: float,
+    amplitude_m: float,
+    move_s: float,
+    dwell_s: float,
+    *,
+    soft_start: bool,
+    ramp_s: float = 2.0,
+) -> tuple[float, float]:
+    """(dy, vy) round-trip with C² endpoints and optional end dwell."""
+    p, pdot = _unit_quintic_dwell_profile(t_s, move_s, dwell_s)
+    if soft_start and ramp_s > 0.0 and t_s < ramp_s:
+        amp_scale, amp_dot = smoothstep_scalar(t_s, ramp_s)
+    else:
+        amp_scale, amp_dot = 1.0, 0.0
+    a = float(amplitude_m)
+    dy = a * amp_scale * p
+    vy = a * (amp_dot * p + amp_scale * pdot)
+    return dy, vy
+
+
 class SinToolYReference:
-    """Tool-frame Y sinusoid about a fixed origin (orientation held)."""
+    """Tool-frame Y scan about a fixed origin (orientation held).
+
+    ``profile``:
+    * ``sine`` — classic sinusoid (max |a| at turnaround where v=0);
+    * ``quintic_dwell`` — C² quintic half-strokes with end dwell (v=a=0 at ends).
+    """
 
     def __init__(
         self,
@@ -352,14 +408,12 @@ class SinToolYReference:
         soft_start: bool = True,
         ramp_s: float = 2.0,
         euler_order: str = "xyz",
+        profile: str = "quintic_dwell",
+        dwell_s: float = 0.20,
     ) -> None:
-        if period_s is None:
-            if max_vel_m_s is None:
-                raise ValueError("provide either period_s or max_vel_m_s")
-            period_s = sin_period_for_peak_vel(amplitude_m, max_vel_m_s)
         self.amplitude_m = float(amplitude_m)
-        self.period_s = float(period_s)
-        self.omega = 2.0 * math.pi / self.period_s if self.period_s > 0 else 0.0
+        self.profile = str(profile).strip().lower()
+        self.dwell_s = max(float(dwell_s), 0.0)
         self.soft_start = soft_start
         self.ramp_s = ramp_s
         self.euler_order = euler_order
@@ -367,6 +421,32 @@ class SinToolYReference:
         # Phase anchor for teach re-origin: sample uses (t_s - _t_anchor) so a
         # mid-scan set_origin() does not double-apply the accumulated sin offset.
         self._t_anchor: float = 0.0
+
+        if self.profile not in ("sine", "quintic_dwell"):
+            raise ValueError(f"unknown scan profile {profile!r}")
+
+        if self.profile == "sine":
+            if period_s is None:
+                if max_vel_m_s is None:
+                    raise ValueError("provide either period_s or max_vel_m_s")
+                period_s = sin_period_for_peak_vel(amplitude_m, max_vel_m_s)
+            self.period_s = float(period_s)
+            self.omega = 2.0 * math.pi / self.period_s if self.period_s > 0 else 0.0
+            self.move_s = 0.0
+        else:
+            if period_s is not None:
+                half = 0.5 * float(period_s)
+                move_s = max(half - self.dwell_s, 1e-3)
+                if half <= self.dwell_s:
+                    move_s = max(half * 0.8, 1e-3)
+                    self.dwell_s = max(half - move_s, 0.0)
+            else:
+                if max_vel_m_s is None:
+                    raise ValueError("provide either period_s or max_vel_m_s")
+                move_s = quintic_move_s_for_peak_vel(amplitude_m, max_vel_m_s)
+            self.move_s = float(move_s)
+            self.period_s = 2.0 * (self.move_s + self.dwell_s)
+            self.omega = 0.0
 
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
         self._origin = np.asarray(pose0, dtype=float).copy()
@@ -377,9 +457,23 @@ class SinToolYReference:
         if self._origin is None:
             raise RuntimeError("SinToolYReference.set_origin must be called first")
         t_eff = float(t_s) - float(self._t_anchor)
-        dy, vy = sin_y_motion(
-            t_eff, self.amplitude_m, self.omega, soft_start=self.soft_start, ramp_s=self.ramp_s
-        )
+        if self.profile == "sine":
+            dy, vy = sin_y_motion(
+                t_eff,
+                self.amplitude_m,
+                self.omega,
+                soft_start=self.soft_start,
+                ramp_s=self.ramp_s,
+            )
+        else:
+            dy, vy = quintic_dwell_y_motion(
+                t_eff,
+                self.amplitude_m,
+                self.move_s,
+                self.dwell_s,
+                soft_start=self.soft_start,
+                ramp_s=self.ramp_s,
+            )
         r_mat = Rsc.from_euler(self.euler_order, self._origin[3:6], degrees=False).as_matrix()
         pose = self._origin.copy()
         pose[:3] = self._origin[:3] + r_mat @ np.array([0.0, dy, 0.0])

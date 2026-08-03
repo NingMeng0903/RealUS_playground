@@ -130,6 +130,8 @@ class QpConfig:
     # Below this σ_min, Cartesian twist (incl. force) is scaled down so
     # nullspace escape / rail recruitment can win over force-driven collapse.
     twist_sigma_floor: float = 0.08
+    # LPF on the singularity twist brake (s); 0 disables (step response).
+    twist_scale_lpf_tau_s: float = 0.08
     # Avoidance onset = sigma_ref * scale.  Must lead the twist brake (>1) so
     # rail/∇μ can accelerate before Cartesian is clamped, but stay below the
     # healthy-D band (σ≈0.11–0.13) — 2.0 kept D permanently escaping.

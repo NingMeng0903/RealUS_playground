@@ -63,6 +63,7 @@ class ForceDisturbanceObserver:
         dt_eff: float,
         in_contact: bool,
         instability_index: float,
+        chase_scale: float = 1.0,
     ) -> float:
         cfg = self.cfg
         if not cfg.enabled:
@@ -89,7 +90,14 @@ class ForceDisturbanceObserver:
         freeze = float(instability_index) >= float(cfg.freeze_is)
         self.frozen = freeze
         if not freeze:
-            self.u_dob += dt_eff * float(cfg.ki) * float(eff)
+            # Soften DOB integration on under-force when tangential speed is low
+            # (scan turnaround); keep full ki for over-force escape.
+            ki_scale = (
+                1.0
+                if float(eff) < 0.0
+                else float(np.clip(chase_scale, 0.0, 1.0))
+            )
+            self.u_dob += dt_eff * float(cfg.ki) * ki_scale * float(eff)
         if cfg.leak_s > 1e-6:
             self.u_dob -= (dt_eff / cfg.leak_s) * self.u_dob
         if cfg.u_max_n > 0.0:

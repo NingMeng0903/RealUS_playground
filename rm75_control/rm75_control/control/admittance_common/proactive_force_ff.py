@@ -55,6 +55,13 @@ class ProactiveFfConfig:
     # (over-force retract was already ungated). Chatter dissipation is left
     # to short-lived ΔD_hf in the passive admittance layer.
     gate_press_on_is: bool = True
+    # Soft press attenuation vs Iₛ even when gate_press_on_is is False:
+    # floor at Iₛ≥press_is_soft_stop (1=no soft atten). Stops single-tick
+    # force dips from slamming v_r to the cap ("frame-drop" feel).
+    press_is_soft_floor: float = 0.45
+    press_is_soft_stop: float = 0.85
+    # Max rising slew on press-side v_r [m/s²].
+    press_slew_max_m_s2: float = 0.35
     force_scale_min_n: float = 0.30
     force_scale_fraction: float = 0.15
     press_drive_max: float = 1.0
@@ -90,6 +97,24 @@ class ProactiveFfConfig:
                 p.get(
                     "gate_press_on_is",
                     p.get("proactive_gate_press_on_is", True),
+                )
+            ),
+            press_is_soft_floor=float(
+                p.get(
+                    "press_is_soft_floor",
+                    p.get("proactive_press_is_soft_floor", 0.45),
+                )
+            ),
+            press_is_soft_stop=float(
+                p.get(
+                    "press_is_soft_stop",
+                    p.get("proactive_press_is_soft_stop", 0.85),
+                )
+            ),
+            press_slew_max_m_s2=float(
+                p.get(
+                    "press_slew_max_m_s2",
+                    p.get("proactive_press_slew_max_m_s2", 0.35),
                 )
             ),
             force_scale_min_n=float(p.get("force_scale_min_n", 0.30)),
@@ -142,6 +167,7 @@ class ProactiveForceIntegrator:
         v_z_cap: float,
         desired_force_n: float = 0.0,
         retract_fast_hold: bool = False,
+        chase_scale: float = 1.0,
     ) -> float:
         cfg = self.cfg
         if not cfg.enabled:
@@ -223,31 +249,49 @@ class ProactiveForceIntegrator:
                 # instability detector close the escape route.
                 step = cfg.retract_gain * drive
             else:
-                step = cfg.gain * drive
-            if (
-                step > 0.0
-                and cfg.gate_press_on_is
-                and cfg.press_is_gate > 1e-9
-            ):
-                gate_stop = max(float(cfg.press_is_gate), 1e-9)
-                gate_start = float(
-                    np.clip(cfg.press_is_gate_start, 0.0, gate_stop)
+                # Slow tangential scan / turnaround: soften under-force chase
+                # so force-axis motion does not feel like a lateral jerk.
+                step = cfg.gain * drive * float(
+                    np.clip(chase_scale, 0.0, 1.0)
                 )
-                if instability_index <= gate_start:
-                    self.last_instability_scale = 1.0
-                elif gate_stop <= gate_start + 1e-9:
-                    self.last_instability_scale = 0.0
-                else:
-                    self.last_instability_scale = float(
-                        np.clip(
-                            1.0
-                            - (instability_index - gate_start)
-                            / (gate_stop - gate_start),
-                            0.0,
-                            1.0,
-                        )
+            if step > 0.0:
+                if cfg.gate_press_on_is and cfg.press_is_gate > 1e-9:
+                    gate_stop = max(float(cfg.press_is_gate), 1e-9)
+                    gate_start = float(
+                        np.clip(cfg.press_is_gate_start, 0.0, gate_stop)
                     )
-                step *= self.last_instability_scale
+                    if instability_index <= gate_start:
+                        self.last_instability_scale = 1.0
+                    elif gate_stop <= gate_start + 1e-9:
+                        self.last_instability_scale = 0.0
+                    else:
+                        self.last_instability_scale = float(
+                            np.clip(
+                                1.0
+                                - (instability_index - gate_start)
+                                / (gate_stop - gate_start),
+                                0.0,
+                                1.0,
+                            )
+                        )
+                    step *= self.last_instability_scale
+                else:
+                    # Soft floor: never fully kill press, but blunt noise dips.
+                    soft_stop = max(float(cfg.press_is_soft_stop), 1e-9)
+                    soft_floor = float(
+                        np.clip(cfg.press_is_soft_floor, 0.0, 1.0)
+                    )
+                    if instability_index <= 0.0 or soft_floor >= 1.0 - 1e-9:
+                        self.last_instability_scale = 1.0
+                    elif instability_index >= soft_stop:
+                        self.last_instability_scale = soft_floor
+                    else:
+                        u = float(instability_index / soft_stop)
+                        blend = u * u * (3.0 - 2.0 * u)
+                        self.last_instability_scale = float(
+                            1.0 - blend * (1.0 - soft_floor)
+                        )
+                    step *= self.last_instability_scale
 
             # Conditional integration at both saturation layers.  Motion back
             # toward the admissible set is always allowed.
@@ -264,6 +308,10 @@ class ProactiveForceIntegrator:
                 step > 0.0 and at_positive_cap
             ):
                 step = 0.0
+            # Slew-limit rising press reference only (retract stays snappy).
+            if step > 0.0 and cfg.press_slew_max_m_s2 > 0.0:
+                max_step = float(cfg.press_slew_max_m_s2)
+                step = min(step, max_step)
             self.last_reference_accel_m_s2 = float(step)
             self.v_r += dt_eff * step
 

@@ -137,6 +137,7 @@ class SecondaryComposer:
         centering_sigma_fade: bool = True,
         centering_gain_scale: float = 1.0,
         max_qdot_frac_override: float | None = None,
+        dt_s: float = 0.005,
     ) -> np.ndarray:
         q = np.asarray(q_rad, dtype=float)
         cfg = self.centering.cfg
@@ -181,7 +182,7 @@ class SecondaryComposer:
         # never to be a stealth rail driver behind the primary QP's back.
         if manipulability_active and self.manipulability is not None:
             qdot_soft = qdot_soft + self.manipulability(
-                q, sigma_min=sigma_min, exclude_rail=True
+                q, sigma_min=sigma_min, exclude_rail=True, dt_s=float(dt_s)
             )
         if rail_hold:
             qdot_soft = qdot_soft + self.rail_lock(q)

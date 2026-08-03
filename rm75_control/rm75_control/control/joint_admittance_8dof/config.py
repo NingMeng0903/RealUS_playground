@@ -98,6 +98,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         fail_qdot_decay=float(c.get("fail_qdot_decay", 0.85)),
         max_solve_ms=float(c.get("max_solve_ms", 8.0)),
         twist_sigma_floor=float(c.get("twist_sigma_floor", 0.08)),
+        twist_scale_lpf_tau_s=float(c.get("twist_scale_lpf_tau_s", 0.08)),
         sigma_escape_ref_scale=float(c.get("sigma_escape_ref_scale", 1.25)),
     )
     if reg_arr is not None:
@@ -123,6 +124,8 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         k_mu=float(m.get("k_mu", 0.8)),
         eps_rad=float(m.get("eps_rad", 1e-4)),
         sigma_fade_ref=float(m.get("sigma_fade_ref", 0.12)),
+        grad_norm_floor=float(m.get("grad_norm_floor", 0.02)),
+        qdot_lpf_tau_s=float(m.get("qdot_lpf_tau_s", 0.08)),
     )
 
     a = inner.get("arm_angle", {})
@@ -215,4 +218,10 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             inner.get("centering_recovery_max_qdot_frac", 0.35)
         ),
         centering_recovery_tol=float(inner.get("centering_recovery_tol", 0.12)),
+        centering_recovery_exit_scale=float(
+            inner.get("centering_recovery_exit_scale", 1.35)
+        ),
+        centering_recovery_blend_tau_s=float(
+            inner.get("centering_recovery_blend_tau_s", 0.25)
+        ),
     )

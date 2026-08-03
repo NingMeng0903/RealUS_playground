@@ -698,6 +698,8 @@ def build_sin_tool_y_program(
                 soft_start=True,
                 ramp_s=2.0,
                 euler_order=inner_cfg.euler_order,
+                profile=str(getattr(params, "scan_profile", "quintic_dwell")),
+                dwell_s=float(getattr(params, "scan_dwell_s", 0.20)),
             )
             hybrid_label = "scan"
             # COUPLED: let the QP-IK freely distribute the tool-Y sweep between the
@@ -830,6 +832,8 @@ def make_task_params_from_args(
         y_pp_cm=float(args.y_pp_cm),
         max_vel_cm_s=float(args.max_vel_cm_s),
         period_s=args.period_s,
+        scan_profile=str(getattr(args, "scan_profile", "quintic_dwell")),
+        scan_dwell_s=float(getattr(args, "scan_dwell_s", 0.20)),
         desired_z=float(desired_z),
         scan_duration=float(args.scan_duration),
         hold_at_d_s=float(args.hold_at_d_s),

@@ -97,6 +97,10 @@ class JointIkConfig:
     centering_recovery_gain: float = 3.0
     centering_recovery_max_qdot_frac: float = 0.35
     centering_recovery_tol: float = 0.12
+    # Leave escape only above enter·scale (hysteresis); kills ∇μ↔3×center chatter.
+    centering_recovery_exit_scale: float = 1.35
+    # Soft-ramp recovery gain (s); 0 = hard step (old behaviour).
+    centering_recovery_blend_tau_s: float = 0.25
 
 
 @dataclass
@@ -159,7 +163,8 @@ class JointIkController:
         )
         self._sigma_grad_rail_cached: float = 0.0
         self._sigma_grad_tick: int = 0
-        self._sigma_grad_period: int = 10
+        self._sigma_grad_period: int = 4  # was 10 (~50 ms steps on rail escape)
+        self._sigma_grad_rail_filt: float = 0.0
         # Build an 8-vector a_max: rail is m/s^2, arm joints 1..7 are rad/s^2.
         a_max_vec = np.full(kin.nv, float(self.cfg.a_max_arm_rad_s2))
         a_max_vec[0] = float(self.cfg.a_max_rail_m_s2)
@@ -198,6 +203,9 @@ class JointIkController:
         self.last_sigma_min: float = float(self.cfg.qp.sr_damping.sigma_ref)
         self._singularity_escape_seen: bool = False
         self._centering_recovery_active: bool = False
+        self._in_escape_zone: bool = False
+        self._centering_gain_filt: float = 1.0
+        self._twist_scale_filt: float = 1.0
         self._rail_mode: RailMode = self.cfg.rail.mode
         self._locked_style: LockedStyle = self.cfg.rail.locked_style
         # Immutable yaml rail mode (live cfg.rail.mode is mutated by locks).
@@ -279,36 +287,68 @@ class JointIkController:
             self.rail_ext_task.reset(self.q_cmd)
         self._singularity_escape_seen = False
         self._centering_recovery_active = False
+        self._in_escape_zone = False
+        self._centering_gain_filt = 1.0
+        self._sigma_grad_rail_filt = 0.0
+        self._twist_scale_filt = 1.0
+        if self.manipulability_task is not None:
+            self.manipulability_task.reset()
         self._apply_rail_mode_side_effects()
+
+    def _update_escape_zone(self, sigma_min: float, sigma_escape_ref: float) -> None:
+        """Hysteresis on the σ-escape band so ∇μ / recovery do not chatter."""
+        if sigma_escape_ref <= 1e-9:
+            self._in_escape_zone = False
+            return
+        enter = float(sigma_escape_ref)
+        exit_ = enter * max(float(self.cfg.centering_recovery_exit_scale), 1.0)
+        if float(sigma_min) < enter:
+            self._in_escape_zone = True
+            self._singularity_escape_seen = True
+        elif float(sigma_min) > exit_:
+            self._in_escape_zone = False
 
     def _centering_recovery_scale(
         self,
         q: np.ndarray,
         sigma_min: float,
         sigma_escape_ref: float,
+        *,
+        dt: float = 0.005,
     ) -> float:
-        """Latch strong posture recovery after leaving the singularity zone."""
-        if sigma_escape_ref > 1e-9 and sigma_min < sigma_escape_ref:
-            self._singularity_escape_seen = True
-            self._centering_recovery_active = False
-            return 1.0
+        """Soft-ramped posture recovery after leaving the singularity zone."""
+        self._update_escape_zone(sigma_min, sigma_escape_ref)
 
-        if not self._singularity_escape_seen:
+        target = 1.0
+        if self._in_escape_zone:
             self._centering_recovery_active = False
-            return 1.0
-
-        target_error = np.abs(
-            (np.asarray(q, dtype=float) - self.centering_task.q_target)
-            / self.centering_task.half
-        )
-        weighted_error = float(np.max(target_error * self.centering_task.w))
-        if weighted_error <= max(float(self.cfg.centering_recovery_tol), 0.0):
-            self._singularity_escape_seen = False
+            target = 1.0
+        elif not self._singularity_escape_seen:
             self._centering_recovery_active = False
-            return 1.0
+            target = 1.0
+        else:
+            target_error = np.abs(
+                (np.asarray(q, dtype=float) - self.centering_task.q_target)
+                / self.centering_task.half
+            )
+            weighted_error = float(np.max(target_error * self.centering_task.w))
+            if weighted_error <= max(float(self.cfg.centering_recovery_tol), 0.0):
+                self._singularity_escape_seen = False
+                self._centering_recovery_active = False
+                target = 1.0
+            else:
+                self._centering_recovery_active = True
+                target = max(float(self.cfg.centering_recovery_gain), 1.0)
 
-        self._centering_recovery_active = True
-        return max(float(self.cfg.centering_recovery_gain), 1.0)
+        tau = float(self.cfg.centering_recovery_blend_tau_s)
+        if tau <= 1e-6 or dt <= 1e-9:
+            self._centering_gain_filt = float(target)
+        else:
+            a = float(np.clip(dt / tau, 0.0, 1.0))
+            self._centering_gain_filt += a * (
+                float(target) - self._centering_gain_filt
+            )
+        return float(self._centering_gain_filt)
 
     def set_rail_mode(
         self,
@@ -379,6 +419,7 @@ class JointIkController:
         sigma_escape_ref: float | None = None,
         centering_gain_scale: float = 1.0,
         max_qdot_frac_override: float | None = None,
+        dt_s: float = 0.005,
     ) -> np.ndarray:
         sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
         if sigma_escape_ref is None:
@@ -405,6 +446,7 @@ class JointIkController:
             ),
             centering_gain_scale=centering_gain_scale,
             max_qdot_frac_override=max_qdot_frac_override,
+            dt_s=float(dt_s),
         )
         self.last_secondary_norm = float(np.linalg.norm(qdot0))
         return qdot0
@@ -445,14 +487,34 @@ class JointIkController:
         J_pre = self.kin.jacobian(q_prev)
         sigma_pre = float(self.kin.singular_values(J_pre).min())
         centering_gain_scale = self._centering_recovery_scale(
-            q_prev, sigma_pre, sigma_escape_ref
+            q_prev, sigma_pre, sigma_escape_ref, dt=float(dt)
         )
+        # During an active Cartesian scan, do not 3× posture recovery — it
+        # fights the Y stroke and feels like a one/two-tick stick.
+        if vel_ff is not None:
+            v_ff = np.asarray(vel_ff, dtype=float).reshape(-1)
+            if v_ff.size >= 2 and float(np.linalg.norm(v_ff[:2])) > 0.005:
+                centering_gain_scale = min(float(centering_gain_scale), 1.0)
+        twist_scale_raw = 1.0
         if sigma_ref > 1e-9 and sigma_pre < sigma_ref:
             floor = float(getattr(self.cfg.qp, "twist_sigma_floor", 0.08))
-            twist_scale = max(float(sigma_pre / sigma_ref), floor)
+            twist_scale_raw = max(float(sigma_pre / sigma_ref), floor)
             # Below half σ_ref, square scale so force retract cannot collapse posture.
             if sigma_pre < 0.5 * sigma_ref:
-                twist_scale = max(twist_scale * twist_scale, 0.5 * floor)
+                twist_scale_raw = max(
+                    twist_scale_raw * twist_scale_raw, 0.5 * floor
+                )
+        # LPF the brake so σ noise does not punch the scan for 1–2 ticks.
+        tau_ts = float(getattr(self.cfg.qp, "twist_scale_lpf_tau_s", 0.08))
+        if tau_ts <= 1e-6 or dt <= 1e-9:
+            self._twist_scale_filt = float(twist_scale_raw)
+        else:
+            a = float(np.clip(dt / tau_ts, 0.0, 1.0))
+            self._twist_scale_filt += a * (
+                float(twist_scale_raw) - self._twist_scale_filt
+            )
+        twist_scale = float(np.clip(self._twist_scale_filt, 0.0, 1.0))
+        if twist_scale < 1.0 - 1e-9:
             vz_tool = float(twist_tool[2])
             overforce_retract = (
                 f_ext_z is not None
@@ -553,9 +615,15 @@ class JointIkController:
         rail_task_vel: float | None = None
         rail_task_weight = 0.0
         rail_ext_err = 0.0
-        # Posture recovery takes nullspace once σ recovers from escape.
-        manip_for_saturation = (
-            self._manipulability_active and not self._centering_recovery_active
+        # Escape-zone ∇μ uses hysteresis (_in_escape_zone).  Soft recovery
+        # only drops manip once the blended gain has actually risen — avoids
+        # hard ∇μ↔3×center swaps that feel like stepwise J1/J2 kicks.
+        manip_for_saturation = bool(self._manipulability_active) and (
+            self._in_escape_zone
+            or (
+                not self._centering_recovery_active
+                and self._centering_gain_filt < 1.25
+            )
         )
         if (
             self.rail_ext_task is not None
@@ -568,9 +636,9 @@ class JointIkController:
             if sigma_ref > 1e-9 and sigma_now < sigma_ref:
                 sig_scale = max(sigma_now / sigma_ref, 0.25)
             sig_escape = 1.0
-            if sigma_escape_ref > 1e-9 and sigma_now < sigma_escape_ref:
+            if self._in_escape_zone and sigma_escape_ref > 1e-9:
                 sig_escape = max(sigma_now / sigma_escape_ref, 0.0)
-            # Refresh σ-escape gradient every _sigma_grad_period ticks.
+            # Refresh σ-escape gradient every _sigma_grad_period ticks + LPF.
             self._sigma_grad_tick += 1
             if (
                 self._sigma_grad_tick % self._sigma_grad_period == 0
@@ -580,11 +648,15 @@ class JointIkController:
                     q_prev, force=True
                 )
                 del _g
+            a_g = float(np.clip(dt / 0.06, 0.0, 1.0))
+            self._sigma_grad_rail_filt += a_g * (
+                float(self._sigma_grad_rail_cached) - self._sigma_grad_rail_filt
+            )
             v_ext, w_ext = self.rail_ext_task(
                 q_prev,
                 sigma_scale=sig_scale,
                 sigma_escape_scale=sig_escape,
-                sigma_grad_rail=self._sigma_grad_rail_cached,
+                sigma_grad_rail=self._sigma_grad_rail_filt,
                 vel_ff=vel_ff,
                 dt_s=float(dt),
             )
@@ -592,12 +664,8 @@ class JointIkController:
             if w_ext > 0.0:
                 rail_task_vel = v_ext
                 rail_task_weight = w_ext
-            # Arm ∇μ escape when σ is depressed (skip if centering recovery latched).
-            if (
-                sigma_escape_ref > 1e-9
-                and sigma_now < sigma_escape_ref
-                and not self._centering_recovery_active
-            ):
+            # Arm ∇μ escape while latched in the hysteresis escape band.
+            if self._in_escape_zone:
                 manip_for_saturation = True
 
         r = self.core.step(
@@ -619,6 +687,7 @@ class JointIkController:
                     if self._centering_recovery_active
                     else None
                 ),
+                dt_s=float(dt),
             ),
             q_meas=q_meas,
             resync_err=resync_vec,
