@@ -168,8 +168,8 @@ force:
   phi_source: phi_recommended
   fc_hz: 6.0
   min_samples: 22
-  causal_fc_hz: 6.0
-  causal_order: 2
+  causal_fc_hz: 12.0
+  causal_order: 1
   causal_history: 5
   # Inertia compensation off on the joint stream (re-enable only with telemetry).
   use_inertia: false
@@ -183,33 +183,54 @@ hybrid_motion:
   pos_err_deadband_m: 0.0005
   pos_correction_max_m_s: 0.08
   system_delay_s: 0.015
-  # fz-only enter-only contact latch: lateral shear must not flip contact.
+  # Signed compression + enter/exit hysteresis (tool +z press = +force).
   contact_threshold_n: 0.8
+  contact_enter_n: 0.8
+  contact_enter_ticks: 3
+  contact_release_n: 0.30
+  contact_release_ticks: 8
   contact_use_fz_only: true
   # Fixed sensor-noise deadband (never scale with desired_z).
   deadband_n: 0.10
   deadband_width_n: 0.10
-  # Caps: tangential X==Y; tool-Z matches max_vz_tool_m_s (single vz authority).
-  max_velocity: [0.22, 0.22, 0.10, 0.6, 0.6, 0.6]
+  # Caps: tangential X==Y; tool-Z retract room 0.05, press via max_vz_tool.
+  max_velocity: [0.22, 0.22, 0.05, 0.6, 0.6, 0.6]
   max_acceleration: [1.0, 1.0, 0.8, 2.0, 2.0, 2.0]
-  admittance_mass_z: 1.5
-  admittance_damping_z: 25.0   # fixed normal damping in and out of contact
-  # One press/retract cap; bounce handled by Dimeas variable inertia.
-  max_vz_tool_m_s: 0.10
-  # Ramp desired_z from ~contact threshold over this many seconds of latch.
+  force_accel_press_m_s2: 0.8
+  force_accel_retract_m_s2: 2.0
+  admittance_mass_z: 2.5
+  admittance_damping_z: 50.0   # fixed D (Duan: do not adapt M for bounce)
+  max_vz_tool_m_s: 0.03
+  seek_vz_m_s: 0.03
+  # Rate-limit f_des: rise = |f_des|/ramp_s (1 N @ 1 s → 1 N/s).
   desired_force_ramp_s: 1.0
-  # Dimeas variable-INERTIA on tool-Z (inflate M with Iₛ, not D).
+  desired_force_fall_n_s: 4.0
+  # Iₛ kept for logs/gates; mass inflation frozen (m_u=0).
   var_damping_enabled: true
-  # ~3.5 Hz splits hand guidance (<2 Hz) from contact resonance (~4.9 Hz).
   var_damping_omega_c_hz: 3.5
-  # Iₛ EWMA ≈ paper τ~0.1 s at 200 Hz (λ=exp(-dt/0.1)).
   var_damping_lambda: 0.951
   var_damping_f_max_n: 7.0
-  var_damping_d_u: 0.0           # do not inflate damping with Iₛ (Dimeas)
-  var_damping_m_u: 3.0           # M = mass_z + m_u·Iₛ (hard-contact anti-bounce)
-  # Hardware safety cap on virtual-mass authority.
+  var_damping_d_u: 0.0
+  var_damping_m_u: 0.0
   var_damping_m_max: 5.0
   var_damping_dc_alpha: 0.02
+  force_barrier:
+    enabled: true
+    t_react_s: 0.030
+    budget_min_n: 1.0
+    budget_frac: 0.20
+    f_keep_n: 0.5
+    v_ref_m_s: 0.05
+    v_min_retract_m_s: 0.002
+    fdot_lpf_s: 0.040
+  # Anti-windup / sensor gating.
+  force_dt_min_s: 0.002
+  force_dt_max_s: 0.015
+  velocity_backcalc_tau_s: 0.03
+  time_scale_decay_tau_s: 0.04
+  time_scale_decay_below: 0.20
+  sensor_age_block_press_s: 0.025
+  sensor_age_zero_normal_s: 0.050
   adaptive_ke:
     # Off: K̂_e unreliable on moving tissue. Keys kept for A/B re-enable.
     enabled: false
@@ -237,8 +258,8 @@ hybrid_motion:
     bd_max: 200.0
     bd_slew_max: 400.0
     ke_slew_max: 1200.0
-  # Energy-aware leaky force reference: Dimeas gates press only; retract stays open.
-  proactive_feedforward: true
+  # Phase 1: disable proactive press energy injection on hard contact.
+  proactive_feedforward: false
   proactive_retract_only: false
   proactive_gain: 0.10
   proactive_retract_gain: 0.10

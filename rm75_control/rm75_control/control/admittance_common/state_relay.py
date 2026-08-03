@@ -26,6 +26,7 @@ from rm75_control.control.admittance_common.state_bus import RobotStateBus, expa
 
 DEFAULT_RELAY_NAME = "rm75_state"
 DEFAULT_RELAY_HZ = 200.0
+DEFAULT_F_EXT_NAME = "rm75_f_ext"
 
 _HEADER_DTYPE = np.dtype([("active", "<u8"), ("global_seq", "<u8"), ("session_id", "<u8")])
 _SLOT_DTYPE = np.dtype(
@@ -42,6 +43,19 @@ _SLOT_DTYPE = np.dtype(
 )
 _LAYOUT_DTYPE = np.dtype([("header", _HEADER_DTYPE), ("slots", _SLOT_DTYPE, (2,))])
 SHM_SIZE = int(_LAYOUT_DTYPE.itemsize)
+
+# Separate segment for controller-compensated tool wrench (do NOT alter rm75_state).
+_F_EXT_DTYPE = np.dtype(
+    [
+        ("session_id", "<u8"),
+        ("seq", "<u8"),
+        ("t_s", "<f8"),
+        ("f_ext", "<f8", (6,)),
+        ("ok", "u1"),
+    ],
+    align=True,
+)
+F_EXT_SHM_SIZE = int(_F_EXT_DTYPE.itemsize)
 
 
 @dataclass(frozen=True)
@@ -66,6 +80,14 @@ def normalize_relay_name(name: str) -> str:
     if name.startswith("shm://"):
         return name[len("shm://") :]
     return name
+
+
+def f_ext_name_for_relay(relay_name: str = DEFAULT_RELAY_NAME) -> str:
+    """Companion SHM name for compensated wrench (keeps ``rm75_state`` layout stable)."""
+    name = normalize_relay_name(relay_name)
+    if name == DEFAULT_RELAY_NAME:
+        return DEFAULT_F_EXT_NAME
+    return f"{name}_f_ext"
 
 
 def relay_shm_has_publisher(name: str = DEFAULT_RELAY_NAME) -> bool:
@@ -150,6 +172,157 @@ def _read_slot(slot) -> tuple[int, AsyncStateSnapshot, float]:
     return seq, snap, rail_m
 
 
+class _ForceExtShm:
+    """Tiny publisher/subscriber for controller tool wrench on ``rm75_f_ext``."""
+
+    def __init__(self, name: str = DEFAULT_F_EXT_NAME) -> None:
+        self._name = normalize_relay_name(name)
+        self._shm: shared_memory.SharedMemory | None = None
+        self._arr: np.ndarray | None = None
+        self._seq = 0
+        self._session_id = 0
+        self._lock = threading.Lock()
+
+    def start_publisher(self) -> None:
+        with self._lock:
+            if self._arr is not None:
+                return
+            self._shm = create_named_shm(self._name, F_EXT_SHM_SIZE)
+            self._arr = np.ndarray((), dtype=_F_EXT_DTYPE, buffer=self._shm.buf)
+            self._session_id = int(time.time_ns() & ((1 << 64) - 1)) or 1
+            self._arr["session_id"] = np.uint64(self._session_id)
+            self._arr["seq"] = np.uint64(0)
+            self._arr["t_s"] = 0.0
+            self._arr["f_ext"][:] = np.nan
+            self._arr["ok"] = np.uint8(0)
+            self._seq = 0
+
+    def stop_publisher(self) -> None:
+        with self._lock:
+            if self._arr is not None:
+                try:
+                    self._arr["session_id"] = np.uint64(0)
+                    self._arr["ok"] = np.uint8(0)
+                except (OSError, ValueError):
+                    pass
+            self._arr = None
+            close_named_shm(self._shm)
+            self._shm = None
+            self._session_id = 0
+
+    def publish(self, f_ext: np.ndarray, *, t_s: float | None = None) -> None:
+        with self._lock:
+            if self._arr is None:
+                return
+            arr = np.asarray(f_ext, dtype=float).reshape(-1)
+            self._seq += 1
+            self._arr["seq"] = np.uint64(self._seq)
+            self._arr["t_s"] = float(time.time() if t_s is None else t_s)
+            self._arr["f_ext"][:] = np.nan
+            n = min(6, arr.size)
+            self._arr["f_ext"][:n] = arr[:n]
+            self._arr["ok"] = np.uint8(1)
+            self._arr["session_id"] = np.uint64(self._session_id)
+
+    def attach_reader(self) -> bool:
+        with self._lock:
+            if self._arr is not None and self._shm is not None:
+                return True
+            try:
+                self._shm = attach_named_shm(self._name)
+                if self._shm.size < F_EXT_SHM_SIZE:
+                    close_attached_shm(self._shm)
+                    self._shm = None
+                    return False
+                self._arr = np.ndarray((), dtype=_F_EXT_DTYPE, buffer=self._shm.buf)
+                return int(self._arr["session_id"]) != 0
+            except (FileNotFoundError, ValueError, OSError):
+                self._arr = None
+                self._shm = None
+                return False
+
+    def detach_reader(self) -> None:
+        with self._lock:
+            self._arr = None
+            close_attached_shm(self._shm)
+            self._shm = None
+
+    def read(self) -> tuple[bool, int, float, np.ndarray]:
+        """Return (ok, seq, t_s, f_ext)."""
+        with self._lock:
+            if self._arr is None:
+                return False, 0, float("nan"), np.full(6, np.nan)
+            if int(self._arr["session_id"]) == 0 or not bool(self._arr["ok"]):
+                return False, int(self._arr["seq"]), float(self._arr["t_s"]), np.full(6, np.nan)
+            return (
+                True,
+                int(self._arr["seq"]),
+                float(self._arr["t_s"]),
+                np.asarray(self._arr["f_ext"], dtype=float).copy(),
+            )
+
+
+def f_ext_shm_has_publisher(name: str = DEFAULT_F_EXT_NAME) -> bool:
+    name = normalize_relay_name(name)
+    try:
+        shm = attach_named_shm(name)
+        if shm.size < F_EXT_SHM_SIZE:
+            close_attached_shm(shm)
+            return False
+        arr = np.ndarray((), dtype=_F_EXT_DTYPE, buffer=shm.buf)
+        ok = int(arr["session_id"]) != 0
+        close_attached_shm(shm)
+        return ok
+    except (FileNotFoundError, ValueError, OSError):
+        return False
+
+
+class ForceExtBus:
+    """Read-only subscriber for controller-compensated tool wrench (``rm75_f_ext``)."""
+
+    def __init__(self, name: str = DEFAULT_F_EXT_NAME) -> None:
+        self._name = normalize_relay_name(name)
+        self._shm = _ForceExtShm(self._name)
+        self._last_seq = 0
+        self._last_f_ext = np.full(6, np.nan, dtype=float)
+        self._last_t_s = float("nan")
+        self._last_ok = False
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def last_f_ext(self) -> np.ndarray:
+        return self._last_f_ext.copy()
+
+    @property
+    def last_seq(self) -> int:
+        return int(self._last_seq)
+
+    @property
+    def last_t_s(self) -> float:
+        return float(self._last_t_s)
+
+    def ensure_attached(self, *, force: bool = False) -> bool:
+        del force
+        return self._shm.attach_reader()
+
+    def stop(self) -> None:
+        self._shm.detach_reader()
+
+    def read(self) -> tuple[bool, int, float, np.ndarray]:
+        if not self.ensure_attached():
+            self._last_ok = False
+            return False, 0, float("nan"), np.full(6, np.nan)
+        ok, seq, t_s, f_ext = self._shm.read()
+        self._last_ok = bool(ok)
+        self._last_seq = int(seq)
+        self._last_t_s = float(t_s)
+        self._last_f_ext = np.asarray(f_ext, dtype=float).copy()
+        return self._last_ok, self._last_seq, self._last_t_s, self._last_f_ext
+
+
 class StateRelayPublisher:
     """Background publisher: ``RobotStateBus.read()`` -> shared memory @ hz."""
 
@@ -187,11 +360,20 @@ class StateRelayPublisher:
         self._pub_window_t0 = 0.0
         self._rate_log_period_s = 5.0
         self._last_logged_rail = float("nan")
+        # Compensated wrench lives on a separate SHM so rm75_state layout
+        # stays binary-compatible with the twin (rail_m must not shift).
+        self._f_ext_shm = _ForceExtShm(f_ext_name_for_relay(self._name))
 
     def set_kin(self, kin: Any | None) -> None:
         """Hot-swap TCP kinematics used for SHM pose (e.g. after tool sync)."""
         with self._kin_lock:
             self._kin = kin
+
+    def set_f_ext(self, f_ext: np.ndarray | None) -> None:
+        """Publish controller-compensated tool wrench on ``rm75_f_ext``."""
+        if f_ext is None:
+            return
+        self._f_ext_shm.publish(f_ext)
 
     def _pose_from_kin(self, snap: AsyncStateSnapshot, rail_m: float) -> np.ndarray | None:
         with self._kin_lock:
@@ -227,6 +409,7 @@ class StateRelayPublisher:
         self._view.header["session_id"] = np.uint64(self._session_id)
         self._seq = 0
         self._stop.clear()
+        self._f_ext_shm.start_publisher()
 
         def _on_udp(snap: AsyncStateSnapshot) -> None:
             if self._stop.is_set() or self._view is None:
@@ -276,6 +459,7 @@ class StateRelayPublisher:
         close_named_shm(self._shm)
         self._shm = None
         self._session_id = 0
+        self._f_ext_shm.stop_publisher()
 
     def _publish_snap(self, snap: AsyncStateSnapshot, *, source: str = "thread") -> None:
         assert self._view is not None

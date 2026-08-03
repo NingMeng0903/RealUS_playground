@@ -20,6 +20,8 @@ DT = 0.005
 def _controller(**overrides) -> AdmittanceController:
     values = dict(
         contact_threshold_n=0.8,
+        contact_enter_n=0.8,
+        contact_enter_ticks=1,
         contact_release_n=0.25,
         contact_release_ticks=40,
         desired_force_ramp_s=0.5,
@@ -34,6 +36,7 @@ def _controller(**overrides) -> AdmittanceController:
     cfg = AdmittanceConfig(**values)
     cfg.proactive_ff = ProactiveFfConfig(enabled=False)
     cfg.adaptive_ke.enabled = False
+    cfg.force_barrier.enabled = True
     return AdmittanceController(DT, cfg)
 
 
@@ -83,7 +86,7 @@ def test_release_counter_resets_when_force_recovers() -> None:
 
 @pytest.mark.parametrize("target_n", [1.0, 3.0, 5.0])
 def test_free_space_seek_is_setpoint_independent(target_n: float) -> None:
-    ctrl = _controller()
+    ctrl = _controller(force_accel_press_m_s2=10.0, force_accel_retract_m_s2=10.0)
     assert _tick(ctrl, 0.0, target_n) == pytest.approx(0.012)
     assert ctrl.cap_press_z == pytest.approx(0.012)
 

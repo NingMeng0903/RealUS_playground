@@ -74,12 +74,17 @@ class ForceSpaceVelocityDamper:
         v_z_cap: float,
         seek_vz_m_s: float,
         contact_enter_n: float,
+        v_z_cap_retract: float | None = None,
     ) -> tuple[float, float]:
         cfg = self.cfg
         v_hi = max(float(v_z_cap), 0.0)
+        v_hi_retract = max(
+            float(v_z_cap_retract) if v_z_cap_retract is not None else v_hi,
+            0.0,
+        )
         if not cfg.enabled:
             self.cap_press_z = v_hi
-            self.cap_retract_z = v_hi
+            self.cap_retract_z = v_hi_retract
             self.f_pred_z = float(f_z)
             return self.cap_press_z, self.cap_retract_z
 
@@ -89,13 +94,13 @@ class ForceSpaceVelocityDamper:
                 seek = min(seek, v_hi) if seek > 0.0 else v_hi
             del contact_enter_n
             self.cap_press_z = seek if seek > 0.0 else v_hi
-            self.cap_retract_z = v_hi
+            self.cap_retract_z = v_hi_retract
             self.f_pred_z = float(f_z)
             return self.cap_press_z, self.cap_retract_z
 
         if abs(float(f_des_z)) < 1e-6:
             self.cap_press_z = v_hi
-            self.cap_retract_z = v_hi
+            self.cap_retract_z = v_hi_retract
             self.f_pred_z = float(f_z)
             return self.cap_press_z, self.cap_retract_z
 
@@ -119,8 +124,8 @@ class ForceSpaceVelocityDamper:
             float(cfg.v_min_retract_m_s),
             (f_pred - float(cfg.f_keep_n)) / budget * v_ref,
         )
-        if v_hi > 0.0:
-            cap_retract = min(cap_retract, v_hi)
+        if v_hi_retract > 0.0:
+            cap_retract = min(cap_retract, v_hi_retract)
 
         self.cap_press_z = float(cap_press)
         self.cap_retract_z = float(cap_retract)

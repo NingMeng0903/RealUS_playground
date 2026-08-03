@@ -155,6 +155,8 @@ def _run_controller_service(
 
         def _on_step(label, t_phase, step, pose, f_ext, t_wall=float("nan")) -> None:
             tick_counter[0] += 1
+            if relay is not None and f_ext is not None:
+                relay.set_f_ext(f_ext)
             if label in phase_labels:
                 idx = phase_labels.index(label)
             else:

@@ -95,19 +95,37 @@ def test_governor_filter_freeze_hysteresis():
     assert 0.0 < out <= 0.5 + 1e-9
 
 
-def test_admittance_integrator_freezes_with_time_scale():
-    """v_force_z must hold while the governor freezes the reference clock."""
+def test_admittance_integrator_keeps_updating_when_time_scale_zero():
+    """Force loop must keep correcting on wall-clock dt when governor freezes."""
     from rm75_control.control.hybrid_motion.controller import (
         AdmittanceConfig,
         AdmittanceController,
     )
+    from rm75_control.control.admittance_common.proactive_force_ff import (
+        ProactiveFfConfig,
+    )
 
-    ctrl = AdmittanceController(0.005, AdmittanceConfig())
+    cfg = AdmittanceConfig(
+        contact_threshold_n=0.5,
+        contact_enter_ticks=1,
+        contact_release_n=0.1,
+        contact_release_ticks=1,
+        desired_force_ramp_s=0.0,
+        deadband_n=0.0,
+        deadband_width_n=0.0,
+        max_vz_tool_m_s=0.05,
+        max_velocity=np.array([0.2, 0.2, 0.05, 0.5, 0.5, 0.5]),
+        var_damping_enabled=False,
+        seek_vz_m_s=0.0,
+    )
+    cfg.proactive_ff = ProactiveFfConfig(enabled=False)
+    cfg.adaptive_ke.enabled = False
+    cfg.force_barrier.enabled = False
+    ctrl = AdmittanceController(0.005, cfg)
     pose = np.zeros(6)
     pose_d = np.zeros(6)
     vel_ff = np.zeros(6)
-    # Small force error so the steady-state admittance velocity stays below
-    # max_vz_tool_m_s (a cap-pinned v_force_z would mask the freeze check).
+    # Over-force → retract velocity builds while scale=1.
     f_ext = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
     f_des = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
 
@@ -119,8 +137,5 @@ def test_admittance_integrator_freezes_with_time_scale():
     ctrl.set_time_scale(0.0)
     for _ in range(50):
         ctrl.compute_velocity_command(pose, pose_d, vel_ff, f_ext, f_des)
-    assert ctrl.v_force_z == pytest.approx(v_before, abs=1e-12)
-
-    ctrl.set_time_scale(1.0)
-    ctrl.compute_velocity_command(pose, pose_d, vel_ff, f_ext, f_des)
-    assert ctrl.v_force_z != pytest.approx(v_before, abs=1e-12)
+    # Must not freeze at the pre-pause velocity (decay and/or force update).
+    assert ctrl.v_force_z != pytest.approx(v_before, abs=1e-9)

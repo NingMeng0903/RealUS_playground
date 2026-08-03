@@ -707,9 +707,12 @@ def _bone_transforms(asset: Any, side_transforms: Mapping[str, np.ndarray]) -> n
         # multi-pose hand/foot correction so this legacy builder remains
         # reproducible and cannot silently change terminal bind semantics.
         # Femur/knee may use proximal/distal for bounded axial shaft scale
-        # (BSM-style). Patella stays on the proximal map so condyle/patella
-        # skinning unity is preserved (distal-only patella previously collapsed).
-        result[patella] = femur_proximal
+        # (BSM-style). Patella defaults to proximal unless a dedicated inset map
+        # is provided by the V9 embed search.
+        if f"{side}_patella" in side_transforms:
+            result[patella] = side_transforms[f"{side}_patella"]
+        else:
+            result[patella] = femur_proximal
     return result
 
 
@@ -889,6 +892,458 @@ def _select_bone_first_femur_scale(
             "selected_tpose_outside_m": float(best["tpose_outside"]),
             "flex_pose_used": bool(use_flex),
         },
+    )
+
+
+def _knee_gap_contact_violation_m(
+    *,
+    domains: Any,
+    vertices: np.ndarray,
+    side: str,
+    gap_min_m: float = 0.0,
+    gap_max_m: float = 0.003,
+    reference_gaps: Mapping[str, float] | None = None,
+    gap_change_max_m: float = 0.002,
+) -> tuple[float, dict[str, float]]:
+    """Sum of knee condyle–plateau gap violations for one side (metres)."""
+
+    from scipy.spatial import cKDTree
+
+    frame = np.asarray(vertices, dtype=np.float64)
+    gaps: dict[str, float] = {}
+    violation = 0.0
+    for compartment in ("medial", "lateral"):
+        condyle_key = f"{side}/femoral_condyle_{compartment}.fit"
+        plateau_key = f"{side}/tibial_plateau_{compartment}.fit"
+        if condyle_key not in domains.domains:
+            condyle_key = f"{side}/femoral_condyle_{compartment}"
+        if plateau_key not in domains.domains:
+            plateau_key = f"{side}/tibial_plateau_{compartment}"
+        condyle = np.asarray(domains.require(condyle_key), dtype=np.int64)
+        plateau = np.asarray(domains.require(plateau_key), dtype=np.int64)
+        tree = cKDTree(frame[plateau])
+        dists, _ = tree.query(frame[condyle], k=1)
+        gap = float(np.min(dists))
+        gaps[compartment] = gap
+        if gap < gap_min_m:
+            violation += gap_min_m - gap
+        elif gap > gap_max_m:
+            violation += gap - gap_max_m
+        if reference_gaps is not None and compartment in reference_gaps:
+            change = abs(gap - float(reference_gaps[compartment]))
+            if change > gap_change_max_m:
+                violation += change - gap_change_max_m
+    return float(violation), gaps
+
+
+def _rotate_direction(direction: np.ndarray, *, pitch_deg: float, coronal_deg: float) -> np.ndarray:
+    """Small pitch (about X) and coronal (about Z) nudges on a unit direction."""
+
+    from scipy.spatial.transform import Rotation
+
+    unit = np.asarray(direction, dtype=np.float64)
+    unit = unit / np.linalg.norm(unit)
+    rot = Rotation.from_euler("xz", [float(pitch_deg), float(coronal_deg)], degrees=True)
+    out = rot.apply(unit)
+    return out / np.linalg.norm(out)
+
+
+def _select_femur_embed_v9(
+    *,
+    side: str,
+    scales: np.ndarray,
+    pitch_deg: np.ndarray,
+    coronal_deg: np.ndarray,
+    hip_source: np.ndarray,
+    hip_target: np.ndarray,
+    knee_source: np.ndarray,
+    ankle_source: np.ndarray,
+    femur_preferred: np.ndarray,
+    femur_span: float,
+    shank_span: float,
+    vertices_prefit: np.ndarray,
+    driver_indices: np.ndarray,
+    driver_weights: np.ndarray,
+    femur_controller: int,
+    knee_controller: int,
+    patella_controller: int,
+    tibia_controller: int,
+    tibia_twist_controller: int,
+    ankle_controller: int,
+    bone_count: int,
+    femur_vertex_ids: np.ndarray,
+    patella_vertex_ids: np.ndarray,
+    skin: np.ndarray,
+    skin_faces: np.ndarray,
+    faces: np.ndarray,
+    domains: Any,
+    bind_global_prefit: np.ndarray,
+    source_posed_global_flex: np.ndarray | None,
+    skin_flex: np.ndarray | None,
+    skin_faces_flex: np.ndarray | None,
+) -> tuple[
+    float,
+    float,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    dict[str, Any],
+]:
+    """Embed femur+shank with seating+containment (SKEL/Pinocchio-style).
+
+    Objective: minimize knee gap violation first, then flexed/T-pose outside,
+    then |scale-1|. Axial scale is applied on Femur_Rot (the weighted controller).
+    Patella may receive a bounded inward offset on its own controller.
+    """
+
+    femur_ids = np.asarray(femur_vertex_ids, dtype=np.int64)
+    patella_ids = np.asarray(patella_vertex_ids, dtype=np.int64)
+    # Subsample femur only. Always keep every patella vertex — a uniform stride
+    # over concatenated [femur|patella] can drop the entire patella group and
+    # falsely report flex_outside≈0 while Patella still pokes 10+ mm.
+    if len(femur_ids) > 350:
+        step = max(1, len(femur_ids) // 350)
+        femur_sample = femur_ids[::step]
+    else:
+        femur_sample = femur_ids
+    if len(patella_ids):
+        probe_sample = np.unique(np.concatenate([femur_sample, patella_ids]))
+        probe_ids = np.unique(np.concatenate([femur_ids, patella_ids]))
+    else:
+        probe_sample = femur_sample
+        probe_ids = femur_ids
+    ref_viol, ref_gaps = _knee_gap_contact_violation_m(
+        domains=domains, vertices=vertices_prefit, side=side
+    )
+    del ref_viol
+    use_flex = (
+        source_posed_global_flex is not None
+        and skin_flex is not None
+        and skin_faces_flex is not None
+    )
+    b_prefit = np.asarray(bind_global_prefit, dtype=np.float64)
+    inv_b_prefit = np.linalg.inv(b_prefit)
+    g_src_flex = (
+        np.asarray(source_posed_global_flex, dtype=np.float64)
+        if source_posed_global_flex is not None
+        else None
+    )
+    preferred = np.asarray(femur_preferred, dtype=np.float64)
+    preferred = preferred / np.linalg.norm(preferred)
+    source_dir = (knee_source - hip_source) / max(femur_span, 1.0e-12)
+    if float(np.dot(preferred, source_dir)) < 0.0:
+        preferred = -preferred
+
+    def _group_outside(
+        verts: np.ndarray,
+        *,
+        skin_v: np.ndarray,
+        skin_f: np.ndarray,
+        ids: np.ndarray,
+    ) -> float:
+        return _femur_group_outside_m(
+            verts,
+            faces=faces,
+            skin=skin_v,
+            skin_faces=skin_f,
+            vertex_ids=ids,
+        )
+
+    prelim: list[dict[str, Any]] = []
+    for scale in np.asarray(scales, dtype=np.float64).tolist():
+        if not 0.90 <= float(scale) <= 1.05:
+            continue
+        for pitch in np.asarray(pitch_deg, dtype=np.float64).tolist():
+            for coronal in np.asarray(coronal_deg, dtype=np.float64).tolist():
+                direction = _rotate_direction(
+                    preferred, pitch_deg=float(pitch), coronal_deg=float(coronal)
+                )
+                femur_rotation = _shortest_arc_rotation(
+                    knee_source - hip_source, direction
+                )
+                knee_target = hip_target + direction * (femur_span * float(scale))
+                proximal = _axial_scaled_pivot_rotation(
+                    hip_source,
+                    hip_target,
+                    femur_rotation,
+                    source_axis=(knee_source - hip_source),
+                    scale=float(scale),
+                )
+                distal = _pivot_rotation(knee_source, knee_target, femur_rotation)
+                ankle_target = np.asarray(ankle_source, dtype=np.float64).copy()
+                target_shank = float(np.linalg.norm(ankle_target - knee_target))
+                if target_shank <= 1.0e-8:
+                    continue
+                shank_scale = target_shank / max(shank_span, 1.0e-12)
+                if not 0.88 <= shank_scale <= 1.12:
+                    continue
+                shank_direction = (ankle_target - knee_target) / target_shank
+                shank_rotation = _shortest_arc_rotation(
+                    ankle_source - knee_source, shank_direction
+                )
+                shank_proximal = _pivot_rotation(knee_source, knee_target, shank_rotation)
+                shank_distal = _pivot_rotation(ankle_source, ankle_target, shank_rotation)
+                corrections = np.tile(np.eye(4, dtype=np.float64), (int(bone_count), 1, 1))
+                corrections[int(femur_controller)] = proximal
+                corrections[int(knee_controller)] = distal
+                corrections[int(patella_controller)] = proximal
+                corrections[int(tibia_controller)] = shank_proximal
+                corrections[int(tibia_twist_controller)] = shank_distal
+                corrections[int(ankle_controller)] = shank_distal
+                rest = _weighted_rest_correction(
+                    vertices_prefit, driver_indices, driver_weights, corrections
+                )
+                contact_viol, gaps = _knee_gap_contact_violation_m(
+                    domains=domains,
+                    vertices=rest,
+                    side=side,
+                    reference_gaps=ref_gaps,
+                )
+                tpose_outside = _group_outside(
+                    rest, skin_v=skin, skin_f=skin_faces, ids=probe_sample
+                )
+                prelim.append(
+                    {
+                        "scale": float(scale),
+                        "pitch_deg": float(pitch),
+                        "coronal_deg": float(coronal),
+                        "direction": direction,
+                        "femur_rotation": femur_rotation,
+                        "proximal": proximal,
+                        "distal": distal,
+                        "shank_proximal": shank_proximal,
+                        "shank_distal": shank_distal,
+                        "knee_target": knee_target,
+                        "shank_scale": float(shank_scale),
+                        "contact_violation_m": float(contact_viol),
+                        "knee_gaps_m": gaps,
+                        "tpose_outside_m": float(tpose_outside),
+                        "rest": rest,
+                        "corrections": corrections,
+                    }
+                )
+    if not prelim:
+        raise ValueError(f"{side} femur embed v9 produced no candidates")
+    prelim.sort(
+        key=lambda row: (
+            float(row["contact_violation_m"]),
+            float(row["tpose_outside_m"]),
+            abs(float(row["scale"]) - 1.0),
+            abs(float(row["pitch_deg"])) + abs(float(row["coronal_deg"])),
+        )
+    )
+    shortlist = prelim[:24]
+    best: dict[str, Any] | None = None
+    trials = []
+    for row in shortlist:
+        flex_outside = float(row["tpose_outside_m"])
+        if use_flex:
+            assert g_src_flex is not None and skin_flex is not None
+            assert skin_faces_flex is not None
+            b_tgt = row["corrections"] @ b_prefit
+            g_tgt = g_src_flex @ inv_b_prefit @ b_tgt
+            transforms = g_tgt @ np.linalg.inv(b_tgt)
+            flexed = _weighted_rest_correction(
+                row["rest"], driver_indices, driver_weights, transforms
+            )
+            flex_outside = _group_outside(
+                flexed, skin_v=skin_flex, skin_f=skin_faces_flex, ids=probe_sample
+            )
+        trial = {
+            "scale": row["scale"],
+            "pitch_deg": row["pitch_deg"],
+            "coronal_deg": row["coronal_deg"],
+            "contact_violation_m": row["contact_violation_m"],
+            "knee_gaps_m": row["knee_gaps_m"],
+            "tpose_max_outside_m": row["tpose_outside_m"],
+            "flex_max_outside_m": float(flex_outside),
+            "shank_axial_scale": row["shank_scale"],
+            "knee_target_m": row["knee_target"].tolist(),
+        }
+        trials.append(trial)
+        key = (
+            float(row["contact_violation_m"]),
+            float(flex_outside),
+            float(row["tpose_outside_m"]),
+            abs(float(row["scale"]) - 1.0),
+            abs(float(row["pitch_deg"])) + abs(float(row["coronal_deg"])),
+        )
+        if best is None or key < best["key"]:
+            best = {
+                "key": key,
+                "row": row,
+                "flex_outside": float(flex_outside),
+            }
+    assert best is not None
+    row = best["row"]
+    # Re-score the femur-only winner on the full probe before patella inset so
+    # the baseline is not an under-sampled false zero.
+    best_patella = np.asarray(row["proximal"], dtype=np.float64)
+    best_tpose = _group_outside(
+        row["rest"], skin_v=skin, skin_f=skin_faces, ids=probe_ids
+    )
+    best_flex = float(best_tpose)
+    best_patella_out = 0.0
+    if use_flex:
+        assert g_src_flex is not None and skin_flex is not None
+        assert skin_faces_flex is not None
+        b_tgt = row["corrections"] @ b_prefit
+        g_tgt = g_src_flex @ inv_b_prefit @ b_tgt
+        transforms = g_tgt @ np.linalg.inv(b_tgt)
+        flexed0 = _weighted_rest_correction(
+            row["rest"], driver_indices, driver_weights, transforms
+        )
+        best_flex = _group_outside(
+            flexed0, skin_v=skin_flex, skin_f=skin_faces_flex, ids=probe_ids
+        )
+        if len(patella_ids):
+            best_patella_out = _group_outside(
+                flexed0,
+                skin_v=skin_flex,
+                skin_f=skin_faces_flex,
+                ids=patella_ids,
+            )
+    # Patella has its own controller: bounded inset after Femur_Rot embed.
+    best_patella_shift = 0.0
+    best_patella_dir = None
+    if len(patella_ids) and use_flex:
+        pts = np.asarray(row["rest"], dtype=np.float64)[patella_ids]
+        centroid = pts.mean(axis=0)
+        hip = np.asarray(hip_target, dtype=np.float64)
+        knee_t = np.asarray(row["knee_target"], dtype=np.float64)
+        shaft = knee_t - hip
+        shaft = shaft / max(np.linalg.norm(shaft), 1.0e-12)
+        from scipy.spatial import cKDTree
+
+        # Rest centroid vs T-pose skin (same pose) for a stable inward axis.
+        tree = cKDTree(np.asarray(skin, dtype=np.float64))
+        _d, idx = tree.query(centroid.reshape(1, 3), k=1)
+        nearest = np.asarray(skin, dtype=np.float64)[
+            int(np.asarray(idx).reshape(-1)[0])
+        ]
+        to_skin = nearest - centroid
+        directions: list[np.ndarray] = []
+        sn = float(np.linalg.norm(to_skin))
+        if sn > 1.0e-8:
+            unit = to_skin / sn
+            directions.extend([unit, -unit])
+        lateral = np.array(
+            [1.0 if side == "left" else -1.0, 0.0, 0.0], dtype=np.float64
+        )
+        anterior = np.cross(shaft, lateral)
+        an = float(np.linalg.norm(anterior))
+        if an > 1.0e-12:
+            anterior = anterior / an
+            directions.extend([anterior, -anterior, shaft, -shaft])
+        for direction in directions:
+            for shift in (0.005, 0.010, 0.015, 0.020, 0.030, 0.040, 0.050):
+                offset = np.eye(4, dtype=np.float64)
+                offset[:3, 3] = float(shift) * direction
+                patella_tf = offset @ np.asarray(row["proximal"], dtype=np.float64)
+                corrections = np.asarray(row["corrections"], dtype=np.float64).copy()
+                corrections[int(patella_controller)] = patella_tf
+                rest = _weighted_rest_correction(
+                    vertices_prefit, driver_indices, driver_weights, corrections
+                )
+                contact_viol, _gaps = _knee_gap_contact_violation_m(
+                    domains=domains,
+                    vertices=rest,
+                    side=side,
+                    reference_gaps=ref_gaps,
+                )
+                if contact_viol > float(row["contact_violation_m"]) + 5.0e-4:
+                    continue
+                b_tgt = corrections @ b_prefit
+                g_tgt = g_src_flex @ inv_b_prefit @ b_tgt
+                transforms = g_tgt @ np.linalg.inv(b_tgt)
+                flexed = _weighted_rest_correction(
+                    rest, driver_indices, driver_weights, transforms
+                )
+                flex_out = _group_outside(
+                    flexed, skin_v=skin_flex, skin_f=skin_faces_flex, ids=probe_ids
+                )
+                pat_out = _group_outside(
+                    flexed, skin_v=skin_flex, skin_f=skin_faces_flex, ids=patella_ids
+                )
+                tpose_out = _group_outside(
+                    rest, skin_v=skin, skin_f=skin_faces, ids=probe_ids
+                )
+                key = (
+                    float(contact_viol),
+                    float(flex_out),
+                    float(pat_out),
+                    float(tpose_out),
+                    float(shift),
+                )
+                cur = (
+                    float(row["contact_violation_m"]),
+                    float(best_flex),
+                    float(best_patella_out),
+                    float(best_tpose),
+                    float(best_patella_shift),
+                )
+                if key < cur:
+                    best_patella = patella_tf
+                    best_flex = float(flex_out)
+                    best_patella_out = float(pat_out)
+                    best_tpose = float(tpose_out)
+                    best_patella_shift = float(shift)
+                    best_patella_dir = direction.tolist()
+                    row = {
+                        **row,
+                        "rest": rest,
+                        "corrections": corrections,
+                        "contact_violation_m": float(contact_viol),
+                        "tpose_outside_m": float(tpose_out),
+                    }
+    tpose_full = float(best_tpose)
+    flex_full = float(best_flex)
+    if use_flex:
+        b_tgt = row["corrections"] @ b_prefit
+        g_tgt = g_src_flex @ inv_b_prefit @ b_tgt
+        transforms = g_tgt @ np.linalg.inv(b_tgt)
+        flexed = _weighted_rest_correction(
+            row["rest"], driver_indices, driver_weights, transforms
+        )
+        flex_full = _group_outside(
+            flexed, skin_v=skin_flex, skin_f=skin_faces_flex, ids=probe_ids
+        )
+        tpose_full = _group_outside(
+            row["rest"], skin_v=skin, skin_f=skin_faces, ids=probe_ids
+        )
+        if len(patella_ids):
+            best_patella_out = _group_outside(
+                flexed, skin_v=skin_flex, skin_f=skin_faces_flex, ids=patella_ids
+            )
+    report = {
+        "method": "seat_then_inside_embed_v9",
+        "trials_shortlist": trials,
+        "selected_scale": float(row["scale"]),
+        "selected_pitch_deg": float(row["pitch_deg"]),
+        "selected_coronal_deg": float(row["coronal_deg"]),
+        "selected_contact_violation_m": float(row["contact_violation_m"]),
+        "selected_knee_gaps_m": row["knee_gaps_m"],
+        "selected_tpose_outside_m": float(tpose_full),
+        "selected_flex_outside_m": float(flex_full),
+        "selected_flex_patella_outside_m": float(best_patella_out),
+        "selected_patella_inward_shift_m": float(best_patella_shift),
+        "selected_patella_shift_direction": best_patella_dir,
+        "reference_knee_gaps_m": ref_gaps,
+        "flex_pose_used": bool(use_flex),
+        "candidate_count": int(len(prelim)),
+        "shortlist_count": int(len(shortlist)),
+    }
+    return (
+        float(row["scale"]),
+        float(flex_full),
+        np.asarray(row["proximal"], dtype=np.float64),
+        np.asarray(row["distal"], dtype=np.float64),
+        np.asarray(row["shank_proximal"], dtype=np.float64),
+        np.asarray(row["shank_distal"], dtype=np.float64),
+        np.asarray(best_patella, dtype=np.float64),
+        report,
     )
 
 
@@ -1121,6 +1576,15 @@ def build_lower_chain_rest_fit_v1(
     mesh_policy, mesh_groups = _mesh_policy(asset)
     bone_names = list(asset.source_bone_names or ())
     bind_global_prefit = np.asarray(asset.target_bind_global, dtype=np.float64)
+    from .joint_contact_v7 import FrozenJointMaterialDomainsV7
+
+    joint_domains = FrozenJointMaterialDomainsV7.freeze(
+        source_bind_vertices=np.asarray(
+            operator.template_asset.vertices_rest, dtype=np.float64
+        ),
+        faces=np.asarray(operator.template_asset.faces, dtype=np.int32),
+        domains=operator.fixed_material_domains,
+    )
     source_posed_global_flex = None
     skin_flex = None
     skin_faces_flex = None
@@ -1179,48 +1643,63 @@ def build_lower_chain_rest_fit_v1(
             requested_femur_scale = 1.0
         else:
             requested_femur_scale = projected_span / femur_span
-        # Bone-first (SKEL/BSM-style): anatomical segment length is femur_span;
-        # bounded axial scale serves T-pose containment, not skin-centerline length.
+        # V9 embed: seat condyle–plateau + multi-pose containment (not ±3% skin oracle).
         suffix = "L" if side == "left" else "R"
-        femur_scale, femur_tpose_outside, femur_proximal, femur_distal, scale_search = (
-            _select_bone_first_femur_scale(
-                scales=np.linspace(0.97, 1.03, 13),
-                hip_source=hip_source,
-                hip_target=hip_target,
-                knee_source=knee,
-                femur_direction=femur_direction,
-                femur_span=femur_span,
-                femur_rotation=femur_rotation,
-                vertices_prefit=vertices_prefit,
-                driver_indices=np.asarray(asset.driver_indices),
-                driver_weights=np.asarray(asset.driver_weights),
-                femur_controller=bone_names.index(f"Femur_Rot_{suffix}"),
-                knee_controller=bone_names.index(f"Knee_Rotate_{suffix}"),
-                patella_controller=bone_names.index(f"Patella_Rotate_{suffix}"),
-                bone_count=len(bone_names),
-                femur_vertex_ids=mesh_groups[f"{side}_femur"],
-                patella_vertex_ids=mesh_groups[f"{side}_patella"],
-                skin=skin,
-                skin_faces=faces,
-                faces=np.asarray(asset.faces, dtype=np.int32),
-                bind_global_prefit=bind_global_prefit,
-                source_posed_global_flex=source_posed_global_flex,
-                skin_flex=skin_flex,
-                skin_faces_flex=skin_faces_flex,
-            )
+        tibia_i = bone_names.index(f"Tibia_Bone_{suffix}")
+        (
+            femur_scale,
+            femur_flex_outside,
+            femur_proximal,
+            femur_distal,
+            shank_proximal,
+            shank_distal,
+            patella_tf,
+            embed_search,
+        ) = _select_femur_embed_v9(
+            side=side,
+            scales=np.linspace(0.90, 1.03, 14),
+            pitch_deg=np.asarray((-4.0, -2.0, 0.0, 2.0, 4.0), dtype=np.float64),
+            coronal_deg=np.asarray((-3.0, 0.0, 3.0), dtype=np.float64),
+            hip_source=hip_source,
+            hip_target=hip_target,
+            knee_source=knee,
+            ankle_source=ankle,
+            femur_preferred=preferred_unit,
+            femur_span=femur_span,
+            shank_span=shank_span,
+            vertices_prefit=vertices_prefit,
+            driver_indices=np.asarray(asset.driver_indices),
+            driver_weights=np.asarray(asset.driver_weights),
+            femur_controller=bone_names.index(f"Femur_Rot_{suffix}"),
+            knee_controller=bone_names.index(f"Knee_Rotate_{suffix}"),
+            patella_controller=bone_names.index(f"Patella_Rotate_{suffix}"),
+            tibia_controller=tibia_i,
+            tibia_twist_controller=tibia_i + 1,
+            ankle_controller=bone_names.index(f"Ankle_Rot_{suffix}"),
+            bone_count=len(bone_names),
+            femur_vertex_ids=mesh_groups[f"{side}_femur"],
+            patella_vertex_ids=mesh_groups[f"{side}_patella"],
+            skin=skin,
+            skin_faces=faces,
+            faces=np.asarray(asset.faces, dtype=np.int32),
+            domains=joint_domains,
+            bind_global_prefit=bind_global_prefit,
+            source_posed_global_flex=source_posed_global_flex,
+            skin_flex=skin_flex,
+            skin_faces_flex=skin_faces_flex,
         )
+        femur_direction = _rotate_direction(
+            preferred_unit,
+            pitch_deg=float(embed_search["selected_pitch_deg"]),
+            coronal_deg=float(embed_search["selected_coronal_deg"]),
+        )
+        femur_rotation = _shortest_arc_rotation(knee - hip_source, femur_direction)
         target_femur_span = femur_span * float(femur_scale)
         knee_target = hip_target + femur_direction * target_femur_span
-        _station_shank_direction, ankle_constraint = _station_ray_direction(
-            preferred=shank_preferred,
-            proximal_target=knee_target,
-            span_m=shank_span,
-            station=station_joints[ids[2]],
-        )
         ankle_target = ankle.copy()
         target_shank_span = float(np.linalg.norm(ankle_target - knee_target))
         shank_scale = target_shank_span / shank_span
-        if not 0.97 <= shank_scale <= 1.03:
+        if not 0.88 <= shank_scale <= 1.12:
             raise ValueError(
                 f"{side} shank-to-frozen-ankle span needs forbidden scale "
                 f"{shank_scale:.6f}"
@@ -1230,14 +1709,21 @@ def build_lower_chain_rest_fit_v1(
             chain["shank_endpoints"][1][0] + station_frame_translation[0]
         )
         shank_rotation = _shortest_arc_rotation(ankle - knee, shank_direction)
-        shank_proximal = _pivot_rotation(knee, knee_target, shank_rotation)
-        shank_distal = _pivot_rotation(ankle, ankle_target, shank_rotation)
+        # Prefer embed-selected shank transforms (already consistent with knee_target).
+        _station_shank_direction, ankle_constraint = _station_ray_direction(
+            preferred=shank_preferred,
+            proximal_target=knee_target,
+            span_m=shank_span,
+            station=station_joints[ids[2]],
+        )
+        del _station_shank_direction
         side_transforms[f"{side}_femur_proximal"] = femur_proximal
         side_transforms[f"{side}_femur_distal"] = femur_distal
         # Legacy single-key consumers (report / older call sites).
         side_transforms[f"{side}_femur"] = femur_proximal
         side_transforms[f"{side}_shank_proximal"] = shank_proximal
         side_transforms[f"{side}_shank_distal"] = shank_distal
+        side_transforms[f"{side}_patella"] = patella_tf
         centerline_report[side] = {
             "femur": femur_report,
             "shank": shank_report,
@@ -1268,13 +1754,14 @@ def build_lower_chain_rest_fit_v1(
             "shank_target_direction": shank_direction.tolist(),
             "femur_length_scale": femur_scale,
             "femur_requested_skin_scale": requested_femur_scale,
-            "femur_tpose_outside_m": float(femur_tpose_outside),
-            "femur_bone_first_scale_search": scale_search,
+            "femur_tpose_outside_m": float(embed_search["selected_tpose_outside_m"]),
+            "femur_flex_outside_m": float(femur_flex_outside),
+            "femur_embed_v9": embed_search,
             "anatomical_femur_span_m": femur_span,
             "applied_bone_scale": femur_scale,
             "femur_endpoint_axes": [0],
-            "femur_direction_source": "anatomical_segment_plus_skin_direction_coronal_endpoint",
-            "femur_axial_scale_policy": "bounded_per_bone_axial_containment_v8",
+            "femur_direction_source": "embed_v9_preferred_plus_pitch_coronal",
+            "femur_axial_scale_policy": "seat_then_inside_embed_v9",
         }
 
     C_bone = _bone_transforms(asset, side_transforms)
@@ -1340,7 +1827,7 @@ def build_lower_chain_rest_fit_v1(
         build_report={
             "schema_version": CHAIN_REST_FIT_SCHEMA_VERSION,
             "artifact_kind": CHAIN_REST_FIT_KIND,
-            "method": "bounded_pelvis_cage_and_bone_first_femur_axial_v8",
+            "method": "bounded_pelvis_cage_and_seat_inside_embed_v9",
             "beta_prefit_source": "frozen_142_materialize_subject",
             "raw_smplx_joint_translation_target": False,
             "station_frame_mapping": "per_beta_bilateral_hip_midpoint_report_only",
@@ -1352,15 +1839,19 @@ def build_lower_chain_rest_fit_v1(
                 side: float(centerline_report[side]["femur_length_scale"])
                 for side in ("left", "right")
             },
-            "femur_axial_scale_policy": "bounded_per_bone_axial_containment_v8",
+            "femur_axial_scale_policy": "seat_then_inside_embed_v9",
             "femur_endpoint_axes": [0],
-            "femur_direction_source": "anatomical_segment_plus_skin_direction_coronal_endpoint",
+            "femur_direction_source": "embed_v9_preferred_plus_pitch_coronal",
             "femur_requested_skin_scale": {
                 side: float(centerline_report[side]["femur_requested_skin_scale"])
                 for side in ("left", "right")
             },
             "femur_tpose_outside_m": {
                 side: float(centerline_report[side]["femur_tpose_outside_m"])
+                for side in ("left", "right")
+            },
+            "femur_flex_outside_m": {
+                side: float(centerline_report[side]["femur_flex_outside_m"])
                 for side in ("left", "right")
             },
             "applied_bone_scale": {

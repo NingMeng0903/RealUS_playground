@@ -160,7 +160,7 @@ def test_var_damping_d_target_respects_bd_max_when_is_unbounded():
         ctrl._admittance_z(
             0.0,
             True,
-            dt_eff=DT,
+            dt_force=DT,
             rising_edge=False,
         )
     assert ctrl.damping_z_eff <= 50.0 + 1e-6

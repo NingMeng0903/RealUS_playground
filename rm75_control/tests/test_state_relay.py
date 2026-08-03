@@ -168,3 +168,45 @@ def test_expand_q_matches_relay_rail():
     q7 = np.array([0.0, 10.0, 20.0, -10.0, 30.0, 0.0, 15.0])
     direct = expand_q_meas_8dof(q7, 0.07)
     assert direct[0] == pytest.approx(0.07)
+
+
+def test_f_ext_on_separate_shm_does_not_shift_rail(relay_name):
+    from rm75_control.control.admittance_common.state_relay import (
+        ForceExtBus,
+        f_ext_name_for_relay,
+    )
+
+    obs = _FakeObserver()
+    bus = RobotStateBus(None, observer=obs)
+    pub = StateRelayPublisher(bus, name=relay_name, hz=200.0, rail_m_fn=lambda: 0.123)
+    pub.start()
+    try:
+        sub = RelayStateBus(relay_name)
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            if sub.read().ok:
+                break
+            time.sleep(0.005)
+        assert sub.read().ok
+        assert sub.last_rail_m == pytest.approx(0.123)
+
+        wrench = np.array([0.1, -0.2, 1.7, 0.0, 0.0, 0.0])
+        pub.set_f_ext(wrench)
+        fbus = ForceExtBus(name=f_ext_name_for_relay(relay_name))
+        deadline = time.monotonic() + 2.0
+        ok = False
+        while time.monotonic() < deadline:
+            ok, _seq, _t, f_ext = fbus.read()
+            if ok and np.isfinite(f_ext[2]):
+                break
+            time.sleep(0.005)
+        assert ok
+        assert f_ext[2] == pytest.approx(1.7)
+        # Rail still correct after f_ext publish (layout not poisoned).
+        assert sub.read().ok
+        assert sub.last_rail_m == pytest.approx(0.123)
+        fbus.stop()
+        sub.stop()
+    finally:
+        pub.stop()
+

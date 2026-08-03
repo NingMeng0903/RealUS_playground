@@ -431,7 +431,7 @@ def build_whole_chain_rest_fit_v1(
         {
             "schema_version": WHOLE_CHAIN_SCHEMA_VERSION,
             "artifact_kind": WHOLE_CHAIN_KIND,
-            "method": "full_main_chain_right_multiply_pose_v8_bone_first_femur",
+            "method": "full_main_chain_right_multiply_pose_v9_seat_inside_embed",
             "accepted_scope": "full_main_chain_shadow",
             "upper_station_frame_translation_m": upper_translation.tolist(),
             "upper_centerlines": report,
@@ -443,7 +443,7 @@ def build_whole_chain_rest_fit_v1(
             "scapula_clavicle_vertices_changed": False,
             "terminal_hand_policy": "copy_142_terminal_hand",
             "pose_map_composition": "right_multiply_bind_v6",
-            "femur_axial_scale_policy": "bounded_per_bone_axial_containment_v8",
+            "femur_axial_scale_policy": "seat_then_inside_embed_v9",
             "containment_pose_used": containment_pose_axis_angle is not None,
             "tube_vertices_changed": True,
             "tube_transport_application_count": 1,
@@ -676,8 +676,11 @@ def check_whole_chain_rest_fit_v1(
         # Bone-first containment search adds winding-number trials; allow headroom.
         and float(expected.build_report["elapsed_seconds"])
         <= (
-            180.0
-            if bool(expected.build_report.get("containment_pose_used"))
+            600.0
+            if str(expected.build_report.get("femur_axial_scale_policy", "")).endswith(
+                "_v9"
+            )
+            or bool(expected.build_report.get("containment_pose_used"))
             else 30.0
         )
     )

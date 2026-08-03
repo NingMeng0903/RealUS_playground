@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import inspect
+import math
 import os
 import queue
 import threading
@@ -416,18 +417,24 @@ class JointIkController:
         qdot_ff: np.ndarray | None = None,
         *,
         vel_ff: np.ndarray | None = None,
+        f_ext_z: float | None = None,
+        f_des_z: float | None = None,
     ) -> JointIkStep:
         """One Cartesian-tracking WBC step.
 
         ``q_meas`` rotates tool→base twist and bounds command lead via QP
         velocity constraints (never a position teleport). ``qdot_ff`` feeds
         the nullspace with centering / arm-angle tasks.
+
+        When ``f_ext_z`` / ``f_des_z`` indicate over-force retract (tool +z
+        press convention), the tool-normal twist component is not attenuated
+        by singularity ``twist_scale``.
         """
         dt = self.cfg.dt if dt is None else dt
         q_prev = self.q_cmd
         follow_err = 0.0 if q_meas is None else float(np.max(np.abs(q_prev - q_meas)))
         q_rot = q_meas if q_meas is not None else q_prev
-        twist_base = self._twist_to_base(twist, q_rot)
+        twist_tool = np.asarray(twist, dtype=float).copy()
 
         # Two-threshold σ policy: sigma_ref brakes twist; sigma_escape_ref
         # starts avoidance earlier (must lead the brake).
@@ -446,7 +453,17 @@ class JointIkController:
             # Below half σ_ref, square scale so force retract cannot collapse posture.
             if sigma_pre < 0.5 * sigma_ref:
                 twist_scale = max(twist_scale * twist_scale, 0.5 * floor)
-            twist_base = twist_base * twist_scale
+            vz_tool = float(twist_tool[2])
+            overforce_retract = (
+                f_ext_z is not None
+                and f_des_z is not None
+                and float(f_ext_z) > float(f_des_z)
+                and vz_tool < 0.0
+            )
+            twist_tool = twist_tool * twist_scale
+            if overforce_retract:
+                twist_tool[2] = vz_tool
+        twist_base = self._twist_to_base(twist_tool, q_rot)
 
         locked_hold = self.is_locked_hold
         rail_only = (
@@ -710,7 +727,7 @@ class AdmittanceOuterLoop:
                 self.reference.set_origin(pose0)
 
     def set_time_scale(self, scale: float) -> None:
-        """Governor scale (0..1); pause force integrator with the reference clock."""
+        """Governor scale (0..1) for trajectory/FF; force loop stays on wall clock."""
         if hasattr(self.controller, "set_time_scale"):
             self.controller.set_time_scale(scale)
 
@@ -1546,7 +1563,7 @@ def run_joint_admittance_phases(
                                 f_ext_raw = inner.kin.wrench_link7_to_tcp(f_ext_raw)
     
                         q_prev = inner.q_cmd.copy()
-                        # Pause force integrator with the governed reference clock.
+                        # Governor scales trajectory/FF only; force loop uses wall clock.
                         if hasattr(phase.outer, "set_time_scale"):
                             phase.outer.set_time_scale(scale)
                         sample_params = inspect.signature(phase.outer.sample).parameters
@@ -1554,7 +1571,7 @@ def run_joint_admittance_phases(
                         if "q_meas" in sample_params:
                             sample_kwargs["q_meas"] = q_meas
                         if "f_ext_raw" in sample_params and f_ext_raw is not None:
-                            # Unfiltered wrench for Dimeas (6 Hz LPF hides the band).
+                            # Unfiltered wrench for Dimeas (LPF hides the band).
                             sample_kwargs["f_ext_raw"] = f_ext_raw
                         if "dt_actual" in sample_params:
                             sample_kwargs["dt_actual"] = dt_actual
@@ -1582,12 +1599,23 @@ def run_joint_admittance_phases(
                             qdot_ff = qdot_fb if qdot_ff is None else (qdot_ff + qdot_fb)
                         vel_ff_ref = getattr(phase.outer, "last_vel_ff", None)
                         control_dt = dt
+                        ctrl = getattr(phase.outer, "controller", None)
+                        f_des_z = float(
+                            getattr(ctrl, "f_des_z_eff", float("nan"))
+                        ) if ctrl is not None else float("nan")
+                        f_ext_z = (
+                            float(f_ext[2])
+                            if f_ext is not None and len(f_ext) > 2
+                            else float("nan")
+                        )
                         step = inner.update(
                             twist,
                             control_dt,
                             q_meas=q_meas,
                             qdot_ff=qdot_ff,
                             vel_ff=vel_ff_ref,
+                            f_ext_z=f_ext_z if math.isfinite(f_ext_z) else None,
+                            f_des_z=f_des_z if math.isfinite(f_des_z) else None,
                         )
                         if rail_bridge is not None:
                             rail_bridge.set_target_m(float(inner.q_cmd[0]))
