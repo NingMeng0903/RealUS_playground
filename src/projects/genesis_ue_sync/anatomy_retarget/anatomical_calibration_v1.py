@@ -252,6 +252,11 @@ def _augment_upper_domains(
             vertices,
             _mesh_ids(asset, f"Humerus_{suffix}"),
             opposite_center=elbow_center,
+            # The proximal 28% reaches the non-spherical neck/shaft and makes
+            # the disjoint head-sphere fits disagree by more than 2 mm.  The
+            # proximal 18% remains on the humeral head while retaining more
+            # than 100 frozen vertices per side for the spatial split.
+            fraction=0.18,
         )
         shoulder_head_center = np.mean(vertices[humerus_cap], axis=0)
         scapula_socket = _nearest_domain(

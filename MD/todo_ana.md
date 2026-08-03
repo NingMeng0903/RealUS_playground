@@ -1,16 +1,78 @@
 # 基于 `142ece5f` 的快速、拓扑保持解剖骨骼 Retarget 记录与执行计划
 
-更新时间：2026-08-01
+更新时间：2026-08-03
 
-基线提交：`142ece5f0bc646978ae3e8c9add76deea71c26a2`
+基线提交：`142ece5f0bc646978ae3e8c9add76deea71c26a2`  
+分支起点对照：`31133afba2ced3f4de01df7328d487859c7f9b05`（`codex/stage1-male-retarget-v4` HEAD）
 
-当前阶段：只解决骨骼 rest placement 和后续 parent-local pose mapping。血管/神经只验证
-原有 Blender 权重联动与拓扑不变量，不做 reroute、投影、containment repair 或软组织
-残差场。所有候选保持 `publishable=false`，不得更新 `trusted/latest`。
+当前阶段：骨骼 rest/bind + parent-local pose。血管/神经只验证联动与拓扑不变量。  
+所有候选 `publishable=false`，不得更新 `trusted/latest`。
 
-本文档是在 `MD/todo_ana.md` 被清空后重新建立的单一事实记录。它记录 142 之后本轮实际
-做过的工作、失败方向、数值发现、不可再做的事情、工件/参考图路径、agent 监管规则和
-下一阶段实施节点。
+---
+
+## 零、现状树 / 版本判决（2026-08-03 双审）
+
+### 0.1 做过什么
+
+1. 冻结 142 operator + Blender link oracle（235 controller / 14-slot / 17 tube）。
+2. Male provenance 纠正；Node1 full-main-chain calibration；`node2_004` whole-chain rest-fit。
+3. V2 动态主链（双 correction 根因）→ V3（源码已删，工件失败）→ V4 CUDA 多姿态（未提交，31 轮 `rejected_for_redesign`）。
+4. 2026-08-03 强制先出完整对照图再改代码：Pack A=`31133af`/142 materialize，Pack B=`node2_004`，Pack C=`v4_node2_031_root`。
+
+### 0.2 现在哪版
+
+| 身份 | 路径/提交 | 角色 |
+|---|---|---|
+| 分支起点 | `31133af` | 联动基线；T-pose 可看；带 pose 穿出；**非**最终 pose 解 |
+| 继承 rest/bind | `chain_retarget_v1_node2_004` | 双审通过：V5 唯一 rest/bind 权威 |
+| 失败 WIP | 未提交 V4 + `chain_retarget_v4_node2_*` | quarantine；禁止 production import |
+| 负例 | `29e1072` | 细骨硬塞；不重建 |
+
+对照图根：
+
+```text
+outputs/anatomy_retarget/v8_candidates/stage1_baseline_compare_20260803_full/
+  pack_A/  # 31133af / 142 materialize
+  pack_B/  # node2_004
+  pack_C/  # V4_031 + reused_v4_debug_outside
+  manifest.json
+```
+
+### 0.3 错在哪里
+
+- **不是** tube 大爆炸（Pack A/B `bones_tubes` 拓扑连续；transport×1/zero-pose 合同可过）。
+- **是** posed 主链相对 SMPLX 外露：屈膝髌前/髁前、踝足、腕手。
+- V4：放弃 whole-chain target bind，改 142-prefit CUDA multipose；outside 呈尖刺/碎裂（Pack C `left_knee_ap`），正式 `NO-GO`。
+- V2：`vertices_final` 与 `B_prefit`/terminal `C` 运动权威不一致。
+
+### 0.4 双审裁决（GROK + LUNA MAX）
+
+- Pack A：`direction_accepted` 作为 **linkage baseline only**。
+- Pack B：`direction_accepted` — **继承 rest/bind 合同做 V5**。
+- Pack C：`rejected_for_redesign` — **丢弃 V4 求解器**。
+- 共同下一步：V5 = `node2_004` 的 `B_final`/`target_local_bind` + 单次 `C_total=B_final@inv(B_prefit)` + parent-local FK；主链门优先，不抠手指；不叠 V4。
+
+### 0.5 怎么改（主线唯一）
+
+1. Quarantine V4 源码与失败工件；切断 production import。
+2. 实现 V5 shadow：只消费 whole-chain target bind；禁止第二套 global override。
+3. 验收分层：P0 髋膝踝肩肘腕连续与长骨 containment；P1 手足 compound；soft tissue 只查不爆炸。
+4. 正式 handoff 后再停骨骼迭代等用户；不做血管 reroute。
+
+### 0.6 禁止事项（继续有效）
+
+不 snap raw SMPL-X joint；不缩骨；不改 tube 拓扑/权重；不更新 `trusted/latest`；不用候选自报 pass/相机验收；不用 composer-2.5。
+
+### 0.7 2026-08-03 执行结果（停骨骼迭代）
+
+- V4 已隔离至 `src/projects/genesis_ue_sync/anatomy_retarget/_quarantine_v4/`。
+- V5 矩阵：`outputs/anatomy_retarget/v8_candidates/chain_retarget_v5_node2_002`  
+  `passed=true`，`decision=accepted_for_user_genesis_review`，`v4_solver_used=false`。  
+  权威：`node2_004` rest/bind + `pose_map_v1` parent-local FK；手足/posed 外露为 report-only。
+- 正式 handoff：  
+  `outputs/anatomy_retarget/v8_candidates/chain_retarget_v5_node4_001/independent_genesis_review_v5/`  
+  （几何与对照 Pack B 同权威；含 `review_decision.json` 与 6 张 three-layer handoff）。
+- Global supervisor：**GO** — 停止骨骼代码迭代，等待用户 Genesis 验收；`publishable=false`。
 
 ---
 
@@ -1492,3 +1554,138 @@ GPU，所以之前 CPU 试跑的残留图已删除，不作为验收依据。
 
 当前停止点：等待独立视觉 agent 审核 `node4_008` 的动作姿态局部图（尤其两侧 ankle/wrist、
 hip/knee 和完整 hand/foot）；不因血管穿模启动 vessel reroute 或软组织 harmonic solve。
+
+### 2026-08-02 — 撤销 V2 `accepted_for_user_genesis_review`，重开骨骼阶段
+
+用户人工检查确认 `chain_retarget_v2_node4_008` 的带 pose 图中手、腕、踝和足仍有明显
+错位/外露。此前 `accepted_for_user_genesis_review` 结论错误，现正式撤销；
+`chain_retarget_v2_node2_008` 与 `chain_retarget_v2_node4_008` 只保留为失败反例，禁止发布、
+禁止更新 `trusted/latest`，也不能作为后续候选通过基线。
+
+重新检查现有数值合同后确认，旧 validator 本身允许肉眼可见的失败：手最大外露可到
+`6 mm`，major foot 可到 `15 mm`，lower core 可到 `40 mm`，toe phalanges 完全是
+`report_only`。实际 `213712 beta x pose_213328` 中左趾面积体内率约 `20.99%`、最大外露
+`32.21 mm`，左第五跖骨体内率约 `69.9%`，左 lower core 最大外露约 `18.05 mm`，仍被
+判为 `passed=true`。这些数值从现在起固定为 fail-closed 回归反例。
+
+代码根因也已确认：`DynamicMainChainSubjectV2` 的 rest geometry 来自已经 retarget 的
+`legacy.vertices_final`，但 target bind 又退回 `legacy.B_prefit`，随后把相对 source bind
+计算的 terminal `C_bone` 再施加到已搬运的 terminal rest geometry。主链 geometry、bind、
+terminal correction 因而不是同一个运动权威，且存在重复/顺序不一致的 correction；这能
+解释 T-pose 尚可而带 pose 的 wrist/ankle 断链和错位。
+
+HEAD 中未接 CLI/测试的 `main_chain_retarget_v3.py` 也不作为修复基础。只读复算显示它虽能
+通过静态 single-`C_bone` checker，但两 beta 的三姿态动态 validator 全部失败；例如
+213328 recorded pose 的 left hand inside fraction 约 `0.0402`、最大外露约 `53.46 mm`。
+
+本轮重新打开第一阶段，唯一允许的新主线是：以 whole-chain rest-fit 的 target bind 为基础，
+在其 parent-local bind 上组合 bounded terminal delta，再从 142 beta-prefit 一次性计算
+`C_total = B_final @ inverse(B_prefit)`；骨、target bind 和 17 个 tube 都必须共享该唯一
+correction。新验收取消全部 hand/foot/toe `report_only`，逐 bone mesh 使用严格体内门，并由
+CUDA Genesis 独立 reviewer 输出 outside heatmap 后再交用户检查。在用户明确接受前仍保持
+`publishable=false`、`trusted_latest_updated=false`、`vessel_repair_started=false`。
+
+Codex custom agent 状态：`/home/camp/.codex/agents/luna-worker.toml` 已存在，当前
+`codex-cli 0.146.0-alpha.9.2` 已实际以 `gpt-5.6-luna`、`max` reasoning 启动该角色；配置
+兼容且无需修改，因此本轮 agent 配置 diff 为空，不覆盖其他 Codex 配置。
+
+### 2026-08-02 — Dynamic Main-Chain V3 实施与独立 CUDA 失败验收
+
+新增 shadow-only V3 主线：
+
+```text
+src/projects/genesis_ue_sync/anatomy_retarget/dynamic_main_chain_retarget_v3.py
+src/projects/genesis_ue_sync/anatomy_retarget/dynamic_main_chain_validation_v3.py
+src/projects/genesis_ue_sync/anatomy_retarget/terminal_containment_contract_v3.py
+src/projects/genesis_ue_sync/anatomy_retarget/cli/run_dynamic_main_chain_retarget_v3.py
+src/projects/genesis_ue_sync/anatomy_retarget/cli/render_dynamic_main_chain_genesis_v3.py
+tests/test_dynamic_main_chain_retarget_v3.py
+tests/test_independent_genesis_review_v3.py
+```
+
+V3 已修正 V2 的 correction 顺序：whole-chain `B_final/target_local_bind` 是基础 bind，
+`C_total = B_final @ inverse(B_prefit)` 只从 142 beta-prefit 搬运一次；17 条 vessel/nerve
+tube 共 55,337 顶点继续使用同一 `C_total` 且 application count 为 1。V3 不再追加 legacy
+pelvis-cage displacement。四个 terminal root 的局部增量按欧氏范数限制为 `2 mm / 5 deg`，
+而不是旧实现的逐坐标盒约束。235-controller hierarchy、faces 和 14-slot driver
+indices/weights 均未改变。
+
+完整手/足 rigid compound 在 213328 beta 的 T-pose/两 recorded pose 严格逐骨门中首先被
+证明不可行：初始失败 bone mesh 数为 109。按计划启用离线 bounded per-mesh proper-SE(3)
+layout（不缩放、不 shear、不 remesh、不做 pose-time search），8 轮后失败数依次为
+`109, 89, 74, 66, 65, 65, 61, 60, 59`，其中 57 个 mesh 达到平移或旋转边界，仍不能通过。
+该 layout 是 rigid-compound 不可行后独立记录的骨 mesh 局部增量；tube 不读取它。
+
+两 beta 诊断工件：
+
+```text
+outputs/anatomy_retarget/v8_candidates/chain_retarget_v3_node2_001
+```
+
+两 subject 的 structural checker 和 pose-map checker 都通过，但 strict containment 均失败：
+
+```text
+213328: tpose 43 failed meshes; pose_213328 49; pose_213712 53
+213712: tpose 43 failed meshes; pose_213328 48; pose_213712 57
+```
+
+代表性失败包括左手第一远节指骨 `inside_fraction=0`、动作姿态最大外露约 `25.58 mm`；
+213712 pose_213712 左月骨 `inside_fraction=0`、最大外露约 `29.54 mm`；T-pose 也存在约
+`30.50 mm` 指骨外露。逐骨硬门仍是面积体内率 `>=99.9%`、顶点体内率 `>=99.5%`、
+最大外露 `<=0.5 mm`，没有因失败放宽。wrist/ankle 还增加了上游两骨面中心到下游骨面
+中心的 interface-gap drift `<=2 mm` 硬门。
+
+独立 reviewer 不再信任 candidate 自带 identity：strict loader 必须从外部 captures 比对
+subject label、10 betas、capture SHA 和两条 recorded pose 后重新 build。Renderer 还要求
+`torch.cuda.is_available=true`，并在 Genesis 初始化后现场证明
+`genesis.backend == genesis.cuda`；请求字符串 `--backend cuda` 本身不算证据。
+
+第一轮 `chain_retarget_v3_node4_001` 因 renderer 把 SMPL-X posed `4x4` joint globals 误当
+`[55,3]` joint positions 而 18/18 场景 fail-closed，没有 PNG，不作为视觉证据。修复为读取
+`posed_global[:, :3, 3]` 后生成有效包：
+
+```text
+outputs/anatomy_retarget/v8_candidates/chain_retarget_v3_node4_002
+GPU: NVIDIA GeForce RTX 4080 Laptop GPU
+Torch CUDA: 12.6
+Genesis actual backend: cuda (certified=true)
+18/18 scenes complete
+1170 PNG, 18 contact sheets
+decision: rejected_for_redesign
+accepted=false, publishable=false
+```
+
+主代理查看原始局部图后确认数值失败有清楚视觉对应：动作姿态手掌/手背图中多节指骨和
+腕骨大面积红色，ankle oblique 中足骨链与小腿断开且胫骨明显红色外露。bones+tubes 图
+没有出现 17 条 tube 整体爆炸，但这只满足阶段一联动 sanity，不能覆盖骨骼失败；部分
+foot dorsal 图还被近景 skin 遮挡，只能由同关节其他 AP/oblique/plantar 图判断。
+独立视觉 agent 又确认 576 张 RGB 均非空，但 wrist axial 常拍到 torso/head，ankle AP 和
+foot dorsal 常拍到 knee/proximal tibia 或 skin-only 近景；因此 renderer 已给所有局部
+wrist/ankle/hand/foot 相机增加围绕目标关节的 `0.40 m` near/far depth slab。该相机修正已
+通过聚焦测试，但没有回写或伪造 `node4_002`，后者仍保留原始错误 framing 作为失败证据。
+
+性能目标未通过：两 beta recorded-only build/check/validation 包耗时约 `232.29 s`，完整
+CUDA review 约 `253.91 s`，超过 `<120 s` 目标；单 beta V3 builder 实测约 `39.53 s`，也
+超过 `<30 s`。下一轮必须按 operator/calibration/male-model/beta/pose digest 缓存严格重建
+和 SDF，不得把本次速度写成通过。
+
+聚焦跨层回归结果：
+
+```text
+male provenance / whole-chain / pose-map / V2 failure / V3 core / reviewer
+31 passed in 102.69 s
+```
+
+Codex 配置复核补充：`codex doctor` 明确显示 `Configuration: config loaded`、
+`config.toml parse ok`，且本轮已再次实际启动 `luna_worker`。doctor 总退出码仍为 1，原因是
+当前非交互 `TERM=dumb`、memory DB 只读/不可打开和受限网络 reachability，不是
+`luna-worker.toml` 格式错误；agent 配置文件仍是空 diff。
+
+按用户要求清理了未被当前代码/测试引用的 pre-V8 旧输出：`v233-v253`、`v29e`、旧
+`audit_*`、`eval_*`、`reference_762*` 和 `preview_142*`，约释放 0.4 GB，删除不可恢复。
+保留 `v7_candidates` 冻结 oracle、`v7_source_bake_001`、`canonical_cache`、
+`cache_v7_final_bind`、`latest_asset/latest_canonical` 以及所有 V8/V3 回归证据。
+
+当前结论不是 `accepted_for_user_genesis_review`。骨、bind、tube 的重复 correction 根因已
+修正，但严格逐骨 containment 和带 pose 视觉仍失败，状态固定为 `rejected_for_redesign`；
+不更新 `trusted/latest`，不启动 vessel reroute、nerve repair 或软组织第二阶段。
