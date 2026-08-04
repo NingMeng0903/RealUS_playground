@@ -32,6 +32,10 @@ class NullspaceTaskConfig:
     # (e.g. J4 ~ 90deg) so the redundant DOF doesn't fight the primary task by
     # trying to snap the elbow straight; see JointCenteringTask.__call__.
     q_nominal_rad: np.ndarray | None = None
+    # Keep J4 on the taught side of the straight-elbow singularity (Burdick).
+    # 0 disables.  Typical 35° — run_20260804_143805 flipped +77°→−133°.
+    elbow_branch_min_deg: float = 35.0
+    elbow_branch_k: float = 6.0
 
 
 class JointCenteringTask:

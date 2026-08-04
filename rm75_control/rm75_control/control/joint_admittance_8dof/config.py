@@ -124,8 +124,6 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         k_mu=float(m.get("k_mu", 0.8)),
         eps_rad=float(m.get("eps_rad", 1e-4)),
         sigma_fade_ref=float(m.get("sigma_fade_ref", 0.12)),
-        grad_norm_floor=float(m.get("grad_norm_floor", 0.02)),
-        qdot_lpf_tau_s=float(m.get("qdot_lpf_tau_s", 0.08)),
     )
 
     a = inner.get("arm_angle", {})

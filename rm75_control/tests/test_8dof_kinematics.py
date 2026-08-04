@@ -9,6 +9,7 @@ from rm75_control.control.joint_admittance_8dof.model import (
     DEFAULT_URDF,
     RobotKinematics,
     full_q_from_arm,
+    joint_ptp_delta,
     wrap_joint_delta,
 )
 from scipy.spatial.transform import Rotation as Rsc
@@ -46,6 +47,25 @@ def test_wrap_joint_delta_prismatic_vs_revolute():
     d = wrap_joint_delta(q_from, q_to)
     assert d[0] == pytest.approx(0.05)
     assert d[1] == pytest.approx(3.0)
+
+
+def test_joint_ptp_delta_avoids_wrap_into_j4_limit(kin: RobotKinematics):
+    """Folded start J4≈-133° → D J4≈+77° must take +210°, not wrap -150° into limit."""
+    q_from = np.zeros(8)
+    q_to = np.zeros(8)
+    q_from[4] = np.deg2rad(-133.0)
+    q_to[4] = np.deg2rad(77.0)
+    assert wrap_joint_delta(q_from, q_to)[4] == pytest.approx(np.deg2rad(-150.0), abs=1e-9)
+    d = joint_ptp_delta(q_from, q_to, kin.q_lower, kin.q_upper)
+    assert d[4] == pytest.approx(np.deg2rad(210.0), abs=1e-9)
+    from rm75_control.control.joint_admittance_8dof.reference import JointSmoothMoveReference
+
+    ref = JointSmoothMoveReference(kin, q_from, q_to, 8.0)
+    q_end, _ = ref.sample_q(8.0)
+    assert q_end[4] == pytest.approx(q_to[4], abs=1e-9)
+    # Midpoint stays away from the lower hard stop (wrap path would go more negative).
+    q_mid, _ = ref.sample_q(4.0)
+    assert q_mid[4] > kin.q_lower[4] + 0.2
 
 
 def test_link7_to_tcp_rotation_matches_gripper_ry90(kin: RobotKinematics):

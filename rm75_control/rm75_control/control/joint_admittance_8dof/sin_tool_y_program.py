@@ -707,7 +707,9 @@ def build_sin_tool_y_program(
             # controller-driven-rail behaviour. The velocity-mode motor just follows
             # the resulting smooth q_cmd[0]; no rail pinning, no arm-only contortion.
             hybrid_sec = SecondaryPolicy(preset="track", qdot_ff="off")
-            hybrid_gov = GovernorSpec(err_ok_mm=10.0, err_max_mm=40.0)
+            # Looser than 10/40: near singularity TCP lag (~25–30 mm) used to
+            # freeze t_ref (gov→0.33) and trap straight-elbow recovery.
+            hybrid_gov = GovernorSpec(err_ok_mm=15.0, err_max_mm=80.0)
         specs.append(
             phase_hybrid_track(
                 hybrid_ref,

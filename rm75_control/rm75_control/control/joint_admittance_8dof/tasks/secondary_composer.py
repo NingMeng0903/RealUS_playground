@@ -131,13 +131,9 @@ class SecondaryComposer:
         arm_suppressed: bool,
         sigma_min: float = 1.0,
         sigma_ref: float = 0.08,
-        sigma_escape_ref: float = 0.0,
         centering_suppressed: bool = False,
         manipulability_active: bool = False,
         centering_sigma_fade: bool = True,
-        centering_gain_scale: float = 1.0,
-        max_qdot_frac_override: float | None = None,
-        dt_s: float = 0.005,
     ) -> np.ndarray:
         q = np.asarray(q_rad, dtype=float)
         cfg = self.centering.cfg
@@ -151,39 +147,15 @@ class SecondaryComposer:
 
         qdot_soft = np.zeros_like(q)
         rail_hold = self.rail_lock is not None and self.rail_lock.active
-        # Nullspace attractor (centering) and ∇μ escape must COEXIST when σ
-        # dips: replacing centering with manip alone let J5 drift to the
-        # flipped wrist on long hard-contact scans.  Always apply centering
-        # first (unless suppressed); add manipulability on top.  When manip is
-        # active in the escape band, σ-yield proximal centering (floor 0.25) so
-        # ∇μ can lead without a full tug-of-war; never kill the attractor.
-        # J6 (index 6) is exempt from yield: |J6|≈0 is wrist singularity and
-        # yielding the 45° nominal pull let scans park there and jitter.
-        if not centering_suppressed:
-            qdot_center = float(max(centering_gain_scale, 0.0)) * self.centering(q)
-            escape_ref = float(sigma_escape_ref) if float(sigma_escape_ref) > 1e-9 else float(sigma_ref)
-            if (
-                manipulability_active
-                and escape_ref > 1e-9
-                and float(sigma_min) < escape_ref
-            ):
-                yield_scale = float(
-                    np.clip(float(sigma_min) / escape_ref, 0.25, 1.0)
-                )
-                qdot_full = qdot_center
-                qdot_center = yield_scale * qdot_center
-                if qdot_center.shape[0] > 6:
-                    qdot_center[6] = qdot_full[6]
-            qdot_soft = qdot_center
         # Rail is a base translation: ∂μ/∂q0 is analytically zero, but the FD
         # gradient in ManipulabilityTask can produce small numerical residuals
         # that get unit-normalised to k_mu.  Always exclude rail from the
         # manipulability push — its purpose is to escape ARM singularities,
         # never to be a stealth rail driver behind the primary QP's back.
         if manipulability_active and self.manipulability is not None:
-            qdot_soft = qdot_soft + self.manipulability(
-                q, sigma_min=sigma_min, exclude_rail=True, dt_s=float(dt_s)
-            )
+            qdot_soft = self.manipulability(q, sigma_min=sigma_min, exclude_rail=True)
+        elif not centering_suppressed:
+            qdot_soft = self.centering(q)
         if rail_hold:
             qdot_soft = qdot_soft + self.rail_lock(q)
 
@@ -194,13 +166,8 @@ class SecondaryComposer:
             qdot_soft = qdot_soft - d_eff * np.asarray(qdot_prev, dtype=float)
 
         # Per-joint magnitude cap on the soft tasks (see module docstring).
-        cap_frac = (
-            self.max_qdot_frac
-            if max_qdot_frac_override is None
-            else float(max_qdot_frac_override)
-        )
-        if self.v_max is not None and cap_frac > 0.0:
-            cap = cap_frac * self.v_max
+        if self.v_max is not None and self.max_qdot_frac > 0.0:
+            cap = self.max_qdot_frac * self.v_max
             qdot_soft = np.clip(qdot_soft, -cap, cap)
 
         if not rail_hold:

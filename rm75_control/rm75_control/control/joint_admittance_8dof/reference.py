@@ -68,10 +68,13 @@ class JointSmoothMoveReference:
 
     def sample_q(self, t_s: float) -> tuple[np.ndarray, np.ndarray]:
         """Joint-space (q_ref(t), qdot_ff(t)) for Phase.qdot_ff_provider."""
-        from rm75_control.control.joint_admittance_8dof.model import wrap_joint_delta
+        from rm75_control.control.joint_admittance_8dof.model import joint_ptp_delta
 
         s, ds_dt = smoothstep_scalar(t_s, self.duration_s)
-        dq = wrap_joint_delta(self.q_start, self.q_target)
+        # Limit-aware delta (not shortest-angle wrap) — see joint_ptp_delta.
+        q_lo = getattr(self.kin, "q_lower", None)
+        q_hi = getattr(self.kin, "q_upper", None)
+        dq = joint_ptp_delta(self.q_start, self.q_target, q_lo, q_hi)
         q = self.q_start + s * dq
         qdot = ds_dt * dq
         return q, qdot
@@ -94,11 +97,13 @@ def srs_move_duration_s(
     max_qdot_rad_s: float | np.ndarray = 1.0,
     peak_v_frac: float = 0.60,
     duration_min_s: float = 0.5,
+    q_lower: np.ndarray | None = None,
+    q_upper: np.ndarray | None = None,
 ) -> float:
     """Auto duration so quintic peak ``1.875·|dq|/T`` stays under ``peak_v_frac·v_max``."""
-    from rm75_control.control.joint_admittance_8dof.model import wrap_joint_delta
+    from rm75_control.control.joint_admittance_8dof.model import joint_ptp_delta
 
-    dq = np.abs(wrap_joint_delta(q_start_rad, q_target_rad))
+    dq = np.abs(joint_ptp_delta(q_start_rad, q_target_rad, q_lower, q_upper))
     if np.isscalar(max_qdot_rad_s):
         vmax_vec = np.full_like(dq, float(max_qdot_rad_s))
     else:

@@ -57,6 +57,53 @@ def wrap_joint_delta(q_from: np.ndarray, q_to: np.ndarray) -> np.ndarray:
     return d
 
 
+def joint_ptp_delta(
+    q_from: np.ndarray,
+    q_to: np.ndarray,
+    q_lower: np.ndarray | None = None,
+    q_upper: np.ndarray | None = None,
+) -> np.ndarray:
+    """Joint PTP travel on limited revolutes (no wrap into a hard stop).
+
+    ``wrap_joint_delta`` picks the shortest angle in (-π, π].  On RM75 that
+    can turn a feasible J4 move (-133°→+77° = +210°) into -150° *into* the
+    lower limit — MoveJ then sits at ``pos_clamped`` forever and never
+    reaches D.  With joint limits, prefer the path whose linear segment
+    stays inside [q_lower, q_upper]; if both are feasible, take the shorter.
+    """
+    a = np.asarray(q_from, dtype=float)
+    b = np.asarray(q_to, dtype=float)
+    d = b - a
+    if d.size >= 1:
+        d[0] = b[0] - a[0]
+    if d.size <= 1:
+        return d
+    lo = None if q_lower is None else np.asarray(q_lower, dtype=float)
+    hi = None if q_upper is None else np.asarray(q_upper, dtype=float)
+    for i in range(1, d.size):
+        raw = float(b[i] - a[i])
+        wrapped = float((raw + np.pi) % (2.0 * np.pi) - np.pi)
+
+        def _segment_ok(delta: float) -> bool:
+            if lo is None or hi is None or i >= lo.size or i >= hi.size:
+                return True
+            q_a = float(a[i])
+            q_b = q_a + float(delta)
+            seg_lo = min(q_a, q_b)
+            seg_hi = max(q_a, q_b)
+            return seg_lo >= float(lo[i]) - 1e-9 and seg_hi <= float(hi[i]) + 1e-9
+
+        ok_raw = _segment_ok(raw)
+        ok_wrap = _segment_ok(wrapped)
+        if ok_raw and not ok_wrap:
+            d[i] = raw
+        elif ok_wrap and not ok_raw:
+            d[i] = wrapped
+        else:
+            d[i] = wrapped if abs(wrapped) <= abs(raw) else raw
+    return d
+
+
 def arm_q_from_full(q_full: np.ndarray) -> np.ndarray:
     """Extract 7 arm joints (rad) for Realman CANFD."""
     return np.asarray(q_full, dtype=float)[ARM_Q_INDICES]
@@ -114,7 +161,7 @@ def auto_move_duration_s(
     the arm follows a joint path, not a straight-line TCP jump.  A hard
     ``duration_max_s`` prevents runaway plans when σ₀ is numerically tiny.
     """
-    dq = wrap_joint_delta(q0_rad, q_target_rad)
+    dq = joint_ptp_delta(q0_rad, q_target_rad, kin.q_lower, kin.q_upper)
     v_lim = np.asarray(v_max_rad_s, dtype=float) * float(v_scale) * float(peak_joint_v_frac)
     with np.errstate(divide="ignore", invalid="ignore"):
         per_joint = np.where(v_lim > 1e-6, 1.875 * np.abs(dq) / v_lim, 0.0)

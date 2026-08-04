@@ -217,7 +217,13 @@ def make_srs_move_reference(
     # Plan uses live FK(q_target), not a cached pose_target.
     pose_from_q = np.asarray(kin.fk_pose(q_target), dtype=float).reshape(6)
     v_max = kin.v_max * 0.5  # match inner v_scale default
-    T_rate = srs_move_duration_s(q_start, q_target, max_qdot_rad_s=v_max)
+    T_rate = srs_move_duration_s(
+        q_start,
+        q_target,
+        max_qdot_rad_s=v_max,
+        q_lower=kin.q_lower,
+        q_upper=kin.q_upper,
+    )
     T = max(float(duration_s), T_rate)
     d_wt = float(d_wt_from_kin(kin))
     return SrsSmoothMoveReference(

@@ -54,9 +54,10 @@ inner:
     max_iter_cap: 400
     max_solve_ms: 8.0         # skip retry if first attempt already burned wall budget
     fail_qdot_decay: 0.85
-    twist_sigma_floor: 0.25   # keep ≥25% scan twist near σ (was 0.08 → felt stuck)
-    twist_scale_lpf_tau_s: 0.08  # smooth σ-brake so it is not a 1–2 tick punch
-    # Avoidance onset vs sigma_ref (escape must lead the twist brake).
+    twist_sigma_floor: 0.25   # keep ≥25% scan/force twist near σ (was 0.08 → stuck)
+    twist_scale_lpf_tau_s: 0.08  # smooth σ-brake (kills single-tick 2× jumps)
+    # Avoidance onset vs sigma_ref (rail escape). 1.25 keeps pose-D scan out of
+    # a permanent escape latch (2.0 was too sticky).
     sigma_escape_ref_scale: 1.25
     warn_on_fail: false
     # Chiaverini 1997 SR damping for nullspace projection.
@@ -64,10 +65,9 @@ inner:
       lam0: 0.05
       sigma_ref: 0.08
       sigma_floor: 1.0e-6
-    # Soften W_task toward task_weight_min_frac as σ_min drops (LPF-smoothed).
-    # Was 0.05: near σ the QP nearly dropped Cartesian → scan hitch.
-    task_weight_min_frac: 0.22
-    task_weight_lpf_tau_s: 0.15
+    # σ-adaptive W_task (4d15c1d defaults).
+    task_weight_min_frac: 0.05
+    task_weight_lpf_tau_s: 0.25
     # Mass-weighted reg: reg[i] *= max(diag(M)[i], mass_reg_floor).
     use_mass_weighted_reg: true
     mass_reg_floor: 0.05
@@ -89,36 +89,20 @@ inner:
     max_pairs: 8
 
   nullspace:
-    k_center: 1.5
+    # 4d15c1d defaults (Jul-30 hw OK): uniform arm weights, k_center=1.
+    k_center: 1.0
     k_limit: 2.0
     activation: 0.85
-    # Index 5 = J5: resist flip when escape-zone ∇μ is also active.
-    # Index 6 = J6: prefer nominal 45° (wrist away from |J6|≈0).
-    weights: [0.0, 1.0, 1.0, 1.0, 1.0, 2.5, 2.5, 1.0]
-    # Comfortable RM75 posture attractor (independent of taught D).
+    weights: [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     q_nominal_deg: [0.0, 0.0, -45.0, 0.0, 90.0, 0.0, 45.0, 0.0]
-    # Move-phase nullspace: ascend Yoshikawa μ (see manipulability_task.py).
     manipulability:
       k_mu: 0.8
       eps_rad: 5.0e-4
       sigma_fade_ref: 0.12
-      # Soft-norm floor: hard unit-norm turns tiny FD noise into ±k_mu kicks.
-      grad_norm_floor: 0.02
-      qdot_lpf_tau_s: 0.08
 
-  # Viscous damping on composed secondary qdot (1/s); scales up near limits.
   nullspace_d_null: 0.5
   nullspace_d_null_adaptive: 1.0
-  # Cap soft secondary qdot as a fraction of URDF v_max (near σ, N→I).
   nullspace_max_qdot_frac: 0.2
-  # Keep recovering the active posture after singularity escape.
-  centering_recovery_gain: 3.0
-  centering_recovery_max_qdot_frac: 0.35
-  centering_recovery_tol: 0.12
-  # Hysteresis: leave escape only above enter·scale (enter=σ_ref·1.25).
-  centering_recovery_exit_scale: 1.35
-  # Soft-ramp 1→3× recovery so J1/J2 do not step when σ chatters.
-  centering_recovery_blend_tau_s: 0.25
 
   arm_angle:
     enabled: true
@@ -138,8 +122,7 @@ inner:
     w_max: 2.0             # QP weight cap (≪ W_task=100)
     v_max_m_s: 0.08        # cap on the task's desired rail velocity
     limit_margin_m: 0.08   # C¹ smoothstep handoff band before physical stop (8 cm)
-    # σ-escape: keep w_max*(1+k_sigma_boost)=6 ≪ W_task=100 (slack > rail > arm).
-    k_sigma_boost: 2.0     # w_ext boosts up to 3x as σ → 0
+    k_sigma_boost: 2.0     # w_ext boosts up to 3x as σ → 0 (4d15c1d)
     k_esc: 0.5             # σ-escape velocity gain (m/s per unit σ gradient)
     w_sigma_floor: 1.0     # baseline w inside dead zone when σ depressed
     # move→D pose attractor (preset=move → mode=pose_attract).
@@ -215,7 +198,8 @@ hybrid_motion:
     enter_n: 0.8
     hard_enter_n: 1.5
     exit_n: 0.35
-    enter_confirm_s: 0.01
+    # 50 ms rejects air inertia spikes (≤20 ms); true press stays for seconds.
+    enter_confirm_s: 0.05
     exit_confirm_s: 0.1
   # Slightly wider band: blunt single-tick contact dips without sticky D.
   deadband_n: 0.08
@@ -256,8 +240,9 @@ hybrid_motion:
   var_damping_hf_on: 0.30
   var_damping_hf_off: 0.15
   var_damping_hf_err_n: 0.8
-  recontact_vz_cap_m_s: 0.008
-  recontact_hold_s: 0.22
+  # Soften first press after acquire/reacquire (was 0.008×0.22s → air hitch).
+  recontact_vz_cap_m_s: 0.03
+  recontact_hold_s: 0.10
   force_dob:
     enabled: true
     ki: 8.0
@@ -277,7 +262,7 @@ hybrid_motion:
     ke_initial: 80.0
     ke_min: 40.0
     ke_max: 2500.0
-    ke_impact_initial: 1500.0
+    ke_impact_initial: 500.0   # was 1500 → bd≈87 / D spike to 80–180 on fake contact
     ke_forgetting: 0.995
     ke_forgetting_inc: 0.88
     ke_idle_decay_s: 2.0

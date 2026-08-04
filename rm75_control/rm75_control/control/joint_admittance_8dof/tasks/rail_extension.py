@@ -72,12 +72,21 @@ class RailExtensionConfig:
     # Fade the task to zero within this distance (m) of a rail travel limit
     # when the desired velocity points into the limit.
     limit_margin_m: float = 0.08
-    # σ-escape: boost rail weight and add non-reach velocity along σ ascent
-    # when σ_min dips. Keep w_max*(1+k_sigma_boost) ≪ W_task.
+    # Bug 2: σ-escape.  When σ_min ↘ the rail should BOOST authority (not
+    # cut it — the old ``w *= sigma_scale`` was backwards) and add a
+    # non-reaching velocity component along the TCP-preserving σ-ascent
+    # direction so the rail acts even inside the reach dead zone.
+    #
+    # Invariant kept by callers: ``w_max * (1 + k_sigma_boost) ≪ W_task``
+    # (default 1.5 * 3 = 4.5 vs W_task = 100 in yaml → 22:1 ratio).  This is
+    # what keeps the QP preference order  ``slack > rail > free-arm``
+    # untouched even during σ dips (§3 test 1 & 2 in the plan pin this).
     k_sigma_boost: float = 2.0
-    # Escape velocity scale [m/s per unit σ].
+    # k_esc [m/s per unit σ]: scales the σ-escape velocity component.
+    # sigma_grad_rail has units 1/m, so k_esc·(1-sig)·grad has units of m/s.
     k_esc: float = 0.5
-    # Baseline weight when reach error is in the dead zone but σ is low.
+    # Baseline w that lets the rail act even when the reach error is inside
+    # the dead zone (|e| < e0), provided σ is depressed.  Fades with σ.
     w_sigma_floor: float = 1.0
     # --- move→D pose attractor (primary during preset="move") ---
     k_pose: float = 2.0          # 1/s soft P on (y_target - y_rail)
@@ -210,21 +219,6 @@ class RailExtensionTask:
         self._v_lpf = (1.0 - alpha) * self._v_lpf + alpha * float(v)
         return float(self._v_lpf)
 
-    def _sigma_guard_hold(self, sigma_scale: float) -> bool:
-        """Update and return the σ-guard latch (enter/exit hysteresis).
-
-        True means "σ is unhealthy enough that escape outranks the primary".
-        Shared by both modes so ``reach`` and ``pose_attract`` switch over at
-        the same σ instead of each inventing their own rule.
-        """
-        sig = float(np.clip(sigma_scale, 0.0, 1.0))
-        if self._guard_active:
-            if sig >= float(self.cfg.sigma_guard_exit):
-                self._guard_active = False
-        elif sig < float(self.cfg.sigma_guard_enter):
-            self._guard_active = True
-        return self._guard_active
-
     def _sigma_guard_velocity(
         self,
         *,
@@ -238,7 +232,15 @@ class RailExtensionTask:
         primary attractor (same anti-oppose rule as the old σ-escape).
         """
         sig = float(np.clip(sigma_scale, 0.0, 1.0))
-        if not self._sigma_guard_hold(sig):
+        enter = float(self.cfg.sigma_guard_enter)
+        exit_ = float(self.cfg.sigma_guard_exit)
+        if self._guard_active:
+            if sig >= exit_:
+                self._guard_active = False
+        else:
+            if sig < enter:
+                self._guard_active = True
+        if not self._guard_active:
             return 0.0
         v_g = float(self.cfg.k_esc) * (1.0 - sig) * float(sigma_grad_rail)
         v_g = float(np.clip(v_g, -self.cfg.v_guard_max_m_s, self.cfg.v_guard_max_m_s))
@@ -250,11 +252,10 @@ class RailExtensionTask:
         self,
         q: np.ndarray,
         *,
-        sigma_escape_scale: float,
+        sigma_scale: float,
         sigma_grad_rail: float,
         dt_s: float | None,
     ) -> tuple[float, float]:
-        sigma_scale = sigma_escape_scale
         if self.y_rail_target_m is None:
             self.last_err_m = 0.0
             self.last_weight = 0.0
@@ -297,7 +298,6 @@ class RailExtensionTask:
         q: np.ndarray,
         *,
         sigma_scale: float,
-        sigma_escape_scale: float,
         sigma_grad_rail: float,
         vel_ff: np.ndarray | None,
         dt_s: float | None,
@@ -313,13 +313,7 @@ class RailExtensionTask:
         v_reach = float(
             np.clip(self.cfg.k_ext * err, -self.cfg.v_max_m_s, self.cfg.v_max_m_s)
         )
-        # Mirror pose_attract: inside the dead zone the primary is exactly
-        # zero.  A residual v_reach there is never large enough to move the
-        # rail, but it is large enough to veto the σ-escape below.
-        if abs(err) <= float(self.cfg.e0_m):
-            v_reach = 0.0
         sig = float(np.clip(sigma_scale, 0.0, 1.0))
-        sig_esc = float(np.clip(sigma_escape_scale, 0.0, 1.0))
         v_ff = (
             rail_vel_ff_from_reference(vel_ff, self.kin, q, k_ff=self.cfg.k_ff)
             if vel_ff is not None
@@ -328,18 +322,11 @@ class RailExtensionTask:
         v_ff *= sig
         # σ-escape: extra rail velocity along the TCP-preserving σ-ascent
         # direction; kicks in even when |err| < e0 (dead zone) if σ drops.
-        v_escape = float(self.cfg.k_esc) * (1.0 - sig_esc) * float(sigma_grad_rail)
+        # In reach/scan mode this is a soft preference (not a hard guardrail),
+        # but still anti-opposes the primary so it cannot hunt against FF.
+        v_escape = float(self.cfg.k_esc) * (1.0 - sig) * float(sigma_grad_rail)
         v_primary = v_ff + v_reach
-        # Anti-oppose, σ-gated exactly like the pose_attract guardrail: while
-        # σ is healthy the escape is a soft preference and must not hunt
-        # against reach/FF, but once σ drops past the guard threshold escape
-        # is the whole point and has to be allowed to win.  This used to be
-        # unconditional, so at hybrid@D — where the force axis keeps a small
-        # reach error alive — the escape was vetoed on every tick no matter
-        # how far σ fell.
-        if self._sigma_guard_hold(sig_esc):
-            pass
-        elif v_escape * v_primary < 0.0 and abs(v_primary) > 1.0e-4:
+        if v_escape * v_primary < 0.0 and abs(v_primary) > 1.0e-4:
             v_escape = 0.0
         v_total = v_primary + v_escape
         v = float(np.clip(v_total, -self.cfg.v_max_m_s, self.cfg.v_max_m_s))
@@ -352,8 +339,8 @@ class RailExtensionTask:
         span_ff = max(float(self.cfg.v_ff_span_m_s), 1e-6)
         w_ff = float(self.cfg.w_max) * _smoothstep01((abs(v_ff) - thr) / span_ff) * sig
         # Weight: reach + scan feedforward + σ-baseline floor, then σ-boost.
-        w = (w_reach + w_ff + float(self.cfg.w_sigma_floor) * (1.0 - sig_esc)) * lim
-        sig_boost = 1.0 + float(self.cfg.k_sigma_boost) * (1.0 - sig_esc)
+        w = (w_reach + w_ff + float(self.cfg.w_sigma_floor) * (1.0 - sig)) * lim
+        sig_boost = 1.0 + float(self.cfg.k_sigma_boost) * (1.0 - sig)
         w *= sig_boost
         self.last_err_m = float(err)
         self.last_weight = w
@@ -364,7 +351,6 @@ class RailExtensionTask:
         q_rad: np.ndarray,
         *,
         sigma_scale: float = 1.0,
-        sigma_escape_scale: float | None = None,
         sigma_grad_rail: float = 0.0,
         vel_ff: np.ndarray | None = None,
         dt_s: float | None = None,
@@ -376,14 +362,8 @@ class RailExtensionTask:
         q_rad : current command joint vector.
         sigma_scale : 1.0 when σ_min is healthy (``≥ sigma_ref``), 0.0 at
             deep singularity.  This is the σ-health scalar computed by the
-            loop, NOT the raw σ_min.  Fades the *scan feedforward*: as the arm
-            gets ill-conditioned the rail stops chasing the scan reference.
-        sigma_escape_scale : the same kind of scalar but measured against the
-            earlier ``sigma_escape_ref`` (default 2·σ_ref); drives σ-escape
-            velocity, the ``w_sigma_floor`` baseline, the w-boost and the
-            guard latch.  Avoidance has to start before the loop's twist
-            brake does — the rail is accel-limited and cannot respond within
-            the tick the brake fires.  Defaults to ``sigma_scale``.
+            loop, NOT the raw σ_min.  σ-escape and w-boost fade in as this
+            drops.
         sigma_grad_rail : ``d σ_min / d y_rail`` under TCP-preservation
             (:mod:`rm75_control.control.joint_admittance_8dof.solver.sigma_grad`).
             Sign tells us which rail direction escapes the singularity.
@@ -397,22 +377,16 @@ class RailExtensionTask:
             self.last_limit_saturated = False
             return 0.0, 0.0
         q = np.asarray(q_rad, dtype=float)
-        sig_esc = (
-            float(sigma_scale)
-            if sigma_escape_scale is None
-            else float(sigma_escape_scale)
-        )
         if self.mode == "pose_attract":
             return self._call_pose_attract(
                 q,
-                sigma_escape_scale=sig_esc,
+                sigma_scale=sigma_scale,
                 sigma_grad_rail=sigma_grad_rail,
                 dt_s=dt_s,
             )
         return self._call_reach(
             q,
             sigma_scale=sigma_scale,
-            sigma_escape_scale=sig_esc,
             sigma_grad_rail=sigma_grad_rail,
             vel_ff=vel_ff,
             dt_s=dt_s,

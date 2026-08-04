@@ -296,6 +296,7 @@ class AdmittanceController:
         self.u_dob_z = 0.0
         # Arm lateral chase softener only after real tool-XY scan motion.
         self._lat_soften_hold_s = 0.0
+        self._v_lateral_for_hf = 0.0
         self._init_hp_filter()
 
     def _init_hp_filter(self) -> None:
@@ -363,6 +364,7 @@ class AdmittanceController:
         self._force_dob.reset()
         self.u_dob_z = 0.0
         self._lat_soften_hold_s = 0.0
+        self._v_lateral_for_hf = 0.0
         self._hp_zi.fill(0.0)
         self._ke_estimator.reset()
         self.ke_est = self._ke_estimator.ke_est
@@ -397,8 +399,16 @@ class AdmittanceController:
         dt_eff: float,
         *,
         abs_eff_n: float = 0.0,
+        v_lateral_m_s: float = 0.0,
     ) -> float:
-        """Fast-attack / hold / fast-release ΔD from the Dimeas index."""
+        """Fast-attack / hold / fast-release ΔD from the Dimeas index.
+
+        Dimeas & Aspragathos (2016): ΔD dissipates *motion* chatter.  At
+        quasi-static tool-XY speed, sensor noise still elevates Iₛ and used
+        to renew the hold → sticky D≈D0+d_u·Iₛ and stick–slip crawl.  Hold
+        renewal therefore requires either real lateral motion or a clearly
+        elevated Iₛ; release is faster when quasi-static.
+        """
         cfg = self.cfg
         if not cfg.var_damping_enabled or dt_eff <= 0.0:
             self._delta_d_hf = 0.0
@@ -412,28 +422,46 @@ class AdmittanceController:
             ramp_done
             and abs(float(abs_eff_n)) <= float(cfg.var_damping_hf_err_n)
         )
+        soft = max(float(cfg.force_lateral_soft_m_s), 0.0)
+        full = max(float(cfg.force_lateral_full_m_s), soft + 1e-6)
+        # Renew HF hold only during clear scan motion (not slow crawl where
+        # Iₛ noise + sticky ΔD feels like stick–slip).  Strong chatter still
+        # arms regardless of speed.
+        moving = float(v_lateral_m_s) >= full
+        # Crawl logs sit at Iₛ≈0.8–0.9 with sticky ΔD; real bounce/chatter
+        # peaks ≳1.2.  Only the latter bypasses the motion gate.
+        strong_chatter = is_now >= max(1.2, 3.0 * float(cfg.var_damping_hf_on))
         target = float(cfg.var_damping_d_u) * is_now
         if (
             (not self._hf_active)
             and near_setpoint
             and is_now >= float(cfg.var_damping_hf_on)
+            and (moving or strong_chatter)
         ):
             self._hf_active = True
             self._hf_hold_s = float(cfg.var_damping_hf_hold_s)
         if self._hf_active:
-            if is_now >= float(cfg.var_damping_hf_off) and near_setpoint:
+            if (
+                is_now >= float(cfg.var_damping_hf_off)
+                and near_setpoint
+                and (moving or strong_chatter)
+            ):
                 self._hf_hold_s = max(
                     self._hf_hold_s, float(cfg.var_damping_hf_hold_s)
                 )
             else:
                 self._hf_hold_s = max(0.0, self._hf_hold_s - dt_eff)
             if self._hf_hold_s <= 0.0 and (
-                is_now < float(cfg.var_damping_hf_off) or not near_setpoint
+                is_now < float(cfg.var_damping_hf_off)
+                or not near_setpoint
+                or not (moving or strong_chatter)
             ):
                 self._hf_active = False
                 target = 0.0
             if not near_setpoint:
                 # Large force error: prefer chase / escape over HF damping.
+                target = 0.0
+            if not moving and not strong_chatter:
                 target = 0.0
             tau = max(float(cfg.var_damping_hf_attack_s), 1e-4)
         else:
@@ -442,6 +470,9 @@ class AdmittanceController:
             # Hand-release / large force error: dump ΔD faster than the
             # chatter-hold release so retract does not feel sticky.
             if abs(float(abs_eff_n)) > float(cfg.var_damping_hf_err_n):
+                tau = min(tau, max(float(cfg.var_damping_hf_release_fast_s), 1e-4))
+            # Quasi-static crawl: dump sticky ΔD quickly (stick–slip).
+            if not moving:
                 tau = min(tau, max(float(cfg.var_damping_hf_release_fast_s), 1e-4))
         blend = min(1.0, dt_eff / tau)
         self._delta_d_hf += blend * (target - self._delta_d_hf)
@@ -687,9 +718,12 @@ class AdmittanceController:
 
         f_des_z = self._effective_desired_z(float(f_des[2]))
         f_err_z = f_des_z - f_ext_z
+        # 4d15c1d: do not mute tool-Y in free space — that felt like air hitch
+        # at scan start. Contact latch / force axes already gate Z press.
         v_lateral_m_s = float(
             np.linalg.norm((r_mat.T @ v_pos_base[:3])[:2])
         )
+        self._v_lateral_for_hf = v_lateral_m_s
         chase_scale = self._lateral_chase_scale(
             v_lateral_m_s, dt_s=dt_contact
         )
@@ -857,7 +891,9 @@ class AdmittanceController:
         else:
             damping_ke = float(cfg.admittance_damping_z)
         damping_dimeas = self._update_delta_d_hf(
-            dt_eff, abs_eff_n=abs(float(eff))
+            dt_eff,
+            abs_eff_n=abs(float(eff)),
+            v_lateral_m_s=float(getattr(self, "_v_lateral_for_hf", 0.0)),
         )
         # Impact burst: on rising edge, briefly allow critical-damping level
         # even when drive_damping is False (stiff-first without sticky steady D).

@@ -220,3 +220,104 @@ def test_free_space_vz_respects_single_cap():
     _tick(ctrl, fz=0.0)
     cap = ctrl._v_z_cap()
     assert -cap - 1e-9 <= ctrl.v_force_z <= cap + 1e-9
+
+
+def test_scan_y_not_muted_in_free_or_lost():
+    """4d15c1d: tool-Y scan FF stays alive in FREE and mid-scan LOST."""
+    cfg = _cfg(
+        contact_threshold_n=0.8,
+        contact_use_fz_only=True,
+        deadband_n=0.0,
+        deadband_width_n=0.0,
+        max_velocity=np.array([0.5, 0.5, 0.1, 1.0, 1.0, 1.0]),
+        max_acceleration=np.array([50.0, 50.0, 50.0, 50.0, 50.0, 50.0]),
+    )
+    ctrl = AdmittanceController(0.005, cfg)
+    pose = np.zeros(6)
+    f_des = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
+    vel_ff = np.array([0.0, 0.02, 0.0, 0.0, 0.0, 0.0])  # tool-Y scan
+
+    ctrl._in_contact_latched = True
+    ctrl._physical_contact.reset()
+    v_free = ctrl.compute_velocity_command(
+        pose, pose, vel_ff, np.zeros(6), f_des, enable_pbac=False
+    )
+    assert ctrl.physical_contact_state == PhysicalContactTracker.FREE
+    assert ctrl.force_task_latched
+    assert abs(float(v_free[1])) > 0.01
+
+    for _ in range(5):
+        _tick(ctrl, fz=1.5, f_des_z=2.0)
+    assert ctrl.physical_contact_state == PhysicalContactTracker.CONTACT
+    for _ in range(30):
+        _tick(ctrl, fz=0.1, f_des_z=2.0)
+    assert ctrl.physical_contact_state == PhysicalContactTracker.LOST
+    assert ctrl.force_task_latched
+
+    v_lost = ctrl.compute_velocity_command(
+        pose,
+        pose,
+        vel_ff,
+        np.array([0.0, 0.0, 0.1, 0.0, 0.0, 0.0]),
+        f_des,
+        enable_pbac=False,
+    )
+    assert abs(float(v_lost[1])) > 0.01
+
+
+def test_enter_confirm_rejects_20ms_air_burst_but_locks_sustained():
+    """Air inertia spikes (~20 ms) must not acquire; sustained press must.
+
+    Matches yaml enter_confirm_s=0.05 / hard_enter_n=1.5 (run_20260804_145958).
+    """
+    from rm75_control.control.admittance_common.contact_state import (
+        PhysicalContactConfig,
+    )
+
+    tracker = PhysicalContactTracker(
+        PhysicalContactConfig(
+            enter_n=0.8,
+            hard_enter_n=1.5,
+            exit_n=0.35,
+            enter_confirm_s=0.05,
+            exit_confirm_s=0.1,
+        )
+    )
+    dt = 0.005
+    # 20 ms burst at 0.9 N (4 ticks) — air hitch source in the log.
+    for _ in range(4):
+        u = tracker.update(0.9, 0.9, dt_s=dt)
+        assert u.state == PhysicalContactTracker.FREE
+        assert not u.acquired
+        assert not u.present
+    # Clear high timer, then sustain beyond enter_confirm_s.
+    tracker.update(0.0, 0.0, dt_s=dt)
+    acquired = False
+    for _ in range(12):  # 60 ms
+        u = tracker.update(0.9, 0.9, dt_s=dt)
+        if u.acquired:
+            acquired = True
+            break
+    assert acquired
+    assert tracker.state == PhysicalContactTracker.CONTACT
+
+
+def test_hard_enter_locks_immediately():
+    """True impact above hard_enter_n bypasses enter_confirm_s."""
+    from rm75_control.control.admittance_common.contact_state import (
+        PhysicalContactConfig,
+    )
+
+    tracker = PhysicalContactTracker(
+        PhysicalContactConfig(
+            enter_n=0.8,
+            hard_enter_n=1.5,
+            exit_n=0.35,
+            enter_confirm_s=0.05,
+            exit_confirm_s=0.1,
+        )
+    )
+    u = tracker.update(0.2, 1.6, dt_s=0.005)
+    assert u.acquired
+    assert u.present
+    assert tracker.state == PhysicalContactTracker.CONTACT
