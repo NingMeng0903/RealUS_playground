@@ -47,11 +47,12 @@ class DigitalTwinMirror:
         self._thread: threading.Thread | None = None
         self._viewer_closed = False
         self._last_seq = -1
-        self._rail_x = 0.0
+        self._rail_x = float("nan")
         self._rail_v = 0.0
         self._rail_t = 0.0
-        self._rail_sample = 0.0
+        self._rail_sample = float("nan")
         self._rail_have = False
+        self._rail_stale = True
         # Sync-rate probe (measurement only; does not change refresh).
         self._sync_ok_n = 0
         self._sync_fail_n = 0
@@ -64,19 +65,48 @@ class DigitalTwinMirror:
     def viewer_closed(self) -> bool:
         return self._viewer_closed
 
+    def reset_rail_filter(self) -> None:
+        """Call when controller SHM session changes — avoid 0→pose fake motion."""
+        self._rail_have = False
+        self._rail_v = 0.0
+        self._rail_x = float("nan")
+        self._rail_sample = float("nan")
+        self._rail_t = 0.0
+        self._rail_stale = True
+
+    def freeze_rail(self) -> None:
+        """Publisher gone: stop extrapolating; next good sample will hard-teleport."""
+        self._rail_v = 0.0
+        self._rail_stale = True
+
     def _extrapolate_rail(self, rail_meas: float, now: float) -> float:
         """Constant-velocity hold between SHM encoder updates (≤ rail_extrapolate_s)."""
         x = float(rail_meas)
-        if not self._rail_have:
+        if (not self._rail_have) or self._rail_stale:
+            # First sample after (re)connect / publisher gap: hard teleport.
+            if self._rail_have and abs(x - float(self._rail_x)) > 0.002:
+                print(
+                    f"rm75 twin: rail resync {float(self._rail_x) * 1000:.1f} → "
+                    f"{x * 1000:.1f} mm (controller reconnect / after limit recovery)",
+                    flush=True,
+                )
             self._rail_x = x
             self._rail_sample = x
             self._rail_v = 0.0
             self._rail_t = now
             self._rail_have = True
+            self._rail_stale = False
             return x
 
         if abs(x - self._rail_sample) > 1e-7:
             dt = max(now - self._rail_t, 1e-4)
+            # Large jump after reconnect → teleport, do not invent speed from 0.
+            if abs(x - self._rail_x) > 0.05:
+                self._rail_v = 0.0
+                self._rail_x = x
+                self._rail_sample = x
+                self._rail_t = now
+                return x
             v_inst = (x - self._rail_x) / dt
             self._rail_v = 0.5 * self._rail_v + 0.5 * v_inst
             self._rail_x = x

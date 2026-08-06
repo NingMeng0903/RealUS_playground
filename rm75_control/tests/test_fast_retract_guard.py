@@ -19,20 +19,25 @@ from rm75_control.control.admittance_common.proactive_force_ff import (
 DT = 0.005
 
 
-def _guard() -> FastRetractGuard:
-    return FastRetractGuard(
-        FastRetractGuardConfig(
-            cutoff_hz=20.0,
-            stop_margin_n=0.25,
-            stop_margin_fraction=0.05,
-            rearm_margin_n=0.45,
-            rearm_margin_fraction=0.10,
-            stop_confirm_s=0.015,
-            rearm_confirm_s=0.010,
-            min_hold_s=0.025,
-            max_sensor_age_s=0.020,
-        )
+def _guard(**kwargs) -> FastRetractGuard:
+    cfg = dict(
+        cutoff_hz=20.0,
+        stop_margin_n=0.25,
+        stop_margin_fraction=0.05,
+        rearm_margin_n=0.45,
+        rearm_margin_fraction=0.10,
+        stop_confirm_s=0.015,
+        rearm_confirm_s=0.010,
+        min_hold_s=0.025,
+        max_sensor_age_s=0.020,
+        # Disable prediction in legacy tests unless opted in.
+        retract_stop_prediction_s=0.0,
+        retract_stop_margin_n=0.10,
+        retract_stop_confirm_s=0.005,
+        retract_stop_fdot_n_s=15.0,
     )
+    cfg.update(kwargs)
+    return FastRetractGuard(FastRetractGuardConfig(**cfg))
 
 
 def _step(
@@ -173,7 +178,7 @@ def test_single_raw_force_noise_spike_cannot_trigger_stop() -> None:
 
 
 def test_falling_force_still_above_target_does_not_stop_retract() -> None:
-    guard = _guard()
+    guard = _guard()  # prediction off — legacy low-side only
     target = 2.0
     _arm(guard, target)
 
@@ -191,6 +196,47 @@ def test_falling_force_still_above_target_does_not_stop_retract() -> None:
     assert guard.fast_force_n > target
     assert guard.armed
     assert guard.stop_count == 0
+
+
+def test_predictive_stop_before_low_side_crossing() -> None:
+    """Fast fall: stop when F_pred,down ≤ Fd+margin, still above 1.75 N."""
+    guard = _guard(
+        retract_stop_prediction_s=0.045,
+        retract_stop_margin_n=0.10,
+        retract_stop_confirm_s=0.005,
+        retract_stop_fdot_n_s=15.0,
+    )
+    target = 2.0
+    _arm(guard, target)
+    # ~40 N/s fall from 3.2 → pred reaches ~Fd while force still > 2.0.
+    forces = [3.2 - 0.20 * i for i in range(12)]
+    held_at = None
+    for fz in forces:
+        if _step(guard, fz, desired_force_n=target):
+            held_at = fz
+            break
+    assert held_at is not None
+    assert held_at > target - 0.25  # before legacy low-side 1.75
+    assert guard.predictive_stop_count == 1
+    assert guard.hold
+
+
+def test_slow_fall_above_target_ignores_prediction() -> None:
+    """Surface follow: small |ḟ| must not predictive-stop while F > Fd."""
+    guard = _guard(
+        retract_stop_prediction_s=0.045,
+        retract_stop_margin_n=0.10,
+        retract_stop_confirm_s=0.005,
+        retract_stop_fdot_n_s=15.0,
+    )
+    target = 2.0
+    _arm(guard, target)
+    # ~4 N/s — below fdot gate; stay above low-side.
+    for i in range(40):
+        fz = 2.8 - 0.02 * i  # ends ~2.0
+        assert not _step(guard, fz, desired_force_n=target)
+    assert guard.predictive_stop_count == 0
+    assert guard.armed
 
 
 def test_stale_sensor_fails_open_and_keeps_active_escape_available() -> None:

@@ -549,10 +549,15 @@ class StateRelayPublisher:
         try:
             rail_m = float(self._rail_m_fn())
         except Exception:
-            rail_m = 0.0
-        # Never publish garbage encoder (e.g. -1474 mm) into SHM/twin.
+            rail_m = float("nan")
+        # Never publish a fake 0 m when the encoder is missing — that makes the
+        # twin jump to rail_y=0 then snap to the real pose on the next sample.
         if not np.isfinite(rail_m) or rail_m < -0.05 or rail_m > 0.85:
-            rail_m = float(self._last_logged_rail) if np.isfinite(self._last_logged_rail) else 0.0
+            if np.isfinite(self._last_logged_rail):
+                rail_m = float(self._last_logged_rail)
+            else:
+                # No prior good rail: skip this publish (keep last SHM slot).
+                return
         pose_override = self._pose_from_kin(snap, rail_m)
         with self._pub_lock:
             self._seq += 1
@@ -653,11 +658,12 @@ class RelayStateBus:
         self._name = normalize_relay_name(name)
         self._shm: shared_memory.SharedMemory | None = None
         self._view: _ShmView | None = None
-        self._last_rail_m = 0.0
+        self._last_rail_m = float("nan")
         self._attached_session_id = 0
         self._last_reattach_t = 0.0
         self._last_live_seq = 0
         self._last_live_t = 0.0
+        self._have_rail = False
 
     @property
     def name(self) -> str:
@@ -716,6 +722,9 @@ class RelayStateBus:
             self._last_reattach_t = now
             self._last_live_seq = 0
             self._last_live_t = 0.0
+            # New controller session: wait for a fresh encoder rail (do not keep 0).
+            self._last_rail_m = float("nan")
+            self._have_rail = False
             return True
         except FileNotFoundError:
             self._detach()
@@ -764,7 +773,9 @@ class RelayStateBus:
                 break
             seq, snap, rail_m = _read_slot(self._view.slots[active])
             if seq == global_seq and int(self._view.header["active"]) == active:
-                self._last_rail_m = rail_m
+                if np.isfinite(rail_m) and -0.05 <= float(rail_m) <= 0.85:
+                    self._last_rail_m = float(rail_m)
+                    self._have_rail = True
                 if snap.ok:
                     self._last_live_seq = int(snap.seq)
                     self._last_live_t = time.monotonic()
@@ -800,5 +811,8 @@ class RelayStateBus:
         del rail_m  # rail position comes from the relay frame
         snap = self.read()
         if snap.q_deg is None or not snap.ok:
+            return None
+        # Refuse arm+rail=0 placeholder before the first real encoder rail sample.
+        if not self._have_rail or not np.isfinite(self._last_rail_m):
             return None
         return expand_q_meas_8dof(snap.q_deg, self._last_rail_m)

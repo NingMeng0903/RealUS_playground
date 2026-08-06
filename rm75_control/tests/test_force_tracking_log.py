@@ -92,6 +92,11 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert "mass_z_eff" in header
     assert "damping_ke_z" in header
     assert "damping_dimeas_z" in header
+    assert "damping_retract_brake_z" in header
+    assert "reverse_interlock_active" in header
+    assert "tank_gamma" in header
+    assert "impact_danger" in header
+    assert "v_tcp_z_gate" in header
     assert "vz_achieved_tool" in header
 
     values = dict(zip(header, rows[1], strict=True))

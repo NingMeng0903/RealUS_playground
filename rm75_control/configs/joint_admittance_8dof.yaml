@@ -139,7 +139,9 @@ inner:
     # mode: coupled | locked; locked_style: hold | rail_only | tcp_fixed.
     mode: coupled              # scan: rail joins QP (set locked for pin-only scan)
     locked_style: hold
-    q_ref_m: 0.0
+    # null = pin at current encoder/command when LOCKED+HOLD (do NOT use 0.0 —
+    # that commanded a jump to soft-zero on bring-up / hold).
+    q_ref_m: null
     # HOLD-only lock knobs:
     lock_gain: 200.0
     lock_reg_scale: 100.0     # tempered from 500 -> 100 (HOLD still very rigid)
@@ -202,8 +204,10 @@ hybrid_motion:
     enter_confirm_s: 0.05
     exit_confirm_s: 0.1
   # Slightly wider band: blunt single-tick contact dips without sticky D.
-  deadband_n: 0.08
-  deadband_width_n: 0.10
+  # Soft zone: no sticky exact-zero band (slow-push derder fix).
+  deadband_n: 0.025
+  deadband_width_n: 0.075
+  deadband_soft_tanh: true
   max_velocity:
   - 0.22
   - 0.22
@@ -219,32 +223,153 @@ hybrid_motion:
   - 2.0
   - 2.0
   # Low baseline MD for light feel + fast under/over-force chase.
-  # Chatter: short-lived ΔD_hf(Is). Steady offset: force_dob. Not sticky Ke·D.
+  # Bounce: stiffness-scheduled barrier + D_delay=κ·K̂b·T_dead.
+  # Chatter: short-lived ΔD_hf(Is) on measured TCP vel. Steady offset: force_dob.
   admittance_mass_z: 1.0
   admittance_damping_z: 25.0
   max_vz_tool_m_s: 0.08
-  desired_force_ramp_s: 0.8
-  var_damping_enabled: true
-  var_damping_omega_c_hz: 2.5
+  desired_force_ramp_s: 0.30          # air seek ramp (was 0.8 — felt slow in air)
+  recontact_force_ramp_s: 0.25
+  # Dimeas OFF for passivity A/B (not impact protection).
+  var_damping_enabled: false
+  var_damping_omega_c_hz: 1.8
   var_damping_lambda: 0.951
-  var_damping_f_max_n: 7.0
-  # ΔD_hf amplitude (primary chatter dissipation); M bump is secondary.
-  var_damping_d_u: 90.0
-  var_damping_m_u: 1.5
+  var_damping_f_max_n: 30.0
+  var_damping_d_u: 60.0
+  var_damping_m_u: 0.0
   var_damping_m_max: 3.0
   var_damping_dc_alpha: 0.02
   var_damping_hf_attack_s: 0.02
-  var_damping_hf_hold_s: 0.18
-  var_damping_hf_release_s: 0.12
-  var_damping_hf_release_fast_s: 0.04  # dump ΔD on hand-release / large |e_f|
-  var_damping_hf_on: 0.30
-  var_damping_hf_off: 0.15
+  var_damping_hf_hold_s: 0.12
+  var_damping_hf_release_s: 0.10
+  var_damping_hf_release_fast_s: 0.04
+  var_damping_hf_on: 0.35
+  var_damping_hf_off: 0.18
   var_damping_hf_err_n: 0.8
-  # Soften first press after acquire/reacquire (was 0.008×0.22s → air hitch).
-  recontact_vz_cap_m_s: 0.03
-  recontact_hold_s: 0.10
-  force_dob:
+  var_damping_hf_slew_max: 800.0
+  recontact_vz_cap_m_s: 0.02
+  recontact_hold_s: 0.12
+  # Passivity baseline (204355 lesson): cut active press energy, keep D0=25.
+  t_eff_s: 0.070
+  delay_press_budget_enabled: true
+  delay_press_budget_min_n: 0.40
+  delay_press_budget_frac: 0.25
+  delay_press_v_floor_m_s: 0.003
+  delay_press_cap_lpf_tau_s: 0.18
+  suspect_recovery_enabled: true
+  suspect_recovery_vz_cap_m_s: 0.012
+  suspect_recovery_vr_press_max_m_s: 0.003
+  suspect_recovery_f_abs_n: 0.3
+  suspect_recovery_f_frac: 0.35
+  suspect_recovery_hold_s: 0.20
+  low_force_press_cap_m_s: 0.010
+  low_force_press_enter_n: 1.80
+  v_tcp_lpf_tau_s: 0.012
+  v_tcp_clip_m_s: 0.12
+  v_force_aw_enabled: false       # A/B: was weakening retract vs delayed TCP
+  v_force_aw_tau_s: 0.040
+  force_barrier:
+    enabled: false
+    press_only: true
+    t_dead_s: 0.070
+    t_pred_s: 0.070              # match Teff (was 30 ms under-predict)
+    budget_min_n: 0.40
+    budget_frac: 0.25
+    f_keep_n: 0.3
+    v_floor_press_m_s: 0.010
+    v_floor_retract_m_s: 0.0
+    f_panic_n: 20.0
+    yield_overforce_n: 1.5
+    yield_fdot_max_n_s: 60.0
+    ke_seek_default: 300.0
+    ke_min: 200.0
+    ke_max: 4000.0
+    ke_attack_s: 0.20
+    ke_release_s: 0.8
+    ke_free_hold_s: 0.5
+    ke_v_press_min_m_s: 0.012
+    ke_f_err_gate_n: 1.5
+    ke_slew_up_max: 5000.0
+    ke_impact_seed: 0.0
+    cap_lpf_tau_s: 0.08
+    limit_free_seek: false
+    fdot_taps: 3
+  # Impact: zero-centered Di; D0+Di in [60,100]; compress-rise re-arm.
+  delay_damping_enabled: true
+  delay_damping_mode: impact_only
+  delay_damping_kappa: 0.8
+  delay_damping_bd_max: 150.0
+  impact_damping_hold_s: 0.12
+  impact_damping_release_s: 0.10
+  impact_damping_zeta: 0.9
+  impact_damping_d_min: 60.0
+  impact_damping_d_max: 100.0
+  impact_ke_floor: 800.0
+  # Impact: force-rise arm (not delayed v_tcp>0); confirm ~10 ms.
+  impact_compress_v_min_m_s: 0.003
+  impact_fdot_arm_n_s: 12.0
+  impact_fpred_over_n: 0.15
+  impact_fpred_horizon_s: 0.050
+  impact_arm_confirm_s: 0.010
+  impact_fdot_rearm_n_s: 5.0
+  impact_rearm_f_frac: 0.9
+  # Predictive retract stop → short zero-centered brake on vf.
+  retract_brake_damping_ns_m: 70.0
+  retract_brake_hold_s: 0.060
+  retract_brake_release_s: 0.040
+  # Interlock only during retract-overshoot episode; gate press drive (not vf).
+  reverse_interlock_enter_m_s: 0.004
+  reverse_interlock_exit_m_s: 0.0015
+  reverse_interlock_enter_confirm_s: 0.010
+  reverse_interlock_exit_confirm_s: 0.010
+  v_gate_window_s: 0.030
+  # Unified D_extra (impact/brake share one target).
+  d_extra_attack_s: 0.005
+  d_extra_release_s: 0.120
+  d_extra_min_hold_s: 0.040
+  # Impact danger renew while hard contact still unsafe.
+  impact_danger_f_over_n: 0.15
+  impact_danger_fdot_n_s: 5.0
+  impact_danger_f_over_fdot_n: 0.10
+  impact_safe_f_over_n: 0.25
+  impact_safe_confirm_s: 0.025
+  impact_pred_span_n: 1.5
+  # Contact press slew (gentle). Air seek uses free_seek_accel_m_s2.
+  force_slew_press_m_s2: 0.30
+  force_slew_retract_m_s2: 1.20
+  force_slew_press_to_retract_m_s2: 2.0
+  force_slew_zero_cross_m_s2: 0.40
+  # Air seek vs contact press. Tight contact_press_cap only in energy-limit
+  # (impact / overshoot / F>Fd+0.25); under-force tracking uses low_force_cap.
+  free_seek_vz_m_s: 0.080
+  free_seek_accel_m_s2: 0.80
+  free_seek_exit_force_n: 0.15
+  free_seek_exit_fdot_n_s: 5.0
+  contact_press_cap_m_s: 0.012
+  # Tank must be small vs ½M v² (3.2 mJ @ 80 mm/s) — was 80 mJ (inert).
+  press_energy_tank:
     enabled: true
+    e_max_j: 0.004
+    e_initial_j: 0.001
+    e_min_j: 0.0
+    credit_gain: 0.20
+    dx_deadband_m: 2.0e-6
+    seed_on_acquire: false
+  # Bidirectional real-port PO/PC (elastic rebound / delayed inject).
+  port_passivity:
+    enabled: true
+    e_max_j: 0.004
+    e_initial_j: 0.002
+    eps_v2dt: 1.0e-8
+    d_pc_max: 120.0
+    leak_s: 0.5
+  wrist_relax_enabled: true
+  wrist_relax_enter_rad: 0.175
+  wrist_relax_exit_rad: 0.35
+  wrist_relax_floor: 0.30
+  wrist_relax_lpf_tau_s: 0.08
+  force_dob:
+    enabled: false               # A/B: active energy source
     ki: 8.0
     leak_s: 0.4
     u_max_n: 1.5
@@ -256,13 +381,13 @@ hybrid_motion:
   force_lateral_gain_floor: 0.35
   adaptive_ke:
     enabled: true
-    # Observe Ke / impact burst only — do not hold high critical D in steady contact.
+    # Telemetry / impact seed only — barrier K̂b drives contact D_delay.
     drive_damping: false
     zeta: 0.9
     ke_initial: 80.0
     ke_min: 40.0
     ke_max: 2500.0
-    ke_impact_initial: 500.0   # was 1500 → bd≈87 / D spike to 80–180 on fake contact
+    ke_impact_initial: 500.0
     ke_forgetting: 0.995
     ke_forgetting_inc: 0.88
     ke_idle_decay_s: 2.0
@@ -279,12 +404,12 @@ hybrid_motion:
     f_err_gate_n: 1.2
     f_err_gate_frac: 0.35
     bd_min: 25.0
-    bd_max: 180.0
+    bd_max: 600.0
     bd_slew_max: 400.0
     ke_slew_max: 1200.0
   proactive_feedforward: true
-  proactive_retract_only: false
-  # Faster under-force chase; stronger over-force escape; no Is gate on press.
+  # A/B: retract-only — cut Dv_r press injection; under-force via e_f / D0.
+  proactive_retract_only: true
   proactive_gain: 0.24
   proactive_retract_gain: 0.30
   proactive_leak_s: 0.25
@@ -312,6 +437,12 @@ hybrid_motion:
     rearm_confirm_s: 0.01
     min_hold_s: 0.025
     max_sensor_age_s: 0.02
+    # Stop retract when F_pred,down reaches Fd (before low-side 1.75 N).
+    # Armed + |ḟ| gate: bounce overshoot only, not slow surface follow.
+    retract_stop_prediction_s: 0.045
+    retract_stop_margin_n: 0.10
+    retract_stop_confirm_s: 0.005
+    retract_stop_fdot_n_s: 15.0
 hw:
   lw100:
     enabled: true
@@ -319,8 +450,27 @@ hw:
     port: 8234
     slave: 1
     lead_mm: 10.0
-    zero_mode: current
+    # calibrated_file: load var/lw100_rail_zero.json (run apps/lw100_rail_home_limit.py first).
+    # current/fixed are debug-only; with require_calibration true, current is refused.
+    zero_mode: calibrated_file
     counts0: 0
+    calibration_path: var/lw100_rail_zero.json
+    require_calibration: true
+    home_di: di4             # −Y home switch (confirmed on HW; was swapped vs DI3)
+    plus_di: di3             # +Y end (run-time e-stop if hit)
+    di_nc: true
+    di_debounce_n: 3
+    soft_min_m: 0.01         # usable band 1–78 cm (mechanical travel still 0.80)
+    soft_max_m: 0.78
+    post_home_m: 0.01
+    # Home-script only (controller does not auto-home on start):
+    home_search_m_s: 0.020
+    home_creep_m_s: 0.003
+    home_backoff_mm: 5.0
+    home_touch_count: 3
+    home_search_timeout_s: 60.0
+    home_to_post_m_s: 0.030
+    limit_poll_every: 5
     # Host rail_y ↔ motor: -1 flips FA24 RPM (+ encoder map in rail_servo).
     sign: -1
     enable_settle_s: 0.3
@@ -347,6 +497,15 @@ hw:
     encoder_freeze_s: 1.0
     encoder_freeze_min_v_m_s: 0.02
     encoder_freeze_min_move_mm: 0.5
+    # End-of-stream / task-end settle before releasing follow (closes latched overshoot).
+    settle_tol_mm: 0.05
+    settle_v_m_s: 0.006
+    settle_timeout_s: 1.5
+    # Stall-safe speed: worst-case latched FA24 overshoot ≤ |err| for max_stall_s.
+    max_stall_s: 0.06
+    stall_v_floor_m_s: 0.004
+    # Run-time encoder jump → PANIC + invalidate cal (above v_max·dt + margin).
+    jump_margin_mm: 3.0
     accel_ms: 200            # FA40 — manual: Er-01 if accel too short at start
     decel_ms: 200            # FA41
     scurve_ms: 30            # FA42

@@ -17,6 +17,8 @@ import sys
 import time
 from pathlib import Path
 
+import numpy as np
+
 from rm75_control.control.admittance_common.state_relay import RelayStateBus, relay_shm_has_publisher
 from rm75_control.control.joint_admittance_8dof.viewer import DigitalTwinMirror, RailGenesisConfig, RailGenesisScene
 
@@ -43,6 +45,12 @@ def _run_subscribe_loop(
             break
 
         if not relay_shm_has_publisher(shm_name):
+            # Controller down (limit recovery / restart): freeze rail filter so
+            # the next live sample hard-teleports to the real encoder pose.
+            twin.freeze_rail()
+            if last_session_id != 0:
+                print("rm75 twin: controller offline — freezing rail pose", flush=True)
+                last_session_id = 0
             time.sleep(0.2)
             continue
 
@@ -55,8 +63,15 @@ def _run_subscribe_loop(
             else:
                 print("rm75 twin: running", flush=True)
             last_session_id = sid
+            twin.reset_rail_filter()
             try:
                 twin.sync_once()
+                rail = getattr(bus, "last_rail_m", float("nan"))
+                if rail == rail:  # finite
+                    print(
+                        f"rm75 twin: rail locked to encoder @ {float(rail) * 1000:.1f} mm",
+                        flush=True,
+                    )
             except AssertionError as exc:
                 # Genesis/quadrants fastcache can trip after controller restart
                 # while the viewer process is reused / partially stale.
@@ -146,12 +161,54 @@ def main() -> int:
     print(f"rm75 twin: waiting for {shm_name!r} …", flush=True)
     bus = RelayStateBus(shm_name)
     try:
+        # Seed Genesis from the first real encoder rail — never show URDF rail_y=0
+        # then animate to the true pose (looks like a snap back to 0 / post_home).
+        print("rm75 twin: waiting for first encoder rail sample …", flush=True)
+        seeded = False
+        t_seed = time.monotonic()
+        while time.monotonic() - t_seed < 120.0:
+            if bus.is_live():
+                q8 = bus.q_meas_8dof()
+                if q8 is not None:
+                    q = np.asarray(q8, dtype=float).reshape(-1)
+                    if q.size >= 1 and np.isfinite(q[0]) and -0.05 <= float(q[0]) <= 0.85:
+                        scene.set_joint_positions(q)
+                        scene.step()
+                        print(
+                            f"rm75 twin: seeded @ rail={float(q[0]) * 1000:.1f} mm "
+                            "(live encoder, not 0 / post_home)",
+                            flush=True,
+                        )
+                        seeded = True
+                        break
+            time.sleep(0.05)
+        if not seeded:
+            print(
+                "rm75 twin: WARN no encoder rail yet — start window A first; "
+                "viewer will stay at URDF default until live",
+                flush=True,
+            )
+
         twin = DigitalTwinMirror(
             bus,
             scene,
             hz=args.twin_hz,
             rail_extrapolate_s=0.12,
         )
+        if seeded:
+            twin.reset_rail_filter()
+            # Match filter to already-displayed pose so the first sync does not
+            # invent velocity from a stale 0.
+            try:
+                q_now = bus.q_meas_8dof()
+                if q_now is not None:
+                    twin._rail_x = float(q_now[0])
+                    twin._rail_sample = float(q_now[0])
+                    twin._rail_v = 0.0
+                    twin._rail_t = time.monotonic()
+                    twin._rail_have = True
+            except Exception:
+                pass
         twin.start_background()
         print(
             f"rm75 twin: rail display extrapolate≤120 ms @ {args.twin_hz:.0f} Hz",

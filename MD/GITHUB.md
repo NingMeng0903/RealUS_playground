@@ -49,7 +49,7 @@ git push -u origin main
 
 ```bash
 git add .
-git commit -m "备份IRD"
+git commit -m "备份控制器，准备修弹跳，简化1"
 git push -u origin main
 ```
 

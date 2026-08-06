@@ -4,7 +4,8 @@ Controller path (virtual-rail WBC structure; motor replaces sim rail):
   * WBC streams ``q_cmd[0]`` (metres) via ``set_target_m`` each control tick.
   * Soft loop (validated): ``v = v_ff + kp*e + kd*de`` + host amax slew → FA24.
   * Encoder → SHM / Genesis twin only. Encoder is **never** fed into the WBC.
-  * Exit: FA24=0 + disable (``home_on_exit: false``). No auto crawl-home.
+  * Exit: FA24=0, SON held by default (``release_son_on_exit: false``) so a
+    controller restart does not edge-enable and wipe the multi-turn monitor.
 
 Pr P1 + CTRG continuous follow is not used (stuttery point-to-point).
 """
@@ -21,6 +22,19 @@ from pathlib import Path
 
 from rm75_control.hw.lw100.drive import LW100Drive, LW100DriveConfig
 from rm75_control.hw.lw100.modbus_rtu_tcp import ModbusRtuError
+from rm75_control.hw.lw100.rail_calibration import (
+    COMMS_FAIL_MSG,
+    FRAME_UNKNOWN_MSG,
+    MISSING_CAL_MSG,
+    POWER_CYCLE_CAL_MSG,
+    CalValidationError,
+    default_calibration_path,
+    invalidate_calibration,
+    load_calibration,
+    save_calibration,
+    sync_calibration_frame,
+    validate_on_drive,
+)
 
 
 @dataclass
@@ -30,9 +44,19 @@ class RailServoConfig:
     port: int = 8234
     slave_id: int = 1
     lead_mm: float = 10.0
-    # "current": rail_y=0 at start pose (manual pre-home). "fixed": use counts0.
-    zero_mode: str = "current"
+    # calibrated_file | current | fixed
+    zero_mode: str = "calibrated_file"
     counts0: int = 0
+    calibration_path: str = ""
+    require_calibration: bool = True
+    home_di: str = "di4"
+    plus_di: str = "di3"
+    di_nc: bool = True
+    di_debounce_n: int = 3
+    soft_min_m: float = 0.01
+    soft_max_m: float = 0.78
+    post_home_m: float = 0.01
+    limit_poll_every: int = 5  # worker: check DI every N polls when calibrated
     # +1 / -1: maps host rail_y (+Y) ↔ motor RPM and encoder metres together.
     sign: float = 1.0
     enable_settle_s: float = 0.2
@@ -55,11 +79,20 @@ class RailServoConfig:
     vel_max_m_s: float = 0.15
     vel_amax_m_s2: float = 0.8  # softer slew vs Er-01 / host overshoot
     vel_deadband_mm: float = 0.02
-    target_timeout_s: float = 0.10  # no fresh set_target → FA24=0
+    target_timeout_s: float = 0.10  # no fresh set_target → settle then FA24=0
     # Soft lag hold (FA24=0 this tick); does NOT DISARM.
     encoder_freeze_s: float = 1.0
     encoder_freeze_min_v_m_s: float = 0.02
     encoder_freeze_min_move_mm: float = 0.5
+    # End-of-stream settle: close residual before releasing follow.
+    settle_tol_mm: float = 0.05
+    settle_v_m_s: float = 0.006
+    settle_timeout_s: float = 1.5
+    # Stall-safe speed: worst-case latched FA24 overshoot ≤ |err|.
+    max_stall_s: float = 0.06
+    stall_v_floor_m_s: float = 0.004
+    # Run-time encoder jump → PANIC (above v_max·dt + margin).
+    jump_margin_mm: float = 3.0
     accel_ms: int = 200  # FA40 — manual: too-short accel → Er-01 超速 at start
     decel_ms: int = 200  # FA41
     scurve_ms: int = 30  # FA42
@@ -68,6 +101,9 @@ class RailServoConfig:
     retries: int = 1
     inter_frame_delay_s: float = 0.0005
     home_on_exit: bool = False
+    # False (default): stop() leaves SON on (FA24=0 hold) so the next controller
+    # start skips enable-edge wipe and keeps the absolute encoder frame.
+    release_son_on_exit: bool = False
     home_speed_rpm: int = 900
     home_approach_mm: float = 40.0
     home_timeout_s: float = 60.0
@@ -84,11 +120,16 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
     lead_mm = float(hw.get("lead_mm", 10.0))
     v_max = float(rail.get("v_max_m_s", 0.20))
     default_rpm = max(60, int(round(v_max * 1000.0 / max(lead_mm, 1e-6) * 60.0)))
-    zero_mode = str(hw.get("zero_mode", "current")).strip().lower()
-    if zero_mode not in ("current", "fixed"):
-        zero_mode = "current"
+    zero_mode = str(hw.get("zero_mode", "calibrated_file")).strip().lower()
+    if zero_mode not in ("current", "fixed", "calibrated_file"):
+        zero_mode = "calibrated_file"
     log_csv = hw.get("log_csv", None)
     log_csv_s = str(log_csv).strip() if log_csv else None
+    cal_path = str(hw.get("calibration_path", "") or "").strip()
+    soft_min = float(hw.get("soft_min_m", 0.01))
+    soft_max = float(hw.get("soft_max_m", 0.78))
+    if soft_max <= soft_min:
+        soft_min, soft_max = 0.01, 0.78
     return RailServoConfig(
         enabled=bool(hw.get("enabled", False)),
         host=str(hw.get("host", "192.168.0.7")),
@@ -97,6 +138,16 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         lead_mm=lead_mm,
         zero_mode=zero_mode,
         counts0=int(hw.get("counts0", 0)),
+        calibration_path=cal_path,
+        require_calibration=bool(hw.get("require_calibration", True)),
+        home_di=str(hw.get("home_di", "di3")),
+        plus_di=str(hw.get("plus_di", "di4")),
+        di_nc=bool(hw.get("di_nc", True)),
+        di_debounce_n=int(hw.get("di_debounce_n", 3)),
+        soft_min_m=soft_min,
+        soft_max_m=soft_max,
+        post_home_m=float(hw.get("post_home_m", soft_min)),
+        limit_poll_every=max(1, int(hw.get("limit_poll_every", 5))),
         sign=float(hw.get("sign", 1.0)),
         enable_settle_s=float(hw.get("enable_settle_s", 0.2)),
         arm_good_reads=int(hw.get("arm_good_reads", 25)),
@@ -118,6 +169,12 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         encoder_freeze_s=float(hw.get("encoder_freeze_s", 1.0)),
         encoder_freeze_min_v_m_s=float(hw.get("encoder_freeze_min_v_m_s", 0.02)),
         encoder_freeze_min_move_mm=float(hw.get("encoder_freeze_min_move_mm", 0.5)),
+        settle_tol_mm=float(hw.get("settle_tol_mm", 0.05)),
+        settle_v_m_s=float(hw.get("settle_v_m_s", 0.006)),
+        settle_timeout_s=float(hw.get("settle_timeout_s", 1.5)),
+        max_stall_s=float(hw.get("max_stall_s", 0.06)),
+        stall_v_floor_m_s=float(hw.get("stall_v_floor_m_s", 0.004)),
+        jump_margin_mm=float(hw.get("jump_margin_mm", 3.0)),
         accel_ms=int(hw.get("accel_ms", 100)),
         decel_ms=int(hw.get("decel_ms", 100)),
         scurve_ms=int(hw.get("scurve_ms", 20)),
@@ -126,6 +183,7 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         retries=int(hw.get("retries", 1)),
         inter_frame_delay_s=float(hw.get("inter_frame_delay_s", 0.0005)),
         home_on_exit=bool(hw.get("home_on_exit", False)),
+        release_son_on_exit=bool(hw.get("release_son_on_exit", False)),
         home_speed_rpm=int(hw.get("home_speed_rpm", default_rpm)),
         home_approach_mm=float(hw.get("home_approach_mm", 40.0)),
         home_timeout_s=float(hw.get("home_timeout_s", 60.0)),
@@ -234,18 +292,20 @@ class RailServoBridge:
     def __init__(self, config: RailServoConfig) -> None:
         self.config = config
         self.enabled = bool(config.enabled)
-        self._target_m = 0.0
-        self._commanded_m = 0.0
-        self._measured_m = 0.0
+        self._target_m = float("nan")
+        self._commanded_m = float("nan")
+        self._measured_m = float("nan")
         self._lock = threading.Lock()
         self._drive: LW100Drive | None = None
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._follow_enabled = False
         self._armed = False
+        self._calibrated = False
         self._arm_req = threading.Event()  # set → worker restarts arming
         self._speed_cap_rpm: int | None = None
         self._panic = False
+        self._panic_reason = ""
         self._abort = threading.Event()
         self._last_target_rx_mono = 0.0
         self._last_enc_ok_mono = 0.0
@@ -254,6 +314,10 @@ class RailServoBridge:
         self._safety_thread: threading.Thread | None = None
         self._latch_kill_req = threading.Event()
         self._csv: _RailCsvLogger | None = None
+        self._limit_poll_i = 0
+        self._calibration_path: Path | None = None
+        # False after encoder jump / mid-session wipe — refuse stop() cal sync.
+        self._frame_continuous = True
         if config.log_csv:
             self.enable_log_csv(str(config.log_csv))
 
@@ -316,16 +380,46 @@ class RailServoBridge:
             return bool(self._panic)
 
     @property
+    def panic_reason(self) -> str:
+        with self._lock:
+            return str(self._panic_reason or "")
+
+    @property
     def armed(self) -> bool:
         """True after cold-start Modbus+encoder health gate; follow allowed only then."""
         with self._lock:
             return bool(self._armed)
 
+    @property
+    def calibrated(self) -> bool:
+        """True after a valid software zero is loaded (or debug current/fixed)."""
+        with self._lock:
+            return bool(self._calibrated)
+
+    def _soft_lo_hi(self) -> tuple[float, float]:
+        lo = float(self.config.soft_min_m)
+        hi = float(self.config.soft_max_m)
+        if hi <= lo:
+            return 0.01, min(0.78, float(self.config.travel_m))
+        return lo, hi
+
     def set_target_m(self, target_m: float) -> None:
         """Accept WBC ``q_cmd[0]`` in metres. Reject OOB / non-finite (never clamp to end)."""
         with self._lock:
             armed = bool(self._armed)
+            calibrated = bool(self._calibrated)
             panic = bool(self._panic)
+        if not calibrated:
+            now = time.monotonic()
+            if now - self._last_reject_unarmed_log >= 1.0:
+                self._last_reject_unarmed_log = now
+                print(
+                    "lw100 rail: NOT CALIBRATED — ignore set_target "
+                    "(run apps/lw100_rail_home_limit.py)",
+                    flush=True,
+                )
+                self._log_event("reject_uncalibrated", target_m=float(target_m))
+            return
         if not armed:
             now = time.monotonic()
             if now - self._last_reject_unarmed_log >= 1.0:
@@ -338,28 +432,27 @@ class RailServoBridge:
                 self._log_event("reject_unarmed", target_m=float(target_m))
             return
         raw = float(target_m)
+        soft_lo, soft_hi = self._soft_lo_hi()
         travel = float(self.config.travel_m)
         if not math.isfinite(raw):
             print(f"lw100 rail: reject non-finite target {raw}", flush=True)
             self._log_event("reject_nonfinite", target_m=raw)
             return
-        # Do NOT silently clamp garbage into travel end (that caused fly-to-800 mm).
-        if raw < -0.01 or raw > travel + 0.01:
+        # Soft usable band; do NOT silently clamp into the end.
+        if raw < soft_lo - 0.005 or raw > soft_hi + 0.005:
             print(
                 f"lw100 rail: reject target {raw * 1000:.1f} mm "
-                f"(valid=[0, {travel * 1000:.0f}] mm)",
+                f"(soft=[{soft_lo * 1000:.0f}, {soft_hi * 1000:.0f}] mm)",
                 flush=True,
             )
             self._log_event("reject_oob", target_m=raw)
             return
-        snapped = max(0.0, min(travel, raw))
+        snapped = max(soft_lo, min(soft_hi, raw))
         with self._lock:
+            # PANIC latches until explicit rearm (limit DI / encoder fault).
+            # Do not auto-clear here — that let WBC resume while the arm kept moving.
             if panic or self._panic:
-                margin = max(float(self.config.fault_margin_m), 0.0)
-                meas = float(self._measured_m)
-                if not (-margin <= meas <= travel + margin):
-                    return
-                self._panic = False
+                return
             self._target_m = snapped
             self._last_target_rx_mono = time.monotonic()
             self._follow_enabled = True
@@ -374,13 +467,112 @@ class RailServoBridge:
             self._follow_enabled = False
         self.kill_motion()
 
+    def settle_and_hold(
+        self,
+        *,
+        tol_mm: float | None = None,
+        timeout_s: float | None = None,
+    ) -> bool:
+        """Close residual to last target (±tol), then freeze (FA24=0).
+
+        Used at task end so a latched-FA24 overshoot is corrected before follow
+        drops. Returns True if settled within tolerance.
+        """
+        if not self.enabled or self._drive is None:
+            return True
+        tol_m = max(float(self.config.settle_tol_mm if tol_mm is None else tol_mm), 0.01) * 1e-3
+        timeout = max(float(self.config.settle_timeout_s if timeout_s is None else timeout_s), 0.1)
+        deadline = time.monotonic() + timeout
+        with self._lock:
+            if self._panic or not self._armed or not self._calibrated:
+                self.hold_current()
+                return False
+            # Keep last WBC target; refresh rx so worker does not drop follow.
+            self._follow_enabled = True
+            self._last_target_rx_mono = time.monotonic()
+            target = float(self._target_m)
+        while time.monotonic() < deadline:
+            if self._abort.is_set() or self._stop.is_set():
+                break
+            with self._lock:
+                if self._panic:
+                    break
+                meas = float(self._measured_m)
+                target = float(self._target_m)
+                self._follow_enabled = True
+                self._last_target_rx_mono = time.monotonic()
+            if self._encoder_sane(meas) and abs(target - meas) <= tol_m:
+                self.hold_current()
+                return True
+            time.sleep(0.02)
+        with self._lock:
+            meas = float(self._measured_m)
+            target = float(self._target_m)
+        err_mm = abs(target - meas) * 1000.0 if math.isfinite(target) and math.isfinite(meas) else float("nan")
+        print(
+            f"lw100 rail: settle timeout — residual={err_mm:.2f} mm "
+            f"(tol={tol_m * 1000:.2f} mm); freezing",
+            flush=True,
+        )
+        self.hold_current()
+        return bool(math.isfinite(err_mm) and err_mm <= tol_m * 1000.0)
+
     def request_rearm(self) -> None:
-        """Drop armed flag and ask the worker to re-prove Modbus health (FA24 stays 0)."""
+        """Drop armed/panic/abort and ask the worker to re-prove Modbus health."""
         with self._lock:
             self._armed = False
             self._follow_enabled = False
             self._panic = False
+            self._panic_reason = ""
+        # Clear estop latch so a prior Ctrl+C/limit kill cannot block re-arm forever.
+        self._abort.clear()
         self._arm_req.set()
+
+    def limits_pressed(self) -> tuple[bool, bool]:
+        """Live ``(di3, di4)`` pressed, or ``(False, False)`` if unreadable."""
+        drive = self._drive
+        if drive is None:
+            return False, False
+        try:
+            return drive.read_limit_pressed(
+                nc=bool(self.config.di_nc),
+                debounce_n=max(1, min(3, int(self.config.di_debounce_n))),
+                settle_s=0.01,
+            )
+        except Exception:
+            return False, False
+
+    def wait_limits_clear(self, *, timeout_s: float = 8.0) -> bool:
+        """Block until both limit DIs are released (manual recovery after a trip)."""
+        deadline = time.monotonic() + max(0.5, float(timeout_s))
+        logged = False
+        while time.monotonic() < deadline:
+            if self._stop.is_set():
+                return False
+            di3_p, di4_p = self.limits_pressed()
+            if not di3_p and not di4_p:
+                if logged:
+                    print("lw100 rail: limits clear — continuing arming", flush=True)
+                return True
+            if not logged:
+                which = "+".join(
+                    [n for n, p in (("DI3", di3_p), ("DI4", di4_p)) if p]
+                )
+                print(
+                    f"lw100 rail: waiting for limit release ({which}) — "
+                    f"nudge carriage off the switch, then arming resumes",
+                    flush=True,
+                )
+                logged = True
+            time.sleep(0.1)
+        di3_p, di4_p = self.limits_pressed()
+        which = "+".join([n for n, p in (("DI3", di3_p), ("DI4", di4_p)) if p]) or "?"
+        print(
+            f"lw100 rail: limits still pressed ({which}) after "
+            f"{float(timeout_s):.1f}s — refuse arming",
+            flush=True,
+        )
+        return False
 
     def wait_until_armed(self, timeout_s: float | None = None) -> bool:
         """Block until worker marks ARMED, or timeout. Returns True if armed."""
@@ -389,8 +581,10 @@ class RailServoBridge:
         )
         deadline = time.monotonic() + max(0.5, timeout)
         while time.monotonic() < deadline:
-            if self._abort.is_set() or self._stop.is_set():
+            if self._stop.is_set():
                 return False
+            # Abort may be cleared by request_rearm; do not treat a stale abort
+            # as permanent failure once re-arm was requested.
             if self.armed:
                 return True
             time.sleep(0.05)
@@ -399,24 +593,190 @@ class RailServoBridge:
     def ensure_armed(self, *, timeout_s: float | None = None, rearm: bool = False) -> bool:
         """Guarantee rail is ARMED before any motion command / task START.
 
+        After a limit DI panic: wait for the switch to clear, then re-arm.
         If already armed and ``rearm`` is False, returns immediately.
         """
         if not self.enabled:
             return True
-        if rearm or self.panicked:
+        if not self.calibrated:
+            print(MISSING_CAL_MSG, flush=True)
+            return False
+        timeout = float(self.config.arm_timeout_s if timeout_s is None else timeout_s)
+        need = bool(rearm or self.panicked or not self.armed)
+        if need:
+            # Manual recovery after hard-limit trip: must be off the switch first.
+            if not self.wait_limits_clear(timeout_s=min(timeout, 15.0)):
+                return False
             self.request_rearm()
             print("lw100 rail: warming (Modbus read + FA24=0)…", flush=True)
-        elif not self.armed:
-            print("lw100 rail: warming (Modbus read + FA24=0)…", flush=True)
-        ok = self.wait_until_armed(timeout_s=timeout_s)
+        ok = self.wait_until_armed(timeout_s=timeout)
         if not ok:
+            di3_p, di4_p = self.limits_pressed()
+            extra = ""
+            if di3_p or di4_p:
+                which = "+".join(
+                    [n for n, p in (("DI3", di3_p), ("DI4", di4_p)) if p]
+                )
+                extra = f" (limit still active: {which})"
             print(
-                f"lw100 rail: NOT READY after "
-                f"{float(self.config.arm_timeout_s if timeout_s is None else timeout_s):.1f}s "
-                f"— refuse motion",
+                f"lw100 rail: NOT READY after {timeout:.1f}s "
+                f"— refuse motion{extra}",
                 flush=True,
             )
         return ok
+
+    def _resolve_calibration_path(self) -> Path:
+        raw = str(self.config.calibration_path or "").strip()
+        if raw:
+            p = Path(raw)
+            if not p.is_absolute():
+                # Prefer rm75_control package root (parent of configs/).
+                here = Path(__file__).resolve()
+                pkg = here.parents[4]  # …/hw/rail_servo.py → rm75_control/
+                p = (pkg / p).resolve()
+            return p
+        here = Path(__file__).resolve()
+        pkg = here.parents[4]
+        return default_calibration_path(pkg)
+
+    def _apply_zero_at_start(self, drive: LW100Drive) -> str:
+        """Load software zero. Sets ``_calibrated``. Raises if required cal missing."""
+        mode = str(self.config.zero_mode).strip().lower()
+        if mode == "fixed":
+            counts0 = int(self.config.counts0)
+            drive.set_rail_zero(counts0)
+            with self._lock:
+                self._calibrated = True
+            return f"fixed counts0={counts0}"
+        if mode == "current":
+            if bool(self.config.require_calibration):
+                raise RuntimeError(
+                    "zero_mode=current is a debug bypass; set require_calibration: false "
+                    "or use calibrated_file after apps/lw100_rail_home_limit.py"
+                )
+            counts0 = int(drive.set_rail_zero())
+            with self._lock:
+                self._calibrated = True
+            return f"current-as-zero counts0={counts0}"
+
+        # calibrated_file (default)
+        path = self._resolve_calibration_path()
+        self._calibration_path = path
+        cal = load_calibration(path)
+        if cal is None:
+            with self._lock:
+                self._calibrated = False
+            print(MISSING_CAL_MSG, flush=True)
+            raise CalValidationError("no valid calibration file", power_cycle=False)
+        ok, reason, host_m, power_cycle, comms_fail = validate_on_drive(
+            drive,
+            cal,
+            sign=float(self.config.sign),
+            di_nc=bool(self.config.di_nc),
+            home_di=str(self.config.home_di),
+            plus_di=str(self.config.plus_di),
+        )
+        if not ok:
+            with self._lock:
+                self._calibrated = False
+            if comms_fail:
+                print(COMMS_FAIL_MSG, flush=True)
+                print(f"lw100 rail: {reason}", flush=True)
+                # Surface as Modbus so start() reconnect loop can retry.
+                raise ModbusRtuError(reason)
+            print(POWER_CYCLE_CAL_MSG if power_cycle else MISSING_CAL_MSG, flush=True)
+            print(f"lw100 rail: {reason}", flush=True)
+            raise CalValidationError(reason, power_cycle=power_cycle)
+        if cal.soft_min_m < cal.soft_max_m:
+            self.config.soft_min_m = float(cal.soft_min_m)
+            self.config.soft_max_m = float(cal.soft_max_m)
+        try:
+            save_calibration(path, cal)
+        except OSError:
+            pass
+        with self._lock:
+            self._calibrated = True
+        return (
+            f"calibrated_file counts0={cal.raw_counts0} "
+            f"raw={cal.last_raw_counts} "
+            f"host={host_m * 1000:.1f} mm"
+        )
+
+    def _invalidate_cal_after_frame_loss(self, reason: str) -> None:
+        """Mark calibration invalid after a wipe/jump; live pose may still use bias."""
+        self._frame_continuous = False
+        path = self._calibration_path or self._resolve_calibration_path()
+        try:
+            invalidate_calibration(path)
+        except Exception:
+            pass
+        print(
+            f"lw100 rail: WARN {reason} — calibration invalidated; "
+            f"re-run apps/lw100_rail_home_limit.py --force before next start",
+            flush=True,
+        )
+
+    def _resync_cal_frame_after_wipe(self, delta_bias: int, *, reason: str) -> None:
+        """Trusted wipe (valid pre-read): keep live pose, re-pair JSON to new raw frame.
+
+        Refuse to write if the live pose / raw looks corrupt (seen: FC-13/14 write
+        leaving monitor at ~-62e6 → host kilometres). Only an untrusted jump should
+        call ``_invalidate_cal_after_frame_loss``.
+        """
+        path = self._calibration_path or self._resolve_calibration_path()
+        if path is None or self._drive is None:
+            return
+        try:
+            raw_now = int(self._drive._read_encoder_counts_raw(retries=3))
+            host_m = float(self._encode_rail_m(self._drive.read_rail_m_fast()))
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"lw100 rail: WARN {reason} — post-wipe read failed ({exc}); "
+                f"skip cal resync (Δbias={delta_bias})",
+                flush=True,
+            )
+            return
+        # Raw beyond ~1.2× travel is not a real rail pose (corrupt monitor).
+        max_raw = int(
+            abs(float(self.config.travel_m))
+            / max(float(self.config.lead_mm) * 1e-3, 1e-9)
+            * 131_072
+            * 1.2
+        )
+        if abs(raw_now) > max_raw or not self._encoder_sane(host_m):
+            print(
+                f"lw100 rail: WARN {reason} — refuse cal resync "
+                f"(raw={raw_now}, host={host_m * 1000:.1f} mm corrupt); "
+                f"live bias kept, re-home before next cold start",
+                flush=True,
+            )
+            self._frame_continuous = False
+            return
+        try:
+            synced = sync_calibration_frame(
+                path, self._drive, require_continuity=False
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"lw100 rail: WARN {reason} — cal resync failed ({exc}); "
+                f"Δbias={delta_bias}",
+                flush=True,
+            )
+            return
+        self._frame_continuous = True
+        if synced is not None:
+            print(
+                f"lw100 rail: encoder wipe during session (Δbias={delta_bias}) — "
+                f"cal frame resynced counts0={synced.raw_counts0} "
+                f"raw={synced.last_raw_counts} ({reason})",
+                flush=True,
+            )
+        else:
+            print(
+                f"lw100 rail: WARN {reason} — cal resync returned None "
+                f"(Δbias={delta_bias}); live pose still uses bias",
+                flush=True,
+            )
 
     def kill_motion(self) -> None:
         """Best-effort FA24=0. Prefer ``estop()`` from signal handlers (non-blocking)."""
@@ -472,6 +832,7 @@ class RailServoBridge:
         with self._lock:
             already = self._panic
             self._panic = True
+            self._panic_reason = str(reason)
             self._follow_enabled = False
             self._armed = False
         # Avoid blocking Modbus from panic path when link may be dead.
@@ -484,8 +845,7 @@ class RailServoBridge:
                 pass
             print(
                 f"lw100 rail: PANIC — {reason} "
-                f"(meas={measured * 1000:.1f} mm, travel={self.config.travel_m * 1000:.0f} mm). "
-                f"FA24=0, follow off, DISARMED.",
+                f"(meas={measured * 1000:.1f} mm). FA24=0, DISARMED, task must stop.",
                 flush=True,
             )
             last_rpm = 0
@@ -548,19 +908,42 @@ class RailServoBridge:
             try:
                 self._drive.connect()
                 self._drive._client.recover()
+                # Validate/apply software zero BEFORE velocity session. FA-60 /
+                # FA61 / SON may wipe the multi-turn monitor; bias bookkeeping
+                # + cal-file resync keep the zero continuous.
+                zero_note = self._apply_zero_at_start(self._drive)
+                self._frame_continuous = True
+                bias_before = int(self._drive._counts_bias)
                 self._drive.start_velocity_session(
                     accel_ms=self.config.accel_ms,
                     decel_ms=self.config.decel_ms,
                     scurve_ms=self.config.scurve_ms,
                     max_speed_rpm=self.config.max_speed_rpm,
                 )
-                if self.config.zero_mode == "fixed":
-                    counts0 = int(self.config.counts0)
-                    self._drive.set_rail_zero(counts0)
-                    zero_note = f"fixed counts0={counts0}"
-                else:
-                    counts0 = int(self._drive.set_rail_zero())
-                    zero_note = f"current-as-zero counts0={counts0}"
+                if not self._drive.frame_trusted:
+                    print(FRAME_UNKNOWN_MSG, flush=True)
+                    raise CalValidationError(
+                        "encoder frame unknown after velocity session",
+                        frame_unknown=True,
+                    )
+                bias_after = int(self._drive._counts_bias)
+                if bias_after != bias_before:
+                    delta = bias_after - bias_before
+                    if self._drive.frame_trusted:
+                        # Pre-read valid = our FA61/SON wipe; pose still exact.
+                        self._resync_cal_frame_after_wipe(
+                            delta,
+                            reason="session start wipe",
+                        )
+                    else:
+                        self._invalidate_cal_after_frame_loss(
+                            f"encoder wiped during session start "
+                            f"(Δbias={delta}, frame untrusted)"
+                        )
+                try:
+                    self._drive.ensure_fa20_ignore()
+                except Exception as exc:
+                    print(f"lw100 rail: WARN FA-20={exc}", flush=True)
                 last_err = None
                 break
             except ModbusRtuError as exc:
@@ -579,6 +962,17 @@ class RailServoBridge:
                         pass
                     self._drive = LW100Drive(drive_cfg)
                 time.sleep(0.2)
+            except (CalValidationError, RuntimeError):
+                # Missing/invalid calibration — do not retry as Modbus.
+                try:
+                    if self._drive is not None:
+                        self._drive.set_velocity_rpm(0, force=True)
+                        self._drive.disable()
+                        self._drive.close()
+                except Exception:
+                    pass
+                self._drive = None
+                raise
         if last_err is not None:
             raise ModbusRtuError(f"lw100 rail: start failed: {last_err}") from last_err
 
@@ -590,9 +984,17 @@ class RailServoBridge:
         measured = float(samples[-1])
         if not self._encoder_sane(measured):
             self._drive.set_velocity_rpm(0, force=True)
+            with self._lock:
+                self._calibrated = False
+            # Poisoned resync / corrupt monitor — do not keep a bad JSON.
+            self._invalidate_cal_after_frame_loss(
+                f"encoder out of range at start (meas={measured * 1000:.1f} mm)"
+            )
+            print(MISSING_CAL_MSG, flush=True)
             raise RuntimeError(
                 f"lw100 rail: encoder out of range at start "
-                f"(meas={measured * 1000:.1f} mm, travel={self.config.travel_m * 1000:.0f} mm)"
+                f"(meas={measured * 1000:.1f} mm, travel={self.config.travel_m * 1000:.0f} mm) "
+                f"— re-run apps/lw100_rail_home_limit.py"
             )
         span = max(samples) - min(samples)
         if span > 0.005:
@@ -610,6 +1012,7 @@ class RailServoBridge:
             self._follow_enabled = False
             self._armed = False
             self._panic = False
+            self._panic_reason = ""
             self._speed_cap_rpm = None
             self._last_target_rx_mono = 0.0
         self._stop.clear()
@@ -624,10 +1027,11 @@ class RailServoBridge:
         )
         self._thread.start()
         self._safety_thread.start()
+        soft_lo, soft_hi = self._soft_lo_hi()
         print(
             f"lw100 rail: connecting hold @ {measured:+.4f} m ({zero_note}, "
             f"raw={raw} bias={self._drive._counts_bias}, "
-            f"travel=[0, {self.config.travel_m:.2f}] m, "
+            f"soft=[{soft_lo:.2f}, {soft_hi:.2f}] m travel={self.config.travel_m:.2f} m, "
             f"velocity-follow (kp={self.config.vel_kp}, kd={self.config.vel_kd}, "
             f"v_max={self.config.vel_max_m_s:.2f} m/s, "
             f"a_max={self.config.vel_amax_m_s2:.2f} m/s², "
@@ -643,11 +1047,13 @@ class RailServoBridge:
             )
 
     def go_home(self, *, timeout_s: float | None = None) -> bool:
-        """Command ``rail_y -> 0``. Aborts on estop / out-of-range encoder."""
+        """Command rail to ``post_home_m`` (soft park, not mechanical zero)."""
         if not self.enabled or self._drive is None:
             return True
         if self._thread is None or not self._thread.is_alive():
-            return abs(self.measured_m) * 1000.0 <= float(self.config.deadband_mm)
+            return abs(self.measured_m - float(self.config.post_home_m)) * 1000.0 <= float(
+                self.config.deadband_mm
+            )
 
         if not self.ensure_armed(timeout_s=self.config.arm_timeout_s):
             print("lw100 rail: SKIP home — rail NOT READY", flush=True)
@@ -664,17 +1070,18 @@ class RailServoBridge:
             self.kill_motion()
             return False
 
+        target = float(self.config.post_home_m)
+        soft_lo, soft_hi = self._soft_lo_hi()
+        target = max(soft_lo, min(soft_hi, target))
         timeout = float(self.config.home_timeout_s if timeout_s is None else timeout_s)
         with self._lock:
             self._panic = False
             self._speed_cap_rpm = int(self.config.home_speed_rpm)
         self._abort.clear()
-        self.set_target_m(0.0)
+        self.set_target_m(target)
         print(
-            f"lw100 rail: homing to 0 (timeout={timeout:.0f}s, "
-            f"cruise≤{self.config.home_speed_rpm} r/min "
-            f"≈{self.config.home_speed_rpm / 60.0 * self.config.lead_mm / 10.0:.1f} cm/s, "
-            f"approach={self.config.home_approach_mm:.0f} mm)…",
+            f"lw100 rail: park to {target * 1000:.0f} mm (timeout={timeout:.0f}s, "
+            f"cruise≤{self.config.home_speed_rpm} r/min)…",
             flush=True,
         )
         deadband_m = float(self.config.deadband_mm) * 1e-3
@@ -700,17 +1107,17 @@ class RailServoBridge:
                 busy = self._drive.is_busy(speed_threshold_rpm=self.config.busy_speed_rpm)
             except ModbusRtuError:
                 busy = True
-            if abs(meas) <= deadband_m and not busy:
+            if abs(meas - target) <= deadband_m and not busy:
                 ok = True
                 break
-            if abs(cmd) <= deadband_m and abs(meas) <= 5.0 * deadband_m and not busy:
+            if abs(cmd - target) <= deadband_m and abs(meas - target) <= 5.0 * deadband_m and not busy:
                 ok = True
                 break
             now = time.monotonic()
             if now - last_log >= 2.0:
                 last_log = now
                 print(
-                    f"lw100 rail: home… meas={meas * 1000:.1f} mm cmd={cmd * 1000:.1f} mm "
+                    f"lw100 rail: park… meas={meas * 1000:.1f} mm cmd={cmd * 1000:.1f} mm "
                     f"busy={busy}",
                     flush=True,
                 )
@@ -719,7 +1126,7 @@ class RailServoBridge:
         with self._lock:
             self._speed_cap_rpm = None
         print(
-            f"lw100 rail: home {'OK' if ok else 'TIMEOUT'} @ {self.measured_m:+.4f} m "
+            f"lw100 rail: park {'OK' if ok else 'TIMEOUT'} @ {self.measured_m:+.4f} m "
             f"(cmd={self.commanded_m:+.4f} m)",
             flush=True,
         )
@@ -732,6 +1139,34 @@ class RailServoBridge:
         with self._lock:
             self._follow_enabled = False
             self._armed = False
+
+        # Snapshot counts0 + last_raw in the same raw frame (never last_raw alone).
+        # Refuse if frame jumped / wiped — writing would launder a power-cycle.
+        if (
+            self._calibration_path is not None
+            and self._drive is not None
+            and self.calibrated
+            and self._drive.frame_trusted
+            and self._frame_continuous
+        ):
+            try:
+                try:
+                    self._drive._client.connect()
+                except Exception:
+                    pass
+                synced = sync_calibration_frame(
+                    self._calibration_path,
+                    self._drive,
+                    require_continuity=True,
+                )
+                if synced is None:
+                    print(
+                        "lw100 rail: WARN stop() refused cal sync "
+                        "(discontinuity / reboot signature) — re-home required",
+                        flush=True,
+                    )
+            except Exception:
+                pass
 
         do_home = self.config.home_on_exit if home is None else bool(home)
         if do_home and self._drive is not None and self._thread is not None:
@@ -766,10 +1201,24 @@ class RailServoBridge:
             self._safety_thread.join(timeout=0.3)
             self._safety_thread = None
         if self._drive is not None:
-            # Best-effort disable only if we can reconnect quickly.
+            # Hold SON by default (FA24=0) so the next start does not edge-enable
+            # and wipe multi-turn. Set release_son_on_exit=true to de-energize.
             try:
                 self._drive._client.connect()
-                self._drive.disable()
+                try:
+                    self._drive.set_velocity_rpm(0, force=True)
+                except Exception:
+                    pass
+                if bool(self.config.release_son_on_exit):
+                    self._drive.disable()
+                else:
+                    # Keep velocity session flag consistent with live SON.
+                    self._drive._disable_on_exit = False  # noqa: SLF001
+                    print(
+                        "lw100 rail: SON held (FA24=0) — start controller again "
+                        "without power-cycling; use release_son_on_exit to drop SON",
+                        flush=True,
+                    )
             except Exception:
                 pass
             try:
@@ -799,7 +1248,7 @@ class RailServoBridge:
             if abs(last_rpm) <= 0:
                 continue
             age = time.monotonic() - float(self._last_enc_ok_mono)
-            if age <= 0.25:
+            if age <= 0.12:
                 continue
             self._latch_kill_req.set()
             try:
@@ -835,6 +1284,12 @@ class RailServoBridge:
         freeze_s = max(float(self.config.encoder_freeze_s), 0.1)
         freeze_vmin = max(float(self.config.encoder_freeze_min_v_m_s), 0.005)
         freeze_dx = max(float(self.config.encoder_freeze_min_move_mm), 0.1) * 1e-3
+        settle_tol_m = max(float(self.config.settle_tol_mm), 0.01) * 1e-3
+        settle_v = max(float(self.config.settle_v_m_s), 0.001)
+        settle_timeout = max(float(self.config.settle_timeout_s), 0.1)
+        max_stall_s = max(float(self.config.max_stall_s), 0.02)
+        stall_v_floor = max(float(self.config.stall_v_floor_m_s), 0.001)
+        jump_margin_m = max(float(self.config.jump_margin_mm), 0.5) * 1e-3
         prev_target: float | None = None
         prev_err = 0.0
         prev_t = time.monotonic()
@@ -861,6 +1316,9 @@ class RailServoBridge:
         arm_samples: list[float] = []
         arm_settle_deadline: float | None = None
         arm_log_t = 0.0
+        settling = False
+        settle_deadline: float | None = None
+        last_bias = int(getattr(self._drive, "_counts_bias", 0) or 0)
 
         while not self._stop.is_set():
             if self._arm_req.is_set():
@@ -921,6 +1379,7 @@ class RailServoBridge:
                     speed_cap = self._speed_cap_rpm
                     last_rx = float(self._last_target_rx_mono)
                     armed = bool(self._armed)
+                    calibrated = bool(self._calibrated)
                     last_sane = float(self._measured_m)
 
                 if not self._encoder_sane(measured):
@@ -931,8 +1390,82 @@ class RailServoBridge:
                     armed = False
                     measured = last_sane  # keep last sane for logging / twin
                 else:
-                    with self._lock:
-                        self._measured_m = measured
+                    # Frame jump / power-cycle mid-run: host_m still "in band" but
+                    # leaps by tens of cm in one poll (CSV: 394→138 mm).
+                    if (
+                        math.isfinite(last_sane)
+                        and self._encoder_sane(last_sane)
+                        and calibrated
+                    ):
+                        jump_lim = v_max * dt_wall + jump_margin_m
+                        jump = abs(measured - last_sane)
+                        if jump > jump_lim:
+                            self._trip_panic(
+                                measured,
+                                f"encoder frame jump {jump * 1000:+.1f} mm "
+                                f"(lim={jump_lim * 1000:.1f} mm) — drive power-cycle?",
+                            )
+                            self._invalidate_cal_after_frame_loss(
+                                f"encoder frame jump {jump * 1000:+.1f} mm"
+                            )
+                            panic = True
+                            follow = False
+                            armed = False
+                            measured = last_sane
+                        else:
+                            with self._lock:
+                                self._measured_m = measured
+                    else:
+                        with self._lock:
+                            self._measured_m = measured
+
+                # Mid-session bias change = FA-60/SON wipe (trusted → resync).
+                try:
+                    bias_now = int(getattr(self._drive, "_counts_bias", 0) or 0)
+                except Exception:
+                    bias_now = last_bias
+                if bias_now != last_bias and calibrated and not panic:
+                    delta = bias_now - last_bias
+                    if getattr(self._drive, "frame_trusted", False):
+                        self._resync_cal_frame_after_wipe(
+                            delta,
+                            reason=f"mid-run bias {last_bias}→{bias_now}",
+                        )
+                    else:
+                        self._invalidate_cal_after_frame_loss(
+                            f"encoder bias changed mid-run "
+                            f"({last_bias}→{bias_now}, frame untrusted)"
+                        )
+                    last_bias = bias_now
+
+                # Run-time hard-limit DI → e-stop (theoretically unreachable inside soft band).
+                self._limit_poll_i += 1
+                if (
+                    calibrated
+                    and not panic
+                    and (self._limit_poll_i % max(1, int(self.config.limit_poll_every)) == 0)
+                ):
+                    try:
+                        di3_p, di4_p = self._drive.read_limit_pressed(
+                            nc=bool(self.config.di_nc),
+                            debounce_n=max(1, min(3, int(self.config.di_debounce_n))),
+                            settle_s=0.0,
+                        )
+                        if di3_p or di4_p:
+                            which = []
+                            if di3_p:
+                                which.append("DI3")
+                            if di4_p:
+                                which.append("DI4")
+                            self._trip_panic(
+                                measured,
+                                f"limit DI hit in run ({'+'.join(which)})",
+                            )
+                            panic = True
+                            follow = False
+                            armed = False
+                    except ModbusRtuError:
+                        pass
 
                 # Over-budget poll: zero FA24 this tick, stay armed.
                 if (not poll_ok) and abs(int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)) > 0:
@@ -1027,10 +1560,61 @@ class RailServoBridge:
                     continue
 
                 if follow and last_rx > 0.0 and (t0 - last_rx) > target_timeout:
-                    follow = False
-                    with self._lock:
-                        self._follow_enabled = False
-                    print("lw100 rail: target timeout → FA24=0", flush=True)
+                    err_abs = abs(target - measured) if math.isfinite(target) else 0.0
+                    if err_abs > settle_tol_m and not panic and armed:
+                        if not settling:
+                            settling = True
+                            settle_deadline = t0 + settle_timeout
+                            print(
+                                f"lw100 rail: target stream ended — settling "
+                                f"residual={err_abs * 1000:.2f} mm "
+                                f"(tol={settle_tol_m * 1000:.2f} mm)",
+                                flush=True,
+                            )
+                        elif settle_deadline is not None and t0 >= settle_deadline:
+                            settling = False
+                            settle_deadline = None
+                            follow = False
+                            with self._lock:
+                                self._follow_enabled = False
+                            print(
+                                f"lw100 rail: settle timeout → FA24=0 "
+                                f"(residual={err_abs * 1000:.2f} mm)",
+                                flush=True,
+                            )
+                        # else: keep follow=True while settling
+                    else:
+                        settling = False
+                        settle_deadline = None
+                        follow = False
+                        with self._lock:
+                            self._follow_enabled = False
+                        if err_abs > 1e-6:
+                            print(
+                                f"lw100 rail: target timeout → FA24=0 "
+                                f"(residual={err_abs * 1000:.2f} mm)",
+                                flush=True,
+                            )
+                        else:
+                            print("lw100 rail: target timeout → FA24=0", flush=True)
+                elif follow and last_rx > 0.0:
+                    # Fresh targets — exit settle substate.
+                    settling = False
+                    settle_deadline = None
+
+                if settling and follow and not panic and armed:
+                    err_abs = abs(target - measured)
+                    if err_abs <= settle_tol_m:
+                        settling = False
+                        settle_deadline = None
+                        follow = False
+                        with self._lock:
+                            self._follow_enabled = False
+                        print(
+                            f"lw100 rail: settled @ "
+                            f"{measured * 1000:.2f} mm (err={err_abs * 1000:.2f} mm)",
+                            flush=True,
+                        )
 
                 if panic or self._abort.is_set() or not follow or not armed:
                     v_cmd = 0.0
@@ -1039,12 +1623,16 @@ class RailServoBridge:
                     freeze_anchor_x = measured
                     freeze_anchor_t = t0
                     moving_without_fb = False
+                    settling = False
+                    settle_deadline = None
                 else:
-                    if prev_target is not None:
+                    if prev_target is not None and not settling:
                         v_inst = (target - prev_target) / dt
                         v_inst = max(-v_max, min(v_max, v_inst))
                         # Light LPF on ff (heavy filter adds lag → overshoot).
                         v_ff = 0.2 * v_ff + 0.8 * v_inst
+                    elif settling:
+                        v_ff = 0.0
                     prev_target = target
 
                     err = target - measured
@@ -1056,6 +1644,8 @@ class RailServoBridge:
                         v_raw = ff * v_ff + kp * err + kd * de
 
                     v_des = max(-v_max, min(v_max, v_raw))
+                    if settling:
+                        v_des = max(-settle_v, min(settle_v, v_des))
                     # Soft ends: only when target is also near that end.
                     if target <= approach_m and measured < approach_m and v_des < 0.0:
                         v_des *= max(0.0, measured / approach_m)
@@ -1075,6 +1665,10 @@ class RailServoBridge:
                         else:
                             lim = cruise_m_s * (abs(err) / home_band)
                         v_des = max(-lim, min(lim, v_des))
+
+                    # Stall-safe: worst-case latched FA24 overshoot ≤ |err|.
+                    v_allow = max(abs(err) / max_stall_s, stall_v_floor)
+                    v_des = max(-v_allow, min(v_allow, v_des))
 
                     dv_max = a_max * dt
                     v_cmd = max(prev_v_cmd - dv_max, min(prev_v_cmd + dv_max, v_des))

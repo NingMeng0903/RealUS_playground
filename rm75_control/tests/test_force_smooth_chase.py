@@ -92,13 +92,15 @@ def test_hf_delta_d_releases_after_hold():
         desired_force_ramp_s=0.0,
         var_damping_enabled=True,
         var_damping_d_u=80.0,
-        var_damping_m_u=1.0,
+        var_damping_m_u=0.0,
         var_damping_hf_attack_s=0.02,
         var_damping_hf_hold_s=0.10,
         var_damping_hf_release_s=0.05,
         var_damping_hf_on=0.2,
         var_damping_hf_off=0.1,
         var_damping_hf_err_n=1.0,
+        var_damping_hf_slew_max=0.0,  # no slew limit for this unit test
+        force_lateral_full_m_s=0.01,
     )
     cfg.adaptive_ke.enabled = False
     cfg.adaptive_ke.drive_damping = False
@@ -107,10 +109,15 @@ def test_hf_delta_d_releases_after_hold():
     ctrl = AdmittanceController(DT, cfg)
     ctrl._contact_time_s = 1.0
     ctrl.instability_index = 0.8
+    # Arming requires clear lateral motion or strong chatter.
     for _ in range(10):
-        d = ctrl._update_delta_d_hf(DT, abs_eff_n=0.2)
+        d = ctrl._update_delta_d_hf(
+            DT, abs_eff_n=0.2, v_lateral_m_s=0.05
+        )
     assert d > 10.0
     ctrl.instability_index = 0.0
     for _ in range(80):
-        d = ctrl._update_delta_d_hf(DT, abs_eff_n=0.2)
+        d = ctrl._update_delta_d_hf(
+            DT, abs_eff_n=0.2, v_lateral_m_s=0.05
+        )
     assert d < 5.0

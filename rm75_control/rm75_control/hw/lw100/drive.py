@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field
+from typing import Iterator
 
 from rm75_control.hw.lw100.geometry import PositionCommand, mm_to_position_command
 from rm75_control.hw.lw100.modbus_rtu_tcp import ModbusRtuTcpClient, ModbusRtuTcpConfig, ModbusRtuError
 from rm75_control.hw.lw100.registers import (
+    DI_BIT_DI1,
+    DI_BIT_DI2,
+    DI_BIT_DI3,
+    DI_BIT_DI4,
     ENCODER_COUNTS_PER_REV_17BIT,
+    MONITOR_DI_STATUS,
     MONITOR_POS_HI,
     MONITOR_POS_LO,
     MONITOR_SPEED_RPM,
@@ -31,6 +38,8 @@ from rm75_control.hw.lw100.registers import (
     P_FA72_BAUD,
     P_FA73_PROTO,
     P_FA74_COMM_ERR_ACTION,
+    P_FC13_POS_COORD_LO,
+    P_FC14_POS_COORD_HI,
     P_FC15_DI_FORCE1,
     P_FC16_DI_FORCE2,
     P_FC18_DI_FORCE4,
@@ -67,6 +76,11 @@ CTRG_EDGE_HOLD_S = 0.02
 # FA4/FA14/FD-0 writes read back immediately but only become *active* after FA-60 soft reset
 # (or power-cycle). Without this, enable/hold works but CTRG/speed commands are ignored.
 SOFT_RESET_RECONNECT_S = 1.5
+# Match rail_calibration.BOOT_RAW_ABS (avoid circular import). Post-wipe / boot cluster.
+# ~1 mm @ 10 mm/rev (131072 cpr); live power-on readings are ≤ ~12 counts.
+_FRAME_BOOT_RAW_ABS = 13_107
+# |post-pre| below this → treat as noise / no frame change.
+_FRAME_NOISE_JUMP = 2_000
 
 
 @dataclass
@@ -118,6 +132,15 @@ class LW100Drive:
         # FA-60 soft-reset clears the drive's multi-turn monitor to ~0; bias keeps
         # host-side counts continuous across that wipe (not across power-loss).
         self._counts_bias: int = 0
+        # False after an encoder-frame wipe we could not bookkeep (pre-read fail /
+        # unexpected jump). Upper layers must refuse motion until re-home.
+        self._frame_trusted: bool = True
+        # When False, ``__exit__`` skips ``disable()`` (home→controller SON handoff).
+        self._disable_on_exit: bool = True
+        # FC-13/14 → monitor restore. Off until apps/lw100_pos_coord_probe.py
+        # proves it; writing FC when unsupported has been seen to corrupt
+        # 0x1001/0x1002 into absurd values (~-62e6 → host kilometres).
+        self._fc_coord_restore_enabled: bool = False
         # True after start_position_session(); cleared on disable().
         self._position_session_active: bool = False
         # True after start_velocity_session(); cleared on disable().
@@ -148,10 +171,11 @@ class LW100Drive:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        try:
-            self.disable()
-        except Exception:
-            pass
+        if self._disable_on_exit:
+            try:
+                self.disable()
+            except Exception:
+                pass
         self.close()
 
     @property
@@ -160,6 +184,11 @@ class LW100Drive:
             raise RuntimeError("call connect() first")
         return self._map
 
+    @property
+    def frame_trusted(self) -> bool:
+        """False if a host write may have wiped the encoder without a usable pre-read."""
+        return bool(self._frame_trusted)
+
     def _addr(self, param: ParamRef) -> int:
         return self.register_map.addr(param)
 
@@ -167,6 +196,124 @@ class LW100Drive:
         steps.append(msg)
         if self.config.verbose:
             print(msg, flush=True)
+
+    def restore_encoder_frame(
+        self, target_raw: int, *, steps: list[str] | None = None
+    ) -> bool:
+        """Try to write multi-turn monitor via FC-13/FC-14 (position coord).
+
+        Returns True only when the live 0x1001/0x1002 reading returns within
+        ``_FRAME_NOISE_JUMP`` of ``target_raw``. Hardware may ignore these
+        writes — then callers fall back to ``_counts_bias`` bookkeeping.
+        """
+        log = steps if steps is not None else []
+        target = int(target_raw)
+        lo = target & 0xFFFF
+        hi = (target >> 16) & 0xFFFF
+        try:
+            self.write_param(P_FC13_POS_COORD_LO, lo)
+            self.write_param(P_FC14_POS_COORD_HI, hi)
+        except ModbusRtuError as exc:
+            self._log(log, f"WARN: FC-13/14 write failed ({exc})")
+            return False
+        time.sleep(0.05)
+        try:
+            got = int(self._read_encoder_counts_raw(retries=3))
+        except ModbusRtuError as exc:
+            self._log(log, f"WARN: post-restore raw failed ({exc})")
+            return False
+        if abs(got - target) <= _FRAME_NOISE_JUMP:
+            self._log(
+                log,
+                f"encoder frame restored via FC-13/14 → raw={got} (target={target})",
+            )
+            return True
+        self._log(
+            log,
+            f"FC-13/14 write ignored by monitor (raw={got}, target={target})",
+        )
+        return False
+
+    @contextmanager
+    def _bracket_frame(
+        self, action_name: str, steps: list[str] | None = None
+    ) -> Iterator[None]:
+        """Snapshot raw encoder around a host write that may clear multi-turn.
+
+        - Small |Δ| → no wipe, bias unchanged.
+        - Classic wipe → try ``restore_encoder_frame(pre)``; on success bias
+          stays 0 (invariant ``raw≈0 ⇔ mechanical home`` preserved). Else
+          ``_counts_bias += pre-post``.
+        - Pre/post unread or any other large jump → ``_frame_trusted = False``.
+        """
+        log = steps if steps is not None else []
+        try:
+            pre = int(self._read_encoder_counts_raw(retries=3))
+        except ModbusRtuError as exc:
+            self._frame_trusted = False
+            self._log(
+                log,
+                f"WARN: {action_name} pre-raw failed ({exc}) — encoder frame untrusted",
+            )
+            yield
+            return
+
+        yield
+
+        try:
+            post = int(self._read_encoder_counts_raw(retries=3))
+        except ModbusRtuError as exc:
+            self._frame_trusted = False
+            self._log(
+                log,
+                f"WARN: {action_name} post-raw failed ({exc}) — encoder frame untrusted",
+            )
+            return
+
+        jump = abs(int(post) - int(pre))
+        if jump < _FRAME_NOISE_JUMP:
+            return
+
+        now_boot = abs(int(post)) < _FRAME_BOOT_RAW_ABS
+        pre_away = abs(int(pre)) >= _FRAME_BOOT_RAW_ABS * 2
+        if now_boot and pre_away:
+            if self._fc_coord_restore_enabled and self.restore_encoder_frame(
+                pre, steps=log
+            ):
+                # Frame origin preserved — do not accumulate bias.
+                self._frame_trusted = True
+                return
+            delta = int(pre) - int(post)
+            self._counts_bias += delta
+            # Re-read: a failed FC restore must not leave a corrupted monitor
+            # silently feeding kilometres into the host pose.
+            try:
+                post2 = int(self._read_encoder_counts_raw(retries=3))
+            except ModbusRtuError:
+                post2 = int(post)
+            if abs(int(post2)) >= _FRAME_BOOT_RAW_ABS * 2 and abs(
+                int(post2) - int(pre)
+            ) > _FRAME_NOISE_JUMP:
+                self._frame_trusted = False
+                self._log(
+                    log,
+                    f"WARN: {action_name} monitor corrupt after wipe "
+                    f"(post={post} post2={post2} pre={pre}) — frame untrusted",
+                )
+                return
+            self._log(
+                log,
+                f"encoder bias += {delta} after {action_name} "
+                f"(pre={pre} post={post} bias={self._counts_bias})",
+            )
+            return
+
+        self._frame_trusted = False
+        self._log(
+            log,
+            f"WARN: {action_name} unexpected encoder jump "
+            f"pre={pre} post={post} Δ={post - pre} — encoder frame untrusted",
+        )
 
     def read_param(self, param: ParamRef) -> int:
         vals = self._client.read_holding_registers(self._addr(param), 1)
@@ -189,39 +336,57 @@ class LW100Drive:
         motion commands (CTRG, internal speed) are ignored until soft-reset or
         power-cycle. TCP may drop briefly; we reconnect afterward.
 
-        FA-60 also clears the encoder multi-turn monitor (~0). We snapshot counts
-        before/after and accumulate ``_counts_bias`` so ``read_encoder_counts()``
-        stays continuous for the host (power-cycle still loses multi-turn).
+        FA-60 also clears the encoder multi-turn monitor (~0). ``_bracket_frame``
+        snapshots counts and accumulates ``_counts_bias`` (fail-closed if the
+        pre-read fails — never silently assume pre=0).
         """
         log = steps if steps is not None else []
-        pre = 0
-        try:
-            pre = self._read_encoder_counts_raw()
-        except ModbusRtuError:
-            pass
-        self._log(log, "FA-60=1 soft reset (activate mode params)")
+        with self._bracket_frame("FA-60 soft reset", log):
+            self._log(log, "FA-60=1 soft reset (activate mode params)")
+            try:
+                self.write_param(P_FA60_SOFT_RESET, 1)
+            except ModbusRtuError as exc:
+                self._log(log, f"WARN: FA-60 soft reset write failed: {exc}")
+            time.sleep(SOFT_RESET_RECONNECT_S)
+            try:
+                self._client.close()
+            except Exception:
+                pass
+            self._client.connect()
+            self._log(log, "reconnected after soft reset")
+
+    def adopt_encoder_frame(self, steps: list[str] | None = None) -> int:
+        """FA-60 soft reset that *adopts* the wiped monitor (bias=0, trusted).
+
+        Used by the home script to pin the encoder origin at the mechanical home
+        switch. Unlike ``soft_reset()``, this does **not** accumulate
+        ``_counts_bias`` — the new raw≈0 frame becomes the host truth.
+
+        Returns the post-reset raw monitor reading. Clears cached mode/session so
+        the caller must re-run ``start_velocity_session`` before motion.
+        """
+        log = steps if steps is not None else []
+        self._log(log, "FA-60=1 adopt encoder frame (bias cleared)")
         try:
             self.write_param(P_FA60_SOFT_RESET, 1)
         except ModbusRtuError as exc:
-            self._log(log, f"WARN: FA-60 soft reset write failed: {exc}")
+            self._frame_trusted = False
+            self._log(log, f"WARN: FA-60 adopt write failed: {exc}")
+            raise
         time.sleep(SOFT_RESET_RECONNECT_S)
         try:
             self._client.close()
         except Exception:
             pass
         self._client.connect()
-        self._log(log, "reconnected after soft reset")
-        try:
-            post = self._read_encoder_counts_raw()
-            delta = int(pre) - int(post)
-            if delta != 0:
-                self._counts_bias += delta
-                self._log(
-                    log,
-                    f"encoder bias += {delta} (pre={pre} post={post} bias={self._counts_bias})",
-                )
-        except ModbusRtuError as exc:
-            self._log(log, f"WARN: encoder bias after soft reset failed: {exc}")
+        self._counts_bias = 0
+        self._frame_trusted = True
+        self._active_mode = None
+        self._velocity_session_active = False
+        self._position_session_active = False
+        post = int(self._read_encoder_counts_raw(retries=3))
+        self._log(log, f"encoder frame adopted post_raw={post} bias=0")
+        return post
 
     def configure_internal_mode(
         self,
@@ -309,15 +474,23 @@ class LW100Drive:
             self._log(log, "skip velocity mode configure (configure_mode=False)")
             return
         max_rpm = int(max(1, min(6000, max_speed_rpm)))
-        desired = (1, 1, max_rpm)  # FA4, FA22, FA23 marker
-        if self._active_mode is None and not force_reset:
+        # Soft-reset only when FA4/FA22 need activation. FA23/FA40/… can be written
+        # live — tying FA-60 to FA23 used to wipe multi-turn after every home→controller
+        # start when ceilings differed, invalidating software zero.
+        desired = (1, 1, max_rpm)  # FA4, FA22, FA23 marker (FA23 not a reset trigger)
+        mode_live = False
+        if self._active_mode is not None and self._active_mode[:2] == (1, 1):
+            mode_live = True
+        elif self._active_mode is None and not force_reset:
             try:
                 cur_mode = self.read_param(P_FA4_MODE)
                 cur_src = self.read_param(P_FA22_SPEED_SRC)
-                cur_max = self.read_param(P_FA23_MAX_SPEED)
-                if (cur_mode, cur_src, cur_max) == (1, 1, max_rpm):
-                    self._active_mode = desired
-                    self._log(log, f"velocity mode already live FA4=1 FA22=1 FA23={max_rpm} (no soft reset)")
+                if (cur_mode, cur_src) == (1, 1):
+                    mode_live = True
+                    self._log(
+                        log,
+                        f"velocity mode already live FA4=1 FA22=1 (no soft reset; FA23→{max_rpm})",
+                    )
             except ModbusRtuError:
                 pass
         writes = [
@@ -345,7 +518,7 @@ class LW100Drive:
             except ModbusRtuError as exc:
                 self._log(log, f"WARN: {note} failed: {exc}")
 
-        if force_reset or self._active_mode != desired:
+        if force_reset or not mode_live:
             self.soft_reset(log)
             for param, value, note in writes:
                 try:
@@ -355,6 +528,7 @@ class LW100Drive:
             self._active_mode = desired
             self._log(log, f"velocity mode active FA4=1 FA22=1 FA23={max_rpm} SP=00")
         else:
+            self._active_mode = desired
             self._log(log, f"velocity mode already active FA4=1 FA22=1 FA23={max_rpm}")
 
     def start_velocity_session(
@@ -379,13 +553,78 @@ class LW100Drive:
             max_speed_rpm=self._max_speed_rpm,
             steps=log,
         )
-        # Er-01 (超速) latches until FA61 / power-cycle; clear before SON.
-        self.clear_alarm(log)
+        # Skip FA61 when SON is already on — the clear edge can wipe multi-turn.
+        # When SON is off (post force-exit / cold start) clear then enable.
+        son_on = False
+        try:
+            fa53 = int(self.read_param(P_FA53_FORCE_ENABLE))
+            fc15 = int(self.read_param(P_FC15_DI_FORCE1))
+            son_on = fa53 == 1 and bool(fc15 & DI_SON)
+        except ModbusRtuError:
+            pass
+        if not son_on:
+            self.clear_alarm(log)
+        else:
+            self._log(log, "SON already ON — skip FA61 (avoid encoder wipe)")
         self.enable_and_settle(log)
         self._last_rpm_cmd = 0
         self.set_velocity_rpm(0, force=True)
         self._velocity_session_active = True
         self._log(log, "velocity session started")
+
+    def rewire_velocity_after_adopt(
+        self,
+        *,
+        accel_ms: int = 150,
+        decel_ms: int = 150,
+        scurve_ms: int = 50,
+        max_speed_rpm: int = 1200,
+        steps: list[str] | None = None,
+    ) -> None:
+        """Re-assert FA23/FA24–27/FA40–42 after ``adopt_encoder_frame`` (no FA-60/FA61/SON).
+
+        FA-60 can leave factory FA25 etc. active; rewriting those slots is required
+        before motion. Must **not** soft-reset / clear-alarm / re-enable — those
+        wipe the newly adopted frame or add bias and break ``raw≈0 at home``.
+        Caller must already have SON on from the pre-adopt session.
+        """
+        log = steps if steps is not None else []
+        max_rpm = int(max(1, min(6000, max_speed_rpm)))
+        self._max_speed_rpm = max_rpm
+        writes = [
+            (P_FA23_MAX_SPEED, max_rpm, f"FA23={max_rpm}"),
+            (P_FA24_INT_SPEED1, 0, "FA24=0"),
+            (P_FA25_INT_SPEED2, 0, "FA25=0"),
+            (P_FA26_INT_SPEED3, 0, "FA26=0"),
+            (P_FA27_INT_SPEED4, 0, "FA27=0"),
+            (P_FA40_ACC_MS, int(accel_ms), f"FA40={accel_ms}ms"),
+            (P_FA41_DEC_MS, int(decel_ms), f"FA41={decel_ms}ms"),
+            (P_FA42_SCURVE_MS, int(scurve_ms), f"FA42={scurve_ms}ms"),
+            (P_FC16_DI_FORCE2, 0, "FC-16=0"),
+        ]
+        for param, value, note in writes:
+            try:
+                self.write_param(param, value)
+                self._log(log, f"rewire {note}")
+            except ModbusRtuError as exc:
+                self._log(log, f"WARN: rewire {note} failed: {exc}")
+        self._active_mode = (1, 1, max_rpm)
+        self._velocity_session_active = True
+        self._last_rpm_cmd = 0
+        try:
+            self.set_velocity_rpm(0, force=True)
+        except ModbusRtuError as exc:
+            self._log(log, f"WARN: FA24=0 after rewire failed: {exc}")
+        # FA-60 can drop SON; re-enable without FA61 (rewire already set FA24=0).
+        try:
+            fa53 = int(self.read_param(P_FA53_FORCE_ENABLE))
+            fc15 = int(self.read_param(P_FC15_DI_FORCE1))
+            if not (fa53 == 1 and (fc15 & DI_SON)):
+                self._log(log, "SON off after adopt — re-enable (no FA61)")
+                self.enable(log)
+        except ModbusRtuError as exc:
+            self._log(log, f"WARN: SON check after rewire failed: {exc}")
+        self._log(log, "velocity slots rewired after adopt (no FA-60/FA61/SON)")
 
     def set_velocity_rpm(self, rpm: float, *, force: bool = False) -> int:
         """Write live velocity command FA24 (signed r/min).
@@ -476,18 +715,22 @@ class LW100Drive:
         return int(getattr(self, "_last_rpm_cmd", 0) or 0) == 0
 
     def clear_alarm(self, steps: list[str] | None = None) -> None:
-        """Pulse FA61 system-alarm clear (manual ch.6/9: FA61=1 clears Er-xx)."""
+        """Pulse FA61 system-alarm clear (manual ch.6/9: FA61=1 clears Er-xx).
+
+        Bracketed: some firmware revisions clear the multi-turn monitor on FA61.
+        """
         log = steps if steps is not None else []
-        try:
-            self.write_param(P_FA61_ALARM_CLEAR, 1)
-            time.sleep(0.05)
-            self.write_param(P_FA61_ALARM_CLEAR, 0)
-            self._log(log, "FA61 pulsed (alarm clear)")
-        except ModbusRtuError as exc:
-            self._log(log, f"WARN: FA61 alarm clear failed: {exc}")
+        with self._bracket_frame("FA61 alarm clear", log):
+            try:
+                self.write_param(P_FA61_ALARM_CLEAR, 1)
+                time.sleep(0.05)
+                self.write_param(P_FA61_ALARM_CLEAR, 0)
+                self._log(log, "FA61 pulsed (alarm clear)")
+            except ModbusRtuError as exc:
+                self._log(log, f"WARN: FA61 alarm clear failed: {exc}")
 
     def ensure_velocity_slot_safe(self) -> None:
-        """Re-assert SP=00 and FA25–27=0 (prevents factory FA25=500 runaway)."""
+        """Re-assert SP=00 and FA25/FA26/FA27=0 (prevents factory FA25=500 runaway)."""
         self.write_param(P_FC16_DI_FORCE2, 0)
         self.write_param(P_FA25_INT_SPEED2, 0)
         self.write_param(P_FA26_INT_SPEED3, 0)
@@ -505,18 +748,33 @@ class LW100Drive:
 
         Uses FA-53=1 (software force enable) so no physical SON wiring on CN1 is
         needed, and also forces SON via FC-15 bit0 as a belt-and-braces measure.
+
+        Idempotent: if SON is already forced on, skip rewrites (avoids an enable
+        edge that can wipe the multi-turn monitor after home→controller handoff).
         """
         log = steps if steps is not None else []
         try:
-            self.write_param(P_FA53_FORCE_ENABLE, 1)
-            self._log(log, "FA-53=1 software force enable")
-        except ModbusRtuError as exc:
-            self._log(log, f"WARN: FA-53 software enable failed: {exc}")
-        try:
-            self.write_param(P_FC15_DI_FORCE1, DI_SON)
-            self._log(log, f"SON forced ON (FC-15 @ 0x{self._addr(P_FC15_DI_FORCE1):04X})")
-        except ModbusRtuError as exc:
-            self._log(log, f"WARN: FC-15 SON failed: {exc}")
+            fa53 = int(self.read_param(P_FA53_FORCE_ENABLE))
+            fc15 = int(self.read_param(P_FC15_DI_FORCE1))
+            if fa53 == 1 and (fc15 & DI_SON):
+                self._log(log, "SON already ON (skip re-enable)")
+                return
+        except ModbusRtuError:
+            pass
+
+        with self._bracket_frame("enable SON", log):
+            try:
+                self.write_param(P_FA53_FORCE_ENABLE, 1)
+                self._log(log, "FA-53=1 software force enable")
+            except ModbusRtuError as exc:
+                self._log(log, f"WARN: FA-53 software enable failed: {exc}")
+            try:
+                self.write_param(P_FC15_DI_FORCE1, DI_SON)
+                self._log(
+                    log, f"SON forced ON (FC-15 @ 0x{self._addr(P_FC15_DI_FORCE1):04X})"
+                )
+            except ModbusRtuError as exc:
+                self._log(log, f"WARN: FC-15 SON failed: {exc}")
 
     def enable_and_settle(self, steps: list[str] | None = None) -> None:
         """Enable, then wait for stable zero-speed before CTRG."""
@@ -723,6 +981,60 @@ class LW100Drive:
         """Live motor speed (r/min) from monitor register 0x1000 (signed)."""
         val = int(self._client.read_holding_registers(MONITOR_SPEED_RPM, 1)[0])
         return val - 0x10000 if val >= 0x8000 else val
+
+    def ensure_fa20_ignore(self) -> int:
+        """Force FA-20=1 so CWL/CCWL do not raise Er-7 (host owns limit policy)."""
+        self.write_param(P_FA20_DRIVE_INHIBIT, 1)
+        v = int(self.read_param(P_FA20_DRIVE_INHIBIT))
+        if v != 1:
+            raise RuntimeError(f"failed to set FA-20=1 (got {v})")
+        return v
+
+    def read_di_mask(self, *, reg: int = MONITOR_DI_STATUS) -> int:
+        """Raw CN1 DI status word (bit0=DI1 … bit3=DI4; 1=ON/closed path)."""
+        return int(self._client.read_holding_registers(int(reg), 1)[0]) & 0xFFFF
+
+    def read_limit_pressed(
+        self,
+        *,
+        nc: bool = True,
+        debounce_n: int = 3,
+        settle_s: float = 0.015,
+        reg: int = MONITOR_DI_STATUS,
+    ) -> tuple[bool, bool]:
+        """Return ``(di3_pressed, di4_pressed)`` after ``debounce_n`` agreeing samples.
+
+        NC wiring (default): pressed when that DI bit is OFF.
+        """
+        n = max(1, int(debounce_n))
+        last: tuple[bool, bool] | None = None
+        streak = 0
+        for _ in range(n * 4):
+            mask = self.read_di_mask(reg=reg)
+            di3_on = bool(mask & (1 << DI_BIT_DI3))
+            di4_on = bool(mask & (1 << DI_BIT_DI4))
+            if nc:
+                cur = (not di3_on, not di4_on)
+            else:
+                cur = (di3_on, di4_on)
+            if cur == last:
+                streak += 1
+            else:
+                last = cur
+                streak = 1
+            if streak >= n and last is not None:
+                return last
+            time.sleep(max(0.0, float(settle_s)))
+        return last if last is not None else (False, False)
+
+    def set_rail_zero_raw(self, raw_counts0: int) -> int:
+        """Software-home using raw monitor counts (survives host restart + FA-60 bias).
+
+        Stores ``_counts0 = raw_counts0 + bias`` so
+        ``(raw + bias) - counts0 == raw - raw_counts0``.
+        """
+        self._counts0 = int(raw_counts0) + int(self._counts_bias)
+        return self._counts0
 
     def _read_encoder_counts_raw(self, *, retries: int = 5) -> int:
         """Drive monitor 0x1001/0x1002 only (no host bias)."""

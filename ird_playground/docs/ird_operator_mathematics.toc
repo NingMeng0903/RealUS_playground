@@ -1,0 +1,78 @@
+\contentsline {section}{\numberline {1}Problem statement and classical IRD}{3}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Reachability and inverse reachability}{3}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}What IRDPLAYGROUND computes instead}{3}{subsection.1.2}%
+\contentsline {section}{\numberline {2}Design narrative: from IRD constraints to oriented queries}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}IRD constraints in this problem}{4}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}What a quotient space is}{4}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Why only J1 may be eliminated}{4}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}How IRD is represented on J1 / the rail}{5}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Why a flange 9-D embedding is selected}{5}{subsection.2.5}%
+\contentsline {subsection}{\numberline {2.6}How the operator is layered}{5}{subsection.2.6}%
+\contentsline {subsection}{\numberline {2.7}Key tricks}{6}{subsection.2.7}%
+\contentsline {subsection}{\numberline {2.8}Ordered tip$\times $roll query pipeline (must not be reordered)}{6}{subsection.2.8}%
+\contentsline {section}{\numberline {3}Paper map: what each reference contributes}{7}{section.3}%
+\contentsline {paragraph}{Murooka's differentiable reachability map.}{7}{section*.2}%
+\contentsline {paragraph}{RM4D symmetry.}{7}{section*.3}%
+\contentsline {paragraph}{Chiu's task compatibility.}{7}{section*.4}%
+\contentsline {section}{\numberline {4}Frames, rail base, and the flange chart}{8}{section.4}%
+\contentsline {subsection}{\numberline {4.1}World poses and relative pose}{8}{subsection.4.1}%
+\contentsline {paragraph}{Why the axis frame, not ``base\_link'' alone.}{8}{section*.5}%
+\contentsline {subsection}{\numberline {4.2}Rail-induced axis frame}{8}{subsection.4.2}%
+\contentsline {paragraph}{Fixed factors.}{9}{section*.6}%
+\contentsline {subsection}{\numberline {4.3}TCP to flange}{9}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Quotient by J1 yaw: what is being identified}{9}{subsection.4.4}%
+\contentsline {paragraph}{What we do \emph {not} quotient.}{10}{section*.7}%
+\contentsline {paragraph}{Relation to the rail coordinate.}{10}{section*.8}%
+\contentsline {subsection}{\numberline {4.5}Why the chart uses flange axes \(u_{x},u_{y},u_{z}\), not TCP}{10}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}Nine-dimensional yaw-invariant flange embedding}{11}{subsection.4.6}%
+\contentsline {paragraph}{Why each component.}{12}{section*.9}%
+\contentsline {paragraph}{Symmetry / embedding statement.}{12}{section*.10}%
+\contentsline {paragraph}{Conversion summary.}{12}{section*.11}%
+\contentsline {section}{\numberline {5}Signed reachability field}{12}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Definition}{12}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Input normalisation and Fourier features}{13}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Network architecture}{13}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Support guard}{13}{subsection.5.4}%
+\contentsline {subsection}{\numberline {5.5}World scoring (the IRD point query)}{13}{subsection.5.5}%
+\contentsline {section}{\numberline {6}Declared SE(3) metric and training targets}{13}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Metric}{13}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Stencil supervision}{14}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Losses}{14}{subsection.6.3}%
+\contentsline {paragraph}{Classification (sign).}{14}{section*.12}%
+\contentsline {paragraph}{Signed value (magnitude).}{14}{section*.13}%
+\contentsline {paragraph}{Boundary normal alignment.}{14}{section*.14}%
+\contentsline {paragraph}{Empirical boundary slope (production loss).}{14}{section*.15}%
+\contentsline {paragraph}{Optional Eikonal (disabled in production).}{15}{section*.16}%
+\contentsline {paragraph}{Total.}{15}{section*.17}%
+\contentsline {subsection}{\numberline {6.4}Held-out accuracy of point queries \(f_{\theta }\)}{15}{subsection.6.4}%
+\contentsline {section}{\numberline {7}Differentiable set queries}{15}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Local pose perturbation}{15}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Normalised softmin and softmax}{16}{subsection.7.2}%
+\contentsline {paragraph}{Implicit weights (gradient structure).}{16}{section*.18}%
+\contentsline {paragraph}{Mean (cone expectation).}{16}{section*.19}%
+\contentsline {subsection}{\numberline {7.3}Region A: uncertainty box \(\times \) small cone (softmin)}{17}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}Task cone: tip \(\times \) roll free set (softmax or mean)}{17}{subsection.7.4}%
+\contentsline {subsection}{\numberline {7.5}Nested free \(\times \) uncertain query (SetQuery)}{18}{subsection.7.5}%
+\contentsline {paragraph}{Rockafellar--Uryasev lower-tail CVaR.}{18}{section*.20}%
+\contentsline {paragraph}{Implemented reduction.}{18}{section*.21}%
+\contentsline {section}{\numberline {8}Why IRD gradients exist and are useful}{18}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Chain rule through the IRD point query}{18}{subsection.8.1}%
+\contentsline {paragraph}{Geometric reading.}{18}{section*.22}%
+\contentsline {subsection}{\numberline {8.2}Gradients of conditional cone queries}{18}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}From point clearances to conditional queries and update directions}{19}{subsection.8.3}%
+\contentsline {paragraph}{Step 1 --- Point query.}{19}{section*.23}%
+\contentsline {paragraph}{Step 2 --- Region/angle $=$ many points $+$ aggregation.}{19}{section*.24}%
+\contentsline {paragraph}{Step 3 --- Update direction $=$ gradient of the scalar $C$.}{19}{section*.25}%
+\contentsline {subsection}{\numberline {8.4}Vessel-surface example \((\theta ,y)\)}{20}{subsection.8.4}%
+\contentsline {section}{\numberline {9}Trajectory operator and online updates}{20}{section.9}%
+\contentsline {subsection}{\numberline {9.1}Aggregation order}{20}{subsection.9.1}%
+\contentsline {subsection}{\numberline {9.2}SE(3) path interpolation}{20}{subsection.9.2}%
+\contentsline {subsection}{\numberline {9.3}Per-waypoint and path margins}{20}{subsection.9.3}%
+\contentsline {subsection}{\numberline {9.4}Why the landscape updates with the trajectory}{21}{subsection.9.4}%
+\contentsline {subsection}{\numberline {9.5}Typical optimisation objective}{21}{subsection.9.5}%
+\contentsline {subsection}{\numberline {9.6}Fail-closed 8-DOF trajectory SQP}{21}{subsection.9.6}%
+\contentsline {section}{\numberline {10}End-to-end commutative diagram}{21}{section.10}%
+\contentsline {section}{\numberline {11}Scope, guarantees, and non-goals}{22}{section.11}%
+\contentsline {section}{\numberline {12}Symbol table}{22}{section.12}%
+\contentsline {section}{\numberline {13}References}{22}{section.13}%
+\contentsline {section}{\numberline {A}Code $\leftrightarrow $ equation map}{23}{appendix.A}%

@@ -21,6 +21,7 @@ Task orchestration (window C):
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import signal
 import time
@@ -47,6 +48,7 @@ from rm75_control.control.joint_admittance_8dof.hw.rail_servo import (
     RailServoBridge,
     parse_rail_servo_config,
 )
+from rm75_control.hw.lw100.rail_calibration import CalValidationError
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.reference import HoldReference
 from rm75_control.control.joint_admittance_8dof.sin_tool_y_program import (
@@ -131,15 +133,37 @@ def _run_controller_service(
 
         # Refuse move→D / FA24 until rail Modbus path is hot (or re-armed after panic).
         if rail_bridge is not None and rail_bridge.enabled:
+            if not rail_bridge.calibrated:
+                hub.set_error(cmd_seq, "rail NOT CALIBRATED")
+                hub.ack(cmd_seq)
+                print(
+                    f"rm75 controller: task #{task_n} refused — rail not calibrated. "
+                    "Run: python apps/lw100_rail_home_limit.py",
+                    flush=True,
+                )
+                if not stop:
+                    print("rm75 controller: hot-wait", flush=True)
+                continue
             need_rearm = rail_bridge.panicked or not rail_bridge.armed
+            if need_rearm and rail_bridge.panicked:
+                reason = rail_bridge.panic_reason or "rail PANIC"
+                print(
+                    f"rm75 controller: task #{task_n} — recovering from "
+                    f"{reason}; clear limits then auto-rearm",
+                    flush=True,
+                )
             if not rail_bridge.ensure_armed(
                 timeout_s=float(getattr(rail_bridge.config, "arm_timeout_s", 8.0)),
                 rearm=need_rearm,
             ):
-                hub.set_error(cmd_seq, "rail NOT READY (arming failed)")
+                hub.set_error(
+                    cmd_seq,
+                    "rail NOT READY (clear limit DI / check Modbus, then retry)",
+                )
                 hub.ack(cmd_seq)
                 print(
-                    f"rm75 controller: task #{task_n} refused — rail NOT READY",
+                    f"rm75 controller: task #{task_n} refused — rail NOT READY "
+                    "(if a limit was hit: nudge off the switch and resubmit)",
                     flush=True,
                 )
                 if not stop:
@@ -239,7 +263,7 @@ def _run_controller_service(
                     if stop or rail_bridge._abort.is_set():
                         rail_bridge.estop()
                     else:
-                        rail_bridge.hold_current()
+                        rail_bridge.settle_and_hold()
                 except Exception:
                     try:
                         rail_bridge.estop()
@@ -274,7 +298,15 @@ class _RailPublisher:
 
     def __call__(self) -> float:
         if self._bridge is not None and self._bridge.enabled:
-            return float(self._bridge.measured_m)
+            # After software zero is applied, always publish the live encoder
+            # (true carriage pose). Never emit a fake 0 that makes the twin jump.
+            if self._bridge.calibrated:
+                m = float(self._bridge.measured_m)
+                if math.isfinite(m):
+                    self._default_m = m
+                    return m
+            # Not calibrated yet: hold last good / NaN (relay must not treat as 0).
+            return float(self._default_m) if math.isfinite(self._default_m) else float("nan")
         if self._active_inner is not None:
             return float(self._active_inner.q_cmd[0])
         return self._default_m
@@ -313,7 +345,9 @@ def main() -> int:
         relay_name = str(args.state_relay or relay_cfg.name or "rm75_state")
     relay_hz = float(args.relay_hz) if args.relay_hz is not None else relay_cfg.hz
     dt = float(raw.get("timing", {}).get("dt_ms", 5.0)) / 1000.0
-    rail_default_m = float(raw.get("inner", {}).get("rail", {}).get("q_ref_m", 0.0))
+    # Never seed twin/SHM from q_ref_m (yaml often has 0.0) — that fakes a jump to 0.
+    # After bridge.start(), publisher uses live encoder metres.
+    rail_default_m = float("nan")
     rail_bridge = RailServoBridge(parse_rail_servo_config(raw))
     if args.verbose and rail_bridge.enabled and not rail_bridge.log_csv_path:
         log_dir = Path(__file__).resolve().parents[1] / "logs" / "rail_servo"
@@ -349,8 +383,18 @@ def main() -> int:
     ) as sess:
         try:
             if rail_bridge.enabled:
-                rail_bridge.start()
-                rail_pub._default_m = float(rail_bridge.measured_m)
+                try:
+                    rail_bridge.start()
+                except CalValidationError:
+                    return 2
+                meas = float(rail_bridge.measured_m)
+                rail_pub._default_m = meas
+                if inner is not None and math.isfinite(meas):
+                    inner.q_cmd[0] = meas
+                    try:
+                        inner.rail_task.set_reference(meas)
+                    except Exception:
+                        pass
             if inner is not None:
                 maybe_sync_kin_tcp_from_config(raw=raw, kin=inner.kin, robot=sess.robot)
             else:

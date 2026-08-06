@@ -402,7 +402,7 @@ def make_move_arrived(
 def make_rail_arrived(
     q_target_m: float,
     *,
-    tol_mm: float = 0.5,
+    tol_mm: float = 0.1,
 ) -> Callable[[np.ndarray, np.ndarray], bool]:
     def _fn(pose_meas: np.ndarray, q_meas: np.ndarray) -> bool:
         del pose_meas

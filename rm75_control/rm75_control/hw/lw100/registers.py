@@ -25,6 +25,7 @@ P_FA22_SPEED_SRC = ParamRef("FA", 22)   # 1=internal speed by SP1/SP2 (SP=00 →
 P_FA23_MAX_SPEED = ParamRef("FA", 23)   # 0..6000 r/min hard speed ceiling (factory 5000)
 P_FA24_INT_SPEED1 = ParamRef("FA", 24)  # -6000..6000 r/min, live velocity command
 P_FA25_INT_SPEED2 = ParamRef("FA", 25)
+# FA26: unused when FC-16 forces SP1=SP2=OFF (FA24 active). Kept at 0.
 P_FA26_INT_SPEED3 = ParamRef("FA", 26)
 P_FA27_INT_SPEED4 = ParamRef("FA", 27)
 P_FA40_ACC_MS = ParamRef("FA", 40)
@@ -49,10 +50,19 @@ P_FA74_COMM_ERR_ACTION = ParamRef("FA", 74)
 #   0x1001/0x1002 = encoder position int32 (lo, hi), +131072 counts per motor rev (17-bit)
 #                   Stable at idle (span ≤2 counts). Prefer idle/double-read snapshots.
 #   0x100C/0x100D = NOT reliable live position (noisy / word-tear); do not use.
+#   0x100F        = digital input terminal status (hypothesis: FA3 display index 15
+#                   「输入端子」; confirm with apps/lw100_limit_di_monitor.py --discover).
+#                   Bit0=DI1 … Bit3=DI4 (same order as FA55). 1=ON/closed path.
 MONITOR_SPEED_RPM = 0x1000
 MONITOR_POS_LO = 0x1001
 MONITOR_POS_HI = 0x1002
+MONITOR_DI_STATUS = 0x100F
 ENCODER_COUNTS_PER_REV_17BIT = 131_072
+# Physical CN1 DI bit indices inside MONITOR_DI_STATUS (manual FA55 layout).
+DI_BIT_DI1 = 0
+DI_BIT_DI2 = 1
+DI_BIT_DI3 = 2  # factory FC-2=3 → CCWL (one travel end)
+DI_BIT_DI4 = 3  # factory FC-3=4 → CWL  (other travel end)
 P_FC13_POS_COORD_LO = ParamRef("FC", 13)  # set current position coord low 16b — NOT live feedback
 P_FC14_POS_COORD_HI = ParamRef("FC", 14)  # set current position coord high 16b — NOT live feedback
 P_FC15_DI_FORCE1 = ParamRef("FC", 15)

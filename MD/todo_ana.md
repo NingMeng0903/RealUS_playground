@@ -254,6 +254,89 @@ outputs/anatomy_retarget/v8_candidates/v7_vs_v6_knee_proof_001/                 
 
 在屈膝座合不差于 V7 的前提下再谈皮内；缩骨若开铰链则宁可 outside 残差。
 
+### 0.13 2026-08-04 V10 手部退化 → Hybrid → V11 锚定（GROK）
+
+**用户问题**：为何有的图手在皮内、有的不在？是不是反而差了？
+
+**判决：V10 FK-only 是净亏损；Hybrid 止血；V11 治主链。**
+
+#### 根因（已量化）
+
+1. **终端 rebase bug**：`apply_pose_map_global_v10` 对手/足做 `rebase = G_tgt[wrist] @ inv(G_src[wrist])`。左手腕平移实测 37 mm（213328）/ 22.7 mm（213712）→ `hand_L` area_inside 0.952 → **0.001**。T-pose 下终端 `|d|=0` 故 rebase 恒等，表现为“有的图好、有的坏”。
+2. **终端门是恒等式**：旧 `evaluate_terminal_pose_regression_v10` 用候选自己的手腕造 baseline → 90 网格 × 3 pose 全部 `delta≡0`，数学上无法失败。已改为绝对 `_pose_142_vertices` 硬门（验收：旧 V10 FK-only 立刻 FAIL）。
+3. **Rest-fit 左右不对称**：模板级（跨 beta 相同）`Knee_Rotate_L` 19.59 mm / `_R` 1.84 mm；`Elbow_Rot_L` 21.68 / `_R` 0.95。拟合把左膝/肘 **推离** 解剖关节（膝 6.66→21.76、肘 7.83→19.79）。结构来源：`result[elbow]=humerus`（肩部力臂）+ 膝站位射线；目标函数无解剖锚定、无左右对称。
+4. **Station 髋→膝 19 mm 差是真 SMPL-X male 不对称**，不是推导错误。`A_tmpl` 左右几乎对称（384.62 / 384.08 mm）；`station_rest` 左 399.50 / 右 380.56 mm。解剖目标应以迁移后的 `A_subj` 为准。
+
+#### 文献依据
+
+- **SKEL**（SIGGRAPH Asia 2023）：SMPL 关节 ≠ 解剖关节，膝差 30–50 mm；解法是骨与皮同一套 rig。
+- **OSSO**（CVPR 2022 补充 §2.2）：`Ein/Ep/Ect`、`Ed` 姿态不变骨–皮距离、`Ej` 球窝约束——正是 V7/V10 缺的硬门。
+
+#### Phase 0 — 真门（已落地）
+
+| 门 | 变更 |
+|---|---|
+| `evaluate_terminal_pose_regression_v10` | 绝对 142 基线硬门；rebased 降为 report-only |
+| `evaluate_posed_body_containment_v10` | 234 骨网格分组，相对基线回退 >0.02 硬失败 |
+| `evaluate_knee_pose_containment_v10` | outside vs 基线 >2 mm 硬失败 |
+| CLI | `cli/run_posed_body_containment_diag_v10.py` |
+
+#### Phase 1 — Hybrid 止血（已落地）
+
+`pose_map_v10.py`：手/足（含腕/踝根）冻结为 `source_global`（identity-142）。工件：`chain_retarget_v10_hybrid_001`。
+
+- 手/足 vs V7：`area_inside Δ = 0`
+- 屈膝内侧 gap：18 → 4 mm（主链 FK 收益保留）
+- 独立视觉审：**Verdict A**（中间态；forearm/patella/shank 仍红，待 Phase 2）
+
+#### Phase 2 — V11 锚定 rest（已落地）
+
+工件：`outputs/anatomy_retarget/v11_candidates/chain_retarget_v11_anchored_001`
+
+方法 `prefit_hinge_origin_restore_v11`：保留 V7 **mesh**（接触几何），把被破坏的铰链 controller **原点** 恢复到 `B_prefit`——等价于拆开 `result[elbow]=humerus` 的平移放大，并撤回膝射线推离。髋 `Femur_Rot` **故意不恢复**（恢复会毁 containment / flex gap）。
+
+| 门 | 规则 |
+|---|---|
+| `rest_anatomical_anchor_v11` | 膝/踝/肩/肘/腕：`|B_f−A|≤|B_pre−A|`；髋：相对 V7 不回退 |
+| `lr_symmetry_v11` | 成对 bind-Δ `||Δ_L|−|Δ_R|| < 5 mm` |
+| `pose_invariant_distance_v11` | OSSO `Ed`：主链骨–皮距离跨 pose 中位漂移 ≤10 mm |
+| body/knee | 相对 **同构图** hybrid（V7 rest + V10 FK）不回退 |
+| contact | 相对 V7 right-multiply flex 不回退（历史合同） |
+
+**213328 vs hybrid（pose_213328，同构图）**
+
+| 组 | hybrid | V11 | Δ |
+|---|---|---|---|
+| `forearm_L` | 0.647 | **0.834** | **+0.187** |
+| `shank_L` | 0.506 | **0.922** | **+0.417** |
+| `patella_L` | 0.353 | **0.847** | **+0.494** |
+| `hand_L` | 0.952 | 0.952 | 0 |
+
+两 beta 全门 `passed=true`。Genesis slim：`review_slim_v11_vs_v7`（目录里 `v10/` 实为 V11，渲染器复用 `--v10-shadow`）。
+
+**outside 红像素（pose_213328）**
+
+| 视图 | V7 RM | hybrid | **V11** |
+|---|---:|---:|---:|
+| `left_knee_ap` | 5933 | 8360 | **1474** |
+| `left_hand_oblique` | 2414 | 8983 | **5073** |
+| `left_elbow_ap` | 0 | 866 | **86** |
+| `whole_ap` | 568 | 806 | **507** |
+| `left_elbow_lateral` | 0 | 3323 | 5170 |
+
+**双审**
+
+- GROK：`A`（膝/髌骨红崩塌；铰链未开；手整体近似 V7）。
+- LUNA：`reject_for_hand_regression`——相对 **V7 right-multiply** 的腕/前臂红（跨构图对比；与 hybrid 同类残差）。相对 hybrid 手 crop 红已降（8983→5073），且 `terminal`/`hand_* Δ=0`。
+- **综合判决**：`accept_with_known_residual`——主链 vs hybrid 已收回；相对 V7 RM 的前臂外侧残差是 V10 FK 构图差，不是手部再退化。
+
+**残留 / 禁止**
+
+- 髋仍停在 V7 座（~10.5 mm from A）；全量 A_subj 吸附 / segment-similarity 会开接触。
+- `left_elbow_lateral` 红仍高于 hybrid，需后续上臂 mesh 再锚定（非本轮阻塞）。
+- 不重跑冻结 V7 CLI（当前 builder 已是 `seat_then_inside_embed_v9`，与旧 `v7_femur_axial` 断言不兼容）。
+- `publishable=false`；权威链仍是 shadow。
+
 ---
 
 ## 一、当前结论

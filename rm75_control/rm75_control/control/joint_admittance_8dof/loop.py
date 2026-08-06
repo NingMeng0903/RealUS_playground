@@ -212,6 +212,12 @@ class JointIkController:
                 float(self.limits.v_max[0]),
                 float(self.cfg.rail.v_max_m_s),
             )
+        # Host soft usable band (1–78 cm); mechanical travel remains in URDF.
+        soft_lo = float(getattr(self.cfg.rail, "soft_min_m", 0.01))
+        soft_hi = float(getattr(self.cfg.rail, "soft_max_m", 0.78))
+        if soft_hi > soft_lo:
+            self.limits.q_lower[0] = max(float(self.limits.q_lower[0]), soft_lo)
+            self.limits.q_upper[0] = min(float(self.limits.q_upper[0]), soft_hi)
         self.core = QpIkController(self.kin, self.limits, self.cfg.qp)
         self.safety = SafetyLimiter(self.limits)
         self.q_cmd = np.zeros(kin.nv, dtype=float)
@@ -699,6 +705,7 @@ class AdmittanceOuterLoop:
         dt_actual: float | None = None,
         v_tcp_z_actual: float | None = None,
         sensor_age_s: float | None = None,
+        q_meas: np.ndarray | None = None,
     ) -> np.ndarray:
         ref = self.reference.sample(t_s)
         # Track-axis-only error (force axis excluded).
@@ -721,6 +728,7 @@ class AdmittanceOuterLoop:
             dt_actual=dt_actual,
             v_tcp_z_actual=v_tcp_z_actual,
             sensor_age_s=sensor_age_s,
+            q_meas=q_meas,
         )
 
 
@@ -1034,6 +1042,15 @@ class _TickLogger:
            "fx_raw_comp", "fy_raw_comp", "fz_raw_comp",
            "vz_achieved_tool", "contact_present",
            "force_pred_z", "force_dot_z", "cap_press_z", "cap_retract_z",
+           "ke_barrier", "damping_delay_z", "damping_impact_z",
+           "damping_retract_brake_z", "reverse_interlock_active",
+           "reverse_interlock_gate", "impact_danger", "d_extra_target_z",
+           "f_err_raw", "f_err_eff", "v_force_raw", "v_tcp_z_gate",
+           "tank_energy_j", "tank_gamma",
+           "port_energy_j", "port_excess_j", "damping_pc_z",
+           "free_seek_active",
+           "wrist_relax_scale",
+           "u_dob_z", "dob_frozen", "suspect_recovery", "v_tcp_z_filt",
            "ke_update_gated", "ke_dx_m", "ke_df_n", "ke_update_count",
            "governor_scale", "governor_scale_raw", "sigma_min",
            "qdot_norm", "qdot_max_frac_vmax",
@@ -1164,6 +1181,35 @@ class _TickLogger:
         cap_retract_z = getattr(ctrl, "cap_retract_z", float("nan"))
         force_pred_z = getattr(ctrl, "force_pred_z", float("nan"))
         force_dot_z = getattr(ctrl, "force_dot_z", float("nan"))
+        ke_barrier = getattr(ctrl, "ke_barrier", float("nan"))
+        damping_delay_z = getattr(ctrl, "damping_delay_z", float("nan"))
+        damping_impact_z = getattr(ctrl, "damping_impact_z", float("nan"))
+        damping_retract_brake_z = getattr(
+            ctrl, "damping_retract_brake_z", float("nan")
+        )
+        reverse_interlock_active = getattr(
+            ctrl, "reverse_interlock_active", False
+        )
+        reverse_interlock_gate = getattr(
+            ctrl, "reverse_interlock_gate", float("nan")
+        )
+        impact_danger = getattr(ctrl, "impact_danger", False)
+        d_extra_target_z = getattr(ctrl, "d_extra_target_z", float("nan"))
+        f_err_raw = getattr(ctrl, "f_err_raw", float("nan"))
+        f_err_eff = getattr(ctrl, "f_err_eff", float("nan"))
+        v_force_raw = getattr(ctrl, "v_force_raw", float("nan"))
+        v_tcp_z_gate = getattr(ctrl, "v_tcp_z_gate", float("nan"))
+        tank_energy_j = getattr(ctrl, "tank_energy_j", float("nan"))
+        tank_gamma = getattr(ctrl, "tank_gamma", float("nan"))
+        port_energy_j = getattr(ctrl, "port_energy_j", float("nan"))
+        port_excess_j = getattr(ctrl, "port_excess_j", float("nan"))
+        damping_pc_z = getattr(ctrl, "damping_pc_z", float("nan"))
+        free_seek_active = getattr(ctrl, "free_seek_active", False)
+        wrist_relax_scale = getattr(ctrl, "wrist_relax_scale", float("nan"))
+        u_dob_z = getattr(ctrl, "u_dob_z", float("nan"))
+        dob_frozen = getattr(ctrl, "dob_frozen", False)
+        suspect_recovery = getattr(ctrl, "suspect_recovery_active", False)
+        v_tcp_z_filt = getattr(ctrl, "v_tcp_z_filt", float("nan"))
         ke_tracker = getattr(ctrl, "_ke_estimator", None)
         ke_update_gated = getattr(ke_tracker, "update_gated", False)
         ke_dx_m = getattr(ke_tracker, "last_dx_m", float("nan"))
@@ -1233,6 +1279,29 @@ class _TickLogger:
                f"{v_tcp_z_actual:.6f}", int(bool(contact_present)),
                f"{force_pred_z:.4f}", f"{force_dot_z:.4f}",
                f"{cap_press_z:.6f}", f"{cap_retract_z:.6f}",
+               f"{float(ke_barrier):.1f}",
+               f"{float(damping_delay_z):.2f}",
+               f"{float(damping_impact_z):.2f}",
+               f"{float(damping_retract_brake_z):.2f}",
+               int(bool(reverse_interlock_active)),
+               f"{float(reverse_interlock_gate):.4f}",
+               int(bool(impact_danger)),
+               f"{float(d_extra_target_z):.2f}",
+               f"{float(f_err_raw):.4f}",
+               f"{float(f_err_eff):.4f}",
+               f"{float(v_force_raw):.5f}",
+               f"{float(v_tcp_z_gate):.6f}",
+               f"{float(tank_energy_j):.6f}",
+               f"{float(tank_gamma):.4f}",
+               f"{float(port_energy_j):.6f}",
+               f"{float(port_excess_j):.6f}",
+               f"{float(damping_pc_z):.2f}",
+               int(bool(free_seek_active)),
+               f"{float(wrist_relax_scale):.4f}",
+               f"{float(u_dob_z):.4f}",
+               int(bool(dob_frozen)),
+               int(bool(suspect_recovery)),
+               f"{float(v_tcp_z_filt):.6f}",
                int(bool(ke_update_gated)), f"{ke_dx_m:.8f}", f"{ke_df_n:.5f}",
                int(ke_update_count),
                f"{governor_scale:.4f}", f"{governor_scale_raw:.4f}",
@@ -1456,8 +1525,35 @@ def run_joint_admittance_phases(
                 for phase_idx, phase in enumerate(phases):
                     if stop_check is not None and stop_check():
                         phase_stopped = True
+                        stop_reason = stop_reason or "external stop"
                         if verbose:
                             print("  stopped by external request", flush=True)
+                        break
+                    if (
+                        rail_bridge is not None
+                        and getattr(rail_bridge, "enabled", False)
+                        and bool(getattr(rail_bridge, "panicked", False))
+                    ):
+                        phase_stopped = True
+                        stop_reason = (
+                            f"rail safety stop: "
+                            f"{getattr(rail_bridge, 'panic_reason', '') or 'rail PANIC'}"
+                        )
+                        if verbose:
+                            print(
+                                f"  SAFETY STOP — {stop_reason} "
+                                "(arm+rail halt, task end)",
+                                flush=True,
+                            )
+                        try:
+                            rail_bridge.kill_motion()
+                        except Exception:
+                            pass
+                        if robot is not None:
+                            try:
+                                robot.rm_set_arm_slow_stop()
+                            except Exception:
+                                pass
                         break
                     if verbose:
                         print(f"-- phase: {phase.label or phase.outer.__class__.__name__} --", flush=True)
@@ -1506,6 +1602,34 @@ def run_joint_admittance_phases(
                     while True:
                         if stop_check is not None and stop_check():
                             phase_stopped = True
+                            stop_reason = stop_reason or "external stop"
+                            break
+                        if (
+                            rail_bridge is not None
+                            and getattr(rail_bridge, "enabled", False)
+                            and bool(getattr(rail_bridge, "panicked", False))
+                        ):
+                            reason = str(
+                                getattr(rail_bridge, "panic_reason", "")
+                                or "rail PANIC (limit/encoder)"
+                            )
+                            phase_stopped = True
+                            stop_reason = f"rail safety stop: {reason}"
+                            if verbose:
+                                print(
+                                    f"  SAFETY STOP — {stop_reason} "
+                                    "(arm+rail halt, task end)",
+                                    flush=True,
+                                )
+                            try:
+                                rail_bridge.kill_motion()
+                            except Exception:
+                                pass
+                            if robot is not None:
+                                try:
+                                    robot.rm_set_arm_slow_stop()
+                                except Exception:
+                                    pass
                             break
                         now = time.perf_counter()
                         dt_raw = now - last_tick_time

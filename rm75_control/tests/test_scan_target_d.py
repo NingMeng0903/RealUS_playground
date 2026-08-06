@@ -32,7 +32,12 @@ def test_load_slot_joints_only_d():
 def test_resolve_scan_target_joints_matches_fk():
     kin = RobotKinematics()
     inner_cfg = _inner_cfg()
-    rail_m = float(inner_cfg.rail.q_ref_m)
+    # yaml may set q_ref_m: null (live encoder); tests use soft_min / mid-stroke.
+    rail_m = (
+        float(inner_cfg.rail.q_ref_m)
+        if inner_cfg.rail.q_ref_m is not None
+        else float(getattr(inner_cfg.rail, "soft_min_m", 0.01))
+    )
 
     target = resolve_scan_target_at_d(
         "d",
