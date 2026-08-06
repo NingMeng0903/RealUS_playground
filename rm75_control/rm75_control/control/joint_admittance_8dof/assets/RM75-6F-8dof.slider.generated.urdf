@@ -20,9 +20,9 @@
       <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01" />
     </inertial>
     <visual>
-      <origin xyz="-0.075000 0.000000 0.017000" rpy="0 0 0" />
+      <origin xyz="-0.075000 0.000000 0.102000" rpy="0 0 0" />
       <geometry>
-        <box size="0.300000 0.998000 0.034000" />
+        <box size="0.300000 0.998000 0.204000" />
       </geometry>
       <material name="frame_mat">
         <color rgba="0.750000 0.750000 0.780000 1.000000" />
@@ -87,7 +87,7 @@
     </visual>
   </link>
   <joint name="rail_mount" type="fixed">
-    <origin xyz="0 0 0.034000" rpy="0 0 0" />
+    <origin xyz="0 0 0.204000" rpy="0 0 0" />
     <parent link="rail_base" />
     <child link="rail_link" />
   </joint>
