@@ -135,7 +135,7 @@ class QpConfig:
     # Avoidance onset = sigma_ref * scale.  Must lead the twist brake (>1) so
     # rail/∇μ can accelerate before Cartesian is clamped, but stay below the
     # healthy-D band (σ≈0.11–0.13) — 2.0 kept D permanently escaping.
-    sigma_escape_ref_scale: float = 1.25
+    sigma_escape_ref_scale: float = 2.0
 
 
 class _ProxQpWbcBackend:
@@ -317,6 +317,7 @@ class QpIkController:
         self.qdot_prev = np.zeros(kin.nv, dtype=float)
         self._m_diag_lpf: np.ndarray | None = None
         self._task_scale_lpf: float = 1.0
+        self.n_insane: int = 0
         self.backend = self._make_backend(kin.nv)
 
         w_reg = np.asarray(self.cfg.reg, dtype=float)
@@ -350,6 +351,19 @@ class QpIkController:
         self.qdot_prev = np.zeros(self.kin.nv, dtype=float)
         self._m_diag_lpf = None
         self._task_scale_lpf = 1.0
+
+    @staticmethod
+    def _solution_is_sane(
+        x: np.ndarray, nv: int, lo_box: np.ndarray, hi_box: np.ndarray
+    ) -> bool:
+        """Reject a converged-looking iterate that violates its own box."""
+        if not np.all(np.isfinite(x)):
+            return False
+        qdot = x[:nv]
+        tol = 1e-3 * (1.0 + np.maximum(np.abs(lo_box), np.abs(hi_box)))
+        return bool(
+            np.all(qdot >= lo_box - tol) and np.all(qdot <= hi_box + tol)
+        )
 
     def _task_scale_sigma(self, sigma_min: float, dt: float) -> float:
         """LPF-smoothed W_task scale in [min_frac, 1] from σ_min."""
@@ -519,6 +533,13 @@ class QpIkController:
             np.ascontiguousarray(lo),
             np.ascontiguousarray(hi),
         )
+        if x is not None and not self._solution_is_sane(x, nv, lo_box, hi_box):
+            # ProxQP can report success on a diverged iterate: run
+            # 20260807_174032 was handed ‖qdot‖=6.1e9 rad/s with ‖slack‖=5.2e9
+            # and commanded it (the downstream clamp only bounds magnitude, not
+            # direction).  A solution outside its own velocity box is garbage.
+            self.n_insane += 1
+            x = None
         if x is None:
             # Solver failure: exponential decay of previous velocity.  Near
             # σ→0 decay harder — keeping a large qdot_prev is what drove the

@@ -323,7 +323,6 @@ def _run_scenario(
                 target,
                 f_ext_raw=force_raw,
                 dt_actual=DT_S,
-                v_tcp_z_actual=previous_actual_velocity_m_s,
             )[2]
         )
         actual_velocity_m_s = delayed_commands.popleft()

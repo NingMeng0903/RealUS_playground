@@ -98,8 +98,8 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         fail_qdot_decay=float(c.get("fail_qdot_decay", 0.85)),
         max_solve_ms=float(c.get("max_solve_ms", 8.0)),
         twist_sigma_floor=float(c.get("twist_sigma_floor", 0.08)),
-        twist_scale_lpf_tau_s=float(c.get("twist_scale_lpf_tau_s", 0.08)),
-        sigma_escape_ref_scale=float(c.get("sigma_escape_ref_scale", 1.25)),
+        twist_scale_lpf_tau_s=float(c.get("twist_scale_lpf_tau_s", 0.0)),
+        sigma_escape_ref_scale=float(c.get("sigma_escape_ref_scale", 2.0)),
     )
     if reg_arr is not None:
         qp_kwargs["reg"] = reg_arr
@@ -179,27 +179,16 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         v_lpf_tau_s=float(re_cfg.get("v_lpf_tau_s", 0.12)),
     )
 
-    hw_lw = (raw.get("hw", {}) or {}).get("lw100", {}) or {}
-    soft_min = float(hw_lw.get("soft_min_m", r.get("soft_min_m", 0.01)))
-    soft_max = float(hw_lw.get("soft_max_m", r.get("soft_max_m", 0.78)))
-    if soft_max <= soft_min:
-        soft_min, soft_max = 0.01, 0.78
     rail = RailLockConfig(
         mode=rail_mode,
         locked_style=locked_style,
-        q_ref_m=(
-            float(r["q_ref_m"])
-            if r.get("q_ref_m") is not None and str(r.get("q_ref_m")).lower() != "null"
-            else None
-        ),
+        q_ref_m=(float(r["q_ref_m"]) if r.get("q_ref_m") is not None else None),
         lock_gain=float(r.get("lock_gain", 200.0)),
         lock_reg_scale=float(r.get("lock_reg_scale", 100.0)),
         lock_vel_eps_m_s=float(r.get("lock_vel_eps_m_s", 0.0)),
         lock_hard_pin=bool(r.get("lock_hard_pin", True)),
         v_max_m_s=(float(r["v_max_m_s"]) if r.get("v_max_m_s") is not None else None),
         travel_m=float(r.get("travel_m", 0.80)),
-        soft_min_m=soft_min,
-        soft_max_m=soft_max,
     )
 
     return JointIkConfig(
@@ -227,10 +216,4 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             inner.get("centering_recovery_max_qdot_frac", 0.35)
         ),
         centering_recovery_tol=float(inner.get("centering_recovery_tol", 0.12)),
-        centering_recovery_exit_scale=float(
-            inner.get("centering_recovery_exit_scale", 1.35)
-        ),
-        centering_recovery_blend_tau_s=float(
-            inner.get("centering_recovery_blend_tau_s", 0.25)
-        ),
     )

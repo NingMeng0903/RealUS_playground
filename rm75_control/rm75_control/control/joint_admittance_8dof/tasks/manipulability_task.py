@@ -34,6 +34,10 @@ class ManipulabilityTask:
         self.last_mu: float = 0.0
         self.last_grad_norm: float = 0.0
 
+    def reset(self) -> None:
+        self.last_mu = 0.0
+        self.last_grad_norm = 0.0
+
     def gradient(self, q_rad: np.ndarray, *, exclude_rail: bool = False) -> np.ndarray:
         q = np.asarray(q_rad, dtype=float)
         eps = max(float(self.cfg.eps_rad), 1e-6)

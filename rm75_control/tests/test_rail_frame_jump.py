@@ -115,4 +115,5 @@ def test_make_rail_arrived_default_tol():
     from rm75_control.control.joint_admittance_8dof.api import make_rail_arrived
 
     sig = inspect.signature(make_rail_arrived)
-    assert sig.parameters["tol_mm"].default == 0.1
+    # e85 / current api.make_rail_arrived default (not the tighter 0.1 mm).
+    assert sig.parameters["tol_mm"].default == 0.5

@@ -1,0 +1,407 @@
+# Joint-space 8-DOF inner loop (rail_y + RM75 arm) — configs/joint_admittance_8dof.yaml
+#
+# URDF: rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf
+# Genesis viz: python -m rm75_control.control.joint_admittance_8dof.viewer.demo --show-viewer
+# Param spec: joint_admittance_8dof/config/slider_rail.yaml (default viewer scene)
+
+robot:
+  ip: "192.168.1.18"
+  port: 8080
+  thread_mode: 2
+
+timing:
+  dt_ms: 5.0
+
+# UDP arm-state push (rm_set_realtime_push).  Replaces the old TCP polling
+# path (rm_get_current_arm_state in a side thread) which collapsed to ~10 Hz
+# under 200 Hz rm_movej_canfd.  Requires robot.thread_mode: 2.
+realtime_push:
+  cycle: 1              # broadcast period = cycle * 5 ms (1 -> 200 Hz)
+  port: 8098
+  ip: "192.168.1.80"    # PC NIC on robot subnet — do not auto-detect on multi-NIC hosts
+  force_coordinate: 0   # 0=sensor frame (matches rm_get_force_data force_data)
+
+# Shared-memory state relay for split-process Genesis twin (same host).
+# Controller publishes @ hz; twin subscribes with run_with_twin.py --subscribe.
+# Match realtime_push (cycle=1 -> 200 Hz): attach-mode WBC reads this SHM every
+# 5 ms; 60 Hz relay stair-steps q_meas and causes periodic hitching on hardware.
+state_relay:
+  enabled: false
+  name: rm75_state
+  hz: 200
+
+inner:
+  control_frame: tool
+  euler_order: xyz
+  # Probe TCP lives in URDF (link_7_to_tcp). Keep false so pose D / sin-Y FK and
+  # Cartesian track use the probe frame (same taught q_deg → new Cartesian).
+  # Set true only when the pendant tool must override Pinocchio (old gripper flow).
+  sync_tcp_from_robot: false
+
+  v_scale: 0.8             # fraction of URDF joint velocity limit
+  # Acceleration limits are unit-explicit: the old scalar a_max mixed arm
+  # rad/s^2 with the rail's m/s^2 and gave the prismatic joint no effective
+  # accel bound (20 m/s^2 = 0 -> 0.2 m/s in 10 ms = no limit at all).
+  a_max_arm: 18.0          # rad/s^2 per arm joint (1..7)
+  # Rail accel: 0.30 m/s^2 → 0 to 0.20 m/s in ~0.67 s.  Big enough to keep the
+  # QP feasible under normal 2 cm/s scan demand (arm serves the primary task,
+  # rail rarely needs to change vel fast), soft enough that a Modbus RTU
+  # servo drive with its own internal a_max can trace the command without
+  # over-shoot / brake pulses.  Drop to 0.20 if the servo still 'kicks'.
+  a_max_rail_m_s2: 0.30    # m/s^2 for the rail
+  position_margin_deg: 2.0
+  # Rail hard stops are the motor travel [0, travel_m].  A non-zero margin
+  # teleports q_cmd off the end-stop (0 → margin) at v_max on the first tick
+  # and soft-PD hunts before the plan ever moves — keep 0.
+  position_margin_rail_mm: 0.0
+  # Command-lead anti-windup: a QP velocity bound (never a position jump) that
+  # stops q_cmd from leading the encoders by more than this much per joint.
+  # Some lag during a fast move is normal servo behaviour, not a fault - set
+  # generously above the following error you actually observe in telemetry
+  # (follow_err_deg column) during a healthy move; too tight throttles normal
+  # moves, too loose defeats the point. 0 disables the bound entirely.
+  resync_err_deg: 6.0            # arm joints 1..7 (degrees)
+  resync_err_rail_mm: 20.0       # rail joint 0 (millimetres — units matter!)
+
+  qp:
+    # Escande-style slack QP: task_weight >> reg makes the Cartesian equality
+    # "hard" (solver penalizes slack w heavily instead of sacrificing tracking
+    # for nullspace); reg stays small so secondary tasks act only in the
+    # nullspace.  Ratio kept near 1e4 (with mass_reg_floor below) so ProxQP
+    # stays well-conditioned - the old 1000/0.001*diag(M) ratio reached ~1e9
+    # and caused sporadic solver failures (one-tick freezes).
+    task_weight: [100.0, 100.0, 100.0, 50.0, 50.0, 50.0]
+    # Ultrasound-scan effort allocation on rail + RM75:
+    #   idx 0     rail (m)             1.0e-3  ABSOLUTE (mass-exempt): ~4x
+    #                                    dearer than wrist but ≪ singular-arm
+    #                                    cost — QP "prefers stillness" when
+    #                                    rail_extension is silent; FF/reach
+    #                                    weights (w_max≤6) overcome this when
+    #                                    the scan or extension error demands it.
+    #   idx 1..4  shoulder / elbow     1.0e-2
+    #   idx 5..7  wrist 1/2/3          5.0e-3
+    reg: [1.0e-3, 1.0e-2, 1.0e-2, 1.0e-2, 1.0e-2, 5.0e-3, 5.0e-3, 5.0e-3]
+    backend: proxqp
+    eps_abs: 1.0e-6
+    # Raised 1000 -> 3000 for deep-σ slack; keep first solve at 3000 but the
+    # ProxQP *retry* is capped at 400 iters in code so a singular tick cannot
+    # hold the GIL for multiple seconds (Ctrl+C appeared dead).
+    max_iter: 400             # realtime ProxQP cap (was 3000; long solves freeze MoveJ)
+    max_iter_cap: 400
+    max_solve_ms: 8.0         # skip retry if first attempt already burned wall budget
+    fail_qdot_decay: 0.85
+    twist_sigma_floor: 0.08   # scale Cartesian/force twist when σ < sigma_ref
+    warn_on_fail: false
+    # Chiaverini 1997 SR damping for nullspace projection.
+    sr_damping:
+      lam0: 0.05
+      sigma_ref: 0.08
+      sigma_floor: 1.0e-6
+    # σ-adaptive W_task: as σ_min drops, primary Cartesian weight scales toward
+    # task_weight_min_frac (LPF-smoothed) so slack absorbs infeasible v_cmd at
+    # rail limits / deep singularities instead of saturating qdot with ~0 TCP
+    # motion.  rail_extension still coordinates the rail; this handles the
+    # residual when the rail is pinned or the arm is ill-conditioned.
+    task_weight_min_frac: 0.05
+    task_weight_lpf_tau_s: 0.25
+    # Mass-weighted reg: multiply reg[i] by max(diag(M(q))[i], mass_reg_floor).
+    # Keeps the shoulder naturally dearer than the wrist inside the arm
+    # cluster (stops shoulder bang-bang).
+    use_mass_weighted_reg: true
+    mass_reg_floor: 0.05
+    # Rail exemption from mass weighting: diag(M)[0] is the full ~9.8 kg
+    # carriage+arm mass, which over-priced rail motion 30-400x vs the arm.
+    # With the exemption the rail's cost is exactly reg[0] (absolute).
+    mass_weight_exempt_rail: true
+    # LPF (s) on the mass-weighted reg diagonal: per-tick diag(M(q)) made the
+    # QP Hessian jitter and degraded ProxQP warm starts (a vibration input
+    # near singular poses).  0 disables.
+    mass_reg_lpf_tau_s: 0.2
+    # Kinematic nullspace for secondary projection (dyn N_dyn is oblique and
+    # amplified tiny wrist inertias; keep false unless tuning with care).
+    use_dyn_nullspace: false
+    # Faverjon/Tournassoud joint-limit velocity damper: speed toward a limit
+    # ramps to 0 over this band before the position margin (replaces the
+    # old binary one-sided bound at |u|>0.95, which chattered).  Units are
+    # per joint: rad for the arm, METRES for the rail — the old scalar band
+    # applied 0.15 "rad" = 15 cm to the rail and throttled it over 60% of
+    # its ±0.25 m travel.
+    limit_damper_band_rad: 0.15      # arm joints 1..7 (rad)
+    limit_damper_band_rail_m: 0.02   # rail joint 0 (m)
+
+  collision:
+    enabled: true          # CBF self-collision (low-poly STL)
+    d_safe: 0.01
+    d_activate: 0.04
+    gamma: 5.0
+    max_pairs: 8
+
+  nullspace:
+    k_center: 1.0
+    k_limit: 2.0
+    activation: 0.85
+    weights: [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    # Comfortable RM75 posture (rail=0, J1=0, J2=-45, J3=0, J4=90, J5=0, J6=45, J7=0).
+    # Nullspace centering attractor during scan/track — independent of taught D.
+    q_nominal_deg: [0.0, 0.0, -45.0, 0.0, 90.0, 0.0, 45.0, 0.0]
+    # Move-phase nullspace: ascend Yoshikawa μ instead of centering (see
+    # manipulability_task.py).  Enabled by d_sin_tool_y move_enter().
+    manipulability:
+      k_mu: 0.8
+      eps_rad: 5.0e-4
+      sigma_fade_ref: 0.12
+
+  # Viscous damping on composed secondary qdot (1/s); scales up near limits.
+  nullspace_d_null: 0.5
+  nullspace_d_null_adaptive: 1.0
+  # Per-joint cap on the soft secondary tasks (centering/arm/damping) as a
+  # fraction of the URDF velocity limit.  Near a singularity the SR projector
+  # opens (N -> I); without this cap the centering gradient from a straight
+  # arm drove rad/s-scale self-motion while the Cartesian task was soft.
+  nullspace_max_qdot_frac: 0.2
+
+  arm_angle:
+    enabled: true
+    k_psi: 1.0
+    psi_ref_deg: null      # null -> capture at reset / set by the app after IK
+
+  # Preferred-extension rail coordination (Yamamoto & Yun 1994): two independent
+  # channels in COUPLED mode — (1) velocity-gated FF projects vel_ff onto the
+  # rail column for sustained scans; (2) extension-gated reach holds arm length
+  # near d_pref before the arm approaches singularity (arm precision collapses
+  # near σ≈0 faster than rail response lag — do not wait for "workspace exhausted").
+  # Idle: both silent + reg[0]=1e-3 → rail stays put.  Centering NOT σ-faded
+  # during coupled scan (see secondary_composer).
+  rail_extension:
+    enabled: true
+    k_ext: 2.0             # reach push-back gain (1/s per m of extension error)
+    k_ff: 1.0              # 100% vel_ff → rail column projection
+    v_ff_thr_m_s: 0.005    # FF silent below 5 mm/s (micro-adjust / jitter)
+    v_ff_span_m_s: 0.015   # FF fully on by ~20 mm/s (2 cm/s scan is "awake")
+    e0_m: 0.02             # reach dead zone: arm handles ±2 cm inside d_pref
+    e1_m: 0.08             # full reach authority by 8 cm drift
+    w_max: 2.0             # QP weight cap (≪ W_task=100)
+    v_max_m_s: 0.08        # cap on the task's desired rail velocity
+    limit_margin_m: 0.08   # C¹ smoothstep handoff band before physical stop (8 cm)
+    # Bug 2 — σ-escape.  INVARIANT (do not break lightly, see plan §3):
+    #   w_max * (1 + k_sigma_boost) = 2.0 * 3 = 6.0   ≪   W_task = 100
+    # keeps the QP preference order  slack > rail > free-arm.  Any change
+    # here should be re-validated by tests/test_qp_smart_allocation.py.
+    k_sigma_boost: 2.0     # w_ext boosts up to 3x as σ → 0
+    k_esc: 0.5             # σ-escape velocity gain (m/s per unit σ gradient)
+    w_sigma_floor: 1.0     # baseline w inside dead zone when σ depressed
+    # move→D pose attractor (preset=move → mode=pose_attract):
+    # primary = soft P to q_target[0]; σ_min is a dead-zoned guardrail only.
+    k_pose: 2.0            # 1/s soft P on (y_target - y_rail)
+    pose_e0_m: 0.005       # settle dead-zone (stop hunting at target)
+    pose_e1_m: 0.04        # full pose-attract weight by 4 cm
+    pose_w_max: 4.0        # ≪ W_task=100
+    sigma_guard_enter: 0.45
+    sigma_guard_exit: 0.70
+    v_guard_max_m_s: 0.04  # guardrail cannot yank rail off the pose path
+    v_lpf_tau_s: 0.12      # macro-micro LPF on desired rail velocity
+
+  rail:
+    # Two-layer rail mode:
+    #   mode: coupled            — rail is a normal QP joint (reg/v_max/a_max)
+    #   mode: locked             — rail motion is externally imposed:
+    #     locked_style: hold        hold position (only when mode=locked; hold@D phase also forces lock)
+    #     locked_style: rail_only   plan drives rail, arm frozen
+    #     locked_style: tcp_fixed   plan drives rail, arm QP holds TCP
+    mode: coupled              # scan: rail joins QP (set locked for pin-only scan)
+    locked_style: hold
+    # Planning default (rail at -Y end). HOLD without an explicit q_ref captures
+    # live q_cmd[0] — this value must NOT be treated as the hybrid@D lock target.
+    q_ref_m: 0.0
+    # HOLD-only lock knobs:
+    lock_gain: 200.0
+    lock_reg_scale: 100.0     # tempered from 500 -> 100 (HOLD still very rigid)
+    lock_vel_eps_m_s: 0.0
+    lock_hard_pin: true
+    # Geometry / limits (also mirrored in URDF; keep in sync):
+    # rail_y = 0 at -Y end stop, rail_y = travel_m at +Y end (0..800 mm).
+    v_max_m_s: 0.20           # 20 cm/s (matches motor + URDF velocity limit)
+    travel_m: 0.80            # [0, 0.80] m
+
+frames:
+  euler_order: xyz
+  control_frame: tool
+
+force:
+  desired_z_n: 1.0
+  phi_source: phi_recommended
+  fc_hz: 6.0
+  min_samples: 22
+  # Keemink 2018 Guideline 2 / Eq.(11): lower force-LPF group delay reduces
+  # the virtual-mass passivity floor. 10 Hz ≈ half the previous 6 Hz delay.
+  causal_fc_hz: 10.0
+  causal_order: 2
+  causal_history: 5
+  # Inertia compensation off: on the joint stream it injected command-side
+  # acceleration noise into F_ext. Re-enable only after verifying with telemetry.
+  use_inertia: false
+
+hybrid_motion:
+  # Tool-Z force admittance: trend damping + Dimeas inertia + Ke-normalized FF
+  # + force-space barrier. force_axes / track_axes / kp_pos are tool-frame.
+  force_axes: [0, 0, 1, 0, 0, 0]
+  track_axes: [1, 1, 0, 1, 1, 1]
+  kp_pos: [2.0, 2.0, 0.0, 1.5, 1.5, 1.5]
+  pos_err_deadband_m: 0.0005
+  pos_correction_max_m_s: 0.08
+  system_delay_s: 0.015
+  contact_threshold_n: 0.8
+  contact_use_fz_only: true
+  contact_release_n: 0.25
+  contact_release_ticks: 40
+  deadband_n: 0.05
+  deadband_width_n: 0.05
+  max_velocity: [0.22, 0.22, 0.10, 0.6, 0.6, 0.6]
+  max_acceleration: [1.0, 1.0, 0.8, 2.0, 2.0, 2.0]
+  admittance_mass_z: 1.0
+  admittance_damping_z: 25.0   # ke_critical free-space seed only
+  damping_law: trend
+  damping_base_z: 15.0
+  damping_alpha_e: 1.0          # tracking only; hand guidance uses base
+  damping_beta_e_edot: 2.5
+  damping_max_z: 200.0
+  edot_lpf_s: 0.02
+  seek_vz_m_s: 0.012
+  seek_force_sat_n: 1.0
+  max_vz_tool_m_s: 0.10
+  desired_force_ramp_s: 0.5
+  force_barrier:
+    enabled: true
+    t_react_s: 0.030
+    budget_min_n: 0.5
+    budget_frac: 0.4
+    f_keep_n: 0.5
+    v_ref_m_s: 0.05
+    v_min_retract_m_s: 0.002
+    fdot_lpf_s: 0.040
+  var_damping_enabled: true
+  var_damping_omega_c_hz: 2.5
+  var_damping_lambda: 0.951
+  var_damping_f_max_n: 7.0
+  var_damping_d_u: 0.0
+  var_damping_m_u: 4.0
+  var_damping_m_max: 5.0
+  var_damping_dc_alpha: 0.02
+  adaptive_ke:
+    enabled: true
+    zeta: 0.9
+    ke_initial: 80.0
+    ke_min: 40.0
+    ke_max: 2500.0
+    ke_impact_initial: 1500.0
+    ke_forgetting: 0.995
+    ke_forgetting_inc: 0.88
+    ke_idle_decay_s: 2.0
+    ke_soft_floor: 300.0
+    ke_detach_decay_s: 1.0
+    displacement_source: admittance
+    dx_threshold_m: 0.00008
+    contact_force_n: 0.8
+    settle_ticks: 10
+    gate_lateral_velocity: true
+    lateral_vel_gate_m_s: 0.02
+    gate_df_spike: true
+    df_spike_n: 4.0
+    f_err_gate_n: 1.2
+    f_err_gate_frac: 0.35
+    f_err_gate_floor_n: 3.0
+    idle_decay_is_gate: 0.15
+    bd_min: 25.0
+    bd_max: 200.0
+    bd_slew_max: 400.0
+    ke_slew_max: 1200.0
+  proactive_feedforward: true
+  proactive_retract_only: false
+  proactive_gain_mode: ke_normalized
+  tau_ff_s: 0.20
+  ke_floor_ff: 80.0
+  tau_track_s: 0.08
+  alpha_leak: 2.0
+  proactive_gain: 0.10
+  proactive_retract_gain: 0.10
+  proactive_leak_s: 0.3
+  v_r_max_m_s: 0.06
+  proactive_press_is_gate_start: 0.20
+  proactive_press_is_gate: 0.60
+  proactive_press_drive_max: 1.0
+  proactive_retract_drive_max: 1.0
+  proactive_reset_on_reversal: true
+  force_scale_min_n: 0.20
+  force_scale_fraction: 0.15
+
+# LW100 rail servo (Modbus RTU over USR-TCP232).
+# Soft CSP via FA24: same cascade as apps/lw100_vel_pos_follow_demo.py
+#   WBC q_cmd[0] → soft PD(target − encoder) → FA24; encoder ALSO feeds WBC
+#   q_meas[0] so arm FK/tracking can compensate motor lag/reversal.
+# Tuned empty-load: kp=18, kd=0.22, a_max=0.8, vmax=0.15 (FA23=900), FA40/41=200 ms.
+# Soft faults → HOLD (stay ARMED); hard PANIC only on garbage encoder.
+# Host Modbus: timeout_s≈0.06, retries=1 (never stack into multi-second freezes).
+# Drive: FA74=1 (comms-error → alarm+stop) written at velocity-session arming.
+# USR-TCP232-304 (manual): enable KeepAlive + short 超时重启/无数据重启 on the
+# converter web UI so a dead TCP link is reset without host intervention.
+# Workflow without limit switches:
+#   1) Manually push carriage to -Y end (mechanical 0) before starting controller.
+#   2) zero_mode=current → start pose becomes rail_y=0.
+#   3) home_on_exit=false → exit only estop/hold + disable (NO auto home / crawl).
+# OOB targets are REJECTED (never silently clamped to travel end).
+hw:
+  lw100:
+    enabled: true
+    host: 192.168.0.7
+    port: 8234
+    slave: 1
+    lead_mm: 10.0
+    zero_mode: current
+    counts0: 0
+    sign: 1
+    enable_settle_s: 0.3
+    # Cold start: prove worker Modbus read+FA24=0 before any set_target / move→D.
+    arm_good_reads: 30          # ~0.6 s @ 50 Hz consecutive healthy polls
+    arm_settle_s: 0.8           # extra FA24=0 hold after good polls
+    arm_max_span_mm: 2.0
+    arm_timeout_s: 10.0
+    fault_margin_m: 0.05
+    poll_hz: 50
+    inter_frame_delay_s: 0.0005
+    timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0
+    retries: 1
+    deadband_mm: 0.5
+    max_speed_rpm: 900       # FA23: 0.15 m/s @ 10 mm/rev (gentler vs Er-01 on move→D)
+    # Soft CSP via FA24: same cascade as apps/lw100_vel_pos_follow_demo.py
+    # Soft faults (lag / brief Modbus) → HOLD (FA24=0, stay ARMED). Hard PANIC
+    # only on garbage encoder. Do not invent complex re-arm recovery.
+    # Tuned gentler vs overshoot hunting: kp=18, a_max=0.8, vmax=0.15.
+    vel_kp: 18.0
+    vel_kd: 0.22
+    vel_ff_gain: 1.0
+    vel_max_m_s: 0.15
+    vel_amax_m_s2: 0.8
+    vel_deadband_mm: 0.02
+    target_timeout_s: 0.25
+    encoder_freeze_s: 1.0
+    encoder_freeze_min_v_m_s: 0.02
+    encoder_freeze_min_move_mm: 0.5
+    accel_ms: 200            # FA40 — manual: Er-01 if accel too short at start
+    decel_ms: 200            # FA41
+    scurve_ms: 30            # FA42
+    busy_speed_rpm: 1
+    home_on_exit: false
+    home_speed_rpm: 900
+    home_approach_mm: 40
+    home_timeout_s: 60
+    verbose: false
+
+startup:
+  pose_slot_q_deg: null
+  duration_s: 20.0
+  move_speed: 20
+  reference: hold
+  enable_force: false
+  follow: true
+  realtime: false
+  watchdog_timeout_s: 0.1

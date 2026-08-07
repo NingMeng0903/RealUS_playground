@@ -1,4 +1,4 @@
-"""Runtime 8-DOF posture-attractor contract (4d15c1d nullspace policy)."""
+"""Runtime 8-DOF posture attractor + c3ba58e XOR nullspace (∇μ replaces centering)."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ class _FakeManip:
 
 
 def test_manip_xor_replaces_centering_when_armed() -> None:
-    """4d15c1d: manip active → centering off for that tick."""
+    """c3ba58e: manipulability_active → only ∇μ (centering fully off)."""
     task = _task()
     composer = SecondaryComposer(
         task,
@@ -68,19 +68,59 @@ def test_manip_xor_replaces_centering_when_armed() -> None:
     )
     q = np.zeros(8)
     q[5] = np.deg2rad(120.0)
+    q[2] = np.deg2rad(-90.0)
     center_only = composer.compose(
         q, None, None, arm_suppressed=True, manipulability_active=False
     )
     manip_only = composer.compose(
-        q, None, None, arm_suppressed=True, manipulability_active=True
+        q,
+        None,
+        None,
+        arm_suppressed=True,
+        manipulability_active=True,
+        sigma_min=0.02,
+        sigma_ref=0.08,
+        centering_sigma_fade=False,
     )
     assert center_only[5] < 0.0
     assert manip_only[5] == pytest.approx(0.5)
-    assert manip_only[1] == pytest.approx(0.0)
+    # XOR: orthogonal centering joints are also dropped while manip is armed.
+    assert manip_only[2] == pytest.approx(0.0)
+
+
+def test_centering_returns_when_manip_inactive() -> None:
+    """When escape is off, centering pulls all arm joints (incl. J6)."""
+    task = _task()
+    composer = SecondaryComposer(
+        task,
+        None,
+        manipulability=_FakeManip(),
+        v_max=np.ones(8) * 10.0,
+        max_qdot_frac=1.0,
+    )
+    q = np.zeros(8)
+    q[6] = np.deg2rad(90.0)
+    q[2] = np.deg2rad(-90.0)
+    full = composer.compose(
+        q, None, None, arm_suppressed=True, manipulability_active=False
+    )
+    escaping = composer.compose(
+        q,
+        None,
+        None,
+        arm_suppressed=True,
+        manipulability_active=True,
+        sigma_min=0.01,
+        centering_sigma_fade=False,
+    )
+    assert abs(full[6]) > 0.0
+    assert abs(full[2]) > 0.0
+    assert escaping[6] == pytest.approx(0.0)
+    assert escaping[2] == pytest.approx(0.0)
+    assert escaping[5] == pytest.approx(0.5)
 
 
 def test_force_manip_when_sigma_below_ref() -> None:
-    """4d15c1d loop policy: COUPLED scan arms ∇μ when σ < sigma_ref."""
     sigma_ref = 0.08
     sigma_now = 0.05
     force_manip = sigma_ref > 1e-9 and sigma_now < sigma_ref

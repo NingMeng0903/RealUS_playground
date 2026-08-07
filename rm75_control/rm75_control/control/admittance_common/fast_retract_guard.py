@@ -1,8 +1,9 @@
 """Low-latency veto for stale active over-force retraction.
 
 The 6 Hz force used by the passive admittance remains untouched.  Compensated
-raw force clears/holds a negative active reference when a drop is observed or
-*predicted* (cmd→TCP stop delay).  This guard never commands a press.
+raw force is used only to clear/hold a negative active reference after a force
+drop has already been observed.  Consequently this guard can remove injected
+motion but can neither command a press nor disable passive over-force escape.
 """
 
 from __future__ import annotations
@@ -26,12 +27,6 @@ class FastRetractGuardConfig:
     rearm_confirm_s: float = 0.010
     min_hold_s: float = 0.025
     max_sensor_age_s: float = 0.020
-    # Predict force at TCP-stop horizon; stop retract before low-side cross.
-    # Requires high-side arm + fast fall so slow surface tracking is untouched.
-    retract_stop_prediction_s: float = 0.045
-    retract_stop_margin_n: float = 0.10
-    retract_stop_confirm_s: float = 0.005
-    retract_stop_fdot_n_s: float = 15.0
 
     @classmethod
     def from_dict(cls, raw: dict) -> FastRetractGuardConfig:
@@ -50,18 +45,6 @@ class FastRetractGuardConfig:
             rearm_confirm_s=float(p.get("rearm_confirm_s", 0.010)),
             min_hold_s=float(p.get("min_hold_s", 0.025)),
             max_sensor_age_s=float(p.get("max_sensor_age_s", 0.020)),
-            retract_stop_prediction_s=float(
-                p.get("retract_stop_prediction_s", 0.045)
-            ),
-            retract_stop_margin_n=float(
-                p.get("retract_stop_margin_n", 0.10)
-            ),
-            retract_stop_confirm_s=float(
-                p.get("retract_stop_confirm_s", 0.005)
-            ),
-            retract_stop_fdot_n_s=float(
-                p.get("retract_stop_fdot_n_s", 15.0)
-            ),
         )
 
 
@@ -74,26 +57,20 @@ class FastRetractGuard:
     def reset(self) -> None:
         self._raw_window.clear()
         self.fast_force_n = float("nan")
-        self.force_dot_fast = 0.0
-        self.force_pred_down = float("nan")
         self.armed = False
         self.hold = False
         self.valid = False
         self._stop_timer_s = 0.0
         self._rearm_timer_s = 0.0
         self._hold_timer_s = 0.0
-        self._prev_fast_force = float("nan")
         self.stop_count = 0
         self.rearm_count = 0
-        self.predictive_stop_count = 0
 
     def _update_fast_force(self, raw_force_n: float, dt_s: float) -> float:
         self._raw_window.append(float(raw_force_n))
         raw_median = float(np.median(np.asarray(self._raw_window, dtype=float)))
         if not np.isfinite(self.fast_force_n):
             self.fast_force_n = raw_median
-            self._prev_fast_force = raw_median
-            self.force_dot_fast = 0.0
             return self.fast_force_n
         fc = max(float(self.cfg.cutoff_hz), 0.0)
         alpha = (
@@ -104,13 +81,6 @@ class FastRetractGuard:
         self.fast_force_n += float(np.clip(alpha, 0.0, 1.0)) * (
             raw_median - self.fast_force_n
         )
-        if dt_s > 1e-9 and np.isfinite(self._prev_fast_force):
-            raw_dot = (self.fast_force_n - self._prev_fast_force) / dt_s
-            # Mild LPF on ḟ_fast (~8 ms) to reject single-tick spikes.
-            tau = 0.008
-            a_dot = 1.0 - math.exp(-dt_s / tau)
-            self.force_dot_fast += a_dot * (raw_dot - self.force_dot_fast)
-        self._prev_fast_force = self.fast_force_n
         return self.fast_force_n
 
     def update(
@@ -147,9 +117,6 @@ class FastRetractGuard:
             # than blend with pre-dropout force.
             self._raw_window.clear()
             self.fast_force_n = float("nan")
-            self.force_dot_fast = 0.0
-            self.force_pred_down = float("nan")
-            self._prev_fast_force = float("nan")
             self.armed = False
             self.hold = False
             self._stop_timer_s = 0.0
@@ -167,17 +134,15 @@ class FastRetractGuard:
             float(cfg.rearm_margin_n),
             float(cfg.rearm_margin_fraction) * target,
         )
-        # Crossing guard: arm on the high side; legacy stop on the low side.
-        # Predictive stop uses falling ḟ × T_stop so retract ends near Fd
-        # *before* the delayed TCP finishes lifting off.
+        # This is a *crossing* guard, not an over-force regulator.  Arm on
+        # the high side, then stop only after the fast/raw path has crossed
+        # the target's low side while the delayed control force still asks
+        # for retraction.  Using ``target + stop_margin`` as the stop level
+        # erased the negative reference needed to follow a surface moving
+        # steadily toward the probe, especially at a 1 N setpoint.
         arm_level = target + stop_margin
         stop_level = max(target - stop_margin, 0.0)
         rearm_level = target + rearm_margin
-        pred_horizon = max(float(cfg.retract_stop_prediction_s), 0.0)
-        self.force_pred_down = float(
-            fast_force + min(self.force_dot_fast, 0.0) * pred_horizon
-        )
-        pred_stop_level = target + max(float(cfg.retract_stop_margin_n), 0.0)
         retract_episode = (
             float(filtered_eff_n) < 0.0
             and float(active_reference_m_s) <= 0.0
@@ -219,34 +184,19 @@ class FastRetractGuard:
             self._stop_timer_s = 0.0
             return False
 
-        # Predictive: armed over-force episode + fast fall whose Teff-horizon
-        # prediction reaches Fd.  Slow surface tracking (small |ḟ|) is ignored.
-        fdot_gate = max(float(cfg.retract_stop_fdot_n_s), 0.0)
-        predictive = (
-            self.armed
-            and pred_horizon > 0.0
-            and self.force_dot_fast <= -fdot_gate
-            and self.force_pred_down <= pred_stop_level
-        )
-        low_side = self.armed and fast_force <= stop_level
-        if predictive or low_side:
+        if self.armed and fast_force <= stop_level:
             self._stop_timer_s += dt
-            if predictive:
-                confirm = max(float(cfg.retract_stop_confirm_s), 0.0)
-            else:
-                confirm = max(
-                    float(cfg.stop_confirm_s),
-                    0.020 if instability_index > 0.6 else 0.0,
-                )
-            if self._stop_timer_s + 1e-12 >= confirm:
+            confirm = max(
+                cfg.stop_confirm_s,
+                0.020 if instability_index > 0.6 else 0.0,
+            )
+            if self._stop_timer_s + 1e-12 >= max(confirm, 0.0):
                 self.hold = True
                 self._hold_timer_s = 0.0
                 self._stop_timer_s = 0.0
                 self.stop_count += 1
-                if predictive:
-                    self.predictive_stop_count += 1
         else:
             # Stay armed throughout the hysteresis band, but confirmation is
-            # continuous-time only while a stop condition is true.
+            # continuous-time below the low-side crossing only.
             self._stop_timer_s = 0.0
         return self.hold

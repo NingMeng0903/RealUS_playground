@@ -583,17 +583,10 @@ def build_sin_tool_y_program(
         if params.cartesian_max_lin_vel is not None
         else 0.4
     )
+    rail_m = float(inner_cfg.rail.q_ref_m)
+
     q_target_rad = np.asarray(params.q_target_rad, dtype=float).reshape(-1)
     q0_rad = np.asarray(params.q0_rad, dtype=float).reshape(-1)
-    # yaml q_ref_m may be null (live encoder / calibrated zero). Prefer task seed.
-    if inner_cfg.rail.q_ref_m is not None:
-        rail_m = float(inner_cfg.rail.q_ref_m)
-    elif q0_rad.size >= 1 and np.isfinite(q0_rad[0]):
-        rail_m = float(q0_rad[0])
-    elif q_target_rad.size >= 1 and np.isfinite(q_target_rad[0]):
-        rail_m = float(q_target_rad[0])
-    else:
-        rail_m = float(getattr(inner_cfg.rail, "soft_min_m", 0.01))
     # Wait/SRS target must be FK(q_target) after TCP sync — raw params.pose_d can
     # still carry an ArmTip/IK residual orientation that blocks arrival forever
     # while track_err_mm (position-only) looks fine.
@@ -653,11 +646,10 @@ def build_sin_tool_y_program(
 
     if params.rail_move_cm > 0.0:
         sign = 1.0 if params.rail_move_dir == "+y" else -1.0
-        rail0 = float(rail_m)
+        rail0 = float(inner_cfg.rail.q_ref_m if inner_cfg.rail.q_ref_m is not None else 0.0)
         delta_m = sign * float(params.rail_move_cm) * 0.01
         rail_target = rail0 + delta_m
-        lo = float(getattr(inner_cfg.rail, "soft_min_m", 0.0))
-        hi = float(inner_cfg.rail.travel_m)
+        lo, hi = 0.0, float(inner_cfg.rail.travel_m)
         if not (lo <= rail_target <= hi):
             raise RuntimeError(
                 f"rail target {rail_target * 100:.1f}cm outside travel "
@@ -715,9 +707,7 @@ def build_sin_tool_y_program(
             # controller-driven-rail behaviour. The velocity-mode motor just follows
             # the resulting smooth q_cmd[0]; no rail pinning, no arm-only contortion.
             hybrid_sec = SecondaryPolicy(preset="track", qdot_ff="off")
-            # Looser than 10/40: near singularity TCP lag (~25–30 mm) used to
-            # freeze t_ref (gov→0.33) and trap straight-elbow recovery.
-            hybrid_gov = GovernorSpec(err_ok_mm=15.0, err_max_mm=80.0)
+            hybrid_gov = GovernorSpec(err_ok_mm=10.0, err_max_mm=40.0)
         specs.append(
             phase_hybrid_track(
                 hybrid_ref,

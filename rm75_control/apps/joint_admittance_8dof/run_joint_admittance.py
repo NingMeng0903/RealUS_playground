@@ -259,11 +259,13 @@ def _run_controller_service(
             rail_m_fn.reset_idle()
             if rail_bridge is not None and rail_bridge.enabled:
                 # Prefer non-blocking path if abort already set (Ctrl+C).
+                # Normal exit: hold (FA24=0) unless residual is large — avoid
+                # re-opening follow for sub-mm settle crawls (3–5 r/min hum).
                 try:
                     if stop or rail_bridge._abort.is_set():
                         rail_bridge.estop()
                     else:
-                        rail_bridge.settle_and_hold()
+                        rail_bridge.hold_or_settle_after_task(settle_if_err_mm=2.0)
                 except Exception:
                     try:
                         rail_bridge.estop()

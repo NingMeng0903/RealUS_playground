@@ -136,6 +136,28 @@ def test_80cm_scan_stays_well_conditioned():
     assert _rail_reversals(out["rail"]) <= 10, _rail_reversals(out["rail"])
 
 
+def test_real_scan_rail_does_not_hunt():
+    """16 cm pp (the app default): the rail reverses only at sine turnarounds.
+
+    Extra reversals are the σ-escape fighting the scan feedforward, which is
+    the left/right rocking seen near singularity on hardware: ∂σ/∂y holds one
+    sign while the sweep flips every half period, so any escape allowed to
+    outrank the primary shows up here as more than 2 reversals per period.
+    """
+    inner = _make_inner()
+    amplitude = 0.08
+    periods = 4
+    omega = 0.04 / amplitude
+    n = int(periods * 2.0 * np.pi / omega / inner.cfg.dt) + 10
+    out = _run_scan(inner, amplitude, n)
+
+    reversals = _rail_reversals(out["rail"])
+    assert reversals <= 2 * periods, reversals
+    assert out["err_mm"].max() < 1.0, out["err_mm"].max()
+    assert out["elbow_deg"].min() > 35.0, out["elbow_deg"].min()
+    assert out["sigma"].min() > 0.07, out["sigma"].min()
+
+
 def test_small_scan_rail_stays_in_sweet_spot():
     """8 cm pp scan: FF recruits the rail for gross Y, but reach error stays
     inside e0_m so the arm remains in its sweet spot (no straightening)."""

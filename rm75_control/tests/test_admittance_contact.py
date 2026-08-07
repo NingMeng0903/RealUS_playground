@@ -318,9 +318,6 @@ def test_production_stack_tracks_moving_surface_at_1n_and_5n():
                     target,
                     f_ext_raw=force,
                     dt_actual=dt,
-                    v_tcp_z_actual=velocity_tail[-1]
-                    if velocity_tail
-                    else 0.0,
                 )[2]
                 tcp_z += velocity * dt
                 surface_z += surface_velocity * dt

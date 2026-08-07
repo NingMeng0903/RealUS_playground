@@ -467,6 +467,42 @@ class RailServoBridge:
             self._follow_enabled = False
         self.kill_motion()
 
+    def hold_or_settle_after_task(self, *, settle_if_err_mm: float = 2.0) -> bool:
+        """Task-end default: snap-hold (FA24=0). Settle only on large residual.
+
+        Re-opening follow for sub-mm residuals made FA24 crawl at 3–5 r/min
+        (stall_v_floor) after Window C exits — sometimes 0 (already in tol),
+        sometimes audible crawl.  Daily scans should exit silent.
+        """
+        if not self.enabled or self._drive is None:
+            return True
+        with self._lock:
+            if self._panic or not self._armed or not self._calibrated:
+                self.hold_current()
+                return False
+            meas = float(self._measured_m)
+            target = float(self._target_m)
+        if not (math.isfinite(meas) and math.isfinite(target) and self._encoder_sane(meas)):
+            print("lw100 rail: task end hold (encoder/target invalid)", flush=True)
+            self.hold_current()
+            return False
+        err_mm = abs(target - meas) * 1000.0
+        threshold = max(float(settle_if_err_mm), 0.0)
+        if err_mm <= threshold:
+            print(
+                f"lw100 rail: task end hold (residual={err_mm:.2f} mm "
+                f"≤ {threshold:.1f} mm)",
+                flush=True,
+            )
+            self.hold_current()
+            return True
+        print(
+            f"lw100 rail: task end settle (residual={err_mm:.2f} mm "
+            f"> {threshold:.1f} mm)",
+            flush=True,
+        )
+        return self.settle_and_hold()
+
     def settle_and_hold(
         self,
         *,
@@ -475,14 +511,15 @@ class RailServoBridge:
     ) -> bool:
         """Close residual to last target (±tol), then freeze (FA24=0).
 
-        Used at task end so a latched-FA24 overshoot is corrected before follow
-        drops. Returns True if settled within tolerance.
+        Used when residual is large after a task. Returns True if settled
+        within tolerance. Always ends in ``hold_current``.
         """
         if not self.enabled or self._drive is None:
             return True
         tol_m = max(float(self.config.settle_tol_mm if tol_mm is None else tol_mm), 0.01) * 1e-3
         timeout = max(float(self.config.settle_timeout_s if timeout_s is None else timeout_s), 0.1)
         deadline = time.monotonic() + timeout
+        crawled = False
         with self._lock:
             if self._panic or not self._armed or not self._calibrated:
                 self.hold_current()
@@ -491,6 +528,9 @@ class RailServoBridge:
             self._follow_enabled = True
             self._last_target_rx_mono = time.monotonic()
             target = float(self._target_m)
+            meas0 = float(self._measured_m)
+        if math.isfinite(target) and math.isfinite(meas0) and abs(target - meas0) > tol_m:
+            crawled = True
         while time.monotonic() < deadline:
             if self._abort.is_set() or self._stop.is_set():
                 break
@@ -502,6 +542,12 @@ class RailServoBridge:
                 self._follow_enabled = True
                 self._last_target_rx_mono = time.monotonic()
             if self._encoder_sane(meas) and abs(target - meas) <= tol_m:
+                err_mm = abs(target - meas) * 1000.0
+                print(
+                    f"lw100 rail: settled residual={err_mm:.2f} mm "
+                    f"(crawled={int(crawled)}); hold",
+                    flush=True,
+                )
                 self.hold_current()
                 return True
             time.sleep(0.02)
@@ -511,7 +557,7 @@ class RailServoBridge:
         err_mm = abs(target - meas) * 1000.0 if math.isfinite(target) and math.isfinite(meas) else float("nan")
         print(
             f"lw100 rail: settle timeout — residual={err_mm:.2f} mm "
-            f"(tol={tol_m * 1000:.2f} mm); freezing",
+            f"(tol={tol_m * 1000:.2f} mm, crawled={int(crawled)}); freezing",
             flush=True,
         )
         self.hold_current()
@@ -1667,11 +1713,22 @@ class RailServoBridge:
                         v_des = max(-lim, min(lim, v_des))
 
                     # Stall-safe: worst-case latched FA24 overshoot ≤ |err|.
-                    v_allow = max(abs(err) / max_stall_s, stall_v_floor)
+                    # Settle substate: no stall_v_floor — the floor forced FA24
+                    # ≈2–5 r/min crawls on sub-mm residuals after task end.
+                    if settling:
+                        v_allow = abs(err) / max_stall_s
+                    else:
+                        v_allow = max(abs(err) / max_stall_s, stall_v_floor)
                     v_des = max(-v_allow, min(v_allow, v_des))
+
+                    # Inside settle / deadband with no feedforward: hard zero.
+                    if abs(err) <= max(deadband_m, settle_tol_m) and abs(v_ff) < 0.001:
+                        v_des = 0.0
 
                     dv_max = a_max * dt
                     v_cmd = max(prev_v_cmd - dv_max, min(prev_v_cmd + dv_max, v_des))
+                    if abs(err) <= max(deadband_m, settle_tol_m) and abs(v_ff) < 0.001:
+                        v_cmd = 0.0
 
                     # Any slow/unhealthy poll: do NOT keep streaming velocity.
                     if not poll_ok:

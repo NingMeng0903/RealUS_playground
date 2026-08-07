@@ -178,8 +178,12 @@ def test_feedforward_weight_in_dead_zone_during_scan():
     assert w_ff > 0.5
 
 
-def test_sigma_escape_anti_opposes_primary_ff():
-    """4d15c1d: opposing σ-escape is zeroed whenever |v_primary| is nonzero."""
+def test_sigma_escape_anti_oppose_only_when_healthy():
+    """Opposing σ-escape is blocked only when σ is healthy (≥ sigma_guard_enter).
+
+    Below enter, escape must be allowed to fight reach/FF so the rail can
+    pull the arm out of a bad region.  (c3ba58e behaviour.)
+    """
     task, _ = _task(e0_m=0.01, e1_m=0.06, k_ff=1.0, k_esc=0.5)
     q = Q_D.copy()
     q[0] = 0.40  # mid-travel so -Y escape is not limit-saturated
@@ -187,11 +191,13 @@ def test_sigma_escape_anti_opposes_primary_ff():
     task.capture_reference(q)
     vel_ff = np.zeros(6)
     vel_ff[1] = 0.04
+    # sigma_scale=0.5 ≥ enter(0.45): anti-oppose → escape zeroed, v follows +FF
     v_blocked, _ = task(q, sigma_scale=0.5, sigma_grad_rail=-1.0, vel_ff=vel_ff)
     assert v_blocked > 0.0
-    # Same veto at deep σ while FF is alive (escape rides dead-zone instead).
-    v_deep, _ = task(q, sigma_scale=0.2, sigma_grad_rail=-1.0, vel_ff=vel_ff)
-    assert v_deep > 0.0
+    # sigma_scale=0.2 < enter: escape wins against FF → net rail velocity flips
+    v_free, _ = task(q, sigma_scale=0.2, sigma_grad_rail=-1.0, vel_ff=vel_ff)
+    assert v_free < 0.0
+    assert v_free < v_blocked
 
 
 def test_sigma_grad_activates_escape_velocity_in_dead_zone():
