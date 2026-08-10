@@ -2,7 +2,8 @@
 
 These tests pin the desired cost hierarchy of the WBC slack QP:
 
-    W_task (100) >> rail_task_weight (<= 4.5) >> reg (~1e-2)
+    W_task (100) >> healthy rail task (<= 4.5; deep escape <= 2.0)
+                 >> reg (~1e-2)
 
 so that on a *feasible* twist the QP recruits the rail (or any joint) to keep
 slack near zero (100% tracking), and on a *truly infeasible* twist (v_cmd
@@ -171,7 +172,8 @@ def test_qp_rail_hint_does_not_move_rail_on_orthogonal_twist(kin: RobotKinematic
 # Test 5 — hierarchy anti-inversion: the primary Cartesian equality must
 # retain the SAME sign as v_cmd even with an aggressive rail hint.  This is
 # the minimal invariant we need — the plan calls the weight ratio
-# W_task=100 vs w_ext_max=4.5 a 22:1 hierarchy; if that ever inverts (bugs
+# W_task=100 vs healthy w_ext_max=4.5 gives a >22:1 hierarchy (deep escape is
+# tighter at 2.0); if that ever inverts (bugs
 # like accidentally scaling W_task by 0.01 or raising w_ext to 100), the QP
 # would follow the rail hint in preference to v_cmd, and this test would
 # catch it (TCP Y sign flipping or tracking error > 30 % of target).
@@ -199,3 +201,57 @@ def test_task_hierarchy_cartesian_beats_rail_soft_cost(kin: RobotKinematics) -> 
     )
     # Rail must not drive TCP more than 30% off the commanded Y velocity.
     assert abs(v_tcp[1] - v_cmd[1]) < 0.3 * abs(v_cmd[1]) + 5e-3
+
+
+def test_healthy_relocation_uses_wider_cap_but_deep_escape_is_tightened(
+    kin: RobotKinematics,
+    monkeypatch,
+) -> None:
+    """Healthy rail relocation may exceed 2; deep escape may not."""
+    monkeypatch.setattr(
+        kin,
+        "singular_values",
+        lambda _J: np.ones(6, dtype=float),
+    )
+    limits = SafetyLimits.from_kinematics(kin, v_scale=0.5, a_max=20.0)
+    ctrl = QpIkController(
+        kin,
+        limits,
+        QpConfig(
+            task_weight=np.array([10.0, 12.0, 20.0, 5.0, 5.0, 5.0]),
+            collision=CollisionConfig(enabled=False),
+        ),
+    )
+    q = full_q_from_arm(Q_ARM_SINGULAR_XSTRETCH, rail_m=RAIL_MID_M)
+    ctrl.reset(q)
+
+    healthy = ctrl.step(
+        q,
+        np.zeros(6),
+        0.005,
+        rail_task_vel_m_s=0.02,
+        rail_task_weight=100.0,
+    )
+    assert 2.0 < healthy.rail_task_weight_effective <= 4.5 + 1.0e-9
+    assert healthy.rail_task_weight_effective <= (
+        0.8 * healthy.cart_translation_weight_effective + 1.0e-9
+    )
+
+    for deep_flags in (
+        {"rail_escape_active": True},
+        {"rail_escape_sign": -1.0},
+        {"rail_escape_stop": True},
+    ):
+        ctrl.reset(q)
+        deep = ctrl.step(
+            q,
+            np.zeros(6),
+            0.005,
+            rail_task_vel_m_s=0.02,
+            rail_task_weight=100.0,
+            **deep_flags,
+        )
+        assert deep.rail_task_weight_effective <= 2.0 + 1.0e-9
+        assert deep.rail_task_weight_effective <= (
+            0.2 * deep.cart_translation_weight_effective + 1.0e-9
+        )

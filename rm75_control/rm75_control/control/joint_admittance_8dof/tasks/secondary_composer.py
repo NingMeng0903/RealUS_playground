@@ -166,47 +166,26 @@ class SecondaryComposer:
 
         qdot_soft = np.zeros_like(q)
         rail_hold = self.rail_lock is not None and self.rail_lock.active
-        # Nullspace attractor (centering) and ∇μ escape COEXIST.  Replacing
-        # centering with manipulability (XOR) let the wrist drift during long
-        # scans.  During an escape episode the centering term yields smoothly
-        # but never below 25%; J6 (full-vector index 6) is exempt so wrist
-        # swivel remains available to escape.
+        # Restore the 4d/c3 escape invariant: ∇μ owns the soft-nullspace slot
+        # while an escape is active.  Adding centering and ∇μ made two posture
+        # fields oppose each other before the per-joint cap; on the 162413
+        # hardware run that coincided with joint flips and 42--94 mm TCP drift.
+        # Hard joint boxes/velocity dampers remain active, and centering resumes
+        # after the explicit sigma hysteresis exits.
         #
         # Rail is a base translation: ∂μ/∂q0 is analytically zero, but the FD
         # gradient in ManipulabilityTask can produce small numerical residuals
         # that get unit-normalised to k_mu.  Always exclude rail from the
         # manipulability push — its purpose is to escape ARM singularities,
         # never to be a stealth rail driver behind the primary QP's back.
-        qdot_center = (
-            None
-            if centering_suppressed
-            else float(max(centering_gain_scale, 0.0)) * self.centering(q)
-        )
-        qdot_center_raw = None if qdot_center is None else qdot_center.copy()
-        qdot_manip = (
-            self.manipulability(q, sigma_min=sigma_min, exclude_rail=True)
-            if manipulability_active and self.manipulability is not None
-            else None
-        )
-        if qdot_center is not None and qdot_manip is not None:
-            # e85 proximal yield: center fades continuously with σ, with a
-            # hard floor so the nominal posture never disappears.  Use the
-            # early escape reference (not the twist-brake σ_ref) so the
-            # transition starts before Cartesian authority is reduced.
-            esc_ref = max(float(sigma_escape_ref), 1e-9)
-            yield_scale = float(
-                np.clip(float(sigma_min) / esc_ref, self.centering_yield_floor, 1.0)
+        if manipulability_active and self.manipulability is not None:
+            qdot_soft = self.manipulability(
+                q, sigma_min=sigma_min, exclude_rail=True
             )
-            qdot_center = qdot_center * yield_scale
-            for i in self.centering_yield_exempt_indices:
-                if 0 <= i < qdot_center.size:
-                    # qdot_center was scaled in-place above; restore J6 from
-                    # the original centering command exactly.
-                    qdot_center[i] = qdot_center_raw[i]
-        if qdot_center is not None:
-            qdot_soft = qdot_soft + qdot_center
-        if qdot_manip is not None:
-            qdot_soft = qdot_soft + qdot_manip
+        elif not centering_suppressed:
+            qdot_soft = (
+                float(max(centering_gain_scale, 0.0)) * self.centering(q)
+            )
         if rail_hold:
             qdot_soft = qdot_soft + self.rail_lock(q)
 

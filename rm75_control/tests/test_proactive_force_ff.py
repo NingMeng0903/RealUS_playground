@@ -273,6 +273,10 @@ def test_stable_controller_tracks_moving_surface_at_1n_and_5n_without_bias():
             cfg.adaptive_ke.enabled = False
             cfg.var_damping_enabled = False
             cfg.force_dob.enabled = False
+            # The shipped YAML is retract-only for safety.  This regression
+            # intentionally isolates bidirectional force-reference tracking
+            # on moving surfaces, so opt into that behavior locally.
+            cfg.proactive_ff.retract_only = False
             ctrl = AdmittanceController(DT, cfg)
             tcp_z = desired / ke_n_m
             surface_z = 0.0
@@ -416,7 +420,7 @@ def test_yaml_proactive_bidirectional_and_headroom():
     raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     hm = raw["hybrid_motion"]
     assert hm["proactive_feedforward"] is True
-    assert hm["proactive_retract_only"] is False
+    assert hm["proactive_retract_only"] is True
     # Asymmetric chase: retract gain may exceed press gain (over-force escape).
     assert float(hm["proactive_gain"]) > 0.0
     assert float(hm["proactive_retract_gain"]) >= float(hm["proactive_gain"])

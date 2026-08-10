@@ -26,6 +26,9 @@ class IkStepResult:
     escape_active: bool = False
     rail_escape_active: bool = False
     rail_escape_sign: float = 0.0
+    rail_escape_stopped: bool = False
+    rail_escape_travel_m: float = 0.0
+    rail_escape_v_des_m_s: float = 0.0
     twist_scale: float = 1.0
 
 

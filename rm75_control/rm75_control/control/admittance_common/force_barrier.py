@@ -28,6 +28,11 @@ class ForceBarrierConfig:
     stiffness_cap_enabled: bool = True
     ke_floor_n_m: float = 50.0
     mass_floor_kg: float = 0.05
+    # Before the debounced physical-contact latch is established, a raw force
+    # spike may request a short impact guard.  Keep this append-only in the
+    # dataclass so positional construction of the older public fields remains
+    # compatible.  Zero is the library-safe opt-out; the RM75 YAML opts in.
+    precontact_raw_trigger_n: float = 0.0
 
     @classmethod
     def from_dict(cls, raw: dict) -> "ForceBarrierConfig":
@@ -51,6 +56,9 @@ class ForceBarrierConfig:
             v_ref_m_s=float(barrier.get("v_ref_m_s", 0.05)),
             v_min_retract_m_s=float(barrier.get("v_min_retract_m_s", 0.002)),
             fdot_lpf_s=float(barrier.get("fdot_lpf_s", 0.040)),
+            precontact_raw_trigger_n=float(
+                barrier.get("precontact_raw_trigger_n", 0.0)
+            ),
             stiffness_cap_enabled=bool(
                 barrier.get("stiffness_cap_enabled", True)
             ),

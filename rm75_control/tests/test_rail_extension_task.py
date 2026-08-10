@@ -91,10 +91,21 @@ def test_weight_schedule_continuous_and_monotone():
     for edge in (0.05, 0.15):
         d = (w_of(edge + h) - w_of(edge - h)) / (2 * h)
         assert abs(d) < 0.05, (edge, d)
-    # Zero inside dead zone; the Stage-1 safety contract hard-caps the
-    # effective rail-task weight at 4.5 even when w_max is configured to 5.
+    # Zero inside dead zone; healthy relocation uses the task's configured
+    # 4.5 cap even when w_max is configured to 5.  The QP applies the final
+    # 2.0/.2 boundary only when deep escape flags are active.
     assert w_of(0.049) == 0.0
     assert abs(w_of(0.151) - 4.5) < 1e-9
+
+
+def test_healthy_weight_telemetry_exposes_raw_and_task_capped_values():
+    """Task telemetry separates raw scheduling from its healthy cap."""
+    task, _ = _task(w_max=5.0)
+    _force_err(task, 0.20)
+    _, w = task(Q_D, sigma_scale=1.0)
+    assert task.last_weight_raw > 4.5
+    assert 2.0 < task.last_weight_capped <= 4.5
+    assert task.last_weight == task.last_weight_capped == w
 
 
 def test_extension_invariant_to_coupled_translation():
@@ -159,7 +170,9 @@ def test_sigma_scale_boosts_weight():
     _, w_half = task(Q_D, sigma_scale=0.5)
     _, w_zero = task(Q_D, sigma_scale=0.0)
     assert w_half > w_full  # low σ → boost, not cut
-    assert w_zero > w_half
+    # The Stage-1 absolute cap may saturate both deep-σ values, but the
+    # schedule must never decrease as σ worsens.
+    assert w_zero >= w_half
     # invariant: total boost bounded by (1 + k_sigma_boost) = 3 at σ=0
     assert w_zero <= (1.0 + task.cfg.k_sigma_boost) * (
         w_full + task.cfg.w_sigma_floor

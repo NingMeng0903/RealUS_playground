@@ -390,6 +390,9 @@ class AdmittanceController:
         self._force_barrier = ForceSpaceVelocityDamper(self.cfg.force_barrier)
         self.force_pred_z = 0.0
         self.force_dot_z = 0.0
+        self.force_barrier_contact_active = False
+        self._precontact_barrier_hold_s = 0.0
+        self._precontact_peak_force_n = 0.0
         self.cap_press_z = self._v_z_cap()
         self.cap_retract_z = self._v_z_cap()
         self._bidirectional_flow = BidirectionalFlowController(
@@ -491,6 +494,9 @@ class AdmittanceController:
         self._force_barrier.reset()
         self.force_pred_z = 0.0
         self.force_dot_z = 0.0
+        self.force_barrier_contact_active = False
+        self._precontact_barrier_hold_s = 0.0
+        self._precontact_peak_force_n = 0.0
         self.cap_press_z = self._v_z_cap()
         self.cap_retract_z = self._v_z_cap()
         self._bidirectional_flow.reset()
@@ -827,7 +833,7 @@ class AdmittanceController:
 
         self.contact_episode_rearm_event = False
         low_raw = normal_sign * raw_z < float(cfg.contact_episode_release_force_n)
-        if not physical_contact:
+        if not physical_contact and self._episode_seen:
             if not self._episode_rearm_armed:
                 if low_raw:
                     self._episode_detached_s += dt_flow
@@ -841,6 +847,11 @@ class AdmittanceController:
                     self._episode_detached_s
                     >= max(float(cfg.contact_episode_release_s), 0.0)
                 )
+        elif not physical_contact:
+            # Free-space startup is not a detached contact episode.  Arming
+            # here made the very first acquisition look like a re-contact.
+            self._episode_detached_s = 0.0
+            self._episode_rearm_armed = False
         elif contact_update.acquired:
             # Physical reacquire is intentionally telemetry-only.  ``rising``
             # is reserved for first contact or an explicitly re-armed episode.
@@ -927,8 +938,14 @@ class AdmittanceController:
         # estimate.  In active BEFM mode only, the previous verified tank
         # balance may further tighten press; observe/off never alter behavior
         # through the tank.
+        # The barrier always runs in a press-positive normal coordinate.  The
+        # rest of the legacy force loop may use either tool-Z sign, so map at
+        # this boundary and map velocity back after clamping.
+        force_normal_filtered = normal_sign * f_ext_z
+        force_normal_raw = normal_sign * raw_z
+        force_normal_desired = abs(float(f_des_z))
         self.force_dot_z = float(
-            self._force_barrier.update_fdot(raw_z, dt_flow)
+            self._force_barrier.update_fdot(force_normal_raw, dt_flow)
         )
         energy_available_j = None
         if cfg.bidirectional_flow.mode == "active":
@@ -937,10 +954,71 @@ class AdmittanceController:
                 - float(cfg.bidirectional_flow.Tmin),
                 0.0,
             )
+        precontact_trigger = max(
+            float(cfg.force_barrier.precontact_raw_trigger_n), 0.0
+        )
+        precontact_impact = (
+            not physical_contact
+            and precontact_trigger > 0.0
+            and force_normal_raw >= precontact_trigger
+        )
+        if precontact_impact:
+            self._precontact_barrier_hold_s = max(
+                self._precontact_barrier_hold_s,
+                max(float(cfg.physical_contact.enter_confirm_s), dt_flow),
+            )
+            self._precontact_peak_force_n = max(
+                self._precontact_peak_force_n,
+                force_normal_raw,
+                force_normal_filtered,
+            )
+        elif self._precontact_barrier_hold_s > 0.0:
+            self._precontact_peak_force_n = max(
+                self._precontact_peak_force_n,
+                force_normal_raw,
+                force_normal_filtered,
+            )
+
+        # Keep the impact guard active throughout the filtered contact
+        # confirmation window.  This is deliberately separate from the
+        # physical/force-task latch: a raw air spike can pause press briefly,
+        # but it cannot create a sticky contact episode.
+        precontact_candidate = (
+            not physical_contact
+            and float(self._physical_contact.high_timer_s) > 0.0
+        )
+        precontact_guard = bool(
+            not physical_contact
+            and (
+                precontact_impact
+                or self._precontact_barrier_hold_s > 0.0
+                or precontact_candidate
+            )
+        )
+        barrier_contact = bool(physical_contact or precontact_guard)
+        self.force_barrier_contact_active = barrier_contact
+        if physical_contact:
+            barrier_force_n = force_normal_filtered
+            barrier_desired_n = force_normal_desired
+            self._precontact_barrier_hold_s = 0.0
+            self._precontact_peak_force_n = 0.0
+        else:
+            barrier_force_n = max(
+                force_normal_filtered,
+                force_normal_raw,
+                self._precontact_peak_force_n,
+            )
+            # Before confirmation, treat the acquire threshold as the safe
+            # force target.  Continuing toward a 2--5 N setpoint immediately
+            # after the first impact defeated the purpose of this guard.
+            barrier_desired_n = min(
+                force_normal_desired,
+                max(float(cfg.physical_contact.enter_n), 0.0),
+            )
         self.cap_press_z, self.cap_retract_z = self._force_barrier.caps(
-            f_z=f_ext_z,
-            f_des_z=f_des_z,
-            in_contact=physical_contact,
+            f_z=barrier_force_n,
+            f_des_z=barrier_desired_n,
+            in_contact=barrier_contact,
             v_z_cap=self._v_z_cap(),
             seek_vz_m_s=self._v_z_cap(),
             contact_enter_n=float(cfg.contact_threshold_n),
@@ -949,6 +1027,18 @@ class AdmittanceController:
             mass_eq_kg=float(self._m_z_now),
             energy_available_j=energy_available_j,
         )
+        if precontact_guard:
+            # A deterministic low-speed confirmation sleeve closes the gap
+            # between the raw impact tick and the debounced filtered latch.
+            confirm_cap = max(float(cfg.recontact_vz_cap_m_s), 0.0)
+            if confirm_cap > 0.0:
+                self.cap_press_z = min(self.cap_press_z, confirm_cap)
+                self._force_barrier.cap_press_z = self.cap_press_z
+            self._precontact_barrier_hold_s = max(
+                0.0, self._precontact_barrier_hold_s - dt_flow
+            )
+            if self._precontact_barrier_hold_s <= 0.0 and not precontact_candidate:
+                self._precontact_peak_force_n = 0.0
         self.force_pred_z = float(self._force_barrier.f_pred_z)
 
         v_force_tool = np.zeros(6, dtype=float)
@@ -1048,12 +1138,14 @@ class AdmittanceController:
         if v_z_cap > 0.0:
             lo = -v_z_cap
             hi = press_cap if press_cap > 0.0 else v_z_cap
-            v_cmd_tool[2] = float(np.clip(v_cmd_tool[2], lo, hi))
+            v_normal = normal_sign * float(v_cmd_tool[2])
+            v_normal = float(np.clip(v_normal, lo, hi))
             # Force-space barrier caps are directional: a predicted force
             # rise can close press while retract remains available.
-            v_cmd_tool[2] = self._force_barrier.clamp_velocity(
-                v_cmd_tool[2]
+            v_normal = self._force_barrier.clamp_velocity(
+                v_normal
             )
+            v_cmd_tool[2] = normal_sign * v_normal
             if cfg.control_frame == "base":
                 v_cmd_base[:3] = r_mat @ v_cmd_tool[:3]
                 v_cmd_base[3:] = r_mat @ v_cmd_tool[3:6]
@@ -1069,6 +1161,8 @@ class AdmittanceController:
         for index in range(6):
             if cfg.force_axes[index] > 0.5:
                 if index == 2:
+                    desired_normal = normal_sign * float(v_final[index])
+                    previous_normal = normal_sign * float(self.last_v_cmd[index])
                     press_slew = max(
                         float(cfg.force_axis_slew_press_m_s2), 0.0
                     )
@@ -1078,13 +1172,12 @@ class AdmittanceController:
                     reverse_slew = max(
                         float(cfg.force_axis_slew_reverse_m_s2), 0.0
                     )
-                    if v_final[index] >= self.last_v_cmd[index]:
+                    if desired_normal >= previous_normal:
                         if press_slew > 0.0:
-                            v_final[index] = float(
+                            desired_normal = float(
                                 min(
-                                    v_final[index],
-                                    self.last_v_cmd[index]
-                                    + press_slew * dt_flow,
+                                    desired_normal,
+                                    previous_normal + press_slew * dt_flow,
                                 )
                             )
                     else:
@@ -1093,20 +1186,20 @@ class AdmittanceController:
                         # retracting, use the regular retract slew.
                         slew = (
                             reverse_slew
-                            if self.last_v_cmd[index] > 0.0
-                            and v_final[index] <= 0.0
+                            if previous_normal > 0.0
+                            and desired_normal <= 0.0
                             and reverse_slew > 0.0
                             else retract_slew
                         )
                         if slew <= 0.0:
                             continue
-                        v_final[index] = float(
+                        desired_normal = float(
                             max(
-                                v_final[index],
-                                self.last_v_cmd[index]
-                                - slew * dt_flow,
+                                desired_normal,
+                                previous_normal - slew * dt_flow,
                             )
                         )
+                    v_final[index] = normal_sign * desired_normal
                 continue
             v_final[index] = float(
                 np.clip(

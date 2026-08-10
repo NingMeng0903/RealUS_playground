@@ -59,6 +59,12 @@ class CachedRailGoodness:
         self._g = 0.0
         self._dg = 0.0
 
+    def reset(self) -> None:
+        """Invalidate the cached direction before a new motion/escape episode."""
+        self._tick = 0
+        self._g = 0.0
+        self._dg = 0.0
+
     def refresh(self, q_rad: np.ndarray, *, force: bool = False) -> tuple[float, float]:
         self._tick += 1
         if force or self._tick == 1 or (self._tick % self.period_ticks == 0):

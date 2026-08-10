@@ -9,7 +9,10 @@ from __future__ import annotations
 import numpy as np
 
 from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import CbfRows
-from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
+from rm75_control.control.joint_admittance_8dof.utils.safety import (
+    RAIL_ESCAPE_ACCEL_M_S2,
+    SafetyLimits,
+)
 
 
 def _collapse_to(
@@ -65,6 +68,10 @@ class VelocityBoxConstraints:
         rail_locked: bool = False,
         rail_lock_vel_eps_m_s: float = 0.0,
         rail_vel_pin_m_s: float | None = None,
+        rail_escape_active: bool = False,
+        rail_escape_sign: float = 0.0,
+        rail_escape_stop: bool = False,
+        rail_escape_accel_m_s2: float | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         lim = self.lim
         q = np.asarray(q, dtype=float)
@@ -118,9 +125,31 @@ class VelocityBoxConstraints:
         # velocity the joint cannot run or one that points into a hard stop.
         v_lo, v_hi = lo, hi
 
-        if lim.a_max is not None and qdot_prev is not None:
+        # The hardware bridge uses a 0.8 m/s² slew while an escape episode is
+        # signed (or braking at its travel stop).  Apply that override to the
+        # rail only, and only while the episode is explicitly active.  This is
+        # deliberately computed before the acceleration box so the resulting
+        # interval remains intersected with the hard velocity/position box.
+        escape_slew_active = bool(rail_escape_active) and (
+            abs(float(rail_escape_sign)) >= 0.5 or bool(rail_escape_stop)
+        )
+        a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
+        if escape_slew_active:
+            accel = (
+                RAIL_ESCAPE_ACCEL_M_S2
+                if rail_escape_accel_m_s2 is None
+                else float(rail_escape_accel_m_s2)
+            )
+            if np.isfinite(accel) and accel >= 0.0 and q.shape[0] > 0:
+                if a_max is None:
+                    # Keep the ordinary arm joints unbounded when the
+                    # caller disabled their acceleration stage.
+                    a_max = np.full(q.shape, np.inf, dtype=float)
+                a_max[0] = accel
+
+        if a_max is not None and qdot_prev is not None:
             qdot_prev = np.asarray(qdot_prev, dtype=float)
-            a = lim.a_max * dt
+            a = a_max * dt
             # a_max is secondary: honour it whenever it intersects the
             # envelope, drop it when it does not.  A rail decelerating into an
             # end stop cannot brake inside the damper band at a_max_rail

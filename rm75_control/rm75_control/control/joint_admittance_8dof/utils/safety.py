@@ -22,6 +22,13 @@ from typing import Callable
 import numpy as np
 
 
+# The LW100 rail bridge applies a 0.8 m/s² velocity slew during its signed
+# escape/stop path (``hw/rail_servo.py``).  Keep that value in one place so
+# the QP box and the downstream host limiter cannot silently diverge.  The
+# ordinary rail slew remains the slower user-configured ``a_max``.
+RAIL_ESCAPE_ACCEL_M_S2 = 0.80
+
+
 @dataclass
 class SafetyLimits:
     q_lower: np.ndarray
@@ -82,13 +89,66 @@ class SafetyLimiter:
     def reset(self, q0: np.ndarray | None = None) -> None:
         self._dq_prev = None
 
-    def clamp(self, q_prev: np.ndarray, q_desired: np.ndarray, dt: float) -> SafetyReport:
+    def sync_applied_delta(self, dq_applied: np.ndarray, dt: float) -> np.ndarray:
+        """Synchronize acceleration history after a downstream hard clamp.
+
+        Rail lead/escape/lock handling may tighten the already-safe command
+        after :meth:`clamp`.  The next tick must start from what was actually
+        sent, not from the pre-tightening delta, otherwise the acceleration
+        limiter can reintroduce a stale opposite-direction step.
+        """
+        dt = float(max(dt, 1e-9))
+        dq = np.asarray(dq_applied, dtype=float)
+        dq_max = np.asarray(self.lim.v_max, dtype=float) * dt
+        self._dq_prev = np.clip(dq, -dq_max, dq_max)
+        return self._dq_prev.copy()
+
+    def clamp(
+        self,
+        q_prev: np.ndarray,
+        q_desired: np.ndarray,
+        dt: float,
+        *,
+        rail_escape_active: bool = False,
+        rail_escape_sign: float = 0.0,
+        rail_escape_stop: bool = False,
+        rail_escape_accel_m_s2: float | None = None,
+    ) -> SafetyReport:
+        """Clamp one position target, optionally using the signed rail slew.
+
+        ``rail_escape_accel_m_s2`` is intentionally gated by both an active
+        episode and a signed/stop state.  A stale configuration value must
+        never weaken ordinary rail acceleration, and a caller cannot enable
+        the escape slew merely by supplying a number while the episode is
+        inactive.  The override is applied to rail index 0 only; all arm
+        joints retain their normal acceleration limits.
+        """
         lim = self.lim
         q_prev = np.asarray(q_prev, dtype=float)
         q_desired = np.asarray(q_desired, dtype=float)
         dt = float(max(dt, 1e-9))
         dq = q_desired - q_prev
         dq_max = np.asarray(lim.v_max, dtype=float) * dt
+
+        # ``sign`` remains latched while a travel-stop is braking to zero.
+        # Require an explicit episode plus either that sign or stop marker so
+        # a normal scan never inherits the faster escape slew.
+        escape_slew_active = bool(rail_escape_active) and (
+            abs(float(rail_escape_sign)) >= 0.5 or bool(rail_escape_stop)
+        )
+        a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
+        if escape_slew_active:
+            accel = (
+                RAIL_ESCAPE_ACCEL_M_S2
+                if rail_escape_accel_m_s2 is None
+                else float(rail_escape_accel_m_s2)
+            )
+            if np.isfinite(accel) and accel >= 0.0 and dq.size > 0:
+                if a_max is None:
+                    # No ordinary acceleration clamp: add a rail-only bound
+                    # while leaving all arm joints unconstrained.
+                    a_max = np.full(dq.shape, np.inf, dtype=float)
+                a_max[0] = accel
 
         vel_clamped = acc_clamped = pos_clamped = False
 
@@ -99,8 +159,8 @@ class SafetyLimiter:
         dq = clipped
 
         # 2) acceleration limit (change in dq between ticks)
-        if lim.a_max is not None and self._dq_prev is not None:
-            ddq_max = np.asarray(lim.a_max, dtype=float) * dt * dt
+        if a_max is not None and self._dq_prev is not None:
+            ddq_max = np.asarray(a_max, dtype=float) * dt * dt
             ddq = dq - self._dq_prev
             ddq_c = np.clip(ddq, -ddq_max, ddq_max)
             if not np.allclose(ddq_c, ddq):

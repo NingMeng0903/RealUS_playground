@@ -176,14 +176,24 @@ class PhysicalContactTracker:
             return PhysicalContactUpdate(self.present, self.state)
 
         self.low_timer_s = 0.0
+        # Initial contact is confirmed on the filtered channel.  The raw
+        # channel is intentionally reserved for *re*-acquisition after a
+        # known flight: tool/gravity residuals produced isolated 1--2 N raw
+        # spikes during the 162413 free-space approach and a single spike
+        # used to latch the force episode for the rest of the scan.  Immediate
+        # pre-contact impact limiting remains a separate force-barrier path.
         hard_hit = (
-            cfg.hard_enter_n > 0.0
+            self.ever_acquired
+            and cfg.hard_enter_n > 0.0
             and self.raw_force_n >= cfg.hard_enter_n
         )
-        high = (
-            self.raw_force_n >= cfg.enter_n
-            or self.filtered_force_n >= cfg.enter_n
-        )
+        if self.ever_acquired:
+            high = (
+                self.raw_force_n >= cfg.enter_n
+                or self.filtered_force_n >= cfg.enter_n
+            )
+        else:
+            high = self.filtered_force_n >= cfg.enter_n
         if hard_hit:
             self.high_timer_s = max(cfg.enter_confirm_s, 0.0)
         elif high:

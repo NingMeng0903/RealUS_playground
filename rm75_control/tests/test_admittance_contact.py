@@ -166,12 +166,12 @@ def test_closed_loop_very_hard_surface_no_bounce_cascade():
     assert tail.std() < 0.6, f"force still oscillating (std {tail.std():.2f})"
 
 
-def test_dimeas_5hz_forced_oscillation_inflates_inertia():
+def test_dimeas_5hz_forced_oscillation_adds_zero_centered_damping():
     """A 5 Hz forced fz oscillation (in the contact-resonance band that
-    ``_update_instability_index``'s HP-filter targets) must raise the
-    Dimeas Iₛ index and, via M(t) = m₀ + m_u·Iₛ, inflate the effective
-    virtual mass. Direct guard against the scan_v5.csv 5 Hz limit cycle
-    that a controller with the inertia channel deleted let stand.
+    ``_update_instability_index``'s HP-filter targets) must raise Iₛ and
+    add zero-centered damping.  The shipped Stage-2 policy deliberately keeps
+    ``m_u=0``: Dimeas is a detector/dissipative layer, not the primary impact
+    mechanism and not an online inertia switch.
     """
     import yaml
     from pathlib import Path
@@ -211,14 +211,9 @@ def test_dimeas_5hz_forced_oscillation_inflates_inertia():
         f"5 Hz forced oscillation must raise Iₛ above 0.1, got "
         f"{ctrl.instability_index:.4f}"
     )
-    assert ctrl._m_z_now > m_base + 0.2, (
-        "M(t) must inflate via m_u·Iₛ when the contact-resonance band is "
-        f"active; m stayed at {ctrl._m_z_now:.3f} (was {m_base:.3f})"
-    )
-    assert ctrl._m_z_now <= cfg.var_damping_m_max + 1e-6, (
-        f"M(t) must be capped at m_max, got {ctrl._m_z_now:.3f}"
-    )
-    assert max_mass > m_base + 0.2
+    assert cfg.var_damping_m_u == pytest.approx(0.0)
+    assert ctrl._m_z_now == pytest.approx(m_base)
+    assert max_mass == pytest.approx(m_base)
     assert max_dimeas_damping > 0.2
     assert max_total_damping > cfg.admittance_damping_z
 
@@ -275,7 +270,9 @@ def test_production_stack_tracks_moving_surface_at_1n_and_5n():
 
     A constant-velocity surface is deliberately used here: after the
     transient, the TCP velocity must match it and the residual force bias must
-    remain comparable in press/retract at both 1 N and 5 N.
+    stay inside the passive-admittance bias budget at both 1 N and 5 N.
+    ``proactive_retract_only`` is intentionally asymmetric in the shipped
+    safety baseline, so equal press/retract force error is not an invariant.
     """
     import yaml
     from pathlib import Path
@@ -331,17 +328,21 @@ def test_production_stack_tracks_moving_surface_at_1n_and_5n():
                 float(np.mean(velocity_tail)),
             )
 
-    assert results[(1.0, -0.01)][0] <= 0.25
-    assert results[(1.0, 0.01)][0] <= 0.25
-    assert results[(5.0, -0.01)][0] <= 0.50
-    assert results[(5.0, 0.01)][0] <= 0.50
+    # A passive steady chase needs approximately D*v plus the smooth-deadband
+    # offset.  At D=25 Ns/m and v=10 mm/s this is ~0.38 N, independent of the
+    # 1/5 N setpoint.  The old 0.25 N assertion contradicted that configured
+    # plant and encouraged re-enabling proactive press merely to satisfy a
+    # test.
+    passive_bias_budget = (
+        cfg.admittance_damping_z * 0.01
+        + cfg.deadband_n
+        + 0.5 * cfg.deadband_width_n
+        + 0.05
+    )
     for desired in (1.0, 5.0):
-        err_negative = results[(desired, -0.01)][0]
-        err_positive = results[(desired, 0.01)][0]
-        assert max(err_negative, err_positive) <= 1.50 * min(
-            err_negative,
-            err_positive,
-        )
+        assert results[(desired, -0.01)][0] <= passive_bias_budget
+        assert results[(desired, 0.01)][0] <= passive_bias_budget
+    for desired in (1.0, 5.0):
         assert results[(desired, -0.01)][1] == pytest.approx(
             -0.01,
             abs=2e-4,

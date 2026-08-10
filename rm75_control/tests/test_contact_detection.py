@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
+import yaml
 
 from rm75_control.control.admittance_common.contact_state import PhysicalContactTracker
 from rm75_control.control.admittance_common.contact_state import PhysicalContactConfig
@@ -56,6 +59,137 @@ def test_lateral_shear_does_not_enter_contact_when_fz_low():
     ctrl = AdmittanceController(0.005, cfg)
     assert not _tick(ctrl, fz=0.1, fy=1.2)
     assert not ctrl._in_contact_latched
+
+
+def test_initial_raw_spikes_limit_impact_without_latching_air_as_contact():
+    """Raw precontact spikes may invoke the barrier but not a sticky episode."""
+    cfg = _cfg(
+        physical_contact=PhysicalContactConfig(
+            enabled=True,
+            enter_n=0.8,
+            hard_enter_n=1.5,
+            exit_n=0.70,
+            enter_confirm_s=0.020,
+            exit_confirm_s=0.100,
+        )
+    )
+    cfg.force_barrier.precontact_raw_trigger_n = 1.5
+    ctrl = AdmittanceController(0.005, cfg)
+
+    # Filtered force is the biased free-space level from 162413.  Even a raw
+    # hard spike does not establish the first contact episode.
+    assert not _tick(ctrl, fz=0.65, raw_fz=1.9, f_des_z=2.0)
+    assert ctrl.force_barrier_contact_active
+    assert ctrl.cap_press_z <= cfg.recontact_vz_cap_m_s + 1.0e-12
+    assert not ctrl.force_task_latched
+    assert ctrl.physical_contact_state == PhysicalContactTracker.FREE
+
+    # The raw-impact hold spans the debounce window but remains independent
+    # from the sticky contact/task latch.
+    assert not _tick(ctrl, fz=0.65, raw_fz=0.65, f_des_z=2.0)
+    assert ctrl.force_barrier_contact_active
+    assert ctrl.cap_press_z <= cfg.recontact_vz_cap_m_s + 1.0e-12
+    for _ in range(4):
+        assert not _tick(ctrl, fz=0.65, raw_fz=0.65, f_des_z=2.0)
+    assert not ctrl.force_barrier_contact_active
+
+    # Stable filtered load still acquires normally after the configured 20 ms;
+    # every candidate tick remains inside the low-speed confirmation sleeve.
+    for _ in range(3):
+        assert not _tick(ctrl, fz=1.1, raw_fz=1.1, f_des_z=2.0)
+        assert ctrl.force_barrier_contact_active
+        assert ctrl.cap_press_z <= cfg.recontact_vz_cap_m_s + 1.0e-12
+    assert _tick(ctrl, fz=1.1, raw_fz=1.1, f_des_z=2.0)
+    assert ctrl.physical_contact_acquire_event
+
+
+def test_biased_free_space_can_end_and_rearm_a_contact_episode():
+    """162413's ~0.65 N air residual must not defeat LOST/re-arm logic."""
+    cfg = _cfg(
+        recontact_vz_cap_m_s=0.012,
+        recontact_hold_s=0.12,
+        physical_contact=PhysicalContactConfig(
+            enabled=True,
+            enter_n=0.8,
+            hard_enter_n=1.5,
+            exit_n=0.70,
+            enter_confirm_s=0.020,
+            exit_confirm_s=0.100,
+        ),
+    )
+    cfg.contact_episode_release_s = 0.30
+    cfg.contact_episode_release_force_n = 0.75
+    ctrl = AdmittanceController(0.005, cfg)
+
+    for _ in range(4):
+        _tick(ctrl, fz=1.0, raw_fz=1.0, f_des_z=2.0)
+    assert ctrl.force_task_latched
+    assert ctrl.contact_present
+
+    # A biased but truly airborne signal remains below the calibrated exit and
+    # release thresholds long enough to establish a new physical episode.
+    for _ in range(90):
+        _tick(ctrl, fz=0.65, raw_fz=0.65, f_des_z=2.0)
+    assert ctrl.physical_contact_state == PhysicalContactTracker.LOST
+    assert ctrl._episode_rearm_armed
+
+    # A hard raw re-contact is immediate after a known episode and re-arms the
+    # stiff-first/recontact safety sleeve without ever dropping the force task.
+    _tick(ctrl, fz=0.65, raw_fz=1.9, f_des_z=2.0)
+    assert ctrl.physical_contact_reacquire_event
+    assert ctrl.contact_episode_rearm_event
+    assert ctrl._recontact_timer_s > 0.10
+    assert ctrl.force_task_latched
+
+
+def test_shipped_1n_configuration_can_acquire_filtered_contact():
+    """The physical enter threshold must remain reachable below a 1 N hold."""
+    raw = yaml.safe_load(
+        Path("configs/joint_admittance_8dof.yaml").read_text()
+    )
+    cfg = AdmittanceConfig.from_dict(raw)
+    ctrl = AdmittanceController(0.005, cfg)
+
+    # 0.95 N is inside the shipped 1 N deadband but above the calibrated
+    # physical-contact threshold.  It must acquire after the 20 ms debounce.
+    for _ in range(12):
+        _tick(ctrl, fz=0.95, raw_fz=0.95, f_des_z=1.0)
+    assert cfg.physical_contact.enter_n < 0.95
+    assert ctrl.physical_contact_state == PhysicalContactTracker.CONTACT
+    assert ctrl.force_task_latched
+
+
+def test_force_barrier_uses_press_positive_coordinate_for_negative_tool_z():
+    """Directional press/retract caps must follow the configured force sign."""
+    cfg = _cfg(
+        desired_force_ramp_s=0.0,
+        deadband_n=0.0,
+        deadband_width_n=0.0,
+    )
+    ctrl = AdmittanceController(0.005, cfg)
+
+    def command(fz: float) -> np.ndarray:
+        f_ext = np.zeros(6)
+        f_ext[2] = fz
+        f_des = np.zeros(6)
+        f_des[2] = -2.0
+        return ctrl.compute_velocity_command(
+            np.zeros(6),
+            np.zeros(6),
+            np.zeros(6),
+            f_ext,
+            f_des,
+            in_contact=True,
+            f_ext_raw=f_ext,
+        )
+
+    under_force = command(-1.0)
+    assert under_force[2] < 0.0  # negative tool-Z is press in this fixture
+    assert -under_force[2] <= ctrl.cap_press_z + 1.0e-12
+
+    over_force = command(-3.0)
+    assert over_force[2] > 0.0  # retract remains available in the other sign
+    assert over_force[2] <= ctrl.cap_retract_z + 1.0e-12
 
 
 def test_force_task_latch_persists_after_confirmed_physical_loss():

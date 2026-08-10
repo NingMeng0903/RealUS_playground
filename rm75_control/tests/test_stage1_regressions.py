@@ -37,8 +37,8 @@ class _FixedManip:
         return out
 
 
-def test_centering_and_manipulability_are_coexistent_secondary_terms():
-    """Manipulability escape must add to, not replace, posture centering."""
+def test_manipulability_exclusively_owns_escape_nullspace_slot():
+    """The proven 4d/c3 escape policy must not cancel grad-mu with centering."""
     kin = RobotKinematics()
     centering = JointCenteringTask.from_kinematics(
         kin,
@@ -85,11 +85,7 @@ def test_centering_and_manipulability_are_coexistent_secondary_terms():
     assert manip.calls >= 2
     assert np.linalg.norm(center_only) > 1e-6
     assert np.linalg.norm(manip_only) > 1e-6
-    center_yield = np.clip(0.04 / 0.10, 0.25, 1.0)
-    expected_center = center_only * center_yield
-    # Full-vector J6 (index 6) remains unscaled for wrist-swivel escape.
-    expected_center[6] = center_only[6]
-    assert np.allclose(both, expected_center + manip_only, atol=1e-12)
+    assert np.allclose(both, manip_only, atol=1e-12)
 
 
 def test_sigma_escape_guard_has_enter_exit_hysteresis():
@@ -159,7 +155,9 @@ def test_rail_extension_weight_is_hard_capped_after_sigma_boost():
         w_max=4.0,
         w_sigma_floor=2.0,
         k_sigma_boost=8.0,
-        weight_hard_max=4.5,
+        # The rail is an escape hint, not a competing Cartesian task.  Keep
+        # its absolute cap at 2.0 even when the sigma boost is extreme.
+        weight_hard_max=2.0,
         e0_m=0.01,
         e1_m=0.05,
     )
@@ -173,8 +171,8 @@ def test_rail_extension_weight_is_hard_capped_after_sigma_boost():
         sigma_escape_scale=0.0,
         sigma_grad_rail=0.0,
     )
-    assert weight <= cfg.weight_hard_max + 1e-12
-    assert task.last_weight <= cfg.weight_hard_max + 1e-12
+    assert weight <= 2.0 + 1e-12
+    assert task.last_weight <= 2.0 + 1e-12
 
 
 def test_rail_soft_bounds_are_shared_and_mismatch_is_rejected():

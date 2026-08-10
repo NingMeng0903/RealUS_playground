@@ -67,7 +67,10 @@ def test_yaml_smooth_chase_defaults_load():
         Path("configs/joint_admittance_8dof.yaml").read_text(encoding="utf-8")
     )
     cfg = AdmittanceConfig.from_dict(raw)
-    assert cfg.force_dob.enabled
+    # The shipped hardware baseline keeps DOB opt-in; smooth under-force
+    # motion is provided by the passive admittance path in this fixture.
+    assert not cfg.force_dob.enabled
+    assert cfg.proactive_ff.retract_only is True
     assert cfg.adaptive_ke.drive_damping is False
     assert cfg.proactive_ff.gate_press_on_is is False
     assert cfg.var_damping_d_u >= 50.0
@@ -80,9 +83,12 @@ def test_yaml_smooth_chase_defaults_load():
         ctrl.compute_velocity_command(
             np.zeros(6), np.zeros(6), np.zeros(6), f_ext, f_des
         )
-    # Under-force should produce positive press velocity with DOB/v_r help.
+    # Under-force should still produce positive passive-admittance velocity.
+    # The shipped baseline deliberately disables DOB and makes proactive
+    # feed-forward retract-only, so neither auxiliary term is expected here.
     assert ctrl.v_force_z > 0.0
-    assert ctrl.u_dob_z > 0.0 or ctrl.v_r_z > 0.0
+    assert ctrl.u_dob_z == 0.0
+    assert ctrl.v_r_z == 0.0
 
 
 def test_hf_delta_d_releases_after_hold():

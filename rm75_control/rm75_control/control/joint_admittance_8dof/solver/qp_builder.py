@@ -41,10 +41,75 @@ from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
     VelocityBoxConstraints,
     build_wbc_inequalities,
 )
-from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
+from rm75_control.control.joint_admittance_8dof.utils.safety import (
+    RAIL_ESCAPE_ACCEL_M_S2,
+    SafetyLimits,
+)
 
 N_SLACK = 6
+# Healthy rail relocation may use the full preferred-task budget.  A latched
+# singularity escape is deliberately tighter; these constants are the final
+# QP boundary even when a caller supplies a stale/oversized task cap.
 RAIL_TASK_WEIGHT_HARD_MAX = 4.5
+RAIL_TASK_WEIGHT_MAX_FRAC = 0.80
+RAIL_ESCAPE_TASK_WEIGHT_HARD_MAX = 2.0
+RAIL_ESCAPE_TASK_WEIGHT_MAX_FRAC = 0.20
+
+
+def apply_rail_escape_velocity_envelope(
+    lo_box: np.ndarray,
+    hi_box: np.ndarray,
+    *,
+    escape_sign: float,
+    stop: bool,
+    v_min_m_s: float = 0.0,
+    v_max_m_s: float = 0.020,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Apply the latched escape direction to the *actual* QP rail velocity.
+
+    The rail-extension objective is soft and therefore cannot enforce an
+    episode direction: Cartesian allocation can make ``qdot[0]`` point the
+    other way even while the task telemetry reports a latched sign.  During
+    an escape this envelope is a higher-priority safety invariant.  It is
+    applied after the ordinary acceleration box.  If the previous velocity is
+    already opposite, the executable endpoint closest to the signed interval
+    is selected on each tick, so it decelerates monotonically rather than
+    receiving another soft-objective push in the wrong direction.
+    """
+    lo = np.asarray(lo_box, dtype=float).copy()
+    hi = np.asarray(hi_box, dtype=float).copy()
+    if lo.size == 0 or hi.size == 0:
+        return lo, hi
+
+    sign = float(np.sign(float(escape_sign)))
+    if not bool(stop) and abs(sign) < 0.5:
+        return lo, hi
+
+    vmax = max(float(v_max_m_s), 0.0)
+    vmin = float(np.clip(float(v_min_m_s), 0.0, vmax))
+    if bool(stop):
+        desired_lo = desired_hi = 0.0
+    elif sign > 0.0:
+        desired_lo, desired_hi = vmin, vmax
+    else:
+        desired_lo, desired_hi = -vmax, -vmin
+
+    # Preserve the hard velocity/position envelope when it already excludes
+    # the requested interval (for example exactly at a rail soft stop).
+    base_lo = float(lo[0])
+    base_hi = float(hi[0])
+    new_lo = max(base_lo, desired_lo)
+    new_hi = min(base_hi, desired_hi)
+    if new_lo <= new_hi:
+        lo[0], hi[0] = new_lo, new_hi
+    elif base_hi < desired_lo:
+        lo[0] = hi[0] = base_hi
+    elif base_lo > desired_hi:
+        lo[0] = hi[0] = base_lo
+    else:  # defensive finite-precision fallback
+        pin = float(np.clip(0.0, base_lo, base_hi))
+        lo[0] = hi[0] = pin
+    return lo, hi
 
 
 @dataclass
@@ -136,12 +201,17 @@ class QpConfig:
     # Avoidance onset = sigma_ref * scale.  Must lead the twist brake (>1) so
     # rail/∇μ can accelerate before Cartesian is clamped, but stay below the
     # healthy-D band (σ≈0.11–0.13) — 2.0 kept D permanently escaping.
-    sigma_escape_ref_scale: float = 2.0
+    sigma_escape_ref_scale: float = 1.25
     # Absolute σ hysteresis for one rail/manipulability escape episode.
     # ``sigma_escape_ref_scale`` remains as a compatibility knob for older
     # callers, but these thresholds are the canonical Stage-1 contract.
     sigma_escape_enter: float = 0.10
     sigma_escape_exit: float = 0.12
+    # A joint already in its limit-repulsion band must recruit the rail before
+    # the ordinary sigma threshold; healthy D poses with low limit activation
+    # remain outside escape.
+    sigma_limit_escape_enter: float = 0.12
+    limit_escape_activation: float = 0.80
     # Canonical host soft rail command band.  The active SafetyLimits object
     # supplies the actual velocity box; these fields keep the QP contract
     # visible to callers/config telemetry as well.
@@ -149,6 +219,15 @@ class QpConfig:
     rail_soft_max_m: float = 0.78
     # Defensive cap for callers that bypass RailExtensionTask's own cap.
     rail_task_weight_hard_max: float = RAIL_TASK_WEIGHT_HARD_MAX
+    rail_task_weight_max_frac: float = RAIL_TASK_WEIGHT_MAX_FRAC
+    # Escape is a slow macro relocation, not another high-speed Cartesian
+    # axis.  The lower bound guarantees that a latched episode actually starts
+    # moving instead of choosing qdot=0 because the scalar task is soft.
+    rail_escape_v_min_m_s: float = 0.010
+    rail_escape_v_max_m_s: float = 0.020
+    # LW100 bridge slew while a signed escape (or travel-stop brake) is active.
+    # The ordinary rail acceleration remains SafetyLimits.a_max[0].
+    rail_escape_accel_m_s2: float = RAIL_ESCAPE_ACCEL_M_S2
 
 
 class _ProxQpWbcBackend:
@@ -422,6 +501,14 @@ class QpIkController:
         zero_secondary_rail: bool = False,
         rail_task_vel_m_s: float | None = None,
         rail_task_weight: float = 0.0,
+        rail_task_weight_hard_max: float | None = None,
+        rail_task_weight_max_frac: float | None = None,
+        rail_escape_sign: float = 0.0,
+        rail_escape_stop: bool = False,
+        rail_escape_active: bool = False,
+        rail_escape_v_min_m_s: float | None = None,
+        rail_escape_v_max_m_s: float | None = None,
+        rail_escape_accel_m_s2: float | None = None,
     ) -> IkStepResult:
         q_prev = np.asarray(q_prev, dtype=float)
         v_cmd = np.asarray(twist_ref, dtype=float)
@@ -470,26 +557,54 @@ class QpIkController:
         w_task *= self._task_scale_sigma(sigma_min, dt)
 
         # rail_extension hint stays at its caller-scheduled weight (the task
-        # itself applies σ scaling).  Keep the rail preference below both the
-        # absolute safety cap and 80% of the weakest effective translational
-        # Cartesian slack weight, preserving the Cartesian hierarchy even when
-        # the rail task is boosted during an escape episode.
+        # itself applies σ scaling).  Healthy relocation can use the wider
+        # preferred-task budget; once an escape is active, signed, or stopped,
+        # this QP is the final deep-escape boundary and forces the tighter
+        # 2.0 / 20% envelope regardless of caller/task telemetry.
+        deep_escape = bool(
+            rail_escape_active
+            or abs(float(rail_escape_sign)) >= 0.5
+            or rail_escape_stop
+        )
         translational_task_weight = float(
             np.min(np.asarray(w_task[:3], dtype=float))
         ) if w_task.size >= 3 else 0.0
-        rail_hierarchy_cap = max(0.0, 0.8 * translational_task_weight)
+        max_frac = (
+            RAIL_ESCAPE_TASK_WEIGHT_MAX_FRAC
+            if deep_escape
+            else float(
+                getattr(
+                    self.cfg,
+                    "rail_task_weight_max_frac",
+                    RAIL_TASK_WEIGHT_MAX_FRAC,
+                )
+                if rail_task_weight_max_frac is None
+                else rail_task_weight_max_frac
+            )
+        )
+        # Caller/config values may lower the healthy envelope, never widen its
+        # 4.5/.8 safety boundary.  Deep escape uses the fixed constants above.
+        max_frac = min(max_frac, RAIL_TASK_WEIGHT_MAX_FRAC)
+        rail_hierarchy_cap = max(
+            0.0, float(np.clip(max_frac, 0.0, 1.0)) * translational_task_weight
+        )
+        hard_max = (
+            RAIL_ESCAPE_TASK_WEIGHT_HARD_MAX
+            if deep_escape
+            else float(
+                getattr(
+                    self.cfg,
+                    "rail_task_weight_hard_max",
+                    RAIL_TASK_WEIGHT_HARD_MAX,
+                )
+                if rail_task_weight_hard_max is None
+                else rail_task_weight_hard_max
+            )
+        )
+        hard_max = min(hard_max, RAIL_TASK_WEIGHT_HARD_MAX)
         rail_weight_cap = min(
             RAIL_TASK_WEIGHT_HARD_MAX,
-            max(
-                float(
-                    getattr(
-                        self.cfg,
-                        "rail_task_weight_hard_max",
-                        RAIL_TASK_WEIGHT_HARD_MAX,
-                    )
-                ),
-                0.0,
-            ),
+            max(hard_max, 0.0),
             rail_hierarchy_cap,
         )
         rail_w_eff = float(
@@ -555,7 +670,42 @@ class QpIkController:
             rail_locked=rail_locked,
             rail_lock_vel_eps_m_s=rail_lock_vel_eps_m_s,
             rail_vel_pin_m_s=rail_vel_pin_m_s,
+            rail_escape_active=bool(
+                rail_escape_active
+                or abs(float(rail_escape_sign)) >= 0.5
+                or bool(rail_escape_stop)
+            ),
+            rail_escape_sign=rail_escape_sign,
+            rail_escape_stop=rail_escape_stop,
+            rail_escape_accel_m_s2=(
+                float(
+                    getattr(
+                        self.cfg,
+                        "rail_escape_accel_m_s2",
+                        RAIL_ESCAPE_ACCEL_M_S2,
+                    )
+                )
+                if rail_escape_accel_m_s2 is None
+                else float(rail_escape_accel_m_s2)
+            ),
         )
+        if rail_vel_pin_m_s is None and not rail_locked:
+            lo_box, hi_box = apply_rail_escape_velocity_envelope(
+                lo_box,
+                hi_box,
+                escape_sign=rail_escape_sign,
+                stop=rail_escape_stop,
+                v_min_m_s=(
+                    float(getattr(self.cfg, "rail_escape_v_min_m_s", 0.010))
+                    if rail_escape_v_min_m_s is None
+                    else float(rail_escape_v_min_m_s)
+                ),
+                v_max_m_s=(
+                    float(getattr(self.cfg, "rail_escape_v_max_m_s", 0.020))
+                    if rail_escape_v_max_m_s is None
+                    else float(rail_escape_v_max_m_s)
+                ),
+            )
         if self.collision is not None and self.collision_cfg.enabled:
             cbf = build_cbf_rows(
                 self.collision,
@@ -599,7 +749,10 @@ class QpIkController:
             sigma_ref = float(self.cfg.sr_damping.sigma_ref)
             if sigma_ref > 1e-9 and sigma_min < sigma_ref:
                 decay = min(decay, 0.4)
-            qdot = decay * self.qdot_prev
+            # Failure fallback must obey the same hard box.  The historical
+            # raw decay could continue a rejected rail direction for several
+            # ticks even though the successful-QP path was constrained.
+            qdot = np.clip(decay * self.qdot_prev, lo_box, hi_box)
             slack = np.zeros(ns, dtype=float)
         else:
             qdot = x[:nv]
