@@ -16,7 +16,9 @@ from rm75_control.force.compensation.paths import CONFIG_ID
 def test_load_config_pose_d_joint_only():
     cfg = load_config(CONFIG_ID)
     pd = cfg.collect.pose_d
-    assert pd.joint_duration_s == 30.0
+    # The checked-in force-ID profile restored the rank-rich pre-b632324
+    # excitation duration; this test verifies the loader without retuning it.
+    assert pd.joint_duration_s == 45.0
     assert len(pd.joint_amp_deg) == 7
     assert not hasattr(pd, "velocity_burst")
     assert cfg.fit.phi_recommended_key == "phi_10"

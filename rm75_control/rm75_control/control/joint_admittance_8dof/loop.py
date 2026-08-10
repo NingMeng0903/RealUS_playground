@@ -58,11 +58,9 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
 )
 from rm75_control.control.joint_admittance_8dof.tasks.secondary_composer import (
     SecondaryComposer,
-    max_limit_activation,
 )
 from rm75_control.control.joint_admittance_8dof.ik_types import saturate_error
 from rm75_control.control.joint_admittance_8dof.utils.safety import (
-    RAIL_ESCAPE_ACCEL_M_S2,
     SafetyLimiter,
     SafetyLimits,
     Watchdog,
@@ -88,10 +86,6 @@ class JointIkConfig:
     # Accel limits are unit-separated: rail m/s^2, arm rad/s^2.
     a_max_arm_rad_s2: float = 20.0     # rad/s^2 per arm joint (1..7)
     a_max_rail_m_s2: float = 0.30      # m/s^2 for prismatic rail (0)
-    # LW100 bridge-compatible acceleration used only during a signed rail
-    # singularity escape or its travel-stop brake.  Normal scans retain
-    # ``a_max_rail_m_s2`` above.
-    a_max_rail_escape_m_s2: float = RAIL_ESCAPE_ACCEL_M_S2
     position_margin_rad: float = 0.017
     position_margin_rail_m: float = 0.0  # metres (do not reuse arm rad margin)
     # QP velocity bound: stop q_cmd leading q_meas (0 disables; never a teleport).
@@ -101,11 +95,6 @@ class JointIkConfig:
     nullspace_d_null_adaptive: float = 1.0 # scale d_null up near joint limits
     # Cap soft secondary qdot as a fraction of URDF v_max (near σ, N→I).
     nullspace_max_qdot_frac: float = 0.2
-    # Latched stronger posture pull after singularity escape until near target.
-    # Stage-1 default is neutral: no implicit hard 3x posture recovery.
-    centering_recovery_gain: float = 1.0
-    centering_recovery_max_qdot_frac: float = 0.2
-    centering_recovery_tol: float = 0.12
 
 
 @dataclass
@@ -149,30 +138,21 @@ def twist_scale_target(
     sigma_ref: float,
     floor: float = 0.08,
 ) -> float:
-    """Continuous full-twist singularity scale.
+    """Immediate 4d full-twist singularity scale.
 
     Above ``sigma_ref`` the task is untouched.  Below it the requested twist
-    is scaled by ``max(sigma/sigma_ref, floor)``; there is deliberately no
-    deep-σ square branch or force-axis bypass.
+    is scaled by ``max(sigma/sigma_ref, floor)``.  In the deep branch the
+    scale is squared, as in the 4d controller, to let rail/manipulability
+    secondary tasks reclaim the nullspace.  The frozen 4d branch switches
+    directly at ``sigma_ref / 2``; it is intentionally not LPF-blended.
     """
     ref = float(sigma_ref)
     if ref <= 1e-9 or float(sigma_min) >= ref:
         return 1.0
-    return float(max(float(sigma_min) / ref, float(floor)))
-
-
-def twist_scale_lpf_step(
-    filt: float,
-    target: float,
-    *,
-    dt: float,
-    tau_s: float,
-) -> float:
-    """One first-order low-pass step (tau<=0 gives an immediate step)."""
-    if float(tau_s) <= 1e-6 or float(dt) <= 1e-9:
-        return float(target)
-    alpha = float(np.clip(float(dt) / float(tau_s), 0.0, 1.0))
-    return float(filt) + alpha * (float(target) - float(filt))
+    scale = max(float(sigma_min) / ref, float(floor))
+    if float(sigma_min) < 0.5 * ref:
+        scale = max(scale * scale, 0.5 * float(floor))
+    return float(scale)
 
 
 class JointIkController:
@@ -216,16 +196,6 @@ class JointIkController:
         # Build an 8-vector a_max: rail is m/s^2, arm joints 1..7 are rad/s^2.
         a_max_vec = np.full(kin.nv, float(self.cfg.a_max_arm_rad_s2))
         a_max_vec[0] = float(self.cfg.a_max_rail_m_s2)
-        escape_accel = float(self.cfg.a_max_rail_escape_m_s2)
-        if not np.isfinite(escape_accel) or escape_accel < 0.0:
-            raise ValueError(
-                "a_max_rail_escape_m_s2 must be finite and non-negative, "
-                f"got {self.cfg.a_max_rail_escape_m_s2!r}"
-            )
-        self._rail_escape_accel_m_s2 = escape_accel
-        # Keep QP and downstream safety on one canonical value even when a
-        # caller builds JointIkConfig directly rather than through YAML.
-        self.cfg.qp.rail_escape_accel_m_s2 = escape_accel
         # Position margin is unit-separated too: arm rad, rail metres.
         margin_vec = np.full(kin.nv, float(self.cfg.position_margin_rad))
         margin_vec[0] = float(self.cfg.position_margin_rail_m)
@@ -299,13 +269,6 @@ class JointIkController:
         )
         self.last_secondary_norm: float = 0.0
         self.last_sigma_min: float = float(self.cfg.qp.sr_damping.sigma_ref)
-        self._singularity_escape_seen: bool = False
-        self._centering_recovery_active: bool = False
-        self._in_escape_zone: bool = False
-        self._escape_enter_threshold_active: float = float(
-            getattr(self.cfg.qp, "sigma_escape_enter", 0.10)
-        )
-        self._twist_scale_filt: float = 1.0
         self._rail_mode: RailMode = self.cfg.rail.mode
         self._locked_style: LockedStyle = self.cfg.rail.locked_style
         # Immutable yaml rail mode (live cfg.rail.mode is mutated by locks).
@@ -357,40 +320,42 @@ class JointIkController:
         """Use ∇μ ascent in the nullspace instead of Liegeois centering."""
         self._manipulability_active = bool(active) and self.manipulability_task is not None
 
-    def _reset_rail_escape_inputs(self) -> None:
+    def _reset_rail_coordination_dynamics(self) -> None:
+        """Clear phase-local rail filters without creating an escape episode."""
         self._sigma_grad_tick = 0
         self._sigma_grad_rail_cached = 0.0
         self._rail_goodness.reset()
         if self.rail_ext_task is not None:
-            self.rail_ext_task.reset_escape()
+            self.rail_ext_task.reset_dynamics()
 
     def set_rail_extension_active(self, active: bool) -> None:
         """Gate preferred-extension / pose-attract rail task (COUPLED)."""
         active_b = bool(active)
         if active_b != self._rail_ext_active:
-            self._reset_rail_escape_inputs()
+            self._reset_rail_coordination_dynamics()
         self._rail_ext_active = active_b
 
     def set_rail_extension_mode(self, mode: str) -> None:
         """Select ``reach`` (scan) or ``pose_attract`` (move→D)."""
         if self.rail_ext_task is not None:
-            old_mode = str(self.rail_ext_task.mode)
+            old_mode = self.rail_ext_task.mode
             self.rail_ext_task.set_mode(mode)  # type: ignore[arg-type]
-            if str(self.rail_ext_task.mode) != old_mode:
-                self._reset_rail_escape_inputs()
+            if self.rail_ext_task.mode != old_mode:
+                self._reset_rail_coordination_dynamics()
 
     def set_rail_pose_target(self, y_rail_m: float | None) -> None:
         """Soft-attract target for pose_attract mode (metres on the rail)."""
         if self.rail_ext_task is not None:
+            old_target = self.rail_ext_task.y_rail_target_m
             self.rail_ext_task.set_rail_pose_target(y_rail_m)
-            if y_rail_m is None:
-                self._reset_rail_escape_inputs()
+            if self.rail_ext_task.y_rail_target_m != old_target:
+                self._reset_rail_coordination_dynamics()
 
     def capture_rail_extension_ref(self) -> None:
         """Capture preferred rail extension from the current scan-entry posture."""
         if self.rail_ext_task is not None:
-            self._reset_rail_escape_inputs()
             self.rail_ext_task.capture_reference(self.q_cmd)
+            self._reset_rail_coordination_dynamics()
 
     def reset(self, q0_rad: np.ndarray) -> None:
         self.q_cmd = np.asarray(q0_rad, dtype=float).copy()
@@ -401,101 +366,12 @@ class JointIkController:
         self.rail_task.reset(self.q_cmd)
         if self.rail_ext_task is not None:
             self.rail_ext_task.reset(self.q_cmd)
-        self._singularity_escape_seen = False
-        self._centering_recovery_active = False
-        self._in_escape_zone = False
-        self._escape_enter_threshold_active = float(
-            getattr(self.cfg.qp, "sigma_escape_enter", 0.10)
-        )
-        self._twist_scale_filt = 1.0
         self._sigma_grad_tick = 0
         self._sigma_grad_rail_cached = 0.0
         self._rail_goodness.reset()
         if self.manipulability_task is not None:
             self.manipulability_task.reset()
         self._apply_rail_mode_side_effects()
-
-    def _update_escape_zone(
-        self,
-        sigma_min: float,
-        enter: float,
-        exit_: float,
-        *,
-        limit_activation: float = 0.0,
-        limit_escape_activation: float | None = None,
-        sigma_limit_escape_enter: float | None = None,
-    ) -> bool:
-        """Latch one σ escape episode; pre-trigger only near a joint limit.
-
-        Returns ``True`` on the entry tick so the expensive coordinated rail
-        gradient can be refreshed immediately instead of reusing an old sign.
-        """
-        enter = float(enter)
-        exit_ = max(float(exit_), enter)
-        if enter <= 1e-9:
-            self._in_escape_zone = False
-            self._escape_enter_threshold_active = enter
-            return False
-        if self._in_escape_zone:
-            if float(sigma_min) >= exit_:
-                self._in_escape_zone = False
-                self._escape_enter_threshold_active = enter
-            return False
-
-        limit_thr = float(
-            getattr(self.cfg.qp, "limit_escape_activation", 0.80)
-            if limit_escape_activation is None
-            else limit_escape_activation
-        )
-        limit_enter = float(
-            getattr(self.cfg.qp, "sigma_limit_escape_enter", 0.12)
-            if sigma_limit_escape_enter is None
-            else sigma_limit_escape_enter
-        )
-        effective_enter = enter
-        if float(limit_activation) >= limit_thr:
-            effective_enter = max(effective_enter, limit_enter)
-        if float(sigma_min) < effective_enter:
-            self._in_escape_zone = True
-            self._escape_enter_threshold_active = effective_enter
-            return True
-        return False
-
-    @property
-    def escape_active(self) -> bool:
-        """Whether the controller is inside the latched σ escape episode."""
-        return bool(self._in_escape_zone)
-
-    def _centering_recovery_scale(
-        self,
-        q: np.ndarray,
-        sigma_min: float,
-        sigma_escape_enter: float,
-    ) -> float:
-        """Apply only explicitly configured posture recovery during escape."""
-        if sigma_escape_enter > 1e-9 and sigma_min < sigma_escape_enter:
-            self._singularity_escape_seen = True
-            self._centering_recovery_active = False
-            # Gain remains neutral by default; the state is retained only for
-            # explicit opt-in configurations.
-            return max(float(self.cfg.centering_recovery_gain), 1.0)
-
-        if not self._singularity_escape_seen:
-            self._centering_recovery_active = False
-            return 1.0
-
-        target_error = np.abs(
-            (np.asarray(q, dtype=float) - self.centering_task.q_target)
-            / self.centering_task.half
-        )
-        weighted_error = float(np.max(target_error * self.centering_task.w))
-        if weighted_error <= max(float(self.cfg.centering_recovery_tol), 0.0):
-            self._singularity_escape_seen = False
-            self._centering_recovery_active = False
-            return 1.0
-
-        self._centering_recovery_active = True
-        return max(float(self.cfg.centering_recovery_gain), 1.0)
 
     def set_rail_mode(
         self,
@@ -505,9 +381,10 @@ class JointIkController:
         locked_style: LockedStyle | str | None = None,
     ) -> None:
         """Set rail mode (COUPLED / LOCKED) and optional locked_style."""
+        old_mode = self._rail_mode
+        old_style = self._locked_style
         if isinstance(mode, str):
             mode = RailMode(mode)
-        mode_changed = mode != self._rail_mode
         self._rail_mode = mode
         if locked_style is not None:
             if isinstance(locked_style, str):
@@ -518,9 +395,9 @@ class JointIkController:
         elif mode == RailMode.LOCKED and self._locked_style == LockedStyle.HOLD:
             # HOLD without explicit ref = pin at current command (never yaml 0.0).
             self.rail_task.set_reference(float(self.q_cmd[0]))
-        if mode_changed:
-            self._reset_rail_escape_inputs()
         self._apply_rail_mode_side_effects()
+        if mode != old_mode or self._locked_style != old_style:
+            self._reset_rail_coordination_dynamics()
 
     def set_coupled(self) -> None:
         """Convenience: switch to RailMode.COUPLED (rail participates in QP)."""
@@ -566,14 +443,9 @@ class JointIkController:
         manipulability_active: bool | None = None,
         centering_sigma_fade: bool = True,
         sigma_min: float | None = None,
-        centering_gain_scale: float = 1.0,
-        max_qdot_frac_override: float | None = None,
     ) -> np.ndarray:
         """Compose centering, manipulability, and feedforward secondaries."""
         sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
-        sigma_escape_ref = float(
-            getattr(self.cfg.qp, "sigma_escape_enter", 0.10)
-        )
         qdot0 = self.secondary.compose(
             q,
             qdot_ff,
@@ -584,7 +456,6 @@ class JointIkController:
                 self.last_sigma_min if sigma_min is None else float(sigma_min)
             ),
             sigma_ref=sigma_ref,
-            sigma_escape_ref=sigma_escape_ref,
             centering_suppressed=self._centering_suppressed,
             centering_sigma_fade=centering_sigma_fade,
             manipulability_active=(
@@ -592,8 +463,6 @@ class JointIkController:
                 if manipulability_active is None
                 else manipulability_active
             ),
-            centering_gain_scale=centering_gain_scale,
-            max_qdot_frac_override=max_qdot_frac_override,
         )
         self.last_secondary_norm = float(np.linalg.norm(qdot0))
         return qdot0
@@ -615,58 +484,48 @@ class JointIkController:
         velocity constraints (never a position teleport). ``qdot_ff`` feeds
         the nullspace with centering / arm-angle tasks.
 
-        ``f_ext_z`` / ``f_des_z`` are retained as compatibility inputs for
-        callers, but the singularity brake always scales the complete 6D
-        twist, including force/retract motion.
+        When ``f_ext_z`` / ``f_des_z`` identify an over-force retract, the
+        negative tool-Z component keeps the e85 bypass; press and all other
+        components use the 4d singularity scale.
         """
         dt = self.cfg.dt if dt is None else dt
         q_prev = self.q_cmd
         follow_err = 0.0 if q_meas is None else float(np.max(np.abs(q_prev - q_meas)))
         q_rot = q_meas if q_meas is not None else q_prev
-        twist_tool = np.asarray(twist, dtype=float).copy()
+        twist_in = np.asarray(twist, dtype=float).copy()
 
-        # Continuous full-twist brake with an explicit absolute escape episode.
-        # The enter/exit thresholds are intentionally independent of the SR
-        # damping reference so rail/manipulability latches agree across modes.
+        # Restore the 4d immediate singularity brake.  The force/retract axis
+        # bypass below is the only e85 behavior retained in this layer.
         sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
-        sigma_escape_enter = float(
-            getattr(self.cfg.qp, "sigma_escape_enter", 0.10)
-        )
-        sigma_escape_exit = max(
-            float(getattr(self.cfg.qp, "sigma_escape_exit", 0.12)),
-            sigma_escape_enter,
-        )
         J_pre = self.kin.jacobian(q_prev)
         sigma_pre = float(self.kin.singular_values(J_pre).min())
-        limit_activation_pre = max_limit_activation(
-            q_prev[1:],
-            self.centering_task.q_mid[1:],
-            self.centering_task.half[1:],
-            activation=float(self.centering_task.cfg.activation),
-        )
-        escape_entered = self._update_escape_zone(
-            sigma_pre,
-            sigma_escape_enter,
-            sigma_escape_exit,
-            limit_activation=limit_activation_pre,
-        )
-        centering_gain_scale = self._centering_recovery_scale(
-            q_prev, sigma_pre, sigma_escape_enter
-        )
         floor = float(getattr(self.cfg.qp, "twist_sigma_floor", 0.08))
-        twist_scale_raw = twist_scale_target(sigma_pre, sigma_ref, floor)
-        tau_ts = float(getattr(self.cfg.qp, "twist_scale_lpf_tau_s", 0.08))
-        self._twist_scale_filt = twist_scale_lpf_step(
-            self._twist_scale_filt,
-            twist_scale_raw,
-            dt=float(dt),
-            tau_s=tau_ts,
+        twist_scale = twist_scale_target(sigma_pre, sigma_ref, floor)
+        force_is_over_target = (
+            f_ext_z is not None
+            and f_des_z is not None
+            and float(f_ext_z) > float(f_des_z)
         )
-        twist_scale = float(np.clip(self._twist_scale_filt, 0.0, 1.0))
-        # Brake all six components continuously; there is no force-axis
-        # bypass or deep-σ square branch.
-        twist_tool = twist_tool * twist_scale
-        twist_base = self._twist_to_base(twist_tool, q_rot)
+        if self.cfg.control_frame == "tool":
+            vz_tool = float(twist_in[2])
+            twist_scaled = twist_in * twist_scale
+            if force_is_over_target and vz_tool < 0.0:
+                # e85: preserve fast tool-Z withdrawal while press and all
+                # tangential/rotational components remain singularity-limited.
+                twist_scaled[2] = vz_tool
+            twist_base = self._twist_to_base(twist_scaled, q_rot)
+        else:
+            # A base-frame request still needs the e85 exception resolved on
+            # the physical tool normal.  Restore only its projection after the
+            # scalar 4d brake; the other five tool components remain scaled.
+            R_base_tool = self.kin.fk_placement(q_rot).rotation
+            tool_z_base = np.asarray(R_base_tool[:, 2], dtype=float)
+            vz_tool = float(np.dot(tool_z_base, twist_in[:3]))
+            twist_base = twist_in * twist_scale
+            if force_is_over_target and vz_tool < 0.0:
+                twist_base[:3] += (
+                    (1.0 - twist_scale) * vz_tool * tool_z_base
+                )
 
         locked_hold = self.is_locked_hold
         rail_only = (
@@ -732,17 +591,9 @@ class JointIkController:
                 pos_clamped=rep.pos_clamped,
                 rail_ext_err_m=0.0,
                 rail_ext_weight=0.0,
-                escape_active=bool(self._in_escape_zone),
-                rail_escape_active=bool(
-                    self.rail_ext_task.escape_active
-                    if self.rail_ext_task is not None
-                    else False
-                ),
-                rail_escape_sign=float(
-                    self.rail_ext_task.escape_sign
-                    if self.rail_ext_task is not None
-                    else 0.0
-                ),
+                escape_active=False,
+                rail_escape_active=False,
+                rail_escape_sign=0.0,
                 twist_scale=float(twist_scale),
                 cart_translation_weight_effective=float(
                     np.min(np.asarray(self.cfg.qp.task_weight, dtype=float)[:3])
@@ -754,12 +605,6 @@ class JointIkController:
 
         # Pin rail vel only for LOCKED (RAIL_ONLY/TCP_FIXED) or plan ownership.
         plan_drives_rail = rail_only or tcp_fixed or bool(self._plan_drives_rail)
-        if self._in_escape_zone and self._rail_mode == RailMode.COUPLED:
-            # Singularity escape is a safety override.  A coupled joint plan
-            # may resume after sigma exits, but it may not pin the rail through
-            # the signed escape envelope while the episode is active.
-            plan_drives_rail = False
-
         qdot_ff_sec = qdot_ff
         rail_vel_pin: float | None = None
         rail_qdot_ff_val = float("nan")
@@ -777,56 +622,29 @@ class JointIkController:
         resync_vec = np.full(self.kin.nv, float(self.cfg.resync_err_rad))
         resync_vec[0] = float(self.cfg.resync_err_rail_m)
 
-        # Preferred-extension rail coordination (COUPLED only) — c3ba58e.
+        # Preferred-extension rail coordination (COUPLED only), restored from
+        # 4d15c1d: scan FF + preferred extension + continuous sigma gradient.
         rail_task_vel: float | None = None
         rail_task_weight = 0.0
         rail_task_weight_raw = 0.0
         rail_task_weight_capped = 0.0
-        rail_escape_active = False
-        rail_escape_sign = 0.0
-        rail_escape_stopped = False
-        rail_escape_travel_m = 0.0
         rail_escape_v_des = 0.0
         rail_ext_err = 0.0
-        # Once sigma has recovered from an escape, posture recovery takes the
-        # nullspace slot even if a move preset left the manipulability flag on.
-        manip_for_saturation = (
-            self._manipulability_active and not self._centering_recovery_active
-        )
-        # Escape must not depend on whether a rail task/preset happens to be
-        # active.  The old nesting silently disabled arm ∇mu in coupled-off or
-        # locked modes exactly when the arm needed it most.
-        if self._in_escape_zone:
-            manip_for_saturation = True
+        manip_for_saturation = self._manipulability_active
         if (
             self.rail_ext_task is not None
             and self._rail_ext_active
             and self._rail_mode == RailMode.COUPLED
         ):
             sigma_now = float(sigma_pre)
-            # sig_scale fades scan FF; sig_escape drives escape / w_sigma / boost.
+            # Frozen 4d health scalar used by the rail task scheduler.
             sig_scale = 1.0
             if sigma_ref > 1e-9 and sigma_now < sigma_ref:
                 sig_scale = max(sigma_now / sigma_ref, 0.25)
-            sig_escape = 1.0
-            escape_enter_runtime = max(
-                float(self._escape_enter_threshold_active), sigma_escape_enter
-            )
-            if escape_enter_runtime > 1e-9:
-                sig_escape = max(sigma_now / escape_enter_runtime, 0.0)
-            if escape_entered:
-                self._sigma_grad_tick = 0
-                self._sigma_grad_rail_cached = 0.0
-                self._rail_goodness.reset()
             self._sigma_grad_tick += 1
             if (
                 self._sigma_grad_tick % self._sigma_grad_period == 0
                 or self._sigma_grad_tick == 1
-                or (
-                    self._in_escape_zone
-                    and not self.rail_ext_task.escape_active
-                    and self._sigma_grad_tick <= 3
-                )
             ):
                 _g, self._sigma_grad_rail_cached = self._rail_goodness.refresh(
                     q_prev, force=True
@@ -835,19 +653,11 @@ class JointIkController:
             v_ext, w_ext = self.rail_ext_task(
                 q_prev,
                 sigma_scale=sig_scale,
-                sigma_escape_scale=sig_escape,
                 sigma_grad_rail=self._sigma_grad_rail_cached,
                 vel_ff=vel_ff,
                 dt_s=float(dt),
-                sigma_min=sigma_now,
-                sigma_escape_enter=escape_enter_runtime,
-                sigma_escape_exit=sigma_escape_exit,
             )
             rail_ext_err = self.rail_ext_task.last_err_m
-            rail_escape_active = bool(self.rail_ext_task.escape_active)
-            rail_escape_sign = float(self.rail_ext_task.escape_sign)
-            rail_escape_stopped = bool(self.rail_ext_task.escape_stopped)
-            rail_escape_travel_m = float(self.rail_ext_task.escape_travel_m)
             rail_escape_v_des = float(v_ext)
             rail_task_weight_raw = float(self.rail_ext_task.last_weight_raw)
             rail_task_weight_capped = float(
@@ -856,6 +666,8 @@ class JointIkController:
             if w_ext > 0.0:
                 rail_task_vel = v_ext
                 rail_task_weight = w_ext
+            if sigma_ref > 1e-9 and sigma_now < sigma_ref:
+                manip_for_saturation = True
 
         r = self.core.step(
             q_prev,
@@ -869,12 +681,6 @@ class JointIkController:
                     self._rail_ext_active and self._rail_mode == RailMode.COUPLED
                 ),
                 sigma_min=sigma_pre,
-                centering_gain_scale=centering_gain_scale,
-                max_qdot_frac_override=(
-                    self.cfg.centering_recovery_max_qdot_frac
-                    if self._centering_recovery_active
-                    else None
-                ),
             ),
             q_meas=q_meas,
             resync_err=resync_vec,
@@ -885,38 +691,13 @@ class JointIkController:
             zero_secondary_rail=not locked_hold,
             rail_task_vel_m_s=rail_task_vel,
             rail_task_weight=rail_task_weight,
-            rail_task_weight_hard_max=(
-                float(self.rail_ext_task.cfg.weight_hard_max)
-                if self.rail_ext_task is not None
-                else None
-            ),
-            rail_task_weight_max_frac=(
-                float(self.rail_ext_task.cfg.task_weight_max_frac)
-                if self.rail_ext_task is not None
-                else None
-            ),
-            rail_escape_sign=rail_escape_sign,
-            rail_escape_stop=rail_escape_stopped,
-            rail_escape_active=rail_escape_active,
-            rail_escape_v_min_m_s=(
-                float(self.rail_ext_task.cfg.escape_v_min_m_s)
-                if self.rail_ext_task is not None
-                else None
-            ),
-            rail_escape_v_max_m_s=(
-                float(self.rail_ext_task.cfg.escape_v_max_m_s)
-                if self.rail_ext_task is not None
-                else None
-            ),
-            rail_escape_accel_m_s2=self._rail_escape_accel_m_s2,
         )
-        # Carry controller-side geometry state on the shared result as well as
-        # the public JointIkStep wrapper for callers that inspect the QP result.
-        r.escape_active = bool(self._in_escape_zone)
-        r.rail_escape_active = bool(rail_escape_active)
-        r.rail_escape_sign = float(rail_escape_sign)
-        r.rail_escape_stopped = bool(rail_escape_stopped)
-        r.rail_escape_travel_m = float(rail_escape_travel_m)
+        # Keep append-only telemetry fields while retiring episode semantics.
+        r.escape_active = False
+        r.rail_escape_active = False
+        r.rail_escape_sign = 0.0
+        r.rail_escape_stopped = False
+        r.rail_escape_travel_m = 0.0
         r.rail_escape_v_des_m_s = float(rail_escape_v_des)
         r.twist_scale = float(twist_scale)
         rail_task_weight_effective = float(
@@ -930,15 +711,7 @@ class JointIkController:
             )
         )
 
-        rep = self.safety.clamp(
-            q_prev,
-            r.q_next,
-            dt,
-            rail_escape_active=rail_escape_active,
-            rail_escape_sign=rail_escape_sign,
-            rail_escape_stop=rail_escape_stopped,
-            rail_escape_accel_m_s2=self._rail_escape_accel_m_s2,
-        )
+        rep = self.safety.clamp(q_prev, r.q_next, dt)
         self.q_cmd = rep.q_safe
         if dt > 1e-9 and (rep.vel_clamped or rep.acc_clamped or rep.pos_clamped):
             self.core.qdot_prev = rep.dq / dt
@@ -956,33 +729,6 @@ class JointIkController:
                     self.q_cmd[0] = q0_meas - lead_max
                     if dt > 1e-9:
                         self.core.qdot_prev[0] = (self.q_cmd[0] - q_prev[0]) / dt
-        # Enforce the episode displacement on the final host target, after QP,
-        # SafetyLimiter and encoder-lead handling.  This is a position budget,
-        # so it outranks acceleration continuity at its boundary; the hardware
-        # bridge still slews the motor velocity.
-        if rail_escape_active and self.rail_ext_task is not None:
-            episode_limit = self.rail_ext_task.escape_position_limit_m
-            if episode_limit is not None:
-                y_before = float(self.q_cmd[0])
-                if rail_escape_sign > 0.0:
-                    self.q_cmd[0] = min(y_before, float(episode_limit))
-                    reached_episode_limit = y_before >= float(episode_limit) - 1e-12
-                elif rail_escape_sign < 0.0:
-                    self.q_cmd[0] = max(y_before, float(episode_limit))
-                    reached_episode_limit = y_before <= float(episode_limit) + 1e-12
-                else:
-                    reached_episode_limit = False
-                self.rail_ext_task.observe_escape_position(float(self.q_cmd[0]))
-                if reached_episode_limit:
-                    self.rail_ext_task.stop_escape()
-                    rail_escape_stopped = True
-                    rep.pos_clamped = rep.pos_clamped or not np.isclose(
-                        self.q_cmd[0], y_before
-                    )
-                rail_escape_travel_m = float(
-                    self.rail_ext_task.escape_travel_m
-                )
-
         # QP velocity pins already participate in the same box as every other
         # rail constraint.  Do not rewrite q_cmd from raw qdot_ff afterwards;
         # that historical second integration bypassed safety/escape/lead caps.
@@ -1023,11 +769,11 @@ class JointIkController:
             rail_ext_weight_raw=rail_task_weight_raw,
             rail_ext_weight_capped=rail_task_weight_capped,
             rail_ext_weight_effective=rail_task_weight_effective,
-            escape_active=bool(self._in_escape_zone),
-            rail_escape_active=rail_escape_active,
-            rail_escape_sign=rail_escape_sign,
-            rail_escape_stopped=rail_escape_stopped,
-            rail_escape_travel_m=rail_escape_travel_m,
+            escape_active=False,
+            rail_escape_active=False,
+            rail_escape_sign=0.0,
+            rail_escape_stopped=False,
+            rail_escape_travel_m=0.0,
             rail_escape_v_des_m_s=rail_escape_v_des,
             twist_scale=float(twist_scale),
             cart_translation_weight_effective=cart_translation_weight_effective,

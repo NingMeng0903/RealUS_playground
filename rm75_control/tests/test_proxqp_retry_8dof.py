@@ -96,7 +96,7 @@ def test_srs_midpath_ik_none_raises_after_streak(monkeypatch):
 
 
 def test_fail_qdot_decay_uses_cfg_alpha():
-    """Solver failure must apply fail_qdot_decay, not a hard 0.5 chop."""
+    """Failure decay applies before the retained normal velocity box."""
     kin = RobotKinematics()
     limits = SafetyLimits.from_kinematics(kin, v_scale=0.5, a_max=20.0)
     cfg = QpConfig(
@@ -111,7 +111,13 @@ def test_fail_qdot_decay_uses_cfg_alpha():
     ctrl.qdot_prev = np.full(kin.nv, 0.2)
     ctrl.backend.solve = lambda *a, **k: None  # type: ignore[method-assign]
     r = ctrl.step(Q_HOME, np.zeros(6), 0.005)
-    assert np.allclose(r.qdot, 0.85 * 0.2)
+    expected = np.clip(
+        0.85 * np.full(kin.nv, 0.2),
+        -limits.v_max,
+        limits.v_max,
+    )
+    assert np.allclose(r.qdot, expected)
+    assert np.allclose(r.qdot[1:], 0.85 * 0.2)
 
 
 def test_direct_joint_ptp_skips_proxqp():

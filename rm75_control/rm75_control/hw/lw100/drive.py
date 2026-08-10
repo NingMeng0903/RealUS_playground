@@ -1084,6 +1084,36 @@ class LW100Drive:
         """Measured rail position in metres (Genesis ``rail_y``)."""
         return self.read_rail_mm() * 1e-3
 
+    def _counts_to_rail_m(self, raw_counts: int) -> float:
+        counts = float(int(raw_counts) + int(self._counts_bias) - int(self._counts0))
+        cpr = float(max(self.config.encoder_counts_per_rev, 1))
+        motor_revs = counts / cpr
+        return (motor_revs / float(self.config.gear_ratio)) * float(self.config.lead_mm) * 1e-3
+
+    @staticmethod
+    def _u16_to_i16(val: int) -> int:
+        v = int(val) & 0xFFFF
+        return v - 0x10000 if v >= 0x8000 else v
+
+    @staticmethod
+    def _u32_pair_to_i32(lo: int, hi: int) -> int:
+        v = ((int(hi) & 0xFFFF) << 16) | (int(lo) & 0xFFFF)
+        return v - (1 << 32) if v >= (1 << 31) else v
+
+    def read_motion_fast(self) -> tuple[int, float]:
+        """ONE Modbus read: monitor speed 0x1000 + encoder 0x1001/0x1002.
+
+        Returns ``(speed_rpm_signed, rail_m)`` in the drive encoder frame
+        (before host ``sign``).  Manual/monitor block: 0x1000 = motor r/min.
+        Prefer this over differentiating host-cached position — a 50 Hz host
+        thread can sample the same cached ``measured_m`` twice and invent a
+        false ``v=0`` even while the drive is moving.
+        """
+        speed_u, lo, hi = self._client.read_holding_registers(MONITOR_SPEED_RPM, 3)
+        speed_rpm = self._u16_to_i16(speed_u)
+        raw = self._u32_pair_to_i32(lo, hi)
+        return speed_rpm, self._counts_to_rail_m(raw)
+
     def read_rail_m_fast(self) -> float:
         """Streaming rail position (metres): ONE Modbus transaction, no double-read.
 
@@ -1093,12 +1123,10 @@ class LW100Drive:
         exactly when the rail moves. lo/hi come back in a single Modbus response
         (no word-tear within a transaction), so a single read is safe for display
         and the soft position loop.
+
+        Prefer :meth:`read_motion_fast` when speed is also needed (same cost).
         """
-        raw = self._read_encoder_counts_raw(retries=1) + int(self._counts_bias)
-        counts = float(raw - self._counts0)
-        cpr = float(max(self.config.encoder_counts_per_rev, 1))
-        motor_revs = counts / cpr
-        return (motor_revs / float(self.config.gear_ratio)) * float(self.config.lead_mm) * 1e-3
+        return self.read_motion_fast()[1]
 
     def read_status(self) -> dict[str, int]:
         """Mode / enable params + live speed. Prefer ``read_rail_mm`` for position."""

@@ -98,15 +98,24 @@ def test_parse_rail_servo_config_settle_keys():
 
 
 def test_stall_safe_speed_near_target():
-    """Near target, stall clamp keeps latched overshoot ≤ residual."""
+    """PD correction stall clamp keeps latched overshoot ≤ residual.
+
+    Feedforward is intentionally *not* stall-clamped (see rail_servo worker):
+    clamping total velocity forced ~v_ref·max_stall_s lag independent of gains.
+    """
     err = 0.001  # 1 mm
     max_stall_s = 0.06
     stall_v_floor = 0.004
-    v_allow = max(abs(err) / max_stall_s, stall_v_floor)
+    v_pd_allow = max(abs(err) / max_stall_s, stall_v_floor)
     # 1 mm / 0.06 s ≈ 0.0167 m/s; floor 0.004 → allow ≈ 0.0167
-    assert abs(v_allow - err / max_stall_s) < 1e-9
-    # Worst-case latched travel over max_stall_s ≈ |err|
-    assert v_allow * max_stall_s <= abs(err) + 1e-12
+    assert abs(v_pd_allow - err / max_stall_s) < 1e-9
+    # Worst-case latched travel of the *PD* term over max_stall_s ≈ |err|
+    assert v_pd_allow * max_stall_s <= abs(err) + 1e-12
+    # Tracking with feedforward must still be able to command v_ref when err→0.
+    v_ff = 0.020
+    v_pd = 0.0
+    v_des = v_ff + max(-v_pd_allow, min(v_pd_allow, v_pd))
+    assert abs(v_des - v_ff) < 1e-12
 
 
 def test_make_rail_arrived_default_tol():

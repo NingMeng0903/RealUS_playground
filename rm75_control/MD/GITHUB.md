@@ -56,7 +56,7 @@ git push -u origin main
 cd /media/camp/EXT_DRIVE/rm75_control
 git status
 git add .
-git commit -m "不弹，力不快"
+git commit -m "huorong前备份，singulity问题"
 git push origin main
 ```
 

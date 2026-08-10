@@ -35,8 +35,7 @@ inner:
   v_scale: 0.8             # fraction of URDF joint velocity limit
   # Accel limits are unit-explicit (arm rad/s^2 vs rail m/s^2).
   a_max_arm: 18.0          # rad/s^2 per arm joint (1..7)
-  a_max_rail_m_s2: 0.30    # normal host target slew
-  a_max_rail_escape_m_s2: 0.80  # LW100 signed escape/stop slew (m/s^2)
+  a_max_rail_m_s2: 0.30    # host target slew
   position_margin_deg: 2.0
   # Keep 0: non-zero margin teleports q_cmd off the rail end-stop.
   position_margin_rail_mm: 0.0
@@ -55,18 +54,8 @@ inner:
     max_iter_cap: 400
     max_solve_ms: 8.0         # skip retry if first attempt already burned wall budget
     fail_qdot_decay: 0.85
-    # Continuous full-twist singularity brake (force-Z is not exempt).
+    # Immediate 4d singularity brake; over-force retract keeps e85 tool-Z bypass.
     twist_sigma_floor: 0.08
-    twist_scale_lpf_tau_s: 0.08
-    # Escape is hysteretic: normal pose-D σ≈0.11–0.14 must stay out.
-    sigma_escape_ref_scale: 1.25   # compatibility: 1.25 * 0.08 = 0.10
-    sigma_escape_enter: 0.10
-    sigma_escape_exit: 0.12
-    # If an arm joint is already very near its hard limit (activation >=0.80
-    # within the configured repulsion profile), start the macro escape at
-    # sigma=.12.  Rail position is deliberately excluded from this trigger.
-    sigma_limit_escape_enter: 0.12
-    limit_escape_activation: 0.80
     warn_on_fail: false
     # Chiaverini 1997 SR damping for nullspace projection.
     sr_damping:
@@ -97,8 +86,7 @@ inner:
     max_pairs: 8
 
   nullspace:
-    # 4d/c3 invariant: ∇μ owns the soft nullspace during escape; centering
-    # resumes only after the sigma exit hysteresis clears.
+    # 4d/c3 invariant: below sigma_ref, ∇μ owns the soft nullspace slot.
     k_center: 1.0
     k_limit: 2.0
     activation: 0.85
@@ -116,11 +104,6 @@ inner:
   nullspace_d_null_adaptive: 1.0
   # Cap soft secondary qdot as a fraction of URDF v_max (near σ, N→I).
   nullspace_max_qdot_frac: 0.2
-  # Stage-1 baseline: no hard 3× recovery transition.
-  centering_recovery_gain: 1.0
-  centering_recovery_max_qdot_frac: 0.2
-  centering_recovery_tol: 0.12
-
   arm_angle:
     enabled: true
     k_psi: 1.0
@@ -136,18 +119,13 @@ inner:
     v_ff_span_m_s: 0.015   # FF fully on by ~20 mm/s (2 cm/s scan is "awake")
     e0_m: 0.02             # reach dead zone: arm handles ±2 cm inside d_pref
     e1_m: 0.08             # full reach authority by 8 cm drift
-    w_max: 2.0             # base schedule; healthy cap below allows relocation
+    w_max: 2.0             # restored 4d schedule; QP consumes this weight verbatim
     v_max_m_s: 0.08        # cap on the task's desired rail velocity
     limit_margin_m: 0.08   # C¹ smoothstep handoff band before physical stop (8 cm)
-    # σ-escape task is subordinate; actual rail qdot gets a separate signed envelope.
+    # Continuous sigma-gradient bias, restored from 4d15c1d.
     k_sigma_boost: 2.0     # w_ext boosts up to 3x as σ → 0
     k_esc: 0.5             # σ-escape velocity gain (m/s per unit σ gradient)
     w_sigma_floor: 1.0     # baseline w inside dead zone when σ depressed
-    weight_hard_max: 4.5   # healthy relocation cap; QP deep escape caps at 2.0
-    task_weight_max_frac: 0.80  # healthy fraction; QP deep escape caps at 0.20
-    escape_v_min_m_s: 0.010 # a latched episode must actually start side motion
-    escape_v_max_m_s: 0.020 # macro relocation, never the previous 0.13 m/s sweep
-    escape_max_travel_m: 0.080 # then pin rail and leave recovery to arm nullspace
     # move→D pose attractor (preset=move → mode=pose_attract).
     k_pose: 2.0            # 1/s soft P on (y_target - y_rail)
     pose_e0_m: 0.005       # settle dead-zone (stop hunting at target)
@@ -451,7 +429,8 @@ hw:
     deadband_mm: 0.5
     max_speed_rpm: 900       # FA23: 0.15 m/s @ 10 mm/rev (gentler vs Er-01 on move→D)
     # Soft CSP via FA24 (see apps/lw100_vel_pos_follow_demo.py).
-    vel_kp: 18.0
+    # Loaded PD scan BEST (400±40 mm): kp=14/kd=0.22 (was empty-load 18/0.22).
+    vel_kp: 14.0
     vel_kd: 0.22
     vel_ff_gain: 1.0
     vel_max_m_s: 0.15
@@ -460,7 +439,7 @@ hw:
     target_timeout_s: 0.25
     encoder_freeze_s: 1.0
     encoder_freeze_min_v_m_s: 0.02
-    encoder_freeze_min_move_mm: 0.5
+    encoder_freeze_min_move_mm: 0.15
     # End-of-stream / task-end settle before releasing follow (closes latched overshoot).
     settle_tol_mm: 0.05
     settle_v_m_s: 0.006
@@ -470,8 +449,10 @@ hw:
     stall_v_floor_m_s: 0.004
     # Run-time encoder jump → PANIC + invalidate cal (above v_max·dt + margin).
     jump_margin_mm: 3.0
-    accel_ms: 200            # FA40 — manual: Er-01 if accel too short at start
-    decel_ms: 200            # FA41
+    # FA40/41: 200→150 ms to cut ~0.3 mm tracking lag under load; 120 is next
+    # step if Er-01 stays clear. Too short → Er-01 超速.
+    accel_ms: 150
+    decel_ms: 150
     scurve_ms: 30            # FA42
     busy_speed_rpm: 1
     home_on_exit: false

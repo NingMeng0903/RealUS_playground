@@ -146,7 +146,6 @@ class SecondaryComposer:
         arm_suppressed: bool,
         sigma_min: float = 1.0,
         sigma_ref: float = 0.08,
-        sigma_escape_ref: float = 0.10,
         centering_suppressed: bool = False,
         manipulability_active: bool = False,
         centering_sigma_fade: bool = True,
@@ -166,12 +165,13 @@ class SecondaryComposer:
 
         qdot_soft = np.zeros_like(q)
         rail_hold = self.rail_lock is not None and self.rail_lock.active
-        # Restore the 4d/c3 escape invariant: ∇μ owns the soft-nullspace slot
-        # while an escape is active.  Adding centering and ∇μ made two posture
-        # fields oppose each other before the per-joint cap; on the 162413
+        # Restore the 4d/c3 invariant: grad-mu owns the soft-nullspace slot
+        # while the loop sees sigma below sigma_ref.  Adding centering and
+        # grad-mu made two posture fields oppose each other before the
+        # per-joint cap; on the 162413
         # hardware run that coincided with joint flips and 42--94 mm TCP drift.
         # Hard joint boxes/velocity dampers remain active, and centering resumes
-        # after the explicit sigma hysteresis exits.
+        # immediately when sigma recovers to sigma_ref.
         #
         # Rail is a base translation: ∂μ/∂q0 is analytically zero, but the FD
         # gradient in ManipulabilityTask can produce small numerical residuals

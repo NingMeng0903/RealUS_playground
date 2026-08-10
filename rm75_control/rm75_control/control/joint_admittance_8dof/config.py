@@ -21,9 +21,6 @@ from rm75_control.control.joint_admittance_8dof.tasks.nullspace_task import Null
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import RailExtensionConfig
 from rm75_control.control.joint_admittance_8dof.tasks.rail_lock import RailLockConfig
 from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedStyle, RailMode
-from rm75_control.control.joint_admittance_8dof.utils.safety import (
-    RAIL_ESCAPE_ACCEL_M_S2,
-)
 
 
 def _arr(v, default):
@@ -46,76 +43,6 @@ def _finite_float(value, *, name: str) -> float:
     if not math.isfinite(out):
         raise ValueError(f"{name} must be a finite number, got {value!r}")
     return out
-
-
-def _shared_float(
-    primary: dict,
-    primary_key: str,
-    alias: dict,
-    alias_key: str,
-    *,
-    default: float,
-    name: str,
-    compare=lambda x: x,
-) -> float:
-    """Resolve a value shared by the QP and rail-extension sections.
-
-    ``inner.qp`` keys are retained as compatibility aliases for older YAMLs;
-    ``inner.rail_extension`` is the canonical section.  If both spellings are
-    present they must agree, otherwise startup fails instead of silently
-    running the two controllers with different envelopes.
-    """
-
-    has_primary = primary_key in primary
-    has_alias = alias_key in alias
-    p = _finite_float(primary[primary_key], name=f"inner.qp.{primary_key}") if has_primary else None
-    a = (
-        _finite_float(alias[alias_key], name=f"inner.rail_extension.{alias_key}")
-        if has_alias
-        else None
-    )
-    if p is not None and a is not None and not math.isclose(
-        float(compare(p)), float(compare(a)), rel_tol=0.0, abs_tol=1.0e-12
-    ):
-        raise ValueError(
-            f"{name} mismatch: inner.qp.{primary_key}={p:.12g} vs "
-            f"inner.rail_extension.{alias_key}={a:.12g}"
-        )
-    if a is not None:
-        return a
-    if p is not None:
-        return p
-    return _finite_float(default, name=name)
-
-
-def _validate_escape_thresholds(
-    sigma_escape_enter: float,
-    sigma_limit_escape_enter: float,
-    sigma_escape_exit: float,
-) -> None:
-    """Validate the one-way singularity escape hysteresis ordering."""
-
-    if not (
-        0.0 < sigma_escape_enter
-        <= sigma_limit_escape_enter
-        <= sigma_escape_exit
-    ):
-        raise ValueError(
-            "invalid singularity escape thresholds: expected "
-            "0 < sigma_escape_enter <= sigma_limit_escape_enter <= "
-            f"sigma_escape_exit, got {sigma_escape_enter:.12g}, "
-            f"{sigma_limit_escape_enter:.12g}, {sigma_escape_exit:.12g}"
-        )
-
-
-def _validate_escape_velocity(v_min: float, v_max: float) -> None:
-    """Validate the non-negative rail escape speed envelope."""
-
-    if not (0.0 <= v_min <= v_max):
-        raise ValueError(
-            "invalid rail escape velocity envelope: expected "
-            f"0 <= v_min <= v_max, got {v_min:.12g}, {v_max:.12g}"
-        )
 
 
 def _resolve_rail_mode(r: dict) -> tuple[RailMode, LockedStyle]:
@@ -144,118 +71,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
     euler_order = str(raw.get("frames", {}).get("euler_order", inner.get("euler_order", "xyz")))
 
     c = inner.get("qp", {})
-    # ``rail_extension`` is the canonical source for the runtime rail escape
-    # envelope.  The QP spellings below remain accepted as compatibility
-    # aliases, but both sections are resolved once so the derived objects
-    # cannot disagree.
     re_cfg = inner.get("rail_extension", {})
-    sigma_escape_enter = _finite_float(
-        c.get("sigma_escape_enter", 0.10), name="inner.qp.sigma_escape_enter"
-    )
-    sigma_limit_escape_enter = _finite_float(
-        c.get("sigma_limit_escape_enter", 0.12),
-        name="inner.qp.sigma_limit_escape_enter",
-    )
-    sigma_escape_exit = _finite_float(
-        c.get("sigma_escape_exit", 0.12), name="inner.qp.sigma_escape_exit"
-    )
-    _validate_escape_thresholds(
-        sigma_escape_enter,
-        sigma_limit_escape_enter,
-        sigma_escape_exit,
-    )
-    escape_v_min = _shared_float(
-        c,
-        "rail_escape_v_min_m_s",
-        re_cfg,
-        "escape_v_min_m_s",
-        default=0.010,
-        name="rail escape v_min_m_s",
-    )
-    escape_v_max = _shared_float(
-        c,
-        "rail_escape_v_max_m_s",
-        re_cfg,
-        "escape_v_max_m_s",
-        default=0.020,
-        name="rail escape v_max_m_s",
-    )
-    _validate_escape_velocity(escape_v_min, escape_v_max)
-    # This is the one rail escape slew shared by QP and SafetyLimiter.  Keep
-    # it in the inner section so startup rejects NaN/Inf/negative overrides
-    # before any controller object is constructed.
-    a_max_rail_escape = _finite_float(
-        inner.get("a_max_rail_escape_m_s2", RAIL_ESCAPE_ACCEL_M_S2),
-        name="inner.a_max_rail_escape_m_s2",
-    )
-    if a_max_rail_escape < 0.0:
-        raise ValueError(
-            "inner.a_max_rail_escape_m_s2 must be non-negative, "
-            f"got {a_max_rail_escape:.12g}"
-        )
-    if "rail_escape_accel_m_s2" in c:
-        qp_escape = _finite_float(
-            c["rail_escape_accel_m_s2"],
-            name="inner.qp.rail_escape_accel_m_s2",
-        )
-        if qp_escape < 0.0:
-            raise ValueError(
-                "inner.qp.rail_escape_accel_m_s2 must be non-negative, "
-                f"got {qp_escape:.12g}"
-            )
-        if not math.isclose(
-            qp_escape, a_max_rail_escape, rel_tol=0.0, abs_tol=1.0e-12
-        ):
-            raise ValueError(
-                "rail escape acceleration mismatch: inner.a_max_rail_escape_m_s2="
-                f"{a_max_rail_escape:.12g} vs inner.qp.rail_escape_accel_m_s2="
-                f"{qp_escape:.12g}"
-            )
-
-    # Healthy relocation aliases resolve to the wider preferred-task budget;
-    # deep escape is tightened independently by the final QP boundary.
-    rail_weight_hard_max = _shared_float(
-        c,
-        "rail_task_weight_hard_max",
-        re_cfg,
-        "weight_hard_max",
-        default=4.5,
-        name="rail task hard weight",
-    )
-    if rail_weight_hard_max < 0.0:
-        raise ValueError(
-            "rail task hard weight must be non-negative, "
-            f"got {rail_weight_hard_max:.12g}"
-        )
-    # Older configs occasionally used a larger scheduling cap.  Keep those
-    # inputs loadable, but normalize them to the current healthy hard boundary;
-    # duplicate aliases were already compared before this clipping step.
-    rail_weight_hard_max = min(rail_weight_hard_max, 4.5)
-    rail_weight_max_frac = _shared_float(
-        c,
-        "rail_task_weight_max_frac",
-        re_cfg,
-        "task_weight_max_frac",
-        default=0.80,
-        name="rail task weight fraction",
-    )
-    if not 0.0 <= rail_weight_max_frac <= 1.0:
-        raise ValueError(
-            "rail task weight fraction must be within [0, 1], "
-            f"got {rail_weight_max_frac:.12g}"
-        )
-    # As with the absolute cap, a legacy wider fraction remains compatible but
-    # cannot widen the healthy hierarchy.  Deep escape is tightened in QP.
-    rail_weight_max_frac = min(rail_weight_max_frac, 0.80)
-    limit_escape_activation = _finite_float(
-        c.get("limit_escape_activation", 0.80),
-        name="inner.qp.limit_escape_activation",
-    )
-    if not 0.0 <= limit_escape_activation <= 1.0:
-        raise ValueError(
-            "inner.qp.limit_escape_activation must be within [0, 1], "
-            f"got {limit_escape_activation:.12g}"
-        )
     reg = c.get("reg", None)
     if isinstance(reg, (list, tuple)):
         reg_arr = _arr(reg, [1e-2] * 8)
@@ -301,20 +117,6 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         fail_qdot_decay=float(c.get("fail_qdot_decay", 0.85)),
         max_solve_ms=float(c.get("max_solve_ms", 8.0)),
         twist_sigma_floor=float(c.get("twist_sigma_floor", 0.08)),
-        # Continuous full-twist brake: the canonical Stage-1 LPF is 80 ms.
-        twist_scale_lpf_tau_s=float(c.get("twist_scale_lpf_tau_s", 0.08)),
-        # Kept for old YAMLs; explicit absolute thresholds below are the
-        # runtime hysteresis contract (enter=.10, exit=.12).
-        sigma_escape_ref_scale=float(c.get("sigma_escape_ref_scale", 1.25)),
-        sigma_escape_enter=sigma_escape_enter,
-        sigma_escape_exit=sigma_escape_exit,
-        sigma_limit_escape_enter=sigma_limit_escape_enter,
-        limit_escape_activation=limit_escape_activation,
-        rail_task_weight_hard_max=rail_weight_hard_max,
-        rail_task_weight_max_frac=rail_weight_max_frac,
-        rail_escape_v_min_m_s=escape_v_min,
-        rail_escape_v_max_m_s=escape_v_max,
-        rail_escape_accel_m_s2=a_max_rail_escape,
     )
     if reg_arr is not None:
         qp_kwargs["reg"] = reg_arr
@@ -414,17 +216,6 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
     # inner-rail/hardware precedence used by SafetyLimits and RailExtension.
     qp.rail_soft_min_m = soft_min
     qp.rail_soft_max_m = soft_max
-    escape_max_travel = _finite_float(
-        re_cfg.get("escape_max_travel_m", 0.080),
-        name="inner.rail_extension.escape_max_travel_m",
-    )
-    rail_span = soft_max - soft_min
-    if not (escape_max_travel >= 0.0 and escape_max_travel <= rail_span):
-        raise ValueError(
-            "invalid rail escape_max_travel_m: expected "
-            f"0 <= escape_max_travel_m <= soft_max_m-soft_min_m "
-            f"({rail_span:.12g}), got {escape_max_travel:.12g}"
-        )
     rail_extension = RailExtensionConfig(
         enabled=bool(re_cfg.get("enabled", True)),
         k_ext=float(re_cfg.get("k_ext", 2.0)),
@@ -436,12 +227,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         w_max=float(re_cfg.get("w_max", 2.0)),
         soft_min_m=soft_min,
         soft_max_m=soft_max,
-        weight_hard_max=rail_weight_hard_max,
-        task_weight_max_frac=rail_weight_max_frac,
         v_max_m_s=float(re_cfg.get("v_max_m_s", 0.08)),
-        escape_v_min_m_s=escape_v_min,
-        escape_v_max_m_s=escape_v_max,
-        escape_max_travel_m=escape_max_travel,
         limit_margin_m=float(re_cfg.get("limit_margin_m", 0.08)),
         k_sigma_boost=float(re_cfg.get("k_sigma_boost", 2.0)),
         k_esc=float(re_cfg.get("k_esc", 0.5)),
@@ -455,13 +241,6 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         v_guard_max_m_s=float(re_cfg.get("v_guard_max_m_s", 0.04)),
         v_lpf_tau_s=float(re_cfg.get("v_lpf_tau_s", 0.12)),
     )
-    # Direct QpIkController callers retain defensive defaults, while the
-    # production JointIk path uses the rail-extension values as the canonical
-    # hierarchy/escape envelope.
-    qp.rail_task_weight_hard_max = float(rail_extension.weight_hard_max)
-    qp.rail_task_weight_max_frac = float(rail_extension.task_weight_max_frac)
-    qp.rail_escape_v_min_m_s = float(rail_extension.escape_v_min_m_s)
-    qp.rail_escape_v_max_m_s = float(rail_extension.escape_v_max_m_s)
 
     rail = RailLockConfig(
         mode=rail_mode,
@@ -490,7 +269,6 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         v_scale=float(inner.get("v_scale", 0.5)),
         a_max_arm_rad_s2=a_max_arm,
         a_max_rail_m_s2=a_max_rail,
-        a_max_rail_escape_m_s2=a_max_rail_escape,
         position_margin_rad=math.radians(margin_deg),
         position_margin_rail_m=float(inner.get("position_margin_rail_mm", 0.0)) / 1000.0,
         resync_err_rad=math.radians(resync_deg),
@@ -498,11 +276,4 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         nullspace_d_null=float(inner.get("nullspace_d_null", 0.0)),
         nullspace_d_null_adaptive=float(inner.get("nullspace_d_null_adaptive", 1.0)),
         nullspace_max_qdot_frac=float(inner.get("nullspace_max_qdot_frac", 0.2)),
-        # Stage-1 keeps recovery neutral by default; callers may opt into a
-        # stronger posture pull explicitly, but there is no implicit 3x step.
-        centering_recovery_gain=float(inner.get("centering_recovery_gain", 1.0)),
-        centering_recovery_max_qdot_frac=float(
-            inner.get("centering_recovery_max_qdot_frac", 0.2)
-        ),
-        centering_recovery_tol=float(inner.get("centering_recovery_tol", 0.12)),
     )

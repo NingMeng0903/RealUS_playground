@@ -2,7 +2,8 @@
 
 Controller path (virtual-rail WBC structure; motor replaces sim rail):
   * WBC streams ``q_cmd[0]`` (metres) via ``set_target_m`` each control tick.
-  * Soft loop (validated): ``v = v_ff + kp*e + kd*de`` + host amax slew → FA24.
+  * Soft CSP: online trapezoid ``(x_ref,v_ref)`` from ``set_target_m`` +
+    ``v = ff*v_ref + kp*(x_ref−x) + kd*(v_ref−v_meas)`` → FA24 (``v_meas``=0x1000).
   * Encoder → SHM / Genesis twin only. Encoder is **never** fed into the WBC.
   * Exit: FA24=0, SON held by default (``release_son_on_exit: false``) so a
     controller restart does not edge-enable and wipe the multi-turn monitor.
@@ -315,6 +316,8 @@ class RailServoBridge:
         self._target_m = float("nan")
         self._commanded_m = float("nan")
         self._measured_m = float("nan")
+        self._measured_speed_rpm = 0  # drive monitor 0x1000 (drive frame)
+        self._measured_seq = 0  # bumps on every successful encoder/speed poll
         self._lock = threading.Lock()
         self._drive: LW100Drive | None = None
         self._thread: threading.Thread | None = None
@@ -384,10 +387,41 @@ class RailServoBridge:
         """Drive encoder metres → host ``rail_y`` (applies ``sign``)."""
         return float(self.config.sign) * float(drive_m)
 
+    def _encode_speed_rpm(self, drive_rpm: int) -> int:
+        """Drive monitor rpm → host rail direction (same ``sign`` as position)."""
+        return int(round(float(self.config.sign) * float(drive_rpm)))
+
+    def _publish_motion(self, host_m: float, host_speed_rpm: int) -> None:
+        with self._lock:
+            self._measured_m = float(host_m)
+            self._measured_speed_rpm = int(host_speed_rpm)
+            self._measured_seq = int(self._measured_seq) + 1
+
     @property
     def measured_m(self) -> float:
         with self._lock:
             return float(self._measured_m)
+
+    @property
+    def measured_speed_rpm(self) -> int:
+        """Last drive-monitor speed (0x1000), host-signed (``sign`` applied)."""
+        with self._lock:
+            return int(self._measured_speed_rpm)
+
+    @property
+    def measured_seq(self) -> int:
+        """Increments on each successful motion poll (detect stale host samples)."""
+        with self._lock:
+            return int(self._measured_seq)
+
+    def motion_snapshot(self) -> tuple[float, int, int]:
+        """Return ``(measured_m, speed_rpm_host, seq)`` under one lock."""
+        with self._lock:
+            return (
+                float(self._measured_m),
+                int(self._measured_speed_rpm),
+                int(self._measured_seq),
+            )
 
     @property
     def commanded_m(self) -> float:
@@ -422,6 +456,26 @@ class RailServoBridge:
         if hi <= lo:
             return 0.01, min(0.78, float(self.config.travel_m))
         return lo, hi
+
+    def set_velocity_gains(
+        self,
+        *,
+        kp: float | None = None,
+        kd: float | None = None,
+        ff: float | None = None,
+    ) -> tuple[float, float, float]:
+        """Hot-update soft-loop gains (worker re-reads every poll). Returns (kp, kd, ff)."""
+        if kp is not None:
+            self.config.vel_kp = float(kp)
+        if kd is not None:
+            self.config.vel_kd = float(kd)
+        if ff is not None:
+            self.config.vel_ff_gain = float(ff)
+        return (
+            float(self.config.vel_kp),
+            float(self.config.vel_kd),
+            float(self.config.vel_ff_gain),
+        )
 
     def set_target_m(self, target_m: float) -> None:
         """Accept WBC ``q_cmd[0]`` in metres. Reject OOB / non-finite (never clamp to end)."""
@@ -1084,9 +1138,16 @@ class RailServoBridge:
                 flush=True,
             )
 
-        raw = self._drive._read_encoder_counts_raw(retries=1)
+        try:
+            rpm0, _ = self._drive.read_motion_fast()
+            self._publish_motion(measured, self._encode_speed_rpm(rpm0))
+        except Exception:
+            self._publish_motion(measured, 0)
+        try:
+            raw = int(self._drive._read_encoder_counts_raw(retries=1))
+        except Exception:
+            raw = -1
         with self._lock:
-            self._measured_m = measured
             self._commanded_m = measured
             self._target_m = measured
             self._follow_enabled = False
@@ -1345,20 +1406,77 @@ class RailServoBridge:
         lead = max(float(self.config.lead_mm), 1e-6)
         return float(v_m_s) * 1000.0 / lead * 60.0
 
+    def _rpm_to_mps(self, rpm: float) -> float:
+        lead = max(float(self.config.lead_mm), 1e-6)
+        return float(rpm) / 60.0 * lead * 1e-3
+
+    @staticmethod
+    def _step_trapezoid_ref(
+        x_ref: float,
+        v_ref: float,
+        x_goal: float,
+        *,
+        dt: float,
+        v_max: float,
+        a_max: float,
+    ) -> tuple[float, float]:
+        """One online trapezoid step from ``(x_ref, v_ref)`` toward ``x_goal``.
+
+        Works for arbitrary stepwise goals (WBC, sine samples, point-to-point).
+        Brakes using stop distance ``v²/(2a)`` so the reference does not overshoot.
+        """
+        dt = max(float(dt), 1e-4)
+        v_max = max(float(v_max), 1e-6)
+        a_max = max(float(a_max), 1e-6)
+        dx = float(x_goal) - float(x_ref)
+        v = float(v_ref)
+        stop_dist = (v * v) / (2.0 * a_max)
+
+        if abs(dx) <= 1.0e-9:
+            if abs(v) <= a_max * dt:
+                v_new = 0.0
+            else:
+                v_new = v - math.copysign(a_max * dt, v)
+        elif v * dx < 0.0:
+            # Moving away from goal — brake first.
+            if abs(v) <= a_max * dt:
+                v_new = 0.0
+            else:
+                v_new = v - math.copysign(a_max * dt, v)
+        elif stop_dist >= abs(dx):
+            # Must decelerate to arrive at goal.
+            if abs(v) <= a_max * dt:
+                v_new = 0.0
+            else:
+                v_new = v - math.copysign(a_max * dt, v)
+        else:
+            v_des = math.copysign(v_max, dx)
+            if abs(v_des - v) <= a_max * dt:
+                v_new = v_des
+            else:
+                v_new = v + math.copysign(a_max * dt, v_des - v)
+
+        v_new = max(-v_max, min(v_max, v_new))
+        x_new = float(x_ref) + v_new * dt
+        # Clamp single-step overshoot of the reference.
+        if dx != 0.0 and (x_goal - x_ref) * (x_goal - x_new) < 0.0:
+            x_new = float(x_goal)
+            v_new = 0.0
+        return x_new, v_new
+
     def _worker_velocity(self) -> None:
-        """Continuous soft position loop → live FA24 (validated PD + v_ff)."""
+        """Continuous soft-CSP → FA24: online trapezoid ref + P–V law."""
         assert self._drive is not None
         period = 1.0 / max(float(self.config.poll_hz), 1.0)
         deadband_m = max(float(self.config.vel_deadband_mm), 0.01) * 1e-3
         v_max = float(self.config.vel_max_m_s)
         a_max = max(float(self.config.vel_amax_m_s2), 1e-3)
-        kp = float(self.config.vel_kp)
-        kd = float(self.config.vel_kd)
-        ff = float(self.config.vel_ff_gain)
+        # kp/kd/ff are re-read each tick (see set_velocity_gains) so loaded
+        # PD scans can change gains without restarting the worker.
         sign = float(self.config.sign)
         travel = float(self.config.travel_m)
         margin = max(float(self.config.fault_margin_m), 0.0)
-        # Soft-end taper only when *target* is near that end (homing), not mid-scan.
+        # Soft-end taper only when *goal* is near that end (homing), not mid-scan.
         approach_m = 0.008
         target_timeout = max(float(self.config.target_timeout_s), 0.02)
         freeze_s = max(float(self.config.encoder_freeze_s), 0.1)
@@ -1370,17 +1488,18 @@ class RailServoBridge:
         max_stall_s = max(float(self.config.max_stall_s), 0.02)
         stall_v_floor = max(float(self.config.stall_v_floor_m_s), 0.001)
         jump_margin_m = max(float(self.config.jump_margin_mm), 0.5) * 1e-3
-        prev_target: float | None = None
-        prev_err = 0.0
         prev_t = time.monotonic()
         prev_v_cmd = 0.0
-        v_ff = 0.0
+        x_ref = float(self.measured_m) if math.isfinite(self.measured_m) else 0.0
+        v_ref = 0.0
+        ref_inited = False
         loop_n = 0
         loop_t0 = time.monotonic()
         freeze_anchor_x = float(self.measured_m)
         freeze_anchor_t = time.monotonic()
         moving_without_fb = False
         mb_fail_n = 0
+        slow_poll_n = 0
         last_status_t = time.monotonic()
         last_enc_ok_t = time.monotonic()
         verbose = bool(self.config.verbose)
@@ -1410,6 +1529,8 @@ class RailServoBridge:
                 arm_samples.clear()
                 arm_settle_deadline = None
                 prev_v_cmd = 0.0
+                v_ref = 0.0
+                ref_inited = False
                 try:
                     self._drive.set_velocity_rpm(0, force=True)
                 except Exception:
@@ -1446,7 +1567,9 @@ class RailServoBridge:
                     prev_v_cmd = 0.0
                     v_cmd = 0.0
 
-                measured = self._encode_rail_m(self._drive.read_rail_m_fast())
+                drive_rpm, drive_m = self._drive.read_motion_fast()
+                measured = self._encode_rail_m(drive_m)
+                speed_rpm_host = self._encode_speed_rpm(drive_rpm)
                 last_enc_ok_t = t0
                 self._last_enc_ok_mono = t0
                 mb_fail_n = 0
@@ -1493,11 +1616,9 @@ class RailServoBridge:
                             armed = False
                             measured = last_sane
                         else:
-                            with self._lock:
-                                self._measured_m = measured
+                            self._publish_motion(measured, speed_rpm_host)
                     else:
-                        with self._lock:
-                            self._measured_m = measured
+                        self._publish_motion(measured, speed_rpm_host)
 
                 # Mid-session bias change = FA-60/SON wipe (trusted → resync).
                 try:
@@ -1526,9 +1647,13 @@ class RailServoBridge:
                     and (self._limit_poll_i % max(1, int(self.config.limit_poll_every)) == 0)
                 ):
                     try:
+                        # Hot path: 1 DI sample/poll. Temporal debounce is the
+                        # 10 Hz poll itself — debounce_n=3 burned 3–12 Modbus
+                        # reads every 5th cycle and pushed the 50 Hz loop over
+                        # budget → FA24 hold → audible micro-stutter.
                         di3_p, di4_p = self._drive.read_limit_pressed(
                             nc=bool(self.config.di_nc),
-                            debounce_n=max(1, min(3, int(self.config.di_debounce_n))),
+                            debounce_n=1,
                             settle_s=0.0,
                         )
                         if di3_p or di4_p:
@@ -1547,14 +1672,24 @@ class RailServoBridge:
                     except ModbusRtuError:
                         pass
 
-                # Over-budget poll: zero FA24 this tick, stay armed.
-                if (not poll_ok) and abs(int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)) > 0:
-                    self._hold_velocity(
-                        measured,
-                        f"poll over-budget dt_wall={dt_wall * 1000:.0f}ms",
-                    )
-                    prev_v_cmd = 0.0
-                    v_cmd = 0.0
+                # Over-budget poll: do NOT zero FA24 on a single slow cycle —
+                # that made mid-travel "tugs" (meas velocity → 0 while target
+                # kept moving). Coast with the previous command; only hard-hold
+                # after several consecutive over-budget polls.
+                if poll_ok:
+                    slow_poll_n = 0
+                else:
+                    slow_poll_n += 1
+                    if slow_poll_n >= 3 and abs(
+                        int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
+                    ) > 0:
+                        self._hold_velocity(
+                            measured,
+                            f"poll over-budget ×{slow_poll_n} "
+                            f"dt_wall={dt_wall * 1000:.0f}ms",
+                        )
+                        prev_v_cmd = 0.0
+                        v_cmd = 0.0
 
                 if not math.isfinite(target):
                     self._hold_velocity(measured, "invalid target")
@@ -1699,37 +1834,67 @@ class RailServoBridge:
                 if panic or self._abort.is_set() or not follow or not armed:
                     v_cmd = 0.0
                     v_des = 0.0
-                    prev_err = 0.0
+                    v_ref = 0.0
+                    ref_inited = False
                     freeze_anchor_x = measured
                     freeze_anchor_t = t0
                     moving_without_fb = False
                     settling = False
                     settle_deadline = None
                 else:
-                    if prev_target is not None and not settling:
-                        v_inst = (target - prev_target) / dt
-                        v_inst = max(-v_max, min(v_max, v_inst))
-                        # Light LPF on ff (heavy filter adds lag → overshoot).
-                        v_ff = 0.2 * v_ff + 0.8 * v_inst
-                    elif settling:
-                        v_ff = 0.0
-                    prev_target = target
-
-                    err = target - measured
-                    de = (err - prev_err) / dt
-                    prev_err = err
-                    if abs(err) <= deadband_m and abs(v_ff) < 0.001 and abs(de) < 0.02:
-                        v_raw = 0.0
+                    # --- Online trapezoid CSP: arbitrary x_goal → (x_ref, v_ref) ---
+                    if not ref_inited or not math.isfinite(x_ref):
+                        x_ref = measured
+                        v_ref = 0.0
+                        ref_inited = True
+                    x_goal = float(target)
+                    if settling:
+                        # Bleed reference velocity to zero while holding last goal.
+                        x_ref, v_ref = self._step_trapezoid_ref(
+                            x_ref,
+                            v_ref,
+                            x_goal,
+                            dt=dt,
+                            v_max=min(v_max, settle_v),
+                            a_max=a_max,
+                        )
                     else:
-                        v_raw = ff * v_ff + kp * err + kd * de
+                        x_ref, v_ref = self._step_trapezoid_ref(
+                            x_ref,
+                            v_ref,
+                            x_goal,
+                            dt=dt,
+                            v_max=v_max,
+                            a_max=a_max,
+                        )
+
+                    kp = float(self.config.vel_kp)
+                    kd = float(self.config.vel_kd)
+                    ff = float(self.config.vel_ff_gain)
+                    v_meas = self._rpm_to_mps(float(speed_rpm_host))
+                    err_x = x_ref - measured
+                    err_v = v_ref - v_meas
+                    # Stall-safe on position correction only (not on v_ref).
+                    v_p = kp * err_x
+                    if settling:
+                        v_p_allow = abs(err_x) / max_stall_s
+                    else:
+                        v_p_allow = max(abs(err_x) / max_stall_s, stall_v_floor)
+                    v_p = max(-v_p_allow, min(v_p_allow, v_p))
+                    v_d = kd * err_v
+                    v_raw = ff * v_ref + v_p + v_d
+
+                    # Deadband only when reference has stopped (never mid-stroke).
+                    if abs(v_ref) < 0.001 and abs(err_x) <= deadband_m:
+                        v_raw = 0.0
 
                     v_des = max(-v_max, min(v_max, v_raw))
                     if settling:
                         v_des = max(-settle_v, min(settle_v, v_des))
-                    # Soft ends: only when target is also near that end.
-                    if target <= approach_m and measured < approach_m and v_des < 0.0:
+                    # Soft ends: only when *goal* is also near that end.
+                    if x_goal <= approach_m and measured < approach_m and v_des < 0.0:
                         v_des *= max(0.0, measured / approach_m)
-                    if target >= travel - approach_m and measured > travel - approach_m and v_des > 0.0:
+                    if x_goal >= travel - approach_m and measured > travel - approach_m and v_des > 0.0:
                         v_des *= max(0.0, (travel - measured) / approach_m)
                     if measured <= 0.0 and v_des < 0.0:
                         v_des = 0.0
@@ -1740,46 +1905,39 @@ class RailServoBridge:
                         rpm_per_mps = max(abs(self._mps_to_rpm(1.0)), 1e-6)
                         cruise_m_s = abs(float(speed_cap)) / rpm_per_mps
                         home_band = max(float(self.config.home_approach_mm), 1.0) * 1e-3
-                        if abs(err) >= home_band:
+                        if abs(err_x) >= home_band:
                             lim = cruise_m_s
                         else:
-                            lim = cruise_m_s * (abs(err) / home_band)
+                            lim = cruise_m_s * (abs(err_x) / home_band)
                         v_des = max(-lim, min(lim, v_des))
-
-                    # Stall-safe: worst-case latched FA24 overshoot ≤ |err|.
-                    # Settle substate: no stall_v_floor — the floor forced FA24
-                    # ≈2–5 r/min crawls on sub-mm residuals after task end.
-                    if settling:
-                        v_allow = abs(err) / max_stall_s
-                    else:
-                        v_allow = max(abs(err) / max_stall_s, stall_v_floor)
-                    v_des = max(-v_allow, min(v_allow, v_des))
-
-                    # Inside settle / deadband with no feedforward: hard zero.
-                    if abs(err) <= max(deadband_m, settle_tol_m) and abs(v_ff) < 0.001:
-                        v_des = 0.0
 
                     dv_max = a_max * dt
                     v_cmd = max(prev_v_cmd - dv_max, min(prev_v_cmd + dv_max, v_des))
-                    if abs(err) <= max(deadband_m, settle_tol_m) and abs(v_ff) < 0.001:
+                    if abs(v_ref) < 0.001 and abs(err_x) <= max(deadband_m, settle_tol_m):
                         v_cmd = 0.0
 
-                    # Any slow/unhealthy poll: do NOT keep streaming velocity.
+                    # Single/double slow poll: coast. ≥3 → hard zero.
                     if not poll_ok:
+                        if slow_poll_n >= 3:
+                            v_cmd = 0.0
+                            prev_v_cmd = 0.0
+                        else:
+                            v_cmd = prev_v_cmd
                         freeze_anchor_t = t0
-                        v_cmd = 0.0
                     elif abs(v_cmd) >= freeze_vmin:
-                        if abs(measured - freeze_anchor_x) >= freeze_dx:
+                        # Freeze only if drive RPM≈0 AND host Δx is stuck.
+                        drive_moving = abs(speed_rpm_host) >= 3
+                        if drive_moving or abs(measured - freeze_anchor_x) >= freeze_dx:
                             freeze_anchor_x = measured
                             freeze_anchor_t = t0
                             moving_without_fb = False
                         elif (t0 - freeze_anchor_t) >= freeze_s:
-                            # Soft hold only — hunting / lag must not DISARM.
                             moving_without_fb = True
                             self._hold_velocity(
                                 measured,
                                 f"encoder lag while cmd={v_cmd:+.3f} m/s "
-                                f"(Δx<{freeze_dx * 1000:.1f}mm for {freeze_s:.2f}s)",
+                                f"(Δx<{freeze_dx * 1000:.1f}mm, drive_rpm="
+                                f"{speed_rpm_host} for {freeze_s:.2f}s)",
                             )
                             v_cmd = 0.0
                             prev_v_cmd = 0.0
@@ -1807,9 +1965,9 @@ class RailServoBridge:
                     self._csv.write(
                         event="",
                         target_m=target,
-                        commanded_m=target,
+                        commanded_m=x_ref if ref_inited else target,
                         measured_m=measured,
-                        v_ff=v_ff,
+                        v_ff=v_ref,
                         v_des=v_des,
                         v_cmd=v_cmd,
                         rpm=rpm,
@@ -1857,21 +2015,26 @@ class RailServoBridge:
                 arm_samples.clear()
                 arm_settle_deadline = None
                 latched = int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
-                prev_v_cmd = 0.0
-                # Best-effort FA24=0; never block on reconnect sleeps here.
-                if abs(latched) > 0 and self._drive._client._sock is not None:
+                # One short/timeout on USR-TCP232 is common. Killing FA24 on the
+                # first failure made a visible micro-stutter every glitch; only
+                # escalate after consecutive failures.
+                killed = False
+                if mb_fail_n >= 2 and abs(latched) > 0 and self._drive._client._sock is not None:
+                    prev_v_cmd = 0.0
                     try:
                         self._drive.kill_velocity_hard(attempts=1, disable_on_fail=False)
+                        killed = True
                     except Exception:
                         pass
-                if mb_fail_n in (1, 3, 10) or mb_fail_n % 50 == 0:
+                if mb_fail_n in (1, 2, 3, 10) or mb_fail_n % 50 == 0:
                     print(
                         f"lw100 rail: modbus error ({mb_fail_n}x)"
-                        f"{' latched-kill' if abs(latched) > 0 else ''}: {exc}",
+                        f"{' latched-kill' if killed else ''}: {exc}",
                         flush=True,
                     )
                 # Consecutive poll failures → zero FA24, stay ARMED (resume on next OK).
                 if mb_fail_n >= 3:
+                    prev_v_cmd = 0.0
                     self._hold_velocity(
                         self.measured_m,
                         f"modbus poll failed {mb_fail_n}x"

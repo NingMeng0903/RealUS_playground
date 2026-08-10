@@ -91,21 +91,21 @@ def test_weight_schedule_continuous_and_monotone():
     for edge in (0.05, 0.15):
         d = (w_of(edge + h) - w_of(edge - h)) / (2 * h)
         assert abs(d) < 0.05, (edge, d)
-    # Zero inside dead zone; healthy relocation uses the task's configured
-    # 4.5 cap even when w_max is configured to 5.  The QP applies the final
-    # 2.0/.2 boundary only when deep escape flags are active.
+    # Zero inside dead zone; the 4d scheduler returns its configured weight
+    # without an episode-specific cap.
     assert w_of(0.049) == 0.0
-    assert abs(w_of(0.151) - 4.5) < 1e-9
+    assert abs(w_of(0.151) - 5.0) < 1e-9
 
 
-def test_healthy_weight_telemetry_exposes_raw_and_task_capped_values():
-    """Task telemetry separates raw scheduling from its healthy cap."""
+def test_weight_telemetry_aliases_match_uncapped_4d_schedule():
+    """Compatibility telemetry must not reintroduce hidden weight caps."""
     task, _ = _task(w_max=5.0)
     _force_err(task, 0.20)
     _, w = task(Q_D, sigma_scale=1.0)
-    assert task.last_weight_raw > 4.5
-    assert 2.0 < task.last_weight_capped <= 4.5
-    assert task.last_weight == task.last_weight_capped == w
+    assert w == 5.0
+    assert task.last_weight_raw == w
+    assert task.last_weight_capped == w
+    assert task.last_weight == w
 
 
 def test_extension_invariant_to_coupled_translation():
@@ -170,9 +170,7 @@ def test_sigma_scale_boosts_weight():
     _, w_half = task(Q_D, sigma_scale=0.5)
     _, w_zero = task(Q_D, sigma_scale=0.0)
     assert w_half > w_full  # low σ → boost, not cut
-    # The Stage-1 absolute cap may saturate both deep-σ values, but the
-    # schedule must never decrease as σ worsens.
-    assert w_zero >= w_half
+    assert w_zero > w_half
     # invariant: total boost bounded by (1 + k_sigma_boost) = 3 at σ=0
     assert w_zero <= (1.0 + task.cfg.k_sigma_boost) * (
         w_full + task.cfg.w_sigma_floor
@@ -194,12 +192,8 @@ def test_feedforward_weight_in_dead_zone_during_scan():
     assert w_ff > 0.5
 
 
-def test_sigma_escape_anti_oppose_only_when_healthy():
-    """Opposing σ-escape is blocked only when σ is healthy (≥ sigma_guard_enter).
-
-    Below enter, escape must be allowed to fight reach/FF so the rail can
-    pull the arm out of a bad region.  (c3ba58e behaviour.)
-    """
+def test_sigma_gradient_never_opposes_scan_feedforward():
+    """The 4d soft gradient does not reverse a live scan primary."""
     task, _ = _task(e0_m=0.01, e1_m=0.06, k_ff=1.0, k_esc=0.5)
     q = Q_D.copy()
     q[0] = 0.40  # mid-travel so -Y escape is not limit-saturated
@@ -207,13 +201,12 @@ def test_sigma_escape_anti_oppose_only_when_healthy():
     task.capture_reference(q)
     vel_ff = np.zeros(6)
     vel_ff[1] = 0.04
-    # sigma_scale=0.5 ≥ enter(0.45): anti-oppose → escape zeroed, v follows +FF
+    # Opposing gradient is suppressed at both moderate and deep sigma scales.
     v_blocked, _ = task(q, sigma_scale=0.5, sigma_grad_rail=-1.0, vel_ff=vel_ff)
     assert v_blocked > 0.0
-    # sigma_scale=0.2 < enter: escape wins against FF → net rail velocity flips
-    v_free, _ = task(q, sigma_scale=0.2, sigma_grad_rail=-1.0, vel_ff=vel_ff)
-    assert v_free < 0.0
-    assert v_free < v_blocked
+    v_deep, _ = task(q, sigma_scale=0.2, sigma_grad_rail=-1.0, vel_ff=vel_ff)
+    assert v_deep > 0.0
+    assert v_deep < v_blocked
 
 
 def test_sigma_grad_activates_escape_velocity_in_dead_zone():

@@ -5,7 +5,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from rm75_control.control.joint_admittance_8dof.collision_model import CollisionConfig
+from rm75_control.control.joint_admittance_8dof.loop import (
+    JointIkConfig,
+    JointIkController,
+)
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
+from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfig
 from rm75_control.control.joint_admittance_8dof.tasks.nullspace_task import (
     JointCenteringTask,
     NullspaceTaskConfig,
@@ -79,7 +85,6 @@ def test_manipulability_exclusively_owns_escape_nullspace_slot():
         centering_suppressed=False,
         manipulability_active=True,
         sigma_min=0.04,
-        sigma_escape_ref=0.10,
         centering_sigma_fade=False,
     )
     assert manip.calls >= 2
@@ -88,76 +93,108 @@ def test_manipulability_exclusively_owns_escape_nullspace_slot():
     assert np.allclose(both, manip_only, atol=1e-12)
 
 
-def test_sigma_escape_guard_has_enter_exit_hysteresis():
+def test_pose_guard_has_enter_exit_hysteresis():
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
         RailExtensionConfig(sigma_guard_enter=0.45, sigma_guard_exit=0.70),
     )
-    assert not task._sigma_guard_hold(0.50)
-    assert task._sigma_guard_hold(0.40)
+    def active(scale: float) -> bool:
+        task._sigma_guard_velocity(
+            sigma_scale=scale,
+            sigma_grad_rail=1.0,
+            v_primary=0.0,
+        )
+        return task._guard_active
+
+    assert not active(0.50)
+    assert active(0.40)
     # Between thresholds, the latch remains active.
-    assert task._sigma_guard_hold(0.60)
-    assert not task._sigma_guard_hold(0.71)
+    assert active(0.60)
+    assert not active(0.71)
 
 
-def test_sigma_escape_direction_is_latched_until_exit_threshold():
-    """Finite-difference sign noise cannot reverse an active rail escape."""
+def test_sigma_gradient_reversal_is_continuous_and_not_latched():
+    """The restored 4d task follows the current gradient on every call."""
     kin = RobotKinematics()
     task = RailExtensionTask(kin, RailExtensionConfig(enabled=True))
     q = np.zeros(8)
+    q[0] = 0.40
     task.reset(q)
 
     v_pos, _ = task(
         q,
         sigma_scale=0.0,
-        sigma_escape_scale=0.0,
         sigma_grad_rail=0.10,
-        sigma_min=0.05,
-        sigma_escape_enter=0.10,
-        sigma_escape_exit=0.12,
     )
-    assert task.escape_active
-    assert task.escape_sign > 0.0
-    assert v_pos >= 0.0
-
-    # Still below exit: a reversed gradient must retain the committed sign.
-    v_latched, _ = task(
+    v_neg, _ = task(
         q,
         sigma_scale=0.0,
-        sigma_escape_scale=0.0,
         sigma_grad_rail=-0.10,
-        sigma_min=0.08,
-        sigma_escape_enter=0.10,
-        sigma_escape_exit=0.12,
     )
-    assert task.escape_active
-    assert task.escape_sign > 0.0
-    assert v_latched >= 0.0
+    assert v_pos > 0.0
+    assert v_neg < 0.0
+    assert v_neg == pytest.approx(-v_pos)
 
-    # At/above exit, release the sign so a new episode may choose either side.
-    task(
-        q,
-        sigma_scale=0.0,
-        sigma_escape_scale=0.0,
-        sigma_grad_rail=-0.10,
-        sigma_min=0.12,
-        sigma_escape_enter=0.10,
-        sigma_escape_exit=0.12,
+
+def test_phase_reentry_clears_stale_rail_filter_and_gradient():
+    """A hold boundary cannot replay the previous scan direction."""
+    kin = RobotKinematics()
+    ctrl = JointIkController(
+        kin,
+        JointIkConfig(
+            control_frame="base",
+            qp=QpConfig(collision=CollisionConfig(enabled=False)),
+        ),
     )
-    assert not task.escape_active
-    assert task.escape_sign == pytest.approx(0.0)
+    q = np.array(
+        [
+            0.40,
+            -0.905938,
+            1.117987,
+            0.459109,
+            1.775407,
+            -0.342094,
+            1.06775,
+            0.749873,
+        ]
+    )
+    ctrl.reset(q)
+    task = ctrl.rail_ext_task
+    assert task is not None
+
+    vel_ff = np.zeros(6)
+    vel_ff[1] = 0.08
+    for _ in range(40):
+        v_before, _ = task(q, vel_ff=vel_ff, dt_s=0.005)
+    assert v_before > 0.07
+
+    ctrl._sigma_grad_tick = 7
+    ctrl._sigma_grad_rail_cached = 0.2
+    ctrl.set_rail_extension_active(False)
+    assert ctrl._sigma_grad_tick == 0
+    assert ctrl._sigma_grad_rail_cached == 0.0
+    assert not task._v_lpf_initialized
+
+    ctrl.set_rail_extension_active(True)
+    vel_ff[1] = -0.08
+    v_after, _ = task(q, vel_ff=vel_ff, dt_s=0.005)
+    assert v_after < -0.07
+
+    ctrl._sigma_grad_tick = 5
+    ctrl._sigma_grad_rail_cached = -0.2
+    ctrl.capture_rail_extension_ref()
+    assert ctrl._sigma_grad_tick == 0
+    assert ctrl._sigma_grad_rail_cached == 0.0
+    assert not task._v_lpf_initialized
 
 
-def test_rail_extension_weight_is_hard_capped_after_sigma_boost():
+def test_rail_extension_weight_uses_uncapped_4d_schedule():
     kin = RobotKinematics()
     cfg = RailExtensionConfig(
         w_max=4.0,
         w_sigma_floor=2.0,
         k_sigma_boost=8.0,
-        # The rail is an escape hint, not a competing Cartesian task.  Keep
-        # its absolute cap at 2.0 even when the sigma boost is extreme.
-        weight_hard_max=2.0,
         e0_m=0.01,
         e1_m=0.05,
     )
@@ -168,11 +205,12 @@ def test_rail_extension_weight_is_hard_capped_after_sigma_boost():
     _, weight = task(
         q,
         sigma_scale=0.0,
-        sigma_escape_scale=0.0,
         sigma_grad_rail=0.0,
     )
-    assert weight <= 2.0 + 1e-12
-    assert task.last_weight <= 2.0 + 1e-12
+    expected = (cfg.w_max + cfg.w_sigma_floor) * (1.0 + cfg.k_sigma_boost)
+    assert weight == pytest.approx(expected)
+    assert task.last_weight_raw == pytest.approx(expected)
+    assert task.last_weight_capped == pytest.approx(expected)
 
 
 def test_rail_soft_bounds_are_shared_and_mismatch_is_rejected():
