@@ -16,6 +16,13 @@ from rm75_control.control.admittance_common.controller import (
     AdmittanceConfig,
     AdmittanceController,
 )
+from rm75_control.control.admittance_common.bidirectional_flow import (
+    BidirectionalFlowConfig,
+    BidirectionalFlowController,
+    BidirectionalFlowCore,
+    BidirectionalEnergyFlowController,
+    BidirectionalFlowTelemetry,
+)
 from rm75_control.control.admittance_common.contact_state import (
     PhysicalContactConfig,
     PhysicalContactTracker,
@@ -44,6 +51,11 @@ __all__ = [
     "AdaptiveKeConfig",
     "AdmittanceConfig",
     "AdmittanceController",
+    "BidirectionalFlowConfig",
+    "BidirectionalFlowController",
+    "BidirectionalFlowCore",
+    "BidirectionalEnergyFlowController",
+    "BidirectionalFlowTelemetry",
     "AsyncStateObserver",
     "AsyncStateSnapshot",
     "CompensatedForceObserver",

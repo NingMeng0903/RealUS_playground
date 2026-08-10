@@ -98,8 +98,16 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         fail_qdot_decay=float(c.get("fail_qdot_decay", 0.85)),
         max_solve_ms=float(c.get("max_solve_ms", 8.0)),
         twist_sigma_floor=float(c.get("twist_sigma_floor", 0.08)),
-        twist_scale_lpf_tau_s=float(c.get("twist_scale_lpf_tau_s", 0.0)),
-        sigma_escape_ref_scale=float(c.get("sigma_escape_ref_scale", 2.0)),
+        # Continuous full-twist brake: the canonical Stage-1 LPF is 80 ms.
+        twist_scale_lpf_tau_s=float(c.get("twist_scale_lpf_tau_s", 0.08)),
+        # Kept for old YAMLs; explicit absolute thresholds below are the
+        # runtime hysteresis contract (enter=.10, exit=.12).
+        sigma_escape_ref_scale=float(c.get("sigma_escape_ref_scale", 1.25)),
+        sigma_escape_enter=float(c.get("sigma_escape_enter", 0.10)),
+        sigma_escape_exit=float(c.get("sigma_escape_exit", 0.12)),
+        rail_task_weight_hard_max=min(
+            float(c.get("rail_task_weight_hard_max", 4.5)), 4.5
+        ),
     )
     if reg_arr is not None:
         qp_kwargs["reg"] = reg_arr
@@ -154,6 +162,41 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
 
     r = inner.get("rail", {})
     rail_mode, locked_style = _resolve_rail_mode(r)
+    hw_lw = (raw.get("hw", {}) or {}).get("lw100", {}) or {}
+    # One canonical usable rail band.  Old hardware-side fields remain a
+    # compatibility mirror, but conflicting values are a startup error: a QP
+    # and a bridge must never believe in different endpoints.
+    inner_has_soft = "soft_min_m" in r or "soft_max_m" in r
+    hw_has_soft = "soft_min_m" in hw_lw or "soft_max_m" in hw_lw
+    soft_min = float(r.get("soft_min_m", hw_lw.get("soft_min_m", 0.01)))
+    soft_max = float(r.get("soft_max_m", hw_lw.get("soft_max_m", 0.78)))
+    if inner_has_soft and hw_has_soft:
+        hw_soft_min = float(hw_lw.get("soft_min_m", soft_min))
+        hw_soft_max = float(hw_lw.get("soft_max_m", soft_max))
+        if (
+            abs(soft_min - hw_soft_min) > 1.0e-6
+            or abs(soft_max - hw_soft_max) > 1.0e-6
+        ):
+            raise ValueError(
+                "rail soft-limit mismatch: inner.rail "
+                f"[{soft_min:.6f}, {soft_max:.6f}] vs hw.lw100 "
+                f"[{hw_soft_min:.6f}, {hw_soft_max:.6f}]"
+            )
+    travel_m = float(r.get("travel_m", 0.80))
+    if not (
+        np.isfinite(soft_min)
+        and np.isfinite(soft_max)
+        and 0.0 <= soft_min < soft_max <= travel_m
+    ):
+        raise ValueError(
+            "invalid rail soft limits: expected 0 <= soft_min < soft_max "
+            f"<= travel_m ({travel_m:.6f}), got "
+            f"[{soft_min:.6f}, {soft_max:.6f}]"
+        )
+    # Keep the QP's public canonical-band fields synchronized with the same
+    # inner-rail/hardware precedence used by SafetyLimits and RailExtension.
+    qp.rail_soft_min_m = soft_min
+    qp.rail_soft_max_m = soft_max
     re_cfg = inner.get("rail_extension", {})
     rail_extension = RailExtensionConfig(
         enabled=bool(re_cfg.get("enabled", True)),
@@ -164,6 +207,9 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         e0_m=float(re_cfg.get("e0_m", 0.02)),
         e1_m=float(re_cfg.get("e1_m", 0.08)),
         w_max=float(re_cfg.get("w_max", 2.0)),
+        soft_min_m=soft_min,
+        soft_max_m=soft_max,
+        weight_hard_max=min(float(re_cfg.get("weight_hard_max", 4.5)), 4.5),
         v_max_m_s=float(re_cfg.get("v_max_m_s", 0.08)),
         limit_margin_m=float(re_cfg.get("limit_margin_m", 0.08)),
         k_sigma_boost=float(re_cfg.get("k_sigma_boost", 2.0)),
@@ -188,7 +234,9 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         lock_vel_eps_m_s=float(r.get("lock_vel_eps_m_s", 0.0)),
         lock_hard_pin=bool(r.get("lock_hard_pin", True)),
         v_max_m_s=(float(r["v_max_m_s"]) if r.get("v_max_m_s") is not None else None),
-        travel_m=float(r.get("travel_m", 0.80)),
+        travel_m=travel_m,
+        soft_min_m=soft_min,
+        soft_max_m=soft_max,
     )
 
     return JointIkConfig(
@@ -211,9 +259,11 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         nullspace_d_null=float(inner.get("nullspace_d_null", 0.0)),
         nullspace_d_null_adaptive=float(inner.get("nullspace_d_null_adaptive", 1.0)),
         nullspace_max_qdot_frac=float(inner.get("nullspace_max_qdot_frac", 0.2)),
-        centering_recovery_gain=float(inner.get("centering_recovery_gain", 3.0)),
+        # Stage-1 keeps recovery neutral by default; callers may opt into a
+        # stronger posture pull explicitly, but there is no implicit 3x step.
+        centering_recovery_gain=float(inner.get("centering_recovery_gain", 1.0)),
         centering_recovery_max_qdot_frac=float(
-            inner.get("centering_recovery_max_qdot_frac", 0.35)
+            inner.get("centering_recovery_max_qdot_frac", 0.2)
         ),
         centering_recovery_tol=float(inner.get("centering_recovery_tol", 0.12)),
     )

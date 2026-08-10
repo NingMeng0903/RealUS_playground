@@ -32,9 +32,17 @@ from rm75_control.control.admittance_common.fast_retract_guard import (
     FastRetractGuard,
     FastRetractGuardConfig,
 )
+from rm75_control.control.admittance_common.force_barrier import (
+    ForceSpaceVelocityDamper,
+    ForceBarrierConfig,
+)
 from rm75_control.control.admittance_common.force_dob import (
     ForceDisturbanceObserver,
     ForceDobConfig,
+)
+from rm75_control.control.admittance_common.bidirectional_flow import (
+    BidirectionalFlowConfig,
+    BidirectionalFlowController,
 )
 from rm75_control.control.admittance_common.pose_math import pose_error, wrap_pi
 from rm75_control.control.admittance_common.proactive_force_ff import (
@@ -57,6 +65,44 @@ def smooth_deadband_eff(f_err: float, deadband_n: float, width_n: float) -> floa
     t = (af - deadband_n) / width_n
     gain = t * t * (3.0 - 2.0 * t)
     return math.copysign(gain * (af - deadband_n), f_err)
+
+
+@dataclass
+class SurfaceForceModulationConfig:
+    """Optional Piedra-style reduction of normal force while sliding.
+
+    This is a velocity-interface adaptation, not a passivity mechanism.  It
+    is disabled by default and only becomes eligible after physical contact
+    has remained stable for ``stable_contact_s``.
+    """
+
+    enabled: bool = False
+    min_force_scale: float = 0.25
+    beta_per_m: float = 80.0
+    stable_contact_s: float = 0.20
+    attack_s: float = 0.05
+    release_s: float = 0.15
+
+    @classmethod
+    def from_dict(cls, raw: dict) -> "SurfaceForceModulationConfig":
+        root = raw if isinstance(raw, dict) else {}
+        controller = root.get("hybrid_motion", root.get("controller", root))
+        if not isinstance(controller, dict):
+            controller = root
+        section = controller.get(
+            "surface_force_modulation",
+            root.get("surface_force_modulation", {}),
+        )
+        if not isinstance(section, dict):
+            section = {}
+        return cls(
+            enabled=bool(section.get("enabled", False)),
+            min_force_scale=float(section.get("min_force_scale", 0.25)),
+            beta_per_m=float(section.get("beta_per_m", 80.0)),
+            stable_contact_s=float(section.get("stable_contact_s", 0.20)),
+            attack_s=float(section.get("attack_s", 0.05)),
+            release_s=float(section.get("release_s", 0.15)),
+        )
 
 
 @dataclass
@@ -123,6 +169,29 @@ class AdmittanceConfig:
     force_lateral_full_m_s: float = 0.018
     force_lateral_gain_floor: float = 0.35
     force_dob: ForceDobConfig = field(default_factory=ForceDobConfig)
+    # Optional scalar proxy/real-port energy-flow adaptation.  ``off`` is
+    # the safe legacy default; observe/active are opt-in and require the
+    # caller to provide a verified force/velocity sign before press can be
+    # modulated.
+    bidirectional_flow: BidirectionalFlowConfig = field(
+        default_factory=BidirectionalFlowConfig
+    )
+    # Predictive force-space velocity damper.  Its telemetry is populated even
+    # when the flow adapter is disabled so existing loggers can consume the
+    # same fields in all modes.
+    force_barrier: ForceBarrierConfig = field(default_factory=ForceBarrierConfig)
+    # Force-axis slew is intentionally asymmetric.  A zero value preserves
+    # the historical uncapped force-axis path; positive values are applied
+    # after the safety caps and before the normal-axis command is returned.
+    force_axis_slew_press_m_s2: float = 0.0
+    force_axis_slew_retract_m_s2: float = 0.0
+    force_axis_slew_reverse_m_s2: float = 0.0
+    surface_force_modulation: SurfaceForceModulationConfig = field(
+        default_factory=SurfaceForceModulationConfig
+    )
+    # Contact episode re-arm is distinct from a physical contact reacquire.
+    contact_episode_release_s: float = 0.30
+    contact_episode_release_force_n: float = 0.15
 
     @classmethod
     def from_dict(cls, raw: dict) -> AdmittanceConfig:
@@ -222,6 +291,30 @@ class AdmittanceConfig:
                 c.get("force_lateral_gain_floor", 0.35)
             ),
             force_dob=ForceDobConfig.from_dict(c),
+            bidirectional_flow=BidirectionalFlowConfig.from_dict(raw),
+            force_barrier=ForceBarrierConfig.from_dict(raw),
+            force_axis_slew_press_m_s2=float(
+                c.get("force_axis_slew_press_m_s2", c.get("force_slew_press_m_s2", 0.0))
+            ),
+            force_axis_slew_retract_m_s2=float(
+                c.get(
+                    "force_axis_slew_retract_m_s2",
+                    c.get("force_slew_retract_m_s2", 0.0),
+                )
+            ),
+            force_axis_slew_reverse_m_s2=float(
+                c.get(
+                    "force_axis_slew_reverse_m_s2",
+                    c.get("force_slew_reverse_m_s2", 0.0),
+                )
+            ),
+            surface_force_modulation=SurfaceForceModulationConfig.from_dict(raw),
+            contact_episode_release_s=float(
+                c.get("contact_episode_release_s", 0.30)
+            ),
+            contact_episode_release_force_n=float(
+                c.get("contact_episode_release_force_n", 0.15)
+            ),
         )
 
 
@@ -294,6 +387,39 @@ class AdmittanceController:
         self._recontact_timer_s = 0.0
         self._force_dob = ForceDisturbanceObserver(self.cfg.force_dob)
         self.u_dob_z = 0.0
+        self._force_barrier = ForceSpaceVelocityDamper(self.cfg.force_barrier)
+        self.force_pred_z = 0.0
+        self.force_dot_z = 0.0
+        self.cap_press_z = self._v_z_cap()
+        self.cap_retract_z = self._v_z_cap()
+        self._bidirectional_flow = BidirectionalFlowController(
+            dt,
+            self.cfg.bidirectional_flow,
+        )
+        # Public alias retained for integration code and telemetry adapters.
+        self.bidirectional_flow = self._bidirectional_flow
+        self.flow_mode = self.cfg.bidirectional_flow.mode
+        self.flow_alpha = 1.0
+        self.flow_tank_energy = float(self.cfg.bidirectional_flow.T0)
+        self.flow_fc = 0.0
+        self.flow_v_track = 0.0
+        self.flow_v_aux = 0.0
+        self.flow_retract_through = 0.0
+        self.flow_press = 0.0
+        self.flow_gamma_effective = 0.0
+        self.flow_feedback_stale = True
+        self.flow_sign_verified = bool(self.cfg.bidirectional_flow.sign_verified)
+        # A physical reacquire is telemetry only until the tool has stayed
+        # detached at low raw force for the full episode-release interval.
+        self._episode_detached_s = 0.0
+        self._episode_rearm_armed = False
+        self._episode_seen = False
+        self.contact_episode_rearm_event = False
+        self.contact_episode_release_s = 0.0
+        self._surface_contact_s = 0.0
+        self.surface_force_scale = 1.0
+        self.surface_force_alpha = 0.0
+        self.surface_xy_error_m = 0.0
         # Arm lateral chase softener only after real tool-XY scan motion.
         self._lat_soften_hold_s = 0.0
         self._init_hp_filter()
@@ -362,6 +488,32 @@ class AdmittanceController:
         self._recontact_timer_s = 0.0
         self._force_dob.reset()
         self.u_dob_z = 0.0
+        self._force_barrier.reset()
+        self.force_pred_z = 0.0
+        self.force_dot_z = 0.0
+        self.cap_press_z = self._v_z_cap()
+        self.cap_retract_z = self._v_z_cap()
+        self._bidirectional_flow.reset()
+        self.flow_mode = self.cfg.bidirectional_flow.mode
+        self.flow_alpha = 1.0
+        self.flow_tank_energy = float(self.cfg.bidirectional_flow.T0)
+        self.flow_fc = 0.0
+        self.flow_v_track = 0.0
+        self.flow_v_aux = 0.0
+        self.flow_retract_through = 0.0
+        self.flow_press = 0.0
+        self.flow_gamma_effective = 0.0
+        self.flow_feedback_stale = True
+        self.flow_sign_verified = bool(self.cfg.bidirectional_flow.sign_verified)
+        self._episode_detached_s = 0.0
+        self._episode_rearm_armed = False
+        self._episode_seen = False
+        self.contact_episode_rearm_event = False
+        self.contact_episode_release_s = 0.0
+        self._surface_contact_s = 0.0
+        self.surface_force_scale = 1.0
+        self.surface_force_alpha = 0.0
+        self.surface_xy_error_m = 0.0
         self._lat_soften_hold_s = 0.0
         self._hp_zi.fill(0.0)
         self._ke_estimator.reset()
@@ -548,12 +700,17 @@ class AdmittanceController:
         enable_pbac: bool | None = None,
         f_ext_raw: np.ndarray | None = None,
         dt_actual: float | None = None,
+        v_tcp_z_actual: float | None = None,
         sensor_age_s: float | None = None,
+        feedback_age_s: float | None = None,
+        feedback_freshness: bool | float | None = None,
+        feedback_fresh: bool | float | None = None,
     ) -> np.ndarray:
-        # The hardware-proven admittance dynamics retain the nominal fixed dt.
-        # Wall-clock dt is used only by contact/fast-force confirmation timers.
+        # Use the measured wall-clock period for force/proxy dynamics and
+        # safety timers.  Trajectory governor scaling remains a reference-path
+        # concern and does not alter physical-time integration.
         if dt_actual is not None and np.isfinite(dt_actual):
-            dt_contact = float(np.clip(dt_actual, 0.0025, 0.020))
+            dt_contact = float(np.clip(dt_actual, 1.0e-4, 0.10))
         else:
             dt_contact = float(self.dt)
         cfg = self.cfg
@@ -659,11 +816,53 @@ class AdmittanceController:
             self._physical_contact.high_timer_s
         )
 
-        dt_eff = self.dt * self.time_scale
+        # Force/proxy dynamics and all contact timers use wall-clock dt.  The
+        # governor still scales the trajectory/reference path above, but it
+        # must not silently slow the physical force state or make feedback
+        # freshness time-scale dependent.
+        dt_flow = dt_contact
+        dt_eff = dt_flow
         if force_task_active:
-            self._contact_time_s += dt_eff
-        rising_edge = bool(contact_update.acquired)
-        if bool(contact_update.reacquired) or rising_edge:
+            self._contact_time_s += dt_flow
+
+        self.contact_episode_rearm_event = False
+        low_raw = normal_sign * raw_z < float(cfg.contact_episode_release_force_n)
+        if not physical_contact:
+            if not self._episode_rearm_armed:
+                if low_raw:
+                    self._episode_detached_s += dt_flow
+                else:
+                    # A detached interval only counts when raw force remains
+                    # low; this prevents a noisy trough from re-arming the
+                    # episode.  Once armed, keep the latch through the
+                    # contact tracker confirmation window.
+                    self._episode_detached_s = 0.0
+                self._episode_rearm_armed = (
+                    self._episode_detached_s
+                    >= max(float(cfg.contact_episode_release_s), 0.0)
+                )
+        elif contact_update.acquired:
+            # Physical reacquire is intentionally telemetry-only.  ``rising``
+            # is reserved for first contact or an explicitly re-armed episode.
+            self.contact_episode_rearm_event = bool(self._episode_rearm_armed)
+            if self._episode_rearm_armed:
+                self._episode_detached_s = 0.0
+                self._episode_rearm_armed = False
+            else:
+                self._episode_detached_s = 0.0
+        if physical_contact and not contact_update.acquired:
+            self._episode_detached_s = 0.0
+
+        rising_edge = bool(contact_update.acquired) and (
+            (not self._episode_seen) or self.contact_episode_rearm_event
+        )
+        if contact_update.acquired:
+            self._episode_seen = True
+        self.contact_episode_release_s = float(self._episode_detached_s)
+        # Physical reacquire is telemetry only.  The temporary press cap is
+        # re-armed on first contact or a true episode re-arm, never on every
+        # short contact trough.
+        if rising_edge:
             self._recontact_timer_s = max(
                 self._recontact_timer_s,
                 float(cfg.recontact_hold_s),
@@ -684,6 +883,16 @@ class AdmittanceController:
         self.mass_z_eff = self._m_z_now
 
         f_des_z = self._effective_desired_z(float(f_des[2]))
+        # Piedra-style surface modulation is an optional tracking aid only;
+        # it changes the requested force smoothly after stable contact but is
+        # not credited by the passivity/energy account.
+        surface_scale = self._update_surface_force_scale(
+            float(np.linalg.norm(err_tool[:2])),
+            physical_contact=physical_contact,
+            dt_s=dt_flow,
+        )
+        f_des_z *= surface_scale
+        self.f_des_z_eff = float(f_des_z)
         f_err_z = f_des_z - f_ext_z
         v_lateral_m_s = float(
             np.linalg.norm((r_mat.T @ v_pos_base[:3])[:2])
@@ -713,7 +922,39 @@ class AdmittanceController:
             )
             self.zeta_eff = self._ke_estimator.zeta_eff
 
+        # Predictive force-space damper is the primary hard-contact impact
+        # limiter.  It runs on wall time and uses the newest stiffness/mass
+        # estimate.  In active BEFM mode only, the previous verified tank
+        # balance may further tighten press; observe/off never alter behavior
+        # through the tank.
+        self.force_dot_z = float(
+            self._force_barrier.update_fdot(raw_z, dt_flow)
+        )
+        energy_available_j = None
+        if cfg.bidirectional_flow.mode == "active":
+            energy_available_j = max(
+                float(self._bidirectional_flow.tank_energy)
+                - float(cfg.bidirectional_flow.Tmin),
+                0.0,
+            )
+        self.cap_press_z, self.cap_retract_z = self._force_barrier.caps(
+            f_z=f_ext_z,
+            f_des_z=f_des_z,
+            in_contact=physical_contact,
+            v_z_cap=self._v_z_cap(),
+            seek_vz_m_s=self._v_z_cap(),
+            contact_enter_n=float(cfg.contact_threshold_n),
+            v_z_cap_retract=self._v_z_cap(),
+            ke_est_n_m=float(self.ke_est),
+            mass_eq_kg=float(self._m_z_now),
+            energy_available_j=energy_available_j,
+        )
+        self.force_pred_z = float(self._force_barrier.f_pred_z)
+
         v_force_tool = np.zeros(6, dtype=float)
+        sensor_age_eff = (
+            feedback_age_s if feedback_age_s is not None else sensor_age_s
+        )
         v_force_tool[2] = self._admittance_z(
             f_err_z,
             force_task_active,
@@ -726,8 +967,75 @@ class AdmittanceController:
                 else None
             ),
             dt_contact=dt_contact,
-            sensor_age_s=sensor_age_s,
+            sensor_age_s=sensor_age_eff,
             chase_scale=chase_scale,
+        )
+        # Optional scalar bidirectional-flow adapter.  The adapter sees a
+        # press-positive normal coordinate; ``normal_sign`` maps the tool
+        # force convention into that coordinate and back.
+        flow_cfg = cfg.bidirectional_flow
+        flow_sign = 1.0 if float(flow_cfg.normal_sign) >= 0.0 else -1.0
+        flow_feedback_age = (
+            feedback_age_s if feedback_age_s is not None else sensor_age_s
+        )
+        flow_speed_actual = (
+            None
+            if v_tcp_z_actual is None
+            else flow_sign * float(v_tcp_z_actual)
+        )
+        flow_command = self._bidirectional_flow.update(
+            flow_sign * float(v_force_tool[2]),
+            # current_pose[2] is base-Z and is not a normal displacement when
+            # the tool is tilted.  Until the loop supplies a projected
+            # normal position, let the flow core integrate xa from the fresh
+            # tool-normal velocity instead of feeding it base-Z.
+            x_actual=None,
+            v_actual=flow_speed_actual,
+            force=flow_sign * f_ext_z,
+            dt_actual=dt_flow,
+            feedback_age_s=flow_feedback_age,
+            feedback_fresh=(
+                feedback_freshness
+                if feedback_freshness is not None
+                else feedback_fresh
+            ),
+            # Reconstruct the actual uncoupled implicit proxy RHS with the
+            # same total damping used by _admittance_z.  Tank credit remains
+            # limited to nominal_damping below, so Dimeas/impact damping is
+            # never used as fictitious energy income.
+            nominal_damping=float(cfg.admittance_damping_z),
+            proxy_mass=float(self._m_z_now),
+            proxy_damping=float(self.damping_z_eff),
+            active_effort_n=float(
+                max(float(f_des_z), 0.0)
+                + max(float(self.u_dob_z), 0.0)
+                + max(float(self.damping_ke_z * max(self.v_r_z, 0.0)), 0.0)
+            ),
+        )
+        if flow_cfg.mode == "active":
+            # The coupled proxy, not the uncoupled legacy Euler result, is the
+            # state carried into the next tick.  Without this assignment the
+            # -lambda*alpha*Fc branch would be forgotten every cycle.
+            self.v_force_z = flow_sign * float(self._bidirectional_flow.vp)
+            v_force_tool[2] = flow_sign * flow_command
+        self.flow_mode = str(flow_cfg.mode)
+        self.flow_alpha = float(self._bidirectional_flow.alpha)
+        self.flow_tank_energy = float(self._bidirectional_flow.tank_energy)
+        self.flow_fc = float(self._bidirectional_flow.fc)
+        self.flow_v_track = float(self._bidirectional_flow.v_track)
+        self.flow_v_aux = float(self._bidirectional_flow.v_aux)
+        self.flow_retract_through = float(
+            self._bidirectional_flow.retract_through
+        )
+        self.flow_press = float(self._bidirectional_flow.press)
+        self.flow_gamma_effective = float(
+            self._bidirectional_flow.gamma_effective
+        )
+        self.flow_feedback_stale = bool(
+            self._bidirectional_flow.feedback_stale
+        )
+        self.flow_sign_verified = bool(
+            self._bidirectional_flow.sign_verified
         )
         v_cmd_tool, v_cmd_base = self.fuse_tool_sleeve(
             v_pos_base,
@@ -741,6 +1049,11 @@ class AdmittanceController:
             lo = -v_z_cap
             hi = press_cap if press_cap > 0.0 else v_z_cap
             v_cmd_tool[2] = float(np.clip(v_cmd_tool[2], lo, hi))
+            # Force-space barrier caps are directional: a predicted force
+            # rise can close press while retract remains available.
+            v_cmd_tool[2] = self._force_barrier.clamp_velocity(
+                v_cmd_tool[2]
+            )
             if cfg.control_frame == "base":
                 v_cmd_base[:3] = r_mat @ v_cmd_tool[:3]
                 v_cmd_base[3:] = r_mat @ v_cmd_tool[3:6]
@@ -751,10 +1064,49 @@ class AdmittanceController:
             else v_cmd_base
         )
         v_clamp = np.clip(v_out, -cfg.max_velocity, cfg.max_velocity)
-        dv_max = cfg.max_acceleration * self.dt
+        dv_max = cfg.max_acceleration * dt_flow
         v_final = np.asarray(v_clamp, dtype=float).copy()
         for index in range(6):
             if cfg.force_axes[index] > 0.5:
+                if index == 2:
+                    press_slew = max(
+                        float(cfg.force_axis_slew_press_m_s2), 0.0
+                    )
+                    retract_slew = max(
+                        float(cfg.force_axis_slew_retract_m_s2), 0.0
+                    )
+                    reverse_slew = max(
+                        float(cfg.force_axis_slew_reverse_m_s2), 0.0
+                    )
+                    if v_final[index] >= self.last_v_cmd[index]:
+                        if press_slew > 0.0:
+                            v_final[index] = float(
+                                min(
+                                    v_final[index],
+                                    self.last_v_cmd[index]
+                                    + press_slew * dt_flow,
+                                )
+                            )
+                    else:
+                        # Crossing from press to retract is a safety escape,
+                        # so it has its own faster allowance.  Once already
+                        # retracting, use the regular retract slew.
+                        slew = (
+                            reverse_slew
+                            if self.last_v_cmd[index] > 0.0
+                            and v_final[index] <= 0.0
+                            and reverse_slew > 0.0
+                            else retract_slew
+                        )
+                        if slew <= 0.0:
+                            continue
+                        v_final[index] = float(
+                            max(
+                                v_final[index],
+                                self.last_v_cmd[index]
+                                - slew * dt_flow,
+                            )
+                        )
                 continue
             v_final[index] = float(
                 np.clip(
@@ -765,6 +1117,57 @@ class AdmittanceController:
             )
         self.last_v_cmd = v_final.copy()
         return v_final
+
+    def _update_surface_force_scale(
+        self,
+        xy_error_m: float,
+        *,
+        physical_contact: bool,
+        dt_s: float,
+    ) -> float:
+        """Return the optional elastic-surface desired-force scale.
+
+        The normal force is reduced as tangential tracking error grows, using
+        ``alpha = 1-exp(-beta*||e_xy||)``.  This layer is deliberately
+        independent from BEFM/tank accounting and defaults to unity.
+        """
+
+        cfg = self.cfg.surface_force_modulation
+        self.surface_xy_error_m = max(float(xy_error_m), 0.0)
+        if physical_contact:
+            self._surface_contact_s += max(float(dt_s), 0.0)
+        else:
+            self._surface_contact_s = 0.0
+
+        eligible = (
+            bool(cfg.enabled)
+            and physical_contact
+            and self._surface_contact_s >= max(float(cfg.stable_contact_s), 0.0)
+        )
+        if eligible:
+            alpha_target = 1.0 - math.exp(
+                -max(float(cfg.beta_per_m), 0.0) * self.surface_xy_error_m
+            )
+            min_scale = float(np.clip(cfg.min_force_scale, 0.0, 1.0))
+            target = alpha_target * min_scale + (1.0 - alpha_target)
+        else:
+            alpha_target = 0.0
+            target = 1.0
+
+        target = float(np.clip(target, 0.0, 1.0))
+        tau = float(cfg.attack_s if target < self.surface_force_scale else cfg.release_s)
+        if tau <= 1.0e-9:
+            self.surface_force_scale = target
+        else:
+            blend = float(np.clip(max(float(dt_s), 0.0) / tau, 0.0, 1.0))
+            self.surface_force_scale += blend * (
+                target - self.surface_force_scale
+            )
+        self.surface_force_scale = float(
+            np.clip(self.surface_force_scale, 0.0, 1.0)
+        )
+        self.surface_force_alpha = float(np.clip(alpha_target, 0.0, 1.0))
+        return self.surface_force_scale
 
     def _effective_desired_z(self, f_des_z: float) -> float:
         cfg = self.cfg
@@ -885,7 +1288,14 @@ class AdmittanceController:
             )
         else:
             self._d_z_smooth = damping_target
-        damping = self._d_z_smooth
+        damping_total = self._d_z_smooth
+        # Keep the nominal/base damping attached to (v-v_r), but make every
+        # extra dissipative channel zero-centred.  In particular Dimeas must
+        # not multiply the proactive reference and thereby amplify a stale
+        # press/retract anchor.
+        damping_base = max(float(damping_ke), 0.0)
+        damping_extra = max(damping_total - damping_base, 0.0)
+        damping = damping_base + damping_extra
         self.damping_ke_z = damping_ke
         self.damping_dimeas_z = damping_dimeas
         self.damping_z_eff = float(damping)
@@ -930,11 +1340,13 @@ class AdmittanceController:
         if dt_eff <= 0.0:
             velocity = float(self.v_force_z)
         else:
-            # Implicit Euler: (M/dt + D) v+ = M/dt · v + D · v_r + drive
+            # Implicit Euler with split damping:
+            # (M/dt + D0 + D_extra)v+ = M/dt*v + D0*v_r + drive.
+            # D_extra is zero-centred and therefore cannot amplify v_r.
             denom = mass_z / dt_eff + max(damping, 0.0)
             velocity = (
                 (mass_z / dt_eff) * self.v_force_z
-                + max(damping, 0.0) * v_reference
+                + max(damping_base, 0.0) * v_reference
                 + drive
             ) / max(denom, 1e-6)
         if v_z_cap > 0.0:

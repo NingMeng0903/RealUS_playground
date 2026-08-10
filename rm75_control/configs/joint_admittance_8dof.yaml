@@ -54,11 +54,13 @@ inner:
     max_iter_cap: 400
     max_solve_ms: 8.0         # skip retry if first attempt already burned wall budget
     fail_qdot_decay: 0.85
-    # c3ba58e singularity stack (8.1修改前备份) — restore as-is, no hybrid.
-    twist_sigma_floor: 0.08   # scale Cartesian/force twist when σ < sigma_ref
-    twist_scale_lpf_tau_s: 0.0   # c3ba had no LPF field
-    # Avoidance starts at 2·σ_ref so rail/∇μ lead the twist brake.
-    sigma_escape_ref_scale: 2.0
+    # Continuous full-twist singularity brake (force-Z is not exempt).
+    twist_sigma_floor: 0.08
+    twist_scale_lpf_tau_s: 0.08
+    # Escape is hysteretic: normal pose-D σ≈0.11–0.14 must stay out.
+    sigma_escape_ref_scale: 1.25   # compatibility: 1.25 * 0.08 = 0.10
+    sigma_escape_enter: 0.10
+    sigma_escape_exit: 0.12
     warn_on_fail: false
     # Chiaverini 1997 SR damping for nullspace projection.
     sr_damping:
@@ -89,7 +91,7 @@ inner:
     max_pairs: 8
 
   nullspace:
-    # c3ba58e: uniform arm weights; XOR ∇μ (see SecondaryComposer).
+    # Centering remains active while ∇μ is added during an escape episode.
     k_center: 1.0
     k_limit: 2.0
     activation: 0.85
@@ -107,9 +109,9 @@ inner:
   nullspace_d_null_adaptive: 1.0
   # Cap soft secondary qdot as a fraction of URDF v_max (near σ, N→I).
   nullspace_max_qdot_frac: 0.2
-  # c3ba58e: 3× centering pull after leaving σ-escape until near nominal.
-  centering_recovery_gain: 3.0
-  centering_recovery_max_qdot_frac: 0.35
+  # Stage-1 baseline: no hard 3× recovery transition.
+  centering_recovery_gain: 1.0
+  centering_recovery_max_qdot_frac: 0.2
   centering_recovery_tol: 0.12
 
   arm_angle:
@@ -134,6 +136,8 @@ inner:
     k_sigma_boost: 2.0     # w_ext boosts up to 3x as σ → 0
     k_esc: 0.5             # σ-escape velocity gain (m/s per unit σ gradient)
     w_sigma_floor: 1.0     # baseline w inside dead zone when σ depressed
+    weight_hard_max: 4.5   # final cap after reach/FF/σ terms and boost
+    task_weight_max_frac: 0.8  # never outrank effective Cartesian translation
     # move→D pose attractor (preset=move → mode=pose_attract).
     k_pose: 2.0            # 1/s soft P on (y_target - y_rail)
     pose_e0_m: 0.005       # settle dead-zone (stop hunting at target)
@@ -233,14 +237,14 @@ hybrid_motion:
   admittance_mass_z: 1.0
   admittance_damping_z: 25.0
   max_vz_tool_m_s: 0.08
-  desired_force_ramp_s: 0.8
+  desired_force_ramp_s: 0.30
   var_damping_enabled: true
   var_damping_omega_c_hz: 2.5
   var_damping_lambda: 0.951
   var_damping_f_max_n: 7.0
   # ΔD_hf amplitude (primary chatter dissipation); M bump is secondary.
-  var_damping_d_u: 90.0
-  var_damping_m_u: 1.5
+  var_damping_d_u: 60.0
+  var_damping_m_u: 0.0
   var_damping_m_max: 3.0
   var_damping_dc_alpha: 0.02
   var_damping_hf_attack_s: 0.02
@@ -250,15 +254,80 @@ hybrid_motion:
   var_damping_hf_on: 0.30
   var_damping_hf_off: 0.15
   var_damping_hf_err_n: 0.8
-  recontact_vz_cap_m_s: 0.008
-  recontact_hold_s: 0.22
+  recontact_vz_cap_m_s: 0.012
+  recontact_hold_s: 0.12
+  contact_episode_release_s: 0.30
+  contact_episode_release_force_n: 0.15
   force_dob:
-    enabled: true
+    enabled: false
     ki: 8.0
     leak_s: 0.4
     u_max_n: 1.5
     freeze_is: 0.45
     reset_on_reversal: true
+  # Contact impact is limited before BEFM/tank intervention.  In free space
+  # this preserves the 80 mm/s approach; after contact F+Fdot*T and the
+  # stiffness estimate continuously tighten positive press speed.
+  force_barrier:
+    enabled: true
+    t_react_s: 0.050
+    budget_min_n: 1.0
+    budget_frac: 0.20
+    f_keep_n: 0.5
+    v_ref_m_s: 0.08
+    v_min_retract_m_s: 0.002
+    fdot_lpf_s: 0.040
+    stiffness_cap_enabled: true
+    ke_floor_n_m: 50.0
+    mass_floor_kg: 0.05
+  # Force-axis slew is press-positive and asymmetric.  A sign reversal into
+  # retract gets the fastest allowance and is never tank/alpha gated.
+  force_axis_slew_press_m_s2: 0.30
+  force_axis_slew_retract_m_s2: 1.20
+  force_axis_slew_reverse_m_s2: 2.00
+  # Lee-structure speed-level engineering adapter.  Observe is deliberately
+  # non-mutating until the slow press/retract sign check and 2/5/10 mm/s
+  # no-contact delay identification have been recorded.
+  bidirectional_flow:
+    mode: observe
+    normal_sign: 1.0
+    sign_verified: false
+    feedback_delay_verified: false
+    require_sign_verification: true
+    require_delay_verification: true
+    Dtrack: 25.0
+    Kd: 25.0
+    Kp: 250.0              # Dtrack / 0.10 s
+    Ki: 0.0
+    lambda_gain: 0.25
+    track_correction_max_m_s: 0.020
+    M_p: 1.0
+    D_p: 25.0
+    # Provisional conservative auxiliary values; retune only after the
+    # velocity-step identification.  This branch can hold/retract, never press.
+    M_a: 0.05
+    D_a: 5.0
+    K_a: 50.0
+    B_a: 5.0
+    u_retract_n: 0.0
+    aux_max_retract_m_s: 0.050
+    alpha_attack_s: 0.020
+    alpha_release_s: 0.150
+    max_feedback_age_s: 0.020
+    T0: 0.0010
+    Tmax: 0.0040
+    Tmin: 0.0001
+    mu_power_w: 0.0
+    positive_switching_cost_j: 0.0
+  # Optional Piedra-style elastic-surface force reduction.  Disabled until
+  # stable-contact hardware validation; it is not a passivity guarantee.
+  surface_force_modulation:
+    enabled: false
+    min_force_scale: 0.25
+    beta_per_m: 80.0
+    stable_contact_s: 0.20
+    attack_s: 0.05
+    release_s: 0.15
   # Soften under-force chase near scan turnaround (tool-XY slow).
   force_lateral_soft_m_s: 0.006
   force_lateral_full_m_s: 0.018
@@ -292,8 +361,9 @@ hybrid_motion:
     bd_slew_max: 400.0
     ke_slew_max: 1200.0
   proactive_feedforward: true
-  proactive_retract_only: false
-  # Faster under-force chase; stronger over-force escape; no Is gate on press.
+  proactive_retract_only: true
+  # Stage-1 baseline permits proactive retract only. Active press is re-enabled
+  # only through the bidirectional-flow energy budget.
   proactive_gain: 0.24
   proactive_retract_gain: 0.30
   proactive_leak_s: 0.25

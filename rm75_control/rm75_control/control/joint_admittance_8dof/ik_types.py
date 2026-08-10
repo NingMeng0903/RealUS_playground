@@ -17,6 +17,16 @@ class IkStepResult:
     manip: float
     slack_norm: float = 0.0
     n_cbf_active: int = 0
+    # Effective preferred-rail task weight after hard and hierarchy caps.
+    rail_task_weight_effective: float = 0.0
+    # Effective weakest translational Cartesian slack/task weight after σ
+    # scheduling (used to preserve the rail-vs-Cartesian hierarchy).
+    cart_translation_weight_effective: float = 0.0
+    # Controller-side geometry telemetry (filled by JointIkController).
+    escape_active: bool = False
+    rail_escape_active: bool = False
+    rail_escape_sign: float = 0.0
+    twist_scale: float = 1.0
 
 
 @dataclass

@@ -91,9 +91,10 @@ def test_weight_schedule_continuous_and_monotone():
     for edge in (0.05, 0.15):
         d = (w_of(edge + h) - w_of(edge - h)) / (2 * h)
         assert abs(d) < 0.05, (edge, d)
-    # Zero inside dead zone, w_max above e1.
+    # Zero inside dead zone; the Stage-1 safety contract hard-caps the
+    # effective rail-task weight at 4.5 even when w_max is configured to 5.
     assert w_of(0.049) == 0.0
-    assert abs(w_of(0.151) - 5.0) < 1e-9
+    assert abs(w_of(0.151) - 4.5) < 1e-9
 
 
 def test_extension_invariant_to_coupled_translation():
@@ -122,7 +123,9 @@ def test_rail_at_travel_limit_zeros_task():
 def test_limit_fade_smoothstep_continuous():
     """Approaching a limit: _limit_saturation is C¹ smoothstep, no linear cliff."""
     task, kin = _task(limit_margin_m=0.08)
-    hi = float(kin.q_upper[0])
+    # The shared host-side soft stop is authoritative; the URDF travel limit
+    # is 0.80 m while the configured soft maximum is 0.78 m.
+    hi = min(float(kin.q_upper[0]), float(task.cfg.soft_max_m))
     margin = 0.08
     qs = np.linspace(hi - margin, hi - 1e-9, 401)
     scales = np.array([task._limit_saturation(q, 0.05) for q in qs])

@@ -94,8 +94,9 @@ class JointIkConfig:
     # Cap soft secondary qdot as a fraction of URDF v_max (near σ, N→I).
     nullspace_max_qdot_frac: float = 0.2
     # Latched stronger posture pull after singularity escape until near target.
-    centering_recovery_gain: float = 3.0
-    centering_recovery_max_qdot_frac: float = 0.35
+    # Stage-1 default is neutral: no implicit hard 3x posture recovery.
+    centering_recovery_gain: float = 1.0
+    centering_recovery_max_qdot_frac: float = 0.2
     centering_recovery_tol: float = 0.12
 
 
@@ -119,9 +120,48 @@ class JointIkStep:
     tcp_jump_mm: float = 0.0
     rail_ext_err_m: float = 0.0
     rail_ext_weight: float = 0.0
+    rail_ext_weight_raw: float = 0.0
+    rail_ext_weight_capped: float = 0.0
+    rail_ext_weight_effective: float = 0.0
+    escape_active: bool = False
+    rail_escape_active: bool = False
+    rail_escape_sign: float = 0.0
+    twist_scale: float = 1.0
+    cart_translation_weight_effective: float = 0.0
     rail_vel_pin: float = float("nan")      # m/s hard pin, or NaN if free
     rail_qdot_ff: float = float("nan")      # plan qdot_ff[0] before strip
     plan_drives_rail: bool = False
+
+
+def twist_scale_target(
+    sigma_min: float,
+    sigma_ref: float,
+    floor: float = 0.08,
+) -> float:
+    """Continuous full-twist singularity scale.
+
+    Above ``sigma_ref`` the task is untouched.  Below it the requested twist
+    is scaled by ``max(sigma/sigma_ref, floor)``; there is deliberately no
+    deep-σ square branch or force-axis bypass.
+    """
+    ref = float(sigma_ref)
+    if ref <= 1e-9 or float(sigma_min) >= ref:
+        return 1.0
+    return float(max(float(sigma_min) / ref, float(floor)))
+
+
+def twist_scale_lpf_step(
+    filt: float,
+    target: float,
+    *,
+    dt: float,
+    tau_s: float,
+) -> float:
+    """One first-order low-pass step (tau<=0 gives an immediate step)."""
+    if float(tau_s) <= 1e-6 or float(dt) <= 1e-9:
+        return float(target)
+    alpha = float(np.clip(float(dt) / float(tau_s), 0.0, 1.0))
+    return float(filt) + alpha * (float(target) - float(filt))
 
 
 class JointIkController:
@@ -179,6 +219,46 @@ class JointIkController:
                 float(self.limits.v_max[0]),
                 float(self.cfg.rail.v_max_m_s),
             )
+        # Canonical host soft rail band.  SafetyLimiter and the QP share this
+        # same SafetyLimits object, so both command clamps and velocity boxes
+        # stop at 1--78 cm while the kinematic model retains mechanical travel.
+        soft_lo = float(getattr(self.cfg.rail, "soft_min_m", 0.01))
+        soft_hi = float(getattr(self.cfg.rail, "soft_max_m", 0.78))
+        qp_soft_lo = float(getattr(self.cfg.qp, "rail_soft_min_m", soft_lo))
+        qp_soft_hi = float(getattr(self.cfg.qp, "rail_soft_max_m", soft_hi))
+        if not (
+            np.isfinite(soft_lo)
+            and np.isfinite(soft_hi)
+            and float(self.kin.q_lower[0]) <= soft_lo < soft_hi
+            and soft_hi <= float(self.kin.q_upper[0])
+        ):
+            raise ValueError(
+                "invalid canonical rail soft limits: "
+                f"[{soft_lo:.6f}, {soft_hi:.6f}]"
+            )
+        if (
+            abs(qp_soft_lo - soft_lo) > 1.0e-6
+            or abs(qp_soft_hi - soft_hi) > 1.0e-6
+        ):
+            raise ValueError(
+                "rail soft-limit mismatch: JointIk rail "
+                f"[{soft_lo:.6f}, {soft_hi:.6f}] vs QP "
+                f"[{qp_soft_lo:.6f}, {qp_soft_hi:.6f}]"
+            )
+        self.limits.q_lower[0] = max(float(self.limits.q_lower[0]), soft_lo)
+        self.limits.q_upper[0] = min(float(self.limits.q_upper[0]), soft_hi)
+        # Expose the resolved band on both the shared safety object and
+        # QP config for telemetry/introspection; constraints continue to
+        # consume the same q_lower/q_upper arrays below.
+        self.limits.rail_soft_min_m = float(self.limits.q_lower[0])
+        self.limits.rail_soft_max_m = float(self.limits.q_upper[0])
+        self.cfg.qp.rail_soft_min_m = float(self.limits.q_lower[0])
+        self.cfg.qp.rail_soft_max_m = float(self.limits.q_upper[0])
+        # Explicitly pass the canonical band to the rail task too; direct
+        # task construction still has the same defaults.
+        if self.rail_ext_task is not None:
+            self.rail_ext_task.cfg.soft_min_m = float(self.limits.q_lower[0])
+            self.rail_ext_task.cfg.soft_max_m = float(self.limits.q_upper[0])
         self.core = QpIkController(self.kin, self.limits, self.cfg.qp)
         self.safety = SafetyLimiter(self.limits)
         self.q_cmd = np.zeros(kin.nv, dtype=float)
@@ -200,11 +280,8 @@ class JointIkController:
         self.last_sigma_min: float = float(self.cfg.qp.sr_damping.sigma_ref)
         self._singularity_escape_seen: bool = False
         self._centering_recovery_active: bool = False
+        self._in_escape_zone: bool = False
         self._twist_scale_filt: float = 1.0
-        # #region agent log
-        self._dbg_tick: int = 0
-        self._dbg_logged_cfg: bool = False
-        # #endregion
         self._rail_mode: RailMode = self.cfg.rail.mode
         self._locked_style: LockedStyle = self.cfg.rail.locked_style
         # Immutable yaml rail mode (live cfg.rail.mode is mutated by locks).
@@ -286,71 +363,43 @@ class JointIkController:
             self.rail_ext_task.reset(self.q_cmd)
         self._singularity_escape_seen = False
         self._centering_recovery_active = False
+        self._in_escape_zone = False
         self._twist_scale_filt = 1.0
         if self.manipulability_task is not None:
             self.manipulability_task.reset()
         self._apply_rail_mode_side_effects()
-        # #region agent log
-        try:
-            import json as _json
-            _w = self.cfg.nullspace.weights
-            _p = "/media/camp/EXT_DRIVE/RealUS_playground/.cursor/debug-61e339.log"
-            with open(_p, "a", encoding="utf-8") as _f:
-                _f.write(
-                    _json.dumps(
-                        {
-                            "sessionId": "61e339",
-                            "runId": "post-fix",
-                            "hypothesisId": "rollback-c3ba58e",
-                            "location": "loop.py:reset",
-                            "message": "ik_reset_singularity_knobs",
-                            "data": {
-                                "ref": "c3ba58e",
-                                "sigma_ref": float(self.cfg.qp.sr_damping.sigma_ref),
-                                "escape_scale": float(
-                                    getattr(self.cfg.qp, "sigma_escape_ref_scale", -1)
-                                ),
-                                "escape_ref": float(self.cfg.qp.sr_damping.sigma_ref)
-                                * float(
-                                    getattr(self.cfg.qp, "sigma_escape_ref_scale", 2.0)
-                                ),
-                                "twist_floor": float(
-                                    getattr(self.cfg.qp, "twist_sigma_floor", -1)
-                                ),
-                                "task_w_min": float(
-                                    getattr(self.cfg.qp, "task_weight_min_frac", -1)
-                                ),
-                                "k_center": float(self.cfg.nullspace.k_center),
-                                "weights": (
-                                    np.asarray(_w, dtype=float).tolist()
-                                    if _w is not None
-                                    else None
-                                ),
-                                "recovery_gain": float(self.cfg.centering_recovery_gain),
-                                "composer": "xor",
-                            },
-                            "timestamp": int(time.time() * 1000),
-                        },
-                        ensure_ascii=False,
-                    )
-                    + "\n"
-                )
-            self._dbg_logged_cfg = True
-        except Exception:
-            pass
-        # #endregion
+
+    def _update_escape_zone(self, sigma_min: float, enter: float, exit_: float) -> None:
+        """Latch one σ escape episode with explicit enter/exit hysteresis."""
+        enter = float(enter)
+        exit_ = max(float(exit_), enter)
+        if enter <= 1e-9:
+            self._in_escape_zone = False
+            return
+        if self._in_escape_zone:
+            if float(sigma_min) >= exit_:
+                self._in_escape_zone = False
+        elif float(sigma_min) < enter:
+            self._in_escape_zone = True
+
+    @property
+    def escape_active(self) -> bool:
+        """Whether the controller is inside the latched σ escape episode."""
+        return bool(self._in_escape_zone)
 
     def _centering_recovery_scale(
         self,
         q: np.ndarray,
         sigma_min: float,
-        sigma_escape_ref: float,
+        sigma_escape_enter: float,
     ) -> float:
-        """Latch strong posture recovery after leaving the singularity zone."""
-        if sigma_escape_ref > 1e-9 and sigma_min < sigma_escape_ref:
+        """Apply only explicitly configured posture recovery during escape."""
+        if sigma_escape_enter > 1e-9 and sigma_min < sigma_escape_enter:
             self._singularity_escape_seen = True
             self._centering_recovery_active = False
-            return 1.0
+            # Gain remains neutral by default; the state is retained only for
+            # explicit opt-in configurations.
+            return max(float(self.cfg.centering_recovery_gain), 1.0)
 
         if not self._singularity_escape_seen:
             self._centering_recovery_active = False
@@ -438,8 +487,11 @@ class JointIkController:
         centering_gain_scale: float = 1.0,
         max_qdot_frac_override: float | None = None,
     ) -> np.ndarray:
-        """Compose nullspace: c3ba58e XOR (∇μ replaces centering when armed)."""
+        """Compose centering, manipulability, and feedforward secondaries."""
         sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
+        sigma_escape_ref = float(
+            getattr(self.cfg.qp, "sigma_escape_enter", 0.10)
+        )
         qdot0 = self.secondary.compose(
             q,
             qdot_ff,
@@ -450,6 +502,7 @@ class JointIkController:
                 self.last_sigma_min if sigma_min is None else float(sigma_min)
             ),
             sigma_ref=sigma_ref,
+            sigma_escape_ref=sigma_escape_ref,
             centering_suppressed=self._centering_suppressed,
             centering_sigma_fade=centering_sigma_fade,
             manipulability_active=(
@@ -480,9 +533,9 @@ class JointIkController:
         velocity constraints (never a position teleport). ``qdot_ff`` feeds
         the nullspace with centering / arm-angle tasks.
 
-        When ``f_ext_z`` / ``f_des_z`` indicate over-force retract (tool +z
-        press convention), the tool-normal twist component is not attenuated
-        by singularity ``twist_scale``.
+        ``f_ext_z`` / ``f_des_z`` are retained as compatibility inputs for
+        callers, but the singularity brake always scales the complete 6D
+        twist, including force/retract motion.
         """
         dt = self.cfg.dt if dt is None else dt
         q_prev = self.q_cmd
@@ -490,47 +543,38 @@ class JointIkController:
         q_rot = q_meas if q_meas is not None else q_prev
         twist_tool = np.asarray(twist, dtype=float).copy()
 
-        # Two-threshold σ policy (c3ba58e): sigma_ref brakes twist;
-        # sigma_escape_ref (default 2·σ_ref) starts avoidance earlier.
+        # Continuous full-twist brake with an explicit absolute escape episode.
+        # The enter/exit thresholds are intentionally independent of the SR
+        # damping reference so rail/manipulability latches agree across modes.
         sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
-        sigma_escape_ref = sigma_ref * float(
-            getattr(self.cfg.qp, "sigma_escape_ref_scale", 2.0)
+        sigma_escape_enter = float(
+            getattr(self.cfg.qp, "sigma_escape_enter", 0.10)
+        )
+        sigma_escape_exit = max(
+            float(getattr(self.cfg.qp, "sigma_escape_exit", 0.12)),
+            sigma_escape_enter,
         )
         J_pre = self.kin.jacobian(q_prev)
         sigma_pre = float(self.kin.singular_values(J_pre).min())
-        centering_gain_scale = self._centering_recovery_scale(
-            q_prev, sigma_pre, sigma_escape_ref
+        self._update_escape_zone(
+            sigma_pre, sigma_escape_enter, sigma_escape_exit
         )
-        twist_scale_raw = 1.0
-        if sigma_ref > 1e-9 and sigma_pre < sigma_ref:
-            floor = float(getattr(self.cfg.qp, "twist_sigma_floor", 0.08))
-            twist_scale_raw = max(float(sigma_pre / sigma_ref), floor)
-            # Below half σ_ref, square scale so force retract cannot collapse posture.
-            if sigma_pre < 0.5 * sigma_ref:
-                twist_scale_raw = max(
-                    twist_scale_raw * twist_scale_raw, 0.5 * floor
-                )
-        # Optional LPF (c3ba had none; tau=0 → immediate brake).
-        tau_ts = float(getattr(self.cfg.qp, "twist_scale_lpf_tau_s", 0.0))
-        if tau_ts <= 1e-6 or dt <= 1e-9:
-            self._twist_scale_filt = float(twist_scale_raw)
-        else:
-            a = float(np.clip(dt / tau_ts, 0.0, 1.0))
-            self._twist_scale_filt += a * (
-                float(twist_scale_raw) - self._twist_scale_filt
-            )
+        centering_gain_scale = self._centering_recovery_scale(
+            q_prev, sigma_pre, sigma_escape_enter
+        )
+        floor = float(getattr(self.cfg.qp, "twist_sigma_floor", 0.08))
+        twist_scale_raw = twist_scale_target(sigma_pre, sigma_ref, floor)
+        tau_ts = float(getattr(self.cfg.qp, "twist_scale_lpf_tau_s", 0.08))
+        self._twist_scale_filt = twist_scale_lpf_step(
+            self._twist_scale_filt,
+            twist_scale_raw,
+            dt=float(dt),
+            tau_s=tau_ts,
+        )
         twist_scale = float(np.clip(self._twist_scale_filt, 0.0, 1.0))
-        if twist_scale < 1.0 - 1e-9:
-            vz_tool = float(twist_tool[2])
-            overforce_retract = (
-                f_ext_z is not None
-                and f_des_z is not None
-                and float(f_ext_z) > float(f_des_z)
-                and vz_tool < 0.0
-            )
-            twist_tool = twist_tool * twist_scale
-            if overforce_retract:
-                twist_tool[2] = vz_tool
+        # Brake all six components continuously; there is no force-axis
+        # bypass or deep-σ square branch.
+        twist_tool = twist_tool * twist_scale
         twist_base = self._twist_to_base(twist_tool, q_rot)
 
         locked_hold = self.is_locked_hold
@@ -592,6 +636,21 @@ class JointIkController:
                 pos_clamped=rep.pos_clamped,
                 rail_ext_err_m=0.0,
                 rail_ext_weight=0.0,
+                escape_active=bool(self._in_escape_zone),
+                rail_escape_active=bool(
+                    self.rail_ext_task.escape_active
+                    if self.rail_ext_task is not None
+                    else False
+                ),
+                rail_escape_sign=float(
+                    self.rail_ext_task.escape_sign
+                    if self.rail_ext_task is not None
+                    else 0.0
+                ),
+                twist_scale=float(twist_scale),
+                cart_translation_weight_effective=float(
+                    np.min(np.asarray(self.cfg.qp.task_weight, dtype=float)[:3])
+                ),
                 rail_vel_pin=float(qdot_ff[0]),
                 rail_qdot_ff=float(qdot_ff[0]),
                 plan_drives_rail=True,
@@ -620,6 +679,10 @@ class JointIkController:
         # Preferred-extension rail coordination (COUPLED only) — c3ba58e.
         rail_task_vel: float | None = None
         rail_task_weight = 0.0
+        rail_task_weight_raw = 0.0
+        rail_task_weight_capped = 0.0
+        rail_escape_active = False
+        rail_escape_sign = 0.0
         rail_ext_err = 0.0
         # Once sigma has recovered from an escape, posture recovery takes the
         # nullspace slot even if a move preset left the manipulability flag on.
@@ -637,8 +700,8 @@ class JointIkController:
             if sigma_ref > 1e-9 and sigma_now < sigma_ref:
                 sig_scale = max(sigma_now / sigma_ref, 0.25)
             sig_escape = 1.0
-            if sigma_escape_ref > 1e-9 and sigma_now < sigma_escape_ref:
-                sig_escape = max(sigma_now / sigma_escape_ref, 0.0)
+            if sigma_escape_enter > 1e-9:
+                sig_escape = max(sigma_now / sigma_escape_enter, 0.0)
             self._sigma_grad_tick += 1
             if (
                 self._sigma_grad_tick % self._sigma_grad_period == 0
@@ -655,84 +718,23 @@ class JointIkController:
                 sigma_grad_rail=self._sigma_grad_rail_cached,
                 vel_ff=vel_ff,
                 dt_s=float(dt),
+                sigma_min=sigma_now,
+                sigma_escape_enter=sigma_escape_enter,
+                sigma_escape_exit=sigma_escape_exit,
             )
             rail_ext_err = self.rail_ext_task.last_err_m
+            rail_escape_active = bool(self.rail_ext_task.escape_active)
+            rail_escape_sign = float(self.rail_ext_task.escape_sign)
+            rail_task_weight_raw = float(self.rail_ext_task.last_weight_raw)
+            rail_task_weight_capped = float(
+                self.rail_ext_task.last_weight_capped
+            )
             if w_ext > 0.0:
                 rail_task_vel = v_ext
                 rail_task_weight = w_ext
-            # Arm ∇μ as soon as σ is below the escape threshold (leads brake).
-            if sigma_escape_ref > 1e-9 and sigma_now < sigma_escape_ref:
+            # Arm ∇μ as soon as the absolute escape episode is active.
+            if self._in_escape_zone:
                 manip_for_saturation = True
-
-        # #region agent log
-        self._dbg_tick += 1
-        if self._dbg_tick % 20 == 0:
-            try:
-                import json as _json
-                _q4 = float(np.asarray(q_prev, dtype=float)[4])
-                _rail = float(np.asarray(q_prev, dtype=float)[0])
-                _payload = {
-                    "sessionId": "61e339",
-                    "runId": "post-fix",
-                    "hypothesisId": "rollback-c3ba58e",
-                    "location": "loop.py:update",
-                    "message": "singularity_tick",
-                    "data": {
-                        "tick": int(self._dbg_tick),
-                        "sigma": float(sigma_pre),
-                        "sigma_ref": float(sigma_ref),
-                        "escape_ref": float(sigma_escape_ref),
-                        "in_escape": bool(
-                            sigma_escape_ref > 1e-9 and sigma_pre < sigma_escape_ref
-                        ),
-                        "escape_seen": bool(self._singularity_escape_seen),
-                        "recovery_active": bool(self._centering_recovery_active),
-                        "center_gain": float(centering_gain_scale),
-                        "manip_armed": bool(manip_for_saturation),
-                        "composer": "xor",
-                        "twist_scale": float(twist_scale),
-                        "k_center": float(self.cfg.nullspace.k_center),
-                        "rail_m": _rail,
-                        "q4_deg": float(_q4 * 180.0 / math.pi),
-                        "rail_v": (
-                            float(rail_task_vel)
-                            if rail_task_vel is not None
-                            else None
-                        ),
-                        "rail_w": float(rail_task_weight),
-                        "sig_esc": (
-                            float(sig_escape)
-                            if (
-                                self.rail_ext_task is not None
-                                and self._rail_ext_active
-                                and self._rail_mode == RailMode.COUPLED
-                            )
-                            else None
-                        ),
-                        "sig_grad": float(self._sigma_grad_rail_cached),
-                        "rail_mode": str(self._rail_mode),
-                        "ext_mode": (
-                            str(self.rail_ext_task.mode)
-                            if self.rail_ext_task is not None
-                            else None
-                        ),
-                        "lim_sat": (
-                            bool(self.rail_ext_task.last_limit_saturated)
-                            if self.rail_ext_task is not None
-                            else None
-                        ),
-                    },
-                    "timestamp": int(time.time() * 1000),
-                }
-                with open(
-                    "/media/camp/EXT_DRIVE/RealUS_playground/.cursor/debug-61e339.log",
-                    "a",
-                    encoding="utf-8",
-                ) as _f:
-                    _f.write(_json.dumps(_payload, ensure_ascii=False) + "\n")
-            except Exception:
-                pass
-        # #endregion
 
         r = self.core.step(
             q_prev,
@@ -762,6 +764,22 @@ class JointIkController:
             zero_secondary_rail=not locked_hold,
             rail_task_vel_m_s=rail_task_vel,
             rail_task_weight=rail_task_weight,
+        )
+        # Carry controller-side geometry state on the shared result as well as
+        # the public JointIkStep wrapper for callers that inspect the QP result.
+        r.escape_active = bool(self._in_escape_zone)
+        r.rail_escape_active = bool(rail_escape_active)
+        r.rail_escape_sign = float(rail_escape_sign)
+        r.twist_scale = float(twist_scale)
+        rail_task_weight_effective = float(
+            getattr(r, "rail_task_weight_effective", rail_task_weight)
+        )
+        cart_translation_weight_effective = float(
+            getattr(
+                r,
+                "cart_translation_weight_effective",
+                np.min(np.asarray(self.cfg.qp.task_weight, dtype=float)[:3]),
+            )
         )
 
         rep = self.safety.clamp(q_prev, r.q_next, dt)
@@ -820,6 +838,14 @@ class JointIkController:
             pos_clamped=rep.pos_clamped,
             rail_ext_err_m=rail_ext_err,
             rail_ext_weight=rail_task_weight,
+            rail_ext_weight_raw=rail_task_weight_raw,
+            rail_ext_weight_capped=rail_task_weight_capped,
+            rail_ext_weight_effective=rail_task_weight_effective,
+            escape_active=bool(self._in_escape_zone),
+            rail_escape_active=rail_escape_active,
+            rail_escape_sign=rail_escape_sign,
+            twist_scale=float(twist_scale),
+            cart_translation_weight_effective=cart_translation_weight_effective,
             rail_vel_pin=(
                 float(rail_vel_pin) if rail_vel_pin is not None else float("nan")
             ),
@@ -872,6 +898,10 @@ class AdmittanceOuterLoop:
         f_ext_raw: np.ndarray | None = None,
         dt_actual: float | None = None,
         sensor_age_s: float | None = None,
+        feedback_age_s: float | None = None,
+        feedback_fresh_tick: bool | None = None,
+        feedback_velocity_valid: bool | None = None,
+        v_tcp_z_actual: float | None = None,
     ) -> np.ndarray:
         ref = self.reference.sample(t_s)
         # Track-axis-only error (force axis excluded).
@@ -884,6 +914,17 @@ class AdmittanceOuterLoop:
         self.last_err_mm = tr_mm
         self.last_track_rot_deg = tr_deg
         self.last_vel_ff = np.asarray(ref.vel_ff, dtype=float).copy()
+        # ``feedback_fresh_tick`` is a per-cycle telemetry edge, not a
+        # validity gate: when one UDP frame is missed, retain the last valid
+        # velocity and let ``feedback_age_s`` decide staleness.  Before the
+        # first successful finite-difference estimate, pass no velocity so
+        # BEFM remains fail-closed.
+        velocity_valid = (
+            bool(feedback_velocity_valid)
+            if feedback_velocity_valid is not None
+            else v_tcp_z_actual is not None
+        )
+        v_actual = v_tcp_z_actual if velocity_valid else None
         return self.controller.compute_velocity_command(
             current_pose,
             ref.pose_d,
@@ -893,6 +934,9 @@ class AdmittanceOuterLoop:
             f_ext_raw=f_ext_raw,
             dt_actual=dt_actual,
             sensor_age_s=sensor_age_s,
+            feedback_age_s=feedback_age_s,
+            feedback_fresh=None,
+            v_tcp_z_actual=v_actual,
         )
 
 
@@ -1202,7 +1246,8 @@ class _TickLogger:
            "physical_contact_reacquire_event",
            "physical_contact_low_timer_s", "physical_contact_high_timer_s",
            "mass_z_eff", "takeover",
-           "dt_actual_s", "sensor_age_s",
+           "dt_actual_s", "sensor_age_s", "feedback_age_s",
+           "feedback_fresh_tick",
            "fx_raw_comp", "fy_raw_comp", "fz_raw_comp",
            "vz_achieved_tool", "contact_present",
            "force_pred_z", "force_dot_z", "cap_press_z", "cap_retract_z",
@@ -1211,9 +1256,22 @@ class _TickLogger:
            "qdot_norm", "qdot_max_frac_vmax",
            "qdot_ff_norm", "arm_singularity_smooth", "limit_activation",
            "tcp_jump_mm",
-           "rail_ext_err_m", "rail_ext_w",
+           "rail_ext_err_m", "rail_ext_w", "rail_ext_w_raw",
+           "rail_ext_w_capped", "rail_ext_w_effective",
            "rail_target_sent_m", "rail_meas_m",
-           "rail_vel_pin", "plan_drives_rail", "rail_qdot_ff"]
+           "rail_vel_pin", "plan_drives_rail", "rail_qdot_ff",
+           "escape_active", "rail_escape_active", "rail_escape_sign",
+           "twist_scale", "cart_translation_weight_effective",
+           # Append-only normal-axis BEFM/audit schema.
+           "flow_x_p", "flow_v_p", "flow_v_aux", "flow_x_a", "flow_v_a",
+           "flow_e", "flow_edot", "flow_F_c", "flow_v_track",
+           "flow_P_e", "flow_P_c", "flow_alpha_target", "flow_alpha",
+           "flow_alpha_case", "flow_T", "flow_psi", "flow_S_n",
+           "flow_S_r_hat", "flow_P_phys", "flow_P_mismatch",
+           "flow_E_phys", "flow_E_mismatch", "flow_gamma_active",
+           "flow_sign_fault", "flow_feedback_stale", "flow_blocked_reason",
+           "contact_episode_rearm_event", "contact_episode_release_s",
+           "surface_force_scale", "surface_force_alpha", "surface_xy_error_m"]
     )
 
     def __init__(self, path: str) -> None:
@@ -1263,6 +1321,8 @@ class _TickLogger:
         rail_meas_m: float = float("nan"),
         dt_actual_s: float = float("nan"),
         sensor_age_s: float = float("nan"),
+        feedback_age_s: float = float("nan"),
+        feedback_fresh_tick: bool = False,
         f_ext_raw: np.ndarray | None = None,
         twist_achieved_base: np.ndarray | None = None,
         v_tcp_z_actual: float = float("nan"),
@@ -1341,6 +1401,40 @@ class _TickLogger:
         ke_dx_m = getattr(ke_tracker, "last_dx_m", float("nan"))
         ke_df_n = getattr(ke_tracker, "last_df_n", float("nan"))
         ke_update_count = getattr(ke_tracker, "update_count", 0)
+        flow = getattr(ctrl, "bidirectional_flow", None)
+        flow_xp = getattr(flow, "xp", float("nan"))
+        flow_vp = getattr(flow, "vp", float("nan"))
+        flow_v_aux = getattr(flow, "v_aux", float("nan"))
+        flow_xa = getattr(flow, "xa", float("nan"))
+        flow_va = getattr(flow, "va", float("nan"))
+        flow_e = getattr(flow, "e", float("nan"))
+        flow_edot = getattr(flow, "edot", float("nan"))
+        flow_fc = getattr(flow, "fc", float("nan"))
+        flow_v_track = getattr(flow, "v_track", float("nan"))
+        flow_pe = getattr(flow, "Pe", float("nan"))
+        flow_pc = getattr(flow, "Pc", float("nan"))
+        flow_alpha_target = getattr(flow, "alpha_raw", float("nan"))
+        flow_alpha = getattr(flow, "alpha", float("nan"))
+        flow_alpha_case = getattr(flow, "alpha_case", "")
+        flow_tank = getattr(flow, "tank_energy", float("nan"))
+        flow_psi = getattr(flow, "psi", float("nan"))
+        flow_sn = getattr(flow, "Sn", float("nan"))
+        flow_sr = getattr(flow, "Sr_hat", float("nan"))
+        flow_p_phys = getattr(flow, "P_phys", float("nan"))
+        flow_p_mismatch = getattr(flow, "P_mismatch", float("nan"))
+        flow_e_phys = getattr(flow, "energy_phys_j", float("nan"))
+        flow_e_mismatch = getattr(flow, "energy_mismatch_j", float("nan"))
+        flow_gamma = getattr(flow, "gamma_effective", float("nan"))
+        flow_sign_fault = getattr(flow, "sign_fault", True)
+        flow_stale = getattr(flow, "feedback_stale", True)
+        flow_blocked = getattr(flow, "blocked_reason", "")
+        episode_rearm = getattr(ctrl, "contact_episode_rearm_event", False)
+        episode_release_s = getattr(
+            ctrl, "contact_episode_release_s", float("nan")
+        )
+        surface_force_scale = getattr(ctrl, "surface_force_scale", float("nan"))
+        surface_force_alpha = getattr(ctrl, "surface_force_alpha", float("nan"))
+        surface_xy_error_m = getattr(ctrl, "surface_xy_error_m", float("nan"))
         raw_comp = (
             np.asarray(f_ext_raw, dtype=float)
             if f_ext_raw is not None
@@ -1401,6 +1495,7 @@ class _TickLogger:
                f"{mass_z_eff:.4f}",
                int(bool(takeover)),
                f"{dt_actual_s:.6f}", f"{sensor_age_s:.6f}",
+               f"{feedback_age_s:.6f}", int(bool(feedback_fresh_tick)),
                f"{raw_comp[0]:.3f}", f"{raw_comp[1]:.3f}", f"{raw_comp[2]:.3f}",
                f"{v_tcp_z_actual:.6f}", int(bool(contact_present)),
                f"{force_pred_z:.4f}", f"{force_dot_z:.4f}",
@@ -1414,11 +1509,32 @@ class _TickLogger:
                f"{step.limit_activation:.4f}",
                f"{step.tcp_jump_mm:.3f}",
                f"{step.rail_ext_err_m:.5f}", f"{step.rail_ext_weight:.4f}",
+               f"{step.rail_ext_weight_raw:.4f}",
+               f"{step.rail_ext_weight_capped:.4f}",
+               f"{step.rail_ext_weight_effective:.4f}",
                f"{rail_sent:.6f}",
                f"{rail_meas_m:.6f}" if np.isfinite(rail_meas_m) else "",
                f"{step.rail_vel_pin:.6f}" if np.isfinite(step.rail_vel_pin) else "",
                int(bool(step.plan_drives_rail)),
-               f"{step.rail_qdot_ff:.6f}" if np.isfinite(step.rail_qdot_ff) else ""]
+               f"{step.rail_qdot_ff:.6f}" if np.isfinite(step.rail_qdot_ff) else "",
+               int(bool(step.escape_active)),
+               int(bool(step.rail_escape_active)),
+               f"{step.rail_escape_sign:.6f}",
+               f"{step.twist_scale:.6f}",
+               f"{step.cart_translation_weight_effective:.6f}",
+               f"{flow_xp:.8f}", f"{flow_vp:.8f}", f"{flow_v_aux:.8f}",
+               f"{flow_xa:.8f}", f"{flow_va:.8f}", f"{flow_e:.8f}",
+               f"{flow_edot:.8f}", f"{flow_fc:.8f}", f"{flow_v_track:.8f}",
+               f"{flow_pe:.8f}", f"{flow_pc:.8f}",
+               f"{flow_alpha_target:.8f}", f"{flow_alpha:.8f}",
+               str(flow_alpha_case), f"{flow_tank:.9f}", f"{flow_psi:.8f}",
+               f"{flow_sn:.9f}", f"{flow_sr:.9f}", f"{flow_p_phys:.8f}",
+               f"{flow_p_mismatch:.8f}", f"{flow_e_phys:.9f}",
+               f"{flow_e_mismatch:.9f}", f"{flow_gamma:.8f}",
+               int(bool(flow_sign_fault)), int(bool(flow_stale)),
+               str(flow_blocked), int(bool(episode_rearm)),
+               f"{episode_release_s:.6f}", f"{surface_force_scale:.6f}",
+               f"{surface_force_alpha:.6f}", f"{surface_xy_error_m:.8f}"]
         )
 
     def close(self) -> None:
@@ -1673,8 +1789,15 @@ def run_joint_admittance_phases(
                     last_feedback_seq = int(getattr(snap, "seq", 0))
                     last_feedback_t = float(getattr(snap, "t_s", 0.0))
                     last_feedback_q = np.asarray(q_meas, dtype=float).copy()
+                    # ``feedback_age_s`` tracks the last sample from which a
+                    # finite-difference TCP velocity was actually computed;
+                    # sensor transport age is a separate diagnostic.
+                    last_feedback_velocity_t = last_feedback_t
                     twist_achieved_base = np.zeros(6, dtype=float)
                     v_tcp_z_actual = 0.0
+                    feedback_velocity_valid = False
+                    feedback_fresh_tick = False
+                    first_tick = True
                     while True:
                         if stop_check is not None and stop_check():
                             phase_stopped = True
@@ -1683,10 +1806,20 @@ def run_joint_admittance_phases(
                         dt_raw = now - last_tick_time
                         last_tick_time = now
                         # The first phase tick occurs immediately after setup;
-                        # use the nominal period rather than a near-zero dt.
-                        if dt_raw < 0.002:
-                            dt_raw = dt
-                        dt_actual = float(np.clip(dt_raw, 0.002, 0.015))
+                        # subsequent wall periods are only sanity-clamped so
+                        # >15 ms stalls remain visible to the force/proxy
+                        # dynamics.  Inner QP integration stays on ``dt``.
+                        if first_tick:
+                            dt_wall_actual = float(dt)
+                            first_tick = False
+                        else:
+                            dt_wall_actual = float(
+                                np.clip(
+                                    dt_raw if np.isfinite(dt_raw) else dt,
+                                    1.0e-4,
+                                    0.10,
+                                )
+                            )
                         next_tick, late_ms = _resync_late_tick(next_tick, now, dt)
                         if late_ms > dt * 1000.0:
                             stutter_count += 1
@@ -1697,6 +1830,7 @@ def run_joint_admittance_phases(
                         if phase.max_duration_s is not None and t_wall >= phase.max_duration_s:
                             break
     
+                        feedback_fresh_tick = False
                         snap = async_obs.read()
                         if snap.pose is not None:
                             pose_rm = snap.pose
@@ -1729,6 +1863,9 @@ def run_joint_admittance_phases(
                                     v_tcp_z_actual = float(
                                         (r_velocity.T @ twist_achieved_base[:3])[2]
                                     )
+                                    feedback_fresh_tick = True
+                                    feedback_velocity_valid = True
+                                    last_feedback_velocity_t = snap_t
                                 last_feedback_seq = snap_seq
                                 last_feedback_t = snap_t
                                 last_feedback_q = q_new.copy()
@@ -1738,6 +1875,11 @@ def run_joint_admittance_phases(
                         sensor_age_s = (
                             max(0.0, time.monotonic() - float(snap.t_s))
                             if float(getattr(snap, "t_s", 0.0)) > 0.0
+                            else float("inf")
+                        )
+                        feedback_age_s = (
+                            max(0.0, time.monotonic() - last_feedback_velocity_t)
+                            if last_feedback_velocity_t > 0.0
                             else float("inf")
                         )
 
@@ -1763,11 +1905,19 @@ def run_joint_admittance_phases(
                             # Unfiltered wrench for Dimeas (LPF hides the band).
                             sample_kwargs["f_ext_raw"] = f_ext_raw
                         if "dt_actual" in sample_params:
-                            sample_kwargs["dt_actual"] = dt_actual
+                            sample_kwargs["dt_actual"] = dt_wall_actual
                         if "v_tcp_z_actual" in sample_params:
                             sample_kwargs["v_tcp_z_actual"] = v_tcp_z_actual
                         if "sensor_age_s" in sample_params:
                             sample_kwargs["sensor_age_s"] = sensor_age_s
+                        if "feedback_age_s" in sample_params:
+                            sample_kwargs["feedback_age_s"] = feedback_age_s
+                        if "feedback_fresh_tick" in sample_params:
+                            sample_kwargs["feedback_fresh_tick"] = feedback_fresh_tick
+                        if "feedback_velocity_valid" in sample_params:
+                            sample_kwargs["feedback_velocity_valid"] = (
+                                feedback_velocity_valid
+                            )
                         twist = np.asarray(
                             phase.outer.sample(t_ref, pose_pin, f_ext, **sample_kwargs),
                             dtype=float,
@@ -1873,8 +2023,10 @@ def run_joint_admittance_phases(
                                 governor_scale_raw=raw_scale,
                                 v_max=inner.limits.v_max,
                                 rail_meas_m=rail_meas,
-                                dt_actual_s=dt_actual,
+                                dt_actual_s=dt_wall_actual,
                                 sensor_age_s=sensor_age_s,
+                                feedback_age_s=feedback_age_s,
+                                feedback_fresh_tick=feedback_fresh_tick,
                                 f_ext_raw=f_ext_raw,
                                 twist_achieved_base=twist_achieved_base,
                                 v_tcp_z_actual=v_tcp_z_actual,

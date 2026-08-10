@@ -95,7 +95,6 @@ def test_governor_filter_freeze_hysteresis():
     assert 0.0 < out <= 0.5 + 1e-9
 
 
-@pytest.mark.skip(reason="e85c9ab: time_scale=0 freezes force integrator (post-e85 behavior)")
 def test_admittance_integrator_keeps_updating_when_time_scale_zero():
     """Force loop must keep correcting on wall-clock dt when governor freezes."""
     from rm75_control.control.admittance_common.controller import (

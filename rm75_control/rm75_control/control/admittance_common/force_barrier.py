@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import math
+
 
 @dataclass
 class ForceBarrierConfig:
@@ -21,10 +23,23 @@ class ForceBarrierConfig:
     v_ref_m_s: float = 0.05
     v_min_retract_m_s: float = 0.002
     fdot_lpf_s: float = 0.040
+    # Optional impact-energy/stiffness caps.  These use only controller-side
+    # virtual quantities; no unmeasured physical damping is credited.
+    stiffness_cap_enabled: bool = True
+    ke_floor_n_m: float = 50.0
+    mass_floor_kg: float = 0.05
 
     @classmethod
     def from_dict(cls, raw: dict) -> "ForceBarrierConfig":
-        barrier = raw.get("force_barrier", raw)
+        root = raw if isinstance(raw, dict) else {}
+        controller = root.get(
+            "hybrid_motion", root.get("controller", root)
+        )
+        if not isinstance(controller, dict):
+            controller = root
+        barrier = controller.get(
+            "force_barrier", root.get("force_barrier", {})
+        )
         if not isinstance(barrier, dict):
             barrier = {}
         return cls(
@@ -36,6 +51,11 @@ class ForceBarrierConfig:
             v_ref_m_s=float(barrier.get("v_ref_m_s", 0.05)),
             v_min_retract_m_s=float(barrier.get("v_min_retract_m_s", 0.002)),
             fdot_lpf_s=float(barrier.get("fdot_lpf_s", 0.040)),
+            stiffness_cap_enabled=bool(
+                barrier.get("stiffness_cap_enabled", True)
+            ),
+            ke_floor_n_m=float(barrier.get("ke_floor_n_m", 50.0)),
+            mass_floor_kg=float(barrier.get("mass_floor_kg", 0.05)),
         )
 
 
@@ -75,6 +95,9 @@ class ForceSpaceVelocityDamper:
         seek_vz_m_s: float,
         contact_enter_n: float,
         v_z_cap_retract: float | None = None,
+        ke_est_n_m: float | None = None,
+        mass_eq_kg: float | None = None,
+        energy_available_j: float | None = None,
     ) -> tuple[float, float]:
         cfg = self.cfg
         v_hi = max(float(v_z_cap), 0.0)
@@ -117,6 +140,27 @@ class ForceSpaceVelocityDamper:
             0.0,
             ((float(f_des_z) + budget) - f_pred) / budget * v_ref,
         )
+        # A hard surface converts a small delayed penetration into a large
+        # force rise.  Bound the approach kinetic energy by the remaining
+        # force headroom and, when supplied, the verified tank balance:
+        #
+        #   v_force = DeltaF / sqrt(M_eq K_e)
+        #   v_energy = sqrt(2 E_available / M_eq)
+        #
+        # Both are continuous in the positive headroom.  Missing estimates
+        # leave the historical force-prediction cap unchanged.
+        if cfg.stiffness_cap_enabled and ke_est_n_m is not None:
+            ke = max(float(ke_est_n_m), float(cfg.ke_floor_n_m), 1e-9)
+            mass = max(
+                float(mass_eq_kg) if mass_eq_kg is not None else 1.0,
+                float(cfg.mass_floor_kg),
+                1e-9,
+            )
+            headroom = max((float(f_des_z) + budget) - f_pred, 0.0)
+            cap_press = min(cap_press, headroom / math.sqrt(mass * ke))
+            if energy_available_j is not None:
+                energy = max(float(energy_available_j), 0.0)
+                cap_press = min(cap_press, math.sqrt(2.0 * energy / mass))
         if v_hi > 0.0:
             cap_press = min(cap_press, v_hi)
 

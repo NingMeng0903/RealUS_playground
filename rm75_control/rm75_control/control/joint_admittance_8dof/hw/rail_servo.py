@@ -126,10 +126,30 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
     log_csv = hw.get("log_csv", None)
     log_csv_s = str(log_csv).strip() if log_csv else None
     cal_path = str(hw.get("calibration_path", "") or "").strip()
-    soft_min = float(hw.get("soft_min_m", 0.01))
-    soft_max = float(hw.get("soft_max_m", 0.78))
-    if soft_max <= soft_min:
-        soft_min, soft_max = 0.01, 0.78
+    # ``inner.rail`` is the canonical host-side travel contract shared by the
+    # WBC, RailExtensionTask, and the servo bridge.  Older configs only carried
+    # the values under ``hw.lw100``; keep that fallback, but never allow the two
+    # control layers to silently operate with different stops.
+    inner_has_soft = "soft_min_m" in rail or "soft_max_m" in rail
+    hw_soft_min = float(hw.get("soft_min_m", 0.01))
+    hw_soft_max = float(hw.get("soft_max_m", 0.78))
+    soft_min = float(rail.get("soft_min_m", hw_soft_min))
+    soft_max = float(rail.get("soft_max_m", hw_soft_max))
+    if inner_has_soft and (
+        abs(soft_min - hw_soft_min) > 1.0e-6
+        or abs(soft_max - hw_soft_max) > 1.0e-6
+    ):
+        raise ValueError(
+            "rail soft-limit mismatch: inner.rail "
+            f"[{soft_min:.6f}, {soft_max:.6f}] vs hw.lw100 "
+            f"[{hw_soft_min:.6f}, {hw_soft_max:.6f}]"
+        )
+    if not (0.0 <= soft_min < soft_max <= travel_m):
+        raise ValueError(
+            "invalid rail soft limits: expected 0 <= soft_min < soft_max "
+            f"<= travel_m ({travel_m:.6f}), got "
+            f"[{soft_min:.6f}, {soft_max:.6f}]"
+        )
     return RailServoConfig(
         enabled=bool(hw.get("enabled", False)),
         host=str(hw.get("host", "192.168.0.7")),
@@ -734,8 +754,22 @@ class RailServoBridge:
             print(f"lw100 rail: {reason}", flush=True)
             raise CalValidationError(reason, power_cycle=power_cycle)
         if cal.soft_min_m < cal.soft_max_m:
-            self.config.soft_min_m = float(cal.soft_min_m)
-            self.config.soft_max_m = float(cal.soft_max_m)
+            cal_lo = float(cal.soft_min_m)
+            cal_hi = float(cal.soft_max_m)
+            cfg_lo = float(self.config.soft_min_m)
+            cfg_hi = float(self.config.soft_max_m)
+            if (
+                abs(cal_lo - cfg_lo) > 1.0e-6
+                or abs(cal_hi - cfg_hi) > 1.0e-6
+            ):
+                with self._lock:
+                    self._calibrated = False
+                raise CalValidationError(
+                    "rail calibration soft-limit mismatch: calibration "
+                    f"[{cal_lo:.6f}, {cal_hi:.6f}] vs canonical config "
+                    f"[{cfg_lo:.6f}, {cfg_hi:.6f}]",
+                    power_cycle=False,
+                )
         try:
             save_calibration(path, cal)
         except OSError:

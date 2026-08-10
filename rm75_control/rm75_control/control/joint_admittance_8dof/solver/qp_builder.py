@@ -1,7 +1,7 @@
 """WBC velocity-IK core: slack-variable QP + CBF self-collision constraints.
 
 Formulation (Escande et al. 2014 slack task + Faverjon velocity damper / Khazoom CBF):
-
+ 
     x = [qdot; w]  in R^{nv+6}
 
     min  0.5 (qdot - qdot_nom)^T W_reg (qdot - qdot_nom) + 0.5 w^T W_task w
@@ -44,6 +44,7 @@ from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 
 N_SLACK = 6
+RAIL_TASK_WEIGHT_HARD_MAX = 4.5
 
 
 @dataclass
@@ -136,6 +137,18 @@ class QpConfig:
     # rail/∇μ can accelerate before Cartesian is clamped, but stay below the
     # healthy-D band (σ≈0.11–0.13) — 2.0 kept D permanently escaping.
     sigma_escape_ref_scale: float = 2.0
+    # Absolute σ hysteresis for one rail/manipulability escape episode.
+    # ``sigma_escape_ref_scale`` remains as a compatibility knob for older
+    # callers, but these thresholds are the canonical Stage-1 contract.
+    sigma_escape_enter: float = 0.10
+    sigma_escape_exit: float = 0.12
+    # Canonical host soft rail command band.  The active SafetyLimits object
+    # supplies the actual velocity box; these fields keep the QP contract
+    # visible to callers/config telemetry as well.
+    rail_soft_min_m: float = 0.01
+    rail_soft_max_m: float = 0.78
+    # Defensive cap for callers that bypass RailExtensionTask's own cap.
+    rail_task_weight_hard_max: float = RAIL_TASK_WEIGHT_HARD_MAX
 
 
 class _ProxQpWbcBackend:
@@ -302,6 +315,16 @@ class QpIkController:
     ) -> None:
         self.kin = kin
         self.cfg = cfg or QpConfig()
+        # Resolve the canonical rail soft band here as well as in the outer
+        # controller, so direct QP users cannot accidentally expose the full
+        # mechanical travel through velocity-box constraints.
+        soft_lo = float(getattr(self.cfg, "rail_soft_min_m", 0.01))
+        soft_hi = float(getattr(self.cfg, "rail_soft_max_m", 0.78))
+        if np.isfinite(soft_lo) and np.isfinite(soft_hi) and soft_hi > soft_lo:
+            limits.q_lower[0] = max(float(limits.q_lower[0]), soft_lo)
+            limits.q_upper[0] = min(float(limits.q_upper[0]), soft_hi)
+            limits.rail_soft_min_m = float(limits.q_lower[0])
+            limits.rail_soft_max_m = float(limits.q_upper[0])
         # Per-joint damper band: arm in rad, prismatic rail (joint 0) in m.
         damper_band = np.full(kin.nv, float(self.cfg.limit_damper_band_rad))
         damper_band[0] = float(self.cfg.limit_damper_band_rail_m)
@@ -446,9 +469,36 @@ class QpIkController:
             w_reg[0] *= float(rail_lock_reg_scale)
         w_task *= self._task_scale_sigma(sigma_min, dt)
 
-        # rail_extension hint stays at its full weight (the task itself scales
-        # by σ_scale via Bug 2 — do NOT double-schedule here).
-        rail_w_eff = float(rail_task_weight)
+        # rail_extension hint stays at its caller-scheduled weight (the task
+        # itself applies σ scaling).  Keep the rail preference below both the
+        # absolute safety cap and 80% of the weakest effective translational
+        # Cartesian slack weight, preserving the Cartesian hierarchy even when
+        # the rail task is boosted during an escape episode.
+        translational_task_weight = float(
+            np.min(np.asarray(w_task[:3], dtype=float))
+        ) if w_task.size >= 3 else 0.0
+        rail_hierarchy_cap = max(0.0, 0.8 * translational_task_weight)
+        rail_weight_cap = min(
+            RAIL_TASK_WEIGHT_HARD_MAX,
+            max(
+                float(
+                    getattr(
+                        self.cfg,
+                        "rail_task_weight_hard_max",
+                        RAIL_TASK_WEIGHT_HARD_MAX,
+                    )
+                ),
+                0.0,
+            ),
+            rail_hierarchy_cap,
+        )
+        rail_w_eff = float(
+            np.clip(
+                float(rail_task_weight),
+                0.0,
+                rail_weight_cap,
+            )
+        )
 
         H = np.zeros((n_var, n_var), dtype=float)
         if self.cfg.use_mass_weighted_reg and M is not None:
@@ -563,4 +613,6 @@ class QpIkController:
             manip=self.kin.manipulability(J),
             slack_norm=float(np.linalg.norm(slack)),
             n_cbf_active=int(cbf.jacobian.shape[0]),
+            rail_task_weight_effective=rail_w_eff,
+            cart_translation_weight_effective=translational_task_weight,
         )

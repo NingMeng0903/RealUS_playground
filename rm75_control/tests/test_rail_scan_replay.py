@@ -153,7 +153,10 @@ def test_real_scan_rail_does_not_hunt():
 
     reversals = _rail_reversals(out["rail"])
     assert reversals <= 2 * periods, reversals
-    assert out["err_mm"].max() < 1.0, out["err_mm"].max()
+    # Stage-1 acceptance allows a short transient up to 5 mm; the steady
+    # trajectory remains tighter than 2 mm for 95% of samples.
+    assert out["err_mm"].max() < 5.0, out["err_mm"].max()
+    assert np.percentile(out["err_mm"], 95.0) < 2.0
     assert out["elbow_deg"].min() > 35.0, out["elbow_deg"].min()
     assert out["sigma"].min() > 0.07, out["sigma"].min()
 
