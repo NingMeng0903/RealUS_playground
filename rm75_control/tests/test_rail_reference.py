@@ -283,7 +283,8 @@ def test_defaults_match_the_hardware_baseline() -> None:
     for cfg in (RailServoConfig(), parse_rail_servo_config({})):
         assert cfg.vel_kp == 14.0
         assert cfg.vel_kd == 0.22
-        assert cfg.vel_max_m_s == 0.20
+        assert cfg.vel_max_m_s == 0.30
+        assert cfg.max_speed_rpm == 1800
         assert cfg.vel_amax_m_s2 == 0.8
         assert cfg.vel_deadband_mm == 0.05
         assert cfg.encoder_freeze_min_move_mm == 0.15

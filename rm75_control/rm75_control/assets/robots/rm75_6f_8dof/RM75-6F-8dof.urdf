@@ -22,7 +22,7 @@
     <parent link="rail_base" />
     <child link="slider_link" />
     <axis xyz="0 1 0" />
-    <limit lower="0.0" upper="0.80" velocity="0.20" effort="500" />
+    <limit lower="0.0" upper="0.80" velocity="0.30" effort="500" />
   </joint>
   <link name="base_link">
     <inertial>

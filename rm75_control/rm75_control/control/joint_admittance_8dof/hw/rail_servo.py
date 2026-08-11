@@ -70,15 +70,15 @@ class RailServoConfig:
     arm_timeout_s: float = 8.0
     poll_hz: float = 50.0
     deadband_mm: float = 0.5
-    # FA23 + software FA24 clamp (r/min). 900 @ 10 mm/rev = 0.15 m/s.
-    max_speed_rpm: int = 900
+    # FA23 + software FA24 clamp (r/min). 1800 @ 10 mm/rev = 0.30 m/s.
+    max_speed_rpm: int = 1800
     busy_speed_rpm: int = 1
     # Encoder outside [-margin, travel+margin] → panic (FA24=0, follow off).
     fault_margin_m: float = 0.05
     # Soft position loop (rail metres) — empty-load 2 min FA24 demo / scan.
     vel_kp: float = 14.0  # 1/s (loaded first-pass value)
     vel_kd: float = 0.22  # dimensionless gain on velocity error
-    vel_max_m_s: float = 0.15
+    vel_max_m_s: float = 0.30
     vel_amax_m_s2: float = 0.8  # softer slew vs Er-01 / host overshoot
     vel_deadband_mm: float = 0.05
     target_timeout_s: float = 0.10  # no fresh set_target → settle then FA24=0
@@ -149,7 +149,7 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
     rail = raw.get("inner", {}).get("rail", {}) or {}
     travel_m = float(rail.get("travel_m", 0.80))
     lead_mm = float(hw.get("lead_mm", 10.0))
-    v_max = float(rail.get("v_max_m_s", 0.15))
+    v_max = float(rail.get("v_max_m_s", 0.30))
     default_rpm = max(60, int(round(v_max * 1000.0 / max(lead_mm, 1e-6) * 60.0)))
     zero_mode = str(hw.get("zero_mode", "calibrated_file")).strip().lower()
     if zero_mode not in ("current", "fixed", "calibrated_file"):

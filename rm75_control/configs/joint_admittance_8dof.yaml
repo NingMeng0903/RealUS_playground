@@ -148,7 +148,7 @@ inner:
     lock_hard_pin: true
     # Geometry / limits (also mirrored in URDF; keep in sync):
     # rail_y = 0 at -Y end stop, rail_y = travel_m at +Y end (0..800 mm).
-    v_max_m_s: 0.20           # 20 cm/s; aligned with hw.lw100 FA23/bridge cap
+    v_max_m_s: 0.30           # 30 cm/s; aligned with hw.lw100 FA23/bridge cap
     travel_m: 0.80            # [0, 0.80] m
     soft_min_m: 0.01          # mirrored from hw.lw100
     soft_max_m: 0.78          # mirrored from hw.lw100
@@ -427,12 +427,12 @@ hw:
     timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0
     retries: 1
     deadband_mm: 0.5
-    max_speed_rpm: 1200      # FA23: 0.20 m/s @ 10 mm/rev
+    max_speed_rpm: 1800      # FA23: 0.30 m/s @ 10 mm/rev
     # Soft CSP via FA24 (see apps/lw100_vel_pos_follow_demo.py).
     # Loaded PD scan BEST (400±40 mm): kp=14/kd=0.22 (was empty-load 18/0.22).
     vel_kp: 14.0
     vel_kd: 0.22
-    vel_max_m_s: 0.20
+    vel_max_m_s: 0.30
     vel_amax_m_s2: 0.8
     vel_deadband_mm: 0.05   # match settle_tol; stop PD crawl in settled band
     target_timeout_s: 0.25

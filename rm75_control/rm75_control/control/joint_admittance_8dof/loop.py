@@ -206,8 +206,10 @@ class JointIkController:
             position_margin=margin_vec,
         )
         if self.cfg.rail.v_max_m_s is not None:
+            # The rail has its own absolute cap. Keep the arm-wide v_scale on
+            # joints 1..7, while still respecting the URDF rail limit.
             self.limits.v_max[0] = min(
-                float(self.limits.v_max[0]),
+                float(self.kin.v_max[0]),
                 float(self.cfg.rail.v_max_m_s),
             )
         # Canonical host soft rail band.  SafetyLimiter and the QP share this

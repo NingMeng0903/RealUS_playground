@@ -51,6 +51,17 @@ def _make_inner() -> JointIkController:
     return inner
 
 
+def test_production_rail_speed_cap_is_absolute() -> None:
+    inner = _make_inner()
+    assert inner.kin.v_max[0] == 0.30
+    assert inner.cfg.rail.v_max_m_s == 0.30
+    assert inner.limits.v_max[0] == 0.30
+    np.testing.assert_allclose(
+        inner.limits.v_max[1:],
+        inner.kin.v_max[1:] * inner.cfg.v_scale,
+    )
+
+
 def _run_scan(inner: JointIkController, amplitude_m: float, n_ticks: int, v_peak_m_s: float = 0.04):
     """Base-frame Y sine about the start pose with velocity feedforward."""
     kin = inner.kin
