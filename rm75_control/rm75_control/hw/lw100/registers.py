@@ -19,6 +19,10 @@ class ParamRef:
 
 # Frequently used parameters (LW100 manual ch.7).
 P_FA4_MODE = ParamRef("FA", 4)  # 0=position 1=speed 2=torque 3=pos/speed
+P_FA5_SPEED_KP_HZ = ParamRef("FA", 5)
+P_FA6_SPEED_TI_MS = ParamRef("FA", 6)
+P_FA7_TORQUE_FILTER = ParamRef("FA", 7)
+P_FA8_SPEED_FILTER = ParamRef("FA", 8)
 # Speed-mode params (manual §5.2): FA22 speed-cmd source, FA23 max speed,
 # FA24 internal speed 1 (signed r/min), FA40/41 accel/decel (ms), FA42 S-curve (ms).
 P_FA22_SPEED_SRC = ParamRef("FA", 22)   # 1=internal speed by SP1/SP2 (SP=00 → FA24)

@@ -9,7 +9,11 @@ import pytest
 from rm75_control.hw.lw100.geometry import mm_to_position_command, position_command_to_mm
 from rm75_control.hw.lw100.modbus_rtu_tcp import append_crc, crc16_modbus, verify_crc
 from rm75_control.hw.lw100.registers import (
+    P_FA5_SPEED_KP_HZ,
+    P_FA6_SPEED_TI_MS,
+    P_FA7_TORQUE_FILTER,
     P_FA71_SLAVE,
+    P_FA8_SPEED_FILTER,
     P_FC15_DI_FORCE1,
     P_FD0_ABS_INC,
     P_FD2_P1_REVS,
@@ -32,6 +36,10 @@ def test_append_and_verify_crc():
 
 def test_register_map_defaults():
     m = RegisterMap()
+    assert m.addr(P_FA5_SPEED_KP_HZ) == 5
+    assert m.addr(P_FA6_SPEED_TI_MS) == 6
+    assert m.addr(P_FA7_TORQUE_FILTER) == 7
+    assert m.addr(P_FA8_SPEED_FILTER) == 8
     assert m.addr(P_FA71_SLAVE) == 71
     assert m.addr(P_FD0_ABS_INC) == 512
     assert m.addr(P_FD2_P1_REVS) == 514

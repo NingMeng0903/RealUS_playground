@@ -32,12 +32,16 @@ from rm75_control.hw.lw100.registers import (
     P_FA41_DEC_MS,
     P_FA42_SCURVE_MS,
     P_FA4_MODE,
+    P_FA5_SPEED_KP_HZ,
     P_FA53_FORCE_ENABLE,
+    P_FA6_SPEED_TI_MS,
     P_FA60_SOFT_RESET,
     P_FA61_ALARM_CLEAR,
+    P_FA7_TORQUE_FILTER,
     P_FA72_BAUD,
     P_FA73_PROTO,
     P_FA74_COMM_ERR_ACTION,
+    P_FA8_SPEED_FILTER,
     P_FC13_POS_COORD_LO,
     P_FC14_POS_COORD_HI,
     P_FC15_DI_FORCE1,
@@ -981,6 +985,15 @@ class LW100Drive:
         """Live motor speed (r/min) from monitor register 0x1000 (signed)."""
         val = int(self._client.read_holding_registers(MONITOR_SPEED_RPM, 1)[0])
         return val - 0x10000 if val >= 0x8000 else val
+
+    def read_velocity_loop_params(self) -> dict[str, int]:
+        """Read the drive-side speed PI and feedback/filter parameters."""
+        return {
+            "FA5_speed_kp_hz": int(self.read_param(P_FA5_SPEED_KP_HZ)),
+            "FA6_speed_ti_ms": int(self.read_param(P_FA6_SPEED_TI_MS)),
+            "FA7_torque_filter": int(self.read_param(P_FA7_TORQUE_FILTER)),
+            "FA8_speed_filter": int(self.read_param(P_FA8_SPEED_FILTER)),
+        }
 
     def ensure_fa20_ignore(self) -> int:
         """Force FA-20=1 so CWL/CCWL do not raise Er-7 (host owns limit policy)."""
