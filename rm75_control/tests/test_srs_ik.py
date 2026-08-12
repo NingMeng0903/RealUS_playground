@@ -328,6 +328,25 @@ def test_diagnostics_returns_psi_within_1e6(
 # ---------------------------------------------------------------------------
 # 6. End-to-end resolve_pose_ik_srs on self-produced FK poses
 # ---------------------------------------------------------------------------
+def test_require_path_false_does_not_force_ok_false(kin: RobotKinematics) -> None:
+    """MoveJ path: skipping path check must not zero out ``ok`` via path_ok=False."""
+    q_arm = np.array(Q_ARM_SAFE[0], dtype=float)
+    q_rail = 0.2
+    q_full = full_q_from_arm(q_arm, rail_m=q_rail)
+    pose = kin.fk_pose(q_full)
+    q_tgt, ok, rep = resolve_pose_ik_srs(
+        kin,
+        q_seed=q_full,
+        pose_target=pose,
+        y_rail_target=q_rail,
+        require_path=False,
+    )
+    assert ok
+    assert rep.path_ok
+    assert rep.pos_err_mm < 1.0
+    assert q_tgt.shape == (8,)
+
+
 def test_resolve_pose_ik_srs_self_fk_ok_rate(kin: RobotKinematics) -> None:
     """Self-FK targets should resolve with ok≈1 when path check is off.
 

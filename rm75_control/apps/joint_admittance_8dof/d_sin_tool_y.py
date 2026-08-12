@@ -361,12 +361,15 @@ def main() -> int:
                 deg2rad(np.asarray(st0["joint"][:7], dtype=float)),
                 rail_start_m,
             )
+        # MoveJ does not follow the SRS Cartesian path check; after a bad stop
+        # the live seed can be folded and would false-reject a valid D target.
         scan_target = resolve_scan_target_at_d(
             args.slot,
             kin,
             euler_order=inner_cfg.euler_order,
             rail_m=rail_m,
             q_seed_rad=q0_rad,
+            require_path=(str(args.move_mode) != "joint"),
         )
         pose_d = scan_target.pose_d
         q_target_rad = np.asarray(scan_target.q_target_rad, dtype=float)

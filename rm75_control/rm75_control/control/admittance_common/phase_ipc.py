@@ -225,15 +225,15 @@ class PhaseCommandHub:
                 self._ctl["cmd"] = np.uint32(PhaseCmd.NONE)
                 self._ctl["payload_len"] = np.uint32(0)
                 self.set_idle("shutdown")
-        except (OSError, ValueError):
+        except (OSError, ValueError, BufferError):
             pass
+        # Drop buffer exports before closing the underlying mmap.
         self._payload = None
         self._ctl = None
         close_named_shm(self._ctl_shm)
         close_named_shm(self._payload_shm)
         self._ctl_shm = None
         self._payload_shm = None
-        self._payload = None
 
 
 class PhaseCommandClient:

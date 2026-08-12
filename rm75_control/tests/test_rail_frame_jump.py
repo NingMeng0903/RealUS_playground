@@ -43,7 +43,39 @@ def test_jump_limit_catches_256mm_power_cycle_leap():
     assert jump > 0.25  # sanity: huge leap
 
 
-def test_encoder_jump_trips_panic_and_invalidates(tmp_path: Path):
+def test_post_restitch_jump_keeps_calibration(tmp_path: Path):
+    """Reconnect glitch after TCP tear must HOLD and keep the taught zero."""
+    path = tmp_path / "lw100_rail_zero.json"
+    save_calibration(path, _cal())
+    bridge = RailServoBridge(
+        RailServoConfig(
+            enabled=True,
+            vel_max_m_s=0.15,
+            jump_margin_mm=3.0,
+            jump_hard_mm=50.0,
+            calibration_path=str(path),
+        )
+    )
+    bridge._calibration_path = path
+    with bridge._lock:
+        bridge._calibrated = True
+        bridge._armed = True
+        bridge._measured_m = 0.40
+        bridge._follow_enabled = True
+    bridge._link_restitch = True  # noqa: SLF001
+    last_sane = 0.40
+    measured = 0.40 + 0.222
+    jump = abs(measured - last_sane)
+    assert jump > 0.05
+    bridge._hold_velocity(last_sane, "encoder jump rejected +222.3 mm (cal kept)")
+    bridge._frame_continuous = False
+    assert bridge._calibrated is True
+    assert bridge.panicked is False
+    assert load_calibration(path) is not None
+
+
+def test_encoder_jump_holds_without_wiping_cal(tmp_path: Path):
+    """Hard mid-run leaps HOLD and mark frame discontinuous — zero file stays."""
     path = tmp_path / "lw100_rail_zero.json"
     save_calibration(path, _cal())
     assert load_calibration(path) is not None
@@ -64,14 +96,35 @@ def test_encoder_jump_trips_panic_and_invalidates(tmp_path: Path):
         bridge._follow_enabled = True
 
     measured = 0.137
-    bridge._trip_panic(
+    bridge._hold_velocity(
         measured,
-        "encoder frame jump -257.0 mm (lim=31.4 mm) — drive power-cycle?",
+        "encoder jump rejected -257.0 mm (lim=31.4 mm; cal kept)",
     )
-    bridge._invalidate_cal_after_frame_loss("encoder frame jump -257.0 mm")
+    bridge._frame_continuous = False
 
-    assert bridge.panicked is True
+    assert bridge.panicked is False
     assert bridge._frame_continuous is False
+    assert bridge._calibrated is True
+    assert load_calibration(path) is not None
+
+
+def test_cold_start_invalidate_still_clears_cal(tmp_path: Path):
+    """Bring-up failures may still invalidate the zero file."""
+    path = tmp_path / "lw100_rail_zero.json"
+    save_calibration(path, _cal())
+    bridge = RailServoBridge(
+        RailServoConfig(enabled=True, calibration_path=str(path))
+    )
+    bridge._calibration_path = path
+    with bridge._lock:
+        bridge._calibrated = True
+    bridge._invalidate_cal_after_frame_loss("encoder out of range at start")
+    assert bridge._calibrated is False
+    assert bridge._frame_continuous is False
+    assert load_calibration(path) is None
+    # Second call must be a no-op (no re-write / spam) once already invalid.
+    bridge._invalidate_cal_after_frame_loss("encoder out of range at start again")
+    assert bridge._calibrated is False
     assert load_calibration(path) is None
 
 

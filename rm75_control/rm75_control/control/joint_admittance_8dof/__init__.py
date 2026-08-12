@@ -1,8 +1,6 @@
 """Generic task-priority QPIK for an arm with an optional prismatic rail.
 
-The servo-facing API is trajectory agnostic: applications declare protected
-and scalable task rows, while robot-specific posture planning remains an
-optional lowest-priority plugin.
+Applications declare protected and scalable task rows for two-level QPIK.
 """
 
 from __future__ import annotations
@@ -27,10 +25,6 @@ __all__ = [
     "ReferenceHorizon",
     "HealthMonitor",
     "HealthState",
-    "PosturePlanner",
-    "PosturePlanningRequest",
-    "Rm75SrsPosturePlanner",
-    "Rm75SrsPlannerConfig",
     "TaskMode",
     "SecondaryPolicy",
     "ArmAngleSpec",
@@ -92,14 +86,6 @@ def __getattr__(name: str):
         from rm75_control.control.joint_admittance_8dof import health_monitor
 
         return getattr(health_monitor, name)
-    if name in ("PosturePlanner", "PosturePlanningRequest"):
-        from rm75_control.control.joint_admittance_8dof import posture_planner
-
-        return getattr(posture_planner, name)
-    if name in ("Rm75SrsPosturePlanner", "Rm75SrsPlannerConfig"):
-        from rm75_control.control.joint_admittance_8dof import rm75_srs_planner
-
-        return getattr(rm75_srs_planner, name)
     if name in (
         "TaskMode",
         "SecondaryPolicy",

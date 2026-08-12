@@ -48,12 +48,15 @@ def test_proxqp_has_exactly_one_call_per_level_and_no_retry() -> None:
         np.array([0.006, -0.003, 0.002, 0.0, 0.0, 0.0]),
         q_meas=Q_HOME,
     )
-    assert (qp1.solve_count - before[0], qp2.solve_count - before[1]) == (1, 1)
+    # QP1 once; QP2 (max α) + QP3 (posture) share backend_qp2 → two level-2 calls.
+    assert (qp1.solve_count - before[0], qp2.solve_count - before[1]) == (1, 2)
     assert step.qp1_status == "solved"
-    assert step.qp2_status == "solved"
+    # QP2 may soft-fail and fall back to same-tick QP1 — no ProxQP retry storm.
+    assert not step.solver_fault_latched
+    assert step.qp2_status == "solved" or step.fallback_level == "qp1"
 
 
-def test_qp1_failure_is_latched_zero_stop_not_previous_velocity_decay() -> None:
+def test_qp1_failure_is_p0_safe_not_previous_velocity_decay() -> None:
     ctrl = _controller("scipy")
     previous = np.full(8, 0.05)
     ctrl.core.sync_applied(previous)
@@ -64,9 +67,10 @@ def test_qp1_failure_is_latched_zero_stop_not_previous_velocity_decay() -> None:
         step = ctrl.update(np.zeros(6), q_meas=Q_HOME)
     finally:
         backend.solve = real_solve  # type: ignore[method-assign]
-    assert step.solver_fault_latched
-    assert step.fallback_level in {"zero_stop", "fault"}
-    np.testing.assert_allclose(step.qdot, np.zeros(8), atol=0.0)
+    assert not step.solver_fault_latched
+    assert step.fallback_level == "p0_safe"
+    assert step.fallback_reason.startswith("qp1_failed_p0_")
+    assert not np.allclose(step.qdot, previous)
 
 
 def test_srs_midpath_ik_none_raises_after_streak(monkeypatch):

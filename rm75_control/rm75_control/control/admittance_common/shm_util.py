@@ -71,12 +71,18 @@ def attach_named_shm(name: str) -> shared_memory.SharedMemory:
 
 
 def close_attached_shm(shm: shared_memory.SharedMemory | None) -> None:
-    """Close a subscriber handle without destroying the segment."""
+    """Close a subscriber handle without destroying the segment.
+
+    Callers must drop every ``numpy`` / ``memoryview`` that referenced
+    ``shm.buf`` *before* calling this; otherwise CPython raises
+    ``BufferError: cannot close exported pointers exist`` (also seen in
+    ``SharedMemory.__del__`` during exception teardown).
+    """
     if shm is None:
         return
     try:
         shm.close()
-    except OSError:
+    except (OSError, BufferError):
         pass
 
 
@@ -87,7 +93,7 @@ def close_named_shm(shm: shared_memory.SharedMemory | None) -> None:
     name = getattr(shm, "_name", None)
     try:
         shm.close()
-    except OSError:
+    except (OSError, BufferError):
         pass
     if name:
         _posix_unlink(name)

@@ -45,6 +45,7 @@ def _controller() -> JointIkController:
         generic_qpik=GenericQpikRuntimeConfig(
             solver=TwoLevelQpikConfig(
                 backend="scipy",
+            max_solve_ms=500.0,
                 max_rows=96,
                 max_scalable_groups=4,
                 max_iter=100,
@@ -117,9 +118,15 @@ def test_qp1_failure_never_reintroduces_previous_limiter_velocity() -> None:
         step = controller.update(np.zeros(6), q_meas=Q_SAFE)
     finally:
         backend.solve = real_solve  # type: ignore[method-assign]
-    assert step.solver_fault_latched
-    np.testing.assert_allclose(step.qdot, np.zeros(8), atol=0.0)
-    np.testing.assert_allclose(step.q_send, q_before, atol=0.0)
+    # Soft P0-safe fallback: no latch, and never reintroduce the full previous
+    # limiter velocity (accel-compatible box projection may keep a residual).
+    assert not step.solver_fault_latched
+    assert step.fallback_level == "p0_safe"
+    assert step.fallback_reason.startswith("qp1_failed_p0_")
+    assert not np.allclose(step.qdot, previous)
+    np.testing.assert_allclose(
+        step.q_send, q_before + controller.cfg.dt * step.qdot, atol=1e-12
+    )
 
 
 def test_dense_one_sided_row_survives_final_send_without_axis_clipping() -> None:
@@ -166,7 +173,7 @@ def test_locked_hold_never_teleports_rail_reference() -> None:
     assert float(step.q_send[0]) == rail_before
 
 
-def test_qp1_fault_stops_before_any_joint_or_rail_send() -> None:
+def test_qp1_soft_fallback_remains_sendable() -> None:
     controller = _controller()
     backend = controller.core.solver.backend_qp1
     real_solve = backend.solve
@@ -180,7 +187,26 @@ def test_qp1_fault_stops_before_any_joint_or_rail_send() -> None:
     sendable, reason = _guard_qpik_step_before_send(
         step, lambda _reason: events.append("stop")
     )
-    if sendable:  # Mirrors the hardware loop's guarded publication block.
+    if sendable:
+        events.extend(["rail_send", "arm_send"])
+    assert sendable
+    assert reason == ""
+    assert step.fallback_level == "p0_safe"
+    assert not step.solver_fault_latched
+    assert events == ["rail_send", "arm_send"]
+
+
+def test_latched_fault_still_stops_before_send() -> None:
+    controller = _controller()
+    step = controller.update(np.zeros(6), q_meas=Q_SAFE)
+    step.solver_fault_latched = True
+    step.fallback_level = "fault"
+    step.fallback_reason = "forced"
+    events: list[str] = []
+    sendable, reason = _guard_qpik_step_before_send(
+        step, lambda _reason: events.append("stop")
+    )
+    if sendable:
         events.extend(["rail_send", "arm_send"])
     assert not sendable
     assert reason.startswith("qpik_fault:")

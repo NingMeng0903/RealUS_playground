@@ -306,8 +306,10 @@ def resolve_pose_ik_srs(
         return q_full, ok, report
 
     if not require_path:
+        # Path check skipped (e.g. MoveJ).  Mark path_ok=True so ``ok`` reflects
+        # pose accuracy / limits only — not a false reject with 0 mm / 0 deg error.
         score, psi, q_arm, sigma_min = top_k[0]
-        return _report_from(psi, q_arm, sigma_min, path_ok=False)
+        return _report_from(psi, q_arm, sigma_min, path_ok=True)
 
     # Path reachability check on the top-K candidates.
     for score, psi, q_arm, sigma_min in top_k:

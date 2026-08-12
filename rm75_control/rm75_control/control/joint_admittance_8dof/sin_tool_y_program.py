@@ -76,12 +76,18 @@ def resolve_scan_target_at_d(
     euler_order: str = "xyz",
     rail_m: float = 0.0,
     q_seed_rad: np.ndarray | None = None,
+    require_path: bool = True,
 ) -> ScanTargetD:
     """Resolve scan pose D and joint target for the move->D phase.
 
     Joints-only: taught ``q_deg`` with j7+90° (ArmTip +X → TCP +Z), fold
     approach into a world-vertical plane, optional pose IK. Move execution is
     still ``--move-mode`` (joint MoveJ or cartesian/SRS).
+
+    ``require_path``: when True, SRS must succeed on the Cartesian interpolation
+    from ``q_seed_rad`` → D (needed for cartesian/SRS moves).  For MoveJ
+    (``--move-mode joint``) pass False — joint PTP does not follow that path,
+    and a folded/live seed after a bad stop must not block re-entry.
     """
     travel = 0.80
     try:
@@ -95,6 +101,7 @@ def resolve_scan_target_at_d(
         travel_m=travel,
         q_seed_rad=q_seed_rad,
         euler_order=euler_order,
+        require_path=require_path,
     )
 
 
@@ -182,6 +189,7 @@ def _resolve_scan_target_joints(
     travel_m: float = 0.80,
     q_seed_rad: np.ndarray | None = None,
     euler_order: str = "xyz",
+    require_path: bool = True,
 ) -> ScanTargetD:
     q_deg_taught, pose_id, _rec = load_slot_joints_only(slot)
     q_arm = _remap_taught_q_armtip_x_to_tcp_z(deg2rad(q_deg_taught))
@@ -198,22 +206,28 @@ def _resolve_scan_target_joints(
         kin, Ml7.translation, R_fold, euler_order=euler_order
     )
 
+    # Live q0 seeds the *path check* (cartesian/SRS).  Branch / ψ_home stay on
+    # the taught remapped joints so a folded stop pose cannot flip the IK family.
     path_seed = q_seed if q_seed_rad is None else np.asarray(q_seed_rad, dtype=float)
     if path_seed.shape != (kin.nv,) or not np.isfinite(path_seed).all():
         raise ValueError(f"q_seed_rad must be a finite {(kin.nv,)} vector")
+    ik_seed = path_seed if require_path else q_seed
     q_target_rad, ok, report = resolve_pose_ik_srs(
         kin,
-        path_seed,
+        ik_seed,
         pose_d,
+        q_branch_seed=q_seed,
         y_rail_target=y_rail,
         psi_home_rad=psi_from_q(q_seed),
         euler_order=euler_order,
-        require_path=True,
+        require_path=bool(require_path),
     )
     if not ok:
         raise RuntimeError(
             "SRS target or connecting path is invalid: "
-            f"position={report.pos_err_mm:.3f}mm, rotation={report.rot_err_deg:.3f}deg"
+            f"position={report.pos_err_mm:.3f}mm, rotation={report.rot_err_deg:.3f}deg, "
+            f"path_ok={report.path_ok}, within_limits={report.within_limits}, "
+            f"require_path={bool(require_path)}"
         )
     pose_d = np.asarray(kin.fk_pose(q_target_rad), dtype=float)
 
@@ -412,7 +426,7 @@ def build_sin_tool_y_program(
     if params.psi_toggle_period_s > 0.0 and params.scan_duration > 0.0:
         raise RuntimeError(
             "contact-time posture toggle was removed: submit a branch-locked "
-            "continuous PostureGuide through the generic posture planner"
+            "a soft PostureGuide (psi toggle is not supported in this build)"
         )
     return BuiltSinToolYProgram(
         phases=phases,

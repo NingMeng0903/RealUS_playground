@@ -18,7 +18,7 @@ def velocity_normalized_arm_health(
 
     The caller selects task rows and their physical velocity scales.  No rail
     column, trajectory type or finite-difference manipulability gradient is
-    assumed here.
+    assumed here.  This is the single online arm dexterity metric ``d_arm``.
     """
 
     J = np.asarray(jacobian_arm, dtype=float)
@@ -41,6 +41,53 @@ def velocity_normalized_arm_health(
     return float(np.clip(singular[-1] / singular[0], 0.0, 1.0))
 
 
+# Alias: one name for health / CBF / planner consumers.
+arm_dexterity = velocity_normalized_arm_health
+
+
+def arm_dexterity_gradient(
+    kin,
+    q: np.ndarray,
+    *,
+    velocity_limits: np.ndarray,
+    rail_indices: Sequence[int] = (0,),
+    task_velocity_scales: np.ndarray | None = None,
+    eps: float = 1.0e-4,
+) -> np.ndarray | None:
+    """Finite-difference ∇d_arm over the full configuration (rail column ≈ 0)."""
+
+    q0 = np.asarray(q, dtype=float).reshape(-1)
+    n = int(q0.size)
+    if n <= 0:
+        return None
+    limits = np.asarray(velocity_limits, dtype=float).reshape(-1)
+    if limits.size != n:
+        return None
+    excluded = {int(i) for i in rail_indices}
+    arm_idx = [i for i in range(n) if i not in excluded]
+    if not arm_idx:
+        return None
+
+    def _d_at(q_eval: np.ndarray) -> float:
+        J = np.asarray(kin.jacobian(q_eval), dtype=float)
+        return velocity_normalized_arm_health(
+            J[:, arm_idx],
+            limits[arm_idx],
+            task_velocity_scales=task_velocity_scales,
+        )
+
+    d0 = _d_at(q0)
+    grad = np.zeros(n, dtype=float)
+    step = float(max(eps, 1.0e-6))
+    for i in arm_idx:
+        qp = q0.copy()
+        qp[i] += step
+        grad[i] = (_d_at(qp) - d0) / step
+    if not np.isfinite(grad).all():
+        return None
+    return grad
+
+
 def joint_working_margins(
     q: np.ndarray,
     lower: np.ndarray,
@@ -60,8 +107,9 @@ def joint_working_margins(
 
 @dataclass(frozen=True)
 class HealthMetrics:
-    arm_health: float
+    arm_health: float  # unified d_arm (velocity-normalized arm Jacobian)
     joint_margin: float
+    # Joint-limit margin on wrist DOFs (not an analytic wrist-singularity proxy).
     wrist_margin: float
     collision_clearance: float
     protected_residual: float
@@ -114,6 +162,8 @@ def compute_health_metrics(
 
 __all__ = [
     "HealthMetrics",
+    "arm_dexterity",
+    "arm_dexterity_gradient",
     "compute_health_metrics",
     "joint_working_margins",
     "velocity_normalized_arm_health",

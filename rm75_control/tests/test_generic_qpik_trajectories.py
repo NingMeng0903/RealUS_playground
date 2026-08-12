@@ -80,6 +80,7 @@ def _runtime(n_dof: int) -> tuple[GenericQpikRuntime, np.ndarray]:
     config = GenericQpikRuntimeConfig(
         solver=TwoLevelQpikConfig(
             backend="scipy",
+            max_solve_ms=500.0,
             qdot_lower=-v_max,
             qdot_upper=v_max,
             max_rows=64,

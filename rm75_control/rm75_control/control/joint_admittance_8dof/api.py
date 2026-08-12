@@ -147,13 +147,8 @@ class JointPhaseSpec:
     rail_ref: RailSmoothMoveReference | None = None
     locked_style: LockedStyle = LockedStyle.RAIL_ONLY
     q_rail_target_m: float | None = None
-    # Generic task/planner inputs.  They describe rows and future references;
-    # no trajectory geometry is inferred by the control core.
     task_profile: CartesianTaskProfile | None = None
     reference_horizon: Any = None
-    posture_planner: Any = None
-    planner_apply_output: bool = False
-    planner_submit_period_s: float = 0.10
 
 
 @dataclass
@@ -541,11 +536,9 @@ def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], No
 
     def _enter() -> None:
         spec.secondary.apply(ctx.inner, psi_rad=psi)
-        ctx.inner.set_posture_planner(
-            spec.posture_planner,
-            apply_output=spec.planner_apply_output,
-            submit_period_s=spec.planner_submit_period_s,
-        )
+        # Soft planar recovery needs a latched ψ_D even when CLI did not set one.
+        if hasattr(ctx.inner, "ensure_psi_ref_from_q"):
+            ctx.inner.ensure_psi_ref_from_q()
         if spec.mode == TaskMode.LOCKED_MOVE and spec.q_rail_target_m is not None:
             ctx.inner.set_locked(spec.locked_style, q_ref_m=spec.q_rail_target_m)
 
@@ -558,7 +551,6 @@ def _make_on_exit(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], Non
             ctx.inner.set_locked(
                 LockedStyle.HOLD, q_ref_m=float(ctx.inner.q_cmd[0])
             )
-        ctx.inner.clear_posture_planner()
 
     return _exit
 
@@ -616,15 +608,16 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_tau_s=gov.tau_s,
             governor_freeze_below=gov.freeze_below,
             governor_release_above=gov.release_above,
-            soft_start_ramp_s=(0.3 if spec.secondary.preset == "move" else 0.0),
+            soft_start_ramp_s=(
+                0.3
+                if spec.secondary.preset == "move"
+                else (0.5 if spec.mode == TaskMode.HYBRID_TRACK else 0.0)
+            ),
             qdot_ff_provider=qdot_ff,
             scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
             force_observer=spec.force_observer,
             task_profile=spec.task_profile,
             reference_horizon=spec.reference_horizon,
-            posture_planner=spec.posture_planner,
-            planner_apply_output=spec.planner_apply_output,
-            planner_submit_period_s=spec.planner_submit_period_s,
         )
         if spec.move_mode == "joint":
             attach_joint_move_rail(phase, ctx.inner)
@@ -687,9 +680,6 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             force_observer=spec.force_observer,
             task_profile=spec.task_profile,
             reference_horizon=spec.reference_horizon,
-            posture_planner=spec.posture_planner,
-            planner_apply_output=spec.planner_apply_output,
-            planner_submit_period_s=spec.planner_submit_period_s,
         )
         return CompiledPhase(
             phase=phase,
@@ -732,9 +722,6 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
             task_profile=spec.task_profile,
             reference_horizon=spec.reference_horizon,
-            posture_planner=spec.posture_planner,
-            planner_apply_output=spec.planner_apply_output,
-            planner_submit_period_s=spec.planner_submit_period_s,
         )
         return CompiledPhase(
             phase=phase,
@@ -767,9 +754,6 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             force_observer=spec.force_observer,
             task_profile=spec.task_profile,
             reference_horizon=spec.reference_horizon,
-            posture_planner=spec.posture_planner,
-            planner_apply_output=spec.planner_apply_output,
-            planner_submit_period_s=spec.planner_submit_period_s,
         )
         return CompiledPhase(
             phase=phase,

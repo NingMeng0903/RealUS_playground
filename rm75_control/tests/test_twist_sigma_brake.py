@@ -41,6 +41,7 @@ def _controller(control_frame: str) -> JointIkController:
         generic_qpik=GenericQpikRuntimeConfig(
             solver=TwoLevelQpikConfig(
                 backend="scipy",
+            max_solve_ms=500.0,
                 max_rows=96,
                 max_scalable_groups=4,
                 max_iter=100,

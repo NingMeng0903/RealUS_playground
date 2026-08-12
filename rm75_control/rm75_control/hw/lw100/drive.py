@@ -716,7 +716,12 @@ class LW100Drive:
                 self.disable()
             except Exception:
                 pass
-        return int(getattr(self, "_last_rpm_cmd", 0) or 0) == 0
+        # Clear host latch even if the write failed so the rail safety
+        # watchdog does not PANIC/DISARM after an intentional task-end hold
+        # that lost Modbus mid-teardown.
+        ok = int(getattr(self, "_last_rpm_cmd", 0) or 0) == 0
+        self._last_rpm_cmd = 0
+        return ok
 
     def clear_alarm(self, steps: list[str] | None = None) -> None:
         """Pulse FA61 system-alarm clear (manual ch.6/9: FA61=1 clears Er-xx).

@@ -1,10 +1,9 @@
 """Hysteretic posture-health monitor used by generic task scheduling.
 
-The monitor exposes four states rather than a collection of independent
-booleans.  A danger metric enters ``RECOVERY`` immediately; metrics must cross
-the separate exit bands and remain there for a settling dwell before returning
-to ``NORMAL``.  Invalid telemetry and explicit planner/solver faults latch
-``FAULT`` until :meth:`HealthMonitor.clear_fault` is called.
+``RECOVERY`` is singularity-only (``arm_health`` below danger, plus FAULT
+paths).  Joint/wrist margin danger stays ``NORMAL`` with a warn/reason flag so
+authority is not frozen; the QP2 margin soft cost handles avoidance.  Leaving
+``RECOVERY`` still requires arm_health above the exit band for a settling dwell.
 """
 
 from __future__ import annotations
@@ -38,10 +37,6 @@ class HealthState(str, Enum):
     RECOVERY = "RECOVERY"
     SETTLING = "SETTLING"
     FAULT = "FAULT"
-
-
-# Compatibility spelling used by a few telemetry consumers.
-HealthStatus = HealthState
 
 
 @dataclass(frozen=True, slots=True)
@@ -524,20 +519,23 @@ class HealthMonitor:
         if not any(metrics_present) and not invalid:
             invalid = True
             reason = reason or "no health metrics"
-        danger = (
-            (arm is not None and arm <= self.thresholds.arm_danger)
-            or (joint is not None and joint <= self.thresholds.joint_danger_rad)
-            or (wrist is not None and wrist <= self.thresholds.wrist_danger_rad)
-        )
+        # RECOVERY authority is singularity-only (arm_health). Joint/wrist
+        # margins warn and feed the QP2 soft cost; they must not freeze α.
+        arm_danger = arm is not None and arm <= self.thresholds.arm_danger
+        joint_warn = (
+            joint is not None and joint <= self.thresholds.joint_warn_rad
+        ) or (wrist is not None and wrist <= self.thresholds.wrist_warn_rad)
+        joint_danger = (
+            joint is not None and joint <= self.thresholds.joint_danger_rad
+        ) or (wrist is not None and wrist <= self.thresholds.wrist_danger_rad)
+        danger = arm_danger
         warn = (
             (arm is not None and arm <= self.thresholds.arm_warn)
-            or (joint is not None and joint <= self.thresholds.joint_warn_rad)
-            or (wrist is not None and wrist <= self.thresholds.wrist_warn_rad)
+            or joint_warn
+            or joint_danger
         )
         exit_ok = (
             (arm is None or arm >= self.thresholds.arm_exit)
-            and (joint is None or joint >= self.thresholds.joint_exit_rad)
-            and (wrist is None or wrist >= self.thresholds.wrist_exit_rad)
             and any(metrics_present)
         )
         if invalid:
@@ -552,7 +550,7 @@ class HealthMonitor:
         elif danger:
             self.state = HealthState.RECOVERY
             self.settling_elapsed_s = 0.0
-            self.reason = reason or "danger threshold"
+            self.reason = reason or "arm_health danger"
         elif self.state is HealthState.RECOVERY:
             if exit_ok:
                 self.state = HealthState.SETTLING
@@ -571,11 +569,16 @@ class HealthMonitor:
                     self.settling_elapsed_s = self.thresholds.settling_s
                     self.reason = ""
         elif warn:
-            # Warn requests an early planner refresh but does not relax motion
-            # task limits.  Only the danger band enters RECOVERY.
+            # Joint/wrist (and arm warn) stay NORMAL for authority; reason is
+            # telemetry only. Scalable slack still follows arm RECOVERY.
             self.state = HealthState.NORMAL
             self.settling_elapsed_s = 0.0
-            self.reason = reason or "warn threshold"
+            if joint_danger:
+                self.reason = reason or "joint/wrist margin danger"
+            elif joint_warn:
+                self.reason = reason or "joint/wrist margin warn"
+            else:
+                self.reason = reason or "arm_health warn"
         else:
             self.state = HealthState.NORMAL
             self.settling_elapsed_s = 0.0
@@ -601,7 +604,6 @@ class HealthMonitor:
 
 __all__ = [
     "HealthState",
-    "HealthStatus",
     "HealthThresholds",
     "HealthReport",
     "HealthMetrics",

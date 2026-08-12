@@ -32,7 +32,7 @@ def test_production_config_declares_generic_solver_and_canonical_soft_band():
     assert cfg.generic_qpik.solver.max_rows == 128
     assert cfg.rail.soft_min_m == pytest.approx(0.01)
     assert cfg.rail.soft_max_m == pytest.approx(0.78)
-    assert cfg.rail.v_max_m_s == pytest.approx(0.30)
+    assert cfg.rail.v_max_m_s == pytest.approx(0.15)
     assert not hasattr(cfg, "qp")
     assert not hasattr(cfg, "nullspace")
     assert not hasattr(cfg, "rail_extension")

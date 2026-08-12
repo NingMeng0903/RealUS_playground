@@ -17,6 +17,7 @@ from rm75_control.control.joint_admittance_8dof.solver.two_level_qpik import (
 def test_arbitrary_rotation_rows_and_dof(n: int, n_rot: int) -> None:
     cfg = TwoLevelQpikConfig(
         backend="scipy",
+            max_solve_ms=500.0,
         qdot_lower=-np.ones(n),
         qdot_upper=np.ones(n),
         max_rows=64,
@@ -46,6 +47,7 @@ def test_non_identity_frame_rows_preserve_target() -> None:
         n,
         TwoLevelQpikConfig(
             backend="scipy",
+            max_solve_ms=500.0,
             qdot_lower=-np.ones(n),
             qdot_upper=np.ones(n),
             max_rows=64,
