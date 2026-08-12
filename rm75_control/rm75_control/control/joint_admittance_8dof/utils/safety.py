@@ -22,13 +22,6 @@ from typing import Callable
 import numpy as np
 
 
-# The LW100 rail bridge applies a 0.8 m/s² velocity slew during its signed
-# escape/stop path (``hw/rail_servo.py``).  Keep that value in one place so
-# the QP box and the downstream host limiter cannot silently diverge.  The
-# ordinary rail slew remains the slower user-configured ``a_max``.
-RAIL_ESCAPE_ACCEL_M_S2 = 0.80
-
-
 @dataclass
 class SafetyLimits:
     q_lower: np.ndarray
@@ -108,21 +101,8 @@ class SafetyLimiter:
         q_prev: np.ndarray,
         q_desired: np.ndarray,
         dt: float,
-        *,
-        rail_escape_active: bool = False,
-        rail_escape_sign: float = 0.0,
-        rail_escape_stop: bool = False,
-        rail_escape_accel_m_s2: float | None = None,
     ) -> SafetyReport:
-        """Clamp one position target, optionally using the signed rail slew.
-
-        ``rail_escape_accel_m_s2`` is intentionally gated by both an active
-        episode and a signed/stop state.  A stale configuration value must
-        never weaken ordinary rail acceleration, and a caller cannot enable
-        the escape slew merely by supplying a number while the episode is
-        inactive.  The override is applied to rail index 0 only; all arm
-        joints retain their normal acceleration limits.
-        """
+        """Clamp one direct-joint position target."""
         lim = self.lim
         q_prev = np.asarray(q_prev, dtype=float)
         q_desired = np.asarray(q_desired, dtype=float)
@@ -130,25 +110,7 @@ class SafetyLimiter:
         dq = q_desired - q_prev
         dq_max = np.asarray(lim.v_max, dtype=float) * dt
 
-        # ``sign`` remains latched while a travel-stop is braking to zero.
-        # Require an explicit episode plus either that sign or stop marker so
-        # a normal scan never inherits the faster escape slew.
-        escape_slew_active = bool(rail_escape_active) and (
-            abs(float(rail_escape_sign)) >= 0.5 or bool(rail_escape_stop)
-        )
         a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
-        if escape_slew_active:
-            accel = (
-                RAIL_ESCAPE_ACCEL_M_S2
-                if rail_escape_accel_m_s2 is None
-                else float(rail_escape_accel_m_s2)
-            )
-            if np.isfinite(accel) and accel >= 0.0 and dq.size > 0:
-                if a_max is None:
-                    # No ordinary acceleration clamp: add a rail-only bound
-                    # while leaving all arm joints unconstrained.
-                    a_max = np.full(dq.shape, np.inf, dtype=float)
-                a_max[0] = accel
 
         vel_clamped = acc_clamped = pos_clamped = False
 
@@ -235,17 +197,27 @@ class Watchdog:
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
 
-    def beat(self) -> None:
+    def beat(self) -> bool:
+        """Refresh a healthy watchdog; a fired watchdog stays latched."""
+
+        with self._lock:
+            if self._fired.is_set():
+                return False
+            self._last_beat = time.perf_counter()
+            return True
+
+    def arm(self) -> None:
+        """Explicitly arm a new inactive-to-active control phase."""
+
         with self._lock:
             self._last_beat = time.perf_counter()
-            # allow re-arming after a transient recovery
             self._fired.clear()
 
     def start(self) -> None:
         if self._thread is not None:
             return
-        self._last_beat = time.perf_counter()
         self._stop.clear()
+        self.arm()
         self._thread = threading.Thread(target=self._run, name=self._name, daemon=True)
         self._thread.start()
 
@@ -261,10 +233,13 @@ class Watchdog:
 
     def _run(self) -> None:
         while not self._stop.is_set():
+            should_fire = False
             with self._lock:
                 dt = time.perf_counter() - self._last_beat
-            if dt > self.timeout_s and not self._fired.is_set():
-                self._fired.set()
+                if dt > self.timeout_s and not self._fired.is_set():
+                    self._fired.set()
+                    should_fire = True
+            if should_fire:
                 try:
                     self.on_stall()
                 except Exception:

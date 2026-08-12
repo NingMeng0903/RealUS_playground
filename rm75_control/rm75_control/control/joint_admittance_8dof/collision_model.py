@@ -96,15 +96,32 @@ class CollisionModel:
         self._kin_data = self.model.createData()
         self._q = np.zeros(self.model.nq, dtype=float)
 
-    def update(self, q_rad: np.ndarray) -> None:
+    def update(
+        self,
+        q_rad: np.ndarray,
+        *,
+        kinematic_data: pin.Data | None = None,
+        kinematics_ready: bool = False,
+    ) -> None:
+        """Update witness distances, optionally reusing this tick's FK data.
+
+        ``RobotKinematics.jacobian`` has already computed joint Jacobians and
+        frame placements for the immutable measured-state snapshot used by
+        QPIK.  Reusing that data avoids a second forward-kinematics pass while
+        preserving the exact same collision geometry and distance queries.
+        Standalone callers retain the original self-contained behaviour.
+        """
+
         self._q = np.asarray(q_rad, dtype=float)
-        pin.forwardKinematics(self.model, self._kin_data, self._q)
+        data = self._kin_data if kinematic_data is None else kinematic_data
+        if not kinematics_ready:
+            pin.forwardKinematics(self.model, data, self._q)
         pin.updateGeometryPlacements(
-            self.model, self._kin_data, self.geom_model, self.geom_data
+            self.model, data, self.geom_model, self.geom_data
         )
-        pin.computeDistances(
-            self.model, self._kin_data, self.geom_model, self.geom_data, self._q
-        )
+        # Placements are already current; the five-argument overload would
+        # recompute them a second time.
+        pin.computeDistances(self.geom_model, self.geom_data)
 
     def pair_info(self, pair_index: int) -> CollisionPairInfo | None:
         dr = self.geom_data.distanceResults[pair_index]
@@ -144,12 +161,27 @@ class CollisionModel:
         return out
 
     def active_pairs(self, d_activate: float) -> list[CollisionPairInfo]:
-        pairs = [p for p in self.all_pairs() if p.distance < d_activate]
+        # Reading witness points/normals allocates several arrays per pair.
+        # First filter on HPP-FCL's scalar distance result, then materialise
+        # full information only for pairs that can enter/leave a CBF slot.
+        threshold = float(d_activate)
+        indices = [
+            i
+            for i, result in enumerate(self.geom_data.distanceResults)
+            if np.isfinite(float(result.min_distance))
+            and float(result.min_distance) < threshold
+        ]
+        pairs = [self.pair_info(i) for i in indices]
+        pairs = [p for p in pairs if p is not None]
         pairs.sort(key=lambda p: p.distance)
         return pairs
 
     def min_distance(self) -> float:
-        pairs = self.all_pairs()
-        if not pairs:
+        distances = [
+            float(result.min_distance)
+            for result in self.geom_data.distanceResults
+            if np.isfinite(float(result.min_distance))
+        ]
+        if not distances:
             return float("inf")
-        return min(p.distance for p in pairs)
+        return min(distances)

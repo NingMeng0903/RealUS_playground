@@ -1,39 +1,39 @@
 """One-shot pose IK for the 8-DOF stack (no vendor rm_algo_inverse_kinematics).
 
-``resolve_pose_ik_srs``: preferred closed-form SRS + ψ enum + path check.
-``solve_pose_ik``: legacy iterative WBC IK for tools / reachability scripts.
+``resolve_pose_ik_srs`` is the preferred closed-form SRS + ψ enum + path
+check planner.  ``solve_pose_ik`` is the compatibility entry point for the
+few offline callers that still need a general numerical solve; it delegates
+to the bounded fixed-rail solver in :mod:`numerical_pose_ik` and never owns an
+online QPIK controller.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 from scipy.spatial.transform import Rotation as Rsc
 from scipy.spatial.transform import Slerp
 
-from rm75_control.control.joint_admittance_8dof.ik_types import saturate_error
 from rm75_control.control.joint_admittance_8dof.model import (
     RAIL_INDEX,
     RobotKinematics,
     full_q_from_arm,
     pose_error,
 )
-from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfig, QpIkController
-from rm75_control.control.joint_admittance_8dof.tasks.arm_angle import (
-    ArmAngleTaskConfig,
+from rm75_control.control.joint_admittance_8dof.numerical_pose_ik import (
+    CollisionCheck,
+    NumericalPoseIkConfig,
+    NumericalPoseIkResult,
+    solve_numerical_pose_ik,
 )
-from rm75_control.control.joint_admittance_8dof.tasks.nullspace_task import (
-    JointCenteringTask,
-    NullspaceTaskConfig,
-)
-from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 from rm75_control.kinematics.srs_ik import (
     Q_LOWER,
     Q_UPPER,
     branch_from_q,
-    d_wt_from_kin,
+    flange_tcp_from_kin,
     psi_from_q,
+    shoulder_y_from_q_rail,
     srs_ik,
 )
 
@@ -44,7 +44,7 @@ class UnreachablePathError(RuntimeError):
 
 @dataclass
 class PoseIkReport:
-    """Convergence diagnostics from ``solve_pose_ik`` / ``resolve_pose_ik_srs``."""
+    """Convergence diagnostics from :func:`resolve_pose_ik_srs`."""
     pos_err_mm: float
     rot_err_deg: float
     sigma_min: float
@@ -122,7 +122,8 @@ def _goal_score(
     limit_penalty = weights.w_limit * float(np.sum(u * u))
 
     # Wrist singularity proxy: exp(-8·sin²(q5)) is ~1 at q5 ≈ 0 / ±π, ~0 elsewhere.
-    wrist_penalty = weights.w_wrist * float(np.exp(-8.0 * np.sin(q_arm[4]) ** 2))
+    # RM75's Z-Y-Z wrist loses rank at J6, arm-vector index 5.
+    wrist_penalty = weights.w_wrist * float(np.exp(-8.0 * np.sin(q_arm[5]) ** 2))
 
     # Straight-elbow penalty: sin(q4) < 0.3 means elbow bent < ~17.5°, i.e.
     # near-straight arm — dangerous (approaches the SRS shoulder-arm-wrist
@@ -144,7 +145,8 @@ def _path_reachable(
     *,
     n_samples: int = 10,
     euler_order: str = "xyz",
-    d_wt: float | None = None,
+    R_flange_tcp: np.ndarray | None = None,
+    t_flange_tcp: np.ndarray | None = None,
 ) -> bool:
     """True iff srs_ik succeeds at every interior sample of the (pose, ψ, y_rail)
     interpolation.  Endpoints are excluded: they are guaranteed by the seed
@@ -161,9 +163,10 @@ def _path_reachable(
             pose_s,
             psi_s,
             branch,
-            y_rail=y_rail_s,
+            y_rail=shoulder_y_from_q_rail(y_rail_s),
             euler_order=euler_order,
-            d_wt=d_wt,
+            R_flange_tcp=R_flange_tcp,
+            t_flange_tcp=t_flange_tcp,
         )
         if q_arm is None:
             return False
@@ -232,7 +235,7 @@ def resolve_pose_ik_srs(
     psi_seed = psi_from_q(q_arm_seed)
     branch_seed = branch_from_q(q_branch_src[1:])
     psi_home = float(psi_seed if psi_home_rad is None else psi_home_rad)
-    d_wt = float(d_wt_from_kin(kin))
+    R_flange_tcp, t_flange_tcp = flange_tcp_from_kin(kin)
 
     # Candidate ψ grid on (-π, π].  max_psi_swing is measured from ψ_home
     # (the posture attractor), NOT from ψ_seed — so a live q0 at ψ≈72° can
@@ -251,7 +254,10 @@ def resolve_pose_ik_srs(
 
         q_arm = srs_ik(
             pose_target, float(psi), branch_seed,
-            y_rail=y_rail_target, euler_order=euler_order, d_wt=d_wt,
+            y_rail=shoulder_y_from_q_rail(y_rail_target),
+            euler_order=euler_order,
+            R_flange_tcp=R_flange_tcp,
+            t_flange_tcp=t_flange_tcp,
         )
         if q_arm is None:
             continue
@@ -316,7 +322,8 @@ def resolve_pose_ik_srs(
             y_rail_target=y_rail_target,
             n_samples=int(path_check_samples),
             euler_order=euler_order,
-            d_wt=d_wt,
+            R_flange_tcp=R_flange_tcp,
+            t_flange_tcp=t_flange_tcp,
         ):
             return _report_from(psi, q_arm, sigma_min, path_ok=True)
 
@@ -336,116 +343,29 @@ def solve_pose_ik(
     q_seed: np.ndarray,
     pose_target: np.ndarray,
     *,
-    max_iters: int = 500,
-    pos_tol_m: float = 1e-3,
-    rot_tol_rad: float = 0.02,
-    dt: float = 0.02,
-    k_gain: float = 3.0,
-    max_pos_err_m: float = 0.05,
-    max_rot_err_rad: float = 0.20,
-    qp_cfg: QpConfig | None = None,
-    nullspace_cfg: NullspaceTaskConfig | None = None,
-    attractor_q: np.ndarray | None = None,
-    trace: list[dict] | None = None,
-) -> tuple[np.ndarray, bool, PoseIkReport]:
-    """Iterative WBC IK (legacy): ``q_seed`` → ``q`` with fk(q) ≈ pose_target.
+    rail_m: float | None = None,
+    config: NumericalPoseIkConfig | None = None,
+    collision_check: CollisionCheck | None = None,
+) -> NumericalPoseIkResult:
+    """Solve ``q_seed`` → ``pose_target`` with the rail held fixed.
 
-    ``attractor_q=None`` centers on ``q_seed`` (not yaml zeros). Prefer SRS IK.
+    This small compatibility wrapper deliberately exposes only the numerical
+    solver's safety boundary.  The default rail is the seed rail for a full
+    eight-joint state (or zero for an arm-only seed); callers that need a
+    different fixed coordinate must pass ``rail_m`` explicitly.  The returned
+    :class:`NumericalPoseIkResult` remains tuple-unpackable as
+    ``(q_target, ok, report)`` for existing offline callers.
     """
-    cfg = qp_cfg or QpConfig()
-    limits = SafetyLimits.from_kinematics(kin, v_scale=0.9, a_max=50.0)
-    ctrl = QpIkController(kin, limits, cfg)
-
-    task: JointCenteringTask | None = None
-    if nullspace_cfg is not None:
-        # Default attractor is q_seed (teach posture), not yaml q_nominal zeros.
-        target = np.asarray(
-            attractor_q if attractor_q is not None else q_seed,
-            dtype=float,
-        )
-        cfg_used = NullspaceTaskConfig(
-            k_center=nullspace_cfg.k_center,
-            k_limit=nullspace_cfg.k_limit,
-            activation=nullspace_cfg.activation,
-            weights=nullspace_cfg.weights,
-            q_nominal_rad=target,
-        )
-        task = JointCenteringTask.from_kinematics(kin, cfg_used)
-
-    q = np.clip(np.asarray(q_seed, dtype=float).copy(), kin.q_lower, kin.q_upper)
-    pose_target = np.asarray(pose_target, dtype=float)
-    ctrl.reset(q)
-
-    sigma_last = float("nan")
-    pos_err_m = float("nan")
-    rot_err_rad = float("nan")
-    for it in range(max_iters):
-        err = pose_error(pose_target, kin.fk_pose(q), cfg.euler_order)
-        pos_err_m = float(np.linalg.norm(err[:3]))
-        rot_err_rad = float(np.linalg.norm(err[3:6]))
-        if pos_err_m < pos_tol_m and rot_err_rad < rot_tol_rad:
-            report = _make_report(q, kin, ctrl, pos_err_m, rot_err_rad, it, sigma_last)
-            if trace is not None:
-                trace.append(
-                    {
-                        "iter": it,
-                        "pos_err_mm": pos_err_m * 1000.0,
-                        "rot_err_deg": np.degrees(rot_err_rad),
-                        "v_cmd_norm": 0.0,
-                        "slack_norm": None,
-                        "n_cbf_active": None,
-                        "sigma_min": report.sigma_min,
-                        "converged": True,
-                    }
-                )
-            return q, True, report
-        err_sat = saturate_error(err, max_pos_err_m, max_rot_err_rad)
-        v_cmd = k_gain * err_sat
-        secondary = task(q) if task is not None else None
-        r = ctrl.step(q, v_cmd, dt, secondary_qdot=secondary)
-        sigma_last = r.sigma_min
-        if trace is not None:
-            trace.append(
-                {
-                    "iter": it,
-                    "pos_err_mm": pos_err_m * 1000.0,
-                    "rot_err_deg": np.degrees(rot_err_rad),
-                    "v_cmd_norm": float(np.linalg.norm(v_cmd)),
-                    "slack_norm": r.slack_norm,
-                    "n_cbf_active": r.n_cbf_active,
-                    "sigma_min": r.sigma_min,
-                    "converged": False,
-                }
-            )
-        q = np.clip(r.q_next, kin.q_lower, kin.q_upper)
-
-    report = _make_report(q, kin, ctrl, pos_err_m, rot_err_rad, max_iters, sigma_last)
-    return q, False, report
-
-
-def _make_report(
-    q: np.ndarray,
-    kin: RobotKinematics,
-    ctrl: QpIkController,
-    pos_err_m: float,
-    rot_err_rad: float,
-    iters: int,
-    sigma_last: float,
-) -> PoseIkReport:
-    try:
-        sigma_min = float(kin.singular_values(kin.jacobian(q)).min())
-    except Exception:
-        sigma_min = float(sigma_last)
-    margin = float(ctrl.constraints.lim.position_margin)
-    lo = kin.q_lower + margin
-    hi = kin.q_upper - margin
-    within = bool(np.all(q >= lo - 1e-9) and np.all(q <= hi + 1e-9))
-    return PoseIkReport(
-        pos_err_mm=pos_err_m * 1000.0,
-        rot_err_deg=float(np.degrees(rot_err_rad)),
-        sigma_min=sigma_min,
-        iters=int(iters),
-        within_limits=within,
+    q_seed_arr = np.asarray(q_seed, dtype=float).reshape(-1)
+    if rail_m is None:
+        rail_m = float(q_seed_arr[RAIL_INDEX]) if q_seed_arr.size == kin.nq else 0.0
+    return solve_numerical_pose_ik(
+        kin,
+        q_seed_arr,
+        np.asarray(pose_target, dtype=float),
+        rail_m=float(rail_m),
+        config=config,
+        collision_check=collision_check,
     )
 
 

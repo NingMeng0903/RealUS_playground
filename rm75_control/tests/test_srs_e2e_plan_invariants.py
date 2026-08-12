@@ -31,7 +31,7 @@ from rm75_control.control.joint_admittance_8dof.reference import (
     SinToolYReference,
     srs_move_duration_s,
 )
-from rm75_control.kinematics.srs_ik import branch_from_q
+from rm75_control.kinematics.srs_ik import branch_from_q, psi_from_q
 
 
 CFG_PATH = Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml"
@@ -49,12 +49,16 @@ def kin():
 
 
 def test_yaml_loads_production_config():
-    """Production yaml loads without legacy qp scheduling keys."""
+    """Production yaml exposes generic QPIK and no retired task blocks."""
     raw = yaml.safe_load(CFG_PATH.read_text())
     cfg = build_joint_ik_config(raw)
-    assert cfg.rail_extension.e0_m == 0.02
-    assert cfg.rail_extension.k_ext == 2.0
-    assert cfg.qp.task_weight_min_frac == 0.05
+    assert cfg.generic_qpik.solver.backend == "proxqp"
+    assert cfg.generic_qpik.solver.max_rows == 128
+    assert cfg.rail.soft_min_m == pytest.approx(0.01)
+    assert cfg.rail.soft_max_m == pytest.approx(0.78)
+    assert not hasattr(cfg, "qp")
+    assert not hasattr(cfg, "nullspace")
+    assert not hasattr(cfg, "rail_extension")
 
 
 def test_srs_ik_move_meets_sigma_and_psi_floors(kin, cfg):
@@ -69,10 +73,10 @@ def test_srs_ik_move_meets_sigma_and_psi_floors(kin, cfg):
         q_seed=q_seed,
         pose_target=pose_target,
         y_rail_target=0.05,
-        psi_home_rad=cfg.arm_angle.psi_home_rad,
-        max_psi_swing_rad=cfg.arm_angle.max_psi_swing_rad,
-        psi_hard_lower_rad=cfg.arm_angle.psi_hard_lower_rad,
-        psi_hard_upper_rad=cfg.arm_angle.psi_hard_upper_rad,
+        # The generic profile has no null-space ``arm_angle`` block.  A
+        # branch-local ψ seed is the planner's explicit posture guide.
+        psi_home_rad=float(psi_from_q(q_seed[1:])),
+        max_psi_swing_rad=np.pi,
     )
     assert ok
     assert rpt.pos_err_mm < 1.0

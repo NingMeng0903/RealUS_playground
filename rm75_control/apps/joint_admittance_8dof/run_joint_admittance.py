@@ -393,10 +393,6 @@ def main() -> int:
                 rail_pub._default_m = meas
                 if inner is not None and math.isfinite(meas):
                     inner.q_cmd[0] = meas
-                    try:
-                        inner.rail_task.set_reference(meas)
-                    except Exception:
-                        pass
             if inner is not None:
                 maybe_sync_kin_tcp_from_config(raw=raw, kin=inner.kin, robot=sess.robot)
             else:

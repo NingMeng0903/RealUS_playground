@@ -130,10 +130,13 @@ class SrsSmoothMoveReference:
         duration_s: float,
         branch_id: int | None = None,
         euler_order: str = "xyz",
-        d_wt: float | None = None,
         max_ik_fail_streak: int = 5,
     ) -> None:
-        from rm75_control.kinematics.srs_ik import branch_from_q, d_wt_from_kin, psi_from_q
+        from rm75_control.kinematics.srs_ik import (
+            branch_from_q,
+            flange_tcp_from_kin,
+            psi_from_q,
+        )
 
         self.kin = kin
         self.q_start = np.asarray(q_start_rad, dtype=float).copy()
@@ -151,7 +154,7 @@ class SrsSmoothMoveReference:
             (self.psi_target - self.psi_start + np.pi) % (2.0 * np.pi) - np.pi
         )
         self.euler_order = str(euler_order)
-        self.d_wt = float(d_wt_from_kin(kin) if d_wt is None else d_wt)
+        self._R_flange_tcp, self._t_flange_tcp = flange_tcp_from_kin(kin)
         R_start = Rsc.from_euler(self.euler_order, self.pose_start[3:])
         R_target = Rsc.from_euler(self.euler_order, self.pose_target[3:])
         self._R_start = R_start
@@ -189,7 +192,7 @@ class SrsSmoothMoveReference:
         return pose
 
     def _q_at(self, s: float) -> np.ndarray:
-        from rm75_control.kinematics.srs_ik import srs_ik
+        from rm75_control.kinematics.srs_ik import shoulder_y_from_q_rail, srs_ik
 
         pose_s = self._pose_at(s)
         psi_s = self.psi_start + s * self.psi_delta
@@ -198,10 +201,11 @@ class SrsSmoothMoveReference:
             pose_s,
             psi_s,
             self.branch_id,
-            y_rail=y_s,
+            y_rail=shoulder_y_from_q_rail(y_s),
             euler_order=self.euler_order,
             check_limits=False,
-            d_wt=self.d_wt,
+            R_flange_tcp=self._R_flange_tcp,
+            t_flange_tcp=self._t_flange_tcp,
         )
         q = np.zeros_like(self.q_start)
         q[0] = y_s
@@ -485,4 +489,3 @@ class SinToolYReference:
         vel = np.zeros(6, dtype=float)
         vel[:3] = r_mat @ np.array([0.0, vy, 0.0])
         return MotionReference(pose_d=pose, vel_ff=vel, t_ref=t_s)
-

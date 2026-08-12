@@ -1,51 +1,6 @@
-"""Shared robot feedback, force observation, and task-space admittance primitives."""
+"""Shared admittance primitives exposed without eager dependency cycles."""
 
-from rm75_control.control.admittance_common.adaptive_ke import (
-    AdaptiveKeConfig,
-    EnvironmentStiffnessEstimator,
-)
-from rm75_control.control.admittance_common.async_state import (
-    AsyncStateObserver,
-    AsyncStateSnapshot,
-    RealtimePushConfig,
-    RealtimeStateObserver,
-    create_state_observer,
-)
-from rm75_control.control.admittance_common.state_bus import RobotStateBus, expand_q_meas_8dof
-from rm75_control.control.admittance_common.controller import (
-    AdmittanceConfig,
-    AdmittanceController,
-)
-from rm75_control.control.admittance_common.bidirectional_flow import (
-    BidirectionalFlowConfig,
-    BidirectionalFlowController,
-    BidirectionalFlowCore,
-    BidirectionalEnergyFlowController,
-    BidirectionalFlowTelemetry,
-)
-from rm75_control.control.admittance_common.contact_state import (
-    PhysicalContactConfig,
-    PhysicalContactTracker,
-    PhysicalContactUpdate,
-)
-from rm75_control.control.admittance_common.fast_retract_guard import (
-    FastRetractGuard,
-    FastRetractGuardConfig,
-)
-from rm75_control.control.admittance_common.observer import (
-    CompensatedForceObserver,
-    ForceObserverConfig,
-)
-from rm75_control.control.admittance_common.pose_math import (
-    pose_error,
-    pose_track_error_mm_deg,
-    wrap_pi,
-)
-from rm75_control.control.admittance_common.reference import (
-    MotionReference,
-    MotionReferenceSource,
-    TrajectorySample,
-)
+from importlib import import_module
 
 __all__ = [
     "AdaptiveKeConfig",
@@ -78,3 +33,66 @@ __all__ = [
     "pose_track_error_mm_deg",
     "wrap_pi",
 ]
+
+_MODULE_BY_NAME = {
+    **{
+        name: "adaptive_ke"
+        for name in ("AdaptiveKeConfig", "EnvironmentStiffnessEstimator")
+    },
+    **{
+        name: "async_state"
+        for name in (
+            "AsyncStateObserver",
+            "AsyncStateSnapshot",
+            "RealtimePushConfig",
+            "RealtimeStateObserver",
+            "create_state_observer",
+        )
+    },
+    **{name: "state_bus" for name in ("RobotStateBus", "expand_q_meas_8dof")},
+    **{name: "controller" for name in ("AdmittanceConfig", "AdmittanceController")},
+    **{
+        name: "bidirectional_flow"
+        for name in (
+            "BidirectionalFlowConfig",
+            "BidirectionalFlowController",
+            "BidirectionalFlowCore",
+            "BidirectionalEnergyFlowController",
+            "BidirectionalFlowTelemetry",
+        )
+    },
+    **{
+        name: "contact_state"
+        for name in (
+            "PhysicalContactConfig",
+            "PhysicalContactTracker",
+            "PhysicalContactUpdate",
+        )
+    },
+    **{
+        name: "fast_retract_guard"
+        for name in ("FastRetractGuard", "FastRetractGuardConfig")
+    },
+    **{
+        name: "observer"
+        for name in ("CompensatedForceObserver", "ForceObserverConfig")
+    },
+    **{
+        name: "pose_math"
+        for name in ("pose_error", "pose_track_error_mm_deg", "wrap_pi")
+    },
+    **{
+        name: "reference"
+        for name in ("MotionReference", "MotionReferenceSource", "TrajectorySample")
+    },
+}
+
+
+def __getattr__(name: str):
+    try:
+        leaf = _MODULE_BY_NAME[name]
+    except KeyError as exc:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from exc
+    value = getattr(import_module(f"{__name__}.{leaf}"), name)
+    globals()[name] = value
+    return value

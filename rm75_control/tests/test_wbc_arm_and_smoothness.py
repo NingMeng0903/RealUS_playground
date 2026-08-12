@@ -135,13 +135,14 @@ def test_joint_move_phase_enables_plan_drives_rail():
     compiled = compile_phase(spec, ctx)
     assert compiled.phase.on_enter is not None
     inner.set_plan_drives_rail(False)
-    inner.set_rail_extension_active(True)
+    inner.set_direct_joint_ptp(False)
     compiled.phase.on_enter()
     assert inner._plan_drives_rail is True
-    assert inner._rail_ext_active is False
+    assert inner._direct_joint_ptp is True
     if compiled.phase.on_exit is not None:
         compiled.phase.on_exit()
     assert inner._plan_drives_rail is False
+    assert inner._direct_joint_ptp is False
 
 
 
@@ -194,4 +195,3 @@ def test_algo_fk_roundtrip_near_home():
     # FK(q) should match kin.fk_pose
     q = arm._joint_list_to_rad(q_list)
     assert np.allclose(pose, arm.kin.fk_pose(q), atol=1e-9)
-

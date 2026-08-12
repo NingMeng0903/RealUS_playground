@@ -39,6 +39,8 @@ References
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
+import xml.etree.ElementTree as ET
 
 import numpy as np
 
@@ -53,6 +55,48 @@ D_SE: float = 0.256    # |S-E| upper arm length
 D_EW: float = 0.210    # |E-W| forearm length
 D_WT_FLANGE: float = 0.1612  # |W→link_7| along flange / tool Z (URDF joint_7)
 D_WT: float = 0.3812   # default |W-TCP| = D_WT_FLANGE + 0.220 (stock gripper)
+RAIL_ORIGIN_Y: float = -0.4
+TOOL_MODE_COAXIAL = "coaxial"
+TOOL_MODE_FLANGE_TCP = "flange_tcp"
+
+
+def shoulder_y_from_q_rail(q_rail: float) -> float:
+    """Convert the URDF prismatic coordinate to shoulder world-Y."""
+
+    return float(RAIL_ORIGIN_Y + float(q_rail))
+
+
+def flange_tcp_from_kin(kin) -> tuple[np.ndarray, np.ndarray]:
+    """Return the active rigid link_7/flange -> TCP transform."""
+
+    try:
+        R = np.asarray(kin._R_link7_tcp, dtype=float).reshape(3, 3)  # noqa: SLF001
+        t = np.asarray(kin._r_link7_tcp, dtype=float).reshape(3)  # noqa: SLF001
+        return R.copy(), t.copy()
+    except Exception:
+        pose = np.asarray(kin.tcp_offset_pose, dtype=float).reshape(6)
+        return _euler_xyz_to_R(*pose[3:6]), pose[:3].copy()
+
+
+def assert_srs_constants_match_urdf() -> None:
+    """Fail loudly if the closed-form geometry drifts from the checked-in URDF."""
+
+    urdf = (
+        Path(__file__).resolve().parents[1]
+        / "assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf"
+    )
+    root = ET.parse(urdf).getroot()
+    joints = {joint.attrib.get("name", ""): joint for joint in root.findall("joint")}
+
+    def xyz(name: str) -> np.ndarray:
+        raw = joints[name].find("origin").attrib.get("xyz", "0 0 0")
+        return np.fromstring(raw, sep=" ", dtype=float)
+
+    assert np.allclose(xyz("rail_y"), [0.0, RAIL_ORIGIN_Y, 0.0], atol=1e-12)
+    assert abs(float(xyz("joint_1")[2]) - D_BS) < 1e-12
+    assert abs(float(np.linalg.norm(xyz("joint_3"))) - D_SE) < 1e-12
+    assert abs(float(np.linalg.norm(xyz("joint_5"))) - D_EW) < 1e-12
+    assert abs(float(np.linalg.norm(xyz("joint_7"))) - D_WT_FLANGE) < 1e-12
 
 
 def d_wt_from_tcp_offset(tcp_offset_pose: np.ndarray) -> float:
@@ -133,6 +177,44 @@ def _pose_to_Rp(pose: np.ndarray, euler_order: str = "xyz") -> tuple[np.ndarray,
     p = pose[:3].copy()
     R = _euler_xyz_to_R(pose[3], pose[4], pose[5])
     return R, p
+
+
+def _flange_pose_and_wrist(
+    pose_tcp: np.ndarray,
+    euler_order: str,
+    *,
+    tool_mode: str | None,
+    R_flange_tcp: np.ndarray | None,
+    t_flange_tcp: np.ndarray | None,
+    d_wt: float | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Resolve flange orientation/position and wrist centre from a TCP pose."""
+
+    R_tcp, p_tcp = _pose_to_Rp(pose_tcp, euler_order)
+    mode = tool_mode
+    if mode is None:
+        mode = (
+            TOOL_MODE_FLANGE_TCP
+            if R_flange_tcp is not None or t_flange_tcp is not None
+            else TOOL_MODE_COAXIAL
+        )
+    if mode == TOOL_MODE_COAXIAL:
+        length = float(D_WT if d_wt is None else d_wt)
+        return R_tcp, p_tcp, p_tcp - length * R_tcp[:, 2]
+    if mode != TOOL_MODE_FLANGE_TCP:
+        raise ValueError(f"unknown SRS tool_mode {mode!r}")
+    if R_flange_tcp is None or t_flange_tcp is None:
+        raise ValueError("flange_tcp mode requires R_flange_tcp and t_flange_tcp")
+    R_ft = np.asarray(R_flange_tcp, dtype=float).reshape(3, 3)
+    t_ft = np.asarray(t_flange_tcp, dtype=float).reshape(3)
+    if not np.isfinite(R_ft).all() or not np.isfinite(t_ft).all():
+        raise ValueError("flange->TCP transform must be finite")
+    if not np.allclose(R_ft.T @ R_ft, np.eye(3), atol=1e-7):
+        raise ValueError("R_flange_tcp must be a rotation matrix")
+    R_flange = R_tcp @ R_ft.T
+    p_flange = p_tcp - R_flange @ t_ft
+    W = p_flange - D_WT_FLANGE * R_flange[:, 2]
+    return R_flange, p_flange, W
 
 
 def _wrap_pi(a: float) -> float:
@@ -262,16 +344,24 @@ def is_reachable(
     euler_order: str = "xyz",
     *,
     d_wt: float | None = None,
+    tool_mode: str | None = None,
+    R_flange_tcp: np.ndarray | None = None,
+    t_flange_tcp: np.ndarray | None = None,
 ) -> bool:
     """True iff the TCP pose lies inside the SRS reachable annulus.
 
     Ignores joint limits (those are branch-dependent and are enforced inside
     ``srs_ik``); this is the fast geometric feasibility check for a planner.
     """
-    L = float(D_WT if d_wt is None else d_wt)
-    R, p = _pose_to_Rp(pose_tcp, euler_order)
+    _R_flange, _p_flange, W = _flange_pose_and_wrist(
+        pose_tcp,
+        euler_order,
+        tool_mode=tool_mode,
+        R_flange_tcp=R_flange_tcp,
+        t_flange_tcp=t_flange_tcp,
+        d_wt=d_wt,
+    )
     S = np.array([0.0, float(y_rail), D_BS])
-    W = p - L * R[:, 2]
     dsw = float(np.linalg.norm(W - S))
     return abs(D_SE - D_EW) + 1e-6 < dsw < D_SE + D_EW - 1e-6
 
@@ -296,6 +386,9 @@ def srs_ik(
     euler_order: str = "xyz",
     check_limits: bool = True,
     d_wt: float | None = None,
+    tool_mode: str | None = None,
+    R_flange_tcp: np.ndarray | None = None,
+    t_flange_tcp: np.ndarray | None = None,
 ) -> np.ndarray | None:
     """Closed-form IK for (pose_tcp, ψ, branch, y_rail) → q_arm (7-vec, rad).
 
@@ -316,8 +409,14 @@ def srs_ik(
     -------------
     ``euler_order`` must be ``'xyz'`` (matches ``RobotKinematics.fk_pose``).
     """
-    L = float(D_WT if d_wt is None else d_wt)
-    R_tcp, p_tcp = _pose_to_Rp(pose_tcp, euler_order)
+    R_flange, _p_flange, W = _flange_pose_and_wrist(
+        pose_tcp,
+        euler_order,
+        tool_mode=tool_mode,
+        R_flange_tcp=R_flange_tcp,
+        t_flange_tcp=t_flange_tcp,
+        d_wt=d_wt,
+    )
     branch_id = int(branch_id) & 0b111
     b_sh = (branch_id >> 2) & 1
     b_el = (branch_id >> 1) & 1
@@ -325,9 +424,6 @@ def srs_ik(
 
     # --- 1. Wrist centre and shoulder centre --------------------------------
     S = np.array([0.0, float(y_rail), D_BS], dtype=float)
-    # TCP frame Z axis points from W to TCP (verified against the URDF joint
-    # chain: link_7 Z at q_7 = 0 equals joint_7 axis; TCP is on that axis).
-    W = p_tcp - L * R_tcp[:, 2]
 
     # --- 2. Elbow angle from law of cosines --------------------------------
     dsw = float(np.linalg.norm(W - S))
@@ -379,7 +475,7 @@ def srs_ik(
 
     # --- 5. Wrist joints from residual orientation (ZYZ) -------------------
     R_pre_wrist = _rot_z(q1) @ _rot_y(q2) @ _rot_z(q3) @ _rot_y(q4)
-    R_wrist = R_pre_wrist.T @ R_tcp
+    R_wrist = R_pre_wrist.T @ R_flange
 
     # ZYZ Euler extraction on R_wrist.  The two branches differ by q_6 sign.
     cos_q6 = float(np.clip(R_wrist[2, 2], -1.0, 1.0))
@@ -420,6 +516,9 @@ def srs_ik_with_diagnostics(
     euler_order: str = "xyz",
     check_limits: bool = True,
     d_wt: float | None = None,
+    tool_mode: str | None = None,
+    R_flange_tcp: np.ndarray | None = None,
+    t_flange_tcp: np.ndarray | None = None,
 ) -> SrsSolution | None:
     """Same as ``srs_ik`` but also returns S/E/W/ψ_realised for diagnostics."""
     q_arm = srs_ik(
@@ -430,6 +529,9 @@ def srs_ik_with_diagnostics(
         euler_order=euler_order,
         check_limits=check_limits,
         d_wt=d_wt,
+        tool_mode=tool_mode,
+        R_flange_tcp=R_flange_tcp,
+        t_flange_tcp=t_flange_tcp,
     )
     if q_arm is None:
         return None
@@ -454,8 +556,14 @@ __all__ = [
     "D_EW",
     "D_WT",
     "D_WT_FLANGE",
+    "RAIL_ORIGIN_Y",
+    "TOOL_MODE_COAXIAL",
+    "TOOL_MODE_FLANGE_TCP",
+    "assert_srs_constants_match_urdf",
     "d_wt_from_kin",
     "d_wt_from_tcp_offset",
+    "flange_tcp_from_kin",
+    "shoulder_y_from_q_rail",
     "Q_LOWER",
     "Q_UPPER",
     "SrsSolution",

@@ -8,31 +8,6 @@ import numpy as np
 
 
 @dataclass
-class IkStepResult:
-    """One WBC QP velocity-IK step (all joint quantities in rad, rad/s)."""
-
-    q_next: np.ndarray
-    qdot: np.ndarray
-    sigma_min: float
-    manip: float
-    slack_norm: float = 0.0
-    n_cbf_active: int = 0
-    # Effective preferred-rail task weight after hard and hierarchy caps.
-    rail_task_weight_effective: float = 0.0
-    # Effective weakest translational Cartesian slack/task weight after σ
-    # scheduling (used to preserve the rail-vs-Cartesian hierarchy).
-    cart_translation_weight_effective: float = 0.0
-    # Controller-side geometry telemetry (filled by JointIkController).
-    escape_active: bool = False
-    rail_escape_active: bool = False
-    rail_escape_sign: float = 0.0
-    rail_escape_stopped: bool = False
-    rail_escape_travel_m: float = 0.0
-    rail_escape_v_des_m_s: float = 0.0
-    twist_scale: float = 1.0
-
-
-@dataclass
 class SrDampingConfig:
     """Singularity-robust (SR) damping for nullspace projection (Chiaverini 1997).
 

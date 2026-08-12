@@ -20,6 +20,15 @@ class CbfRows:
     jacobian: np.ndarray   # (n_rows, nv) — packed active or fixed slot layout
     lower: np.ndarray      # (n_rows,)  J_col qdot >= lower
     slot_index: np.ndarray | None = None  # (n_rows,) QP row offset within CBF block
+    names: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class FrameJacobian:
+    """Base-aligned frame Jacobian together with its point of application."""
+
+    jacobian: np.ndarray  # (6, nv), [v_origin; omega]
+    origin: np.ndarray  # (3,), expressed in the base frame
 
 
 @dataclass
@@ -87,27 +96,61 @@ def _frame_linear_jacobians(
     model: pin.Model,
     data: pin.Data,
     geom_model: pin.GeometryModel,
-) -> dict[int, np.ndarray]:
-    pin.computeJointJacobians(model, data)
-    pin.updateFramePlacements(model, data)
-    out: dict[int, np.ndarray] = {}
+    *,
+    kinematics_ready: bool = False,
+) -> dict[int, FrameJacobian]:
+    if not kinematics_ready:
+        pin.computeJointJacobians(model, data)
+        pin.updateFramePlacements(model, data)
+    out: dict[int, FrameJacobian] = {}
     for go in geom_model.geometryObjects:
         fid = int(go.parentFrame)
         if fid not in out:
             J6 = pin.getFrameJacobian(model, data, fid, pin.LOCAL_WORLD_ALIGNED)
-            out[fid] = np.asarray(J6[:3, :], dtype=float)
+            out[fid] = FrameJacobian(
+                jacobian=np.asarray(J6, dtype=float).copy(),
+                origin=np.asarray(data.oMf[fid].translation, dtype=float).copy(),
+            )
     return out
 
 
+def _skew(vector: np.ndarray) -> np.ndarray:
+    x, y, z = np.asarray(vector, dtype=float).reshape(3)
+    return np.array(
+        [[0.0, -z, y], [z, 0.0, -x], [-y, x, 0.0]], dtype=float
+    )
+
+
+def _point_linear_jacobian(
+    frame_jac: FrameJacobian | np.ndarray,
+    point: np.ndarray,
+) -> np.ndarray:
+    """Linear Jacobian at a collision witness point, not the frame origin."""
+
+    if isinstance(frame_jac, FrameJacobian):
+        J6 = np.asarray(frame_jac.jacobian, dtype=float)
+        r = np.asarray(point, dtype=float).reshape(3) - frame_jac.origin
+        # v_point = v_origin + omega x r = v_origin - skew(r) omega.
+        return J6[:3, :] - _skew(r) @ J6[3:, :]
+    J = np.asarray(frame_jac, dtype=float)
+    if J.ndim != 2 or J.shape[0] < 3:
+        raise ValueError("frame Jacobian must have at least three rows")
+    return J[:3, :]
+
+
 def collision_jacobian(
-    frame_jacs: dict[int, np.ndarray],
+    frame_jacs: dict[int, FrameJacobian | np.ndarray],
     geom_model: pin.GeometryModel,
     pair: CollisionPairInfo,
 ) -> np.ndarray:
     go_a = geom_model.geometryObjects[pair.geom_a]
     go_b = geom_model.geometryObjects[pair.geom_b]
-    J_a = frame_jacs[int(go_a.parentFrame)]
-    J_b = frame_jacs[int(go_b.parentFrame)]
+    J_a = _point_linear_jacobian(
+        frame_jacs[int(go_a.parentFrame)], pair.point_a
+    )
+    J_b = _point_linear_jacobian(
+        frame_jacs[int(go_b.parentFrame)], pair.point_b
+    )
     return pair.normal @ (J_a - J_b)
 
 
@@ -118,22 +161,37 @@ def build_cbf_rows(
     cfg: CollisionConfig,
     *,
     tracker: CbfSlotTracker | None = None,
+    kinematics_ready: bool = False,
 ) -> CbfRows:
     """Build CBF inequality rows J_col qdot >= v_safe with optional sticky slots."""
     nv = kin.nv
     if not cfg.enabled:
         return CbfRows(jacobian=np.zeros((0, nv)), lower=np.zeros(0))
 
-    collision.update(q_rad)
+    # GenericQpikRuntime has computed J(q_meas) immediately before P0 and
+    # explicitly proves that fact with ``kinematics_ready``.  Direct callers
+    # default to CollisionModel's self-contained kinematics path.
+    snapshot_ready = bool(kinematics_ready)
+    collision.update(
+        q_rad,
+        kinematic_data=kin.data if snapshot_ready else None,
+        kinematics_ready=snapshot_ready,
+    )
+    jacobian_data = kin.data if snapshot_ready else collision._kin_data  # noqa: SLF001
     raw_pairs = collision.active_pairs(cfg.d_activate + (tracker.hyst_m if tracker else 0.0))
 
     if tracker is not None:
         slotted = tracker.update(raw_pairs, cfg.d_activate)
-        kin_data = collision._kin_data  # noqa: SLF001
-        frame_jacs = _frame_linear_jacobians(collision.model, kin_data, collision.geom_model)
+        frame_jacs = _frame_linear_jacobians(
+            collision.model,
+            jacobian_data,
+            collision.geom_model,
+            kinematics_ready=snapshot_ready,
+        )
         rows = []
         lowers = []
         slots = []
+        names = []
         for i, pair in enumerate(slotted):
             if pair is None:
                 continue
@@ -142,29 +200,38 @@ def build_cbf_rows(
             rows.append(J_col)
             lowers.append(v_safe)
             slots.append(i)
+            names.append(f"self_collision:{pair.name_a}:{pair.name_b}")
         if not rows:
             return CbfRows(jacobian=np.zeros((0, nv)), lower=np.zeros(0))
         return CbfRows(
             jacobian=np.vstack(rows),
             lower=np.asarray(lowers, dtype=float),
             slot_index=np.asarray(slots, dtype=int),
+            names=tuple(names),
         )
 
     pairs = raw_pairs[: cfg.max_pairs]
     if not pairs:
         return CbfRows(jacobian=np.zeros((0, nv)), lower=np.zeros(0))
 
-    kin_data = collision._kin_data  # noqa: SLF001
-    frame_jacs = _frame_linear_jacobians(collision.model, kin_data, collision.geom_model)
+    frame_jacs = _frame_linear_jacobians(
+        collision.model,
+        jacobian_data,
+        collision.geom_model,
+        kinematics_ready=snapshot_ready,
+    )
     rows = []
     lowers = []
+    names = []
     for pair in pairs:
         J_col = collision_jacobian(frame_jacs, collision.geom_model, pair)
         v_safe = -cfg.gamma * (pair.distance - cfg.d_safe)
         rows.append(J_col)
         lowers.append(v_safe)
+        names.append(f"self_collision:{pair.name_a}:{pair.name_b}")
 
     return CbfRows(
         jacobian=np.vstack(rows),
         lower=np.asarray(lowers, dtype=float),
+        names=tuple(names),
     )

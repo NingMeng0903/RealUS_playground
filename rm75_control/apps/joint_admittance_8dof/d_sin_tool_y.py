@@ -38,22 +38,19 @@ from rm75_control.control.admittance_common.state_relay import (
 )
 from rm75_control.control.joint_admittance_8dof.api import compute_move_plan
 from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
-from rm75_control.control.joint_admittance_8dof.loop import JointIkController
 from rm75_control.control.joint_admittance_8dof.sin_tool_y_program import (
     execute_sin_tool_y_program,
     make_task_params_from_args,
-    plan_psi_toggle_sides,
-    plan_q_toggle_at_pose,
     resolve_scan_target_at_d,
 )
 from rm75_control.control.joint_admittance_8dof.model import (
     RobotKinematics,
     deg2rad,
     full_q_from_arm,
-    rad2deg,
 )
 from rm75_control.core.session import RobotSession
 from rm75_control.force.compensation.tool_pose import maybe_sync_kin_tcp_from_config
+from rm75_control.kinematics.srs_ik import psi_from_q
 
 
 @dataclass
@@ -188,7 +185,7 @@ def main() -> int:
         action="store_true",
         help=(
             "At D: force-position hold (no Y sin scan); rail stays COUPLED "
-            "so σ-escape can slide the carriage"
+            "as a continuous variable in the whole-body QP"
         ),
     )
     ap.add_argument(
@@ -277,7 +274,6 @@ def main() -> int:
 
     kin = RobotKinematics()
     inner_cfg = build_joint_ik_config(raw)
-    inner = JointIkController(kin, inner_cfg)
     travel_m = float(inner_cfg.rail.travel_m)
     rail_center_m = 0.5 * travel_m
     rail_plan_m = (
@@ -296,7 +292,7 @@ def main() -> int:
 
     robot_cfg = raw.get("robot", {})
     max_lin = float(args.cartesian_max_lin_vel) if args.cartesian_max_lin_vel is not None else 0.4
-    sigma_ref = float(inner_cfg.qp.sr_damping.sigma_ref)
+    sigma_ref = float(inner_cfg.generic_qpik.health.arm_warn)
 
     local_bus: RobotStateBus | None = None
     state_bus: RobotStateBus | RelayStateBus | None = None
@@ -350,17 +346,6 @@ def main() -> int:
             state_bus = local_bus
             print("rm75 task: CANFD + local UDP (standalone)", flush=True)
 
-        scan_target = resolve_scan_target_at_d(
-            args.slot,
-            kin,
-            euler_order=inner_cfg.euler_order,
-            rail_m=rail_m,
-            qp_cfg=inner_cfg.qp,
-            nullspace_cfg=inner_cfg.nullspace,
-        )
-        pose_d = scan_target.pose_d
-        q_target_rad = np.asarray(scan_target.q_target_rad, dtype=float)
-
         if attach_mode:
             snap0 = state_bus.read()
             if snap0.q_deg is None:
@@ -376,9 +361,16 @@ def main() -> int:
                 deg2rad(np.asarray(st0["joint"][:7], dtype=float)),
                 rail_start_m,
             )
-        psi_tgt = None
-        if inner.arm_task is not None:
-            psi_tgt = inner.arm_task.arm_angle(q_target_rad)
+        scan_target = resolve_scan_target_at_d(
+            args.slot,
+            kin,
+            euler_order=inner_cfg.euler_order,
+            rail_m=rail_m,
+            q_seed_rad=q0_rad,
+        )
+        pose_d = scan_target.pose_d
+        q_target_rad = np.asarray(scan_target.q_target_rad, dtype=float)
+        psi_tgt = float(psi_from_q(q_target_rad))
 
         # PTP mode is explicit (--move-mode); scan/track stays Cartesian/hybrid.
         move_mode = str(args.move_mode)
@@ -399,53 +391,11 @@ def main() -> int:
             euler_order=inner_cfg.euler_order,
         )
 
-        psi_left = None
-        psi_right = None
-        q_toggle_left = None
-        q_toggle_right = None
         if args.scan_duration > 0.0 and args.psi_toggle_period > 0.0:
-            if psi_tgt is None and inner.arm_task is None:
-                raise RuntimeError("--psi-toggle-period requires arm_angle task (psi at D)")
-            q_toggle_center, q_toggle_left, q_toggle_right = plan_q_toggle_at_pose(
-                kin,
-                pose_d,
-                q_target_rad,
-                q0_rad,
-                qp_cfg=inner_cfg.qp,
-                nullspace_cfg=inner_cfg.nullspace,
+            raise RuntimeError(
+                "--psi-toggle-period is disabled: use the generic branch-locked "
+                "posture planner and continuous guide"
             )
-            if inner.arm_task is not None and psi_tgt is not None:
-                _psi_center, psi_left, psi_right = plan_psi_toggle_sides(
-                    inner,
-                    q0_rad,
-                    psi_tgt,
-                    side_offset_rad=np.deg2rad(float(args.psi_side_offset_deg)),
-                    psi_left_rad=(
-                        np.deg2rad(float(args.psi_left_deg))
-                        if args.psi_left_deg is not None
-                        else None
-                    ),
-                    psi_right_rad=(
-                        np.deg2rad(float(args.psi_right_deg))
-                        if args.psi_right_deg is not None
-                        else None
-                    ),
-                    psi_live_left=not args.no_psi_live_left,
-                    kin=kin,
-                    pose_d=pose_d,
-                    q_center_rad=q_target_rad,
-                    qp_cfg=inner_cfg.qp,
-                    nullspace_cfg=inner_cfg.nullspace,
-                )
-            max_l = float(
-                np.max(np.abs(rad2deg(q_toggle_left[1:] - q_toggle_center[1:])))
-            )
-            if max_l < 15.0 and args.psi_left_deg is None:
-                print(
-                    "  WARN: left Δq < 15deg — park arm in LEFT teach pose, "
-                    "then submit (q0 read at task start, before move->D)",
-                    flush=True,
-                )
 
         task_params = make_task_params_from_args(
             args,
@@ -457,10 +407,10 @@ def main() -> int:
             psi_tgt=psi_tgt,
             desired_z=desired_z,
             enable_force=enable_force,
-            psi_left_rad=psi_left,
-            psi_right_rad=psi_right,
-            q_toggle_left_rad=q_toggle_left,
-            q_toggle_right_rad=q_toggle_right,
+            psi_left_rad=None,
+            psi_right_rad=None,
+            q_toggle_left_rad=None,
+            q_toggle_right_rad=None,
             tcp_offset_pose=kin.tcp_offset_pose,
         )
 

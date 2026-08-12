@@ -158,7 +158,7 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
     log_csv_s = str(log_csv).strip() if log_csv else None
     cal_path = str(hw.get("calibration_path", "") or "").strip()
     # ``inner.rail`` is the canonical host-side travel contract shared by the
-    # WBC, RailExtensionTask, and the servo bridge.  Older configs only carried
+    # QPIK, posture planners, and the servo bridge.  Older configs only carried
     # the values under ``hw.lw100``; keep that fallback, but never allow the two
     # control layers to silently operate with different stops.
     inner_has_soft = "soft_min_m" in rail or "soft_max_m" in rail
@@ -582,8 +582,8 @@ class RailServoBridge:
             self.config.vel_kd = float(kd)
         return float(self.config.vel_kp), float(self.config.vel_kd)
 
-    def set_target_m(self, target_m: float) -> None:
-        """Accept a rail position goal; the worker estimates target velocity."""
+    def set_target_m(self, target_m: float) -> bool:
+        """Accept a rail goal and report whether it entered the follow buffer."""
         with self._lock:
             armed = bool(self._armed)
             calibrated = bool(self._calibrated)
@@ -598,7 +598,7 @@ class RailServoBridge:
                     flush=True,
                 )
                 self._log_event("reject_uncalibrated", target_m=float(target_m))
-            return
+            return False
         if not armed:
             now = time.monotonic()
             if now - self._last_reject_unarmed_log >= 1.0:
@@ -609,14 +609,13 @@ class RailServoBridge:
                     flush=True,
                 )
                 self._log_event("reject_unarmed", target_m=float(target_m))
-            return
+            return False
         raw = float(target_m)
         soft_lo, soft_hi = self._soft_lo_hi()
-        travel = float(self.config.travel_m)
         if not math.isfinite(raw):
             print(f"lw100 rail: reject non-finite target {raw}", flush=True)
             self._log_event("reject_nonfinite", target_m=raw)
-            return
+            return False
         if raw < soft_lo - 0.005 or raw > soft_hi + 0.005:
             print(
                 f"lw100 rail: reject target {raw * 1000:.1f} mm "
@@ -624,18 +623,19 @@ class RailServoBridge:
                 flush=True,
             )
             self._log_event("reject_oob", target_m=raw)
-            return
+            return False
         snapped = max(soft_lo, min(soft_hi, raw))
         rx_mono = time.monotonic()
         with self._lock:
             # PANIC latches until explicit rearm (limit DI / encoder fault).
             # Do not auto-clear here — that let WBC resume while the arm kept moving.
             if panic or self._panic:
-                return
+                return False
             self._target_m = snapped
             self._last_target_rx_mono = rx_mono
             self._target_history.append((rx_mono, snapped))
             self._follow_enabled = True
+        return True
 
     def hold_current(self) -> None:
         """Stop following; FA24=0. Keep last sane target (do not adopt insane encoder)."""

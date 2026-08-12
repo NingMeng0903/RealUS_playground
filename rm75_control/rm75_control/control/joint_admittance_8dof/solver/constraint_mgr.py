@@ -9,10 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import CbfRows
-from rm75_control.control.joint_admittance_8dof.utils.safety import (
-    RAIL_ESCAPE_ACCEL_M_S2,
-    SafetyLimits,
-)
+from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 
 
 def _collapse_to(
@@ -64,14 +61,11 @@ class VelocityBoxConstraints:
         qdot_prev: np.ndarray | None = None,
         *,
         q_meas: np.ndarray | None = None,
+        q_cmd: np.ndarray | None = None,
         resync_err: float | np.ndarray = 0.0,
         rail_locked: bool = False,
         rail_lock_vel_eps_m_s: float = 0.0,
         rail_vel_pin_m_s: float | None = None,
-        rail_escape_active: bool = False,
-        rail_escape_sign: float = 0.0,
-        rail_escape_stop: bool = False,
-        rail_escape_accel_m_s2: float | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         lim = self.lim
         q = np.asarray(q, dtype=float)
@@ -120,33 +114,34 @@ class VelocityBoxConstraints:
             hi = np.minimum(hi, lim.v_max * d_hi)
             lo = np.maximum(lo, -lim.v_max * d_lo)
 
-        # v_max + damper is the *executable envelope*: every later stage is
-        # projected back into it, so the returned box can never ask for a
-        # velocity the joint cannot run or one that points into a hard stop.
-        v_lo, v_hi = lo, hi
-
-        # The hardware bridge uses a 0.8 m/s² slew while an escape episode is
-        # signed (or braking at its travel stop).  Apply that override to the
-        # rail only, and only while the episode is explicitly active.  This is
-        # deliberately computed before the acceleration box so the resulting
-        # interval remains intersected with the hard velocity/position box.
-        escape_slew_active = bool(rail_escape_active) and (
-            abs(float(rail_escape_sign)) >= 0.5 or bool(rail_escape_stop)
+        # Position look-ahead belongs to the hard executable envelope.  It is
+        # evaluated for both the measured state (physical safety) and the
+        # independently integrated command state (the value actually sent to
+        # the position streamer).  Keeping the command check inside P0 means
+        # the QP output needs no downstream position clamp that could rewrite
+        # a protected-task lock or an application one-sided row.
+        m = np.broadcast_to(np.asarray(m, dtype=float), q.shape)
+        p_lo = (lim.q_lower + m - q) / dt
+        p_hi = (lim.q_upper - m - q) / dt
+        lo, hi = _collapse_to(
+            np.maximum(lo, p_lo), np.minimum(hi, p_hi), lo, hi
         )
-        a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
-        if escape_slew_active:
-            accel = (
-                RAIL_ESCAPE_ACCEL_M_S2
-                if rail_escape_accel_m_s2 is None
-                else float(rail_escape_accel_m_s2)
+        if q_cmd is not None:
+            q_cmd_arr = np.asarray(q_cmd, dtype=float)
+            if q_cmd_arr.shape != q.shape or not np.all(np.isfinite(q_cmd_arr)):
+                raise ValueError("q_cmd must be finite and match q")
+            cmd_lo = (lim.q_lower + m - q_cmd_arr) / dt
+            cmd_hi = (lim.q_upper - m - q_cmd_arr) / dt
+            lo, hi = _collapse_to(
+                np.maximum(lo, cmd_lo), np.minimum(hi, cmd_hi), lo, hi
             )
-            if np.isfinite(accel) and accel >= 0.0 and q.shape[0] > 0:
-                if a_max is None:
-                    # Keep the ordinary arm joints unbounded when the
-                    # caller disabled their acceleration stage.
-                    a_max = np.full(q.shape, np.inf, dtype=float)
-                a_max[0] = accel
 
+        # Velocity, damper and both position checks form the *hard executable
+        # envelope*.  Acceleration is retained whenever compatible, but is
+        # projected onto this envelope rather than forcing motion into a stop.
+        v_lo, v_hi = lo.copy(), hi.copy()
+
+        a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
         if a_max is not None and qdot_prev is not None:
             qdot_prev = np.asarray(qdot_prev, dtype=float)
             a = a_max * dt
@@ -159,17 +154,6 @@ class VelocityBoxConstraints:
             a_lo = np.maximum(v_lo, qdot_prev - a)
             a_hi = np.minimum(v_hi, qdot_prev + a)
             lo, hi = _collapse_to(a_lo, a_hi, v_lo, v_hi)
-
-        # Position look-ahead, applied last so a margin recovery ramps up
-        # under a_max instead of stepping to v_max.  Inside the margin the
-        # push-back ``p_lo`` is margin/dt, routinely tens of times v_max: it
-        # is a direction, not an achievable speed, so it is clamped into the
-        # box the earlier stages left.
-        p_lo = (lim.q_lower + m - q) / dt
-        p_hi = (lim.q_upper - m - q) / dt
-        lo, hi = _collapse_to(
-            np.maximum(lo, p_lo), np.minimum(hi, p_hi), lo, hi
-        )
 
         # Vectorised command-lead damper: resync_err is either scalar (legacy;
         # arm-only, radians) or an nv-vector with per-joint bounds — arm rad
@@ -184,7 +168,11 @@ class VelocityBoxConstraints:
             active = re > 0.0
             if np.any(active):
                 q_meas = np.asarray(q_meas, dtype=float)
-                lead = q - q_meas
+                # Safety geometry is evaluated at measured q.  Command lead
+                # is the one exception: compare the independently integrated
+                # command state against the same measured snapshot.
+                q_for_lead = q if q_cmd is None else np.asarray(q_cmd, dtype=float)
+                lead = q_for_lead - q_meas
                 band = np.maximum(re * 0.5, 1e-6)
                 d_hi = np.clip((re - lead) / band, 0.0, 1.0)
                 d_lo = np.clip((re + lead) / band, 0.0, 1.0)
@@ -198,12 +186,24 @@ class VelocityBoxConstraints:
 
         if rail_vel_pin_m_s is not None:
             v = float(rail_vel_pin_m_s)
-            lo[0] = v
-            hi[0] = v
+            if not np.isfinite(v):
+                raise ValueError("rail_vel_pin_m_s must be finite")
+            # Plan ownership is subordinate to the already assembled safety
+            # box; it may pin the closest executable velocity, never replace
+            # velocity/position/acceleration/command-lead bounds.
+            v_safe = float(np.clip(v, lo[0], hi[0]))
+            lo[0] = v_safe
+            hi[0] = v_safe
         elif rail_locked:
             eps = max(float(rail_lock_vel_eps_m_s), 0.0)
-            lo[0] = -eps
-            hi[0] = eps
+            lock_lo = max(float(lo[0]), -eps)
+            lock_hi = min(float(hi[0]), eps)
+            if lock_lo > lock_hi:
+                pinned = float(np.clip(0.0, lo[0], hi[0]))
+                lock_lo = pinned
+                lock_hi = pinned
+            lo[0] = lock_lo
+            hi[0] = lock_hi
 
         return lo, hi
 

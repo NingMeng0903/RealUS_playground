@@ -5,8 +5,9 @@ Strategy:
      are reachable by construction (they are hit by some ``q_truth``).
   2. Solve IK from a *different* seed and assert the returned q reproduces the
      pose within tolerance (may land on a different IK branch, that's fine).
-  3. Cross-check against the existing ``pose_ik.solve_pose_ik`` (WBC QP) on a
-     few of them — same reachability decision, comparable accuracy.
+  3. Cross-check against the fixed-rail numerical
+     ``pose_ik.solve_pose_ik`` wrapper on a few of them — same reachability
+     decision, comparable accuracy.
 """
 
 from __future__ import annotations
@@ -108,17 +109,20 @@ def test_ik_dls_rejects_unreachable_pose(lm):
     assert res.report.pos_err_m > 0.5
 
 
-def test_ik_dls_and_qp_agree_on_reachable(lm):
-    """DLS should agree with the QP-based WBC IK on clearly reachable poses.
+def test_ik_dls_and_numerical_agree_on_reachable(lm):
+    """DLS should agree with fixed-rail numerical IK on reachable poses.
 
     We only check the *decision* (both converge) and coarse pose match; the
     two solvers can land on different branches so joint values may differ.
     """
     try:
         from rm75_control.control.joint_admittance_8dof.model import RobotKinematics as Kin8
+        from rm75_control.control.joint_admittance_8dof.numerical_pose_ik import (
+            NumericalPoseIkConfig,
+        )
         from rm75_control.control.joint_admittance_8dof.pose_ik import solve_pose_ik
     except Exception as e:  # pragma: no cover
-        pytest.skip(f"WBC IK unavailable: {e}")
+        pytest.skip(f"8-DOF numerical IK unavailable: {e}")
     kin8 = Kin8(urdf_path=DEFAULT_URDF)
 
     rng = np.random.default_rng(4)
@@ -128,15 +132,21 @@ def test_ik_dls_and_qp_agree_on_reachable(lm):
         # DLS path
         seed = q_truth + rng.normal(scale=0.05, size=q_truth.shape)
         res_dls = ik_dls(lm, target, seed, max_iter=80, lam=0.03)
-        # QP path (8-DOF): pose_target as [x,y,z, rx,ry,rz] xyz-euler; rail_y=0 seed
+        # Fixed-rail numerical path (8-DOF): pose_target as
+        # [x,y,z, rx,ry,rz] xyz-euler; rail_y=0 seed.
         from scipy.spatial.transform import Rotation as R
 
         rxryrz = R.from_matrix(target.rotation).as_euler("xyz", degrees=False)
         pose6 = np.concatenate([target.translation, rxryrz])
         q_seed_full = np.zeros(8)
         q_seed_full[1:] = q_truth
-        q_qp, ok_qp, _ = solve_pose_ik(kin8, q_seed_full, pose6, max_iters=120)
-        if res_dls.report.ok and ok_qp:
+        _q_num, ok_num, _ = solve_pose_ik(
+            kin8,
+            q_seed_full,
+            pose6,
+            config=NumericalPoseIkConfig(max_iters=120),
+        )
+        if res_dls.report.ok and ok_num:
             both += 1
     # Because both solvers get a very good seed here, both should converge
     # on essentially every pose.

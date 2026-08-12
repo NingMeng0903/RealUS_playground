@@ -19,7 +19,6 @@ from rm75_control.control.joint_admittance_8dof.loop import (
     JointTrackOuterLoop,
     Phase,
 )
-from rm75_control.control.joint_admittance_8dof.tasks.arm_angle import _wrap_pi
 from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedStyle, RailMode
 from rm75_control.control.joint_admittance_8dof.model import (
     RobotKinematics,
@@ -34,6 +33,9 @@ from rm75_control.control.joint_admittance_8dof.reference import (
     SrsSmoothMoveReference,
     auto_rail_move_duration_s,
     srs_move_duration_s,
+)
+from rm75_control.control.joint_admittance_8dof.task_adapter import (
+    CartesianTaskProfile,
 )
 
 
@@ -56,70 +58,36 @@ class ArmAngleSpec:
 
 @dataclass
 class SecondaryPolicy:
-    """Nullspace / secondary-task preset: off | move | track | hold."""
+    """Compatibility preset for rail ownership and planner posture hints."""
 
     preset: Literal["off", "move", "track", "hold"] = "track"
     arm_angle: ArmAngleSpec | None = None
     qdot_ff: Literal["off", "plan", "plan_joint"] = "off"
-
-    def _set_arm_angle_reference(
-        self,
-        inner: JointIkController,
-        psi_rad: float | None,
-    ) -> None:
-        if psi_rad is None or inner.arm_task is None:
-            return
-        psi_live = float(inner.arm_task.arm_angle(inner.q_cmd))
-        psi_set = float(psi_live + _wrap_pi(float(psi_rad) - psi_live))
-        inner.arm_task.set_reference(psi_set)
 
     def apply(self, inner: JointIkController, *, psi_rad: float | None = None) -> None:
         psi = psi_rad
         if self.arm_angle is not None and self.arm_angle.psi_rad is not None:
             psi = self.arm_angle.psi_rad
 
+        inner.set_posture_hint(psi_rad=psi)
         if self.preset == "move":
-            # Plan owns posture; suppress secondary fights with the planner.
             inner.set_coupled()
-            inner.set_arm_task_suppressed(True)
-            inner.set_centering_suppressed(True)
-            inner.set_manipulability_active(False)
-            inner.set_rail_extension_mode("pose_attract")
-            inner.set_rail_extension_active(True)
         elif self.preset == "track":
             inner.set_plan_drives_rail(False)
-            inner.set_manipulability_active(False)
-            inner.set_centering_suppressed(False)
-            inner.set_arm_task_suppressed(False)
             # Restore yaml rail mode (live cfg.rail.mode is mutated by locks).
             if inner.configured_rail_mode == RailMode.COUPLED:
                 inner.set_coupled()
-                inner.set_rail_extension_mode("reach")
-                inner.capture_rail_extension_ref()
-                inner.set_rail_extension_active(True)
             else:
                 inner.set_locked(
                     LockedStyle.HOLD, q_ref_m=float(inner.q_cmd[0])
                 )
-                inner.set_rail_extension_active(False)
-            if psi is not None and inner.arm_task is not None:
-                self._set_arm_angle_reference(inner, psi)
         elif self.preset == "hold":
             inner.set_plan_drives_rail(False)
-            inner.set_manipulability_active(False)
-            # Suppress centering (fights teach/force hold); keep arm_angle branch.
-            inner.set_centering_suppressed(True)
-            inner.set_arm_task_suppressed(False)
-            # Pin rail at current q_cmd[0] (never yaml q_ref_m=0.0).
             inner.set_locked(LockedStyle.HOLD, q_ref_m=float(inner.q_cmd[0]))
-            inner.set_rail_extension_active(False)
-            if psi is not None and inner.arm_task is not None:
-                self._set_arm_angle_reference(inner, psi)
         elif self.preset == "off":
-            inner.set_arm_task_suppressed(True)
-            inner.set_centering_suppressed(True)
-            inner.set_manipulability_active(False)
-            inner.set_rail_extension_active(False)
+            inner.set_plan_drives_rail(False)
+        else:
+            raise ValueError(f"unknown SecondaryPolicy preset {self.preset!r}")
 
     def make_qdot_ff_provider(
         self,
@@ -179,6 +147,13 @@ class JointPhaseSpec:
     rail_ref: RailSmoothMoveReference | None = None
     locked_style: LockedStyle = LockedStyle.RAIL_ONLY
     q_rail_target_m: float | None = None
+    # Generic task/planner inputs.  They describe rows and future references;
+    # no trajectory geometry is inferred by the control core.
+    task_profile: CartesianTaskProfile | None = None
+    reference_horizon: Any = None
+    posture_planner: Any = None
+    planner_apply_output: bool = False
+    planner_submit_period_s: float = 0.10
 
 
 @dataclass
@@ -210,7 +185,7 @@ def make_srs_move_reference(
     euler_order: str = "xyz",
 ) -> SrsSmoothMoveReference:
     """Build a branch-locked SRS move reference (plan pose = FK(q_target))."""
-    from rm75_control.kinematics.srs_ik import d_wt_from_kin, psi_from_q
+    from rm75_control.kinematics.srs_ik import psi_from_q
 
     q_start = np.asarray(q_start_rad, dtype=float)
     q_target = np.asarray(q_target_rad, dtype=float)
@@ -219,7 +194,6 @@ def make_srs_move_reference(
     v_max = kin.v_max * 0.5  # match inner v_scale default
     T_rate = srs_move_duration_s(q_start, q_target, max_qdot_rad_s=v_max)
     T = max(float(duration_s), T_rate)
-    d_wt = float(d_wt_from_kin(kin))
     return SrsSmoothMoveReference(
         kin,
         q_start,
@@ -228,7 +202,6 @@ def make_srs_move_reference(
         psi_target_rad=float(psi_from_q(q_target[1:])),
         duration_s=T,
         euler_order=euler_order,
-        d_wt=d_wt,
     )
 
 
@@ -243,7 +216,6 @@ def attach_joint_move_rail(
     def _enter() -> None:
         if prev_on_enter is not None:
             prev_on_enter()
-        inner.set_rail_extension_active(False)
         inner.set_plan_drives_rail(True)
         inner.set_direct_joint_ptp(True)
 
@@ -263,8 +235,8 @@ def attach_srs_move_tracking(
     move_ref: SrsSmoothMoveReference,
     q_target_rad: np.ndarray,
 ) -> None:
-    """Wire ψ_ref(t) + centering for SRS move; pin rail to y_rail(t) plan."""
-    q_target = np.asarray(q_target_rad, dtype=float)
+    """Publish the branch-locked SRS guide and pin rail to its plan."""
+    del q_target_rad
     prev_on_enter = phase.on_enter
     prev_on_tick = phase.on_tick
     prev_on_exit = phase.on_exit
@@ -272,22 +244,17 @@ def attach_srs_move_tracking(
     def _enter() -> None:
         if prev_on_enter is not None:
             prev_on_enter()
-        if not inner._centering_suppressed:
-            inner.centering_task.set_q_target(q_target)
-        if inner.arm_task is not None and not inner._arm_task_suppressed:
-            inner.arm_task.set_reference(move_ref.psi_start)
+        inner.set_posture_hint(psi_rad=move_ref.psi_start)
         inner.set_plan_drives_rail(True)
 
     def _tick(t_ref: float, step, q_meas: np.ndarray) -> None:
-        if inner.arm_task is not None and not inner._arm_task_suppressed:
-            inner.arm_task.set_reference(move_ref.sample_psi(t_ref))
+        inner.set_posture_hint(psi_rad=move_ref.sample_psi(t_ref))
         if prev_on_tick is not None:
             prev_on_tick(t_ref, step, q_meas)
 
     def _exit() -> None:
         inner.set_plan_drives_rail(False)
-        # Restore yaml posture attractor (do not keep D-point as scan target).
-        inner.centering_task.set_q_target(None)
+        inner.set_posture_hint()
         if prev_on_exit is not None:
             prev_on_exit()
 
@@ -574,16 +541,11 @@ def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], No
 
     def _enter() -> None:
         spec.secondary.apply(ctx.inner, psi_rad=psi)
-        # move→D: soft-attract rail to the target pose's rail coordinate.
-        if (
-            spec.secondary.preset == "move"
-            and spec.q_target_rad is not None
-            and len(np.asarray(spec.q_target_rad).reshape(-1)) > 0
-        ):
-            y_tgt = float(np.asarray(spec.q_target_rad, dtype=float).reshape(-1)[0])
-            ctx.inner.set_rail_pose_target(y_tgt)
-            ctx.inner.set_rail_extension_mode("pose_attract")
-            ctx.inner.set_rail_extension_active(True)
+        ctx.inner.set_posture_planner(
+            spec.posture_planner,
+            apply_output=spec.planner_apply_output,
+            submit_period_s=spec.planner_submit_period_s,
+        )
         if spec.mode == TaskMode.LOCKED_MOVE and spec.q_rail_target_m is not None:
             ctx.inner.set_locked(spec.locked_style, q_ref_m=spec.q_rail_target_m)
 
@@ -591,11 +553,12 @@ def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], No
 
 
 def _make_on_exit(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], None] | None:
-    if spec.mode != TaskMode.LOCKED_MOVE:
-        return None
-
     def _exit() -> None:
-        ctx.inner.set_locked(LockedStyle.HOLD, q_ref_m=float(ctx.inner.q_cmd[0]))
+        if spec.mode == TaskMode.LOCKED_MOVE:
+            ctx.inner.set_locked(
+                LockedStyle.HOLD, q_ref_m=float(ctx.inner.q_cmd[0])
+            )
+        ctx.inner.clear_posture_planner()
 
     return _exit
 
@@ -657,6 +620,11 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             qdot_ff_provider=qdot_ff,
             scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
             force_observer=spec.force_observer,
+            task_profile=spec.task_profile,
+            reference_horizon=spec.reference_horizon,
+            posture_planner=spec.posture_planner,
+            planner_apply_output=spec.planner_apply_output,
+            planner_submit_period_s=spec.planner_submit_period_s,
         )
         if spec.move_mode == "joint":
             attach_joint_move_rail(phase, ctx.inner)
@@ -717,6 +685,11 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             qdot_ff_provider=qdot_ff,
             scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
             force_observer=spec.force_observer,
+            task_profile=spec.task_profile,
+            reference_horizon=spec.reference_horizon,
+            posture_planner=spec.posture_planner,
+            planner_apply_output=spec.planner_apply_output,
+            planner_submit_period_s=spec.planner_submit_period_s,
         )
         return CompiledPhase(
             phase=phase,
@@ -757,6 +730,11 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_release_above=gov.release_above,
             force_observer=spec.force_observer,
             scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
+            task_profile=spec.task_profile,
+            reference_horizon=spec.reference_horizon,
+            posture_planner=spec.posture_planner,
+            planner_apply_output=spec.planner_apply_output,
+            planner_submit_period_s=spec.planner_submit_period_s,
         )
         return CompiledPhase(
             phase=phase,
@@ -787,6 +765,11 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_freeze_below=gov.freeze_below,
             governor_release_above=gov.release_above,
             force_observer=spec.force_observer,
+            task_profile=spec.task_profile,
+            reference_horizon=spec.reference_horizon,
+            posture_planner=spec.posture_planner,
+            planner_apply_output=spec.planner_apply_output,
+            planner_submit_period_s=spec.planner_submit_period_s,
         )
         return CompiledPhase(
             phase=phase,

@@ -1,17 +1,36 @@
-"""Joint-space WBC inner loop (Pinocchio slack-QP IK) for RM75-F on Y-axis rail.
+"""Generic task-priority QPIK for an arm with an optional prismatic rail.
 
-8 DOF: rail_y (prismatic) + joint_1..joint_7.  See MD/JOINT_ADMITTANCE_8DOF.md.
+The servo-facing API is trajectory agnostic: applications declare protected
+and scalable task rows, while robot-specific posture planning remains an
+optional lowest-priority plugin.
 """
 
 from __future__ import annotations
 
 __all__ = [
     "RobotKinematics",
-    "QpIkController",
-    "QpConfig",
     "JointIkController",
     "JointIkConfig",
-    "IkStepResult",
+    "RobotState",
+    "ProtectedTask",
+    "ScalableTask",
+    "PostureGuide",
+    "HardConstraintRow",
+    "LinearConstraintSet",
+    "CartesianTaskProfile",
+    "ScalableRowGroup",
+    "TaskSpaceConstraintRow",
+    "TwoLevelQpikConfig",
+    "TwoLevelQpikController",
+    "TwoLevelQpikResult",
+    "ReferenceGovernor",
+    "ReferenceHorizon",
+    "HealthMonitor",
+    "HealthState",
+    "PosturePlanner",
+    "PosturePlanningRequest",
+    "Rm75SrsPosturePlanner",
+    "Rm75SrsPlannerConfig",
     "TaskMode",
     "SecondaryPolicy",
     "ArmAngleSpec",
@@ -33,18 +52,54 @@ def __getattr__(name: str):
         from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 
         return RobotKinematics
-    if name in ("QpIkController", "QpConfig"):
-        from rm75_control.control.joint_admittance_8dof.solver import qp_builder
-
-        return getattr(qp_builder, name)
     if name in ("JointIkController", "JointIkConfig"):
         from rm75_control.control.joint_admittance_8dof import loop
 
         return getattr(loop, name)
-    if name in ("IkStepResult",):
-        from rm75_control.control.joint_admittance_8dof.ik_types import IkStepResult
+    if name in (
+        "RobotState",
+        "ProtectedTask",
+        "ScalableTask",
+        "PostureGuide",
+        "HardConstraintRow",
+        "LinearConstraintSet",
+        "ReferenceHorizon",
+    ):
+        from rm75_control.control.joint_admittance_8dof import generic_tasks
 
-        return IkStepResult
+        return getattr(generic_tasks, name)
+    if name in (
+        "CartesianTaskProfile",
+        "ScalableRowGroup",
+        "TaskSpaceConstraintRow",
+    ):
+        from rm75_control.control.joint_admittance_8dof import task_adapter
+
+        return getattr(task_adapter, name)
+    if name in (
+        "TwoLevelQpikConfig",
+        "TwoLevelQpikController",
+        "TwoLevelQpikResult",
+    ):
+        from rm75_control.control.joint_admittance_8dof.solver import two_level_qpik
+
+        return getattr(two_level_qpik, name)
+    if name == "ReferenceGovernor":
+        from rm75_control.control.joint_admittance_8dof import reference_governor
+
+        return getattr(reference_governor, name)
+    if name in ("HealthMonitor", "HealthState"):
+        from rm75_control.control.joint_admittance_8dof import health_monitor
+
+        return getattr(health_monitor, name)
+    if name in ("PosturePlanner", "PosturePlanningRequest"):
+        from rm75_control.control.joint_admittance_8dof import posture_planner
+
+        return getattr(posture_planner, name)
+    if name in ("Rm75SrsPosturePlanner", "Rm75SrsPlannerConfig"):
+        from rm75_control.control.joint_admittance_8dof import rm75_srs_planner
+
+        return getattr(rm75_srs_planner, name)
     if name in (
         "TaskMode",
         "SecondaryPolicy",

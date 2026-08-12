@@ -19,10 +19,27 @@ from typing import Any
 
 import numpy as np
 
-from Robotic_Arm.rm_ctypes_wrap import (
-    rm_realtime_arm_state_callback_ptr,
-    rm_realtime_push_config_t,
-)
+
+
+def _realtime_sdk_types():
+    """Load the optional RealMan SDK only when UDP feedback is started.
+
+    Kinematics, QPIK and log-replay tooling are intentionally hardware-free.
+    Importing this module must therefore not require a locally installed robot
+    SDK.  Hardware use still fails immediately, with a focused error, when the
+    observer is actually started.
+    """
+
+    try:
+        from Robotic_Arm.rm_ctypes_wrap import (
+            rm_realtime_arm_state_callback_ptr,
+            rm_realtime_push_config_t,
+        )
+    except ModuleNotFoundError as exc:  # pragma: no cover - hardware install
+        raise RuntimeError(
+            "RealMan Robotic_Arm SDK is required to start realtime UDP feedback"
+        ) from exc
+    return rm_realtime_arm_state_callback_ptr, rm_realtime_push_config_t
 
 
 @dataclass
@@ -174,6 +191,7 @@ class RealtimeStateObserver:
     ) -> None:
         if self._running:
             return
+        callback_type, push_config_type = _realtime_sdk_types()
         peer = self._robot_ip or self.config.ip
         if not peer:
             raise ValueError("robot_ip or realtime_push.ip is required for UDP feedback")
@@ -203,17 +221,17 @@ class RealtimeStateObserver:
                 )
             )
 
-        self._callback_ref = rm_realtime_arm_state_callback_ptr(_on_state)
+        self._callback_ref = callback_type(_on_state)
         self.robot.rm_realtime_arm_state_call_back(self._callback_ref)
 
-        push_on = rm_realtime_push_config_t(
+        push_on = push_config_type(
             self.config.cycle,
             True,
             self.config.port,
             self.config.force_coordinate,
             self._target_ip,
         )
-        push_off = rm_realtime_push_config_t(
+        push_off = push_config_type(
             self.config.cycle,
             False,
             self.config.port,
@@ -253,7 +271,8 @@ class RealtimeStateObserver:
             return
         self._running = False
         try:
-            off = rm_realtime_push_config_t(
+            _, push_config_type = _realtime_sdk_types()
+            off = push_config_type(
                 self.config.cycle,
                 False,
                 self.config.port,

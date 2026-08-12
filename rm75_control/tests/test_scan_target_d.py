@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 import yaml
 
 from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
@@ -32,20 +33,18 @@ def test_load_slot_joints_only_d():
 def test_resolve_scan_target_joints_matches_fk():
     kin = RobotKinematics()
     inner_cfg = _inner_cfg()
-    # yaml may set q_ref_m: null (live encoder); tests use soft_min / mid-stroke.
-    rail_m = (
-        float(inner_cfg.rail.q_ref_m)
-        if inner_cfg.rail.q_ref_m is not None
-        else float(getattr(inner_cfg.rail, "soft_min_m", 0.01))
-    )
+    # The live encoder owns the startup rail position; offline tests use the
+    # configured canonical soft minimum explicitly.
+    rail_m = float(getattr(inner_cfg.rail, "soft_min_m", 0.01))
 
     target = resolve_scan_target_at_d(
         "d",
         kin,
         rail_m=rail_m,
-        qp_cfg=inner_cfg.qp,
-        nullspace_cfg=inner_cfg.nullspace,
     )
     assert target.q_target_rad.shape == (8,)
+    # The application-provided rail target is authoritative.  Configuration
+    # selection must not silently replace it with a fixed-arm sigma scan.
+    assert float(target.q_target_rad[0]) == pytest.approx(rail_m, abs=1e-9)
     pose_fk = kin.fk_pose(target.q_target_rad)
     np.testing.assert_allclose(target.pose_d, pose_fk, atol=1e-6)
