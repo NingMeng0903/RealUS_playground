@@ -213,7 +213,7 @@ def test_margin_triggers_escape_while_sigma_healthy() -> None:
     assert task._escape_active
 
 
-def test_latched_escape_zeros_opposing_reach() -> None:
+def test_latched_escape_does_not_override_reach() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -233,17 +233,25 @@ def test_latched_escape_zeros_opposing_reach() -> None:
     task.set_mode("reach")
     q = 0.5 * (kin.q_lower + kin.q_upper)
     task.capture_reference(q)
-    # Force large negative reach error while escape wants +.
+    # Large negative reach error; escape would want +.  Reach stays primary.
     task.d_pref_m = task.extension(q) + 0.30
     v, _ = task(
         q, sigma_scale=0.2, sigma_grad_rail=2.0, joint_margin_frac=1.0, dt_s=0.005
     )
     assert task._escape_active
-    assert task._escape_sign > 0.0
-    assert v > 0.0  # reach opposition cleared
+    assert task.last_v_reach < 0.0
+    assert v * task.last_v_reach > 0.0
+    assert abs(task.last_v_escape) < 1e-9
 
 
-def test_rail_end_flips_escape_sign_once() -> None:
+def test_escape_stays_out_of_the_rail_limit_band() -> None:
+    """Inside the soft-limit fade the carriage has nowhere to escape to.
+
+    Measured on hardware: the latch fired on 29-31% of ticks at the stop
+    versus 5-9% mid-travel, and fighting the reach term against the wall is
+    what the operator feels as rail chatter.  Limit avoidance there belongs
+    to the weighted-least-norm reg, which hands the stroke to the arm.
+    """
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -261,20 +269,22 @@ def test_rail_end_flips_escape_sign_once() -> None:
     )
     task.set_mode("reach")
     q = 0.5 * (kin.q_lower + kin.q_upper)
-    # Park near high soft limit; +grad would point into the wall.
-    q[0] = float(kin.q_upper[0]) - 0.02
+    q[0] = float(kin.q_upper[0]) - 0.02  # inside the 0.08 m fade band
     task.capture_reference(q)
-    v1, _ = task(
-        q, sigma_scale=0.2, sigma_grad_rail=2.0, joint_margin_frac=1.0, dt_s=0.005
+    for _ in range(2):
+        task(
+            q, sigma_scale=0.2, sigma_grad_rail=2.0, joint_margin_frac=1.0, dt_s=0.005
+        )
+        assert not task._escape_active
+        assert abs(task.last_v_escape) < 1.0e-12
+
+    # Well inside travel the latch still works as before.
+    q_mid = 0.5 * (kin.q_lower + kin.q_upper)
+    task.capture_reference(q_mid)
+    task(
+        q_mid, sigma_scale=0.2, sigma_grad_rail=2.0, joint_margin_frac=1.0, dt_s=0.005
     )
     assert task._escape_active
-    assert task._escape_sign < 0.0  # flipped away from high end
-    assert task._escape_flipped_at_end
-    v2, _ = task(
-        q, sigma_scale=0.2, sigma_grad_rail=2.0, joint_margin_frac=1.0, dt_s=0.005
-    )
-    assert task._escape_sign < 0.0  # stays flipped (once)
-    assert v1 < 0.0 and v2 < 0.0
 
 
 def test_healthy_vel_ff_follows_without_escape_latch() -> None:

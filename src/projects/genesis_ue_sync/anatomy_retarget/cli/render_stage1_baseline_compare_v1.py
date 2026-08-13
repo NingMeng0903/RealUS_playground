@@ -67,7 +67,20 @@ COLORS = {
 }
 
 
-def _camera_manifest(skin: np.ndarray, frames: np.ndarray) -> dict[str, dict[str, Any]]:
+def _camera_manifest(
+    skin: np.ndarray,
+    frames: np.ndarray,
+    *,
+    include_acceptance_views: bool = False,
+) -> dict[str, dict[str, Any]]:
+    """Cameras derived only from the SMPL-X skin and frozen validation frames.
+
+    ``include_acceptance_views`` adds the whole-body lateral, feet-top and
+    pelvis-context views that MD/todo_ana.md section 9.5 requires and the
+    original review packs never had.  It defaults off so existing packs stay
+    byte-identical.
+    """
+
     lookup = {spec.name: index for index, spec in enumerate(JOINT_SPECS)}
     lower = np.min(skin, axis=0)
     upper = np.max(skin, axis=0)
@@ -88,6 +101,32 @@ def _camera_manifest(skin: np.ndarray, frames: np.ndarray) -> dict[str, dict[str
             "fov": 34.0,
         },
     }
+    if include_acceptance_views:
+        left_ankle = frames[lookup["left_ankle"], :3, 3]
+        right_ankle = frames[lookup["right_ankle"], :3, 3]
+        feet = 0.5 * (left_ankle + right_ankle)
+        left_hip = frames[lookup["left_hip"], :3, 3]
+        right_hip = frames[lookup["right_hip"], :3, 3]
+        pelvis = 0.5 * (left_hip + right_hip)
+        cameras["whole_lateral"] = {
+            "pos": tuple((center + (distance, 0.0, 0.0)).tolist()),
+            "lookat": tuple(center.tolist()),
+            "up": (0.0, 1.0, 0.0),
+            "fov": 34.0,
+        }
+        cameras["feet_top"] = {
+            # Looking down the +Y axis, so "up" has to leave the view axis.
+            "pos": tuple((feet + (0.0, 0.75, 0.0)).tolist()),
+            "lookat": tuple(feet.tolist()),
+            "up": (0.0, 0.0, -1.0),
+            "fov": 34.0,
+        }
+        cameras["pelvis_context"] = {
+            "pos": tuple((pelvis + (0.0, 0.0, 0.85)).tolist()),
+            "lookat": tuple(pelvis.tolist()),
+            "up": (0.0, 1.0, 0.0),
+            "fov": 34.0,
+        }
     for side, sign in (("left", 1.0), ("right", -1.0)):
         specs = (
             ("hip", "ap", (0.0, 0.0, 0.42), (0.0, 1.0, 0.0)),
@@ -248,6 +287,7 @@ def _render_modes(
     frames: np.ndarray,
     backend: str,
     camera_names: list[str] | tuple[str, ...] | None = None,
+    include_acceptance_views: bool = False,
 ) -> dict[str, Any]:
     bone_mask = _mask(asset, {"bone"})
     vessel_mask = _mask(asset, {"vessel"})
@@ -264,7 +304,9 @@ def _render_modes(
     outside_faces = _outside_faces(
         vertices, asset.faces, bone_mask, skin, skin_faces
     )
-    cameras = _camera_manifest(skin, frames)
+    cameras = _camera_manifest(
+        skin, frames, include_acceptance_views=include_acceptance_views
+    )
     if camera_names is not None:
         missing = [name for name in camera_names if name not in cameras]
         if missing:

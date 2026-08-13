@@ -162,6 +162,8 @@ class RailExtensionTask:
         self.last_v_ff: float = 0.0
         self.last_v_escape: float = 0.0
         self.last_v_reach: float = 0.0
+        self.last_rail_ff_m: float = float("nan")
+        self.last_track_err_m: float = 0.0
 
     def set_mode(self, mode: RailExtMode) -> None:
         mode_s = str(mode).strip().lower()
@@ -221,6 +223,14 @@ class RailExtensionTask:
         self._sigma_raw_prev = None
         self._v_lpf = 0.0
         self._v_lpf_initialized = False
+
+    def _rail_in_limit_band(self, q_rail: float) -> bool:
+        """True while the carriage sits inside either soft-limit fade band."""
+        margin = float(self.cfg.limit_margin_m)
+        if margin <= 1.0e-9:
+            return False
+        lo, hi = self._soft_travel()
+        return bool(q_rail <= lo + margin or q_rail >= hi - margin)
 
     def _rail_end_blocks(self, q_rail: float, sign: float) -> bool:
         """True if moving with ``sign`` (+1/−1) points into the soft-limit fade."""
@@ -476,10 +486,20 @@ class RailExtensionTask:
         dt_s: float | None,
         joint_margin_frac: float = 1.0,
         sigma_raw: float | None = None,
+        y_tcp_d: float | None = None,
     ) -> tuple[float, float]:
         if self.d_pref_m is None:
             self.capture_reference(q)
-        err = self.extension(q) - float(self.d_pref_m)
+        d_star = float(self.d_pref_m)
+        y = float(q[RAIL_INDEX])
+        if y_tcp_d is not None and np.isfinite(float(y_tcp_d)):
+            y_des = float(y_tcp_d)
+        else:
+            y_des = float(self.kin.fk_placement(q).translation[1])
+        rail_ff = y_des - d_star
+        err = rail_ff - y
+        self.last_rail_ff_m = float(rail_ff)
+        self.last_track_err_m = float(err)
         span = max(float(self.cfg.e1_m) - float(self.cfg.e0_m), 1e-6)
         w_reach = float(self.cfg.w_max) * _smoothstep01(
             (abs(err) - float(self.cfg.e0_m)) / span
@@ -497,7 +517,6 @@ class RailExtensionTask:
         # MotionReference (dbb/4d). Soft σ bias is a separate term below.
         thr = float(self.cfg.v_ff_thr_m_s)
         ff_owns = abs(v_ff) > thr
-        y = float(q[RAIL_INDEX])
         # Trajectory owns rail direction: clear sticky latch (not merely mute v).
         grad_latched = self._escape_latched(
             sigma_scale=sig,
@@ -511,15 +530,27 @@ class RailExtensionTask:
         cap = max(float(self.cfg.v_reach_cap_m_s), 0.0)
         if cap > 0.0:
             v_reach = float(np.clip(v_reach, -cap, cap))
-        if self._escape_active:
-            # Latch = commit (only when trajectory is NOT owning the rail).
-            v_escape = float(self.cfg.k_esc) * float(grad_latched)
+        # Demoted: healthy σ (raw ≥ 0.08) never lets escape drive the rail.
+        # Unit tests that omit sigma_raw keep the latch path at reduced gain.
+        healthy_sigma = sigma_raw is not None and float(sigma_raw) >= 0.08
+        # Inside the soft-limit band the carriage has nowhere left to go, so
+        # escape can only fight the reach term against the wall.  Measured at
+        # the stop: escape latched 29-31% of ticks versus 5-9% mid-travel,
+        # and that tug-of-war is what the operator feels as rail chatter.
+        if self._rail_in_limit_band(y):
+            self._clear_escape_latch()
+            v_escape = 0.0
+        elif healthy_sigma:
+            self._escape_active = False
+            v_escape = 0.0
+        elif self._escape_active:
+            v_escape = 0.25 * float(self.cfg.k_esc) * float(grad_latched)
             if abs(v_escape) > 1e-9 and v_reach * v_escape < 0.0:
-                v_reach = 0.0
-                w_reach = 0.0
+                v_escape = 0.0
         else:
-            # Continuous soft σ bias (4d/dbb): never sticky; anti-oppose FF.
-            v_escape = float(self.cfg.k_esc) * (1.0 - sig) * float(sigma_grad_rail)
+            v_escape = (
+                0.25 * float(self.cfg.k_esc) * (1.0 - sig) * float(sigma_grad_rail)
+            )
             if ff_owns and v_escape * v_ff < 0.0:
                 v_escape = 0.0
             else:
@@ -566,6 +597,7 @@ class RailExtensionTask:
         dt_s: float | None = None,
         joint_margin_frac: float = 1.0,
         sigma_raw: float | None = None,
+        y_tcp_d: float | None = None,
     ) -> tuple[float, float]:
         """Return ``(v_rail_des, w_ext)`` for the QP."""
         if not self.cfg.enabled:
@@ -587,6 +619,7 @@ class RailExtensionTask:
             sigma_grad_rail=sigma_grad_rail,
             vel_ff=vel_ff,
             dt_s=dt_s,
+            y_tcp_d=y_tcp_d,
             joint_margin_frac=joint_margin_frac,
             sigma_raw=sigma_raw,
         )

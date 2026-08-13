@@ -70,13 +70,11 @@ def test_vertical_press_lift_reconfigures_without_rail_hunting() -> None:
     lift_rail = np.array([step.qdot[0] for step in lift])
     assert _meaningful_reversals(press_rail) == 0
     assert _meaningful_reversals(lift_rail) <= 1
-    # Healthy-ish σ uses soft continuous bias (not early latch); still moves rail.
-    assert max(abs(press_rail)) > 1.0e-3
+    # Healthy σ: σ-escape is demoted and must not hunt the carriage.
+    assert not any(bool(s.rail_escape_active) for s in press)
     prefs = np.array(
         [s.rail_macro_pref_v for s in press if abs(s.rail_macro_pref_v) > 5.0e-4]
     )
-    assert prefs.size >= 1
-    # Narrow latch must not fire on this mild-σ press (enter≈0.55).
-    assert not any(bool(s.rail_escape_active) for s in press)
+    assert prefs.size == 0 or float(np.max(np.abs(prefs))) < 0.02
     assert all(np.sign(step.q_send[4]) == elbow_sign for step in (*press, *lift))
     assert all(np.sign(step.q_send[6]) == wrist_sign for step in (*press, *lift))

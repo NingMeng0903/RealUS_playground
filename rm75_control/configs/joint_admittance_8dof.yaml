@@ -53,6 +53,10 @@ qpik:
       locked_style: hold
       lock_vel_eps_m_s: 0.0
       v_max_m_s: 0.15
+      # Carriage servo measures ~26 ms/loop with its own 0.8 m/s² shaper, so
+      # it cannot follow a rail velocity that steps every 6 ms.  Shape the
+      # command to the actuator instead of letting the servo clip it.
+      cmd_lpf_tau_s: 0.04
       travel_m: 0.80
       soft_min_m: 0.005   # temporary: matches manual-zero JSON (limits broken)
       soft_max_m: 0.78
@@ -80,6 +84,7 @@ inner:
       sigma_floor: 1.0e-6
     task_weight_min_frac: 0.05
     task_weight_lpf_tau_s: 0.25
+    twist_scale_lpf_tau_s: 0.08
     use_mass_weighted_reg: true
     mass_reg_floor: 0.05
     mass_weight_exempt_rail: true
@@ -89,6 +94,21 @@ inner:
     limit_damper_band_rail_m: 0.02
     sns_retry_scales: [1.0, 0.85, 0.7, 0.55, 0.4, 0.25]
     smoothness_weight: 0.15
+    # Third-order box: bounds how fast the commanded acceleration may turn.
+    # Measured jerk RMS was 250-570 rad/s³ with the acceleration flipping sign
+    # on ~half the ticks while the reference twist was smooth.
+    j_max_arm_rad_s3: 300.0
+    j_max_rail_m_s3: 3.0
+    # Chan & Dubey weighted least-norm: reg_i grows as a joint approaches its
+    # stop *while moving toward it*, so the stroke transfers to the other
+    # joints before the velocity box hits the wall.  Sized so the rail
+    # (reg 1e-3) becomes dearer than an arm joint (1e-2) about 6 cm out.
+    wln:
+      enabled: true
+      k: 1.0
+      band_rad: 0.35
+      band_rail_m: 0.12
+      max_scale: 50.0
     sigma_setbased:
       enabled: true
       activate: 0.12
@@ -132,13 +152,12 @@ inner:
 
   psi_retarget:
     enabled: true
-    evals_per_tick: 2
-    psi_step_deg: 5.0
+    n_y: 9
+    n_d: 8
+    n_psi: 9
+    w_sigma: 0.5
     psi_rate_deg_s: 20.0
-    psi_lpf_tau_s: 0.30
-    rail_step_m: 0.05
-    d_pref_rate_m_s: 0.02
-    d_pref_lpf_tau_s: 0.40
+    rail_margin_m: 0.02
 
   rail_extension:
     enabled: true
@@ -275,8 +294,11 @@ hybrid_motion:
   recontact_hold_s: 0.12
   contact_episode_release_s: 0.30
   contact_episode_release_force_n: 0.75
+  # Restored from e85c9ab.  Steady under-force offset rejection; 1bfe98b
+  # disabled it as part of the anti-bounce sweep, and the force barrier below
+  # now provides that brake instead.
   force_dob:
-    enabled: false
+    enabled: true
     ki: 8.0
     leak_s: 0.4
     u_max_n: 1.5
@@ -300,7 +322,10 @@ hybrid_motion:
     mass_floor_kg: 0.05
   # Force-axis slew is press-positive and asymmetric.  A sign reversal into
   # retract gets the fastest allowance and is never tank/alpha gated.
-  force_axis_slew_press_m_s2: 0.30
+  # 0.30 allowed press to rise only ~1.9 mm/s per 6.2 ms tick — 0.27 s to
+  # reach the 80 mm/s cap, which is the "damped, not light" feel.  The force
+  # barrier is the error-gated brake; this no longer has to be one.
+  force_axis_slew_press_m_s2: 0.80
   force_axis_slew_retract_m_s2: 1.20
   force_axis_slew_reverse_m_s2: 2.00
   # Lee-structure speed-level engineering adapter.  Observe is deliberately
@@ -313,6 +338,9 @@ hybrid_motion:
     feedback_delay_verified: false
     require_sign_verification: true
     require_delay_verification: true
+    # Lee Sec. V-C: alpha is zero in free space.  Below this |fz| the gate is
+    # held off and the tank charges from proxy damping.
+    free_space_force_n: 0.5
     Dtrack: 25.0
     Kd: 25.0
     Kp: 250.0              # Dtrack / 0.10 s
@@ -379,9 +407,11 @@ hybrid_motion:
     bd_slew_max: 400.0
     ke_slew_max: 1200.0
   proactive_feedforward: true
-  proactive_retract_only: true
-  # Stage-1 baseline permits proactive retract only. Active press is re-enabled
-  # only through the bidirectional-flow energy budget.
+  # Bidirectional press feedforward restored from e85c9ab: retract_only killed
+  # the press-side v_r integration outright (measured v_r_z p95 = 0), which is
+  # the single largest cause of slow under-force chase.  The force barrier
+  # still caps press as the force error closes.
+  proactive_retract_only: false
   proactive_gain: 0.24
   proactive_retract_gain: 0.30
   proactive_leak_s: 0.25

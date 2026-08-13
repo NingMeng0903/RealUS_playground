@@ -1,5 +1,7 @@
 # 基于 `142ece5f` 的快速、拓扑保持解剖骨骼 Retarget 记录与执行计划
 
+2026-08-13 现状摘要（bakeoff + 图审 + 方向）：[`MD/todo_ana_status_20260813.md`](todo_ana_status_20260813.md)。下文 §0.0–§0.13 仍是详细日志。
+
 更新时间：2026-08-03
 
 基线提交：`142ece5f0bc646978ae3e8c9add76deea71c26a2`  

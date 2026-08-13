@@ -18,10 +18,16 @@ from rm75_control.control.admittance_common.bidirectional_flow import (
 
 
 def _active_cfg(**overrides: object) -> BidirectionalFlowConfig:
-    """Small deterministic config with no proxy/real-port mismatch terms."""
+    """Small deterministic config with no proxy/real-port mismatch terms.
+
+    ``free_space_force_n=0`` opts out of the free-space alpha override so the
+    cases below exercise Lee's raw power law at the sub-newton forces that
+    keep the arithmetic checkable by hand.  The override has its own test.
+    """
 
     values: dict[str, object] = dict(
         mode="active",
+        free_space_force_n=0.0,
         sign_verified=True,
         feedback_delay_verified=True,
         require_sign_verification=True,
@@ -217,8 +223,77 @@ def test_alpha_gate_structure_is_bounded_and_telemetry_is_finite() -> None:
         assert np.isfinite(ctrl.command)
         assert np.isfinite(ctrl.P_phys)
         assert np.isfinite(ctrl.P_mismatch)
-        assert ctrl.alpha_case in {"Pe", "Pc", "nonpositive", "stale", "tank_low"}
+        assert ctrl.alpha_case in {
+            "Pe",
+            "Pc",
+            "nonpositive",
+            "stale",
+            "tank_low",
+            "free_space",
+        }
         assert ctrl.telemetry.alpha_case == ctrl.alpha_case
+
+
+def test_free_space_pins_alpha_to_zero_and_charges_the_tank() -> None:
+    """Lee Sec. V-C: alpha is zero in free space, and damping charges the tank.
+
+    The paper's own free-space run still saw alpha lifted by F/T noise, so the
+    override is explicit rather than left to the power test.
+    """
+    cfg = _active_cfg(
+        free_space_force_n=0.5,
+        M_p=1.0,
+        D_p=25.0,
+        nominal_damping=25.0,
+        T0=0.002,
+        Tmin=0.0001,
+        Tmax=0.004,
+    )
+    ctrl = BidirectionalFlowController(0.005, cfg)
+    t0 = float(ctrl.tank_energy)
+    for _ in range(40):
+        _step(ctrl, 0.04, va=0.04, force=0.05)
+    assert ctrl.alpha == pytest.approx(0.0)
+    assert ctrl.alpha_case == "free_space"
+    assert ctrl.tank_energy >= t0 - 1e-12
+
+    # A drained tank must not force alpha=1 in free space either.
+    ctrl.tank_energy = cfg.Tmin
+    _step(ctrl, 0.04, va=0.04, force=0.05)
+    assert ctrl.alpha == pytest.approx(0.0)
+
+
+def test_storage_terms_share_one_inertia() -> None:
+    """Sn and Sr_hat are the same scaled inertia, so alpha changes are free.
+
+    They used M_p=1.0 and M_a=0.05, a 20x artefact that booked a positive
+    modulation debit on every alpha rise and drained the tank one way.
+    """
+    cfg = _active_cfg(M_p=1.0, M_a=0.05, K_a=0.0, free_space_force_n=0.0)
+    ctrl = BidirectionalFlowController(0.005, cfg)
+    _step(ctrl, 0.10, va=0.10, force=1.0)
+    assert ctrl.Sn == pytest.approx(ctrl.Sr_hat, abs=1e-12)
+    assert ctrl.modulation_debit_j == pytest.approx(0.0, abs=1e-12)
+
+
+def test_edot_is_time_aligned_to_the_delayed_velocity_sample() -> None:
+    """A pure transport lag must not read as energy generation.
+
+    vp is current while va is one CANFD round trip old, so the raw difference
+    is dominated by the link, not by the contact.
+    """
+    dt = 0.005
+    cfg = _active_cfg(free_space_force_n=0.0, max_feedback_age_s=0.020)
+    ctrl = BidirectionalFlowController(dt, cfg)
+    # Ramp the proxy, and feed back the value it held 4 ticks (20 ms) ago.
+    hist: list[float] = []
+    for i in range(30):
+        vp_cmd = 0.002 * i
+        delayed = hist[-4] if len(hist) >= 4 else 0.0
+        _step(ctrl, vp_cmd, va=delayed, force=1.0, age=4 * dt)
+        hist.append(float(ctrl.vp))
+    # Aligned, the mismatch is the ramp's own curvature, not 4 ticks of ramp.
+    assert abs(ctrl.mismatch_velocity_aligned) < abs(ctrl.vp - ctrl.va)
 
 
 def test_delayed_one_dimensional_hard_contact_does_not_press_on_stale_sample() -> None:

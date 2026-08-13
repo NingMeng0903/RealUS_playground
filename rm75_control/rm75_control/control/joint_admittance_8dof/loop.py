@@ -137,6 +137,14 @@ class JointIkStep:
     rail_contrib_m_s: float = float("nan")
     arm_contrib_m_s: float = float("nan")
     rail_motion_share: float = float("nan")
+    wln_scale_rail: float = float("nan")
+    wln_scale_arm_max: float = float("nan")
+    waste_ratio: float = float("nan")
+    rail_ff_m: float = float("nan")
+    rail_track_err_m: float = float("nan")
+    d_star_m: float = float("nan")
+    psi_star_deg: float = float("nan")
+    minmax_margin: float = float("nan")
     controller_mode: str = "qpik"
     qp_backend: str = ""
     qp_solver_status: str = "not_run"
@@ -307,6 +315,9 @@ class JointIkController:
         self._arm_task_suppressed = False
         self._centering_suppressed = False
         self._manipulability_active = False
+        self._twist_scale_filt = 1.0
+        self._rail_v_filt = 0.0
+        self._box_dt_last_t: float | None = None
         self.secondary = SecondaryComposer.from_controller_parts(
             self.centering_task,
             self.arm_task,
@@ -377,6 +388,62 @@ class JointIkController:
         if self.rail_ext_task is not None:
             self.rail_ext_task.capture_reference(self.q_cmd)
 
+    def _measure_box_dt(self, dt: float) -> float:
+        """Wall period for the rate limits (integration stays on nominal dt).
+
+        The loop is configured at 5 ms but measures ~6.2 ms, and the boxes were
+        sized with the nominal value — so the acceleration limit was silently
+        24% tighter than configured and a jerk limit would be 38% tighter
+        (it scales with dt²).  Clamped so one stalled tick cannot open them up.
+        """
+        now = time.monotonic()
+        prev = self._box_dt_last_t
+        self._box_dt_last_t = now
+        nominal = max(float(dt), 1.0e-6)
+        if prev is None:
+            return nominal
+        measured = now - prev
+        if not math.isfinite(measured) or measured <= 0.0:
+            return nominal
+        return float(np.clip(measured, 0.8 * nominal, 2.0 * nominal))
+
+    def _rail_cmd_lpf(self, v_rail: float, dt: float) -> float:
+        """First-order shaping of the rail velocity toward the servo bandwidth."""
+        tau = float(getattr(self.cfg.rail, "cmd_lpf_tau_s", 0.0) or 0.0)
+        if tau <= 1.0e-9 or dt <= 0.0:
+            self._rail_v_filt = float(v_rail)
+            return float(v_rail)
+        alpha = min(1.0, float(dt) / tau)
+        self._rail_v_filt += alpha * (float(v_rail) - self._rail_v_filt)
+        return float(self._rail_v_filt)
+
+    def plan_scan_stroke(
+        self,
+        y_center_m: float,
+        amplitude_m: float,
+        q_rad: np.ndarray | None = None,
+    ) -> tuple[float, float]:
+        """One-shot min-max (d*, ψ*) at scan start.  Raises if infeasible."""
+        q = self.q_cmd if q_rad is None else np.asarray(q_rad, dtype=float)
+        if self.posture_retarget is None:
+            y_tcp = float(self.kin.fk_placement(q).translation[1])
+            d_star = y_tcp - float(q[0])
+            if self.rail_ext_task is not None:
+                self.rail_ext_task.set_d_pref(d_star)
+            return d_star, float("nan")
+        d_star, psi_star = self.posture_retarget.plan_stroke(
+            q,
+            y_center_m=float(y_center_m),
+            amplitude_m=float(amplitude_m),
+            rail_lo=float(self.limits.q_lower[0]),
+            rail_hi=float(self.limits.q_upper[0]),
+        )
+        if self.arm_task is not None:
+            self.arm_task.set_reference(float(psi_star))
+        if self.rail_ext_task is not None:
+            self.rail_ext_task.set_d_pref(float(d_star))
+        return float(d_star), float(psi_star)
+
     def _latch_attractor_from_q(self, q_meas: np.ndarray) -> None:
         """Latch yaml |q*| signs from measurement; sync branch barriers."""
         q = np.asarray(q_meas, dtype=float).reshape(-1)
@@ -399,6 +466,9 @@ class JointIkController:
             self.rail_ext_task.reset(self.q_cmd)
         if self.posture_retarget is not None:
             self.posture_retarget.reset(self.q_cmd)
+        self._twist_scale_filt = 1.0
+        self._rail_v_filt = 0.0
+        self._box_dt_last_t = None
         self._direct_joint_ptp = False
         self._plan_drives_rail = False
         self._apply_rail_mode_side_effects()
@@ -627,6 +697,40 @@ class JointIkController:
             rail_contrib_m_s=float(rail_contrib_m_s),
             arm_contrib_m_s=float(arm_contrib_m_s),
             rail_motion_share=float(rail_motion_share),
+            wln_scale_rail=float(self.core.last_wln_scale[0]),
+            wln_scale_arm_max=float(np.max(self.core.last_wln_scale[1:])),
+            waste_ratio=(
+                (abs(float(rail_contrib_m_s)) + abs(float(arm_contrib_m_s)))
+                / max(abs(float(rail_contrib_m_s) + float(arm_contrib_m_s)), 1.0e-9)
+                if np.isfinite(rail_contrib_m_s) and np.isfinite(arm_contrib_m_s)
+                else float("nan")
+            ),
+            rail_ff_m=(
+                float(getattr(self.rail_ext_task, "last_rail_ff_m", float("nan")))
+                if self.rail_ext_task is not None
+                else float("nan")
+            ),
+            rail_track_err_m=(
+                float(getattr(self.rail_ext_task, "last_track_err_m", float("nan")))
+                if self.rail_ext_task is not None
+                else float("nan")
+            ),
+            d_star_m=(
+                float(self.posture_retarget.d_star_m)
+                if self.posture_retarget is not None
+                else float("nan")
+            ),
+            psi_star_deg=(
+                float(np.degrees(self.posture_retarget.psi_star_rad))
+                if self.posture_retarget is not None
+                and np.isfinite(self.posture_retarget.psi_star_rad)
+                else float("nan")
+            ),
+            minmax_margin=(
+                float(self.posture_retarget.last_minmax_margin)
+                if self.posture_retarget is not None
+                else float("nan")
+            ),
             controller_mode=mode,
             qp_backend=self.core.backend_name,
             qp_solver_status=self.core.last_status if mode == "qpik" else "not_run",
@@ -668,6 +772,7 @@ class JointIkController:
         qdot_ff: np.ndarray | None = None,
         *,
         vel_ff: np.ndarray | None = None,
+        pose_d: np.ndarray | None = None,
         f_ext_z: float | None = None,
         f_des_z: float | None = None,
         contact_active: bool = False,
@@ -708,11 +813,20 @@ class JointIkController:
         sigma_pre = float(self.kin.singular_values(J_pre).min())
         sigma_arm = float(np.linalg.svd(J_pre[:, 1:], compute_uv=False).min())
         if sigma_ref > 1e-9 and sigma_pre < sigma_ref:
-            # Tiny numeric floor only; set-based σ + rail own "尽量不进".
-            floor = float(getattr(self.cfg.qp, "twist_sigma_floor", 0.02))
+            floor = float(getattr(self.cfg.qp, "twist_sigma_floor", 0.25))
             twist_scale = max(float(sigma_pre / sigma_ref), floor)
             if sigma_pre < 0.5 * sigma_ref:
                 twist_scale = max(twist_scale * twist_scale, floor)
+        else:
+            twist_scale = 1.0
+        tau_ts = float(getattr(self.cfg.qp, "twist_scale_lpf_tau_s", 0.0) or 0.0)
+        if tau_ts > 1e-9 and dt > 0.0:
+            alpha_ts = min(1.0, dt / tau_ts)
+            self._twist_scale_filt += alpha_ts * (twist_scale - self._twist_scale_filt)
+            twist_scale = float(self._twist_scale_filt)
+        else:
+            self._twist_scale_filt = float(twist_scale)
+        if twist_scale < 1.0:
             twist_base = twist_base * twist_scale
 
         locked_hold = self.is_locked_hold
@@ -825,6 +939,11 @@ class JointIkController:
                 activation=self.centering_task.cfg.activation,
             )
             joint_margin_frac = float(np.clip(1.0 - u_max, 0.0, 1.0))
+            y_tcp_d = None
+            if pose_d is not None:
+                pose_d_arr = np.asarray(pose_d, dtype=float).reshape(-1)
+                if pose_d_arr.size >= 2 and np.isfinite(pose_d_arr[1]):
+                    y_tcp_d = float(pose_d_arr[1])
             v_ext, w_ext = self.rail_ext_task(
                 q_prev,
                 sigma_scale=sig_scale,
@@ -833,6 +952,7 @@ class JointIkController:
                 dt_s=float(dt),
                 joint_margin_frac=joint_margin_frac,
                 sigma_raw=sigma_now,
+                y_tcp_d=y_tcp_d,
             )
             rail_ext_err = self.rail_ext_task.last_err_m
             rail_escape_active = bool(self.rail_ext_task._escape_active)
@@ -866,6 +986,7 @@ class JointIkController:
             zero_secondary_rail=not locked_hold,
             rail_task_vel_m_s=rail_task_vel,
             rail_task_weight=rail_task_weight,
+            box_dt=self._measure_box_dt(dt),
         )
 
         qdot_out = np.asarray(r.qdot, dtype=float).copy()
@@ -889,6 +1010,15 @@ class JointIkController:
                     rail_locked=locked_hold, rail_vel_pin=rail_vel_pin,
                 )
                 fallback_reason = fallback_reason or "projected_into_velocity_box"
+
+        # Bandwidth match before integration: the carriage is a separate
+        # Modbus servo (26 ms loop measured, own 0.8 m/s² shaper), so a rail
+        # velocity that steps every 6 ms arrives as a staircase it cannot
+        # track — it then saturates its own accel limit and chatters.  The
+        # applied value feeds core.qdot_prev below, so the next QP tick sees
+        # the real rail state and the arm covers the difference.
+        if self._rail_mode == RailMode.COUPLED:
+            qdot_out[0] = self._rail_cmd_lpf(float(qdot_out[0]), dt)
 
         q_next = q_prev + qdot_out * dt
         rep = self.safety.clamp(q_prev, q_next, dt)
@@ -1575,11 +1705,16 @@ class _TickLogger:
            "motion_err_rot_x_deg", "motion_err_rot_y_deg", "motion_err_rot_z_deg",
            "motion_err_rms_mm", "motion_axis_peak_mm",
            "vel_ff_vx", "vel_ff_vy", "vel_ff_vz", "vel_ff_wx", "vel_ff_wy", "vel_ff_wz",
-           "rail_contrib_m_s", "arm_contrib_m_s", "rail_motion_share",
+           "rail_contrib_m_s", "arm_contrib_m_s", "arm_y_qdot", "rail_motion_share",
+           # Chan-Dubey reg multipliers: rail first, then the worst arm joint.
+           "wln_scale_rail", "wln_scale_arm_max",
+           "waste_ratio", "rail_ff_m", "rail_track_err_m",
            "rail_escape_active",
            "psi_deg", "psi_ref_deg", "psi_retarget_score", "d_pref_m",
+           "d_star_m", "psi_star_deg", "minmax_margin",
            "elbow_margin_rad", "wrist_open_rad",
            "tool_y_des_m", "tool_y_err_mm",
+           "contact_phase", "v_air_cmd", "ke_hat", "dob_v", "barrier_cap_floor",
            # Append-only normal-axis BEFM/audit schema.
            "flow_x_p", "flow_v_p", "flow_v_aux", "flow_x_a", "flow_v_a",
            "flow_e", "flow_edot", "flow_F_c", "flow_v_track",
@@ -1587,6 +1722,8 @@ class _TickLogger:
            "flow_alpha_case", "flow_T", "flow_psi", "flow_S_n",
            "flow_S_r_hat", "flow_P_phys", "flow_P_mismatch",
            "flow_E_phys", "flow_E_mismatch", "flow_gamma_active",
+           # Observe-mode evidence: press (m/s) the gate would have removed.
+           "flow_alpha_would_gate", "flow_edot_aligned",
            "flow_sign_fault", "flow_feedback_stale", "flow_blocked_reason",
            "contact_episode_rearm_event", "contact_episode_release_s",
            "surface_force_scale", "surface_force_alpha", "surface_xy_error_m",
@@ -1750,6 +1887,11 @@ class _TickLogger:
         force_barrier_contact_active = getattr(
             ctrl, "force_barrier_contact_active", False
         )
+        contact_phase = getattr(ctrl, "contact_phase", "")
+        v_air_cmd = getattr(ctrl, "v_air_cmd", float("nan"))
+        ke_hat = getattr(ctrl, "ke_hat", getattr(ctrl, "ke_est", float("nan")))
+        dob_v = getattr(ctrl, "dob_v", float("nan"))
+        barrier_cap_floor = getattr(ctrl, "barrier_cap_floor", float("nan"))
         ke_tracker = getattr(ctrl, "_ke_estimator", None)
         ke_update_gated = getattr(ke_tracker, "update_gated", False)
         ke_dx_m = getattr(ke_tracker, "last_dx_m", float("nan"))
@@ -1770,6 +1912,10 @@ class _TickLogger:
         flow_alpha_target = getattr(flow, "alpha_raw", float("nan"))
         flow_alpha = getattr(flow, "alpha", float("nan"))
         flow_alpha_case = getattr(flow, "alpha_case", "")
+        flow_would_gate = getattr(flow, "alpha_would_gate_m_s", float("nan"))
+        flow_edot_aligned = getattr(
+            flow, "mismatch_velocity_aligned", float("nan")
+        )
         flow_tank = getattr(flow, "tank_energy", float("nan"))
         flow_psi = getattr(flow, "psi", float("nan"))
         flow_sn = getattr(flow, "Sn", float("nan"))
@@ -1974,8 +2120,38 @@ class _TickLogger:
                    else ""
                ),
                (
+                   f"{step.arm_contrib_m_s:.6f}"
+                   if np.isfinite(step.arm_contrib_m_s)
+                   else ""
+               ),
+               (
                    f"{step.rail_motion_share:.4f}"
                    if np.isfinite(step.rail_motion_share)
+                   else ""
+               ),
+               (
+                   f"{step.wln_scale_rail:.4f}"
+                   if np.isfinite(getattr(step, "wln_scale_rail", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{step.wln_scale_arm_max:.4f}"
+                   if np.isfinite(getattr(step, "wln_scale_arm_max", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{step.waste_ratio:.4f}"
+                   if np.isfinite(getattr(step, "waste_ratio", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{step.rail_ff_m:.6f}"
+                   if np.isfinite(getattr(step, "rail_ff_m", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{step.rail_track_err_m:.6f}"
+                   if np.isfinite(getattr(step, "rail_track_err_m", float("nan")))
                    else ""
                ),
                int(bool(step.rail_escape_active)),
@@ -1988,6 +2164,21 @@ class _TickLogger:
                ),
                f"{step.d_pref_m:.6f}" if np.isfinite(step.d_pref_m) else "",
                (
+                   f"{step.d_star_m:.6f}"
+                   if np.isfinite(getattr(step, "d_star_m", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{step.psi_star_deg:.4f}"
+                   if np.isfinite(getattr(step, "psi_star_deg", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{step.minmax_margin:.6f}"
+                   if np.isfinite(getattr(step, "minmax_margin", float("nan")))
+                   else ""
+               ),
+               (
                    f"{step.elbow_margin_rad:.6f}"
                    if np.isfinite(step.elbow_margin_rad)
                    else ""
@@ -1999,6 +2190,15 @@ class _TickLogger:
                ),
                f"{tool_y_des_m:.6f}" if np.isfinite(tool_y_des_m) else "",
                f"{tool_y_err_mm:.3f}" if np.isfinite(tool_y_err_mm) else "",
+               str(contact_phase),
+               f"{float(v_air_cmd):.6f}" if np.isfinite(v_air_cmd) else "",
+               f"{float(ke_hat):.4f}" if np.isfinite(ke_hat) else "",
+               f"{float(dob_v):.6f}" if np.isfinite(dob_v) else "",
+               (
+                   f"{float(barrier_cap_floor):.6f}"
+                   if np.isfinite(barrier_cap_floor)
+                   else ""
+               ),
                f"{flow_xp:.8f}", f"{flow_vp:.8f}", f"{flow_v_aux:.8f}",
                f"{flow_xa:.8f}", f"{flow_va:.8f}", f"{flow_e:.8f}",
                f"{flow_edot:.8f}", f"{flow_fc:.8f}", f"{flow_v_track:.8f}",
@@ -2008,6 +2208,8 @@ class _TickLogger:
                f"{flow_sn:.9f}", f"{flow_sr:.9f}", f"{flow_p_phys:.8f}",
                f"{flow_p_mismatch:.8f}", f"{flow_e_phys:.9f}",
                f"{flow_e_mismatch:.9f}", f"{flow_gamma:.8f}",
+               f"{float(flow_would_gate):.8f}",
+               f"{float(flow_edot_aligned):.8f}",
                int(bool(flow_sign_fault)), int(bool(flow_stale)),
                str(flow_blocked), int(bool(episode_rearm)),
                f"{episode_release_s:.6f}", f"{surface_force_scale:.6f}",
@@ -2617,6 +2819,7 @@ def run_joint_admittance_phases(
                             qdot_fb = np.asarray(qdot_fb, dtype=float)
                             qdot_ff = qdot_fb if qdot_ff is None else (qdot_ff + qdot_fb)
                         vel_ff_ref = getattr(phase.outer, "last_vel_ff", None)
+                        pose_d_ref = getattr(phase.outer, "last_pose_d", None)
                         path_twist = getattr(phase.outer, "last_path_twist", None)
                         feedback_twist = getattr(
                             phase.outer, "last_feedback_twist", None
@@ -2637,6 +2840,7 @@ def run_joint_admittance_phases(
                             q_meas=q_meas,
                             qdot_ff=qdot_ff,
                             vel_ff=vel_ff_ref,
+                            pose_d=pose_d_ref,
                             f_ext_z=f_ext_z if math.isfinite(f_ext_z) else None,
                             f_des_z=f_des_z if math.isfinite(f_des_z) else None,
                             contact_active=bool(

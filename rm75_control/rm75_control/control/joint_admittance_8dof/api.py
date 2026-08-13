@@ -562,6 +562,10 @@ def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], No
 
     def _enter() -> None:
         spec.secondary.apply(ctx.inner, psi_rad=psi)
+        if spec.mode == TaskMode.HYBRID_TRACK and spec.reference is not None:
+            amp = float(getattr(spec.reference, "amplitude_m", 0.0) or 0.0)
+            pose = ctx.inner.kin.fk_pose(ctx.inner.q_cmd)
+            ctx.inner.plan_scan_stroke(float(pose[1]), amp)
         if (
             spec.secondary.preset == "move"
             and spec.q_target_rad is not None

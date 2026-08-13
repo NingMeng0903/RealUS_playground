@@ -101,12 +101,20 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert "vel_ff_vy" in header
     assert "rail_contrib_m_s" in header
     assert "arm_contrib_m_s" in header
+    assert "arm_y_qdot" in header
     assert "rail_motion_share" in header
     assert "rail_escape_active" in header
     assert "tool_y_des_m" in header
     assert "psi_deg" in header
     assert "psi_ref_deg" in header
     assert "d_pref_m" in header
+    assert "waste_ratio" in header
+    assert "rail_ff_m" in header
+    assert "d_star_m" in header
+    assert "contact_phase" in header
+    assert "ke_hat" in header
+    assert "dob_v" in header
+    assert "barrier_cap_floor" in header
     assert "elbow_margin_rad" in header
     assert "wrist_open_rad" in header
     assert "tool_y_err_mm" in header

@@ -74,6 +74,10 @@ class BidirectionalFlowConfig:
     lambda_gain: float = 0.25
     Dtrack: float = 20.0
     track_correction_max_m_s: float = 0.020
+    # Lee Sec. V-C: alpha must be zero in free space.  Below this |F| the
+    # modulation is held off and the tank charges from proxy damping instead.
+    # 0 restores the pure power test (paper-faithful, noise-sensitive).
+    free_space_force_n: float = 0.5
     M_p: float = 1.0
     D_p: float = 0.0
     m_p: float | None = None
@@ -308,6 +312,9 @@ class BidirectionalFlowConfig:
                 value("track_correction_max_m_s", "v_track_max_m_s", default=0.020),
                 0.020,
             ),
+            free_space_force_n=_finite(
+                value("free_space_force_n", "air_force_n", default=0.5), 0.5
+            ),
             gamma_active=_finite(value("gamma_active", "gamma", default=1.0), 1.0),
             aux_tau_s=_finite(value("aux_tau_s", "auxiliary_tau_s", default=0.05), 0.05),
             aux_max_retract_m_s=_finite(
@@ -435,6 +442,10 @@ class BidirectionalFlowController:
     cannot open the active press gate.
     """
 
+    # Enough proxy-velocity history to reach back one staleness budget even at
+    # the fastest tick rate this loop runs at.
+    _VP_HISTORY_MAX = 64
+
     ENGINEERING_ADAPTATION = "engineering adaptation; not a torque theorem"
 
     def __init__(
@@ -481,6 +492,9 @@ class BidirectionalFlowController:
         self.modulation_debit_j = 0.0
         self.feedback_age_s = float("nan")
         self.feedback_stale = True
+        self._vp_history: list[float] = []
+        self.mismatch_velocity_aligned = 0.0
+        self.alpha_would_gate_m_s = 0.0
         self.sign_verified = bool(self.cfg.sign_verified)
         self.sign_fault = bool(
             self.cfg.require_sign_verification and not self.cfg.sign_verified
@@ -618,6 +632,23 @@ class BidirectionalFlowController:
             return False
         age = _finite(feedback_age_s, float("inf"))
         return (not np.isfinite(age)) or age > self.cfg.max_feedback_age_s
+
+    def _vp_delayed(self, age_s: float, dt: float) -> float:
+        """Proxy velocity resampled back to when ``va`` was measured."""
+        hist = self._vp_history
+        if not hist:
+            return float(self.vp)
+        age = _finite(age_s, 0.0)
+        if not np.isfinite(age) or age <= 0.0 or dt <= 0.0:
+            return float(hist[-1])
+        # Cap at the staleness budget: beyond it the sample is rejected as
+        # stale anyway, and reaching further back would fabricate a match.
+        age = min(float(age), float(self.cfg.max_feedback_age_s))
+        steps = int(round(age / dt))
+        if steps <= 0:
+            return float(hist[-1])
+        idx = max(0, len(hist) - 1 - steps)
+        return float(hist[idx])
 
     def _lee_alpha_raw(
         self,
@@ -914,7 +945,18 @@ class BidirectionalFlowController:
         self.nominal_damping_now = float(nominal_d)
         # Press-positive generalized force/port powers.  These are kept
         # separate from the tank's known nominal-damping credit below.
-        edot = self.vp - self.va
+        #
+        # ``edot`` is Lee's e_nr_dot and must compare the two ports at the same
+        # instant.  ``va`` arrives one CANFD round trip late (15-20 ms here,
+        # against a 20 ms staleness budget) while ``vp`` is current, so the raw
+        # difference is dominated by transport lag rather than by energy
+        # generation — alpha would then be measuring the link, not the contact.
+        self._vp_history.append(float(self.vp))
+        if len(self._vp_history) > self._VP_HISTORY_MAX:
+            del self._vp_history[: -self._VP_HISTORY_MAX]
+        vp_aligned = self._vp_delayed(self.feedback_age_s, dt)
+        edot = vp_aligned - self.va
+        self.mismatch_velocity_aligned = float(edot)
         self.P_phys = force * self.va
         self.P_mismatch = force * edot
         self.Pe = self.P_mismatch
@@ -936,9 +978,25 @@ class BidirectionalFlowController:
             dt=dt,
             stale=stale,
         )
+        # Lee Sec. V-C: "when the robot is moving in free space, alpha should
+        # always be zero because there is no energy generation in the nominal
+        # system."  Structurally Pe=0 without contact, but the paper's own
+        # free-space run (Fig. 13) still saw alpha lifted by F/T noise at 4 kHz
+        # with collocated sensing; this link is slower and delayed, so make it
+        # explicit rather than hoping the power test stays clean.
+        free_n = max(float(getattr(self.cfg, "free_space_force_n", 0.0)), 0.0)
+        in_free_space = free_n > 0.0 and abs(float(force)) < free_n
+        if in_free_space and not stale:
+            raw_alpha, alpha_case = 0.0, "free_space"
         self.alpha_raw = float(raw_alpha)
         self.alpha_case = alpha_case
-        hard_gate = stale or self.tank_energy <= self.cfg.Tmin + 1.0e-12
+        # A drained tank must not force alpha=1 in free space: there is no
+        # energy generation to gate, and alpha=1 there is exactly the
+        # performance loss the paper warns about.  Stale feedback still is a
+        # hard gate — an unknown port is not a safe port.
+        hard_gate = stale or (
+            self.tank_energy <= self.cfg.Tmin + 1.0e-12 and not in_free_space
+        )
         alpha_before_smoothing = float(self.alpha)
         self._smooth_alpha(raw_alpha, dt, hard=hard_gate)
 
@@ -972,10 +1030,15 @@ class BidirectionalFlowController:
         # Compute conservative storage/credit terms before selecting the
         # positive command so gamma is budget-limited, not retroactively
         # clipped after an overdraw.
+        # Lee's S_n and Ŝ_r are the *same* scaled inertia (M_n = λM̂), so the
+        # α-interpolated storage S = (1-α)S_n + αŜ_r is a single physical
+        # quantity.  Using M_p=1.0 for one and M_a=0.05 for the other made
+        # Ŝ_r - S_n a 20x scale artefact, so every α rise booked a positive
+        # modulation debit and drained the tank one way.
         self.Sn = float(0.5 * self.proxy_mass_now * self.vp * self.vp)
         self.Sr_hat = float(
             max(
-                0.5 * self.cfg.M_a * self.va * self.va
+                0.5 * self.proxy_mass_now * self.va * self.va
                 + 0.5
                 * self.cfg.K_a
                 * (self.x_safe - self.xa)
@@ -987,6 +1050,12 @@ class BidirectionalFlowController:
             (1.0 - self.alpha) * self.nominal_damping_now * self.vp * self.vp
             + self.alpha * self.cfg.D_a * self.va * self.va
         ) * dt
+        if in_free_space:
+            # Free-space motion is pure proxy damping dissipation, which is a
+            # credit term in Lee eq. (32).  Without it the tank only ever sits
+            # or falls and arrives at contact already empty.
+            air_d = max(float(self.proxy_damping_now), float(self.cfg.D_p), 0.0)
+            credit_j += air_d * self.vp * self.vp * dt
         delta_alpha = self.alpha - alpha_before_smoothing
         self.alpha_delta_energy_j = delta_alpha * (self.Sr_hat - self.Sn)
         self.modulation_debit_j = max(self.alpha_delta_energy_j, 0.0)
@@ -1001,6 +1070,13 @@ class BidirectionalFlowController:
                 and not stale
                 else 0.0
             )
+        )
+        # Shadow of what the gate would remove if it were driving.  In observe
+        # this is the only way to judge alpha before handing it the command:
+        # it must sit at zero in free space and rise only at force peaks.
+        self.alpha_would_gate_m_s = float(
+            max(self.press, 0.0)
+            * (1.0 - (1.0 - self.alpha) * self.cfg.gamma_active)
         )
         if self.cfg.mode == "active" and sign_ok and delay_ok and not stale:
             # Retract-through is never alpha-gated.  Only the positive branch

@@ -119,9 +119,17 @@ class VelocityBoxConstraints:
         rail_locked: bool = False,
         rail_lock_vel_eps_m_s: float = 0.0,
         rail_vel_pin_m_s: float | None = None,
+        qdot_prev2: np.ndarray | None = None,
+        j_max: np.ndarray | None = None,
+        box_dt: float | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         lim = self.lim
         q = np.asarray(q, dtype=float)
+        # ``dt`` is the nominal period the command is integrated with (the
+        # CANFD stream assumes a fixed one).  ``box_dt`` is the wall period the
+        # motion is actually played out over; the rate limits describe physical
+        # motion, so they belong on wall time.  Defaults to ``dt``.
+        a_dt = float(dt if box_dt is None else box_dt)
 
         lo = -lim.v_max.copy()
         hi = lim.v_max.copy()
@@ -184,9 +192,30 @@ class VelocityBoxConstraints:
 
         if a_max is not None and qdot_prev is not None:
             qdot_prev = np.asarray(qdot_prev, dtype=float)
-            a = a_max * dt
+            a = a_max * a_dt
             lo = np.maximum(lo, qdot_prev - a)
             hi = np.minimum(hi, qdot_prev + a)
+            lo, hi = collapse_interval(
+                lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
+            )
+
+        # Third order.  Velocity and acceleration boxes still permit the
+        # acceleration to flip sign every tick, which is what the commanded
+        # joint trajectory actually did (sign reversals on ~50% of samples,
+        # jerk RMS 250-570 rad/s^3) even though the reference twist was
+        # smooth.  Bounding |a_k - a_{k-1}| is a plain velocity box:
+        #   qdot in 2*qdot_prev - qdot_prev2 +- j_max*dt^2
+        if (
+            j_max is not None
+            and qdot_prev is not None
+            and qdot_prev2 is not None
+            and float(dt) > 0.0
+        ):
+            qdot_prev2 = np.asarray(qdot_prev2, dtype=float)
+            centre = 2.0 * qdot_prev - qdot_prev2
+            span = np.asarray(j_max, dtype=float) * a_dt * a_dt
+            lo = np.maximum(lo, centre - span)
+            hi = np.minimum(hi, centre + span)
             lo, hi = collapse_interval(
                 lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
             )

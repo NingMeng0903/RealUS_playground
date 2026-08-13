@@ -420,7 +420,9 @@ def test_yaml_proactive_bidirectional_and_headroom():
     raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     hm = raw["hybrid_motion"]
     assert hm["proactive_feedforward"] is True
-    assert hm["proactive_retract_only"] is True
+    # Bidirectional again (e85c9ab): retract_only zeroed the press-side v_r
+    # integration outright, which is what made under-force chase so slow.
+    assert hm["proactive_retract_only"] is False
     # Asymmetric chase: retract gain may exceed press gain (over-force escape).
     assert float(hm["proactive_gain"]) > 0.0
     assert float(hm["proactive_retract_gain"]) >= float(hm["proactive_gain"])

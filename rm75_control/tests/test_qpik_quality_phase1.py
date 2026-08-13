@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from rm75_control.control.joint_admittance_8dof.loop import scale_qdot_into_box
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
@@ -91,47 +92,28 @@ def test_psi_rate_limit_caps_step() -> None:
         kin,
         PsiRetargetConfig(
             enabled=True,
-            evals_per_tick=1,
             psi_rate_rad_s=np.deg2rad(20.0),
-            psi_lpf_tau_s=0.0,
         ),
     )
     q = 0.5 * (kin.q_lower + kin.q_upper)
     rt.reset(q)
     start = 0.0
     rt._psi_cmd = start
-    rt._psi_best = np.deg2rad(90.0)
+    rt._psi_star = np.deg2rad(90.0)
     out = rt._rate_limit_psi(0.005)
     assert abs(out - start) <= np.deg2rad(20.0) * 0.005 + 1e-9
     assert abs(out - start) > 0.0
 
 
-def test_psi_hill_climb_keeps_feasible_neighbour() -> None:
+def test_psi_hold_does_not_climb_d_star() -> None:
     kin = RobotKinematics()
-    rt = PostureRetarget(
-        kin,
-        PsiRetargetConfig(
-            enabled=True,
-            evals_per_tick=2,
-            psi_step_rad=np.deg2rad(5.0),
-            psi_lpf_tau_s=0.0,
-            psi_rate_rad_s=10.0,
-        ),
-    )
-    # Seed from a posture that round-trips through srs_ik (mid-box FK does not).
+    rt = PostureRetarget(kin, PsiRetargetConfig(enabled=True))
     q = np.array([0.375, 0.194, -0.503, -0.069, 1.979, -0.776, 0.547, -4.370])
     rt.reset(q)
-    lo = 0.05
-    hi = 0.75
+    d0 = float(rt._d_star)
     for _ in range(20):
-        rt.step(q, 0.005, rail_lo=lo, rail_hi=hi)
-    from rm75_control.kinematics.srs_ik import branch_from_q
-
-    pose = kin.fk_pose(q)
-    pack = rt._eval.evaluate(
-        pose, float(rt._psi_best), int(branch_from_q(q)), float(q[0])
-    )
-    assert pack is not None
+        _psi, d = rt.step(q, 0.005, rail_lo=0.05, rail_hi=0.75)
+    assert d == pytest.approx(d0)
 
 
 def test_qp_smoothness_weight_is_wired() -> None:

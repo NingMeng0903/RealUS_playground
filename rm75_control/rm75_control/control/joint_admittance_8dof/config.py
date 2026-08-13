@@ -9,7 +9,10 @@ import numpy as np
 from rm75_control.control.joint_admittance_8dof.collision_model import CollisionConfig
 from rm75_control.control.joint_admittance_8dof.ik_types import SrDampingConfig
 from rm75_control.control.joint_admittance_8dof.loop import JointIkConfig
-from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfig
+from rm75_control.control.joint_admittance_8dof.solver.qp_builder import (
+    QpConfig,
+    WlnConfig,
+)
 from rm75_control.control.joint_admittance_8dof.tasks.arm_angle import ArmAngleTaskConfig
 from rm75_control.control.joint_admittance_8dof.tasks.manipulability_task import (
     ManipulabilityTaskConfig,
@@ -183,9 +186,16 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             "mass_reg_lpf_tau_s", "use_dyn_nullspace",
             "limit_damper_band_rad", "limit_damper_band_rail_m",
             "sigma_setbased", "branch_barrier", "sns_retry_scales",
-            "smoothness_weight",
+            "smoothness_weight", "twist_scale_lpf_tau_s", "wln",
+            "j_max_arm_rad_s3", "j_max_rail_m_s3",
         },
         name="inner.qp",
+    )
+    wln_raw = _mapping(c.get("wln"), name="inner.qp.wln")
+    _reject_unknown(
+        wln_raw,
+        {"enabled", "k", "band_rad", "band_rail_m", "max_scale"},
+        name="inner.qp.wln",
     )
     backend = str(c.get("backend", "proxqp")).lower()
     if backend not in {"proxqp", "osqp", "scipy"}:
@@ -318,6 +328,29 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         smoothness_weight=_finite_float(
             c.get("smoothness_weight", 0.15), name="inner.qp.smoothness_weight"
         ),
+        twist_scale_lpf_tau_s=_finite_float(
+            c.get("twist_scale_lpf_tau_s", 0.08),
+            name="inner.qp.twist_scale_lpf_tau_s",
+        ),
+        j_max_arm_rad_s3=_finite_float(
+            c.get("j_max_arm_rad_s3", 300.0), name="inner.qp.j_max_arm_rad_s3"
+        ),
+        j_max_rail_m_s3=_finite_float(
+            c.get("j_max_rail_m_s3", 3.0), name="inner.qp.j_max_rail_m_s3"
+        ),
+        wln=WlnConfig(
+            enabled=bool(wln_raw.get("enabled", True)),
+            k=_finite_float(wln_raw.get("k", 1.0), name="inner.qp.wln.k"),
+            band_rad=_finite_float(
+                wln_raw.get("band_rad", 0.35), name="inner.qp.wln.band_rad"
+            ),
+            band_rail_m=_finite_float(
+                wln_raw.get("band_rail_m", 0.12), name="inner.qp.wln.band_rail_m"
+            ),
+            max_scale=_finite_float(
+                wln_raw.get("max_scale", 50.0), name="inner.qp.wln.max_scale"
+            ),
+        ),
     )
 
 
@@ -397,33 +430,27 @@ def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
     _reject_unknown(
         p,
         {
-            "enabled", "evals_per_tick", "psi_step_deg", "psi_rate_deg_s",
-            "psi_lpf_tau_s", "rail_step_m", "d_pref_rate_m_s", "d_pref_lpf_tau_s",
+            "enabled", "n_y", "n_d", "n_psi", "w_sigma",
+            "psi_rate_deg_s", "rail_margin_m",
+            # Retired hill-climb keys accepted so older yaml still loads.
+            "evals_per_tick", "psi_step_deg", "psi_lpf_tau_s",
+            "rail_step_m", "d_pref_rate_m_s", "d_pref_lpf_tau_s",
         },
         name="inner.psi_retarget",
     )
     return PsiRetargetConfig(
         enabled=bool(p.get("enabled", True)),
-        evals_per_tick=int(p.get("evals_per_tick", 2)),
-        psi_step_rad=math.radians(
-            _finite_float(p.get("psi_step_deg", 5.0), name="psi_retarget.psi_step_deg")
-        ),
+        n_y=int(p.get("n_y", 9)),
+        n_d=int(p.get("n_d", 8)),
+        n_psi=int(p.get("n_psi", 9)),
+        w_sigma=_finite_float(p.get("w_sigma", 0.5), name="psi_retarget.w_sigma"),
         psi_rate_rad_s=math.radians(
             _finite_float(
                 p.get("psi_rate_deg_s", 20.0), name="psi_retarget.psi_rate_deg_s"
             )
         ),
-        psi_lpf_tau_s=_finite_float(
-            p.get("psi_lpf_tau_s", 0.30), name="psi_retarget.psi_lpf_tau_s"
-        ),
-        rail_step_m=_finite_float(
-            p.get("rail_step_m", 0.05), name="psi_retarget.rail_step_m"
-        ),
-        d_pref_rate_m_s=_finite_float(
-            p.get("d_pref_rate_m_s", 0.02), name="psi_retarget.d_pref_rate_m_s"
-        ),
-        d_pref_lpf_tau_s=_finite_float(
-            p.get("d_pref_lpf_tau_s", 0.40), name="psi_retarget.d_pref_lpf_tau_s"
+        rail_margin_m=_finite_float(
+            p.get("rail_margin_m", 0.02), name="psi_retarget.rail_margin_m"
         ),
     )
 
@@ -553,7 +580,7 @@ def _parse_rail(rail_raw: dict, hw_lw: dict) -> RailLockConfig:
         {
             "mode", "locked_style", "q_ref_m", "lock_gain", "lock_reg_scale",
             "lock_vel_eps_m_s", "lock_hard_pin", "v_max_m_s", "travel_m",
-            "soft_min_m", "soft_max_m",
+            "soft_min_m", "soft_max_m", "cmd_lpf_tau_s",
         },
         name="rail",
     )
@@ -598,6 +625,9 @@ def _parse_rail(rail_raw: dict, hw_lw: dict) -> RailLockConfig:
         travel_m=travel,
         soft_min_m=soft_min,
         soft_max_m=soft_max,
+        cmd_lpf_tau_s=_finite_float(
+            rail_raw.get("cmd_lpf_tau_s", 0.04), name="rail.cmd_lpf_tau_s"
+        ),
     )
 
 

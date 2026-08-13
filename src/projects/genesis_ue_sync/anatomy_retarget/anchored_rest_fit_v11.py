@@ -29,7 +29,11 @@ from typing import Any, Mapping
 import numpy as np
 
 from .anatomical_calibration_v1 import AnatomicalCalibrationV1, JOINT_SPECS
-from .chain_rest_fit_v1 import ChainRestFitSubjectV1, _global_to_local
+from .chain_rest_fit_v1 import (
+    ChainRestFitSubjectV1,
+    _global_to_local,
+    _weighted_rest_correction,
+)
 from .segment_similarity_rest_v10 import subject_anatomical_pivots_v10
 
 
@@ -54,6 +58,22 @@ HINGE_RESTORE_CONTROLLERS = (
     "Shoulder_Rotate_L",
     "Shoulder_Rotate_R",
 )
+
+# Leaving the arm chain on the V7 seat is not a legal option: it fails V11's
+# own ``rest_anatomical_anchor_v11`` and ``lr_symmetry_v11``, which is the
+# whole reason the elbow was restored.  Kept only so that failure is
+# reproducible, not as a shipping preset.
+LEG_ONLY_HINGE_RESTORE_CONTROLLERS = (
+    "Knee_Rotate_L",
+    "Knee_Rotate_R",
+    "Patella_Rotate_L",
+    "Patella_Rotate_R",
+)
+
+HINGE_RESTORE_PRESETS = {
+    "full": HINGE_RESTORE_CONTROLLERS,
+    "leg_only": LEG_ONLY_HINGE_RESTORE_CONTROLLERS,
+}
 
 # Joints that must meet |B_final−A| ≤ |B_prefit−A| (OSSO Ej hard).
 ANATOMICAL_ANCHOR_HARD_JOINTS = (
@@ -93,8 +113,20 @@ def build_anchored_rest_fit_v11(
     *,
     asset: Any,
     calibration: AnatomicalCalibrationV1,
+    restore_controllers: tuple[str, ...] = HINGE_RESTORE_CONTROLLERS,
+    carry_mesh: bool = False,
 ) -> ChainRestFitSubjectV1:
-    """Return V7 rest with hinge origins restored to prefit (elbow split)."""
+    """Return V7 rest with hinge origins restored to prefit (elbow split).
+
+    ``carry_mesh`` (V12a) re-derives ``vertices_final`` from the restored
+    ``C_bone`` through the frozen 14-slot LBS instead of keeping the V7 mesh.
+    V11 kept the mesh to preserve V7's contact geometry, but that leaves the
+    bind and the geometry describing different elbows: the forearm then
+    rotates about a pivot ~15 mm from the mesh condyle, which is where the
+    left-forearm poke-through and the 17.7 mm station-to-hinge-axis error come
+    from.  Carrying the mesh keeps bind and geometry consistent; the contact
+    non-regression gate is what decides whether the knee survives it.
+    """
 
     started = time.perf_counter()
     names = [str(n) for n in asset.source_bone_names]
@@ -105,7 +137,7 @@ def build_anchored_rest_fit_v11(
     a_subj = subject_anatomical_pivots_v10(asset, calibration)
 
     restored: dict[str, Any] = {}
-    for controller in HINGE_RESTORE_CONTROLLERS:
+    for controller in restore_controllers:
         index = _controller_index(names, controller)
         before = b_final[index, :3, 3].copy()
         b_final[index, :3, 3] = b_prefit[index, :3, 3]
@@ -114,8 +146,11 @@ def build_anchored_rest_fit_v11(
             "delta_norm_m": float(np.linalg.norm(b_prefit[index, :3, 3] - before)),
         }
 
-    # Elbow is no longer a copy of the humerus/shoulder correction.
+    # Only meaningful when the elbow was restored; otherwise the arm chain is
+    # deliberately left on the V7 seat, elbow=humerus lever included.
     for suffix in ("L", "R"):
+        if f"Elbow_Rot_{suffix}" not in restore_controllers:
+            continue
         elbow = _controller_index(names, f"Elbow_Rot_{suffix}")
         shoulder = _controller_index(names, f"Shoulder_Rotate_{suffix}")
         if np.allclose(b_final[elbow], b_final[shoulder], atol=1.0e-9):
@@ -126,6 +161,20 @@ def build_anchored_rest_fit_v11(
     c_bone = b_final @ np.linalg.inv(b_prefit)
     target_local = _global_to_local(b_final, parents)
     inverse = np.linalg.inv(b_final)
+
+    vertices_final = np.asarray(value.vertices_final, dtype=np.float32)
+    mesh_shift_m = 0.0
+    if carry_mesh:
+        carried = _weighted_rest_correction(
+            np.asarray(value.vertices_prefit, dtype=np.float64),
+            np.asarray(asset.driver_indices, dtype=np.int64),
+            np.asarray(asset.driver_weights, dtype=np.float64),
+            c_bone,
+        )
+        mesh_shift_m = float(
+            np.max(np.linalg.norm(carried - np.asarray(vertices_final), axis=1))
+        )
+        vertices_final = np.asarray(carried, dtype=np.float32)
 
     joint_rows: dict[str, Any] = {}
     for joint_index, spec in enumerate(JOINT_SPECS):
@@ -161,10 +210,22 @@ def build_anchored_rest_fit_v11(
             "artifact_kind": ANCHORED_REST_V11_KIND,
             "method": ANCHORED_REST_V11_METHOD,
             "accepted_scope": "full_main_chain_shadow_v11",
-            "elbow_policy": "independent_of_humerus_prefit_origin",
+            "elbow_policy": (
+                "independent_of_humerus_prefit_origin"
+                if "Elbow_Rot_L" in restore_controllers
+                else "left_on_v7_seat"
+            ),
             "knee_policy": "prefit_origin_restore_keep_v7_mesh",
             "hip_policy": "keep_v7_femur_origin_for_containment",
-            "mesh_policy_note": "vertices_final unchanged from V7 (contact-preserving)",
+            "mesh_policy_note": (
+                "vertices_final re-derived from the restored C_bone "
+                "(bind and geometry consistent)"
+                if carry_mesh
+                else "vertices_final unchanged from V7 (contact-preserving)"
+            ),
+            "carry_mesh": bool(carry_mesh),
+            "mesh_shift_vs_v7_max_m": mesh_shift_m,
+            "hinge_restore_controllers": list(restore_controllers),
             "hinge_restore": restored,
             "anatomical_anchor": joint_rows,
             "anatomical_anchor_hard_joints": list(ANATOMICAL_ANCHOR_HARD_JOINTS),
@@ -181,6 +242,7 @@ def build_anchored_rest_fit_v11(
     )
     return replace(
         value,
+        vertices_final=vertices_final,
         B_final=b_final.astype(np.float64),
         C_bone=c_bone.astype(np.float64),
         target_local_bind=target_local.astype(np.float64),
@@ -221,6 +283,8 @@ __all__ = [
     "ANCHORED_REST_V11_KIND",
     "ANCHORED_REST_V11_METHOD",
     "HINGE_RESTORE_CONTROLLERS",
+    "HINGE_RESTORE_PRESETS",
+    "LEG_ONLY_HINGE_RESTORE_CONTROLLERS",
     "SYMMETRY_PAIRS",
     "anatomical_bind_distances_v11",
     "build_anchored_rest_fit_v11",

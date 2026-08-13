@@ -60,6 +60,31 @@ N_SLACK = N_TASK_SLACK
 
 
 @dataclass
+class WlnConfig:
+    """Chan & Dubey (1995) weighted least-norm joint-limit avoidance.
+
+    ``reg_i`` is a *preference* cost, not a constraint, so raising it as a
+    joint approaches its stop makes the QP hand the task to the other joints
+    smoothly, well before the velocity box slams shut at the wall.  On this
+    robot the rail is the cheapest joint (``reg[0]=1e-3``) and constant, so
+    the solver rode it into the soft stop and only the box stopped it — the
+    arm never picked up the stroke.
+
+    Deviations from the paper, both deliberate:
+      * a band, so mid-travel keeps the tuned ``reg`` (the paper is always-on,
+        which would double the rail cost in the middle of the stroke);
+      * the approach test uses the previous solution's sign.  Weighting a
+        joint that is already leaving its limit would price its own escape.
+    """
+
+    enabled: bool = True
+    k: float = 1.0
+    band_rad: float = 0.35        # arm joints (rad)
+    band_rail_m: float = 0.12     # prismatic rail (m)
+    max_scale: float = 50.0
+
+
+@dataclass
 class QpConfig:
     task_weight: np.ndarray = field(
         default_factory=lambda: np.array([1.0, 1.0, 1.0, 0.5, 0.5, 0.5], dtype=float)
@@ -155,6 +180,14 @@ class QpConfig:
     # Soft velocity continuity: ½ w_s ‖q̇ − q̇_prev‖² added to the QP cost
     # (no extra decision variable).  0 disables.
     smoothness_weight: float = 0.15
+    # First-order LPF on the σ twist scale.  0 disables (legacy one-tick punch).
+    twist_scale_lpf_tau_s: float = 0.08
+    wln: WlnConfig = field(default_factory=WlnConfig)
+    # Third-order box on |a_k - a_{k-1}|.  The velocity and acceleration boxes
+    # alone let the commanded acceleration flip sign every tick; this bounds
+    # how fast it may turn.  0 disables either axis.
+    j_max_arm_rad_s3: float = 300.0
+    j_max_rail_m_s3: float = 3.0
 
 
 class _ProxQpWbcBackend:
@@ -340,6 +373,11 @@ class QpIkController:
         self.sigma_setbased = SigmaSetBasedTracker(self.cfg.sigma_setbased)
         self.branch_barrier = BranchBarrierBuilder(self.cfg.branch_barrier)
         self.qdot_prev = np.zeros(kin.nv, dtype=float)
+        self.qdot_prev2 = np.zeros(kin.nv, dtype=float)
+        self._qdot_prev_seen = np.zeros(kin.nv, dtype=float)
+        j_max = np.full(kin.nv, float(self.cfg.j_max_arm_rad_s3), dtype=float)
+        j_max[0] = float(self.cfg.j_max_rail_m_s3)
+        self._j_max = j_max if np.all(j_max > 0.0) else None
         self._m_diag_lpf: np.ndarray | None = None
         self._task_scale_lpf: float = 1.0
         self.solve_count = 0
@@ -348,6 +386,7 @@ class QpIkController:
         self.last_dexterity_slack = 0.0
         self.last_branch_slack = 0.0
         self.last_sns_scale = 1.0
+        self.last_wln_scale = np.ones(kin.nv, dtype=float)
         self.q_star: np.ndarray | None = None
         self.backend = self._make_backend(kin.nv)
 
@@ -380,6 +419,8 @@ class QpIkController:
     def reset(self, q0_rad: np.ndarray | None = None) -> None:
         del q0_rad  # QP state is velocity history / LPF only
         self.qdot_prev = np.zeros(self.kin.nv, dtype=float)
+        self.qdot_prev2 = np.zeros(self.kin.nv, dtype=float)
+        self._qdot_prev_seen = np.zeros(self.kin.nv, dtype=float)
         self._m_diag_lpf = None
         self._task_scale_lpf = 1.0
         self.solve_count = 0
@@ -388,6 +429,7 @@ class QpIkController:
         self.last_dexterity_slack = 0.0
         self.last_branch_slack = 0.0
         self.last_sns_scale = 1.0
+        self.last_wln_scale = np.ones(self.kin.nv, dtype=float)
         self.sigma_setbased.reset()
         self.branch_barrier.reset()
 
@@ -401,6 +443,42 @@ class QpIkController:
     def sync_applied(self, qdot: np.ndarray) -> None:
         """Seed velocity history from an already-applied command."""
         self.qdot_prev = np.asarray(qdot, dtype=float).reshape(-1).copy()
+        # An episode boundary is not a jerk event: start the third-order
+        # history flat so the first tick is not boxed against a stale value.
+        self.qdot_prev2 = self.qdot_prev.copy()
+        self._qdot_prev_seen = self.qdot_prev.copy()
+
+    def _wln_reg_scale(
+        self, q: np.ndarray, qdot_prev: np.ndarray
+    ) -> np.ndarray:
+        """Per-joint ``reg`` multiplier from the Chan & Dubey limit potential."""
+        cfg = self.cfg.wln
+        nv = int(q.size)
+        if not cfg.enabled or float(cfg.k) <= 0.0:
+            return np.ones(nv, dtype=float)
+        lim = self.constraints.lim
+        lo = np.asarray(lim.q_lower, dtype=float)
+        hi = np.asarray(lim.q_upper, dtype=float)
+        span = hi - lo
+        d_hi = hi - q
+        d_lo = q - lo
+        denom = 4.0 * np.square(d_hi) * np.square(d_lo)
+        grad = np.zeros(nv, dtype=float)
+        ok = (denom > 1.0e-12) & (span > 1.0e-9)
+        grad[ok] = (
+            np.square(span[ok]) * (2.0 * q[ok] - hi[ok] - lo[ok]) / denom[ok]
+        )
+        band = np.full(nv, float(cfg.band_rad), dtype=float)
+        band[0] = float(cfg.band_rail_m)
+        band = np.maximum(band, 1.0e-9)
+        # Smoothstep so the weight is C1 at the band edge; a hard gate would
+        # step reg by ~10x in one tick and show up as a torque bump.
+        ramp = np.clip((band - np.minimum(d_hi, d_lo)) / band, 0.0, 1.0)
+        ramp = ramp * ramp * (3.0 - 2.0 * ramp)
+        approaching = (qdot_prev * grad > 0.0) | (np.abs(qdot_prev) <= 1.0e-6)
+        scale = 1.0 + float(cfg.k) * np.abs(grad) * ramp
+        scale = np.where(approaching, scale, 1.0)
+        return np.clip(scale, 1.0, max(float(cfg.max_scale), 1.0))
 
     def _task_scale_sigma(self, sigma_min: float, dt: float) -> float:
         """LPF-smoothed W_task scale in [min_frac, 1] from σ_min."""
@@ -459,8 +537,14 @@ class QpIkController:
         zero_secondary_rail: bool = False,
         rail_task_vel_m_s: float | None = None,
         rail_task_weight: float = 0.0,
+        box_dt: float | None = None,
     ) -> IkStepResult:
         q_prev = np.asarray(q_prev, dtype=float)
+        # ``qdot_prev`` is whatever the loop actually applied last tick (it may
+        # rewrite it after clamping), so shift the third-order history here
+        # rather than at every assignment site.
+        self.qdot_prev2 = self._qdot_prev_seen
+        self._qdot_prev_seen = np.asarray(self.qdot_prev, dtype=float).copy()
         v_cmd0 = np.asarray(twist_ref, dtype=float)
         self.solve_count += 1
 
@@ -494,8 +578,12 @@ class QpIkController:
         if zero_secondary_rail and qdot_nom.shape[0] > 0:
             qdot_nom[0] = 0.0
 
+        # Limit avoidance and the velocity box must judge the same geometry.
+        q_geom = q_meas if q_meas is not None else q_prev
         w_reg = self._w_reg.copy()
         w_task = self._w_task.copy()
+        self.last_wln_scale = self._wln_reg_scale(q_geom, self.qdot_prev)
+        w_reg = w_reg * self.last_wln_scale
         if rail_locked and rail_lock_reg_scale > 1.0:
             w_reg[0] *= float(rail_lock_reg_scale)
         w_task *= self._task_scale_sigma(sigma_min, dt)
@@ -546,7 +634,6 @@ class QpIkController:
         A[:, :nv] = J
         A[:, nv : nv + ns] = -np.eye(ns)
 
-        q_geom = q_meas if q_meas is not None else q_prev
         lo_box, hi_box = self.constraints.bounds(
             q_geom,
             dt,
@@ -557,6 +644,9 @@ class QpIkController:
             rail_locked=rail_locked,
             rail_lock_vel_eps_m_s=rail_lock_vel_eps_m_s,
             rail_vel_pin_m_s=rail_vel_pin_m_s,
+            qdot_prev2=self.qdot_prev2,
+            j_max=self._j_max,
+            box_dt=box_dt,
         )
         if self.collision is not None and self.collision_cfg.enabled:
             cbf = build_cbf_rows(

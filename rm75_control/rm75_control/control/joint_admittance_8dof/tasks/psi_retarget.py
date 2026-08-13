@@ -1,22 +1,20 @@
-"""Amortized online SRS retarget of arm-angle ψ and preferred rail extension.
+"""One-shot min-max (d*, ψ*) planner for a known scan stroke.
 
-The analytic SRS family is a 1-parameter (ψ) family at a *fixed* rail; elbow
-J4 is a function of shoulder–wrist distance (i.e. the rail), not of ψ.  This
-module therefore:
+Online hill-climb of instantaneous elbow margin is a double-well: both rail
+ends score high and the interior (rail facing the TCP) scores low, so a
+greedy climber parks the carriage on a stop.  For a periodic scan the
+literature answer (Pin–Culioli minimax / Vahrenkamp ORM_tr) is to pick the
+offset that maximises the *worst* joint margin over the whole stroke, then
+hold it.
 
-* hill-climbs ψ inside the *currently connected* feasible interval (never
-  jumps an infeasible gap on the ψ-circle);
-* hill-climbs the rail coordinate that maximises J4 margin + σ_min, then
-  writes ``d_pref = y_tcp − y_rail★``.
-
-Both searches share a 2-eval/tick budget so the 200 Hz QP stays inside its
-ProxQP wall-clock.  Outputs are rate-limited and first-order filtered before
-they reach :class:`ArmAngleTask` / :class:`RailExtensionTask`.
+Call :meth:`PostureRetarget.plan_stroke` once when the scan starts.  After
+that :meth:`step` only slews ψ toward ψ* with a single rate limit (no LPF)
+and holds d* constant.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -24,10 +22,6 @@ from rm75_control.control.joint_admittance_8dof.model import (
     RAIL_INDEX,
     RobotKinematics,
     full_q_from_arm,
-)
-from rm75_control.control.joint_admittance_8dof.pose_ik import (
-    PlannerGoalWeights,
-    goal_score,
 )
 from rm75_control.kinematics.srs_ik import (
     Q_LOWER,
@@ -40,35 +34,37 @@ from rm75_control.kinematics.srs_ik import (
 )
 
 
+class StrokeInfeasibleError(RuntimeError):
+    """Raised when no (d, ψ) covers the requested stroke inside rail travel."""
+
+
 def _wrap_pi(a: float) -> float:
     return float((a + np.pi) % (2.0 * np.pi) - np.pi)
 
 
-def _lpf(prev: float, target: float, dt_s: float, tau_s: float) -> float:
-    if tau_s <= 1e-9 or dt_s <= 0.0:
-        return float(target)
-    alpha = float(dt_s) / (tau_s + float(dt_s))
-    return (1.0 - alpha) * float(prev) + alpha * float(target)
+def joint_margin_frac(q_arm: np.ndarray) -> float:
+    """Normalised per-joint slack in (0, 1]; return the worst joint."""
+    q = np.asarray(q_arm, dtype=float).reshape(-1)
+    if q.size == 8:
+        q = q[1:]
+    half = 0.5 * (Q_UPPER - Q_LOWER)
+    half = np.maximum(half, 1.0e-6)
+    lo = (q - Q_LOWER) / half
+    hi = (Q_UPPER - q) / half
+    return float(np.min(np.minimum(lo, hi)))
 
 
 @dataclass
 class PsiRetargetConfig:
     enabled: bool = True
-    evals_per_tick: int = 2
-    psi_step_rad: float = 5.0 * np.pi / 180.0
+    n_y: int = 9
+    n_d: int = 8
+    n_psi: int = 9
+    w_sigma: float = 0.5
+    # Used only when ψ* changes (new scan segment).  No LPF on top.
     psi_rate_rad_s: float = 20.0 * np.pi / 180.0
-    psi_lpf_tau_s: float = 0.30
-    rail_step_m: float = 0.05
-    d_pref_rate_m_s: float = 0.02
-    d_pref_lpf_tau_s: float = 0.40
-    weights: PlannerGoalWeights = field(
-        default_factory=lambda: PlannerGoalWeights(
-            w_home=0.05,
-            w_sigma_floor=100.0,
-            w_wrist=1.0,
-            w_elbow=0.5,
-        )
-    )
+    # Soft travel used by the planner (must cover the whole stroke).
+    rail_margin_m: float = 0.02
 
 
 class _SrsEval:
@@ -84,7 +80,7 @@ class _SrsEval:
         psi: float,
         branch: int,
         y_rail: float,
-    ) -> tuple[np.ndarray, float, float] | None:
+    ) -> tuple[np.ndarray, np.ndarray, float] | None:
         q_arm = srs_ik(
             pose,
             float(psi),
@@ -101,7 +97,7 @@ class _SrsEval:
 
 
 class PostureRetarget:
-    """Shared-budget ψ + d_pref hill-climb; call ``step`` once per control tick."""
+    """Stroke min-max planner; ``step`` holds (d*, ψ*) after ``plan_stroke``."""
 
     def __init__(
         self,
@@ -115,31 +111,31 @@ class PostureRetarget:
         self.euler_order = str(euler_order)
         self._eval = _SrsEval(kin)
         self._psi_cmd: float | None = None
-        self._psi_best: float | None = None
-        self._d_pref_cmd: float | None = None
-        self._d_pref_best: float | None = None
-        self._rail_best: float | None = None
-        self._psi_slot: int = 0
-        self._rail_slot: int = 0
+        self._psi_star: float | None = None
+        self._d_star: float | None = None
+        self._planned: bool = False
         self.last_psi_score: float = float("nan")
         self.last_dpref_score: float = float("nan")
+        self.last_minmax_margin: float = float("nan")
         self.last_elbow_margin_rad: float = float("nan")
         self.last_wrist_open_rad: float = float("nan")
+        self.d_star_m: float = float("nan")
+        self.psi_star_rad: float = float("nan")
 
     def reset(self, q_rad: np.ndarray) -> None:
         q = np.asarray(q_rad, dtype=float)
         psi = float(psi_from_q(q))
         self._psi_cmd = psi
-        self._psi_best = psi
+        self._psi_star = psi
         y_tcp = float(self.kin.fk_placement(q).translation[1])
         d_pref = y_tcp - float(q[RAIL_INDEX])
-        self._d_pref_cmd = d_pref
-        self._d_pref_best = d_pref
-        self._rail_best = float(q[RAIL_INDEX])
-        self._psi_slot = 0
-        self._rail_slot = 0
+        self._d_star = d_pref
+        self._planned = False
+        self.d_star_m = float(d_pref)
+        self.psi_star_rad = float(psi)
         self.last_psi_score = float("nan")
         self.last_dpref_score = float("nan")
+        self.last_minmax_margin = float("nan")
         self._update_margins(q)
 
     def _update_margins(self, q: np.ndarray) -> None:
@@ -153,6 +149,97 @@ class PostureRetarget:
         )
         self.last_wrist_open_rad = float(abs(q6))
 
+    def plan_stroke(
+        self,
+        q_rad: np.ndarray,
+        *,
+        y_center_m: float,
+        amplitude_m: float,
+        rail_lo: float,
+        rail_hi: float,
+    ) -> tuple[float, float]:
+        """Grid-search ``(d*, ψ*)`` over the scan stroke.  Raises if empty."""
+        q = np.asarray(q_rad, dtype=float)
+        pose0 = np.asarray(self.kin.fk_pose(q), dtype=float).reshape(6)
+        branch = int(branch_from_q(q))
+        amp = abs(float(amplitude_m))
+        y_c = float(y_center_m)
+        y_lo = y_c - amp
+        y_hi = y_c + amp
+        margin = max(float(self.cfg.rail_margin_m), 0.0)
+        rail_lo_s = float(rail_lo) + margin
+        rail_hi_s = float(rail_hi) - margin
+        # y - d ∈ [rail_lo_s, rail_hi_s] for every y in the stroke.
+        d_min = y_hi - rail_hi_s
+        d_max = y_lo - rail_lo_s
+        if d_min > d_max + 1.0e-9:
+            raise StrokeInfeasibleError(
+                f"scan stroke [{y_lo:.3f}, {y_hi:.3f}] m does not fit rail "
+                f"[{rail_lo_s:.3f}, {rail_hi_s:.3f}] m; reduce amplitude"
+            )
+        n_y = max(int(self.cfg.n_y), 3)
+        n_d = max(int(self.cfg.n_d), 3)
+        n_psi = max(int(self.cfg.n_psi), 3)
+        y_samples = np.linspace(y_lo, y_hi, n_y)
+        d_samples = np.linspace(d_min, d_max, n_d)
+        psi0 = float(psi_from_q(q))
+        psi_samples = psi0 + np.linspace(-np.pi, np.pi, n_psi, endpoint=False)
+        w_sigma = float(self.cfg.w_sigma)
+        best_score = -np.inf
+        best_d = float(self._d_star if self._d_star is not None else 0.0)
+        best_psi = psi0
+        any_feasible = False
+        for d in d_samples:
+            for psi in psi_samples:
+                worst = np.inf
+                feasible = True
+                last_q: np.ndarray | None = None
+                for y in y_samples:
+                    y_rail = float(y) - float(d)
+                    if y_rail < rail_lo_s - 1.0e-9 or y_rail > rail_hi_s + 1.0e-9:
+                        feasible = False
+                        break
+                    pose = pose0.copy()
+                    pose[1] = float(y)
+                    pack = self._eval.evaluate(pose, float(psi), branch, y_rail)
+                    if pack is None:
+                        feasible = False
+                        break
+                    q_arm, q_full, sigma = pack
+                    last_q = q_full
+                    score_y = joint_margin_frac(q_arm) + w_sigma * float(sigma)
+                    if score_y < worst:
+                        worst = score_y
+                if not feasible or not np.isfinite(worst):
+                    continue
+                any_feasible = True
+                if worst > best_score:
+                    best_score = float(worst)
+                    best_d = float(d)
+                    best_psi = float(psi)
+                    if last_q is not None:
+                        self._update_margins(last_q)
+        if not any_feasible:
+            raise StrokeInfeasibleError(
+                "no feasible (d, ψ) covers the scan stroke; reduce amplitude "
+                "or choose a less extended start pose"
+            )
+        # The ψ grid is psi0 ± π, so best_psi can land outside (-π, π].  The
+        # rate limiter already takes the short way round, but an unwrapped
+        # value made psi_star_deg / |ψ − ψ_ref| unreadable in the CSV.
+        best_psi = _wrap_pi(best_psi)
+        self._d_star = float(best_d)
+        self._psi_star = float(best_psi)
+        self._planned = True
+        self.d_star_m = float(best_d)
+        self.psi_star_rad = float(best_psi)
+        self.last_minmax_margin = float(best_score)
+        self.last_dpref_score = float(best_score)
+        self.last_psi_score = float(best_score)
+        if self._psi_cmd is None:
+            self._psi_cmd = float(best_psi)
+        return float(best_d), float(best_psi)
+
     def step(
         self,
         q_rad: np.ndarray,
@@ -161,132 +248,30 @@ class PostureRetarget:
         rail_lo: float,
         rail_hi: float,
     ) -> tuple[float, float]:
-        """Return ``(psi_ref_rad, d_pref_m)`` after at most ``evals_per_tick`` IK solves."""
+        """Hold d* and slew ψ_ref toward ψ* with a single rate limit."""
+        del rail_lo, rail_hi
         q = np.asarray(q_rad, dtype=float)
-        if self._psi_cmd is None or self._d_pref_cmd is None:
+        if self._psi_cmd is None or self._d_star is None:
             self.reset(q)
-        pose = self.kin.fk_pose(q)
-        branch = int(branch_from_q(q))
-        psi_meas = float(psi_from_q(q))
-        y_rail = float(q[RAIL_INDEX])
-        y_tcp = float(pose[1])
-        budget = max(1, int(self.cfg.evals_per_tick))
-        # Split: first eval ψ neighbour, remaining evals rail neighbours.
-        n_psi = 1 if budget == 1 else max(1, budget - 1)
-        n_rail = max(0, budget - n_psi)
-        self._climb_psi(pose, branch, y_rail, psi_meas, n_psi)
-        self._climb_rail(pose, branch, y_tcp, y_rail, rail_lo, rail_hi, n_rail)
         dt = max(float(dt_s), 0.0)
         psi_out = self._rate_limit_psi(dt)
-        d_out = self._rate_limit_dpref(dt)
         self._update_margins(q)
-        return psi_out, d_out
-
-    def _climb_psi(
-        self,
-        pose: np.ndarray,
-        branch: int,
-        y_rail: float,
-        psi_meas: float,
-        n_eval: int,
-    ) -> None:
-        if n_eval <= 0:
-            return
-        step = float(self.cfg.psi_step_rad)
-        center = float(self._psi_best if self._psi_best is not None else psi_meas)
-        # Neighbours on the connected component: ±1 step, then ±2, cycling.
-        offsets = [0.0, step, -step]
-        scored: list[tuple[float, float]] = []
-        used = 0
-        start = self._psi_slot
-        for k in range(len(offsets)):
-            if used >= n_eval:
-                break
-            off = offsets[(start + k) % len(offsets)]
-            psi = center + off
-            pack = self._eval.evaluate(pose, psi, branch, y_rail)
-            used += 1
-            if pack is None:
-                continue
-            q_arm, q_full, sigma = pack
-            psi_home = float(self._psi_cmd if self._psi_cmd is not None else psi_meas)
-            score = goal_score(
-                q_arm, q_full, float(psi), psi_home, sigma, self.kin, self.cfg.weights
-            )
-            scored.append((score, float(psi)))
-        self._psi_slot = (start + used) % len(offsets)
-        if not scored:
-            return
-        score, psi_star = max(scored, key=lambda t: t[0])
-        self.last_psi_score = float(score)
-        self._psi_best = float(psi_star)
-
-    def _climb_rail(
-        self,
-        pose: np.ndarray,
-        branch: int,
-        y_tcp: float,
-        y_rail: float,
-        rail_lo: float,
-        rail_hi: float,
-        n_eval: int,
-    ) -> None:
-        if n_eval <= 0:
-            return
-        step = float(self.cfg.rail_step_m)
-        center = float(self._rail_best if self._rail_best is not None else y_rail)
-        psi = float(self._psi_best if self._psi_best is not None else 0.0)
-        offsets = [0.0, step, -step]
-        scored: list[tuple[float, float]] = []
-        used = 0
-        start = self._rail_slot
-        for k in range(len(offsets)):
-            if used >= n_eval:
-                break
-            y = float(np.clip(center + offsets[(start + k) % len(offsets)], rail_lo, rail_hi))
-            pack = self._eval.evaluate(pose, psi, branch, y)
-            used += 1
-            if pack is None:
-                continue
-            q_arm, _q_full, sigma = pack
-            q4 = float(q_arm[3])
-            elbow_margin = min(q4 - float(Q_LOWER[3]), float(Q_UPPER[3]) - q4)
-            score = float(elbow_margin) + 0.5 * float(sigma)
-            scored.append((score, y))
-        self._rail_slot = (start + used) % len(offsets)
-        if not scored:
-            return
-        score, y_star = max(scored, key=lambda t: t[0])
-        self.last_dpref_score = float(score)
-        self._rail_best = float(y_star)
-        self._d_pref_best = float(y_tcp) - float(y_star)
+        return float(psi_out), float(self._d_star)
 
     def _rate_limit_psi(self, dt_s: float) -> float:
-        target = float(self._psi_best if self._psi_best is not None else 0.0)
+        target = float(self._psi_star if self._psi_star is not None else 0.0)
         cur = float(self._psi_cmd if self._psi_cmd is not None else target)
         err = _wrap_pi(target - cur)
         max_step = float(self.cfg.psi_rate_rad_s) * dt_s
-        if abs(err) > max_step > 0.0:
+        if max_step > 0.0 and abs(err) > max_step:
             err = float(np.clip(err, -max_step, max_step))
-        stepped = cur + err
-        filtered = _lpf(cur, stepped, dt_s, float(self.cfg.psi_lpf_tau_s))
-        self._psi_cmd = float(filtered)
+        self._psi_cmd = float(cur + err)
         return float(self._psi_cmd)
-
-    def _rate_limit_dpref(self, dt_s: float) -> float:
-        target = float(self._d_pref_best if self._d_pref_best is not None else 0.0)
-        cur = float(self._d_pref_cmd if self._d_pref_cmd is not None else target)
-        max_step = float(self.cfg.d_pref_rate_m_s) * dt_s
-        delta = target - cur
-        if abs(delta) > max_step > 0.0:
-            delta = float(np.clip(delta, -max_step, max_step))
-        stepped = cur + delta
-        filtered = _lpf(cur, stepped, dt_s, float(self.cfg.d_pref_lpf_tau_s))
-        self._d_pref_cmd = float(filtered)
-        return float(self._d_pref_cmd)
 
 
 __all__ = [
     "PostureRetarget",
     "PsiRetargetConfig",
+    "StrokeInfeasibleError",
+    "joint_margin_frac",
 ]

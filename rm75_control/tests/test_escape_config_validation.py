@@ -27,6 +27,8 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
     assert cfg.qp.backend.lower() == "proxqp"
     assert cfg.qp.max_iter == 400
     assert cfg.qp.twist_sigma_floor == pytest.approx(0.02)
+    assert cfg.qp.task_weight_min_frac == pytest.approx(0.05)
+    assert cfg.qp.twist_scale_lpf_tau_s == pytest.approx(0.08)
     assert cfg.qp.sigma_setbased.enabled
     assert cfg.qp.branch_barrier.enabled
     assert cfg.nullspace.q_nominal_rad is not None
