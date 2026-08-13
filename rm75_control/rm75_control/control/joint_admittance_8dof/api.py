@@ -34,11 +34,6 @@ from rm75_control.control.joint_admittance_8dof.reference import (
     auto_rail_move_duration_s,
     srs_move_duration_s,
 )
-from rm75_control.control.joint_admittance_8dof.task_adapter import (
-    CartesianTaskProfile,
-)
-
-
 class TaskMode(str, Enum):
     JOINT_RESET = "joint_reset"
     CARTESIAN_GOTO = "cartesian_goto"
@@ -50,26 +45,13 @@ class TaskMode(str, Enum):
 
 
 @dataclass
-class ArmAngleSpec:
-    """Arm-angle nullspace target applied on phase entry (scan/handoff)."""
-
-    psi_rad: float | None = None
-
-
-@dataclass
 class SecondaryPolicy:
-    """Compatibility preset for rail ownership and planner posture hints."""
+    """Phase-scoped rail and direct-plan ownership."""
 
     preset: Literal["off", "move", "track", "hold"] = "track"
-    arm_angle: ArmAngleSpec | None = None
     qdot_ff: Literal["off", "plan", "plan_joint"] = "off"
 
-    def apply(self, inner: JointIkController, *, psi_rad: float | None = None) -> None:
-        psi = psi_rad
-        if self.arm_angle is not None and self.arm_angle.psi_rad is not None:
-            psi = self.arm_angle.psi_rad
-
-        inner.set_posture_hint(psi_rad=psi)
+    def apply(self, inner: JointIkController) -> None:
         if self.preset == "move":
             inner.set_coupled()
         elif self.preset == "track":
@@ -147,8 +129,6 @@ class JointPhaseSpec:
     rail_ref: RailSmoothMoveReference | None = None
     locked_style: LockedStyle = LockedStyle.RAIL_ONLY
     q_rail_target_m: float | None = None
-    task_profile: CartesianTaskProfile | None = None
-    reference_horizon: Any = None
 
 
 @dataclass
@@ -239,17 +219,14 @@ def attach_srs_move_tracking(
     def _enter() -> None:
         if prev_on_enter is not None:
             prev_on_enter()
-        inner.set_posture_hint(psi_rad=move_ref.psi_start)
         inner.set_plan_drives_rail(True)
 
     def _tick(t_ref: float, step, q_meas: np.ndarray) -> None:
-        inner.set_posture_hint(psi_rad=move_ref.sample_psi(t_ref))
         if prev_on_tick is not None:
             prev_on_tick(t_ref, step, q_meas)
 
     def _exit() -> None:
         inner.set_plan_drives_rail(False)
-        inner.set_posture_hint()
         if prev_on_exit is not None:
             prev_on_exit()
 
@@ -396,6 +373,8 @@ def phase_rail_reposition(
             v_max_m_s=rail_v,
             peak_v_frac=1.0,
         )
+    if max_duration_s is None:
+        max_duration_s = 2.5 * float(duration_s) + 5.0
     rail_ref = RailSmoothMoveReference(q_start, float(q_target_m), float(duration_s))
     # Suppress secondary posture tasks during rail reposition.
     sec = SecondaryPolicy(preset="off", qdot_ff="plan")
@@ -452,6 +431,8 @@ def phase_cartesian_goto(
     require_arrival: bool = True,
     force_observer: Any = None,
 ) -> JointPhaseSpec:
+    if max_duration_s is None:
+        max_duration_s = 2.5 * float(move_ref.duration_s) + 15.0
     sec = SecondaryPolicy(
         preset="move",
         qdot_ff="plan_joint",
@@ -509,13 +490,10 @@ def phase_hybrid_track(
     label: str = "hybrid_track",
     duration_s: float | None = None,
     force_observer: Any = None,
-    psi_rad_on_enter: float | None = None,
     governor: GovernorSpec | None = None,
     secondary: SecondaryPolicy | None = None,
 ) -> JointPhaseSpec:
     sec = secondary or SecondaryPolicy(preset="track", qdot_ff="off")
-    if psi_rad_on_enter is not None and sec.arm_angle is None:
-        sec.arm_angle = ArmAngleSpec(psi_rad=psi_rad_on_enter)
     return JointPhaseSpec(
         mode=TaskMode.HYBRID_TRACK,
         label=label,
@@ -530,15 +508,8 @@ def phase_hybrid_track(
 
 
 def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], None] | None:
-    psi = None
-    if spec.secondary.arm_angle is not None:
-        psi = spec.secondary.arm_angle.psi_rad
-
     def _enter() -> None:
-        spec.secondary.apply(ctx.inner, psi_rad=psi)
-        # Soft planar recovery needs a latched ψ_D even when CLI did not set one.
-        if hasattr(ctx.inner, "ensure_psi_ref_from_q"):
-            ctx.inner.ensure_psi_ref_from_q()
+        spec.secondary.apply(ctx.inner)
         if spec.mode == TaskMode.LOCKED_MOVE and spec.q_rail_target_m is not None:
             ctx.inner.set_locked(spec.locked_style, q_ref_m=spec.q_rail_target_m)
 
@@ -590,6 +561,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
                     max_lin_vel_m_s=spec.max_lin_vel_m_s,
                     control_frame=ctx.control_frame,
                     euler_order=ctx.euler_order,
+                    path_feedforward=(spec.mode != TaskMode.CARTESIAN_GOTO),
                 ),
             )
         phase = Phase(
@@ -601,6 +573,8 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             on_enter=on_enter,
             on_exit=on_exit,
             require_arrival=spec.require_arrival,
+            arrival_plan_duration_s=float(spec.move_ref.duration_s),
+            arrival_dwell_s=(0.10 if spec.move_mode == "joint" else 0.05),
             governor_err_ok_mm=gov.err_ok_mm,
             governor_err_max_mm=gov.err_max_mm,
             governor_joint_err_ok_deg=gov.joint_err_ok_deg,
@@ -616,8 +590,6 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             qdot_ff_provider=qdot_ff,
             scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
             force_observer=spec.force_observer,
-            task_profile=spec.task_profile,
-            reference_horizon=spec.reference_horizon,
         )
         if spec.move_mode == "joint":
             attach_joint_move_rail(phase, ctx.inner)
@@ -657,6 +629,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
                 max_lin_vel_m_s=spec.max_lin_vel_m_s,
                 control_frame=ctx.control_frame,
                 euler_order=ctx.euler_order,
+                path_feedforward=False,
             ),
         )
         phase = Phase(
@@ -668,6 +641,8 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             on_enter=on_enter,
             on_exit=on_exit,
             require_arrival=spec.require_arrival,
+            arrival_plan_duration_s=float(spec.rail_ref.duration_s),
+            arrival_dwell_s=0.10,
             governor_err_ok_mm=gov.err_ok_mm,
             governor_err_max_mm=gov.err_max_mm,
             governor_joint_err_ok_deg=gov.joint_err_ok_deg,
@@ -678,8 +653,6 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             qdot_ff_provider=qdot_ff,
             scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
             force_observer=spec.force_observer,
-            task_profile=spec.task_profile,
-            reference_horizon=spec.reference_horizon,
         )
         return CompiledPhase(
             phase=phase,
@@ -689,6 +662,11 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
         )
 
     if spec.mode == TaskMode.CARTESIAN_TRACK:
+        if spec.wait_until is not None or spec.require_arrival:
+            raise ValueError(
+                "cartesian_track uses duration semantics; arrival gates are only "
+                "supported by move and locked_move phases"
+            )
         if spec.reference is None:
             raise ValueError(f"{spec.mode}: reference is required")
         outer = CartesianTrackOuterLoop(
@@ -720,8 +698,6 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_release_above=gov.release_above,
             force_observer=spec.force_observer,
             scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
-            task_profile=spec.task_profile,
-            reference_horizon=spec.reference_horizon,
         )
         return CompiledPhase(
             phase=phase,
@@ -731,6 +707,11 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
         )
 
     if spec.mode == TaskMode.HYBRID_TRACK:
+        if spec.wait_until is not None or spec.require_arrival:
+            raise ValueError(
+                "hybrid_track uses duration semantics; arrival gates are only "
+                "supported by move and locked_move phases"
+            )
         if spec.reference is None or spec.controller is None:
             raise ValueError("hybrid_track: reference and controller are required")
         desired = spec.desired_force if spec.desired_force is not None else np.zeros(6)
@@ -752,8 +733,6 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_freeze_below=gov.freeze_below,
             governor_release_above=gov.release_above,
             force_observer=spec.force_observer,
-            task_profile=spec.task_profile,
-            reference_horizon=spec.reference_horizon,
         )
         return CompiledPhase(
             phase=phase,

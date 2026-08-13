@@ -13,6 +13,7 @@ from rm75_control.control.joint_admittance_8dof.reference import SrsSmoothMoveRe
 from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import CbfSlotTracker
 from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
     VelocityBoxConstraints,
+    VelocityBoxInfeasible,
 )
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 from rm75_control.control.joint_admittance_8dof.wbc_arm import (
@@ -42,17 +43,15 @@ def _pair(ga: int, gb: int, dist: float) -> CollisionPairInfo:
     )
 
 
-def test_accel_box_projects_when_infeasible():
+def test_inconsistent_state_is_not_silently_projected():
     kin = RobotKinematics()
     limits = SafetyLimits.from_kinematics(kin, v_scale=0.5, a_max=1.0)
     box = VelocityBoxConstraints(limits, damper_band_rad=0.0)
     q = np.zeros(kin.nv)
     # Huge previous velocity so accel band cannot intersect position-safe box.
     qdot_prev = np.full(kin.nv, 50.0)
-    lo, hi = box.bounds(q, dt=0.005, qdot_prev=qdot_prev)
-    assert np.all(lo <= hi)
-    assert np.all(np.isfinite(lo))
-    assert np.all(np.isfinite(hi))
+    with pytest.raises(VelocityBoxInfeasible):
+        box.bounds(q, dt=0.005, qdot_prev=qdot_prev)
 
 
 def test_cbf_slot_sticky_assignment():
@@ -143,6 +142,169 @@ def test_joint_move_phase_enables_plan_drives_rail():
         compiled.phase.on_exit()
     assert inner._plan_drives_rail is False
     assert inner._direct_joint_ptp is False
+
+
+def test_arrival_dwell_requires_plan_and_continuous_settled_command():
+    from rm75_control.control.joint_admittance_8dof.loop import _ArrivalDwellGate
+
+    gate = _ArrivalDwellGate(
+        plan_duration_s=1.0,
+        dwell_required_s=0.015,
+        arm_speed_rad_s=0.02,
+        rail_speed_m_s=0.003,
+    )
+    stopped = np.zeros(8)
+    assert not gate.update(
+        geometric_arrival=True, t_ref_s=0.99, qdot_applied=stopped, dt_s=0.005
+    )
+    assert gate.dwell_s == 0.0
+    assert not gate.update(
+        geometric_arrival=True, t_ref_s=1.0, qdot_applied=stopped, dt_s=0.005
+    )
+    moving = stopped.copy()
+    moving[4] = 0.03
+    assert not gate.update(
+        geometric_arrival=True, t_ref_s=1.005, qdot_applied=moving, dt_s=0.005
+    )
+    assert gate.dwell_s == 0.0
+    for index in range(3):
+        arrived = gate.update(
+            geometric_arrival=True,
+            t_ref_s=1.01 + 0.005 * index,
+            qdot_applied=stopped,
+            dt_s=0.005,
+        )
+    assert arrived
+
+
+def test_zero_arrival_dwell_still_requires_all_candidate_conditions():
+    from rm75_control.control.joint_admittance_8dof.loop import _ArrivalDwellGate
+
+    gate = _ArrivalDwellGate(
+        plan_duration_s=1.0,
+        dwell_required_s=0.0,
+        arm_speed_rad_s=0.02,
+        rail_speed_m_s=0.003,
+    )
+    stopped = np.zeros(8)
+    assert not gate.update(
+        geometric_arrival=False, t_ref_s=1.0, qdot_applied=stopped, dt_s=0.005
+    )
+    assert not gate.update(
+        geometric_arrival=True, t_ref_s=0.9, qdot_applied=stopped, dt_s=0.005
+    )
+    moving = stopped.copy()
+    moving[1] = 0.03
+    assert not gate.update(
+        geometric_arrival=True, t_ref_s=1.0, qdot_applied=moving, dt_s=0.005
+    )
+    assert gate.update(
+        geometric_arrival=True, t_ref_s=1.0, qdot_applied=stopped, dt_s=0.005
+    )
+
+
+def test_arrival_dwell_requires_fresh_rail_worker_standstill():
+    from types import SimpleNamespace
+
+    from rm75_control.control.joint_admittance_8dof.loop import (
+        _ArrivalDwellGate,
+        _rail_settled_for_arrival,
+    )
+
+    bridge = SimpleNamespace(
+        enabled=True,
+        servo_sample=SimpleNamespace(
+            sample_mono_s=10.0,
+            v_cmd_m_s=0.004,
+            v_meas_m_s=0.001,
+        ),
+    )
+    gate = _ArrivalDwellGate(None, 0.01, 0.02, 0.003)
+    settled = _rail_settled_for_arrival(
+        bridge, speed_limit_m_s=0.003, now_s=10.01, freshness_s=0.05
+    )
+    assert settled is False
+    assert not gate.update(
+        geometric_arrival=True,
+        t_ref_s=1.0,
+        qdot_applied=np.zeros(8),
+        dt_s=0.005,
+        rail_settled=settled,
+    )
+    bridge.servo_sample = SimpleNamespace(
+        sample_mono_s=9.0,
+        v_cmd_m_s=0.0,
+        v_meas_m_s=0.0,
+    )
+    assert not _rail_settled_for_arrival(
+        bridge, speed_limit_m_s=0.003, now_s=10.01, freshness_s=0.05
+    )
+
+
+def test_public_move_factory_has_arrival_timeout():
+    from rm75_control.control.joint_admittance_8dof.api import phase_cartesian_goto
+    from rm75_control.control.joint_admittance_8dof.reference import (
+        JointSmoothMoveReference,
+    )
+
+    kin = RobotKinematics()
+    q0 = Q_HOME.copy()
+    ref = JointSmoothMoveReference(kin, q0, q0, duration_s=2.0)
+    spec = phase_cartesian_goto(
+        ref,
+        pose_target=kin.fk_pose(q0),
+        q_target_rad=q0,
+        max_duration_s=None,
+    )
+    assert spec.max_duration_s == pytest.approx(20.0)
+
+
+def test_compiled_move_and_rail_arrival_use_explicit_plan_duration():
+    from rm75_control.control.joint_admittance_8dof.api import (
+        CompileContext,
+        compile_phase,
+        phase_rail_reposition,
+    )
+    from rm75_control.control.joint_admittance_8dof.loop import (
+        JointIkConfig,
+        JointIkController,
+    )
+
+    kin = RobotKinematics()
+    inner = JointIkController(kin, JointIkConfig())
+    ctx = CompileContext(kin=kin, inner=inner, control_frame="base")
+    q0 = Q_HOME.copy()
+    qt = q0.copy()
+    qt[2] += np.deg2rad(5.0)
+    move = WbcArm.make_movej_phase(kin, q0, qt, duration_s=1.25)
+    compiled_move = compile_phase(move, ctx)
+    assert compiled_move.phase.arrival_plan_duration_s == pytest.approx(1.25)
+    assert compiled_move.phase.arrival_dwell_s == pytest.approx(0.10)
+
+    rail = phase_rail_reposition(0.42, q0, kin, duration_s=0.75)
+    compiled_rail = compile_phase(rail, ctx)
+    assert compiled_rail.phase.arrival_plan_duration_s == pytest.approx(0.75)
+    assert compiled_rail.phase.max_duration_s > 0.75
+
+
+def test_cartesian_track_sample_uses_local_error_saturation():
+    from rm75_control.control.joint_admittance_8dof.loop import (
+        CartesianTrackConfig,
+        CartesianTrackOuterLoop,
+    )
+    from rm75_control.control.joint_admittance_8dof.reference import HoldReference
+
+    pose = np.array([0.2, -0.1, 0.4, 0.1, -0.2, 0.3])
+    outer = CartesianTrackOuterLoop(
+        HoldReference(),
+        CartesianTrackConfig(control_frame="base", k_task=np.ones(6)),
+    )
+    outer.set_origin(pose)
+    current = pose.copy()
+    current[0] += 0.2
+    command = outer.sample(0.0, current, np.zeros(6))
+    assert np.all(np.isfinite(command))
+    assert np.linalg.norm(outer.last_feedback_twist[:3]) <= 0.05 + 1.0e-12
 
 
 

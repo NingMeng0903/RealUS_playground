@@ -2,7 +2,7 @@
 
 ``RECOVERY`` is singularity-only (``arm_health`` below danger, plus FAULT
 paths).  Joint/wrist margin danger stays ``NORMAL`` with a warn/reason flag so
-authority is not frozen; the QP2 margin soft cost handles avoidance.  Leaving
+authority is not frozen; the single QP recovery/preference terms handle avoidance.  Leaving
 ``RECOVERY`` still requires arm_health above the exit band for a settling dwell.
 """
 
@@ -520,7 +520,7 @@ class HealthMonitor:
             invalid = True
             reason = reason or "no health metrics"
         # RECOVERY authority is singularity-only (arm_health). Joint/wrist
-        # margins warn and feed the QP2 soft cost; they must not freeze α.
+        # margins warn and feed the recovery/preference terms; they must not freeze alpha.
         arm_danger = arm is not None and arm <= self.thresholds.arm_danger
         joint_warn = (
             joint is not None and joint <= self.thresholds.joint_warn_rad

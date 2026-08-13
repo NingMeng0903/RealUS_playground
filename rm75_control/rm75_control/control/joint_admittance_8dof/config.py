@@ -1,4 +1,4 @@
-"""YAML loader for the generic measured-state two-level QPIK controller."""
+"""YAML loader for the fixed single-shot RM75 Cartesian QPIK controller."""
 
 from __future__ import annotations
 
@@ -13,13 +13,8 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedSty
 from rm75_control.control.joint_admittance_8dof.generic_runtime import (
     GenericQpikRuntimeConfig,
 )
-from rm75_control.control.joint_admittance_8dof.solver.two_level_qpik import (
-    TwoLevelQpikConfig,
-)
-from rm75_control.control.joint_admittance_8dof.task_adapter import (
-    CartesianTaskProfile,
-    ScalableRowGroup,
-    selection_from_indices,
+from rm75_control.control.joint_admittance_8dof.solver.single_qpik import (
+    SingleQpikConfig,
 )
 from rm75_control.control.joint_admittance_8dof.health_monitor import HealthThresholds
 
@@ -32,6 +27,12 @@ def _mapping(value, *, name: str) -> dict:
     if not isinstance(value, dict):
         raise ValueError(f"{name} must be a mapping")
     return value
+
+
+def _reject_unknown(section: dict, allowed: set[str], *, name: str) -> None:
+    unknown = sorted(set(section) - set(allowed))
+    if unknown:
+        raise ValueError(f"unknown {name} configuration keys: " + ", ".join(unknown))
 
 
 def _finite_array(value, *, name: str, ndim: int | None = None) -> np.ndarray:
@@ -48,138 +49,6 @@ def _finite_array(value, *, name: str, ndim: int | None = None) -> np.ndarray:
     return out
 
 
-def _selection_from_config(value, *, name: str, default_indices=()) -> np.ndarray:
-    """Parse a generic 6D task selection matrix or row-index list.
-
-    A mapping may use ``selection``/``matrix`` for an explicit matrix or
-    ``rows``/``indices`` for Cartesian row indices.  For convenience, a
-    one-dimensional integer sequence is interpreted as row indices, while a
-    one-dimensional six-element non-integer sequence is one coefficient row.
-    This keeps application profiles declarative without assigning any axis
-    semantic to the control core.
-    """
-
-    if value is None:
-        return selection_from_indices(tuple(default_indices), width=6)
-    if isinstance(value, dict):
-        if "selection" in value:
-            value = value["selection"]
-        elif "matrix" in value:
-            value = value["matrix"]
-        elif "rows" in value:
-            return _selection_from_config(value["rows"], name=f"{name}.rows")
-        elif "indices" in value:
-            return _selection_from_config(value["indices"], name=f"{name}.indices")
-        else:
-            raise ValueError(
-                f"{name} must contain selection/matrix or rows/indices"
-            )
-
-    try:
-        raw = np.asarray(value)
-    except Exception as exc:
-        raise ValueError(f"{name} must be a row-index sequence or matrix") from exc
-    if raw.ndim == 1:
-        if raw.size == 0:
-            return np.zeros((0, 6), dtype=float)
-        # Explicit row-index lists are the common compact form.  Require
-        # integral values and bounds rather than silently truncating floats.
-        try:
-            as_float = raw.astype(float)
-        except (TypeError, ValueError) as exc:
-            raise ValueError(f"{name} must be numeric") from exc
-        if np.isfinite(as_float).all() and np.allclose(as_float, np.round(as_float)):
-            rounded = np.round(as_float).astype(int)
-            if np.all((0 <= rounded) & (rounded < 6)):
-                return selection_from_indices(tuple(rounded.tolist()), width=6)
-        if raw.size == 6:
-            matrix = _finite_array(value, name=name, ndim=1).reshape(1, 6)
-            return matrix
-        raise ValueError(
-            f"{name} 1D values must be integer row indices or a 6-vector"
-        )
-    matrix = _finite_array(value, name=name, ndim=2)
-    if matrix.shape[1] != 6:
-        raise ValueError(f"{name} matrix must have shape (rows, 6), got {matrix.shape}")
-    return matrix
-
-
-def _optional_vector(value, *, name: str):
-    """Preserve omitted values as ``None`` while validating supplied arrays."""
-
-    if value is None:
-        return None
-    out = _finite_array(value, name=name)
-    return out.copy()
-
-
-def _parse_cartesian_profile(raw: dict) -> CartesianTaskProfile:
-    """Build the application-declared protected/scalable Cartesian rows."""
-
-    protected = _mapping(raw.get("protected_task"), name="qpik.protected_task")
-    scalable_raw = raw.get("scalable_tasks", ())
-    if scalable_raw is None:
-        scalable_raw = ()
-    if not isinstance(scalable_raw, (list, tuple)):
-        raise ValueError("qpik.scalable_tasks must be a sequence")
-
-    protected_spec = protected.get(
-        "selection",
-        protected.get("matrix", protected.get("rows", protected.get("indices"))),
-    )
-    # A missing protected block is deliberately all-protected for compatibility
-    # with existing callers that have not migrated their profile yet.
-    protected_selection = _selection_from_config(
-        protected_spec,
-        name="qpik.protected_task.selection",
-        default_indices=range(6),
-    )
-    groups: list[ScalableRowGroup] = []
-    for idx, item in enumerate(scalable_raw):
-        section = _mapping(item, name=f"qpik.scalable_tasks[{idx}]")
-        group_id = section.get("group_id", section.get("id", idx))
-        spec = section.get(
-            "selection",
-            section.get("matrix", section.get("rows", section.get("indices"))),
-        )
-        selection = _selection_from_config(
-            spec, name=f"qpik.scalable_tasks[{idx}].selection"
-        )
-        groups.append(
-            ScalableRowGroup(
-                selection=selection,
-                group_id=group_id,
-                row_scales=_optional_vector(
-                    section.get("row_scales", section.get("scales")),
-                    name=f"qpik.scalable_tasks[{idx}].row_scales",
-                ),
-                slack_limits=_optional_vector(
-                    section.get("slack_limits"),
-                    name=f"qpik.scalable_tasks[{idx}].slack_limits",
-                ),
-                recovery_slack_limits=_optional_vector(
-                    section.get("recovery_slack_limits"),
-                    name=f"qpik.scalable_tasks[{idx}].recovery_slack_limits",
-                ),
-                name=str(section.get("name", group_id)),
-            )
-        )
-
-    return CartesianTaskProfile(
-        protected_selection=protected_selection,
-        protected_row_scales=_optional_vector(
-            protected.get("row_scales", protected.get("scales")),
-            name="qpik.protected_task.row_scales",
-        ),
-        protected_residual_limits=_optional_vector(
-            protected.get("residual_limits"),
-            name="qpik.protected_task.residual_limits",
-        ),
-        scalable_groups=tuple(groups),
-        name=str(raw.get("name", "cartesian")),
-    )
-
-
 def _parse_health_thresholds(raw: dict) -> HealthThresholds:
     """Read health hysteresis thresholds while accepting compact nested YAML."""
 
@@ -193,6 +62,24 @@ def _parse_health_thresholds(raw: dict) -> HealthThresholds:
         section.get("wrist_margin", section.get("wrist")),
         name="qpik.health.wrist_margin",
     )
+    _reject_unknown(
+        section,
+        {
+            "arm", "joint", "joint_margin", "wrist", "wrist_margin",
+            "arm_warn", "arm_danger", "arm_exit", "joint_danger_deg",
+            "joint_warn_deg", "joint_exit_deg", "wrist_danger_deg",
+            "wrist_warn_deg", "wrist_exit_deg", "settling_s",
+            "settling_time_s", "task_velocity_scales",
+        },
+        name="qpik.health",
+    )
+    _reject_unknown(
+        arm, {"warn", "warn_rho", "danger", "danger_rho", "exit", "exit_rho"},
+        name="qpik.health.arm",
+    )
+    margin_keys = {"danger_deg", "enter_deg", "warn_deg", "warn_margin_deg", "exit_deg"}
+    _reject_unknown(joint, margin_keys, name="qpik.health.joint_margin")
+    _reject_unknown(wrist, margin_keys, name="qpik.health.wrist_margin")
 
     def pick(section_value, *keys, default=None):
         for key in keys:
@@ -245,11 +132,7 @@ def _parse_health_thresholds(raw: dict) -> HealthThresholds:
 
 
 def _parse_generic_qpik(raw: dict) -> GenericQpikRuntimeConfig:
-    """Parse the generic ``qpik`` responsibility blocks.
-
-    Backend/capacity are explicit and task rows are application data rather
-    than controller semantics.
-    """
+    """Parse the fixed single-shot solver and whole-body policy."""
 
     section = _mapping(raw.get("qpik"), name="qpik")
     solver = _mapping(section.get("solver"), name="qpik.solver")
@@ -260,57 +143,125 @@ def _parse_generic_qpik(raw: dict) -> GenericQpikRuntimeConfig:
             f"(got {backend!r})"
         )
 
-    def solver_value(name, default=None, *aliases):
-        for key in (name, *aliases):
-            if key in solver:
-                return solver[key]
-        return default
+    retired = sorted(
+        (
+            set(section)
+            & {
+                "protected_task",
+                "scalable_tasks",
+                "task_profile",
+                "compatibility",
+                "reference_governor",
+                "accepted_reference_governor",
+                "governor",
+                "psi_lift",
+            }
+        )
+        | (
+            set(solver)
+            & {
+                "max_rows",
+                "max_constraint_rows",
+                "max_p0_rows",
+                "max_scalable_groups",
+                "max_groups",
+                "protected_tolerance",
+                "regularization",
+                "previous_velocity_weight",
+                "scalable_weight",
+                "posture_weight",
+                "posture_regularization",
+                "margin_weight",
+                "margin_weight_gain",
+                "psi_weight",
+                "psi_k",
+                "psi_lift_weight_scale",
+                "psi_err_boost_rad",
+                "psi_err_weight_scale",
+                "comfort_k_g",
+                "comfort_qdot_max",
+                "row_scale_floor",
+                "qp1",
+                "qp2",
+                "qp3",
+                "retry",
+                "regularization_retry",
+                "fallback_qp",
+                "p0_fallback",
+                "health_to_alpha",
+                "sigma_escape_enter",
+                "sigma_escape_exit",
+                "rail_escape_v_min_m_s",
+                "rail_escape_v_max_m_s",
+            }
+        )
+    )
+    if retired:
+        raise ValueError(
+            "retired multi-level QPIK configuration keys: " + ", ".join(retired)
+        )
 
-    qcfg = TwoLevelQpikConfig(
+    _reject_unknown(
+        section,
+        {
+            "solver", "dexterity", "working_set", "whole_body", "health",
+            "indices", "hard_limits", "task_velocity_scales",
+        },
+        name="qpik",
+    )
+    _reject_unknown(
+        solver,
+        {
+            "backend", "max_iter", "max_iter_in", "max_solve_ms",
+            "feasibility_tolerance", "equality_tolerance", "protected_limits",
+            "task_scales", "protected_weight", "beta_weight", "recovery_weight",
+            "recovery_linear_weight", "alpha_weight", "preference_weight",
+            "smoothness_weight", "rail_smoothness_weight",
+            "ridge_weight", "authority_quadratic", "authority_rise_per_s",
+            "anchor_decay_tau_s", "anchor_projection_sweeps", "warm_start",
+            "scipy_ftol",
+        },
+        name="qpik.solver",
+    )
+
+    qcfg = SingleQpikConfig(
         backend=backend,
-        max_iter=int(solver_value("max_iter", 80)),
-        max_solve_ms=float(solver_value("max_solve_ms", 3.0)),
-        max_rows=int(solver_value("max_rows", 128, "max_constraint_rows", "max_p0_rows")),
-        max_scalable_groups=int(
-            solver_value("max_scalable_groups", 16, "max_groups")
+        max_iter=int(solver.get("max_iter", 20)),
+        max_iter_in=int(solver.get("max_iter_in", 10)),
+        max_solve_ms=float(solver.get("max_solve_ms", 3.0)),
+        feasibility_tolerance=float(solver.get("feasibility_tolerance", 1.0e-5)),
+        equality_tolerance=float(solver.get("equality_tolerance", 1.0e-5)),
+        protected_limits=_finite_array(
+            solver.get("protected_limits", [0.010, 0.050, 0.050, 0.050]),
+            name="qpik.solver.protected_limits",
+            ndim=1,
         ),
-        protected_tolerance=float(
-            solver_value("protected_tolerance", 1.0e-6, "y_tolerance", "lock_tolerance")
+        task_scales=_finite_array(
+            solver.get("task_scales", [0.10, 0.50, 0.50, 0.50, 0.10, 0.10]),
+            name="qpik.solver.task_scales",
+            ndim=1,
         ),
-        feasibility_tolerance=float(solver_value("feasibility_tolerance", 1.0e-6)),
-        regularization=solver_value("regularization", 1.0e-6, "reg"),
-        previous_velocity_weight=solver_value(
-            "previous_velocity_weight", 1.0e-3, "smoothing", "smoothing_weight"
-        ),
-        alpha_weight=float(solver_value("alpha_weight", 1.0)),
-        scalable_weight=float(solver_value("scalable_weight", 1.0)),
-        posture_weight=float(solver_value("posture_weight", 1.0e-4)),
-        posture_regularization=float(solver_value("posture_regularization", 1.0e-8)),
-        margin_weight=float(solver_value("margin_weight", 5.0e-4)),
-        margin_weight_gain=float(solver_value("margin_weight_gain", 10.0)),
-        # Deprecated handoff / singularity schedules: ignored by solver.
-        rail_handoff_weight=float(solver_value("rail_handoff_weight", 0.0)),
-        rail_handoff_band_m=(
-            None
-            if solver_value("rail_handoff_band_m", None) is None
-            else float(solver_value("rail_handoff_band_m", 0.02))
-        ),
-        rail_margin_boost=float(solver_value("rail_margin_boost", 1.0)),
-        psi_weight=float(solver_value("psi_weight", 8.0e-2)),
-        psi_k=float(solver_value("psi_k", 1.5)),
-        psi_lift_weight_scale=float(solver_value("psi_lift_weight_scale", 3.0)),
-        psi_singularity_sigma=float(solver_value("psi_singularity_sigma", 0.0)),
-        psi_singularity_weight_scale=float(
-            solver_value("psi_singularity_weight_scale", 1.0)
-        ),
-        psi_err_boost_rad=float(solver_value("psi_err_boost_rad", 0.50)),
-        psi_err_weight_scale=float(solver_value("psi_err_weight_scale", 4.0)),
-        comfort_k_g=float(solver_value("comfort_k_g", 2.0)),
-        comfort_qdot_max=float(solver_value("comfort_qdot_max", 0.8)),
-        row_scale_floor=float(solver_value("row_scale_floor", 1.0e-9)),
-        warm_start=bool(solver_value("warm_start", True)),
+        protected_weight=float(solver.get("protected_weight", 1.0e5)),
+        beta_weight=float(solver.get("beta_weight", 1.0e4)),
+        recovery_weight=float(solver.get("recovery_weight", 1.0e3)),
+        recovery_linear_weight=float(solver.get("recovery_linear_weight", 1.0e3)),
+        alpha_weight=float(solver.get("alpha_weight", 1.0e2)),
+        preference_weight=float(solver.get("preference_weight", 10.0)),
+        smoothness_weight=float(solver.get("smoothness_weight", 1.0)),
+        rail_smoothness_weight=float(solver.get("rail_smoothness_weight", 5.0)),
+        ridge_weight=float(solver.get("ridge_weight", 1.0e-4)),
+        authority_quadratic=float(solver.get("authority_quadratic", 0.05)),
+        authority_rise_per_s=float(solver.get("authority_rise_per_s", 2.0)),
+        anchor_decay_tau_s=float(solver.get("anchor_decay_tau_s", 0.08)),
+        anchor_projection_sweeps=int(solver.get("anchor_projection_sweeps", 64)),
+        warm_start=bool(solver.get("warm_start", True)),
+        scipy_ftol=float(solver.get("scipy_ftol", 1.0e-9)),
     )
     dexterity = _mapping(section.get("dexterity"), name="qpik.dexterity")
+    _reject_unknown(
+        dexterity, {"d_safe", "d_activate", "gamma", "k_d"},
+        name="qpik.dexterity",
+    )
     dexterity_d_safe = float(dexterity.get("d_safe", 0.04))
     dexterity_gamma = float(dexterity.get("gamma", 5.0))
     dexterity_d_activate = float(
@@ -318,10 +269,13 @@ def _parse_generic_qpik(raw: dict) -> GenericQpikRuntimeConfig:
     )
     dexterity_k_d = float(dexterity.get("k_d", 0.15))
     working = _mapping(section.get("working_set"), name="qpik.working_set")
+    _reject_unknown(
+        working, {"arm_margin_rad", "rail_margin_m", "gamma"},
+        name="qpik.working_set",
+    )
     working_arm_margin_rad = float(working.get("arm_margin_rad", 0.30))
     working_rail_margin_m = float(working.get("rail_margin_m", 0.02))
     working_gamma = float(working.get("gamma", 8.0))
-    profile = _parse_cartesian_profile(section)
     health = _parse_health_thresholds(section)
     task_scales = section.get(
         "task_velocity_scales",
@@ -336,36 +290,70 @@ def _parse_generic_qpik(raw: dict) -> GenericQpikRuntimeConfig:
         raise ValueError("qpik.task_velocity_scales must contain six positive values")
 
     indices = _mapping(section.get("indices"), name="qpik.indices")
+    _reject_unknown(indices, {"rail", "wrist"}, name="qpik.indices")
     rail_indices = tuple(int(i) for i in indices.get("rail", (0,)))
     wrist_indices = tuple(int(i) for i in indices.get("wrist", (5, 6, 7)))
-    compatibility = _mapping(
-        section.get("compatibility"), name="qpik.compatibility"
+    whole_body = _mapping(section.get("whole_body"), name="qpik.whole_body")
+    _reject_unknown(
+        whole_body,
+        {
+            "arm_nominal_k", "arm_nominal_qdot_max", "rail_macro", "risk",
+            "feedback_lpf_tau_s", "feedback_accel_max_m_s2",
+        },
+        name="qpik.whole_body",
     )
-    raw_row = compatibility.get("overforce_task_row", section.get("overforce_task_row"))
-    overforce_row = None if raw_row is None else int(raw_row)
-    if overforce_row is not None and not 0 <= overforce_row < 6:
-        raise ValueError("qpik.compatibility.overforce_task_row must be in [0, 6)")
+    rail_macro = _mapping(
+        whole_body.get("rail_macro"), name="qpik.whole_body.rail_macro"
+    )
+    risk = _mapping(whole_body.get("risk"), name="qpik.whole_body.risk")
+    _reject_unknown(
+        rail_macro,
+        {"tau_s", "v_max_m_s", "a_max_m_s2", "jerk_max_m_s3", "center_k", "center_v_max_m_s"},
+        name="qpik.whole_body.rail_macro",
+    )
+    _reject_unknown(
+        risk,
+        {
+            "collision_k_d", "attack_s", "release_s", "exit_dwell_s",
+            "gradient_period_ticks", "gradient_lpf_tau_s", "wrist_danger_deg",
+            "wrist_warn_deg", "wrist_exit_deg",
+        },
+        name="qpik.whole_body.risk",
+    )
     return GenericQpikRuntimeConfig(
         solver=qcfg,
-        task_profile=profile,
         health=health,
         rail_indices=rail_indices,
         wrist_indices=wrist_indices,
         task_velocity_scales=task_scales_arr,
-        overforce_task_row=overforce_row,
-        overforce_positive_is_unsafe=bool(
-            compatibility.get(
-                "overforce_positive_is_unsafe",
-                section.get("overforce_positive_is_unsafe", True),
-            )
-        ),
         dexterity_d_safe=dexterity_d_safe,
         dexterity_gamma=dexterity_gamma,
         dexterity_d_activate=dexterity_d_activate,
         dexterity_k_d=dexterity_k_d,
+        collision_k_d=float(risk.get("collision_k_d", 0.10)),
         working_arm_margin_rad=working_arm_margin_rad,
         working_rail_margin_m=working_rail_margin_m,
         working_gamma=working_gamma,
+        arm_nominal_k=float(whole_body.get("arm_nominal_k", 0.25)),
+        arm_nominal_qdot_max=float(whole_body.get("arm_nominal_qdot_max", 0.30)),
+        risk_attack_s=float(risk.get("attack_s", 0.05)),
+        risk_release_s=float(risk.get("release_s", 0.40)),
+        risk_exit_dwell_s=float(risk.get("exit_dwell_s", 0.20)),
+        gradient_period_ticks=int(risk.get("gradient_period_ticks", 10)),
+        gradient_lpf_tau_s=float(risk.get("gradient_lpf_tau_s", 0.10)),
+        wrist_danger_deg=float(risk.get("wrist_danger_deg", 10.0)),
+        wrist_warn_deg=float(risk.get("wrist_warn_deg", 20.0)),
+        wrist_exit_deg=float(risk.get("wrist_exit_deg", 25.0)),
+        rail_macro_tau_s=float(rail_macro.get("tau_s", 0.15)),
+        rail_macro_v_max_m_s=float(rail_macro.get("v_max_m_s", 0.12)),
+        rail_macro_a_max_m_s2=float(rail_macro.get("a_max_m_s2", 0.30)),
+        rail_macro_jerk_max_m_s3=float(rail_macro.get("jerk_max_m_s3", 2.0)),
+        rail_center_k=float(rail_macro.get("center_k", 0.04)),
+        rail_center_v_max_m_s=float(rail_macro.get("center_v_max_m_s", 0.025)),
+        feedback_lpf_tau_s=float(whole_body.get("feedback_lpf_tau_s", 0.05)),
+        feedback_accel_max_m_s2=float(
+            whole_body.get("feedback_accel_max_m_s2", 0.30)
+        ),
     )
 
 
@@ -421,7 +409,32 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
     inner = _mapping(raw.get("inner"), name="inner")
     qpik = _mapping(raw.get("qpik"), name="qpik")
     hard = _mapping(qpik.get("hard_limits"), name="qpik.hard_limits")
+    _reject_unknown(
+        hard,
+        {
+            "v_scale", "a_max_arm_rad_s2", "a_max_rail_m_s2",
+            "position_margin_deg", "position_margin_rail_mm",
+            "command_lead_arm_deg", "command_lead_rail_mm",
+            "velocity_damper", "collision", "rail",
+        },
+        name="qpik.hard_limits",
+    )
     legacy_qp = _mapping(inner.get("qp"), name="inner.qp")
+    retired_inner = sorted(
+        set(inner)
+        & {
+            "a_max_rail_escape_m_s2",
+            "rail_escape_v_min_m_s",
+            "rail_escape_v_max_m_s",
+            "sigma_escape_enter",
+            "sigma_escape_exit",
+        }
+    )
+    if retired_inner:
+        raise ValueError(
+            "retired QPIK configuration keys in inner: "
+            + ", ".join(retired_inner)
+        )
     euler_order = str(
         _mapping(raw.get("frames"), name="frames").get(
             "euler_order", inner.get("euler_order", "xyz")
@@ -430,6 +443,11 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
 
     collision_raw = _mapping(
         hard.get("collision", inner.get("collision")),
+        name="qpik.hard_limits.collision",
+    )
+    _reject_unknown(
+        collision_raw,
+        {"enabled", "d_safe", "d_activate", "gamma", "max_pairs"},
         name="qpik.hard_limits.collision",
     )
     collision = CollisionConfig(
@@ -449,6 +467,10 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
     velocity_damper = _mapping(
         hard.get("velocity_damper"), name="qpik.hard_limits.velocity_damper"
     )
+    _reject_unknown(
+        velocity_damper, {"arm_band_rad", "rail_band_m"},
+        name="qpik.hard_limits.velocity_damper",
+    )
     damper_arm = _finite_float(
         velocity_damper.get(
             "arm_band_rad", legacy_qp.get("limit_damper_band_rad", 0.15)
@@ -466,6 +488,14 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
 
     rail_raw = _mapping(
         hard.get("rail", inner.get("rail")), name="qpik.hard_limits.rail"
+    )
+    _reject_unknown(
+        rail_raw,
+        {
+            "mode", "locked_style", "q_ref_m", "lock_vel_eps_m_s",
+            "v_max_m_s", "travel_m", "soft_min_m", "soft_max_m",
+        },
+        name="qpik.hard_limits.rail",
     )
     rail_mode, locked_style = _resolve_rail_mode(rail_raw)
     hw_lw = _mapping(
@@ -511,7 +541,6 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
     def hard_value(name: str, legacy_name: str, default):
         return hard.get(name, inner.get(legacy_name, default))
 
-    psi_lift = _mapping(qpik.get("psi_lift"), name="qpik.psi_lift")
     return JointIkConfig(
         dt=_finite_float(timing.get("dt_ms", 5.0), name="timing.dt_ms") / 1000.0,
         feedback_timeout_s=_finite_float(
@@ -555,17 +584,6 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             name="command_lead_rail_mm",
         )
         / 1000.0,
-        psi_lift_enabled=bool(psi_lift.get("enabled", True)),
-        psi_lift_lost_contact_s=_finite_float(
-            psi_lift.get("lost_contact_s", 0.15), name="qpik.psi_lift.lost_contact_s"
-        ),
-        psi_lift_fz_frac=_finite_float(
-            psi_lift.get("fz_frac_of_desired", 0.50),
-            name="qpik.psi_lift.fz_frac_of_desired",
-        ),
-        psi_lift_vz_m_s=_finite_float(
-            psi_lift.get("vz_lift_m_s", 0.005), name="qpik.psi_lift.vz_lift_m_s"
-        ),
     )
 
 

@@ -1,7 +1,4 @@
-"""Generic task-priority QPIK for an arm with an optional prismatic rail.
-
-Applications declare protected and scalable task rows for two-level QPIK.
-"""
+"""Fixed single-shot QPIK for the RM75 arm and prismatic rail."""
 
 from __future__ import annotations
 
@@ -10,24 +7,17 @@ __all__ = [
     "JointIkController",
     "JointIkConfig",
     "RobotState",
-    "ProtectedTask",
-    "ScalableTask",
-    "PostureGuide",
     "HardConstraintRow",
     "LinearConstraintSet",
-    "CartesianTaskProfile",
-    "ScalableRowGroup",
     "TaskSpaceConstraintRow",
-    "TwoLevelQpikConfig",
-    "TwoLevelQpikController",
-    "TwoLevelQpikResult",
-    "ReferenceGovernor",
-    "ReferenceHorizon",
+    "CartesianQpCommand",
+    "SingleQpikConfig",
+    "SingleQpikController",
+    "SingleQpikResult",
     "HealthMonitor",
     "HealthState",
     "TaskMode",
     "SecondaryPolicy",
-    "ArmAngleSpec",
     "JointPhaseSpec",
     "CompileContext",
     "CompiledPhase",
@@ -52,36 +42,25 @@ def __getattr__(name: str):
         return getattr(loop, name)
     if name in (
         "RobotState",
-        "ProtectedTask",
-        "ScalableTask",
-        "PostureGuide",
         "HardConstraintRow",
         "LinearConstraintSet",
-        "ReferenceHorizon",
     ):
         from rm75_control.control.joint_admittance_8dof import generic_tasks
 
         return getattr(generic_tasks, name)
-    if name in (
-        "CartesianTaskProfile",
-        "ScalableRowGroup",
-        "TaskSpaceConstraintRow",
-    ):
+    if name == "TaskSpaceConstraintRow":
         from rm75_control.control.joint_admittance_8dof import task_adapter
 
         return getattr(task_adapter, name)
     if name in (
-        "TwoLevelQpikConfig",
-        "TwoLevelQpikController",
-        "TwoLevelQpikResult",
+        "CartesianQpCommand",
+        "SingleQpikConfig",
+        "SingleQpikController",
+        "SingleQpikResult",
     ):
-        from rm75_control.control.joint_admittance_8dof.solver import two_level_qpik
+        from rm75_control.control.joint_admittance_8dof.solver import single_qpik
 
-        return getattr(two_level_qpik, name)
-    if name == "ReferenceGovernor":
-        from rm75_control.control.joint_admittance_8dof import reference_governor
-
-        return getattr(reference_governor, name)
+        return getattr(single_qpik, name)
     if name in ("HealthMonitor", "HealthState"):
         from rm75_control.control.joint_admittance_8dof import health_monitor
 
@@ -89,7 +68,6 @@ def __getattr__(name: str):
     if name in (
         "TaskMode",
         "SecondaryPolicy",
-        "ArmAngleSpec",
         "JointPhaseSpec",
         "CompileContext",
         "CompiledPhase",

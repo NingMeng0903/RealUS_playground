@@ -12,32 +12,32 @@ from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import Cb
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 
 
-def _collapse_to(
-    lo: np.ndarray,
-    hi: np.ndarray,
-    keep_lo: np.ndarray,
-    keep_hi: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Resolve an empty ``[lo, hi]`` by projecting onto ``[keep_lo, keep_hi]``.
+class VelocityBoxInfeasible(RuntimeError):
+    """The physical per-joint velocity intervals have an empty intersection."""
 
-    ``lo > hi`` means the stage just applied is infeasible against the
-    higher-priority interval ``[keep_lo, keep_hi]``.  The requested value is
-    whichever endpoint caused the crossing (``lo`` when the new stage pushed
-    the floor up, ``hi`` when it pushed the ceiling down); clamping it back
-    into the priority interval keeps the intent of the lower-priority stage
-    while guaranteeing the returned box is always executable.
+    def __init__(self, stage: str, indices: np.ndarray, lo: np.ndarray, hi: np.ndarray):
+        joints = ",".join(str(int(index)) for index in np.asarray(indices).reshape(-1))
+        super().__init__(
+            f"velocity viability conflict at {stage}; joints=[{joints}], "
+            f"lo={np.asarray(lo)[indices].tolist()}, hi={np.asarray(hi)[indices].tolist()}"
+        )
+        self.stage = str(stage)
+        self.indices = tuple(int(index) for index in np.asarray(indices).reshape(-1))
 
-    Rows that are already feasible are returned untouched.
-    """
-    crossed = lo > hi
-    if not np.any(crossed):
-        return lo, hi
-    # ``lo`` rose above ``hi``: the new stage wants at least ``lo``.
-    # Otherwise ``hi`` fell below ``lo``: the new stage wants at most ``hi``.
-    want = np.where(lo > keep_hi, lo, hi)
-    # ``+ 0.0`` normalises -0.0 so a collapsed box compares as lo == hi.
-    pinned = np.clip(want, keep_lo, keep_hi) + 0.0
-    return np.where(crossed, pinned, lo), np.where(crossed, pinned, hi)
+
+def _validate_interval(lo: np.ndarray, hi: np.ndarray, stage: str) -> None:
+    crossed = np.flatnonzero(lo > hi + 1.0e-12)
+    if crossed.size:
+        raise VelocityBoxInfeasible(stage, crossed, lo, hi)
+
+
+def stopping_velocity(distance: np.ndarray, acceleration: np.ndarray, reaction_s: float) -> np.ndarray:
+    """Maximum speed toward a limit while retaining delayed braking viability."""
+
+    d = np.maximum(np.asarray(distance, dtype=float), 0.0)
+    a = np.maximum(np.asarray(acceleration, dtype=float), 1.0e-9)
+    reaction = max(float(reaction_s), 0.0)
+    return np.sqrt(np.square(a * reaction) + 2.0 * a * d) - a * reaction
 
 
 class VelocityBoxConstraints:
@@ -70,24 +70,6 @@ class VelocityBoxConstraints:
         lim = self.lim
         q = np.asarray(q, dtype=float)
 
-        # Staged/prioritised clamp: v_max + position margin are hard safety
-        # bounds and are always honoured.  a_max and the resync anti-windup
-        # bound are secondary - each is applied only if it doesn't render the
-        # box infeasible against the *previous* (higher-priority) stage; a
-        # single combined "crossed -> discard everything" check would let a
-        # transient accel/resync conflict silently drop the resync bound
-        # (or worse, both) for the rest of the move, which is exactly what
-        # let the command lead run away unbounded instead of saturating.
-        #
-        # When a stage IS infeasible against the previous one, the conflict is
-        # resolved by PROJECTING onto the higher-priority interval (see
-        # ``_collapse_to``), never by averaging the two.  An unclamped midpoint
-        # silently inverts the documented priority: at the rail's 0 m end stop
-        # it produced lo == hi == +0.925 m/s against v_max = 0.16 m/s (a forced
-        # 6x over-speed the servo answers with Er-01), and an inbound rail
-        # arriving at the stop was pinned at a negative velocity - i.e. forced
-        # to keep driving INTO the stop - because a_max could not decelerate
-        # inside the damper band.
         lo = -lim.v_max.copy()
         hi = lim.v_max.copy()
 
@@ -114,53 +96,46 @@ class VelocityBoxConstraints:
             hi = np.minimum(hi, lim.v_max * d_hi)
             lo = np.maximum(lo, -lim.v_max * d_lo)
 
-        # Position look-ahead belongs to the hard executable envelope.  It is
-        # evaluated for both the measured state (physical safety) and the
-        # independently integrated command state (the value actually sent to
-        # the position streamer).  Keeping the command check inside P0 means
-        # the QP output needs no downstream position clamp that could rewrite
-        # a protected-task lock or an application one-sided row.
         m = np.broadcast_to(np.asarray(m, dtype=float), q.shape)
+        a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
+        if a_max is not None:
+            # Enter the braking envelope before acceleration and one-tick
+            # position constraints can conflict.  Only speed toward a limit is
+            # reduced; motion away remains available.
+            d_upper = (lim.q_upper - m) - q
+            d_lower = q - (lim.q_lower + m)
+            hi = np.minimum(hi, stopping_velocity(d_upper, a_max, dt))
+            lo = np.maximum(lo, -stopping_velocity(d_lower, a_max, dt))
+            _validate_interval(lo, hi, "stopping_envelope")
+
         p_lo = (lim.q_lower + m - q) / dt
         p_hi = (lim.q_upper - m - q) / dt
-        lo, hi = _collapse_to(
-            np.maximum(lo, p_lo), np.minimum(hi, p_hi), lo, hi
-        )
+        lo = np.maximum(lo, p_lo)
+        hi = np.minimum(hi, p_hi)
+        _validate_interval(lo, hi, "measured_position")
         if q_cmd is not None:
             q_cmd_arr = np.asarray(q_cmd, dtype=float)
             if q_cmd_arr.shape != q.shape or not np.all(np.isfinite(q_cmd_arr)):
                 raise ValueError("q_cmd must be finite and match q")
             cmd_lo = (lim.q_lower + m - q_cmd_arr) / dt
             cmd_hi = (lim.q_upper - m - q_cmd_arr) / dt
-            lo, hi = _collapse_to(
-                np.maximum(lo, cmd_lo), np.minimum(hi, cmd_hi), lo, hi
-            )
+            lo = np.maximum(lo, cmd_lo)
+            hi = np.minimum(hi, cmd_hi)
+            _validate_interval(lo, hi, "command_position")
 
-        # Velocity, damper and both position checks form the *hard executable
-        # envelope*.  Acceleration is retained whenever compatible, but is
-        # projected onto this envelope rather than forcing motion into a stop.
-        v_lo, v_hi = lo.copy(), hi.copy()
-
-        a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
         if a_max is not None and qdot_prev is not None:
             qdot_prev = np.asarray(qdot_prev, dtype=float)
             a = a_max * dt
-            # a_max is secondary: honour it whenever it intersects the
-            # envelope, drop it when it does not.  A rail decelerating into an
-            # end stop cannot brake inside the damper band at a_max_rail
-            # (0.3 m/s^2 needs ~17 mm from 0.1 m/s, band is 20 mm), so the
-            # intersection goes empty exactly there — and "keep the envelope"
-            # is the only safe answer.
-            a_lo = np.maximum(v_lo, qdot_prev - a)
-            a_hi = np.minimum(v_hi, qdot_prev + a)
-            lo, hi = _collapse_to(a_lo, a_hi, v_lo, v_hi)
+            lo = np.maximum(lo, qdot_prev - a)
+            hi = np.minimum(hi, qdot_prev + a)
+            _validate_interval(lo, hi, "acceleration")
 
-        # Vectorised command-lead damper: resync_err is either scalar (legacy;
-        # arm-only, radians) or an nv-vector with per-joint bounds — arm rad
-        # for joints 1..7 and metres for joint 0 (rail).  Using a scalar rad
-        # bound for the prismatic joint was a silent unit bug: 0.10 rad =
-        # 100 mm of lead allowed on the rail, and the QP would happily plan
-        # multiple centimetres ahead of the encoder before anti-windup engaged.
+        # Command lead is an anti-windup envelope, not a physical joint limit.
+        # Start braking before |q_cmd-q_meas| reaches ``resync_err``.  If stale
+        # tracking has already left too little distance for the acceleration
+        # box, request the strongest acceleration-feasible braking velocity
+        # instead of manufacturing an empty interval and stopping the robot.
+        # ``resync_err`` is arm radians for joints 1..7 and metres for rail 0.
         if q_meas is not None:
             re = np.broadcast_to(
                 np.asarray(resync_err, dtype=float), q.shape
@@ -173,16 +148,29 @@ class VelocityBoxConstraints:
                 # command state against the same measured snapshot.
                 q_for_lead = q if q_cmd is None else np.asarray(q_cmd, dtype=float)
                 lead = q_for_lead - q_meas
-                band = np.maximum(re * 0.5, 1e-6)
-                d_hi = np.clip((re - lead) / band, 0.0, 1.0)
-                d_lo = np.clip((re + lead) / band, 0.0, 1.0)
-                hi_new = np.where(hi > 0.0, hi * d_hi, hi)
-                lo_new = np.where(lo < 0.0, lo * d_lo, lo)
-                hi = np.where(active, hi_new, hi)
-                lo = np.where(active, lo_new, lo)
-                # Scaling a one-sided box toward 0 can push a bound past the
-                # other one; keep the interval non-empty.
-                lo, hi = _collapse_to(lo, hi, v_lo, v_hi)
+                if a_max is None:
+                    band = np.maximum(re * 0.5, 1.0e-6)
+                    toward_hi = lim.v_max * np.clip((re - lead) / band, 0.0, 1.0)
+                    toward_lo = -lim.v_max * np.clip((re + lead) / band, 0.0, 1.0)
+                else:
+                    toward_hi = stopping_velocity(re - lead, a_max, dt)
+                    toward_lo = -stopping_velocity(re + lead, a_max, dt)
+
+                candidate_hi = np.minimum(hi, toward_hi)
+                candidate_lo = np.maximum(lo, toward_lo)
+                crossed = candidate_lo > candidate_hi
+                # A positive lead must brake positive motion; a negative lead
+                # must brake negative motion.  Collapse only the offending
+                # side to the closest acceleration-feasible velocity.
+                candidate_hi = np.where(
+                    crossed & (lead >= 0.0), candidate_lo, candidate_hi
+                )
+                candidate_lo = np.where(
+                    crossed & (lead < 0.0), candidate_hi, candidate_lo
+                )
+                hi = np.where(active, candidate_hi, hi)
+                lo = np.where(active, candidate_lo, lo)
+                _validate_interval(lo, hi, "command_lead")
 
         if rail_vel_pin_m_s is not None:
             v = float(rail_vel_pin_m_s)
@@ -196,14 +184,21 @@ class VelocityBoxConstraints:
             hi[0] = v_safe
         elif rail_locked:
             eps = max(float(rail_lock_vel_eps_m_s), 0.0)
-            lock_lo = max(float(lo[0]), -eps)
-            lock_hi = min(float(hi[0]), eps)
-            if lock_lo > lock_hi:
-                pinned = float(np.clip(0.0, lo[0], hi[0]))
-                lock_lo = pinned
-                lock_hi = pinned
-            lo[0] = lock_lo
-            hi[0] = lock_hi
+            previous = 0.0 if qdot_prev is None else float(qdot_prev[0])
+            rail_acceleration = (
+                float(a_max[0]) if a_max is not None else float("inf")
+            )
+            if abs(previous) <= eps and float(lo[0]) <= 0.0 <= float(hi[0]):
+                target = 0.0
+            elif np.isfinite(rail_acceleration):
+                target = np.sign(previous) * max(
+                    abs(previous) - rail_acceleration * dt, 0.0
+                )
+                target = float(np.clip(target, lo[0], hi[0]))
+            else:
+                target = float(np.clip(0.0, lo[0], hi[0]))
+            lo[0] = target
+            hi[0] = target
 
         return lo, hi
 
@@ -243,3 +238,11 @@ def build_wbc_inequalities(
             C[nv + i, :nv] = cbf.jacobian[i]
             l[nv + i] = cbf.lower[i]
     return C, l, u
+
+
+__all__ = [
+    "VelocityBoxConstraints",
+    "VelocityBoxInfeasible",
+    "build_wbc_inequalities",
+    "stopping_velocity",
+]

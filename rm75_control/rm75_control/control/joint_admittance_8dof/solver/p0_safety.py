@@ -17,12 +17,25 @@ from rm75_control.control.joint_admittance_8dof.generic_tasks import (
 )
 from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import (
     CbfSlotTracker,
-    build_cbf_rows,
+    _frame_linear_jacobians,
+    collision_jacobian,
 )
 from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
     VelocityBoxConstraints,
 )
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
+
+
+class CollisionHardCapacityExceeded(RuntimeError):
+    """More absolute-hard collision events exist than the fixed QP can hold."""
+
+    def __init__(self, active: int, capacity: int) -> None:
+        super().__init__(
+            "absolute self-collision pairs exceed fixed hard capacity: "
+            f"{int(active)} > {int(capacity)}"
+        )
+        self.active = int(active)
+        self.capacity = int(capacity)
 
 
 class P0SafetyBuilder:
@@ -52,6 +65,12 @@ class P0SafetyBuilder:
             )
         self._slots = CbfSlotTracker(
             max_pairs=max(1, int(self.collision_config.max_pairs))
+        )
+        self._warning_slots = CbfSlotTracker(max_pairs=4)
+        self.last_collision_warning_C = np.zeros((4, int(kin.nv)))
+        self.last_collision_warning_lower = np.full(4, -np.inf)
+        self.last_collision_warning_names = tuple(
+            f"self_collision_warning:slot:{index}" for index in range(4)
         )
 
     def set_collision_enabled(self, enabled: bool) -> None:
@@ -96,37 +115,84 @@ class P0SafetyBuilder:
         upper = [hi_box]
         names = [f"joint_velocity_box:{index}" for index in range(state.n_joints)]
 
-        # Collision rows occupy sticky fixed slots even while inactive.  This
-        # preserves row identity for the two persistent ProxQP instances and
-        # their dual warm starts; active pairs never get compacted into a
-        # different row on the next tick.
+        # Absolute collision rows are hard. Warning-band rows are exported to
+        # the main QP as recoverable constraints with four independent slacks.
         n_collision_slots = max(1, int(self.collision_config.max_pairs))
         collision_C = np.zeros((n_collision_slots, state.n_joints), dtype=float)
         collision_lo = np.full(n_collision_slots, -np.inf, dtype=float)
         collision_names = [
             f"self_collision:slot:{slot}" for slot in range(n_collision_slots)
         ]
+        warning_C = np.zeros((4, state.n_joints), dtype=float)
+        warning_lower = np.full(4, -np.inf, dtype=float)
+        warning_names = [f"self_collision_warning:slot:{slot}" for slot in range(4)]
         if self.collision is not None and self.collision_config.enabled:
-            cbf = build_cbf_rows(
-                self.collision,
-                self.kin,
+            snapshot_ready = bool(measured_kinematics_ready)
+            self.collision.update(
                 state.q_meas,
-                self.collision_config,
-                tracker=self._slots,
-                kinematics_ready=measured_kinematics_ready,
+                kinematic_data=self.kin.data if snapshot_ready else None,
+                kinematics_ready=snapshot_ready,
             )
-            for active_index in range(cbf.jacobian.shape[0]):
-                slot = (
-                    int(cbf.slot_index[active_index])
-                    if cbf.slot_index is not None
-                    else active_index
+            keep_band = max(self._slots.hyst_m, self._warning_slots.hyst_m)
+            pairs = self.collision.active_pairs(
+                float(self.collision_config.d_activate) + keep_band
+            )
+            hard_pairs = [
+                pair
+                for pair in pairs
+                if float(pair.distance) <= float(self.collision_config.d_safe)
+            ]
+            if len(hard_pairs) > n_collision_slots:
+                raise CollisionHardCapacityExceeded(
+                    len(hard_pairs), n_collision_slots
                 )
-                if not 0 <= slot < n_collision_slots:
+            warning_pairs = [
+                pair
+                for pair in pairs
+                if float(pair.distance) > float(self.collision_config.d_safe)
+            ]
+            hard_slotted = self._slots.update(
+                hard_pairs, float(self.collision_config.d_safe)
+            )
+            warning_slotted = self._warning_slots.update(
+                warning_pairs, float(self.collision_config.d_activate)
+            )
+            jacobian_data = (
+                self.kin.data if snapshot_ready else self.collision._kin_data
+            )
+            frame_jacs = _frame_linear_jacobians(
+                self.collision.model,
+                jacobian_data,
+                self.collision.geom_model,
+                kinematics_ready=snapshot_ready,
+            )
+            for slot, pair in enumerate(hard_slotted):
+                if pair is None:
                     continue
-                collision_C[slot] = cbf.jacobian[active_index]
-                collision_lo[slot] = cbf.lower[active_index]
-                if cbf.names and active_index < len(cbf.names):
-                    collision_names[slot] = str(cbf.names[active_index])
+                collision_C[slot] = collision_jacobian(
+                    frame_jacs, self.collision.geom_model, pair
+                )
+                collision_lo[slot] = -float(self.collision_config.gamma) * (
+                    float(pair.distance) - float(self.collision_config.d_safe)
+                )
+                collision_names[slot] = (
+                    f"self_collision:{pair.name_a}:{pair.name_b}"
+                )
+            for slot, pair in enumerate(warning_slotted):
+                if pair is None:
+                    continue
+                warning_C[slot] = collision_jacobian(
+                    frame_jacs, self.collision.geom_model, pair
+                )
+                warning_lower[slot] = -float(self.collision_config.gamma) * (
+                    float(pair.distance) - float(self.collision_config.d_safe)
+                )
+                warning_names[slot] = (
+                    f"self_collision_warning:{pair.name_a}:{pair.name_b}"
+                )
+        self.last_collision_warning_C = warning_C
+        self.last_collision_warning_lower = warning_lower
+        self.last_collision_warning_names = tuple(warning_names)
         matrices.append(collision_C)
         lower.append(collision_lo)
         upper.append(np.full(n_collision_slots, np.inf))
@@ -151,4 +217,4 @@ class P0SafetyBuilder:
         )
 
 
-__all__ = ["P0SafetyBuilder"]
+__all__ = ["CollisionHardCapacityExceeded", "P0SafetyBuilder"]

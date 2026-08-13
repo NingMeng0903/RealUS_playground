@@ -135,6 +135,22 @@ def test_alpha_one_is_fail_closed_for_stale_feedback_and_low_tank() -> None:
     assert low_tank.gamma_effective == pytest.approx(0.0)
 
 
+def test_episode_entry_never_refills_tank_and_post_slew_press_is_charged() -> None:
+    ctrl = BidirectionalFlowController(0.01, _active_cfg())
+    ctrl.tank_energy = 0.0015
+    ctrl.begin_episode(0.02)
+    assert ctrl.tank_energy == pytest.approx(0.0015)
+
+    _step(ctrl, 0.01, force=0.0)
+    before = ctrl.tank_energy
+    accounted = ctrl._accounted_press_m_s
+    ctrl._active_effort_budget_n = 2.0
+    applied = ctrl.settle_applied_press(accounted + 0.01)
+    assert applied >= accounted
+    assert ctrl.tank_energy < before
+    assert ctrl.tank_energy >= ctrl.cfg.Tmin
+
+
 def test_retract_through_is_not_alpha_gated() -> None:
     """A negative proxy request passes through even while the press gate is closed."""
 

@@ -324,7 +324,6 @@ def main() -> int:
                     label="scan",
                     duration_s=args.scan_duration,
                     force_observer=force_observer,
-                    psi_rad_on_enter=psi_tgt,
                 )
             )
             print(

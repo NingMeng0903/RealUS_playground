@@ -13,7 +13,6 @@ from scipy.spatial.transform import Rotation as Rsc
 from rm75_control.control.admittance_common.controller import AdmittanceController
 from rm75_control.control.admittance_common.phase_ipc import SinToolYTaskParams
 from rm75_control.control.joint_admittance_8dof.api import (
-    ArmAngleSpec,
     CompileContext,
     GovernorSpec,
     SecondaryPolicy,
@@ -375,7 +374,6 @@ def build_sin_tool_y_program(
         )
         desired_force = np.zeros(6)
         desired_force[2] = float(params.desired_z)
-        psi = None if params.psi_tgt is None or not np.isfinite(params.psi_tgt) else float(params.psi_tgt)
         if params.scan_hybrid_hold:
             # TCP force hold (no Y motion); rail stays a continuous variable
             # in the whole-body QP.
@@ -383,7 +381,6 @@ def build_sin_tool_y_program(
             hybrid_label = "hybrid@D"
             hybrid_sec = SecondaryPolicy(
                 preset="track",
-                arm_angle=ArmAngleSpec(psi_rad=psi) if psi is not None else None,
                 qdot_ff="off",
             )
             hybrid_gov = GovernorSpec(err_ok_mm=15.0, err_max_mm=80.0)
@@ -415,7 +412,6 @@ def build_sin_tool_y_program(
                 label=hybrid_label,
                 duration_s=float(params.scan_duration),
                 force_observer=force_observer,
-                psi_rad_on_enter=psi,
                 secondary=hybrid_sec,
                 governor=hybrid_gov,
             )
@@ -426,7 +422,7 @@ def build_sin_tool_y_program(
     if params.psi_toggle_period_s > 0.0 and params.scan_duration > 0.0:
         raise RuntimeError(
             "contact-time posture toggle was removed: submit a branch-locked "
-            "a soft PostureGuide (psi toggle is not supported in this build)"
+            "the fixed arm whole-body preference (psi toggle is not supported in this build)"
         )
     return BuiltSinToolYProgram(
         phases=phases,

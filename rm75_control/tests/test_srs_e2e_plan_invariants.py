@@ -31,6 +31,11 @@ from rm75_control.control.joint_admittance_8dof.reference import (
     SinToolYReference,
     srs_move_duration_s,
 )
+from rm75_control.control.joint_admittance_8dof.solver.single_qpik import (
+    N_EQ,
+    N_INEQ,
+    N_VAR,
+)
 from rm75_control.kinematics.srs_ik import branch_from_q, psi_from_q
 
 
@@ -53,9 +58,13 @@ def test_yaml_loads_production_config():
     raw = yaml.safe_load(CFG_PATH.read_text())
     cfg = build_joint_ik_config(raw)
     assert cfg.generic_qpik.solver.backend == "proxqp"
-    assert cfg.generic_qpik.solver.max_rows == 128
-    assert cfg.rail.soft_min_m == pytest.approx(0.01)
-    assert cfg.rail.soft_max_m == pytest.approx(0.78)
+    assert (N_VAR, N_EQ, N_INEQ) == (28, 6, 61)
+    assert cfg.rail.soft_min_m == pytest.approx(
+        raw["qpik"]["hard_limits"]["rail"]["soft_min_m"]
+    )
+    assert cfg.rail.soft_max_m == pytest.approx(
+        raw["qpik"]["hard_limits"]["rail"]["soft_max_m"]
+    )
     assert not hasattr(cfg, "qp")
     assert not hasattr(cfg, "nullspace")
     assert not hasattr(cfg, "rail_extension")

@@ -1,15 +1,17 @@
-"""Velocity QP solver implementations."""
+"""Fixed single-shot velocity-QP interfaces."""
 
-from .two_level_qpik import (
-    TwoLevelQpikConfig,
-    TwoLevelQpikController,
-    TwoLevelQpikResult,
-    QpDiagnostics,
+from .single_qpik import (
+    CartesianQpCommand,
+    SingleQpikConfig,
+    SingleQpikController,
+    SingleQpikResult,
+    SolverDiagnostics,
 )
 
 __all__ = [
-    "QpDiagnostics",
-    "TwoLevelQpikConfig",
-    "TwoLevelQpikController",
-    "TwoLevelQpikResult",
+    "CartesianQpCommand",
+    "SingleQpikConfig",
+    "SingleQpikController",
+    "SingleQpikResult",
+    "SolverDiagnostics",
 ]

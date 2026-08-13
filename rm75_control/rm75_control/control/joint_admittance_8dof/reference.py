@@ -44,6 +44,25 @@ def smoothstep_scalar(t_s: float, duration_s: float) -> tuple[float, float]:
     return s, ds_dt
 
 
+def _soft_start_time_warp(t_s: float, ramp_s: float) -> tuple[float, float]:
+    """C2 time warp whose speed rises from zero to one without overshoot."""
+
+    ramp = max(float(ramp_s), 0.0)
+    time_s = max(float(t_s), 0.0)
+    if ramp <= 0.0:
+        return time_s, 1.0
+    if time_s >= ramp:
+        return time_s - 0.5 * ramp, 1.0
+    u = time_s / ramp
+    u2 = u * u
+    u3 = u2 * u
+    # tau_dot is the quintic smoothstep.  Its exact integral is used for tau,
+    # so pose and velocity remain a consistent reference pair.
+    tau_dot = 10.0 * u3 - 15.0 * u3 * u + 6.0 * u3 * u2
+    tau = ramp * (2.5 * u3 * u - 3.0 * u3 * u2 + u3 * u3)
+    return tau, tau_dot
+
+
 class JointSmoothMoveReference:
     """Joint-space smoothstep (q_start→q_target) exposed via FK/J as Cartesian ref.
 
@@ -339,15 +358,9 @@ def sin_y_motion(
     soft_start: bool,
     ramp_s: float = 2.0,
 ) -> tuple[float, float]:
-    """(dy, vy) with C1 soft start via time-warp tau(t) (pose/vel stay consistent)."""
-    if soft_start and ramp_s > 0.0:
-        if t_s < ramp_s:
-            # tau(t) = int_0^t sin(pi*u/(2*ramp)) du
-            tau = (2.0 * ramp_s / math.pi) * (1.0 - math.cos(0.5 * math.pi * t_s / ramp_s))
-            tau_dot = math.sin(0.5 * math.pi * t_s / ramp_s)
-        else:
-            tau = t_s - ramp_s + (2.0 * ramp_s / math.pi)
-            tau_dot = 1.0
+    """(dy, vy) with C2 soft start via time-warp tau(t) (pose/vel stay consistent)."""
+    if soft_start:
+        tau, tau_dot = _soft_start_time_warp(t_s, ramp_s)
     else:
         tau = t_s
         tau_dot = 1.0
@@ -388,15 +401,30 @@ def quintic_dwell_y_motion(
     soft_start: bool,
     ramp_s: float = 2.0,
 ) -> tuple[float, float]:
-    """(dy, vy) round-trip with C² endpoints and optional end dwell."""
-    p, pdot = _unit_quintic_dwell_profile(t_s, move_s, dwell_s)
-    if soft_start and ramp_s > 0.0 and t_s < ramp_s:
-        amp_scale, amp_dot = smoothstep_scalar(t_s, ramp_s)
+    """(dy, vy) round-trip with C2 endpoints and velocity-bounded startup.
+
+    The unit profile starts at ``p=-1``.  Amplitude ramping would therefore
+    move from zero to ``-amplitude`` at roughly ``amplitude/ramp_s`` and can
+    exceed the requested scan velocity by orders of magnitude.  Time-warp the
+    profile instead, as the sine profile does, so startup only reduces speed.
+    """
+    if soft_start:
+        tau, tau_dot = _soft_start_time_warp(t_s, ramp_s)
     else:
-        amp_scale, amp_dot = 1.0, 0.0
+        tau = t_s
+        tau_dot = 1.0
+    # Soft-start scans begin at the centre (midpoint of the outbound quintic),
+    # keeping set_origin() bumpless.  Preserve the historical no-soft-start
+    # profile, which begins at the negative endpoint.
+    profile_time = (
+        0.5 * max(float(move_s), 1.0e-3) + tau
+        if soft_start
+        else tau
+    )
+    p, pdot = _unit_quintic_dwell_profile(profile_time, move_s, dwell_s)
     a = float(amplitude_m)
-    dy = a * amp_scale * p
-    vy = a * (amp_dot * p + amp_scale * pdot)
+    dy = a * p
+    vy = a * pdot * tau_dot
     return dy, vy
 
 

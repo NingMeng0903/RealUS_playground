@@ -494,12 +494,84 @@ class BidirectionalFlowController:
         self.proxy_damping_now = float(self.cfg.D_p)
         self.nominal_damping_now = float(self.cfg.nominal_damping)
         self._prev_press_request = 0.0
+        self._accounted_press_m_s = 0.0
+        self._active_effort_budget_n = 0.0
+        self._accounting_dt_s = self.dt
         self._initialized = False
         self.last_dt_actual = self.dt
         self.telemetry = BidirectionalFlowTelemetry(
             tank_energy=self.tank_energy,
             mode=self.cfg.mode,
             sign_verified=self.sign_verified,
+            engineering_adaptation=self.ENGINEERING_ADAPTATION,
+        )
+        self._mirror_telemetry()
+
+    def begin_episode(
+        self,
+        v_actual: float,
+        *,
+        tank_energy: float | None = None,
+        energy_phys_j: float | None = None,
+        energy_mismatch_j: float | None = None,
+    ) -> None:
+        """Clear episode transients without adding energy to the tank."""
+
+        previous_tank = (
+            float(self.tank_energy) if tank_energy is None else float(tank_energy)
+        )
+        previous_phys = (
+            float(self.energy_phys_j)
+            if energy_phys_j is None
+            else float(energy_phys_j)
+        )
+        previous_mismatch = (
+            float(self.energy_mismatch_j)
+            if energy_mismatch_j is None
+            else float(energy_mismatch_j)
+        )
+        if not np.isfinite(previous_tank):
+            raise ValueError("tank energy must be finite at episode entry")
+        if previous_tank < float(self.cfg.Tmin) - 1.0e-12:
+            raise RuntimeError("tank energy is below Tmin at episode entry")
+        seed = _finite(v_actual, 0.0)
+        self.reset(x_actual=0.0)
+        # A changed upper bound may remove available energy; no phase boundary
+        # is allowed to raise the stored energy toward Tmin or T0.
+        self.tank_energy = min(previous_tank, float(self.cfg.Tmax))
+        self.energy_phys_j = previous_phys
+        self.energy_mismatch_j = previous_mismatch
+        self.xp = 0.0
+        self.xa = 0.0
+        self.aux_anchor = 0.0
+        self.x_aux = 0.0
+        self.x_safe = 0.0
+        self.va = seed
+        self.vp = seed
+        self.v_track = seed
+        self.command = seed
+        self.v_aux = 0.0
+        self.retract_through = min(seed, 0.0)
+        self.press = max(seed, 0.0)
+        self._prev_press_request = self.press
+        # Re-arm conservatively. Stale feedback and the normal tank gate still
+        # decide whether positive press is allowed on the first live tick.
+        self.alpha = 1.0
+        self.alpha_raw = 1.0
+        self.alpha_case = "episode_entry"
+        self.gamma_effective = 0.0
+        self.Sn = self.tank_energy
+        self.Sr_hat = self.tank_energy
+        self.telemetry = BidirectionalFlowTelemetry(
+            tank_energy=self.tank_energy,
+            energy_phys_j=self.energy_phys_j,
+            energy_mismatch_j=self.energy_mismatch_j,
+            mode=self.cfg.mode,
+            sign_verified=bool(self.cfg.sign_verified),
+            feedback_stale=True,
+            alpha=1.0,
+            alpha_raw=1.0,
+            alpha_case="episode_entry",
             engineering_adaptation=self.ENGINEERING_ADAPTATION,
         )
         self._mirror_telemetry()
@@ -895,6 +967,8 @@ class BidirectionalFlowController:
             self.cfg.Ki * self.integral_position_error,
             0.0,
         )
+        self._active_effort_budget_n = float(active_effort_budget)
+        self._accounting_dt_s = float(dt)
         # Compute conservative storage/credit terms before selecting the
         # positive command so gamma is budget-limited, not retroactively
         # clipped after an overdraw.
@@ -977,6 +1051,7 @@ class BidirectionalFlowController:
         # proxy kinetic storage versus conservative real-port auxiliary
         # storage.  Only identified damping channels are credited.
         sent_press = max(self.command, 0.0) if self.active else 0.0
+        self._accounted_press_m_s = float(sent_press)
         effort = active_effort_budget
         active_power_w = effort * sent_press
         active_press_debit_j = active_power_w * dt
@@ -994,6 +1069,32 @@ class BidirectionalFlowController:
         self._prev_press_request = self.press
         self._mirror_telemetry()
         return float(self.command)
+
+    def settle_applied_press(self, applied_press_m_s: float) -> float:
+        """Charge any positive speed added after the flow controller.
+
+        The outer force-axis slew can retain more press than ``command`` when
+        the flow gate closes.  That extra real command must buy energy from the
+        same tank.  Retraction and reductions never receive a refund.
+        """
+
+        requested = max(_finite(applied_press_m_s, 0.0), 0.0)
+        if not self.active:
+            return requested
+        extra = max(requested - float(self._accounted_press_m_s), 0.0)
+        effort = max(float(self._active_effort_budget_n), 0.0)
+        dt = max(float(self._accounting_dt_s), 1.0e-9)
+        if extra <= 0.0 or effort <= 0.0:
+            return requested
+        available = max(float(self.tank_energy) - float(self.cfg.Tmin), 0.0)
+        allowed_extra = min(extra, available / (effort * dt))
+        debit = allowed_extra * effort * dt
+        self.tank_energy = max(float(self.cfg.Tmin), float(self.tank_energy) - debit)
+        self.tank_power_debit += debit / dt
+        self.psi = self.tank_power_credit - self.tank_power_debit
+        self._accounted_press_m_s += allowed_extra
+        self._mirror_telemetry()
+        return min(requested, float(self._accounted_press_m_s))
 
     # Common aliases used by small simulation harnesses.
     step = update

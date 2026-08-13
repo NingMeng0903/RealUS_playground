@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import csv
 import math
+import signal
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -309,10 +310,14 @@ def move_and_hold(
 
     # Limit the bridge reference during the approach; callers still provide
     # only the final position and never synthesize trajectory derivatives.
+    # Match host a_max to FA40/41: if host ramps faster than the drive filter,
+    # PD sees lag and chops FA24 (30→20→24 mm/s) → crawl feels stuttery.
     v_max0 = float(bridge.config.vel_max_m_s)
     a_max0 = float(bridge.config.vel_amax_m_s2)
+    accel_s = max(float(getattr(bridge.config, "accel_ms", 200)) * 1e-3, 0.05)
+    a_drive = crawl / accel_s  # ≈ FA40 rise to crawl speed
     bridge.config.vel_max_m_s = min(v_max0, crawl)
-    bridge.config.vel_amax_m_s2 = min(a_max0, 0.35)
+    bridge.config.vel_amax_m_s2 = min(a_max0, max(0.08, 0.85 * a_drive))
 
     t0 = time.monotonic()
     next_tick = t0
@@ -599,12 +604,32 @@ def main() -> int:
     cfg.vel_kp = float(args.kp) if args.kp is not None else float(cfg.vel_kp)
     cfg.vel_kd = float(args.kd) if args.kd is not None else float(cfg.vel_kd)
     cfg.verbose = bool(args.verbose)
-    cfg.release_son_on_exit = False
+    # Drop SON on exit. Keeping SON + a latched FA24 after Ctrl+C is what
+    # drove the rail toward soft_max / ~780 mm with broken limit DIs.
+    cfg.release_son_on_exit = True
     cfg.home_on_exit = False
     cfg.log_csv = str(LOG_DIR / "worker_aligned.csv")
 
     bridge = RailServoBridge(cfg)
     results: list[dict] = []
+    interrupted = False
+
+    def _hard_stop(_signum=None, _frame=None) -> None:
+        """Ctrl+C: FA24=0 first (link still up), then abort — never park/move."""
+        nonlocal interrupted
+        interrupted = True
+        print("\n[scan] SIGINT — FA24=0 / abort (no return-to-center)", flush=True)
+        # kill_motion BEFORE estop: estop() drops TCP and would block FA24=0.
+        try:
+            bridge.kill_motion()
+        except Exception:
+            pass
+        try:
+            bridge.estop()
+        except Exception:
+            pass
+
+    prev_int = signal.signal(signal.SIGINT, _hard_stop)
     try:
         bridge.start()
         if not bridge.calibrated:
@@ -625,13 +650,15 @@ def main() -> int:
         # Direct point goal: the bridge, not this caller, owns interpolation.
         crawl = max(5.0, float(args.crawl_mm_s)) * 1e-3
         print(f"→ crawl to center {args.center_mm:.0f} mm …", flush=True)
-        if not move_and_hold(
+        if interrupted or not move_and_hold(
             bridge, center_m, poll_hz=float(cfg.poll_hz), crawl_m_s=crawl
         ):
             return 4
         print(f"at center meas={bridge.measured_m*1000:.1f} mm", flush=True)
 
         for i, g in enumerate(combos, 1):
+            if interrupted:
+                break
             tag = f"kp{g.kp:g}_kd{g.kd:g}"
             print(f"\n[{i}/{len(combos)}] {tag}", flush=True)
             if bridge.panicked:
@@ -641,19 +668,24 @@ def main() -> int:
                     flush=True,
                 )
                 break
-            rows, panic = run_trial(
-                bridge,
-                g,
-                center_m=center_m,
-                amp_m=amp_m,
-                freq_hz=float(args.freq_hz),
-                duration_s=float(args.duration_s),
-                poll_hz=float(cfg.poll_hz),
-                target_hz=float(args.target_hz),
-                soft_lo=soft_lo,
-                soft_hi=soft_hi,
-                verbose=bool(args.verbose),
-            )
+            try:
+                rows, panic = run_trial(
+                    bridge,
+                    g,
+                    center_m=center_m,
+                    amp_m=amp_m,
+                    freq_hz=float(args.freq_hz),
+                    duration_s=float(args.duration_s),
+                    poll_hz=float(cfg.poll_hz),
+                    target_hz=float(args.target_hz),
+                    soft_lo=soft_lo,
+                    soft_hi=soft_hi,
+                    verbose=bool(args.verbose),
+                )
+            except KeyboardInterrupt:
+                interrupted = True
+                _hard_stop()
+                break
             if panic or len(rows) < int(cfg.poll_hz * 5):
                 print(f"  PANIC/FAIL: {panic}", flush=True)
                 metrics = {
@@ -700,14 +732,38 @@ def main() -> int:
                 print("hard fault — stopping scan", flush=True)
                 break
     finally:
+        signal.signal(signal.SIGINT, prev_int)
+        # CRITICAL: never move_and_hold on Ctrl+C. Old finally returned to
+        # center first; a second ^C skipped stop() and left FA24≈±180 + SON
+        # → runaway toward soft_max / mechanical end.
         try:
-            if bridge.armed and not bridge.panicked:
-                move_and_hold(
-                    bridge, center_m, tol_mm=3.0, timeout_s=12.0, poll_hz=float(cfg.poll_hz)
-                )
+            bridge.kill_motion()
         except Exception:
             pass
-        bridge.stop(home=False)
+        try:
+            if (
+                not interrupted
+                and bridge.armed
+                and not bridge.panicked
+            ):
+                move_and_hold(
+                    bridge,
+                    center_m,
+                    tol_mm=3.0,
+                    timeout_s=12.0,
+                    poll_hz=float(cfg.poll_hz),
+                )
+        except (KeyboardInterrupt, Exception):
+            try:
+                bridge.kill_motion()
+            except Exception:
+                pass
+        try:
+            # kill → stop(disable SON). Never leave FA24≠0 with enable latched.
+            bridge.kill_motion()
+            bridge.stop(home=False)
+        except Exception:
+            pass
 
     if not results:
         return 5

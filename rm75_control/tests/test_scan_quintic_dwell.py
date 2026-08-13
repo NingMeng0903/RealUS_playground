@@ -7,6 +7,7 @@ import numpy as np
 from rm75_control.control.admittance_common.controller import AdmittanceConfig
 from rm75_control.control.joint_admittance_8dof.reference import (
     SinToolYReference,
+    quintic_move_s_for_peak_vel,
     quintic_dwell_y_motion,
     smoothstep_scalar,
 )
@@ -66,6 +67,44 @@ def test_sin_tool_y_reference_default_quintic_dwell():
     # Sample near first end.
     mref = ref.sample(ref.move_s)
     assert abs(mref.vel_ff[1]) < 1e-6
+
+
+def test_quintic_soft_start_never_exceeds_requested_peak_velocity():
+    amplitude = 0.05
+    requested = 0.002
+    move_s = quintic_move_s_for_peak_vel(amplitude, requested)
+    samples = np.linspace(0.0, 6.0, 2001)
+    values = [
+        quintic_dwell_y_motion(
+            t, amplitude, move_s, 0.20, soft_start=True, ramp_s=2.0
+        )[1]
+        for t in samples
+    ]
+    assert max(abs(value) for value in values) <= requested * (1.0 + 1.0e-9)
+    # Startup is bumpless at the scan centre.
+    dy0, vy0 = quintic_dwell_y_motion(
+        0.0, amplitude, move_s, 0.20, soft_start=True, ramp_s=2.0
+    )
+    assert abs(dy0) <= 1.0e-12
+    assert vy0 == 0.0
+
+
+def test_quintic_soft_start_acceleration_is_continuous_at_both_boundaries():
+    amplitude = 0.05
+    move_s = quintic_move_s_for_peak_vel(amplitude, 0.002)
+    ramp_s = 2.0
+    h = 1.0e-4
+
+    def velocity(t_s: float) -> float:
+        return quintic_dwell_y_motion(
+            t_s, amplitude, move_s, 0.20, soft_start=True, ramp_s=ramp_s
+        )[1]
+
+    start_acceleration = (velocity(h) - velocity(0.0)) / h
+    before = (velocity(ramp_s) - velocity(ramp_s - h)) / h
+    after = (velocity(ramp_s + h) - velocity(ramp_s)) / h
+    assert abs(start_acceleration) <= 1.0e-6
+    assert abs(before - after) <= 1.0e-5
 
 
 def test_smoothstep_c2_endpoints():

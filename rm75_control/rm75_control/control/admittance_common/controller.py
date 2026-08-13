@@ -17,7 +17,7 @@ import math
 from dataclasses import dataclass, field
 
 import numpy as np
-from scipy.signal import butter, lfilter
+from scipy.signal import butter, lfilter, lfilter_zi
 from scipy.spatial.transform import Rotation as Rsc
 
 from rm75_control.control.admittance_common.adaptive_ke import (
@@ -331,6 +331,8 @@ class AdmittanceController:
         # A fixed identifier is retained in CSV logs; it is not a mode switch.
         self.controller_mode = "legacy_symmetric"
         self.last_v_cmd = np.zeros(6)
+        self.last_path_twist = np.zeros(6)
+        self.last_feedback_twist = np.zeros(6)
         self._in_contact_latched = False
         self.force_task_latched = False
         self.contact_present = False
@@ -425,6 +427,7 @@ class AdmittanceController:
         self.surface_xy_error_m = 0.0
         # Arm lateral chase softener only after real tool-XY scan motion.
         self._lat_soften_hold_s = 0.0
+        self._episode_filter_seed_pending = False
         self._init_hp_filter()
 
     def _init_hp_filter(self) -> None:
@@ -528,6 +531,40 @@ class AdmittanceController:
         self.zeta_eff = self._ke_estimator.zeta_eff
         if clear_velocity:
             self.last_v_cmd.fill(0.0)
+
+    def begin_hybrid_episode(self, applied_twist: np.ndarray) -> None:
+        """Start a force task continuously without resetting passivity energy."""
+
+        seed = np.asarray(applied_twist, dtype=float).reshape(-1)
+        if seed.size != 6 or not np.all(np.isfinite(seed)):
+            raise ValueError("applied_twist must be a finite six-vector")
+        tank = float(self._bidirectional_flow.tank_energy)
+        energy_phys = float(self._bidirectional_flow.energy_phys_j)
+        energy_mismatch = float(self._bidirectional_flow.energy_mismatch_j)
+        # Reuse the established reset list for non-passivity episode state,
+        # then restore the energy account through the dedicated flow API.
+        self.reset(clear_velocity=False)
+        flow_sign = 1.0 if float(self.cfg.bidirectional_flow.normal_sign) >= 0.0 else -1.0
+        self._bidirectional_flow.begin_episode(
+            flow_sign * float(seed[2]),
+            tank_energy=tank,
+            energy_phys_j=energy_phys,
+            energy_mismatch_j=energy_mismatch,
+        )
+        self.last_v_cmd = seed.copy()
+        self.v_force_z = float(seed[2])
+        self.v_r_z = 0.0
+        self.time_scale = 1.0
+        self.flow_tank_energy = float(self._bidirectional_flow.tank_energy)
+        self.flow_alpha = float(self._bidirectional_flow.alpha)
+        self.flow_v_track = float(self._bidirectional_flow.v_track)
+        self.flow_v_aux = 0.0
+        self.flow_retract_through = float(self._bidirectional_flow.retract_through)
+        self.flow_press = float(self._bidirectional_flow.press)
+        self.flow_feedback_stale = True
+        # The first synchronized force sample seeds the high-pass filter at
+        # steady state, so a constant contact load is not interpreted as HF.
+        self._episode_filter_seed_pending = True
 
     def _v_z_cap(self) -> float:
         cap = float(self.cfg.max_vz_tool_m_s)
@@ -777,6 +814,22 @@ class AdmittanceController:
         kp_rot = cfg.kp_pos[3:6] * cfg.track_axes[3:6]
         v_corr[3:6] = r_mat @ (kp_rot * err_rot_tool)
         v_pos_base = vel_ff + v_corr
+        if cfg.control_frame == "tool":
+            path_task = np.concatenate((r_mat.T @ vel_ff[:3], r_mat.T @ vel_ff[3:]))
+            feedback_task = np.concatenate(
+                (r_mat.T @ v_corr[:3], r_mat.T @ v_corr[3:])
+            )
+        else:
+            path_task = vel_ff.copy()
+            feedback_task = v_corr.copy()
+        # QPIK consumes these two sources independently.  Bound each source
+        # before the legacy combined-command clamp so saturation is not
+        # misreported as high-priority tracking feedback.
+        task_limit = np.asarray(cfg.max_velocity, dtype=float)
+        self.last_path_twist = np.clip(path_task, -task_limit, task_limit)
+        self.last_feedback_twist = np.clip(
+            feedback_task, -task_limit, task_limit
+        )
 
         f_ext = np.asarray(f_ext, dtype=float)
         f_des = np.asarray(desired_force, dtype=float)
@@ -1208,6 +1261,14 @@ class AdmittanceController:
                     self.last_v_cmd[index] + dv_max[index],
                 )
             )
+        if cfg.bidirectional_flow.mode == "active":
+            requested_press = max(normal_sign * float(v_final[2]), 0.0)
+            paid_press = self._bidirectional_flow.settle_applied_press(
+                requested_press
+            )
+            if requested_press > paid_press:
+                v_final[2] = normal_sign * paid_press
+            self.flow_tank_energy = float(self._bidirectional_flow.tank_energy)
         self.last_v_cmd = v_final.copy()
         return v_final
 
@@ -1293,6 +1354,13 @@ class AdmittanceController:
         if not cfg.var_damping_enabled:
             self.instability_index = 0.0
             return
+        if self._episode_filter_seed_pending:
+            self._hp_zi = lfilter_zi(self._hp_b, self._hp_a) * float(f_z)
+            self._f_dc = float(f_z)
+            self._p_hi = 0.0
+            self._p_ac = 0.0
+            self.instability_index = 0.0
+            self._episode_filter_seed_pending = False
         filtered, self._hp_zi = lfilter(
             self._hp_b,
             self._hp_a,

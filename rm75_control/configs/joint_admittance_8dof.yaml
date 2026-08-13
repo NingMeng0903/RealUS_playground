@@ -28,42 +28,33 @@ state_relay:
   name: rm75_state
   hz: 200
 
-# Strict HQP / SNS QPIK: P0 hard → P1 protected → P2 max α → P3 posture.
-# Scan α is produced only by P2 feasibility (never by arm_health / ρ).
-# Row indices are an application profile; the controller does not infer scan
-# direction or tool axis from them.
+# Fixed single-shot QPIK. Physical safety is hard; protected Z/orientation,
+# XY feedback/path authority, recovery, and whole-body preference have fixed
+# RM75 semantics. Retired task-group and retry keys are rejected at startup.
 qpik:
   solver:
     backend: proxqp
-    max_iter: 80
-    # Per-call wall clock; over-budget → that layer fails (QP2→q1, QP3→q2).
+    max_iter: 20
+    max_iter_in: 10
     max_solve_ms: 3.0
-    max_rows: 128
-    max_scalable_groups: 4
-    protected_tolerance: 1.0e-6
-    feasibility_tolerance: 1.0e-6
-    regularization: 1.0e-6
-    previous_velocity_weight: 1.0e-3
-    alpha_weight: 1.0
-    scalable_weight: 1.0
-    posture_weight: 1.0e-4
-    posture_regularization: 1.0e-8
-    # P3-only near-limit soft repulsion (zero outside damper band; no midpoint).
-    # Hard leave-limits is P0 Faverjon + working_set CBF.
-    margin_weight: 5.0e-4
-    margin_weight_gain: 10.0
-    # Soft ψ@D attractor — P3 only (never competes with scan α).
-    psi_weight: 8.0e-2
-    psi_k: 1.5
-    psi_lift_weight_scale: 3.0
-    psi_err_boost_rad: 0.50
-    psi_err_weight_scale: 4.0
-    # Comfort posture: q̇_g = sat(K_g (q_g − q)) + k_d ∇d into P3 (Dv-normalized).
-    comfort_k_g: 2.0
-    comfort_qdot_max: 0.8
-    row_scale_floor: 1.0e-9
+    feasibility_tolerance: 1.0e-5
+    equality_tolerance: 1.0e-5
+    protected_limits: [0.010, 0.050, 0.050, 0.050]
+    task_scales: [0.10, 0.50, 0.50, 0.50, 0.10, 0.10]
+    protected_weight: 1.0e5
+    beta_weight: 1.0e4
+    recovery_weight: 1.0e3
+    recovery_linear_weight: 1.0e3
+    alpha_weight: 1.0e2
+    preference_weight: 10.0
+    smoothness_weight: 1.0
+    rail_smoothness_weight: 5.0
+    ridge_weight: 1.0e-4
+    authority_rise_per_s: 2.0
+    anchor_decay_tau_s: 0.08
+    anchor_projection_sweeps: 64
     warm_start: true
-  # Arm dexterity: P0 barrier + P3 proactive k_d ∇d (rail column ≈ 0 → rail compensates).
+  # Arm dexterity is recoverable; only physical q/v/a/collision rows are hard.
   dexterity:
     d_safe: 0.04
     d_activate: 0.08
@@ -74,21 +65,27 @@ qpik:
     arm_margin_rad: 0.30
     rail_margin_m: 0.02
     gamma: 8.0
-  psi_lift:
-    enabled: true
-    lost_contact_s: 0.15
-    fz_frac_of_desired: 0.50
-    vz_lift_m_s: 0.005
-  # Protected force-Z + orientation.  Scalable XY uses recursive SNS
-  # (A q = y0 + α(b−y0)); legacy slack_limits are ignored by the solver.
-  protected_task:
-    rows: [2, 3, 4, 5]
-    row_scales: [0.10, 0.50, 0.50, 0.50]
-  scalable_tasks:
-    - group_id: motion
-      rows: [0, 1]
-      row_scales: [0.10, 0.10]
-      name: application_motion
+  whole_body:
+    arm_nominal_k: 0.25
+    arm_nominal_qdot_max: 0.30
+    feedback_lpf_tau_s: 0.05
+    feedback_accel_max_m_s2: 0.30
+    rail_macro:
+      tau_s: 0.15
+      v_max_m_s: 0.12
+      a_max_m_s2: 0.30
+      jerk_max_m_s3: 2.0
+      center_k: 0.04
+      center_v_max_m_s: 0.025
+    risk:
+      attack_s: 0.05
+      release_s: 0.40
+      exit_dwell_s: 0.20
+      gradient_period_ticks: 10
+      gradient_lpf_tau_s: 0.10
+      wrist_danger_deg: 10.0
+      wrist_warn_deg: 20.0
+      wrist_exit_deg: 25.0
   health:
     arm:
       warn: 0.08
@@ -98,7 +95,7 @@ qpik:
       danger_deg: 15.0
       warn_deg: 20.0
       exit_deg: 25.0
-    # wrist_margin here is joint-limit margin on wrist DOFs (not analytic wrist singularity).
+    # Joint-limit margin is separate from the analytic J6 wrist metric above.
     wrist_margin:
       danger_deg: 20.0
       warn_deg: 25.0
@@ -131,13 +128,8 @@ qpik:
       lock_vel_eps_m_s: 0.0
       v_max_m_s: 0.15
       travel_m: 0.80
-      soft_min_m: 0.01
+      soft_min_m: 0.005   # temporary: matches manual-zero JSON (limits broken)
       soft_max_m: 0.78
-  compatibility:
-    # Legacy force/admittance callers can still map over-force to this
-    # application-declared task row; omit the block to disable that adapter.
-    overforce_task_row: 2
-    overforce_positive_is_unsafe: true
 
 inner:
   control_frame: tool
@@ -394,9 +386,9 @@ hw:
     plus_di: di3             # +Y end (run-time e-stop if hit)
     di_nc: true
     di_debounce_n: 3
-    soft_min_m: 0.01         # usable band 1–78 cm (mechanical travel still 0.80)
+    soft_min_m: 0.005        # temporary: matches manual-zero JSON (limits broken)
     soft_max_m: 0.78
-    post_home_m: 0.01
+    post_home_m: 0.005
     # Home-script only (controller does not auto-home on start):
     home_search_m_s: 0.020
     home_creep_m_s: 0.003

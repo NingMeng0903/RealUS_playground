@@ -38,6 +38,77 @@ def _tick(ctrl: AdmittanceController, fz: float, f_des_z: float = 3.0) -> float:
     return ctrl.v_force_z
 
 
+def test_hybrid_episode_reset_is_bumpless_and_clears_episode_state():
+    cfg = _base_cfg(var_damping_enabled=True)
+    cfg.bidirectional_flow.Tmin = 0.001
+    cfg.bidirectional_flow.T0 = 0.003
+    cfg.bidirectional_flow.Tmax = 0.004
+    ctrl = AdmittanceController(0.005, cfg)
+    ctrl._bidirectional_flow.tank_energy = 0.0015
+    ctrl._in_contact_latched = True
+    ctrl.force_task_latched = True
+    ctrl.contact_present = True
+    ctrl._contact_time_s = 2.0
+    ctrl._episode_seen = True
+    ctrl._episode_detached_s = 0.2
+    ctrl._proactive_ff.v_r = 0.02
+    ctrl.v_r_z = 0.02
+    ctrl._force_dob.u_dob = 0.8
+    ctrl.u_dob_z = 0.8
+    ctrl._ke_estimator.ke_est = 1234.0
+    seed = np.array([0.01, -0.02, 0.015, 0.03, -0.04, 0.05])
+
+    ctrl.begin_hybrid_episode(seed)
+
+    np.testing.assert_allclose(ctrl.last_v_cmd, seed)
+    assert ctrl.v_force_z == pytest.approx(seed[2])
+    assert ctrl._bidirectional_flow.tank_energy == pytest.approx(0.0015)
+    assert not ctrl._in_contact_latched
+    assert not ctrl.force_task_latched
+    assert not ctrl.contact_present
+    assert ctrl._contact_time_s == 0.0
+    assert not ctrl._episode_seen
+    assert ctrl._episode_detached_s == 0.0
+    assert ctrl._proactive_ff.v_r == 0.0
+    assert ctrl.v_r_z == 0.0
+    assert ctrl._force_dob.u_dob == 0.0
+    assert ctrl.u_dob_z == 0.0
+    assert ctrl._ke_estimator.ke_est == pytest.approx(cfg.adaptive_ke.ke_initial)
+
+
+def test_hybrid_episode_first_force_sample_has_no_filter_or_barrier_spike():
+    cfg = _base_cfg(var_damping_enabled=True)
+    ctrl = AdmittanceController(0.005, cfg)
+    ctrl.begin_hybrid_episode(np.zeros(6))
+
+    ctrl._update_instability_index(6.0)
+    assert ctrl.instability_index == pytest.approx(0.0, abs=1.0e-12)
+    assert ctrl._p_hi == pytest.approx(0.0, abs=1.0e-12)
+    assert ctrl._force_barrier.update_fdot(6.0, 0.005) == pytest.approx(0.0)
+
+
+def test_admittance_outer_episode_seeds_applied_twist_in_task_frame():
+    from scipy.spatial.transform import Rotation as Rsc
+
+    from rm75_control.control.joint_admittance_8dof.loop import AdmittanceOuterLoop
+    from rm75_control.control.joint_admittance_8dof.reference import HoldReference
+
+    cfg = _base_cfg(control_frame="tool")
+    ctrl = AdmittanceController(0.005, cfg)
+    outer = AdmittanceOuterLoop(ctrl, HoldReference())
+    pose = np.array([0.2, 0.1, 0.3, 0.4, -0.2, 0.3])
+    applied_base = np.array([0.01, -0.02, 0.03, 0.04, -0.05, 0.06])
+    rotation = Rsc.from_euler(cfg.euler_order, pose[3:6]).as_matrix()
+    expected = np.concatenate(
+        (rotation.T @ applied_base[:3], rotation.T @ applied_base[3:])
+    )
+
+    outer.begin_hybrid_episode(applied_base, pose)
+
+    np.testing.assert_allclose(ctrl.last_v_cmd, expected, atol=1.0e-12)
+    assert ctrl.v_force_z == pytest.approx(expected[2])
+
+
 def test_single_press_cap_no_free_space_switch():
     """One tool-Z cap in and out of contact — the 5× press-speed jump at
     contact latch that produced the dual press-speed-tier jitter is gone."""

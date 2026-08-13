@@ -12,6 +12,7 @@ from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import (
 )
 from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
     VelocityBoxConstraints,
+    VelocityBoxInfeasible,
 )
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 
@@ -84,12 +85,9 @@ def test_nonfinite_rail_velocity_pin_is_rejected() -> None:
         box.bounds(np.zeros(8), dt=0.1, rail_vel_pin_m_s=np.nan)
 
 
-def test_locked_rail_preserves_required_limit_recovery() -> None:
+def test_locked_rail_outside_viability_band_is_explicit_conflict() -> None:
     box = VelocityBoxConstraints(_limits(), damper_band_rad=0.0)
     q = np.zeros(8)
     q[0] = 1.02
-    lo, hi = box.bounds(
-        q, dt=0.1, rail_locked=True, rail_lock_vel_eps_m_s=0.0
-    )
-    assert lo[0] == pytest.approx(-0.1)
-    assert hi[0] == pytest.approx(-0.1)
+    with pytest.raises(VelocityBoxInfeasible, match="measured_position"):
+        box.bounds(q, dt=0.1, rail_locked=True, rail_lock_vel_eps_m_s=0.0)
