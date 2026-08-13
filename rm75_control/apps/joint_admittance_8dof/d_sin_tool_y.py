@@ -3,6 +3,21 @@
 
   source env.sh
   python apps/joint_admittance_8dof/d_sin_tool_y.py --dry-run
+
+  # Recommended first fixture after the phase-1 QPIK quality patch:
+  # ±20 cm tool-Y (40 cm pp) @ 5 cm/s, then promote to 60 cm pp.
+  python apps/joint_admittance_8dof/d_sin_tool_y.py \\
+      --config configs/joint_admittance_8dof.yaml \\
+      --d-target joints --move-mode joint \\
+      --enable-force --desired-z 2.0 \\
+      --y-pp-cm 40 --max-vel-cm-s 5 \\
+      --scan-duration 200 -v
+  python apps/joint_admittance_8dof/analyze_qpik_quality.py \\
+      apps/logs/sin_tool_y/run_YYYYMMDD_HHMMSS.csv
+  # Promote to --y-pp-cm 60 only after the 40 cm gates pass.
+  # Gates: J4 max<125°; |J6|>0.25 rad ≥95%; rail in [0.005,0.78];
+  # arm |a| p95<4; tcp_jump p99<0.4 mm; governor p05>0.5; motion_err p95<10 mm.
+
   # same taught q_deg → pose_d = Pin FK; default MoveJ (WbcArm) then force scan
   python apps/joint_admittance_8dof/d_sin_tool_y.py --enable-force --desired-z 3.0 --scan-duration 600
   # explicit MoveL/SRS instead of MoveJ:
@@ -108,13 +123,33 @@ def main() -> int:
                     help="PTP to D: joint=MoveJ (default, industrial PTP); "
                          "cartesian=MoveL/SRS. Scan/track always Cartesian. "
                          "No auto detect-and-switch.")
-    ap.add_argument("--y-pp-cm", type=float, default=16.0,
-                    help="Tool-Y scan peak-to-peak (cm). 90 = 900 mm stroke.")
+    ap.add_argument(
+        "--y-pp-cm",
+        type=float,
+        default=16.0,
+        help=(
+            "Tool-Y scan peak-to-peak (cm). IK-quality fixture uses 60 (±30 cm); "
+            "default 16 for short local scans."
+        ),
+    )
+    ap.add_argument(
+        "--beyond-rail-cm",
+        type=float,
+        default=None,
+        help=(
+            "Force hybrid full-stroke fixture: Y peak-to-peak so each side exceeds "
+            "rail soft travel by this many cm (amp=(soft_max-soft_min)/2 + beyond). "
+            "Overrides --y-pp-cm. Defaults --enable-force on (use --no-enable-force to disable)."
+        ),
+    )
     ap.add_argument(
         "--max-vel-cm-s",
         type=float,
         default=1.5,
-        help="Peak tool-Y speed (cm/s). Default 1.5 (was 2.0) for softer turnarounds.",
+        help=(
+            "Peak tool-Y speed (cm/s). IK-quality fixture uses 5; default 1.5 for "
+            "softer short scans."
+        ),
     )
     ap.add_argument("--period-s", type=float, default=None)
     ap.add_argument(
@@ -218,7 +253,12 @@ def main() -> int:
         default="+y",
         help="Rail travel direction for --rail-move-cm",
     )
-    ap.add_argument("--enable-force", action="store_true", default=None)
+    ap.add_argument(
+        "--enable-force",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable hybrid force (default from yaml; --beyond-rail-cm defaults this on).",
+    )
     ap.add_argument("--log-interval", type=float, default=2.0)
     ap.add_argument("--verbose", "-v", action="store_true", help="Detailed IK / WBC logs + auto CSV")
     ap.add_argument(
@@ -283,6 +323,21 @@ def main() -> int:
     )
     rail_m = rail_plan_m
 
+    if args.beyond_rail_cm is not None:
+        soft_lo = float(getattr(inner_cfg.rail, "soft_min_m", 0.005))
+        soft_hi = float(getattr(inner_cfg.rail, "soft_max_m", 0.78))
+        half_stroke = 0.5 * max(soft_hi - soft_lo, 0.0)
+        amp_m = half_stroke + 0.01 * float(args.beyond_rail_cm)
+        args.y_pp_cm = 2.0 * amp_m * 100.0
+        print(
+            f"beyond-rail: soft=[{soft_lo:.3f},{soft_hi:.3f}] m → "
+            f"y_pp={args.y_pp_cm:.1f} cm (±{amp_m*100:.1f} cm)",
+            flush=True,
+        )
+        # Full-length beyond-rail scan is a force-hybrid fixture by default.
+        if args.enable_force is None:
+            args.enable_force = True
+
     desired_z = args.desired_z if args.desired_z is not None else float(raw.get("force", {}).get("desired_z_n", 0.0))
     enable_force = args.enable_force if args.enable_force is not None else bool(startup.get("enable_force", False))
 
@@ -292,7 +347,7 @@ def main() -> int:
 
     robot_cfg = raw.get("robot", {})
     max_lin = float(args.cartesian_max_lin_vel) if args.cartesian_max_lin_vel is not None else 0.4
-    sigma_ref = float(inner_cfg.generic_qpik.health.arm_warn)
+    sigma_ref = float(inner_cfg.qp.sr_damping.sigma_ref)
 
     local_bus: RobotStateBus | None = None
     state_bus: RobotStateBus | RelayStateBus | None = None

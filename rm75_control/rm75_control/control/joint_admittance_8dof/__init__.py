@@ -1,4 +1,4 @@
-"""Fixed single-shot QPIK for the RM75 arm and prismatic rail."""
+"""Escande slack-QP WBC for the RM75 arm and prismatic rail."""
 
 from __future__ import annotations
 
@@ -6,16 +6,8 @@ __all__ = [
     "RobotKinematics",
     "JointIkController",
     "JointIkConfig",
-    "RobotState",
-    "HardConstraintRow",
-    "LinearConstraintSet",
-    "TaskSpaceConstraintRow",
-    "CartesianQpCommand",
-    "SingleQpikConfig",
-    "SingleQpikController",
-    "SingleQpikResult",
-    "HealthMonitor",
-    "HealthState",
+    "QpConfig",
+    "QpIkController",
     "TaskMode",
     "SecondaryPolicy",
     "JointPhaseSpec",
@@ -40,31 +32,13 @@ def __getattr__(name: str):
         from rm75_control.control.joint_admittance_8dof import loop
 
         return getattr(loop, name)
-    if name in (
-        "RobotState",
-        "HardConstraintRow",
-        "LinearConstraintSet",
-    ):
-        from rm75_control.control.joint_admittance_8dof import generic_tasks
+    if name in ("QpConfig", "QpIkController"):
+        from rm75_control.control.joint_admittance_8dof.solver.qp_builder import (
+            QpConfig,
+            QpIkController,
+        )
 
-        return getattr(generic_tasks, name)
-    if name == "TaskSpaceConstraintRow":
-        from rm75_control.control.joint_admittance_8dof import task_adapter
-
-        return getattr(task_adapter, name)
-    if name in (
-        "CartesianQpCommand",
-        "SingleQpikConfig",
-        "SingleQpikController",
-        "SingleQpikResult",
-    ):
-        from rm75_control.control.joint_admittance_8dof.solver import single_qpik
-
-        return getattr(single_qpik, name)
-    if name in ("HealthMonitor", "HealthState"):
-        from rm75_control.control.joint_admittance_8dof import health_monitor
-
-        return getattr(health_monitor, name)
+        return QpConfig if name == "QpConfig" else QpIkController
     if name in (
         "TaskMode",
         "SecondaryPolicy",

@@ -101,7 +101,7 @@ def _slerp_pose(p0: np.ndarray, p1: np.ndarray, s: float, euler_order: str = "xy
     return out
 
 
-def _goal_score(
+def goal_score(
     q_arm: np.ndarray,
     q_full: np.ndarray,
     psi: float,
@@ -203,7 +203,7 @@ def resolve_pose_ik_srs(
        (if provided) and outside ``|wrap(ψ − ψ_seed)| ≤ max_psi_swing_rad``.
     2. Reject candidates whose srs_ik is None (branch unreachable / hits
        shoulder or wrist singularity / violates URDF joint limits).
-    3. Rank surviving candidates by :func:`_goal_score` and take the top-K.
+    3. Rank surviving candidates by :func:`goal_score` and take the top-K.
     4. For each top-K candidate, verify the whole interpolation path
        ``(pose_seed, ψ_seed) → (pose_target, ψ_candidate)`` is srs_ik-solvable
        at ``path_check_samples`` interior points.
@@ -264,7 +264,7 @@ def resolve_pose_ik_srs(
         q_full = full_q_from_arm(q_arm, rail_m=y_rail_target)
         J = kin.jacobian(q_full)
         sigma_min = float(kin.singular_values(J).min())
-        score = _goal_score(q_arm, q_full, float(psi), psi_home, sigma_min, kin, weights)
+        score = goal_score(q_arm, q_full, float(psi), psi_home, sigma_min, kin, weights)
         scored.append((score, float(psi), q_arm, sigma_min))
 
     if not scored:
@@ -375,6 +375,7 @@ __all__ = [
     "PlannerGoalWeights",
     "PoseIkReport",
     "UnreachablePathError",
+    "goal_score",
     "resolve_pose_ik_srs",
     "solve_pose_ik",
 ]

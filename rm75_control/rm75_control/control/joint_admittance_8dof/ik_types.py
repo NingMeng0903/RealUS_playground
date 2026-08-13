@@ -8,6 +8,21 @@ import numpy as np
 
 
 @dataclass
+class IkStepResult:
+    """One WBC QP velocity-IK step (all joint quantities in rad, rad/s)."""
+
+    q_next: np.ndarray
+    qdot: np.ndarray
+    sigma_min: float
+    manip: float
+    slack_norm: float = 0.0
+    n_cbf_active: int = 0
+    dexterity_slack: float = 0.0
+    branch_slack: float = 0.0
+    sns_scale: float = 1.0
+
+
+@dataclass
 class SrDampingConfig:
     """Singularity-robust (SR) damping for nullspace projection (Chiaverini 1997).
 

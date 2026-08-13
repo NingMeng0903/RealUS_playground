@@ -1,9 +1,4 @@
-"""Configuration contract for the fixed single-shot QPIK path.
-
-The old weighted-QP/rail-extension episode knobs were intentionally removed.
-These tests guard the replacement schema and make sure retired keys cannot
-silently become runtime state again.
-"""
+"""Configuration contract for the slack-QP 8-DOF inner loop."""
 
 from __future__ import annotations
 
@@ -15,8 +10,8 @@ import pytest
 import yaml
 
 from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
-from rm75_control.control.joint_admittance_8dof.generic_runtime import GenericQpikRuntime
 from rm75_control.control.joint_admittance_8dof.loop import JointIkController
+from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpIkController
 
 
 CONFIG = Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml"
@@ -26,12 +21,16 @@ def _raw() -> dict:
     return yaml.safe_load(CONFIG.read_text())
 
 
-def test_production_config_declares_generic_solver_and_canonical_soft_band():
+def test_production_config_declares_slack_qp_and_canonical_soft_band():
     raw = _raw()
     cfg = build_joint_ik_config(_raw())
-    assert cfg.generic_qpik.solver.backend.lower() == "proxqp"
-    assert cfg.generic_qpik.solver.max_iter == 20
-    assert cfg.generic_qpik.solver.max_iter_in == 10
+    assert cfg.qp.backend.lower() == "proxqp"
+    assert cfg.qp.max_iter == 400
+    assert cfg.qp.twist_sigma_floor == pytest.approx(0.02)
+    assert cfg.qp.sigma_setbased.enabled
+    assert cfg.qp.branch_barrier.enabled
+    assert cfg.nullspace.q_nominal_rad is not None
+    assert cfg.rail_extension.enabled
     assert cfg.rail.soft_min_m == pytest.approx(
         raw["qpik"]["hard_limits"]["rail"]["soft_min_m"]
     )
@@ -39,9 +38,7 @@ def test_production_config_declares_generic_solver_and_canonical_soft_band():
         raw["qpik"]["hard_limits"]["rail"]["soft_max_m"]
     )
     assert cfg.rail.v_max_m_s == pytest.approx(0.15)
-    assert not hasattr(cfg, "qp")
-    assert not hasattr(cfg, "nullspace")
-    assert not hasattr(cfg, "rail_extension")
+    assert not hasattr(cfg, "generic_qpik")
 
 
 def test_retired_task_group_and_solver_keys_fail_fast():
@@ -51,7 +48,7 @@ def test_retired_task_group_and_solver_keys_fail_fast():
         build_joint_ik_config(raw)
 
     raw = deepcopy(_raw())
-    raw["qpik"]["solver"]["max_scalable_groups"] = 4
+    raw["qpik"]["solver"] = {"max_scalable_groups": 4}
     with pytest.raises(ValueError, match="max_scalable_groups"):
         build_joint_ik_config(raw)
 
@@ -63,13 +60,13 @@ def test_retired_escape_and_retry_keys_fail_fast():
         build_joint_ik_config(raw)
 
     raw = deepcopy(_raw())
-    raw["qpik"]["solver"]["regularization_retry"] = 1.0e-5
+    raw["qpik"]["solver"] = {"regularization_retry": 1.0e-5}
     with pytest.raises(ValueError, match="regularization_retry"):
         build_joint_ik_config(raw)
 
 
 def test_generic_call_shapes_drop_episode_plumbing():
-    runtime_params = inspect.signature(GenericQpikRuntime.solve).parameters
+    step_params = inspect.signature(QpIkController.step).parameters
     update_params = inspect.signature(JointIkController.update).parameters
     assert not {
         "rail_escape_active",
@@ -78,7 +75,7 @@ def test_generic_call_shapes_drop_episode_plumbing():
         "rail_escape_v_min_m_s",
         "rail_escape_v_max_m_s",
         "rail_escape_accel_m_s2",
-    } & (set(runtime_params) | set(update_params))
+    } & (set(step_params) | set(update_params))
     assert "task_profile" not in update_params
     assert "posture_guide" not in update_params
 

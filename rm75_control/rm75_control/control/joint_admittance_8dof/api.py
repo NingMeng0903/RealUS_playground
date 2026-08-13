@@ -19,6 +19,7 @@ from rm75_control.control.joint_admittance_8dof.loop import (
     JointTrackOuterLoop,
     Phase,
 )
+from rm75_control.control.joint_admittance_8dof.tasks.arm_angle import _wrap_pi
 from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedStyle, RailMode
 from rm75_control.control.joint_admittance_8dof.model import (
     RobotKinematics,
@@ -45,29 +46,75 @@ class TaskMode(str, Enum):
 
 
 @dataclass
+class ArmAngleSpec:
+    """Arm-angle nullspace target applied on phase entry (scan/handoff)."""
+
+    psi_rad: float | None = None
+
+
+@dataclass
 class SecondaryPolicy:
-    """Phase-scoped rail and direct-plan ownership."""
+    """Nullspace / secondary-task preset: off | move | track | hold."""
 
     preset: Literal["off", "move", "track", "hold"] = "track"
+    arm_angle: ArmAngleSpec | None = None
     qdot_ff: Literal["off", "plan", "plan_joint"] = "off"
 
-    def apply(self, inner: JointIkController) -> None:
+    def _set_arm_angle_reference(
+        self,
+        inner: JointIkController,
+        psi_rad: float | None,
+    ) -> None:
+        if psi_rad is None or inner.arm_task is None:
+            return
+        psi_live = float(inner.arm_task.arm_angle(inner.q_cmd))
+        psi_set = float(psi_live + _wrap_pi(float(psi_rad) - psi_live))
+        inner.arm_task.set_reference(psi_set)
+
+    def apply(self, inner: JointIkController, *, psi_rad: float | None = None) -> None:
+        psi = psi_rad
+        if self.arm_angle is not None and self.arm_angle.psi_rad is not None:
+            psi = self.arm_angle.psi_rad
+
         if self.preset == "move":
             inner.set_coupled()
+            inner.set_arm_task_suppressed(True)
+            inner.set_centering_suppressed(True)
+            inner.set_manipulability_active(False)
+            inner.set_rail_extension_mode("pose_attract")
+            inner.set_rail_extension_active(True)
         elif self.preset == "track":
             inner.set_plan_drives_rail(False)
-            # Restore yaml rail mode (live cfg.rail.mode is mutated by locks).
+            inner.set_manipulability_active(False)
+            inner.set_centering_suppressed(False)
+            inner.set_arm_task_suppressed(False)
             if inner.configured_rail_mode == RailMode.COUPLED:
                 inner.set_coupled()
+                inner.set_rail_extension_mode("reach")
+                inner.capture_rail_extension_ref()
+                inner.set_rail_extension_active(True)
             else:
                 inner.set_locked(
                     LockedStyle.HOLD, q_ref_m=float(inner.q_cmd[0])
                 )
+                inner.set_rail_extension_active(False)
+            if psi is not None and inner.arm_task is not None:
+                self._set_arm_angle_reference(inner, psi)
         elif self.preset == "hold":
             inner.set_plan_drives_rail(False)
+            inner.set_manipulability_active(False)
+            inner.set_centering_suppressed(True)
+            inner.set_arm_task_suppressed(False)
             inner.set_locked(LockedStyle.HOLD, q_ref_m=float(inner.q_cmd[0]))
+            inner.set_rail_extension_active(False)
+            if psi is not None and inner.arm_task is not None:
+                self._set_arm_angle_reference(inner, psi)
         elif self.preset == "off":
             inner.set_plan_drives_rail(False)
+            inner.set_arm_task_suppressed(True)
+            inner.set_centering_suppressed(True)
+            inner.set_manipulability_active(False)
+            inner.set_rail_extension_active(False)
         else:
             raise ValueError(f"unknown SecondaryPolicy preset {self.preset!r}")
 
@@ -99,6 +146,7 @@ class GovernorSpec:
     tau_s: float = 0.2
     freeze_below: float = 0.02
     release_above: float = 0.10
+    scale_min: float = 0.25
 
 
 @dataclass
@@ -508,8 +556,21 @@ def phase_hybrid_track(
 
 
 def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], None] | None:
+    psi = None
+    if spec.secondary.arm_angle is not None:
+        psi = spec.secondary.arm_angle.psi_rad
+
     def _enter() -> None:
-        spec.secondary.apply(ctx.inner)
+        spec.secondary.apply(ctx.inner, psi_rad=psi)
+        if (
+            spec.secondary.preset == "move"
+            and spec.q_target_rad is not None
+            and len(np.asarray(spec.q_target_rad).reshape(-1)) > 0
+        ):
+            y_tgt = float(np.asarray(spec.q_target_rad, dtype=float).reshape(-1)[0])
+            ctx.inner.set_rail_pose_target(y_tgt)
+            ctx.inner.set_rail_extension_mode("pose_attract")
+            ctx.inner.set_rail_extension_active(True)
         if spec.mode == TaskMode.LOCKED_MOVE and spec.q_rail_target_m is not None:
             ctx.inner.set_locked(spec.locked_style, q_ref_m=spec.q_rail_target_m)
 
@@ -577,6 +638,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             arrival_dwell_s=(0.10 if spec.move_mode == "joint" else 0.05),
             governor_err_ok_mm=gov.err_ok_mm,
             governor_err_max_mm=gov.err_max_mm,
+            governor_scale_min=gov.scale_min,
             governor_joint_err_ok_deg=gov.joint_err_ok_deg,
             governor_joint_err_max_deg=gov.joint_err_max_deg,
             governor_tau_s=gov.tau_s,
@@ -645,6 +707,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             arrival_dwell_s=0.10,
             governor_err_ok_mm=gov.err_ok_mm,
             governor_err_max_mm=gov.err_max_mm,
+            governor_scale_min=gov.scale_min,
             governor_joint_err_ok_deg=gov.joint_err_ok_deg,
             governor_joint_err_max_deg=gov.joint_err_max_deg,
             governor_tau_s=gov.tau_s,
@@ -691,6 +754,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             require_arrival=spec.require_arrival,
             governor_err_ok_mm=gov.err_ok_mm,
             governor_err_max_mm=gov.err_max_mm,
+            governor_scale_min=gov.scale_min,
             governor_joint_err_ok_deg=gov.joint_err_ok_deg,
             governor_joint_err_max_deg=gov.joint_err_max_deg,
             governor_tau_s=gov.tau_s,
@@ -727,6 +791,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             require_arrival=spec.require_arrival,
             governor_err_ok_mm=gov.err_ok_mm,
             governor_err_max_mm=gov.err_max_mm,
+            governor_scale_min=gov.scale_min,
             governor_joint_err_ok_deg=gov.joint_err_ok_deg,
             governor_joint_err_max_deg=gov.joint_err_max_deg,
             governor_tau_s=gov.tau_s,

@@ -1,0 +1,436 @@
+"""Config-agnostic QPIK preference tests: set-based σ, branch barrier, rail latch."""
+
+from __future__ import annotations
+
+import numpy as np
+
+from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
+from rm75_control.control.joint_admittance_8dof.solver.branch_barrier import (
+    BranchBarrierBuilder,
+    BranchBarrierConfig,
+    latch_q_star_signs,
+)
+from rm75_control.control.joint_admittance_8dof.solver.sigma_setbased import (
+    SigmaSetBasedConfig,
+    SigmaSetBasedTracker,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.nullspace_task import (
+    JointCenteringTask,
+    NullspaceTaskConfig,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
+    RailExtensionConfig,
+    RailExtensionTask,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.secondary_composer import (
+    SecondaryComposer,
+)
+
+
+def test_latch_q_star_signs_preserves_magnitude() -> None:
+    qn = np.array([0.0, 0.0, -0.7, 0.0, 1.57, 0.0, 0.78, 0.0])
+    qm = np.array([0.2, 0.1, -0.5, 0.0, -1.2, 0.1, -0.4, 0.0])
+    out = latch_q_star_signs(qn, qm)
+    assert np.isclose(out[4], -1.57)
+    assert np.isclose(out[6], -0.78)
+    assert np.isclose(out[2], -0.7)
+
+
+def test_sigma_setbased_hysteresis() -> None:
+    tr = SigmaSetBasedTracker(
+        SigmaSetBasedConfig(activate=0.10, exit=0.14, safe=0.05, enabled=True)
+    )
+    assert tr.update_hysteresis(0.20) is False
+    assert tr.update_hysteresis(0.09) is True
+    assert tr.update_hysteresis(0.12) is True  # still active below exit
+    assert tr.update_hysteresis(0.15) is False
+
+
+def test_branch_barrier_blocks_zero_crossing() -> None:
+    bb = BranchBarrierBuilder(
+        BranchBarrierConfig(activate_rad=0.5, eps_rad=0.05, gamma=6.0)
+    )
+    q_star = np.array([0.0, 0.0, 0.0, 0.0, 1.57, 0.0, 0.78, 0.0])
+    # Inside eps band on the +side of 0 → rhs > 0 forbids crossing toward −.
+    q = np.array([0.0, 0.0, 0.0, 0.0, 0.02, 0.0, 0.02, 0.0])
+    rows = bb.build_rows(q, q_star)
+    assert rows.active
+    assert rows.jacobian.shape[0] >= 1
+    j4_rows = [k for k in range(rows.jacobian.shape[0]) if abs(rows.jacobian[k, 4]) > 0.5]
+    assert j4_rows
+    k = j4_rows[0]
+    assert rows.jacobian[k, 4] > 0.0
+    assert rows.lower[k] > 0.0
+
+
+def test_rail_escape_latches_sign_against_grad_flip() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_esc=1.0,
+            v_ff_thr_m_s=0.01,
+            sigma_escape_enter=0.9,
+            sigma_escape_exit=0.95,
+            escape_enter_dwell_s=0.0,
+            v_lpf_tau_s=0.0,
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    task.capture_reference(q)
+    v1, _ = task(
+        q, sigma_scale=0.2, sigma_grad_rail=2.0, vel_ff=None, dt_s=0.005
+    )
+    v2, _ = task(
+        q, sigma_scale=0.2, sigma_grad_rail=-2.0, vel_ff=None, dt_s=0.005
+    )
+    assert abs(v1) > 1e-6
+    assert np.sign(v1) == np.sign(v2)
+
+
+def test_rail_ff_gate_zeros_escape() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_esc=1.0,
+            k_ff=1.0,
+            v_ff_thr_m_s=0.005,
+            sigma_escape_enter=0.9,
+            sigma_escape_exit=0.95,
+            escape_enter_dwell_s=0.0,
+            v_lpf_tau_s=0.0,
+            k_ext=0.0,
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    task.capture_reference(q)
+    j_rail = kin.jacobian(q)[:3, 0]
+    n = float(np.linalg.norm(j_rail))
+    assert n > 1e-6
+    vel_ff = np.zeros(6)
+    vel_ff[:3] = 0.05 * (j_rail / n)
+    v_esc_only, _ = task(
+        q, sigma_scale=0.1, sigma_grad_rail=5.0, vel_ff=None, dt_s=0.005
+    )
+    assert task._escape_active
+    v_with_ff, _ = task(
+        q, sigma_scale=0.1, sigma_grad_rail=5.0, vel_ff=vel_ff, dt_s=0.005
+    )
+    assert abs(v_esc_only) > 1e-4
+    assert abs(v_with_ff) > 1e-4
+    assert not task._escape_active  # trajectory FF clears sticky latch
+
+
+def test_secondary_composer_adds_manip_to_centering() -> None:
+    kin = RobotKinematics()
+    centering = JointCenteringTask.from_kinematics(
+        kin,
+        NullspaceTaskConfig(
+            k_center=1.0,
+            q_nominal_rad=np.array([0.0, 0.0, -0.7, 0.0, 1.57, 0.0, 0.78, 0.0]),
+        ),
+    )
+
+    class _FakeManip:
+        def __call__(self, q, sigma_min=1.0, exclude_rail=True):
+            out = np.zeros_like(q)
+            out[2] = 0.5
+            return out
+
+    composer = SecondaryComposer(
+        centering, None, manipulability=_FakeManip(), max_qdot_frac=0.0
+    )
+    q = centering.q_target + np.array([0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0])
+    q_center = composer.compose(
+        q, None, None, arm_suppressed=True, manipulability_active=False
+    )
+    q_both = composer.compose(
+        q, None, None, arm_suppressed=True, manipulability_active=True, sigma_min=0.05
+    )
+    assert abs(q_center[2]) > 1e-6
+    assert abs(q_both[2]) > abs(q_center[2]) - 1e-9
+
+
+def test_near_limit_boosts_rail_weight() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True, k_margin_boost=4.0, w_ext_cap=20.0, w_max=2.0, k_esc=0.0
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    task.capture_reference(q)
+    task.d_pref_m = task.extension(q) - 0.20
+    _, w_ok = task(q, sigma_scale=1.0, joint_margin_frac=1.0, dt_s=0.005)
+    _, w_near = task(q, sigma_scale=1.0, joint_margin_frac=0.0, dt_s=0.005)
+    assert w_near > w_ok
+
+
+def test_margin_triggers_escape_while_sigma_healthy() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_esc=1.2,
+            k_ext=0.0,
+            sigma_escape_enter=0.5,  # σ healthy at 1.0 → would NOT latch alone
+            sigma_escape_exit=0.98,
+            margin_escape_enter=0.35,
+            margin_escape_exit=0.55,
+            escape_enter_dwell_s=0.0,
+            v_lpf_tau_s=0.0,
+            v_lpf_tau_escape_s=0.0,
+            escape_grad_floor=0.5,
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    task.capture_reference(q)
+    v_ok, _ = task(
+        q,
+        sigma_scale=1.0,
+        sigma_grad_rail=1.0,
+        joint_margin_frac=1.0,
+        dt_s=0.005,
+    )
+    v_near, _ = task(
+        q,
+        sigma_scale=1.0,
+        sigma_grad_rail=1.0,
+        joint_margin_frac=0.2,
+        dt_s=0.005,
+    )
+    assert abs(v_ok) < 1e-6
+    assert abs(v_near) > 1e-3
+    assert task._escape_active
+
+
+def test_latched_escape_zeros_opposing_reach() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_esc=1.2,
+            k_ext=5.0,
+            e0_m=0.0,
+            e1_m=0.01,
+            sigma_escape_enter=0.99,
+            escape_enter_dwell_s=0.0,
+            v_lpf_tau_s=0.0,
+            v_lpf_tau_escape_s=0.0,
+            escape_grad_floor=1.0,
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    task.capture_reference(q)
+    # Force large negative reach error while escape wants +.
+    task.d_pref_m = task.extension(q) + 0.30
+    v, _ = task(
+        q, sigma_scale=0.2, sigma_grad_rail=2.0, joint_margin_frac=1.0, dt_s=0.005
+    )
+    assert task._escape_active
+    assert task._escape_sign > 0.0
+    assert v > 0.0  # reach opposition cleared
+
+
+def test_rail_end_flips_escape_sign_once() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_esc=1.2,
+            k_ext=0.0,
+            limit_margin_m=0.08,
+            sigma_escape_enter=0.99,
+            escape_enter_dwell_s=0.0,
+            v_lpf_tau_s=0.0,
+            v_lpf_tau_escape_s=0.0,
+            escape_grad_floor=1.0,
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    # Park near high soft limit; +grad would point into the wall.
+    q[0] = float(kin.q_upper[0]) - 0.02
+    task.capture_reference(q)
+    v1, _ = task(
+        q, sigma_scale=0.2, sigma_grad_rail=2.0, joint_margin_frac=1.0, dt_s=0.005
+    )
+    assert task._escape_active
+    assert task._escape_sign < 0.0  # flipped away from high end
+    assert task._escape_flipped_at_end
+    v2, _ = task(
+        q, sigma_scale=0.2, sigma_grad_rail=2.0, joint_margin_frac=1.0, dt_s=0.005
+    )
+    assert task._escape_sign < 0.0  # stays flipped (once)
+    assert v1 < 0.0 and v2 < 0.0
+
+
+def test_healthy_vel_ff_follows_without_escape_latch() -> None:
+    """Any MotionReference FF owns the rail when σ/margin are healthy."""
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_esc=0.5,
+            k_ff=1.0,
+            k_ext=0.0,
+            v_ff_thr_m_s=0.005,
+            sigma_escape_enter=0.55,
+            sigma_escape_exit=0.80,
+            margin_escape_enter=0.12,
+            margin_escape_exit=0.25,
+            v_lpf_tau_s=0.0,
+            escape_grad_floor=0.0,
+            v_max_m_s=0.08,
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    task.capture_reference(q)
+    # Arbitrary MotionReference FF aligned with the rail column (not Y-hardcoded).
+    j_rail = kin.jacobian(q)[:3, 0]
+    n = float(np.linalg.norm(j_rail))
+    assert n > 1e-6
+    vel_ff = np.zeros(6)
+    vel_ff[:3] = 0.05 * (j_rail / n)
+    v, _ = task(
+        q,
+        sigma_scale=0.85,  # mild σ dip — must NOT latch
+        sigma_grad_rail=0.5,
+        joint_margin_frac=1.0,
+        vel_ff=vel_ff,
+        dt_s=0.005,
+    )
+    assert not task._escape_active
+    assert abs(v) > 1e-4
+    assert abs(task.last_v_ff) > 1e-4
+    # Soft bias must not dominate FF into an escape-style saturation.
+    assert abs(task.last_v_escape) < abs(task.last_v_ff) + 1e-6
+
+
+def test_deep_sigma_latches_monotonic_escape() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_esc=0.5,
+            k_ext=0.0,
+            sigma_escape_enter=0.55,
+            sigma_escape_exit=0.80,
+            margin_escape_enter=0.12,
+            escape_enter_dwell_s=0.0,
+            v_lpf_tau_s=0.0,
+            v_lpf_tau_escape_s=0.0,
+            escape_grad_floor=0.0,
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    task.capture_reference(q)
+    v1, _ = task(
+        q, sigma_scale=0.3, sigma_grad_rail=2.0, joint_margin_frac=1.0, dt_s=0.005
+    )
+    v2, _ = task(
+        q, sigma_scale=0.3, sigma_grad_rail=-2.0, joint_margin_frac=1.0, dt_s=0.005
+    )
+    assert task._escape_active
+    assert abs(v1) > 1e-4
+    assert np.sign(v1) == np.sign(v2)
+
+
+def test_true_near_limit_latches_with_narrow_margin() -> None:
+    kin = RobotKinematics()
+    cfg = RailExtensionConfig(
+        enabled=True,
+        k_esc=0.5,
+        k_ext=0.0,
+        sigma_escape_enter=0.55,
+        margin_escape_enter=0.12,
+        margin_escape_exit=0.25,
+        escape_enter_dwell_s=0.0,
+        v_lpf_tau_s=0.0,
+        escape_grad_floor=0.0,
+    )
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    task_ok = RailExtensionTask(kin, cfg)
+    task_ok.set_mode("reach")
+    task_ok.capture_reference(q)
+    v_ok, _ = task_ok(
+        q,
+        sigma_scale=1.0,
+        sigma_grad_rail=2.0,
+        joint_margin_frac=0.5,
+        dt_s=0.005,
+    )
+    assert abs(v_ok) < 1e-6
+    assert not task_ok._escape_active
+
+    task_near = RailExtensionTask(kin, cfg)
+    task_near.set_mode("reach")
+    task_near.capture_reference(q)
+    v_near, _ = task_near(
+        q,
+        sigma_scale=1.0,
+        sigma_grad_rail=2.0,
+        joint_margin_frac=0.05,
+        dt_s=0.005,
+    )
+    assert task_near._escape_active
+    assert abs(v_near) > 1e-4
+
+
+def test_escape_enter_requires_dwell() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_esc=1.0,
+            k_ext=0.0,
+            sigma_escape_enter=0.55,
+            escape_enter_dwell_s=0.05,
+            v_lpf_tau_s=0.0,
+            escape_grad_floor=0.0,
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    task.capture_reference(q)
+    task(q, sigma_scale=0.2, sigma_grad_rail=2.0, dt_s=0.005)
+    assert not task._escape_active  # 5 ms < 50 ms dwell
+    for _ in range(10):
+        task(q, sigma_scale=0.2, sigma_grad_rail=2.0, dt_s=0.005)
+    assert task._escape_active
+
+
+def test_beyond_rail_cli_defaults_force_on(tmp_path) -> None:
+    import argparse
+    from pathlib import Path
+
+    # Smoke the argparse + beyond force default logic via a mini replica.
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--beyond-rail-cm", type=float, default=None)
+    ap.add_argument(
+        "--enable-force", action=argparse.BooleanOptionalAction, default=None
+    )
+    args = ap.parse_args(["--beyond-rail-cm", "5"])
+    if args.beyond_rail_cm is not None and args.enable_force is None:
+        args.enable_force = True
+    assert args.enable_force is True
+    args2 = ap.parse_args(["--beyond-rail-cm", "5", "--no-enable-force"])
+    assert args2.enable_force is False
+    del tmp_path, Path

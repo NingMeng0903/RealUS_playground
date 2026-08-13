@@ -93,8 +93,26 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert "damping_ke_z" in header
     assert "damping_dimeas_z" in header
     assert "vz_achieved_tool" in header
+    assert "pose_d_x" in header
+    assert "pose_meas_x" in header
+    assert "motion_err_lin_y_mm" in header
+    assert "motion_err_rms_mm" in header
+    assert "motion_axis_peak_mm" in header
+    assert "vel_ff_vy" in header
+    assert "rail_contrib_m_s" in header
+    assert "arm_contrib_m_s" in header
+    assert "rail_motion_share" in header
+    assert "rail_escape_active" in header
+    assert "tool_y_des_m" in header
+    assert "psi_deg" in header
+    assert "psi_ref_deg" in header
+    assert "d_pref_m" in header
+    assert "elbow_margin_rad" in header
+    assert "wrist_open_rad" in header
+    assert "tool_y_err_mm" in header
 
     values = dict(zip(header, rows[1], strict=True))
+    assert values["rail_escape_active"] == "0"
     assert values["force_reference_fast_clear"] == "1"
     assert values["force_fast_z"] == "1.234"
     assert values["retract_guard_armed"] == "1"
@@ -108,3 +126,59 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert values["physical_contact_reacquire_event"] == "1"
     assert values["physical_contact_low_timer_s"] == "0.012000"
     assert values["physical_contact_high_timer_s"] == "0.034000"
+
+
+def test_motion_axis_accuracy_columns_populated(tmp_path):
+    path = tmp_path / "motion.csv"
+    logger = _TickLogger(str(path))
+    step = JointIkStep(
+        q_send=np.zeros(8),
+        qdot=np.zeros(8),
+        twist_base=np.array([0.0, 0.02, 0.0, 0.0, 0.0, 0.0]),
+        sigma_min=0.2,
+        manip=0.1,
+        slack_norm=0.0,
+        n_cbf_active=0,
+        follow_err_rad=0.0,
+        rail_contrib_m_s=0.01,
+        arm_contrib_m_s=0.01,
+        rail_motion_share=0.5,
+        rail_escape_active=False,
+    )
+    cfg = AdmittanceConfig(
+        track_axes=np.array([1.0, 1.0, 0.0, 1.0, 1.0, 1.0]),
+        force_axes=np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
+    )
+    controller = AdmittanceController(0.005, cfg)
+
+    class Outer:
+        pass
+
+    outer = Outer()
+    outer.controller = controller
+    outer.last_pose_d = np.array([0.0, 0.05, 0.0, 0.0, 0.0, 0.0])
+    outer.last_vel_ff = np.array([0.0, 0.03, 0.0, 0.0, 0.0, 0.0])
+    pose_meas = np.array([0.0, 0.04, 0.01, 0.0, 0.0, 0.0])
+    logger.write(
+        0.0,
+        "scan",
+        0.0,
+        step,
+        np.zeros(8),
+        pose_meas,
+        np.zeros(6),
+        outer=outer,
+    )
+    logger.close()
+    with path.open(newline="") as stream:
+        rows = list(csv.reader(stream))
+    values = dict(zip(rows[0], rows[1], strict=True))
+    assert values["pose_d_y"] == "0.050000"
+    assert values["pose_meas_y"] == "0.040000"
+    assert values["motion_err_lin_y_mm"] != ""
+    assert values["motion_err_lin_z_mm"] == ""  # force axis excluded
+    assert values["motion_err_rms_mm"] != ""
+    assert values["vel_ff_vy"] == "0.030000"
+    assert values["rail_contrib_m_s"] == "0.010000"
+    assert values["rail_escape_active"] == "0"
+    assert values["tool_y_err_mm"] != ""

@@ -1,4 +1,4 @@
-"""YAML loader for the fixed single-shot RM75 Cartesian QPIK controller."""
+"""YAML loader for the 8-DOF slack-QP inner loop (Escande WBC + rail extension)."""
 
 from __future__ import annotations
 
@@ -6,22 +6,26 @@ import math
 
 import numpy as np
 
-from rm75_control.control.joint_admittance_8dof.loop import JointIkConfig
 from rm75_control.control.joint_admittance_8dof.collision_model import CollisionConfig
+from rm75_control.control.joint_admittance_8dof.ik_types import SrDampingConfig
+from rm75_control.control.joint_admittance_8dof.loop import JointIkConfig
+from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfig
+from rm75_control.control.joint_admittance_8dof.tasks.arm_angle import ArmAngleTaskConfig
+from rm75_control.control.joint_admittance_8dof.tasks.manipulability_task import (
+    ManipulabilityTaskConfig,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.nullspace_task import (
+    NullspaceTaskConfig,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
+    RailExtensionConfig,
+)
 from rm75_control.control.joint_admittance_8dof.tasks.rail_lock import RailLockConfig
 from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedStyle, RailMode
-from rm75_control.control.joint_admittance_8dof.generic_runtime import (
-    GenericQpikRuntimeConfig,
-)
-from rm75_control.control.joint_admittance_8dof.solver.single_qpik import (
-    SingleQpikConfig,
-)
-from rm75_control.control.joint_admittance_8dof.health_monitor import HealthThresholds
+from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import PsiRetargetConfig
 
 
 def _mapping(value, *, name: str) -> dict:
-    """Return a mapping config section, rejecting ambiguous YAML values."""
-
     if value is None:
         return {}
     if not isinstance(value, dict):
@@ -35,9 +39,21 @@ def _reject_unknown(section: dict, allowed: set[str], *, name: str) -> None:
         raise ValueError(f"unknown {name} configuration keys: " + ", ".join(unknown))
 
 
-def _finite_array(value, *, name: str, ndim: int | None = None) -> np.ndarray:
-    """Convert a numeric YAML vector/matrix and reject non-finite entries."""
+def _finite_float(value, *, name: str) -> float:
+    try:
+        out = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name} must be a finite number, got {value!r}") from exc
+    if not math.isfinite(out):
+        raise ValueError(f"{name} must be a finite number, got {value!r}")
+    return out
 
+
+def _arr(value, default) -> np.ndarray:
+    return np.asarray(value if value is not None else default, dtype=float)
+
+
+def _finite_array(value, *, name: str, ndim: int | None = None) -> np.ndarray:
     try:
         out = np.asarray(value, dtype=float)
     except (TypeError, ValueError) as exc:
@@ -49,340 +65,7 @@ def _finite_array(value, *, name: str, ndim: int | None = None) -> np.ndarray:
     return out
 
 
-def _parse_health_thresholds(raw: dict) -> HealthThresholds:
-    """Read health hysteresis thresholds while accepting compact nested YAML."""
-
-    section = _mapping(raw.get("health"), name="qpik.health")
-    arm = _mapping(section.get("arm"), name="qpik.health.arm")
-    joint = _mapping(
-        section.get("joint_margin", section.get("joint")),
-        name="qpik.health.joint_margin",
-    )
-    wrist = _mapping(
-        section.get("wrist_margin", section.get("wrist")),
-        name="qpik.health.wrist_margin",
-    )
-    _reject_unknown(
-        section,
-        {
-            "arm", "joint", "joint_margin", "wrist", "wrist_margin",
-            "arm_warn", "arm_danger", "arm_exit", "joint_danger_deg",
-            "joint_warn_deg", "joint_exit_deg", "wrist_danger_deg",
-            "wrist_warn_deg", "wrist_exit_deg", "settling_s",
-            "settling_time_s", "task_velocity_scales",
-        },
-        name="qpik.health",
-    )
-    _reject_unknown(
-        arm, {"warn", "warn_rho", "danger", "danger_rho", "exit", "exit_rho"},
-        name="qpik.health.arm",
-    )
-    margin_keys = {"danger_deg", "enter_deg", "warn_deg", "warn_margin_deg", "exit_deg"}
-    _reject_unknown(joint, margin_keys, name="qpik.health.joint_margin")
-    _reject_unknown(wrist, margin_keys, name="qpik.health.wrist_margin")
-
-    def pick(section_value, *keys, default=None):
-        for key in keys:
-            if key in section_value:
-                return section_value[key]
-        return default
-
-    return HealthThresholds(
-        arm_warn=pick(arm, "warn", "warn_rho", default=section.get("arm_warn", 0.08)),
-        arm_danger=pick(
-            arm, "danger", "danger_rho", default=section.get("arm_danger", 0.04)
-        ),
-        arm_exit=pick(arm, "exit", "exit_rho", default=section.get("arm_exit", 0.10)),
-        joint_danger_deg=pick(
-            joint,
-            "danger_deg",
-            "enter_deg",
-            default=section.get("joint_danger_deg", 15.0),
-        ),
-        joint_warn_deg=pick(
-            joint,
-            "warn_deg",
-            "warn_margin_deg",
-            default=section.get("joint_warn_deg", 20.0),
-        ),
-        joint_exit_deg=pick(
-            joint,
-            "exit_deg",
-            default=section.get("joint_exit_deg", 25.0),
-        ),
-        wrist_danger_deg=pick(
-            wrist,
-            "danger_deg",
-            "enter_deg",
-            default=section.get("wrist_danger_deg", 20.0),
-        ),
-        wrist_warn_deg=pick(
-            wrist,
-            "warn_deg",
-            "warn_margin_deg",
-            default=section.get("wrist_warn_deg", 25.0),
-        ),
-        wrist_exit_deg=pick(
-            wrist,
-            "exit_deg",
-            default=section.get("wrist_exit_deg", 30.0),
-        ),
-        settling_s=section.get("settling_s", section.get("settling_time_s", 0.20)),
-    )
-
-
-def _parse_generic_qpik(raw: dict) -> GenericQpikRuntimeConfig:
-    """Parse the fixed single-shot solver and whole-body policy."""
-
-    section = _mapping(raw.get("qpik"), name="qpik")
-    solver = _mapping(section.get("solver"), name="qpik.solver")
-    backend = str(solver.get("backend", "proxqp")).lower()
-    if backend not in {"proxqp", "scipy"}:
-        raise ValueError(
-            "qpik.solver.backend must be explicit 'proxqp' or 'scipy' "
-            f"(got {backend!r})"
-        )
-
-    retired = sorted(
-        (
-            set(section)
-            & {
-                "protected_task",
-                "scalable_tasks",
-                "task_profile",
-                "compatibility",
-                "reference_governor",
-                "accepted_reference_governor",
-                "governor",
-                "psi_lift",
-            }
-        )
-        | (
-            set(solver)
-            & {
-                "max_rows",
-                "max_constraint_rows",
-                "max_p0_rows",
-                "max_scalable_groups",
-                "max_groups",
-                "protected_tolerance",
-                "regularization",
-                "previous_velocity_weight",
-                "scalable_weight",
-                "posture_weight",
-                "posture_regularization",
-                "margin_weight",
-                "margin_weight_gain",
-                "psi_weight",
-                "psi_k",
-                "psi_lift_weight_scale",
-                "psi_err_boost_rad",
-                "psi_err_weight_scale",
-                "comfort_k_g",
-                "comfort_qdot_max",
-                "row_scale_floor",
-                "qp1",
-                "qp2",
-                "qp3",
-                "retry",
-                "regularization_retry",
-                "fallback_qp",
-                "p0_fallback",
-                "health_to_alpha",
-                "sigma_escape_enter",
-                "sigma_escape_exit",
-                "rail_escape_v_min_m_s",
-                "rail_escape_v_max_m_s",
-            }
-        )
-    )
-    if retired:
-        raise ValueError(
-            "retired multi-level QPIK configuration keys: " + ", ".join(retired)
-        )
-
-    _reject_unknown(
-        section,
-        {
-            "solver", "dexterity", "working_set", "whole_body", "health",
-            "indices", "hard_limits", "task_velocity_scales",
-        },
-        name="qpik",
-    )
-    _reject_unknown(
-        solver,
-        {
-            "backend", "max_iter", "max_iter_in", "max_solve_ms",
-            "feasibility_tolerance", "equality_tolerance", "protected_limits",
-            "task_scales", "protected_weight", "beta_weight", "recovery_weight",
-            "recovery_linear_weight", "alpha_weight", "preference_weight",
-            "smoothness_weight", "rail_smoothness_weight",
-            "ridge_weight", "authority_quadratic", "authority_rise_per_s",
-            "anchor_decay_tau_s", "anchor_projection_sweeps", "warm_start",
-            "scipy_ftol",
-        },
-        name="qpik.solver",
-    )
-
-    qcfg = SingleQpikConfig(
-        backend=backend,
-        max_iter=int(solver.get("max_iter", 20)),
-        max_iter_in=int(solver.get("max_iter_in", 10)),
-        max_solve_ms=float(solver.get("max_solve_ms", 3.0)),
-        feasibility_tolerance=float(solver.get("feasibility_tolerance", 1.0e-5)),
-        equality_tolerance=float(solver.get("equality_tolerance", 1.0e-5)),
-        protected_limits=_finite_array(
-            solver.get("protected_limits", [0.010, 0.050, 0.050, 0.050]),
-            name="qpik.solver.protected_limits",
-            ndim=1,
-        ),
-        task_scales=_finite_array(
-            solver.get("task_scales", [0.10, 0.50, 0.50, 0.50, 0.10, 0.10]),
-            name="qpik.solver.task_scales",
-            ndim=1,
-        ),
-        protected_weight=float(solver.get("protected_weight", 1.0e5)),
-        beta_weight=float(solver.get("beta_weight", 1.0e4)),
-        recovery_weight=float(solver.get("recovery_weight", 1.0e3)),
-        recovery_linear_weight=float(solver.get("recovery_linear_weight", 1.0e3)),
-        alpha_weight=float(solver.get("alpha_weight", 1.0e2)),
-        preference_weight=float(solver.get("preference_weight", 10.0)),
-        smoothness_weight=float(solver.get("smoothness_weight", 1.0)),
-        rail_smoothness_weight=float(solver.get("rail_smoothness_weight", 5.0)),
-        ridge_weight=float(solver.get("ridge_weight", 1.0e-4)),
-        authority_quadratic=float(solver.get("authority_quadratic", 0.05)),
-        authority_rise_per_s=float(solver.get("authority_rise_per_s", 2.0)),
-        anchor_decay_tau_s=float(solver.get("anchor_decay_tau_s", 0.08)),
-        anchor_projection_sweeps=int(solver.get("anchor_projection_sweeps", 64)),
-        warm_start=bool(solver.get("warm_start", True)),
-        scipy_ftol=float(solver.get("scipy_ftol", 1.0e-9)),
-    )
-    dexterity = _mapping(section.get("dexterity"), name="qpik.dexterity")
-    _reject_unknown(
-        dexterity, {"d_safe", "d_activate", "gamma", "k_d"},
-        name="qpik.dexterity",
-    )
-    dexterity_d_safe = float(dexterity.get("d_safe", 0.04))
-    dexterity_gamma = float(dexterity.get("gamma", 5.0))
-    dexterity_d_activate = float(
-        dexterity.get("d_activate", max(2.0 * dexterity_d_safe, dexterity_d_safe + 0.02))
-    )
-    dexterity_k_d = float(dexterity.get("k_d", 0.15))
-    working = _mapping(section.get("working_set"), name="qpik.working_set")
-    _reject_unknown(
-        working, {"arm_margin_rad", "rail_margin_m", "gamma"},
-        name="qpik.working_set",
-    )
-    working_arm_margin_rad = float(working.get("arm_margin_rad", 0.30))
-    working_rail_margin_m = float(working.get("rail_margin_m", 0.02))
-    working_gamma = float(working.get("gamma", 8.0))
-    health = _parse_health_thresholds(section)
-    task_scales = section.get(
-        "task_velocity_scales",
-        _mapping(section.get("health"), name="qpik.health").get(
-            "task_velocity_scales", [0.10, 0.10, 0.10, 0.50, 0.50, 0.50]
-        ),
-    )
-    task_scales_arr = _finite_array(
-        task_scales, name="qpik.task_velocity_scales", ndim=1
-    ).reshape(-1)
-    if task_scales_arr.size != 6 or np.any(task_scales_arr <= 0.0):
-        raise ValueError("qpik.task_velocity_scales must contain six positive values")
-
-    indices = _mapping(section.get("indices"), name="qpik.indices")
-    _reject_unknown(indices, {"rail", "wrist"}, name="qpik.indices")
-    rail_indices = tuple(int(i) for i in indices.get("rail", (0,)))
-    wrist_indices = tuple(int(i) for i in indices.get("wrist", (5, 6, 7)))
-    whole_body = _mapping(section.get("whole_body"), name="qpik.whole_body")
-    _reject_unknown(
-        whole_body,
-        {
-            "arm_nominal_k", "arm_nominal_qdot_max", "rail_macro", "risk",
-            "feedback_lpf_tau_s", "feedback_accel_max_m_s2",
-        },
-        name="qpik.whole_body",
-    )
-    rail_macro = _mapping(
-        whole_body.get("rail_macro"), name="qpik.whole_body.rail_macro"
-    )
-    risk = _mapping(whole_body.get("risk"), name="qpik.whole_body.risk")
-    _reject_unknown(
-        rail_macro,
-        {"tau_s", "v_max_m_s", "a_max_m_s2", "jerk_max_m_s3", "center_k", "center_v_max_m_s"},
-        name="qpik.whole_body.rail_macro",
-    )
-    _reject_unknown(
-        risk,
-        {
-            "collision_k_d", "attack_s", "release_s", "exit_dwell_s",
-            "gradient_period_ticks", "gradient_lpf_tau_s", "wrist_danger_deg",
-            "wrist_warn_deg", "wrist_exit_deg",
-        },
-        name="qpik.whole_body.risk",
-    )
-    return GenericQpikRuntimeConfig(
-        solver=qcfg,
-        health=health,
-        rail_indices=rail_indices,
-        wrist_indices=wrist_indices,
-        task_velocity_scales=task_scales_arr,
-        dexterity_d_safe=dexterity_d_safe,
-        dexterity_gamma=dexterity_gamma,
-        dexterity_d_activate=dexterity_d_activate,
-        dexterity_k_d=dexterity_k_d,
-        collision_k_d=float(risk.get("collision_k_d", 0.10)),
-        working_arm_margin_rad=working_arm_margin_rad,
-        working_rail_margin_m=working_rail_margin_m,
-        working_gamma=working_gamma,
-        arm_nominal_k=float(whole_body.get("arm_nominal_k", 0.25)),
-        arm_nominal_qdot_max=float(whole_body.get("arm_nominal_qdot_max", 0.30)),
-        risk_attack_s=float(risk.get("attack_s", 0.05)),
-        risk_release_s=float(risk.get("release_s", 0.40)),
-        risk_exit_dwell_s=float(risk.get("exit_dwell_s", 0.20)),
-        gradient_period_ticks=int(risk.get("gradient_period_ticks", 10)),
-        gradient_lpf_tau_s=float(risk.get("gradient_lpf_tau_s", 0.10)),
-        wrist_danger_deg=float(risk.get("wrist_danger_deg", 10.0)),
-        wrist_warn_deg=float(risk.get("wrist_warn_deg", 20.0)),
-        wrist_exit_deg=float(risk.get("wrist_exit_deg", 25.0)),
-        rail_macro_tau_s=float(rail_macro.get("tau_s", 0.15)),
-        rail_macro_v_max_m_s=float(rail_macro.get("v_max_m_s", 0.12)),
-        rail_macro_a_max_m_s2=float(rail_macro.get("a_max_m_s2", 0.30)),
-        rail_macro_jerk_max_m_s3=float(rail_macro.get("jerk_max_m_s3", 2.0)),
-        rail_center_k=float(rail_macro.get("center_k", 0.04)),
-        rail_center_v_max_m_s=float(rail_macro.get("center_v_max_m_s", 0.025)),
-        feedback_lpf_tau_s=float(whole_body.get("feedback_lpf_tau_s", 0.05)),
-        feedback_accel_max_m_s2=float(
-            whole_body.get("feedback_accel_max_m_s2", 0.30)
-        ),
-    )
-
-
-def _finite_float(value, *, name: str) -> float:
-    """Convert a config scalar and reject NaN/Inf at the loader boundary.
-
-    Config values eventually become QP bounds and velocity envelopes.  Letting
-    a non-finite value through here usually produces a much less actionable
-    solver failure several layers later, so all safety-critical scalars use
-    this small fail-fast conversion helper.
-    """
-
-    try:
-        out = float(value)
-    except (TypeError, ValueError) as exc:
-        raise ValueError(f"{name} must be a finite number, got {value!r}") from exc
-    if not math.isfinite(out):
-        raise ValueError(f"{name} must be a finite number, got {value!r}")
-    return out
-
-
 def _resolve_rail_mode(r: dict) -> tuple[RailMode, LockedStyle]:
-    """Read (mode, locked_style) from yaml.
-
-    Schema::
-        rail:
-          mode: coupled | locked
-          locked_style: hold | rail_only | tcp_fixed   # only if mode=locked
-    """
     mode_str = str(r.get("mode", "coupled")).lower()
     raw_style = r.get("locked_style", "hold")
     if mode_str == "coupled":
@@ -390,117 +73,491 @@ def _resolve_rail_mode(r: dict) -> tuple[RailMode, LockedStyle]:
     if mode_str == "locked":
         style = LockedStyle(str(raw_style).lower()) if raw_style else LockedStyle.HOLD
         return RailMode.LOCKED, style
-    raise ValueError(f"unknown qpik.hard_limits.rail.mode: {r.get('mode')!r}")
+    raise ValueError(f"unknown rail.mode: {r.get('mode')!r}")
 
 
-def build_joint_ik_config(raw: dict) -> JointIkConfig:
-    """Build the production controller config from responsibility blocks.
+_RETIRED_QPIK = {
+    "protected_task",
+    "scalable_tasks",
+    "task_profile",
+    "compatibility",
+    "reference_governor",
+    "accepted_reference_governor",
+    "governor",
+    "psi_lift",
+}
+_RETIRED_SOLVER = {
+    "max_rows",
+    "max_constraint_rows",
+    "max_p0_rows",
+    "max_scalable_groups",
+    "max_groups",
+    "protected_tolerance",
+    "regularization",
+    "previous_velocity_weight",
+    "scalable_weight",
+    "posture_weight",
+    "posture_regularization",
+    "margin_weight",
+    "margin_weight_gain",
+    "psi_weight",
+    "psi_k",
+    "psi_lift_weight_scale",
+    "psi_err_boost_rad",
+    "psi_err_weight_scale",
+    "comfort_k_g",
+    "comfort_qdot_max",
+    "row_scale_floor",
+    "qp1",
+    "qp2",
+    "qp3",
+    "retry",
+    "regularization_retry",
+    "fallback_qp",
+    "p0_fallback",
+    "health_to_alpha",
+    "sigma_escape_enter",
+    "sigma_escape_exit",
+    "rail_escape_v_min_m_s",
+    "rail_escape_v_max_m_s",
+}
+_LEFTOVER_28VAR = {
+    "dexterity",
+    "working_set",
+    "whole_body",
+    "health",
+    "indices",
+    "task_velocity_scales",
+}
 
-    The preferred schema is ``qpik.solver``, ``qpik.hard_limits``, task
-    profiles, health and planner/guide sections.  A small read-only fallback
-    for dbb's ``inner.collision`` and ``inner.rail`` is retained so older
-    application YAML can be inspected without reviving the retired weighted
-    QP, null-space or rail-extension APIs.
-    """
 
-    if not isinstance(raw, dict):
-        raise ValueError("controller config root must be a mapping")
-    timing = _mapping(raw.get("timing"), name="timing")
-    inner = _mapping(raw.get("inner"), name="inner")
-    qpik = _mapping(raw.get("qpik"), name="qpik")
-    hard = _mapping(qpik.get("hard_limits"), name="qpik.hard_limits")
-    _reject_unknown(
-        hard,
-        {
-            "v_scale", "a_max_arm_rad_s2", "a_max_rail_m_s2",
-            "position_margin_deg", "position_margin_rail_mm",
-            "command_lead_arm_deg", "command_lead_rail_mm",
-            "velocity_damper", "collision", "rail",
-        },
-        name="qpik.hard_limits",
-    )
-    legacy_qp = _mapping(inner.get("qp"), name="inner.qp")
-    retired_inner = sorted(
-        set(inner)
-        & {
-            "a_max_rail_escape_m_s2",
-            "rail_escape_v_min_m_s",
-            "rail_escape_v_max_m_s",
-            "sigma_escape_enter",
-            "sigma_escape_exit",
-        }
-    )
-    if retired_inner:
+def _reject_retired_qpik(qpik: dict) -> None:
+    solver = _mapping(qpik.get("solver"), name="qpik.solver")
+    retired = sorted((set(qpik) & _RETIRED_QPIK) | (set(solver) & _RETIRED_SOLVER))
+    if retired:
         raise ValueError(
-            "retired QPIK configuration keys in inner: "
-            + ", ".join(retired_inner)
+            "retired multi-level QPIK configuration keys: " + ", ".join(retired)
         )
-    euler_order = str(
-        _mapping(raw.get("frames"), name="frames").get(
-            "euler_order", inner.get("euler_order", "xyz")
+    leftover = sorted(set(qpik) & _LEFTOVER_28VAR)
+    if leftover:
+        raise ValueError(
+            "retired 28-var QPIK keys (use inner.qp / inner.nullspace / "
+            "inner.rail_extension): " + ", ".join(leftover)
         )
-    )
+    if "solver" in qpik:
+        raise ValueError("qpik.solver is retired; use inner.qp")
 
-    collision_raw = _mapping(
-        hard.get("collision", inner.get("collision")),
-        name="qpik.hard_limits.collision",
-    )
+
+def _parse_collision(raw: dict, *, name: str) -> CollisionConfig:
+    section = _mapping(raw, name=name)
     _reject_unknown(
-        collision_raw,
+        section,
         {"enabled", "d_safe", "d_activate", "gamma", "max_pairs"},
-        name="qpik.hard_limits.collision",
+        name=name,
     )
     collision = CollisionConfig(
-        enabled=bool(collision_raw.get("enabled", True)),
-        d_safe=_finite_float(collision_raw.get("d_safe", 0.01), name="collision.d_safe"),
+        enabled=bool(section.get("enabled", True)),
+        d_safe=_finite_float(section.get("d_safe", 0.01), name=f"{name}.d_safe"),
         d_activate=_finite_float(
-            collision_raw.get("d_activate", 0.04), name="collision.d_activate"
+            section.get("d_activate", 0.04), name=f"{name}.d_activate"
         ),
-        gamma=_finite_float(collision_raw.get("gamma", 5.0), name="collision.gamma"),
-        max_pairs=int(collision_raw.get("max_pairs", 8)),
+        gamma=_finite_float(section.get("gamma", 5.0), name=f"{name}.gamma"),
+        max_pairs=int(section.get("max_pairs", 8)),
     )
     if not 0.0 <= collision.d_safe < collision.d_activate:
         raise ValueError("collision distances must satisfy 0 <= d_safe < d_activate")
     if collision.gamma <= 0.0 or collision.max_pairs <= 0:
         raise ValueError("collision gamma/max_pairs must be positive")
+    return collision
 
-    velocity_damper = _mapping(
-        hard.get("velocity_damper"), name="qpik.hard_limits.velocity_damper"
-    )
+
+def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpConfig:
+    c = _mapping(inner.get("qp"), name="inner.qp")
     _reject_unknown(
-        velocity_damper, {"arm_band_rad", "rail_band_m"},
-        name="qpik.hard_limits.velocity_damper",
+        c,
+        {
+            "task_weight", "reg", "backend", "eps_abs", "max_iter", "max_iter_cap",
+            "max_solve_ms", "fail_qdot_decay", "twist_sigma_floor", "warn_on_fail",
+            "sr_damping", "task_weight_min_frac", "task_weight_lpf_tau_s",
+            "use_mass_weighted_reg", "mass_reg_floor", "mass_weight_exempt_rail",
+            "mass_reg_lpf_tau_s", "use_dyn_nullspace",
+            "limit_damper_band_rad", "limit_damper_band_rail_m",
+            "sigma_setbased", "branch_barrier", "sns_retry_scales",
+            "smoothness_weight",
+        },
+        name="inner.qp",
     )
-    damper_arm = _finite_float(
-        velocity_damper.get(
-            "arm_band_rad", legacy_qp.get("limit_damper_band_rad", 0.15)
-        ),
-        name="velocity_damper.arm_band_rad",
+    backend = str(c.get("backend", "proxqp")).lower()
+    if backend not in {"proxqp", "osqp", "scipy"}:
+        raise ValueError(
+            "inner.qp.backend must be 'proxqp', 'osqp', or 'scipy' "
+            f"(got {backend!r})"
+        )
+    if backend == "scipy":
+        # Slack QP has no scipy path; ProxQP falls back to OSQP at runtime.
+        backend = "proxqp"
+    sr = _mapping(c.get("sr_damping"), name="inner.qp.sr_damping")
+    _reject_unknown(
+        sr, {"lam0", "sigma_ref", "sigma_floor"}, name="inner.qp.sr_damping"
     )
-    damper_rail = _finite_float(
-        velocity_damper.get(
-            "rail_band_m", legacy_qp.get("limit_damper_band_rail_m", 0.05)
-        ),
-        name="velocity_damper.rail_band_m",
+    from rm75_control.control.joint_admittance_8dof.solver.branch_barrier import (
+        BranchBarrierConfig,
     )
-    if damper_arm < 0.0 or damper_rail < 0.0:
-        raise ValueError("velocity damper bands must be non-negative")
+    from rm75_control.control.joint_admittance_8dof.solver.sigma_setbased import (
+        SigmaSetBasedConfig,
+    )
 
-    rail_raw = _mapping(
-        hard.get("rail", inner.get("rail")), name="qpik.hard_limits.rail"
+    ss = _mapping(c.get("sigma_setbased"), name="inner.qp.sigma_setbased")
+    _reject_unknown(
+        ss,
+        {"enabled", "activate", "safe", "exit", "gamma", "slack_weight", "grad_eps"},
+        name="inner.qp.sigma_setbased",
     )
+    bb = _mapping(c.get("branch_barrier"), name="inner.qp.branch_barrier")
+    _reject_unknown(
+        bb,
+        {
+            "enabled", "activate_rad", "eps_rad", "gamma", "slack_weight",
+            "target_eps_rad",
+        },
+        name="inner.qp.branch_barrier",
+    )
+    sns_raw = c.get("sns_retry_scales", [1.0, 0.85, 0.7, 0.55, 0.4, 0.25])
+    if isinstance(sns_raw, (list, tuple)):
+        sns_scales = tuple(float(x) for x in sns_raw)
+    else:
+        sns_scales = (1.0, 0.85, 0.7, 0.55, 0.4, 0.25)
+    return QpConfig(
+        task_weight=_arr(c.get("task_weight"), [100.0, 100.0, 100.0, 50.0, 50.0, 50.0]),
+        reg=_arr(
+            c.get("reg"),
+            [1.0e-3, 1.0e-2, 1.0e-2, 1.0e-2, 1.0e-2, 5.0e-3, 5.0e-3, 5.0e-3],
+        ),
+        backend=backend,
+        eps_abs=_finite_float(c.get("eps_abs", 1.0e-6), name="inner.qp.eps_abs"),
+        max_iter=int(c.get("max_iter", 400)),
+        max_iter_cap=int(c.get("max_iter_cap", 400)),
+        euler_order=euler_order,
+        collision=collision,
+        sr_damping=SrDampingConfig(
+            lam0=_finite_float(sr.get("lam0", 0.05), name="sr_damping.lam0"),
+            sigma_ref=_finite_float(
+                sr.get("sigma_ref", 0.08), name="sr_damping.sigma_ref"
+            ),
+            sigma_floor=_finite_float(
+                sr.get("sigma_floor", 1e-6), name="sr_damping.sigma_floor"
+            ),
+        ),
+        task_weight_min_frac=_finite_float(
+            c.get("task_weight_min_frac", 0.05), name="inner.qp.task_weight_min_frac"
+        ),
+        task_weight_lpf_tau_s=_finite_float(
+            c.get("task_weight_lpf_tau_s", 0.25),
+            name="inner.qp.task_weight_lpf_tau_s",
+        ),
+        use_mass_weighted_reg=bool(c.get("use_mass_weighted_reg", True)),
+        mass_reg_floor=_finite_float(
+            c.get("mass_reg_floor", 0.05), name="inner.qp.mass_reg_floor"
+        ),
+        mass_weight_exempt_rail=bool(c.get("mass_weight_exempt_rail", True)),
+        mass_reg_lpf_tau_s=_finite_float(
+            c.get("mass_reg_lpf_tau_s", 0.2), name="inner.qp.mass_reg_lpf_tau_s"
+        ),
+        use_dyn_nullspace=bool(c.get("use_dyn_nullspace", False)),
+        limit_damper_band_rad=_finite_float(
+            c.get("limit_damper_band_rad", 0.15),
+            name="inner.qp.limit_damper_band_rad",
+        ),
+        limit_damper_band_rail_m=_finite_float(
+            c.get("limit_damper_band_rail_m", 0.05),
+            name="inner.qp.limit_damper_band_rail_m",
+        ),
+        warn_on_fail=bool(c.get("warn_on_fail", False)),
+        fail_qdot_decay=_finite_float(
+            c.get("fail_qdot_decay", 0.85), name="inner.qp.fail_qdot_decay"
+        ),
+        max_solve_ms=_finite_float(
+            c.get("max_solve_ms", 8.0), name="inner.qp.max_solve_ms"
+        ),
+        twist_sigma_floor=_finite_float(
+            c.get("twist_sigma_floor", 0.02), name="inner.qp.twist_sigma_floor"
+        ),
+        sigma_setbased=SigmaSetBasedConfig(
+            enabled=bool(ss.get("enabled", True)),
+            activate=_finite_float(
+                ss.get("activate", 0.14), name="sigma_setbased.activate"
+            ),
+            safe=_finite_float(ss.get("safe", 0.06), name="sigma_setbased.safe"),
+            exit=_finite_float(ss.get("exit", 0.18), name="sigma_setbased.exit"),
+            gamma=_finite_float(ss.get("gamma", 8.0), name="sigma_setbased.gamma"),
+            slack_weight=_finite_float(
+                ss.get("slack_weight", 200.0), name="sigma_setbased.slack_weight"
+            ),
+            grad_eps=_finite_float(
+                ss.get("grad_eps", 1.0e-4), name="sigma_setbased.grad_eps"
+            ),
+        ),
+        branch_barrier=BranchBarrierConfig(
+            enabled=bool(bb.get("enabled", True)),
+            activate_rad=_finite_float(
+                bb.get("activate_rad", 0.35), name="branch_barrier.activate_rad"
+            ),
+            eps_rad=_finite_float(
+                bb.get("eps_rad", 0.05), name="branch_barrier.eps_rad"
+            ),
+            gamma=_finite_float(bb.get("gamma", 6.0), name="branch_barrier.gamma"),
+            slack_weight=_finite_float(
+                bb.get("slack_weight", 80.0), name="branch_barrier.slack_weight"
+            ),
+            target_eps_rad=_finite_float(
+                bb.get("target_eps_rad", 1.0e-3),
+                name="branch_barrier.target_eps_rad",
+            ),
+        ),
+        sns_retry_scales=sns_scales,
+        smoothness_weight=_finite_float(
+            c.get("smoothness_weight", 0.15), name="inner.qp.smoothness_weight"
+        ),
+    )
+
+
+def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTaskConfig]:
+    n = _mapping(inner.get("nullspace"), name="inner.nullspace")
+    _reject_unknown(
+        n,
+        {
+            "k_center", "k_limit", "activation", "weights", "q_nominal_deg",
+            "manipulability",
+        },
+        name="inner.nullspace",
+    )
+    q_nominal_deg = n.get("q_nominal_deg")
+    m = _mapping(n.get("manipulability"), name="inner.nullspace.manipulability")
+    _reject_unknown(
+        m, {"k_mu", "eps_rad", "sigma_fade_ref"},
+        name="inner.nullspace.manipulability",
+    )
+    nullspace = NullspaceTaskConfig(
+        k_center=_finite_float(n.get("k_center", 1.0), name="nullspace.k_center"),
+        k_limit=_finite_float(n.get("k_limit", 2.0), name="nullspace.k_limit"),
+        activation=_finite_float(
+            n.get("activation", 0.85), name="nullspace.activation"
+        ),
+        weights=(
+            _finite_array(n["weights"], name="nullspace.weights", ndim=1)
+            if n.get("weights") is not None
+            else None
+        ),
+        q_nominal_rad=(
+            np.radians(_finite_array(q_nominal_deg, name="nullspace.q_nominal_deg", ndim=1))
+            if q_nominal_deg is not None
+            else None
+        ),
+    )
+    manipulability = ManipulabilityTaskConfig(
+        k_mu=_finite_float(m.get("k_mu", 0.8), name="manipulability.k_mu"),
+        eps_rad=_finite_float(m.get("eps_rad", 1e-4), name="manipulability.eps_rad"),
+        sigma_fade_ref=_finite_float(
+            m.get("sigma_fade_ref", 0.12), name="manipulability.sigma_fade_ref"
+        ),
+    )
+    return nullspace, manipulability
+
+
+def _parse_arm_angle(inner: dict) -> ArmAngleTaskConfig:
+    a = _mapping(inner.get("arm_angle"), name="inner.arm_angle")
+    _reject_unknown(
+        a,
+        {
+            "enabled", "k_psi", "psi_ref_deg", "fd_eps_rad", "safe_denom_eps",
+            "obs_decay_gain", "max_qdot_frac", "psi_home_deg", "max_psi_swing_deg",
+        },
+        name="inner.arm_angle",
+    )
+    psi_ref_deg = a.get("psi_ref_deg")
+    psi_home_deg = a.get("psi_home_deg")
+    return ArmAngleTaskConfig(
+        enabled=bool(a.get("enabled", False)),
+        k_psi=_finite_float(a.get("k_psi", 1.0), name="arm_angle.k_psi"),
+        psi_ref_rad=(
+            math.radians(_finite_float(psi_ref_deg, name="arm_angle.psi_ref_deg"))
+            if psi_ref_deg is not None
+            else None
+        ),
+        psi_home_rad=(
+            math.radians(_finite_float(psi_home_deg, name="arm_angle.psi_home_deg"))
+            if psi_home_deg is not None
+            else None
+        ),
+    )
+
+
+def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
+    p = _mapping(inner.get("psi_retarget"), name="inner.psi_retarget")
+    _reject_unknown(
+        p,
+        {
+            "enabled", "evals_per_tick", "psi_step_deg", "psi_rate_deg_s",
+            "psi_lpf_tau_s", "rail_step_m", "d_pref_rate_m_s", "d_pref_lpf_tau_s",
+        },
+        name="inner.psi_retarget",
+    )
+    return PsiRetargetConfig(
+        enabled=bool(p.get("enabled", True)),
+        evals_per_tick=int(p.get("evals_per_tick", 2)),
+        psi_step_rad=math.radians(
+            _finite_float(p.get("psi_step_deg", 5.0), name="psi_retarget.psi_step_deg")
+        ),
+        psi_rate_rad_s=math.radians(
+            _finite_float(
+                p.get("psi_rate_deg_s", 20.0), name="psi_retarget.psi_rate_deg_s"
+            )
+        ),
+        psi_lpf_tau_s=_finite_float(
+            p.get("psi_lpf_tau_s", 0.30), name="psi_retarget.psi_lpf_tau_s"
+        ),
+        rail_step_m=_finite_float(
+            p.get("rail_step_m", 0.05), name="psi_retarget.rail_step_m"
+        ),
+        d_pref_rate_m_s=_finite_float(
+            p.get("d_pref_rate_m_s", 0.02), name="psi_retarget.d_pref_rate_m_s"
+        ),
+        d_pref_lpf_tau_s=_finite_float(
+            p.get("d_pref_lpf_tau_s", 0.40), name="psi_retarget.d_pref_lpf_tau_s"
+        ),
+    )
+
+
+def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
+    r = _mapping(inner.get("rail_extension"), name="inner.rail_extension")
+    _reject_unknown(
+        r,
+        {
+            "enabled", "k_ext", "k_ff", "v_ff_thr_m_s", "v_ff_span_m_s",
+            "e0_m", "e1_m", "w_max", "v_max_m_s", "limit_margin_m",
+            "k_sigma_boost", "k_esc", "w_sigma_floor",
+            "k_pose", "pose_e0_m", "pose_e1_m", "pose_w_max",
+            "sigma_guard_enter", "sigma_guard_exit", "v_guard_max_m_s",
+            "v_lpf_tau_s", "v_lpf_tau_escape_s",
+            "sigma_escape_enter", "sigma_escape_exit",
+            "margin_escape_enter", "margin_escape_exit", "sigma_drop_rate",
+            "escape_enter_dwell_s",
+            "k_escape_boost", "escape_grad_floor",
+            "k_margin_boost", "w_ext_cap",
+            "soft_min_m", "soft_max_m", "v_reach_cap_m_s",
+        },
+        name="inner.rail_extension",
+    )
+    return RailExtensionConfig(
+        enabled=bool(r.get("enabled", True)),
+        k_ext=_finite_float(r.get("k_ext", 1.0), name="rail_extension.k_ext"),
+        k_ff=_finite_float(r.get("k_ff", 1.0), name="rail_extension.k_ff"),
+        v_ff_thr_m_s=_finite_float(
+            r.get("v_ff_thr_m_s", 0.01), name="rail_extension.v_ff_thr_m_s"
+        ),
+        v_ff_span_m_s=_finite_float(
+            r.get("v_ff_span_m_s", 0.03), name="rail_extension.v_ff_span_m_s"
+        ),
+        e0_m=_finite_float(r.get("e0_m", 0.05), name="rail_extension.e0_m"),
+        e1_m=_finite_float(r.get("e1_m", 0.15), name="rail_extension.e1_m"),
+        w_max=_finite_float(r.get("w_max", 1.5), name="rail_extension.w_max"),
+        v_max_m_s=_finite_float(
+            r.get("v_max_m_s", 0.08), name="rail_extension.v_max_m_s"
+        ),
+        limit_margin_m=_finite_float(
+            r.get("limit_margin_m", 0.15), name="rail_extension.limit_margin_m"
+        ),
+        k_sigma_boost=_finite_float(
+            r.get("k_sigma_boost", 2.0), name="rail_extension.k_sigma_boost"
+        ),
+        k_esc=_finite_float(r.get("k_esc", 0.5), name="rail_extension.k_esc"),
+        w_sigma_floor=_finite_float(
+            r.get("w_sigma_floor", 1.0), name="rail_extension.w_sigma_floor"
+        ),
+        k_pose=_finite_float(r.get("k_pose", 2.0), name="rail_extension.k_pose"),
+        pose_e0_m=_finite_float(
+            r.get("pose_e0_m", 0.005), name="rail_extension.pose_e0_m"
+        ),
+        pose_e1_m=_finite_float(
+            r.get("pose_e1_m", 0.04), name="rail_extension.pose_e1_m"
+        ),
+        pose_w_max=_finite_float(
+            r.get("pose_w_max", 4.0), name="rail_extension.pose_w_max"
+        ),
+        sigma_guard_enter=_finite_float(
+            r.get("sigma_guard_enter", 0.45), name="rail_extension.sigma_guard_enter"
+        ),
+        sigma_guard_exit=_finite_float(
+            r.get("sigma_guard_exit", 0.70), name="rail_extension.sigma_guard_exit"
+        ),
+        v_guard_max_m_s=_finite_float(
+            r.get("v_guard_max_m_s", 0.04), name="rail_extension.v_guard_max_m_s"
+        ),
+        v_lpf_tau_s=_finite_float(
+            r.get("v_lpf_tau_s", 0.12), name="rail_extension.v_lpf_tau_s"
+        ),
+        v_lpf_tau_escape_s=_finite_float(
+            r.get("v_lpf_tau_escape_s", 0.08),
+            name="rail_extension.v_lpf_tau_escape_s",
+        ),
+        sigma_escape_enter=_finite_float(
+            r.get("sigma_escape_enter", 0.55),
+            name="rail_extension.sigma_escape_enter",
+        ),
+        sigma_escape_exit=_finite_float(
+            r.get("sigma_escape_exit", 0.80),
+            name="rail_extension.sigma_escape_exit",
+        ),
+        margin_escape_enter=_finite_float(
+            r.get("margin_escape_enter", 0.12),
+            name="rail_extension.margin_escape_enter",
+        ),
+        margin_escape_exit=_finite_float(
+            r.get("margin_escape_exit", 0.25),
+            name="rail_extension.margin_escape_exit",
+        ),
+        sigma_drop_rate=_finite_float(
+            r.get("sigma_drop_rate", 0.0), name="rail_extension.sigma_drop_rate"
+        ),
+        escape_enter_dwell_s=_finite_float(
+            r.get("escape_enter_dwell_s", 0.05),
+            name="rail_extension.escape_enter_dwell_s",
+        ),
+        k_escape_boost=_finite_float(
+            r.get("k_escape_boost", 1.2), name="rail_extension.k_escape_boost"
+        ),
+        escape_grad_floor=_finite_float(
+            r.get("escape_grad_floor", 0.0), name="rail_extension.escape_grad_floor"
+        ),
+        k_margin_boost=_finite_float(
+            r.get("k_margin_boost", 4.0), name="rail_extension.k_margin_boost"
+        ),
+        w_ext_cap=_finite_float(
+            r.get("w_ext_cap", 12.0), name="rail_extension.w_ext_cap"
+        ),
+        soft_min_m=_finite_float(
+            r.get("soft_min_m", 0.005), name="rail_extension.soft_min_m"
+        ),
+        soft_max_m=_finite_float(
+            r.get("soft_max_m", 0.78), name="rail_extension.soft_max_m"
+        ),
+        v_reach_cap_m_s=_finite_float(
+            r.get("v_reach_cap_m_s", 0.02), name="rail_extension.v_reach_cap_m_s"
+        ),
+    )
+
+
+def _parse_rail(rail_raw: dict, hw_lw: dict) -> RailLockConfig:
     _reject_unknown(
         rail_raw,
         {
-            "mode", "locked_style", "q_ref_m", "lock_vel_eps_m_s",
-            "v_max_m_s", "travel_m", "soft_min_m", "soft_max_m",
+            "mode", "locked_style", "q_ref_m", "lock_gain", "lock_reg_scale",
+            "lock_vel_eps_m_s", "lock_hard_pin", "v_max_m_s", "travel_m",
+            "soft_min_m", "soft_max_m",
         },
-        name="qpik.hard_limits.rail",
+        name="rail",
     )
     rail_mode, locked_style = _resolve_rail_mode(rail_raw)
-    hw_lw = _mapping(
-        _mapping(raw.get("hw"), name="hw").get("lw100"), name="hw.lw100"
-    )
     soft_min = _finite_float(
         rail_raw.get("soft_min_m", hw_lw.get("soft_min_m", 0.01)),
         name="rail.soft_min_m",
@@ -517,7 +574,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         hw_max = _finite_float(hw_lw.get("soft_max_m", soft_max), name="hw rail soft_max")
         if abs(hw_min - soft_min) > 1.0e-6 or abs(hw_max - soft_max) > 1.0e-6:
             raise ValueError("rail soft-limit mismatch between QPIK and hardware")
-    rail = RailLockConfig(
+    return RailLockConfig(
         mode=rail_mode,
         locked_style=locked_style,
         q_ref_m=(
@@ -525,9 +582,14 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             if rail_raw.get("q_ref_m") is None
             else _finite_float(rail_raw["q_ref_m"], name="rail.q_ref_m")
         ),
+        lock_gain=_finite_float(rail_raw.get("lock_gain", 200.0), name="rail.lock_gain"),
+        lock_reg_scale=_finite_float(
+            rail_raw.get("lock_reg_scale", 100.0), name="rail.lock_reg_scale"
+        ),
         lock_vel_eps_m_s=_finite_float(
             rail_raw.get("lock_vel_eps_m_s", 0.0), name="rail.lock_vel_eps_m_s"
         ),
+        lock_hard_pin=bool(rail_raw.get("lock_hard_pin", True)),
         v_max_m_s=(
             None
             if rail_raw.get("v_max_m_s") is None
@@ -537,6 +599,99 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         soft_min_m=soft_min,
         soft_max_m=soft_max,
     )
+
+
+def build_joint_ik_config(raw: dict) -> JointIkConfig:
+    """Build JointIkConfig from inner.qp + qpik.hard_limits."""
+
+    if not isinstance(raw, dict):
+        raise ValueError("controller config root must be a mapping")
+    timing = _mapping(raw.get("timing"), name="timing")
+    inner = _mapping(raw.get("inner"), name="inner")
+    qpik = _mapping(raw.get("qpik"), name="qpik")
+    _reject_retired_qpik(qpik)
+    _reject_unknown(qpik, {"hard_limits"}, name="qpik")
+
+    hard = _mapping(qpik.get("hard_limits"), name="qpik.hard_limits")
+    _reject_unknown(
+        hard,
+        {
+            "v_scale", "a_max_arm_rad_s2", "a_max_rail_m_s2",
+            "position_margin_deg", "position_margin_rail_mm",
+            "command_lead_arm_deg", "command_lead_rail_mm",
+            "velocity_damper", "collision", "rail",
+        },
+        name="qpik.hard_limits",
+    )
+    retired_inner = sorted(
+        set(inner)
+        & {
+            "a_max_rail_escape_m_s2",
+            "rail_escape_v_min_m_s",
+            "rail_escape_v_max_m_s",
+            "sigma_escape_enter",
+            "sigma_escape_exit",
+        }
+    )
+    if retired_inner:
+        raise ValueError(
+            "retired QPIK configuration keys in inner: " + ", ".join(retired_inner)
+        )
+    _reject_unknown(
+        inner,
+        {
+            "control_frame", "euler_order", "sync_tcp_from_robot",
+            "v_scale", "a_max_arm", "a_max_arm_rad_s2", "a_max_rail_m_s2",
+            "position_margin_deg", "position_margin_rail_mm",
+            "resync_err_deg", "resync_err_rail_mm",
+            "qp", "collision", "nullspace", "arm_angle", "rail_extension", "rail",
+            "psi_retarget",
+            "nullspace_d_null", "nullspace_d_null_adaptive", "nullspace_max_qdot_frac",
+        },
+        name="inner",
+    )
+
+    euler_order = str(
+        _mapping(raw.get("frames"), name="frames").get(
+            "euler_order", inner.get("euler_order", "xyz")
+        )
+    )
+    collision = _parse_collision(
+        hard.get("collision", inner.get("collision")),
+        name="collision",
+    )
+    qp = _parse_qp(inner, collision, euler_order)
+    damper = _mapping(hard.get("velocity_damper"), name="qpik.hard_limits.velocity_damper")
+    if damper:
+        _reject_unknown(
+            damper, {"arm_band_rad", "rail_band_m"},
+            name="qpik.hard_limits.velocity_damper",
+        )
+        if "arm_band_rad" in damper:
+            qp.limit_damper_band_rad = _finite_float(
+                damper["arm_band_rad"], name="velocity_damper.arm_band_rad"
+            )
+        if "rail_band_m" in damper:
+            qp.limit_damper_band_rail_m = _finite_float(
+                damper["rail_band_m"], name="velocity_damper.rail_band_m"
+            )
+    if qp.limit_damper_band_rad < 0.0 or qp.limit_damper_band_rail_m < 0.0:
+        raise ValueError("velocity damper bands must be non-negative")
+
+    nullspace, manipulability = _parse_nullspace(inner)
+    arm_angle = _parse_arm_angle(inner)
+    psi_retarget = _parse_psi_retarget(inner)
+    rail_extension = _parse_rail_extension(inner)
+
+    hw_lw = _mapping(
+        _mapping(raw.get("hw"), name="hw").get("lw100"), name="hw.lw100"
+    )
+    rail_raw = _mapping(
+        hard.get("rail", inner.get("rail")), name="rail"
+    )
+    rail = _parse_rail(rail_raw, hw_lw)
+    rail_extension.soft_min_m = float(rail.soft_min_m)
+    rail_extension.soft_max_m = float(rail.soft_max_m)
 
     def hard_value(name: str, legacy_name: str, default):
         return hard.get(name, inner.get(legacy_name, default))
@@ -550,21 +705,25 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         / 1000.0,
         control_frame=str(inner.get("control_frame", "tool")),
         euler_order=euler_order,
-        generic_qpik=_parse_generic_qpik(raw),
+        qp=qp,
+        nullspace=nullspace,
+        manipulability=manipulability,
+        arm_angle=arm_angle,
+        psi_retarget=psi_retarget,
         collision=collision,
-        limit_damper_band_rad=damper_arm,
-        limit_damper_band_rail_m=damper_rail,
         rail=rail,
+        rail_extension=rail_extension,
         v_scale=_finite_float(hard_value("v_scale", "v_scale", 0.5), name="v_scale"),
         a_max_arm_rad_s2=_finite_float(
             hard_value("a_max_arm_rad_s2", "a_max_arm", 20.0), name="a_max_arm_rad_s2"
         ),
         a_max_rail_m_s2=_finite_float(
-            hard_value("a_max_rail_m_s2", "a_max_rail_m_s2", 0.30), name="a_max_rail_m_s2"
+            hard_value("a_max_rail_m_s2", "a_max_rail_m_s2", 0.30),
+            name="a_max_rail_m_s2",
         ),
         position_margin_rad=math.radians(
             _finite_float(
-                hard_value("position_margin_deg", "position_margin_deg", 1.0),
+                hard_value("position_margin_deg", "position_margin_deg", 0.3),
                 name="position_margin_deg",
             )
         ),
@@ -584,6 +743,17 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             name="command_lead_rail_mm",
         )
         / 1000.0,
+        nullspace_d_null=_finite_float(
+            inner.get("nullspace_d_null", 0.5), name="inner.nullspace_d_null"
+        ),
+        nullspace_d_null_adaptive=_finite_float(
+            inner.get("nullspace_d_null_adaptive", 1.0),
+            name="inner.nullspace_d_null_adaptive",
+        ),
+        nullspace_max_qdot_frac=_finite_float(
+            inner.get("nullspace_max_qdot_frac", 0.2),
+            name="inner.nullspace_max_qdot_frac",
+        ),
     )
 
 

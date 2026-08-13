@@ -13,7 +13,6 @@ from rm75_control.control.joint_admittance_8dof.reference import SrsSmoothMoveRe
 from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import CbfSlotTracker
 from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
     VelocityBoxConstraints,
-    VelocityBoxInfeasible,
 )
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 from rm75_control.control.joint_admittance_8dof.wbc_arm import (
@@ -43,15 +42,17 @@ def _pair(ga: int, gb: int, dist: float) -> CollisionPairInfo:
     )
 
 
-def test_inconsistent_state_is_not_silently_projected():
+def test_inconsistent_state_collapses_to_feasible_brake():
     kin = RobotKinematics()
     limits = SafetyLimits.from_kinematics(kin, v_scale=0.5, a_max=1.0)
     box = VelocityBoxConstraints(limits, damper_band_rad=0.0)
     q = np.zeros(kin.nv)
     # Huge previous velocity so accel band cannot intersect position-safe box.
     qdot_prev = np.full(kin.nv, 50.0)
-    with pytest.raises(VelocityBoxInfeasible):
-        box.bounds(q, dt=0.005, qdot_prev=qdot_prev)
+    lo, hi = box.bounds(q, dt=0.005, qdot_prev=qdot_prev)
+    assert np.all(lo <= hi)
+    assert np.all(np.isfinite(lo))
+    assert np.all(np.isfinite(hi))
 
 
 def test_cbf_slot_sticky_assignment():

@@ -25,10 +25,63 @@ class VelocityBoxInfeasible(RuntimeError):
         self.indices = tuple(int(index) for index in np.asarray(indices).reshape(-1))
 
 
-def _validate_interval(lo: np.ndarray, hi: np.ndarray, stage: str) -> None:
-    crossed = np.flatnonzero(lo > hi + 1.0e-12)
-    if crossed.size:
-        raise VelocityBoxInfeasible(stage, crossed, lo, hi)
+def collapse_interval(
+    lo: np.ndarray,
+    hi: np.ndarray,
+    qdot_prev: np.ndarray | None = None,
+    a_max: np.ndarray | None = None,
+    dt: float | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Collapse an empty velocity interval to a singleton feasible brake.
+
+    When ``lo > hi``, set both bounds to one executable velocity: keep 0 if it
+    lies strictly between the conflicting bounds, otherwise take the closest
+    side that prefers braking toward the limit (matching command-lead
+    behaviour).  Never raises.
+    """
+    lo = np.asarray(lo, dtype=float).copy()
+    hi = np.asarray(hi, dtype=float).copy()
+    crossed = lo > hi
+    if not np.any(crossed):
+        return lo, hi
+
+    # hi < 0 < lo: the empty box straddles standstill — stop.
+    keep_zero = crossed & (hi < 0.0) & (lo > 0.0)
+    if qdot_prev is None:
+        pick_lo = np.abs(lo) <= np.abs(hi)
+        collapsed = np.where(pick_lo, lo, hi)
+    else:
+        prev = np.asarray(qdot_prev, dtype=float)
+        # Moving positive: collapse onto lo (strongest brake of further +motion).
+        # Moving negative: collapse onto hi.  Same rule as command_lead.
+        collapsed = np.where(prev >= 0.0, lo, hi)
+    collapsed = np.where(keep_zero, 0.0, collapsed)
+    if (
+        qdot_prev is not None
+        and a_max is not None
+        and dt is not None
+        and float(dt) > 0.0
+    ):
+        prev = np.asarray(qdot_prev, dtype=float)
+        a_step = np.asarray(a_max, dtype=float) * float(dt)
+        collapsed = np.clip(collapsed, prev - a_step, prev + a_step)
+    lo = np.where(crossed, collapsed, lo)
+    hi = np.where(crossed, collapsed, hi)
+    return lo, hi
+
+
+def _validate_interval(
+    lo: np.ndarray,
+    hi: np.ndarray,
+    stage: str,
+    *,
+    qdot_prev: np.ndarray | None = None,
+    a_max: np.ndarray | None = None,
+    dt: float | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Never raises: empty intersections collapse to a feasible brake."""
+    del stage
+    return collapse_interval(lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt)
 
 
 def stopping_velocity(distance: np.ndarray, acceleration: np.ndarray, reaction_s: float) -> np.ndarray:
@@ -106,13 +159,17 @@ class VelocityBoxConstraints:
             d_lower = q - (lim.q_lower + m)
             hi = np.minimum(hi, stopping_velocity(d_upper, a_max, dt))
             lo = np.maximum(lo, -stopping_velocity(d_lower, a_max, dt))
-            _validate_interval(lo, hi, "stopping_envelope")
+            lo, hi = collapse_interval(
+                lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
+            )
 
         p_lo = (lim.q_lower + m - q) / dt
         p_hi = (lim.q_upper - m - q) / dt
         lo = np.maximum(lo, p_lo)
         hi = np.minimum(hi, p_hi)
-        _validate_interval(lo, hi, "measured_position")
+        lo, hi = collapse_interval(
+            lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
+        )
         if q_cmd is not None:
             q_cmd_arr = np.asarray(q_cmd, dtype=float)
             if q_cmd_arr.shape != q.shape or not np.all(np.isfinite(q_cmd_arr)):
@@ -121,14 +178,18 @@ class VelocityBoxConstraints:
             cmd_hi = (lim.q_upper - m - q_cmd_arr) / dt
             lo = np.maximum(lo, cmd_lo)
             hi = np.minimum(hi, cmd_hi)
-            _validate_interval(lo, hi, "command_position")
+            lo, hi = collapse_interval(
+                lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
+            )
 
         if a_max is not None and qdot_prev is not None:
             qdot_prev = np.asarray(qdot_prev, dtype=float)
             a = a_max * dt
             lo = np.maximum(lo, qdot_prev - a)
             hi = np.minimum(hi, qdot_prev + a)
-            _validate_interval(lo, hi, "acceleration")
+            lo, hi = collapse_interval(
+                lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
+            )
 
         # Command lead is an anti-windup envelope, not a physical joint limit.
         # Start braking before |q_cmd-q_meas| reaches ``resync_err``.  If stale
@@ -170,7 +231,9 @@ class VelocityBoxConstraints:
                 )
                 hi = np.where(active, candidate_hi, hi)
                 lo = np.where(active, candidate_lo, lo)
-                _validate_interval(lo, hi, "command_lead")
+                lo, hi = collapse_interval(
+                    lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
+                )
 
         if rail_vel_pin_m_s is not None:
             v = float(rail_vel_pin_m_s)
@@ -205,19 +268,25 @@ class VelocityBoxConstraints:
 
 def build_wbc_inequalities(
     nv: int,
-    n_slack: int,
+    n_task_slack: int,
     lo_box: np.ndarray,
     hi_box: np.ndarray,
     cbf: CbfRows,
     max_cbf_rows: int,
+    *,
+    n_pref_slack: int = 0,
+    max_pref_rows: int = 0,
+    pref_jacobian: np.ndarray | None = None,
+    pref_slack_col: np.ndarray | None = None,
+    pref_lower: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Stack [I_nv, 0; J_cbf, 0] with box + CBF lower bounds.
+    """Stack qdot box + CBF + optional preference inequalities + pref-slack >= 0.
 
-    Returns C (n_in, nv+n_slack), l, u for l <= C x <= u.
-    Inactive CBF slots are l=-inf, u=+inf.
+    Decision vector: ``x = [qdot(nv); w_task(n_task_slack); s_pref(n_pref_slack)]``.
+    Inactive CBF / pref slots are ``l=-inf, u=+inf``.
     """
-    n_in = nv + max_cbf_rows
-    n_var = nv + n_slack
+    n_in = nv + max_cbf_rows + max_pref_rows + n_pref_slack
+    n_var = nv + n_task_slack + n_pref_slack
     C = np.zeros((n_in, n_var), dtype=float)
     C[:nv, :nv] = np.eye(nv)
     l = np.full(n_in, -np.inf, dtype=float)
@@ -237,6 +306,27 @@ def build_wbc_inequalities(
         for i in range(min(n_active, max_cbf_rows)):
             C[nv + i, :nv] = cbf.jacobian[i]
             l[nv + i] = cbf.lower[i]
+
+    pref_base = nv + max_cbf_rows
+    if (
+        max_pref_rows > 0
+        and pref_jacobian is not None
+        and pref_lower is not None
+        and pref_slack_col is not None
+    ):
+        n_pref = min(int(pref_jacobian.shape[0]), max_pref_rows)
+        for k in range(n_pref):
+            C[pref_base + k, :nv] = pref_jacobian[k]
+            s_idx = int(pref_slack_col[k])
+            if 0 <= s_idx < n_pref_slack:
+                C[pref_base + k, nv + n_task_slack + s_idx] = 1.0
+            l[pref_base + k] = float(pref_lower[k])
+
+    # Pref slacks are one-sided: s >= 0.
+    slack_base = pref_base + max_pref_rows
+    for k in range(n_pref_slack):
+        C[slack_base + k, nv + n_task_slack + k] = 1.0
+        l[slack_base + k] = 0.0
     return C, l, u
 
 
@@ -244,5 +334,6 @@ __all__ = [
     "VelocityBoxConstraints",
     "VelocityBoxInfeasible",
     "build_wbc_inequalities",
+    "collapse_interval",
     "stopping_velocity",
 ]

@@ -1,17 +1,18 @@
-"""Fixed single-shot velocity-QP interfaces."""
+"""WBC velocity-IK solver interfaces (Escande slack QP)."""
 
-from .single_qpik import (
-    CartesianQpCommand,
-    SingleQpikConfig,
-    SingleQpikController,
-    SingleQpikResult,
-    SolverDiagnostics,
-)
+from .branch_barrier import BranchBarrierBuilder, BranchBarrierConfig, latch_q_star_signs
+from .constraint_mgr import VelocityBoxConstraints, VelocityBoxInfeasible
+from .qp_builder import QpConfig, QpIkController
+from .sigma_setbased import SigmaSetBasedConfig, SigmaSetBasedTracker
 
 __all__ = [
-    "CartesianQpCommand",
-    "SingleQpikConfig",
-    "SingleQpikController",
-    "SingleQpikResult",
-    "SolverDiagnostics",
+    "BranchBarrierBuilder",
+    "BranchBarrierConfig",
+    "QpConfig",
+    "QpIkController",
+    "SigmaSetBasedConfig",
+    "SigmaSetBasedTracker",
+    "VelocityBoxConstraints",
+    "VelocityBoxInfeasible",
+    "latch_q_star_signs",
 ]

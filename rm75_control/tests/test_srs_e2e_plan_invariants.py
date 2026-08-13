@@ -31,11 +31,6 @@ from rm75_control.control.joint_admittance_8dof.reference import (
     SinToolYReference,
     srs_move_duration_s,
 )
-from rm75_control.control.joint_admittance_8dof.solver.single_qpik import (
-    N_EQ,
-    N_INEQ,
-    N_VAR,
-)
 from rm75_control.kinematics.srs_ik import branch_from_q, psi_from_q
 
 
@@ -54,20 +49,18 @@ def kin():
 
 
 def test_yaml_loads_production_config():
-    """Production yaml exposes generic QPIK and no retired task blocks."""
+    """Production yaml exposes slack QP + rail-extension, not the 28-var stack."""
     raw = yaml.safe_load(CFG_PATH.read_text())
     cfg = build_joint_ik_config(raw)
-    assert cfg.generic_qpik.solver.backend == "proxqp"
-    assert (N_VAR, N_EQ, N_INEQ) == (28, 6, 61)
+    assert cfg.qp.backend == "proxqp"
+    assert cfg.rail_extension.enabled
     assert cfg.rail.soft_min_m == pytest.approx(
         raw["qpik"]["hard_limits"]["rail"]["soft_min_m"]
     )
     assert cfg.rail.soft_max_m == pytest.approx(
         raw["qpik"]["hard_limits"]["rail"]["soft_max_m"]
     )
-    assert not hasattr(cfg, "qp")
-    assert not hasattr(cfg, "nullspace")
-    assert not hasattr(cfg, "rail_extension")
+    assert not hasattr(cfg, "generic_qpik")
 
 
 def test_srs_ik_move_meets_sigma_and_psi_floors(kin, cfg):

@@ -168,7 +168,7 @@ def build_cbf_rows(
     if not cfg.enabled:
         return CbfRows(jacobian=np.zeros((0, nv)), lower=np.zeros(0))
 
-    # GenericQpikRuntime has computed J(q_meas) immediately before P0 and
+    # Caller has computed J(q_meas) immediately before CBF rows and
     # explicitly proves that fact with ``kinematics_ready``.  Direct callers
     # default to CollisionModel's self-contained kinematics path.
     snapshot_ready = bool(kinematics_ready)
