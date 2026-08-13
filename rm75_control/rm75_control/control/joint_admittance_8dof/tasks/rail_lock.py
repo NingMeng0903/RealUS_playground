@@ -30,10 +30,6 @@ class RailLockConfig:
     travel_m: float = 0.80         # mechanical [0, travel_m] m (rail_y=0 at -Y end)
     soft_min_m: float = 0.01       # usable command band (host soft limits)
     soft_max_m: float = 0.78
-    # The carriage is a separate Modbus servo (~38 Hz measured, own 0.8 m/s²
-    # shaper), not a joint the 160 Hz QP can steer tick by tick.  Low-pass the
-    # rail velocity command to what the servo can actually follow; 0 disables.
-    cmd_lpf_tau_s: float = 0.04
 
     def __post_init__(self) -> None:
         if isinstance(self.mode, str):

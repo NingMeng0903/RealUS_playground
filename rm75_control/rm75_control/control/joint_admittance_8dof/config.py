@@ -342,13 +342,13 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             enabled=bool(wln_raw.get("enabled", True)),
             k=_finite_float(wln_raw.get("k", 1.0), name="inner.qp.wln.k"),
             band_rad=_finite_float(
-                wln_raw.get("band_rad", 0.35), name="inner.qp.wln.band_rad"
+                wln_raw.get("band_rad", 0.0), name="inner.qp.wln.band_rad"
             ),
             band_rail_m=_finite_float(
-                wln_raw.get("band_rail_m", 0.12), name="inner.qp.wln.band_rail_m"
+                wln_raw.get("band_rail_m", 0.10), name="inner.qp.wln.band_rail_m"
             ),
             max_scale=_finite_float(
-                wln_raw.get("max_scale", 50.0), name="inner.qp.wln.max_scale"
+                wln_raw.get("max_scale", 20.0), name="inner.qp.wln.max_scale"
             ),
         ),
     )
@@ -580,7 +580,7 @@ def _parse_rail(rail_raw: dict, hw_lw: dict) -> RailLockConfig:
         {
             "mode", "locked_style", "q_ref_m", "lock_gain", "lock_reg_scale",
             "lock_vel_eps_m_s", "lock_hard_pin", "v_max_m_s", "travel_m",
-            "soft_min_m", "soft_max_m", "cmd_lpf_tau_s",
+            "soft_min_m", "soft_max_m",
         },
         name="rail",
     )
@@ -625,9 +625,6 @@ def _parse_rail(rail_raw: dict, hw_lw: dict) -> RailLockConfig:
         travel_m=travel,
         soft_min_m=soft_min,
         soft_max_m=soft_max,
-        cmd_lpf_tau_s=_finite_float(
-            rail_raw.get("cmd_lpf_tau_s", 0.04), name="rail.cmd_lpf_tau_s"
-        ),
     )
 
 

@@ -15,6 +15,7 @@ import numpy as np
 
 from projects.genesis_ue_sync.anatomy_retarget.anchored_rest_fit_v11 import (
     ANCHORED_REST_V11_METHOD,
+    CARRY_MESH_PRESETS,
     HINGE_RESTORE_PRESETS,
     build_anchored_rest_fit_v11,
 )
@@ -145,10 +146,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--carry-mesh",
-        action="store_true",
+        choices=sorted(CARRY_MESH_PRESETS),
+        default="none",
         help=(
-            "V12a: re-derive vertices_final from the restored C_bone so the "
-            "bind and the mesh describe the same joint (V11 kept the V7 mesh)"
+            "V12a: which controllers' mesh follows the restored C_bone so the "
+            "bind and the geometry describe the same joint; 'none' is V11"
         ),
     )
     parser.add_argument(
@@ -223,7 +225,7 @@ def main(argv: list[str] | None = None) -> int:
                 asset=asset,
                 calibration=calibration,
                 restore_controllers=HINGE_RESTORE_PRESETS[args.hinge_restore],
-                carry_mesh=bool(args.carry_mesh),
+                carry_mesh_controllers=CARRY_MESH_PRESETS[args.carry_mesh],
             )
             pose_map = build_pose_map_v10(
                 value,
@@ -410,7 +412,7 @@ def main(argv: list[str] | None = None) -> int:
             "pose_map_composition": POSE_MAP_V10_COMPOSITION,
             "rest_method": ANCHORED_REST_V11_METHOD,
             "hinge_restore_preset": str(args.hinge_restore),
-            "carry_mesh": bool(args.carry_mesh),
+            "carry_mesh_preset": str(args.carry_mesh),
             "v7_baseline": str(v7_baseline),
             "publishable": False,
             "trusted_latest_updated": False,

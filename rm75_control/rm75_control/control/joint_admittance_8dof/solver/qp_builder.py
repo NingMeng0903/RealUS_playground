@@ -79,9 +79,15 @@ class WlnConfig:
 
     enabled: bool = True
     k: float = 1.0
-    band_rad: float = 0.35        # arm joints (rad)
-    band_rail_m: float = 0.12     # prismatic rail (m)
-    max_scale: float = 50.0
+    # Per-joint influence band; <= 0 disables that joint.  The arm is off by
+    # default (see _wln_reg_scale): it has no spare joint to hand the stroke
+    # to, so weighting only buys slack.  The rail does have one — the arm.
+    band_rad: float = 0.0         # arm joints (rad)
+    band_rail_m: float = 0.10     # prismatic rail (m)
+    # Rail reg is 1e-3 against the arm's 1e-2, so 20x is already 2x dearer
+    # than an arm joint — enough to shift the stroke, small enough that the
+    # QP still prefers moving the rail over dropping the task into slack.
+    max_scale: float = 20.0
 
 
 @dataclass
@@ -470,11 +476,17 @@ class QpIkController:
         )
         band = np.full(nv, float(cfg.band_rad), dtype=float)
         band[0] = float(cfg.band_rail_m)
-        band = np.maximum(band, 1.0e-9)
+        # band <= 0 disables that joint outright.  The arm is disabled by
+        # default: J4 sits inside any useful band ~80% of a scan, so weighting
+        # it does not hand the stroke to another joint, it just prices J4 out
+        # and the QP buys slack instead (measured: slack 0.0001 -> 0.05).
+        active_band = band > 0.0
+        safe_band = np.where(active_band, band, 1.0)
         # Smoothstep so the weight is C1 at the band edge; a hard gate would
         # step reg by ~10x in one tick and show up as a torque bump.
-        ramp = np.clip((band - np.minimum(d_hi, d_lo)) / band, 0.0, 1.0)
+        ramp = np.clip((safe_band - np.minimum(d_hi, d_lo)) / safe_band, 0.0, 1.0)
         ramp = ramp * ramp * (3.0 - 2.0 * ramp)
+        ramp = np.where(active_band, ramp, 0.0)
         approaching = (qdot_prev * grad > 0.0) | (np.abs(qdot_prev) <= 1.0e-6)
         scale = 1.0 + float(cfg.k) * np.abs(grad) * ramp
         scale = np.where(approaching, scale, 1.0)

@@ -11,7 +11,11 @@ import numpy as np
 import pytest
 
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
-from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfig
+from rm75_control.control.joint_admittance_8dof.solver.qp_builder import (
+    QpConfig,
+    QpIkController,
+)
+from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
     PostureRetarget,
     PsiRetargetConfig,
@@ -134,6 +138,87 @@ def test_anti_cancel_term_is_gone() -> None:
     assert not hasattr(QpConfig(), "anti_cancel_weight")
 
 
+def _wln_core() -> tuple[QpIkController, SafetyLimits]:
+    kin = RobotKinematics()
+    a_max = np.full(kin.nv, 3.0)
+    a_max[0] = 0.30
+    lim = SafetyLimits.from_kinematics(
+        kin, v_scale=0.8, a_max=a_max, position_margin=0.0
+    )
+    lim.q_lower[0], lim.q_upper[0] = 0.005, 0.78
+    cfg = QpConfig()
+    cfg.collision.enabled = False
+    return QpIkController(kin, lim, cfg), lim
+
+
+def test_wln_prices_the_rail_only_toward_its_stop() -> None:
+    core, lim = _wln_core()
+    nv = core.kin.nv
+    q_mid = 0.5 * (lim.q_lower + lim.q_upper)
+
+    q_near = q_mid.copy()
+    q_near[0] = lim.q_lower[0] + 0.04
+    toward = np.zeros(nv)
+    toward[0] = -0.05
+    scale_toward = core._wln_reg_scale(q_near, toward)
+    # reg[0]=1e-3 against the arm's 1e-2: the rail must end up the dearer
+    # joint so the QP shifts the stroke instead of grinding into the stop.
+    assert scale_toward[0] > 10.0
+    assert scale_toward[0] <= core.cfg.wln.max_scale + 1e-9
+
+    away = np.zeros(nv)
+    away[0] = +0.05
+    assert core._wln_reg_scale(q_near, away)[0] == pytest.approx(1.0)
+
+    # Mid travel is the tuned reg, untouched.
+    assert core._wln_reg_scale(q_mid, toward)[0] == pytest.approx(1.0)
+
+
+def test_wln_never_touches_arm_joints() -> None:
+    """J4 sits inside any useful band most of a scan; pricing it buys slack."""
+    core, lim = _wln_core()
+    nv = core.kin.nv
+    for joint in range(1, nv):
+        q = 0.5 * (lim.q_lower + lim.q_upper)
+        q[joint] = lim.q_upper[joint] - 0.002  # 0.1 deg off the stop
+        qdot = np.zeros(nv)
+        qdot[joint] = +0.5  # driving straight at it
+        assert core._wln_reg_scale(q, qdot)[joint] == pytest.approx(1.0)
+
+
+def test_barrier_press_cap_has_a_floor_in_contact() -> None:
+    from rm75_control.control.admittance_common.force_barrier import (
+        ForceBarrierConfig,
+        ForceSpaceVelocityDamper,
+    )
+
+    cfg = ForceBarrierConfig(enabled=True, v_min_press_m_s=0.003, v_ref_m_s=0.08)
+    damper = ForceSpaceVelocityDamper(cfg)
+    # Massively over force: prediction and stiffness terms both collapse.
+    cap_press, _ = damper.caps(
+        f_z=40.0,
+        f_des_z=3.0,
+        in_contact=True,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+        ke_est_n_m=20000.0,
+        mass_eq_kg=1.0,
+    )
+    assert cap_press >= 0.003 - 1e-12
+
+    # A tighter v_z_cap (recontact sleeve) still wins over the floor.
+    cap_small, _ = damper.caps(
+        f_z=40.0,
+        f_des_z=3.0,
+        in_contact=True,
+        v_z_cap=0.001,
+        seek_vz_m_s=0.001,
+        contact_enter_n=0.5,
+    )
+    assert cap_small <= 0.001 + 1e-12
+
+
 def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     from pathlib import Path
 
@@ -154,11 +239,17 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.qp.twist_sigma_floor == pytest.approx(0.02)
     assert cfg.qp.task_weight_min_frac == pytest.approx(0.05)
     assert "anti_cancel_weight" not in raw["inner"]["qp"]
-    # Rail/jerk work: limit handoff, third-order box, servo bandwidth match.
+    # Rail/jerk work: limit handoff on the rail only, third-order box.
     assert cfg.qp.wln.enabled
+    assert cfg.qp.wln.band_rail_m > 0.0
+    # The arm has no spare joint to hand the stroke to; weighting it only
+    # bought slack, so its band must stay disabled.
+    assert cfg.qp.wln.band_rad == 0.0
     assert cfg.qp.j_max_arm_rad_s3 > 0.0
     assert cfg.qp.j_max_rail_m_s3 > 0.0
-    assert cfg.rail.cmd_lpf_tau_s > 0.0
+    # Rail command shaping must not come back: it fed core.qdot_prev and so
+    # multiplied every acceleration limit by its own alpha.
+    assert not hasattr(cfg.rail, "cmd_lpf_tau_s")
     # e85c9ab press speed restored; the barrier stays as the brake.
     hm = raw["hybrid_motion"]
     assert hm["proactive_retract_only"] is False

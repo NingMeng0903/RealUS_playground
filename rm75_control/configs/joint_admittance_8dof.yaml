@@ -53,10 +53,6 @@ qpik:
       locked_style: hold
       lock_vel_eps_m_s: 0.0
       v_max_m_s: 0.15
-      # Carriage servo measures ~26 ms/loop with its own 0.8 m/s² shaper, so
-      # it cannot follow a rail velocity that steps every 6 ms.  Shape the
-      # command to the actuator instead of letting the servo clip it.
-      cmd_lpf_tau_s: 0.04
       travel_m: 0.80
       soft_min_m: 0.005   # temporary: matches manual-zero JSON (limits broken)
       soft_max_m: 0.78
@@ -98,17 +94,20 @@ inner:
     # Measured jerk RMS was 250-570 rad/s³ with the acceleration flipping sign
     # on ~half the ticks while the reference twist was smooth.
     j_max_arm_rad_s3: 300.0
-    j_max_rail_m_s3: 3.0
+    # 3.0 made a full rail acceleration reversal take 2*a_max/j = 0.2 s versus
+    # 0.02 s on the arm; 30 puts the two on the same relative scale.
+    j_max_rail_m_s3: 30.0
     # Chan & Dubey weighted least-norm: reg_i grows as a joint approaches its
-    # stop *while moving toward it*, so the stroke transfers to the other
-    # joints before the velocity box hits the wall.  Sized so the rail
-    # (reg 1e-3) becomes dearer than an arm joint (1e-2) about 6 cm out.
+    # stop *while moving toward it*, so the stroke transfers before the
+    # velocity box hits the wall.  Rail only — band_rad 0 keeps the arm out.
+    # J4 lives inside any useful arm band ~80% of a scan and has no spare
+    # joint to hand the stroke to, so weighting it only bought slack.
     wln:
       enabled: true
       k: 1.0
-      band_rad: 0.35
-      band_rail_m: 0.12
-      max_scale: 50.0
+      band_rad: 0.0
+      band_rail_m: 0.10
+      max_scale: 20.0
     sigma_setbased:
       enabled: true
       activate: 0.12
@@ -315,6 +314,9 @@ hybrid_motion:
     f_keep_n: 0.5
     v_ref_m_s: 0.08
     v_min_retract_m_s: 0.002
+    # Barrier keeps its force-error gating; this only stops it closing press
+    # to exactly zero, which left the tool unable to recover a lost contact.
+    v_min_press_m_s: 0.003
     fdot_lpf_s: 0.040
     precontact_raw_trigger_n: 1.50 # short impact sleeve; never latches contact
     stiffness_cap_enabled: true

@@ -316,7 +316,6 @@ class JointIkController:
         self._centering_suppressed = False
         self._manipulability_active = False
         self._twist_scale_filt = 1.0
-        self._rail_v_filt = 0.0
         self._box_dt_last_t: float | None = None
         self.secondary = SecondaryComposer.from_controller_parts(
             self.centering_task,
@@ -407,16 +406,6 @@ class JointIkController:
             return nominal
         return float(np.clip(measured, 0.8 * nominal, 2.0 * nominal))
 
-    def _rail_cmd_lpf(self, v_rail: float, dt: float) -> float:
-        """First-order shaping of the rail velocity toward the servo bandwidth."""
-        tau = float(getattr(self.cfg.rail, "cmd_lpf_tau_s", 0.0) or 0.0)
-        if tau <= 1.0e-9 or dt <= 0.0:
-            self._rail_v_filt = float(v_rail)
-            return float(v_rail)
-        alpha = min(1.0, float(dt) / tau)
-        self._rail_v_filt += alpha * (float(v_rail) - self._rail_v_filt)
-        return float(self._rail_v_filt)
-
     def plan_scan_stroke(
         self,
         y_center_m: float,
@@ -467,7 +456,6 @@ class JointIkController:
         if self.posture_retarget is not None:
             self.posture_retarget.reset(self.q_cmd)
         self._twist_scale_filt = 1.0
-        self._rail_v_filt = 0.0
         self._box_dt_last_t = None
         self._direct_joint_ptp = False
         self._plan_drives_rail = False
@@ -1011,15 +999,15 @@ class JointIkController:
                 )
                 fallback_reason = fallback_reason or "projected_into_velocity_box"
 
-        # Bandwidth match before integration: the carriage is a separate
-        # Modbus servo (26 ms loop measured, own 0.8 m/s² shaper), so a rail
-        # velocity that steps every 6 ms arrives as a staircase it cannot
-        # track — it then saturates its own accel limit and chatters.  The
-        # applied value feeds core.qdot_prev below, so the next QP tick sees
-        # the real rail state and the arm covers the difference.
-        if self._rail_mode == RailMode.COUPLED:
-            qdot_out[0] = self._rail_cmd_lpf(float(qdot_out[0]), dt)
-
+        # Do NOT shape qdot_out[0] here to "match the rail servo bandwidth".
+        # Whatever is written here becomes core.qdot_prev below, which is the
+        # base of the QP acceleration box, the jerk box and the SafetyLimiter
+        # acceleration clamp — a first-order filter therefore multiplies all
+        # three limits by its own alpha instead of just smoothing.  A 40 ms
+        # filter measured 7x less rail travel than the task asked for
+        # (0.0137 vs 0.0997 m/s) and pushed the residual into slack.  Any
+        # future shaping must act only on the value handed to the servo, and
+        # must leave the state that feeds the boxes untouched.
         q_next = q_prev + qdot_out * dt
         rep = self.safety.clamp(q_prev, q_next, dt)
         self.q_cmd = rep.q_safe

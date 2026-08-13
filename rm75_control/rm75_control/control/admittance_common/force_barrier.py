@@ -22,6 +22,12 @@ class ForceBarrierConfig:
     f_keep_n: float = 0.5
     v_ref_m_s: float = 0.05
     v_min_retract_m_s: float = 0.002
+    # Floor under the in-contact press cap.  The prediction and stiffness
+    # terms can both reach zero, and a controller that is not allowed to press
+    # at all cannot recover from a detachment — hardware logs showed
+    # cap_press_z pinned at 0 for the bottom 5% of contact ticks.  Applied
+    # last, after the stiffness cap and the v_hi clamp.
+    v_min_press_m_s: float = 0.003
     fdot_lpf_s: float = 0.040
     # Optional impact-energy/stiffness caps.  These use only controller-side
     # virtual quantities; no unmeasured physical damping is credited.
@@ -55,6 +61,7 @@ class ForceBarrierConfig:
             f_keep_n=float(barrier.get("f_keep_n", 0.5)),
             v_ref_m_s=float(barrier.get("v_ref_m_s", 0.05)),
             v_min_retract_m_s=float(barrier.get("v_min_retract_m_s", 0.002)),
+            v_min_press_m_s=float(barrier.get("v_min_press_m_s", 0.003)),
             fdot_lpf_s=float(barrier.get("fdot_lpf_s", 0.040)),
             precontact_raw_trigger_n=float(
                 barrier.get("precontact_raw_trigger_n", 0.0)
@@ -171,6 +178,12 @@ class ForceSpaceVelocityDamper:
                 cap_press = min(cap_press, math.sqrt(2.0 * energy / mass))
         if v_hi > 0.0:
             cap_press = min(cap_press, v_hi)
+        # Never close press completely while in contact; see v_min_press_m_s.
+        # Bounded by v_hi so a small v_z_cap (recontact sleeve) still wins.
+        v_min_press = max(float(cfg.v_min_press_m_s), 0.0)
+        if v_hi > 0.0:
+            v_min_press = min(v_min_press, v_hi)
+        cap_press = max(cap_press, v_min_press)
 
         cap_retract = max(
             float(cfg.v_min_retract_m_s),

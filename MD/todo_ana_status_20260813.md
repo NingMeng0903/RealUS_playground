@@ -341,18 +341,84 @@ V11 四处失败里三处是 `forearm_L`。剩下的 `shank_R`（`pose_213712`�
 
 ---
 
+## 8. V12a 两条路都被门否决（2026-08-13 夜）
+
+§7.3 把 V11 的缺陷收敛到左臂，于是试了两个变体。**两个都被门拒绝，而且拒绝理由互相矛盾——这正是有价值的部分。**
+
+| 变体 | 做法 | 判决 |
+|---|---|---|
+| `leg_only` | 只恢复膝/髌铰链原点，臂链留在 V7 | 失败：`rest_anatomical_anchor_v11` + `lr_symmetry_v11`。V11 自己的解剖锚定门**要求**肘 bind 必须回到 prefit，留在 V7 就违反 `|B_final−A| ≤ |B_prefit−A|`，且左右不对称（`Elbow_Rot_L` 21.68 vs `_R` 0.95）超 5 mm |
+| `carry_mesh=all` | 恢复全部铰链原点，mesh 跟着 `C_bone` 一起走 | 失败：`knee_pose_containment_v10` + `posed_body_containment_v10`。V7 的**腿部 mesh 摆放是承重的**，搬走就破坏髁–平台接触 |
+| `carry_mesh=arm` | 只让臂链 mesh 跟着走（按 LBS 权重混合，避免接缝撕裂） | 失败：`posed_body_containment_v10`。膝的门过了，但 **`forearm_L` 反而更差**：delta 从 −0.166 恶化到 **−0.373** |
+
+第三个变体的结果推翻了原假设。原以为前臂穿出是「bind 在 prefit、mesh 在 V7」的枢轴滑移造成的，把 mesh 搬过去就能修。实测相反：恢复后的肘原点距 V7 有 21.7 mm，把前臂 mesh 搬过去（最大位移 22.9 mm）**直接把它推出了皮囊**。
+
+所以这是一个三方矛盾，且当前 V11 的折中是三者里最不坏的：
+
+1. 解剖锚定门要求肘 bind 在 prefit
+2. 皮肤容纳要求前臂 mesh 留在 V7
+3. 一致性要求 bind 与 mesh 同处
+
+结论：**`forearm_L` 不能靠重排 bind/mesh 解决**，需要真正的前臂 rest 重定位（带皮肤容纳目标的有界刚体拟合），不是本轮的 preset 切换。代码里 `HINGE_RESTORE_PRESETS` / `CARRY_MESH_PRESETS` 保留，供复现这三个否决。
+
+---
+
+## 9. 独立盲审（§7.3 口径，只看图不看 JSON）
+
+用 §7.1 的验收图包（2β × 6 姿态 × 4 层 × 10 相机）做盲审，reviewer 被禁止读任何 manifest / 门报告 / pass flag。
+
+| 候选 | 判决 | 阻断项 |
+|---|---|---|
+| [V7](f67a358e-9e91-4b93-85f0-6b2c473e3703) | `direction_accepted` | 两个 beta 上足部仍大面积外露；`pose_213328` 髌骨仍尖出 |
+| [V11](ec9c92ea-87bd-422e-b778-0c3820f70d4e) | `direction_accepted` | 两个 beta 上足部仍大面积外露；屈肘时左前臂比 Pack A 更差 |
+
+两位都确认的正面结论：
+
+- **两个体型都成立**，不是只对 213328 有效。
+- **120° 深屈膝下股–胫–髌铰链连续、髌骨不尖出**，且穿出优于 Pack A（两个 beta 都是）。
+- **血管/神经/脏器连续跟骨**，无撕裂或炸开；股骨头在髋臼内（深屈也在）。
+
+两位都给出同一个阻断项：**足部**。这与 §5.4 第 1 条的数字完全吻合——手足在所有版本里数字一致，因为**从来没有任何一版动过它们**。
+
+V11 盲审另外指出数字门看不见的两点：屈膝腘窝处皮肤出现碎三角；`flex_knee_both_120` 侧位可见肩胛板凸出背部。
+
+---
+
+## 10. V12b 可行性已验证：足部是摆错，不是太大
+
+盲审的唯一阻断项是足部。先测能不能用**纯刚体重定位**（用户已批准的口径：腕/踝根下刚体 + 同一冻结 LBS、禁缩骨）修好，还是足骨本身就塞不进去。
+
+在 `subject_213328` 的 rest 上，对足骨簇做无缩放的刚体拟合（Powell，目标为外露量平方和）：
+
+| 骨组 | 现状 max 外露 | 最优刚体后 | 外露顶点 | 所需位移 |
+|---|---:|---:|---|---|
+| `foot_L` | 16.37 mm | **2.38 mm** | 815 → **93** | 平移 6.0 mm + 旋转 **11.0°** |
+| `hand_L` | 0.62 mm | 0.00 mm | 12 → 0 | 平移 0.5 mm + 旋转 1.1° |
+
+**足部穿出的 85% 是姿态摆放错误，不是尺寸问题。** 142 的足相对 SMPL-X 足腔转了约 11°。这条路不需要碰骨几何、不需要缩放，完全在用户批准的红线内。
+
+手在 rest 下本来就几乎不穿（0.62 mm）——手的问题只在 posed（`pose_213328` 7.1 mm），属于终端 FK 契约，不是 rest 摆放。
+
+**下一步（未实现）**：把这个有界刚体重定位做进 rest fit 的终端簇，保留 `evaluate_terminal_pose_regression_v10` 的绝对 142 硬门防 V10 式手崩，并新增足部对应门。注意终端门当前以**绝对 142** 为基线，而重定位后的足按设计就会偏离 142，所以那道门的口径必须同步改成「不差于 142 的皮内程度」而不是「等于 142 的位置」。
+
+---
+
 ## 附录：本轮产物与红线
 
 ```text
 outputs/anatomy_retarget/bakeoff_20260813/
-  pack_A_31133af/               564M   31133af 联动基线（tpose+pose，四层）
-  pack_B_v7/                    567M   V7 权威（同上）
-  v10_fk_only/                  570M   标签 C；图 = hybrid 回放
-  v10_hybrid/                   569M   标签 D；与 C md5 相同
-  v11_anchored/                 571M   标签 E；v10/ 才是 V11
-  keep_v10_*/                   ~3M    slim 8 相机 × 3 层；审图请用完整树
-  absolute_poke_table_v12.json  §5 全量度量 + 门判决
-  absolute_poke_table_v12.md    §5 对照表
+  pack_A_31133af/                     564M  31133af 联动基线（tpose+pose，四层）
+  pack_B_v7/                          567M  V7 权威（同上）
+  v10_fk_only/                        570M  标签 C；图 = hybrid 回放
+  v10_hybrid/                         569M  标签 D；与 C md5 相同
+  v11_anchored/                       571M  标签 E；v10/ 才是 V11
+  absolute_poke_table_v12.{json,md}         §5 穿出度量 + 门判决
+  acceptance_gates_v12_baseline.json        §7.3 三族门 × 2β × 6 姿态 × 4 候选
+
+outputs/anatomy_retarget/accept_20260813/   §9 盲审用图包（每个 ~48M）
+  pack_a/ v7/ v11/                          slim/subject_<β>/<pose>/<layer>/<camera>.png
+
+outputs/anatomy_retarget/v10_candidates/chain_retarget_v10_hybrid_002/  两 beta 齐全
 ```
 
 复现 §5（约 25 秒）：

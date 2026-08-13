@@ -75,6 +75,27 @@ HINGE_RESTORE_PRESETS = {
     "leg_only": LEG_ONLY_HINGE_RESTORE_CONTROLLERS,
 }
 
+# Carrying the whole mesh with the restored bind fails knee containment: V7's
+# leg mesh placement is load-bearing for condyle-plateau contact.  Carrying
+# nothing leaves the elbow bind describing a different joint than the elbow
+# geometry.  The arm chain is the only part that needs to move, so the carry
+# is restricted to it and blended by LBS weight so the shoulder seam does not
+# tear.
+ARM_CARRY_CONTROLLERS = (
+    "Elbow_Rot_L",
+    "Elbow_Rot_R",
+    "Forearm_Bone_L",
+    "Forearm_Bone_R",
+    "Forearm_Twist_L",
+    "Forearm_Twist_R",
+)
+
+CARRY_MESH_PRESETS = {
+    "none": (),
+    "arm": ARM_CARRY_CONTROLLERS,
+    "all": None,
+}
+
 # Joints that must meet |B_final−A| ≤ |B_prefit−A| (OSSO Ej hard).
 ANATOMICAL_ANCHOR_HARD_JOINTS = (
     "left_knee",
@@ -114,18 +135,21 @@ def build_anchored_rest_fit_v11(
     asset: Any,
     calibration: AnatomicalCalibrationV1,
     restore_controllers: tuple[str, ...] = HINGE_RESTORE_CONTROLLERS,
-    carry_mesh: bool = False,
+    carry_mesh_controllers: tuple[str, ...] | None = (),
 ) -> ChainRestFitSubjectV1:
     """Return V7 rest with hinge origins restored to prefit (elbow split).
 
-    ``carry_mesh`` (V12a) re-derives ``vertices_final`` from the restored
-    ``C_bone`` through the frozen 14-slot LBS instead of keeping the V7 mesh.
-    V11 kept the mesh to preserve V7's contact geometry, but that leaves the
-    bind and the geometry describing different elbows: the forearm then
+    ``carry_mesh_controllers`` (V12a) re-derives ``vertices_final`` from the
+    restored ``C_bone`` for the listed controllers instead of keeping the V7
+    mesh everywhere; ``None`` carries the whole body, ``()`` is V11.
+
+    V11 kept the entire V7 mesh to preserve its contact geometry, but that
+    leaves the bind and the geometry describing different elbows: the forearm
     rotates about a pivot ~15 mm from the mesh condyle, which is where the
     left-forearm poke-through and the 17.7 mm station-to-hinge-axis error come
-    from.  Carrying the mesh keeps bind and geometry consistent; the contact
-    non-regression gate is what decides whether the knee survives it.
+    from.  Carrying everything instead fails knee containment, because V7's
+    leg mesh placement is load-bearing.  Hence the per-controller selection,
+    blended by LBS weight so no seam tears.
     """
 
     started = time.perf_counter()
@@ -164,17 +188,31 @@ def build_anchored_rest_fit_v11(
 
     vertices_final = np.asarray(value.vertices_final, dtype=np.float32)
     mesh_shift_m = 0.0
-    if carry_mesh:
+    if carry_mesh_controllers is None or len(carry_mesh_controllers):
+        driver_indices = np.asarray(asset.driver_indices, dtype=np.int64)
+        driver_weights = np.asarray(asset.driver_weights, dtype=np.float64)
         carried = _weighted_rest_correction(
             np.asarray(value.vertices_prefit, dtype=np.float64),
-            np.asarray(asset.driver_indices, dtype=np.int64),
-            np.asarray(asset.driver_weights, dtype=np.float64),
+            driver_indices,
+            driver_weights,
             c_bone,
         )
-        mesh_shift_m = float(
-            np.max(np.linalg.norm(carried - np.asarray(vertices_final), axis=1))
-        )
-        vertices_final = np.asarray(carried, dtype=np.float32)
+        base = np.asarray(vertices_final, dtype=np.float64)
+        if carry_mesh_controllers is None:
+            blended = carried
+        else:
+            selected = {
+                _controller_index(names, controller)
+                for controller in carry_mesh_controllers
+            }
+            member = np.isin(driver_indices, sorted(selected))
+            # Fraction of a vertex's LBS mass that sits on carried
+            # controllers, so the transition is as smooth as the skinning.
+            alpha = np.sum(driver_weights * member, axis=1)
+            alpha = np.clip(alpha, 0.0, 1.0)[:, None]
+            blended = (1.0 - alpha) * base + alpha * carried
+        mesh_shift_m = float(np.max(np.linalg.norm(blended - base, axis=1)))
+        vertices_final = np.asarray(blended, dtype=np.float32)
 
     joint_rows: dict[str, Any] = {}
     for joint_index, spec in enumerate(JOINT_SPECS):
@@ -218,12 +256,15 @@ def build_anchored_rest_fit_v11(
             "knee_policy": "prefit_origin_restore_keep_v7_mesh",
             "hip_policy": "keep_v7_femur_origin_for_containment",
             "mesh_policy_note": (
-                "vertices_final re-derived from the restored C_bone "
-                "(bind and geometry consistent)"
-                if carry_mesh
-                else "vertices_final unchanged from V7 (contact-preserving)"
+                "vertices_final unchanged from V7 (contact-preserving)"
+                if carry_mesh_controllers == ()
+                else "vertices_final carried with the restored C_bone by LBS weight"
             ),
-            "carry_mesh": bool(carry_mesh),
+            "carry_mesh_controllers": (
+                None
+                if carry_mesh_controllers is None
+                else list(carry_mesh_controllers)
+            ),
             "mesh_shift_vs_v7_max_m": mesh_shift_m,
             "hinge_restore_controllers": list(restore_controllers),
             "hinge_restore": restored,
@@ -282,6 +323,8 @@ __all__ = [
     "ANATOMICAL_ANCHOR_V7_NONREGRESS_JOINTS",
     "ANCHORED_REST_V11_KIND",
     "ANCHORED_REST_V11_METHOD",
+    "ARM_CARRY_CONTROLLERS",
+    "CARRY_MESH_PRESETS",
     "HINGE_RESTORE_CONTROLLERS",
     "HINGE_RESTORE_PRESETS",
     "LEG_ONLY_HINGE_RESTORE_CONTROLLERS",
