@@ -20,6 +20,10 @@ from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
     PostureRetarget,
     PsiRetargetConfig,
     StrokeInfeasibleError,
+    arm_respects_floor,
+    joint_margin_frac,
+    stroke_score,
+    wrist_band_frac,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
     RailExtensionConfig,
@@ -104,6 +108,167 @@ def test_psi_rate_limit_no_lpf() -> None:
     assert abs(out) > 0.0
 
 
+def test_wrist_term_prefers_open_j6_when_margin_ties() -> None:
+    """J6=0 is the ±128° midpoint; without w_wrist the planner likes it."""
+    q_closed = np.zeros(7)
+    q_closed[3] = 1.0  # J4 sets the worst margin for both
+    q_closed[5] = 0.05
+    q_open = q_closed.copy()
+    q_open[5] = 0.80
+    assert joint_margin_frac(q_closed) == pytest.approx(joint_margin_frac(q_open), abs=1e-9)
+    s_old_closed = stroke_score(q_closed, 0.15, w_sigma=0.5, w_wrist=0.0)
+    s_old_open = stroke_score(q_open, 0.15, w_sigma=0.5, w_wrist=0.0)
+    assert s_old_closed == pytest.approx(s_old_open, abs=1e-9)
+    s_new_closed = stroke_score(q_closed, 0.15, w_sigma=0.5, w_wrist=0.5)
+    s_new_open = stroke_score(q_open, 0.15, w_sigma=0.5, w_wrist=0.5)
+    assert s_new_open > s_new_closed
+
+
+def test_wrist_band_peaks_near_attractor_not_the_stop() -> None:
+    assert wrist_band_frac(0.0) == pytest.approx(0.0)
+    assert wrist_band_frac(np.deg2rad(45.0)) == pytest.approx(1.0)
+    assert wrist_band_frac(np.deg2rad(45.0)) > wrist_band_frac(np.deg2rad(120.0))
+
+
+def test_margin_floor_rejects_a_joint_on_the_stop() -> None:
+    q = np.zeros(7)
+    q[1] = -2.2689  # J2 at the URDF stop
+    assert arm_respects_floor(q, np.deg2rad(15.0)) is False
+    q[1] = -0.8
+    assert arm_respects_floor(q, np.deg2rad(15.0)) is True
+
+
+def test_step_does_not_replan_when_z_moves() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(
+        kin,
+        PsiRetargetConfig(enabled=True, n_y=3, n_d=3, n_psi=3, z_replan_m=0.03),
+    )
+    rt.reset(_SEED_Q)
+    y_c = float(kin.fk_placement(_SEED_Q).translation[1])
+    d0, psi0 = rt.plan_stroke(
+        _SEED_Q,
+        y_center_m=y_c,
+        amplitude_m=0.05,
+        rail_lo=0.005,
+        rail_hi=0.78,
+    )
+    q2 = _SEED_Q.copy()
+    q2[2] -= 0.25
+    _psi1, d1 = rt.step(q2, 0.005, rail_lo=0.005, rail_hi=0.78)
+    assert d1 == pytest.approx(d0, abs=1e-9)
+    assert rt.d_star_m == pytest.approx(d0, abs=1e-9)
+    assert rt.psi_star_rad == pytest.approx(psi0, abs=1e-9)
+
+
+def test_planner_rejects_wrist_on_barrier_floor() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(
+        kin,
+        PsiRetargetConfig(
+            enabled=True, n_y=3, n_d=3, n_psi=3, wrist_min_rad=np.deg2rad(25.0)
+        ),
+    )
+    rt.reset(_SEED_Q)
+
+    class _FloorWrist:
+        def evaluate(self, pose, psi, branch, y_rail):
+            del pose, psi, branch
+            q_arm = np.array([0.1, -0.4, 0.1, 1.0, 0.1, np.deg2rad(15.0), 0.1])
+            q_full = np.concatenate([[float(y_rail)], q_arm])
+            return q_arm, q_full, 0.2
+
+    rt._eval = _FloorWrist()
+    y_c = float(kin.fk_placement(_SEED_Q).translation[1])
+    with pytest.raises(StrokeInfeasibleError, match="no feasible"):
+        rt.plan_stroke(
+            _SEED_Q, y_center_m=y_c, amplitude_m=0.04, rail_lo=0.025, rail_hi=0.78
+        )
+
+
+def test_planner_accepts_open_wrist_cells() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(
+        kin,
+        PsiRetargetConfig(
+            enabled=True, n_y=3, n_d=3, n_psi=3, wrist_min_rad=np.deg2rad(25.0)
+        ),
+    )
+    rt.reset(_SEED_Q)
+
+    class _OpenWrist:
+        def evaluate(self, pose, psi, branch, y_rail):
+            del pose, psi, branch
+            q_arm = np.array([0.1, -0.4, 0.1, 1.0, 0.1, np.deg2rad(45.0), 0.1])
+            q_full = np.concatenate([[float(y_rail)], q_arm])
+            return q_arm, q_full, 0.2
+
+    rt._eval = _OpenWrist()
+    y_c = float(kin.fk_placement(_SEED_Q).translation[1])
+    d_star, psi_star = rt.plan_stroke(
+        _SEED_Q, y_center_m=y_c, amplitude_m=0.04, rail_lo=0.025, rail_hi=0.78
+    )
+    assert np.isfinite(d_star)
+    assert np.isfinite(psi_star)
+    assert rt.last_wrist_open_rad >= np.deg2rad(25.0) - 1e-9
+
+
+def test_ird_d_star_that_hits_the_limit_band_is_discarded() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(
+        kin, PsiRetargetConfig(enabled=True, n_y=3, n_d=5, n_psi=5)
+    )
+    rt.reset(_SEED_Q)
+
+    class _BadIrd:
+        available = True
+
+        def tcp_ird_from_q(self, _kin, _q):
+            return np.eye(4)
+
+        def query_d_star(self, *_a, **_k):
+            return 5.0
+
+    rt._ird = _BadIrd()
+    y_c = float(kin.fk_placement(_SEED_Q).translation[1])
+    d_star, _psi = rt.plan_stroke(
+        _SEED_Q, y_center_m=y_c, amplitude_m=0.04, rail_lo=0.025, rail_hi=0.78
+    )
+    assert abs(d_star) < 1.0
+
+
+def test_d_star_drift_raises_reach_weight_and_rail_reg() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_ext=2.0,
+            k_esc=0.0,
+            k_ff=0.0,
+            e0_m=0.0,
+            e1_m=0.01,
+            v_lpf_tau_s=0.0,
+            d_star_err0_m=0.01,
+            d_star_err1_m=0.04,
+            d_star_w_mult=6.0,
+            d_star_reg_mult=20.0,
+            w_max=2.0,
+            w_ext_cap=40.0,
+        ),
+    )
+    task.set_mode("reach")
+    q = _SEED_Q.copy()
+    task.set_d_pref(0.10)
+    y_on = float(q[0]) + 0.10
+    _v0, w0 = task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on)
+    assert task.last_d_star_reg_scale == pytest.approx(1.0)
+    _v1, w1 = task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.08)
+    assert task.last_d_star_reg_scale == pytest.approx(20.0)
+    assert w1 > w0 + 1.0
+    assert abs(task.last_track_err_m) > 0.04
+
+
 def test_rail_ff_tracks_desired_y_minus_d_star() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
@@ -168,10 +333,30 @@ def test_wln_prices_the_rail_only_toward_its_stop() -> None:
 
     away = np.zeros(nv)
     away[0] = +0.05
+    core._wln_scale_prev[:] = 1.0
     assert core._wln_reg_scale(q_near, away)[0] == pytest.approx(1.0)
 
     # Mid travel is the tuned reg, untouched.
+    core._wln_scale_prev[:] = 1.0
     assert core._wln_reg_scale(q_mid, toward)[0] == pytest.approx(1.0)
+
+
+def test_wln_scale_does_not_jump_on_reverse() -> None:
+    """A sign flip must not slam rail reg 20→1 in one tick."""
+    core, lim = _wln_core()
+    nv = core.kin.nv
+    q_mid = 0.5 * (lim.q_lower + lim.q_upper)
+    q_near = q_mid.copy()
+    q_near[0] = lim.q_lower[0] + 0.04
+    toward = np.zeros(nv)
+    toward[0] = -0.05
+    away = np.zeros(nv)
+    away[0] = +0.05
+    core._wln_scale_prev[:] = 1.0
+    s0 = float(core._wln_reg_scale(q_near, toward)[0])
+    s1 = float(core._wln_reg_scale(q_near, away)[0])
+    assert s0 - s1 <= core.cfg.wln.max_delta + 1e-9
+    assert s0 - s1 > 0.5
 
 
 def test_wln_never_touches_arm_joints() -> None:
@@ -291,6 +476,16 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.qp.twist_scale_lpf_tau_s == pytest.approx(0.08)
     assert cfg.psi_retarget.enabled
     assert cfg.psi_retarget.n_y >= 3
+    assert cfg.psi_retarget.w_wrist == pytest.approx(0.5)
+    assert cfg.psi_retarget.wrist_min_rad == pytest.approx(np.deg2rad(25.0))
+    assert cfg.rail.soft_min_m == pytest.approx(0.025)
+    assert cfg.rail_extension.d_star_reg_mult == pytest.approx(20.0)
+    assert raw["hw"]["lw100"]["soft_min_m"] == pytest.approx(0.025)
+    assert raw["hw"]["lw100"]["vel_kp"] == pytest.approx(14.0)
+    assert raw["hw"]["lw100"]["vel_kd"] == pytest.approx(0.22)
+    assert raw["hw"]["lw100"]["target_stale_coast_s"] == pytest.approx(0.35)
+    assert cfg.qp.branch_barrier.eps_rad == pytest.approx(0.26)
+    assert cfg.qp.wln.max_delta == pytest.approx(3.0)
     assert cfg.rail_extension.enabled
     assert cfg.qp.twist_sigma_floor == pytest.approx(0.02)
     assert cfg.qp.task_weight_min_frac == pytest.approx(0.05)
@@ -301,6 +496,10 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     # The arm has no spare joint to hand the stroke to; weighting it only
     # bought slack, so its band must stay disabled.
     assert cfg.qp.wln.band_rad == 0.0
+    assert cfg.ird.enabled
+    assert cfg.ird.device == "cpu"
+    assert cfg.qp.joint_comfort.enabled
+    assert cfg.psi_retarget.z_replan_m == pytest.approx(0.0)
     assert cfg.qp.j_max_arm_rad_s3 > 0.0
     assert cfg.qp.j_max_rail_m_s3 > 0.0
     # Rail command shaping must not come back: it fed core.qdot_prev and so
@@ -343,6 +542,8 @@ def test_analyzer_rejects_empty_scan(tmp_path) -> None:
     assert "waste_ratio" in mod.GATES
     assert "accel_reversals_per_s" in mod.GATES
     assert "dt_on_time_frac" in mod.GATES
+    assert mod.GATES["rail_min_m"] == pytest.approx(0.02)
+    assert mod.GATES["tick_inner_max_ms"] == pytest.approx(20.0)
 
 
 def test_analyzer_jerk_metric_ignores_loop_period_jitter(tmp_path) -> None:

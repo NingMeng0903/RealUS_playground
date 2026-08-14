@@ -66,6 +66,10 @@ from projects.genesis_ue_sync.anatomy_retarget.smplx_body_surface_v7 import (
     require_frozen_smplx_male_v7,
     smplx_body_surface_v7,
 )
+from projects.genesis_ue_sync.anatomy_retarget.deep_flex_poses_v12 import (
+    build_deep_flex_poses_v12,
+    verify_deep_flex_poses_v12,
+)
 from projects.genesis_ue_sync.anatomy_retarget.terminal_reseat_v12 import (
     reseat_subject_terminals_v12,
 )
@@ -250,7 +254,9 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 # Fitting the re-seat on rest alone wins at T-pose and gives
                 # part of it back once a knee bends, so both frozen captures
-                # go into the objective too.
+                # go into the objective too.  Acceptance gates also score the
+                # synthetic deep-flex set; leaving those out lets Ankle_Rot_R
+                # buy capture-pose millimetres by dumping ~7 mm into flex.
                 inverse_source_bind = np.linalg.inv(
                     np.asarray(
                         source_bone_posed_global(
@@ -259,8 +265,33 @@ def main(argv: list[str] | None = None) -> int:
                         dtype=np.float64,
                     )
                 )
+                regressor = np.asarray(model["J_regressor"], dtype=np.float64)
+                betas = np.asarray(value.betas, dtype=np.float64)
+
+                def _joints_of(pose: np.ndarray, _betas: np.ndarray = betas) -> np.ndarray:
+                    skin, _faces = smplx_body_surface_v7(
+                        model,
+                        betas=_betas,
+                        pose_axis_angle=np.asarray(pose, dtype=np.float32).reshape(55, 3),
+                    )
+                    return regressor @ np.asarray(skin, dtype=np.float64)
+
+                synthetic = build_deep_flex_poses_v12(
+                    captures={
+                        "213328": recorded["pose_213328"],
+                        "213712": recorded["pose_213712"],
+                    },
+                    joints_of=_joints_of,
+                )
+                verification = verify_deep_flex_poses_v12(
+                    synthetic, joints_of=_joints_of
+                )
+                if not verification["passed"]:
+                    raise SystemExit(
+                        f"deep-flex poses missed their target: {verification['failures']}"
+                    )
                 reseat_frames = []
-                for pose in recorded.values():
+                for pose in (*recorded.values(), *synthetic.values()):
                     pose_aa = np.asarray(pose, dtype=np.float32).reshape(55, 3)
                     pose_skin, pose_faces = smplx_body_surface_v7(
                         model, betas=np.asarray(value.betas), pose_axis_angle=pose_aa
@@ -465,7 +496,11 @@ def main(argv: list[str] | None = None) -> int:
             "smplx_model_sha256": model_sha,
             "capture_sha256s": capture_sha256s,
             "subjects": subjects,
-            "terminal_policy": "identity_142_hand_foot",
+            "terminal_policy": (
+                "reseated_142_hand_foot"
+                if args.reseat_terminals
+                else "identity_142_hand_foot"
+            ),
             "pose_map_composition": POSE_MAP_V10_COMPOSITION,
             "rest_method": ANCHORED_REST_V11_METHOD,
             "hinge_restore_preset": str(args.hinge_restore),

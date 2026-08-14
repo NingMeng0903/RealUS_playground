@@ -10,6 +10,7 @@ import pytest
 import yaml
 
 from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
+from rm75_control.control.joint_admittance_8dof.hw.rail_servo import parse_rail_servo_config
 from rm75_control.control.joint_admittance_8dof.loop import JointIkController
 from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpIkController
 
@@ -33,9 +34,20 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
     assert cfg.qp.branch_barrier.enabled
     assert cfg.nullspace.q_nominal_rad is not None
     assert cfg.rail_extension.enabled
+    assert cfg.rail.soft_min_m == pytest.approx(0.025)
     assert cfg.rail.soft_min_m == pytest.approx(
         raw["qpik"]["hard_limits"]["rail"]["soft_min_m"]
     )
+    assert raw["hw"]["lw100"]["soft_min_m"] == pytest.approx(0.025)
+    assert raw["hw"]["lw100"]["soft_min_m"] == pytest.approx(
+        raw["qpik"]["hard_limits"]["rail"]["soft_min_m"]
+    )
+    servo = parse_rail_servo_config(raw)
+    assert servo.soft_min_m == pytest.approx(0.025)
+    assert servo.soft_max_m == pytest.approx(cfg.rail.soft_max_m)
+    assert servo.vel_kp == pytest.approx(14.0)
+    assert servo.vel_kd == pytest.approx(0.22)
+    assert servo.target_stale_coast_s == pytest.approx(0.35)
     assert cfg.rail.soft_max_m == pytest.approx(
         raw["qpik"]["hard_limits"]["rail"]["soft_max_m"]
     )

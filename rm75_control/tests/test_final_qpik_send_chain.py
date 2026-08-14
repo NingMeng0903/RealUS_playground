@@ -148,6 +148,25 @@ def test_locked_hold_never_teleports_rail_reference() -> None:
     assert float(step.q_send[0]) == rail_before
 
 
+def test_rail_panic_is_reported_before_not_armed() -> None:
+    class PanickedRail:
+        enabled = True
+        calibrated = True
+        armed = False
+        panicked = True
+        panic_reason = "home_di"
+
+    events: list[str] = []
+    accepted, reason = _publish_rail_target_before_arm(
+        PanickedRail(), 0.4, events.append
+    )
+    assert not accepted
+    assert "home_di" in reason
+    assert "re-arm" in reason
+    assert "not_armed" not in reason
+    assert events == [reason]
+
+
 def test_rail_rejection_stops_before_arm_half_of_8d_tick() -> None:
     class RejectingRail:
         enabled = True

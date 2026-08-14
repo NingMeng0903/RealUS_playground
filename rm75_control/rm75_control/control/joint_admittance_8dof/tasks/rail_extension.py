@@ -73,7 +73,7 @@ class RailExtensionConfig:
     # when the desired velocity points into the limit.
     limit_margin_m: float = 0.15
     # Host soft travel (not URDF 0/0.8). Fade and end-flip use these.
-    soft_min_m: float = 0.005
+    soft_min_m: float = 0.025
     soft_max_m: float = 0.78
     # Reach may oppose MotionReference FF, but only this much (m/s) so the
     # rail can still re-extend the elbow without re-triggering LW100 Er-01.
@@ -124,7 +124,13 @@ class RailExtensionConfig:
     escape_grad_floor: float = 0.0
     # Boost rail soft weight when any arm joint is near its soft limit [0,1].
     k_margin_boost: float = 4.0
-    w_ext_cap: float = 12.0  # still ≪ W_task=100
+    w_ext_cap: float = 24.0  # still ≪ W_task=100
+    # When |q_rail − (y_des − d*)| exceeds err0, raise reach weight and make
+    # the rail expensive for the Cartesian Y equality so the arm takes Y.
+    d_star_err0_m: float = 0.01
+    d_star_err1_m: float = 0.04
+    d_star_w_mult: float = 6.0
+    d_star_reg_mult: float = 20.0
 
 
 def _smoothstep01(x: float) -> float:
@@ -164,6 +170,7 @@ class RailExtensionTask:
         self.last_v_reach: float = 0.0
         self.last_rail_ff_m: float = float("nan")
         self.last_track_err_m: float = 0.0
+        self.last_d_star_reg_scale: float = 1.0
 
     def set_mode(self, mode: RailExtMode) -> None:
         mode_s = str(mode).strip().lower()
@@ -528,7 +535,15 @@ class RailExtensionTask:
             trajectory_owns=ff_owns,
         )
         cap = max(float(self.cfg.v_reach_cap_m_s), 0.0)
+        err_abs = abs(err)
+        e0 = max(float(self.cfg.d_star_err0_m), 0.0)
+        e1 = max(float(self.cfg.d_star_err1_m), e0 + 1.0e-6)
+        drift = _smoothstep01((err_abs - e0) / (e1 - e0)) if e0 > 0.0 else 0.0
+        self.last_d_star_reg_scale = 1.0 + drift * max(
+            float(self.cfg.d_star_reg_mult) - 1.0, 0.0
+        )
         if cap > 0.0:
+            cap = cap + drift * 0.06
             v_reach = float(np.clip(v_reach, -cap, cap))
         # Demoted: healthy σ (raw ≥ 0.08) never lets escape drive the rail.
         # Unit tests that omit sigma_raw keep the latch path at reduced gain.
@@ -579,6 +594,7 @@ class RailExtensionTask:
         w *= 1.0 + float(self.cfg.k_margin_boost) * (1.0 - mfrac)
         if self._escape_active:
             w *= float(self.cfg.k_escape_boost)
+        w *= 1.0 + drift * max(float(self.cfg.d_star_w_mult) - 1.0, 0.0)
         w = min(w, float(self.cfg.w_ext_cap))
         self.last_err_m = float(err)
         self.last_weight = w
@@ -604,9 +620,11 @@ class RailExtensionTask:
             self.last_err_m = 0.0
             self.last_weight = 0.0
             self.last_limit_saturated = False
+            self.last_d_star_reg_scale = 1.0
             return 0.0, 0.0
         q = np.asarray(q_rad, dtype=float)
         if self.mode == "pose_attract":
+            self.last_d_star_reg_scale = 1.0
             return self._call_pose_attract(
                 q,
                 sigma_scale=sigma_scale,

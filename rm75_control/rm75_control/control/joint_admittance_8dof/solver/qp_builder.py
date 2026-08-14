@@ -37,6 +37,10 @@ from rm75_control.control.joint_admittance_8dof.solver.branch_barrier import (
     BranchBarrierBuilder,
     BranchBarrierConfig,
 )
+from rm75_control.control.joint_admittance_8dof.solver.joint_comfort import (
+    JointComfortBuilder,
+    JointComfortConfig,
+)
 from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import (
     CbfSlotTracker,
     build_cbf_rows,
@@ -53,8 +57,8 @@ from rm75_control.control.joint_admittance_8dof.solver.sigma_setbased import (
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 
 N_TASK_SLACK = 6
-N_PREF_SLACK = 2  # [sigma, branch]
-MAX_PREF_ROWS = 8  # 1 sigma + up to 7 arm joints
+N_PREF_SLACK = 9  # [sigma, branch, J1..J7 comfort]
+MAX_PREF_ROWS = 16  # 1 sigma + 7 branch + 7 comfort
 # Backward-compatible alias used by older call sites / tests.
 N_SLACK = N_TASK_SLACK
 
@@ -73,8 +77,8 @@ class WlnConfig:
     Deviations from the paper, both deliberate:
       * a band, so mid-travel keeps the tuned ``reg`` (the paper is always-on,
         which would double the rail cost in the middle of the stroke);
-      * the approach test uses the previous solution's sign.  Weighting a
-        joint that is already leaving its limit would price its own escape.
+      * leaving a stop is blended, not hard-gated, and the published scale
+        is slew-limited so a reverse cannot step rail reg 20→1 in one tick.
     """
 
     enabled: bool = True
@@ -88,6 +92,8 @@ class WlnConfig:
     # than an arm joint — enough to shift the stroke, small enough that the
     # QP still prefers moving the rail over dropping the task into slack.
     max_scale: float = 20.0
+    # Max |Δscale| per tick.  3 keeps a 20→1 reverse over ~7 ticks (~40 ms).
+    max_delta: float = 3.0
 
 
 @dataclass
@@ -181,6 +187,7 @@ class QpConfig:
     twist_sigma_floor: float = 0.02
     sigma_setbased: SigmaSetBasedConfig = field(default_factory=SigmaSetBasedConfig)
     branch_barrier: BranchBarrierConfig = field(default_factory=BranchBarrierConfig)
+    joint_comfort: JointComfortConfig = field(default_factory=JointComfortConfig)
     # SNS-style Cartesian scale retries when the first ProxQP attempt fails.
     sns_retry_scales: tuple[float, ...] = (1.0, 0.85, 0.7, 0.55, 0.4, 0.25)
     # Soft velocity continuity: ½ w_s ‖q̇ − q̇_prev‖² added to the QP cost
@@ -386,6 +393,7 @@ class QpIkController:
         self._cbf_slots = CbfSlotTracker(max_pairs=self._max_cbf)
         self.sigma_setbased = SigmaSetBasedTracker(self.cfg.sigma_setbased)
         self.branch_barrier = BranchBarrierBuilder(self.cfg.branch_barrier)
+        self.joint_comfort = JointComfortBuilder(self.cfg.joint_comfort)
         self.qdot_prev = np.zeros(kin.nv, dtype=float)
         self.qdot_prev2 = np.zeros(kin.nv, dtype=float)
         self._qdot_prev_seen = np.zeros(kin.nv, dtype=float)
@@ -401,6 +409,7 @@ class QpIkController:
         self.last_branch_slack = 0.0
         self.last_sns_scale = 1.0
         self.last_wln_scale = np.ones(kin.nv, dtype=float)
+        self._wln_scale_prev = np.ones(kin.nv, dtype=float)
         self.q_star: np.ndarray | None = None
         self.backend = self._make_backend(kin.nv)
 
@@ -444,8 +453,10 @@ class QpIkController:
         self.last_branch_slack = 0.0
         self.last_sns_scale = 1.0
         self.last_wln_scale = np.ones(self.kin.nv, dtype=float)
+        self._wln_scale_prev = np.ones(self.kin.nv, dtype=float)
         self.sigma_setbased.reset()
         self.branch_barrier.reset()
+        self.joint_comfort.reset()
 
     def set_q_star(self, q_star: np.ndarray | None) -> None:
         """Nominal attractor used by branch near-zero barriers."""
@@ -495,10 +506,28 @@ class QpIkController:
         ramp = np.clip((safe_band - np.minimum(d_hi, d_lo)) / safe_band, 0.0, 1.0)
         ramp = ramp * ramp * (3.0 - 2.0 * ramp)
         ramp = np.where(active_band, ramp, 0.0)
-        approaching = (qdot_prev * grad > 0.0) | (np.abs(qdot_prev) <= 1.0e-6)
-        scale = 1.0 + float(cfg.k) * np.abs(grad) * ramp
-        scale = np.where(approaching, scale, 1.0)
-        return np.clip(scale, 1.0, max(float(cfg.max_scale), 1.0))
+        # Smooth approach weight: 1 toward the nearer stop (or at rest), 0
+        # when leaving.  A hard sign gate slammed rail reg 20→1 on reverse.
+        v_blend = np.full(nv, 0.05, dtype=float)  # rad/s
+        v_blend[0] = 0.005  # m/s — 5 mm/s fully saturates the blend
+        toward = qdot_prev * grad
+        denom = np.maximum(np.abs(grad) * v_blend, 1.0e-12)
+        approach_w = np.clip(0.5 + 0.5 * toward / denom, 0.0, 1.0)
+        approach_w = np.where(np.abs(qdot_prev) <= 1.0e-6, 1.0, approach_w)
+        raw = 1.0 + float(cfg.k) * np.abs(grad) * ramp * approach_w
+        raw = np.clip(raw, 1.0, max(float(cfg.max_scale), 1.0))
+        prev = np.asarray(self._wln_scale_prev, dtype=float)
+        if prev.size != nv:
+            prev = np.ones(nv, dtype=float)
+        max_delta = max(float(cfg.max_delta), 0.0)
+        if max_delta > 0.0:
+            # Only slew the drop.  Rise is already C1 in the position ramp;
+            # the hitch was 20→1 on reverse.
+            drop = np.maximum(prev - raw, 0.0)
+            raw = np.where(drop > max_delta, prev - max_delta, raw)
+        scale = np.clip(raw, 1.0, max(float(cfg.max_scale), 1.0))
+        self._wln_scale_prev = scale
+        return scale
 
     def _task_scale_sigma(self, sigma_min: float, dt: float) -> float:
         """LPF-smoothed W_task scale in [min_frac, 1] from σ_min."""
@@ -552,6 +581,7 @@ class QpIkController:
         resync_err: float | np.ndarray = 0.0,
         rail_locked: bool = False,
         rail_lock_reg_scale: float = 1.0,
+        rail_reg_scale: float = 1.0,
         rail_lock_vel_eps_m_s: float = 0.0,
         rail_vel_pin_m_s: float | None = None,
         zero_secondary_rail: bool = False,
@@ -606,6 +636,8 @@ class QpIkController:
         w_reg = w_reg * self.last_wln_scale
         if rail_locked and rail_lock_reg_scale > 1.0:
             w_reg[0] *= float(rail_lock_reg_scale)
+        if (not rail_locked) and float(rail_reg_scale) > 1.0:
+            w_reg[0] *= float(rail_reg_scale)
         w_task *= self._task_scale_sigma(sigma_min, dt)
         rail_w_eff = float(rail_task_weight)
 
@@ -629,6 +661,9 @@ class QpIkController:
         # Pref slack costs (Escande: expensive vs penetrating set-based rows).
         H[nv + ns, nv + ns] = float(self.cfg.sigma_setbased.slack_weight)
         H[nv + ns + 1, nv + ns + 1] = float(self.cfg.branch_barrier.slack_weight)
+        comfort_w = float(self.cfg.joint_comfort.slack_weight)
+        for k in range(2, n_pref):
+            H[nv + ns + k, nv + ns + k] = comfort_w
         g = np.zeros(n_var, dtype=float)
         g[:nv] = (
             -np.diag(H[:nv, :nv]) * qdot_nom
@@ -685,7 +720,10 @@ class QpIkController:
         sigma_rows = self.sigma_setbased.build_row(self.kin, q_prev)
         q_star = self.q_star if self.q_star is not None else q_prev
         branch_rows = self.branch_barrier.build_rows(q_prev, q_star)
-        pref = self._merge_pref_rows(sigma_rows, branch_rows)
+        comfort_rows = self.joint_comfort.build_rows(
+            q_prev, self.constraints.lim.q_lower, self.constraints.lim.q_upper
+        )
+        pref = self._merge_pref_rows(sigma_rows, branch_rows, comfort_rows)
 
         C, lo, hi = build_wbc_inequalities(
             nv,

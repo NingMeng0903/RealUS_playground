@@ -42,16 +42,62 @@ def _wrap_pi(a: float) -> float:
     return float((a + np.pi) % (2.0 * np.pi) - np.pi)
 
 
+def _arm7(q_arm: np.ndarray) -> np.ndarray:
+    q = np.asarray(q_arm, dtype=float).reshape(-1)
+    return q[1:] if q.size == 8 else q
+
+
 def joint_margin_frac(q_arm: np.ndarray) -> float:
     """Normalised per-joint slack in (0, 1]; return the worst joint."""
-    q = np.asarray(q_arm, dtype=float).reshape(-1)
-    if q.size == 8:
-        q = q[1:]
+    q = _arm7(q_arm)
     half = 0.5 * (Q_UPPER - Q_LOWER)
     half = np.maximum(half, 1.0e-6)
     lo = (q - Q_LOWER) / half
     hi = (Q_UPPER - q) / half
     return float(np.min(np.minimum(lo, hi)))
+
+
+def wrist_band_frac(
+    q6: float,
+    *,
+    peak_rad: float = 45.0 * np.pi / 180.0,
+) -> float:
+    """1 at |q6|≈45°, 0 at a straight wrist and at the J6 stop."""
+    a = abs(float(q6))
+    q6_max = max(abs(float(Q_LOWER[5])), abs(float(Q_UPPER[5])), 1.0e-6)
+    peak = min(max(float(peak_rad), 1.0e-6), q6_max)
+    if a <= peak:
+        return a / peak
+    return max(0.0, 1.0 - (a - peak) / (q6_max - peak))
+
+
+def arm_respects_floor(q_arm: np.ndarray, floor_rad: float) -> bool:
+    """True iff every arm joint is at least ``floor_rad`` from a stop."""
+    if float(floor_rad) <= 0.0:
+        return True
+    q = _arm7(q_arm)
+    margin = np.minimum(q - Q_LOWER, Q_UPPER - q)
+    return bool(np.all(margin >= float(floor_rad) - 1.0e-9))
+
+
+def stroke_score(
+    q_arm: np.ndarray,
+    sigma: float,
+    *,
+    w_sigma: float,
+    w_wrist: float,
+) -> float:
+    """One-shot cell score: worst-joint margin + σ + J6 band around 45°.
+
+    ``|q6|/q6_max`` rewarded opening the wrist all the way to ±128° and
+    parked J2 on a stop.  The band peaks at the yaml attractor (45°).
+    """
+    q = _arm7(q_arm)
+    return (
+        joint_margin_frac(q)
+        + float(w_sigma) * float(sigma)
+        + float(w_wrist) * wrist_band_frac(float(q[5]))
+    )
 
 
 @dataclass
@@ -61,10 +107,18 @@ class PsiRetargetConfig:
     n_d: int = 8
     n_psi: int = 9
     w_sigma: float = 0.5
+    # Same scale as w_sigma.  Scores a 45° wrist band, not |q6|/q6_max.
+    w_wrist: float = 0.5
+    # Reject a (d, ψ) cell if any arm joint is closer than this to a stop.
+    margin_floor_rad: float = 15.0 * np.pi / 180.0
+    # Kept for yaml compatibility.  step() never replans; 0 is the contract.
+    z_replan_m: float = 0.0
     # Used only when ψ* changes (new scan segment).  No LPF on top.
     psi_rate_rad_s: float = 20.0 * np.pi / 180.0
     # Soft travel used by the planner (must cover the whole stroke).
     rail_margin_m: float = 0.02
+    # Reject a cell whose wrist sits on the branch-barrier floor (~15°).
+    wrist_min_rad: float = 25.0 * np.pi / 180.0
 
 
 class _SrsEval:
@@ -114,6 +168,11 @@ class PostureRetarget:
         self._psi_star: float | None = None
         self._d_star: float | None = None
         self._planned: bool = False
+        self._z_plan: float = float("nan")
+        self._y_center_m: float = float("nan")
+        self._amplitude_m: float = float("nan")
+        self._rail_lo: float = float("nan")
+        self._rail_hi: float = float("nan")
         self.last_psi_score: float = float("nan")
         self.last_dpref_score: float = float("nan")
         self.last_minmax_margin: float = float("nan")
@@ -121,6 +180,7 @@ class PostureRetarget:
         self.last_wrist_open_rad: float = float("nan")
         self.d_star_m: float = float("nan")
         self.psi_star_rad: float = float("nan")
+        self._ird = None
 
     def reset(self, q_rad: np.ndarray) -> None:
         q = np.asarray(q_rad, dtype=float)
@@ -131,6 +191,7 @@ class PostureRetarget:
         d_pref = y_tcp - float(q[RAIL_INDEX])
         self._d_star = d_pref
         self._planned = False
+        self._z_plan = float("nan")
         self.d_star_m = float(d_pref)
         self.psi_star_rad = float(psi)
         self.last_psi_score = float("nan")
@@ -181,44 +242,78 @@ class PostureRetarget:
         n_d = max(int(self.cfg.n_d), 3)
         n_psi = max(int(self.cfg.n_psi), 3)
         y_samples = np.linspace(y_lo, y_hi, n_y)
-        d_samples = np.linspace(d_min, d_max, n_d)
+        d_grid = np.linspace(d_min, d_max, n_d)
+        d_samples = d_grid
+        if self._ird is not None and getattr(self._ird, "available", False):
+            T_ird0 = self._ird.tcp_ird_from_q(self.kin, q)
+            d_ird = self._ird.query_d_star(
+                T_ird0,
+                y_tcp0_m=float(pose0[1]),
+                y_samples_m=y_samples,
+                d_samples_m=d_grid,
+                rail_lo=rail_lo_s,
+                rail_hi=rail_hi_s,
+            )
+            if d_ird is not None and d_min - 1.0e-9 <= d_ird <= d_max + 1.0e-9:
+                rails = y_samples - float(d_ird)
+                if np.all(rails >= rail_lo_s - 1.0e-9) and np.all(
+                    rails <= rail_hi_s + 1.0e-9
+                ):
+                    d_samples = np.array([float(d_ird)], dtype=float)
         psi0 = float(psi_from_q(q))
         psi_samples = psi0 + np.linspace(-np.pi, np.pi, n_psi, endpoint=False)
         w_sigma = float(self.cfg.w_sigma)
-        best_score = -np.inf
-        best_d = float(self._d_star if self._d_star is not None else 0.0)
-        best_psi = psi0
-        any_feasible = False
-        for d in d_samples:
-            for psi in psi_samples:
-                worst = np.inf
-                feasible = True
-                last_q: np.ndarray | None = None
-                for y in y_samples:
-                    y_rail = float(y) - float(d)
-                    if y_rail < rail_lo_s - 1.0e-9 or y_rail > rail_hi_s + 1.0e-9:
-                        feasible = False
-                        break
-                    pose = pose0.copy()
-                    pose[1] = float(y)
-                    pack = self._eval.evaluate(pose, float(psi), branch, y_rail)
-                    if pack is None:
-                        feasible = False
-                        break
-                    q_arm, q_full, sigma = pack
-                    last_q = q_full
-                    score_y = joint_margin_frac(q_arm) + w_sigma * float(sigma)
-                    if score_y < worst:
-                        worst = score_y
-                if not feasible or not np.isfinite(worst):
-                    continue
-                any_feasible = True
-                if worst > best_score:
-                    best_score = float(worst)
-                    best_d = float(d)
-                    best_psi = float(psi)
-                    if last_q is not None:
-                        self._update_margins(last_q)
+        w_wrist = float(self.cfg.w_wrist)
+        floor = float(self.cfg.margin_floor_rad)
+
+        def _search(d_list: np.ndarray) -> tuple[bool, float, float, float]:
+            best_s = -np.inf
+            best_dv = float(self._d_star if self._d_star is not None else 0.0)
+            best_pv = psi0
+            found = False
+            for d in d_list:
+                for psi in psi_samples:
+                    worst = np.inf
+                    feasible = True
+                    last_q: np.ndarray | None = None
+                    for y in y_samples:
+                        y_rail = float(y) - float(d)
+                        if y_rail < rail_lo_s - 1.0e-9 or y_rail > rail_hi_s + 1.0e-9:
+                            feasible = False
+                            break
+                        pose = pose0.copy()
+                        pose[1] = float(y)
+                        pack = self._eval.evaluate(pose, float(psi), branch, y_rail)
+                        if pack is None:
+                            feasible = False
+                            break
+                        q_arm, q_full, sigma = pack
+                        last_q = q_full
+                        if not arm_respects_floor(q_arm, floor):
+                            feasible = False
+                            break
+                        if abs(float(q_arm[5])) < float(self.cfg.wrist_min_rad) - 1.0e-9:
+                            feasible = False
+                            break
+                        score_y = stroke_score(
+                            q_arm, sigma, w_sigma=w_sigma, w_wrist=w_wrist
+                        )
+                        if score_y < worst:
+                            worst = score_y
+                    if not feasible or not np.isfinite(worst):
+                        continue
+                    found = True
+                    if worst > best_s:
+                        best_s = float(worst)
+                        best_dv = float(d)
+                        best_pv = float(psi)
+                        if last_q is not None:
+                            self._update_margins(last_q)
+            return found, best_s, best_dv, best_pv
+
+        any_feasible, best_score, best_d, best_psi = _search(d_samples)
+        if not any_feasible and d_samples.size == 1 and d_grid.size > 1:
+            any_feasible, best_score, best_d, best_psi = _search(d_grid)
         if not any_feasible:
             raise StrokeInfeasibleError(
                 "no feasible (d, ψ) covers the scan stroke; reduce amplitude "
@@ -231,6 +326,11 @@ class PostureRetarget:
         self._d_star = float(best_d)
         self._psi_star = float(best_psi)
         self._planned = True
+        self._z_plan = float(pose0[2])
+        self._y_center_m = y_c
+        self._amplitude_m = amp
+        self._rail_lo = float(rail_lo)
+        self._rail_hi = float(rail_hi)
         self.d_star_m = float(best_d)
         self.psi_star_rad = float(best_psi)
         self.last_minmax_margin = float(best_score)
@@ -248,10 +348,10 @@ class PostureRetarget:
         rail_lo: float,
         rail_hi: float,
     ) -> tuple[float, float]:
-        """Hold d* and slew ψ_ref toward ψ* with a single rate limit."""
+        """Hold the scan-start (d*, ψ*) and slew ψ_ref toward ψ*."""
         del rail_lo, rail_hi
         q = np.asarray(q_rad, dtype=float)
-        if self._psi_cmd is None or self._d_star is None:
+        if not self._planned or self._d_star is None or self._psi_cmd is None:
             self.reset(q)
         dt = max(float(dt_s), 0.0)
         psi_out = self._rate_limit_psi(dt)
@@ -273,5 +373,8 @@ __all__ = [
     "PostureRetarget",
     "PsiRetargetConfig",
     "StrokeInfeasibleError",
+    "arm_respects_floor",
     "joint_margin_frac",
+    "stroke_score",
+    "wrist_band_frac",
 ]

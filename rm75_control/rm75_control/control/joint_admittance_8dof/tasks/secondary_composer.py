@@ -177,11 +177,16 @@ class SecondaryComposer:
         if not rail_hold:
             qdot_soft[0] = 0.0
 
-        # Near σ≈0 mildly attenuate soft tasks — NOT arm_angle.  Keep some
-        # centering even when manip is active (attractor must remain).
+        # Near σ≈0 mildly attenuate soft tasks — NOT arm_angle, and not
+        # J4/J6.  Those two *are* the posture that opens the wrist / keeps
+        # the elbow off the stop; fading them 4× is what parked J6 at 2.8°.
         if centering_sigma_fade and sigma_min < sigma_ref:
             fade = max(float(sigma_min) / max(sigma_ref, 1e-6), 0.25)
-            qdot_soft = qdot_soft * fade
+            scaled = qdot_soft * fade
+            if scaled.size > 6:
+                scaled[4] = qdot_soft[4]
+                scaled[6] = qdot_soft[6]
+            qdot_soft = scaled
 
         qdot0 = qdot_soft
         if self.arm_task is not None and not arm_suppressed:

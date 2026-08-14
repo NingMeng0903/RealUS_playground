@@ -54,7 +54,7 @@ qpik:
       lock_vel_eps_m_s: 0.0
       v_max_m_s: 0.15
       travel_m: 0.80
-      soft_min_m: 0.005   # temporary: matches manual-zero JSON (limits broken)
+      soft_min_m: 0.025   # command floor; 0.005 is panic/encoder only
       soft_max_m: 0.78
 
 inner:
@@ -108,6 +108,8 @@ inner:
       band_rad: 0.0
       band_rail_m: 0.10
       max_scale: 20.0
+      # Cap |Δscale| per tick so a reverse cannot slam 20→1 in one sample.
+      max_delta: 3.0
     sigma_setbased:
       enabled: true
       activate: 0.12
@@ -118,7 +120,16 @@ inner:
     branch_barrier:
       enabled: true
       activate_rad: 0.35
-      eps_rad: 0.05
+      # 0.05 rad = 2.8° was the measured J6 parking floor.  0.26 (~15°)
+      # forces the wrist open; activate_rad 0.35 stays outside this.
+      eps_rad: 0.26
+      gamma: 6.0
+      slack_weight: 80.0
+    # Moe/Kanoun set-based comfort: each arm joint, own slack, 15–25° band.
+    joint_comfort:
+      enabled: true
+      m_comfort_deg: 15.0
+      activate_deg: 25.0
       gamma: 6.0
       slack_weight: 80.0
 
@@ -155,8 +166,24 @@ inner:
     n_d: 8
     n_psi: 9
     w_sigma: 0.5
+    # Band around the 45° attractor — not |q6|/128°, which sacrificed J2.
+    w_wrist: 0.5
+    margin_floor_deg: 15.0
+    # step() never replans.  Pin–Culioli runs once at scan start.
+    z_replan_m: 0.0
     psi_rate_deg_s: 20.0
     rail_margin_m: 0.02
+    # Reject cells whose wrist sits on the ~15° branch-barrier floor.
+    wrist_min_deg: 25.0
+
+  # Signed IRD field (ird_playground).  One-shot d* at plan_scan_stroke only.
+  # Hot-path RailGoodness is σ_min (autograd IRD caused 127 ms hitches).
+  # Queries rebuild probe45 TCP from link_7 so gripper2 is ok.
+  ird:
+    enabled: true
+    device: cpu
+    allow_stale: true
+    goodness_period_ticks: 10
 
   rail_extension:
     enabled: true
@@ -192,7 +219,11 @@ inner:
     k_escape_boost: 1.2
     escape_grad_floor: 0.0
     k_margin_boost: 4.0
-    w_ext_cap: 12.0
+    w_ext_cap: 24.0
+    d_star_err0_m: 0.01
+    d_star_err1_m: 0.04
+    d_star_w_mult: 6.0
+    d_star_reg_mult: 20.0
 
 
 frames:
@@ -462,9 +493,9 @@ hw:
     plus_di: di3             # +Y end (run-time e-stop if hit)
     di_nc: true
     di_debounce_n: 3
-    soft_min_m: 0.005        # temporary: matches manual-zero JSON (limits broken)
+    soft_min_m: 0.025        # must match qpik.hard_limits.rail
     soft_max_m: 0.78
-    post_home_m: 0.005
+    post_home_m: 0.025
     # Home-script only (controller does not auto-home on start):
     home_search_m_s: 0.020
     home_creep_m_s: 0.003
@@ -502,6 +533,8 @@ hw:
     standstill_exit_mm: 0.25
     standstill_dwell_s: 0.08
     target_timeout_s: 0.25
+    # Extra coast after timeout before FA24=0.  A 127 ms hitch must not brake.
+    target_stale_coast_s: 0.35
     encoder_freeze_s: 1.0
     encoder_freeze_min_v_m_s: 0.02
     encoder_freeze_min_move_mm: 0.15

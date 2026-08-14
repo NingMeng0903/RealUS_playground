@@ -25,7 +25,7 @@ CONFIG = Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8do
 
 # Slot-D arm posture from the hardware run, expressed at the current canonical
 # mid-rail coordinate.  The historical fixture used rail=0 and ±0.25 m limits;
-# feeding that into the current [0.01, 0.78] m controller starts outside its
+# feeding that into the current [0.025, 0.78] m controller starts outside its
 # soft band and measures a synthetic 10 mm recovery jump instead of a scan.
 Q_D = np.array(
     [0.40, -0.949552, 0.095255, 0.646858, 1.469911, 0.502701, 0.666503, -0.338137]
@@ -36,6 +36,7 @@ def _make_inner() -> JointIkController:
     raw = yaml.safe_load(CONFIG.read_text())
     cfg = build_joint_ik_config(raw)
     cfg.collision.enabled = False  # STL narrow-phase not needed offline
+    cfg.ird.enabled = False
     cfg.control_frame = "base"        # test drives base-frame twists directly
     kin = RobotKinematics()
     inner = JointIkController(kin, cfg)

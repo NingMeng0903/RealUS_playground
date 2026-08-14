@@ -1,9 +1,9 @@
 """Pluggable rail "goodness" metric g(q) and ∂g/∂y_rail.
 
 Used by :class:`RailExtensionTask` as a singularity / reachability guardrail
-(and, in scan mode, as a soft preference).  Default implementation is σ_min
-(Yoshikawa / SVD of J).  Swap in ``ird_playground.region.RegionA`` later by
-implementing the same protocol — the rail task does not change.
+(and, in scan mode, as a soft preference).  Default and production hot path
+is σ_min (Yoshikawa / SVD of J).  IRD is one-shot ``d*`` at scan start only;
+do not put ``IrdRailGoodness`` autograd on the 5 ms thread.
 """
 
 from __future__ import annotations

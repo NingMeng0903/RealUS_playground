@@ -439,3 +439,98 @@ QD_OFFLINE_CACHE_FILE_PATH=/tmp/anatomy_qd_cache PYTHONPATH=.:src python \
 ```
 
 红线（仍然有效）：不动 `rm75_control`；不删既有产物；候选一律 `publishable=false`；不采信自报 pass；不用 Composer。§5 只加度量，不改几何。
+
+---
+
+## 11. 下一步怎么继续改 retarget（2026-08-14）
+
+上轮 V12b 被中断，产物目录是空的。已经量过的事实决定顺序，不再猜。
+
+### 11.1 还没过的东西，按阻断排序
+
+| 优先级 | 缺陷 | 证据 | 允许的修法 | 禁止 |
+|---|---|---|---|---|
+| P0 | 足部大面积外露（两 beta、所有版） | 盲审唯一共同阻断；`foot_L` 16.4 mm rest / 23.2 mm posed；刚体 6 mm+11° 可收到 2.4 mm | 腕/踝根下有界刚体重定位 + 同一冻结 LBS + 多姿态拟合 | 缩骨、改权重、腕 rebase、pose-time IK |
+| P1 | `forearm_L` 相对 Pack A +8.7–15.8 mm | V11 四处绝对穿出失败里三处是它 | 与手足同一套有界刚体 rest 拟合（皮肤容纳目标），不是 V12a 的 bind/mesh 对调 | 上肢链退回 V7（锚定门否决）；`carry_mesh=arm`（穿出更差） |
+| P2 | 左肘 station→轴垂距 +17.7 mm | 每个候选含 V7、每个姿态含 T-pose | 前臂簇 reseat 的附带量；单独报 | 再写一套 FK |
+| P3 | 股骨 mesh 轴长超髋–膝约 32 mm | 冻 14-slot LBS + 只搬 bind 藏不住 | **等用户书面接受轴向约短 8%** 再开路线 2 cage | V8/V9 `Femur_Rot` 尺度、径向缩 |
+
+### 11.2 本轮只做 P0（V12b），做完再开 P1
+
+构图栈不动：V11 rest + hybrid 终端契约 + V10 主链 FK。V12b 只在 rest 上给手/足簇加一个有界刚体 `T`，pose 用右乘 `G_src @ inv(B_src) @ B_tgt` 让 `T` 跟着肢转。
+
+已经踩过、不再重复的坑：
+
+1. mesh 按 LBS 混合、bind 整段搬 → posed 足飞 194 mm。
+2. 硬簇赋值 → 胫骨下端绑在踝上的顶点 bind 变了 mesh 没变 → 仍飞 ~190 mm。
+3. 只按 rest 拟合 → rest 赢 11 mm，`pose_213328` 左足 23.2→26.4 mm。
+4. 左乘 `T` → 世界系偏移，屈膝时不跟着腿转。
+
+当前代码：施加走 `_weighted_rest_correction`；求解的目标也走同一条 LBS（不再按整段 `T` 计分）；拟合 rest + 两个冻结捕获；踝/腕原点不得走出 `B_prefit` 的解剖球。
+
+**2026-08-14 诊断（213328，mean-SSE 多姿态，17 min）——这条目标函数否决了自己：**
+
+| 簇 | rest | tpose | pose_213328 | pose_213712 |
+|---|---:|---:|---:|---:|
+| `foot_L` | 16.4→14.9 | 16.4→14.9 | **23.2→12.5** | 16.8→**21.1** |
+| `foot_R` | 5.6→**11.9** | 5.6→**11.9** | 12.6→9.1 | **24.5→13.3** |
+| `hand_L` | 0.6→0.0 | 0.6→0.0 | 7.1→6.0 | 0.8→1.3 |
+| `hand_R` | 0.5→1.3 | 0.5→1.3 | 3.5→2.4 | 5.4→2.2 |
+| `shank_L` / `forearm_L` | 不变 | 不变 | 不变 | 不变 |
+
+T-pose 恒等仍过，胫/前臂没有被带坏。但一个刚体 `T` 坐不住所有足腔：mean-SSE 用 T-pose 右足 +6.3 mm、`pose_213712` 左足 +4.3 mm 去买屈足的赢。§11 禁止手足反向优化，所以**不能建这个候选**。
+
+下一刀目标改成 **minimax（压最差帧的 max）+ 单帧回退 ≤1 mm**。T=0 永远可行；若最优解停在恒等，说明刚体 rest reseat 到了上限，再开 P1，不要硬建。
+
+**minimax + 采样硬墙的第一跑否决了自己（手炸了）：** 旋转上界写成了每轴 ±15°，合模长可以到 26°。800 个采样点上看手没事，整簇指尖 0.6→62 mm。足部方向对（`foot_L` 三帧都不回退，`pose_213328` 23.2→15.3），但 `foot_R` T-pose +1.93 mm 仍超 1 mm，因为墙看的是采样 max 不是整簇 max。
+
+已补：旋转按轴角模长封顶 15°；求解后对**整簇 × 全部拟合帧**做验收，任一帧回退 >1 mm 或代价掉进 1e6 墙，该簇退回恒等。
+
+**整簇否决后的 213328 诊断（合法，可建）：**
+
+| 簇 | 判决 | 效果 |
+|---|---|---|
+| 双手 | 否决，退回恒等 | 不再炸指尖 |
+| `Ankle_Rot_R` | 否决，退回恒等 | 刚体 `T` 修不了右足而不伤 T-pose |
+| `Ankle_Rot_L` | **接受** 5.9 mm + 5.0° | `pose_213328` 左足 **23.2→14.3**；`pose_213712` 16.8→15.8；T-pose 16.4→16.8（+0.4，墙内） |
+
+全身 `pose_213328` 23.2→16.1（最差点就是这只左足）。手/右足/胫/前臂逐位不变。这是第一刀**不回退的**刚体收益；右足 24.5 mm 和 rest 16 mm 左足是刚体上限，留给 P1/笼。
+
+**两 beta shadow 被 T-pose 面积门挡住。** 捕获姿态上 `terminal_pose_regression_v10` / `posed_body_containment_v10` 都过；CLI 还门 T-pose。左足 max 只 +0.4 mm，但一批跖骨/趾骨皮内面积掉了 8–15%，均值超过 2%。已补：验收同时看面积，超了就对 `T` 做二分缩放，找到仍过门的最大步长。
+
+**塌缩验收后 213328 两门三帧全过（可建）：** 左踝 7.4 mm + 4.5°；右踝 ≈ 恒等；手 0.6–0.7 mm。`pose_213712` 上曾有单骨 0.9→0.5 塌缩，现已挡掉。
+
+### 11.3 验收环（过一环才进下一环）
+
+1. 单测：混合权重顶点按 LBS 分数移动；恒等 reseat 是空操作；求解不走出解剖球。
+2. 诊断（只 213328，不出图）：多姿态 reseat 后 `foot_*` 在 tpose / 两捕获上不得差于 V11，争取 rest ≤6 mm、posed ≤ V11。
+3. 过了才建 `chain_retarget_v12b_reseat_001`（两 beta）。
+4. `run_acceptance_gates_v12` 对照 Pack A。终端门已经按皮内面积判，不要求等于 142 位置。
+5. `render_acceptance_pack_v12` + slim，磁盘 96%，不留完整树。
+6. 独立盲审，判决必须是 `accepted_for_user_genesis_review` 才停。足部仍红就改拟合，不要开 cage。
+
+§11 停止条件里「foot 不再大幅外露」是本轮唯一要关掉的视觉阻断。前臂和 32 mm 超长留下一轮。
+
+### 11.4 V12b 已建，P0 未关（2026-08-14 15:45）
+
+产物：`outputs/anatomy_retarget/v12_candidates/chain_retarget_v12b_reseat_001`  
+`passed=true`（V11 阶梯）、`publishable=false`、`terminal_policy=reseated_142_hand_foot`。两 beta 的 `terminal_pose_regression` / `posed_body_containment` / 锚定 / 对称都过；旧 `containment_check` 仍否（对 142 位置，预期）。
+
+独立进度审（explore，[V12b audit](565a3b31-5cab-45d0-94e2-062cb5af5599)）：**`not_ready`**。没有 §9.5 10 图 handoff，也没有 `independent_genesis_review*`。
+
+`run_acceptance_gates_v12`（`acceptance_gates_v12_v12b.json`）v11 与 v12b 都 `passed=false`。相对 V11：
+
+| 姿态 | foot_L | foot_R | 含义 |
+|---|---:|---:|---|
+| pose_213328 | 23.2→19.9 | 12.6→8.1 | 捕获赢 |
+| pose_213712 | 16.8→13.2 | 24.5→16.8 | 捕获赢 |
+| tpose | 16.4→16.1 | 5.6→6.6 | 右足贴 1 mm 墙 |
+| flex_knee_*_120 | −0.3 mm | **+7.2–7.5 mm** | **新回退** |
+
+右踝建成的是 **8.8 mm + 1.5°**，不是诊断里「否决退回恒等」。拟合只吃了 rest + 两捕获，深屈不在墙里，所以捕获毫米是用深屈右足买的。`forearm_L` 仍 +8.7–15.8 mm（与 V11 相同）。左肘 +17.7 mm 未动。
+
+`acceptance_pack_v12b_001` 已齐（2β×6pose，480 slim）。10 图 handoff：`chain_retarget_v12b_reseat_001/independent_genesis_review_v12/handoff/`，`decision` 先是 `ready_for_independent_review`。
+
+独立盲审（[V12b visual](29af2ef8-3527-48bd-8e08-6c0e885d0dee)）：**`needs_fix`**。膝铰链过、联动未炸；手足仍大面积外露（P0 未关）；深屈右足比捕获更差。已改 `review_decision.json`。
+
+下一刀：深屈三态进 reseat minimax，建 `chain_retarget_v12b_reseat_002`。

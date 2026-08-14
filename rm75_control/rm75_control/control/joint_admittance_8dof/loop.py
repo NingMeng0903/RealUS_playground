@@ -54,6 +54,10 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
     RailExtensionConfig,
     RailExtensionTask,
 )
+from rm75_control.control.joint_admittance_8dof.tasks.ird_adapter import (
+    IrdConfig,
+    try_load_ird,
+)
 from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
     PostureRetarget,
     PsiRetargetConfig,
@@ -87,6 +91,7 @@ class JointIkConfig:
     manipulability: ManipulabilityTaskConfig = field(default_factory=ManipulabilityTaskConfig)
     arm_angle: ArmAngleTaskConfig = field(default_factory=ArmAngleTaskConfig)
     psi_retarget: PsiRetargetConfig = field(default_factory=PsiRetargetConfig)
+    ird: IrdConfig = field(default_factory=IrdConfig)
     collision: CollisionConfig = field(default_factory=CollisionConfig)
     rail: RailLockConfig = field(default_factory=RailLockConfig)
     rail_extension: RailExtensionConfig = field(default_factory=RailExtensionConfig)
@@ -279,6 +284,14 @@ class JointIkController:
             SigmaMinGoodness,
         )
 
+        ird_cfg = self.cfg.ird if self.cfg.ird is not None else IrdConfig()
+        self._ird = (
+            try_load_ird(ird_cfg) if bool(getattr(ird_cfg, "enabled", False)) else None
+        )
+        if self.posture_retarget is not None:
+            self.posture_retarget._ird = self._ird
+        # IRD is one-shot d* at plan_scan_stroke only.  Autograd goodness
+        # on this thread caused 127 ms hitches → servo FA24=0.
         self._rail_goodness = CachedRailGoodness(
             SigmaMinGoodness(kin), period_ticks=10
         )
@@ -298,7 +311,7 @@ class JointIkController:
                 float(self.kin.v_max[0]),
                 float(self.cfg.rail.v_max_m_s),
             )
-        soft_lo = float(getattr(self.cfg.rail, "soft_min_m", 0.01))
+        soft_lo = float(getattr(self.cfg.rail, "soft_min_m", 0.025))
         soft_hi = float(getattr(self.cfg.rail, "soft_max_m", 0.78))
         if not (
             np.isfinite(soft_lo)
@@ -964,6 +977,12 @@ class JointIkController:
             if sigma_esc_ref > 1e-9 and sigma_now < sigma_esc_ref:
                 manip_for_saturation = True
 
+        rail_reg_scale = 1.0
+        if self.rail_ext_task is not None:
+            rail_reg_scale = float(
+                getattr(self.rail_ext_task, "last_d_star_reg_scale", 1.0) or 1.0
+            )
+
         r = self.core.step(
             q_prev,
             twist_base,
@@ -980,6 +999,7 @@ class JointIkController:
             resync_err=resync_vec,
             rail_locked=locked_hold,
             rail_lock_reg_scale=self.cfg.rail.lock_reg_scale,
+            rail_reg_scale=rail_reg_scale,
             rail_lock_vel_eps_m_s=self.cfg.rail.lock_vel_eps_m_s,
             rail_vel_pin_m_s=rail_vel_pin,
             zero_secondary_rail=not locked_hold,
@@ -1040,6 +1060,16 @@ class JointIkController:
                     self.q_cmd[0] = q0_meas - lead_max
                     if dt > 1e-9:
                         self.core.qdot_prev[0] = (self.q_cmd[0] - q_prev[0]) / dt
+        # At the command floor, refuse to jog back into the switch.
+        lo0 = float(self.limits.q_lower[0])
+        hi0 = float(self.limits.q_upper[0])
+        self.q_cmd[0] = float(np.clip(self.q_cmd[0], lo0, hi0))
+        if self.q_cmd[0] <= lo0 + 1.0e-4 and self.core.qdot_prev[0] < 0.0:
+            self.q_cmd[0] = lo0
+            self.core.qdot_prev[0] = 0.0
+        elif self.q_cmd[0] >= hi0 - 1.0e-4 and self.core.qdot_prev[0] > 0.0:
+            self.q_cmd[0] = hi0
+            self.core.qdot_prev[0] = 0.0
         if plan_drives_rail and qdot_ff is not None and dt > 1e-9:
             v_rail = float(np.asarray(qdot_ff)[0])
             y = float(q_prev[0] + v_rail * dt)
@@ -2350,11 +2380,14 @@ def _publish_rail_target_before_arm(
         return True, ""
     if not bool(getattr(rail_bridge, "calibrated", False)):
         reason = "rail_target_rejected:not_calibrated"
-    elif not bool(getattr(rail_bridge, "armed", False)):
-        reason = "rail_target_rejected:not_armed"
     elif bool(getattr(rail_bridge, "panicked", False)):
         detail = str(getattr(rail_bridge, "panic_reason", "") or "panic")
-        reason = f"rail_target_rejected:{detail}"
+        reason = (
+            f"rail_target_rejected:{detail}; "
+            "restart Window A to re-arm (panic latches)"
+        )
+    elif not bool(getattr(rail_bridge, "armed", False)):
+        reason = "rail_target_rejected:not_armed; restart Window A to re-arm"
     else:
         try:
             accepted = rail_bridge.set_target_m(float(target_m))

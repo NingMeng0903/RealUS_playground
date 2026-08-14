@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.solver.branch_barrier import (
     BranchBarrierBuilder,
     BranchBarrierConfig,
     latch_q_star_signs,
+)
+from rm75_control.control.joint_admittance_8dof.solver.joint_comfort import (
+    COMFORT_SLACK0,
+    JointComfortBuilder,
+    JointComfortConfig,
 )
 from rm75_control.control.joint_admittance_8dof.solver.sigma_setbased import (
     SigmaSetBasedConfig,
@@ -61,6 +67,47 @@ def test_branch_barrier_blocks_zero_crossing() -> None:
     k = j4_rows[0]
     assert rows.jacobian[k, 4] > 0.0
     assert rows.lower[k] > 0.0
+
+
+def test_branch_barrier_requires_open_at_legacy_j6_floor() -> None:
+    """2.8° used to sit on eps=0.05; 15° eps must demand a positive qdot."""
+    bb = BranchBarrierBuilder(
+        BranchBarrierConfig(activate_rad=0.35, eps_rad=0.26, gamma=6.0)
+    )
+    q_star = np.array([0.0, 0.0, 0.0, 0.0, 1.57, 0.0, 0.78, 0.0])
+    q = np.zeros(8)
+    q[6] = np.deg2rad(2.8)
+    rows = bb.build_rows(q, q_star)
+    assert rows.active
+    j6_rows = [
+        k for k in range(rows.jacobian.shape[0]) if abs(rows.jacobian[k, 6]) > 0.5
+    ]
+    assert j6_rows
+    k = j6_rows[0]
+    assert rows.jacobian[k, 6] > 0.0
+    assert rows.lower[k] > 1.0
+
+
+def test_sigma_fade_spares_j4_and_j6() -> None:
+    kin = RobotKinematics()
+    q_nom = np.array([0.0, 0.0, -0.7, 0.0, 1.57, 0.0, 0.78, 0.0])
+    centering = JointCenteringTask.from_kinematics(
+        kin, NullspaceTaskConfig(k_center=1.0, q_nominal_rad=q_nom)
+    )
+    composer = SecondaryComposer(centering, None, max_qdot_frac=0.0)
+    q = q_nom.copy()
+    q[2] = 0.0
+    q[4] = 0.20
+    q[6] = 0.05
+    healthy = composer.compose(
+        q, None, None, arm_suppressed=True, sigma_min=1.0, centering_sigma_fade=True
+    )
+    singular = composer.compose(
+        q, None, None, arm_suppressed=True, sigma_min=0.02, centering_sigma_fade=True
+    )
+    assert singular[4] == pytest.approx(healthy[4])
+    assert singular[6] == pytest.approx(healthy[6])
+    assert abs(singular[2]) < abs(healthy[2]) - 1e-9
 
 
 def test_rail_escape_latches_sign_against_grad_flip() -> None:
@@ -425,6 +472,31 @@ def test_escape_enter_requires_dwell() -> None:
     for _ in range(10):
         task(q, sigma_scale=0.2, sigma_grad_rail=2.0, dt_s=0.005)
     assert task._escape_active
+
+
+def test_joint_comfort_inactive_when_centered() -> None:
+    kin = RobotKinematics()
+    b = JointComfortBuilder(
+        JointComfortConfig(m_comfort_rad=0.26, activate_rad=0.44, gamma=6.0)
+    )
+    q = np.array([0.4, 0.0, -0.8, 0.0, 1.57, 0.0, 0.78, 0.0])
+    rows = b.build_rows(q, kin.q_lower, kin.q_upper)
+    assert rows.active is False
+
+
+def test_joint_comfort_has_per_joint_slack_near_j2_stop() -> None:
+    kin = RobotKinematics()
+    b = JointComfortBuilder(
+        JointComfortConfig(m_comfort_rad=0.26, activate_rad=0.44, gamma=6.0)
+    )
+    q = np.array([0.4, 0.0, -2.20, 0.0, 1.57, 0.0, 0.78, 0.0])
+    rows = b.build_rows(q, kin.q_lower, kin.q_upper)
+    assert rows.active
+    j2 = [k for k in range(rows.jacobian.shape[0]) if abs(rows.jacobian[k, 2]) > 1e-6]
+    assert j2
+    assert int(rows.slack_col[j2[0]]) == COMFORT_SLACK0 + 1
+    # Near the lower stop: ∇h points +q2.
+    assert rows.jacobian[j2[0], 2] > 0.0
 
 
 def test_beyond_rail_cli_defaults_force_on(tmp_path) -> None:

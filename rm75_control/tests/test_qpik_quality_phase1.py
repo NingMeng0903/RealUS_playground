@@ -55,6 +55,7 @@ def test_ff_owns_does_not_zero_reach_but_caps_it() -> None:
             v_reach_cap_m_s=0.02,
             v_max_m_s=0.08,
             v_lpf_tau_s=0.0,
+            d_star_err0_m=1.0,
         ),
     )
     task.set_mode("reach")

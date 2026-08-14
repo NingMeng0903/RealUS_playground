@@ -21,7 +21,7 @@ from rm75_control.control.joint_admittance_8dof.solver.sigma_setbased import (
 class BranchBarrierConfig:
     enabled: bool = True
     activate_rad: float = 0.35  # ~20°
-    eps_rad: float = 0.05
+    eps_rad: float = 0.26  # ~15° floor; never an attractor (planner rejects this band)
     gamma: float = 6.0
     slack_weight: float = 80.0
     # Skip rail (index 0); only arm joints with |q*| > target_eps.

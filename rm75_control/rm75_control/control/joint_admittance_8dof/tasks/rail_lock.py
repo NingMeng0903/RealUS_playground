@@ -28,7 +28,7 @@ class RailLockConfig:
     # Rail speed / geometry (used by planners and safety limits)
     v_max_m_s: float | None = None
     travel_m: float = 0.80         # mechanical [0, travel_m] m (rail_y=0 at -Y end)
-    soft_min_m: float = 0.01       # usable command band (host soft limits)
+    soft_min_m: float = 0.025      # usable command band (host soft limits)
     soft_max_m: float = 0.78
 
     def __post_init__(self) -> None:

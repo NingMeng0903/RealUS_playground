@@ -656,7 +656,6 @@ class LW100Drive:
         This is what stops latched ~900 r/min runaways when Modbus stalls
         for many seconds (seen: +1.9 m in ~12 s).
         """
-        self._last_rpm_cmd = 0
         try:
             self._client.close()
         except Exception:
@@ -681,6 +680,7 @@ class LW100Drive:
                 addr = 24
             side.write_register(addr, 0)
             ok = True
+            self._last_rpm_cmd = 0
         except Exception:
             ok = False
         finally:
@@ -716,12 +716,11 @@ class LW100Drive:
                 self.disable()
             except Exception:
                 pass
-        # Clear host latch even if the write failed so the rail safety
-        # watchdog does not PANIC/DISARM after an intentional task-end hold
-        # that lost Modbus mid-teardown.
-        ok = int(getattr(self, "_last_rpm_cmd", 0) or 0) == 0
-        self._last_rpm_cmd = 0
-        return ok
+        # Do NOT clear ``_last_rpm_cmd`` on a failed write.  The streaming
+        # path skips Modbus when the latch already says 0, so a forged 0
+        # leaves the drive coasting at the last real FA24 (run 125211:
+        # ~1 r/min after Window C while host logged v_cmd=0).
+        return int(getattr(self, "_last_rpm_cmd", 0) or 0) == 0
 
     def clear_alarm(self, steps: list[str] | None = None) -> None:
         """Pulse FA61 system-alarm clear (manual ch.6/9: FA61=1 clears Er-xx).

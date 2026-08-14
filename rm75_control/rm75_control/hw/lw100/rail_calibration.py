@@ -2,7 +2,7 @@
 
 Power-cycle detection (frame origin pinned at mechanical home by FA-60):
   - Home script calls ``adopt_encoder_frame()`` at the home switch so
-    ``raw_counts0 ≈ 0`` and soft band starts at ~10 mm (``raw ≈ 131k``).
+    ``raw_counts0 ≈ 0`` and soft band starts at ~25 mm (``raw ≈ 328k``).
   - After a drive power-cycle the monitor returns near 0 → reported host_m ≈ 0
     which is *below* soft_min → refuse start (no blind zone).
   - Do NOT reject just because |Δraw| is large while the drive stayed powered
@@ -31,7 +31,7 @@ VERSION = 4
 ENCODER_CPR = 131_072
 
 # Post-power-on / post-FA-60 monitor readings cluster near 0 (seen: -3, 1, …).
-# ~1 mm @ 10 mm/rev — soft band starts at 10 mm so raw≈0 is never a valid pose.
+# ~1 mm @ 10 mm/rev — soft band starts at 25 mm so raw≈0 is never a valid pose.
 BOOT_RAW_ABS = 13_107
 # Minimum jump before we consider a reboot signature (noise / settle).
 MIN_REBOOT_JUMP = 13_107
@@ -48,10 +48,10 @@ class RailCalibration:
     frame_origin_at_home: bool = False
     sign: float = 1.0
     lead_mm: float = 10.0
-    soft_min_m: float = 0.01
+    soft_min_m: float = 0.025
     soft_max_m: float = 0.78
-    post_home_m: float = 0.01
-    rail_m_at_cal: float = 0.01
+    post_home_m: float = 0.025
+    rail_m_at_cal: float = 0.025
     host: str = ""
     calibrated_unix: float = 0.0
     valid: bool = True
@@ -70,10 +70,10 @@ class RailCalibration:
             frame_origin_at_home=bool(d.get("frame_origin_at_home", False)),
             sign=float(d.get("sign", 1.0)),
             lead_mm=float(d.get("lead_mm", 10.0)),
-            soft_min_m=float(d.get("soft_min_m", 0.01)),
+            soft_min_m=float(d.get("soft_min_m", 0.025)),
             soft_max_m=float(d.get("soft_max_m", 0.78)),
-            post_home_m=float(d.get("post_home_m", 0.01)),
-            rail_m_at_cal=float(d.get("rail_m_at_cal", 0.01)),
+            post_home_m=float(d.get("post_home_m", 0.025)),
+            rail_m_at_cal=float(d.get("rail_m_at_cal", 0.025)),
             host=str(d.get("host", "")),
             calibrated_unix=float(d.get("calibrated_unix", 0.0)),
             valid=bool(d.get("valid", True)),

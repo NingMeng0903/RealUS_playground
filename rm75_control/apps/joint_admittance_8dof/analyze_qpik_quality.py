@@ -21,7 +21,7 @@ import numpy as np
 
 GATES = {
     "waste_ratio": 1.15,
-    "rail_min_m": 0.005,
+    "rail_min_m": 0.02,
     "rail_max_m": 0.78,
     "j4_j7_margin_deg": 10.0,
     "arm_acc_max": 8.0,
@@ -46,6 +46,9 @@ GATES = {
     "dt_on_time_frac": 0.80,
     "j6_open_frac": 0.05,
     "j4_near_limit_frac": 0.05,
+    "j2_near_limit_frac": 0.05,
+    "j2_limit_deg": 130.0,
+    "tick_inner_max_ms": 20.0,
     # Rail hand-off: inside the soft-limit band the arm should own the stroke.
     "rail_share_at_limit": 0.35,
     "rail_limit_band_m": 0.06,
@@ -116,6 +119,13 @@ def _rail_servo_checks(
                 "rail servo accel reversals < 3/s",
                 rev < GATES["rail_servo_accel_reversals_per_s"],
                 f"{rev:.1f}/s  |a| p95 {np.percentile(np.abs(a_cmd), 95):.2f} m/s²",
+            )
+        )
+        info.append(
+            (
+                "mid-scan jerk",
+                "compare this a_cmd rate to apps/lw100_isolated_sine_track.py; "
+                "command jerk RMS is L0 only (honor d* is not a mid-jerk gate)",
             )
         )
 
@@ -227,7 +237,8 @@ def analyze(path: Path) -> int:
     span_ok = (not np.isfinite(tcp_ptp)) or rail_ptp <= tcp_ptp + 2.0 * d_abs + 0.02
     results.append(
         (
-            "rail in [0.005, 0.78] and stroke ≤ TCP+2|d*|",
+            f"rail in [{GATES['rail_min_m']:.3f}, {GATES['rail_max_m']:.2f}] "
+            "and stroke ≤ TCP+2|d*|",
             rail_ok and span_ok,
             f"rail [{rmin:.3f}, {rmax:.3f}] ptp={rail_ptp:.3f} tcp={tcp_ptp:.3f}",
         )
@@ -348,6 +359,32 @@ def analyze(path: Path) -> int:
             f"{100.0 * j4_near:.1f}%",
         )
     )
+    j2 = _col(rows, "q_meas_2")
+    if not np.isfinite(j2).any():
+        j2 = _col(rows, "q_cmd_2")
+    j2_deg = np.degrees(j2)
+    j2_near = (
+        float(np.nanmean(np.abs(GATES["j2_limit_deg"] - np.abs(j2_deg)) < 5.0))
+        if np.isfinite(j2_deg).any()
+        else float("nan")
+    )
+    results.append(
+        (
+            "J2 within 5° of limit frac < 5%",
+            bool(np.isfinite(j2_near) and j2_near < GATES["j2_near_limit_frac"]),
+            f"{100.0 * j2_near:.1f}%",
+        )
+    )
+    inner_ms = _col(rows, "tick_inner_ms")
+    if np.isfinite(inner_ms).any():
+        inner_max = float(np.nanmax(inner_ms))
+        results.append(
+            (
+                "tick_inner max < 20 ms (no plan_stroke hitch)",
+                inner_max < GATES["tick_inner_max_ms"],
+                f"{inner_max:.1f} ms",
+            )
+        )
 
     if np.isfinite(contact).any():
         loss = float(np.nanmean(contact < 0.5))

@@ -58,9 +58,9 @@ class RailServoConfig:
     plus_di: str = "di3"
     di_nc: bool = True
     di_debounce_n: int = 3
-    soft_min_m: float = 0.01
+    soft_min_m: float = 0.025
     soft_max_m: float = 0.78
-    post_home_m: float = 0.01
+    post_home_m: float = 0.025
     limit_poll_every: int = 5  # worker: check DI every N polls when calibrated
     # +1 / -1: maps host rail_y (+Y) ↔ motor RPM and encoder metres together.
     sign: float = 1.0
@@ -89,7 +89,10 @@ class RailServoConfig:
     standstill_enter_mm: float = 0.05
     standstill_exit_mm: float = 0.25
     standstill_dwell_s: float = 0.08
-    target_timeout_s: float = 0.10  # no fresh set_target → settle then FA24=0
+    target_timeout_s: float = 0.10  # stale age before the stream is "old"
+    # Extra coast after target_timeout before FA24=0.  A 127 ms QPIK hitch
+    # must not hard-brake the carriage; only a true end-of-stream should.
+    target_stale_coast_s: float = 0.35
     # Soft lag hold (FA24=0 this tick); does NOT DISARM.
     encoder_freeze_s: float = 1.0
     encoder_freeze_min_v_m_s: float = 0.02
@@ -123,6 +126,16 @@ class RailServoConfig:
     verbose: bool = False
     # Per-poll soft-loop CSV (debug). None = off. Window A -v / task params can set.
     log_csv: str | None = None
+
+    def stream_dead_s(self) -> float:
+        """Age after which a live follow stream is treated as ended.
+
+        ``target_timeout_s`` marks the stream old; ``target_stale_coast_s``
+        is extra coast so a 127 ms QPIK hitch does not hard-brake FA24.
+        """
+        timeout = max(float(self.target_timeout_s), 0.02)
+        coast = max(0.0, float(self.target_stale_coast_s))
+        return timeout + coast
 
 
 @dataclass(frozen=True)
@@ -168,24 +181,39 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
     log_csv = hw.get("log_csv", None)
     log_csv_s = str(log_csv).strip() if log_csv else None
     cal_path = str(hw.get("calibration_path", "") or "").strip()
-    # ``inner.rail`` is the canonical host-side travel contract shared by the
-    # QPIK, posture planners, and the servo bridge.  Older configs only carried
-    # the values under ``hw.lw100``; keep that fallback, but never allow the two
-    # control layers to silently operate with different stops.
-    inner_has_soft = "soft_min_m" in rail or "soft_max_m" in rail
-    hw_soft_min = float(hw.get("soft_min_m", 0.01))
+    # Canonical travel is qpik.hard_limits.rail (same as build_joint_ik_config).
+    # inner.rail / hw.lw100 are fallbacks; any two that are set must match.
+    qpik_rail = (
+        (raw.get("qpik") or {}).get("hard_limits", {}) or {}
+    )
+    qpik_rail = qpik_rail.get("rail") or {}
+    hw_soft_min = float(hw.get("soft_min_m", 0.025))
     hw_soft_max = float(hw.get("soft_max_m", 0.78))
-    soft_min = float(rail.get("soft_min_m", hw_soft_min))
-    soft_max = float(rail.get("soft_max_m", hw_soft_max))
-    if inner_has_soft and (
-        abs(soft_min - hw_soft_min) > 1.0e-6
-        or abs(soft_max - hw_soft_max) > 1.0e-6
-    ):
-        raise ValueError(
-            "rail soft-limit mismatch: inner.rail "
-            f"[{soft_min:.6f}, {soft_max:.6f}] vs hw.lw100 "
-            f"[{hw_soft_min:.6f}, {hw_soft_max:.6f}]"
-        )
+    if "soft_min_m" in qpik_rail:
+        soft_min = float(qpik_rail["soft_min_m"])
+        soft_max = float(qpik_rail.get("soft_max_m", hw_soft_max))
+    elif "soft_min_m" in rail or "soft_max_m" in rail:
+        soft_min = float(rail.get("soft_min_m", hw_soft_min))
+        soft_max = float(rail.get("soft_max_m", hw_soft_max))
+    else:
+        soft_min = hw_soft_min
+        soft_max = hw_soft_max
+    sources = []
+    if "soft_min_m" in qpik_rail:
+        sources.append(("qpik.hard_limits.rail", float(qpik_rail["soft_min_m"]),
+                        float(qpik_rail.get("soft_max_m", soft_max))))
+    if "soft_min_m" in rail or "soft_max_m" in rail:
+        sources.append(("inner.rail", float(rail.get("soft_min_m", soft_min)),
+                        float(rail.get("soft_max_m", soft_max))))
+    if "soft_min_m" in hw or "soft_max_m" in hw:
+        sources.append(("hw.lw100", hw_soft_min, hw_soft_max))
+    for name, lo, hi in sources[1:]:
+        if abs(lo - sources[0][1]) > 1.0e-6 or abs(hi - sources[0][2]) > 1.0e-6:
+            raise ValueError(
+                "rail soft-limit mismatch: "
+                f"{sources[0][0]} [{sources[0][1]:.6f}, {sources[0][2]:.6f}] vs "
+                f"{name} [{lo:.6f}, {hi:.6f}]"
+            )
     if not (0.0 <= soft_min < soft_max <= travel_m):
         raise ValueError(
             "invalid rail soft limits: expected 0 <= soft_min < soft_max "
@@ -236,6 +264,7 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         standstill_exit_mm=standstill_exit_mm,
         standstill_dwell_s=standstill_dwell_s,
         target_timeout_s=float(hw.get("target_timeout_s", 0.10)),
+        target_stale_coast_s=float(hw.get("target_stale_coast_s", 0.35)),
         encoder_freeze_s=float(hw.get("encoder_freeze_s", 1.0)),
         encoder_freeze_min_v_m_s=float(hw.get("encoder_freeze_min_v_m_s", 0.02)),
         encoder_freeze_min_move_mm=float(hw.get("encoder_freeze_min_move_mm", 0.15)),
@@ -454,6 +483,12 @@ class RailServoBridge:
         self._last_hold_reason = ""
         self._last_hold_mono = 0.0
         self._hold_count = 0
+        # Task-end / explicit hold: FA24=0 is not a position lock.  The
+        # worker re-writes zero and PANICs if the encoder still walks.
+        self._hold_active = False
+        self._hold_anchor_m = float("nan")
+        self._hold_origin_m = float("nan")
+        self._last_hold_zero_mono = 0.0
         self._safety_thread: threading.Thread | None = None
         self._latch_kill_req = threading.Event()
         self._csv: _RailCsvLogger | None = None
@@ -593,7 +628,7 @@ class RailServoBridge:
         lo = float(self.config.soft_min_m)
         hi = float(self.config.soft_max_m)
         if hi <= lo:
-            return 0.01, min(0.78, float(self.config.travel_m))
+            return 0.025, min(0.78, float(self.config.travel_m))
         return lo, hi
 
     def set_velocity_gains(
@@ -626,6 +661,9 @@ class RailServoBridge:
             self._target_history.clear()
             self._target_history.append((now, meas))
             self._hold_count = 0
+            self._hold_active = False
+            self._hold_anchor_m = float("nan")
+            self._hold_origin_m = float("nan")
         self._log_event(
             "session_begin",
             measured_m=meas,
@@ -687,6 +725,9 @@ class RailServoBridge:
             self._last_target_rx_mono = rx_mono
             self._target_history.append((rx_mono, snapped))
             self._follow_enabled = True
+            self._hold_active = False
+            self._hold_anchor_m = float("nan")
+            self._hold_origin_m = float("nan")
         return True
 
     def hold_current(self) -> None:
@@ -698,50 +739,77 @@ class RailServoBridge:
                 self._commanded_m = meas
                 self._target_history.clear()
                 self._target_history.append((time.monotonic(), meas))
+                self._hold_anchor_m = meas
+                self._hold_origin_m = meas
+            else:
+                self._hold_anchor_m = float("nan")
+                self._hold_origin_m = float("nan")
             self._follow_enabled = False
+            self._hold_active = True
+            self._last_hold_zero_mono = 0.0
         self.kill_motion()
 
     def hold_or_settle_after_task(self, *, settle_if_err_mm: float = 2.0) -> bool:
-        """Task-end default: snap-hold (FA24=0). Settle only on large residual.
+        """Task-end: always snap-hold (FA24=0). Never re-open follow.
 
-        Re-opening follow for sub-mm residuals made FA24 crawl at 3–5 r/min
-        (stall_v_floor) after Window C exits — sometimes 0 (already in tol),
-        sometimes audible crawl.  Daily scans should exit silent.
+        Run 125211: a 10.7 mm residual called ``settle_and_hold``, which
+        re-enabled follow and hit 900 r/min / 8 mm overshoot.  Then host
+        thought FA24=0 while the carriage crept 31 mm.  A 10 mm leftover
+        is not worth that.  ``settle_if_err_mm`` is accepted and ignored
+        so older call sites keep working.
         """
+        del settle_if_err_mm
         if not self.enabled or self._drive is None:
             return True
         with self._lock:
-            if self._panic or not self._armed or not self._calibrated:
-                can_settle = False
-                meas = float(self._measured_m)
-                target = float(self._target_m)
-            else:
-                can_settle = True
-                meas = float(self._measured_m)
-                target = float(self._target_m)
-        if not can_settle:
-            self.hold_current()
-            return False
-        if not (math.isfinite(meas) and math.isfinite(target) and self._encoder_sane(meas)):
-            print("lw100 rail: task end hold (encoder/target invalid)", flush=True)
-            self.hold_current()
-            return False
-        err_mm = abs(target - meas) * 1000.0
-        threshold = max(float(settle_if_err_mm), 0.0)
-        if err_mm <= threshold:
+            meas = float(self._measured_m)
+            target = float(self._target_m)
+        if math.isfinite(meas) and math.isfinite(target) and self._encoder_sane(meas):
+            err_mm = abs(target - meas) * 1000.0
             print(
-                f"lw100 rail: task end hold (residual={err_mm:.2f} mm "
-                f"≤ {threshold:.1f} mm)",
+                f"lw100 rail: task end hold (residual={err_mm:.2f} mm)",
                 flush=True,
             )
-            self.hold_current()
-            return True
-        print(
-            f"lw100 rail: task end settle (residual={err_mm:.2f} mm "
-            f"> {threshold:.1f} mm)",
-            flush=True,
-        )
-        return self.settle_and_hold()
+        else:
+            print("lw100 rail: task end hold (encoder/target invalid)", flush=True)
+        self.hold_current()
+        return True
+
+    def _hold_watchdog(self, measured: float, now_s: float) -> None:
+        """While follow is down, keep FA24=0 and trip if the encoder walks.
+
+        Velocity mode has no position lock.  Host skip-if-unchanged plus a
+        forged ``_last_rpm_cmd=0`` is how 125211 crept at ~1 r/min after C
+        exited.  Re-write zero every second; re-anchor at 2 mm; PANIC at 5 mm
+        from the original hold (do not re-open follow to close the residual).
+        """
+        if not self._hold_active or self._drive is None:
+            return
+        if now_s - float(self._last_hold_zero_mono) >= 1.0:
+            try:
+                self._drive.set_velocity_rpm(0, force=True)
+            except Exception:
+                pass
+            self._last_hold_zero_mono = float(now_s)
+        if not (math.isfinite(measured) and self._encoder_sane(measured)):
+            return
+        origin = float(self._hold_origin_m)
+        anchor = float(self._hold_anchor_m)
+        if math.isfinite(origin) and abs(measured - origin) > 0.005:
+            self._trip_panic(
+                measured,
+                f"hold drift {abs(measured - origin) * 1000:.1f} mm "
+                f"(FA24 should be 0)",
+            )
+            return
+        if math.isfinite(anchor) and abs(measured - anchor) > 0.002:
+            try:
+                self._drive.set_velocity_rpm(0, force=True)
+            except Exception:
+                pass
+            self._last_hold_zero_mono = float(now_s)
+            with self._lock:
+                self._hold_anchor_m = float(measured)
 
     def settle_and_hold(
         self,
@@ -1130,10 +1198,8 @@ class RailServoBridge:
                     pass
         drive = self._drive
         if drive is not None:
-            try:
-                drive._last_rpm_cmd = 0
-            except Exception:
-                pass
+            # Do not forge ``_last_rpm_cmd=0`` — the worker skips the
+            # Modbus write when the latch already says zero.
             try:
                 drive._client.close()
             except Exception:
@@ -1393,7 +1459,8 @@ class RailServoBridge:
         print(
             f"lw100 rail: connecting hold @ {measured:+.4f} m ({zero_note}, "
             f"raw={raw} bias={self._drive._counts_bias}, "
-            f"soft=[{soft_lo:.2f}, {soft_hi:.2f}] m travel={self.config.travel_m:.2f} m, "
+            f"soft=[{soft_lo * 1000:.0f}, {soft_hi * 1000:.0f}] mm "
+            f"travel={self.config.travel_m:.2f} m, "
             f"velocity-follow (kp={self.config.vel_kp}, kd={self.config.vel_kd}, "
             f"v_max={self.config.vel_max_m_s:.2f} m/s, "
             f"a_max={self.config.vel_amax_m_s2:.2f} m/s², "
@@ -1790,7 +1857,7 @@ class RailServoBridge:
         margin = max(float(self.config.fault_margin_m), 0.0)
         # Soft-end taper only when *goal* is near that end (homing), not mid-scan.
         approach_m = 0.008
-        target_timeout = max(float(self.config.target_timeout_s), 0.02)
+        stream_dead_s = float(self.config.stream_dead_s())
         freeze_s = max(float(self.config.encoder_freeze_s), 0.1)
         freeze_vmin = max(float(self.config.encoder_freeze_min_v_m_s), 0.005)
         freeze_dx = max(float(self.config.encoder_freeze_min_move_mm), 0.1) * 1e-3
@@ -2137,7 +2204,7 @@ class RailServoBridge:
                         break
                     continue
 
-                if follow and last_rx > 0.0 and (t0 - last_rx) > target_timeout:
+                if follow and last_rx > 0.0 and (t0 - last_rx) > stream_dead_s:
                     err_abs = abs(target - measured) if math.isfinite(target) else 0.0
                     motion_active = (
                         abs(v_ref) >= 0.001
@@ -2224,6 +2291,13 @@ class RailServoBridge:
                     settle_deadline = None
                     standstill_held = False
                     standstill_enter_since = None
+                    if (
+                        not follow
+                        and not panic
+                        and not self._abort.is_set()
+                        and bool(self._hold_active)
+                    ):
+                        self._hold_watchdog(measured, t0)
                 else:
                     # --- Stream-aware soft CSP: arbitrary x_goal → (x_ref, v_ref) ---
                     if not ref_inited or not math.isfinite(x_ref):
@@ -2274,7 +2348,7 @@ class RailServoBridge:
                     # tiny errors while follow is live and targets are fresh.
                     # Standstill latch is only for LOCKED/HOLD or stale target.
                     target_stale = bool(
-                        last_rx <= 0.0 or (t0 - last_rx) > target_timeout
+                        last_rx <= 0.0 or (t0 - last_rx) > stream_dead_s
                     )
                     continuous_tracking = (
                         bool(follow) and not settling and not target_stale

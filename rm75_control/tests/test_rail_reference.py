@@ -283,6 +283,8 @@ def test_defaults_match_the_hardware_baseline() -> None:
     for cfg in (RailServoConfig(), parse_rail_servo_config({})):
         assert cfg.vel_kp == 14.0
         assert cfg.vel_kd == 0.22
+        assert cfg.target_stale_coast_s == pytest.approx(0.35)
+        assert cfg.soft_min_m == pytest.approx(0.025)
         assert cfg.vel_max_m_s == 0.30
         assert cfg.max_speed_rpm == 1800
         assert cfg.vel_amax_m_s2 == 0.8
@@ -294,6 +296,30 @@ def test_defaults_match_the_hardware_baseline() -> None:
         assert cfg.accel_ms == 150
         assert cfg.decel_ms == 150
         assert cfg.scurve_ms == 30
+
+
+def test_single_hitch_does_not_end_the_target_stream() -> None:
+    """A 127 ms QPIK hitch must coast; only timeout+coast ends the stream."""
+    cfg = RailServoConfig(target_timeout_s=0.10, target_stale_coast_s=0.35)
+    dead = cfg.stream_dead_s()
+    assert dead == pytest.approx(0.45)
+    assert 0.127 < dead
+    assert 0.50 > dead
+    yaml_cfg = parse_rail_servo_config(
+        {
+            "hw": {
+                "lw100": {
+                    "target_timeout_s": 0.25,
+                    "target_stale_coast_s": 0.35,
+                    "vel_kp": 14.0,
+                    "vel_kd": 0.22,
+                }
+            }
+        }
+    )
+    assert yaml_cfg.vel_kp == 14.0
+    assert yaml_cfg.vel_kd == 0.22
+    assert yaml_cfg.stream_dead_s() == pytest.approx(0.60)
 
 
 def test_begin_tracking_session_clears_stale_target_and_hold() -> None:
