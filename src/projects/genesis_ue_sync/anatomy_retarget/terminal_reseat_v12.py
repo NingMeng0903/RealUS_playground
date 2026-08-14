@@ -4,16 +4,16 @@ Every version from V7 through V11 froze the terminals to copy-142, so their
 containment numbers are identical and the feet are the top poke source in
 every pose -- both independent visual reviews block on exactly that.
 
-Measured on subject 213328 at rest, a pure rigid move of the left foot cluster
-(6 mm translation, 11 degrees rotation, no scale at all) takes its worst
-poke-through from 16.4 mm to 2.4 mm and the outside vertex count from 815 to
-93.  The foot is not too large for the SMPL-X envelope; it is rotated about
-11 degrees out of the foot pocket.
+A single rigid T on ``Ankle_Rot`` cannot seat every posed foot pocket: the
+hindfoot, metatarsals and toes have to move together, and the 1 mm
+non-regression wall then leaves a 10 mm-class residual.  V12c splits the
+authored tree at ``Arch_Rot`` (the only child of the ankle) so the hindfoot
+and the forefoot each get their own bounded rigid T, composed as
+``T_arch @ T_a`` on the arch subtree.  The objective is the outside-area
+fraction the blind reviewer sees as red, not a single max-mm spike.
 
-So this module solves that rigid transform and applies it to both the terminal
-bind matrices and the terminal geometry, blended by LBS weight so the wrist and
-ankle seams do not tear.  No scaling, no vertex surgery, no weight edits: the
-authored bone stays exactly the shape the Blender rig authored.
+No scaling, no vertex surgery, no weight edits: the authored bone stays
+exactly the shape the Blender rig authored.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from .chain_containment_v1 import _signed_distance
+from .chain_containment_v1 import _signed_distance, _vertex_areas
 from .pose_map_v10 import FOOT_ROOTS, HAND_ROOTS
 from .whole_chain_rest_fit_v1 import _descendants
 
@@ -37,6 +37,11 @@ from .whole_chain_rest_fit_v1 import _descendants
 # decides whether a given re-seat is allowed to stand.
 MAX_TRANSLATION_M = 0.015
 MAX_ROTATION_DEG = 15.0
+
+# Arch_Rot is not in JOINT_SPECS, so it has no anatomical ball.  Keep the
+# extra forefoot translation tighter than the ankle so the midfoot seam
+# cannot walk away from the tarsals.
+FOREFOOT_MAX_TRANSLATION_M = 0.008
 
 # Objective sample size.  The clusters have 5k-10k vertices and the signed
 # distance query dominates the solve, so the fit runs on a deterministic
@@ -54,7 +59,16 @@ NON_REGRESSION_SLACK_M = 0.001
 # cross the skin; the accept step therefore also holds this area budget.
 AREA_INSIDE_REGRESSION_MAX = 0.02
 
+# Ankle / wrist roots keep the 142 terminal FK contract.  Arch_Rot is the
+# authored midfoot root (owns every metatarsal and the toe chains).
+FOREFOOT_ROOTS = ("Arch_Rot_L", "Arch_Rot_R")
 TERMINAL_ROOTS = (*HAND_ROOTS, *FOOT_ROOTS)
+RESEAT_ORDER = (*HAND_ROOTS, *FOOT_ROOTS, *FOREFOOT_ROOTS)
+
+_ARCH_PARENT = {
+    "Arch_Rot_L": "Ankle_Rot_L",
+    "Arch_Rot_R": "Ankle_Rot_R",
+}
 
 
 def _cluster_vertex_ids(asset: Any, controllers: Sequence[int]) -> np.ndarray:
@@ -82,14 +96,13 @@ def _blended_affine(
 
 
 def _controller_delta(
-    n_bones: int, controllers: Sequence[int], transform: np.ndarray
+    n_bones: int, assignments: Mapping[int, np.ndarray]
 ) -> np.ndarray:
-    """Identity on every bone, ``transform`` on the named controllers."""
+    """Identity on every bone, then the named per-controller transforms."""
 
     delta = np.tile(np.eye(4, dtype=np.float64), (int(n_bones), 1, 1))
-    matrix = np.asarray(transform, dtype=np.float64)
-    for controller in controllers:
-        delta[int(controller)] = matrix
+    for controller, transform in assignments.items():
+        delta[int(controller)] = np.asarray(transform, dtype=np.float64)
     return delta
 
 
@@ -100,6 +113,25 @@ def _lbs_moved(
 
     affine = _blended_affine(asset, vertex_ids, delta)
     return np.einsum("vab,vb->va", affine[:, :3, :3], points) + affine[:, :3, 3]
+
+
+def _controllers_for(
+    root_name: str, names: Sequence[str], parents: np.ndarray
+) -> list[int]:
+    """Partition the ankle from its arch subtree.
+
+    ``Ankle_Rot_*`` owns only itself (hindfoot meshes).  ``Arch_Rot_*`` and
+    the wrists own the full descendant set, including the root.
+    """
+
+    root = names.index(root_name)
+    if root_name in FOOT_ROOTS:
+        return [int(root)]
+    return sorted(int(i) for i in _descendants(parents, root))
+
+
+def _parent_root(root_name: str) -> str | None:
+    return _ARCH_PARENT.get(root_name)
 
 
 def _cluster_mesh_areas(
@@ -129,6 +161,22 @@ def _cluster_mesh_areas(
     return fracs
 
 
+def _outside_area_fraction(
+    points: np.ndarray,
+    skin: np.ndarray,
+    skin_faces: np.ndarray,
+    weights: np.ndarray,
+) -> float:
+    signed = _signed_distance(points, skin, skin_faces)
+    poke = signed > 0.0
+    total = float(np.sum(weights))
+    if not len(poke):
+        return 0.0
+    if total <= 0.0:
+        return float(np.mean(poke))
+    return float(np.sum(weights[poke]) / total)
+
+
 def _frame_max_outside(
     asset: Any,
     vertex_ids: np.ndarray,
@@ -152,6 +200,27 @@ def _frame_max_outside(
     return out
 
 
+def _frame_outside_area(
+    asset: Any,
+    vertex_ids: np.ndarray,
+    rest_points: np.ndarray,
+    weights: np.ndarray,
+    delta: np.ndarray,
+    frames: Sequence[tuple[np.ndarray, np.ndarray, np.ndarray | None]],
+) -> list[float]:
+    moved = _lbs_moved(asset, vertex_ids, rest_points, delta)
+    out: list[float] = []
+    for frame_skin, frame_faces, affine in frames:
+        posed = (
+            moved
+            if affine is None
+            else np.einsum("vab,vb->va", affine[:, :3, :3], moved)
+            + affine[:, :3, 3]
+        )
+        out.append(_outside_area_fraction(posed, frame_skin, frame_faces, weights))
+    return out
+
+
 def _rigid(parameters: np.ndarray, centre: np.ndarray) -> np.ndarray:
     from scipy.spatial.transform import Rotation
 
@@ -164,6 +233,438 @@ def _rigid(parameters: np.ndarray, centre: np.ndarray) -> np.ndarray:
 
 def _apply(transform: np.ndarray, points: np.ndarray) -> np.ndarray:
     return points @ np.asarray(transform[:3, :3]).T + np.asarray(transform[:3, 3])
+
+
+def _cluster_weights(
+    rest: np.ndarray, asset: Any, vertex_ids: np.ndarray
+) -> np.ndarray:
+    faces = getattr(asset, "faces", None)
+    if faces is None:
+        return np.ones(len(vertex_ids), dtype=np.float64)
+    areas = _vertex_areas(rest, np.asarray(faces))
+    weights = areas[vertex_ids]
+    if float(np.sum(weights)) <= 0.0:
+        return np.ones(len(vertex_ids), dtype=np.float64)
+    return weights
+
+
+def _assignments(
+    *,
+    n_bones: int,
+    controllers: Sequence[int],
+    transform: np.ndarray,
+    parent_controllers: Sequence[int] | None,
+    parent_transform: np.ndarray | None,
+) -> dict[int, np.ndarray]:
+    """Per-controller deltas: parent T on the proximal set, composed on distal."""
+
+    assigned: dict[int, np.ndarray] = {}
+    parent = (
+        np.asarray(parent_transform, dtype=np.float64)
+        if parent_transform is not None
+        else np.eye(4, dtype=np.float64)
+    )
+    if parent_controllers:
+        for controller in parent_controllers:
+            assigned[int(controller)] = parent
+    composed = np.asarray(transform, dtype=np.float64) @ parent
+    for controller in controllers:
+        assigned[int(controller)] = composed
+    return assigned
+
+
+def _fit_one_cluster(
+    *,
+    root_name: str,
+    rest: np.ndarray,
+    asset: Any,
+    matrices: np.ndarray,
+    names: Sequence[str],
+    parents: np.ndarray,
+    skin_points: np.ndarray,
+    skin_triangles: np.ndarray,
+    pose_frames: Sequence[Mapping[str, Any]] | None,
+    anchor_targets: Mapping[str, np.ndarray] | None,
+    anchor_budget_m: Mapping[str, float] | None,
+    parent_transform: np.ndarray | None,
+    parent_controllers: Sequence[int] | None,
+    max_translation_m: float,
+    max_rotation_deg: float,
+    samples: int,
+) -> dict[str, Any]:
+    from scipy.optimize import minimize
+
+    controllers = _controllers_for(root_name, names, parents)
+    ids = _cluster_vertex_ids(asset, controllers)
+    if not len(ids):
+        raise ValueError(f"terminal cluster {root_name} has no bone vertices")
+    cluster = rest[ids]
+    centre = np.asarray(matrices[names.index(root_name), :3, 3], dtype=np.float64)
+    if parent_transform is not None:
+        centre = _apply(parent_transform, centre[None, :])[0]
+    generator = np.random.default_rng(abs(hash(root_name)) % (2**32))
+    pick = (
+        generator.choice(len(cluster), size=samples, replace=False)
+        if len(cluster) > samples
+        else np.arange(len(cluster))
+    )
+    sampled = cluster[pick]
+    weights = _cluster_weights(rest, asset, ids)
+    sample_weights = weights[pick]
+    bound = float(np.deg2rad(max_rotation_deg))
+    target = None if anchor_targets is None else anchor_targets.get(root_name)
+    budget = None if anchor_budget_m is None else anchor_budget_m.get(root_name)
+
+    frames: list[tuple[np.ndarray, np.ndarray, np.ndarray | None]] = [
+        (skin_points, skin_triangles, None)
+    ]
+    for entry in pose_frames or ():
+        frames.append(
+            (
+                np.asarray(entry["skin"], dtype=np.float64),
+                np.asarray(entry["skin_faces"]),
+                _blended_affine(
+                    asset, ids[pick], np.asarray(entry["source_transforms"])
+                ),
+            )
+        )
+
+    identity = np.eye(4, dtype=np.float64)
+    parent = (
+        np.asarray(parent_transform, dtype=np.float64)
+        if parent_transform is not None
+        else identity
+    )
+
+    def _delta_of(transform: np.ndarray) -> np.ndarray:
+        return _controller_delta(
+            len(matrices),
+            _assignments(
+                n_bones=len(matrices),
+                controllers=controllers,
+                transform=transform,
+                parent_controllers=parent_controllers,
+                parent_transform=parent_transform,
+            ),
+        )
+
+    inherit_name = None
+    inherit_controllers: list[int] = []
+    inherit_ids = np.empty(0, dtype=np.int64)
+    inherit_pick = np.empty(0, dtype=np.int64)
+    inherit_sampled = np.empty((0, 3), dtype=np.float64)
+    inherit_frames: list[tuple[np.ndarray, np.ndarray, np.ndarray | None]] = []
+    if root_name in FOOT_ROOTS:
+        candidate = "Arch_Rot_L" if root_name.endswith("_L") else "Arch_Rot_R"
+        if candidate in names:
+            inherit_name = candidate
+            inherit_controllers = _controllers_for(candidate, names, parents)
+            inherit_ids = _cluster_vertex_ids(asset, inherit_controllers)
+            if len(inherit_ids):
+                inherit_cluster_pts = rest[inherit_ids]
+                inherit_pick = (
+                    generator.choice(len(inherit_ids), size=min(samples, len(inherit_ids)), replace=False)
+                    if len(inherit_ids) > samples
+                    else np.arange(len(inherit_ids))
+                )
+                inherit_sampled = inherit_cluster_pts[inherit_pick]
+                inherit_frames = [(skin_points, skin_triangles, None)]
+                for entry in pose_frames or ():
+                    inherit_frames.append(
+                        (
+                            np.asarray(entry["skin"], dtype=np.float64),
+                            np.asarray(entry["skin_faces"]),
+                            _blended_affine(
+                                asset,
+                                inherit_ids[inherit_pick],
+                                np.asarray(entry["source_transforms"]),
+                            ),
+                        )
+                    )
+
+    def _inherit_delta(transform: np.ndarray) -> np.ndarray:
+        # Preview T_a on the arch subtree (T_rel = I) so an ankle T that
+        # swings the toes 20 mm cannot hide behind a hindfoot-only wall.
+        assigned = {int(c): transform for c in controllers}
+        for controller in inherit_controllers:
+            assigned[int(controller)] = transform
+        return _controller_delta(len(matrices), assigned)
+
+    true_identity = _controller_delta(len(matrices), {})
+    baselines_mm: list[float] = []
+    unmoved_cluster = sampled
+    for frame_skin, frame_faces, affine in frames:
+        unmoved = (
+            unmoved_cluster
+            if affine is None
+            else np.einsum("vab,vb->va", affine[:, :3, :3], unmoved_cluster)
+            + affine[:, :3, 3]
+        )
+        signed = _signed_distance(unmoved, frame_skin, frame_faces)
+        baselines_mm.append(float(max(0.0, float(np.max(signed)))))
+    inherit_baselines: list[float] = []
+    for frame_skin, frame_faces, affine in inherit_frames:
+        unmoved = (
+            inherit_sampled
+            if affine is None
+            else np.einsum("vab,vb->va", affine[:, :3, :3], inherit_sampled)
+            + affine[:, :3, 3]
+        )
+        signed = _signed_distance(unmoved, frame_skin, frame_faces)
+        inherit_baselines.append(float(max(0.0, float(np.max(signed)))))
+
+    def cost(parameters: np.ndarray) -> float:
+        rot_norm = float(np.linalg.norm(parameters[3:]))
+        if rot_norm > bound:
+            return 1.0e6 * (1.0 + rot_norm - bound)
+        transform = _rigid(parameters, centre)
+        if target is not None and budget is not None:
+            origin = _apply(transform @ parent, matrices[names.index(root_name), :3, 3][None, :])[0]
+            excess = float(np.linalg.norm(origin - target)) - float(budget)
+            if excess > 0.0:
+                return 1.0e6 * (1.0 + excess)
+        delta = _delta_of(transform)
+        moved = _lbs_moved(asset, ids[pick], sampled, delta)
+        worst_area = 0.0
+        worst_mm = 0.0
+        for baseline, (frame_skin, frame_faces, affine) in zip(baselines_mm, frames):
+            posed = (
+                moved
+                if affine is None
+                else np.einsum("vab,vb->va", affine[:, :3, :3], moved)
+                + affine[:, :3, 3]
+            )
+            signed = _signed_distance(posed, frame_skin, frame_faces)
+            poke = np.maximum(signed, 0.0)
+            mx = float(np.max(poke)) if len(poke) else 0.0
+            extra = mx - float(baseline) - NON_REGRESSION_SLACK_M
+            if extra > 0.0:
+                return 1.0e6 * (1.0 + extra)
+            worst_mm = max(worst_mm, mx)
+            worst_area = max(
+                worst_area,
+                _outside_area_fraction(posed, frame_skin, frame_faces, sample_weights),
+            )
+        if len(inherit_ids):
+            inherited = _lbs_moved(
+                asset, inherit_ids[inherit_pick], inherit_sampled, _inherit_delta(transform)
+            )
+            for baseline, (frame_skin, frame_faces, affine) in zip(
+                inherit_baselines, inherit_frames
+            ):
+                posed = (
+                    inherited
+                    if affine is None
+                    else np.einsum("vab,vb->va", affine[:, :3, :3], inherited)
+                    + affine[:, :3, 3]
+                )
+                mx = float(max(0.0, float(np.max(_signed_distance(posed, frame_skin, frame_faces)))))
+                if mx > float(baseline) + NON_REGRESSION_SLACK_M:
+                    return 1.0e6 * (1.0 + mx - float(baseline))
+        return worst_area * worst_area + 1.0e-4 * worst_mm * worst_mm
+
+    translation_bound = max(float(max_translation_m), 1.0e-12)
+    best = minimize(
+        cost,
+        np.zeros(6),
+        method="Powell",
+        bounds=[(-translation_bound, translation_bound)] * 3 + [(-bound, bound)] * 3,
+        options={"maxiter": 300, "xtol": 1.0e-4, "ftol": 1.0e-7},
+    )
+    parameters = np.asarray(best.x, dtype=np.float64).copy()
+    if max_translation_m <= 0.0:
+        parameters[:3] = 0.0
+    rot_norm = float(np.linalg.norm(parameters[3:]))
+    if rot_norm > bound:
+        parameters[3:] *= bound / rot_norm
+    transform = _rigid(parameters, centre)
+
+    full_frames: list[tuple[np.ndarray, np.ndarray, np.ndarray | None]] = [
+        (skin_points, skin_triangles, None)
+    ]
+    for entry in pose_frames or ():
+        full_frames.append(
+            (
+                np.asarray(entry["skin"], dtype=np.float64),
+                np.asarray(entry["skin_faces"]),
+                _blended_affine(asset, ids, np.asarray(entry["source_transforms"])),
+            )
+        )
+    has_faces = getattr(asset, "faces", None) is not None
+
+    def _scatter_posed(delta: np.ndarray, affine: np.ndarray | None) -> np.ndarray:
+        moved = _lbs_moved(asset, ids, cluster, delta)
+        posed = (
+            moved
+            if affine is None
+            else np.einsum("vab,vb->va", affine[:, :3, :3], moved)
+            + affine[:, :3, 3]
+        )
+        full = np.asarray(rest, dtype=np.float64).copy()
+        full[ids] = posed
+        return full
+
+    def _areas(delta: np.ndarray) -> list[list[float]]:
+        if not has_faces:
+            return [[] for _ in full_frames]
+        return [
+            _cluster_mesh_areas(
+                asset, _scatter_posed(delta, affine), frame_skin, frame_faces, controllers
+            )
+            for frame_skin, frame_faces, affine in full_frames
+        ]
+
+    def _accept(candidate: np.ndarray) -> tuple[bool, np.ndarray, list[float], list[float]]:
+        from .terminal_pose_regression_v6 import (
+            HAND_FOOT_COLLAPSE_BASELINE_MIN,
+            HAND_FOOT_COLLAPSE_CANDIDATE_MAX,
+        )
+
+        matrix = _rigid(candidate, centre)
+        delta = _delta_of(matrix)
+        after_m = _frame_max_outside(asset, ids, cluster, delta, full_frames)
+        after_area = _frame_outside_area(
+            asset, ids, cluster, weights, delta, full_frames
+        )
+        if any(
+            later > earlier + NON_REGRESSION_SLACK_M + 1.0e-6
+            for earlier, later in zip(original_before, after_m)
+        ):
+            return False, matrix, after_m, after_area
+        if len(inherit_ids):
+            inherit_after = _frame_max_outside(
+                asset,
+                inherit_ids,
+                rest[inherit_ids],
+                _inherit_delta(matrix),
+                inherit_full_frames,
+            )
+            if any(
+                later > earlier + NON_REGRESSION_SLACK_M + 1.0e-6
+                for earlier, later in zip(inherit_original, inherit_after)
+            ):
+                return False, matrix, after_m, after_area
+        if has_faces:
+            for before_meshes, after_meshes in zip(area_before, _areas(delta)):
+                if not before_meshes:
+                    continue
+                if (
+                    float(np.mean(after_meshes))
+                    < float(np.mean(before_meshes)) - AREA_INSIDE_REGRESSION_MAX
+                ):
+                    return False, matrix, after_m, after_area
+                if any(
+                    earlier > HAND_FOOT_COLLAPSE_BASELINE_MIN
+                    and later < HAND_FOOT_COLLAPSE_CANDIDATE_MAX
+                    for earlier, later in zip(before_meshes, after_meshes)
+                ):
+                    return False, matrix, after_m, after_area
+        return True, matrix, after_m, after_area
+
+    identity_delta = _delta_of(identity)
+    original_before = _frame_max_outside(asset, ids, cluster, true_identity, full_frames)
+    inherit_full_frames: list[tuple[np.ndarray, np.ndarray, np.ndarray | None]] = []
+    inherit_original: list[float] = []
+    if len(inherit_ids):
+        inherit_full_frames = [(skin_points, skin_triangles, None)]
+        for entry in pose_frames or ():
+            inherit_full_frames.append(
+                (
+                    np.asarray(entry["skin"], dtype=np.float64),
+                    np.asarray(entry["skin_faces"]),
+                    _blended_affine(
+                        asset, inherit_ids, np.asarray(entry["source_transforms"])
+                    ),
+                )
+            )
+        inherit_original = _frame_max_outside(
+            asset, inherit_ids, rest[inherit_ids], true_identity, inherit_full_frames
+        )
+    full_before = _frame_max_outside(asset, ids, cluster, identity_delta, full_frames)
+    area_frac_before = _frame_outside_area(
+        asset, ids, cluster, weights, identity_delta, full_frames
+    )
+    area_before = _areas(identity_delta)
+    ok, transform, full_after, area_after = _accept(parameters)
+    rejected = bool(best.fun >= 1.0e5) or not ok
+    if rejected and float(np.linalg.norm(parameters)) > 0.0:
+        lo, hi = 0.0, 1.0
+        kept = np.zeros(6, dtype=np.float64)
+        kept_transform = identity
+        kept_after = list(full_before)
+        kept_area = list(area_frac_before)
+        for _ in range(8):
+            mid = 0.5 * (lo + hi)
+            trial = parameters * mid
+            accepted, matrix, after_m, after_area = _accept(trial)
+            if accepted:
+                kept = trial
+                kept_transform = matrix
+                kept_after = after_m
+                kept_area = after_area
+                lo = mid
+            else:
+                hi = mid
+        if lo > 0.0:
+            parameters = kept
+            transform = kept_transform
+            full_after = kept_after
+            area_after = kept_area
+            rejected = False
+        else:
+            parameters[:] = 0.0
+            transform = identity
+            full_after = list(full_before)
+            area_after = list(area_frac_before)
+
+    composed = transform @ parent
+    before = _signed_distance(
+        _lbs_moved(asset, ids, cluster, identity_delta), skin_points, skin_triangles
+    )
+    after = _signed_distance(
+        _lbs_moved(asset, ids, cluster, _delta_of(transform)),
+        skin_points,
+        skin_triangles,
+    )
+    bind_origin = np.asarray(matrices[names.index(root_name), :3, 3], dtype=np.float64)
+    return {
+        "controllers": controllers,
+        "vertex_ids": ids,
+        "transform": transform,
+        "composed_transform": composed,
+        "parent": _parent_root(root_name),
+        "pivot": "terminal_root_bind_origin",
+        "root_origin_shift_m": float(
+            np.linalg.norm(_apply(composed, bind_origin[None, :])[0] - bind_origin)
+        ),
+        "translation_m": float(np.linalg.norm(parameters[:3])),
+        "rotation_deg": float(np.degrees(np.linalg.norm(parameters[3:]))),
+        "max_outside_before_m": float(max(0.0, float(np.max(before)))),
+        "max_outside_after_m": float(max(0.0, float(np.max(after)))),
+        "outside_area_before": float(
+            _outside_area_fraction(
+                _lbs_moved(asset, ids, cluster, identity_delta),
+                skin_points,
+                skin_triangles,
+                weights,
+            )
+        ),
+        "outside_area_after": float(
+            _outside_area_fraction(
+                _lbs_moved(asset, ids, cluster, _delta_of(transform)),
+                skin_points,
+                skin_triangles,
+                weights,
+            )
+        ),
+        "outside_count_before": int(np.count_nonzero(before > 0.0)),
+        "outside_count_after": int(np.count_nonzero(after > 0.0)),
+        "rejected_full_cluster_regression": bool(rejected),
+        "frame_max_outside_before_m": [float(v) for v in full_before],
+        "frame_max_outside_after_m": [float(v) for v in full_after],
+        "frame_outside_area_before": [float(v) for v in area_frac_before],
+        "frame_outside_area_after": [float(v) for v in area_after],
+    }
 
 
 def solve_terminal_reseat_v12(
@@ -181,20 +682,15 @@ def solve_terminal_reseat_v12(
     max_rotation_deg: float = MAX_ROTATION_DEG,
     samples: int = OBJECTIVE_SAMPLES,
 ) -> dict[str, Any]:
-    """Fit one bounded rigid transform per terminal cluster at rest.
+    """Fit one bounded rigid transform per terminal / arch cluster at rest.
 
-    The rotation pivot is the terminal root's bind origin -- the wrist or
-    ankle joint centre -- so the swing is anatomical rather than about an
-    arbitrary centroid.
+    Ankles are fitted first on hindfoot meshes only.  ``Arch_Rot`` is then
+    fitted relative to that ankle T, pivoted at the already-moved arch
+    origin.  Hands stay a single descendant cluster.
 
-    ``anchor_targets`` / ``anchor_budget_m`` keep the solve inside
-    ``evaluate_rest_anatomical_anchor_v11``: the re-seated root origin may not
-    end further from its anatomical target than the prefit bind was.  Without
-    that constraint the best skin fit walks the ankle 18.6 mm off the
-    anatomical ankle and the anchor gate rejects it.
+    ``anchor_targets`` / ``anchor_budget_m`` apply only to wrist/ankle roots
+    that sit in ``evaluate_rest_anatomical_anchor_v11``.
     """
-
-    from scipy.optimize import minimize
 
     rest = np.asarray(vertices, dtype=np.float64)
     matrices = np.asarray(bind, dtype=np.float64)
@@ -202,251 +698,42 @@ def solve_terminal_reseat_v12(
     parents = np.asarray(bone_parents, dtype=np.int64)
     skin_points = np.asarray(skin, dtype=np.float64)
     skin_triangles = np.asarray(skin_faces)
-    bound = float(np.deg2rad(max_rotation_deg))
+    present = set(names)
 
     result: dict[str, Any] = {}
-    for root_name in TERMINAL_ROOTS:
-        root = names.index(root_name)
-        controllers = sorted({root, *(int(i) for i in _descendants(parents, root))})
-        ids = _cluster_vertex_ids(asset, controllers)
-        if not len(ids):
-            raise ValueError(f"terminal cluster {root_name} has no bone vertices")
-        cluster = rest[ids]
-        centre = matrices[root, :3, 3]
-        generator = np.random.default_rng(abs(hash(root_name)) % (2**32))
-        pick = (
-            generator.choice(len(cluster), size=samples, replace=False)
-            if len(cluster) > samples
-            else np.arange(len(cluster))
+    for root_name in RESEAT_ORDER:
+        if root_name not in present:
+            continue
+        parent_name = _parent_root(root_name)
+        parent_transform = None
+        parent_controllers = None
+        translation_cap = float(max_translation_m)
+        if parent_name is not None and parent_name in result:
+            parent_transform = np.asarray(
+                result[parent_name]["transform"], dtype=np.float64
+            )
+            parent_controllers = list(result[parent_name]["controllers"])
+            translation_cap = min(translation_cap, FOREFOOT_MAX_TRANSLATION_M)
+        elif parent_name is not None:
+            translation_cap = min(translation_cap, FOREFOOT_MAX_TRANSLATION_M)
+        result[root_name] = _fit_one_cluster(
+            root_name=root_name,
+            rest=rest,
+            asset=asset,
+            matrices=matrices,
+            names=names,
+            parents=parents,
+            skin_points=skin_points,
+            skin_triangles=skin_triangles,
+            pose_frames=pose_frames,
+            anchor_targets=anchor_targets,
+            anchor_budget_m=anchor_budget_m,
+            parent_transform=parent_transform,
+            parent_controllers=parent_controllers,
+            max_translation_m=translation_cap,
+            max_rotation_deg=max_rotation_deg,
+            samples=samples,
         )
-        sampled = cluster[pick]
-
-        target = None if anchor_targets is None else anchor_targets.get(root_name)
-        budget = None if anchor_budget_m is None else anchor_budget_m.get(root_name)
-
-        # Under the terminal contract the posed transform of a terminal vertex
-        # is ``G_src @ inv(B_src)`` blended by its frozen weights, which does
-        # not depend on the re-seat at all.  So the posed cluster is an affine
-        # image of the re-seated rest cluster and every pose can be scored for
-        # the cost of one more signed-distance query.  Fitting rest only is not
-        # enough: it wins 11 mm at rest and gives 3 mm back at 105 degrees of
-        # knee flexion, because the posed foot pocket is a different shape.
-        frames: list[tuple[np.ndarray, np.ndarray, np.ndarray | None]] = [
-            (skin_points, skin_triangles, None)
-        ]
-        for entry in pose_frames or ():
-            affine = _blended_affine(
-                asset, ids[pick], np.asarray(entry["source_transforms"])
-            )
-            frames.append(
-                (
-                    np.asarray(entry["skin"], dtype=np.float64),
-                    np.asarray(entry["skin_faces"]),
-                    affine,
-                )
-            )
-
-        # T=0 baselines on the same samples the objective sees.  Mean-SSE
-        # across frames is the wrong score: one rigid T cannot seat every
-        # posed foot pocket, so the mean spends T-pose millimetres to buy
-        # flexed-foot millimetres.  Minimax + a 1 mm non-regression wall
-        # keeps any frame from paying for another.
-        baselines: list[float] = []
-        for frame_skin, frame_faces, affine in frames:
-            unmoved = (
-                sampled
-                if affine is None
-                else np.einsum("vab,vb->va", affine[:, :3, :3], sampled)
-                + affine[:, :3, 3]
-            )
-            signed = _signed_distance(unmoved, frame_skin, frame_faces)
-            baselines.append(float(max(0.0, float(np.max(signed)))))
-
-        def cost(parameters: np.ndarray) -> float:
-            rot_norm = float(np.linalg.norm(parameters[3:]))
-            if rot_norm > bound:
-                return 1.0e6 * (1.0 + rot_norm - bound)
-            transform = _rigid(parameters, centre)
-            if target is not None and budget is not None:
-                origin = _apply(transform, centre[None, :])[0]
-                excess = float(np.linalg.norm(origin - target)) - float(budget)
-                if excess > 0.0:
-                    # Outside the anatomical ball the anchor gate allows.
-                    return 1.0e6 * (1.0 + excess)
-            # Same LBS path as apply_terminal_reseat_v12: a seam vertex that
-            # is only partly weighted to the ankle must not be scored as if
-            # the whole rigid T landed on it.  The earlier full-T objective
-            # fitted a motion the apply step then refused to realise.
-            delta = _controller_delta(len(matrices), controllers, transform)
-            moved = _lbs_moved(asset, ids[pick], sampled, delta)
-            worst = 0.0
-            sse = 0.0
-            for baseline, (frame_skin, frame_faces, affine) in zip(baselines, frames):
-                posed = (
-                    moved
-                    if affine is None
-                    else np.einsum("vab,vb->va", affine[:, :3, :3], moved)
-                    + affine[:, :3, 3]
-                )
-                signed = _signed_distance(posed, frame_skin, frame_faces)
-                poke = np.maximum(signed, 0.0)
-                mx = float(np.max(poke)) if len(poke) else 0.0
-                extra = mx - float(baseline) - NON_REGRESSION_SLACK_M
-                if extra > 0.0:
-                    return 1.0e6 * (1.0 + extra)
-                worst = max(worst, mx)
-                sse += float(np.sum(poke * poke))
-            return worst * worst + 1.0e-3 * sse / len(frames)
-
-        translation_bound = max(float(max_translation_m), 1.0e-12)
-        best = minimize(
-            cost,
-            np.zeros(6),
-            method="Powell",
-            bounds=[(-translation_bound, translation_bound)] * 3
-            + [(-bound, bound)] * 3,
-            options={"maxiter": 300, "xtol": 1.0e-4, "ftol": 1.0e-7},
-        )
-        parameters = np.asarray(best.x, dtype=np.float64).copy()
-        if max_translation_m <= 0.0:
-            parameters[:3] = 0.0
-        rot_norm = float(np.linalg.norm(parameters[3:]))
-        if rot_norm > bound:
-            parameters[3:] *= bound / rot_norm
-        transform = _rigid(parameters, centre)
-        # Powell scores a subsample.  A 26 deg wrist swing can look fine on
-        # 800 palm samples and throw the fingertips 60 mm out of the skin.
-        # Reject any T that regresses the *full* cluster on any fitted frame.
-        full_frames: list[tuple[np.ndarray, np.ndarray, np.ndarray | None]] = [
-            (skin_points, skin_triangles, None)
-        ]
-        for entry in pose_frames or ():
-            full_frames.append(
-                (
-                    np.asarray(entry["skin"], dtype=np.float64),
-                    np.asarray(entry["skin_faces"]),
-                    _blended_affine(
-                        asset, ids, np.asarray(entry["source_transforms"])
-                    ),
-                )
-            )
-        identity = np.eye(4, dtype=np.float64)
-        has_faces = getattr(asset, "faces", None) is not None
-
-        def _scatter_posed(delta: np.ndarray, affine: np.ndarray | None) -> np.ndarray:
-            moved = _lbs_moved(asset, ids, cluster, delta)
-            posed = (
-                moved
-                if affine is None
-                else np.einsum("vab,vb->va", affine[:, :3, :3], moved)
-                + affine[:, :3, 3]
-            )
-            full = np.asarray(rest, dtype=np.float64).copy()
-            full[ids] = posed
-            return full
-
-        def _areas(delta: np.ndarray) -> list[list[float]]:
-            if not has_faces:
-                return [[] for _ in full_frames]
-            return [
-                _cluster_mesh_areas(
-                    asset, _scatter_posed(delta, affine), frame_skin, frame_faces, controllers
-                )
-                for frame_skin, frame_faces, affine in full_frames
-            ]
-
-        def _accept(candidate: np.ndarray) -> tuple[bool, np.ndarray, list[float]]:
-            from .terminal_pose_regression_v6 import (
-                HAND_FOOT_COLLAPSE_BASELINE_MIN,
-                HAND_FOOT_COLLAPSE_CANDIDATE_MAX,
-            )
-
-            matrix = _rigid(candidate, centre)
-            delta = _controller_delta(len(matrices), controllers, matrix)
-            after_m = _frame_max_outside(asset, ids, cluster, delta, full_frames)
-            if any(
-                later > earlier + NON_REGRESSION_SLACK_M + 1.0e-6
-                for earlier, later in zip(full_before, after_m)
-            ):
-                return False, matrix, after_m
-            if has_faces:
-                for before_meshes, after_meshes in zip(area_before, _areas(delta)):
-                    if not before_meshes:
-                        continue
-                    if (
-                        float(np.mean(after_meshes))
-                        < float(np.mean(before_meshes)) - AREA_INSIDE_REGRESSION_MAX
-                    ):
-                        return False, matrix, after_m
-                    if any(
-                        earlier > HAND_FOOT_COLLAPSE_BASELINE_MIN
-                        and later < HAND_FOOT_COLLAPSE_CANDIDATE_MAX
-                        for earlier, later in zip(before_meshes, after_meshes)
-                    ):
-                        return False, matrix, after_m
-            return True, matrix, after_m
-
-        identity_delta = _controller_delta(len(matrices), controllers, identity)
-        full_before = _frame_max_outside(asset, ids, cluster, identity_delta, full_frames)
-        area_before = _areas(identity_delta)
-        ok, transform, full_after = _accept(parameters)
-        rejected = bool(best.fun >= 1.0e5) or not ok
-        if rejected and float(np.linalg.norm(parameters)) > 0.0:
-            # Largest scaled T that still clears max-outside and area-inside
-            # on every fitted frame, including T-pose.
-            lo, hi = 0.0, 1.0
-            kept = np.zeros(6, dtype=np.float64)
-            kept_transform = identity
-            kept_after = list(full_before)
-            for _ in range(8):
-                mid = 0.5 * (lo + hi)
-                trial = parameters * mid
-                accepted, matrix, after_m = _accept(trial)
-                if accepted:
-                    kept = trial
-                    kept_transform = matrix
-                    kept_after = after_m
-                    lo = mid
-                else:
-                    hi = mid
-            if lo > 0.0:
-                parameters = kept
-                transform = kept_transform
-                full_after = kept_after
-                rejected = False
-            else:
-                parameters[:] = 0.0
-                transform = identity
-                full_after = list(full_before)
-        before = _signed_distance(cluster, skin_points, skin_triangles)
-        after = _signed_distance(
-            _lbs_moved(
-                asset,
-                ids,
-                cluster,
-                _controller_delta(len(matrices), controllers, transform),
-            ),
-            skin_points,
-            skin_triangles,
-        )
-        result[root_name] = {
-            "controllers": controllers,
-            "vertex_ids": ids,
-            "transform": transform,
-            "pivot": "terminal_root_bind_origin",
-            "root_origin_shift_m": float(
-                np.linalg.norm(_apply(transform, centre[None, :])[0] - centre)
-            ),
-            "translation_m": float(np.linalg.norm(parameters[:3])),
-            "rotation_deg": float(np.degrees(np.linalg.norm(parameters[3:]))),
-            "max_outside_before_m": float(max(0.0, float(np.max(before)))),
-            "max_outside_after_m": float(max(0.0, float(np.max(after)))),
-            "outside_count_before": int(np.count_nonzero(before > 0.0)),
-            "outside_count_after": int(np.count_nonzero(after > 0.0)),
-            "rejected_full_cluster_regression": bool(rejected),
-            "frame_max_outside_before_m": [float(v) for v in full_before],
-            "frame_max_outside_after_m": [float(v) for v in full_after],
-        }
     return result
 
 
@@ -457,16 +744,13 @@ def apply_terminal_reseat_v12(
     asset: Any,
     reseat: Mapping[str, Any],
 ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
-    """Move terminal geometry and terminal binds by the same rigid transform.
+    """Move terminal geometry and terminal binds by the composed rigid Ts.
 
-    The geometry has to move through the *same frozen LBS* that will later
-    pose it, not by assigning the transform to a hand-picked vertex list.
-    Changing a controller's bind changes the inverse bind for every vertex it
-    drives, including distal tibia vertices that are only partly weighted to
-    the ankle; if their rest position does not move by the matching weighted
-    amount, posing amplifies the mismatch.  Both earlier attempts -- an
-    LBS-weighted mesh blend against a full bind move, and a hard cluster
-    assignment -- got that wrong and threw the feet 190 mm out of the skin.
+    Proximal clusters (wrist / ankle) write ``T`` onto their controllers.
+    Distal ``Arch_Rot`` writes ``T_arch @ T_a`` so the forefoot inherits the
+    ankle motion and then adds its own relative T.  Geometry still moves
+    through the frozen LBS; a seam vertex weighted to both ankle and arch
+    sees the blend of those two deltas.
     """
 
     from .chain_rest_fit_v1 import _weighted_rest_correction
@@ -478,12 +762,33 @@ def apply_terminal_reseat_v12(
     delta = np.tile(np.eye(4, dtype=np.float64), (len(matrices), 1, 1))
     report: dict[str, Any] = {}
 
-    for root_name, entry in reseat.items():
+    proximal = [
+        (name, entry)
+        for name, entry in reseat.items()
+        if not entry.get("parent")
+    ]
+    distal = [
+        (name, entry)
+        for name, entry in reseat.items()
+        if entry.get("parent")
+    ]
+    parent_ts = {
+        name: np.asarray(entry["transform"], dtype=np.float64)
+        for name, entry in proximal
+    }
+    for root_name, entry in proximal:
         transform = np.asarray(entry["transform"], dtype=np.float64)
-        controllers = list(entry["controllers"])
-        for controller in controllers:
-            delta[controller] = transform
-            matrices[controller] = transform @ matrices[controller]
+        for controller in entry["controllers"]:
+            delta[int(controller)] = transform
+            matrices[int(controller)] = transform @ matrices[int(controller)]
+    for root_name, entry in distal:
+        relative = np.asarray(entry["transform"], dtype=np.float64)
+        parent_name = str(entry["parent"])
+        parent = parent_ts.get(parent_name, np.eye(4, dtype=np.float64))
+        composed = relative @ parent
+        for controller in entry["controllers"]:
+            delta[int(controller)] = composed
+            matrices[int(controller)] = composed @ matrices[int(controller)]
 
     moved = _weighted_rest_correction(base, driver_indices, driver_weights, delta)
 
@@ -496,18 +801,29 @@ def apply_terminal_reseat_v12(
             "root_origin_shift_m": float(entry["root_origin_shift_m"]),
             "max_outside_before_m": float(entry["max_outside_before_m"]),
             "max_outside_after_m": float(entry["max_outside_after_m"]),
+            "outside_area_before": float(entry.get("outside_area_before", 0.0)),
+            "outside_area_after": float(entry.get("outside_area_after", 0.0)),
             "outside_count_before": int(entry["outside_count_before"]),
             "outside_count_after": int(entry["outside_count_after"]),
             "moved_vertex_count": int(len(active)),
-            "max_vertex_shift_m": float(np.max(np.linalg.norm(shift, axis=1))),
+            "max_vertex_shift_m": float(np.max(np.linalg.norm(shift, axis=1)))
+            if len(active)
+            else 0.0,
             "rejected_full_cluster_regression": bool(
                 entry.get("rejected_full_cluster_regression", False)
             ),
+            "parent": entry.get("parent"),
             "frame_max_outside_before_m": [
                 float(v) for v in entry.get("frame_max_outside_before_m", ())
             ],
             "frame_max_outside_after_m": [
                 float(v) for v in entry.get("frame_max_outside_after_m", ())
+            ],
+            "frame_outside_area_before": [
+                float(v) for v in entry.get("frame_outside_area_before", ())
+            ],
+            "frame_outside_area_after": [
+                float(v) for v in entry.get("frame_outside_area_after", ())
             ],
         }
     return moved, matrices, report
@@ -550,9 +866,10 @@ def reseat_terminals_v12(
         moved,
         matrices,
         {
-            "method": "bounded_rigid_terminal_reseat_v12",
+            "method": "bounded_rigid_terminal_reseat_v12c",
             "scaling_applied": False,
             "max_translation_m": float(max_translation_m),
+            "forefoot_max_translation_m": float(FOREFOOT_MAX_TRANSLATION_M),
             "max_rotation_deg": float(max_rotation_deg),
             "non_regression_slack_m": float(NON_REGRESSION_SLACK_M),
             "area_inside_regression_max": float(AREA_INSIDE_REGRESSION_MAX),
@@ -566,7 +883,7 @@ def reseat_terminals_v12(
 def _anchor_constraints(
     value: Any, *, asset: Any, calibration: Any
 ) -> tuple[dict[str, np.ndarray], dict[str, float]]:
-    """Anatomical target and allowed radius for each terminal root."""
+    """Anatomical target and allowed radius for each wrist/ankle root."""
 
     from .anatomical_calibration_v1 import JOINT_SPECS
     from .segment_similarity_rest_v10 import subject_anatomical_pivots_v10
@@ -626,8 +943,8 @@ def reseat_subject_terminals_v12(
     build_report = dict(value.build_report)
     build_report["terminal_reseat_v12"] = report
     build_report["terminal_policy_note"] = (
-        "hand/foot clusters rigidly re-seated at rest; no scaling, weights and "
-        "topology untouched"
+        "hand clusters plus split ankle/arch foot clusters rigidly re-seated "
+        "at rest; no scaling, weights and topology untouched"
     )
     return replace(
         value,
@@ -642,9 +959,12 @@ def reseat_subject_terminals_v12(
 
 __all__ = [
     "AREA_INSIDE_REGRESSION_MAX",
+    "FOREFOOT_MAX_TRANSLATION_M",
+    "FOREFOOT_ROOTS",
     "MAX_ROTATION_DEG",
     "MAX_TRANSLATION_M",
     "NON_REGRESSION_SLACK_M",
+    "RESEAT_ORDER",
     "TERMINAL_ROOTS",
     "apply_terminal_reseat_v12",
     "reseat_subject_terminals_v12",

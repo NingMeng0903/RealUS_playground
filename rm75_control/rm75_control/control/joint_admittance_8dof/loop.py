@@ -430,6 +430,7 @@ class JointIkController:
         y_center_m: float,
         amplitude_m: float,
         q_rad: np.ndarray | None = None,
+        path_xyz: np.ndarray | None = None,
     ) -> tuple[float, float]:
         """One-shot min-max (d*, ψ*) at scan start.  Raises if infeasible."""
         q = self.q_cmd if q_rad is None else np.asarray(q_rad, dtype=float)
@@ -445,6 +446,7 @@ class JointIkController:
             amplitude_m=float(amplitude_m),
             rail_lo=float(self.limits.q_lower[0]),
             rail_hi=float(self.limits.q_upper[0]),
+            path_xyz=path_xyz,
         )
         if self.arm_task is not None:
             self.arm_task.set_reference(float(psi_star))
@@ -983,6 +985,32 @@ class JointIkController:
                 getattr(self.rail_ext_task, "last_d_star_reg_scale", 1.0) or 1.0
             )
 
+        if task_rotation_base is not None:
+            r_task = np.asarray(task_rotation_base, dtype=float)
+        else:
+            pose_now = np.asarray(self.kin.fk_pose(q_state), dtype=float)
+            r_task = Rsc.from_euler(
+                self.cfg.euler_order, pose_now[3:6], degrees=False
+            ).as_matrix()
+        rail_force_dir = (
+            r_task[:, 2] if r_task.shape == (3, 3) else None
+        )
+        rail_sat_now = bool(
+            self.rail_ext_task is not None
+            and self.rail_ext_task.last_limit_saturated
+            and not locked_hold
+        )
+        rail_vel_pin_eff = rail_vel_pin
+        rail_task_weight_eff = rail_task_weight
+        keep_task_weight = False
+        pref_slack_scale = 1.0
+        if rail_sat_now:
+            # Lock q0 and keep XY hard: rail-at-wall is not workspace-sat.
+            rail_vel_pin_eff = 0.0
+            rail_task_weight_eff = 0.0
+            keep_task_weight = True
+            pref_slack_scale = 0.05
+
         r = self.core.step(
             q_prev,
             twist_base,
@@ -1001,11 +1029,14 @@ class JointIkController:
             rail_lock_reg_scale=self.cfg.rail.lock_reg_scale,
             rail_reg_scale=rail_reg_scale,
             rail_lock_vel_eps_m_s=self.cfg.rail.lock_vel_eps_m_s,
-            rail_vel_pin_m_s=rail_vel_pin,
+            rail_vel_pin_m_s=rail_vel_pin_eff,
             zero_secondary_rail=not locked_hold,
             rail_task_vel_m_s=rail_task_vel,
-            rail_task_weight=rail_task_weight,
+            rail_task_weight=rail_task_weight_eff,
             box_dt=self._measure_box_dt(dt),
+            rail_force_dir_base=rail_force_dir,
+            keep_task_weight=keep_task_weight,
+            pref_slack_scale=pref_slack_scale,
         )
 
         qdot_out = np.asarray(r.qdot, dtype=float).copy()
@@ -1128,10 +1159,10 @@ class JointIkController:
             np.any(q_now[1:] < self.limits.q_lower[1:] + 0.08)
             or np.any(q_now[1:] > self.limits.q_upper[1:] - 0.08)
         )
-        rail_sat = bool(
-            self.rail_ext_task is not None and self.rail_ext_task.last_limit_saturated
-        )
-        physical_saturated = bool(rep.pos_clamped or rail_sat or near_arm)
+        # Rail-at-wall is not workspace saturation: the arm can still
+        # realize XY.  Governor may slow the clock only when the arm is
+        # boxed or the position clamp fired.
+        physical_saturated = bool(rep.pos_clamped or near_arm)
         return self._make_step(
             qdot=qdot_out,
             twist_base=twist_base,

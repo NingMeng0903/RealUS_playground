@@ -49,8 +49,9 @@ GATES = {
     "j2_near_limit_frac": 0.05,
     "j2_limit_deg": 130.0,
     "tick_inner_max_ms": 20.0,
-    # Rail hand-off: inside the soft-limit band the arm should own the stroke.
-    "rail_share_at_limit": 0.35,
+    # Rail-at-wall is not workspace-sat.  If 7DOF IK exists at locked q0,
+    # track_err in the band must stay at the scan gate (not rail_share).
+    "track_err_at_limit_mm": 3.0,
     "rail_limit_band_m": 0.06,
     # Carriage servo (rail_servo CSV, sibling directory).
     "rail_servo_accel_reversals_per_s": 3.0,
@@ -151,6 +152,164 @@ def _rail_servo_checks(
                 f"  max {age.max():.0f} ms",
             )
         )
+
+
+def _finite6(row: dict, keys: tuple[str, ...]) -> np.ndarray | None:
+    vals = []
+    for key in keys:
+        raw = row.get(key, "")
+        try:
+            val = float(raw) if raw not in ("", None) else float("nan")
+        except (TypeError, ValueError):
+            return None
+        if not np.isfinite(val):
+            return None
+        vals.append(val)
+    return np.asarray(vals, dtype=float)
+
+
+def _q8_from_row(row: dict) -> np.ndarray | None:
+    q = _finite6(row, tuple(f"q_cmd_{i}" for i in range(8)))
+    if q is not None:
+        return q
+    return _finite6(row, tuple(f"q_meas_{i}" for i in range(8)))
+
+
+def _ik_exists_7dof(
+    pose_d: np.ndarray,
+    y_rail: float,
+    *,
+    q_hint: np.ndarray | None = None,
+    kin=None,
+) -> bool:
+    """True if a URDF-box 7DOF IK exists at locked ``y_rail``."""
+    from rm75_control.kinematics.srs_ik import (
+        branch_from_q,
+        d_wt_from_kin,
+        flange_tcp_from_kin,
+        psi_from_q,
+        shoulder_y_from_q_rail,
+        srs_ik,
+    )
+
+    kwargs: dict = {
+        "y_rail": float(shoulder_y_from_q_rail(y_rail)),
+        "check_limits": True,
+    }
+    if kin is not None:
+        try:
+            r_off, t_off = flange_tcp_from_kin(kin)
+            kwargs["R_flange_tcp"] = r_off
+            kwargs["t_flange_tcp"] = t_off
+            kwargs["d_wt"] = d_wt_from_kin(kin)
+        except Exception:
+            pass
+    hints: list[tuple[float, int]] = []
+    if q_hint is not None:
+        try:
+            hints.append((float(psi_from_q(q_hint)), int(branch_from_q(q_hint))))
+        except Exception:
+            pass
+    if not hints:
+        hints.append((0.0, 0))
+    seen: set[tuple[int, int]] = set()
+    extras = (0.0, 0.5, -0.5, 1.0, -1.0, 1.57, -1.57)
+    for psi0, branch0 in hints:
+        for dpsi in extras:
+            psi = float(psi0 + dpsi)
+            for branch in range(8) if dpsi == 0.0 else (branch0,):
+                key = (int(branch), int(round(psi * 1000.0)))
+                if key in seen:
+                    continue
+                seen.add(key)
+                if srs_ik(pose_d, psi, int(branch), **kwargs) is not None:
+                    return True
+    return False
+
+
+def _rail_handoff_checks(
+    rows: list[dict],
+    rail: np.ndarray,
+    err: np.ndarray,
+    results: list[tuple[str, bool, str]],
+    info: list[tuple[str, str]],
+) -> None:
+    """At the rail wall, IK-feasible ticks must keep track_err < 3 mm."""
+    band = GATES["rail_limit_band_m"]
+    at_limit = np.isfinite(rail) & (
+        (rail < GATES["rail_min_m"] + band) | (rail > GATES["rail_max_m"] - band)
+    )
+    n_limit = int(np.count_nonzero(at_limit))
+    if n_limit < 50:
+        info.append(("rail wall handoff", "rail never entered the band"))
+        return
+
+    idxs = np.flatnonzero(at_limit)
+    step = max(1, idxs.size // 12)
+    sample = idxs[::step][:12]
+    kin = None
+    try:
+        from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
+
+        kin = RobotKinematics()
+    except Exception:
+        kin = None
+
+    feasible = 0
+    checked = 0
+    for i in sample:
+        pose_d = _finite6(
+            rows[int(i)],
+            ("pose_d_x", "pose_d_y", "pose_d_z", "pose_d_rx", "pose_d_ry", "pose_d_rz"),
+        )
+        q = _q8_from_row(rows[int(i)])
+        if pose_d is None:
+            continue
+        checked += 1
+        y_rail = float(rail[int(i)])
+        if _ik_exists_7dof(pose_d, y_rail, q_hint=q, kin=kin):
+            feasible += 1
+
+    if checked == 0:
+        info.append(
+            (
+                "rail wall 7DOF IK",
+                f"{n_limit} ticks in band but no pose_d columns; skip IK gate",
+            )
+        )
+        return
+
+    frac = feasible / max(checked, 1)
+    info.append(
+        (
+            "rail wall 7DOF IK",
+            f"{feasible}/{checked} sampled ticks feasible at locked q0 "
+            f"({n_limit} ticks in band)",
+        )
+    )
+    if feasible == 0:
+        info.append(
+            (
+                "rail wall track_err",
+                "no 7DOF IK in the band (workspace hole); slack allowed",
+            )
+        )
+        return
+
+    band_err = err[at_limit]
+    band_err = band_err[np.isfinite(band_err)]
+    e95 = (
+        float(np.nanpercentile(np.abs(band_err), 95))
+        if band_err.size
+        else float("nan")
+    )
+    results.append(
+        (
+            "IK-feasible rail wall: track_err p95 < 3 mm",
+            bool(np.isfinite(e95) and e95 < GATES["track_err_at_limit_mm"]),
+            f"{e95:.2f} mm  (IK {frac:.0%} of samples)",
+        )
+    )
 
 
 def _tick_profile(rows: list[dict], info: list[tuple[str, str]]) -> None:
@@ -429,26 +588,14 @@ def analyze(path: Path) -> int:
         )
     )
 
-    # Rail hand-off.  The carriage cannot help once it is against the stop, so
-    # the arm has to have taken the stroke over by then; grinding the rail into
-    # the wall is what shows up as end-of-travel chatter.
-    share = _col(rows, "rail_motion_share")
+    # Rail-at-wall ≠ workspace-sat.  Share dropping only means the carriage
+    # stopped; the arm must still hold XY if 7DOF IK exists at locked q0.
+    _rail_handoff_checks(rows, rail, err, results, info)
+
     band = GATES["rail_limit_band_m"]
     at_limit = np.isfinite(rail) & (
         (rail < GATES["rail_min_m"] + band) | (rail > GATES["rail_max_m"] - band)
     )
-    if int(np.count_nonzero(at_limit & np.isfinite(share))) >= 50:
-        share_at_limit = float(np.nanmedian(share[at_limit]))
-        results.append(
-            (
-                "rail share at soft limit < 0.35 (arm takes over)",
-                share_at_limit < GATES["rail_share_at_limit"],
-                f"{share_at_limit:.3f} over {int(at_limit.sum())} ticks",
-            )
-        )
-    else:
-        info.append(("rail share at soft limit", "rail never entered the band"))
-
     esc = _col(rows, "rail_escape_active")
     if np.isfinite(esc).any() and int(at_limit.sum()) >= 50:
         esc_at_limit = float(np.nanmean(esc[at_limit] > 0.5))

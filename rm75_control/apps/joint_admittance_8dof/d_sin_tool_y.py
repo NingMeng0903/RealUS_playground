@@ -143,11 +143,19 @@ def main() -> int:
         ),
     )
     ap.add_argument(
+        "--x-pp-cm",
+        type=float,
+        default=8.0,
+        help=(
+            "Tool-X Lissajous peak-to-peak (cm), 2× Y frequency. 0 = Y-only line."
+        ),
+    )
+    ap.add_argument(
         "--max-vel-cm-s",
         type=float,
         default=1.5,
         help=(
-            "Peak tool-Y speed (cm/s). IK-quality fixture uses 5; default 1.5 for "
+            "Peak tool-path speed (cm/s). IK-quality fixture uses 5; default 1.5 for "
             "softer short scans."
         ),
     )
@@ -155,8 +163,8 @@ def main() -> int:
     ap.add_argument(
         "--scan-profile",
         choices=("quintic_dwell", "sine"),
-        default="quintic_dwell",
-        help="Y scan shape: quintic_dwell=C2 ends + short dwell (default); sine=classic.",
+        default="sine",
+        help="Scan time law: sine=C∞ Lissajous/line (default); quintic_dwell=C2 + dwell.",
     )
     ap.add_argument(
         "--scan-dwell-s",

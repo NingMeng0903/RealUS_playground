@@ -563,9 +563,29 @@ def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], No
     def _enter() -> None:
         spec.secondary.apply(ctx.inner, psi_rad=psi)
         if spec.mode == TaskMode.HYBRID_TRACK and spec.reference is not None:
-            amp = float(getattr(spec.reference, "amplitude_m", 0.0) or 0.0)
             pose = ctx.inner.kin.fk_pose(ctx.inner.q_cmd)
-            ctx.inner.plan_scan_stroke(float(pose[1]), amp)
+            ref = spec.reference
+            path_xyz = None
+            y_c = float(pose[1])
+            amp = float(getattr(ref, "amplitude_m", 0.0) or 0.0)
+            if hasattr(ref, "set_origin"):
+                try:
+                    ref.set_origin(pose)
+                except Exception:
+                    pass
+            if hasattr(ref, "world_y_span") and hasattr(ref, "path_world_xyz"):
+                try:
+                    y_span = ref.world_y_span()
+                    if (
+                        np.isfinite(y_span[0])
+                        and np.isfinite(y_span[1])
+                        and float(y_span[1]) > 0.0
+                    ):
+                        y_c, amp = float(y_span[0]), float(y_span[1])
+                    path_xyz = ref.path_world_xyz(n=16)
+                except Exception:
+                    path_xyz = None
+            ctx.inner.plan_scan_stroke(y_c, amp, path_xyz=path_xyz)
         if (
             spec.secondary.preset == "move"
             and spec.q_target_rad is not None

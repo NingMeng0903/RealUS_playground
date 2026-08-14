@@ -67,9 +67,10 @@ class SinToolYTaskParams:
     slot: str = "d"
     move_kp: float = 2.0
     y_pp_cm: float = 16.0
+    x_pp_cm: float = 8.0
     max_vel_cm_s: float = 1.5
     period_s: float | None = None
-    scan_profile: str = "quintic_dwell"
+    scan_profile: str = "sine"
     scan_dwell_s: float = 0.20
     desired_z: float = 0.0
     scan_duration: float = 30.0

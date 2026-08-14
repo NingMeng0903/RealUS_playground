@@ -487,9 +487,14 @@ class QpIkController:
         span = hi - lo
         d_hi = hi - q
         d_lo = q - lo
-        denom = 4.0 * np.square(d_hi) * np.square(d_lo)
+        # ε floor: sitting exactly on a stop used to zero denom and drop
+        # WLN to 1, which is when the handoff is needed most.
+        eps = 1.0e-4
+        d_hi_e = np.maximum(d_hi, eps)
+        d_lo_e = np.maximum(d_lo, eps)
+        denom = 4.0 * np.square(d_hi_e) * np.square(d_lo_e)
         grad = np.zeros(nv, dtype=float)
-        ok = (denom > 1.0e-12) & (span > 1.0e-9)
+        ok = span > 1.0e-9
         grad[ok] = (
             np.square(span[ok]) * (2.0 * q[ok] - hi[ok] - lo[ok]) / denom[ok]
         )
@@ -588,6 +593,9 @@ class QpIkController:
         rail_task_vel_m_s: float | None = None,
         rail_task_weight: float = 0.0,
         box_dt: float | None = None,
+        rail_force_dir_base: np.ndarray | None = None,
+        keep_task_weight: bool = False,
+        pref_slack_scale: float = 1.0,
     ) -> IkStepResult:
         q_prev = np.asarray(q_prev, dtype=float)
         # ``qdot_prev`` is whatever the loop actually applied last tick (it may
@@ -599,6 +607,15 @@ class QpIkController:
         self.solve_count += 1
 
         J = self.kin.jacobian(q_prev)
+        if rail_force_dir_base is not None and J.shape[1] > 0:
+            n = np.asarray(rail_force_dir_base, dtype=float).reshape(-1)
+            if n.size >= 3:
+                n3 = n[:3]
+                nn = float(np.linalg.norm(n3))
+                if nn > 1.0e-9:
+                    n3 = n3 / nn
+                    j0 = J[:3, 0].copy()
+                    J[:3, 0] = j0 - n3 * float(np.dot(n3, j0))
         sigma = self.kin.singular_values(J)
         sigma_min = float(sigma.min())
 
@@ -638,7 +655,8 @@ class QpIkController:
             w_reg[0] *= float(rail_lock_reg_scale)
         if (not rail_locked) and float(rail_reg_scale) > 1.0:
             w_reg[0] *= float(rail_reg_scale)
-        w_task *= self._task_scale_sigma(sigma_min, dt)
+        if not keep_task_weight:
+            w_task *= self._task_scale_sigma(sigma_min, dt)
         rail_w_eff = float(rail_task_weight)
 
         H = np.zeros((n_var, n_var), dtype=float)
@@ -659,9 +677,12 @@ class QpIkController:
             H[:nv, :nv] = np.diag(w_reg)
         H[nv : nv + ns, nv : nv + ns] = np.diag(w_task)
         # Pref slack costs (Escande: expensive vs penetrating set-based rows).
+        pref_w = max(float(pref_slack_scale), 1.0e-6)
         H[nv + ns, nv + ns] = float(self.cfg.sigma_setbased.slack_weight)
-        H[nv + ns + 1, nv + ns + 1] = float(self.cfg.branch_barrier.slack_weight)
-        comfort_w = float(self.cfg.joint_comfort.slack_weight)
+        H[nv + ns + 1, nv + ns + 1] = (
+            float(self.cfg.branch_barrier.slack_weight) * pref_w
+        )
+        comfort_w = float(self.cfg.joint_comfort.slack_weight) * pref_w
         for k in range(2, n_pref):
             H[nv + ns + k, nv + ns + k] = comfort_w
         g = np.zeros(n_var, dtype=float)

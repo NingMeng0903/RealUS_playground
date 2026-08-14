@@ -12,7 +12,9 @@ from projects.genesis_ue_sync.anatomy_retarget.pose_map_v10 import (
     HAND_ROOTS,
 )
 from projects.genesis_ue_sync.anatomy_retarget.terminal_reseat_v12 import (
+    FOREFOOT_ROOTS,
     NON_REGRESSION_SLACK_M,
+    RESEAT_ORDER,
     TERMINAL_ROOTS,
     apply_terminal_reseat_v12,
     solve_terminal_reseat_v12,
@@ -225,6 +227,8 @@ def test_solver_after_metric_matches_the_lbs_apply() -> None:
 
 def test_terminal_roots_cover_both_hands_and_feet() -> None:
     assert TERMINAL_ROOTS == (*HAND_ROOTS, *FOOT_ROOTS)
+    assert FOREFOOT_ROOTS == ("Arch_Rot_L", "Arch_Rot_R")
+    assert RESEAT_ORDER == (*HAND_ROOTS, *FOOT_ROOTS, *FOREFOOT_ROOTS)
     assert NON_REGRESSION_SLACK_M == pytest.approx(0.001)
 
 
@@ -257,3 +261,138 @@ def test_solver_will_not_buy_a_rest_win_with_a_posed_regression() -> None:
 
     first = result[TERMINAL_ROOTS[0]]
     assert first["translation_m"] <= 0.002 + NON_REGRESSION_SLACK_M + 1.0e-3
+
+
+def _asset_ankle_arch() -> SimpleNamespace:
+    """Tibia + ankle + arch. One vertex is 50/50 ankle/arch."""
+
+    names = ["Tibia_Bone_L", "Ankle_Rot_L", "Arch_Rot_L"]
+    return SimpleNamespace(
+        source_bone_names=names,
+        source_tissues=np.asarray(["bone", "bone", "bone"]),
+        source_mesh_controller_bones=np.asarray([0, 1, 2], dtype=np.int64),
+        source_vertex_ranges=np.asarray([[0, 1], [1, 2], [2, 4]], dtype=np.int64),
+        driver_indices=np.asarray(
+            [[0, 0], [1, 1], [2, 2], [1, 2]], dtype=np.int64
+        ),
+        driver_weights=np.asarray(
+            [[1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.5, 0.5]], dtype=np.float64
+        ),
+    )
+
+
+def test_apply_composes_arch_relative_to_ankle() -> None:
+    asset = _asset_ankle_arch()
+    rest = np.asarray(
+        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [1.5, 0.0, 0.0]],
+        dtype=np.float64,
+    )
+    bind = np.tile(np.eye(4, dtype=np.float64), (3, 1, 1))
+    bind[1, 0, 3] = 1.0
+    bind[2, 0, 3] = 2.0
+    reseat = {
+        "Ankle_Rot_L": {
+            "transform": _translation(0.10),
+            "controllers": [1],
+            "vertex_ids": np.asarray([1], dtype=np.int64),
+            "translation_m": 0.10,
+            "rotation_deg": 0.0,
+            "root_origin_shift_m": 0.10,
+            "max_outside_before_m": 0.0,
+            "max_outside_after_m": 0.0,
+            "outside_count_before": 0,
+            "outside_count_after": 0,
+        },
+        "Arch_Rot_L": {
+            "transform": _translation(0.04),
+            "parent": "Ankle_Rot_L",
+            "controllers": [2],
+            "vertex_ids": np.asarray([2, 3], dtype=np.int64),
+            "translation_m": 0.04,
+            "rotation_deg": 0.0,
+            "root_origin_shift_m": 0.14,
+            "max_outside_before_m": 0.0,
+            "max_outside_after_m": 0.0,
+            "outside_count_before": 0,
+            "outside_count_after": 0,
+        },
+    }
+
+    moved, matrices, _report = apply_terminal_reseat_v12(
+        rest, bind, asset=asset, reseat=reseat
+    )
+
+    assert moved[0] == pytest.approx([0.0, 0.0, 0.0])
+    assert moved[1] == pytest.approx([1.10, 0.0, 0.0])
+    assert moved[2] == pytest.approx([2.14, 0.0, 0.0])
+    assert moved[3] == pytest.approx([1.62, 0.0, 0.0])
+    assert matrices[1, 0, 3] == pytest.approx(1.10)
+    assert matrices[2, 0, 3] == pytest.approx(2.14)
+
+
+def test_solver_rejects_an_area_win_that_breaks_the_millimetre_wall() -> None:
+    """A T that pulls rest inside cannot buy a posed max-outside regression."""
+
+    asset, bind, parents = _solver_asset()
+    rest = bind[:, :3, 3].copy()
+    rest_skin, rest_faces = _cube(0.5)
+    pose_skin, pose_faces = _cube(0.002)
+    pose_skin = pose_skin + rest[0]
+    identity = np.tile(np.eye(4, dtype=np.float64), (len(TERMINAL_ROOTS), 1, 1))
+    result = solve_terminal_reseat_v12(
+        rest,
+        asset=asset,
+        skin=rest_skin,
+        skin_faces=rest_faces,
+        bone_parents=parents,
+        bind=bind,
+        pose_frames=(
+            {"skin": pose_skin, "skin_faces": pose_faces, "source_transforms": identity},
+        ),
+        max_translation_m=0.20,
+        max_rotation_deg=5.0,
+        samples=4,
+    )
+
+    first = result[TERMINAL_ROOTS[0]]
+    assert first["translation_m"] <= 0.002 + NON_REGRESSION_SLACK_M + 1.0e-3
+    assert first["frame_max_outside_after_m"][1] <= (
+        first["frame_max_outside_before_m"][1] + NON_REGRESSION_SLACK_M + 1.0e-6
+    )
+
+
+def test_ankle_t_cannot_throw_the_inherited_arch() -> None:
+    """T_a is applied to Arch_Rot at apply time, so the ankle wall includes toes."""
+
+    names = ["Ankle_Rot_L", "Arch_Rot_L"]
+    rest = np.asarray([[0.0, 0.0, 0.0], [0.05, 0.0, 0.0]], dtype=np.float64)
+    asset = SimpleNamespace(
+        source_bone_names=names,
+        source_tissues=np.asarray(["bone", "bone"]),
+        source_mesh_controller_bones=np.asarray([0, 1], dtype=np.int64),
+        source_vertex_ranges=np.asarray([[0, 1], [1, 2]], dtype=np.int64),
+        driver_indices=np.stack([np.arange(2), np.arange(2)], axis=1).astype(np.int64),
+        driver_weights=np.stack([np.ones(2), np.zeros(2)], axis=1),
+    )
+    bind = np.tile(np.eye(4, dtype=np.float64), (2, 1, 1))
+    bind[:, :3, 3] = rest
+    parents = np.asarray([-1, 0], dtype=np.int64)
+    rest_skin, rest_faces = _cube(0.5)
+    pose_skin, pose_faces = _cube(0.002)
+    pose_skin = pose_skin + rest[1]
+    identity = np.tile(np.eye(4, dtype=np.float64), (2, 1, 1))
+    result = solve_terminal_reseat_v12(
+        rest,
+        asset=asset,
+        skin=rest_skin,
+        skin_faces=rest_faces,
+        bone_parents=parents,
+        bind=bind,
+        pose_frames=(
+            {"skin": pose_skin, "skin_faces": pose_faces, "source_transforms": identity},
+        ),
+        max_translation_m=0.20,
+        max_rotation_deg=5.0,
+        samples=2,
+    )
+    assert result["Ankle_Rot_L"]["translation_m"] <= 0.002 + NON_REGRESSION_SLACK_M + 1.0e-3

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from rm75_control.control.admittance_common.controller import AdmittanceConfig
 from rm75_control.control.joint_admittance_8dof.reference import (
@@ -134,3 +135,57 @@ def test_lateral_chase_scale_softens_at_low_speed():
     assert slow == cfg.force_lateral_gain_floor
     mid = ctrl._lateral_chase_scale(0.012, dt_s=0.005)
     assert cfg.force_lateral_gain_floor < mid < 1.0
+
+
+def test_lissajous_x_is_double_frequency():
+    from rm75_control.control.joint_admittance_8dof.reference import (
+        lissajous_period_for_peak_vel,
+    )
+
+    ay, ax, vmax = 0.15, 0.04, 0.03
+    period = lissajous_period_for_peak_vel(ay, ax, vmax)
+    ref = SinToolYReference(
+        ay,
+        max_vel_m_s=vmax,
+        soft_start=False,
+        profile="sine",
+        amplitude_x_m=ax,
+    )
+    assert ref.period_s == pytest.approx(period)
+    origin = np.zeros(6)
+    ref.set_origin(origin)
+    # x=Ax sin(2ωt) peaks at ωt=π/4; y=Ay sin(ωt) peaks at ωt=π/2.
+    m_x = ref.sample(0.125 * ref.period_s)
+    assert abs(m_x.pose_d[0] - ax) < 1.0e-9
+    m_y = ref.sample(0.25 * ref.period_s)
+    assert abs(m_y.pose_d[1] - ay) < 1.0e-9
+    assert abs(m_y.pose_d[0]) < 1.0e-9
+    speeds = []
+    for t in np.linspace(0.0, ref.period_s, 361):
+        vel = ref.sample(t).vel_ff[:2]
+        speeds.append(float(np.hypot(vel[0], vel[1])))
+    assert max(speeds) <= vmax * (1.0 + 1.0e-6)
+
+
+def test_lissajous_world_y_span_includes_tilted_tool_x():
+    ref = SinToolYReference(
+        0.15,
+        max_vel_m_s=0.03,
+        soft_start=False,
+        profile="sine",
+        amplitude_x_m=0.04,
+    )
+    identity = np.array([0.4, 0.2, 0.3, 0.0, 0.0, 0.0])
+    ref.set_origin(identity)
+    y_c0, y_half0 = ref.world_y_span()
+    assert abs(y_c0 - 0.2) < 1.0e-6
+    assert abs(y_half0 - 0.15) < 1.0e-6
+    # Yaw 50°: tool-X leaks into world Y, so the envelope is not (y0, Ay).
+    origin = np.array([0.4, 0.2, 0.3, 0.0, 0.0, np.deg2rad(50.0)])
+    ref.set_origin(origin)
+    y_c, y_half = ref.world_y_span()
+    pts = ref.path_world_xyz(n=16)
+    assert abs(y_half - 0.15) > 0.005 or abs(y_c - 0.2) > 0.005
+    assert float(np.max(pts[:, 1]) - np.min(pts[:, 1])) == pytest.approx(
+        2.0 * y_half, abs=1.0e-9
+    )

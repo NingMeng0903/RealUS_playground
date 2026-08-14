@@ -167,7 +167,7 @@ class AdmittanceConfig:
     # Soften under-force chase / DOB when tool-XY speed is near a scan turnaround.
     force_lateral_soft_m_s: float = 0.006
     force_lateral_full_m_s: float = 0.018
-    force_lateral_gain_floor: float = 0.35
+    force_lateral_gain_floor: float = 1.0
     force_dob: ForceDobConfig = field(default_factory=ForceDobConfig)
     # Optional scalar proxy/real-port energy-flow adaptation.  ``off`` is
     # the safe legacy default; observe/active are opt-in and require the
@@ -288,7 +288,7 @@ class AdmittanceConfig:
                 c.get("force_lateral_full_m_s", 0.018)
             ),
             force_lateral_gain_floor=float(
-                c.get("force_lateral_gain_floor", 0.35)
+                c.get("force_lateral_gain_floor", 1.0)
             ),
             force_dob=ForceDobConfig.from_dict(c),
             bidirectional_flow=BidirectionalFlowConfig.from_dict(raw),
@@ -1120,6 +1120,19 @@ class AdmittanceController:
             sensor_age_s=sensor_age_eff,
             chase_scale=chase_scale,
         )
+        # True air: command the free-space seek, not the tiny admittance
+        # crawl from a 0.5 N residual / D=25 (measured vz_achieved ~6 mm/s).
+        # Precontact / impact sleeve still wins via the barrier cap below.
+        if (not physical_contact) and (not precontact_guard):
+            seek = max(float(cfg.force_barrier.v_seek_free_m_s), 0.0)
+            v_hi = self._v_z_cap()
+            if seek <= 0.0:
+                seek = v_hi
+            elif v_hi > 0.0:
+                seek = min(seek, v_hi)
+            v_n = normal_sign * float(v_force_tool[2])
+            if seek > 0.0 and v_n < seek:
+                v_force_tool[2] = normal_sign * seek
         # Optional scalar bidirectional-flow adapter.  The adapter sees a
         # press-positive normal coordinate; ``normal_sign`` maps the tool
         # force convention into that coordinate and back.
@@ -1205,6 +1218,13 @@ class AdmittanceController:
             v_normal = self._force_barrier.clamp_velocity(
                 v_normal
             )
+            # Under-force must press.  Retract while chasing was the
+            # "hold" feel; the barrier still brakes over-force above.
+            under_force = (normal_sign * float(f_err_z)) > max(
+                float(cfg.deadband_n), 0.0
+            )
+            if physical_contact and under_force and v_normal < 0.0:
+                v_normal = 0.0
             v_cmd_tool[2] = normal_sign * v_normal
             if cfg.control_frame == "base":
                 v_cmd_base[:3] = r_mat @ v_cmd_tool[:3]

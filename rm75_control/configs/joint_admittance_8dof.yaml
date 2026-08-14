@@ -348,23 +348,20 @@ hybrid_motion:
     # Barrier keeps its force-error gating; this only stops it closing press
     # to exactly zero, which left the tool unable to recover a lost contact.
     v_min_press_m_s: 0.003
-    # Free-space approach cap.  Impact ~ Ke*v*T_delay, so closing the gap at
-    # the full 80 mm/s made ~8 N peaks on a 3 N target and the over-force
-    # retract threw the tool off the surface.  In-contact response unchanged.
-    v_seek_free_m_s: 0.030
+    # Free-space seek.  e85 closed the gap at max_vz (80 mm/s); 30 mm/s was
+    # the post-e85 anti-bounce sleeve that left air vz_achieved ~6 mm/s.
+    # The in-contact barrier still brakes over-force / impact.
+    v_seek_free_m_s: 0.08
     fdot_lpf_s: 0.040
     precontact_raw_trigger_n: 1.50 # short impact sleeve; never latches contact
     stiffness_cap_enabled: true
     ke_floor_n_m: 50.0
     mass_floor_kg: 0.05
-  # Force-axis slew is press-positive and asymmetric.  A sign reversal into
-  # retract gets the fastest allowance and is never tank/alpha gated.
-  # 0.30 allowed press to rise only ~1.9 mm/s per 6.2 ms tick — 0.27 s to
-  # reach the 80 mm/s cap, which is the "damped, not light" feel.  The force
-  # barrier is the error-gated brake; this no longer has to be one.
-  force_axis_slew_press_m_s2: 0.80
-  force_axis_slew_retract_m_s2: 1.20
-  force_axis_slew_reverse_m_s2: 2.00
+  # e85 skipped force-axis accel limiting.  0 restores that step; the
+  # barrier remains the over-force brake.
+  force_axis_slew_press_m_s2: 0.0
+  force_axis_slew_retract_m_s2: 0.0
+  force_axis_slew_reverse_m_s2: 0.0
   # Lee-structure speed-level engineering adapter.  Observe is deliberately
   # non-mutating until the slow press/retract sign check and 2/5/10 mm/s
   # no-contact delay identification have been recorded.
@@ -411,10 +408,10 @@ hybrid_motion:
     stable_contact_s: 0.20
     attack_s: 0.05
     release_s: 0.15
-  # Soften under-force chase near scan turnaround (tool-XY slow).
+  # Floor 1.0 disables the turnaround chase softener (e85 had none).
   force_lateral_soft_m_s: 0.006
   force_lateral_full_m_s: 0.018
-  force_lateral_gain_floor: 0.35
+  force_lateral_gain_floor: 1.0
   adaptive_ke:
     enabled: true
     # Observe Ke / impact burst only — do not hold high critical D in steady contact.

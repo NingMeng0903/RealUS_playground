@@ -497,7 +497,7 @@ def main(argv: list[str] | None = None) -> int:
             "capture_sha256s": capture_sha256s,
             "subjects": subjects,
             "terminal_policy": (
-                "reseated_142_hand_foot"
+                "reseated_142_hand_foot_split_arch"
                 if args.reseat_terminals
                 else "identity_142_hand_foot"
             ),
