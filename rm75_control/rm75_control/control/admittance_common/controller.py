@@ -957,6 +957,13 @@ class AdmittanceController:
         )
         f_des_z *= surface_scale
         self.f_des_z_eff = float(f_des_z)
+        # Deliberately unfiltered.  Raw fz moves 0.16 N per tick, but the
+        # force-axis slew limiter already bounds the command to ~4.9 mm/s per
+        # tick and the measured v_force_z step is only 2.8 mm/s p95 — the
+        # noise never reaches the joints.  A low-pass here bought nothing and
+        # cost twice: 12 ms of phase took the stiff-surface impact from 8 N to
+        # 12.2 N, and it starved the proactive feedforward (v_r 6.97 -> 5.89
+        # mm/s on a receding surface, tracking error 0.18 -> 0.28 N).
         f_err_z = f_des_z - f_ext_z
         v_lateral_m_s = float(
             np.linalg.norm((r_mat.T @ v_pos_base[:3])[:2])

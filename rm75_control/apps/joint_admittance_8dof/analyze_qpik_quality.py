@@ -31,10 +31,19 @@ GATES = {
     "j4_limit_deg": 135.0,
     "j6_limit_deg": 128.0,
     "j7_limit_deg": 360.0,
-    # Stage-2 jitter budget.  Measured from q_cmd (never from differentiated
-    # pose feedback, whose 0.1 mm quantisation aliases to ~20 mm/s per tick).
-    "accel_reversals_per_s": 15.0,
+    # Jitter budget, measured from q_cmd on a UNIFORM step (never from wall
+    # time, and never from differentiated pose feedback whose 0.1 mm
+    # quantisation aliases to ~20 mm/s per tick).  Run 230940 on a uniform
+    # step: reversals 6.5-14.3/s, jerk RMS 94-130, so 20/s and 200 are just
+    # above the current machine and will catch a real regression.
+    "accel_reversals_per_s": 20.0,
+    "jerk_rms": 200.0,
     "accel_saturation_frac": 0.05,
+    # rm_movej_canfd consumes at a fixed cadence; an irregular producer is
+    # felt as roughness.  Measured 6.16 ms mean against a 5.0 ms budget with
+    # only 2.1% of ticks on time, so this starts as a tracked failure.
+    "dt_nominal_s": 0.005,
+    "dt_on_time_frac": 0.80,
     "j6_open_frac": 0.05,
     "j4_near_limit_frac": 0.05,
     # Rail hand-off: inside the soft-limit band the arm should own the stroke.
@@ -134,6 +143,34 @@ def _rail_servo_checks(
         )
 
 
+def _tick_profile(rows: list[dict], info: list[tuple[str, str]]) -> None:
+    """Attribute the per-tick budget so the period overrun is not a guess."""
+    stages = [
+        ("qpik_solver_solve_ms", "QP solve"),
+        ("tick_inner_ms", "inner.update (incl. QP)"),
+        ("tick_send_ms", "rail publish + CANFD send"),
+        ("tick_log_ms", "CSV write"),
+    ]
+    shown = False
+    for key, label in stages:
+        a = _col(rows, key)
+        a = a[np.isfinite(a)]
+        if not a.size:
+            continue
+        shown = True
+        info.append(
+            (
+                f"tick stage: {label}",
+                f"med {np.median(a):.3f} ms  p95 {np.percentile(a, 95):.3f} ms"
+                f"  max {a.max():.2f} ms",
+            )
+        )
+    if not shown:
+        info.append(
+            ("tick stage profile", "not logged (older CSV, re-run to populate)")
+        )
+
+
 def analyze(path: Path) -> int:
     with path.open(newline="") as handle:
         rows = [r for r in csv.DictReader(handle) if r.get("phase") == "scan"]
@@ -208,6 +245,31 @@ def analyze(path: Path) -> int:
         )
     )
 
+    # Loop period is a first-class metric: the commanded trajectory is
+    # consumed by rm_movej_canfd at a fixed cadence, so an irregular producer
+    # shows up as motion roughness no joint-space metric can see.
+    dt_wall = np.diff(t)
+    dt_wall = dt_wall[np.isfinite(dt_wall) & (dt_wall > 0.0)]
+    dt_step = float(np.median(dt_wall)) if dt_wall.size else 0.005
+    if dt_wall.size:
+        on_time = float(
+            np.mean(
+                (dt_wall > 0.9 * GATES["dt_nominal_s"])
+                & (dt_wall < 1.1 * GATES["dt_nominal_s"])
+            )
+        )
+        results.append(
+            (
+                "loop period on-time > 80%",
+                on_time > GATES["dt_on_time_frac"],
+                f"{100.0 * on_time:.1f}% within ±10% of "
+                f"{1000.0 * GATES['dt_nominal_s']:.1f} ms; "
+                f"med {1000.0 * dt_step:.2f} ms "
+                f"p95 {1000.0 * np.percentile(dt_wall, 95):.2f} ms "
+                f"-> {1.0 / max(np.mean(dt_wall), 1e-9):.0f} Hz effective",
+            )
+        )
+
     acc_ok = True
     acc_max = 0.0
     rev_worst = 0.0
@@ -219,8 +281,15 @@ def analyze(path: Path) -> int:
         qi = _col(rows, f"q_cmd_{i}")
         if not np.isfinite(qi).any():
             qi = _col(rows, f"q_meas_{i}")
-        vi = np.diff(qi) / np.maximum(np.diff(t), 1e-4)
-        ai = np.diff(vi) / np.maximum(np.diff(t[:-1]), 1e-4)
+        # Differentiate on a UNIFORM step, never on wall time.  Dividing by a
+        # jittering dt injects the scheduler's 21% period noise into the
+        # second difference: on run 230940 that inflated the reversal rate
+        # from 6.5-14.3/s to 29-48/s and the jerk RMS from ~110 to ~370, and
+        # sent three rounds of tuning after a metric artefact.  The consumer
+        # replays these samples at a fixed cadence, so the uniform-step
+        # derivative is also the physically meaningful one.
+        vi = np.diff(qi) / dt_step
+        ai = np.diff(vi) / dt_step
         amax = float(np.nanmax(np.abs(ai))) if ai.size else 0.0
         acc_max = max(acc_max, amax)
         acc_ok = acc_ok and amax < GATES["arm_acc_max"]
@@ -233,13 +302,14 @@ def analyze(path: Path) -> int:
                 flips = int(np.count_nonzero(np.sign(big[1:]) != np.sign(big[:-1])))
                 rev_worst = max(rev_worst, flips / span_s)
             sat_worst = max(sat_worst, float(np.mean(np.abs(af) > 0.97 * a_box)))
-            ji = np.diff(af) / max(float(np.median(np.diff(t))), 1e-4)
+            ji = np.diff(af) / dt_step
             jerk_worst = max(jerk_worst, float(np.sqrt(np.mean(ji * ji))))
     results.append(("arm |a| max < 8 rad/s²", acc_ok, f"{acc_max:.2f} rad/s²"))
     results.append(
         (
-            "accel sign reversals < 15/s (solver chatter)",
-            rev_worst < GATES["accel_reversals_per_s"],
+            "accel sign reversals < 20/s and jerk RMS < 200 (uniform step)",
+            rev_worst < GATES["accel_reversals_per_s"]
+            and jerk_worst < GATES["jerk_rms"],
             f"worst {rev_worst:.1f}/s  jerk_rms {jerk_worst:.0f} rad/s³",
         )
     )
@@ -354,6 +424,7 @@ def analyze(path: Path) -> int:
         )
 
     _rail_servo_checks(path, results, info)
+    _tick_profile(rows, info)
 
     e95 = (
         float(np.nanpercentile(np.abs(err[np.isfinite(err)]), 95))

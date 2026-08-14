@@ -28,6 +28,14 @@ class ForceBarrierConfig:
     # cap_press_z pinned at 0 for the bottom 5% of contact ticks.  Applied
     # last, after the stiffness cap and the v_hi clamp.
     v_min_press_m_s: float = 0.003
+    # Cap on the free-space approach.  Impact force goes roughly as
+    # Ke * v * T_delay, so the speed used to close the last gap sets the first
+    # peak.  Approaching at the full max_vz produced ~8 N peaks against a 3 N
+    # target, and the resulting over-force retract threw the tool back off the
+    # surface — press rail 22.7% of ticks, retract rail 23.1%, contact lost 30%
+    # of the scan.  Only the free-space branch is capped; the in-contact
+    # admittance response is untouched.  0 disables.
+    v_seek_free_m_s: float = 0.030
     fdot_lpf_s: float = 0.040
     # Optional impact-energy/stiffness caps.  These use only controller-side
     # virtual quantities; no unmeasured physical damping is credited.
@@ -62,6 +70,7 @@ class ForceBarrierConfig:
             v_ref_m_s=float(barrier.get("v_ref_m_s", 0.05)),
             v_min_retract_m_s=float(barrier.get("v_min_retract_m_s", 0.002)),
             v_min_press_m_s=float(barrier.get("v_min_press_m_s", 0.003)),
+            v_seek_free_m_s=float(barrier.get("v_seek_free_m_s", 0.030)),
             fdot_lpf_s=float(barrier.get("fdot_lpf_s", 0.040)),
             precontact_raw_trigger_n=float(
                 barrier.get("precontact_raw_trigger_n", 0.0)
@@ -130,6 +139,11 @@ class ForceSpaceVelocityDamper:
             seek = max(float(seek_vz_m_s), 0.0)
             if v_hi > 0.0:
                 seek = min(seek, v_hi) if seek > 0.0 else v_hi
+            # Free-space approach cap; see v_seek_free_m_s.  Take the smaller
+            # of the two so a tighter external sleeve (recontact) still wins.
+            free = max(float(cfg.v_seek_free_m_s), 0.0)
+            if free > 0.0:
+                seek = min(seek, free) if seek > 0.0 else free
             del contact_enter_n
             self.cap_press_z = seek if seek > 0.0 else v_hi
             self.cap_retract_z = v_hi_retract

@@ -234,6 +234,7 @@ class _ProxQpWbcBackend:
         self._warn_every = 25
         self._warn_seen = 0
         self._max_solve_s = max(1.0e-3, float(getattr(cfg, "max_solve_ms", 8.0)) * 1.0e-3)
+        self.last_solve_ms = 0.0
 
     def _status(self):
         return self.qp.results.info.status
@@ -275,6 +276,7 @@ class _ProxQpWbcBackend:
         t0 = _time.perf_counter()
         self.qp.solve()
         elapsed = _time.perf_counter() - t0
+        self.last_solve_ms = elapsed * 1000.0
 
         if not self._solved():
             # First retry: cold-start + loose eps + fewer iters.  Skip the
@@ -293,6 +295,9 @@ class _ProxQpWbcBackend:
                 self.qp.settings.max_iter = retry_iters
                 self.qp.solve()
                 self.qp.settings.max_iter = int(self._max_iter)
+                self.last_solve_ms = (
+                    _time.perf_counter() - t0
+                ) * 1000.0
 
         if not self._solved():
             self.fail_count += 1
@@ -328,9 +333,11 @@ class _OsqpWbcBackend:
         self.n_in = nv + max_cbf + MAX_PREF_ROWS + N_PREF_SLACK
         self.cfg = cfg
         self.prob = None
+        self.last_solve_ms = 0.0
 
     def solve(self, H, g, A, b, C, lo, hi):
         sp = self._sp
+        t0 = _time.perf_counter()
         A_full = np.vstack([C, A])
         l_full = np.concatenate([lo, b])
         u_full = np.concatenate([hi, b])
@@ -347,6 +354,7 @@ class _OsqpWbcBackend:
         else:
             self.prob.update(Px=P.data, q=g, Ax=A_csc.data, l=l_full, u=u_full)
         res = self.prob.solve()
+        self.last_solve_ms = (_time.perf_counter() - t0) * 1000.0
         if res.x is None or np.any(np.isnan(res.x)):
             return None
         return np.asarray(res.x, dtype=float)

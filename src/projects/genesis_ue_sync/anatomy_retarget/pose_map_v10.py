@@ -121,11 +121,22 @@ def apply_pose_map_global_v10(
         else:
             target_global[bone] = target_global[int(parent)] @ local_pose
 
-    # Hybrid terminal policy: keep copy-142 hand/foot (including wrist/ankle
-    # roots) at the absolute 142 posed globals — same as V7 right-multiply
-    # when B_tgt == B_src on terminals.
+    # Hybrid terminal policy: hand/foot (including wrist/ankle roots) follow
+    # the absolute 142 posed motion, carrying whatever re-seat their own bind
+    # holds.  This is the V6/V7 right-multiply form, so the re-seat rides in
+    # the bone's local frame and turns with the limb.  Left-multiplying instead
+    # makes it a world-space offset that stays put while the leg rotates, which
+    # threw the foot 180 mm out of the skin at 105 degrees of knee flexion.
+    # When the terminal bind still equals the 142 bind this collapses to
+    # ``target_global = source_global``, the previous copy-142 contract.
+    source_bind_global = np.asarray(pose_map.source_bind_global, dtype=np.float64)
+    target_bind_global = np.asarray(pose_map.target_bind_global, dtype=np.float64)
     for bone in sorted(frozen_all):
-        target_global[bone] = source_global[bone]
+        target_global[bone] = (
+            source_global[bone]
+            @ np.linalg.inv(source_bind_global[bone])
+            @ target_bind_global[bone]
+        )
 
     return target_global
 
@@ -244,7 +255,7 @@ def check_pose_map_v10(
         "pose_composition": POSE_MAP_V10_COMPOSITION,
         "parent_local_mapping_only": True,
         "source_pose_authority": "frozen_142_source_bone_posed_global",
-        "terminal_policy": "identity_142_hand_foot",
+        "terminal_policy": "reseated_142_hand_foot",
         "zero_pose_matrix_max_abs": matrix_error,
         "zero_pose_vertex_rms_m": vertex_rms,
         "zero_pose_vertex_max_m": vertex_max,

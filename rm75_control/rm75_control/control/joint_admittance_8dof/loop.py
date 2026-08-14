@@ -152,6 +152,12 @@ class JointIkStep:
     qp_solver_solve_ms: float = 0.0
     qp_solver_call_count: int = 0
     qp_solver_overrun: bool = False
+    # Coarse per-stage tick profile (ms).  The loop budgets 5.0 ms but
+    # measured 6.16 ms mean with only 2.1% of ticks on time, and the log had
+    # no way to attribute the overrun.
+    tick_inner_ms: float = float("nan")
+    tick_send_ms: float = float("nan")
+    tick_log_ms: float = float("nan")
     qpik_alpha: float = 1.0
     qpik_beta: float = 1.0
     qpik_authority: float = 1.0
@@ -723,6 +729,11 @@ class JointIkController:
             qp_backend=self.core.backend_name,
             qp_solver_status=self.core.last_status if mode == "qpik" else "not_run",
             qp_solver_call_count=int(self.core.solve_count) if mode == "qpik" else 0,
+            qp_solver_solve_ms=(
+                float(getattr(self.core.backend, "last_solve_ms", 0.0))
+                if mode == "qpik"
+                else 0.0
+            ),
             qpik_alpha=alpha,
             qpik_beta=1.0,
             qpik_authority=1.0,
@@ -1720,6 +1731,7 @@ class _TickLogger:
            "qpik_backend", "qpik_solver_status", "qpik_solver_iterations",
            "qpik_solver_solve_ms", "qpik_solver_call_count",
            "qpik_solver_overrun",
+           "tick_inner_ms", "tick_send_ms", "tick_log_ms",
            "qpik_alpha", "qpik_beta", "qpik_authority",
            "qpik_equality_residual_max", "qpik_hard_residual_max",
            "qpik_anchor_valid", "qpik_recovery_overflow",
@@ -2208,6 +2220,14 @@ class _TickLogger:
                f"{step.qp_solver_solve_ms:.6f}",
                int(step.qp_solver_call_count),
                int(bool(step.qp_solver_overrun)),
+               *(
+                   f"{v:.4f}" if np.isfinite(v) else ""
+                   for v in (
+                       getattr(step, "tick_inner_ms", float("nan")),
+                       getattr(step, "tick_send_ms", float("nan")),
+                       getattr(step, "tick_log_ms", float("nan")),
+                   )
+               ),
                f"{step.qpik_alpha:.8f}", f"{step.qpik_beta:.8f}",
                f"{step.qpik_authority:.8f}",
                f"{step.qpik_equality_residual_max:.9e}",
@@ -2638,6 +2658,7 @@ def run_joint_admittance_phases(
                     feedback_velocity_valid = False
                     feedback_fresh_tick = False
                     first_tick = True
+                    last_log_ms = float("nan")
                     wd.arm()
                     while True:
                         if stop_check is not None and stop_check():
@@ -2822,6 +2843,7 @@ def run_joint_admittance_phases(
                             if f_ext is not None and len(f_ext) > 2
                             else float("nan")
                         )
+                        _t_inner0 = time.perf_counter()
                         step = inner.update(
                             twist,
                             control_dt,
@@ -2839,6 +2861,9 @@ def run_joint_admittance_phases(
                             path_twist=path_twist,
                             feedback_twist=feedback_twist,
                         )
+                        step.tick_inner_ms = (
+                            time.perf_counter() - _t_inner0
+                        ) * 1000.0
                         step.pre_solve_feedback_age_s = sensor_age_s
                         # A hard-construction/final-validation fault is acted on before the
                         # rail target or CANFD joint command can be published.
@@ -2893,6 +2918,7 @@ def run_joint_admittance_phases(
                             stop_reason = publication_reason
                             _fault_stop(stop_reason)
                             break
+                        _t_send0 = time.perf_counter()
                         rail_ok, rail_reason = _publish_rail_target_before_arm(
                             rail_bridge,
                             float(step.q_send[0]),
@@ -2917,6 +2943,9 @@ def run_joint_admittance_phases(
                             )
                             _fault_stop(stop_reason)
                             break
+                        step.tick_send_ms = (
+                            time.perf_counter() - _t_send0
+                        ) * 1000.0
     
                         joint_err_deg = getattr(
                             phase.outer, "last_joint_err_deg", None
@@ -2959,6 +2988,11 @@ def run_joint_admittance_phases(
                                     rail_meas = float(rail_bridge.measured_m)
                                 except Exception:
                                     rail_meas = float("nan")
+                            # The write cannot time itself into its own row, so
+                            # carry the previous tick's cost; over a run the
+                            # statistics are the same.
+                            step.tick_log_ms = last_log_ms
+                            _t_log0 = time.perf_counter()
                             logger.write(
                                 now - total_t0, phase.label, t_ref, step, q_meas, pose_pin, f_ext,
                                 outer=phase.outer,
@@ -2974,6 +3008,9 @@ def run_joint_admittance_phases(
                                 twist_achieved_base=twist_achieved_base,
                                 v_tcp_z_actual=v_tcp_z_actual,
                             )
+                            last_log_ms = (
+                                time.perf_counter() - _t_log0
+                            ) * 1000.0
                         if on_step is not None:
                             on_step(phase.label, t_ref, step, pose_pin, f_ext, t_wall)
 

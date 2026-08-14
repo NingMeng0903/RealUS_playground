@@ -317,6 +317,10 @@ hybrid_motion:
     # Barrier keeps its force-error gating; this only stops it closing press
     # to exactly zero, which left the tool unable to recover a lost contact.
     v_min_press_m_s: 0.003
+    # Free-space approach cap.  Impact ~ Ke*v*T_delay, so closing the gap at
+    # the full 80 mm/s made ~8 N peaks on a 3 N target and the over-force
+    # retract threw the tool off the surface.  In-contact response unchanged.
+    v_seek_free_m_s: 0.030
     fdot_lpf_s: 0.040
     precontact_raw_trigger_n: 1.50 # short impact sleeve; never latches contact
     stiffness_cap_enabled: true

@@ -28,8 +28,13 @@ from .pose_map_v10 import FOOT_ROOTS, HAND_ROOTS
 from .whole_chain_rest_fit_v1 import _descendants
 
 
-# The measured optimum is 6 mm / 11 degrees; these leave headroom for other
-# betas without letting the solver walk a terminal off its joint.
+# Rotation is taken about the terminal's own joint centre so the swing is
+# anatomical rather than about an arbitrary centroid.  Rotation alone is not
+# enough: pivoting the foot about the ankle swings the toes through a long arc
+# and measured *worse* than doing nothing (16.4 -> 17.1 mm), while rotation
+# plus a small translation reaches 4.0 mm.  The translation does move the
+# wrist/ankle bind origin, so ``evaluate_rest_anatomical_anchor_v11`` is what
+# decides whether a given re-seat is allowed to stand.
 MAX_TRANSLATION_M = 0.015
 MAX_ROTATION_DEG = 15.0
 
@@ -54,6 +59,17 @@ def _cluster_vertex_ids(asset: Any, controllers: Sequence[int]) -> np.ndarray:
     return np.concatenate(chunks) if chunks else np.empty(0, dtype=np.int64)
 
 
+def _blended_affine(
+    asset: Any, vertex_ids: np.ndarray, transforms: np.ndarray
+) -> np.ndarray:
+    """LBS-blend per-controller transforms down to one affine per vertex."""
+
+    indices = np.asarray(asset.driver_indices, dtype=np.int64)[vertex_ids]
+    weights = np.asarray(asset.driver_weights, dtype=np.float64)[vertex_ids]
+    selected = np.asarray(transforms, dtype=np.float64)[indices]
+    return np.einsum("vk,vkab->vab", weights, selected)
+
+
 def _rigid(parameters: np.ndarray, centre: np.ndarray) -> np.ndarray:
     from scipy.spatial.transform import Rotation
 
@@ -75,15 +91,31 @@ def solve_terminal_reseat_v12(
     skin: np.ndarray,
     skin_faces: np.ndarray,
     bone_parents: np.ndarray,
+    bind: np.ndarray,
+    anchor_targets: Mapping[str, np.ndarray] | None = None,
+    anchor_budget_m: Mapping[str, float] | None = None,
+    pose_frames: Sequence[Mapping[str, Any]] | None = None,
     max_translation_m: float = MAX_TRANSLATION_M,
     max_rotation_deg: float = MAX_ROTATION_DEG,
     samples: int = OBJECTIVE_SAMPLES,
 ) -> dict[str, Any]:
-    """Fit one bounded rigid transform per terminal cluster at rest."""
+    """Fit one bounded rigid transform per terminal cluster at rest.
+
+    The rotation pivot is the terminal root's bind origin -- the wrist or
+    ankle joint centre -- so the swing is anatomical rather than about an
+    arbitrary centroid.
+
+    ``anchor_targets`` / ``anchor_budget_m`` keep the solve inside
+    ``evaluate_rest_anatomical_anchor_v11``: the re-seated root origin may not
+    end further from its anatomical target than the prefit bind was.  Without
+    that constraint the best skin fit walks the ankle 18.6 mm off the
+    anatomical ankle and the anchor gate rejects it.
+    """
 
     from scipy.optimize import minimize
 
     rest = np.asarray(vertices, dtype=np.float64)
+    matrices = np.asarray(bind, dtype=np.float64)
     names = [str(name) for name in asset.source_bone_names]
     parents = np.asarray(bone_parents, dtype=np.int64)
     skin_points = np.asarray(skin, dtype=np.float64)
@@ -98,7 +130,7 @@ def solve_terminal_reseat_v12(
         if not len(ids):
             raise ValueError(f"terminal cluster {root_name} has no bone vertices")
         points = rest[ids]
-        centre = points.mean(axis=0)
+        centre = matrices[root, :3, 3]
         generator = np.random.default_rng(abs(hash(root_name)) % (2**32))
         pick = (
             generator.choice(len(points), size=samples, replace=False)
@@ -107,27 +139,77 @@ def solve_terminal_reseat_v12(
         )
         sampled = points[pick]
 
-        def cost(parameters: np.ndarray) -> float:
-            moved = _apply(_rigid(parameters, centre), sampled)
-            signed = _signed_distance(moved, skin_points, skin_triangles)
-            return float(np.sum(np.maximum(signed, 0.0) ** 2))
+        target = None if anchor_targets is None else anchor_targets.get(root_name)
+        budget = None if anchor_budget_m is None else anchor_budget_m.get(root_name)
 
+        # Under the terminal contract the posed transform of a terminal vertex
+        # is ``G_src @ inv(B_src)`` blended by its frozen weights, which does
+        # not depend on the re-seat at all.  So the posed cluster is an affine
+        # image of the re-seated rest cluster and every pose can be scored for
+        # the cost of one more signed-distance query.  Fitting rest only is not
+        # enough: it wins 11 mm at rest and gives 3 mm back at 105 degrees of
+        # knee flexion, because the posed foot pocket is a different shape.
+        frames: list[tuple[np.ndarray, np.ndarray, np.ndarray | None]] = [
+            (skin_points, skin_triangles, None)
+        ]
+        for entry in pose_frames or ():
+            affine = _blended_affine(
+                asset, ids[pick], np.asarray(entry["source_transforms"])
+            )
+            frames.append(
+                (
+                    np.asarray(entry["skin"], dtype=np.float64),
+                    np.asarray(entry["skin_faces"]),
+                    affine,
+                )
+            )
+
+        def cost(parameters: np.ndarray) -> float:
+            transform = _rigid(parameters, centre)
+            if target is not None and budget is not None:
+                origin = _apply(transform, centre[None, :])[0]
+                excess = float(np.linalg.norm(origin - target)) - float(budget)
+                if excess > 0.0:
+                    # Outside the anatomical ball the anchor gate allows.
+                    return 1.0e6 * (1.0 + excess)
+            moved = _apply(transform, sampled)
+            total = 0.0
+            for frame_skin, frame_faces, affine in frames:
+                points = (
+                    moved
+                    if affine is None
+                    else np.einsum("vab,vb->va", affine[:, :3, :3], moved)
+                    + affine[:, :3, 3]
+                )
+                signed = _signed_distance(points, frame_skin, frame_faces)
+                total += float(np.sum(np.maximum(signed, 0.0) ** 2))
+            return total / len(frames)
+
+        translation_bound = max(float(max_translation_m), 1.0e-12)
         best = minimize(
             cost,
             np.zeros(6),
             method="Powell",
-            bounds=[(-max_translation_m, max_translation_m)] * 3 + [(-bound, bound)] * 3,
+            bounds=[(-translation_bound, translation_bound)] * 3
+            + [(-bound, bound)] * 3,
             options={"maxiter": 300, "xtol": 1.0e-4, "ftol": 1.0e-7},
         )
-        transform = _rigid(np.asarray(best.x, dtype=np.float64), centre)
+        parameters = np.asarray(best.x, dtype=np.float64).copy()
+        if max_translation_m <= 0.0:
+            parameters[:3] = 0.0
+        transform = _rigid(parameters, centre)
         before = _signed_distance(points, skin_points, skin_triangles)
         after = _signed_distance(_apply(transform, points), skin_points, skin_triangles)
         result[root_name] = {
             "controllers": controllers,
             "vertex_ids": ids,
             "transform": transform,
-            "translation_m": float(np.linalg.norm(best.x[:3])),
-            "rotation_deg": float(np.degrees(np.linalg.norm(best.x[3:]))),
+            "pivot": "terminal_root_bind_origin",
+            "root_origin_shift_m": float(
+                np.linalg.norm(_apply(transform, centre[None, :])[0] - centre)
+            ),
+            "translation_m": float(np.linalg.norm(parameters[:3])),
+            "rotation_deg": float(np.degrees(np.linalg.norm(parameters[3:]))),
             "max_outside_before_m": float(max(0.0, float(np.max(before)))),
             "max_outside_after_m": float(max(0.0, float(np.max(after)))),
             "outside_count_before": int(np.count_nonzero(before > 0.0)),
@@ -145,39 +227,46 @@ def apply_terminal_reseat_v12(
 ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
     """Move terminal geometry and terminal binds by the same rigid transform.
 
-    Geometry is blended by the fraction of each vertex's LBS mass that sits on
-    the cluster, so a vertex straddling the wrist moves partway rather than
-    tearing away from the forearm.
+    The geometry has to move through the *same frozen LBS* that will later
+    pose it, not by assigning the transform to a hand-picked vertex list.
+    Changing a controller's bind changes the inverse bind for every vertex it
+    drives, including distal tibia vertices that are only partly weighted to
+    the ankle; if their rest position does not move by the matching weighted
+    amount, posing amplifies the mismatch.  Both earlier attempts -- an
+    LBS-weighted mesh blend against a full bind move, and a hard cluster
+    assignment -- got that wrong and threw the feet 190 mm out of the skin.
     """
 
-    moved = np.asarray(vertices, dtype=np.float64).copy()
+    from .chain_rest_fit_v1 import _weighted_rest_correction
+
+    base = np.asarray(vertices, dtype=np.float64)
     matrices = np.asarray(bind, dtype=np.float64).copy()
     driver_indices = np.asarray(asset.driver_indices, dtype=np.int64)
     driver_weights = np.asarray(asset.driver_weights, dtype=np.float64)
+    delta = np.tile(np.eye(4, dtype=np.float64), (len(matrices), 1, 1))
     report: dict[str, Any] = {}
 
     for root_name, entry in reseat.items():
         transform = np.asarray(entry["transform"], dtype=np.float64)
         controllers = list(entry["controllers"])
-        member = np.isin(driver_indices, controllers)
-        alpha = np.clip(np.sum(driver_weights * member, axis=1), 0.0, 1.0)
-        active = np.flatnonzero(alpha > 0.0)
-        if not len(active):
-            raise ValueError(f"terminal cluster {root_name} drives no vertices")
-        target = _apply(transform, moved[active])
-        weights = alpha[active][:, None]
-        shift = weights * (target - moved[active])
-        moved[active] += shift
         for controller in controllers:
+            delta[controller] = transform
             matrices[controller] = transform @ matrices[controller]
+
+    moved = _weighted_rest_correction(base, driver_indices, driver_weights, delta)
+
+    for root_name, entry in reseat.items():
+        active = np.asarray(entry["vertex_ids"], dtype=np.int64)
+        shift = moved[active] - base[active]
         report[root_name] = {
             "translation_m": float(entry["translation_m"]),
             "rotation_deg": float(entry["rotation_deg"]),
+            "root_origin_shift_m": float(entry["root_origin_shift_m"]),
             "max_outside_before_m": float(entry["max_outside_before_m"]),
             "max_outside_after_m": float(entry["max_outside_after_m"]),
             "outside_count_before": int(entry["outside_count_before"]),
             "outside_count_after": int(entry["outside_count_after"]),
-            "blended_vertex_count": int(len(active)),
+            "moved_vertex_count": int(len(active)),
             "max_vertex_shift_m": float(np.max(np.linalg.norm(shift, axis=1))),
         }
     return moved, matrices, report
@@ -191,6 +280,9 @@ def reseat_terminals_v12(
     skin: np.ndarray,
     skin_faces: np.ndarray,
     bone_parents: np.ndarray,
+    anchor_targets: Mapping[str, np.ndarray] | None = None,
+    anchor_budget_m: Mapping[str, float] | None = None,
+    pose_frames: Sequence[Mapping[str, Any]] | None = None,
     max_translation_m: float = MAX_TRANSLATION_M,
     max_rotation_deg: float = MAX_ROTATION_DEG,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
@@ -203,6 +295,10 @@ def reseat_terminals_v12(
         skin=skin,
         skin_faces=skin_faces,
         bone_parents=bone_parents,
+        bind=bind,
+        anchor_targets=anchor_targets,
+        anchor_budget_m=anchor_budget_m,
+        pose_frames=pose_frames,
         max_translation_m=max_translation_m,
         max_rotation_deg=max_rotation_deg,
     )
@@ -217,18 +313,46 @@ def reseat_terminals_v12(
             "scaling_applied": False,
             "max_translation_m": float(max_translation_m),
             "max_rotation_deg": float(max_rotation_deg),
+            "fitted_pose_count": 1 + len(pose_frames or ()),
             "clusters": report,
             "elapsed_seconds": float(time.perf_counter() - started),
         },
     )
 
 
+def _anchor_constraints(
+    value: Any, *, asset: Any, calibration: Any
+) -> tuple[dict[str, np.ndarray], dict[str, float]]:
+    """Anatomical target and allowed radius for each terminal root."""
+
+    from .anatomical_calibration_v1 import JOINT_SPECS
+    from .segment_similarity_rest_v10 import subject_anatomical_pivots_v10
+
+    names = [str(name) for name in asset.source_bone_names]
+    pivots = subject_anatomical_pivots_v10(asset, calibration)
+    prefit = np.asarray(value.B_prefit, dtype=np.float64)
+    targets: dict[str, np.ndarray] = {}
+    budget: dict[str, float] = {}
+    for index, spec in enumerate(JOINT_SPECS):
+        if spec.controller not in TERMINAL_ROOTS:
+            continue
+        origin = pivots[index, :3, 3]
+        controller = names.index(spec.controller)
+        targets[spec.controller] = origin
+        budget[spec.controller] = float(
+            np.linalg.norm(prefit[controller, :3, 3] - origin)
+        )
+    return targets, budget
+
+
 def reseat_subject_terminals_v12(
     value: Any,
     *,
     asset: Any,
+    calibration: Any,
     skin: np.ndarray,
     skin_faces: np.ndarray,
+    pose_frames: Sequence[Mapping[str, Any]] | None = None,
     max_translation_m: float = MAX_TRANSLATION_M,
     max_rotation_deg: float = MAX_ROTATION_DEG,
 ) -> Any:
@@ -238,6 +362,9 @@ def reseat_subject_terminals_v12(
 
     from .chain_rest_fit_v1 import _global_to_local
 
+    targets, budget = _anchor_constraints(
+        value, asset=asset, calibration=calibration
+    )
     moved, b_final, report = reseat_terminals_v12(
         np.asarray(value.vertices_final, dtype=np.float64),
         np.asarray(value.B_final, dtype=np.float64),
@@ -245,6 +372,9 @@ def reseat_subject_terminals_v12(
         skin=skin,
         skin_faces=skin_faces,
         bone_parents=np.asarray(value.bone_parents, dtype=np.int64),
+        anchor_targets=targets,
+        anchor_budget_m=budget,
+        pose_frames=pose_frames,
         max_translation_m=max_translation_m,
         max_rotation_deg=max_rotation_deg,
     )

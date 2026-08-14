@@ -23,6 +23,9 @@ from projects.genesis_ue_sync.anatomy_retarget.anatomical_calibration_v1 import 
     _calibration_content_digest,
     load_anatomical_calibration_v1,
 )
+from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import (
+    source_bone_posed_global,
+)
 from projects.genesis_ue_sync.anatomy_retarget.blender_link_oracle_v7 import (
     EXPECTED_OPERATOR_RUNTIME_DIGEST,
     EXPECTED_ORACLE_SHA256,
@@ -62,6 +65,9 @@ from projects.genesis_ue_sync.anatomy_retarget.smplx_body_surface_v7 import (
     load_smplx_model_v7,
     require_frozen_smplx_male_v7,
     smplx_body_surface_v7,
+)
+from projects.genesis_ue_sync.anatomy_retarget.terminal_reseat_v12 import (
+    reseat_subject_terminals_v12,
 )
 from projects.genesis_ue_sync.anatomy_retarget.v8_artifacts import (
     load_source_operator,
@@ -154,6 +160,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--reseat-terminals",
+        action="store_true",
+        help=(
+            "V12b: bounded rigid re-seat of the hand/foot clusters at rest. "
+            "No scaling. Every version since V7 froze them to copy-142, which "
+            "is why the feet are the top poke source in every pose"
+        ),
+    )
+    parser.add_argument(
         "--subjects",
         default="213328,213712",
         help="Comma-separated subject labels (default both frozen captures)",
@@ -227,6 +242,48 @@ def main(argv: list[str] | None = None) -> int:
                 restore_controllers=HINGE_RESTORE_PRESETS[args.hinge_restore],
                 carry_mesh_controllers=CARRY_MESH_PRESETS[args.carry_mesh],
             )
+            if args.reseat_terminals:
+                rest_skin, rest_skin_faces = smplx_body_surface_v7(
+                    model,
+                    betas=np.asarray(value.betas),
+                    pose_axis_angle=np.zeros((55, 3), dtype=np.float32),
+                )
+                # Fitting the re-seat on rest alone wins at T-pose and gives
+                # part of it back once a knee bends, so both frozen captures
+                # go into the objective too.
+                inverse_source_bind = np.linalg.inv(
+                    np.asarray(
+                        source_bone_posed_global(
+                            asset, np.zeros((55, 3), dtype=np.float32)
+                        ),
+                        dtype=np.float64,
+                    )
+                )
+                reseat_frames = []
+                for pose in recorded.values():
+                    pose_aa = np.asarray(pose, dtype=np.float32).reshape(55, 3)
+                    pose_skin, pose_faces = smplx_body_surface_v7(
+                        model, betas=np.asarray(value.betas), pose_axis_angle=pose_aa
+                    )
+                    reseat_frames.append(
+                        {
+                            "skin": pose_skin,
+                            "skin_faces": pose_faces,
+                            "source_transforms": np.asarray(
+                                source_bone_posed_global(asset, pose_aa),
+                                dtype=np.float64,
+                            )
+                            @ inverse_source_bind,
+                        }
+                    )
+                value = reseat_subject_terminals_v12(
+                    value,
+                    asset=asset,
+                    calibration=calibration,
+                    skin=rest_skin,
+                    skin_faces=rest_skin_faces,
+                    pose_frames=reseat_frames,
+                )
             pose_map = build_pose_map_v10(
                 value,
                 asset=asset,
@@ -413,6 +470,7 @@ def main(argv: list[str] | None = None) -> int:
             "rest_method": ANCHORED_REST_V11_METHOD,
             "hinge_restore_preset": str(args.hinge_restore),
             "carry_mesh_preset": str(args.carry_mesh),
+            "reseat_terminals": bool(args.reseat_terminals),
             "v7_baseline": str(v7_baseline),
             "publishable": False,
             "trusted_latest_updated": False,

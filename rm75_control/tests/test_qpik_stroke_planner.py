@@ -219,6 +219,62 @@ def test_barrier_press_cap_has_a_floor_in_contact() -> None:
     assert cap_small <= 0.001 + 1e-12
 
 
+def test_barrier_caps_the_free_space_approach() -> None:
+    """Impact ~ Ke*v*T_delay, so the gap-closing speed sets the first peak."""
+    from rm75_control.control.admittance_common.force_barrier import (
+        ForceBarrierConfig,
+        ForceSpaceVelocityDamper,
+    )
+
+    damper = ForceSpaceVelocityDamper(
+        ForceBarrierConfig(enabled=True, v_seek_free_m_s=0.030)
+    )
+    cap_free, _ = damper.caps(
+        f_z=0.0,
+        f_des_z=3.0,
+        in_contact=False,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+    )
+    assert cap_free == pytest.approx(0.030)
+
+    # A tighter external sleeve still wins.
+    cap_sleeve, _ = damper.caps(
+        f_z=0.0,
+        f_des_z=3.0,
+        in_contact=False,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.008,
+        contact_enter_n=0.5,
+    )
+    assert cap_sleeve == pytest.approx(0.008)
+
+    # In contact the cap is the admittance's business, not this one.
+    cap_contact, _ = damper.caps(
+        f_z=0.0,
+        f_des_z=3.0,
+        in_contact=True,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+    )
+    assert cap_contact > 0.030
+
+
+def test_admittance_error_is_not_low_passed() -> None:
+    """The force-axis slew limiter already bounds command jitter to ~4.9 mm/s
+    per tick (measured v_force_z step: 2.8 mm/s p95), so a low-pass on the
+    admittance error bought nothing and cost twice — stiff-surface impact
+    8 N -> 12.2 N, and proactive v_r 6.97 -> 5.89 mm/s on a receding surface.
+    """
+    from rm75_control.control.admittance_common.controller import AdmittanceConfig
+
+    cfg = AdmittanceConfig()
+    assert not hasattr(cfg, "force_lpf_tau_s")
+    assert not hasattr(cfg, "force_lpf_snap_n")
+
+
 def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     from pathlib import Path
 
@@ -286,3 +342,51 @@ def test_analyzer_rejects_empty_scan(tmp_path) -> None:
     assert mod.analyze(csv_path) == 2
     assert "waste_ratio" in mod.GATES
     assert "accel_reversals_per_s" in mod.GATES
+    assert "dt_on_time_frac" in mod.GATES
+
+
+def test_analyzer_jerk_metric_ignores_loop_period_jitter(tmp_path) -> None:
+    """A perfectly smooth command must not read as jerk just because the
+    scheduler jittered.  Dividing by wall dt inflated the reversal rate 3-4x
+    and sent three rounds of tuning after a metric artefact."""
+    import importlib.util
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "joint_admittance_8dof"
+        / "analyze_qpik_quality.py"
+    )
+    spec = importlib.util.spec_from_file_location("analyze_qpik_quality", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+
+    rng = np.random.default_rng(1)
+    n = 3000
+    cols = ["phase", "t_wall_s"] + [f"q_cmd_{i}" for i in range(8)]
+    lines = [",".join(cols)]
+    t = 0.0
+    for k in range(n):
+        # Smooth sinusoid in sample index; wall clock jitters +-20% like the
+        # real loop (measured 5.6-6.9 ms against a 5.0 ms budget).
+        t += 0.0061 * float(rng.uniform(0.8, 1.2))
+        q = 0.3 * np.sin(2.0 * np.pi * 0.2 * k * 0.0061)
+        lines.append(
+            ",".join(["scan", f"{t:.6f}"] + [f"{q:.9f}"] * 8)
+        )
+    csv_path = tmp_path / "jitter.csv"
+    csv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    import io
+    from contextlib import redirect_stdout
+
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        mod.analyze(csv_path)
+    out = buf.getvalue()
+    line = next(
+        ln for ln in out.splitlines() if "accel sign reversals" in ln
+    )
+    assert "[PASS]" in line, line
