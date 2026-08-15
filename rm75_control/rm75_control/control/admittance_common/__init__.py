@@ -13,6 +13,7 @@ __all__ = [
     "BidirectionalFlowTelemetry",
     "AsyncStateObserver",
     "AsyncStateSnapshot",
+    "arm_qdot_rad_s_from_snap",
     "CompensatedForceObserver",
     "EnvironmentStiffnessEstimator",
     "FastRetractGuard",
@@ -44,6 +45,7 @@ _MODULE_BY_NAME = {
         for name in (
             "AsyncStateObserver",
             "AsyncStateSnapshot",
+            "arm_qdot_rad_s_from_snap",
             "RealtimePushConfig",
             "RealtimeStateObserver",
             "create_state_observer",

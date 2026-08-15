@@ -534,3 +534,42 @@ T-pose 恒等仍过，胫/前臂没有被带坏。但一个刚体 `T` 坐不住�
 独立盲审（[V12b visual](29af2ef8-3527-48bd-8e08-6c0e885d0dee)）：**`needs_fix`**。膝铰链过、联动未炸；手足仍大面积外露（P0 未关）；深屈右足比捕获更差。已改 `review_decision.json`。
 
 下一刀：深屈三态进 reseat minimax，建 `chain_retarget_v12b_reseat_002`。
+
+### 11.5 V12c 拆足簇 + 面积（2026-08-14）
+
+`Ankle_Rot` 只搬后足，`Arch_Rot` 搬跖+趾，施加 `T_arch @ T_a`。目标改成 minimax 出皮面积；1 mm 墙对着**原始未动**，踝拟合还墙继承后的前足，避免右踝 9° 把趾甩到 26 mm。
+
+213328 诊断（rest + 两捕获 + 深屈三态）：
+
+- `Ankle_Rot_R` 1.2 mm + 1.3°（不再 8 mm+9°）；深屈后足 5.9→6.3 mm，不再 +7 mm
+- `Arch_Rot_L` 3.8 mm + 1.6°；`pose_213328` 前足 23.1→20.4，`pose_213712` 16.9→14.6
+- `Arch_Rot_R` ≈ 恒等（任何 T 都会撞墙）
+- 左后足 rest 仍 ~16 mm：刚体拆簇也坐不进那个跟/距骨尖
+
+`chain_retarget_v12c_arch_001` 已拼好（`publishable=false`）。深屈 `foot_R` 相对 V11 只 +0.35 mm（V12b 的 +7 mm 已关）。捕获足仍 13–25 mm，P0 未关。sweep 网格已删。
+
+### 11.6 V12d 前臂刚体 + V10 FK 评分（2026-08-15）
+
+`forearm_L` 的 16 mm 在桡尺骨上（`Forearm_Bone`=尺骨，`Forearm_Twist`=桡骨），腕 reseat 动不到。已把同一套有界刚体接到这两根轴上，手跟随 `T_w @ T_ft @ T_fb`。
+
+关键修正：终端源仿射会把 `B_tgt` 约掉，看不见主链 FK 穿出。评分改成运行时那套关节锚定 FK。诊断现在能看见 `pose_213328` 尺骨 12.9 mm / 桡骨 14.4 mm。
+
+**刚体 T 仍压不下去**（1 mm 墙 + 多姿态 + 继承手）：尺骨 12.9→12.9，桡骨 14.4→15.2。把 V7 前臂 bind 接回 V11（mesh 本就相同，左尺骨原点差 23 mm）在 V10 FK 下变成 **16.1→17.7 mm**，与 V12a `carry_mesh=arm` 同类。V7 的 0 mm 前臂是旧右乘构图的数字，搬不到 V10。
+
+未建两 beta 影子（没有可买的毫米，不堆产物）。bind+mesh 刚体到了上限。
+
+### 11.7 V12e 前臂只搬网格、冻 bind（2026-08-15）
+
+根因：V11 肘 bind 在 prefit，尺桡 mesh 在 V7，相差 ~15–23 mm。V10 绕 bind 转，rest 已贴皮（内余 38 mm），屈肘把骨干甩出皮囊。搬 bind（V12a / V7 graft）和 bind+mesh T（V12d）都会改旋转中心，压不住。
+
+V12e：`B_final` 不动，只对尺骨/桡骨 rest 网格做有界刚体 T（管随同一 T）。213328 诊断：
+
+| 姿态 | `forearm_L` V11 | V12e | 面积 |
+|---|---:|---:|---:|
+| rest | 0.00 | 0.00 | 0→0 |
+| pose_213328 | 16.07 | **0.00** | 16.2%→0 |
+| pose_213712 | 14.97 | **0.00** | 14.4%→0 |
+
+四根前臂 bind 原点位移 0.000 mm。手/膝/胫未借毫米（`humerus_L`/`shank_L`/`patella_L` 逐位相同）。足仍是 V12c 量级（P0 未关）。
+
+正在建 `chain_retarget_v12e_forearm_mesh_001`（`publishable=false`）。仍不开股骨笼。

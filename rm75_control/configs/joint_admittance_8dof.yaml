@@ -145,7 +145,11 @@ inner:
     k_limit: 2.0
     activation: 0.75
     weights: [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    q_nominal_deg: [0.0, 0.0, -45.0, 0.0, 90.0, 0.0, 45.0, 0.0]
+    # rail, J1, J2, J3, J4, J5, J6, J7.  Comfortable posture, not mid-range
+    # (J4 mid=0 is a straight arm).  J5=0 aligned wrist-roll and pulled
+    # scans into |J5|<15°; +40 matches the live branch (scan p50 ≈ 42°).
+    # Episode start latches the sign from q_meas.
+    q_nominal_deg: [0.0, 0.0, -45.0, 0.0, 90.0, 40.0, 45.0, 0.0]
     manipulability:
       k_mu: 0.8
       eps_rad: 5.0e-4
@@ -168,7 +172,7 @@ inner:
     w_sigma: 0.5
     # Band around the 45° attractor — not |q6|/128°, which sacrificed J2.
     w_wrist: 0.5
-    margin_floor_deg: 15.0
+    margin_floor_deg: 20.0
     # step() never replans.  Pin–Culioli runs once at scan start.
     z_replan_m: 0.0
     psi_rate_deg_s: 20.0
@@ -196,6 +200,8 @@ inner:
     w_max: 2.0
     v_max_m_s: 0.08
     limit_margin_m: 0.15
+    pin_margin_m: 0.008
+    escape_leave_m: 0.04
     v_reach_cap_m_s: 0.02
     k_sigma_boost: 2.0
     k_esc: 0.5
@@ -253,14 +259,14 @@ hybrid_motion:
   track_axes:
   - 1
   - 1
-  - 0
+  - 1
   - 1
   - 1
   - 1
   kp_pos:
   - 2.0
   - 2.0
-  - 0.0
+  - 1.0
   - 1.5
   - 1.5
   - 1.5
@@ -348,20 +354,23 @@ hybrid_motion:
     # Barrier keeps its force-error gating; this only stops it closing press
     # to exactly zero, which left the tool unable to recover a lost contact.
     v_min_press_m_s: 0.003
-    # Free-space seek.  e85 closed the gap at max_vz (80 mm/s); 30 mm/s was
-    # the post-e85 anti-bounce sleeve that left air vz_achieved ~6 mm/s.
-    # The in-contact barrier still brakes over-force / impact.
-    v_seek_free_m_s: 0.08
+    # Free-space approach cap.  Impact ~ Ke*v*T_delay, so closing the gap at
+    # the full 80 mm/s made ~8 N peaks on a 3 N target and the over-force
+    # retract threw the tool off the surface.  In-contact response unchanged.
+    v_seek_free_m_s: 0.030
     fdot_lpf_s: 0.040
     precontact_raw_trigger_n: 1.50 # short impact sleeve; never latches contact
     stiffness_cap_enabled: true
     ke_floor_n_m: 50.0
     mass_floor_kg: 0.05
-  # e85 skipped force-axis accel limiting.  0 restores that step; the
-  # barrier remains the over-force brake.
-  force_axis_slew_press_m_s2: 0.0
-  force_axis_slew_retract_m_s2: 0.0
-  force_axis_slew_reverse_m_s2: 0.0
+  # Force-axis slew is press-positive and asymmetric.  A sign reversal into
+  # retract gets the fastest allowance and is never tank/alpha gated.
+  # 0.30 allowed press to rise only ~1.9 mm/s per 6.2 ms tick — 0.27 s to
+  # reach the 80 mm/s cap, which is the "damped, not light" feel.  The force
+  # barrier is the error-gated brake; this no longer has to be one.
+  force_axis_slew_press_m_s2: 0.80
+  force_axis_slew_retract_m_s2: 1.20
+  force_axis_slew_reverse_m_s2: 2.00
   # Lee-structure speed-level engineering adapter.  Observe is deliberately
   # non-mutating until the slow press/retract sign check and 2/5/10 mm/s
   # no-contact delay identification have been recorded.
@@ -408,10 +417,10 @@ hybrid_motion:
     stable_contact_s: 0.20
     attack_s: 0.05
     release_s: 0.15
-  # Floor 1.0 disables the turnaround chase softener (e85 had none).
+  # Soften under-force chase near scan turnaround (tool-XY slow).
   force_lateral_soft_m_s: 0.006
   force_lateral_full_m_s: 0.018
-  force_lateral_gain_floor: 1.0
+  force_lateral_gain_floor: 0.35
   adaptive_ke:
     enabled: true
     # Observe Ke / impact burst only — do not hold high critical D in steady contact.
@@ -524,6 +533,11 @@ hw:
     vel_kd: 0.22
     vel_max_m_s: 0.15
     vel_amax_m_s2: 0.8
+    # Live QPIK v_ff: position is a slow trim; host a_max is capped to FA40.
+    vel_ff_kp: 4.0
+    vel_ff_p_trim_m_s: 0.010
+    match_drive_accel: true
+    fa24_rpm_deadband: 12   # skip Modbus if |Δrpm|<12 (~2 mm/s) while moving
     vel_deadband_mm: 0.05   # tight tracking band (not a permanent accuracy sacrifice)
     # Standstill hysteresis: freeze FA24 after tight settle; wake only if pushed.
     standstill_enter_mm: 0.05

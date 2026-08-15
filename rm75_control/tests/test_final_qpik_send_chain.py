@@ -5,6 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from rm75_control.control.joint_admittance_8dof.collision_model import CollisionConfig
 from rm75_control.control.joint_admittance_8dof.loop import (
@@ -13,6 +14,7 @@ from rm75_control.control.joint_admittance_8dof.loop import (
     _guard_qpik_step_before_send,
     _publish_rail_target_before_arm,
     _rail_m_for_feedback,
+    _wall_clock_rail_target,
 )
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics, full_q_from_arm
 from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfig
@@ -175,7 +177,8 @@ def test_rail_rejection_stops_before_arm_half_of_8d_tick() -> None:
         panicked = False
         panic_reason = ""
 
-        def set_target_m(self, _target):
+        def set_target_m(self, _target, v_ff_m_s=None):
+            del v_ff_m_s
             return False
 
     events: list[str] = []
@@ -211,3 +214,49 @@ def test_watchdog_fault_is_latched_until_explicit_phase_arm() -> None:
         assert watchdog.beat()
     finally:
         watchdog.stop()
+
+
+def test_publish_forwards_v_ff_to_the_bridge() -> None:
+    class RecordingRail:
+        enabled = True
+        calibrated = True
+        armed = True
+        panicked = False
+        panic_reason = ""
+        seen: tuple[float, float | None] | None = None
+
+        def set_target_m(self, target, v_ff_m_s=None):
+            self.seen = (float(target), v_ff_m_s)
+            return True
+
+    rail = RecordingRail()
+    events: list[str] = []
+    accepted, reason = _publish_rail_target_before_arm(
+        rail, 0.41, events.append, v_ff_m_s=0.08
+    )
+    assert accepted
+    assert reason == ""
+    assert events == []
+    assert rail.seen == (0.41, 0.08)
+
+
+def test_wall_clock_rail_target_uses_wall_dt_not_nominal_q_send() -> None:
+    seeded = _wall_clock_rail_target(
+        None,
+        q_send0=0.4004,
+        qdot0=0.08,
+        dt_wall=0.0065,
+        soft_lo=0.025,
+        soft_hi=0.78,
+    )
+    assert seeded == pytest.approx(0.4004)
+    advanced = _wall_clock_rail_target(
+        0.40,
+        q_send0=0.4004,
+        qdot0=0.08,
+        dt_wall=0.0065,
+        soft_lo=0.025,
+        soft_hi=0.78,
+    )
+    assert advanced == pytest.approx(0.40 + 0.08 * 0.0065)
+    assert advanced > 0.4004

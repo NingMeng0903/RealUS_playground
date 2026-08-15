@@ -16,6 +16,7 @@ Twin (separate terminal):
 Task orchestration (window C):
 
   python apps/joint_admittance_8dof/d_sin_tool_y.py --config ... --enable-force ...
+  python apps/joint_admittance_8dof/d_gamepad_vcmd.py --config ...
 """
 
 from __future__ import annotations
@@ -51,6 +52,10 @@ from rm75_control.control.joint_admittance_8dof.hw.rail_servo import (
 from rm75_control.hw.lw100.rail_calibration import CalValidationError
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.reference import HoldReference
+from rm75_control.control.joint_admittance_8dof.gamepad_vcmd_program import (
+    build_gamepad_vcmd_program,
+    close_built_pad,
+)
 from rm75_control.control.joint_admittance_8dof.sin_tool_y_program import (
     build_sin_tool_y_program,
     execute_sin_tool_y_program,
@@ -203,7 +208,10 @@ def _run_controller_service(
             # YAML. Re-read it for every submitted task so Window C cannot
             # silently run a controller snapshot left over from daemon start.
             task_raw = load_yaml(config_path) if config_path is not None else raw
-            built = build_sin_tool_y_program(params, raw=task_raw)
+            if str(getattr(params, "task_kind", "sin_tool_y") or "sin_tool_y") == "gamepad_vcmd":
+                built = build_gamepad_vcmd_program(params, raw=task_raw)
+            else:
+                built = build_sin_tool_y_program(params, raw=task_raw)
             rail_m_fn.set_active(built.inner)
             if relay is not None:
                 # Prefer task kin (synced gripper TCP) for SHM pose publish.
@@ -257,6 +265,7 @@ def _run_controller_service(
             hub.set_error(cmd_seq, str(exc))
             print(f"rm75 controller: task error: {exc}", flush=True)
         finally:
+            close_built_pad(locals().get("built"))
             hub.ack(cmd_seq)
             rail_m_fn.reset_idle()
             if rail_bridge is not None and rail_bridge.enabled:

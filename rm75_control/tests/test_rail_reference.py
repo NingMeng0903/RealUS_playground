@@ -10,8 +10,10 @@ import pytest
 from rm75_control.control.joint_admittance_8dof.hw.rail_servo import (
     RailServoBridge,
     RailServoConfig,
+    live_host_accel_m_s2,
     parse_rail_servo_config,
 )
+from rm75_control.hw.lw100.drive import apply_fa24_rpm_deadband
 
 
 DT = 0.02
@@ -288,6 +290,10 @@ def test_defaults_match_the_hardware_baseline() -> None:
         assert cfg.vel_max_m_s == 0.30
         assert cfg.max_speed_rpm == 1800
         assert cfg.vel_amax_m_s2 == 0.8
+        assert cfg.vel_ff_kp == 4.0
+        assert cfg.vel_ff_p_trim_m_s == pytest.approx(0.010)
+        assert cfg.match_drive_accel is True
+        assert cfg.fa24_rpm_deadband == 12
         assert cfg.vel_deadband_mm == 0.05
         assert cfg.standstill_enter_mm == 0.05
         assert cfg.standstill_exit_mm == 0.25
@@ -332,12 +338,14 @@ def test_begin_tracking_session_clears_stale_target_and_hold() -> None:
     bridge._last_target_rx_mono = 123.0  # noqa: SLF001
     bridge._follow_enabled = True  # noqa: SLF001
     bridge._hold_count = 7  # noqa: SLF001
+    bridge._target_v_ff_m_s = 0.08  # noqa: SLF001
     bridge.begin_tracking_session()
     assert bridge._follow_enabled is False  # noqa: SLF001
     assert bridge._last_target_rx_mono == 0.0  # noqa: SLF001
     assert bridge._hold_count == 0  # noqa: SLF001
     assert bridge._target_m == pytest.approx(0.40)  # noqa: SLF001
     assert bridge._commanded_m == pytest.approx(0.40)  # noqa: SLF001
+    assert math.isnan(bridge.target_v_ff_m_s)
 
 
 def test_continuous_follow_does_not_freeze_tiny_v_ref() -> None:
@@ -430,3 +438,120 @@ def test_standstill_hysteresis_enters_tight_and_wakes_wide() -> None:
     )
     assert held is False
     assert since is None
+
+
+def test_late_tick_position_stream_under_reads_without_v_ff() -> None:
+    """Nominal 5 ms integrate on a 6.5 ms wall tick looks like ~0.061 m/s."""
+    history: deque[tuple[float, float]] = deque(maxlen=64)
+    x = 0.400
+    qdot = 0.079
+    t = 0.0
+    for _ in range(24):
+        t += 0.0065
+        x += qdot * 0.005
+        history.append((t, x))
+    _, v_est, _ = RailServoBridge._estimate_goal_motion(
+        history,
+        now_s=t,
+        max_age_s=0.04,
+    )
+    assert v_est == pytest.approx(0.0608, abs=0.004)
+
+
+def test_v_ff_overrides_slow_nominal_dt_position_stream() -> None:
+    history: deque[tuple[float, float]] = deque(maxlen=64)
+    x = 0.400
+    qdot = 0.079
+    t = 0.0
+    for _ in range(24):
+        t += 0.0065
+        x += qdot * 0.005
+        history.append((t, x))
+    goal, v_goal, stationary = RailServoBridge._resolve_stream_goal(
+        history,
+        now_s=t + 0.002,
+        max_age_s=0.04,
+        target_m=x,
+        last_rx_s=t,
+        v_ff_m_s=qdot,
+    )
+    assert v_goal == pytest.approx(0.079)
+    assert not stationary
+    assert goal == pytest.approx(x + qdot * 0.002, abs=1.0e-9)
+
+
+def test_v_ff_cruise_does_not_chop_host_velocity() -> None:
+    """Live v_ff + FA40-matched a_max + trim P must not reverse FA24 on cruise."""
+    a_max = live_host_accel_m_s2(
+        vel_max_m_s=0.15,
+        accel_ms=200.0,
+        configured_m_s2=0.8,
+    )
+    assert a_max < 0.70
+    x_ref = 0.400
+    v_ref = 0.0
+    v_cmd = 0.0
+    v_meas = 0.0
+    x_meas = 0.400
+    cmds: list[float] = []
+    for i in range(80):
+        now_s = i * DT
+        target = 0.400 + 0.080 * now_s
+        goal, v_goal, stationary = RailServoBridge._resolve_stream_goal(
+            ((now_s, target),),
+            now_s=now_s,
+            max_age_s=0.04,
+            target_m=target,
+            last_rx_s=now_s,
+            v_ff_m_s=0.080,
+        )
+        x_ref, v_ref, _ = RailServoBridge._step_reference(
+            x_ref,
+            v_ref,
+            goal,
+            v_goal,
+            stationary=stationary,
+            dt=DT,
+            v_max=V_MAX,
+            a_max=a_max,
+        )
+        err_x = x_ref - x_meas
+        v_p = max(-0.010, min(0.010, 4.0 * err_x))
+        v_des = max(-V_MAX, min(V_MAX, v_ref + v_p + 0.22 * (v_ref - v_meas)))
+        v_cmd = max(v_cmd - a_max * DT, min(v_cmd + a_max * DT, v_des))
+        v_meas += 0.35 * (v_cmd - v_meas)
+        x_meas += v_meas * DT
+        cmds.append(v_cmd)
+    cruise = cmds[25:]
+    assert min(cruise) > 0.04
+    assert max(cruise) < 0.12
+    flips = sum(
+        1
+        for i in range(1, len(cruise))
+        if cruise[i] * cruise[i - 1] < 0.0
+        and abs(cruise[i]) > 0.005
+        and abs(cruise[i - 1]) > 0.005
+    )
+    assert flips == 0
+    assert max(abs(cruise[i] - cruise[i - 1]) for i in range(1, len(cruise))) <= (
+        a_max * DT + 1.0e-12
+    )
+
+
+def test_set_target_m_stores_v_ff() -> None:
+    bridge = RailServoBridge(RailServoConfig(enabled=False))
+    bridge._calibrated = True  # noqa: SLF001
+    bridge._armed = True  # noqa: SLF001
+    assert bridge.set_target_m(0.40, v_ff_m_s=0.08)
+    assert bridge.target_v_ff_m_s == pytest.approx(0.08)
+    assert bridge.set_target_m(0.41)
+    assert math.isnan(bridge.target_v_ff_m_s)
+
+
+def test_fa24_deadband_skips_small_nonzero_dither() -> None:
+    assert apply_fa24_rpm_deadband(360, 360, 12) == 360
+    assert apply_fa24_rpm_deadband(368, 360, 12) == 360
+    assert apply_fa24_rpm_deadband(380, 360, 12) == 380
+    assert apply_fa24_rpm_deadband(0, 360, 12) == 0
+    assert apply_fa24_rpm_deadband(12, 0, 12) == 12
+    assert apply_fa24_rpm_deadband(368, 360, 12, force=True) == 368

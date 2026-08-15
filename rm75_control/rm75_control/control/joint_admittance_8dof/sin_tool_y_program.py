@@ -386,7 +386,6 @@ def build_sin_tool_y_program(
             hybrid_gov = GovernorSpec(err_ok_mm=15.0, err_max_mm=80.0)
         else:
             amplitude_m = float(params.y_pp_cm) * 0.01 / 2.0
-            amplitude_x_m = float(getattr(params, "x_pp_cm", 0.0) or 0.0) * 0.01 / 2.0
             max_vel_m_s = float(params.max_vel_cm_s) * 0.01
             hybrid_ref = SinToolYReference(
                 amplitude_m,
@@ -395,9 +394,8 @@ def build_sin_tool_y_program(
                 soft_start=True,
                 ramp_s=2.0,
                 euler_order=inner_cfg.euler_order,
-                profile=str(getattr(params, "scan_profile", "sine")),
+                profile=str(getattr(params, "scan_profile", "quintic_dwell")),
                 dwell_s=float(getattr(params, "scan_dwell_s", 0.20)),
-                amplitude_x_m=amplitude_x_m,
             )
             hybrid_label = "scan"
             # COUPLED: let the QP-IK freely distribute the tool-Y sweep between the
@@ -496,10 +494,9 @@ def make_task_params_from_args(
         slot=str(args.slot),
         move_kp=float(args.move_kp),
         y_pp_cm=float(args.y_pp_cm),
-        x_pp_cm=float(getattr(args, "x_pp_cm", 8.0) or 0.0),
         max_vel_cm_s=float(args.max_vel_cm_s),
         period_s=args.period_s,
-        scan_profile=str(getattr(args, "scan_profile", "sine")),
+        scan_profile=str(getattr(args, "scan_profile", "quintic_dwell")),
         scan_dwell_s=float(getattr(args, "scan_dwell_s", 0.20)),
         desired_z=float(desired_z),
         scan_duration=float(args.scan_duration),

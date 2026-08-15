@@ -37,6 +37,7 @@ def test_phase_ipc_start_done_roundtrip():
         assert seq == cmd_seq
         assert decoded is not None
         assert decoded.slot == "d"
+        assert decoded.task_kind == "sin_tool_y"
         hub.set_done(cmd_seq)
         hub.ack(cmd_seq)
         final = client.wait_for_cmd(cmd_seq, timeout_s=1.0, poll_s=0.01)

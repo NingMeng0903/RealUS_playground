@@ -67,10 +67,9 @@ class SinToolYTaskParams:
     slot: str = "d"
     move_kp: float = 2.0
     y_pp_cm: float = 16.0
-    x_pp_cm: float = 8.0
     max_vel_cm_s: float = 1.5
     period_s: float | None = None
-    scan_profile: str = "sine"
+    scan_profile: str = "quintic_dwell"
     scan_dwell_s: float = 0.20
     desired_z: float = 0.0
     scan_duration: float = 30.0
@@ -99,6 +98,11 @@ class SinToolYTaskParams:
     q_toggle_left_rad: list[float] = field(default_factory=list)
     q_toggle_right_rad: list[float] = field(default_factory=list)
     tcp_offset_pose: list[float] = field(default_factory=list)
+    task_kind: str = "sin_tool_y"
+    gamepad_trans_m_s: float = 0.08
+    gamepad_rot_rad_s: float = 0.60
+    gamepad_deadzone: float = 0.18
+    gamepad_device_index: int = 0
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), separators=(",", ":"))

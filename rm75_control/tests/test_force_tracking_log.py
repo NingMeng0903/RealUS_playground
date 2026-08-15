@@ -118,6 +118,18 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert "elbow_margin_rad" in header
     assert "wrist_open_rad" in header
     assert "tool_y_err_mm" in header
+    assert "rail_sat" in header
+    assert "sigma_arm" in header
+    assert "qdot_meas_0" in header
+    assert "v_cmd_vy" in header
+    assert "path_twist_vy" in header
+    assert "feedback_twist_vy" in header
+    assert "sns_scale" in header
+    assert "v_escape" in header
+    assert "cbf_min_dist" in header
+    assert "comfort_slack_j4" in header
+    assert "pad_lx" in header
+    assert "pad_vcmd_base_vy" in header
 
     values = dict(zip(header, rows[1], strict=True))
     assert values["rail_escape_active"] == "0"

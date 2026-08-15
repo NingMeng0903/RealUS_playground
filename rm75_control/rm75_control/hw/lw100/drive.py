@@ -72,6 +72,32 @@ FA72_BAUD_115200 = 1152
 FA73_PROTO_8N2 = 0
 FA73_PROTO_8N1 = 3
 
+def apply_fa24_rpm_deadband(
+    requested: int,
+    last: int,
+    deadband: int,
+    *,
+    force: bool = False,
+) -> int:
+    """Return the FA24 RPM that should be on the wire.
+
+    A small non-zero dither keeps ``last`` so the 50 Hz worker can skip the
+    ~15 ms Modbus write.  Unchanged, forced, zero, or a large step pass
+    ``requested`` through so a stop cannot be swallowed.
+    """
+    requested = int(requested)
+    last = int(last)
+    if force or int(deadband) <= 0:
+        return requested
+    if requested == last:
+        return last
+    if requested == 0 or last == 0:
+        return requested
+    if abs(requested - last) < int(deadband):
+        return last
+    return requested
+
+
 # After FA-53 software enable, wait for ZSFD before accepting CTRG (manual FD-1 / CTRG §7.2).
 ENABLE_SETTLE_S = 0.2
 # Streaming follow needs short CTRG edges; 200 ms/edge limited the rail to ~2.5 Hz
@@ -630,23 +656,34 @@ class LW100Drive:
             self._log(log, f"WARN: SON check after rewire failed: {exc}")
         self._log(log, "velocity slots rewired after adopt (no FA-60/FA61/SON)")
 
-    def set_velocity_rpm(self, rpm: float, *, force: bool = False) -> int:
+    def set_velocity_rpm(
+        self,
+        rpm: float,
+        *,
+        force: bool = False,
+        deadband: int = 0,
+    ) -> int:
         """Write live velocity command FA24 (signed r/min).
 
         Clamped to ±``_max_speed_rpm`` (FA23 software mirror, default 1200).
         FA25..FA27 are zeroed at session start. SP1/SP2 forced OFF via FC-16 so
         FA24 is the active slot; writing only FA24 is one Modbus transaction.
 
-        Skips Modbus I/O when the command is unchanged.
+        Skips Modbus I/O when the command is unchanged, or when ``deadband``
+        is set and the change is a small non-zero dither (keeps the 50 Hz
+        poll from paying a 15 ms write every tick). A command of 0 always
+        writes so a stop cannot be swallowed.
         """
         cap = int(getattr(self, "_max_speed_rpm", 1200) or 1200)
         cap = max(1, min(6000, cap))
         r = int(max(-cap, min(cap, round(float(rpm)))))
-        if (not force) and r == int(self._last_rpm_cmd):
-            return r
-        self.write_param(P_FA24_INT_SPEED1, r & 0xFFFF)
-        self._last_rpm_cmd = r
-        return r
+        last = int(self._last_rpm_cmd)
+        wire = apply_fa24_rpm_deadband(r, last, int(deadband), force=bool(force))
+        if (not force) and wire == last:
+            return last
+        self.write_param(P_FA24_INT_SPEED1, wire & 0xFFFF)
+        self._last_rpm_cmd = wire
+        return wire
 
     def emergency_zero_fa24(self) -> bool:
         """Force FA24=0 even when the streaming client is blocked in ``recv``.

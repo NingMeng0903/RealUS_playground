@@ -72,6 +72,11 @@ class RailExtensionConfig:
     # Fade the task to zero within this distance (m) of a rail travel limit
     # when the desired velocity points into the limit.
     limit_margin_m: float = 0.15
+    # Hard pin / +q0 end-flip only this close to a soft stop (not the fade).
+    pin_margin_m: float = 0.008
+    # Stop driving +q0 this far from soft_max so escape cannot dump the carriage
+    # onto the +stop (174417 sat at 774 mm for 52 s, Y error 340 mm).
+    escape_leave_m: float = 0.04
     # Host soft travel (not URDF 0/0.8). Fade and end-flip use these.
     soft_min_m: float = 0.025
     soft_max_m: float = 0.78
@@ -131,6 +136,15 @@ class RailExtensionConfig:
     d_star_err1_m: float = 0.04
     d_star_w_mult: float = 6.0
     d_star_reg_mult: float = 20.0
+    # Press-stall lateral escape: keep σ-escape / d* nudge alive when Z is
+    # still demanding and the carriage still has travel.  Y error is not a
+    # gate — mid-stroke stalls often track Y to < 5 mm.
+    press_v_force_min_m_s: float = 0.02
+    press_dz_max_m: float = 0.002
+    press_y_err_m: float = 0.005
+    press_stall_s: float = 0.5
+    d_star_nudge_m: float = 0.01
+    open_travel_min_m: float = 0.01
 
 
 def _smoothstep01(x: float) -> float:
@@ -157,6 +171,7 @@ class RailExtensionTask:
         self.last_err_m: float = 0.0
         self.last_weight: float = 0.0
         self.last_limit_saturated: bool = False
+        self.last_in_limit_band: bool = False
         self._guard_active: bool = False
         self._escape_active: bool = False
         self._escape_sign: float = 0.0
@@ -223,6 +238,7 @@ class RailExtensionTask:
         self.last_err_m = 0.0
         self.last_weight = 0.0
         self.last_limit_saturated = False
+        self.last_in_limit_band = False
         self._guard_active = False
         self._escape_active = False
         self._escape_sign = 0.0
@@ -239,9 +255,51 @@ class RailExtensionTask:
         lo, hi = self._soft_travel()
         return bool(q_rail <= lo + margin or q_rail >= hi - margin)
 
+    def _rail_in_pin_band(self, q_rail: float) -> bool:
+        """True only a few millimetres from a soft stop (not the 150 mm fade)."""
+        margin = float(self.cfg.pin_margin_m)
+        if margin <= 1.0e-9:
+            return False
+        lo, hi = self._soft_travel()
+        return bool(q_rail <= lo + margin or q_rail >= hi - margin)
+
+    def _open_side_sign(self, q_rail: float) -> float:
+        """+1 toward soft_max, −1 toward soft_min (the side with more travel)."""
+        lo, hi = self._soft_travel()
+        return 1.0 if (hi - q_rail) >= (q_rail - lo) else -1.0
+
+    def _open_side_travel_m(self, q_rail: float) -> float:
+        lo, hi = self._soft_travel()
+        return float(max(q_rail - lo, hi - q_rail))
+
+    def _plus_travel_m(self, q_rail: float) -> float:
+        _lo, hi = self._soft_travel()
+        return float(hi - q_rail)
+
+    def _leave_margin_m(self) -> float:
+        return max(float(self.cfg.escape_leave_m), float(self.cfg.pin_margin_m))
+
+    def _in_plus_leave(self, q_rail: float) -> bool:
+        _lo, hi = self._soft_travel()
+        return bool(q_rail >= hi - self._leave_margin_m())
+
+    def _preferred_escape_sign(self, q_rail: float, *, backoff: bool = False) -> float:
+        """+q0 while travel remains; 0 in the leave band; −1 on the +stop / backoff."""
+        _lo, hi = self._soft_travel()
+        pin = float(self.cfg.pin_margin_m)
+        leave = self._leave_margin_m()
+        if pin > 1.0e-9 and q_rail >= hi - pin:
+            return -1.0
+        if q_rail >= hi - leave:
+            return -1.0 if backoff else 0.0
+        return 1.0
+
+    def _rail_has_open_travel(self, q_rail: float) -> bool:
+        return self._open_side_travel_m(q_rail) > float(self.cfg.open_travel_min_m)
+
     def _rail_end_blocks(self, q_rail: float, sign: float) -> bool:
-        """True if moving with ``sign`` (+1/−1) points into the soft-limit fade."""
-        margin = float(self.cfg.limit_margin_m)
+        """True if moving with ``sign`` (+1/−1) points into the pin band."""
+        margin = float(self.cfg.pin_margin_m)
         lo, hi = self._soft_travel()
         if margin <= 1e-9:
             return False
@@ -324,6 +382,12 @@ class RailExtensionTask:
         if self._escape_active:
             if healthy_exit:
                 self._clear_escape_latch()
+            else:
+                pref = self._preferred_escape_sign(q_rail)
+                if abs(pref) < 1.0e-12:
+                    self._clear_escape_latch()
+                elif pref * self._escape_sign < 0.0:
+                    self._escape_sign = pref
         else:
             if want_enter:
                 self._escape_enter_timer_s += dt
@@ -332,15 +396,50 @@ class RailExtensionTask:
                     self._escape_flipped_at_end = False
                     self._escape_enter_timer_s = 0.0
                     if abs(float(sigma_grad_rail)) > 1.0e-9:
-                        self._escape_sign = (
-                            1.0 if float(sigma_grad_rail) >= 0.0 else -1.0
-                        )
+                        raw = 1.0 if float(sigma_grad_rail) >= 0.0 else -1.0
                     else:
-                        # Margin/dσ latch without a grad: prefer longer travel.
-                        lo, hi = self._soft_travel()
-                        self._escape_sign = (
-                            1.0 if (hi - q_rail) >= (q_rail - lo) else -1.0
-                        )
+                        raw = 1.0
+                    self._escape_sign = self._preferred_escape_sign(q_rail)
+                    if abs(self._escape_sign) < 1.0e-12:
+                        self._clear_escape_latch()
+                        if sigma_raw is not None:
+                            self._sigma_raw_prev = float(sigma_raw)
+                        return 0.0
+                    # #region agent log
+                    try:
+                        import json as _json, time as _time
+                        with open(
+                            "/media/camp/EXT_DRIVE/RealUS_playground/.cursor/debug-f95044.log",
+                            "a",
+                            encoding="utf-8",
+                        ) as _df:
+                            _df.write(
+                                _json.dumps(
+                                    {
+                                        "sessionId": "f95044",
+                                        "runId": "post-fix2",
+                                        "hypothesisId": "H2",
+                                        "location": "rail_extension.py:_escape_latched",
+                                        "message": "escape sign latch",
+                                        "timestamp": int(_time.time() * 1000),
+                                        "data": {
+                                            "q_rail": float(q_rail),
+                                            "raw_sign": float(raw),
+                                            "final_sign": float(self._escape_sign),
+                                            "preferred": float(
+                                                self._preferred_escape_sign(q_rail)
+                                            ),
+                                            "open_side": float(self._open_side_sign(q_rail)),
+                                            "grad": float(sigma_grad_rail),
+                                        },
+                                    },
+                                    allow_nan=False,
+                                )
+                                + "\n"
+                            )
+                    except Exception:
+                        pass
+                    # #endregion
             else:
                 self._escape_enter_timer_s = 0.0
 
@@ -494,6 +593,8 @@ class RailExtensionTask:
         joint_margin_frac: float = 1.0,
         sigma_raw: float | None = None,
         y_tcp_d: float | None = None,
+        press_stalled: bool = False,
+        tool_y_err_m: float = 0.0,
     ) -> tuple[float, float]:
         if self.d_pref_m is None:
             self.capture_reference(q)
@@ -545,34 +646,67 @@ class RailExtensionTask:
         if cap > 0.0:
             cap = cap + drift * 0.06
             v_reach = float(np.clip(v_reach, -cap, cap))
-        # Demoted: healthy σ (raw ≥ 0.08) never lets escape drive the rail.
-        # Unit tests that omit sigma_raw keep the latch path at reduced gain.
+        # Demoted: healthy σ (raw ≥ 0.08) never lets escape drive the rail
+        # unless a press stall still needs a lateral Y offset.
         healthy_sigma = sigma_raw is not None and float(sigma_raw) >= 0.08
-        # Inside the soft-limit band the carriage has nowhere left to go, so
-        # escape can only fight the reach term against the wall.  Measured at
-        # the stop: escape latched 29-31% of ticks versus 5-9% mid-travel,
-        # and that tug-of-war is what the operator feels as rail chatter.
-        if self._rail_in_limit_band(y):
+        in_band = self._rail_in_limit_band(y)
+        self.last_in_limit_band = bool(in_band)
+        y_thr = max(float(self.cfg.press_y_err_m), 0.0)
+        backoff = bool(
+            self._in_plus_leave(y) and abs(float(tool_y_err_m)) >= y_thr
+        )
+        allow_press_escape = bool(
+            (press_stalled or backoff) and self._rail_has_open_travel(y)
+        )
+        # Inside the fade band escape only fights the wall — unless Z is
+        # still demanding and the open side still has travel.
+        if in_band and not allow_press_escape:
             self._clear_escape_latch()
             v_escape = 0.0
-        elif healthy_sigma:
+        elif healthy_sigma and not allow_press_escape:
             self._escape_active = False
             v_escape = 0.0
         elif self._escape_active:
             v_escape = 0.25 * float(self.cfg.k_esc) * float(grad_latched)
-            if abs(v_escape) > 1e-9 and v_reach * v_escape < 0.0:
+            if (
+                not allow_press_escape
+                and abs(v_escape) > 1e-9
+                and v_reach * v_escape < 0.0
+            ):
                 v_escape = 0.0
         else:
             v_escape = (
                 0.25 * float(self.cfg.k_esc) * (1.0 - sig) * float(sigma_grad_rail)
             )
-            if ff_owns and v_escape * v_ff < 0.0:
+            if allow_press_escape:
+                pref = self._preferred_escape_sign(y, backoff=backoff)
+                v_escape = (
+                    0.25
+                    * float(self.cfg.k_esc)
+                    * pref
+                    * max(abs(float(sigma_grad_rail)), 1.0)
+                )
+                if abs(v_escape) > 1.0e-12:
+                    self._escape_active = True
+                    self._escape_sign = pref
+            elif ff_owns and v_escape * v_ff < 0.0:
                 v_escape = 0.0
             else:
                 v_primary_ff = v_ff + v_reach
                 if v_escape * v_primary_ff < 0.0 and abs(v_primary_ff) > 1.0e-4:
                     v_escape = 0.0
         v_primary = v_ff + v_reach
+        pref_now = self._preferred_escape_sign(y, backoff=backoff)
+        if self._in_plus_leave(y) and v_primary > 0.0:
+            v_primary = 0.0
+        if allow_press_escape:
+            esc_sign = (
+                float(self._escape_sign)
+                if self._escape_active and abs(self._escape_sign) > 1.0e-12
+                else pref_now
+            )
+            if esc_sign != 0.0 and v_primary * esc_sign < 0.0:
+                v_primary = 0.0
         v_total = v_primary + v_escape
         v = float(np.clip(v_total, -self.cfg.v_max_m_s, self.cfg.v_max_m_s))
         tau = (
@@ -614,15 +748,19 @@ class RailExtensionTask:
         joint_margin_frac: float = 1.0,
         sigma_raw: float | None = None,
         y_tcp_d: float | None = None,
+        press_stalled: bool = False,
+        tool_y_err_m: float = 0.0,
     ) -> tuple[float, float]:
         """Return ``(v_rail_des, w_ext)`` for the QP."""
         if not self.cfg.enabled:
             self.last_err_m = 0.0
             self.last_weight = 0.0
             self.last_limit_saturated = False
+            self.last_in_limit_band = False
             self.last_d_star_reg_scale = 1.0
             return 0.0, 0.0
         q = np.asarray(q_rad, dtype=float)
+        self.last_in_limit_band = self._rail_in_limit_band(float(q[RAIL_INDEX]))
         if self.mode == "pose_attract":
             self.last_d_star_reg_scale = 1.0
             return self._call_pose_attract(
@@ -640,4 +778,6 @@ class RailExtensionTask:
             y_tcp_d=y_tcp_d,
             joint_margin_frac=joint_margin_frac,
             sigma_raw=sigma_raw,
+            press_stalled=press_stalled,
+            tool_y_err_m=tool_y_err_m,
         )

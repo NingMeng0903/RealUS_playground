@@ -516,3 +516,132 @@ def test_beyond_rail_cli_defaults_force_on(tmp_path) -> None:
     args2 = ap.parse_args(["--beyond-rail-cm", "5", "--no-enable-force"])
     assert args2.enable_force is False
     del tmp_path, Path
+
+
+def test_escape_sign_prefers_plus_q0_even_if_grad_is_negative() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_esc=0.5,
+            k_ext=0.0,
+            soft_min_m=0.10,
+            soft_max_m=0.70,
+            limit_margin_m=0.02,
+            pin_margin_m=0.008,
+            sigma_escape_enter=0.99,
+            escape_enter_dwell_s=0.0,
+            v_lpf_tau_s=0.0,
+            v_lpf_tau_escape_s=0.0,
+            escape_grad_floor=1.0,
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    q[0] = 0.51  # mid-rail; 173438 latched −1 here from grad/open-side
+    task.capture_reference(q)
+    task(
+        q,
+        sigma_scale=0.2,
+        sigma_grad_rail=-2.0,
+        joint_margin_frac=1.0,
+        dt_s=0.005,
+    )
+    assert task._escape_active
+    assert task._escape_sign > 0.0
+
+
+def test_preferred_escape_stops_in_plus_leave_band() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            soft_min_m=0.10,
+            soft_max_m=0.70,
+            pin_margin_m=0.008,
+            escape_leave_m=0.04,
+        ),
+    )
+    assert task._preferred_escape_sign(0.51) > 0.0
+    assert task._preferred_escape_sign(0.67) == 0.0
+    assert task._preferred_escape_sign(0.695) < 0.0
+    assert task._preferred_escape_sign(0.67, backoff=True) < 0.0
+
+
+def test_press_stall_keeps_escape_despite_healthy_sigma() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_esc=1.2,
+            k_ext=0.0,
+            sigma_escape_enter=0.99,
+            escape_enter_dwell_s=0.0,
+            v_lpf_tau_s=0.0,
+            v_lpf_tau_escape_s=0.0,
+            escape_grad_floor=1.0,
+            press_y_err_m=0.005,
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    task.capture_reference(q)
+    task(
+        q,
+        sigma_scale=1.0,
+        sigma_grad_rail=2.0,
+        joint_margin_frac=1.0,
+        sigma_raw=0.12,
+        dt_s=0.005,
+    )
+    assert not task._escape_active
+    assert abs(task.last_v_escape) < 1.0e-12
+    v, _ = task(
+        q,
+        sigma_scale=1.0,
+        sigma_grad_rail=2.0,
+        joint_margin_frac=1.0,
+        sigma_raw=0.12,
+        dt_s=0.005,
+        press_stalled=True,
+        tool_y_err_m=0.0,
+    )
+    assert abs(v) > 1e-4 or abs(task.last_v_escape) > 1e-4
+    assert task.last_v_escape > 0.0
+
+
+def test_press_stall_allows_escape_in_limit_band_toward_open() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_esc=1.2,
+            k_ext=0.0,
+            limit_margin_m=0.08,
+            sigma_escape_enter=0.99,
+            escape_enter_dwell_s=0.0,
+            v_lpf_tau_s=0.0,
+            v_lpf_tau_escape_s=0.0,
+            escape_grad_floor=1.0,
+            press_y_err_m=0.005,
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    q[0] = float(kin.q_upper[0]) - 0.02
+    task.capture_reference(q)
+    task(
+        q,
+        sigma_scale=0.2,
+        sigma_grad_rail=2.0,
+        joint_margin_frac=1.0,
+        dt_s=0.005,
+        press_stalled=True,
+        tool_y_err_m=0.0,
+    )
+    assert task.last_v_escape * task._open_side_sign(float(q[0])) >= -1e-12
+    assert abs(task.last_v_escape) > 1e-12 or task._escape_active

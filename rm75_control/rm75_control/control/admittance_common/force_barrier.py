@@ -35,7 +35,7 @@ class ForceBarrierConfig:
     # surface — press rail 22.7% of ticks, retract rail 23.1%, contact lost 30%
     # of the scan.  Only the free-space branch is capped; the in-contact
     # admittance response is untouched.  0 disables.
-    v_seek_free_m_s: float = 0.08
+    v_seek_free_m_s: float = 0.030
     fdot_lpf_s: float = 0.040
     # Optional impact-energy/stiffness caps.  These use only controller-side
     # virtual quantities; no unmeasured physical damping is credited.
@@ -70,7 +70,7 @@ class ForceBarrierConfig:
             v_ref_m_s=float(barrier.get("v_ref_m_s", 0.05)),
             v_min_retract_m_s=float(barrier.get("v_min_retract_m_s", 0.002)),
             v_min_press_m_s=float(barrier.get("v_min_press_m_s", 0.003)),
-            v_seek_free_m_s=float(barrier.get("v_seek_free_m_s", 0.08)),
+            v_seek_free_m_s=float(barrier.get("v_seek_free_m_s", 0.030)),
             fdot_lpf_s=float(barrier.get("fdot_lpf_s", 0.040)),
             precontact_raw_trigger_n=float(
                 barrier.get("precontact_raw_trigger_n", 0.0)

@@ -20,6 +20,7 @@ from typing import Protocol
 import numpy as np
 from scipy.spatial.transform import Rotation as Rsc
 
+from rm75_control.control.admittance_common.async_state import arm_qdot_rad_s_from_snap
 from rm75_control.control.joint_admittance_8dof.collision_model import CollisionConfig
 from rm75_control.control.joint_admittance_8dof.ik_types import saturate_error
 from rm75_control.control.joint_admittance_8dof.model import (
@@ -76,6 +77,16 @@ from rm75_control.control.joint_admittance_8dof.utils.safety import (
     SafetyLimits,
     Watchdog,
 )
+
+# Wall handoff: raise comfort/branch slack cost (never cheapen J4/J6 prefs).
+# 20260815 CSVs parked J4 at the 15° comfort stop (~120°) and closed J6
+# because pref_slack_scale=0.05 made buying slack cheaper than moving the
+# elbow/wrist.  J5 stayed at −15° against q_nominal +40° — that is pose-task
+# roll lock, not a bad attractor; do not retune q_nominal until the new
+# feedback_twist / nullspace_norm columns confirm centering is starved.
+WALL_PREF_SLACK_SCALE = 2.0
+# Hold the carriage when pinned so WLN 20↔1 cannot tug q0.
+WALL_RAIL_REG_FLOOR = 20.0
 
 
 # ---------------------------------------------------------------------------
@@ -208,6 +219,24 @@ class JointIkStep:
     accepted_reference_lag_s: float = 0.0
     pre_solve_feedback_age_s: float = float("nan")
     post_solve_feedback_age_s: float = float("nan")
+    rail_sat: bool = False
+    last_limit_saturated: bool = False
+    keep_task_weight: bool = False
+    pref_slack_scale: float = 1.0
+    rail_task_vel: float = float("nan")
+    v_escape: float = float("nan")
+    v_reach: float = float("nan")
+    v_ff_rail: float = float("nan")
+    sigma_arm: float = float("nan")
+    sns_scale: float = 1.0
+    qdot_meas: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    v_cmd: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    path_twist: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    feedback_twist: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    comfort_slack: np.ndarray = field(default_factory=lambda: np.zeros(7))
+    cbf_min_dist: float = float("nan")
+    cbf_pair: str = ""
+    nullspace_norm: float = float("nan")
 
 
 def scale_qdot_into_box(
@@ -279,6 +308,10 @@ class JointIkController:
             else None
         )
         self._rail_ext_active = True
+        # Scan/hybrid: freeze q0 in the +leave / pin band. Teleop must turn
+        # this off — a bidirectional pin at +soft_max leaves the stick unable
+        # to drive the carriage back.
+        self._rail_wall_hold = True
         from rm75_control.control.joint_admittance_8dof.tasks.rail_goodness import (
             CachedRailGoodness,
             SigmaMinGoodness,
@@ -350,6 +383,11 @@ class JointIkController:
         self.last_secondary_norm: float = 0.0
         self.last_sigma_min: float = float(self.cfg.qp.sr_damping.sigma_ref)
         self.last_arm_rho: float = float("nan")
+        self._press_z_mark: float = float("nan")
+        self._press_stall_s: float = 0.0
+        self._d_star_nudge_cool_s: float = 0.0
+        self._dbg_last_log_t: float = 0.0
+        self._dbg_last_key: tuple = ()
         self._rail_mode: RailMode = self.cfg.rail.mode
         self._locked_style: LockedStyle = self.cfg.rail.locked_style
         self._configured_rail_mode: RailMode = self.cfg.rail.mode
@@ -394,6 +432,10 @@ class JointIkController:
     def set_rail_extension_active(self, active: bool) -> None:
         self._rail_ext_active = bool(active)
 
+    def set_rail_wall_hold(self, hold: bool) -> None:
+        """If False, do not bidirectional-pin q0 at a soft stop (teleop)."""
+        self._rail_wall_hold = bool(hold)
+
     def set_rail_extension_mode(self, mode: str) -> None:
         if self.rail_ext_task is not None:
             self.rail_ext_task.set_mode(mode)  # type: ignore[arg-type]
@@ -430,7 +472,6 @@ class JointIkController:
         y_center_m: float,
         amplitude_m: float,
         q_rad: np.ndarray | None = None,
-        path_xyz: np.ndarray | None = None,
     ) -> tuple[float, float]:
         """One-shot min-max (d*, ψ*) at scan start.  Raises if infeasible."""
         q = self.q_cmd if q_rad is None else np.asarray(q_rad, dtype=float)
@@ -446,7 +487,6 @@ class JointIkController:
             amplitude_m=float(amplitude_m),
             rail_lo=float(self.limits.q_lower[0]),
             rail_hi=float(self.limits.q_upper[0]),
-            path_xyz=path_xyz,
         )
         if self.arm_task is not None:
             self.arm_task.set_reference(float(psi_star))
@@ -480,6 +520,9 @@ class JointIkController:
         self._box_dt_last_t = None
         self._direct_joint_ptp = False
         self._plan_drives_rail = False
+        self._press_z_mark = float("nan")
+        self._press_stall_s = 0.0
+        self._d_star_nudge_cool_s = 0.0
         self._apply_rail_mode_side_effects()
         self._latch_attractor_from_q(self.q_cmd)
 
@@ -794,9 +837,19 @@ class JointIkController:
         task_safety_rows: tuple = (),
         path_twist: np.ndarray | None = None,
         feedback_twist: np.ndarray | None = None,
+        v_force_z: float | None = None,
     ) -> JointIkStep:
         del f_ext_z, f_des_z, contact_active, task_safety_rows
-        del path_twist, feedback_twist
+        path_twist_arr = (
+            np.asarray(path_twist, dtype=float).reshape(6)
+            if path_twist is not None
+            else np.zeros(6)
+        )
+        feedback_twist_arr = (
+            np.asarray(feedback_twist, dtype=float).reshape(6)
+            if feedback_twist is not None
+            else np.zeros(6)
+        )
         dt = self.cfg.dt if dt is None else float(dt)
         if not np.isfinite(dt) or dt <= 0.0:
             raise ValueError("dt must be finite and > 0")
@@ -905,6 +958,77 @@ class JointIkController:
         resync_vec = np.full(self.kin.nv, float(self.cfg.resync_err_rad))
         resync_vec[0] = float(self.cfg.resync_err_rail_m)
 
+        pose_now = self.kin.fk_pose(q_prev)
+        z_now = float(pose_now[2])
+        y_tcp_d = None
+        tool_y_err_m = 0.0
+        if pose_d is not None:
+            pose_d_arr = np.asarray(pose_d, dtype=float).reshape(-1)
+            if pose_d_arr.size >= 2 and np.isfinite(pose_d_arr[1]):
+                y_tcp_d = float(pose_d_arr[1])
+                tool_y_err_m = y_tcp_d - float(pose_now[1])
+
+        ext_cfg = self.rail_ext_task.cfg if self.rail_ext_task is not None else None
+        v_force = (
+            float(v_force_z)
+            if v_force_z is not None and np.isfinite(float(v_force_z))
+            else float("nan")
+        )
+        v_min = float(getattr(ext_cfg, "press_v_force_min_m_s", 0.02))
+        dz_max = float(getattr(ext_cfg, "press_dz_max_m", 0.002))
+        y_thr = float(getattr(ext_cfg, "press_y_err_m", 0.005))
+        stall_need = float(getattr(ext_cfg, "press_stall_s", 0.5))
+        demanding = bool(np.isfinite(v_force) and abs(v_force) >= v_min)
+        # Windowed stall: |Δz| over the timer, not per 5 ms tick (2 mm/tick
+        # is 400 mm/s — every real press looked "stuck").
+        if demanding:
+            if not np.isfinite(self._press_z_mark):
+                self._press_z_mark = z_now
+            z_progress = abs(z_now - self._press_z_mark)
+            if z_progress > dz_max:
+                self._press_z_mark = z_now
+                self._press_stall_s = 0.0
+                z_stuck = False
+            else:
+                self._press_stall_s += float(dt)
+                z_stuck = True
+        else:
+            self._press_z_mark = float("nan")
+            self._press_stall_s = 0.0
+            z_stuck = False
+        press_stalled_timer = self._press_stall_s + 1.0e-12 >= stall_need
+        in_band = bool(
+            self.rail_ext_task is not None
+            and self.rail_ext_task._rail_in_limit_band(float(q_prev[0]))
+        )
+        in_pin = bool(
+            self.rail_ext_task is not None
+            and self.rail_ext_task._rail_in_pin_band(float(q_prev[0]))
+        )
+        has_travel = bool(
+            self.rail_ext_task is not None
+            and self.rail_ext_task._rail_has_open_travel(float(q_prev[0]))
+        )
+        plus_leave = bool(
+            self.rail_ext_task is not None
+            and self.rail_ext_task._in_plus_leave(float(q_prev[0]))
+        )
+        arm_starved = bool(abs(tool_y_err_m) >= y_thr)
+        comfort_m = 0.26
+        j4_blocked = bool(
+            (float(self.limits.q_upper[4]) - float(q_prev[4])) <= comfort_m
+            or (float(q_prev[4]) - float(self.limits.q_lower[4])) <= comfort_m
+        )
+        allow_press_escape = bool(
+            demanding
+            and has_travel
+            and (
+                press_stalled_timer
+                or (j4_blocked and not plus_leave)
+                or (plus_leave and arm_starved)
+            )
+        )
+
         if (
             self.posture_retarget is not None
             and self._rail_mode == RailMode.COUPLED
@@ -919,6 +1043,28 @@ class JointIkController:
                 self.arm_task.set_reference(float(psi_ref))
             if self.rail_ext_task is not None:
                 self.rail_ext_task.set_d_pref(float(d_pref))
+
+        if (
+            press_stalled_timer
+            and allow_press_escape
+            and self.posture_retarget is not None
+            and self.rail_ext_task is not None
+            and self._d_star_nudge_cool_s <= 0.0
+        ):
+            y_des = y_tcp_d if y_tcp_d is not None else float(pose_now[1])
+            lo, hi = self.rail_ext_task._soft_travel()
+            away = self.rail_ext_task._preferred_escape_sign(float(q_prev[0]))
+            delta = -away * float(self.rail_ext_task.cfg.d_star_nudge_m)
+            d_new = self.posture_retarget.nudge_d_star(
+                delta, y_des_m=y_des, rail_lo=lo, rail_hi=hi
+            )
+            if np.isfinite(d_new):
+                self.rail_ext_task.set_d_pref(float(d_new))
+            self._d_star_nudge_cool_s = stall_need
+        else:
+            self._d_star_nudge_cool_s = max(
+                0.0, self._d_star_nudge_cool_s - float(dt)
+            )
 
         rail_task_vel: float | None = None
         rail_task_weight = 0.0
@@ -953,11 +1099,6 @@ class JointIkController:
                 activation=self.centering_task.cfg.activation,
             )
             joint_margin_frac = float(np.clip(1.0 - u_max, 0.0, 1.0))
-            y_tcp_d = None
-            if pose_d is not None:
-                pose_d_arr = np.asarray(pose_d, dtype=float).reshape(-1)
-                if pose_d_arr.size >= 2 and np.isfinite(pose_d_arr[1]):
-                    y_tcp_d = float(pose_d_arr[1])
             v_ext, w_ext = self.rail_ext_task(
                 q_prev,
                 sigma_scale=sig_scale,
@@ -967,6 +1108,8 @@ class JointIkController:
                 joint_margin_frac=joint_margin_frac,
                 sigma_raw=sigma_now,
                 y_tcp_d=y_tcp_d,
+                press_stalled=allow_press_escape,
+                tool_y_err_m=tool_y_err_m,
             )
             rail_ext_err = self.rail_ext_task.last_err_m
             rail_escape_active = bool(self.rail_ext_task._escape_active)
@@ -985,31 +1128,81 @@ class JointIkController:
                 getattr(self.rail_ext_task, "last_d_star_reg_scale", 1.0) or 1.0
             )
 
-        if task_rotation_base is not None:
-            r_task = np.asarray(task_rotation_base, dtype=float)
-        else:
-            pose_now = np.asarray(self.kin.fk_pose(q_state), dtype=float)
-            r_task = Rsc.from_euler(
-                self.cfg.euler_order, pose_now[3:6], degrees=False
-            ).as_matrix()
-        rail_force_dir = (
-            r_task[:, 2] if r_task.shape == (3, 3) else None
-        )
+        # Soft walls are only cfg.rail.soft_min/max.  Do not freeze q0 in a
+        # leave/fade band — that pinned teleop at ~740 mm.  Into-wall stop is
+        # the position box + rail-task one-way fade.
         rail_sat_now = bool(
             self.rail_ext_task is not None
-            and self.rail_ext_task.last_limit_saturated
-            and not locked_hold
+            and bool(getattr(self.rail_ext_task, "last_limit_saturated", False))
         )
         rail_vel_pin_eff = rail_vel_pin
         rail_task_weight_eff = rail_task_weight
         keep_task_weight = False
         pref_slack_scale = 1.0
-        if rail_sat_now:
-            # Lock q0 and keep XY hard: rail-at-wall is not workspace-sat.
-            rail_vel_pin_eff = 0.0
-            rail_task_weight_eff = 0.0
-            keep_task_weight = True
-            pref_slack_scale = 0.05
+
+        # #region agent log
+        try:
+            _now = time.monotonic()
+            _vesc = float(getattr(self.rail_ext_task, "last_v_escape", 0.0) or 0.0) if self.rail_ext_task is not None else 0.0
+            _esign = float(getattr(self.rail_ext_task, "_escape_sign", 0.0) or 0.0) if self.rail_ext_task is not None else 0.0
+            _key = (
+                int(rail_sat_now),
+                int(allow_press_escape),
+                int(in_pin),
+                int(_vesc > 1e-4) - int(_vesc < -1e-4),
+            )
+            if _key != self._dbg_last_key or (_now - self._dbg_last_log_t) >= 0.5:
+                self._dbg_last_key = _key
+                self._dbg_last_log_t = _now
+                import json as _json
+                with open(
+                    "/media/camp/EXT_DRIVE/RealUS_playground/.cursor/debug-f95044.log",
+                    "a",
+                    encoding="utf-8",
+                ) as _df:
+                    _df.write(
+                        _json.dumps(
+                            {
+                                "sessionId": "f95044",
+                                "runId": "post-fix2",
+                                "hypothesisId": "H6-H7-H9",
+                                "location": "loop.py:update:pin",
+                                "message": "pin/escape/air gates",
+                                "timestamp": int(_now * 1000),
+                                "data": {
+                                    "q0": float(q_prev[0]),
+                                    "in_band": bool(in_band),
+                                    "in_pin": bool(in_pin),
+                                    "plus_leave": bool(plus_leave),
+                                    "rail_sat": bool(rail_sat_now),
+                                    "rail_wall_hold": bool(self._rail_wall_hold),
+                                    "allow_press_escape": bool(allow_press_escape),
+                                    "demanding": bool(demanding),
+                                    "z_stuck": bool(z_stuck),
+                                    "j4_blocked": bool(j4_blocked),
+                                    "arm_starved": bool(arm_starved),
+                                    "has_travel": bool(has_travel),
+                                    "tool_y_err_m": float(tool_y_err_m),
+                                    "v_force_z": float(v_force),
+                                    "press_stall_s": float(self._press_stall_s),
+                                    "sigma_arm": float(sigma_arm),
+                                    "twist_scale": float(twist_scale),
+                                    "q4_deg": float(np.degrees(q_prev[4])),
+                                    "q6_deg": float(np.degrees(q_prev[6])),
+                                    "v_escape": _vesc,
+                                    "escape_sign": _esign,
+                                    "escape_active": bool(rail_escape_active),
+                                    "v_cmd_z": float(twist_base[2]),
+                                    "z_now": float(z_now),
+                                },
+                            },
+                            allow_nan=False,
+                        )
+                        + "\n"
+                    )
+        except Exception:
+            pass
+        # #endregion
 
         r = self.core.step(
             q_prev,
@@ -1034,7 +1227,6 @@ class JointIkController:
             rail_task_vel_m_s=rail_task_vel,
             rail_task_weight=rail_task_weight_eff,
             box_dt=self._measure_box_dt(dt),
-            rail_force_dir_base=rail_force_dir,
             keep_task_weight=keep_task_weight,
             pref_slack_scale=pref_slack_scale,
         )
@@ -1045,7 +1237,7 @@ class JointIkController:
         if qdot_out.shape != q_prev.shape or not np.all(np.isfinite(qdot_out)):
             qdot_out = self._clip_qdot_to_box(
                 q_prev, qdot_out, dt, q_state, resync_vec,
-                rail_locked=locked_hold, rail_vel_pin=rail_vel_pin,
+                rail_locked=locked_hold, rail_vel_pin=rail_vel_pin_eff,
             )
             failed = True
             fallback_reason = "final_qdot_nonfinite_or_bad_shape"
@@ -1057,7 +1249,7 @@ class JointIkController:
             ):
                 qdot_out = self._clip_qdot_to_box(
                     q_prev, qdot_out, dt, q_state, resync_vec,
-                    rail_locked=locked_hold, rail_vel_pin=rail_vel_pin,
+                    rail_locked=locked_hold, rail_vel_pin=rail_vel_pin_eff,
                 )
                 fallback_reason = fallback_reason or "projected_into_velocity_box"
 
@@ -1159,11 +1351,8 @@ class JointIkController:
             np.any(q_now[1:] < self.limits.q_lower[1:] + 0.08)
             or np.any(q_now[1:] > self.limits.q_upper[1:] - 0.08)
         )
-        # Rail-at-wall is not workspace saturation: the arm can still
-        # realize XY.  Governor may slow the clock only when the arm is
-        # boxed or the position clamp fired.
         physical_saturated = bool(rep.pos_clamped or near_arm)
-        return self._make_step(
+        step = self._make_step(
             qdot=qdot_out,
             twist_base=twist_base,
             sigma_min=r.sigma_min,
@@ -1175,7 +1364,7 @@ class JointIkController:
             vel_clamped=rep.vel_clamped,
             acc_clamped=rep.acc_clamped,
             pos_clamped=rep.pos_clamped,
-            rail_vel_pin=rail_vel_pin,
+            rail_vel_pin=rail_vel_pin_eff,
             rail_qdot_ff=rail_qdot_ff_val,
             plan_drives_rail=bool(plan_drives_rail),
             rail_ext_err_m=rail_ext_err,
@@ -1194,6 +1383,36 @@ class JointIkController:
             scan_residual=scan_t - scan_a,
             physical_saturated=physical_saturated,
         )
+        step.rail_sat = bool(rail_sat_now)
+        step.last_limit_saturated = bool(
+            self.rail_ext_task is not None
+            and self.rail_ext_task.last_limit_saturated
+        )
+        step.keep_task_weight = bool(keep_task_weight)
+        step.pref_slack_scale = float(pref_slack_scale)
+        step.rail_task_vel = (
+            float(rail_task_vel) if rail_task_vel is not None else float("nan")
+        )
+        if self.rail_ext_task is not None:
+            step.v_escape = float(self.rail_ext_task.last_v_escape)
+            step.v_reach = float(self.rail_ext_task.last_v_reach)
+            step.v_ff_rail = float(self.rail_ext_task.last_v_ff)
+        step.sigma_arm = float(sigma_arm)
+        step.sns_scale = float(getattr(self.core, "last_sns_scale", 1.0))
+        step.v_cmd = np.asarray(twist_base, dtype=float).reshape(6).copy()
+        step.path_twist = np.asarray(path_twist_arr, dtype=float).reshape(6).copy()
+        step.feedback_twist = np.asarray(
+            feedback_twist_arr, dtype=float
+        ).reshape(6).copy()
+        comfort = getattr(self.core, "last_comfort_slack", None)
+        if comfort is not None:
+            step.comfort_slack = np.asarray(comfort, dtype=float).reshape(-1)[:7]
+        step.cbf_min_dist = float(
+            getattr(self.core, "last_cbf_min_dist", float("nan"))
+        )
+        step.cbf_pair = str(getattr(self.core, "last_cbf_pair", "") or "")
+        step.nullspace_norm = float(self.last_secondary_norm)
+        return step
 
 # ---------------------------------------------------------------------------
 # Outer loops
@@ -1270,15 +1489,6 @@ class AdmittanceOuterLoop:
         self._reference_override = None
         if ref is None:
             ref = self.reference.sample(t_s)
-        # Track-axis-only error (force axis excluded).
-        tr_mm, tr_deg = pose_track_error_mm_deg(
-            ref.pose_d,
-            current_pose,
-            track_axes=self.controller.cfg.track_axes,
-            euler_order=self.controller.cfg.euler_order,
-        )
-        self.last_err_mm = tr_mm
-        self.last_track_rot_deg = tr_deg
         self.last_pose_d = np.asarray(ref.pose_d, dtype=float).copy()
         self.last_vel_ff = np.asarray(ref.vel_ff, dtype=float).copy()
         # ``feedback_fresh_tick`` is a per-cycle telemetry edge, not a
@@ -1305,6 +1515,20 @@ class AdmittanceOuterLoop:
             feedback_fresh=None,
             v_tcp_z_actual=v_actual,
         )
+        pose_track = np.asarray(
+            getattr(self.controller, "last_pose_d_combined", ref.pose_d),
+            dtype=float,
+        ).reshape(-1)
+        if pose_track.size != 6 or not np.isfinite(pose_track).all():
+            pose_track = np.asarray(ref.pose_d, dtype=float)
+        tr_mm, tr_deg = pose_track_error_mm_deg(
+            pose_track,
+            current_pose,
+            track_axes=self.controller.cfg.track_axes,
+            euler_order=self.controller.cfg.euler_order,
+        )
+        self.last_err_mm = tr_mm
+        self.last_track_rot_deg = tr_deg
         path = np.asarray(ref.vel_ff, dtype=float).reshape(6).copy()
         if self.controller.cfg.control_frame == "tool":
             rotation = Rsc.from_euler(
@@ -1820,7 +2044,24 @@ class _TickLogger:
            "qpik_pre_solve_feedback_age_s", "qpik_post_solve_feedback_age_s",
            "qpik_q_cmd_q_meas_norm", "qpik_fallback_level",
            "qpik_fallback_reason", "qpik_solver_fault_latched",
-           "qpik_final_sent_qdot_json"]
+           "qpik_final_sent_qdot_json",
+           "rail_sat", "last_limit_saturated", "keep_task_weight",
+           "pref_slack_scale", "rail_task_vel",
+           "v_escape", "v_reach", "v_ff_rail", "sigma_arm", "sns_scale",
+           "qpik_nullspace_norm", "cbf_min_dist", "cbf_pair"]
+        + [f"qdot_meas_{i}" for i in range(8)]
+        + [f"v_cmd_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + [f"path_twist_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + [f"feedback_twist_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + [f"comfort_slack_j{i}" for i in range(1, 8)]
+        + [
+            "pad_connected",
+            "pad_lx", "pad_ly", "pad_lt", "pad_rx", "pad_ry", "pad_rt",
+            "pad_lb", "pad_rb",
+            "pad_vx", "pad_vy", "pad_vz",
+            "pad_wx", "pad_wy", "pad_wz",
+        ]
+        + [f"pad_vcmd_base_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
     )
 
     def __init__(self, path: str) -> None:
@@ -1853,6 +2094,43 @@ class _TickLogger:
                 if n % 200 == 0:
                     f.flush()
 
+    @staticmethod
+    def _fmt_pad_fields(outer) -> list[str]:
+        """Stick + mapped v_cmd extras; empty when the outer loop is not a pad."""
+
+        def _fmt_n(arr, n: int, prec: int = 6) -> list[str]:
+            if arr is None:
+                return [""] * n
+            vals = np.asarray(arr, dtype=float).reshape(-1)
+            out = []
+            for i in range(n):
+                if i >= vals.size or not np.isfinite(vals[i]):
+                    out.append("")
+                else:
+                    out.append(f"{float(vals[i]):.{prec}f}")
+            return out
+
+        axes = getattr(outer, "last_pad_axes", None)
+        buttons = getattr(outer, "last_pad_buttons", None)
+        if axes is None and buttons is None:
+            return [""] * 21
+        connected = getattr(outer, "last_pad_connected", False)
+        btn = (
+            np.asarray(buttons, dtype=float).reshape(-1)
+            if buttons is not None
+            else np.zeros(8)
+        )
+        lb = 1 if (btn.size > 4 and float(btn[4]) > 0.5) else 0
+        rb = 1 if (btn.size > 5 and float(btn[5]) > 0.5) else 0
+        return (
+            [str(int(bool(connected)))]
+            + _fmt_n(axes, 6, 4)
+            + [str(lb), str(rb)]
+            + _fmt_n(getattr(outer, "last_v_world", None), 3, 6)
+            + _fmt_n(getattr(outer, "last_w_tool", None), 3, 6)
+            + _fmt_n(getattr(outer, "last_twist_base", None), 6, 6)
+        )
+
     def write(
         self,
         t_wall,
@@ -1875,6 +2153,8 @@ class _TickLogger:
         f_ext_raw: np.ndarray | None = None,
         twist_achieved_base: np.ndarray | None = None,
         v_tcp_z_actual: float = float("nan"),
+        qdot_meas: np.ndarray | None = None,
+        rail_target_sent_m: float | None = None,
     ) -> None:
         qm = q_meas if q_meas is not None else np.full(8, np.nan)
         ctrl = getattr(outer, "controller", None)
@@ -2012,7 +2292,10 @@ class _TickLogger:
             qdot_max_frac = float(np.max(np.abs(step.qdot) / np.maximum(v_max, 1e-9)))
         else:
             qdot_max_frac = float("nan")
-        rail_sent = float(step.q_send[0]) if step.q_send is not None else float("nan")
+        if rail_target_sent_m is not None and np.isfinite(float(rail_target_sent_m)):
+            rail_sent = float(rail_target_sent_m)
+        else:
+            rail_sent = float(step.q_send[0]) if step.q_send is not None else float("nan")
         try:
             q_cmd_q_meas_norm = float(
                 np.linalg.norm(np.asarray(step.q_send, dtype=float) - qm)
@@ -2088,10 +2371,26 @@ class _TickLogger:
                 tool_y_meas = float((r_cur.T @ pose_meas_arr[:3])[1])
                 tool_y_err_mm = float((tool_y_des_m - tool_y_meas) * 1000.0)
 
-        def _fmt6(arr: np.ndarray) -> list[str]:
+        def _fmt6(arr: np.ndarray | None) -> list[str]:
+            if arr is None:
+                return [""] * 6
+            vals = np.asarray(arr, dtype=float).reshape(-1)
+            if vals.size < 6:
+                vals = np.pad(vals, (0, 6 - int(vals.size)), constant_values=np.nan)
             return [
                 f"{float(v):.6f}" if np.isfinite(v) else ""
-                for v in np.asarray(arr, dtype=float).reshape(-1)[:6]
+                for v in vals[:6]
+            ]
+
+        def _fmt8(arr: np.ndarray | None) -> list[str]:
+            if arr is None:
+                return [""] * 8
+            vals = np.asarray(arr, dtype=float).reshape(-1)
+            if vals.size < 8:
+                vals = np.pad(vals, (0, 8 - int(vals.size)), constant_values=np.nan)
+            return [
+                f"{float(v):.6f}" if np.isfinite(v) else ""
+                for v in vals[:8]
             ]
 
         def _fmt3(arr: np.ndarray, prec: int = 4) -> list[str]:
@@ -2099,6 +2398,13 @@ class _TickLogger:
                 f"{float(v):.{prec}f}" if np.isfinite(v) else ""
                 for v in np.asarray(arr, dtype=float).reshape(-1)[:3]
             ]
+
+        comfort = np.asarray(
+            getattr(step, "comfort_slack", np.zeros(7)), dtype=float
+        ).reshape(-1)
+        if comfort.size < 7:
+            comfort = np.pad(comfort, (0, 7 - int(comfort.size)))
+        comfort = comfort[:7]
 
         self._q.put(
             [
@@ -2331,7 +2637,42 @@ class _TickLogger:
                f"{q_cmd_q_meas_norm:.8f}",
                str(step.fallback_level), str(step.fallback_reason),
                int(bool(step.solver_fault_latched)),
-               self._json_compact(step.qdot)]
+               self._json_compact(step.qdot),
+               int(bool(step.rail_sat)),
+               int(bool(step.last_limit_saturated)),
+               int(bool(step.keep_task_weight)),
+               f"{float(step.pref_slack_scale):.4f}",
+               (
+                   f"{float(step.rail_task_vel):.6f}"
+                   if np.isfinite(step.rail_task_vel)
+                   else ""
+               ),
+               f"{float(step.v_escape):.6f}" if np.isfinite(step.v_escape) else "",
+               f"{float(step.v_reach):.6f}" if np.isfinite(step.v_reach) else "",
+               f"{float(step.v_ff_rail):.6f}" if np.isfinite(step.v_ff_rail) else "",
+               f"{float(step.sigma_arm):.5f}" if np.isfinite(step.sigma_arm) else "",
+               f"{float(step.sns_scale):.4f}",
+               (
+                   f"{float(step.nullspace_norm):.6f}"
+                   if np.isfinite(step.nullspace_norm)
+                   else ""
+               ),
+               (
+                   f"{float(step.cbf_min_dist):.6f}"
+                   if np.isfinite(step.cbf_min_dist)
+                   else ""
+               ),
+               str(step.cbf_pair),
+               *_fmt8(
+                   qdot_meas
+                   if qdot_meas is not None
+                   else getattr(step, "qdot_meas", None)
+               ),
+               *_fmt6(getattr(step, "v_cmd", step.twist_base)),
+               *_fmt6(getattr(step, "path_twist", None)),
+               *_fmt6(getattr(step, "feedback_twist", None)),
+               *(f"{float(v):.9e}" for v in comfort),
+               *self._fmt_pad_fields(outer)]
         )
 
     def close(self) -> None:
@@ -2348,6 +2689,53 @@ def _expand_q_meas(q_deg_or_rad: np.ndarray, rail_m: float) -> np.ndarray:
     if q.size == 7:
         return full_q_from_arm(q, rail_m)
     raise ValueError(f"expected 7 or 8 joint values, got {q.size}")
+
+
+def _rail_qdot_m_s(
+    rail_bridge,
+    q_new: np.ndarray,
+    last_q: np.ndarray | None,
+    dt_feedback: float | None,
+) -> float | None:
+    """Rail is not in the RealMan UDP frame; use FA24 speed, else Δq0/Δt."""
+    meas = getattr(rail_bridge, "measured_speed_m_s", None)
+    if meas is not None:
+        try:
+            v_rail = float(meas)
+        except (TypeError, ValueError):
+            v_rail = float("nan")
+        if np.isfinite(v_rail):
+            return v_rail
+    if (
+        last_q is not None
+        and dt_feedback is not None
+        and 0.001 <= float(dt_feedback) <= 0.050
+    ):
+        return float(q_new[0] - last_q[0]) / float(dt_feedback)
+    return None
+
+
+def _qdot_meas_8dof(
+    q_new: np.ndarray,
+    last_q: np.ndarray | None,
+    dt_feedback: float | None,
+    snap,
+    rail_bridge=None,
+) -> np.ndarray | None:
+    """8-vector qdot: SDK arm speed + rail encoder/servo. Finite-diff only as fallback."""
+    arm = arm_qdot_rad_s_from_snap(snap)
+    if arm is not None:
+        qdot = np.zeros(8, dtype=float)
+        qdot[1:] = arm
+        v_rail = _rail_qdot_m_s(rail_bridge, q_new, last_q, dt_feedback)
+        if v_rail is not None:
+            qdot[0] = v_rail
+        return qdot
+    if last_q is None or dt_feedback is None:
+        return None
+    if not (0.001 <= float(dt_feedback) <= 0.050):
+        return None
+    return wrap_joint_delta(last_q, q_new) / float(dt_feedback)
 
 
 def _rail_m_for_init(rail_bridge, inner: JointIkController) -> float:
@@ -2400,10 +2788,43 @@ def _rail_settled_for_arrival(
     return bool(abs(v_cmd) <= limit and abs(v_meas) <= limit)
 
 
+def _wall_clock_rail_target(
+    prev_pub_m: float | None,
+    q_send0: float,
+    qdot0: float,
+    dt_wall: float,
+    *,
+    soft_lo: float,
+    soft_hi: float,
+    meas_m: float | None = None,
+    lead_max_m: float = 0.0,
+) -> float:
+    """Advance the servo goal on wall time; leave CANFD ``q_cmd`` on nominal dt.
+
+    QPIK integrates ``q_cmd[0]`` at 5 ms.  The loop actually runs ~6.5 ms, so
+    handing ``q_send[0]`` to the rail under-reads wall-clock speed by ~25%.
+    """
+    if prev_pub_m is None or not math.isfinite(float(prev_pub_m)):
+        x = float(q_send0)
+    else:
+        x = float(prev_pub_m) + float(qdot0) * max(float(dt_wall), 0.0)
+    lo = float(soft_lo)
+    hi = float(soft_hi)
+    if hi < lo:
+        lo, hi = hi, lo
+    x = max(lo, min(hi, x))
+    lead = max(float(lead_max_m), 0.0)
+    if lead > 0.0 and meas_m is not None and math.isfinite(float(meas_m)):
+        meas = float(meas_m)
+        x = max(meas - lead, min(meas + lead, x))
+    return x
+
+
 def _publish_rail_target_before_arm(
     rail_bridge,
     target_m: float,
     fault_stop,
+    v_ff_m_s: float | None = None,
 ) -> tuple[bool, str]:
     """Require the rail to accept this 8D tick before publishing the arm half."""
 
@@ -2421,7 +2842,12 @@ def _publish_rail_target_before_arm(
         reason = "rail_target_rejected:not_armed; restart Window A to re-arm"
     else:
         try:
-            accepted = rail_bridge.set_target_m(float(target_m))
+            try:
+                accepted = rail_bridge.set_target_m(
+                    float(target_m), v_ff_m_s=v_ff_m_s
+                )
+            except TypeError:
+                accepted = rail_bridge.set_target_m(float(target_m))
         except Exception as exc:
             reason = f"rail_target_exception:{type(exc).__name__}:{exc}"
         else:
@@ -2693,6 +3119,7 @@ def run_joint_admittance_phases(
                     phase_t0 = time.perf_counter()
                     next_tick = phase_t0
                     last_tick_time = phase_t0
+                    rail_pub_m: float | None = None
                     t_ref = 0.0
                     gov_filter = GovernorFilter(
                         tau_s=phase.governor_tau_s,
@@ -2709,7 +3136,7 @@ def run_joint_admittance_phases(
                         rail_speed_m_s=phase.arrival_rail_speed_m_s,
                     )
                     prev_pose_cmd = inner.kin.fk_pose(inner.q_cmd)
-                    # Encoder TCP velocity: update only on a fresh UDP sequence.
+                    # TCP velocity from SDK joint_speed (rail from servo / Δq0).
                     last_feedback_seq = int(getattr(snap, "seq", 0))
                     last_feedback_t = float(getattr(snap, "t_s", 0.0))
                     last_feedback_q = np.asarray(q_meas, dtype=float).copy()
@@ -2718,6 +3145,7 @@ def run_joint_admittance_phases(
                     # sensor transport age is a separate diagnostic.
                     last_feedback_velocity_t = last_feedback_t
                     twist_achieved_base = np.zeros(6, dtype=float)
+                    qdot_meas = None
                     v_tcp_z_actual = 0.0
                     feedback_velocity_valid = False
                     feedback_fresh_tick = False
@@ -2786,11 +3214,14 @@ def run_joint_admittance_phases(
                                 and snap_t > last_feedback_t
                             ):
                                 dt_feedback = snap_t - last_feedback_t
-                                if 0.001 <= dt_feedback <= 0.050:
-                                    qdot_meas = (
-                                        wrap_joint_delta(last_feedback_q, q_new)
-                                        / dt_feedback
-                                    )
+                                qdot_meas = _qdot_meas_8dof(
+                                    q_new,
+                                    last_feedback_q,
+                                    dt_feedback,
+                                    snap,
+                                    rail_bridge,
+                                )
+                                if qdot_meas is not None:
                                     twist_achieved_base = (
                                         inner.kin.jacobian(q_new) @ qdot_meas
                                     )
@@ -2924,6 +3355,11 @@ def run_joint_admittance_phases(
                             ),
                             path_twist=path_twist,
                             feedback_twist=feedback_twist,
+                            v_force_z=(
+                                float(getattr(ctrl, "v_force_z", float("nan")))
+                                if ctrl is not None
+                                else None
+                            ),
                         )
                         step.tick_inner_ms = (
                             time.perf_counter() - _t_inner0
@@ -2983,10 +3419,30 @@ def run_joint_admittance_phases(
                             _fault_stop(stop_reason)
                             break
                         _t_send0 = time.perf_counter()
+                        qdot0_pub = float(np.asarray(step.qdot, dtype=float).reshape(-1)[0])
+                        if not math.isfinite(qdot0_pub):
+                            qdot0_pub = 0.0
+                        rail_meas_pub = float("nan")
+                        if rail_bridge is not None and getattr(rail_bridge, "enabled", False):
+                            try:
+                                rail_meas_pub = float(rail_bridge.measured_m)
+                            except Exception:
+                                rail_meas_pub = float("nan")
+                        rail_pub_m = _wall_clock_rail_target(
+                            rail_pub_m,
+                            float(step.q_send[0]),
+                            qdot0_pub,
+                            dt_wall_actual,
+                            soft_lo=float(inner.limits.q_lower[0]),
+                            soft_hi=float(inner.limits.q_upper[0]),
+                            meas_m=rail_meas_pub,
+                            lead_max_m=float(inner.cfg.resync_err_rail_m),
+                        )
                         rail_ok, rail_reason = _publish_rail_target_before_arm(
                             rail_bridge,
-                            float(step.q_send[0]),
+                            float(rail_pub_m),
                             _fault_stop,
+                            v_ff_m_s=qdot0_pub,
                         )
                         if not rail_ok:
                             phase_stopped = True
@@ -3064,6 +3520,7 @@ def run_joint_admittance_phases(
                                 governor_scale_raw=raw_scale,
                                 v_max=inner.limits.v_max,
                                 rail_meas_m=rail_meas,
+                                rail_target_sent_m=rail_pub_m,
                                 dt_actual_s=dt_wall_actual,
                                 sensor_age_s=sensor_age_s,
                                 feedback_age_s=feedback_age_s,
@@ -3071,6 +3528,7 @@ def run_joint_admittance_phases(
                                 f_ext_raw=f_ext_raw,
                                 twist_achieved_base=twist_achieved_base,
                                 v_tcp_z_actual=v_tcp_z_actual,
+                                qdot_meas=qdot_meas,
                             )
                             last_log_ms = (
                                 time.perf_counter() - _t_log0

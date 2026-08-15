@@ -532,6 +532,7 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
         {
             "enabled", "k_ext", "k_ff", "v_ff_thr_m_s", "v_ff_span_m_s",
             "e0_m", "e1_m", "w_max", "v_max_m_s", "limit_margin_m",
+            "pin_margin_m", "escape_leave_m",
             "k_sigma_boost", "k_esc", "w_sigma_floor",
             "k_pose", "pose_e0_m", "pose_e1_m", "pose_w_max",
             "sigma_guard_enter", "sigma_guard_exit", "v_guard_max_m_s",
@@ -543,6 +544,8 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
             "k_margin_boost", "w_ext_cap",
             "soft_min_m", "soft_max_m", "v_reach_cap_m_s",
             "d_star_err0_m", "d_star_err1_m", "d_star_w_mult", "d_star_reg_mult",
+            "press_v_force_min_m_s", "press_dz_max_m", "press_y_err_m",
+            "press_stall_s", "d_star_nudge_m", "open_travel_min_m",
         },
         name="inner.rail_extension",
     )
@@ -564,6 +567,12 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
         ),
         limit_margin_m=_finite_float(
             r.get("limit_margin_m", 0.15), name="rail_extension.limit_margin_m"
+        ),
+        pin_margin_m=_finite_float(
+            r.get("pin_margin_m", 0.008), name="rail_extension.pin_margin_m"
+        ),
+        escape_leave_m=_finite_float(
+            r.get("escape_leave_m", 0.04), name="rail_extension.escape_leave_m"
         ),
         k_sigma_boost=_finite_float(
             r.get("k_sigma_boost", 2.0), name="rail_extension.k_sigma_boost"
@@ -653,6 +662,26 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
         ),
         d_star_reg_mult=_finite_float(
             r.get("d_star_reg_mult", 20.0), name="rail_extension.d_star_reg_mult"
+        ),
+        press_v_force_min_m_s=_finite_float(
+            r.get("press_v_force_min_m_s", 0.02),
+            name="rail_extension.press_v_force_min_m_s",
+        ),
+        press_dz_max_m=_finite_float(
+            r.get("press_dz_max_m", 0.002), name="rail_extension.press_dz_max_m"
+        ),
+        press_y_err_m=_finite_float(
+            r.get("press_y_err_m", 0.005), name="rail_extension.press_y_err_m"
+        ),
+        press_stall_s=_finite_float(
+            r.get("press_stall_s", 0.5), name="rail_extension.press_stall_s"
+        ),
+        d_star_nudge_m=_finite_float(
+            r.get("d_star_nudge_m", 0.01), name="rail_extension.d_star_nudge_m"
+        ),
+        open_travel_min_m=_finite_float(
+            r.get("open_travel_min_m", 0.01),
+            name="rail_extension.open_travel_min_m",
         ),
     )
 

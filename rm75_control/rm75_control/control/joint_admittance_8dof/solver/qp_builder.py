@@ -407,7 +407,10 @@ class QpIkController:
         self.last_failed = False
         self.last_dexterity_slack = 0.0
         self.last_branch_slack = 0.0
+        self.last_comfort_slack = np.zeros(7, dtype=float)
         self.last_sns_scale = 1.0
+        self.last_cbf_min_dist = float("nan")
+        self.last_cbf_pair = ""
         self.last_wln_scale = np.ones(kin.nv, dtype=float)
         self._wln_scale_prev = np.ones(kin.nv, dtype=float)
         self.q_star: np.ndarray | None = None
@@ -451,7 +454,10 @@ class QpIkController:
         self.last_failed = False
         self.last_dexterity_slack = 0.0
         self.last_branch_slack = 0.0
+        self.last_comfort_slack = np.zeros(7, dtype=float)
         self.last_sns_scale = 1.0
+        self.last_cbf_min_dist = float("nan")
+        self.last_cbf_pair = ""
         self.last_wln_scale = np.ones(self.kin.nv, dtype=float)
         self._wln_scale_prev = np.ones(self.kin.nv, dtype=float)
         self.sigma_setbased.reset()
@@ -593,7 +599,6 @@ class QpIkController:
         rail_task_vel_m_s: float | None = None,
         rail_task_weight: float = 0.0,
         box_dt: float | None = None,
-        rail_force_dir_base: np.ndarray | None = None,
         keep_task_weight: bool = False,
         pref_slack_scale: float = 1.0,
     ) -> IkStepResult:
@@ -607,15 +612,6 @@ class QpIkController:
         self.solve_count += 1
 
         J = self.kin.jacobian(q_prev)
-        if rail_force_dir_base is not None and J.shape[1] > 0:
-            n = np.asarray(rail_force_dir_base, dtype=float).reshape(-1)
-            if n.size >= 3:
-                n3 = n[:3]
-                nn = float(np.linalg.norm(n3))
-                if nn > 1.0e-9:
-                    n3 = n3 / nn
-                    j0 = J[:3, 0].copy()
-                    J[:3, 0] = j0 - n3 * float(np.dot(n3, j0))
         sigma = self.kin.singular_values(J)
         sigma_min = float(sigma.min())
 
@@ -737,6 +733,13 @@ class QpIkController:
 
             cbf = CbfRows(jacobian=np.zeros((0, nv)), lower=np.zeros(0))
             self._cbf_slots = CbfSlotTracker(max_pairs=self._max_cbf)
+        self.last_cbf_min_dist = float("nan")
+        self.last_cbf_pair = ""
+        if self.collision is not None and self.collision_cfg.enabled:
+            closest = self.collision.closest_pair()
+            if closest is not None:
+                self.last_cbf_min_dist = float(closest.distance)
+                self.last_cbf_pair = f"{closest.name_a}:{closest.name_b}"
 
         sigma_rows = self.sigma_setbased.build_row(self.kin, q_prev)
         q_star = self.q_star if self.q_star is not None else q_prev
@@ -789,6 +792,7 @@ class QpIkController:
             slack = np.zeros(ns, dtype=float)
             dex_s = 0.0
             br_s = 0.0
+            comfort = np.zeros(7, dtype=float)
             self.last_failed = True
             self.last_status = "failed"
         else:
@@ -796,10 +800,15 @@ class QpIkController:
             slack = x[nv : nv + ns]
             dex_s = float(max(0.0, x[nv + ns]))
             br_s = float(max(0.0, x[nv + ns + 1]))
+            comfort = np.maximum(0.0, np.asarray(x[nv + ns + 2 : nv + ns + 9], dtype=float))
+            if comfort.size < 7:
+                comfort = np.pad(comfort, (0, 7 - int(comfort.size)))
+            comfort = comfort[:7]
             self.last_failed = False
             self.last_status = "solved"
         self.last_dexterity_slack = dex_s
         self.last_branch_slack = br_s
+        self.last_comfort_slack = np.asarray(comfort, dtype=float).reshape(7)
         self.sigma_setbased.last_slack = dex_s
         self.branch_barrier.last_slack = br_s
         self.qdot_prev = qdot

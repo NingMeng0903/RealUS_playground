@@ -185,3 +185,16 @@ class CollisionModel:
         if not distances:
             return float("inf")
         return min(distances)
+
+    def closest_pair(self) -> CollisionPairInfo | None:
+        """Nearest pair after ``update``; not the CBF slot occupancy count."""
+        best_i = -1
+        best_d = float("inf")
+        for i, result in enumerate(self.geom_data.distanceResults):
+            d = float(result.min_distance)
+            if np.isfinite(d) and d < best_d:
+                best_d = d
+                best_i = i
+        if best_i < 0:
+            return None
+        return self.pair_info(best_i)

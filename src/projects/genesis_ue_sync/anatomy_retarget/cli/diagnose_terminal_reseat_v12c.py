@@ -24,6 +24,7 @@ from projects.genesis_ue_sync.anatomy_retarget.smplx_body_surface_v7 import (
 )
 from projects.genesis_ue_sync.anatomy_retarget.pose_map_v10 import FOOT_ROOTS
 from projects.genesis_ue_sync.anatomy_retarget.terminal_reseat_v12 import (
+    FOREARM_SHAFT_ROOTS,
     FOREFOOT_ROOTS,
     reseat_subject_terminals_v12,
 )
@@ -125,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
         pose_frames=frames,
     )
     report = reseated.build_report["terminal_reseat_v12"]
-    wanted = (*FOOT_ROOTS, *FOREFOOT_ROOTS)
+    wanted = (*FOREARM_SHAFT_ROOTS, *FOOT_ROOTS, *FOREFOOT_ROOTS)
     summary = {
         "method": report.get("method"),
         "fitted_pose_count": report.get("fitted_pose_count"),

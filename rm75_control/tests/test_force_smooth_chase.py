@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from rm75_control.control.admittance_common.controller import (
     AdmittanceConfig,
@@ -67,12 +68,14 @@ def test_yaml_smooth_chase_defaults_load():
         Path("configs/joint_admittance_8dof.yaml").read_text(encoding="utf-8")
     )
     cfg = AdmittanceConfig.from_dict(raw)
-    # e85c9ab's press path is back: bidirectional proactive feedforward plus
-    # DOB.  1bfe98b had switched both off to fight bounce, at the cost of all
-    # under-force chase speed; the force barrier is the brake now.
+    # 45c74e1 force law: DOB + bidirectional proactive, barrier as the brake.
+    # Desired-point decoupling tracks tool-Z of the force point, not scan Z.
     assert cfg.force_dob.enabled
     assert cfg.proactive_ff.retract_only is False
     assert cfg.force_barrier.enabled
+    assert cfg.track_axes[2] == pytest.approx(1.0)
+    assert cfg.kp_pos[2] > 0.0
+    assert cfg.kp_pos[2] < cfg.kp_pos[0]
     assert cfg.adaptive_ke.drive_damping is False
     assert cfg.proactive_ff.gate_press_on_is is False
     assert cfg.var_damping_d_u >= 50.0

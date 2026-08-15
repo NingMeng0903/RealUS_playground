@@ -12,7 +12,9 @@ from projects.genesis_ue_sync.anatomy_retarget.pose_map_v10 import (
     HAND_ROOTS,
 )
 from projects.genesis_ue_sync.anatomy_retarget.terminal_reseat_v12 import (
+    FOREARM_SHAFT_ROOTS,
     FOREFOOT_ROOTS,
+    MESH_ONLY_ROOTS,
     NON_REGRESSION_SLACK_M,
     RESEAT_ORDER,
     TERMINAL_ROOTS,
@@ -228,7 +230,19 @@ def test_solver_after_metric_matches_the_lbs_apply() -> None:
 def test_terminal_roots_cover_both_hands_and_feet() -> None:
     assert TERMINAL_ROOTS == (*HAND_ROOTS, *FOOT_ROOTS)
     assert FOREFOOT_ROOTS == ("Arch_Rot_L", "Arch_Rot_R")
-    assert RESEAT_ORDER == (*HAND_ROOTS, *FOOT_ROOTS, *FOREFOOT_ROOTS)
+    assert FOREARM_SHAFT_ROOTS == (
+        "Forearm_Bone_L",
+        "Forearm_Bone_R",
+        "Forearm_Twist_L",
+        "Forearm_Twist_R",
+    )
+    assert MESH_ONLY_ROOTS == FOREARM_SHAFT_ROOTS
+    assert RESEAT_ORDER == (
+        *FOREARM_SHAFT_ROOTS,
+        *HAND_ROOTS,
+        *FOOT_ROOTS,
+        *FOREFOOT_ROOTS,
+    )
     assert NON_REGRESSION_SLACK_M == pytest.approx(0.001)
 
 
@@ -396,3 +410,96 @@ def test_ankle_t_cannot_throw_the_inherited_arch() -> None:
         samples=2,
     )
     assert result["Ankle_Rot_L"]["translation_m"] <= 0.002 + NON_REGRESSION_SLACK_M + 1.0e-3
+
+
+def test_mesh_only_forearm_apply_leaves_binds_and_the_hand() -> None:
+    names = ["Elbow_Rot_L", "Forearm_Bone_L", "Wrist_Rotate_L"]
+    asset = SimpleNamespace(
+        source_bone_names=names,
+        source_tissues=np.asarray(["bone", "bone", "bone"]),
+        source_mesh_controller_bones=np.asarray([0, 1, 2], dtype=np.int64),
+        source_vertex_ranges=np.asarray([[0, 1], [1, 2], [2, 3]], dtype=np.int64),
+        driver_indices=np.stack([np.arange(3), np.arange(3)], axis=1).astype(np.int64),
+        driver_weights=np.stack([np.ones(3), np.zeros(3)], axis=1),
+    )
+    rest = np.asarray(
+        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]], dtype=np.float64
+    )
+    bind = np.tile(np.eye(4, dtype=np.float64), (3, 1, 1))
+    bind[:, 0, 3] = rest[:, 0]
+    reseat = {
+        "Forearm_Bone_L": {
+            "transform": _translation(0.10),
+            "mesh_only": True,
+            "controllers": [1],
+            "vertex_ids": np.asarray([1], dtype=np.int64),
+            "translation_m": 0.10,
+            "rotation_deg": 0.0,
+            "root_origin_shift_m": 0.0,
+            "max_outside_before_m": 0.0,
+            "max_outside_after_m": 0.0,
+            "outside_count_before": 0,
+            "outside_count_after": 0,
+        },
+        "Wrist_Rotate_L": {
+            "transform": _translation(0.02),
+            "controllers": [2],
+            "vertex_ids": np.asarray([2], dtype=np.int64),
+            "translation_m": 0.02,
+            "rotation_deg": 0.0,
+            "root_origin_shift_m": 0.02,
+            "max_outside_before_m": 0.0,
+            "max_outside_after_m": 0.0,
+            "outside_count_before": 0,
+            "outside_count_after": 0,
+        },
+    }
+
+    moved, matrices, _report = apply_terminal_reseat_v12(
+        rest, bind, asset=asset, reseat=reseat
+    )
+
+    assert moved[0] == pytest.approx([0.0, 0.0, 0.0])
+    assert moved[1] == pytest.approx([1.10, 0.0, 0.0])
+    assert moved[2] == pytest.approx([2.02, 0.0, 0.0])
+    assert matrices[0] == pytest.approx(bind[0])
+    assert matrices[1] == pytest.approx(bind[1])
+    assert matrices[2, 0, 3] == pytest.approx(2.02)
+
+
+def test_mesh_only_forearm_solver_seats_without_moving_bind() -> None:
+    names = ["Elbow_Rot_L", "Forearm_Bone_L", "Wrist_Rotate_L"]
+    rest = np.asarray(
+        [[0.0, 0.0, 0.0], [0.0, 0.0, 0.62], [0.4, 0.0, 0.0]], dtype=np.float64
+    )
+    asset = SimpleNamespace(
+        source_bone_names=names,
+        source_tissues=np.asarray(["bone", "bone", "bone"]),
+        source_mesh_controller_bones=np.asarray([0, 1, 2], dtype=np.int64),
+        source_vertex_ranges=np.asarray([[0, 1], [1, 2], [2, 3]], dtype=np.int64),
+        driver_indices=np.stack([np.arange(3), np.arange(3)], axis=1).astype(np.int64),
+        driver_weights=np.stack([np.ones(3), np.zeros(3)], axis=1),
+    )
+    bind = np.tile(np.eye(4, dtype=np.float64), (3, 1, 1))
+    bind[2, :3, 3] = rest[2]
+    parents = np.asarray([-1, 0, 1], dtype=np.int64)
+    skin, faces = _cube(0.5)
+    solved = solve_terminal_reseat_v12(
+        rest,
+        asset=asset,
+        skin=skin,
+        skin_faces=faces,
+        bone_parents=parents,
+        bind=bind,
+        max_translation_m=0.15,
+        max_rotation_deg=5.0,
+        samples=2,
+    )
+    moved, matrices, _report = apply_terminal_reseat_v12(
+        rest, bind, asset=asset, reseat=solved
+    )
+    assert solved["Forearm_Bone_L"]["mesh_only"] is True
+    assert solved["Forearm_Bone_L"]["translation_m"] > 0.05
+    assert matrices[0] == pytest.approx(bind[0])
+    assert matrices[1] == pytest.approx(bind[1])
+    assert float(moved[1, 2]) < 0.51

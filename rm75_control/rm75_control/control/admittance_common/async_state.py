@@ -34,22 +34,60 @@ def _realtime_sdk_types():
         from Robotic_Arm.rm_ctypes_wrap import (
             rm_realtime_arm_state_callback_ptr,
             rm_realtime_push_config_t,
+            rm_udp_custom_config_t,
         )
     except ModuleNotFoundError as exc:  # pragma: no cover - hardware install
         raise RuntimeError(
             "RealMan Robotic_Arm SDK is required to start realtime UDP feedback"
         ) from exc
-    return rm_realtime_arm_state_callback_ptr, rm_realtime_push_config_t
+    return (
+        rm_realtime_arm_state_callback_ptr,
+        rm_realtime_push_config_t,
+        rm_udp_custom_config_t,
+    )
 
 
 @dataclass
 class AsyncStateSnapshot:
     pose: np.ndarray | None = None
     q_deg: np.ndarray | None = None
+    # RealMan UDP ``joint_status.joint_speed``: 7 arm joints, deg/s.
+    qdot_deg_s: np.ndarray | None = None
     force_raw: np.ndarray = field(default_factory=lambda: np.zeros(6))
     t_s: float = 0.0
     ok: bool = False
     seq: int = 0
+
+
+def _copy_vec(arr: np.ndarray | None) -> np.ndarray | None:
+    if arr is None:
+        return None
+    return np.asarray(arr, dtype=float).copy()
+
+
+def arm_qdot_rad_s_from_snap(snap: AsyncStateSnapshot) -> np.ndarray | None:
+    """SDK arm speed (deg/s) → 7-vector rad/s, or None if the field is unusable."""
+    raw = getattr(snap, "qdot_deg_s", None)
+    if raw is None:
+        return None
+    qdot = np.asarray(raw, dtype=float).reshape(-1)
+    if qdot.size < 7 or not np.isfinite(qdot[:7]).all():
+        return None
+    return np.deg2rad(qdot[:7])
+
+
+def _joint_speed_deg_s(joint_status) -> np.ndarray | None:
+    """Read UDP ``joint_speed`` (deg/s). Missing/non-finite → None."""
+    speed = getattr(joint_status, "joint_speed", None)
+    if speed is None:
+        return None
+    try:
+        qdot = np.asarray([speed[i] for i in range(7)], dtype=float)
+    except (IndexError, TypeError, ValueError):
+        return None
+    if not np.isfinite(qdot).all():
+        return None
+    return qdot
 
 
 @dataclass(frozen=True)
@@ -155,10 +193,12 @@ class RealtimeStateObserver:
                     t_s=s.t_s,
                     ok=False,
                     seq=seq,
+                    qdot_deg_s=_copy_vec(s.qdot_deg_s),
                 )
             out = AsyncStateSnapshot(
                 pose=s.pose.copy(),
-                q_deg=s.q_deg.copy() if s.q_deg is not None else None,
+                q_deg=_copy_vec(s.q_deg),
+                qdot_deg_s=_copy_vec(s.qdot_deg_s),
                 force_raw=s.force_raw.copy(),
                 t_s=s.t_s,
                 ok=s.ok,
@@ -169,10 +209,17 @@ class RealtimeStateObserver:
                     return out
         s = self._slots[self._active]
         if s.pose is None:
-            return AsyncStateSnapshot(force_raw=s.force_raw.copy(), t_s=s.t_s, ok=False, seq=self._seq)
+            return AsyncStateSnapshot(
+                force_raw=s.force_raw.copy(),
+                t_s=s.t_s,
+                ok=False,
+                seq=self._seq,
+                qdot_deg_s=_copy_vec(s.qdot_deg_s),
+            )
         return AsyncStateSnapshot(
             pose=s.pose.copy(),
-            q_deg=s.q_deg.copy() if s.q_deg is not None else None,
+            q_deg=_copy_vec(s.q_deg),
+            qdot_deg_s=_copy_vec(s.qdot_deg_s),
             force_raw=s.force_raw.copy(),
             t_s=s.t_s,
             ok=s.ok,
@@ -183,6 +230,17 @@ class RealtimeStateObserver:
     def push_period_ms(self) -> float:
         return float(self.config.cycle) * 5.0
 
+    def _push_config(self, push_config_type, custom_type, *, enable: bool):
+        """UDP push struct with ``custom_config.joint_speed=1`` so SDK reports qdot."""
+        return push_config_type(
+            self.config.cycle,
+            bool(enable),
+            self.config.port,
+            self.config.force_coordinate,
+            self._target_ip,
+            custom_type(joint_speed=1),
+        )
+
     def start(
         self,
         *,
@@ -191,7 +249,7 @@ class RealtimeStateObserver:
     ) -> None:
         if self._running:
             return
-        callback_type, push_config_type = _realtime_sdk_types()
+        callback_type, push_config_type, custom_type = _realtime_sdk_types()
         peer = self._robot_ip or self.config.ip
         if not peer:
             raise ValueError("robot_ip or realtime_push.ip is required for UDP feedback")
@@ -201,10 +259,12 @@ class RealtimeStateObserver:
             if data.errCode != 0:
                 return
             t_s = time.monotonic()
+            status = data.joint_status
             q_deg = np.asarray(
-                [data.joint_status.joint_position[i] for i in range(7)],
+                [status.joint_position[i] for i in range(7)],
                 dtype=float,
             )
+            qdot_deg_s = _joint_speed_deg_s(status)
             pose = pose_from_waypoint(data.waypoint)
             force_raw = np.asarray(
                 [data.force_sensor.force[i] for i in range(6)],
@@ -214,6 +274,7 @@ class RealtimeStateObserver:
                 AsyncStateSnapshot(
                     pose=pose,
                     q_deg=q_deg,
+                    qdot_deg_s=qdot_deg_s,
                     force_raw=force_raw,
                     t_s=t_s,
                     ok=True,
@@ -224,20 +285,8 @@ class RealtimeStateObserver:
         self._callback_ref = callback_type(_on_state)
         self.robot.rm_realtime_arm_state_call_back(self._callback_ref)
 
-        push_on = push_config_type(
-            self.config.cycle,
-            True,
-            self.config.port,
-            self.config.force_coordinate,
-            self._target_ip,
-        )
-        push_off = push_config_type(
-            self.config.cycle,
-            False,
-            self.config.port,
-            self.config.force_coordinate,
-            self._target_ip,
-        )
+        push_on = self._push_config(push_config_type, custom_type, enable=True)
+        push_off = self._push_config(push_config_type, custom_type, enable=False)
 
         last_ret: int | None = None
         attempts = max(1, int(retries))
@@ -271,14 +320,8 @@ class RealtimeStateObserver:
             return
         self._running = False
         try:
-            _, push_config_type = _realtime_sdk_types()
-            off = push_config_type(
-                self.config.cycle,
-                False,
-                self.config.port,
-                self.config.force_coordinate,
-                self._target_ip,
-            )
+            _, push_config_type, custom_type = _realtime_sdk_types()
+            off = self._push_config(push_config_type, custom_type, enable=False)
             self.robot.rm_set_realtime_push(off)
         except Exception:
             pass

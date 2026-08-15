@@ -8,6 +8,8 @@ import numpy as np
 import pytest
 
 from rm75_control.control.hybrid_motion.async_state import (
+    AsyncStateSnapshot,
+    arm_qdot_rad_s_from_snap,
     parse_realtime_push_config,
     pose_from_waypoint,
 )
@@ -51,6 +53,25 @@ def test_parse_realtime_push_config_explicit():
     assert cfg.port == 9000
     assert cfg.ip == "10.0.0.5"
     assert cfg.force_coordinate == 2
+
+
+def test_arm_qdot_rad_s_from_sdk_deg():
+    snap = AsyncStateSnapshot(qdot_deg_s=np.array([10.0, 0.0, -5.0, 0.0, 0.0, 0.0, 20.0]))
+    qdot = arm_qdot_rad_s_from_snap(snap)
+    assert qdot is not None
+    np.testing.assert_allclose(qdot[0], np.deg2rad(10.0))
+    np.testing.assert_allclose(qdot[2], np.deg2rad(-5.0))
+    np.testing.assert_allclose(qdot[6], np.deg2rad(20.0))
+
+
+def test_arm_qdot_rad_s_rejects_bad_field():
+    assert arm_qdot_rad_s_from_snap(AsyncStateSnapshot()) is None
+    assert arm_qdot_rad_s_from_snap(
+        AsyncStateSnapshot(qdot_deg_s=np.array([np.nan, 0, 0, 0, 0, 0, 0]))
+    ) is None
+    assert arm_qdot_rad_s_from_snap(
+        AsyncStateSnapshot(qdot_deg_s=np.array([1.0, 2.0]))
+    ) is None
 
 
 def test_wrap_joint_delta_shortest_path():

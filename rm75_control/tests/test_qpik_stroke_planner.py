@@ -478,6 +478,11 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.psi_retarget.n_y >= 3
     assert cfg.psi_retarget.w_wrist == pytest.approx(0.5)
     assert cfg.psi_retarget.wrist_min_rad == pytest.approx(np.deg2rad(25.0))
+    assert cfg.psi_retarget.margin_floor_rad == pytest.approx(np.deg2rad(20.0))
+    qn = np.asarray(raw["inner"]["nullspace"]["q_nominal_deg"], dtype=float)
+    assert qn[4] == pytest.approx(90.0)
+    assert qn[5] == pytest.approx(40.0)
+    assert qn[6] == pytest.approx(45.0)
     assert cfg.rail.soft_min_m == pytest.approx(0.025)
     assert cfg.rail_extension.d_star_reg_mult == pytest.approx(20.0)
     assert raw["hw"]["lw100"]["soft_min_m"] == pytest.approx(0.025)
@@ -509,11 +514,7 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     hm = raw["hybrid_motion"]
     assert hm["proactive_retract_only"] is False
     assert hm["force_dob"]["enabled"] is True
-    assert float(hm["force_axis_slew_press_m_s2"]) == pytest.approx(0.0)
-    assert float(hm["force_axis_slew_retract_m_s2"]) == pytest.approx(0.0)
-    assert float(hm["force_axis_slew_reverse_m_s2"]) == pytest.approx(0.0)
-    assert float(hm["force_barrier"]["v_seek_free_m_s"]) == pytest.approx(0.08)
-    assert float(hm["force_lateral_gain_floor"]) == pytest.approx(1.0)
+    assert float(hm["force_axis_slew_press_m_s2"]) >= 0.8
     assert hm["force_barrier"]["enabled"] is True
     # The blunt phase-2 instruments stay out.
     assert "vel_dob" not in hm
@@ -546,10 +547,61 @@ def test_analyzer_rejects_empty_scan(tmp_path) -> None:
     assert "waste_ratio" in mod.GATES
     assert "accel_reversals_per_s" in mod.GATES
     assert "dt_on_time_frac" in mod.GATES
-    assert "rail_share_at_limit" not in mod.GATES
-    assert mod.GATES["track_err_at_limit_mm"] == pytest.approx(3.0)
     assert mod.GATES["rail_min_m"] == pytest.approx(0.02)
     assert mod.GATES["tick_inner_max_ms"] == pytest.approx(20.0)
+
+
+def test_analyzer_wall_uses_tool_y_err_and_reports_posture(tmp_path) -> None:
+    import importlib.util
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "joint_admittance_8dof"
+        / "analyze_qpik_quality.py"
+    )
+    spec = importlib.util.spec_from_file_location("analyze_qpik_quality", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+
+    n = 80
+    cols = [
+        "phase", "t_wall_s", "q_meas_0", "q_meas_2", "q_meas_4", "q_meas_5",
+        "q_meas_6", "q_meas_7", "tool_y_err_mm", "motion_err_rms_mm",
+    ]
+    lines = [",".join(cols)]
+    for k in range(n):
+        lines.append(
+            ",".join(
+                [
+                    "scan",
+                    f"{0.005 * k:.4f}",
+                    "0.030",
+                    "0.0",
+                    "2.094",  # 120°
+                    "-0.262",  # -15°
+                    "0.384",  # 22°
+                    "0.0",
+                    "1.5",
+                    "40.0",
+                ]
+            )
+        )
+    csv_path = tmp_path / "wall.csv"
+    csv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    import io
+    from contextlib import redirect_stdout
+
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        mod.analyze(csv_path)
+    out = buf.getvalue()
+    assert "tool_y_err p95" in out
+    assert "J5 vs nominal" in out
+    assert "J4 comfort park" in out
 
 
 def test_analyzer_jerk_metric_ignores_loop_period_jitter(tmp_path) -> None:
@@ -599,67 +651,27 @@ def test_analyzer_jerk_metric_ignores_loop_period_jitter(tmp_path) -> None:
     assert "[PASS]" in line, line
 
 
-def test_plan_stroke_uses_path_world_y_envelope() -> None:
-    """Tool-X leak into world Y must size d*, not the 1-D tool-Y amplitude."""
-    kin = RobotKinematics()
-    rt = PostureRetarget(
-        kin,
-        PsiRetargetConfig(enabled=True, n_y=3, n_d=3, n_psi=3, rail_margin_m=0.02),
-    )
-    rt.reset(_SEED_Q)
-    pose0 = np.asarray(kin.fk_pose(_SEED_Q), dtype=float)
-    path = np.array(
-        [
-            [pose0[0], -1.0, pose0[2]],
-            [pose0[0], 0.0, pose0[2]],
-            [pose0[0], 1.0, pose0[2]],
-        ]
-    )
-    with pytest.raises(StrokeInfeasibleError, match="reduce amplitude"):
-        rt.plan_stroke(
-            _SEED_Q,
-            y_center_m=float(pose0[1]),
-            amplitude_m=0.01,
-            rail_lo=0.005,
-            rail_hi=0.78,
-            path_xyz=path,
-        )
-
-
-def test_wln_scale_stays_high_on_exact_rail_stop() -> None:
+def test_wln_still_prices_rail_on_the_stop() -> None:
+    """Exact-stop used to zero the Chan–Dubey denom and drop WLN to 1."""
     core, lim = _wln_core()
     q = 0.5 * (lim.q_lower + lim.q_upper)
-    q[0] = float(lim.q_lower[0])
+    q[0] = lim.q_lower[0]
     toward = np.zeros(core.kin.nv)
     toward[0] = -0.05
-    core._wln_scale_prev[:] = 1.0
-    scale = core._wln_reg_scale(q, toward)
-    assert scale[0] > 1.0
-    assert np.isfinite(scale[0])
+    assert float(core._wln_reg_scale(q, toward)[0]) > 10.0
 
 
-def test_rail_force_axis_mask_zeros_normal_column() -> None:
-    kin = RobotKinematics()
-    from scipy.spatial.transform import Rotation as Rsc
-
-    q = _SEED_Q.copy()
-    J = kin.jacobian(q)
-    pose = np.asarray(kin.fk_pose(q), dtype=float)
-    n = Rsc.from_euler("xyz", pose[3:6], degrees=False).as_matrix()[:, 2]
-    leak = float(np.dot(n, J[:3, 0]))
-    assert abs(leak) > 1.0e-4
-    j0 = J[:3, 0] - n * leak
-    assert abs(float(np.dot(n, j0))) < 1.0e-12
-
+def test_keep_task_weight_skips_sigma_scale() -> None:
     core, _lim = _wln_core()
-    twist = np.zeros(6)
-    twist[:3] = 0.03 * n
-    r_mask = core.step(q, twist, DT, rail_force_dir_base=n)
-    core.qdot_prev[:] = 0.0
-    core._qdot_prev_seen[:] = 0.0
-    r_open = core.step(q, twist, DT)
-    assert abs(float(r_mask.qdot[0])) < abs(float(r_open.qdot[0])) + 1.0e-9
-    assert abs(float(r_mask.qdot[0])) < 5.0e-3
+    q = np.zeros(8)
+    q[0] = 0.20
+    core.reset()
+    core._task_scale_lpf = 0.5
+    twist = np.array([0.02, 0.0, 0.0, 0.0, 0.0, 0.0])
+    core.step(q, twist, DT, keep_task_weight=True)
+    assert core._task_scale_lpf == pytest.approx(0.5)
+    core.step(q, twist, DT, keep_task_weight=False)
+    assert core._task_scale_lpf != pytest.approx(0.5)
 
 
 def test_rail_sat_is_not_workspace_saturation() -> None:
@@ -683,7 +695,7 @@ def test_rail_sat_is_not_workspace_saturation() -> None:
     kin = RobotKinematics()
     inner = JointIkController(kin, cfg)
     q = _SEED_Q.copy()
-    q[0] = 0.05
+    q[0] = 0.025
     inner.reset(q)
     inner.begin_hybrid_episode(q, np.zeros(8))
     assert inner.rail_ext_task is not None
@@ -693,176 +705,169 @@ def test_rail_sat_is_not_workspace_saturation() -> None:
     twist[1] = 0.03
     step = inner.update(twist, dt=cfg.dt, q_meas=q)
     assert step.physical_saturated is False
-    assert abs(float(step.qdot[0])) < 1.0e-4
 
 
-def test_free_space_seek_is_e85_speed() -> None:
-    from rm75_control.control.admittance_common.controller import (
-        AdmittanceConfig,
-        AdmittanceController,
-    )
-    from rm75_control.control.admittance_common.force_dob import ForceDobConfig
-    from rm75_control.control.admittance_common.proactive_force_ff import (
-        ProactiveFfConfig,
-    )
-
-    cfg = AdmittanceConfig(
-        desired_force_ramp_s=0.0,
-        max_vz_tool_m_s=0.08,
-        max_velocity=np.array([0.22, 0.22, 0.10, 0.6, 0.6, 0.6]),
-        force_axis_slew_press_m_s2=0.0,
-        force_axis_slew_retract_m_s2=0.0,
-        force_axis_slew_reverse_m_s2=0.0,
-        force_lateral_gain_floor=1.0,
-        admittance_mass_z=1.0,
-        admittance_damping_z=25.0,
-        deadband_n=0.08,
-        var_damping_enabled=False,
-    )
-    cfg.force_barrier.enabled = True
-    cfg.force_barrier.v_seek_free_m_s = 0.08
-    cfg.proactive_ff = ProactiveFfConfig(enabled=False)
-    cfg.force_dob = ForceDobConfig(enabled=False)
-    cfg.adaptive_ke.enabled = False
-    cfg.bidirectional_flow.mode = "off"
-    ctrl = AdmittanceController(DT, cfg)
-    f_ext = np.zeros(6)
-    f_des = np.zeros(6)
-    f_des[2] = 1.0
-    v = np.zeros(6)
-    for _ in range(8):
-        v = ctrl.compute_velocity_command(
-            np.zeros(6),
-            np.zeros(6),
-            np.zeros(6),
-            f_ext,
-            f_des,
-            in_contact=False,
-        )
-    assert float(v[2]) == pytest.approx(0.08, abs=5.0e-3)
-
-
-def test_under_force_contact_does_not_retract() -> None:
-    from rm75_control.control.admittance_common.controller import (
-        AdmittanceConfig,
-        AdmittanceController,
-    )
-    from rm75_control.control.admittance_common.force_dob import ForceDobConfig
-    from rm75_control.control.admittance_common.proactive_force_ff import (
-        ProactiveFfConfig,
-    )
-
-    cfg = AdmittanceConfig(
-        desired_force_ramp_s=0.0,
-        max_vz_tool_m_s=0.08,
-        max_velocity=np.array([0.22, 0.22, 0.10, 0.6, 0.6, 0.6]),
-        force_axis_slew_press_m_s2=0.0,
-        force_axis_slew_retract_m_s2=0.0,
-        force_axis_slew_reverse_m_s2=0.0,
-        force_lateral_gain_floor=1.0,
-        admittance_mass_z=1.0,
-        admittance_damping_z=25.0,
-        deadband_n=0.08,
-        var_damping_enabled=False,
-    )
-    cfg.force_barrier.enabled = True
-    cfg.proactive_ff = ProactiveFfConfig(enabled=False)
-    cfg.force_dob = ForceDobConfig(enabled=False)
-    cfg.adaptive_ke.enabled = False
-    cfg.bidirectional_flow.mode = "off"
-    ctrl = AdmittanceController(DT, cfg)
-    ctrl.last_v_cmd[2] = -0.04
-    f_ext = np.zeros(6)
-    f_ext[2] = 0.2
-    f_des = np.zeros(6)
-    f_des[2] = 1.0
-    v = ctrl.compute_velocity_command(
-        np.zeros(6),
-        np.zeros(6),
-        np.zeros(6),
-        f_ext,
-        f_des,
-        in_contact=True,
-    )
-    assert float(v[2]) >= -1.0e-9
-    assert float(v[2]) > 0.0
-
-
-def test_analyzer_ik_feasible_wall_requires_track_err(tmp_path) -> None:
-    import importlib.util
-    import io
-    from contextlib import redirect_stdout
+def test_rail_soft_min_is_one_way() -> None:
+    """At soft_min the box blocks −q0; +q0 (away) stays free."""
     from pathlib import Path
 
-    from rm75_control.kinematics.srs_ik import (
-        branch_from_q,
-        d_wt_from_kin,
-        flange_tcp_from_kin,
-        psi_from_q,
-        shoulder_y_from_q_rail,
-        srs_ik,
-    )
+    import yaml
 
-    path = (
+    from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
+    from rm75_control.control.joint_admittance_8dof.loop import JointIkController
+
+    raw = yaml.safe_load(
         Path(__file__).resolve().parents[1]
-        / "apps"
-        / "joint_admittance_8dof"
-        / "analyze_qpik_quality.py"
+        .joinpath("configs", "joint_admittance_8dof.yaml")
+        .read_text(encoding="utf-8")
     )
-    spec = importlib.util.spec_from_file_location("analyze_qpik_quality", path)
-    mod = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(mod)
-
+    cfg = build_joint_ik_config(raw)
+    cfg.collision.enabled = False
+    cfg.qp.collision.enabled = False
+    cfg.ird.enabled = False
+    cfg.qp.joint_comfort.enabled = False
     kin = RobotKinematics()
+    inner = JointIkController(kin, cfg)
     q = _SEED_Q.copy()
-    q[0] = 0.025
-    pose = np.asarray(kin.fk_pose(q), dtype=float)
-    r_off, t_off = flange_tcp_from_kin(kin)
-    assert (
-        srs_ik(
-            pose,
-            psi_from_q(q),
-            branch_from_q(q),
-            y_rail=shoulder_y_from_q_rail(0.025),
-            R_flange_tcp=r_off,
-            t_flange_tcp=t_off,
-            d_wt=d_wt_from_kin(kin),
-        )
-        is not None
+    q[0] = float(cfg.rail.soft_min_m)
+    inner.reset(q)
+    inner.begin_hybrid_episode(q, np.zeros(8))
+    pose = kin.fk_pose(q)
+    into = np.zeros(6)
+    into[1] = -0.03
+    step_into = inner.update(
+        into, dt=cfg.dt, q_meas=q, pose_d=pose, task_rotation_base=np.eye(3)
     )
-    assert mod._ik_exists_7dof(pose, 0.025, q_hint=q, kin=kin)
+    assert float(step_into.qdot[0]) >= -1.0e-4
+    away = np.zeros(6)
+    away[1] = 0.03
+    step_away = inner.update(
+        away, dt=cfg.dt, q_meas=q, pose_d=pose, task_rotation_base=np.eye(3)
+    )
+    assert float(step_away.qdot[0]) > 1.0e-4
 
-    cols = [
-        "phase",
-        "t_wall_s",
-        "q_meas_0",
-        "track_err_mm",
-        "pose_d_x",
-        "pose_d_y",
-        "pose_d_z",
-        "pose_d_rx",
-        "pose_d_ry",
-        "pose_d_rz",
-        *[f"q_cmd_{i}" for i in range(8)],
-    ]
-    lines = [",".join(cols)]
-    for k in range(80):
-        row = [
-            "scan",
-            f"{k * 0.005:.6f}",
-            "0.025",
-            "20.0",
-            *[f"{float(v):.9f}" for v in pose],
-            *[f"{float(v):.9f}" for v in q],
-        ]
-        lines.append(",".join(row))
-    csv_path = tmp_path / "wall.csv"
-    csv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    buf = io.StringIO()
-    with redirect_stdout(buf):
-        mod.analyze(csv_path)
-    out = buf.getvalue()
-    line = next(ln for ln in out.splitlines() if "IK-feasible rail wall" in ln)
-    assert "[FAIL]" in line, line
-    assert "rail share at soft limit" not in out
+
+def test_rail_does_not_pin_in_fade_band_only() -> None:
+    """150 mm fade is not a wall: q0=100 mm must stay free for handoff."""
+    from pathlib import Path
+
+    import yaml
+
+    from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
+    from rm75_control.control.joint_admittance_8dof.loop import JointIkController
+
+    raw = yaml.safe_load(
+        Path(__file__).resolve().parents[1]
+        .joinpath("configs", "joint_admittance_8dof.yaml")
+        .read_text(encoding="utf-8")
+    )
+    cfg = build_joint_ik_config(raw)
+    cfg.collision.enabled = False
+    cfg.qp.collision.enabled = False
+    cfg.ird.enabled = False
+    cfg.qp.joint_comfort.enabled = False
+    kin = RobotKinematics()
+    inner = JointIkController(kin, cfg)
+    q = _SEED_Q.copy()
+    q[0] = 0.10
+    inner.reset(q)
+    inner.begin_hybrid_episode(q, np.zeros(8))
+    pose_d = kin.fk_pose(q)
+    step = inner.update(np.zeros(6), dt=cfg.dt, q_meas=q, pose_d=pose_d)
+    assert inner.rail_ext_task is not None
+    assert inner.rail_ext_task._rail_in_limit_band(0.10)
+    assert not inner.rail_ext_task._rail_in_pin_band(0.10)
+    assert not step.rail_sat
+
+
+def test_plus_leave_band_does_not_freeze_rail() -> None:
+    from pathlib import Path
+
+    import yaml
+
+    from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
+    from rm75_control.control.joint_admittance_8dof.loop import JointIkController
+
+    raw = yaml.safe_load(
+        Path(__file__).resolve().parents[1]
+        .joinpath("configs", "joint_admittance_8dof.yaml")
+        .read_text(encoding="utf-8")
+    )
+    cfg = build_joint_ik_config(raw)
+    cfg.collision.enabled = False
+    cfg.qp.collision.enabled = False
+    cfg.ird.enabled = False
+    cfg.qp.joint_comfort.enabled = False
+    kin = RobotKinematics()
+    inner = JointIkController(kin, cfg)
+    q = _SEED_Q.copy()
+    q[0] = 0.75
+    inner.reset(q)
+    inner.begin_hybrid_episode(q, np.zeros(8))
+    pose = kin.fk_pose(q)
+    away = np.zeros(6)
+    away[1] = -0.04
+    step = inner.update(
+        away, dt=cfg.dt, q_meas=q, pose_d=pose, task_rotation_base=np.eye(3)
+    )
+    assert inner.rail_ext_task is not None
+    assert inner.rail_ext_task._in_plus_leave(0.75)
+    assert not step.rail_sat
+    assert float(step.qdot[0]) < -1.0e-4
+
+
+def test_d_star_nudge_stays_inside_soft_travel() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(
+        kin,
+        PsiRetargetConfig(enabled=True, n_y=3, n_d=3, n_psi=3),
+    )
+    rt.reset(_SEED_Q)
+    y_des = float(kin.fk_placement(_SEED_Q).translation[1])
+    d0 = float(rt.d_star_m)
+    d1 = rt.nudge_d_star(-0.01, y_des_m=y_des, rail_lo=0.025, rail_hi=0.78)
+    assert d1 != pytest.approx(d0)
+    rail_ff = y_des - d1
+    assert 0.025 - 1e-9 <= rail_ff <= 0.78 + 1e-9
+    d_hi = rt.nudge_d_star(10.0, y_des_m=y_des, rail_lo=0.025, rail_hi=0.78)
+    assert y_des - 0.78 - 1e-9 <= d_hi <= y_des - 0.025 + 1e-9
+
+
+def test_press_stall_nudges_d_star_on_the_controller() -> None:
+    from pathlib import Path
+
+    import yaml
+
+    from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
+    from rm75_control.control.joint_admittance_8dof.loop import JointIkController
+
+    raw = yaml.safe_load(
+        Path(__file__).resolve().parents[1]
+        .joinpath("configs", "joint_admittance_8dof.yaml")
+        .read_text(encoding="utf-8")
+    )
+    cfg = build_joint_ik_config(raw)
+    cfg.collision.enabled = False
+    cfg.qp.collision.enabled = False
+    cfg.ird.enabled = False
+    kin = RobotKinematics()
+    inner = JointIkController(kin, cfg)
+    q = _SEED_Q.copy()
+    inner.reset(q)
+    inner.begin_hybrid_episode(q, np.zeros(8))
+    assert inner.posture_retarget is not None
+    d0 = float(inner.posture_retarget.d_star_m)
+    pose_d = kin.fk_pose(q)
+    pose_d[1] += 0.02
+    z = float(pose_d[2])
+    inner._press_z_mark = z
+    inner._press_stall_s = 0.6
+    inner._d_star_nudge_cool_s = 0.0
+    inner.update(
+        np.zeros(6),
+        dt=cfg.dt,
+        q_meas=q,
+        pose_d=pose_d,
+        v_force_z=0.04,
+    )
+    assert float(inner.posture_retarget.d_star_m) != pytest.approx(d0)

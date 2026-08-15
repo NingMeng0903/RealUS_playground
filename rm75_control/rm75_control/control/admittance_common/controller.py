@@ -167,7 +167,7 @@ class AdmittanceConfig:
     # Soften under-force chase / DOB when tool-XY speed is near a scan turnaround.
     force_lateral_soft_m_s: float = 0.006
     force_lateral_full_m_s: float = 0.018
-    force_lateral_gain_floor: float = 1.0
+    force_lateral_gain_floor: float = 0.35
     force_dob: ForceDobConfig = field(default_factory=ForceDobConfig)
     # Optional scalar proxy/real-port energy-flow adaptation.  ``off`` is
     # the safe legacy default; observe/active are opt-in and require the
@@ -288,7 +288,7 @@ class AdmittanceConfig:
                 c.get("force_lateral_full_m_s", 0.018)
             ),
             force_lateral_gain_floor=float(
-                c.get("force_lateral_gain_floor", 1.0)
+                c.get("force_lateral_gain_floor", 0.35)
             ),
             force_dob=ForceDobConfig.from_dict(c),
             bidirectional_flow=BidirectionalFlowConfig.from_dict(raw),
@@ -348,6 +348,11 @@ class AdmittanceController:
         self.time_scale = 1.0
         self.v_force_z = 0.0
         self.v_r_z = 0.0
+        # Force owns a Cartesian point along tool-Z; QPIK only tracks motion.
+        self._force_point_base = np.zeros(3)
+        self._force_point_inited = False
+        self.force_point_z = 0.0
+        self.last_pose_d_combined = np.zeros(6)
         self._proactive_ff = ProactiveForceIntegrator(self.cfg.proactive_ff)
         self.force_reference_scale_n = float("nan")
         self.force_reference_drive = 0.0
@@ -463,6 +468,10 @@ class AdmittanceController:
         self._physical_contact.reset()
         self.v_force_z = 0.0
         self.v_r_z = 0.0
+        self._force_point_base = np.zeros(3)
+        self._force_point_inited = False
+        self.force_point_z = 0.0
+        self.last_pose_d_combined = np.zeros(6)
         self._proactive_ff.reset()
         self.force_reference_scale_n = float("nan")
         self.force_reference_drive = 0.0
@@ -721,6 +730,7 @@ class AdmittanceController:
         v_force_tool: np.ndarray,
         r_mat: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
+        """Legacy sleeve (tests). Runtime path uses the force point + PBAC."""
         v_pos_tool = np.zeros(6, dtype=float)
         v_pos_tool[:3] = r_mat.T @ np.asarray(v_pos_base[:3], dtype=float)
         v_pos_tool[3:6] = r_mat.T @ np.asarray(v_pos_base[3:6], dtype=float)
@@ -729,6 +739,82 @@ class AdmittanceController:
         v_cmd_base = np.zeros(6, dtype=float)
         v_cmd_base[:3] = r_mat @ v_cmd_tool[:3]
         v_cmd_base[3:] = r_mat @ v_cmd_tool[3:6]
+        return v_cmd_tool, v_cmd_base
+
+    def _advance_force_point(
+        self,
+        pose_predicted: np.ndarray,
+        desired_pose: np.ndarray,
+        r_mat: np.ndarray,
+        v_force_z: float,
+        dt_s: float,
+        *,
+        reseeds: bool,
+    ) -> None:
+        n = np.asarray(r_mat[:, 2], dtype=float)
+        p_now = np.asarray(pose_predicted[:3], dtype=float)
+        if (not self._force_point_inited) or reseeds:
+            self._force_point_base = p_now.copy()
+            self._force_point_inited = True
+        self._force_point_base = (
+            self._force_point_base + n * float(v_force_z) * float(dt_s)
+        )
+        self.force_point_z = float(np.dot(n, self._force_point_base))
+        pose_c = np.asarray(desired_pose, dtype=float).copy()
+        p_scan = pose_c[:3]
+        pose_c[:3] = p_scan - n * float(np.dot(n, p_scan)) + n * self.force_point_z
+        self.last_pose_d_combined = pose_c
+
+    def _motion_twist_to_force_point(
+        self,
+        pose_predicted: np.ndarray,
+        desired_pose: np.ndarray,
+        vel_ff: np.ndarray,
+        r_mat: np.ndarray,
+        v_force_z: float,
+        use_pbac: bool,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """PBAC to the fused scan+force point. QPIK sees only this motion twist."""
+        cfg = self.cfg
+        err_pose = pose_error(
+            desired_pose,
+            pose_predicted,
+            cfg.euler_order,
+        )
+        if not use_pbac:
+            err_pose[:] = 0.0
+        err_tool = r_mat.T @ err_pose[:3]
+        n = r_mat[:, 2]
+        err_tool[2] = float(np.dot(n, self._force_point_base - pose_predicted[:3]))
+        if cfg.pos_err_deadband_m > 0.0:
+            for index in range(3):
+                if abs(err_tool[index]) <= cfg.pos_err_deadband_m:
+                    err_tool[index] = 0.0
+        kp = cfg.kp_pos[:3] * cfg.track_axes[:3]
+        v_corr_tool = kp * err_tool
+        if cfg.pos_correction_max_m_s > 0.0:
+            v_corr_tool = np.clip(
+                v_corr_tool,
+                -cfg.pos_correction_max_m_s,
+                cfg.pos_correction_max_m_s,
+            )
+        err_rot_tool = r_mat.T @ err_pose[3:6]
+        kp_rot = cfg.kp_pos[3:6] * cfg.track_axes[3:6]
+        v_rot_tool = kp_rot * err_rot_tool
+        vel_ff_tool = r_mat.T @ np.asarray(vel_ff[:3], dtype=float)
+        vel_ff_tool[2] = float(v_force_z)
+        w_ff_tool = r_mat.T @ np.asarray(vel_ff[3:6], dtype=float)
+        v_cmd_tool = np.zeros(6, dtype=float)
+        v_cmd_tool[:3] = vel_ff_tool + v_corr_tool
+        v_cmd_tool[3:6] = w_ff_tool + v_rot_tool
+        v_cmd_base = np.zeros(6, dtype=float)
+        v_cmd_base[:3] = r_mat @ v_cmd_tool[:3]
+        v_cmd_base[3:] = r_mat @ v_cmd_tool[3:6]
+        path_task = np.concatenate((vel_ff_tool, w_ff_tool))
+        feedback_task = np.concatenate((v_corr_tool, v_rot_tool))
+        task_limit = np.asarray(cfg.max_velocity, dtype=float)
+        self.last_path_twist = np.clip(path_task, -task_limit, task_limit)
+        self.last_feedback_twist = np.clip(feedback_task, -task_limit, task_limit)
         return v_cmd_tool, v_cmd_base
 
     def compute_velocity_command(
@@ -1120,19 +1206,6 @@ class AdmittanceController:
             sensor_age_s=sensor_age_eff,
             chase_scale=chase_scale,
         )
-        # True air: command the free-space seek, not the tiny admittance
-        # crawl from a 0.5 N residual / D=25 (measured vz_achieved ~6 mm/s).
-        # Precontact / impact sleeve still wins via the barrier cap below.
-        if (not physical_contact) and (not precontact_guard):
-            seek = max(float(cfg.force_barrier.v_seek_free_m_s), 0.0)
-            v_hi = self._v_z_cap()
-            if seek <= 0.0:
-                seek = v_hi
-            elif v_hi > 0.0:
-                seek = min(seek, v_hi)
-            v_n = normal_sign * float(v_force_tool[2])
-            if seek > 0.0 and v_n < seek:
-                v_force_tool[2] = normal_sign * seek
         # Optional scalar bidirectional-flow adapter.  The adapter sees a
         # press-positive normal coordinate; ``normal_sign`` maps the tool
         # force convention into that coordinate and back.
@@ -1200,10 +1273,21 @@ class AdmittanceController:
         self.flow_sign_verified = bool(
             self._bidirectional_flow.sign_verified
         )
-        v_cmd_tool, v_cmd_base = self.fuse_tool_sleeve(
-            v_pos_base,
-            v_force_tool,
+        self._advance_force_point(
+            pose_predicted,
+            desired_pose,
             r_mat,
+            float(v_force_tool[2]),
+            dt_eff,
+            reseeds=rising_edge,
+        )
+        v_cmd_tool, v_cmd_base = self._motion_twist_to_force_point(
+            pose_predicted,
+            desired_pose,
+            vel_ff,
+            r_mat,
+            float(v_force_tool[2]),
+            use_pbac,
         )
         # Recontact cap only limits press (+z); over-force retract stays open.
         v_z_cap = self._v_z_cap()
@@ -1218,13 +1302,6 @@ class AdmittanceController:
             v_normal = self._force_barrier.clamp_velocity(
                 v_normal
             )
-            # Under-force must press.  Retract while chasing was the
-            # "hold" feel; the barrier still brakes over-force above.
-            under_force = (normal_sign * float(f_err_z)) > max(
-                float(cfg.deadband_n), 0.0
-            )
-            if physical_contact and under_force and v_normal < 0.0:
-                v_normal = 0.0
             v_cmd_tool[2] = normal_sign * v_normal
             if cfg.control_frame == "base":
                 v_cmd_base[:3] = r_mat @ v_cmd_tool[:3]

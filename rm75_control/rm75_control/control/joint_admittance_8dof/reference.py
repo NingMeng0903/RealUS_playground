@@ -343,33 +343,6 @@ def sin_period_for_peak_vel(amplitude_m: float, max_vel_m_s: float) -> float:
     return 2.0 * math.pi * amplitude_m / max_vel_m_s
 
 
-def lissajous_period_for_peak_vel(
-    amplitude_y_m: float,
-    amplitude_x_m: float,
-    max_vel_m_s: float,
-    *,
-    x_freq_mult: float = 2.0,
-) -> float:
-    """Period so peak path speed ``sqrt(vx²+vy²)`` equals ``max_vel``."""
-    ay = abs(float(amplitude_y_m))
-    ax = abs(float(amplitude_x_m))
-    vmax = float(max_vel_m_s)
-    if vmax <= 0.0:
-        return 1.0
-    if ax <= 1.0e-12:
-        return sin_period_for_peak_vel(ay, vmax)
-    k = float(x_freq_mult)
-    peak = 0.0
-    for i in range(721):
-        th = i * 2.0 * math.pi / 720.0
-        vx = ax * k * math.cos(k * th)
-        vy = ay * math.cos(th)
-        peak = max(peak, math.hypot(vx, vy))
-    if peak <= 1.0e-12:
-        return 1.0
-    return 2.0 * math.pi / (vmax / peak)
-
-
 def quintic_move_s_for_peak_vel(amplitude_m: float, max_vel_m_s: float) -> float:
     """Half-stroke duration so quintic peak speed 1.875·(2A)/T equals ``max_vel``."""
     if amplitude_m <= 0.0 or max_vel_m_s <= 0.0:
@@ -474,12 +447,8 @@ class SinToolYReference:
         euler_order: str = "xyz",
         profile: str = "quintic_dwell",
         dwell_s: float = 0.20,
-        amplitude_x_m: float = 0.0,
-        x_freq_mult: float = 2.0,
     ) -> None:
         self.amplitude_m = float(amplitude_m)
-        self.amplitude_x_m = max(float(amplitude_x_m), 0.0)
-        self.x_freq_mult = float(x_freq_mult)
         self.profile = str(profile).strip().lower()
         self.dwell_s = max(float(dwell_s), 0.0)
         self.soft_start = soft_start
@@ -497,15 +466,7 @@ class SinToolYReference:
             if period_s is None:
                 if max_vel_m_s is None:
                     raise ValueError("provide either period_s or max_vel_m_s")
-                if self.amplitude_x_m > 1.0e-12:
-                    period_s = lissajous_period_for_peak_vel(
-                        amplitude_m,
-                        self.amplitude_x_m,
-                        max_vel_m_s,
-                        x_freq_mult=self.x_freq_mult,
-                    )
-                else:
-                    period_s = sin_period_for_peak_vel(amplitude_m, max_vel_m_s)
+                period_s = sin_period_for_peak_vel(amplitude_m, max_vel_m_s)
             self.period_s = float(period_s)
             self.omega = 2.0 * math.pi / self.period_s if self.period_s > 0 else 0.0
             self.move_s = 0.0
@@ -550,65 +511,9 @@ class SinToolYReference:
                 soft_start=self.soft_start,
                 ramp_s=self.ramp_s,
             )
-        dx, vx = 0.0, 0.0
-        if self.amplitude_x_m > 1.0e-12:
-            if self.soft_start:
-                tau, tau_dot = _soft_start_time_warp(t_eff, self.ramp_s)
-            else:
-                tau, tau_dot = t_eff, 1.0
-            if self.omega > 0.0:
-                omega_x = self.x_freq_mult * self.omega
-            elif self.period_s > 0.0:
-                omega_x = self.x_freq_mult * 2.0 * math.pi / self.period_s
-            else:
-                omega_x = 0.0
-            dx = self.amplitude_x_m * math.sin(omega_x * tau)
-            vx = self.amplitude_x_m * omega_x * math.cos(omega_x * tau) * tau_dot
         r_mat = Rsc.from_euler(self.euler_order, self._origin[3:6], degrees=False).as_matrix()
         pose = self._origin.copy()
-        pose[:3] = self._origin[:3] + r_mat @ np.array([dx, dy, 0.0])
+        pose[:3] = self._origin[:3] + r_mat @ np.array([0.0, dy, 0.0])
         vel = np.zeros(6, dtype=float)
-        vel[:3] = r_mat @ np.array([vx, vy, 0.0])
+        vel[:3] = r_mat @ np.array([0.0, vy, 0.0])
         return MotionReference(pose_d=pose, vel_ff=vel, t_ref=t_s)
-
-    def _tool_xy_at_phase(self, theta: float) -> tuple[float, float]:
-        """Geometric tool-frame ``(dx, dy)`` at phase ``theta`` (no soft-start)."""
-        if self.profile == "quintic_dwell":
-            period = float(self.period_s) if self.period_s > 0.0 else 1.0
-            t = (float(theta) / (2.0 * math.pi)) * period
-            dy, _ = quintic_dwell_y_motion(
-                t,
-                self.amplitude_m,
-                self.move_s,
-                self.dwell_s,
-                soft_start=False,
-            )
-        else:
-            dy = self.amplitude_m * math.sin(theta)
-        dx = 0.0
-        if self.amplitude_x_m > 1.0e-12:
-            dx = self.amplitude_x_m * math.sin(self.x_freq_mult * theta)
-        return dx, dy
-
-    def path_world_xyz(self, n: int = 9) -> np.ndarray:
-        """World-XYZ samples of one geometric period (origin must be set)."""
-        if self._origin is None:
-            raise RuntimeError("SinToolYReference.set_origin must be called first")
-        n = max(int(n), 3)
-        r_mat = Rsc.from_euler(
-            self.euler_order, self._origin[3:6], degrees=False
-        ).as_matrix()
-        pts = np.zeros((n, 3), dtype=float)
-        for i in range(n):
-            theta = 2.0 * math.pi * i / n
-            dx, dy = self._tool_xy_at_phase(theta)
-            pts[i] = self._origin[:3] + r_mat @ np.array([dx, dy, 0.0])
-        return pts
-
-    def world_y_span(self) -> tuple[float, float]:
-        """``(y_center, y_half_span)`` of the world-Y envelope."""
-        if self._origin is None:
-            return float("nan"), float(self.amplitude_m)
-        ys = self.path_world_xyz(n=16)[:, 1]
-        y_lo, y_hi = float(np.min(ys)), float(np.max(ys))
-        return 0.5 * (y_lo + y_hi), 0.5 * (y_hi - y_lo)

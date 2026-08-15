@@ -218,28 +218,15 @@ class PostureRetarget:
         amplitude_m: float,
         rail_lo: float,
         rail_hi: float,
-        path_xyz: np.ndarray | None = None,
     ) -> tuple[float, float]:
         """Grid-search ``(d*, ψ*)`` over the scan stroke.  Raises if empty."""
         q = np.asarray(q_rad, dtype=float)
         pose0 = np.asarray(self.kin.fk_pose(q), dtype=float).reshape(6)
         branch = int(branch_from_q(q))
-        pts = None
-        if path_xyz is not None:
-            pts = np.asarray(path_xyz, dtype=float).reshape(-1, 3)
-            if pts.shape[0] < 3:
-                pts = None
-        if pts is not None:
-            y_samples = pts[:, 1]
-            y_lo = float(np.min(y_samples))
-            y_hi = float(np.max(y_samples))
-            y_c = 0.5 * (y_lo + y_hi)
-            amp = 0.5 * (y_hi - y_lo)
-        else:
-            amp = abs(float(amplitude_m))
-            y_c = float(y_center_m)
-            y_lo = y_c - amp
-            y_hi = y_c + amp
+        amp = abs(float(amplitude_m))
+        y_c = float(y_center_m)
+        y_lo = y_c - amp
+        y_hi = y_c + amp
         margin = max(float(self.cfg.rail_margin_m), 0.0)
         rail_lo_s = float(rail_lo) + margin
         rail_hi_s = float(rail_hi) - margin
@@ -254,8 +241,7 @@ class PostureRetarget:
         n_y = max(int(self.cfg.n_y), 3)
         n_d = max(int(self.cfg.n_d), 3)
         n_psi = max(int(self.cfg.n_psi), 3)
-        if pts is None:
-            y_samples = np.linspace(y_lo, y_hi, n_y)
+        y_samples = np.linspace(y_lo, y_hi, n_y)
         d_grid = np.linspace(d_min, d_max, n_d)
         d_samples = d_grid
         if self._ird is not None and getattr(self._ird, "available", False):
@@ -290,18 +276,13 @@ class PostureRetarget:
                     worst = np.inf
                     feasible = True
                     last_q: np.ndarray | None = None
-                    n_pts = int(pts.shape[0]) if pts is not None else int(y_samples.size)
-                    for i in range(n_pts):
-                        y = float(pts[i, 1] if pts is not None else y_samples[i])
+                    for y in y_samples:
                         y_rail = float(y) - float(d)
                         if y_rail < rail_lo_s - 1.0e-9 or y_rail > rail_hi_s + 1.0e-9:
                             feasible = False
                             break
                         pose = pose0.copy()
-                        if pts is not None:
-                            pose[:3] = pts[i]
-                        else:
-                            pose[1] = float(y)
+                        pose[1] = float(y)
                         pack = self._eval.evaluate(pose, float(psi), branch, y_rail)
                         if pack is None:
                             feasible = False
@@ -376,6 +357,29 @@ class PostureRetarget:
         psi_out = self._rate_limit_psi(dt)
         self._update_margins(q)
         return float(psi_out), float(self._d_star)
+
+    def nudge_d_star(
+        self,
+        delta_m: float,
+        *,
+        y_des_m: float,
+        rail_lo: float,
+        rail_hi: float,
+    ) -> float:
+        """Shift d* so rail_ff = y_des − d* stays inside the soft travel."""
+        if self._d_star is None:
+            return float("nan")
+        y_des = float(y_des_m)
+        lo = float(rail_lo)
+        hi = float(rail_hi)
+        d_lo = y_des - hi
+        d_hi = y_des - lo
+        if d_lo > d_hi:
+            d_lo, d_hi = d_hi, d_lo
+        d_new = float(np.clip(float(self._d_star) + float(delta_m), d_lo, d_hi))
+        self._d_star = d_new
+        self.d_star_m = d_new
+        return d_new
 
     def _rate_limit_psi(self, dt_s: float) -> float:
         target = float(self._psi_star if self._psi_star is not None else 0.0)

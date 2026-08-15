@@ -106,20 +106,39 @@ def _rail_servo_checks(
             )
         )
 
+    follow = _col(rows, "follow")
+    age = _col(rows, "target_age_ms")
+    live = np.ones(len(rows), dtype=bool)
+    if np.isfinite(follow).any():
+        live &= follow > 0.5
+    if np.isfinite(age).any():
+        med_age = float(np.nanmedian(age[np.isfinite(age)]))
+        fresh_lim = max(50.0, 2.0 * med_age) if np.isfinite(med_age) else 50.0
+        live &= np.isfinite(age) & (age <= fresh_lim)
+    t_live = t[live]
+    live_span = float(t_live[-1] - t_live[0]) if t_live.size > 1 else 0.0
     a_cmd = _col(rows, "a_cmd_m_s2")
-    a_cmd = a_cmd[np.isfinite(a_cmd)]
-    if a_cmd.size > 2 and span > 0.0:
-        big = a_cmd[np.abs(a_cmd) > 0.05]
+    a_live = a_cmd[live & np.isfinite(a_cmd)]
+    if a_live.size > 2 and live_span > 0.0:
+        big = a_live[np.abs(a_live) > 0.05]
         rev = 0.0
         if big.size > 1:
             rev = float(
-                np.count_nonzero(np.sign(big[1:]) != np.sign(big[:-1])) / span
+                np.count_nonzero(np.sign(big[1:]) != np.sign(big[:-1])) / live_span
             )
         results.append(
             (
-                "rail servo accel reversals < 3/s",
+                "rail servo accel reversals < 3/s (live follow)",
                 rev < GATES["rail_servo_accel_reversals_per_s"],
-                f"{rev:.1f}/s  |a| p95 {np.percentile(np.abs(a_cmd), 95):.2f} m/s²",
+                f"{rev:.1f}/s  |a| p95 {np.percentile(np.abs(a_live), 95):.2f} m/s²"
+                f"  live {int(np.count_nonzero(live))}/{len(rows)}",
+            )
+        )
+    elif a_cmd[np.isfinite(a_cmd)].size > 2 and span > 0.0:
+        info.append(
+            (
+                "rail servo accel reversals",
+                "no live follow=1 / fresh target_age window; skipped idle dilution",
             )
         )
         info.append(
@@ -234,7 +253,7 @@ def _rail_handoff_checks(
     results: list[tuple[str, bool, str]],
     info: list[tuple[str, str]],
 ) -> None:
-    """At the rail wall, IK-feasible ticks must keep track_err < 3 mm."""
+    """At the rail wall, IK-feasible ticks must keep tool-Y error < 3 mm."""
     band = GATES["rail_limit_band_m"]
     at_limit = np.isfinite(rail) & (
         (rail < GATES["rail_min_m"] + band) | (rail > GATES["rail_max_m"] - band)
@@ -305,11 +324,76 @@ def _rail_handoff_checks(
     )
     results.append(
         (
-            "IK-feasible rail wall: track_err p95 < 3 mm",
+            "IK-feasible rail wall: tool_y_err p95 < 3 mm",
             bool(np.isfinite(e95) and e95 < GATES["track_err_at_limit_mm"]),
             f"{e95:.2f} mm  (IK {frac:.0%} of samples)",
         )
     )
+
+
+def _posture_followup(
+    rows: list[dict],
+    info: list[tuple[str, str]],
+) -> None:
+    """J5 / J4 / J6 parks from existing columns; do not retune q_nominal here.
+
+    Hardware CSVs parked J5 at −15° (nominal +40° never won), J4 at the
+    comfort stop (~120° = 135°−15°), and J6 closed.  Pose-task roll lock
+    starves centering; buying comfort/branch slack is cheaper than opening
+    the elbow/wrist.  Wall handoff now *raises* those slack costs.
+    """
+    j4 = np.degrees(_col(rows, "q_meas_4"))
+    j5 = np.degrees(_col(rows, "q_meas_5"))
+    j6 = np.degrees(_col(rows, "q_meas_6"))
+    if not np.isfinite(j4).any():
+        j4 = np.degrees(_col(rows, "q_cmd_4"))
+    if not np.isfinite(j5).any():
+        j5 = np.degrees(_col(rows, "q_cmd_5"))
+    if not np.isfinite(j6).any():
+        j6 = np.degrees(_col(rows, "q_cmd_6"))
+    if np.isfinite(j5).any():
+        info.append(
+            (
+                "J5 vs nominal +40°",
+                f"median {float(np.nanmedian(j5)):.1f}°  "
+                f"(pose-task roll lock beats centering; do not retune q_nominal "
+                f"until feedback_twist / nullspace_norm are logged)",
+            )
+        )
+    if np.isfinite(j4).any():
+        info.append(
+            (
+                "J4 comfort park",
+                f"max {float(np.nanmax(j4)):.1f}°  "
+                f"(120° = 135° limit − 15° comfort; wall now raises pref slack)",
+            )
+        )
+    if np.isfinite(j6).any():
+        closed = float(np.nanmean(np.abs(j6) < 15.0))
+        info.append(
+            (
+                "J6 close",
+                f"{100.0 * closed:.1f}% |J6|<15°  min {float(np.nanmin(np.abs(j6))):.1f}°",
+            )
+        )
+    ns = _col(rows, "qpik_nullspace_norm")
+    fb = _col(rows, "feedback_twist_wz")
+    if np.isfinite(ns).any() or np.isfinite(fb).any():
+        info.append(
+            (
+                "posture nullspace / feedback",
+                (
+                    f"nullspace p50 {float(np.nanmedian(ns)):.4f}  "
+                    if np.isfinite(ns).any()
+                    else ""
+                )
+                + (
+                    f"fb_wz p95 {float(np.nanpercentile(np.abs(fb[np.isfinite(fb)]), 95)):.4f}"
+                    if np.isfinite(fb).any()
+                    else "feedback_twist not logged"
+                ),
+            )
+        )
 
 
 def _tick_profile(rows: list[dict], info: list[tuple[str, str]]) -> None:
@@ -362,9 +446,14 @@ def analyze(path: Path) -> int:
         fz = _col(rows, "fz_raw_comp")
     phase = np.array([str(r.get("contact_phase", "")) for r in rows])
     vz = _col(rows, "vz_achieved_tool")
-    err = _col(rows, "motion_err_rms_mm")
+    err = _col(rows, "tool_y_err_mm")
+    if not np.isfinite(err).any():
+        err = _col(rows, "motion_err_rms_mm")
     if not np.isfinite(err).any():
         err = _col(rows, "track_err_mm")
+    motion_rms = _col(rows, "motion_err_rms_mm")
+    if not np.isfinite(motion_rms).any():
+        motion_rms = _col(rows, "track_err_mm")
     d_star = _col(rows, "d_star_m")
 
     results: list[tuple[str, bool, str]] = []
@@ -591,6 +680,15 @@ def analyze(path: Path) -> int:
     # Rail-at-wall ≠ workspace-sat.  Share dropping only means the carriage
     # stopped; the arm must still hold XY if 7DOF IK exists at locked q0.
     _rail_handoff_checks(rows, rail, err, results, info)
+    _posture_followup(rows, info)
+    sat = _col(rows, "rail_sat")
+    if np.isfinite(sat).any():
+        info.append(
+            (
+                "rail_sat",
+                f"{100.0 * float(np.nanmean(sat > 0.5)):.1f}% of scan ticks",
+            )
+        )
 
     band = GATES["rail_limit_band_m"]
     at_limit = np.isfinite(rail) & (
@@ -617,11 +715,18 @@ def analyze(path: Path) -> int:
     )
     results.append(
         (
-            "track_err p95 < 3 mm",
+            "tool_y_err p95 < 3 mm",
             bool(np.isfinite(e95) and e95 < GATES["track_err_p95_mm"]),
             f"{e95:.2f} mm",
         )
     )
+    rms95 = (
+        float(np.nanpercentile(np.abs(motion_rms[np.isfinite(motion_rms)]), 95))
+        if np.isfinite(motion_rms).any()
+        else float("nan")
+    )
+    if np.isfinite(rms95):
+        info.append(("motion_err_rms p95 (force-Z included)", f"{rms95:.2f} mm"))
 
     failed = 0
     print(f"scan rows: {len(rows)}  file: {path}")

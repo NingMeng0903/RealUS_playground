@@ -133,5 +133,6 @@ def test_admittance_integrator_keeps_updating_when_time_scale_zero():
     ctrl.set_time_scale(0.0)
     for _ in range(50):
         ctrl.compute_velocity_command(pose, pose_d, vel_ff, f_ext, f_des)
-    # Must not freeze at the pre-pause velocity (decay and/or force update).
+    # 45c74e1: force/proxy uses wall-clock dt.  Governor time_scale only
+    # freezes the scan path, not the force point / admittance state.
     assert ctrl.v_force_z != pytest.approx(v_before, abs=1e-9)
