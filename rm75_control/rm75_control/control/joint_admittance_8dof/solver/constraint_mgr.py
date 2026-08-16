@@ -125,14 +125,22 @@ class VelocityBoxConstraints:
         qdot_prev2: np.ndarray | None = None,
         j_max: np.ndarray | None = None,
         box_dt: float | None = None,
+        box_h1: float | None = None,
+        box_h2: float | None = None,
+        rail_lead_exempt: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
         lim = self.lim
         q = np.asarray(q, dtype=float)
         # ``dt`` is the nominal period the command is integrated with (the
-        # CANFD stream assumes a fixed one).  ``box_dt`` is the wall period the
-        # motion is actually played out over; the rate limits describe physical
-        # motion, so they belong on wall time.  Defaults to ``dt``.
-        a_dt = float(dt if box_dt is None else box_dt)
+        # CANFD stream assumes a fixed one).  ``box_h1`` / ``box_h2`` are the
+        # two most recent wall periods; rate limits describe physical motion
+        # so they belong on wall time.  ``box_dt`` remains a one-period
+        # fallback for older callers.
+        if box_h1 is not None:
+            a_dt = float(box_h1)
+        else:
+            a_dt = float(dt if box_dt is None else box_dt)
+        h2 = float(box_h2) if box_h2 is not None else float("nan")
 
         lo = -lim.v_max.copy()
         hi = lim.v_max.copy()
@@ -244,11 +252,12 @@ class VelocityBoxConstraints:
             )
 
         # Third order.  Velocity and acceleration boxes still permit the
-        # acceleration to flip sign every tick, which is what the commanded
-        # joint trajectory actually did (sign reversals on ~50% of samples,
-        # jerk RMS 250-570 rad/s^3) even though the reference twist was
-        # smooth.  Bounding |a_k - a_{k-1}| is a plain velocity box:
-        #   qdot in 2*qdot_prev - qdot_prev2 +- j_max*dt^2
+        # acceleration to flip sign every tick.  Bounding |a_k - a_{k-1}|
+        # on unequal samples is
+        #   qdot in qdot_prev + (h1/h2)(qdot_prev - qdot_prev2) +- j_max*h1^2
+        # The equal-period form 2*qdot_prev - qdot_prev2 is recovered when
+        # h1 == h2.  If h2 is unavailable (first tick / reset) the centre
+        # stays at qdot_prev so only the acceleration box decides.
         if (
             j_max is not None
             and qdot_prev is not None
@@ -256,7 +265,10 @@ class VelocityBoxConstraints:
             and float(dt) > 0.0
         ):
             qdot_prev2 = np.asarray(qdot_prev2, dtype=float)
-            centre = 2.0 * qdot_prev - qdot_prev2
+            if np.isfinite(h2) and h2 > 1.0e-9:
+                centre = qdot_prev + (a_dt / h2) * (qdot_prev - qdot_prev2)
+            else:
+                centre = np.asarray(qdot_prev, dtype=float)
             span = np.asarray(j_max, dtype=float) * a_dt * a_dt
             lo = np.maximum(lo, centre - span)
             hi = np.minimum(hi, centre + span)
@@ -282,6 +294,11 @@ class VelocityBoxConstraints:
                 # command state against the same measured snapshot.
                 q_for_lead = q if q_cmd is None else np.asarray(q_cmd, dtype=float)
                 lead = q_for_lead - q_meas
+                # COUPLED rail velocity is authoritative; the 20 mm command
+                # integrator lag is not a tracking error and must not freeze
+                # the rail box.
+                if rail_lead_exempt:
+                    lead[0] = 0.0
                 if a_max is None:
                     band = np.maximum(re * 0.5, 1.0e-6)
                     toward_hi = lim.v_max * np.clip((re - lead) / band, 0.0, 1.0)

@@ -81,9 +81,10 @@ def _run_scan(inner: JointIkController, amplitude_m: float, n_ticks: int, v_peak
         perr = (p0 + np.array([0.0, dy, 0.0])) - mc.translation
         rerr = Rsc.from_matrix(r0 @ mc.rotation.T).as_rotvec()
         twist = np.zeros(6)
-        twist[:3] = 2.0 * perr + np.array([0.0, vy, 0.0])
+        vel_ff = np.array([0.0, vy, 0.0, 0.0, 0.0, 0.0])
+        twist[:3] = 2.0 * perr + vel_ff[:3]
         twist[3:] = 1.5 * rerr
-        step = inner.update(twist, dt, q_meas=q.copy())
+        step = inner.update(twist, dt, q_meas=q.copy(), vel_ff=vel_ff)
         mc_post = kin.fk_placement(inner.q_cmd)
         out["sigma"].append(step.sigma_min)
         out["elbow_deg"].append(abs(float(np.degrees(inner.q_cmd[4]))))

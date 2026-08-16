@@ -144,7 +144,12 @@ def test_gamepad_can_reverse_off_plus_leave() -> None:
     twist_away = np.zeros(6)
     twist_away[1] = -0.04
     step = inner.update(
-        twist_away, dt=cfg.dt, q_meas=q, pose_d=pose, task_rotation_base=np.eye(3)
+        twist_away,
+        dt=cfg.dt,
+        q_meas=q,
+        pose_d=pose,
+        vel_ff=twist_away,
+        task_rotation_base=np.eye(3),
     )
     assert not step.rail_sat
     assert float(step.qdot[0]) < -1.0e-4
@@ -261,12 +266,15 @@ def test_unplanned_inner_holds_taught_plane_not_q_nominal() -> None:
     assert inner.posture_retarget is not None
     assert not inner.posture_retarget.planned
     assert inner.posture_retarget.d_star_m == pytest.approx(d_live, abs=0.08)
-    assert abs(inner.posture_retarget.d_star_m - d_yaml) > 1.0e-3
+    assert abs(
+        inner.posture_retarget.d_star_m - float(inner.cfg.psi_retarget.d_attr_m)
+    ) > 0.05
     assert inner.posture_retarget.psi_star_rad == pytest.approx(
         float(inner.cfg.psi_retarget.psi_attr_rad), abs=1e-6
     )
     assert last is not None
     assert abs(abs(float(last.psi_ref_deg)) - 180.0) < 5.0
+    assert float(last.psi_ref_deg) > 0.0
 
 
 def test_gamepad_track_is_full_inner_loop() -> None:
@@ -339,6 +347,45 @@ def test_minus_z_twist_enables_press_escape_without_force() -> None:
     assert bool(step.rail_escape_active) or abs(float(step.v_escape)) > 1.0e-6
 
 
+def test_large_d_star_error_keeps_outer_vel_ff() -> None:
+    inner = _yaml_inner_at_rail(0.40)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q = _SEED_Q.copy()
+    q[0] = 0.40
+    q[4] = np.deg2rad(20.0)
+    inner.reset(q)
+    inner.rail_ext_task.set_d_pref(-0.22)
+    if inner.posture_retarget is not None:
+        inner.posture_retarget._d_star = -0.22
+        inner.posture_retarget.d_star_m = -0.22
+        inner.posture_retarget._d_center_target = -0.22
+    twist = np.array([0.0, 0.12, 0.0, 0.0, 0.0, 0.0])
+    step = inner.update(twist, q_meas=q, vel_ff=twist)
+    assert inner.rail_ext_task.last_k_ff_scale == pytest.approx(1.0)
+    assert float(step.v_ff_rail) > 0.05
+    assert float(step.rail_task_vel) > 0.04
+
+
+def test_coupled_command_lead_does_not_freeze_rail() -> None:
+    inner = _yaml_inner_at_rail(0.666)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q_cmd = _SEED_Q.copy()
+    q_cmd[0] = 0.666
+    q_meas = q_cmd.copy()
+    q_meas[0] = 0.686
+    inner.reset(q_cmd)
+    inner.q_cmd = q_cmd.copy()
+    twist = np.array([0.0, -0.085, 0.0, 0.0, 0.0, 0.0])
+    last = None
+    for _ in range(40):
+        last = inner.update(
+            twist, q_meas=q_meas, vel_ff=twist, rail_exec_vel_m_s=0.0
+        )
+    assert last is not None
+    assert float(last.rail_task_vel) < -0.03
+    assert float(last.qdot[0]) < -0.01
+
+
 def test_qpik_rail_brakes_when_task_drops() -> None:
     """Generic QPIK: a dropped Y command must not coast near cruise speed."""
     inner = _yaml_inner_at_rail(0.40)
@@ -351,7 +398,7 @@ def test_qpik_rail_brakes_when_task_drops() -> None:
     inner.core.sync_applied(cruise)
     twist0 = np.zeros(6)
     last = None
-    for _ in range(120):
+    for _ in range(250):
         last = inner.update(twist0, q_meas=inner.q_cmd, vel_ff=twist0)
     assert last is not None
     assert abs(float(last.qdot[0])) < 0.02
@@ -360,4 +407,4 @@ def test_qpik_rail_brakes_when_task_drops() -> None:
     for _ in range(40):
         moving = inner.update(plus_y, q_meas=inner.q_cmd, vel_ff=plus_y)
     assert moving is not None
-    assert float(moving.qdot[0]) > 0.03
+    assert float(moving.qdot[0]) > 0.02

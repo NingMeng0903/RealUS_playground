@@ -78,7 +78,7 @@ inner:
     eps_abs: 1.0e-6
     max_iter: 400
     max_iter_cap: 400
-    max_solve_ms: 8.0
+    max_solve_ms: 5.0
     fail_qdot_decay: 0.85
     twist_sigma_floor: 0.02
     warn_on_fail: false
@@ -97,8 +97,9 @@ inner:
     use_dyn_nullspace: false
     limit_damper_band_rad: 0.25
     limit_damper_band_rail_m: 0.025
-    sns_retry_scales: [1.0, 0.85, 0.7, 0.55, 0.4, 0.25]
-    smoothness_weight: 0.15
+    sns_retry_scales: [1.0]
+    # Rail continuity is the hard a/j box + macro filter, not a soft glue term.
+    smoothness_weight: [0.0, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
     # Third-order box: bounds how fast the commanded acceleration may turn.
     # Measured jerk RMS was 250-570 rad/s³ with the acceleration flipping sign
     # on ~half the ticks while the reference twist was smooth.
@@ -126,11 +127,13 @@ inner:
       exit: 0.16
       gamma: 8.0
       slack_weight: 200.0
+      grad_period_ticks: 10
     branch_barrier:
       enabled: true
-      # 20° floor / 30° activate.  slack_weight stays 80 so a fast
-      # crossing remains cheap; dwell ramps the cost only if J6 parks.
+      # Soft preference at 30°.  The hard velocity box starts at 50° so
+      # J4 cannot blast through 0 when QP1 is holding TCP (035411).
       activate_rad: 0.52
+      box_activate_rad: 0.87
       eps_rad: 0.35
       gamma: 6.0
       slack_weight: 80.0
@@ -165,6 +168,7 @@ inner:
       k_mu: 0.8
       eps_rad: 5.0e-4
       sigma_fade_ref: 0.12
+      grad_period_ticks: 10
 
   nullspace_d_null: 0.5
   nullspace_d_null_adaptive: 1.0
@@ -188,11 +192,16 @@ inner:
     # Planned stroke still one-shot.  Unplanned step re-searches ψ.
     z_replan_m: 0.0
     psi_rate_deg_s: 25.0
-    # Design split: J4≈104°, 30° worst-joint margin.  Slew 18 cm in 9 s.
+    # Design split: J4≈104°, 30° worst-joint margin.  Unplanned step
+    # holds d* until ψ_cmd is within d_slew_psi_err of ψ_attr, then
+    # slews at d_center_rate.  Starting the rail during the 180° fold
+    # made J1 overshoot then backtrack (035411).
     psi_attr_deg: 70.0
     d_attr_m: -0.22
     d_center_rate_m_s: 0.02
     d_band_m: 0.08
+    d_slew_psi_err_deg: 40.0
+    psi_cmd_lead_deg: 18.0
     psi_replan_period_s: 0.1
     psi_search_half_span_deg: 45.0
     psi_search_n: 9

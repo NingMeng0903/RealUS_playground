@@ -328,15 +328,22 @@ def test_split_error_raises_rail_reg_and_fades_k_ff() -> None:
     task._v_lpf_initialized = False
     task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.025, vel_ff=vel_ff)
     assert task.last_d_star_reg_scale > 1.0
-    assert task.last_k_ff_scale < 1.0
-    assert abs(task.last_v_ff) > 1e-4
+    assert task.last_k_ff_scale == pytest.approx(1.0)
+    assert abs(task.last_v_ff) > 0.04
     assert abs(task.last_track_err_m) > 0.02
 
     task._v_lpf = 0.0
     task._v_lpf_initialized = False
     task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on - 0.08, vel_ff=vel_ff)
     assert task.last_d_star_reg_scale > 1.0
+    assert task.last_k_ff_scale == pytest.approx(1.0)
+    assert abs(task.last_v_ff) > 0.04
+
+    task._v_lpf = 0.0
+    task._v_lpf_initialized = False
+    task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on - 0.08, vel_ff=None)
     assert task.last_k_ff_scale < 1.0
+    assert task.last_v_ff == pytest.approx(0.0, abs=1e-12)
 
 
 def test_v_reach_deadzone_inside_d_band() -> None:
@@ -654,6 +661,7 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert raw["hw"]["lw100"]["target_stale_coast_s"] == pytest.approx(0.35)
     assert cfg.qp.branch_barrier.eps_rad == pytest.approx(0.35)
     assert cfg.qp.branch_barrier.activate_rad == pytest.approx(0.52)
+    assert cfg.qp.branch_barrier.box_activate_rad == pytest.approx(0.87)
     assert cfg.qp.branch_barrier.slack_weight == pytest.approx(80.0)
     assert cfg.qp.branch_barrier.dwell_free_s == pytest.approx(0.3)
     assert cfg.qp.branch_barrier.dwell_ramp_s == pytest.approx(1.0)
@@ -675,6 +683,8 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.qp.joint_comfort.enabled
     assert cfg.psi_retarget.z_replan_m == pytest.approx(0.0)
     assert cfg.psi_retarget.d_center_rate_m_s == pytest.approx(0.02)
+    assert cfg.psi_retarget.d_slew_psi_err_rad == pytest.approx(np.deg2rad(40.0))
+    assert cfg.psi_retarget.psi_cmd_lead_rad == pytest.approx(np.deg2rad(18.0))
     assert cfg.psi_retarget.psi_attr_rad == pytest.approx(np.deg2rad(70.0))
     assert cfg.psi_retarget.d_attr_m == pytest.approx(-0.22)
     assert cfg.psi_retarget.psi_envelope_lo_rad == pytest.approx(np.deg2rad(40.0))
@@ -982,7 +992,12 @@ def test_plus_leave_band_does_not_freeze_rail() -> None:
     away = np.zeros(6)
     away[1] = -0.04
     step = inner.update(
-        away, dt=cfg.dt, q_meas=q, pose_d=pose, task_rotation_base=np.eye(3)
+        away,
+        dt=cfg.dt,
+        q_meas=q,
+        pose_d=pose,
+        vel_ff=away,
+        task_rotation_base=np.eye(3),
     )
     assert inner.rail_ext_task is not None
     assert inner.rail_ext_task._in_plus_leave(0.75)

@@ -11,11 +11,13 @@ Call :meth:`PostureRetarget.plan_stroke` once when the scan starts.  After
 that :meth:`step` only slews ψ toward ψ* with a single rate limit (no LPF)
 and holds the planned d* constant.
 
-Unplanned ``step`` slews d* toward the design split ``d_attr`` and
-homes ψ* to ``psi_attr``.  Local search takes over only while the wrist
-is collapsed or ``psi_attr`` is infeasible, then returns after a healthy
-dwell.  The search stays inside a one-sided envelope that never crosses
-ψ = 0.
+Unplanned ``step`` homes ψ* to ``psi_attr`` on the positive half-plane
+and slews d* toward ``d_attr`` at ``d_center_rate`` (no step) only after
+ψ_cmd is close to the attractor.  Starting the rail during the 180°→70°
+fold made J1 overshoot then backtrack.  A one-shot jump of d* yanked
+the arm the same way.  Local search takes over only while the wrist is
+collapsed and the elbow is still open; a live outer ``vel_ff`` can
+freeze ``d*`` via ``hold_setpoint``.
 """
 
 from __future__ import annotations
@@ -217,7 +219,11 @@ class PsiRetargetConfig:
     # Unplanned d* is a band around the design split, not a chasing point.
     d_center_rate_m_s: float = 0.02
     d_band_m: float = 0.08
-    # Design family (side-lying).  step() homes here when the wrist is healthy.
+    # Hold d* at the live split until ψ_cmd is this close to ψ_attr.
+    d_slew_psi_err_rad: float = 40.0 * np.pi / 180.0
+    # Do not let ψ_cmd run more than this ahead of live ψ.
+    psi_cmd_lead_rad: float = 18.0 * np.pi / 180.0
+    # Design family (side-lying).  Used by plan_stroke, not unplanned step().
     psi_attr_rad: float = 70.0 * np.pi / 180.0
     d_attr_m: float = -0.22
     psi_return_dwell_s: float = 1.0
@@ -308,7 +314,9 @@ class PostureRetarget:
 
     def reset(self, q_rad: np.ndarray) -> None:
         q = np.asarray(q_rad, dtype=float)
-        psi = float(psi_from_q(q))
+        # ±π are the same SEW plane.  Stay on the positive half so the
+        # command slews 180°→70°, never −180°→−290° through ψ = 0.
+        psi = fold_psi_to_positive(float(psi_from_q(q)))
         psi_star = clamp_psi_to_envelope(
             float(self.cfg.psi_attr_rad),
             self.cfg.psi_envelope_lo_rad,
@@ -316,8 +324,10 @@ class PostureRetarget:
         )
         self._psi_cmd = psi
         self._psi_star = psi_star
-        d_pref = d_from_q(self.kin, q)
-        self._d_star = d_pref
+        # Start at the live split and slew toward d_attr.  A one-shot
+        # publish of d_attr yanks the rail and walks the fold backwards.
+        d_live = d_from_q(self.kin, q)
+        self._d_star = d_live
         self._d_center_target = float(self.cfg.d_attr_m)
         self._search_age_s = 0.0
         self._healthy_dwell_s = 0.0
@@ -325,7 +335,7 @@ class PostureRetarget:
         self.last_search_j6_rad = float("nan")
         self._planned = False
         self._z_plan = float("nan")
-        self.d_star_m = float(d_pref)
+        self.d_star_m = float(self._d_star)
         self.psi_star_rad = float(psi_star)
         self.last_psi_score = float("nan")
         self.last_dpref_score = float("nan")
@@ -505,6 +515,7 @@ class PostureRetarget:
         rail_lo: float,
         rail_hi: float,
         q_nominal: np.ndarray | None = None,
+        hold_setpoint: bool = False,
     ) -> tuple[float, float]:
         """Slew ψ toward ψ*; unplanned also re-searches ψ when the wrist collapses."""
         del q_nominal
@@ -519,16 +530,34 @@ class PostureRetarget:
                 rail_lo=float(rail_lo),
                 rail_hi=float(rail_hi),
             )
-            y_tcp = float(self.kin.fk_placement(q).translation[1])
-            self._rate_limit_d(
-                dt,
-                y_tcp=y_tcp,
-                rail_lo=float(rail_lo),
-                rail_hi=float(rail_hi),
-            )
-        psi_out = self._rate_limit_psi(dt)
+            if not hold_setpoint and self._d_slew_psi_ready():
+                y_tcp = float(self.kin.fk_placement(q).translation[1])
+                self._rate_limit_d(
+                    dt,
+                    y_tcp=y_tcp,
+                    rail_lo=float(rail_lo),
+                    rail_hi=float(rail_hi),
+                    d_live=y_tcp - float(q[RAIL_INDEX]),
+                )
+        live_psi = fold_psi_to_positive(float(psi_from_q(q)))
+        psi_out = self._rate_limit_psi(dt, live_psi=live_psi)
         self._update_margins(q)
         return float(psi_out), float(self._d_star)
+
+    def _d_slew_psi_ready(self) -> bool:
+        """True once the ψ command is close enough that the rail may follow."""
+        gate = max(float(self.cfg.d_slew_psi_err_rad), 0.0)
+        if gate <= 1.0e-12:
+            return True
+        attr = clamp_psi_to_envelope(
+            float(self.cfg.psi_attr_rad),
+            self.cfg.psi_envelope_lo_rad,
+            self.cfg.psi_envelope_hi_rad,
+        )
+        cmd = fold_psi_to_positive(
+            float(self._psi_cmd if self._psi_cmd is not None else attr)
+        )
+        return abs(psi_err_avoiding_zero(cmd, attr)) <= gate + 1.0e-12
 
     def _maybe_retarget_psi(
         self,
@@ -545,17 +574,19 @@ class PostureRetarget:
         q_arm = np.asarray(q, dtype=float).reshape(-1)
         if q_arm.size == 8:
             q_arm = q_arm[1:]
+        j4 = abs(float(q_arm[3]))
         j6 = abs(float(q_arm[5]))
         attr = clamp_psi_to_envelope(
             float(self.cfg.psi_attr_rad),
             self.cfg.psi_envelope_lo_rad,
             self.cfg.psi_envelope_hi_rad,
         )
+        # SEW is undefined near a straight elbow; searching ψ there flipped
+        # the family on 035411 (J4 through 0, ψ 39°→−141°).
+        if j4 < float(self.cfg.psi_envelope_lo_rad):
+            return
         wrist_bad = j6 < float(self.cfg.psi_wrist_ok_rad)
-        attr_infeas = self._psi_infeasible_at(
-            q, attr, rail_lo=rail_lo, rail_hi=rail_hi
-        )
-        if wrist_bad or attr_infeas:
+        if wrist_bad:
             self._healthy_dwell_s = 0.0
             if not due:
                 return
@@ -716,6 +747,7 @@ class PostureRetarget:
         y_tcp: float | None = None,
         rail_lo: float | None = None,
         rail_hi: float | None = None,
+        d_live: float | None = None,
     ) -> float:
         if self._d_star is None:
             return float("nan")
@@ -740,11 +772,15 @@ class PostureRetarget:
             y_lo = float(rail_lo) + margin
             y_hi = float(rail_hi) - margin
             if y_lo > y_hi + 1.0e-12:
+                if d_live is not None and np.isfinite(float(d_live)):
+                    self._d_star = float(d_live)
                 self.d_star_m = float(self._d_star)
                 return float(self._d_star)
             d_lo = float(y_tcp) - y_hi
             d_hi = float(y_tcp) - y_lo
             if d_lo > d_hi + 1.0e-12:
+                if d_live is not None and np.isfinite(float(d_live)):
+                    self._d_star = float(d_live)
                 self.d_star_m = float(self._d_star)
                 return float(self._d_star)
             new_d = float(np.clip(new_d, d_lo, d_hi))
@@ -752,9 +788,15 @@ class PostureRetarget:
         self.d_star_m = float(self._d_star)
         return float(self._d_star)
 
-    def _rate_limit_psi(self, dt_s: float) -> float:
-        target = float(self._psi_star if self._psi_star is not None else 0.0)
-        cur = float(self._psi_cmd if self._psi_cmd is not None else target)
+    def _rate_limit_psi(
+        self, dt_s: float, live_psi: float | None = None
+    ) -> float:
+        target = fold_psi_to_positive(
+            float(self._psi_star if self._psi_star is not None else 0.0)
+        )
+        cur = fold_psi_to_positive(
+            float(self._psi_cmd if self._psi_cmd is not None else target)
+        )
         err = psi_err_avoiding_zero(cur, target)
         max_step = float(self.cfg.psi_rate_rad_s) * dt_s
         if max_step > 0.0 and abs(err) > max_step:
@@ -763,6 +805,18 @@ class PostureRetarget:
         # Never publish a command that sits on the wrong side of 0.
         if cur * nxt < 0.0 and abs(cur) > 1.0e-6:
             nxt = float(np.sign(cur) * 1.0e-6)
+        nxt = fold_psi_to_positive(nxt)
+        lead = max(float(self.cfg.psi_cmd_lead_rad), 0.0)
+        if (
+            lead > 0.0
+            and live_psi is not None
+            and np.isfinite(float(live_psi))
+        ):
+            live = fold_psi_to_positive(float(live_psi))
+            lead_nxt = abs(psi_err_avoiding_zero(live, nxt))
+            lead_cur = abs(psi_err_avoiding_zero(live, cur))
+            if lead_nxt > lead + 1.0e-12 and lead_nxt > lead_cur + 1.0e-12:
+                nxt = cur
         self._psi_cmd = nxt
         return float(self._psi_cmd)
 

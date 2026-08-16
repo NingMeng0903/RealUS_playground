@@ -27,6 +27,7 @@ import time
 from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
+from enum import Enum
 from pathlib import Path
 
 from rm75_control.hw.lw100.drive import (
@@ -211,6 +212,104 @@ class RailServoSample:
     freeze_flag: bool = False
     hold_count: int = 0
     hold_reason: str = ""
+    command_mode: str = "position"
+    feedback_valid: bool = False
+
+
+class RailCommandMode(str, Enum):
+    """Execution semantics for a rail command.
+
+    ``COUPLED_VELOCITY`` is the 8-DOF QPIK stream: velocity is authoritative
+    and position is only a travel/lead guard.  ``POSITION`` retains the old
+    soft-CSP behaviour and settles at the requested position.
+    """
+
+    COUPLED_VELOCITY = "coupled_velocity"
+    POSITION = "position"
+
+    @classmethod
+    def coerce(cls, value: "RailCommandMode | str | None") -> "RailCommandMode":
+        if isinstance(value, cls):
+            return value
+        text = "" if value is None else str(value).strip().lower()
+        aliases = {
+            "coupled": cls.COUPLED_VELOCITY,
+            "velocity": cls.COUPLED_VELOCITY,
+            "coupled_velocity": cls.COUPLED_VELOCITY,
+            "coupled-velocity": cls.COUPLED_VELOCITY,
+            "position": cls.POSITION,
+            "pos": cls.POSITION,
+        }
+        try:
+            return aliases[text]
+        except KeyError as exc:
+            raise ValueError(
+                f"unknown rail command mode {value!r}; expected "
+                "'coupled_velocity' or 'position'"
+            ) from exc
+
+
+@dataclass(frozen=True)
+class RailCommand:
+    """Immutable command snapshot accepted by :class:`RailServoBridge`."""
+
+    target_m: float
+    v_ff_m_s: float
+    mode: RailCommandMode
+    rx_mono_s: float
+    motion_seq: int
+
+    @property
+    def command_mode(self) -> RailCommandMode:
+        return self.mode
+
+
+@dataclass(frozen=True)
+class RailExecutionFeedback:
+    """Time-stamped rail execution feedback for QPIK.
+
+    ``sample_age_s`` is measured when the snapshot is created.  A caller can
+    use :meth:`is_fresh` with its own budget; no mutable bridge state is
+    exposed through this object.
+    """
+
+    position_m: float = float("nan")
+    v_meas_m_s: float = 0.0
+    v_cmd_m_s: float = 0.0
+    a_cmd_m_s2: float = 0.0
+    sample_mono_s: float = float("nan")
+    sample_age_s: float = float("inf")
+    motion_seq: int = 0
+    valid: bool = False
+    command_mode: RailCommandMode = RailCommandMode.POSITION
+    follow: bool = False
+    armed: bool = False
+    panic: bool = False
+
+    @property
+    def x_meas_m(self) -> float:
+        return float(self.position_m)
+
+    @property
+    def freshness_s(self) -> float:
+        return float(self.sample_age_s)
+
+    @property
+    def timestamp_mono_s(self) -> float:
+        return float(self.sample_mono_s)
+
+    @property
+    def fresh(self) -> bool:
+        return bool(
+            bool(self.valid)
+            and math.isfinite(float(self.sample_mono_s))
+            and math.isfinite(float(self.sample_age_s))
+            and float(self.sample_age_s) >= 0.0
+        )
+
+    def is_fresh(self, max_age_s: float) -> bool:
+        budget = max(float(max_age_s), 0.0)
+        return bool(self.fresh and float(self.sample_age_s) <= budget)
 
 
 def parse_rail_servo_config(raw: dict) -> RailServoConfig:
@@ -390,11 +489,11 @@ class _RailCsvLogger:
         "t_wall_s,event,target_m,commanded_m,measured_m,"
         "v_ff,v_des,v_cmd,rpm,follow,armed,panic,poll_ok,"
         "dt_wall_ms,last_rpm_cmd,mb_fail_n,freeze_flag,arm_good,"
-        "sample_mono_s,target_rx_mono_s,target_age_ms,motion_seq,"
+        "sample_mono_s,target_rx_mono_s,target_age_ms,motion_seq,feedback_valid,"
         "x_goal_m,x_ref_m,x_meas_m,v_goal_est_m_s,v_ref_m_s,a_ref_m_s2,"
         "v_meas_m_s,v_des_m_s,v_cmd_m_s,a_cmd_m_s2,x_goal_eval_m,"
         "rpm_cmd,e_track_mm,e_shape_mm,"
-        "hold_count,hold_reason,"
+        "hold_count,hold_reason,command_mode,"
         "t_read_ms,t_write_ms,n_modbus"
     ).split(",")
 
@@ -451,6 +550,7 @@ class _RailCsvLogger:
         sample_mono_s: float = float("nan"),
         target_rx_mono_s: float = float("nan"),
         motion_seq: int = 0,
+        feedback_valid: bool = False,
         x_goal_m: float = float("nan"),
         x_ref_m: float = float("nan"),
         x_meas_m: float = float("nan"),
@@ -465,6 +565,7 @@ class _RailCsvLogger:
         rpm_cmd: int = 0,
         hold_count: int = 0,
         hold_reason: str = "",
+        command_mode: str = "position",
         t_read_ms: float = float("nan"),
         t_write_ms: float = float("nan"),
         n_modbus: int = 0,
@@ -520,6 +621,7 @@ class _RailCsvLogger:
                 _f(target_rx_mono_s),
                 _f(target_age_ms),
                 int(motion_seq),
+                int(bool(feedback_valid)),
                 _f(x_goal_m),
                 _f(x_ref_m),
                 _f(x_meas_m),
@@ -536,6 +638,7 @@ class _RailCsvLogger:
                 _f(e_shape_mm),
                 int(hold_count),
                 str(hold_reason),
+                str(command_mode),
                 _f(t_read_ms),
                 _f(t_write_ms),
                 int(n_modbus),
@@ -555,6 +658,8 @@ class RailServoBridge:
         self.enabled = bool(config.enabled)
         self._target_m = float("nan")
         self._target_v_ff_m_s = float("nan")
+        self._command_mode = RailCommandMode.POSITION
+        self._command_seq = 0
         self._commanded_m = float("nan")
         self._measured_m = float("nan")
         self._measured_speed_rpm = 0  # drive monitor 0x1000 (drive frame)
@@ -636,6 +741,9 @@ class RailServoBridge:
                 kwargs.setdefault("follow", bool(self._follow_enabled))
                 kwargs.setdefault("armed", bool(self._armed))
                 kwargs.setdefault("panic", bool(self._panic))
+                kwargs.setdefault(
+                    "command_mode", RailCommandMode(self._command_mode).value
+                )
             self._csv.write(event=event, **kwargs)
         except Exception:
             pass
@@ -785,17 +893,77 @@ class RailServoBridge:
         with self._lock:
             return float(self._target_v_ff_m_s)
 
+    @property
+    def command_mode(self) -> RailCommandMode:
+        with self._lock:
+            return RailCommandMode(self._command_mode)
+
+    @property
+    def command(self) -> RailCommand:
+        with self._lock:
+            return RailCommand(
+                target_m=float(self._target_m),
+                v_ff_m_s=float(self._target_v_ff_m_s),
+                mode=RailCommandMode(self._command_mode),
+                rx_mono_s=float(self._last_target_rx_mono),
+                motion_seq=int(self._command_seq),
+            )
+
+    @property
+    def execution_feedback(self) -> RailExecutionFeedback:
+        """Latest rail execution sample for the QPIK kinematic snapshot."""
+        now = time.monotonic()
+        with self._lock:
+            sample = self._servo_sample
+            sample_t = float(sample.sample_mono_s)
+            age = (
+                max(0.0, now - sample_t)
+                if math.isfinite(sample_t)
+                else float("inf")
+            )
+            mode = RailCommandMode.coerce(sample.command_mode)
+            return RailExecutionFeedback(
+                position_m=float(sample.x_meas_m),
+                v_meas_m_s=float(sample.v_meas_m_s),
+                v_cmd_m_s=float(sample.v_cmd_m_s),
+                a_cmd_m_s2=float(sample.a_cmd_m_s2),
+                sample_mono_s=sample_t,
+                sample_age_s=age,
+                motion_seq=int(sample.motion_seq),
+                valid=bool(sample.feedback_valid),
+                command_mode=mode,
+                follow=bool(sample.follow),
+                armed=bool(sample.armed),
+                panic=bool(sample.panic),
+            )
+
+    @property
+    def rail_execution_feedback(self) -> RailExecutionFeedback:
+        return self.execution_feedback
+
     def set_target_m(
         self,
         target_m: float,
         v_ff_m_s: float | None = None,
+        *,
+        mode: RailCommandMode | str | None = None,
     ) -> bool:
         """Accept a rail goal and report whether it entered the follow buffer.
 
         ``v_ff_m_s`` is the QPIK rail velocity for this tick.  When finite the
-        worker uses it as ``v_goal`` instead of differentiating the position
-        stream (nominal 5 ms integrate vs ~6.5 ms wall under-reads ~25%).
+        worker uses it as the authoritative velocity in
+        :attr:`RailCommandMode.COUPLED_VELOCITY`; the target position is then
+        only a travel/lead guard.
         """
+        raw_v = float("nan") if v_ff_m_s is None else float(v_ff_m_s)
+        if mode is None:
+            command_mode = (
+                RailCommandMode.COUPLED_VELOCITY
+                if math.isfinite(raw_v)
+                else RailCommandMode.POSITION
+            )
+        else:
+            command_mode = RailCommandMode.coerce(mode)
         with self._lock:
             armed = bool(self._armed)
             calibrated = bool(self._calibrated)
@@ -844,13 +1012,12 @@ class RailServoBridge:
             if panic or self._panic:
                 return False
             self._target_m = snapped
-            if v_ff_m_s is None:
+            self._command_mode = command_mode
+            self._command_seq = int(self._command_seq) + 1
+            if command_mode is RailCommandMode.POSITION:
                 self._target_v_ff_m_s = float("nan")
             else:
-                raw_v = float(v_ff_m_s)
-                self._target_v_ff_m_s = (
-                    raw_v if math.isfinite(raw_v) else float("nan")
-                )
+                self._target_v_ff_m_s = raw_v if math.isfinite(raw_v) else 0.0
             self._last_target_rx_mono = rx_mono
             self._target_history.append((rx_mono, snapped))
             self._follow_enabled = True
@@ -866,6 +1033,8 @@ class RailServoBridge:
             if self._encoder_sane(meas):
                 self._target_m = meas
                 self._target_v_ff_m_s = float("nan")
+                self._command_mode = RailCommandMode.POSITION
+                self._command_seq = int(self._command_seq) + 1
                 self._commanded_m = meas
                 self._target_history.clear()
                 self._target_history.append((time.monotonic(), meas))
@@ -1947,6 +2116,64 @@ class RailServoBridge:
         return x_new, v_new, a_new
 
     @staticmethod
+    def _step_velocity_reference(
+        x_ref: float,
+        v_ref: float,
+        v_goal: float,
+        *,
+        dt: float,
+        v_max: float,
+        a_max: float,
+        x_min: float | None = None,
+        x_max: float | None = None,
+    ) -> tuple[float, float, float]:
+        """Advance a velocity-authoritative reference without position catch-up."""
+        dt = max(float(dt), 1.0e-4)
+        v_max = max(float(v_max), 1.0e-6)
+        a_max = max(float(a_max), 1.0e-6)
+        v_goal = max(-v_max, min(v_max, float(v_goal)))
+        dv_max = a_max * dt
+        v_new = max(float(v_ref) - dv_max, min(float(v_ref) + dv_max, v_goal))
+        v_new = max(-v_max, min(v_max, v_new))
+        x_new = float(x_ref) + v_new * dt
+        if x_min is not None and x_new < float(x_min):
+            x_new = float(x_min)
+            if v_new < 0.0:
+                v_new = 0.0
+        if x_max is not None and x_new > float(x_max):
+            x_new = float(x_max)
+            if v_new > 0.0:
+                v_new = 0.0
+        a_new = (v_new - float(v_ref)) / dt
+        return x_new, v_new, a_new
+
+    @staticmethod
+    def _clamp_zero_target_brake(
+        v_des: float,
+        *,
+        v_goal: float,
+        v_ref: float,
+        v_meas: float,
+        v_prev_cmd: float,
+        zero_eps: float = 1.0e-3,
+    ) -> float:
+        """Do not turn a zero-velocity request into an active reversal."""
+        desired = float(v_des)
+        if abs(float(v_goal)) >= max(float(zero_eps), 0.0):
+            return desired
+        direction = 0.0
+        for candidate in (v_prev_cmd, v_meas, v_ref):
+            value = float(candidate)
+            if abs(value) >= max(float(zero_eps), 0.0):
+                direction = math.copysign(1.0, value)
+                break
+        if direction > 0.0:
+            return max(desired, 0.0)
+        if direction < 0.0:
+            return min(desired, 0.0)
+        return 0.0
+
+    @staticmethod
     def _standstill_hold_update(
         *,
         held: bool,
@@ -2031,6 +2258,8 @@ class RailServoBridge:
         mb_fail_n = 0
         slow_poll_n = 0
         jump_soft_streak = 0
+        idle_jump_n = 0
+        idle_jump_m = float("nan")
         last_status_t = time.monotonic()
         last_enc_ok_t = time.monotonic()
         verbose = bool(self.config.verbose)
@@ -2093,12 +2322,14 @@ class RailServoBridge:
             target_history: tuple[tuple[float, float], ...] = ()
             v_goal_est = 0.0
             target_v_ff = float("nan")
+            command_mode = RailCommandMode.POSITION
             goal_stationary = False
             v_meas = self._rpm_to_mps(float(self.measured_speed_rpm))
             v_des = 0.0
             v_cmd = 0.0
             a_cmd = 0.0
             hard_hold_this_tick = False
+            encoder_accepted = True
             try:
                 # Safety flag from latch watchdog (no concurrent Modbus there).
                 if self._latch_kill_req.is_set():
@@ -2134,6 +2365,7 @@ class RailServoBridge:
                 with self._lock:
                     target = float(self._target_m)
                     target_v_ff = float(self._target_v_ff_m_s)
+                    command_mode = RailCommandMode(self._command_mode)
                     follow = bool(self._follow_enabled)
                     panic = bool(self._panic)
                     speed_cap = self._speed_cap_rpm
@@ -2150,6 +2382,7 @@ class RailServoBridge:
                         measured, "invalid encoder sample (rejected; cal kept)"
                     )
                     hard_hold_this_tick = True
+                    encoder_accepted = False
                     self._frame_continuous = False
                 else:
                     # Continuity gate on host pose.  Impossible leaps are
@@ -2168,21 +2401,50 @@ class RailServoBridge:
                             jump_lim = jump_margin_m
                         jump = abs(measured - last_sane)
                         if jump > jump_lim:
-                            measured = last_sane
-                            jump_soft_streak = jump_soft_streak + 1
-                            self._hold_velocity(
-                                measured,
-                                f"encoder jump rejected {jump * 1000:+.1f} mm "
-                                f"(lim={jump_lim * 1000:.1f} mm; cal kept)",
+                            raw_jump = float(measured)
+                            same_idle = (
+                                not follow
+                                and math.isfinite(idle_jump_m)
+                                and abs(raw_jump - idle_jump_m) <= 0.001
                             )
-                            hard_hold_this_tick = True
-                            if jump >= jump_hard_m or jump_soft_streak >= jump_soft_streak_panic:
-                                # Pose stream untrusted for this session; do not
-                                # DISARM or erase the home zero.
-                                self._frame_continuous = False
+                            if not follow:
+                                idle_jump_n = idle_jump_n + 1 if same_idle else 1
+                                idle_jump_m = raw_jump
+                            else:
+                                idle_jump_n = 0
+                                idle_jump_m = float("nan")
+                            # HOLD / hot-wait: a stable new pose means last_sane
+                            # is the stale frame (reconnect / torn read), not a
+                            # physical leap.  Re-anchor after 3 agreeing polls.
+                            if not follow and idle_jump_n >= 3:
                                 jump_soft_streak = 0
+                                idle_jump_n = 0
+                                idle_jump_m = float("nan")
+                                self._link_restitch = False
+                                self._publish_motion(
+                                    raw_jump,
+                                    speed_rpm_host,
+                                    sample_mono_s=motion_sample_mono,
+                                )
+                            else:
+                                measured = last_sane
+                                jump_soft_streak = jump_soft_streak + 1
+                                self._hold_velocity(
+                                    measured,
+                                    f"encoder jump rejected {jump * 1000:+.1f} mm "
+                                    f"(lim={jump_lim * 1000:.1f} mm; cal kept)",
+                                )
+                                hard_hold_this_tick = True
+                                encoder_accepted = False
+                                if jump >= jump_hard_m or jump_soft_streak >= jump_soft_streak_panic:
+                                    # Pose stream untrusted for this session; do not
+                                    # DISARM or erase the home zero.
+                                    self._frame_continuous = False
+                                    jump_soft_streak = 0
                         else:
                             jump_soft_streak = 0
+                            idle_jump_n = 0
+                            idle_jump_m = float("nan")
                             if self._link_restitch:
                                 self._link_restitch = False
                             self._publish_motion(
@@ -2355,48 +2617,75 @@ class RailServoBridge:
                     continue
 
                 if follow and last_rx > 0.0 and (t0 - last_rx) > stream_dead_s:
-                    err_abs = abs(target - measured) if math.isfinite(target) else 0.0
-                    motion_active = (
-                        abs(v_ref) >= 0.001
-                        or abs(prev_v_cmd) >= 0.001
-                        or abs(self._rpm_to_mps(float(speed_rpm_host))) >= 0.001
-                    )
-                    if (err_abs > settle_tol_m or motion_active) and not panic and armed:
-                        if not settling:
-                            settling = True
-                            settle_deadline = t0 + settle_timeout
-                            print(
-                                f"lw100 rail: target stream ended — settling "
-                                f"residual={err_abs * 1000:.2f} mm "
-                                f"(tol={settle_tol_m * 1000:.2f} mm)",
-                                flush=True,
-                            )
-                        elif settle_deadline is not None and t0 >= settle_deadline:
+                    # A velocity stream has no terminal position contract.
+                    # Ramp to zero and re-anchor at the measured position
+                    # after the encoder sample is valid.  Never reopen the
+                    # old integrated target for a position catch-up.
+                    if command_mode is RailCommandMode.COUPLED_VELOCITY:
+                        target_v_ff = 0.0
+                        v_goal_est = 0.0
+                        goal_stationary = True
+                        settling = False
+                        settle_deadline = None
+                        motion_active = (
+                            abs(v_ref) >= 0.001
+                            or abs(prev_v_cmd) >= 0.001
+                            or abs(self._rpm_to_mps(float(speed_rpm_host))) >= 0.001
+                        )
+                        if (
+                            not motion_active
+                            and abs(self._rpm_to_mps(float(speed_rpm_host))) < 0.001
+                            and self._encoder_sane(measured)
+                        ):
+                            x_ref = measured
+                            v_ref = 0.0
+                            a_ref = 0.0
+                            follow = False
+                            with self._lock:
+                                self._target_m = measured
+                                self._follow_enabled = False
+                    else:
+                        err_abs = abs(target - measured) if math.isfinite(target) else 0.0
+                        motion_active = (
+                            abs(v_ref) >= 0.001
+                            or abs(prev_v_cmd) >= 0.001
+                            or abs(self._rpm_to_mps(float(speed_rpm_host))) >= 0.001
+                        )
+                        if (err_abs > settle_tol_m or motion_active) and not panic and armed:
+                            if not settling:
+                                settling = True
+                                settle_deadline = t0 + settle_timeout
+                                print(
+                                    f"lw100 rail: target stream ended — settling "
+                                    f"residual={err_abs * 1000:.2f} mm "
+                                    f"(tol={settle_tol_m * 1000:.2f} mm)",
+                                    flush=True,
+                                )
+                            elif settle_deadline is not None and t0 >= settle_deadline:
+                                settling = False
+                                settle_deadline = None
+                                follow = False
+                                with self._lock:
+                                    self._follow_enabled = False
+                                print(
+                                    f"lw100 rail: settle timeout → FA24=0 "
+                                    f"(residual={err_abs * 1000:.2f} mm)",
+                                    flush=True,
+                                )
+                        else:
                             settling = False
                             settle_deadline = None
                             follow = False
                             with self._lock:
                                 self._follow_enabled = False
-                            print(
-                                f"lw100 rail: settle timeout → FA24=0 "
-                                f"(residual={err_abs * 1000:.2f} mm)",
-                                flush=True,
-                            )
-                        # else: keep follow=True while settling
-                    else:
-                        settling = False
-                        settle_deadline = None
-                        follow = False
-                        with self._lock:
-                            self._follow_enabled = False
-                        if err_abs > 1e-6:
-                            print(
-                                f"lw100 rail: target timeout → FA24=0 "
-                                f"(residual={err_abs * 1000:.2f} mm)",
-                                flush=True,
-                            )
-                        else:
-                            print("lw100 rail: target timeout → FA24=0", flush=True)
+                            if err_abs > 1e-6:
+                                print(
+                                    f"lw100 rail: target timeout → FA24=0 "
+                                    f"(residual={err_abs * 1000:.2f} mm)",
+                                    flush=True,
+                                )
+                            else:
+                                print("lw100 rail: target timeout → FA24=0", flush=True)
                 elif follow and last_rx > 0.0:
                     # Fresh targets — exit settle substate.
                     settling = False
@@ -2456,65 +2745,89 @@ class RailServoBridge:
                         a_ref = 0.0
                         ref_inited = True
                     x_goal = float(target)
-                    x_goal_eval, v_goal_est, goal_stationary = (
-                        self._resolve_stream_goal(
-                            target_history,
-                            now_s=motion_sample_mono,
-                            max_age_s=min(2.0 * period, 0.05),
-                            target_m=x_goal,
-                            last_rx_s=last_rx,
-                            v_ff_m_s=target_v_ff,
-                        )
-                    )
-                    v_goal_est = max(-v_max, min(v_max, v_goal_est))
                     soft_lo, soft_hi = self._soft_lo_hi()
-                    x_goal_eval = max(soft_lo, min(soft_hi, x_goal_eval))
-                    if settling:
-                        v_goal_est = 0.0
-                        goal_stationary = True
-                        x_goal_eval = x_goal
-                    v_ff_live = (
-                        math.isfinite(target_v_ff)
-                        and not settling
-                        and bool(follow)
+                    velocity_coupled = (
+                        command_mode is RailCommandMode.COUPLED_VELOCITY
                     )
-                    a_ref_max = (
-                        float(self.config.live_host_accel_m_s2())
-                        if v_ff_live
-                        else a_max
-                    )
-                    x_ref, v_ref, a_ref = self._step_reference(
-                        x_ref,
-                        v_ref,
-                        x_goal_eval,
-                        v_goal_est,
-                        stationary=goal_stationary,
-                        dt=dt,
-                        v_max=v_max,
-                        a_max=a_ref_max,
-                    )
+                    if velocity_coupled:
+                        v_goal_est = (
+                            target_v_ff if math.isfinite(target_v_ff) else 0.0
+                        )
+                        v_goal_est = max(-v_max, min(v_max, v_goal_est))
+                        goal_stationary = abs(v_goal_est) < 0.001
+                        x_goal_eval = max(soft_lo, min(soft_hi, x_goal))
+                        v_ff_live = bool(follow) and not settling
+                        a_ref_max = (
+                            float(self.config.live_host_accel_m_s2())
+                            if v_ff_live
+                            else a_max
+                        )
+                        x_ref, v_ref, a_ref = self._step_velocity_reference(
+                            x_ref,
+                            v_ref,
+                            v_goal_est,
+                            dt=dt,
+                            v_max=v_max,
+                            a_max=a_ref_max,
+                            x_min=soft_lo,
+                            x_max=soft_hi,
+                        )
+                    else:
+                        x_goal_eval, v_goal_est, goal_stationary = (
+                            self._resolve_stream_goal(
+                                target_history,
+                                now_s=motion_sample_mono,
+                                max_age_s=min(2.0 * period, 0.05),
+                                target_m=x_goal,
+                                last_rx_s=last_rx,
+                                v_ff_m_s=float("nan"),
+                            )
+                        )
+                        v_goal_est = max(-v_max, min(v_max, v_goal_est))
+                        x_goal_eval = max(soft_lo, min(soft_hi, x_goal_eval))
+                        if settling:
+                            v_goal_est = 0.0
+                            goal_stationary = True
+                            x_goal_eval = x_goal
+                        v_ff_live = False
+                        a_ref_max = a_max
+                        x_ref, v_ref, a_ref = self._step_reference(
+                            x_ref,
+                            v_ref,
+                            x_goal_eval,
+                            v_goal_est,
+                            stationary=goal_stationary,
+                            dt=dt,
+                            v_max=v_max,
+                            a_max=a_ref_max,
+                        )
 
                     kp = float(self.config.vel_kp)
                     kd = float(self.config.vel_kd)
                     v_meas = self._rpm_to_mps(float(speed_rpm_host))
                     err_x = x_ref - measured
                     err_v = v_ref - v_meas
-                    # Stall-safe on position correction only (not on v_ref).
-                    if v_ff_live:
+                    if v_ff_live and not velocity_coupled:
                         kp = min(kp, max(float(self.config.vel_ff_kp), 0.0))
-                    v_p = kp * err_x
-                    if settling:
-                        v_p_allow = abs(err_x) / max_stall_s
+                    if velocity_coupled:
+                        v_p = 0.0
                     else:
-                        v_p_allow = max(abs(err_x) / max_stall_s, stall_v_floor)
-                    if v_ff_live:
-                        v_p_allow = min(
-                            v_p_allow,
-                            max(float(self.config.vel_ff_p_trim_m_s), 0.0),
-                        )
-                    v_p = max(-v_p_allow, min(v_p_allow, v_p))
+                        v_p = kp * err_x
+                        if settling:
+                            v_p_allow = abs(err_x) / max_stall_s
+                        else:
+                            v_p_allow = max(abs(err_x) / max_stall_s, stall_v_floor)
+                        v_p = max(-v_p_allow, min(v_p_allow, v_p))
                     v_d = kd * err_v
                     v_raw = v_ref + v_p + v_d
+                    if velocity_coupled:
+                        v_raw = self._clamp_zero_target_brake(
+                            v_raw,
+                            v_goal=v_goal_est,
+                            v_ref=v_ref,
+                            v_meas=v_meas,
+                            v_prev_cmd=prev_v_cmd,
+                        )
 
                     # COUPLED / continuous QPIK tracking: never freeze FA24 on
                     # tiny errors while follow is live and targets are fresh.
@@ -2694,6 +3007,9 @@ class RailServoBridge:
                         if control_mono - self._last_hold_mono <= max(2.0 * period, 0.05)
                         else ""
                     )
+                    prev_sample_t = float(self._servo_sample.sample_mono_s)
+                    if not encoder_accepted and math.isfinite(prev_sample_t):
+                        sample_mono = prev_sample_t
                     self._servo_sample = RailServoSample(
                         sample_mono_s=sample_mono,
                         target_rx_mono_s=last_rx,
@@ -2718,6 +3034,8 @@ class RailServoBridge:
                         freeze_flag=moving_without_fb,
                         hold_count=hold_count,
                         hold_reason=hold_reason,
+                        command_mode=command_mode.value,
+                        feedback_valid=bool(encoder_accepted),
                     )
                 if self._csv is not None:
                     last_rpm = int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
@@ -2756,6 +3074,8 @@ class RailServoBridge:
                         rpm_cmd=rpm_cmd,
                         hold_count=hold_count,
                         hold_reason=hold_reason,
+                        command_mode=command_mode.value,
+                        feedback_valid=bool(encoder_accepted),
                         t_read_ms=t_read_ms,
                         t_write_ms=t_write_ms,
                         n_modbus=n_modbus,

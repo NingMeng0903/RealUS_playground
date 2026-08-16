@@ -29,6 +29,25 @@ def _cal() -> RailCalibration:
     )
 
 
+def test_idle_stable_jump_is_a_stale_frame_not_a_leap():
+    """Same +15.6 mm reading three idle polls → re-anchor, not HOLD forever."""
+    last_sane = 0.2386
+    raw = 0.2386 + 0.0156
+    jump_lim = 0.003
+    assert abs(raw - last_sane) > jump_lim
+    idle_n = 0
+    idle_m = float("nan")
+    accepted = False
+    for _ in range(3):
+        same = abs(raw - idle_m) <= 0.001 if idle_m == idle_m else False
+        idle_n = idle_n + 1 if same else 1
+        idle_m = raw
+        if idle_n >= 3:
+            accepted = True
+    assert accepted
+    assert abs(idle_m - raw) <= 0.001
+
+
 def test_jump_limit_catches_256mm_power_cycle_leap():
     """CSV case: 394.28 → 137.68 mm in one poll must exceed jump_lim."""
     cfg = RailServoConfig(

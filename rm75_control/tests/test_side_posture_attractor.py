@@ -70,7 +70,7 @@ def test_inconsistent_yaml_is_rejected() -> None:
         build_joint_ik_config(raw)
 
 
-def test_centering_keeps_signed_nominal_while_q_star_latches() -> None:
+def test_centering_and_q_star_keep_signed_nominal() -> None:
     cfg = build_joint_ik_config(_raw())
     cfg.ird.enabled = False
     cfg.collision.enabled = False
@@ -82,8 +82,23 @@ def test_centering_keeps_signed_nominal_while_q_star_latches() -> None:
     inner.reset(q)
     assert float(inner.centering_task.q_target[1]) < 0.0
     assert inner.core.q_star is not None
-    assert float(inner.core.q_star[1]) > 0.0
+    assert float(inner.core.q_star[1]) < 0.0
     assert inner._family_ok is False
+
+
+def test_planar_start_keeps_design_j1_sign() -> None:
+    cfg = build_joint_ik_config(_raw())
+    cfg.ird.enabled = False
+    cfg.collision.enabled = False
+    cfg.qp.collision.enabled = False
+    inner = JointIkController(RobotKinematics(), cfg)
+    q = np.array(
+        [0.31, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    inner.reset(q)
+    assert inner.core.q_star is not None
+    assert float(inner.core.q_star[1]) < 0.0
+    assert float(inner.centering_task.q_target[1]) < 0.0
 
 
 def test_psi_star_returns_home_after_healthy_dwell() -> None:

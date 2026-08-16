@@ -35,9 +35,6 @@ from rm75_control.control.joint_admittance_8dof.model import (
     rad2deg,
     wrap_joint_delta,
 )
-from rm75_control.control.joint_admittance_8dof.solver.branch_barrier import (
-    latch_q_star_signs,
-)
 from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfig, QpIkController
 from rm75_control.control.joint_admittance_8dof.tasks.arm_angle import (
     ArmAngleTask,
@@ -164,6 +161,14 @@ class JointIkStep:
     qp_solver_solve_ms: float = 0.0
     qp_solver_call_count: int = 0
     qp_solver_overrun: bool = False
+    qp1_status: str = "not_run"
+    qp2_status: str = "not_run"
+    qp1_solve_ms: float = 0.0
+    qp2_solve_ms: float = 0.0
+    qp_assembly_ms: float = 0.0
+    qp_fallback_ms: float = 0.0
+    qpik_total_ms: float = 0.0
+    qp2_fallback: bool = False
     # Coarse per-stage tick profile (ms).  The loop budgets 5.0 ms but
     # measured 6.16 ms mean with only 2.1% of ticks on time, and the log had
     # no way to attribute the overrun.
@@ -216,6 +221,13 @@ class JointIkStep:
     pre_solve_feedback_age_s: float = float("nan")
     post_solve_feedback_age_s: float = float("nan")
     rail_sat: bool = False
+    rail_exec_velocity_m_s: float = float("nan")
+    rail_measured_velocity_m_s: float = float("nan")
+    rail_commanded_velocity_m_s: float = float("nan")
+    rail_commanded_acceleration_m_s2: float = float("nan")
+    rail_feedback_age_s: float = float("nan")
+    a_mirror_frac: float = float("nan")
+    j_mirror_frac: float = float("nan")
     last_limit_saturated: bool = False
     keep_task_weight: bool = False
     pref_slack_scale: float = 1.0
@@ -361,6 +373,9 @@ class JointIkController:
         self._manipulability_active = False
         self._twist_scale_filt = 1.0
         self._box_dt_last_t: float | None = None
+        self._box_h1_last: float | None = None
+        self._rail_dv_filt: float = 0.0
+        self._rail_dv_tau_s: float = 0.025
         self.secondary = SecondaryComposer.from_controller_parts(
             self.centering_task,
             self.arm_task,
@@ -436,23 +451,31 @@ class JointIkController:
             self.rail_ext_task.capture_reference(self.q_cmd)
 
     def _measure_box_dt(self, dt: float) -> float:
-        """Wall period for the rate limits (integration stays on nominal dt).
+        """Backward-compatible single-period wall dt (``h1``)."""
+        h1, _h2 = self._measure_box_periods(dt)
+        return h1
 
-        The loop is configured at 5 ms but measures ~6.2 ms, and the boxes were
-        sized with the nominal value — so the acceleration limit was silently
-        24% tighter than configured and a jerk limit would be 38% tighter
-        (it scales with dt²).  Clamped so one stalled tick cannot open them up.
+    def _measure_box_periods(self, dt: float) -> tuple[float, float | None]:
+        """Two most recent wall periods for the unequal-sample third-order box.
+
+        Each period is clamped to ``[0.8, 2.0] × dt`` so one stalled tick
+        cannot open the acceleration/jerk boxes.
         """
         now = time.monotonic()
         prev = self._box_dt_last_t
+        prev_h1 = self._box_h1_last
         self._box_dt_last_t = now
         nominal = max(float(dt), 1.0e-6)
         if prev is None:
-            return nominal
+            self._box_h1_last = nominal
+            return nominal, None
         measured = now - prev
         if not math.isfinite(measured) or measured <= 0.0:
-            return nominal
-        return float(np.clip(measured, 0.8 * nominal, 2.0 * nominal))
+            h1 = nominal
+        else:
+            h1 = float(np.clip(measured, 0.8 * nominal, 2.0 * nominal))
+        self._box_h1_last = h1
+        return h1, prev_h1
 
     def plan_scan_stroke(
         self,
@@ -504,13 +527,17 @@ class JointIkController:
             raise ValueError(msg)
 
     def _latch_attractor_from_q(self, q_meas: np.ndarray) -> None:
-        """Fixed signed q_nominal for centering; latch signs only for q_star."""
+        """Keep yaml ``q_nominal`` signs for both centering and q*.
+
+        Mirroring J1 from a planar start (J1≈0⁺) made q*=+90° and the
+        branch barrier then forbade the design fold to J1=−90°.
+        """
         q = np.asarray(q_meas, dtype=float).reshape(-1)
         if q.size != self.kin.nv or not np.all(np.isfinite(q)):
             return
         q_nominal = np.asarray(self.centering_task._q_target_default, dtype=float)
         self.centering_task.set_q_target(q_nominal)
-        self.core.set_q_star(latch_q_star_signs(q_nominal, q))
+        self.core.set_q_star(q_nominal.copy())
         if self.arm_task is not None:
             self.arm_task.reset(q)
         self._check_design_family(q)
@@ -526,8 +553,16 @@ class JointIkController:
             self.rail_ext_task.reset(self.q_cmd)
         if self.posture_retarget is not None:
             self.posture_retarget.reset(self.q_cmd)
+            if self.rail_ext_task is not None and np.isfinite(
+                self.posture_retarget.d_star_m
+            ):
+                self.rail_ext_task.set_d_pref(float(self.posture_retarget.d_star_m))
+            if self.arm_task is not None and self.posture_retarget._psi_cmd is not None:
+                self.arm_task.set_reference(float(self.posture_retarget._psi_cmd))
         self._twist_scale_filt = 1.0
         self._box_dt_last_t = None
+        self._box_h1_last = None
+        self._rail_dv_filt = 0.0
         self._direct_joint_ptp = False
         self._plan_drives_rail = False
         self._press_z_mark = float("nan")
@@ -650,10 +685,13 @@ class JointIkController:
         *,
         rail_locked: bool,
         rail_vel_pin: float | None,
+        box_h1: float | None = None,
+        box_h2: float | None = None,
+        rail_lead_exempt: bool = False,
     ) -> np.ndarray:
         qdot = np.asarray(qdot, dtype=float).reshape(-1).copy()
         if qdot.shape != q_prev.shape or not np.all(np.isfinite(qdot)):
-            qdot = float(self.cfg.qp.fail_qdot_decay) * self.core.qdot_prev
+            qdot = np.zeros_like(q_prev)
         q_geom = q_meas if q_meas is not None else q_prev
         lo, hi = self.core.constraints.bounds(
             q_geom,
@@ -665,6 +703,11 @@ class JointIkController:
             rail_locked=rail_locked,
             rail_lock_vel_eps_m_s=self.cfg.rail.lock_vel_eps_m_s,
             rail_vel_pin_m_s=rail_vel_pin,
+            qdot_prev2=self.core.qdot_prev2,
+            j_max=self.core._j_max,
+            box_h1=box_h1,
+            box_h2=box_h2,
+            rail_lead_exempt=rail_lead_exempt,
         )
         return scale_qdot_into_box(qdot, lo, hi)
 
@@ -702,6 +745,8 @@ class JointIkController:
     ) -> JointIkStep:
         slack = float(slack_norm)
         alpha = 0.0 if failed else float(np.clip(1.0 - slack, 0.0, 1.0))
+        qp_total_ms = float(getattr(self.core, "last_qp_total_ms", 0.0))
+        qp2_fallback = bool(getattr(self.core, "last_qp2_fallback", False))
         return JointIkStep(
             q_send=self.q_cmd.copy(),
             qdot=np.asarray(qdot, dtype=float).copy(),
@@ -798,11 +843,49 @@ class JointIkController:
             qp_backend=self.core.backend_name,
             qp_solver_status=self.core.last_status if mode == "qpik" else "not_run",
             qp_solver_call_count=int(self.core.solve_count) if mode == "qpik" else 0,
-            qp_solver_solve_ms=(
-                float(getattr(self.core.backend, "last_solve_ms", 0.0))
+            qp_solver_solve_ms=qp_total_ms if mode == "qpik" else 0.0,
+            qp_solver_overrun=bool(
+                mode == "qpik"
+                and qp_total_ms > float(getattr(self.cfg.qp, "max_solve_ms", 5.0))
+            ),
+            qp1_status=(
+                str(getattr(self.core, "last_qp1_status", "not_run"))
+                if mode == "qpik"
+                else "not_run"
+            ),
+            qp2_status=(
+                str(getattr(self.core, "last_qp2_status", "not_run"))
+                if mode == "qpik"
+                else "not_run"
+            ),
+            qp1_solve_ms=(
+                float(getattr(self.core, "last_qp1_solve_ms", 0.0))
                 if mode == "qpik"
                 else 0.0
             ),
+            qp2_solve_ms=(
+                float(getattr(self.core, "last_qp2_solve_ms", 0.0))
+                if mode == "qpik"
+                else 0.0
+            ),
+            qp_assembly_ms=(
+                max(
+                    qp_total_ms
+                    - float(getattr(self.core, "last_qp1_solve_ms", 0.0))
+                    - float(getattr(self.core, "last_qp2_solve_ms", 0.0))
+                    - float(getattr(self.core, "last_fallback_ms", 0.0)),
+                    0.0,
+                )
+                if mode == "qpik"
+                else 0.0
+            ),
+            qp_fallback_ms=(
+                float(getattr(self.core, "last_fallback_ms", 0.0))
+                if mode == "qpik"
+                else 0.0
+            ),
+            qpik_total_ms=qp_total_ms if mode == "qpik" else 0.0,
+            qp2_fallback=qp2_fallback if mode == "qpik" else False,
             qpik_alpha=alpha,
             qpik_beta=1.0,
             qpik_authority=1.0,
@@ -826,10 +909,12 @@ class JointIkController:
                 if scan_residual is not None
                 else np.zeros(2)
             ),
-            fallback_level="decay" if failed else "none",
+            fallback_level="stop" if failed else "none",
             fallback_reason=fallback_reason,
-            solver_fault_latched=False,
+            solver_fault_latched=bool(mode == "qpik" and failed),
             arm_health=float(sigma_min),
+            a_mirror_frac=float(getattr(self.core, "last_a_mirror_frac", float("nan"))),
+            j_mirror_frac=float(getattr(self.core, "last_j_mirror_frac", float("nan"))),
         )
 
     def update(
@@ -849,6 +934,8 @@ class JointIkController:
         path_twist: np.ndarray | None = None,
         feedback_twist: np.ndarray | None = None,
         v_force_z: float | None = None,
+        rail_exec_vel_m_s: float | None = None,
+        rail_exec_smooth_m_s: float | None = None,
     ) -> JointIkStep:
         del f_ext_z, f_des_z, contact_active, task_safety_rows
         path_twist_arr = (
@@ -874,6 +961,25 @@ class JointIkController:
         twist_task = np.asarray(twist, dtype=float).reshape(-1)
         if twist_task.size != 6 or not np.isfinite(twist_task).all():
             raise ValueError("twist must be a finite 6-vector")
+        if rail_exec_vel_m_s is not None and not np.isfinite(float(rail_exec_vel_m_s)):
+            raise ValueError("rail_exec_vel_m_s must be finite when supplied")
+        if rail_exec_smooth_m_s is not None and not np.isfinite(
+            float(rail_exec_smooth_m_s)
+        ):
+            raise ValueError("rail_exec_smooth_m_s must be finite when supplied")
+        # Hardware supplies the time-stamped worker estimate.  Offline callers
+        # have no independent actuator, so the last applied rail command is
+        # the least-surprising zero-order execution estimate.
+        if rail_exec_vel_m_s is not None and rail_exec_smooth_m_s is not None:
+            delta_v = float(rail_exec_vel_m_s) - float(rail_exec_smooth_m_s)
+            tau = max(float(self._rail_dv_tau_s), 1.0e-6)
+            alpha = min(1.0, float(dt) / tau)
+            self._rail_dv_filt += alpha * (delta_v - self._rail_dv_filt)
+            rail_exec_for_qp = float(rail_exec_smooth_m_s) + float(self._rail_dv_filt)
+        elif rail_exec_vel_m_s is not None:
+            rail_exec_for_qp = float(rail_exec_vel_m_s)
+        else:
+            rail_exec_for_qp = float(self.core.qdot_prev[0])
 
         if task_rotation_base is not None:
             rotation_base_task = np.asarray(task_rotation_base, dtype=float)
@@ -886,26 +992,20 @@ class JointIkController:
         else:
             twist_base = self._twist_to_base(twist_task, q_state)
 
-        sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
-        J_pre = self.kin.jacobian(q_prev)
-        sigma_pre = float(self.kin.singular_values(J_pre).min())
+        J_pre = self.kin.jacobian(q_state)
+        sigma_values_pre = self.kin.singular_values(J_pre)
+        mass_pre = (
+            self.kin.mass_matrix(q_state)
+            if self.cfg.qp.use_dyn_nullspace or self.cfg.qp.use_mass_weighted_reg
+            else None
+        )
+        sigma_pre = float(sigma_values_pre.min())
         sigma_arm = float(np.linalg.svd(J_pre[:, 1:], compute_uv=False).min())
-        if sigma_ref > 1e-9 and sigma_pre < sigma_ref:
-            floor = float(getattr(self.cfg.qp, "twist_sigma_floor", 0.25))
-            twist_scale = max(float(sigma_pre / sigma_ref), floor)
-            if sigma_pre < 0.5 * sigma_ref:
-                twist_scale = max(twist_scale * twist_scale, floor)
-        else:
-            twist_scale = 1.0
-        tau_ts = float(getattr(self.cfg.qp, "twist_scale_lpf_tau_s", 0.0) or 0.0)
-        if tau_ts > 1e-9 and dt > 0.0:
-            alpha_ts = min(1.0, dt / tau_ts)
-            self._twist_scale_filt += alpha_ts * (twist_scale - self._twist_scale_filt)
-            twist_scale = float(self._twist_scale_filt)
-        else:
-            self._twist_scale_filt = float(twist_scale)
-        if twist_scale < 1.0:
-            twist_base = twist_base * twist_scale
+        sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
+        # The protected QP target is exactly the outer-loop v_cmd.  Sigma is
+        # still used for SR/null-space conditioning and diagnostics, but it
+        # must not silently scale the Cartesian command before QP1.
+        self._twist_scale_filt = 1.0
 
         locked_hold = self.is_locked_hold
         rail_only = (
@@ -933,8 +1033,8 @@ class JointIkController:
                 applied = qdot_cmd
             self.core.sync_applied(applied)
             self.last_sigma_min = sigma_pre
-            J = self.kin.jacobian(q_prev)
-            sigma = self.kin.singular_values(J)
+            J = J_pre
+            sigma = sigma_values_pre
             return self._make_step(
                 qdot=applied,
                 twist_base=twist_base,
@@ -1045,6 +1145,18 @@ class JointIkController:
             )
         )
 
+        hold_d_star = False
+        if vel_ff is not None:
+            vff = np.asarray(vel_ff, dtype=float).reshape(-1)
+            thr = (
+                float(self.rail_ext_task.cfg.v_ff_thr_m_s)
+                if self.rail_ext_task is not None
+                else 0.01
+            )
+            hold_d_star = (
+                vff.size >= 3 and float(np.linalg.norm(vff[:3])) > thr
+            )
+
         if (
             self.posture_retarget is not None
             and self._rail_mode == RailMode.COUPLED
@@ -1054,6 +1166,7 @@ class JointIkController:
                 float(dt),
                 rail_lo=float(self.limits.q_lower[0]),
                 rail_hi=float(self.limits.q_upper[0]),
+                hold_setpoint=hold_d_star,
             )
             if self.arm_task is not None:
                 self.arm_task.set_reference(float(psi_ref))
@@ -1118,6 +1231,16 @@ class JointIkController:
             stroke_planned = bool(
                 self.posture_retarget is not None and self.posture_retarget.planned
             )
+            homing_split = False
+            if self.posture_retarget is not None and not stroke_planned:
+                homing_split = abs(
+                    float(self.posture_retarget.d_star_m)
+                    - float(self.posture_retarget.cfg.d_attr_m)
+                ) > 0.01
+            elbow_floor = float(self.cfg.qp.branch_barrier.box_activate_rad)
+            if elbow_floor <= 1.0e-9:
+                elbow_floor = float(self.cfg.qp.branch_barrier.activate_rad)
+            block_escape = abs(float(q_prev[4])) < elbow_floor
             v_ext, w_ext = self.rail_ext_task(
                 q_prev,
                 sigma_scale=sig_scale,
@@ -1130,6 +1253,8 @@ class JointIkController:
                 press_stalled=allow_press_escape,
                 tool_y_err_m=tool_y_err_m,
                 stroke_limiters=stroke_planned,
+                apply_d_band=not homing_split,
+                block_escape=block_escape,
             )
             rail_ext_err = self.rail_ext_task.last_err_m
             rail_escape_active = bool(self.rail_ext_task._escape_active)
@@ -1158,6 +1283,8 @@ class JointIkController:
         keep_task_weight = False
         pref_slack_scale = 1.0
 
+        box_h1, box_h2 = self._measure_box_periods(dt)
+        qdot_history_before_solve = np.asarray(self.core.qdot_prev, dtype=float).copy()
         r = self.core.step(
             q_prev,
             twist_base,
@@ -1180,22 +1307,60 @@ class JointIkController:
             zero_secondary_rail=not locked_hold,
             rail_task_vel_m_s=rail_task_vel,
             rail_task_weight=rail_task_weight_eff,
-            box_dt=self._measure_box_dt(dt),
+            box_dt=box_h1,
+            box_h1=box_h1,
+            box_h2=box_h2,
             keep_task_weight=keep_task_weight,
             pref_slack_scale=pref_slack_scale,
+            rail_exec_vel_m_s=rail_exec_for_qp,
+            jacobian=J_pre,
+            sigma=sigma_values_pre,
+            mass_matrix=mass_pre,
+            kinematics_ready=True,
         )
 
         qdot_out = np.asarray(r.qdot, dtype=float).copy()
         failed = bool(self.core.last_failed)
         fallback_reason = "qp_failed" if failed else ""
         if qdot_out.shape != q_prev.shape or not np.all(np.isfinite(qdot_out)):
-            qdot_out = self._clip_qdot_to_box(
-                q_prev, qdot_out, dt, q_state, resync_vec,
-                rail_locked=locked_hold, rail_vel_pin=rail_vel_pin_eff,
-            )
+            qdot_out = np.zeros_like(q_prev)
             failed = True
             fallback_reason = "final_qdot_nonfinite_or_bad_shape"
+        if failed:
+            # One infeasible / max-iter tick must not kill the session.
+            # Brake with the certified previous command, same as 3d095f2.
+            decay = float(getattr(self.cfg.qp, "fail_qdot_decay", 0.85))
+            qdot_out = np.asarray(qdot_history_before_solve, dtype=float) * decay
+            v_lim = np.asarray(self.limits.v_max, dtype=float)
+            qdot_out = np.clip(qdot_out, -v_lim, v_lim)
+            self.q_cmd = q_prev + qdot_out * float(dt)
+            self.core.qdot_prev = qdot_out.copy()
+            self.safety.sync_applied_delta(qdot_out * float(dt), float(dt))
+            return self._make_step(
+                qdot=qdot_out,
+                twist_base=twist_base,
+                sigma_min=r.sigma_min,
+                manip=r.manip,
+                slack_norm=r.slack_norm,
+                n_cbf_active=r.n_cbf_active,
+                follow_err=follow_err,
+                qdot_ff_norm=(
+                    float(np.linalg.norm(qdot_ff)) if qdot_ff is not None else 0.0
+                ),
+                rail_vel_pin=rail_vel_pin_eff,
+                rail_qdot_ff=rail_qdot_ff_val,
+                plan_drives_rail=bool(plan_drives_rail),
+                rail_ext_err_m=rail_ext_err,
+                rail_ext_weight=rail_task_weight,
+                failed=False,
+                fallback_reason="qp1_decay",
+                rail_macro_pref_v=(
+                    float(rail_task_vel) if rail_task_vel is not None else 0.0
+                ),
+                rail_escape_active=rail_escape_active,
+            )
         else:
+            qdot_certified = qdot_out.copy()
             q_candidate = q_prev + qdot_out * dt
             margin = np.asarray(self.limits.position_margin, dtype=float)
             if np.any(q_candidate < self.limits.q_lower + margin - 1.0e-9) or np.any(
@@ -1204,6 +1369,8 @@ class JointIkController:
                 qdot_out = self._clip_qdot_to_box(
                     q_prev, qdot_out, dt, q_state, resync_vec,
                     rail_locked=locked_hold, rail_vel_pin=rail_vel_pin_eff,
+                    box_h1=box_h1, box_h2=box_h2,
+                    rail_lead_exempt=True,
                 )
                 fallback_reason = fallback_reason or "projected_into_velocity_box"
 
@@ -1275,12 +1442,60 @@ class JointIkController:
             qdot_out[0] = float(np.asarray(qdot_ff)[0])
             if rail_only:
                 qdot_out[1:] = 0.0
+
+        final_hard_violation, final_task_lock_violation = (
+            self.core.validate_final_qdot(qdot_out)
+        )
+        self.core.last_final_hard_violation = float(final_hard_violation)
+        self.core.last_final_task_lock_violation = float(final_task_lock_violation)
+        final_tol = max(
+            10.0 * float(getattr(self.cfg.qp, "eps_abs", 1.0e-6)),
+            1.0e-5,
+        )
+        if (
+            not np.isfinite(final_hard_violation)
+            or not np.isfinite(final_task_lock_violation)
+            or final_hard_violation > final_tol
+            or final_task_lock_violation > final_tol
+        ):
+            # A limiter/lead rewrite is not allowed to break QP1.  If this
+            # tick already has a certified QP command, publish that instead
+            # of stopping; stop only when no certified command exists.
+            hard_qp, lock_qp = self.core.validate_final_qdot(qdot_certified)
+            if (
+                np.isfinite(hard_qp)
+                and np.isfinite(lock_qp)
+                and hard_qp <= final_tol
+                and lock_qp <= final_tol
+            ):
+                fallback_reason = (
+                    fallback_reason or "limiter_rewrite_rejected_keep_qp"
+                )
+                qdot_out = qdot_certified.copy()
+                self.q_cmd = q_prev + qdot_out * dt
+                self.core.qdot_prev = qdot_out.copy()
+                self.safety.sync_applied_delta(qdot_out * float(dt), float(dt))
+                self.core.last_final_hard_violation = float(hard_qp)
+                self.core.last_final_task_lock_violation = float(lock_qp)
+            else:
+                failed = True
+                fallback_reason = (
+                    "final_publication_certificate_failed:"
+                    f"hard={final_hard_violation:.3e},"
+                    f"task_lock={final_task_lock_violation:.3e}"
+                )
+                self.q_cmd = q_prev.copy()
+                self.core.qdot_prev = qdot_history_before_solve.copy()
+                self.safety.sync_applied_delta(
+                    qdot_history_before_solve * float(dt), float(dt)
+                )
+                qdot_out = np.zeros_like(q_prev)
         self.last_sigma_min = r.sigma_min
         self.last_arm_rho = float(r.sigma_min)
         # Decompose achieved linear velocity into rail vs arm along primary motion.
-        J_fin = self.kin.jacobian(q_prev)
+        J_fin = J_pre
         qdot_arr = np.asarray(qdot_out, dtype=float)
-        twist_rail = J_fin[:, 0] * float(qdot_arr[0])
+        twist_rail = J_fin[:, 0] * float(rail_exec_for_qp)
         twist_arm = J_fin[:, 1:] @ qdot_arr[1:]
         motion_dir = np.asarray(twist_base[:3], dtype=float)
         if vel_ff is not None:
@@ -1346,6 +1561,27 @@ class JointIkController:
             scan_residual=scan_t - scan_a,
             physical_saturated=physical_saturated,
         )
+        actual_task_twist = twist_rail + twist_arm
+        actual_task_residual = np.asarray(twist_base, dtype=float) - actual_task_twist
+        step.protected_target = np.asarray(twist_base, dtype=float).copy()
+        step.protected_achieved = np.asarray(actual_task_twist, dtype=float).copy()
+        step.protected_residual = np.asarray(actual_task_residual, dtype=float).copy()
+        step.qpik_working_slack = np.asarray(actual_task_residual, dtype=float).copy()
+        step.qpik_equality_residual_max = float(np.max(np.abs(actual_task_residual)))
+        step.qpik_hard_residual_max = float(
+            getattr(self.core, "last_final_hard_violation", 0.0)
+        )
+        step.rail_xy_contribution = np.asarray(twist_rail[:2], dtype=float).copy()
+        step.arm_xy_contribution = np.asarray(twist_arm[:2], dtype=float).copy()
+        step.rail_exec_velocity_m_s = float(rail_exec_for_qp)
+        if rail_exec_vel_m_s is not None:
+            step.rail_measured_velocity_m_s = float(rail_exec_vel_m_s)
+        if rail_exec_smooth_m_s is not None:
+            step.rail_commanded_velocity_m_s = float(rail_exec_smooth_m_s)
+        step.qp_solver_overrun = bool(getattr(self.core, "last_qp_overrun", False))
+        step.qp1_status = str(getattr(self.core, "last_qp1_status", step.qp1_status))
+        step.qp2_status = str(getattr(self.core, "last_qp2_status", step.qp2_status))
+        step.qp2_fallback = bool(getattr(self.core, "last_qp2_fallback", False))
         step.rail_sat = bool(rail_sat_now)
         step.last_limit_saturated = bool(
             self.rail_ext_task is not None
@@ -1979,6 +2215,10 @@ class _TickLogger:
            "qpik_backend", "qpik_solver_status", "qpik_solver_iterations",
            "qpik_solver_solve_ms", "qpik_solver_call_count",
            "qpik_solver_overrun",
+           "qpik_qp1_status", "qpik_qp2_status",
+           "qpik_qp1_solve_ms", "qpik_qp2_solve_ms",
+           "qpik_assembly_ms", "qpik_fallback_ms",
+           "qpik_total_ms", "qpik_qp2_fallback",
            "tick_inner_ms", "tick_send_ms", "tick_log_ms",
            "qpik_alpha", "qpik_beta", "qpik_authority",
            "qpik_equality_residual_max", "qpik_hard_residual_max",
@@ -2008,7 +2248,11 @@ class _TickLogger:
            "qpik_q_cmd_q_meas_norm", "qpik_fallback_level",
            "qpik_fallback_reason", "qpik_solver_fault_latched",
            "qpik_final_sent_qdot_json",
-           "rail_sat", "last_limit_saturated", "keep_task_weight",
+           "rail_sat",
+           "rail_exec_velocity_m_s", "rail_measured_velocity_m_s",
+           "rail_commanded_velocity_m_s", "rail_commanded_acceleration_m_s2",
+           "rail_feedback_age_s", "a_mirror_frac", "j_mirror_frac",
+           "last_limit_saturated", "keep_task_weight",
            "pref_slack_scale", "rail_task_vel",
            "v_escape", "v_reach", "v_ff_rail", "sigma_arm", "sns_scale",
            "qpik_nullspace_norm", "cbf_min_dist", "cbf_pair"]
@@ -2551,6 +2795,14 @@ class _TickLogger:
                f"{step.qp_solver_solve_ms:.6f}",
                int(step.qp_solver_call_count),
                int(bool(step.qp_solver_overrun)),
+               str(getattr(step, "qp1_status", "not_run")),
+               str(getattr(step, "qp2_status", "not_run")),
+               f"{float(getattr(step, 'qp1_solve_ms', 0.0)):.6f}",
+               f"{float(getattr(step, 'qp2_solve_ms', 0.0)):.6f}",
+               f"{float(getattr(step, 'qp_assembly_ms', 0.0)):.6f}",
+               f"{float(getattr(step, 'qp_fallback_ms', 0.0)):.6f}",
+               f"{float(getattr(step, 'qpik_total_ms', 0.0)):.6f}",
+               int(bool(getattr(step, "qp2_fallback", False))),
                *(
                    f"{v:.4f}" if np.isfinite(v) else ""
                    for v in (
@@ -2603,6 +2855,34 @@ class _TickLogger:
                int(bool(step.solver_fault_latched)),
                self._json_compact(step.qdot),
                int(bool(step.rail_sat)),
+               (
+                   f"{float(step.rail_exec_velocity_m_s):.8f}"
+                   if np.isfinite(step.rail_exec_velocity_m_s) else ""
+               ),
+               (
+                   f"{float(step.rail_measured_velocity_m_s):.8f}"
+                   if np.isfinite(step.rail_measured_velocity_m_s) else ""
+               ),
+               (
+                   f"{float(step.rail_commanded_velocity_m_s):.8f}"
+                   if np.isfinite(step.rail_commanded_velocity_m_s) else ""
+               ),
+               (
+                   f"{float(step.rail_commanded_acceleration_m_s2):.8f}"
+                   if np.isfinite(step.rail_commanded_acceleration_m_s2) else ""
+               ),
+               (
+                   f"{float(step.rail_feedback_age_s):.6f}"
+                   if np.isfinite(step.rail_feedback_age_s) else ""
+               ),
+               (
+                   f"{float(step.a_mirror_frac):.6f}"
+                   if np.isfinite(step.a_mirror_frac) else ""
+               ),
+               (
+                   f"{float(step.j_mirror_frac):.6f}"
+                   if np.isfinite(step.j_mirror_frac) else ""
+               ),
                int(bool(step.last_limit_saturated)),
                int(bool(step.keep_task_weight)),
                f"{float(step.pref_slack_scale):.4f}",
@@ -2679,19 +2959,114 @@ def _rail_qdot_m_s(
     return None
 
 
+@dataclass
+class RailExecutionEstimate:
+    position_m: float
+    velocity_m_s: float
+    measured_velocity_m_s: float
+    commanded_velocity_m_s: float
+    commanded_acceleration_m_s2: float
+    sample_mono_s: float
+    age_s: float
+    extrapolation_age_s: float
+    command_mode: str
+
+
+def _rail_execution_velocity_estimate(
+    rail_bridge,
+    *,
+    now_s: float | None = None,
+    freshness_s: float,
+    feedback=None,
+    require_fresh: bool = True,
+) -> RailExecutionEstimate | None:
+    """Bounded one-poll rail execution estimate for strict QPIK.
+
+    Between two FA24 samples the measured velocity is propagated with the
+    worker's latest commanded acceleration, but never farther than one
+    configured rail poll.  After a fresh sample has been seen, stale or
+    non-finite feedback is a control fault.  Before that first sample the
+    caller should pass ``require_fresh=False`` so a cold Modbus poll can
+    finish; the QP then uses its existing command-velocity ZOH.
+    """
+    if rail_bridge is None or not getattr(rail_bridge, "enabled", False):
+        return None
+    now = time.monotonic() if now_s is None else float(now_s)
+    try:
+        if feedback is None:
+            feedback = rail_bridge.execution_feedback
+        position = float(feedback.position_m)
+        sample_t = float(feedback.sample_mono_s)
+        v_meas = float(feedback.v_meas_m_s)
+        v_cmd = float(feedback.v_cmd_m_s)
+        a_cmd = float(feedback.a_cmd_m_s2)
+        feedback_valid = bool(getattr(feedback, "valid", True))
+        mode_obj = feedback.command_mode
+    except Exception as exc:
+        if not require_fresh:
+            return None
+        raise RuntimeError(f"rail execution feedback unavailable: {exc}") from exc
+    values = (now, position, sample_t, v_meas, v_cmd, a_cmd)
+    if not all(np.isfinite(value) for value in values):
+        if not require_fresh:
+            return None
+        raise RuntimeError(
+            "rail execution feedback is non-finite: "
+            f"x={position!r}, t={sample_t!r}, v_meas={v_meas!r}, "
+            f"v_cmd={v_cmd!r}, a_cmd={a_cmd!r}"
+        )
+    if not feedback_valid:
+        if not require_fresh:
+            return None
+        raise RuntimeError("rail execution feedback rejected by encoder gate")
+    age = max(0.0, now - sample_t)
+    max_age = max(float(freshness_s), 0.0)
+    if age > max_age:
+        if not require_fresh:
+            return None
+        raise RuntimeError(
+            f"rail execution feedback stale: age={age:.6f}s > {max_age:.6f}s"
+        )
+    cfg = getattr(rail_bridge, "config", None)
+    poll_hz = max(float(getattr(cfg, "poll_hz", 50.0)), 1.0)
+    extrap_age = min(age, 1.0 / poll_hz)
+    v_est = v_meas + a_cmd * extrap_age
+    v_cap = abs(float(getattr(cfg, "vel_max_m_s", float("inf"))))
+    if np.isfinite(v_cap):
+        v_est = float(np.clip(v_est, -v_cap, v_cap))
+    mode = str(getattr(mode_obj, "value", mode_obj) or "")
+    return RailExecutionEstimate(
+        position_m=position,
+        velocity_m_s=float(v_est),
+        measured_velocity_m_s=v_meas,
+        commanded_velocity_m_s=v_cmd,
+        commanded_acceleration_m_s2=a_cmd,
+        sample_mono_s=sample_t,
+        age_s=age,
+        extrapolation_age_s=extrap_age,
+        command_mode=mode,
+    )
+
+
 def _qdot_meas_8dof(
     q_new: np.ndarray,
     last_q: np.ndarray | None,
     dt_feedback: float | None,
     snap,
     rail_bridge=None,
+    rail_velocity_m_s: float | None = None,
 ) -> np.ndarray | None:
     """8-vector qdot: SDK arm speed + rail encoder/servo. Finite-diff only as fallback."""
     arm = arm_qdot_rad_s_from_snap(snap)
     if arm is not None:
         qdot = np.zeros(8, dtype=float)
         qdot[1:] = arm
-        v_rail = _rail_qdot_m_s(rail_bridge, q_new, last_q, dt_feedback)
+        v_rail = (
+            float(rail_velocity_m_s)
+            if rail_velocity_m_s is not None
+            and np.isfinite(float(rail_velocity_m_s))
+            else _rail_qdot_m_s(rail_bridge, q_new, last_q, dt_feedback)
+        )
         if v_rail is not None:
             qdot[0] = v_rail
         return qdot
@@ -2699,7 +3074,10 @@ def _qdot_meas_8dof(
         return None
     if not (0.001 <= float(dt_feedback) <= 0.050):
         return None
-    return wrap_joint_delta(last_q, q_new) / float(dt_feedback)
+    qdot = wrap_joint_delta(last_q, q_new) / float(dt_feedback)
+    if rail_velocity_m_s is not None and np.isfinite(float(rail_velocity_m_s)):
+        qdot[0] = float(rail_velocity_m_s)
+    return qdot
 
 
 def _rail_m_for_init(rail_bridge, inner: JointIkController) -> float:
@@ -2934,17 +3312,11 @@ def _send_joint_canfd_cmd(robot, q_deg, follow: bool, canfd_proxy=None) -> None:
 
 
 def _guard_qpik_step_before_send(step: JointIkStep, fault_stop) -> tuple[bool, str]:
-    """Gate rail/CANFD publication on hardware-level faults only.
-
-    Slack-QP infeasibility decays qdot and continues; empty velocity boxes
-    collapse to a brake.  This guard never stops the stream for solver
-    status, slack, or a stale ``solver_fault_latched`` leftover.
-    """
-    del fault_stop
-    if bool(step.solver_fault_latched) and str(step.fallback_reason).startswith(
-        ("rail_", "arm_send", "feedback_", "watchdog")
-    ):
-        return False, f"qpik_fault:{step.fallback_level}:{step.fallback_reason}"
+    """Gate rail/CANFD publication.  A failed QP1 has no certified command."""
+    if bool(step.solver_fault_latched) or str(step.fallback_level) == "stop":
+        reason = f"qpik_fault:{step.fallback_level}:{step.fallback_reason}"
+        fault_stop(reason)
+        return False, reason
     return True, ""
 
 
@@ -3059,6 +3431,7 @@ def run_joint_admittance_phases(
             jump_warn_t = 0.0
             phase_stopped = False
             stop_reason = ""
+            rail_feedback_ready = False
             try:
                 for phase_idx, phase in enumerate(phases):
                     if stop_check is not None and stop_check():
@@ -3172,12 +3545,28 @@ def run_joint_admittance_phases(
     
                         feedback_fresh_tick = False
                         snap = async_obs.read()
+                        try:
+                            rail_exec_estimate = _rail_execution_velocity_estimate(
+                                rail_bridge,
+                                now_s=time.monotonic(),
+                                freshness_s=float(inner.cfg.feedback_timeout_s),
+                                require_fresh=rail_feedback_ready,
+                            )
+                        except RuntimeError as exc:
+                            phase_stopped = True
+                            stop_reason = f"rail_feedback_fault:{exc}"
+                            _fault_stop(stop_reason)
+                            break
+                        if rail_exec_estimate is not None:
+                            rail_feedback_ready = True
                         if snap.pose is not None:
                             pose_rm = snap.pose
                         if snap.q_deg is not None:
                             try:
-                                rail_measured_m = _rail_m_for_feedback(
-                                    rail_bridge, inner
+                                rail_measured_m = (
+                                    float(rail_exec_estimate.position_m)
+                                    if rail_exec_estimate is not None
+                                    else _rail_m_for_feedback(rail_bridge, inner)
                                 )
                             except RuntimeError as exc:
                                 phase_stopped = True
@@ -3200,6 +3589,11 @@ def run_joint_admittance_phases(
                                     dt_feedback,
                                     snap,
                                     rail_bridge,
+                                    rail_velocity_m_s=(
+                                        rail_exec_estimate.velocity_m_s
+                                        if rail_exec_estimate is not None
+                                        else None
+                                    ),
                                 )
                                 if qdot_meas is not None:
                                     twist_achieved_base = (
@@ -3340,7 +3734,31 @@ def run_joint_admittance_phases(
                                 if ctrl is not None
                                 else None
                             ),
+                            rail_exec_vel_m_s=(
+                                rail_exec_estimate.velocity_m_s
+                                if rail_exec_estimate is not None
+                                else None
+                            ),
+                            rail_exec_smooth_m_s=(
+                                rail_exec_estimate.commanded_velocity_m_s
+                                if rail_exec_estimate is not None
+                                else None
+                            ),
                         )
+                        if rail_exec_estimate is not None:
+                            step.rail_exec_velocity_m_s = float(
+                                rail_exec_estimate.velocity_m_s
+                            )
+                            step.rail_measured_velocity_m_s = float(
+                                rail_exec_estimate.measured_velocity_m_s
+                            )
+                            step.rail_commanded_velocity_m_s = float(
+                                rail_exec_estimate.commanded_velocity_m_s
+                            )
+                            step.rail_commanded_acceleration_m_s2 = float(
+                                rail_exec_estimate.commanded_acceleration_m_s2
+                            )
+                            step.rail_feedback_age_s = float(rail_exec_estimate.age_s)
                         step.tick_inner_ms = (
                             time.perf_counter() - _t_inner0
                         ) * 1000.0
@@ -3353,6 +3771,36 @@ def run_joint_admittance_phases(
                         if not sendable:
                             phase_stopped = True
                             stop_reason = qpik_stop_reason
+                            if logger is not None:
+                                rail_meas = float("nan")
+                                if (
+                                    rail_bridge is not None
+                                    and rail_bridge.enabled
+                                ):
+                                    try:
+                                        rail_meas = float(rail_bridge.measured_m)
+                                    except Exception:
+                                        rail_meas = float("nan")
+                                step.tick_log_ms = last_log_ms
+                                logger.write(
+                                    now - total_t0,
+                                    phase.label,
+                                    t_ref,
+                                    step,
+                                    q_meas,
+                                    pose_pin,
+                                    f_ext,
+                                    outer=phase.outer,
+                                    rail_meas_m=rail_meas,
+                                    dt_actual_s=dt_wall_actual,
+                                    sensor_age_s=sensor_age_s,
+                                    feedback_age_s=feedback_age_s,
+                                    feedback_fresh_tick=feedback_fresh_tick,
+                                    f_ext_raw=f_ext_raw,
+                                    twist_achieved_base=twist_achieved_base,
+                                    v_tcp_z_actual=v_tcp_z_actual,
+                                    qdot_meas=qdot_meas,
+                                )
                             break
                         outer_err_mm = getattr(phase.outer, "last_err_mm", None)
                         if outer_err_mm is not None:

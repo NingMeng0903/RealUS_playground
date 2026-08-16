@@ -226,15 +226,19 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
     ss = _mapping(c.get("sigma_setbased"), name="inner.qp.sigma_setbased")
     _reject_unknown(
         ss,
-        {"enabled", "activate", "safe", "exit", "gamma", "slack_weight", "grad_eps"},
+        {
+            "enabled", "activate", "safe", "exit", "gamma", "slack_weight",
+            "grad_eps", "grad_period_ticks",
+        },
         name="inner.qp.sigma_setbased",
     )
     bb = _mapping(c.get("branch_barrier"), name="inner.qp.branch_barrier")
     _reject_unknown(
         bb,
         {
-            "enabled", "activate_rad", "eps_rad", "gamma", "slack_weight",
-            "target_eps_rad", "dwell_free_s", "dwell_ramp_s", "dwell_scale_max",
+            "enabled", "activate_rad", "box_activate_rad", "eps_rad", "gamma",
+            "slack_weight", "target_eps_rad", "dwell_free_s", "dwell_ramp_s",
+            "dwell_scale_max",
         },
         name="inner.qp.branch_barrier",
     )
@@ -246,11 +250,26 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         },
         name="inner.qp.joint_comfort",
     )
-    sns_raw = c.get("sns_retry_scales", [1.0, 0.85, 0.7, 0.55, 0.4, 0.25])
+    sns_raw = c.get("sns_retry_scales", [1.0])
     if isinstance(sns_raw, (list, tuple)):
         sns_scales = tuple(float(x) for x in sns_raw)
     else:
-        sns_scales = (1.0, 0.85, 0.7, 0.55, 0.4, 0.25)
+        sns_scales = (1.0,)
+    smooth_raw = c.get("smoothness_weight", 0.15)
+    if isinstance(smooth_raw, (list, tuple, np.ndarray)):
+        smoothness_weight = _finite_array(
+            smooth_raw,
+            name="inner.qp.smoothness_weight",
+            ndim=1,
+        )
+        if smoothness_weight.size != 8:
+            raise ValueError(
+                "inner.qp.smoothness_weight must be scalar or length 8"
+            )
+    else:
+        smoothness_weight = _finite_float(
+            smooth_raw, name="inner.qp.smoothness_weight"
+        )
     return QpConfig(
         task_weight=_arr(c.get("task_weight"), [100.0, 100.0, 100.0, 50.0, 50.0, 50.0]),
         reg=_arr(
@@ -306,7 +325,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             c.get("fail_qdot_decay", 0.85), name="inner.qp.fail_qdot_decay"
         ),
         max_solve_ms=_finite_float(
-            c.get("max_solve_ms", 8.0), name="inner.qp.max_solve_ms"
+            c.get("max_solve_ms", 5.0), name="inner.qp.max_solve_ms"
         ),
         twist_sigma_floor=_finite_float(
             c.get("twist_sigma_floor", 0.02), name="inner.qp.twist_sigma_floor"
@@ -325,11 +344,16 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             grad_eps=_finite_float(
                 ss.get("grad_eps", 1.0e-4), name="sigma_setbased.grad_eps"
             ),
+            grad_period_ticks=max(1, int(ss.get("grad_period_ticks", 10))),
         ),
         branch_barrier=BranchBarrierConfig(
             enabled=bool(bb.get("enabled", True)),
             activate_rad=_finite_float(
                 bb.get("activate_rad", 0.52), name="branch_barrier.activate_rad"
+            ),
+            box_activate_rad=_finite_float(
+                bb.get("box_activate_rad", 0.87),
+                name="branch_barrier.box_activate_rad",
             ),
             eps_rad=_finite_float(
                 bb.get("eps_rad", 0.35), name="branch_barrier.eps_rad"
@@ -373,9 +397,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             ),
         ),
         sns_retry_scales=sns_scales,
-        smoothness_weight=_finite_float(
-            c.get("smoothness_weight", 0.15), name="inner.qp.smoothness_weight"
-        ),
+        smoothness_weight=smoothness_weight,
         twist_scale_lpf_tau_s=_finite_float(
             c.get("twist_scale_lpf_tau_s", 0.08),
             name="inner.qp.twist_scale_lpf_tau_s",
@@ -418,7 +440,7 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
     q_nominal_deg = n.get("q_nominal_deg")
     m = _mapping(n.get("manipulability"), name="inner.nullspace.manipulability")
     _reject_unknown(
-        m, {"k_mu", "eps_rad", "sigma_fade_ref"},
+        m, {"k_mu", "eps_rad", "sigma_fade_ref", "grad_period_ticks"},
         name="inner.nullspace.manipulability",
     )
     nullspace = NullspaceTaskConfig(
@@ -444,6 +466,7 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
         sigma_fade_ref=_finite_float(
             m.get("sigma_fade_ref", 0.12), name="manipulability.sigma_fade_ref"
         ),
+        grad_period_ticks=max(1, int(m.get("grad_period_ticks", 10))),
     )
     return nullspace, manipulability
 
@@ -488,6 +511,7 @@ def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
             "enabled", "n_y", "n_d", "n_psi", "w_sigma", "w_wrist",
             "margin_floor_deg", "z_replan_m", "psi_rate_deg_s", "rail_margin_m",
             "wrist_min_deg", "d_center_rate_m_s", "d_band_m",
+            "d_slew_psi_err_deg", "psi_cmd_lead_deg",
             "psi_replan_period_s", "psi_search_half_span_deg", "psi_search_n",
             "psi_wrist_ok_deg", "psi_envelope_deg",
             "psi_attr_deg", "d_attr_m", "psi_return_dwell_s",
@@ -529,6 +553,18 @@ def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
         ),
         d_band_m=_finite_float(
             p.get("d_band_m", 0.08), name="psi_retarget.d_band_m"
+        ),
+        d_slew_psi_err_rad=math.radians(
+            _finite_float(
+                p.get("d_slew_psi_err_deg", 40.0),
+                name="psi_retarget.d_slew_psi_err_deg",
+            )
+        ),
+        psi_cmd_lead_rad=math.radians(
+            _finite_float(
+                p.get("psi_cmd_lead_deg", 18.0),
+                name="psi_retarget.psi_cmd_lead_deg",
+            )
         ),
         psi_attr_rad=math.radians(
             _finite_float(p.get("psi_attr_deg", 70.0), name="psi_retarget.psi_attr_deg")

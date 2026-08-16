@@ -58,7 +58,7 @@ def test_vertical_press_lift_reconfigures_without_rail_hunting() -> None:
     press, lift = phases
     for step in (*press, *lift):
         assert step.qp_solver_call_count >= 1
-        assert step.fallback_level in {"none", "decay"}
+        assert step.fallback_level == "none"
         assert not step.solver_fault_latched
 
     press_rail = np.array([step.qdot[0] for step in press])

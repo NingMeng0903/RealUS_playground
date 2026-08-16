@@ -37,6 +37,40 @@ def test_position_damper_uses_measured_state_but_lead_uses_command_state() -> No
     assert hi[3] == 0.0
 
 
+def test_rail_lead_exempt_keeps_coupled_velocity_box_open() -> None:
+    limits = SafetyLimits(
+        q_lower=np.full(8, 0.0),
+        q_upper=np.full(8, 0.8),
+        v_max=np.full(8, 0.30),
+        a_max=None,
+        position_margin=np.zeros(8),
+    )
+    box = VelocityBoxConstraints(limits, damper_band_rad=0.0)
+    q_meas = np.zeros(8)
+    q_meas[0] = 0.686
+    q_cmd = np.zeros(8)
+    q_cmd[0] = 0.666
+    resync = np.r_[0.02, np.full(7, 0.10)]
+    lo, hi = box.bounds(
+        q_meas,
+        dt=0.005,
+        q_meas=q_meas,
+        q_cmd=q_cmd,
+        resync_err=resync,
+    )
+    assert lo[0] >= -1.0e-12
+    lo_open, hi_open = box.bounds(
+        q_meas,
+        dt=0.005,
+        q_meas=q_meas,
+        q_cmd=q_cmd,
+        resync_err=resync,
+        rail_lead_exempt=True,
+    )
+    assert lo_open[0] < -0.05
+    assert hi_open[0] > 0.05
+
+
 def test_legacy_call_without_q_cmd_keeps_previous_semantics() -> None:
     limits = SafetyLimits(
         q_lower=np.full(2, -1.0),

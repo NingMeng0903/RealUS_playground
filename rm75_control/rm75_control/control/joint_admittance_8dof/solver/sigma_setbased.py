@@ -27,6 +27,9 @@ class SigmaSetBasedConfig:
     gamma: float = 8.0
     slack_weight: float = 200.0
     grad_eps: float = 1.0e-4
+    # The inequality is soft and its finite-difference gradient is expensive.
+    # Sigma itself is still evaluated every tick; only the gradient is held.
+    grad_period_ticks: int = 10
 
 
 @dataclass
@@ -48,12 +51,14 @@ class SigmaSetBasedTracker:
         self.last_sigma: float = float("nan")
         self.last_grad: np.ndarray | None = None
         self.last_slack: float = 0.0
+        self._grad_tick: int = 0
 
     def reset(self) -> None:
         self.active = False
         self.last_sigma = float("nan")
         self.last_grad = None
         self.last_slack = 0.0
+        self._grad_tick = 0
 
     def update_hysteresis(self, sigma: float) -> bool:
         cfg = self.cfg
@@ -82,7 +87,9 @@ class SigmaSetBasedTracker:
         J0 = kin.jacobian(q)
         sig0 = float(np.linalg.svd(J0[:, 1:], compute_uv=False).min())
         g = np.zeros(nv, dtype=float)
-        for i in range(nv):
+        # A rigid rail translation cannot change the arm-only singular values.
+        # Skipping index zero also avoids one redundant Pinocchio evaluation.
+        for i in range(1, nv):
             dq = np.zeros(nv, dtype=float)
             dq[i] = eps
             Jp = kin.jacobian(q + dq)
@@ -103,9 +110,35 @@ class SigmaSetBasedTracker:
         )
         if not self.cfg.enabled:
             return empty
-        sigma, grad = self.arm_sigma_and_grad(kin, q_rad)
+        q = np.asarray(q_rad, dtype=float)
+        J0 = kin.jacobian(q)
+        sigma = float(np.linalg.svd(J0[:, 1:], compute_uv=False).min())
+        was_active = bool(self.active)
         if not self.update_hysteresis(sigma):
             return empty
+        period = max(1, int(getattr(self.cfg, "grad_period_ticks", 1)))
+        self._grad_tick += 1
+        refresh = (
+            not was_active
+            or self.last_grad is None
+            or self._grad_tick >= period
+        )
+        if refresh:
+            # Reuse the already computed nominal sigma and only evaluate the
+            # perturbed arm columns here.
+            nv = int(q.size)
+            eps = float(self.cfg.grad_eps)
+            grad = np.zeros(nv, dtype=float)
+            for i in range(1, nv):
+                dq = np.zeros(nv, dtype=float)
+                dq[i] = eps
+                Jp = kin.jacobian(q + dq)
+                sig_p = float(np.linalg.svd(Jp[:, 1:], compute_uv=False).min())
+                grad[i] = (sig_p - sigma) / eps
+            self.last_grad = grad.copy()
+            self._grad_tick = 0
+        else:
+            grad = np.asarray(self.last_grad, dtype=float).copy()
         # ∇σᵀ q̇ + s ≥ −γ(σ − σ_safe)  ⇔  ∇σᵀ q̇ + s ≥ γ(σ_safe − σ)
         rhs = float(self.cfg.gamma) * (float(self.cfg.safe) - float(sigma))
         return PrefInequalityRows(

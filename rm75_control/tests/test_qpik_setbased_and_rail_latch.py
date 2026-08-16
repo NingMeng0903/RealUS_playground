@@ -52,6 +52,46 @@ def test_sigma_setbased_hysteresis() -> None:
     assert tr.update_hysteresis(0.15) is False
 
 
+def test_branch_barrier_tightens_box_against_zero() -> None:
+    bb = BranchBarrierBuilder(
+        BranchBarrierConfig(activate_rad=0.52, box_activate_rad=0.87, eps_rad=0.35)
+    )
+    q_star = np.array([0.0, -1.58, -1.63, 1.15, 1.82, 1.65, 1.05, 1.46])
+    q = q_star.copy()
+    q[4] = np.deg2rad(22.0)
+    lo = -np.ones(8)
+    hi = np.ones(8)
+    lo2, hi2 = bb.tighten_box(lo, hi, q, q_star, np.ones(8))
+    assert lo2[4] > -0.2
+    assert hi2[4] == pytest.approx(1.0)
+
+
+def test_branch_barrier_start_j1_still_allows_fold() -> None:
+    bb = BranchBarrierBuilder(
+        BranchBarrierConfig(activate_rad=0.52, box_activate_rad=0.87, eps_rad=0.35)
+    )
+    q_star = np.array([0.0, -1.58, -1.63, 1.15, 1.82, 1.65, 1.05, 1.46])
+    q = np.array([0.31, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0])
+    lo = -np.ones(8)
+    hi = np.ones(8)
+    lo2, hi2 = bb.tighten_box(lo, hi, q, q_star, np.ones(8))
+    assert hi2[1] <= 1.0e-12
+    assert lo2[1] < -0.5
+
+
+def test_branch_barrier_wrong_side_stays_active() -> None:
+    bb = BranchBarrierBuilder(BranchBarrierConfig(activate_rad=0.52, eps_rad=0.35))
+    q_star = np.array([0.0, -1.58, -1.63, 1.15, 1.82, 1.65, 1.05, 1.46])
+    q = q_star.copy()
+    q[4] = np.deg2rad(-45.0)
+    rows = bb.build_rows(q, q_star)
+    assert rows.active
+    j4_rows = [k for k in range(rows.jacobian.shape[0]) if abs(rows.jacobian[k, 4]) > 0.5]
+    assert j4_rows
+    assert rows.jacobian[j4_rows[0], 4] > 0.0
+    assert rows.lower[j4_rows[0]] > 0.0
+
+
 def test_branch_barrier_blocks_zero_crossing() -> None:
     bb = BranchBarrierBuilder(
         BranchBarrierConfig(activate_rad=0.5, eps_rad=0.05, gamma=6.0)
@@ -108,6 +148,37 @@ def test_sigma_fade_spares_j4_and_j6() -> None:
     assert singular[4] == pytest.approx(healthy[4])
     assert singular[6] == pytest.approx(healthy[6])
     assert abs(singular[2]) < abs(healthy[2]) - 1e-9
+
+
+def test_near_straight_elbow_blocks_rail_escape() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_esc=1.0,
+            k_ext=0.0,
+            sigma_escape_enter=0.9,
+            sigma_escape_exit=0.95,
+            escape_enter_dwell_s=0.0,
+            v_lpf_tau_s=0.0,
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    q[4] = np.deg2rad(22.0)
+    task.capture_reference(q)
+    v, _ = task(
+        q,
+        sigma_scale=0.2,
+        sigma_grad_rail=2.0,
+        vel_ff=None,
+        dt_s=0.005,
+        block_escape=True,
+    )
+    assert not task._escape_active
+    assert abs(task.last_v_escape) < 1e-12
+    assert abs(v) < 1e-6
 
 
 def test_rail_escape_latches_sign_against_grad_flip() -> None:

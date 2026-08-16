@@ -1,4 +1,4 @@
-"""The slack-QP velocity is the Cartesian command sent; QP fail never latches stop."""
+"""The slack-QP velocity is the Cartesian command sent; QP1 fail latches stop."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def test_successful_final_send_is_exact_qp_velocity() -> None:
     )
 
 
-def test_backend_failure_decays_qdot_and_stays_sendable() -> None:
+def test_backend_failure_decays_and_stays_sendable() -> None:
     controller = _controller()
     previous = np.full(8, 0.05)
     controller.core.sync_applied(previous)
@@ -68,18 +68,20 @@ def test_backend_failure_decays_qdot_and_stays_sendable() -> None:
     finally:
         backend.solve = real_solve  # type: ignore[method-assign]
 
+    decay = float(controller.cfg.qp.fail_qdot_decay)
     assert step.qp_solver_call_count == 1
-    assert step.fallback_level == "decay"
-    assert step.qpik_authority == 1.0
+    assert step.fallback_level == "none"
     assert not step.solver_fault_latched
+    assert step.fallback_reason == "qp1_decay"
+    np.testing.assert_allclose(step.qdot, decay * previous, atol=1e-12, rtol=0.0)
+    np.testing.assert_allclose(
+        step.q_send, q_before + controller.cfg.dt * step.qdot, atol=1e-12, rtol=0.0
+    )
     events: list[str] = []
     sendable, reason = _guard_qpik_step_before_send(step, events.append)
     assert sendable
     assert reason == ""
     assert events == []
-    np.testing.assert_allclose(
-        step.q_send, q_before + controller.cfg.dt * step.qdot, atol=1e-12
-    )
 
 
 def test_empty_velocity_box_does_not_latch_stop() -> None:
@@ -93,7 +95,7 @@ def test_empty_velocity_box_does_not_latch_stop() -> None:
     assert events == []
 
 
-def test_numerical_fallback_remains_sendable() -> None:
+def test_numerical_fallback_decays_without_latching_stop() -> None:
     controller = _controller()
     backend = controller.core.backend
     real_solve = backend.solve
@@ -107,8 +109,9 @@ def test_numerical_fallback_remains_sendable() -> None:
     sendable, reason = _guard_qpik_step_before_send(step, events.append)
     assert sendable
     assert reason == ""
-    assert step.fallback_level == "decay"
-    assert step.qpik_authority == 1.0
+    assert step.fallback_reason == "qp1_decay"
+    assert step.fallback_level == "none"
+    assert not step.solver_fault_latched
     assert events == []
 
 
@@ -306,8 +309,13 @@ def test_zero_v_cmd_does_not_invent_rail_task() -> None:
     q = Q_SAFE.copy()
     controller.reset(q)
     controller.centering_task.set_q_target(q)
+    d_now = float(controller.kin.fk_placement(q).translation[1]) - float(q[0])
+    if controller.posture_retarget is not None:
+        controller.posture_retarget._d_star = d_now
+        controller.posture_retarget.d_star_m = d_now
+        controller.posture_retarget._d_center_target = d_now
+        controller.posture_retarget.cfg.d_attr_m = d_now
     if controller.rail_ext_task is not None:
-        d_now = float(controller.kin.fk_placement(q).translation[1]) - float(q[0])
         controller.rail_ext_task.set_d_pref(d_now)
     step = controller.update(np.zeros(6), q_meas=q)
     assert not np.isfinite(step.rail_task_vel) or abs(float(step.rail_task_vel)) < 1e-9

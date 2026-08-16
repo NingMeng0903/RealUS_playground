@@ -27,6 +27,9 @@ import pinocchio as pin
 
 from rm75_control.control.joint_admittance_8dof.ik_types import project_onto_task_nullspace
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
+from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
+    fold_psi_to_positive,
+)
 
 _SHOULDER_JOINT = "joint_2"
 _ELBOW_JOINT = "joint_4"
@@ -191,8 +194,10 @@ class ArmAngleTask:
         (by config or an explicit set_reference from the application)."""
         q = np.asarray(q_rad, dtype=float)
         if self.psi_ref is None:
-            self.psi_ref = self.arm_angle(q)
-        self._psi_ref_unwrapped = float(self.psi_ref)
+            self.psi_ref = fold_psi_to_positive(self.arm_angle(q))
+        # Same SEW plane as −π; keep the tracker on the positive half so a
+        # later set_reference(70°) slews 180°→70°, not −180°→−290°.
+        self._psi_ref_unwrapped = fold_psi_to_positive(float(self.psi_ref))
 
     def set_reference(self, psi_ref_rad: float) -> None:
         psi_ref_rad = float(psi_ref_rad)

@@ -31,6 +31,7 @@ from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
     PsiRetargetConfig,
     clamp_psi_to_envelope,
     d_from_q,
+    fold_psi_to_positive,
     nearest_planar_psi,
     psi_err_avoiding_zero,
 )
@@ -174,9 +175,29 @@ def test_unplanned_step_holds_taught_plane_not_q_nominal() -> None:
     d_yaml = d_from_q(kin, q_star)
     assert abs(last_d - d_yaml) > 1.0e-3
     assert last_d == pytest.approx(d_live, abs=0.08)
+    assert abs(last_d - float(rt.cfg.d_attr_m)) > 0.05
     assert rt.psi_star_rad == pytest.approx(float(rt.cfg.psi_attr_rad), abs=1e-6)
     assert min(abs(last_psi - np.pi), abs(last_psi + np.pi)) < np.deg2rad(2.0)
+    assert last_psi > 0.0
     assert not rt.planned
+
+
+def test_hold_setpoint_freezes_d_star() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(kin, PsiRetargetConfig(enabled=True))
+    q = np.array(
+        [0.50, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+    d_live = d_from_q(kin, q)
+    rt._d_star = d_live
+    rt.d_star_m = d_live
+    rt._d_center_target = float(rt.cfg.d_attr_m)
+    for _ in range(20):
+        _psi, d = rt.step(
+            q, 0.02, rail_lo=0.005, rail_hi=0.78, hold_setpoint=True
+        )
+    assert d == pytest.approx(d_live, abs=1e-9)
 
 
 def test_unplanned_infeasible_rail_keeps_split_and_envelope() -> None:
@@ -186,12 +207,12 @@ def test_unplanned_infeasible_rail_keeps_split_and_envelope() -> None:
         [0.40, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
     )
     rt.reset(q)
-    d0 = float(rt.d_star_m)
     psi0 = float(rt.psi_star_rad)
     q0 = float(q[0])
+    last_d = float("nan")
     for _ in range(12):
-        _psi, d = rt.step(q, 0.005, rail_lo=q0 - 0.005, rail_hi=q0 + 0.005)
-    assert d == pytest.approx(d0, abs=1e-9)
+        _psi, last_d = rt.step(q, 0.005, rail_lo=q0 - 0.005, rail_hi=q0 + 0.005)
+    assert last_d == pytest.approx(d_from_q(kin, q), abs=1e-9)
     assert rt.psi_star_rad == pytest.approx(psi0, abs=1e-9)
 
 
@@ -213,6 +234,126 @@ def test_search_psi_at_collapsed_wrist_opens_j6() -> None:
     assert rt.last_search_j6_rad >= np.deg2rad(45.0)
 
 
+def test_reset_folds_negative_pi_and_keeps_attr() -> None:
+    kin = RobotKinematics()
+    cfg = PsiRetargetConfig(enabled=True, psi_rate_rad_s=np.deg2rad(25.0))
+    rt = PostureRetarget(kin, cfg)
+    q = np.array(
+        [0.396, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+    assert rt._psi_cmd == pytest.approx(fold_psi_to_positive(psi_from_q(q)), abs=1e-9)
+    assert rt._psi_cmd >= 0.0
+    assert rt.psi_star_rad == pytest.approx(float(cfg.psi_attr_rad), abs=1e-9)
+    assert rt.d_star_m == pytest.approx(d_from_q(kin, q), abs=1e-6)
+    rt._psi_cmd = -np.pi
+    dt = 0.02
+    prev = float("nan")
+    for _ in range(50):
+        psi, _d = rt.step(q, dt, rail_lo=0.005, rail_hi=0.78)
+        assert psi >= -1.0e-9
+        assert psi <= np.pi + 1.0e-9
+        if np.isfinite(prev):
+            assert psi <= prev + 1.0e-9
+        prev = psi
+    assert rt.psi_star_rad == pytest.approx(float(cfg.psi_attr_rad), abs=1e-9)
+    assert prev < np.deg2rad(175.0)
+
+
+def test_design_pose_releases_rail_split() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(kin, PsiRetargetConfig(enabled=True))
+    q = np.deg2rad([0.0, -90.4, -93.7, 66.1, 104.4, 94.5, 60.3, 83.6])
+    q[0] = 0.40
+    rt.reset(q)
+    assert rt.d_star_m == pytest.approx(d_from_q(kin, q), abs=1e-6)
+    _psi, d = rt.step(q, 0.005, rail_lo=0.005, rail_hi=0.78)
+    assert d == pytest.approx(float(rt.cfg.d_attr_m), abs=0.08)
+
+
+def test_unplanned_d_star_waits_for_psi_fold() -> None:
+    kin = RobotKinematics()
+    cfg = PsiRetargetConfig(enabled=True, d_center_rate_m_s=0.02)
+    rt = PostureRetarget(kin, cfg)
+    q = np.array(
+        [0.31, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+    d0 = float(rt.d_star_m)
+    for _ in range(20):
+        _psi, d = rt.step(q, 0.02, rail_lo=0.005, rail_hi=0.78)
+        assert d == pytest.approx(d0, abs=1e-9)
+
+
+def test_unplanned_d_star_slews_without_step() -> None:
+    kin = RobotKinematics()
+    cfg = PsiRetargetConfig(enabled=True, d_center_rate_m_s=0.02)
+    rt = PostureRetarget(kin, cfg)
+    q = np.array(
+        [0.31, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+    rt._psi_cmd = float(cfg.psi_attr_rad)
+    d0 = float(rt.d_star_m)
+    dt = 0.02
+    prev = d0
+    for _ in range(20):
+        _psi, d = rt.step(q, dt, rail_lo=0.005, rail_hi=0.78)
+        assert abs(d - prev) <= cfg.d_center_rate_m_s * dt + 1e-9
+        prev = d
+    assert abs(prev - d0) > 1e-4
+    assert abs(prev - float(cfg.d_attr_m)) < abs(d0 - float(cfg.d_attr_m))
+
+
+def test_psi_cmd_does_not_lead_live() -> None:
+    kin = RobotKinematics()
+    cfg = PsiRetargetConfig(
+        enabled=True,
+        psi_rate_rad_s=np.deg2rad(25.0),
+        psi_cmd_lead_rad=np.deg2rad(18.0),
+    )
+    rt = PostureRetarget(kin, cfg)
+    q = np.array(
+        [0.31, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+    live = fold_psi_to_positive(psi_from_q(q))
+    dt = 0.02
+    for _ in range(80):
+        psi, _d = rt.step(q, dt, rail_lo=0.005, rail_hi=0.78)
+        assert abs(psi_err_avoiding_zero(live, psi)) <= cfg.psi_cmd_lead_rad + 1e-9
+    assert abs(psi_err_avoiding_zero(live, float(rt._psi_cmd))) == pytest.approx(
+        cfg.psi_cmd_lead_rad, abs=np.deg2rad(1.0)
+    )
+
+
+def test_stretched_start_does_not_search_off_attr() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(kin, PsiRetargetConfig(enabled=True, psi_replan_period_s=0.1))
+    q = np.array(
+        [0.396, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+    for _ in range(20):
+        rt.step(q, 0.02, rail_lo=0.005, rail_hi=0.78)
+    assert rt.last_psi_search_count == 0
+    assert rt.psi_star_rad == pytest.approx(float(rt.cfg.psi_attr_rad), abs=1e-9)
+
+
+def test_arm_angle_reset_folds_negative_pi_reference() -> None:
+    kin = RobotKinematics()
+    arm = ArmAngleTask(kin, ArmAngleTaskConfig(enabled=True, k_psi=1.5))
+    q = np.array(
+        [0.396, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    arm.psi_ref = -np.pi
+    arm.reset(q)
+    assert arm._psi_ref_unwrapped == pytest.approx(np.pi, abs=1e-9)
+    arm.set_reference(np.deg2rad(70.0))
+    assert arm._psi_ref_unwrapped == pytest.approx(np.deg2rad(70.0), abs=1e-9)
+    assert float(arm._psi_ref_unwrapped) > 0.0
+
+
 def test_psi_step_is_rate_limited_and_stays_in_envelope() -> None:
     kin = RobotKinematics()
     cfg = PsiRetargetConfig(enabled=True, psi_rate_rad_s=np.deg2rad(25.0))
@@ -232,6 +373,22 @@ def test_psi_step_is_rate_limited_and_stays_in_envelope() -> None:
         prev = psi
     assert 0.0 < float(rt._psi_star) < np.pi
     assert not (prev > 0.0 and float(rt._psi_star) < 0.0)
+
+
+def test_straight_elbow_does_not_search_psi() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(
+        kin,
+        PsiRetargetConfig(enabled=True, psi_replan_period_s=0.0, psi_wrist_ok_rad=2.0),
+    )
+    q = np.array(
+        [0.16, -2.1, -1.55, 1.2, np.deg2rad(8.0), 0.9, np.deg2rad(15.0), 1.3]
+    )
+    rt.reset(q)
+    for _ in range(8):
+        rt.step(q, 0.05, rail_lo=0.005, rail_hi=0.78)
+    assert rt.last_psi_search_count == 0
+    assert rt.psi_star_rad == pytest.approx(float(rt.cfg.psi_attr_rad), abs=1e-9)
 
 
 def test_psi_search_is_throttled() -> None:

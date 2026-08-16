@@ -590,6 +590,8 @@ class RailExtensionTask:
         press_stalled: bool = False,
         tool_y_err_m: float = 0.0,
         stroke_limiters: bool = True,
+        apply_d_band: bool | None = None,
+        block_escape: bool = False,
     ) -> tuple[float, float]:
         if self.d_pref_m is None:
             self.capture_reference(q)
@@ -602,7 +604,8 @@ class RailExtensionTask:
         rail_ff = y_des - d_star
         err_raw = rail_ff - y
         band = max(float(getattr(self.cfg, "d_band_m", 0.0)), 0.0)
-        if stroke_limiters:
+        use_band = (not stroke_limiters) if apply_d_band is None else bool(apply_d_band)
+        if not use_band:
             band = 0.0
         err = float(err_raw - np.clip(err_raw, -band, band))
         self.last_rail_ff_m = float(rail_ff)
@@ -622,18 +625,24 @@ class RailExtensionTask:
         self.last_d_star_reg_scale = 1.0 + drift * max(
             float(self.cfg.d_star_reg_mult) - 1.0, 0.0
         )
-        self.last_k_ff_scale = 1.0 - drift
-        v_ff = (
+        v_ff_full = (
             rail_vel_ff_from_reference(
-                vel_ff, self.kin, q, k_ff=self.cfg.k_ff * self.last_k_ff_scale
+                vel_ff, self.kin, q, k_ff=self.cfg.k_ff
             )
             if vel_ff is not None
             else 0.0
         )
         # Do not attenuate FF by σ: healthy scan must keep rail tracking any
         # MotionReference (dbb/4d). Soft σ bias is a separate term below.
+        # A live outer vel_ff also owns the rail: d* drift must not fade it.
         thr = float(self.cfg.v_ff_thr_m_s)
-        ff_owns = abs(v_ff) > thr
+        ff_owns = abs(v_ff_full) > thr
+        if ff_owns:
+            self.last_k_ff_scale = 1.0
+            v_ff = float(v_ff_full)
+        else:
+            self.last_k_ff_scale = 1.0 - drift
+            v_ff = float(v_ff_full) * self.last_k_ff_scale
         # Trajectory owns rail direction: clear sticky latch (not merely mute v).
         grad_latched = self._escape_latched(
             sigma_scale=sig,
@@ -646,7 +655,6 @@ class RailExtensionTask:
         )
         cap = max(float(self.cfg.v_reach_cap_m_s), 0.0)
         if cap > 0.0:
-            cap = cap + drift * 0.06
             v_reach = float(np.clip(v_reach, -cap, cap))
         # Demoted: healthy σ (raw ≥ 0.08) never lets escape drive the rail
         # unless a press stall still needs a lateral Y offset.
@@ -666,7 +674,12 @@ class RailExtensionTask:
         )
         # Inside the fade band escape only fights the wall — unless Z is
         # still demanding and the open side still has travel.
-        if in_band and not allow_press_escape:
+        # A near-straight elbow must not latch minus-escape: that retracted
+        # the rail and forced J4 through 0 on 035411.
+        if block_escape and not allow_press_escape:
+            self._clear_escape_latch()
+            v_escape = 0.0
+        elif in_band and not allow_press_escape:
             self._clear_escape_latch()
             v_escape = 0.0
         elif healthy_sigma and not allow_press_escape:
@@ -768,6 +781,8 @@ class RailExtensionTask:
         press_stalled: bool = False,
         tool_y_err_m: float = 0.0,
         stroke_limiters: bool = True,
+        apply_d_band: bool | None = None,
+        block_escape: bool = False,
     ) -> tuple[float, float]:
         """Return ``(v_rail_des, w_ext)`` for the QP."""
         if not self.cfg.enabled:
@@ -801,4 +816,6 @@ class RailExtensionTask:
             press_stalled=press_stalled,
             tool_y_err_m=tool_y_err_m,
             stroke_limiters=stroke_limiters,
+            apply_d_band=apply_d_band,
+            block_escape=block_escape,
         )

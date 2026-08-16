@@ -22,6 +22,7 @@ Task orchestration (window C):
 from __future__ import annotations
 
 import argparse
+import importlib
 import math
 import os
 import signal
@@ -53,12 +54,7 @@ from rm75_control.hw.lw100.rail_calibration import CalValidationError
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.reference import HoldReference
 from rm75_control.control.joint_admittance_8dof.gamepad_vcmd_program import (
-    build_gamepad_vcmd_program,
     close_built_pad,
-)
-from rm75_control.control.joint_admittance_8dof.sin_tool_y_program import (
-    build_sin_tool_y_program,
-    execute_sin_tool_y_program,
 )
 from rm75_control.core.session import RobotSession
 from rm75_control.force.compensation.tool_pose import maybe_sync_kin_tcp_from_config
@@ -67,6 +63,37 @@ from rm75_control.force.compensation.tool_pose import maybe_sync_kin_tcp_from_co
 def load_yaml(path: Path) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
+
+
+def _reload_task_parsers():
+    """Re-import yaml parsers so a long-lived window A picks up new keys.
+
+    Each START already re-reads the yaml file.  Without this, an old
+    ``_reject_unknown`` still running from daemon start refuses the task
+    (``box_activate_rad`` on tasks #4–#6).
+    """
+    from rm75_control.control.joint_admittance_8dof.solver import (
+        branch_barrier,
+        joint_comfort,
+        sigma_setbased,
+    )
+    from rm75_control.control.joint_admittance_8dof.tasks import (
+        psi_retarget,
+        rail_extension,
+    )
+    from rm75_control.control.joint_admittance_8dof import config as ik_config
+    from rm75_control.control.joint_admittance_8dof import gamepad_vcmd_program as gvp
+    from rm75_control.control.joint_admittance_8dof import sin_tool_y_program as syp
+
+    importlib.reload(branch_barrier)
+    importlib.reload(joint_comfort)
+    importlib.reload(sigma_setbased)
+    importlib.reload(psi_retarget)
+    importlib.reload(rail_extension)
+    importlib.reload(ik_config)
+    importlib.reload(gvp)
+    importlib.reload(syp)
+    return gvp, syp
 
 
 def _run_controller_service(
@@ -204,14 +231,14 @@ def _run_controller_service(
                 )
 
         try:
-            # Window A is long-lived while force-controller tuning happens in
-            # YAML. Re-read it for every submitted task so Window C cannot
-            # silently run a controller snapshot left over from daemon start.
+            # Window A is long-lived.  Re-read yaml *and* reload the parsers
+            # so a new key (e.g. box_activate_rad) cannot refuse START.
+            gvp, syp = _reload_task_parsers()
             task_raw = load_yaml(config_path) if config_path is not None else raw
             if str(getattr(params, "task_kind", "sin_tool_y") or "sin_tool_y") == "gamepad_vcmd":
-                built = build_gamepad_vcmd_program(params, raw=task_raw)
+                built = gvp.build_gamepad_vcmd_program(params, raw=task_raw)
             else:
-                built = build_sin_tool_y_program(params, raw=task_raw)
+                built = syp.build_sin_tool_y_program(params, raw=task_raw)
             rail_m_fn.set_active(built.inner)
             if relay is not None:
                 # Prefer task kin (synced gripper TCP) for SHM pose publish.
@@ -222,7 +249,7 @@ def _run_controller_service(
                     rail_bridge.enable_log_csv(str(rail_csv))
                 # Drop inherited SHM target / standstill latch from prior task.
                 rail_bridge.begin_tracking_session()
-            result = execute_sin_tool_y_program(
+            result = syp.execute_sin_tool_y_program(
                 sess,
                 bus,
                 params,
@@ -264,6 +291,12 @@ def _run_controller_service(
         except Exception as exc:
             hub.set_error(cmd_seq, str(exc))
             print(f"rm75 controller: task error: {exc}", flush=True)
+            if "unknown" in str(exc) and "configuration keys" in str(exc):
+                print(
+                    "rm75 controller: window A is still using the parser from "
+                    "daemon start. Restart run_joint_admittance.py, then resubmit.",
+                    flush=True,
+                )
         finally:
             close_built_pad(locals().get("built"))
             hub.ack(cmd_seq)
