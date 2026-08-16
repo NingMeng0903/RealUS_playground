@@ -11,6 +11,7 @@ from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfi
 from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
     PostureRetarget,
     PsiRetargetConfig,
+    d_from_q,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
     RailExtensionConfig,
@@ -115,6 +116,26 @@ def test_psi_hold_does_not_climb_d_star() -> None:
     for _ in range(20):
         _psi, d = rt.step(q, 0.005, rail_lo=0.05, rail_hi=0.75)
     assert d == pytest.approx(d0)
+
+
+def test_unplanned_step_freezes_d_star_from_q_nominal() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(kin, PsiRetargetConfig(enabled=True))
+    q = np.array([0.375, 0.194, -0.503, -0.069, 1.979, -0.776, 0.547, -4.370])
+    q_star = np.array([0.0, 0.0, -0.785, 0.0, 1.571, 0.698, 0.785, 0.0])
+    rt.reset(q)
+    d_live = d_from_q(kin, q)
+    d_star = d_from_q(kin, q_star)
+    assert abs(d_live - d_star) > 0.01
+    last_d = float("nan")
+    for _ in range(8):
+        _psi, last_d = rt.step(
+            q, 0.005, rail_lo=0.005, rail_hi=0.78, q_nominal=q_star
+        )
+    assert last_d == pytest.approx(d_star, abs=1e-9)
+    assert rt.d_star_m == pytest.approx(d_star, abs=1e-9)
+    assert last_d != pytest.approx(d_live, abs=1e-3)
+    assert not rt.planned
 
 
 def test_qp_smoothness_weight_is_wired() -> None:

@@ -305,8 +305,10 @@ def test_zero_v_cmd_does_not_invent_rail_task() -> None:
     controller = _controller()
     q = Q_SAFE.copy()
     controller.reset(q)
+    controller.centering_task.set_q_target(q)
     if controller.rail_ext_task is not None:
-        controller.rail_ext_task.set_d_pref(0.10)
+        d_now = float(controller.kin.fk_placement(q).translation[1]) - float(q[0])
+        controller.rail_ext_task.set_d_pref(d_now)
     step = controller.update(np.zeros(6), q_meas=q)
     assert not np.isfinite(step.rail_task_vel) or abs(float(step.rail_task_vel)) < 1e-9
     assert abs(float(step.qdot[0])) < 0.01

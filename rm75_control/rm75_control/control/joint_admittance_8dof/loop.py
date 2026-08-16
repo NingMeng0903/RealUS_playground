@@ -54,7 +54,6 @@ from rm75_control.control.joint_admittance_8dof.tasks.nullspace_task import (
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
     RailExtensionConfig,
     RailExtensionTask,
-    rail_vel_ff_from_reference,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.ird_adapter import (
     IrdConfig,
@@ -380,7 +379,6 @@ class JointIkController:
         self._locked_style: LockedStyle = self.cfg.rail.locked_style
         self._configured_rail_mode: RailMode = self.cfg.rail.mode
         self._plan_drives_rail: bool = False
-        self._vcmd_owns_rail: bool = False
         self._direct_joint_ptp: bool = False
         self._apply_rail_mode_side_effects()
 
@@ -390,12 +388,6 @@ class JointIkController:
 
     def set_plan_drives_rail(self, enabled: bool) -> None:
         self._plan_drives_rail = bool(enabled)
-
-    def set_vcmd_owns_rail(self, enabled: bool) -> None:
-        """Gamepad / stick Y owns the rail.  Do not let rail_ext fade then lunge."""
-        self._vcmd_owns_rail = bool(enabled)
-        if self._vcmd_owns_rail:
-            self.set_rail_extension_active(False)
 
     def set_direct_joint_ptp(self, enabled: bool) -> None:
         self._direct_joint_ptp = bool(enabled)
@@ -1095,6 +1087,9 @@ class JointIkController:
                 activation=self.centering_task.cfg.activation,
             )
             joint_margin_frac = float(np.clip(1.0 - u_max, 0.0, 1.0))
+            stroke_planned = bool(
+                self.posture_retarget is not None and self.posture_retarget.planned
+            )
             v_ext, w_ext = self.rail_ext_task(
                 q_prev,
                 sigma_scale=sig_scale,
@@ -1106,6 +1101,7 @@ class JointIkController:
                 y_tcp_d=y_tcp_d,
                 press_stalled=allow_press_escape,
                 tool_y_err_m=tool_y_err_m,
+                stroke_limiters=stroke_planned,
             )
             rail_ext_err = self.rail_ext_task.last_err_m
             rail_escape_active = bool(self.rail_ext_task._escape_active)
@@ -1117,22 +1113,6 @@ class JointIkController:
                 rail_task_weight = w_ext
             if sigma_esc_ref > 1e-9 and sigma_now < sigma_esc_ref:
                 manip_for_saturation = True
-
-        # No Cartesian rail command: do not let d*/escape invent qdot[0].
-        # Stick Y owns the rail: the 150 mm scan fade + 40 mm plus-leave
-        # braked ~10 cm out (qdot 80→6 mm/s) then released at 760 (lunge).
-        along_rail = abs(
-            _along_rail_v_cmd_m_s(self.kin, q_prev, twist_base, vel_ff)
-        )
-        if along_rail < _RAIL_V_IDLE_M_S or self._vcmd_owns_rail:
-            rail_task_vel = None
-            rail_task_weight = 0.0
-            rail_escape_active = False
-            if self.rail_ext_task is not None:
-                self.rail_ext_task.last_v_reach = 0.0
-                self.rail_ext_task.last_v_escape = 0.0
-                self.rail_ext_task._v_lpf = 0.0
-                self.rail_ext_task._v_lpf_initialized = False
 
         rail_reg_scale = 1.0
         if self.rail_ext_task is not None:
@@ -2751,22 +2731,6 @@ def _qpik_rail_v_ff_m_s(
     if not math.isfinite(v) or abs(v) < float(idle_eps):
         return 0.0
     return v
-
-
-def _along_rail_v_cmd_m_s(
-    kin: RobotKinematics,
-    q_rad: np.ndarray,
-    twist_base: np.ndarray,
-    vel_ff: np.ndarray | None,
-) -> float:
-    """Largest along-rail Cartesian command from ``v_cmd`` and optional ``vel_ff``."""
-    v_twist = rail_vel_ff_from_reference(twist_base, kin, q_rad)
-    candidates = [v_twist]
-    if vel_ff is not None:
-        arr = np.asarray(vel_ff, dtype=float).reshape(-1)
-        if arr.size >= 3 and bool(np.all(np.isfinite(arr[:3]))):
-            candidates.append(rail_vel_ff_from_reference(arr, kin, q_rad))
-    return float(max(candidates, key=abs))
 
 
 def _wall_clock_rail_target(

@@ -9,7 +9,8 @@ hold it.
 
 Call :meth:`PostureRetarget.plan_stroke` once when the scan starts.  After
 that :meth:`step` only slews ψ toward ψ* with a single rate limit (no LPF)
-and holds d* constant.
+and holds d* constant.  Unplanned ``step`` freezes ``d*(q*)`` and slews ψ
+toward ``ψ(q*)``; it does not recapture live ``y_tcp − q0``.
 """
 
 from __future__ import annotations
@@ -45,6 +46,16 @@ def _wrap_pi(a: float) -> float:
 def _arm7(q_arm: np.ndarray) -> np.ndarray:
     q = np.asarray(q_arm, dtype=float).reshape(-1)
     return q[1:] if q.size == 8 else q
+
+
+def d_from_q(kin: RobotKinematics, q_rad: np.ndarray) -> float:
+    """Arm Y-reach ``d = y_tcp − q0``.  Invariant to the rail coordinate."""
+    q = np.asarray(q_rad, dtype=float).reshape(-1)
+    if q.size == 7:
+        q = np.concatenate([[0.0], q])
+    if q.size != 8:
+        raise ValueError(f"q must be length 7 or 8, got {q.size}")
+    return float(kin.fk_placement(q).translation[1]) - float(q[RAIL_INDEX])
 
 
 def joint_margin_frac(q_arm: np.ndarray) -> float:
@@ -353,18 +364,18 @@ class PostureRetarget:
         rail_hi: float,
         q_nominal: np.ndarray | None = None,
     ) -> tuple[float, float]:
-        """Hold a planned (d*, ψ*), or recapture d* and slew ψ toward q*."""
+        """Hold a planned (d*, ψ*), or freeze d*(q*) and slew ψ toward q*."""
         del rail_lo, rail_hi
         q = np.asarray(q_rad, dtype=float)
         if self._psi_cmd is None or self._d_star is None:
             self.reset(q)
         dt = max(float(dt_s), 0.0)
         if not self._planned:
-            y_tcp = float(self.kin.fk_placement(q).translation[1])
-            self._d_star = y_tcp - float(q[RAIL_INDEX])
-            self.d_star_m = float(self._d_star)
             if q_nominal is not None:
-                self._psi_star = float(psi_from_q(np.asarray(q_nominal, dtype=float)))
+                qn = np.asarray(q_nominal, dtype=float)
+                self._psi_star = float(psi_from_q(qn))
+                self._d_star = d_from_q(self.kin, qn)
+                self.d_star_m = float(self._d_star)
             psi_out = self._rate_limit_psi(dt)
             self._update_margins(q)
             return float(psi_out), float(self._d_star)
@@ -411,6 +422,7 @@ __all__ = [
     "PsiRetargetConfig",
     "StrokeInfeasibleError",
     "arm_respects_floor",
+    "d_from_q",
     "joint_margin_frac",
     "stroke_score",
     "wrist_band_frac",

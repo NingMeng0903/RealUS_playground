@@ -245,7 +245,7 @@ def test_d_star_drift_raises_reach_weight_and_rail_reg() -> None:
             enabled=True,
             k_ext=2.0,
             k_esc=0.0,
-            k_ff=0.0,
+            k_ff=1.0,
             e0_m=0.0,
             e1_m=0.01,
             v_lpf_tau_s=0.0,
@@ -261,10 +261,14 @@ def test_d_star_drift_raises_reach_weight_and_rail_reg() -> None:
     q = _SEED_Q.copy()
     task.set_d_pref(0.10)
     y_on = float(q[0]) + 0.10
-    _v0, w0 = task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on)
+    vel_ff = np.array([0.0, 0.05, 0.0, 0.0, 0.0, 0.0])
+    _v0, w0 = task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on, vel_ff=vel_ff)
     assert task.last_d_star_reg_scale == pytest.approx(1.0)
-    _v1, w1 = task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.08)
+    assert task.last_k_ff_scale == pytest.approx(1.0)
+    _v1, w1 = task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.08, vel_ff=vel_ff)
     assert task.last_d_star_reg_scale == pytest.approx(20.0)
+    assert task.last_k_ff_scale == pytest.approx(0.0)
+    assert abs(task.last_v_ff) < 1e-9
     assert w1 > w0 + 1.0
     assert abs(task.last_track_err_m) > 0.04
 
@@ -296,6 +300,62 @@ def test_rail_ff_tracks_desired_y_minus_d_star() -> None:
     assert np.isfinite(task.last_rail_ff_m)
     assert task.last_rail_ff_m == pytest.approx(y_tcp_d - d_star, abs=1e-9)
     assert v * 0.03 > 0.0
+
+
+def test_stroke_limiters_only_when_planned() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_ext=0.0,
+            k_esc=0.0,
+            k_ff=1.0,
+            e0_m=0.0,
+            e1_m=0.01,
+            v_ff_thr_m_s=0.005,
+            v_reach_cap_m_s=0.08,
+            v_max_m_s=0.08,
+            v_lpf_tau_s=0.0,
+            limit_margin_m=0.15,
+            escape_leave_m=0.04,
+            soft_min_m=0.005,
+            soft_max_m=0.78,
+            d_star_err0_m=1.0,
+        ),
+    )
+    task.set_mode("reach")
+    q = _SEED_Q.copy()
+    q[0] = 0.70
+    task.set_d_pref(float(kin.fk_placement(q).translation[1]) - float(q[0]))
+    vel_ff = np.array([0.0, 0.08, 0.0, 0.0, 0.0, 0.0])
+    v_open, _ = task(
+        q, sigma_scale=1.0, vel_ff=vel_ff, dt_s=DT, stroke_limiters=False
+    )
+    task._v_lpf = 0.0
+    task._v_lpf_initialized = False
+    v_fade, _ = task(
+        q, sigma_scale=1.0, vel_ff=vel_ff, dt_s=DT, stroke_limiters=True
+    )
+    assert v_open > 0.05
+    assert v_fade < v_open
+    assert v_fade < 0.055
+    assert not task.last_limit_saturated or v_fade < 0.02
+
+    q[0] = 0.74
+    task.set_d_pref(float(kin.fk_placement(q).translation[1]) - float(q[0]))
+    task._v_lpf = 0.0
+    task._v_lpf_initialized = False
+    v_leave_open, _ = task(
+        q, sigma_scale=1.0, vel_ff=vel_ff, dt_s=DT, stroke_limiters=False
+    )
+    task._v_lpf = 0.0
+    task._v_lpf_initialized = False
+    v_leave_scan, _ = task(
+        q, sigma_scale=1.0, vel_ff=vel_ff, dt_s=DT, stroke_limiters=True
+    )
+    assert v_leave_open > 0.04
+    assert v_leave_scan == pytest.approx(0.0, abs=1e-4)
 
 
 def test_anti_cancel_term_is_gone() -> None:

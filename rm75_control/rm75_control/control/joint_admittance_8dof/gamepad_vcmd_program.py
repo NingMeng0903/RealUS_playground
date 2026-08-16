@@ -137,7 +137,6 @@ def build_gamepad_vcmd_program(
 
     def _enter() -> None:
         SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
-        inner.set_vcmd_owns_rail(True)
         print(MAPPING_HELP, flush=True)
         if not getattr(pad, "connected", True):
             print("gamepad: no device — v_cmd stays zero until a pad appears", flush=True)

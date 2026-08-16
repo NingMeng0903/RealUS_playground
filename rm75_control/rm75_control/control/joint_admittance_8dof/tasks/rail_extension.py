@@ -186,6 +186,7 @@ class RailExtensionTask:
         self.last_rail_ff_m: float = float("nan")
         self.last_track_err_m: float = 0.0
         self.last_d_star_reg_scale: float = 1.0
+        self.last_k_ff_scale: float = 1.0
 
     def set_mode(self, mode: RailExtMode) -> None:
         mode_s = str(mode).strip().lower()
@@ -595,6 +596,7 @@ class RailExtensionTask:
         y_tcp_d: float | None = None,
         press_stalled: bool = False,
         tool_y_err_m: float = 0.0,
+        stroke_limiters: bool = True,
     ) -> tuple[float, float]:
         if self.d_pref_m is None:
             self.capture_reference(q)
@@ -616,8 +618,18 @@ class RailExtensionTask:
             np.clip(self.cfg.k_ext * err, -self.cfg.v_max_m_s, self.cfg.v_max_m_s)
         )
         sig = float(np.clip(sigma_scale, 0.0, 1.0))
+        err_abs = abs(err)
+        e0 = max(float(self.cfg.d_star_err0_m), 0.0)
+        e1 = max(float(self.cfg.d_star_err1_m), e0 + 1.0e-6)
+        drift = _smoothstep01((err_abs - e0) / (e1 - e0)) if e0 > 0.0 else 0.0
+        self.last_d_star_reg_scale = 1.0 + drift * max(
+            float(self.cfg.d_star_reg_mult) - 1.0, 0.0
+        )
+        self.last_k_ff_scale = 1.0 - drift
         v_ff = (
-            rail_vel_ff_from_reference(vel_ff, self.kin, q, k_ff=self.cfg.k_ff)
+            rail_vel_ff_from_reference(
+                vel_ff, self.kin, q, k_ff=self.cfg.k_ff * self.last_k_ff_scale
+            )
             if vel_ff is not None
             else 0.0
         )
@@ -636,24 +648,20 @@ class RailExtensionTask:
             trajectory_owns=ff_owns,
         )
         cap = max(float(self.cfg.v_reach_cap_m_s), 0.0)
-        err_abs = abs(err)
-        e0 = max(float(self.cfg.d_star_err0_m), 0.0)
-        e1 = max(float(self.cfg.d_star_err1_m), e0 + 1.0e-6)
-        drift = _smoothstep01((err_abs - e0) / (e1 - e0)) if e0 > 0.0 else 0.0
-        self.last_d_star_reg_scale = 1.0 + drift * max(
-            float(self.cfg.d_star_reg_mult) - 1.0, 0.0
-        )
         if cap > 0.0:
             cap = cap + drift * 0.06
             v_reach = float(np.clip(v_reach, -cap, cap))
         # Demoted: healthy σ (raw ≥ 0.08) never lets escape drive the rail
         # unless a press stall still needs a lateral Y offset.
         healthy_sigma = sigma_raw is not None and float(sigma_raw) >= 0.08
-        in_band = self._rail_in_limit_band(y)
+        use_limiters = bool(stroke_limiters)
+        in_band = self._rail_in_limit_band(y) if use_limiters else False
         self.last_in_limit_band = bool(in_band)
         y_thr = max(float(self.cfg.press_y_err_m), 0.0)
         backoff = bool(
-            self._in_plus_leave(y) and abs(float(tool_y_err_m)) >= y_thr
+            use_limiters
+            and self._in_plus_leave(y)
+            and abs(float(tool_y_err_m)) >= y_thr
         )
         allow_press_escape = bool(
             (press_stalled or backoff) and self._rail_has_open_travel(y)
@@ -697,7 +705,7 @@ class RailExtensionTask:
                     v_escape = 0.0
         v_primary = v_ff + v_reach
         pref_now = self._preferred_escape_sign(y, backoff=backoff)
-        if self._in_plus_leave(y) and v_primary > 0.0:
+        if use_limiters and self._in_plus_leave(y) and v_primary > 0.0:
             v_primary = 0.0
         if allow_press_escape:
             esc_sign = (
@@ -715,7 +723,11 @@ class RailExtensionTask:
             else float(self.cfg.v_lpf_tau_s)
         )
         v = self._macro_lpf(v, dt_s=dt_s, tau_s=tau)
-        lim = self._limit_saturation(y, v)
+        if use_limiters:
+            lim = self._limit_saturation(y, v)
+        else:
+            lim = 1.0
+            self.last_limit_saturated = False
         self.last_limit_saturated = lim < 1e-6
         v *= lim
         span_ff = max(float(self.cfg.v_ff_span_m_s), 1e-6)
@@ -750,6 +762,7 @@ class RailExtensionTask:
         y_tcp_d: float | None = None,
         press_stalled: bool = False,
         tool_y_err_m: float = 0.0,
+        stroke_limiters: bool = True,
     ) -> tuple[float, float]:
         """Return ``(v_rail_des, w_ext)`` for the QP."""
         if not self.cfg.enabled:
@@ -758,11 +771,13 @@ class RailExtensionTask:
             self.last_limit_saturated = False
             self.last_in_limit_band = False
             self.last_d_star_reg_scale = 1.0
+            self.last_k_ff_scale = 1.0
             return 0.0, 0.0
         q = np.asarray(q_rad, dtype=float)
         self.last_in_limit_band = self._rail_in_limit_band(float(q[RAIL_INDEX]))
         if self.mode == "pose_attract":
             self.last_d_star_reg_scale = 1.0
+            self.last_k_ff_scale = 1.0
             return self._call_pose_attract(
                 q,
                 sigma_scale=sigma_scale,
@@ -780,4 +795,5 @@ class RailExtensionTask:
             sigma_raw=sigma_raw,
             press_stalled=press_stalled,
             tool_y_err_m=tool_y_err_m,
+            stroke_limiters=stroke_limiters,
         )

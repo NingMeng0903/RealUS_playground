@@ -18,6 +18,7 @@ from rm75_control.control.joint_admittance_8dof.gamepad_vcmd_program import (
     close_built_pad,
 )
 from rm75_control.control.joint_admittance_8dof.loop import JointIkController
+from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import d_from_q
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
     GamepadTwistConfig,
@@ -200,15 +201,21 @@ def test_build_gamepad_program_and_ipc_kind() -> None:
         assert built.phases[-1].duration_s == 1.0
         assert built.phases[-1].governor_err_max_mm == 0.0
         built.phases[-1].on_enter()
-        assert built.inner._vcmd_owns_rail
-        assert built.inner._rail_ext_active is False
+        assert built.inner._rail_ext_active is True
+        assert built.inner._arm_task_suppressed is False
+        assert built.inner._centering_suppressed is False
+        assert not hasattr(built.inner, "set_vcmd_owns_rail")
     finally:
         close_built_pad(built)
 
 
 def _yaml_inner_at_rail(q_rail_m: float) -> JointIkController:
     raw = yaml.safe_load(_CFG.read_text(encoding="utf-8"))
-    inner = JointIkController(RobotKinematics(), build_joint_ik_config(raw))
+    cfg = build_joint_ik_config(raw)
+    cfg.collision.enabled = False
+    cfg.qp.collision.enabled = False
+    cfg.ird.enabled = False
+    inner = JointIkController(RobotKinematics(), cfg)
     q = _SEED_Q.copy()
     q[0] = float(q_rail_m)
     inner.reset(q)
@@ -222,36 +229,71 @@ def _plus_y_step(inner: JointIkController, q_rail_m: float):
     return inner.update(twist, q_meas=q, vel_ff=twist)
 
 
-def test_scan_fade_brakes_then_gamepad_owns_rail() -> None:
-    """Scan rail_ext fade at 700 mm must not run when the stick owns Y."""
-    faded = _yaml_inner_at_rail(0.70)
-    SecondaryPolicy(preset="track", qdot_ff="off").apply(faded)
-    step_fade = _plus_y_step(faded, 0.70)
-    assert np.isfinite(step_fade.rail_task_vel)
-    assert float(step_fade.rail_task_vel) < 0.055
-    assert float(step_fade.v_cmd[1]) > 0.05
+def test_unplanned_inner_freezes_d_star_from_q_nominal() -> None:
+    inner = _yaml_inner_at_rail(0.375)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q = _SEED_Q.copy()
+    inner.reset(q)
+    inner.begin_hybrid_episode(q, np.zeros(8))
+    d_star = d_from_q(inner.kin, inner.centering_task.q_target)
+    d_live = d_from_q(inner.kin, q)
+    assert abs(d_live - d_star) > 1.0e-3
+    twist = np.array([0.0, 0.08, 0.0, 0.0, 0.0, 0.0])
+    for _ in range(6):
+        inner.update(twist, q_meas=inner.q_cmd, vel_ff=twist)
+    assert inner.posture_retarget is not None
+    assert not inner.posture_retarget.planned
+    assert inner.posture_retarget.d_star_m == pytest.approx(d_star, abs=1e-9)
 
-    owned = _yaml_inner_at_rail(0.70)
-    SecondaryPolicy(preset="track", qdot_ff="off").apply(owned)
-    owned.set_vcmd_owns_rail(True)
-    step_own = _plus_y_step(owned, 0.70)
-    assert owned._rail_ext_active is False
-    assert not np.isfinite(step_own.rail_task_vel)
-    assert float(step_own.v_cmd[1]) > 0.05
+
+def test_gamepad_track_is_full_inner_loop() -> None:
+    """Unplanned track (gamepad) keeps rail_ext / arm angle; no scan fade."""
+    inner = _yaml_inner_at_rail(0.70)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    assert inner._rail_ext_active is True
+    assert inner._arm_task_suppressed is False
+    assert inner._centering_suppressed is False
+    assert inner.posture_retarget is not None
+    assert not inner.posture_retarget.planned
+    step = _plus_y_step(inner, 0.70)
+    assert float(step.v_cmd[1]) > 0.05
+    assert np.isfinite(step.rail_task_vel)
+    assert not bool(step.last_limit_saturated)
+    assert not bool(inner.rail_ext_task.last_in_limit_band)
 
 
-def test_plus_leave_does_not_zero_stick_y() -> None:
-    """40 mm plus-leave zeros rail_ext +v; stick Y must still own the rail."""
-    blocked = _yaml_inner_at_rail(0.74)
-    SecondaryPolicy(preset="track", qdot_ff="off").apply(blocked)
-    step_block = _plus_y_step(blocked, 0.74)
-    assert float(step_block.rail_task_vel) == pytest.approx(0.0, abs=1e-4)
-    assert float(step_block.v_cmd[1]) > 0.05
+def test_unplanned_plus_leave_does_not_zero_rail_task() -> None:
+    inner = _yaml_inner_at_rail(0.74)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    step = _plus_y_step(inner, 0.74)
+    assert float(step.v_cmd[1]) > 0.05
+    assert np.isfinite(step.rail_task_vel)
+    assert float(step.rail_task_vel) != pytest.approx(0.0, abs=1e-4)
 
-    owned = _yaml_inner_at_rail(0.74)
-    SecondaryPolicy(preset="track", qdot_ff="off").apply(owned)
-    owned.set_vcmd_owns_rail(True)
-    step_own = _plus_y_step(owned, 0.74)
-    assert owned._rail_ext_active is False
-    assert not np.isfinite(step_own.rail_task_vel)
-    assert float(step_own.v_cmd[1]) > 0.05
+
+def test_planned_stroke_still_fades_and_holds_d_star() -> None:
+    inner = _yaml_inner_at_rail(0.375)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q = _SEED_Q.copy()
+    y_c = float(inner.kin.fk_placement(q).translation[1])
+    d0, psi0 = inner.plan_scan_stroke(y_c, 0.04, q)
+    assert inner.posture_retarget is not None
+    assert inner.posture_retarget.planned
+    q70 = q.copy()
+    q70[0] = 0.70
+    inner.q_cmd = q70.copy()
+    step = _plus_y_step(inner, 0.70)
+    assert float(step.v_cmd[1]) > 0.05
+    assert inner.posture_retarget.d_star_m == pytest.approx(d0, abs=1e-9)
+    assert inner.posture_retarget.psi_star_rad == pytest.approx(psi0, abs=1e-9)
+    assert bool(inner.rail_ext_task.last_in_limit_band)
+    assert float(step.rail_task_vel) < 0.055
+
+    q74 = q.copy()
+    q74[0] = 0.74
+    inner.q_cmd = q74.copy()
+    inner.rail_ext_task._v_lpf = 0.0
+    inner.rail_ext_task._v_lpf_initialized = False
+    step_leave = _plus_y_step(inner, 0.74)
+    assert float(step_leave.v_cmd[1]) > 0.05
+    assert float(step_leave.rail_task_vel) == pytest.approx(0.0, abs=1e-3)
