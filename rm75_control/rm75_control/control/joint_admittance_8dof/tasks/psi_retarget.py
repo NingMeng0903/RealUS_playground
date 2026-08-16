@@ -182,6 +182,10 @@ class PostureRetarget:
         self.psi_star_rad: float = float("nan")
         self._ird = None
 
+    @property
+    def planned(self) -> bool:
+        return bool(self._planned)
+
     def reset(self, q_rad: np.ndarray) -> None:
         q = np.asarray(q_rad, dtype=float)
         psi = float(psi_from_q(q))
@@ -347,13 +351,23 @@ class PostureRetarget:
         *,
         rail_lo: float,
         rail_hi: float,
+        q_nominal: np.ndarray | None = None,
     ) -> tuple[float, float]:
-        """Hold the scan-start (d*, ψ*) and slew ψ_ref toward ψ*."""
+        """Hold a planned (d*, ψ*), or recapture d* and slew ψ toward q*."""
         del rail_lo, rail_hi
         q = np.asarray(q_rad, dtype=float)
-        if not self._planned or self._d_star is None or self._psi_cmd is None:
+        if self._psi_cmd is None or self._d_star is None:
             self.reset(q)
         dt = max(float(dt_s), 0.0)
+        if not self._planned:
+            y_tcp = float(self.kin.fk_placement(q).translation[1])
+            self._d_star = y_tcp - float(q[RAIL_INDEX])
+            self.d_star_m = float(self._d_star)
+            if q_nominal is not None:
+                self._psi_star = float(psi_from_q(np.asarray(q_nominal, dtype=float)))
+            psi_out = self._rate_limit_psi(dt)
+            self._update_margins(q)
+            return float(psi_out), float(self._d_star)
         psi_out = self._rate_limit_psi(dt)
         self._update_margins(q)
         return float(psi_out), float(self._d_star)

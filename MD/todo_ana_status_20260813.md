@@ -572,4 +572,17 @@ V12e：`B_final` 不动，只对尺骨/桡骨 rest 网格做有界刚体 T（管
 
 四根前臂 bind 原点位移 0.000 mm。手/膝/胫未借毫米（`humerus_L`/`shank_L`/`patella_L` 逐位相同）。足仍是 V12c 量级（P0 未关）。
 
-正在建 `chain_retarget_v12e_forearm_mesh_001`（`publishable=false`）。仍不开股骨笼。
+`chain_retarget_v12e_forearm_mesh_001` 已建（`publishable=false`，两受试 `passed=true`）。`forearm_L` 相对 hybrid 面积 +0.35。
+
+绝对穿出门（vs Pack A）：
+
+| | V11 / V12c | V12e |
+|---|---|---|
+| 213328 `forearm_L` ×3 | +15.8 / +8.7 / +7.7 mm | **关**（0.00） |
+| 213712 `forearm_L` ×3 | +15.9 / +8.8 / +7.7 mm | 只剩 pose_213328 **+1.37 mm**（16→1.5） |
+| `shank_R` pose_213712 | +5.8 / +4.8 | 同 V11（V10 FK，未动） |
+| `hand_L` 深屈肘 | — | 刚过墙 **+1.0006 mm** |
+
+P2 左肘 station→轴：T-pose 回归 17.7→**12.0 / 9.4 mm**（mesh 靠近 bind 轴）。联动门 tpose 管–骨漂移 9.5→22 mm（有的管没吃到同一 T）。足仍是 P0 刚体上限。仍不开股骨笼。
+
+独立盲审 [V12e visual](4f8b92ad-1a8e-4a16-a282-adc7abda62b2)：`needs_fix`；`p1_forearm_closed=true`；`p0_feet_closed=false`；膝铰链连续；`bones_tubes` 前臂血管看起来撕开/没跟骨。下一刀：同一 T 跟上前臂管，不重开笼、不缩骨。

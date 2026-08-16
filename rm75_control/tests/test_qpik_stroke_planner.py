@@ -317,6 +317,7 @@ def _wln_core() -> tuple[QpIkController, SafetyLimits]:
 
 
 def test_wln_prices_the_rail_only_toward_its_stop() -> None:
+    """band_rail_m=0: rail WLN stays 1 toward a stop, away, and mid-stroke."""
     core, lim = _wln_core()
     nv = core.kin.nv
     q_mid = 0.5 * (lim.q_lower + lim.q_upper)
@@ -325,24 +326,19 @@ def test_wln_prices_the_rail_only_toward_its_stop() -> None:
     q_near[0] = lim.q_lower[0] + 0.04
     toward = np.zeros(nv)
     toward[0] = -0.05
-    scale_toward = core._wln_reg_scale(q_near, toward)
-    # reg[0]=1e-3 against the arm's 1e-2: the rail must end up the dearer
-    # joint so the QP shifts the stroke instead of grinding into the stop.
-    assert scale_toward[0] > 10.0
-    assert scale_toward[0] <= core.cfg.wln.max_scale + 1e-9
+    assert core._wln_reg_scale(q_near, toward)[0] == pytest.approx(1.0)
 
     away = np.zeros(nv)
     away[0] = +0.05
     core._wln_scale_prev[:] = 1.0
     assert core._wln_reg_scale(q_near, away)[0] == pytest.approx(1.0)
 
-    # Mid travel is the tuned reg, untouched.
     core._wln_scale_prev[:] = 1.0
     assert core._wln_reg_scale(q_mid, toward)[0] == pytest.approx(1.0)
 
 
 def test_wln_scale_does_not_jump_on_reverse() -> None:
-    """A sign flip must not slam rail reg 20→1 in one tick."""
+    """Rail WLN is off, so a sign flip is a no-op on rail reg."""
     core, lim = _wln_core()
     nv = core.kin.nv
     q_mid = 0.5 * (lim.q_lower + lim.q_upper)
@@ -355,8 +351,8 @@ def test_wln_scale_does_not_jump_on_reverse() -> None:
     core._wln_scale_prev[:] = 1.0
     s0 = float(core._wln_reg_scale(q_near, toward)[0])
     s1 = float(core._wln_reg_scale(q_near, away)[0])
-    assert s0 - s1 <= core.cfg.wln.max_delta + 1e-9
-    assert s0 - s1 > 0.5
+    assert s0 == pytest.approx(1.0)
+    assert s1 == pytest.approx(1.0)
 
 
 def test_wln_never_touches_arm_joints() -> None:
@@ -483,9 +479,9 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert qn[4] == pytest.approx(90.0)
     assert qn[5] == pytest.approx(40.0)
     assert qn[6] == pytest.approx(45.0)
-    assert cfg.rail.soft_min_m == pytest.approx(0.025)
+    assert cfg.rail.soft_min_m == pytest.approx(0.030)
     assert cfg.rail_extension.d_star_reg_mult == pytest.approx(20.0)
-    assert raw["hw"]["lw100"]["soft_min_m"] == pytest.approx(0.025)
+    assert raw["hw"]["lw100"]["soft_min_m"] == pytest.approx(0.030)
     assert raw["hw"]["lw100"]["vel_kp"] == pytest.approx(14.0)
     assert raw["hw"]["lw100"]["vel_kd"] == pytest.approx(0.22)
     assert raw["hw"]["lw100"]["target_stale_coast_s"] == pytest.approx(0.35)
@@ -497,7 +493,7 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert "anti_cancel_weight" not in raw["inner"]["qp"]
     # Rail/jerk work: limit handoff on the rail only, third-order box.
     assert cfg.qp.wln.enabled
-    assert cfg.qp.wln.band_rail_m > 0.0
+    assert cfg.qp.wln.band_rail_m == pytest.approx(0.0)
     # The arm has no spare joint to hand the stroke to; weighting it only
     # bought slack, so its band must stay disabled.
     assert cfg.qp.wln.band_rad == 0.0
@@ -652,13 +648,13 @@ def test_analyzer_jerk_metric_ignores_loop_period_jitter(tmp_path) -> None:
 
 
 def test_wln_still_prices_rail_on_the_stop() -> None:
-    """Exact-stop used to zero the Chan–Dubey denom and drop WLN to 1."""
+    """band_rail_m=0: sitting on the stop does not raise rail WLN."""
     core, lim = _wln_core()
     q = 0.5 * (lim.q_lower + lim.q_upper)
     q[0] = lim.q_lower[0]
     toward = np.zeros(core.kin.nv)
     toward[0] = -0.05
-    assert float(core._wln_reg_scale(q, toward)[0]) > 10.0
+    assert float(core._wln_reg_scale(q, toward)[0]) == pytest.approx(1.0)
 
 
 def test_keep_task_weight_skips_sigma_scale() -> None:
@@ -708,7 +704,7 @@ def test_rail_sat_is_not_workspace_saturation() -> None:
 
 
 def test_rail_soft_min_is_one_way() -> None:
-    """At soft_min the box blocks −q0; +q0 (away) stays free."""
+    """30 mm is the full-speed edge; one-way into-wall block is at hard 5 mm."""
     from pathlib import Path
 
     import yaml
@@ -730,21 +726,14 @@ def test_rail_soft_min_is_one_way() -> None:
     inner = JointIkController(kin, cfg)
     q = _SEED_Q.copy()
     q[0] = float(cfg.rail.soft_min_m)
-    inner.reset(q)
-    inner.begin_hybrid_episode(q, np.zeros(8))
-    pose = kin.fk_pose(q)
-    into = np.zeros(6)
-    into[1] = -0.03
-    step_into = inner.update(
-        into, dt=cfg.dt, q_meas=q, pose_d=pose, task_rotation_base=np.eye(3)
-    )
-    assert float(step_into.qdot[0]) >= -1.0e-4
-    away = np.zeros(6)
-    away[1] = 0.03
-    step_away = inner.update(
-        away, dt=cfg.dt, q_meas=q, pose_d=pose, task_rotation_base=np.eye(3)
-    )
-    assert float(step_away.qdot[0]) > 1.0e-4
+    lo_soft, hi_soft = inner.core.constraints.bounds(q, cfg.dt, qdot_prev=None)
+    assert float(lo_soft[0]) < 0.0
+    assert float(hi_soft[0]) > 1.0e-4
+
+    q[0] = float(cfg.rail.hard_min_m)
+    lo_hard, hi_hard = inner.core.constraints.bounds(q, cfg.dt, qdot_prev=None)
+    assert float(lo_hard[0]) == pytest.approx(0.0, abs=1e-9)
+    assert float(hi_hard[0]) > 1.0e-4
 
 
 def test_rail_does_not_pin_in_fade_band_only() -> None:

@@ -6,8 +6,9 @@ Translation is world/base XY + world Z. Rotation is TCP-frame.
   Left stick Y (up)   → world +X
   LB                  → world +Z
   LT                  → world −Z
-  Right stick         → TCP ωx / ωy
-  RB / RT             → TCP ±ωz
+  Right stick X (right) → TCP +ωx
+  Right stick Y (up)    → TCP −ωy
+  RB / RT               → TCP ±ωz
 """
 
 from __future__ import annotations
@@ -91,8 +92,8 @@ def map_pad_to_world_lin_tool_ang(
     v_world = _cap_vec(v_world, cfg.max_lin_vel_m_s)
 
     w_tool = np.zeros(3, dtype=float)
-    w_tool[0] = (-ry) * float(cfg.rot_rad_s)
-    w_tool[1] = rx * float(cfg.rot_rad_s)
+    w_tool[0] = rx * float(cfg.rot_rad_s)
+    w_tool[1] = ry * float(cfg.rot_rad_s)
     w_tool[2] = (rb - rt) * float(cfg.rot_rad_s)
     w_tool = _cap_vec(w_tool, cfg.max_ang_vel_rad_s)
     return v_world, w_tool

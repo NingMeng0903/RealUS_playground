@@ -41,7 +41,10 @@ qpik:
     command_lead_rail_mm: 20.0
     velocity_damper:
       arm_band_rad: 0.25
-      rail_band_m: 0.02
+      rail_band_m: 0.025
+      # Stopping envelope look-ahead.  At 80 mm/s and a_max=0.30 this
+      # starts tapering ~23 mm out; 0 would only use one control period.
+      rail_reaction_s: 0.15
     collision:
       enabled: true
       d_safe: 0.01
@@ -54,8 +57,13 @@ qpik:
       lock_vel_eps_m_s: 0.0
       v_max_m_s: 0.15
       travel_m: 0.80
-      soft_min_m: 0.025   # command floor; 0.005 is panic/encoder only
-      soft_max_m: 0.78
+      # Linear taper inner edge (must match rail_band_m).  Stick-speed
+      # braking is the stopping envelope, not a step at this line.
+      soft_min_m: 0.030
+      soft_max_m: 0.755
+      # QP / servo box.  5–780 mm is the full travel; 780 is reachable.
+      hard_min_m: 0.005
+      hard_max_m: 0.78
 
 inner:
   control_frame: tool
@@ -87,7 +95,7 @@ inner:
     mass_reg_lpf_tau_s: 0.2
     use_dyn_nullspace: false
     limit_damper_band_rad: 0.25
-    limit_damper_band_rail_m: 0.02
+    limit_damper_band_rail_m: 0.025
     sns_retry_scales: [1.0, 0.85, 0.7, 0.55, 0.4, 0.25]
     smoothness_weight: 0.15
     # Third-order box: bounds how fast the commanded acceleration may turn.
@@ -106,7 +114,7 @@ inner:
       enabled: true
       k: 1.0
       band_rad: 0.0
-      band_rail_m: 0.10
+      band_rail_m: 0.0
       max_scale: 20.0
       # Cap |Δscale| per tick so a reverse cannot slam 20→1 in one sample.
       max_delta: 3.0
@@ -499,8 +507,10 @@ hw:
     plus_di: di3             # +Y end (run-time e-stop if hit)
     di_nc: true
     di_debounce_n: 3
-    soft_min_m: 0.025        # must match qpik.hard_limits.rail
-    soft_max_m: 0.78
+    soft_min_m: 0.030        # full-speed inner edge; must match qpik.hard_limits.rail
+    soft_max_m: 0.755
+    hard_min_m: 0.005        # travel box 5–780 mm
+    hard_max_m: 0.78
     post_home_m: 0.025
     # Home-script only (controller does not auto-home on start):
     home_search_m_s: 0.020

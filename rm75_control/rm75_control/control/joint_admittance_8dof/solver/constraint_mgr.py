@@ -89,7 +89,7 @@ def stopping_velocity(distance: np.ndarray, acceleration: np.ndarray, reaction_s
 
     d = np.maximum(np.asarray(distance, dtype=float), 0.0)
     a = np.maximum(np.asarray(acceleration, dtype=float), 1.0e-9)
-    reaction = max(float(reaction_s), 0.0)
+    reaction = np.maximum(np.asarray(reaction_s, dtype=float), 0.0)
     return np.sqrt(np.square(a * reaction) + 2.0 * a * d) - a * reaction
 
 
@@ -99,6 +99,7 @@ class VelocityBoxConstraints:
         limits: SafetyLimits,
         *,
         damper_band_rad: float | np.ndarray = 0.15,
+        rail_reaction_s: float = 0.15,
     ) -> None:
         self.lim = limits
         # Faverjon/Tournassoud velocity-damper influence zone before each
@@ -106,6 +107,8 @@ class VelocityBoxConstraints:
         # vector — units are per joint (rad for revolute, m for the prismatic
         # rail), so a scalar rad band must NOT be applied to the rail.
         self.damper_band_rad = np.asarray(damper_band_rad, dtype=float)
+        # Extra look-ahead on the rail stopping envelope.  0 falls back to dt.
+        self.rail_reaction_s = max(float(rail_reaction_s), 0.0)
 
     def bounds(
         self,
@@ -135,6 +138,19 @@ class VelocityBoxConstraints:
         hi = lim.v_max.copy()
 
         m = lim.position_margin
+        q_cmd_arr = None
+        if q_cmd is not None:
+            q_cmd_arr = np.asarray(q_cmd, dtype=float)
+            if q_cmd_arr.shape != q.shape or not np.all(np.isfinite(q_cmd_arr)):
+                raise ValueError("q_cmd must be finite and match q")
+        # Rail damper / stop envelope use the state closer to the wall.
+        # Command lead or servo overshoot of a few millimetres otherwise
+        # eats a 10 mm band before qdot can fall.
+        q_rail_hi = float(q[0])
+        q_rail_lo = float(q[0])
+        if q_cmd_arr is not None:
+            q_rail_hi = max(q_rail_hi, float(q_cmd_arr[0]))
+            q_rail_lo = min(q_rail_lo, float(q_cmd_arr[0]))
 
         # Faverjon & Tournassoud (1987) velocity damper toward each joint
         # limit: the allowed speed TOWARD a limit ramps linearly to zero over
@@ -156,6 +172,19 @@ class VelocityBoxConstraints:
             d_lo = np.where(band > 1e-9, d_lo, 1.0)
             hi = np.minimum(hi, lim.v_max * d_hi)
             lo = np.maximum(lo, -lim.v_max * d_lo)
+            # Rail linear taper uses the leading state so a few millimetres
+            # of command lead / servo overshoot cannot skip the cone.
+            m0 = float(np.broadcast_to(np.asarray(m, dtype=float).reshape(-1), q.shape)[0])
+            b0 = float(np.broadcast_to(band, q.shape)[0])
+            if b0 > 1e-9:
+                d_hi[0] = float(
+                    np.clip((float(lim.q_upper[0]) - m0 - q_rail_hi) / b0, 0.0, 1.0)
+                )
+                d_lo[0] = float(
+                    np.clip((q_rail_lo - float(lim.q_lower[0]) - m0) / b0, 0.0, 1.0)
+                )
+                hi[0] = min(float(hi[0]), float(lim.v_max[0]) * float(d_hi[0]))
+                lo[0] = max(float(lo[0]), -float(lim.v_max[0]) * float(d_lo[0]))
 
         m = np.broadcast_to(np.asarray(m, dtype=float), q.shape)
         a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
@@ -165,25 +194,40 @@ class VelocityBoxConstraints:
             # reduced; motion away remains available.
             d_upper = (lim.q_upper - m) - q
             d_lower = q - (lim.q_lower + m)
-            hi = np.minimum(hi, stopping_velocity(d_upper, a_max, dt))
-            lo = np.maximum(lo, -stopping_velocity(d_lower, a_max, dt))
+            d_upper[0] = float(lim.q_upper[0] - m[0]) - q_rail_hi
+            d_lower[0] = q_rail_lo - float(lim.q_lower[0] + m[0])
+            reaction = np.full(q.shape, float(dt))
+            if self.rail_reaction_s > 0.0:
+                reaction[0] = max(float(dt), float(self.rail_reaction_s))
+            hi = np.minimum(hi, stopping_velocity(d_upper, a_max, reaction))
+            lo = np.maximum(lo, -stopping_velocity(d_lower, a_max, reaction))
             lo, hi = collapse_interval(
                 lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
             )
 
         p_lo = (lim.q_lower + m - q) / dt
         p_hi = (lim.q_upper - m - q) / dt
+        # Rail hard box: past 5/780, one-tick look-ahead would require
+        # returning by Δq/dt in a single period (reverse kick / chatter).
+        # Kill into-wall only; leave stays open.
+        rail_lo = float(lim.q_lower[0] + m[0])
+        rail_hi = float(lim.q_upper[0] - m[0])
+        if q[0] < rail_lo:
+            p_lo[0] = min(float(p_lo[0]), 0.0)
+        if q[0] > rail_hi:
+            p_hi[0] = max(float(p_hi[0]), 0.0)
         lo = np.maximum(lo, p_lo)
         hi = np.minimum(hi, p_hi)
         lo, hi = collapse_interval(
             lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
         )
-        if q_cmd is not None:
-            q_cmd_arr = np.asarray(q_cmd, dtype=float)
-            if q_cmd_arr.shape != q.shape or not np.all(np.isfinite(q_cmd_arr)):
-                raise ValueError("q_cmd must be finite and match q")
+        if q_cmd_arr is not None:
             cmd_lo = (lim.q_lower + m - q_cmd_arr) / dt
             cmd_hi = (lim.q_upper - m - q_cmd_arr) / dt
+            if q_cmd_arr[0] < rail_lo:
+                cmd_lo[0] = min(float(cmd_lo[0]), 0.0)
+            if q_cmd_arr[0] > rail_hi:
+                cmd_hi[0] = max(float(cmd_hi[0]), 0.0)
             lo = np.maximum(lo, cmd_lo)
             hi = np.minimum(hi, cmd_hi)
             lo, hi = collapse_interval(

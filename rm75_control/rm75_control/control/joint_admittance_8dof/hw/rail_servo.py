@@ -26,7 +26,7 @@ import threading
 import time
 from collections import deque
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from rm75_control.hw.lw100.drive import LW100Drive, LW100DriveConfig
@@ -78,8 +78,10 @@ class RailServoConfig:
     plus_di: str = "di3"
     di_nc: bool = True
     di_debounce_n: int = 3
-    soft_min_m: float = 0.025
-    soft_max_m: float = 0.78
+    soft_min_m: float = 0.015
+    soft_max_m: float = 0.77
+    hard_min_m: float = 0.005
+    hard_max_m: float = 0.78
     post_home_m: float = 0.025
     limit_poll_every: int = 5  # worker: check DI every N polls when calibrated
     # +1 / -1: maps host rail_y (+Y) ↔ motor RPM and encoder metres together.
@@ -222,8 +224,10 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         (raw.get("qpik") or {}).get("hard_limits", {}) or {}
     )
     qpik_rail = qpik_rail.get("rail") or {}
-    hw_soft_min = float(hw.get("soft_min_m", 0.025))
-    hw_soft_max = float(hw.get("soft_max_m", 0.78))
+    hw_soft_min = float(hw.get("soft_min_m", 0.015))
+    hw_soft_max = float(hw.get("soft_max_m", 0.77))
+    hw_hard_min = float(hw.get("hard_min_m", 0.005))
+    hw_hard_max = float(hw.get("hard_max_m", 0.78))
     if "soft_min_m" in qpik_rail:
         soft_min = float(qpik_rail["soft_min_m"])
         soft_max = float(qpik_rail.get("soft_max_m", hw_soft_max))
@@ -233,6 +237,15 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
     else:
         soft_min = hw_soft_min
         soft_max = hw_soft_max
+    if "hard_min_m" in qpik_rail:
+        hard_min = float(qpik_rail["hard_min_m"])
+        hard_max = float(qpik_rail.get("hard_max_m", hw_hard_max))
+    elif "hard_min_m" in rail or "hard_max_m" in rail:
+        hard_min = float(rail.get("hard_min_m", hw_hard_min))
+        hard_max = float(rail.get("hard_max_m", hw_hard_max))
+    else:
+        hard_min = hw_hard_min
+        hard_max = hw_hard_max
     sources = []
     if "soft_min_m" in qpik_rail:
         sources.append(("qpik.hard_limits.rail", float(qpik_rail["soft_min_m"]),
@@ -249,11 +262,38 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
                 f"{sources[0][0]} [{sources[0][1]:.6f}, {sources[0][2]:.6f}] vs "
                 f"{name} [{lo:.6f}, {hi:.6f}]"
             )
-    if not (0.0 <= soft_min < soft_max <= travel_m):
+    hard_sources = []
+    if "hard_min_m" in qpik_rail:
+        hard_sources.append(
+            (
+                "qpik.hard_limits.rail",
+                float(qpik_rail["hard_min_m"]),
+                float(qpik_rail.get("hard_max_m", hard_max)),
+            )
+        )
+    if "hard_min_m" in rail or "hard_max_m" in rail:
+        hard_sources.append(
+            (
+                "inner.rail",
+                float(rail.get("hard_min_m", hard_min)),
+                float(rail.get("hard_max_m", hard_max)),
+            )
+        )
+    if "hard_min_m" in hw or "hard_max_m" in hw:
+        hard_sources.append(("hw.lw100", hw_hard_min, hw_hard_max))
+    for name, lo, hi in hard_sources[1:]:
+        if abs(lo - hard_sources[0][1]) > 1.0e-6 or abs(hi - hard_sources[0][2]) > 1.0e-6:
+            raise ValueError(
+                "rail hard-limit mismatch: "
+                f"{hard_sources[0][0]} [{hard_sources[0][1]:.6f}, {hard_sources[0][2]:.6f}] vs "
+                f"{name} [{lo:.6f}, {hi:.6f}]"
+            )
+    if not (0.0 <= hard_min <= soft_min < soft_max <= hard_max <= travel_m):
         raise ValueError(
-            "invalid rail soft limits: expected 0 <= soft_min < soft_max "
-            f"<= travel_m ({travel_m:.6f}), got "
-            f"[{soft_min:.6f}, {soft_max:.6f}]"
+            "invalid rail limits: expected "
+            "0 <= hard_min <= soft_min < soft_max <= hard_max <= travel_m "
+            f"({travel_m:.6f}), got soft=[{soft_min:.6f}, {soft_max:.6f}] "
+            f"hard=[{hard_min:.6f}, {hard_max:.6f}]"
         )
     standstill_enter_mm = max(float(hw.get("standstill_enter_mm", 0.05)), 0.01)
     standstill_exit_mm = max(
@@ -277,6 +317,8 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         di_debounce_n=int(hw.get("di_debounce_n", 3)),
         soft_min_m=soft_min,
         soft_max_m=soft_max,
+        hard_min_m=hard_min,
+        hard_max_m=hard_max,
         post_home_m=float(hw.get("post_home_m", soft_min)),
         limit_poll_every=max(1, int(hw.get("limit_poll_every", 5))),
         sign=float(hw.get("sign", 1.0)),
@@ -672,10 +714,11 @@ class RailServoBridge:
             return bool(self._calibrated)
 
     def _soft_lo_hi(self) -> tuple[float, float]:
-        lo = float(self.config.soft_min_m)
-        hi = float(self.config.soft_max_m)
+        """Command box is the hard travel; 30/755 is only the full-speed edge."""
+        lo = float(self.config.hard_min_m)
+        hi = float(self.config.hard_max_m)
         if hi <= lo:
-            return 0.025, min(0.78, float(self.config.travel_m))
+            return 0.005, min(0.78, float(self.config.travel_m))
         return lo, hi
 
     def set_velocity_gains(
@@ -772,7 +815,7 @@ class RailServoBridge:
         if raw < soft_lo - 0.005 or raw > soft_hi + 0.005:
             print(
                 f"lw100 rail: reject target {raw * 1000:.1f} mm "
-                f"(soft=[{soft_lo * 1000:.0f}, {soft_hi * 1000:.0f}] mm)",
+                f"(hard=[{soft_lo * 1000:.0f}, {soft_hi * 1000:.0f}] mm)",
                 flush=True,
             )
             self._log_event("reject_oob", target_m=raw)
@@ -1101,9 +1144,17 @@ class RailServoBridge:
                 self._calibrated = False
             print(MISSING_CAL_MSG, flush=True)
             raise CalValidationError("no valid calibration file", power_cycle=False)
+        # Pose gate is the hard travel 5/780.  yaml soft 25/760 is only the
+        # full-speed edge; older cal files store 25/780 as travel and must
+        # still start.  780 is reachable.
+        cal_gate = replace(
+            cal,
+            soft_min_m=float(self.config.hard_min_m),
+            soft_max_m=float(self.config.hard_max_m),
+        )
         ok, reason, host_m, power_cycle, comms_fail = validate_on_drive(
             drive,
-            cal,
+            cal_gate,
             sign=float(self.config.sign),
             di_nc=bool(self.config.di_nc),
             home_di=str(self.config.home_di),
@@ -1120,23 +1171,7 @@ class RailServoBridge:
             print(POWER_CYCLE_CAL_MSG if power_cycle else MISSING_CAL_MSG, flush=True)
             print(f"lw100 rail: {reason}", flush=True)
             raise CalValidationError(reason, power_cycle=power_cycle)
-        if cal.soft_min_m < cal.soft_max_m:
-            cal_lo = float(cal.soft_min_m)
-            cal_hi = float(cal.soft_max_m)
-            cfg_lo = float(self.config.soft_min_m)
-            cfg_hi = float(self.config.soft_max_m)
-            if (
-                abs(cal_lo - cfg_lo) > 1.0e-6
-                or abs(cal_hi - cfg_hi) > 1.0e-6
-            ):
-                with self._lock:
-                    self._calibrated = False
-                raise CalValidationError(
-                    "rail calibration soft-limit mismatch: calibration "
-                    f"[{cal_lo:.6f}, {cal_hi:.6f}] vs canonical config "
-                    f"[{cfg_lo:.6f}, {cfg_hi:.6f}]",
-                    power_cycle=False,
-                )
+        cal.last_raw_counts = cal_gate.last_raw_counts
         try:
             save_calibration(path, cal)
         except OSError:
@@ -1526,11 +1561,11 @@ class RailServoBridge:
         )
         self._thread.start()
         self._safety_thread.start()
-        soft_lo, soft_hi = self._soft_lo_hi()
+        hard_lo, hard_hi = self._soft_lo_hi()
         print(
             f"lw100 rail: connecting hold @ {measured:+.4f} m ({zero_note}, "
             f"raw={raw} bias={self._drive._counts_bias}, "
-            f"soft=[{soft_lo * 1000:.0f}, {soft_hi * 1000:.0f}] mm "
+            f"hard=[{hard_lo * 1000:.0f}, {hard_hi * 1000:.0f}] mm "
             f"travel={self.config.travel_m:.2f} m, "
             f"velocity-follow (kp={self.config.vel_kp}, kd={self.config.vel_kd}, "
             f"v_max={self.config.vel_max_m_s:.2f} m/s, "

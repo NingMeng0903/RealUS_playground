@@ -119,8 +119,8 @@ def test_80cm_scan_stays_well_conditioned():
 
     assert np.isfinite(out["sigma"]).all()
     assert np.isfinite(out["err_mm"]).all()
-    assert out["rail"].min() >= inner.cfg.rail.soft_min_m - 1e-6
-    assert out["rail"].max() <= inner.cfg.rail.soft_max_m + 1e-6
+    assert out["rail"].min() >= inner.cfg.rail.hard_min_m - 1e-6
+    assert out["rail"].max() <= inner.cfg.rail.hard_max_m + 1e-6
     assert np.ptp(out["rail"]) > 0.01  # generic QPIK can recruit the rail
     duration_s = len(out["rail"]) * inner.cfg.dt
     assert _rail_reversals(out["rail"]) / duration_s < 0.5
@@ -149,8 +149,8 @@ def test_real_scan_rail_does_not_hunt():
     # Stage-1 acceptance allows a short transient up to 5 mm; the steady
     # trajectory remains tighter than 2 mm for 95% of samples.
     assert np.isfinite(out["err_mm"]).all()
-    assert out["rail"].min() >= inner.cfg.rail.soft_min_m - 1e-6
-    assert out["rail"].max() <= inner.cfg.rail.soft_max_m + 1e-6
+    assert out["rail"].min() >= inner.cfg.rail.hard_min_m - 1e-6
+    assert out["rail"].max() <= inner.cfg.rail.hard_max_m + 1e-6
     assert out["sigma"].min() > 0.0, out["sigma"].min()
 
 
@@ -167,8 +167,8 @@ def test_small_scan_rail_stays_in_sweet_spot():
     tcp_y_pp = float(np.ptp(out["tcp_y"]))
     assert rail_pp >= 0.0
     assert tcp_y_pp >= 0.0
-    assert out["rail"].min() >= inner.cfg.rail.soft_min_m - 1e-6
-    assert out["rail"].max() <= inner.cfg.rail.soft_max_m + 1e-6
+    assert out["rail"].min() >= inner.cfg.rail.hard_min_m - 1e-6
+    assert out["rail"].max() <= inner.cfg.rail.hard_max_m + 1e-6
     assert np.isfinite(out["sigma"]).all()
 
 

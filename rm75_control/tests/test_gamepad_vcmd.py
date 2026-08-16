@@ -11,6 +11,7 @@ import pytest
 import yaml
 
 from rm75_control.control.admittance_common.phase_ipc import SinToolYTaskParams
+from rm75_control.control.joint_admittance_8dof.api import SecondaryPolicy
 from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
 from rm75_control.control.joint_admittance_8dof.gamepad_vcmd_program import (
     build_gamepad_vcmd_program,
@@ -58,11 +59,16 @@ def test_lb_up_lt_down_are_world_z() -> None:
 
 def test_right_stick_and_rb_rt_are_tool_rotation() -> None:
     cfg = GamepadTwistConfig(rot_rad_s=0.30, deadzone=0.10)
-    _, w_stick = map_pad_to_world_lin_tool_ang(_state(rx=1.0, ry=-1.0), cfg)
+    _, w_up = map_pad_to_world_lin_tool_ang(_state(ry=-1.0), cfg)
+    _, w_down = map_pad_to_world_lin_tool_ang(_state(ry=1.0), cfg)
+    _, w_left = map_pad_to_world_lin_tool_ang(_state(rx=-1.0), cfg)
+    _, w_right = map_pad_to_world_lin_tool_ang(_state(rx=1.0), cfg)
     _, w_rb = map_pad_to_world_lin_tool_ang(_state(rb=1.0), cfg)
     _, w_rt = map_pad_to_world_lin_tool_ang(_state(rt=1.0), cfg)
-    assert w_stick[0] > 0.2
-    assert w_stick[1] > 0.2
+    assert w_up[1] < -0.2 and abs(w_up[0]) < 1e-12
+    assert w_down[1] > 0.2 and abs(w_down[0]) < 1e-12
+    assert w_left[0] < -0.2 and abs(w_left[1]) < 1e-12
+    assert w_right[0] > 0.2 and abs(w_right[1]) < 1e-12
     assert w_rb[2] > 0.2
     assert w_rt[2] < -0.2
 
@@ -193,5 +199,59 @@ def test_build_gamepad_program_and_ipc_kind() -> None:
         assert built.phases[-1].label == "gamepad_vcmd"
         assert built.phases[-1].duration_s == 1.0
         assert built.phases[-1].governor_err_max_mm == 0.0
+        built.phases[-1].on_enter()
+        assert built.inner._vcmd_owns_rail
+        assert built.inner._rail_ext_active is False
     finally:
         close_built_pad(built)
+
+
+def _yaml_inner_at_rail(q_rail_m: float) -> JointIkController:
+    raw = yaml.safe_load(_CFG.read_text(encoding="utf-8"))
+    inner = JointIkController(RobotKinematics(), build_joint_ik_config(raw))
+    q = _SEED_Q.copy()
+    q[0] = float(q_rail_m)
+    inner.reset(q)
+    return inner
+
+
+def _plus_y_step(inner: JointIkController, q_rail_m: float):
+    q = _SEED_Q.copy()
+    q[0] = float(q_rail_m)
+    twist = np.array([0.0, 0.08, 0.0, 0.0, 0.0, 0.0])
+    return inner.update(twist, q_meas=q, vel_ff=twist)
+
+
+def test_scan_fade_brakes_then_gamepad_owns_rail() -> None:
+    """Scan rail_ext fade at 700 mm must not run when the stick owns Y."""
+    faded = _yaml_inner_at_rail(0.70)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(faded)
+    step_fade = _plus_y_step(faded, 0.70)
+    assert np.isfinite(step_fade.rail_task_vel)
+    assert float(step_fade.rail_task_vel) < 0.055
+    assert float(step_fade.v_cmd[1]) > 0.05
+
+    owned = _yaml_inner_at_rail(0.70)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(owned)
+    owned.set_vcmd_owns_rail(True)
+    step_own = _plus_y_step(owned, 0.70)
+    assert owned._rail_ext_active is False
+    assert not np.isfinite(step_own.rail_task_vel)
+    assert float(step_own.v_cmd[1]) > 0.05
+
+
+def test_plus_leave_does_not_zero_stick_y() -> None:
+    """40 mm plus-leave zeros rail_ext +v; stick Y must still own the rail."""
+    blocked = _yaml_inner_at_rail(0.74)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(blocked)
+    step_block = _plus_y_step(blocked, 0.74)
+    assert float(step_block.rail_task_vel) == pytest.approx(0.0, abs=1e-4)
+    assert float(step_block.v_cmd[1]) > 0.05
+
+    owned = _yaml_inner_at_rail(0.74)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(owned)
+    owned.set_vcmd_owns_rail(True)
+    step_own = _plus_y_step(owned, 0.74)
+    assert owned._rail_ext_active is False
+    assert not np.isfinite(step_own.rail_task_vel)
+    assert float(step_own.v_cmd[1]) > 0.05

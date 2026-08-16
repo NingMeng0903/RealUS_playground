@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from types import SimpleNamespace
 
 import numpy as np
@@ -13,6 +14,7 @@ from rm75_control.control.joint_admittance_8dof.loop import (
     JointIkController,
     _guard_qpik_step_before_send,
     _publish_rail_target_before_arm,
+    _qpik_rail_v_ff_m_s,
     _rail_m_for_feedback,
     _wall_clock_rail_target,
 )
@@ -240,23 +242,104 @@ def test_publish_forwards_v_ff_to_the_bridge() -> None:
     assert rail.seen == (0.41, 0.08)
 
 
-def test_wall_clock_rail_target_uses_wall_dt_not_nominal_q_send() -> None:
-    seeded = _wall_clock_rail_target(
-        None,
-        q_send0=0.4004,
-        qdot0=0.08,
-        dt_wall=0.0065,
+def test_qpik_rail_v_ff_is_ik_qdot_not_pad_bypass() -> None:
+    assert _qpik_rail_v_ff_m_s(0.079) == pytest.approx(0.079)
+    assert _qpik_rail_v_ff_m_s(0.0) == 0.0
+    assert _qpik_rail_v_ff_m_s(5.0e-4) == 0.0
+    assert _qpik_rail_v_ff_m_s(float("nan")) == 0.0
+    assert _qpik_rail_v_ff_m_s(float("inf")) == 0.0
+
+
+def test_wall_clock_rail_target_one_tick_extra_not_accumulator() -> None:
+    pub = _wall_clock_rail_target(
+        0.4004,
+        0.08,
+        0.0065,
+        0.005,
         soft_lo=0.025,
         soft_hi=0.78,
     )
-    assert seeded == pytest.approx(0.4004)
-    advanced = _wall_clock_rail_target(
+    assert pub == pytest.approx(0.4004 + 0.08 * 0.0015)
+    again = _wall_clock_rail_target(
+        0.4008,
+        0.08,
+        0.0065,
+        0.005,
+        soft_lo=0.025,
+        soft_hi=0.78,
+    )
+    assert again == pytest.approx(0.4008 + 0.08 * 0.0015)
+    # A persistent integrator would have been prev_pub + qdot * dt_wall.
+    assert again != pytest.approx(pub + 0.08 * 0.0065)
+
+
+def test_wall_clock_idle_publishes_q_send_without_lead_chase() -> None:
+    first = _wall_clock_rail_target(
         0.40,
-        q_send0=0.4004,
-        qdot0=0.08,
-        dt_wall=0.0065,
+        0.0,
+        0.0065,
+        0.005,
         soft_lo=0.025,
         soft_hi=0.78,
+        meas_m=0.42,
+        lead_max_m=0.020,
     )
-    assert advanced == pytest.approx(0.40 + 0.08 * 0.0065)
-    assert advanced > 0.4004
+    assert first == pytest.approx(0.40)
+    walked = 0.40
+    for _ in range(200):
+        walked = _wall_clock_rail_target(
+            0.40,
+            -0.033,
+            0.0065,
+            0.005,
+            soft_lo=0.025,
+            soft_hi=0.78,
+            meas_m=walked,
+            lead_max_m=0.020,
+        )
+    # Residual qdot without a persistent integrator cannot walk 20 mm.
+    assert abs(walked - 0.40) < 0.020
+
+
+def test_zero_v_cmd_does_not_invent_rail_task() -> None:
+    controller = _controller()
+    q = Q_SAFE.copy()
+    controller.reset(q)
+    if controller.rail_ext_task is not None:
+        controller.rail_ext_task.set_d_pref(0.10)
+    step = controller.update(np.zeros(6), q_meas=q)
+    assert not np.isfinite(step.rail_task_vel) or abs(float(step.rail_task_vel)) < 1e-9
+    assert abs(float(step.qdot[0])) < 0.01
+    assert _qpik_rail_v_ff_m_s(float(step.qdot[0])) == 0.0
+
+
+def test_lead_clamp_does_not_invent_qdot_above_vmax() -> None:
+    controller = _controller()
+    q_meas = Q_SAFE.copy()
+    q_meas[0] = 0.40
+    controller.reset(q_meas)
+    controller.q_cmd[0] = 0.50
+    twist = np.array([0.0, 0.08, 0.0, 0.0, 0.0, 0.0])
+    step = controller.update(twist, q_meas=q_meas)
+    v_max = float(controller.limits.v_max[0])
+    assert abs(float(step.qdot[0])) <= v_max + 1e-9
+    assert abs(float(step.q_send[0]) - 0.40) <= float(controller.cfg.resync_err_rail_m) + 1e-9
+
+
+def test_nonzero_v_cmd_publishes_qpik_qdot_not_v_ff_rail() -> None:
+    controller = _controller()
+    q = Q_SAFE.copy()
+    controller.reset(q)
+    twist = np.array([0.0, 0.08, 0.0, 0.0, 0.0, 0.0])
+    step = None
+    for _ in range(40):
+        step = controller.update(twist, q_meas=controller.q_cmd.copy(), vel_ff=twist)
+    assert step is not None
+    qdot0 = float(step.qdot[0])
+    published = _qpik_rail_v_ff_m_s(qdot0)
+    assert abs(qdot0) > 1.0e-3
+    assert published == pytest.approx(qdot0)
+    pad_proj = float(step.v_ff_rail)
+    # Servo v_ff is the IK rail velocity.  Pad/path projection is not substituted.
+    if math.isfinite(pad_proj) and abs(pad_proj - qdot0) > 1.0e-3:
+        assert published != pytest.approx(pad_proj)

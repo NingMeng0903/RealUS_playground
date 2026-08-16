@@ -87,7 +87,7 @@ class WlnConfig:
     # default (see _wln_reg_scale): it has no spare joint to hand the stroke
     # to, so weighting only buys slack.  The rail does have one — the arm.
     band_rad: float = 0.0         # arm joints (rad)
-    band_rail_m: float = 0.10     # prismatic rail (m)
+    band_rail_m: float = 0.0      # prismatic rail (m); 0 disables rail WLN
     # Rail reg is 1e-3 against the arm's 1e-2, so 20x is already 2x dearer
     # than an arm joint — enough to shift the stroke, small enough that the
     # QP still prefers moving the rail over dropping the task into slack.
@@ -172,7 +172,9 @@ class QpConfig:
     # throttling rail velocity from |y| > 6.5 cm (60% of the ±0.25 m travel),
     # exactly where the rail is needed most to rescue arm singularities.
     limit_damper_band_rad: float = 0.15      # arm joints 1..7 (rad)
-    limit_damper_band_rail_m: float = 0.05   # rail joint 0 (metres)
+    limit_damper_band_rail_m: float = 0.01   # rail joint 0 (metres)
+    # Rail stopping-envelope look-ahead.  0 uses the control period only.
+    limit_damper_rail_reaction_s: float = 0.15
     warn_on_fail: bool = True
     # On ProxQP failure: qdot ← fail_qdot_decay * qdot_prev (not a hard 0.5
     # chop — that was a one-tick jerk when the solver hiccupped).
@@ -383,7 +385,9 @@ class QpIkController:
         damper_band = np.full(kin.nv, float(self.cfg.limit_damper_band_rad))
         damper_band[0] = float(self.cfg.limit_damper_band_rail_m)
         self.constraints = VelocityBoxConstraints(
-            limits, damper_band_rad=damper_band
+            limits,
+            damper_band_rad=damper_band,
+            rail_reaction_s=float(self.cfg.limit_damper_rail_reaction_s),
         )
         self.collision_cfg = self.cfg.collision
         self._max_cbf = max(1, int(self.collision_cfg.max_pairs))

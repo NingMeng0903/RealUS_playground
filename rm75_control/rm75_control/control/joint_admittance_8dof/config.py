@@ -186,6 +186,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             "use_mass_weighted_reg", "mass_reg_floor", "mass_weight_exempt_rail",
             "mass_reg_lpf_tau_s", "use_dyn_nullspace",
             "limit_damper_band_rad", "limit_damper_band_rail_m",
+            "limit_damper_rail_reaction_s",
             "sigma_setbased", "branch_barrier", "joint_comfort", "sns_retry_scales",
             "smoothness_weight", "twist_scale_lpf_tau_s", "wln",
             "j_max_arm_rad_s3", "j_max_rail_m_s3",
@@ -291,8 +292,12 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             name="inner.qp.limit_damper_band_rad",
         ),
         limit_damper_band_rail_m=_finite_float(
-            c.get("limit_damper_band_rail_m", 0.05),
+            c.get("limit_damper_band_rail_m", 0.01),
             name="inner.qp.limit_damper_band_rail_m",
+        ),
+        limit_damper_rail_reaction_s=_finite_float(
+            c.get("limit_damper_rail_reaction_s", 0.15),
+            name="inner.qp.limit_damper_rail_reaction_s",
         ),
         warn_on_fail=bool(c.get("warn_on_fail", False)),
         fail_qdot_decay=_finite_float(
@@ -376,7 +381,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
                 wln_raw.get("band_rad", 0.0), name="inner.qp.wln.band_rad"
             ),
             band_rail_m=_finite_float(
-                wln_raw.get("band_rail_m", 0.10), name="inner.qp.wln.band_rail_m"
+                wln_raw.get("band_rail_m", 0.0), name="inner.qp.wln.band_rail_m"
             ),
             max_scale=_finite_float(
                 wln_raw.get("max_scale", 20.0), name="inner.qp.wln.max_scale"
@@ -692,27 +697,43 @@ def _parse_rail(rail_raw: dict, hw_lw: dict) -> RailLockConfig:
         {
             "mode", "locked_style", "q_ref_m", "lock_gain", "lock_reg_scale",
             "lock_vel_eps_m_s", "lock_hard_pin", "v_max_m_s", "travel_m",
-            "soft_min_m", "soft_max_m",
+            "soft_min_m", "soft_max_m", "hard_min_m", "hard_max_m",
         },
         name="rail",
     )
     rail_mode, locked_style = _resolve_rail_mode(rail_raw)
     soft_min = _finite_float(
-        rail_raw.get("soft_min_m", hw_lw.get("soft_min_m", 0.025)),
+        rail_raw.get("soft_min_m", hw_lw.get("soft_min_m", 0.015)),
         name="rail.soft_min_m",
     )
     soft_max = _finite_float(
-        rail_raw.get("soft_max_m", hw_lw.get("soft_max_m", 0.78)),
+        rail_raw.get("soft_max_m", hw_lw.get("soft_max_m", 0.77)),
         name="rail.soft_max_m",
     )
+    hard_min = _finite_float(
+        rail_raw.get("hard_min_m", hw_lw.get("hard_min_m", 0.005)),
+        name="rail.hard_min_m",
+    )
+    hard_max = _finite_float(
+        rail_raw.get("hard_max_m", hw_lw.get("hard_max_m", 0.78)),
+        name="rail.hard_max_m",
+    )
     travel = _finite_float(rail_raw.get("travel_m", 0.80), name="rail.travel_m")
-    if not 0.0 <= soft_min < soft_max <= travel:
-        raise ValueError("rail limits must satisfy 0 <= soft_min < soft_max <= travel")
+    if not 0.0 <= hard_min <= soft_min < soft_max <= hard_max <= travel:
+        raise ValueError(
+            "rail limits must satisfy "
+            "0 <= hard_min <= soft_min < soft_max <= hard_max <= travel"
+        )
     if rail_raw and hw_lw and ("soft_min_m" in hw_lw or "soft_max_m" in hw_lw):
         hw_min = _finite_float(hw_lw.get("soft_min_m", soft_min), name="hw rail soft_min")
         hw_max = _finite_float(hw_lw.get("soft_max_m", soft_max), name="hw rail soft_max")
         if abs(hw_min - soft_min) > 1.0e-6 or abs(hw_max - soft_max) > 1.0e-6:
             raise ValueError("rail soft-limit mismatch between QPIK and hardware")
+    if rail_raw and hw_lw and ("hard_min_m" in hw_lw or "hard_max_m" in hw_lw):
+        hw_hmin = _finite_float(hw_lw.get("hard_min_m", hard_min), name="hw rail hard_min")
+        hw_hmax = _finite_float(hw_lw.get("hard_max_m", hard_max), name="hw rail hard_max")
+        if abs(hw_hmin - hard_min) > 1.0e-6 or abs(hw_hmax - hard_max) > 1.0e-6:
+            raise ValueError("rail hard-limit mismatch between QPIK and hardware")
     return RailLockConfig(
         mode=rail_mode,
         locked_style=locked_style,
@@ -737,6 +758,8 @@ def _parse_rail(rail_raw: dict, hw_lw: dict) -> RailLockConfig:
         travel_m=travel,
         soft_min_m=soft_min,
         soft_max_m=soft_max,
+        hard_min_m=hard_min,
+        hard_max_m=hard_max,
     )
 
 
@@ -803,7 +826,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
     damper = _mapping(hard.get("velocity_damper"), name="qpik.hard_limits.velocity_damper")
     if damper:
         _reject_unknown(
-            damper, {"arm_band_rad", "rail_band_m"},
+            damper, {"arm_band_rad", "rail_band_m", "rail_reaction_s"},
             name="qpik.hard_limits.velocity_damper",
         )
         if "arm_band_rad" in damper:
@@ -814,8 +837,14 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             qp.limit_damper_band_rail_m = _finite_float(
                 damper["rail_band_m"], name="velocity_damper.rail_band_m"
             )
+        if "rail_reaction_s" in damper:
+            qp.limit_damper_rail_reaction_s = _finite_float(
+                damper["rail_reaction_s"], name="velocity_damper.rail_reaction_s"
+            )
     if qp.limit_damper_band_rad < 0.0 or qp.limit_damper_band_rail_m < 0.0:
         raise ValueError("velocity damper bands must be non-negative")
+    if qp.limit_damper_rail_reaction_s < 0.0:
+        raise ValueError("velocity_damper.rail_reaction_s must be non-negative")
 
     nullspace, manipulability = _parse_nullspace(inner)
     arm_angle = _parse_arm_angle(inner)
@@ -830,8 +859,17 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         hard.get("rail", inner.get("rail")), name="rail"
     )
     rail = _parse_rail(rail_raw, hw_lw)
-    rail_extension.soft_min_m = float(rail.soft_min_m)
-    rail_extension.soft_max_m = float(rail.soft_max_m)
+    if "hard_min_m" in rail_raw or "hard_max_m" in rail_raw:
+        band = float(qp.limit_damper_band_rail_m)
+        lo_gap = float(rail.soft_min_m) - float(rail.hard_min_m)
+        hi_gap = float(rail.hard_max_m) - float(rail.soft_max_m)
+        if abs(lo_gap - band) > 1.0e-6 or abs(hi_gap - band) > 1.0e-6:
+            raise ValueError(
+                "rail damper band must equal the hard–soft gap "
+                f"(band={band:.6f}, lo_gap={lo_gap:.6f}, hi_gap={hi_gap:.6f})"
+            )
+    rail_extension.soft_min_m = float(rail.hard_min_m)
+    rail_extension.soft_max_m = float(rail.hard_max_m)
 
     def hard_value(name: str, legacy_name: str, default):
         return hard.get(name, inner.get(legacy_name, default))

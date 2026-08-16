@@ -54,6 +54,7 @@ from rm75_control.control.joint_admittance_8dof.tasks.nullspace_task import (
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
     RailExtensionConfig,
     RailExtensionTask,
+    rail_vel_ff_from_reference,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.ird_adapter import (
     IrdConfig,
@@ -78,15 +79,8 @@ from rm75_control.control.joint_admittance_8dof.utils.safety import (
     Watchdog,
 )
 
-# Wall handoff: raise comfort/branch slack cost (never cheapen J4/J6 prefs).
-# 20260815 CSVs parked J4 at the 15° comfort stop (~120°) and closed J6
-# because pref_slack_scale=0.05 made buying slack cheaper than moving the
-# elbow/wrist.  J5 stayed at −15° against q_nominal +40° — that is pose-task
-# roll lock, not a bad attractor; do not retune q_nominal until the new
-# feedback_twist / nullspace_norm columns confirm centering is starved.
-WALL_PREF_SLACK_SCALE = 2.0
-# Hold the carriage when pinned so WLN 20↔1 cannot tug q0.
-WALL_RAIL_REG_FLOOR = 20.0
+# Below this, QPIK rail speed is treated as idle (publish 0, no 20 mm lead).
+_RAIL_V_IDLE_M_S = 1.0e-3
 
 
 # ---------------------------------------------------------------------------
@@ -300,18 +294,14 @@ class JointIkController:
             else None
         )
         if self.rail_ext_task is not None:
-            self.rail_ext_task.cfg.soft_min_m = float(self.cfg.rail.soft_min_m)
-            self.rail_ext_task.cfg.soft_max_m = float(self.cfg.rail.soft_max_m)
+            self.rail_ext_task.cfg.soft_min_m = float(self.cfg.rail.hard_min_m)
+            self.rail_ext_task.cfg.soft_max_m = float(self.cfg.rail.hard_max_m)
         self.posture_retarget = (
             PostureRetarget(kin, self.cfg.psi_retarget, euler_order=self.cfg.euler_order)
             if self.cfg.psi_retarget.enabled
             else None
         )
         self._rail_ext_active = True
-        # Scan/hybrid: freeze q0 in the +leave / pin band. Teleop must turn
-        # this off — a bidirectional pin at +soft_max leaves the stick unable
-        # to drive the carriage back.
-        self._rail_wall_hold = True
         from rm75_control.control.joint_admittance_8dof.tasks.rail_goodness import (
             CachedRailGoodness,
             SigmaMinGoodness,
@@ -344,22 +334,22 @@ class JointIkController:
                 float(self.kin.v_max[0]),
                 float(self.cfg.rail.v_max_m_s),
             )
-        soft_lo = float(getattr(self.cfg.rail, "soft_min_m", 0.025))
-        soft_hi = float(getattr(self.cfg.rail, "soft_max_m", 0.78))
+        hard_lo = float(getattr(self.cfg.rail, "hard_min_m", 0.005))
+        hard_hi = float(getattr(self.cfg.rail, "hard_max_m", 0.78))
         if not (
-            np.isfinite(soft_lo)
-            and np.isfinite(soft_hi)
-            and float(self.kin.q_lower[0]) <= soft_lo < soft_hi
-            and soft_hi <= float(self.kin.q_upper[0])
+            np.isfinite(hard_lo)
+            and np.isfinite(hard_hi)
+            and float(self.kin.q_lower[0]) <= hard_lo < hard_hi
+            and hard_hi <= float(self.kin.q_upper[0])
         ):
             raise ValueError(
-                "invalid canonical rail soft limits: "
-                f"[{soft_lo:.6f}, {soft_hi:.6f}]"
+                "invalid rail hard limits: "
+                f"[{hard_lo:.6f}, {hard_hi:.6f}]"
             )
-        self.limits.q_lower[0] = max(float(self.limits.q_lower[0]), soft_lo)
-        self.limits.q_upper[0] = min(float(self.limits.q_upper[0]), soft_hi)
-        self.limits.rail_soft_min_m = float(self.limits.q_lower[0])
-        self.limits.rail_soft_max_m = float(self.limits.q_upper[0])
+        self.limits.q_lower[0] = max(float(self.limits.q_lower[0]), hard_lo)
+        self.limits.q_upper[0] = min(float(self.limits.q_upper[0]), hard_hi)
+        self.limits.rail_soft_min_m = float(self.cfg.rail.soft_min_m)
+        self.limits.rail_soft_max_m = float(self.cfg.rail.soft_max_m)
         self.core = QpIkController(self.kin, self.limits, self.cfg.qp)
         self.core.set_q_star(self.centering_task.q_target)
         self.safety = SafetyLimiter(self.limits)
@@ -386,12 +376,11 @@ class JointIkController:
         self._press_z_mark: float = float("nan")
         self._press_stall_s: float = 0.0
         self._d_star_nudge_cool_s: float = 0.0
-        self._dbg_last_log_t: float = 0.0
-        self._dbg_last_key: tuple = ()
         self._rail_mode: RailMode = self.cfg.rail.mode
         self._locked_style: LockedStyle = self.cfg.rail.locked_style
         self._configured_rail_mode: RailMode = self.cfg.rail.mode
         self._plan_drives_rail: bool = False
+        self._vcmd_owns_rail: bool = False
         self._direct_joint_ptp: bool = False
         self._apply_rail_mode_side_effects()
 
@@ -401,6 +390,12 @@ class JointIkController:
 
     def set_plan_drives_rail(self, enabled: bool) -> None:
         self._plan_drives_rail = bool(enabled)
+
+    def set_vcmd_owns_rail(self, enabled: bool) -> None:
+        """Gamepad / stick Y owns the rail.  Do not let rail_ext fade then lunge."""
+        self._vcmd_owns_rail = bool(enabled)
+        if self._vcmd_owns_rail:
+            self.set_rail_extension_active(False)
 
     def set_direct_joint_ptp(self, enabled: bool) -> None:
         self._direct_joint_ptp = bool(enabled)
@@ -431,10 +426,6 @@ class JointIkController:
 
     def set_rail_extension_active(self, active: bool) -> None:
         self._rail_ext_active = bool(active)
-
-    def set_rail_wall_hold(self, hold: bool) -> None:
-        """If False, do not bidirectional-pin q0 at a soft stop (teleop)."""
-        self._rail_wall_hold = bool(hold)
 
     def set_rail_extension_mode(self, mode: str) -> None:
         if self.rail_ext_task is not None:
@@ -1038,6 +1029,11 @@ class JointIkController:
                 float(dt),
                 rail_lo=float(self.limits.q_lower[0]),
                 rail_hi=float(self.limits.q_upper[0]),
+                q_nominal=(
+                    None
+                    if self.posture_retarget.planned
+                    else self.centering_task.q_target
+                ),
             )
             if self.arm_task is not None:
                 self.arm_task.set_reference(float(psi_ref))
@@ -1122,15 +1118,29 @@ class JointIkController:
             if sigma_esc_ref > 1e-9 and sigma_now < sigma_esc_ref:
                 manip_for_saturation = True
 
+        # No Cartesian rail command: do not let d*/escape invent qdot[0].
+        # Stick Y owns the rail: the 150 mm scan fade + 40 mm plus-leave
+        # braked ~10 cm out (qdot 80→6 mm/s) then released at 760 (lunge).
+        along_rail = abs(
+            _along_rail_v_cmd_m_s(self.kin, q_prev, twist_base, vel_ff)
+        )
+        if along_rail < _RAIL_V_IDLE_M_S or self._vcmd_owns_rail:
+            rail_task_vel = None
+            rail_task_weight = 0.0
+            rail_escape_active = False
+            if self.rail_ext_task is not None:
+                self.rail_ext_task.last_v_reach = 0.0
+                self.rail_ext_task.last_v_escape = 0.0
+                self.rail_ext_task._v_lpf = 0.0
+                self.rail_ext_task._v_lpf_initialized = False
+
         rail_reg_scale = 1.0
         if self.rail_ext_task is not None:
             rail_reg_scale = float(
                 getattr(self.rail_ext_task, "last_d_star_reg_scale", 1.0) or 1.0
             )
 
-        # Soft walls are only cfg.rail.soft_min/max.  Do not freeze q0 in a
-        # leave/fade band — that pinned teleop at ~740 mm.  Into-wall stop is
-        # the position box + rail-task one-way fade.
+        # Hard box is 5/780 mm.  Do not freeze q0 in a leave/fade band.
         rail_sat_now = bool(
             self.rail_ext_task is not None
             and bool(getattr(self.rail_ext_task, "last_limit_saturated", False))
@@ -1139,70 +1149,6 @@ class JointIkController:
         rail_task_weight_eff = rail_task_weight
         keep_task_weight = False
         pref_slack_scale = 1.0
-
-        # #region agent log
-        try:
-            _now = time.monotonic()
-            _vesc = float(getattr(self.rail_ext_task, "last_v_escape", 0.0) or 0.0) if self.rail_ext_task is not None else 0.0
-            _esign = float(getattr(self.rail_ext_task, "_escape_sign", 0.0) or 0.0) if self.rail_ext_task is not None else 0.0
-            _key = (
-                int(rail_sat_now),
-                int(allow_press_escape),
-                int(in_pin),
-                int(_vesc > 1e-4) - int(_vesc < -1e-4),
-            )
-            if _key != self._dbg_last_key or (_now - self._dbg_last_log_t) >= 0.5:
-                self._dbg_last_key = _key
-                self._dbg_last_log_t = _now
-                import json as _json
-                with open(
-                    "/media/camp/EXT_DRIVE/RealUS_playground/.cursor/debug-f95044.log",
-                    "a",
-                    encoding="utf-8",
-                ) as _df:
-                    _df.write(
-                        _json.dumps(
-                            {
-                                "sessionId": "f95044",
-                                "runId": "post-fix2",
-                                "hypothesisId": "H6-H7-H9",
-                                "location": "loop.py:update:pin",
-                                "message": "pin/escape/air gates",
-                                "timestamp": int(_now * 1000),
-                                "data": {
-                                    "q0": float(q_prev[0]),
-                                    "in_band": bool(in_band),
-                                    "in_pin": bool(in_pin),
-                                    "plus_leave": bool(plus_leave),
-                                    "rail_sat": bool(rail_sat_now),
-                                    "rail_wall_hold": bool(self._rail_wall_hold),
-                                    "allow_press_escape": bool(allow_press_escape),
-                                    "demanding": bool(demanding),
-                                    "z_stuck": bool(z_stuck),
-                                    "j4_blocked": bool(j4_blocked),
-                                    "arm_starved": bool(arm_starved),
-                                    "has_travel": bool(has_travel),
-                                    "tool_y_err_m": float(tool_y_err_m),
-                                    "v_force_z": float(v_force),
-                                    "press_stall_s": float(self._press_stall_s),
-                                    "sigma_arm": float(sigma_arm),
-                                    "twist_scale": float(twist_scale),
-                                    "q4_deg": float(np.degrees(q_prev[4])),
-                                    "q6_deg": float(np.degrees(q_prev[6])),
-                                    "v_escape": _vesc,
-                                    "escape_sign": _esign,
-                                    "escape_active": bool(rail_escape_active),
-                                    "v_cmd_z": float(twist_base[2]),
-                                    "z_now": float(z_now),
-                                },
-                            },
-                            allow_nan=False,
-                        )
-                        + "\n"
-                    )
-        except Exception:
-            pass
-        # #endregion
 
         r = self.core.step(
             q_prev,
@@ -1266,7 +1212,16 @@ class JointIkController:
         rep = self.safety.clamp(q_prev, q_next, dt)
         self.q_cmd = rep.q_safe
         if dt > 1e-9 and (rep.vel_clamped or rep.acc_clamped or rep.pos_clamped):
-            self.core.qdot_prev = (self.q_cmd - q_prev) / dt
+            applied = (self.q_cmd - q_prev) / dt
+            if rep.pos_clamped:
+                applied[0] = float(qdot_out[0])
+                lo0 = float(self.limits.q_lower[0])
+                hi0 = float(self.limits.q_upper[0])
+                if self.q_cmd[0] <= lo0 + 1.0e-9 and applied[0] < 0.0:
+                    applied[0] = 0.0
+                elif self.q_cmd[0] >= hi0 - 1.0e-9 and applied[0] > 0.0:
+                    applied[0] = 0.0
+            self.core.qdot_prev = applied
         else:
             self.core.qdot_prev = qdot_out.copy()
 
@@ -1277,12 +1232,12 @@ class JointIkController:
                 q0_cmd = float(self.q_cmd[0])
                 if q0_cmd > q0_meas + lead_max:
                     self.q_cmd[0] = q0_meas + lead_max
-                    if dt > 1e-9:
-                        self.core.qdot_prev[0] = (self.q_cmd[0] - q_prev[0]) / dt
                 elif q0_cmd < q0_meas - lead_max:
                     self.q_cmd[0] = q0_meas - lead_max
-                    if dt > 1e-9:
-                        self.core.qdot_prev[0] = (self.q_cmd[0] - q_prev[0]) / dt
+                v_rail_max = float(self.limits.v_max[0])
+                self.core.qdot_prev[0] = float(
+                    np.clip(float(self.core.qdot_prev[0]), -v_rail_max, v_rail_max)
+                )
         # At the command floor, refuse to jog back into the switch.
         lo0 = float(self.limits.q_lower[0])
         hi0 = float(self.limits.q_upper[0])
@@ -2788,33 +2743,66 @@ def _rail_settled_for_arrival(
     return bool(abs(v_cmd) <= limit and abs(v_meas) <= limit)
 
 
+def _qpik_rail_v_ff_m_s(
+    qdot0: float, *, idle_eps: float = _RAIL_V_IDLE_M_S
+) -> float:
+    """Servo ``v_ff`` is the QPIK rail velocity, never a pad/path bypass."""
+    v = float(qdot0)
+    if not math.isfinite(v) or abs(v) < float(idle_eps):
+        return 0.0
+    return v
+
+
+def _along_rail_v_cmd_m_s(
+    kin: RobotKinematics,
+    q_rad: np.ndarray,
+    twist_base: np.ndarray,
+    vel_ff: np.ndarray | None,
+) -> float:
+    """Largest along-rail Cartesian command from ``v_cmd`` and optional ``vel_ff``."""
+    v_twist = rail_vel_ff_from_reference(twist_base, kin, q_rad)
+    candidates = [v_twist]
+    if vel_ff is not None:
+        arr = np.asarray(vel_ff, dtype=float).reshape(-1)
+        if arr.size >= 3 and bool(np.all(np.isfinite(arr[:3]))):
+            candidates.append(rail_vel_ff_from_reference(arr, kin, q_rad))
+    return float(max(candidates, key=abs))
+
+
 def _wall_clock_rail_target(
-    prev_pub_m: float | None,
     q_send0: float,
     qdot0: float,
     dt_wall: float,
+    dt_nom: float,
     *,
     soft_lo: float,
     soft_hi: float,
     meas_m: float | None = None,
     lead_max_m: float = 0.0,
 ) -> float:
-    """Advance the servo goal on wall time; leave CANFD ``q_cmd`` on nominal dt.
+    """One-tick wall alignment of QPIK ``q_send[0]``; no persistent integrator.
 
-    QPIK integrates ``q_cmd[0]`` at 5 ms.  The loop actually runs ~6.5 ms, so
-    handing ``q_send[0]`` to the rail under-reads wall-clock speed by ~25%.
+    QPIK already integrated at ``dt_nom``.  Add only
+    ``qdot * max(0, dt_wall - dt_nom)`` for this tick.  Idle (``|qdot|≈0``)
+    publishes ``q_send[0]`` and does not keep a 20 mm lead chase.
     """
-    if prev_pub_m is None or not math.isfinite(float(prev_pub_m)):
-        x = float(q_send0)
-    else:
-        x = float(prev_pub_m) + float(qdot0) * max(float(dt_wall), 0.0)
+    v = _qpik_rail_v_ff_m_s(qdot0)
+    x = float(q_send0)
+    if abs(v) >= _RAIL_V_IDLE_M_S:
+        extra = max(0.0, float(dt_wall) - max(float(dt_nom), 0.0))
+        x = x + v * extra
     lo = float(soft_lo)
     hi = float(soft_hi)
     if hi < lo:
         lo, hi = hi, lo
     x = max(lo, min(hi, x))
     lead = max(float(lead_max_m), 0.0)
-    if lead > 0.0 and meas_m is not None and math.isfinite(float(meas_m)):
+    if (
+        abs(v) >= _RAIL_V_IDLE_M_S
+        and lead > 0.0
+        and meas_m is not None
+        and math.isfinite(float(meas_m))
+    ):
         meas = float(meas_m)
         x = max(meas - lead, min(meas + lead, x))
     return x
@@ -3119,7 +3107,6 @@ def run_joint_admittance_phases(
                     phase_t0 = time.perf_counter()
                     next_tick = phase_t0
                     last_tick_time = phase_t0
-                    rail_pub_m: float | None = None
                     t_ref = 0.0
                     gov_filter = GovernorFilter(
                         tau_s=phase.governor_tau_s,
@@ -3419,9 +3406,9 @@ def run_joint_admittance_phases(
                             _fault_stop(stop_reason)
                             break
                         _t_send0 = time.perf_counter()
-                        qdot0_pub = float(np.asarray(step.qdot, dtype=float).reshape(-1)[0])
-                        if not math.isfinite(qdot0_pub):
-                            qdot0_pub = 0.0
+                        qdot0_pub = _qpik_rail_v_ff_m_s(
+                            float(np.asarray(step.qdot, dtype=float).reshape(-1)[0])
+                        )
                         rail_meas_pub = float("nan")
                         if rail_bridge is not None and getattr(rail_bridge, "enabled", False):
                             try:
@@ -3429,10 +3416,10 @@ def run_joint_admittance_phases(
                             except Exception:
                                 rail_meas_pub = float("nan")
                         rail_pub_m = _wall_clock_rail_target(
-                            rail_pub_m,
                             float(step.q_send[0]),
                             qdot0_pub,
                             dt_wall_actual,
+                            float(inner.cfg.dt),
                             soft_lo=float(inner.limits.q_lower[0]),
                             soft_hi=float(inner.limits.q_upper[0]),
                             meas_m=rail_meas_pub,

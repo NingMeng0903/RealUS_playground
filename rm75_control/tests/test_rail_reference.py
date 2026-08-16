@@ -286,7 +286,7 @@ def test_defaults_match_the_hardware_baseline() -> None:
         assert cfg.vel_kp == 14.0
         assert cfg.vel_kd == 0.22
         assert cfg.target_stale_coast_s == pytest.approx(0.35)
-        assert cfg.soft_min_m == pytest.approx(0.025)
+        assert cfg.soft_min_m == pytest.approx(0.015)
         assert cfg.vel_max_m_s == 0.30
         assert cfg.max_speed_rpm == 1800
         assert cfg.vel_amax_m_s2 == 0.8

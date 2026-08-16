@@ -398,7 +398,11 @@ def main() -> int:
             if rail_bridge.enabled:
                 try:
                     rail_bridge.start()
-                except CalValidationError:
+                except CalValidationError as exc:
+                    print(
+                        f"rm75 controller: rail calibration failed — {exc}",
+                        flush=True,
+                    )
                     return 2
                 meas = float(rail_bridge.measured_m)
                 rail_pub._default_m = meas

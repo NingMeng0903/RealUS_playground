@@ -34,17 +34,22 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
     assert cfg.qp.branch_barrier.enabled
     assert cfg.nullspace.q_nominal_rad is not None
     assert cfg.rail_extension.enabled
-    assert cfg.rail.soft_min_m == pytest.approx(0.025)
+    assert cfg.rail.soft_min_m == pytest.approx(0.030)
+    assert cfg.rail.soft_max_m == pytest.approx(0.755)
+    assert cfg.rail.hard_min_m == pytest.approx(0.005)
+    assert cfg.rail.hard_max_m == pytest.approx(0.78)
     assert cfg.rail.soft_min_m == pytest.approx(
         raw["qpik"]["hard_limits"]["rail"]["soft_min_m"]
     )
-    assert raw["hw"]["lw100"]["soft_min_m"] == pytest.approx(0.025)
+    assert raw["hw"]["lw100"]["soft_min_m"] == pytest.approx(0.030)
     assert raw["hw"]["lw100"]["soft_min_m"] == pytest.approx(
         raw["qpik"]["hard_limits"]["rail"]["soft_min_m"]
     )
     servo = parse_rail_servo_config(raw)
-    assert servo.soft_min_m == pytest.approx(0.025)
+    assert servo.soft_min_m == pytest.approx(0.030)
     assert servo.soft_max_m == pytest.approx(cfg.rail.soft_max_m)
+    assert servo.hard_min_m == pytest.approx(0.005)
+    assert servo.hard_max_m == pytest.approx(0.78)
     assert servo.vel_kp == pytest.approx(14.0)
     assert servo.vel_kd == pytest.approx(0.22)
     assert servo.target_stale_coast_s == pytest.approx(0.35)

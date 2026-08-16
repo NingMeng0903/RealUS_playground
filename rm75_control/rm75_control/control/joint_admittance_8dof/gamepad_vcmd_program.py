@@ -137,13 +137,10 @@ def build_gamepad_vcmd_program(
 
     def _enter() -> None:
         SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
-        inner.set_rail_wall_hold(False)
+        inner.set_vcmd_owns_rail(True)
         print(MAPPING_HELP, flush=True)
         if not getattr(pad, "connected", True):
             print("gamepad: no device — v_cmd stays zero until a pad appears", flush=True)
-
-    def _exit() -> None:
-        inner.set_rail_wall_hold(True)
 
     duration = float(params.scan_duration)
     phase = Phase(
@@ -154,7 +151,6 @@ def build_gamepad_vcmd_program(
         governor_err_max_mm=0.0,
         governor_joint_err_max_deg=0.0,
         on_enter=_enter,
-        on_exit=_exit,
         scale_qdot_ff_with_governor=False,
     )
     phases.append(phase)
