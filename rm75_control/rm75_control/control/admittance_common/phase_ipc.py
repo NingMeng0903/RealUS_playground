@@ -99,10 +99,10 @@ class SinToolYTaskParams:
     q_toggle_right_rad: list[float] = field(default_factory=list)
     tcp_offset_pose: list[float] = field(default_factory=list)
     task_kind: str = "sin_tool_y"
-    gamepad_trans_m_s: float = 0.08
+    gamepad_trans_m_s: float = 0.12
     gamepad_rot_rad_s: float = 0.60
     gamepad_deadzone: float = 0.18
-    gamepad_device_index: int = 0
+    gamepad_device_index: int = -1
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), separators=(",", ":"))

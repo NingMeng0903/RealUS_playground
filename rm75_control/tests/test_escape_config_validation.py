@@ -35,6 +35,10 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
     assert cfg.qp.branch_barrier.enabled
     assert cfg.nullspace.q_nominal_rad is not None
     assert cfg.rail_extension.enabled
+    assert cfg.a_max_arm_rad_s2 == pytest.approx(3.0)
+    assert cfg.a_max_rail_m_s2 == pytest.approx(0.30)
+    assert cfg.qp.j_max_arm_rad_s3 == pytest.approx(300.0)
+    assert cfg.qp.limit_damper_band_rail_m == pytest.approx(0.025)
     assert cfg.rail.soft_min_m == pytest.approx(0.030)
     assert cfg.rail.soft_max_m == pytest.approx(0.755)
     assert cfg.rail.hard_min_m == pytest.approx(0.005)

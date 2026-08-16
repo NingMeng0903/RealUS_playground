@@ -684,7 +684,7 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.psi_retarget.psi_replan_period_s == pytest.approx(0.1)
     assert cfg.arm_angle.k_psi == pytest.approx(1.5)
     assert cfg.nullspace.weights[1] == pytest.approx(1.0)
-    assert cfg.qp.j_max_arm_rad_s3 > 0.0
+    assert cfg.qp.j_max_arm_rad_s3 == pytest.approx(300.0)
     assert cfg.qp.j_max_rail_m_s3 > 0.0
     # Rail command shaping must not come back: it fed core.qdot_prev and so
     # multiplied every acceleration limit by its own alpha.

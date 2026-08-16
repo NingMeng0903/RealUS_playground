@@ -119,15 +119,17 @@ def build_gamepad_vcmd_program(
     phases = [item.phase for item in compiled]
 
     if pad is None:
+        idx = int(getattr(params, "gamepad_device_index", -1))
         pad = XboxPad(
-            device_index=int(getattr(params, "gamepad_device_index", 0) or 0),
+            device_index=max(idx, 0),
+            auto_select=idx < 0,
             allow_missing=True,
         )
     twist_cfg = GamepadTwistConfig(
-        trans_m_s=float(getattr(params, "gamepad_trans_m_s", 0.08)),
+        trans_m_s=float(getattr(params, "gamepad_trans_m_s", 0.12)),
         rot_rad_s=float(getattr(params, "gamepad_rot_rad_s", 0.60)),
         deadzone=float(getattr(params, "gamepad_deadzone", 0.18)),
-        max_lin_vel_m_s=2.0 * float(getattr(params, "gamepad_trans_m_s", 0.08)),
+        max_lin_vel_m_s=2.0 * float(getattr(params, "gamepad_trans_m_s", 0.12)),
         max_ang_vel_rad_s=2.0 * float(getattr(params, "gamepad_rot_rad_s", 0.60)),
         dt=float(inner_cfg.dt),
         euler_order=str(inner_cfg.euler_order),
@@ -138,6 +140,7 @@ def build_gamepad_vcmd_program(
     def _enter() -> None:
         SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
         print(MAPPING_HELP, flush=True)
+        print(f"gamepad: {getattr(pad, 'describe', lambda: 'pad')()}", flush=True)
         if not getattr(pad, "connected", True):
             print("gamepad: no device — v_cmd stays zero until a pad appears", flush=True)
 

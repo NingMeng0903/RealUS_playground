@@ -33,10 +33,10 @@ MAPPING_HELP = (
 
 @dataclass
 class GamepadTwistConfig:
-    trans_m_s: float = 0.08
+    trans_m_s: float = 0.12
     rot_rad_s: float = 0.60
     deadzone: float = 0.18
-    max_lin_vel_m_s: float = 0.16
+    max_lin_vel_m_s: float = 0.24
     max_ang_vel_rad_s: float = 1.20
     dt: float = 0.005
     euler_order: str = "xyz"

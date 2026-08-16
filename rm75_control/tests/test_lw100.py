@@ -74,3 +74,29 @@ def test_write_single_request_crc():
     req = struct.pack(">BBHH", 1, 0x06, 71, 1)
     full = append_crc(req)
     assert verify_crc(full)
+
+
+def test_read_motion_fast_is_three_registers():
+    from rm75_control.hw.lw100.drive import LW100Drive, LW100DriveConfig
+    from rm75_control.hw.lw100.registers import MONITOR_SPEED_RPM
+
+    class _Client:
+        def __init__(self) -> None:
+            self.calls: list[tuple[int, int]] = []
+
+        def read_holding_registers(self, addr, count):
+            self.calls.append((int(addr), int(count)))
+            return [0] * int(count)
+
+    drive = LW100Drive.__new__(LW100Drive)
+    drive._client = _Client()
+    drive._counts_bias = 0
+    drive._counts0 = 0
+    drive.config = LW100DriveConfig()
+    rpm, rail_m = drive.read_motion_fast()
+    assert drive._client.calls == [(MONITOR_SPEED_RPM, 3)]
+    assert rpm == 0
+    assert rail_m == pytest.approx(0.0)
+    drive._client.calls.clear()
+    drive.read_motion_and_di_fast()
+    assert drive._client.calls == [(MONITOR_SPEED_RPM, 16)]

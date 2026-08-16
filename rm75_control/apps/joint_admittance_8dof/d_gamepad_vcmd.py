@@ -132,10 +132,15 @@ def main() -> int:
     ap.add_argument("--move-duration-max", type=float, default=20.0)
     ap.add_argument("--move-kp", type=float, default=2.0)
     ap.add_argument("--move-mode", choices=("cartesian", "joint"), default="joint")
-    ap.add_argument("--trans-m-s", type=float, default=0.08, help="Full-stick world translation (m/s).")
+    ap.add_argument("--trans-m-s", type=float, default=0.12, help="Full-stick world translation (m/s).")
     ap.add_argument("--rot-rad-s", type=float, default=0.60, help="Full-stick TCP rotation (rad/s).")
     ap.add_argument("--deadzone", type=float, default=0.18)
-    ap.add_argument("--device-index", type=int, default=0)
+    ap.add_argument(
+        "--device-index",
+        type=int,
+        default=-1,
+        help="Force pygame joystick index. Default −1 = USB/wired over Bluetooth.",
+    )
     ap.add_argument(
         "--duration",
         type=float,
@@ -159,9 +164,13 @@ def main() -> int:
     args = ap.parse_args()
 
     if args.print_axes:
-        pad = XboxPad(device_index=int(args.device_index), allow_missing=True)
+        pad = XboxPad(
+            device_index=int(args.device_index),
+            auto_select=int(args.device_index) < 0,
+            allow_missing=True,
+        )
         print(MAPPING_HELP, flush=True)
-        print(f"connected={pad.connected}", flush=True)
+        print(f"connected={pad.connected} {getattr(pad, 'describe', lambda: '')()}", flush=True)
         try:
             t_end = time.monotonic() + 8.0
             while time.monotonic() < t_end:

@@ -187,6 +187,11 @@ def test_logger_records_pad_and_vcmd(tmp_path) -> None:
     assert values["pad_connected"] == "1"
 
 
+def test_gamepad_trans_default_is_120_mm_s() -> None:
+    assert SinToolYTaskParams(config_path="x").gamepad_trans_m_s == pytest.approx(0.12)
+    assert GamepadTwistConfig().trans_m_s == pytest.approx(0.12)
+
+
 def test_build_gamepad_program_and_ipc_kind() -> None:
     params = SinToolYTaskParams(
         config_path=str(_CFG),
@@ -210,6 +215,7 @@ def test_build_gamepad_program_and_ipc_kind() -> None:
         assert built.inner._arm_task_suppressed is False
         assert built.inner._centering_suppressed is False
         assert not hasattr(built.inner, "set_vcmd_owns_rail")
+        assert not hasattr(built.inner, "set_rail_hold_when_idle")
     finally:
         close_built_pad(built)
 
@@ -331,3 +337,27 @@ def test_minus_z_twist_enables_press_escape_without_force() -> None:
     )
     assert float(step.v_cmd[2]) < -0.05
     assert bool(step.rail_escape_active) or abs(float(step.v_escape)) > 1.0e-6
+
+
+def test_qpik_rail_brakes_when_task_drops() -> None:
+    """Generic QPIK: a dropped Y command must not coast near cruise speed."""
+    inner = _yaml_inner_at_rail(0.40)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q = _SEED_Q.copy()
+    q[0] = 0.40
+    inner.reset(q)
+    cruise = np.zeros(8)
+    cruise[0] = 0.12
+    inner.core.sync_applied(cruise)
+    twist0 = np.zeros(6)
+    last = None
+    for _ in range(120):
+        last = inner.update(twist0, q_meas=inner.q_cmd, vel_ff=twist0)
+    assert last is not None
+    assert abs(float(last.qdot[0])) < 0.02
+    plus_y = np.array([0.0, 0.08, 0.0, 0.0, 0.0, 0.0])
+    moving = None
+    for _ in range(40):
+        moving = inner.update(plus_y, q_meas=inner.q_cmd, vel_ff=plus_y)
+    assert moving is not None
+    assert float(moving.qdot[0]) > 0.03

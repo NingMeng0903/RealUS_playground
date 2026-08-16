@@ -1,7 +1,8 @@
 """Minimal Xbox / pygame joystick reader for 8-DOF QPIK teleop.
 
-Axis layout matches the Linux SDL Xbox mapping used by the Genesis teleop
-stack (left stick 0/1, LT 2, right stick 3/4, RT 5; LB=4, RB=5).
+Physical SDL order depends on USB vs Bluetooth.  This module picks the
+device (wired wins) and remaps into the logical order consumed by
+``gamepad_twist``: left stick 0/1, LT 2, right stick 3/4, RT 5; LB=4, RB=5.
 """
 
 from __future__ import annotations
@@ -10,6 +11,15 @@ import os
 from dataclasses import dataclass
 
 import numpy as np
+
+from rm75_control.control.joint_admittance_8dof.teleop.pad_layout import (
+    PadLayout,
+    apply_layout,
+    classify_layout,
+    load_pinned_layout,
+    pick_device_index,
+    transport_from_name,
+)
 
 XBOX_BUTTON_A = 0
 XBOX_BUTTON_B = 1
@@ -44,14 +54,29 @@ class PadState:
         return bool(self.buttons[idx])
 
 
+def list_joystick_names() -> list[str]:
+    pygame = _require_pygame()
+    pygame.joystick.init()
+    names = []
+    for i in range(int(pygame.joystick.get_count())):
+        joy = pygame.joystick.Joystick(i)
+        joy.init()
+        names.append(joy.get_name())
+        joy.quit()
+    return names
+
+
 class XboxPad:
-    """Read raw Xbox axes/buttons. Missing device emits zeros."""
+    """Read Xbox axes/buttons, remapped to the wired logical layout."""
 
     def __init__(
         self,
         *,
-        device_index: int = 0,
+        device_index: int | None = 0,
         allow_missing: bool = True,
+        auto_select: bool = True,
+        layout: PadLayout | None = None,
+        pin_layout: bool = True,
     ) -> None:
         pygame = _require_pygame()
         if os.environ.get("DISPLAY") is None and os.environ.get("SDL_VIDEODRIVER") is None:
@@ -61,20 +86,50 @@ class XboxPad:
         self._pygame = pygame
         self._joy = None
         self._closed = False
+        self._layout = layout
+        self.name = ""
+        self.transport = "unknown"
+        self.device_index = -1
         count = int(pygame.joystick.get_count())
-        if count <= int(device_index):
+        names = [pygame.joystick.Joystick(i).get_name() for i in range(count)]
+        if auto_select and names:
+            idx = pick_device_index(names)
+        else:
+            idx = 0 if device_index is None else int(device_index)
+        if count <= idx or idx < 0:
             if not allow_missing:
                 pygame.quit()
                 raise RuntimeError(
-                    f"no joystick at index {device_index} (found {count})"
+                    f"no joystick at index {idx} (found {count})"
                 )
             return
-        self._joy = pygame.joystick.Joystick(int(device_index))
+        self._joy = pygame.joystick.Joystick(int(idx))
         self._joy.init()
+        self.device_index = int(idx)
+        self.name = self._joy.get_name()
+        self.transport = transport_from_name(self.name)
+        guid = ""
+        try:
+            guid = str(self._joy.get_guid())
+        except Exception:
+            pass
+        if self._layout is None and pin_layout:
+            self._layout = load_pinned_layout(name=self.name, guid=guid or None)
 
     @property
     def connected(self) -> bool:
         return self._joy is not None and not self._closed
+
+    @property
+    def layout(self) -> PadLayout | None:
+        return self._layout
+
+    def describe(self) -> str:
+        layout_name = self._layout.name if self._layout is not None else "pending"
+        return (
+            f"pad[{self.device_index}] {self.name!r} "
+            f"transport={self.transport} layout={layout_name}"
+        )
 
     def read(self) -> PadState:
         axes = np.zeros(_N_AXES, dtype=float)
@@ -84,10 +139,18 @@ class XboxPad:
         self._pygame.event.pump()
         n_ax = int(self._joy.get_numaxes())
         n_btn = int(self._joy.get_numbuttons())
-        for i in range(min(_N_AXES, n_ax)):
-            axes[i] = float(self._joy.get_axis(i))
-        for i in range(min(_N_BUTTONS, n_btn)):
-            buttons[i] = 1.0 if self._joy.get_button(i) else 0.0
+        raw_ax = np.array(
+            [float(self._joy.get_axis(i)) for i in range(n_ax)], dtype=float
+        )
+        raw_btn = np.array(
+            [1.0 if self._joy.get_button(i) else 0.0 for i in range(n_btn)],
+            dtype=float,
+        )
+        if self._layout is None:
+            self._layout = classify_layout(raw_ax, name=self.name)
+        mapped_ax, mapped_btn = apply_layout(raw_ax, raw_btn, self._layout)
+        axes[: min(_N_AXES, mapped_ax.size)] = mapped_ax[:_N_AXES]
+        buttons[: min(_N_BUTTONS, mapped_btn.size)] = mapped_btn[:_N_BUTTONS]
         return PadState(axes=axes, buttons=buttons)
 
     def close(self) -> None:
@@ -107,7 +170,7 @@ class XboxPad:
 
 
 class FakePad:
-    """Deterministic pad for tests / dry-run."""
+    """Deterministic pad for tests / dry-run. Axes are already logical."""
 
     def __init__(
         self,
@@ -125,6 +188,9 @@ class FakePad:
             else np.asarray(buttons, dtype=float).reshape(-1)
         )
         self.closed = False
+        self.name = "fake"
+        self.transport = "fake"
+        self.device_index = 0
 
     @property
     def connected(self) -> bool:
@@ -136,6 +202,9 @@ class FakePad:
         ax[: min(_N_AXES, self.axes.size)] = self.axes[:_N_AXES]
         btn[: min(_N_BUTTONS, self.buttons.size)] = self.buttons[:_N_BUTTONS]
         return PadState(axes=ax, buttons=btn)
+
+    def describe(self) -> str:
+        return "pad[fake] transport=fake layout=logical"
 
     def close(self) -> None:
         self.closed = True

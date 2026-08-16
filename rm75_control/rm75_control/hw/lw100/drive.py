@@ -1162,16 +1162,24 @@ class LW100Drive:
         Prefer this over differentiating host-cached position — a 50 Hz host
         thread can sample the same cached ``measured_m`` twice and invent a
         false ``v=0`` even while the drive is moving.
+
+        Hot path stays at 3 registers.  Use :meth:`read_motion_and_di_fast`
+        only when DI is needed in the same transaction.
         """
-        speed_rpm, rail_m, _mask = self.read_motion_and_di_fast()
-        return speed_rpm, rail_m
+        regs = self._client.read_holding_registers(MONITOR_SPEED_RPM, 3)
+        if len(regs) < 3:
+            raise RuntimeError(
+                f"read_motion_fast expected 3 registers, got {len(regs)}"
+            )
+        speed_rpm = self._u16_to_i16(regs[0])
+        raw = self._u32_pair_to_i32(regs[1], regs[2])
+        return speed_rpm, self._counts_to_rail_m(raw)
 
     def read_motion_and_di_fast(self) -> tuple[int, float, int]:
         """ONE FC03 of 16 regs: speed, encoder, and DI at 0x100F.
 
-        Returns ``(speed_rpm_signed, rail_m, di_mask)``.  The extra words
-        between 0x1003 and 0x100E ride along so the worker can drop the
-        separate DI poll.
+        Returns ``(speed_rpm_signed, rail_m, di_mask)``.  Non-hot-path helper;
+        the worker polls DI separately every N ticks.
         """
         regs = self._client.read_holding_registers(MONITOR_SPEED_RPM, 16)
         if len(regs) < 16:
