@@ -109,75 +109,6 @@ class VelocityBoxConstraints:
         self.damper_band_rad = np.asarray(damper_band_rad, dtype=float)
         # Extra look-ahead on the rail stopping envelope.  0 falls back to dt.
         self.rail_reaction_s = max(float(rail_reaction_s), 0.0)
-        # Per-call provenance for the rail scalar velocity interval.  This is
-        # deliberately kept outside the QP matrix: it is a small diagnostic
-        # trace, and must not alter the numerical safety box.  Each entry is
-        # ``(lo, hi, tightened_lo, tightened_hi)`` after one construction
-        # stage.  Keeping a short list per stage also handles the two position
-        # intersections (measured and command state) without allocating an
-        # 8-joint diagnostic matrix on every tick.
-        self._last_rail_bound_trace: dict[
-            str, list[tuple[float, float, bool, bool]]
-        ] = {}
-        self._last_rail_bounds: tuple[float, float] | None = None
-
-    def active_rail_bounds(
-        self,
-        qdot0: float | np.ndarray,
-        tol: float = 1.0e-8,
-    ) -> set[str]:
-        """Return final rail-box bounds active at ``qdot0``.
-
-        Names have the form ``"<source>_<side>"`` where ``source`` is one of
-        ``velocity``, ``position``, ``acceleration``, ``jerk``, ``lead`` or
-        ``pin`` and ``side`` is ``lower``/``upper``.  A source is reported only
-        when its stage actually tightened that side and the resulting stage
-        value is still the final box boundary.  Thus a coincident, inactive
-        intermediate bound does not get reported as a saturation reason.
-
-        The method describes the most recent :meth:`bounds` call.  It is
-        intentionally read-only and constant-size (the trace contains only a
-        handful of rail scalars), so callers can use it in the real-time
-        telemetry path.
-        """
-        if self._last_rail_bounds is None:
-            return set()
-        try:
-            value_arr = np.asarray(qdot0, dtype=float).reshape(-1)
-            value = float(value_arr[0])
-        except (IndexError, TypeError, ValueError) as exc:
-            raise ValueError("qdot0 must be a finite scalar or non-empty array") from exc
-        if not np.isfinite(value):
-            raise ValueError("qdot0 must be finite")
-        tolerance = float(tol)
-        if not np.isfinite(tolerance) or tolerance < 0.0:
-            raise ValueError("tol must be finite and non-negative")
-
-        final_lo, final_hi = self._last_rail_bounds
-        at_lower = abs(value - final_lo) <= tolerance
-        at_upper = abs(value - final_hi) <= tolerance
-        active: set[str] = set()
-        for source, entries in self._last_rail_bound_trace.items():
-            for stage_lo, stage_hi, tightened_lo, tightened_hi in entries:
-                if (
-                    at_lower
-                    and tightened_lo
-                    and abs(stage_lo - final_lo) <= tolerance
-                ):
-                    active.add(f"{source}_lower")
-                if (
-                    at_upper
-                    and tightened_hi
-                    and abs(stage_hi - final_hi) <= tolerance
-                ):
-                    active.add(f"{source}_upper")
-        return active
-
-    @property
-    def last_rail_bounds(self) -> tuple[float, float] | None:
-        """Final rail ``(lower, upper)`` from the most recent bounds call."""
-
-        return self._last_rail_bounds
 
     def bounds(
         self,
@@ -206,38 +137,6 @@ class VelocityBoxConstraints:
         lo = -lim.v_max.copy()
         hi = lim.v_max.copy()
 
-        # Keep provenance local until the call has completed successfully;
-        # callers never observe a half-built trace if a validation error is
-        # raised part-way through bounds construction.
-        bound_trace: dict[str, list[tuple[float, float, bool, bool]]] = {}
-
-        def mark_stage(
-            source: str,
-            before_lo: float,
-            before_hi: float,
-            *,
-            force: bool = False,
-        ) -> None:
-            """Record only the rail scalar changed by one bound stage."""
-
-            # A stage can be called twice (the two position intersections and
-            # the two acceleration intersections).  Keep both entries so a
-            # final boundary can be attributed to whichever pass formed it.
-            rail_lo_now = float(lo[0])
-            rail_hi_now = float(hi[0])
-            eps = 1.0e-14
-            tightened_lo = force or rail_lo_now > before_lo + eps
-            tightened_hi = force or rail_hi_now < before_hi - eps
-            bound_trace.setdefault(source, []).append(
-                (rail_lo_now, rail_hi_now, tightened_lo, tightened_hi)
-            )
-
-        # The initial symmetric box is the velocity source.  It is the
-        # baseline bound even when no later safety stage tightens it.
-        bound_trace["velocity"] = [
-            (float(lo[0]), float(hi[0]), True, True)
-        ]
-
         m = lim.position_margin
         q_cmd_arr = None
         if q_cmd is not None:
@@ -265,8 +164,6 @@ class VelocityBoxConstraints:
         # limit, so it can never block a margin recovery.
         band = np.broadcast_to(self.damper_band_rad, q.shape)
         if np.any(band > 1e-9):
-            before_lo = float(lo[0])
-            before_hi = float(hi[0])
             b = np.maximum(band, 1e-9)
             d_hi = np.clip(((lim.q_upper - m) - q) / b, 0.0, 1.0)
             d_lo = np.clip((q - (lim.q_lower + m)) / b, 0.0, 1.0)
@@ -288,13 +185,10 @@ class VelocityBoxConstraints:
                 )
                 hi[0] = min(float(hi[0]), float(lim.v_max[0]) * float(d_hi[0]))
                 lo[0] = max(float(lo[0]), -float(lim.v_max[0]) * float(d_lo[0]))
-            mark_stage("position", before_lo, before_hi)
 
         m = np.broadcast_to(np.asarray(m, dtype=float), q.shape)
         a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
         if a_max is not None:
-            before_lo = float(lo[0])
-            before_hi = float(hi[0])
             # Enter the braking envelope before acceleration and one-tick
             # position constraints can conflict.  Only speed toward a limit is
             # reduced; motion away remains available.
@@ -310,10 +204,7 @@ class VelocityBoxConstraints:
             lo, hi = collapse_interval(
                 lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
             )
-            mark_stage("acceleration", before_lo, before_hi)
 
-        before_lo = float(lo[0])
-        before_hi = float(hi[0])
         p_lo = (lim.q_lower + m - q) / dt
         p_hi = (lim.q_upper - m - q) / dt
         # Rail hard box: past 5/780, one-tick look-ahead would require
@@ -330,10 +221,7 @@ class VelocityBoxConstraints:
         lo, hi = collapse_interval(
             lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
         )
-        mark_stage("position", before_lo, before_hi)
         if q_cmd_arr is not None:
-            before_lo = float(lo[0])
-            before_hi = float(hi[0])
             cmd_lo = (lim.q_lower + m - q_cmd_arr) / dt
             cmd_hi = (lim.q_upper - m - q_cmd_arr) / dt
             if q_cmd_arr[0] < rail_lo:
@@ -345,11 +233,8 @@ class VelocityBoxConstraints:
             lo, hi = collapse_interval(
                 lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
             )
-            mark_stage("position", before_lo, before_hi)
 
         if a_max is not None and qdot_prev is not None:
-            before_lo = float(lo[0])
-            before_hi = float(hi[0])
             qdot_prev = np.asarray(qdot_prev, dtype=float)
             a = a_max * a_dt
             lo = np.maximum(lo, qdot_prev - a)
@@ -357,7 +242,6 @@ class VelocityBoxConstraints:
             lo, hi = collapse_interval(
                 lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
             )
-            mark_stage("acceleration", before_lo, before_hi)
 
         # Third order.  Velocity and acceleration boxes still permit the
         # acceleration to flip sign every tick, which is what the commanded
@@ -371,8 +255,6 @@ class VelocityBoxConstraints:
             and qdot_prev2 is not None
             and float(dt) > 0.0
         ):
-            before_lo = float(lo[0])
-            before_hi = float(hi[0])
             qdot_prev2 = np.asarray(qdot_prev2, dtype=float)
             centre = 2.0 * qdot_prev - qdot_prev2
             span = np.asarray(j_max, dtype=float) * a_dt * a_dt
@@ -381,7 +263,6 @@ class VelocityBoxConstraints:
             lo, hi = collapse_interval(
                 lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
             )
-            mark_stage("jerk", before_lo, before_hi)
 
         # Command lead is an anti-windup envelope, not a physical joint limit.
         # Start braking before |q_cmd-q_meas| reaches ``resync_err``.  If stale
@@ -390,8 +271,6 @@ class VelocityBoxConstraints:
         # instead of manufacturing an empty interval and stopping the robot.
         # ``resync_err`` is arm radians for joints 1..7 and metres for rail 0.
         if q_meas is not None:
-            before_lo = float(lo[0])
-            before_hi = float(hi[0])
             re = np.broadcast_to(
                 np.asarray(resync_err, dtype=float), q.shape
             ).astype(float)
@@ -428,11 +307,8 @@ class VelocityBoxConstraints:
                 lo, hi = collapse_interval(
                     lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
                 )
-            mark_stage("lead", before_lo, before_hi)
 
         if rail_vel_pin_m_s is not None:
-            before_lo = float(lo[0])
-            before_hi = float(hi[0])
             v = float(rail_vel_pin_m_s)
             if not np.isfinite(v):
                 raise ValueError("rail_vel_pin_m_s must be finite")
@@ -442,10 +318,7 @@ class VelocityBoxConstraints:
             v_safe = float(np.clip(v, lo[0], hi[0]))
             lo[0] = v_safe
             hi[0] = v_safe
-            mark_stage("pin", before_lo, before_hi, force=True)
         elif rail_locked:
-            before_lo = float(lo[0])
-            before_hi = float(hi[0])
             eps = max(float(rail_lock_vel_eps_m_s), 0.0)
             previous = 0.0 if qdot_prev is None else float(qdot_prev[0])
             rail_acceleration = (
@@ -462,10 +335,7 @@ class VelocityBoxConstraints:
                 target = float(np.clip(0.0, lo[0], hi[0]))
             lo[0] = target
             hi[0] = target
-            mark_stage("pin", before_lo, before_hi, force=True)
 
-        self._last_rail_bound_trace = bound_trace
-        self._last_rail_bounds = (float(lo[0]), float(hi[0]))
         return lo, hi
 
 
