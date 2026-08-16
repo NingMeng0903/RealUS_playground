@@ -1,4 +1,4 @@
-"""Healthy-pose Cartesian twists are not sigma-scaled; low-σ poses are."""
+"""The strict QP1 target is never silently sigma-scaled before the solve."""
 
 from __future__ import annotations
 
@@ -40,10 +40,7 @@ def test_healthy_pose_cartesian_twist_is_not_sigma_scaled(control_frame: str) ->
 
     J = controller.kin.jacobian(Q_SAFE)
     sigma_min = float(controller.kin.singular_values(J).min())
-    sigma_ref = float(controller.cfg.qp.sr_damping.sigma_ref)
     step = controller.update(requested, q_meas=Q_SAFE)
-    if sigma_min >= sigma_ref:
-        np.testing.assert_allclose(step.twist_base, expected, atol=1e-12, rtol=0.0)
-    else:
-        assert float(np.linalg.norm(step.twist_base)) <= float(np.linalg.norm(expected)) + 1e-12
+    assert sigma_min >= 0.0
+    np.testing.assert_allclose(step.twist_base, expected, atol=1e-12, rtol=0.0)
     assert step.qp_solver_call_count == 1

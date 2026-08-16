@@ -120,6 +120,9 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert "family_ok" in header
     assert "tool_y_err_mm" in header
     assert "rail_sat" in header
+    assert "rail_feedback_fresh" in header
+    assert "rail_command_mode" in header
+    assert header.index("rail_feedback_fresh") < header.index("rail_command_mode")
     assert "sigma_arm" in header
     assert "qdot_meas_0" in header
     assert "v_cmd_vy" in header
@@ -147,6 +150,8 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert values["physical_contact_reacquire_event"] == "1"
     assert values["physical_contact_low_timer_s"] == "0.012000"
     assert values["physical_contact_high_timer_s"] == "0.034000"
+    assert values["rail_feedback_fresh"] == "0"
+    assert values["rail_command_mode"] == ""
 
 
 def test_motion_axis_accuracy_columns_populated(tmp_path):

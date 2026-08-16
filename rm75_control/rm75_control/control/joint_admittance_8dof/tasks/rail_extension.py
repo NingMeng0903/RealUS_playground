@@ -646,7 +646,13 @@ class RailExtensionTask:
         )
         cap = max(float(self.cfg.v_reach_cap_m_s), 0.0)
         if cap > 0.0:
-            cap = cap + drift * 0.06
+            # Keep the arm-extension/recenter component bounded by its own
+            # configured budget.  The d* error ``drift`` below still raises
+            # the rail preference and fades trajectory FF, but it must never
+            # buy extra reach velocity: otherwise a large split error can
+            # silently turn the nominal 20 mm/s recenter term into an
+            # 80 mm/s rail command.  Long, planned motion remains available
+            # through ``v_ff`` and the overall ``v_max_m_s`` limit.
             v_reach = float(np.clip(v_reach, -cap, cap))
         # Demoted: healthy σ (raw ≥ 0.08) never lets escape drive the rail
         # unless a press stall still needs a lateral Y offset.

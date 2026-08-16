@@ -226,7 +226,10 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
     ss = _mapping(c.get("sigma_setbased"), name="inner.qp.sigma_setbased")
     _reject_unknown(
         ss,
-        {"enabled", "activate", "safe", "exit", "gamma", "slack_weight", "grad_eps"},
+        {
+            "enabled", "activate", "safe", "exit", "gamma", "slack_weight",
+            "grad_eps", "grad_period_ticks",
+        },
         name="inner.qp.sigma_setbased",
     )
     bb = _mapping(c.get("branch_barrier"), name="inner.qp.branch_barrier")
@@ -246,17 +249,59 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         },
         name="inner.qp.joint_comfort",
     )
-    sns_raw = c.get("sns_retry_scales", [1.0, 0.85, 0.7, 0.55, 0.4, 0.25])
+    sns_raw = c.get("sns_retry_scales", [1.0])
     if isinstance(sns_raw, (list, tuple)):
         sns_scales = tuple(float(x) for x in sns_raw)
     else:
-        sns_scales = (1.0, 0.85, 0.7, 0.55, 0.4, 0.25)
-    return QpConfig(
-        task_weight=_arr(c.get("task_weight"), [100.0, 100.0, 100.0, 50.0, 50.0, 50.0]),
-        reg=_arr(
-            c.get("reg"),
-            [1.0e-3, 1.0e-2, 1.0e-2, 1.0e-2, 1.0e-2, 5.0e-3, 5.0e-3, 5.0e-3],
+        sns_scales = (1.0,)
+    smooth_raw = c.get("smoothness_weight", 0.15)
+    if isinstance(smooth_raw, (list, tuple, np.ndarray)):
+        smoothness_weight = _finite_array(
+            smooth_raw,
+            name="inner.qp.smoothness_weight",
+            ndim=1,
+        )
+        if smoothness_weight.size != 8:
+            raise ValueError(
+                "inner.qp.smoothness_weight must be scalar or length 8"
+            )
+    else:
+        smoothness_weight = _finite_float(
+            smooth_raw, name="inner.qp.smoothness_weight"
+        )
+    task_weight = _finite_array(
+        c.get("task_weight", [100.0, 100.0, 100.0, 50.0, 50.0, 50.0]),
+        name="inner.qp.task_weight",
+        ndim=1,
+    )
+    if task_weight.size != 6 or np.any(task_weight <= 0.0):
+        raise ValueError(
+            "inner.qp.task_weight must contain six strictly positive values"
+        )
+    reg_weight = _finite_array(
+        c.get(
+            "reg",
+            [
+                1.0e-3,
+                1.0e-2,
+                1.0e-2,
+                1.0e-2,
+                1.0e-2,
+                5.0e-3,
+                5.0e-3,
+                5.0e-3,
+            ],
         ),
+        name="inner.qp.reg",
+        ndim=1,
+    )
+    if reg_weight.size != 8 or np.any(reg_weight < 0.0):
+        raise ValueError(
+            "inner.qp.reg must contain eight non-negative values"
+        )
+    return QpConfig(
+        task_weight=task_weight,
+        reg=reg_weight,
         backend=backend,
         eps_abs=_finite_float(c.get("eps_abs", 1.0e-6), name="inner.qp.eps_abs"),
         max_iter=int(c.get("max_iter", 400)),
@@ -325,6 +370,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             grad_eps=_finite_float(
                 ss.get("grad_eps", 1.0e-4), name="sigma_setbased.grad_eps"
             ),
+            grad_period_ticks=max(1, int(ss.get("grad_period_ticks", 10))),
         ),
         branch_barrier=BranchBarrierConfig(
             enabled=bool(bb.get("enabled", True)),
@@ -373,9 +419,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             ),
         ),
         sns_retry_scales=sns_scales,
-        smoothness_weight=_finite_float(
-            c.get("smoothness_weight", 0.15), name="inner.qp.smoothness_weight"
-        ),
+        smoothness_weight=smoothness_weight,
         twist_scale_lpf_tau_s=_finite_float(
             c.get("twist_scale_lpf_tau_s", 0.08),
             name="inner.qp.twist_scale_lpf_tau_s",
@@ -418,7 +462,7 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
     q_nominal_deg = n.get("q_nominal_deg")
     m = _mapping(n.get("manipulability"), name="inner.nullspace.manipulability")
     _reject_unknown(
-        m, {"k_mu", "eps_rad", "sigma_fade_ref"},
+        m, {"k_mu", "eps_rad", "sigma_fade_ref", "grad_period_ticks"},
         name="inner.nullspace.manipulability",
     )
     nullspace = NullspaceTaskConfig(
@@ -444,6 +488,7 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
         sigma_fade_ref=_finite_float(
             m.get("sigma_fade_ref", 0.12), name="manipulability.sigma_fade_ref"
         ),
+        grad_period_ticks=max(1, int(m.get("grad_period_ticks", 10))),
     )
     return nullspace, manipulability
 

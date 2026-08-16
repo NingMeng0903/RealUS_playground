@@ -38,6 +38,14 @@ class CollisionPairInfo:
     point_b: np.ndarray
 
 
+@dataclass(frozen=True)
+class BoundingSphere:
+    """Conservative sphere enclosing one collision geometry in local coords."""
+
+    center: np.ndarray
+    radius: float
+
+
 @dataclass
 class CollisionConfig:
     enabled: bool = True
@@ -95,6 +103,120 @@ class CollisionModel:
         self.geom_data = self.geom_model.createData()
         self._kin_data = self.model.createData()
         self._q = np.zeros(self.model.nq, dtype=float)
+        # The collision URDF currently contains triangle meshes.  Keeping a
+        # local sphere for every geometry makes the broadphase independent of
+        # HPP-FCL internals and, since it encloses every mesh vertex, strictly
+        # conservative for triangle meshes as well.
+        self._bounding_spheres = tuple(
+            self._make_bounding_sphere(
+                go.geometry,
+                mesh_scale=getattr(go, "meshScale", np.ones(3)),
+            )
+            for go in self.geom_model.geometryObjects
+        )
+        self._exact_pair_indices: tuple[int, ...] = ()
+        self._last_lower_bounds = np.full(
+            len(self.geom_model.collisionPairs), np.inf, dtype=float
+        )
+        self._last_distance_threshold: float | None = None
+        self._last_skipped_pair_indices: tuple[int, ...] = ()
+
+    @staticmethod
+    def _make_bounding_sphere(
+        geometry: object,
+        *,
+        mesh_scale: np.ndarray,
+    ) -> BoundingSphere:
+        """Build a conservative local sphere from the mesh vertices.
+
+        ``coal`` exposes ``vertices`` as a method in some versions and as an
+        array in others.  For an unsupported primitive, use an infinite
+        radius; that preserves the old full narrow-phase behaviour rather
+        than risking a false negative in collision checking.
+        """
+
+        try:
+            scale = np.asarray(mesh_scale, dtype=float).reshape(-1)
+            # Pinocchio/HPP-FCL versions differ on whether meshScale has
+            # already been baked into ``vertices``.  A non-unit scale is
+            # therefore ambiguous; disable broadphase for that geometry
+            # instead of risking a sphere that is too small.
+            if (
+                scale.size < 3
+                or not np.all(np.isfinite(scale[:3]))
+                or not np.allclose(scale[:3], np.ones(3), atol=1.0e-12, rtol=0.0)
+            ):
+                raise ValueError("non-unit mesh scale is not safely inferable")
+            vertices = getattr(geometry, "vertices")
+            if callable(vertices):
+                vertices = vertices()
+            vertices = np.asarray(vertices, dtype=float)
+            if vertices.ndim != 2 or vertices.shape[1] != 3 or not len(vertices):
+                raise ValueError("geometry has no Nx3 vertices")
+            if not np.all(np.isfinite(vertices)):
+                raise ValueError("geometry vertices are non-finite")
+            center = np.mean(vertices, axis=0)
+            radius = float(np.max(np.linalg.norm(vertices - center, axis=1)))
+            if not np.isfinite(radius):
+                raise ValueError("geometry radius is non-finite")
+            return BoundingSphere(center=center, radius=radius)
+        except Exception:
+            return BoundingSphere(
+                center=np.zeros(3, dtype=float), radius=float("inf")
+            )
+
+    @property
+    def bounding_spheres(self) -> tuple[BoundingSphere, ...]:
+        """Precomputed local-space spheres, exposed for diagnostics/tests."""
+
+        return self._bounding_spheres
+
+    @property
+    def exact_pair_indices(self) -> tuple[int, ...]:
+        """Pair indices whose narrow-phase distance was evaluated this tick."""
+
+        return self._exact_pair_indices
+
+    @property
+    def broadphase_lower_bounds(self) -> np.ndarray:
+        """Latest sphere lower bound for every collision pair."""
+
+        return self._last_lower_bounds.copy()
+
+    @property
+    def skipped_pair_indices(self) -> tuple[int, ...]:
+        """Pair indices skipped by the latest broadphase update."""
+
+        return self._last_skipped_pair_indices
+
+    @property
+    def distance_query_count(self) -> int:
+        """Number of exact narrow-phase pair queries in the latest update."""
+
+        return len(self._exact_pair_indices)
+
+    def _pair_lower_bound(self, pair_index: int) -> float:
+        pair = self.geom_model.collisionPairs[int(pair_index)]
+        sphere_a = self._bounding_spheres[int(pair.first)]
+        sphere_b = self._bounding_spheres[int(pair.second)]
+        if not np.isfinite(sphere_a.radius) or not np.isfinite(sphere_b.radius):
+            return -float("inf")
+        T_a = self.geom_data.oMg[int(pair.first)]
+        T_b = self.geom_data.oMg[int(pair.second)]
+        center_a = np.asarray(T_a.translation, dtype=float) + np.asarray(
+            T_a.rotation, dtype=float
+        ) @ sphere_a.center
+        center_b = np.asarray(T_b.translation, dtype=float) + np.asarray(
+            T_b.rotation, dtype=float
+        ) @ sphere_b.center
+        # The sphere-sphere separation is a lower bound on the mesh distance.
+        # Do not clamp to zero: a negative value is still a valid conservative
+        # lower bound for overlapping spheres.
+        return float(
+            np.linalg.norm(center_a - center_b)
+            - sphere_a.radius
+            - sphere_b.radius
+        )
 
     def update(
         self,
@@ -102,6 +224,7 @@ class CollisionModel:
         *,
         kinematic_data: pin.Data | None = None,
         kinematics_ready: bool = False,
+        distance_threshold: float | None = None,
     ) -> None:
         """Update witness distances, optionally reusing this tick's FK data.
 
@@ -120,10 +243,52 @@ class CollisionModel:
             self.model, data, self.geom_model, self.geom_data
         )
         # Placements are already current; the five-argument overload would
-        # recompute them a second time.
-        pin.computeDistances(self.geom_model, self.geom_data)
+        # recompute them a second time.  A missing threshold preserves the
+        # standalone/full narrow-phase API.  CBF callers provide the current
+        # activation+hysteresis band and use the conservative sphere test.
+        n_pairs = len(self.geom_model.collisionPairs)
+        self._exact_pair_indices = ()
+        self._last_distance_threshold = (
+            None if distance_threshold is None else float(distance_threshold)
+        )
+        self._last_lower_bounds = np.full(n_pairs, np.inf, dtype=float)
+        self._last_skipped_pair_indices = ()
+        if distance_threshold is None:
+            pin.computeDistances(self.geom_model, self.geom_data)
+            self._exact_pair_indices = tuple(range(n_pairs))
+            return
+
+        threshold = float(distance_threshold)
+        if not np.isfinite(threshold):
+            # An infinite threshold is equivalent to the old full query and
+            # avoids treating NaNs as an opportunity to skip safety checks.
+            pin.computeDistances(self.geom_model, self.geom_data)
+            self._exact_pair_indices = tuple(range(n_pairs))
+            return
+
+        for i in range(n_pairs):
+            self._last_lower_bounds[i] = self._pair_lower_bound(i)
+
+        # Every pair whose true distance is <= threshold has a sphere lower
+        # bound <= threshold, so this set cannot omit an active CBF pair.
+        selected = np.flatnonzero(self._last_lower_bounds <= threshold).tolist()
+        # Keep closest-pair telemetry meaningful even when every sphere is
+        # outside the activation band.  The minimum lower-bound pair is the
+        # only extra narrow-phase query needed for that telemetry.
+        if n_pairs and not selected:
+            selected = [int(np.argmin(self._last_lower_bounds))]
+        selected = tuple(sorted(set(int(i) for i in selected)))
+        for i in selected:
+            pin.computeDistance(self.geom_model, self.geom_data, int(i))
+        self._exact_pair_indices = selected
+        selected_set = set(selected)
+        self._last_skipped_pair_indices = tuple(
+            i for i in range(n_pairs) if i not in selected_set
+        )
 
     def pair_info(self, pair_index: int) -> CollisionPairInfo | None:
+        if int(pair_index) not in self._exact_pair_indices:
+            return None
         dr = self.geom_data.distanceResults[pair_index]
         d = float(dr.min_distance)
         if not np.isfinite(d):
@@ -154,7 +319,7 @@ class CollisionModel:
 
     def all_pairs(self) -> list[CollisionPairInfo]:
         out: list[CollisionPairInfo] = []
-        for i in range(len(self.geom_model.collisionPairs)):
+        for i in self._exact_pair_indices:
             info = self.pair_info(i)
             if info is not None:
                 out.append(info)
@@ -167,7 +332,8 @@ class CollisionModel:
         threshold = float(d_activate)
         indices = [
             i
-            for i, result in enumerate(self.geom_data.distanceResults)
+            for i in self._exact_pair_indices
+            for result in (self.geom_data.distanceResults[i],)
             if np.isfinite(float(result.min_distance))
             and float(result.min_distance) < threshold
         ]
@@ -178,8 +344,9 @@ class CollisionModel:
 
     def min_distance(self) -> float:
         distances = [
-            float(result.min_distance)
-            for result in self.geom_data.distanceResults
+            float(self.geom_data.distanceResults[i].min_distance)
+            for i in self._exact_pair_indices
+            for result in (self.geom_data.distanceResults[i],)
             if np.isfinite(float(result.min_distance))
         ]
         if not distances:
@@ -190,7 +357,8 @@ class CollisionModel:
         """Nearest pair after ``update``; not the CBF slot occupancy count."""
         best_i = -1
         best_d = float("inf")
-        for i, result in enumerate(self.geom_data.distanceResults):
+        for i in self._exact_pair_indices:
+            result = self.geom_data.distanceResults[i]
             d = float(result.min_distance)
             if np.isfinite(d) and d < best_d:
                 best_d = d

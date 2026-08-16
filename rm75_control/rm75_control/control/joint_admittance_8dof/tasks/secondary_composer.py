@@ -122,6 +122,32 @@ class SecondaryComposer:
         band = max(self.arm_fade_band, 1e-6)
         return _smoothstep01((self.arm_activation_limit + band - u_max) / (2.0 * band))
 
+    def cap_arm_secondary(self, qdot: np.ndarray) -> np.ndarray:
+        """Apply the configured magnitude cap to a *composed* soft task.
+
+        Centering, ψ, and manipulability are intentionally added before this
+        operation.  Capping each component independently lets their sum
+        exceed ``max_qdot_frac``; capping only the arm-angle component has the
+        same failure mode.  ``qdot_ff`` is a separate joint-plan input and is
+        therefore added by :meth:`compose` after this cap.
+
+        The rail slot is included in the numerical clip for compatibility with
+        the explicit ``LOCKED + HOLD`` rail task.  In the normal coupled mode
+        the composer has already forced that slot to zero, so no rail
+        secondary velocity is created here.
+        """
+        out = np.asarray(qdot, dtype=float).copy()
+        if self.v_max is None or self.max_qdot_frac <= 0.0:
+            return out
+        vmax = np.asarray(self.v_max, dtype=float)
+        if vmax.shape != out.shape:
+            raise ValueError(
+                "secondary velocity cap shape mismatch: "
+                f"v_max={vmax.shape}, qdot={out.shape}"
+            )
+        cap = self.max_qdot_frac * np.abs(vmax)
+        return np.clip(out, -cap, cap)
+
     def compose(
         self,
         q_rad: np.ndarray,
@@ -169,11 +195,6 @@ class SecondaryComposer:
         if d_eff > 0.0 and qdot_prev is not None:
             qdot_soft = qdot_soft - d_eff * np.asarray(qdot_prev, dtype=float)
 
-        # Per-joint magnitude cap on the soft tasks (see module docstring).
-        if self.v_max is not None and self.max_qdot_frac > 0.0:
-            cap = self.max_qdot_frac * self.v_max
-            qdot_soft = np.clip(qdot_soft, -cap, cap)
-
         if not rail_hold:
             qdot_soft[0] = 0.0
 
@@ -199,6 +220,11 @@ class SecondaryComposer:
                 self.last_arm_smooth = 0.0
         else:
             self.last_arm_smooth = 1.0 if self.arm_task is None else 0.0
+
+        # Compose every soft task first, then apply one arm-wide cap.  This
+        # keeps centering, ψ, and manipulability from bypassing the cap when
+        # their individual contributions add constructively.
+        qdot0 = self.cap_arm_secondary(qdot0)
 
         if qdot_ff is not None:
             qdot0 = qdot0 + np.asarray(qdot_ff, dtype=float)

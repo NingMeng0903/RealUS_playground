@@ -78,7 +78,8 @@ inner:
     eps_abs: 1.0e-6
     max_iter: 400
     max_iter_cap: 400
-    max_solve_ms: 8.0
+    # End-to-end QPIK budget: assembly + protected QP + allocation QP.
+    max_solve_ms: 5.0
     fail_qdot_decay: 0.85
     twist_sigma_floor: 0.02
     warn_on_fail: false
@@ -97,8 +98,12 @@ inner:
     use_dyn_nullspace: false
     limit_damper_band_rad: 0.25
     limit_damper_band_rail_m: 0.025
-    sns_retry_scales: [1.0, 0.85, 0.7, 0.55, 0.4, 0.25]
-    smoothness_weight: 0.15
+    # Kept as a one-element compatibility value; strict HQP no longer retries
+    # scaled Cartesian commands after a backend failure.
+    sns_retry_scales: [1.0]
+    # Rail continuity is provided by its hard a/jerk box and macro LPF.  The
+    # arm retains the proven previous-velocity smoothing.
+    smoothness_weight: [0.0, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
     # Third-order box: bounds how fast the commanded acceleration may turn.
     # Measured jerk RMS was 250-570 rad/s³ with the acceleration flipping sign
     # on ~half the ticks while the reference twist was smooth.
@@ -126,6 +131,8 @@ inner:
       exit: 0.16
       gamma: 8.0
       slack_weight: 200.0
+      # Sigma is checked every tick; cache only its soft finite-difference row.
+      grad_period_ticks: 10
     branch_barrier:
       enabled: true
       # 20° floor / 30° activate.  slack_weight stays 80 so a fast
@@ -165,6 +172,7 @@ inner:
       k_mu: 0.8
       eps_rad: 5.0e-4
       sigma_fade_ref: 0.12
+      grad_period_ticks: 10
 
   nullspace_d_null: 0.5
   nullspace_d_null_adaptive: 1.0

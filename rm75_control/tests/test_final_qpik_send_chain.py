@@ -1,4 +1,4 @@
-"""The slack-QP velocity is the Cartesian command sent; QP fail never latches stop."""
+"""Only a current hard-feasible QPIK result may reach rail/CANFD publication."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def test_successful_final_send_is_exact_qp_velocity() -> None:
     )
 
 
-def test_backend_failure_decays_qdot_and_stays_sendable() -> None:
+def test_qp1_backend_failure_is_stopped_before_send() -> None:
     controller = _controller()
     previous = np.full(8, 0.05)
     controller.core.sync_applied(previous)
@@ -69,16 +69,20 @@ def test_backend_failure_decays_qdot_and_stays_sendable() -> None:
         backend.solve = real_solve  # type: ignore[method-assign]
 
     assert step.qp_solver_call_count == 1
-    assert step.fallback_level == "decay"
+    assert step.fallback_level == "stop"
     assert step.qpik_authority == 1.0
-    assert not step.solver_fault_latched
+    assert step.solver_fault_latched
     events: list[str] = []
     sendable, reason = _guard_qpik_step_before_send(step, events.append)
-    assert sendable
-    assert reason == ""
-    assert events == []
+    assert not sendable
+    assert reason == "qpik_fault:stop:qp_failed"
+    assert events == [reason]
     np.testing.assert_allclose(
         step.q_send, q_before + controller.cfg.dt * step.qdot, atol=1e-12
+    )
+    np.testing.assert_allclose(step.qdot, np.zeros(8), atol=0.0, rtol=0.0)
+    np.testing.assert_allclose(
+        controller.core.qdot_prev, previous, atol=0.0, rtol=0.0
     )
 
 
@@ -93,7 +97,7 @@ def test_empty_velocity_box_does_not_latch_stop() -> None:
     assert events == []
 
 
-def test_numerical_fallback_remains_sendable() -> None:
+def test_numerical_qp1_fallback_is_not_sendable() -> None:
     controller = _controller()
     backend = controller.core.backend
     real_solve = backend.solve
@@ -105,11 +109,74 @@ def test_numerical_fallback_remains_sendable() -> None:
 
     events: list[str] = []
     sendable, reason = _guard_qpik_step_before_send(step, events.append)
+    assert not sendable
+    assert reason == "qpik_fault:stop:qp_failed"
+    assert step.fallback_level == "stop"
+    assert step.qpik_authority == 1.0
+    assert step.solver_fault_latched
+    assert events == [reason]
+
+
+def test_qp2_failure_keeps_same_tick_qp1_sendable() -> None:
+    controller = _controller()
+    solve_qp2 = controller.core._backend_qp2.solve
+    controller.core._backend_qp2.solve = lambda *args, **kwargs: None
+    try:
+        step = controller.update(
+            np.array([0.01, -0.006, 0.004, 0.0, 0.0, 0.0]),
+            q_meas=Q_SAFE,
+            rail_exec_vel_m_s=0.0,
+        )
+    finally:
+        controller.core._backend_qp2.solve = solve_qp2
+
+    events: list[str] = []
+    sendable, reason = _guard_qpik_step_before_send(step, events.append)
+    assert step.qp2_fallback
+    assert not step.solver_fault_latched
     assert sendable
     assert reason == ""
-    assert step.fallback_level == "decay"
-    assert step.qpik_authority == 1.0
     assert events == []
+
+
+def test_post_qp_certificate_failure_is_stopped_and_not_integrated() -> None:
+    controller = _controller()
+    q_before = controller.q_cmd.copy()
+    qdot_before = controller.core.qdot_prev.copy()
+    real_validate = controller.core.validate_final_qdot
+    controller.core.validate_final_qdot = lambda _qdot: (2.0e-3, 0.0)
+    try:
+        step = controller.update(
+            np.array([0.01, -0.006, 0.004, 0.0, 0.0, 0.0]),
+            q_meas=Q_SAFE,
+            rail_exec_vel_m_s=0.0,
+        )
+    finally:
+        controller.core.validate_final_qdot = real_validate
+
+    assert step.solver_fault_latched
+    assert "final_publication_certificate_failed" in step.fallback_reason
+    np.testing.assert_allclose(step.q_send, q_before, atol=0.0, rtol=0.0)
+    np.testing.assert_allclose(step.qdot, np.zeros(8), atol=0.0, rtol=0.0)
+    np.testing.assert_allclose(
+        controller.core.qdot_prev, qdot_before, atol=0.0, rtol=0.0
+    )
+    events: list[str] = []
+    sendable, reason = _guard_qpik_step_before_send(step, events.append)
+    assert not sendable
+    assert reason.startswith("qpik_fault:stop:final_publication_certificate_failed")
+
+
+def test_send_guard_independently_rejects_bad_hard_certificate() -> None:
+    controller = _controller()
+    step = controller.update(np.zeros(6), q_meas=Q_SAFE)
+    step.solver_fault_latched = False
+    step.qpik_hard_residual_max = 2.0e-3
+    events: list[str] = []
+    sendable, reason = _guard_qpik_step_before_send(step, events.append)
+    assert not sendable
+    assert reason == "qpik_fault:hard_certificate:violation=2.000e-03"
+    assert events == [reason]
 
 
 def test_direct_joint_ptp_calls_no_cartesian_backend() -> None:
@@ -240,6 +307,32 @@ def test_publish_forwards_v_ff_to_the_bridge() -> None:
     assert reason == ""
     assert events == []
     assert rail.seen == (0.41, 0.08)
+
+
+def test_publish_rejects_an_explicit_mode_mismatch() -> None:
+    class WrongModeRail:
+        enabled = True
+        calibrated = True
+        armed = True
+        panicked = False
+        panic_reason = ""
+        command_mode = "position"
+
+        def set_target_m(self, _target, v_ff_m_s=None, *, mode=None):
+            del v_ff_m_s, mode
+            return True
+
+    events: list[str] = []
+    accepted, reason = _publish_rail_target_before_arm(
+        WrongModeRail(),
+        0.41,
+        events.append,
+        v_ff_m_s=0.08,
+        command_mode="coupled_velocity",
+    )
+    assert not accepted
+    assert "mode_mismatch" in reason
+    assert events == [reason]
 
 
 def test_qpik_rail_v_ff_is_ik_qdot_not_pad_bypass() -> None:
