@@ -9,8 +9,13 @@ hold it.
 
 Call :meth:`PostureRetarget.plan_stroke` once when the scan starts.  After
 that :meth:`step` only slews ψ toward ψ* with a single rate limit (no LPF)
-and holds d* constant.  Unplanned ``step`` freezes ``d*(q*)`` and slews ψ
-toward ``ψ(q*)``; it does not recapture live ``y_tcp − q0``.
+and holds the planned d* constant.
+
+Unplanned ``step`` slews d* toward the design split ``d_attr`` and
+homes ψ* to ``psi_attr``.  Local search takes over only while the wrist
+is collapsed or ``psi_attr`` is infeasible, then returns after a healthy
+dwell.  The search stays inside a one-sided envelope that never crosses
+ψ = 0.
 """
 
 from __future__ import annotations
@@ -43,6 +48,62 @@ def _wrap_pi(a: float) -> float:
     return float((a + np.pi) % (2.0 * np.pi) - np.pi)
 
 
+def nearest_planar_psi(psi_rad: float) -> float:
+    """Quantize swivel to the nearer SEW plane ``{0, ±π}``.
+
+    The taught home (J1≈0, J6≈90°) sits at ψ=π; yaml ``q_nominal``
+    (J6=45°) sits at ψ=0.  Those are opposite elbow orbits.  Snap once
+    at reset so swivel returns to the start family, not the other plane.
+    """
+    a = _wrap_pi(float(psi_rad))
+    if abs(a) <= 0.5 * np.pi:
+        return 0.0
+    # ±π are the same SEW plane; keep +π so CSV ψ* reads 180°.
+    return float(np.pi)
+
+
+def fold_psi_to_positive(psi_rad: float) -> float:
+    """Map ψ into ``[0, π]`` so the one-sided envelope is well-defined.
+
+    ``−π`` and ``+π`` are the same SEW plane; the negative half-plane is
+    folded across 0 so the attractor never asks the arm to cross ψ = 0.
+    """
+    a = abs(_wrap_pi(float(psi_rad)))
+    return min(a, float(np.pi))
+
+
+def clamp_psi_to_envelope(
+    psi_rad: float,
+    lo_rad: float,
+    hi_rad: float,
+) -> float:
+    """Fold onto the positive family, then clamp to ``[lo, hi] ⊂ (0, π)``."""
+    lo = max(float(lo_rad), 1.0e-6)
+    hi = min(float(hi_rad), float(np.pi) - 1.0e-6)
+    if lo > hi:
+        lo, hi = hi, lo
+    return float(np.clip(fold_psi_to_positive(psi_rad), lo, hi))
+
+
+def psi_err_avoiding_zero(cur_rad: float, target_rad: float) -> float:
+    """Signed ψ error that never takes the short path through 0."""
+    cur = _wrap_pi(float(cur_rad))
+    target = _wrap_pi(float(target_rad))
+    err = _wrap_pi(target - cur)
+    nxt = cur + err
+    if cur * nxt < 0.0 and abs(cur) < 0.5 * np.pi and abs(target) < 0.5 * np.pi:
+        if err > 0.0:
+            err -= 2.0 * np.pi
+        else:
+            err += 2.0 * np.pi
+    return float(err)
+
+
+# Half-width of the first ``plan_stroke`` search around the taught plane.
+# Opposite-family search uses the same width only when this band is empty.
+_PLAN_FAMILY_HALF_SPAN_RAD = 40.0 * np.pi / 180.0
+
+
 def _arm7(q_arm: np.ndarray) -> np.ndarray:
     q = np.asarray(q_arm, dtype=float).reshape(-1)
     return q[1:] if q.size == 8 else q
@@ -71,7 +132,7 @@ def joint_margin_frac(q_arm: np.ndarray) -> float:
 def wrist_band_frac(
     q6: float,
     *,
-    peak_rad: float = 45.0 * np.pi / 180.0,
+    peak_rad: float = 60.0 * np.pi / 180.0,
 ) -> float:
     """1 at |q6|≈45°, 0 at a straight wrist and at the J6 stop."""
     a = abs(float(q6))
@@ -80,6 +141,33 @@ def wrist_band_frac(
     if a <= peak:
         return a / peak
     return max(0.0, 1.0 - (a - peak) / (q6_max - peak))
+
+
+def design_family_ok(
+    q_meas: np.ndarray,
+    q_nominal: np.ndarray,
+    *,
+    psi_tol_rad: float = 45.0 * np.pi / 180.0,
+) -> bool:
+    """True if measured q is the same SEW family as the design attractor."""
+    qm = np.asarray(q_meas, dtype=float).reshape(-1)
+    qn = np.asarray(q_nominal, dtype=float).reshape(-1)
+    if qm.size == 7:
+        qm = np.concatenate([[0.0], qm])
+    if qn.size == 7:
+        qn = np.concatenate([[0.0], qn])
+    if qm.size != 8 or qn.size != 8:
+        return False
+    psi_m = fold_psi_to_positive(psi_from_q(qm))
+    psi_n = fold_psi_to_positive(psi_from_q(qn))
+    if abs(psi_m - psi_n) > float(psi_tol_rad):
+        return False
+    if int(branch_from_q(qm)) != int(branch_from_q(qn)):
+        return False
+    if abs(float(qn[1])) > 1.0e-3 and abs(float(qm[1])) > 1.0e-3:
+        if float(qm[1]) * float(qn[1]) < 0.0:
+            return False
+    return True
 
 
 def arm_respects_floor(q_arm: np.ndarray, floor_rad: float) -> bool:
@@ -125,11 +213,26 @@ class PsiRetargetConfig:
     # Kept for yaml compatibility.  step() never replans; 0 is the contract.
     z_replan_m: float = 0.0
     # Used only when ψ* changes (new scan segment).  No LPF on top.
-    psi_rate_rad_s: float = 20.0 * np.pi / 180.0
+    psi_rate_rad_s: float = 25.0 * np.pi / 180.0
+    # Unplanned d* is a band around the design split, not a chasing point.
+    d_center_rate_m_s: float = 0.02
+    d_band_m: float = 0.08
+    # Design family (side-lying).  step() homes here when the wrist is healthy.
+    psi_attr_rad: float = 70.0 * np.pi / 180.0
+    d_attr_m: float = -0.22
+    psi_return_dwell_s: float = 1.0
+    require_design_family: bool = False
+    # Local ψ search (unplanned).  9 srs_ik × 0.09 ms ≈ 0.8 ms at 10 Hz.
+    psi_replan_period_s: float = 0.1
+    psi_search_half_span_rad: float = 45.0 * np.pi / 180.0
+    psi_search_n: int = 9
+    psi_wrist_ok_rad: float = 40.0 * np.pi / 180.0
+    psi_envelope_lo_rad: float = 40.0 * np.pi / 180.0
+    psi_envelope_hi_rad: float = 110.0 * np.pi / 180.0
     # Soft travel used by the planner (must cover the whole stroke).
     rail_margin_m: float = 0.02
-    # Reject a cell whose wrist sits on the branch-barrier floor (~15°).
-    wrist_min_rad: float = 25.0 * np.pi / 180.0
+    # Reject a cell whose wrist sits on the branch-barrier floor (~20°).
+    wrist_min_rad: float = 30.0 * np.pi / 180.0
 
 
 class _SrsEval:
@@ -178,6 +281,10 @@ class PostureRetarget:
         self._psi_cmd: float | None = None
         self._psi_star: float | None = None
         self._d_star: float | None = None
+        self._d_center_target: float | None = None
+        self._search_age_s: float = 0.0
+        self.last_psi_search_count: int = 0
+        self.last_search_j6_rad: float = float("nan")
         self._planned: bool = False
         self._z_plan: float = float("nan")
         self._y_center_m: float = float("nan")
@@ -191,6 +298,8 @@ class PostureRetarget:
         self.last_wrist_open_rad: float = float("nan")
         self.d_star_m: float = float("nan")
         self.psi_star_rad: float = float("nan")
+        self.last_psi_family_degraded: bool = False
+        self._healthy_dwell_s: float = 0.0
         self._ird = None
 
     @property
@@ -200,18 +309,28 @@ class PostureRetarget:
     def reset(self, q_rad: np.ndarray) -> None:
         q = np.asarray(q_rad, dtype=float)
         psi = float(psi_from_q(q))
+        psi_star = clamp_psi_to_envelope(
+            float(self.cfg.psi_attr_rad),
+            self.cfg.psi_envelope_lo_rad,
+            self.cfg.psi_envelope_hi_rad,
+        )
         self._psi_cmd = psi
-        self._psi_star = psi
-        y_tcp = float(self.kin.fk_placement(q).translation[1])
-        d_pref = y_tcp - float(q[RAIL_INDEX])
+        self._psi_star = psi_star
+        d_pref = d_from_q(self.kin, q)
         self._d_star = d_pref
+        self._d_center_target = float(self.cfg.d_attr_m)
+        self._search_age_s = 0.0
+        self._healthy_dwell_s = 0.0
+        self.last_psi_search_count = 0
+        self.last_search_j6_rad = float("nan")
         self._planned = False
         self._z_plan = float("nan")
         self.d_star_m = float(d_pref)
-        self.psi_star_rad = float(psi)
+        self.psi_star_rad = float(psi_star)
         self.last_psi_score = float("nan")
         self.last_dpref_score = float("nan")
         self.last_minmax_margin = float("nan")
+        self.last_psi_family_degraded = False
         self._update_margins(q)
 
     def _update_margins(self, q: np.ndarray) -> None:
@@ -234,8 +353,13 @@ class PostureRetarget:
         rail_lo: float,
         rail_hi: float,
     ) -> tuple[float, float]:
-        """Grid-search ``(d*, ψ*)`` over the scan stroke.  Raises if empty."""
+        """Grid-search ``(d*, ψ*)`` over the scan stroke.  Raises if empty.
+
+        Search the taught SEW family first.  The opposite plane is used only
+        when that family has no feasible cell (singularity / travel).
+        """
         q = np.asarray(q_rad, dtype=float)
+        self.last_psi_family_degraded = False
         pose0 = np.asarray(self.kin.fk_pose(q), dtype=float).reshape(6)
         branch = int(branch_from_q(q))
         amp = abs(float(amplitude_m))
@@ -276,18 +400,28 @@ class PostureRetarget:
                 ):
                     d_samples = np.array([float(d_ird)], dtype=float)
         psi0 = float(psi_from_q(q))
-        psi_samples = psi0 + np.linspace(-np.pi, np.pi, n_psi, endpoint=False)
+        # Unplanned home (psi_attr) must not steal the stroke family.
+        if self._planned and self._psi_star is not None:
+            psi_family = float(self._psi_star)
+        else:
+            psi_family = nearest_planar_psi(psi0)
+        half = float(_PLAN_FAMILY_HALF_SPAN_RAD)
+        family_samples = psi_family + np.linspace(-half, half, n_psi)
+        opposite = _wrap_pi(psi_family + np.pi)
+        opposite_samples = opposite + np.linspace(-half, half, n_psi)
         w_sigma = float(self.cfg.w_sigma)
         w_wrist = float(self.cfg.w_wrist)
         floor = float(self.cfg.margin_floor_rad)
 
-        def _search(d_list: np.ndarray) -> tuple[bool, float, float, float]:
+        def _search(
+            d_list: np.ndarray, psi_list: np.ndarray
+        ) -> tuple[bool, float, float, float]:
             best_s = -np.inf
             best_dv = float(self._d_star if self._d_star is not None else 0.0)
-            best_pv = psi0
+            best_pv = psi_family
             found = False
             for d in d_list:
-                for psi in psi_samples:
+                for psi in psi_list:
                     worst = np.inf
                     feasible = True
                     last_q: np.ndarray | None = None
@@ -326,19 +460,27 @@ class PostureRetarget:
                             self._update_margins(last_q)
             return found, best_s, best_dv, best_pv
 
-        any_feasible, best_score, best_d, best_psi = _search(d_samples)
-        if not any_feasible and d_samples.size == 1 and d_grid.size > 1:
-            any_feasible, best_score, best_d, best_psi = _search(d_grid)
+        def _search_d(psi_list: np.ndarray) -> tuple[bool, float, float, float]:
+            found, score, d_v, p_v = _search(d_samples, psi_list)
+            if not found and d_samples.size == 1 and d_grid.size > 1:
+                found, score, d_v, p_v = _search(d_grid, psi_list)
+            return found, score, d_v, p_v
+
+        any_feasible, best_score, best_d, best_psi = _search_d(family_samples)
+        degraded = False
+        if not any_feasible:
+            degraded = True
+            any_feasible, best_score, best_d, best_psi = _search_d(opposite_samples)
         if not any_feasible:
             raise StrokeInfeasibleError(
                 "no feasible (d, ψ) covers the scan stroke; reduce amplitude "
                 "or choose a less extended start pose"
             )
-        # The ψ grid is psi0 ± π, so best_psi can land outside (-π, π].  The
-        # rate limiter already takes the short way round, but an unwrapped
-        # value made psi_star_deg / |ψ − ψ_ref| unreadable in the CSV.
+        # Family grids are already near 0 or ±π; wrap so CSV ψ* stays readable.
         best_psi = _wrap_pi(best_psi)
+        self.last_psi_family_degraded = bool(degraded)
         self._d_star = float(best_d)
+        self._d_center_target = float(best_d)
         self._psi_star = float(best_psi)
         self._planned = True
         self._z_plan = float(pose0[2])
@@ -364,24 +506,184 @@ class PostureRetarget:
         rail_hi: float,
         q_nominal: np.ndarray | None = None,
     ) -> tuple[float, float]:
-        """Hold a planned (d*, ψ*), or freeze d*(q*) and slew ψ toward q*."""
-        del rail_lo, rail_hi
+        """Slew ψ toward ψ*; unplanned also re-searches ψ when the wrist collapses."""
+        del q_nominal
         q = np.asarray(q_rad, dtype=float)
         if self._psi_cmd is None or self._d_star is None:
             self.reset(q)
         dt = max(float(dt_s), 0.0)
         if not self._planned:
-            if q_nominal is not None:
-                qn = np.asarray(q_nominal, dtype=float)
-                self._psi_star = float(psi_from_q(qn))
-                self._d_star = d_from_q(self.kin, qn)
-                self.d_star_m = float(self._d_star)
-            psi_out = self._rate_limit_psi(dt)
-            self._update_margins(q)
-            return float(psi_out), float(self._d_star)
+            self._maybe_retarget_psi(
+                q,
+                dt_s=dt,
+                rail_lo=float(rail_lo),
+                rail_hi=float(rail_hi),
+            )
+            y_tcp = float(self.kin.fk_placement(q).translation[1])
+            self._rate_limit_d(
+                dt,
+                y_tcp=y_tcp,
+                rail_lo=float(rail_lo),
+                rail_hi=float(rail_hi),
+            )
         psi_out = self._rate_limit_psi(dt)
         self._update_margins(q)
         return float(psi_out), float(self._d_star)
+
+    def _maybe_retarget_psi(
+        self,
+        q: np.ndarray,
+        *,
+        dt_s: float,
+        rail_lo: float,
+        rail_hi: float,
+    ) -> None:
+        dt = max(float(dt_s), 0.0)
+        self._search_age_s += dt
+        period = max(float(self.cfg.psi_replan_period_s), 0.0)
+        due = self._search_age_s + 1.0e-12 >= period
+        q_arm = np.asarray(q, dtype=float).reshape(-1)
+        if q_arm.size == 8:
+            q_arm = q_arm[1:]
+        j6 = abs(float(q_arm[5]))
+        attr = clamp_psi_to_envelope(
+            float(self.cfg.psi_attr_rad),
+            self.cfg.psi_envelope_lo_rad,
+            self.cfg.psi_envelope_hi_rad,
+        )
+        wrist_bad = j6 < float(self.cfg.psi_wrist_ok_rad)
+        attr_infeas = self._psi_infeasible_at(
+            q, attr, rail_lo=rail_lo, rail_hi=rail_hi
+        )
+        if wrist_bad or attr_infeas:
+            self._healthy_dwell_s = 0.0
+            if not due:
+                return
+            self._search_age_s = 0.0
+            found = self.search_psi_at_pose(q, rail_lo=rail_lo, rail_hi=rail_hi)
+            self.last_psi_search_count += 1
+            if found is None:
+                return
+            self._psi_star = float(found)
+            self.psi_star_rad = float(found)
+            return
+        self._healthy_dwell_s += dt
+        if due:
+            self._search_age_s = 0.0
+        dwell = max(float(self.cfg.psi_return_dwell_s), 0.0)
+        if self._healthy_dwell_s + 1.0e-12 >= dwell:
+            self._psi_star = float(attr)
+            self.psi_star_rad = float(attr)
+
+    def _psi_infeasible_at(
+        self,
+        q_rad: np.ndarray,
+        psi: float,
+        *,
+        rail_lo: float,
+        rail_hi: float,
+    ) -> bool:
+        q = np.asarray(q_rad, dtype=float)
+        pose = np.asarray(self.kin.fk_pose(q), dtype=float).reshape(6)
+        d_c = (
+            float(self._d_star)
+            if self._d_star is not None
+            else d_from_q(self.kin, q)
+        )
+        y_rail = float(pose[1]) - d_c
+        margin = max(float(self.cfg.rail_margin_m), 0.0)
+        if y_rail < float(rail_lo) + margin or y_rail > float(rail_hi) - margin:
+            return True
+        pack = self._eval.evaluate(
+            pose, float(psi), int(branch_from_q(q)), y_rail
+        )
+        return pack is None
+
+    def search_psi_at_pose(
+        self,
+        q_rad: np.ndarray,
+        *,
+        rail_lo: float,
+        rail_hi: float,
+    ) -> float | None:
+        """Best ψ in the local envelope window at the current TCP, or None.
+
+        Score is wrist openness plus joint margin.  Samples stay inside
+        ``[psi_envelope_lo, psi_envelope_hi]`` so the family never crosses 0.
+        """
+        q = np.asarray(q_rad, dtype=float)
+        pose = np.asarray(self.kin.fk_pose(q), dtype=float).reshape(6)
+        branch = int(branch_from_q(q))
+        d_c = (
+            float(self._d_star)
+            if self._d_star is not None
+            else d_from_q(self.kin, q)
+        )
+        y_rail = float(pose[1]) - d_c
+        margin = max(float(self.cfg.rail_margin_m), 0.0)
+        if y_rail < float(rail_lo) + margin or y_rail > float(rail_hi) - margin:
+            return None
+        lo = float(self.cfg.psi_envelope_lo_rad)
+        hi = float(self.cfg.psi_envelope_hi_rad)
+        center = (
+            float(self._psi_star)
+            if self._psi_star is not None
+            else clamp_psi_to_envelope(float(psi_from_q(q)), lo, hi)
+        )
+        center = clamp_psi_to_envelope(center, lo, hi)
+        half = max(float(self.cfg.psi_search_half_span_rad), 0.0)
+        n = max(int(self.cfg.psi_search_n), 3)
+        raw = np.linspace(center - half, center + half, n)
+        local = np.unique(
+            np.array([clamp_psi_to_envelope(p, lo, hi) for p in raw], dtype=float)
+        )
+        best_psi, best_j6 = self._score_psi_samples(
+            local, pose=pose, branch=branch, y_rail=y_rail
+        )
+        wrist_ok = float(self.cfg.psi_wrist_ok_rad)
+        if best_psi is None or not np.isfinite(best_j6) or best_j6 < wrist_ok:
+            full = np.linspace(lo, hi, n)
+            best_full, j6_full = self._score_psi_samples(
+                full, pose=pose, branch=branch, y_rail=y_rail
+            )
+            if best_full is not None and (
+                best_psi is None or j6_full > best_j6 + 1.0e-9
+            ):
+                best_psi, best_j6 = best_full, j6_full
+        self.last_search_j6_rad = best_j6
+        return best_psi
+
+    def _score_psi_samples(
+        self,
+        samples: np.ndarray,
+        *,
+        pose: np.ndarray,
+        branch: int,
+        y_rail: float,
+    ) -> tuple[float | None, float]:
+        best_s = -np.inf
+        best_psi: float | None = None
+        best_j6 = float("nan")
+        for psi in samples:
+            pack = self._eval.evaluate(pose, float(psi), branch, y_rail)
+            if pack is None:
+                continue
+            q_arm, q_full, _sigma = pack
+            j6 = abs(float(q_arm[5]))
+            if j6 < float(self.cfg.wrist_min_rad) - 1.0e-9:
+                continue
+            marg = float(np.min(np.minimum(q_arm - Q_LOWER, Q_UPPER - q_arm)))
+            score = min(j6 / (60.0 * np.pi / 180.0), 1.0) + 0.8 * min(
+                marg / (30.0 * np.pi / 180.0), 1.0
+            )
+            if score > best_s + 1.0e-9:
+                best_s = float(score)
+                best_psi = float(psi)
+                best_j6 = float(j6)
+                self._update_margins(q_full)
+                self.last_dpref_score = float(score)
+                self.last_psi_score = float(score)
+        return best_psi, best_j6
 
     def nudge_d_star(
         self,
@@ -402,18 +704,66 @@ class PostureRetarget:
         if d_lo > d_hi:
             d_lo, d_hi = d_hi, d_lo
         d_new = float(np.clip(float(self._d_star) + float(delta_m), d_lo, d_hi))
+        self._d_center_target = d_new
         self._d_star = d_new
         self.d_star_m = d_new
         return d_new
 
+    def _rate_limit_d(
+        self,
+        dt_s: float,
+        *,
+        y_tcp: float | None = None,
+        rail_lo: float | None = None,
+        rail_hi: float | None = None,
+    ) -> float:
+        if self._d_star is None:
+            return float("nan")
+        target = (
+            float(self._d_center_target)
+            if self._d_center_target is not None
+            else float(self._d_star)
+        )
+        cur = float(self._d_star)
+        err = target - cur
+        max_step = max(float(self.cfg.d_center_rate_m_s), 0.0) * max(float(dt_s), 0.0)
+        if max_step > 0.0 and abs(err) > max_step:
+            err = float(np.clip(err, -max_step, max_step))
+        new_d = float(cur + err)
+        if (
+            y_tcp is not None
+            and rail_lo is not None
+            and rail_hi is not None
+            and np.isfinite(float(y_tcp))
+        ):
+            margin = max(float(self.cfg.rail_margin_m), 0.0)
+            y_lo = float(rail_lo) + margin
+            y_hi = float(rail_hi) - margin
+            if y_lo > y_hi + 1.0e-12:
+                self.d_star_m = float(self._d_star)
+                return float(self._d_star)
+            d_lo = float(y_tcp) - y_hi
+            d_hi = float(y_tcp) - y_lo
+            if d_lo > d_hi + 1.0e-12:
+                self.d_star_m = float(self._d_star)
+                return float(self._d_star)
+            new_d = float(np.clip(new_d, d_lo, d_hi))
+        self._d_star = new_d
+        self.d_star_m = float(self._d_star)
+        return float(self._d_star)
+
     def _rate_limit_psi(self, dt_s: float) -> float:
         target = float(self._psi_star if self._psi_star is not None else 0.0)
         cur = float(self._psi_cmd if self._psi_cmd is not None else target)
-        err = _wrap_pi(target - cur)
+        err = psi_err_avoiding_zero(cur, target)
         max_step = float(self.cfg.psi_rate_rad_s) * dt_s
         if max_step > 0.0 and abs(err) > max_step:
             err = float(np.clip(err, -max_step, max_step))
-        self._psi_cmd = float(cur + err)
+        nxt = float(cur + err)
+        # Never publish a command that sits on the wrong side of 0.
+        if cur * nxt < 0.0 and abs(cur) > 1.0e-6:
+            nxt = float(np.sign(cur) * 1.0e-6)
+        self._psi_cmd = nxt
         return float(self._psi_cmd)
 
 
@@ -422,8 +772,13 @@ __all__ = [
     "PsiRetargetConfig",
     "StrokeInfeasibleError",
     "arm_respects_floor",
+    "clamp_psi_to_envelope",
     "d_from_q",
+    "design_family_ok",
+    "fold_psi_to_positive",
     "joint_margin_frac",
+    "nearest_planar_psi",
+    "psi_err_avoiding_zero",
     "stroke_score",
     "wrist_band_frac",
 ]

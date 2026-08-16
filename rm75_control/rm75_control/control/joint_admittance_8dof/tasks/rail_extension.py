@@ -83,6 +83,10 @@ class RailExtensionConfig:
     # Reach may oppose MotionReference FF, but only this much (m/s) so the
     # rail can still re-extend the elbow without re-triggering LW100 Er-01.
     v_reach_cap_m_s: float = 0.02
+    # Dead-zone around d_center.  Inside the band v_reach is exactly 0 so
+    # the carriage is free to ride the stroke; only stretch beyond the
+    # band is corrected (and then drift makes the rail expensive in Y).
+    d_band_m: float = 0.08
     # Bug 2: σ-escape.  When σ_min ↘ the rail should BOOST authority (not
     # cut it — the old ``w *= sigma_scale`` was backwards) and add a
     # non-reaching velocity component along the TCP-preserving σ-ascent
@@ -130,8 +134,8 @@ class RailExtensionConfig:
     # Boost rail soft weight when any arm joint is near its soft limit [0,1].
     k_margin_boost: float = 4.0
     w_ext_cap: float = 24.0  # still ≪ W_task=100
-    # When |q_rail − (y_des − d*)| exceeds err0, raise reach weight and make
-    # the rail expensive for the Cartesian Y equality so the arm takes Y.
+    # When |err_band| exceeds err0, raise rail Cartesian reg and fade k_ff
+    # so the arm takes Y instead of stretching the split further.
     d_star_err0_m: float = 0.01
     d_star_err1_m: float = 0.04
     d_star_w_mult: float = 6.0
@@ -145,6 +149,8 @@ class RailExtensionConfig:
     press_stall_s: float = 0.5
     d_star_nudge_m: float = 0.01
     open_travel_min_m: float = 0.01
+    # One-sided lateral escape.  ``minus`` drives −q0 until the minus pin.
+    escape_sign_policy: str = "minus"
 
 
 def _smoothstep01(x: float) -> float:
@@ -280,15 +286,41 @@ class RailExtensionTask:
     def _leave_margin_m(self) -> float:
         return max(float(self.cfg.escape_leave_m), float(self.cfg.pin_margin_m))
 
+    def _policy_escape_sign(self) -> float:
+        raw = str(getattr(self.cfg, "escape_sign_policy", "minus")).strip().lower()
+        if raw in ("minus", "-", "neg", "negative"):
+            return -1.0
+        if raw in ("plus", "+", "pos", "positive"):
+            return 1.0
+        raise ValueError(f"unknown rail_extension.escape_sign_policy: {raw!r}")
+
+    def _in_leave_band(self, q_rail: float, sign: float = 0.0) -> bool:
+        lo, hi = self._soft_travel()
+        leave = self._leave_margin_m()
+        s = float(sign)
+        if abs(s) < 1.0e-12:
+            s = self._policy_escape_sign()
+        if s > 0.0:
+            return bool(q_rail >= hi - leave)
+        if s < 0.0:
+            return bool(q_rail <= lo + leave)
+        return False
+
     def _in_plus_leave(self, q_rail: float) -> bool:
-        _lo, hi = self._soft_travel()
-        return bool(q_rail >= hi - self._leave_margin_m())
+        return self._in_leave_band(q_rail, +1.0)
 
     def _preferred_escape_sign(self, q_rail: float, *, backoff: bool = False) -> float:
-        """+q0 while travel remains; 0 in the leave band; −1 on the +stop / backoff."""
-        _lo, hi = self._soft_travel()
+        """Policy-side escape; 0 in that leave band; reverse on the policy pin."""
+        sign = self._policy_escape_sign()
+        lo, hi = self._soft_travel()
         pin = float(self.cfg.pin_margin_m)
         leave = self._leave_margin_m()
+        if sign < 0.0:
+            if pin > 1.0e-9 and q_rail <= lo + pin:
+                return 1.0
+            if q_rail <= lo + leave:
+                return 1.0 if backoff else 0.0
+            return -1.0
         if pin > 1.0e-9 and q_rail >= hi - pin:
             return -1.0
         if q_rail >= hi - leave:
@@ -396,51 +428,12 @@ class RailExtensionTask:
                     self._escape_active = True
                     self._escape_flipped_at_end = False
                     self._escape_enter_timer_s = 0.0
-                    if abs(float(sigma_grad_rail)) > 1.0e-9:
-                        raw = 1.0 if float(sigma_grad_rail) >= 0.0 else -1.0
-                    else:
-                        raw = 1.0
                     self._escape_sign = self._preferred_escape_sign(q_rail)
                     if abs(self._escape_sign) < 1.0e-12:
                         self._clear_escape_latch()
                         if sigma_raw is not None:
                             self._sigma_raw_prev = float(sigma_raw)
                         return 0.0
-                    # #region agent log
-                    try:
-                        import json as _json, time as _time
-                        with open(
-                            "/media/camp/EXT_DRIVE/RealUS_playground/.cursor/debug-f95044.log",
-                            "a",
-                            encoding="utf-8",
-                        ) as _df:
-                            _df.write(
-                                _json.dumps(
-                                    {
-                                        "sessionId": "f95044",
-                                        "runId": "post-fix2",
-                                        "hypothesisId": "H2",
-                                        "location": "rail_extension.py:_escape_latched",
-                                        "message": "escape sign latch",
-                                        "timestamp": int(_time.time() * 1000),
-                                        "data": {
-                                            "q_rail": float(q_rail),
-                                            "raw_sign": float(raw),
-                                            "final_sign": float(self._escape_sign),
-                                            "preferred": float(
-                                                self._preferred_escape_sign(q_rail)
-                                            ),
-                                            "open_side": float(self._open_side_sign(q_rail)),
-                                            "grad": float(sigma_grad_rail),
-                                        },
-                                    },
-                                    allow_nan=False,
-                                )
-                                + "\n"
-                            )
-                    except Exception:
-                        pass
-                    # #endregion
             else:
                 self._escape_enter_timer_s = 0.0
 
@@ -607,9 +600,13 @@ class RailExtensionTask:
         else:
             y_des = float(self.kin.fk_placement(q).translation[1])
         rail_ff = y_des - d_star
-        err = rail_ff - y
+        err_raw = rail_ff - y
+        band = max(float(getattr(self.cfg, "d_band_m", 0.0)), 0.0)
+        if stroke_limiters:
+            band = 0.0
+        err = float(err_raw - np.clip(err_raw, -band, band))
         self.last_rail_ff_m = float(rail_ff)
-        self.last_track_err_m = float(err)
+        self.last_track_err_m = float(err_raw)
         span = max(float(self.cfg.e1_m) - float(self.cfg.e0_m), 1e-6)
         w_reach = float(self.cfg.w_max) * _smoothstep01(
             (abs(err) - float(self.cfg.e0_m)) / span
@@ -658,9 +655,10 @@ class RailExtensionTask:
         in_band = self._rail_in_limit_band(y) if use_limiters else False
         self.last_in_limit_band = bool(in_band)
         y_thr = max(float(self.cfg.press_y_err_m), 0.0)
+        policy_sign = self._policy_escape_sign()
         backoff = bool(
             use_limiters
-            and self._in_plus_leave(y)
+            and self._in_leave_band(y, policy_sign)
             and abs(float(tool_y_err_m)) >= y_thr
         )
         allow_press_escape = bool(
@@ -705,8 +703,15 @@ class RailExtensionTask:
                     v_escape = 0.0
         v_primary = v_ff + v_reach
         pref_now = self._preferred_escape_sign(y, backoff=backoff)
-        if use_limiters and self._in_plus_leave(y) and v_primary > 0.0:
-            v_primary = 0.0
+        if use_limiters:
+            # Park primary at either leave band so a planned +Y stroke still
+            # stops short of +soft_max, while minus-policy escape parks at −.
+            in_plus = self._in_plus_leave(y)
+            in_policy = self._in_leave_band(y, policy_sign)
+            if in_plus and (not allow_press_escape or v_primary > 0.0):
+                v_primary = 0.0
+            if in_policy and (not allow_press_escape or v_primary * policy_sign > 0.0):
+                v_primary = 0.0
         if allow_press_escape:
             esc_sign = (
                 float(self._escape_sign)

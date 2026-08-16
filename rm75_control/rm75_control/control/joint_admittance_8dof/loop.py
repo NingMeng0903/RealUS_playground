@@ -62,6 +62,8 @@ from rm75_control.control.joint_admittance_8dof.tasks.ird_adapter import (
 from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
     PostureRetarget,
     PsiRetargetConfig,
+    design_family_ok,
+    fold_psi_to_positive,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.rail_lock import (
     RailLockConfig,
@@ -142,6 +144,7 @@ class JointIkStep:
     d_pref_m: float = float("nan")
     elbow_margin_rad: float = float("nan")
     wrist_open_rad: float = float("nan")
+    family_ok: bool = True
     physical_saturated: bool = False
     rail_contrib_m_s: float = float("nan")
     arm_contrib_m_s: float = float("nan")
@@ -375,6 +378,7 @@ class JointIkController:
         self._press_z_mark: float = float("nan")
         self._press_stall_s: float = 0.0
         self._d_star_nudge_cool_s: float = 0.0
+        self._family_ok: bool = True
         self._rail_mode: RailMode = self.cfg.rail.mode
         self._locked_style: LockedStyle = self.cfg.rail.locked_style
         self._configured_rail_mode: RailMode = self.cfg.rail.mode
@@ -477,16 +481,39 @@ class JointIkController:
             self.rail_ext_task.set_d_pref(float(d_star))
         return float(d_star), float(psi_star)
 
+    def _check_design_family(self, q_meas: np.ndarray) -> None:
+        qn = np.asarray(self.centering_task._q_target_default, dtype=float)
+        ok = design_family_ok(q_meas, qn)
+        self._family_ok = bool(ok)
+        if ok:
+            return
+        from rm75_control.kinematics.srs_ik import branch_from_q, psi_from_q
+
+        q = np.asarray(q_meas, dtype=float).reshape(-1)
+        psi_m = math.degrees(fold_psi_to_positive(psi_from_q(q)))
+        psi_n = math.degrees(fold_psi_to_positive(psi_from_q(qn)))
+        msg = (
+            "DESIGN FAMILY MISMATCH: measured "
+            f"ψ={psi_m:.1f}° branch={int(branch_from_q(q))} "
+            f"J1={math.degrees(float(q[1])):+.1f}° vs design "
+            f"ψ={psi_n:.1f}° branch={int(branch_from_q(qn))} "
+            f"J1={math.degrees(float(qn[1])):+.1f}°"
+        )
+        print(f"[joint_ik] {msg}", flush=True)
+        if bool(getattr(self.cfg.psi_retarget, "require_design_family", False)):
+            raise ValueError(msg)
+
     def _latch_attractor_from_q(self, q_meas: np.ndarray) -> None:
-        """Latch yaml |q*| signs from measurement; sync branch barriers."""
+        """Fixed signed q_nominal for centering; latch signs only for q_star."""
         q = np.asarray(q_meas, dtype=float).reshape(-1)
         if q.size != self.kin.nv or not np.all(np.isfinite(q)):
             return
-        target = latch_q_star_signs(self.centering_task._q_target_default, q)
-        self.centering_task.set_q_target(target)
-        self.core.set_q_star(target)
+        q_nominal = np.asarray(self.centering_task._q_target_default, dtype=float)
+        self.centering_task.set_q_target(q_nominal)
+        self.core.set_q_star(latch_q_star_signs(q_nominal, q))
         if self.arm_task is not None:
             self.arm_task.reset(q)
+        self._check_design_family(q)
 
     def reset(self, q0_rad: np.ndarray) -> None:
         self.q_cmd = np.asarray(q0_rad, dtype=float).copy()
@@ -728,6 +755,7 @@ class JointIkController:
                 if self.posture_retarget is not None
                 else float("nan")
             ),
+            family_ok=bool(self._family_ok),
             physical_saturated=bool(physical_saturated),
             rail_contrib_m_s=float(rail_contrib_m_s),
             arm_contrib_m_s=float(arm_contrib_m_s),
@@ -961,7 +989,10 @@ class JointIkController:
         dz_max = float(getattr(ext_cfg, "press_dz_max_m", 0.002))
         y_thr = float(getattr(ext_cfg, "press_y_err_m", 0.005))
         stall_need = float(getattr(ext_cfg, "press_stall_s", 0.5))
-        demanding = bool(np.isfinite(v_force) and abs(v_force) >= v_min)
+        v_z_demand = (
+            v_force if np.isfinite(v_force) else float(twist_base[2])
+        )
+        demanding = bool(abs(v_z_demand) >= v_min)
         # Windowed stall: |Δz| over the timer, not per 5 ms tick (2 mm/tick
         # is 400 mm/s — every real press looked "stuck").
         if demanding:
@@ -992,9 +1023,11 @@ class JointIkController:
             self.rail_ext_task is not None
             and self.rail_ext_task._rail_has_open_travel(float(q_prev[0]))
         )
-        plus_leave = bool(
+        policy_leave = bool(
             self.rail_ext_task is not None
-            and self.rail_ext_task._in_plus_leave(float(q_prev[0]))
+            and self.rail_ext_task._in_leave_band(
+                float(q_prev[0]), self.rail_ext_task._policy_escape_sign()
+            )
         )
         arm_starved = bool(abs(tool_y_err_m) >= y_thr)
         comfort_m = 0.26
@@ -1007,8 +1040,8 @@ class JointIkController:
             and has_travel
             and (
                 press_stalled_timer
-                or (j4_blocked and not plus_leave)
-                or (plus_leave and arm_starved)
+                or (j4_blocked and not policy_leave)
+                or (policy_leave and arm_starved)
             )
         )
 
@@ -1021,11 +1054,6 @@ class JointIkController:
                 float(dt),
                 rail_lo=float(self.limits.q_lower[0]),
                 rail_hi=float(self.limits.q_upper[0]),
-                q_nominal=(
-                    None
-                    if self.posture_retarget.planned
-                    else self.centering_task.q_target
-                ),
             )
             if self.arm_task is not None:
                 self.arm_task.set_reference(float(psi_ref))
@@ -1931,7 +1959,7 @@ class _TickLogger:
            "rail_escape_active",
            "psi_deg", "psi_ref_deg", "psi_retarget_score", "d_pref_m",
            "d_star_m", "psi_star_deg", "minmax_margin",
-           "elbow_margin_rad", "wrist_open_rad",
+           "elbow_margin_rad", "wrist_open_rad", "family_ok",
            "tool_y_des_m", "tool_y_err_mm",
            "contact_phase", "v_air_cmd", "ke_hat", "dob_v", "barrier_cap_floor",
            # Append-only normal-axis BEFM/audit schema.
@@ -2490,6 +2518,7 @@ class _TickLogger:
                    if np.isfinite(step.wrist_open_rad)
                    else ""
                ),
+               "1" if bool(getattr(step, "family_ok", True)) else "0",
                f"{tool_y_des_m:.6f}" if np.isfinite(tool_y_des_m) else "",
                f"{tool_y_err_mm:.3f}" if np.isfinite(tool_y_err_mm) else "",
                str(contact_phase),

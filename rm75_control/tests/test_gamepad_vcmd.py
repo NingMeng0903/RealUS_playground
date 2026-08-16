@@ -18,7 +18,11 @@ from rm75_control.control.joint_admittance_8dof.gamepad_vcmd_program import (
     close_built_pad,
 )
 from rm75_control.control.joint_admittance_8dof.loop import JointIkController
-from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import d_from_q
+from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
+    d_from_q,
+    nearest_planar_psi,
+)
+from rm75_control.kinematics.srs_ik import psi_from_q
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
     GamepadTwistConfig,
@@ -99,7 +103,8 @@ def test_outer_loop_feeds_plus_y_into_qpik() -> None:
     cfg.ird.enabled = False
     kin = RobotKinematics()
     inner = JointIkController(kin, cfg)
-    q = _SEED_Q.copy()
+    q = np.deg2rad(np.array([0.0, -90.4, -93.7, 66.1, 104.4, 94.5, 60.3, 83.6]))
+    q[0] = 0.375
     inner.reset(q)
     pad = FakePad(axes=np.array([-1.0, 0.0, -1.0, 0.0, 0.0, -1.0]))
     outer = GamepadTwistOuterLoop(
@@ -229,21 +234,33 @@ def _plus_y_step(inner: JointIkController, q_rail_m: float):
     return inner.update(twist, q_meas=q, vel_ff=twist)
 
 
-def test_unplanned_inner_freezes_d_star_from_q_nominal() -> None:
+def test_unplanned_inner_holds_taught_plane_not_q_nominal() -> None:
     inner = _yaml_inner_at_rail(0.375)
     SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
-    q = _SEED_Q.copy()
+    q = np.array(
+        [0.774, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
     inner.reset(q)
     inner.begin_hybrid_episode(q, np.zeros(8))
-    d_star = d_from_q(inner.kin, inner.centering_task.q_target)
+    d_yaml = d_from_q(inner.kin, inner.centering_task.q_target)
     d_live = d_from_q(inner.kin, q)
-    assert abs(d_live - d_star) > 1.0e-3
-    twist = np.array([0.0, 0.08, 0.0, 0.0, 0.0, 0.0])
+    psi_yaml = float(psi_from_q(inner.centering_task.q_target))
+    psi_taught = nearest_planar_psi(psi_from_q(q))
+    assert abs(d_live - d_yaml) > 1.0e-3
+    assert abs(psi_taught - psi_yaml) > 1.0
+    twist = np.zeros(6)
+    last = None
     for _ in range(6):
-        inner.update(twist, q_meas=inner.q_cmd, vel_ff=twist)
+        last = inner.update(twist, q_meas=inner.q_cmd, vel_ff=twist)
     assert inner.posture_retarget is not None
     assert not inner.posture_retarget.planned
-    assert inner.posture_retarget.d_star_m == pytest.approx(d_star, abs=1e-9)
+    assert inner.posture_retarget.d_star_m == pytest.approx(d_live, abs=0.08)
+    assert abs(inner.posture_retarget.d_star_m - d_yaml) > 1.0e-3
+    assert inner.posture_retarget.psi_star_rad == pytest.approx(
+        float(inner.cfg.psi_retarget.psi_attr_rad), abs=1e-6
+    )
+    assert last is not None
+    assert abs(abs(float(last.psi_ref_deg)) - 180.0) < 5.0
 
 
 def test_gamepad_track_is_full_inner_loop() -> None:
@@ -297,3 +314,20 @@ def test_planned_stroke_still_fades_and_holds_d_star() -> None:
     step_leave = _plus_y_step(inner, 0.74)
     assert float(step_leave.v_cmd[1]) > 0.05
     assert float(step_leave.rail_task_vel) == pytest.approx(0.0, abs=1e-3)
+
+
+def test_minus_z_twist_enables_press_escape_without_force() -> None:
+    inner = _yaml_inner_at_rail(0.40)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q = np.array(
+        [0.40, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    q[4] = float(inner.limits.q_upper[4]) - 0.20
+    inner.reset(q)
+    inner.begin_hybrid_episode(q, np.zeros(8))
+    twist = np.array([0.0, 0.0, -0.08, 0.0, 0.0, 0.0])
+    step = inner.update(
+        twist, q_meas=q, vel_ff=twist, task_rotation_base=np.eye(3)
+    )
+    assert float(step.v_cmd[2]) < -0.05
+    assert bool(step.rail_escape_active) or abs(float(step.v_escape)) > 1.0e-6

@@ -88,6 +88,7 @@ inner:
       sigma_floor: 1.0e-6
     task_weight_min_frac: 0.05
     task_weight_lpf_tau_s: 0.25
+    aniso_task_damping: true
     twist_scale_lpf_tau_s: 0.08
     use_mass_weighted_reg: true
     mass_reg_floor: 0.05
@@ -127,12 +128,15 @@ inner:
       slack_weight: 200.0
     branch_barrier:
       enabled: true
-      activate_rad: 0.35
-      # 0.05 rad = 2.8° was the measured J6 parking floor.  0.26 (~15°)
-      # forces the wrist open; activate_rad 0.35 stays outside this.
-      eps_rad: 0.26
+      # 20° floor / 30° activate.  slack_weight stays 80 so a fast
+      # crossing remains cheap; dwell ramps the cost only if J6 parks.
+      activate_rad: 0.52
+      eps_rad: 0.35
       gamma: 6.0
       slack_weight: 80.0
+      dwell_free_s: 0.3
+      dwell_ramp_s: 1.0
+      dwell_scale_max: 5.0
     # Moe/Kanoun set-based comfort: each arm joint, own slack, 15–25° band.
     joint_comfort:
       enabled: true
@@ -153,11 +157,10 @@ inner:
     k_limit: 2.0
     activation: 0.75
     weights: [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    # rail, J1, J2, J3, J4, J5, J6, J7.  Comfortable posture, not mid-range
-    # (J4 mid=0 is a straight arm).  J5=0 aligned wrist-roll and pulled
-    # scans into |J5|<15°; +40 matches the live branch (scan p50 ≈ 42°).
-    # Episode start latches the sign from q_meas.
-    q_nominal_deg: [0.0, 0.0, -45.0, 0.0, 90.0, 40.0, 45.0, 0.0]
+    # Side-lying family (photo 2026-08-16): ψ=70°, d=−0.22, branch=4.
+    # Same SEW half-plane as the taught lean; J4 at 104° so comfort (25°)
+    # stays off.  Signs are fixed — episode latch no longer mirrors J1.
+    q_nominal_deg: [0.0, -90.4, -93.7, 66.1, 104.4, 94.5, 60.3, 83.6]
     manipulability:
       k_mu: 0.8
       eps_rad: 5.0e-4
@@ -169,8 +172,9 @@ inner:
 
   arm_angle:
     enabled: true
-    k_psi: 1.0
+    k_psi: 1.5
     psi_ref_deg: null
+    obs_smooth_floor: 0.3
 
   psi_retarget:
     enabled: true
@@ -178,15 +182,28 @@ inner:
     n_d: 8
     n_psi: 9
     w_sigma: 0.5
-    # Band around the 45° attractor — not |q6|/128°, which sacrificed J2.
+    # Band around the 60° attractor — not |q6|/128°, which sacrificed J2.
     w_wrist: 0.5
     margin_floor_deg: 20.0
-    # step() never replans.  Pin–Culioli runs once at scan start.
+    # Planned stroke still one-shot.  Unplanned step re-searches ψ.
     z_replan_m: 0.0
-    psi_rate_deg_s: 20.0
+    psi_rate_deg_s: 25.0
+    # Design split: J4≈104°, 30° worst-joint margin.  Slew 18 cm in 9 s.
+    psi_attr_deg: 70.0
+    d_attr_m: -0.22
+    d_center_rate_m_s: 0.02
+    d_band_m: 0.08
+    psi_replan_period_s: 0.1
+    psi_search_half_span_deg: 45.0
+    psi_search_n: 9
+    psi_wrist_ok_deg: 40.0
+    psi_return_dwell_s: 1.0
+    # >110° collapses J6 on this family.  Never cross ψ=0.
+    psi_envelope_deg: [40.0, 110.0]
+    require_design_family: false
     rail_margin_m: 0.02
-    # Reject cells whose wrist sits on the ~15° branch-barrier floor.
-    wrist_min_deg: 25.0
+    # Reject cells whose wrist sits on the ~20° branch-barrier floor.
+    wrist_min_deg: 30.0
 
   # Signed IRD field (ird_playground).  One-shot d* at plan_scan_stroke only.
   # Hot-path RailGoodness is σ_min (autograd IRD caused 127 ms hitches).
@@ -211,6 +228,7 @@ inner:
     pin_margin_m: 0.008
     escape_leave_m: 0.04
     v_reach_cap_m_s: 0.02
+    d_band_m: 0.08
     k_sigma_boost: 2.0
     k_esc: 0.5
     w_sigma_floor: 1.0
@@ -238,6 +256,8 @@ inner:
     d_star_err1_m: 0.04
     d_star_w_mult: 6.0
     d_star_reg_mult: 20.0
+    # One-sided lateral escape: always −q0 until the minus pin band.
+    escape_sign_policy: minus
 
 
 frames:
@@ -529,7 +549,9 @@ hw:
     arm_max_span_mm: 2.0
     arm_timeout_s: 10.0
     fault_margin_m: 0.05
-    poll_hz: 50
+    # 23 ms median cycle at 115200 (read+FA24 write).  Honest 43 Hz
+    # beats a 50 Hz label that free-runs at 41–45.
+    poll_hz: 43
     inter_frame_delay_s: 0.0005
     timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0
     retries: 1
@@ -542,7 +564,7 @@ hw:
     vel_kp: 14.0
     vel_kd: 0.22
     vel_max_m_s: 0.15
-    vel_amax_m_s2: 0.8
+    vel_amax_m_s2: 1.2
     # Live QPIK v_ff: position is a slow trim; host a_max is capped to FA40.
     vel_ff_kp: 4.0
     vel_ff_p_trim_m_s: 0.010
@@ -570,9 +592,10 @@ hw:
     jump_margin_mm: 3.0
     jump_hard_mm: 50.0
     jump_soft_streak_panic: 2
-    # FA40/41: longer ramp leaves headroom under FA23 vs Er-01 超速.
-    accel_ms: 200
-    decel_ms: 200
+    # FA40/41: 120 ms → host a_max ≈ 1.06 m/s² (still ≫ QP 0.30).
+    # If Er-01 appears on a reverse, step back to 160 before touching FA23.
+    accel_ms: 120
+    decel_ms: 120
     scurve_ms: 30            # FA42
     busy_speed_rpm: 1
     home_on_exit: false

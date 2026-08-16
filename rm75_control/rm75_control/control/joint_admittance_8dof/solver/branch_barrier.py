@@ -20,12 +20,16 @@ from rm75_control.control.joint_admittance_8dof.solver.sigma_setbased import (
 @dataclass
 class BranchBarrierConfig:
     enabled: bool = True
-    activate_rad: float = 0.35  # ~20°
-    eps_rad: float = 0.26  # ~15° floor; never an attractor (planner rejects this band)
+    activate_rad: float = 0.52  # ~30°
+    eps_rad: float = 0.35  # ~20° floor; crossing stays cheap via slack
     gamma: float = 6.0
     slack_weight: float = 80.0
     # Skip rail (index 0); only arm joints with |q*| > target_eps.
     target_eps_rad: float = 1.0e-3
+    # Dwell upgrade: brief crossings keep slack_weight; parking ramps it.
+    dwell_free_s: float = 0.3
+    dwell_ramp_s: float = 1.0
+    dwell_scale_max: float = 5.0
 
 
 class BranchBarrierBuilder:
@@ -33,13 +37,37 @@ class BranchBarrierBuilder:
         self.cfg = cfg or BranchBarrierConfig()
         self.last_slack: float = 0.0
         self.last_n_active: int = 0
+        self.last_dwell_scale: float = 1.0
+        self._dwell_s: float = 0.0
 
     def reset(self) -> None:
         self.last_slack = 0.0
         self.last_n_active = 0
+        self.last_dwell_scale = 1.0
+        self._dwell_s = 0.0
+
+    def _update_dwell(self, q: np.ndarray, dt_s: float) -> float:
+        """Scale in [1, dwell_scale_max] from how long |q6| stays in-band."""
+        act = float(self.cfg.activate_rad)
+        j6 = 6 if q.size >= 8 else 5
+        in_band = abs(float(q[j6])) < act
+        if in_band:
+            self._dwell_s += max(float(dt_s), 0.0)
+        else:
+            self._dwell_s = 0.0
+        free = max(float(self.cfg.dwell_free_s), 0.0)
+        ramp = max(float(self.cfg.dwell_ramp_s), 1.0e-9)
+        hi = max(float(self.cfg.dwell_scale_max), 1.0)
+        if self._dwell_s <= free:
+            scale = 1.0
+        else:
+            u = min((self._dwell_s - free) / ramp, 1.0)
+            scale = 1.0 + u * (hi - 1.0)
+        self.last_dwell_scale = float(scale)
+        return float(scale)
 
     def build_rows(
-        self, q_rad: np.ndarray, q_star: np.ndarray
+        self, q_rad: np.ndarray, q_star: np.ndarray, *, dt_s: float = 0.0
     ) -> PrefInequalityRows:
         q = np.asarray(q_rad, dtype=float).reshape(-1)
         q_star = np.asarray(q_star, dtype=float).reshape(-1)
@@ -50,6 +78,8 @@ class BranchBarrierBuilder:
             lower=np.zeros(0),
             active=False,
         )
+        if dt_s > 0.0:
+            self._update_dwell(q, dt_s)
         if not self.cfg.enabled or q_star.size != nv:
             return empty
         act = float(self.cfg.activate_rad)

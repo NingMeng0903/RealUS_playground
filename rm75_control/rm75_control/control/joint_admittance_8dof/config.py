@@ -183,6 +183,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             "task_weight", "reg", "backend", "eps_abs", "max_iter", "max_iter_cap",
             "max_solve_ms", "fail_qdot_decay", "twist_sigma_floor", "warn_on_fail",
             "sr_damping", "task_weight_min_frac", "task_weight_lpf_tau_s",
+            "aniso_task_damping",
             "use_mass_weighted_reg", "mass_reg_floor", "mass_weight_exempt_rail",
             "mass_reg_lpf_tau_s", "use_dyn_nullspace",
             "limit_damper_band_rad", "limit_damper_band_rail_m",
@@ -233,7 +234,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         bb,
         {
             "enabled", "activate_rad", "eps_rad", "gamma", "slack_weight",
-            "target_eps_rad",
+            "target_eps_rad", "dwell_free_s", "dwell_ramp_s", "dwell_scale_max",
         },
         name="inner.qp.branch_barrier",
     )
@@ -278,6 +279,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             c.get("task_weight_lpf_tau_s", 0.25),
             name="inner.qp.task_weight_lpf_tau_s",
         ),
+        aniso_task_damping=bool(c.get("aniso_task_damping", True)),
         use_mass_weighted_reg=bool(c.get("use_mass_weighted_reg", True)),
         mass_reg_floor=_finite_float(
             c.get("mass_reg_floor", 0.05), name="inner.qp.mass_reg_floor"
@@ -327,10 +329,10 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         branch_barrier=BranchBarrierConfig(
             enabled=bool(bb.get("enabled", True)),
             activate_rad=_finite_float(
-                bb.get("activate_rad", 0.35), name="branch_barrier.activate_rad"
+                bb.get("activate_rad", 0.52), name="branch_barrier.activate_rad"
             ),
             eps_rad=_finite_float(
-                bb.get("eps_rad", 0.26), name="branch_barrier.eps_rad"
+                bb.get("eps_rad", 0.35), name="branch_barrier.eps_rad"
             ),
             gamma=_finite_float(bb.get("gamma", 6.0), name="branch_barrier.gamma"),
             slack_weight=_finite_float(
@@ -339,6 +341,16 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             target_eps_rad=_finite_float(
                 bb.get("target_eps_rad", 1.0e-3),
                 name="branch_barrier.target_eps_rad",
+            ),
+            dwell_free_s=_finite_float(
+                bb.get("dwell_free_s", 0.3), name="branch_barrier.dwell_free_s"
+            ),
+            dwell_ramp_s=_finite_float(
+                bb.get("dwell_ramp_s", 1.0), name="branch_barrier.dwell_ramp_s"
+            ),
+            dwell_scale_max=_finite_float(
+                bb.get("dwell_scale_max", 5.0),
+                name="branch_barrier.dwell_scale_max",
             ),
         ),
         joint_comfort=JointComfortConfig(
@@ -442,7 +454,8 @@ def _parse_arm_angle(inner: dict) -> ArmAngleTaskConfig:
         a,
         {
             "enabled", "k_psi", "psi_ref_deg", "fd_eps_rad", "safe_denom_eps",
-            "obs_decay_gain", "max_qdot_frac", "psi_home_deg", "max_psi_swing_deg",
+            "obs_decay_gain", "obs_smooth_floor", "max_qdot_frac",
+            "psi_home_deg", "max_psi_swing_deg",
         },
         name="inner.arm_angle",
     )
@@ -451,6 +464,9 @@ def _parse_arm_angle(inner: dict) -> ArmAngleTaskConfig:
     return ArmAngleTaskConfig(
         enabled=bool(a.get("enabled", False)),
         k_psi=_finite_float(a.get("k_psi", 1.0), name="arm_angle.k_psi"),
+        obs_smooth_floor=_finite_float(
+            a.get("obs_smooth_floor", 0.3), name="arm_angle.obs_smooth_floor"
+        ),
         psi_ref_rad=(
             math.radians(_finite_float(psi_ref_deg, name="arm_angle.psi_ref_deg"))
             if psi_ref_deg is not None
@@ -471,13 +487,23 @@ def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
         {
             "enabled", "n_y", "n_d", "n_psi", "w_sigma", "w_wrist",
             "margin_floor_deg", "z_replan_m", "psi_rate_deg_s", "rail_margin_m",
-            "wrist_min_deg",
-            # Retired hill-climb keys accepted so older yaml still loads.
+            "wrist_min_deg", "d_center_rate_m_s", "d_band_m",
+            "psi_replan_period_s", "psi_search_half_span_deg", "psi_search_n",
+            "psi_wrist_ok_deg", "psi_envelope_deg",
+            "psi_attr_deg", "d_attr_m", "psi_return_dwell_s",
+            "require_design_family",
+            # Retired keys accepted so older yaml still loads.
+            "d_replan_m", "d_replan_period_s", "d_pref_rate_m_s",
             "evals_per_tick", "psi_step_deg", "psi_lpf_tau_s",
-            "rail_step_m", "d_pref_rate_m_s", "d_pref_lpf_tau_s",
+            "rail_step_m", "d_pref_lpf_tau_s",
         },
         name="inner.psi_retarget",
     )
+    env = p.get("psi_envelope_deg", [40.0, 110.0])
+    if isinstance(env, (list, tuple)) and len(env) == 2:
+        env_lo, env_hi = float(env[0]), float(env[1])
+    else:
+        env_lo, env_hi = 40.0, 110.0
     return PsiRetargetConfig(
         enabled=bool(p.get("enabled", True)),
         n_y=int(p.get("n_y", 9)),
@@ -495,15 +521,50 @@ def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
         ),
         psi_rate_rad_s=math.radians(
             _finite_float(
-                p.get("psi_rate_deg_s", 20.0), name="psi_retarget.psi_rate_deg_s"
+                p.get("psi_rate_deg_s", 25.0), name="psi_retarget.psi_rate_deg_s"
             )
         ),
+        d_center_rate_m_s=_finite_float(
+            p.get("d_center_rate_m_s", 0.02), name="psi_retarget.d_center_rate_m_s"
+        ),
+        d_band_m=_finite_float(
+            p.get("d_band_m", 0.08), name="psi_retarget.d_band_m"
+        ),
+        psi_attr_rad=math.radians(
+            _finite_float(p.get("psi_attr_deg", 70.0), name="psi_retarget.psi_attr_deg")
+        ),
+        d_attr_m=_finite_float(
+            p.get("d_attr_m", -0.22), name="psi_retarget.d_attr_m"
+        ),
+        psi_return_dwell_s=_finite_float(
+            p.get("psi_return_dwell_s", 1.0), name="psi_retarget.psi_return_dwell_s"
+        ),
+        require_design_family=bool(p.get("require_design_family", False)),
+        psi_replan_period_s=_finite_float(
+            p.get("psi_replan_period_s", 0.1),
+            name="psi_retarget.psi_replan_period_s",
+        ),
+        psi_search_half_span_rad=math.radians(
+            _finite_float(
+                p.get("psi_search_half_span_deg", 45.0),
+                name="psi_retarget.psi_search_half_span_deg",
+            )
+        ),
+        psi_search_n=int(p.get("psi_search_n", 9)),
+        psi_wrist_ok_rad=math.radians(
+            _finite_float(
+                p.get("psi_wrist_ok_deg", 40.0),
+                name="psi_retarget.psi_wrist_ok_deg",
+            )
+        ),
+        psi_envelope_lo_rad=math.radians(env_lo),
+        psi_envelope_hi_rad=math.radians(env_hi),
         rail_margin_m=_finite_float(
             p.get("rail_margin_m", 0.02), name="psi_retarget.rail_margin_m"
         ),
         wrist_min_rad=math.radians(
             _finite_float(
-                p.get("wrist_min_deg", 25.0), name="psi_retarget.wrist_min_deg"
+                p.get("wrist_min_deg", 30.0), name="psi_retarget.wrist_min_deg"
             )
         ),
     )
@@ -547,10 +608,11 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
             "escape_enter_dwell_s",
             "k_escape_boost", "escape_grad_floor",
             "k_margin_boost", "w_ext_cap",
-            "soft_min_m", "soft_max_m", "v_reach_cap_m_s",
+            "soft_min_m", "soft_max_m", "v_reach_cap_m_s", "d_band_m",
             "d_star_err0_m", "d_star_err1_m", "d_star_w_mult", "d_star_reg_mult",
             "press_v_force_min_m_s", "press_dz_max_m", "press_y_err_m",
             "press_stall_s", "d_star_nudge_m", "open_travel_min_m",
+            "escape_sign_policy",
         },
         name="inner.rail_extension",
     )
@@ -656,6 +718,9 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
         v_reach_cap_m_s=_finite_float(
             r.get("v_reach_cap_m_s", 0.02), name="rail_extension.v_reach_cap_m_s"
         ),
+        d_band_m=_finite_float(
+            r.get("d_band_m", 0.08), name="rail_extension.d_band_m"
+        ),
         d_star_err0_m=_finite_float(
             r.get("d_star_err0_m", 0.01), name="rail_extension.d_star_err0_m"
         ),
@@ -688,6 +753,7 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
             r.get("open_travel_min_m", 0.01),
             name="rail_extension.open_travel_min_m",
         ),
+        escape_sign_policy=str(r.get("escape_sign_policy", "minus")).strip().lower(),
     )
 
 
@@ -870,11 +936,20 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             )
     rail_extension.soft_min_m = float(rail.hard_min_m)
     rail_extension.soft_max_m = float(rail.hard_max_m)
+    policy = str(rail_extension.escape_sign_policy).strip().lower()
+    if policy not in {"minus", "plus", "-", "+", "neg", "negative", "pos", "positive"}:
+        raise ValueError(
+            "rail_extension.escape_sign_policy must be 'minus' or 'plus', "
+            f"got {rail_extension.escape_sign_policy!r}"
+        )
+    rail_extension.escape_sign_policy = "minus" if policy in {
+        "minus", "-", "neg", "negative"
+    } else "plus"
 
     def hard_value(name: str, legacy_name: str, default):
         return hard.get(name, inner.get(legacy_name, default))
 
-    return JointIkConfig(
+    cfg = JointIkConfig(
         dt=_finite_float(timing.get("dt_ms", 5.0), name="timing.dt_ms") / 1000.0,
         feedback_timeout_s=_finite_float(
             timing.get("feedback_timeout_ms", 50.0),
@@ -934,6 +1009,64 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             name="inner.nullspace_max_qdot_frac",
         ),
     )
+    assert_design_attractor_consistent(cfg)
+    return cfg
 
 
-__all__ = ["build_joint_ik_config"]
+def assert_design_attractor_consistent(cfg: JointIkConfig, kin=None) -> None:
+    """Refuse a yaml whose two nullspace attractors point at different families."""
+    qn = getattr(cfg.nullspace, "q_nominal_rad", None)
+    if qn is None:
+        return
+    qn = np.asarray(qn, dtype=float).reshape(-1)
+    if qn.size != 8:
+        raise ValueError(
+            f"nullspace.q_nominal_deg must be length 8, got {qn.size}"
+        )
+    from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
+    from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
+        d_from_q,
+        fold_psi_to_positive,
+    )
+    from rm75_control.kinematics.srs_ik import Q_LOWER, Q_UPPER, psi_from_q
+
+    psi_attr = float(cfg.psi_retarget.psi_attr_rad)
+    d_attr = float(cfg.psi_retarget.d_attr_m)
+    lo = float(cfg.psi_retarget.psi_envelope_lo_rad)
+    hi = float(cfg.psi_retarget.psi_envelope_hi_rad)
+    if psi_attr < lo - 1.0e-9 or psi_attr > hi + 1.0e-9:
+        raise ValueError(
+            "psi_retarget.psi_attr_deg must lie inside psi_envelope_deg "
+            f"({math.degrees(psi_attr):.2f} not in "
+            f"[{math.degrees(lo):.2f}, {math.degrees(hi):.2f}])"
+        )
+    psi_q = fold_psi_to_positive(psi_from_q(qn))
+    psi_err = abs(psi_q - fold_psi_to_positive(psi_attr))
+    if psi_err > math.radians(1.0) + 1.0e-9:
+        raise ValueError(
+            "q_nominal ψ disagrees with psi_attr: "
+            f"ψ(q_nominal)={math.degrees(psi_q):.2f}° "
+            f"psi_attr={math.degrees(psi_attr):.2f}° "
+            f"(|Δ|={math.degrees(psi_err):.2f}° > 1°)"
+        )
+    if kin is None:
+        kin = RobotKinematics()
+    d_q = d_from_q(kin, qn)
+    if abs(d_q - d_attr) > 0.005 + 1.0e-9:
+        raise ValueError(
+            "q_nominal d disagrees with d_attr: "
+            f"d(q_nominal)={d_q:.4f} m d_attr={d_attr:.4f} m "
+            f"(|Δ|={abs(d_q - d_attr) * 1000.0:.1f} mm > 5 mm)"
+        )
+    q_arm = qn[1:]
+    margin = float(np.min(np.minimum(q_arm - Q_LOWER, Q_UPPER - q_arm)))
+    need = float(cfg.qp.joint_comfort.activate_rad)
+    if margin + 1.0e-9 < need:
+        raise ValueError(
+            "q_nominal worst-joint margin is inside the comfort wall: "
+            f"margin={math.degrees(margin):.2f}° "
+            f"joint_comfort.activate={math.degrees(need):.2f}°"
+        )
+
+
+__all__ = ["assert_design_attractor_consistent", "build_joint_ik_config"]

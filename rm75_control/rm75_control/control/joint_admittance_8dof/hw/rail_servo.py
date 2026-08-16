@@ -29,7 +29,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from rm75_control.hw.lw100.drive import LW100Drive, LW100DriveConfig
+from rm75_control.hw.lw100.drive import (
+    LW100Drive,
+    LW100DriveConfig,
+    di_limits_pressed_from_mask,
+)
 from rm75_control.hw.lw100.modbus_rtu_tcp import ModbusRtuError
 from rm75_control.hw.lw100.rail_calibration import (
     COMMS_FAIL_MSG,
@@ -60,6 +64,11 @@ def live_host_accel_m_s2(
     accel_s = max(float(accel_ms) * 1.0e-3, 0.05)
     a_drive = max(float(vel_max_m_s), 1.0e-6) / accel_s
     return min(configured, max(0.08, 0.85 * a_drive))
+
+
+def next_poll_deadline(next_t: float, now: float, period: float) -> float:
+    """Absolute schedule: overruns skip catch-up instead of accumulating debt."""
+    return max(float(next_t) + float(period), float(now))
 
 
 @dataclass
@@ -385,7 +394,8 @@ class _RailCsvLogger:
         "x_goal_m,x_ref_m,x_meas_m,v_goal_est_m_s,v_ref_m_s,a_ref_m_s2,"
         "v_meas_m_s,v_des_m_s,v_cmd_m_s,a_cmd_m_s2,x_goal_eval_m,"
         "rpm_cmd,e_track_mm,e_shape_mm,"
-        "hold_count,hold_reason"
+        "hold_count,hold_reason,"
+        "t_read_ms,t_write_ms,n_modbus"
     ).split(",")
 
     def __init__(self, path: str) -> None:
@@ -455,6 +465,9 @@ class _RailCsvLogger:
         rpm_cmd: int = 0,
         hold_count: int = 0,
         hold_reason: str = "",
+        t_read_ms: float = float("nan"),
+        t_write_ms: float = float("nan"),
+        n_modbus: int = 0,
     ) -> None:
         t_wall = time.monotonic() - self._t0
 
@@ -523,6 +536,9 @@ class _RailCsvLogger:
                 _f(e_shape_mm),
                 int(hold_count),
                 str(hold_reason),
+                _f(t_read_ms),
+                _f(t_write_ms),
+                int(n_modbus),
             ]
         )
 
@@ -2035,6 +2051,8 @@ class RailServoBridge:
         standstill_held = False
         standstill_enter_since: float | None = None
         last_bias = int(getattr(self._drive, "_counts_bias", 0) or 0)
+        next_t = time.monotonic()
+        di_streak = 0
 
         while not self._stop.is_set():
             if self._arm_req.is_set():
@@ -2102,7 +2120,10 @@ class RailServoBridge:
                     v_cmd = 0.0
                     hard_hold_this_tick = True
 
-                drive_rpm, drive_m = self._drive.read_motion_fast()
+                t_read0 = time.monotonic()
+                drive_rpm, drive_m, di_mask = self._drive.read_motion_and_di_fast()
+                t_read_ms = (time.monotonic() - t_read0) * 1000.0
+                n_modbus = 1
                 motion_sample_mono = time.monotonic()
                 measured = self._encode_rail_m(drive_m)
                 speed_rpm_host = self._encode_speed_rpm(drive_rpm)
@@ -2200,38 +2221,32 @@ class RailServoBridge:
                         self._frame_continuous = False
                     last_bias = bias_now
 
-                # Run-time hard-limit DI → e-stop (theoretically unreachable inside soft band).
-                self._limit_poll_i += 1
-                if (
-                    calibrated
-                    and not panic
-                    and (self._limit_poll_i % max(1, int(self.config.limit_poll_every)) == 0)
-                ):
-                    try:
-                        # Hot path: 1 DI sample/poll. Temporal debounce is the
-                        # 10 Hz poll itself — debounce_n=3 burned 3–12 Modbus
-                        # reads every 5th cycle and pushed the 50 Hz loop over
-                        # budget → FA24 hold → audible micro-stutter.
-                        di3_p, di4_p = self._drive.read_limit_pressed(
-                            nc=bool(self.config.di_nc),
-                            debounce_n=1,
-                            settle_s=0.0,
+                # DI comes from the same 16-reg read.  Debounce in software
+                # (3 consecutive polls) so we never spend a second Modbus trip.
+                if calibrated and not panic:
+                    di3_p, di4_p = di_limits_pressed_from_mask(
+                        di_mask, nc=bool(self.config.di_nc)
+                    )
+                    if di3_p or di4_p:
+                        di_streak += 1
+                    else:
+                        di_streak = 0
+                    if di_streak >= 3:
+                        which = []
+                        if di3_p:
+                            which.append("DI3")
+                        if di4_p:
+                            which.append("DI4")
+                        self._trip_panic(
+                            measured,
+                            f"limit DI hit in run ({'+'.join(which)})",
                         )
-                        if di3_p or di4_p:
-                            which = []
-                            if di3_p:
-                                which.append("DI3")
-                            if di4_p:
-                                which.append("DI4")
-                            self._trip_panic(
-                                measured,
-                                f"limit DI hit in run ({'+'.join(which)})",
-                            )
-                            panic = True
-                            follow = False
-                            armed = False
-                    except ModbusRtuError:
-                        pass
+                        panic = True
+                        follow = False
+                        armed = False
+                        di_streak = 0
+                else:
+                    di_streak = 0
 
                 # Over-budget poll: do NOT zero FA24 on a single slow cycle —
                 # that made mid-travel "tugs" (meas velocity → 0 while target
@@ -2333,8 +2348,9 @@ class RailServoBridge:
                             flush=True,
                         )
                     # Hold zero; skip soft loop until ARMED.
-                    elapsed = time.monotonic() - t0
-                    if self._stop.wait(max(0.0, period - elapsed)):
+                    now = time.monotonic()
+                    next_t = next_poll_deadline(next_t, now, period)
+                    if self._stop.wait(max(0.0, next_t - now)):
                         break
                     continue
 
@@ -2652,7 +2668,19 @@ class RailServoBridge:
                     if bool(follow) and not settling and not panic
                     else 0
                 )
+                last_rpm_before = int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
+                t_write0 = time.monotonic()
                 rpm_cmd = self._drive.set_velocity_rpm(rpm, deadband=rpm_deadband)
+                t_write_ms = (time.monotonic() - t_write0) * 1000.0
+                wrote = (
+                    t_write_ms > 0.5
+                    or int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
+                    != last_rpm_before
+                )
+                if wrote:
+                    n_modbus += 1
+                else:
+                    t_write_ms = 0.0
                 prev_v_cmd = sign * self._rpm_to_mps(float(rpm_cmd))
                 control_mono = time.monotonic()
                 sample_mono = motion_sample_mono
@@ -2728,6 +2756,9 @@ class RailServoBridge:
                         rpm_cmd=rpm_cmd,
                         hold_count=hold_count,
                         hold_reason=hold_reason,
+                        t_read_ms=t_read_ms,
+                        t_write_ms=t_write_ms,
+                        n_modbus=n_modbus,
                     )
                 # Rare SP-slot reassert (avoid extra Modbus during tracking).
                 if loop_n > 0 and loop_n % max(1, int(self.config.poll_hz * 30)) == 0:
@@ -2801,8 +2832,9 @@ class RailServoBridge:
                     break
                 continue
 
-            elapsed = time.monotonic() - t0
-            if self._stop.wait(max(0.0, period - elapsed)):
+            now = time.monotonic()
+            next_t = next_poll_deadline(next_t, now, period)
+            if self._stop.wait(max(0.0, next_t - now)):
                 break
 
         # Teardown: socket may already be closed by estop/stop — never block.

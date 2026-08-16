@@ -145,6 +145,10 @@ class QpConfig:
     # removal — only the primary cost softens; rail_extension / reg stay put.
     task_weight_min_frac: float = 0.05
     task_weight_lpf_tau_s: float = 0.25
+    # Chiaverini 1994 numerical filtering: only the degenerate left
+    # singular directions of W^{1/2} J lose task weight.  Off falls
+    # back to the isotropic (σ_min / σ_ref)² scale.
+    aniso_task_damping: bool = True
     # Weight QP reg by diag(M(q)) for dynamics-consistent nullspace resolution.
     use_mass_weighted_reg: bool = True
     # Floor on diag(M) in the mass-weighted reg: wrist inertias are ~1e-3,
@@ -406,6 +410,12 @@ class QpIkController:
         self._j_max = j_max if np.all(j_max > 0.0) else None
         self._m_diag_lpf: np.ndarray | None = None
         self._task_scale_lpf: float = 1.0
+        self._s_lpf: np.ndarray | None = None
+        self._U_prev: np.ndarray | None = None
+        self.last_task_weight_mat: np.ndarray = np.diag(
+            np.asarray(self.cfg.task_weight, dtype=float)
+        )
+        self.last_s_sigma: np.ndarray = np.ones(N_TASK_SLACK, dtype=float)
         self.solve_count = 0
         self.last_status = "not_run"
         self.last_failed = False
@@ -453,6 +463,10 @@ class QpIkController:
         self._qdot_prev_seen = np.zeros(self.kin.nv, dtype=float)
         self._m_diag_lpf = None
         self._task_scale_lpf = 1.0
+        self._s_lpf = None
+        self._U_prev = None
+        self.last_task_weight_mat = np.diag(np.asarray(self.cfg.task_weight, dtype=float))
+        self.last_s_sigma = np.ones(N_TASK_SLACK, dtype=float)
         self.solve_count = 0
         self.last_status = "not_run"
         self.last_failed = False
@@ -559,6 +573,59 @@ class QpIkController:
         self._task_scale_lpf = float(raw)
         return float(raw)
 
+    def _task_weight_matrix(
+        self,
+        J: np.ndarray,
+        dt: float,
+        *,
+        keep_task_weight: bool,
+    ) -> np.ndarray:
+        """Task slack Hessian block.  Aniso: only degenerate directions fade."""
+        w = np.asarray(self._w_task, dtype=float).reshape(-1)
+        ns = int(w.size)
+        if keep_task_weight or not bool(getattr(self.cfg, "aniso_task_damping", True)):
+            scale = 1.0 if keep_task_weight else self._task_scale_sigma(
+                float(np.linalg.svd(J, compute_uv=False).min()), dt
+            )
+            mat = np.diag(w * scale)
+            self.last_task_weight_mat = mat
+            self.last_s_sigma = np.full(ns, scale, dtype=float)
+            return mat
+        w_sqrt = np.sqrt(np.maximum(w, 1.0e-12))
+        jw = w_sqrt[:, None] * np.asarray(J, dtype=float)
+        u, s_j, _vt = np.linalg.svd(jw, full_matrices=False)
+        if u.shape[1] < ns:
+            u_full = np.eye(ns, dtype=float)
+            u_full[:, : u.shape[1]] = u
+            u = u_full
+            s_pad = np.zeros(ns, dtype=float)
+            s_pad[: s_j.size] = s_j
+            s_j = s_pad
+        if self._U_prev is not None and self._U_prev.shape == u.shape:
+            for i in range(u.shape[1]):
+                if float(np.dot(u[:, i], self._U_prev[:, i])) < 0.0:
+                    u[:, i] *= -1.0
+        self._U_prev = u.copy()
+        sigma_ref = float(self.cfg.sr_damping.sigma_ref)
+        min_frac = float(self.cfg.task_weight_min_frac)
+        s_raw = np.ones(ns, dtype=float)
+        for i, si in enumerate(s_j[:ns]):
+            if sigma_ref > 1.0e-9 and float(si) < sigma_ref:
+                s_raw[i] = max((float(si) / sigma_ref) ** 2, min_frac)
+        tau = float(self.cfg.task_weight_lpf_tau_s)
+        if self._s_lpf is None or self._s_lpf.size != ns:
+            self._s_lpf = s_raw.copy()
+        elif tau > 1.0e-9 and dt > 1.0e-9:
+            alpha = min(1.0, dt / tau)
+            self._s_lpf = self._s_lpf + alpha * (s_raw - self._s_lpf)
+        else:
+            self._s_lpf = s_raw.copy()
+        self.last_s_sigma = np.asarray(self._s_lpf, dtype=float).copy()
+        usu = u @ np.diag(self.last_s_sigma) @ u.T
+        mat = (w_sqrt[:, None] * usu) * w_sqrt[None, :]
+        self.last_task_weight_mat = mat
+        return mat
+
     def set_collision_enabled(self, enabled: bool) -> None:
         self.collision_cfg.enabled = bool(enabled)
 
@@ -648,15 +715,14 @@ class QpIkController:
         # Limit avoidance and the velocity box must judge the same geometry.
         q_geom = q_meas if q_meas is not None else q_prev
         w_reg = self._w_reg.copy()
-        w_task = self._w_task.copy()
         self.last_wln_scale = self._wln_reg_scale(q_geom, self.qdot_prev)
         w_reg = w_reg * self.last_wln_scale
         if rail_locked and rail_lock_reg_scale > 1.0:
             w_reg[0] *= float(rail_lock_reg_scale)
         if (not rail_locked) and float(rail_reg_scale) > 1.0:
             w_reg[0] *= float(rail_reg_scale)
-        if not keep_task_weight:
-            w_task *= self._task_scale_sigma(sigma_min, dt)
+        w_task_mat = self._task_weight_matrix(J, dt, keep_task_weight=keep_task_weight)
+        self.branch_barrier._update_dwell(q_prev, dt)
         rail_w_eff = float(rail_task_weight)
 
         H = np.zeros((n_var, n_var), dtype=float)
@@ -675,12 +741,14 @@ class QpIkController:
             H[:nv, :nv] = np.diag(w_reg * m_diag)
         else:
             H[:nv, :nv] = np.diag(w_reg)
-        H[nv : nv + ns, nv : nv + ns] = np.diag(w_task)
+        H[nv : nv + ns, nv : nv + ns] = w_task_mat
         # Pref slack costs (Escande: expensive vs penetrating set-based rows).
         pref_w = max(float(pref_slack_scale), 1.0e-6)
         H[nv + ns, nv + ns] = float(self.cfg.sigma_setbased.slack_weight)
         H[nv + ns + 1, nv + ns + 1] = (
-            float(self.cfg.branch_barrier.slack_weight) * pref_w
+            float(self.cfg.branch_barrier.slack_weight)
+            * pref_w
+            * float(self.branch_barrier.last_dwell_scale)
         )
         comfort_w = float(self.cfg.joint_comfort.slack_weight) * pref_w
         for k in range(2, n_pref):

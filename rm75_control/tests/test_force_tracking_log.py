@@ -117,6 +117,7 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert "barrier_cap_floor" in header
     assert "elbow_margin_rad" in header
     assert "wrist_open_rad" in header
+    assert "family_ok" in header
     assert "tool_y_err_mm" in header
     assert "rail_sat" in header
     assert "sigma_arm" in header

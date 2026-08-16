@@ -138,6 +138,14 @@ def _point_linear_jacobian(
     return J[:3, :]
 
 
+def cbf_v_safe(
+    distance: float,
+    cfg: CollisionConfig,
+) -> float:
+    """Closing-speed floor: J_col qdot >= v_safe.  Leave (positive) is free."""
+    return float(-float(cfg.gamma) * (float(distance) - float(cfg.d_safe)))
+
+
 def collision_jacobian(
     frame_jacs: dict[int, FrameJacobian | np.ndarray],
     geom_model: pin.GeometryModel,
@@ -196,7 +204,7 @@ def build_cbf_rows(
             if pair is None:
                 continue
             J_col = collision_jacobian(frame_jacs, collision.geom_model, pair)
-            v_safe = -cfg.gamma * (pair.distance - cfg.d_safe)
+            v_safe = cbf_v_safe(pair.distance, cfg)
             rows.append(J_col)
             lowers.append(v_safe)
             slots.append(i)
@@ -225,7 +233,7 @@ def build_cbf_rows(
     names = []
     for pair in pairs:
         J_col = collision_jacobian(frame_jacs, collision.geom_model, pair)
-        v_safe = -cfg.gamma * (pair.distance - cfg.d_safe)
+        v_safe = cbf_v_safe(pair.distance, cfg)
         rows.append(J_col)
         lowers.append(v_safe)
         names.append(f"self_collision:{pair.name_a}:{pair.name_b}")

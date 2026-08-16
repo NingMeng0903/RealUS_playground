@@ -22,9 +22,11 @@ from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
     StrokeInfeasibleError,
     arm_respects_floor,
     joint_margin_frac,
+    nearest_planar_psi,
     stroke_score,
     wrist_band_frac,
 )
+from rm75_control.kinematics.srs_ik import psi_from_q
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
     RailExtensionConfig,
     RailExtensionTask,
@@ -76,7 +78,7 @@ def test_minmax_does_not_park_rail_at_a_stop() -> None:
 
 
 def test_psi_star_is_wrapped_for_telemetry() -> None:
-    """psi0 ± π grid must not leak an unwrapped ψ* into the CSV."""
+    """Chosen ψ* stays in (−π, π] for CSV / rate-limit wrap."""
     kin = RobotKinematics()
     rt = PostureRetarget(
         kin,
@@ -93,6 +95,60 @@ def test_psi_star_is_wrapped_for_telemetry() -> None:
     )
     assert -np.pi - 1e-9 <= psi_star <= np.pi + 1e-9
     assert -np.pi - 1e-9 <= rt.psi_star_rad <= np.pi + 1e-9
+
+
+def test_plan_stroke_prefers_taught_family() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(
+        kin,
+        PsiRetargetConfig(enabled=True, n_y=5, n_d=6, n_psi=5, w_sigma=0.5),
+    )
+    q = np.array(
+        [0.774, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+    assert abs(nearest_planar_psi(psi_from_q(q))) == pytest.approx(np.pi, abs=1e-6)
+    y_c = float(kin.fk_placement(q).translation[1])
+    _d, psi_star = rt.plan_stroke(
+        q, y_center_m=y_c, amplitude_m=0.04, rail_lo=0.005, rail_hi=0.78
+    )
+    assert not rt.last_psi_family_degraded
+    err0 = abs(float(psi_star))
+    err_pi = min(abs(float(psi_star) - np.pi), abs(float(psi_star) + np.pi))
+    assert err_pi < err0
+    assert err_pi < np.deg2rad(45.0)
+
+
+def test_plan_stroke_degrades_to_opposite_family_when_taught_empty() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(
+        kin,
+        PsiRetargetConfig(enabled=True, n_y=3, n_d=3, n_psi=3, w_sigma=0.5),
+    )
+    rt.reset(_SEED_Q)
+    rt._planned = True
+    rt._psi_star = 0.0
+    rt.psi_star_rad = 0.0
+
+    class _OppositeOnly:
+        def evaluate(self, pose, psi, branch, y_rail):
+            del pose, branch
+            a = float(psi)
+            a = (a + np.pi) % (2.0 * np.pi) - np.pi
+            if abs(a) < 0.5 * np.pi:
+                return None
+            q_arm = np.array([0.1, -0.4, 0.1, 1.0, 0.1, np.deg2rad(45.0), 0.1])
+            q_full = np.concatenate([[float(y_rail)], q_arm])
+            return q_arm, q_full, 0.2
+
+    rt._eval = _OppositeOnly()
+    y_c = float(kin.fk_placement(_SEED_Q).translation[1])
+    _d, psi_star = rt.plan_stroke(
+        _SEED_Q, y_center_m=y_c, amplitude_m=0.04, rail_lo=0.025, rail_hi=0.78
+    )
+    assert rt.last_psi_family_degraded
+    err_pi = min(abs(float(psi_star) - np.pi), abs(float(psi_star) + np.pi))
+    assert err_pi < np.deg2rad(45.0)
 
 
 def test_psi_rate_limit_no_lpf() -> None:
@@ -126,8 +182,8 @@ def test_wrist_term_prefers_open_j6_when_margin_ties() -> None:
 
 def test_wrist_band_peaks_near_attractor_not_the_stop() -> None:
     assert wrist_band_frac(0.0) == pytest.approx(0.0)
-    assert wrist_band_frac(np.deg2rad(45.0)) == pytest.approx(1.0)
-    assert wrist_band_frac(np.deg2rad(45.0)) > wrist_band_frac(np.deg2rad(120.0))
+    assert wrist_band_frac(np.deg2rad(60.0)) == pytest.approx(1.0)
+    assert wrist_band_frac(np.deg2rad(60.0)) > wrist_band_frac(np.deg2rad(120.0))
 
 
 def test_margin_floor_rejects_a_joint_on_the_stop() -> None:
@@ -237,7 +293,7 @@ def test_ird_d_star_that_hits_the_limit_band_is_discarded() -> None:
     assert abs(d_star) < 1.0
 
 
-def test_d_star_drift_raises_reach_weight_and_rail_reg() -> None:
+def test_split_error_raises_rail_reg_and_fades_k_ff() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -249,9 +305,10 @@ def test_d_star_drift_raises_reach_weight_and_rail_reg() -> None:
             e0_m=0.0,
             e1_m=0.01,
             v_lpf_tau_s=0.0,
+            v_reach_cap_m_s=0.04,
+            v_max_m_s=0.08,
             d_star_err0_m=0.01,
             d_star_err1_m=0.04,
-            d_star_w_mult=6.0,
             d_star_reg_mult=20.0,
             w_max=2.0,
             w_ext_cap=40.0,
@@ -262,15 +319,60 @@ def test_d_star_drift_raises_reach_weight_and_rail_reg() -> None:
     task.set_d_pref(0.10)
     y_on = float(q[0]) + 0.10
     vel_ff = np.array([0.0, 0.05, 0.0, 0.0, 0.0, 0.0])
-    _v0, w0 = task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on, vel_ff=vel_ff)
+    task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on, vel_ff=vel_ff)
     assert task.last_d_star_reg_scale == pytest.approx(1.0)
     assert task.last_k_ff_scale == pytest.approx(1.0)
-    _v1, w1 = task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.08, vel_ff=vel_ff)
-    assert task.last_d_star_reg_scale == pytest.approx(20.0)
-    assert task.last_k_ff_scale == pytest.approx(0.0)
-    assert abs(task.last_v_ff) < 1e-9
-    assert w1 > w0 + 1.0
-    assert abs(task.last_track_err_m) > 0.04
+    assert abs(task.last_v_reach) < 1e-9
+
+    task._v_lpf = 0.0
+    task._v_lpf_initialized = False
+    task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.025, vel_ff=vel_ff)
+    assert task.last_d_star_reg_scale > 1.0
+    assert task.last_k_ff_scale < 1.0
+    assert abs(task.last_v_ff) > 1e-4
+    assert abs(task.last_track_err_m) > 0.02
+
+    task._v_lpf = 0.0
+    task._v_lpf_initialized = False
+    task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on - 0.08, vel_ff=vel_ff)
+    assert task.last_d_star_reg_scale > 1.0
+    assert task.last_k_ff_scale < 1.0
+
+
+def test_v_reach_deadzone_inside_d_band() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_ext=2.0,
+            k_esc=0.0,
+            k_ff=0.0,
+            e0_m=0.0,
+            e1_m=0.01,
+            v_lpf_tau_s=0.0,
+            v_reach_cap_m_s=0.02,
+            v_max_m_s=0.08,
+            d_band_m=0.08,
+            d_star_err0_m=0.01,
+            d_star_err1_m=0.04,
+            d_star_reg_mult=20.0,
+        ),
+    )
+    task.set_mode("reach")
+    q = _SEED_Q.copy()
+    d_live = task.extension(q)
+    task.set_d_pref(d_live)
+    y_on = float(q[0]) + d_live
+    task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.04, stroke_limiters=False)
+    assert task.last_v_reach == pytest.approx(0.0, abs=1e-12)
+    assert task.last_d_star_reg_scale == pytest.approx(1.0)
+    task._v_lpf = 0.0
+    task._v_lpf_initialized = False
+    task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.16, stroke_limiters=False)
+    assert abs(task.last_v_reach) > 1e-6
+    assert task.last_d_star_reg_scale > 1.0
+    assert task.last_k_ff_scale < 1.0
 
 
 def test_rail_ff_tracks_desired_y_minus_d_star() -> None:
@@ -533,19 +635,30 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.psi_retarget.enabled
     assert cfg.psi_retarget.n_y >= 3
     assert cfg.psi_retarget.w_wrist == pytest.approx(0.5)
-    assert cfg.psi_retarget.wrist_min_rad == pytest.approx(np.deg2rad(25.0))
+    assert cfg.psi_retarget.wrist_min_rad == pytest.approx(np.deg2rad(30.0))
     assert cfg.psi_retarget.margin_floor_rad == pytest.approx(np.deg2rad(20.0))
     qn = np.asarray(raw["inner"]["nullspace"]["q_nominal_deg"], dtype=float)
-    assert qn[4] == pytest.approx(90.0)
-    assert qn[5] == pytest.approx(40.0)
-    assert qn[6] == pytest.approx(45.0)
+    assert qn[1] == pytest.approx(-90.4)
+    assert qn[4] == pytest.approx(104.4)
+    assert qn[5] == pytest.approx(94.5)
+    assert qn[6] == pytest.approx(60.3)
     assert cfg.rail.soft_min_m == pytest.approx(0.030)
     assert cfg.rail_extension.d_star_reg_mult == pytest.approx(20.0)
+    assert cfg.rail_extension.v_reach_cap_m_s == pytest.approx(0.02)
+    assert cfg.rail_extension.d_band_m == pytest.approx(0.08)
+    assert cfg.collision.d_safe == pytest.approx(0.01)
+    assert cfg.collision.d_activate == pytest.approx(0.04)
     assert raw["hw"]["lw100"]["soft_min_m"] == pytest.approx(0.030)
     assert raw["hw"]["lw100"]["vel_kp"] == pytest.approx(14.0)
     assert raw["hw"]["lw100"]["vel_kd"] == pytest.approx(0.22)
     assert raw["hw"]["lw100"]["target_stale_coast_s"] == pytest.approx(0.35)
-    assert cfg.qp.branch_barrier.eps_rad == pytest.approx(0.26)
+    assert cfg.qp.branch_barrier.eps_rad == pytest.approx(0.35)
+    assert cfg.qp.branch_barrier.activate_rad == pytest.approx(0.52)
+    assert cfg.qp.branch_barrier.slack_weight == pytest.approx(80.0)
+    assert cfg.qp.branch_barrier.dwell_free_s == pytest.approx(0.3)
+    assert cfg.qp.branch_barrier.dwell_ramp_s == pytest.approx(1.0)
+    assert cfg.qp.branch_barrier.dwell_scale_max == pytest.approx(5.0)
+    assert cfg.qp.aniso_task_damping is True
     assert cfg.qp.wln.max_delta == pytest.approx(3.0)
     assert cfg.rail_extension.enabled
     assert cfg.qp.twist_sigma_floor == pytest.approx(0.02)
@@ -561,6 +674,16 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.ird.device == "cpu"
     assert cfg.qp.joint_comfort.enabled
     assert cfg.psi_retarget.z_replan_m == pytest.approx(0.0)
+    assert cfg.psi_retarget.d_center_rate_m_s == pytest.approx(0.02)
+    assert cfg.psi_retarget.psi_attr_rad == pytest.approx(np.deg2rad(70.0))
+    assert cfg.psi_retarget.d_attr_m == pytest.approx(-0.22)
+    assert cfg.psi_retarget.psi_envelope_lo_rad == pytest.approx(np.deg2rad(40.0))
+    assert cfg.psi_retarget.psi_envelope_hi_rad == pytest.approx(np.deg2rad(110.0))
+    assert cfg.rail_extension.escape_sign_policy == "minus"
+    assert cfg.psi_retarget.d_band_m == pytest.approx(0.08)
+    assert cfg.psi_retarget.psi_replan_period_s == pytest.approx(0.1)
+    assert cfg.arm_angle.k_psi == pytest.approx(1.5)
+    assert cfg.nullspace.weights[1] == pytest.approx(1.0)
     assert cfg.qp.j_max_arm_rad_s3 > 0.0
     assert cfg.qp.j_max_rail_m_s3 > 0.0
     # Rail command shaping must not come back: it fed core.qdot_prev and so
@@ -723,11 +846,13 @@ def test_keep_task_weight_skips_sigma_scale() -> None:
     q[0] = 0.20
     core.reset()
     core._task_scale_lpf = 0.5
+    core._s_lpf = None
     twist = np.array([0.02, 0.0, 0.0, 0.0, 0.0, 0.0])
     core.step(q, twist, DT, keep_task_weight=True)
     assert core._task_scale_lpf == pytest.approx(0.5)
+    assert np.allclose(core.last_s_sigma, 1.0)
     core.step(q, twist, DT, keep_task_weight=False)
-    assert core._task_scale_lpf != pytest.approx(0.5)
+    assert not np.allclose(core.last_s_sigma, 1.0)
 
 
 def test_rail_sat_is_not_workspace_saturation() -> None:

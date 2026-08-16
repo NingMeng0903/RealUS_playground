@@ -5,15 +5,31 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from rm75_control.control.joint_admittance_8dof.collision_model import CollisionPairInfo
+from rm75_control.control.joint_admittance_8dof.collision_model import (
+    CollisionConfig,
+    CollisionPairInfo,
+)
 from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import (
     FrameJacobian,
+    cbf_v_safe,
     collision_jacobian,
 )
 from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
     VelocityBoxConstraints,
 )
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
+
+
+def test_cbf_v_safe_limits_close_and_leaves_open() -> None:
+    cfg = CollisionConfig(d_safe=0.01, d_activate=0.04, gamma=5.0)
+    assert cfg.d_safe < cfg.d_activate
+    far = cbf_v_safe(0.10, cfg)
+    edge = cbf_v_safe(0.04, cfg)
+    near = cbf_v_safe(0.01, cfg)
+    assert far < edge < 0.0
+    assert near == pytest.approx(0.0)
+    # Leave (positive J qdot) is never upper-bounded; close is.
+    assert far < 0.0
 
 
 def test_collision_jacobian_uses_nearest_point_angular_velocity() -> None:

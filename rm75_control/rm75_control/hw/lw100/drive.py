@@ -1163,10 +1163,25 @@ class LW100Drive:
         thread can sample the same cached ``measured_m`` twice and invent a
         false ``v=0`` even while the drive is moving.
         """
-        speed_u, lo, hi = self._client.read_holding_registers(MONITOR_SPEED_RPM, 3)
-        speed_rpm = self._u16_to_i16(speed_u)
-        raw = self._u32_pair_to_i32(lo, hi)
-        return speed_rpm, self._counts_to_rail_m(raw)
+        speed_rpm, rail_m, _mask = self.read_motion_and_di_fast()
+        return speed_rpm, rail_m
+
+    def read_motion_and_di_fast(self) -> tuple[int, float, int]:
+        """ONE FC03 of 16 regs: speed, encoder, and DI at 0x100F.
+
+        Returns ``(speed_rpm_signed, rail_m, di_mask)``.  The extra words
+        between 0x1003 and 0x100E ride along so the worker can drop the
+        separate DI poll.
+        """
+        regs = self._client.read_holding_registers(MONITOR_SPEED_RPM, 16)
+        if len(regs) < 16:
+            raise RuntimeError(
+                f"read_motion_and_di_fast expected 16 registers, got {len(regs)}"
+            )
+        speed_rpm = self._u16_to_i16(regs[0])
+        raw = self._u32_pair_to_i32(regs[1], regs[2])
+        di_mask = int(regs[15]) & 0xFFFF
+        return speed_rpm, self._counts_to_rail_m(raw), di_mask
 
     def read_rail_m_fast(self) -> float:
         """Streaming rail position (metres): ONE Modbus transaction, no double-read.
@@ -1244,3 +1259,12 @@ class LW100Drive:
             "(3) python apps/lw100_rail_demo.py --diagnose",
         )
         return steps
+
+
+def di_limits_pressed_from_mask(mask: int, *, nc: bool = True) -> tuple[bool, bool]:
+    """Decode ``(di3_pressed, di4_pressed)`` from MONITOR_DI_STATUS."""
+    di3_on = bool(int(mask) & (1 << DI_BIT_DI3))
+    di4_on = bool(int(mask) & (1 << DI_BIT_DI4))
+    if nc:
+        return (not di3_on, not di4_on)
+    return (di3_on, di4_on)

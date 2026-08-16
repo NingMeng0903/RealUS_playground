@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import inspect
+import math
 from pathlib import Path
 
 import pytest
@@ -46,6 +47,12 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
         raw["qpik"]["hard_limits"]["rail"]["soft_min_m"]
     )
     servo = parse_rail_servo_config(raw)
+    assert servo.poll_hz == pytest.approx(43.0)
+    assert servo.accel_ms == 120
+    assert servo.decel_ms == 120
+    assert servo.vel_amax_m_s2 == pytest.approx(1.2)
+    assert cfg.psi_retarget.psi_attr_rad == pytest.approx(math.radians(70.0))
+    assert cfg.rail_extension.escape_sign_policy == "minus"
     assert servo.soft_min_m == pytest.approx(0.030)
     assert servo.soft_max_m == pytest.approx(cfg.rail.soft_max_m)
     assert servo.hard_min_m == pytest.approx(0.005)
@@ -57,6 +64,8 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
         raw["qpik"]["hard_limits"]["rail"]["soft_max_m"]
     )
     assert cfg.rail.v_max_m_s == pytest.approx(0.15)
+    assert cfg.collision.d_safe == pytest.approx(0.01)
+    assert cfg.collision.d_activate == pytest.approx(0.04)
     assert not hasattr(cfg, "generic_qpik")
 
 

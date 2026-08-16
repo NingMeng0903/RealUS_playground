@@ -280,13 +280,13 @@ def test_latched_escape_does_not_override_reach() -> None:
     task.set_mode("reach")
     q = 0.5 * (kin.q_lower + kin.q_upper)
     task.capture_reference(q)
-    # Large negative reach error; escape would want +.  Reach stays primary.
-    task.d_pref_m = task.extension(q) + 0.30
+    # Large positive reach error; minus-policy escape would want −.  Reach stays primary.
+    task.d_pref_m = task.extension(q) - 0.30
     v, _ = task(
         q, sigma_scale=0.2, sigma_grad_rail=2.0, joint_margin_frac=1.0, dt_s=0.005
     )
     assert task._escape_active
-    assert task.last_v_reach < 0.0
+    assert task.last_v_reach > 0.0
     assert v * task.last_v_reach > 0.0
     assert abs(task.last_v_escape) < 1e-9
 
@@ -518,7 +518,7 @@ def test_beyond_rail_cli_defaults_force_on(tmp_path) -> None:
     del tmp_path, Path
 
 
-def test_escape_sign_prefers_plus_q0_even_if_grad_is_negative() -> None:
+def test_escape_sign_prefers_minus_q0_even_if_grad_is_positive() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -544,15 +544,15 @@ def test_escape_sign_prefers_plus_q0_even_if_grad_is_negative() -> None:
     task(
         q,
         sigma_scale=0.2,
-        sigma_grad_rail=-2.0,
+        sigma_grad_rail=2.0,
         joint_margin_frac=1.0,
         dt_s=0.005,
     )
     assert task._escape_active
-    assert task._escape_sign > 0.0
+    assert task._escape_sign < 0.0
 
 
-def test_preferred_escape_stops_in_plus_leave_band() -> None:
+def test_preferred_escape_is_minus_until_soft_min_pin() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -562,12 +562,14 @@ def test_preferred_escape_stops_in_plus_leave_band() -> None:
             soft_max_m=0.70,
             pin_margin_m=0.008,
             escape_leave_m=0.04,
+            escape_sign_policy="minus",
         ),
     )
-    assert task._preferred_escape_sign(0.51) > 0.0
-    assert task._preferred_escape_sign(0.67) == 0.0
-    assert task._preferred_escape_sign(0.695) < 0.0
-    assert task._preferred_escape_sign(0.67, backoff=True) < 0.0
+    assert task._preferred_escape_sign(0.51) < 0.0
+    assert task._preferred_escape_sign(0.14) == 0.0
+    assert task._preferred_escape_sign(0.105) > 0.0
+    assert task._preferred_escape_sign(0.14, backoff=True) > 0.0
+    assert task._in_plus_leave(0.67)
 
 
 def test_press_stall_keeps_escape_despite_healthy_sigma() -> None:
@@ -610,7 +612,7 @@ def test_press_stall_keeps_escape_despite_healthy_sigma() -> None:
         tool_y_err_m=0.0,
     )
     assert abs(v) > 1e-4 or abs(task.last_v_escape) > 1e-4
-    assert task.last_v_escape > 0.0
+    assert task.last_v_escape < 0.0
 
 
 def test_press_stall_allows_escape_in_limit_band_toward_open() -> None:

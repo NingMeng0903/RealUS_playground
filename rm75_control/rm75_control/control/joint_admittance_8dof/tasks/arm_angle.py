@@ -50,6 +50,8 @@ class ArmAngleTaskConfig:
     # version used ne in meters (~0.16 max on the RM75) with gain 100, which
     # attenuated the task to ~3% in EVERY posture - psi looked "stuck".)
     obs_decay_gain: float = 400.0
+    # Floor on the observability fade so a stretched arm still tracks ψ.
+    obs_smooth_floor: float = 0.3
     max_qdot_frac: float = 0.15   # clip |qdot| to this fraction of v_max per joint
     # Global posture attractor for the SRS planner (pose_ik.resolve_pose_ik_srs).
     # ψ_home is the target the enumeration pulls toward on every new pose so
@@ -217,14 +219,13 @@ class ArmAngleTask:
         # RM75) so d(psi)/dt ~= k_psi * err in the executed QP solution.
         gN = project_onto_task_nullspace(J, g, sigma_min=sigma_min)
         denom = float(np.dot(g, gN))
-        if denom < 1e-10:
-            # psi not controllable within the task nullspace at this q
-            return np.zeros_like(q)
         err = float(self._psi_ref_unwrapped) - psi
         _, _, obs = self._sw_observability(q)
         smooth = 1.0 - np.exp(-self.cfg.obs_decay_gain * obs * obs)
+        floor = float(np.clip(self.cfg.obs_smooth_floor, 0.0, 1.0))
+        smooth = max(float(smooth), floor)
         self.last_singularity_smooth = float(smooth)
-        safe_denom = denom + self.cfg.safe_denom_eps
+        safe_denom = max(denom, 0.0) + self.cfg.safe_denom_eps
         qdot = smooth * self.cfg.k_psi * err * gN / safe_denom
         v_cap = self.cfg.max_qdot_frac * np.asarray(self.kin.v_max, dtype=float)
         return np.clip(qdot, -v_cap, v_cap)
