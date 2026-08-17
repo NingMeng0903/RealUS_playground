@@ -24,6 +24,15 @@ class BranchBarrierConfig:
     # Hard velocity-box damper starts earlier so J4 cannot blast through 0.
     box_activate_rad: float = 0.87  # ~50°
     eps_rad: float = 0.35  # ~20° floor; crossing stays cheap via slack
+    # J4 stop damper (open rail travel only).  Separate from eps_rad so
+    # the upper wall is 128–130°, not 135°−20°=115°.
+    j4_limit_eps_rad: float = 5.0 * np.pi / 180.0  # zero at ~130°
+    j4_limit_activate_rad: float = 25.0 * np.pi / 180.0  # taper from ~110°
+    # J1 over-fold (same-sign).  Design is −90°; QP1 used to dump to −163°.
+    # Zero at 120°; taper from 95°.  Fold 0→−90 is unrestricted.
+    j1_overfold_abs_rad: float = 120.0 * np.pi / 180.0
+    j1_overfold_activate_rad: float = 25.0 * np.pi / 180.0
+    j1_overfold_eps_rad: float = 0.0
     gamma: float = 6.0
     slack_weight: float = 80.0
     # Skip rail (index 0); only arm joints with |q*| > target_eps.
@@ -149,12 +158,23 @@ class BranchBarrierBuilder:
         q: np.ndarray,
         q_star: np.ndarray,
         v_max: np.ndarray,
+        *,
+        rail_open_travel: bool = False,
+        q_lower: np.ndarray | None = None,
+        q_upper: np.ndarray | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Hard Faverjon damper toward 0 for latched branch signs.
 
         Motion *away* from 0 is never restricted, so a planar J1≈0 start
         can still fold toward q*=−90°.  Crossing through 0 is closed at
         ``eps`` so QP1 cannot buy an elbow flip with TCP slack.
+
+        When the rail still has open travel, J4 is also damped toward the
+        ±135° stops with ``j4_limit_eps`` (zero near 128–130°), not the
+        20° branch-floor eps.  Exhausted travel leaves that damper off.
+
+        J1 same-sign over-fold is a separate wall at ``j1_overfold_abs``
+        (default 120°).  It does not block the 0→−90° startup fold.
         """
         lo = np.asarray(lo, dtype=float).copy()
         hi = np.asarray(hi, dtype=float).copy()
@@ -182,6 +202,47 @@ class BranchBarrierBuilder:
                 lo[i] = max(float(lo[i]), -vmax * d)
             else:
                 hi[i] = min(float(hi[i]), vmax * d)
+        if q.size > 1 and q_star.size > 1 and lo.size > 1 and hi.size > 1:
+            qs1 = float(q_star[1])
+            if abs(qs1) > target_eps:
+                sign1 = 1.0 if qs1 >= 0.0 else -1.0
+                q1 = float(q[1])
+                if sign1 * q1 > 0.0:
+                    wall = max(float(self.cfg.j1_overfold_abs_rad), 1.0e-6)
+                    j1_eps = max(float(self.cfg.j1_overfold_eps_rad), 0.0)
+                    j1_act = max(
+                        float(self.cfg.j1_overfold_activate_rad), j1_eps + 1.0e-6
+                    )
+                    j1_band = max(j1_act - j1_eps, 1.0e-6)
+                    margin_ov = wall - abs(q1)
+                    d_ov = float(np.clip((margin_ov - j1_eps) / j1_band, 0.0, 1.0))
+                    vmax1 = abs(float(v_max[1])) if v_max.size > 1 else 0.0
+                    if sign1 < 0.0:
+                        lo[1] = max(float(lo[1]), -vmax1 * d_ov)
+                    else:
+                        hi[1] = min(float(hi[1]), vmax1 * d_ov)
+        if (
+            rail_open_travel
+            and q_lower is not None
+            and q_upper is not None
+            and q.size > 4
+            and lo.size > 4
+            and hi.size > 4
+        ):
+            q_lo = np.asarray(q_lower, dtype=float).reshape(-1)
+            q_hi = np.asarray(q_upper, dtype=float).reshape(-1)
+            if q_lo.size > 4 and q_hi.size > 4:
+                i = 4
+                vmax = abs(float(v_max[i])) if v_max.size > i else 0.0
+                j4_eps = max(float(self.cfg.j4_limit_eps_rad), 1.0e-6)
+                j4_act = max(float(self.cfg.j4_limit_activate_rad), j4_eps + 1.0e-6)
+                j4_band = max(j4_act - j4_eps, 1.0e-6)
+                margin_hi = float(q_hi[i]) - float(q[i])
+                d_hi = float(np.clip((margin_hi - j4_eps) / j4_band, 0.0, 1.0))
+                hi[i] = min(float(hi[i]), vmax * d_hi)
+                margin_lo = float(q[i]) - float(q_lo[i])
+                d_lo = float(np.clip((margin_lo - j4_eps) / j4_band, 0.0, 1.0))
+                lo[i] = max(float(lo[i]), -vmax * d_lo)
         return lo, hi
 
 

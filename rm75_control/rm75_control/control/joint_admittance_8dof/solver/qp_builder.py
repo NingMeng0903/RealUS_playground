@@ -494,6 +494,7 @@ class QpIkController:
         self.last_wln_scale = np.ones(kin.nv, dtype=float)
         self._wln_scale_prev = np.ones(kin.nv, dtype=float)
         self.q_star: np.ndarray | None = None
+        self.q_star_signs: np.ndarray | None = None
         self.backend = self._make_backend(kin.nv)
         # Both levels have six fixed equality rows.  QP1 uses
         # ``J qdot - residual = target``; QP2 directly locks
@@ -650,11 +651,18 @@ class QpIkController:
         self.joint_comfort.reset()
 
     def set_q_star(self, q_star: np.ndarray | None) -> None:
-        """Nominal attractor used by branch near-zero barriers."""
+        """Homotopy / centering attractor (not necessarily yaml signs)."""
         if q_star is None:
             self.q_star = None
         else:
             self.q_star = np.asarray(q_star, dtype=float).reshape(-1).copy()
+
+    def set_q_star_signs(self, q_star: np.ndarray | None) -> None:
+        """Yaml-family signs for the near-zero branch barrier."""
+        if q_star is None:
+            self.q_star_signs = None
+        else:
+            self.q_star_signs = np.asarray(q_star, dtype=float).reshape(-1).copy()
 
     def sync_applied(self, qdot: np.ndarray) -> None:
         """Seed velocity history from an already-applied command."""
@@ -927,6 +935,7 @@ class QpIkController:
         sigma: np.ndarray | None = None,
         mass_matrix: np.ndarray | None = None,
         kinematics_ready: bool = False,
+        rail_open_travel: bool = False,
     ) -> IkStepResult:
         t_total = time.perf_counter()
         q_prev = np.asarray(q_prev, dtype=float).reshape(-1)
@@ -1026,7 +1035,11 @@ class QpIkController:
         w_task_mat = self._task_weight_matrix(
             J_task, dt, keep_task_weight=keep_task_weight
         )
-        q_star_box = self.q_star if self.q_star is not None else q_geom
+        q_star_box = (
+            self.q_star_signs
+            if self.q_star_signs is not None
+            else (self.q_star if self.q_star is not None else q_geom)
+        )
         self.branch_barrier._update_dwell(q_geom, dt, q_star=q_star_box)
         rail_w_eff = float(rail_task_weight)
         pref_w = max(float(pref_slack_scale), 1.0e-6)
@@ -1059,6 +1072,9 @@ class QpIkController:
             q_geom,
             q_star_box,
             self.constraints.lim.v_max,
+            rail_open_travel=bool(rail_open_travel),
+            q_lower=self.constraints.lim.q_lower,
+            q_upper=self.constraints.lim.q_upper,
         )
         lo_box, hi_box = collapse_interval(
             lo_box,
@@ -1295,7 +1311,11 @@ class QpIkController:
                 g2[:nv] -= smooth * np.asarray(self.qdot_prev, dtype=float)
 
             sigma_rows = self.sigma_setbased.build_row(self.kin, q_geom)
-            q_star = self.q_star if self.q_star is not None else q_geom
+            q_star = (
+                self.q_star_signs
+                if self.q_star_signs is not None
+                else (self.q_star if self.q_star is not None else q_geom)
+            )
             branch_rows = self.branch_barrier.build_rows(q_geom, q_star)
             comfort_rows = self.joint_comfort.build_rows(
                 q_geom, self.constraints.lim.q_lower, self.constraints.lim.q_upper

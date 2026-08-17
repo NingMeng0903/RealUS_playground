@@ -238,7 +238,8 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         {
             "enabled", "activate_rad", "box_activate_rad", "eps_rad", "gamma",
             "slack_weight", "target_eps_rad", "dwell_free_s", "dwell_ramp_s",
-            "dwell_scale_max",
+            "dwell_scale_max", "j4_limit_eps_rad", "j4_limit_activate_rad",
+            "j1_overfold_abs_rad", "j1_overfold_activate_rad", "j1_overfold_eps_rad",
         },
         name="inner.qp.branch_barrier",
     )
@@ -357,6 +358,26 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             ),
             eps_rad=_finite_float(
                 bb.get("eps_rad", 0.35), name="branch_barrier.eps_rad"
+            ),
+            j4_limit_eps_rad=_finite_float(
+                bb.get("j4_limit_eps_rad", 5.0 * math.pi / 180.0),
+                name="branch_barrier.j4_limit_eps_rad",
+            ),
+            j4_limit_activate_rad=_finite_float(
+                bb.get("j4_limit_activate_rad", 25.0 * math.pi / 180.0),
+                name="branch_barrier.j4_limit_activate_rad",
+            ),
+            j1_overfold_abs_rad=_finite_float(
+                bb.get("j1_overfold_abs_rad", 120.0 * math.pi / 180.0),
+                name="branch_barrier.j1_overfold_abs_rad",
+            ),
+            j1_overfold_activate_rad=_finite_float(
+                bb.get("j1_overfold_activate_rad", 25.0 * math.pi / 180.0),
+                name="branch_barrier.j1_overfold_activate_rad",
+            ),
+            j1_overfold_eps_rad=_finite_float(
+                bb.get("j1_overfold_eps_rad", 0.0),
+                name="branch_barrier.j1_overfold_eps_rad",
             ),
             gamma=_finite_float(bb.get("gamma", 6.0), name="branch_barrier.gamma"),
             slack_weight=_finite_float(
@@ -567,10 +588,10 @@ def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
             )
         ),
         psi_attr_rad=math.radians(
-            _finite_float(p.get("psi_attr_deg", 70.0), name="psi_retarget.psi_attr_deg")
+            _finite_float(p.get("psi_attr_deg", 68.0), name="psi_retarget.psi_attr_deg")
         ),
         d_attr_m=_finite_float(
-            p.get("d_attr_m", -0.22), name="psi_retarget.d_attr_m"
+            p.get("d_attr_m", -0.185), name="psi_retarget.d_attr_m"
         ),
         psi_return_dwell_s=_finite_float(
             p.get("psi_return_dwell_s", 1.0), name="psi_retarget.psi_return_dwell_s"

@@ -103,7 +103,7 @@ def test_outer_loop_feeds_plus_y_into_qpik() -> None:
     cfg.ird.enabled = False
     kin = RobotKinematics()
     inner = JointIkController(kin, cfg)
-    q = np.deg2rad(np.array([0.0, -90.4, -93.7, 66.1, 104.4, 94.5, 60.3, 83.6]))
+    q = np.deg2rad(np.array([0.0, -89.5, -94.5, 65.2, 96.0, 89.3, 61.0, 94.6]))
     q[0] = 0.375
     inner.reset(q)
     pad = FakePad(axes=np.array([-1.0, 0.0, -1.0, 0.0, 0.0, -1.0]))
@@ -253,9 +253,9 @@ def test_unplanned_inner_holds_taught_plane_not_q_nominal() -> None:
     )
     inner.reset(q)
     inner.begin_hybrid_episode(q, np.zeros(8))
-    d_yaml = d_from_q(inner.kin, inner.centering_task.q_target)
+    d_yaml = d_from_q(inner.kin, inner.centering_task._q_target_default)
     d_live = d_from_q(inner.kin, q)
-    psi_yaml = float(psi_from_q(inner.centering_task.q_target))
+    psi_yaml = float(inner.cfg.psi_retarget.psi_attr_rad)
     psi_taught = nearest_planar_psi(psi_from_q(q))
     assert abs(d_live - d_yaml) > 1.0e-3
     assert abs(psi_taught - psi_yaml) > 1.0

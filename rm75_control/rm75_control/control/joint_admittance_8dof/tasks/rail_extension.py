@@ -309,9 +309,22 @@ class RailExtensionTask:
     def _in_plus_leave(self, q_rail: float) -> bool:
         return self._in_leave_band(q_rail, +1.0)
 
-    def _preferred_escape_sign(self, q_rail: float, *, backoff: bool = False) -> float:
-        """Policy-side escape; 0 in that leave band; reverse on the policy pin."""
+    def _preferred_escape_sign(
+        self,
+        q_rail: float,
+        *,
+        backoff: bool = False,
+        unload_sign: float = 0.0,
+    ) -> float:
+        """Policy-side escape; 0 in that leave band; reverse on the policy pin.
+
+        When the elbow is past the design band and the rail still has travel,
+        ``unload_sign`` overrides the fixed minus/plus policy so the macro
+        pulls live d toward the feasible split.
+        """
         sign = self._policy_escape_sign()
+        if abs(float(unload_sign)) > 1.0e-12:
+            sign = 1.0 if float(unload_sign) > 0.0 else -1.0
         lo, hi = self._soft_travel()
         pin = float(self.cfg.pin_margin_m)
         leave = self._leave_margin_m()
@@ -374,6 +387,7 @@ class RailExtensionTask:
         dt_s: float | None,
         q_rail: float,
         trajectory_owns: bool = False,
+        unload_sign: float = 0.0,
     ) -> float:
         """Narrow hysteresis latch: deep σ ∪ true near-limit (optional dσ/dt).
 
@@ -416,7 +430,7 @@ class RailExtensionTask:
             if healthy_exit:
                 self._clear_escape_latch()
             else:
-                pref = self._preferred_escape_sign(q_rail)
+                pref = self._preferred_escape_sign(q_rail, unload_sign=unload_sign)
                 if abs(pref) < 1.0e-12:
                     self._clear_escape_latch()
                 elif pref * self._escape_sign < 0.0:
@@ -428,7 +442,9 @@ class RailExtensionTask:
                     self._escape_active = True
                     self._escape_flipped_at_end = False
                     self._escape_enter_timer_s = 0.0
-                    self._escape_sign = self._preferred_escape_sign(q_rail)
+                    self._escape_sign = self._preferred_escape_sign(
+                        q_rail, unload_sign=unload_sign
+                    )
                     if abs(self._escape_sign) < 1.0e-12:
                         self._clear_escape_latch()
                         if sigma_raw is not None:
@@ -592,6 +608,7 @@ class RailExtensionTask:
         stroke_limiters: bool = True,
         apply_d_band: bool | None = None,
         block_escape: bool = False,
+        unload_sign: float = 0.0,
     ) -> tuple[float, float]:
         if self.d_pref_m is None:
             self.capture_reference(q)
@@ -652,6 +669,7 @@ class RailExtensionTask:
             dt_s=dt_s,
             q_rail=y,
             trajectory_owns=ff_owns,
+            unload_sign=float(unload_sign),
         )
         cap = max(float(self.cfg.v_reach_cap_m_s), 0.0)
         if cap > 0.0:
@@ -698,7 +716,9 @@ class RailExtensionTask:
                 0.25 * float(self.cfg.k_esc) * (1.0 - sig) * float(sigma_grad_rail)
             )
             if allow_press_escape:
-                pref = self._preferred_escape_sign(y, backoff=backoff)
+                pref = self._preferred_escape_sign(
+                    y, backoff=backoff, unload_sign=float(unload_sign)
+                )
                 v_escape = (
                     0.25
                     * float(self.cfg.k_esc)
@@ -715,7 +735,9 @@ class RailExtensionTask:
                 if v_escape * v_primary_ff < 0.0 and abs(v_primary_ff) > 1.0e-4:
                     v_escape = 0.0
         v_primary = v_ff + v_reach
-        pref_now = self._preferred_escape_sign(y, backoff=backoff)
+        pref_now = self._preferred_escape_sign(
+            y, backoff=backoff, unload_sign=float(unload_sign)
+        )
         if use_limiters:
             # Park primary at either leave band so a planned +Y stroke still
             # stops short of +soft_max, while minus-policy escape parks at −.
@@ -783,6 +805,7 @@ class RailExtensionTask:
         stroke_limiters: bool = True,
         apply_d_band: bool | None = None,
         block_escape: bool = False,
+        unload_sign: float = 0.0,
     ) -> tuple[float, float]:
         """Return ``(v_rail_des, w_ext)`` for the QP."""
         if not self.cfg.enabled:
@@ -818,4 +841,5 @@ class RailExtensionTask:
             stroke_limiters=stroke_limiters,
             apply_d_band=apply_d_band,
             block_escape=block_escape,
+            unload_sign=unload_sign,
         )

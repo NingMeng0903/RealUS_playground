@@ -15,7 +15,7 @@ from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 CONFIG = Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml"
 # Side-lying design family (yaml q_nominal) at the logged rail station.
 RISK_POSE = np.deg2rad(
-    np.array([0.0, -90.4, -93.7, 66.1, 104.4, 94.5, 60.3, 83.6])
+    np.array([0.0, -89.5, -94.5, 65.2, 96.0, 89.3, 61.0, 94.6])
 )
 RISK_POSE[0] = 0.361050
 

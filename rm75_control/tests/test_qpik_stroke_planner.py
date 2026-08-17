@@ -7,6 +7,8 @@ file covers just that.
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pytest
 
@@ -645,10 +647,10 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.psi_retarget.wrist_min_rad == pytest.approx(np.deg2rad(30.0))
     assert cfg.psi_retarget.margin_floor_rad == pytest.approx(np.deg2rad(20.0))
     qn = np.asarray(raw["inner"]["nullspace"]["q_nominal_deg"], dtype=float)
-    assert qn[1] == pytest.approx(-90.4)
-    assert qn[4] == pytest.approx(104.4)
-    assert qn[5] == pytest.approx(94.5)
-    assert qn[6] == pytest.approx(60.3)
+    assert qn[1] == pytest.approx(-89.5)
+    assert qn[4] == pytest.approx(96.0)
+    assert qn[5] == pytest.approx(89.3)
+    assert qn[6] == pytest.approx(61.0)
     assert cfg.rail.soft_min_m == pytest.approx(0.030)
     assert cfg.rail_extension.d_star_reg_mult == pytest.approx(20.0)
     assert cfg.rail_extension.v_reach_cap_m_s == pytest.approx(0.02)
@@ -660,6 +662,18 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert raw["hw"]["lw100"]["vel_kd"] == pytest.approx(0.22)
     assert raw["hw"]["lw100"]["target_stale_coast_s"] == pytest.approx(0.35)
     assert cfg.qp.branch_barrier.eps_rad == pytest.approx(0.35)
+    assert cfg.qp.branch_barrier.j4_limit_eps_rad == pytest.approx(
+        math.radians(5.0), abs=1e-6
+    )
+    assert cfg.qp.branch_barrier.j4_limit_activate_rad == pytest.approx(
+        math.radians(25.0), abs=1e-6
+    )
+    assert cfg.qp.branch_barrier.j1_overfold_abs_rad == pytest.approx(
+        math.radians(120.0), abs=1e-6
+    )
+    assert cfg.qp.branch_barrier.j1_overfold_activate_rad == pytest.approx(
+        math.radians(25.0), abs=1e-6
+    )
     assert cfg.qp.branch_barrier.activate_rad == pytest.approx(0.52)
     assert cfg.qp.branch_barrier.box_activate_rad == pytest.approx(0.87)
     assert cfg.qp.branch_barrier.slack_weight == pytest.approx(80.0)
@@ -683,10 +697,9 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.qp.joint_comfort.enabled
     assert cfg.psi_retarget.z_replan_m == pytest.approx(0.0)
     assert cfg.psi_retarget.d_center_rate_m_s == pytest.approx(0.02)
-    assert cfg.psi_retarget.d_slew_psi_err_rad == pytest.approx(np.deg2rad(40.0))
     assert cfg.psi_retarget.psi_cmd_lead_rad == pytest.approx(np.deg2rad(18.0))
-    assert cfg.psi_retarget.psi_attr_rad == pytest.approx(np.deg2rad(70.0))
-    assert cfg.psi_retarget.d_attr_m == pytest.approx(-0.22)
+    assert cfg.psi_retarget.psi_attr_rad == pytest.approx(np.deg2rad(68.0))
+    assert cfg.psi_retarget.d_attr_m == pytest.approx(-0.185)
     assert cfg.psi_retarget.psi_envelope_lo_rad == pytest.approx(np.deg2rad(40.0))
     assert cfg.psi_retarget.psi_envelope_hi_rad == pytest.approx(np.deg2rad(110.0))
     assert cfg.rail_extension.escape_sign_policy == "minus"

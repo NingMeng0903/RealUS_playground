@@ -79,6 +79,26 @@ from rm75_control.control.joint_admittance_8dof.utils.safety import (
 
 # Below this, QPIK rail speed is treated as idle (publish 0, no 20 mm lead).
 _RAIL_V_IDLE_M_S = 1.0e-3
+# Pure rotation used to skip hold_setpoint (only vff[:3] was checked), so
+# homotopy q* chased live IK while the stick twisted J1 to −163°.
+_HOLD_ROT_THR_RAD_S = 0.05
+
+
+def hold_setpoint_from_vel_ff(
+    vel_ff: np.ndarray | None,
+    *,
+    lin_thr_m_s: float,
+    rot_thr_rad_s: float = _HOLD_ROT_THR_RAD_S,
+) -> bool:
+    """True if translation or rotation FF is commanding motion."""
+    if vel_ff is None:
+        return False
+    vff = np.asarray(vel_ff, dtype=float).reshape(-1)
+    if vff.size >= 3 and float(np.linalg.norm(vff[:3])) > float(lin_thr_m_s):
+        return True
+    if vff.size >= 6 and float(np.linalg.norm(vff[3:6])) > float(rot_thr_rad_s):
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -366,6 +386,7 @@ class JointIkController:
         self.limits.rail_soft_max_m = float(self.cfg.rail.soft_max_m)
         self.core = QpIkController(self.kin, self.limits, self.cfg.qp)
         self.core.set_q_star(self.centering_task.q_target)
+        self.core.set_q_star_signs(self.centering_task.q_target)
         self.safety = SafetyLimiter(self.limits)
         self.q_cmd = np.zeros(kin.nv, dtype=float)
         self._arm_task_suppressed = False
@@ -527,20 +548,40 @@ class JointIkController:
             raise ValueError(msg)
 
     def _latch_attractor_from_q(self, q_meas: np.ndarray) -> None:
-        """Keep yaml ``q_nominal`` signs for both centering and q*.
+        """Yaml signs for the branch barrier; homotopy q* starts at live q.
 
-        Mirroring J1 from a planar start (J1≈0⁺) made q*=+90° and the
-        branch barrier then forbade the design fold to J1=−90°.
+        Publishing the yaml photo as q* at t=0 pinned J1 to −90° while d*
+        was still the live split.  Barrier signs stay on the design family
+        so a planar J1≈0 start can still fold toward −90°.
         """
         q = np.asarray(q_meas, dtype=float).reshape(-1)
         if q.size != self.kin.nv or not np.all(np.isfinite(q)):
             return
         q_nominal = np.asarray(self.centering_task._q_target_default, dtype=float)
-        self.centering_task.set_q_target(q_nominal)
-        self.core.set_q_star(q_nominal.copy())
+        self.core.set_q_star_signs(q_nominal)
+        q_star = q.copy()
+        if self.posture_retarget is not None and self.posture_retarget.q_star_rad is not None:
+            qh = np.asarray(self.posture_retarget.q_star_rad, dtype=float).reshape(-1)
+            if qh.size == q.size:
+                q_star = qh
+        self.centering_task.set_q_target(q_star)
+        self.core.set_q_star(q_star.copy())
         if self.arm_task is not None:
             self.arm_task.reset(q)
         self._check_design_family(q)
+
+    def _publish_homotopy_centering(self) -> None:
+        """Homotopy q* while s<1; yaml nominal after s≈1 so centering cannot chase a yanked IK."""
+        if self.posture_retarget is None:
+            return
+        if float(self.posture_retarget.homotopy_s) >= 1.0 - 1.0e-6:
+            self.centering_task.set_q_target(None)
+            self.core.set_q_star(np.asarray(self.centering_task.q_target, dtype=float))
+            return
+        qh = self.posture_retarget.q_star_rad
+        if qh is not None and np.asarray(qh).size == self.kin.nv:
+            self.centering_task.set_q_target(np.asarray(qh, dtype=float))
+            self.core.set_q_star(np.asarray(qh, dtype=float))
 
     def reset(self, q0_rad: np.ndarray) -> None:
         self.q_cmd = np.asarray(q0_rad, dtype=float).copy()
@@ -576,10 +617,10 @@ class JointIkController:
         q_meas: np.ndarray,
         qdot_applied: np.ndarray | None = None,
     ) -> None:
-        """Preserve velocity continuity and latch yaml q* branch signs.
+        """Preserve velocity continuity and latch yaml branch signs.
 
-        ``q_nominal`` keeps magnitudes from yaml; signs follow the measured
-        pose so the attractor never pulls through 0 to the reverse branch.
+        Homotopy ``q*`` starts at the measured pose.  Barrier signs stay on
+        the yaml family so a planar start can still fold toward design J1.
         """
         applied = self.core.qdot_prev if qdot_applied is None else qdot_applied
         self.core.sync_applied(applied)
@@ -1145,17 +1186,12 @@ class JointIkController:
             )
         )
 
-        hold_d_star = False
-        if vel_ff is not None:
-            vff = np.asarray(vel_ff, dtype=float).reshape(-1)
-            thr = (
-                float(self.rail_ext_task.cfg.v_ff_thr_m_s)
-                if self.rail_ext_task is not None
-                else 0.01
-            )
-            hold_d_star = (
-                vff.size >= 3 and float(np.linalg.norm(vff[:3])) > thr
-            )
+        lin_thr = (
+            float(self.rail_ext_task.cfg.v_ff_thr_m_s)
+            if self.rail_ext_task is not None
+            else 0.01
+        )
+        hold_d_star = hold_setpoint_from_vel_ff(vel_ff, lin_thr_m_s=lin_thr)
 
         if (
             self.posture_retarget is not None
@@ -1172,6 +1208,7 @@ class JointIkController:
                 self.arm_task.set_reference(float(psi_ref))
             if self.rail_ext_task is not None:
                 self.rail_ext_task.set_d_pref(float(d_pref))
+            self._publish_homotopy_centering()
 
         if (
             press_stalled_timer
@@ -1233,14 +1270,24 @@ class JointIkController:
             )
             homing_split = False
             if self.posture_retarget is not None and not stroke_planned:
-                homing_split = abs(
-                    float(self.posture_retarget.d_star_m)
-                    - float(self.posture_retarget.cfg.d_attr_m)
-                ) > 0.01
+                homing_split = float(self.posture_retarget.homotopy_s) < 1.0 - 1.0e-6
             elbow_floor = float(self.cfg.qp.branch_barrier.box_activate_rad)
             if elbow_floor <= 1.0e-9:
                 elbow_floor = float(self.cfg.qp.branch_barrier.activate_rad)
             block_escape = abs(float(q_prev[4])) < elbow_floor
+            unload_sign = 0.0
+            if (
+                has_travel
+                and self.posture_retarget is not None
+                and np.isfinite(float(self.posture_retarget.d_star_m))
+            ):
+                j4_c = float(self.posture_retarget.cfg.elbow_center_rad)
+                if abs(float(q_prev[4])) > j4_c:
+                    y_now = float(self.kin.fk_placement(q_prev).translation[1])
+                    d_live = y_now - float(q_prev[0])
+                    unload_sign = float(
+                        np.sign(d_live - float(self.posture_retarget.d_star_m))
+                    )
             v_ext, w_ext = self.rail_ext_task(
                 q_prev,
                 sigma_scale=sig_scale,
@@ -1255,6 +1302,7 @@ class JointIkController:
                 stroke_limiters=stroke_planned,
                 apply_d_band=not homing_split,
                 block_escape=block_escape,
+                unload_sign=unload_sign,
             )
             rail_ext_err = self.rail_ext_task.last_err_m
             rail_escape_active = bool(self.rail_ext_task._escape_active)
@@ -1317,6 +1365,11 @@ class JointIkController:
             sigma=sigma_values_pre,
             mass_matrix=mass_pre,
             kinematics_ready=True,
+            rail_open_travel=bool(
+                self._rail_mode == RailMode.COUPLED
+                and has_travel
+                and not locked_hold
+            ),
         )
 
         qdot_out = np.asarray(r.qdot, dtype=float).copy()

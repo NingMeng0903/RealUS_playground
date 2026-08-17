@@ -135,6 +135,13 @@ inner:
       activate_rad: 0.52
       box_activate_rad: 0.87
       eps_rad: 0.35
+      # J4 ±135° damper (open travel only).  Do not reuse eps_rad=20°
+      # or the upper wall sits at 115° and vertical press dies.
+      j4_limit_eps_rad: 0.08726646259971647   # 5° → zero at ~130°
+      j4_limit_activate_rad: 0.4363323129985824  # 25° → taper from ~110°
+      # J1 same-sign over-fold.  Zero at 120°; 0→−90° startup stays free.
+      j1_overfold_abs_rad: 2.0943951023931953   # 120°
+      j1_overfold_activate_rad: 0.4363323129985824  # 25° → taper from ~95°
       gamma: 6.0
       slack_weight: 80.0
       dwell_free_s: 0.3
@@ -160,10 +167,10 @@ inner:
     k_limit: 2.0
     activation: 0.75
     weights: [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    # Side-lying family (photo 2026-08-16): ψ=70°, d=−0.22, branch=4.
-    # Same SEW half-plane as the taught lean; J4 at 104° so comfort (25°)
-    # stays off.  Signs are fixed — episode latch no longer mirrors J1.
-    q_nominal_deg: [0.0, -90.4, -93.7, 66.1, 104.4, 94.5, 60.3, 83.6]
+    # Side-lying family (Pin–Culioli minmax on the photo seed): ψ=68°,
+    # d=−0.185, J4≈96°.  Same branch as the taught lean; the 104° seed
+    # already hit 124° under a typical Δx/roll shake.  Signs are fixed.
+    q_nominal_deg: [0.0, -89.5, -94.5, 65.2, 96.0, 89.3, 61.0, 94.6]
     manipulability:
       k_mu: 0.8
       eps_rad: 5.0e-4
@@ -192,12 +199,11 @@ inner:
     # Planned stroke still one-shot.  Unplanned step re-searches ψ.
     z_replan_m: 0.0
     psi_rate_deg_s: 25.0
-    # Design split: J4≈104°, 30° worst-joint margin.  Unplanned step
-    # holds d* until ψ_cmd is within d_slew_psi_err of ψ_attr, then
-    # slews at d_center_rate.  Starting the rail during the 180° fold
-    # made J1 overshoot then backtrack (035411).
-    psi_attr_deg: 70.0
-    d_attr_m: -0.22
+    # Design split: J4≈96° (band center 95°).  Unplanned step shares one
+    # progress s across (d*, ψ*, q*); q* is srs_ik at the live TCP, not
+    # the yaml photo at t=0.  d_slew_psi_err is retired (no ψ gate).
+    psi_attr_deg: 68.0
+    d_attr_m: -0.185
     d_center_rate_m_s: 0.02
     d_band_m: 0.08
     d_slew_psi_err_deg: 40.0

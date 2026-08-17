@@ -66,6 +66,96 @@ def test_branch_barrier_tightens_box_against_zero() -> None:
     assert hi2[4] == pytest.approx(1.0)
 
 
+def test_tighten_box_blocks_j4_toward_stop_when_travel_open() -> None:
+    from rm75_control.kinematics.srs_ik import Q_LOWER, Q_UPPER
+
+    bb = BranchBarrierBuilder(
+        BranchBarrierConfig(activate_rad=0.52, box_activate_rad=0.87, eps_rad=0.35)
+    )
+    q_star = np.array([0.0, -1.56, -1.65, 1.14, 1.68, 1.56, 1.06, 1.65])
+    q = q_star.copy()
+    lo = -np.ones(8)
+    hi = np.ones(8)
+    q_lo = np.concatenate([[0.0], Q_LOWER])
+    q_hi = np.concatenate([[0.8], Q_UPPER])
+    q[4] = np.deg2rad(115.0)
+    _lo115, hi115 = bb.tighten_box(
+        lo,
+        hi,
+        q,
+        q_star,
+        np.ones(8),
+        rail_open_travel=True,
+        q_lower=q_lo,
+        q_upper=q_hi,
+    )
+    assert hi115[4] > 0.3
+    q[4] = np.deg2rad(130.0)
+    lo2, hi2 = bb.tighten_box(
+        lo,
+        hi,
+        q,
+        q_star,
+        np.ones(8),
+        rail_open_travel=True,
+        q_lower=q_lo,
+        q_upper=q_hi,
+    )
+    assert hi2[4] < 0.15
+    lo3, hi3 = bb.tighten_box(
+        lo,
+        hi,
+        q,
+        q_star,
+        np.ones(8),
+        rail_open_travel=False,
+        q_lower=q_lo,
+        q_upper=q_hi,
+    )
+    assert hi3[4] == pytest.approx(1.0)
+
+
+def test_tighten_box_blocks_j1_overfold_not_startup_fold() -> None:
+    bb = BranchBarrierBuilder(
+        BranchBarrierConfig(activate_rad=0.52, box_activate_rad=0.87, eps_rad=0.35)
+    )
+    q_star = np.array([0.0, np.deg2rad(-89.5), -1.65, 1.14, 1.68, 1.56, 1.06, 1.65])
+    lo = -np.ones(8)
+    hi = np.ones(8)
+    q0 = q_star.copy()
+    q0[1] = 0.0
+    _lo0, hi0 = bb.tighten_box(lo, hi, q0, q_star, np.ones(8))
+    assert hi0[1] < 0.15
+    assert _lo0[1] == pytest.approx(-1.0)
+    q90 = q_star.copy()
+    q90[1] = np.deg2rad(-90.0)
+    lo90, hi90 = bb.tighten_box(lo, hi, q90, q_star, np.ones(8))
+    assert lo90[1] < -0.3
+    assert hi90[1] == pytest.approx(1.0)
+    q120 = q_star.copy()
+    q120[1] = np.deg2rad(-120.0)
+    lo120, _hi120 = bb.tighten_box(lo, hi, q120, q_star, np.ones(8))
+    assert lo120[1] > -0.15
+
+
+def test_preferred_escape_sign_follows_unload() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            soft_min_m=0.10,
+            soft_max_m=0.70,
+            pin_margin_m=0.008,
+            escape_leave_m=0.04,
+            escape_sign_policy="minus",
+        ),
+    )
+    assert task._preferred_escape_sign(0.40) == pytest.approx(-1.0)
+    assert task._preferred_escape_sign(0.40, unload_sign=1.0) == pytest.approx(1.0)
+    assert task._preferred_escape_sign(0.40, unload_sign=-1.0) == pytest.approx(-1.0)
+
+
 def test_branch_barrier_start_j1_still_allows_fold() -> None:
     bb = BranchBarrierBuilder(
         BranchBarrierConfig(activate_rad=0.52, box_activate_rad=0.87, eps_rad=0.35)

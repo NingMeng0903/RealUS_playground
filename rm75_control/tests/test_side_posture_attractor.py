@@ -35,7 +35,7 @@ from rm75_control.kinematics.srs_ik import Q_LOWER, Q_UPPER, psi_from_q
 
 
 CONFIG = Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml"
-_Q_NOM_DEG = np.array([0.0, -90.4, -93.7, 66.1, 104.4, 94.5, 60.3, 83.6])
+_Q_NOM_DEG = np.array([0.0, -89.5, -94.5, 65.2, 96.0, 89.3, 61.0, 94.6])
 
 
 def _raw() -> dict:
@@ -80,9 +80,11 @@ def test_centering_and_q_star_keep_signed_nominal() -> None:
     q[0] = 0.40
     q[1] = abs(float(q[1]))
     inner.reset(q)
-    assert float(inner.centering_task.q_target[1]) < 0.0
+    assert inner.core.q_star_signs is not None
+    assert float(inner.core.q_star_signs[1]) < 0.0
     assert inner.core.q_star is not None
-    assert float(inner.core.q_star[1]) < 0.0
+    assert float(inner.core.q_star[1]) > 0.0
+    assert float(inner.centering_task.q_target[1]) > 0.0
     assert inner._family_ok is False
 
 
@@ -96,9 +98,42 @@ def test_planar_start_keeps_design_j1_sign() -> None:
         [0.31, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
     )
     inner.reset(q)
+    yaml_j1 = float(cfg.nullspace.q_nominal_rad[1])
+    assert inner.core.q_star_signs is not None
+    assert float(inner.core.q_star_signs[1]) < 0.0
     assert inner.core.q_star is not None
-    assert float(inner.core.q_star[1]) < 0.0
-    assert float(inner.centering_task.q_target[1]) < 0.0
+    assert abs(float(inner.core.q_star[1]) - yaml_j1) > np.deg2rad(20.0)
+    assert abs(float(inner.core.q_star[1])) < np.deg2rad(10.0)
+    assert abs(float(inner.centering_task.q_target[1])) < np.deg2rad(10.0)
+
+
+def test_homotopy_done_pins_centering_to_yaml() -> None:
+    cfg = build_joint_ik_config(_raw())
+    cfg.ird.enabled = False
+    cfg.collision.enabled = False
+    cfg.qp.collision.enabled = False
+    inner = JointIkController(RobotKinematics(), cfg)
+    q = np.array(
+        [0.31, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    inner.reset(q)
+    yanked = q.copy()
+    yanked[1] = np.deg2rad(-160.0)
+    assert inner.posture_retarget is not None
+    inner.posture_retarget.q_star_rad = yanked
+    inner.posture_retarget.homotopy_s = 0.4
+    inner._publish_homotopy_centering()
+    assert float(inner.centering_task.q_target[1]) == pytest.approx(
+        np.deg2rad(-160.0)
+    )
+    inner.posture_retarget.homotopy_s = 1.0
+    inner._publish_homotopy_centering()
+    yaml_j1 = float(cfg.nullspace.q_nominal_rad[1])
+    assert float(inner.centering_task.q_target[1]) == pytest.approx(yaml_j1)
+    assert inner.core.q_star is not None
+    assert float(inner.core.q_star[1]) == pytest.approx(yaml_j1)
+    assert inner.core.q_star_signs is not None
+    assert float(inner.core.q_star_signs[1]) < 0.0
 
 
 def test_psi_star_returns_home_after_healthy_dwell() -> None:

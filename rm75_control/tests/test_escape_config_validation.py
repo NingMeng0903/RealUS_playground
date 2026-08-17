@@ -55,7 +55,7 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
     assert servo.accel_ms == 120
     assert servo.decel_ms == 120
     assert servo.vel_amax_m_s2 == pytest.approx(1.2)
-    assert cfg.psi_retarget.psi_attr_rad == pytest.approx(math.radians(70.0))
+    assert cfg.psi_retarget.psi_attr_rad == pytest.approx(math.radians(68.0))
     assert cfg.rail_extension.escape_sign_policy == "minus"
     assert servo.soft_min_m == pytest.approx(0.030)
     assert servo.soft_max_m == pytest.approx(cfg.rail.soft_max_m)

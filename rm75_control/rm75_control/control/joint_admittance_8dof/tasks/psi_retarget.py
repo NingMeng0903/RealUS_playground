@@ -11,13 +11,14 @@ Call :meth:`PostureRetarget.plan_stroke` once when the scan starts.  After
 that :meth:`step` only slews ψ toward ψ* with a single rate limit (no LPF)
 and holds the planned d* constant.
 
-Unplanned ``step`` homes ψ* to ``psi_attr`` on the positive half-plane
-and slews d* toward ``d_attr`` at ``d_center_rate`` (no step) only after
-ψ_cmd is close to the attractor.  Starting the rail during the 180°→70°
-fold made J1 overshoot then backtrack.  A one-shot jump of d* yanked
-the arm the same way.  Local search takes over only while the wrist is
-collapsed and the elbow is still open; a live outer ``vel_ff`` can
-freeze ``d*`` via ``hold_setpoint``.
+Unplanned ``step`` homes ``(d*, ψ*, q*)`` on one progress ``s``.  ``T``
+is the slower of the existing ψ and d rates; ``q*`` is ``srs_ik`` at the
+current TCP (same branch), not the yaml photo at t=0.  ``d*`` is the
+split that keeps IK J4 in the design band (center ~95°), then eases
+toward ``d_attr``.  A live outer ``vel_ff`` freezes ``s`` via
+``hold_setpoint``; an infeasible intermediate IK also freezes ``s``.
+Local ψ search takes over only while the wrist is collapsed and the
+elbow is still open (SEW is undefined near the J4 floor).
 """
 
 from __future__ import annotations
@@ -219,13 +220,18 @@ class PsiRetargetConfig:
     # Unplanned d* is a band around the design split, not a chasing point.
     d_center_rate_m_s: float = 0.02
     d_band_m: float = 0.08
-    # Hold d* at the live split until ψ_cmd is this close to ψ_attr.
+    # Retired: unplanned step no longer gates d* on ψ error.
     d_slew_psi_err_rad: float = 40.0 * np.pi / 180.0
     # Do not let ψ_cmd run more than this ahead of live ψ.
     psi_cmd_lead_rad: float = 18.0 * np.pi / 180.0
-    # Design family (side-lying).  Used by plan_stroke, not unplanned step().
-    psi_attr_rad: float = 70.0 * np.pi / 180.0
-    d_attr_m: float = -0.22
+    # Design family (side-lying).  Unplanned homotopy and plan_stroke.
+    psi_attr_rad: float = 68.0 * np.pi / 180.0
+    d_attr_m: float = -0.185
+    # Runtime elbow band.  Open rail travel must not pick J4≈135°.
+    elbow_center_rad: float = 95.0 * np.pi / 180.0
+    elbow_lo_rad: float = 70.0 * np.pi / 180.0
+    elbow_hi_rad: float = 115.0 * np.pi / 180.0
+    elbow_hi_illegal_rad: float = 130.0 * np.pi / 180.0
     psi_return_dwell_s: float = 1.0
     require_design_family: bool = False
     # Local ψ search (unplanned).  9 srs_ik × 0.09 ms ≈ 0.8 ms at 10 Hz.
@@ -288,6 +294,12 @@ class PostureRetarget:
         self._psi_star: float | None = None
         self._d_star: float | None = None
         self._d_center_target: float | None = None
+        self._s: float = 0.0
+        self._d0: float = float("nan")
+        self._psi0: float = float("nan")
+        self._branch: int = 0
+        self.q_star_rad: np.ndarray | None = None
+        self.homotopy_s: float = 0.0
         self._search_age_s: float = 0.0
         self.last_psi_search_count: int = 0
         self.last_search_j6_rad: float = float("nan")
@@ -324,11 +336,17 @@ class PostureRetarget:
         )
         self._psi_cmd = psi
         self._psi_star = psi_star
-        # Start at the live split and slew toward d_attr.  A one-shot
-        # publish of d_attr yanks the rail and walks the fold backwards.
+        # Start at the live split.  q* is the live configuration — not the
+        # yaml photo — so J1 is not pinned to −90° while d* is still here.
         d_live = d_from_q(self.kin, q)
         self._d_star = d_live
         self._d_center_target = float(self.cfg.d_attr_m)
+        self._s = 0.0
+        self._d0 = float(d_live)
+        self._psi0 = float(psi)
+        self._branch = int(branch_from_q(q))
+        self.q_star_rad = np.asarray(q, dtype=float).reshape(-1).copy()
+        self.homotopy_s = 0.0
         self._search_age_s = 0.0
         self._healthy_dwell_s = 0.0
         self.last_psi_search_count = 0
@@ -517,47 +535,236 @@ class PostureRetarget:
         q_nominal: np.ndarray | None = None,
         hold_setpoint: bool = False,
     ) -> tuple[float, float]:
-        """Slew ψ toward ψ*; unplanned also re-searches ψ when the wrist collapses."""
+        """Slew (d*, ψ*, q*) on one s; planned strokes only slew ψ."""
         del q_nominal
         q = np.asarray(q_rad, dtype=float)
         if self._psi_cmd is None or self._d_star is None:
             self.reset(q)
         dt = max(float(dt_s), 0.0)
-        if not self._planned:
-            self._maybe_retarget_psi(
-                q,
-                dt_s=dt,
-                rail_lo=float(rail_lo),
-                rail_hi=float(rail_hi),
-            )
-            if not hold_setpoint and self._d_slew_psi_ready():
-                y_tcp = float(self.kin.fk_placement(q).translation[1])
-                self._rate_limit_d(
-                    dt,
-                    y_tcp=y_tcp,
-                    rail_lo=float(rail_lo),
-                    rail_hi=float(rail_hi),
-                    d_live=y_tcp - float(q[RAIL_INDEX]),
-                )
         live_psi = fold_psi_to_positive(float(psi_from_q(q)))
-        psi_out = self._rate_limit_psi(dt, live_psi=live_psi)
+        if self._planned:
+            psi_out = self._rate_limit_psi(dt, live_psi=live_psi)
+            self._update_margins(q)
+            return float(psi_out), float(self._d_star)
+        self._maybe_retarget_psi(
+            q,
+            dt_s=dt,
+            rail_lo=float(rail_lo),
+            rail_hi=float(rail_hi),
+        )
+        if hold_setpoint:
+            psi_out = self._rate_limit_psi(dt, live_psi=live_psi)
+            self._update_margins(q)
+            return float(psi_out), float(self._d_star)
+        self._advance_homotopy(
+            q,
+            dt,
+            rail_lo=float(rail_lo),
+            rail_hi=float(rail_hi),
+            live_psi=live_psi,
+        )
         self._update_margins(q)
-        return float(psi_out), float(self._d_star)
+        return float(self._psi_cmd), float(self._d_star)
 
-    def _d_slew_psi_ready(self) -> bool:
-        """True once the ψ command is close enough that the rail may follow."""
-        gate = max(float(self.cfg.d_slew_psi_err_rad), 0.0)
-        if gate <= 1.0e-12:
-            return True
-        attr = clamp_psi_to_envelope(
-            float(self.cfg.psi_attr_rad),
-            self.cfg.psi_envelope_lo_rad,
-            self.cfg.psi_envelope_hi_rad,
+    def _advance_homotopy(
+        self,
+        q: np.ndarray,
+        dt_s: float,
+        *,
+        rail_lo: float,
+        rail_hi: float,
+        live_psi: float,
+    ) -> None:
+        psi_goal = fold_psi_to_positive(
+            float(self._psi_star if self._psi_star is not None else self._psi0)
         )
-        cmd = fold_psi_to_positive(
-            float(self._psi_cmd if self._psi_cmd is not None else attr)
+        pose = np.asarray(self.kin.fk_pose(q), dtype=float).reshape(6)
+        d_goal = self._select_d_for_elbow(
+            q,
+            pose=pose,
+            psi=psi_goal,
+            rail_lo=float(rail_lo),
+            rail_hi=float(rail_hi),
         )
-        return abs(psi_err_avoiding_zero(cmd, attr)) <= gate + 1.0e-12
+        if d_goal is None or not np.isfinite(float(d_goal)):
+            self._rate_limit_psi(float(dt_s), live_psi=live_psi)
+            return
+        d0 = float(self._d0) if np.isfinite(self._d0) else float(self._d_star)
+        psi0 = float(self._psi0) if np.isfinite(self._psi0) else float(self._psi_cmd)
+        T = self._homotopy_T(d0, float(d_goal), psi0, psi_goal)
+        s_try = min(1.0, float(self._s) + float(dt_s) / T)
+        d_try = float(d0 + s_try * (float(d_goal) - d0))
+        y_tcp = float(pose[1])
+        d_try = self._clip_d_to_travel(
+            d_try,
+            y_tcp=y_tcp,
+            rail_lo=float(rail_lo),
+            rail_hi=float(rail_hi),
+            d_live=y_tcp - float(q[RAIL_INDEX]),
+        )
+        if d_try is None:
+            self._rate_limit_psi(float(dt_s), live_psi=live_psi)
+            return
+        psi_s = fold_psi_to_positive(
+            float(psi0) + s_try * psi_err_avoiding_zero(psi0, psi_goal)
+        )
+        pack = self._eval_at_split(pose, float(psi_s), float(d_try))
+        if pack is None or not self._q_star_acceptable(pack[0], q, rail_lo, rail_hi):
+            self._rate_limit_psi(float(dt_s), live_psi=live_psi)
+            return
+        self._s = float(s_try)
+        self.homotopy_s = float(s_try)
+        self._d_star = float(d_try)
+        self.d_star_m = float(d_try)
+        q_arm, q_full, _sigma = pack
+        self.q_star_rad = np.asarray(q_full, dtype=float).copy()
+        self._update_margins(q_full)
+        del q_arm
+        self._rate_limit_psi(float(dt_s), live_psi=live_psi)
+
+    def _homotopy_T(
+        self,
+        d0: float,
+        d_goal: float,
+        psi0: float,
+        psi_goal: float,
+    ) -> float:
+        d_rate = max(float(self.cfg.d_center_rate_m_s), 1.0e-9)
+        psi_rate = max(float(self.cfg.psi_rate_rad_s), 1.0e-9)
+        t_d = abs(float(d_goal) - float(d0)) / d_rate
+        t_psi = abs(psi_err_avoiding_zero(float(psi0), float(psi_goal))) / psi_rate
+        return max(t_d, t_psi, 1.0e-6)
+
+    def _j4_in_design_band(self, j4_rad: float, *, loose: bool = False) -> bool:
+        lo = float(self.cfg.elbow_lo_rad)
+        hi = float(self.cfg.elbow_hi_rad)
+        if loose:
+            lo -= np.deg2rad(5.0)
+            hi += np.deg2rad(7.0)
+        return bool(lo - 1.0e-9 <= float(j4_rad) <= hi + 1.0e-9)
+
+    def _j4_illegal_at_stop(self, j4_rad: float, *, has_travel: bool) -> bool:
+        if not has_travel:
+            return False
+        return bool(abs(float(j4_rad)) >= float(self.cfg.elbow_hi_illegal_rad) - 1.0e-9)
+
+    def _rail_window(
+        self, y_tcp: float, rail_lo: float, rail_hi: float
+    ) -> tuple[float, float] | None:
+        margin = max(float(self.cfg.rail_margin_m), 0.0)
+        y_lo = float(rail_lo) + margin
+        y_hi = float(rail_hi) - margin
+        if y_lo > y_hi + 1.0e-12:
+            return None
+        d_lo = float(y_tcp) - y_hi
+        d_hi = float(y_tcp) - y_lo
+        if d_lo > d_hi + 1.0e-12:
+            return None
+        return float(d_lo), float(d_hi)
+
+    def _clip_d_to_travel(
+        self,
+        d: float,
+        *,
+        y_tcp: float,
+        rail_lo: float,
+        rail_hi: float,
+        d_live: float | None,
+    ) -> float | None:
+        window = self._rail_window(float(y_tcp), float(rail_lo), float(rail_hi))
+        if window is None:
+            if d_live is not None and np.isfinite(float(d_live)):
+                return float(d_live)
+            return None
+        return float(np.clip(float(d), window[0], window[1]))
+
+    def _eval_at_split(
+        self,
+        pose: np.ndarray,
+        psi: float,
+        d: float,
+    ) -> tuple[np.ndarray, np.ndarray, float] | None:
+        y_rail = float(pose[1]) - float(d)
+        return self._eval.evaluate(pose, float(psi), int(self._branch), y_rail)
+
+    def _q_star_acceptable(
+        self,
+        q_arm: np.ndarray,
+        q_live: np.ndarray,
+        rail_lo: float,
+        rail_hi: float,
+    ) -> bool:
+        j4 = float(np.asarray(q_arm, dtype=float).reshape(-1)[3])
+        window = self._rail_window(
+            float(self.kin.fk_placement(q_live).translation[1]),
+            float(rail_lo),
+            float(rail_hi),
+        )
+        has_travel = window is not None and (window[1] - window[0]) > 0.01
+        if self._j4_illegal_at_stop(j4, has_travel=has_travel):
+            return False
+        return True
+
+    def _select_d_for_elbow(
+        self,
+        q: np.ndarray,
+        *,
+        pose: np.ndarray,
+        psi: float,
+        rail_lo: float,
+        rail_hi: float,
+    ) -> float | None:
+        """Split at ``psi`` whose IK J4 stays in the design band, near d_attr."""
+        y_tcp = float(pose[1])
+        window = self._rail_window(y_tcp, float(rail_lo), float(rail_hi))
+        if window is None:
+            return None
+        d_lo, d_hi = window
+        d_pref = (
+            float(self._d_center_target)
+            if self._d_center_target is not None
+            else float(self.cfg.d_attr_m)
+        )
+        samples = list(np.linspace(d_lo, d_hi, 11))
+        for extra in (d_pref, float(self._d_star), float(self._d0)):
+            if extra is None or not np.isfinite(float(extra)):
+                continue
+            if d_lo - 1.0e-9 <= float(extra) <= d_hi + 1.0e-9:
+                samples.append(float(extra))
+        samples = [float(x) for x in np.unique(np.asarray(samples, dtype=float))]
+        # Prefer the yaml family (J1 < 0).  Do not freeze s on a live/IK
+        # sign mismatch — that locked d* while ψ already folded J1.
+        sign_pref = -1.0
+        j4_c = float(self.cfg.elbow_center_rad)
+        has_travel = (d_hi - d_lo) > 0.01
+        best_d: float | None = None
+        best_cost = float("inf")
+        fallback_d: float | None = None
+        fallback_cost = float("inf")
+        for d in samples:
+            pack = self._eval_at_split(pose, float(psi), float(d))
+            if pack is None:
+                continue
+            q_arm = pack[0]
+            j4 = float(q_arm[3])
+            j1 = float(q_arm[0])
+            if self._j4_illegal_at_stop(j4, has_travel=has_travel):
+                continue
+            sign_pen = 0.0
+            if abs(j1) > np.deg2rad(10.0) and j1 * sign_pref < 0.0:
+                sign_pen = 10.0
+            cost = abs(float(d) - d_pref) + 0.15 * abs(j4 - j4_c) + sign_pen
+            if cost < fallback_cost:
+                fallback_cost = float(cost)
+                fallback_d = float(d)
+            if not self._j4_in_design_band(j4, loose=False):
+                continue
+            if cost < best_cost:
+                best_cost = float(cost)
+                best_d = float(d)
+        if best_d is not None:
+            return float(best_d)
+        return fallback_d
 
     def _maybe_retarget_psi(
         self,
@@ -738,6 +945,7 @@ class PostureRetarget:
         self._d_center_target = d_new
         self._d_star = d_new
         self.d_star_m = d_new
+        self._d0 = d_new
         return d_new
 
     def _rate_limit_d(

@@ -5,7 +5,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from rm75_control.control.joint_admittance_8dof.loop import scale_qdot_into_box
+from rm75_control.control.joint_admittance_8dof.loop import (
+    hold_setpoint_from_vel_ff,
+    scale_qdot_into_box,
+)
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.tasks.arm_angle import (
     ArmAngleTask,
@@ -200,6 +203,19 @@ def test_hold_setpoint_freezes_d_star() -> None:
     assert d == pytest.approx(d_live, abs=1e-9)
 
 
+def test_hold_setpoint_includes_rotation() -> None:
+    assert hold_setpoint_from_vel_ff(np.zeros(6), lin_thr_m_s=0.01) is False
+    assert hold_setpoint_from_vel_ff(
+        np.array([0.02, 0.0, 0.0, 0.0, 0.0, 0.0]), lin_thr_m_s=0.01
+    )
+    assert hold_setpoint_from_vel_ff(
+        np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.2]), lin_thr_m_s=0.01
+    )
+    assert hold_setpoint_from_vel_ff(
+        np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.01]), lin_thr_m_s=0.01
+    ) is False
+
+
 def test_unplanned_infeasible_rail_keeps_split_and_envelope() -> None:
     kin = RobotKinematics()
     rt = PostureRetarget(kin, PsiRetargetConfig(enabled=True, rail_margin_m=0.02))
@@ -263,7 +279,7 @@ def test_reset_folds_negative_pi_and_keeps_attr() -> None:
 def test_design_pose_releases_rail_split() -> None:
     kin = RobotKinematics()
     rt = PostureRetarget(kin, PsiRetargetConfig(enabled=True))
-    q = np.deg2rad([0.0, -90.4, -93.7, 66.1, 104.4, 94.5, 60.3, 83.6])
+    q = np.deg2rad([0.0, -89.5, -94.5, 65.2, 96.0, 89.3, 61.0, 94.6])
     q[0] = 0.40
     rt.reset(q)
     assert rt.d_star_m == pytest.approx(d_from_q(kin, q), abs=1e-6)
@@ -271,7 +287,7 @@ def test_design_pose_releases_rail_split() -> None:
     assert d == pytest.approx(float(rt.cfg.d_attr_m), abs=0.08)
 
 
-def test_unplanned_d_star_waits_for_psi_fold() -> None:
+def test_unplanned_d_and_psi_move_together() -> None:
     kin = RobotKinematics()
     cfg = PsiRetargetConfig(enabled=True, d_center_rate_m_s=0.02)
     rt = PostureRetarget(kin, cfg)
@@ -280,9 +296,169 @@ def test_unplanned_d_star_waits_for_psi_fold() -> None:
     )
     rt.reset(q)
     d0 = float(rt.d_star_m)
-    for _ in range(20):
-        _psi, d = rt.step(q, 0.02, rail_lo=0.005, rail_hi=0.78)
-        assert d == pytest.approx(d0, abs=1e-9)
+    psi0 = float(rt._psi_cmd)
+    psi, d = rt.step(q, 0.02, rail_lo=0.005, rail_hi=0.78)
+    assert abs(d - d0) > 1.0e-6
+    assert abs(psi_err_avoiding_zero(psi0, psi)) > 1.0e-6
+    assert abs(d - d0) <= cfg.d_center_rate_m_s * 0.02 + 1e-9
+
+
+def test_q_star_does_not_latch_yaml_at_reset() -> None:
+    kin = RobotKinematics()
+    cfg = PsiRetargetConfig(enabled=True, d_center_rate_m_s=0.02)
+    rt = PostureRetarget(kin, cfg)
+    q = np.array(
+        [0.31, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+    assert rt.q_star_rad is not None
+    assert abs(float(rt.q_star_rad[1])) < np.deg2rad(5.0)
+    yaml_j1 = np.deg2rad(-89.5)
+    j1_hist = [float(rt.q_star_rad[1])]
+    d_hist = [float(rt.d_star_m)]
+    for _ in range(80):
+        rt.step(q, 0.05, rail_lo=0.005, rail_hi=0.78)
+        assert rt.q_star_rad is not None
+        j1_hist.append(float(rt.q_star_rad[1]))
+        d_hist.append(float(rt.d_star_m))
+    assert abs(j1_hist[4] - yaml_j1) > np.deg2rad(20.0)
+    assert j1_hist[-1] < j1_hist[0] - np.deg2rad(5.0)
+    assert d_hist[-1] > d_hist[0] + 1.0e-4
+    assert abs(d_hist[-1] - float(cfg.d_attr_m)) < abs(d_hist[0] - float(cfg.d_attr_m))
+
+
+def test_homotopy_does_not_freeze_when_live_j1_leads() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(kin, PsiRetargetConfig(enabled=True, d_center_rate_m_s=0.02))
+    q = np.array(
+        [0.31, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+    real_eval = rt._eval.evaluate
+
+    def _ik_j1_slightly_positive(pose, psi, branch, y_rail):
+        pack = real_eval(pose, psi, branch, y_rail)
+        q_arm: np.ndarray
+        q_full: np.ndarray
+        sig: float
+        if pack is None:
+            q_arm = np.array(
+                [
+                    np.deg2rad(2.0),
+                    -0.5,
+                    0.0,
+                    np.deg2rad(90.0),
+                    0.0,
+                    np.pi / 2.0,
+                    np.pi / 2.0,
+                ]
+            )
+            q_full = np.concatenate([[float(y_rail)], q_arm])
+            sig = 1.0
+        else:
+            q_arm, q_full, sig = pack
+            q_arm = np.asarray(q_arm, dtype=float).copy()
+            q_full = np.asarray(q_full, dtype=float).copy()
+        # Homotopy IK still near the planar start (even slightly +) while
+        # live J1 is already folded.  That used to freeze s.
+        q_arm[0] = np.deg2rad(2.0)
+        q_full[1] = np.deg2rad(2.0)
+        return q_arm, q_full, sig
+
+    rt._eval.evaluate = _ik_j1_slightly_positive  # type: ignore[method-assign]
+    q_lead = q.copy()
+    q_lead[1] = np.deg2rad(-90.0)
+    q_ik = np.array(
+        [np.deg2rad(2.0), -0.5, 0.0, np.deg2rad(90.0), 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    assert rt._q_star_acceptable(q_ik, q_lead, 0.005, 0.78)
+    q_ik_stop = q_ik.copy()
+    q_ik_stop[3] = np.deg2rad(132.0)
+    assert not rt._q_star_acceptable(q_ik_stop, q_lead, 0.005, 0.78)
+    d0 = float(rt.d_star_m)
+    s_hist = [float(rt.homotopy_s)]
+    for _ in range(40):
+        rt.step(q_lead, 0.05, rail_lo=0.005, rail_hi=0.78)
+        s_hist.append(float(rt.homotopy_s))
+    assert s_hist[-1] > s_hist[0] + 0.05
+    assert float(rt.d_star_m) > d0 + 1.0e-4
+
+
+def test_homotopy_ik_failure_freezes_s() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(kin, PsiRetargetConfig(enabled=True))
+    q = np.array(
+        [0.31, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+    rt.step(q, 0.02, rail_lo=0.005, rail_hi=0.78)
+    s0 = float(rt.homotopy_s)
+    d0 = float(rt.d_star_m)
+    assert s0 > 0.0
+
+    def _boom(*_a, **_k):
+        return None
+
+    rt._eval.evaluate = _boom  # type: ignore[method-assign]
+    rt.step(q, 0.02, rail_lo=0.005, rail_hi=0.78)
+    assert float(rt.homotopy_s) == pytest.approx(s0)
+    assert float(rt.d_star_m) == pytest.approx(d0)
+
+
+def test_d_star_keeps_j4_in_band_when_attr_folds() -> None:
+    kin = RobotKinematics()
+    cfg = PsiRetargetConfig(enabled=True, d_attr_m=-0.185)
+    rt = PostureRetarget(kin, cfg)
+    q = np.array(
+        [0.31, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+    real_eval = rt._eval.evaluate
+
+    def _fold_at_attr(pose, psi, branch, y_rail):
+        pack = real_eval(pose, psi, branch, y_rail)
+        if pack is None:
+            return None
+        d = float(pose[1]) - float(y_rail)
+        q_arm, q_full, sig = pack
+        if abs(d - float(cfg.d_attr_m)) < 0.02:
+            q_arm = np.asarray(q_arm, dtype=float).copy()
+            q_full = np.asarray(q_full, dtype=float).copy()
+            q_arm[3] = np.deg2rad(134.0)
+            q_full[4] = np.deg2rad(134.0)
+            return q_arm, q_full, sig
+        return pack
+
+    rt._eval.evaluate = _fold_at_attr  # type: ignore[method-assign]
+    last_d = float(rt.d_star_m)
+    for _ in range(40):
+        _psi, last_d = rt.step(q, 0.05, rail_lo=0.005, rail_hi=0.78)
+    assert abs(last_d - float(cfg.d_attr_m)) > 0.02
+    assert rt.q_star_rad is not None
+    assert float(rt.q_star_rad[4]) < np.deg2rad(122.0)
+    d_live = d_from_q(kin, q)
+    unload = float(np.sign(d_live - last_d))
+    assert unload != 0.0
+
+
+def test_zero_vel_ff_does_not_freeze_rail_reach() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(enabled=True, d_band_m=0.0, v_lpf_tau_s=0.0),
+    )
+    q = np.array(
+        [0.40, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    task.set_d_pref(-0.185)
+    v, _w = task(
+        q,
+        sigma_scale=1.0,
+        sigma_grad_rail=0.0,
+        vel_ff=np.zeros(6),
+        dt_s=0.02,
+    )
+    assert abs(float(task.last_v_reach)) > 1.0e-4 or abs(float(v)) > 1.0e-4
 
 
 def test_unplanned_d_star_slews_without_step() -> None:
