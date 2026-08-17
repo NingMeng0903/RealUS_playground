@@ -669,6 +669,7 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
             "k_escape_boost", "escape_grad_floor",
             "k_margin_boost", "w_ext_cap",
             "soft_min_m", "soft_max_m", "v_reach_cap_m_s", "d_band_m",
+            "v_reach_total_max_m_s",
             "d_star_err0_m", "d_star_err1_m", "d_star_w_mult", "d_star_reg_mult",
             "press_v_force_min_m_s", "press_dz_max_m", "press_y_err_m",
             "press_stall_s", "d_star_nudge_m", "open_travel_min_m",
@@ -777,6 +778,14 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
         ),
         v_reach_cap_m_s=_finite_float(
             r.get("v_reach_cap_m_s", 0.05), name="rail_extension.v_reach_cap_m_s"
+        ),
+        v_reach_total_max_m_s=(
+            None
+            if r.get("v_reach_total_max_m_s") is None
+            else _finite_float(
+                r["v_reach_total_max_m_s"],
+                name="rail_extension.v_reach_total_max_m_s",
+            )
         ),
         d_band_m=_finite_float(
             r.get("d_band_m", 0.005), name="rail_extension.d_band_m"

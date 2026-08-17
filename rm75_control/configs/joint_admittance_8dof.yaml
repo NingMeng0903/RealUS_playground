@@ -243,6 +243,12 @@ inner:
     pin_margin_m: 0.008
     escape_leave_m: 0.04
     v_reach_cap_m_s: 0.05
+    # Budget for v_ff + v_reach on the reach path.  v_max_m_s (0.08) alone is
+    # below the legal FF (rail.v_max_m_s 0.15 * v_scale 0.8 = 0.12), so the
+    # two saturated together and reach never ran: run 225941 grew the posture
+    # error at 39 mm/s while driving, then dumped 25-73 mm on stick release.
+    # 0.12 (QP box) + 0.05 (v_reach_cap).  QP box and FA24 still limit speed.
+    v_reach_total_max_m_s: 0.17
     d_band_m: 0.005
     k_sigma_boost: 2.0
     k_esc: 0.5

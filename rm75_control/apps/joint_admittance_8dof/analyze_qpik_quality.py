@@ -56,9 +56,30 @@ GATES = {
     # Carriage servo (rail_servo CSV, sibling directory).
     "rail_servo_accel_reversals_per_s": 3.0,
     "rail_servo_track_err_p95_mm": 2.0,
+    # After v_goal→0, encoder-diff reverse peak / entry speed.
+    # Hardware before the brake fix: 0.50–0.60.
+    "rail_stop_reverse_frac": 0.15,
     # q_cmd[0]−q_meas[0] stuck on the 20 mm resync window is a fault.
     "rail_resync_err_m": 0.018,
     "rail_resync_bind_frac": 0.10,
+    # v_enc falling back to the 157 ms-lagged drive register puts a step in
+    # the D term.  Run 225941 fell back on 11.2% of ticks and cost the
+    # gamepad 1.43 → 3.23 mm of e_track.
+    "rail_v_enc_register_frac": 0.02,
+    # Rail travel after the operator lets go: the posture preference used to
+    # dump its accumulated debt for ~1 s (25–73 mm).
+    "idle_rail_travel_mm": 8.0,
+    # TCP must hold station while that happens.  Do not score this with
+    # tool_y_err_mm: gamepad rebases pose_d on pose_meas every tick, so the
+    # error is identically 0 exactly when the TCP is drifting.
+    "idle_tcp_drift_mm": 5.0,
+    # QP1 buys the rail motion it cannot cancel with Cartesian slack, which
+    # is how the rail slide reaches the TCP.  Run 225941: 31.3% of idle ticks.
+    "idle_task_slack_frac": 0.05,
+    # |rail_track_err| while driving.  The old shared 80 mm/s budget starved
+    # reach whenever FF asked for its legal 120, and the error grew at
+    # 39 mm/s until release (p95 94 mm).
+    "drive_rail_track_err_p95_m": 0.030,
 }
 
 
@@ -132,6 +153,122 @@ def _col(rows: list[dict], name: str) -> np.ndarray:
         except (TypeError, ValueError):
             out[i] = np.nan
     return out
+
+
+def _encoder_diff_from_position(
+    t: np.ndarray,
+    x: np.ndarray,
+    *,
+    poll_hz: float = 60.0,
+    span_ticks: int = 2,
+) -> np.ndarray:
+    """Bounded position difference matching the rail-servo ``v_enc`` path."""
+    t_a = np.asarray(t, dtype=float)
+    x_a = np.asarray(x, dtype=float)
+    n = int(min(t_a.size, x_a.size))
+    out = np.full(n, np.nan, dtype=float)
+    period = 1.0 / max(float(poll_hz), 1.0)
+    lo = 0.5 * period
+    hi = 3.0 * period
+    back = max(int(span_ticks), 1)
+    for i in range(back, n):
+        dt = t_a[i] - t_a[i - back]
+        if lo <= dt <= hi and np.isfinite(x_a[i]) and np.isfinite(x_a[i - back]):
+            out[i] = (x_a[i] - x_a[i - back]) / dt
+    return out
+
+
+def rail_stop_reverse_frac(
+    t: np.ndarray,
+    v_goal: np.ndarray,
+    v_enc: np.ndarray,
+    *,
+    entry_m_s: float = 0.015,
+    zero_m_s: float = 0.005,
+    window_s: float = 0.40,
+    entry_window_s: float = 0.20,
+) -> float:
+    """Worst reverse-peak / entry-speed after ``v_goal`` falls to ~0.
+
+    Returns NaN when no stop event is found.  A plugging-brake stop that
+    reverses at 50–60% of entry speed scores ~0.5–0.6.
+
+    Entry speed is the fastest ``v_enc`` in ``entry_window_s`` before the
+    stop, and stops entering below ``entry_m_s`` are skipped.  Reading a
+    single sample at the backtrack index instead let one near-zero
+    quantisation sample divide the ratio into 2632175%.
+    """
+    t_a = np.asarray(t, dtype=float)
+    vg = np.asarray(v_goal, dtype=float)
+    ve = np.asarray(v_enc, dtype=float)
+    n = int(min(t_a.size, vg.size, ve.size))
+    if n < 8:
+        return float("nan")
+    t_a = t_a[:n]
+    vg = vg[:n]
+    ve = ve[:n]
+    worst = float("nan")
+    i = 1
+    while i < n:
+        if not (np.isfinite(vg[i]) and np.isfinite(vg[i - 1])):
+            i += 1
+            continue
+        if abs(float(vg[i])) > float(zero_m_s):
+            i += 1
+            continue
+        if abs(float(vg[i - 1])) <= float(zero_m_s):
+            i += 1
+            continue
+        j = i - 1
+        while j >= 0 and (not np.isfinite(vg[j]) or abs(float(vg[j])) < float(entry_m_s)):
+            j -= 1
+        if j < 0:
+            i += 1
+            continue
+        t_stop = float(t_a[i])
+        entry_mask = (
+            np.isfinite(t_a)
+            & np.isfinite(ve)
+            & (t_a >= t_stop - float(entry_window_s))
+            & (t_a <= t_stop)
+        )
+        v_entry = 0.0
+        if np.any(entry_mask):
+            entry_vals = ve[entry_mask]
+            v_entry = float(entry_vals[int(np.argmax(np.abs(entry_vals)))])
+        if abs(v_entry) < float(entry_m_s) and np.isfinite(vg[j]):
+            if abs(float(vg[j])) > abs(v_entry):
+                v_entry = float(vg[j])
+        if abs(v_entry) < float(entry_m_s):
+            i += 1
+            continue
+        # Only score while the goal is still asking for a stop.  A gamepad
+        # goal that dips through zero and drives the other way is a new
+        # command, not the brake reversing itself.
+        end = i
+        while (
+            end + 1 < n
+            and float(t_a[end + 1]) <= t_stop + float(window_s)
+            and (
+                not np.isfinite(vg[end + 1])
+                or abs(float(vg[end + 1])) <= float(zero_m_s)
+            )
+        ):
+            end += 1
+        mask = np.zeros(n, dtype=bool)
+        mask[i : end + 1] = True
+        mask &= np.isfinite(t_a) & np.isfinite(ve)
+        if not np.any(mask):
+            i += 1
+            continue
+        sign = 1.0 if v_entry >= 0.0 else -1.0
+        peak = float(np.max(-sign * ve[mask]))
+        frac = peak / abs(v_entry)
+        if not np.isfinite(worst) or frac > worst:
+            worst = frac
+        while i < n and float(t_a[i]) <= t_stop + float(window_s):
+            i += 1
+    return worst
 
 
 def _rail_servo_checks(
@@ -235,6 +372,35 @@ def _rail_servo_checks(
                 f"  max {age.max():.0f} ms",
             )
         )
+
+    v_enc = _col(rows, "v_enc_m_s")
+    if not np.isfinite(v_enc).any():
+        v_enc = _encoder_diff_from_position(t, _col(rows, "x_meas_m"))
+    sources = [str(r.get("v_enc_source", "") or "") for r in rows]
+    live_sources = [s for s, keep in zip(sources, live) if keep and s]
+    if live_sources:
+        n_src = len(live_sources)
+        reg = sum(1 for s in live_sources if s == "reg") / n_src
+        hold = sum(1 for s in live_sources if s == "hold") / n_src
+        results.append(
+            (
+                "rail v_enc register fallback < 2% (live follow)",
+                reg < GATES["rail_v_enc_register_frac"],
+                f"reg {100.0 * reg:.1f}%  hold {100.0 * hold:.1f}%  n={n_src}",
+            )
+        )
+    v_goal = _col(rows, "v_goal_est_m_s")
+    rev_frac = rail_stop_reverse_frac(t, v_goal, v_enc)
+    if np.isfinite(rev_frac):
+        results.append(
+            (
+                "rail stop reverse < 15% of entry",
+                rev_frac < GATES["rail_stop_reverse_frac"],
+                f"{100.0 * rev_frac:.1f}% of entry",
+            )
+        )
+    else:
+        info.append(("rail stop reverse", "no v_goal→0 event"))
 
 
 def _finite6(row: dict, keys: tuple[str, ...]) -> np.ndarray | None:
@@ -391,6 +557,143 @@ def _rail_handoff_checks(
             "IK-feasible rail wall: tool_y_err p95 < 3 mm",
             bool(np.isfinite(e95) and e95 < GATES["track_err_at_limit_mm"]),
             f"{e95:.2f} mm  (IK {frac:.0%} of samples)",
+        )
+    )
+
+
+def _idle_hold_checks(
+    rows: list[dict],
+    results: list[tuple[str, bool, str]],
+    info: list[tuple[str, str]],
+    *,
+    min_idle_s: float = 0.4,
+) -> None:
+    """The rail and the TCP must both stand still once the operator lets go.
+
+    ``tool_y_err_mm`` cannot see this in gamepad mode — ``pose_d`` is rebased
+    on ``pose_meas`` every tick, so the error is 0 exactly while the TCP
+    drifts.  Latch ``pose_meas`` at the start of each idle window instead.
+    """
+    t = _col(rows, "t_wall_s")
+    if t.size < 8:
+        return
+    req = np.zeros(t.size, dtype=float)
+    have_request = False
+    for axis in ("vx", "vy", "vz", "wx", "wy", "wz"):
+        vals = _col(rows, f"twist_requested_{axis}")
+        if vals.size == t.size and np.isfinite(vals).any():
+            have_request = True
+            req = np.maximum(req, np.abs(np.nan_to_num(vals, nan=0.0)))
+    if not have_request:
+        info.append(("idle hold", "no twist_requested_* columns"))
+        return
+    idle = req < 1.0e-6
+    if not np.any(idle):
+        info.append(("idle hold", "no twist_requested=0 window"))
+        return
+
+    rail = _col(rows, "rail_meas_m")
+    slack = _col(rows, "slack_norm")
+    pose = np.stack(
+        [_col(rows, f"pose_meas_{a}") for a in ("x", "y", "z")], axis=1
+    )
+    travels: list[float] = []
+    drifts: list[float] = []
+    slack_hits = 0
+    slack_n = 0
+    i = 0
+    while i < t.size:
+        if not idle[i]:
+            i += 1
+            continue
+        j = i
+        while j + 1 < t.size and idle[j + 1]:
+            j += 1
+        if float(t[j] - t[i]) >= float(min_idle_s):
+            seg_rail = rail[i : j + 1]
+            seg_rail = seg_rail[np.isfinite(seg_rail)]
+            if seg_rail.size > 1:
+                travels.append(
+                    float(np.max(np.abs(seg_rail - seg_rail[0]))) * 1000.0
+                )
+            seg_pose = pose[i : j + 1]
+            good = np.all(np.isfinite(seg_pose), axis=1)
+            if int(np.count_nonzero(good)) > 1:
+                anchored = seg_pose[good]
+                drifts.append(
+                    float(
+                        np.max(np.linalg.norm(anchored - anchored[0], axis=1))
+                    )
+                    * 1000.0
+                )
+            seg_slack = slack[i : j + 1]
+            seg_slack = seg_slack[np.isfinite(seg_slack)]
+            slack_n += int(seg_slack.size)
+            slack_hits += int(np.count_nonzero(seg_slack > 1.0e-6))
+        i = j + 1
+
+    if not travels:
+        info.append(("idle hold", "no idle window longer than 0.4 s"))
+        return
+
+    travel_p95 = float(np.percentile(travels, 95))
+    results.append(
+        (
+            "idle rail travel p95 < 8 mm",
+            travel_p95 < GATES["idle_rail_travel_mm"],
+            f"{travel_p95:.1f} mm  max {max(travels):.1f} mm  n={len(travels)}",
+        )
+    )
+    if drifts:
+        drift_p95 = float(np.percentile(drifts, 95))
+        results.append(
+            (
+                "idle TCP drift p95 < 5 mm (pose_meas latched)",
+                drift_p95 < GATES["idle_tcp_drift_mm"],
+                f"{drift_p95:.1f} mm  max {max(drifts):.1f} mm  n={len(drifts)}",
+            )
+        )
+    if slack_n:
+        frac = slack_hits / slack_n
+        results.append(
+            (
+                "idle QP1 task slack < 5% of ticks",
+                frac < GATES["idle_task_slack_frac"],
+                f"{100.0 * frac:.1f}%  ({slack_hits}/{slack_n} ticks)",
+            )
+        )
+
+
+def _posture_debt_check(
+    rows: list[dict],
+    results: list[tuple[str, bool, str]],
+    info: list[tuple[str, str]],
+    *,
+    drive_ff_m_s: float = 0.07,
+) -> None:
+    """While driving hard, the rail must stay near its preferred extension.
+
+    A shared velocity budget that cannot hold FF *and* reach starves reach
+    for the whole stroke and dumps the accumulated error on release, so
+    this is the gate that sees the conflict before the slide happens.
+    """
+    ff = _col(rows, "rail_qdot_ff")
+    err = _col(rows, "rail_track_err_m")
+    n = int(min(ff.size, err.size))
+    if n < 8:
+        return
+    driving = np.isfinite(ff[:n]) & np.isfinite(err[:n]) & (
+        np.abs(ff[:n]) >= float(drive_ff_m_s)
+    )
+    if int(np.count_nonzero(driving)) < 20:
+        info.append(("rail posture debt", "no sustained hard-drive window"))
+        return
+    p95 = float(np.percentile(np.abs(err[:n][driving]), 95))
+    results.append(
+        (
+            "driving |rail_track_err| p95 < 30 mm",
+            p95 < GATES["drive_rail_track_err_p95_m"],
+            f"{1000.0 * p95:.1f} mm  n={int(np.count_nonzero(driving))}",
         )
     )
 
@@ -779,6 +1082,8 @@ def analyze(path: Path) -> int:
         )
 
     _rail_servo_checks(path, results, info)
+    _idle_hold_checks(rows, results, info)
+    _posture_debt_check(rows, results, info)
     _tick_profile(rows, info)
 
     div = _col(rows, "rail_cmd_meas_err_m")

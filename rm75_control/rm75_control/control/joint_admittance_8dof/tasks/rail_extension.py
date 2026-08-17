@@ -152,6 +152,20 @@ class RailExtensionConfig:
     open_travel_min_m: float = 0.01
     # One-sided lateral escape.  ``minus`` drives −q0 until the minus pin.
     escape_sign_policy: str = "minus"
+    # Budget for the reach path's ``v_ff + v_reach + v_escape`` sum.  It must
+    # leave room for a legal FF *plus* reach, or the two saturate together and
+    # reach never runs: gamepad demands 120 mm/s of FF against a 80 mm/s
+    # ``v_max_m_s``, so the 40 mm/s shortfall grew the posture error at
+    # 39 mm/s until the stick was released and it dumped in one 1 s slide.
+    # ``None`` keeps the old shared cap.  The real speed limit is the QP rail
+    # box and the FA24 clamp, not this.
+    v_reach_total_max_m_s: float | None = None
+
+    def reach_budget_m_s(self) -> float:
+        """Total velocity budget for the reach path."""
+        if self.v_reach_total_max_m_s is None:
+            return float(self.v_max_m_s)
+        return max(float(self.v_reach_total_max_m_s), float(self.v_max_m_s))
 
 
 def _smoothstep01(x: float) -> float:
@@ -757,7 +771,8 @@ class RailExtensionTask:
             if esc_sign != 0.0 and v_primary * esc_sign < 0.0:
                 v_primary = 0.0
         v_total = v_primary + v_escape
-        v = float(np.clip(v_total, -self.cfg.v_max_m_s, self.cfg.v_max_m_s))
+        budget = self.cfg.reach_budget_m_s()
+        v = float(np.clip(v_total, -budget, budget))
         tau = (
             float(self.cfg.v_lpf_tau_escape_s)
             if self._escape_active

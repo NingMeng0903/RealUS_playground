@@ -1232,3 +1232,311 @@ def test_press_stall_nudges_d_star_on_the_controller() -> None:
         v_force_z=0.04,
     )
     assert float(inner.posture_retarget.d_star_m) != pytest.approx(d0)
+
+
+def _load_analyze_qpik_quality():
+    import importlib.util
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "joint_admittance_8dof"
+        / "analyze_qpik_quality.py"
+    )
+    spec = importlib.util.spec_from_file_location("analyze_qpik_quality", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _write_rail_stop_csv(path, *, reverse_frac: float) -> None:
+    import csv
+
+    n = 80
+    dt = 1.0 / 60.0
+    header = [
+        "t_wall_s",
+        "follow",
+        "target_age_ms",
+        "a_cmd_m_s2",
+        "e_track_mm",
+        "v_goal_est_m_s",
+        "v_enc_m_s",
+        "x_meas_m",
+    ]
+    entry = 0.030
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=header)
+        writer.writeheader()
+        x = 0.40
+        for k in range(n):
+            t = k * dt
+            if k < 40:
+                v_goal = entry
+                v_enc = entry
+            elif k == 40:
+                v_goal = 0.0
+                v_enc = entry
+            elif k < 48:
+                # 8 samples (~130 ms) after v_goal→0.
+                phase = (k - 41) / 6.0
+                v_enc = entry * (1.0 - phase) - entry * reverse_frac * max(
+                    0.0, phase
+                )
+                v_goal = 0.0
+            else:
+                v_goal = 0.0
+                v_enc = 0.0
+            x += v_enc * dt
+            writer.writerow(
+                {
+                    "t_wall_s": f"{t:.6f}",
+                    "follow": "1",
+                    "target_age_ms": "8.0",
+                    "a_cmd_m_s2": "0.0",
+                    "e_track_mm": "0.05",
+                    "v_goal_est_m_s": f"{v_goal:.6f}",
+                    "v_enc_m_s": f"{v_enc:.6f}",
+                    "x_meas_m": f"{x:.6f}",
+                }
+            )
+
+
+def test_analyzer_stop_reverse_gate_fails_on_plugging(tmp_path) -> None:
+    mod = _load_analyze_qpik_quality()
+    scan = tmp_path / "gamepad_vcmd" / "run_20260101_000000.csv"
+    scan.parent.mkdir(parents=True)
+    scan.write_text("phase,t_wall_s\nscan,0.0\n", encoding="utf-8")
+    servo = tmp_path / "rail_servo" / "rail_20260101_000000.csv"
+    _write_rail_stop_csv(servo, reverse_frac=0.55)
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._rail_servo_checks(scan, results, info)
+    gate = next(r for r in results if "stop reverse" in r[0])
+    assert gate[1] is False
+    assert "55" in gate[2] or float(gate[2].split("%")[0]) > 15.0
+
+
+def test_analyzer_stop_reverse_gate_passes_without_reverse(tmp_path) -> None:
+    mod = _load_analyze_qpik_quality()
+    scan = tmp_path / "gamepad_vcmd" / "run_20260101_000001.csv"
+    scan.parent.mkdir(parents=True)
+    scan.write_text("phase,t_wall_s\nscan,0.0\n", encoding="utf-8")
+    servo = tmp_path / "rail_servo" / "rail_20260101_000001.csv"
+    _write_rail_stop_csv(servo, reverse_frac=0.0)
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._rail_servo_checks(scan, results, info)
+    gate = next(r for r in results if "stop reverse" in r[0])
+    assert gate[1] is True
+
+
+def test_analyzer_stop_reverse_gate_survives_a_near_zero_entry_sample(tmp_path) -> None:
+    """Entry speed comes from the pre-stop peak, not one backtracked sample.
+
+    Run 225941 printed 2632175% because the sample at the backtrack index
+    was a quantisation zero.
+    """
+    import csv
+
+    mod = _load_analyze_qpik_quality()
+    scan = tmp_path / "gamepad_vcmd" / "run_20260101_000002.csv"
+    scan.parent.mkdir(parents=True)
+    scan.write_text("phase,t_wall_s\nscan,0.0\n", encoding="utf-8")
+    servo = tmp_path / "rail_servo" / "rail_20260101_000002.csv"
+    servo.parent.mkdir(parents=True, exist_ok=True)
+    header = [
+        "t_wall_s", "follow", "target_age_ms", "a_cmd_m_s2", "e_track_mm",
+        "v_goal_est_m_s", "v_enc_m_s", "x_meas_m",
+    ]
+    dt = 1.0 / 60.0
+    with servo.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=header)
+        writer.writeheader()
+        x = 0.40
+        for k in range(80):
+            if k < 40:
+                v_goal, v_enc = 0.030, 0.030
+            elif k == 40:
+                # The one sample the old backtrack landed on.
+                v_goal, v_enc = 0.0, 1.0e-7
+            elif k < 46:
+                v_goal, v_enc = 0.0, -0.002
+            else:
+                v_goal, v_enc = 0.0, 0.0
+            x += v_enc * dt
+            writer.writerow(
+                {
+                    "t_wall_s": f"{k * dt:.6f}", "follow": "1",
+                    "target_age_ms": "8.0", "a_cmd_m_s2": "0.0",
+                    "e_track_mm": "0.05", "v_goal_est_m_s": f"{v_goal:.9f}",
+                    "v_enc_m_s": f"{v_enc:.9f}", "x_meas_m": f"{x:.6f}",
+                }
+            )
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._rail_servo_checks(scan, results, info)
+    gate = next(r for r in results if "stop reverse" in r[0])
+    # 2 mm/s against a 30 mm/s entry, not a percentage in the millions.
+    assert float(gate[2].split("%")[0]) < 20.0
+    assert gate[1] is True
+
+
+def _write_idle_rows(
+    *, rail_travel_m: float, tcp_drift_m: float, slack: float, n: int = 400
+) -> list[dict]:
+    """Drive for 1 s, then hold the stick at zero for 2 s."""
+    dt = 1.0 / 200.0
+    rows: list[dict] = []
+    n_drive = n // 3
+    rail = 0.40
+    y = 0.19
+    for k in range(n):
+        idle = k >= n_drive
+        if idle:
+            phase = min(1.0, (k - n_drive) / max(n - n_drive - 1, 1))
+            rail_k = 0.40 + rail_travel_m * phase
+            y_k = 0.19 + tcp_drift_m * phase
+            slack_k = slack
+        else:
+            rail_k = rail
+            y_k = y
+            slack_k = 0.0
+        rows.append(
+            {
+                "t_wall_s": f"{k * dt:.6f}",
+                "twist_requested_vx": "0.0",
+                "twist_requested_vy": "0.0" if idle else "0.12",
+                "twist_requested_vz": "0.0",
+                "twist_requested_wx": "0.0",
+                "twist_requested_wy": "0.0",
+                "twist_requested_wz": "0.0",
+                "rail_meas_m": f"{rail_k:.6f}",
+                "pose_meas_x": "0.5",
+                "pose_meas_y": f"{y_k:.6f}",
+                "pose_meas_z": "0.3",
+                "slack_norm": f"{slack_k:.6f}",
+                # pose_d is rebased on pose_meas every tick in gamepad mode,
+                # so this is 0 exactly while the TCP drifts.
+                "tool_y_err_mm": "0.0",
+            }
+        )
+    return rows
+
+
+def test_analyzer_idle_gates_fail_on_the_release_slide() -> None:
+    mod = _load_analyze_qpik_quality()
+    rows = _write_idle_rows(rail_travel_m=0.050, tcp_drift_m=0.022, slack=0.05)
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._idle_hold_checks(rows, results, info)
+    by_name = {name: (ok, detail) for name, ok, detail in results}
+    assert by_name["idle rail travel p95 < 8 mm"][0] is False
+    assert by_name["idle TCP drift p95 < 5 mm (pose_meas latched)"][0] is False
+    assert by_name["idle QP1 task slack < 5% of ticks"][0] is False
+
+
+def test_analyzer_idle_gates_pass_when_the_release_is_clean() -> None:
+    mod = _load_analyze_qpik_quality()
+    rows = _write_idle_rows(rail_travel_m=0.001, tcp_drift_m=0.0005, slack=0.0)
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._idle_hold_checks(rows, results, info)
+    assert results
+    assert all(ok for _name, ok, _detail in results)
+
+
+def _write_debt_rows(track_err_m: float, n: int = 200) -> list[dict]:
+    return [
+        {
+            "rail_qdot_ff": "0.120",
+            "rail_track_err_m": f"{track_err_m:.6f}",
+        }
+        for _ in range(n)
+    ]
+
+
+def test_analyzer_posture_debt_gate_catches_a_starved_reach() -> None:
+    mod = _load_analyze_qpik_quality()
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._posture_debt_check(_write_debt_rows(0.094), results, info)
+    gate = next(r for r in results if "rail_track_err" in r[0])
+    assert gate[1] is False
+
+    results.clear()
+    mod._posture_debt_check(_write_debt_rows(0.010), results, info)
+    gate = next(r for r in results if "rail_track_err" in r[0])
+    assert gate[1] is True
+
+
+def test_analyzer_posture_debt_gate_skips_ticks_without_hard_drive() -> None:
+    mod = _load_analyze_qpik_quality()
+    rows = [
+        {"rail_qdot_ff": "0.001", "rail_track_err_m": "0.200"} for _ in range(200)
+    ]
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._posture_debt_check(rows, results, info)
+    assert not results
+    assert any("posture debt" in name for name, _detail in info)
+
+
+def _write_rail_source_csv(path, *, reg_frac: float, n: int = 200) -> None:
+    import csv
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    header = [
+        "t_wall_s", "follow", "target_age_ms", "a_cmd_m_s2", "e_track_mm",
+        "v_goal_est_m_s", "v_enc_m_s", "v_enc_source", "x_meas_m",
+    ]
+    dt = 1.0 / 60.0
+    n_reg = int(round(reg_frac * n))
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=header)
+        writer.writeheader()
+        for k in range(n):
+            writer.writerow(
+                {
+                    "t_wall_s": f"{k * dt:.6f}", "follow": "1",
+                    "target_age_ms": "8.0", "a_cmd_m_s2": "0.0",
+                    "e_track_mm": "0.05", "v_goal_est_m_s": "0.030",
+                    "v_enc_m_s": "0.030",
+                    "v_enc_source": "reg" if k < n_reg else "lsq",
+                    "x_meas_m": f"{0.40 + 0.030 * k * dt:.6f}",
+                }
+            )
+
+
+def test_analyzer_flags_v_enc_falling_back_to_the_drive_register(tmp_path) -> None:
+    mod = _load_analyze_qpik_quality()
+    scan = tmp_path / "gamepad_vcmd" / "run_20260101_000003.csv"
+    scan.parent.mkdir(parents=True)
+    scan.write_text("phase,t_wall_s\nscan,0.0\n", encoding="utf-8")
+    _write_rail_source_csv(
+        tmp_path / "rail_servo" / "rail_20260101_000003.csv", reg_frac=0.112
+    )
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._rail_servo_checks(scan, results, info)
+    gate = next(r for r in results if "register fallback" in r[0])
+    assert gate[1] is False
+    assert "reg 11.0%" in gate[2]
+
+
+def test_analyzer_accepts_v_enc_without_register_fallback(tmp_path) -> None:
+    mod = _load_analyze_qpik_quality()
+    scan = tmp_path / "gamepad_vcmd" / "run_20260101_000004.csv"
+    scan.parent.mkdir(parents=True)
+    scan.write_text("phase,t_wall_s\nscan,0.0\n", encoding="utf-8")
+    _write_rail_source_csv(
+        tmp_path / "rail_servo" / "rail_20260101_000004.csv", reg_frac=0.0
+    )
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._rail_servo_checks(scan, results, info)
+    gate = next(r for r in results if "register fallback" in r[0])
+    assert gate[1] is True

@@ -177,6 +177,10 @@ class JointIkStep:
     rail_contrib_m_s: float = float("nan")
     arm_contrib_m_s: float = float("nan")
     rail_motion_share: float = float("nan")
+    # Rail velocity the QP actually used for affine compensation, after the
+    # command/measurement blend.  rail_exec_velocity_m_s is overwritten with
+    # the raw worker estimate downstream, so the blended value needs its own.
+    rail_exec_for_qp_m_s: float = float("nan")
     wln_scale_rail: float = float("nan")
     wln_scale_arm_max: float = float("nan")
     waste_ratio: float = float("nan")
@@ -1587,6 +1591,16 @@ class JointIkController:
             if vff.size >= 3 and float(np.linalg.norm(vff[:3])) > 1e-6:
                 motion_dir = vff[:3].astype(float)
         n_dir = float(np.linalg.norm(motion_dir))
+        if n_dir <= 1e-9:
+            # Idle ticks have no commanded direction, which used to blank the
+            # whole split for the entire release window — exactly where the
+            # TCP leak lives.  The rail's own TCP axis is always defined and
+            # is the axis the leak shows up on.
+            rail_axis = np.asarray(J_fin[:3, 0], dtype=float)
+            n_axis = float(np.linalg.norm(rail_axis))
+            if n_axis > 1e-9:
+                motion_dir = rail_axis
+                n_dir = n_axis
         if n_dir > 1e-9:
             u = motion_dir / n_dir
             rail_contrib = float(np.dot(twist_rail[:3], u))
@@ -1658,6 +1672,7 @@ class JointIkController:
         step.rail_xy_contribution = np.asarray(twist_rail[:2], dtype=float).copy()
         step.arm_xy_contribution = np.asarray(twist_arm[:2], dtype=float).copy()
         step.rail_exec_velocity_m_s = float(rail_exec_for_qp)
+        step.rail_exec_for_qp_m_s = float(rail_exec_for_qp)
         if rail_exec_vel_m_s is not None:
             step.rail_measured_velocity_m_s = float(rail_exec_vel_m_s)
         if rail_exec_smooth_m_s is not None:
@@ -2273,6 +2288,7 @@ class _TickLogger:
            "motion_err_rms_mm", "motion_axis_peak_mm",
            "vel_ff_vx", "vel_ff_vy", "vel_ff_vz", "vel_ff_wx", "vel_ff_wy", "vel_ff_wz",
            "rail_contrib_m_s", "arm_contrib_m_s", "arm_y_qdot", "rail_motion_share",
+           "rail_exec_for_qp",
            # Chan-Dubey reg multipliers: rail first, then the worst arm joint.
            "wln_scale_rail", "wln_scale_arm_max",
            "waste_ratio", "rail_ff_m", "rail_track_err_m",
@@ -2794,6 +2810,13 @@ class _TickLogger:
                (
                    f"{step.rail_motion_share:.4f}"
                    if np.isfinite(step.rail_motion_share)
+                   else ""
+               ),
+               (
+                   f"{step.rail_exec_for_qp_m_s:.6f}"
+                   if np.isfinite(
+                       getattr(step, "rail_exec_for_qp_m_s", float("nan"))
+                   )
                    else ""
                ),
                (

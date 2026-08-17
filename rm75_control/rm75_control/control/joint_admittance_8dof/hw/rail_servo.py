@@ -5,7 +5,9 @@ Controller path (virtual-rail WBC structure; motor replaces sim rail):
     optionally with ``v_ff_m_s`` so the worker does not differentiate a
     nominal-dt position stream (5 ms integrate / ~6.5 ms wall → 25% slow).
   * Soft CSP: stream-aware online ``(x_ref,v_ref)`` from ``set_target_m`` +
-    ``v = v_ref + kp*(x_ref−x) + kd*(v_ref−v_meas)`` → FA24 (``v_meas``=0x1000).
+    ``v = v_ref + kp*(x_ref−x) + kd*(v_ref−v_enc)`` → FA24.
+    ``v_enc`` is a bounded encoder-position difference (the 0x1000 speed
+    register lags ~150 ms and plugged the carriage on every gamepad stop).
     Position is closed on the shaped reference, never ``x_goal`` (command
     lead / later KMP OTG stay outside).  Same law for QPIK coupled-velocity
     and a position+FF stream (KMP/DMP ``p_cmd``, ``p_dot``).  Host ``a_max``
@@ -28,6 +30,7 @@ import threading
 import time
 from collections import deque
 from collections.abc import Sequence
+from statistics import median
 from dataclasses import dataclass, replace
 from enum import Enum
 from pathlib import Path
@@ -493,7 +496,7 @@ class _RailCsvLogger:
         "dt_wall_ms,last_rpm_cmd,mb_fail_n,freeze_flag,arm_good,"
         "sample_mono_s,target_rx_mono_s,target_age_ms,motion_seq,feedback_valid,"
         "x_goal_m,x_ref_m,x_meas_m,v_goal_est_m_s,v_ref_m_s,a_ref_m_s2,"
-        "v_meas_m_s,v_des_m_s,v_cmd_m_s,a_cmd_m_s2,x_goal_eval_m,"
+        "v_meas_m_s,v_enc_m_s,v_enc_source,v_des_m_s,v_cmd_m_s,a_cmd_m_s2,x_goal_eval_m,"
         "rpm_cmd,e_track_mm,e_shape_mm,"
         "hold_count,hold_reason,command_mode,"
         "t_read_ms,t_write_ms,n_modbus"
@@ -560,6 +563,8 @@ class _RailCsvLogger:
         v_ref_m_s: float = float("nan"),
         a_ref_m_s2: float = float("nan"),
         v_meas_m_s: float = float("nan"),
+        v_enc_m_s: float = float("nan"),
+        v_enc_source: str = "",
         v_des_m_s: float = float("nan"),
         v_cmd_m_s: float = float("nan"),
         a_cmd_m_s2: float = float("nan"),
@@ -631,6 +636,8 @@ class _RailCsvLogger:
                 _f(v_ref_m_s),
                 _f(a_ref_m_s2),
                 _f(v_meas_m_s),
+                _f(v_enc_m_s),
+                str(v_enc_source),
                 _f(v_des_m_s),
                 _f(v_cmd_m_s),
                 _f(a_cmd_m_s2),
@@ -2010,6 +2017,126 @@ class RailServoBridge:
         return float(rpm) / 60.0 * lead * 1e-3
 
     @staticmethod
+    def _encoder_velocity(
+        samples: Sequence[tuple[float, float]],
+        *,
+        poll_hz: float,
+        fallback_m_s: float,
+        period_s: float | None = None,
+        hold_m_s: float = float("nan"),
+        hold_budget: int = 0,
+    ) -> tuple[float, str]:
+        """Least-squares slope of the accepted encoder samples.
+
+        Returns ``(velocity_m_s, source)`` with source in ``lsq`` / ``hold``
+        / ``reg``.  The window is sized from ``period_s`` (the worker's
+        measured poll period) rather than the nominal ``poll_hz``: run
+        225941 polled at 56 Hz against a nominal 60, so a fixed
+        ``3 / poll_hz`` window rejected 11.2% of the ticks and hard-switched
+        the D term back to the 157 ms-lagged drive register.  Slope over the
+        whole window also averages down the encoder quantisation and the
+        Modbus timestamp jitter that a two-point difference amplifies.
+
+        Repeated positions give 0 (not a spike).  When no window qualifies
+        the previous value is held for ``hold_budget`` ticks before the
+        register value is used, so a single dropped poll is not a step into
+        the derivative.
+        """
+        period = float(period_s) if period_s is not None else float("nan")
+        if not (math.isfinite(period) and period > 1.0e-6):
+            period = 1.0 / max(float(poll_hz), 1.0)
+        lo = 0.5 * period
+        hi = 5.0 * period
+
+        def _degraded() -> tuple[float, str]:
+            if int(hold_budget) > 0 and math.isfinite(float(hold_m_s)):
+                return float(hold_m_s), "hold"
+            return float(fallback_m_s), "reg"
+
+        if len(samples) < 2:
+            return _degraded()
+        t_new, x_new = float(samples[-1][0]), float(samples[-1][1])
+        if not (math.isfinite(t_new) and math.isfinite(x_new)):
+            return _degraded()
+        window: list[tuple[float, float]] = []
+        for t_s, x_s in reversed(samples):
+            t_f, x_f = float(t_s), float(x_s)
+            if not (math.isfinite(t_f) and math.isfinite(x_f)):
+                break
+            age = t_new - t_f
+            if age < 0.0 or age > hi:
+                break
+            window.append((t_f, x_f))
+        if len(window) < 2:
+            return _degraded()
+        span = t_new - window[-1][0]
+        if span < lo:
+            return _degraded()
+        n = float(len(window))
+        t_bar = sum(p[0] for p in window) / n
+        x_bar = sum(p[1] for p in window) / n
+        s_tt = sum((p[0] - t_bar) ** 2 for p in window)
+        if s_tt <= 1.0e-12:
+            return _degraded()
+        s_tx = sum((p[0] - t_bar) * (p[1] - x_bar) for p in window)
+        return s_tx / s_tt, "lsq"
+
+    @staticmethod
+    def _motion_from_candidates(
+        *candidates: float,
+        zero_eps: float = 1.0e-3,
+    ) -> float:
+        """First finite candidate whose magnitude exceeds ``zero_eps``."""
+        eps = max(float(zero_eps), 0.0)
+        for candidate in candidates:
+            value = float(candidate)
+            if math.isfinite(value) and abs(value) >= eps:
+                return value
+        return 0.0
+
+    @staticmethod
+    def _is_decel_request(
+        v_goal: float,
+        v_motion: float,
+        *,
+        zero_eps: float = 1.0e-3,
+    ) -> bool:
+        """True when the goal is a same-sign slowdown (including stop).
+
+        An opposite-sign ``v_goal`` is an explicit reverse and is not a
+        brake request.
+        """
+        vg = float(v_goal)
+        vm = float(v_motion)
+        eps = max(float(zero_eps), 0.0)
+        if not (math.isfinite(vg) and math.isfinite(vm)):
+            return False
+        if abs(vm) < eps:
+            return False
+        if vg * vm < 0.0:
+            return False
+        return abs(vg) <= abs(vm) + 1.0e-12
+
+    @staticmethod
+    def _clamp_brake_position_term(
+        v_p: float,
+        *,
+        v_goal: float,
+        v_motion: float,
+        zero_eps: float = 1.0e-3,
+    ) -> float:
+        """During a same-sign slowdown, do not let P command a reverse."""
+        if not RailServoBridge._is_decel_request(
+            v_goal, v_motion, zero_eps=zero_eps
+        ):
+            return float(v_p)
+        if v_motion > 0.0:
+            return max(float(v_p), 0.0)
+        if v_motion < 0.0:
+            return min(float(v_p), 0.0)
+        return float(v_p)
+
+    @staticmethod
     def _estimate_goal_motion(
         samples: Sequence[tuple[float, float]],
         *,
@@ -2179,21 +2306,30 @@ class RailServoBridge:
         v_prev_cmd: float,
         zero_eps: float = 1.0e-3,
     ) -> float:
-        """Do not turn a zero-velocity request into an active reversal."""
+        """Do not turn a deceleration / stop into an active reversal.
+
+        Direction comes from actual motion (``v_meas`` first — encoder
+        difference after the 157 ms register lag fix), then ``v_ref``, then
+        the previous command.  Engages for the whole same-sign slowdown
+        (``v_goal * v_motion >= 0`` and ``|v_goal| <= |v_motion|``), not
+        only when ``v_goal≈0``.  An opposite-sign ``v_goal`` is a real
+        reverse and is left alone.
+        """
         desired = float(v_des)
-        if abs(float(v_goal)) >= max(float(zero_eps), 0.0):
+        v_motion = RailServoBridge._motion_from_candidates(
+            v_meas, v_ref, v_prev_cmd, zero_eps=zero_eps
+        )
+        if abs(v_motion) < max(float(zero_eps), 0.0):
+            if abs(float(v_goal)) < max(float(zero_eps), 0.0):
+                return 0.0
             return desired
-        direction = 0.0
-        for candidate in (v_prev_cmd, v_meas, v_ref):
-            value = float(candidate)
-            if abs(value) >= max(float(zero_eps), 0.0):
-                direction = math.copysign(1.0, value)
-                break
-        if direction > 0.0:
+        if not RailServoBridge._is_decel_request(
+            v_goal, v_motion, zero_eps=zero_eps
+        ):
+            return desired
+        if v_motion > 0.0:
             return max(desired, 0.0)
-        if direction < 0.0:
-            return min(desired, 0.0)
-        return 0.0
+        return min(desired, 0.0)
 
     @staticmethod
     def _standstill_hold_update(
@@ -2304,6 +2440,13 @@ class RailServoBridge:
         last_bias = int(getattr(self._drive, "_counts_bias", 0) or 0)
         next_t = time.monotonic()
         di_streak = 0
+        enc_history: deque[tuple[float, float]] = deque(maxlen=8)
+        # Window the encoder slope by what the worker actually achieves, not
+        # by config: 225941 asked for 60 Hz and got 56.
+        poll_period_history: deque[float] = deque(maxlen=16)
+        v_enc_hold = float("nan")
+        enc_hold_left = 0
+        enc_hold_max = 2
 
         while not self._stop.is_set():
             if self._arm_req.is_set():
@@ -2321,6 +2464,10 @@ class RailServoBridge:
                 ref_inited = False
                 standstill_held = False
                 standstill_enter_since = None
+                enc_history.clear()
+                poll_period_history.clear()
+                v_enc_hold = float("nan")
+                enc_hold_left = 0
                 try:
                     self._drive.set_velocity_rpm(0, force=True)
                 except Exception:
@@ -2332,6 +2479,13 @@ class RailServoBridge:
             prev_t = t0
             dt = min(dt_wall, dt_cap)
             poll_ok = dt_wall <= dt_cap
+            if poll_ok:
+                poll_period_history.append(float(dt_wall))
+            enc_period_s = (
+                float(median(poll_period_history))
+                if len(poll_period_history) >= 4
+                else None
+            )
             v_max = max(float(self.config.vel_max_m_s), 1.0e-4)
             a_max = max(float(self.config.vel_amax_m_s2), 1.0e-3)
             follow = False
@@ -2346,7 +2500,10 @@ class RailServoBridge:
             target_v_ff = float("nan")
             command_mode = RailCommandMode.POSITION
             goal_stationary = False
-            v_meas = self._rpm_to_mps(float(self.measured_speed_rpm))
+            v_reg = self._rpm_to_mps(float(self.measured_speed_rpm))
+            v_enc = v_reg
+            v_meas = v_enc
+            v_enc_source = "reg"
             v_des = 0.0
             v_cmd = 0.0
             a_cmd = 0.0
@@ -2375,9 +2532,13 @@ class RailServoBridge:
 
                 t_read0 = time.monotonic()
                 drive_rpm, drive_m, di_mask = self._drive.read_motion_and_di_fast()
-                t_read_ms = (time.monotonic() - t_read0) * 1000.0
+                t_read1 = time.monotonic()
+                t_read_ms = (t_read1 - t_read0) * 1000.0
                 n_modbus = 1
-                motion_sample_mono = time.monotonic()
+                # Stamp the middle of the Modbus read, not its end: the read
+                # takes 8 ms median with a long tail, and timing the samples
+                # off the tail put that jitter straight into the slope.
+                motion_sample_mono = 0.5 * (t_read0 + t_read1)
                 measured = self._encode_rail_m(drive_m)
                 speed_rpm_host = self._encode_speed_rpm(drive_rpm)
                 last_enc_ok_t = motion_sample_mono
@@ -2481,6 +2642,33 @@ class RailServoBridge:
                             speed_rpm_host,
                             sample_mono_s=motion_sample_mono,
                         )
+
+                v_reg = self._rpm_to_mps(float(speed_rpm_host))
+                if (
+                    encoder_accepted
+                    and math.isfinite(measured)
+                    and math.isfinite(motion_sample_mono)
+                ):
+                    enc_history.append(
+                        (float(motion_sample_mono), float(measured))
+                    )
+                v_enc, v_enc_source = self._encoder_velocity(
+                    enc_history,
+                    poll_hz=float(self.config.poll_hz),
+                    fallback_m_s=v_reg,
+                    period_s=enc_period_s,
+                    hold_m_s=v_enc_hold,
+                    hold_budget=enc_hold_left,
+                )
+                if v_enc_source == "lsq":
+                    v_enc_hold = float(v_enc)
+                    enc_hold_left = enc_hold_max
+                elif v_enc_source == "hold":
+                    enc_hold_left = max(0, enc_hold_left - 1)
+                else:
+                    v_enc_hold = float("nan")
+                    enc_hold_left = 0
+                v_meas = v_enc
 
                 # Mid-session bias change = FA-60/SON wipe (trusted → resync).
                 # Untrusted mid-run: HOLD and keep the taught zero (no wipe).
@@ -2837,19 +3025,23 @@ class RailServoBridge:
 
                     kp = float(self.config.vel_kp)
                     kd = float(self.config.vel_kd)
-                    v_meas = self._rpm_to_mps(float(speed_rpm_host))
                     err_x = x_ref - measured
                     err_v = v_ref - v_meas
                     # Position+FF on the shaped reference (papers: ẋd + Kp(xd−x)
                     # + Kd(ẋd−ẋ)).  xd is x_ref, never x_goal — command lead
                     # and later KMP OTG stay outside this loop.  Pure velocity
                     # (v_p=0) integrates drift; that was the 3 mm tool-Y.
+                    # v_meas is encoder-difference, not the lagged 0x1000
+                    # register (157 ms stale → plugging brake on every stop).
                     v_p = kp * err_x
                     if settling:
                         v_p_allow = abs(err_x) / max_stall_s
                     else:
                         v_p_allow = max(abs(err_x) / max_stall_s, stall_v_floor)
                     v_p = max(-v_p_allow, min(v_p_allow, v_p))
+                    v_p = self._clamp_brake_position_term(
+                        v_p, v_goal=v_goal_est, v_motion=v_meas
+                    )
                     v_d = kd * err_v
                     v_raw = v_ref + v_p + v_d
                     if velocity_coupled:
@@ -3098,7 +3290,9 @@ class RailServoBridge:
                         v_goal_est_m_s=v_goal_est,
                         v_ref_m_s=v_ref if ref_inited else 0.0,
                         a_ref_m_s2=a_ref if ref_inited else 0.0,
-                        v_meas_m_s=v_meas,
+                        v_meas_m_s=v_reg,
+                        v_enc_m_s=v_enc,
+                        v_enc_source=v_enc_source,
                         v_des_m_s=v_des,
                         v_cmd_m_s=v_cmd,
                         a_cmd_m_s2=a_cmd,
