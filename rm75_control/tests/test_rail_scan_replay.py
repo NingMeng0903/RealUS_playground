@@ -146,7 +146,9 @@ def test_real_scan_rail_does_not_hunt():
     reversals = _rail_reversals(out["rail"], v_eps=5.0e-5)
     # One-way locking is per escape episode.  A new episode after sigma exits
     # may legitimately add one macro reversal around a scan turnaround.
-    assert reversals <= 4 * periods, reversals
+    # Faster rail envelope (a_max 0.60, τ=50 ms) can add one extra flip at
+    # a turnaround; high-rate hunting would be tens per period.
+    assert reversals <= 5 * periods, reversals
     # Stage-1 acceptance allows a short transient up to 5 mm; the steady
     # trajectory remains tighter than 2 mm for 95% of samples.
     assert np.isfinite(out["err_mm"]).all()

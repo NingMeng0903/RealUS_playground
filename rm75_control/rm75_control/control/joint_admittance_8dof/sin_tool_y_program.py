@@ -293,7 +293,7 @@ def build_sin_tool_y_program(
             q_target_rad,
             duration_s=float(params.plan_duration_s),
             label=f"movej->{params.slot}",
-            move_kp=float(params.move_kp),
+            move_kp=SinToolYTaskParams.optional_move_kp(params.move_kp),
             gov_joint_max_deg=float(params.plan_gov_joint_max_deg),
             force_observer=None,
         )
@@ -305,7 +305,7 @@ def build_sin_tool_y_program(
             q_target_rad,
             duration_s=float(params.plan_duration_s),
             label=f"movel->{params.slot}",
-            move_kp=float(params.move_kp),
+            move_kp=SinToolYTaskParams.optional_move_kp(params.move_kp),
             max_lin_vel_m_s=max_lin,
             gov_joint_max_deg=float(params.plan_gov_joint_max_deg),
             force_observer=None,
@@ -492,7 +492,7 @@ def make_task_params_from_args(
     return SinToolYTaskParams(
         config_path=config_path,
         slot=str(args.slot),
-        move_kp=float(args.move_kp),
+        move_kp=SinToolYTaskParams.optional_move_kp(args.move_kp),
         y_pp_cm=float(args.y_pp_cm),
         max_vel_cm_s=float(args.max_vel_cm_s),
         period_s=args.period_s,

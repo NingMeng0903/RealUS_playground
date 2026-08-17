@@ -384,6 +384,40 @@ def test_v_reach_deadzone_inside_d_band() -> None:
     assert task.last_k_ff_scale < 1.0
 
 
+def test_v_reach_alive_with_5mm_d_band() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_ext=2.0,
+            k_esc=0.0,
+            k_ff=0.0,
+            e0_m=0.0,
+            e1_m=0.01,
+            v_lpf_tau_s=0.0,
+            v_reach_cap_m_s=0.05,
+            v_max_m_s=0.08,
+            d_band_m=0.005,
+            d_star_err0_m=0.01,
+            d_star_err1_m=0.04,
+            d_star_reg_mult=20.0,
+        ),
+    )
+    task.set_mode("reach")
+    q = _SEED_Q.copy()
+    d_live = task.extension(q)
+    task.set_d_pref(d_live)
+    y_on = float(q[0]) + d_live
+    task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.008, apply_d_band=True)
+    assert abs(task.last_v_reach) > 1.0e-4
+    assert abs(task.last_v_reach) <= 0.05 + 1.0e-9
+    task._v_lpf = 0.0
+    task._v_lpf_initialized = False
+    task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.080, apply_d_band=True)
+    assert abs(task.last_v_reach) == pytest.approx(0.05, abs=1.0e-9)
+
+
 def test_rail_ff_tracks_desired_y_minus_d_star() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
@@ -653,8 +687,13 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert qn[6] == pytest.approx(61.0)
     assert cfg.rail.soft_min_m == pytest.approx(0.030)
     assert cfg.rail_extension.d_star_reg_mult == pytest.approx(20.0)
-    assert cfg.rail_extension.v_reach_cap_m_s == pytest.approx(0.02)
-    assert cfg.rail_extension.d_band_m == pytest.approx(0.08)
+    assert cfg.rail_extension.v_reach_cap_m_s == pytest.approx(0.05)
+    assert cfg.rail_extension.d_band_m == pytest.approx(0.005)
+    assert cfg.cartesian_track.k_task_lin == pytest.approx(10.0)
+    assert cfg.cartesian_track.k_task_rot == pytest.approx(2.0)
+    assert cfg.cartesian_track.max_pos_err_m == pytest.approx(0.05)
+    assert raw["hybrid_motion"]["kp_pos"][0] == pytest.approx(10.0)
+    assert raw["hybrid_motion"]["kp_pos"][2] == pytest.approx(5.0)
     assert cfg.collision.d_safe == pytest.approx(0.01)
     assert cfg.collision.d_activate == pytest.approx(0.04)
     assert raw["hw"]["lw100"]["soft_min_m"] == pytest.approx(0.030)
@@ -669,7 +708,7 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
         math.radians(25.0), abs=1e-6
     )
     assert cfg.qp.branch_barrier.j1_overfold_abs_rad == pytest.approx(
-        math.radians(120.0), abs=1e-6
+        math.radians(140.0), abs=1e-6
     )
     assert cfg.qp.branch_barrier.j1_overfold_activate_rad == pytest.approx(
         math.radians(25.0), abs=1e-6
@@ -744,13 +783,133 @@ def test_analyzer_rejects_empty_scan(tmp_path) -> None:
     assert spec.loader is not None
     spec.loader.exec_module(mod)
     csv_path = tmp_path / "empty.csv"
-    csv_path.write_text("phase,t_wall_s\nmove,0\n", encoding="utf-8")
+    csv_path.write_text("phase,t_wall_s\n", encoding="utf-8")
     assert mod.analyze(csv_path) == 2
     assert "waste_ratio" in mod.GATES
     assert "accel_reversals_per_s" in mod.GATES
     assert "dt_on_time_frac" in mod.GATES
     assert mod.GATES["rail_min_m"] == pytest.approx(0.02)
     assert mod.GATES["tick_inner_max_ms"] == pytest.approx(20.0)
+    assert mod.GATES["track_err_p95_mm"] == pytest.approx(1.0)
+
+
+def test_analyzer_accepts_ellipse_track_phase(tmp_path) -> None:
+    import importlib.util
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "joint_admittance_8dof"
+        / "analyze_qpik_quality.py"
+    )
+    spec = importlib.util.spec_from_file_location("analyze_qpik_quality", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    n = 40
+    cols = ["phase", "t_wall_s", "q_meas_0", "tool_y_err_mm"]
+    lines = [",".join(cols)]
+    for k in range(n):
+        lines.append(
+            ",".join(["ellipse_track", f"{0.005 * k:.4f}", "0.20", "0.4"])
+        )
+    csv_path = tmp_path / "ellipse.csv"
+    csv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    import io
+    from contextlib import redirect_stdout
+
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        rc = mod.analyze(csv_path)
+    out = buf.getvalue()
+    assert rc != 2
+    assert "phase=ellipse_track" in out
+
+
+def test_wbc_log_header_has_rail_cmd_meas_err() -> None:
+    from rm75_control.control.joint_admittance_8dof.loop import _TickLogger
+
+    header = _TickLogger._HEADER
+    assert "rail_cmd_meas_err_m" in header
+    assert header.count("rail_cmd_meas_err_m") == 1
+    assert len(header) == len(set(header))
+
+
+def test_analyzer_flags_resync_guard_binding(tmp_path) -> None:
+    import importlib.util
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "joint_admittance_8dof"
+        / "analyze_qpik_quality.py"
+    )
+    spec = importlib.util.spec_from_file_location("analyze_qpik_quality", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    n = 80
+    cols = [
+        "phase", "t_wall_s", "q_cmd_0", "q_meas_0", "rail_cmd_meas_err_m",
+        "tool_y_err_mm",
+    ]
+    lines = [",".join(cols)]
+    for k in range(n):
+        lines.append(
+            ",".join(
+                [
+                    "scan",
+                    f"{0.005 * k:.4f}",
+                    "0.420",
+                    "0.400",
+                    "0.020",
+                    "0.4",
+                ]
+            )
+        )
+    csv_path = tmp_path / "bind.csv"
+    csv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    import io
+    from contextlib import redirect_stdout
+
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        rc = mod.analyze(csv_path)
+    out = buf.getvalue()
+    assert rc == 1
+    assert "20 mm guard" in out
+    assert "[FAIL]" in out
+
+
+def test_analyzer_recovers_known_axis_lead() -> None:
+    import importlib.util
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "joint_admittance_8dof"
+        / "analyze_qpik_quality.py"
+    )
+    spec = importlib.util.spec_from_file_location("analyze_qpik_quality", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    dt = 0.005
+    t = np.arange(0.0, 4.0, dt)
+    omega = 2.0 * np.pi / 2.0
+    tau = -0.19
+    ref = np.sin(omega * t)
+    meas = np.sin(omega * (t - tau))
+    got, resid = mod.best_axis_time_shift(ref, meas, dt)
+    assert got == pytest.approx(tau, abs=dt)
+    assert resid < 0.02
+    err = (ref - meas) * 1000.0
+    vel = omega * np.cos(omega * t)
+    corr = mod.err_vel_correlation(err, vel)
+    assert corr < -0.5
 
 
 def test_analyzer_wall_uses_tool_y_err_and_reports_posture(tmp_path) -> None:

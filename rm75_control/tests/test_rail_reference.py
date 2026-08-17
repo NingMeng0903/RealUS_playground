@@ -349,19 +349,64 @@ def test_begin_tracking_session_clears_stale_target_and_hold() -> None:
 
 
 def test_continuous_follow_does_not_freeze_tiny_v_ref() -> None:
-    """COUPLED tracking must keep PD live for tiny nonzero goals (no deadband 0)."""
+    """Tiny nonzero v_ref must keep PD live; only a stopped ref may deadband."""
 
-    # Mirror the worker gate: fresh follow + not settling ⇒ no standstill/deadband.
-    follow, settling, target_stale = True, False, False
-    continuous_tracking = bool(follow) and not settling and not target_stale
-    assert continuous_tracking
-    v_ref = 0.0005  # < 1 mm/s
     err_x = 0.00002
     deadband_m = 0.00005
+    v_ref = 0.0005  # 0.5 mm/s — below standstill wake, still a motion command
     v_raw = v_ref + 14.0 * err_x
-    if not continuous_tracking and abs(v_ref) < 0.001 and abs(err_x) <= deadband_m:
+    if abs(v_ref) < 1.0e-6 and abs(err_x) <= deadband_m:
         v_raw = 0.0
     assert v_raw != 0.0
+    v_ref0 = 0.0
+    v_raw0 = v_ref0 + 14.0 * err_x
+    if abs(v_ref0) < 1.0e-6 and abs(err_x) <= deadband_m:
+        v_raw0 = 0.0
+    assert v_raw0 == 0.0
+
+
+def test_follow_standstill_latches_on_e_track_not_x_goal() -> None:
+    """Live follow + v_ref=0 latches on x_ref−x_meas (not the 20 mm lead)."""
+
+    held, since = False, None
+    held, since = RailServoBridge._standstill_hold_update(
+        held=held,
+        enter_since_s=since,
+        now_s=1.0,
+        err_m=0.00004,
+        v_ref_m_s=0.0,
+        v_cmd_m_s=0.0,
+        v_meas_m_s=0.0,
+        enter_m=0.00005,
+        exit_m=0.00025,
+        dwell_s=0.08,
+    )
+    held, since = RailServoBridge._standstill_hold_update(
+        held=held,
+        enter_since_s=since,
+        now_s=1.09,
+        err_m=0.00004,
+        v_ref_m_s=0.0,
+        v_cmd_m_s=0.0,
+        v_meas_m_s=0.0,
+        enter_m=0.00005,
+        exit_m=0.00025,
+        dwell_s=0.08,
+    )
+    assert held is True
+    held_lead, _ = RailServoBridge._standstill_hold_update(
+        held=False,
+        enter_since_s=1.0,
+        now_s=1.09,
+        err_m=0.020,
+        v_ref_m_s=0.0,
+        v_cmd_m_s=0.0,
+        v_meas_m_s=0.0,
+        enter_m=0.00005,
+        exit_m=0.00025,
+        dwell_s=0.08,
+    )
+    assert held_lead is False
 
 
 def test_standstill_hysteresis_enters_tight_and_wakes_wide() -> None:
@@ -536,6 +581,47 @@ def test_v_ff_cruise_does_not_chop_host_velocity() -> None:
     assert max(abs(cruise[i] - cruise[i - 1]) for i in range(1, len(cruise))) <= (
         a_max * DT + 1.0e-12
     )
+
+
+def test_p_trim_is_on_x_ref_not_x_goal() -> None:
+    """Stream trim follows the shaped reference; 20 mm lead must not enter P."""
+    err_ref = 0.0016
+    err_goal = 0.020
+    v_p = RailServoBridge._p_trim_velocity(err_ref, kp=4.0, trim_max_m_s=0.010)
+    v_if_goal = RailServoBridge._p_trim_velocity(err_goal, kp=4.0, trim_max_m_s=0.010)
+    assert v_p == pytest.approx(0.0064)
+    assert v_if_goal == pytest.approx(0.010)
+
+
+def test_p_trim_caps_and_rejects_nonpositive_gain() -> None:
+    assert RailServoBridge._p_trim_velocity(0.010, kp=4.0, trim_max_m_s=0.010) == pytest.approx(
+        0.010
+    )
+    assert RailServoBridge._p_trim_velocity(-0.010, kp=4.0, trim_max_m_s=0.010) == pytest.approx(
+        -0.010
+    )
+    assert RailServoBridge._p_trim_velocity(0.005, kp=0.0, trim_max_m_s=0.010) == 0.0
+    assert RailServoBridge._p_trim_velocity(0.005, kp=4.0, trim_max_m_s=0.0) == 0.0
+
+
+def test_stream_law_matches_position_plus_ff_cruise() -> None:
+    """Paper law: v = v_ref + kp*(x_ref−x) + kd*(v_ref−v).  Not velocity-only."""
+    x_ref = 0.400
+    x_meas = 0.3984
+    v_ref = 0.025
+    v_meas = 0.024
+    err_x = x_ref - x_meas
+    kp = 14.0
+    max_stall_s = 0.06
+    stall_v_floor = 0.004
+    v_p = kp * err_x
+    v_p_allow = max(abs(err_x) / max_stall_s, stall_v_floor)
+    v_p = max(-v_p_allow, min(v_p_allow, v_p))
+    v_des = v_ref + v_p + 0.22 * (v_ref - v_meas)
+    assert err_x == pytest.approx(0.0016)
+    assert v_p == pytest.approx(0.0224)
+    assert v_p > 0.0
+    assert v_des == pytest.approx(0.04762)
 
 
 def test_set_target_m_stores_v_ff() -> None:

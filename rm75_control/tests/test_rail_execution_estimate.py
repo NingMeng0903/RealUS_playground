@@ -19,7 +19,7 @@ class _Bridge:
         self.execution_feedback = feedback
 
 
-def test_rail_execution_estimate_extrapolates_at_most_one_poll() -> None:
+def test_rail_execution_estimate_uses_true_age_up_to_two_polls() -> None:
     feedback = SimpleNamespace(
         position_m=0.401,
         sample_mono_s=10.0,
@@ -33,12 +33,20 @@ def test_rail_execution_estimate_extrapolates_at_most_one_poll() -> None:
     )
     assert estimate is not None
     assert estimate.position_m == pytest.approx(0.401)
-    assert estimate.extrapolation_age_s == pytest.approx(0.025)
-    assert estimate.velocity_m_s == pytest.approx(0.06)
+    assert estimate.age_s == pytest.approx(0.04)
+    assert estimate.extrapolation_age_s == pytest.approx(0.04)
+    assert estimate.velocity_m_s == pytest.approx(0.072)
     assert estimate.command_mode == "coupled_velocity"
+    capped = _rail_execution_velocity_estimate(
+        _Bridge(feedback), now_s=10.08, freshness_s=0.10
+    )
+    assert capped is not None
+    assert capped.age_s == pytest.approx(0.08)
+    assert capped.extrapolation_age_s == pytest.approx(0.05)
+    assert capped.velocity_m_s == pytest.approx(0.08)
 
 
-def test_rail_execution_estimate_rejects_stale_feedback() -> None:
+def test_rail_execution_estimate_coasts_stale_feedback() -> None:
     feedback = SimpleNamespace(
         position_m=0.401,
         sample_mono_s=10.0,
@@ -47,10 +55,14 @@ def test_rail_execution_estimate_rejects_stale_feedback() -> None:
         a_cmd_m_s2=0.0,
         command_mode="coupled_velocity",
     )
-    with pytest.raises(RuntimeError, match="stale"):
-        _rail_execution_velocity_estimate(
-            _Bridge(feedback), now_s=10.051, freshness_s=0.05
-        )
+    estimate = _rail_execution_velocity_estimate(
+        _Bridge(feedback), now_s=10.051, freshness_s=0.05
+    )
+    assert estimate is not None
+    assert estimate.age_s == pytest.approx(0.051)
+    assert estimate.extrapolation_age_s == pytest.approx(0.05)
+    assert estimate.position_m == pytest.approx(0.401)
+    assert estimate.velocity_m_s == pytest.approx(0.04)
 
 
 def test_rail_execution_estimate_skips_startup_before_first_sample() -> None:
@@ -80,22 +92,23 @@ def test_rail_execution_estimate_skips_startup_before_first_sample() -> None:
         a_cmd_m_s2=0.0,
         command_mode="coupled_velocity",
     )
-    assert (
-        _rail_execution_velocity_estimate(
-            _Bridge(stale),
-            now_s=10.116,
-            freshness_s=0.08,
-            require_fresh=False,
-        )
-        is None
+    coast = _rail_execution_velocity_estimate(
+        _Bridge(stale),
+        now_s=10.116,
+        freshness_s=0.08,
+        require_fresh=False,
     )
-    with pytest.raises(RuntimeError, match="stale"):
-        _rail_execution_velocity_estimate(
-            _Bridge(stale),
-            now_s=10.116,
-            freshness_s=0.08,
-            require_fresh=True,
-        )
+    assert coast is not None
+    assert coast.age_s == pytest.approx(0.116)
+    assert coast.position_m == pytest.approx(0.401)
+    again = _rail_execution_velocity_estimate(
+        _Bridge(stale),
+        now_s=10.116,
+        freshness_s=0.08,
+        require_fresh=True,
+    )
+    assert again is not None
+    assert again.age_s == pytest.approx(0.116)
 
 
 def test_rail_execution_estimate_rejects_encoder_gated_sample() -> None:

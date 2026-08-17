@@ -17,6 +17,7 @@ Task orchestration (window C):
 
   python apps/joint_admittance_8dof/d_sin_tool_y.py --config ... --enable-force ...
   python apps/joint_admittance_8dof/d_gamepad_vcmd.py --config ...
+  python apps/joint_admittance_8dof/d_ellipse_track.py --config ...
 """
 
 from __future__ import annotations
@@ -82,7 +83,10 @@ def _reload_task_parsers():
         rail_extension,
     )
     from rm75_control.control.joint_admittance_8dof import config as ik_config
+    from rm75_control.control.joint_admittance_8dof import api as ja_api
+    from rm75_control.control.joint_admittance_8dof import ellipse_track_program as etp
     from rm75_control.control.joint_admittance_8dof import gamepad_vcmd_program as gvp
+    from rm75_control.control.joint_admittance_8dof import reference as ja_ref
     from rm75_control.control.joint_admittance_8dof import sin_tool_y_program as syp
 
     importlib.reload(branch_barrier)
@@ -91,9 +95,12 @@ def _reload_task_parsers():
     importlib.reload(psi_retarget)
     importlib.reload(rail_extension)
     importlib.reload(ik_config)
+    importlib.reload(ja_ref)
+    importlib.reload(ja_api)
     importlib.reload(gvp)
     importlib.reload(syp)
-    return gvp, syp
+    importlib.reload(etp)
+    return gvp, syp, etp
 
 
 def _run_controller_service(
@@ -233,10 +240,13 @@ def _run_controller_service(
         try:
             # Window A is long-lived.  Re-read yaml *and* reload the parsers
             # so a new key (e.g. box_activate_rad) cannot refuse START.
-            gvp, syp = _reload_task_parsers()
+            gvp, syp, etp = _reload_task_parsers()
             task_raw = load_yaml(config_path) if config_path is not None else raw
-            if str(getattr(params, "task_kind", "sin_tool_y") or "sin_tool_y") == "gamepad_vcmd":
+            task_kind = str(getattr(params, "task_kind", "sin_tool_y") or "sin_tool_y")
+            if task_kind == "gamepad_vcmd":
                 built = gvp.build_gamepad_vcmd_program(params, raw=task_raw)
+            elif task_kind == "ellipse_track":
+                built = etp.build_ellipse_track_program(params, raw=task_raw)
             else:
                 built = syp.build_sin_tool_y_program(params, raw=task_raw)
             rail_m_fn.set_active(built.inner)
@@ -478,10 +488,23 @@ def main() -> int:
 
             if args.hold:
                 assert inner is not None
+                gains = inner.cfg.cartesian_track
                 outer = CartesianTrackOuterLoop(
                     HoldReference(),
                     CartesianTrackConfig(
-                        k_task=np.full(6, 2.0),
+                        k_task=np.array(
+                            [
+                                gains.k_task_lin,
+                                gains.k_task_lin,
+                                gains.k_task_lin,
+                                gains.k_task_rot,
+                                gains.k_task_rot,
+                                gains.k_task_rot,
+                            ],
+                            dtype=float,
+                        ),
+                        max_pos_err_m=gains.max_pos_err_m,
+                        max_rot_err_rad=gains.max_rot_err_rad,
                         euler_order=inner.cfg.euler_order,
                         control_frame=inner.cfg.control_frame,
                     ),

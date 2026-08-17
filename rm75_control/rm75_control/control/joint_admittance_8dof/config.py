@@ -8,7 +8,10 @@ import numpy as np
 
 from rm75_control.control.joint_admittance_8dof.collision_model import CollisionConfig
 from rm75_control.control.joint_admittance_8dof.ik_types import SrDampingConfig
-from rm75_control.control.joint_admittance_8dof.loop import JointIkConfig
+from rm75_control.control.joint_admittance_8dof.loop import (
+    CartesianTrackGains,
+    JointIkConfig,
+)
 from rm75_control.control.joint_admittance_8dof.solver.qp_builder import (
     QpConfig,
     WlnConfig,
@@ -368,7 +371,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
                 name="branch_barrier.j4_limit_activate_rad",
             ),
             j1_overfold_abs_rad=_finite_float(
-                bb.get("j1_overfold_abs_rad", 120.0 * math.pi / 180.0),
+                bb.get("j1_overfold_abs_rad", 140.0 * math.pi / 180.0),
                 name="branch_barrier.j1_overfold_abs_rad",
             ),
             j1_overfold_activate_rad=_finite_float(
@@ -725,10 +728,10 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
             r.get("v_guard_max_m_s", 0.04), name="rail_extension.v_guard_max_m_s"
         ),
         v_lpf_tau_s=_finite_float(
-            r.get("v_lpf_tau_s", 0.12), name="rail_extension.v_lpf_tau_s"
+            r.get("v_lpf_tau_s", 0.05), name="rail_extension.v_lpf_tau_s"
         ),
         v_lpf_tau_escape_s=_finite_float(
-            r.get("v_lpf_tau_escape_s", 0.08),
+            r.get("v_lpf_tau_escape_s", 0.04),
             name="rail_extension.v_lpf_tau_escape_s",
         ),
         sigma_escape_enter=_finite_float(
@@ -773,10 +776,10 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
             r.get("soft_max_m", 0.78), name="rail_extension.soft_max_m"
         ),
         v_reach_cap_m_s=_finite_float(
-            r.get("v_reach_cap_m_s", 0.02), name="rail_extension.v_reach_cap_m_s"
+            r.get("v_reach_cap_m_s", 0.05), name="rail_extension.v_reach_cap_m_s"
         ),
         d_band_m=_finite_float(
-            r.get("d_band_m", 0.08), name="rail_extension.d_band_m"
+            r.get("d_band_m", 0.005), name="rail_extension.d_band_m"
         ),
         d_star_err0_m=_finite_float(
             r.get("d_star_err0_m", 0.01), name="rail_extension.d_star_err0_m"
@@ -886,6 +889,39 @@ def _parse_rail(rail_raw: dict, hw_lw: dict) -> RailLockConfig:
     )
 
 
+def _parse_cartesian_track(raw: dict) -> CartesianTrackGains:
+    section = _mapping(raw.get("cartesian_track"), name="cartesian_track")
+    _reject_unknown(
+        section,
+        {"k_task_lin", "k_task_rot", "max_pos_err_m", "max_rot_err_rad"},
+        name="cartesian_track",
+    )
+    defaults = CartesianTrackGains()
+    gains = CartesianTrackGains(
+        k_task_lin=_finite_float(
+            section.get("k_task_lin", defaults.k_task_lin),
+            name="cartesian_track.k_task_lin",
+        ),
+        k_task_rot=_finite_float(
+            section.get("k_task_rot", defaults.k_task_rot),
+            name="cartesian_track.k_task_rot",
+        ),
+        max_pos_err_m=_finite_float(
+            section.get("max_pos_err_m", defaults.max_pos_err_m),
+            name="cartesian_track.max_pos_err_m",
+        ),
+        max_rot_err_rad=_finite_float(
+            section.get("max_rot_err_rad", defaults.max_rot_err_rad),
+            name="cartesian_track.max_rot_err_rad",
+        ),
+    )
+    if gains.k_task_lin < 0.0 or gains.k_task_rot < 0.0:
+        raise ValueError("cartesian_track gains must be non-negative")
+    if gains.max_pos_err_m <= 0.0 or gains.max_rot_err_rad <= 0.0:
+        raise ValueError("cartesian_track error limits must be positive")
+    return gains
+
+
 def build_joint_ik_config(raw: dict) -> JointIkConfig:
     """Build JointIkConfig from inner.qp + qpik.hard_limits."""
 
@@ -974,6 +1010,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
     psi_retarget = _parse_psi_retarget(inner)
     ird = _parse_ird(inner)
     rail_extension = _parse_rail_extension(inner)
+    cartesian_track = _parse_cartesian_track(raw)
 
     hw_lw = _mapping(
         _mapping(raw.get("hw"), name="hw").get("lw100"), name="hw.lw100"
@@ -1024,12 +1061,13 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         collision=collision,
         rail=rail,
         rail_extension=rail_extension,
+        cartesian_track=cartesian_track,
         v_scale=_finite_float(hard_value("v_scale", "v_scale", 0.5), name="v_scale"),
         a_max_arm_rad_s2=_finite_float(
             hard_value("a_max_arm_rad_s2", "a_max_arm", 20.0), name="a_max_arm_rad_s2"
         ),
         a_max_rail_m_s2=_finite_float(
-            hard_value("a_max_rail_m_s2", "a_max_rail_m_s2", 0.30),
+            hard_value("a_max_rail_m_s2", "a_max_rail_m_s2", 0.60),
             name="a_max_rail_m_s2",
         ),
         position_margin_rad=math.radians(

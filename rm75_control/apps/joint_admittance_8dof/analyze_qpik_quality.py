@@ -27,7 +27,7 @@ GATES = {
     "arm_acc_max": 8.0,
     "contact_loss_frac": 0.02,
     "fz_p99_n": 4.0,
-    "track_err_p95_mm": 3.0,
+    "track_err_p95_mm": 1.0,
     "j4_limit_deg": 135.0,
     "j6_limit_deg": 128.0,
     "j7_limit_deg": 360.0,
@@ -56,7 +56,71 @@ GATES = {
     # Carriage servo (rail_servo CSV, sibling directory).
     "rail_servo_accel_reversals_per_s": 3.0,
     "rail_servo_track_err_p95_mm": 2.0,
+    # q_cmd[0]−q_meas[0] stuck on the 20 mm resync window is a fault.
+    "rail_resync_err_m": 0.018,
+    "rail_resync_bind_frac": 0.10,
 }
+
+
+def best_axis_time_shift(
+    ref: np.ndarray,
+    meas: np.ndarray,
+    dt: float,
+    *,
+    max_lag_s: float = 0.5,
+) -> tuple[float, float]:
+    """Best lag ``tau`` such that ``meas(t) ≈ ref(t - tau)``.
+
+    Positive ``tau`` means the measurement lags the reference.  Negative
+    means it leads.  Returns ``(tau_s, residual_rms)``.
+    """
+    ref_a = np.asarray(ref, dtype=float).reshape(-1)
+    meas_a = np.asarray(meas, dtype=float).reshape(-1)
+    n = int(min(ref_a.size, meas_a.size))
+    if n < 20 or not np.isfinite(dt) or dt <= 0.0:
+        return float("nan"), float("nan")
+    ref_a = ref_a[:n]
+    meas_a = meas_a[:n]
+    max_k = min(int(round(float(max_lag_s) / float(dt))), n // 4)
+    best_tau = 0.0
+    best_rms = float("inf")
+    found = False
+    for k in range(-max_k, max_k + 1):
+        if k >= 0:
+            r = ref_a[: n - k]
+            m = meas_a[k:]
+        else:
+            r = ref_a[-k:]
+            m = meas_a[: n + k]
+        valid = np.isfinite(r) & np.isfinite(m)
+        if int(valid.sum()) < 20:
+            continue
+        resid = m[valid] - r[valid]
+        rms = float(np.sqrt(np.mean(resid * resid)))
+        if rms < best_rms:
+            best_rms = rms
+            best_tau = float(k) * float(dt)
+            found = True
+    if not found:
+        return float("nan"), float("nan")
+    return best_tau, best_rms
+
+
+def err_vel_correlation(err: np.ndarray, vel: np.ndarray) -> float:
+    """Pearson correlation of tracking error vs desired velocity."""
+    e = np.asarray(err, dtype=float).reshape(-1)
+    v = np.asarray(vel, dtype=float).reshape(-1)
+    n = int(min(e.size, v.size))
+    if n < 20:
+        return float("nan")
+    mask = np.isfinite(e[:n]) & np.isfinite(v[:n])
+    if int(mask.sum()) < 20:
+        return float("nan")
+    ee = e[:n][mask]
+    vv = v[:n][mask]
+    if float(np.std(ee)) < 1.0e-12 or float(np.std(vv)) < 1.0e-12:
+        return float("nan")
+    return float(np.corrcoef(ee, vv)[0, 1])
 
 
 def _col(rows: list[dict], name: str) -> np.ndarray:
@@ -426,9 +490,17 @@ def _tick_profile(rows: list[dict], info: list[tuple[str, str]]) -> None:
 
 def analyze(path: Path) -> int:
     with path.open(newline="") as handle:
-        rows = [r for r in csv.DictReader(handle) if r.get("phase") == "scan"]
+        all_rows = list(csv.DictReader(handle))
+    scan_rows = [r for r in all_rows if r.get("phase") == "scan"]
+    if scan_rows:
+        rows = scan_rows
+        phase_used = "scan"
+    else:
+        rows = all_rows
+        labels = sorted({str(r.get("phase") or "") for r in rows})
+        phase_used = ",".join(labels) if labels else "(none)"
     if not rows:
-        print("no scan rows", file=sys.stderr)
+        print("no rows", file=sys.stderr)
         return 2
 
     t = _col(rows, "t_wall_s")
@@ -458,6 +530,7 @@ def analyze(path: Path) -> int:
 
     results: list[tuple[str, bool, str]] = []
     info: list[tuple[str, str]] = []
+    info.append(("phase filter", phase_used))
 
     if np.isfinite(waste).any():
         w = float(np.nanmedian(waste[np.isfinite(waste)]))
@@ -708,6 +781,56 @@ def analyze(path: Path) -> int:
     _rail_servo_checks(path, results, info)
     _tick_profile(rows, info)
 
+    div = _col(rows, "rail_cmd_meas_err_m")
+    if not np.isfinite(div).any():
+        div = _col(rows, "q_cmd_0") - _col(rows, "q_meas_0")
+    div_abs = np.abs(div)
+    div_ok = div_abs[np.isfinite(div_abs)]
+    if div_ok.size:
+        bind = float(np.mean(div_ok >= GATES["rail_resync_err_m"]))
+        p95_div = float(np.percentile(div_ok, 95))
+        results.append(
+            (
+                "rail |q_cmd-q_meas| not stuck on 20 mm guard",
+                bind < GATES["rail_resync_bind_frac"],
+                f"bind {100.0 * bind:.1f}%  p95 {1000.0 * p95_div:.1f} mm",
+            )
+        )
+
+    dt_med = float(np.median(dt_wall)) if dt_wall.size else GATES["dt_nominal_s"]
+    for axis, d_name, m_name, v_name in (
+        ("X", "pose_d_x", "pose_meas_x", "vel_ff_vx"),
+        ("Y", "pose_d_y", "pose_meas_y", "vel_ff_vy"),
+        ("Z", "pose_d_z", "pose_meas_z", "vel_ff_vz"),
+    ):
+        ref = _col(rows, d_name)
+        meas = _col(rows, m_name)
+        if not (np.isfinite(ref).any() and np.isfinite(meas).any()):
+            continue
+        tau, resid = best_axis_time_shift(ref, meas, dt_med)
+        axis_err = (ref - meas) * 1000.0
+        corr = err_vel_correlation(axis_err, _col(rows, v_name))
+        info.append(
+            (
+                f"axis {axis} phase",
+                (
+                    f"tau {1000.0 * tau:.0f} ms  "
+                    if np.isfinite(tau)
+                    else "tau n/a  "
+                )
+                + (
+                    f"resid {1000.0 * resid:.2f} mm  "
+                    if np.isfinite(resid)
+                    else "resid n/a  "
+                )
+                + (
+                    f"corr(e,v) {corr:.3f}"
+                    if np.isfinite(corr)
+                    else "corr(e,v) n/a"
+                ),
+            )
+        )
+
     e95 = (
         float(np.nanpercentile(np.abs(err[np.isfinite(err)]), 95))
         if np.isfinite(err).any()
@@ -715,7 +838,7 @@ def analyze(path: Path) -> int:
     )
     results.append(
         (
-            "tool_y_err p95 < 3 mm",
+            "tool_y_err p95 < 1 mm",
             bool(np.isfinite(e95) and e95 < GATES["track_err_p95_mm"]),
             f"{e95:.2f} mm",
         )
@@ -729,7 +852,7 @@ def analyze(path: Path) -> int:
         info.append(("motion_err_rms p95 (force-Z included)", f"{rms95:.2f} mm"))
 
     failed = 0
-    print(f"scan rows: {len(rows)}  file: {path}")
+    print(f"rows: {len(rows)}  phase={phase_used}  file: {path}")
     for name, detail in info:
         print(f"  [INFO] {name}: {detail}")
     for name, ok, detail in results:

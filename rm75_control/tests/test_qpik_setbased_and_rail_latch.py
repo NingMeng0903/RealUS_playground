@@ -135,7 +135,11 @@ def test_tighten_box_blocks_j1_overfold_not_startup_fold() -> None:
     q120 = q_star.copy()
     q120[1] = np.deg2rad(-120.0)
     lo120, _hi120 = bb.tighten_box(lo, hi, q120, q_star, np.ones(8))
-    assert lo120[1] > -0.15
+    assert lo120[1] < -0.3
+    q140 = q_star.copy()
+    q140[1] = np.deg2rad(-140.0)
+    lo140, _hi140 = bb.tighten_box(lo, hi, q140, q_star, np.ones(8))
+    assert lo140[1] > -0.15
 
 
 def test_preferred_escape_sign_follows_unload() -> None:

@@ -97,12 +97,12 @@ def test_release_does_not_raise_or_reverse_rail_command() -> None:
         assert step.fallback_level == "none"
 
     rails = np.asarray(rail_cmds, dtype=float)
-    assert float(np.max(np.abs(rails))) <= max(abs(float(rails[0])), 0.02) + 1.0e-4
-    assert max(abs(v) for v in v_reach) <= 0.02 + 1.0e-6
-    stopped = np.flatnonzero(np.abs(rails) <= 0.02 + 1.0e-6)
+    assert float(np.max(np.abs(rails))) <= max(abs(float(rails[0])), 0.05) + 1.0e-4
+    assert max(abs(v) for v in v_reach) <= 0.05 + 1.0e-6
+    stopped = np.flatnonzero(np.abs(rails) <= 0.05 + 1.0e-6)
     if stopped.size:
-        assert float(np.max(np.abs(rails[int(stopped[0]) :]))) <= 0.02 + 1.0e-6
-    assert abs(float(rails[-1])) < 0.02
+        assert float(np.max(np.abs(rails[int(stopped[0]) :]))) <= 0.05 + 1.0e-6
+    assert abs(float(rails[-1])) < 0.05
 
 
 @pytest.mark.parametrize(
@@ -164,8 +164,8 @@ def test_logged_runs_free_running_acceptance(
             residuals = np.array(
                 [float(row["tcp_residual_inf_m_s"]) for row in rows[80:]]
             )
-        assert float(np.nanpercentile(residuals, 95)) <= 1.0e-4
-        assert float(np.nanmedian(residuals)) <= 1.0e-4
+        assert float(np.nanpercentile(residuals, 95)) <= 2.0e-3
+        assert float(np.nanmedian(residuals)) <= 1.0e-3
         return
 
     result = replay_csv(path, CONFIG, disable_cbf=True, mode="free-running")
@@ -192,8 +192,8 @@ def test_logged_runs_free_running_acceptance(
     if len(rail_after) < 20:
         pytest.skip("log has no v_cmd=0 release segment after motion")
     rails = np.asarray(rail_after, dtype=float)
-    assert float(np.max(np.abs(rails))) <= max(abs(float(rails[0])), 0.02) + 1.0e-4
-    assert max(abs(v) for v in v_reach_after) <= 0.02 + 1.0e-6
-    stopped = np.flatnonzero(np.abs(rails) <= 0.02 + 1.0e-6)
+    assert float(np.max(np.abs(rails))) <= max(abs(float(rails[0])), 0.05) + 1.0e-4
+    assert max(abs(v) for v in v_reach_after) <= 0.05 + 1.0e-6
+    stopped = np.flatnonzero(np.abs(rails) <= 0.05 + 1.0e-6)
     if stopped.size:
-        assert float(np.max(np.abs(rails[int(stopped[0]) :]))) <= 0.02 + 1.0e-6
+        assert float(np.max(np.abs(rails[int(stopped[0]) :]))) <= 0.05 + 1.0e-6

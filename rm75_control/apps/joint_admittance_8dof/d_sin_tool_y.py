@@ -118,7 +118,12 @@ def main() -> int:
         default=20.0,
         help="Cap on auto move duration (s). Was 5s and crushed 13s joint moves into a jerk.",
     )
-    ap.add_argument("--move-kp", type=float, default=2.0)
+    ap.add_argument(
+        "--move-kp",
+        type=float,
+        default=None,
+        help="Override cartesian_track.k_task_lin (default: yaml).",
+    )
     ap.add_argument("--move-mode", choices=("cartesian", "joint"), default="joint",
                     help="PTP to D: joint=MoveJ (default, industrial PTP); "
                          "cartesian=MoveL/SRS. Scan/track always Cartesian. "

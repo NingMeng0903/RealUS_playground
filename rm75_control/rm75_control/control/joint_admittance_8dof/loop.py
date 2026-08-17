@@ -105,11 +105,22 @@ def hold_setpoint_from_vel_ff(
 # Inner loop (hardware-free)
 # ---------------------------------------------------------------------------
 @dataclass
+class CartesianTrackGains:
+    """Outer-loop Cartesian P gains from yaml ``cartesian_track``."""
+
+    k_task_lin: float = 10.0
+    k_task_rot: float = 2.0
+    max_pos_err_m: float = 0.05
+    max_rot_err_rad: float = 0.35
+
+
+@dataclass
 class JointIkConfig:
     dt: float = 0.005
     control_frame: str = "tool"
     euler_order: str = "xyz"
     qp: QpConfig = field(default_factory=QpConfig)
+    cartesian_track: CartesianTrackGains = field(default_factory=CartesianTrackGains)
     nullspace: NullspaceTaskConfig = field(default_factory=NullspaceTaskConfig)
     manipulability: ManipulabilityTaskConfig = field(default_factory=ManipulabilityTaskConfig)
     arm_angle: ArmAngleTaskConfig = field(default_factory=ArmAngleTaskConfig)
@@ -120,7 +131,7 @@ class JointIkConfig:
     rail_extension: RailExtensionConfig = field(default_factory=RailExtensionConfig)
     v_scale: float = 0.5
     a_max_arm_rad_s2: float = 20.0
-    a_max_rail_m_s2: float = 0.30
+    a_max_rail_m_s2: float = 0.60
     position_margin_rad: float = 0.017
     position_margin_rail_m: float = 0.0
     resync_err_rad: float = 0.10
@@ -977,6 +988,7 @@ class JointIkController:
         v_force_z: float | None = None,
         rail_exec_vel_m_s: float | None = None,
         rail_exec_smooth_m_s: float | None = None,
+        dt_wall_s: float | None = None,
     ) -> JointIkStep:
         del f_ext_z, f_des_z, contact_active, task_safety_rows
         path_twist_arr = (
@@ -992,6 +1004,12 @@ class JointIkController:
         dt = self.cfg.dt if dt is None else float(dt)
         if not np.isfinite(dt) or dt <= 0.0:
             raise ValueError("dt must be finite and > 0")
+        if dt_wall_s is None:
+            dt_rail = dt
+        else:
+            dt_rail = float(dt_wall_s)
+            if not np.isfinite(dt_rail) or dt_rail <= 0.0:
+                raise ValueError("dt_wall_s must be finite and > 0")
         q_prev = np.asarray(self.q_cmd, dtype=float).copy()
         if q_meas is None:
             raise ValueError("q_meas is required for every Cartesian QPIK tick")
@@ -1066,10 +1084,15 @@ class JointIkController:
             if rail_only:
                 qdot_cmd[1:] = 0.0
             q_next = q_prev + qdot_cmd * dt
+            q_next[0] = float(q_prev[0]) + float(qdot_cmd[0]) * float(dt_rail)
             rep = self.safety.clamp(q_prev, q_next, dt)
             self.q_cmd = rep.q_safe
             if dt > 1e-9:
                 applied = (self.q_cmd - q_prev) / dt
+                if dt_rail > 1e-9:
+                    applied[0] = (
+                        float(self.q_cmd[0]) - float(q_prev[0])
+                    ) / float(dt_rail)
             else:
                 applied = qdot_cmd
             self.core.sync_applied(applied)
@@ -1387,6 +1410,7 @@ class JointIkController:
             v_lim = np.asarray(self.limits.v_max, dtype=float)
             qdot_out = np.clip(qdot_out, -v_lim, v_lim)
             self.q_cmd = q_prev + qdot_out * float(dt)
+            self.q_cmd[0] = float(q_prev[0]) + float(qdot_out[0]) * float(dt_rail)
             self.core.qdot_prev = qdot_out.copy()
             self.safety.sync_applied_delta(qdot_out * float(dt), float(dt))
             return self._make_step(
@@ -1453,6 +1477,13 @@ class JointIkController:
         else:
             self.core.qdot_prev = qdot_out.copy()
 
+        # Arm stays on the CANFD nominal period.  The rail servo integrates
+        # v_ff on wall time, so q_cmd[0] must use the same clock or the
+        # 20 mm resync clamp binds (~25% at 5 ms vs 6.2 ms).
+        self.q_cmd[0] = float(self.q_cmd[0]) + float(qdot_out[0]) * (
+            float(dt_rail) - float(dt)
+        )
+
         if q_state is not None:
             lead_max = float(self.cfg.resync_err_rail_m)
             if lead_max > 0.0:
@@ -1476,13 +1507,13 @@ class JointIkController:
         elif self.q_cmd[0] >= hi0 - 1.0e-4 and self.core.qdot_prev[0] > 0.0:
             self.q_cmd[0] = hi0
             self.core.qdot_prev[0] = 0.0
-        if plan_drives_rail and qdot_ff is not None and dt > 1e-9:
+        if plan_drives_rail and qdot_ff is not None and dt_rail > 1e-9:
             v_rail = float(np.asarray(qdot_ff)[0])
-            y = float(q_prev[0] + v_rail * dt)
+            y = float(q_prev[0] + v_rail * float(dt_rail))
             y_lo = float(self.limits.q_lower[0])
             y_hi = float(self.limits.q_upper[0])
             self.q_cmd[0] = float(np.clip(y, y_lo, y_hi))
-            self.core.qdot_prev[0] = (self.q_cmd[0] - q_prev[0]) / dt
+            self.core.qdot_prev[0] = (self.q_cmd[0] - q_prev[0]) / float(dt_rail)
             if rail_only:
                 self.q_cmd[1:] = q_prev[1:]
                 self.core.qdot_prev[1:] = 0.0
@@ -1803,7 +1834,7 @@ class AdmittanceOuterLoop:
 class CartesianTrackConfig:
     """PD + feedforward Cartesian tracking (no force axis)."""
 
-    k_task: np.ndarray = field(default_factory=lambda: np.full(6, 2.0))
+    k_task: np.ndarray = field(default_factory=lambda: np.array([10.0, 10.0, 10.0, 2.0, 2.0, 2.0]))
     max_pos_err_m: float = 0.05
     max_rot_err_rad: float = 0.35
     max_lin_vel_m_s: float = 0.4
@@ -2231,7 +2262,7 @@ class _TickLogger:
            "governor_scale", "governor_scale_raw", "sigma_min",
            "qdot_norm", "qdot_max_frac_vmax",
            "qdot_ff_norm", "tcp_jump_mm",
-           "rail_target_sent_m", "rail_meas_m",
+           "rail_target_sent_m", "rail_meas_m", "rail_cmd_meas_err_m",
            "rail_vel_pin", "plan_drives_rail", "rail_qdot_ff",
            # Motion-subspace accuracy (force axes excluded from "准" metrics).
            "pose_d_x", "pose_d_y", "pose_d_z", "pose_d_rx", "pose_d_ry", "pose_d_rz",
@@ -2722,6 +2753,15 @@ class _TickLogger:
                f"{step.qdot_ff_norm:.5f}", f"{step.tcp_jump_mm:.3f}",
                f"{rail_sent:.6f}",
                f"{rail_meas_m:.6f}" if np.isfinite(rail_meas_m) else "",
+               (
+                   f"{float(step.q_send[0]) - float(qm[0]):.6f}"
+                   if (
+                       step.q_send is not None
+                       and np.isfinite(float(step.q_send[0]))
+                       and np.isfinite(float(qm[0]))
+                   )
+                   else ""
+               ),
                f"{step.rail_vel_pin:.6f}" if np.isfinite(step.rail_vel_pin) else "",
                int(bool(step.plan_drives_rail)),
                f"{step.rail_qdot_ff:.6f}" if np.isfinite(step.rail_qdot_ff) else "",
@@ -3033,14 +3073,16 @@ def _rail_execution_velocity_estimate(
     feedback=None,
     require_fresh: bool = True,
 ) -> RailExecutionEstimate | None:
-    """Bounded one-poll rail execution estimate for strict QPIK.
+    """Bounded rail execution estimate for strict QPIK affine compensation.
 
     Between two FA24 samples the measured velocity is propagated with the
-    worker's latest commanded acceleration, but never farther than one
-    configured rail poll.  After a fresh sample has been seen, stale or
-    non-finite feedback is a control fault.  Before that first sample the
-    caller should pass ``require_fresh=False`` so a cold Modbus poll can
-    finish; the QP then uses its existing command-velocity ZOH.
+    worker's latest commanded acceleration over the true sample age, but
+    never farther than two configured rail polls.  A sample older than
+    ``freshness_s`` still coasts on that last reading (USB jitter must not
+    kill the task).  Missing or non-finite feedback is a fault only when
+    ``require_fresh`` is true.  Before the first sample the caller should
+    pass ``require_fresh=False`` so a cold Modbus poll can finish; the QP
+    then uses its existing command-velocity ZOH.
     """
     if rail_bridge is None or not getattr(rail_bridge, "enabled", False):
         return None
@@ -3073,16 +3115,13 @@ def _rail_execution_velocity_estimate(
             return None
         raise RuntimeError("rail execution feedback rejected by encoder gate")
     age = max(0.0, now - sample_t)
-    max_age = max(float(freshness_s), 0.0)
-    if age > max_age:
-        if not require_fresh:
-            return None
-        raise RuntimeError(
-            f"rail execution feedback stale: age={age:.6f}s > {max_age:.6f}s"
-        )
+    # freshness_s is the call-site budget; stale age coasts instead of
+    # raising.  One USB hiccup (age 83 ms vs 80 ms) must not stop QPIK.
+    # Worker still hard-holds FA24 after 3 Modbus fails.
+    _ = max(float(freshness_s), 0.0)
     cfg = getattr(rail_bridge, "config", None)
     poll_hz = max(float(getattr(cfg, "poll_hz", 50.0)), 1.0)
-    extrap_age = min(age, 1.0 / poll_hz)
+    extrap_age = min(age, 2.0 / poll_hz)
     v_est = v_meas + a_cmd * extrap_age
     v_cap = abs(float(getattr(cfg, "vel_max_m_s", float("inf"))))
     if np.isfinite(v_cap):
@@ -3204,17 +3243,15 @@ def _wall_clock_rail_target(
     meas_m: float | None = None,
     lead_max_m: float = 0.0,
 ) -> float:
-    """One-tick wall alignment of QPIK ``q_send[0]``; no persistent integrator.
+    """Publish QPIK ``q_send[0]``; the rail already integrated on wall time.
 
-    QPIK already integrated at ``dt_nom``.  Add only
-    ``qdot * max(0, dt_wall - dt_nom)`` for this tick.  Idle (``|qdot|≈0``)
-    publishes ``q_send[0]`` and does not keep a 20 mm lead chase.
+    Soft limits and the ±``lead_max_m`` command-lead clamp stay here.
+    Do not add ``qdot * (dt_wall - dt_nom)`` — that would double-count.
+    Idle (``|qdot|≈0``) publishes ``q_send[0]`` and does not chase the lead.
     """
+    del dt_wall, dt_nom
     v = _qpik_rail_v_ff_m_s(qdot0)
     x = float(q_send0)
-    if abs(v) >= _RAIL_V_IDLE_M_S:
-        extra = max(0.0, float(dt_wall) - max(float(dt_nom), 0.0))
-        x = x + v * extra
     lo = float(soft_lo)
     hi = float(soft_hi)
     if hi < lo:
@@ -3797,6 +3834,7 @@ def run_joint_admittance_phases(
                                 if rail_exec_estimate is not None
                                 else None
                             ),
+                            dt_wall_s=dt_wall_actual,
                         )
                         if rail_exec_estimate is not None:
                             step.rail_exec_velocity_m_s = float(

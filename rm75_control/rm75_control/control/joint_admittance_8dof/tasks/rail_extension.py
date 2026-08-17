@@ -82,11 +82,12 @@ class RailExtensionConfig:
     soft_max_m: float = 0.78
     # Reach may oppose MotionReference FF, but only this much (m/s) so the
     # rail can still re-extend the elbow without re-triggering LW100 Er-01.
-    v_reach_cap_m_s: float = 0.02
-    # Dead-zone around d_center.  Inside the band v_reach is exactly 0 so
-    # the carriage is free to ride the stroke; only stretch beyond the
-    # band is corrected (and then drift makes the rail expensive in Y).
-    d_band_m: float = 0.08
+    v_reach_cap_m_s: float = 0.05
+    # Dead-zone around d_center.  Coupled mode is velocity-authoritative,
+    # so this is the only Cartesian position term on the rail axis.  Keep
+    # it small enough that a few millimetres of track error still produce
+    # v_reach; 80 mm used to kill the term on every healthy scan.
+    d_band_m: float = 0.005
     # Bug 2: σ-escape.  When σ_min ↘ the rail should BOOST authority (not
     # cut it — the old ``w *= sigma_scale`` was backwards) and add a
     # non-reaching velocity component along the TCP-preserving σ-ascent
@@ -115,9 +116,9 @@ class RailExtensionConfig:
     # Cap on guardrail velocity so it cannot yank the rail off the pose path.
     v_guard_max_m_s: float = 0.04
     # Macro-micro LPF on the *desired* rail velocity (seconds).
-    v_lpf_tau_s: float = 0.12
+    v_lpf_tau_s: float = 0.05
     # Faster LPF while escape is latched (commit without hunting).
-    v_lpf_tau_escape_s: float = 0.08
+    v_lpf_tau_escape_s: float = 0.04
     # Narrow latch: only deep σ (scale) or truly near joint soft limits.
     sigma_escape_enter: float = 0.55
     sigma_escape_exit: float = 0.80

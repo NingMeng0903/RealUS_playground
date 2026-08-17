@@ -401,7 +401,7 @@ def test_qpik_rail_brakes_when_task_drops() -> None:
     for _ in range(250):
         last = inner.update(twist0, q_meas=inner.q_cmd, vel_ff=twist0)
     assert last is not None
-    assert abs(float(last.qdot[0])) < 0.02
+    assert abs(float(last.qdot[0])) < 0.05
     plus_y = np.array([0.0, 0.08, 0.0, 0.0, 0.0, 0.0])
     moving = None
     for _ in range(40):

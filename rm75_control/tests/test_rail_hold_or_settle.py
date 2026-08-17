@@ -68,7 +68,7 @@ def test_hold_watchdog_rewrites_fa24_after_2mm_drift() -> None:
     assert bridge._panic is False
 
 
-def test_hold_watchdog_panics_after_5mm_from_origin() -> None:
+def test_hold_watchdog_does_not_panic_after_5mm_from_origin() -> None:
     bridge = _bridge(target_m=0.300, measured_m=0.300)
     drive = MagicMock()
     drive.kill_velocity_hard.return_value = True
@@ -79,9 +79,11 @@ def test_hold_watchdog_panics_after_5mm_from_origin() -> None:
     bridge._hold_origin_m = 0.300
     bridge._hold_anchor_m = 0.304
     bridge._last_hold_zero_mono = time.monotonic()
+    bridge._last_hold_drift_log_mono = 0.0
     bridge._hold_watchdog(0.306, time.monotonic())
-    assert bridge._panic is True
-    assert bridge._follow_enabled is False
+    assert bridge._panic is False
+    drive.set_velocity_rpm.assert_called_with(0, force=True)
+    assert bridge._hold_anchor_m == pytest.approx(0.306)
 
 
 def test_hold_watchdog_force_zeros_every_second() -> None:

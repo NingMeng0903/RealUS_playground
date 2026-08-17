@@ -13,6 +13,7 @@ from rm75_control.control.admittance_common.reference import MotionReferenceSour
 from rm75_control.control.joint_admittance_8dof.loop import (
     AdmittanceOuterLoop,
     CartesianTrackConfig,
+    CartesianTrackGains,
     CartesianTrackOuterLoop,
     JointIkController,
     JointTrackConfig,
@@ -165,7 +166,7 @@ class JointPhaseSpec:
     move_ref: JointSmoothMoveReference | SrsSmoothMoveReference | None = None
     pose_target: np.ndarray | None = None
     q_target_rad: np.ndarray | None = None
-    move_kp: float = 2.0
+    move_kp: float | None = None
     move_mode: Literal["joint", "cartesian"] = "cartesian"
     max_lin_vel_m_s: float = 0.4
     sigma_ref: float = 0.08
@@ -471,7 +472,7 @@ def phase_cartesian_goto(
     label: str = "cartesian_goto",
     pose_target: np.ndarray | None = None,
     q_target_rad: np.ndarray | None = None,
-    move_kp: float = 2.0,
+    move_kp: float | None = None,
     move_mode: Literal["joint", "cartesian"] = "cartesian",
     max_lin_vel_m_s: float = 0.4,
     max_duration_s: float | None = None,
@@ -530,6 +531,31 @@ def phase_cartesian_goto(
     )
 
 
+def phase_cartesian_track(
+    reference: MotionReferenceSource,
+    *,
+    label: str = "cartesian_track",
+    duration_s: float | None = None,
+    move_kp: float | None = None,
+    max_lin_vel_m_s: float = 0.4,
+    force_observer: Any = None,
+    governor: GovernorSpec | None = None,
+    secondary: SecondaryPolicy | None = None,
+) -> JointPhaseSpec:
+    """PD + path-FF Cartesian tracking (no force / no admittance)."""
+    return JointPhaseSpec(
+        mode=TaskMode.CARTESIAN_TRACK,
+        label=label,
+        reference=reference,
+        duration_s=duration_s,
+        move_kp=move_kp,
+        max_lin_vel_m_s=max_lin_vel_m_s,
+        force_observer=force_observer,
+        secondary=secondary or SecondaryPolicy(preset="track", qdot_ff="off"),
+        governor=governor or GovernorSpec(err_ok_mm=10.0, err_max_mm=40.0),
+    )
+
+
 def phase_hybrid_track(
     reference: MotionReferenceSource,
     controller: AdmittanceController,
@@ -581,6 +607,45 @@ def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], No
     return _enter
 
 
+def _cartesian_track_gains(ctx: CompileContext) -> CartesianTrackGains:
+    cfg = getattr(ctx.inner, "cfg", None)
+    gains = getattr(cfg, "cartesian_track", None)
+    if isinstance(gains, CartesianTrackGains):
+        return gains
+    return CartesianTrackGains()
+
+
+def _cartesian_k_task(spec: JointPhaseSpec, ctx: CompileContext) -> np.ndarray:
+    gains = _cartesian_track_gains(ctx)
+    lin = float(gains.k_task_lin)
+    rot = float(gains.k_task_rot)
+    if spec.move_kp is not None:
+        lin = float(spec.move_kp)
+        if spec.mode == TaskMode.LOCKED_MOVE:
+            rot = float(spec.move_kp)
+    return np.array([lin, lin, lin, rot, rot, rot], dtype=float)
+
+
+def _cartesian_track_config(
+    spec: JointPhaseSpec,
+    ctx: CompileContext,
+    **kwargs,
+) -> CartesianTrackConfig:
+    gains = _cartesian_track_gains(ctx)
+    return CartesianTrackConfig(
+        k_task=_cartesian_k_task(spec, ctx),
+        max_pos_err_m=float(gains.max_pos_err_m),
+        max_rot_err_rad=float(gains.max_rot_err_rad),
+        **kwargs,
+    )
+
+
+def _move_joint_kp(spec: JointPhaseSpec, ctx: CompileContext) -> float:
+    if spec.move_kp is not None:
+        return float(spec.move_kp)
+    return float(_cartesian_track_gains(ctx).k_task_lin)
+
+
 def _make_on_exit(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], None] | None:
     def _exit() -> None:
         if spec.mode == TaskMode.LOCKED_MOVE:
@@ -608,7 +673,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
                 spec.move_ref,
                 ctx.kin,
                 JointTrackConfig(
-                    k_joint=float(spec.move_kp),
+                    k_joint=_move_joint_kp(spec, ctx),
                     max_joint_err_rad=0.35,
                     sigma_ref=spec.sigma_ref,
                     control_frame=ctx.control_frame,
@@ -619,10 +684,9 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
         else:
             outer = CartesianTrackOuterLoop(
                 spec.move_ref,
-                CartesianTrackConfig(
-                    k_task=np.full(6, spec.move_kp),
-                    max_pos_err_m=0.05,
-                    max_rot_err_rad=0.35,
+                _cartesian_track_config(
+                    spec,
+                    ctx,
                     max_lin_vel_m_s=spec.max_lin_vel_m_s,
                     control_frame=ctx.control_frame,
                     euler_order=ctx.euler_order,
@@ -681,17 +745,11 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
         if spec.rail_ref is None:
             raise ValueError("locked_move: rail_ref is required")
         hold = HoldReference()
-        kp = (
-            float(spec.move_kp)
-            if spec.locked_style == LockedStyle.TCP_FIXED
-            else 0.0
-        )
         outer = CartesianTrackOuterLoop(
             hold,
-            CartesianTrackConfig(
-                k_task=np.full(6, kp),
-                max_pos_err_m=0.05,
-                max_rot_err_rad=0.35,
+            _cartesian_track_config(
+                spec,
+                ctx,
                 max_lin_vel_m_s=spec.max_lin_vel_m_s,
                 control_frame=ctx.control_frame,
                 euler_order=ctx.euler_order,
@@ -738,10 +796,9 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             raise ValueError(f"{spec.mode}: reference is required")
         outer = CartesianTrackOuterLoop(
             spec.reference,
-            CartesianTrackConfig(
-                k_task=np.full(6, spec.move_kp),
-                max_pos_err_m=0.05,
-                max_rot_err_rad=0.35,
+            _cartesian_track_config(
+                spec,
+                ctx,
                 max_lin_vel_m_s=spec.max_lin_vel_m_s,
                 control_frame=ctx.control_frame,
                 euler_order=ctx.euler_order,

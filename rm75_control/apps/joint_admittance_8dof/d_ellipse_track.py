@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
-"""Send Xbox stick velocity into the 8-DOF QPIK inner loop (no force / no scan).
+"""Cartesian TRACKING ellipse on the 8-DOF QPIK backend (no force).
 
-Window A must already be running. This submits a ``gamepad_vcmd`` task; A reads
-the pad and feeds ``v_cmd`` to ``JointIkController.update``. All existing QP
-limits, CBF, rail pin/escape, and nullspace stay on.
+Same-frequency tool-XY ellipse through the live TCP (no jump). Window A must
+already be running the current dispatcher (restart A once after this lands).
 
   source env.sh
-  # terminal A
+  # terminal A  (restart if it was started before ellipse_track existed)
   python apps/joint_admittance_8dof/run_joint_admittance.py \\
       --config configs/joint_admittance_8dof.yaml -v
   # terminal C
-  python apps/joint_admittance_8dof/d_gamepad_vcmd.py --config configs/joint_admittance_8dof.yaml
+  python apps/joint_admittance_8dof/d_ellipse_track.py \\
+      --config configs/joint_admittance_8dof.yaml
 
-  Left stick: world XY (left = +Y, up = +X)
-  LB / LT:    world +Z / −Z
-  Right stick + RB/RT: TCP-frame rotation
+Defaults are conservative: X 4 cm pp, Y 8 cm pp, 3 cm/s, 40 s, from the live
+pose.  Add ``--goto-d`` to MoveJ to taught slot D first.
 """
 
 from __future__ import annotations
@@ -42,9 +41,8 @@ from rm75_control.control.admittance_common.state_relay import (
 )
 from rm75_control.control.joint_admittance_8dof.api import compute_move_plan
 from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
-from rm75_control.control.joint_admittance_8dof.gamepad_vcmd_program import (
-    build_gamepad_vcmd_program,
-    close_built_pad,
+from rm75_control.control.joint_admittance_8dof.ellipse_track_program import (
+    build_ellipse_track_program,
 )
 from rm75_control.control.joint_admittance_8dof.model import (
     RobotKinematics,
@@ -55,8 +53,6 @@ from rm75_control.control.joint_admittance_8dof.sin_tool_y_program import (
     execute_sin_tool_y_program,
     resolve_scan_target_at_d,
 )
-from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import MAPPING_HELP
-from rm75_control.control.joint_admittance_8dof.teleop.xbox_pad import XboxPad
 from rm75_control.core.session import RobotSession
 from rm75_control.force.compensation.tool_pose import maybe_sync_kin_tcp_from_config
 from rm75_control.kinematics.srs_ik import psi_from_q
@@ -91,12 +87,12 @@ def _poll_attach_status(phase_client: PhaseCommandClient, cmd_seq: int) -> Phase
             pass
         if stop_n[0] == 1:
             print(
-                "\nrm75 gamepad: Ctrl+C — stop requested on window A "
+                "\nrm75 ellipse: Ctrl+C — stop requested on window A "
                 "(second Ctrl+C forces exit)",
                 flush=True,
             )
             return
-        print("\nrm75 gamepad: force exit", flush=True)
+        print("\nrm75 ellipse: force exit", flush=True)
         os._exit(130)
 
     prev_int = signal.signal(signal.SIGINT, _on_sig)
@@ -124,7 +120,7 @@ def main() -> int:
     ap.add_argument(
         "--goto-d",
         action="store_true",
-        help="MoveJ to taught slot D before teleop (default: start from the live pose).",
+        help="MoveJ to taught slot D before the ellipse (default: live pose).",
     )
     ap.add_argument("--move-duration", type=float, default=None)
     ap.add_argument("--move-duration-margin", type=float, default=0.80)
@@ -137,30 +133,15 @@ def main() -> int:
         help="Override cartesian_track.k_task_lin (default: yaml).",
     )
     ap.add_argument("--move-mode", choices=("cartesian", "joint"), default="joint")
-    ap.add_argument("--trans-m-s", type=float, default=0.12, help="Full-stick world translation (m/s).")
-    ap.add_argument("--rot-rad-s", type=float, default=0.60, help="Full-stick TCP rotation (rad/s).")
-    ap.add_argument("--deadzone", type=float, default=0.18)
-    ap.add_argument(
-        "--device-index",
-        type=int,
-        default=-1,
-        help="Force pygame joystick index. Default −1 = USB/wired over Bluetooth.",
-    )
-    ap.add_argument(
-        "--duration",
-        type=float,
-        default=0.0,
-        help="Teleop wall time (s). 0 = until Ctrl+C / window-C stop.",
-    )
+    ap.add_argument("--x-pp-cm", type=float, default=4.0, help="Tool-X peak-to-peak (cm).")
+    ap.add_argument("--y-pp-cm", type=float, default=8.0, help="Tool-Y peak-to-peak (cm).")
+    ap.add_argument("--max-vel-cm-s", type=float, default=3.0)
+    ap.add_argument("--period-s", type=float, default=None)
+    ap.add_argument("--scan-duration", type=float, default=40.0)
     ap.add_argument("--cartesian-max-lin-vel", type=float, default=None)
     ap.add_argument("--log-csv", type=str, default=None)
     ap.add_argument("--verbose", "-v", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument(
-        "--print-axes",
-        action="store_true",
-        help="Dump raw pad axes and exit (no robot).",
-    )
     ap.add_argument(
         "--no-attach-state",
         action="store_true",
@@ -168,66 +149,48 @@ def main() -> int:
     )
     args = ap.parse_args()
 
-    if args.print_axes:
-        pad = XboxPad(
-            device_index=int(args.device_index),
-            auto_select=int(args.device_index) < 0,
-            allow_missing=True,
-        )
-        print(MAPPING_HELP, flush=True)
-        print(f"connected={pad.connected} {getattr(pad, 'describe', lambda: '')()}", flush=True)
-        try:
-            t_end = time.monotonic() + 8.0
-            while time.monotonic() < t_end:
-                state = pad.read()
-                print(
-                    f"axes={np.round(state.axes, 3).tolist()} "
-                    f"buttons={state.buttons.astype(int).tolist()}",
-                    flush=True,
-                )
-                time.sleep(0.2)
-        finally:
-            pad.close()
-        return 0
-
     raw = load_yaml(args.config)
     startup = raw.get("startup", {})
     relay_cfg = parse_state_relay_config(raw)
     kin = RobotKinematics()
     inner_cfg = build_joint_ik_config(raw)
 
+    if args.dry_run:
+        params = SinToolYTaskParams(
+            config_path=str(args.config.resolve()),
+            slot=str(args.slot),
+            task_kind="ellipse_track",
+            x_pp_cm=float(args.x_pp_cm),
+            y_pp_cm=float(args.y_pp_cm),
+            max_vel_cm_s=float(args.max_vel_cm_s),
+            period_s=args.period_s,
+            scan_duration=float(args.scan_duration),
+            move_kp=args.move_kp,
+            q0_rad=[0.0] * 8,
+            q_target_rad=[0.0] * 8,
+            tcp_offset_pose=[0.0] * 6,
+        )
+        built = build_ellipse_track_program(params, raw=raw)
+        ref = built.reference
+        print(
+            f"dry-run: ellipse_track OK  "
+            f"ax={ref.amplitude_x_m * 100:.1f}cm  ay={ref.amplitude_y_m * 100:.1f}cm  "
+            f"T={ref.period_s:.2f}s  phases={[p.label for p in built.phases]}",
+            flush=True,
+        )
+        return 0
+
     ts = time.strftime("%Y%m%d_%H%M%S")
     if not args.log_csv:
-        log_dir = Path(__file__).resolve().parents[1] / "logs" / "gamepad_vcmd"
+        log_dir = Path(__file__).resolve().parents[1] / "logs" / "ellipse_track"
         log_dir.mkdir(parents=True, exist_ok=True)
         args.log_csv = str(log_dir / f"run_{ts}.csv")
     if not getattr(args, "rail_log_csv", None):
         rail_dir = Path(__file__).resolve().parents[1] / "logs" / "rail_servo"
         rail_dir.mkdir(parents=True, exist_ok=True)
         args.rail_log_csv = str(rail_dir / f"rail_{ts}.csv")
-    print(f"gamepad WBC log: {args.log_csv}", flush=True)
-    print(f"gamepad rail log: {args.rail_log_csv}", flush=True)
-
-    if args.dry_run:
-        params = SinToolYTaskParams(
-            config_path=str(args.config.resolve()),
-            slot=str(args.slot),
-            task_kind="gamepad_vcmd",
-            scan_duration=float(args.duration),
-            gamepad_trans_m_s=float(args.trans_m_s),
-            gamepad_rot_rad_s=float(args.rot_rad_s),
-            gamepad_deadzone=float(args.deadzone),
-            gamepad_device_index=int(args.device_index),
-            q0_rad=[0.0] * 8,
-            q_target_rad=[0.0] * 8,
-            tcp_offset_pose=[0.0] * 6,
-        )
-        from rm75_control.control.joint_admittance_8dof.teleop.xbox_pad import FakePad
-
-        built = build_gamepad_vcmd_program(params, raw=raw, pad=FakePad())
-        close_built_pad(built)
-        print("dry-run: gamepad_vcmd program built OK", flush=True)
-        return 0
+    print(f"ellipse WBC log: {args.log_csv}", flush=True)
+    print(f"ellipse rail log: {args.rail_log_csv}", flush=True)
 
     robot_cfg = raw.get("robot", {})
     max_lin = float(args.cartesian_max_lin_vel) if args.cartesian_max_lin_vel is not None else 0.4
@@ -239,7 +202,7 @@ def main() -> int:
     shm_name = str(relay_cfg.name or "rm75_state")
 
     if attach_mode:
-        print("rm75 gamepad: connecting to window A …", flush=True)
+        print("rm75 ellipse: connecting to window A …", flush=True)
         attach_bus = RelayStateBus(shm_name)
         try:
             attach_bus.wait_first_pose(timeout_s=30.0)
@@ -250,7 +213,7 @@ def main() -> int:
         state_bus = attach_bus
         phase_client = PhaseCommandClient()
         phase_client.wait_for_hub(timeout_s=30.0)
-        print("rm75 gamepad: connected", flush=True)
+        print("rm75 ellipse: connected", flush=True)
         session_cm = nullcontext(_AttachSession(config=raw, ip=str(robot_cfg.get("ip", ""))))
     else:
         if relay_shm_has_publisher(shm_name):
@@ -276,7 +239,7 @@ def main() -> int:
             local_bus = RobotStateBus(sess.robot, raw, robot_ip=sess.ip)
             local_bus.start()
             state_bus = local_bus
-            print("rm75 gamepad: CANFD + local UDP (standalone)", flush=True)
+            print("rm75 ellipse: CANFD + local UDP (standalone)", flush=True)
 
         snap0 = state_bus.read()
         if snap0.q_deg is None:
@@ -325,9 +288,14 @@ def main() -> int:
         task_params = SinToolYTaskParams(
             config_path=str(args.config.resolve()),
             slot=str(args.slot),
-            task_kind="gamepad_vcmd",
+            task_kind="ellipse_track",
+            enable_force=False,
             move_kp=args.move_kp,
-            scan_duration=float(args.duration),
+            x_pp_cm=float(args.x_pp_cm),
+            y_pp_cm=float(args.y_pp_cm),
+            max_vel_cm_s=float(args.max_vel_cm_s),
+            period_s=args.period_s,
+            scan_duration=float(args.scan_duration),
             log_csv=args.log_csv,
             rail_log_csv=getattr(args, "rail_log_csv", None),
             cartesian_max_lin_vel=args.cartesian_max_lin_vel,
@@ -343,18 +311,20 @@ def main() -> int:
                 if kin.tcp_offset_pose is not None
                 else []
             ),
-            gamepad_trans_m_s=float(args.trans_m_s),
-            gamepad_rot_rad_s=float(args.rot_rad_s),
-            gamepad_deadzone=float(args.deadzone),
-            gamepad_device_index=int(args.device_index),
+        )
+        print(
+            f"rm75 ellipse: CARTESIAN_TRACK  "
+            f"X {args.x_pp_cm:.1f} cm pp  Y {args.y_pp_cm:.1f} cm pp  "
+            f"v≤{args.max_vel_cm_s:.1f} cm/s  {args.scan_duration:.0f}s  "
+            f"{'goto D then ' if args.goto_d else ''}from live pose",
+            flush=True,
         )
 
-        print(MAPPING_HELP, flush=True)
         try:
             if attach_mode:
                 assert phase_client is not None
                 cmd_seq = phase_client.start(task_params)
-                print(f"rm75 gamepad: submitted task #{cmd_seq}", flush=True)
+                print(f"rm75 ellipse: submitted task #{cmd_seq}", flush=True)
                 final = _poll_attach_status(phase_client, cmd_seq)
                 if final == PhaseStatus.ERROR:
                     st = phase_client.read_status()
@@ -362,22 +332,19 @@ def main() -> int:
                         f"window A task failed: {st['msg'] if st else 'unknown'}"
                     )
                 if final == PhaseStatus.STOPPED:
-                    print("rm75 gamepad: stopped", flush=True)
+                    print("rm75 ellipse: stopped", flush=True)
                 else:
-                    print("rm75 gamepad: done", flush=True)
+                    print("rm75 ellipse: done", flush=True)
             else:
-                built = build_gamepad_vcmd_program(task_params, raw=raw)
-                try:
-                    execute_sin_tool_y_program(
-                        sess,
-                        state_bus,
-                        task_params,
-                        raw=raw,
-                        built=built,
-                        verbose=bool(args.verbose) or bool(startup.get("verbose", False)),
-                    )
-                finally:
-                    close_built_pad(built)
+                built = build_ellipse_track_program(task_params, raw=raw)
+                execute_sin_tool_y_program(
+                    sess,
+                    state_bus,
+                    task_params,
+                    raw=raw,
+                    built=built,
+                    verbose=bool(args.verbose) or bool(startup.get("verbose", False)),
+                )
         except KeyboardInterrupt:
             if attach_mode and phase_client is not None:
                 phase_client.stop()

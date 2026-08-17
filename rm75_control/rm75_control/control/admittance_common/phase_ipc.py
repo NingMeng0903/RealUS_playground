@@ -65,8 +65,9 @@ class SinToolYTaskParams:
 
     config_path: str
     slot: str = "d"
-    move_kp: float = 2.0
+    move_kp: float | None = None
     y_pp_cm: float = 16.0
+    x_pp_cm: float = 0.0
     max_vel_cm_s: float = 1.5
     period_s: float | None = None
     scan_profile: str = "quintic_dwell"
@@ -103,6 +104,13 @@ class SinToolYTaskParams:
     gamepad_rot_rad_s: float = 0.60
     gamepad_deadzone: float = 0.18
     gamepad_device_index: int = -1
+
+    @staticmethod
+    def optional_move_kp(value) -> float | None:
+        """Pass CLI/IPC ``move_kp`` through; ``None`` means use yaml."""
+        if value is None:
+            return None
+        return float(value)
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), separators=(",", ":"))

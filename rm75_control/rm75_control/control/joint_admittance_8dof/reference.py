@@ -1,7 +1,8 @@
 """Motion references for the joint-admittance loop (pure kinematics / scipy).
 
 HoldReference, JointSmoothMoveReference, SrsSmoothMoveReference (branch-locked
-quintic in pose/ψ), RailSmoothMoveReference, SinToolYReference.
+quintic in pose/ψ), RailSmoothMoveReference, SinToolYReference,
+EllipseToolXYReference.
 """
 
 from __future__ import annotations
@@ -516,4 +517,113 @@ class SinToolYReference:
         pose[:3] = self._origin[:3] + r_mat @ np.array([0.0, dy, 0.0])
         vel = np.zeros(6, dtype=float)
         vel[:3] = r_mat @ np.array([0.0, vy, 0.0])
+        return MotionReference(pose_d=pose, vel_ff=vel, t_ref=t_s)
+
+
+def ellipse_period_for_peak_vel(
+    amplitude_x_m: float,
+    amplitude_y_m: float,
+    max_vel_m_s: float,
+) -> float:
+    """Period so peak path speed of the through-origin ellipse stays ≤ ``max_vel``."""
+    span = math.hypot(float(amplitude_x_m), float(amplitude_y_m))
+    if span <= 1.0e-12:
+        raise ValueError("ellipse axes are zero")
+    omega = max(float(max_vel_m_s), 1.0e-6) / span
+    return 2.0 * math.pi / omega
+
+
+def ellipse_xy_motion(
+    t_s: float,
+    amplitude_x_m: float,
+    amplitude_y_m: float,
+    omega: float,
+    *,
+    soft_start: bool,
+    ramp_s: float = 2.0,
+) -> tuple[float, float, float, float]:
+    """Same-frequency tool-XY ellipse through the origin (bumpless ``set_origin``).
+
+    ``x = ax sin(ωτ)``, ``y = ay (1 − cos(ωτ))``.  At τ=0 the pose is the
+    origin and the C² time warp keeps velocity at zero.
+    """
+    if soft_start:
+        tau, tau_dot = _soft_start_time_warp(t_s, ramp_s)
+    else:
+        tau = float(t_s)
+        tau_dot = 1.0
+    wt = float(omega) * tau
+    ax = float(amplitude_x_m)
+    ay = float(amplitude_y_m)
+    dx = ax * math.sin(wt)
+    dy = ay * (1.0 - math.cos(wt))
+    vx = ax * float(omega) * math.cos(wt) * tau_dot
+    vy = ay * float(omega) * math.sin(wt) * tau_dot
+    return dx, dy, vx, vy
+
+
+class EllipseToolXYReference:
+    """Tool-frame same-frequency XY ellipse about a fixed origin (orientation held).
+
+    Peak-to-peak: X is ``±ax`` (``x_pp = 2 ax``), Y is ``[0, 2 ay]``
+    (``y_pp = 2 ay``).  The path is an ellipse centered at ``(0, ay)`` so the
+    live TCP can be the start without a jump.
+    """
+
+    def __init__(
+        self,
+        amplitude_x_m: float,
+        amplitude_y_m: float,
+        *,
+        period_s: float | None = None,
+        max_vel_m_s: float | None = None,
+        soft_start: bool = True,
+        ramp_s: float = 2.0,
+        euler_order: str = "xyz",
+    ) -> None:
+        self.amplitude_x_m = float(amplitude_x_m)
+        self.amplitude_y_m = float(amplitude_y_m)
+        self.amplitude_m = float(amplitude_y_m)
+        self.soft_start = bool(soft_start)
+        self.ramp_s = float(ramp_s)
+        self.euler_order = str(euler_order)
+        self._origin: np.ndarray | None = None
+        self._t_anchor: float = 0.0
+        if self.amplitude_x_m < 0.0 or self.amplitude_y_m < 0.0:
+            raise ValueError("ellipse amplitudes must be ≥ 0")
+        if self.amplitude_x_m <= 1.0e-12 and self.amplitude_y_m <= 1.0e-12:
+            raise ValueError("provide a non-zero X or Y ellipse axis")
+        if period_s is None:
+            if max_vel_m_s is None:
+                raise ValueError("provide either period_s or max_vel_m_s")
+            period_s = ellipse_period_for_peak_vel(
+                self.amplitude_x_m, self.amplitude_y_m, float(max_vel_m_s)
+            )
+        self.period_s = float(period_s)
+        if self.period_s <= 1.0e-9:
+            raise ValueError("ellipse period_s must be > 0")
+        self.omega = 2.0 * math.pi / self.period_s
+
+    def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
+        self._origin = np.asarray(pose0, dtype=float).copy()
+        if t_s is not None:
+            self._t_anchor = float(t_s)
+
+    def sample(self, t_s: float) -> MotionReference:
+        if self._origin is None:
+            raise RuntimeError("EllipseToolXYReference.set_origin must be called first")
+        t_eff = float(t_s) - float(self._t_anchor)
+        dx, dy, vx, vy = ellipse_xy_motion(
+            t_eff,
+            self.amplitude_x_m,
+            self.amplitude_y_m,
+            self.omega,
+            soft_start=self.soft_start,
+            ramp_s=self.ramp_s,
+        )
+        r_mat = Rsc.from_euler(self.euler_order, self._origin[3:6], degrees=False).as_matrix()
+        pose = self._origin.copy()
+        pose[:3] = self._origin[:3] + r_mat @ np.array([dx, dy, 0.0])
+        vel = np.zeros(6, dtype=float)
+        vel[:3] = r_mat @ np.array([vx, vy, 0.0])
         return MotionReference(pose_d=pose, vel_ff=vel, t_ref=t_s)

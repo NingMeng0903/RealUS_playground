@@ -29,8 +29,8 @@ class BranchBarrierConfig:
     j4_limit_eps_rad: float = 5.0 * np.pi / 180.0  # zero at ~130°
     j4_limit_activate_rad: float = 25.0 * np.pi / 180.0  # taper from ~110°
     # J1 over-fold (same-sign).  Design is −90°; QP1 used to dump to −163°.
-    # Zero at 120°; taper from 95°.  Fold 0→−90 is unrestricted.
-    j1_overfold_abs_rad: float = 120.0 * np.pi / 180.0
+    # Zero at 140°; taper from 115°.  Fold 0→−90 is unrestricted.
+    j1_overfold_abs_rad: float = 140.0 * np.pi / 180.0
     j1_overfold_activate_rad: float = 25.0 * np.pi / 180.0
     j1_overfold_eps_rad: float = 0.0
     gamma: float = 6.0
@@ -174,7 +174,7 @@ class BranchBarrierBuilder:
         20° branch-floor eps.  Exhausted travel leaves that damper off.
 
         J1 same-sign over-fold is a separate wall at ``j1_overfold_abs``
-        (default 120°).  It does not block the 0→−90° startup fold.
+        (default 140°).  It does not block the 0→−90° startup fold.
         """
         lo = np.asarray(lo, dtype=float).copy()
         hi = np.asarray(hi, dtype=float).copy()

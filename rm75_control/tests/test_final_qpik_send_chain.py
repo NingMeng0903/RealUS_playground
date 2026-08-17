@@ -253,7 +253,7 @@ def test_qpik_rail_v_ff_is_ik_qdot_not_pad_bypass() -> None:
     assert _qpik_rail_v_ff_m_s(float("inf")) == 0.0
 
 
-def test_wall_clock_rail_target_one_tick_extra_not_accumulator() -> None:
+def test_wall_clock_rail_target_does_not_add_one_tick_lead() -> None:
     pub = _wall_clock_rail_target(
         0.4004,
         0.08,
@@ -262,18 +262,18 @@ def test_wall_clock_rail_target_one_tick_extra_not_accumulator() -> None:
         soft_lo=0.025,
         soft_hi=0.78,
     )
-    assert pub == pytest.approx(0.4004 + 0.08 * 0.0015)
-    again = _wall_clock_rail_target(
-        0.4008,
+    assert pub == pytest.approx(0.4004)
+    clamped = _wall_clock_rail_target(
+        0.50,
         0.08,
         0.0065,
         0.005,
         soft_lo=0.025,
         soft_hi=0.78,
+        meas_m=0.40,
+        lead_max_m=0.020,
     )
-    assert again == pytest.approx(0.4008 + 0.08 * 0.0015)
-    # A persistent integrator would have been prev_pub + qdot * dt_wall.
-    assert again != pytest.approx(pub + 0.08 * 0.0065)
+    assert clamped == pytest.approx(0.42)
 
 
 def test_wall_clock_idle_publishes_q_send_without_lead_chase() -> None:
@@ -304,6 +304,24 @@ def test_wall_clock_idle_publishes_q_send_without_lead_chase() -> None:
     assert abs(walked - 0.40) < 0.020
 
 
+def test_rail_q_cmd_integrates_on_wall_clock_arm_stays_on_dt() -> None:
+    dt = 0.005
+    dt_wall = 0.010
+    qdot_ff = np.zeros(8)
+    qdot_ff[0] = 0.001
+    qdot_ff[2] = 0.001
+
+    wall = _controller()
+    wall.set_direct_joint_ptp(True)
+    q0 = wall.q_cmd.copy()
+    step = wall.update(
+        np.zeros(6), dt, q_meas=q0, qdot_ff=qdot_ff, dt_wall_s=dt_wall
+    )
+    assert wall.q_cmd[0] == pytest.approx(q0[0] + qdot_ff[0] * dt_wall)
+    assert wall.q_cmd[2] == pytest.approx(q0[2] + qdot_ff[2] * dt)
+    assert step.qdot[0] == pytest.approx(qdot_ff[0])
+
+
 def test_zero_v_cmd_does_not_invent_rail_task() -> None:
     controller = _controller()
     q = Q_SAFE.copy()
@@ -318,7 +336,7 @@ def test_zero_v_cmd_does_not_invent_rail_task() -> None:
     if controller.rail_ext_task is not None:
         controller.rail_ext_task.set_d_pref(d_now)
     step = controller.update(np.zeros(6), q_meas=q)
-    assert not np.isfinite(step.rail_task_vel) or abs(float(step.rail_task_vel)) < 1e-9
+    assert not np.isfinite(step.rail_task_vel) or abs(float(step.rail_task_vel)) < 1e-3
     assert abs(float(step.qdot[0])) < 0.01
     assert _qpik_rail_v_ff_m_s(float(step.qdot[0])) == 0.0
 

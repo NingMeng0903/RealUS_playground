@@ -34,7 +34,7 @@ qpik:
   hard_limits:
     v_scale: 0.8
     a_max_arm_rad_s2: 3.0
-    a_max_rail_m_s2: 0.30
+    a_max_rail_m_s2: 0.60
     position_margin_deg: 0.3
     position_margin_rail_mm: 0.0
     command_lead_arm_deg: 6.0
@@ -42,8 +42,8 @@ qpik:
     velocity_damper:
       arm_band_rad: 0.25
       rail_band_m: 0.025
-      # Stopping envelope look-ahead.  At 80 mm/s and a_max=0.30 this
-      # starts tapering ~23 mm out; 0 would only use one control period.
+      # Stopping envelope look-ahead.  At 80 mm/s and a_max=0.60 this
+      # starts tapering ~17 mm out; 0 would only use one control period.
       rail_reaction_s: 0.15
     collision:
       enabled: true
@@ -105,8 +105,8 @@ inner:
     # on ~half the ticks while the reference twist was smooth.
     j_max_arm_rad_s3: 300.0
     # 3.0 made a full rail acceleration reversal take 2*a_max/j = 0.2 s versus
-    # 0.02 s on the arm; 30 puts the two on the same relative scale.
-    j_max_rail_m_s3: 30.0
+    # 0.02 s on the arm; 60 keeps 2*a_max/j = 0.02 s after a_max rose to 0.60.
+    j_max_rail_m_s3: 60.0
     # Chan & Dubey weighted least-norm: reg_i grows as a joint approaches its
     # stop *while moving toward it*, so the stroke transfers before the
     # velocity box hits the wall.  Rail only — band_rad 0 keeps the arm out.
@@ -139,9 +139,9 @@ inner:
       # or the upper wall sits at 115° and vertical press dies.
       j4_limit_eps_rad: 0.08726646259971647   # 5° → zero at ~130°
       j4_limit_activate_rad: 0.4363323129985824  # 25° → taper from ~110°
-      # J1 same-sign over-fold.  Zero at 120°; 0→−90° startup stays free.
-      j1_overfold_abs_rad: 2.0943951023931953   # 120°
-      j1_overfold_activate_rad: 0.4363323129985824  # 25° → taper from ~95°
+      # J1 same-sign over-fold.  Zero at 140°; 0→−90° startup stays free.
+      j1_overfold_abs_rad: 2.443460952792061   # 140°
+      j1_overfold_activate_rad: 0.4363323129985824  # 25° → taper from ~115°
       gamma: 6.0
       slack_weight: 80.0
       dwell_free_s: 0.3
@@ -242,8 +242,8 @@ inner:
     limit_margin_m: 0.15
     pin_margin_m: 0.008
     escape_leave_m: 0.04
-    v_reach_cap_m_s: 0.02
-    d_band_m: 0.08
+    v_reach_cap_m_s: 0.05
+    d_band_m: 0.005
     k_sigma_boost: 2.0
     k_esc: 0.5
     w_sigma_floor: 1.0
@@ -254,8 +254,8 @@ inner:
     sigma_guard_enter: 0.45
     sigma_guard_exit: 0.70
     v_guard_max_m_s: 0.04
-    v_lpf_tau_s: 0.12
-    v_lpf_tau_escape_s: 0.08
+    v_lpf_tau_s: 0.05
+    v_lpf_tau_escape_s: 0.04
     # Narrow latch: deep σ or true near-limit only (healthy = FF+reach).
     sigma_escape_enter: 0.55
     sigma_escape_exit: 0.80
@@ -291,6 +291,14 @@ force:
   # Inertia compensation off on the joint stream (re-enable only with telemetry).
   use_inertia: false
 
+# Outer-loop Cartesian P for CARTESIAN_TRACK / GOTO.  CLI --move-kp
+# overrides k_task_lin only.  Rotation stays here.
+cartesian_track:
+  k_task_lin: 10.0
+  k_task_rot: 2.0
+  max_pos_err_m: 0.05
+  max_rot_err_rad: 0.35
+
 hybrid_motion:
   force_axes:
   - 0
@@ -307,9 +315,9 @@ hybrid_motion:
   - 1
   - 1
   kp_pos:
-  - 2.0
-  - 2.0
-  - 1.0
+  - 10.0
+  - 10.0
+  - 5.0
   - 1.5
   - 1.5
   - 1.5
@@ -564,9 +572,10 @@ hw:
     arm_max_span_mm: 2.0
     arm_timeout_s: 10.0
     fault_margin_m: 0.05
-    # 23 ms median cycle at 115200 (read+FA24 write).  Honest 43 Hz
-    # beats a 50 Hz label that free-runs at 41–45.
-    poll_hz: 43
+    # 205605: t_read med 5.8 ms, FA24 write usually skipped.  43 Hz left
+    # ~17 ms of sleep.  60 Hz (16.7 ms) still has ~11 ms median headroom;
+    # 80 Hz is tight on p95.
+    poll_hz: 60
     inter_frame_delay_s: 0.0005
     timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0
     retries: 1
@@ -580,7 +589,8 @@ hw:
     vel_kd: 0.22
     vel_max_m_s: 0.15
     vel_amax_m_s2: 1.2
-    # Live QPIK v_ff: position is a slow trim; host a_max is capped to FA40.
+    # Position+FF: v = v_ref + kp*(x_ref−x_meas) + kd*(v_ref−v).  Never close
+    # x_goal (20 mm lead / KMP OTG).  vel_ff_* remain for stream-goal resolve.
     vel_ff_kp: 4.0
     vel_ff_p_trim_m_s: 0.010
     match_drive_accel: true

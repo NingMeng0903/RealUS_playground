@@ -6,8 +6,10 @@ Controller path (virtual-rail WBC structure; motor replaces sim rail):
     nominal-dt position stream (5 ms integrate / ~6.5 ms wall → 25% slow).
   * Soft CSP: stream-aware online ``(x_ref,v_ref)`` from ``set_target_m`` +
     ``v = v_ref + kp*(x_ref−x) + kd*(v_ref−v_meas)`` → FA24 (``v_meas``=0x1000).
-    Live ``v_ff`` makes position a slow trim; host ``a_max`` is capped to
-    FA40 so PD cannot chop FA24 against the 200 ms drive ramp.
+    Position is closed on the shaped reference, never ``x_goal`` (command
+    lead / later KMP OTG stay outside).  Same law for QPIK coupled-velocity
+    and a position+FF stream (KMP/DMP ``p_cmd``, ``p_dot``).  Host ``a_max``
+    is capped to FA40 so PD cannot chop FA24 against the 200 ms drive ramp.
   * Standstill hysteresis freezes FA24 after a tight settle (enter band) and
     only re-engages if disturbed past the wider exit band or ``v_ref≠0``.
   * Encoder → SHM / Genesis twin only. Encoder is **never** fed into the WBC.
@@ -687,11 +689,12 @@ class RailServoBridge:
         self._last_hold_mono = 0.0
         self._hold_count = 0
         # Task-end / explicit hold: FA24=0 is not a position lock.  The
-        # worker re-writes zero and PANICs if the encoder still walks.
+        # worker re-writes zero and re-anchors if the encoder still walks.
         self._hold_active = False
         self._hold_anchor_m = float("nan")
         self._hold_origin_m = float("nan")
         self._last_hold_zero_mono = 0.0
+        self._last_hold_drift_log_mono = 0.0
         self._safety_thread: threading.Thread | None = None
         self._latch_kill_req = threading.Event()
         self._csv: _RailCsvLogger | None = None
@@ -1046,6 +1049,7 @@ class RailServoBridge:
             self._follow_enabled = False
             self._hold_active = True
             self._last_hold_zero_mono = 0.0
+            self._last_hold_drift_log_mono = 0.0
         self.kill_motion()
 
     def hold_or_settle_after_task(self, *, settle_if_err_mm: float = 2.0) -> bool:
@@ -1075,12 +1079,12 @@ class RailServoBridge:
         return True
 
     def _hold_watchdog(self, measured: float, now_s: float) -> None:
-        """While follow is down, keep FA24=0 and trip if the encoder walks.
+        """While follow is down, keep FA24=0 if the encoder walks.
 
         Velocity mode has no position lock.  Host skip-if-unchanged plus a
         forged ``_last_rpm_cmd=0`` is how 125211 crept at ~1 r/min after C
-        exited.  Re-write zero every second; re-anchor at 2 mm; PANIC at 5 mm
-        from the original hold (do not re-open follow to close the residual).
+        exited.  Re-write zero every second; re-anchor at 2 mm.  A 5 mm
+        walk only logs — do not PANIC/DISARM the whole controller.
         """
         if not self._hold_active or self._drive is None:
             return
@@ -1095,12 +1099,14 @@ class RailServoBridge:
         origin = float(self._hold_origin_m)
         anchor = float(self._hold_anchor_m)
         if math.isfinite(origin) and abs(measured - origin) > 0.005:
-            self._trip_panic(
-                measured,
-                f"hold drift {abs(measured - origin) * 1000:.1f} mm "
-                f"(FA24 should be 0)",
-            )
-            return
+            if now_s - float(self._last_hold_drift_log_mono) >= 1.0:
+                print(
+                    f"lw100 rail: hold drift "
+                    f"{abs(measured - origin) * 1000:.1f} mm "
+                    f"(FA24 rewrite, stay ARMED)",
+                    flush=True,
+                )
+                self._last_hold_drift_log_mono = float(now_s)
         if math.isfinite(anchor) and abs(measured - anchor) > 0.002:
             try:
                 self._drive.set_velocity_rpm(0, force=True)
@@ -2116,6 +2122,22 @@ class RailServoBridge:
         return x_new, v_new, a_new
 
     @staticmethod
+    def _p_trim_velocity(
+        err_x_m: float,
+        *,
+        kp: float,
+        trim_max_m_s: float,
+    ) -> float:
+        """Capped P on ``x_ref − x_meas`` (never ``x_goal``).
+
+        Shared by coupled-velocity and any later position+FF stream.  The cap
+        keeps the trim from outrunning feedforward.
+        """
+        kp = max(float(kp), 0.0)
+        cap = max(float(trim_max_m_s), 0.0)
+        return max(-cap, min(cap, kp * float(err_x_m)))
+
+    @staticmethod
     def _step_velocity_reference(
         x_ref: float,
         v_ref: float,
@@ -2773,6 +2795,13 @@ class RailServoBridge:
                             x_max=soft_hi,
                         )
                     else:
+                        stream_v_ff = (
+                            target_v_ff
+                            if math.isfinite(target_v_ff)
+                            and bool(follow)
+                            and not settling
+                            else float("nan")
+                        )
                         x_goal_eval, v_goal_est, goal_stationary = (
                             self._resolve_stream_goal(
                                 target_history,
@@ -2780,7 +2809,7 @@ class RailServoBridge:
                                 max_age_s=min(2.0 * period, 0.05),
                                 target_m=x_goal,
                                 last_rx_s=last_rx,
-                                v_ff_m_s=float("nan"),
+                                v_ff_m_s=stream_v_ff,
                             )
                         )
                         v_goal_est = max(-v_max, min(v_max, v_goal_est))
@@ -2789,8 +2818,12 @@ class RailServoBridge:
                             v_goal_est = 0.0
                             goal_stationary = True
                             x_goal_eval = x_goal
-                        v_ff_live = False
-                        a_ref_max = a_max
+                        v_ff_live = math.isfinite(stream_v_ff)
+                        a_ref_max = (
+                            float(self.config.live_host_accel_m_s2())
+                            if v_ff_live
+                            else a_max
+                        )
                         x_ref, v_ref, a_ref = self._step_reference(
                             x_ref,
                             v_ref,
@@ -2807,17 +2840,16 @@ class RailServoBridge:
                     v_meas = self._rpm_to_mps(float(speed_rpm_host))
                     err_x = x_ref - measured
                     err_v = v_ref - v_meas
-                    if v_ff_live and not velocity_coupled:
-                        kp = min(kp, max(float(self.config.vel_ff_kp), 0.0))
-                    if velocity_coupled:
-                        v_p = 0.0
+                    # Position+FF on the shaped reference (papers: ẋd + Kp(xd−x)
+                    # + Kd(ẋd−ẋ)).  xd is x_ref, never x_goal — command lead
+                    # and later KMP OTG stay outside this loop.  Pure velocity
+                    # (v_p=0) integrates drift; that was the 3 mm tool-Y.
+                    v_p = kp * err_x
+                    if settling:
+                        v_p_allow = abs(err_x) / max_stall_s
                     else:
-                        v_p = kp * err_x
-                        if settling:
-                            v_p_allow = abs(err_x) / max_stall_s
-                        else:
-                            v_p_allow = max(abs(err_x) / max_stall_s, stall_v_floor)
-                        v_p = max(-v_p_allow, min(v_p_allow, v_p))
+                        v_p_allow = max(abs(err_x) / max_stall_s, stall_v_floor)
+                    v_p = max(-v_p_allow, min(v_p_allow, v_p))
                     v_d = kd * err_v
                     v_raw = v_ref + v_p + v_d
                     if velocity_coupled:
@@ -2829,35 +2861,34 @@ class RailServoBridge:
                             v_prev_cmd=prev_v_cmd,
                         )
 
-                    # COUPLED / continuous QPIK tracking: never freeze FA24 on
-                    # tiny errors while follow is live and targets are fresh.
-                    # Standstill latch is only for LOCKED/HOLD or stale target.
+                    # Standstill when the shaped reference has stopped
+                    # (|v_ref| < 1 mm/s), including live follow.  Do not
+                    # veto on follow — that left P hunting FA24 at idle.
+                    # Latch on e_track (x_ref−x_meas), never x_goal (20 mm lead).
+                    # Instant deadband only for a truly stopped ref so a
+                    # tiny nonzero v_ref still moves.
                     target_stale = bool(
                         last_rx <= 0.0 or (t0 - last_rx) > stream_dead_s
                     )
-                    continuous_tracking = (
-                        bool(follow) and not settling and not target_stale
-                    )
-                    err_goal = float(x_goal_eval) - measured
-                    if continuous_tracking:
+                    follow_live = bool(follow) and not settling and not target_stale
+                    v_ref_stopped = abs(v_ref) < 0.001
+                    if abs(v_ref) < 1.0e-6 and abs(err_x) <= deadband_m:
+                        v_raw = 0.0
+
+                    enter_m = max(float(self.config.standstill_enter_mm), 0.01) * 1e-3
+                    exit_m = max(float(self.config.standstill_exit_mm), 0.01) * 1e-3
+                    dwell_s = max(float(self.config.standstill_dwell_s), 0.0)
+                    was_held = standstill_held
+                    if not v_ref_stopped:
                         standstill_held = False
                         standstill_enter_since = None
                     else:
-                        # Deadband only when reference has stopped (never mid-stroke).
-                        if abs(v_ref) < 0.001 and abs(err_x) <= deadband_m:
-                            v_raw = 0.0
-
-                        # Goal-error hysteresis: freeze FA24 after a tight settle.
-                        enter_m = max(float(self.config.standstill_enter_mm), 0.01) * 1e-3
-                        exit_m = max(float(self.config.standstill_exit_mm), 0.01) * 1e-3
-                        dwell_s = max(float(self.config.standstill_dwell_s), 0.0)
-                        was_held = standstill_held
                         standstill_held, standstill_enter_since = (
                             self._standstill_hold_update(
                                 held=standstill_held,
                                 enter_since_s=standstill_enter_since,
                                 now_s=t0,
-                                err_m=err_goal,
+                                err_m=err_x,
                                 v_ref_m_s=v_ref,
                                 v_cmd_m_s=prev_v_cmd,
                                 v_meas_m_s=v_meas,
@@ -2874,13 +2905,13 @@ class RailServoBridge:
                             if verbose and not was_held:
                                 print(
                                     f"lw100 rail: standstill latch "
-                                    f"|err|={abs(err_goal) * 1000:.2f} mm → FA24=0",
+                                    f"|e_track|={abs(err_x) * 1000:.2f} mm → FA24=0",
                                     flush=True,
                                 )
                         elif verbose and was_held:
                             print(
                                 f"lw100 rail: standstill wake "
-                                f"|err|={abs(err_goal) * 1000:.2f} mm",
+                                f"|e_track|={abs(err_x) * 1000:.2f} mm",
                                 flush=True,
                             )
 
@@ -2910,17 +2941,17 @@ class RailServoBridge:
                     dv_max = a_ref_max * dt
                     v_cmd = max(prev_v_cmd - dv_max, min(prev_v_cmd + dv_max, v_des))
                     a_cmd = (v_cmd - prev_v_cmd) / max(dt, 1.0e-6)
-                    if not continuous_tracking:
+                    if standstill_held:
+                        # Instant freeze — do not coast down through stiction hum.
+                        v_des = 0.0
+                        v_cmd = 0.0
+                        a_cmd = 0.0
+                    elif not follow_live:
                         if (
                             abs(v_ref) < 0.001
                             and abs(err_x) <= max(deadband_m, settle_tol_m)
                             and abs(v_cmd) <= 1.0e-6
                         ):
-                            v_cmd = 0.0
-                            a_cmd = 0.0
-                        if standstill_held:
-                            # Instant freeze — do not coast down through stiction hum.
-                            v_des = 0.0
                             v_cmd = 0.0
                             a_cmd = 0.0
 

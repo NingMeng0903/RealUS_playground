@@ -36,7 +36,7 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
     assert cfg.nullspace.q_nominal_rad is not None
     assert cfg.rail_extension.enabled
     assert cfg.a_max_arm_rad_s2 == pytest.approx(3.0)
-    assert cfg.a_max_rail_m_s2 == pytest.approx(0.30)
+    assert cfg.a_max_rail_m_s2 == pytest.approx(0.60)
     assert cfg.qp.j_max_arm_rad_s3 == pytest.approx(300.0)
     assert cfg.qp.limit_damper_band_rail_m == pytest.approx(0.025)
     assert cfg.rail.soft_min_m == pytest.approx(0.030)
@@ -51,7 +51,7 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
         raw["qpik"]["hard_limits"]["rail"]["soft_min_m"]
     )
     servo = parse_rail_servo_config(raw)
-    assert servo.poll_hz == pytest.approx(43.0)
+    assert servo.poll_hz == pytest.approx(60.0)
     assert servo.accel_ms == 120
     assert servo.decel_ms == 120
     assert servo.vel_amax_m_s2 == pytest.approx(1.2)
