@@ -969,6 +969,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             "psi_retarget", "ird",
             "nullspace_d_null", "nullspace_d_null_adaptive", "nullspace_max_qdot_frac",
             "post_qp_step_clamp",
+            "qmeas_filter", "qmeas_lowpass_hz",
         },
         name="inner",
     )
@@ -1112,6 +1113,10 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             name="inner.nullspace_max_qdot_frac",
         ),
         post_qp_step_clamp=bool(inner.get("post_qp_step_clamp", False)),
+        qmeas_filter=str(inner.get("qmeas_filter", "lowpass") or "lowpass"),
+        qmeas_lowpass_hz=_finite_float(
+            inner.get("qmeas_lowpass_hz", 25.0), name="inner.qmeas_lowpass_hz"
+        ),
     )
     assert_design_attractor_consistent(cfg)
     return cfg

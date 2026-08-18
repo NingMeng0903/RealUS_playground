@@ -35,7 +35,7 @@ class NullspaceTaskConfig:
     q_nominal_rad: np.ndarray | None = None
     # Smoothstep ramp after set_q_target so a large posture error cannot
     # dump a full-scale kick on the first tick.
-    engage_s: float = 0.35
+    engage_s: float = 0.0
 
 
 class JointCenteringTask:

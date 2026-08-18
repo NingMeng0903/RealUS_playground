@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -49,6 +50,11 @@ GATES = {
     "step_ripple_p999": 0.50,
     "step_ripple_max": 1.00,
     "deadline_slack_pos_frac": 0.99,
+    # t_ref used to advance by dt_nom while wall ran 6.64 ms: lag grew to 14 s.
+    "accepted_reference_lag_p95_s": 0.10,
+    "rail_period_nominal_s": 1.0 / 60.0,
+    "rail_period_on_time_frac": 0.80,
+    "rail_target_age_p95_ms": 50.0,
 }
 
 # If 5 ms misses the slack gate, step back up; do not skip rungs.
@@ -200,6 +206,25 @@ def err_vel_correlation(err: np.ndarray, vel: np.ndarray) -> float:
     if float(np.std(ee)) < 1.0e-12 or float(np.std(vv)) < 1.0e-12:
         return float("nan")
     return float(np.corrcoef(ee, vv)[0, 1])
+
+
+def _latency_histogram(values: np.ndarray, edges_ms: tuple[float, ...] = (2.0, 5.0, 10.0, 20.0)) -> str:
+    """Compact one-line histogram for Modbus read/write tails."""
+    finite = np.asarray(values, dtype=float)
+    finite = finite[np.isfinite(finite)]
+    if finite.size == 0:
+        return "hist n=0"
+    bounds = (0.0, *tuple(float(e) for e in edges_ms), float("inf"))
+    counts = []
+    for lo, hi in zip(bounds[:-1], bounds[1:]):
+        if math.isinf(hi):
+            n = int(np.count_nonzero(finite >= lo))
+            label = f">={lo:.0f}"
+        else:
+            n = int(np.count_nonzero((finite >= lo) & (finite < hi)))
+            label = f"{lo:.0f}-{hi:.0f}"
+        counts.append(f"{label}:{100.0 * n / finite.size:.0f}%")
+    return "hist " + " ".join(counts)
 
 
 def _col(rows: list[dict], name: str) -> np.ndarray:
@@ -369,6 +394,10 @@ def _rail_servo_checks(
     dtw = _col(rows, "dt_wall_ms")
     dtw = dtw[np.isfinite(dtw)]
     if dtw.size:
+        nom_ms = 1000.0 * GATES["rail_period_nominal_s"]
+        on_time = float(
+            np.mean((dtw > 0.9 * nom_ms) & (dtw < 1.1 * nom_ms))
+        )
         info.append(
             (
                 "rail servo loop",
@@ -376,6 +405,39 @@ def _rail_servo_checks(
                 f"  p95 {np.percentile(dtw, 95):.1f} ms  max {dtw.max():.1f} ms",
             )
         )
+        results.append(
+            (
+                f"rail period on-time > 80% of {nom_ms:.1f} ms",
+                on_time > GATES["rail_period_on_time_frac"],
+                f"{100.0 * on_time:.1f}% within ±10% of {nom_ms:.1f} ms",
+            )
+        )
+        for name in ("t_read_ms", "t_write_ms"):
+            lat = _col(rows, name)
+            lat = lat[np.isfinite(lat)]
+            if lat.size:
+                info.append(
+                    (
+                        f"rail {name}",
+                        f"p50 {np.median(lat):.2f}  p95 {np.percentile(lat, 95):.2f}  "
+                        f"max {lat.max():.1f} ms  {_latency_histogram(lat)}",
+                    )
+                )
+    age = _col(rows, "target_age_ms")
+    follow = _col(rows, "follow")
+    if np.isfinite(age).any():
+        live_age = np.isfinite(age)
+        if np.isfinite(follow).any():
+            live_age &= follow > 0.5
+        if np.any(live_age):
+            p95_age = float(np.nanpercentile(age[live_age], 95))
+            results.append(
+                (
+                    "rail target_age p95 < 50 ms (live follow)",
+                    p95_age < GATES["rail_target_age_p95_ms"],
+                    f"p95 {p95_age:.1f} ms",
+                )
+            )
 
     follow = _col(rows, "follow")
     age = _col(rows, "target_age_ms")
@@ -1268,6 +1330,23 @@ def analyze(path: Path) -> int:
                     f"slack passed at dt_ms={current_ms:.1f}",
                 )
             )
+    lag = _col(rows, "qpik_accepted_reference_lag_s")
+    if not np.isfinite(lag).any():
+        lag = _col(rows, "accepted_reference_lag_s")
+    if np.isfinite(lag).any():
+        p95_lag = float(np.nanpercentile(lag[np.isfinite(lag)], 95))
+        results.append(
+            (
+                "accepted reference lag p95 < 0.1 s",
+                p95_lag < GATES["accepted_reference_lag_p95_s"],
+                f"p95 {p95_lag:.3f} s  max {float(np.nanmax(lag)):.3f} s",
+            )
+        )
+    for name in ("rt_fifo_ok", "cpu_pinned", "cstate_ok"):
+        col = _col(rows, name)
+        if col.size and np.isfinite(col).any():
+            frac = float(np.mean(col[np.isfinite(col)] > 0.5))
+            info.append((name, f"{100.0 * frac:.0f}% of ticks"))
     results.append(
         (
             "accel sign reversals < 20/s and jerk RMS < 200 (uniform step)",

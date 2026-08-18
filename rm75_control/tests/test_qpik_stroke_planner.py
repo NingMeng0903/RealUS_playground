@@ -794,6 +794,10 @@ def test_analyzer_rejects_empty_scan(tmp_path) -> None:
     assert "dt_on_time_frac" in mod.GATES
     assert "step_ripple_p999" in mod.GATES
     assert "deadline_slack_pos_frac" in mod.GATES
+    assert "accepted_reference_lag_p95_s" in mod.GATES
+    assert mod.GATES["accepted_reference_lag_p95_s"] == pytest.approx(0.10)
+    assert mod.GATES["rail_period_nominal_s"] == pytest.approx(1.0 / 60.0)
+    assert mod.GATES["rail_period_on_time_frac"] == pytest.approx(0.80)
     assert mod.GATES["dt_nominal_s"] == pytest.approx(0.005)
     assert mod.PERIOD_LADDER_MS == (7.0, 6.0, 5.0)
     assert mod.next_period_ms(7.0, 0.50) == pytest.approx(7.0)

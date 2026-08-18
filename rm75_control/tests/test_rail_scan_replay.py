@@ -94,7 +94,7 @@ def _run_scan(inner: JointIkController, amplitude_m: float, n_ticks: int, v_peak
     return {k: np.asarray(v) for k, v in out.items()}
 
 
-def _rail_reversals(rail: np.ndarray, v_eps: float = 1e-6) -> int:
+def _rail_reversals(rail: np.ndarray, v_eps: float = 5.0e-5) -> int:
     dq = np.diff(rail)
     rev = 0
     last = 0

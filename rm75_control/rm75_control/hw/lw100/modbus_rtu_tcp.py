@@ -122,6 +122,7 @@ class ModbusRtuTcpClient:
                 (self.config.host, self.config.port),
                 timeout=self.config.timeout_s,
             )
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             sock.settimeout(self.config.timeout_s)
             self._sock = sock
             # Drop any bytes left from a previous crashed client on the USR.

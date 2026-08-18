@@ -40,6 +40,8 @@ from pathlib import Path
 RAIL_IDLE_EPS_M_S = 1.0e-3
 
 from rm75_control.hw.lw100.drive import (
+    FA72_BAUD_115200,
+    FA73_PROTO_8N1,
     LW100Drive,
     LW100DriveConfig,
     di_limits_pressed_from_mask,
@@ -724,7 +726,7 @@ class RailServoBridge:
         self._panic = False
         self._panic_reason = ""
         self._abort = threading.Event()
-        self._last_target_rx_mono = 0.0
+        self._last_target_rx_mono = float("nan")
         self._target_history: deque[tuple[float, float]] = deque(maxlen=64)
         self._last_enc_ok_mono = 0.0
         self._last_reject_unarmed_log = 0.0
@@ -919,7 +921,7 @@ class RailServoBridge:
             self._target_v_ff_m_s = float("nan")
             self._commanded_m = meas
             self._follow_enabled = False
-            self._last_target_rx_mono = 0.0
+            self._last_target_rx_mono = float("nan")
             self._target_history.clear()
             self._target_history.append((now, meas))
             self._hold_count = 0
@@ -1092,6 +1094,7 @@ class RailServoBridge:
                 self._hold_origin_m = float("nan")
             self._follow_enabled = False
             self._hold_active = True
+            self._last_target_rx_mono = time.monotonic()
             self._last_hold_zero_mono = 0.0
             self._last_hold_drift_log_mono = 0.0
         self.kill_motion()
@@ -1693,6 +1696,26 @@ class RailServoBridge:
                     )
                 except ModbusRtuError as exc:
                     print(f"lw100 rail: WARN read FA5/6/7/8 failed ({exc})", flush=True)
+                try:
+                    status = self._drive.read_status()
+                    fa72 = int(status.get("FA-72", -1))
+                    fa73 = int(status.get("FA-73", -1))
+                    print(
+                        f"lw100 rail: Modbus serial FA72={fa72} "
+                        f"({fa72 * 100 if fa72 > 0 else '?'} bps) "
+                        f"FA73={fa73} (3=8N1, 0=8N2)",
+                        flush=True,
+                    )
+                    if fa72 != FA72_BAUD_115200 or fa73 != FA73_PROTO_8N1:
+                        print(
+                            "lw100 rail: WARN serial not at 115200 8N1 — "
+                            "run apps/lw100_setup_115200.py then power-cycle "
+                            "and match the USR baud.  100 Hz is not honest "
+                            "until this link is at the servo ceiling.",
+                            flush=True,
+                        )
+                except ModbusRtuError as exc:
+                    print(f"lw100 rail: WARN read FA72/FA73 failed ({exc})", flush=True)
                 last_err = None
                 break
             except ModbusRtuError as exc:
@@ -1772,10 +1795,10 @@ class RailServoBridge:
             self._panic = False
             self._panic_reason = ""
             self._speed_cap_rpm = None
-            self._last_target_rx_mono = 0.0
+            self._last_target_rx_mono = float("nan")
             self._servo_sample = RailServoSample(
                 sample_mono_s=float(self._measured_mono_s),
-                target_rx_mono_s=0.0,
+                target_rx_mono_s=float("nan"),
                 motion_seq=int(self._measured_seq),
                 x_goal_m=measured,
                 x_ref_m=measured,
@@ -2597,6 +2620,7 @@ class RailServoBridge:
                     v_cmd = 0.0
                     hard_hold_this_tick = True
 
+                t_write_ms = 0.0
                 t_read0 = time.monotonic()
                 drive_rpm, drive_m, di_mask = self._drive.read_motion_and_di_fast()
                 t_read1 = time.monotonic()
@@ -2624,6 +2648,19 @@ class RailServoBridge:
                     armed = bool(self._armed)
                     calibrated = bool(self._calibrated)
                     last_sane = float(self._measured_m)
+                    hold_active = bool(self._hold_active)
+
+                # Position / hold has no stream publisher.  Stamp the active
+                # hold target so target_age does not walk from the last
+                # coupled-velocity tick (p50 was 5.7 s).
+                if (
+                    command_mode is RailCommandMode.POSITION
+                    and math.isfinite(target)
+                    and (follow or hold_active)
+                ):
+                    last_rx = float(t0)
+                    with self._lock:
+                        self._last_target_rx_mono = last_rx
 
                 if not self._encoder_sane(measured):
                     # Out-of-band reading: stop streaming, keep session/cal.

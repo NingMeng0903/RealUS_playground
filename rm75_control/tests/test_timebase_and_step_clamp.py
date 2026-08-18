@@ -13,6 +13,8 @@ from rm75_control.control.joint_admittance_8dof.loop import (
     _CStateGuard,
     _pin_control_cpu,
     _set_realtime_priority,
+    filter_q_meas,
+    reference_time_step,
 )
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics, full_q_from_arm
 from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfig
@@ -148,6 +150,47 @@ def test_yaml_dt_ms_is_5ms() -> None:
         (Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml").read_text()
     )
     assert float(raw["timing"]["dt_ms"]) == pytest.approx(5.0)
+    assert raw["inner"]["post_qp_step_clamp"] is True
+    assert raw["timing"]["control_cpu"] is None
+    assert float(raw["inner"]["qp"]["nullspace_vel_damp"]) == pytest.approx(0.0)
+    assert float(raw["hw"]["lw100"]["poll_hz"]) == pytest.approx(60.0)
+    assert float(raw["inner"]["arm_angle"]["engage_s"]) == pytest.approx(0.0)
+    assert float(raw["inner"]["nullspace"]["engage_s"]) == pytest.approx(0.0)
+    assert raw["inner"]["qmeas_filter"] == "lowpass"
+
+
+def test_reference_time_step_follows_elapsed_wall() -> None:
+    assert reference_time_step(0.00664, 1.0) == pytest.approx(0.00664)
+    assert reference_time_step(0.00664, 0.5) == pytest.approx(0.00332)
+    assert reference_time_step(0.0, 1.0) == pytest.approx(0.0)
+    assert reference_time_step(float("nan"), 1.0) == pytest.approx(0.0)
+
+
+def test_post_qp_step_clamp_off_does_not_rewrite_command() -> None:
+    qp = QpConfig(backend="proxqp", collision=CollisionConfig(enabled=False))
+    cfg = JointIkConfig(
+        dt=0.005,
+        control_frame="base",
+        qp=qp,
+        collision=CollisionConfig(enabled=False),
+        a_max_arm_rad_s2=3.0,
+        a_max_rail_m_s2=0.60,
+        post_qp_step_clamp=False,
+    )
+    controller = JointIkController(RobotKinematics(), cfg)
+    controller.reset(Q_SAFE)
+    controller.set_direct_joint_ptp(True)
+    dt_nom = float(controller.cfg.dt)
+    q = controller.q_cmd.copy()
+    slow = np.zeros(8)
+    slow[2] = 0.002
+    controller.update(np.zeros(6), dt_nom, q_meas=q, qdot_ff=slow)
+    q = controller.q_cmd.copy()
+    jump = np.zeros(8)
+    jump[2] = 0.80
+    step = controller.update(np.zeros(6), dt_nom, q_meas=q, qdot_ff=jump)
+    assert not step.acc_clamped
+    assert step.qdot[2] == pytest.approx(0.80, abs=1.0e-9)
 
 
 def test_period_ladder_holds_until_slack_passes() -> None:
@@ -186,3 +229,71 @@ def test_step_clamp_flags_acc_clamped_on_large_qdot_jump() -> None:
     assert step.acc_clamped
     ddq = abs(step.qdot[2] * dt_nom - slow[2] * dt_nom)
     assert ddq <= controller.limits.a_max[2] * dt_nom * dt_nom + 1.0e-9
+
+
+def test_box_period_does_not_open_on_long_tick(monkeypatch: pytest.MonkeyPatch) -> None:
+    controller = _ptp_controller()
+    controller._box_dt_last_t = 0.0
+    controller._box_h1_last = 0.005
+    monkeypatch.setattr(
+        "rm75_control.control.joint_admittance_8dof.loop.time.monotonic",
+        lambda: 0.0109,
+    )
+    h1, prev = controller._measure_box_periods(0.005)
+    assert prev == pytest.approx(0.005)
+    assert h1 == pytest.approx(0.005)
+
+
+def test_filter_q_meas_hold_keeps_stale_frame() -> None:
+    q0 = np.linspace(0.1, 0.8, 8)
+    q1 = q0.copy()
+    q1[4] += 1.7e-5
+    filt, raw, kept = filter_q_meas(
+        q0, mode="hold", dt=0.005, prev_raw=None, prev_filt=None
+    )
+    np.testing.assert_allclose(filt, q0)
+    filt2, _, _ = filter_q_meas(
+        q0, mode="hold", dt=0.005, prev_raw=raw, prev_filt=kept
+    )
+    np.testing.assert_allclose(filt2, q0)
+    filt3, _, kept3 = filter_q_meas(
+        q1, mode="hold", dt=0.005, prev_raw=q0, prev_filt=q0
+    )
+    np.testing.assert_allclose(filt3, q1)
+    stale, _, _ = filter_q_meas(
+        q1, mode="hold", dt=0.005, prev_raw=q1, prev_filt=kept3
+    )
+    np.testing.assert_allclose(stale, q1)
+
+
+def test_filter_q_meas_lowpass_lags_a_step() -> None:
+    q0 = np.zeros(8)
+    q1 = np.ones(8)
+    filt, _, kept = filter_q_meas(
+        q0, mode="lowpass", dt=0.005, prev_raw=None, prev_filt=None, lowpass_hz=25.0
+    )
+    np.testing.assert_allclose(filt, q0)
+    filt2, _, _ = filter_q_meas(
+        q1, mode="lowpass", dt=0.005, prev_raw=q0, prev_filt=kept, lowpass_hz=25.0
+    )
+    assert float(filt2[0]) > 0.0
+    assert float(filt2[0]) < 1.0
+
+
+def test_latency_histogram_splits_the_write_tail() -> None:
+    import importlib.util
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "joint_admittance_8dof"
+        / "analyze_qpik_quality.py"
+    )
+    spec = importlib.util.spec_from_file_location("analyze_qpik_quality_hist", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    text = mod._latency_histogram(np.array([0.0, 1.0, 6.0, 17.0, 22.0]))
+    assert "0-2:40%" in text
+    assert ">=20:20%" in text

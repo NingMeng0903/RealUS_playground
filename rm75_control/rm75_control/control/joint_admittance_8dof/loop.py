@@ -149,10 +149,14 @@ class JointIkConfig:
     nullspace_d_null: float = 0.0
     nullspace_d_null_adaptive: float = 1.0
     nullspace_max_qdot_frac: float = 0.2
-    # Post-QP rewrite of |Δdq|.  Default on so unit tests keep the safety
-    # net; hardware yaml turns it off so the QP accel/jerk boxes own the
-    # limit (a second tighter clamp is what made the fs/4 limit cycle).
+    # Post-QP rewrite of |Δdq|.  This is the only rate limit that lives in
+    # the CANFD fixed-dt domain; keep it on for hardware and unit tests.
     post_qp_step_clamp: bool = True
+    # Encoder-state filter before Jacobian / task error.  ``raw`` feeds the
+    # sensor as-is; ``hold`` keeps the last sample on a stale frame;
+    # ``lowpass`` is a first-order cutoff at ``qmeas_lowpass_hz``.
+    qmeas_filter: str = "raw"
+    qmeas_lowpass_hz: float = 25.0
 
 
 @dataclass
@@ -327,6 +331,51 @@ def scale_qdot_into_box(
     return qdot * s
 
 
+def filter_q_meas(
+    raw: np.ndarray,
+    *,
+    mode: str,
+    dt: float,
+    prev_raw: np.ndarray | None,
+    prev_filt: np.ndarray | None,
+    lowpass_hz: float = 25.0,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Filter encoder state before QP geometry.
+
+    Returns ``(filtered, new_prev_raw, new_prev_filt)``.  ``hold`` keeps the
+    last accepted sample when this frame is bit-identical to the previous
+    one (stale encoder).  ``lowpass`` is first-order at ``lowpass_hz``.
+    """
+    q_raw = np.asarray(raw, dtype=float).copy()
+    kind = str(mode or "raw").strip().lower()
+    if kind in ("", "raw", "none", "off"):
+        return q_raw, q_raw, q_raw
+    if kind == "hold":
+        if (
+            prev_raw is not None
+            and prev_filt is not None
+            and q_raw.shape == prev_raw.shape
+            and np.array_equal(q_raw, prev_raw)
+        ):
+            q_filt = np.asarray(prev_filt, dtype=float).copy()
+        else:
+            q_filt = q_raw
+        return q_filt, q_raw, q_filt
+    if kind == "lowpass":
+        fc = max(float(lowpass_hz), 1.0e-3)
+        period = max(float(dt), 1.0e-6)
+        alpha = 1.0 - math.exp(-2.0 * math.pi * fc * period)
+        alpha = float(np.clip(alpha, 0.0, 1.0))
+        if prev_filt is None or np.asarray(prev_filt).shape != q_raw.shape:
+            q_filt = q_raw
+        else:
+            q_filt = np.asarray(prev_filt, dtype=float) + alpha * (
+                q_raw - np.asarray(prev_filt, dtype=float)
+            )
+        return q_filt, q_raw, q_filt
+    raise ValueError(f"unknown qmeas_filter {mode!r}")
+
+
 class JointIkController:
     """Reusable inner loop: (q_cmd, q_meas, twist) -> next joint command (rad)."""
 
@@ -422,6 +471,8 @@ class JointIkController:
         self._box_dt_last_t: float | None = None
         self._box_h1_last: float | None = None
         self._dq_prev: np.ndarray | None = None
+        self._q_meas_raw_prev: np.ndarray | None = None
+        self._q_meas_filt: np.ndarray | None = None
         self._rail_dv_filt: float = 0.0
         self._rail_dv_tau_s: float = 0.025
         self.secondary = SecondaryComposer.from_controller_parts(
@@ -501,9 +552,11 @@ class JointIkController:
     def _measure_box_periods(self, dt: float) -> tuple[float, float | None]:
         """Two most recent wall periods for the unequal-sample third-order box.
 
-        Each period is clamped to ``[0.8, 2.0] × dt`` (pass the nominal
+        Each period is clamped to ``[0.8, 1.0] × dt`` (pass the nominal
         period, not the jittering wall period) so one stalled tick cannot
-        open the acceleration/jerk boxes.
+        open the acceleration/jerk boxes.  CANFD consumes ``q_cmd`` on a
+        fixed ``dt_nom``, so a longer wall period must not enlarge the
+        accel / jerk budget.
         """
         now = time.monotonic()
         prev = self._box_dt_last_t
@@ -517,7 +570,7 @@ class JointIkController:
         if not math.isfinite(measured) or measured <= 0.0:
             h1 = nominal
         else:
-            h1 = float(np.clip(measured, 0.8 * nominal, 2.0 * nominal))
+            h1 = float(np.clip(measured, 0.8 * nominal, 1.0 * nominal))
         self._box_h1_last = h1
         return h1, prev_h1
 
@@ -529,16 +582,12 @@ class JointIkController:
     ) -> tuple[np.ndarray, bool]:
         """Commit the integrated command; optionally clamp |Δdq|.
 
-        Hardware yaml sets ``post_qp_step_clamp: false`` so the QP
-        acceleration / jerk boxes are the only rate limit.  The post-QP
-        rewrite used ``a_max * dt_nom^2`` while integration used
-        ``dt_int``, which is what pinned every joint to the same |a|max
-        and drove the fs/4 nullspace limit cycle.
+        Hardware yaml keeps ``post_qp_step_clamp: true`` so the rewrite
+        lives in the CANFD fixed-dt domain.  The off path only parks on
+        the hard position box; it does not rewrite |Δdq|.
         """
         if not bool(getattr(self.cfg, "post_qp_step_clamp", True)):
-            dq = np.asarray(self.q_cmd, dtype=float) - np.asarray(
-                q_prev, dtype=float
-            )
+            dq = self._apply_position_box(q_prev)
             self._dq_prev = dq.copy()
             period = max(float(dt_int), 1.0e-12)
             qdot = dq / period
@@ -551,12 +600,36 @@ class JointIkController:
             self.limits.a_max,
             dt_nom,
         )
-        self._dq_prev = np.asarray(dq, dtype=float).copy()
         self.q_cmd = np.asarray(q_safe, dtype=float).copy()
+        # Hard-limit park only.  Does not rewrite |Δdq| in free space;
+        # without it a scan can step ~0.1 mm past rail hard_min.
+        dq = self._apply_position_box(q_prev)
+        self._dq_prev = dq.copy()
         period = max(float(dt_int), 1.0e-12)
-        qdot = np.asarray(dq, dtype=float) / period
+        qdot = dq / period
         self.core.qdot_prev = qdot.copy()
         return qdot, bool(acc_clamped)
+
+    def _apply_position_box(self, q_prev: np.ndarray) -> np.ndarray:
+        """Clip the committed command to the hard box without a snap-back qdot.
+
+        A command that is already past a wall parks on the wall (qdot=0).
+        A step that would cross a wall stops on the wall.  Pulling ``q_prev``
+        from 0.782 to 0.78 over ``dt`` would invent −0.4 m/s and is not a
+        legal leave-wall command.
+        """
+        lo = np.asarray(self.limits.q_lower, dtype=float)
+        hi = np.asarray(self.limits.q_upper, dtype=float)
+        q_raw = np.asarray(self.q_cmd, dtype=float)
+        prev = np.asarray(q_prev, dtype=float)
+        q_clip = np.minimum(np.maximum(q_raw, lo), hi)
+        already_lo = prev <= lo
+        already_hi = prev >= hi
+        parked = (already_lo & (q_raw <= lo)) | (already_hi & (q_raw >= hi))
+        q_clip = np.where(parked, np.clip(prev, lo, hi), q_clip)
+        self.q_cmd = q_clip
+        dq = q_clip - prev
+        return np.where(parked, 0.0, dq)
 
     def plan_scan_stroke(
         self,
@@ -662,6 +735,8 @@ class JointIkController:
         self._box_dt_last_t = None
         self._box_h1_last = None
         self._dq_prev = None
+        self._q_meas_raw_prev = None
+        self._q_meas_filt = None
         self._rail_dv_filt = 0.0
         self._direct_joint_ptp = False
         self._plan_drives_rail = False
@@ -1065,9 +1140,17 @@ class JointIkController:
         q_prev = np.asarray(self.q_cmd, dtype=float).copy()
         if q_meas is None:
             raise ValueError("q_meas is required for every Cartesian QPIK tick")
-        q_state = np.asarray(q_meas, dtype=float).copy()
-        if q_state.shape != (self.kin.nv,) or not np.isfinite(q_state).all():
+        q_raw = np.asarray(q_meas, dtype=float).copy()
+        if q_raw.shape != (self.kin.nv,) or not np.isfinite(q_raw).all():
             raise ValueError(f"q_meas must be a finite {(self.kin.nv,)} vector")
+        q_state, self._q_meas_raw_prev, self._q_meas_filt = filter_q_meas(
+            q_raw,
+            mode=str(getattr(self.cfg, "qmeas_filter", "raw") or "raw"),
+            dt=float(dt),
+            prev_raw=self._q_meas_raw_prev,
+            prev_filt=self._q_meas_filt,
+            lowpass_hz=float(getattr(self.cfg, "qmeas_lowpass_hz", 25.0) or 25.0),
+        )
         follow_err = float(np.max(np.abs(q_prev - q_state)))
         twist_task = np.asarray(twist, dtype=float).reshape(-1)
         if twist_task.size != 6 or not np.isfinite(twist_task).all():

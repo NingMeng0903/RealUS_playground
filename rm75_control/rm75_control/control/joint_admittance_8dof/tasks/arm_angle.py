@@ -75,7 +75,7 @@ class ArmAngleTaskConfig:
     psi_hard_upper_rad: float | None = None
     # Smoothstep ramp after reset / set_reference so a large ψ error cannot
     # dump a full-scale nullspace kick on the first tick.
-    engage_s: float = 0.35
+    engage_s: float = 0.0
 
 
 def _wrap_pi(a: float) -> float:

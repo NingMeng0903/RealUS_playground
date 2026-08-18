@@ -28,10 +28,13 @@ def main() -> int:
     parser.add_argument("csv", nargs="+", type=Path)
     args = parser.parse_args()
     print(
-        "Hardware checklist: ellipse + gamepad, 3-5 s idle on the pad, "
-        "then these gates must pass: loop period on-time, command-step "
-        "ripple, deadline slack > 0 on ≥99% of ticks.  Target is "
-        "dt_ms=5.0; if slack misses, raise back to 7.0."
+        "Hardware checklist: ellipse + gamepad, 3-5 s idle on the pad.  "
+        "Gates that must pass: accel reversals < 20/s, deadline slack > 0 "
+        "on ≥99% of ticks, accepted_reference_lag p95 < 0.1 s, loop period "
+        "on-time at 5 ms, rail period on-time at 16.7 ms / 60 Hz (>80%), rail accel "
+        "reversals < 3/s, rail target_age p95 < 50 ms.  Confirm CSV "
+        "rt_fifo_ok / cpu_pinned / cstate_ok after scripts/enable_rt.sh.  "
+        "If slack misses, raise dt_ms back to 7.0."
     )
     worst = 0
     for path in args.csv:

@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from rm75_control.control.joint_admittance_8dof.collision_model import CollisionModel
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
@@ -77,6 +78,28 @@ def test_default_update_remains_full_narrow_phase() -> None:
     assert collision.distance_query_count == len(collision.geom_model.collisionPairs)
     assert not collision.skipped_pair_indices
     assert len(collision.all_pairs()) == len(collision.geom_model.collisionPairs)
+
+
+def test_cbf_rows_use_activation_band_as_distance_threshold() -> None:
+    from rm75_control.control.joint_admittance_8dof.collision_model import (
+        CollisionConfig,
+    )
+    from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import (
+        CbfSlotTracker,
+        build_cbf_rows,
+    )
+
+    kin, collision = _collision()
+    cfg = CollisionConfig(enabled=True, d_safe=0.01, d_activate=0.04)
+    tracker = CbfSlotTracker(max_pairs=cfg.max_pairs)
+    q = np.zeros(kin.nq, dtype=float)
+    build_cbf_rows(collision, kin, q, cfg, tracker=tracker)
+    n_pairs = len(collision.geom_model.collisionPairs)
+    assert collision.distance_query_count <= n_pairs
+    assert collision._last_distance_threshold == pytest.approx(  # noqa: SLF001
+        cfg.d_activate + tracker.hyst_m
+    )
+    assert collision.distance_query_count >= 1
 
 
 def test_nonunit_mesh_scale_disables_broadphase_for_safety() -> None:

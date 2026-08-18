@@ -111,6 +111,9 @@ inner:
     # Measured jerk RMS was 250-570 rad/s³ with the acceleration flipping sign
     # on ~half the ticks while the reference twist was smooth.
     j_max_arm_rad_s3: 300.0
+    # De Luca 2015 velocity-level nullspace damping (arm only).  Soft ‖q̇‖²
+    # on QP2; 0 disables.  Leave off until an offline k_d sweep is done.
+    nullspace_vel_damp: 0.0
     # 3.0 made a full rail acceleration reversal take 2*a_max/j = 0.2 s versus
     # 0.02 s on the arm; 60 keeps 2*a_max/j = 0.02 s after a_max rose to 0.60.
     j_max_rail_m_s3: 60.0
@@ -170,16 +173,29 @@ inner:
       eps_rad: 5.0e-4
       sigma_fade_ref: 0.12
       grad_period_ticks: 10
+    # Smoothstep after set_q_target.  Off: set_q_target is called every tick
+    # and would otherwise pin the attractor at ramp ≈ 0.
+    engage_s: 0.0
 
   nullspace_d_null: 0.5
   nullspace_d_null_adaptive: 1.0
   nullspace_max_qdot_frac: 0.2
+  # Post-QP |Δdq| clamp is the only rate limit that lives in the CANFD
+  # fixed-dt domain.  QP boxes use wall-time box_h1 and can over-budget.
+  post_qp_step_clamp: true
+  # Encoder-state filter before Jacobian / task error.  Offline on 205559:
+  # hold == raw (stale frames already identical); lowpass cut q_meas jerk
+  # ~2.5× (j4 3110→1247).  Command-side gain is small once the post-QP
+  # clamp is on, but the injection into J / task error still drops.
+  qmeas_filter: lowpass
+  qmeas_lowpass_hz: 25.0
 
   arm_angle:
     enabled: true
     k_psi: 1.5
     psi_ref_deg: null
     obs_smooth_floor: 0.3
+    engage_s: 0.0
 
   psi_retarget:
     enabled: true
@@ -578,9 +594,10 @@ hw:
     arm_max_span_mm: 2.0
     arm_timeout_s: 10.0
     fault_margin_m: 0.05
-    # 205605: t_read med 5.8 ms, FA24 write usually skipped.  43 Hz left
-    # ~17 ms of sleep.  60 Hz (16.7 ms) still has ~11 ms median headroom;
-    # 80 Hz is tight on p95.
+    # 16.7 ms beat.  Isolated remasure after TCP_NODELAY: t_read p95 3.4 ms,
+    # t_write p95 2.7 ms (was 17 ms).  A 10 ms pair now fits on the wire, but
+    # keep 60 until a live rail remasure; the last 100 Hz attempt reversed
+    # at 24.4/s.
     poll_hz: 60
     inter_frame_delay_s: 0.0005
     timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0

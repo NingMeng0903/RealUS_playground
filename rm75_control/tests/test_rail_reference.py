@@ -347,8 +347,23 @@ def test_begin_tracking_session_clears_stale_target_and_hold() -> None:
     bridge._target_v_ff_m_s = 0.08  # noqa: SLF001
     bridge.begin_tracking_session()
     assert bridge._follow_enabled is False  # noqa: SLF001
-    assert bridge._last_target_rx_mono == 0.0  # noqa: SLF001
+    assert math.isnan(bridge._last_target_rx_mono)  # noqa: SLF001
     assert bridge._hold_count == 0  # noqa: SLF001
+    assert bridge._target_m == pytest.approx(0.40)  # noqa: SLF001
+    assert bridge._commanded_m == pytest.approx(0.40)  # noqa: SLF001
+    assert math.isnan(bridge.target_v_ff_m_s)
+
+
+def test_hold_current_stamps_target_rx_so_age_does_not_walk() -> None:
+    bridge = RailServoBridge(RailServoConfig(enabled=False))
+    bridge._calibrated = True  # noqa: SLF001
+    bridge._armed = True  # noqa: SLF001
+    bridge._measured_m = 0.40  # noqa: SLF001
+    bridge._target_m = 0.40  # noqa: SLF001
+    bridge._last_target_rx_mono = 1.0  # noqa: SLF001
+    bridge.hold_current()
+    assert bridge._last_target_rx_mono > 1.0  # noqa: SLF001
+    assert math.isfinite(bridge._last_target_rx_mono)  # noqa: SLF001
     assert bridge._target_m == pytest.approx(0.40)  # noqa: SLF001
     assert bridge._commanded_m == pytest.approx(0.40)  # noqa: SLF001
     assert math.isnan(bridge.target_v_ff_m_s)

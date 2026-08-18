@@ -15,6 +15,7 @@ Usage::
   python apps/lw100_setup_115200.py
   # power-cycle LW100, then:
   python apps/lw100_setup_115200.py --verify-only
+  python apps/lw100_setup_115200.py --verify-only --rtt 80
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ from rm75_control.hw.lw100.drive import (
     LW100DriveConfig,
 )
 from rm75_control.hw.lw100.modbus_rtu_tcp import ModbusRtuTcpClient, ModbusRtuTcpConfig
-from rm75_control.hw.lw100.registers import probe_register_map
+from rm75_control.hw.lw100.registers import P_FA24_INT_SPEED1, P_FA72_BAUD, P_FA73_PROTO, probe_register_map
 
 
 DEFAULT_HOST = "192.168.0.7"
@@ -181,6 +182,117 @@ def _write_lw100_115200(host: str, port: int, slave: int) -> None:
             print(f"  {line}", flush=True)
 
 
+def _pct(values: list[float], p: float) -> float:
+    if not values:
+        return float("nan")
+    xs = sorted(values)
+    k = (len(xs) - 1) * (p / 100.0)
+    lo = int(k)
+    hi = min(lo + 1, len(xs) - 1)
+    frac = k - lo
+    return xs[lo] * (1.0 - frac) + xs[hi] * frac
+
+
+def _hist(values: list[float], edges_ms: tuple[float, ...] = (2.0, 5.0, 10.0, 20.0)) -> str:
+    if not values:
+        return "hist n=0"
+    n = len(values)
+    bounds = (0.0, *edges_ms, float("inf"))
+    parts = []
+    for lo, hi in zip(bounds[:-1], bounds[1:]):
+        if hi == float("inf"):
+            c = sum(1 for v in values if v >= lo)
+            label = f">={lo:.0f}"
+        else:
+            c = sum(1 for v in values if lo <= v < hi)
+            label = f"{lo:.0f}-{hi:.0f}"
+        parts.append(f"{label}:{100.0 * c / n:.0f}%")
+    return "hist " + " ".join(parts)
+
+
+def measure_modbus_rtt(
+    host: str,
+    port: int,
+    slave: int,
+    *,
+    samples: int = 80,
+    timeout_s: float = 0.06,
+) -> dict[str, object]:
+    """Time Modbus reads and same-value FA24 rewrites (no motion change)."""
+    cfg = LW100DriveConfig(
+        host=host, port=port, slave_id=slave, timeout_s=timeout_s, retries=1
+    )
+    reads: list[float] = []
+    writes: list[float] = []
+    fa72 = fa73 = fa24 = -1
+    with LW100Drive(cfg) as drive:
+        fa72 = int(drive.read_param(P_FA72_BAUD))
+        fa73 = int(drive.read_param(P_FA73_PROTO))
+        raw24 = int(drive.read_param(P_FA24_INT_SPEED1))
+        fa24 = raw24 if raw24 < 32768 else raw24 - 65536
+        for _ in range(int(samples)):
+            t0 = time.monotonic()
+            drive.read_motion_fast()
+            reads.append((time.monotonic() - t0) * 1000.0)
+            t1 = time.monotonic()
+            drive.write_param(P_FA24_INT_SPEED1, fa24 & 0xFFFF)
+            writes.append((time.monotonic() - t1) * 1000.0)
+    return {
+        "fa72": fa72,
+        "fa73": fa73,
+        "fa24": fa24,
+        "t_read_ms": reads,
+        "t_write_ms": writes,
+    }
+
+
+def _print_rtt(args: argparse.Namespace) -> int:
+    print(f"=== Modbus RTT  n={int(args.rtt)}  TCP_NODELAY on ===", flush=True)
+    try:
+        stats = measure_modbus_rtt(
+            args.host, args.port, args.slave, samples=int(args.rtt)
+        )
+    except Exception as exc:
+        print(f"FAIL: RTT measure: {exc}", flush=True)
+        return 1
+    fa72 = int(stats["fa72"])
+    fa73 = int(stats["fa73"])
+    print(
+        f"  FA72={fa72} ({fa72 * 100 if fa72 > 0 else '?'} bps)  "
+        f"FA73={fa73} (3=8N1, 0=8N2)  FA24={stats['fa24']}",
+        flush=True,
+    )
+    if fa72 != FA72_BAUD_115200 or fa73 != FA73_PROTO_8N1:
+        print(
+            "  WARN: serial not at 115200 8N1 — run this script without "
+            "--verify-only, then power-cycle the servo and match USR baud.",
+            flush=True,
+        )
+    honest_100 = True
+    for name in ("t_read_ms", "t_write_ms"):
+        xs = list(stats[name])
+        p50, p95, mx = _pct(xs, 50), _pct(xs, 95), max(xs) if xs else float("nan")
+        print(
+            f"  {name}: p50 {p50:.2f}  p95 {p95:.2f}  max {mx:.1f} ms  {_hist(xs)}",
+            flush=True,
+        )
+        if name == "t_write_ms" and p95 > 12.0:
+            honest_100 = False
+    if honest_100:
+        print(
+            "  verdict: write tail is in the read ballpark — 100 Hz is worth a "
+            "try after a live rail remasure.",
+            flush=True,
+        )
+    else:
+        print(
+            "  verdict: write p95 still >> read — keep poll_hz=60.  "
+            "Do not claim 100 Hz.",
+            flush=True,
+        )
+    return 0
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--host", default=DEFAULT_HOST)
@@ -191,6 +303,15 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Only probe at 115200 (after LW100 power-cycle + USR 115200)",
     )
+    p.add_argument(
+        "--rtt",
+        type=int,
+        nargs="?",
+        const=80,
+        default=0,
+        metavar="N",
+        help="After verify, time N read+same-value FA24 write pairs (default N=80)",
+    )
     p.add_argument("--skip-reboot", action="store_true", help="Do not reboot USR (params may not apply)")
     return p.parse_args()
 
@@ -198,6 +319,19 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     usr = UsrTcp232Web(args.host)
+
+    if int(args.rtt) > 0 and not args.verify_only:
+        # Standalone remasure: do not touch USR/FA72.
+        try:
+            vars_ = usr.read_port_vars()
+            print(
+                f"USR: br={vars_.get('br')} stop={vars_.get('stop')} "
+                f"parity={vars_.get('parity')}",
+                flush=True,
+            )
+        except Exception as exc:
+            print(f"WARN: cannot read USR web: {exc}", flush=True)
+        return _print_rtt(args)
 
     if args.verify_only:
         print(f"verify @ 115200 on {args.host}:{args.port}", flush=True)
@@ -210,6 +344,8 @@ def main() -> int:
             print(f"  WARN: cannot read USR web: {exc}", flush=True)
         if _probe_ok(args.host, args.port, args.slave):
             print("OK: LW100 answers at 115200 8N1", flush=True)
+            if int(args.rtt) > 0:
+                return _print_rtt(args)
             return 0
         print("FAIL: no Modbus reply at 115200 — power-cycle LW100 and confirm USR is 115200 8N1", flush=True)
         return 1

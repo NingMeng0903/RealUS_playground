@@ -576,6 +576,31 @@ def test_stretched_start_does_not_search_off_attr() -> None:
     assert rt.psi_star_rad == pytest.approx(float(rt.cfg.psi_attr_rad), abs=1e-9)
 
 
+def test_arm_angle_engage_ramp_starts_near_zero() -> None:
+    kin = RobotKinematics()
+    arm = ArmAngleTask(
+        kin, ArmAngleTaskConfig(enabled=True, k_psi=1.5, engage_s=10.0)
+    )
+    q = np.array(
+        [0.396, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    arm.reset(q)
+    arm.set_reference(float(arm.arm_angle(q)) + 0.8)
+    qdot = arm(q)
+    assert float(np.linalg.norm(qdot)) < 1.0e-3
+
+
+def test_centering_engage_ramp_starts_near_zero() -> None:
+    kin = RobotKinematics()
+    centering = JointCenteringTask.from_kinematics(
+        kin, NullspaceTaskConfig(k_center=1.0, engage_s=10.0)
+    )
+    q = np.asarray(centering.q_target, dtype=float).copy()
+    q[4] += 0.6
+    qdot = centering(q)
+    assert float(np.linalg.norm(qdot)) < 1.0e-3
+
+
 def test_arm_angle_reset_folds_negative_pi_reference() -> None:
     kin = RobotKinematics()
     arm = ArmAngleTask(kin, ArmAngleTaskConfig(enabled=True, k_psi=1.5))

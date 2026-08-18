@@ -263,6 +263,35 @@ def _set_cbf_enabled(cfg: Any, enabled: bool) -> None:
     cfg.qp.collision.enabled = bool(enabled)
 
 
+def _apply_replay_ablations(
+    cfg: Any,
+    *,
+    disable_step_clamp: bool = False,
+    enable_step_clamp: bool = False,
+    disable_jerk_box: bool = False,
+    disable_secondary: bool = False,
+) -> None:
+    """Mutate a loaded JointIkConfig for offline fs/4 ablations."""
+
+    if enable_step_clamp:
+        cfg.post_qp_step_clamp = True
+    if disable_step_clamp:
+        cfg.post_qp_step_clamp = False
+    if disable_jerk_box:
+        cfg.qp.j_max_arm_rad_s3 = 0.0
+        cfg.qp.j_max_rail_m_s3 = 0.0
+    if disable_secondary:
+        cfg.arm_angle.enabled = False
+        cfg.nullspace.k_center = 0.0
+        cfg.nullspace.k_limit = 0.0
+        cfg.nullspace_d_null = 0.0
+        cfg.qp.nullspace_vel_damp = 0.0
+        for name in ("joint_comfort", "branch_barrier", "sigma_setbased"):
+            block = getattr(cfg.qp, name, None)
+            if block is not None and hasattr(block, "enabled"):
+                block.enabled = False
+
+
 def _status(value: Any, default: str = "not_run") -> str:
     text = str(value if value is not None else default)
     return text or default
@@ -670,8 +699,15 @@ def replay_csv(
     stride: int = 1,
     max_rows: int | None = None,
     disable_cbf: bool = False,
+    disable_step_clamp: bool = False,
+    enable_step_clamp: bool = False,
+    disable_jerk_box: bool = False,
+    disable_secondary: bool = False,
     output_csv: str | Path | None = None,
     mode: str = "snapshot",
+    qmeas_filter: str = "raw",
+    qmeas_lowpass_hz: float = 25.0,
+    use_logged_qmeas: bool = False,
 ) -> dict[str, Any]:
     """Replay selected CSV rows and return ``{"rows", "summary"}``.
 
@@ -692,6 +728,15 @@ def replay_csv(
     cfg = build_joint_ik_config(raw)
     if disable_cbf:
         _set_cbf_enabled(cfg, False)
+    _apply_replay_ablations(
+        cfg,
+        disable_step_clamp=disable_step_clamp,
+        enable_step_clamp=enable_step_clamp,
+        disable_jerk_box=disable_jerk_box,
+        disable_secondary=disable_secondary,
+    )
+    cfg.qmeas_filter = str(qmeas_filter or "raw")
+    cfg.qmeas_lowpass_hz = float(qmeas_lowpass_hz)
     controller = JointIkController(RobotKinematics(), cfg)
     # ``update`` asks the controller for the two most recent wall periods.
     # Replace only this instance method so the current source row's measured
@@ -711,6 +756,12 @@ def replay_csv(
     previous_row: Mapping[str, Any] | None = None
     previous2_row: Mapping[str, Any] | None = None
     history_fallback_counts: Counter[str] = Counter()
+    feed_logged_qmeas = bool(use_logged_qmeas) or str(qmeas_filter).lower() not in (
+        "raw",
+        "none",
+        "off",
+        "",
+    )
 
     with Path(input_csv).open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
@@ -815,11 +866,12 @@ def replay_csv(
                     ).copy()
                     rail_meas = float(qdot_prev[0])
                     rail_source = "controller_last_rail_command"
+                    q_meas_in = q_meas_log if feed_logged_qmeas else q_prev
                     out, _ = _controller_row_free_running(
                         source_row=source_index,
                         row=row,
                         controller=controller,
-                        q_meas=q_prev,
+                        q_meas=q_meas_in,
                         q_prev=q_prev,
                         qdot_prev=qdot_prev,
                         qdot_prev2=qdot_prev2,
@@ -853,6 +905,13 @@ def replay_csv(
     summary["stride"] = int(stride)
     summary["max_rows"] = None if max_rows is None else int(max_rows)
     summary["cbf_enabled"] = not bool(disable_cbf)
+    summary["post_qp_step_clamp"] = bool(getattr(cfg, "post_qp_step_clamp", True))
+    summary["jerk_box_enabled"] = bool(
+        float(getattr(cfg.qp, "j_max_arm_rad_s3", 0.0) or 0.0) > 0.0
+    )
+    summary["secondary_enabled"] = not bool(disable_secondary)
+    summary["qmeas_filter"] = str(getattr(cfg, "qmeas_filter", "raw"))
+    summary["use_logged_qmeas"] = bool(feed_logged_qmeas)
     if replay_mode == "snapshot":
         summary["mode"] = "velocity_level_log_replay"
         summary["replay_mode"] = "snapshot"
@@ -885,10 +944,47 @@ def main(argv: list[str] | None = None) -> int:
         help="offline counterfactual: disable collision CBF rows",
     )
     parser.add_argument(
+        "--disable-step-clamp",
+        action="store_true",
+        help="offline: turn off post-QP clamp_command_step",
+    )
+    parser.add_argument(
+        "--enable-step-clamp",
+        action="store_true",
+        help="offline: force the legacy post-QP clamp on",
+    )
+    parser.add_argument(
+        "--disable-jerk-box",
+        action="store_true",
+        help="offline: drop the third-order jerk box",
+    )
+    parser.add_argument(
+        "--disable-secondary",
+        action="store_true",
+        help="offline: disable comfort / branch / attractor secondaries",
+    )
+    parser.add_argument(
         "--mode",
         choices=("snapshot", "free-running"),
         default="snapshot",
         help="snapshot restores logged history; free-running integrates v_cmd",
+    )
+    parser.add_argument(
+        "--qmeas-filter",
+        choices=("raw", "hold", "lowpass"),
+        default="raw",
+        help="filter logged q_meas before QP geometry (free-running needs --use-logged-qmeas)",
+    )
+    parser.add_argument(
+        "--qmeas-lowpass-hz",
+        type=float,
+        default=25.0,
+        help="cutoff for --qmeas-filter lowpass",
+    )
+    parser.add_argument(
+        "--use-logged-qmeas",
+        action="store_true",
+        help="free-running: feed logged q_meas instead of integrated q_cmd",
     )
     args = parser.parse_args(argv)
     try:
@@ -898,8 +994,15 @@ def main(argv: list[str] | None = None) -> int:
             stride=args.stride,
             max_rows=args.max_rows,
             disable_cbf=args.disable_cbf,
+            disable_step_clamp=args.disable_step_clamp,
+            enable_step_clamp=args.enable_step_clamp,
+            disable_jerk_box=args.disable_jerk_box,
+            disable_secondary=args.disable_secondary,
             output_csv=args.output_csv,
             mode=args.mode,
+            qmeas_filter=args.qmeas_filter,
+            qmeas_lowpass_hz=args.qmeas_lowpass_hz,
+            use_logged_qmeas=args.use_logged_qmeas,
         )
     except (OSError, ValueError, yaml.YAMLError) as exc:
         parser.error(str(exc))
