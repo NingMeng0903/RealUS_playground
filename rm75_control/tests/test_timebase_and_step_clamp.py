@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 
 import numpy as np
@@ -192,5 +193,168 @@ def test_step_clamp_flags_acc_clamped_on_large_qdot_jump() -> None:
     jump[2] = 0.80
     step = controller.update(np.zeros(6), dt_nom, q_meas=q, qdot_ff=jump)
     assert step.acc_clamped
+    assert step.post_step_would_clamp
+    assert step.post_step_clamp_applied
+    assert step.post_qp_step_clamp_enabled
     ddq = abs(step.qdot[2] * dt_nom - slow[2] * dt_nom)
     assert ddq <= controller.limits.a_max[2] * dt_nom * dt_nom + 1.0e-9
+
+
+def test_yaml_and_dataclass_post_qp_step_clamp_default_true() -> None:
+    from pathlib import Path
+
+    import yaml
+
+    from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
+
+    raw = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml").read_text()
+    )
+    assert raw["inner"]["post_qp_step_clamp"] is True
+    cfg = build_joint_ik_config(raw)
+    assert cfg.post_qp_step_clamp is True
+    assert JointIkConfig().post_qp_step_clamp is True
+    raw["inner"].pop("post_qp_step_clamp")
+    assert build_joint_ik_config(raw).post_qp_step_clamp is True
+
+
+def test_post_qp_step_clamp_false_shadows_but_does_not_project() -> None:
+    controller = _ptp_controller()
+    controller.cfg.post_qp_step_clamp = False
+    dt_nom = float(controller.cfg.dt)
+    q = controller.q_cmd.copy()
+    slow = np.zeros(8)
+    slow[2] = 0.002
+    controller.update(np.zeros(6), dt_nom, q_meas=q, qdot_ff=slow)
+    q = controller.q_cmd.copy()
+    jump = np.zeros(8)
+    jump[2] = 0.80
+    step = controller.update(np.zeros(6), dt_nom, q_meas=q, qdot_ff=jump)
+    assert step.post_qp_step_clamp_enabled is False
+    assert step.post_step_would_clamp
+    assert step.post_step_clamp_applied is False
+    assert step.acc_clamped is False
+    assert step.qdot[2] == pytest.approx(0.80, abs=1.0e-9)
+    assert np.allclose(step.qdot_committed, step.qdot)
+    assert np.max(np.abs(step.qdot_pre_commit - step.qdot_raw)) < 1.0e-8
+    assert not np.allclose(step.post_step_shadow_q, step.q_send)
+
+
+def test_tick_logger_writes_step_controller_mode_and_ab_fields(tmp_path) -> None:
+    import csv
+
+    from rm75_control.control.joint_admittance_8dof.loop import JointIkStep, _TickLogger
+
+    path = tmp_path / "wbc.csv"
+    logger = _TickLogger(str(path))
+    step = JointIkStep(
+        q_send=np.linspace(0.1, 0.8, 8),
+        qdot=np.zeros(8),
+        twist_base=np.zeros(6),
+        sigma_min=0.1,
+        manip=1.0,
+        slack_norm=0.0,
+        n_cbf_active=0,
+        follow_err_rad=0.0,
+        controller_mode="qpik",
+        post_qp_step_clamp_enabled=True,
+        post_step_would_clamp=True,
+        post_step_clamp_applied=False,
+        qdot_raw=np.full(8, 0.01),
+        qdot_pre_commit=np.full(8, 0.01),
+        qdot_committed=np.full(8, 0.01),
+        arm_send_mono_ns=2_000_000_000,
+    )
+    logger.write(
+        0.012345678,
+        "ellipse_track",
+        0.0,
+        step,
+        np.zeros(8),
+        np.zeros(6),
+        np.zeros(6),
+    )
+    logger.close()
+    with path.open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert rows
+    row = rows[0]
+    assert list(row.keys()) == list(_TickLogger._HEADER)
+    assert row["controller_mode"] == "qpik"
+    assert row["post_qp_step_clamp_enabled"] == "1"
+    assert row["post_step_would_clamp"] == "1"
+    assert row["post_step_clamp_applied"] == "0"
+    assert row["arm_send_mono_ns"] == "2000000000"
+    assert "0.01" in row["qpik_qdot_raw_json"]
+
+
+def test_ab_lomb_scargle_and_verdicts() -> None:
+    import importlib.util
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "joint_admittance_8dof"
+        / "analyze_qpik_quality.py"
+    )
+    spec = importlib.util.spec_from_file_location("analyze_qpik_quality", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+
+    t = np.linspace(0.0, 1.0, 64)
+    y = np.sin(2.0 * np.pi * 60.0 * t)
+    power_60 = float(mod.band_power(t, y, 55.0, 65.0))
+    power_20 = float(mod.band_power(t, np.sin(2.0 * np.pi * 20.0 * t), 55.0, 65.0))
+    assert power_60 > power_20
+    assert mod.hysteresis_flip_count(np.array([0.2, -0.2, 0.2]), 0.05) == 2
+
+    def _rows(power_scale: float, flips: int) -> list[dict]:
+        n = 32
+        rows = []
+        for i in range(n):
+            qdot = [0.0] * 7
+            qdot[0] = power_scale * math.sin(2.0 * np.pi * 60.0 * i * 0.005)
+            if i % 4 == 0 and i < 2 * flips:
+                qdot[1] = 2.0 if (i // 4) % 2 == 0 else -2.0
+            rows.append(
+                {
+                    "qpik_qp1_status": "solved",
+                    "qpik_qp2_status": "solved",
+                    "qpik_qp2_fallback": "0",
+                    "qpik_solver_fault_latched": "0",
+                    "qpik_fallback_reason": "",
+                    "psi_ref_deg": "68.0",
+                    "qpik_qdot_raw_json": "[0,0,0,0,0,0,0,0]",
+                    "qpik_qdot_pre_commit_json": "[0,0,0,0,0,0,0,0]",
+                    "arm_send_mono_ns": str(1_000_000_000 + i * 5_000_000),
+                    "arm_qdot_target_wall_json": str(qdot).replace(" ", ""),
+                }
+            )
+        return rows
+
+    amp = mod.evaluate_post_qp_ab(_rows(1.0, 8), _rows(0.2, 2), _rows(1.0, 8))
+    assert amp["verdict"] in {"amplifier", "inconclusive"}
+    drift = mod.evaluate_post_qp_ab(_rows(1.0, 8), _rows(0.2, 2), _rows(2.0, 8))
+    assert drift["verdict"] == "no_conclusion"
+    bad = mod.evaluate_post_qp_ab(
+        _rows(1.0, 8),
+        [{**_rows(0.2, 2)[0], "qpik_qp2_fallback": "1"}],
+        _rows(1.0, 8),
+    )
+    assert bad["verdict"] == "invalid"
+
+
+def test_commit_does_not_rewrite_qdot_prev2() -> None:
+    controller = _ptp_controller()
+    q_prev = controller.q_cmd.copy()
+    controller.q_cmd = q_prev + np.array([0.0, 0.0, 0.01, 0, 0, 0, 0, 0])
+    prev2 = np.linspace(0.1, 0.8, 8)
+    controller.core.qdot_prev2 = prev2.copy()
+    seen = np.linspace(0.2, 0.9, 8)
+    controller.core._qdot_prev_seen = seen.copy()
+    controller._commit_command_step(q_prev, 0.005, 0.005)
+    assert np.allclose(controller.core.qdot_prev2, prev2)
+    assert np.allclose(controller.core._qdot_prev_seen, seen)
+    assert np.isfinite(controller.core.qdot_prev).all()

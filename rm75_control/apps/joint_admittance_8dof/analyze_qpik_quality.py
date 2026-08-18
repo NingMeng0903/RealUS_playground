@@ -230,6 +230,245 @@ def _latency_histogram(values: np.ndarray, edges_ms: tuple[float, ...] = (2.0, 5
     return "hist " + " ".join(counts)
 
 
+def _parse_json_vec(raw) -> np.ndarray:
+    if raw in ("", None):
+        return np.empty(0, dtype=float)
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return np.empty(0, dtype=float)
+    if not isinstance(data, list):
+        return np.empty(0, dtype=float)
+    return np.asarray(
+        [float(v) if v is not None else np.nan for v in data],
+        dtype=float,
+    )
+
+
+def hysteresis_flip_count(series: np.ndarray, deadband: float) -> int:
+    """Count sign changes that leave ``±deadband`` (ignore chatter around 0)."""
+    state = 0
+    flips = 0
+    band = abs(float(deadband))
+    for v in np.asarray(series, dtype=float).reshape(-1):
+        if not np.isfinite(v):
+            continue
+        if state >= 0 and v < -band:
+            if state != 0:
+                flips += 1
+            state = -1
+        elif state <= 0 and v > band:
+            if state != 0:
+                flips += 1
+            state = 1
+    return int(flips)
+
+
+def uneven_accel_from_qdot(qdot: np.ndarray, t_s: np.ndarray) -> np.ndarray:
+    """Non-uniform acceleration: ``a_k = 2 Δqdot / (Δt_k + Δt_{k-1})``."""
+    q = np.asarray(qdot, dtype=float)
+    t = np.asarray(t_s, dtype=float)
+    n = int(min(q.shape[0], t.size))
+    if n < 3:
+        return np.empty(0, dtype=float)
+    dt = np.diff(t[:n])
+    dq = np.diff(q[:n], axis=0)
+    acc = np.full((n - 1,) + q.shape[1:], np.nan, dtype=float)
+    for k in range(1, n - 1):
+        denom = float(dt[k] + dt[k - 1])
+        if denom <= 0.0 or not np.isfinite(denom):
+            continue
+        acc[k] = 2.0 * dq[k] / denom
+    return acc
+
+
+def lomb_scargle_power(
+    t_s: np.ndarray,
+    y: np.ndarray,
+    freqs: np.ndarray,
+) -> np.ndarray:
+    """Classical Lomb–Scargle periodogram for uneven samples."""
+    t = np.asarray(t_s, dtype=float).reshape(-1)
+    z = np.asarray(y, dtype=float).reshape(-1)
+    mask = np.isfinite(t) & np.isfinite(z)
+    t = t[mask]
+    z = z[mask]
+    freqs = np.asarray(freqs, dtype=float).reshape(-1)
+    power = np.full(freqs.shape, np.nan, dtype=float)
+    if t.size < 8 or freqs.size == 0:
+        return power
+    z = z - float(z.mean())
+    two_t = 2.0 * t
+    for i, f in enumerate(freqs):
+        if not np.isfinite(f) or f <= 0.0:
+            continue
+        w = 2.0 * math.pi * float(f)
+        tan_2wt = math.atan2(float(np.sum(np.sin(w * two_t))), float(np.sum(np.cos(w * two_t))))
+        tau = 0.5 * tan_2wt / w
+        arg = w * (t - tau)
+        c = np.cos(arg)
+        s = np.sin(arg)
+        cc = float(np.dot(c, c))
+        ss = float(np.dot(s, s))
+        if cc <= 1.0e-18 or ss <= 1.0e-18:
+            continue
+        power[i] = 0.5 * ((float(np.dot(z, c)) ** 2) / cc + (float(np.dot(z, s)) ** 2) / ss)
+    return power
+
+
+def band_power(t_s: np.ndarray, y: np.ndarray, f_lo: float, f_hi: float) -> float:
+    freqs = np.linspace(float(f_lo), float(f_hi), 21)
+    p = lomb_scargle_power(t_s, y, freqs)
+    finite = p[np.isfinite(p)]
+    if finite.size == 0:
+        return float("nan")
+    return float(np.mean(finite))
+
+
+def _ab_run_invalid_reasons(rows: list[dict], *, psi_ref_deg: float = 68.0) -> list[str]:
+    """Whole-run vetoes for the post-QP clamp A/B (any hit voids the run)."""
+    reasons: list[str] = []
+    if not rows:
+        return ["empty"]
+    for row in rows:
+        if str(row.get("qpik_qp1_status", "") or "") != "solved":
+            reasons.append("qp1_status")
+            break
+        if str(row.get("qpik_qp2_status", "") or "") != "solved":
+            reasons.append("qp2_status")
+            break
+        if str(row.get("qpik_qp2_fallback", "0") or "0") not in {"0", "false", "False"}:
+            reasons.append("qp2_fallback")
+            break
+        if str(row.get("qpik_solver_fault_latched", "0") or "0") not in {"0", "false", "False"}:
+            reasons.append("solver_fault_latched")
+            break
+        if str(row.get("qpik_fallback_reason", "") or "") != "":
+            reasons.append("fallback_reason")
+            break
+    psi = _col(rows, "psi_ref_deg")
+    if psi.size and np.isfinite(psi).any():
+        med = float(np.nanmedian(psi))
+        if abs(med - float(psi_ref_deg)) > 0.2:
+            reasons.append(f"psi_ref={med:.3f}")
+    pre_raw = 0.0
+    n_cmp = 0
+    for row in rows:
+        raw = _parse_json_vec(row.get("qpik_qdot_raw_json", ""))
+        pre = _parse_json_vec(row.get("qpik_qdot_pre_commit_json", ""))
+        if raw.size == 0 or pre.size == 0 or raw.size != pre.size:
+            continue
+        n_cmp += 1
+        pre_raw = max(pre_raw, float(np.nanmax(np.abs(pre - raw))))
+    if n_cmp == 0:
+        reasons.append("missing_qdot_layers")
+    elif pre_raw >= 1.0e-8:
+        reasons.append(f"precommit_raw_inf={pre_raw:.3e}")
+    return reasons
+
+
+def _ab_band_and_flips(rows: list[dict]) -> tuple[float, float]:
+    """55–65 Hz Lomb–Scargle power and hysteresis flip rate from send clock."""
+    t_ns = _col(rows, "arm_send_mono_ns")
+    if not np.isfinite(t_ns).any():
+        return float("nan"), float("nan")
+    t = t_ns * 1.0e-9
+    qdots = []
+    times = []
+    for row, ti in zip(rows, t):
+        if not np.isfinite(ti):
+            continue
+        vec = _parse_json_vec(row.get("arm_qdot_target_wall_json", ""))
+        if vec.size == 0:
+            q = _parse_json_vec(row.get("q_cmd_json", ""))
+            if q.size >= 8 and times:
+                dt = ti - times[-1]
+                if dt > 0.0:
+                    prev = _parse_json_vec(rows[len(times) - 1].get("q_cmd_json", ""))
+                    if prev.size >= 8:
+                        vec = (q[1:8] - prev[1:8]) / dt
+        if vec.size >= 7:
+            qdots.append(vec[:7])
+            times.append(ti)
+    if len(qdots) < 16:
+        return float("nan"), float("nan")
+    qdot = np.vstack(qdots)
+    t_a = np.asarray(times, dtype=float)
+    acc = uneven_accel_from_qdot(qdot, t_a)
+    if acc.shape[0] < 8:
+        return float("nan"), float("nan")
+    t_acc = t_a[1:]
+    powers = []
+    flips = 0
+    dur = float(t_a[-1] - t_a[0])
+    for j in range(acc.shape[1]):
+        powers.append(band_power(t_acc, acc[:, j], 55.0, 65.0))
+        flips += hysteresis_flip_count(acc[:, j], 0.05 * 3.0)
+    finite = [p for p in powers if np.isfinite(p)]
+    p_band = float(np.mean(finite)) if finite else float("nan")
+    flip_rate = float(flips) / dur if dur > 0.0 else float("nan")
+    return p_band, flip_rate
+
+
+def evaluate_post_qp_ab(
+    true1_rows: list[dict],
+    false_rows: list[dict],
+    true2_rows: list[dict],
+) -> dict:
+    """Score True→False→True post-QP clamp A/B with the locked criteria."""
+    report = {
+        "true1_invalid": _ab_run_invalid_reasons(true1_rows),
+        "false_invalid": _ab_run_invalid_reasons(false_rows),
+        "true2_invalid": _ab_run_invalid_reasons(true2_rows),
+        "verdict": "invalid",
+    }
+    if report["true1_invalid"] or report["false_invalid"] or report["true2_invalid"]:
+        return report
+    p1, f1 = _ab_band_and_flips(true1_rows)
+    pf, ff = _ab_band_and_flips(false_rows)
+    p2, f2 = _ab_band_and_flips(true2_rows)
+    report.update(
+        {
+            "P_true1": p1,
+            "P_false": pf,
+            "P_true2": p2,
+            "flips_true1": f1,
+            "flips_false": ff,
+            "flips_true2": f2,
+        }
+    )
+    if not all(np.isfinite(v) for v in (p1, pf, p2, f1, ff, f2)):
+        report["verdict"] = "invalid"
+        report["reason"] = "spectrum_or_flips_nan"
+        return report
+    if p1 > 0.0 and p2 > 0.0 and abs(p1 - p2) / math.sqrt(p1 * p2) > 0.20:
+        report["R_P"] = float("nan")
+        report["verdict"] = "no_conclusion"
+        report["reason"] = "true_drift>20%"
+        return report
+    if f1 > 0.0 and f2 > 0.0 and abs(f1 - f2) / math.sqrt(f1 * f2) > 0.20:
+        report["R_P"] = float("nan")
+        report["verdict"] = "no_conclusion"
+        report["reason"] = "true_flip_drift>20%"
+        return report
+    geom = math.sqrt(p1 * p2)
+    r_p = pf / geom if geom > 0.0 else float("nan")
+    flip_geom = math.sqrt(f1 * f2)
+    flip_drop = 1.0 - (ff / flip_geom) if flip_geom > 0.0 else float("nan")
+    report["R_P"] = r_p
+    report["flip_drop"] = flip_drop
+    if np.isfinite(r_p) and r_p <= 0.5 and np.isfinite(flip_drop) and flip_drop >= 0.30:
+        report["verdict"] = "amplifier"
+    elif (
+        abs(pf - geom) / geom <= 0.20
+        and abs(ff - flip_geom) / flip_geom <= 0.20
+    ):
+        report["verdict"] = "unchanged"
+    else:
+        report["verdict"] = "inconclusive"
+    return report
+
+
 def _cmd_accel_spectrum(
     qi: np.ndarray, fs: float
 ) -> tuple[float, float] | None:
@@ -1643,10 +1882,38 @@ def analyze(path: Path) -> int:
     return 1 if failed else 0
 
 
+def _load_csv_rows(path: Path) -> list[dict]:
+    with path.open(newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("csv", type=Path)
+    ap.add_argument("csv", type=Path, nargs="?")
+    ap.add_argument(
+        "--ab-clamp",
+        nargs=3,
+        metavar=("TRUE1", "FALSE", "TRUE2"),
+        help="Score post-QP clamp A/B from three full CSVs (True→False→True).",
+    )
     args = ap.parse_args()
+    if args.ab_clamp is not None:
+        report = evaluate_post_qp_ab(
+            _load_csv_rows(Path(args.ab_clamp[0])),
+            _load_csv_rows(Path(args.ab_clamp[1])),
+            _load_csv_rows(Path(args.ab_clamp[2])),
+        )
+        def _clean(value):
+            if isinstance(value, dict):
+                return {k: _clean(v) for k, v in value.items()}
+            if isinstance(value, float) and not np.isfinite(value):
+                return None
+            return value
+
+        print(json.dumps(_clean(report), indent=2, ensure_ascii=True))
+        return 0 if report.get("verdict") in {"amplifier", "unchanged"} else 1
+    if args.csv is None:
+        ap.error("csv is required unless --ab-clamp is given")
     return analyze(args.csv)
 
 

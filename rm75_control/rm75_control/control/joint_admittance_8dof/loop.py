@@ -148,6 +148,9 @@ class JointIkConfig:
     nullspace_d_null: float = 0.0
     nullspace_d_null_adaptive: float = 1.0
     nullspace_max_qdot_frac: float = 0.2
+    # Post-QP |Δdq| <= a_max * dt_nom^2.  Default on matches e8220b8.
+    # A/B only flips this; False still updates qdot_prev from the sent step.
+    post_qp_step_clamp: bool = True
 
 
 @dataclass
@@ -288,6 +291,25 @@ class JointIkStep:
     cbf_min_dist: float = float("nan")
     cbf_pair: str = ""
     nullspace_norm: float = float("nan")
+    post_qp_step_clamp_enabled: bool = True
+    post_step_would_clamp: bool = False
+    post_step_clamp_applied: bool = False
+    dt_nom_s: float = float("nan")
+    dt_int_s: float = float("nan")
+    box_h1_s: float = float("nan")
+    box_h2_s: float = float("nan")
+    qdot_raw: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    qdot_pre_commit: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    qdot_committed: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    qdot_prev_used: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    qdot_prev2_used: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    box_lo: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    box_hi: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    post_step_shadow_q: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    arm_send_mono_ns: int = 0
+    rail_target_publish_mono_ns: int = 0
+    rail_fa24_write_mono_ns: int = 0
+    rail_encoder_sample_mono_ns: int = 0
 
 
 def scale_qdot_into_box(
@@ -442,6 +464,7 @@ class JointIkController:
         self._configured_rail_mode: RailMode = self.cfg.rail.mode
         self._plan_drives_rail: bool = False
         self._direct_joint_ptp: bool = False
+        self._last_post_step: dict = {}
         self._apply_rail_mode_side_effects()
 
     @property
@@ -522,20 +545,85 @@ class JointIkController:
         dt_int: float,
         dt_nom: float,
     ) -> tuple[np.ndarray, bool]:
-        """Apply the slim ``|Δdq| <= a_max * dt_nom^2`` command-domain clamp."""
-        q_safe, dq, acc_clamped = clamp_command_step(
+        """Project ``q_cmd`` through the post-QP step box, or only shadow it.
+
+        Always writes the actually sent ``dq/dt_int`` into ``core.qdot_prev``.
+        Does not touch ``qdot_prev2`` / ``_qdot_prev_seen`` — ``step()`` shifts
+        those at the start of the next solve.
+        """
+        q_desired = np.asarray(self.q_cmd, dtype=float).copy()
+        q_shadow, _dq_shadow, would_clamp = clamp_command_step(
             q_prev,
-            self.q_cmd,
+            q_desired,
             self._dq_prev,
             self.limits.a_max,
             dt_nom,
         )
-        self._dq_prev = np.asarray(dq, dtype=float).copy()
-        self.q_cmd = np.asarray(q_safe, dtype=float).copy()
+        apply_clamp = bool(getattr(self.cfg, "post_qp_step_clamp", True))
+        if apply_clamp:
+            q_final = np.asarray(q_shadow, dtype=float)
+            clamp_applied = bool(would_clamp)
+        else:
+            q_final = q_desired
+            clamp_applied = False
+        dq_final = q_final - np.asarray(q_prev, dtype=float)
+        self.q_cmd = np.asarray(q_final, dtype=float).copy()
+        self._dq_prev = np.asarray(dq_final, dtype=float).copy()
         period = max(float(dt_int), 1.0e-12)
-        qdot = np.asarray(dq, dtype=float) / period
-        self.core.qdot_prev = qdot.copy()
-        return qdot, bool(acc_clamped)
+        qdot_committed = np.asarray(dq_final, dtype=float) / period
+        self.core.qdot_prev = qdot_committed.copy()
+        self._last_post_step = {
+            "would_clamp": bool(would_clamp),
+            "clamp_applied": bool(clamp_applied),
+            "shadow_q": np.asarray(q_shadow, dtype=float).copy(),
+            "qdot_committed": qdot_committed.copy(),
+        }
+        return qdot_committed, bool(clamp_applied)
+
+    def _attach_post_qp_ab(
+        self,
+        step: JointIkStep,
+        *,
+        dt_nom: float,
+        dt_int: float,
+        box_h1: float | None,
+        box_h2: float | None,
+        qdot_raw: np.ndarray,
+        qdot_pre_commit: np.ndarray,
+        qdot_committed: np.ndarray,
+        qdot_prev_used: np.ndarray,
+        qdot_prev2_used: np.ndarray,
+    ) -> JointIkStep:
+        """Stamp the A/B fields that the CSV / offline box check need."""
+        tel = self._last_post_step or {}
+        step.post_qp_step_clamp_enabled = bool(
+            getattr(self.cfg, "post_qp_step_clamp", True)
+        )
+        step.post_step_would_clamp = bool(tel.get("would_clamp", False))
+        step.post_step_clamp_applied = bool(tel.get("clamp_applied", False))
+        step.acc_clamped = bool(tel.get("clamp_applied", step.acc_clamped))
+        step.dt_nom_s = float(dt_nom)
+        step.dt_int_s = float(dt_int)
+        step.box_h1_s = (
+            float(box_h1) if box_h1 is not None and np.isfinite(box_h1) else float("nan")
+        )
+        step.box_h2_s = (
+            float(box_h2) if box_h2 is not None and np.isfinite(box_h2) else float("nan")
+        )
+        step.qdot_raw = np.asarray(qdot_raw, dtype=float).copy()
+        step.qdot_pre_commit = np.asarray(qdot_pre_commit, dtype=float).copy()
+        step.qdot_committed = np.asarray(qdot_committed, dtype=float).copy()
+        step.qdot_prev_used = np.asarray(qdot_prev_used, dtype=float).copy()
+        step.qdot_prev2_used = np.asarray(qdot_prev2_used, dtype=float).copy()
+        step.box_lo = np.asarray(self.core.last_lo_box, dtype=float).copy()
+        step.box_hi = np.asarray(self.core.last_hi_box, dtype=float).copy()
+        shadow = tel.get("shadow_q")
+        step.post_step_shadow_q = (
+            np.asarray(shadow, dtype=float).copy()
+            if shadow is not None
+            else np.full(self.kin.nv, np.nan)
+        )
+        return step
 
     def plan_scan_stroke(
         self,
@@ -647,6 +735,7 @@ class JointIkController:
         self._press_z_mark = float("nan")
         self._press_stall_s = 0.0
         self._d_star_nudge_cool_s = 0.0
+        self._last_post_step = {}
         self._apply_rail_mode_side_effects()
         self._latch_attractor_from_q(self.q_cmd)
 
@@ -1038,9 +1127,15 @@ class JointIkController:
             # Integrate on a clipped wall period so a single overrun cannot
             # emit a 2x command step.  Force/proxy dynamics still see the
             # raw wall period via dt_actual_s in the outer loop.
-            dt_int = integration_period(dt_nom, dt_wall_s)
-            dt = dt_int
-            dt_rail = dt_int
+            dt = integration_period(dt_nom, dt_wall_s)
+            dt_rail = dt
+        dt_int = float(dt)
+        qdot_prev_used = np.asarray(self.core.qdot_prev, dtype=float).copy()
+        qdot_prev2_used = np.asarray(self.core._qdot_prev_seen, dtype=float).copy()
+        qdot_raw = np.full(self.kin.nv, np.nan)
+        qdot_pre_commit = np.full(self.kin.nv, np.nan)
+        box_h1: float | None = None
+        box_h2: float | None = None
         q_prev = np.asarray(self.q_cmd, dtype=float).copy()
         if q_meas is None:
             raise ValueError("q_meas is required for every Cartesian QPIK tick")
@@ -1126,24 +1221,39 @@ class JointIkController:
             else:
                 applied = qdot_cmd
             self.core.sync_applied(applied)
+            qdot_raw = np.asarray(qdot_cmd, dtype=float).copy()
+            qdot_pre_commit = (
+                np.asarray(self.q_cmd, dtype=float) - q_prev
+            ) / max(float(dt), 1.0e-12)
             applied, acc_clamped = self._commit_command_step(q_prev, dt, dt_nom)
             self.last_sigma_min = sigma_pre
             J = J_pre
             sigma = sigma_values_pre
-            return self._make_step(
-                qdot=applied,
-                twist_base=twist_base,
-                sigma_min=float(sigma.min()),
-                manip=float(np.prod(sigma)),
-                slack_norm=0.0,
-                n_cbf_active=0,
-                follow_err=follow_err,
-                qdot_ff_norm=float(np.linalg.norm(qdot_ff)),
-                rail_vel_pin=float(qdot_ff[0]),
-                rail_qdot_ff=float(qdot_ff[0]),
-                plan_drives_rail=True,
-                acc_clamped=acc_clamped,
-                mode="direct_joint_ptp",
+            return self._attach_post_qp_ab(
+                self._make_step(
+                    qdot=applied,
+                    twist_base=twist_base,
+                    sigma_min=float(sigma.min()),
+                    manip=float(np.prod(sigma)),
+                    slack_norm=0.0,
+                    n_cbf_active=0,
+                    follow_err=follow_err,
+                    qdot_ff_norm=float(np.linalg.norm(qdot_ff)),
+                    rail_vel_pin=float(qdot_ff[0]),
+                    rail_qdot_ff=float(qdot_ff[0]),
+                    plan_drives_rail=True,
+                    acc_clamped=acc_clamped,
+                    mode="direct_joint_ptp",
+                ),
+                dt_nom=dt_nom,
+                dt_int=dt_int,
+                box_h1=box_h1,
+                box_h2=box_h2,
+                qdot_raw=qdot_raw,
+                qdot_pre_commit=qdot_pre_commit,
+                qdot_committed=applied,
+                qdot_prev_used=qdot_prev_used,
+                qdot_prev2_used=qdot_prev2_used,
             )
 
         plan_drives_rail = rail_only or tcp_fixed or bool(self._plan_drives_rail)
@@ -1422,6 +1532,7 @@ class JointIkController:
         )
 
         qdot_out = np.asarray(r.qdot, dtype=float).copy()
+        qdot_raw = qdot_out.copy()
         failed = bool(self.core.last_failed)
         fallback_reason = "qp_failed" if failed else ""
         if qdot_out.shape != q_prev.shape or not np.all(np.isfinite(qdot_out)):
@@ -1438,32 +1549,44 @@ class JointIkController:
             self.q_cmd = q_prev + qdot_out * float(dt)
             self.q_cmd[0] = float(q_prev[0]) + float(qdot_out[0]) * float(dt_rail)
             self.core.qdot_prev = qdot_out.copy()
+            qdot_pre_commit = qdot_out.copy()
             qdot_out, acc_clamped = self._commit_command_step(
                 q_prev, dt, dt_nom
             )
-            return self._make_step(
-                qdot=qdot_out,
-                twist_base=twist_base,
-                sigma_min=r.sigma_min,
-                manip=r.manip,
-                slack_norm=r.slack_norm,
-                n_cbf_active=r.n_cbf_active,
-                follow_err=follow_err,
-                qdot_ff_norm=(
-                    float(np.linalg.norm(qdot_ff)) if qdot_ff is not None else 0.0
+            return self._attach_post_qp_ab(
+                self._make_step(
+                    qdot=qdot_out,
+                    twist_base=twist_base,
+                    sigma_min=r.sigma_min,
+                    manip=r.manip,
+                    slack_norm=r.slack_norm,
+                    n_cbf_active=r.n_cbf_active,
+                    follow_err=follow_err,
+                    qdot_ff_norm=(
+                        float(np.linalg.norm(qdot_ff)) if qdot_ff is not None else 0.0
+                    ),
+                    rail_vel_pin=rail_vel_pin_eff,
+                    rail_qdot_ff=rail_qdot_ff_val,
+                    plan_drives_rail=bool(plan_drives_rail),
+                    rail_ext_err_m=rail_ext_err,
+                    rail_ext_weight=rail_task_weight,
+                    failed=False,
+                    acc_clamped=acc_clamped,
+                    fallback_reason="qp1_decay",
+                    rail_macro_pref_v=(
+                        float(rail_task_vel) if rail_task_vel is not None else 0.0
+                    ),
+                    rail_escape_active=rail_escape_active,
                 ),
-                rail_vel_pin=rail_vel_pin_eff,
-                rail_qdot_ff=rail_qdot_ff_val,
-                plan_drives_rail=bool(plan_drives_rail),
-                rail_ext_err_m=rail_ext_err,
-                rail_ext_weight=rail_task_weight,
-                failed=False,
-                acc_clamped=acc_clamped,
-                fallback_reason="qp1_decay",
-                rail_macro_pref_v=(
-                    float(rail_task_vel) if rail_task_vel is not None else 0.0
-                ),
-                rail_escape_active=rail_escape_active,
+                dt_nom=dt_nom,
+                dt_int=dt_int,
+                box_h1=box_h1,
+                box_h2=box_h2,
+                qdot_raw=qdot_raw,
+                qdot_pre_commit=qdot_pre_commit,
+                qdot_committed=qdot_out,
+                qdot_prev_used=qdot_prev_used,
+                qdot_prev2_used=qdot_prev2_used,
             )
         else:
             qdot_certified = qdot_out.copy()
@@ -1571,6 +1694,7 @@ class JointIkController:
                 qdot_out = np.zeros_like(q_prev)
         self.last_sigma_min = r.sigma_min
         self.last_arm_rho = float(r.sigma_min)
+        qdot_pre_commit = qdot_out.copy()
         qdot_out, acc_clamped = self._commit_command_step(q_prev, dt, dt_nom)
         # Decompose achieved linear velocity into rail vs arm along primary motion.
         J_fin = J_pre
@@ -1701,7 +1825,18 @@ class JointIkController:
         )
         step.cbf_pair = str(getattr(self.core, "last_cbf_pair", "") or "")
         step.nullspace_norm = float(self.last_secondary_norm)
-        return step
+        return self._attach_post_qp_ab(
+            step,
+            dt_nom=dt_nom,
+            dt_int=dt_int,
+            box_h1=box_h1,
+            box_h2=box_h2,
+            qdot_raw=qdot_raw,
+            qdot_pre_commit=qdot_pre_commit,
+            qdot_committed=qdot_out,
+            qdot_prev_used=qdot_prev_used,
+            qdot_prev2_used=qdot_prev2_used,
+        )
 
 # ---------------------------------------------------------------------------
 # Outer loops
@@ -2385,6 +2520,24 @@ class _TickLogger:
            "qpik_q_cmd_q_meas_norm", "qpik_fallback_level",
            "qpik_fallback_reason", "qpik_solver_fault_latched",
            "qpik_final_sent_qdot_json",
+           "post_qp_step_clamp_enabled",
+           "post_step_would_clamp",
+           "post_step_clamp_applied",
+           "dt_nom_s", "dt_int_s", "box_h1_s", "box_h2_s",
+           "qpik_qdot_raw_json",
+           "qpik_qdot_pre_commit_json",
+           "qpik_qdot_committed_json",
+           "qpik_qdot_prev_used_json",
+           "qpik_qdot_prev2_used_json",
+           "qpik_box_lo_json",
+           "qpik_box_hi_json",
+           "post_step_shadow_q_json",
+           "q_cmd_json",
+           "arm_send_mono_ns",
+           "rail_target_publish_mono_ns",
+           "rail_fa24_write_mono_ns",
+           "rail_encoder_sample_mono_ns",
+           "arm_qdot_target_wall_json",
            "rail_sat",
            "rail_exec_velocity_m_s", "rail_measured_velocity_m_s",
            "rail_commanded_velocity_m_s", "rail_commanded_acceleration_m_s2",
@@ -2411,6 +2564,8 @@ class _TickLogger:
     def __init__(self, path: str) -> None:
         self._q: queue.SimpleQueue = queue.SimpleQueue()
         self._stop = threading.Event()
+        self._prev_arm_send_ns = 0
+        self._prev_q_send_arm: np.ndarray | None = None
         self._worker = threading.Thread(
             target=self._run,
             args=(path,),
@@ -2753,7 +2908,7 @@ class _TickLogger:
             comfort = np.pad(comfort, (0, 7 - int(comfort.size)))
         comfort = comfort[:7]
         pad_fields = self._fmt_pad_fields(outer)
-        controller_mode = str(getattr(ctrl, "controller_mode", "none"))
+        controller_mode = str(getattr(step, "controller_mode", "") or "none")
         qm = np.asarray(qm, dtype=float).copy()
         pose = np.asarray(pose, dtype=float).copy()
         f_ext = np.asarray(f_ext, dtype=float).copy()
@@ -2767,6 +2922,23 @@ class _TickLogger:
         for _name, _val in vars(step).items():
             if isinstance(_val, np.ndarray):
                 setattr(step, _name, np.array(_val, copy=True))
+        arm_ns = int(getattr(step, "arm_send_mono_ns", 0) or 0)
+        q_send_arr = np.asarray(step.q_send, dtype=float).reshape(-1)
+        arm_qdot_wall = None
+        if (
+            self._prev_arm_send_ns > 0
+            and arm_ns > self._prev_arm_send_ns
+            and q_send_arr.size >= 8
+            and self._prev_q_send_arm is not None
+        ):
+            dt_send = (arm_ns - self._prev_arm_send_ns) * 1.0e-9
+            if dt_send > 0.0:
+                arm_qdot_wall = (
+                    q_send_arr[1:8] - self._prev_q_send_arm
+                ) / dt_send
+        if arm_ns > 0 and q_send_arr.size >= 8:
+            self._prev_arm_send_ns = arm_ns
+            self._prev_q_send_arm = q_send_arr[1:8].copy()
         # Format on the writer thread: f-strings of ~300 columns were ~0.4 ms
         # on the control thread even after the disk write was already queued.
         self._q.put(lambda: (
@@ -3032,6 +3204,59 @@ class _TickLogger:
                str(step.fallback_level), str(step.fallback_reason),
                int(bool(step.solver_fault_latched)),
                self._json_compact(step.qdot),
+               int(bool(getattr(step, "post_qp_step_clamp_enabled", True))),
+               int(bool(getattr(step, "post_step_would_clamp", False))),
+               int(bool(getattr(step, "post_step_clamp_applied", False))),
+               (
+                   f"{float(step.dt_nom_s):.9e}"
+                   if np.isfinite(getattr(step, "dt_nom_s", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(step.dt_int_s):.9e}"
+                   if np.isfinite(getattr(step, "dt_int_s", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(step.box_h1_s):.9e}"
+                   if np.isfinite(getattr(step, "box_h1_s", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(step.box_h2_s):.9e}"
+                   if np.isfinite(getattr(step, "box_h2_s", float("nan")))
+                   else ""
+               ),
+               self._json_compact(getattr(step, "qdot_raw", None)),
+               self._json_compact(getattr(step, "qdot_pre_commit", None)),
+               self._json_compact(getattr(step, "qdot_committed", None)),
+               self._json_compact(getattr(step, "qdot_prev_used", None)),
+               self._json_compact(getattr(step, "qdot_prev2_used", None)),
+               self._json_compact(getattr(step, "box_lo", None)),
+               self._json_compact(getattr(step, "box_hi", None)),
+               self._json_compact(getattr(step, "post_step_shadow_q", None)),
+               self._json_compact(step.q_send),
+               (
+                   str(int(arm_ns))
+                   if arm_ns > 0
+                   else ""
+               ),
+               (
+                   str(int(step.rail_target_publish_mono_ns))
+                   if int(getattr(step, "rail_target_publish_mono_ns", 0) or 0) > 0
+                   else ""
+               ),
+               (
+                   str(int(step.rail_fa24_write_mono_ns))
+                   if int(getattr(step, "rail_fa24_write_mono_ns", 0) or 0) > 0
+                   else ""
+               ),
+               (
+                   str(int(step.rail_encoder_sample_mono_ns))
+                   if int(getattr(step, "rail_encoder_sample_mono_ns", 0) or 0) > 0
+                   else ""
+               ),
+               self._json_compact(arm_qdot_wall),
                int(bool(step.rail_sat)),
                (
                    f"{float(step.rail_exec_velocity_m_s):.8f}"
@@ -4064,6 +4289,7 @@ def run_joint_admittance_phases(
                             meas_m=rail_meas_pub,
                             lead_max_m=float(inner.cfg.resync_err_rail_m),
                         )
+                        step.rail_target_publish_mono_ns = time.monotonic_ns()
                         rail_ok, rail_reason = _publish_rail_target_before_arm(
                             rail_bridge,
                             float(rail_pub_m),
@@ -4074,7 +4300,16 @@ def run_joint_admittance_phases(
                             phase_stopped = True
                             stop_reason = rail_reason
                             break
+                        if rail_bridge is not None:
+                            step.rail_fa24_write_mono_ns = int(
+                                getattr(rail_bridge, "last_fa24_write_mono_ns", 0) or 0
+                            )
+                            step.rail_encoder_sample_mono_ns = int(
+                                getattr(rail_bridge, "last_encoder_sample_mono_ns", 0)
+                                or 0
+                            )
                         try:
+                            step.arm_send_mono_ns = time.monotonic_ns()
                             _send_joint_canfd_cmd(
                                 robot,
                                 rad2deg(arm_q_from_full(step.q_send)),

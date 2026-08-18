@@ -173,6 +173,9 @@ inner:
   nullspace_d_null: 0.5
   nullspace_d_null_adaptive: 1.0
   nullspace_max_qdot_frac: 0.2
+  # Post-QP |Δdq| <= a_max * dt_nom^2.  Default on = current e8220b8 feel.
+  # A/B: only flip this.  Both dataclass and parser default True.
+  post_qp_step_clamp: true
 
   arm_angle:
     enabled: true

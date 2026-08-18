@@ -845,6 +845,30 @@ def test_wbc_log_header_has_rail_cmd_meas_err() -> None:
     assert header.count("rail_cmd_meas_err_m") == 1
     assert "rail_posture_err_m" in header
     assert "rail_track_err_m" not in header
+    for name in (
+        "post_qp_step_clamp_enabled",
+        "post_step_would_clamp",
+        "post_step_clamp_applied",
+        "dt_nom_s",
+        "dt_int_s",
+        "box_h1_s",
+        "box_h2_s",
+        "qpik_qdot_raw_json",
+        "qpik_qdot_pre_commit_json",
+        "qpik_qdot_committed_json",
+        "qpik_qdot_prev_used_json",
+        "qpik_qdot_prev2_used_json",
+        "qpik_box_lo_json",
+        "qpik_box_hi_json",
+        "post_step_shadow_q_json",
+        "q_cmd_json",
+        "arm_send_mono_ns",
+        "rail_target_publish_mono_ns",
+        "rail_fa24_write_mono_ns",
+        "rail_encoder_sample_mono_ns",
+        "arm_qdot_target_wall_json",
+    ):
+        assert name in header
     assert len(header) == len(set(header))
 
 

@@ -536,7 +536,8 @@ class _RailCsvLogger:
         "v_reg_m_s,v_enc_m_s,v_enc_source,v_des_m_s,v_cmd_m_s,a_cmd_m_s2,x_goal_eval_m,"
         "rpm_cmd,e_track_mm,e_shape_mm,"
         "hold_count,hold_reason,command_mode,"
-        "t_read_ms,t_write_ms,n_modbus"
+        "t_read_ms,t_write_ms,n_modbus,"
+        "fa24_write_mono_ns,encoder_sample_mono_ns"
     ).split(",")
 
     def __init__(self, path: str) -> None:
@@ -613,6 +614,8 @@ class _RailCsvLogger:
         t_read_ms: float = float("nan"),
         t_write_ms: float = float("nan"),
         n_modbus: int = 0,
+        fa24_write_mono_ns: int = 0,
+        encoder_sample_mono_ns: int = 0,
     ) -> None:
         t_wall = time.monotonic() - self._t0
 
@@ -688,6 +691,12 @@ class _RailCsvLogger:
                 _f(t_read_ms),
                 _f(t_write_ms),
                 int(n_modbus),
+                str(int(fa24_write_mono_ns)) if int(fa24_write_mono_ns) > 0 else "",
+                (
+                    str(int(encoder_sample_mono_ns))
+                    if int(encoder_sample_mono_ns) > 0
+                    else ""
+                ),
             ]
         )
 
@@ -727,6 +736,8 @@ class RailServoBridge:
         self._last_target_rx_mono = 0.0
         self._target_history: deque[tuple[float, float]] = deque(maxlen=64)
         self._last_enc_ok_mono = 0.0
+        self._last_fa24_write_mono_ns = 0
+        self._last_encoder_sample_mono_ns = 0
         self._last_reject_unarmed_log = 0.0
         self._last_hold_log = 0.0
         self._last_hold_reason = ""
@@ -822,6 +833,16 @@ class RailServoBridge:
     def measured_m(self) -> float:
         with self._lock:
             return float(self._measured_m)
+
+    @property
+    def last_fa24_write_mono_ns(self) -> int:
+        with self._lock:
+            return int(self._last_fa24_write_mono_ns)
+
+    @property
+    def last_encoder_sample_mono_ns(self) -> int:
+        with self._lock:
+            return int(self._last_encoder_sample_mono_ns)
 
     @property
     def measured_speed_rpm(self) -> int:
@@ -2610,6 +2631,14 @@ class RailServoBridge:
                 speed_rpm_host = self._encode_speed_rpm(drive_rpm)
                 last_enc_ok_t = motion_sample_mono
                 self._last_enc_ok_mono = motion_sample_mono
+                encoder_sample_ns = (
+                    int(round(float(motion_sample_mono) * 1.0e9))
+                    if math.isfinite(float(motion_sample_mono))
+                    else 0
+                )
+                if encoder_sample_ns > 0:
+                    with self._lock:
+                        self._last_encoder_sample_mono_ns = encoder_sample_ns
                 mb_fail_n = 0
                 # Snapshot command state under lock; only stamp encoder if sane.
                 with self._lock:
@@ -3286,6 +3315,7 @@ class RailServoBridge:
                 )
                 last_rpm_before = int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
                 t_write0 = time.monotonic()
+                fa24_write_ns = time.monotonic_ns()
                 rpm_cmd = self._drive.set_velocity_rpm(rpm, deadband=rpm_deadband)
                 t_write_ms = (time.monotonic() - t_write0) * 1000.0
                 wrote = (
@@ -3295,6 +3325,8 @@ class RailServoBridge:
                 )
                 if wrote:
                     n_modbus += 1
+                    with self._lock:
+                        self._last_fa24_write_mono_ns = int(fa24_write_ns)
                 else:
                     t_write_ms = 0.0
                 prev_v_cmd = sign * self._rpm_to_mps(float(rpm_cmd))
@@ -3384,6 +3416,8 @@ class RailServoBridge:
                         t_read_ms=t_read_ms,
                         t_write_ms=t_write_ms,
                         n_modbus=n_modbus,
+                        fa24_write_mono_ns=int(self._last_fa24_write_mono_ns),
+                        encoder_sample_mono_ns=int(self._last_encoder_sample_mono_ns),
                     )
                 # Rare SP-slot reassert (avoid extra Modbus during tracking).
                 if loop_n > 0 and loop_n % max(1, int(self.config.poll_hz * 30)) == 0:

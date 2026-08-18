@@ -960,6 +960,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             "qp", "collision", "nullspace", "arm_angle", "rail_extension", "rail",
             "psi_retarget", "ird",
             "nullspace_d_null", "nullspace_d_null_adaptive", "nullspace_max_qdot_frac",
+            "post_qp_step_clamp",
         },
         name="inner",
     )
@@ -1102,6 +1103,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             inner.get("nullspace_max_qdot_frac", 0.2),
             name="inner.nullspace_max_qdot_frac",
         ),
+        post_qp_step_clamp=bool(inner.get("post_qp_step_clamp", True)),
     )
     assert_design_attractor_consistent(cfg)
     return cfg

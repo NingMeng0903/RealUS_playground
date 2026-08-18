@@ -45,6 +45,8 @@ def test_rail_csv_schema_keeps_feedback_and_mode_columns_aligned(tmp_path) -> No
     assert "v_enc_m_s" in fields
     assert "v_reg_m_s" in fields
     assert "v_meas_m_s" not in fields
+    assert "fa24_write_mono_ns" in fields
+    assert "encoder_sample_mono_ns" in fields
 
 
 def _armed_bridge() -> RailServoBridge:
