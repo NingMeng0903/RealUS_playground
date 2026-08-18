@@ -13,6 +13,7 @@ plus a smooth activation term that grows near the limits.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 
 import numpy as np
@@ -32,6 +33,9 @@ class NullspaceTaskConfig:
     # (e.g. J4 ~ 90deg) so the redundant DOF doesn't fight the primary task by
     # trying to snap the elbow straight; see JointCenteringTask.__call__.
     q_nominal_rad: np.ndarray | None = None
+    # Smoothstep ramp after set_q_target so a large posture error cannot
+    # dump a full-scale kick on the first tick.
+    engage_s: float = 0.35
 
 
 class JointCenteringTask:
@@ -65,6 +69,7 @@ class JointCenteringTask:
             if self.cfg.weights is None
             else np.asarray(self.cfg.weights, dtype=float)
         )
+        self._engage_t = time.monotonic()
 
     def set_q_target(self, q_rad: np.ndarray | None = None) -> None:
         """Override the centering attractor (e.g. move-phase plan target).
@@ -77,6 +82,7 @@ class JointCenteringTask:
             self.q_target = self._q_target_default.copy()
         else:
             self.q_target = np.asarray(q_rad, dtype=float).copy()
+        self._engage_t = time.monotonic()
 
     @classmethod
     def from_kinematics(
@@ -99,4 +105,8 @@ class JointCenteringTask:
             span = max(1.0 - cfg.activation, 1e-6)
             over = np.clip((np.abs(u_limit) - cfg.activation) / span, 0.0, 1.0)
             qdot0 = qdot0 - cfg.k_limit * np.sign(u_limit) * (over * over)
+        engage_s = max(float(getattr(cfg, "engage_s", 0.0)), 0.0)
+        if engage_s > 1.0e-9:
+            u = float(np.clip((time.monotonic() - self._engage_t) / engage_s, 0.0, 1.0))
+            qdot0 = qdot0 * (u * u * (3.0 - 2.0 * u))
         return qdot0

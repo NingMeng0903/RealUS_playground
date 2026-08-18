@@ -184,6 +184,9 @@ class QpConfig:
     # how fast it may turn.  0 disables either axis.
     j_max_arm_rad_s3: float = 300.0
     j_max_rail_m_s3: float = 3.0
+    # Extra ‖qdot‖² on the arm (not rail).  De Luca 2015 nullspace damping
+    # at the velocity level; 0 disables.
+    nullspace_vel_damp: float = 0.0
 
 
 class _ProxQpWbcBackend:
@@ -1267,6 +1270,11 @@ class QpIkController:
                 qdot_prev=self.qdot_prev,
                 use_native=bool(getattr(self.cfg, "use_cpp_kernel", True)),
             )
+            ns_damp = float(getattr(self.cfg, "nullspace_vel_damp", 0.0) or 0.0)
+            if ns_damp > 0.0:
+                # Arm joints only: rail velocity is an equality-adjacent task.
+                for i in range(1, nv):
+                    H2[i, i] += ns_damp
 
             sigma_rows = self.sigma_setbased.build_row(self.kin, q_geom)
             q_star = (

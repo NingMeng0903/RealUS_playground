@@ -193,7 +193,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             "sigma_setbased", "branch_barrier", "joint_comfort",
             "smoothness_weight", "near_arm_margin_rad",
             "j_max_arm_rad_s3", "j_max_rail_m_s3",
-            "use_cpp_kernel",
+            "use_cpp_kernel", "nullspace_vel_damp",
         },
         name="inner.qp",
     )
@@ -421,6 +421,10 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         j_max_rail_m_s3=_finite_float(
             c.get("j_max_rail_m_s3", 3.0), name="inner.qp.j_max_rail_m_s3"
         ),
+        nullspace_vel_damp=_finite_float(
+            c.get("nullspace_vel_damp", 0.0),
+            name="inner.qp.nullspace_vel_damp",
+        ),
     )
 
 
@@ -430,7 +434,7 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
         n,
         {
             "k_center", "k_limit", "activation", "weights", "q_nominal_deg",
-            "manipulability",
+            "manipulability", "engage_s",
         },
         name="inner.nullspace",
     )
@@ -456,6 +460,9 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
             if q_nominal_deg is not None
             else None
         ),
+        engage_s=_finite_float(
+            n.get("engage_s", 0.35), name="nullspace.engage_s"
+        ),
     )
     manipulability = ManipulabilityTaskConfig(
         k_mu=_finite_float(m.get("k_mu", 0.8), name="manipulability.k_mu"),
@@ -475,7 +482,7 @@ def _parse_arm_angle(inner: dict) -> ArmAngleTaskConfig:
         {
             "enabled", "k_psi", "psi_ref_deg", "fd_eps_rad", "safe_denom_eps",
             "obs_decay_gain", "obs_smooth_floor", "max_qdot_frac",
-            "psi_home_deg", "max_psi_swing_deg",
+            "psi_home_deg", "max_psi_swing_deg", "engage_s",
         },
         name="inner.arm_angle",
     )
@@ -497,6 +504,7 @@ def _parse_arm_angle(inner: dict) -> ArmAngleTaskConfig:
             if psi_home_deg is not None
             else None
         ),
+        engage_s=_finite_float(a.get("engage_s", 0.35), name="arm_angle.engage_s"),
     )
 
 
@@ -960,6 +968,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             "qp", "collision", "nullspace", "arm_angle", "rail_extension", "rail",
             "psi_retarget", "ird",
             "nullspace_d_null", "nullspace_d_null_adaptive", "nullspace_max_qdot_frac",
+            "post_qp_step_clamp",
         },
         name="inner",
     )
@@ -1102,6 +1111,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             inner.get("nullspace_max_qdot_frac", 0.2),
             name="inner.nullspace_max_qdot_frac",
         ),
+        post_qp_step_clamp=bool(inner.get("post_qp_step_clamp", False)),
     )
     assert_design_attractor_consistent(cfg)
     return cfg

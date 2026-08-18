@@ -16,6 +16,7 @@ import queue
 import threading
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Protocol
 
 import numpy as np
@@ -148,6 +149,10 @@ class JointIkConfig:
     nullspace_d_null: float = 0.0
     nullspace_d_null_adaptive: float = 1.0
     nullspace_max_qdot_frac: float = 0.2
+    # Post-QP rewrite of |Δdq|.  Default on so unit tests keep the safety
+    # net; hardware yaml turns it off so the QP accel/jerk boxes own the
+    # limit (a second tighter clamp is what made the fs/4 limit cycle).
+    post_qp_step_clamp: bool = True
 
 
 @dataclass
@@ -522,7 +527,23 @@ class JointIkController:
         dt_int: float,
         dt_nom: float,
     ) -> tuple[np.ndarray, bool]:
-        """Apply the slim ``|Δdq| <= a_max * dt_nom^2`` command-domain clamp."""
+        """Commit the integrated command; optionally clamp |Δdq|.
+
+        Hardware yaml sets ``post_qp_step_clamp: false`` so the QP
+        acceleration / jerk boxes are the only rate limit.  The post-QP
+        rewrite used ``a_max * dt_nom^2`` while integration used
+        ``dt_int``, which is what pinned every joint to the same |a|max
+        and drove the fs/4 nullspace limit cycle.
+        """
+        if not bool(getattr(self.cfg, "post_qp_step_clamp", True)):
+            dq = np.asarray(self.q_cmd, dtype=float) - np.asarray(
+                q_prev, dtype=float
+            )
+            self._dq_prev = dq.copy()
+            period = max(float(dt_int), 1.0e-12)
+            qdot = dq / period
+            self.core.qdot_prev = qdot.copy()
+            return qdot, False
         q_safe, dq, acc_clamped = clamp_command_step(
             q_prev,
             self.q_cmd,
@@ -2069,15 +2090,56 @@ def _set_realtime_priority(priority: int = 80) -> bool:
         return False
 
 
+def _cpu_is_isolated(cpu: int) -> bool:
+    """True when ``cpu`` appears in ``/sys/devices/system/cpu/isolated``."""
+    try:
+        text = Path("/sys/devices/system/cpu/isolated").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    text = text.strip()
+    if not text:
+        return False
+    wanted = int(cpu)
+    for part in text.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            lo_s, hi_s = part.split("-", 1)
+            try:
+                lo, hi = int(lo_s), int(hi_s)
+            except ValueError:
+                continue
+            if lo <= wanted <= hi:
+                return True
+        else:
+            try:
+                if int(part) == wanted:
+                    return True
+            except ValueError:
+                continue
+    return False
+
+
 def _pin_control_cpu(cpu: int | None) -> bool:
-    """Best-effort CPU affinity for the calling thread."""
+    """Pin only when the core is isolated.  Pinning to a shared core hurts."""
     if cpu is None:
+        return False
+    if not _cpu_is_isolated(int(cpu)):
         return False
     try:
         os.sched_setaffinity(0, {int(cpu)})
         return True
     except (PermissionError, OSError, AttributeError, ValueError):
         return False
+
+
+def reference_time_step(dt_elapsed_s: float, scale: float) -> float:
+    """Advance ``t_ref`` by the time that actually passed, not ``dt_nom``."""
+    elapsed = float(dt_elapsed_s)
+    if not math.isfinite(elapsed) or elapsed <= 0.0:
+        return 0.0
+    return elapsed * float(scale)
 
 
 class _CStateGuard:
@@ -2146,8 +2208,8 @@ class LoopResult:
 class Phase:
     """One leg of a multi-phase on-robot run (shared inner loop / watchdog).
 
-    ``t_ref`` advances by ``dt * governor_scale``; qdot_ff is sampled at the
-    same governed ``t_ref``. Set ``governor_err_max_mm=0`` to disable Cartesian
+    ``t_ref`` advances by ``dt_wall * governor_scale`` so the reference
+    plays in real time. Set ``governor_err_max_mm=0`` to disable Cartesian
     governor (typical for MoveJ-like joint moves).
     """
 
@@ -2297,7 +2359,9 @@ class _TickLogger:
            "physical_contact_reacquire_event",
            "physical_contact_low_timer_s", "physical_contact_high_timer_s",
            "mass_z_eff", "takeover",
-           "dt_actual_s", "deadline_slack_s", "sensor_age_s", "feedback_age_s",
+           "dt_actual_s", "deadline_slack_s",
+           "rt_fifo_ok", "cpu_pinned", "cstate_ok",
+           "sensor_age_s", "feedback_age_s",
            "feedback_fresh_tick",
            "fx_raw_comp", "fy_raw_comp", "fz_raw_comp",
            "vz_achieved_tool", "contact_present",
@@ -2403,6 +2467,9 @@ class _TickLogger:
     def __init__(self, path: str) -> None:
         self._q: queue.SimpleQueue = queue.SimpleQueue()
         self._stop = threading.Event()
+        self.rt_fifo_ok = False
+        self.cpu_pinned = False
+        self.cstate_ok = False
         self._worker = threading.Thread(
             target=self._run,
             args=(path,),
@@ -2809,6 +2876,9 @@ class _TickLogger:
                    if np.isfinite(deadline_slack_s)
                    else ""
                ),
+               int(bool(self.rt_fifo_ok)),
+               int(bool(self.cpu_pinned)),
+               int(bool(self.cstate_ok)),
                f"{sensor_age_s:.6f}",
                f"{feedback_age_s:.6f}", int(bool(feedback_fresh_tick)),
                f"{raw_comp[0]:.3f}", f"{raw_comp[1]:.3f}", f"{raw_comp[2]:.3f}",
@@ -3557,17 +3627,27 @@ def run_joint_admittance_phases(
         inner.reset(q0_rad)
 
         if realtime:
-            if not _set_realtime_priority():
-                if verbose:
-                    print("  (SCHED_FIFO unavailable - running at normal priority)", flush=True)
-            if _pin_control_cpu(getattr(inner.cfg, "control_cpu", None)):
-                if verbose:
-                    print(
-                        f"  control thread pinned to CPU {inner.cfg.control_cpu}",
-                        flush=True,
-                    )
-            elif verbose and getattr(inner.cfg, "control_cpu", None) is not None:
-                print("  (CPU affinity unavailable)", flush=True)
+            rt_fifo_ok = _set_realtime_priority()
+            if not rt_fifo_ok and verbose:
+                print(
+                    "  (SCHED_FIFO unavailable — running at normal priority; "
+                    "see scripts/enable_rt.sh)",
+                    flush=True,
+                )
+            pin_cpu = getattr(inner.cfg, "control_cpu", None)
+            cpu_pinned = _pin_control_cpu(pin_cpu)
+            if cpu_pinned and verbose:
+                print(f"  control thread pinned to isolated CPU {pin_cpu}", flush=True)
+            elif verbose and pin_cpu is not None:
+                print(
+                    f"  (CPU {pin_cpu} is not isolated — skip pin; "
+                    "shared-core pin concentrates jitter)",
+                    flush=True,
+                )
+            if logger is not None:
+                logger.rt_fifo_ok = bool(rt_fifo_ok)
+                logger.cpu_pinned = bool(cpu_pinned)
+                logger.cstate_ok = bool(cstate is not None and cstate.active)
 
         def _hold() -> None:
             # watchdog stall action: hold at the last commanded joint state
@@ -4103,7 +4183,7 @@ def run_joint_admittance_phases(
                         ramp_s = float(getattr(phase, "soft_start_ramp_s", 0.0) or 0.0)
                         if ramp_s > 1e-6 and step.controller_mode != "direct_joint_ptp":
                             scale *= float(np.clip(t_wall / ramp_s, 0.0, 1.0))
-                        t_ref += control_dt * scale
+                        t_ref += reference_time_step(dt_wall_actual, scale)
                         step.accepted_reference_lag_s = max(0.0, t_wall - t_ref)
     
                         if phase.on_tick is not None:

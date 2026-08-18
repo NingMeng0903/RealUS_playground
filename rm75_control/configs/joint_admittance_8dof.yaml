@@ -10,15 +10,15 @@ robot:
   thread_mode: 2
 
 timing:
-  # 5.0 ms target after the C++ assembly kernel.  Integration is clipped
-  # to [dt_nom, 1.25*dt_nom] and command-step clamped, so a late tick
-  # cannot emit a 2× step the way the old wall-dt path did.  If
-  # deadline_slack_s > 0 on <99% of ticks, raise this back to 7.0.
+  # 5.0 ms target.  t_ref advances by wall time; integration clips a late
+  # tick to [dt_nom, 1.25*dt_nom].  If deadline_slack_s > 0 on <99% of
+  # ticks, raise this back to 7.0.
   dt_ms: 5.0
   # Post-solve gate re-reads UDP; 80 ms still fails closed on a true push gap.
   feedback_timeout_ms: 80.0
-  # Best-effort RT: pin the control thread; hold /dev/cpu_dma_latency at 0.
-  control_cpu: 2
+  # Pin only if this core is isolated (isolcpus / cset).  Shared-core pin
+  # concentrates jitter — leave unset until scripts/enable_rt.sh + isolcpus.
+  control_cpu: null
   disable_cstates: true
 
 # UDP arm-state push (rm_set_realtime_push). Requires robot.thread_mode: 2.
