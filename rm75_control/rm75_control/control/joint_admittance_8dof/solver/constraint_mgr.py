@@ -196,22 +196,6 @@ class VelocityBoxConstraints:
 
         m = np.broadcast_to(np.asarray(m, dtype=float), q.shape)
         a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
-        if a_max is not None:
-            # Enter the braking envelope before acceleration and one-tick
-            # position constraints can conflict.  Only speed toward a limit is
-            # reduced; motion away remains available.
-            d_upper = (lim.q_upper - m) - q
-            d_lower = q - (lim.q_lower + m)
-            d_upper[0] = float(lim.q_upper[0] - m[0]) - q_rail_hi
-            d_lower[0] = q_rail_lo - float(lim.q_lower[0] + m[0])
-            reaction = np.full(q.shape, float(dt))
-            if self.rail_reaction_s > 0.0:
-                reaction[0] = max(float(dt), float(self.rail_reaction_s))
-            hi = np.minimum(hi, stopping_velocity(d_upper, a_max, reaction))
-            lo = np.maximum(lo, -stopping_velocity(d_lower, a_max, reaction))
-            lo, hi = collapse_interval(
-                lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
-            )
 
         p_lo = (lim.q_lower + m - q) / dt
         p_hi = (lim.q_upper - m - q) / dt
@@ -229,18 +213,6 @@ class VelocityBoxConstraints:
         lo, hi = collapse_interval(
             lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
         )
-        if q_cmd_arr is not None:
-            cmd_lo = (lim.q_lower + m - q_cmd_arr) / dt
-            cmd_hi = (lim.q_upper - m - q_cmd_arr) / dt
-            if q_cmd_arr[0] < rail_lo:
-                cmd_lo[0] = min(float(cmd_lo[0]), 0.0)
-            if q_cmd_arr[0] > rail_hi:
-                cmd_hi[0] = max(float(cmd_hi[0]), 0.0)
-            lo = np.maximum(lo, cmd_lo)
-            hi = np.minimum(hi, cmd_hi)
-            lo, hi = collapse_interval(
-                lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
-            )
 
         if a_max is not None and qdot_prev is not None:
             qdot_prev = np.asarray(qdot_prev, dtype=float)

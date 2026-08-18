@@ -71,6 +71,26 @@ def test_rail_lead_exempt_keeps_coupled_velocity_box_open() -> None:
     assert hi_open[0] > 0.05
 
 
+def test_damper_and_one_tick_box_still_forbid_leaving_the_limit() -> None:
+    """After deleting the stopping envelope, damper + p_hi still hold the wall."""
+    limits = SafetyLimits(
+        q_lower=np.full(8, -1.0),
+        q_upper=np.full(8, 1.0),
+        v_max=np.ones(8),
+        a_max=np.full(8, 3.0),
+        position_margin=np.zeros(8),
+    )
+    box = VelocityBoxConstraints(limits, damper_band_rad=0.2)
+    q = np.zeros(8)
+    q[3] = 0.995
+    lo, hi = box.bounds(q, 0.005)
+    assert hi[3] <= (1.0 - 0.995) / 0.005 + 1.0e-12
+    assert lo[3] < 0.0
+    q[3] = 1.0
+    _lo, hi_wall = box.bounds(q, 0.005)
+    assert hi_wall[3] == pytest.approx(0.0, abs=1e-12)
+
+
 def test_legacy_call_without_q_cmd_keeps_previous_semantics() -> None:
     limits = SafetyLimits(
         q_lower=np.full(2, -1.0),

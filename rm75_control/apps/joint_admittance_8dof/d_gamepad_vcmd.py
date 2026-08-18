@@ -20,7 +20,6 @@ limits, CBF, rail pin/escape, and nullspace stay on.
 from __future__ import annotations
 
 import argparse
-import os
 import signal
 import time
 from contextlib import nullcontext
@@ -81,23 +80,12 @@ def load_yaml(path: Path) -> dict:
 
 
 def _poll_attach_status(phase_client: PhaseCommandClient, cmd_seq: int) -> PhaseStatus:
-    stop_n = [0]
-
     def _on_sig(_signum, _frame) -> None:
-        stop_n[0] += 1
         try:
             phase_client.stop()
         except Exception:
             pass
-        if stop_n[0] == 1:
-            print(
-                "\nrm75 gamepad: Ctrl+C — stop requested on window A "
-                "(second Ctrl+C forces exit)",
-                flush=True,
-            )
-            return
-        print("\nrm75 gamepad: force exit", flush=True)
-        os._exit(130)
+        raise KeyboardInterrupt
 
     prev_int = signal.signal(signal.SIGINT, _on_sig)
     prev_term = signal.signal(signal.SIGTERM, _on_sig)
@@ -137,7 +125,7 @@ def main() -> int:
         help="Override cartesian_track.k_task_lin (default: yaml).",
     )
     ap.add_argument("--move-mode", choices=("cartesian", "joint"), default="joint")
-    ap.add_argument("--trans-m-s", type=float, default=0.12, help="Full-stick world translation (m/s).")
+    ap.add_argument("--trans-m-s", type=float, default=0.10, help="Full-stick world translation (m/s).")
     ap.add_argument("--rot-rad-s", type=float, default=0.60, help="Full-stick TCP rotation (rad/s).")
     ap.add_argument("--deadzone", type=float, default=0.18)
     ap.add_argument(
@@ -239,7 +227,6 @@ def main() -> int:
     shm_name = str(relay_cfg.name or "rm75_state")
 
     if attach_mode:
-        print("rm75 gamepad: connecting to window A …", flush=True)
         attach_bus = RelayStateBus(shm_name)
         try:
             attach_bus.wait_first_pose(timeout_s=30.0)
@@ -250,7 +237,6 @@ def main() -> int:
         state_bus = attach_bus
         phase_client = PhaseCommandClient()
         phase_client.wait_for_hub(timeout_s=30.0)
-        print("rm75 gamepad: connected", flush=True)
         session_cm = nullcontext(_AttachSession(config=raw, ip=str(robot_cfg.get("ip", ""))))
     else:
         if relay_shm_has_publisher(shm_name):
@@ -276,8 +262,6 @@ def main() -> int:
             local_bus = RobotStateBus(sess.robot, raw, robot_ip=sess.ip)
             local_bus.start()
             state_bus = local_bus
-            print("rm75 gamepad: CANFD + local UDP (standalone)", flush=True)
-
         snap0 = state_bus.read()
         if snap0.q_deg is None:
             raise RuntimeError("no joint feedback")
@@ -349,22 +333,16 @@ def main() -> int:
             gamepad_device_index=int(args.device_index),
         )
 
-        print(MAPPING_HELP, flush=True)
         try:
             if attach_mode:
                 assert phase_client is not None
                 cmd_seq = phase_client.start(task_params)
-                print(f"rm75 gamepad: submitted task #{cmd_seq}", flush=True)
                 final = _poll_attach_status(phase_client, cmd_seq)
                 if final == PhaseStatus.ERROR:
                     st = phase_client.read_status()
                     raise RuntimeError(
                         f"window A task failed: {st['msg'] if st else 'unknown'}"
                     )
-                if final == PhaseStatus.STOPPED:
-                    print("rm75 gamepad: stopped", flush=True)
-                else:
-                    print("rm75 gamepad: done", flush=True)
             else:
                 built = build_gamepad_vcmd_program(task_params, raw=raw)
                 try:
@@ -381,7 +359,6 @@ def main() -> int:
         except KeyboardInterrupt:
             if attach_mode and phase_client is not None:
                 phase_client.stop()
-            print("\nStopped.", flush=True)
         finally:
             if phase_client is not None:
                 phase_client.close()

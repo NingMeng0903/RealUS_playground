@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import sys
 from pathlib import Path
 
@@ -44,6 +45,38 @@ GATES = {
     # only 2.1% of ticks on time, so this starts as a tracked failure.
     "dt_nominal_s": 0.005,
     "dt_on_time_frac": 0.80,
+    # Command-step ripple is what rm_movej_canfd actually consumes.
+    "step_ripple_p999": 0.50,
+    "step_ripple_max": 1.00,
+    "deadline_slack_pos_frac": 0.99,
+}
+
+# If 5 ms misses the slack gate, step back up; do not skip rungs.
+PERIOD_LADDER_MS = (7.0, 6.0, 5.0)
+
+
+def next_period_ms(
+    current_ms: float,
+    slack_pos_frac: float,
+    *,
+    threshold: float = 0.99,
+) -> float:
+    """Return the next lower period only when deadline slack already passes."""
+    current = float(current_ms)
+    if not np.isfinite(slack_pos_frac) or float(slack_pos_frac) < float(threshold):
+        return current
+    lower = [p for p in PERIOD_LADDER_MS if p < current - 1.0e-9]
+    return float(lower[0]) if lower else current
+
+
+def raise_period_ms(current_ms: float) -> float:
+    """Next slower rung if 5 ms cannot hold the slack gate."""
+    current = float(current_ms)
+    higher = [p for p in PERIOD_LADDER_MS if p > current + 1.0e-9]
+    return float(higher[0]) if higher else current
+
+
+_GATES_CONT = {
     "j6_open_frac": 0.05,
     "j4_near_limit_frac": 0.05,
     "j2_near_limit_frac": 0.05,
@@ -61,7 +94,7 @@ GATES = {
     "rail_stop_reverse_frac": 0.15,
     # q_cmd[0]−q_meas[0] stuck on the 20 mm resync window is a fault.
     "rail_resync_err_m": 0.018,
-    "rail_resync_bind_frac": 0.10,
+    "rail_resync_bind_frac": 0.005,
     # v_enc falling back to the 157 ms-lagged drive register puts a step in
     # the D term.  Run 225941 fell back on 11.2% of ticks and cost the
     # gamepad 1.43 → 3.23 mm of e_track.
@@ -69,18 +102,43 @@ GATES = {
     # Rail travel after the operator lets go: the posture preference used to
     # dump its accumulated debt for ~1 s (25–73 mm).
     "idle_rail_travel_mm": 8.0,
-    # TCP must hold station while that happens.  Do not score this with
-    # tool_y_err_mm: gamepad rebases pose_d on pose_meas every tick, so the
-    # error is identically 0 exactly when the TCP is drifting.
-    "idle_tcp_drift_mm": 5.0,
+    # TCP must hold station while that happens.  After wall-dt integration
+    # the planned rail/arm cancel is already ~0; idle pose_d is latched.
+    "idle_tcp_drift_mm": 1.0,
     # QP1 buys the rail motion it cannot cancel with Cartesian slack, which
     # is how the rail slide reaches the TCP.  Run 225941: 31.3% of idle ticks.
     "idle_task_slack_frac": 0.05,
-    # |rail_track_err| while driving.  The old shared 80 mm/s budget starved
-    # reach whenever FF asked for its legal 120, and the error grew at
-    # 39 mm/s until release (p95 94 mm).
-    "drive_rail_track_err_p95_m": 0.030,
+    # |rail_posture_err| while driving (preferred-extension residual, not
+    # TCP tracking).  The old shared 80 mm/s budget starved reach whenever
+    # FF asked for its legal 120, and the error grew at 39 mm/s until
+    # release (p95 94 mm).
+    "drive_rail_posture_err_p95_m": 0.030,
+    # Coupled-mode open-loop drift of x_goal − x_ref.  Run 002843 ratcheted
+    # to 15.93 mm because _step_velocity_reference never used x_goal.
+    "rail_eshape_p95_mm": 2.0,
+    # QP box: rail.v_max_m_s 0.15 × v_scale 0.8, a_max_rail_m_s2 0.60.
+    "rail_v_box_m_s": 0.12,
+    "rail_a_box_m_s2": 0.60,
+    "rail_v_box_frac": 0.01,
+    "rail_a_box_frac": 0.01,
+    # rail_task_vel empty while |v_ff_rail| is live: QP1 pins the rail to 0.
+    "rail_task_dropout_frac": 0.01,
+    "rail_task_dropout_ff_m_s": 1.0e-4,
+    # Live (v_des − v_ref)·sign(v_goal) < −5 mm/s is the cruise P-term leak.
+    "rail_p_term_leak_m_s": 0.005,
+    "rail_p_term_leak_frac": 0.001,
+    # |v_goal| < 5 mm/s: catch-up must not fire a 7x turn kick.
+    "rail_turn_v_goal_m_s": 0.005,
+    "rail_turn_overspeed_p99": 2.0,
+    # d* per-tick step (d_center_rate 20 mm/s × dt × 2).
+    "d_star_rate_m_s": 0.02,
+    "d_star_step_margin": 2.0,
+    # Δq_meas / ∫(qdot_sent · dt_wall) after wall-dt integration.
+    "joint_exec_ratio_lo": 0.90,
+    "joint_exec_ratio_hi": 1.10,
+    "joint_exec_min_integral": 0.01,
 }
+GATES.update(_GATES_CONT)
 
 
 def best_axis_time_shift(
@@ -153,6 +211,18 @@ def _col(rows: list[dict], name: str) -> np.ndarray:
         except (TypeError, ValueError):
             out[i] = np.nan
     return out
+
+
+def _col_any(rows: list[dict], *names: str) -> np.ndarray:
+    """First column that has any finite values (new name, then legacy)."""
+    empty = np.empty(0)
+    for name in names:
+        vals = _col(rows, name)
+        if vals.size and np.isfinite(vals).any():
+            return vals
+        if vals.size:
+            empty = vals
+    return empty
 
 
 def _encoder_diff_from_position(
@@ -361,6 +431,38 @@ def _rail_servo_checks(
                 f"{p95:.2f} mm  max {np.abs(e_track).max():.2f} mm",
             )
         )
+    e_shape = _col(rows, "e_shape_mm")
+    e_shape_live = e_shape[live & np.isfinite(e_shape)]
+    if e_shape_live.size:
+        p95_shape = float(np.percentile(np.abs(e_shape_live), 95))
+        results.append(
+            (
+                "rail |e_shape| p95 < 2 mm (coupled reference drift)",
+                p95_shape < GATES["rail_eshape_p95_mm"],
+                f"{p95_shape:.2f} mm  max {np.abs(e_shape_live).max():.2f} mm",
+            )
+        )
+    v_enc_box = _col(rows, "v_enc_m_s")
+    v_box_live = v_enc_box[live & np.isfinite(v_enc_box)]
+    if v_box_live.size:
+        v_over = float(np.mean(np.abs(v_box_live) > GATES["rail_v_box_m_s"]))
+        results.append(
+            (
+                "rail |v_enc| over QP box < 1%",
+                v_over < GATES["rail_v_box_frac"],
+                f"{100.0 * v_over:.1f}%  max {1000.0 * np.max(np.abs(v_box_live)):.1f} mm/s",
+            )
+        )
+    a_box_live = a_cmd[live & np.isfinite(a_cmd)]
+    if a_box_live.size:
+        a_over = float(np.mean(np.abs(a_box_live) > GATES["rail_a_box_m_s2"]))
+        results.append(
+            (
+                "rail |a_cmd| over QP box < 1%",
+                a_over < GATES["rail_a_box_frac"],
+                f"{100.0 * a_over:.1f}%  max {np.max(np.abs(a_box_live)):.2f} m/s²",
+            )
+        )
 
     age = _col(rows, "target_age_ms")
     age = age[np.isfinite(age)]
@@ -402,6 +504,42 @@ def _rail_servo_checks(
     else:
         info.append(("rail stop reverse", "no v_goal→0 event"))
 
+    v_des = _col(rows, "v_des_m_s")
+    v_ref = _col(rows, "v_ref_m_s")
+    leak_n = 0
+    leak_hits = 0
+    turn_ratios: list[float] = []
+    for keep, vg, vd, vr in zip(live, v_goal, v_des, v_ref):
+        if not keep:
+            continue
+        if not (np.isfinite(vg) and np.isfinite(vd) and np.isfinite(vr)):
+            continue
+        leak_n += 1
+        if abs(vg) > 1.0e-12 and (vd - vr) * float(np.sign(vg)) < -GATES[
+            "rail_p_term_leak_m_s"
+        ]:
+            leak_hits += 1
+        if 1.0e-6 < abs(vg) < GATES["rail_turn_v_goal_m_s"]:
+            turn_ratios.append(abs(vd) / abs(vg))
+    if leak_n:
+        frac = leak_hits / leak_n
+        results.append(
+            (
+                "rail P-term leak < 0.1% of live ticks",
+                frac < GATES["rail_p_term_leak_frac"],
+                f"{100.0 * frac:.2f}%  ({leak_hits}/{leak_n})",
+            )
+        )
+    if turn_ratios:
+        p99 = float(np.percentile(turn_ratios, 99))
+        results.append(
+            (
+                "rail turn overspeed p99 < 2 (|v_goal|<5 mm/s)",
+                p99 < GATES["rail_turn_overspeed_p99"],
+                f"p99 {p99:.2f}  n={len(turn_ratios)}",
+            )
+        )
+
 
 def _finite6(row: dict, keys: tuple[str, ...]) -> np.ndarray | None:
     vals = []
@@ -422,6 +560,104 @@ def _q8_from_row(row: dict) -> np.ndarray | None:
     if q is not None:
         return q
     return _finite6(row, tuple(f"q_meas_{i}" for i in range(8)))
+
+
+def _q8_meas_from_row(row: dict) -> np.ndarray | None:
+    return _finite6(row, tuple(f"q_meas_{i}" for i in range(8)))
+
+
+def _qdot_sent_from_row(row: dict) -> np.ndarray | None:
+    raw = row.get("qpik_final_sent_qdot_json", "")
+    if raw in ("", None):
+        return None
+    try:
+        vals = json.loads(raw)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+    arr = np.asarray(vals, dtype=float).reshape(-1)
+    if arr.size != 8 or not np.all(np.isfinite(arr)):
+        return None
+    return arr
+
+
+def _d_star_step_check(
+    d_star: np.ndarray,
+    dt_wall: np.ndarray,
+    results: list[tuple[str, bool, str]],
+    info: list[tuple[str, str]],
+) -> None:
+    if d_star.size < 3 or not np.isfinite(d_star).any():
+        return
+    dd = np.abs(np.diff(d_star))
+    dd = dd[np.isfinite(dd)]
+    if not dd.size:
+        return
+    dt_med = float(np.median(dt_wall)) if dt_wall.size else GATES["dt_nominal_s"]
+    limit = GATES["d_star_rate_m_s"] * dt_med * GATES["d_star_step_margin"]
+    peak = float(np.max(dd))
+    results.append(
+        (
+            "d_star step max < 2 × d_center_rate × dt",
+            peak < limit,
+            f"{1000.0 * peak:.2f} mm  limit {1000.0 * limit:.2f} mm",
+        )
+    )
+
+
+def _joint_exec_ratio_check(
+    rows: list[dict],
+    t: np.ndarray,
+    results: list[tuple[str, bool, str]],
+    info: list[tuple[str, str]],
+) -> None:
+    qdots: list[np.ndarray] = []
+    qmeas: list[np.ndarray] = []
+    times: list[float] = []
+    for row, ti in zip(rows, t):
+        qd = _qdot_sent_from_row(row)
+        qm = _q8_meas_from_row(row)
+        if qd is None or qm is None or not np.isfinite(ti):
+            continue
+        qdots.append(qd)
+        qmeas.append(qm)
+        times.append(float(ti))
+    if len(times) < 20:
+        if not any(r.get("qpik_final_sent_qdot_json") for r in rows[:8]):
+            info.append(("joint exec ratio", "no qpik_final_sent_qdot_json"))
+        return
+    qdots_a = np.asarray(qdots, dtype=float)
+    qmeas_a = np.asarray(qmeas, dtype=float)
+    times_a = np.asarray(times, dtype=float)
+    dt = np.diff(times_a)
+    good = np.isfinite(dt) & (dt > 0.0) & (dt < 0.10)
+    if int(np.count_nonzero(good)) < 10:
+        info.append(("joint exec ratio", "too few finite wall periods"))
+        return
+    integ = np.sum(qdots_a[:-1][good] * dt[good, None], axis=0)
+    # Match the integrated interval: q[0] → q[last good dt].
+    idx = np.nonzero(good)[0]
+    dq = qmeas_a[idx[-1] + 1] - qmeas_a[idx[0]]
+    parts: list[str] = []
+    ok = True
+    scored = 0
+    for j in range(8):
+        if abs(float(integ[j])) < GATES["joint_exec_min_integral"]:
+            continue
+        ratio = float(dq[j] / integ[j])
+        scored += 1
+        parts.append(f"j{j} {ratio:.3f}")
+        if not (GATES["joint_exec_ratio_lo"] <= ratio <= GATES["joint_exec_ratio_hi"]):
+            ok = False
+    if not scored:
+        info.append(("joint exec ratio", "no joint with |∫qdot dt_wall| ≥ 0.01"))
+        return
+    results.append(
+        (
+            "joint exec ratio 0.9–1.1 (Δq_meas / ∫qdot·dt_wall)",
+            ok,
+            "  ".join(parts),
+        )
+    )
 
 
 def _ik_exists_7dof(
@@ -570,9 +806,9 @@ def _idle_hold_checks(
 ) -> None:
     """The rail and the TCP must both stand still once the operator lets go.
 
-    ``tool_y_err_mm`` cannot see this in gamepad mode — ``pose_d`` is rebased
-    on ``pose_meas`` every tick, so the error is 0 exactly while the TCP
-    drifts.  Latch ``pose_meas`` at the start of each idle window instead.
+    Score TCP hold from ``pose_meas`` latched at idle start, not
+    ``tool_y_err_mm``.  Idle ``pose_d`` is now latched, but the physical
+    drift gate still uses measured pose.
     """
     t = _col(rows, "t_wall_s")
     if t.size < 8:
@@ -648,7 +884,7 @@ def _idle_hold_checks(
         drift_p95 = float(np.percentile(drifts, 95))
         results.append(
             (
-                "idle TCP drift p95 < 5 mm (pose_meas latched)",
+                "idle TCP drift p95 < 1 mm (pose_meas latched)",
                 drift_p95 < GATES["idle_tcp_drift_mm"],
                 f"{drift_p95:.1f} mm  max {max(drifts):.1f} mm  n={len(drifts)}",
             )
@@ -678,7 +914,7 @@ def _posture_debt_check(
     this is the gate that sees the conflict before the slide happens.
     """
     ff = _col(rows, "rail_qdot_ff")
-    err = _col(rows, "rail_track_err_m")
+    err = _col_any(rows, "rail_posture_err_m", "rail_track_err_m")
     n = int(min(ff.size, err.size))
     if n < 8:
         return
@@ -691,9 +927,47 @@ def _posture_debt_check(
     p95 = float(np.percentile(np.abs(err[:n][driving]), 95))
     results.append(
         (
-            "driving |rail_track_err| p95 < 30 mm",
-            p95 < GATES["drive_rail_track_err_p95_m"],
+            "driving |rail_posture_err| p95 < 30 mm",
+            p95 < GATES["drive_rail_posture_err_p95_m"],
             f"{1000.0 * p95:.1f} mm  n={int(np.count_nonzero(driving))}",
+        )
+    )
+
+
+def _rail_task_dropout_check(
+    rows: list[dict],
+    results: list[tuple[str, bool, str]],
+    info: list[tuple[str, str]],
+) -> None:
+    """w_ext=0 must not pin the rail to 0 while feedforward is still live."""
+    tv = _col(rows, "rail_task_vel")
+    ff = _col(rows, "v_ff_rail")
+    t = _col(rows, "t_wall_s")
+    n = int(min(tv.size, ff.size))
+    if n < 8:
+        return
+    dead = ~np.isfinite(tv[:n])
+    live_ff = np.isfinite(ff[:n]) & (np.abs(ff[:n]) > GATES["rail_task_dropout_ff_m_s"])
+    hit = dead & live_ff
+    frac = float(np.mean(hit)) if n else 0.0
+    longest_s = 0.0
+    if t.size >= n and np.isfinite(t[:n]).any():
+        i = 0
+        while i < n:
+            if not hit[i]:
+                i += 1
+                continue
+            j = i
+            while j + 1 < n and hit[j + 1]:
+                j += 1
+            if np.isfinite(t[i]) and np.isfinite(t[j]):
+                longest_s = max(longest_s, float(t[j] - t[i]))
+            i = j + 1
+    results.append(
+        (
+            "rail task dropout < 1% while |v_ff| live",
+            frac < GATES["rail_task_dropout_frac"],
+            f"{100.0 * frac:.1f}%  longest {1000.0 * longest_s:.0f} ms  n={int(np.count_nonzero(hit))}",
         )
     )
 
@@ -940,6 +1214,60 @@ def analyze(path: Path) -> int:
             ji = np.diff(af) / dt_step
             jerk_worst = max(jerk_worst, float(np.sqrt(np.mean(ji * ji))))
     results.append(("arm |a| max < 8 rad/s²", acc_ok, f"{acc_max:.2f} rad/s²"))
+    ripple_p999 = 0.0
+    ripple_max = 0.0
+    for i in range(1, 8):
+        qi = _col(rows, f"q_cmd_{i}")
+        if not np.isfinite(qi).any():
+            continue
+        dqi = np.diff(qi)
+        med = float(np.nanmedian(np.abs(dqi)))
+        if med < 1.0e-6:
+            continue
+        moving = np.abs(dqi) > 0.5 * med
+        if int(np.count_nonzero(moving)) < 8:
+            continue
+        rip = np.abs(np.diff(np.abs(dqi[moving]))) / med
+        if rip.size:
+            ripple_p999 = max(ripple_p999, float(np.nanpercentile(rip, 99.9)))
+            ripple_max = max(ripple_max, float(np.nanmax(rip)))
+    results.append(
+        (
+            "command-step ripple p99.9 < 0.50 and max < 1.00",
+            ripple_p999 < GATES["step_ripple_p999"]
+            and ripple_max < GATES["step_ripple_max"],
+            f"p99.9 {ripple_p999:.2f}  max {ripple_max:.2f}",
+        )
+    )
+    slack = _col(rows, "deadline_slack_s")
+    if np.isfinite(slack).any():
+        pos_frac = float(np.mean(slack[np.isfinite(slack)] > 0.0))
+        results.append(
+            (
+                "deadline slack > 0 on ≥99% of ticks",
+                pos_frac >= GATES["deadline_slack_pos_frac"],
+                f"{100.0 * pos_frac:.1f}% positive  "
+                f"med {1000.0 * np.nanmedian(slack):.2f} ms "
+                f"p5 {1000.0 * np.nanpercentile(slack, 5):.2f} ms",
+            )
+        )
+        current_ms = 1000.0 * GATES["dt_nominal_s"]
+        if pos_frac < GATES["deadline_slack_pos_frac"]:
+            up = raise_period_ms(current_ms)
+            info.append(
+                (
+                    "period ladder",
+                    f"slack missed; raise dt_ms to {up:.1f} "
+                    f"(now {current_ms:.1f})",
+                )
+            )
+        else:
+            info.append(
+                (
+                    "period ladder",
+                    f"slack passed at dt_ms={current_ms:.1f}",
+                )
+            )
     results.append(
         (
             "accel sign reversals < 20/s and jerk RMS < 200 (uniform step)",
@@ -1084,6 +1412,9 @@ def analyze(path: Path) -> int:
     _rail_servo_checks(path, results, info)
     _idle_hold_checks(rows, results, info)
     _posture_debt_check(rows, results, info)
+    _rail_task_dropout_check(rows, results, info)
+    _d_star_step_check(d_star, dt_wall, results, info)
+    _joint_exec_ratio_check(rows, t, results, info)
     _tick_profile(rows, info)
 
     div = _col(rows, "rail_cmd_meas_err_m")
@@ -1096,7 +1427,7 @@ def analyze(path: Path) -> int:
         p95_div = float(np.percentile(div_ok, 95))
         results.append(
             (
-                "rail |q_cmd-q_meas| not stuck on 20 mm guard",
+                "rail |q_cmd-q_meas| lead clamp duty < 0.5%",
                 bind < GATES["rail_resync_bind_frac"],
                 f"bind {100.0 * bind:.1f}%  p95 {1000.0 * p95_div:.1f} mm",
             )

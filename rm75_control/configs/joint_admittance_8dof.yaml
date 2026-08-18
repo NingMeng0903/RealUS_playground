@@ -10,9 +10,16 @@ robot:
   thread_mode: 2
 
 timing:
+  # 5.0 ms target after the C++ assembly kernel.  Integration is clipped
+  # to [dt_nom, 1.25*dt_nom] and command-step clamped, so a late tick
+  # cannot emit a 2× step the way the old wall-dt path did.  If
+  # deadline_slack_s > 0 on <99% of ticks, raise this back to 7.0.
   dt_ms: 5.0
   # Post-solve gate re-reads UDP; 80 ms still fails closed on a true push gap.
   feedback_timeout_ms: 80.0
+  # Best-effort RT: pin the control thread; hold /dev/cpu_dma_latency at 0.
+  control_cpu: 2
+  disable_cstates: true
 
 # UDP arm-state push (rm_set_realtime_push). Requires robot.thread_mode: 2.
 realtime_push:
@@ -75,6 +82,7 @@ inner:
     task_weight: [100.0, 100.0, 100.0, 50.0, 50.0, 50.0]
     reg: [1.0e-3, 1.0e-2, 1.0e-2, 1.0e-2, 1.0e-2, 1.2e-2, 1.2e-2, 1.2e-2]
     backend: proxqp
+    use_cpp_kernel: true
     eps_abs: 1.0e-6
     max_iter: 400
     max_iter_cap: 400
@@ -89,7 +97,6 @@ inner:
     task_weight_min_frac: 0.05
     task_weight_lpf_tau_s: 0.25
     aniso_task_damping: true
-    twist_scale_lpf_tau_s: 0.08
     use_mass_weighted_reg: true
     mass_reg_floor: 0.05
     mass_weight_exempt_rail: true
@@ -97,7 +104,7 @@ inner:
     use_dyn_nullspace: false
     limit_damper_band_rad: 0.25
     limit_damper_band_rail_m: 0.025
-    sns_retry_scales: [1.0]
+    near_arm_margin_rad: 0.08
     # Rail continuity is the hard a/j box + macro filter, not a soft glue term.
     smoothness_weight: [0.0, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
     # Third-order box: bounds how fast the commanded acceleration may turn.
@@ -107,19 +114,6 @@ inner:
     # 3.0 made a full rail acceleration reversal take 2*a_max/j = 0.2 s versus
     # 0.02 s on the arm; 60 keeps 2*a_max/j = 0.02 s after a_max rose to 0.60.
     j_max_rail_m_s3: 60.0
-    # Chan & Dubey weighted least-norm: reg_i grows as a joint approaches its
-    # stop *while moving toward it*, so the stroke transfers before the
-    # velocity box hits the wall.  Rail only — band_rad 0 keeps the arm out.
-    # J4 lives inside any useful arm band ~80% of a scan and has no spare
-    # joint to hand the stroke to, so weighting it only bought slack.
-    wln:
-      enabled: true
-      k: 1.0
-      band_rad: 0.0
-      band_rail_m: 0.0
-      max_scale: 20.0
-      # Cap |Δscale| per tick so a reverse cannot slam 20→1 in one sample.
-      max_delta: 3.0
     sigma_setbased:
       enabled: true
       activate: 0.12
@@ -243,6 +237,12 @@ inner:
     pin_margin_m: 0.008
     escape_leave_m: 0.04
     v_reach_cap_m_s: 0.05
+    v_reach_idle_cap_m_s: 0.010
+    healthy_sigma_mute: 0.08
+    press_v_force_min_m_s: 0.02
+    press_dz_max_m: 0.002
+    press_y_err_m: 0.005
+    press_stall_s: 0.5
     # Budget for v_ff + v_reach on the reach path.  v_max_m_s (0.08) alone is
     # below the legal FF (rail.v_max_m_s 0.15 * v_scale 0.8 = 0.12), so the
     # two saturated together and reach never ran: run 225941 grew the posture
@@ -593,8 +593,16 @@ hw:
     # Loaded PD scan BEST (400±40 mm): kp=14/kd=0.22 (was empty-load 18/0.22).
     vel_kp: 14.0
     vel_kd: 0.22
-    vel_max_m_s: 0.15
+    # Matches QP box rail.v_max_m_s 0.15 × v_scale 0.8.  parse_rail_servo_config
+    # also caps hw.vel_max by that product so the two cannot drift apart.
+    vel_max_m_s: 0.12
     vel_amax_m_s2: 1.2
+    # Coupled-mode catch-up of x_ref toward x_goal while moving.  20 mm/s
+    # clears a 20 mm standing offset in ~1 s without outrunning FF.
+    catch_v_max_m_s: 0.02
+    catch_k: 5.0
+    catch_frac: 0.3
+    decel_request_margin_m_s: 0.005
     # Position+FF: v = v_ref + kp*(x_ref−x_meas) + kd*(v_ref−v).  Never close
     # x_goal (20 mm lead / KMP OTG).  vel_ff_* remain for stream-goal resolve.
     vel_ff_kp: 4.0
@@ -606,6 +614,8 @@ hw:
     standstill_enter_mm: 0.05
     standstill_exit_mm: 0.25
     standstill_dwell_s: 0.08
+    approach_m: 0.008
+    latch_watch_s: 0.12
     target_timeout_s: 0.25
     # Extra coast after timeout before FA24=0.  A 127 ms hitch must not brake.
     target_stale_coast_s: 0.35
@@ -623,8 +633,9 @@ hw:
     jump_margin_mm: 3.0
     jump_hard_mm: 50.0
     jump_soft_streak_panic: 2
-    # FA40/41: 120 ms → host a_max ≈ 1.06 m/s² (still ≫ QP 0.30).
-    # If Er-01 appears on a reverse, step back to 160 before touching FA23.
+    # FA40/41: 120 ms → drive a ≈ 1.0 m/s².  Host a_max is min(this, QP
+    # a_max_rail_m_s2 0.60, 0.85 × vel_max/accel_s) so the servo cannot
+    # outrun the QP model.
     accel_ms: 120
     decel_ms: 120
     scurve_ms: 30            # FA42

@@ -21,6 +21,7 @@ from rm75_control.control.joint_admittance_8dof.loop import (
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics, full_q_from_arm
 from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfig
 from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedStyle, RailMode
+from rm75_control.control.joint_admittance_8dof.utils import safety as safety_mod
 from rm75_control.control.joint_admittance_8dof.utils.safety import Watchdog
 
 
@@ -204,6 +205,13 @@ def test_invalid_enabled_rail_feedback_never_falls_back_to_q_cmd() -> None:
         _rail_m_for_feedback(rail, inner)
 
 
+def test_post_solve_safety_limiter_is_gone_watchdog_remains() -> None:
+    assert not hasattr(safety_mod, "SafetyLimiter")
+    assert not hasattr(safety_mod, "SafetyReport")
+    assert hasattr(safety_mod, "Watchdog")
+    assert hasattr(safety_mod, "SafetyLimits")
+
+
 def test_watchdog_fault_is_latched_until_explicit_phase_arm() -> None:
     import threading
 
@@ -248,7 +256,7 @@ def test_publish_forwards_v_ff_to_the_bridge() -> None:
 def test_qpik_rail_v_ff_is_ik_qdot_not_pad_bypass() -> None:
     assert _qpik_rail_v_ff_m_s(0.079) == pytest.approx(0.079)
     assert _qpik_rail_v_ff_m_s(0.0) == 0.0
-    assert _qpik_rail_v_ff_m_s(5.0e-4) == 0.0
+    assert _qpik_rail_v_ff_m_s(5.0e-4) == pytest.approx(5.0e-4)
     assert _qpik_rail_v_ff_m_s(float("nan")) == 0.0
     assert _qpik_rail_v_ff_m_s(float("inf")) == 0.0
 
@@ -304,9 +312,10 @@ def test_wall_clock_idle_publishes_q_send_without_lead_chase() -> None:
     assert abs(walked - 0.40) < 0.020
 
 
-def test_rail_q_cmd_integrates_on_wall_clock_arm_stays_on_dt() -> None:
+def test_arm_and_rail_integrate_on_wall_dt() -> None:
     dt = 0.005
     dt_wall = 0.010
+    dt_int = min(dt_wall, 1.25 * dt)
     qdot_ff = np.zeros(8)
     qdot_ff[0] = 0.001
     qdot_ff[2] = 0.001
@@ -317,9 +326,32 @@ def test_rail_q_cmd_integrates_on_wall_clock_arm_stays_on_dt() -> None:
     step = wall.update(
         np.zeros(6), dt, q_meas=q0, qdot_ff=qdot_ff, dt_wall_s=dt_wall
     )
-    assert wall.q_cmd[0] == pytest.approx(q0[0] + qdot_ff[0] * dt_wall)
-    assert wall.q_cmd[2] == pytest.approx(q0[2] + qdot_ff[2] * dt)
+    assert wall.q_cmd[0] == pytest.approx(q0[0] + qdot_ff[0] * dt_int)
+    assert wall.q_cmd[2] == pytest.approx(q0[2] + qdot_ff[2] * dt_int)
     assert step.qdot[0] == pytest.approx(qdot_ff[0])
+    assert np.all(wall.q_cmd >= wall.limits.q_lower - 1.0e-9)
+    assert np.all(wall.q_cmd <= wall.limits.q_upper + 1.0e-9)
+
+
+def test_qp_tick_integrates_on_wall_dt_and_stays_in_position_box() -> None:
+    controller = _controller()
+    q0 = controller.q_cmd.copy()
+    dt_nom = float(controller.cfg.dt)
+    dt_wall = 1.6 * dt_nom
+    dt_int = min(dt_wall, 1.25 * dt_nom)
+    twist = np.array([0.0, 0.04, 0.0, 0.0, 0.0, 0.0])
+    step = controller.update(
+        twist, dt_nom, q_meas=q0, vel_ff=twist, dt_wall_s=dt_wall
+    )
+    np.testing.assert_allclose(
+        controller.q_cmd,
+        q0 + np.asarray(step.qdot, dtype=float) * dt_int,
+        atol=1.0e-8,
+        rtol=0.0,
+    )
+    margin = np.asarray(controller.limits.position_margin, dtype=float)
+    assert np.all(controller.q_cmd >= controller.limits.q_lower + margin - 1.0e-6)
+    assert np.all(controller.q_cmd <= controller.limits.q_upper - margin + 1.0e-6)
 
 
 def test_zero_v_cmd_does_not_invent_rail_task() -> None:
@@ -338,10 +370,17 @@ def test_zero_v_cmd_does_not_invent_rail_task() -> None:
     step = controller.update(np.zeros(6), q_meas=q)
     assert not np.isfinite(step.rail_task_vel) or abs(float(step.rail_task_vel)) < 1e-3
     assert abs(float(step.qdot[0])) < 0.01
-    assert _qpik_rail_v_ff_m_s(float(step.qdot[0])) == 0.0
+    assert _qpik_rail_v_ff_m_s(float(step.qdot[0])) == pytest.approx(
+        float(step.qdot[0])
+    )
 
 
 def test_lead_clamp_does_not_invent_qdot_above_vmax() -> None:
+    """QP velocity box keeps ``qdot`` inside ``v_max``; publish clamp holds 20 mm.
+
+    Post-solve ``q_cmd`` is no longer lead-clamped.  The remaining bound is
+    ``_wall_clock_rail_target`` and only engages while the rail is moving.
+    """
     controller = _controller()
     q_meas = Q_SAFE.copy()
     q_meas[0] = 0.40
@@ -351,7 +390,18 @@ def test_lead_clamp_does_not_invent_qdot_above_vmax() -> None:
     step = controller.update(twist, q_meas=q_meas)
     v_max = float(controller.limits.v_max[0])
     assert abs(float(step.qdot[0])) <= v_max + 1e-9
-    assert abs(float(step.q_send[0]) - 0.40) <= float(controller.cfg.resync_err_rail_m) + 1e-9
+    lead = float(controller.cfg.resync_err_rail_m)
+    published = _wall_clock_rail_target(
+        0.50,
+        0.08,
+        0.0065,
+        0.005,
+        soft_lo=0.0,
+        soft_hi=0.8,
+        meas_m=0.40,
+        lead_max_m=lead,
+    )
+    assert published == pytest.approx(0.40 + lead)
 
 
 def test_nonzero_v_cmd_publishes_qpik_qdot_not_v_ff_rail() -> None:

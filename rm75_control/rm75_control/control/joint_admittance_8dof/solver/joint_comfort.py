@@ -72,8 +72,8 @@ class JointComfortBuilder:
         rows_s = []
         rows_lo = []
         min_m = float("inf")
-        # Arm only — rail has WLN + its own travel box.
-        for i in range(1, nv):
+        # J4 only — other arm comfort rows never bound (max slack 2e-6).
+        for i in range(4, min(5, nv)):
             d_hi = float(hi[i] - q[i])
             d_lo = float(q[i] - lo[i])
             margin = min(d_hi, d_lo)

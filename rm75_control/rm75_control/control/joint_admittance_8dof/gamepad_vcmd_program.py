@@ -19,7 +19,6 @@ from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_con
 from rm75_control.control.joint_admittance_8dof.loop import JointIkController, Phase
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
-    MAPPING_HELP,
     GamepadTwistConfig,
     GamepadTwistOuterLoop,
 )
@@ -126,10 +125,10 @@ def build_gamepad_vcmd_program(
             allow_missing=True,
         )
     twist_cfg = GamepadTwistConfig(
-        trans_m_s=float(getattr(params, "gamepad_trans_m_s", 0.12)),
+        trans_m_s=float(getattr(params, "gamepad_trans_m_s", 0.10)),
         rot_rad_s=float(getattr(params, "gamepad_rot_rad_s", 0.60)),
         deadzone=float(getattr(params, "gamepad_deadzone", 0.18)),
-        max_lin_vel_m_s=2.0 * float(getattr(params, "gamepad_trans_m_s", 0.12)),
+        max_lin_vel_m_s=2.0 * float(getattr(params, "gamepad_trans_m_s", 0.10)),
         max_ang_vel_rad_s=2.0 * float(getattr(params, "gamepad_rot_rad_s", 0.60)),
         dt=float(inner_cfg.dt),
         euler_order=str(inner_cfg.euler_order),
@@ -139,8 +138,6 @@ def build_gamepad_vcmd_program(
 
     def _enter() -> None:
         SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
-        print(MAPPING_HELP, flush=True)
-        print(f"gamepad: {getattr(pad, 'describe', lambda: 'pad')()}", flush=True)
         if not getattr(pad, "connected", True):
             print("gamepad: no device — v_cmd stays zero until a pad appears", flush=True)
 

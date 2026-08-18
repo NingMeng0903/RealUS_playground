@@ -39,6 +39,7 @@ from rm75_control.control.joint_admittance_8dof.ik_types import (
     project_onto_task_nullspace,
     sr_damping_lambda,
 )
+from rm75_control.control.joint_admittance_8dof.solver import cpp_kernel
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.solver.branch_barrier import (
     BranchBarrierBuilder,
@@ -70,39 +71,6 @@ N_PREF_SLACK = 9  # [sigma, branch, J1..J7 comfort]
 MAX_PREF_ROWS = 16  # 1 sigma + 7 branch + 7 comfort
 # Backward-compatible alias used by older call sites / tests.
 N_SLACK = N_TASK_SLACK
-
-
-@dataclass
-class WlnConfig:
-    """Chan & Dubey (1995) weighted least-norm joint-limit avoidance.
-
-    ``reg_i`` is a *preference* cost, not a constraint, so raising it as a
-    joint approaches its stop makes the QP hand the task to the other joints
-    smoothly, well before the velocity box slams shut at the wall.  On this
-    robot the rail is the cheapest joint (``reg[0]=1e-3``) and constant, so
-    the solver rode it into the soft stop and only the box stopped it — the
-    arm never picked up the stroke.
-
-    Deviations from the paper, both deliberate:
-      * a band, so mid-travel keeps the tuned ``reg`` (the paper is always-on,
-        which would double the rail cost in the middle of the stroke);
-      * leaving a stop is blended, not hard-gated, and the published scale
-        is slew-limited so a reverse cannot step rail reg 20→1 in one tick.
-    """
-
-    enabled: bool = True
-    k: float = 1.0
-    # Per-joint influence band; <= 0 disables that joint.  The arm is off by
-    # default (see _wln_reg_scale): it has no spare joint to hand the stroke
-    # to, so weighting only buys slack.  The rail does have one — the arm.
-    band_rad: float = 0.0         # arm joints (rad)
-    band_rail_m: float = 0.0      # prismatic rail (m); 0 disables rail WLN
-    # Rail reg is 1e-3 against the arm's 1e-2, so 20x is already 2x dearer
-    # than an arm joint — enough to shift the stroke, small enough that the
-    # QP still prefers moving the rail over dropping the task into slack.
-    max_scale: float = 20.0
-    # Max |Δscale| per tick.  3 keeps a 20→1 reverse over ~7 ticks (~40 ms).
-    max_delta: float = 3.0
 
 
 @dataclass
@@ -138,6 +106,7 @@ class QpConfig:
         )
     )
     backend: str = "proxqp"
+    use_cpp_kernel: bool = True
     eps_abs: float = 1e-6
     max_iter: int = 200
     # Clamp applied in ProxQP backend so a yaml typo (e.g. 3000) cannot freeze
@@ -203,16 +172,13 @@ class QpConfig:
     sigma_setbased: SigmaSetBasedConfig = field(default_factory=SigmaSetBasedConfig)
     branch_barrier: BranchBarrierConfig = field(default_factory=BranchBarrierConfig)
     joint_comfort: JointComfortConfig = field(default_factory=JointComfortConfig)
-    # Compatibility telemetry only.  Strict HQP never rescales/retries v_cmd.
-    sns_retry_scales: tuple[float, ...] = (1.0,)
+    # Arm joints this close to a stop count as physically saturated (rad).
+    near_arm_margin_rad: float = 0.08
     # Soft velocity continuity: ½ w_s ‖q̇ − q̇_prev‖² added to the QP cost
     # (no extra decision variable).  0 disables.
     # May be a scalar or one value per joint.  A vector lets the rail use no
     # velocity-continuity preference while the arm keeps its tuned value.
     smoothness_weight: float | np.ndarray = 0.15
-    # First-order LPF on the σ twist scale.  0 disables (legacy one-tick punch).
-    twist_scale_lpf_tau_s: float = 0.08
-    wln: WlnConfig = field(default_factory=WlnConfig)
     # Third-order box on |a_k - a_{k-1}|.  The velocity and acceleration boxes
     # alone let the commanded acceleration flip sign every tick; this bounds
     # how fast it may turn.  0 disables either axis.
@@ -533,9 +499,8 @@ class QpIkController:
         self.last_hi_box = np.full(kin.nv, np.inf, dtype=float)
         self.last_qp2_seed_violation = 0.0
         self.last_qp2_seed_equality = 0.0
-        # Final-publication certificate.  The loop may still apply its legacy
-        # SafetyLimiter/lead guards after QP2, so retain the qdot-only hard set
-        # and QP1 task value needed to verify the value that will actually be
+        # Final-publication certificate.  Retain the qdot-only hard set and
+        # QP1 task value needed to verify the command that will actually be
         # sent.  Preference slack rows are deliberately excluded here.
         self.last_hard_cbf_jacobian = np.zeros((0, kin.nv), dtype=float)
         self.last_hard_cbf_lower = np.zeros(0, dtype=float)
@@ -708,63 +673,9 @@ class QpIkController:
     def _wln_reg_scale(
         self, q: np.ndarray, qdot_prev: np.ndarray
     ) -> np.ndarray:
-        """Per-joint ``reg`` multiplier from the Chan & Dubey limit potential."""
-        cfg = self.cfg.wln
-        nv = int(q.size)
-        if not cfg.enabled or float(cfg.k) <= 0.0:
-            return np.ones(nv, dtype=float)
-        lim = self.constraints.lim
-        lo = np.asarray(lim.q_lower, dtype=float)
-        hi = np.asarray(lim.q_upper, dtype=float)
-        span = hi - lo
-        d_hi = hi - q
-        d_lo = q - lo
-        # ε floor: sitting exactly on a stop used to zero denom and drop
-        # WLN to 1, which is when the handoff is needed most.
-        eps = 1.0e-4
-        d_hi_e = np.maximum(d_hi, eps)
-        d_lo_e = np.maximum(d_lo, eps)
-        denom = 4.0 * np.square(d_hi_e) * np.square(d_lo_e)
-        grad = np.zeros(nv, dtype=float)
-        ok = span > 1.0e-9
-        grad[ok] = (
-            np.square(span[ok]) * (2.0 * q[ok] - hi[ok] - lo[ok]) / denom[ok]
-        )
-        band = np.full(nv, float(cfg.band_rad), dtype=float)
-        band[0] = float(cfg.band_rail_m)
-        # band <= 0 disables that joint outright.  The arm is disabled by
-        # default: J4 sits inside any useful band ~80% of a scan, so weighting
-        # it does not hand the stroke to another joint, it just prices J4 out
-        # and the QP buys slack instead (measured: slack 0.0001 -> 0.05).
-        active_band = band > 0.0
-        safe_band = np.where(active_band, band, 1.0)
-        # Smoothstep so the weight is C1 at the band edge; a hard gate would
-        # step reg by ~10x in one tick and show up as a torque bump.
-        ramp = np.clip((safe_band - np.minimum(d_hi, d_lo)) / safe_band, 0.0, 1.0)
-        ramp = ramp * ramp * (3.0 - 2.0 * ramp)
-        ramp = np.where(active_band, ramp, 0.0)
-        # Smooth approach weight: 1 toward the nearer stop (or at rest), 0
-        # when leaving.  A hard sign gate slammed rail reg 20→1 on reverse.
-        v_blend = np.full(nv, 0.05, dtype=float)  # rad/s
-        v_blend[0] = 0.005  # m/s — 5 mm/s fully saturates the blend
-        toward = qdot_prev * grad
-        denom = np.maximum(np.abs(grad) * v_blend, 1.0e-12)
-        approach_w = np.clip(0.5 + 0.5 * toward / denom, 0.0, 1.0)
-        approach_w = np.where(np.abs(qdot_prev) <= 1.0e-6, 1.0, approach_w)
-        raw = 1.0 + float(cfg.k) * np.abs(grad) * ramp * approach_w
-        raw = np.clip(raw, 1.0, max(float(cfg.max_scale), 1.0))
-        prev = np.asarray(self._wln_scale_prev, dtype=float)
-        if prev.size != nv:
-            prev = np.ones(nv, dtype=float)
-        max_delta = max(float(cfg.max_delta), 0.0)
-        if max_delta > 0.0:
-            # Only slew the drop.  Rise is already C1 in the position ramp;
-            # the hitch was 20→1 on reverse.
-            drop = np.maximum(prev - raw, 0.0)
-            raw = np.where(drop > max_delta, prev - max_delta, raw)
-        scale = np.clip(raw, 1.0, max(float(cfg.max_scale), 1.0))
-        self._wln_scale_prev = scale
-        return scale
+        """WLN is retired (band was 0).  Stub kept for older tests."""
+        del qdot_prev
+        return np.ones(int(np.asarray(q, dtype=float).size), dtype=float)
 
     def _task_scale_sigma(self, sigma_min: float, dt: float) -> float:
         """LPF-smoothed W_task scale in [min_frac, 1] from σ_min."""
@@ -908,6 +819,29 @@ class QpIkController:
             jacobian=jac, slack_col=scol.astype(int), lower=lo, active=True
         )
 
+    def _solve_qp(self, backend, H, g, A, b, C, lo, hi, *, warm_start_x=None):
+        if bool(getattr(self.cfg, "use_cpp_kernel", True)) and cpp_kernel.available():
+            packed = cpp_kernel.solve_dense_qp(
+                H,
+                g,
+                A,
+                b,
+                C,
+                lo,
+                hi,
+                warm_x=warm_start_x,
+                max_iter=int(
+                    min(max(int(self.cfg.max_iter), 1), int(self.cfg.max_iter_cap))
+                ),
+                eps_abs=float(self.cfg.eps_abs),
+            )
+            if packed is not None:
+                x, ms, status = packed
+                backend.last_solve_ms = float(ms)
+                backend.last_status = str(status)
+                return x
+        return backend.solve(H, g, A, b, C, lo, hi, warm_start_x=warm_start_x)
+
     def step(
         self,
         q_prev: np.ndarray,
@@ -1009,14 +943,24 @@ class QpIkController:
         if M is not None and M.shape != (nv, nv):
             raise ValueError(f"mass_matrix must have shape {(nv, nv)}")
         qdot_nom = (
-            project_onto_task_nullspace(
-                J_task,
-                secondary_qdot,
-                damping=proj_damping,
-                sigma_min=sigma_min,
-                sr_cfg=self.cfg.sr_damping,
-                M=M,
-                use_dyn=self.cfg.use_dyn_nullspace and M is not None,
+            (
+                cpp_kernel.project_nullspace(
+                    J_task,
+                    secondary_qdot,
+                    damping=proj_damping,
+                    M=M,
+                    use_dyn=self.cfg.use_dyn_nullspace and M is not None,
+                )
+                if bool(getattr(self.cfg, "use_cpp_kernel", True))
+                else project_onto_task_nullspace(
+                    J_task,
+                    secondary_qdot,
+                    damping=proj_damping,
+                    sigma_min=sigma_min,
+                    sr_cfg=self.cfg.sr_damping,
+                    M=M,
+                    use_dyn=self.cfg.use_dyn_nullspace and M is not None,
+                )
             )
             if secondary_qdot is not None
             else np.zeros(nv, dtype=float)
@@ -1026,8 +970,7 @@ class QpIkController:
 
         # Limit avoidance and the velocity box use the same measured geometry.
         w_reg = self._w_reg.copy()
-        self.last_wln_scale = self._wln_reg_scale(q_geom, self.qdot_prev)
-        w_reg *= self.last_wln_scale
+        self.last_wln_scale = np.ones(self.kin.nv, dtype=float)
         if rail_locked and rail_lock_reg_scale > 1.0:
             w_reg[0] *= float(rail_lock_reg_scale)
         if (not rail_locked) and float(rail_reg_scale) > 1.0:
@@ -1129,7 +1072,12 @@ class QpIkController:
             if closest is not None:
                 self.last_cbf_min_dist = float(closest.distance)
                 self.last_cbf_pair = f"{closest.name_a}:{closest.name_b}"
-        C_hard, lo, hi = build_wbc_inequalities(
+        _assemble = (
+            cpp_kernel.build_wbc_inequalities
+            if bool(getattr(self.cfg, "use_cpp_kernel", True))
+            else build_wbc_inequalities
+        )
+        C_hard, lo, hi = _assemble(
             nv,
             n_task,
             lo_box,
@@ -1145,12 +1093,17 @@ class QpIkController:
         # even a tiny qdot regularizer would mathematically permit trading an
         # otherwise-zero Cartesian residual for less joint motion.  ProxQP's
         # own proximal terms handle the positive-semidefinite Hessian.
-        H1 = np.zeros((n_var, n_var), dtype=float)
-        H1[nv : nv + n_task, nv : nv + n_task] = w_task_mat
-        g1 = np.zeros(n_var, dtype=float)
-        A1 = np.zeros((n_task, n_var), dtype=float)
-        A1[:, :nv] = J_task
-        A1[:, nv : nv + n_task] = -np.eye(n_task)
+        if bool(getattr(self.cfg, "use_cpp_kernel", True)):
+            H1, g1, A1 = cpp_kernel.setup_qp1(
+                nv, n_task, n_pref, w_task_mat, J_task, use_native=True
+            )
+        else:
+            H1 = np.zeros((n_var, n_var), dtype=float)
+            H1[nv : nv + n_task, nv : nv + n_task] = w_task_mat
+            g1 = np.zeros(n_var, dtype=float)
+            A1 = np.zeros((n_task, n_var), dtype=float)
+            A1[:, :nv] = J_task
+            A1[:, nv : nv + n_task] = -np.eye(n_task)
 
         # ProxQP may return a point a few nanometres outside an inequality
         # while still satisfying ``eps_abs``.  QP2 then locks J*qdot from
@@ -1170,7 +1123,8 @@ class QpIkController:
         lo1[inset_both | inset_lo_only] += feasibility_inset
         hi1[inset_both | inset_hi_only] -= feasibility_inset
 
-        x1 = self.backend.solve(
+        x1 = self._solve_qp(
+            self.backend,
             np.ascontiguousarray(H1),
             np.ascontiguousarray(g1),
             np.ascontiguousarray(A1),
@@ -1253,7 +1207,6 @@ class QpIkController:
             # Build QP2's existing weighted secondary objective.  Its task
             # equality is augmented with w_task=0, locking QP1's achieved
             # task exactly while allowing all lower-priority preferences.
-            H2 = np.zeros((n_var, n_var), dtype=float)
             if self.cfg.use_mass_weighted_reg and M is not None:
                 m_diag = np.maximum(np.diag(M), self.cfg.mass_reg_floor)
                 if self.cfg.mass_weight_exempt_rail:
@@ -1269,31 +1222,26 @@ class QpIkController:
                 h_reg = w_reg * m_diag
             else:
                 h_reg = w_reg
-            H2[:nv, :nv] = np.diag(h_reg)
-            H2[nv : nv + n_task, nv : nv + n_task] = np.eye(n_task) * 1.0e-10
-            H2[nv + n_task, nv + n_task] = float(
-                self.cfg.sigma_setbased.slack_weight
-            )
-            H2[nv + n_task + 1, nv + n_task + 1] = (
+            slack_w = np.zeros(n_pref, dtype=float)
+            slack_w[0] = float(self.cfg.sigma_setbased.slack_weight)
+            slack_w[1] = (
                 float(self.cfg.branch_barrier.slack_weight)
                 * pref_w
                 * float(self.branch_barrier.last_dwell_scale)
             )
             comfort_w = float(self.cfg.joint_comfort.slack_weight) * pref_w
-            for k in range(2, n_pref):
-                H2[nv + n_task + k, nv + n_task + k] = comfort_w
-            g2 = np.zeros(n_var, dtype=float)
-            g2[:nv] = -h_reg * qdot_nom
-
+            if n_pref > 2:
+                slack_w[2:] = comfort_w
+            rail_w_qp2 = 0.0
+            rail_vel_qp2 = 0.0
             if (
                 rail_task_vel_m_s is not None
                 and rail_w_eff > 0.0
                 and not rail_locked
                 and rail_vel_pin_m_s is None
             ):
-                H2[0, 0] += rail_w_eff
-                g2[0] -= rail_w_eff * float(rail_task_vel_m_s)
-
+                rail_w_qp2 = float(rail_w_eff)
+                rail_vel_qp2 = float(rail_task_vel_m_s)
             smooth_raw = np.asarray(
                 getattr(self.cfg, "smoothness_weight", 0.0), dtype=float
             ).reshape(-1)
@@ -1306,9 +1254,19 @@ class QpIkController:
                     f"smoothness_weight must be scalar or length {nv}, got {smooth_raw.size}"
                 )
             smooth = np.maximum(smooth, 0.0)
-            if np.any(smooth > 0.0):
-                H2[:nv, :nv] += np.diag(smooth)
-                g2[:nv] -= smooth * np.asarray(self.qdot_prev, dtype=float)
+            H2, g2 = cpp_kernel.setup_qp2_costs(
+                nv,
+                n_task,
+                n_pref,
+                h_reg,
+                qdot_nom,
+                slack_w,
+                rail_w=rail_w_qp2,
+                rail_vel=rail_vel_qp2,
+                smooth=smooth,
+                qdot_prev=self.qdot_prev,
+                use_native=bool(getattr(self.cfg, "use_cpp_kernel", True)),
+            )
 
             sigma_rows = self.sigma_setbased.build_row(self.kin, q_geom)
             q_star = (
@@ -1316,12 +1274,19 @@ class QpIkController:
                 if self.q_star_signs is not None
                 else (self.q_star if self.q_star is not None else q_geom)
             )
-            branch_rows = self.branch_barrier.build_rows(q_geom, q_star)
+            # Soft branch rows never bound (max slack 2e-6).  Keep the hard
+            # Faverjon damper in tighten_box.
+            branch_rows = PrefInequalityRows(
+                jacobian=np.zeros((0, nv)),
+                slack_col=np.zeros(0, dtype=int),
+                lower=np.zeros(0),
+                active=False,
+            )
             comfort_rows = self.joint_comfort.build_rows(
                 q_geom, self.constraints.lim.q_lower, self.constraints.lim.q_upper
             )
             pref = self._merge_pref_rows(sigma_rows, branch_rows, comfort_rows)
-            C2, lo2, hi2 = build_wbc_inequalities(
+            C2, lo2, hi2 = _assemble(
                 nv,
                 n_task,
                 lo_box,
@@ -1364,7 +1329,8 @@ class QpIkController:
             )
             qp2_exception_status = ""
             try:
-                x2 = self._backend_qp2.solve(
+                x2 = self._solve_qp(
+                    self._backend_qp2,
                     np.ascontiguousarray(H2),
                     np.ascontiguousarray(g2),
                     np.ascontiguousarray(A2),

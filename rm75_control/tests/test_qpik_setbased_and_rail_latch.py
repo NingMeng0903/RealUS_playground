@@ -649,19 +649,26 @@ def test_joint_comfort_inactive_when_centered() -> None:
     assert rows.active is False
 
 
-def test_joint_comfort_has_per_joint_slack_near_j2_stop() -> None:
+def test_joint_comfort_is_j4_only_and_still_binds_near_stop() -> None:
+    """Comfort rows other than J4 never bound; the J4 row still holds the band."""
     kin = RobotKinematics()
     b = JointComfortBuilder(
         JointComfortConfig(m_comfort_rad=0.26, activate_rad=0.44, gamma=6.0)
     )
-    q = np.array([0.4, 0.0, -2.20, 0.0, 1.57, 0.0, 0.78, 0.0])
-    rows = b.build_rows(q, kin.q_lower, kin.q_upper)
+    q_j2 = np.array([0.4, 0.0, -2.20, 0.0, 1.57, 0.0, 0.78, 0.0])
+    rows_j2 = b.build_rows(q_j2, kin.q_lower, kin.q_upper)
+    assert rows_j2.active is False
+
+    q_j4 = q_j2.copy()
+    q_j4[4] = float(kin.q_upper[4]) - 0.20
+    rows = b.build_rows(q_j4, kin.q_lower, kin.q_upper)
     assert rows.active
-    j2 = [k for k in range(rows.jacobian.shape[0]) if abs(rows.jacobian[k, 2]) > 1e-6]
-    assert j2
-    assert int(rows.slack_col[j2[0]]) == COMFORT_SLACK0 + 1
-    # Near the lower stop: ∇h points +q2.
-    assert rows.jacobian[j2[0], 2] > 0.0
+    j4 = [k for k in range(rows.jacobian.shape[0]) if abs(rows.jacobian[k, 4]) > 1e-6]
+    assert j4
+    assert int(rows.slack_col[j4[0]]) == COMFORT_SLACK0 + 3
+    assert abs(rows.jacobian[j4[0], 2]) <= 1e-12
+    # Near the upper stop: ∇h points −q4.
+    assert rows.jacobian[j4[0], 4] < 0.0
 
 
 def test_beyond_rail_cli_defaults_force_on(tmp_path) -> None:
@@ -889,3 +896,98 @@ def test_pose_attract_keeps_the_original_cap_when_reach_budget_is_raised() -> No
     task.y_rail_target_m = float(q[0]) + 0.30  # k_pose 2.0 * 0.30 = 0.60 m/s
     v, _w = task(q, sigma_scale=1.0, sigma_grad_rail=0.0, dt_s=0.005)
     assert float(v) == pytest.approx(0.08, abs=1e-9)
+
+
+def _w_ff_task(*, v_ff_thr_m_s: float = 0.005) -> RailExtensionTask:
+    return RailExtensionTask(
+        RobotKinematics(),
+        RailExtensionConfig(
+            enabled=True,
+            k_ext=0.0,
+            k_ff=1.0,
+            k_esc=0.0,
+            w_max=2.0,
+            w_sigma_floor=0.0,
+            v_ff_thr_m_s=v_ff_thr_m_s,
+            v_ff_span_m_s=0.015,
+            e0_m=0.20,
+            e1_m=0.40,
+            v_lpf_tau_s=0.0,
+            escape_grad_floor=0.0,
+        ),
+    )
+
+
+def _drive_ff_only(task: RailExtensionTask, v_ff_m_s: float) -> tuple[float, float]:
+    kin = task.kin
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    task.set_mode("reach")
+    task.capture_reference(q)
+    j_rail = kin.jacobian(q)[:3, 0]
+    vel_ff = np.zeros(6)
+    if abs(v_ff_m_s) > 0.0:
+        vel_ff[:3] = v_ff_m_s * j_rail
+    _v, w = task(
+        q,
+        sigma_scale=1.0,
+        sigma_grad_rail=0.0,
+        joint_margin_frac=1.0,
+        sigma_raw=0.5,
+        vel_ff=vel_ff,
+        dt_s=0.005,
+    )
+    return float(task.last_v_ff), float(w)
+
+
+def test_w_ff_is_live_below_the_ownership_threshold() -> None:
+    from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
+        _smoothstep01,
+    )
+
+    task = _w_ff_task()
+    v_ff, w = _drive_ff_only(task, 0.0023)
+    assert v_ff == pytest.approx(0.0023, rel=0.05)
+    expected = 2.0 * _smoothstep01(abs(v_ff) / 0.015)
+    assert w == pytest.approx(expected, abs=1e-6)
+    assert w > 0.1
+
+
+def test_w_ff_is_zero_when_feedforward_is_zero() -> None:
+    task = _w_ff_task()
+    v_ff, w = _drive_ff_only(task, 0.0)
+    assert v_ff == pytest.approx(0.0, abs=1e-12)
+    assert w == pytest.approx(0.0, abs=1e-12)
+
+
+def test_ff_owns_still_flips_at_the_threshold() -> None:
+    task = _w_ff_task(v_ff_thr_m_s=0.005)
+    kin = task.kin
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    task.set_mode("reach")
+    task.capture_reference(q)
+    task.d_pref_m = task.extension(q) - 0.10
+    j_rail = kin.jacobian(q)[:3, 0]
+    vel_lo = np.zeros(6)
+    vel_lo[:3] = 0.004 * j_rail
+    vel_hi = np.zeros(6)
+    vel_hi[:3] = 0.006 * j_rail
+    task(
+        q,
+        sigma_scale=1.0,
+        sigma_grad_rail=0.0,
+        vel_ff=vel_lo,
+        dt_s=0.005,
+        sigma_raw=0.5,
+    )
+    assert abs(task.last_v_ff) < 0.005
+    assert task.last_k_ff_scale < 1.0
+    task(
+        q,
+        sigma_scale=1.0,
+        sigma_grad_rail=0.0,
+        vel_ff=vel_hi,
+        dt_s=0.005,
+        sigma_raw=0.5,
+    )
+    assert abs(task.last_v_ff) > 0.005
+    assert task.last_k_ff_scale == pytest.approx(1.0)

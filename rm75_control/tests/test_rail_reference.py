@@ -290,6 +290,10 @@ def test_defaults_match_the_hardware_baseline() -> None:
         assert cfg.vel_max_m_s == 0.30
         assert cfg.max_speed_rpm == 1800
         assert cfg.vel_amax_m_s2 == 0.8
+        assert cfg.catch_v_max_m_s == pytest.approx(0.02)
+        assert cfg.catch_k == pytest.approx(5.0)
+        assert cfg.catch_frac == pytest.approx(0.3)
+        assert cfg.decel_request_margin_m_s == pytest.approx(0.005)
         assert cfg.vel_ff_kp == 4.0
         assert cfg.vel_ff_p_trim_m_s == pytest.approx(0.010)
         assert cfg.match_drive_accel is True
@@ -298,6 +302,8 @@ def test_defaults_match_the_hardware_baseline() -> None:
         assert cfg.standstill_enter_mm == 0.05
         assert cfg.standstill_exit_mm == 0.25
         assert cfg.standstill_dwell_s == 0.08
+        assert cfg.approach_m == pytest.approx(0.008)
+        assert cfg.latch_watch_s == pytest.approx(0.12)
         assert cfg.encoder_freeze_min_move_mm == 0.15
         assert cfg.accel_ms == 150
         assert cfg.decel_ms == 150
@@ -641,3 +647,27 @@ def test_fa24_deadband_skips_small_nonzero_dither() -> None:
     assert apply_fa24_rpm_deadband(0, 360, 12) == 0
     assert apply_fa24_rpm_deadband(12, 0, 12) == 12
     assert apply_fa24_rpm_deadband(368, 360, 12, force=True) == 368
+
+
+def test_servo_box_is_capped_by_the_qp_hard_limits() -> None:
+    cfg = parse_rail_servo_config(
+        {
+            "qpik": {
+                "hard_limits": {
+                    "v_scale": 0.8,
+                    "a_max_rail_m_s2": 0.60,
+                    "rail": {"v_max_m_s": 0.15},
+                }
+            },
+            "hw": {
+                "lw100": {
+                    "vel_max_m_s": 0.15,
+                    "vel_amax_m_s2": 1.2,
+                    "accel_ms": 120,
+                }
+            },
+        }
+    )
+    assert cfg.vel_max_m_s == pytest.approx(0.12)
+    assert cfg.vel_amax_m_s2 == pytest.approx(0.60)
+    assert cfg.live_host_accel_m_s2() == pytest.approx(0.60)

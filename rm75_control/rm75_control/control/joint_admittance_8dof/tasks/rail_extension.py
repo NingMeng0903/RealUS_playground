@@ -83,6 +83,10 @@ class RailExtensionConfig:
     # Reach may oppose MotionReference FF, but only this much (m/s) so the
     # rail can still re-extend the elbow without re-triggering LW100 Er-01.
     v_reach_cap_m_s: float = 0.05
+    # Operator idle: posture reach must not drag the rail at 50 mm/s.
+    v_reach_idle_cap_m_s: float = 0.010
+    # Raw σ at or above this mutes escape unless a press stall needs Y.
+    healthy_sigma_mute: float = 0.08
     # Dead-zone around d_center.  Coupled mode is velocity-authoritative,
     # so this is the only Cartesian position term on the rail axis.  Keep
     # it small enough that a few millimetres of track error still produce
@@ -624,6 +628,7 @@ class RailExtensionTask:
         apply_d_band: bool | None = None,
         block_escape: bool = False,
         unload_sign: float = 0.0,
+        operator_idle: bool = False,
     ) -> tuple[float, float]:
         if self.d_pref_m is None:
             self.capture_reference(q)
@@ -687,11 +692,18 @@ class RailExtensionTask:
             unload_sign=float(unload_sign),
         )
         cap = max(float(self.cfg.v_reach_cap_m_s), 0.0)
+        if operator_idle:
+            idle_cap = max(float(self.cfg.v_reach_idle_cap_m_s), 0.0)
+            if idle_cap > 0.0:
+                cap = min(cap, idle_cap) if cap > 0.0 else idle_cap
         if cap > 0.0:
             v_reach = float(np.clip(v_reach, -cap, cap))
         # Demoted: healthy σ (raw ≥ 0.08) never lets escape drive the rail
         # unless a press stall still needs a lateral Y offset.
-        healthy_sigma = sigma_raw is not None and float(sigma_raw) >= 0.08
+        healthy_sigma = (
+            sigma_raw is not None
+            and float(sigma_raw) >= float(self.cfg.healthy_sigma_mute)
+        )
         use_limiters = bool(stroke_limiters)
         in_band = self._rail_in_limit_band(y) if use_limiters else False
         self.last_in_limit_band = bool(in_band)
@@ -787,7 +799,9 @@ class RailExtensionTask:
         self.last_limit_saturated = lim < 1e-6
         v *= lim
         span_ff = max(float(self.cfg.v_ff_span_m_s), 1e-6)
-        w_ff = float(self.cfg.w_max) * _smoothstep01((abs(v_ff) - thr) / span_ff)
+        # v_ff_thr_m_s is the ff_owns ownership test, not a weight dead
+        # zone: subtracting it zeroed w_ff for the whole 0.67 s Y turn.
+        w_ff = float(self.cfg.w_max) * _smoothstep01(abs(v_ff) / span_ff)
         w_sigma = float(self.cfg.w_sigma_floor) * (1.0 - sig)
         w = (w_reach + w_ff + w_sigma) * lim
         sig_boost = 1.0 + float(self.cfg.k_sigma_boost) * (1.0 - sig)
@@ -822,6 +836,7 @@ class RailExtensionTask:
         apply_d_band: bool | None = None,
         block_escape: bool = False,
         unload_sign: float = 0.0,
+        operator_idle: bool = False,
     ) -> tuple[float, float]:
         """Return ``(v_rail_des, w_ext)`` for the QP."""
         if not self.cfg.enabled:
@@ -858,4 +873,5 @@ class RailExtensionTask:
             apply_d_band=apply_d_band,
             block_escape=block_escape,
             unload_sign=unload_sign,
+            operator_idle=operator_idle,
         )

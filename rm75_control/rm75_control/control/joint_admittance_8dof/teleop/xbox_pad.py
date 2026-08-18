@@ -7,7 +7,7 @@ device (wired wins) and remaps into the logical order consumed by
 
 from __future__ import annotations
 
-import os
+import signal
 from dataclasses import dataclass
 
 import numpy as np
@@ -42,6 +42,23 @@ def _require_pygame():
     return pygame
 
 
+def _init_joystick_pygame():
+    """Full pygame init. SDL steals SIGINT — give it back afterwards."""
+    pygame = _require_pygame()
+    prev_int = signal.getsignal(signal.SIGINT)
+    prev_term = signal.getsignal(signal.SIGTERM)
+    try:
+        pygame.init()
+        pygame.joystick.init()
+    finally:
+        try:
+            signal.signal(signal.SIGINT, prev_int)
+            signal.signal(signal.SIGTERM, prev_term)
+        except Exception:
+            pass
+    return pygame
+
+
 @dataclass
 class PadState:
     axes: np.ndarray
@@ -55,8 +72,7 @@ class PadState:
 
 
 def list_joystick_names() -> list[str]:
-    pygame = _require_pygame()
-    pygame.joystick.init()
+    pygame = _init_joystick_pygame()
     names = []
     for i in range(int(pygame.joystick.get_count())):
         joy = pygame.joystick.Joystick(i)
@@ -78,11 +94,7 @@ class XboxPad:
         layout: PadLayout | None = None,
         pin_layout: bool = True,
     ) -> None:
-        pygame = _require_pygame()
-        if os.environ.get("DISPLAY") is None and os.environ.get("SDL_VIDEODRIVER") is None:
-            os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-        pygame.init()
-        pygame.joystick.init()
+        pygame = _init_joystick_pygame()
         self._pygame = pygame
         self._joy = None
         self._closed = False
@@ -98,7 +110,6 @@ class XboxPad:
             idx = 0 if device_index is None else int(device_index)
         if count <= idx or idx < 0:
             if not allow_missing:
-                pygame.quit()
                 raise RuntimeError(
                     f"no joystick at index {idx} (found {count})"
                 )
@@ -163,10 +174,6 @@ class XboxPad:
         except Exception:
             pass
         self._joy = None
-        try:
-            self._pygame.quit()
-        except Exception:
-            pass
 
 
 class FakePad:

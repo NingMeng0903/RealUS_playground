@@ -674,7 +674,7 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
         ).read_text(encoding="utf-8")
     )
     cfg = build_joint_ik_config(raw)
-    assert cfg.qp.twist_scale_lpf_tau_s == pytest.approx(0.08)
+    assert cfg.qp.near_arm_margin_rad == pytest.approx(0.08)
     assert cfg.psi_retarget.enabled
     assert cfg.psi_retarget.n_y >= 3
     assert cfg.psi_retarget.w_wrist == pytest.approx(0.5)
@@ -720,20 +720,24 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.qp.branch_barrier.dwell_ramp_s == pytest.approx(1.0)
     assert cfg.qp.branch_barrier.dwell_scale_max == pytest.approx(5.0)
     assert cfg.qp.aniso_task_damping is True
-    assert cfg.qp.wln.max_delta == pytest.approx(3.0)
+    assert not hasattr(cfg.qp, "wln")
+    assert not hasattr(cfg.qp, "sns_retry_scales")
+    assert not hasattr(cfg.qp, "twist_scale_lpf_tau_s")
     assert cfg.rail_extension.enabled
     assert cfg.qp.twist_sigma_floor == pytest.approx(0.02)
     assert cfg.qp.task_weight_min_frac == pytest.approx(0.05)
     assert "anti_cancel_weight" not in raw["inner"]["qp"]
-    # Rail/jerk work: limit handoff on the rail only, third-order box.
-    assert cfg.qp.wln.enabled
-    assert cfg.qp.wln.band_rail_m == pytest.approx(0.0)
-    # The arm has no spare joint to hand the stroke to; weighting it only
-    # bought slack, so its band must stay disabled.
-    assert cfg.qp.wln.band_rad == 0.0
     assert cfg.ird.enabled
     assert cfg.ird.device == "cpu"
     assert cfg.qp.joint_comfort.enabled
+    assert cfg.qp.near_arm_margin_rad == pytest.approx(0.08)
+    assert cfg.qp.joint_comfort.m_comfort_rad == pytest.approx(math.radians(15.0))
+    assert cfg.rail_extension.healthy_sigma_mute == pytest.approx(0.08)
+    assert cfg.rail_extension.v_reach_idle_cap_m_s == pytest.approx(0.010)
+    assert cfg.rail_extension.press_v_force_min_m_s == pytest.approx(0.02)
+    assert cfg.rail_extension.press_dz_max_m == pytest.approx(0.002)
+    assert cfg.rail_extension.press_y_err_m == pytest.approx(0.005)
+    assert cfg.rail_extension.press_stall_s == pytest.approx(0.5)
     assert cfg.psi_retarget.z_replan_m == pytest.approx(0.0)
     assert cfg.psi_retarget.d_center_rate_m_s == pytest.approx(0.02)
     assert cfg.psi_retarget.psi_cmd_lead_rad == pytest.approx(np.deg2rad(18.0))
@@ -788,6 +792,11 @@ def test_analyzer_rejects_empty_scan(tmp_path) -> None:
     assert "waste_ratio" in mod.GATES
     assert "accel_reversals_per_s" in mod.GATES
     assert "dt_on_time_frac" in mod.GATES
+    assert "step_ripple_p999" in mod.GATES
+    assert "deadline_slack_pos_frac" in mod.GATES
+    assert mod.GATES["dt_nominal_s"] == pytest.approx(0.005)
+    assert mod.PERIOD_LADDER_MS == (7.0, 6.0, 5.0)
+    assert mod.next_period_ms(7.0, 0.50) == pytest.approx(7.0)
     assert mod.GATES["rail_min_m"] == pytest.approx(0.02)
     assert mod.GATES["tick_inner_max_ms"] == pytest.approx(20.0)
     assert mod.GATES["track_err_p95_mm"] == pytest.approx(1.0)
@@ -831,8 +840,11 @@ def test_wbc_log_header_has_rail_cmd_meas_err() -> None:
     from rm75_control.control.joint_admittance_8dof.loop import _TickLogger
 
     header = _TickLogger._HEADER
+    assert "deadline_slack_s" in header
     assert "rail_cmd_meas_err_m" in header
     assert header.count("rail_cmd_meas_err_m") == 1
+    assert "rail_posture_err_m" in header
+    assert "rail_track_err_m" not in header
     assert len(header) == len(set(header))
 
 
@@ -879,7 +891,7 @@ def test_analyzer_flags_resync_guard_binding(tmp_path) -> None:
         rc = mod.analyze(csv_path)
     out = buf.getvalue()
     assert rc == 1
-    assert "20 mm guard" in out
+    assert "lead clamp" in out
     assert "[FAIL]" in out
 
 
@@ -1419,8 +1431,7 @@ def _write_idle_rows(
                 "pose_meas_y": f"{y_k:.6f}",
                 "pose_meas_z": "0.3",
                 "slack_norm": f"{slack_k:.6f}",
-                # pose_d is rebased on pose_meas every tick in gamepad mode,
-                # so this is 0 exactly while the TCP drifts.
+                # tool_y_err is not the idle-drift gate; pose_meas is.
                 "tool_y_err_mm": "0.0",
             }
         )
@@ -1435,7 +1446,7 @@ def test_analyzer_idle_gates_fail_on_the_release_slide() -> None:
     mod._idle_hold_checks(rows, results, info)
     by_name = {name: (ok, detail) for name, ok, detail in results}
     assert by_name["idle rail travel p95 < 8 mm"][0] is False
-    assert by_name["idle TCP drift p95 < 5 mm (pose_meas latched)"][0] is False
+    assert by_name["idle TCP drift p95 < 1 mm (pose_meas latched)"][0] is False
     assert by_name["idle QP1 task slack < 5% of ticks"][0] is False
 
 
@@ -1464,12 +1475,12 @@ def test_analyzer_posture_debt_gate_catches_a_starved_reach() -> None:
     results: list[tuple[str, bool, str]] = []
     info: list[tuple[str, str]] = []
     mod._posture_debt_check(_write_debt_rows(0.094), results, info)
-    gate = next(r for r in results if "rail_track_err" in r[0])
+    gate = next(r for r in results if "rail_posture_err" in r[0])
     assert gate[1] is False
 
     results.clear()
     mod._posture_debt_check(_write_debt_rows(0.010), results, info)
-    gate = next(r for r in results if "rail_track_err" in r[0])
+    gate = next(r for r in results if "rail_posture_err" in r[0])
     assert gate[1] is True
 
 
@@ -1539,4 +1550,175 @@ def test_analyzer_accepts_v_enc_without_register_fallback(tmp_path) -> None:
     info: list[tuple[str, str]] = []
     mod._rail_servo_checks(scan, results, info)
     gate = next(r for r in results if "register fallback" in r[0])
+    assert gate[1] is True
+
+
+def test_analyzer_stop_reverse_ignores_a_through_zero_command(tmp_path) -> None:
+    """A stick that sweeps through zero is a new command, not a brake reverse."""
+    import csv
+
+    mod = _load_analyze_qpik_quality()
+    t = np.arange(0.0, 1.2, 1.0 / 60.0)
+    v_goal = np.where(t < 0.40, -0.084, np.where(t < 0.42, 0.0, 0.135))
+    v_enc = np.where(t < 0.40, -0.084, np.where(t < 0.45, -0.010, 0.135))
+    frac = mod.rail_stop_reverse_frac(t, v_goal, v_enc)
+    assert not np.isfinite(frac) or frac < 0.15
+
+    scan = tmp_path / "gamepad_vcmd" / "run_20260101_000005.csv"
+    scan.parent.mkdir(parents=True)
+    scan.write_text("phase,t_wall_s\nscan,0.0\n", encoding="utf-8")
+    servo = tmp_path / "rail_servo" / "rail_20260101_000005.csv"
+    servo.parent.mkdir(parents=True, exist_ok=True)
+    header = [
+        "t_wall_s", "follow", "target_age_ms", "a_cmd_m_s2", "e_track_mm",
+        "v_goal_est_m_s", "v_enc_m_s", "x_meas_m",
+    ]
+    with servo.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=header)
+        writer.writeheader()
+        x = 0.40
+        dt = 1.0 / 60.0
+        for k, (vg, ve) in enumerate(zip(v_goal, v_enc)):
+            x += ve * dt
+            writer.writerow(
+                {
+                    "t_wall_s": f"{k * dt:.6f}", "follow": "1",
+                    "target_age_ms": "8.0", "a_cmd_m_s2": "0.0",
+                    "e_track_mm": "0.05", "v_goal_est_m_s": f"{vg:.6f}",
+                    "v_enc_m_s": f"{ve:.6f}", "x_meas_m": f"{x:.6f}",
+                }
+            )
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._rail_servo_checks(scan, results, info)
+    stop = [r for r in results if "stop reverse" in r[0]]
+    assert not stop or stop[0][1] is True
+
+
+def _write_rail_shape_csv(path, *, e_shape_mm: float, v_enc=0.03, a_cmd=0.10, n: int = 80) -> None:
+    import csv
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    header = [
+        "t_wall_s", "follow", "target_age_ms", "a_cmd_m_s2", "e_track_mm",
+        "e_shape_mm", "v_goal_est_m_s", "v_enc_m_s", "x_meas_m",
+    ]
+    dt = 1.0 / 60.0
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=header)
+        writer.writeheader()
+        for k in range(n):
+            writer.writerow(
+                {
+                    "t_wall_s": f"{k * dt:.6f}", "follow": "1",
+                    "target_age_ms": "8.0", "a_cmd_m_s2": f"{a_cmd:.6f}",
+                    "e_track_mm": "0.05", "e_shape_mm": f"{e_shape_mm:.4f}",
+                    "v_goal_est_m_s": f"{v_enc:.6f}", "v_enc_m_s": f"{v_enc:.6f}",
+                    "x_meas_m": f"{0.40 + v_enc * k * dt:.6f}",
+                }
+            )
+
+
+def test_analyzer_eshape_gate_fails_on_open_loop_drift(tmp_path) -> None:
+    mod = _load_analyze_qpik_quality()
+    scan = tmp_path / "gamepad_vcmd" / "run_20260101_000006.csv"
+    scan.parent.mkdir(parents=True)
+    scan.write_text("phase,t_wall_s\nscan,0.0\n", encoding="utf-8")
+    _write_rail_shape_csv(
+        tmp_path / "rail_servo" / "rail_20260101_000006.csv", e_shape_mm=15.93
+    )
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._rail_servo_checks(scan, results, info)
+    gate = next(r for r in results if "e_shape" in r[0])
+    assert gate[1] is False
+
+
+def test_analyzer_eshape_gate_passes_when_the_loop_is_closed(tmp_path) -> None:
+    mod = _load_analyze_qpik_quality()
+    scan = tmp_path / "gamepad_vcmd" / "run_20260101_000007.csv"
+    scan.parent.mkdir(parents=True)
+    scan.write_text("phase,t_wall_s\nscan,0.0\n", encoding="utf-8")
+    _write_rail_shape_csv(
+        tmp_path / "rail_servo" / "rail_20260101_000007.csv", e_shape_mm=0.40
+    )
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._rail_servo_checks(scan, results, info)
+    gate = next(r for r in results if "e_shape" in r[0])
+    assert gate[1] is True
+
+
+def test_analyzer_box_gates_fail_when_servo_outruns_qp(tmp_path) -> None:
+    mod = _load_analyze_qpik_quality()
+    scan = tmp_path / "gamepad_vcmd" / "run_20260101_000008.csv"
+    scan.parent.mkdir(parents=True)
+    scan.write_text("phase,t_wall_s\nscan,0.0\n", encoding="utf-8")
+    _write_rail_shape_csv(
+        tmp_path / "rail_servo" / "rail_20260101_000008.csv",
+        e_shape_mm=0.2,
+        v_enc=0.154,
+        a_cmd=1.06,
+    )
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._rail_servo_checks(scan, results, info)
+    v_gate = next(r for r in results if "|v_enc| over QP box" in r[0])
+    a_gate = next(r for r in results if "|a_cmd| over QP box" in r[0])
+    assert v_gate[1] is False
+    assert a_gate[1] is False
+
+
+def test_analyzer_box_gates_pass_inside_the_qp_box(tmp_path) -> None:
+    mod = _load_analyze_qpik_quality()
+    scan = tmp_path / "gamepad_vcmd" / "run_20260101_000009.csv"
+    scan.parent.mkdir(parents=True)
+    scan.write_text("phase,t_wall_s\nscan,0.0\n", encoding="utf-8")
+    _write_rail_shape_csv(
+        tmp_path / "rail_servo" / "rail_20260101_000009.csv",
+        e_shape_mm=0.2,
+        v_enc=0.10,
+        a_cmd=0.40,
+    )
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._rail_servo_checks(scan, results, info)
+    v_gate = next(r for r in results if "|v_enc| over QP box" in r[0])
+    a_gate = next(r for r in results if "|a_cmd| over QP box" in r[0])
+    assert v_gate[1] is True
+    assert a_gate[1] is True
+
+
+def test_analyzer_rail_task_dropout_fails_when_ff_is_silenced() -> None:
+    mod = _load_analyze_qpik_quality()
+    rows = [
+        {
+            "t_wall_s": f"{k * 0.006:.4f}",
+            "rail_task_vel": "",
+            "v_ff_rail": "0.0023",
+        }
+        for k in range(200)
+    ]
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._rail_task_dropout_check(rows, results, info)
+    gate = next(r for r in results if "dropout" in r[0])
+    assert gate[1] is False
+    assert "longest" in gate[2]
+
+
+def test_analyzer_rail_task_dropout_passes_when_vel_is_issued() -> None:
+    mod = _load_analyze_qpik_quality()
+    rows = [
+        {
+            "t_wall_s": f"{k * 0.006:.4f}",
+            "rail_task_vel": "0.0023",
+            "v_ff_rail": "0.0023",
+        }
+        for k in range(200)
+    ]
+    results: list[tuple[str, bool, str]] = []
+    info: list[tuple[str, str]] = []
+    mod._rail_task_dropout_check(rows, results, info)
+    gate = next(r for r in results if "dropout" in r[0])
     assert gate[1] is True

@@ -30,7 +30,7 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
     assert cfg.qp.max_iter == 400
     assert cfg.qp.twist_sigma_floor == pytest.approx(0.02)
     assert cfg.qp.task_weight_min_frac == pytest.approx(0.05)
-    assert cfg.qp.twist_scale_lpf_tau_s == pytest.approx(0.08)
+    assert cfg.qp.near_arm_margin_rad == pytest.approx(0.08)
     assert cfg.qp.sigma_setbased.enabled
     assert cfg.qp.branch_barrier.enabled
     assert cfg.nullspace.q_nominal_rad is not None
@@ -54,7 +54,8 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
     assert servo.poll_hz == pytest.approx(60.0)
     assert servo.accel_ms == 120
     assert servo.decel_ms == 120
-    assert servo.vel_amax_m_s2 == pytest.approx(1.2)
+    assert servo.vel_amax_m_s2 == pytest.approx(0.60)
+    assert servo.vel_max_m_s == pytest.approx(0.12)
     assert cfg.psi_retarget.psi_attr_rad == pytest.approx(math.radians(68.0))
     assert cfg.rail_extension.escape_sign_policy == "minus"
     assert servo.soft_min_m == pytest.approx(0.030)

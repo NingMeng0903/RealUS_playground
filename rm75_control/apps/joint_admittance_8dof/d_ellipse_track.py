@@ -19,7 +19,6 @@ pose.  Add ``--goto-d`` to MoveJ to taught slot D first.
 from __future__ import annotations
 
 import argparse
-import os
 import signal
 import time
 from contextlib import nullcontext
@@ -77,23 +76,12 @@ def load_yaml(path: Path) -> dict:
 
 
 def _poll_attach_status(phase_client: PhaseCommandClient, cmd_seq: int) -> PhaseStatus:
-    stop_n = [0]
-
     def _on_sig(_signum, _frame) -> None:
-        stop_n[0] += 1
         try:
             phase_client.stop()
         except Exception:
             pass
-        if stop_n[0] == 1:
-            print(
-                "\nrm75 ellipse: Ctrl+C — stop requested on window A "
-                "(second Ctrl+C forces exit)",
-                flush=True,
-            )
-            return
-        print("\nrm75 ellipse: force exit", flush=True)
-        os._exit(130)
+        raise KeyboardInterrupt
 
     prev_int = signal.signal(signal.SIGINT, _on_sig)
     prev_term = signal.signal(signal.SIGTERM, _on_sig)
@@ -125,7 +113,7 @@ def main() -> int:
     ap.add_argument("--move-duration", type=float, default=None)
     ap.add_argument("--move-duration-margin", type=float, default=0.80)
     ap.add_argument("--move-duration-min", type=float, default=2.5)
-    ap.add_argument("--move-duration-max", type=float, default=20.0)
+    ap.add_argument("--move-duration-max", type=float, default=120.0)
     ap.add_argument(
         "--move-kp",
         type=float,
@@ -133,9 +121,9 @@ def main() -> int:
         help="Override cartesian_track.k_task_lin (default: yaml).",
     )
     ap.add_argument("--move-mode", choices=("cartesian", "joint"), default="joint")
-    ap.add_argument("--x-pp-cm", type=float, default=4.0, help="Tool-X peak-to-peak (cm).")
-    ap.add_argument("--y-pp-cm", type=float, default=8.0, help="Tool-Y peak-to-peak (cm).")
-    ap.add_argument("--max-vel-cm-s", type=float, default=3.0)
+    ap.add_argument("--x-pp-cm", type=float, default=10.0, help="Tool-X peak-to-peak (cm).")
+    ap.add_argument("--y-pp-cm", type=float, default=30.0, help="Tool-Y peak-to-peak (cm).")
+    ap.add_argument("--max-vel-cm-s", type=float, default=4.0)
     ap.add_argument("--period-s", type=float, default=None)
     ap.add_argument("--scan-duration", type=float, default=40.0)
     ap.add_argument("--cartesian-max-lin-vel", type=float, default=None)
@@ -202,7 +190,6 @@ def main() -> int:
     shm_name = str(relay_cfg.name or "rm75_state")
 
     if attach_mode:
-        print("rm75 ellipse: connecting to window A …", flush=True)
         attach_bus = RelayStateBus(shm_name)
         try:
             attach_bus.wait_first_pose(timeout_s=30.0)
@@ -213,7 +200,6 @@ def main() -> int:
         state_bus = attach_bus
         phase_client = PhaseCommandClient()
         phase_client.wait_for_hub(timeout_s=30.0)
-        print("rm75 ellipse: connected", flush=True)
         session_cm = nullcontext(_AttachSession(config=raw, ip=str(robot_cfg.get("ip", ""))))
     else:
         if relay_shm_has_publisher(shm_name):
@@ -239,7 +225,6 @@ def main() -> int:
             local_bus = RobotStateBus(sess.robot, raw, robot_ip=sess.ip)
             local_bus.start()
             state_bus = local_bus
-            print("rm75 ellipse: CANFD + local UDP (standalone)", flush=True)
 
         snap0 = state_bus.read()
         if snap0.q_deg is None:
@@ -324,17 +309,12 @@ def main() -> int:
             if attach_mode:
                 assert phase_client is not None
                 cmd_seq = phase_client.start(task_params)
-                print(f"rm75 ellipse: submitted task #{cmd_seq}", flush=True)
                 final = _poll_attach_status(phase_client, cmd_seq)
                 if final == PhaseStatus.ERROR:
                     st = phase_client.read_status()
                     raise RuntimeError(
                         f"window A task failed: {st['msg'] if st else 'unknown'}"
                     )
-                if final == PhaseStatus.STOPPED:
-                    print("rm75 ellipse: stopped", flush=True)
-                else:
-                    print("rm75 ellipse: done", flush=True)
             else:
                 built = build_ellipse_track_program(task_params, raw=raw)
                 execute_sin_tool_y_program(
@@ -348,7 +328,6 @@ def main() -> int:
         except KeyboardInterrupt:
             if attach_mode and phase_client is not None:
                 phase_client.stop()
-            print("\nStopped.", flush=True)
         finally:
             if phase_client is not None:
                 phase_client.close()

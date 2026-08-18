@@ -1,15 +1,9 @@
-"""Safety layer for direct joint-position streaming.
+"""Joint-limit data, command-step accel clamp, and the stall Watchdog.
 
-When you bypass MoveJ's built-in S-curve planner and push q_cmd straight into
-rm_movej_canfd, the motor drivers will fault (over-current / following error) on
-any discontinuity.  This module enforces, per tick, in order:
-
-  1. velocity limit : |dq| <= v_max * dt          (per-frame dq clamp)
-  2. acceleration   : |dq - dq_prev| <= a_max*dt^2 (jerk-free enough for CANFD)
-  3. position limit : q in [q_lower+margin, q_upper-margin]
-
-plus a Watchdog thread that trips (freeze / slow-stop) if the control loop stops
-feeding heartbeats - so a stuck Python process can never leave the arm coasting.
+Velocity / acceleration / position boxes live in the QP.  The full
+post-solve SafetyLimiter is gone (it rewrote the certified command).
+A one-rule command-step clamp remains: ``|dq_k - dq_{k-1}| <= a_max * dt_nom^2``.
+The Watchdog still trips if the control loop stops feeding heartbeats.
 """
 
 from __future__ import annotations
@@ -54,121 +48,50 @@ class SafetyLimits:
         )
 
 
-@dataclass
-class SafetyReport:
-    q_safe: np.ndarray
-    dq: np.ndarray
-    vel_clamped: bool = False
-    acc_clamped: bool = False
-    pos_clamped: bool = False
+_INTEGRATION_OVERRUN_FRAC = 1.25
 
 
-class SafetyLimiter:
-    """Stateful per-tick clamp: velocity -> acceleration -> position.
+def integration_period(dt_nom: float, dt_wall_s: float | None) -> float:
+    """Wall period used to integrate ``qdot`` into the next absolute target.
 
-    Critical invariant: ``|_dq_prev|`` must never exceed ``v_max * dt``.  A
-    position-margin teleport (e.g. rail at 0 mm with margin=5 mm → snap to
-    5 mm in one tick) used to rewrite ``dq = q_clamped - q_prev`` *after*
-    the velocity clamp, poisoning ``_dq_prev`` to ~1 m/s.  The acceleration
-    limiter then kept the rail command integrating at that fake speed
-    forever (hardware log 200755: +5 mm/tick while ``v_max=0.1``), so the
-    motor at 0.15 m/s fell hundreds of mm behind and the governor froze.
+    ``rm_movej_canfd`` has no period argument, so a long wall tick would
+    otherwise emit a double-size step.  Clip to ``[dt_nom, 1.25 * dt_nom]``.
     """
+    nominal = float(dt_nom)
+    if dt_wall_s is None:
+        return nominal
+    wall = float(dt_wall_s)
+    if not np.isfinite(wall) or wall <= 0.0:
+        raise ValueError("dt_wall_s must be finite and > 0")
+    return float(np.clip(wall, nominal, _INTEGRATION_OVERRUN_FRAC * nominal))
 
-    def __init__(self, limits: SafetyLimits) -> None:
-        self.lim = limits
-        self._dq_prev: np.ndarray | None = None
 
-    def reset(self, q0: np.ndarray | None = None) -> None:
-        self._dq_prev = None
+def clamp_command_step(
+    q_prev: np.ndarray,
+    q_desired: np.ndarray,
+    dq_prev: np.ndarray | None,
+    a_max: np.ndarray | None,
+    dt_nom: float,
+) -> tuple[np.ndarray, np.ndarray, bool]:
+    """Bound ``|dq_k - dq_{k-1}|`` by ``a_max * dt_nom^2``.
 
-    def sync_applied_delta(self, dq_applied: np.ndarray, dt: float) -> np.ndarray:
-        """Synchronize acceleration history after a downstream hard clamp.
-
-        Rail lead/escape/lock handling may tighten the already-safe command
-        after :meth:`clamp`.  The next tick must start from what was actually
-        sent, not from the pre-tightening delta, otherwise the acceleration
-        limiter can reintroduce a stale opposite-direction step.
-        """
-        dt = float(max(dt, 1e-9))
-        dq = np.asarray(dq_applied, dtype=float)
-        dq_max = np.asarray(self.lim.v_max, dtype=float) * dt
-        self._dq_prev = np.clip(dq, -dq_max, dq_max)
-        return self._dq_prev.copy()
-
-    def clamp(
-        self,
-        q_prev: np.ndarray,
-        q_desired: np.ndarray,
-        dt: float,
-    ) -> SafetyReport:
-        """Clamp one direct-joint position target."""
-        lim = self.lim
-        q_prev = np.asarray(q_prev, dtype=float)
-        q_desired = np.asarray(q_desired, dtype=float)
-        dt = float(max(dt, 1e-9))
-        dq = q_desired - q_prev
-        dq_max = np.asarray(lim.v_max, dtype=float) * dt
-
-        a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
-
-        vel_clamped = acc_clamped = pos_clamped = False
-
-        # 1) velocity limit
-        clipped = np.clip(dq, -dq_max, dq_max)
-        if not np.allclose(clipped, dq):
-            vel_clamped = True
-        dq = clipped
-
-        # 2) acceleration limit (change in dq between ticks)
-        if a_max is not None and self._dq_prev is not None:
-            ddq_max = np.asarray(a_max, dtype=float) * dt * dt
-            ddq = dq - self._dq_prev
-            ddq_c = np.clip(ddq, -ddq_max, ddq_max)
-            if not np.allclose(ddq_c, ddq):
+    Returns ``(q_safe, dq, acc_clamped)``.  First tick (no previous step)
+    or a missing ``a_max`` is a no-op.
+    """
+    q_prev = np.asarray(q_prev, dtype=float).reshape(-1)
+    q_desired = np.asarray(q_desired, dtype=float).reshape(-1)
+    dq = q_desired - q_prev
+    acc_clamped = False
+    if a_max is not None and dq_prev is not None:
+        prev = np.asarray(dq_prev, dtype=float).reshape(-1)
+        if prev.shape == dq.shape:
+            dt2 = float(dt_nom) * float(dt_nom)
+            ddq_max = np.asarray(a_max, dtype=float).reshape(-1) * dt2
+            dq_new = prev + np.clip(dq - prev, -ddq_max, ddq_max)
+            if np.any(np.abs(dq_new - dq) > 1.0e-15):
                 acc_clamped = True
-            dq = self._dq_prev + ddq_c
-            # Accel must never re-violate the velocity box (otherwise a
-            # poisoned _dq_prev locks the command at >v_max forever).
-            clipped = np.clip(dq, -dq_max, dq_max)
-            if not np.allclose(clipped, dq):
-                vel_clamped = True
-                dq = clipped
-
-        q_safe = q_prev + dq
-
-        # 3) position limit
-        lo = lim.q_lower + lim.position_margin
-        hi = lim.q_upper - lim.position_margin
-        q_clamped = np.clip(q_safe, lo, hi)
-        if not np.allclose(q_clamped, q_safe):
-            pos_clamped = True
-            dq = q_clamped - q_prev
-            # 4) Re-enforce velocity after a margin snap.  Without this, a
-            # one-tick teleport (0 → margin) becomes next tick's dq_prev and
-            # the accel limiter treats it as a legitimate cruise speed.
-            clipped = np.clip(dq, -dq_max, dq_max)
-            if not np.allclose(clipped, dq):
-                vel_clamped = True
-                dq = clipped
-                q_clamped = q_prev + dq
-                # Stay inside the soft position band even after the re-clip
-                # (may take several ticks to enter from outside).
-                q_clamped = np.clip(q_clamped, lo, hi)
-                dq = q_clamped - q_prev
-                dq = np.clip(dq, -dq_max, dq_max)
-                q_clamped = q_prev + dq
-        q_safe = q_clamped
-
-        self._dq_prev = np.clip(dq, -dq_max, dq_max)
-        return SafetyReport(
-            q_safe=q_safe,
-            dq=self._dq_prev.copy(),
-            vel_clamped=vel_clamped,
-            acc_clamped=acc_clamped,
-            pos_clamped=pos_clamped,
-        )
-
+            dq = dq_new
+    return q_prev + dq, dq, acc_clamped
 
 
 class Watchdog:

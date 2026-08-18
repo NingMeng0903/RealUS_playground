@@ -318,6 +318,7 @@ class PostureRetarget:
         self.psi_star_rad: float = float("nan")
         self.last_psi_family_degraded: bool = False
         self._healthy_dwell_s: float = 0.0
+        self._held_prev: bool = False
         self._ird = None
 
     @property
@@ -353,6 +354,7 @@ class PostureRetarget:
         self.last_search_j6_rad = float("nan")
         self._planned = False
         self._z_plan = float("nan")
+        self._held_prev = False
         self.d_star_m = float(self._d_star)
         self.psi_star_rad = float(psi_star)
         self.last_psi_score = float("nan")
@@ -552,6 +554,14 @@ class PostureRetarget:
             rail_lo=float(rail_lo),
             rail_hi=float(rail_hi),
         )
+        if self._held_prev and not hold_setpoint:
+            if self._d_star is not None and np.isfinite(float(self._d_star)):
+                self._d0 = float(self._d_star)
+            if self._psi_cmd is not None and np.isfinite(float(self._psi_cmd)):
+                self._psi0 = float(self._psi_cmd)
+            self._s = 0.0
+            self.homotopy_s = 0.0
+        self._held_prev = bool(hold_setpoint)
         if hold_setpoint:
             psi_out = self._rate_limit_psi(dt, live_psi=live_psi)
             self._update_margins(q)
@@ -605,6 +615,13 @@ class PostureRetarget:
         if d_try is None:
             self._rate_limit_psi(float(dt_s), live_psi=live_psi)
             return
+        d_step = max(float(self.cfg.d_center_rate_m_s), 0.0) * max(float(dt_s), 0.0)
+        d_prev = (
+            float(self._d_star)
+            if self._d_star is not None and np.isfinite(float(self._d_star))
+            else float(d_try)
+        )
+        d_try = max(d_prev - d_step, min(d_prev + d_step, float(d_try)))
         psi_s = fold_psi_to_positive(
             float(psi0) + s_try * psi_err_avoiding_zero(psi0, psi_goal)
         )

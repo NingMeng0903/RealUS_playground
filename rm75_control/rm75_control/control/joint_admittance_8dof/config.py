@@ -14,7 +14,6 @@ from rm75_control.control.joint_admittance_8dof.loop import (
 )
 from rm75_control.control.joint_admittance_8dof.solver.qp_builder import (
     QpConfig,
-    WlnConfig,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.arm_angle import ArmAngleTaskConfig
 from rm75_control.control.joint_admittance_8dof.tasks.manipulability_task import (
@@ -191,17 +190,12 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             "mass_reg_lpf_tau_s", "use_dyn_nullspace",
             "limit_damper_band_rad", "limit_damper_band_rail_m",
             "limit_damper_rail_reaction_s",
-            "sigma_setbased", "branch_barrier", "joint_comfort", "sns_retry_scales",
-            "smoothness_weight", "twist_scale_lpf_tau_s", "wln",
+            "sigma_setbased", "branch_barrier", "joint_comfort",
+            "smoothness_weight", "near_arm_margin_rad",
             "j_max_arm_rad_s3", "j_max_rail_m_s3",
+            "use_cpp_kernel",
         },
         name="inner.qp",
-    )
-    wln_raw = _mapping(c.get("wln"), name="inner.qp.wln")
-    _reject_unknown(
-        wln_raw,
-        {"enabled", "k", "band_rad", "band_rail_m", "max_scale", "max_delta"},
-        name="inner.qp.wln",
     )
     backend = str(c.get("backend", "proxqp")).lower()
     if backend not in {"proxqp", "osqp", "scipy"}:
@@ -254,11 +248,6 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         },
         name="inner.qp.joint_comfort",
     )
-    sns_raw = c.get("sns_retry_scales", [1.0])
-    if isinstance(sns_raw, (list, tuple)):
-        sns_scales = tuple(float(x) for x in sns_raw)
-    else:
-        sns_scales = (1.0,)
     smooth_raw = c.get("smoothness_weight", 0.15)
     if isinstance(smooth_raw, (list, tuple, np.ndarray)):
         smoothness_weight = _finite_array(
@@ -281,6 +270,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             [1.0e-3, 1.0e-2, 1.0e-2, 1.0e-2, 1.0e-2, 5.0e-3, 5.0e-3, 5.0e-3],
         ),
         backend=backend,
+        use_cpp_kernel=bool(c.get("use_cpp_kernel", True)),
         eps_abs=_finite_float(c.get("eps_abs", 1.0e-6), name="inner.qp.eps_abs"),
         max_iter=int(c.get("max_iter", 400)),
         max_iter_cap=int(c.get("max_iter_cap", 400)),
@@ -420,33 +410,16 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
                 jc.get("slack_weight", 80.0), name="joint_comfort.slack_weight"
             ),
         ),
-        sns_retry_scales=sns_scales,
-        smoothness_weight=smoothness_weight,
-        twist_scale_lpf_tau_s=_finite_float(
-            c.get("twist_scale_lpf_tau_s", 0.08),
-            name="inner.qp.twist_scale_lpf_tau_s",
+        near_arm_margin_rad=_finite_float(
+            c.get("near_arm_margin_rad", 0.08),
+            name="inner.qp.near_arm_margin_rad",
         ),
+        smoothness_weight=smoothness_weight,
         j_max_arm_rad_s3=_finite_float(
             c.get("j_max_arm_rad_s3", 300.0), name="inner.qp.j_max_arm_rad_s3"
         ),
         j_max_rail_m_s3=_finite_float(
             c.get("j_max_rail_m_s3", 3.0), name="inner.qp.j_max_rail_m_s3"
-        ),
-        wln=WlnConfig(
-            enabled=bool(wln_raw.get("enabled", True)),
-            k=_finite_float(wln_raw.get("k", 1.0), name="inner.qp.wln.k"),
-            band_rad=_finite_float(
-                wln_raw.get("band_rad", 0.0), name="inner.qp.wln.band_rad"
-            ),
-            band_rail_m=_finite_float(
-                wln_raw.get("band_rail_m", 0.0), name="inner.qp.wln.band_rail_m"
-            ),
-            max_scale=_finite_float(
-                wln_raw.get("max_scale", 20.0), name="inner.qp.wln.max_scale"
-            ),
-            max_delta=_finite_float(
-                wln_raw.get("max_delta", 3.0), name="inner.qp.wln.max_delta"
-            ),
         ),
     )
 
@@ -668,7 +641,9 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
             "escape_enter_dwell_s",
             "k_escape_boost", "escape_grad_floor",
             "k_margin_boost", "w_ext_cap",
-            "soft_min_m", "soft_max_m", "v_reach_cap_m_s", "d_band_m",
+            "soft_min_m", "soft_max_m", "v_reach_cap_m_s",
+            "v_reach_idle_cap_m_s", "d_band_m",
+            "healthy_sigma_mute",
             "v_reach_total_max_m_s",
             "d_star_err0_m", "d_star_err1_m", "d_star_w_mult", "d_star_reg_mult",
             "press_v_force_min_m_s", "press_dz_max_m", "press_y_err_m",
@@ -778,6 +753,14 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
         ),
         v_reach_cap_m_s=_finite_float(
             r.get("v_reach_cap_m_s", 0.05), name="rail_extension.v_reach_cap_m_s"
+        ),
+        v_reach_idle_cap_m_s=_finite_float(
+            r.get("v_reach_idle_cap_m_s", 0.010),
+            name="rail_extension.v_reach_idle_cap_m_s",
+        ),
+        healthy_sigma_mute=_finite_float(
+            r.get("healthy_sigma_mute", 0.08),
+            name="rail_extension.healthy_sigma_mute",
         ),
         v_reach_total_max_m_s=(
             None
@@ -1059,6 +1042,13 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             name="timing.feedback_timeout_ms",
         )
         / 1000.0,
+        control_cpu=(
+            int(timing["control_cpu"])
+            if timing.get("control_cpu") is not None
+            else None
+        ),
+        disable_cstates=bool(timing.get("disable_cstates", True)),
+        qp_use_cpp_kernel=bool(timing.get("qp_use_cpp_kernel", True)),
         control_frame=str(inner.get("control_frame", "tool")),
         euler_order=euler_order,
         qp=qp,

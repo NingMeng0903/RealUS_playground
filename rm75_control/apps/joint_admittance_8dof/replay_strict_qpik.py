@@ -210,9 +210,6 @@ def _restore_logged_snapshot(
     # QpIkController.step shifts _qdot_prev_seen into qdot_prev2 at entry.
     # Seed it with the source row i-2 value so that shift reproduces the log.
     core._qdot_prev_seen = np.asarray(qdot_prev2, dtype=float).copy()
-    # SafetyLimiter stores position delta, not velocity.  Set the raw logged
-    # history directly; sync_applied_delta would additionally clip it.
-    controller.safety._dq_prev = np.asarray(qdot_prev, dtype=float) * float(control_dt)
 
 
 def _json_value(value: Any) -> str:
@@ -679,8 +676,8 @@ def replay_csv(
     """Replay selected CSV rows and return ``{"rows", "summary"}``.
 
     ``stride`` and ``max_rows`` select source rows before invoking the
-    controller.  Snapshot mode restores q command, acceleration/jerk, and
-    SafetyLimiter histories from adjacent logged rows before every selected
+    controller.  Snapshot mode restores q command and acceleration/jerk
+    histories from adjacent logged rows before every selected
     solve.  Free-running mode feeds only ``v_cmd`` and integrates the
     controller's own state.
     """

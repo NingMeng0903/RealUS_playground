@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
@@ -94,8 +95,8 @@ def test_replay_csv_writes_strict_qpik_diagnostics(tmp_path: Path) -> None:
         np.linspace(0.001, 0.008, 8),
         atol=1.0e-12,
     )
-    assert float(rows[1]["dt_s"]) == 0.005
-    assert float(rows[1]["box_dt_s"]) == 0.005
+    assert float(rows[1]["dt_s"]) == pytest.approx(0.005)
+    assert float(rows[1]["box_dt_s"]) == pytest.approx(0.005)
     assert summary["history_fallback_counts"]["q_cmd_prev_from_current_q_meas"] == 1
     assert np.isfinite([row["tcp_residual_inf_m_s"] for row in rows]).all()
     assert all(len(json.loads(row["tcp_residual_json"])) == 6 for row in rows)

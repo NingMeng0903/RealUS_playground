@@ -35,6 +35,10 @@ from dataclasses import dataclass, replace
 from enum import Enum
 from pathlib import Path
 
+# Shared idle / park / stream-stationary threshold (m/s).  Do not scatter
+# 1 mm/s literals — they used to gate catch-up and park independently.
+RAIL_IDLE_EPS_M_S = 1.0e-3
+
 from rm75_control.hw.lw100.drive import (
     LW100Drive,
     LW100DriveConfig,
@@ -119,6 +123,15 @@ class RailServoConfig:
     vel_kd: float = 0.22  # dimensionless gain on velocity error
     vel_max_m_s: float = 0.30
     vel_amax_m_s2: float = 0.8  # softer slew vs Er-01 / host overshoot
+    # Coupled-mode bounded catch-up of x_ref toward x_goal while moving.
+    # Pure integration ratcheted 15.9 mm of e_shape over 84 s of gamepad.
+    catch_v_max_m_s: float = 0.02
+    catch_k: float = 5.0
+    # Catch-up may not exceed this fraction of |v_goal|.  0.3 keeps it a
+    # correction term so a 1.4 mm/s turn cannot kick 7x via catch_v_max.
+    catch_frac: float = 0.3
+    # Encoder-noise hysteresis for same-sign brake detection (m/s).
+    decel_request_margin_m_s: float = 0.005
     # Live v_ff: position is a slow trim so PD cannot outrun FA40.
     vel_ff_kp: float = 4.0
     vel_ff_p_trim_m_s: float = 0.010
@@ -132,6 +145,10 @@ class RailServoConfig:
     standstill_enter_mm: float = 0.05
     standstill_exit_mm: float = 0.25
     standstill_dwell_s: float = 0.08
+    # Soft-end taper distance (m) when the goal is also near that end.
+    approach_m: float = 0.008
+    # FA24 nonzero without a fresh encoder this long → hard kill.
+    latch_watch_s: float = 0.12
     target_timeout_s: float = 0.10  # stale age before the stream is "old"
     # Extra coast after target_timeout before FA24=0.  A 127 ms QPIK hitch
     # must not hard-brake the carriage; only a true end-of-stream should.
@@ -408,6 +425,20 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
             f"({travel_m:.6f}), got soft=[{soft_min:.6f}, {soft_max:.6f}] "
             f"hard=[{hard_min:.6f}, {hard_max:.6f}]"
         )
+    qpik_limits = (raw.get("qpik") or {}).get("hard_limits", {}) or {}
+    hw_vel_max = float(hw.get("vel_max_m_s", v_max))
+    qp_v_max = qpik_rail.get("v_max_m_s")
+    if qp_v_max is not None:
+        box_v = float(qp_v_max) * float(qpik_limits.get("v_scale", 1.0))
+        vel_max_m_s = min(hw_vel_max, box_v)
+    else:
+        vel_max_m_s = hw_vel_max
+    hw_a_max = float(hw.get("vel_amax_m_s2", 0.8))
+    qp_a_max = qpik_limits.get("a_max_rail_m_s2")
+    if qp_a_max is not None:
+        vel_amax_m_s2 = min(hw_a_max, float(qp_a_max))
+    else:
+        vel_amax_m_s2 = hw_a_max
     standstill_enter_mm = max(float(hw.get("standstill_enter_mm", 0.05)), 0.01)
     standstill_exit_mm = max(
         float(hw.get("standstill_exit_mm", standstill_enter_mm * 5.0)),
@@ -447,8 +478,12 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         fault_margin_m=float(hw.get("fault_margin_m", 0.05)),
         vel_kp=float(hw.get("vel_kp", 14.0)),
         vel_kd=float(hw.get("vel_kd", 0.22)),
-        vel_max_m_s=float(hw.get("vel_max_m_s", v_max)),
-        vel_amax_m_s2=float(hw.get("vel_amax_m_s2", 0.8)),
+        vel_max_m_s=vel_max_m_s,
+        vel_amax_m_s2=vel_amax_m_s2,
+        catch_v_max_m_s=float(hw.get("catch_v_max_m_s", 0.02)),
+        catch_k=float(hw.get("catch_k", 5.0)),
+        catch_frac=float(hw.get("catch_frac", 0.3)),
+        decel_request_margin_m_s=float(hw.get("decel_request_margin_m_s", 0.005)),
         vel_ff_kp=float(hw.get("vel_ff_kp", 4.0)),
         vel_ff_p_trim_m_s=float(hw.get("vel_ff_p_trim_m_s", 0.010)),
         match_drive_accel=bool(hw.get("match_drive_accel", True)),
@@ -457,6 +492,8 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         standstill_enter_mm=standstill_enter_mm,
         standstill_exit_mm=standstill_exit_mm,
         standstill_dwell_s=standstill_dwell_s,
+        approach_m=float(hw.get("approach_m", 0.008)),
+        latch_watch_s=float(hw.get("latch_watch_s", 0.12)),
         target_timeout_s=float(hw.get("target_timeout_s", 0.10)),
         target_stale_coast_s=float(hw.get("target_stale_coast_s", 0.35)),
         encoder_freeze_s=float(hw.get("encoder_freeze_s", 1.0)),
@@ -496,7 +533,7 @@ class _RailCsvLogger:
         "dt_wall_ms,last_rpm_cmd,mb_fail_n,freeze_flag,arm_good,"
         "sample_mono_s,target_rx_mono_s,target_age_ms,motion_seq,feedback_valid,"
         "x_goal_m,x_ref_m,x_meas_m,v_goal_est_m_s,v_ref_m_s,a_ref_m_s2,"
-        "v_meas_m_s,v_enc_m_s,v_enc_source,v_des_m_s,v_cmd_m_s,a_cmd_m_s2,x_goal_eval_m,"
+        "v_reg_m_s,v_enc_m_s,v_enc_source,v_des_m_s,v_cmd_m_s,a_cmd_m_s2,x_goal_eval_m,"
         "rpm_cmd,e_track_mm,e_shape_mm,"
         "hold_count,hold_reason,command_mode,"
         "t_read_ms,t_write_ms,n_modbus"
@@ -562,7 +599,7 @@ class _RailCsvLogger:
         v_goal_est_m_s: float = float("nan"),
         v_ref_m_s: float = float("nan"),
         a_ref_m_s2: float = float("nan"),
-        v_meas_m_s: float = float("nan"),
+        v_reg_m_s: float = float("nan"),
         v_enc_m_s: float = float("nan"),
         v_enc_source: str = "",
         v_des_m_s: float = float("nan"),
@@ -635,7 +672,7 @@ class _RailCsvLogger:
                 _f(v_goal_est_m_s),
                 _f(v_ref_m_s),
                 _f(a_ref_m_s2),
-                _f(v_meas_m_s),
+                _f(v_reg_m_s),
                 _f(v_enc_m_s),
                 str(v_enc_source),
                 _f(v_des_m_s),
@@ -1990,7 +2027,7 @@ class RailServoBridge:
         - TCP tear marks ``_link_restitch`` so the next encoder samples are
           accepted only if continuous with the last sane host pose.
         """
-        dark_s = 0.12
+        dark_s = max(float(self.config.latch_watch_s), 0.0)
         while not self._stop.wait(0.05):
             drive = self._drive
             if drive is None:
@@ -2084,7 +2121,7 @@ class RailServoBridge:
     @staticmethod
     def _motion_from_candidates(
         *candidates: float,
-        zero_eps: float = 1.0e-3,
+        zero_eps: float = RAIL_IDLE_EPS_M_S,
     ) -> float:
         """First finite candidate whose magnitude exceeds ``zero_eps``."""
         eps = max(float(zero_eps), 0.0)
@@ -2099,12 +2136,15 @@ class RailServoBridge:
         v_goal: float,
         v_motion: float,
         *,
-        zero_eps: float = 1.0e-3,
+        zero_eps: float = RAIL_IDLE_EPS_M_S,
+        margin: float = 0.005,
     ) -> bool:
         """True when the goal is a same-sign slowdown (including stop).
 
         An opposite-sign ``v_goal`` is an explicit reverse and is not a
-        brake request.
+        brake request.  ``margin`` covers encoder-difference noise so a
+        cruise tick with |v_goal| slightly below |v_enc| still counts as
+        a brake (root cause B).
         """
         vg = float(v_goal)
         vm = float(v_motion)
@@ -2115,26 +2155,7 @@ class RailServoBridge:
             return False
         if vg * vm < 0.0:
             return False
-        return abs(vg) <= abs(vm) + 1.0e-12
-
-    @staticmethod
-    def _clamp_brake_position_term(
-        v_p: float,
-        *,
-        v_goal: float,
-        v_motion: float,
-        zero_eps: float = 1.0e-3,
-    ) -> float:
-        """During a same-sign slowdown, do not let P command a reverse."""
-        if not RailServoBridge._is_decel_request(
-            v_goal, v_motion, zero_eps=zero_eps
-        ):
-            return float(v_p)
-        if v_motion > 0.0:
-            return max(float(v_p), 0.0)
-        if v_motion < 0.0:
-            return min(float(v_p), 0.0)
-        return float(v_p)
+        return abs(vg) <= abs(vm) + max(float(margin), 0.0)
 
     @staticmethod
     def _estimate_goal_motion(
@@ -2202,7 +2223,7 @@ class RailServoBridge:
                     max(float(max_age_s), 0.0),
                 )
             goal = float(target_m) + float(v_ff_m_s) * age_s
-            return goal, float(v_ff_m_s), abs(float(v_ff_m_s)) < 0.001
+            return goal, float(v_ff_m_s), abs(float(v_ff_m_s)) < RAIL_IDLE_EPS_M_S
         return RailServoBridge._estimate_goal_motion(
             samples,
             now_s=now_s,
@@ -2243,7 +2264,7 @@ class RailServoBridge:
         if (
             stationary
             and abs(float(x_goal) - x_new) <= 0.00002
-            and abs(v_new) < 0.001
+            and abs(v_new) < RAIL_IDLE_EPS_M_S
         ):
             return float(x_goal), 0.0, 0.0
         return x_new, v_new, a_new
@@ -2273,16 +2294,35 @@ class RailServoBridge:
         dt: float,
         v_max: float,
         a_max: float,
+        x_goal: float | None = None,
+        catch_v_max: float = 0.0,
+        k_catch: float = 0.0,
+        catch_frac: float = 0.3,
         x_min: float | None = None,
         x_max: float | None = None,
     ) -> tuple[float, float, float]:
-        """Advance a velocity-authoritative reference without position catch-up."""
+        """Advance a velocity-authoritative reference with bounded catch-up.
+
+        Catch-up is a correction on top of ``v_goal``.  Its cap is
+        ``min(catch_v_max, catch_frac*|v_goal|)``, so a parked or near-zero
+        goal cannot fire a 7x kick.  Parked ticks still re-anchor ``x_ref``.
+        """
         dt = max(float(dt), 1.0e-4)
         v_max = max(float(v_max), 1.0e-6)
         a_max = max(float(a_max), 1.0e-6)
         v_goal = max(-v_max, min(v_max, float(v_goal)))
+        v_catch = 0.0
+        if x_goal is not None and math.isfinite(float(x_goal)):
+            err = float(x_goal) - float(x_ref)
+            cap = min(
+                max(float(catch_v_max), 0.0),
+                max(float(catch_frac), 0.0) * abs(v_goal),
+            )
+            gain = max(float(k_catch), 0.0)
+            v_catch = max(-cap, min(cap, gain * err))
+        v_target = max(-v_max, min(v_max, v_goal + v_catch))
         dv_max = a_max * dt
-        v_new = max(float(v_ref) - dv_max, min(float(v_ref) + dv_max, v_goal))
+        v_new = max(float(v_ref) - dv_max, min(float(v_ref) + dv_max, v_target))
         v_new = max(-v_max, min(v_max, v_new))
         x_new = float(x_ref) + v_new * dt
         if x_min is not None and x_new < float(x_min):
@@ -2297,6 +2337,32 @@ class RailServoBridge:
         return x_new, v_new, a_new
 
     @staticmethod
+    def _parked_reanchor(
+        x_ref: float,
+        v_ref: float,
+        a_ref: float,
+        *,
+        measured: float,
+        v_goal: float,
+        v_meas: float,
+        zero_eps: float = RAIL_IDLE_EPS_M_S,
+    ) -> tuple[float, float, float, bool]:
+        """Wipe P-term debt when the coupled stream is standing still.
+
+        Orthogonal to standstill hysteresis (FA24 hold): this only snaps
+        ``x_ref`` to ``measured`` so ``v_p = kp*(x_ref−x_meas)`` is zero
+        on the release tick.  It does not move the carriage.
+        """
+        parked = (
+            abs(float(v_goal)) < float(zero_eps)
+            and abs(float(v_meas)) < float(zero_eps)
+            and abs(float(v_ref)) < float(zero_eps)
+        )
+        if parked:
+            return float(measured), 0.0, 0.0, True
+        return float(x_ref), float(v_ref), float(a_ref), False
+
+    @staticmethod
     def _clamp_zero_target_brake(
         v_des: float,
         *,
@@ -2304,7 +2370,8 @@ class RailServoBridge:
         v_ref: float,
         v_meas: float,
         v_prev_cmd: float,
-        zero_eps: float = 1.0e-3,
+        zero_eps: float = RAIL_IDLE_EPS_M_S,
+        margin: float = 0.005,
     ) -> float:
         """Do not turn a deceleration / stop into an active reversal.
 
@@ -2324,7 +2391,7 @@ class RailServoBridge:
                 return 0.0
             return desired
         if not RailServoBridge._is_decel_request(
-            v_goal, v_motion, zero_eps=zero_eps
+            v_goal, v_motion, zero_eps=zero_eps, margin=margin
         ):
             return desired
         if v_motion > 0.0:
@@ -2344,7 +2411,7 @@ class RailServoBridge:
         enter_m: float,
         exit_m: float,
         dwell_s: float,
-        motion_wake_m_s: float = 0.001,
+        motion_wake_m_s: float = RAIL_IDLE_EPS_M_S,
     ) -> tuple[bool, float | None]:
         """Hysteresis standstill latch for FA24 freeze.
 
@@ -2389,7 +2456,7 @@ class RailServoBridge:
         travel = float(self.config.travel_m)
         margin = max(float(self.config.fault_margin_m), 0.0)
         # Soft-end taper only when *goal* is near that end (homing), not mid-scan.
-        approach_m = 0.008
+        approach_m = max(float(self.config.approach_m), 0.0)
         stream_dead_s = float(self.config.stream_dead_s())
         freeze_s = max(float(self.config.encoder_freeze_s), 0.1)
         freeze_vmin = max(float(self.config.encoder_freeze_min_v_m_s), 0.005)
@@ -2424,7 +2491,7 @@ class RailServoBridge:
         # Cap PD/slew dt so a stalled poll cannot blow kd·de or fake a freeze.
         dt_cap = max(3.0 * period, 0.05)
         # If FA24 is nonzero but we have not read encoder this long → hard kill.
-        latch_watch_s = 0.12
+        latch_watch_s = max(float(self.config.latch_watch_s), 0.0)
         # Cold-start / re-arm: consecutive healthy polls with FA24=0.
         arm_need = max(5, int(self.config.arm_good_reads))
         arm_settle_s = max(0.0, float(self.config.arm_settle_s))
@@ -2838,13 +2905,13 @@ class RailServoBridge:
                         settling = False
                         settle_deadline = None
                         motion_active = (
-                            abs(v_ref) >= 0.001
-                            or abs(prev_v_cmd) >= 0.001
-                            or abs(self._rpm_to_mps(float(speed_rpm_host))) >= 0.001
+                            abs(v_ref) >= RAIL_IDLE_EPS_M_S
+                            or abs(prev_v_cmd) >= RAIL_IDLE_EPS_M_S
+                            or abs(self._rpm_to_mps(float(speed_rpm_host))) >= RAIL_IDLE_EPS_M_S
                         )
                         if (
                             not motion_active
-                            and abs(self._rpm_to_mps(float(speed_rpm_host))) < 0.001
+                            and abs(self._rpm_to_mps(float(speed_rpm_host))) < RAIL_IDLE_EPS_M_S
                             and self._encoder_sane(measured)
                         ):
                             x_ref = measured
@@ -2857,9 +2924,9 @@ class RailServoBridge:
                     else:
                         err_abs = abs(target - measured) if math.isfinite(target) else 0.0
                         motion_active = (
-                            abs(v_ref) >= 0.001
-                            or abs(prev_v_cmd) >= 0.001
-                            or abs(self._rpm_to_mps(float(speed_rpm_host))) >= 0.001
+                            abs(v_ref) >= RAIL_IDLE_EPS_M_S
+                            or abs(prev_v_cmd) >= RAIL_IDLE_EPS_M_S
+                            or abs(self._rpm_to_mps(float(speed_rpm_host))) >= RAIL_IDLE_EPS_M_S
                         )
                         if (err_abs > settle_tol_m or motion_active) and not panic and armed:
                             if not settling:
@@ -2904,9 +2971,9 @@ class RailServoBridge:
                 if settling and follow and not panic and armed:
                     err_abs = abs(target - measured)
                     motion_settled = (
-                        abs(v_ref) < 0.001
-                        and abs(prev_v_cmd) < 0.001
-                        and abs(self._rpm_to_mps(float(speed_rpm_host))) < 0.001
+                        abs(v_ref) < RAIL_IDLE_EPS_M_S
+                        and abs(prev_v_cmd) < RAIL_IDLE_EPS_M_S
+                        and abs(self._rpm_to_mps(float(speed_rpm_host))) < RAIL_IDLE_EPS_M_S
                     )
                     if err_abs <= settle_tol_m and motion_settled:
                         settling = False
@@ -2964,7 +3031,6 @@ class RailServoBridge:
                             target_v_ff if math.isfinite(target_v_ff) else 0.0
                         )
                         v_goal_est = max(-v_max, min(v_max, v_goal_est))
-                        goal_stationary = abs(v_goal_est) < 0.001
                         x_goal_eval = max(soft_lo, min(soft_hi, x_goal))
                         v_ff_live = bool(follow) and not settling
                         a_ref_max = (
@@ -2972,16 +3038,29 @@ class RailServoBridge:
                             if v_ff_live
                             else a_max
                         )
-                        x_ref, v_ref, a_ref = self._step_velocity_reference(
+                        x_ref, v_ref, a_ref, parked = self._parked_reanchor(
                             x_ref,
                             v_ref,
-                            v_goal_est,
-                            dt=dt,
-                            v_max=v_max,
-                            a_max=a_ref_max,
-                            x_min=soft_lo,
-                            x_max=soft_hi,
+                            a_ref,
+                            measured=measured,
+                            v_goal=v_goal_est,
+                            v_meas=v_meas,
                         )
+                        if not parked:
+                            x_ref, v_ref, a_ref = self._step_velocity_reference(
+                                x_ref,
+                                v_ref,
+                                v_goal_est,
+                                dt=dt,
+                                v_max=v_max,
+                                a_max=a_ref_max,
+                                x_goal=x_goal_eval,
+                                catch_v_max=float(self.config.catch_v_max_m_s),
+                                k_catch=float(self.config.catch_k),
+                                catch_frac=float(self.config.catch_frac),
+                                x_min=soft_lo,
+                                x_max=soft_hi,
+                            )
                     else:
                         stream_v_ff = (
                             target_v_ff
@@ -3038,10 +3117,12 @@ class RailServoBridge:
                         v_p_allow = abs(err_x) / max_stall_s
                     else:
                         v_p_allow = max(abs(err_x) / max_stall_s, stall_v_floor)
+                    if velocity_coupled:
+                        trim = max(float(self.config.vel_ff_p_trim_m_s), 0.0)
+                        if trim > 0.0:
+                            v_p_allow = min(v_p_allow, trim)
                     v_p = max(-v_p_allow, min(v_p_allow, v_p))
-                    v_p = self._clamp_brake_position_term(
-                        v_p, v_goal=v_goal_est, v_motion=v_meas
-                    )
+                    brake_margin = float(self.config.decel_request_margin_m_s)
                     v_d = kd * err_v
                     v_raw = v_ref + v_p + v_d
                     if velocity_coupled:
@@ -3051,6 +3132,7 @@ class RailServoBridge:
                             v_ref=v_ref,
                             v_meas=v_meas,
                             v_prev_cmd=prev_v_cmd,
+                            margin=brake_margin,
                         )
 
                     # Standstill when the shaped reference has stopped
@@ -3063,9 +3145,7 @@ class RailServoBridge:
                         last_rx <= 0.0 or (t0 - last_rx) > stream_dead_s
                     )
                     follow_live = bool(follow) and not settling and not target_stale
-                    v_ref_stopped = abs(v_ref) < 0.001
-                    if abs(v_ref) < 1.0e-6 and abs(err_x) <= deadband_m:
-                        v_raw = 0.0
+                    v_ref_stopped = abs(v_ref) < RAIL_IDLE_EPS_M_S
 
                     enter_m = max(float(self.config.standstill_enter_mm), 0.01) * 1e-3
                     exit_m = max(float(self.config.standstill_exit_mm), 0.01) * 1e-3
@@ -3140,7 +3220,7 @@ class RailServoBridge:
                         a_cmd = 0.0
                     elif not follow_live:
                         if (
-                            abs(v_ref) < 0.001
+                            abs(v_ref) < RAIL_IDLE_EPS_M_S
                             and abs(err_x) <= max(deadband_m, settle_tol_m)
                             and abs(v_cmd) <= 1.0e-6
                         ):
@@ -3290,7 +3370,7 @@ class RailServoBridge:
                         v_goal_est_m_s=v_goal_est,
                         v_ref_m_s=v_ref if ref_inited else 0.0,
                         a_ref_m_s2=a_ref if ref_inited else 0.0,
-                        v_meas_m_s=v_reg,
+                        v_reg_m_s=v_reg,
                         v_enc_m_s=v_enc,
                         v_enc_source=v_enc_source,
                         v_des_m_s=v_des,

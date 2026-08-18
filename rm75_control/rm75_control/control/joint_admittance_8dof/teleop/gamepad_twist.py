@@ -18,6 +18,7 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.spatial.transform import Rotation as Rsc
 
+from rm75_control.control.admittance_common.pose_math import pose_error
 from rm75_control.control.joint_admittance_8dof.teleop.xbox_pad import (
     XBOX_BUTTON_LB,
     XBOX_BUTTON_RB,
@@ -33,7 +34,7 @@ MAPPING_HELP = (
 
 @dataclass
 class GamepadTwistConfig:
-    trans_m_s: float = 0.12
+    trans_m_s: float = 0.10
     rot_rad_s: float = 0.60
     deadzone: float = 0.18
     max_lin_vel_m_s: float = 0.24
@@ -41,6 +42,8 @@ class GamepadTwistConfig:
     dt: float = 0.005
     euler_order: str = "xyz"
     control_frame: str = "tool"
+    # Idle hold gain on latched pose_d (1/s).  Zero disables the P term.
+    hold_k_task: float = 4.0
 
 
 def apply_deadzone(value: float, deadzone: float) -> float:
@@ -129,8 +132,10 @@ def compose_inner_twist(
 class GamepadTwistOuterLoop:
     """Outer loop that sends stick velocity straight into the QPIK inner loop.
 
-    No pose-PD: ``sample()`` is the v_cmd. Existing inner constraints
-    (limits, CBF, rail pin/escape, nullspace) stay on ``JointIkController``.
+    Stick motion is open-loop v_cmd.  When the pad is idle, ``pose_d`` is
+    latched (not rebased onto ``pose_meas``) so residual TCP drift has a
+    closed-loop hold.  Existing inner constraints stay on
+    ``JointIkController``.
     """
 
     def __init__(self, pad, cfg: GamepadTwistConfig | None = None) -> None:
@@ -147,12 +152,14 @@ class GamepadTwistOuterLoop:
         self.last_pad_buttons = np.zeros(8, dtype=float)
         self.last_twist_base = np.zeros(6, dtype=float)
         self.last_pad_connected = False
+        self._idle_hold_active = False
 
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
         del t_s
         pose = np.asarray(pose0, dtype=float).reshape(6).copy()
         self.last_pose_d = pose
         self.last_vel_ff = np.zeros(6, dtype=float)
+        self._idle_hold_active = True
 
     def sample(self, t_s: float, current_pose: np.ndarray, f_ext: np.ndarray) -> np.ndarray:
         del t_s, f_ext
@@ -171,6 +178,38 @@ class GamepadTwistOuterLoop:
         v_world, w_tool = map_pad_to_world_lin_tool_ang(state, self.cfg)
         self.last_v_world = v_world
         self.last_w_tool = w_tool
+        pose = np.asarray(current_pose, dtype=float).reshape(6).copy()
+        requested = (
+            float(np.linalg.norm(v_world)) > 1.0e-12
+            or float(np.linalg.norm(w_tool)) > 1.0e-12
+        )
+        if not requested:
+            if self.last_pose_d is None or not np.all(np.isfinite(self.last_pose_d)):
+                self.last_pose_d = pose.copy()
+            pose_d = np.asarray(self.last_pose_d, dtype=float).reshape(6).copy()
+            self._idle_hold_active = True
+            err = pose_error(pose_d, pose, self.cfg.euler_order)
+            k = max(float(self.cfg.hold_k_task), 0.0)
+            fb_base = k * err
+            rotation = Rsc.from_euler(
+                self.cfg.euler_order, pose[3:6], degrees=False
+            ).as_matrix()
+            if str(self.cfg.control_frame) == "tool":
+                feedback = np.zeros(6, dtype=float)
+                feedback[:3] = rotation.T @ fb_base[:3]
+                feedback[3:6] = rotation.T @ fb_base[3:6]
+            else:
+                feedback = fb_base
+            self.last_pose_d = pose_d
+            self.last_vel_ff = np.zeros(6, dtype=float)
+            self.last_twist_base = np.zeros(6, dtype=float)
+            self.last_path_twist = np.zeros(6, dtype=float)
+            self.last_feedback_twist = np.asarray(feedback, dtype=float).copy()
+            self.last_err_mm = float(np.linalg.norm(err[:3]) * 1000.0)
+            return self.last_feedback_twist.copy()
+
+        if self._idle_hold_active:
+            self._idle_hold_active = False
         twist, twist_base = compose_inner_twist(
             v_world,
             w_tool,
@@ -178,7 +217,6 @@ class GamepadTwistOuterLoop:
             euler_order=self.cfg.euler_order,
             control_frame=self.cfg.control_frame,
         )
-        pose = np.asarray(current_pose, dtype=float).reshape(6).copy()
         dt = float(self.cfg.dt)
         pose_d = pose.copy()
         pose_d[:3] = pose[:3] + twist_base[:3] * dt

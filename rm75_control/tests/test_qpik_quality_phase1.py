@@ -100,6 +100,35 @@ def test_ff_owns_does_not_zero_reach_but_caps_it() -> None:
     assert task.last_v_reach * task.last_v_ff < 0.0
 
 
+def test_operator_idle_trims_reach_cap() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_ext=5.0,
+            k_esc=0.0,
+            k_ff=1.0,
+            e0_m=0.0,
+            e1_m=0.01,
+            v_reach_cap_m_s=0.05,
+            v_reach_idle_cap_m_s=0.010,
+            v_max_m_s=0.08,
+            v_lpf_tau_s=0.0,
+            d_star_err0_m=1.0,
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    task.capture_reference(q)
+    task.d_pref_m = task.extension(q) + 0.30
+    task(q, sigma_scale=1.0, dt_s=0.005, operator_idle=True)
+    assert abs(task.last_v_reach) <= 0.010 + 1e-9
+    task(q, sigma_scale=1.0, dt_s=0.005, operator_idle=False)
+    assert abs(task.last_v_reach) > 0.010 + 1e-6
+    assert abs(task.last_v_reach) <= 0.05 + 1e-9
+
+
 def test_scale_qdot_into_box_preserves_direction() -> None:
     qdot = np.array([0.2, 0.4, -0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
     lo = np.full(8, -1.0)
@@ -201,6 +230,37 @@ def test_hold_setpoint_freezes_d_star() -> None:
             q, 0.02, rail_lo=0.005, rail_hi=0.78, hold_setpoint=True
         )
     assert d == pytest.approx(d_live, abs=1e-9)
+
+
+def test_hold_release_does_not_jump_d_star(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Window 8: s=1 and a 132 mm d_goal step must still rate-limit Δd*."""
+    kin = RobotKinematics()
+    cfg = PsiRetargetConfig(enabled=True, d_center_rate_m_s=0.02)
+    rt = PostureRetarget(kin, cfg)
+    q = np.array(
+        [0.40, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+    d0 = -0.185
+    d_goal = -0.317
+    rt._d_star = d0
+    rt.d_star_m = d0
+    rt._d0 = d0
+    rt._s = 1.0
+    rt.homotopy_s = 1.0
+    rt._held_prev = True
+    rt._planned = False
+    monkeypatch.setattr(rt, "_select_d_for_elbow", lambda *a, **k: d_goal)
+    monkeypatch.setattr(
+        rt, "_eval_at_split", lambda pose, psi, d: (q[1:], q.copy(), 0.2)
+    )
+    monkeypatch.setattr(rt, "_q_star_acceptable", lambda *a, **k: True)
+    monkeypatch.setattr(rt, "_maybe_retarget_psi", lambda *a, **k: None)
+    monkeypatch.setattr(rt, "_clip_d_to_travel", lambda d_try, **k: float(d_try))
+    dt = 0.005
+    _psi, d = rt.step(q, dt, rail_lo=0.005, rail_hi=0.78, hold_setpoint=False)
+    assert abs(d - d0) <= cfg.d_center_rate_m_s * dt + 1e-9
+    assert abs(d - d_goal) > 0.10
 
 
 def test_hold_setpoint_includes_rotation() -> None:

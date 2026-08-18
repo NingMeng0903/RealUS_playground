@@ -40,6 +40,10 @@ var/lw100_rail_zero.json.tmp
 # Legacy velocity-admittance npz captures
 data/velocity_admittance/logs/*.npz
 
+# C++ QPIK kernel (rebuild with native/qpik_kernel/build.sh)
+native/qpik_kernel/build/
+rm75_control/control/joint_admittance_8dof/solver/_qpik_kernel*.so
+
 # OS / editor
 .DS_Store
 *.swp

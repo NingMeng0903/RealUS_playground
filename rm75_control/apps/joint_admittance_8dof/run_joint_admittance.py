@@ -88,6 +88,7 @@ def _reload_task_parsers():
     from rm75_control.control.joint_admittance_8dof import gamepad_vcmd_program as gvp
     from rm75_control.control.joint_admittance_8dof import reference as ja_ref
     from rm75_control.control.joint_admittance_8dof import sin_tool_y_program as syp
+    from rm75_control.control.joint_admittance_8dof.teleop import xbox_pad
 
     importlib.reload(branch_barrier)
     importlib.reload(joint_comfort)
@@ -97,6 +98,7 @@ def _reload_task_parsers():
     importlib.reload(ik_config)
     importlib.reload(ja_ref)
     importlib.reload(ja_api)
+    importlib.reload(xbox_pad)
     importlib.reload(gvp)
     importlib.reload(syp)
     importlib.reload(etp)
@@ -118,12 +120,9 @@ def _run_controller_service(
 ) -> None:
     """Hot-wait for window C; run WBC locally on START (direct UDP + CANFD)."""
     stop = False
-    sig_n = 0
 
     def _on_sig(_signum, _frame) -> None:
-        nonlocal stop, sig_n
-        sig_n += 1
-        # First action: kill rail (non-blocking) so FA24 cannot stay latched.
+        nonlocal stop
         if rail_bridge is not None and rail_bridge.enabled:
             try:
                 rail_bridge.estop()
@@ -133,18 +132,9 @@ def _run_controller_service(
             hub.request_stop()
         except Exception:
             pass
+        if stop:
+            os._exit(130)
         stop = True
-        if sig_n == 1:
-            print(
-                "\nrm75 controller: Ctrl+C — stopping task "
-                "(second Ctrl+C forces exit)",
-                flush=True,
-            )
-            return
-        # Second+ signal: ProxQP / CANFD may hold the GIL for seconds near
-        # singularity — do not wait for a clean Python teardown.
-        print("\nrm75 controller: force exit", flush=True)
-        os._exit(130)
 
     signal.signal(signal.SIGINT, _on_sig)
     signal.signal(signal.SIGTERM, _on_sig)
@@ -210,7 +200,6 @@ def _run_controller_service(
                 continue
 
         hub.set_running(cmd_seq, msg="accepted")
-        print(f"rm75 controller: running task #{task_n}", flush=True)
 
         phase_labels: list[str] = []
         tick_counter = [0]
@@ -272,7 +261,6 @@ def _run_controller_service(
             )
             if hub.should_stop():
                 hub.set_stopped(cmd_seq)
-                print(f"rm75 controller: task #{task_n} stopped", flush=True)
             elif result.stop_reason:
                 hub.set_error(cmd_seq, result.stop_reason)
                 print(
@@ -289,15 +277,9 @@ def _run_controller_service(
                 )
             else:
                 hub.set_done(cmd_seq)
-                print(
-                    f"rm75 controller: task #{task_n} done "
-                    f"({result.duration_s:.1f}s, {result.ticks} ticks)",
-                    flush=True,
-                )
         except KeyboardInterrupt:
             stop = True
             hub.set_stopped(cmd_seq, msg="interrupted")
-            print(f"rm75 controller: task #{task_n} interrupted", flush=True)
         except Exception as exc:
             hub.set_error(cmd_seq, str(exc))
             print(f"rm75 controller: task error: {exc}", flush=True)
@@ -325,8 +307,6 @@ def _run_controller_service(
                         rail_bridge.estop()
                     except Exception:
                         pass
-            if not stop:
-                print("rm75 controller: hot-wait", flush=True)
 
 
 class _RailPublisher:
@@ -400,7 +380,7 @@ def main() -> int:
     else:
         relay_name = str(args.state_relay or relay_cfg.name or "rm75_state")
     relay_hz = float(args.relay_hz) if args.relay_hz is not None else relay_cfg.hz
-    dt = float(raw.get("timing", {}).get("dt_ms", 5.0)) / 1000.0
+    dt = float(raw.get("timing", {}).get("dt_ms", 5.0)) / 1000.0,
     # Never seed twin/SHM from q_ref_m (yaml often has 0.0) — that fakes a jump to 0.
     # After bridge.start(), publisher uses live encoder metres.
     rail_default_m = float("nan")

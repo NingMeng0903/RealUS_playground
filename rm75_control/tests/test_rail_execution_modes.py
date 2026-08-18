@@ -43,7 +43,8 @@ def test_rail_csv_schema_keeps_feedback_and_mode_columns_aligned(tmp_path) -> No
     assert fields["feedback_valid"] == "1"
     assert fields["command_mode"] == RailCommandMode.COUPLED_VELOCITY.value
     assert "v_enc_m_s" in fields
-    assert "v_meas_m_s" in fields
+    assert "v_reg_m_s" in fields
+    assert "v_meas_m_s" not in fields
 
 
 def _armed_bridge() -> RailServoBridge:
@@ -266,20 +267,27 @@ def test_encoder_velocity_tracks_a_constant_acceleration_ramp() -> None:
     assert got == pytest.approx(accel * t_mid, rel=1e-6)
 
 
-def test_brake_position_term_does_not_command_reverse() -> None:
-    # x_ref stopped, measured already past it: kp*err_x = 14*(-0.69 mm).
-    v_p = 14.0 * (-0.00069)
-    got = RailServoBridge._clamp_brake_position_term(
-        v_p, v_goal=0.0, v_motion=0.018
+def test_brake_position_term_was_merged_into_zero_target_brake() -> None:
+    assert not hasattr(RailServoBridge, "_clamp_brake_position_term")
+
+
+def test_zero_target_brake_covers_leaked_position_reverse() -> None:
+    """``_clamp_zero_target_brake`` is the remaining stop-stack reverse guard.
+
+    The old P-only clamp is gone; the same leak (x_ref stopped, measured
+    already past it) must still be zeroed, while same-sign trim and an
+    explicit reverse goal stay open.
+    """
+    v_des = 14.0 * (-0.00069)
+    got = RailServoBridge._clamp_zero_target_brake(
+        v_des, v_goal=0.0, v_ref=0.0, v_meas=0.018, v_prev_cmd=0.0
     )
     assert got == pytest.approx(0.0)
-    # Same-sign trim is left alone.
-    assert RailServoBridge._clamp_brake_position_term(
-        0.004, v_goal=0.0, v_motion=0.018
+    assert RailServoBridge._clamp_zero_target_brake(
+        0.004, v_goal=0.0, v_ref=0.0, v_meas=0.018, v_prev_cmd=0.0
     ) == pytest.approx(0.004)
-    # Explicit reverse goal does not clamp P.
-    assert RailServoBridge._clamp_brake_position_term(
-        -0.010, v_goal=-0.020, v_motion=0.018
+    assert RailServoBridge._clamp_zero_target_brake(
+        -0.010, v_goal=-0.020, v_ref=0.0, v_meas=0.018, v_prev_cmd=0.0
     ) == pytest.approx(-0.010)
 
 
@@ -309,3 +317,149 @@ def test_execution_feedback_is_immutable_and_reports_freshness() -> None:
     assert feedback.is_fresh(0.05)
     with pytest.raises(AttributeError):
         feedback.v_cmd_m_s = 0.0  # type: ignore[misc]
+
+
+def test_velocity_reference_does_not_catch_up_when_goal_is_parked() -> None:
+    x_new, v_new, a_new = RailServoBridge._step_velocity_reference(
+        0.40,
+        0.0,
+        0.0,
+        dt=0.02,
+        v_max=0.12,
+        a_max=0.60,
+        x_goal=0.55,
+        catch_v_max=0.02,
+        k_catch=5.0,
+        x_min=0.005,
+        x_max=0.78,
+    )
+    assert x_new == pytest.approx(0.40)
+    assert v_new == pytest.approx(0.0)
+    assert a_new == pytest.approx(0.0)
+
+
+def test_velocity_reference_catch_up_is_bounded_while_moving() -> None:
+    x_new, v_new, _a_new = RailServoBridge._step_velocity_reference(
+        0.40,
+        0.10,
+        0.10,
+        dt=0.05,
+        v_max=0.12,
+        a_max=0.60,
+        x_goal=0.55,
+        catch_v_max=0.02,
+        k_catch=5.0,
+        x_min=0.005,
+        x_max=0.78,
+    )
+    # 5.0 * 0.15 = 0.75, capped at catch_v_max 0.02 → v_target = 0.12
+    assert v_new == pytest.approx(0.12)
+    assert x_new == pytest.approx(0.40 + 0.12 * 0.05)
+
+
+def test_velocity_reference_catch_up_is_zero_when_x_ref_matches_goal() -> None:
+    x_new, v_new, _a_new = RailServoBridge._step_velocity_reference(
+        0.40,
+        0.08,
+        0.08,
+        dt=0.02,
+        v_max=0.12,
+        a_max=0.60,
+        x_goal=0.40,
+        catch_v_max=0.02,
+        k_catch=5.0,
+    )
+    assert v_new == pytest.approx(0.08)
+    assert x_new == pytest.approx(0.40 + 0.08 * 0.02)
+
+
+def test_parked_reanchor_snaps_x_ref_to_measured_and_does_not_move() -> None:
+    x_ref, v_ref, a_ref, parked = RailServoBridge._parked_reanchor(
+        0.3114,
+        0.0,
+        0.0,
+        measured=0.2917,
+        v_goal=0.0,
+        v_meas=0.0,
+    )
+    assert parked is True
+    assert x_ref == pytest.approx(0.2917)
+    assert v_ref == pytest.approx(0.0)
+    assert a_ref == pytest.approx(0.0)
+
+
+def test_velocity_reference_catch_up_bounds_repeated_start_stop_loss() -> None:
+    x_ref = 0.40
+    x_goal = 0.40
+    v_ref = 0.0
+    dt = 0.02
+    for _cycle in range(30):
+        for _ in range(20):
+            x_goal += 0.08 * dt
+            x_ref, v_ref, _a = RailServoBridge._step_velocity_reference(
+                x_ref,
+                v_ref,
+                0.08,
+                dt=dt,
+                v_max=0.12,
+                a_max=0.60,
+                x_goal=x_goal,
+                catch_v_max=0.02,
+                k_catch=5.0,
+            )
+        x_ref -= 0.001
+        for _ in range(10):
+            x_ref, v_ref, _a = RailServoBridge._step_velocity_reference(
+                x_ref,
+                v_ref,
+                0.0,
+                dt=dt,
+                v_max=0.12,
+                a_max=0.60,
+                x_goal=x_goal,
+                catch_v_max=0.02,
+                k_catch=5.0,
+            )
+            v_ref = 0.0
+    assert abs(x_goal - x_ref) < 0.005
+
+
+def test_turn_catch_up_cannot_overspeed_a_1mm_s_goal() -> None:
+    """Window-8 turn kick: e_shape 1.06 mm at v_goal 1.4 mm/s must stay < 1.5x."""
+    v_goal = 0.0014
+    x_ref = 0.40
+    x_goal = x_ref + 0.00106
+    _x_new, v_new, _a_new = RailServoBridge._step_velocity_reference(
+        x_ref,
+        0.0,
+        v_goal,
+        dt=0.02,
+        v_max=0.12,
+        a_max=0.60,
+        x_goal=x_goal,
+        catch_v_max=0.02,
+        k_catch=5.0,
+        catch_frac=0.3,
+    )
+    assert abs(v_new) < 1.5 * abs(v_goal)
+
+
+def test_decel_request_covers_encoder_noise_gap() -> None:
+    """t=5.390 cruise leak: |v_goal| 19.66 vs |v_enc| 18.81 mm/s is still brake."""
+    assert RailServoBridge._is_decel_request(0.01966, 0.01881) is True
+    assert RailServoBridge._is_decel_request(-0.01966, -0.01881) is True
+    assert RailServoBridge._is_decel_request(0.01966, -0.01881) is False
+
+
+def test_parked_reanchor_leaves_a_moving_stream_alone() -> None:
+    x_ref, v_ref, a_ref, parked = RailServoBridge._parked_reanchor(
+        0.40,
+        0.08,
+        0.0,
+        measured=0.399,
+        v_goal=0.08,
+        v_meas=0.07,
+    )
+    assert parked is False
+    assert x_ref == pytest.approx(0.40)
+    assert v_ref == pytest.approx(0.08)

@@ -96,7 +96,7 @@ def _step(inner: JointIkController, q0: float, twist: np.ndarray):
 def test_yaml_hard_soft_and_no_far_wln() -> None:
     raw = yaml.safe_load(_CFG.read_text(encoding="utf-8"))
     cfg = build_joint_ik_config(raw)
-    assert cfg.qp.wln.band_rail_m == pytest.approx(0.0)
+    assert not hasattr(cfg.qp, "wln")
     assert not hasattr(cfg.qp, "limit_reaction_rail_s")
     assert cfg.qp.limit_damper_rail_reaction_s == pytest.approx(0.15)
     assert cfg.rail.hard_min_m == pytest.approx(0.005)
@@ -143,26 +143,25 @@ def test_linear_taper_has_no_enter_step() -> None:
     )
 
 
-def test_stopping_envelope_tapers_into_wall() -> None:
+def test_damper_and_one_tick_box_taper_into_wall() -> None:
     box = _rail_box(a_max=_A_RAIL, reaction_s=_T_RAIL, band=_BAND, v_max=0.15)
     _lo, hi_far = _bounds(0.40, box=box)
     assert float(hi_far[0]) == pytest.approx(0.15, abs=1e-9)
 
-    def env(dist_m: float) -> float:
-        return float(stopping_velocity(np.array([dist_m]), np.array([_A_RAIL]), _T_RAIL)[0])
-
-    # Stick 80 mm/s first drops below full when the envelope does (~23 mm).
     _lo, hi_edge = _bounds(0.755, box=box)
-    assert float(hi_edge[0]) == pytest.approx(min(0.15, env(0.025)), abs=1e-9)
-    assert float(hi_edge[0]) > 0.08
+    assert float(hi_edge[0]) == pytest.approx(0.15, abs=1e-9)
 
     _lo, hi_mid = _bounds(0.765, box=box)
-    assert 0.0 < float(hi_mid[0]) < 0.08
-    assert float(hi_mid[0]) == pytest.approx(min(0.15 * 0.015 / _BAND, env(0.015)), abs=1e-8)
+    assert float(hi_mid[0]) == pytest.approx(0.15 * 0.015 / _BAND, abs=1e-8)
 
     _lo, hi_wall = _bounds(0.78, box=box)
     assert float(hi_wall[0]) == pytest.approx(0.0, abs=1e-9)
     assert float(hi_wall[0]) < float(hi_mid[0]) < float(hi_edge[0])
+
+    q = np.zeros(8)
+    q[0] = 0.779
+    _lo, hi_tick = box.bounds(q, _DT)
+    assert float(hi_tick[0]) <= (0.78 - 0.779) / _DT + 1.0e-12
 
 
 def test_hard_wall_zeros_rail_not_cartesian_y() -> None:
@@ -187,7 +186,7 @@ def test_hard_wall_zeros_rail_not_cartesian_y() -> None:
 
 
 def test_damper_uses_leading_rail_state() -> None:
-    """Linear taper and envelope both see the state closer to the wall."""
+    """Linear taper sees the state closer to the wall."""
     _lo, hi_cmd = _bounds(0.74, q_cmd=0.775)
     assert float(hi_cmd[0]) == pytest.approx(0.5 * _V_MAX, abs=1e-9)
     _lo, hi_meas = _bounds(0.775, q_cmd=0.74)

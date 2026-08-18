@@ -34,7 +34,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 import signal
 import time
 from contextlib import nullcontext
@@ -361,7 +360,6 @@ def main() -> int:
     shm_name = str(relay_cfg.name or "rm75_state")
 
     if attach_mode:
-        print("rm75 task: connecting to window A …", flush=True)
         attach_bus = RelayStateBus(shm_name)
         try:
             attach_bus.wait_first_pose(timeout_s=30.0)
@@ -378,7 +376,6 @@ def main() -> int:
             raise RuntimeError(
                 "window A phase IPC not ready — restart run_joint_admittance.py"
             ) from exc
-        print("rm75 task: connected", flush=True)
         session_cm = nullcontext(_AttachSession(config=raw, ip=str(robot_cfg.get("ip", ""))))
     else:
         if relay_shm_has_publisher(shm_name):
@@ -404,7 +401,6 @@ def main() -> int:
             local_bus = RobotStateBus(sess.robot, raw, robot_ip=sess.ip)
             local_bus.start()
             state_bus = local_bus
-            print("rm75 task: CANFD + local UDP (standalone)", flush=True)
 
         if attach_mode:
             snap0 = state_bus.read()
@@ -491,23 +487,13 @@ def main() -> int:
                 "interrupted",
             }
             last_status_msg[0] = ""
-            stop_n = [0]
 
             def _on_sig(_signum, _frame) -> None:
-                stop_n[0] += 1
                 try:
                     phase_client.stop()
                 except Exception:
                     pass
-                if stop_n[0] == 1:
-                    print(
-                        "\nrm75 task: Ctrl+C — stop requested on window A "
-                        "(second Ctrl+C forces exit)",
-                        flush=True,
-                    )
-                    return
-                print("\nrm75 task: force exit", flush=True)
-                os._exit(130)
+                raise KeyboardInterrupt
 
             prev_int = signal.signal(signal.SIGINT, _on_sig)
             prev_term = signal.signal(signal.SIGTERM, _on_sig)
@@ -541,15 +527,10 @@ def main() -> int:
             if attach_mode:
                 assert phase_client is not None
                 cmd_seq = phase_client.start(task_params)
-                print(f"rm75 task: submitted task #{cmd_seq}", flush=True)
                 final = _poll_attach_status(cmd_seq)
                 if final == PhaseStatus.ERROR:
                     st = phase_client.read_status()
                     raise RuntimeError(f"window A task failed: {st['msg'] if st else 'unknown'}")
-                if final == PhaseStatus.STOPPED:
-                    print("rm75 task: stopped", flush=True)
-                else:
-                    print("rm75 task: done", flush=True)
             else:
                 execute_sin_tool_y_program(
                     sess,
@@ -568,11 +549,10 @@ def main() -> int:
                     while time.monotonic() < t_hold:
                         time.sleep(0.2)
                 except KeyboardInterrupt:
-                    print("\nStopped.", flush=True)
+                    pass
         except KeyboardInterrupt:
             if attach_mode and phase_client is not None:
                 phase_client.stop()
-            print("\nStopped.", flush=True)
         finally:
             if phase_client is not None:
                 phase_client.close()

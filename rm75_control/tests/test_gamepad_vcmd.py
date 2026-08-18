@@ -192,9 +192,74 @@ def test_logger_records_pad_and_vcmd(tmp_path) -> None:
     assert values["pad_connected"] == "1"
 
 
-def test_gamepad_trans_default_is_120_mm_s() -> None:
-    assert SinToolYTaskParams(config_path="x").gamepad_trans_m_s == pytest.approx(0.12)
-    assert GamepadTwistConfig().trans_m_s == pytest.approx(0.12)
+def test_idle_sample_latches_pose_d_and_rebases_on_stick() -> None:
+    pad = FakePad(axes=np.array([0.0, 0.0, -1.0, 0.0, 0.0, -1.0]))
+    outer = GamepadTwistOuterLoop(
+        pad,
+        GamepadTwistConfig(trans_m_s=0.10, deadzone=0.10, control_frame="base"),
+    )
+    pose0 = np.array([0.40, 0.20, 0.30, 0.0, 0.0, 0.0])
+    outer.set_origin(pose0)
+    drifted = pose0.copy()
+    drifted[1] += 0.012
+    twist = outer.sample(0.0, drifted, np.zeros(6))
+    np.testing.assert_allclose(outer.last_pose_d, pose0, atol=1e-12)
+    assert float(np.linalg.norm(twist[:3])) > 0.0
+    assert twist[1] < 0.0
+    pad.axes = np.array([-1.0, 0.0, -1.0, 0.0, 0.0, -1.0])
+    twist_go = outer.sample(0.0, drifted, np.zeros(6))
+    assert twist_go[1] > 0.05
+    assert outer.last_pose_d[1] == pytest.approx(
+        drifted[1] + twist_go[1] * outer.cfg.dt
+    )
+
+
+def test_gamepad_trans_default_is_100_mm_s() -> None:
+    assert SinToolYTaskParams(config_path="x").gamepad_trans_m_s == pytest.approx(0.10)
+    assert GamepadTwistConfig().trans_m_s == pytest.approx(0.10)
+
+
+def test_xbox_pad_keeps_sigint_and_does_not_quit_pygame(monkeypatch) -> None:
+    """Full pygame.init(); restore SIGINT so one Ctrl+C stops window A."""
+    import signal
+
+    from rm75_control.control.joint_admittance_8dof.teleop import xbox_pad
+
+    calls = {"init": 0, "quit": 0}
+
+    class _JoyMod:
+        def init(self) -> None:
+            return None
+
+        def get_count(self) -> int:
+            return 0
+
+    class _Pygame:
+        joystick = _JoyMod()
+
+        def init(self) -> None:
+            calls["init"] += 1
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+        def quit(self) -> None:
+            calls["quit"] += 1
+
+    fake = _Pygame()
+    monkeypatch.setattr(xbox_pad, "_require_pygame", lambda: fake)
+
+    def _handler(signum, _frame) -> None:
+        return None
+
+    prev = signal.getsignal(signal.SIGINT)
+    try:
+        signal.signal(signal.SIGINT, _handler)
+        pad = xbox_pad.XboxPad(allow_missing=True, auto_select=False, device_index=0)
+        assert calls["init"] == 1
+        assert signal.getsignal(signal.SIGINT) is _handler
+        pad.close()
+        assert calls["quit"] == 0
+    finally:
+        signal.signal(signal.SIGINT, prev)
 
 
 def test_build_gamepad_program_and_ipc_kind() -> None:
@@ -408,3 +473,29 @@ def test_qpik_rail_brakes_when_task_drops() -> None:
         moving = inner.update(plus_y, q_meas=inner.q_cmd, vel_ff=plus_y)
     assert moving is not None
     assert float(moving.qdot[0]) > 0.02
+
+
+def test_rail_task_vel_is_issued_when_weight_is_zero_but_ff_is_live() -> None:
+    inner = _yaml_inner_at_rail(0.40)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    inner.rail_ext_task.cfg.w_max = 0.0
+    inner.rail_ext_task.cfg.w_sigma_floor = 0.0
+    step = _plus_y_step(inner, 0.40)
+    assert inner.rail_ext_task.last_weight == pytest.approx(0.0, abs=1e-12)
+    assert abs(float(inner.rail_ext_task.last_v_ff)) > 1.0e-4
+    assert np.isfinite(step.rail_task_vel)
+    assert abs(float(step.rail_task_vel)) > 1e-4
+
+
+def test_rail_task_vel_stays_dropped_when_ff_is_zero() -> None:
+    inner = _yaml_inner_at_rail(0.40)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    inner.rail_ext_task.cfg.w_max = 0.0
+    inner.rail_ext_task.cfg.w_sigma_floor = 0.0
+    q = _SEED_Q.copy()
+    q[0] = 0.40
+    twist = np.zeros(6)
+    step = inner.update(twist, q_meas=q, vel_ff=twist)
+    assert inner.rail_ext_task.last_weight == pytest.approx(0.0, abs=1e-12)
+    assert abs(float(inner.rail_ext_task.last_v_ff)) < 1.0e-4
+    assert not np.isfinite(step.rail_task_vel)
