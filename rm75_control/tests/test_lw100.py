@@ -100,32 +100,3 @@ def test_read_motion_fast_is_three_registers():
     drive._client.calls.clear()
     drive.read_motion_and_di_fast()
     assert drive._client.calls == [(MONITOR_SPEED_RPM, 16)]
-
-
-def test_modbus_connect_sets_tcp_nodelay(monkeypatch: pytest.MonkeyPatch) -> None:
-    import socket
-
-    from rm75_control.hw.lw100.modbus_rtu_tcp import ModbusRtuTcpClient, ModbusRtuTcpConfig
-
-    opts: list[tuple[int, int, int]] = []
-
-    class _Sock:
-        def setsockopt(self, level, opt, value):
-            opts.append((int(level), int(opt), int(value)))
-
-        def settimeout(self, _timeout):
-            return None
-
-        def setblocking(self, _flag):
-            return None
-
-        def recv(self, _n):
-            raise BlockingIOError
-
-    def _connect(_addr, timeout=None):
-        return _Sock()
-
-    monkeypatch.setattr(socket, "create_connection", _connect)
-    client = ModbusRtuTcpClient(ModbusRtuTcpConfig(host="127.0.0.1", port=8234))
-    client.connect()
-    assert (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1) in opts

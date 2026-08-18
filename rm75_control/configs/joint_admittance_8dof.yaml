@@ -16,13 +16,9 @@ timing:
   dt_ms: 5.0
   # Post-solve gate re-reads UDP; 80 ms still fails closed on a true push gap.
   feedback_timeout_ms: 80.0
-  # Pin only if this core is isolated (isolcpus / cset).  Shared-core pin
-  # concentrates jitter — leave unset until scripts/enable_rt.sh + isolcpus.
-  control_cpu: null
+  # Best-effort RT: pin the control thread; hold /dev/cpu_dma_latency at 0.
+  control_cpu: 2
   disable_cstates: true
-  # CPython default is 5 ms and starves the rail Modbus worker.  0.5 ms
-  # lets a 200 Hz control thread yield between send/recv of each RTU frame.
-  gil_switch_interval_ms: 0.5
 
 # UDP arm-state push (rm_set_realtime_push). Requires robot.thread_mode: 2.
 realtime_push:
@@ -114,9 +110,6 @@ inner:
     # Measured jerk RMS was 250-570 rad/s³ with the acceleration flipping sign
     # on ~half the ticks while the reference twist was smooth.
     j_max_arm_rad_s3: 300.0
-    # De Luca 2015 velocity-level nullspace damping (arm only).  Soft ‖q̇‖²
-    # on QP2; 0 disables.  Leave off until an offline k_d sweep is done.
-    nullspace_vel_damp: 0.0
     # 3.0 made a full rail acceleration reversal take 2*a_max/j = 0.2 s versus
     # 0.02 s on the arm; 60 keeps 2*a_max/j = 0.02 s after a_max rose to 0.60.
     j_max_rail_m_s3: 60.0
@@ -176,31 +169,16 @@ inner:
       eps_rad: 5.0e-4
       sigma_fade_ref: 0.12
       grad_period_ticks: 10
-    # Smoothstep after set_q_target.  Off: set_q_target is called every tick
-    # and would otherwise pin the attractor at ramp ≈ 0.
-    engage_s: 0.0
 
   nullspace_d_null: 0.5
   nullspace_d_null_adaptive: 1.0
   nullspace_max_qdot_frac: 0.2
-  # Post-QP |Δdq| clamp is the only rate limit that lives in the CANFD
-  # fixed-dt domain.  QP boxes use wall-time box_h1 and can over-budget.
-  post_qp_step_clamp: true
-  # Encoder-state filter.  lowpass was proven harmful on 220505 (jerk RMS
-  # 139→179) — phase lag on the measurement-geometry loop.  Keep raw;
-  # QP Jacobian uses qp_geometry_source instead.
-  qmeas_filter: raw
-  qmeas_lowpass_hz: 25.0
-  # cmd = Jacobian / twist at integrated q_cmd (opens the 58 Hz loop).
-  # meas = legacy J(q_meas).  Safety (resync / CBF / lead) stays on q_meas.
-  qp_geometry_source: cmd
 
   arm_angle:
     enabled: true
     k_psi: 1.5
     psi_ref_deg: null
     obs_smooth_floor: 0.3
-    engage_s: 0.0
 
   psi_retarget:
     enabled: true
@@ -599,10 +577,9 @@ hw:
     arm_max_span_mm: 2.0
     arm_timeout_s: 10.0
     fault_margin_m: 0.05
-    # 16.7 ms beat.  Isolated remasure after TCP_NODELAY: t_read p95 3.4 ms,
-    # t_write p95 2.7 ms (was 17 ms).  A 10 ms pair now fits on the wire, but
-    # keep 60 until a live rail remasure; the last 100 Hz attempt reversed
-    # at 24.4/s.
+    # 205605: t_read med 5.8 ms, FA24 write usually skipped.  43 Hz left
+    # ~17 ms of sleep.  60 Hz (16.7 ms) still has ~11 ms median headroom;
+    # 80 Hz is tight on p95.
     poll_hz: 60
     inter_frame_delay_s: 0.0005
     timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0

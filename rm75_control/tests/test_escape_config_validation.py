@@ -71,17 +71,7 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
     assert cfg.rail.v_max_m_s == pytest.approx(0.15)
     assert cfg.collision.d_safe == pytest.approx(0.01)
     assert cfg.collision.d_activate == pytest.approx(0.04)
-    assert cfg.qmeas_filter == "raw"
-    assert cfg.qp_geometry_source == "cmd"
-    assert cfg.gil_switch_interval_ms == pytest.approx(0.5)
     assert not hasattr(cfg, "generic_qpik")
-
-
-def test_qp_geometry_source_rejects_unknown():
-    raw = deepcopy(_raw())
-    raw["inner"]["qp_geometry_source"] = "jacobian"
-    with pytest.raises(ValueError, match="qp_geometry_source"):
-        build_joint_ik_config(raw)
 
 
 def test_retired_task_group_and_solver_keys_fail_fast():

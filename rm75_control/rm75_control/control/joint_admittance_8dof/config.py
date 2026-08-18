@@ -193,7 +193,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             "sigma_setbased", "branch_barrier", "joint_comfort",
             "smoothness_weight", "near_arm_margin_rad",
             "j_max_arm_rad_s3", "j_max_rail_m_s3",
-            "use_cpp_kernel", "nullspace_vel_damp",
+            "use_cpp_kernel",
         },
         name="inner.qp",
     )
@@ -421,10 +421,6 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         j_max_rail_m_s3=_finite_float(
             c.get("j_max_rail_m_s3", 3.0), name="inner.qp.j_max_rail_m_s3"
         ),
-        nullspace_vel_damp=_finite_float(
-            c.get("nullspace_vel_damp", 0.0),
-            name="inner.qp.nullspace_vel_damp",
-        ),
     )
 
 
@@ -434,7 +430,7 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
         n,
         {
             "k_center", "k_limit", "activation", "weights", "q_nominal_deg",
-            "manipulability", "engage_s",
+            "manipulability",
         },
         name="inner.nullspace",
     )
@@ -460,9 +456,6 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
             if q_nominal_deg is not None
             else None
         ),
-        engage_s=_finite_float(
-            n.get("engage_s", 0.35), name="nullspace.engage_s"
-        ),
     )
     manipulability = ManipulabilityTaskConfig(
         k_mu=_finite_float(m.get("k_mu", 0.8), name="manipulability.k_mu"),
@@ -482,7 +475,7 @@ def _parse_arm_angle(inner: dict) -> ArmAngleTaskConfig:
         {
             "enabled", "k_psi", "psi_ref_deg", "fd_eps_rad", "safe_denom_eps",
             "obs_decay_gain", "obs_smooth_floor", "max_qdot_frac",
-            "psi_home_deg", "max_psi_swing_deg", "engage_s",
+            "psi_home_deg", "max_psi_swing_deg",
         },
         name="inner.arm_angle",
     )
@@ -504,7 +497,6 @@ def _parse_arm_angle(inner: dict) -> ArmAngleTaskConfig:
             if psi_home_deg is not None
             else None
         ),
-        engage_s=_finite_float(a.get("engage_s", 0.35), name="arm_angle.engage_s"),
     )
 
 
@@ -968,9 +960,6 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             "qp", "collision", "nullspace", "arm_angle", "rail_extension", "rail",
             "psi_retarget", "ird",
             "nullspace_d_null", "nullspace_d_null_adaptive", "nullspace_max_qdot_frac",
-            "post_qp_step_clamp",
-            "qmeas_filter", "qmeas_lowpass_hz",
-            "qp_geometry_source",
         },
         name="inner",
     )
@@ -1060,10 +1049,6 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         ),
         disable_cstates=bool(timing.get("disable_cstates", True)),
         qp_use_cpp_kernel=bool(timing.get("qp_use_cpp_kernel", True)),
-        gil_switch_interval_ms=_finite_float(
-            timing.get("gil_switch_interval_ms", 0.5),
-            name="timing.gil_switch_interval_ms",
-        ),
         control_frame=str(inner.get("control_frame", "tool")),
         euler_order=euler_order,
         qp=qp,
@@ -1117,22 +1102,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             inner.get("nullspace_max_qdot_frac", 0.2),
             name="inner.nullspace_max_qdot_frac",
         ),
-        post_qp_step_clamp=bool(inner.get("post_qp_step_clamp", False)),
-        qmeas_filter=str(inner.get("qmeas_filter", "raw") or "raw"),
-        qmeas_lowpass_hz=_finite_float(
-            inner.get("qmeas_lowpass_hz", 25.0), name="inner.qmeas_lowpass_hz"
-        ),
-        qp_geometry_source=str(
-            inner.get("qp_geometry_source", "cmd") or "cmd"
-        ).strip().lower(),
     )
-    if cfg.qp_geometry_source not in {"cmd", "meas"}:
-        raise ValueError(
-            "inner.qp_geometry_source must be 'cmd' or 'meas', "
-            f"got {cfg.qp_geometry_source!r}"
-        )
-    if cfg.gil_switch_interval_ms < 0.0:
-        raise ValueError("timing.gil_switch_interval_ms must be non-negative")
     assert_design_attractor_consistent(cfg)
     return cfg
 

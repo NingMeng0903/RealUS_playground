@@ -20,8 +20,6 @@ joint_1/2, joint_3/4, joint_5/6 pairs are coincident):
 
 from __future__ import annotations
 
-import time
-
 from dataclasses import dataclass
 
 import numpy as np
@@ -73,9 +71,6 @@ class ArmAngleTaskConfig:
     # disables the hard limit; if set, both ends are checked.
     psi_hard_lower_rad: float | None = None
     psi_hard_upper_rad: float | None = None
-    # Smoothstep ramp after reset / set_reference so a large ψ error cannot
-    # dump a full-scale nullspace kick on the first tick.
-    engage_s: float = 0.0
 
 
 def _wrap_pi(a: float) -> float:
@@ -116,7 +111,6 @@ class ArmAngleTask:
             self._model.getJointId(n) for n in (_SHOULDER_JOINT, _ELBOW_JOINT, _WRIST_JOINT)
         )
         self.last_singularity_smooth: float = 1.0
-        self._engage_t = time.monotonic()
 
     def _sw_observability(self, q_rad: np.ndarray) -> tuple[float, float, float]:
         """Return (ne_norm, nr, obs) for algorithmic-singularity attenuation.
@@ -204,11 +198,9 @@ class ArmAngleTask:
         # Same SEW plane as −π; keep the tracker on the positive half so a
         # later set_reference(70°) slews 180°→70°, not −180°→−290°.
         self._psi_ref_unwrapped = fold_psi_to_positive(float(self.psi_ref))
-        self._engage_t = time.monotonic()
 
     def set_reference(self, psi_ref_rad: float) -> None:
         psi_ref_rad = float(psi_ref_rad)
-        self._engage_t = time.monotonic()
         if self._psi_ref_unwrapped is not None:
             self._psi_ref_unwrapped = float(
                 self._psi_ref_unwrapped + _wrap_pi(psi_ref_rad - self._psi_ref_unwrapped)
@@ -239,12 +231,6 @@ class ArmAngleTask:
         smooth = max(float(smooth), floor)
         self.last_singularity_smooth = float(smooth)
         safe_denom = max(denom, 0.0) + self.cfg.safe_denom_eps
-        engage_s = max(float(getattr(self.cfg, "engage_s", 0.0)), 0.0)
-        if engage_s > 1.0e-9:
-            u = float(np.clip((time.monotonic() - self._engage_t) / engage_s, 0.0, 1.0))
-            ramp = u * u * (3.0 - 2.0 * u)
-        else:
-            ramp = 1.0
-        qdot = ramp * smooth * self.cfg.k_psi * err * gN / safe_denom
+        qdot = smooth * self.cfg.k_psi * err * gN / safe_denom
         v_cap = self.cfg.max_qdot_frac * np.asarray(self.kin.v_max, dtype=float)
         return np.clip(qdot, -v_cap, v_cap)

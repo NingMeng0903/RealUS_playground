@@ -13,11 +13,9 @@ import json
 import math
 import os
 import queue
-import sys
 import threading
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Protocol
 
 import numpy as np
@@ -150,21 +148,6 @@ class JointIkConfig:
     nullspace_d_null: float = 0.0
     nullspace_d_null_adaptive: float = 1.0
     nullspace_max_qdot_frac: float = 0.2
-    # Post-QP rewrite of |Δdq|.  This is the only rate limit that lives in
-    # the CANFD fixed-dt domain; keep it on for hardware and unit tests.
-    post_qp_step_clamp: bool = True
-    # Encoder-state filter before Jacobian / task error.  ``raw`` feeds the
-    # sensor as-is; ``hold`` keeps the last sample on a stale frame;
-    # ``lowpass`` is a first-order cutoff at ``qmeas_lowpass_hz``.
-    qmeas_filter: str = "raw"
-    qmeas_lowpass_hz: float = 25.0
-    # QP Jacobian / twist map.  ``cmd`` uses the integrated command (opens
-    # the 58 Hz measurement-geometry loop); ``meas`` is the legacy path.
-    # Safety (follow_err, resync, CBF, rail lead) always stays on q_meas.
-    qp_geometry_source: str = "cmd"
-    # CPython default switch interval is 5 ms and starves the rail Modbus
-    # thread.  0.5 ms is enough for a 200 Hz control thread to yield.
-    gil_switch_interval_ms: float = 0.5
 
 
 @dataclass
@@ -339,51 +322,6 @@ def scale_qdot_into_box(
     return qdot * s
 
 
-def filter_q_meas(
-    raw: np.ndarray,
-    *,
-    mode: str,
-    dt: float,
-    prev_raw: np.ndarray | None,
-    prev_filt: np.ndarray | None,
-    lowpass_hz: float = 25.0,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Filter encoder state before QP geometry.
-
-    Returns ``(filtered, new_prev_raw, new_prev_filt)``.  ``hold`` keeps the
-    last accepted sample when this frame is bit-identical to the previous
-    one (stale encoder).  ``lowpass`` is first-order at ``lowpass_hz``.
-    """
-    q_raw = np.asarray(raw, dtype=float).copy()
-    kind = str(mode or "raw").strip().lower()
-    if kind in ("", "raw", "none", "off"):
-        return q_raw, q_raw, q_raw
-    if kind == "hold":
-        if (
-            prev_raw is not None
-            and prev_filt is not None
-            and q_raw.shape == prev_raw.shape
-            and np.array_equal(q_raw, prev_raw)
-        ):
-            q_filt = np.asarray(prev_filt, dtype=float).copy()
-        else:
-            q_filt = q_raw
-        return q_filt, q_raw, q_filt
-    if kind == "lowpass":
-        fc = max(float(lowpass_hz), 1.0e-3)
-        period = max(float(dt), 1.0e-6)
-        alpha = 1.0 - math.exp(-2.0 * math.pi * fc * period)
-        alpha = float(np.clip(alpha, 0.0, 1.0))
-        if prev_filt is None or np.asarray(prev_filt).shape != q_raw.shape:
-            q_filt = q_raw
-        else:
-            q_filt = np.asarray(prev_filt, dtype=float) + alpha * (
-                q_raw - np.asarray(prev_filt, dtype=float)
-            )
-        return q_filt, q_raw, q_filt
-    raise ValueError(f"unknown qmeas_filter {mode!r}")
-
-
 class JointIkController:
     """Reusable inner loop: (q_cmd, q_meas, twist) -> next joint command (rad)."""
 
@@ -479,8 +417,6 @@ class JointIkController:
         self._box_dt_last_t: float | None = None
         self._box_h1_last: float | None = None
         self._dq_prev: np.ndarray | None = None
-        self._q_meas_raw_prev: np.ndarray | None = None
-        self._q_meas_filt: np.ndarray | None = None
         self._rail_dv_filt: float = 0.0
         self._rail_dv_tau_s: float = 0.025
         self.secondary = SecondaryComposer.from_controller_parts(
@@ -560,11 +496,9 @@ class JointIkController:
     def _measure_box_periods(self, dt: float) -> tuple[float, float | None]:
         """Two most recent wall periods for the unequal-sample third-order box.
 
-        Each period is clamped to ``[0.8, 1.0] × dt`` (pass the nominal
+        Each period is clamped to ``[0.8, 2.0] × dt`` (pass the nominal
         period, not the jittering wall period) so one stalled tick cannot
-        open the acceleration/jerk boxes.  CANFD consumes ``q_cmd`` on a
-        fixed ``dt_nom``, so a longer wall period must not enlarge the
-        accel / jerk budget.
+        open the acceleration/jerk boxes.
         """
         now = time.monotonic()
         prev = self._box_dt_last_t
@@ -578,7 +512,7 @@ class JointIkController:
         if not math.isfinite(measured) or measured <= 0.0:
             h1 = nominal
         else:
-            h1 = float(np.clip(measured, 0.8 * nominal, 1.0 * nominal))
+            h1 = float(np.clip(measured, 0.8 * nominal, 2.0 * nominal))
         self._box_h1_last = h1
         return h1, prev_h1
 
@@ -588,19 +522,7 @@ class JointIkController:
         dt_int: float,
         dt_nom: float,
     ) -> tuple[np.ndarray, bool]:
-        """Commit the integrated command; optionally clamp |Δdq|.
-
-        Hardware yaml keeps ``post_qp_step_clamp: true`` so the rewrite
-        lives in the CANFD fixed-dt domain.  The off path only parks on
-        the hard position box; it does not rewrite |Δdq|.
-        """
-        if not bool(getattr(self.cfg, "post_qp_step_clamp", True)):
-            dq = self._apply_position_box(q_prev)
-            self._dq_prev = dq.copy()
-            period = max(float(dt_int), 1.0e-12)
-            qdot = dq / period
-            self.core.qdot_prev = qdot.copy()
-            return qdot, False
+        """Apply the slim ``|Δdq| <= a_max * dt_nom^2`` command-domain clamp."""
         q_safe, dq, acc_clamped = clamp_command_step(
             q_prev,
             self.q_cmd,
@@ -608,36 +530,12 @@ class JointIkController:
             self.limits.a_max,
             dt_nom,
         )
+        self._dq_prev = np.asarray(dq, dtype=float).copy()
         self.q_cmd = np.asarray(q_safe, dtype=float).copy()
-        # Hard-limit park only.  Does not rewrite |Δdq| in free space;
-        # without it a scan can step ~0.1 mm past rail hard_min.
-        dq = self._apply_position_box(q_prev)
-        self._dq_prev = dq.copy()
         period = max(float(dt_int), 1.0e-12)
-        qdot = dq / period
+        qdot = np.asarray(dq, dtype=float) / period
         self.core.qdot_prev = qdot.copy()
         return qdot, bool(acc_clamped)
-
-    def _apply_position_box(self, q_prev: np.ndarray) -> np.ndarray:
-        """Clip the committed command to the hard box without a snap-back qdot.
-
-        A command that is already past a wall parks on the wall (qdot=0).
-        A step that would cross a wall stops on the wall.  Pulling ``q_prev``
-        from 0.782 to 0.78 over ``dt`` would invent −0.4 m/s and is not a
-        legal leave-wall command.
-        """
-        lo = np.asarray(self.limits.q_lower, dtype=float)
-        hi = np.asarray(self.limits.q_upper, dtype=float)
-        q_raw = np.asarray(self.q_cmd, dtype=float)
-        prev = np.asarray(q_prev, dtype=float)
-        q_clip = np.minimum(np.maximum(q_raw, lo), hi)
-        already_lo = prev <= lo
-        already_hi = prev >= hi
-        parked = (already_lo & (q_raw <= lo)) | (already_hi & (q_raw >= hi))
-        q_clip = np.where(parked, np.clip(prev, lo, hi), q_clip)
-        self.q_cmd = q_clip
-        dq = q_clip - prev
-        return np.where(parked, 0.0, dq)
 
     def plan_scan_stroke(
         self,
@@ -743,8 +641,6 @@ class JointIkController:
         self._box_dt_last_t = None
         self._box_h1_last = None
         self._dq_prev = None
-        self._q_meas_raw_prev = None
-        self._q_meas_filt = None
         self._rail_dv_filt = 0.0
         self._direct_joint_ptp = False
         self._plan_drives_rail = False
@@ -753,18 +649,6 @@ class JointIkController:
         self._d_star_nudge_cool_s = 0.0
         self._apply_rail_mode_side_effects()
         self._latch_attractor_from_q(self.q_cmd)
-
-    def _qp_geometry_state(
-        self, q_prev: np.ndarray, q_state: np.ndarray
-    ) -> np.ndarray:
-        """State used for Jacobian / twist map.  Safety stays on ``q_state``."""
-        src = str(getattr(self.cfg, "qp_geometry_source", "cmd") or "cmd")
-        src = src.strip().lower()
-        if src == "cmd":
-            return np.asarray(q_prev, dtype=float)
-        if src == "meas":
-            return np.asarray(q_state, dtype=float)
-        raise ValueError(f"unknown qp_geometry_source {src!r}")
 
     def begin_hybrid_episode(
         self,
@@ -1160,18 +1044,9 @@ class JointIkController:
         q_prev = np.asarray(self.q_cmd, dtype=float).copy()
         if q_meas is None:
             raise ValueError("q_meas is required for every Cartesian QPIK tick")
-        q_raw = np.asarray(q_meas, dtype=float).copy()
-        if q_raw.shape != (self.kin.nv,) or not np.isfinite(q_raw).all():
+        q_state = np.asarray(q_meas, dtype=float).copy()
+        if q_state.shape != (self.kin.nv,) or not np.isfinite(q_state).all():
             raise ValueError(f"q_meas must be a finite {(self.kin.nv,)} vector")
-        q_state, self._q_meas_raw_prev, self._q_meas_filt = filter_q_meas(
-            q_raw,
-            mode=str(getattr(self.cfg, "qmeas_filter", "raw") or "raw"),
-            dt=float(dt),
-            prev_raw=self._q_meas_raw_prev,
-            prev_filt=self._q_meas_filt,
-            lowpass_hz=float(getattr(self.cfg, "qmeas_lowpass_hz", 25.0) or 25.0),
-        )
-        q_geom = self._qp_geometry_state(q_prev, q_state)
         follow_err = float(np.max(np.abs(q_prev - q_state)))
         twist_task = np.asarray(twist, dtype=float).reshape(-1)
         if twist_task.size != 6 or not np.isfinite(twist_task).all():
@@ -1205,19 +1080,19 @@ class JointIkController:
                 )
             )
         else:
-            twist_base = self._twist_to_base(twist_task, q_geom)
+            twist_base = self._twist_to_base(twist_task, q_state)
 
         need_mass = bool(
             self.cfg.qp.use_dyn_nullspace or self.cfg.qp.use_mass_weighted_reg
         )
         if bool(getattr(self.cfg, "qp_use_cpp_kernel", True)):
             J_pre, sigma_values_pre, mass_pre = cpp_kernel.kinematics_snapshot(
-                self.kin, q_geom, need_mass=need_mass
+                self.kin, q_state, need_mass=need_mass
             )
         else:
-            J_pre = self.kin.jacobian(q_geom)
+            J_pre = self.kin.jacobian(q_state)
             sigma_values_pre = self.kin.singular_values(J_pre)
-            mass_pre = self.kin.mass_matrix(q_geom) if need_mass else None
+            mass_pre = self.kin.mass_matrix(q_state) if need_mass else None
         sigma_pre = float(sigma_values_pre.min())
         sigma_arm = float(np.linalg.svd(J_pre[:, 1:], compute_uv=False).min())
         sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
@@ -1519,8 +1394,6 @@ class JointIkController:
                     self._rail_ext_active and self._rail_mode == RailMode.COUPLED
                 ),
             ),
-            # Safety / resync / CBF stay on the measured state.  The task
-            # Jacobian above was built at q_geom (q_cmd when configured).
             q_meas=q_state,
             resync_err=resync_vec,
             rail_locked=locked_hold,
@@ -2186,21 +2059,6 @@ class JointTrackOuterLoop:
 # ---------------------------------------------------------------------------
 # On-robot orchestration
 # ---------------------------------------------------------------------------
-def _set_gil_switch_interval(interval_ms: float) -> bool:
-    """Best-effort ``sys.setswitchinterval``.  Default CPython is 5 ms."""
-    try:
-        ms = float(interval_ms)
-    except (TypeError, ValueError):
-        return False
-    if not math.isfinite(ms) or ms <= 0.0:
-        return False
-    try:
-        sys.setswitchinterval(ms / 1000.0)
-        return True
-    except (ValueError, OverflowError):
-        return False
-
-
 def _set_realtime_priority(priority: int = 80) -> bool:
     """Best-effort SCHED_FIFO for the control thread (needs CAP_SYS_NICE / root)."""
     try:
@@ -2211,56 +2069,15 @@ def _set_realtime_priority(priority: int = 80) -> bool:
         return False
 
 
-def _cpu_is_isolated(cpu: int) -> bool:
-    """True when ``cpu`` appears in ``/sys/devices/system/cpu/isolated``."""
-    try:
-        text = Path("/sys/devices/system/cpu/isolated").read_text(encoding="utf-8")
-    except OSError:
-        return False
-    text = text.strip()
-    if not text:
-        return False
-    wanted = int(cpu)
-    for part in text.split(","):
-        part = part.strip()
-        if not part:
-            continue
-        if "-" in part:
-            lo_s, hi_s = part.split("-", 1)
-            try:
-                lo, hi = int(lo_s), int(hi_s)
-            except ValueError:
-                continue
-            if lo <= wanted <= hi:
-                return True
-        else:
-            try:
-                if int(part) == wanted:
-                    return True
-            except ValueError:
-                continue
-    return False
-
-
 def _pin_control_cpu(cpu: int | None) -> bool:
-    """Pin only when the core is isolated.  Pinning to a shared core hurts."""
+    """Best-effort CPU affinity for the calling thread."""
     if cpu is None:
-        return False
-    if not _cpu_is_isolated(int(cpu)):
         return False
     try:
         os.sched_setaffinity(0, {int(cpu)})
         return True
     except (PermissionError, OSError, AttributeError, ValueError):
         return False
-
-
-def reference_time_step(dt_elapsed_s: float, scale: float) -> float:
-    """Advance ``t_ref`` by the time that actually passed, not ``dt_nom``."""
-    elapsed = float(dt_elapsed_s)
-    if not math.isfinite(elapsed) or elapsed <= 0.0:
-        return 0.0
-    return elapsed * float(scale)
 
 
 class _CStateGuard:
@@ -2323,6 +2140,14 @@ class LoopResult:
     stalled: bool
     stutter_count: int = 0
     stop_reason: str = ""
+
+
+def reference_time_step(dt_elapsed_s: float, scale: float) -> float:
+    """Advance ``t_ref`` by the time that actually passed, not ``dt_nom``."""
+    elapsed = float(dt_elapsed_s)
+    if not math.isfinite(elapsed) or elapsed <= 0.0:
+        return 0.0
+    return elapsed * float(scale)
 
 
 @dataclass
@@ -2480,9 +2305,7 @@ class _TickLogger:
            "physical_contact_reacquire_event",
            "physical_contact_low_timer_s", "physical_contact_high_timer_s",
            "mass_z_eff", "takeover",
-           "dt_actual_s", "deadline_slack_s",
-           "rt_fifo_ok", "cpu_pinned", "cstate_ok",
-           "sensor_age_s", "feedback_age_s",
+           "dt_actual_s", "deadline_slack_s", "sensor_age_s", "feedback_age_s",
            "feedback_fresh_tick",
            "fx_raw_comp", "fy_raw_comp", "fz_raw_comp",
            "vz_achieved_tool", "contact_present",
@@ -2588,9 +2411,6 @@ class _TickLogger:
     def __init__(self, path: str) -> None:
         self._q: queue.SimpleQueue = queue.SimpleQueue()
         self._stop = threading.Event()
-        self.rt_fifo_ok = False
-        self.cpu_pinned = False
-        self.cstate_ok = False
         self._worker = threading.Thread(
             target=self._run,
             args=(path,),
@@ -2997,9 +2817,6 @@ class _TickLogger:
                    if np.isfinite(deadline_slack_s)
                    else ""
                ),
-               int(bool(self.rt_fifo_ok)),
-               int(bool(self.cpu_pinned)),
-               int(bool(self.cstate_ok)),
                f"{sensor_age_s:.6f}",
                f"{feedback_age_s:.6f}", int(bool(feedback_fresh_tick)),
                f"{raw_comp[0]:.3f}", f"{raw_comp[1]:.3f}", f"{raw_comp[2]:.3f}",
@@ -3748,40 +3565,17 @@ def run_joint_admittance_phases(
         inner.reset(q0_rad)
 
         if realtime:
-            gil_ms = float(getattr(inner.cfg, "gil_switch_interval_ms", 0.5) or 0.0)
-            gil_ok = _set_gil_switch_interval(gil_ms)
-            if gil_ok and verbose:
-                print(
-                    f"  GIL switch interval {gil_ms:.2f} ms "
-                    f"(sys.getswitchinterval={1000.0 * sys.getswitchinterval():.2f} ms)",
-                    flush=True,
-                )
-            elif verbose and gil_ms > 0.0:
-                print(
-                    f"  (GIL switch interval {gil_ms:.2f} ms unavailable)",
-                    flush=True,
-                )
-            rt_fifo_ok = _set_realtime_priority()
-            if not rt_fifo_ok and verbose:
-                print(
-                    "  (SCHED_FIFO unavailable — running at normal priority; "
-                    "see scripts/enable_rt.sh)",
-                    flush=True,
-                )
-            pin_cpu = getattr(inner.cfg, "control_cpu", None)
-            cpu_pinned = _pin_control_cpu(pin_cpu)
-            if cpu_pinned and verbose:
-                print(f"  control thread pinned to isolated CPU {pin_cpu}", flush=True)
-            elif verbose and pin_cpu is not None:
-                print(
-                    f"  (CPU {pin_cpu} is not isolated — skip pin; "
-                    "shared-core pin concentrates jitter)",
-                    flush=True,
-                )
-            if logger is not None:
-                logger.rt_fifo_ok = bool(rt_fifo_ok)
-                logger.cpu_pinned = bool(cpu_pinned)
-                logger.cstate_ok = bool(cstate is not None and cstate.active)
+            if not _set_realtime_priority():
+                if verbose:
+                    print("  (SCHED_FIFO unavailable - running at normal priority)", flush=True)
+            if _pin_control_cpu(getattr(inner.cfg, "control_cpu", None)):
+                if verbose:
+                    print(
+                        f"  control thread pinned to CPU {inner.cfg.control_cpu}",
+                        flush=True,
+                    )
+            elif verbose and getattr(inner.cfg, "control_cpu", None) is not None:
+                print("  (CPU affinity unavailable)", flush=True)
 
         def _hold() -> None:
             # watchdog stall action: hold at the last commanded joint state
