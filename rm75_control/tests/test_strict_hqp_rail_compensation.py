@@ -30,6 +30,7 @@ def _controller() -> JointIkController:
         backend="proxqp",
         collision=collision,
         smoothness_weight=np.r_[0.0, np.full(7, 0.15)],
+        rail_task_alpha=0.0,
     )
     cfg = JointIkConfig(control_frame="base", qp=qp, collision=collision)
     controller = JointIkController(RobotKinematics(), cfg)

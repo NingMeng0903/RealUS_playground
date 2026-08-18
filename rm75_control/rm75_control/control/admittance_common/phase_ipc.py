@@ -104,6 +104,14 @@ class SinToolYTaskParams:
     gamepad_rot_rad_s: float = 0.60
     gamepad_deadzone: float = 0.18
     gamepad_device_index: int = -1
+    gamepad_trans_a_max_m_s2: float = 0.8
+    gamepad_rot_a_max_rad_s2: float = 4.0
+    gamepad_hold_v_max_m_s: float = 0.03
+    gamepad_hold_w_max_rad_s: float = 0.20
+    gamepad_hold_deadband_m: float = 0.001
+    gamepad_hold_deadband_rad: float = 0.005
+    gamepad_hold_settle_v_m_s: float = 0.005
+    gamepad_hold_relatch_on_settle: bool = True
 
     @staticmethod
     def optional_move_kp(value) -> float | None:

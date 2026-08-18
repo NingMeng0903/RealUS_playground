@@ -133,6 +133,16 @@ def build_gamepad_vcmd_program(
         dt=float(inner_cfg.dt),
         euler_order=str(inner_cfg.euler_order),
         control_frame=str(inner_cfg.control_frame),
+        trans_a_max_m_s2=float(getattr(params, "gamepad_trans_a_max_m_s2", 0.8)),
+        rot_a_max_rad_s2=float(getattr(params, "gamepad_rot_a_max_rad_s2", 4.0)),
+        hold_v_max_m_s=float(getattr(params, "gamepad_hold_v_max_m_s", 0.03)),
+        hold_w_max_rad_s=float(getattr(params, "gamepad_hold_w_max_rad_s", 0.20)),
+        hold_deadband_m=float(getattr(params, "gamepad_hold_deadband_m", 0.001)),
+        hold_deadband_rad=float(getattr(params, "gamepad_hold_deadband_rad", 0.005)),
+        hold_settle_v_m_s=float(getattr(params, "gamepad_hold_settle_v_m_s", 0.005)),
+        hold_relatch_on_settle=bool(
+            getattr(params, "gamepad_hold_relatch_on_settle", True)
+        ),
     )
     outer = GamepadTwistOuterLoop(pad, twist_cfg)
 

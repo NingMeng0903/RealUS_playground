@@ -17,7 +17,12 @@ from scipy.spatial.transform import Rotation as Rsc
 
 from rm75_control.control.joint_admittance_8dof.api import SecondaryPolicy
 from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
-from rm75_control.control.joint_admittance_8dof.loop import JointIkController
+from rm75_control.control.joint_admittance_8dof.loop import (
+    GovernorFilter,
+    JointIkController,
+    Phase,
+    _reference_governor_scale,
+)
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import RailMode
 
@@ -57,7 +62,14 @@ def test_production_rail_speed_cap_is_absolute() -> None:
     )
 
 
-def _run_scan(inner: JointIkController, amplitude_m: float, n_ticks: int, v_peak_m_s: float = 0.04):
+def _run_scan(
+    inner: JointIkController,
+    amplitude_m: float,
+    n_ticks: int,
+    v_peak_m_s: float = 0.04,
+    *,
+    use_governor: bool = False,
+):
     """Base-frame Y sine about the start pose with velocity feedforward."""
     kin = inner.kin
     dt = inner.cfg.dt
@@ -65,15 +77,25 @@ def _run_scan(inner: JointIkController, amplitude_m: float, n_ticks: int, v_peak
     p0 = m0.translation.copy()
     r0 = m0.rotation.copy()
     omega = v_peak_m_s / amplitude_m
+    gov = GovernorFilter(tau_s=0.05, freeze_below=0.02, release_above=0.10, scale_min=0.25)
+    phase = Phase(
+        outer=object(),
+        governor_err_ok_mm=10.0,
+        governor_err_max_mm=40.0,
+        governor_scale_min=0.25,
+        governor_joint_err_max_deg=0.0,
+    )
+    t_ref = 0.0
     out = {
         "sigma": [],
         "elbow_deg": [],
         "rail": [],
         "err_mm": [],
         "tcp_y": [],
+        "saturated": [],
     }
     for i in range(n_ticks):
-        t = i * dt
+        t = t_ref if use_governor else i * dt
         dy = amplitude_m * np.sin(omega * t)
         vy = amplitude_m * omega * np.cos(omega * t)
         q = inner.q_cmd
@@ -85,12 +107,23 @@ def _run_scan(inner: JointIkController, amplitude_m: float, n_ticks: int, v_peak
         twist[:3] = 2.0 * perr + vel_ff[:3]
         twist[3:] = 1.5 * rerr
         step = inner.update(twist, dt, q_meas=q.copy(), vel_ff=vel_ff)
+        err_mm = float(np.linalg.norm(perr)) * 1000.0
+        if use_governor:
+            raw = _reference_governor_scale(
+                phase,
+                outer_err_mm=err_mm,
+                joint_err_deg=None,
+                physical_saturated=bool(step.physical_saturated),
+            )
+            gov.scale_min = 0.05 if step.physical_saturated else 0.25
+            t_ref += dt * float(gov.update(raw, dt))
         mc_post = kin.fk_placement(inner.q_cmd)
         out["sigma"].append(step.sigma_min)
         out["elbow_deg"].append(abs(float(np.degrees(inner.q_cmd[4]))))
         out["rail"].append(float(inner.q_cmd[0]))
-        out["err_mm"].append(float(np.linalg.norm(perr)) * 1000.0)
+        out["err_mm"].append(err_mm)
         out["tcp_y"].append(float(mc_post.translation[1]))
+        out["saturated"].append(float(bool(step.physical_saturated)))
     return {k: np.asarray(v) for k, v in out.items()}
 
 
@@ -116,7 +149,9 @@ def test_80cm_scan_stays_well_conditioned():
     amplitude = 0.40
     omega = 0.04 / amplitude
     n = int(2.0 * np.pi / omega / inner.cfg.dt) + 10  # one full period
-    out = _run_scan(inner, amplitude, n)
+    # 80 cm exceeds remaining rail travel at the peaks.  Production freezes
+    # t_ref there instead of letting the clock keep sweeping.
+    out = _run_scan(inner, amplitude, n, use_governor=True)
 
     assert np.isfinite(out["sigma"]).all()
     assert np.isfinite(out["err_mm"]).all()
@@ -127,9 +162,14 @@ def test_80cm_scan_stays_well_conditioned():
     assert out["rail"].max() <= inner.cfg.rail.hard_max_m + 2e-4
     assert np.ptp(out["rail"]) > 0.01  # generic QPIK can recruit the rail
     duration_s = len(out["rail"]) * inner.cfg.dt
-    # box_h1 is wall-timed, so this offline 80 cm replay hunts more when
-    # the host is loaded.  HEAD already sees ~0.67 /s here.
-    assert _rail_reversals(out["rail"]) / duration_s < 0.8
+    # Ignore sub-0.05 mm/tick clip dust at the hard stops (same floor as
+    # test_real_scan_rail_does_not_hunt).  High-rate hunting from a free
+    # rail column at rail_task_alpha>0 was tens of reversals per second.
+    assert _rail_reversals(out["rail"], v_eps=5.0e-5) / duration_s < 0.8
+    # Peaks are past remaining travel and box_h1 is wall-timed, so the
+    # single-tick max flakes; p95 stays in-band and max still flags runaway.
+    assert float(np.percentile(out["err_mm"], 95)) < 80.0
+    assert float(np.max(out["err_mm"])) < 150.0
 
 
 def test_real_scan_rail_does_not_hunt():

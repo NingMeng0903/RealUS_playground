@@ -29,6 +29,7 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_lock import RailLockC
 from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedStyle, RailMode
 from rm75_control.control.joint_admittance_8dof.tasks.ird_adapter import IrdConfig
 from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import PsiRetargetConfig
+from rm75_control.control.joint_admittance_8dof.saturation_latch import SaturationConfig
 
 
 def _mapping(value, *, name: str) -> dict:
@@ -193,7 +194,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             "sigma_setbased", "branch_barrier", "joint_comfort",
             "smoothness_weight", "near_arm_margin_rad",
             "j_max_arm_rad_s3", "j_max_rail_m_s3",
-            "use_cpp_kernel",
+            "use_cpp_kernel", "rail_task_alpha",
         },
         name="inner.qp",
     )
@@ -421,6 +422,60 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         j_max_rail_m_s3=_finite_float(
             c.get("j_max_rail_m_s3", 3.0), name="inner.qp.j_max_rail_m_s3"
         ),
+        rail_task_alpha=float(
+            np.clip(
+                _finite_float(
+                    c.get("rail_task_alpha", 0.07),
+                    name="inner.qp.rail_task_alpha",
+                ),
+                0.0,
+                1.0,
+            )
+        ),
+    )
+
+
+def _parse_saturation(raw) -> SaturationConfig:
+    s = _mapping(raw, name="inner.saturation")
+    _reject_unknown(
+        s,
+        {
+            "slack_enter", "slack_exit", "dwell_s", "rail_margin_m",
+            "branch_margin_rad", "secondary_scale", "secondary_scale_tau_s",
+            "crawl_floor", "freeze_timeout_s", "stall_improve_mm",
+        },
+        name="inner.saturation",
+    )
+    enter = _finite_float(s.get("slack_enter", 0.03), name="saturation.slack_enter")
+    exit_ = _finite_float(s.get("slack_exit", 0.015), name="saturation.slack_exit")
+    if exit_ > enter:
+        raise ValueError("inner.saturation.slack_exit must be <= slack_enter")
+    return SaturationConfig(
+        slack_enter=enter,
+        slack_exit=exit_,
+        dwell_s=_finite_float(s.get("dwell_s", 0.15), name="saturation.dwell_s"),
+        rail_margin_m=_finite_float(
+            s.get("rail_margin_m", 0.010), name="saturation.rail_margin_m"
+        ),
+        branch_margin_rad=_finite_float(
+            s.get("branch_margin_rad", 0.035), name="saturation.branch_margin_rad"
+        ),
+        secondary_scale=_finite_float(
+            s.get("secondary_scale", 0.15), name="saturation.secondary_scale"
+        ),
+        secondary_scale_tau_s=_finite_float(
+            s.get("secondary_scale_tau_s", 0.10),
+            name="saturation.secondary_scale_tau_s",
+        ),
+        crawl_floor=_finite_float(
+            s.get("crawl_floor", 0.05), name="saturation.crawl_floor"
+        ),
+        freeze_timeout_s=_finite_float(
+            s.get("freeze_timeout_s", 9.0), name="saturation.freeze_timeout_s"
+        ),
+        stall_improve_mm=_finite_float(
+            s.get("stall_improve_mm", 1.0), name="saturation.stall_improve_mm"
+        ),
     )
 
 
@@ -437,7 +492,7 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
     q_nominal_deg = n.get("q_nominal_deg")
     m = _mapping(n.get("manipulability"), name="inner.nullspace.manipulability")
     _reject_unknown(
-        m, {"k_mu", "eps_rad", "sigma_fade_ref", "grad_period_ticks"},
+        m, {"k_mu", "eps_rad", "sigma_fade_ref", "grad_period_ticks", "qdot_tau_s"},
         name="inner.nullspace.manipulability",
     )
     nullspace = NullspaceTaskConfig(
@@ -464,6 +519,9 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
             m.get("sigma_fade_ref", 0.12), name="manipulability.sigma_fade_ref"
         ),
         grad_period_ticks=max(1, int(m.get("grad_period_ticks", 10))),
+        qdot_tau_s=_finite_float(
+            m.get("qdot_tau_s", 0.05), name="manipulability.qdot_tau_s"
+        ),
     )
     return nullspace, manipulability
 
@@ -960,7 +1018,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             "qp", "collision", "nullspace", "arm_angle", "rail_extension", "rail",
             "psi_retarget", "ird",
             "nullspace_d_null", "nullspace_d_null_adaptive", "nullspace_max_qdot_frac",
-            "post_qp_step_clamp",
+            "post_qp_step_clamp", "saturation",
         },
         name="inner",
     )
@@ -1104,6 +1162,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             name="inner.nullspace_max_qdot_frac",
         ),
         post_qp_step_clamp=bool(inner.get("post_qp_step_clamp", True)),
+        saturation=_parse_saturation(inner.get("saturation")),
     )
     assert_design_attractor_consistent(cfg)
     return cfg

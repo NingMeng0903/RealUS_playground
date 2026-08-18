@@ -180,10 +180,16 @@ def build_cbf_rows(
     # explicitly proves that fact with ``kinematics_ready``.  Direct callers
     # default to CollisionModel's self-contained kinematics path.
     snapshot_ready = bool(kinematics_ready)
+    # Same keep-band the tracker uses: skip HPP-FCL on pairs whose sphere
+    # lower bound is already outside the CBF activation+hysteresis window.
+    keep_band = float(cfg.d_activate) + (
+        float(tracker.hyst_m) if tracker is not None else 0.0
+    )
     collision.update(
         q_rad,
         kinematic_data=kin.data if snapshot_ready else None,
         kinematics_ready=snapshot_ready,
+        distance_threshold=keep_band,
     )
     jacobian_data = kin.data if snapshot_ready else collision._kin_data  # noqa: SLF001
     raw_pairs = collision.active_pairs(cfg.d_activate + (tracker.hyst_m if tracker else 0.0))

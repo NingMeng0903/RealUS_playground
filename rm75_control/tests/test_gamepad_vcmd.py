@@ -29,6 +29,7 @@ from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
     GamepadTwistOuterLoop,
     compose_inner_twist,
     map_pad_to_world_lin_tool_ang,
+    slew_vec,
 )
 from rm75_control.control.joint_admittance_8dof.teleop.xbox_pad import FakePad, PadState
 
@@ -165,7 +166,8 @@ def test_logger_records_pad_and_vcmd(tmp_path) -> None:
     )
     pose = np.array([0.4, 0.2, 0.3, 0.0, 0.0, 0.0])
     twist = outer.sample(0.0, pose, np.zeros(6))
-    assert twist[1] > 0.05
+    assert twist[1] > 0.0
+    assert outer.last_twist_slewed
     path = tmp_path / "gamepad_vcmd.csv"
     logger = _TickLogger(str(path))
     step = JointIkStep(
@@ -188,8 +190,9 @@ def test_logger_records_pad_and_vcmd(tmp_path) -> None:
     assert "pad_lx" in header
     assert float(values["pad_lx"]) == pytest.approx(-1.0)
     assert float(values["pad_vy"]) > 0.05
-    assert float(values["pad_vcmd_base_vy"]) > 0.05
+    assert float(values["pad_vcmd_base_vy"]) > 0.0
     assert values["pad_connected"] == "1"
+    assert values["pad_twist_slewed"] == "1"
 
 
 def test_idle_sample_latches_pose_d_and_rebases_on_stick() -> None:
@@ -207,8 +210,10 @@ def test_idle_sample_latches_pose_d_and_rebases_on_stick() -> None:
     assert float(np.linalg.norm(twist[:3])) > 0.0
     assert twist[1] < 0.0
     pad.axes = np.array([-1.0, 0.0, -1.0, 0.0, 0.0, -1.0])
-    twist_go = outer.sample(0.0, drifted, np.zeros(6))
-    assert twist_go[1] > 0.05
+    twist_go = np.zeros(6)
+    for _ in range(8):
+        twist_go = outer.sample(0.0, drifted, np.zeros(6))
+    assert twist_go[1] > 0.0
     assert outer.last_pose_d[1] == pytest.approx(
         drifted[1] + twist_go[1] * outer.cfg.dt
     )

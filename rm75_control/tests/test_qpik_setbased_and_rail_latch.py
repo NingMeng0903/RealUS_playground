@@ -349,7 +349,7 @@ def test_secondary_composer_adds_manip_to_centering() -> None:
     )
 
     class _FakeManip:
-        def __call__(self, q, sigma_min=1.0, exclude_rail=True):
+        def __call__(self, q, sigma_min=1.0, exclude_rail=True, dt_s=None):
             out = np.zeros_like(q)
             out[2] = 0.5
             return out

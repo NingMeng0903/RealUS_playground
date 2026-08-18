@@ -84,6 +84,12 @@ class SecondaryComposer:
         self.max_qdot_frac = float(max_qdot_frac)
         self.last_limit_activation: float = 0.0
         self.last_arm_smooth: float = 1.0
+        self.last_centering_norm: float = 0.0
+        self.last_manip_norm: float = 0.0
+        self.last_arm_angle_norm: float = 0.0
+        self.last_damping_norm: float = 0.0
+        self.last_rail_lock_norm: float = 0.0
+        self.last_soft_scale: float = 1.0
 
     @classmethod
     def from_controller_parts(
@@ -134,6 +140,8 @@ class SecondaryComposer:
         centering_suppressed: bool = False,
         manipulability_active: bool = False,
         centering_sigma_fade: bool = True,
+        soft_scale: float = 1.0,
+        dt_s: float | None = None,
     ) -> np.ndarray:
         q = np.asarray(q_rad, dtype=float)
         cfg = self.centering.cfg
@@ -146,14 +154,24 @@ class SecondaryComposer:
         self.last_limit_activation = u_max
 
         qdot_soft = np.zeros_like(q)
+        qdot_center = np.zeros_like(q)
+        qdot_mu = np.zeros_like(q)
+        qdot_lock = np.zeros_like(q)
+        qdot_damp = np.zeros_like(q)
         rail_hold = self.rail_lock is not None and self.rail_lock.active
         # Lillo dual soft layer: q* centering stays on; manipulability ADDS when
         # active (never XOR-replaces the attractor — that forgot the branch).
         if not centering_suppressed:
-            qdot_soft = self.centering(q)
+            qdot_center = np.asarray(self.centering(q), dtype=float)
+            qdot_soft = qdot_center
         if manipulability_active and self.manipulability is not None:
             # Rail is a base translation: always exclude from manip push.
-            qdot_mu = self.manipulability(q, sigma_min=sigma_min, exclude_rail=True)
+            qdot_mu = np.asarray(
+                self.manipulability(
+                    q, sigma_min=sigma_min, exclude_rail=True, dt_s=dt_s
+                ),
+                dtype=float,
+            )
             sig_ref = max(float(sigma_ref), 1e-6)
             alpha = 1.0
             if sigma_min < sig_ref:
@@ -161,13 +179,19 @@ class SecondaryComposer:
                 alpha = 1.0 + (1.0 - float(sigma_min) / sig_ref)
             qdot_soft = qdot_soft + float(alpha) * qdot_mu
         if rail_hold:
-            qdot_soft = qdot_soft + self.rail_lock(q)
+            qdot_lock = np.asarray(self.rail_lock(q), dtype=float)
+            qdot_soft = qdot_soft + qdot_lock
 
         d_eff = self.d_null
         if self.adaptive_d_null_gain > 0.0 and u_max > 0.0:
             d_eff = d_eff * (1.0 + self.adaptive_d_null_gain * u_max)
         if d_eff > 0.0 and qdot_prev is not None:
-            qdot_soft = qdot_soft - d_eff * np.asarray(qdot_prev, dtype=float)
+            qdot_damp = d_eff * np.asarray(qdot_prev, dtype=float)
+            qdot_soft = qdot_soft - qdot_damp
+        self.last_centering_norm = float(np.linalg.norm(qdot_center))
+        self.last_manip_norm = float(np.linalg.norm(qdot_mu))
+        self.last_rail_lock_norm = float(np.linalg.norm(qdot_lock))
+        self.last_damping_norm = float(np.linalg.norm(qdot_damp))
 
         # Per-joint magnitude cap on the soft tasks (see module docstring).
         if self.v_max is not None and self.max_qdot_frac > 0.0:
@@ -189,16 +213,22 @@ class SecondaryComposer:
             qdot_soft = scaled
 
         qdot0 = qdot_soft
+        qdot_arm = np.zeros_like(q)
         if self.arm_task is not None and not arm_suppressed:
             w_arm = self._arm_weight(u_max)
             if w_arm > 0.0:
-                qdot_arm = self.arm_task(q)
+                qdot_arm = np.asarray(self.arm_task(q), dtype=float)
                 self.last_arm_smooth = w_arm * float(self.arm_task.last_singularity_smooth)
                 qdot0 = qdot0 + w_arm * qdot_arm
             else:
                 self.last_arm_smooth = 0.0
         else:
             self.last_arm_smooth = 1.0 if self.arm_task is None else 0.0
+        self.last_arm_angle_norm = float(np.linalg.norm(qdot_arm))
+
+        scale = float(np.clip(soft_scale, 0.0, 1.0)) if np.isfinite(soft_scale) else 1.0
+        self.last_soft_scale = scale
+        qdot0 = qdot0 * scale
 
         if qdot_ff is not None:
             qdot0 = qdot0 + np.asarray(qdot_ff, dtype=float)

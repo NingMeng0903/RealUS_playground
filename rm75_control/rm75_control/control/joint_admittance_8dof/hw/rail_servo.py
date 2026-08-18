@@ -2526,6 +2526,7 @@ class RailServoBridge:
         standstill_held = False
         standstill_enter_since: float | None = None
         last_bias = int(getattr(self._drive, "_counts_bias", 0) or 0)
+        last_di_mask = 0
         next_t = time.monotonic()
         di_streak = 0
         enc_history: deque[tuple[float, float]] = deque(maxlen=8)
@@ -2619,7 +2620,15 @@ class RailServoBridge:
                     hard_hold_this_tick = True
 
                 t_read0 = time.monotonic()
-                drive_rpm, drive_m, di_mask = self._drive.read_motion_and_di_fast()
+                limit_every = max(1, int(self.config.limit_poll_every))
+                poll_di = (self._limit_poll_i % limit_every) == 0
+                self._limit_poll_i += 1
+                if poll_di:
+                    drive_rpm, drive_m, di_mask = self._drive.read_motion_and_di_fast()
+                    last_di_mask = int(di_mask)
+                else:
+                    drive_rpm, drive_m = self._drive.read_motion_fast()
+                    di_mask = int(last_di_mask)
                 t_read1 = time.monotonic()
                 t_read_ms = (t_read1 - t_read0) * 1000.0
                 n_modbus = 1

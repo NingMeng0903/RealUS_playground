@@ -214,6 +214,22 @@ def test_leave_wall_is_not_reduced() -> None:
     assert float(lo_env[0]) == pytest.approx(-0.15, abs=1e-9)
 
 
+def test_accel_box_cannot_reopen_leading_wall() -> None:
+    """Cruise + lagging encoder must not keep ~vmax after q_cmd is at 780."""
+    box = _rail_box(a_max=0.60, reaction_s=0.0, band=_BAND, v_max=0.15)
+    q = np.zeros(8)
+    q[0] = 0.773
+    q_cmd = q.copy()
+    q_cmd[0] = 0.779
+    qdot_prev = np.zeros(8)
+    qdot_prev[0] = 0.12
+    lo, hi = box.bounds(
+        q, _DT, qdot_prev=qdot_prev, q_meas=q, q_cmd=q_cmd
+    )
+    assert float(hi[0]) <= (0.78 - 0.779) / _DT + 1.0e-9
+    assert float(lo[0]) <= float(hi[0]) + 1.0e-12
+
+
 def test_overshoot_kills_into_wall_not_leave() -> None:
     lo, hi = _bounds(0.782)
     assert float(hi[0]) == pytest.approx(0.0, abs=1e-9)

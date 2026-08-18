@@ -36,6 +36,7 @@ def test_rail_execution_estimate_uses_true_age_up_to_two_polls() -> None:
     assert estimate.age_s == pytest.approx(0.04)
     assert estimate.extrapolation_age_s == pytest.approx(0.04)
     assert estimate.velocity_m_s == pytest.approx(0.072)
+    assert estimate.predicted_position_m == pytest.approx(0.401 + 0.072 * 0.04)
     assert estimate.command_mode == "coupled_velocity"
     capped = _rail_execution_velocity_estimate(
         _Bridge(feedback), now_s=10.08, freshness_s=0.10
@@ -44,6 +45,7 @@ def test_rail_execution_estimate_uses_true_age_up_to_two_polls() -> None:
     assert capped.age_s == pytest.approx(0.08)
     assert capped.extrapolation_age_s == pytest.approx(0.05)
     assert capped.velocity_m_s == pytest.approx(0.08)
+    assert capped.predicted_position_m == pytest.approx(0.401 + 0.08 * 0.05)
 
 
 def test_rail_execution_estimate_coasts_stale_feedback() -> None:
@@ -63,6 +65,7 @@ def test_rail_execution_estimate_coasts_stale_feedback() -> None:
     assert estimate.extrapolation_age_s == pytest.approx(0.05)
     assert estimate.position_m == pytest.approx(0.401)
     assert estimate.velocity_m_s == pytest.approx(0.04)
+    assert estimate.predicted_position_m == pytest.approx(0.401 + 0.04 * 0.05)
 
 
 def test_rail_execution_estimate_skips_startup_before_first_sample() -> None:

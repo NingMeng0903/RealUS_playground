@@ -199,20 +199,25 @@ class VelocityBoxConstraints:
 
         p_lo = (lim.q_lower + m - q) / dt
         p_hi = (lim.q_upper - m - q) / dt
-        # Rail hard box: past 5/780, one-tick look-ahead would require
-        # returning by Δq/dt in a single period (reverse kick / chatter).
-        # Kill into-wall only; leave stays open.
+        # Rail hard box uses the leading state (command or meas).  A lagging
+        # encoder must not keep the outbound door open after q_cmd has
+        # already reached 5/780.  Past the wall, kill into-wall only;
+        # leave stays open (no reverse kick of Δq/dt).
         rail_lo = float(lim.q_lower[0] + m[0])
         rail_hi = float(lim.q_upper[0] - m[0])
-        if q[0] < rail_lo:
+        p_lo[0] = (rail_lo - q_rail_lo) / dt
+        p_hi[0] = (rail_hi - q_rail_hi) / dt
+        if q_rail_lo < rail_lo:
             p_lo[0] = min(float(p_lo[0]), 0.0)
-        if q[0] > rail_hi:
+        if q_rail_hi > rail_hi:
             p_hi[0] = max(float(p_hi[0]), 0.0)
         lo = np.maximum(lo, p_lo)
         hi = np.minimum(hi, p_hi)
         lo, hi = collapse_interval(
             lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
         )
+        rail_lo_cap = float(lo[0])
+        rail_hi_cap = float(hi[0])
 
         if a_max is not None and qdot_prev is not None:
             qdot_prev = np.asarray(qdot_prev, dtype=float)
@@ -247,6 +252,22 @@ class VelocityBoxConstraints:
             lo, hi = collapse_interval(
                 lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
             )
+
+        # Accel/jerk must not reopen an outbound rail door the damper or
+        # one-tick box already closed.  Cruise into the last centimetres
+        # otherwise keeps ~vmax and the carriage hits the limit DI.
+        if dt > 0.0:
+            remain_hi = rail_hi - q_rail_hi
+            remain_lo = q_rail_lo - rail_lo
+            out_cap = 0.0 if remain_hi <= 0.0 else remain_hi / dt
+            in_cap = 0.0 if remain_lo <= 0.0 else -remain_lo / dt
+            hi[0] = min(float(hi[0]), float(rail_hi_cap), out_cap)
+            lo[0] = max(float(lo[0]), float(rail_lo_cap), in_cap)
+            if lo[0] > hi[0]:
+                if qdot_prev is not None and float(qdot_prev[0]) >= 0.0:
+                    lo[0] = hi[0]
+                else:
+                    hi[0] = lo[0]
 
         # Command lead is an anti-windup envelope, not a physical joint limit.
         # Start braking before |q_cmd-q_meas| reaches ``resync_err``.  If stale

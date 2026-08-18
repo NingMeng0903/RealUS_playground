@@ -719,6 +719,19 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.qp.branch_barrier.dwell_free_s == pytest.approx(0.3)
     assert cfg.qp.branch_barrier.dwell_ramp_s == pytest.approx(1.0)
     assert cfg.qp.branch_barrier.dwell_scale_max == pytest.approx(5.0)
+    assert cfg.saturation.slack_enter == pytest.approx(0.03)
+    assert cfg.saturation.slack_exit == pytest.approx(0.015)
+    assert cfg.saturation.dwell_s == pytest.approx(0.15)
+    assert cfg.saturation.rail_margin_m == pytest.approx(0.010)
+    assert cfg.saturation.branch_margin_rad == pytest.approx(0.035)
+    assert cfg.saturation.secondary_scale == pytest.approx(0.15)
+    assert cfg.saturation.secondary_scale_tau_s == pytest.approx(0.10)
+    assert cfg.saturation.crawl_floor == pytest.approx(0.05)
+    assert cfg.saturation.freeze_timeout_s == pytest.approx(9.0)
+    assert cfg.saturation.stall_improve_mm == pytest.approx(1.0)
+    assert cfg.qp.rail_task_alpha == pytest.approx(0.07)
+    assert cfg.manipulability.qdot_tau_s == pytest.approx(0.05)
+    assert cfg.manipulability.grad_period_ticks == 10
     assert cfg.qp.aniso_task_damping is True
     assert not hasattr(cfg.qp, "wln")
     assert not hasattr(cfg.qp, "sns_retry_scales")
@@ -867,6 +880,22 @@ def test_wbc_log_header_has_rail_cmd_meas_err() -> None:
         "rail_fa24_write_mono_ns",
         "rail_encoder_sample_mono_ns",
         "arm_qdot_target_wall_json",
+        "physical_saturated",
+        "sat_near_arm",
+        "sat_near_rail",
+        "sat_near_branch",
+        "sat_slack_over",
+        "sat_secondary_scale",
+        "rail_task_alpha",
+        "rail_margin_escape_active",
+        "governor_freeze_s",
+        "pad_twist_slewed",
+        "governor_scale_raw",
+        "qpik_nullspace_centering_norm",
+        "qpik_nullspace_manip_norm",
+        "qpik_nullspace_arm_angle_norm",
+        "qpik_nullspace_damping_norm",
+        "qpik_nullspace_rail_lock_norm",
     ):
         assert name in header
     assert len(header) == len(set(header))

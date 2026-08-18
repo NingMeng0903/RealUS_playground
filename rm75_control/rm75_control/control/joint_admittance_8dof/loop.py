@@ -72,6 +72,13 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import (
     LockedStyle,
     RailMode,
 )
+from rm75_control.control.joint_admittance_8dof.saturation_latch import (
+    SaturationConfig,
+    SaturationFlags,
+    SaturationLatch,
+    predict_rail_position_m,
+    secondary_scale_from_slack,
+)
 from rm75_control.control.joint_admittance_8dof.tasks.secondary_composer import SecondaryComposer
 from rm75_control.control.joint_admittance_8dof.utils.safety import (
     SafetyLimits,
@@ -151,6 +158,7 @@ class JointIkConfig:
     # Post-QP |Δdq| <= a_max * dt_nom^2.  Default on matches e8220b8.
     # A/B only flips this; False still updates qdot_prev from the sent step.
     post_qp_step_clamp: bool = True
+    saturation: SaturationConfig = field(default_factory=SaturationConfig)
 
 
 @dataclass
@@ -185,6 +193,19 @@ class JointIkStep:
     wrist_open_rad: float = float("nan")
     family_ok: bool = True
     physical_saturated: bool = False
+    sat_near_arm: bool = False
+    sat_near_rail: bool = False
+    sat_near_branch: bool = False
+    sat_slack_over: bool = False
+    sat_secondary_scale: float = 1.0
+    rail_task_alpha: float = 0.0
+    rail_margin_escape_active: bool = False
+    governor_freeze_s: float = 0.0
+    nullspace_centering_norm: float = float("nan")
+    nullspace_manip_norm: float = float("nan")
+    nullspace_arm_angle_norm: float = float("nan")
+    nullspace_damping_norm: float = float("nan")
+    nullspace_rail_lock_norm: float = float("nan")
     rail_contrib_m_s: float = float("nan")
     arm_contrib_m_s: float = float("nan")
     rail_motion_share: float = float("nan")
@@ -465,6 +486,11 @@ class JointIkController:
         self._plan_drives_rail: bool = False
         self._direct_joint_ptp: bool = False
         self._last_post_step: dict = {}
+        self._sat_latch = SaturationLatch(self.cfg.saturation)
+        self._last_sat_flags = SaturationFlags()
+        self.last_slack_norm: float = 0.0
+        self._sat_scale: float = 1.0
+        self.last_sat_scale: float = 1.0
         self._apply_rail_mode_side_effects()
 
     @property
@@ -579,6 +605,63 @@ class JointIkController:
             "qdot_committed": qdot_committed.copy(),
         }
         return qdot_committed, bool(clamp_applied)
+
+    def _clip_rail_hard_stop(
+        self,
+        q_prev: np.ndarray,
+        qdot_out: np.ndarray,
+        dt: float,
+        qdot_pre_commit: np.ndarray | None = None,
+    ) -> np.ndarray:
+        """Keep the published rail inside the hard box and stop outbound motion.
+
+        The QP accel box can refuse to brake a cruise, and a limiter-restore
+        can re-integrate q_cmd past 5/780.  Either path drives the servo
+        into the limit DI.  This is a last-gate publication clip.
+        """
+        lo0 = float(self.limits.q_lower[0])
+        hi0 = float(self.limits.q_upper[0])
+        qdot_out = np.asarray(qdot_out, dtype=float).copy()
+        dt_s = max(float(dt), 1.0e-9)
+        q_prev0 = float(q_prev[0])
+        q_cmd0 = float(self.q_cmd[0])
+        lead_hi = max(q_prev0, q_cmd0)
+        lead_lo = min(q_prev0, q_cmd0)
+        pre0 = (
+            float(qdot_pre_commit[0])
+            if qdot_pre_commit is not None
+            else float(qdot_out[0])
+        )
+        if lead_hi < hi0 - 1.0e-12:
+            qdot_out[0] = min(float(qdot_out[0]), (hi0 - lead_hi) / dt_s)
+        else:
+            qdot_out[0] = min(float(qdot_out[0]), 0.0)
+        if lead_lo > lo0 + 1.0e-12:
+            qdot_out[0] = max(float(qdot_out[0]), (lo0 - lead_lo) / dt_s)
+        else:
+            qdot_out[0] = max(float(qdot_out[0]), 0.0)
+        if q_prev0 > hi0:
+            self.q_cmd[0] = hi0
+            if pre0 >= -1.0e-6:
+                qdot_out[0] = 0.0
+        elif q_prev0 < lo0:
+            self.q_cmd[0] = lo0
+            if pre0 <= 1.0e-6:
+                qdot_out[0] = 0.0
+        else:
+            self.q_cmd[0] = float(
+                np.clip(q_prev0 + float(qdot_out[0]) * dt_s, lo0, hi0)
+            )
+            if self.q_cmd[0] >= hi0 - 1.0e-12:
+                qdot_out[0] = min(float(qdot_out[0]), 0.0)
+            if self.q_cmd[0] <= lo0 + 1.0e-12:
+                qdot_out[0] = max(float(qdot_out[0]), 0.0)
+        self.core.qdot_prev = np.asarray(self.core.qdot_prev, dtype=float).copy()
+        self.core.qdot_prev[0] = float(qdot_out[0])
+        if self._dq_prev is not None:
+            self._dq_prev = np.asarray(self._dq_prev, dtype=float).copy()
+            self._dq_prev[0] = float(qdot_out[0]) * dt_s
+        return qdot_out
 
     def _attach_post_qp_ab(
         self,
@@ -736,6 +819,13 @@ class JointIkController:
         self._press_stall_s = 0.0
         self._d_star_nudge_cool_s = 0.0
         self._last_post_step = {}
+        self._sat_latch.reset()
+        self._last_sat_flags = SaturationFlags()
+        self.last_slack_norm = 0.0
+        self._sat_scale = 1.0
+        self.last_sat_scale = 1.0
+        if self.manipulability_task is not None and hasattr(self.manipulability_task, "reset"):
+            self.manipulability_task.reset()
         self._apply_rail_mode_side_effects()
         self._latch_attractor_from_q(self.q_cmd)
 
@@ -824,7 +914,19 @@ class JointIkController:
         *,
         manipulability_active: bool | None = None,
         centering_sigma_fade: bool = True,
+        dt_s: float | None = None,
     ) -> np.ndarray:
+        slack = float(self.last_slack_norm)
+        target = secondary_scale_from_slack(slack, self.cfg.saturation)
+        dt = float(self.cfg.dt if dt_s is None else dt_s)
+        tau = float(getattr(self.cfg.saturation, "secondary_scale_tau_s", 0.10) or 0.0)
+        if tau <= 1.0e-9 or dt <= 0.0:
+            sat_scale = target
+        else:
+            alpha = min(1.0, dt / tau)
+            sat_scale = float(self._sat_scale) + alpha * (target - float(self._sat_scale))
+        self._sat_scale = float(sat_scale)
+        self.last_sat_scale = float(sat_scale)
         qdot0 = self.secondary.compose(
             q,
             qdot_ff,
@@ -839,9 +941,50 @@ class JointIkController:
                 if manipulability_active is None
                 else manipulability_active
             ),
+            soft_scale=sat_scale,
+            dt_s=float(self.cfg.dt if dt_s is None else dt_s),
         )
         self.last_secondary_norm = float(np.linalg.norm(qdot0))
         return qdot0
+
+    def _refresh_saturation(self, q_now: np.ndarray, slack_norm: float, dt_s: float) -> SaturationFlags:
+        eps = float(getattr(self.cfg.qp.branch_barrier, "eps_rad", 0.35))
+        flags = self._sat_latch.update(
+            q_cmd=q_now,
+            q_lower=self.limits.q_lower,
+            q_upper=self.limits.q_upper,
+            rail_soft_min_m=float(self.limits.rail_soft_min_m),
+            rail_soft_max_m=float(self.limits.rail_soft_max_m),
+            near_arm_margin_rad=float(getattr(self.cfg.qp, "near_arm_margin_rad", 0.08)),
+            branch_eps_rad=eps,
+            slack_norm=float(slack_norm),
+            dt_s=float(dt_s),
+        )
+        self._last_sat_flags = flags
+        self.last_slack_norm = float(slack_norm) if np.isfinite(slack_norm) else 0.0
+        return flags
+
+    def _attach_saturation(self, step: JointIkStep) -> JointIkStep:
+        flags = self._last_sat_flags
+        step.physical_saturated = bool(flags.cannot_follow)
+        step.sat_near_arm = bool(flags.near_arm)
+        step.sat_near_rail = bool(flags.near_rail)
+        step.sat_near_branch = bool(flags.near_branch)
+        step.sat_slack_over = bool(flags.slack_over)
+        step.sat_secondary_scale = float(self.last_sat_scale)
+        step.rail_task_alpha = float(
+            getattr(self.core, "last_rail_task_alpha", getattr(self.cfg.qp, "rail_task_alpha", 0.0))
+        )
+        step.rail_margin_escape_active = bool(
+            self.rail_ext_task is not None
+            and getattr(self.rail_ext_task, "last_margin_escape_active", False)
+        )
+        step.nullspace_centering_norm = float(self.secondary.last_centering_norm)
+        step.nullspace_manip_norm = float(self.secondary.last_manip_norm)
+        step.nullspace_arm_angle_norm = float(self.secondary.last_arm_angle_norm)
+        step.nullspace_damping_norm = float(self.secondary.last_damping_norm)
+        step.nullspace_rail_lock_norm = float(self.secondary.last_rail_lock_norm)
+        return step
 
     def _clip_qdot_to_box(
         self,
@@ -1503,6 +1646,7 @@ class JointIkController:
                 centering_sigma_fade=not (
                     self._rail_ext_active and self._rail_mode == RailMode.COUPLED
                 ),
+                dt_s=dt,
             ),
             q_meas=q_state,
             resync_err=resync_vec,
@@ -1553,8 +1697,12 @@ class JointIkController:
             qdot_out, acc_clamped = self._commit_command_step(
                 q_prev, dt, dt_nom
             )
+            qdot_out = self._clip_rail_hard_stop(
+                q_prev, qdot_out, dt, qdot_pre_commit=qdot_pre_commit
+            )
+            self._refresh_saturation(self.q_cmd, r.slack_norm, dt_int)
             return self._attach_post_qp_ab(
-                self._make_step(
+                self._attach_saturation(self._make_step(
                     qdot=qdot_out,
                     twist_base=twist_base,
                     sigma_min=r.sigma_min,
@@ -1577,7 +1725,7 @@ class JointIkController:
                         float(rail_task_vel) if rail_task_vel is not None else 0.0
                     ),
                     rail_escape_active=rail_escape_active,
-                ),
+                )),
                 dt_nom=dt_nom,
                 dt_int=dt_int,
                 box_h1=box_h1,
@@ -1658,7 +1806,30 @@ class JointIkController:
             10.0 * float(getattr(self.cfg.qp, "eps_abs", 1.0e-6)),
             1.0e-5,
         )
+        rail_wall_park = False
         if (
+            np.isfinite(final_hard_violation)
+            and final_hard_violation <= final_tol
+            and np.isfinite(final_task_lock_violation)
+            and final_task_lock_violation > final_tol
+            and (
+                float(self.q_cmd[0]) <= lo0 + 1.0e-4
+                or float(self.q_cmd[0]) >= hi0 - 1.0e-4
+            )
+        ):
+            # alpha>0 puts the rail in the task lock.  A stop-side limiter
+            # rewrite of qdot[0] would otherwise look like a hierarchy break
+            # and restore the overshooting certified command.
+            qdot_swap = np.asarray(qdot_out, dtype=float).copy()
+            qdot_swap[0] = float(qdot_certified[0])
+            _hard_swap, lock_swap = self.core.validate_final_qdot(qdot_swap)
+            rail_wall_park = bool(
+                np.isfinite(lock_swap) and lock_swap <= final_tol
+            )
+        if rail_wall_park:
+            fallback_reason = fallback_reason or "rail_wall_park"
+            self.core.last_final_task_lock_violation = 0.0
+        elif (
             not np.isfinite(final_hard_violation)
             or not np.isfinite(final_task_lock_violation)
             or final_hard_violation > final_tol
@@ -1680,6 +1851,9 @@ class JointIkController:
                 qdot_out = qdot_certified.copy()
                 self.q_cmd = q_prev + qdot_out * dt
                 self.core.qdot_prev = qdot_out.copy()
+                qdot_out = self._clip_rail_hard_stop(
+                    q_prev, qdot_out, dt, qdot_pre_commit=qdot_certified
+                )
                 self.core.last_final_hard_violation = float(hard_qp)
                 self.core.last_final_task_lock_violation = float(lock_qp)
             else:
@@ -1696,6 +1870,9 @@ class JointIkController:
         self.last_arm_rho = float(r.sigma_min)
         qdot_pre_commit = qdot_out.copy()
         qdot_out, acc_clamped = self._commit_command_step(q_prev, dt, dt_nom)
+        qdot_out = self._clip_rail_hard_stop(
+            q_prev, qdot_out, dt, qdot_pre_commit=qdot_pre_commit
+        )
         # Decompose achieved linear velocity into rail vs arm along primary motion.
         J_fin = J_pre
         qdot_arr = np.asarray(qdot_out, dtype=float)
@@ -1739,12 +1916,7 @@ class JointIkController:
             dtype=float,
         )
         q_now = np.asarray(self.q_cmd, dtype=float)
-        near_arm_m = float(getattr(self.cfg.qp, "near_arm_margin_rad", 0.08))
-        near_arm = bool(
-            np.any(q_now[1:] < self.limits.q_lower[1:] + near_arm_m)
-            or np.any(q_now[1:] > self.limits.q_upper[1:] - near_arm_m)
-        )
-        physical_saturated = bool(near_arm)
+        self._refresh_saturation(q_now, r.slack_norm, dt_int)
         step = self._make_step(
             qdot=qdot_out,
             twist_base=twist_base,
@@ -1772,8 +1944,9 @@ class JointIkController:
             scan_target=scan_t,
             scan_achieved=scan_a,
             scan_residual=scan_t - scan_a,
-            physical_saturated=physical_saturated,
+            physical_saturated=bool(self._last_sat_flags.cannot_follow),
         )
+        self._attach_saturation(step)
         actual_task_twist = twist_rail + twist_arm
         actual_task_residual = np.asarray(twist_base, dtype=float) - actual_task_twist
         step.protected_target = np.asarray(twist_base, dtype=float).copy()
@@ -2309,6 +2482,9 @@ class Phase:
     governor_err_ok_mm: float = 5.0
     governor_err_max_mm: float = 25.0
     governor_scale_min: float = 0.25
+    governor_crawl_floor: float = 0.05
+    governor_freeze_timeout_s: float = 9.0
+    governor_stall_improve_mm: float = 1.0
     # Joint-space governor: enable with governor_joint_err_max_deg > 0.
     governor_joint_err_ok_deg: float = 3.0
     governor_joint_err_max_deg: float = 0.0
@@ -2468,6 +2644,10 @@ class _TickLogger:
            "psi_deg", "psi_ref_deg", "psi_retarget_score", "d_pref_m",
            "d_star_m", "psi_star_deg", "minmax_margin",
            "elbow_margin_rad", "wrist_open_rad", "family_ok",
+           "physical_saturated", "sat_near_arm", "sat_near_rail",
+           "sat_near_branch", "sat_slack_over", "sat_secondary_scale",
+           "rail_task_alpha", "rail_margin_escape_active",
+           "governor_freeze_s",
            "tool_y_des_m", "tool_y_err_mm",
            "contact_phase", "v_air_cmd", "ke_hat", "dob_v", "barrier_cap_floor",
            # Append-only normal-axis BEFM/audit schema.
@@ -2545,7 +2725,11 @@ class _TickLogger:
            "last_limit_saturated", "keep_task_weight",
            "pref_slack_scale", "rail_task_vel",
            "v_escape", "v_reach", "v_ff_rail", "sigma_arm", "sns_scale",
-           "qpik_nullspace_norm", "cbf_min_dist", "cbf_pair"]
+           "qpik_nullspace_norm",
+           "qpik_nullspace_centering_norm", "qpik_nullspace_manip_norm",
+           "qpik_nullspace_arm_angle_norm", "qpik_nullspace_damping_norm",
+           "qpik_nullspace_rail_lock_norm",
+           "cbf_min_dist", "cbf_pair"]
         + [f"qdot_meas_{i}" for i in range(8)]
         + [f"v_cmd_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
         + [f"path_twist_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
@@ -2559,6 +2743,7 @@ class _TickLogger:
             "pad_wx", "pad_wy", "pad_wz",
         ]
         + [f"pad_vcmd_base_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + ["pad_twist_slewed"]
     )
 
     def __init__(self, path: str) -> None:
@@ -2614,7 +2799,7 @@ class _TickLogger:
         axes = getattr(outer, "last_pad_axes", None)
         buttons = getattr(outer, "last_pad_buttons", None)
         if axes is None and buttons is None:
-            return [""] * 21
+            return [""] * 22
         connected = getattr(outer, "last_pad_connected", False)
         btn = (
             np.asarray(buttons, dtype=float).reshape(-1)
@@ -2630,6 +2815,7 @@ class _TickLogger:
             + _fmt_n(getattr(outer, "last_v_world", None), 3, 6)
             + _fmt_n(getattr(outer, "last_w_tool", None), 3, 6)
             + _fmt_n(getattr(outer, "last_twist_base", None), 6, 6)
+            + [str(int(bool(getattr(outer, "last_twist_slewed", False))))]
         )
 
     def write(
@@ -3113,6 +3299,27 @@ class _TickLogger:
                    else ""
                ),
                "1" if bool(getattr(step, "family_ok", True)) else "0",
+               "1" if bool(getattr(step, "physical_saturated", False)) else "0",
+               "1" if bool(getattr(step, "sat_near_arm", False)) else "0",
+               "1" if bool(getattr(step, "sat_near_rail", False)) else "0",
+               "1" if bool(getattr(step, "sat_near_branch", False)) else "0",
+               "1" if bool(getattr(step, "sat_slack_over", False)) else "0",
+               (
+                   f"{float(getattr(step, 'sat_secondary_scale', 1.0)):.4f}"
+                   if np.isfinite(getattr(step, "sat_secondary_scale", 1.0))
+                   else "1.0000"
+               ),
+               (
+                   f"{float(getattr(step, 'rail_task_alpha', 0.0)):.4f}"
+                   if np.isfinite(getattr(step, "rail_task_alpha", 0.0))
+                   else "0.0000"
+               ),
+               "1" if bool(getattr(step, "rail_margin_escape_active", False)) else "0",
+               (
+                   f"{float(getattr(step, 'governor_freeze_s', 0.0)):.4f}"
+                   if np.isfinite(getattr(step, "governor_freeze_s", 0.0))
+                   else "0.0000"
+               ),
                f"{tool_y_des_m:.6f}" if np.isfinite(tool_y_des_m) else "",
                f"{tool_y_err_mm:.3f}" if np.isfinite(tool_y_err_mm) else "",
                str(contact_phase),
@@ -3304,6 +3511,20 @@ class _TickLogger:
                    if np.isfinite(step.nullspace_norm)
                    else ""
                ),
+               *(
+                   (
+                       f"{float(getattr(step, name, float('nan'))):.6f}"
+                       if np.isfinite(getattr(step, name, float("nan")))
+                       else ""
+                   )
+                   for name in (
+                       "nullspace_centering_norm",
+                       "nullspace_manip_norm",
+                       "nullspace_arm_angle_norm",
+                       "nullspace_damping_norm",
+                       "nullspace_rail_lock_norm",
+                   )
+               ),
                (
                    f"{float(step.cbf_min_dist):.6f}"
                    if np.isfinite(step.cbf_min_dist)
@@ -3373,6 +3594,7 @@ class RailExecutionEstimate:
     age_s: float
     extrapolation_age_s: float
     command_mode: str
+    predicted_position_m: float = float("nan")
 
 
 def _rail_execution_velocity_estimate(
@@ -3437,6 +3659,11 @@ def _rail_execution_velocity_estimate(
     if np.isfinite(v_cap):
         v_est = float(np.clip(v_est, -v_cap, v_cap))
     mode = str(getattr(mode_obj, "value", mode_obj) or "")
+    predicted = predict_rail_position_m(
+        position,
+        float(v_est),
+        extrap_age,
+    )
     return RailExecutionEstimate(
         position_m=position,
         velocity_m_s=float(v_est),
@@ -3447,6 +3674,7 @@ def _rail_execution_velocity_estimate(
         age_s=age,
         extrapolation_age_s=extrap_age,
         command_mode=mode,
+        predicted_position_m=predicted,
     )
 
 
@@ -3633,13 +3861,15 @@ def _reference_governor_scale(
 ) -> float:
     """Raw governor scale in [0, 1] (min of active bands); filter in GovernorFilter.
 
-    Cartesian error only slows the clock when a joint/rail is physically
-    saturated; otherwise tracking lag from a bad IK posture must not crawl
-    the reference to ~4% speed.  A floor (``governor_scale_min``) still
-    applies whenever a band is active.
+    Cartesian error only slows the clock when the saturation latch is
+    closed (pinned AND slack).  Healthy tracking must not crawl the
+    clock.  While latched the floor drops to ``governor_crawl_floor``
+    so an unreachable target crawls instead of freezing.
     """
     scales: list[float] = []
     floor = float(getattr(phase, "governor_scale_min", 0.0) or 0.0)
+    if physical_saturated:
+        floor = float(getattr(phase, "governor_crawl_floor", 0.05) or 0.05)
 
     if phase.governor_joint_err_max_deg > 0.0 and joint_err_deg is not None:
         e0, e1 = phase.governor_joint_err_ok_deg, phase.governor_joint_err_max_deg
@@ -3902,6 +4132,8 @@ def run_joint_admittance_phases(
                         scale_min=float(getattr(phase, "governor_scale_min", 0.25)),
                     )
                     scale = 1.0
+                    freeze_s = 0.0
+                    stall_best_mm = float("nan")
                     phase_arrived = False
                     arrival_gate = _ArrivalDwellGate(
                         plan_duration_s=phase.arrival_plan_duration_s,
@@ -4037,7 +4269,19 @@ def run_joint_admittance_phases(
                                 last_feedback_t = snap_t
                                 last_feedback_q = q_new.copy()
                             q_meas = q_new
-                            pose_pin = inner.kin.fk_pose(q_meas)
+                            q_fk = np.asarray(q_meas, dtype=float).copy()
+                            if (
+                                rail_exec_estimate is not None
+                                and np.isfinite(rail_exec_estimate.predicted_position_m)
+                            ):
+                                q_fk[0] = float(
+                                    np.clip(
+                                        rail_exec_estimate.predicted_position_m,
+                                        float(inner.limits.q_lower[0]),
+                                        float(inner.limits.q_upper[0]),
+                                    )
+                                )
+                            pose_pin = inner.kin.fk_pose(q_fk)
 
                         sensor_age_s = (
                             max(0.0, time.monotonic() - float(snap.t_s))
@@ -4341,7 +4585,47 @@ def run_joint_admittance_phases(
                             joint_err_deg=joint_err_deg,
                             physical_saturated=bool(step.physical_saturated),
                         )
+                        crawl_floor = float(
+                            getattr(phase, "governor_crawl_floor", 0.05) or 0.05
+                        )
+                        if step.physical_saturated:
+                            gov_filter.scale_min = crawl_floor
+                        else:
+                            gov_filter.scale_min = float(
+                                getattr(phase, "governor_scale_min", 0.25)
+                            )
                         scale = gov_filter.update(raw_scale, control_dt)
+                        err_mm = (
+                            float(outer_err_mm)
+                            if outer_err_mm is not None and np.isfinite(outer_err_mm)
+                            else float("nan")
+                        )
+                        improve_eps = float(
+                            getattr(phase, "governor_stall_improve_mm", 1.0) or 1.0
+                        )
+                        if step.physical_saturated:
+                            if np.isfinite(err_mm) and (
+                                not np.isfinite(stall_best_mm)
+                                or err_mm < stall_best_mm - improve_eps
+                            ):
+                                stall_best_mm = err_mm
+                                freeze_s = 0.0
+                            else:
+                                freeze_s += float(control_dt)
+                        else:
+                            freeze_s = 0.0
+                            stall_best_mm = float("nan")
+                        step.governor_freeze_s = float(freeze_s)
+                        freeze_limit = float(
+                            getattr(phase, "governor_freeze_timeout_s", 9.0) or 0.0
+                        )
+                        if freeze_limit > 0.0 and freeze_s >= freeze_limit:
+                            phase_stopped = True
+                            stop_reason = (
+                                f"governor_stall_timeout:{phase.label or phase_idx}"
+                            )
+                            _fault_stop(stop_reason)
+                            break
                         # Soft-start ramp: first ~0.3s cannot command near-vmax.
                         ramp_s = float(getattr(phase, "soft_start_ramp_s", 0.0) or 0.0)
                         if ramp_s > 1e-6 and step.controller_mode != "direct_joint_ptp":

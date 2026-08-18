@@ -68,6 +68,13 @@ from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 
 N_TASK_SLACK = 6
 N_PREF_SLACK = 9  # [sigma, branch, J1..J7 comfort]
+
+
+def _as_c_contiguous(arr: np.ndarray) -> np.ndarray:
+    a = np.asarray(arr)
+    if a.flags.c_contiguous and a.dtype == np.float64:
+        return a
+    return np.ascontiguousarray(a, dtype=float)
 MAX_PREF_ROWS = 16  # 1 sigma + 7 branch + 7 comfort
 # Backward-compatible alias used by older call sites / tests.
 N_SLACK = N_TASK_SLACK
@@ -184,6 +191,13 @@ class QpConfig:
     # how fast it may turn.  0 disables either axis.
     j_max_arm_rad_s3: float = 300.0
     j_max_rail_m_s3: float = 3.0
+    # Fraction of commanded rail velocity treated as realized this sample.
+    # 0 keeps the measured-rail affine (rail excluded from the task).
+    # 1 uses the full Jacobian.  A constant execution rate, not a runtime
+    # gate.  QP1 still pins qdot[0] to the macro plant-scale command
+    # (rail_task_vel or 0): a free column at small alpha is a 1/alpha
+    # amplifier because QP1 has zero qdot cost.
+    rail_task_alpha: float = 0.0
 
 
 class _ProxQpWbcBackend:
@@ -259,6 +273,7 @@ class _ProxQpWbcBackend:
     ) -> np.ndarray:
         import time as _time
 
+        t0 = _time.perf_counter()
         if not self._initialized:
             self.qp.init(H, g, A, b, C, lo, hi)
             self._initialized = True
@@ -277,8 +292,6 @@ class _ProxQpWbcBackend:
             self.qp.settings.eps_abs = self._eps_tight
             self.qp.settings.max_iter = self._max_iter
             self.qp.update(H=H, g=g, A=A, b=b, C=C, l=lo, u=hi)
-
-        t0 = _time.perf_counter()
         if warm_start_x is not None:
             seed = np.asarray(warm_start_x, dtype=float).reshape(self.n_var)
             self.qp.settings.initial_guess = self._px.proxqp.InitialGuess.WARM_START
@@ -487,6 +500,7 @@ class QpIkController:
         self.last_qp2_residual_norm = 0.0
         self.last_task_target = np.zeros(N_TASK_SLACK, dtype=float)
         self.last_task_achieved = np.zeros(N_TASK_SLACK, dtype=float)
+        self.last_rail_task_alpha = float(getattr(self.cfg, "rail_task_alpha", 0.0))
         self.last_rail_exec_contrib = np.zeros(N_TASK_SLACK, dtype=float)
         self.last_rail_cmd_contrib = np.zeros(N_TASK_SLACK, dtype=float)
         self.last_arm_contrib = np.zeros(N_TASK_SLACK, dtype=float)
@@ -587,6 +601,7 @@ class QpIkController:
         self.last_qp2_residual_norm = 0.0
         self.last_task_target = np.zeros(N_TASK_SLACK, dtype=float)
         self.last_task_achieved = np.zeros(N_TASK_SLACK, dtype=float)
+        self.last_rail_task_alpha = float(getattr(self.cfg, "rail_task_alpha", 0.0))
         self.last_rail_exec_contrib = np.zeros(N_TASK_SLACK, dtype=float)
         self.last_rail_cmd_contrib = np.zeros(N_TASK_SLACK, dtype=float)
         self.last_arm_contrib = np.zeros(N_TASK_SLACK, dtype=float)
@@ -775,6 +790,10 @@ class QpIkController:
         jr = np.asarray(J[:, 0], dtype=float)
         if ja.size == 0:
             return
+        if abs(a_rail) < 1.0e-6 and abs(j_rail) < 1.0e-6:
+            self.last_a_mirror_frac = 0.0
+            self.last_j_mirror_frac = 0.0
+            return
         try:
             pinv = np.linalg.pinv(ja)
         except np.linalg.LinAlgError:
@@ -909,17 +928,19 @@ class QpIkController:
         )
         sigma_min = float(np.min(sigma_arr)) if sigma_arr.size else 0.0
 
-        # When available, the rail feedback represents the motion that has
-        # actually happened during this sample.  The rail command remains a
-        # decision variable for the next sample, but is excluded from the
-        # current task map so the arm solves the measured residual directly.
+        # Execution-rate mix: treat a fraction ``alpha`` of commanded rail
+        # velocity as a task actuator this sample, and subtract only the
+        # unrealized remainder of measured rail motion.  alpha=0 is the
+        # measured-rail affine (rail column zeroed); alpha=1 is the full J.
         rail_exec = None
         rail_exec_contrib = np.zeros(N_TASK_SLACK, dtype=float)
         J_task = np.asarray(J, dtype=float).copy()
+        alpha = float(np.clip(getattr(self.cfg, "rail_task_alpha", 0.0), 0.0, 1.0))
+        self.last_rail_task_alpha = alpha
         if rail_exec_vel_m_s is not None and np.isfinite(float(rail_exec_vel_m_s)):
             rail_exec = float(rail_exec_vel_m_s)
-            rail_exec_contrib = J[:, 0] * rail_exec
-            J_task[:, 0] = 0.0
+            J_task[:, 0] = alpha * J[:, 0]
+            rail_exec_contrib = (1.0 - alpha) * J[:, 0] * rail_exec
         b_task = v_cmd0 - rail_exec_contrib
         # Public telemetry is expressed in the caller's original Cartesian
         # coordinates.  ``b_task`` is the internal arm-only target after
@@ -1041,13 +1062,12 @@ class QpIkController:
             cbf = CbfRows(jacobian=np.zeros((0, nv)), lower=np.zeros(0))
             self._cbf_slots = CbfSlotTracker(max_pairs=self._max_cbf)
         if rail_exec is not None and cbf.jacobian.size:
-            # CBF is a constraint on actual instantaneous motion just like the
-            # protected TCP task.  Do not let a lagging rail command masquerade
-            # as the rail velocity that is really changing collision distance.
+            # Same execution-rate mix as the protected TCP task so QP cannot
+            # buy unconstrained rail velocity against the CBF.
             cbf_jac = np.asarray(cbf.jacobian, dtype=float).copy()
             cbf_lower = np.asarray(cbf.lower, dtype=float).copy()
-            cbf_lower -= cbf_jac[:, 0] * rail_exec
-            cbf_jac[:, 0] = 0.0
+            cbf_lower -= (1.0 - alpha) * cbf_jac[:, 0] * rail_exec
+            cbf_jac[:, 0] = alpha * cbf_jac[:, 0]
             cbf = CbfRows(
                 jacobian=cbf_jac,
                 lower=cbf_lower,
@@ -1123,15 +1143,43 @@ class QpIkController:
         lo1[inset_both | inset_lo_only] += feasibility_inset
         hi1[inset_both | inset_hi_only] -= feasibility_inset
 
+        # Plant-scale rail preference (macro FF / escape / explicit 0).
+        # A free rail column at small alpha is a 1/alpha amplifier: QP1 has
+        # zero qdot cost, so it commands residual/alpha and saturates.  Pin
+        # the command to the desired plant velocity and let alpha only tell
+        # the arm how much of that command is realized this sample.
+        if (
+            rail_task_vel_m_s is not None
+            and np.isfinite(float(rail_task_vel_m_s))
+            and not rail_locked
+            and rail_vel_pin_m_s is None
+        ):
+            rail_qp1_pref = float(
+                np.clip(float(rail_task_vel_m_s), lo_box[0], hi_box[0])
+            )
+        else:
+            rail_qp1_pref = float(np.clip(0.0, lo_box[0], hi_box[0]))
+        q_lo0 = float(self.constraints.lim.q_lower[0])
+        q_hi0 = float(self.constraints.lim.q_upper[0])
+        q_lead_hi = max(float(q_geom[0]), float(q_prev[0]))
+        q_lead_lo = min(float(q_geom[0]), float(q_prev[0]))
+        if q_lead_hi >= q_hi0 - 1.0e-4 and rail_qp1_pref > 0.0:
+            rail_qp1_pref = float(np.clip(0.0, lo_box[0], hi_box[0]))
+        elif q_lead_lo <= q_lo0 + 1.0e-4 and rail_qp1_pref < 0.0:
+            rail_qp1_pref = float(np.clip(0.0, lo_box[0], hi_box[0]))
+        if rail_exec is not None and alpha > 1.0e-12:
+            lo1[0] = rail_qp1_pref
+            hi1[0] = rail_qp1_pref
+
         x1 = self._solve_qp(
             self.backend,
-            np.ascontiguousarray(H1),
-            np.ascontiguousarray(g1),
-            np.ascontiguousarray(A1),
-            np.ascontiguousarray(b_task),
-            np.ascontiguousarray(C_hard),
-            np.ascontiguousarray(lo1),
-            np.ascontiguousarray(hi1),
+            _as_c_contiguous(H1),
+            _as_c_contiguous(g1),
+            _as_c_contiguous(A1),
+            _as_c_contiguous(b_task),
+            _as_c_contiguous(C_hard),
+            _as_c_contiguous(lo1),
+            _as_c_contiguous(hi1),
         )
         self.last_qp1_solve_ms = float(
             getattr(self.backend, "last_solve_ms", 0.0)
@@ -1170,23 +1218,11 @@ class QpIkController:
         else:
             qdot1 = np.asarray(x1[:nv], dtype=float).copy()
             if rail_exec is not None:
-                # With measured-rail affine compensation the next rail command
-                # is absent from both the protected task and the current CBF.
-                # It is therefore a genuine QP1 null variable.  Prefer the
-                # already-computed rail macro when one exists so a QP2
-                # failure or limiter keep-QP1 still moves the carriage.
-                # Otherwise brake to the hard-feasible standstill.
-                if (
-                    rail_task_vel_m_s is not None
-                    and np.isfinite(float(rail_task_vel_m_s))
-                    and not rail_locked
-                    and rail_vel_pin_m_s is None
-                ):
-                    qdot1[0] = float(
-                        np.clip(float(rail_task_vel_m_s), lo_box[0], hi_box[0])
-                    )
-                else:
-                    qdot1[0] = float(np.clip(0.0, lo_box[0], hi_box[0]))
+                # alpha=0: rail is a QP1 null variable; overwrite so a QP2
+                # failure still publishes the macro.  alpha>0: the same pref
+                # was already pinned in lo1/hi1 so the arm solved against it;
+                # snap again in case ProxQP left a few nanometres of slack.
+                qdot1[0] = rail_qp1_pref
                 x1 = np.asarray(x1, dtype=float).copy()
                 x1[0] = qdot1[0]
             self.last_qdot_qp1 = qdot1.copy()
@@ -1216,8 +1252,8 @@ class QpIkController:
                     if self._m_diag_lpf is None:
                         self._m_diag_lpf = m_diag.copy()
                     else:
-                        alpha = min(1.0, dt / tau)
-                        self._m_diag_lpf += alpha * (m_diag - self._m_diag_lpf)
+                        lpf_a = min(1.0, dt / tau)
+                        self._m_diag_lpf += lpf_a * (m_diag - self._m_diag_lpf)
                     m_diag = self._m_diag_lpf
                 h_reg = w_reg * m_diag
             else:
@@ -1274,13 +1310,8 @@ class QpIkController:
                 if self.q_star_signs is not None
                 else (self.q_star if self.q_star is not None else q_geom)
             )
-            # Soft branch rows never bound (max slack 2e-6).  Keep the hard
-            # Faverjon damper in tighten_box.
-            branch_rows = PrefInequalityRows(
-                jacobian=np.zeros((0, nv)),
-                slack_col=np.zeros(0, dtype=int),
-                lower=np.zeros(0),
-                active=False,
+            branch_rows = self.branch_barrier.build_rows(
+                q_geom, q_star, dt_s=0.0
             )
             comfort_rows = self.joint_comfort.build_rows(
                 q_geom, self.constraints.lim.q_lower, self.constraints.lim.q_upper
@@ -1299,6 +1330,12 @@ class QpIkController:
                 pref_slack_col=pref.slack_col,
                 pref_lower=pref.lower,
             )
+            if rail_exec is not None and alpha > 1.0e-12:
+                # Same plant-scale pin as QP1.  QP2's lock is J_task @ qdot
+                # = t1 with a thin rail column (alpha*J); leaving qdot[0]
+                # free lets secondary costs slam the carriage at 1/alpha.
+                lo2[0] = rail_qp1_pref
+                hi2[0] = rail_qp1_pref
             A2 = np.zeros((n_task, n_var), dtype=float)
             A2[:, :nv] = J_task
             b2 = t1
@@ -1331,14 +1368,14 @@ class QpIkController:
             try:
                 x2 = self._solve_qp(
                     self._backend_qp2,
-                    np.ascontiguousarray(H2),
-                    np.ascontiguousarray(g2),
-                    np.ascontiguousarray(A2),
-                    np.ascontiguousarray(b2),
-                    np.ascontiguousarray(C2),
-                    np.ascontiguousarray(lo2),
-                    np.ascontiguousarray(hi2),
-                    warm_start_x=np.ascontiguousarray(x2_seed),
+                    _as_c_contiguous(H2),
+                    _as_c_contiguous(g2),
+                    _as_c_contiguous(A2),
+                    _as_c_contiguous(b2),
+                    _as_c_contiguous(C2),
+                    _as_c_contiguous(lo2),
+                    _as_c_contiguous(hi2),
+                    warm_start_x=_as_c_contiguous(x2_seed),
                 )
             except Exception as exc:
                 # QP1 is already a valid protected solution.  A secondary

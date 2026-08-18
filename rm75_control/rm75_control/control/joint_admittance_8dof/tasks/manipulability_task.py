@@ -26,6 +26,9 @@ class ManipulabilityTaskConfig:
     # Recompute the soft finite-difference direction at this cadence.  A large
     # configuration jump forces an immediate refresh.
     grad_period_ticks: int = 10
+    # First-order smoothing of the emitted qdot (not of q_meas).  Keep the
+    # 15 Hz recompute; only the command staircase is filtered.
+    qdot_tau_s: float = 0.05
 
 
 class ManipulabilityTask:
@@ -40,6 +43,7 @@ class ManipulabilityTask:
         self._cached_q: np.ndarray | None = None
         self._cached_exclude_rail: bool | None = None
         self._grad_tick: int = 0
+        self._qdot_filt: np.ndarray | None = None
 
     def gradient(self, q_rad: np.ndarray, *, exclude_rail: bool = False) -> np.ndarray:
         q = np.asarray(q_rad, dtype=float)
@@ -87,14 +91,39 @@ class ManipulabilityTask:
         self.last_grad_norm = float(np.linalg.norm(grad))
         return grad
 
-    def __call__(self, q_rad: np.ndarray, *, sigma_min: float = 1.0, exclude_rail: bool = False) -> np.ndarray:
+    def reset(self) -> None:
+        self._cached_grad = None
+        self._cached_q = None
+        self._cached_exclude_rail = None
+        self._grad_tick = 0
+        self._qdot_filt = None
+
+    def __call__(
+        self,
+        q_rad: np.ndarray,
+        *,
+        sigma_min: float = 1.0,
+        exclude_rail: bool = False,
+        dt_s: float | None = None,
+    ) -> np.ndarray:
         grad = self._gradient_cached(q_rad, exclude_rail=exclude_rail)
         if self.last_grad_norm < 1e-12:
-            return np.zeros(self.kin.nv, dtype=float)
-        # Unit direction × gain; typical |∇μ| is O(0.01–0.1) near singularities.
-        qdot0 = self.cfg.k_mu * grad / self.last_grad_norm
-        ref = max(float(self.cfg.sigma_fade_ref), 1e-6)
-        if sigma_min >= ref:
-            fade = max(0.0, 1.0 - (sigma_min - ref) / ref)
-            qdot0 = qdot0 * fade
-        return qdot0
+            raw = np.zeros(self.kin.nv, dtype=float)
+        else:
+            # Unit direction × gain; typical |∇μ| is O(0.01–0.1) near singularities.
+            raw = self.cfg.k_mu * grad / self.last_grad_norm
+            ref = max(float(self.cfg.sigma_fade_ref), 1e-6)
+            if sigma_min >= ref:
+                fade = max(0.0, 1.0 - (sigma_min - ref) / ref)
+                raw = raw * fade
+        tau = float(getattr(self.cfg, "qdot_tau_s", 0.0) or 0.0)
+        dt = float(dt_s) if dt_s is not None and np.isfinite(dt_s) else 0.0
+        if tau <= 1.0e-9 or dt <= 1.0e-9:
+            self._qdot_filt = np.asarray(raw, dtype=float).copy()
+            return raw
+        alpha = min(1.0, dt / tau)
+        if self._qdot_filt is None or self._qdot_filt.shape != raw.shape:
+            self._qdot_filt = np.asarray(raw, dtype=float).copy()
+        else:
+            self._qdot_filt = self._qdot_filt + alpha * (raw - self._qdot_filt)
+        return np.asarray(self._qdot_filt, dtype=float).copy()

@@ -208,6 +208,7 @@ class RailExtensionTask:
         self.last_v_ff: float = 0.0
         self.last_v_escape: float = 0.0
         self.last_v_reach: float = 0.0
+        self.last_margin_escape_active: bool = False
         self.last_rail_ff_m: float = float("nan")
         self.last_track_err_m: float = 0.0
         self.last_d_star_reg_scale: float = 1.0
@@ -265,6 +266,7 @@ class RailExtensionTask:
         self.last_weight = 0.0
         self.last_limit_saturated = False
         self.last_in_limit_band = False
+        self.last_margin_escape_active = False
         self._guard_active = False
         self._escape_active = False
         self._escape_sign = 0.0
@@ -698,12 +700,13 @@ class RailExtensionTask:
                 cap = min(cap, idle_cap) if cap > 0.0 else idle_cap
         if cap > 0.0:
             v_reach = float(np.clip(v_reach, -cap, cap))
-        # Demoted: healthy σ (raw ≥ 0.08) never lets escape drive the rail
-        # unless a press stall still needs a lateral Y offset.
+        # Healthy σ mutes escape only when joint margin is also healthy.
+        # A pinned arm with σ still above 0.08 must be allowed to recruit rail.
         healthy_sigma = (
             sigma_raw is not None
             and float(sigma_raw) >= float(self.cfg.healthy_sigma_mute)
         )
+        mfrac_healthy = float(joint_margin_frac) >= float(self.cfg.margin_escape_exit)
         use_limiters = bool(stroke_limiters)
         in_band = self._rail_in_limit_band(y) if use_limiters else False
         self.last_in_limit_band = bool(in_band)
@@ -727,7 +730,7 @@ class RailExtensionTask:
         elif in_band and not allow_press_escape:
             self._clear_escape_latch()
             v_escape = 0.0
-        elif healthy_sigma and not allow_press_escape:
+        elif healthy_sigma and mfrac_healthy and not allow_press_escape:
             self._escape_active = False
             v_escape = 0.0
         elif self._escape_active:
@@ -817,6 +820,9 @@ class RailExtensionTask:
         self.last_v_ff = float(v_ff)
         self.last_v_escape = float(v_escape)
         self.last_v_reach = float(v_reach)
+        self.last_margin_escape_active = bool(
+            self._escape_active and healthy_sigma and not mfrac_healthy
+        )
         return v, w
 
     def __call__(

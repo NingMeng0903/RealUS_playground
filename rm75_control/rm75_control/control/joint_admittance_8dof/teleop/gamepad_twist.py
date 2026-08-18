@@ -44,6 +44,14 @@ class GamepadTwistConfig:
     control_frame: str = "tool"
     # Idle hold gain on latched pose_d (1/s).  Zero disables the P term.
     hold_k_task: float = 4.0
+    trans_a_max_m_s2: float = 0.8
+    rot_a_max_rad_s2: float = 4.0
+    hold_v_max_m_s: float = 0.03
+    hold_w_max_rad_s: float = 0.20
+    hold_deadband_m: float = 0.001
+    hold_deadband_rad: float = 0.005
+    hold_settle_v_m_s: float = 0.005
+    hold_relatch_on_settle: bool = True
 
 
 def apply_deadzone(value: float, deadzone: float) -> float:
@@ -129,13 +137,38 @@ def compose_inner_twist(
     return twist_base.copy(), twist_base
 
 
+def slew_vec(prev: np.ndarray, target: np.ndarray, a_max: float, dt: float) -> np.ndarray:
+    """Rate-limit a 3-vector without changing its direction."""
+
+    out = np.asarray(target, dtype=float).reshape(-1).copy()
+    prev_v = np.asarray(prev, dtype=float).reshape(-1)
+    n = min(out.size, prev_v.size)
+    if n == 0:
+        return out
+    step = out[:n] - prev_v[:n]
+    lim = max(float(a_max), 0.0) * max(float(dt), 0.0)
+    mag = float(np.linalg.norm(step))
+    if lim > 0.0 and mag > lim:
+        out[:n] = prev_v[:n] + step * (lim / mag)
+    return out
+
+
+def apply_hold_deadband(err: np.ndarray, dead_m: float, dead_rad: float) -> np.ndarray:
+    out = np.asarray(err, dtype=float).reshape(6).copy()
+    if float(np.linalg.norm(out[:3])) <= max(float(dead_m), 0.0):
+        out[:3] = 0.0
+    if float(np.linalg.norm(out[3:6])) <= max(float(dead_rad), 0.0):
+        out[3:6] = 0.0
+    return out
+
+
 class GamepadTwistOuterLoop:
-    """Outer loop that sends stick velocity straight into the QPIK inner loop.
+    """Outer loop that sends stick velocity into the QPIK inner loop.
 
     Stick motion is open-loop v_cmd.  When the pad is idle, ``pose_d`` is
-    latched (not rebased onto ``pose_meas``) so residual TCP drift has a
-    closed-loop hold.  Existing inner constraints stay on
-    ``JointIkController``.
+    latched after TCP settle (or immediately if relatch is off) so residual
+    drift has a capped closed-loop hold.  A single slew limiter is the only
+    rate-limit on both branches.
     """
 
     def __init__(self, pad, cfg: GamepadTwistConfig | None = None) -> None:
@@ -152,7 +185,12 @@ class GamepadTwistOuterLoop:
         self.last_pad_buttons = np.zeros(8, dtype=float)
         self.last_twist_base = np.zeros(6, dtype=float)
         self.last_pad_connected = False
+        self.last_twist_slewed = False
         self._idle_hold_active = False
+        self._hold_p_active = False
+        self._coast_until_settle = False
+        self._prev_pose: np.ndarray | None = None
+        self._twist_out = np.zeros(6, dtype=float)
 
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
         del t_s
@@ -160,6 +198,24 @@ class GamepadTwistOuterLoop:
         self.last_pose_d = pose
         self.last_vel_ff = np.zeros(6, dtype=float)
         self._idle_hold_active = True
+        self._hold_p_active = True
+        self._coast_until_settle = False
+        self._prev_pose = pose.copy()
+        self._twist_out = np.zeros(6, dtype=float)
+        self.last_twist_slewed = False
+
+    def _slew_twist(self, twist: np.ndarray) -> np.ndarray:
+        dt = float(self.cfg.dt)
+        raw = np.asarray(twist, dtype=float).reshape(6)
+        lin = slew_vec(self._twist_out[:3], raw[:3], self.cfg.trans_a_max_m_s2, dt)
+        ang = slew_vec(self._twist_out[3:6], raw[3:6], self.cfg.rot_a_max_rad_s2, dt)
+        out = np.zeros(6, dtype=float)
+        out[:3] = lin[:3]
+        out[3:6] = ang[:3]
+        slewed = float(np.linalg.norm(out - raw)) > 1.0e-9
+        self.last_twist_slewed = slewed
+        self._twist_out = out
+        return out
 
     def sample(self, t_s: float, current_pose: np.ndarray, f_ext: np.ndarray) -> np.ndarray:
         del t_s, f_ext
@@ -176,21 +232,54 @@ class GamepadTwistOuterLoop:
             self.last_pad_buttons = padded_b
         self.last_pad_connected = bool(getattr(self.pad, "connected", True))
         v_world, w_tool = map_pad_to_world_lin_tool_ang(state, self.cfg)
-        self.last_v_world = v_world
-        self.last_w_tool = w_tool
         pose = np.asarray(current_pose, dtype=float).reshape(6).copy()
+        dt = float(self.cfg.dt)
+        tcp_speed = 0.0
+        if self._prev_pose is not None and dt > 1.0e-9:
+            tcp_speed = float(np.linalg.norm(pose[:3] - self._prev_pose[:3]) / dt)
+        self._prev_pose = pose.copy()
         requested = (
             float(np.linalg.norm(v_world)) > 1.0e-12
             or float(np.linalg.norm(w_tool)) > 1.0e-12
         )
         if not requested:
+            just_released = not self._idle_hold_active
+            self._idle_hold_active = True
+            if just_released and bool(self.cfg.hold_relatch_on_settle):
+                self._coast_until_settle = True
+                self._hold_p_active = False
+            elif just_released:
+                self._coast_until_settle = False
+                self._hold_p_active = True
+                if self.last_pose_d is None or not np.all(np.isfinite(self.last_pose_d)):
+                    self.last_pose_d = pose.copy()
+            if self._coast_until_settle:
+                if tcp_speed <= float(self.cfg.hold_settle_v_m_s):
+                    self.last_pose_d = pose.copy()
+                    self._coast_until_settle = False
+                    self._hold_p_active = True
+                else:
+                    self.last_vel_ff = np.zeros(6, dtype=float)
+                    self.last_twist_base = np.zeros(6, dtype=float)
+                    self.last_path_twist = np.zeros(6, dtype=float)
+                    out = self._slew_twist(np.zeros(6, dtype=float))
+                    self.last_feedback_twist = out.copy()
+                    self.last_v_world = np.zeros(3, dtype=float)
+                    self.last_w_tool = np.zeros(3, dtype=float)
+                    self.last_err_mm = 0.0
+                    return out
             if self.last_pose_d is None or not np.all(np.isfinite(self.last_pose_d)):
                 self.last_pose_d = pose.copy()
             pose_d = np.asarray(self.last_pose_d, dtype=float).reshape(6).copy()
-            self._idle_hold_active = True
-            err = pose_error(pose_d, pose, self.cfg.euler_order)
+            err = apply_hold_deadband(
+                pose_error(pose_d, pose, self.cfg.euler_order),
+                self.cfg.hold_deadband_m,
+                self.cfg.hold_deadband_rad,
+            )
             k = max(float(self.cfg.hold_k_task), 0.0)
             fb_base = k * err
+            fb_base[:3] = _cap_vec(fb_base[:3], self.cfg.hold_v_max_m_s)
+            fb_base[3:6] = _cap_vec(fb_base[3:6], self.cfg.hold_w_max_rad_s)
             rotation = Rsc.from_euler(
                 self.cfg.euler_order, pose[3:6], degrees=False
             ).as_matrix()
@@ -200,16 +289,23 @@ class GamepadTwistOuterLoop:
                 feedback[3:6] = rotation.T @ fb_base[3:6]
             else:
                 feedback = fb_base
+            if not self._hold_p_active:
+                feedback = np.zeros(6, dtype=float)
             self.last_pose_d = pose_d
             self.last_vel_ff = np.zeros(6, dtype=float)
             self.last_twist_base = np.zeros(6, dtype=float)
             self.last_path_twist = np.zeros(6, dtype=float)
-            self.last_feedback_twist = np.asarray(feedback, dtype=float).copy()
+            out = self._slew_twist(feedback)
+            self.last_feedback_twist = out.copy()
+            self.last_v_world = np.zeros(3, dtype=float)
+            self.last_w_tool = np.zeros(3, dtype=float)
             self.last_err_mm = float(np.linalg.norm(err[:3]) * 1000.0)
-            return self.last_feedback_twist.copy()
+            return out
 
         if self._idle_hold_active:
             self._idle_hold_active = False
+            self._coast_until_settle = False
+            self._hold_p_active = False
         twist, twist_base = compose_inner_twist(
             v_world,
             w_tool,
@@ -217,17 +313,26 @@ class GamepadTwistOuterLoop:
             euler_order=self.cfg.euler_order,
             control_frame=self.cfg.control_frame,
         )
-        dt = float(self.cfg.dt)
+        out = self._slew_twist(twist)
+        slewed_base = out.copy()
+        if str(self.cfg.control_frame) == "tool":
+            rotation = Rsc.from_euler(
+                self.cfg.euler_order, pose[3:6], degrees=False
+            ).as_matrix()
+            slewed_base[:3] = rotation @ out[:3]
+            slewed_base[3:6] = rotation @ out[3:6]
         pose_d = pose.copy()
-        pose_d[:3] = pose[:3] + twist_base[:3] * dt
-        if float(np.linalg.norm(twist_base[3:6])) > 1.0e-12:
-            delta = Rsc.from_rotvec(twist_base[3:6] * dt)
+        pose_d[:3] = pose[:3] + slewed_base[:3] * dt
+        if float(np.linalg.norm(slewed_base[3:6])) > 1.0e-12:
+            delta = Rsc.from_rotvec(slewed_base[3:6] * dt)
             cur = Rsc.from_euler(self.cfg.euler_order, pose[3:6], degrees=False)
             pose_d[3:6] = (delta * cur).as_euler(self.cfg.euler_order, degrees=False)
         self.last_pose_d = pose_d
-        self.last_vel_ff = twist_base
-        self.last_twist_base = twist_base
-        self.last_path_twist = np.asarray(twist, dtype=float).copy()
+        self.last_vel_ff = slewed_base
+        self.last_twist_base = slewed_base
+        self.last_path_twist = out.copy()
         self.last_feedback_twist = np.zeros(6, dtype=float)
+        self.last_v_world = v_world
+        self.last_w_tool = w_tool
         self.last_err_mm = 0.0
-        return twist
+        return out

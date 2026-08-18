@@ -738,6 +738,27 @@ def test_branch_barrier_dwell_keeps_crossing_cheap() -> None:
     assert b.last_dwell_scale == pytest.approx(1.0)
 
 
+def test_qp_emits_soft_branch_rows_near_j4_wall() -> None:
+    from rm75_control.control.joint_admittance_8dof.collision_model import (
+        CollisionConfig,
+    )
+    from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
+
+    kin = RobotKinematics()
+    limits = SafetyLimits.from_kinematics(kin, v_scale=0.8, a_max=10.0)
+    core = QpIkController(
+        kin, limits, QpConfig(collision=CollisionConfig(enabled=False))
+    )
+    q_star = np.array([0.40, -1.56, -1.65, 1.14, 1.68, 1.56, 1.06, 1.65])
+    core.set_q_star(q_star)
+    core.set_q_star_signs(q_star)
+    core.reset()
+    q = q_star.copy()
+    q[4] = 0.30
+    core.step(q, np.array([0.0, 0.04, 0.0, 0.0, 0.0, 0.0]), 0.005, q_meas=q)
+    assert core.branch_barrier.last_n_active > 0
+
+
 def test_qp_smoothness_weight_is_wired() -> None:
     cfg = QpConfig(smoothness_weight=0.15)
     assert cfg.smoothness_weight == 0.15
@@ -766,4 +787,8 @@ def test_governor_floor_and_physical_gate() -> None:
     raw_sat = _reference_governor_scale(
         phase, outer_err_mm=80.0, joint_err_deg=None, physical_saturated=True
     )
-    assert raw_sat == 0.25
+    assert raw_sat == pytest.approx(0.05)
+    raw_band = _reference_governor_scale(
+        phase, outer_err_mm=15.0, joint_err_deg=None, physical_saturated=True
+    )
+    assert raw_band == pytest.approx((25.0 - 15.0) / (25.0 - 5.0))

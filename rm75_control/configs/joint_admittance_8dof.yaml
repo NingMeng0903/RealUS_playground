@@ -113,6 +113,9 @@ inner:
     # 3.0 made a full rail acceleration reversal take 2*a_max/j = 0.2 s versus
     # 0.02 s on the arm; 60 keeps 2*a_max/j = 0.02 s after a_max rose to 0.60.
     j_max_rail_m_s3: 60.0
+    # Constant execution-rate mix for the rail column.  0 = measured-rail
+    # affine (today).  Identified from FA24 step response as 1-exp(-dt/tau).
+    rail_task_alpha: 0.07
     sigma_setbased:
       enabled: true
       activate: 0.12
@@ -169,6 +172,20 @@ inner:
       eps_rad: 5.0e-4
       sigma_fade_ref: 0.12
       grad_period_ticks: 10
+      qdot_tau_s: 0.05
+
+  # Reference-clock latch: pinned AND slack, never slack alone.
+  saturation:
+    slack_enter: 0.03
+    slack_exit: 0.015
+    dwell_s: 0.15
+    rail_margin_m: 0.010
+    branch_margin_rad: 0.035
+    secondary_scale: 0.15
+    secondary_scale_tau_s: 0.10
+    crawl_floor: 0.05
+    freeze_timeout_s: 9.0
+    stall_improve_mm: 1.0
 
   nullspace_d_null: 0.5
   nullspace_d_null_adaptive: 1.0
@@ -583,6 +600,9 @@ hw:
     # 205605: t_read med 5.8 ms, FA24 write usually skipped.  43 Hz left
     # ~17 ms of sleep.  60 Hz (16.7 ms) still has ~11 ms median headroom;
     # 80 Hz is tight on p95.
+    # 60 Hz spectral peak A/B: keep this at 60 for production.  Probe with
+    # analyze_qpik_quality.py --poll-hz {60,37,100} on three identical
+    # ellipses; if q_cmd accel follows poll_hz the source is rail feedback.
     poll_hz: 60
     inter_frame_delay_s: 0.0005
     timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0
