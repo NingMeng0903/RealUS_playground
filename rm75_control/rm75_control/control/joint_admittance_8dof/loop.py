@@ -13,6 +13,7 @@ import json
 import math
 import os
 import queue
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -157,6 +158,13 @@ class JointIkConfig:
     # ``lowpass`` is a first-order cutoff at ``qmeas_lowpass_hz``.
     qmeas_filter: str = "raw"
     qmeas_lowpass_hz: float = 25.0
+    # QP Jacobian / twist map.  ``cmd`` uses the integrated command (opens
+    # the 58 Hz measurement-geometry loop); ``meas`` is the legacy path.
+    # Safety (follow_err, resync, CBF, rail lead) always stays on q_meas.
+    qp_geometry_source: str = "cmd"
+    # CPython default switch interval is 5 ms and starves the rail Modbus
+    # thread.  0.5 ms is enough for a 200 Hz control thread to yield.
+    gil_switch_interval_ms: float = 0.5
 
 
 @dataclass
@@ -746,6 +754,18 @@ class JointIkController:
         self._apply_rail_mode_side_effects()
         self._latch_attractor_from_q(self.q_cmd)
 
+    def _qp_geometry_state(
+        self, q_prev: np.ndarray, q_state: np.ndarray
+    ) -> np.ndarray:
+        """State used for Jacobian / twist map.  Safety stays on ``q_state``."""
+        src = str(getattr(self.cfg, "qp_geometry_source", "cmd") or "cmd")
+        src = src.strip().lower()
+        if src == "cmd":
+            return np.asarray(q_prev, dtype=float)
+        if src == "meas":
+            return np.asarray(q_state, dtype=float)
+        raise ValueError(f"unknown qp_geometry_source {src!r}")
+
     def begin_hybrid_episode(
         self,
         q_meas: np.ndarray,
@@ -1151,6 +1171,7 @@ class JointIkController:
             prev_filt=self._q_meas_filt,
             lowpass_hz=float(getattr(self.cfg, "qmeas_lowpass_hz", 25.0) or 25.0),
         )
+        q_geom = self._qp_geometry_state(q_prev, q_state)
         follow_err = float(np.max(np.abs(q_prev - q_state)))
         twist_task = np.asarray(twist, dtype=float).reshape(-1)
         if twist_task.size != 6 or not np.isfinite(twist_task).all():
@@ -1184,19 +1205,19 @@ class JointIkController:
                 )
             )
         else:
-            twist_base = self._twist_to_base(twist_task, q_state)
+            twist_base = self._twist_to_base(twist_task, q_geom)
 
         need_mass = bool(
             self.cfg.qp.use_dyn_nullspace or self.cfg.qp.use_mass_weighted_reg
         )
         if bool(getattr(self.cfg, "qp_use_cpp_kernel", True)):
             J_pre, sigma_values_pre, mass_pre = cpp_kernel.kinematics_snapshot(
-                self.kin, q_state, need_mass=need_mass
+                self.kin, q_geom, need_mass=need_mass
             )
         else:
-            J_pre = self.kin.jacobian(q_state)
+            J_pre = self.kin.jacobian(q_geom)
             sigma_values_pre = self.kin.singular_values(J_pre)
-            mass_pre = self.kin.mass_matrix(q_state) if need_mass else None
+            mass_pre = self.kin.mass_matrix(q_geom) if need_mass else None
         sigma_pre = float(sigma_values_pre.min())
         sigma_arm = float(np.linalg.svd(J_pre[:, 1:], compute_uv=False).min())
         sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
@@ -1498,6 +1519,8 @@ class JointIkController:
                     self._rail_ext_active and self._rail_mode == RailMode.COUPLED
                 ),
             ),
+            # Safety / resync / CBF stay on the measured state.  The task
+            # Jacobian above was built at q_geom (q_cmd when configured).
             q_meas=q_state,
             resync_err=resync_vec,
             rail_locked=locked_hold,
@@ -2163,6 +2186,21 @@ class JointTrackOuterLoop:
 # ---------------------------------------------------------------------------
 # On-robot orchestration
 # ---------------------------------------------------------------------------
+def _set_gil_switch_interval(interval_ms: float) -> bool:
+    """Best-effort ``sys.setswitchinterval``.  Default CPython is 5 ms."""
+    try:
+        ms = float(interval_ms)
+    except (TypeError, ValueError):
+        return False
+    if not math.isfinite(ms) or ms <= 0.0:
+        return False
+    try:
+        sys.setswitchinterval(ms / 1000.0)
+        return True
+    except (ValueError, OverflowError):
+        return False
+
+
 def _set_realtime_priority(priority: int = 80) -> bool:
     """Best-effort SCHED_FIFO for the control thread (needs CAP_SYS_NICE / root)."""
     try:
@@ -3710,6 +3748,19 @@ def run_joint_admittance_phases(
         inner.reset(q0_rad)
 
         if realtime:
+            gil_ms = float(getattr(inner.cfg, "gil_switch_interval_ms", 0.5) or 0.0)
+            gil_ok = _set_gil_switch_interval(gil_ms)
+            if gil_ok and verbose:
+                print(
+                    f"  GIL switch interval {gil_ms:.2f} ms "
+                    f"(sys.getswitchinterval={1000.0 * sys.getswitchinterval():.2f} ms)",
+                    flush=True,
+                )
+            elif verbose and gil_ms > 0.0:
+                print(
+                    f"  (GIL switch interval {gil_ms:.2f} ms unavailable)",
+                    flush=True,
+                )
             rt_fifo_ok = _set_realtime_priority()
             if not rt_fifo_ok and verbose:
                 print(

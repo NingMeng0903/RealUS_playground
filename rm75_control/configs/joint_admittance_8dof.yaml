@@ -20,6 +20,9 @@ timing:
   # concentrates jitter — leave unset until scripts/enable_rt.sh + isolcpus.
   control_cpu: null
   disable_cstates: true
+  # CPython default is 5 ms and starves the rail Modbus worker.  0.5 ms
+  # lets a 200 Hz control thread yield between send/recv of each RTU frame.
+  gil_switch_interval_ms: 0.5
 
 # UDP arm-state push (rm_set_realtime_push). Requires robot.thread_mode: 2.
 realtime_push:
@@ -183,12 +186,14 @@ inner:
   # Post-QP |Δdq| clamp is the only rate limit that lives in the CANFD
   # fixed-dt domain.  QP boxes use wall-time box_h1 and can over-budget.
   post_qp_step_clamp: true
-  # Encoder-state filter before Jacobian / task error.  Offline on 205559:
-  # hold == raw (stale frames already identical); lowpass cut q_meas jerk
-  # ~2.5× (j4 3110→1247).  Command-side gain is small once the post-QP
-  # clamp is on, but the injection into J / task error still drops.
-  qmeas_filter: lowpass
+  # Encoder-state filter.  lowpass was proven harmful on 220505 (jerk RMS
+  # 139→179) — phase lag on the measurement-geometry loop.  Keep raw;
+  # QP Jacobian uses qp_geometry_source instead.
+  qmeas_filter: raw
   qmeas_lowpass_hz: 25.0
+  # cmd = Jacobian / twist at integrated q_cmd (opens the 58 Hz loop).
+  # meas = legacy J(q_meas).  Safety (resync / CBF / lead) stays on q_meas.
+  qp_geometry_source: cmd
 
   arm_angle:
     enabled: true

@@ -49,6 +49,9 @@ GATES = {
     # Command-step ripple is what rm_movej_canfd actually consumes.
     "step_ripple_p999": 0.50,
     "step_ripple_max": 1.00,
+    # 58 Hz measurement-geometry limit cycle: 40-80 Hz power on q_cmd accel.
+    "q_cmd_accel_hf_frac": 0.15,
+    "rail_write_dt_corr": 0.30,
     "deadline_slack_pos_frac": 0.99,
     # t_ref used to advance by dt_nom while wall ran 6.64 ms: lag grew to 14 s.
     "accepted_reference_lag_p95_s": 0.10,
@@ -225,6 +228,31 @@ def _latency_histogram(values: np.ndarray, edges_ms: tuple[float, ...] = (2.0, 5
             label = f"{lo:.0f}-{hi:.0f}"
         counts.append(f"{label}:{100.0 * n / finite.size:.0f}%")
     return "hist " + " ".join(counts)
+
+
+def _cmd_accel_spectrum(
+    qi: np.ndarray, fs: float
+) -> tuple[float, float] | None:
+    """Peak frequency and 40-80 Hz power fraction of commanded acceleration."""
+    q = np.asarray(qi, dtype=float)
+    if q.size < 512 or not math.isfinite(float(fs)) or float(fs) <= 0.0:
+        return None
+    acc = np.diff(np.diff(q)) * (float(fs) ** 2)
+    acc = acc[np.isfinite(acc)]
+    if acc.size < 512:
+        return None
+    acc = acc - float(acc.mean())
+    n = 1 << int(math.floor(math.log2(acc.size)))
+    window = np.hanning(n)
+    power = np.abs(np.fft.rfft(acc[:n] * window)) ** 2
+    freq = np.fft.rfftfreq(n, 1.0 / float(fs))
+    band = freq >= 2.0
+    denom = float(power[band].sum()) if np.any(band) else 0.0
+    if denom <= 0.0:
+        return None
+    peak = float(freq[band][int(np.argmax(power[band]))])
+    high = float(power[(freq >= 40.0) & (freq < 80.0)].sum() / denom)
+    return peak, high
 
 
 def _col(rows: list[dict], name: str) -> np.ndarray:
@@ -423,6 +451,22 @@ def _rail_servo_checks(
                         f"max {lat.max():.1f} ms  {_latency_histogram(lat)}",
                     )
                 )
+        tw = _col(rows, "t_write_ms")
+        if dtw.size and tw.size == _col(rows, "dt_wall_ms").size:
+            dt_all = _col(rows, "dt_wall_ms")
+            if tw.size > 8:
+                x = tw[:-1]
+                y = dt_all[1:]
+                mask = np.isfinite(x) & np.isfinite(y) & (x > 0.5)
+                if int(mask.sum()) >= 8 and float(np.std(x[mask])) > 1.0e-6:
+                    corr = float(np.corrcoef(x[mask], y[mask])[0, 1])
+                    results.append(
+                        (
+                            "rail t_write vs next dt_wall |corr| < 0.30",
+                            abs(corr) < GATES["rail_write_dt_corr"],
+                            f"corr {corr:.2f}  n={int(mask.sum())}",
+                        )
+                    )
     age = _col(rows, "target_age_ms")
     follow = _col(rows, "follow")
     if np.isfinite(age).any():
@@ -1301,6 +1345,27 @@ def analyze(path: Path) -> int:
             f"p99.9 {ripple_p999:.2f}  max {ripple_max:.2f}",
         )
     )
+    hf_worst = 0.0
+    peak_hz = float("nan")
+    for i in range(1, 8):
+        qi = _col(rows, f"q_cmd_{i}")
+        if not np.isfinite(qi).any():
+            continue
+        spec = _cmd_accel_spectrum(qi, 1.0 / dt_step)
+        if spec is None:
+            continue
+        pk, hf = spec
+        if hf >= hf_worst:
+            hf_worst = hf
+            peak_hz = pk
+    if math.isfinite(peak_hz):
+        results.append(
+            (
+                "q_cmd accel 40-80 Hz power < 0.15",
+                hf_worst < GATES["q_cmd_accel_hf_frac"],
+                f"peak {peak_hz:.1f} Hz  40-80 frac {hf_worst:.2f}",
+            )
+        )
     slack = _col(rows, "deadline_slack_s")
     if np.isfinite(slack).any():
         pos_frac = float(np.mean(slack[np.isfinite(slack)] > 0.0))

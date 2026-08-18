@@ -8,10 +8,15 @@ from collections import deque
 import pytest
 
 from rm75_control.control.joint_admittance_8dof.hw.rail_servo import (
+    Fa24WriteSlot,
     RailServoBridge,
     RailServoConfig,
     live_host_accel_m_s2,
     parse_rail_servo_config,
+    rail_encoder_continuity_action,
+    rail_encoder_jump_limit_m,
+    rail_encoder_sample_stale,
+    rail_feedback_valid,
 )
 from rm75_control.hw.lw100.drive import apply_fa24_rpm_deadband
 
@@ -686,3 +691,122 @@ def test_servo_box_is_capped_by_the_qp_hard_limits() -> None:
     assert cfg.vel_max_m_s == pytest.approx(0.12)
     assert cfg.vel_amax_m_s2 == pytest.approx(0.60)
     assert cfg.live_host_accel_m_s2() == pytest.approx(0.60)
+
+
+def test_fa24_write_slot_latest_wins_and_fail_is_drained_next_take() -> None:
+    slot = Fa24WriteSlot()
+    slot.submit(100)
+    slot.submit(220)
+    req = slot.take()
+    assert req is not None
+    rpm, force, _seq = req
+    assert rpm == 220
+    assert force is False
+    assert slot.take() is None
+    slot.report(written=None, write_ms=19.8, error=RuntimeError("timeout"))
+    ms, fails = slot.take_write_telemetry()
+    assert fails == 1
+    assert ms == pytest.approx(19.8)
+    ms2, fails2 = slot.take_write_telemetry()
+    assert fails2 == 0
+    assert ms2 == pytest.approx(0.0)
+    slot.report(written=220, write_ms=3.1, error=None)
+    assert slot.last_written == 220
+    slot.submit(0, force=True)
+    req0 = slot.take()
+    assert req0 is not None and req0[0] == 0 and req0[1] is True
+
+
+def test_rail_feedback_valid_coasts_a_fresh_missed_read() -> None:
+    assert rail_feedback_valid(
+        encoder_accepted=True, encoder_rejected=False, age_s=0.0, latch_watch_s=0.12
+    )
+    assert rail_feedback_valid(
+        encoder_accepted=False, encoder_rejected=False, age_s=0.05, latch_watch_s=0.12
+    )
+    assert not rail_feedback_valid(
+        encoder_accepted=False, encoder_rejected=False, age_s=0.13, latch_watch_s=0.12
+    )
+    assert not rail_feedback_valid(
+        encoder_accepted=True, encoder_rejected=True, age_s=0.0, latch_watch_s=0.12
+    )
+
+
+def test_encoder_jump_limit_uses_last_accepted_age() -> None:
+    """Write-stretched 61 ms must widen the magnitude box past 5.2 mm."""
+    tight = rail_encoder_jump_limit_m(
+        dt_wall_s=0.0167,
+        now_s=4.777,
+        last_accepted_s=4.777,
+        v_max_m_s=0.12,
+        jump_margin_m=0.003,
+    )
+    assert tight == pytest.approx(0.005, abs=1e-4)
+    wide = rail_encoder_jump_limit_m(
+        dt_wall_s=0.0167,
+        now_s=4.777,
+        last_accepted_s=4.716,
+        v_max_m_s=0.12,
+        jump_margin_m=0.003,
+    )
+    assert wide > 0.0052
+    assert wide == pytest.approx(0.12 * 0.061 + 0.003, abs=1e-4)
+
+
+def test_encoder_stale_against_stream_is_dropped_not_hold() -> None:
+    """230949: +5.2 mm against v_enc ≈ −0.115 m/s is a stale frame, not a leap."""
+    dx = 0.4628 - 0.4575
+    v_hint = -0.115
+    margin = 0.003
+    assert rail_encoder_sample_stale(
+        dx, v_hint_m_s=v_hint, jump_margin_m=margin
+    )
+    # Widening the magnitude box would *accept* this reverse glitch.  Drop.
+    wide_lim = 0.12 * 0.061 + 0.003
+    assert rail_encoder_continuity_action(
+        dx,
+        jump_lim_m=wide_lim,
+        jump_hard_m=0.05,
+        v_hint_m_s=v_hint,
+        jump_margin_m=margin,
+    ) == "drop"
+    tight_lim = 0.12 * 0.0167 + 0.003
+    assert rail_encoder_continuity_action(
+        dx,
+        jump_lim_m=tight_lim,
+        jump_hard_m=0.05,
+        v_hint_m_s=v_hint,
+        jump_margin_m=margin,
+    ) == "drop"
+    # Same-direction catch-up after a stretched poll is real motion.
+    assert rail_encoder_continuity_action(
+        -0.0052,
+        jump_lim_m=wide_lim,
+        jump_hard_m=0.05,
+        v_hint_m_s=v_hint,
+        jump_margin_m=margin,
+    ) == "accept"
+    # Quantization against travel stays inside the margin.
+    assert not rail_encoder_sample_stale(
+        0.001, v_hint_m_s=v_hint, jump_margin_m=margin
+    )
+
+
+def test_encoder_power_cycle_leap_still_holds() -> None:
+    """256 mm power-cycle / wrap is still a HOLD, even if against travel."""
+    dx = 0.256
+    assert rail_encoder_continuity_action(
+        dx,
+        jump_lim_m=0.031,
+        jump_hard_m=0.05,
+        v_hint_m_s=0.0,
+        jump_margin_m=0.003,
+    ) == "hold"
+    assert rail_encoder_continuity_action(
+        dx,
+        jump_lim_m=0.031,
+        jump_hard_m=0.05,
+        v_hint_m_s=-0.115,
+        jump_margin_m=0.003,
+    ) == "hold"
+

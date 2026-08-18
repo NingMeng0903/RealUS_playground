@@ -970,6 +970,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             "nullspace_d_null", "nullspace_d_null_adaptive", "nullspace_max_qdot_frac",
             "post_qp_step_clamp",
             "qmeas_filter", "qmeas_lowpass_hz",
+            "qp_geometry_source",
         },
         name="inner",
     )
@@ -1059,6 +1060,10 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         ),
         disable_cstates=bool(timing.get("disable_cstates", True)),
         qp_use_cpp_kernel=bool(timing.get("qp_use_cpp_kernel", True)),
+        gil_switch_interval_ms=_finite_float(
+            timing.get("gil_switch_interval_ms", 0.5),
+            name="timing.gil_switch_interval_ms",
+        ),
         control_frame=str(inner.get("control_frame", "tool")),
         euler_order=euler_order,
         qp=qp,
@@ -1113,11 +1118,21 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             name="inner.nullspace_max_qdot_frac",
         ),
         post_qp_step_clamp=bool(inner.get("post_qp_step_clamp", False)),
-        qmeas_filter=str(inner.get("qmeas_filter", "lowpass") or "lowpass"),
+        qmeas_filter=str(inner.get("qmeas_filter", "raw") or "raw"),
         qmeas_lowpass_hz=_finite_float(
             inner.get("qmeas_lowpass_hz", 25.0), name="inner.qmeas_lowpass_hz"
         ),
+        qp_geometry_source=str(
+            inner.get("qp_geometry_source", "cmd") or "cmd"
+        ).strip().lower(),
     )
+    if cfg.qp_geometry_source not in {"cmd", "meas"}:
+        raise ValueError(
+            "inner.qp_geometry_source must be 'cmd' or 'meas', "
+            f"got {cfg.qp_geometry_source!r}"
+        )
+    if cfg.gil_switch_interval_ms < 0.0:
+        raise ValueError("timing.gil_switch_interval_ms must be non-negative")
     assert_design_attractor_consistent(cfg)
     return cfg
 

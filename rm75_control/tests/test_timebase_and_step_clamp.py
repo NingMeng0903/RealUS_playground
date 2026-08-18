@@ -12,6 +12,7 @@ from rm75_control.control.joint_admittance_8dof.loop import (
     JointIkController,
     _CStateGuard,
     _pin_control_cpu,
+    _set_gil_switch_interval,
     _set_realtime_priority,
     filter_q_meas,
     reference_time_step,
@@ -156,7 +157,9 @@ def test_yaml_dt_ms_is_5ms() -> None:
     assert float(raw["hw"]["lw100"]["poll_hz"]) == pytest.approx(60.0)
     assert float(raw["inner"]["arm_angle"]["engage_s"]) == pytest.approx(0.0)
     assert float(raw["inner"]["nullspace"]["engage_s"]) == pytest.approx(0.0)
-    assert raw["inner"]["qmeas_filter"] == "lowpass"
+    assert raw["inner"]["qmeas_filter"] == "raw"
+    assert raw["inner"]["qp_geometry_source"] == "cmd"
+    assert float(raw["timing"]["gil_switch_interval_ms"]) == pytest.approx(0.5)
 
 
 def test_reference_time_step_follows_elapsed_wall() -> None:
@@ -244,6 +247,67 @@ def test_box_period_does_not_open_on_long_tick(monkeypatch: pytest.MonkeyPatch) 
     assert h1 == pytest.approx(0.005)
 
 
+def test_set_gil_switch_interval_accepts_positive_ms() -> None:
+    import sys
+
+    before = sys.getswitchinterval()
+    try:
+        assert _set_gil_switch_interval(0.5) is True
+        assert sys.getswitchinterval() == pytest.approx(0.0005)
+        assert _set_gil_switch_interval(0.0) is False
+        assert _set_gil_switch_interval(-1.0) is False
+        assert _set_gil_switch_interval(float("nan")) is False
+    finally:
+        sys.setswitchinterval(before)
+
+
+def test_qp_geometry_source_cmd_uses_command_not_measurement() -> None:
+    qp = QpConfig(backend="proxqp", collision=CollisionConfig(enabled=False))
+    cfg = JointIkConfig(
+        dt=0.005,
+        control_frame="base",
+        qp=qp,
+        collision=CollisionConfig(enabled=False),
+        qp_use_cpp_kernel=False,
+        qp_geometry_source="cmd",
+    )
+    controller = JointIkController(RobotKinematics(), cfg)
+    controller.reset(Q_SAFE)
+    seen: list[np.ndarray] = []
+    real = controller.kin.jacobian
+
+    def _wrap(q):
+        seen.append(np.asarray(q, dtype=float).copy())
+        return real(q)
+
+    controller.kin.jacobian = _wrap  # type: ignore[method-assign]
+    q_before = controller.q_cmd.copy()
+    q_meas = q_before.copy()
+    q_meas[4] += 0.05
+    controller.update(
+        np.array([0.0, 0.01, 0.0, 0.0, 0.0, 0.0]),
+        0.005,
+        q_meas=q_meas,
+    )
+    assert seen
+    np.testing.assert_allclose(seen[0], q_before)
+    controller.cfg.qp_geometry_source = "meas"
+    seen.clear()
+    q_before = controller.q_cmd.copy()
+    q_meas = q_before.copy()
+    q_meas[4] += 0.05
+    controller.update(
+        np.array([0.0, 0.01, 0.0, 0.0, 0.0, 0.0]),
+        0.005,
+        q_meas=q_meas,
+    )
+    assert seen
+    np.testing.assert_allclose(seen[0], q_meas)
+    controller.cfg.qp_geometry_source = "nope"
+    with pytest.raises(ValueError, match="qp_geometry_source"):
+        controller._qp_geometry_state(q_before, q_meas)
+
+
 def test_filter_q_meas_hold_keeps_stale_frame() -> None:
     q0 = np.linspace(0.1, 0.8, 8)
     q1 = q0.copy()
@@ -297,3 +361,10 @@ def test_latency_histogram_splits_the_write_tail() -> None:
     text = mod._latency_histogram(np.array([0.0, 1.0, 6.0, 17.0, 22.0]))
     assert "0-2:40%" in text
     assert ">=20:20%" in text
+    t = np.linspace(0.0, 4.0, 800)
+    q = 0.01 * np.sin(2.0 * np.pi * 4.0 * t)
+    spec = mod._cmd_accel_spectrum(q, 200.0)
+    assert spec is not None
+    peak, hf = spec
+    assert 2.0 < peak < 10.0
+    assert hf < 0.20

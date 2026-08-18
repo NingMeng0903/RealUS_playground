@@ -44,6 +44,7 @@ from rm75_control.hw.lw100.drive import (
     FA73_PROTO_8N1,
     LW100Drive,
     LW100DriveConfig,
+    apply_fa24_rpm_deadband,
     di_limits_pressed_from_mask,
 )
 from rm75_control.hw.lw100.modbus_rtu_tcp import ModbusRtuError
@@ -81,6 +82,193 @@ def live_host_accel_m_s2(
 def next_poll_deadline(next_t: float, now: float, period: float) -> float:
     """Absolute schedule: overruns skip catch-up instead of accumulating debt."""
     return max(float(next_t) + float(period), float(now))
+
+
+def rail_feedback_valid(
+    *,
+    encoder_accepted: bool,
+    encoder_rejected: bool,
+    age_s: float,
+    latch_watch_s: float,
+) -> bool:
+    """QPIK encoder-gate flag.
+
+    A missed or dropped Modbus sample is a coast, not a reject.  ``valid``
+    stays true while the last accepted encoder is still fresh.  ``valid=False``
+    is only for a true loss of pose (no last sane sample / panic).  A single
+    jump HOLD must not kill the WBC task — that is what ended 230949.
+    """
+    if encoder_rejected:
+        return False
+    if encoder_accepted:
+        return True
+    age = float(age_s)
+    watch = max(float(latch_watch_s), 0.0)
+    return math.isfinite(age) and age <= watch
+
+
+def rail_encoder_sample_stale(
+    dx_m: float,
+    *,
+    v_hint_m_s: float,
+    jump_margin_m: float,
+    v_move_m_s: float = 0.02,
+) -> bool:
+    """True when ``dx`` contradicts live velocity (stale / reordered frame).
+
+    At 60 Hz and 0.12 m/s a real tick is ~2 mm.  Run 230949 reported +5.2 mm
+    *against* v_enc ≈ −0.115 m/s, equal to the pose from four polls earlier.
+    That is not physical motion; HOLD-zeroing FA24 at 115 mm/s is the hitch.
+    """
+    if not math.isfinite(float(dx_m)) or not math.isfinite(float(v_hint_m_s)):
+        return False
+    if abs(float(v_hint_m_s)) < max(float(v_move_m_s), 0.0):
+        return False
+    if float(dx_m) * float(v_hint_m_s) >= 0.0:
+        return False
+    return abs(float(dx_m)) > max(float(jump_margin_m), 0.0)
+
+
+def rail_encoder_continuity_action(
+    dx_m: float,
+    *,
+    jump_lim_m: float,
+    jump_hard_m: float,
+    v_hint_m_s: float,
+    jump_margin_m: float,
+) -> str:
+    """``drop`` (stale, keep FA24), ``hold`` (impossible leap), or ``accept``."""
+    jump = abs(float(dx_m))
+    stale = rail_encoder_sample_stale(
+        float(dx_m),
+        v_hint_m_s=float(v_hint_m_s),
+        jump_margin_m=float(jump_margin_m),
+    )
+    if stale and jump < max(float(jump_hard_m), 0.0):
+        return "drop"
+    if jump > max(float(jump_lim_m), 0.0):
+        return "hold"
+    return "accept"
+
+
+def rail_encoder_jump_limit_m(
+    *,
+    dt_wall_s: float,
+    now_s: float,
+    last_accepted_s: float,
+    v_max_m_s: float,
+    jump_margin_m: float,
+    restitch: bool = False,
+) -> float:
+    """Continuity window from the last *accepted* sample, not this read's stamp.
+
+    Stamping last_enc_ok before the gate made gap≈dt_wall (16.7 ms) even when
+    the write thread stretched the real interval to 40–60 ms.  Run 230949
+    then rejected a +5.2 mm stale frame against a 5.0 mm limit.
+    """
+    if restitch:
+        return max(float(jump_margin_m), 0.0)
+    gap = max(float(dt_wall_s), 0.0)
+    if math.isfinite(float(last_accepted_s)):
+        gap = max(gap, max(0.0, float(now_s) - float(last_accepted_s)))
+    return max(float(v_max_m_s), 0.0) * gap + max(float(jump_margin_m), 0.0)
+
+
+class Fa24WriteSlot:
+    """Latest-value-wins mailbox for FA24 writes.
+
+    The worker posts an intended RPM and returns immediately.  A dedicated
+    writer thread owns the Modbus write so a slow transaction only delays
+    the next write, never the poll period.  Failures are counted here and
+    drained on the next worker tick (the 3-fail hard-hold is therefore one
+    period later than an in-line write).
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._wakeup = threading.Event()
+        self._pending: tuple[int, bool, int] | None = None
+        self._seq = 0
+        self._fail_n = 0
+        self._last_write_ms = 0.0
+        self._last_written: int | None = None
+        self._busy = False
+        self._last_exc = ""
+
+    def submit(self, rpm: int, *, force: bool = False) -> int:
+        with self._lock:
+            self._seq += 1
+            self._pending = (int(rpm), bool(force), self._seq)
+            seq = self._seq
+        self._wakeup.set()
+        return seq
+
+    def take(self) -> tuple[int, bool, int] | None:
+        with self._lock:
+            pending = self._pending
+            self._pending = None
+            if pending is not None:
+                self._busy = True
+            if self._pending is None:
+                self._wakeup.clear()
+            return pending
+
+    def wait(self, timeout: float) -> bool:
+        return self._wakeup.wait(timeout)
+
+    def wake(self) -> None:
+        self._wakeup.set()
+
+    def report(
+        self,
+        *,
+        written: int | None,
+        write_ms: float,
+        error: BaseException | None,
+    ) -> None:
+        with self._lock:
+            self._busy = False
+            self._last_write_ms = float(write_ms)
+            if error is not None:
+                self._fail_n += 1
+                self._last_exc = str(error)
+            else:
+                if written is not None:
+                    self._last_written = int(written)
+                self._last_exc = ""
+
+    def take_write_telemetry(self) -> tuple[float, int]:
+        """Return ``(write_ms, fail_n)`` since the last take and zero both."""
+        with self._lock:
+            ms = float(self._last_write_ms)
+            n = int(self._fail_n)
+            self._last_write_ms = 0.0
+            self._fail_n = 0
+            return ms, n
+
+    @property
+    def last_written(self) -> int | None:
+        with self._lock:
+            return self._last_written
+
+    @property
+    def last_error(self) -> str:
+        with self._lock:
+            return str(self._last_exc)
+
+    @property
+    def busy(self) -> bool:
+        with self._lock:
+            return bool(self._busy)
+
+    def clear(self) -> None:
+        with self._lock:
+            self._pending = None
+            self._fail_n = 0
+            self._last_write_ms = 0.0
+            self._busy = False
+            self._last_exc = ""
+            self._wakeup.clear()
 
 
 @dataclass
@@ -742,6 +930,10 @@ class RailServoBridge:
         self._last_hold_zero_mono = 0.0
         self._last_hold_drift_log_mono = 0.0
         self._safety_thread: threading.Thread | None = None
+        self._write_thread: threading.Thread | None = None
+        self._fa24_slot = Fa24WriteSlot()
+        self._modbus_io = threading.Lock()
+        self._last_di_mask = 0
         self._latch_kill_req = threading.Event()
         self._csv: _RailCsvLogger | None = None
         self._limit_poll_i = 0
@@ -1513,7 +1705,8 @@ class RailServoBridge:
         if drive is None:
             return
         try:
-            drive.kill_velocity_hard(attempts=2, disable_on_fail=False)
+            with self._modbus_io:
+                drive.kill_velocity_hard(attempts=2, disable_on_fail=False)
         except Exception:
             pass
 
@@ -1567,7 +1760,8 @@ class RailServoBridge:
             try:
                 drive = self._drive
                 if drive is not None and drive._client._sock is not None:
-                    drive.kill_velocity_hard(attempts=1, disable_on_fail=False)
+                    with self._modbus_io:
+                        drive.kill_velocity_hard(attempts=1, disable_on_fail=False)
             except Exception:
                 pass
             print(
@@ -1603,7 +1797,8 @@ class RailServoBridge:
         try:
             drive = self._drive
             if drive is not None and drive._client._sock is not None:
-                drive.kill_velocity_hard(attempts=1, disable_on_fail=False)
+                with self._modbus_io:
+                    drive.kill_velocity_hard(attempts=1, disable_on_fail=False)
         except Exception:
             pass
         if now - getattr(self, "_last_hold_log", 0.0) >= 1.0:
@@ -1621,6 +1816,48 @@ class RailServoBridge:
                 hold_count=self._hold_count,
                 hold_reason=str(reason),
             )
+
+    def _fa24_write_loop(self) -> None:
+        """Own FA24 Modbus writes so a slow transaction cannot stretch the poll."""
+        slot = self._fa24_slot
+        while not self._stop.is_set():
+            if not slot.wait(0.05):
+                continue
+            req = slot.take()
+            if req is None:
+                continue
+            rpm, _force, _seq = req
+            drive = self._drive
+            if drive is None:
+                slot.report(
+                    written=None,
+                    write_ms=0.0,
+                    error=RuntimeError("rail drive missing"),
+                )
+                continue
+            t0 = time.monotonic()
+            try:
+                with self._modbus_io:
+                    written = drive.set_velocity_rpm(rpm, force=True, deadband=0)
+                slot.report(
+                    written=int(written),
+                    write_ms=(time.monotonic() - t0) * 1000.0,
+                    error=None,
+                )
+            except Exception as exc:
+                slot.report(
+                    written=None,
+                    write_ms=(time.monotonic() - t0) * 1000.0,
+                    error=exc,
+                )
+
+    def _write_fa24_sync(self, rpm: int, *, force: bool = True) -> int:
+        """In-thread FA24 write (arming / teardown).  Serialized with the writer."""
+        drive = self._drive
+        if drive is None:
+            return 0
+        with self._modbus_io:
+            return int(drive.set_velocity_rpm(rpm, force=force, deadband=0))
 
     def start(self) -> None:
         if not self.enabled:
@@ -1811,14 +2048,19 @@ class RailServoBridge:
         self._abort.clear()
         self._arm_req.set()  # worker begins arming immediately
         self._last_enc_ok_mono = time.monotonic()
+        self._fa24_slot.clear()
         self._thread = threading.Thread(
             target=self._worker_velocity, name="lw100-rail", daemon=True
         )
         self._safety_thread = threading.Thread(
             target=self._latch_safety_watchdog, name="lw100-rail-safety", daemon=True
         )
+        self._write_thread = threading.Thread(
+            target=self._fa24_write_loop, name="lw100-rail-fa24", daemon=True
+        )
         self._thread.start()
         self._safety_thread.start()
+        self._write_thread.start()
         hard_lo, hard_hi = self._soft_lo_hi()
         print(
             f"lw100 rail: connecting hold @ {measured:+.4f} m ({zero_note}, "
@@ -1956,7 +2198,8 @@ class RailServoBridge:
         tore_link = False
         if drive is not None:
             try:
-                drive.kill_velocity_hard(attempts=2, disable_on_fail=False)
+                with self._modbus_io:
+                    drive.kill_velocity_hard(attempts=2, disable_on_fail=False)
             except Exception:
                 pass
             if int(getattr(drive, "_last_rpm_cmd", 0) or 0) != 0:
@@ -1975,6 +2218,10 @@ class RailServoBridge:
         if self._safety_thread is not None:
             self._safety_thread.join(timeout=0.3)
             self._safety_thread = None
+        self._fa24_slot.wake()
+        if self._write_thread is not None:
+            self._write_thread.join(timeout=0.6)
+            self._write_thread = None
         if self._drive is not None:
             try:
                 self._drive._client.connect()
@@ -2494,6 +2741,7 @@ class RailServoBridge:
         jump_soft_streak_panic = max(1, int(self.config.jump_soft_streak_panic))
         prev_t = time.monotonic()
         prev_v_cmd = 0.0
+        last_intended_rpm = int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
         x_ref = float(self.measured_m) if math.isfinite(self.measured_m) else 0.0
         v_ref = 0.0
         a_ref = 0.0
@@ -2559,9 +2807,9 @@ class RailServoBridge:
                 v_enc_hold = float("nan")
                 enc_hold_left = 0
                 try:
-                    self._drive.set_velocity_rpm(0, force=True)
+                    last_intended_rpm = self._write_fa24_sync(0, force=True)
                 except Exception:
-                    pass
+                    last_intended_rpm = 0
                 print("lw100 rail: arming… (FA24=0, proving Modbus)", flush=True)
 
             t0 = time.monotonic()
@@ -2599,6 +2847,7 @@ class RailServoBridge:
             a_cmd = 0.0
             hard_hold_this_tick = False
             encoder_accepted = True
+            encoder_rejected = False
             try:
                 # Safety flag from latch watchdog (no concurrent Modbus there).
                 if self._latch_kill_req.is_set():
@@ -2620,21 +2869,70 @@ class RailServoBridge:
                     v_cmd = 0.0
                     hard_hold_this_tick = True
 
-                t_write_ms = 0.0
-                t_read0 = time.monotonic()
-                drive_rpm, drive_m, di_mask = self._drive.read_motion_and_di_fast()
-                t_read1 = time.monotonic()
-                t_read_ms = (t_read1 - t_read0) * 1000.0
-                n_modbus = 1
-                # Stamp the middle of the Modbus read, not its end: the read
-                # takes 8 ms median with a long tail, and timing the samples
-                # off the tail put that jitter straight into the slope.
-                motion_sample_mono = 0.5 * (t_read0 + t_read1)
-                measured = self._encode_rail_m(drive_m)
-                speed_rpm_host = self._encode_speed_rpm(drive_rpm)
-                last_enc_ok_t = motion_sample_mono
-                self._last_enc_ok_mono = motion_sample_mono
-                mb_fail_n = 0
+                t_write_ms, write_fails = self._fa24_slot.take_write_telemetry()
+                if write_fails:
+                    written = self._fa24_slot.last_written
+                    if written is not None:
+                        last_intended_rpm = int(written)
+                    mb_fail_n += int(write_fails)
+                    if mb_fail_n in (1, 2, 3, 10) or mb_fail_n % 50 == 0:
+                        print(
+                            f"lw100 rail: FA24 write error ({mb_fail_n}x): "
+                            f"{self._fa24_slot.last_error}",
+                            flush=True,
+                        )
+                    if mb_fail_n >= 3:
+                        latched = int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
+                        prev_v_cmd = 0.0
+                        v_ref = 0.0
+                        a_ref = 0.0
+                        ref_inited = False
+                        self._hold_velocity(
+                            measured,
+                            f"modbus write failed {mb_fail_n}x"
+                            + (
+                                f" with latched FA24={latched} r/min"
+                                if abs(latched) > 0
+                                else ""
+                            ),
+                        )
+                        hard_hold_this_tick = True
+                t_read_ms = 0.0
+                n_modbus = 0
+                read_fresh = False
+                drive_rpm = int(self._measured_speed_rpm)
+                di_mask = int(self._last_di_mask)
+                # _measured_speed_rpm is already in host frame.
+                speed_rpm_host = drive_rpm
+                motion_sample_mono = float(t0)
+                # Block for the writer, do not skip the encoder.  A non-
+                # blocking skip made follow-start write every tick, freeze
+                # last_enc_ok_t, and publish valid=False — QPIK died in 12
+                # ticks on the encoder gate.
+                io_timeout = max(2.0 * period, 0.05)
+                got_io = self._modbus_io.acquire(timeout=io_timeout)
+                if got_io:
+                    try:
+                        t_read0 = time.monotonic()
+                        drive_rpm, drive_m, di_mask = (
+                            self._drive.read_motion_and_di_fast()
+                        )
+                        t_read1 = time.monotonic()
+                        t_read_ms = (t_read1 - t_read0) * 1000.0
+                        n_modbus = 1
+                        # Stamp the middle of the Modbus read, not its end:
+                        # the read takes 8 ms median with a long tail.
+                        motion_sample_mono = 0.5 * (t_read0 + t_read1)
+                        measured = self._encode_rail_m(drive_m)
+                        speed_rpm_host = self._encode_speed_rpm(drive_rpm)
+                        self._last_di_mask = int(di_mask)
+                        read_fresh = True
+                        if not write_fails:
+                            mb_fail_n = 0
+                    finally:
+                        self._modbus_io.release()
+                else:
+                    encoder_accepted = False
                 # Snapshot command state under lock; only stamp encoder if sane.
                 with self._lock:
                     target = float(self._target_m)
@@ -2662,7 +2960,9 @@ class RailServoBridge:
                     with self._lock:
                         self._last_target_rx_mono = last_rx
 
-                if not self._encoder_sane(measured):
+                if not read_fresh:
+                    encoder_accepted = False
+                elif not self._encoder_sane(measured):
                     # Out-of-band reading: stop streaming, keep session/cal.
                     measured = last_sane
                     self._hold_velocity(
@@ -2670,6 +2970,8 @@ class RailServoBridge:
                     )
                     hard_hold_this_tick = True
                     encoder_accepted = False
+                    # Last sane pose is still good — do not trip the WBC gate.
+                    encoder_rejected = False
                     self._frame_continuous = False
                 else:
                     # Continuity gate on host pose.  Impossible leaps are
@@ -2680,14 +2982,54 @@ class RailServoBridge:
                         and self._encoder_sane(last_sane)
                         and calibrated
                     ):
-                        gap_s = max(float(dt_wall), max(0.0, t0 - last_enc_ok_t))
-                        jump_lim = v_max * gap_s + jump_margin_m
-                        # After a TCP restitch, allow only continuity with the
-                        # last sane pose (not "physical motion while blind").
-                        if self._link_restitch:
-                            jump_lim = jump_margin_m
-                        jump = abs(measured - last_sane)
-                        if jump > jump_lim:
+                        jump_lim = rail_encoder_jump_limit_m(
+                            dt_wall_s=float(dt_wall),
+                            now_s=float(t0),
+                            last_accepted_s=float(last_enc_ok_t),
+                            v_max_m_s=float(v_max),
+                            jump_margin_m=float(jump_margin_m),
+                            restitch=bool(self._link_restitch),
+                        )
+                        dx = float(measured) - float(last_sane)
+                        jump = abs(dx)
+                        v_hint = (
+                            float(v_enc_hold)
+                            if math.isfinite(float(v_enc_hold))
+                            else self._rpm_to_mps(float(speed_rpm_host))
+                        )
+                        gate = rail_encoder_continuity_action(
+                            dx,
+                            jump_lim_m=float(jump_lim),
+                            jump_hard_m=float(jump_hard_m),
+                            v_hint_m_s=float(v_hint),
+                            jump_margin_m=float(jump_margin_m),
+                        )
+                        if gate == "drop":
+                            # Stale / reordered frame (230949 +5.2 mm against
+                            # travel).  Do not HOLD: zeroing FA24 at 0.12 m/s
+                            # is the hitch.  Keep last sane; WBC coasts.
+                            measured = last_sane
+                            encoder_accepted = False
+                            encoder_rejected = False
+                            idle_jump_n = 0
+                            idle_jump_m = float("nan")
+                            if t0 - getattr(self, "_last_stale_log", 0.0) >= 1.0:
+                                self._last_stale_log = t0
+                                print(
+                                    f"lw100 rail: drop stale encoder "
+                                    f"{dx * 1000:+.1f} mm against "
+                                    f"v={v_hint:.3f} m/s (no HOLD)",
+                                    flush=True,
+                                )
+                                self._log_event(
+                                    "STALE",
+                                    measured_m=float(last_sane),
+                                    hold_reason=(
+                                        f"encoder stale {dx * 1000:+.1f} mm "
+                                        f"against v={v_hint:.3f} m/s"
+                                    ),
+                                )
+                        elif gate == "hold":
                             raw_jump = float(measured)
                             same_idle = (
                                 not follow
@@ -2713,6 +3055,8 @@ class RailServoBridge:
                                     speed_rpm_host,
                                     sample_mono_s=motion_sample_mono,
                                 )
+                                last_enc_ok_t = float(motion_sample_mono)
+                                self._last_enc_ok_mono = last_enc_ok_t
                             else:
                                 measured = last_sane
                                 jump_soft_streak = jump_soft_streak + 1
@@ -2723,6 +3067,8 @@ class RailServoBridge:
                                 )
                                 hard_hold_this_tick = True
                                 encoder_accepted = False
+                                # Soft HOLD keeps last sane pose; WBC must coast.
+                                encoder_rejected = False
                                 if jump >= jump_hard_m or jump_soft_streak >= jump_soft_streak_panic:
                                     # Pose stream untrusted for this session; do not
                                     # DISARM or erase the home zero.
@@ -2739,6 +3085,8 @@ class RailServoBridge:
                                 speed_rpm_host,
                                 sample_mono_s=motion_sample_mono,
                             )
+                            last_enc_ok_t = float(motion_sample_mono)
+                            self._last_enc_ok_mono = last_enc_ok_t
                     else:
                         jump_soft_streak = 0
                         self._publish_motion(
@@ -2746,6 +3094,8 @@ class RailServoBridge:
                             speed_rpm_host,
                             sample_mono_s=motion_sample_mono,
                         )
+                        last_enc_ok_t = float(motion_sample_mono)
+                        self._last_enc_ok_mono = last_enc_ok_t
 
                 v_reg = self._rpm_to_mps(float(speed_rpm_host))
                 if (
@@ -2852,7 +3202,9 @@ class RailServoBridge:
 
                 # --- Arming gate: no follow until Modbus path is proven hot ---
                 if not armed and not panic and not self._abort.is_set():
-                    self._drive.set_velocity_rpm(0, force=False)
+                    if last_intended_rpm != 0:
+                        self._fa24_slot.submit(0, force=True)
+                        last_intended_rpm = 0
                     prev_v_cmd = 0.0
                     if poll_ok and self._encoder_sane(measured):
                         arm_good += 1
@@ -3321,19 +3673,19 @@ class RailServoBridge:
                     if bool(follow) and not settling and not panic
                     else 0
                 )
-                last_rpm_before = int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
-                t_write0 = time.monotonic()
-                rpm_cmd = self._drive.set_velocity_rpm(rpm, deadband=rpm_deadband)
-                t_write_ms = (time.monotonic() - t_write0) * 1000.0
-                wrote = (
-                    t_write_ms > 0.5
-                    or int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
-                    != last_rpm_before
+                cap = int(getattr(self._drive, "_max_speed_rpm", 1200) or 1200)
+                cap = max(1, min(6000, cap))
+                requested = int(max(-cap, min(cap, round(float(rpm)))))
+                rpm_cmd = apply_fa24_rpm_deadband(
+                    requested,
+                    last_intended_rpm,
+                    int(rpm_deadband),
+                    force=False,
                 )
-                if wrote:
+                if int(rpm_cmd) != int(last_intended_rpm):
+                    self._fa24_slot.submit(int(rpm_cmd), force=True)
+                    last_intended_rpm = int(rpm_cmd)
                     n_modbus += 1
-                else:
-                    t_write_ms = 0.0
                 prev_v_cmd = sign * self._rpm_to_mps(float(rpm_cmd))
                 control_mono = time.monotonic()
                 sample_mono = motion_sample_mono
@@ -3350,6 +3702,17 @@ class RailServoBridge:
                     prev_sample_t = float(self._servo_sample.sample_mono_s)
                     if not encoder_accepted and math.isfinite(prev_sample_t):
                         sample_mono = prev_sample_t
+                    enc_age = (
+                        max(0.0, control_mono - last_enc_ok_t)
+                        if math.isfinite(last_enc_ok_t)
+                        else float("inf")
+                    )
+                    sample_valid = rail_feedback_valid(
+                        encoder_accepted=encoder_accepted,
+                        encoder_rejected=encoder_rejected,
+                        age_s=enc_age,
+                        latch_watch_s=latch_watch_s,
+                    )
                     self._servo_sample = RailServoSample(
                         sample_mono_s=sample_mono,
                         target_rx_mono_s=last_rx,
@@ -3375,7 +3738,7 @@ class RailServoBridge:
                         hold_count=hold_count,
                         hold_reason=hold_reason,
                         command_mode=command_mode.value,
-                        feedback_valid=bool(encoder_accepted),
+                        feedback_valid=bool(sample_valid),
                     )
                 if self._csv is not None:
                     last_rpm = int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
@@ -3417,7 +3780,7 @@ class RailServoBridge:
                         hold_count=hold_count,
                         hold_reason=hold_reason,
                         command_mode=command_mode.value,
-                        feedback_valid=bool(encoder_accepted),
+                        feedback_valid=bool(sample_valid),
                         t_read_ms=t_read_ms,
                         t_write_ms=t_write_ms,
                         n_modbus=n_modbus,
@@ -3425,7 +3788,8 @@ class RailServoBridge:
                 # Rare SP-slot reassert (avoid extra Modbus during tracking).
                 if loop_n > 0 and loop_n % max(1, int(self.config.poll_hz * 30)) == 0:
                     try:
-                        self._drive.ensure_velocity_slot_safe()
+                        with self._modbus_io:
+                            self._drive.ensure_velocity_slot_safe()
                     except ModbusRtuError:
                         pass
 
@@ -3502,6 +3866,7 @@ class RailServoBridge:
         # Teardown: socket may already be closed by estop/stop — never block.
         try:
             if self._drive is not None and self._drive._client._sock is not None:
-                self._drive.kill_velocity_hard(attempts=1, disable_on_fail=False)
+                with self._modbus_io:
+                    self._drive.kill_velocity_hard(attempts=1, disable_on_fail=False)
         except Exception:
             pass
