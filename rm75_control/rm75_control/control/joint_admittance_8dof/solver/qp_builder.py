@@ -8,10 +8,10 @@ Formulation (Escande et al. 2014 slack task + Faverjon velocity damper / Khazoom
          J_task qdot - w = v_cmd                   (protected equality)
          l_box <= qdot <= u_box, J_col qdot >= v_safe
 
-    QP2: keep QP1's achieved J_task qdot as a hard equality and minimize
-         regularization, posture and rail preferences.  Thus a rail box can
-         only change the arm/rail allocation when the Cartesian task remains
-         unchanged; it cannot buy task slack with a finite soft weight.
+    QP2: keep QP1's achieved Cartesian velocity as a hard equality on the
+         *full* Jacobian (including the next rail command).  Attractors may
+         only move in the realizable TCP nullspace; a rail preference cannot
+         buy task slack.
 
 H is block-diagonal (no J^T J).  ProxQP warm-started each tick.
 
@@ -513,6 +513,8 @@ class QpIkController:
         self.last_hard_cbf_lower = np.zeros(0, dtype=float)
         self.last_qp1_task_velocity = np.zeros(N_TASK_SLACK, dtype=float)
         self.last_task_jacobian = np.zeros((N_TASK_SLACK, kin.nv), dtype=float)
+        self.last_lock_jacobian = np.zeros((N_TASK_SLACK, kin.nv), dtype=float)
+        self.last_lock_velocity = np.zeros(N_TASK_SLACK, dtype=float)
         self.last_final_task_lock_violation = 0.0
         self.last_a_mirror_frac = float("nan")
         self.last_j_mirror_frac = float("nan")
@@ -625,6 +627,10 @@ class QpIkController:
         self.last_task_jacobian = np.zeros(
             (N_TASK_SLACK, self.kin.nv), dtype=float
         )
+        self.last_lock_jacobian = np.zeros(
+            (N_TASK_SLACK, self.kin.nv), dtype=float
+        )
+        self.last_lock_velocity = np.zeros(N_TASK_SLACK, dtype=float)
         self.last_final_task_lock_violation = 0.0
         self.last_a_mirror_frac = float("nan")
         self.last_j_mirror_frac = float("nan")
@@ -684,9 +690,21 @@ class QpIkController:
                     )
                 ),
             )
-        task_value = self.last_task_jacobian @ qdot_arr
+        lock_jac = (
+            self.last_lock_jacobian
+            if self.last_lock_jacobian.size
+            else self.last_task_jacobian
+        )
+        lock_vel = (
+            self.last_lock_velocity
+            if self.last_lock_velocity.size
+            else self.last_qp1_task_velocity
+        )
+        if lock_jac.shape[1] != qdot_arr.size:
+            return hard, float("inf")
+        task_value = lock_jac @ qdot_arr
         task_lock = float(
-            np.max(np.abs(task_value - self.last_qp1_task_velocity), initial=0.0)
+            np.max(np.abs(task_value - lock_vel), initial=0.0)
         )
         return hard, task_lock
 
@@ -1102,6 +1120,8 @@ class QpIkController:
         ).copy()
         self.last_hard_cbf_lower = np.asarray(cbf.lower, dtype=float).copy()
         self.last_task_jacobian = np.asarray(J_task, dtype=float).copy()
+        self.last_lock_jacobian = np.asarray(J, dtype=float).copy()
+        self.last_lock_velocity = np.zeros(N_TASK_SLACK, dtype=float)
         self.last_cbf_min_dist = float("nan")
         self.last_cbf_pair = ""
         if self.collision is not None and self.collision_cfg.enabled:
@@ -1208,23 +1228,19 @@ class QpIkController:
         else:
             qdot1 = np.asarray(x1[:nv], dtype=float).copy()
             if rail_exec is not None:
-                # With measured-rail affine compensation the next rail command
-                # is absent from both the protected task and the current CBF.
-                # It is therefore a genuine QP1 null variable.  Prefer the
-                # already-computed rail macro when one exists so a QP2
-                # failure or limiter keep-QP1 still moves the carriage.
-                # Otherwise brake to the hard-feasible standstill.
+                # Rail is not in QP1's task map.  Seed the next command at the
+                # allocator preference (clipped to this tick's box) so QP2 and
+                # QP2-fallback send a defined qdot[0].  Do not lock the full
+                # Jacobian to that seed: the arm must keep compensating the
+                # measured rail, not a command the drive has not executed.
+                seed = float(rail_exec)
                 if (
                     rail_task_vel_m_s is not None
                     and np.isfinite(float(rail_task_vel_m_s))
                     and not rail_locked
-                    and rail_vel_pin_m_s is None
                 ):
-                    qdot1[0] = float(
-                        np.clip(float(rail_task_vel_m_s), lo_box[0], hi_box[0])
-                    )
-                else:
-                    qdot1[0] = float(np.clip(0.0, lo_box[0], hi_box[0]))
+                    seed = float(rail_task_vel_m_s)
+                qdot1[0] = float(np.clip(seed, lo_box[0], hi_box[0]))
                 x1 = np.asarray(x1, dtype=float).copy()
                 x1[0] = qdot1[0]
             self.last_qdot_qp1 = qdot1.copy()
@@ -1238,6 +1254,14 @@ class QpIkController:
             )
             t1 = J_task @ qdot1
             self.last_qp1_task_velocity = np.asarray(t1, dtype=float).copy()
+            if rail_exec is not None:
+                lock_jac = np.asarray(J_task, dtype=float).copy()
+                lock_vel = np.asarray(t1, dtype=float).copy()
+            else:
+                lock_jac = np.asarray(J, dtype=float).copy()
+                lock_vel = np.asarray(t1, dtype=float).copy()
+            self.last_lock_jacobian = lock_jac
+            self.last_lock_velocity = lock_vel
             residual1 = b_task - t1
             self.last_qp1_residual = residual1.copy()
             self.last_qp1_residual_norm = float(np.linalg.norm(residual1))
@@ -1339,8 +1363,8 @@ class QpIkController:
                 pref_lower=pref.lower,
             )
             A2 = np.zeros((n_task, n_var), dtype=float)
-            A2[:, :nv] = J_task
-            b2 = t1
+            A2[:, :nv] = lock_jac
+            b2 = lock_vel
             # Same-tick feasible hot start: qdot1 already satisfies all hard
             # constraints and exactly produces b2.  Fill only the one-sided
             # preference slacks needed by the added QP2 rows.  Seeding from
@@ -1416,7 +1440,7 @@ class QpIkController:
             )
             self.last_final_task_lock_violation = float(
                 np.max(
-                    np.abs(J_task @ np.asarray(qdot, dtype=float) - t1),
+                    np.abs(lock_jac @ np.asarray(qdot, dtype=float) - lock_vel),
                     initial=0.0,
                 )
             )

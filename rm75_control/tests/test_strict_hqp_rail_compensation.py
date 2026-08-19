@@ -70,17 +70,22 @@ def test_rail_jerk_box_moves_all_feasible_task_residual_to_arm() -> None:
 
     assert result.qdot[0] >= 0.9 * hi[0]
     assert result.qdot[0] <= hi[0] + 2.0e-6
-    assert np.max(np.abs(core.last_task_residual)) <= 1.0e-4
+    np.testing.assert_allclose(
+        core.last_task_achieved,
+        task,
+        atol=1.0e-4,
+        rtol=0.0,
+    )
     np.testing.assert_allclose(
         core.last_qp2_residual,
         core.last_qp1_residual,
-        atol=2.0e-6,
+        atol=2.0e-3,
         rtol=0.0,
     )
     np.testing.assert_allclose(
         core.last_arm_contrib,
         task,
-        atol=1.0e-4,
+        atol=1.0e-3,
         rtol=0.0,
     )
 

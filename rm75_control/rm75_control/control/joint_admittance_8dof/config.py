@@ -812,7 +812,7 @@ def _parse_rail_allocator(inner: dict) -> RailAllocatorConfig:
         {
             "v0_m_s", "w0_rad_s", "k_margin",
             "kp_mid", "ki_mid", "u_mid_max_m_s", "k_err_rail", "e_ref_m",
-            "f_c_hz", "reaction_s",
+            "f_c_hz", "reaction_s", "kaw_mid", "rho_mirror_a", "rho_mirror_j",
             "observer_pos_gain", "observer_vel_gain",
             "observer_vel_lpf_hz",
         },
@@ -837,7 +837,14 @@ def _parse_rail_allocator(inner: dict) -> RailAllocatorConfig:
         e_ref_m=_finite_float(
             r.get("e_ref_m", 0.08), name="rail_allocator.e_ref_m"
         ),
-        f_c_hz=_finite_float(r.get("f_c_hz", 20.0), name="rail_allocator.f_c_hz"),
+        f_c_hz=_finite_float(r.get("f_c_hz", 1.0), name="rail_allocator.f_c_hz"),
+        kaw_mid=_finite_float(r.get("kaw_mid", 8.0), name="rail_allocator.kaw_mid"),
+        rho_mirror_a=_finite_float(
+            r.get("rho_mirror_a", 0.50), name="rail_allocator.rho_mirror_a"
+        ),
+        rho_mirror_j=_finite_float(
+            r.get("rho_mirror_j", 0.30), name="rail_allocator.rho_mirror_j"
+        ),
         reaction_s=_finite_float(
             r.get("reaction_s", 0.06), name="rail_allocator.reaction_s"
         ),

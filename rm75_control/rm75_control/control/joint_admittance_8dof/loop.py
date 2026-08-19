@@ -60,7 +60,9 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
     RailReferenceModel,
     RailStateObserver,
     allocate_rail,
+    arm_mirror_rail_limits,
     margin_weight_from_activation,
+    wall_leave_only_sign,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
     RailExtensionConfig,
@@ -72,6 +74,7 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_goodness import (
 )
 from rm75_control.control.joint_admittance_8dof.tasks.secondary_composer import (
     SecondaryComposer,
+    SecondaryRateFilter,
     max_limit_activation,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.ird_adapter import (
@@ -109,6 +112,12 @@ from rm75_control.control.joint_admittance_8dof.utils.safety import (
 # Pure rotation used to skip hold_setpoint (only vff[:3] was checked), so
 # homotopy q* chased live IK while the stick twisted J1 to −163°.
 _HOLD_ROT_THR_RAD_S = 0.05
+_QUIESCENT_LIN_M_S = 0.005
+_QUIESCENT_ROT_RAD_S = 0.05
+_QUIESCENT_TCP_M_S = 0.010
+_QUIESCENT_HOLD_S = 0.15
+_RAIL_V_DRIVE_CAP_M_S = 0.12
+_RAIL_PREF_WEIGHT = 64.0
 
 
 def hold_setpoint_from_vel_ff(
@@ -349,6 +358,38 @@ class JointIkStep:
     rail_target_publish_mono_ns: int = 0
     rail_fa24_write_mono_ns: int = 0
     rail_encoder_sample_mono_ns: int = 0
+    v_cmd_received: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    v_cmd_feasible: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    v_tcp_estimated: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    e_shape: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    e_qp: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    e_exec: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    e_shape_norm: float = 0.0
+    e_qp_norm: float = 0.0
+    e_exec_norm: float = 0.0
+    quiescent: bool = False
+    secondary_suppressed: bool = False
+    command_stale: bool = False
+    joint_limited: bool = False
+    rail_limited: bool = False
+    wall_active: bool = False
+
+
+@dataclass
+class TrackerStatus:
+    """Pure-velocity inner-loop report.  Input is only ``v_cmd[6]``."""
+
+    v_cmd_received: np.ndarray
+    v_cmd_feasible: np.ndarray
+    v_tcp_estimated: np.ndarray
+    task_residual: np.ndarray
+    slack_norm: float
+    joint_limited: bool = False
+    rail_limited: bool = False
+    wall_active: bool = False
+    secondary_suppressed: bool = False
+    command_stale: bool = False
+    step: JointIkStep | None = None
 
 
 def scale_qdot_into_box(
@@ -444,9 +485,12 @@ class JointIkController:
         )
         if self.cfg.rail.v_max_m_s is not None:
             self.limits.v_max[0] = min(
-                float(self.kin.v_max[0]),
+                float(self.limits.v_max[0]),
                 float(self.cfg.rail.v_max_m_s),
             )
+        self.limits.v_max[0] = min(
+            float(self.limits.v_max[0]), _RAIL_V_DRIVE_CAP_M_S
+        )
         hard_lo = float(getattr(self.cfg.rail, "hard_min_m", 0.005))
         hard_hi = float(getattr(self.cfg.rail, "hard_max_m", 0.78))
         if not (
@@ -484,6 +528,8 @@ class JointIkController:
             reaction_s=float(alloc_cfg.reaction_s),
             soft_min_m=float(self.cfg.rail.soft_min_m),
             soft_max_m=float(self.cfg.rail.soft_max_m),
+            hard_min_m=hard_lo,
+            hard_max_m=hard_hi,
         )
         self.rail_observer = RailStateObserver(
             pos_gain=float(alloc_cfg.observer_pos_gain),
@@ -501,6 +547,7 @@ class JointIkController:
             kp=float(alloc_cfg.kp_mid),
             ki=float(alloc_cfg.ki_mid),
             v_max=float(alloc_cfg.u_mid_max_m_s),
+            kaw=float(getattr(alloc_cfg, "kaw_mid", 8.0)),
         )
         if float(getattr(self.cfg.rail_extension, "v_lpf_fc_hz", 0.0) or 0.0) <= 0.0:
             self.cfg.rail_extension.v_lpf_fc_hz = float(alloc_cfg.f_c_hz)
@@ -516,6 +563,13 @@ class JointIkController:
             max_qdot_frac=self.cfg.nullspace_max_qdot_frac,
         )
         self.last_secondary_norm: float = 0.0
+        self._sec_filter = SecondaryRateFilter(int(kin.nv))
+        self._enabled = True
+        self._quiescent = False
+        self._quiet_s = 0.0
+        self._last_tcp_est = np.zeros(6, dtype=float)
+        self._u_mid_committed = 0.0
+        self._u_mid_for_sec = 0.0
         self.last_sigma_min: float = float(self.cfg.qp.sr_damping.sigma_ref)
         self.last_slack_norm: float = 0.0
         self._sat_scale: float = 1.0
@@ -585,7 +639,7 @@ class JointIkController:
     def _measure_box_periods(self, dt: float) -> tuple[float, float | None]:
         """Two most recent wall periods for the unequal-sample third-order box.
 
-        Each period is clamped to ``[0.8, 2.0] × dt`` (pass the nominal
+        Each period is clamped to ``[0.8, 1.0] × dt`` (pass the nominal
         period, not the jittering wall period) so one stalled tick cannot
         open the acceleration/jerk boxes.
         """
@@ -601,7 +655,7 @@ class JointIkController:
         if not math.isfinite(measured) or measured <= 0.0:
             h1 = nominal
         else:
-            h1 = float(np.clip(measured, 0.8 * nominal, 2.0 * nominal))
+            h1 = float(np.clip(measured, 0.8 * nominal, 1.0 * nominal))
         self._box_h1_last = h1
         return h1, prev_h1
 
@@ -625,8 +679,32 @@ class JointIkController:
             self.limits.a_max,
             dt_int,
         )
-        q_final = np.asarray(q_shadow, dtype=float)
-        clamp_applied = bool(would_clamp)
+        # Shadow-only: if the clip would change the command, keep the QP
+        # result unless the shadow still satisfies the Cartesian lock.
+        q_final = np.asarray(q_desired, dtype=float)
+        clamp_applied = False
+        if would_clamp:
+            period = max(float(dt_int), 1.0e-12)
+            qdot_shadow = (
+                np.asarray(q_shadow, dtype=float) - np.asarray(q_prev, dtype=float)
+            ) / period
+            hard_s, lock_s = self.core.validate_final_qdot(qdot_shadow)
+            final_tol = max(
+                10.0 * float(getattr(self.cfg.qp, "eps_abs", 1.0e-6)),
+                1.0e-5,
+            )
+            if (
+                np.isfinite(hard_s)
+                and np.isfinite(lock_s)
+                and hard_s <= final_tol
+                and lock_s <= final_tol
+            ):
+                q_final = np.asarray(q_shadow, dtype=float)
+                clamp_applied = True
+        lo = np.asarray(self.limits.q_lower, dtype=float)
+        hi = np.asarray(self.limits.q_upper, dtype=float)
+        if lo.shape == q_final.shape and hi.shape == q_final.shape:
+            q_final = np.minimum(np.maximum(q_final, lo), hi)
         dq_final = q_final - np.asarray(q_prev, dtype=float)
         self.q_cmd = np.asarray(q_final, dtype=float).copy()
         self._dq_prev = np.asarray(dq_final, dtype=float).copy()
@@ -808,6 +886,13 @@ class JointIkController:
         self.last_slack_norm = 0.0
         self._sat_scale = 1.0
         self.last_sat_scale = 1.0
+        self._sec_filter.reset()
+        self._quiescent = False
+        self._quiet_s = 0.0
+        self._last_tcp_est = np.zeros(6, dtype=float)
+        self._u_mid_committed = 0.0
+        self._u_mid_for_sec = 0.0
+        self._enabled = True
         self._apply_rail_mode_side_effects()
         self._latch_attractor_from_q(self.q_cmd)
 
@@ -1172,6 +1257,71 @@ class JointIkController:
             j_mirror_frac=float(getattr(self.core, "last_j_mirror_frac", float("nan"))),
         )
 
+    def enable(self) -> None:
+        self._enabled = True
+
+    def stop(self) -> None:
+        """Communication abort: zero the next command.  Not a trajectory mode."""
+        self._enabled = False
+        self._quiescent = True
+        self._quiet_s = _QUIESCENT_HOLD_S
+        self._sec_filter.reset()
+        self.midranging.reset()
+        self.rail_ref_model.reset(0.0)
+        self.last_v_r_ref = 0.0
+
+    def _update_quiescent(self, twist_base: np.ndarray, dt: float) -> bool:
+        v = np.asarray(twist_base, dtype=float).reshape(-1)
+        lin = float(np.linalg.norm(v[:3])) if v.size >= 3 else 0.0
+        rot = float(np.linalg.norm(v[3:6])) if v.size >= 6 else 0.0
+        tcp = np.asarray(self._last_tcp_est, dtype=float).reshape(-1)
+        tcp_lin = float(np.linalg.norm(tcp[:3])) if tcp.size >= 3 else 0.0
+        cmd_quiet = lin < _QUIESCENT_LIN_M_S and rot < _QUIESCENT_ROT_RAD_S
+        tcp_quiet = tcp_lin < _QUIESCENT_TCP_M_S
+        if cmd_quiet and tcp_quiet:
+            self._quiet_s += max(float(dt), 0.0)
+        else:
+            self._quiet_s = 0.0
+        self._quiescent = bool(self._quiet_s + 1.0e-12 >= _QUIESCENT_HOLD_S)
+        return self._quiescent
+
+    def step(
+        self,
+        v_cmd: np.ndarray,
+        stamp: float | None = None,
+        *,
+        q_meas: np.ndarray | None = None,
+        **kwargs,
+    ) -> TrackerStatus:
+        """Pure-velocity inner API: ``v_cmd[6]`` plus comms stamp."""
+        stale = False
+        twist = np.asarray(v_cmd, dtype=float).reshape(-1).copy()
+        if twist.size != 6:
+            raise ValueError("v_cmd must be a 6-vector")
+        if stamp is not None and np.isfinite(float(stamp)):
+            age = time.monotonic() - float(stamp)
+            if age > float(self.cfg.feedback_timeout_s):
+                stale = True
+                twist[:] = 0.0
+        if not self._enabled:
+            stale = True
+            twist[:] = 0.0
+        inner_step = self.update(twist, q_meas=q_meas, **kwargs)
+        status = TrackerStatus(
+            v_cmd_received=np.asarray(inner_step.v_cmd_received, dtype=float).copy(),
+            v_cmd_feasible=np.asarray(inner_step.v_cmd_feasible, dtype=float).copy(),
+            v_tcp_estimated=np.asarray(inner_step.v_tcp_estimated, dtype=float).copy(),
+            task_residual=np.asarray(inner_step.protected_residual, dtype=float).copy(),
+            slack_norm=float(inner_step.slack_norm),
+            joint_limited=bool(inner_step.joint_limited),
+            rail_limited=bool(inner_step.rail_limited),
+            wall_active=bool(inner_step.wall_active or inner_step.wall_override),
+            secondary_suppressed=bool(inner_step.secondary_suppressed),
+            command_stale=bool(stale or inner_step.command_stale),
+            step=inner_step,
+        )
+        return status
+
     def update(
         self,
         twist: np.ndarray,
@@ -1192,8 +1342,9 @@ class JointIkController:
         rail_exec_vel_m_s: float | None = None,
         rail_exec_smooth_m_s: float | None = None,
         dt_wall_s: float | None = None,
+        command_stale: bool = False,
     ) -> JointIkStep:
-        del f_ext_z, f_des_z, contact_active, task_safety_rows
+        del f_ext_z, f_des_z, task_safety_rows
         path_twist_arr = (
             np.asarray(path_twist, dtype=float).reshape(6)
             if path_twist is not None
@@ -1246,13 +1397,19 @@ class JointIkController:
             float(rail_exec_smooth_m_s)
         ):
             raise ValueError("rail_exec_smooth_m_s must be finite when supplied")
-        # Hardware supplies the time-stamped worker estimate.  Offline callers
-        # have no independent actuator, so the last applied rail command is
-        # the least-surprising zero-order execution estimate.
+        # Hardware supplies the time-stamped worker estimate.  Offline, or
+        # before the first encoder sample, use the last committed rail
+        # command.  An initialized observer with v_hat=0 and no samples
+        # must not masquerade as "the rail is stopped".
         if rail_exec_vel_m_s is not None:
             rail_exec_for_qp = float(rail_exec_vel_m_s)
+        elif (
+            self.rail_observer._initialized
+            and self.rail_observer._last_sample_t is not None
+        ):
+            rail_exec_for_qp = float(self.rail_observer.v_hat)
         else:
-            rail_exec_for_qp = float(self.last_v_r_ref)
+            rail_exec_for_qp = float(self.core.qdot_prev[0])
 
         if task_rotation_base is not None:
             rotation_base_task = np.asarray(task_rotation_base, dtype=float)
@@ -1378,10 +1535,12 @@ class JointIkController:
         dz_max = float(getattr(ext_cfg, "press_dz_max_m", 0.002))
         y_thr = float(getattr(ext_cfg, "press_y_err_m", 0.005))
         stall_need = float(getattr(ext_cfg, "press_stall_s", 0.5))
-        v_z_demand = (
-            v_force if np.isfinite(v_force) else float(twist_base[2])
+        v_z_demand = v_force
+        demanding = bool(
+            bool(contact_active)
+            and np.isfinite(v_force)
+            and abs(v_z_demand) >= v_min
         )
-        demanding = bool(abs(v_z_demand) >= v_min)
         # Windowed stall: |Δz| over the timer, not per 5 ms tick (2 mm/tick
         # is 400 mm/s — every real press looked "stuck").
         if demanding:
@@ -1431,7 +1590,12 @@ class JointIkController:
             if self.rail_ext_task is not None
             else 0.01
         )
-        hold_d_star = hold_setpoint_from_vel_ff(vel_ff, lin_thr_m_s=lin_thr)
+        del lin_thr
+        self._update_quiescent(twist_base, float(dt))
+        slack_high = float(self.last_slack_norm) >= float(
+            getattr(self.cfg.saturation, "slack_enter", 0.15)
+        )
+        hold_d_star = bool(self._quiescent or slack_high)
 
         if (
             self.posture_retarget is not None
@@ -1453,6 +1617,8 @@ class JointIkController:
         if (
             press_stalled_timer
             and allow_press_escape
+            and bool(contact_active)
+            and np.isfinite(v_force)
             and self.posture_retarget is not None
             and self.rail_ext_task is not None
             and self._d_star_nudge_cool_s <= 0.0
@@ -1462,7 +1628,7 @@ class JointIkController:
             away = self.rail_ext_task._preferred_escape_sign(float(q_prev[0]))
             delta = -away * float(self.rail_ext_task.cfg.d_star_nudge_m)
             d_new = self.posture_retarget.nudge_d_star(
-                delta, y_des_m=y_des, rail_lo=lo, rail_hi=hi
+                delta, y_des_m=y_des, rail_lo=lo, rail_hi=hi, dt_s=float(dt)
             )
             if np.isfinite(d_new):
                 self.rail_ext_task.set_d_pref(float(d_new))
@@ -1595,13 +1761,40 @@ class JointIkController:
                 if self.rail_ext_task is not None
                 else 0.0
             )
-            freeze_mid = bool(self._midrange_freeze) or bool(
-                self.rail_ref_model.last_wall_override
+            freeze_mid = bool(self._midrange_freeze) or bool(self._quiescent)
+            leave_sign = wall_leave_only_sign(
+                float(q_state[0]),
+                hard_min_m=float(self.limits.q_lower[0]),
+                hard_max_m=float(self.limits.q_upper[0]),
+                band_m=float(self.cfg.qp.limit_damper_band_rail_m),
             )
-            u_mid = self.midranging.step(e_mid, float(dt), freeze=freeze_mid)
-            u_r = float(u_alloc) + float(u_mid) + float(u_escape)
+            u_mid = self.midranging.step(
+                e_mid,
+                float(dt),
+                freeze=freeze_mid,
+                leave_only_sign=leave_sign,
+                u_committed=self._u_mid_committed,
+            )
+            a_arm = np.asarray(self.limits.a_max, dtype=float).reshape(-1)[1:]
+            j_max_vec = self.core._j_max
+            if j_max_vec is None:
+                j_arm = np.full(max(self.kin.nv - 1, 1), float(self.cfg.qp.j_max_arm_rad_s3))
+            else:
+                j_arm = np.asarray(j_max_vec, dtype=float).reshape(-1)
+                if j_arm.size > 1:
+                    j_arm = j_arm[1:]
+            rho_a = float(getattr(self.rail_allocator_cfg, "rho_mirror_a", 0.50))
+            rho_j = float(getattr(self.rail_allocator_cfg, "rho_mirror_j", 0.30))
+            a_mir, j_mir = arm_mirror_rail_limits(
+                J_pre, a_arm, j_arm, rho_a=rho_a, rho_j=rho_j
+            )
+            # Primary rail share of v_cmd only.  u_mid / escape stay in QP2.
             v_r_ref = self.rail_ref_model.step(
-                u_r, float(dt), x_m=float(q_state[0])
+                float(u_alloc),
+                float(dt),
+                x_m=float(q_state[0]),
+                a_max=a_mir,
+                j_max=j_mir,
             )
             # Leave-band is applied once, after the reference model, so a
             # planned stroke cannot drive into the plus stop (or the
@@ -1628,6 +1821,12 @@ class JointIkController:
             self.last_u_alloc = float(u_alloc)
             self.last_u_posture = float(u_escape)
             self.last_u_mid = float(u_mid)
+            u_sec = float(u_mid) + float(u_escape)
+            # u_mid lives in QP2, but it must not cancel the primary rail
+            # share of v_cmd that L1 already allocated.
+            if abs(float(v_r_ref)) > 1.0e-4 and u_sec * float(v_r_ref) < 0.0:
+                u_sec = 0.0
+            self._u_mid_for_sec = u_sec
         else:
             self.last_v_r_ref = (
                 float(rail_task_vel) if rail_task_vel is not None else 0.0
@@ -1639,6 +1838,7 @@ class JointIkController:
                 else 0.0
             )
             self.last_u_mid = 0.0
+            self._u_mid_for_sec = 0.0
 
         rail_reg_scale = 1.0
         if self.rail_ext_task is not None:
@@ -1653,24 +1853,53 @@ class JointIkController:
         )
         rail_vel_pin_eff = rail_vel_pin
         rail_task_weight_eff = rail_task_weight
+        if (
+            self._rail_mode == RailMode.COUPLED
+            and not locked_hold
+            and rail_task_vel is not None
+        ):
+            rail_task_weight_eff = max(float(rail_task_weight_eff), _RAIL_PREF_WEIGHT)
         keep_task_weight = False
         pref_slack_scale = 1.0
 
         box_h1, box_h2 = self._measure_box_periods(dt_nom)
         qdot_history_before_solve = np.asarray(self.core.qdot_prev, dtype=float).copy()
+        if self.core._j_max is None:
+            j_max_sec = np.full(self.kin.nv, float(self.cfg.qp.j_max_arm_rad_s3))
+            j_max_sec[0] = float(self.cfg.qp.j_max_rail_m_s3)
+        else:
+            j_max_sec = np.asarray(self.core._j_max, dtype=float).copy()
+        sec_raw = self._secondary(
+            q_prev,
+            qdot_ff_sec,
+            manipulability_active=manip_weight,
+            centering_sigma_fade=not (
+                self._rail_ext_active and self._rail_mode == RailMode.COUPLED
+            ),
+            dt_s=float(dt),
+        )
+        if self._rail_mode == RailMode.COUPLED and not locked_hold:
+            sec_raw = np.asarray(sec_raw, dtype=float).copy()
+            sec_raw[0] = float(self._u_mid_for_sec)
+        if self._quiescent:
+            sec_raw = np.zeros_like(sec_raw)
+        sec_filt = self._sec_filter.step(
+            sec_raw, float(dt), j_max_sec, force_target=bool(self._quiescent)
+        )
+        frac = float(self.cfg.nullspace_max_qdot_frac)
+        if frac > 0.0:
+            cap = np.asarray(self.kin.v_max, dtype=float) * frac
+            if cap.size == sec_filt.size:
+                cap = cap.copy()
+                cap[0] = float(self.limits.v_max[0])
+                sec_filt = np.clip(sec_filt, -cap, cap)
+                self._sec_filter.qdot = np.asarray(sec_filt, dtype=float).copy()
+        self.last_secondary_norm = float(np.linalg.norm(sec_filt))
         r = self.core.step(
             q_prev,
             twist_base,
             dt,
-            secondary_qdot=self._secondary(
-                q_prev,
-                qdot_ff_sec,
-                manipulability_active=manip_weight,
-                centering_sigma_fade=not (
-                    self._rail_ext_active and self._rail_mode == RailMode.COUPLED
-                ),
-                dt_s=float(dt),
-            ),
+            secondary_qdot=sec_filt,
             q_meas=q_state,
             resync_err=resync_vec,
             rail_locked=locked_hold,
@@ -1678,7 +1907,7 @@ class JointIkController:
             rail_reg_scale=rail_reg_scale,
             rail_lock_vel_eps_m_s=self.cfg.rail.lock_vel_eps_m_s,
             rail_vel_pin_m_s=rail_vel_pin_eff,
-            zero_secondary_rail=not locked_hold,
+            zero_secondary_rail=False,
             rail_task_vel_m_s=rail_task_vel,
             rail_task_weight=rail_task_weight_eff,
             box_dt=box_h1,
@@ -2013,6 +2242,69 @@ class JointIkController:
         step.nullspace_arm_angle_norm = float(self.secondary.last_arm_angle_norm)
         step.nullspace_damping_norm = float(self.secondary.last_damping_norm)
         step.nullspace_rail_lock_norm = float(self.secondary.last_rail_lock_norm)
+        lock_jac = np.asarray(
+            getattr(self.core, "last_lock_jacobian", J_fin), dtype=float
+        )
+        lock_vel = np.asarray(
+            getattr(self.core, "last_lock_velocity", twist_base), dtype=float
+        ).reshape(-1)
+        if lock_vel.size != 6:
+            lock_vel = np.asarray(twist_base, dtype=float).reshape(6)
+        if lock_jac.shape == J_fin.shape:
+            v_qp_lock = lock_jac @ np.asarray(qdot_arr, dtype=float)
+        else:
+            v_qp_lock = np.asarray(J_fin, dtype=float) @ np.asarray(qdot_arr, dtype=float)
+        v_qp_cmd = np.asarray(J_fin, dtype=float) @ np.asarray(qdot_arr, dtype=float)
+        v_tcp_est = np.asarray(twist_rail, dtype=float) + np.asarray(
+            twist_arm, dtype=float
+        )
+        e_shape = np.asarray(twist_base, dtype=float) - lock_vel
+        e_qp = lock_vel - v_qp_lock
+        e_exec = v_qp_cmd - v_tcp_est
+        step.v_cmd_received = np.asarray(twist_base, dtype=float).reshape(6).copy()
+        step.v_cmd_feasible = lock_vel.reshape(6).copy()
+        step.v_tcp_estimated = v_tcp_est.reshape(6).copy()
+        step.e_shape = e_shape.reshape(6).copy()
+        step.e_qp = e_qp.reshape(6).copy()
+        step.e_exec = e_exec.reshape(6).copy()
+        step.e_shape_norm = float(np.linalg.norm(e_shape))
+        step.e_qp_norm = float(np.linalg.norm(e_qp))
+        step.e_exec_norm = float(np.linalg.norm(e_exec))
+        step.quiescent = bool(self._quiescent)
+        step.secondary_suppressed = bool(self._quiescent or slack_high)
+        step.command_stale = bool(command_stale)
+        lo_box = np.asarray(self.core.last_lo_box, dtype=float)
+        hi_box = np.asarray(self.core.last_hi_box, dtype=float)
+        qdot_chk = np.asarray(qdot_arr, dtype=float)
+        if lo_box.size == qdot_chk.size and hi_box.size == qdot_chk.size:
+            arm_hit = np.any(
+                (qdot_chk[1:] <= lo_box[1:] + 1.0e-9)
+                | (qdot_chk[1:] >= hi_box[1:] - 1.0e-9)
+            )
+            rail_hit = bool(
+                qdot_chk[0] <= lo_box[0] + 1.0e-9 or qdot_chk[0] >= hi_box[0] - 1.0e-9
+            )
+            step.joint_limited = bool(arm_hit or physical_saturated)
+            step.rail_limited = bool(rail_hit or rail_sat_now)
+        else:
+            step.joint_limited = bool(physical_saturated)
+            step.rail_limited = bool(rail_sat_now)
+        step.wall_active = bool(
+            step.wall_override
+            or abs(
+                wall_leave_only_sign(
+                    float(q_state[0]),
+                    hard_min_m=float(self.limits.q_lower[0]),
+                    hard_max_m=float(self.limits.q_upper[0]),
+                    band_m=float(self.cfg.qp.limit_damper_band_rail_m),
+                )
+            )
+            > 0.0
+        )
+        self._last_tcp_est = v_tcp_est.reshape(6).copy()
+        # Anti-windup sees the secondary rail that actually went out, not the
+        # primary v_r,ref share of v_cmd.
+        self._u_mid_committed = float(qdot_arr[0]) - float(self.last_v_r_ref)
         return self._attach_post_qp_ab(
             step,
             dt_nom=dt_nom,
@@ -2745,7 +3037,10 @@ class _TickLogger:
            "qpik_nullspace_arm_angle_norm",
            "qpik_nullspace_damping_norm",
            "qpik_nullspace_rail_lock_norm",
-           "cbf_min_dist", "cbf_pair"]
+           "cbf_min_dist", "cbf_pair",
+           "e_shape_norm", "e_qp_norm", "e_exec_norm",
+           "quiescent", "secondary_suppressed", "command_stale",
+           "joint_limited", "rail_limited", "wall_active"]
         + [f"qdot_meas_{i}" for i in range(8)]
         + [f"v_cmd_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
         + [f"path_twist_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
@@ -3549,6 +3844,15 @@ class _TickLogger:
                    else ""
                ),
                str(step.cbf_pair),
+               f"{float(getattr(step, 'e_shape_norm', 0.0)):.6f}",
+               f"{float(getattr(step, 'e_qp_norm', 0.0)):.6f}",
+               f"{float(getattr(step, 'e_exec_norm', 0.0)):.6f}",
+               int(bool(getattr(step, "quiescent", False))),
+               int(bool(getattr(step, "secondary_suppressed", False))),
+               int(bool(getattr(step, "command_stale", False))),
+               int(bool(getattr(step, "joint_limited", False))),
+               int(bool(getattr(step, "rail_limited", False))),
+               int(bool(getattr(step, "wall_active", False))),
                *_fmt8(
                    qdot_meas
                    if qdot_meas is not None
@@ -3733,6 +4037,7 @@ def _rail_execution_velocity_estimate(
             now_s=now,
             dt_s=float(dt_s) if dt_s is not None else max(age, 1.0e-3),
             v_r_ref=float(v_r_ref) if v_r_ref is not None else float(v_cmd),
+            v_written=float(v_cmd) if np.isfinite(float(v_cmd)) else None,
             q_meas=position,
             sample_t=sample_t,
             v_meas=v_meas,

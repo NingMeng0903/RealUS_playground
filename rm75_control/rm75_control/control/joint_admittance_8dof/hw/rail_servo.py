@@ -951,13 +951,8 @@ class RailServoBridge:
         return lo, hi
 
     def _envelope_lo_hi(self) -> tuple[float, float]:
-        """Braking-envelope anchors: host soft limits."""
-        lo = float(self.config.soft_min_m)
-        hi = float(self.config.soft_max_m)
-        hard_lo, hard_hi = self._soft_lo_hi()
-        if hi <= lo:
-            return hard_lo, hard_hi
-        return max(lo, hard_lo), min(hi, hard_hi)
+        """Braking-envelope anchors: hard travel (5/780).  30/755 is Faverjon."""
+        return self._soft_lo_hi()
 
     def set_velocity_gains(
         self,

@@ -276,3 +276,72 @@ class SecondaryComposer:
             qdot0 = qdot0 + np.asarray(qdot_ff, dtype=float)
 
         return qdot0
+
+
+class SecondaryRateFilter:
+    """200 Hz jerk-limited tracker of a slower (15 Hz) secondary target.
+
+    ``j = clip(wn² (target − qdot) − 2 ζ wn a, ±j_max)``, then integrate.
+    The filtered vector is a QP2 preference, never added after the QP.
+    """
+
+    def __init__(
+        self,
+        n: int,
+        *,
+        wn_rad_s: float = 2.0 * np.pi * 8.0,
+        zeta: float = 1.0,
+        target_hz: float = 15.0,
+    ) -> None:
+        self.n = int(n)
+        self.wn = float(wn_rad_s)
+        self.zeta = float(zeta)
+        self.target_hz = float(target_hz)
+        self.qdot = np.zeros(self.n, dtype=float)
+        self.acc = np.zeros(self.n, dtype=float)
+        self.target = np.zeros(self.n, dtype=float)
+        self._age_s = float("inf")
+
+    def reset(self) -> None:
+        self.qdot[:] = 0.0
+        self.acc[:] = 0.0
+        self.target[:] = 0.0
+        self._age_s = float("inf")
+
+    def step(
+        self,
+        raw: np.ndarray,
+        dt_s: float,
+        j_max: np.ndarray,
+        *,
+        force_target: bool = False,
+    ) -> np.ndarray:
+        dt = max(float(dt_s), 0.0)
+        raw_a = np.asarray(raw, dtype=float).reshape(-1)
+        if raw_a.size != self.n:
+            padded = np.zeros(self.n, dtype=float)
+            n = min(raw_a.size, self.n)
+            padded[:n] = raw_a[:n]
+            raw_a = padded
+        period = 1.0 / max(float(self.target_hz), 1.0e-6)
+        self._age_s += dt
+        if force_target or self._age_s + 1.0e-12 >= period:
+            self.target = raw_a.copy()
+            self._age_s = 0.0
+        if dt <= 1.0e-9:
+            return self.qdot.copy()
+        j_lim = np.abs(np.asarray(j_max, dtype=float).reshape(-1))
+        if j_lim.size == 1:
+            j_lim = np.full(self.n, float(j_lim[0]))
+        elif j_lim.size != self.n:
+            filled = np.full(self.n, float(j_lim[0]) if j_lim.size else 0.0)
+            n = min(j_lim.size, self.n)
+            filled[:n] = j_lim[:n]
+            j_lim = filled
+        wn = float(self.wn)
+        zeta = float(self.zeta)
+        j = wn * wn * (self.target - self.qdot) - 2.0 * zeta * wn * self.acc
+        j = np.clip(j, -j_lim, j_lim)
+        self.acc = self.acc + j * dt
+        self.qdot = self.qdot + self.acc * dt
+        return self.qdot.copy()

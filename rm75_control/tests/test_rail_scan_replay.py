@@ -48,9 +48,9 @@ def _make_inner() -> JointIkController:
 
 def test_production_rail_speed_cap_is_absolute() -> None:
     inner = _make_inner()
-    # Executable envelope follows yaml rail.v_max_m_s (not the raw model default).
+    # Yaml lists 0.15; the executable box and worker share the 0.12 m/s cap.
     assert inner.cfg.rail.v_max_m_s == 0.15
-    assert inner.limits.v_max[0] == 0.15
+    assert inner.limits.v_max[0] == 0.12
     np.testing.assert_allclose(
         inner.limits.v_max[1:],
         inner.kin.v_max[1:] * inner.cfg.v_scale,
@@ -127,10 +127,10 @@ def test_80cm_scan_stays_well_conditioned():
     assert out["rail"].max() <= inner.cfg.rail.hard_max_m + 2e-4
     assert np.ptp(out["rail"]) > 0.01  # generic QPIK can recruit the rail
     duration_s = len(out["rail"]) * inner.cfg.dt
-    # box_h1 is wall-timed, so this offline 80 cm replay hunts more when
-    # the host is loaded.  810d3a1 is ~0.70 /s; slack-continuous sat_scale
-    # adds a few macro reversals while TCP error is tens of millimetres.
-    assert _rail_reversals(out["rail"]) / duration_s < 1.0
+    # Ignore sub-0.05 mm/tick float chatter (same floor as the 16 cm hunt
+    # test).  810d3a1 is ~0.70 /s; slack-continuous sat_scale adds a few
+    # macro reversals while TCP error is tens of millimetres.
+    assert _rail_reversals(out["rail"], v_eps=5.0e-5) / duration_s < 1.0
 
 
 def test_real_scan_rail_does_not_hunt():

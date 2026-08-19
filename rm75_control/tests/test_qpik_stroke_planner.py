@@ -643,7 +643,10 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.rail_allocator.kp_mid == pytest.approx(1.2)
     assert cfg.rail_allocator.k_err_rail == pytest.approx(4.0)
     assert cfg.rail_allocator.e_ref_m == pytest.approx(0.08)
-    assert cfg.rail_allocator.f_c_hz == pytest.approx(20.0)
+    assert cfg.rail_allocator.f_c_hz == pytest.approx(1.0)
+    assert cfg.rail_allocator.kaw_mid == pytest.approx(8.0)
+    assert cfg.rail_allocator.rho_mirror_a == pytest.approx(0.50)
+    assert cfg.rail_allocator.rho_mirror_j == pytest.approx(0.30)
     assert cfg.rail_extension.d_band_m == pytest.approx(0.005)
     assert cfg.cartesian_track.k_task_lin == pytest.approx(10.0)
     assert cfg.cartesian_track.k_task_rot == pytest.approx(2.0)
@@ -831,6 +834,15 @@ def test_wbc_log_header_has_rail_cmd_meas_err() -> None:
         "rail_fa24_write_mono_ns",
         "rail_encoder_sample_mono_ns",
         "arm_qdot_target_wall_json",
+        "e_shape_norm",
+        "e_qp_norm",
+        "e_exec_norm",
+        "quiescent",
+        "secondary_suppressed",
+        "command_stale",
+        "joint_limited",
+        "rail_limited",
+        "wall_active",
     ):
         assert name in header
     assert len(header) == len(set(header))
@@ -1061,7 +1073,7 @@ def test_rail_sat_is_not_workspace_saturation() -> None:
 
 
 def test_rail_soft_min_is_one_way() -> None:
-    """Soft min is the into-wall zero of the braking envelope; leave stays open."""
+    """Hard 5 mm zeros into-wall; 30 mm is the Faverjon inner edge, not a park."""
     from pathlib import Path
 
     import yaml
@@ -1084,7 +1096,7 @@ def test_rail_soft_min_is_one_way() -> None:
     q = _SEED_Q.copy()
     q[0] = float(cfg.rail.soft_min_m)
     lo_soft, hi_soft = inner.core.constraints.bounds(q, cfg.dt, qdot_prev=None)
-    assert float(lo_soft[0]) == pytest.approx(0.0, abs=1e-9)
+    assert float(lo_soft[0]) < -1.0e-4
     assert float(hi_soft[0]) > 1.0e-4
 
     q[0] = float(cfg.rail.hard_min_m)

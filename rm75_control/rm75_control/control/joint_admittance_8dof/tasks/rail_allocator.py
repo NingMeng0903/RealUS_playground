@@ -36,8 +36,12 @@ class RailAllocatorConfig:
     # Haviland 2022 eq (14): cheapen the rail when |e_mid| is large.
     k_err_rail: float = 4.0
     e_ref_m: float = 0.08
-    # Reference-model cutoff.  τ = 1/(2π f_c).
-    f_c_hz: float = 20.0
+    # Reference-model cutoff.  τ = 1/(2π f_c).  Rail is a low-frequency
+    # actuator; start near 1 Hz and raise only with identified lag data.
+    f_c_hz: float = 1.0
+    kaw_mid: float = 8.0
+    rho_mirror_a: float = 0.50
+    rho_mirror_j: float = 0.30
     # One-sided braking envelope (same formula as the worker override).
     reaction_s: float = 0.06
     observer_pos_gain: float = 0.35
@@ -113,13 +117,15 @@ class RailReferenceModel:
     def __init__(
         self,
         *,
-        f_c_hz: float = 20.0,
+        f_c_hz: float = 1.0,
         a_max: float = 0.60,
         j_max: float = 60.0,
         v_max: float = 0.12,
         reaction_s: float = 0.06,
         soft_min_m: float = 0.015,
         soft_max_m: float = 0.77,
+        hard_min_m: float | None = None,
+        hard_max_m: float | None = None,
     ) -> None:
         self.f_c_hz = float(f_c_hz)
         self.a_max = float(a_max)
@@ -128,6 +134,8 @@ class RailReferenceModel:
         self.reaction_s = float(reaction_s)
         self.soft_min_m = float(soft_min_m)
         self.soft_max_m = float(soft_max_m)
+        self.hard_min_m = float(soft_min_m if hard_min_m is None else hard_min_m)
+        self.hard_max_m = float(soft_max_m if hard_max_m is None else hard_max_m)
         self.state = RailReferenceState()
         self.last_wall_override = False
 
@@ -142,10 +150,14 @@ class RailReferenceModel:
         *,
         x_m: float,
         apply_wall: bool = True,
+        a_max: float | None = None,
+        j_max: float | None = None,
     ) -> float:
         dt = float(dt_s)
         if dt <= 1.0e-9:
             return float(self.state.v)
+        a_lim = float(self.a_max if a_max is None else min(self.a_max, abs(float(a_max))))
+        j_lim = float(self.j_max if j_max is None else min(self.j_max, abs(float(j_max))))
         tau = lpf_tau_from_fc(self.f_c_hz)
         u = float(u_r)
         if not self.state.initialized:
@@ -158,18 +170,18 @@ class RailReferenceModel:
         v_prev = float(self.state.v)
         a_prev = float(self.state.a)
         a_raw = (v_f - v_prev) / dt
-        da_max = float(self.j_max) * dt
+        da_max = float(j_lim) * dt
         a = float(np.clip(a_raw, a_prev - da_max, a_prev + da_max))
-        a = float(np.clip(a, -self.a_max, self.a_max))
+        a = float(np.clip(a, -a_lim, a_lim))
         v = v_prev + a * dt
         v = float(np.clip(v, -self.v_max, self.v_max))
         self.last_wall_override = False
         if apply_wall:
             lo_cap, hi_cap = wall_cap(
                 float(x_m),
-                lo=self.soft_min_m,
-                hi=self.soft_max_m,
-                a_max=self.a_max,
+                lo=self.hard_min_m,
+                hi=self.hard_max_m,
+                a_max=a_lim,
                 reaction_s=self.reaction_s,
             )
             v_clamped = float(np.clip(v, lo_cap, hi_cap))
@@ -223,13 +235,23 @@ class RailStateObserver:
         q_meas: float,
         sample_t: float,
         v_meas: float | None = None,
+        v_written: float | None = None,
     ) -> tuple[float, float]:
         if not self._initialized:
             self.reset(q_meas, float(v_meas) if v_meas is not None else 0.0)
             self._last_sample_t = float(sample_t)
             return float(self.q_hat), float(self.v_hat)
         dt = max(float(dt_s), 1.0e-6)
-        v_pred = float(v_r_ref)
+        # Predict with the last written FA24 / measured RPM, never the
+        # internal v_r,ref.  Using v_r_ref made the observer optimistic and
+        # the arm compensated a rail that had not actually moved.
+        if v_written is not None and np.isfinite(float(v_written)):
+            v_pred = float(v_written)
+        elif v_meas is not None and np.isfinite(float(v_meas)):
+            v_pred = float(v_meas)
+        else:
+            v_pred = float(self.v_hat)
+        del v_r_ref
         self.q_hat = float(self.q_hat) + v_pred * dt
         tau = lpf_tau_from_fc(self.vel_lpf_hz)
         if tau <= 1.0e-9:
@@ -286,25 +308,122 @@ class MidrangingController:
         kp: float = 1.2,
         ki: float = 0.80,
         v_max: float = 0.12,
+        kaw: float = 8.0,
     ) -> None:
         self.kp = float(kp)
         self.ki = float(ki)
         self.v_max = float(v_max)
+        self.kaw = float(kaw)
         self.integ = 0.0
+        self.last_raw = 0.0
+        self.last_projected = False
 
     def reset(self) -> None:
         self.integ = 0.0
+        self.last_raw = 0.0
+        self.last_projected = False
 
-    def step(self, err_m: float, dt_s: float, *, freeze: bool = False) -> float:
+    def step(
+        self,
+        err_m: float,
+        dt_s: float,
+        *,
+        freeze: bool = False,
+        leave_only_sign: float = 0.0,
+        u_committed: float | None = None,
+    ) -> float:
+        """Return saturated mid-ranging velocity.
+
+        ``leave_only_sign`` > 0 at the plus hard wall (only negative u_mid),
+        < 0 at the minus hard wall (only positive u_mid).  0 leaves u_mid
+        unconstrained.  Integrator anti-windup uses back-calculation against
+        the committed rail command when one is supplied.
+        """
         err = float(err_m) if np.isfinite(err_m) else 0.0
         dt = max(float(dt_s), 0.0)
         if not freeze and dt > 0.0:
             self.integ += self.ki * err * dt
         raw = self.kp * err + self.integ
         sat = soft_saturate(raw, self.v_max)
-        if not freeze and abs(raw) > self.v_max:
+        sign = float(leave_only_sign)
+        projected = False
+        if sign > 0.0 and sat > 0.0:
+            sat = 0.0
+            projected = True
+        elif sign < 0.0 and sat < 0.0:
+            sat = 0.0
+            projected = True
+        self.last_raw = float(raw)
+        self.last_projected = bool(projected)
+        if freeze:
+            return float(sat)
+        if dt > 0.0 and u_committed is not None and np.isfinite(float(u_committed)):
+            self.integ += self.kaw * (float(u_committed) - float(raw)) * dt
+        elif not freeze and abs(raw) > self.v_max:
+            self.integ -= self.ki * err * dt
+        if projected and dt > 0.0:
+            # Do not keep integrating a command that the wall already killed.
             self.integ -= self.ki * err * dt
         return float(sat)
+
+
+def wall_leave_only_sign(
+    x_m: float,
+    *,
+    hard_min_m: float,
+    hard_max_m: float,
+    band_m: float,
+) -> float:
+    """+1 near the plus hard wall (only leave/negative u), -1 near minus, else 0."""
+    x = float(x_m)
+    band = max(float(band_m), 0.0)
+    hi = float(hard_max_m)
+    lo = float(hard_min_m)
+    if x >= hi - band:
+        return 1.0
+    if x <= lo + band:
+        return -1.0
+    return 0.0
+
+
+def arm_mirror_rail_limits(
+    J: np.ndarray,
+    a_arm_max: np.ndarray,
+    j_arm_max: np.ndarray,
+    *,
+    rho_a: float = 0.50,
+    rho_j: float = 0.30,
+) -> tuple[float, float]:
+    """Max |a_r|, |j_r| the arm can still mirror: qa = −Ja# Jr vr."""
+    J = np.asarray(J, dtype=float)
+    if J.ndim != 2 or J.shape[0] < 1 or J.shape[1] < 2:
+        return float("inf"), float("inf")
+    ja = J[:, 1:]
+    jr = J[:, 0]
+    try:
+        p, *_ = np.linalg.lstsq(ja, jr, rcond=None)
+    except np.linalg.LinAlgError:
+        return float("inf"), float("inf")
+    p = np.abs(np.asarray(p, dtype=float).reshape(-1))
+    a_arm = np.abs(np.asarray(a_arm_max, dtype=float).reshape(-1))
+    j_arm = np.abs(np.asarray(j_arm_max, dtype=float).reshape(-1))
+    a_lim = float("inf")
+    j_lim = float("inf")
+    n = min(p.size, a_arm.size)
+    for i in range(n):
+        if p[i] <= 1.0e-6:
+            continue
+        a_lim = min(a_lim, float(rho_a) * float(a_arm[i]) / float(p[i]))
+    n_j = min(p.size, j_arm.size)
+    for i in range(n_j):
+        if p[i] <= 1.0e-6:
+            continue
+        j_lim = min(j_lim, float(rho_j) * float(j_arm[i]) / float(p[i]))
+    if not np.isfinite(a_lim):
+        a_lim = float("inf")
+    if not np.isfinite(j_lim):
+        j_lim = float("inf")
+    return float(max(a_lim, 0.0)), float(max(j_lim, 0.0))
 
 
 def project_arm_compensation(
@@ -354,10 +473,12 @@ __all__ = (
     "RailReferenceState",
     "RailStateObserver",
     "allocate_rail",
+    "arm_mirror_rail_limits",
     "lpf_tau_from_fc",
     "margin_weight_from_activation",
     "project_arm_compensation",
     "soft_saturate",
     "stopping_velocity",
     "wall_cap",
+    "wall_leave_only_sign",
 )

@@ -403,7 +403,7 @@ def test_planned_stroke_still_fades_and_holds_d_star() -> None:
     assert float(step_leave.rail_task_vel) <= 1.0e-3
 
 
-def test_minus_z_twist_enables_press_escape_without_force() -> None:
+def test_minus_z_twist_does_not_enable_press_escape_without_force() -> None:
     inner = _yaml_inner_at_rail(0.40)
     SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
     q = np.array(
@@ -417,7 +417,8 @@ def test_minus_z_twist_enables_press_escape_without_force() -> None:
         twist, q_meas=q, vel_ff=twist, task_rotation_base=np.eye(3)
     )
     assert float(step.v_cmd[2]) < -0.05
-    assert bool(step.rail_escape_active) or abs(float(step.v_escape)) > 1.0e-6
+    assert not bool(step.rail_escape_active)
+    assert abs(float(step.v_escape)) <= 1.0e-6
 
 
 def test_large_d_star_error_keeps_outer_vel_ff() -> None:
@@ -513,3 +514,76 @@ def test_rail_task_vel_stays_dropped_when_ff_is_zero() -> None:
     assert abs(float(inner.rail_ext_task.last_v_ff)) < 1.0e-4
     assert np.isfinite(step.rail_task_vel)
     assert abs(float(step.rail_task_vel)) < 0.03
+
+
+def test_zero_v_cmd_does_not_put_u_mid_on_v_r_ref() -> None:
+    inner = _yaml_inner_at_rail(0.40)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q = _SEED_Q.copy()
+    q[0] = 0.40
+    inner.reset(q)
+    if inner.rail_ext_task is not None:
+        inner.rail_ext_task.set_d_pref(float(inner.rail_ext_task.d_pref_m or 0.0) + 0.08)
+    twist = np.zeros(6)
+    last = None
+    for _ in range(40):
+        last = inner.update(twist, q_meas=inner.q_cmd.copy())
+    assert last is not None
+    assert abs(float(last.v_r_ref)) < 5.0e-3
+    assert abs(float(last.u_alloc)) < 5.0e-3
+
+
+def test_leave_wall_v_cmd_not_cancelled_by_u_mid() -> None:
+    inner = _yaml_inner_at_rail(0.755)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q = _SEED_Q.copy()
+    q[0] = 0.755
+    inner.reset(q)
+    leave = np.array([0.0, -0.08, 0.0, 0.0, 0.0, 0.0])
+    step = inner.update(leave, q_meas=q, vel_ff=leave, task_rotation_base=np.eye(3))
+    assert float(step.v_cmd[1]) < -0.04
+    assert float(step.rail_task_vel) <= 1.0e-4 or float(step.rail_task_vel) < 0.0
+    if np.isfinite(step.u_mid):
+        assert float(step.u_mid) <= 1.0e-3
+
+
+def test_zero_v_cmd_tcp_drift_after_quiescent() -> None:
+    inner = _yaml_inner_at_rail(0.40)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q = _SEED_Q.copy()
+    q[0] = 0.40
+    inner.reset(q)
+    if inner.rail_ext_task is not None:
+        inner.rail_ext_task.set_d_pref(float(inner.rail_ext_task.d_pref_m or 0.0) + 0.08)
+    pose0 = inner.kin.fk_pose(inner.q_cmd)
+    last = None
+    for _ in range(80):
+        last = inner.update(np.zeros(6), q_meas=inner.q_cmd.copy())
+    assert last is not None
+    pose1 = inner.kin.fk_pose(inner.q_cmd)
+    assert float(np.linalg.norm(pose1[:3] - pose0[:3])) < 0.002
+    assert bool(inner._quiescent)
+    assert abs(float(last.qdot[0])) < 0.01
+    assert abs(float(last.v_r_ref)) < 5.0e-3
+
+
+def test_tracker_step_api_returns_status() -> None:
+    inner = _yaml_inner_at_rail(0.40)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q = _SEED_Q.copy()
+    q[0] = 0.40
+    inner.reset(q)
+    inner.enable()
+    status = inner.step(
+        np.array([0.0, 0.04, 0.0, 0.0, 0.0, 0.0]),
+        stamp=None,
+        q_meas=q,
+        task_rotation_base=np.eye(3),
+    )
+    assert status.v_cmd_received.shape == (6,)
+    assert status.v_cmd_feasible.shape == (6,)
+    assert status.v_tcp_estimated.shape == (6,)
+    assert np.isfinite(status.slack_norm)
+    inner.stop()
+    stopped = inner.step(np.array([0.0, 0.08, 0.0, 0.0, 0.0, 0.0]), q_meas=inner.q_cmd)
+    assert bool(stopped.command_stale)

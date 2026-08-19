@@ -184,34 +184,33 @@ class VelocityBoxConstraints:
 
         m = np.broadcast_to(np.asarray(m, dtype=float), q.shape)
         a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
-        # Soft-limit braking envelope for the rail.  The linear damper above
-        # is a leftover Faverjon cone; this is the actual stop-before-wall
-        # bound.  Soft edges sit one damper-band inside the hard box.
+        # Stopping envelope toward HARD travel (5/780).  30/755 is only the
+        # Faverjon inner edge (full-speed start of the 25 mm band), not a
+        # zero-velocity wall.  At v=0.12, a=0.60, τ=0.06 the envelope is
+        # ~19 mm and stays inside that band.
         if a_max is not None and float(self.rail_reaction_s) > 0.0:
-            b0 = float(np.broadcast_to(self.damper_band_rad, q.shape)[0])
             m0 = float(m[0])
-            soft_lo = float(lim.q_lower[0]) + m0 + max(b0, 0.0)
-            soft_hi = float(lim.q_upper[0]) - m0 - max(b0, 0.0)
-            if soft_hi > soft_lo:
+            hard_lo = float(lim.q_lower[0]) + m0
+            hard_hi = float(lim.q_upper[0]) - m0
+            if hard_hi > hard_lo:
                 lo_cap, hi_cap = wall_cap(
                     float(q[0]),
-                    lo=soft_lo,
-                    hi=soft_hi,
+                    lo=hard_lo,
+                    hi=hard_hi,
                     a_max=float(a_max[0]),
                     reaction_s=float(self.rail_reaction_s),
                 )
-                # Leading command state must also stop in time.
                 lo_hi, hi_hi = wall_cap(
                     q_rail_hi,
-                    lo=soft_lo,
-                    hi=soft_hi,
+                    lo=hard_lo,
+                    hi=hard_hi,
                     a_max=float(a_max[0]),
                     reaction_s=float(self.rail_reaction_s),
                 )
                 lo_lo, hi_lo = wall_cap(
                     q_rail_lo,
-                    lo=soft_lo,
-                    hi=soft_hi,
+                    lo=hard_lo,
+                    hi=hard_hi,
                     a_max=float(a_max[0]),
                     reaction_s=float(self.rail_reaction_s),
                 )

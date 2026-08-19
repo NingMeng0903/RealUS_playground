@@ -270,3 +270,62 @@ def test_allocate_rail_share_rises_with_e_mid() -> None:
     for prev, cur in zip(shares, shares[1:]):
         assert cur >= prev - 1e-9
     assert shares[-1] > shares[0]
+
+
+def test_wall_leave_only_sign_at_hard_band() -> None:
+    from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
+        wall_leave_only_sign,
+    )
+
+    assert wall_leave_only_sign(0.40, hard_min_m=0.005, hard_max_m=0.78, band_m=0.025) == 0.0
+    assert wall_leave_only_sign(0.76, hard_min_m=0.005, hard_max_m=0.78, band_m=0.025) == 1.0
+    assert wall_leave_only_sign(0.02, hard_min_m=0.005, hard_max_m=0.78, band_m=0.025) == -1.0
+
+
+def test_midranging_projects_into_wall_and_does_not_windup() -> None:
+    ctrl = MidrangingController(kp=1.2, ki=0.80, v_max=0.12)
+    for _ in range(80):
+        u = ctrl.step(0.05, 0.005, leave_only_sign=1.0, u_committed=0.0)
+        assert u <= 1.0e-9
+    assert ctrl.integ < 0.02
+
+
+def test_observer_ignores_optimistic_v_r_ref() -> None:
+    obs = RailStateObserver(pos_gain=0.35, vel_gain=2.0, vel_lpf_hz=8.0)
+    obs.reset(0.40, 0.0)
+    t = 0.0
+    q = 0.40
+    v_actual = 0.0
+    for i in range(80):
+        t += 0.005
+        q += v_actual * 0.005
+        sample_t = t if i % 4 == 0 else t - 0.012
+        _q_hat, v_hat = obs.update(
+            now_s=t,
+            dt_s=0.005,
+            v_r_ref=0.12,
+            q_meas=q,
+            sample_t=sample_t,
+            v_meas=v_actual,
+            v_written=0.0,
+        )
+    assert abs(v_hat) < 0.02
+
+
+def test_secondary_rate_filter_holds_target_between_15hz_samples() -> None:
+    from rm75_control.control.joint_admittance_8dof.tasks.secondary_composer import (
+        SecondaryRateFilter,
+    )
+
+    filt = SecondaryRateFilter(2, target_hz=15.0)
+    j_max = np.array([3.0, 40.0])
+    first = filt.step(np.array([0.06, 0.0]), 0.005, j_max)
+    second = filt.step(np.array([0.0, 0.4]), 0.005, j_max)
+    # 15 Hz period is ~67 ms; the second 5 ms tick must not retarget.
+    assert filt.target[0] == pytest.approx(0.06, abs=1e-12)
+    assert first[0] != pytest.approx(second[0], abs=1e-15)
+    zeroed = None
+    for _ in range(80):
+        zeroed = filt.step(np.zeros(2), 0.005, j_max, force_target=True)
+    assert zeroed is not None
+    assert abs(float(zeroed[0])) < 1.0e-3

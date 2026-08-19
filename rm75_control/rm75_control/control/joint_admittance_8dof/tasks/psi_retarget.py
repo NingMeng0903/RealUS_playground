@@ -543,12 +543,6 @@ class PostureRetarget:
             psi_out = self._rate_limit_psi(dt, live_psi=live_psi)
             self._update_margins(q)
             return float(psi_out), float(self._d_star)
-        self._maybe_retarget_psi(
-            q,
-            dt_s=dt,
-            rail_lo=float(rail_lo),
-            rail_hi=float(rail_hi),
-        )
         if self._held_prev and not hold_setpoint:
             if self._d_star is not None and np.isfinite(float(self._d_star)):
                 self._d0 = float(self._d_star)
@@ -561,6 +555,12 @@ class PostureRetarget:
             psi_out = self._rate_limit_psi(dt, live_psi=live_psi)
             self._update_margins(q)
             return float(psi_out), float(self._d_star)
+        self._maybe_retarget_psi(
+            q,
+            dt_s=dt,
+            rail_lo=float(rail_lo),
+            rail_hi=float(rail_hi),
+        )
         self._advance_homotopy(
             q,
             dt,
@@ -942,8 +942,12 @@ class PostureRetarget:
         y_des_m: float,
         rail_lo: float,
         rail_hi: float,
+        dt_s: float = 0.005,
     ) -> float:
-        """Shift d* so rail_ff = y_des − d* stays inside the soft travel."""
+        """Shift d* so rail_ff = y_des − d* stays inside the soft travel.
+
+        The clip is a bound, not a step.  ``d_center_rate_m_s`` then slews.
+        """
         if self._d_star is None:
             return float("nan")
         y_des = float(y_des_m)
@@ -955,10 +959,7 @@ class PostureRetarget:
             d_lo, d_hi = d_hi, d_lo
         d_new = float(np.clip(float(self._d_star) + float(delta_m), d_lo, d_hi))
         self._d_center_target = d_new
-        self._d_star = d_new
-        self.d_star_m = d_new
-        self._d0 = d_new
-        return d_new
+        return self._rate_limit_d(float(dt_s))
 
     def _rate_limit_d(
         self,

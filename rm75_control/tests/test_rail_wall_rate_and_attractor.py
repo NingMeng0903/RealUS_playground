@@ -167,17 +167,20 @@ def test_damper_and_one_tick_box_taper_into_wall() -> None:
     _lo, hi_far = _bounds(0.40, box=box)
     assert float(hi_far[0]) == pytest.approx(0.15, abs=1e-9)
 
-    # Soft edge is the stop-before-wall zero of the braking envelope.
+    # Hard edge is the stop-before-wall zero of the braking envelope.
+    # 30/755 is the Faverjon inner edge, not a park.
     _lo, hi_edge = _bounds(0.755, box=box)
-    assert float(hi_edge[0]) == pytest.approx(0.0, abs=1e-9)
+    assert float(hi_edge[0]) > 0.05
+    _lo, hi_soft = _bounds(0.030, box=box)
+    assert float(hi_soft[0]) == pytest.approx(0.15, abs=1e-9)
 
     _lo, hi_mid = _bounds(0.765, box=box)
-    assert float(hi_mid[0]) == pytest.approx(0.0, abs=1e-9)
+    assert 0.0 < float(hi_mid[0]) < 0.15
 
     _lo, hi_wall = _bounds(0.78, box=box)
     assert float(hi_wall[0]) == pytest.approx(0.0, abs=1e-9)
     _lo, hi_approach = _bounds(0.70, box=box)
-    assert 0.0 < float(hi_approach[0]) < 0.15
+    assert float(hi_approach[0]) == pytest.approx(0.15, abs=1e-6)
 
     q = np.zeros(8)
     q[0] = 0.779

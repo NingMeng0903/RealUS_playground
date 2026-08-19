@@ -215,6 +215,23 @@ def test_hold_setpoint_freezes_d_star() -> None:
     assert d == pytest.approx(d_live, abs=1e-9)
 
 
+def test_hold_setpoint_skips_retarget_before_homotopy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(kin, PsiRetargetConfig(enabled=True))
+    q = np.array(
+        [0.50, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+
+    def _boom(*_a, **_k):
+        raise AssertionError("retarget must not run while holding")
+
+    monkeypatch.setattr(rt, "_maybe_retarget_psi", _boom)
+    rt.step(q, 0.005, rail_lo=0.005, rail_hi=0.78, hold_setpoint=True)
+
+
 def test_hold_release_does_not_jump_d_star(monkeypatch: pytest.MonkeyPatch) -> None:
     """Window 8: s=1 and a 132 mm d_goal step must still rate-limit Δd*."""
     kin = RobotKinematics()
