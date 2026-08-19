@@ -57,7 +57,7 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
     assert servo.vel_amax_m_s2 == pytest.approx(0.60)
     assert servo.vel_max_m_s == pytest.approx(0.12)
     assert cfg.psi_retarget.psi_attr_rad == pytest.approx(math.radians(68.0))
-    assert cfg.rail_extension.escape_sign_policy == "minus"
+    assert cfg.rail_extension.escape_sign_policy == "auto"
     assert servo.soft_min_m == pytest.approx(0.030)
     assert servo.soft_max_m == pytest.approx(cfg.rail.soft_max_m)
     assert servo.hard_min_m == pytest.approx(0.005)
@@ -72,6 +72,18 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
     assert cfg.collision.d_safe == pytest.approx(0.01)
     assert cfg.collision.d_activate == pytest.approx(0.04)
     assert not hasattr(cfg, "generic_qpik")
+
+
+def test_retired_midranging_keys_fail_fast():
+    raw = deepcopy(_raw())
+    raw["inner"]["rail_allocator"]["posture_subordinate"] = 0.35
+    with pytest.raises(ValueError, match="posture_subordinate"):
+        build_joint_ik_config(raw)
+
+    raw = deepcopy(_raw())
+    raw["inner"]["rail_extension"]["v_reach_cap_m_s"] = 0.05
+    with pytest.raises(ValueError, match="v_reach_cap_m_s"):
+        build_joint_ik_config(raw)
 
 
 def test_retired_task_group_and_solver_keys_fail_fast():

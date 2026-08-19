@@ -237,19 +237,11 @@ inner:
     limit_margin_m: 0.15
     pin_margin_m: 0.008
     escape_leave_m: 0.04
-    v_reach_cap_m_s: 0.05
-    v_reach_idle_cap_m_s: 0.010
     healthy_sigma_mute: 0.08
     press_v_force_min_m_s: 0.02
     press_dz_max_m: 0.002
     press_y_err_m: 0.005
     press_stall_s: 0.5
-    # Budget for v_ff + v_reach on the reach path.  v_max_m_s (0.08) alone is
-    # below the legal FF (rail.v_max_m_s 0.15 * v_scale 0.8 = 0.12), so the
-    # two saturated together and reach never ran: run 225941 grew the posture
-    # error at 39 mm/s while driving, then dumped 25-73 mm on stick release.
-    # 0.12 (QP box) + 0.05 (v_reach_cap).  QP box and FA24 still limit speed.
-    v_reach_total_max_m_s: 0.17
     d_band_m: 0.005
     k_sigma_boost: 2.0
     k_esc: 0.5
@@ -264,7 +256,7 @@ inner:
     v_lpf_tau_s: 0.05
     v_lpf_fc_hz: 5.0
     v_lpf_tau_escape_s: 0.04
-    # Narrow latch: deep σ or true near-limit only (healthy = FF+reach).
+    # Narrow latch: deep σ or true near-limit only (healthy = FF + allocator).
     sigma_escape_enter: 0.55
     sigma_escape_exit: 0.80
     margin_escape_enter: 0.12
@@ -279,18 +271,19 @@ inner:
     d_star_err1_m: 0.04
     d_star_w_mult: 6.0
     d_star_reg_mult: 20.0
-    # One-sided lateral escape: always −q0 until the minus pin band.
-    escape_sign_policy: minus
+    # Escape sign: auto = open travel / σ gradient.  minus/plus force a side.
+    escape_sign_policy: auto
 
   rail_allocator:
     v0_m_s: 0.05
     w0_rad_s: 0.30
     k_margin: 4.0
-    kp_mid: 0.40
+    kp_mid: 1.2
     ki_mid: 0.80
-    u_mid_max_m_s: 0.03
-    posture_subordinate: 0.35
-    f_c_hz: 5.0
+    u_mid_max_m_s: 0.12
+    k_err_rail: 4.0
+    e_ref_m: 0.08
+    f_c_hz: 20.0
     reaction_s: 0.06
     observer_pos_gain: 0.35
     observer_vel_gain: 2.0
@@ -624,7 +617,7 @@ hw:
     decel_request_margin_m_s: 0.005
     vel_ff_p_trim_m_s: 0.010
     match_drive_accel: true
-    fa24_rpm_deadband: 12   # skip Modbus if |Δrpm|<12 (~2 mm/s) while moving
+    fa24_rpm_deadband: 0   # write every worker tick; skip only if rpm is unchanged
     vel_deadband_mm: 0.05   # tight tracking band (not a permanent accuracy sacrifice)
     # Standstill hysteresis: freeze FA24 after tight settle; wake only if pushed.
     standstill_enter_mm: 0.05

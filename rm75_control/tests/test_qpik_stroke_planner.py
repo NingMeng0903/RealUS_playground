@@ -295,7 +295,7 @@ def test_ird_d_star_that_hits_the_limit_band_is_discarded() -> None:
     assert abs(d_star) < 1.0
 
 
-def test_split_error_raises_rail_reg_and_fades_k_ff() -> None:
+def test_split_error_exposes_e_mid_and_fades_k_ff() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -307,13 +307,13 @@ def test_split_error_raises_rail_reg_and_fades_k_ff() -> None:
             e0_m=0.0,
             e1_m=0.01,
             v_lpf_tau_s=0.0,
-            v_reach_cap_m_s=0.04,
             v_max_m_s=0.08,
             d_star_err0_m=0.01,
             d_star_err1_m=0.04,
             d_star_reg_mult=20.0,
             w_max=2.0,
             w_ext_cap=40.0,
+            d_band_m=0.0,
         ),
     )
     task.set_mode("reach")
@@ -324,22 +324,25 @@ def test_split_error_raises_rail_reg_and_fades_k_ff() -> None:
     task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on, vel_ff=vel_ff)
     assert task.last_d_star_reg_scale == pytest.approx(1.0)
     assert task.last_k_ff_scale == pytest.approx(1.0)
-    assert abs(task.last_v_reach) < 1e-9
+    assert task.last_v_reach == pytest.approx(0.0, abs=1e-12)
+    assert abs(task.last_e_mid_m) < 1e-9
 
     task._v_lpf = 0.0
     task._v_lpf_initialized = False
     task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.025, vel_ff=vel_ff)
-    assert task.last_d_star_reg_scale > 1.0
+    assert task.last_d_star_reg_scale == pytest.approx(1.0)
     assert task.last_k_ff_scale == pytest.approx(1.0)
     assert abs(task.last_v_ff) > 0.04
+    assert abs(task.last_e_mid_m) > 0.02
     assert abs(task.last_track_err_m) > 0.02
 
     task._v_lpf = 0.0
     task._v_lpf_initialized = False
     task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on - 0.08, vel_ff=vel_ff)
-    assert task.last_d_star_reg_scale > 1.0
+    assert task.last_d_star_reg_scale == pytest.approx(1.0)
     assert task.last_k_ff_scale == pytest.approx(1.0)
     assert abs(task.last_v_ff) > 0.04
+    assert abs(task.last_e_mid_m) > 0.04
 
     task._v_lpf = 0.0
     task._v_lpf_initialized = False
@@ -348,7 +351,7 @@ def test_split_error_raises_rail_reg_and_fades_k_ff() -> None:
     assert task.last_v_ff == pytest.approx(0.0, abs=1e-12)
 
 
-def test_v_reach_deadzone_inside_d_band() -> None:
+def test_e_mid_deadzone_inside_d_band() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -360,7 +363,6 @@ def test_v_reach_deadzone_inside_d_band() -> None:
             e0_m=0.0,
             e1_m=0.01,
             v_lpf_tau_s=0.0,
-            v_reach_cap_m_s=0.02,
             v_max_m_s=0.08,
             d_band_m=0.08,
             d_star_err0_m=0.01,
@@ -374,17 +376,17 @@ def test_v_reach_deadzone_inside_d_band() -> None:
     task.set_d_pref(d_live)
     y_on = float(q[0]) + d_live
     task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.04, stroke_limiters=False)
-    assert task.last_v_reach == pytest.approx(0.0, abs=1e-12)
+    assert task.last_e_mid_m == pytest.approx(0.0, abs=1e-12)
     assert task.last_d_star_reg_scale == pytest.approx(1.0)
     task._v_lpf = 0.0
     task._v_lpf_initialized = False
     task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.16, stroke_limiters=False)
-    assert abs(task.last_v_reach) > 1e-6
-    assert task.last_d_star_reg_scale > 1.0
+    assert abs(task.last_e_mid_m) > 1e-6
+    assert task.last_d_star_reg_scale == pytest.approx(1.0)
     assert task.last_k_ff_scale < 1.0
 
 
-def test_v_reach_alive_with_5mm_d_band() -> None:
+def test_e_mid_alive_with_5mm_d_band() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -396,7 +398,6 @@ def test_v_reach_alive_with_5mm_d_band() -> None:
             e0_m=0.0,
             e1_m=0.01,
             v_lpf_tau_s=0.0,
-            v_reach_cap_m_s=0.05,
             v_max_m_s=0.08,
             d_band_m=0.005,
             d_star_err0_m=0.01,
@@ -410,12 +411,11 @@ def test_v_reach_alive_with_5mm_d_band() -> None:
     task.set_d_pref(d_live)
     y_on = float(q[0]) + d_live
     task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.008, apply_d_band=True)
-    assert abs(task.last_v_reach) > 1.0e-4
-    assert abs(task.last_v_reach) <= 0.05 + 1.0e-9
+    assert abs(task.last_e_mid_m) == pytest.approx(0.003, abs=1e-9)
     task._v_lpf = 0.0
     task._v_lpf_initialized = False
     task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.080, apply_d_band=True)
-    assert 0.040 < abs(task.last_v_reach) <= 0.05 + 1.0e-12
+    assert abs(task.last_e_mid_m) == pytest.approx(0.075, abs=1e-9)
 
 
 def test_rail_ff_tracks_desired_y_minus_d_star() -> None:
@@ -444,10 +444,11 @@ def test_rail_ff_tracks_desired_y_minus_d_star() -> None:
     v, _w = task(q, sigma_scale=1.0, vel_ff=vel_ff, dt_s=DT, y_tcp_d=y_tcp_d)
     assert np.isfinite(task.last_rail_ff_m)
     assert task.last_rail_ff_m == pytest.approx(y_tcp_d - d_star, abs=1e-9)
-    assert v * 0.03 > 0.0
+    assert abs(task.last_v_ff) > 0.02
+    assert abs(float(v)) < abs(task.last_v_ff)
 
 
-def test_stroke_limiters_only_when_planned() -> None:
+def test_stroke_limiters_flag_the_limit_band_without_a_reach_velocity() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -459,7 +460,6 @@ def test_stroke_limiters_only_when_planned() -> None:
             e0_m=0.0,
             e1_m=0.01,
             v_ff_thr_m_s=0.005,
-            v_reach_cap_m_s=0.08,
             v_max_m_s=0.08,
             v_lpf_tau_s=0.0,
             limit_margin_m=0.15,
@@ -467,6 +467,7 @@ def test_stroke_limiters_only_when_planned() -> None:
             soft_min_m=0.005,
             soft_max_m=0.78,
             d_star_err0_m=1.0,
+            d_band_m=0.0,
         ),
     )
     task.set_mode("reach")
@@ -481,10 +482,11 @@ def test_stroke_limiters_only_when_planned() -> None:
     v_fade, _ = task(
         q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_des, stroke_limiters=True
     )
-    assert v_open > 0.05
-    assert v_fade < v_open
-    assert v_fade < 0.055
-    assert not task.last_limit_saturated or v_fade < 0.02
+    assert task.last_v_reach == pytest.approx(0.0, abs=1e-12)
+    assert abs(task.last_e_mid_m) > 0.05
+    assert abs(float(v_open)) < 1e-9
+    assert abs(float(v_fade)) < 1e-9
+    assert task.last_in_limit_band
 
     q[0] = 0.74
     y_leave = float(kin.fk_placement(q).translation[1]) + 0.08
@@ -498,8 +500,10 @@ def test_stroke_limiters_only_when_planned() -> None:
     v_leave_scan, _ = task(
         q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_leave, stroke_limiters=True
     )
-    assert v_leave_open > 0.04
-    assert v_leave_scan == pytest.approx(0.0, abs=1e-4)
+    assert abs(task.last_e_mid_m) > 0.05
+    assert abs(float(v_leave_open)) < 1e-9
+    assert abs(float(v_leave_scan)) < 1e-9
+    assert task._in_plus_leave(float(q[0]))
 
 
 def test_anti_cancel_term_is_gone() -> None:
@@ -635,7 +639,11 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert qn[6] == pytest.approx(61.0)
     assert cfg.rail.soft_min_m == pytest.approx(0.030)
     assert cfg.rail_extension.d_star_reg_mult == pytest.approx(20.0)
-    assert cfg.rail_extension.v_reach_cap_m_s == pytest.approx(0.05)
+    assert cfg.rail_allocator.u_mid_max_m_s == pytest.approx(0.12)
+    assert cfg.rail_allocator.kp_mid == pytest.approx(1.2)
+    assert cfg.rail_allocator.k_err_rail == pytest.approx(4.0)
+    assert cfg.rail_allocator.e_ref_m == pytest.approx(0.08)
+    assert cfg.rail_allocator.f_c_hz == pytest.approx(20.0)
     assert cfg.rail_extension.d_band_m == pytest.approx(0.005)
     assert cfg.cartesian_track.k_task_lin == pytest.approx(10.0)
     assert cfg.cartesian_track.k_task_rot == pytest.approx(2.0)
@@ -681,7 +689,6 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.qp.near_arm_margin_rad == pytest.approx(0.08)
     assert cfg.qp.joint_comfort.m_comfort_rad == pytest.approx(math.radians(15.0))
     assert cfg.rail_extension.healthy_sigma_mute == pytest.approx(0.08)
-    assert cfg.rail_extension.v_reach_idle_cap_m_s == pytest.approx(0.010)
     assert cfg.rail_extension.press_v_force_min_m_s == pytest.approx(0.02)
     assert cfg.rail_extension.press_dz_max_m == pytest.approx(0.002)
     assert cfg.rail_extension.press_y_err_m == pytest.approx(0.005)
@@ -693,7 +700,7 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.psi_retarget.d_attr_m == pytest.approx(-0.185)
     assert cfg.psi_retarget.psi_envelope_lo_rad == pytest.approx(np.deg2rad(40.0))
     assert cfg.psi_retarget.psi_envelope_hi_rad == pytest.approx(np.deg2rad(110.0))
-    assert cfg.rail_extension.escape_sign_policy == "minus"
+    assert cfg.rail_extension.escape_sign_policy == "auto"
     assert not hasattr(cfg.psi_retarget, "d_band_m")
     assert cfg.psi_retarget.psi_replan_period_s == pytest.approx(0.1)
     assert cfg.arm_angle.k_psi == pytest.approx(1.5)
@@ -748,6 +755,10 @@ def test_analyzer_rejects_empty_scan(tmp_path) -> None:
     assert mod.GATES["rail_min_m"] == pytest.approx(0.02)
     assert mod.GATES["tick_inner_max_ms"] == pytest.approx(20.0)
     assert mod.GATES["track_err_p95_mm"] == pytest.approx(1.0)
+    assert mod.GATES["rail_share_p50"] == pytest.approx(0.60)
+    assert mod.GATES["psi_err_p95_deg"] == pytest.approx(15.0)
+    assert mod.GATES["fa24_write_hz"] == pytest.approx(40.0)
+    assert mod.GATES["vpc_track_err_p95_mm"] == pytest.approx(5.0)
 
 
 def test_analyzer_accepts_ellipse_track_phase(tmp_path) -> None:
@@ -1757,3 +1768,51 @@ def test_analyzer_rail_task_dropout_passes_when_vel_is_issued() -> None:
     mod._rail_task_dropout_check(rows, results, info)
     gate = next(r for r in results if "dropout" in r[0])
     assert gate[1] is True
+
+
+def test_vpc_midrange_gates_pass_on_symmetric_synthetic() -> None:
+    mod = _load_analyze_qpik_quality()
+    rows = []
+    for k in range(80):
+        t = k * 0.005
+        plus = k < 40
+        vy = 0.05 if plus else -0.05
+        rows.append(
+            {
+                "t_wall_s": f"{t:.4f}",
+                "rail_motion_share": "0.70",
+                "v_cmd_vy": f"{vy:.4f}",
+                "v_r_ref": f"{0.04 if plus else -0.04:.4f}",
+                "psi_deg": "68.0",
+                "psi_ref_deg": "68.0",
+                "track_err_mm": "1.5",
+            }
+        )
+    results: list[tuple[str, bool, str]] = []
+    mod._vpc_midrange_checks(rows, results)
+    by_name = {r[0]: r for r in results}
+    assert by_name["rail_motion_share p50 ≥ 0.60 (|v_cmd_vy| > 20 mm/s)"][1]
+    assert by_name["+Y/−Y rail share ratio ≤ 1.25"][1]
+    assert by_name["|ψ − ψ_ref| p95 ≤ 15°"][1]
+    assert by_name["sign(v_r_ref)==sign(v_cmd_vy) ≥ 85% (|vy|>10 mm/s)"][1]
+    assert by_name["track_err p95 ≤ 5 mm"][1]
+
+
+def test_fa24_vpc_gates_pass_on_dense_writes() -> None:
+    mod = _load_analyze_qpik_quality()
+    rows = []
+    rpm = 200
+    for k in range(80):
+        rpm += 4
+        rows.append(
+            {
+                "t_wall_s": f"{k / 50.0:.4f}",
+                "rpm_cmd": str(rpm),
+                "t_write_ms": "3.0",
+            }
+        )
+    results: list[tuple[str, bool, str]] = []
+    mod._rail_servo_vpc_checks(rows, results)
+    by_name = {r[0]: r for r in results}
+    assert by_name["FA24 write ≥ 40 Hz (active window)"][1]
+    assert by_name["FA24 |Δrpm| p95 ≤ 20"][1]

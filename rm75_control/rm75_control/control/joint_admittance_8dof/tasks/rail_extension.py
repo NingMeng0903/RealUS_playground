@@ -26,7 +26,6 @@ import numpy as np
 
 from rm75_control.control.joint_admittance_8dof.filters import smoothstep01
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics, RAIL_INDEX
-from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import soft_saturate
 from rm75_control.control.joint_admittance_8dof.tasks.rail_goodness import (
     RailGoodness,
     SigmaMinGoodness,
@@ -163,7 +162,7 @@ class RailExtensionConfig:
     d_star_nudge_m: float = 0.01
     open_travel_min_m: float = 0.01
     # One-sided lateral escape.  ``minus`` drives −q0 until the minus pin.
-    escape_sign_policy: str = "minus"
+    escape_sign_policy: str = "auto"
     # Budget for the reach path's ``v_ff + v_reach + v_escape`` sum.  It must
     # leave room for a legal FF *plus* reach, or the two saturate together and
     # reach never runs: gamepad demands 120 mm/s of FF against a 80 mm/s
@@ -211,6 +210,8 @@ class RailExtensionTask:
         self.last_v_ff: float = 0.0
         self.last_v_escape: float = 0.0
         self.last_v_reach: float = 0.0
+        self.last_e_mid_m: float = 0.0
+        self._escape_grad_hint: float = 0.0
         self.last_rail_ff_m: float = float("nan")
         self.last_track_err_m: float = 0.0
         self.last_d_star_reg_scale: float = 1.0
@@ -265,6 +266,7 @@ class RailExtensionTask:
     def reset(self, q_rad: np.ndarray) -> None:
         self.capture_reference(q_rad)
         self.last_err_m = 0.0
+        self.last_e_mid_m = 0.0
         self.last_weight = 0.0
         self.last_limit_saturated = False
         self.last_in_limit_band = False
@@ -291,20 +293,40 @@ class RailExtensionTask:
     def _leave_margin_m(self) -> float:
         return max(float(self.cfg.escape_leave_m), float(self.cfg.pin_margin_m))
 
-    def _policy_escape_sign(self) -> float:
-        raw = str(getattr(self.cfg, "escape_sign_policy", "minus")).strip().lower()
+    def _policy_escape_sign(self, q_rail: float | None = None) -> float:
+        raw = str(getattr(self.cfg, "escape_sign_policy", "auto")).strip().lower()
         if raw in ("minus", "-", "neg", "negative"):
             return -1.0
         if raw in ("plus", "+", "pos", "positive"):
             return 1.0
-        raise ValueError(f"unknown rail_extension.escape_sign_policy: {raw!r}")
+        if raw not in ("auto", "open", "grad", "gradient"):
+            raise ValueError(f"unknown rail_extension.escape_sign_policy: {raw!r}")
+        # Hold the latched sign so a σ-gradient flicker cannot reverse a
+        # committed escape (monotonic latch).  Open travel / pin logic in
+        # ``_preferred_escape_sign`` may still reverse at a dead end.
+        if abs(float(self._escape_sign)) > 1.0e-9:
+            return 1.0 if self._escape_sign > 0.0 else -1.0
+        grad = float(self._escape_grad_hint)
+        if abs(grad) > 1.0e-9:
+            return 1.0 if grad > 0.0 else -1.0
+        y = float(q_rail) if q_rail is not None else float("nan")
+        if not np.isfinite(y):
+            return 0.0
+        lo, hi = self._soft_travel()
+        plus_room = hi - y
+        minus_room = y - lo
+        if plus_room > minus_room + 1.0e-9:
+            return 1.0
+        if minus_room > plus_room + 1.0e-9:
+            return -1.0
+        return 0.0
 
     def _in_leave_band(self, q_rail: float, sign: float = 0.0) -> bool:
         lo, hi = self._soft_travel()
         leave = self._leave_margin_m()
         s = float(sign)
         if abs(s) < 1.0e-12:
-            s = self._policy_escape_sign()
+            s = self._policy_escape_sign(q_rail)
         if s > 0.0:
             return bool(q_rail >= hi - leave)
         if s < 0.0:
@@ -327,7 +349,7 @@ class RailExtensionTask:
         ``unload_sign`` overrides the fixed minus/plus policy so the macro
         pulls live d toward the feasible split.
         """
-        sign = self._policy_escape_sign()
+        sign = self._policy_escape_sign(q_rail)
         if abs(float(unload_sign)) > 1.0e-12:
             sign = 1.0 if float(unload_sign) > 0.0 else -1.0
         lo, hi = self._soft_travel()
@@ -596,48 +618,40 @@ class RailExtensionTask:
         apply_d_band: bool | None = None,
         block_escape: bool = False,
         unload_sign: float = 0.0,
-        operator_idle: bool = False,
-        hold_setpoint: bool = False,
         jacobian: np.ndarray | None = None,
     ) -> tuple[float, float]:
         if self.d_pref_m is None:
             self.capture_reference(q)
         d_star = float(self.d_pref_m)
         y = float(q[RAIL_INDEX])
+        self._escape_grad_hint = float(sigma_grad_rail)
         if y_tcp_d is not None and np.isfinite(float(y_tcp_d)):
             y_des = float(y_tcp_d)
         else:
             y_des = float(self.kin.fk_placement(q).translation[1])
-        # Frozen d* vs a live y_des is the 40 mm platform chase.  While the
-        # operator owns the stick, hold the attractor error at zero so reach
-        # does not accumulate against the task.
-        if hold_setpoint:
-            rail_ff = y
-        else:
-            rail_ff = y_des - d_star
+        rail_ff = y_des - d_star
         err_raw = rail_ff - y
         band = max(float(getattr(self.cfg, "d_band_m", 0.0)), 0.0)
         use_band = (not stroke_limiters) if apply_d_band is None else bool(apply_d_band)
         if not use_band:
             band = 0.0
         err = float(err_raw - np.clip(err_raw, -band, band))
+        self.last_e_mid_m = float(err)
         self.last_rail_ff_m = float(rail_ff)
         self.last_track_err_m = float(err_raw)
         span = max(float(self.cfg.e1_m) - float(self.cfg.e0_m), 1e-6)
         w_reach = float(self.cfg.w_max) * smoothstep01(
             (abs(err) - float(self.cfg.e0_m)) / span
         )
-        v_reach = float(
-            np.clip(self.cfg.k_ext * err, -self.cfg.v_max_m_s, self.cfg.v_max_m_s)
-        )
+        v_reach = 0.0
         sig = float(np.clip(sigma_scale, 0.0, 1.0))
         err_abs = abs(err)
         e0 = max(float(self.cfg.d_star_err0_m), 0.0)
         e1 = max(float(self.cfg.d_star_err1_m), e0 + 1.0e-6)
         drift = smoothstep01((err_abs - e0) / (e1 - e0)) if e0 > 0.0 else 0.0
-        self.last_d_star_reg_scale = 1.0 + drift * max(
-            float(self.cfg.d_star_reg_mult) - 1.0, 0.0
-        )
+        # Haviland eq (14) cheapens the rail in allocate_rail; do not also
+        # make the QP rail *more* expensive when |e_mid| is large.
+        self.last_d_star_reg_scale = 1.0
         v_ff_measured = (
             rail_vel_ff_from_reference(
                 vel_ff, self.kin, q, k_ff=self.cfg.k_ff, jacobian=jacobian
@@ -667,13 +681,6 @@ class RailExtensionTask:
             trajectory_owns=ff_owns,
             unload_sign=float(unload_sign),
         )
-        cap = max(float(self.cfg.v_reach_cap_m_s), 0.0)
-        if operator_idle:
-            idle_cap = max(float(self.cfg.v_reach_idle_cap_m_s), 0.0)
-            if idle_cap > 0.0:
-                cap = min(cap, idle_cap) if cap > 0.0 else idle_cap
-        if cap > 0.0:
-            v_reach = soft_saturate(v_reach, cap)
         # Demoted: healthy σ (raw ≥ 0.08) never lets escape drive the rail
         # unless a press stall still needs a lateral Y offset.
         healthy_sigma = (
@@ -684,7 +691,7 @@ class RailExtensionTask:
         in_band = self._rail_in_limit_band(y) if use_limiters else False
         self.last_in_limit_band = bool(in_band)
         y_thr = max(float(self.cfg.press_y_err_m), 0.0)
-        policy_sign = self._policy_escape_sign()
+        policy_sign = self._policy_escape_sign(y)
         backoff = bool(
             use_limiters
             and self._in_leave_band(y, policy_sign)
@@ -693,10 +700,6 @@ class RailExtensionTask:
         allow_press_escape = bool(
             (press_stalled or backoff) and self._rail_has_open_travel(y)
         )
-        # Inside the fade band escape only fights the wall — unless Z is
-        # still demanding and the open side still has travel.
-        # A near-straight elbow must not latch minus-escape: that retracted
-        # the rail and forced J4 through 0 on 035411.
         if block_escape and not allow_press_escape:
             self._clear_escape_latch()
             v_escape = 0.0
@@ -708,12 +711,6 @@ class RailExtensionTask:
             v_escape = 0.0
         elif self._escape_active:
             v_escape = 0.25 * float(self.cfg.k_esc) * float(grad_latched)
-            if (
-                not allow_press_escape
-                and abs(v_escape) > 1e-9
-                and v_reach * v_escape < 0.0
-            ):
-                v_escape = 0.0
         else:
             v_escape = (
                 0.25 * float(self.cfg.k_esc) * (1.0 - sig) * float(sigma_grad_rail)
@@ -731,36 +728,10 @@ class RailExtensionTask:
                 if abs(v_escape) > 1.0e-12:
                     self._escape_active = True
                     self._escape_sign = pref
-            elif ff_owns and v_escape * v_ff < 0.0:
-                v_escape = 0.0
-            else:
-                v_primary_ff = v_ff + v_reach
-                if v_escape * v_primary_ff < 0.0 and abs(v_primary_ff) > 1.0e-4:
-                    v_escape = 0.0
-        v_primary = v_ff + v_reach
-        pref_now = self._preferred_escape_sign(
-            y, backoff=backoff, unload_sign=float(unload_sign)
+        v_escape = float(
+            np.clip(v_escape, -self.cfg.v_max_m_s, self.cfg.v_max_m_s)
         )
-        if use_limiters:
-            # Park primary at either leave band so a planned +Y stroke still
-            # stops short of +soft_max, while minus-policy escape parks at −.
-            in_plus = self._in_plus_leave(y)
-            in_policy = self._in_leave_band(y, policy_sign)
-            if in_plus and (not allow_press_escape or v_primary > 0.0):
-                v_primary = 0.0
-            if in_policy and (not allow_press_escape or v_primary * policy_sign > 0.0):
-                v_primary = 0.0
-        if allow_press_escape:
-            esc_sign = (
-                float(self._escape_sign)
-                if self._escape_active and abs(self._escape_sign) > 1.0e-12
-                else pref_now
-            )
-            if esc_sign != 0.0 and v_primary * esc_sign < 0.0:
-                v_primary = 0.0
-        v_total = v_primary + v_escape
-        budget = self.cfg.reach_budget_m_s()
-        v = float(np.clip(v_total, -budget, budget))
+        v = float(v_escape)
         if use_limiters:
             lim = self._limit_saturation(y, v)
         else:
@@ -769,8 +740,6 @@ class RailExtensionTask:
         self.last_limit_saturated = lim < 1e-6
         v *= lim
         span_ff = max(float(self.cfg.v_ff_span_m_s), 1e-6)
-        # v_ff_thr_m_s is the ff_owns ownership test, not a weight dead
-        # zone: subtracting it zeroed w_ff for the whole 0.67 s Y turn.
         w_ff = float(self.cfg.w_max) * smoothstep01(abs(v_ff_att) / span_ff)
         w_sigma = float(self.cfg.w_sigma_floor) * (1.0 - sig)
         w = (w_reach + w_ff + w_sigma) * lim
@@ -786,7 +755,7 @@ class RailExtensionTask:
         self.last_weight = w
         self.last_v_ff = float(v_ff_att)
         self.last_v_escape = float(v_escape)
-        self.last_v_reach = float(v_reach)
+        self.last_v_reach = 0.0
         return v, w
 
     def __call__(
@@ -806,13 +775,12 @@ class RailExtensionTask:
         apply_d_band: bool | None = None,
         block_escape: bool = False,
         unload_sign: float = 0.0,
-        operator_idle: bool = False,
-        hold_setpoint: bool = False,
         jacobian: np.ndarray | None = None,
     ) -> tuple[float, float]:
         """Return ``(v_rail_des, w_ext)`` for the QP."""
         if not self.cfg.enabled:
             self.last_err_m = 0.0
+            self.last_e_mid_m = 0.0
             self.last_weight = 0.0
             self.last_limit_saturated = False
             self.last_in_limit_band = False
@@ -824,6 +792,7 @@ class RailExtensionTask:
         if self.mode == "pose_attract":
             self.last_d_star_reg_scale = 1.0
             self.last_k_ff_scale = 1.0
+            self.last_e_mid_m = 0.0
             return self._call_pose_attract(
                 q,
                 sigma_scale=sigma_scale,
@@ -845,7 +814,5 @@ class RailExtensionTask:
             apply_d_band=apply_d_band,
             block_escape=block_escape,
             unload_sign=unload_sign,
-            operator_idle=operator_idle,
-            hold_setpoint=hold_setpoint,
             jacobian=jacobian,
         )

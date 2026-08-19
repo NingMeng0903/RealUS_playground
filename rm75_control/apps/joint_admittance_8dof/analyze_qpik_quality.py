@@ -146,6 +146,16 @@ _GATES_CONT = {
     "joint_exec_ratio_lo": 0.90,
     "joint_exec_ratio_hi": 1.10,
     "joint_exec_min_integral": 0.01,
+    # VPC mid-ranging rebuild (Phase 5).
+    "rail_share_p50": 0.60,
+    "rail_share_vy_m_s": 0.020,
+    "rail_share_pm_ratio": 1.25,
+    "psi_err_p95_deg": 15.0,
+    "rail_sign_agree_frac": 0.85,
+    "rail_sign_vy_m_s": 0.010,
+    "vpc_track_err_p95_mm": 5.0,
+    "fa24_write_hz": 40.0,
+    "fa24_drpm_p95": 20.0,
 }
 GATES.update(_GATES_CONT)
 
@@ -633,6 +643,114 @@ def rail_stop_reverse_frac(
     return worst
 
 
+def _vpc_midrange_checks(
+    rows: list[dict],
+    results: list[tuple[str, bool, str]],
+) -> None:
+    """Phase 5 VPC mid-ranging gates from the QPIK CSV."""
+    share = _col(rows, "rail_motion_share")
+    vy = _col(rows, "v_cmd_vy")
+    if not np.isfinite(vy).any():
+        vy = _col(rows, "path_twist_vy")
+    moving = np.isfinite(share) & np.isfinite(vy) & (np.abs(vy) > GATES["rail_share_vy_m_s"])
+    if int(moving.sum()) >= 20:
+        p50 = float(np.nanmedian(share[moving]))
+        results.append(
+            (
+                "rail_motion_share p50 ≥ 0.60 (|v_cmd_vy| > 20 mm/s)",
+                p50 >= GATES["rail_share_p50"],
+                f"p50 {p50:.3f}  n={int(moving.sum())}",
+            )
+        )
+        plus = moving & (vy > GATES["rail_share_vy_m_s"])
+        minus = moving & (vy < -GATES["rail_share_vy_m_s"])
+        if int(plus.sum()) >= 10 and int(minus.sum()) >= 10:
+            r_plus = float(np.nanmedian(np.abs(share[plus])))
+            r_minus = float(np.nanmedian(np.abs(share[minus])))
+            denom = max(min(r_plus, r_minus), 1.0e-6)
+            ratio = max(r_plus, r_minus) / denom
+            results.append(
+                (
+                    "+Y/−Y rail share ratio ≤ 1.25",
+                    ratio <= GATES["rail_share_pm_ratio"],
+                    f"+ {r_plus:.3f}  − {r_minus:.3f}  ratio {ratio:.2f}",
+                )
+            )
+    psi = _col(rows, "psi_deg")
+    psi_ref = _col(rows, "psi_ref_deg")
+    if np.isfinite(psi).any() and np.isfinite(psi_ref).any():
+        dpsi = np.abs(((psi - psi_ref + 180.0) % 360.0) - 180.0)
+        finite = dpsi[np.isfinite(dpsi)]
+        if finite.size:
+            p95 = float(np.nanpercentile(finite, 95))
+            results.append(
+                (
+                    "|ψ − ψ_ref| p95 ≤ 15°",
+                    p95 <= GATES["psi_err_p95_deg"],
+                    f"p95 {p95:.1f}°",
+                )
+            )
+    vref = _col(rows, "v_r_ref")
+    live_y = np.isfinite(vref) & np.isfinite(vy) & (np.abs(vy) > GATES["rail_sign_vy_m_s"])
+    if int(live_y.sum()) >= 20:
+        agree = float(np.mean(np.sign(vref[live_y]) == np.sign(vy[live_y])))
+        results.append(
+            (
+                "sign(v_r_ref)==sign(v_cmd_vy) ≥ 85% (|vy|>10 mm/s)",
+                agree >= GATES["rail_sign_agree_frac"],
+                f"{100.0 * agree:.1f}%",
+            )
+        )
+    err = _col(rows, "track_err_mm")
+    if not np.isfinite(err).any():
+        err = _col(rows, "motion_err_rms_mm")
+    finite_err = np.abs(err[np.isfinite(err)])
+    if finite_err.size:
+        p95 = float(np.nanpercentile(finite_err, 95))
+        results.append(
+            (
+                "track_err p95 ≤ 5 mm",
+                p95 <= GATES["vpc_track_err_p95_mm"],
+                f"{p95:.2f} mm",
+            )
+        )
+
+
+def _rail_servo_vpc_checks(
+    rows: list[dict],
+    results: list[tuple[str, bool, str]],
+) -> None:
+    """FA24 write-rate / step-size gates from the rail_servo CSV."""
+    rpm = _col(rows, "rpm_cmd")
+    t = _col(rows, "t_wall_s")
+    tw = _col(rows, "t_write_ms")
+    writes = np.isfinite(tw) & (tw > 0.05)
+    t_w = t[writes] if t.size == writes.size else np.array([])
+    if t_w.size > 2:
+        span = float(t_w[-1] - t_w[0])
+        hz = (float(t_w.size) - 1.0) / max(span, 1.0e-6)
+        results.append(
+            (
+                "FA24 write ≥ 40 Hz (active window)",
+                hz >= GATES["fa24_write_hz"],
+                f"{hz:.1f} Hz  n={int(t_w.size)}",
+            )
+        )
+    finite_rpm = rpm[np.isfinite(rpm)]
+    if finite_rpm.size > 2:
+        drpm = np.abs(np.diff(finite_rpm))
+        drpm = drpm[drpm > 0.5]
+        if drpm.size:
+            p95 = float(np.percentile(drpm, 95))
+            results.append(
+                (
+                    "FA24 |Δrpm| p95 ≤ 20",
+                    p95 <= GATES["fa24_drpm_p95"],
+                    f"p95 {p95:.1f} rpm",
+                )
+            )
+
+
 def _rail_servo_checks(
     scan_path: Path,
     results: list[tuple[str, bool, str]],
@@ -655,6 +773,7 @@ def _rail_servo_checks(
     if len(rows) < 50:
         info.append(("rail servo log", f"only {len(rows)} rows"))
         return
+    _rail_servo_vpc_checks(rows, results)
 
     t = _col(rows, "t_wall_s")
     span = float(t[-1] - t[0]) if t.size > 1 else 0.0
@@ -1453,6 +1572,7 @@ def analyze(path: Path) -> int:
     results: list[tuple[str, bool, str]] = []
     info: list[tuple[str, str]] = []
     info.append(("phase filter", phase_used))
+    _vpc_midrange_checks(rows, results)
 
     if np.isfinite(waste).any():
         w = float(np.nanmedian(waste[np.isfinite(waste)]))

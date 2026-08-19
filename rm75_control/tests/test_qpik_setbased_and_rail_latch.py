@@ -426,7 +426,7 @@ def test_margin_triggers_escape_while_sigma_healthy() -> None:
     assert task._escape_active
 
 
-def test_latched_escape_does_not_override_reach() -> None:
+def test_latched_escape_still_exposes_e_mid() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -441,20 +441,21 @@ def test_latched_escape_does_not_override_reach() -> None:
             v_lpf_tau_s=0.0,
             v_lpf_tau_escape_s=0.0,
             escape_grad_floor=1.0,
+            d_band_m=0.0,
         ),
     )
     task.set_mode("reach")
     q = 0.5 * (kin.q_lower + kin.q_upper)
     task.capture_reference(q)
-    # Large positive reach error; minus-policy escape would want −.  Reach stays primary.
     task.d_pref_m = task.extension(q) - 0.30
     v, _ = task(
         q, sigma_scale=0.2, sigma_grad_rail=2.0, joint_margin_frac=1.0, dt_s=0.005
     )
     assert task._escape_active
-    assert task.last_v_reach > 0.0
-    assert v * task.last_v_reach > 0.0
-    assert abs(task.last_v_escape) < 1e-9
+    assert abs(task.last_e_mid_m) > 0.20
+    assert task.last_v_reach == pytest.approx(0.0, abs=1e-12)
+    assert abs(float(v)) == pytest.approx(abs(task.last_v_escape), abs=1e-9)
+    assert abs(task.last_v_escape) > 1e-9
 
 
 def test_escape_stays_out_of_the_rail_limit_band() -> None:
@@ -691,7 +692,7 @@ def test_beyond_rail_cli_defaults_force_on(tmp_path) -> None:
     del tmp_path, Path
 
 
-def test_escape_sign_prefers_minus_q0_even_if_grad_is_positive() -> None:
+def test_escape_sign_auto_follows_gradient_then_holds() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -708,11 +709,55 @@ def test_escape_sign_prefers_minus_q0_even_if_grad_is_positive() -> None:
             v_lpf_tau_s=0.0,
             v_lpf_tau_escape_s=0.0,
             escape_grad_floor=1.0,
+            escape_sign_policy="auto",
         ),
     )
     task.set_mode("reach")
     q = 0.5 * (kin.q_lower + kin.q_upper)
-    q[0] = 0.51  # mid-rail; 173438 latched −1 here from grad/open-side
+    q[0] = 0.51
+    task.capture_reference(q)
+    task(
+        q,
+        sigma_scale=0.2,
+        sigma_grad_rail=2.0,
+        joint_margin_frac=1.0,
+        dt_s=0.005,
+    )
+    assert task._escape_active
+    assert task._escape_sign > 0.0
+    task(
+        q,
+        sigma_scale=0.2,
+        sigma_grad_rail=-2.0,
+        joint_margin_frac=1.0,
+        dt_s=0.005,
+    )
+    assert task._escape_sign > 0.0
+
+
+def test_escape_sign_minus_policy_ignores_positive_grad() -> None:
+    kin = RobotKinematics()
+    task = RailExtensionTask(
+        kin,
+        RailExtensionConfig(
+            enabled=True,
+            k_esc=0.5,
+            k_ext=0.0,
+            soft_min_m=0.10,
+            soft_max_m=0.70,
+            limit_margin_m=0.02,
+            pin_margin_m=0.008,
+            sigma_escape_enter=0.99,
+            escape_enter_dwell_s=0.0,
+            v_lpf_tau_s=0.0,
+            v_lpf_tau_escape_s=0.0,
+            escape_grad_floor=1.0,
+            escape_sign_policy="minus",
+        ),
+    )
+    task.set_mode("reach")
+    q = 0.5 * (kin.q_lower + kin.q_upper)
+    q[0] = 0.51
     task.capture_reference(q)
     task(
         q,
@@ -785,7 +830,7 @@ def test_press_stall_keeps_escape_despite_healthy_sigma() -> None:
         tool_y_err_m=0.0,
     )
     assert abs(v) > 1e-4 or abs(task.last_v_escape) > 1e-4
-    assert task.last_v_escape < 0.0
+    assert np.sign(task.last_v_escape) == np.sign(task._policy_escape_sign(float(q[0])))
 
 
 def test_press_stall_allows_escape_in_limit_band_toward_open() -> None:
@@ -818,7 +863,7 @@ def test_press_stall_allows_escape_in_limit_band_toward_open() -> None:
         press_stalled=True,
         tool_y_err_m=0.0,
     )
-    assert task.last_v_escape * task._policy_escape_sign() >= -1e-12
+    assert task.last_v_escape * task._policy_escape_sign(float(q[0])) >= -1e-12
     assert abs(task.last_v_escape) > 1e-12 or task._escape_active
 
 
@@ -864,12 +909,12 @@ def _drive_reach(task: RailExtensionTask, *, v_ff_m_s: float) -> float:
     return float(v)
 
 
-def test_reach_records_measured_ff_but_applies_reach_only() -> None:
+def test_reach_records_measured_ff_but_does_not_apply_it() -> None:
     shared = _reach_budget_task(None)
     v_shared = _drive_reach(shared, v_ff_m_s=0.12)
     assert shared.last_v_ff == pytest.approx(0.12, rel=1e-6)
-    assert 0.040 < abs(shared.last_v_reach) <= 0.05 + 1e-12
-    assert v_shared == pytest.approx(shared.last_v_reach, abs=1e-9)
+    assert shared.last_v_reach == pytest.approx(0.0, abs=1e-12)
+    assert abs(v_shared) < 1e-9
 
 
 def test_reach_budget_still_clips_beyond_the_new_total() -> None:

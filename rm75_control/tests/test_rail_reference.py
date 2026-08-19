@@ -296,7 +296,7 @@ def test_defaults_match_the_hardware_baseline() -> None:
         assert cfg.decel_request_margin_m_s == pytest.approx(0.005)
         assert cfg.vel_ff_p_trim_m_s == pytest.approx(0.010)
         assert cfg.match_drive_accel is True
-        assert cfg.fa24_rpm_deadband == 12
+        assert cfg.fa24_rpm_deadband == 0
         assert cfg.vel_deadband_mm == 0.05
         assert cfg.standstill_enter_mm == 0.05
         assert cfg.standstill_exit_mm == 0.25
@@ -629,6 +629,13 @@ def test_fa24_deadband_skips_small_nonzero_dither() -> None:
     assert apply_fa24_rpm_deadband(0, 360, 12) == 0
     assert apply_fa24_rpm_deadband(12, 0, 12) == 12
     assert apply_fa24_rpm_deadband(368, 360, 12, force=True) == 368
+
+
+def test_fa24_deadband_zero_writes_every_rpm_change() -> None:
+    assert apply_fa24_rpm_deadband(361, 360, 0) == 361
+    assert apply_fa24_rpm_deadband(360, 360, 0) == 360
+    assert apply_fa24_rpm_deadband(1, 0, 0) == 1
+    assert apply_fa24_rpm_deadband(0, 12, 0) == 0
 
 
 def test_servo_box_is_capped_by_the_qp_hard_limits() -> None:

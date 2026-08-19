@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from rm75_control.control.joint_admittance_8dof.collision_model import CollisionModel
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
@@ -79,7 +80,81 @@ def test_default_update_remains_full_narrow_phase() -> None:
     assert len(collision.all_pairs()) == len(collision.geom_model.collisionPairs)
 
 
-def test_nonunit_mesh_scale_disables_broadphase_for_safety() -> None:
+def test_vectorized_lower_bound_matches_scalar() -> None:
+    kin, collision = _collision()
+    q = np.zeros(kin.nq, dtype=float)
+    collision.update(q)
+    vec = collision._pair_lower_bounds()
+    assert vec.shape == (len(collision.geom_model.collisionPairs),)
+    for i, pair in enumerate(collision.geom_model.collisionPairs):
+        sphere_a = collision.bounding_spheres[int(pair.first)]
+        sphere_b = collision.bounding_spheres[int(pair.second)]
+        if not np.isfinite(sphere_a.radius) or not np.isfinite(sphere_b.radius):
+            expected = -float("inf")
+        else:
+            t_a = collision.geom_data.oMg[int(pair.first)]
+            t_b = collision.geom_data.oMg[int(pair.second)]
+            center_a = np.asarray(t_a.translation, dtype=float) + np.asarray(
+                t_a.rotation, dtype=float
+            ) @ sphere_a.center
+            center_b = np.asarray(t_b.translation, dtype=float) + np.asarray(
+                t_b.rotation, dtype=float
+            ) @ sphere_b.center
+            expected = float(
+                np.linalg.norm(center_a - center_b) - sphere_a.radius - sphere_b.radius
+            )
+        assert vec[i] == pytest.approx(expected, rel=0.0, abs=1.0e-12)
+
+
+def test_cbf_broadphase_matches_full_narrow_phase_slots() -> None:
+    from rm75_control.control.joint_admittance_8dof.collision_model import (
+        CollisionConfig,
+    )
+    from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import (
+        CbfSlotTracker,
+        build_cbf_rows,
+    )
+
+    kin, collision_bp = _collision()
+    _, collision_full = _collision()
+    cfg = CollisionConfig(enabled=True, d_safe=0.01, d_activate=0.04, gamma=5.0)
+    tracker_bp = CbfSlotTracker(max_pairs=cfg.max_pairs)
+    tracker_full = CbfSlotTracker(max_pairs=cfg.max_pairs)
+    poses = [
+        np.zeros(kin.nq, dtype=float),
+        np.array([0.40, 0.1, -0.5, 0.2, 1.0, -0.1, 0.8, 0.0]),
+        np.array([0.20, 0.4, -1.0, 0.5, 1.4, 0.3, 0.2, -0.2]),
+    ]
+    for q in poses:
+        kin.jacobian(q)
+        rows_bp = build_cbf_rows(
+            collision_bp,
+            kin,
+            q,
+            cfg,
+            tracker=tracker_bp,
+            kinematics_ready=True,
+        )
+        collision_full.update(q)
+        d_keep = cfg.d_activate + tracker_full.hyst_m
+        raw = collision_full.active_pairs(d_keep)
+        slotted = tracker_full.update(raw, cfg.d_activate)
+        names_full = tuple(
+            f"self_collision:{p.name_a}:{p.name_b}" for p in slotted if p is not None
+        )
+        assert rows_bp.names == names_full
+        in_band_full = sorted(
+            p.distance
+            for p in collision_full.all_pairs()
+            if np.isfinite(p.distance) and p.distance < d_keep
+        )
+        in_band_bp = sorted(
+            p.distance
+            for p in collision_bp.all_pairs()
+            if np.isfinite(p.distance) and p.distance < d_keep
+        )
+        assert in_band_bp == pytest.approx(in_band_full, rel=0.0, abs=1.0e-9)
+        assert collision_bp.distance_query_count <= collision_full.distance_query_count
     geometry = SimpleNamespace(
         vertices=np.array(
             [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
@@ -89,3 +164,47 @@ def test_nonunit_mesh_scale_disables_broadphase_for_safety() -> None:
         geometry, mesh_scale=np.array([0.001, 0.001, 0.001])
     )
     assert np.isinf(sphere.radius)
+
+
+def test_broadphase_collision_update_fits_inner_budget() -> None:
+    import time
+
+    kin, collision = _collision()
+    q = np.array([0.40, 0.1, -0.5, 0.2, 1.0, -0.1, 0.8, 0.0])
+    collision.update(q, distance_threshold=0.05)
+    samples = []
+    for _ in range(40):
+        t0 = time.perf_counter()
+        collision.update(q, distance_threshold=0.05)
+        samples.append((time.perf_counter() - t0) * 1000.0)
+    p50 = float(np.median(samples))
+    p95 = float(np.percentile(samples, 95))
+    assert p50 <= 3.0
+    assert p95 <= 5.0
+
+
+def test_inner_tick_median_fits_200hz_budget() -> None:
+    import time
+
+    import yaml
+
+    from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
+    from rm75_control.control.joint_admittance_8dof.loop import JointIkController
+
+    cfg_path = Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml"
+    cfg = build_joint_ik_config(yaml.safe_load(cfg_path.read_text(encoding="utf-8")))
+    inner = JointIkController(RobotKinematics(), cfg)
+    q = np.array([0.40, 0.194, -0.503, -0.069, 1.979, -0.776, 0.547, -4.370])
+    inner.reset(q)
+    twist = np.array([0.0, 0.04, 0.0, 0.0, 0.0, 0.0])
+    for _ in range(8):
+        inner.update(twist, q_meas=inner.q_cmd, vel_ff=twist)
+    samples = []
+    for _ in range(30):
+        t0 = time.perf_counter()
+        inner.update(twist, q_meas=inner.q_cmd, vel_ff=twist)
+        samples.append((time.perf_counter() - t0) * 1000.0)
+    p50 = float(np.median(samples))
+    p95 = float(np.percentile(samples, 95))
+    assert p50 <= 5.2
+    assert p95 <= 6.5

@@ -651,10 +651,8 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
             "escape_enter_dwell_s",
             "k_escape_boost", "escape_grad_floor",
             "k_margin_boost", "w_ext_cap",
-            "soft_min_m", "soft_max_m", "v_reach_cap_m_s",
-            "v_reach_idle_cap_m_s", "d_band_m",
+            "soft_min_m", "soft_max_m", "d_band_m",
             "healthy_sigma_mute",
-            "v_reach_total_max_m_s",
             "d_star_err0_m", "d_star_err1_m", "d_star_w_mult", "d_star_reg_mult",
             "press_v_force_min_m_s", "press_dz_max_m", "press_y_err_m",
             "press_stall_s", "d_star_nudge_m", "open_travel_min_m",
@@ -764,24 +762,9 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
         soft_max_m=_finite_float(
             r.get("soft_max_m", 0.78), name="rail_extension.soft_max_m"
         ),
-        v_reach_cap_m_s=_finite_float(
-            r.get("v_reach_cap_m_s", 0.05), name="rail_extension.v_reach_cap_m_s"
-        ),
-        v_reach_idle_cap_m_s=_finite_float(
-            r.get("v_reach_idle_cap_m_s", 0.010),
-            name="rail_extension.v_reach_idle_cap_m_s",
-        ),
         healthy_sigma_mute=_finite_float(
             r.get("healthy_sigma_mute", 0.08),
             name="rail_extension.healthy_sigma_mute",
-        ),
-        v_reach_total_max_m_s=(
-            None
-            if r.get("v_reach_total_max_m_s") is None
-            else _finite_float(
-                r["v_reach_total_max_m_s"],
-                name="rail_extension.v_reach_total_max_m_s",
-            )
         ),
         d_band_m=_finite_float(
             r.get("d_band_m", 0.005), name="rail_extension.d_band_m"
@@ -818,7 +801,7 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
             r.get("open_travel_min_m", 0.01),
             name="rail_extension.open_travel_min_m",
         ),
-        escape_sign_policy=str(r.get("escape_sign_policy", "minus")).strip().lower(),
+        escape_sign_policy=str(r.get("escape_sign_policy", "auto")).strip().lower(),
     )
 
 
@@ -828,7 +811,7 @@ def _parse_rail_allocator(inner: dict) -> RailAllocatorConfig:
         r,
         {
             "v0_m_s", "w0_rad_s", "k_margin",
-            "kp_mid", "ki_mid", "u_mid_max_m_s", "posture_subordinate",
+            "kp_mid", "ki_mid", "u_mid_max_m_s", "k_err_rail", "e_ref_m",
             "f_c_hz", "reaction_s",
             "observer_pos_gain", "observer_vel_gain",
             "observer_vel_lpf_hz",
@@ -843,16 +826,18 @@ def _parse_rail_allocator(inner: dict) -> RailAllocatorConfig:
         k_margin=_finite_float(
             r.get("k_margin", 4.0), name="rail_allocator.k_margin"
         ),
-        kp_mid=_finite_float(r.get("kp_mid", 0.40), name="rail_allocator.kp_mid"),
+        kp_mid=_finite_float(r.get("kp_mid", 1.2), name="rail_allocator.kp_mid"),
         ki_mid=_finite_float(r.get("ki_mid", 0.80), name="rail_allocator.ki_mid"),
         u_mid_max_m_s=_finite_float(
-            r.get("u_mid_max_m_s", 0.03), name="rail_allocator.u_mid_max_m_s"
+            r.get("u_mid_max_m_s", 0.12), name="rail_allocator.u_mid_max_m_s"
         ),
-        posture_subordinate=_finite_float(
-            r.get("posture_subordinate", 0.35),
-            name="rail_allocator.posture_subordinate",
+        k_err_rail=_finite_float(
+            r.get("k_err_rail", 4.0), name="rail_allocator.k_err_rail"
         ),
-        f_c_hz=_finite_float(r.get("f_c_hz", 5.0), name="rail_allocator.f_c_hz"),
+        e_ref_m=_finite_float(
+            r.get("e_ref_m", 0.08), name="rail_allocator.e_ref_m"
+        ),
+        f_c_hz=_finite_float(r.get("f_c_hz", 20.0), name="rail_allocator.f_c_hz"),
         reaction_s=_finite_float(
             r.get("reaction_s", 0.06), name="rail_allocator.reaction_s"
         ),
@@ -1089,14 +1074,17 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
     rail_extension.soft_min_m = float(rail.soft_min_m)
     rail_extension.soft_max_m = float(rail.soft_max_m)
     policy = str(rail_extension.escape_sign_policy).strip().lower()
-    if policy not in {"minus", "plus", "-", "+", "neg", "negative", "pos", "positive"}:
+    if policy in {"minus", "-", "neg", "negative"}:
+        rail_extension.escape_sign_policy = "minus"
+    elif policy in {"plus", "+", "pos", "positive"}:
+        rail_extension.escape_sign_policy = "plus"
+    elif policy in {"auto", "open", "grad", "gradient"}:
+        rail_extension.escape_sign_policy = "auto"
+    else:
         raise ValueError(
-            "rail_extension.escape_sign_policy must be 'minus' or 'plus', "
+            "rail_extension.escape_sign_policy must be 'auto', 'minus', or 'plus', "
             f"got {rail_extension.escape_sign_policy!r}"
         )
-    rail_extension.escape_sign_policy = "minus" if policy in {
-        "minus", "-", "neg", "negative"
-    } else "plus"
 
     def hard_value(name: str, legacy_name: str, default):
         return hard.get(name, inner.get(legacy_name, default))

@@ -60,7 +60,6 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
     RailReferenceModel,
     RailStateObserver,
     allocate_rail,
-    arm_centering_error_m,
     margin_weight_from_activation,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
@@ -94,7 +93,6 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import (
     RailMode,
 )
 from rm75_control.control.joint_admittance_8dof.filters import (
-    first_order_lpf,
     smoothstep01,
 )
 from rm75_control.control.joint_admittance_8dof.saturation_latch import (
@@ -310,7 +308,6 @@ class JointIkStep:
     v_ff_rail: float = float("nan")
     u_alloc: float = float("nan")
     u_posture: float = float("nan")
-    u_pos_recovery: float = float("nan")
     u_mid: float = float("nan")
     v_r_ref: float = float("nan")
     comp_projected_frac: float = 0.0
@@ -476,8 +473,6 @@ class JointIkController:
         self._box_dt_last_t: float | None = None
         self._box_h1_last: float | None = None
         self._dq_prev: np.ndarray | None = None
-        self._rail_dv_filt: float = 0.0
-        self._rail_dv_tau_s: float = 0.025
         alloc_cfg = getattr(self.cfg, "rail_allocator", RailAllocatorConfig())
         self.rail_allocator_cfg = alloc_cfg
         v_rail = float(self.limits.v_max[0])
@@ -499,7 +494,6 @@ class JointIkController:
         self.last_v_r_ref = 0.0
         self.last_u_alloc = 0.0
         self.last_u_posture = 0.0
-        self.last_u_pos_recovery = 0.0
         self.last_u_mid = 0.0
         self.last_comp_projected_frac = 0.0
         self._midrange_freeze = False
@@ -796,7 +790,6 @@ class JointIkController:
         self._box_dt_last_t = None
         self._box_h1_last = None
         self._dq_prev = None
-        self._rail_dv_filt = 0.0
         self.rail_ref_model.reset(float(self.q_cmd[0]) * 0.0)
         self.rail_observer.reset(float(self.q_cmd[0]), 0.0)
         self.midranging.reset()
@@ -804,7 +797,6 @@ class JointIkController:
         self.last_v_r_ref = 0.0
         self.last_u_alloc = 0.0
         self.last_u_posture = 0.0
-        self.last_u_pos_recovery = 0.0
         self.last_u_mid = 0.0
         self.last_comp_projected_frac = 0.0
         self._direct_joint_ptp = False
@@ -1257,17 +1249,10 @@ class JointIkController:
         # Hardware supplies the time-stamped worker estimate.  Offline callers
         # have no independent actuator, so the last applied rail command is
         # the least-surprising zero-order execution estimate.
-        if rail_exec_vel_m_s is not None and rail_exec_smooth_m_s is not None:
-            delta_v = float(rail_exec_vel_m_s) - float(rail_exec_smooth_m_s)
-            tau = max(float(self._rail_dv_tau_s), 1.0e-6)
-            self._rail_dv_filt = first_order_lpf(
-                self._rail_dv_filt, delta_v, float(dt), tau
-            )
-            rail_exec_for_qp = float(rail_exec_smooth_m_s) + float(self._rail_dv_filt)
-        elif rail_exec_vel_m_s is not None:
+        if rail_exec_vel_m_s is not None:
             rail_exec_for_qp = float(rail_exec_vel_m_s)
         else:
-            rail_exec_for_qp = float(self.core.qdot_prev[0])
+            rail_exec_for_qp = float(self.last_v_r_ref)
 
         if task_rotation_base is not None:
             rotation_base_task = np.asarray(task_rotation_base, dtype=float)
@@ -1422,7 +1407,7 @@ class JointIkController:
         policy_leave = bool(
             self.rail_ext_task is not None
             and self.rail_ext_task._in_leave_band(
-                float(q_state[0]), self.rail_ext_task._policy_escape_sign()
+                float(q_state[0]), self.rail_ext_task._policy_escape_sign(float(q_state[0]))
             )
         )
         arm_starved = bool(abs(tool_y_err_m) >= y_thr)
@@ -1555,11 +1540,6 @@ class JointIkController:
                 apply_d_band=not homing_split,
                 block_escape=block_escape,
                 unload_sign=unload_sign,
-                # Task-active (FF live) uses the 10 mm/s idle cap; stick
-                # released keeps the 50 mm/s posture cap.  hold_d_star is
-                # True while the operator owns the stick.
-                operator_idle=hold_d_star,
-                hold_setpoint=hold_d_star,
                 jacobian=J_pre,
             )
             rail_ext_err = self.rail_ext_task.last_err_m
@@ -1568,11 +1548,10 @@ class JointIkController:
             if np.isfinite(getattr(self.rail_ext_task, "last_v_ff", float("nan"))):
                 rail_qdot_ff_val = float(self.rail_ext_task.last_v_ff)
             rail_task_weight = w_ext
-            # QP1 takes rail_task_vel as the rail command outright;
-            # w_ext only sets QP2's preference strength.  A released
-            # stick has v_ff exactly 0 on 100% of ticks, so posture
-            # error alone still cannot creep the carriage.
-            if w_ext > 0.0 or abs(float(self.rail_ext_task.last_v_ff)) > 1.0e-4:
+            # Escape (and only escape) still comes from the extension task.
+            # Cartesian mid-ranging and allocate_rail own the committed
+            # rail velocity below; w_ext only sets QP2 preference strength.
+            if abs(float(self.rail_ext_task.last_v_escape)) > 1.0e-4:
                 rail_task_vel = v_ext
             if not self._manipulability_active and sigma_esc_ref > 1e-9:
                 manip_weight = smoothstep01(
@@ -1597,77 +1576,69 @@ class JointIkController:
                 lam=lam,
                 v0_m_s=float(self.rail_allocator_cfg.v0_m_s),
                 w0_rad_s=float(self.rail_allocator_cfg.w0_rad_s),
+                e_mid=(
+                    float(self.rail_ext_task.last_e_mid_m)
+                    if self.rail_ext_task is not None
+                    else 0.0
+                ),
+                k_err=float(self.rail_allocator_cfg.k_err_rail),
+                e_ref=float(self.rail_allocator_cfg.e_ref_m),
             )
-            u_posture = 0.0
+            u_escape = 0.0
             if self.rail_ext_task is not None:
-                if rail_task_vel is not None:
-                    u_posture = float(rail_task_vel)
-                else:
-                    u_posture = float(self.rail_ext_task.last_v_reach) + float(
-                        self.rail_ext_task.last_v_escape
-                    )
-            err_mid = arm_centering_error_m(
-                q_state,
-                self.centering_task.q_target,
-                self.centering_task.half,
+                u_escape = float(self.rail_ext_task.last_v_escape)
+                cap = max(float(self.rail_allocator_cfg.u_mid_max_m_s), 0.0)
+                if cap > 0.0:
+                    u_escape = float(np.clip(u_escape, -cap, cap))
+            e_mid = (
+                float(self.rail_ext_task.last_e_mid_m)
+                if self.rail_ext_task is not None
+                else 0.0
             )
             freeze_mid = bool(self._midrange_freeze) or bool(
                 self.rail_ref_model.last_wall_override
             )
-            u_mid = self.midranging.step(err_mid, float(dt), freeze=freeze_mid)
-            v0 = max(float(self.rail_allocator_cfg.v0_m_s), 1.0e-9)
-            sub0 = float(np.clip(self.rail_allocator_cfg.posture_subordinate, 0.0, 1.0))
-            alloc_frac = min(abs(float(u_alloc)) / v0, 1.0)
-            sub = 1.0 - (1.0 - sub0) * alloc_frac
-            u_r = float(u_alloc) + float(sub) * (float(u_posture) + float(u_mid))
-            leave_plus = False
-            leave_pol = False
-            pol = 0.0
+            u_mid = self.midranging.step(e_mid, float(dt), freeze=freeze_mid)
+            u_r = float(u_alloc) + float(u_mid) + float(u_escape)
+            v_r_ref = self.rail_ref_model.step(
+                u_r, float(dt), x_m=float(q_state[0])
+            )
+            # Leave-band is applied once, after the reference model, so a
+            # planned stroke cannot drive into the plus stop (or the
+            # policy-side pin).  Mid-ranging away from the wall is kept.
             stroke_planned = bool(
                 self.posture_retarget is not None and self.posture_retarget.planned
             )
             if self.rail_ext_task is not None and stroke_planned:
                 y_r = float(q_state[0])
-                leave_plus = bool(
-                    self.rail_ext_task._in_plus_leave(y_r) and u_r > 0.0
-                )
-                pol = float(self.rail_ext_task._policy_escape_sign())
-                leave_pol = bool(
-                    self.rail_ext_task._in_leave_band(y_r, pol) and u_r * pol > 0.0
-                )
-                if leave_plus or leave_pol:
-                    u_r = 0.0
-            v_r_ref = self.rail_ref_model.step(
-                u_r, float(dt), x_m=float(q_state[0])
-            )
-            if leave_plus and v_r_ref > 0.0:
-                v_r_ref = 0.0
-                self.rail_ref_model.reset(0.0)
-            if leave_pol and v_r_ref * pol > 0.0:
-                v_r_ref = 0.0
-                self.rail_ref_model.reset(0.0)
+                if self.rail_ext_task._in_plus_leave(y_r) and v_r_ref > 0.0:
+                    v_r_ref = 0.0
+                    self.rail_ref_model.reset(0.0)
+                pol = float(self.rail_ext_task._policy_escape_sign(y_r))
+                if (
+                    self.rail_ext_task._in_leave_band(y_r, pol)
+                    and v_r_ref * pol > 0.0
+                ):
+                    v_r_ref = 0.0
+                    self.rail_ref_model.reset(0.0)
             if abs(float(v_r_ref)) < 1.0e-4:
                 v_r_ref = 0.0
-                rail_task_vel = 0.0 if (leave_plus or leave_pol) else None
-            else:
-                rail_task_vel = float(v_r_ref)
+            rail_task_vel = float(v_r_ref)
             self.last_v_r_ref = float(v_r_ref)
             self.last_u_alloc = float(u_alloc)
-            self.last_u_posture = float(u_posture)
+            self.last_u_posture = float(u_escape)
             self.last_u_mid = float(u_mid)
-            self.last_u_pos_recovery = float(u_mid)
         else:
             self.last_v_r_ref = (
                 float(rail_task_vel) if rail_task_vel is not None else 0.0
             )
             self.last_u_alloc = 0.0
             self.last_u_posture = (
-                float(self.rail_ext_task.last_v_reach)
+                float(self.rail_ext_task.last_v_escape)
                 if self.rail_ext_task is not None
                 else 0.0
             )
             self.last_u_mid = 0.0
-            self.last_u_pos_recovery = 0.0
 
         rail_reg_scale = 1.0
         if self.rail_ext_task is not None:
@@ -2012,7 +1983,6 @@ class JointIkController:
             step.v_ff_rail = float(self.rail_ext_task.last_v_ff)
         step.u_alloc = float(self.last_u_alloc)
         step.u_posture = float(self.last_u_posture)
-        step.u_pos_recovery = float(self.last_u_pos_recovery)
         step.u_mid = float(self.last_u_mid)
         step.v_r_ref = float(self.last_v_r_ref)
         step.comp_projected_frac = float(
@@ -2764,7 +2734,7 @@ class _TickLogger:
            "last_limit_saturated", "keep_task_weight",
            "pref_slack_scale", "rail_task_vel",
            "v_escape", "v_reach", "v_ff_rail",
-           "u_alloc", "u_posture", "u_pos_recovery", "u_mid", "v_r_ref",
+           "u_alloc", "u_posture", "u_mid", "v_r_ref",
            "comp_projected_frac",
            "rail_coast_active", "rail_feedback_reject_streak_s",
            "wall_override", "slack_zero_feasible",
@@ -3530,7 +3500,6 @@ class _TickLogger:
                f"{float(step.v_ff_rail):.6f}" if np.isfinite(step.v_ff_rail) else "",
                f"{float(step.u_alloc):.6f}" if np.isfinite(step.u_alloc) else "",
                f"{float(step.u_posture):.6f}" if np.isfinite(step.u_posture) else "",
-               f"{float(step.u_pos_recovery):.6f}" if np.isfinite(step.u_pos_recovery) else "",
                f"{float(getattr(step, 'u_mid', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_mid", float("nan"))) else "",
                f"{float(step.v_r_ref):.6f}" if np.isfinite(step.v_r_ref) else "",
                f"{float(getattr(step, 'comp_projected_frac', 0.0)):.6f}",

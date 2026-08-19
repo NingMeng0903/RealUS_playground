@@ -179,7 +179,7 @@ class RailServoConfig:
     vel_ff_p_trim_m_s: float = 0.010
     match_drive_accel: bool = True
     # Skip FA24 writes smaller than this (r/min) while moving.  12 ≈ 2 mm/s.
-    fa24_rpm_deadband: int = 12
+    fa24_rpm_deadband: int = 0
     vel_deadband_mm: float = 0.05
     # Standstill hysteresis: enter hold tightly, wake only if disturbed.
     # Tracking deadband stays tight; this freezes FA24 after settle so the
@@ -528,7 +528,7 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         decel_request_margin_m_s=float(hw.get("decel_request_margin_m_s", 0.005)),
         vel_ff_p_trim_m_s=float(hw.get("vel_ff_p_trim_m_s", 0.010)),
         match_drive_accel=bool(hw.get("match_drive_accel", True)),
-        fa24_rpm_deadband=max(0, int(hw.get("fa24_rpm_deadband", 12))),
+        fa24_rpm_deadband=max(0, int(hw.get("fa24_rpm_deadband", 0))),
         vel_deadband_mm=float(hw.get("vel_deadband_mm", 0.05)),
         standstill_enter_mm=standstill_enter_mm,
         standstill_exit_mm=standstill_exit_mm,
@@ -2515,6 +2515,7 @@ class RailServoBridge:
         jump_hard_m = max(float(self.config.jump_hard_mm), 10.0) * 1e-3
         jump_soft_streak_panic = max(1, int(self.config.jump_soft_streak_panic))
         prev_t = time.monotonic()
+        last_modbus_warn = 0.0
         prev_v_cmd = 0.0
         x_ref = float(self.measured_m) if math.isfinite(self.measured_m) else 0.0
         v_ref = 0.0
@@ -3389,6 +3390,17 @@ class RailServoBridge:
                         self._last_fa24_write_mono_ns = int(fa24_write_ns)
                 else:
                     t_write_ms = 0.0
+                modbus_ms = float(t_read_ms) + float(t_write_ms)
+                if modbus_ms > 12.0:
+                    now_warn = time.monotonic()
+                    if now_warn - last_modbus_warn >= 1.0:
+                        last_modbus_warn = now_warn
+                        print(
+                            f"lw100 rail: Modbus {modbus_ms:.1f} ms "
+                            f"(read {t_read_ms:.1f} + write {t_write_ms:.1f}) "
+                            "exceeds 12 ms budget",
+                            flush=True,
+                        )
                 prev_v_cmd = sign * self._rpm_to_mps(float(rpm_cmd))
                 control_mono = time.monotonic()
                 sample_mono = motion_sample_mono

@@ -1,4 +1,4 @@
-"""Closed-form 8-DoF rail allocation, 5 Hz reference model, and 200 Hz observer.
+"""Closed-form 8-DoF rail allocation, 20 Hz reference model, and 200 Hz observer.
 
 L1 produces a committed rail velocity ``v_r,ref``.  It is *not* a TCP
 closed loop: the arm still solves ``J_a q̇_a = v_d − J_r v̂_r`` in QP1.
@@ -29,13 +29,15 @@ class RailAllocatorConfig:
     w0_rad_s: float = 0.30
     # Chan-Dubey: near-limit joints get larger margin_weight → smaller W^{-1}.
     k_margin: float = 4.0
-    # VPC mid-ranging (Ma 2015 C_s).  Error is arm centering, not rail pose.
-    kp_mid: float = 0.40
+    # VPC mid-ranging (Ma 2015 C_s).  Error is Cartesian d = y_tcp − y_rail − d*.
+    kp_mid: float = 1.2
     ki_mid: float = 0.80
-    u_mid_max_m_s: float = 0.03
-    posture_subordinate: float = 0.35
+    u_mid_max_m_s: float = 0.12
+    # Haviland 2022 eq (14): cheapen the rail when |e_mid| is large.
+    k_err_rail: float = 4.0
+    e_ref_m: float = 0.08
     # Reference-model cutoff.  τ = 1/(2π f_c).
-    f_c_hz: float = 5.0
+    f_c_hz: float = 20.0
     # One-sided braking envelope (same formula as the worker override).
     reaction_s: float = 0.06
     observer_pos_gain: float = 0.35
@@ -52,6 +54,9 @@ def allocate_rail(
     lam: float,
     v0_m_s: float = 0.05,
     w0_rad_s: float = 0.30,
+    e_mid: float = 0.0,
+    k_err: float = 0.0,
+    e_ref: float = 0.08,
 ) -> tuple[float, np.ndarray]:
     """Weighted damped least-norm: ``q̇ = W⁻¹ J_nᵀ (J_n W⁻¹ J_nᵀ + λ²I)⁻¹ v_n``.
 
@@ -73,6 +78,12 @@ def allocate_rail(
     v_n = v / scale
     J_n = J / scale[:, None]
     Winv_diag = (s * s) / np.maximum(mw, 1.0e-9)
+    # Haviland 2022 eq (14): base cheap when the mid-ranging error is large.
+    if float(k_err) > 0.0:
+        gain = 1.0 + float(k_err) * min(
+            abs(float(e_mid)) / max(float(e_ref), 1.0e-9), 1.0
+        )
+        Winv_diag[0] *= gain * gain
     JW = J_n * Winv_diag[None, :]
     a = JW @ J_n.T
     lam2 = float(lam) * float(lam)
@@ -102,7 +113,7 @@ class RailReferenceModel:
     def __init__(
         self,
         *,
-        f_c_hz: float = 5.0,
+        f_c_hz: float = 20.0,
         a_max: float = 0.60,
         j_max: float = 60.0,
         v_max: float = 0.12,
@@ -266,34 +277,15 @@ def soft_saturate(value: float, limit: float) -> float:
     return float(lim * np.tanh(float(value) / lim))
 
 
-def arm_centering_error_m(
-    q: np.ndarray,
-    q_target: np.ndarray,
-    half: np.ndarray,
-    *,
-    length_m: float = 0.08,
-) -> float:
-    """Arm-only centering residual, mapped to metres.  Independent of ``q[0]``."""
-
-    q = np.asarray(q, dtype=float).reshape(-1)
-    target = np.asarray(q_target, dtype=float).reshape(-1)
-    h = np.asarray(half, dtype=float).reshape(-1)
-    n = min(q.size, target.size, h.size)
-    if n <= 1:
-        return 0.0
-    u = (target[1:n] - q[1:n]) / np.maximum(h[1:n], 1.0e-9)
-    return float(np.mean(u)) * float(length_m)
-
-
 class MidrangingController:
-    """Slow PI on arm-centering error.  Anti-windup freezes on coast/wall."""
+    """PI on Cartesian mid-ranging error ``e_mid = (y_tcp − y_rail) − d*``."""
 
     def __init__(
         self,
         *,
-        kp: float = 0.40,
+        kp: float = 1.2,
         ki: float = 0.80,
-        v_max: float = 0.03,
+        v_max: float = 0.12,
     ) -> None:
         self.kp = float(kp)
         self.ki = float(ki)
@@ -362,7 +354,6 @@ __all__ = (
     "RailReferenceState",
     "RailStateObserver",
     "allocate_rail",
-    "arm_centering_error_m",
     "lpf_tau_from_fc",
     "margin_weight_from_activation",
     "project_arm_compensation",

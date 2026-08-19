@@ -40,6 +40,9 @@ from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
 )
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 from rm75_control.kinematics.srs_ik import psi_from_q
+from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
+    MidrangingController,
+)
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
     RailExtensionConfig,
     RailExtensionTask,
@@ -68,7 +71,7 @@ def test_limit_saturation_uses_soft_band_not_urdf() -> None:
     assert scale_mid == 1.0
 
 
-def test_ff_owns_does_not_zero_reach_but_caps_it() -> None:
+def test_ff_owns_still_exposes_e_mid() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -80,10 +83,10 @@ def test_ff_owns_does_not_zero_reach_but_caps_it() -> None:
             e0_m=0.0,
             e1_m=0.01,
             v_ff_thr_m_s=0.005,
-            v_reach_cap_m_s=0.02,
             v_max_m_s=0.08,
             v_lpf_tau_s=0.0,
             d_star_err0_m=1.0,
+            d_band_m=0.0,
         ),
     )
     task.set_mode("reach")
@@ -95,38 +98,18 @@ def test_ff_owns_does_not_zero_reach_but_caps_it() -> None:
     vel_ff = np.zeros(6)
     vel_ff[:3] = 0.05 * (j_rail / n)
     task(q, sigma_scale=1.0, vel_ff=vel_ff, dt_s=0.005)
-    assert abs(task.last_v_reach) > 1e-6
-    assert abs(task.last_v_reach) <= 0.02 + 1e-9
-    assert task.last_v_reach * task.last_v_ff < 0.0
+    assert abs(task.last_e_mid_m) > 0.20
+    assert task.last_v_reach == pytest.approx(0.0, abs=1e-12)
+    assert abs(task.last_v_ff) > 1e-4
 
 
-def test_operator_idle_trims_reach_cap() -> None:
-    kin = RobotKinematics()
-    task = RailExtensionTask(
-        kin,
-        RailExtensionConfig(
-            enabled=True,
-            k_ext=5.0,
-            k_esc=0.0,
-            k_ff=1.0,
-            e0_m=0.0,
-            e1_m=0.01,
-            v_reach_cap_m_s=0.05,
-            v_reach_idle_cap_m_s=0.010,
-            v_max_m_s=0.08,
-            v_lpf_tau_s=0.0,
-            d_star_err0_m=1.0,
-        ),
-    )
-    task.set_mode("reach")
-    q = 0.5 * (kin.q_lower + kin.q_upper)
-    task.capture_reference(q)
-    task.d_pref_m = task.extension(q) + 0.30
-    task(q, sigma_scale=1.0, dt_s=0.005, operator_idle=True)
-    assert abs(task.last_v_reach) <= 0.010 + 1e-9
-    task(q, sigma_scale=1.0, dt_s=0.005, operator_idle=False)
-    assert abs(task.last_v_reach) > 0.010 + 1e-6
-    assert abs(task.last_v_reach) <= 0.05 + 1e-9
+def test_midranging_owns_idle_posture_not_reach_cap() -> None:
+    mid = MidrangingController(kp=1.2, ki=0.0, v_max=0.12)
+    u_idle = mid.step(0.008, 0.005)
+    mid.reset()
+    u_drive = mid.step(0.10, 0.005)
+    assert abs(u_idle) < abs(u_drive)
+    assert abs(u_drive) <= 0.12 + 1e-9
 
 
 def test_scale_qdot_into_box_preserves_direction() -> None:
@@ -501,7 +484,7 @@ def test_d_star_keeps_j4_in_band_when_attr_folds() -> None:
     assert unload != 0.0
 
 
-def test_zero_vel_ff_does_not_freeze_rail_reach() -> None:
+def test_zero_vel_ff_does_not_freeze_e_mid() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -518,7 +501,9 @@ def test_zero_vel_ff_does_not_freeze_rail_reach() -> None:
         vel_ff=np.zeros(6),
         dt_s=0.02,
     )
-    assert abs(float(task.last_v_reach)) > 1.0e-4 or abs(float(v)) > 1.0e-4
+    assert abs(float(task.last_e_mid_m)) > 1.0e-4
+    assert task.last_v_reach == pytest.approx(0.0, abs=1e-12)
+    del v
 
 
 def test_unplanned_d_star_slews_without_step() -> None:

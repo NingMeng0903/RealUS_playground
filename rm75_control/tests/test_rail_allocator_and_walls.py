@@ -140,7 +140,7 @@ def test_legacy_ff_is_recorded_but_not_applied() -> None:
     assert abs(v_out) < abs(task.last_v_ff)
 
 
-def test_hold_setpoint_zeros_reach_error() -> None:
+def test_midranging_error_stays_live_during_feedforward() -> None:
     kin = RobotKinematics()
     task = RailExtensionTask(
         kin,
@@ -151,19 +151,19 @@ def test_hold_setpoint_zeros_reach_error() -> None:
             k_ff=0.0,
             e0_m=0.0,
             e1_m=0.01,
-            v_reach_cap_m_s=0.05,
             v_lpf_tau_s=0.0,
             d_star_err0_m=1.0,
+            d_band_m=0.0,
         ),
     )
     task.set_mode("reach")
     q = 0.5 * (kin.q_lower + kin.q_upper)
     task.capture_reference(q)
     y_des = float(kin.fk_placement(q).translation[1]) + 0.040
-    task(q, sigma_scale=1.0, dt_s=0.005, y_tcp_d=y_des, hold_setpoint=False)
-    assert abs(task.last_v_reach) > 1e-4
-    task(q, sigma_scale=1.0, dt_s=0.005, y_tcp_d=y_des, hold_setpoint=True)
+    task(q, sigma_scale=1.0, dt_s=0.005, y_tcp_d=y_des)
+    assert abs(task.last_e_mid_m) > 1e-4
     assert task.last_v_reach == pytest.approx(0.0, abs=1e-12)
+    assert task.last_rail_ff_m == pytest.approx(y_des - float(task.d_pref_m), abs=1e-9)
 
 
 def test_observer_tracks_low_frequency_motion() -> None:
@@ -235,3 +235,38 @@ def test_midranging_pi_integrates_and_freezes_on_wall() -> None:
     integ_sat = sat.integ
     sat.step(0.10, 0.005, freeze=True)
     assert sat.integ == pytest.approx(integ_sat)
+
+
+def test_midranging_is_sign_symmetric_in_y() -> None:
+    plus = MidrangingController(kp=1.2, ki=0.80, v_max=0.12)
+    minus = MidrangingController(kp=1.2, ki=0.80, v_max=0.12)
+    u_plus = plus.step(0.04, 0.005)
+    u_minus = minus.step(-0.04, 0.005)
+    assert u_plus == pytest.approx(-u_minus, abs=1e-12)
+    assert u_plus > 0.0
+
+
+def test_allocate_rail_share_rises_with_e_mid() -> None:
+    J = np.zeros((6, 8))
+    J[1, 0] = 1.0
+    J[1, 1] = 1.0
+    s = np.array([0.12, 1.5, 1.5, 1.5, 1.5, 2.0, 2.0, 2.0])
+    mw = np.ones(8)
+    v = np.array([0.0, 0.05, 0.0, 0.0, 0.0, 0.0])
+    shares = []
+    for e_mid in (0.0, 0.02, 0.04, 0.08):
+        u_r, qdot = allocate_rail(
+            J,
+            v,
+            qdot_scale=s,
+            margin_weight=mw,
+            lam=0.05,
+            e_mid=e_mid,
+            k_err=4.0,
+            e_ref=0.08,
+        )
+        tot = abs(float(u_r)) + abs(float(qdot[1]))
+        shares.append(abs(float(u_r)) / max(tot, 1e-12))
+    for prev, cur in zip(shares, shares[1:]):
+        assert cur >= prev - 1e-9
+    assert shares[-1] > shares[0]

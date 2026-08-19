@@ -114,10 +114,25 @@ class CollisionModel:
             )
             for go in self.geom_model.geometryObjects
         )
-        self._exact_pair_indices: tuple[int, ...] = ()
-        self._last_lower_bounds = np.full(
-            len(self.geom_model.collisionPairs), np.inf, dtype=float
+        n_geoms = len(self.geom_model.geometryObjects)
+        n_pairs = len(self.geom_model.collisionPairs)
+        self._sphere_centers = np.array(
+            [s.center for s in self._bounding_spheres], dtype=float
+        ).reshape(n_geoms, 3)
+        self._sphere_radii = np.array(
+            [s.radius for s in self._bounding_spheres], dtype=float
         )
+        self._pair_first = np.array(
+            [int(cp.first) for cp in self.geom_model.collisionPairs], dtype=np.intp
+        )
+        self._pair_second = np.array(
+            [int(cp.second) for cp in self.geom_model.collisionPairs], dtype=np.intp
+        )
+        self._geom_translation = np.zeros((n_geoms, 3), dtype=float)
+        self._geom_rotation = np.zeros((n_geoms, 3, 3), dtype=float)
+        self._world_centers = np.zeros((n_geoms, 3), dtype=float)
+        self._exact_pair_indices: tuple[int, ...] = ()
+        self._last_lower_bounds = np.full(n_pairs, np.inf, dtype=float)
         self._last_distance_threshold: float | None = None
         self._last_skipped_pair_indices: tuple[int, ...] = ()
 
@@ -195,28 +210,49 @@ class CollisionModel:
 
         return len(self._exact_pair_indices)
 
-    def _pair_lower_bound(self, pair_index: int) -> float:
-        pair = self.geom_model.collisionPairs[int(pair_index)]
-        sphere_a = self._bounding_spheres[int(pair.first)]
-        sphere_b = self._bounding_spheres[int(pair.second)]
-        if not np.isfinite(sphere_a.radius) or not np.isfinite(sphere_b.radius):
-            return -float("inf")
-        T_a = self.geom_data.oMg[int(pair.first)]
-        T_b = self.geom_data.oMg[int(pair.second)]
-        center_a = np.asarray(T_a.translation, dtype=float) + np.asarray(
-            T_a.rotation, dtype=float
-        ) @ sphere_a.center
-        center_b = np.asarray(T_b.translation, dtype=float) + np.asarray(
-            T_b.rotation, dtype=float
-        ) @ sphere_b.center
-        # The sphere-sphere separation is a lower bound on the mesh distance.
-        # Do not clamp to zero: a negative value is still a valid conservative
-        # lower bound for overlapping spheres.
-        return float(
-            np.linalg.norm(center_a - center_b)
-            - sphere_a.radius
-            - sphere_b.radius
+    def _refresh_world_centers(self) -> None:
+        n_geoms = self._geom_translation.shape[0]
+        oMg = self.geom_data.oMg
+        for i in range(n_geoms):
+            T = oMg[i]
+            self._geom_translation[i] = T.translation
+            self._geom_rotation[i] = T.rotation
+        np.einsum(
+            "nij,nj->ni",
+            self._geom_rotation,
+            self._sphere_centers,
+            out=self._world_centers,
         )
+        self._world_centers += self._geom_translation
+
+    def _pair_lower_bounds(self) -> np.ndarray:
+        """Sphere-sphere separation for every collision pair.
+
+        The sphere-sphere separation is a lower bound on the mesh distance.
+        Do not clamp to zero: a negative value is still a valid conservative
+        lower bound for overlapping spheres.  Infinite-radius spheres (unsafe
+        mesh scale) force ``-inf`` so those pairs always take the narrow phase.
+        """
+
+        self._refresh_world_centers()
+        ga = self._pair_first
+        gb = self._pair_second
+        delta = self._world_centers[ga] - self._world_centers[gb]
+        dist = np.linalg.norm(delta, axis=1)
+        dist -= self._sphere_radii[ga]
+        dist -= self._sphere_radii[gb]
+        bad = ~(
+            np.isfinite(self._sphere_radii[ga]) & np.isfinite(self._sphere_radii[gb])
+        )
+        if np.any(bad):
+            dist = dist.copy()
+            dist[bad] = -np.inf
+        return dist
+
+    def _pair_lower_bound(self, pair_index: int) -> float:
+        """Scalar wrapper kept for tests; uses the vectorized path."""
+
+        return float(self._pair_lower_bounds()[int(pair_index)])
 
     def update(
         self,
@@ -266,8 +302,7 @@ class CollisionModel:
             self._exact_pair_indices = tuple(range(n_pairs))
             return
 
-        for i in range(n_pairs):
-            self._last_lower_bounds[i] = self._pair_lower_bound(i)
+        self._last_lower_bounds = self._pair_lower_bounds()
 
         # Every pair whose true distance is <= threshold has a sphere lower
         # bound <= threshold, so this set cannot omit an active CBF pair.
