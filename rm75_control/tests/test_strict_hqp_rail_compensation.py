@@ -30,7 +30,6 @@ def _controller() -> JointIkController:
         backend="proxqp",
         collision=collision,
         smoothness_weight=np.r_[0.0, np.full(7, 0.15)],
-        rail_task_alpha=0.0,
     )
     cfg = JointIkConfig(control_frame="base", qp=qp, collision=collision)
     controller = JointIkController(RobotKinematics(), cfg)
@@ -125,8 +124,14 @@ def test_qp2_failure_uses_same_tick_qp1_not_previous_velocity() -> None:
     task = jacobian[:, 1] * 0.004
     previous = np.r_[0.05, np.zeros(7)]
     core.sync_applied(previous)
-    solve_qp2 = core._backend_qp2.solve
-    core._backend_qp2.solve = lambda *args, **kwargs: None
+    orig_solve = core._solve_qp
+
+    def _fail_qp2(backend, *args, **kwargs):
+        if backend is core._backend_qp2:
+            return None
+        return orig_solve(backend, *args, **kwargs)
+
+    core._solve_qp = _fail_qp2
     try:
         result = core.step(
             Q_SAFE,
@@ -138,7 +143,7 @@ def test_qp2_failure_uses_same_tick_qp1_not_previous_velocity() -> None:
             sigma=controller.kin.singular_values(jacobian),
         )
     finally:
-        core._backend_qp2.solve = solve_qp2
+        core._solve_qp = orig_solve
 
     assert core.last_qp2_fallback
     assert np.linalg.norm(result.qdot) > 1.0e-4
@@ -159,7 +164,14 @@ def test_qp2_failure_follows_nonzero_rail_macro() -> None:
     core = controller.core
     jacobian = controller.kin.jacobian(Q_SAFE)
     task = jacobian[:, 1] * 0.004
-    core._backend_qp2.solve = lambda *args, **kwargs: None
+    orig_solve = core._solve_qp
+
+    def _fail_qp2(backend, *args, **kwargs):
+        if backend is core._backend_qp2:
+            return None
+        return orig_solve(backend, *args, **kwargs)
+
+    core._solve_qp = _fail_qp2
     result = core.step(
         Q_SAFE,
         task,

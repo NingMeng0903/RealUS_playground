@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from rm75_control.control.joint_admittance_8dof.filters import smoothstep01
 from rm75_control.control.joint_admittance_8dof.tasks.arm_angle import ArmAngleTask
 from rm75_control.control.joint_admittance_8dof.tasks.manipulability_task import (
     ManipulabilityTask,
@@ -50,9 +51,43 @@ def max_limit_activation(
     return float(np.max(over))
 
 
-def _smoothstep01(x: float) -> float:
-    x = float(np.clip(x, 0.0, 1.0))
-    return x * x * (3.0 - 2.0 * x)
+def _as_weight(flag) -> float:
+    if isinstance(flag, bool):
+        return 1.0 if flag else 0.0
+    try:
+        value = float(flag)
+    except (TypeError, ValueError):
+        return 0.0
+    if not np.isfinite(value):
+        return 0.0
+    return float(np.clip(value, 0.0, 1.0))
+
+
+def _soft_cap_per_joint(
+    qdot: np.ndarray,
+    cap: np.ndarray,
+    *,
+    band_frac: float = 0.15,
+) -> np.ndarray:
+    """Per-joint C1 fade into ``cap``; ``cap`` remains a hard ceiling."""
+
+    out = np.asarray(qdot, dtype=float).copy()
+    lim = np.asarray(cap, dtype=float)
+    n = min(out.size, lim.size)
+    if n == 0:
+        return out
+    mag = np.abs(out[:n])
+    hi = np.maximum(lim[:n], 0.0)
+    lo = hi * max(0.0, 1.0 - float(band_frac))
+    span = np.maximum(hi - lo, 1.0e-12)
+    s = np.clip((mag - lo) / span, 0.0, 1.0)
+    t = s * s * (3.0 - 2.0 * s)
+    blended = mag * (1.0 - t) + hi * t
+    desired = np.where(mag <= lo, mag, np.minimum(blended, hi))
+    sign = np.sign(out[:n])
+    sign = np.where(sign == 0.0, 1.0, sign)
+    out[:n] = sign * desired
+    return out
 
 
 class SecondaryComposer:
@@ -84,12 +119,12 @@ class SecondaryComposer:
         self.max_qdot_frac = float(max_qdot_frac)
         self.last_limit_activation: float = 0.0
         self.last_arm_smooth: float = 1.0
+        self.last_soft_scale: float = 1.0
         self.last_centering_norm: float = 0.0
         self.last_manip_norm: float = 0.0
         self.last_arm_angle_norm: float = 0.0
         self.last_damping_norm: float = 0.0
         self.last_rail_lock_norm: float = 0.0
-        self.last_soft_scale: float = 1.0
 
     @classmethod
     def from_controller_parts(
@@ -126,7 +161,7 @@ class SecondaryComposer:
         ``u_max < limit`` gate did.
         """
         band = max(self.arm_fade_band, 1e-6)
-        return _smoothstep01((self.arm_activation_limit + band - u_max) / (2.0 * band))
+        return smoothstep01((self.arm_activation_limit + band - u_max) / (2.0 * band))
 
     def compose(
         self,
@@ -138,7 +173,7 @@ class SecondaryComposer:
         sigma_min: float = 1.0,
         sigma_ref: float = 0.08,
         centering_suppressed: bool = False,
-        manipulability_active: bool = False,
+        manipulability_active: bool | float = False,
         centering_sigma_fade: bool = True,
         soft_scale: float = 1.0,
         dt_s: float | None = None,
@@ -164,7 +199,8 @@ class SecondaryComposer:
         if not centering_suppressed:
             qdot_center = np.asarray(self.centering(q), dtype=float)
             qdot_soft = qdot_center
-        if manipulability_active and self.manipulability is not None:
+        w_mu = _as_weight(manipulability_active)
+        if w_mu > 0.0 and self.manipulability is not None:
             # Rail is a base translation: always exclude from manip push.
             qdot_mu = np.asarray(
                 self.manipulability(
@@ -177,7 +213,7 @@ class SecondaryComposer:
             if sigma_min < sig_ref:
                 # Blend up as σ drops so escape grows without dumping q*.
                 alpha = 1.0 + (1.0 - float(sigma_min) / sig_ref)
-            qdot_soft = qdot_soft + float(alpha) * qdot_mu
+            qdot_soft = qdot_soft + w_mu * float(alpha) * qdot_mu
         if rail_hold:
             qdot_lock = np.asarray(self.rail_lock(q), dtype=float)
             qdot_soft = qdot_soft + qdot_lock
@@ -189,14 +225,14 @@ class SecondaryComposer:
             qdot_damp = d_eff * np.asarray(qdot_prev, dtype=float)
             qdot_soft = qdot_soft - qdot_damp
         self.last_centering_norm = float(np.linalg.norm(qdot_center))
-        self.last_manip_norm = float(np.linalg.norm(qdot_mu))
+        self.last_manip_norm = float(np.linalg.norm(qdot_mu)) * w_mu
         self.last_rail_lock_norm = float(np.linalg.norm(qdot_lock))
         self.last_damping_norm = float(np.linalg.norm(qdot_damp))
 
         # Per-joint magnitude cap on the soft tasks (see module docstring).
         if self.v_max is not None and self.max_qdot_frac > 0.0:
             cap = self.max_qdot_frac * self.v_max
-            qdot_soft = np.clip(qdot_soft, -cap, cap)
+            qdot_soft = _soft_cap_per_joint(qdot_soft, cap)
 
         if not rail_hold:
             qdot_soft[0] = 0.0
@@ -219,7 +255,13 @@ class SecondaryComposer:
             if w_arm > 0.0:
                 qdot_arm = np.asarray(self.arm_task(q), dtype=float)
                 self.last_arm_smooth = w_arm * float(self.arm_task.last_singularity_smooth)
-                qdot0 = qdot0 + w_arm * qdot_arm
+                add = w_arm * qdot_arm
+                # Drop the part of the later posture that fights the earlier
+                # soft stack (centering + manip + damping).
+                nb2 = float(np.dot(qdot0, qdot0))
+                if nb2 > 1.0e-12 and float(np.dot(qdot0, add)) < 0.0:
+                    add = add - (float(np.dot(add, qdot0)) / nb2) * qdot0
+                qdot0 = qdot0 + add
             else:
                 self.last_arm_smooth = 0.0
         else:

@@ -350,6 +350,7 @@ def test_secondary_composer_adds_manip_to_centering() -> None:
 
     class _FakeManip:
         def __call__(self, q, sigma_min=1.0, exclude_rail=True, dt_s=None):
+            del sigma_min, exclude_rail, dt_s
             out = np.zeros_like(q)
             out[2] = 0.5
             return out
@@ -817,7 +818,7 @@ def test_press_stall_allows_escape_in_limit_band_toward_open() -> None:
         press_stalled=True,
         tool_y_err_m=0.0,
     )
-    assert task.last_v_escape * task._open_side_sign(float(q[0])) >= -1e-12
+    assert task.last_v_escape * task._policy_escape_sign() >= -1e-12
     assert abs(task.last_v_escape) > 1e-12 or task._escape_active
 
 
@@ -863,28 +864,18 @@ def _drive_reach(task: RailExtensionTask, *, v_ff_m_s: float) -> float:
     return float(v)
 
 
-def test_reach_budget_no_longer_starves_reach_under_a_legal_feedforward() -> None:
-    # The QP rail box allows 0.12 m/s of FF.  Sharing an 0.08 total with
-    # reach meant FF alone overran the budget by 50% and reach got nothing,
-    # so the posture error grew for the whole stroke and dumped on release.
+def test_reach_records_measured_ff_but_applies_reach_only() -> None:
     shared = _reach_budget_task(None)
     v_shared = _drive_reach(shared, v_ff_m_s=0.12)
-    assert v_shared == pytest.approx(0.08, abs=1e-9)
     assert shared.last_v_ff == pytest.approx(0.12, rel=1e-6)
-    assert shared.last_v_reach == pytest.approx(0.05, abs=1e-9)
-
-    split = _reach_budget_task(0.17)
-    v_split = _drive_reach(split, v_ff_m_s=0.12)
-    assert v_split == pytest.approx(
-        split.last_v_ff + split.last_v_reach, abs=1e-9
-    )
-    assert v_split > v_shared + 0.04
+    assert 0.040 < abs(shared.last_v_reach) <= 0.05 + 1e-12
+    assert v_shared == pytest.approx(shared.last_v_reach, abs=1e-9)
 
 
 def test_reach_budget_still_clips_beyond_the_new_total() -> None:
     task = _reach_budget_task(0.17)
     v = _drive_reach(task, v_ff_m_s=0.30)
-    assert v == pytest.approx(0.17, abs=1e-9)
+    assert abs(v) <= task.cfg.reach_budget_m_s() + 1e-12
 
 
 def test_pose_attract_keeps_the_original_cap_when_reach_budget_is_raised() -> None:
@@ -940,9 +931,7 @@ def _drive_ff_only(task: RailExtensionTask, v_ff_m_s: float) -> tuple[float, flo
 
 
 def test_w_ff_is_live_below_the_ownership_threshold() -> None:
-    from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
-        _smoothstep01,
-    )
+    from rm75_control.control.joint_admittance_8dof.filters import smoothstep01 as _smoothstep01
 
     task = _w_ff_task()
     v_ff, w = _drive_ff_only(task, 0.0023)

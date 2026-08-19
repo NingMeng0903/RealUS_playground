@@ -33,7 +33,7 @@ def _bridge(*, target_m: float, measured_m: float) -> RailServoBridge:
 
 def test_hold_or_settle_holds_when_residual_under_2mm() -> None:
     bridge = _bridge(target_m=0.400, measured_m=0.4001)  # 0.1 mm
-    ok = bridge.hold_or_settle_after_task(settle_if_err_mm=2.0)
+    ok = bridge.hold_or_settle_after_task()
     assert ok is True
     assert bridge._follow_enabled is False
     assert bridge._hold_active is True
@@ -45,7 +45,7 @@ def test_hold_or_settle_holds_when_residual_large() -> None:
     """10 mm leftover must not re-open follow (125211 hit 900 r/min)."""
     bridge = _bridge(target_m=0.410, measured_m=0.400)
     bridge.settle_and_hold = MagicMock(return_value=True)  # type: ignore[method-assign]
-    ok = bridge.hold_or_settle_after_task(settle_if_err_mm=2.0)
+    ok = bridge.hold_or_settle_after_task()
     assert ok is True
     assert bridge._follow_enabled is False
     assert bridge._hold_active is True

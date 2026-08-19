@@ -62,10 +62,19 @@ class CachedRailGoodness:
         self._dg_target = 0.0
         self._slew_left = 0
 
-    def refresh(self, q_rad: np.ndarray, *, force: bool = False) -> tuple[float, float]:
+    def refresh(
+        self,
+        q_rad: np.ndarray,
+        *,
+        force: bool = False,
+        g_hint: float | None = None,
+    ) -> tuple[float, float]:
         self._tick += 1
         if force or self._tick == 1 or (self._tick % self.period_ticks == 0):
-            self._g_target = float(self.inner.g(q_rad))
+            if g_hint is not None and np.isfinite(float(g_hint)):
+                self._g_target = float(g_hint)
+            else:
+                self._g_target = float(self.inner.g(q_rad))
             self._dg_target = float(self.inner.dg_dy_rail(q_rad))
             self._slew_left = max(1, self.period_ticks)
         if self._slew_left > 0:

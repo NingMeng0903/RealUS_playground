@@ -35,7 +35,6 @@ class IrdConfig:
     device: str = "cpu"
     # Production selected.pt predates artifact_schema v2; allow until rebuilt.
     allow_stale: bool = True
-    goodness_period_ticks: int = 10
 
 
 class IrdFieldHandle:
@@ -195,24 +194,6 @@ class IrdFieldHandle:
         return float(d[idx])
 
 
-class IrdRailGoodness:
-    """``RailGoodness`` backed by the signed IRD field.
-
-    Do not install this on the 5 ms thread: ``dg_dy_rail`` uses autograd
-    and has measured 127 ms hitches.  Production goodness is σ_min.
-    """
-
-    def __init__(self, kin: RobotKinematics, handle: IrdFieldHandle) -> None:
-        self.kin = kin
-        self.handle = handle
-
-    def g(self, q_rad: np.ndarray) -> float:
-        return float(self.handle.g(self.kin, q_rad))
-
-    def dg_dy_rail(self, q_rad: np.ndarray) -> float:
-        return float(self.handle.dg_dy_rail(self.kin, q_rad))
-
-
 def try_load_ird(cfg: IrdConfig | None = None) -> IrdFieldHandle | None:
     handle = IrdFieldHandle(cfg)
     return handle if handle.available else None
@@ -221,6 +202,5 @@ def try_load_ird(cfg: IrdConfig | None = None) -> IrdFieldHandle | None:
 __all__ = [
     "IrdConfig",
     "IrdFieldHandle",
-    "IrdRailGoodness",
     "try_load_ird",
 ]

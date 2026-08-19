@@ -22,6 +22,9 @@ from rm75_control.control.joint_admittance_8dof.tasks.manipulability_task import
 from rm75_control.control.joint_admittance_8dof.tasks.nullspace_task import (
     NullspaceTaskConfig,
 )
+from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
+    RailAllocatorConfig,
+)
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
     RailExtensionConfig,
 )
@@ -188,13 +191,12 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             "sr_damping", "task_weight_min_frac", "task_weight_lpf_tau_s",
             "aniso_task_damping",
             "use_mass_weighted_reg", "mass_reg_floor", "mass_weight_exempt_rail",
-            "mass_reg_lpf_tau_s", "use_dyn_nullspace",
+            "mass_reg_lpf_tau_s",
             "limit_damper_band_rad", "limit_damper_band_rail_m",
-            "limit_damper_rail_reaction_s",
             "sigma_setbased", "branch_barrier", "joint_comfort",
             "smoothness_weight", "near_arm_margin_rad",
             "j_max_arm_rad_s3", "j_max_rail_m_s3",
-            "use_cpp_kernel", "rail_task_alpha",
+            "use_cpp_kernel",
         },
         name="inner.qp",
     )
@@ -302,7 +304,6 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         mass_reg_lpf_tau_s=_finite_float(
             c.get("mass_reg_lpf_tau_s", 0.2), name="inner.qp.mass_reg_lpf_tau_s"
         ),
-        use_dyn_nullspace=bool(c.get("use_dyn_nullspace", False)),
         limit_damper_band_rad=_finite_float(
             c.get("limit_damper_band_rad", 0.15),
             name="inner.qp.limit_damper_band_rad",
@@ -310,10 +311,6 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         limit_damper_band_rail_m=_finite_float(
             c.get("limit_damper_band_rail_m", 0.01),
             name="inner.qp.limit_damper_band_rail_m",
-        ),
-        limit_damper_rail_reaction_s=_finite_float(
-            c.get("limit_damper_rail_reaction_s", 0.15),
-            name="inner.qp.limit_damper_rail_reaction_s",
         ),
         warn_on_fail=bool(c.get("warn_on_fail", False)),
         fail_qdot_decay=_finite_float(
@@ -422,16 +419,6 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         j_max_rail_m_s3=_finite_float(
             c.get("j_max_rail_m_s3", 3.0), name="inner.qp.j_max_rail_m_s3"
         ),
-        rail_task_alpha=float(
-            np.clip(
-                _finite_float(
-                    c.get("rail_task_alpha", 0.07),
-                    name="inner.qp.rail_task_alpha",
-                ),
-                0.0,
-                1.0,
-            )
-        ),
     )
 
 
@@ -440,41 +427,24 @@ def _parse_saturation(raw) -> SaturationConfig:
     _reject_unknown(
         s,
         {
-            "slack_enter", "slack_exit", "dwell_s", "rail_margin_m",
-            "branch_margin_rad", "secondary_scale", "secondary_scale_tau_s",
-            "crawl_floor", "freeze_timeout_s", "stall_improve_mm",
+            "slack_enter", "slack_exit",
+            "secondary_scale", "secondary_scale_tau_s",
         },
         name="inner.saturation",
     )
-    enter = _finite_float(s.get("slack_enter", 0.03), name="saturation.slack_enter")
-    exit_ = _finite_float(s.get("slack_exit", 0.015), name="saturation.slack_exit")
+    enter = _finite_float(s.get("slack_enter", 0.15), name="saturation.slack_enter")
+    exit_ = _finite_float(s.get("slack_exit", 0.03), name="saturation.slack_exit")
     if exit_ > enter:
         raise ValueError("inner.saturation.slack_exit must be <= slack_enter")
     return SaturationConfig(
         slack_enter=enter,
         slack_exit=exit_,
-        dwell_s=_finite_float(s.get("dwell_s", 0.15), name="saturation.dwell_s"),
-        rail_margin_m=_finite_float(
-            s.get("rail_margin_m", 0.010), name="saturation.rail_margin_m"
-        ),
-        branch_margin_rad=_finite_float(
-            s.get("branch_margin_rad", 0.035), name="saturation.branch_margin_rad"
-        ),
         secondary_scale=_finite_float(
             s.get("secondary_scale", 0.15), name="saturation.secondary_scale"
         ),
         secondary_scale_tau_s=_finite_float(
             s.get("secondary_scale_tau_s", 0.10),
             name="saturation.secondary_scale_tau_s",
-        ),
-        crawl_floor=_finite_float(
-            s.get("crawl_floor", 0.05), name="saturation.crawl_floor"
-        ),
-        freeze_timeout_s=_finite_float(
-            s.get("freeze_timeout_s", 9.0), name="saturation.freeze_timeout_s"
-        ),
-        stall_improve_mm=_finite_float(
-            s.get("stall_improve_mm", 1.0), name="saturation.stall_improve_mm"
         ),
     )
 
@@ -564,17 +534,13 @@ def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
         p,
         {
             "enabled", "n_y", "n_d", "n_psi", "w_sigma", "w_wrist",
-            "margin_floor_deg", "z_replan_m", "psi_rate_deg_s", "rail_margin_m",
-            "wrist_min_deg", "d_center_rate_m_s", "d_band_m",
-            "d_slew_psi_err_deg", "psi_cmd_lead_deg",
+            "margin_floor_deg", "psi_rate_deg_s", "rail_margin_m",
+            "wrist_min_deg", "d_center_rate_m_s",
+            "psi_cmd_lead_deg",
             "psi_replan_period_s", "psi_search_half_span_deg", "psi_search_n",
             "psi_wrist_ok_deg", "psi_envelope_deg",
             "psi_attr_deg", "d_attr_m", "psi_return_dwell_s",
             "require_design_family",
-            # Retired keys accepted so older yaml still loads.
-            "d_replan_m", "d_replan_period_s", "d_pref_rate_m_s",
-            "evals_per_tick", "psi_step_deg", "psi_lpf_tau_s",
-            "rail_step_m", "d_pref_lpf_tau_s",
         },
         name="inner.psi_retarget",
     )
@@ -595,9 +561,6 @@ def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
                 p.get("margin_floor_deg", 15.0), name="psi_retarget.margin_floor_deg"
             )
         ),
-        z_replan_m=_finite_float(
-            p.get("z_replan_m", 0.0), name="psi_retarget.z_replan_m"
-        ),
         psi_rate_rad_s=math.radians(
             _finite_float(
                 p.get("psi_rate_deg_s", 25.0), name="psi_retarget.psi_rate_deg_s"
@@ -605,15 +568,6 @@ def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
         ),
         d_center_rate_m_s=_finite_float(
             p.get("d_center_rate_m_s", 0.02), name="psi_retarget.d_center_rate_m_s"
-        ),
-        d_band_m=_finite_float(
-            p.get("d_band_m", 0.08), name="psi_retarget.d_band_m"
-        ),
-        d_slew_psi_err_rad=math.radians(
-            _finite_float(
-                p.get("d_slew_psi_err_deg", 40.0),
-                name="psi_retarget.d_slew_psi_err_deg",
-            )
         ),
         psi_cmd_lead_rad=math.radians(
             _finite_float(
@@ -667,7 +621,6 @@ def _parse_ird(inner: dict) -> IrdConfig:
         r,
         {
             "enabled", "checkpoint", "robot_spec", "device", "allow_stale",
-            "goodness_period_ticks",
         },
         name="inner.ird",
     )
@@ -678,7 +631,6 @@ def _parse_ird(inner: dict) -> IrdConfig:
         robot_spec=str(r.get("robot_spec", defaults.robot_spec)),
         device=str(r.get("device", "cpu")),
         allow_stale=bool(r.get("allow_stale", True)),
-        goodness_period_ticks=int(r.get("goodness_period_ticks", 10)),
     )
 
 
@@ -693,7 +645,7 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
             "k_sigma_boost", "k_esc", "w_sigma_floor",
             "k_pose", "pose_e0_m", "pose_e1_m", "pose_w_max",
             "sigma_guard_enter", "sigma_guard_exit", "v_guard_max_m_s",
-            "v_lpf_tau_s", "v_lpf_tau_escape_s",
+            "v_lpf_tau_s", "v_lpf_fc_hz", "v_lpf_tau_escape_s",
             "sigma_escape_enter", "sigma_escape_exit",
             "margin_escape_enter", "margin_escape_exit", "sigma_drop_rate",
             "escape_enter_dwell_s",
@@ -763,6 +715,9 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
         ),
         v_lpf_tau_s=_finite_float(
             r.get("v_lpf_tau_s", 0.05), name="rail_extension.v_lpf_tau_s"
+        ),
+        v_lpf_fc_hz=_finite_float(
+            r.get("v_lpf_fc_hz", 0.0), name="rail_extension.v_lpf_fc_hz"
         ),
         v_lpf_tau_escape_s=_finite_float(
             r.get("v_lpf_tau_escape_s", 0.04),
@@ -864,6 +819,53 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
             name="rail_extension.open_travel_min_m",
         ),
         escape_sign_policy=str(r.get("escape_sign_policy", "minus")).strip().lower(),
+    )
+
+
+def _parse_rail_allocator(inner: dict) -> RailAllocatorConfig:
+    r = _mapping(inner.get("rail_allocator"), name="inner.rail_allocator")
+    _reject_unknown(
+        r,
+        {
+            "v0_m_s", "w0_rad_s", "k_margin",
+            "kp_mid", "ki_mid", "u_mid_max_m_s", "posture_subordinate",
+            "f_c_hz", "reaction_s",
+            "observer_pos_gain", "observer_vel_gain",
+            "observer_vel_lpf_hz",
+        },
+        name="inner.rail_allocator",
+    )
+    return RailAllocatorConfig(
+        v0_m_s=_finite_float(r.get("v0_m_s", 0.05), name="rail_allocator.v0_m_s"),
+        w0_rad_s=_finite_float(
+            r.get("w0_rad_s", 0.30), name="rail_allocator.w0_rad_s"
+        ),
+        k_margin=_finite_float(
+            r.get("k_margin", 4.0), name="rail_allocator.k_margin"
+        ),
+        kp_mid=_finite_float(r.get("kp_mid", 0.40), name="rail_allocator.kp_mid"),
+        ki_mid=_finite_float(r.get("ki_mid", 0.80), name="rail_allocator.ki_mid"),
+        u_mid_max_m_s=_finite_float(
+            r.get("u_mid_max_m_s", 0.03), name="rail_allocator.u_mid_max_m_s"
+        ),
+        posture_subordinate=_finite_float(
+            r.get("posture_subordinate", 0.35),
+            name="rail_allocator.posture_subordinate",
+        ),
+        f_c_hz=_finite_float(r.get("f_c_hz", 5.0), name="rail_allocator.f_c_hz"),
+        reaction_s=_finite_float(
+            r.get("reaction_s", 0.06), name="rail_allocator.reaction_s"
+        ),
+        observer_pos_gain=_finite_float(
+            r.get("observer_pos_gain", 0.35), name="rail_allocator.observer_pos_gain"
+        ),
+        observer_vel_gain=_finite_float(
+            r.get("observer_vel_gain", 2.0), name="rail_allocator.observer_vel_gain"
+        ),
+        observer_vel_lpf_hz=_finite_float(
+            r.get("observer_vel_lpf_hz", 8.0),
+            name="rail_allocator.observer_vel_lpf_hz",
+        ),
     )
 
 
@@ -978,6 +980,14 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
     if not isinstance(raw, dict):
         raise ValueError("controller config root must be a mapping")
     timing = _mapping(raw.get("timing"), name="timing")
+    _reject_unknown(
+        timing,
+        {
+            "dt_ms", "feedback_timeout_ms", "feedback_coast_ms",
+            "rt_disable_gc", "verbose_json", "control_cpu", "disable_cstates",
+        },
+        name="timing",
+    )
     inner = _mapping(raw.get("inner"), name="inner")
     qpik = _mapping(raw.get("qpik"), name="qpik")
     _reject_retired_qpik(qpik)
@@ -1016,9 +1026,10 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             "position_margin_deg", "position_margin_rail_mm",
             "resync_err_deg", "resync_err_rail_mm",
             "qp", "collision", "nullspace", "arm_angle", "rail_extension", "rail",
+            "rail_allocator",
             "psi_retarget", "ird",
             "nullspace_d_null", "nullspace_d_null_adaptive", "nullspace_max_qdot_frac",
-            "post_qp_step_clamp", "saturation",
+            "saturation",
         },
         name="inner",
     )
@@ -1036,7 +1047,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
     damper = _mapping(hard.get("velocity_damper"), name="qpik.hard_limits.velocity_damper")
     if damper:
         _reject_unknown(
-            damper, {"arm_band_rad", "rail_band_m", "rail_reaction_s"},
+            damper, {"arm_band_rad", "rail_band_m"},
             name="qpik.hard_limits.velocity_damper",
         )
         if "arm_band_rad" in damper:
@@ -1047,20 +1058,16 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             qp.limit_damper_band_rail_m = _finite_float(
                 damper["rail_band_m"], name="velocity_damper.rail_band_m"
             )
-        if "rail_reaction_s" in damper:
-            qp.limit_damper_rail_reaction_s = _finite_float(
-                damper["rail_reaction_s"], name="velocity_damper.rail_reaction_s"
-            )
     if qp.limit_damper_band_rad < 0.0 or qp.limit_damper_band_rail_m < 0.0:
         raise ValueError("velocity damper bands must be non-negative")
-    if qp.limit_damper_rail_reaction_s < 0.0:
-        raise ValueError("velocity_damper.rail_reaction_s must be non-negative")
 
     nullspace, manipulability = _parse_nullspace(inner)
     arm_angle = _parse_arm_angle(inner)
     psi_retarget = _parse_psi_retarget(inner)
     ird = _parse_ird(inner)
     rail_extension = _parse_rail_extension(inner)
+    rail_allocator = _parse_rail_allocator(inner)
+    qp.limit_damper_rail_reaction_s = float(rail_allocator.reaction_s)
     cartesian_track = _parse_cartesian_track(raw)
 
     hw_lw = _mapping(
@@ -1079,8 +1086,8 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
                 "rail damper band must equal the hard–soft gap "
                 f"(band={band:.6f}, lo_gap={lo_gap:.6f}, hi_gap={hi_gap:.6f})"
             )
-    rail_extension.soft_min_m = float(rail.hard_min_m)
-    rail_extension.soft_max_m = float(rail.hard_max_m)
+    rail_extension.soft_min_m = float(rail.soft_min_m)
+    rail_extension.soft_max_m = float(rail.soft_max_m)
     policy = str(rail_extension.escape_sign_policy).strip().lower()
     if policy not in {"minus", "plus", "-", "+", "neg", "negative", "pos", "positive"}:
         raise ValueError(
@@ -1101,13 +1108,19 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             name="timing.feedback_timeout_ms",
         )
         / 1000.0,
+        feedback_coast_s=_finite_float(
+            timing.get("feedback_coast_ms", 300.0),
+            name="timing.feedback_coast_ms",
+        )
+        / 1000.0,
+        rt_disable_gc=bool(timing.get("rt_disable_gc", True)),
+        verbose_json=bool(timing.get("verbose_json", False)),
         control_cpu=(
             int(timing["control_cpu"])
             if timing.get("control_cpu") is not None
             else None
         ),
         disable_cstates=bool(timing.get("disable_cstates", True)),
-        qp_use_cpp_kernel=bool(timing.get("qp_use_cpp_kernel", True)),
         control_frame=str(inner.get("control_frame", "tool")),
         euler_order=euler_order,
         qp=qp,
@@ -1119,6 +1132,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         collision=collision,
         rail=rail,
         rail_extension=rail_extension,
+        rail_allocator=rail_allocator,
         cartesian_track=cartesian_track,
         v_scale=_finite_float(hard_value("v_scale", "v_scale", 0.5), name="v_scale"),
         a_max_arm_rad_s2=_finite_float(
@@ -1161,7 +1175,6 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             inner.get("nullspace_max_qdot_frac", 0.2),
             name="inner.nullspace_max_qdot_frac",
         ),
-        post_qp_step_clamp=bool(inner.get("post_qp_step_clamp", True)),
         saturation=_parse_saturation(inner.get("saturation")),
     )
     assert_design_attractor_consistent(cfg)

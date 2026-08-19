@@ -294,7 +294,6 @@ def test_defaults_match_the_hardware_baseline() -> None:
         assert cfg.catch_k == pytest.approx(5.0)
         assert cfg.catch_frac == pytest.approx(0.3)
         assert cfg.decel_request_margin_m_s == pytest.approx(0.005)
-        assert cfg.vel_ff_kp == 4.0
         assert cfg.vel_ff_p_trim_m_s == pytest.approx(0.010)
         assert cfg.match_drive_accel is True
         assert cfg.fa24_rpm_deadband == 12
@@ -302,7 +301,11 @@ def test_defaults_match_the_hardware_baseline() -> None:
         assert cfg.standstill_enter_mm == 0.05
         assert cfg.standstill_exit_mm == 0.25
         assert cfg.standstill_dwell_s == 0.08
-        assert cfg.approach_m == pytest.approx(0.008)
+        assert cfg.approach_m == pytest.approx(0.040)
+        assert cfg.wall_reaction_s == pytest.approx(0.06)
+        assert not hasattr(cfg, "vel_ff_kp")
+        assert not hasattr(cfg, "coupled_drop_p")
+        assert cfg.vel_kd_max_m_s == pytest.approx(0.005)
         assert cfg.latch_watch_s == pytest.approx(0.12)
         assert cfg.encoder_freeze_min_move_mm == 0.15
         assert cfg.accel_ms == 150
@@ -587,27 +590,6 @@ def test_v_ff_cruise_does_not_chop_host_velocity() -> None:
     assert max(abs(cruise[i] - cruise[i - 1]) for i in range(1, len(cruise))) <= (
         a_max * DT + 1.0e-12
     )
-
-
-def test_p_trim_is_on_x_ref_not_x_goal() -> None:
-    """Stream trim follows the shaped reference; 20 mm lead must not enter P."""
-    err_ref = 0.0016
-    err_goal = 0.020
-    v_p = RailServoBridge._p_trim_velocity(err_ref, kp=4.0, trim_max_m_s=0.010)
-    v_if_goal = RailServoBridge._p_trim_velocity(err_goal, kp=4.0, trim_max_m_s=0.010)
-    assert v_p == pytest.approx(0.0064)
-    assert v_if_goal == pytest.approx(0.010)
-
-
-def test_p_trim_caps_and_rejects_nonpositive_gain() -> None:
-    assert RailServoBridge._p_trim_velocity(0.010, kp=4.0, trim_max_m_s=0.010) == pytest.approx(
-        0.010
-    )
-    assert RailServoBridge._p_trim_velocity(-0.010, kp=4.0, trim_max_m_s=0.010) == pytest.approx(
-        -0.010
-    )
-    assert RailServoBridge._p_trim_velocity(0.005, kp=0.0, trim_max_m_s=0.010) == 0.0
-    assert RailServoBridge._p_trim_velocity(0.005, kp=4.0, trim_max_m_s=0.0) == 0.0
 
 
 def test_stream_law_matches_position_plus_ff_cruise() -> None:

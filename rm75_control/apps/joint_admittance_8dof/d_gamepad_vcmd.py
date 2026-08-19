@@ -129,6 +129,36 @@ def main() -> int:
     ap.add_argument("--rot-rad-s", type=float, default=0.60, help="Full-stick TCP rotation (rad/s).")
     ap.add_argument("--deadzone", type=float, default=0.18)
     ap.add_argument(
+        "--trigger-deadzone",
+        type=float,
+        default=0.08,
+        help="Rest deadzone on LT/RT after mapping to [0, 1].",
+    )
+    ap.add_argument(
+        "--trans-a-max",
+        type=float,
+        default=0.8,
+        help="Stick translation slew limit (m/s^2).",
+    )
+    ap.add_argument(
+        "--rot-a-max",
+        type=float,
+        default=4.0,
+        help="Stick rotation slew limit (rad/s^2).",
+    )
+    ap.add_argument(
+        "--hold-v-max",
+        type=float,
+        default=0.03,
+        help="Idle hold linear cap (m/s).",
+    )
+    ap.add_argument(
+        "--hold-w-max",
+        type=float,
+        default=0.20,
+        help="Idle hold angular cap (rad/s).",
+    )
+    ap.add_argument(
         "--device-index",
         type=int,
         default=-1,
@@ -206,6 +236,11 @@ def main() -> int:
             gamepad_rot_rad_s=float(args.rot_rad_s),
             gamepad_deadzone=float(args.deadzone),
             gamepad_device_index=int(args.device_index),
+            gamepad_trigger_deadzone=float(args.trigger_deadzone),
+            gamepad_trans_a_max_m_s2=float(args.trans_a_max),
+            gamepad_rot_a_max_rad_s2=float(args.rot_a_max),
+            gamepad_hold_v_max_m_s=float(args.hold_v_max),
+            gamepad_hold_w_max_rad_s=float(args.hold_w_max),
             q0_rad=[0.0] * 8,
             q_target_rad=[0.0] * 8,
             tcp_offset_pose=[0.0] * 6,
@@ -331,6 +366,11 @@ def main() -> int:
             gamepad_rot_rad_s=float(args.rot_rad_s),
             gamepad_deadzone=float(args.deadzone),
             gamepad_device_index=int(args.device_index),
+            gamepad_trigger_deadzone=float(args.trigger_deadzone),
+            gamepad_trans_a_max_m_s2=float(args.trans_a_max),
+            gamepad_rot_a_max_rad_s2=float(args.rot_a_max),
+            gamepad_hold_v_max_m_s=float(args.hold_v_max),
+            gamepad_hold_w_max_rad_s=float(args.hold_w_max),
         )
 
         try:

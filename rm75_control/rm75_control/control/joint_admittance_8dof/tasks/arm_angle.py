@@ -220,8 +220,8 @@ class ArmAngleTask:
         J = self.kin.jacobian(q)
         sigma = self.kin.singular_values(J)
         sigma_min = float(sigma.min())
-        # Kinematic nullspace only — must match qp.use_dyn_nullspace (off on
-        # RM75) so d(psi)/dt ~= k_psi * err in the executed QP solution.
+        # Kinematic nullspace only so d(psi)/dt ~= k_psi * err in the
+        # executed QP solution.
         gN = project_onto_task_nullspace(J, g, sigma_min=sigma_min)
         denom = float(np.dot(g, gN))
         err = float(self._psi_ref_unwrapped) - psi

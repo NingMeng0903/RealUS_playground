@@ -200,53 +200,13 @@ def test_step_clamp_flags_acc_clamped_on_large_qdot_jump() -> None:
     assert ddq <= controller.limits.a_max[2] * dt_nom * dt_nom + 1.0e-9
 
 
-def test_yaml_and_dataclass_post_qp_step_clamp_default_true() -> None:
-    from pathlib import Path
-
-    import yaml
-
-    from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
-
-    raw = yaml.safe_load(
-        (Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml").read_text()
-    )
-    assert raw["inner"]["post_qp_step_clamp"] is True
-    cfg = build_joint_ik_config(raw)
-    assert cfg.post_qp_step_clamp is True
-    assert JointIkConfig().post_qp_step_clamp is True
-    raw["inner"].pop("post_qp_step_clamp")
-    assert build_joint_ik_config(raw).post_qp_step_clamp is True
-
-
-def test_post_qp_step_clamp_false_shadows_but_does_not_project() -> None:
-    controller = _ptp_controller()
-    controller.cfg.post_qp_step_clamp = False
-    dt_nom = float(controller.cfg.dt)
-    q = controller.q_cmd.copy()
-    slow = np.zeros(8)
-    slow[2] = 0.002
-    controller.update(np.zeros(6), dt_nom, q_meas=q, qdot_ff=slow)
-    q = controller.q_cmd.copy()
-    jump = np.zeros(8)
-    jump[2] = 0.80
-    step = controller.update(np.zeros(6), dt_nom, q_meas=q, qdot_ff=jump)
-    assert step.post_qp_step_clamp_enabled is False
-    assert step.post_step_would_clamp
-    assert step.post_step_clamp_applied is False
-    assert step.acc_clamped is False
-    assert step.qdot[2] == pytest.approx(0.80, abs=1.0e-9)
-    assert np.allclose(step.qdot_committed, step.qdot)
-    assert np.max(np.abs(step.qdot_pre_commit - step.qdot_raw)) < 1.0e-8
-    assert not np.allclose(step.post_step_shadow_q, step.q_send)
-
-
 def test_tick_logger_writes_step_controller_mode_and_ab_fields(tmp_path) -> None:
     import csv
 
     from rm75_control.control.joint_admittance_8dof.loop import JointIkStep, _TickLogger
 
     path = tmp_path / "wbc.csv"
-    logger = _TickLogger(str(path))
+    logger = _TickLogger(str(path), verbose_json=True)
     step = JointIkStep(
         q_send=np.linspace(0.1, 0.8, 8),
         qdot=np.zeros(8),

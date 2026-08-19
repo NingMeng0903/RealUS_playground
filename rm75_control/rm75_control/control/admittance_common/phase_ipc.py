@@ -112,6 +112,7 @@ class SinToolYTaskParams:
     gamepad_hold_deadband_rad: float = 0.005
     gamepad_hold_settle_v_m_s: float = 0.005
     gamepad_hold_relatch_on_settle: bool = True
+    gamepad_trigger_deadzone: float = 0.08
 
     @staticmethod
     def optional_move_kp(value) -> float | None:

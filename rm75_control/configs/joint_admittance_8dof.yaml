@@ -16,6 +16,10 @@ timing:
   dt_ms: 5.0
   # Post-solve gate re-reads UDP; 80 ms still fails closed on a true push gap.
   feedback_timeout_ms: 80.0
+  # Consecutive rejected/stale feedback before abort.  One hitch coasts.
+  feedback_coast_ms: 300.0
+  rt_disable_gc: true
+  verbose_json: false
   # Best-effort RT: pin the control thread; hold /dev/cpu_dma_latency at 0.
   control_cpu: 2
   disable_cstates: true
@@ -48,9 +52,6 @@ qpik:
     velocity_damper:
       arm_band_rad: 0.25
       rail_band_m: 0.025
-      # Stopping envelope look-ahead.  At 80 mm/s and a_max=0.60 this
-      # starts tapering ~17 mm out; 0 would only use one control period.
-      rail_reaction_s: 0.15
     collision:
       enabled: true
       d_safe: 0.01
@@ -100,7 +101,6 @@ inner:
     mass_reg_floor: 0.05
     mass_weight_exempt_rail: true
     mass_reg_lpf_tau_s: 0.2
-    use_dyn_nullspace: false
     limit_damper_band_rad: 0.25
     limit_damper_band_rail_m: 0.025
     near_arm_margin_rad: 0.08
@@ -113,9 +113,6 @@ inner:
     # 3.0 made a full rail acceleration reversal take 2*a_max/j = 0.2 s versus
     # 0.02 s on the arm; 60 keeps 2*a_max/j = 0.02 s after a_max rose to 0.60.
     j_max_rail_m_s3: 60.0
-    # Constant execution-rate mix for the rail column.  0 = measured-rail
-    # affine (today).  Identified from FA24 step response as 1-exp(-dt/tau).
-    rail_task_alpha: 0.07
     sigma_setbased:
       enabled: true
       activate: 0.12
@@ -174,25 +171,15 @@ inner:
       grad_period_ticks: 10
       qdot_tau_s: 0.05
 
-  # Reference-clock latch: pinned AND slack, never slack alone.
-  saturation:
-    slack_enter: 0.03
-    slack_exit: 0.015
-    dwell_s: 0.15
-    rail_margin_m: 0.010
-    branch_margin_rad: 0.035
-    secondary_scale: 0.15
-    secondary_scale_tau_s: 0.10
-    crawl_floor: 0.05
-    freeze_timeout_s: 9.0
-    stall_improve_mm: 1.0
-
   nullspace_d_null: 0.5
   nullspace_d_null_adaptive: 1.0
   nullspace_max_qdot_frac: 0.2
-  # Post-QP |Δdq| <= a_max * dt_nom^2.  Default on = current e8220b8 feel.
-  # A/B: only flip this.  Both dataclass and parser default True.
-  post_qp_step_clamp: true
+  # Continuous nullspace fade from task slack.  Not a binary latch.
+  saturation:
+    slack_enter: 0.15
+    slack_exit: 0.03
+    secondary_scale: 0.15
+    secondary_scale_tau_s: 0.10
 
   arm_angle:
     enabled: true
@@ -209,17 +196,13 @@ inner:
     # Band around the 60° attractor — not |q6|/128°, which sacrificed J2.
     w_wrist: 0.5
     margin_floor_deg: 20.0
-    # Planned stroke still one-shot.  Unplanned step re-searches ψ.
-    z_replan_m: 0.0
     psi_rate_deg_s: 25.0
     # Design split: J4≈96° (band center 95°).  Unplanned step shares one
     # progress s across (d*, ψ*, q*); q* is srs_ik at the live TCP, not
-    # the yaml photo at t=0.  d_slew_psi_err is retired (no ψ gate).
+    # the yaml photo at t=0.
     psi_attr_deg: 68.0
     d_attr_m: -0.185
     d_center_rate_m_s: 0.02
-    d_band_m: 0.08
-    d_slew_psi_err_deg: 40.0
     psi_cmd_lead_deg: 18.0
     psi_replan_period_s: 0.1
     psi_search_half_span_deg: 45.0
@@ -240,7 +223,6 @@ inner:
     enabled: true
     device: cpu
     allow_stale: true
-    goodness_period_ticks: 10
 
   rail_extension:
     enabled: true
@@ -280,6 +262,7 @@ inner:
     sigma_guard_exit: 0.70
     v_guard_max_m_s: 0.04
     v_lpf_tau_s: 0.05
+    v_lpf_fc_hz: 5.0
     v_lpf_tau_escape_s: 0.04
     # Narrow latch: deep σ or true near-limit only (healthy = FF+reach).
     sigma_escape_enter: 0.55
@@ -298,6 +281,20 @@ inner:
     d_star_reg_mult: 20.0
     # One-sided lateral escape: always −q0 until the minus pin band.
     escape_sign_policy: minus
+
+  rail_allocator:
+    v0_m_s: 0.05
+    w0_rad_s: 0.30
+    k_margin: 4.0
+    kp_mid: 0.40
+    ki_mid: 0.80
+    u_mid_max_m_s: 0.03
+    posture_subordinate: 0.35
+    f_c_hz: 5.0
+    reaction_s: 0.06
+    observer_pos_gain: 0.35
+    observer_vel_gain: 2.0
+    observer_vel_lpf_hz: 8.0
 
 
 frames:
@@ -600,9 +597,6 @@ hw:
     # 205605: t_read med 5.8 ms, FA24 write usually skipped.  43 Hz left
     # ~17 ms of sleep.  60 Hz (16.7 ms) still has ~11 ms median headroom;
     # 80 Hz is tight on p95.
-    # 60 Hz spectral peak A/B: keep this at 60 for production.  Probe with
-    # analyze_qpik_quality.py --poll-hz {60,37,100} on three identical
-    # ellipses; if q_cmd accel follows poll_hz the source is rail feedback.
     poll_hz: 60
     inter_frame_delay_s: 0.0005
     timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0
@@ -613,8 +607,11 @@ hw:
     max_speed_rpm: 1200
     # Soft CSP via FA24 (see apps/lw100_vel_pos_follow_demo.py).
     # Loaded PD scan BEST (400±40 mm): kp=14/kd=0.22 (was empty-load 18/0.22).
+    # Rollback: vel_kp 14 / vel_kd 0.22.  Coupled path now drops P/D while
+    # moving (L1 owns position).  POSITION scan/home still uses these.
     vel_kp: 14.0
     vel_kd: 0.22
+    vel_kd_max_m_s: 0.005
     # Matches QP box rail.v_max_m_s 0.15 × v_scale 0.8.  parse_rail_servo_config
     # also caps hw.vel_max by that product so the two cannot drift apart.
     vel_max_m_s: 0.12
@@ -625,9 +622,6 @@ hw:
     catch_k: 5.0
     catch_frac: 0.3
     decel_request_margin_m_s: 0.005
-    # Position+FF: v = v_ref + kp*(x_ref−x_meas) + kd*(v_ref−v).  Never close
-    # x_goal (20 mm lead / KMP OTG).  vel_ff_* remain for stream-goal resolve.
-    vel_ff_kp: 4.0
     vel_ff_p_trim_m_s: 0.010
     match_drive_accel: true
     fa24_rpm_deadband: 12   # skip Modbus if |Δrpm|<12 (~2 mm/s) while moving
@@ -636,7 +630,7 @@ hw:
     standstill_enter_mm: 0.05
     standstill_exit_mm: 0.25
     standstill_dwell_s: 0.08
-    approach_m: 0.008
+    approach_m: 0.040
     latch_watch_s: 0.12
     target_timeout_s: 0.25
     # Extra coast after timeout before FA24=0.  A 127 ms hitch must not brake.

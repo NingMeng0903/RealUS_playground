@@ -84,9 +84,6 @@ def test_hot_path_goodness_stays_sigma_min_even_if_ird_loads() -> None:
         JointIkConfig,
         JointIkController,
     )
-    from rm75_control.control.joint_admittance_8dof.tasks.ird_adapter import (
-        IrdRailGoodness,
-    )
     from rm75_control.control.joint_admittance_8dof.tasks.rail_goodness import (
         CachedRailGoodness,
         SigmaMinGoodness,
@@ -103,7 +100,6 @@ def test_hot_path_goodness_stays_sigma_min_even_if_ird_loads() -> None:
     )
     assert isinstance(inner._rail_goodness, CachedRailGoodness)
     assert isinstance(inner._rail_goodness.inner, SigmaMinGoodness)
-    assert not isinstance(inner._rail_goodness.inner, IrdRailGoodness)
 
 
 def test_default_ird_config_is_off_until_yaml_enables_it() -> None:

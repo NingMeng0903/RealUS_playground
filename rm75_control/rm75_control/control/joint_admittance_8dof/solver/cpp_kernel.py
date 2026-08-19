@@ -33,6 +33,14 @@ def available() -> bool:
     return _NATIVE is not None
 
 
+def singular_values(J: np.ndarray) -> np.ndarray:
+    """Native SVD when the kernel is loaded; NumPy otherwise."""
+    arr = np.ascontiguousarray(J, dtype=float)
+    if available() and hasattr(_NATIVE, "singular_values"):
+        return np.asarray(_NATIVE.singular_values(arr), dtype=float)
+    return np.linalg.svd(arr, compute_uv=False)
+
+
 def kinematics_snapshot(
     kin,
     q: np.ndarray,
@@ -42,10 +50,7 @@ def kinematics_snapshot(
     """FK/J/CRBA on Pinocchio Python; SVD on C++ when the kernel is loaded."""
     q = np.asarray(q, dtype=float).reshape(-1)
     J = np.asarray(kin.jacobian(q), dtype=float)
-    if available() and hasattr(_NATIVE, "singular_values"):
-        sigma = np.asarray(_NATIVE.singular_values(np.ascontiguousarray(J)), dtype=float)
-    else:
-        sigma = np.asarray(kin.singular_values(J), dtype=float)
+    sigma = singular_values(J)
     M = np.asarray(kin.mass_matrix(q), dtype=float) if need_mass else None
     return J, sigma, M
 

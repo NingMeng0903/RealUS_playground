@@ -148,9 +148,6 @@ class GovernorSpec:
     freeze_below: float = 0.02
     release_above: float = 0.10
     scale_min: float = 0.25
-    crawl_floor: float = 0.05
-    freeze_timeout_s: float = 9.0
-    stall_improve_mm: float = 1.0
 
 
 @dataclass
@@ -715,9 +712,6 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_tau_s=gov.tau_s,
             governor_freeze_below=gov.freeze_below,
             governor_release_above=gov.release_above,
-            governor_crawl_floor=float(getattr(gov, "crawl_floor", 0.05)),
-            governor_freeze_timeout_s=float(getattr(gov, "freeze_timeout_s", 9.0)),
-            governor_stall_improve_mm=float(getattr(gov, "stall_improve_mm", 1.0)),
             soft_start_ramp_s=(
                 0.3
                 if spec.secondary.preset == "move"
@@ -781,9 +775,6 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_tau_s=gov.tau_s,
             governor_freeze_below=gov.freeze_below,
             governor_release_above=gov.release_above,
-            governor_crawl_floor=float(getattr(gov, "crawl_floor", 0.05)),
-            governor_freeze_timeout_s=float(getattr(gov, "freeze_timeout_s", 9.0)),
-            governor_stall_improve_mm=float(getattr(gov, "stall_improve_mm", 1.0)),
             qdot_ff_provider=qdot_ff,
             scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
             force_observer=spec.force_observer,
@@ -830,9 +821,6 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_tau_s=gov.tau_s,
             governor_freeze_below=gov.freeze_below,
             governor_release_above=gov.release_above,
-            governor_crawl_floor=float(getattr(gov, "crawl_floor", 0.05)),
-            governor_freeze_timeout_s=float(getattr(gov, "freeze_timeout_s", 9.0)),
-            governor_stall_improve_mm=float(getattr(gov, "stall_improve_mm", 1.0)),
             force_observer=spec.force_observer,
             scale_qdot_ff_with_governor=spec.scale_qdot_ff_with_governor,
         )
@@ -870,9 +858,6 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_tau_s=gov.tau_s,
             governor_freeze_below=gov.freeze_below,
             governor_release_above=gov.release_above,
-            governor_crawl_floor=float(getattr(gov, "crawl_floor", 0.05)),
-            governor_freeze_timeout_s=float(getattr(gov, "freeze_timeout_s", 9.0)),
-            governor_stall_improve_mm=float(getattr(gov, "stall_improve_mm", 1.0)),
             force_observer=spec.force_observer,
         )
         return CompiledPhase(

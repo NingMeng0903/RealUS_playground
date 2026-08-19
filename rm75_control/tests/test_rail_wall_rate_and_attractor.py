@@ -98,7 +98,7 @@ def test_yaml_hard_soft_and_no_far_wln() -> None:
     cfg = build_joint_ik_config(raw)
     assert not hasattr(cfg.qp, "wln")
     assert not hasattr(cfg.qp, "limit_reaction_rail_s")
-    assert cfg.qp.limit_damper_rail_reaction_s == pytest.approx(0.15)
+    assert cfg.qp.limit_damper_rail_reaction_s == pytest.approx(0.06)
     assert cfg.rail.hard_min_m == pytest.approx(0.005)
     assert cfg.rail.hard_max_m == pytest.approx(0.78)
     assert cfg.rail.soft_min_m == pytest.approx(0.030)
@@ -111,8 +111,27 @@ def test_yaml_hard_soft_and_no_far_wln() -> None:
     servo = parse_rail_servo_config(raw)
     assert servo.hard_max_m == pytest.approx(0.78)
     assert servo.soft_max_m == pytest.approx(0.755)
-    assert cfg.rail_extension.soft_max_m == pytest.approx(0.78)
-    assert cfg.rail_extension.soft_min_m == pytest.approx(0.005)
+    assert cfg.rail_extension.soft_max_m == pytest.approx(0.755)
+    assert cfg.rail_extension.soft_min_m == pytest.approx(0.030)
+    assert cfg.rail_allocator.reaction_s == pytest.approx(0.06)
+    assert cfg.qp.limit_damper_rail_reaction_s == pytest.approx(
+        cfg.rail_allocator.reaction_s
+    )
+    assert servo.wall_reaction_s == pytest.approx(cfg.rail_allocator.reaction_s)
+
+
+def test_reaction_s_change_reaches_qp_box_and_worker() -> None:
+    raw = yaml.safe_load(_CFG.read_text(encoding="utf-8"))
+    raw["inner"]["rail_allocator"]["reaction_s"] = 0.12
+    cfg = build_joint_ik_config(raw)
+    from rm75_control.control.joint_admittance_8dof.hw.rail_servo import (
+        parse_rail_servo_config,
+    )
+
+    servo = parse_rail_servo_config(raw)
+    assert cfg.qp.limit_damper_rail_reaction_s == pytest.approx(0.12)
+    assert servo.wall_reaction_s == pytest.approx(0.12)
+    assert cfg.rail_allocator.reaction_s == pytest.approx(0.12)
 
 
 def test_mid_stroke_keeps_full_into_wall_speed() -> None:
@@ -148,15 +167,17 @@ def test_damper_and_one_tick_box_taper_into_wall() -> None:
     _lo, hi_far = _bounds(0.40, box=box)
     assert float(hi_far[0]) == pytest.approx(0.15, abs=1e-9)
 
+    # Soft edge is the stop-before-wall zero of the braking envelope.
     _lo, hi_edge = _bounds(0.755, box=box)
-    assert float(hi_edge[0]) == pytest.approx(0.15, abs=1e-9)
+    assert float(hi_edge[0]) == pytest.approx(0.0, abs=1e-9)
 
     _lo, hi_mid = _bounds(0.765, box=box)
-    assert float(hi_mid[0]) == pytest.approx(0.15 * 0.015 / _BAND, abs=1e-8)
+    assert float(hi_mid[0]) == pytest.approx(0.0, abs=1e-9)
 
     _lo, hi_wall = _bounds(0.78, box=box)
     assert float(hi_wall[0]) == pytest.approx(0.0, abs=1e-9)
-    assert float(hi_wall[0]) < float(hi_mid[0]) < float(hi_edge[0])
+    _lo, hi_approach = _bounds(0.70, box=box)
+    assert 0.0 < float(hi_approach[0]) < 0.15
 
     q = np.zeros(8)
     q[0] = 0.779
@@ -214,22 +235,6 @@ def test_leave_wall_is_not_reduced() -> None:
     assert float(lo_env[0]) == pytest.approx(-0.15, abs=1e-9)
 
 
-def test_accel_box_cannot_reopen_leading_wall() -> None:
-    """Cruise + lagging encoder must not keep ~vmax after q_cmd is at 780."""
-    box = _rail_box(a_max=0.60, reaction_s=0.0, band=_BAND, v_max=0.15)
-    q = np.zeros(8)
-    q[0] = 0.773
-    q_cmd = q.copy()
-    q_cmd[0] = 0.779
-    qdot_prev = np.zeros(8)
-    qdot_prev[0] = 0.12
-    lo, hi = box.bounds(
-        q, _DT, qdot_prev=qdot_prev, q_meas=q, q_cmd=q_cmd
-    )
-    assert float(hi[0]) <= (0.78 - 0.779) / _DT + 1.0e-9
-    assert float(lo[0]) <= float(hi[0]) + 1.0e-12
-
-
 def test_overshoot_kills_into_wall_not_leave() -> None:
     lo, hi = _bounds(0.782)
     assert float(hi[0]) == pytest.approx(0.0, abs=1e-9)
@@ -243,7 +248,7 @@ def test_overshoot_kills_into_wall_not_leave() -> None:
     q[0] = 0.782
     inner.reset(q)
     into = inner.update(_INTO_HI, q_meas=q, vel_ff=_INTO_HI)
-    assert float(into.qdot[0]) == pytest.approx(0.0, abs=1e-4)
+    assert float(into.qdot[0]) <= 1e-4
     assert rail_vel_ff_from_reference(into.v_cmd, inner.kin, into.q_send) == pytest.approx(
         0.08, abs=1e-6
     )

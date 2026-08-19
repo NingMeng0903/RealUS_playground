@@ -32,6 +32,7 @@ from rm75_control.control.joint_admittance_8dof.model import (
     RobotKinematics,
     deg2rad,
     full_q_from_arm,
+    shared_robot_kinematics,
 )
 from rm75_control.control.joint_admittance_8dof.reference import (
     HoldReference,
@@ -261,7 +262,7 @@ def build_sin_tool_y_program(
 ) -> BuiltSinToolYProgram:
     """Build phase list from precomputed task params (same on C and A)."""
     raw = raw if raw is not None else load_yaml(params.config_path)
-    kin = RobotKinematics()
+    kin = shared_robot_kinematics()
     maybe_sync_kin_tcp_from_config(
         kin,
         raw,

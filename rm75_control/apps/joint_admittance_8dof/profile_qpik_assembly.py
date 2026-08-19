@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 """cProfile the QPIK assembly path via strict replay or a synthetic tick train.
 
-CBF ``build_cbf_rows`` now uses the sphere broadphase (activation+hysteresis
-band) instead of a full 28-pair narrow-phase.  Offline, collision-off
-assembly is ~0.45 ms; collision-on is ~2.4 ms (was ~3.8 ms on HW).  The
-leftover is ``CollisionModel.update`` / HPP-FCL, not the ProxQP solve
-(~0.1 ms).  Do not raise ``grad_period_ticks`` to spend that budget.
-
     source env.sh
     python apps/joint_admittance_8dof/profile_qpik_assembly.py \\
         apps/logs/ellipse_track/run_YYYYMMDD_HHMMSS.csv \\
@@ -25,7 +19,7 @@ from pathlib import Path
 import numpy as np
 
 
-def _profile_synthetic(n_ticks: int, *, collision: bool = False) -> None:
+def _profile_synthetic(n_ticks: int) -> None:
     from rm75_control.control.joint_admittance_8dof.collision_model import (
         CollisionConfig,
     )
@@ -48,7 +42,7 @@ def _profile_synthetic(n_ticks: int, *, collision: bool = False) -> None:
         limits,
         QpConfig(
             backend="proxqp",
-            collision=CollisionConfig(enabled=bool(collision)),
+            collision=CollisionConfig(enabled=False),
             use_cpp_kernel=True,
         ),
     )
@@ -73,18 +67,13 @@ def main() -> int:
         default=0,
         help="Profile N offline QP ticks instead of replaying a CSV",
     )
-    parser.add_argument(
-        "--collision",
-        action="store_true",
-        help="Enable CBF collision assembly in --synthetic (matches HW cost).",
-    )
     args = parser.parse_args()
     profiler = cProfile.Profile()
     profiler.enable()
     try:
         if args.synthetic > 0 or args.csv is None:
             n = args.synthetic if args.synthetic > 0 else 200
-            _profile_synthetic(n, collision=bool(args.collision))
+            _profile_synthetic(n)
         else:
             from replay_strict_qpik import main as replay_main
 

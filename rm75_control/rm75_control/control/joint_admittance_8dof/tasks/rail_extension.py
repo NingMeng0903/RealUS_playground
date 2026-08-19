@@ -24,7 +24,9 @@ from typing import Literal
 
 import numpy as np
 
+from rm75_control.control.joint_admittance_8dof.filters import smoothstep01
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics, RAIL_INDEX
+from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import soft_saturate
 from rm75_control.control.joint_admittance_8dof.tasks.rail_goodness import (
     RailGoodness,
     SigmaMinGoodness,
@@ -40,6 +42,7 @@ def rail_vel_ff_from_reference(
     q_rad: np.ndarray,
     *,
     k_ff: float = 1.0,
+    jacobian: np.ndarray | None = None,
 ) -> float:
     """Scalar rail speed from any reference ``vel_ff`` (base-frame linear vel).
 
@@ -48,7 +51,10 @@ def rail_vel_ff_from_reference(
     populates ``vel_ff[:3]`` in the base frame (as all current sources do).
     """
     v_lin = np.asarray(vel_ff[:3], dtype=float)
-    j_rail = kin.jacobian(q_rad)[:3, RAIL_INDEX]
+    if jacobian is not None:
+        j_rail = np.asarray(jacobian, dtype=float)[:3, RAIL_INDEX]
+    else:
+        j_rail = kin.jacobian(q_rad)[:3, RAIL_INDEX]
     denom = float(np.dot(j_rail, j_rail))
     if denom < 1e-12:
         return 0.0
@@ -121,6 +127,8 @@ class RailExtensionConfig:
     v_guard_max_m_s: float = 0.04
     # Macro-micro LPF on the *desired* rail velocity (seconds).
     v_lpf_tau_s: float = 0.05
+    # When > 0, ``v_lpf_tau_s`` is derived as 1/(2π f_c).  0 keeps the raw tau.
+    v_lpf_fc_hz: float = 0.0
     # Faster LPF while escape is latched (commit without hunting).
     v_lpf_tau_escape_s: float = 0.04
     # Narrow latch: only deep σ (scale) or truly near joint soft limits.
@@ -172,11 +180,6 @@ class RailExtensionConfig:
         return max(float(self.v_reach_total_max_m_s), float(self.v_max_m_s))
 
 
-def _smoothstep01(x: float) -> float:
-    x = float(np.clip(x, 0.0, 1.0))
-    return x * x * (3.0 - 2.0 * x)
-
-
 class RailExtensionTask:
     """Callable: q (rad/m) -> (v_rail_des m/s, w_ext) for the WBC QP."""
 
@@ -208,7 +211,6 @@ class RailExtensionTask:
         self.last_v_ff: float = 0.0
         self.last_v_escape: float = 0.0
         self.last_v_reach: float = 0.0
-        self.last_margin_escape_active: bool = False
         self.last_rail_ff_m: float = float("nan")
         self.last_track_err_m: float = 0.0
         self.last_d_star_reg_scale: float = 1.0
@@ -266,7 +268,6 @@ class RailExtensionTask:
         self.last_weight = 0.0
         self.last_limit_saturated = False
         self.last_in_limit_band = False
-        self.last_margin_escape_active = False
         self._guard_active = False
         self._escape_active = False
         self._escape_sign = 0.0
@@ -283,26 +284,9 @@ class RailExtensionTask:
         lo, hi = self._soft_travel()
         return bool(q_rail <= lo + margin or q_rail >= hi - margin)
 
-    def _rail_in_pin_band(self, q_rail: float) -> bool:
-        """True only a few millimetres from a soft stop (not the 150 mm fade)."""
-        margin = float(self.cfg.pin_margin_m)
-        if margin <= 1.0e-9:
-            return False
-        lo, hi = self._soft_travel()
-        return bool(q_rail <= lo + margin or q_rail >= hi - margin)
-
-    def _open_side_sign(self, q_rail: float) -> float:
-        """+1 toward soft_max, −1 toward soft_min (the side with more travel)."""
-        lo, hi = self._soft_travel()
-        return 1.0 if (hi - q_rail) >= (q_rail - lo) else -1.0
-
     def _open_side_travel_m(self, q_rail: float) -> float:
         lo, hi = self._soft_travel()
         return float(max(q_rail - lo, hi - q_rail))
-
-    def _plus_travel_m(self, q_rail: float) -> float:
-        _lo, hi = self._soft_travel()
-        return float(hi - q_rail)
 
     def _leave_margin_m(self) -> float:
         return max(float(self.cfg.escape_leave_m), float(self.cfg.pin_margin_m))
@@ -508,7 +492,7 @@ class RailExtensionTask:
             if q_rail > hi - margin:
                 u = float(np.clip((hi - q_rail) / margin, 0.0, 1.0))
                 self.last_limit_saturated = False
-                return _smoothstep01(u)
+                return smoothstep01(u)
 
         elif v < -1e-9:
             if q_rail <= lo:
@@ -517,27 +501,10 @@ class RailExtensionTask:
             if q_rail < lo + margin:
                 u = float(np.clip((q_rail - lo) / margin, 0.0, 1.0))
                 self.last_limit_saturated = False
-                return _smoothstep01(u)
+                return smoothstep01(u)
 
         self.last_limit_saturated = False
         return 1.0
-
-    def _macro_lpf(
-        self, v: float, *, dt_s: float | None, tau_s: float | None = None
-    ) -> float:
-        """First-order LPF so the rail only takes the slow (macro) component."""
-        tau = float(self.cfg.v_lpf_tau_s if tau_s is None else tau_s)
-        if tau <= 1e-6 or dt_s is None or dt_s <= 0.0:
-            self._v_lpf = float(v)
-            self._v_lpf_initialized = True
-            return float(v)
-        if not self._v_lpf_initialized:
-            self._v_lpf = float(v)
-            self._v_lpf_initialized = True
-            return float(v)
-        alpha = float(dt_s) / (tau + float(dt_s))
-        self._v_lpf = (1.0 - alpha) * self._v_lpf + alpha * float(v)
-        return float(self._v_lpf)
 
     def _sigma_guard_velocity(
         self,
@@ -587,7 +554,7 @@ class RailExtensionTask:
         e0 = float(self.cfg.pose_e0_m)
         e1 = max(float(self.cfg.pose_e1_m), e0 + 1e-6)
         span = e1 - e0
-        w_pose = float(self.cfg.pose_w_max) * _smoothstep01((abs(err) - e0) / span)
+        w_pose = float(self.cfg.pose_w_max) * smoothstep01((abs(err) - e0) / span)
         v_pose = float(
             np.clip(self.cfg.k_pose * err, -self.cfg.v_max_m_s, self.cfg.v_max_m_s)
         )
@@ -601,7 +568,6 @@ class RailExtensionTask:
         )
         v_total = v_pose + v_guard
         v_total = float(np.clip(v_total, -self.cfg.v_max_m_s, self.cfg.v_max_m_s))
-        v_total = self._macro_lpf(v_total, dt_s=dt_s)
         lim = self._limit_saturation(y, v_total)
         self.last_limit_saturated = lim < 1e-6
         v_total *= lim
@@ -631,6 +597,8 @@ class RailExtensionTask:
         block_escape: bool = False,
         unload_sign: float = 0.0,
         operator_idle: bool = False,
+        hold_setpoint: bool = False,
+        jacobian: np.ndarray | None = None,
     ) -> tuple[float, float]:
         if self.d_pref_m is None:
             self.capture_reference(q)
@@ -640,7 +608,13 @@ class RailExtensionTask:
             y_des = float(y_tcp_d)
         else:
             y_des = float(self.kin.fk_placement(q).translation[1])
-        rail_ff = y_des - d_star
+        # Frozen d* vs a live y_des is the 40 mm platform chase.  While the
+        # operator owns the stick, hold the attractor error at zero so reach
+        # does not accumulate against the task.
+        if hold_setpoint:
+            rail_ff = y
+        else:
+            rail_ff = y_des - d_star
         err_raw = rail_ff - y
         band = max(float(getattr(self.cfg, "d_band_m", 0.0)), 0.0)
         use_band = (not stroke_limiters) if apply_d_band is None else bool(apply_d_band)
@@ -650,7 +624,7 @@ class RailExtensionTask:
         self.last_rail_ff_m = float(rail_ff)
         self.last_track_err_m = float(err_raw)
         span = max(float(self.cfg.e1_m) - float(self.cfg.e0_m), 1e-6)
-        w_reach = float(self.cfg.w_max) * _smoothstep01(
+        w_reach = float(self.cfg.w_max) * smoothstep01(
             (abs(err) - float(self.cfg.e0_m)) / span
         )
         v_reach = float(
@@ -660,28 +634,28 @@ class RailExtensionTask:
         err_abs = abs(err)
         e0 = max(float(self.cfg.d_star_err0_m), 0.0)
         e1 = max(float(self.cfg.d_star_err1_m), e0 + 1.0e-6)
-        drift = _smoothstep01((err_abs - e0) / (e1 - e0)) if e0 > 0.0 else 0.0
+        drift = smoothstep01((err_abs - e0) / (e1 - e0)) if e0 > 0.0 else 0.0
         self.last_d_star_reg_scale = 1.0 + drift * max(
             float(self.cfg.d_star_reg_mult) - 1.0, 0.0
         )
-        v_ff_full = (
+        v_ff_measured = (
             rail_vel_ff_from_reference(
-                vel_ff, self.kin, q, k_ff=self.cfg.k_ff
+                vel_ff, self.kin, q, k_ff=self.cfg.k_ff, jacobian=jacobian
             )
             if vel_ff is not None
             else 0.0
         )
-        # Do not attenuate FF by σ: healthy scan must keep rail tracking any
-        # MotionReference (dbb/4d). Soft σ bias is a separate term below.
-        # A live outer vel_ff also owns the rail: d* drift must not fade it.
+        # Legacy FF is retired: allocate_rail owns task-side rail velocity.
+        # Still record the measured feedforward for telemetry / escape latch.
         thr = float(self.cfg.v_ff_thr_m_s)
-        ff_owns = abs(v_ff_full) > thr
+        ff_owns = abs(v_ff_measured) > thr
         if ff_owns:
             self.last_k_ff_scale = 1.0
-            v_ff = float(v_ff_full)
+            v_ff_att = float(v_ff_measured)
         else:
             self.last_k_ff_scale = 1.0 - drift
-            v_ff = float(v_ff_full) * self.last_k_ff_scale
+            v_ff_att = float(v_ff_measured) * self.last_k_ff_scale
+        v_ff = 0.0
         # Trajectory owns rail direction: clear sticky latch (not merely mute v).
         grad_latched = self._escape_latched(
             sigma_scale=sig,
@@ -699,14 +673,13 @@ class RailExtensionTask:
             if idle_cap > 0.0:
                 cap = min(cap, idle_cap) if cap > 0.0 else idle_cap
         if cap > 0.0:
-            v_reach = float(np.clip(v_reach, -cap, cap))
-        # Healthy σ mutes escape only when joint margin is also healthy.
-        # A pinned arm with σ still above 0.08 must be allowed to recruit rail.
+            v_reach = soft_saturate(v_reach, cap)
+        # Demoted: healthy σ (raw ≥ 0.08) never lets escape drive the rail
+        # unless a press stall still needs a lateral Y offset.
         healthy_sigma = (
             sigma_raw is not None
             and float(sigma_raw) >= float(self.cfg.healthy_sigma_mute)
         )
-        mfrac_healthy = float(joint_margin_frac) >= float(self.cfg.margin_escape_exit)
         use_limiters = bool(stroke_limiters)
         in_band = self._rail_in_limit_band(y) if use_limiters else False
         self.last_in_limit_band = bool(in_band)
@@ -730,7 +703,7 @@ class RailExtensionTask:
         elif in_band and not allow_press_escape:
             self._clear_escape_latch()
             v_escape = 0.0
-        elif healthy_sigma and mfrac_healthy and not allow_press_escape:
+        elif healthy_sigma and not allow_press_escape:
             self._escape_active = False
             v_escape = 0.0
         elif self._escape_active:
@@ -788,12 +761,6 @@ class RailExtensionTask:
         v_total = v_primary + v_escape
         budget = self.cfg.reach_budget_m_s()
         v = float(np.clip(v_total, -budget, budget))
-        tau = (
-            float(self.cfg.v_lpf_tau_escape_s)
-            if self._escape_active
-            else float(self.cfg.v_lpf_tau_s)
-        )
-        v = self._macro_lpf(v, dt_s=dt_s, tau_s=tau)
         if use_limiters:
             lim = self._limit_saturation(y, v)
         else:
@@ -804,7 +771,7 @@ class RailExtensionTask:
         span_ff = max(float(self.cfg.v_ff_span_m_s), 1e-6)
         # v_ff_thr_m_s is the ff_owns ownership test, not a weight dead
         # zone: subtracting it zeroed w_ff for the whole 0.67 s Y turn.
-        w_ff = float(self.cfg.w_max) * _smoothstep01(abs(v_ff) / span_ff)
+        w_ff = float(self.cfg.w_max) * smoothstep01(abs(v_ff_att) / span_ff)
         w_sigma = float(self.cfg.w_sigma_floor) * (1.0 - sig)
         w = (w_reach + w_ff + w_sigma) * lim
         sig_boost = 1.0 + float(self.cfg.k_sigma_boost) * (1.0 - sig)
@@ -817,12 +784,9 @@ class RailExtensionTask:
         w = min(w, float(self.cfg.w_ext_cap))
         self.last_err_m = float(err)
         self.last_weight = w
-        self.last_v_ff = float(v_ff)
+        self.last_v_ff = float(v_ff_att)
         self.last_v_escape = float(v_escape)
         self.last_v_reach = float(v_reach)
-        self.last_margin_escape_active = bool(
-            self._escape_active and healthy_sigma and not mfrac_healthy
-        )
         return v, w
 
     def __call__(
@@ -843,6 +807,8 @@ class RailExtensionTask:
         block_escape: bool = False,
         unload_sign: float = 0.0,
         operator_idle: bool = False,
+        hold_setpoint: bool = False,
+        jacobian: np.ndarray | None = None,
     ) -> tuple[float, float]:
         """Return ``(v_rail_des, w_ext)`` for the QP."""
         if not self.cfg.enabled:
@@ -880,4 +846,6 @@ class RailExtensionTask:
             block_escape=block_escape,
             unload_sign=unload_sign,
             operator_idle=operator_idle,
+            hold_setpoint=hold_setpoint,
+            jacobian=jacobian,
         )

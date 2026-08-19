@@ -312,6 +312,21 @@ def test_wall_clock_idle_publishes_q_send_without_lead_chase() -> None:
     assert abs(walked - 0.40) < 0.020
 
 
+def test_wall_clock_idle_still_clamps_far_command() -> None:
+    """Stationary publish must clamp meas±lead (0.28 m idle skip is gone)."""
+    parked = _wall_clock_rail_target(
+        0.70,
+        0.0,
+        0.0065,
+        0.005,
+        soft_lo=0.025,
+        soft_hi=0.78,
+        meas_m=0.40,
+        lead_max_m=0.020,
+    )
+    assert parked == pytest.approx(0.42)
+
+
 def test_arm_and_rail_integrate_on_wall_dt() -> None:
     dt = 0.005
     dt_wall = 0.010
@@ -379,7 +394,7 @@ def test_lead_clamp_does_not_invent_qdot_above_vmax() -> None:
     """QP velocity box keeps ``qdot`` inside ``v_max``; publish clamp holds 20 mm.
 
     Post-solve ``q_cmd`` is no longer lead-clamped.  The remaining bound is
-    ``_wall_clock_rail_target`` and only engages while the rail is moving.
+    ``_wall_clock_rail_target``, including idle ticks.
     """
     controller = _controller()
     q_meas = Q_SAFE.copy()

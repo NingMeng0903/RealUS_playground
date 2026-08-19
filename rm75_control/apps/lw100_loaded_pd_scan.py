@@ -499,7 +499,7 @@ def run_trial(
     # Park at center after each trial (keeps load away from ends).
     try:
         move_and_hold(bridge, center_m, tol_mm=2.0, timeout_s=15.0, poll_hz=poll_hz)
-        bridge.hold_or_settle_after_task(settle_if_err_mm=2.0)
+        bridge.hold_or_settle_after_task()
     except Exception as exc:
         print(f"  park warn: {exc}", flush=True)
     return rows, panic

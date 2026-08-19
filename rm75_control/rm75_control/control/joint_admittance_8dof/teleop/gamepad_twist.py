@@ -52,6 +52,7 @@ class GamepadTwistConfig:
     hold_deadband_rad: float = 0.005
     hold_settle_v_m_s: float = 0.005
     hold_relatch_on_settle: bool = True
+    trigger_deadzone: float = 0.08
 
 
 def apply_deadzone(value: float, deadzone: float) -> float:
@@ -63,9 +64,15 @@ def apply_deadzone(value: float, deadzone: float) -> float:
     return float(np.copysign(scaled, value))
 
 
-def normalize_trigger(raw: float) -> float:
-    """Linux Xbox trigger rests at −1; map to [0, 1]."""
-    return float(np.clip((float(raw) + 1.0) * 0.5, 0.0, 1.0))
+def normalize_trigger(raw: float, deadzone: float = 0.08) -> float:
+    """Linux Xbox trigger rests at −1; map to [0, 1] with a rest deadzone."""
+    u = float(np.clip((float(raw) + 1.0) * 0.5, 0.0, 1.0))
+    dz = float(deadzone)
+    if dz <= 0.0:
+        return u
+    if dz >= 1.0 or u <= dz:
+        return 0.0
+    return (u - dz) / (1.0 - dz)
 
 
 def _cap_vec(vec: np.ndarray, limit: float) -> np.ndarray:
@@ -91,8 +98,8 @@ def map_pad_to_world_lin_tool_ang(
     ly = apply_deadzone(float(axes[1]), cfg.deadzone)
     rx = apply_deadzone(float(axes[3]), cfg.deadzone)
     ry = apply_deadzone(float(axes[4]), cfg.deadzone)
-    lt = normalize_trigger(float(axes[2]))
-    rt = normalize_trigger(float(axes[5]))
+    lt = normalize_trigger(float(axes[2]), cfg.trigger_deadzone)
+    rt = normalize_trigger(float(axes[5]), cfg.trigger_deadzone)
     lb = 1.0 if state.button(XBOX_BUTTON_LB) else 0.0
     rb = 1.0 if state.button(XBOX_BUTTON_RB) else 0.0
 

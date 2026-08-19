@@ -38,6 +38,46 @@ from pathlib import Path
 # Shared idle / park / stream-stationary threshold (m/s).  Do not scatter
 # 1 mm/s literals — they used to gate catch-up and park independently.
 RAIL_IDLE_EPS_M_S = 1.0e-3
+# Consecutive agreeing samples needed to re-anchor after a rejected leap.
+RESTITCH_REANCHOR_POLLS = 3
+RESTITCH_MARGIN_SCALE = 0.5
+
+
+def encoder_jump_limit_m(
+    v_max_m_s: float,
+    gap_s: float,
+    jump_margin_m: float,
+    *,
+    restitch: bool = False,
+    restitch_margin_scale: float = RESTITCH_MARGIN_SCALE,
+) -> float:
+    """Time-aware encoder jump limit.  Restitch only tightens the margin.
+
+    A GIL stall of a few hundred milliseconds can move the carriage by
+    ``v_max * gap``.  Collapsing the limit to a fixed millimetre margin
+    after ``_link_restitch`` rejects that real motion and never recovers.
+    """
+
+    margin = max(float(jump_margin_m), 0.0)
+    if restitch:
+        margin *= max(float(restitch_margin_scale), 0.0)
+    return max(float(v_max_m_s), 0.0) * max(float(gap_s), 0.0) + margin
+
+
+def samples_agree_for_reanchor(
+    latest_m: float,
+    previous_m: float,
+    *,
+    v_max_m_s: float,
+    dt_s: float,
+    agree_floor_m: float = 0.001,
+) -> bool:
+    """True when two restitch candidates differ by at most ``v_max·dt``."""
+
+    if not (math.isfinite(float(latest_m)) and math.isfinite(float(previous_m))):
+        return False
+    lim = max(float(agree_floor_m), max(float(v_max_m_s), 0.0) * max(float(dt_s), 0.0))
+    return abs(float(latest_m) - float(previous_m)) <= lim
 
 from rm75_control.hw.lw100.drive import (
     LW100Drive,
@@ -45,6 +85,9 @@ from rm75_control.hw.lw100.drive import (
     di_limits_pressed_from_mask,
 )
 from rm75_control.hw.lw100.modbus_rtu_tcp import ModbusRtuError
+from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
+    wall_cap,
+)
 from rm75_control.hw.lw100.rail_calibration import (
     COMMS_FAIL_MSG,
     FRAME_UNKNOWN_MSG,
@@ -133,7 +176,6 @@ class RailServoConfig:
     # Encoder-noise hysteresis for same-sign brake detection (m/s).
     decel_request_margin_m_s: float = 0.005
     # Live v_ff: position is a slow trim so PD cannot outrun FA40.
-    vel_ff_kp: float = 4.0
     vel_ff_p_trim_m_s: float = 0.010
     match_drive_accel: bool = True
     # Skip FA24 writes smaller than this (r/min) while moving.  12 ≈ 2 mm/s.
@@ -145,8 +187,12 @@ class RailServoConfig:
     standstill_enter_mm: float = 0.05
     standstill_exit_mm: float = 0.25
     standstill_dwell_s: float = 0.08
-    # Soft-end taper distance (m) when the goal is also near that end.
-    approach_m: float = 0.008
+    # Soft-end braking band (m).  Envelope is one-sided and anchors at soft
+    # limits; this is a speed-limit margin, not a travel cut.
+    approach_m: float = 0.040
+    # Measurement + comms + accept.  Do not include FA41 (already in a_max).
+    wall_reaction_s: float = 0.06
+    vel_kd_max_m_s: float = 0.005
     # FA24 nonzero without a fresh encoder this long → hard kill.
     latch_watch_s: float = 0.12
     target_timeout_s: float = 0.10  # stale age before the stream is "old"
@@ -317,10 +363,6 @@ class RailExecutionFeedback:
         return float(self.sample_age_s)
 
     @property
-    def timestamp_mono_s(self) -> float:
-        return float(self.sample_mono_s)
-
-    @property
     def fresh(self) -> bool:
         return bool(
             bool(self.valid)
@@ -484,7 +526,6 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         catch_k=float(hw.get("catch_k", 5.0)),
         catch_frac=float(hw.get("catch_frac", 0.3)),
         decel_request_margin_m_s=float(hw.get("decel_request_margin_m_s", 0.005)),
-        vel_ff_kp=float(hw.get("vel_ff_kp", 4.0)),
         vel_ff_p_trim_m_s=float(hw.get("vel_ff_p_trim_m_s", 0.010)),
         match_drive_accel=bool(hw.get("match_drive_accel", True)),
         fa24_rpm_deadband=max(0, int(hw.get("fa24_rpm_deadband", 12))),
@@ -492,7 +533,13 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         standstill_enter_mm=standstill_enter_mm,
         standstill_exit_mm=standstill_exit_mm,
         standstill_dwell_s=standstill_dwell_s,
-        approach_m=float(hw.get("approach_m", 0.008)),
+        approach_m=float(hw.get("approach_m", 0.040)),
+        wall_reaction_s=float(
+            ((raw.get("inner") or {}).get("rail_allocator") or {}).get(
+                "reaction_s", 0.06
+            )
+        ),
+        vel_kd_max_m_s=float(hw.get("vel_kd_max_m_s", 0.005)),
         latch_watch_s=float(hw.get("latch_watch_s", 0.12)),
         target_timeout_s=float(hw.get("target_timeout_s", 0.10)),
         target_stale_coast_s=float(hw.get("target_stale_coast_s", 0.35)),
@@ -732,6 +779,8 @@ class RailServoBridge:
         self._speed_cap_rpm: int | None = None
         self._panic = False
         self._panic_reason = ""
+        self._wall_override_count = 0
+        self._wall_override_last = False
         self._abort = threading.Event()
         self._last_target_rx_mono = 0.0
         self._target_history: deque[tuple[float, float]] = deque(maxlen=64)
@@ -761,6 +810,9 @@ class RailServoBridge:
         # True after TCP was torn (emergency_zero): next samples are restitch,
         # so leaps vs last-sane are rejected without touching calibration.
         self._link_restitch = False
+        self._restitch_x_m = float("nan")
+        self._restitch_v_m_s = float("nan")
+        self._restitch_mono = 0.0
         if config.log_csv:
             self.enable_log_csv(str(config.log_csv))
 
@@ -858,21 +910,6 @@ class RailServoBridge:
         return self._rpm_to_mps(rpm)
 
     @property
-    def measured_seq(self) -> int:
-        """Increments on each successful motion poll (detect stale host samples)."""
-        with self._lock:
-            return int(self._measured_seq)
-
-    def motion_snapshot(self) -> tuple[float, int, int]:
-        """Return ``(measured_m, speed_rpm_host, seq)`` under one lock."""
-        with self._lock:
-            return (
-                float(self._measured_m),
-                int(self._measured_speed_rpm),
-                int(self._measured_seq),
-            )
-
-    @property
     def servo_sample(self) -> RailServoSample:
         """Latest worker-aligned goal/reference/feedback/control sample."""
         with self._lock:
@@ -906,12 +943,21 @@ class RailServoBridge:
             return bool(self._calibrated)
 
     def _soft_lo_hi(self) -> tuple[float, float]:
-        """Command box is the hard travel; 30/755 is only the full-speed edge."""
+        """Command snap box is the hard travel."""
         lo = float(self.config.hard_min_m)
         hi = float(self.config.hard_max_m)
         if hi <= lo:
             return 0.005, min(0.78, float(self.config.travel_m))
         return lo, hi
+
+    def _envelope_lo_hi(self) -> tuple[float, float]:
+        """Braking-envelope anchors: host soft limits."""
+        lo = float(self.config.soft_min_m)
+        hi = float(self.config.soft_max_m)
+        hard_lo, hard_hi = self._soft_lo_hi()
+        if hi <= lo:
+            return hard_lo, hard_hi
+        return max(lo, hard_lo), min(hi, hard_hi)
 
     def set_velocity_gains(
         self,
@@ -1004,10 +1050,6 @@ class RailServoBridge:
                 armed=bool(sample.armed),
                 panic=bool(sample.panic),
             )
-
-    @property
-    def rail_execution_feedback(self) -> RailExecutionFeedback:
-        return self.execution_feedback
 
     def set_target_m(
         self,
@@ -1117,16 +1159,8 @@ class RailServoBridge:
             self._last_hold_drift_log_mono = 0.0
         self.kill_motion()
 
-    def hold_or_settle_after_task(self, *, settle_if_err_mm: float = 2.0) -> bool:
-        """Task-end: always snap-hold (FA24=0). Never re-open follow.
-
-        Run 125211: a 10.7 mm residual called ``settle_and_hold``, which
-        re-enabled follow and hit 900 r/min / 8 mm overshoot.  Then host
-        thought FA24=0 while the carriage crept 31 mm.  A 10 mm leftover
-        is not worth that.  ``settle_if_err_mm`` is accepted and ignored
-        so older call sites keep working.
-        """
-        del settle_if_err_mm
+    def hold_or_settle_after_task(self) -> bool:
+        """Task-end: always snap-hold (FA24=0). Never re-open follow."""
         if not self.enabled or self._drive is None:
             return True
         with self._lock:
@@ -2059,6 +2093,12 @@ class RailServoBridge:
             age = time.monotonic() - float(self._last_enc_ok_mono)
             if age <= dark_s:
                 continue
+            with self._lock:
+                self._restitch_x_m = float(self._measured_m)
+                self._restitch_v_m_s = self._rpm_to_mps(
+                    float(self._measured_speed_rpm)
+                )
+                self._restitch_mono = time.monotonic()
             self._latch_kill_req.set()
             self._link_restitch = True
             try:
@@ -2291,22 +2331,6 @@ class RailServoBridge:
         return x_new, v_new, a_new
 
     @staticmethod
-    def _p_trim_velocity(
-        err_x_m: float,
-        *,
-        kp: float,
-        trim_max_m_s: float,
-    ) -> float:
-        """Capped P on ``x_ref − x_meas`` (never ``x_goal``).
-
-        Shared by coupled-velocity and any later position+FF stream.  The cap
-        keeps the trim from outrunning feedforward.
-        """
-        kp = max(float(kp), 0.0)
-        cap = max(float(trim_max_m_s), 0.0)
-        return max(-cap, min(cap, kp * float(err_x_m)))
-
-    @staticmethod
     def _step_velocity_reference(
         x_ref: float,
         v_ref: float,
@@ -2508,6 +2532,7 @@ class RailServoBridge:
         idle_jump_m = float("nan")
         last_status_t = time.monotonic()
         last_enc_ok_t = time.monotonic()
+        last_accepted_enc_t = last_enc_ok_t
         verbose = bool(self.config.verbose)
         # Cap PD/slew dt so a stalled poll cannot blow kd·de or fake a freeze.
         dt_cap = max(3.0 * period, 0.05)
@@ -2526,7 +2551,6 @@ class RailServoBridge:
         standstill_held = False
         standstill_enter_since: float | None = None
         last_bias = int(getattr(self._drive, "_counts_bias", 0) or 0)
-        last_di_mask = 0
         next_t = time.monotonic()
         di_streak = 0
         enc_history: deque[tuple[float, float]] = deque(maxlen=8)
@@ -2553,6 +2577,7 @@ class RailServoBridge:
                 ref_inited = False
                 standstill_held = False
                 standstill_enter_since = None
+                last_accepted_enc_t = time.monotonic()
                 enc_history.clear()
                 poll_period_history.clear()
                 v_enc_hold = float("nan")
@@ -2620,15 +2645,7 @@ class RailServoBridge:
                     hard_hold_this_tick = True
 
                 t_read0 = time.monotonic()
-                limit_every = max(1, int(self.config.limit_poll_every))
-                poll_di = (self._limit_poll_i % limit_every) == 0
-                self._limit_poll_i += 1
-                if poll_di:
-                    drive_rpm, drive_m, di_mask = self._drive.read_motion_and_di_fast()
-                    last_di_mask = int(di_mask)
-                else:
-                    drive_rpm, drive_m = self._drive.read_motion_fast()
-                    di_mask = int(last_di_mask)
+                drive_rpm, drive_m, di_mask = self._drive.read_motion_and_di_fast()
                 t_read1 = time.monotonic()
                 t_read_ms = (t_read1 - t_read0) * 1000.0
                 n_modbus = 1
@@ -2638,6 +2655,8 @@ class RailServoBridge:
                 motion_sample_mono = 0.5 * (t_read0 + t_read1)
                 measured = self._encode_rail_m(drive_m)
                 speed_rpm_host = self._encode_speed_rpm(drive_rpm)
+                # Any successful Modbus read proves the encoder feed is not
+                # dark.  Jump acceptance uses last_accepted_enc_t instead.
                 last_enc_ok_t = motion_sample_mono
                 self._last_enc_ok_mono = motion_sample_mono
                 encoder_sample_ns = (
@@ -2681,34 +2700,42 @@ class RailServoBridge:
                         and self._encoder_sane(last_sane)
                         and calibrated
                     ):
-                        gap_s = max(float(dt_wall), max(0.0, t0 - last_enc_ok_t))
-                        jump_lim = v_max * gap_s + jump_margin_m
-                        # After a TCP restitch, allow only continuity with the
-                        # last sane pose (not "physical motion while blind").
-                        if self._link_restitch:
-                            jump_lim = jump_margin_m
+                        gap_s = max(
+                            float(dt_wall),
+                            max(0.0, float(motion_sample_mono) - last_accepted_enc_t),
+                        )
+                        jump_lim = encoder_jump_limit_m(
+                            v_max,
+                            gap_s,
+                            jump_margin_m,
+                            restitch=bool(self._link_restitch),
+                        )
                         jump = abs(measured - last_sane)
                         if jump > jump_lim:
                             raw_jump = float(measured)
-                            same_idle = (
-                                not follow
-                                and math.isfinite(idle_jump_m)
-                                and abs(raw_jump - idle_jump_m) <= 0.001
+                            same_idle = samples_agree_for_reanchor(
+                                raw_jump,
+                                idle_jump_m,
+                                v_max_m_s=v_max,
+                                dt_s=float(dt_wall),
                             )
-                            if not follow:
-                                idle_jump_n = idle_jump_n + 1 if same_idle else 1
-                                idle_jump_m = raw_jump
-                            else:
-                                idle_jump_n = 0
-                                idle_jump_m = float("nan")
-                            # HOLD / hot-wait: a stable new pose means last_sane
-                            # is the stale frame (reconnect / torn read), not a
-                            # physical leap.  Re-anchor after 3 agreeing polls.
-                            if not follow and idle_jump_n >= 3:
+                            idle_jump_n = idle_jump_n + 1 if same_idle else 1
+                            idle_jump_m = raw_jump
+                            fa24_zero = abs(int(last_rpm)) <= 0
+                            v_quiet = abs(float(v_ref)) < RAIL_IDLE_EPS_M_S
+                            # Live follow used to block re-anchor forever after
+                            # a restitch reject.  FA24=0 + agreeing samples is
+                            # enough; leftover v_ref after emergency_zero is
+                            # ignored while restitch is still latched.
+                            can_reanchor = fa24_zero and (
+                                v_quiet or bool(self._link_restitch)
+                            )
+                            if can_reanchor and idle_jump_n >= RESTITCH_REANCHOR_POLLS:
                                 jump_soft_streak = 0
                                 idle_jump_n = 0
                                 idle_jump_m = float("nan")
                                 self._link_restitch = False
+                                last_accepted_enc_t = motion_sample_mono
                                 self._publish_motion(
                                     raw_jump,
                                     speed_rpm_host,
@@ -2724,6 +2751,7 @@ class RailServoBridge:
                                 )
                                 hard_hold_this_tick = True
                                 encoder_accepted = False
+                                v_ref = 0.0
                                 if jump >= jump_hard_m or jump_soft_streak >= jump_soft_streak_panic:
                                     # Pose stream untrusted for this session; do not
                                     # DISARM or erase the home zero.
@@ -2735,6 +2763,7 @@ class RailServoBridge:
                             idle_jump_m = float("nan")
                             if self._link_restitch:
                                 self._link_restitch = False
+                            last_accepted_enc_t = motion_sample_mono
                             self._publish_motion(
                                 measured,
                                 speed_rpm_host,
@@ -2742,6 +2771,7 @@ class RailServoBridge:
                             )
                     else:
                         jump_soft_streak = 0
+                        last_accepted_enc_t = motion_sample_mono
                         self._publish_motion(
                             measured,
                             speed_rpm_host,
@@ -2808,7 +2838,7 @@ class RailServoBridge:
                         di_streak += 1
                     else:
                         di_streak = 0
-                    if di_streak >= 3:
+                    if di_streak >= max(1, int(self.config.di_debounce_n)):
                         which = []
                         if di3_p:
                             which.append("DI3")
@@ -3094,7 +3124,7 @@ class RailServoBridge:
                                 a_max=a_ref_max,
                                 x_goal=x_goal_eval,
                                 catch_v_max=float(self.config.catch_v_max_m_s),
-                                k_catch=float(self.config.catch_k),
+                                k_catch=0.0,
                                 catch_frac=float(self.config.catch_frac),
                                 x_min=soft_lo,
                                 x_max=soft_hi,
@@ -3160,8 +3190,17 @@ class RailServoBridge:
                         if trim > 0.0:
                             v_p_allow = min(v_p_allow, trim)
                     v_p = max(-v_p_allow, min(v_p_allow, v_p))
+                    if velocity_coupled and abs(v_ref) > 1.0e-3:
+                        # Motion: L1 owns position.  Standstill latch keeps P.
+                        v_p = 0.0
                     brake_margin = float(self.config.decel_request_margin_m_s)
                     v_d = kd * err_v
+                    if velocity_coupled:
+                        v_d = 0.0
+                    else:
+                        d_cap = max(float(self.config.vel_kd_max_m_s), 0.0)
+                        if d_cap > 0.0:
+                            v_d = max(-d_cap, min(d_cap, v_d))
                     v_raw = v_ref + v_p + v_d
                     if velocity_coupled:
                         v_raw = self._clamp_zero_target_brake(
@@ -3228,11 +3267,6 @@ class RailServoBridge:
                     v_des = max(-v_max, min(v_max, v_raw))
                     if settling:
                         v_des = max(-settle_v, min(settle_v, v_des))
-                    # Soft ends: only when *goal* is also near that end.
-                    if x_goal <= approach_m and measured < approach_m and v_des < 0.0:
-                        v_des *= max(0.0, measured / approach_m)
-                    if x_goal >= travel - approach_m and measured > travel - approach_m and v_des > 0.0:
-                        v_des *= max(0.0, (travel - measured) / approach_m)
                     if measured <= 0.0 and v_des < 0.0:
                         v_des = 0.0
                     if measured >= travel and v_des > 0.0:
@@ -3250,6 +3284,23 @@ class RailServoBridge:
 
                     dv_max = a_ref_max * dt
                     v_cmd = max(prev_v_cmd - dv_max, min(prev_v_cmd + dv_max, v_des))
+                    env_lo, env_hi = self._envelope_lo_hi()
+                    lo_cap, hi_cap = wall_cap(
+                        measured,
+                        lo=env_lo,
+                        hi=env_hi,
+                        a_max=float(a_ref_max),
+                        reaction_s=float(self.config.wall_reaction_s),
+                    )
+                    v_env = max(lo_cap, min(hi_cap, v_cmd))
+                    if abs(v_env - v_cmd) > 1.0e-9:
+                        self._wall_override_count = (
+                            int(getattr(self, "_wall_override_count", 0)) + 1
+                        )
+                        self._wall_override_last = True
+                    else:
+                        self._wall_override_last = False
+                    v_cmd = v_env
                     a_cmd = (v_cmd - prev_v_cmd) / max(dt, 1.0e-6)
                     if standstill_held:
                         # Instant freeze — do not coast down through stiction hum.

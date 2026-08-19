@@ -14,17 +14,13 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from rm75_control.control.joint_admittance_8dof.filters import smoothstep01
 from rm75_control.control.joint_admittance_8dof.solver.sigma_setbased import (
     PrefInequalityRows,
 )
 
 # Pref-slack layout: 0=sigma, 1=branch, 2..8=J1..J7.
 COMFORT_SLACK0 = 2
-
-
-def _smoothstep01(x: float) -> float:
-    x = float(np.clip(x, 0.0, 1.0))
-    return x * x * (3.0 - 2.0 * x)
 
 
 @dataclass
@@ -79,7 +75,7 @@ class JointComfortBuilder:
             margin = min(d_hi, d_lo)
             min_m = min(min_m, margin)
             h = margin - m_c
-            w = _smoothstep01((act - margin) / band)
+            w = smoothstep01((act - margin) / band)
             if w <= 1.0e-6:
                 continue
             jac = np.zeros(nv, dtype=float)

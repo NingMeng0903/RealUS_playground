@@ -71,22 +71,6 @@ def test_skipped_distance_result_cannot_be_reused_as_active_or_closest() -> None
     assert any(i in previous for i in collision.skipped_pair_indices)
 
 
-def test_cbf_build_uses_activation_broadphase() -> None:
-    from rm75_control.control.joint_admittance_8dof.collision_model import (
-        CollisionConfig,
-    )
-    from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import (
-        build_cbf_rows,
-    )
-
-    kin, collision = _collision()
-    q = np.zeros(kin.nq, dtype=float)
-    collision.update(q)
-    n_full = collision.distance_query_count
-    build_cbf_rows(collision, kin, q, CollisionConfig(enabled=True, d_activate=0.04))
-    assert collision.distance_query_count < n_full
-
-
 def test_default_update_remains_full_narrow_phase() -> None:
     kin, collision = _collision()
     collision.update(np.zeros(kin.nq, dtype=float))

@@ -213,15 +213,10 @@ class PsiRetargetConfig:
     w_wrist: float = 0.5
     # Reject a (d, ψ) cell if any arm joint is closer than this to a stop.
     margin_floor_rad: float = 15.0 * np.pi / 180.0
-    # Kept for yaml compatibility.  step() never replans; 0 is the contract.
-    z_replan_m: float = 0.0
     # Used only when ψ* changes (new scan segment).  No LPF on top.
     psi_rate_rad_s: float = 25.0 * np.pi / 180.0
     # Unplanned d* is a band around the design split, not a chasing point.
     d_center_rate_m_s: float = 0.02
-    d_band_m: float = 0.08
-    # Retired: unplanned step no longer gates d* on ψ error.
-    d_slew_psi_err_rad: float = 40.0 * np.pi / 180.0
     # Do not let ψ_cmd run more than this ahead of live ψ.
     psi_cmd_lead_rad: float = 18.0 * np.pi / 180.0
     # Design family (side-lying).  Unplanned homotopy and plan_stroke.

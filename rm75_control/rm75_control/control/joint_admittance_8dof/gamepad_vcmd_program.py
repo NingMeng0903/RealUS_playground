@@ -17,7 +17,10 @@ from rm75_control.control.joint_admittance_8dof.api import (
 )
 from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
 from rm75_control.control.joint_admittance_8dof.loop import JointIkController, Phase
-from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
+from rm75_control.control.joint_admittance_8dof.model import (
+    RobotKinematics,
+    shared_robot_kinematics,
+)
 from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
     GamepadTwistConfig,
     GamepadTwistOuterLoop,
@@ -59,7 +62,7 @@ def build_gamepad_vcmd_program(
     pad: Any | None = None,
 ) -> BuiltGamepadVcmdProgram:
     raw = raw if raw is not None else load_yaml(params.config_path)
-    kin = RobotKinematics()
+    kin = shared_robot_kinematics()
     maybe_sync_kin_tcp_from_config(
         kin,
         raw,
@@ -143,6 +146,7 @@ def build_gamepad_vcmd_program(
         hold_relatch_on_settle=bool(
             getattr(params, "gamepad_hold_relatch_on_settle", True)
         ),
+        trigger_deadzone=float(getattr(params, "gamepad_trigger_deadzone", 0.08)),
     )
     outer = GamepadTwistOuterLoop(pad, twist_cfg)
 

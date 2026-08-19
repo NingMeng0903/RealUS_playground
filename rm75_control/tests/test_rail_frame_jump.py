@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from rm75_control.control.joint_admittance_8dof.hw.rail_servo import (
     RailServoBridge,
     RailServoConfig,
+    encoder_jump_limit_m,
     parse_rail_servo_config,
+    samples_agree_for_reanchor,
 )
 from rm75_control.hw.lw100.rail_calibration import (
     RailCalibration,
@@ -27,6 +31,25 @@ def _cal() -> RailCalibration:
         soft_min_m=0.01,
         soft_max_m=0.78,
     )
+
+
+def test_restitch_jump_limit_keeps_time_dimension():
+    """A 270 ms stall at 0.12 m/s must still accept an 11 mm physical move."""
+    gap_s = 0.270
+    v_max = 0.12
+    margin = 0.003
+    live = encoder_jump_limit_m(v_max, gap_s, margin, restitch=False)
+    restitch = encoder_jump_limit_m(v_max, gap_s, margin, restitch=True)
+    assert live == pytest.approx(v_max * gap_s + margin)
+    assert restitch == pytest.approx(v_max * gap_s + 0.5 * margin)
+    assert restitch > 0.011
+    # Fixed 3 mm restitch cap is the death loop this replaces.
+    assert restitch > margin
+
+
+def test_reanchor_agreement_uses_vmax_dt():
+    assert samples_agree_for_reanchor(0.400, 0.401, v_max_m_s=0.12, dt_s=0.02)
+    assert not samples_agree_for_reanchor(0.400, 0.420, v_max_m_s=0.12, dt_s=0.02)
 
 
 def test_idle_stable_jump_is_a_stale_frame_not_a_leap():

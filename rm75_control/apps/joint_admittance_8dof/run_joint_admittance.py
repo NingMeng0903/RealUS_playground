@@ -66,12 +66,14 @@ def load_yaml(path: Path) -> dict:
         return yaml.safe_load(f) or {}
 
 
-def _reload_task_parsers():
-    """Re-import yaml parsers so a long-lived window A picks up new keys.
+_PARSER_MTIMES: dict[str, float] = {}
 
-    Each START already re-reads the yaml file.  Without this, an old
-    ``_reject_unknown`` still running from daemon start refuses the task
-    (``box_activate_rad`` on tasks #4–#6).
+
+def _reload_task_parsers():
+    """Re-import yaml parsers only when their source files change.
+
+    Each START already re-reads the yaml file.  Reloading ~12 modules on
+    every START was the dominant window-A delay; skip it when mtimes match.
     """
     from rm75_control.control.joint_admittance_8dof.solver import (
         branch_barrier,
@@ -90,18 +92,31 @@ def _reload_task_parsers():
     from rm75_control.control.joint_admittance_8dof import sin_tool_y_program as syp
     from rm75_control.control.joint_admittance_8dof.teleop import xbox_pad
 
-    importlib.reload(branch_barrier)
-    importlib.reload(joint_comfort)
-    importlib.reload(sigma_setbased)
-    importlib.reload(psi_retarget)
-    importlib.reload(rail_extension)
-    importlib.reload(ik_config)
-    importlib.reload(ja_ref)
-    importlib.reload(ja_api)
-    importlib.reload(xbox_pad)
-    importlib.reload(gvp)
-    importlib.reload(syp)
-    importlib.reload(etp)
+    modules = (
+        branch_barrier,
+        joint_comfort,
+        sigma_setbased,
+        psi_retarget,
+        rail_extension,
+        ik_config,
+        ja_ref,
+        ja_api,
+        xbox_pad,
+        gvp,
+        syp,
+        etp,
+    )
+    current: dict[str, float] = {}
+    for mod in modules:
+        path = getattr(mod, "__file__", None)
+        current[mod.__name__] = Path(path).stat().st_mtime if path else 0.0
+    need_reload = bool(_PARSER_MTIMES) and any(
+        _PARSER_MTIMES.get(name) != mtime for name, mtime in current.items()
+    )
+    if need_reload:
+        for mod in modules:
+            importlib.reload(mod)
+    _PARSER_MTIMES.update(current)
     return gvp, syp, etp
 
 
@@ -301,7 +316,7 @@ def _run_controller_service(
                     if stop or rail_bridge._abort.is_set():
                         rail_bridge.estop()
                     else:
-                        rail_bridge.hold_or_settle_after_task(settle_if_err_mm=2.0)
+                        rail_bridge.hold_or_settle_after_task()
                 except Exception:
                     try:
                         rail_bridge.estop()

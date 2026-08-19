@@ -273,10 +273,7 @@ def _apply_replay_ablations(
 ) -> None:
     """Mutate a loaded JointIkConfig for offline fs/4 ablations."""
 
-    if enable_step_clamp:
-        cfg.post_qp_step_clamp = True
-    if disable_step_clamp:
-        cfg.post_qp_step_clamp = False
+    del enable_step_clamp, disable_step_clamp
     if disable_jerk_box:
         cfg.qp.j_max_arm_rad_s3 = 0.0
         cfg.qp.j_max_rail_m_s3 = 0.0
@@ -405,6 +402,10 @@ def _controller_row(
         "rail_v_reach_m_s": float(getattr(step, "v_reach", 0.0)),
         "rail_v_escape_m_s": float(getattr(step, "v_escape", 0.0)),
         "rail_v_ff_m_s": float(getattr(step, "v_ff_rail", 0.0)),
+        "slack_norm": float(getattr(step, "slack_norm", 0.0)),
+        "slack_zero_feasible": int(bool(getattr(step, "slack_zero_feasible", False))),
+        "u_alloc": float(getattr(step, "u_alloc", float("nan"))),
+        "v_r_ref": float(getattr(step, "v_r_ref", float("nan"))),
         "rail_measured_contribution_json": _json_value(measured_rail_contrib),
         "arm_contribution_json": _json_value(arm_contrib),
         "tcp_achieved_json": _json_value(measured_rail_contrib + arm_contrib),
@@ -529,6 +530,10 @@ def _controller_row_free_running(
         "rail_v_reach_m_s": float(getattr(step, "v_reach", 0.0)),
         "rail_v_escape_m_s": float(getattr(step, "v_escape", 0.0)),
         "rail_v_ff_m_s": float(getattr(step, "v_ff_rail", 0.0)),
+        "slack_norm": float(getattr(step, "slack_norm", 0.0)),
+        "slack_zero_feasible": int(bool(getattr(step, "slack_zero_feasible", False))),
+        "u_alloc": float(getattr(step, "u_alloc", float("nan"))),
+        "v_r_ref": float(getattr(step, "v_r_ref", float("nan"))),
         "rail_measured_contribution_json": _json_value(measured_rail_contrib),
         "arm_contribution_json": _json_value(arm_contrib),
         "tcp_achieved_json": _json_value(measured_rail_contrib + arm_contrib),
@@ -579,6 +584,49 @@ def _percentiles(values: Iterable[float]) -> dict[str, float]:
     }
 
 
+def _summarize_slack_probe(rows: list[Mapping[str, Any]]) -> dict[str, Any]:
+    """Bucket 'slack present but δ=0 still feasible' by twist type."""
+
+    n = len(rows)
+    if n == 0:
+        return {"rows": 0}
+    emerged = 0
+    buckets = {"rot": 0, "trans": 0, "mixed": 0, "idle": 0}
+    emerged_buckets = {"rot": 0, "trans": 0, "mixed": 0, "idle": 0}
+    slacks: list[float] = []
+    for row in rows:
+        slack = float(row.get("slack_norm", 0.0) or 0.0)
+        slacks.append(slack)
+        vx = abs(float(row.get("v_cmd_vx", 0.0) or 0.0))
+        vy = abs(float(row.get("v_cmd_vy", 0.0) or 0.0))
+        vz = abs(float(row.get("v_cmd_vz", 0.0) or 0.0))
+        wx = abs(float(row.get("v_cmd_wx", 0.0) or 0.0))
+        wy = abs(float(row.get("v_cmd_wy", 0.0) or 0.0))
+        wz = abs(float(row.get("v_cmd_wz", 0.0) or 0.0))
+        lin = vx + vy + vz
+        rot = wx + wy + wz
+        if lin < 1.0e-4 and rot < 1.0e-4:
+            kind = "idle"
+        elif lin < 1.0e-4:
+            kind = "rot"
+        elif rot < 1.0e-4:
+            kind = "trans"
+        else:
+            kind = "mixed"
+        buckets[kind] += 1
+        if slack > 1.0e-4 and bool(int(row.get("slack_zero_feasible", 0))):
+            emerged += 1
+            emerged_buckets[kind] += 1
+    return {
+        "rows": n,
+        "emerged_count": emerged,
+        "emerged_fraction": float(emerged / n),
+        "slack_norm": _percentiles(slacks),
+        "bucket_counts": buckets,
+        "emerged_bucket_counts": emerged_buckets,
+    }
+
+
 def summarize_replay_rows(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     """Build a JSON-serializable aggregate from replay output rows."""
 
@@ -616,6 +664,7 @@ def summarize_replay_rows(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
         "rail_command_m_s": _percentiles(
             float(row["rail_command_m_s"]) for row in rows_list
         ),
+        "slack_probe": _summarize_slack_probe(rows_list),
         "rail_measurement_sources": dict(
             sorted(Counter(str(row["rail_measurement_source"]) for row in rows_list).items())
         ),
@@ -905,7 +954,7 @@ def replay_csv(
     summary["stride"] = int(stride)
     summary["max_rows"] = None if max_rows is None else int(max_rows)
     summary["cbf_enabled"] = not bool(disable_cbf)
-    summary["post_qp_step_clamp"] = bool(getattr(cfg, "post_qp_step_clamp", True))
+    summary["post_qp_step_clamp"] = True
     summary["jerk_box_enabled"] = bool(
         float(getattr(cfg.qp, "j_max_arm_rad_s3", 0.0) or 0.0) > 0.0
     )

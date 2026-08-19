@@ -6,18 +6,6 @@ Usage (after a hardware run)::
     python apps/joint_admittance_8dof/analyze_qpik_quality.py \\
         apps/logs/sin_tool_y/run_YYYYMMDD_HHMMSS.csv
 
-Rail poll-hz probe (same ellipse, only ``hw.lw100.poll_hz`` changed)::
-
-    python apps/joint_admittance_8dof/analyze_qpik_quality.py \\
-        apps/logs/ellipse_track/run_POLL60.csv --poll-hz 60
-    python apps/joint_admittance_8dof/analyze_qpik_quality.py \\
-        apps/logs/ellipse_track/run_POLL37.csv --poll-hz 37
-    python apps/joint_admittance_8dof/analyze_qpik_quality.py \\
-        apps/logs/ellipse_track/run_POLL100.csv --poll-hz 100
-
-If ``follows_poll_hz`` is true on 37 and 100, the 60 Hz line is the rail
-feedback path.  If the peak stays near 60 Hz, it is a structural mode.
-
 First fixture: 30 cm peak-to-peak.  Promote to 60 cm only after all gates pass.
 """
 
@@ -420,191 +408,6 @@ def _ab_band_and_flips(rows: list[dict]) -> tuple[float, float]:
     p_band = float(np.mean(finite)) if finite else float("nan")
     flip_rate = float(flips) / dur if dur > 0.0 else float("nan")
     return p_band, flip_rate
-
-
-def evaluate_poll_hz_probe(
-    rows: list[dict],
-    *,
-    poll_hz: float,
-    band_hz: float = 4.0,
-) -> dict:
-    """Peak q_cmd accel frequency vs rail poll_hz (J2/J3/J5/J6)."""
-
-    t_ns = _col(rows, "arm_send_mono_ns")
-    if not np.isfinite(t_ns).any():
-        t_ns = _col(rows, "t_wall_s") * 1.0e9
-    t = t_ns * 1.0e-9
-    peaks: list[float] = []
-    freqs = np.linspace(20.0, 120.0, 201)
-    q_json = [_parse_json_vec(row.get("q_cmd_json", "")) for row in rows]
-    for j in (2, 3, 5, 6):
-        q = _col(rows, f"q_cmd_{j}")
-        if int(np.isfinite(q).sum()) < 64:
-            q = np.array(
-                [
-                    float(vec[j]) if vec.size > j else float("nan")
-                    for vec in q_json
-                ],
-                dtype=float,
-            )
-        ok = np.isfinite(t) & np.isfinite(q)
-        if int(ok.sum()) < 64:
-            continue
-        tt = t[ok]
-        qq = q[ok]
-        dtt = np.diff(tt)
-        if dtt.size < 8 or not np.any(dtt > 0.0):
-            continue
-        qd = np.diff(qq) / np.maximum(dtt, 1.0e-9)
-        tm = 0.5 * (tt[1:] + tt[:-1])
-        acc = np.diff(qd) / np.maximum(np.diff(tm), 1.0e-9)
-        ta = 0.5 * (tm[1:] + tm[:-1])
-        p = lomb_scargle_power(ta, acc, freqs)
-        if np.isfinite(p).any():
-            peaks.append(float(freqs[int(np.nanargmax(p))]))
-    peak = float(np.median(peaks)) if peaks else float("nan")
-    follows = bool(
-        np.isfinite(peak) and abs(peak - float(poll_hz)) <= float(band_hz)
-    )
-    return {
-        "poll_hz": float(poll_hz),
-        "peak_hz": peak,
-        "joint_peaks_hz": peaks,
-        "follows_poll_hz": follows,
-        "verdict": "rail_feedback" if follows else "not_rail_poll",
-    }
-
-
-def identify_rail_task_alpha(
-    rows: list[dict],
-    *,
-    dt_s: float = 1.0 / 60.0,
-    step_min_m_s: float = 0.02,
-    move_eps_m_s: float = 0.003,
-) -> dict:
-    """Fit a first-order tau from FA24/v_cmd to measured rail velocity.
-
-    Prefer a least-squares lag on moving ticks (ellipse has no large steps).
-    Fall back to 63% rise-time on command steps.  ``alpha = 1-exp(-dt/tau)``
-    is the per-sample execution rate at the 5 ms control period.
-    """
-
-    cmd = _col(rows, "v_cmd_m_s")
-    if not np.isfinite(cmd).any():
-        cmd = _col(rows, "v_cmd")
-    meas = _col(rows, "v_enc_m_s")
-    if not np.isfinite(meas).any():
-        meas = _col(rows, "v_meas")
-        if not np.isfinite(meas).any():
-            meas = _col(rows, "v_reg_m_s")
-    if cmd.size < 16 or meas.size != cmd.size:
-        return {"tau_s": float("nan"), "alpha_5ms": float("nan"), "n_samples": 0}
-
-    u = cmd[:-1]
-    y = meas[:-1]
-    yp = meas[1:]
-    err = u - y
-    dy = yp - y
-    moving = (
-        np.isfinite(err)
-        & np.isfinite(dy)
-        & (np.abs(u) >= float(move_eps_m_s))
-    )
-    n_move = int(np.count_nonzero(moving))
-    tau_ls = float("nan")
-    if n_move >= 32:
-        ee = float(np.dot(err[moving], err[moving]))
-        if ee > 1.0e-12:
-            gain = float(np.dot(err[moving], dy[moving]) / ee)
-            if 1.0e-4 < gain < 0.95:
-                tau_ls = float(dt_s) / gain
-
-    dcmd = np.diff(cmd)
-    step_idx = np.flatnonzero(np.abs(dcmd) >= float(step_min_m_s))
-    taus: list[float] = []
-    for i in step_idx:
-        u0 = float(cmd[i])
-        u1 = float(cmd[i + 1])
-        y0 = float(meas[i])
-        if not np.isfinite(u0 + u1 + y0):
-            continue
-        window = meas[i + 1 : min(i + 1 + 24, meas.size)]
-        if window.size < 4:
-            continue
-        target = y0 + 0.632 * (u1 - y0)
-        hit = None
-        for k, yk in enumerate(window, start=1):
-            if not np.isfinite(yk):
-                continue
-            if (u1 - y0) * (yk - target) >= 0.0:
-                hit = k
-                break
-        if hit is None:
-            continue
-        tau = float(hit) * float(dt_s)
-        if 0.005 <= tau <= 0.40:
-            taus.append(tau)
-    tau_s = tau_ls if np.isfinite(tau_ls) else (
-        float(np.median(taus)) if taus else float("nan")
-    )
-    if not np.isfinite(tau_s):
-        return {"tau_s": float("nan"), "alpha_5ms": float("nan"), "n_samples": n_move}
-    alpha = 1.0 - math.exp(-0.005 / tau_s)
-    return {
-        "tau_s": float(tau_s),
-        "alpha_5ms": float(alpha),
-        "n_samples": n_move,
-        "n_steps": int(len(taus)),
-        "tau_ls_s": float(tau_ls) if np.isfinite(tau_ls) else float("nan"),
-        "tau_step_s": float(np.median(taus)) if taus else float("nan"),
-    }
-
-
-MORNING_TRANS_JERK_RMS = 434.0
-
-
-def evaluate_gamepad_jerk_bisect(
-    rows: list[dict],
-    *,
-    morning_jerk_rms: float = MORNING_TRANS_JERK_RMS,
-) -> dict:
-    """Translation-only arm jerk RMS vs the 022056 morning baseline."""
-
-    pad_v = np.sqrt(
-        np.square(_col(rows, "pad_vx"))
-        + np.square(_col(rows, "pad_vy"))
-        + np.square(_col(rows, "pad_vz"))
-    )
-    pad_w = np.sqrt(
-        np.square(_col(rows, "pad_wx"))
-        + np.square(_col(rows, "pad_wy"))
-        + np.square(_col(rows, "pad_wz"))
-    )
-    trans = (pad_v > 1.0e-3) & (pad_w <= 1.0e-3)
-    q = np.column_stack([_col(rows, f"q_cmd_{i}") for i in range(1, 8)])
-    t = _col(rows, "t_wall_s")
-    if q.size == 0 or t.size < 8:
-        return {"jerk_rms": float("nan"), "need_bisect": True, "n": 0}
-    dt = np.diff(t)
-    dt = np.where(np.isfinite(dt) & (dt > 1.0e-4), dt, 0.005)
-    vel = np.diff(q, axis=0) / dt[:, None]
-    acc = np.diff(vel, axis=0) / dt[1:, None]
-    jerk = np.diff(acc, axis=0) / dt[2:, None]
-    mask = trans[3:]
-    if mask.size > jerk.shape[0]:
-        mask = mask[: jerk.shape[0]]
-    else:
-        jerk = jerk[: mask.size]
-    used = jerk[mask]
-    if used.size < 16:
-        return {"jerk_rms": float("nan"), "need_bisect": True, "n": int(used.size)}
-    rms = float(np.sqrt(np.mean(np.square(used))))
-    return {
-        "jerk_rms": rms,
-        "morning_jerk_rms": float(morning_jerk_rms),
-        "need_bisect": bool(rms > float(morning_jerk_rms) * 1.10),
-        "n": int(used.shape[0]),
-    }
 
 
 def evaluate_post_qp_ab(
@@ -2093,22 +1896,6 @@ def main() -> int:
         metavar=("TRUE1", "FALSE", "TRUE2"),
         help="Score post-QP clamp A/B from three full CSVs (True→False→True).",
     )
-    ap.add_argument(
-        "--poll-hz",
-        type=float,
-        default=None,
-        help="Score whether q_cmd accel peaks follow this rail poll_hz.",
-    )
-    ap.add_argument(
-        "--ident-rail-alpha",
-        action="store_true",
-        help="Fit rail_task_alpha from a rail servo CSV.",
-    )
-    ap.add_argument(
-        "--gamepad-jerk-bisect",
-        action="store_true",
-        help="Compare translation jerk RMS against the 022056 morning baseline.",
-    )
     args = ap.parse_args()
     if args.ab_clamp is not None:
         report = evaluate_post_qp_ab(
@@ -2127,18 +1914,6 @@ def main() -> int:
         return 0 if report.get("verdict") in {"amplifier", "unchanged"} else 1
     if args.csv is None:
         ap.error("csv is required unless --ab-clamp is given")
-    if args.poll_hz is not None:
-        report = evaluate_poll_hz_probe(_load_csv_rows(args.csv), poll_hz=args.poll_hz)
-        print(json.dumps(report, indent=2, ensure_ascii=True))
-        return 0
-    if args.ident_rail_alpha:
-        report = identify_rail_task_alpha(_load_csv_rows(args.csv))
-        print(json.dumps(report, indent=2, ensure_ascii=True))
-        return 0
-    if args.gamepad_jerk_bisect:
-        report = evaluate_gamepad_jerk_bisect(_load_csv_rows(args.csv))
-        print(json.dumps(report, indent=2, ensure_ascii=True))
-        return 0 if not report.get("need_bisect") else 1
     return analyze(args.csv)
 
 

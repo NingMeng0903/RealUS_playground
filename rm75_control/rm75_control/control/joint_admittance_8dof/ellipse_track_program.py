@@ -19,7 +19,10 @@ from rm75_control.control.joint_admittance_8dof.api import (
 )
 from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
 from rm75_control.control.joint_admittance_8dof.loop import JointIkController
-from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
+from rm75_control.control.joint_admittance_8dof.model import (
+    RobotKinematics,
+    shared_robot_kinematics,
+)
 from rm75_control.control.joint_admittance_8dof.reference import EllipseToolXYReference
 from rm75_control.control.joint_admittance_8dof.wbc_arm import WbcArm
 from rm75_control.force.compensation.tool_pose import maybe_sync_kin_tcp_from_config
@@ -46,7 +49,7 @@ def build_ellipse_track_program(
     raw: dict | None = None,
 ) -> BuiltEllipseTrackProgram:
     raw = raw if raw is not None else load_yaml(params.config_path)
-    kin = RobotKinematics()
+    kin = shared_robot_kinematics()
     maybe_sync_kin_tcp_from_config(
         kin,
         raw,

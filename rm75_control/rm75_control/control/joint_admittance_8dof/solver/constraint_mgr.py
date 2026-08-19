@@ -12,19 +12,6 @@ from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import Cb
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 
 
-class VelocityBoxInfeasible(RuntimeError):
-    """The physical per-joint velocity intervals have an empty intersection."""
-
-    def __init__(self, stage: str, indices: np.ndarray, lo: np.ndarray, hi: np.ndarray):
-        joints = ",".join(str(int(index)) for index in np.asarray(indices).reshape(-1))
-        super().__init__(
-            f"velocity viability conflict at {stage}; joints=[{joints}], "
-            f"lo={np.asarray(lo)[indices].tolist()}, hi={np.asarray(hi)[indices].tolist()}"
-        )
-        self.stage = str(stage)
-        self.indices = tuple(int(index) for index in np.asarray(indices).reshape(-1))
-
-
 def collapse_interval(
     lo: np.ndarray,
     hi: np.ndarray,
@@ -70,20 +57,6 @@ def collapse_interval(
     return lo, hi
 
 
-def _validate_interval(
-    lo: np.ndarray,
-    hi: np.ndarray,
-    stage: str,
-    *,
-    qdot_prev: np.ndarray | None = None,
-    a_max: np.ndarray | None = None,
-    dt: float | None = None,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Never raises: empty intersections collapse to a feasible brake."""
-    del stage
-    return collapse_interval(lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt)
-
-
 def stopping_velocity(distance: np.ndarray, acceleration: np.ndarray, reaction_s: float) -> np.ndarray:
     """Maximum speed toward a limit while retaining delayed braking viability."""
 
@@ -93,13 +66,28 @@ def stopping_velocity(distance: np.ndarray, acceleration: np.ndarray, reaction_s
     return np.sqrt(np.square(a * reaction) + 2.0 * a * d) - a * reaction
 
 
+def wall_cap(
+    x: float,
+    *,
+    lo: float,
+    hi: float,
+    a_max: float,
+    reaction_s: float,
+) -> tuple[float, float]:
+    """One-sided speed limits toward each wall.  Never produces a restoring push."""
+
+    v_out_lo = float(stopping_velocity(float(x) - float(lo), float(a_max), float(reaction_s)))
+    v_out_hi = float(stopping_velocity(float(hi) - float(x), float(a_max), float(reaction_s)))
+    return -v_out_lo, +v_out_hi
+
+
 class VelocityBoxConstraints:
     def __init__(
         self,
         limits: SafetyLimits,
         *,
         damper_band_rad: float | np.ndarray = 0.15,
-        rail_reaction_s: float = 0.15,
+        rail_reaction_s: float = 0.06,
     ) -> None:
         self.lim = limits
         # Faverjon/Tournassoud velocity-damper influence zone before each
@@ -196,28 +184,56 @@ class VelocityBoxConstraints:
 
         m = np.broadcast_to(np.asarray(m, dtype=float), q.shape)
         a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
+        # Soft-limit braking envelope for the rail.  The linear damper above
+        # is a leftover Faverjon cone; this is the actual stop-before-wall
+        # bound.  Soft edges sit one damper-band inside the hard box.
+        if a_max is not None and float(self.rail_reaction_s) > 0.0:
+            b0 = float(np.broadcast_to(self.damper_band_rad, q.shape)[0])
+            m0 = float(m[0])
+            soft_lo = float(lim.q_lower[0]) + m0 + max(b0, 0.0)
+            soft_hi = float(lim.q_upper[0]) - m0 - max(b0, 0.0)
+            if soft_hi > soft_lo:
+                lo_cap, hi_cap = wall_cap(
+                    float(q[0]),
+                    lo=soft_lo,
+                    hi=soft_hi,
+                    a_max=float(a_max[0]),
+                    reaction_s=float(self.rail_reaction_s),
+                )
+                # Leading command state must also stop in time.
+                lo_hi, hi_hi = wall_cap(
+                    q_rail_hi,
+                    lo=soft_lo,
+                    hi=soft_hi,
+                    a_max=float(a_max[0]),
+                    reaction_s=float(self.rail_reaction_s),
+                )
+                lo_lo, hi_lo = wall_cap(
+                    q_rail_lo,
+                    lo=soft_lo,
+                    hi=soft_hi,
+                    a_max=float(a_max[0]),
+                    reaction_s=float(self.rail_reaction_s),
+                )
+                hi[0] = min(float(hi[0]), hi_cap, hi_hi, hi_lo)
+                lo[0] = max(float(lo[0]), lo_cap, lo_hi, lo_lo)
 
         p_lo = (lim.q_lower + m - q) / dt
         p_hi = (lim.q_upper - m - q) / dt
-        # Rail hard box uses the leading state (command or meas).  A lagging
-        # encoder must not keep the outbound door open after q_cmd has
-        # already reached 5/780.  Past the wall, kill into-wall only;
-        # leave stays open (no reverse kick of Δq/dt).
+        # Rail hard box: past 5/780, one-tick look-ahead would require
+        # returning by Δq/dt in a single period (reverse kick / chatter).
+        # Kill into-wall only; leave stays open.
         rail_lo = float(lim.q_lower[0] + m[0])
         rail_hi = float(lim.q_upper[0] - m[0])
-        p_lo[0] = (rail_lo - q_rail_lo) / dt
-        p_hi[0] = (rail_hi - q_rail_hi) / dt
-        if q_rail_lo < rail_lo:
+        if q[0] < rail_lo:
             p_lo[0] = min(float(p_lo[0]), 0.0)
-        if q_rail_hi > rail_hi:
+        if q[0] > rail_hi:
             p_hi[0] = max(float(p_hi[0]), 0.0)
         lo = np.maximum(lo, p_lo)
         hi = np.minimum(hi, p_hi)
         lo, hi = collapse_interval(
             lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
         )
-        rail_lo_cap = float(lo[0])
-        rail_hi_cap = float(hi[0])
 
         if a_max is not None and qdot_prev is not None:
             qdot_prev = np.asarray(qdot_prev, dtype=float)
@@ -253,22 +269,6 @@ class VelocityBoxConstraints:
                 lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
             )
 
-        # Accel/jerk must not reopen an outbound rail door the damper or
-        # one-tick box already closed.  Cruise into the last centimetres
-        # otherwise keeps ~vmax and the carriage hits the limit DI.
-        if dt > 0.0:
-            remain_hi = rail_hi - q_rail_hi
-            remain_lo = q_rail_lo - rail_lo
-            out_cap = 0.0 if remain_hi <= 0.0 else remain_hi / dt
-            in_cap = 0.0 if remain_lo <= 0.0 else -remain_lo / dt
-            hi[0] = min(float(hi[0]), float(rail_hi_cap), out_cap)
-            lo[0] = max(float(lo[0]), float(rail_lo_cap), in_cap)
-            if lo[0] > hi[0]:
-                if qdot_prev is not None and float(qdot_prev[0]) >= 0.0:
-                    lo[0] = hi[0]
-                else:
-                    hi[0] = lo[0]
-
         # Command lead is an anti-windup envelope, not a physical joint limit.
         # Start braking before |q_cmd-q_meas| reaches ``resync_err``.  If stale
         # tracking has already left too little distance for the acceleration
@@ -297,8 +297,11 @@ class VelocityBoxConstraints:
                     toward_hi = lim.v_max * np.clip((re - lead) / band, 0.0, 1.0)
                     toward_lo = -lim.v_max * np.clip((re + lead) / band, 0.0, 1.0)
                 else:
-                    toward_hi = stopping_velocity(re - lead, a_max, dt)
-                    toward_lo = -stopping_velocity(re + lead, a_max, dt)
+                    reaction = np.full(q.shape, float(dt), dtype=float)
+                    if float(self.rail_reaction_s) > 0.0:
+                        reaction[0] = float(self.rail_reaction_s)
+                    toward_hi = stopping_velocity(re - lead, a_max, reaction)
+                    toward_lo = -stopping_velocity(re + lead, a_max, reaction)
 
                 candidate_hi = np.minimum(hi, toward_hi)
                 candidate_lo = np.maximum(lo, toward_lo)
@@ -415,7 +418,6 @@ def build_wbc_inequalities(
 
 __all__ = [
     "VelocityBoxConstraints",
-    "VelocityBoxInfeasible",
     "build_wbc_inequalities",
     "collapse_interval",
     "stopping_velocity",

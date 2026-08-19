@@ -21,7 +21,8 @@ class HoldReference:
     def __init__(self) -> None:
         self._pose0: np.ndarray | None = None
 
-    def set_origin(self, pose0: np.ndarray) -> None:
+    def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
+        del t_s
         self._pose0 = np.asarray(pose0, dtype=float).copy()
 
     def sample(self, t_s: float) -> MotionReference:
@@ -82,9 +83,9 @@ class JointSmoothMoveReference:
         self.q_target = np.asarray(q_target_rad, dtype=float).copy()
         self.duration_s = float(duration_s)
 
-    def set_origin(self, pose0: np.ndarray) -> None:
+    def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
         # q_start already anchors this reference; pose0 is implied by FK(q_start).
-        del pose0
+        del pose0, t_s
 
     def sample_q(self, t_s: float) -> tuple[np.ndarray, np.ndarray]:
         """Joint-space (q_ref(t), qdot_ff(t)) for Phase.qdot_ff_provider."""
@@ -282,8 +283,8 @@ class SrsSmoothMoveReference:
         s, _ = smoothstep_scalar(t_s, self.duration_s)
         return float(self.psi_start + s * self.psi_delta)
 
-    def set_origin(self, pose0: np.ndarray) -> None:
-        del pose0  # q_start anchors this reference
+    def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
+        del pose0, t_s  # q_start anchors this reference
 
     def done(self, t_s: float) -> bool:
         return t_s >= self.duration_s

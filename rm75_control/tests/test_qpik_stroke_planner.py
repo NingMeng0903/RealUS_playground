@@ -200,7 +200,7 @@ def test_step_does_not_replan_when_z_moves() -> None:
     kin = RobotKinematics()
     rt = PostureRetarget(
         kin,
-        PsiRetargetConfig(enabled=True, n_y=3, n_d=3, n_psi=3, z_replan_m=0.03),
+        PsiRetargetConfig(enabled=True, n_y=3, n_d=3, n_psi=3),
     )
     rt.reset(_SEED_Q)
     y_c = float(kin.fk_placement(_SEED_Q).translation[1])
@@ -415,7 +415,7 @@ def test_v_reach_alive_with_5mm_d_band() -> None:
     task._v_lpf = 0.0
     task._v_lpf_initialized = False
     task(q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_on + 0.080, apply_d_band=True)
-    assert abs(task.last_v_reach) == pytest.approx(0.05, abs=1.0e-9)
+    assert 0.040 < abs(task.last_v_reach) <= 0.05 + 1.0e-12
 
 
 def test_rail_ff_tracks_desired_y_minus_d_star() -> None:
@@ -453,9 +453,9 @@ def test_stroke_limiters_only_when_planned() -> None:
         kin,
         RailExtensionConfig(
             enabled=True,
-            k_ext=0.0,
+            k_ext=5.0,
             k_esc=0.0,
-            k_ff=1.0,
+            k_ff=0.0,
             e0_m=0.0,
             e1_m=0.01,
             v_ff_thr_m_s=0.005,
@@ -471,16 +471,15 @@ def test_stroke_limiters_only_when_planned() -> None:
     )
     task.set_mode("reach")
     q = _SEED_Q.copy()
-    q[0] = 0.70
-    task.set_d_pref(float(kin.fk_placement(q).translation[1]) - float(q[0]))
-    vel_ff = np.array([0.0, 0.08, 0.0, 0.0, 0.0, 0.0])
+    q[0] = 0.75
+    y_des = float(kin.fk_placement(q).translation[1]) + 0.08
     v_open, _ = task(
-        q, sigma_scale=1.0, vel_ff=vel_ff, dt_s=DT, stroke_limiters=False
+        q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_des, stroke_limiters=False
     )
     task._v_lpf = 0.0
     task._v_lpf_initialized = False
     v_fade, _ = task(
-        q, sigma_scale=1.0, vel_ff=vel_ff, dt_s=DT, stroke_limiters=True
+        q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_des, stroke_limiters=True
     )
     assert v_open > 0.05
     assert v_fade < v_open
@@ -488,16 +487,16 @@ def test_stroke_limiters_only_when_planned() -> None:
     assert not task.last_limit_saturated or v_fade < 0.02
 
     q[0] = 0.74
-    task.set_d_pref(float(kin.fk_placement(q).translation[1]) - float(q[0]))
+    y_leave = float(kin.fk_placement(q).translation[1]) + 0.08
     task._v_lpf = 0.0
     task._v_lpf_initialized = False
     v_leave_open, _ = task(
-        q, sigma_scale=1.0, vel_ff=vel_ff, dt_s=DT, stroke_limiters=False
+        q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_leave, stroke_limiters=False
     )
     task._v_lpf = 0.0
     task._v_lpf_initialized = False
     v_leave_scan, _ = task(
-        q, sigma_scale=1.0, vel_ff=vel_ff, dt_s=DT, stroke_limiters=True
+        q, sigma_scale=1.0, dt_s=DT, y_tcp_d=y_leave, stroke_limiters=True
     )
     assert v_leave_open > 0.04
     assert v_leave_scan == pytest.approx(0.0, abs=1e-4)
@@ -519,57 +518,6 @@ def _wln_core() -> tuple[QpIkController, SafetyLimits]:
     cfg = QpConfig()
     cfg.collision.enabled = False
     return QpIkController(kin, lim, cfg), lim
-
-
-def test_wln_prices_the_rail_only_toward_its_stop() -> None:
-    """band_rail_m=0: rail WLN stays 1 toward a stop, away, and mid-stroke."""
-    core, lim = _wln_core()
-    nv = core.kin.nv
-    q_mid = 0.5 * (lim.q_lower + lim.q_upper)
-
-    q_near = q_mid.copy()
-    q_near[0] = lim.q_lower[0] + 0.04
-    toward = np.zeros(nv)
-    toward[0] = -0.05
-    assert core._wln_reg_scale(q_near, toward)[0] == pytest.approx(1.0)
-
-    away = np.zeros(nv)
-    away[0] = +0.05
-    core._wln_scale_prev[:] = 1.0
-    assert core._wln_reg_scale(q_near, away)[0] == pytest.approx(1.0)
-
-    core._wln_scale_prev[:] = 1.0
-    assert core._wln_reg_scale(q_mid, toward)[0] == pytest.approx(1.0)
-
-
-def test_wln_scale_does_not_jump_on_reverse() -> None:
-    """Rail WLN is off, so a sign flip is a no-op on rail reg."""
-    core, lim = _wln_core()
-    nv = core.kin.nv
-    q_mid = 0.5 * (lim.q_lower + lim.q_upper)
-    q_near = q_mid.copy()
-    q_near[0] = lim.q_lower[0] + 0.04
-    toward = np.zeros(nv)
-    toward[0] = -0.05
-    away = np.zeros(nv)
-    away[0] = +0.05
-    core._wln_scale_prev[:] = 1.0
-    s0 = float(core._wln_reg_scale(q_near, toward)[0])
-    s1 = float(core._wln_reg_scale(q_near, away)[0])
-    assert s0 == pytest.approx(1.0)
-    assert s1 == pytest.approx(1.0)
-
-
-def test_wln_never_touches_arm_joints() -> None:
-    """J4 sits inside any useful band most of a scan; pricing it buys slack."""
-    core, lim = _wln_core()
-    nv = core.kin.nv
-    for joint in range(1, nv):
-        q = 0.5 * (lim.q_lower + lim.q_upper)
-        q[joint] = lim.q_upper[joint] - 0.002  # 0.1 deg off the stop
-        qdot = np.zeros(nv)
-        qdot[joint] = +0.5  # driving straight at it
-        assert core._wln_reg_scale(q, qdot)[joint] == pytest.approx(1.0)
 
 
 def test_barrier_press_cap_has_a_floor_in_contact() -> None:
@@ -719,19 +667,6 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.qp.branch_barrier.dwell_free_s == pytest.approx(0.3)
     assert cfg.qp.branch_barrier.dwell_ramp_s == pytest.approx(1.0)
     assert cfg.qp.branch_barrier.dwell_scale_max == pytest.approx(5.0)
-    assert cfg.saturation.slack_enter == pytest.approx(0.03)
-    assert cfg.saturation.slack_exit == pytest.approx(0.015)
-    assert cfg.saturation.dwell_s == pytest.approx(0.15)
-    assert cfg.saturation.rail_margin_m == pytest.approx(0.010)
-    assert cfg.saturation.branch_margin_rad == pytest.approx(0.035)
-    assert cfg.saturation.secondary_scale == pytest.approx(0.15)
-    assert cfg.saturation.secondary_scale_tau_s == pytest.approx(0.10)
-    assert cfg.saturation.crawl_floor == pytest.approx(0.05)
-    assert cfg.saturation.freeze_timeout_s == pytest.approx(9.0)
-    assert cfg.saturation.stall_improve_mm == pytest.approx(1.0)
-    assert cfg.qp.rail_task_alpha == pytest.approx(0.07)
-    assert cfg.manipulability.qdot_tau_s == pytest.approx(0.05)
-    assert cfg.manipulability.grad_period_ticks == 10
     assert cfg.qp.aniso_task_damping is True
     assert not hasattr(cfg.qp, "wln")
     assert not hasattr(cfg.qp, "sns_retry_scales")
@@ -751,7 +686,7 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.rail_extension.press_dz_max_m == pytest.approx(0.002)
     assert cfg.rail_extension.press_y_err_m == pytest.approx(0.005)
     assert cfg.rail_extension.press_stall_s == pytest.approx(0.5)
-    assert cfg.psi_retarget.z_replan_m == pytest.approx(0.0)
+    assert not hasattr(cfg.psi_retarget, "z_replan_m")
     assert cfg.psi_retarget.d_center_rate_m_s == pytest.approx(0.02)
     assert cfg.psi_retarget.psi_cmd_lead_rad == pytest.approx(np.deg2rad(18.0))
     assert cfg.psi_retarget.psi_attr_rad == pytest.approx(np.deg2rad(68.0))
@@ -759,7 +694,7 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.psi_retarget.psi_envelope_lo_rad == pytest.approx(np.deg2rad(40.0))
     assert cfg.psi_retarget.psi_envelope_hi_rad == pytest.approx(np.deg2rad(110.0))
     assert cfg.rail_extension.escape_sign_policy == "minus"
-    assert cfg.psi_retarget.d_band_m == pytest.approx(0.08)
+    assert not hasattr(cfg.psi_retarget, "d_band_m")
     assert cfg.psi_retarget.psi_replan_period_s == pytest.approx(0.1)
     assert cfg.arm_angle.k_psi == pytest.approx(1.5)
     assert cfg.nullspace.weights[1] == pytest.approx(1.0)
@@ -859,6 +794,11 @@ def test_wbc_log_header_has_rail_cmd_meas_err() -> None:
     assert "rail_posture_err_m" in header
     assert "rail_track_err_m" not in header
     for name in (
+        "qpik_nullspace_centering_norm",
+        "qpik_nullspace_manip_norm",
+        "qpik_nullspace_arm_angle_norm",
+        "qpik_nullspace_damping_norm",
+        "qpik_nullspace_rail_lock_norm",
         "post_qp_step_clamp_enabled",
         "post_step_would_clamp",
         "post_step_clamp_applied",
@@ -880,22 +820,6 @@ def test_wbc_log_header_has_rail_cmd_meas_err() -> None:
         "rail_fa24_write_mono_ns",
         "rail_encoder_sample_mono_ns",
         "arm_qdot_target_wall_json",
-        "physical_saturated",
-        "sat_near_arm",
-        "sat_near_rail",
-        "sat_near_branch",
-        "sat_slack_over",
-        "sat_secondary_scale",
-        "rail_task_alpha",
-        "rail_margin_escape_active",
-        "governor_freeze_s",
-        "pad_twist_slewed",
-        "governor_scale_raw",
-        "qpik_nullspace_centering_norm",
-        "qpik_nullspace_manip_norm",
-        "qpik_nullspace_arm_angle_norm",
-        "qpik_nullspace_damping_norm",
-        "qpik_nullspace_rail_lock_norm",
     ):
         assert name in header
     assert len(header) == len(set(header))
@@ -1077,16 +1001,6 @@ def test_analyzer_jerk_metric_ignores_loop_period_jitter(tmp_path) -> None:
     assert "[PASS]" in line, line
 
 
-def test_wln_still_prices_rail_on_the_stop() -> None:
-    """band_rail_m=0: sitting on the stop does not raise rail WLN."""
-    core, lim = _wln_core()
-    q = 0.5 * (lim.q_lower + lim.q_upper)
-    q[0] = lim.q_lower[0]
-    toward = np.zeros(core.kin.nv)
-    toward[0] = -0.05
-    assert float(core._wln_reg_scale(q, toward)[0]) == pytest.approx(1.0)
-
-
 def test_keep_task_weight_skips_sigma_scale() -> None:
     core, _lim = _wln_core()
     q = np.zeros(8)
@@ -1136,7 +1050,7 @@ def test_rail_sat_is_not_workspace_saturation() -> None:
 
 
 def test_rail_soft_min_is_one_way() -> None:
-    """30 mm is the full-speed edge; one-way into-wall block is at hard 5 mm."""
+    """Soft min is the into-wall zero of the braking envelope; leave stays open."""
     from pathlib import Path
 
     import yaml
@@ -1159,7 +1073,7 @@ def test_rail_soft_min_is_one_way() -> None:
     q = _SEED_Q.copy()
     q[0] = float(cfg.rail.soft_min_m)
     lo_soft, hi_soft = inner.core.constraints.bounds(q, cfg.dt, qdot_prev=None)
-    assert float(lo_soft[0]) < 0.0
+    assert float(lo_soft[0]) == pytest.approx(0.0, abs=1e-9)
     assert float(hi_soft[0]) > 1.0e-4
 
     q[0] = float(cfg.rail.hard_min_m)
@@ -1197,7 +1111,7 @@ def test_rail_does_not_pin_in_fade_band_only() -> None:
     step = inner.update(np.zeros(6), dt=cfg.dt, q_meas=q, pose_d=pose_d)
     assert inner.rail_ext_task is not None
     assert inner.rail_ext_task._rail_in_limit_band(0.10)
-    assert not inner.rail_ext_task._rail_in_pin_band(0.10)
+    assert not inner.rail_ext_task._rail_end_blocks(0.10, -1.0)
     assert not step.rail_sat
 
 
@@ -1240,6 +1154,74 @@ def test_plus_leave_band_does_not_freeze_rail() -> None:
     assert inner.rail_ext_task._in_plus_leave(0.75)
     assert not step.rail_sat
     assert float(step.qdot[0]) < -1.0e-4
+
+
+def test_allocation_leave_band_uses_measured_rail() -> None:
+    """Command in the plus leave band must not park a mid-stroke encoder."""
+    from pathlib import Path
+
+    import yaml
+
+    from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
+    from rm75_control.control.joint_admittance_8dof.loop import JointIkController
+
+    raw = yaml.safe_load(
+        Path(__file__).resolve().parents[1]
+        .joinpath("configs", "joint_admittance_8dof.yaml")
+        .read_text(encoding="utf-8")
+    )
+    cfg = build_joint_ik_config(raw)
+    cfg.collision.enabled = False
+    cfg.qp.collision.enabled = False
+    cfg.ird.enabled = False
+    cfg.qp.joint_comfort.enabled = False
+    kin = RobotKinematics()
+    inner = JointIkController(kin, cfg)
+    q_meas = _SEED_Q.copy()
+    q_meas[0] = 0.40
+    inner.reset(q_meas)
+    inner.q_cmd[0] = 0.75
+    if inner.posture_retarget is not None:
+        inner.posture_retarget._planned = True
+    toward = np.zeros(6)
+    toward[1] = 0.05
+    step = inner.update(toward, dt=cfg.dt, q_meas=q_meas, vel_ff=toward)
+    assert inner.rail_ext_task is not None
+    assert inner.rail_ext_task._in_plus_leave(0.75)
+    assert not inner.rail_ext_task._in_plus_leave(0.40)
+    assert float(inner.last_v_r_ref) > 1.0e-4 or float(step.qdot[0]) > 1.0e-4
+
+    q_leave = q_meas.copy()
+    q_leave[0] = 0.75
+    inner.reset(q_leave)
+    inner.q_cmd[0] = 0.40
+    if inner.posture_retarget is not None:
+        inner.posture_retarget._planned = True
+    parked = inner.update(toward, dt=cfg.dt, q_meas=q_leave, vel_ff=toward)
+    assert inner.rail_ext_task._in_plus_leave(float(q_leave[0]))
+    assert float(inner.last_v_r_ref) <= 1.0e-4
+    assert float(parked.rail_task_vel) == pytest.approx(0.0, abs=1.0e-4)
+
+
+def test_retired_inner_keys_are_rejected() -> None:
+    from pathlib import Path
+
+    import yaml
+
+    from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
+
+    raw = yaml.safe_load(
+        Path(__file__).resolve().parents[1]
+        .joinpath("configs", "joint_admittance_8dof.yaml")
+        .read_text(encoding="utf-8")
+    )
+    raw["inner"]["post_qp_step_clamp"] = True
+    with pytest.raises(ValueError, match="post_qp_step_clamp"):
+        build_joint_ik_config(raw)
+    raw["inner"].pop("post_qp_step_clamp")
+    raw["inner"]["qp"]["slack_probe"] = True
+    with pytest.raises(ValueError, match="slack_probe"):
+        build_joint_ik_config(raw)
 
 
 def test_d_star_nudge_stays_inside_soft_travel() -> None:

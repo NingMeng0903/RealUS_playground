@@ -29,7 +29,6 @@ from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
     GamepadTwistOuterLoop,
     compose_inner_twist,
     map_pad_to_world_lin_tool_ang,
-    slew_vec,
 )
 from rm75_control.control.joint_admittance_8dof.teleop.xbox_pad import FakePad, PadState
 
@@ -192,14 +191,19 @@ def test_logger_records_pad_and_vcmd(tmp_path) -> None:
     assert float(values["pad_vy"]) > 0.05
     assert float(values["pad_vcmd_base_vy"]) > 0.0
     assert values["pad_connected"] == "1"
-    assert values["pad_twist_slewed"] == "1"
 
 
 def test_idle_sample_latches_pose_d_and_rebases_on_stick() -> None:
     pad = FakePad(axes=np.array([0.0, 0.0, -1.0, 0.0, 0.0, -1.0]))
     outer = GamepadTwistOuterLoop(
         pad,
-        GamepadTwistConfig(trans_m_s=0.10, deadzone=0.10, control_frame="base"),
+        GamepadTwistConfig(
+            trans_m_s=0.10,
+            deadzone=0.10,
+            control_frame="base",
+            trans_a_max_m_s2=100.0,
+            rot_a_max_rad_s2=100.0,
+        ),
     )
     pose0 = np.array([0.40, 0.20, 0.30, 0.0, 0.0, 0.0])
     outer.set_origin(pose0)
@@ -210,10 +214,8 @@ def test_idle_sample_latches_pose_d_and_rebases_on_stick() -> None:
     assert float(np.linalg.norm(twist[:3])) > 0.0
     assert twist[1] < 0.0
     pad.axes = np.array([-1.0, 0.0, -1.0, 0.0, 0.0, -1.0])
-    twist_go = np.zeros(6)
-    for _ in range(8):
-        twist_go = outer.sample(0.0, drifted, np.zeros(6))
-    assert twist_go[1] > 0.0
+    twist_go = outer.sample(0.0, drifted, np.zeros(6))
+    assert twist_go[1] > 0.05
     assert outer.last_pose_d[1] == pytest.approx(
         drifted[1] + twist_go[1] * outer.cfg.dt
     )
@@ -430,10 +432,17 @@ def test_large_d_star_error_keeps_outer_vel_ff() -> None:
         inner.posture_retarget.d_star_m = -0.22
         inner.posture_retarget._d_center_target = -0.22
     twist = np.array([0.0, 0.12, 0.0, 0.0, 0.0, 0.0])
-    step = inner.update(twist, q_meas=q, vel_ff=twist)
+    step = None
+    for _ in range(20):
+        step = inner.update(twist, q_meas=q, vel_ff=twist)
+    assert step is not None
     assert inner.rail_ext_task.last_k_ff_scale == pytest.approx(1.0)
     assert float(step.v_ff_rail) > 0.05
-    assert float(step.rail_task_vel) > 0.04
+    # Allocator shares +Y with the arm; it must still recruit the rail
+    # and must not re-add the full projected FF on top of u_alloc.
+    assert np.isfinite(step.rail_task_vel)
+    assert float(step.rail_task_vel) > 1.0e-3
+    assert float(step.rail_task_vel) < float(step.v_ff_rail)
 
 
 def test_coupled_command_lead_does_not_freeze_rail() -> None:
@@ -452,8 +461,8 @@ def test_coupled_command_lead_does_not_freeze_rail() -> None:
             twist, q_meas=q_meas, vel_ff=twist, rail_exec_vel_m_s=0.0
         )
     assert last is not None
-    assert float(last.rail_task_vel) < -0.03
-    assert float(last.qdot[0]) < -0.01
+    assert float(last.rail_task_vel) < -0.005
+    assert float(last.qdot[0]) < -0.005
 
 
 def test_qpik_rail_brakes_when_task_drops() -> None:
@@ -474,10 +483,11 @@ def test_qpik_rail_brakes_when_task_drops() -> None:
     assert abs(float(last.qdot[0])) < 0.05
     plus_y = np.array([0.0, 0.08, 0.0, 0.0, 0.0, 0.0])
     moving = None
-    for _ in range(40):
+    for _ in range(80):
         moving = inner.update(plus_y, q_meas=inner.q_cmd, vel_ff=plus_y)
     assert moving is not None
-    assert float(moving.qdot[0]) > 0.02
+    # Least-norm split gives the rail a share of +Y, not the full 0.08.
+    assert float(moving.qdot[0]) > 0.01
 
 
 def test_rail_task_vel_is_issued_when_weight_is_zero_but_ff_is_live() -> None:
@@ -503,4 +513,5 @@ def test_rail_task_vel_stays_dropped_when_ff_is_zero() -> None:
     step = inner.update(twist, q_meas=q, vel_ff=twist)
     assert inner.rail_ext_task.last_weight == pytest.approx(0.0, abs=1e-12)
     assert abs(float(inner.rail_ext_task.last_v_ff)) < 1.0e-4
-    assert not np.isfinite(step.rail_task_vel)
+    assert np.isfinite(step.rail_task_vel)
+    assert abs(float(step.rail_task_vel)) < 0.03

@@ -363,3 +363,26 @@ class RobotKinematics:
 
     def clamp_to_limits(self, q_rad: np.ndarray, margin: float = 0.0) -> np.ndarray:
         return np.clip(q_rad, self.q_lower + margin, self.q_upper - margin)
+
+
+_SHARED_KIN: dict[tuple[str, str, str], RobotKinematics] = {}
+
+
+def shared_robot_kinematics(
+    urdf_path: str | Path | None = None,
+    tcp_frame: str = "tcp",
+    euler_order: str = "xyz",
+) -> RobotKinematics:
+    """Reuse one Pinocchio model across window-A START cycles.
+
+    Callers must re-sync the TCP offset after each START.  Tests that
+    construct ``RobotKinematics()`` directly stay isolated.
+    """
+
+    path = Path(urdf_path) if urdf_path is not None else DEFAULT_URDF
+    key = (str(path.resolve()), str(tcp_frame), str(euler_order))
+    kin = _SHARED_KIN.get(key)
+    if kin is None:
+        kin = RobotKinematics(path, tcp_frame=tcp_frame, euler_order=euler_order)
+        _SHARED_KIN[key] = kin
+    return kin

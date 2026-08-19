@@ -32,6 +32,7 @@ XBOX_BUTTON_START = 7
 
 _N_AXES = 6
 _N_BUTTONS = 8
+_PYGAME_READY = False
 
 
 def _require_pygame():
@@ -43,12 +44,15 @@ def _require_pygame():
 
 
 def _init_joystick_pygame():
-    """Full pygame init. SDL steals SIGINT — give it back afterwards."""
+    """Init pygame once. SDL steals SIGINT — give it back afterwards."""
+    global _PYGAME_READY
     pygame = _require_pygame()
     prev_int = signal.getsignal(signal.SIGINT)
     prev_term = signal.getsignal(signal.SIGTERM)
     try:
-        pygame.init()
+        if not _PYGAME_READY:
+            pygame.init()
+            _PYGAME_READY = True
         pygame.joystick.init()
     finally:
         try:
