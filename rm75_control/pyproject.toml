@@ -16,9 +16,15 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest"]
 
+[tool.setuptools]
+package-dir = {peirastic = "../peirastic"}
+
+[tool.setuptools.package-data]
+peirastic = ["configs/*.yaml"]
+
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["rm75_control*"]
+where = [".", ".."]
+include = ["rm75_control*", "peirastic*"]
 
 [tool.pytest.ini_options]
 # A stray dash pytest11 plugin in this box's site-packages crashes collection

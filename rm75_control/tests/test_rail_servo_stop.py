@@ -90,6 +90,28 @@ def test_stop_clean_kill_may_snapshot(
     assert drive._disable_on_exit is False  # noqa: SLF001
 
 
+def test_halt_velocity_zeros_before_estop_closes_tcp() -> None:
+    events: list[str] = []
+    bridge = RailServoBridge(RailServoConfig(enabled=True, release_son_on_exit=False))
+    drive = _FakeDrive(events, last_rpm=400)
+    bridge._drive = drive  # noqa: SLF001
+    bridge._measured_speed_rpm = 400  # noqa: SLF001
+    assert bridge.halt_velocity()
+    assert "kill_hard" in events
+    assert events.index("kill_hard") < events.index("emergency_zero")
+    assert drive._last_rpm_cmd == 0  # noqa: SLF001
+
+
+def test_halt_if_moving_skips_when_already_stopped() -> None:
+    events: list[str] = []
+    bridge = RailServoBridge(RailServoConfig(enabled=True))
+    drive = _FakeDrive(events, last_rpm=0)
+    bridge._drive = drive  # noqa: SLF001
+    bridge._measured_speed_rpm = 0  # noqa: SLF001
+    assert bridge.halt_if_moving()
+    assert events == []
+
+
 def test_stop_skips_snapshot_after_emergency_zero(
     monkeypatch, tmp_path: Path, capsys
 ) -> None:

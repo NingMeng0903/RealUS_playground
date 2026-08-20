@@ -11,12 +11,12 @@ from rm75_control.control.joint_admittance_8dof.loop import Phase
 from rm75_control.control.joint_admittance_8dof.reference import (
     EllipseToolXYReference,
     HoldReference,
-    JointSmoothMoveReference,
 )
 from peirastic.core.modes import Mode, ModeRequest
 from peirastic.realman8dof.modes.joint import build_goto_joints_phase, build_movej_phase
 from peirastic.realman8dof.modes.servo import ServoTwistHoldOuter, ServoTwistOuter
 from peirastic.realman8dof.modes.track import (
+    build_pad_hybrid_phase,
     build_track_cartesian_phase,
     build_track_hybrid_phase,
 )
@@ -92,9 +92,19 @@ def compile_request(
             ref,
             duration_s=payload.get("duration_s"),
             label=str(payload.get("label", "track_cartesian")),
+            max_lin_vel_m_s=payload.get("max_lin_vel_m_s"),
+            move_kp=payload.get("move_kp"),
         )
     if req.mode == Mode.TRACK_HYBRID:
         kind = str(payload.get("reference", "hold"))
+        if kind in ("pad", "twist", "servo"):
+            return build_pad_hybrid_phase(
+                ctx,
+                twist_read=_twist_source(payload, twist_read),
+                duration_s=payload.get("duration_s"),
+                dt=dt,
+                payload=payload,
+            )
         if kind == "ellipse":
             ref = _ellipse_ref(payload, ctx.euler_order)
         else:
@@ -102,11 +112,10 @@ def compile_request(
         return build_track_hybrid_phase(
             ctx,
             ref,
-            raw=raw,
-            desired_z=float(payload.get("desired_z", 0.0)),
             duration_s=payload.get("duration_s"),
             dt=dt,
             use_tff_split=bool(payload.get("use_tff_split", False)),
+            payload=payload,
         )
     if req.mode in (Mode.GOTO_JOINTS, Mode.MOVEJ):
         q = np.asarray(payload["q_target"], dtype=float).reshape(-1)
@@ -133,19 +142,57 @@ class ProxyOuter:
         return self._child
 
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
-        if hasattr(self._child, "set_origin"):
-            self._child.set_origin(pose0, t_s=t_s)
+        if not hasattr(self._child, "set_origin"):
+            return
+        import inspect
+
+        fn = self._child.set_origin
+        params = inspect.signature(fn).parameters
+        if "t_s" in params:
+            fn(pose0, t_s=t_s)
+        else:
+            fn(pose0)
 
     def begin_hybrid_episode(self, applied_twist_base, current_pose) -> None:
         if hasattr(self._child, "begin_hybrid_episode"):
             self._child.begin_hybrid_episode(applied_twist_base, current_pose)
 
-    def sample(self, t_s: float, current_pose: np.ndarray, f_ext: np.ndarray, **kwargs):
+    def sample(
+        self,
+        t_s: float,
+        current_pose: np.ndarray,
+        f_ext: np.ndarray,
+        *,
+        q_meas=None,
+        f_ext_raw=None,
+        dt_actual=None,
+        v_tcp_z_actual=None,
+        sensor_age_s=None,
+        feedback_age_s=None,
+        feedback_fresh_tick=None,
+        feedback_velocity_valid=None,
+        **kwargs,
+    ):
         import inspect
 
         fn = self._child.sample
         params = inspect.signature(fn).parameters
-        kw = {key: val for key, val in kwargs.items() if key in params}
+        extra = {
+            "q_meas": q_meas,
+            "f_ext_raw": f_ext_raw,
+            "dt_actual": dt_actual,
+            "v_tcp_z_actual": v_tcp_z_actual,
+            "sensor_age_s": sensor_age_s,
+            "feedback_age_s": feedback_age_s,
+            "feedback_fresh_tick": feedback_fresh_tick,
+            "feedback_velocity_valid": feedback_velocity_valid,
+        }
+        extra.update(kwargs)
+        kw = {
+            key: val
+            for key, val in extra.items()
+            if key in params and val is not None
+        }
         return fn(t_s, current_pose, f_ext, **kw)
 
     def __getattr__(self, name):

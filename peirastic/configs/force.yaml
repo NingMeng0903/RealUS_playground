@@ -1,0 +1,245 @@
+# Force-axis law for every peirastic force mode (pad hybrid, hold, ellipse+force).
+# Copied from the sin-scan demo (d_sin_tool_y / joint_admittance_8dof hybrid_motion).
+# A reloads this file on each force-mode compile. --desired-z overrides the setpoint only.
+
+force:
+  desired_z_n: 2.0
+
+frames:
+  euler_order: xyz
+  control_frame: tool
+
+hybrid_motion:
+  force_axes:
+  - 0
+  - 0
+  - 1
+  - 0
+  - 0
+  - 0
+  track_axes:
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  kp_pos:
+  - 10.0
+  - 10.0
+  - 5.0
+  - 1.5
+  - 1.5
+  - 1.5
+  pos_err_deadband_m: 0.0005
+  pos_correction_max_m_s: 0.08
+  system_delay_s: 0.015
+  contact_threshold_n: 0.8
+  contact_use_fz_only: true
+  physical_contact:
+    enabled: true
+    # Initial acquire uses filtered force only.  Replaying 162413 with
+    # 0.85 N / 20 ms moves the false 3.49 s acquire to the stable load at
+    # 4.14 s, while remaining reachable below the shipped 1 N target.
+    enter_n: 0.85
+    hard_enter_n: 1.5
+    # The same log shows a ~0.65 N airborne residual.  Exit/rearm thresholds
+    # therefore straddle that measured baseline instead of assuming <0.15 N.
+    exit_n: 0.70
+    enter_confirm_s: 0.02
+    exit_confirm_s: 0.1
+  # Slightly wider band: blunt single-tick contact dips without sticky D.
+  deadband_n: 0.08
+  deadband_width_n: 0.10
+  max_velocity:
+  - 0.22
+  - 0.22
+  - 0.1
+  - 0.6
+  - 0.6
+  - 0.6
+  max_acceleration:
+  - 1.0
+  - 1.0
+  - 0.8
+  - 2.0
+  - 2.0
+  - 2.0
+  # Low baseline MD for light feel + fast under/over-force chase.
+  # Chatter: short-lived ΔD_hf(Is). Steady offset: force_dob. Not sticky Ke·D.
+  admittance_mass_z: 1.0
+  admittance_damping_z: 25.0
+  max_vz_tool_m_s: 0.08
+  desired_force_ramp_s: 0.30
+  var_damping_enabled: true
+  var_damping_omega_c_hz: 2.5
+  var_damping_lambda: 0.951
+  var_damping_f_max_n: 7.0
+  # ΔD_hf amplitude (primary chatter dissipation); M bump is secondary.
+  var_damping_d_u: 60.0
+  var_damping_m_u: 0.0
+  var_damping_m_max: 3.0
+  var_damping_dc_alpha: 0.02
+  var_damping_hf_attack_s: 0.02
+  var_damping_hf_hold_s: 0.18
+  var_damping_hf_release_s: 0.12
+  var_damping_hf_release_fast_s: 0.04  # dump ΔD on hand-release / large |e_f|
+  var_damping_hf_on: 0.30
+  var_damping_hf_off: 0.15
+  var_damping_hf_err_n: 0.8
+  recontact_vz_cap_m_s: 0.012
+  recontact_hold_s: 0.12
+  contact_episode_release_s: 0.30
+  contact_episode_release_force_n: 0.75
+  # Restored from e85c9ab.  Steady under-force offset rejection; 1bfe98b
+  # disabled it as part of the anti-bounce sweep, and the force barrier below
+  # now provides that brake instead.
+  force_dob:
+    enabled: true
+    ki: 8.0
+    leak_s: 0.4
+    u_max_n: 1.5
+    freeze_is: 0.45
+    reset_on_reversal: true
+  # Contact impact is limited before BEFM/tank intervention.  In free space
+  # this preserves the 80 mm/s approach; after contact F+Fdot*T and the
+  # stiffness estimate continuously tighten positive press speed.
+  force_barrier:
+    enabled: true
+    t_react_s: 0.050
+    budget_min_n: 1.0
+    budget_frac: 0.20
+    f_keep_n: 0.5
+    v_ref_m_s: 0.08
+    v_min_retract_m_s: 0.002
+    # Barrier keeps its force-error gating; this only stops it closing press
+    # to exactly zero, which left the tool unable to recover a lost contact.
+    v_min_press_m_s: 0.003
+    # Free-space approach cap.  Impact ~ Ke*v*T_delay, so closing the gap at
+    # the full 80 mm/s made ~8 N peaks on a 3 N target and the over-force
+    # retract threw the tool off the surface.  In-contact response unchanged.
+    v_seek_free_m_s: 0.030
+    fdot_lpf_s: 0.040
+    precontact_raw_trigger_n: 1.50 # short impact sleeve; never latches contact
+    stiffness_cap_enabled: true
+    ke_floor_n_m: 50.0
+    mass_floor_kg: 0.05
+  # Force-axis slew is press-positive and asymmetric.  A sign reversal into
+  # retract gets the fastest allowance and is never tank/alpha gated.
+  # 0.30 allowed press to rise only ~1.9 mm/s per 6.2 ms tick — 0.27 s to
+  # reach the 80 mm/s cap, which is the "damped, not light" feel.  The force
+  # barrier is the error-gated brake; this no longer has to be one.
+  force_axis_slew_press_m_s2: 0.80
+  force_axis_slew_retract_m_s2: 1.20
+  force_axis_slew_reverse_m_s2: 2.00
+  # Lee-structure speed-level engineering adapter.  Observe is deliberately
+  # non-mutating until the slow press/retract sign check and 2/5/10 mm/s
+  # no-contact delay identification have been recorded.
+  bidirectional_flow:
+    mode: observe
+    normal_sign: 1.0
+    sign_verified: false
+    feedback_delay_verified: false
+    require_sign_verification: true
+    require_delay_verification: true
+    # Lee Sec. V-C: alpha is zero in free space.  Below this |fz| the gate is
+    # held off and the tank charges from proxy damping.
+    free_space_force_n: 0.5
+    Dtrack: 25.0
+    Kd: 25.0
+    Kp: 250.0              # Dtrack / 0.10 s
+    Ki: 0.0
+    lambda_gain: 0.25
+    track_correction_max_m_s: 0.020
+    M_p: 1.0
+    D_p: 25.0
+    # Provisional conservative auxiliary values; retune only after the
+    # velocity-step identification.  This branch can hold/retract, never press.
+    M_a: 0.05
+    D_a: 5.0
+    K_a: 50.0
+    B_a: 5.0
+    u_retract_n: 0.0
+    aux_max_retract_m_s: 0.050
+    alpha_attack_s: 0.020
+    alpha_release_s: 0.150
+    max_feedback_age_s: 0.020
+    T0: 0.0010
+    Tmax: 0.0040
+    Tmin: 0.0001
+    mu_power_w: 0.0
+    positive_switching_cost_j: 0.0
+  # Optional Piedra-style elastic-surface force reduction.  Disabled until
+  # stable-contact hardware validation; it is not a passivity guarantee.
+  surface_force_modulation:
+    enabled: false
+    min_force_scale: 0.25
+    beta_per_m: 80.0
+    stable_contact_s: 0.20
+    attack_s: 0.05
+    release_s: 0.15
+  # Soften under-force chase near scan turnaround (tool-XY slow).
+  force_lateral_soft_m_s: 0.006
+  force_lateral_full_m_s: 0.018
+  force_lateral_gain_floor: 0.35
+  adaptive_ke:
+    enabled: true
+    # Observe Ke / impact burst only — do not hold high critical D in steady contact.
+    drive_damping: false
+    zeta: 0.9
+    ke_initial: 80.0
+    ke_min: 40.0
+    ke_max: 2500.0
+    ke_impact_initial: 1500.0
+    ke_forgetting: 0.995
+    ke_forgetting_inc: 0.88
+    ke_idle_decay_s: 2.0
+    ke_soft_floor: 120.0
+    ke_detach_decay_s: 1.0
+    displacement_source: admittance
+    dx_threshold_m: 8.0e-05
+    contact_force_n: 0.8
+    settle_ticks: 10
+    gate_lateral_velocity: true
+    lateral_vel_gate_m_s: 0.02
+    gate_df_spike: true
+    df_spike_n: 4.0
+    f_err_gate_n: 1.2
+    f_err_gate_frac: 0.35
+    bd_min: 25.0
+    bd_max: 180.0
+    bd_slew_max: 400.0
+    ke_slew_max: 1200.0
+  proactive_feedforward: true
+  # Bidirectional press feedforward restored from e85c9ab: retract_only killed
+  # the press-side v_r integration outright (measured v_r_z p95 = 0), which is
+  # the single largest cause of slow under-force chase.  The force barrier
+  # still caps press as the force error closes.
+  proactive_retract_only: false
+  proactive_gain: 0.24
+  proactive_retract_gain: 0.30
+  proactive_leak_s: 0.25
+  v_r_max_m_s: 0.06
+  proactive_gate_press_on_is: false
+  proactive_press_is_gate_start: 0.2
+  proactive_press_is_gate: 0.6
+  # Soften press when Is high (never hard-kill); slew-limit rising v_r.
+  proactive_press_is_soft_floor: 0.45
+  proactive_press_is_soft_stop: 0.85
+  proactive_press_slew_max_m_s2: 0.35
+  proactive_press_drive_max: 1.2
+  proactive_retract_drive_max: 1.4
+  proactive_reset_on_reversal: true
+  force_scale_min_n: 0.18
+  force_scale_fraction: 0.12
+  fast_retract_guard:
+    enabled: true
+    cutoff_hz: 20.0
+    stop_margin_n: 0.25
+    stop_margin_fraction: 0.05
+    rearm_margin_n: 0.45
+    rearm_margin_fraction: 0.1
+    stop_confirm_s: 0.015
+    rearm_confirm_s: 0.01
+    min_hold_s: 0.025
+    max_sensor_age_s: 0.02

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
+from dataclasses import replace
 
 import numpy as np
 
@@ -55,6 +56,8 @@ class GamepadTwistSource:
         self._lpf = np.zeros(6, dtype=float)
         self._latched = False
         self._stamps: list[float] = []
+        self._t0 = time.monotonic()
+        self._armed = str(getattr(pad, "transport", "") or "") == "fake"
 
     def start(self) -> None:
         if self._thread is not None:
@@ -88,6 +91,8 @@ class GamepadTwistSource:
                 "l3_edge": l3_edge,
                 "r3_edge": r3_edge,
                 "connected": self._connected,
+                "layout": self._layout_name(),
+                "armed": self._armed,
             }
 
     def _loop(self) -> None:
@@ -118,7 +123,10 @@ class GamepadTwistSource:
         buttons[: min(16, raw_b.size)] = raw_b[:16]
         l3 = bool(state.button(LOGICAL_L3))
         r3 = bool(state.button(LOGICAL_R3))
-        v_raw, w_raw = map_pad_to_world_lin_tool_ang(state, self.cfg)
+        layout = getattr(self.pad, "layout", None)
+        z_sign = int(getattr(layout, "z_sign", getattr(self.cfg, "z_sign", 1)) or 1)
+        cfg = replace(self.cfg, z_sign=z_sign)
+        v_raw, w_raw = map_pad_to_world_lin_tool_ang(state, cfg)
         requested = pad_hold_active(state, self.cfg, self._latched)
         self._latched = bool(requested)
         if requested:
@@ -126,6 +134,14 @@ class GamepadTwistSource:
             v_w, w_t = blended[:3], blended[3:6]
         else:
             self._lpf[:] = 0.0
+            v_w = np.zeros(3)
+            w_t = np.zeros(3)
+        if not self._armed and (time.monotonic() - self._t0) >= 0.25:
+            self._armed = True
+        if not self._armed:
+            self._lpf[:] = 0.0
+            self._mapped_out[:] = 0.0
+            self._mapped_acc[:] = 0.0
             v_w = np.zeros(3)
             w_t = np.zeros(3)
         v_s, w_s = self._slew(v_w, w_t)
@@ -151,6 +167,11 @@ class GamepadTwistSource:
             self._buttons = buttons
             self._hz = hz
             self._connected = bool(getattr(self.pad, "connected", True))
+
+    def _layout_name(self) -> str:
+        layout = getattr(self.pad, "layout", None)
+        name = getattr(layout, "name", None) if layout is not None else None
+        return str(name or "pending")
 
     def _lpf_pad(self, raw: np.ndarray) -> np.ndarray:
         dt = float(self.cfg.dt)

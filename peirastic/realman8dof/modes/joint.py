@@ -77,7 +77,11 @@ def build_goto_joints_phase(
     q_start: np.ndarray | None = None,
     duration_s: float | None = None,
 ) -> Phase:
-    """Direct joint-angle mode: same PTP bypass, shorter default duration."""
+    """Direct joint-angle command. Inner ``set_direct_joint_ptp(True)``.
+
+    Still a planned PTP (limits / jerk stay on). Differs from MoveJ only in
+    label and the default auto duration; both skip the Cartesian QP.
+    """
     return build_movej_phase(
         ctx,
         q_target,

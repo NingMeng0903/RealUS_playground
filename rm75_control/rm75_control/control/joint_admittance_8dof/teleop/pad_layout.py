@@ -31,7 +31,7 @@ LAYOUT_BT_XPADNEO = "bt_xpadneo"
 # Some BT stacks rest every axis at 0; triggers are already 0..1.
 LAYOUT_BT_REST0 = "bt_rest0"
 
-_WIRELESS_NAME = re.compile(r"wireless|bluetooth|xpadneo", re.I)
+_WIRELESS_NAME = re.compile(r"wireless|bluetooth|xpadneo|series\s*x|xbox series", re.I)
 _WIRED_NAME = re.compile(r"x-box 360 pad|\bwired\b|xpad(?!neo)", re.I)
 
 DEFAULT_LAYOUT_PATH = Path("var/gamepad_layout.json")
@@ -58,7 +58,9 @@ class PadLayout:
     )
     # −1: Linux xpad trigger rest.  0: trigger already in [0, 1].
     trigger_rest: float = -1.0
-        button_index: dict[str, int] = field(
+    # +1: LB=+Z LT=−Z.  −1 swaps them (this Series X).
+    z_sign: int = 1
+    button_index: dict[str, int] = field(
         default_factory=lambda: {
             "a": 0,
             "b": 1,
@@ -66,8 +68,8 @@ class PadLayout:
             "y": 3,
             "lb": 4,
             "rb": 5,
-            "l3": 9,
-            "r3": 10,
+            "l3": 13,
+            "r3": 14,
         }
     )
 
@@ -76,7 +78,13 @@ class PadLayout:
 
     @classmethod
     def from_json(cls, raw: dict) -> PadLayout:
-        base = layout_wired_xpad()
+        name = str(raw.get("name") or LAYOUT_WIRED_XPAD)
+        if name == LAYOUT_BT_XPADNEO:
+            base = layout_bt_xpadneo()
+        elif name == LAYOUT_BT_REST0:
+            base = layout_bt_rest0()
+        else:
+            base = layout_wired_xpad()
         axis_index = dict(base.axis_index)
         axis_index.update({str(k): int(v) for k, v in dict(raw.get("axis_index") or {}).items()})
         axis_sign = dict(base.axis_sign)
@@ -86,10 +94,11 @@ class PadLayout:
             {str(k): int(v) for k, v in dict(raw.get("button_index") or {}).items()}
         )
         return cls(
-            name=str(raw.get("name") or LAYOUT_WIRED_XPAD),
+            name=name,
             axis_index=axis_index,
             axis_sign=axis_sign,
-            trigger_rest=float(raw.get("trigger_rest", -1.0)),
+            trigger_rest=float(raw.get("trigger_rest", base.trigger_rest)),
+            z_sign=int(raw.get("z_sign", base.z_sign) or 1),
             button_index=button_index,
         )
 
@@ -102,8 +111,12 @@ def layout_bt_xpadneo() -> PadLayout:
     return PadLayout(
         name=LAYOUT_BT_XPADNEO,
         axis_index={"lx": 0, "ly": 1, "lt": 5, "rx": 2, "ry": 3, "rt": 4},
+        # This Series X / pygame reports stick-up as LY=+1 (SDL is −1).
+        # Flip so gamepad_twist "up → world +X" matches the hand.
+        axis_sign={"lx": 1, "ly": -1, "lt": 1, "rx": 1, "ry": 1, "rt": 1},
+        z_sign=-1,
         # xpadneo: A B X Y View Menu LB RB …  (LB is 6, not wired 4)
-        button_index={"a": 0, "b": 1, "x": 2, "y": 3, "lb": 6, "rb": 7, "l3": 9, "r3": 10},
+        button_index={"a": 0, "b": 1, "x": 2, "y": 3, "lb": 6, "rb": 7, "l3": 13, "r3": 14},
     )
 
 
@@ -237,7 +250,22 @@ def load_pinned_layout(
     layout_raw = raw.get("layout") if "layout" in raw else raw
     if not isinstance(layout_raw, dict):
         return None
-    return PadLayout.from_json(layout_raw)
+    layout = PadLayout.from_json(layout_raw)
+    # Incomplete identify dumps used to pin name=wired_xpad with only
+    # button_index. Series X on this bench is bluetooth / xpadneo.
+    if name and transport_from_name(name) == "bluetooth" and layout.name == LAYOUT_WIRED_XPAD:
+        neo = layout_bt_xpadneo()
+        buttons = dict(neo.button_index)
+        buttons.update(layout.button_index)
+        return PadLayout(
+            name=LAYOUT_BT_XPADNEO,
+            axis_index=dict(neo.axis_index),
+            axis_sign=dict(neo.axis_sign),
+            trigger_rest=neo.trigger_rest,
+            z_sign=int(neo.z_sign),
+            button_index=buttons,
+        )
+    return layout
 
 
 def save_identify_result(path: str | Path, payload: dict) -> Path:

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from peirastic.configs import DEFAULT_CONTROLLER_YAML
 from peirastic.realman8dof.daemon import run_service
 
 
@@ -14,9 +15,15 @@ def main() -> int:
     parser.add_argument(
         "--config",
         type=Path,
-        default=Path("/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/configs/joint_admittance_8dof.yaml"),
+        default=DEFAULT_CONTROLLER_YAML,
     )
-    parser.add_argument("--log-csv", default=None, help="off by default")
+    parser.add_argument(
+        "--log-csv",
+        nargs="?",
+        const="auto",
+        default=None,
+        help="200 Hz CSV including force. Bare flag writes apps/logs/peirastic/run_*.csv",
+    )
     parser.add_argument("--shm-prefix", default="", help="test isolation prefix")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--no-panel", action="store_true")

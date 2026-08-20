@@ -57,6 +57,8 @@ class GamepadTwistConfig:
     hold_settle_v_m_s: float = 0.005
     hold_relatch_on_settle: bool = True
     trigger_deadzone: float = 0.08
+    # +1: LB=+Z LT=−Z. Layout may override via map_pad z_sign.
+    z_sign: int = 1
 
 
 def pad_hold_active(
@@ -136,7 +138,8 @@ def map_pad_to_world_lin_tool_ang(
     v_world = np.zeros(3, dtype=float)
     v_world[0] = (-ly) * float(cfg.trans_m_s)
     v_world[1] = (-lx) * float(cfg.trans_m_s)
-    v_world[2] = (lb - lt) * float(cfg.trans_m_s)
+    z_sign = int(getattr(cfg, "z_sign", 1) or 1)
+    v_world[2] = float(z_sign) * (lb - lt) * float(cfg.trans_m_s)
     v_world = _cap_vec(v_world, cfg.max_lin_vel_m_s)
 
     w_tool = np.zeros(3, dtype=float)

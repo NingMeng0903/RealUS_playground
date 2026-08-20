@@ -1573,6 +1573,42 @@ class RailServoBridge:
         except Exception:
             pass
 
+    def halt_velocity(self) -> bool:
+        """Zero FA24 while Modbus is up. Call this *before* ``estop()`` from a thread.
+
+        Limit-switch panic already does ``kill_velocity_hard`` with the socket
+        still open. Pad / IPC e-stop used to call ``estop()`` first, which
+        drops TCP and leaves the last FA24 latched on the drive.
+        """
+        if not self.enabled or self._drive is None:
+            return True
+        with self._lock:
+            self._follow_enabled = False
+            self._hold_active = True
+        ok = False
+        try:
+            ok = bool(self._drive.kill_velocity_hard(attempts=3, disable_on_fail=False))
+        except Exception:
+            ok = False
+        rpm = int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
+        speed = abs(float(self.measured_speed_m_s))
+        if (not ok) or abs(rpm) > 0 or speed > 0.005:
+            try:
+                ok = bool(self._drive.emergency_zero_fa24())
+            except Exception:
+                ok = False
+        return bool(ok)
+
+    def halt_if_moving(self) -> bool:
+        """Startup / re-arm: if the drive still has speed, write FA24=0."""
+        if not self.enabled or self._drive is None:
+            return True
+        rpm = abs(int(getattr(self._drive, "_last_rpm_cmd", 0) or 0))
+        speed = abs(float(self.measured_speed_m_s))
+        if rpm == 0 and speed <= 0.005:
+            return True
+        return self.halt_velocity()
+
     def estop(self) -> None:
         """Signal-safe stop: flags + drop TCP (unblocks Modbus). No Modbus write.
 
@@ -2057,11 +2093,6 @@ class RailServoBridge:
                 else:
                     # Keep velocity session flag consistent with live SON.
                     self._drive._disable_on_exit = False  # noqa: SLF001
-                    print(
-                        "lw100 rail: SON held (FA24=0) — start controller again "
-                        "without power-cycling; use release_son_on_exit to drop SON",
-                        flush=True,
-                    )
             except Exception:
                 pass
             try:
