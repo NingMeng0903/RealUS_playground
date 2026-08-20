@@ -294,7 +294,7 @@ def test_defaults_match_the_hardware_baseline() -> None:
         assert cfg.catch_k == pytest.approx(5.0)
         assert cfg.catch_frac == pytest.approx(0.3)
         assert cfg.decel_request_margin_m_s == pytest.approx(0.005)
-        assert cfg.vel_ff_p_trim_m_s == pytest.approx(0.010)
+        assert not hasattr(cfg, "vel_ff_p_trim_m_s")
         assert cfg.match_drive_accel is True
         assert cfg.fa24_rpm_deadband == 0
         assert cfg.vel_deadband_mm == 0.05
@@ -540,8 +540,12 @@ def test_v_ff_cruise_does_not_chop_host_velocity() -> None:
         vel_max_m_s=0.15,
         accel_ms=200.0,
         configured_m_s2=0.8,
+        lead_mm=10.0,
     )
-    assert a_max < 0.70
+    # FA40 = 0→1000 r/min in 200 ms → 0.167 m/s / 0.2 s = 0.833 m/s²;
+    # host uses 0.85 of that, then min(configured).
+    assert a_max == pytest.approx(0.85 * (1000.0 / 60.0) * 0.010 / 0.200)
+    assert a_max < 0.72
     x_ref = 0.400
     v_ref = 0.0
     v_cmd = 0.0
@@ -592,8 +596,33 @@ def test_v_ff_cruise_does_not_chop_host_velocity() -> None:
     )
 
 
+def test_coupled_zero_cross_does_not_apply_position_p() -> None:
+    """Coupled FA24 is v_ref even with a 0.70 mm ghost and |v_ref|<1 mm/s."""
+    v_ref = -0.00091
+    e_track_m = -0.00070
+    x_ref = 0.17476
+    measured = x_ref - e_track_m
+    x_new, err = RailServoBridge._reanchor_coupled_x_ref(
+        x_ref, measured, follow=True, settling=False
+    )
+    assert x_new == pytest.approx(measured)
+    assert err == pytest.approx(0.0)
+    v_des = v_ref
+    assert v_des == pytest.approx(v_ref)
+    assert abs(v_des) < 0.002
+    assert abs(14.0 * e_track_m) > 0.009
+
+
+def test_coupled_reanchor_is_idle_when_not_following() -> None:
+    x_ref, err = RailServoBridge._reanchor_coupled_x_ref(
+        0.40, 0.401, follow=False, settling=False
+    )
+    assert x_ref == pytest.approx(0.40)
+    assert err == pytest.approx(-0.001)
+
+
 def test_stream_law_matches_position_plus_ff_cruise() -> None:
-    """Paper law: v = v_ref + kp*(x_ref−x) + kd*(v_ref−v).  Not velocity-only."""
+    """POSITION scan/home: v = v_ref + kp*(x_ref−x) + kd*(v_ref−v)."""
     x_ref = 0.400
     x_meas = 0.3984
     v_ref = 0.025

@@ -25,7 +25,9 @@ from rm75_control.control.joint_admittance_8dof.tasks.secondary_composer import 
 from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
     GamepadTwistConfig,
     GamepadTwistOuterLoop,
+    slew_axes_jerk,
     slew_vec,
+    slew_vec_jerk,
 )
 from rm75_control.control.joint_admittance_8dof.teleop.xbox_pad import FakePad
 
@@ -41,6 +43,7 @@ def _safe_q() -> np.ndarray:
 def _inner(q: np.ndarray) -> JointIkController:
     raw = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
     cfg = build_joint_ik_config(raw)
+    cfg.backend = "python"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False
@@ -98,12 +101,99 @@ def test_secondary_soft_scale_fades_soft_tasks_not_ff() -> None:
     assert np.linalg.norm(with_ff - ff) == pytest.approx(np.linalg.norm(fade), rel=1e-6)
 
 
+def test_slew_vec_jerk_stop_does_not_ring_through_zero() -> None:
+    vel = np.array([0.10, 0.0, 0.0])
+    acc = np.array([0.8, 0.0, 0.0])
+    target = np.zeros(3)
+    lo = 0.0
+    for _ in range(400):
+        vel, acc = slew_vec_jerk(vel, acc, target, 0.8, 2.0, 0.005)
+        lo = min(lo, float(vel[0]))
+    assert float(vel[0]) == pytest.approx(0.0, abs=0.008)
+    assert lo >= -0.005
+    assert float(abs(acc[0])) < 0.05
+
+
+def test_slew_vec_jerk_does_not_dump_accel_when_catching_target() -> None:
+    vel = np.zeros(3)
+    acc = np.zeros(3)
+    target = np.array([0.10, 0.0, 0.0])
+    dt = 0.005
+    j_max = 4.0
+    prev_a = acc.copy()
+    peak_j = 0.0
+    for _ in range(120):
+        vel, acc = slew_vec_jerk(vel, acc, target, 0.8, j_max, dt)
+        peak_j = max(peak_j, float(np.linalg.norm(acc - prev_a)) / dt)
+        prev_a = acc.copy()
+    assert peak_j <= j_max + 1.0e-6
+    assert float(vel[0]) == pytest.approx(0.10, abs=0.012)
+
+
+def test_deadzone_hysteresis_does_not_drop_idle_on_edge() -> None:
+    pad = FakePad(axes=np.array([-1.0, 0.0, -1.0, 0.0, 0.0, -1.0]))
+    cfg = GamepadTwistConfig(
+        trans_m_s=0.10,
+        deadzone=0.18,
+        deadzone_release=0.12,
+        dt=0.005,
+        trans_a_max_m_s2=100.0,
+        trans_j_max_m_s3=0.0,
+        pad_lpf_hz=0.0,
+        control_frame="base",
+        hold_relatch_on_settle=False,
+    )
+    outer = GamepadTwistOuterLoop(pad, cfg)
+    pose = np.array([0.4, 0.2, 0.3, 0.0, 0.0, 0.0])
+    outer.set_origin(pose)
+    outer.sample(0.0, pose, np.zeros(6))
+    assert outer._pad_latched
+    pad.axes = np.array([-0.15, 0.0, -1.0, 0.0, 0.0, -1.0])
+    twist = outer.sample(0.0, pose, np.zeros(6))
+    assert outer._pad_latched
+    assert not outer._idle_hold_active
+    assert float(np.linalg.norm(twist[:3])) >= 0.0
+
+
+def test_slew_vec_jerk_first_step_is_smaller_than_accel_only() -> None:
+    prev = np.zeros(3)
+    acc = np.zeros(3)
+    target = np.array([0.10, 0.0, 0.0])
+    v_a = slew_vec(prev, target, 0.8, 0.005)
+    v_j, _ = slew_vec_jerk(prev, acc, target, 0.8, 4.0, 0.005)
+    assert float(v_j[0]) < float(v_a[0])
+    assert float(v_j[0]) > 0.0
+
+
 def test_slew_vec_caps_per_tick_delta() -> None:
     prev = np.zeros(3)
     target = np.array([0.10, 0.0, 0.0])
     out = slew_vec(prev, target, 0.8, 0.005)
     assert float(np.linalg.norm(out - prev)) == pytest.approx(0.004, abs=1e-9)
     assert out[0] > 0.0
+
+
+def test_gamepad_button_first_step_is_jerk_limited() -> None:
+    buttons = np.zeros(8, dtype=float)
+    buttons[4] = 1.0
+    pad = FakePad(axes=np.array([0.0, 0.0, -1.0, 0.0, 0.0, -1.0]), buttons=buttons)
+    cfg = GamepadTwistConfig(
+        trans_m_s=0.10,
+        deadzone=0.10,
+        dt=0.005,
+        trans_a_max_m_s2=0.8,
+        trans_j_max_m_s3=4.0,
+        pad_lpf_hz=8.0,
+        control_frame="base",
+        hold_relatch_on_settle=False,
+    )
+    outer = GamepadTwistOuterLoop(pad, cfg)
+    pose = np.array([0.4, 0.2, 0.3, 0.0, 0.0, 0.0])
+    outer.set_origin(pose)
+    twist = outer.sample(0.0, pose, np.zeros(6))
+    a_only = 0.8 * 0.005
+    assert float(abs(twist[2])) < a_only
+    assert float(abs(twist[2])) > 0.0
 
 
 def test_gamepad_stick_step_is_rate_limited() -> None:
@@ -179,3 +269,84 @@ def test_release_coasts_then_relatches() -> None:
     np.testing.assert_allclose(outer.last_pose_d, settled, atol=1e-12)
     assert float(np.linalg.norm(twist2[:3])) <= 0.03 + 1e-9
     assert not np.allclose(outer.last_pose_d, latch_before)
+
+
+def test_slew_axes_jerk_does_not_cross_couple() -> None:
+    vel = np.array([0.0, 0.0, 0.0])
+    acc = np.zeros(3)
+    target = np.array([0.0, 0.0, -0.10])
+    for _ in range(40):
+        vel, acc = slew_axes_jerk(vel, acc, target, 0.8, 8.0, 0.005)
+    assert abs(float(vel[0])) < 1.0e-12
+    assert abs(float(vel[1])) < 1.0e-12
+    assert float(vel[2]) < -0.02
+
+
+def test_lt_does_not_slew_roll() -> None:
+    buttons = np.zeros(8, dtype=float)
+    pad = FakePad(axes=np.array([0.0, 0.0, 1.0, 0.0, 0.0, -1.0]), buttons=buttons)
+    cfg = GamepadTwistConfig(
+        trans_m_s=0.10,
+        rot_rad_s=0.60,
+        deadzone=0.10,
+        trigger_deadzone=0.08,
+        dt=0.005,
+        pad_lpf_hz=0.0,
+        trans_j_max_m_s3=8.0,
+        rot_j_max_rad_s3=16.0,
+        control_frame="base",
+        hold_relatch_on_settle=False,
+    )
+    outer = GamepadTwistOuterLoop(pad, cfg)
+    pose = np.array([0.4, 0.2, 0.3, 0.0, 0.0, 0.0])
+    outer.set_origin(pose)
+    twist = np.zeros(6)
+    for _ in range(30):
+        twist = outer.sample(0.0, pose, np.zeros(6))
+    assert float(twist[2]) < -0.02
+    assert float(np.linalg.norm(twist[3:6])) < 1.0e-9
+    np.testing.assert_allclose(outer.last_twist_base[3:6], 0.0, atol=1e-12)
+
+
+def test_roll_does_not_slew_translation() -> None:
+    pad = FakePad(axes=np.array([0.0, 0.0, -1.0, 1.0, 0.0, -1.0]))
+    cfg = GamepadTwistConfig(
+        trans_m_s=0.10,
+        rot_rad_s=0.60,
+        deadzone=0.10,
+        dt=0.005,
+        pad_lpf_hz=0.0,
+        control_frame="base",
+        hold_relatch_on_settle=False,
+    )
+    outer = GamepadTwistOuterLoop(pad, cfg)
+    pose = np.array([0.4, 0.2, 0.3, 0.0, 0.0, 0.0])
+    outer.set_origin(pose)
+    twist = np.zeros(6)
+    for _ in range(30):
+        twist = outer.sample(0.0, pose, np.zeros(6))
+    assert float(twist[3]) > 0.05
+    assert float(np.linalg.norm(twist[:3])) < 1.0e-9
+
+
+def test_tool_frame_last_twist_base_is_world() -> None:
+    pad = FakePad(axes=np.array([0.0, 0.0, 1.0, 0.0, 0.0, -1.0]))
+    cfg = GamepadTwistConfig(
+        trans_m_s=0.10,
+        deadzone=0.10,
+        trigger_deadzone=0.08,
+        dt=0.005,
+        pad_lpf_hz=0.0,
+        trans_j_max_m_s3=0.0,
+        trans_a_max_m_s2=100.0,
+        control_frame="tool",
+        hold_relatch_on_settle=False,
+        euler_order="xyz",
+    )
+    outer = GamepadTwistOuterLoop(pad, cfg)
+    pose = np.array([0.4, 0.2, 0.3, 0.0, 0.8, 0.0])
+    outer.set_origin(pose)
+    twist = outer.sample(0.0, pose, np.zeros(6))
+    assert float(np.linalg.norm(twist[:3])) > 0.0
+    assert abs(float(outer.last_twist_base[2]) + 0.10) < 1.0e-9
+    assert abs(float(outer.last_twist_base[0])) < 1.0e-9

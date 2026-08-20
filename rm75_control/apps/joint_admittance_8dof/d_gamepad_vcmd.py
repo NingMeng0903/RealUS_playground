@@ -147,6 +147,24 @@ def main() -> int:
         help="Stick rotation slew limit (rad/s^2).",
     )
     ap.add_argument(
+        "--trans-j-max",
+        type=float,
+        default=8.0,
+        help="Stick/button translation jerk limit (m/s^3).",
+    )
+    ap.add_argument(
+        "--rot-j-max",
+        type=float,
+        default=16.0,
+        help="Stick/button rotation jerk limit (rad/s^3).",
+    )
+    ap.add_argument(
+        "--pad-lpf-hz",
+        type=float,
+        default=16.0,
+        help="First-order LPF on stick and button velocity (Hz). 0 = off.",
+    )
+    ap.add_argument(
         "--hold-v-max",
         type=float,
         default=0.03,
@@ -239,6 +257,9 @@ def main() -> int:
             gamepad_trigger_deadzone=float(args.trigger_deadzone),
             gamepad_trans_a_max_m_s2=float(args.trans_a_max),
             gamepad_rot_a_max_rad_s2=float(args.rot_a_max),
+            gamepad_trans_j_max_m_s3=float(args.trans_j_max),
+            gamepad_rot_j_max_rad_s3=float(args.rot_j_max),
+            gamepad_pad_lpf_hz=float(args.pad_lpf_hz),
             gamepad_hold_v_max_m_s=float(args.hold_v_max),
             gamepad_hold_w_max_rad_s=float(args.hold_w_max),
             q0_rad=[0.0] * 8,
@@ -369,6 +390,9 @@ def main() -> int:
             gamepad_trigger_deadzone=float(args.trigger_deadzone),
             gamepad_trans_a_max_m_s2=float(args.trans_a_max),
             gamepad_rot_a_max_rad_s2=float(args.rot_a_max),
+            gamepad_trans_j_max_m_s3=float(args.trans_j_max),
+            gamepad_rot_j_max_rad_s3=float(args.rot_j_max),
+            gamepad_pad_lpf_hz=float(args.pad_lpf_hz),
             gamepad_hold_v_max_m_s=float(args.hold_v_max),
             gamepad_hold_w_max_rad_s=float(args.hold_w_max),
         )

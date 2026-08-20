@@ -48,6 +48,7 @@ Q_D = np.array(
 def _inner(q: np.ndarray) -> JointIkController:
     raw = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
     cfg = build_joint_ik_config(raw)
+    cfg.backend = "python"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False
@@ -172,6 +173,8 @@ def test_tick_logger_has_nullspace_terms() -> None:
         "qpik_nullspace_arm_angle_norm",
         "qpik_nullspace_damping_norm",
         "qpik_nullspace_rail_lock_norm",
+        "qpik_sat_scale",
+        "qpik_sec_target_norm",
     ):
         assert name in header
     assert len(header) == len(set(header))

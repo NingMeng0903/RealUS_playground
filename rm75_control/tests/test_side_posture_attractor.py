@@ -216,9 +216,9 @@ def test_preferred_escape_sign_is_minus_except_min_pin() -> None:
 
 def test_step_reference_velocity_step_lag_is_at_most_3_2_mm() -> None:
     a_max = live_host_accel_m_s2(
-        vel_max_m_s=0.15, accel_ms=120.0, configured_m_s2=1.2
+        vel_max_m_s=0.15, accel_ms=120.0, configured_m_s2=1.2, lead_mm=10.0
     )
-    assert a_max == pytest.approx(min(1.2, 0.85 * 0.15 / 0.12))
+    assert a_max == pytest.approx(min(1.2, 0.85 * (1000.0 / 60.0) * 0.010 / 0.12))
     dt = 0.02
     x_ref = 0.400
     v_ref = 0.0

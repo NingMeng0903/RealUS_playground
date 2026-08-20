@@ -13,12 +13,11 @@ and holds the planned d* constant.
 
 Unplanned ``step`` homes ``(d*, ψ*, q*)`` on one progress ``s``.  ``T``
 is the slower of the existing ψ and d rates; ``q*`` is ``srs_ik`` at the
-current TCP (same branch), not the yaml photo at t=0.  ``d*`` is the
-split that keeps IK J4 in the design band (center ~95°), then eases
-toward ``d_attr``.  A live outer ``vel_ff`` freezes ``s`` via
-``hold_setpoint``; an infeasible intermediate IK also freezes ``s``.
-Local ψ search takes over only while the wrist is collapsed and the
-elbow is still open (SEW is undefined near the J4 floor).
+current TCP (same branch), not the yaml photo at t=0.  Hunt ``d*`` /
+``ψ*`` while moving; freeze ``hold_setpoint`` only when the command and
+TCP are both quiet (or slack is high).  Local ψ search takes over only
+while the wrist is collapsed and the elbow is still open (SEW is
+undefined near the J4 floor).
 """
 
 from __future__ import annotations
@@ -352,11 +351,6 @@ class PostureRetarget:
         self._held_prev = False
         self.d_star_m = float(self._d_star)
         self.psi_star_rad = float(psi_star)
-        self.last_psi_score = float("nan")
-        self.last_dpref_score = float("nan")
-        self.last_minmax_margin = float("nan")
-        self.last_psi_family_degraded = False
-        self._update_margins(q)
 
     def _update_margins(self, q: np.ndarray) -> None:
         q_arm = np.asarray(q, dtype=float).reshape(-1)
@@ -737,6 +731,7 @@ class PostureRetarget:
             if self._d_center_target is not None
             else float(self.cfg.d_attr_m)
         )
+        has_travel = (d_hi - d_lo) > 0.01
         samples = list(np.linspace(d_lo, d_hi, 11))
         for extra in (d_pref, float(self._d_star), float(self._d0)):
             if extra is None or not np.isfinite(float(extra)):
@@ -748,7 +743,6 @@ class PostureRetarget:
         # sign mismatch — that locked d* while ψ already folded J1.
         sign_pref = -1.0
         j4_c = float(self.cfg.elbow_center_rad)
-        has_travel = (d_hi - d_lo) > 0.01
         best_d: float | None = None
         best_cost = float("inf")
         fallback_d: float | None = None

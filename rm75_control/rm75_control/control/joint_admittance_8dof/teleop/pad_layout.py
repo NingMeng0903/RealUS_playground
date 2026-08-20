@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 
 LOGICAL_AXES = ("lx", "ly", "lt", "rx", "ry", "rt")
-LOGICAL_BUTTONS = ("a", "b", "x", "y", "lb", "rb")
+LOGICAL_BUTTONS = ("a", "b", "x", "y", "lb", "rb", "l3", "r3")
 
 # SDL / xpad (USB): LT=2 RT=5, rest −1.
 LAYOUT_WIRED_XPAD = "wired_xpad"
@@ -58,7 +58,7 @@ class PadLayout:
     )
     # −1: Linux xpad trigger rest.  0: trigger already in [0, 1].
     trigger_rest: float = -1.0
-    button_index: dict[str, int] = field(
+        button_index: dict[str, int] = field(
         default_factory=lambda: {
             "a": 0,
             "b": 1,
@@ -66,6 +66,8 @@ class PadLayout:
             "y": 3,
             "lb": 4,
             "rb": 5,
+            "l3": 9,
+            "r3": 10,
         }
     )
 
@@ -101,7 +103,7 @@ def layout_bt_xpadneo() -> PadLayout:
         name=LAYOUT_BT_XPADNEO,
         axis_index={"lx": 0, "ly": 1, "lt": 5, "rx": 2, "ry": 3, "rt": 4},
         # xpadneo: A B X Y View Menu LB RB …  (LB is 6, not wired 4)
-        button_index={"a": 0, "b": 1, "x": 2, "y": 3, "lb": 6, "rb": 7},
+        button_index={"a": 0, "b": 1, "x": 2, "y": 3, "lb": 6, "rb": 7, "l3": 9, "r3": 10},
     )
 
 
@@ -201,8 +203,8 @@ def apply_layout(
         if key in ("lt", "rt"):
             val = _trigger_to_wired(val, layout.trigger_rest)
         out_ax[i] = val
-    out_btn = np.zeros(8, dtype=float)
-    out_btn[: min(8, src_btn.size)] = src_btn[:8]
+    out_btn = np.zeros(16, dtype=float)
+    out_btn[: min(16, src_btn.size)] = src_btn[:16]
     for logical_i, key in enumerate(LOGICAL_BUTTONS):
         idx = int(layout.button_index.get(key, logical_i))
         out_btn[logical_i] = (

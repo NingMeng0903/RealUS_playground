@@ -19,6 +19,7 @@ from rm75_control.control.joint_admittance_8dof.ellipse_track_program import (
 )
 from rm75_control.control.joint_admittance_8dof.loop import (
     AdmittanceOuterLoop,
+    CartesianTrackConfig,
     CartesianTrackOuterLoop,
     JointIkController,
 )
@@ -76,6 +77,7 @@ def test_phase_cartesian_track_compiles_to_pd_outer() -> None:
     import yaml
 
     cfg = build_joint_ik_config(yaml.safe_load(raw))
+    cfg.backend = "python"
     kin = RobotKinematics()
     inner = JointIkController(kin, cfg)
     ctx = CompileContext(kin=kin, inner=inner, control_frame=cfg.control_frame)
@@ -88,13 +90,47 @@ def test_phase_cartesian_track_compiles_to_pd_outer() -> None:
     assert not isinstance(compiled.outer, AdmittanceOuterLoop)
     assert compiled.phase.label == "ellipse_track"
     assert compiled.phase.duration_s == 5.0
-    assert cfg.cartesian_track.k_task_lin == pytest.approx(10.0)
-    assert np.allclose(compiled.outer.cfg.k_task, [10.0, 10.0, 10.0, 2.0, 2.0, 2.0])
+    assert cfg.cartesian_track.k_task_lin == pytest.approx(12.0)
+    assert cfg.cartesian_track.fb_lpf_tau_s == pytest.approx(0.0)
+    assert compiled.outer.cfg.fb_lpf_tau_s == pytest.approx(0.0)
+    assert np.allclose(compiled.outer.cfg.k_task, [12.0, 12.0, 12.0, 2.0, 2.0, 2.0])
     overridden = compile_phase(
         phase_cartesian_track(ref, label="ellipse_kp", duration_s=5.0, move_kp=6.0),
         ctx,
     )
     assert np.allclose(overridden.outer.cfg.k_task, [6.0, 6.0, 6.0, 2.0, 2.0, 2.0])
+
+
+def test_cartesian_p_lpf_leaves_ff_and_keeps_dc_gain() -> None:
+    cfg = CartesianTrackConfig(
+        k_task=np.array([16.0, 16.0, 16.0, 2.0, 2.0, 2.0]),
+        fb_lpf_tau_s=0.02,
+        path_feedforward=True,
+        control_frame="base",
+        max_lin_vel_m_s=1.0,
+    )
+
+    class _Ref:
+        pose_d = np.zeros(6)
+        vel_ff = np.array([0.04, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+        def sample(self, t_s: float):
+            del t_s
+            return self
+
+    ref = _Ref()
+    outer = CartesianTrackOuterLoop(ref, cfg)
+    pose = np.zeros(6)
+    out0 = outer.sample(0.0, pose, np.zeros(6))
+    assert np.allclose(out0[:3], [0.04, 0.0, 0.0], atol=1e-12)
+    ref.pose_d = np.array([0.01, 0.0, 0.0, 0.0, 0.0, 0.0])
+    out1 = outer.sample(0.005, pose, np.zeros(6))
+    assert np.allclose(outer.last_path_twist[:3], [0.04, 0.0, 0.0], atol=1e-12)
+    assert out1[0] < 0.20 - 1e-6
+    assert out1[0] > 0.04
+    for i in range(80):
+        out = outer.sample(0.005 * (i + 2), pose, np.zeros(6))
+    assert np.allclose(out[:3], [0.20, 0.0, 0.0], atol=1e-3)
 
 
 def test_build_ellipse_program_from_live_pose_and_ipc() -> None:
@@ -113,11 +149,16 @@ def test_build_ellipse_program_from_live_pose_and_ipc() -> None:
     decoded = SinToolYTaskParams.from_json(params.to_json())
     assert decoded.task_kind == "ellipse_track"
     assert decoded.x_pp_cm == 4.0
-    built = build_ellipse_track_program(params)
+    import yaml
+
+    raw = yaml.safe_load(_CFG.read_text(encoding="utf-8"))
+    raw.setdefault("inner", {})["backend"] = "python"
+    built = build_ellipse_track_program(params, raw=raw)
     assert [p.label for p in built.phases] == ["ellipse_track"]
     assert isinstance(built.compiled[0].outer, CartesianTrackOuterLoop)
     assert built.reference.amplitude_x_m == 0.02
     assert built.reference.amplitude_y_m == 0.04
+    built.inner.reset(_SEED_Q)
     built.phases[0].on_enter()
     assert built.inner._centering_suppressed is False
     assert built.inner._arm_task_suppressed is False

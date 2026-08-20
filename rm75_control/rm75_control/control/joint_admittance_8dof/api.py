@@ -636,6 +636,7 @@ def _cartesian_track_config(
         k_task=_cartesian_k_task(spec, ctx),
         max_pos_err_m=float(gains.max_pos_err_m),
         max_rot_err_rad=float(gains.max_rot_err_rad),
+        fb_lpf_tau_s=float(gains.fb_lpf_tau_s),
         **kwargs,
     )
 

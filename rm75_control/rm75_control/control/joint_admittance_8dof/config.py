@@ -937,7 +937,7 @@ def _parse_cartesian_track(raw: dict) -> CartesianTrackGains:
     section = _mapping(raw.get("cartesian_track"), name="cartesian_track")
     _reject_unknown(
         section,
-        {"k_task_lin", "k_task_rot", "max_pos_err_m", "max_rot_err_rad"},
+        {"k_task_lin", "k_task_rot", "max_pos_err_m", "max_rot_err_rad", "fb_lpf_tau_s"},
         name="cartesian_track",
     )
     defaults = CartesianTrackGains()
@@ -958,11 +958,17 @@ def _parse_cartesian_track(raw: dict) -> CartesianTrackGains:
             section.get("max_rot_err_rad", defaults.max_rot_err_rad),
             name="cartesian_track.max_rot_err_rad",
         ),
+        fb_lpf_tau_s=_finite_float(
+            section.get("fb_lpf_tau_s", defaults.fb_lpf_tau_s),
+            name="cartesian_track.fb_lpf_tau_s",
+        ),
     )
     if gains.k_task_lin < 0.0 or gains.k_task_rot < 0.0:
         raise ValueError("cartesian_track gains must be non-negative")
     if gains.max_pos_err_m <= 0.0 or gains.max_rot_err_rad <= 0.0:
         raise ValueError("cartesian_track error limits must be positive")
+    if gains.fb_lpf_tau_s < 0.0:
+        raise ValueError("cartesian_track.fb_lpf_tau_s must be non-negative")
     return gains
 
 
@@ -1014,6 +1020,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         inner,
         {
             "control_frame", "euler_order", "sync_tcp_from_robot",
+            "backend", "native_bin", "native_shm_prefix",
             "v_scale", "a_max_arm", "a_max_arm_rad_s2", "a_max_rail_m_s2",
             "position_margin_deg", "position_margin_rail_mm",
             "resync_err_deg", "resync_err_rail_mm",
@@ -1025,6 +1032,11 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         },
         name="inner",
     )
+    backend = str(inner.get("backend", "python")).lower()
+    if backend not in {"python", "native"}:
+        raise ValueError(
+            f"inner.backend must be 'python' or 'native' (got {backend!r})"
+        )
 
     euler_order = str(
         _mapping(raw.get("frames"), name="frames").get(
@@ -1171,6 +1183,11 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             name="inner.nullspace_max_qdot_frac",
         ),
         saturation=_parse_saturation(inner.get("saturation")),
+        backend=backend,
+        native_bin=(
+            str(inner["native_bin"]) if inner.get("native_bin") is not None else None
+        ),
+        native_shm_prefix=str(inner.get("native_shm_prefix", "rm75_wbc")),
     )
     assert_design_attractor_consistent(cfg)
     return cfg

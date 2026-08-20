@@ -106,6 +106,9 @@ class SinToolYTaskParams:
     gamepad_device_index: int = -1
     gamepad_trans_a_max_m_s2: float = 0.8
     gamepad_rot_a_max_rad_s2: float = 4.0
+    gamepad_trans_j_max_m_s3: float = 8.0
+    gamepad_rot_j_max_rad_s3: float = 16.0
+    gamepad_pad_lpf_hz: float = 16.0
     gamepad_hold_v_max_m_s: float = 0.03
     gamepad_hold_w_max_rad_s: float = 0.20
     gamepad_hold_deadband_m: float = 0.001

@@ -96,6 +96,7 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import (
     RailMode,
 )
 from rm75_control.control.joint_admittance_8dof.filters import (
+    first_order_lpf_vec,
     smoothstep01,
 )
 from rm75_control.control.joint_admittance_8dof.saturation_latch import (
@@ -148,6 +149,8 @@ class CartesianTrackGains:
     k_task_rot: float = 2.0
     max_pos_err_m: float = 0.05
     max_rot_err_rad: float = 0.35
+    # First-order LPF on k*e only.  v_ff is never filtered.  0 = off.
+    fb_lpf_tau_s: float = 0.0
 
 
 @dataclass
@@ -185,6 +188,10 @@ class JointIkConfig:
     nullspace_d_null_adaptive: float = 1.0
     nullspace_max_qdot_frac: float = 0.2
     saturation: SaturationConfig = field(default_factory=SaturationConfig)
+    # python = in-process QPIK; native = separate wbc_rt process over SHM.
+    backend: str = "python"
+    native_bin: str | None = None
+    native_shm_prefix: str = "rm75_wbc"
 
 
 @dataclass
@@ -339,6 +346,8 @@ class JointIkStep:
     nullspace_arm_angle_norm: float = float("nan")
     nullspace_damping_norm: float = float("nan")
     nullspace_rail_lock_norm: float = float("nan")
+    sat_scale: float = float("nan")
+    sec_target_norm: float = float("nan")
     post_qp_step_clamp_enabled: bool = True
     post_step_would_clamp: bool = False
     post_step_clamp_applied: bool = False
@@ -567,6 +576,7 @@ class JointIkController:
         self._enabled = True
         self._quiescent = False
         self._quiet_s = 0.0
+        self._cmd_quiet_s = 0.0
         self._last_tcp_est = np.zeros(6, dtype=float)
         self._u_mid_committed = 0.0
         self._u_mid_for_sec = 0.0
@@ -586,6 +596,22 @@ class JointIkController:
         self._direct_joint_ptp: bool = False
         self._last_post_step: dict = {}
         self._apply_rail_mode_side_effects()
+        self._native = None
+        if str(getattr(self.cfg, "backend", "python")).lower() == "native":
+            from rm75_control.control.joint_admittance_8dof.wbc_rt.client import (
+                NativeWbcClient,
+            )
+
+            self._native = NativeWbcClient(self)
+            self._native.start()
+
+    def __del__(self) -> None:
+        native = getattr(self, "_native", None)
+        if native is not None:
+            try:
+                native.shutdown()
+            except Exception:
+                pass
 
     @property
     def rail_mode(self) -> RailMode:
@@ -593,9 +619,13 @@ class JointIkController:
 
     def set_plan_drives_rail(self, enabled: bool) -> None:
         self._plan_drives_rail = bool(enabled)
+        if self._native is not None:
+            self._native.push_flags()
 
     def set_direct_joint_ptp(self, enabled: bool) -> None:
         self._direct_joint_ptp = bool(enabled)
+        if self._native is not None:
+            self._native.push_flags()
 
     @property
     def configured_rail_mode(self) -> RailMode:
@@ -614,27 +644,45 @@ class JointIkController:
 
     def set_arm_task_suppressed(self, suppressed: bool) -> None:
         self._arm_task_suppressed = bool(suppressed)
+        if self._native is not None:
+            self._native.push_flags()
 
     def set_centering_suppressed(self, suppressed: bool) -> None:
         self._centering_suppressed = bool(suppressed)
+        if self._native is not None:
+            self._native.push_flags()
 
     def set_manipulability_active(self, active: bool) -> None:
         self._manipulability_active = bool(active) and self.manipulability_task is not None
+        if self._native is not None:
+            self._native.push_flags()
 
     def set_rail_extension_active(self, active: bool) -> None:
         self._rail_ext_active = bool(active)
+        if self._native is not None:
+            self._native.push_flags()
 
     def set_rail_extension_mode(self, mode: str) -> None:
         if self.rail_ext_task is not None:
             self.rail_ext_task.set_mode(mode)  # type: ignore[arg-type]
+        if self._native is not None:
+            self._native.set_rail_extension_mode(mode)
+
+    def set_mode(self, mode: str) -> None:
+        """Alias for ``set_rail_extension_mode`` (facade contract)."""
+        self.set_rail_extension_mode(mode)
 
     def set_rail_pose_target(self, y_rail_m: float | None) -> None:
         if self.rail_ext_task is not None:
             self.rail_ext_task.set_rail_pose_target(y_rail_m)
+        if self._native is not None:
+            self._native.set_rail_pose_target(y_rail_m)
 
     def capture_rail_extension_ref(self) -> None:
         if self.rail_ext_task is not None:
             self.rail_ext_task.capture_reference(self.q_cmd)
+        if self._native is not None:
+            self._native.capture_rail_extension_ref()
 
     def _measure_box_periods(self, dt: float) -> tuple[float, float | None]:
         """Two most recent wall periods for the unequal-sample third-order box.
@@ -787,6 +835,8 @@ class JointIkController:
             self.arm_task.set_reference(float(psi_star))
         if self.rail_ext_task is not None:
             self.rail_ext_task.set_d_pref(float(d_star))
+        if self._native is not None:
+            self._native.set_stroke(float(d_star), float(psi_star))
         return float(d_star), float(psi_star)
 
     def _check_design_family(self, q_meas: np.ndarray) -> None:
@@ -835,7 +885,7 @@ class JointIkController:
         self._check_design_family(q)
 
     def _publish_homotopy_centering(self) -> None:
-        """Homotopy q* while s<1; yaml nominal after s≈1 so centering cannot chase a yanked IK."""
+        """Homotopy q* while s<1; yaml nominal after s≈1."""
         if self.posture_retarget is None:
             return
         if float(self.posture_retarget.homotopy_s) >= 1.0 - 1.0e-6:
@@ -889,12 +939,15 @@ class JointIkController:
         self._sec_filter.reset()
         self._quiescent = False
         self._quiet_s = 0.0
+        self._cmd_quiet_s = 0.0
         self._last_tcp_est = np.zeros(6, dtype=float)
         self._u_mid_committed = 0.0
         self._u_mid_for_sec = 0.0
         self._enabled = True
         self._apply_rail_mode_side_effects()
         self._latch_attractor_from_q(self.q_cmd)
+        if self._native is not None:
+            self._native.reset(self.q_cmd)
 
     def begin_hybrid_episode(
         self,
@@ -908,7 +961,11 @@ class JointIkController:
         """
         applied = self.core.qdot_prev if qdot_applied is None else qdot_applied
         self.core.sync_applied(applied)
+        if self.posture_retarget is not None:
+            self.posture_retarget.reset(q_meas)
         self._latch_attractor_from_q(q_meas)
+        if self._native is not None:
+            self._native.begin_hybrid_episode(q_meas, applied)
 
     def set_rail_mode(
         self,
@@ -938,6 +995,12 @@ class JointIkController:
         elif mode == RailMode.LOCKED and self._locked_style == LockedStyle.HOLD:
             self.rail_task.reset(self.q_cmd)
         self._apply_rail_mode_side_effects()
+        if self._native is not None:
+            self._native.set_rail_mode(
+                self._rail_mode,
+                q_ref_m=q_ref_m,
+                locked_style=self._locked_style,
+            )
 
     def set_coupled(self) -> None:
         self.set_rail_mode(RailMode.COUPLED)
@@ -1259,6 +1322,8 @@ class JointIkController:
 
     def enable(self) -> None:
         self._enabled = True
+        if self._native is not None:
+            self._native.enable()
 
     def stop(self) -> None:
         """Communication abort: zero the next command.  Not a trajectory mode."""
@@ -1269,6 +1334,8 @@ class JointIkController:
         self.midranging.reset()
         self.rail_ref_model.reset(0.0)
         self.last_v_r_ref = 0.0
+        if self._native is not None:
+            self._native.stop()
 
     def _update_quiescent(self, twist_base: np.ndarray, dt: float) -> bool:
         v = np.asarray(twist_base, dtype=float).reshape(-1)
@@ -1278,9 +1345,14 @@ class JointIkController:
         tcp_lin = float(np.linalg.norm(tcp[:3])) if tcp.size >= 3 else 0.0
         cmd_quiet = lin < _QUIESCENT_LIN_M_S and rot < _QUIESCENT_ROT_RAD_S
         tcp_quiet = tcp_lin < _QUIESCENT_TCP_M_S
-        if cmd_quiet and tcp_quiet:
-            self._quiet_s += max(float(dt), 0.0)
+        if cmd_quiet:
+            self._cmd_quiet_s += max(float(dt), 0.0)
+            if tcp_quiet:
+                self._quiet_s += max(float(dt), 0.0)
+            else:
+                self._quiet_s = 0.0
         else:
+            self._cmd_quiet_s = 0.0
             self._quiet_s = 0.0
         self._quiescent = bool(self._quiet_s + 1.0e-12 >= _QUIESCENT_HOLD_S)
         return self._quiescent
@@ -1294,6 +1366,8 @@ class JointIkController:
         **kwargs,
     ) -> TrackerStatus:
         """Pure-velocity inner API: ``v_cmd[6]`` plus comms stamp."""
+        if self._native is not None:
+            return self._native.step(v_cmd, stamp, q_meas=q_meas, **kwargs)
         stale = False
         twist = np.asarray(v_cmd, dtype=float).reshape(-1).copy()
         if twist.size != 6:
@@ -1343,7 +1417,30 @@ class JointIkController:
         rail_exec_smooth_m_s: float | None = None,
         dt_wall_s: float | None = None,
         command_stale: bool = False,
+        seed_q_cmd: bool = False,
     ) -> JointIkStep:
+        if self._native is not None:
+            return self._native.update(
+                twist,
+                dt=dt,
+                q_meas=q_meas,
+                qdot_ff=qdot_ff,
+                vel_ff=vel_ff,
+                pose_d=pose_d,
+                f_ext_z=f_ext_z,
+                f_des_z=f_des_z,
+                contact_active=contact_active,
+                task_rotation_base=task_rotation_base,
+                task_safety_rows=task_safety_rows,
+                path_twist=path_twist,
+                feedback_twist=feedback_twist,
+                v_force_z=v_force_z,
+                rail_exec_vel_m_s=rail_exec_vel_m_s,
+                rail_exec_smooth_m_s=rail_exec_smooth_m_s,
+                dt_wall_s=dt_wall_s,
+                command_stale=command_stale,
+                seed_q_cmd=seed_q_cmd,
+            )
         del f_ext_z, f_des_z, task_safety_rows
         path_twist_arr = (
             np.asarray(path_twist, dtype=float).reshape(6)
@@ -2242,6 +2339,8 @@ class JointIkController:
         step.nullspace_arm_angle_norm = float(self.secondary.last_arm_angle_norm)
         step.nullspace_damping_norm = float(self.secondary.last_damping_norm)
         step.nullspace_rail_lock_norm = float(self.secondary.last_rail_lock_norm)
+        step.sat_scale = float(self.last_sat_scale)
+        step.sec_target_norm = float(np.linalg.norm(self._sec_filter.target))
         lock_jac = np.asarray(
             getattr(self.core, "last_lock_jacobian", J_fin), dtype=float
         )
@@ -2461,6 +2560,7 @@ class CartesianTrackConfig:
     # Must match JointIkConfig.control_frame (tool twist is rotated by R @ twist).
     control_frame: str = "tool"
     path_feedforward: bool = True
+    fb_lpf_tau_s: float = 0.0
 
 
 class CartesianTrackOuterLoop:
@@ -2475,6 +2575,8 @@ class CartesianTrackOuterLoop:
         self.last_path_twist = np.zeros(6)
         self.last_feedback_twist = np.zeros(6)
         self._reference_override = None
+        self._fb_lpf: np.ndarray | None = None
+        self._last_t_s: float | None = None
 
     def set_reference_override(self, reference) -> None:
         self._reference_override = reference
@@ -2482,6 +2584,8 @@ class CartesianTrackOuterLoop:
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
         if hasattr(self.reference, "set_origin"):
             self.reference.set_origin(pose0, t_s=t_s)
+        self._fb_lpf = None
+        self._last_t_s = None if t_s is None else float(t_s)
 
     def sample(self, t_s: float, current_pose: np.ndarray, f_ext: np.ndarray) -> np.ndarray:
         del f_ext
@@ -2498,6 +2602,12 @@ class CartesianTrackOuterLoop:
         v_ff = np.asarray(ref.vel_ff, dtype=float)
         path_base = v_ff.copy() if cfg.path_feedforward else np.zeros(6)
         feedback_base = cfg.k_task * err_sat
+        dt = 0.005
+        if self._last_t_s is not None:
+            raw_dt = float(t_s) - float(self._last_t_s)
+            if math.isfinite(raw_dt) and raw_dt > 1.0e-4:
+                dt = float(np.clip(raw_dt, 0.001, 0.05))
+        self._last_t_s = float(t_s)
 
         def cap_twist(value: np.ndarray) -> np.ndarray:
             capped = np.asarray(value, dtype=float).copy()
@@ -2511,6 +2621,14 @@ class CartesianTrackOuterLoop:
 
         path_base = cap_twist(path_base)
         feedback_base = cap_twist(feedback_base)
+        tau = float(getattr(cfg, "fb_lpf_tau_s", 0.0) or 0.0)
+        if self._fb_lpf is None:
+            self._fb_lpf = np.asarray(feedback_base, dtype=float).copy()
+        else:
+            self._fb_lpf = first_order_lpf_vec(
+                self._fb_lpf, feedback_base, dt, tau
+            )
+        feedback_base = np.asarray(self._fb_lpf, dtype=float).copy()
         v = cap_twist(path_base + feedback_base)  # base-frame legacy output
 
         if cfg.control_frame == "tool":
@@ -3037,6 +3155,8 @@ class _TickLogger:
            "qpik_nullspace_arm_angle_norm",
            "qpik_nullspace_damping_norm",
            "qpik_nullspace_rail_lock_norm",
+           "qpik_sat_scale",
+           "qpik_sec_target_norm",
            "cbf_min_dist", "cbf_pair",
            "e_shape_norm", "e_qp_norm", "e_exec_norm",
            "quiescent", "secondary_suppressed", "command_stale",
@@ -3836,6 +3956,16 @@ class _TickLogger:
                (
                    f"{float(getattr(step, 'nullspace_rail_lock_norm', float('nan'))):.6f}"
                    if np.isfinite(getattr(step, "nullspace_rail_lock_norm", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(getattr(step, 'sat_scale', float('nan'))):.6f}"
+                   if np.isfinite(getattr(step, "sat_scale", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(getattr(step, 'sec_target_norm', float('nan'))):.6f}"
+                   if np.isfinite(getattr(step, "sec_target_norm", float("nan")))
                    else ""
                ),
                (

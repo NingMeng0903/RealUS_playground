@@ -1,17 +1,19 @@
-"""LW100 rail servo bridge: PC soft position loop → FA24 continuous velocity.
+"""LW100 rail servo bridge: FA24 velocity stream + POSITION-mode soft CSP.
 
 Controller path (virtual-rail WBC structure; motor replaces sim rail):
   * WBC streams ``q_cmd[0]`` (metres) via ``set_target_m`` each control tick,
     optionally with ``v_ff_m_s`` so the worker does not differentiate a
     nominal-dt position stream (5 ms integrate / ~6.5 ms wall → 25% slow).
-  * Soft CSP: stream-aware online ``(x_ref,v_ref)`` from ``set_target_m`` +
+  * ``COUPLED_VELOCITY`` (QPIK): FA24 follows ``v_ref`` only.  Outer CLIK
+    closes pose.  No host ``kp*(x_ref−x)`` — that dumped a 0.7 mm ghost at
+    reversals (rpm 6→61).  The worker re-anchors ``x_ref`` to the encoder
+    while following so standstill ``e_track`` stays empty.
+  * POSITION scan/home: stream-aware ``(x_ref,v_ref)`` +
     ``v = v_ref + kp*(x_ref−x) + kd*(v_ref−v_enc)`` → FA24.
     ``v_enc`` is a bounded encoder-position difference (the 0x1000 speed
     register lags ~150 ms and plugged the carriage on every gamepad stop).
     Position is closed on the shaped reference, never ``x_goal`` (command
-    lead / later KMP OTG stay outside).  Same law for QPIK coupled-velocity
-    and a position+FF stream (KMP/DMP ``p_cmd``, ``p_dot``).  Host ``a_max``
-    is capped to FA40 so PD cannot chop FA24 against the 200 ms drive ramp.
+    lead / later KMP OTG stay outside).  Host ``a_max`` is capped to FA40.
   * Standstill hysteresis freezes FA24 after a tight settle (enter band) and
     only re-engages if disturbed past the wider exit band or ``v_ref≠0``.
   * Encoder → SHM / Genesis twin only. Encoder is **never** fed into the WBC.
@@ -109,13 +111,22 @@ def live_host_accel_m_s2(
     accel_ms: float,
     configured_m_s2: float,
     match_drive: bool = True,
+    lead_mm: float = 10.0,
 ) -> float:
-    """Cap host ``a_max`` so PD cannot outrun FA40 (loaded-scan 30→20→24 chop)."""
+    """Cap host ``a_max`` so the slew cannot outrun FA40.
+
+    FA40/FA41 are the time from 0 to **1000 r/min**, not 0 to ``vel_max``.
+    ``vel_max_m_s`` is unused for the drive-accel estimate; keep the argument
+    so existing call sites stay valid.
+    """
+    del vel_max_m_s
     configured = max(float(configured_m_s2), 1.0e-3)
     if not match_drive:
         return configured
     accel_s = max(float(accel_ms) * 1.0e-3, 0.05)
-    a_drive = max(float(vel_max_m_s), 1.0e-6) / accel_s
+    lead_m = max(float(lead_mm), 1.0e-6) * 1.0e-3
+    v_1000rpm = (1000.0 / 60.0) * lead_m
+    a_drive = v_1000rpm / accel_s
     return min(configured, max(0.08, 0.85 * a_drive))
 
 
@@ -175,8 +186,6 @@ class RailServoConfig:
     catch_frac: float = 0.3
     # Encoder-noise hysteresis for same-sign brake detection (m/s).
     decel_request_margin_m_s: float = 0.005
-    # Live v_ff: position is a slow trim so PD cannot outrun FA40.
-    vel_ff_p_trim_m_s: float = 0.010
     match_drive_accel: bool = True
     # Skip FA24 writes smaller than this (r/min) while moving.  12 ≈ 2 mm/s.
     fa24_rpm_deadband: int = 0
@@ -250,6 +259,7 @@ class RailServoConfig:
             accel_ms=float(self.accel_ms),
             configured_m_s2=float(self.vel_amax_m_s2),
             match_drive=bool(self.match_drive_accel),
+            lead_mm=float(self.lead_mm),
         )
 
 
@@ -526,7 +536,6 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         catch_k=float(hw.get("catch_k", 5.0)),
         catch_frac=float(hw.get("catch_frac", 0.3)),
         decel_request_margin_m_s=float(hw.get("decel_request_margin_m_s", 0.005)),
-        vel_ff_p_trim_m_s=float(hw.get("vel_ff_p_trim_m_s", 0.010)),
         match_drive_accel=bool(hw.get("match_drive_accel", True)),
         fa24_rpm_deadband=max(0, int(hw.get("fa24_rpm_deadband", 0))),
         vel_deadband_mm=float(hw.get("vel_deadband_mm", 0.05)),
@@ -2387,11 +2396,11 @@ class RailServoBridge:
         v_meas: float,
         zero_eps: float = RAIL_IDLE_EPS_M_S,
     ) -> tuple[float, float, float, bool]:
-        """Wipe P-term debt when the coupled stream is standing still.
+        """Wipe leftover ``x_ref`` when the coupled stream is standing still.
 
-        Orthogonal to standstill hysteresis (FA24 hold): this only snaps
-        ``x_ref`` to ``measured`` so ``v_p = kp*(x_ref−x_meas)`` is zero
-        on the release tick.  It does not move the carriage.
+        Orthogonal to standstill hysteresis (FA24 hold): snaps ``x_ref``
+        to ``measured`` so ``e_track`` is empty on the release tick.
+        It does not move the carriage.
         """
         parked = (
             abs(float(v_goal)) < float(zero_eps)
@@ -2401,6 +2410,20 @@ class RailServoBridge:
         if parked:
             return float(measured), 0.0, 0.0, True
         return float(x_ref), float(v_ref), float(a_ref), False
+
+    @staticmethod
+    def _reanchor_coupled_x_ref(
+        x_ref: float,
+        measured: float,
+        *,
+        follow: bool,
+        settling: bool,
+    ) -> tuple[float, float]:
+        """Keep coupled ``x_ref`` on the encoder so standstill has no ghost debt."""
+        if follow and not settling:
+            x_ref = float(measured)
+        err_x = float(x_ref) - float(measured)
+        return float(x_ref), err_x
 
     @staticmethod
     def _clamp_zero_target_brake(
@@ -2510,7 +2533,6 @@ class RailServoBridge:
         jump_hard_m = max(float(self.config.jump_hard_mm), 10.0) * 1e-3
         jump_soft_streak_panic = max(1, int(self.config.jump_soft_streak_panic))
         prev_t = time.monotonic()
-        last_modbus_warn = 0.0
         prev_v_cmd = 0.0
         x_ref = float(self.measured_m) if math.isfinite(self.measured_m) else 0.0
         v_ref = 0.0
@@ -3166,39 +3188,15 @@ class RailServoBridge:
                             a_max=a_ref_max,
                         )
 
-                    kp = float(self.config.vel_kp)
-                    kd = float(self.config.vel_kd)
-                    err_x = x_ref - measured
-                    err_v = v_ref - v_meas
-                    # Position+FF on the shaped reference (papers: ẋd + Kp(xd−x)
-                    # + Kd(ẋd−ẋ)).  xd is x_ref, never x_goal — command lead
-                    # and later KMP OTG stay outside this loop.  Pure velocity
-                    # (v_p=0) integrates drift; that was the 3 mm tool-Y.
-                    # v_meas is encoder-difference, not the lagged 0x1000
-                    # register (157 ms stale → plugging brake on every stop).
-                    v_p = kp * err_x
-                    if settling:
-                        v_p_allow = abs(err_x) / max_stall_s
-                    else:
-                        v_p_allow = max(abs(err_x) / max_stall_s, stall_v_floor)
-                    if velocity_coupled:
-                        trim = max(float(self.config.vel_ff_p_trim_m_s), 0.0)
-                        if trim > 0.0:
-                            v_p_allow = min(v_p_allow, trim)
-                    v_p = max(-v_p_allow, min(v_p_allow, v_p))
-                    if velocity_coupled and abs(v_ref) > 1.0e-3:
-                        # Motion: L1 owns position.  Standstill latch keeps P.
-                        v_p = 0.0
                     brake_margin = float(self.config.decel_request_margin_m_s)
-                    v_d = kd * err_v
                     if velocity_coupled:
-                        v_d = 0.0
-                    else:
-                        d_cap = max(float(self.config.vel_kd_max_m_s), 0.0)
-                        if d_cap > 0.0:
-                            v_d = max(-d_cap, min(d_cap, v_d))
-                    v_raw = v_ref + v_p + v_d
-                    if velocity_coupled:
+                        x_ref, err_x = self._reanchor_coupled_x_ref(
+                            x_ref,
+                            measured,
+                            follow=bool(follow),
+                            settling=bool(settling),
+                        )
+                        v_raw = v_ref
                         v_raw = self._clamp_zero_target_brake(
                             v_raw,
                             v_goal=v_goal_est,
@@ -3207,6 +3205,25 @@ class RailServoBridge:
                             v_prev_cmd=prev_v_cmd,
                             margin=brake_margin,
                         )
+                    else:
+                        kp = float(self.config.vel_kp)
+                        kd = float(self.config.vel_kd)
+                        err_x = x_ref - measured
+                        err_v = v_ref - v_meas
+                        # POSITION scan/home: ẋd + Kp(xd−x) + Kd(ẋd−ẋ).
+                        # xd is x_ref, never x_goal.  v_meas is encoder
+                        # difference, not the lagged 0x1000 register.
+                        v_p = kp * err_x
+                        if settling:
+                            v_p_allow = abs(err_x) / max_stall_s
+                        else:
+                            v_p_allow = max(abs(err_x) / max_stall_s, stall_v_floor)
+                        v_p = max(-v_p_allow, min(v_p_allow, v_p))
+                        v_d = kd * err_v
+                        d_cap = max(float(self.config.vel_kd_max_m_s), 0.0)
+                        if d_cap > 0.0:
+                            v_d = max(-d_cap, min(d_cap, v_d))
+                        v_raw = v_ref + v_p + v_d
 
                     # Standstill when the shaped reference has stopped
                     # (|v_ref| < 1 mm/s), including live follow.  Do not
@@ -3385,17 +3402,6 @@ class RailServoBridge:
                         self._last_fa24_write_mono_ns = int(fa24_write_ns)
                 else:
                     t_write_ms = 0.0
-                modbus_ms = float(t_read_ms) + float(t_write_ms)
-                if modbus_ms > 12.0:
-                    now_warn = time.monotonic()
-                    if now_warn - last_modbus_warn >= 1.0:
-                        last_modbus_warn = now_warn
-                        print(
-                            f"lw100 rail: Modbus {modbus_ms:.1f} ms "
-                            f"(read {t_read_ms:.1f} + write {t_write_ms:.1f}) "
-                            "exceeds 12 ms budget",
-                            flush=True,
-                        )
                 prev_v_cmd = sign * self._rpm_to_mps(float(rpm_cmd))
                 control_mono = time.monotonic()
                 sample_mono = motion_sample_mono
@@ -3497,14 +3503,16 @@ class RailServoBridge:
                 if t0 - last_status_t >= 5.0:
                     last_status_t = t0
                     hz = loop_n / max(t0 - loop_t0, 1e-6)
-                    print(
-                        f"lw100 rail: loop {hz:.0f} Hz "
-                        f"tgt={target * 1000:.1f} meas={measured * 1000:.1f} mm "
-                        f"follow={follow}{' PANIC' if panic else ''}"
-                        f"{' FREEZE?' if moving_without_fb else ''}"
-                        f"{'' if poll_ok else ' SLOW'}",
-                        flush=True,
-                    )
+                    anomaly = bool(panic or moving_without_fb or not poll_ok)
+                    if verbose or anomaly:
+                        print(
+                            f"lw100 rail: loop {hz:.0f} Hz "
+                            f"tgt={target * 1000:.1f} meas={measured * 1000:.1f} mm "
+                            f"follow={follow}{' PANIC' if panic else ''}"
+                            f"{' FREEZE?' if moving_without_fb else ''}"
+                            f"{'' if poll_ok else ' SLOW'}",
+                            flush=True,
+                        )
                     if verbose and follow and abs(rpm) > 1.0:
                         print(
                             f"lw100 rail: v_follow v={v_cmd:+.3f} m/s → {rpm:+.0f} r/min",

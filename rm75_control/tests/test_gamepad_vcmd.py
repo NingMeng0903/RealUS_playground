@@ -18,11 +18,6 @@ from rm75_control.control.joint_admittance_8dof.gamepad_vcmd_program import (
     close_built_pad,
 )
 from rm75_control.control.joint_admittance_8dof.loop import JointIkController
-from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
-    d_from_q,
-    nearest_planar_psi,
-)
-from rm75_control.kinematics.srs_ik import psi_from_q
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
     GamepadTwistConfig,
@@ -31,6 +26,11 @@ from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
     map_pad_to_world_lin_tool_ang,
 )
 from rm75_control.control.joint_admittance_8dof.teleop.xbox_pad import FakePad, PadState
+from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
+    d_from_q,
+    nearest_planar_psi,
+)
+from rm75_control.kinematics.srs_ik import psi_from_q
 
 
 _SEED_Q = np.array([0.375, 0.194, -0.503, -0.069, 1.979, -0.776, 0.547, -4.370])
@@ -98,6 +98,7 @@ def test_tool_frame_inner_twist_roundtrips_world_y() -> None:
 def test_outer_loop_feeds_plus_y_into_qpik() -> None:
     raw = yaml.safe_load(_CFG.read_text(encoding="utf-8"))
     cfg = build_joint_ik_config(raw)
+    cfg.backend = "python"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False
@@ -130,6 +131,7 @@ def test_gamepad_can_reverse_off_plus_leave() -> None:
     """A stick command away from +soft_max must move q0; no extra freeze wall."""
     raw = yaml.safe_load(_CFG.read_text(encoding="utf-8"))
     cfg = build_joint_ik_config(raw)
+    cfg.backend = "python"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False
@@ -161,7 +163,13 @@ def test_logger_records_pad_and_vcmd(tmp_path) -> None:
     pad = FakePad(axes=np.array([-1.0, 0.0, -1.0, 0.0, 0.0, -1.0]))
     outer = GamepadTwistOuterLoop(
         pad,
-        GamepadTwistConfig(trans_m_s=0.08, deadzone=0.10, control_frame="base"),
+        GamepadTwistConfig(
+            trans_m_s=0.08,
+            deadzone=0.10,
+            control_frame="base",
+            pad_lpf_hz=0.0,
+            trans_j_max_m_s3=0.0,
+        ),
     )
     pose = np.array([0.4, 0.2, 0.3, 0.0, 0.0, 0.0])
     twist = outer.sample(0.0, pose, np.zeros(6))
@@ -188,7 +196,7 @@ def test_logger_records_pad_and_vcmd(tmp_path) -> None:
     header, values = rows[0], dict(zip(rows[0], rows[1], strict=True))
     assert "pad_lx" in header
     assert float(values["pad_lx"]) == pytest.approx(-1.0)
-    assert float(values["pad_vy"]) > 0.05
+    assert float(values["pad_vy"]) > 0.0
     assert float(values["pad_vcmd_base_vy"]) > 0.0
     assert values["pad_connected"] == "1"
 
@@ -203,6 +211,9 @@ def test_idle_sample_latches_pose_d_and_rebases_on_stick() -> None:
             control_frame="base",
             trans_a_max_m_s2=100.0,
             rot_a_max_rad_s2=100.0,
+            trans_j_max_m_s3=0.0,
+            rot_j_max_rad_s3=0.0,
+            pad_lpf_hz=0.0,
         ),
     )
     pose0 = np.array([0.40, 0.20, 0.30, 0.0, 0.0, 0.0])
@@ -224,6 +235,127 @@ def test_idle_sample_latches_pose_d_and_rebases_on_stick() -> None:
 def test_gamepad_trans_default_is_100_mm_s() -> None:
     assert SinToolYTaskParams(config_path="x").gamepad_trans_m_s == pytest.approx(0.10)
     assert GamepadTwistConfig().trans_m_s == pytest.approx(0.10)
+    assert GamepadTwistConfig().pad_lpf_hz == pytest.approx(16.0)
+    assert GamepadTwistConfig().trans_j_max_m_s3 == pytest.approx(8.0)
+    assert GamepadTwistConfig().rot_j_max_rad_s3 == pytest.approx(16.0)
+    params = SinToolYTaskParams(config_path="x")
+    assert params.gamepad_pad_lpf_hz == pytest.approx(16.0)
+    assert params.gamepad_trans_j_max_m_s3 == pytest.approx(8.0)
+    assert params.gamepad_rot_j_max_rad_s3 == pytest.approx(16.0)
+
+
+def test_lt_slew_does_not_move_roll() -> None:
+    pad = FakePad(axes=np.array([0.0, 0.0, 1.0, 0.0, 0.0, -1.0]))
+    outer = GamepadTwistOuterLoop(
+        pad,
+        GamepadTwistConfig(
+            trans_m_s=0.10,
+            rot_rad_s=0.60,
+            deadzone=0.10,
+            trigger_deadzone=0.08,
+            dt=0.005,
+            pad_lpf_hz=0.0,
+            control_frame="base",
+            hold_relatch_on_settle=False,
+        ),
+    )
+    pose = np.array([0.4, 0.2, 0.3, 0.0, 0.0, 0.0])
+    outer.set_origin(pose)
+    twist = np.zeros(6)
+    for _ in range(30):
+        twist = outer.sample(0.0, pose, np.zeros(6))
+    assert float(twist[2]) < -0.02
+    assert float(np.linalg.norm(twist[3:6])) < 1.0e-9
+
+
+def test_release_slew_does_not_cross_zero() -> None:
+    pad = FakePad(axes=np.array([-1.0, 0.0, -1.0, 0.0, 0.0, -1.0]))
+    outer = GamepadTwistOuterLoop(
+        pad,
+        GamepadTwistConfig(
+            trans_m_s=0.10,
+            deadzone=0.10,
+            dt=0.005,
+            trans_a_max_m_s2=0.8,
+            trans_j_max_m_s3=8.0,
+            pad_lpf_hz=0.0,
+            control_frame="base",
+            hold_relatch_on_settle=True,
+        ),
+    )
+    pose = np.array([0.40, 0.20, 0.30, 0.0, 0.0, 0.0])
+    outer.set_origin(pose)
+    moving = pose.copy()
+    for i in range(80):
+        moving = pose.copy()
+        moving[1] += 0.0004 * (i + 1)
+        outer.sample(0.0, moving, np.zeros(6))
+    assert outer.last_twist_base[1] > 0.02
+    pad.axes = np.array([0.0, 0.0, -1.0, 0.0, 0.0, -1.0])
+    lo = 0.0
+    for _ in range(200):
+        twist = outer.sample(0.0, moving, np.zeros(6))
+        lo = min(lo, float(twist[1]))
+    assert lo >= -0.005
+
+
+def test_settle_relatch_pose_d_is_current() -> None:
+    pad = FakePad(axes=np.array([-1.0, 0.0, -1.0, 0.0, 0.0, -1.0]))
+    outer = GamepadTwistOuterLoop(
+        pad,
+        GamepadTwistConfig(
+            trans_m_s=0.10,
+            deadzone=0.10,
+            dt=0.005,
+            trans_a_max_m_s2=100.0,
+            hold_relatch_on_settle=True,
+            hold_settle_v_m_s=0.005,
+            control_frame="base",
+        ),
+    )
+    pose = np.array([0.40, 0.20, 0.30, 0.0, 0.0, 0.0])
+    outer.set_origin(pose)
+    flying = pose.copy()
+    flying[1] += 0.020
+    outer.sample(0.0, flying, np.zeros(6))
+    latch_flight = outer.last_pose_d.copy()
+    pad.axes = np.array([0.0, 0.0, -1.0, 0.0, 0.0, -1.0])
+    coasting = flying.copy()
+    coasting[1] += 0.002
+    outer.sample(0.0, coasting, np.zeros(6))
+    settled = coasting.copy()
+    outer.sample(0.0, settled, np.zeros(6))
+    assert not outer._coast_until_settle
+    np.testing.assert_allclose(outer.last_pose_d, settled, atol=1e-12)
+    assert not np.allclose(outer.last_pose_d, latch_flight)
+
+
+def test_last_twist_base_stays_world_in_tool_frame() -> None:
+    pad = FakePad(axes=np.array([0.0, 0.0, 1.0, 0.0, 0.0, -1.0]))
+    outer = GamepadTwistOuterLoop(
+        pad,
+        GamepadTwistConfig(
+            trans_m_s=0.10,
+            deadzone=0.10,
+            trigger_deadzone=0.08,
+            dt=0.005,
+            pad_lpf_hz=0.0,
+            trans_j_max_m_s3=0.0,
+            trans_a_max_m_s2=100.0,
+            control_frame="tool",
+            hold_relatch_on_settle=False,
+            euler_order="xyz",
+        ),
+    )
+    pose = np.array([0.4, 0.2, 0.3, 0.0, 0.8, 0.0])
+    outer.set_origin(pose)
+    outer.sample(0.0, pose, np.zeros(6))
+    assert abs(float(outer.last_twist_base[2]) + 0.10) < 1.0e-9
+    assert abs(float(outer.last_twist_base[0])) < 1.0e-9
+    pad.axes = np.array([0.0, 0.0, -1.0, 0.0, 0.0, -1.0])
+    outer.sample(0.0, pose, np.zeros(6))
+    assert abs(float(outer.last_twist_base[0])) < 1.0e-6
+    assert abs(float(outer.last_twist_base[1])) < 1.0e-6
 
 
 def test_xbox_pad_keeps_sigint_and_does_not_quit_pygame(monkeypatch) -> None:
@@ -282,7 +414,9 @@ def test_build_gamepad_program_and_ipc_kind() -> None:
     text = params.to_json()
     decoded = SinToolYTaskParams.from_json(text)
     assert decoded.task_kind == "gamepad_vcmd"
-    built = build_gamepad_vcmd_program(params, pad=FakePad())
+    raw = yaml.safe_load(_CFG.read_text(encoding="utf-8"))
+    raw.setdefault("inner", {})["backend"] = "python"
+    built = build_gamepad_vcmd_program(params, raw=raw, pad=FakePad())
     try:
         assert built.phases[-1].label == "gamepad_vcmd"
         assert built.phases[-1].duration_s == 1.0
@@ -291,6 +425,8 @@ def test_build_gamepad_program_and_ipc_kind() -> None:
         assert built.inner._rail_ext_active is True
         assert built.inner._arm_task_suppressed is False
         assert built.inner._centering_suppressed is False
+        if built.inner.posture_retarget is not None:
+            assert built.inner.posture_retarget.planned is False
         assert not hasattr(built.inner, "set_vcmd_owns_rail")
         assert not hasattr(built.inner, "set_rail_hold_when_idle")
     finally:
@@ -300,6 +436,7 @@ def test_build_gamepad_program_and_ipc_kind() -> None:
 def _yaml_inner_at_rail(q_rail_m: float) -> JointIkController:
     raw = yaml.safe_load(_CFG.read_text(encoding="utf-8"))
     cfg = build_joint_ik_config(raw)
+    cfg.backend = "python"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False

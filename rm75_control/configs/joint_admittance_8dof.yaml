@@ -73,6 +73,9 @@ qpik:
       hard_max_m: 0.78
 
 inner:
+  # python = in-process QPIK. native = separate wbc_rt process (SHM).
+  backend: native
+  native_bin: /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/native/wbc_rt/build/wbc_rt
   control_frame: tool
   euler_order: xyz
   # Sync RealMan active tool into Pinocchio link_7→tcp (force-hybrid / tool-Z).
@@ -311,11 +314,13 @@ force:
 
 # Outer-loop Cartesian P for CARTESIAN_TRACK / GOTO.  CLI --move-kp
 # overrides k_task_lin only.  Rotation stays here.
+# fb_lpf_tau_s filters k*e only; vel_ff is never filtered.  0 = off.
 cartesian_track:
-  k_task_lin: 10.0
+  k_task_lin: 12.0
   k_task_rot: 2.0
   max_pos_err_m: 0.05
   max_rot_err_rad: 0.35
+  fb_lpf_tau_s: 0.0
 
 hybrid_motion:
   force_axes:
@@ -592,7 +597,10 @@ hw:
     fault_margin_m: 0.05
     # 205605: t_read med 5.8 ms, FA24 write usually skipped.  43 Hz left
     # ~17 ms of sleep.  60 Hz (16.7 ms) still has ~11 ms median headroom;
-    # 80 Hz is tight on p95.
+    # 80 Hz is tight on p95.  Do not change FA72 or the USR-TCP232-304 baud
+    # alone — both ends must match, then power-cycle the drive.  Confirm no
+    # DI is mapped to 7 (ZCLAMP) and FC-15 bit6 is 0; do not query while A
+    # is live.  FA40/FA41 = time 0→1000 r/min, not 0→vel_max.
     poll_hz: 60
     inter_frame_delay_s: 0.0005
     timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0
@@ -602,9 +610,8 @@ hw:
     # @ 10 mm/rev). Equal FA23=cmd caused Er-01 on scan overshoot (151334).
     max_speed_rpm: 1200
     # Soft CSP via FA24 (see apps/lw100_vel_pos_follow_demo.py).
-    # Loaded PD scan BEST (400±40 mm): kp=14/kd=0.22 (was empty-load 18/0.22).
-    # Rollback: vel_kp 14 / vel_kd 0.22.  Coupled path now drops P/D while
-    # moving (L1 owns position).  POSITION scan/home still uses these.
+    # POSITION scan/home PD.  Coupled QPIK is pure velocity (no FA24 P).
+    # Loaded PD scan BEST (400±40 mm): kp=14/kd=0.22.
     vel_kp: 14.0
     vel_kd: 0.22
     vel_kd_max_m_s: 0.005
@@ -618,7 +625,6 @@ hw:
     catch_k: 5.0
     catch_frac: 0.3
     decel_request_margin_m_s: 0.005
-    vel_ff_p_trim_m_s: 0.010
     match_drive_accel: true
     fa24_rpm_deadband: 0   # write every worker tick; skip only if rpm is unchanged
     vel_deadband_mm: 0.05   # tight tracking band (not a permanent accuracy sacrifice)

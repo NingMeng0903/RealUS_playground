@@ -44,6 +44,10 @@ data/velocity_admittance/logs/*.npz
 native/qpik_kernel/build/
 rm75_control/control/joint_admittance_8dof/solver/_qpik_kernel*.so
 
+# C++ inner process (rebuild with native/wbc_rt/build.sh)
+native/wbc_rt/build/
+native/wbc_rt/third_party/
+
 # OS / editor
 .DS_Store
 *.swp

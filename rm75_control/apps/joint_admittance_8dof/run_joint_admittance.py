@@ -472,8 +472,12 @@ def main() -> int:
                         flush=True,
                     )
                 else:
+                    backend = str(
+                        (raw.get("inner") or {}).get("backend", "python")
+                    ).lower()
                     print(
-                        f"rm75 controller: running @ {relay_hz:.0f} Hz",
+                        f"rm75 controller: running @ {relay_hz:.0f} Hz "
+                        f"(inner.backend={backend}; wbc_rt starts on first task)",
                         flush=True,
                     )
             elif args.hold:

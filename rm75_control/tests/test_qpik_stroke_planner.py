@@ -648,7 +648,8 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.rail_allocator.rho_mirror_a == pytest.approx(0.50)
     assert cfg.rail_allocator.rho_mirror_j == pytest.approx(0.30)
     assert cfg.rail_extension.d_band_m == pytest.approx(0.005)
-    assert cfg.cartesian_track.k_task_lin == pytest.approx(10.0)
+    assert cfg.cartesian_track.k_task_lin == pytest.approx(12.0)
+    assert cfg.cartesian_track.fb_lpf_tau_s == pytest.approx(0.0)
     assert cfg.cartesian_track.k_task_rot == pytest.approx(2.0)
     assert cfg.cartesian_track.max_pos_err_m == pytest.approx(0.05)
     assert raw["hybrid_motion"]["kp_pos"][0] == pytest.approx(10.0)
@@ -813,6 +814,8 @@ def test_wbc_log_header_has_rail_cmd_meas_err() -> None:
         "qpik_nullspace_arm_angle_norm",
         "qpik_nullspace_damping_norm",
         "qpik_nullspace_rail_lock_norm",
+        "qpik_sat_scale",
+        "qpik_sec_target_norm",
         "post_qp_step_clamp_enabled",
         "post_step_would_clamp",
         "post_step_clamp_applied",
@@ -1053,6 +1056,7 @@ def test_rail_sat_is_not_workspace_saturation() -> None:
         .read_text(encoding="utf-8")
     )
     cfg = build_joint_ik_config(raw)
+    cfg.backend = "python"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False
@@ -1087,6 +1091,7 @@ def test_rail_soft_min_is_one_way() -> None:
         .read_text(encoding="utf-8")
     )
     cfg = build_joint_ik_config(raw)
+    cfg.backend = "python"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False
@@ -1120,6 +1125,7 @@ def test_rail_does_not_pin_in_fade_band_only() -> None:
         .read_text(encoding="utf-8")
     )
     cfg = build_joint_ik_config(raw)
+    cfg.backend = "python"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False
@@ -1152,6 +1158,7 @@ def test_plus_leave_band_does_not_freeze_rail() -> None:
         .read_text(encoding="utf-8")
     )
     cfg = build_joint_ik_config(raw)
+    cfg.backend = "python"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False
@@ -1194,6 +1201,7 @@ def test_allocation_leave_band_uses_measured_rail() -> None:
         .read_text(encoding="utf-8")
     )
     cfg = build_joint_ik_config(raw)
+    cfg.backend = "python"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False
@@ -1278,6 +1286,7 @@ def test_press_stall_nudges_d_star_on_the_controller() -> None:
         .read_text(encoding="utf-8")
     )
     cfg = build_joint_ik_config(raw)
+    cfg.backend = "python"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False
