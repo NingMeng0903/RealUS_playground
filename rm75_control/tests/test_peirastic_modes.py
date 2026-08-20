@@ -323,9 +323,15 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
     assert float(phase.outer.desired_force[2]) == pytest.approx(desired_z_n())
     force = load_force_raw()
     assert float(force["hybrid_motion"]["max_vz_tool_m_s"]) == pytest.approx(0.08)
+    assert float(force["hybrid_motion"]["system_delay_s"]) == pytest.approx(0.055)
     assert float(force["hybrid_motion"]["force_barrier"]["v_seek_free_m_s"]) == pytest.approx(
         0.030
     )
+    assert float(force["hybrid_motion"]["force_barrier"]["v_min_press_m_s"]) == pytest.approx(
+        0.0
+    )
+    assert float(force["hybrid_motion"]["force_scale_fraction"]) == pytest.approx(0.0)
+    assert force["hybrid_motion"]["cdyob"]["enabled"] is False
 
 
 def test_pad_hybrid_keeps_pad_axes_force_owns_z() -> None:

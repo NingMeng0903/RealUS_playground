@@ -524,15 +524,14 @@ def _wln_core() -> tuple[QpIkController, SafetyLimits]:
     return QpIkController(kin, lim, cfg), lim
 
 
-def test_barrier_press_cap_has_a_floor_in_contact() -> None:
+def test_barrier_press_cap_closes_on_overforce() -> None:
     from rm75_control.control.admittance_common.force_barrier import (
         ForceBarrierConfig,
         ForceSpaceVelocityDamper,
     )
 
-    cfg = ForceBarrierConfig(enabled=True, v_min_press_m_s=0.003, v_ref_m_s=0.08)
+    cfg = ForceBarrierConfig(enabled=True, v_min_press_m_s=0.0, v_ref_m_s=0.08)
     damper = ForceSpaceVelocityDamper(cfg)
-    # Massively over force: prediction and stiffness terms both collapse.
     cap_press, _ = damper.caps(
         f_z=40.0,
         f_des_z=3.0,
@@ -542,10 +541,10 @@ def test_barrier_press_cap_has_a_floor_in_contact() -> None:
         contact_enter_n=0.5,
         ke_est_n_m=20000.0,
         mass_eq_kg=1.0,
+        tau_s=0.055,
     )
-    assert cap_press >= 0.003 - 1e-12
+    assert cap_press <= 1e-9
 
-    # A tighter v_z_cap (recontact sleeve) still wins over the floor.
     cap_small, _ = damper.caps(
         f_z=40.0,
         f_des_z=3.0,
@@ -553,6 +552,7 @@ def test_barrier_press_cap_has_a_floor_in_contact() -> None:
         v_z_cap=0.001,
         seek_vz_m_s=0.001,
         contact_enter_n=0.5,
+        tau_s=0.055,
     )
     assert cap_small <= 0.001 + 1e-12
 

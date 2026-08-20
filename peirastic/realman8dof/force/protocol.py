@@ -32,4 +32,9 @@ class ForceLaw(Protocol):
         f_des: np.ndarray,
         path_twist: np.ndarray,
         contact: bool | None = None,
+        f_ext_raw: np.ndarray | None = None,
+        dt_actual: float | None = None,
+        sensor_age_s: float | None = None,
+        feedback_age_s: float | None = None,
+        v_tcp_z_actual: float | None = None,
     ) -> ForceOutput: ...

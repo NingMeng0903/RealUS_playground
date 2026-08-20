@@ -78,7 +78,8 @@ def test_yaml_smooth_chase_defaults_load():
     assert cfg.kp_pos[2] < cfg.kp_pos[0]
     assert cfg.adaptive_ke.drive_damping is False
     assert cfg.proactive_ff.gate_press_on_is is False
-    assert cfg.var_damping_d_u >= 50.0
+    assert cfg.var_damping_d_u == pytest.approx(0.0)
+    assert cfg.var_damping_m_u > 0.0
     ctrl = AdmittanceController(DT, cfg)
     f_ext = np.zeros(6)
     f_des = np.zeros(6)

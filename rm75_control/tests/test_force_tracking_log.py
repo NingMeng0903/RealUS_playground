@@ -131,6 +131,11 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert "comfort_slack_j4" in header
     assert "pad_lx" in header
     assert "pad_vcmd_base_vy" in header
+    assert "u_dob_z" in header
+    assert "v_force_cmd_z" in header
+    assert "ke_cap_n_m" in header
+    assert "cdyob_corr_m_s" in header
+    assert "overforce_escape" in header
 
     values = dict(zip(header, rows[1], strict=True))
     assert values["rail_escape_active"] == "0"
@@ -203,3 +208,37 @@ def test_motion_axis_accuracy_columns_populated(tmp_path):
     assert values["rail_contrib_m_s"] == "0.010000"
     assert values["rail_escape_active"] == "0"
     assert values["tool_y_err_mm"] != ""
+
+
+def test_tick_logger_appends_on_restart(tmp_path):
+    path = tmp_path / "run.csv"
+    step = JointIkStep(
+        q_send=np.zeros(8),
+        qdot=np.zeros(8),
+        twist_base=np.zeros(6),
+        sigma_min=0.2,
+        manip=0.1,
+        slack_norm=0.0,
+        n_cbf_active=0,
+        follow_err_rad=0.0,
+    )
+    controller = AdmittanceController(0.005, AdmittanceConfig())
+
+    class Outer:
+        pass
+
+    outer = Outer()
+    outer.controller = controller
+    first = _TickLogger(str(path))
+    first.write(0.0, "scan", 0.0, step, np.zeros(8), np.zeros(6), np.zeros(6), outer=outer)
+    first.close()
+    second = _TickLogger(str(path))
+    second.write(0.01, "scan", 0.01, step, np.zeros(8), np.zeros(6), np.zeros(6), outer=outer)
+    second.close()
+    with path.open(newline="") as stream:
+        rows = list(csv.reader(stream))
+    assert rows[0][0] == "t_wall_s"
+    assert len(rows) == 3
+    assert rows[1][0] != "t_wall_s"
+    assert rows[2][0] != "t_wall_s"
+    assert len(rows[0]) == len(rows[1]) == len(rows[2])

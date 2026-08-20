@@ -33,7 +33,7 @@ hybrid_motion:
   - 1.5
   pos_err_deadband_m: 0.0005
   pos_correction_max_m_s: 0.08
-  system_delay_s: 0.015
+  system_delay_s: 0.055
   contact_threshold_n: 0.8
   contact_use_fz_only: true
   physical_contact:
@@ -75,13 +75,13 @@ hybrid_motion:
   var_damping_omega_c_hz: 2.5
   var_damping_lambda: 0.951
   var_damping_f_max_n: 7.0
-  # ΔD_hf amplitude (primary chatter dissipation); M bump is secondary.
-  var_damping_d_u: 60.0
-  var_damping_m_u: 0.0
+  # Dimeas Iₛ raises virtual mass briefly; ΔD_hf authority is off.
+  var_damping_d_u: 0.0
+  var_damping_m_u: 2.0
   var_damping_m_max: 3.0
   var_damping_dc_alpha: 0.02
   var_damping_hf_attack_s: 0.02
-  var_damping_hf_hold_s: 0.18
+  var_damping_hf_hold_s: 0.08
   var_damping_hf_release_s: 0.12
   var_damping_hf_release_fast_s: 0.04  # dump ΔD on hand-release / large |e_f|
   var_damping_hf_on: 0.30
@@ -106,15 +106,14 @@ hybrid_motion:
   # stiffness estimate continuously tighten positive press speed.
   force_barrier:
     enabled: true
-    t_react_s: 0.050
+    t_react_s: 0.055
     budget_min_n: 1.0
     budget_frac: 0.20
     f_keep_n: 0.5
+    f_escape_n: 0.5
     v_ref_m_s: 0.08
-    v_min_retract_m_s: 0.002
-    # Barrier keeps its force-error gating; this only stops it closing press
-    # to exactly zero, which left the tool unable to recover a lost contact.
-    v_min_press_m_s: 0.003
+    v_min_retract_m_s: 0.0
+    v_min_press_m_s: 0.0
     # Free-space approach cap.  Impact ~ Ke*v*T_delay, so closing the gap at
     # the full 80 mm/s made ~8 N peaks on a 3 N target and the over-force
     # retract threw the tool off the surface.  In-contact response unchanged.
@@ -124,14 +123,23 @@ hybrid_motion:
     stiffness_cap_enabled: true
     ke_floor_n_m: 50.0
     mass_floor_kg: 0.05
+  # Samuel 2024 CDYOB. Off until identify_plant.py confirms τ_eff.
+  # ω_Q = 1/(2π τ) ≈ 2.9 Hz at 55 ms; do not use the paper's 15 Hz.
+  cdyob:
+    enabled: false
+    omega_q_hz: 0.0
+    tau_s: 0.0
+    t_n_s: 0.020
+    v_corr_max_m_s: 0.030
   # Force-axis slew is press-positive and asymmetric.  A sign reversal into
   # retract gets the fastest allowance and is never tank/alpha gated.
   # 0.30 allowed press to rise only ~1.9 mm/s per 6.2 ms tick — 0.27 s to
   # reach the 80 mm/s cap, which is the "damped, not light" feel.  The force
   # barrier is the error-gated brake; this no longer has to be one.
-  force_axis_slew_press_m_s2: 0.80
+  force_axis_slew_press_m_s2: 1.20
   force_axis_slew_retract_m_s2: 1.20
   force_axis_slew_reverse_m_s2: 2.00
+  force_axis_jerk_max_m_s3: 40.0
   # Lee-structure speed-level engineering adapter.  Observe is deliberately
   # non-mutating until the slow press/retract sign check and 2/5/10 mm/s
   # no-contact delay identification have been recorded.
@@ -190,7 +198,8 @@ hybrid_motion:
     ke_initial: 80.0
     ke_min: 40.0
     ke_max: 2500.0
-    ke_impact_initial: 1500.0
+    ke_impact_initial: 0.0
+    ke_cap_ub_n_m: 2000.0
     ke_forgetting: 0.995
     ke_forgetting_inc: 0.88
     ke_idle_decay_s: 2.0
@@ -217,21 +226,23 @@ hybrid_motion:
   # still caps press as the force error closes.
   proactive_retract_only: false
   proactive_gain: 0.24
-  proactive_retract_gain: 0.30
+  proactive_retract_gain: 0.24
   proactive_leak_s: 0.25
   v_r_max_m_s: 0.06
   proactive_gate_press_on_is: false
   proactive_press_is_gate_start: 0.2
   proactive_press_is_gate: 0.6
-  # Soften press when Is high (never hard-kill); slew-limit rising v_r.
   proactive_press_is_soft_floor: 0.45
   proactive_press_is_soft_stop: 0.85
   proactive_press_slew_max_m_s2: 0.35
-  proactive_press_drive_max: 1.2
+  proactive_retract_slew_max_m_s2: 0.35
+  proactive_press_drive_max: 1.4
   proactive_retract_drive_max: 1.4
   proactive_reset_on_reversal: true
+  proactive_in_band_n: 0.25
+  proactive_in_band_leak_s: 0.05
   force_scale_min_n: 0.18
-  force_scale_fraction: 0.12
+  force_scale_fraction: 0.0
   fast_retract_guard:
     enabled: true
     cutoff_hz: 20.0

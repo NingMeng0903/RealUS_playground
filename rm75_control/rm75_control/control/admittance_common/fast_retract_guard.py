@@ -93,6 +93,8 @@ class FastRetractGuard:
         dt_s: float,
         sensor_age_s: float | None,
         instability_index: float,
+        force_pred_n: float | None = None,
+        overforce_escape: bool = False,
     ) -> bool:
         cfg = self.cfg
         dt = max(float(dt_s), 0.0)
@@ -134,19 +136,27 @@ class FastRetractGuard:
             float(cfg.rearm_margin_n),
             float(cfg.rearm_margin_fraction) * target,
         )
-        # This is a *crossing* guard, not an over-force regulator.  Arm on
-        # the high side, then stop only after the fast/raw path has crossed
-        # the target's low side while the delayed control force still asks
-        # for retraction.  Using ``target + stop_margin`` as the stop level
-        # erased the negative reference needed to follow a surface moving
-        # steadily toward the probe, especially at a 1 N setpoint.
         arm_level = target + stop_margin
         stop_level = max(target - stop_margin, 0.0)
         rearm_level = target + rearm_margin
+        stop_signal = (
+            float(force_pred_n)
+            if force_pred_n is not None and np.isfinite(force_pred_n)
+            else fast_force
+        )
         retract_episode = (
             float(filtered_eff_n) < 0.0
             and float(active_reference_m_s) <= 0.0
         )
+
+        if overforce_escape:
+            # Predicted / measured over-force: never freeze a retracting v_r.
+            self.hold = False
+            self.armed = True
+            self._stop_timer_s = 0.0
+            self._rearm_timer_s = 0.0
+            self._hold_timer_s = 0.0
+            return False
 
         if self.hold:
             self._hold_timer_s += dt
@@ -184,7 +194,7 @@ class FastRetractGuard:
             self._stop_timer_s = 0.0
             return False
 
-        if self.armed and fast_force <= stop_level:
+        if self.armed and stop_signal <= stop_level:
             self._stop_timer_s += dt
             confirm = max(
                 cfg.stop_confirm_s,

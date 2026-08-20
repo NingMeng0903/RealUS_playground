@@ -68,7 +68,10 @@ class AdaptiveKeConfig:
     # UP to this value (b_d follows, no slew). Underdamped-at-impact starts
     # bounce cascades; overdamped-at-impact is safe and learns down on soft
     # surfaces. 0 disables. 27c1689: 1500.
-    ke_impact_initial: float = 1500.0
+    ke_impact_initial: float = 0.0
+    # Conservative Ke used for barrier speed limits until the first ΔF/Δz
+    # sample after contact.  0 disables (use ke_est immediately).
+    ke_cap_ub_n_m: float = 2000.0
     # Soft-decay time constants toward ke_initial (see module docstring).
     # ke_detach_decay_s: out of contact. 1.0 s keeps ~95 % of learned K̂_e
     # through a 50 ms bounce flight and returns to seed over ~5 s.
@@ -131,7 +134,8 @@ class AdaptiveKeConfig:
             contact_force_n=float(
                 a.get("contact_force_n", parent.get("adaptive_contact_force_n", 0.8))
             ),
-            ke_impact_initial=float(a.get("ke_impact_initial", 1500.0)),
+            ke_impact_initial=float(a.get("ke_impact_initial", 0.0)),
+            ke_cap_ub_n_m=float(a.get("ke_cap_ub_n_m", 2000.0)),
             ke_detach_decay_s=float(a.get("ke_detach_decay_s", 1.0)),
             ke_idle_decay_s=float(a.get("ke_idle_decay_s", 2.0)),
             ke_soft_floor=float(a.get("ke_soft_floor", 300.0)),
@@ -181,6 +185,9 @@ class EnvironmentStiffnessEstimator:
         # decay: an oscillation crosses f_err=0 twice per cycle, so the
         # instantaneous |f_err| under-reports over-force by ~100 %.
         self._f_err_env = 0.0
+        self.ke_confident = False
+        self._impact_f0 = 0.0
+        self._impact_x0 = 0.0
 
     def reset(self) -> None:
         self.ke_est = float(self.cfg.ke_initial)
@@ -194,6 +201,22 @@ class EnvironmentStiffnessEstimator:
         self._update_gated = False
         self._contact_ticks = 0
         self._f_err_env = 0.0
+        self.ke_confident = False
+        self._impact_f0 = 0.0
+        self._impact_x0 = 0.0
+
+    @property
+    def ke_for_cap(self) -> float:
+        ub = float(self.cfg.ke_cap_ub_n_m)
+        ke = float(self.ke_est)
+        if ub <= 0.0:
+            return ke
+        # Speed limits stay conservative through the impact window even if a
+        # first ΔF/Δz sample already moved ke_est.  Delayed press displacement
+        # reads as a soft spring and would otherwise open the press cap.
+        if (not self.ke_confident) or self._contact_ticks <= max(int(self.cfg.settle_ticks), 0):
+            return max(ke, ub)
+        return ke
 
     def _critical_bd(self, mass_z: float) -> float:
         ke = max(self.ke_est, self.cfg.ke_min)
@@ -304,21 +327,27 @@ class EnvironmentStiffnessEstimator:
         # Peak-hold envelope of |f_err| (~0.3 s release).
         self._f_err_env = max(abs(f_err_z), self._f_err_env * (1.0 - self.dt / 0.3))
 
-        # Contact rising edge: stiff-first init (safe overdamped at impact).
+        # Contact rising edge.  Production YAML leaves ke_impact_initial=0
+        # and estimates Ke from the first ΔF/Δz window; a positive
+        # ke_impact_initial still jumps (legacy / unit-test path).
         if in_contact and not self._in_contact:
             self._contact_ref_pose = np.asarray(pose, dtype=float).copy()
             self._x_adm = 0.0
             self._have_prev = False
             self._contact_ticks = 0
+            self.ke_confident = False
+            self._impact_f0 = (
+                float(self._last_f_z) if self._have_prev else float(f_ext_z)
+            )
+            self._impact_x0 = 0.0
             if (
                 allow_impact_init
                 and cfg.ke_impact_initial > 0.0
                 and self.ke_est < cfg.ke_impact_initial
             ):
                 self.ke_est = min(float(cfg.ke_impact_initial), cfg.ke_max)
-                # b_d jumps with K̂_e immediately: an underdamped first few
-                # ticks on a hard surface is what starts a bounce cascade.
                 self.bd = self._critical_bd(self._mass_z)
+                self.ke_confident = True
 
         if not in_contact:
             self._in_contact = False
@@ -327,6 +356,7 @@ class EnvironmentStiffnessEstimator:
             self._have_prev = False
             self._update_gated = False
             self._contact_ticks = 0
+            self.ke_confident = False
             tau = max(float(cfg.ke_detach_decay_s), 1e-3)
             self.ke_est += (self.dt / tau) * (float(cfg.ke_initial) - self.ke_est)
             self.ke_est = float(np.clip(self.ke_est, cfg.ke_min, cfg.ke_max))
@@ -340,6 +370,30 @@ class EnvironmentStiffnessEstimator:
             self._contact_ref_pose = np.asarray(pose, dtype=float).copy()
 
         x = self._normal_displacement_m(pose, v_force_z=v_force_z, euler_order=euler_order)
+        if not self.ke_confident:
+            dx_imp = x - self._impact_x0
+            df_imp = float(f_ext_z) - self._impact_f0
+            lateral_blocked = (
+                cfg.gate_lateral_velocity
+                and abs(float(v_lateral_m_s)) > cfg.lateral_vel_gate_m_s
+            )
+            window = 20 if int(cfg.settle_ticks) > 0 else 0
+            in_window = self._contact_ticks > 1 and (
+                window == 0 or self._contact_ticks <= window
+            )
+            if (
+                in_window
+                and not lateral_blocked
+                and abs(dx_imp) >= cfg.dx_threshold_m
+                and df_imp >= max(0.2, 0.25 * float(cfg.contact_force_n))
+                and 0.0 < float(v_force_z) <= 0.025
+            ):
+                ke_inst = abs(df_imp) / max(abs(dx_imp), 1e-9)
+                ke_inst = float(np.clip(ke_inst, cfg.ke_min, cfg.ke_max))
+                if ke_inst > 0.0:
+                    self.ke_est = ke_inst
+                    self.bd = self._critical_bd(self._mass_z)
+                    self.ke_confident = True
 
         f_err_gate_n = self._f_err_gate_eff_n(f_des_z)
 
@@ -362,6 +416,7 @@ class EnvironmentStiffnessEstimator:
                 ke_target = lam * self.ke_est + (1.0 - lam) * ke_inst
                 self.ke_est = self._slew_ke(ke_target)
                 learned = True
+                self.ke_confident = True
 
         # Stiff-first closure (idle decay): steady tracking with no ΔF/Δx
         # update this tick lets the impact-initialised K̂_e relax toward

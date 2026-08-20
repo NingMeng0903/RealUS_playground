@@ -1,9 +1,18 @@
-"""Force-space velocity damper for tool-Z press and retract motion.
+"""Continuous predictive speed limit on tool-Z press and retract.
 
-The damper predicts near-future force from a filtered force derivative and
-limits normal velocity before the delayed admittance loop can build a large
-over-force transient.  It deliberately does not depend on the environment
-stiffness estimate, which is least reliable at first impact.
+The damper predicts near-future force
+
+    F_pred = F + Ḟ·τ
+
+and returns command bounds
+
+    v_press_max = (F_max − max(F_pred, F)) / (K̂e · τ)
+    v_retract_max = max(0, −(F_keep − F_pred) / (K̂e · τ))
+
+Ḟ already contains the current motion, so delayed TCP speed is not added
+again as headroom.  Falling Ḟ is not used to reopen press.  Both floors
+default to zero so the limiter is a continuous feasible-velocity solve,
+not a two-sided relay.
 """
 
 from __future__ import annotations
@@ -16,37 +25,23 @@ import math
 @dataclass
 class ForceBarrierConfig:
     enabled: bool = True
-    t_react_s: float = 0.030
+    t_react_s: float = 0.055
     budget_min_n: float = 1.0
     budget_frac: float = 0.20
     f_keep_n: float = 0.5
+    # Over-force band that fully opens retract (escape), independent of Ke.
+    f_escape_n: float = 0.5
     v_ref_m_s: float = 0.05
-    v_min_retract_m_s: float = 0.002
-    # Floor under the in-contact press cap.  The prediction and stiffness
-    # terms can both reach zero, and a controller that is not allowed to press
-    # at all cannot recover from a detachment — hardware logs showed
-    # cap_press_z pinned at 0 for the bottom 5% of contact ticks.  Applied
-    # last, after the stiffness cap and the v_hi clamp.
-    v_min_press_m_s: float = 0.003
-    # Cap on the free-space approach.  Impact force goes roughly as
-    # Ke * v * T_delay, so the speed used to close the last gap sets the first
-    # peak.  Approaching at the full max_vz produced ~8 N peaks against a 3 N
-    # target, and the resulting over-force retract threw the tool back off the
-    # surface — press rail 22.7% of ticks, retract rail 23.1%, contact lost 30%
-    # of the scan.  Only the free-space branch is capped; the in-contact
-    # admittance response is untouched.  0 disables.
+    v_min_retract_m_s: float = 0.0
+    v_min_press_m_s: float = 0.0
     v_seek_free_m_s: float = 0.030
     fdot_lpf_s: float = 0.040
-    # Optional impact-energy/stiffness caps.  These use only controller-side
-    # virtual quantities; no unmeasured physical damping is credited.
     stiffness_cap_enabled: bool = True
     ke_floor_n_m: float = 50.0
     mass_floor_kg: float = 0.05
-    # Before the debounced physical-contact latch is established, a raw force
-    # spike may request a short impact guard.  Keep this append-only in the
-    # dataclass so positional construction of the older public fields remains
-    # compatible.  Zero is the library-safe opt-out; the RM75 YAML opts in.
     precontact_raw_trigger_n: float = 0.0
+    # Extra Ke used for free-space / unconfident approach scheduling.
+    ke_schedule_eps_n_m: float = 1.0
 
     @classmethod
     def from_dict(cls, raw: dict) -> "ForceBarrierConfig":
@@ -63,13 +58,14 @@ class ForceBarrierConfig:
             barrier = {}
         return cls(
             enabled=bool(barrier.get("enabled", True)),
-            t_react_s=float(barrier.get("t_react_s", 0.030)),
+            t_react_s=float(barrier.get("t_react_s", 0.055)),
             budget_min_n=float(barrier.get("budget_min_n", 1.0)),
             budget_frac=float(barrier.get("budget_frac", 0.20)),
             f_keep_n=float(barrier.get("f_keep_n", 0.5)),
+            f_escape_n=float(barrier.get("f_escape_n", 0.5)),
             v_ref_m_s=float(barrier.get("v_ref_m_s", 0.05)),
-            v_min_retract_m_s=float(barrier.get("v_min_retract_m_s", 0.002)),
-            v_min_press_m_s=float(barrier.get("v_min_press_m_s", 0.003)),
+            v_min_retract_m_s=float(barrier.get("v_min_retract_m_s", 0.0)),
+            v_min_press_m_s=float(barrier.get("v_min_press_m_s", 0.0)),
             v_seek_free_m_s=float(barrier.get("v_seek_free_m_s", 0.030)),
             fdot_lpf_s=float(barrier.get("fdot_lpf_s", 0.040)),
             precontact_raw_trigger_n=float(
@@ -80,6 +76,9 @@ class ForceBarrierConfig:
             ),
             ke_floor_n_m=float(barrier.get("ke_floor_n_m", 50.0)),
             mass_floor_kg=float(barrier.get("mass_floor_kg", 0.05)),
+            ke_schedule_eps_n_m=float(
+                barrier.get("ke_schedule_eps_n_m", 1.0)
+            ),
         )
 
 
@@ -109,6 +108,49 @@ class ForceSpaceVelocityDamper:
         self.f_dot_z += alpha * (raw - self.f_dot_z)
         return self.f_dot_z
 
+    def _tau_s(self, tau_s: float | None) -> float:
+        if tau_s is not None and math.isfinite(float(tau_s)) and float(tau_s) > 0.0:
+            return float(tau_s)
+        return max(float(self.cfg.t_react_s), 0.0)
+
+    def _budget(self, f_des_z: float) -> float:
+        return max(
+            float(self.cfg.budget_min_n),
+            float(self.cfg.budget_frac) * abs(float(f_des_z)),
+            1e-6,
+        )
+
+    def _ke_tau(
+        self,
+        *,
+        ke_est_n_m: float | None,
+        tau_s: float,
+    ) -> float:
+        ke = float(self.cfg.ke_floor_n_m)
+        if ke_est_n_m is not None and math.isfinite(float(ke_est_n_m)):
+            ke = max(float(ke_est_n_m), ke, float(self.cfg.ke_schedule_eps_n_m))
+        return max(ke * max(tau_s, 0.0), 1e-6)
+
+    def scheduled_approach_m_s(
+        self,
+        *,
+        f_des_z: float,
+        ke_est_n_m: float | None,
+        tau_s: float | None = None,
+        v_hi: float = 0.0,
+    ) -> float:
+        """ΔF_allow / (K̂e · τ) approach speed, clipped by v_hi / v_seek_free."""
+        tau = self._tau_s(tau_s)
+        budget = self._budget(f_des_z)
+        denom = self._ke_tau(ke_est_n_m=ke_est_n_m, tau_s=tau)
+        allow = budget / denom
+        seek = max(float(self.cfg.v_seek_free_m_s), 0.0)
+        if seek > 0.0:
+            allow = min(allow, seek) if allow > 0.0 else seek
+        if v_hi > 0.0:
+            allow = min(allow, v_hi) if allow > 0.0 else v_hi
+        return max(allow, 0.0)
+
     def caps(
         self,
         *,
@@ -122,6 +164,8 @@ class ForceSpaceVelocityDamper:
         ke_est_n_m: float | None = None,
         mass_eq_kg: float | None = None,
         energy_available_j: float | None = None,
+        tau_s: float | None = None,
+        v_tcp_z_actual: float | None = None,
     ) -> tuple[float, float]:
         cfg = self.cfg
         v_hi = max(float(v_z_cap), 0.0)
@@ -129,6 +173,10 @@ class ForceSpaceVelocityDamper:
             float(v_z_cap_retract) if v_z_cap_retract is not None else v_hi,
             0.0,
         )
+        tau = self._tau_s(tau_s)
+        # v_tcp_z_actual is accepted for API compatibility.  The bound uses
+        # F + Ḟ·τ only; adding delayed TCP speed re-opens press during lag.
+        _ = v_tcp_z_actual
         if not cfg.enabled:
             self.cap_press_z = v_hi
             self.cap_retract_z = v_hi_retract
@@ -139,11 +187,18 @@ class ForceSpaceVelocityDamper:
             seek = max(float(seek_vz_m_s), 0.0)
             if v_hi > 0.0:
                 seek = min(seek, v_hi) if seek > 0.0 else v_hi
-            # Free-space approach cap; see v_seek_free_m_s.  Take the smaller
-            # of the two so a tighter external sleeve (recontact) still wins.
             free = max(float(cfg.v_seek_free_m_s), 0.0)
             if free > 0.0:
                 seek = min(seek, free) if seek > 0.0 else free
+            if cfg.stiffness_cap_enabled and ke_est_n_m is not None:
+                scheduled = self.scheduled_approach_m_s(
+                    f_des_z=f_des_z,
+                    ke_est_n_m=ke_est_n_m,
+                    tau_s=tau,
+                    v_hi=v_hi,
+                )
+                if scheduled > 0.0:
+                    seek = min(seek, scheduled) if seek > 0.0 else scheduled
             del contact_enter_n
             self.cap_press_z = seek if seek > 0.0 else v_hi
             self.cap_retract_z = v_hi_retract
@@ -156,53 +211,43 @@ class ForceSpaceVelocityDamper:
             self.f_pred_z = float(f_z)
             return self.cap_press_z, self.cap_retract_z
 
-        budget = max(
-            float(cfg.budget_min_n),
-            float(cfg.budget_frac) * abs(float(f_des_z)),
-            1e-6,
-        )
-        f_pred = float(f_z) + self.f_dot_z * max(float(cfg.t_react_s), 0.0)
+        budget = self._budget(f_des_z)
+        f_pred = float(f_z) + self.f_dot_z * tau
         self.f_pred_z = f_pred
-        v_ref = max(float(cfg.v_ref_m_s), 0.0)
+        f_max = abs(float(f_des_z)) + budget
+        f_min = max(float(cfg.f_keep_n), 0.0)
+        denom = self._ke_tau(ke_est_n_m=ke_est_n_m, tau_s=tau)
 
-        cap_press = max(
-            0.0,
-            ((float(f_des_z) + budget) - f_pred) / budget * v_ref,
-        )
-        # A hard surface converts a small delayed penetration into a large
-        # force rise.  Bound the approach kinetic energy by the remaining
-        # force headroom and, when supplied, the verified tank balance:
-        #
-        #   v_force = DeltaF / sqrt(M_eq K_e)
-        #   v_energy = sqrt(2 E_available / M_eq)
-        #
-        # Both are continuous in the positive headroom.  Missing estimates
-        # leave the historical force-prediction cap unchanged.
-        if cfg.stiffness_cap_enabled and ke_est_n_m is not None:
-            ke = max(float(ke_est_n_m), float(cfg.ke_floor_n_m), 1e-9)
+        # Ḟ already includes current motion.  Do not treat a falling force
+        # (retract still in the plant) as extra press room.
+        f_pred_press = max(f_pred, float(f_z))
+        v_press_max = (f_max - f_pred_press) / denom
+        cap_press = max(0.0, v_press_max)
+        if cfg.stiffness_cap_enabled and energy_available_j is not None:
             mass = max(
                 float(mass_eq_kg) if mass_eq_kg is not None else 1.0,
                 float(cfg.mass_floor_kg),
                 1e-9,
             )
-            headroom = max((float(f_des_z) + budget) - f_pred, 0.0)
-            cap_press = min(cap_press, headroom / math.sqrt(mass * ke))
-            if energy_available_j is not None:
-                energy = max(float(energy_available_j), 0.0)
-                cap_press = min(cap_press, math.sqrt(2.0 * energy / mass))
+            energy = max(float(energy_available_j), 0.0)
+            cap_press = min(cap_press, math.sqrt(2.0 * energy / mass))
         if v_hi > 0.0:
             cap_press = min(cap_press, v_hi)
-        # Never close press completely while in contact; see v_min_press_m_s.
-        # Bounded by v_hi so a small v_z_cap (recontact sleeve) still wins.
         v_min_press = max(float(cfg.v_min_press_m_s), 0.0)
         if v_hi > 0.0:
             v_min_press = min(v_min_press, v_hi)
         cap_press = max(cap_press, v_min_press)
 
-        cap_retract = max(
-            float(cfg.v_min_retract_m_s),
-            (f_pred - float(cfg.f_keep_n)) / budget * v_ref,
-        )
+        escape = max(float(cfg.f_escape_n), 0.0)
+        overforce = f_pred >= abs(float(f_des_z)) + escape
+        if overforce:
+            cap_retract = v_hi_retract
+        else:
+            v_lower = (f_min - f_pred) / denom
+            cap_retract = max(0.0, -v_lower)
+            if v_hi_retract > 0.0:
+                cap_retract = min(cap_retract, v_hi_retract)
+        cap_retract = max(cap_retract, max(float(cfg.v_min_retract_m_s), 0.0))
         if v_hi_retract > 0.0:
             cap_retract = min(cap_retract, v_hi_retract)
 

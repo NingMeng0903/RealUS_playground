@@ -34,16 +34,26 @@ class LegacyForceLaw:
         f_des: np.ndarray,
         path_twist: np.ndarray,
         contact: bool | None = None,
+        f_ext_raw: np.ndarray | None = None,
+        dt_actual: float | None = None,
+        sensor_age_s: float | None = None,
+        feedback_age_s: float | None = None,
+        v_tcp_z_actual: float | None = None,
     ) -> ForceOutput:
         pose_d = np.asarray(pose, dtype=float).reshape(6).copy()
+        dt_use = float(dt_actual) if dt_actual is not None else float(dt_s)
         cmd = self.controller.compute_velocity_command(
             pose,
             pose_d,
             np.asarray(path_twist, dtype=float).reshape(6),
             np.asarray(f_ext, dtype=float).reshape(6),
             np.asarray(f_des, dtype=float).reshape(6),
-            dt_actual=float(dt_s),
+            dt_actual=dt_use,
             in_contact=contact,
+            f_ext_raw=f_ext_raw,
+            sensor_age_s=sensor_age_s,
+            feedback_age_s=feedback_age_s,
+            v_tcp_z_actual=v_tcp_z_actual,
         )
         v = np.asarray(cmd, dtype=float).reshape(6)
         v_force_z = float(getattr(self.controller, "v_force_z", v[2]))

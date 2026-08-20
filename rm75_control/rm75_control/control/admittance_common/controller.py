@@ -44,6 +44,10 @@ from rm75_control.control.admittance_common.bidirectional_flow import (
     BidirectionalFlowConfig,
     BidirectionalFlowController,
 )
+from rm75_control.control.admittance_common.cdyob import (
+    CdyobConfig,
+    CombinedDynamicsYob,
+)
 from rm75_control.control.admittance_common.pose_math import pose_error, wrap_pi
 from rm75_control.control.admittance_common.proactive_force_ff import (
     ProactiveFfConfig,
@@ -116,7 +120,7 @@ class AdmittanceConfig:
     control_frame: str = "tool"
     kp_pos: np.ndarray = field(default_factory=lambda: np.zeros(6))
     track_axes: np.ndarray = field(default_factory=lambda: np.ones(6))
-    system_delay_s: float = 0.015
+    system_delay_s: float = 0.055
     contact_threshold_n: float = 0.5
     contact_use_fz_only: bool = True
     physical_contact: PhysicalContactConfig = field(
@@ -146,8 +150,8 @@ class AdmittanceConfig:
     var_damping_omega_c_hz: float = 3.5
     var_damping_lambda: float = 0.951
     var_damping_f_max_n: float = 7.0
-    var_damping_d_u: float = 2.0
-    var_damping_m_u: float = 4.0
+    var_damping_d_u: float = 0.0
+    var_damping_m_u: float = 2.0
     var_damping_m_max: float = 7.0
     var_damping_dc_alpha: float = 0.02
     # Short-lived high-frequency dissipation (Dimeas detect, ΔD actuate).
@@ -180,12 +184,14 @@ class AdmittanceConfig:
     # when the flow adapter is disabled so existing loggers can consume the
     # same fields in all modes.
     force_barrier: ForceBarrierConfig = field(default_factory=ForceBarrierConfig)
+    cdyob: CdyobConfig = field(default_factory=CdyobConfig)
     # Force-axis slew is intentionally asymmetric.  A zero value preserves
     # the historical uncapped force-axis path; positive values are applied
     # after the safety caps and before the normal-axis command is returned.
     force_axis_slew_press_m_s2: float = 0.0
     force_axis_slew_retract_m_s2: float = 0.0
     force_axis_slew_reverse_m_s2: float = 0.0
+    force_axis_jerk_max_m_s3: float = 0.0
     surface_force_modulation: SurfaceForceModulationConfig = field(
         default_factory=SurfaceForceModulationConfig
     )
@@ -222,7 +228,7 @@ class AdmittanceConfig:
                 c.get("track_axes", [1, 1, 1, 1, 1, 1]),
                 dtype=float,
             ),
-            system_delay_s=float(c.get("system_delay_s", 0.015)),
+            system_delay_s=float(c.get("system_delay_s", 0.055)),
             contact_threshold_n=float(c.get("contact_threshold_n", 0.5)),
             contact_use_fz_only=bool(c.get("contact_use_fz_only", True)),
             physical_contact=PhysicalContactConfig.from_dict(raw),
@@ -254,8 +260,8 @@ class AdmittanceConfig:
             ),
             var_damping_lambda=float(c.get("var_damping_lambda", 0.951)),
             var_damping_f_max_n=float(c.get("var_damping_f_max_n", 7.0)),
-            var_damping_d_u=float(c.get("var_damping_d_u", 2.0)),
-            var_damping_m_u=float(c.get("var_damping_m_u", 4.0)),
+            var_damping_d_u=float(c.get("var_damping_d_u", 0.0)),
+            var_damping_m_u=float(c.get("var_damping_m_u", 2.0)),
             var_damping_m_max=float(c.get("var_damping_m_max", 7.0)),
             var_damping_dc_alpha=float(
                 c.get("var_damping_dc_alpha", 0.02)
@@ -293,6 +299,7 @@ class AdmittanceConfig:
             force_dob=ForceDobConfig.from_dict(c),
             bidirectional_flow=BidirectionalFlowConfig.from_dict(raw),
             force_barrier=ForceBarrierConfig.from_dict(raw),
+            cdyob=CdyobConfig.from_dict(raw),
             force_axis_slew_press_m_s2=float(
                 c.get("force_axis_slew_press_m_s2", c.get("force_slew_press_m_s2", 0.0))
             ),
@@ -307,6 +314,9 @@ class AdmittanceConfig:
                     "force_axis_slew_reverse_m_s2",
                     c.get("force_slew_reverse_m_s2", 0.0),
                 )
+            ),
+            force_axis_jerk_max_m_s3=float(
+                c.get("force_axis_jerk_max_m_s3", 0.0)
             ),
             surface_force_modulation=SurfaceForceModulationConfig.from_dict(raw),
             contact_episode_release_s=float(
@@ -395,6 +405,12 @@ class AdmittanceController:
         self._force_dob = ForceDisturbanceObserver(self.cfg.force_dob)
         self.u_dob_z = 0.0
         self._force_barrier = ForceSpaceVelocityDamper(self.cfg.force_barrier)
+        self._cdyob = CombinedDynamicsYob(self.cfg.cdyob)
+        self.cdyob_corr_m_s = 0.0
+        self.ke_cap_n_m = float(self.cfg.adaptive_ke.ke_initial)
+        self.overforce_escape = False
+        self.v_force_cmd_z = 0.0
+        self._force_axis_acc = 0.0
         self.force_pred_z = 0.0
         self.force_dot_z = 0.0
         self.force_barrier_contact_active = False
@@ -504,6 +520,12 @@ class AdmittanceController:
         self._force_dob.reset()
         self.u_dob_z = 0.0
         self._force_barrier.reset()
+        self._cdyob.reset()
+        self.cdyob_corr_m_s = 0.0
+        self.ke_cap_n_m = float(self.cfg.adaptive_ke.ke_initial)
+        self.overforce_escape = False
+        self.v_force_cmd_z = 0.0
+        self._force_axis_acc = 0.0
         self.force_pred_z = 0.0
         self.force_dot_z = 0.0
         self.force_barrier_contact_active = False
@@ -705,6 +727,7 @@ class AdmittanceController:
             desired_force_n=desired_force_n,
             retract_fast_hold=retract_fast_hold,
             chase_scale=chase_scale,
+            overforce_escape=bool(self.overforce_escape),
         )
         self.force_reference_scale_n = float(
             self._proactive_ff.last_force_scale_n
@@ -1078,6 +1101,9 @@ class AdmittanceController:
                 ),
             )
             self.zeta_eff = self._ke_estimator.zeta_eff
+            self.ke_cap_n_m = float(self._ke_estimator.ke_for_cap)
+        else:
+            self.ke_cap_n_m = float(self.ke_est)
 
         # Predictive force-space damper is the primary hard-contact impact
         # limiter.  It runs on wall time and uses the newest stiffness/mass
@@ -1169,9 +1195,15 @@ class AdmittanceController:
             seek_vz_m_s=self._v_z_cap(),
             contact_enter_n=float(cfg.contact_threshold_n),
             v_z_cap_retract=self._v_z_cap(),
-            ke_est_n_m=float(self.ke_est),
+            ke_est_n_m=float(self.ke_cap_n_m),
             mass_eq_kg=float(self._m_z_now),
             energy_available_j=energy_available_j,
+            tau_s=max(float(cfg.system_delay_s), float(cfg.force_barrier.t_react_s)),
+            v_tcp_z_actual=(
+                None
+                if v_tcp_z_actual is None
+                else normal_sign * float(v_tcp_z_actual)
+            ),
         )
         if precontact_guard:
             # A deterministic low-speed confirmation sleeve closes the gap
@@ -1186,6 +1218,16 @@ class AdmittanceController:
             if self._precontact_barrier_hold_s <= 0.0 and not precontact_candidate:
                 self._precontact_peak_force_n = 0.0
         self.force_pred_z = float(self._force_barrier.f_pred_z)
+        escape_n = max(float(cfg.force_barrier.f_escape_n), 0.0)
+        self.overforce_escape = bool(
+            physical_contact
+            and force_normal_filtered >= force_normal_desired + escape_n
+        )
+        if self.physical_contact_loss_event:
+            self._proactive_ff.reset()
+            self._force_dob.reset()
+            self.v_r_z = 0.0
+            self.u_dob_z = 0.0
 
         v_force_tool = np.zeros(6, dtype=float)
         sensor_age_eff = (
@@ -1193,7 +1235,7 @@ class AdmittanceController:
         )
         v_force_tool[2] = self._admittance_z(
             f_err_z,
-            force_task_active,
+            physical_contact,
             dt_eff=dt_eff,
             rising_edge=rising_edge,
             desired_force_n=f_des_z,
@@ -1205,7 +1247,26 @@ class AdmittanceController:
             dt_contact=dt_contact,
             sensor_age_s=sensor_age_eff,
             chase_scale=chase_scale,
+            force_pred_n=self.force_pred_z,
+            overforce_escape=self.overforce_escape,
         )
+        v_force_tool[2] = self._cdyob.update(
+            float(v_force_tool[2]),
+            v_meas_m_s=(
+                None
+                if v_tcp_z_actual is None
+                else normal_sign * float(v_tcp_z_actual)
+            ),
+            force_n=force_normal_filtered,
+            dt_s=dt_flow,
+            tau_s=max(
+                float(cfg.system_delay_s),
+                float(cfg.force_barrier.t_react_s),
+            ),
+            in_contact=physical_contact,
+        )
+        self.cdyob_corr_m_s = float(self._cdyob.last_corr_m_s)
+        self.v_force_z = float(v_force_tool[2])
         # Optional scalar bidirectional-flow adapter.  The adapter sees a
         # press-positive normal coordinate; ``normal_sign`` maps the tool
         # force convention into that coordinate and back.
@@ -1343,9 +1404,14 @@ class AdmittanceController:
                         # retracting, use the regular retract slew.
                         slew = (
                             reverse_slew
-                            if previous_normal > 0.0
-                            and desired_normal <= 0.0
-                            and reverse_slew > 0.0
+                            if reverse_slew > 0.0
+                            and (
+                                self.overforce_escape
+                                or (
+                                    previous_normal > 0.0
+                                    and desired_normal <= 0.0
+                                )
+                            )
                             else retract_slew
                         )
                         if slew <= 0.0:
@@ -1356,6 +1422,19 @@ class AdmittanceController:
                                 previous_normal - slew * dt_flow,
                             )
                         )
+                    jerk_max = max(float(cfg.force_axis_jerk_max_m_s3), 0.0)
+                    if jerk_max > 0.0 and dt_flow > 0.0:
+                        acc = (desired_normal - previous_normal) / dt_flow
+                        acc_lim = self._force_axis_acc + jerk_max * dt_flow
+                        acc_lo = self._force_axis_acc - jerk_max * dt_flow
+                        acc = float(np.clip(acc, acc_lo, acc_lim))
+                        desired_normal = previous_normal + acc * dt_flow
+                        self._force_axis_acc = acc
+                    else:
+                        if dt_flow > 0.0:
+                            self._force_axis_acc = (
+                                desired_normal - previous_normal
+                            ) / dt_flow
                     v_final[index] = normal_sign * desired_normal
                 continue
             v_final[index] = float(
@@ -1374,6 +1453,7 @@ class AdmittanceController:
                 v_final[2] = normal_sign * paid_press
             self.flow_tank_energy = float(self._bidirectional_flow.tank_energy)
         self.last_v_cmd = v_final.copy()
+        self.v_force_cmd_z = float(v_final[2]) if v_final.size > 2 else 0.0
         return v_final
 
     def _update_surface_force_scale(
@@ -1505,6 +1585,8 @@ class AdmittanceController:
         dt_contact: float | None = None,
         sensor_age_s: float | None = None,
         chase_scale: float = 1.0,
+        force_pred_n: float | None = None,
+        overforce_escape: bool = False,
     ) -> float:
         cfg = self.cfg
         eff = smooth_deadband_eff(
@@ -1575,6 +1657,8 @@ class AdmittanceController:
             dt_s=self.dt if dt_contact is None else dt_contact,
             sensor_age_s=sensor_age_s,
             instability_index=self.instability_index,
+            force_pred_n=force_pred_n,
+            overforce_escape=overforce_escape,
         )
         self.force_fast_z = float(self._fast_retract_guard.fast_force_n)
         self.retract_guard_armed = bool(self._fast_retract_guard.armed)

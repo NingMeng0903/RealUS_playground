@@ -68,7 +68,21 @@ class HybridTffOuter:
         f_ext: np.ndarray,
         *,
         contact: bool | None = None,
+        f_ext_raw: np.ndarray | None = None,
+        dt_actual: float | None = None,
+        sensor_age_s: float | None = None,
+        feedback_age_s: float | None = None,
+        feedback_fresh_tick: bool | None = None,
+        feedback_velocity_valid: bool | None = None,
+        v_tcp_z_actual: float | None = None,
     ) -> np.ndarray:
+        del feedback_fresh_tick
+        velocity_valid = (
+            bool(feedback_velocity_valid)
+            if feedback_velocity_valid is not None
+            else v_tcp_z_actual is not None
+        )
+        v_actual = v_tcp_z_actual if velocity_valid else None
         v_pos = np.asarray(
             self.position.sample(t_s, current_pose, f_ext), dtype=float
         ).reshape(6)
@@ -77,12 +91,17 @@ class HybridTffOuter:
             path = path * self.selection
             v_pos = v_pos * self.selection
         fout = self.force_law.update(
-            dt_s=self.dt,
+            dt_s=float(dt_actual) if dt_actual is not None else self.dt,
             pose=current_pose,
             f_ext=np.asarray(f_ext, dtype=float).reshape(6),
             f_des=self.desired_force,
             path_twist=path,
             contact=contact,
+            f_ext_raw=f_ext_raw,
+            dt_actual=dt_actual,
+            sensor_age_s=sensor_age_s,
+            feedback_age_s=feedback_age_s,
+            v_tcp_z_actual=v_actual,
         )
         v_star = compose_tff(v_pos, fout.v_force, self.selection)
         self.last_err_mm = float(self.position.last_err_mm)

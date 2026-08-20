@@ -3174,6 +3174,13 @@ class _TickLogger:
             "pad_wx", "pad_wy", "pad_wz",
         ]
         + [f"pad_vcmd_base_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + [
+            "u_dob_z",
+            "v_force_cmd_z",
+            "ke_cap_n_m",
+            "cdyob_corr_m_s",
+            "overforce_escape",
+        ]
     )
 
     def __init__(self, path: str, *, verbose_json: bool = False) -> None:
@@ -3191,9 +3198,15 @@ class _TickLogger:
         self._worker.start()
 
     def _run(self, path: str) -> None:
-        with open(path, "w", newline="") as f:
+        write_header = True
+        try:
+            write_header = not (os.path.exists(path) and os.path.getsize(path) > 0)
+        except OSError:
+            write_header = True
+        with open(path, "a", newline="") as f:
             w = csv.writer(f)
-            w.writerow(self._HEADER)
+            if write_header:
+                w.writerow(self._HEADER)
             n = 0
             while True:
                 if self._stop.is_set() and self._q.empty():
@@ -3282,6 +3295,11 @@ class _TickLogger:
         d_ke = getattr(ctrl, "damping_ke_z", float("nan"))
         d_dimeas = getattr(ctrl, "damping_dimeas_z", float("nan"))
         v_fz = getattr(ctrl, "v_force_z", float("nan"))
+        u_dob_z = getattr(ctrl, "u_dob_z", float("nan"))
+        v_force_cmd_z = getattr(ctrl, "v_force_cmd_z", float("nan"))
+        ke_cap_n_m = getattr(ctrl, "ke_cap_n_m", float("nan"))
+        cdyob_corr_m_s = getattr(ctrl, "cdyob_corr_m_s", float("nan"))
+        overforce_escape = getattr(ctrl, "overforce_escape", False)
         ke_est = getattr(ctrl, "ke_est", float("nan"))
         f_des_eff = getattr(ctrl, "f_des_z_eff", float("nan"))
         v_r_z = getattr(ctrl, "v_r_z", float("nan"))
@@ -3992,7 +4010,21 @@ class _TickLogger:
                *_fmt6(getattr(step, "path_twist", None)),
                *_fmt6(getattr(step, "feedback_twist", None)),
                *(f"{float(v):.9e}" for v in comfort),
-               *pad_fields]
+               *pad_fields,
+               f"{float(u_dob_z):.6f}" if np.isfinite(float(u_dob_z)) else "",
+               (
+                   f"{float(v_force_cmd_z):.6f}"
+                   if np.isfinite(float(v_force_cmd_z))
+                   else ""
+               ),
+               f"{float(ke_cap_n_m):.4f}" if np.isfinite(float(ke_cap_n_m)) else "",
+               (
+                   f"{float(cdyob_corr_m_s):.6f}"
+                   if np.isfinite(float(cdyob_corr_m_s))
+                   else ""
+               ),
+               int(bool(overforce_escape)),
+               ]
         ))
 
     def close(self) -> None:

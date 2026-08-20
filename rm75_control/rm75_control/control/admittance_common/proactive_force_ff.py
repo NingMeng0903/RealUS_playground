@@ -62,11 +62,14 @@ class ProactiveFfConfig:
     press_is_soft_stop: float = 0.85
     # Max rising slew on press-side v_r [m/s²].
     press_slew_max_m_s2: float = 0.35
+    retract_slew_max_m_s2: float = 0.35
     force_scale_min_n: float = 0.30
-    force_scale_fraction: float = 0.15
+    force_scale_fraction: float = 0.0
     press_drive_max: float = 1.0
     retract_drive_max: float = 1.0
     reset_on_reversal: bool = True
+    in_band_n: float = 0.25
+    in_band_leak_s: float = 0.05
 
     @classmethod
     def from_dict(cls, raw: dict) -> ProactiveFfConfig:
@@ -117,8 +120,20 @@ class ProactiveFfConfig:
                     p.get("proactive_press_slew_max_m_s2", 0.35),
                 )
             ),
+            retract_slew_max_m_s2=float(
+                p.get(
+                    "retract_slew_max_m_s2",
+                    p.get(
+                        "proactive_retract_slew_max_m_s2",
+                        p.get(
+                            "press_slew_max_m_s2",
+                            p.get("proactive_press_slew_max_m_s2", 0.35),
+                        ),
+                    ),
+                )
+            ),
             force_scale_min_n=float(p.get("force_scale_min_n", 0.30)),
-            force_scale_fraction=float(p.get("force_scale_fraction", 0.15)),
+            force_scale_fraction=float(p.get("force_scale_fraction", 0.0)),
             press_drive_max=float(
                 p.get(
                     "press_drive_max",
@@ -136,6 +151,10 @@ class ProactiveFfConfig:
                     "reset_on_reversal",
                     p.get("proactive_reset_on_reversal", True),
                 )
+            ),
+            in_band_n=float(p.get("in_band_n", p.get("proactive_in_band_n", 0.25))),
+            in_band_leak_s=float(
+                p.get("in_band_leak_s", p.get("proactive_in_band_leak_s", 0.05))
             ),
         )
 
@@ -168,6 +187,7 @@ class ProactiveForceIntegrator:
         desired_force_n: float = 0.0,
         retract_fast_hold: bool = False,
         chase_scale: float = 1.0,
+        overforce_escape: bool = False,
     ) -> float:
         cfg = self.cfg
         if not cfg.enabled:
@@ -241,7 +261,10 @@ class ProactiveForceIntegrator:
             self.last_reversal_reset = True
 
         if cfg.leak_s > 1e-6:
-            self.v_r -= (dt_eff / cfg.leak_s) * self.v_r
+            leak_s = float(cfg.leak_s)
+            if abs(float(eff)) < max(float(cfg.in_band_n), 0.0) and cfg.in_band_leak_s > 1e-6:
+                leak_s = min(leak_s, float(cfg.in_band_leak_s))
+            self.v_r -= (dt_eff / leak_s) * self.v_r
 
         if integrate:
             if eff < 0.0:
@@ -308,10 +331,12 @@ class ProactiveForceIntegrator:
                 step > 0.0 and at_positive_cap
             ):
                 step = 0.0
-            # Slew-limit rising press reference only (retract stays snappy).
-            if step > 0.0 and cfg.press_slew_max_m_s2 > 0.0:
-                max_step = float(cfg.press_slew_max_m_s2)
-                step = min(step, max_step)
+            # Symmetric slew in regulate; over-force escape skips the retract slew.
+            if not overforce_escape:
+                if step > 0.0 and cfg.press_slew_max_m_s2 > 0.0:
+                    step = min(step, float(cfg.press_slew_max_m_s2))
+                elif step < 0.0 and cfg.retract_slew_max_m_s2 > 0.0:
+                    step = max(step, -float(cfg.retract_slew_max_m_s2))
             self.last_reference_accel_m_s2 = float(step)
             self.v_r += dt_eff * step
 
