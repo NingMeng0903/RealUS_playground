@@ -240,8 +240,8 @@ def test_closed_loop_very_hard_surface_no_bounce_cascade():
 def test_dimeas_5hz_forced_oscillation_adds_zero_centered_damping():
     """A 5 Hz forced fz oscillation (in the contact-resonance band that
     ``_update_instability_index``'s HP-filter targets) must raise Iₛ.
-    Shipped policy uses Dimeas as a detector: ΔD_hf authority is 0 and the
-    brief response is a virtual-mass bump (m_u > 0).
+    Shipped policy keeps Dimeas as a detector only: ΔD_hf and m_u are 0,
+    so virtual mass stays at the configured light value.
     """
     import yaml
     from pathlib import Path
@@ -282,8 +282,8 @@ def test_dimeas_5hz_forced_oscillation_adds_zero_centered_damping():
         f"{ctrl.instability_index:.4f}"
     )
     assert cfg.var_damping_d_u == pytest.approx(0.0)
-    assert cfg.var_damping_m_u > 0.0
-    assert max_mass > m_base
+    assert cfg.var_damping_m_u == pytest.approx(0.0)
+    assert max_mass == pytest.approx(m_base)
     assert max_dimeas_damping < 1.0
 
 

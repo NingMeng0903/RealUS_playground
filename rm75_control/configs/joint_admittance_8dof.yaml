@@ -390,7 +390,7 @@ hybrid_motion:
   var_damping_f_max_n: 7.0
   # Dimeas Iₛ raises virtual mass briefly; ΔD_hf authority is off.
   var_damping_d_u: 0.0
-  var_damping_m_u: 2.0
+  var_damping_m_u: 0.0
   var_damping_m_max: 3.0
   var_damping_dc_alpha: 0.02
   var_damping_hf_attack_s: 0.02
@@ -401,8 +401,12 @@ hybrid_motion:
   var_damping_hf_off: 0.15
   var_damping_hf_err_n: 0.8
   recontact_vz_cap_m_s: 0.012
-  recontact_hold_s: 0.12
-  contact_episode_release_s: 0.30
+  # Safety recontact speed latches on contact *loss* / suspect_loss, not on
+  # reacquire.  hold / episode_release only manage estimator episodes.
+  recontact_hold_s: 0.80
+  recontact_settle_m_s: 0.003
+  recontact_settle_hold_s: 0.050
+  contact_episode_release_s: 0.80
   contact_episode_release_force_n: 0.75
   # Restored from e85c9ab.  Steady under-force offset rejection; 1bfe98b
   # disabled it as part of the anti-bounce sweep, and the force barrier below
@@ -427,26 +431,140 @@ hybrid_motion:
     v_ref_m_s: 0.08
     v_min_retract_m_s: 0.0
     v_min_press_m_s: 0.0
-    # Free-space approach cap.  Impact ~ Ke*v*T_delay, so closing the gap at
-    # the full 80 mm/s made ~8 N peaks on a 3 N target and the over-force
-    # retract threw the tool off the surface.  In-contact response unchanged.
+    # Upper bound only.  First contact and loss-latched recontact use
+    # K_ub, so scheduled approach is a few mm/s, not this 30 mm/s.
     v_seek_free_m_s: 0.030
+    tau_stop_s: 0.080
+    e_x_m: 0.0004
+    e_f_n: 0.20
+    bar_f_n: 0.15
     fdot_lpf_s: 0.040
     precontact_raw_trigger_n: 1.50 # short impact sleeve; never latches contact
     stiffness_cap_enabled: true
     ke_floor_n_m: 50.0
     mass_floor_kg: 0.05
+  # Approximate PROB/CDYOB corrector. Off until after observe/force
+  # scans. Q starts at 2–3 Hz from identified P(z); not a passivity cutoff.
   cdyob:
     enabled: false
-    omega_q_hz: 0.0
+    omega_q_hz: 2.5
     tau_s: 0.0
     t_n_s: 0.020
     v_corr_max_m_s: 0.030
-  # Force-axis slew is press-positive and asymmetric.  A sign reversal into
-  # retract gets the fastest allowance and is never tank/alpha gated.
-  # 0.30 allowed press to rise only ~1.9 mm/s per 6.2 ms tick — 0.27 s to
-  # reach the 80 mm/s cap, which is the "damped, not light" feel.  The force
-  # barrier is the error-gated brake; this no longer has to be one.
+  # Normal-port delay-aware shield. Stay in observe until the same solver
+  # is feasible on hardware. force/observe are empirical peak guards:
+  # require_contact_free_terminal is false until a release model exists.
+  # Do not enable passive/ospf/CDYOB from this file.
+  safety_shield:
+    enabled: true
+    mode: observe
+    k_ub_n_m: 8000.0
+    recovery_hold_s: 0.050
+    require_contact_free_terminal: false
+    r_f_n_s: 8.0
+    r_f_window_steps: 20
+    f_release_n: 0.70
+    u_retract_m_s: 0.040
+    a_max_m_s2: 1.20
+    j_max_m_s3: 40.0
+    rho: 0.15
+    e0_j: 0.004
+    eps_j: 0.0005
+    # One-pose free-space fit from run_20260821_000011 identify tail.
+    # Not a passivity certificate; another pose/load still needed.
+    plant:
+      t0_s: 0.050
+      tp_s: 0.020
+      horizon_steps: 40
+    # stop_dx_ub is written by --analyze-stop --write-yaml.
+    # certified: false until backup replay + independent val.
+    # Force indent uses ē_{x,+}; lookup a0 is [a_actual]+; q_remain_m is dt Σ [u]+.
+    # Candidate bound is Δx_1^ub(ξ,u(λ))+D_b^ub(ξ_1), not max(model, D_b(ξ)).
+
+    velocity_error_ub_m_s:
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002822
+    - 0.002820
+    - 0.002800
+    - 0.002834
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002829
+    - 0.002800
+    - 0.002800
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002820
+    - 0.002800
+    - 0.002800
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002820
+    - 0.002800
+    - 0.002800
+    position_error_ub_m:
+    - 0.0000140
+    - 0.0000280
+    - 0.0000420
+    - 0.0000541
+    - 0.0000681
+    - 0.0000822
+    - 0.0000963
+    - 0.0001104
+    - 0.0001244
+    - 0.0001386
+    - 0.0001526
+    - 0.0001666
+    - 0.0001806
+    - 0.0001927
+    - 0.0002067
+    - 0.0002208
+    - 0.0002349
+    - 0.0002490
+    - 0.0002630
+    - 0.0002770
+    - 0.0002911
+    - 0.0003051
+    - 0.0003191
+    - 0.0003311
+    - 0.0003451
+    - 0.0003592
+    - 0.0003733
+    - 0.0003874
+    - 0.0004014
+    - 0.0004154
+    - 0.0004295
+    - 0.0004435
+    - 0.0004575
+    - 0.0004695
+    - 0.0004835
+    - 0.0004976
+    - 0.0005117
+    - 0.0005258
+    - 0.0005398
+    - 0.0005538
+  # Historical keys. Force-axis a/j now live inside the shield; these
+  # values are not applied after u_sent.
   force_axis_slew_press_m_s2: 1.20
   force_axis_slew_retract_m_s2: 1.20
   force_axis_slew_reverse_m_s2: 2.00

@@ -10,6 +10,39 @@ from rm75_control.control.admittance_common.force_barrier import (
 )
 
 
+def test_vmin_press_does_not_reopen_zero_margin() -> None:
+    damper = ForceSpaceVelocityDamper(
+        ForceBarrierConfig(
+            enabled=True,
+            t_react_s=0.055,
+            v_min_press_m_s=0.003,
+            v_min_retract_m_s=0.0,
+            v_ref_m_s=0.08,
+            stiffness_cap_enabled=True,
+            budget_min_n=0.5,
+            budget_frac=0.0,
+            bar_f_n=0.0,
+            e_f_n=0.0,
+            e_x_m=0.0,
+        )
+    )
+    damper.f_dot_z = 0.0
+    cap_press, cap_retract = damper.caps(
+        f_z=4.0,
+        f_des_z=2.0,
+        in_contact=True,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+        ke_est_n_m=680.0,
+        mass_eq_kg=1.0,
+        tau_s=0.055,
+        v_tcp_z_actual=0.0,
+    )
+    assert cap_press == pytest.approx(0.0, abs=1e-9)
+    assert cap_retract > 0.02
+
+
 def test_overforce_closes_press_without_vmin_floor() -> None:
     damper = ForceSpaceVelocityDamper(
         ForceBarrierConfig(
@@ -92,7 +125,7 @@ def test_delayed_press_speed_does_not_reopen_cap() -> None:
     cap0, _ = damper.caps(v_tcp_z_actual=0.0, **kwargs)
     cap_v, _ = damper.caps(v_tcp_z_actual=0.05, **kwargs)
     assert cap0 == pytest.approx(0.5 / (2000.0 * 0.055), rel=0.05)
-    assert cap_v == pytest.approx(cap0, rel=0.05)
+    assert cap_v < cap0
     assert cap_v < 0.02
 
 

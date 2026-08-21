@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import time
 from enum import IntEnum
 
@@ -19,6 +20,7 @@ from peirastic.core.modes import Mode, ModeRequest
 CTL_NAME = "peirastic_ctl"
 PAYLOAD_NAME = "peirastic_payload"
 TWIST_NAME = "peirastic_twist"
+MOTION_NAME = "peirastic_motion"
 PAYLOAD_MAX = 16384
 
 _CTL = np.dtype(
@@ -52,6 +54,18 @@ _TWIST = np.dtype(
         ("twist", "<f8", (6,)),
         ("axes", "<f8", (6,)),
         ("buttons", "<f8", (16,)),
+    ]
+)
+
+_MOTION = np.dtype(
+    [
+        ("seq", "<u8"),
+        ("t_mono", "<f8"),
+        ("t_wall_s", "<f8"),
+        ("v_tcp_z", "<f8"),
+        ("a_tcp_z_plus", "<f8"),
+        ("feedback_age_s", "<f8"),
+        ("valid", "u1"),
     ]
 )
 
@@ -89,6 +103,7 @@ class CommandHub:
         self._pay = np.ndarray((PAYLOAD_MAX,), dtype=np.uint8, buffer=self._pay_shm.buf)
         self._ctl[0] = np.zeros(1, dtype=_CTL)
         self._seen = 0
+        self.motion = MotionBus(prefix=prefix, create=True)
 
     def close(self) -> None:
         ctl, pay = self._ctl, self._pay
@@ -97,6 +112,7 @@ class CommandHub:
         del ctl, pay
         close_named_shm(self._ctl_shm)
         close_named_shm(self._pay_shm)
+        self.motion.close()
 
     def poll(self) -> tuple[Cmd, int, ModeRequest | None] | None:
         row = self._ctl[0]
@@ -280,3 +296,76 @@ class TwistBus:
             "axes": np.asarray(row["axes"], dtype=float).copy(),
             "buttons": np.asarray(row["buttons"], dtype=float).copy(),
         }
+
+
+class MotionBus:
+    """200 Hz measured tool-Z velocity for Window C backup replay."""
+
+    def __init__(self, *, prefix: str = "", create: bool = False) -> None:
+        self.name = (prefix + MOTION_NAME) if prefix else MOTION_NAME
+        if create:
+            self._shm = create_named_shm(self.name, int(_MOTION.itemsize))
+        else:
+            self._shm = attach_named_shm(self.name)
+        self._row = _view(self._shm.buf, _MOTION)
+        if create:
+            self._row[0] = np.zeros(1, dtype=_MOTION)
+        self._owner = bool(create)
+
+    def close(self) -> None:
+        row = self._row
+        self._row = None
+        del row
+        if self._owner:
+            close_named_shm(self._shm)
+        else:
+            close_attached_shm(self._shm)
+
+    def publish(
+        self,
+        *,
+        v_tcp_z: float,
+        a_tcp_z_plus: float = 0.0,
+        feedback_age_s: float = float("inf"),
+        t_wall_s: float = float("nan"),
+        valid: bool = False,
+    ) -> None:
+        row = self._row[0]
+        row["seq"] = np.uint64(int(row["seq"]) + 1)
+        row["t_mono"] = float(time.monotonic())
+        row["t_wall_s"] = float(t_wall_s)
+        row["v_tcp_z"] = float(v_tcp_z)
+        row["a_tcp_z_plus"] = max(float(a_tcp_z_plus), 0.0)
+        row["feedback_age_s"] = float(feedback_age_s)
+        row["valid"] = np.uint8(1 if valid else 0)
+
+    def read(self) -> dict:
+        row = self._row[0]
+        t_mono = float(row["t_mono"])
+        return {
+            "seq": int(row["seq"]),
+            "t_mono": t_mono,
+            "t_wall_s": float(row["t_wall_s"]),
+            "v_tcp_z": float(row["v_tcp_z"]),
+            "a_tcp_z_plus": float(row["a_tcp_z_plus"]),
+            "feedback_age_s": float(row["feedback_age_s"]),
+            "valid": bool(row["valid"]),
+            "pub_age_s": (
+                max(0.0, time.monotonic() - t_mono) if t_mono > 0.0 else float("inf")
+            ),
+        }
+
+    def fresh(self, last_seq: int, *, max_age_s: float) -> tuple[dict | None, str]:
+        """Return the row only if seq advanced and both ages are inside the bound."""
+        row = self.read()
+        limit = max(float(max_age_s), 0.0)
+        if not row["valid"] or not math.isfinite(float(row["v_tcp_z"])):
+            return None, "invalid"
+        if int(row["seq"]) <= int(last_seq):
+            return None, "seq_stale"
+        if float(row["pub_age_s"]) > limit + 1e-12:
+            return None, "pub_age"
+        fb = float(row["feedback_age_s"])
+        if (not math.isfinite(fb)) or fb > limit + 1e-12:
+            return None, "feedback_age"
+        return row, ""

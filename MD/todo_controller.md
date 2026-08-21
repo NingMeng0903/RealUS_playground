@@ -1,3 +1,16088 @@
+# 延迟感知安全能量盾：审查结论与当前相关源码
+
+写于 2026-08-21 16:46（接 15:41 稿）。本文件包含：当前结论、结构修正、证书口径、**工作树里全部相关源码原文**。其后仍附 git HEAD 的「力控制律双版本审查稿」。
+
+**一句话：** 植物辨识版本对了，可以上机采第一阶段自由空间 `--stop-reverse`；完整 delay-shield 证书仍未成立，`certified` 保持 false，更不能开 `force`。上一轮已修队列保留、输入列、时间戳缺口、未认证表 fail-close。本轮又修了 \(\bar e_{x,+}\)、trigger/event-log 对齐、统一 \(a_0^+=[a_{\mathrm{actual}}]_+\)、以及第一拍 \(u(\lambda)+\) backup 尾的停止界。
+
+不要：开 `force` / `passive` / `ospf` / CDYOB；靠 `hold=0.80`；临时加大 \(F_{\max}\)；随意缩小 \(\bar e_v,\bar e_{x,+}\)；在人或更硬物体上测；把植物阶跃的 \(\Delta x^+\) 叫作 \(\Delta x_b^{\mathrm{ub}}\)；把 `certified: false` 的表当证明；用有符号 \(\bar e_x\) 当力上界；把 `--backup-replay` 在未对齐 Window A 实测速度时叫作在线 backup。
+
+相关单测（盾 / 辨识 / 力障 / 接触 / proactive / cdyob / log / metrics / smooth_chase）：**98 collected, 98 passed**。相对 15:41 的 96/103，本轮加了 \(\bar e_{x,+}\)、\(a_0^+\)、trigger 对齐、第一拍+尾的断言；测试通过 **不能** 说明定理成立。
+
+---
+
+## 0. 操作决策
+
+保持 `safety_shield.mode: observe`。Lee `bidirectional_flow.mode: observe`（永不 `active`）。Dimeas 只作检测（`m_u=0`, `d_u=0`）。CDYOB 默认关。
+
+上机顺序：
+
+1. 先跑 `+10/+20 → 0/−40` 植物辨识，核对 `twist_vz`、工作空间、CSV 边沿、时间戳、符号。`u_sent` 在 SERVO_TWIST 下可能为空或陈旧，不要当输入。
+2. 再跑完整 `+10/+20/+40/+80`，含 0.40 s settled 和 0.05 s acceleration。
+3. 至少再录一份完全独立的验证运行（不同姿态、有/无探头载荷，最好不同日期或重新启动）。
+4. 这次结果只称为植物辨识 \(P:u\mapsto v\)。`--backup-replay` 必须带 `--window-a-csv` 同步实测 \(v,[a]_+\)，分析必须 `--event-log` 按显式 trigger 对齐，不能靠 3 mm/s 边沿。全部验证事件满足力上界、并且人工把 `stop_dx_ub.certified` 设为 true 之前，继续 observe。
+
+```bash
+python -m peirastic.apps.run_controller --log-csv
+python -m peirastic.apps.identify_plant \
+  --stop-reverse --speeds-mm-s 10,20 \
+  --hold-s 0.40 --short-hold-s 0.05 --rest-s 0.40
+python -m peirastic.apps.identify_plant --analyze-stop RUN.csv --input-column twist_vz
+# 完整植物 + 独立验证后再：
+python -m peirastic.apps.identify_plant --stop-reverse --hold-s 0.40 --short-hold-s 0.05 --rest-s 0.40
+python -m peirastic.apps.identify_plant --analyze-stop RUN.csv --val VAL.csv --input-column twist_vz --write-yaml stop_dx.yaml
+# backup 证书采集（软件四项修好之后才跑）：
+python -m peirastic.apps.identify_plant --backup-replay \
+  --speeds-mm-s 10,20 --hold-s 0.40 --short-hold-s 0.05 --rest-s 0.40 \
+  --window-a-csv WINDOW_A.csv --event-log identify_backup_events.csv
+python -m peirastic.apps.identify_plant \
+  --analyze-stop WINDOW_A.csv --event-log identify_backup_events.csv --input-column twist_vz
+```
+
+`--stop-reverse` 是瞬时 \(+v\to 0/+v\to-40\,\mathrm{mm/s}\)，辨识 \(P:u\mapsto v\)。反转里的 \(N_b\) 含人为 −40 mm/s 保持，不是盾的 backup-to-terminal。`--backup-replay` 发送与盾相同的 A/J 受限 \(u_b\)；无 `--window-a-csv` 时只是模型生成的开环 backup 序列。
+
+首次接触是否可行（证书口径，不是植物阶跃 \(\Delta x^+\)）：
+
+\[
+F_{\mathrm{enter}}+\Delta F_{\mathrm{unc}}+K_{\mathrm{ub}}D_{\mathrm{ub}}(\xi,u(\lambda))+\Delta F_{\mathrm{active}}^{\mathrm{ub}}\le F_{\max}.
+\]
+
+认证表 \(D_b^{\mathrm{ub}}(\xi)\) 只覆盖「从现在立即执行 backup」。盾候选是 \(u(\lambda),u_b,u_b,\ldots\)，故
+
+\[
+D_{\mathrm{ub}}(\xi,u(\lambda))=\Delta x_1^{\mathrm{ub}}(\xi,u(\lambda))+D_b^{\mathrm{ub}}(\xi_1).
+\]
+
+不能取 \(\max(D_{\mathrm{模型}},D_b^{\mathrm{ub}}(\xi))\) 并指望停止表改善可行性。无认证表时仍用 \(\bar e_{x,+}\) 管。即使很低的 \(v_0\) 仍不成立：结论不是再缩误差界，而是当前 \(F_{\max}\)、\(K_{\mathrm{ub}}\)、执行器带宽和传感不确定性组合下没有正的安全接近速度。
+
+---
+
+## 1. 已落地的结构修正
+
+1. observe 与 force 共用同一 solver，只在是否采用输出上不同。observe **发送** \(u_{\mathrm{nom,capped}}\)。
+2. 接触丢失 / `SUSPECT_LOSS` 后锁存低速，不是撞上后才启动 timer。
+3. infeasible 后锁存 backup；解除必须清空整条延迟队列、\(\xi=v_{\mathrm{plant}}\)、\(|a|\le a_{\mathrm{hold}}\)，连续 `recovery_hold_s`。
+4. 首次/再接触用 \(K_{\mathrm{ub}}\) 和 \(v_{\mathrm{delay,safe}}\)，不用低估的 \(\hat K_e\) 放宽速度。
+5. `v_min_press` 不再把零力裕量重新打开。
+6. `force` 已退回 `observe`。
+7. 新增 infeasible 原因、恢复状态、`failsafe_frac` / `effective_intervention_frac`。
+8. 再接触解除用 \(|v|\le 3\,\mathrm{mm/s}\)，高速回撤不会误解除。
+9. `hi = max(press_cap, 0.0)`，零按压余量不再被重开。
+10. `pipeline_penetration_ub()` 只校正 \(v_k\) 和 \(a_0^+=[a_{\mathrm{actual}}]_+\)，保留已知延迟队列 \(q_k\)。
+11. `_rollout()` 每拍 \(\Delta x_{\mathrm{ub}}(i)=\max\{\Delta x_{\mathrm{ub}}(i-1),\widehat{\Delta x}^+(i)+\bar e_{x,+}(i)\}\)，不再要求 `pressing = v>0 or u>0`。有符号 \(\bar e_x\) 不进入力界。
+12. `--analyze-stop --write-yaml` 写出单调 `stop_dx_ub`（含 \(a_0^+\)、`q_remain_m`）；仅 `certified: true` 时首次接触改查 lookup，候选界为 \(\Delta x_1^{\mathrm{ub}}+D_b^{\mathrm{ub}}(\xi_1)\)。
+13. `--backup-replay` 用实测 \(v\) 更新 backup；`--analyze-stop --event-log` 用 `v0_cmd→u_b` 对齐第一拍，不漏 jerk 限制下的前两拍。
+
+### 1.1 状态机三项
+
+| 项目 | 判断 |
+| --- | --- |
+| 锁存不能同拍解除 | 状态条件正确。低速判断为 `abs(v)`。 |
+| 首次接触走延迟限速 | 通路正确；分子非正时压到零；`hi = max(press_cap, 0.0)`。无认证表时仍用 \(T_{\mathrm{stop}}\) 公式。 |
+| recovery 等队列和状态清空 | delay queue、`vplant`、命令/实际加速度。 |
+
+**同拍不得解除锁存。** 解除必须：`detached_seen`、`reacquired_seen`、`state==CONTACT`、\(|v|\le 3\,\mathrm{mm/s}\)，连续 50 ms。
+
+**首次接触延迟限速。** 无认证停止表时：
+
+\[
+v_{\mathrm{delay}}
+=
+\left[
+\frac{F_{\max}-F_{\mathrm{enter}}-\Delta F_{\mathrm{unc}}}{K_{\mathrm{ub}}T_{\mathrm{stop}}}
+\right]_+.
+\]
+
+有 `stop_dx_ub.certified: true` 时：取满足 \(K_{\mathrm{ub}}D_{\mathrm{ub}}(v_0,[a_0]_+,q_{\mathrm{remain}})\le\mathrm{room}\) 的最大表列 \(v_0\)。\(a_0\) 是实测按压加速度 \([a_{\mathrm{actual}}]_+\)，不是 \(|u_{k-1}-u_{k-2}|/T_s\)。\(q_{\mathrm{remain}}=T_s\sum[u_j]_+\) 是延迟线加权剩余按压；旧表只有 `q_press_m_s`（队列最大值）时按 \(q_{\mathrm{remain}}=0\) 解析，有剩余按压则 fail-close。
+
+### 1.2 分析口径
+
+\(\Delta x^+=\sum\Delta t[v]_+\)，回撤不抵消按入。力误差界是
+
+\[
+\bar e_{x,+}(i)=\max_j\Big[\sum_{\ell=1}^{i}T_s[v_{j,\ell}]_+-\sum_{\ell=1}^{i}T_s[\hat v_{j,\ell}]_+\Big]_+.
+\]
+
+有符号 \(\bar e_x=\max_j|\sum T_s(v-\hat v)|\) 会正负抵消，不能约束已经发生的正向按入。\(N_{\mathrm{press}}\) 与 \(N_b\) 分开。FOPDT / 二阶 / ARX 同起点开环多步。独立 `--val`；同日志 70/30 只用于开发。默认 `--input-column twist_vz`。时间戳缺口 \(>50\,\mathrm{ms}\) 使该事件无效，不再静默裁成 50 ms。无 `--event-log` 时 backup 边沿仍可能把 jerk 前两拍漏掉。
+
+### 1.3 停止界接入盾（仍未认证）
+
+盾走两条路径：
+
+- 默认：鲁棒植物管 rollout 真实 A/J backup，每拍 \(F_{\mathrm{ub}}=F_0+\Delta F_{\mathrm{unc}}+K_{\mathrm{ub}}(\widehat{\Delta x}^++\bar e_{x,+}(i))+\Delta F_{\mathrm{active}}\)。
+- `certified: true` 且表非空：力缩进改为 \(\Delta x_1^{\mathrm{ub}}(\xi,u(\lambda))+D_b^{\mathrm{ub}}(\xi_1)\)。查询 \(\xi_1\) 超出所有 covering bin 则不可行。纯 backup 的 pipeline 查 \(D_b^{\mathrm{ub}}(\xi)\)。
+
+`--analyze-stop` 打印的表默认 `certified: false`、`source: plant_step_stop` 或 `backup_replay`。植物阶跃 \(\Delta x^+\) 不会自动关掉原来的 4.4 N 可行性矛盾；要用停止表替代原管提升可行性，必须用上述第一拍+尾结构，不能 `max` 原管。
+
+### 1.4 本轮修掉的四个数学洞
+
+| 洞 | 旧实现 | 现实现 |
+| --- | --- | --- |
+| \(\bar e_x\) 不是正向侵入界 | \(\max\|\sum T_s(v-\hat v)\|\)，且仅 `pressing` 时更新 \(\Delta x_{\mathrm{ub}}\) | \(\bar e_{x,+}\)；每拍 max-hold。名义速度已负、真实速度仍正时也更新 |
+| `--backup-replay` 不是在线 backup | `_v_plant=v_z`（命令）；分析器不读 event log；3 mm/s 边沿可能漏前两拍 | 同步实测 \(v,[a]_+\)；`--event-log` 用 `v0_cmd→u_b` 对齐 trigger 拍 |
+| lookup 的 \(a_0\) 不一致 | 表用实测 \(\Delta v/\Delta t\)，rollout 用 \(\|u_{k-1}-u_{k-2}\|/T_s\) | 一律 \([a_{\mathrm{actual}}]_+\)；\(q\) 用 `q_remain_m` |
+| 纯 backup 表 vs 第一拍 \(u(\lambda)\) | \(\max(D_{\mathrm{模型}},D_b(\xi))\) | \(D_{\mathrm{ub}}(\xi,u(\lambda))=\Delta x_1^{\mathrm{ub}}+D_b(\xi_1)\) |
+
+---
+
+## 2. 相关文件清单
+
+| 文件 | 作用 |
+| --- | --- |
+| `delay_safety_shield.py` | 同 solver、保留 \(q_k\)、\(\bar e_{x,+}\)、第一拍+尾、\(a_0^+\)、`q_remain_m` |
+| `controller.py` | 再接触状态机、`hi=max(press_cap,0)`、认证表首次接触用 \(a_0^+\) 与剩余按压 |
+| `force_barrier.py` | `v_min_press` 不重开零裕量 |
+| `contact_state.py` | CONTACT / SUSPECT_LOSS / LOST |
+| `cdyob.py` | 默认关 |
+| `loop.py` | CSV 列（`twist_vz` / `u_sent`） |
+| `identify_plant.py` | `--stop-reverse` / `--backup-replay --window-a-csv` / `--analyze-stop --event-log` |
+| `shield_feel_metrics.py` | failsafe / effective intervention |
+| `gamepad.py` | Window A 手柄 |
+| `force.yaml` / `controller.yaml` / `joint_admittance_8dof.yaml` | `mode: observe`；`certified` 保持 false |
+| 下列 `tests/test_*.py` | 锁存、队列保留、lookup、\(\bar e_{x,+}\)、\(a_0^+\)、第一拍+尾、trigger 对齐 |
+
+---
+
+## 3. 当前工作树相关源码原文
+
+以下按路径全文抄入，与磁盘文件一致。
+
+### FILE `rm75_control/rm75_control/control/admittance_common/delay_safety_shield.py`
+
+```python
+"""Delay-aware normal-port safety/energy shield.
+
+Nominal feel is ``u_nom`` (low-M/D admittance + optional CDYOB).  This
+module only certifies a predicted force upper bound and a measured-port
+energy lower bound.  It does not claim whole-robot passivity, zero
+overshoot, or a theorem until the plant set, ``K_ub``, and the terminal
+set have been validated on hardware.
+
+Modes
+-----
+observe
+    Run the same force certificate as ``force``; send ``u_nom``.
+force
+    Enforce ``F_ub <= F_max`` on the backup-to-terminal rollout.
+passive
+    force + ``E_lb >= eps`` with ``rho = 0``.
+ospf
+    force + ``E_lb >= eps`` with ``rho > 0`` (output-strict, normal port).
+
+The first command is ``u(λ) = u_b + λ (u_nom − u_b)``; the remaining
+``N_b − 1`` steps use the backup law.  A certified stop table covers
+pure backup from the current state, so the candidate bound is
+``D_ub(ξ, u(λ)) = Δx_1^ub(ξ, u(λ)) + D_b^ub(ξ_1)``, not
+``max(model tube, D_b^ub(ξ))``.  Receding-horizon recursive feasibility
+follows from shifting that backup tail, provided the next state stays
+in the prediction tube.
+
+Force indent uses the press-positive error ``ē_{x,+}``, not signed
+position error.  Lookup state ``a0`` is ``[a_actual]_+``, never command
+acceleration.
+"""
+
+from __future__ import annotations
+
+import math
+import time
+from collections import deque
+from dataclasses import dataclass, field
+
+
+def _clip(value: float, lo: float, hi: float) -> float:
+    return lo if value < lo else hi if value > hi else value
+
+
+def inf_minus_fv(
+    f_lo: float,
+    f_hi: float,
+    v_lo: float,
+    v_hi: float,
+) -> float:
+    """Lower bound of ``p = -F v`` on a rectangle (F is compression ≥ 0)."""
+    f0 = max(0.0, float(f_lo))
+    f1 = max(f0, float(f_hi))
+    corners = (
+        f0 * float(v_lo),
+        f0 * float(v_hi),
+        f1 * float(v_lo),
+        f1 * float(v_hi),
+    )
+    return -max(corners)
+
+
+def measured_power_lb(
+    f_csv: float,
+    v_csv: float,
+    bar_f: float,
+    bar_v: float,
+) -> float:
+    """Conservative ``p = F_e v = -F_csv v_csv`` with sensor bounds."""
+    f_hat = -float(f_csv)
+    v_hat = float(v_csv)
+    return (
+        f_hat * v_hat
+        - abs(f_hat) * max(float(bar_v), 0.0)
+        - abs(v_hat) * max(float(bar_f), 0.0)
+        - max(float(bar_f), 0.0) * max(float(bar_v), 0.0)
+    )
+
+
+def default_velocity_error_ub(
+    horizon_steps: int,
+    ev0_m_s: float = 0.003,
+    slope_m_s: float = 0.0004,
+    ev_cap_m_s: float = 0.008,
+) -> list[float]:
+    n = max(int(horizon_steps), 1)
+    return [
+        float(min(ev0_m_s + slope_m_s * i, ev_cap_m_s))
+        for i in range(1, n + 1)
+    ]
+
+
+def default_position_error_ub(
+    velocity_error_ub_m_s: list[float],
+    dt_s: float,
+) -> list[float]:
+    acc = 0.0
+    out: list[float] = []
+    ts = max(float(dt_s), 0.0)
+    for ev in velocity_error_ub_m_s:
+        acc += ts * max(float(ev), 0.0)
+        out.append(acc)
+    return out
+
+
+@dataclass
+class StopDxBin:
+    """One monotonic covering sample of remaining press-positive indent.
+
+    ``a0_m_s2`` is ``[a_actual]_+``.  ``q_remain_m`` is the delay-line
+    remaining press ``dt * Σ [u_j]_+``, not ``max(queue)``.
+    """
+
+    v0_m_s: float
+    a0_m_s2: float = 0.0
+    q_press_m_s: float = 0.0
+    q_remain_m: float = 0.0
+    dx_ub_m: float = 0.0
+    n_b: int = 0
+
+
+def _parse_stop_dx_bins(raw: object) -> list[StopDxBin]:
+    if not isinstance(raw, list):
+        return []
+    out: list[StopDxBin] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        q_press = max(float(item.get("q_press_m_s", 0.0)), 0.0)
+        if "q_remain_m" in item:
+            q_remain = max(float(item.get("q_remain_m", 0.0)), 0.0)
+        else:
+            # Old tables stored max(queue) in q_press_m_s (m/s).  Do not
+            # treat that velocity as remaining meters.
+            q_remain = 0.0
+        out.append(
+            StopDxBin(
+                v0_m_s=abs(float(item.get("v0_m_s", 0.0))),
+                a0_m_s2=max(float(item.get("a0_m_s2", 0.0)), 0.0),
+                q_press_m_s=q_press,
+                q_remain_m=q_remain,
+                dx_ub_m=max(float(item.get("dx_ub_m", 0.0)), 0.0),
+                n_b=max(int(item.get("n_b", 0)), 0),
+            )
+        )
+    return out
+
+
+@dataclass
+class SafetyShieldConfig:
+    enabled: bool = True
+    # observe | force | passive | ospf
+    mode: str = "observe"
+    t0_s: float = 0.005
+    tp_s: float = 0.060
+    horizon_steps: int = 40
+    k_ub_n_m: float = 8000.0
+    r_f_n_s: float = 8.0
+    r_f_window_steps: int = 20
+    f_release_n: float = 0.70
+    v_hold_m_s: float = 0.015
+    a_hold_m_s2: float = 0.15
+    u_retract_m_s: float = 0.040
+    a_max_m_s2: float = 1.20
+    j_max_m_s3: float = 40.0
+    queue_clear_m_s: float = 0.015
+    e0_j: float = 0.004
+    eps_j: float = 0.0005
+    rho: float = 0.0
+    bar_f_n: float = 0.15
+    bar_v_m_s: float = 0.004
+    l_p_w_s: float = 40.0
+    e_x_m: float = 0.0004
+    e_f_n: float = 0.20
+    solver_budget_us: float = 2000.0
+    fail_safe_on_solver_timeout: bool | None = None
+    lambda_tol: float = 0.01
+    recovery_hold_s: float = 0.050
+    # False until a phantom-validated release model exists.  F_ub never
+    # decreases, so requiring F_ub <= F_release at mid-contact empties T.
+    require_contact_free_terminal: bool = False
+    enforce_terminal: bool = True
+    velocity_error_ub_m_s: list[float] = field(default_factory=list)
+    position_error_ub_m: list[float] = field(default_factory=list)
+    # Press-positive indent error.  Signed position_error_ub_m is not this.
+    position_error_ub_plus_m: list[float] = field(default_factory=list)
+    # Empty / certified=false: plant-ID only.  First contact still uses T_stop.
+    stop_dx_certified: bool = False
+    stop_dx_source: str = ""
+    stop_dx_bins: list[StopDxBin] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, raw: dict) -> "SafetyShieldConfig":
+        root = raw if isinstance(raw, dict) else {}
+        controller = root.get("hybrid_motion", root.get("controller", root))
+        if not isinstance(controller, dict):
+            controller = root if isinstance(root, dict) else {}
+        section = controller.get("safety_shield", root.get("safety_shield", {}))
+        if not isinstance(section, dict):
+            section = {}
+        plant = section.get("plant", {})
+        if not isinstance(plant, dict):
+            plant = {}
+        ev = section.get("velocity_error_ub_m_s", plant.get("velocity_error_ub_m_s", []))
+        ex = section.get("position_error_ub_m", plant.get("position_error_ub_m", []))
+        ex_plus = section.get(
+            "position_error_ub_plus_m", plant.get("position_error_ub_plus_m", [])
+        )
+        if not isinstance(ev, list):
+            ev = []
+        if not isinstance(ex, list):
+            ex = []
+        if not isinstance(ex_plus, list):
+            ex_plus = []
+        stop_sec = section.get("stop_dx_ub", {})
+        if not isinstance(stop_sec, dict):
+            stop_sec = {}
+        timeout_default = None
+        if "fail_safe_on_solver_timeout" in section:
+            timeout_default = bool(section.get("fail_safe_on_solver_timeout"))
+        return cls(
+            enabled=bool(section.get("enabled", True)),
+            mode=str(section.get("mode", "observe")).strip().lower(),
+            t0_s=float(plant.get("t0_s", section.get("t0_s", 0.005))),
+            tp_s=float(plant.get("tp_s", section.get("tp_s", 0.060))),
+            horizon_steps=int(
+                plant.get("horizon_steps", section.get("horizon_steps", 40))
+            ),
+            k_ub_n_m=float(section.get("k_ub_n_m", 8000.0)),
+            r_f_n_s=float(section.get("r_f_n_s", 8.0)),
+            r_f_window_steps=int(section.get("r_f_window_steps", 20)),
+            f_release_n=float(section.get("f_release_n", 0.70)),
+            v_hold_m_s=float(section.get("v_hold_m_s", 0.015)),
+            a_hold_m_s2=float(section.get("a_hold_m_s2", 0.15)),
+            u_retract_m_s=float(section.get("u_retract_m_s", 0.040)),
+            a_max_m_s2=float(section.get("a_max_m_s2", 1.20)),
+            j_max_m_s3=float(section.get("j_max_m_s3", 40.0)),
+            queue_clear_m_s=float(section.get("queue_clear_m_s", 0.015)),
+            e0_j=float(section.get("e0_j", 0.004)),
+            eps_j=float(section.get("eps_j", 0.0005)),
+            rho=float(section.get("rho", 0.0)),
+            bar_f_n=float(section.get("bar_f_n", 0.15)),
+            bar_v_m_s=float(section.get("bar_v_m_s", 0.004)),
+            l_p_w_s=float(section.get("l_p_w_s", 40.0)),
+            e_x_m=float(section.get("e_x_m", 0.0004)),
+            e_f_n=float(section.get("e_f_n", 0.20)),
+            solver_budget_us=float(section.get("solver_budget_us", 2000.0)),
+            fail_safe_on_solver_timeout=timeout_default,
+            lambda_tol=float(section.get("lambda_tol", 0.01)),
+            recovery_hold_s=float(section.get("recovery_hold_s", 0.050)),
+            require_contact_free_terminal=bool(
+                section.get("require_contact_free_terminal", False)
+            ),
+            enforce_terminal=bool(section.get("enforce_terminal", True)),
+            velocity_error_ub_m_s=[float(x) for x in ev],
+            position_error_ub_m=[float(x) for x in ex],
+            position_error_ub_plus_m=[float(x) for x in ex_plus],
+            stop_dx_certified=bool(stop_sec.get("certified", False)),
+            stop_dx_source=str(stop_sec.get("source", "")),
+            stop_dx_bins=_parse_stop_dx_bins(stop_sec.get("bins", [])),
+        )
+
+    def normalized_mode(self) -> str:
+        mode = str(self.mode).strip().lower()
+        if mode == "energy":
+            return "passive"
+        if mode not in ("observe", "force", "passive", "ospf", "off"):
+            return "observe"
+        return mode
+
+    def energy_constrained(self) -> bool:
+        return self.normalized_mode() in ("passive", "ospf")
+
+    def force_constrained(self) -> bool:
+        return self.normalized_mode() in ("force", "passive", "ospf")
+
+    def diagnoses_force(self) -> bool:
+        """Observe uses the same force certificate as force; it just does not apply."""
+        return self.normalized_mode() in ("observe", "force", "passive", "ospf")
+
+    def applies_command(self) -> bool:
+        return self.normalized_mode() in ("force", "passive", "ospf")
+
+    def should_enforce_terminal(self) -> bool:
+        # Without a validated release model, force/observe are empirical
+        # peak guards.  Terminal membership is required only for energy modes
+        # or an explicit contact-free terminal.
+        if self.require_contact_free_terminal:
+            return True
+        return self.energy_constrained()
+
+    def rho_used(self) -> float:
+        if self.normalized_mode() == "ospf":
+            return max(float(self.rho), 0.0)
+        return 0.0
+
+    def fail_safe_timeout(self) -> bool:
+        if self.fail_safe_on_solver_timeout is not None:
+            return bool(self.fail_safe_on_solver_timeout)
+        return self.applies_command()
+
+
+@dataclass
+class SafetyShieldResult:
+    u_nom: float
+    u_b: float
+    u_shield_hyp: float
+    u_sent: float
+    lambda_star: float
+    lambda_obs: float
+    shield_applied: bool
+    shield_feasible: bool
+    solver_timeout: bool
+    f_ub_n: float
+    e_lb_j: float
+    w_lb_j: float
+    rho_v2_w: float
+    n_stop: int
+    tube_violation: bool
+    solver_us: float
+    dx_pipe_ub_m: float
+    in_terminal: bool
+    infeasible_reason: str = ""
+    f_constraint_margin_n: float = 0.0
+    energy_margin_j: float = 0.0
+    terminal_ok: bool = False
+    recovery_latched: bool = False
+    domain_ok: bool = True
+    aj_ok: bool = True
+
+
+@dataclass
+class _PlantState:
+    v: float
+    delay: deque[float]
+    u_prev: float
+    u_prev2: float
+    a_plus: float = 0.0
+
+
+class DelaySafetyShield:
+    """Online backup-to-terminal filter on the press-positive normal axis."""
+
+    def __init__(self, cfg: SafetyShieldConfig, dt_s: float) -> None:
+        self.cfg = cfg
+        self.dt_s = max(float(dt_s), 1e-4)
+        self.reset()
+
+    def reset(self) -> None:
+        cfg = self.cfg
+        delay_n = self._delay_steps()
+        self._delay: deque[float] = deque([0.0] * delay_n, maxlen=max(delay_n, 1))
+        self._v_plant = 0.0
+        self._a_plus = 0.0
+        self._u_prev = 0.0
+        self._u_prev2 = 0.0
+        self.energy_lb_j = float(cfg.e0_j)
+        self._recovery_latched = False
+        self._recovery_ok_s = 0.0
+        self.last = SafetyShieldResult(
+            u_nom=0.0,
+            u_b=0.0,
+            u_shield_hyp=0.0,
+            u_sent=0.0,
+            lambda_star=1.0,
+            lambda_obs=1.0,
+            shield_applied=False,
+            shield_feasible=True,
+            solver_timeout=False,
+            f_ub_n=0.0,
+            e_lb_j=float(cfg.e0_j),
+            w_lb_j=0.0,
+            rho_v2_w=0.0,
+            n_stop=0,
+            tube_violation=False,
+            solver_us=0.0,
+            dx_pipe_ub_m=0.0,
+            in_terminal=True,
+        )
+
+    def _delay_steps(self) -> int:
+        return max(int(round(float(self.cfg.t0_s) / self.dt_s)), 0)
+
+    def _alpha(self) -> float:
+        tp = max(float(self.cfg.tp_s), 1e-4)
+        return math.exp(-self.dt_s / tp)
+
+    def _error_v(self, step_index: int) -> float:
+        table = self.cfg.velocity_error_ub_m_s
+        if table:
+            idx = min(max(int(step_index) - 1, 0), len(table) - 1)
+            return max(float(table[idx]), 0.0)
+        defaults = default_velocity_error_ub(max(int(self.cfg.horizon_steps), 1))
+        idx = min(max(int(step_index) - 1, 0), len(defaults) - 1)
+        return defaults[idx]
+
+    def _error_x(self, step_index: int) -> float:
+        table = self.cfg.position_error_ub_m
+        if table:
+            idx = min(max(int(step_index) - 1, 0), len(table) - 1)
+            return max(float(table[idx]), 0.0)
+        ev = self.cfg.velocity_error_ub_m_s or default_velocity_error_ub(
+            max(int(self.cfg.horizon_steps), 1)
+        )
+        px = default_position_error_ub(ev, self.dt_s)
+        idx = min(max(int(step_index) - 1, 0), len(px) - 1)
+        return px[idx]
+
+    def _error_x_plus(self, step_index: int) -> float:
+        """Press-positive indent error ``ē_{x,+}(i)``.
+
+        Signed ``position_error_ub_m`` can cancel and is not used.  If no
+        plus table is loaded, ``Σ dt ē_v`` bounds both ``|Σ dt (v−v̂)|``
+        and ``[Σ dt [v]_+ − Σ dt [v̂]_+]_+``.
+        """
+        table = self.cfg.position_error_ub_plus_m
+        if table:
+            idx = min(max(int(step_index) - 1, 0), len(table) - 1)
+            return max(float(table[idx]), 0.0)
+        ev = self.cfg.velocity_error_ub_m_s or default_velocity_error_ub(
+            max(int(self.cfg.horizon_steps), 1)
+        )
+        px = default_position_error_ub(ev, self.dt_s)
+        idx = min(max(int(step_index) - 1, 0), len(px) - 1)
+        return px[idx]
+
+    def queue_press(self) -> float:
+        if not self._delay:
+            return 0.0
+        return max(0.0, max(float(x) for x in self._delay))
+
+    def queue_remain_m(self, delay: deque[float] | None = None) -> float:
+        """Weighted remaining press of the known delay line, ``dt Σ [u]_+``."""
+        q = self._delay if delay is None else delay
+        if not q:
+            return 0.0
+        return self.dt_s * sum(max(float(u), 0.0) for u in q)
+
+    def lookup_stop_dx(self, v0: float, a0: float, q0: float) -> float:
+        """Monotonic covering ``D_ub(|v0|,[a0]+,q_remain)``.
+
+        ``a0`` is press-direction actual acceleration.  ``q0`` is remaining
+        press indent in metres.  Returns NaN if the table is empty, +inf
+        if the query is outside every covering bin.
+        """
+        bins = self.cfg.stop_dx_bins
+        if not bins:
+            return float("nan")
+        v = abs(float(v0))
+        a = max(float(a0), 0.0)
+        q = max(float(q0), 0.0)
+        covering = [
+            float(b.dx_ub_m)
+            for b in bins
+            if float(b.v0_m_s) + 1e-12 >= v
+            and float(b.a0_m_s2) + 1e-12 >= a
+            and float(b.q_remain_m) + 1e-12 >= q
+        ]
+        if not covering:
+            return float("inf")
+        return min(covering)
+
+    def max_safe_approach_m_s(self, *, room_n: float, a0: float, q0: float) -> float | None:
+        """Largest tabulated ``v0`` with ``K_ub D_ub <= room``.  None = no table."""
+        if not self.cfg.stop_dx_certified or not self.cfg.stop_dx_bins:
+            return None
+        k_ub = max(float(self.cfg.k_ub_n_m), 1.0)
+        if float(room_n) <= 0.0:
+            return 0.0
+        best = 0.0
+        any_ok = False
+        for b in self.cfg.stop_dx_bins:
+            dx = self.lookup_stop_dx(float(b.v0_m_s), a0, q0)
+            if not math.isfinite(dx):
+                continue
+            if k_ub * dx <= float(room_n) + 1e-12:
+                best = max(best, abs(float(b.v0_m_s)))
+                any_ok = True
+        return best if any_ok else 0.0
+
+    def _limit_increment(self, u_cmd: float, u_prev: float, u_prev2: float) -> float:
+        cfg = self.cfg
+        dt = self.dt_s
+        a_max = max(float(cfg.a_max_m_s2), 0.0)
+        j_max = max(float(cfg.j_max_m_s3), 0.0)
+        desired = float(u_cmd)
+        if a_max > 0.0:
+            desired = _clip(desired, u_prev - a_max * dt, u_prev + a_max * dt)
+        if j_max > 0.0 and dt > 0.0:
+            acc = (desired - u_prev) / dt
+            last_acc = (u_prev - u_prev2) / dt
+            acc = _clip(acc, last_acc - j_max * dt, last_acc + j_max * dt)
+            desired = u_prev + acc * dt
+        return float(desired)
+
+    def backup_command(
+        self,
+        u_prev: float,
+        u_prev2: float,
+        *,
+        released: bool = False,
+        v_pred: float = 0.0,
+    ) -> float:
+        pressing = (not released) and float(v_pred) > 0.0
+        target = -abs(float(self.cfg.u_retract_m_s)) if pressing else 0.0
+        return self._limit_increment(target, u_prev, u_prev2)
+
+    def terminal_hold_command(self, u_prev: float, u_prev2: float) -> float:
+        return self._limit_increment(0.0, u_prev, u_prev2)
+
+    def _copy_plant(self) -> _PlantState:
+        return _PlantState(
+            v=float(self._v_plant),
+            delay=deque(self._delay, maxlen=self._delay.maxlen),
+            u_prev=float(self._u_prev),
+            u_prev2=float(self._u_prev2),
+            a_plus=float(self._a_plus),
+        )
+
+    def _step_plant(self, plant: _PlantState, u_cmd: float) -> float:
+        delay_n = self._delay_steps()
+        v_old = float(plant.v)
+        if delay_n <= 0:
+            u_app = float(u_cmd)
+        else:
+            if len(plant.delay) >= delay_n:
+                u_app = float(plant.delay[0])
+                plant.delay.append(float(u_cmd))
+            else:
+                plant.delay.append(float(u_cmd))
+                u_app = 0.0
+        alpha = self._alpha()
+        plant.v = alpha * plant.v + (1.0 - alpha) * u_app
+        plant.a_plus = (
+            max((float(plant.v) - v_old) / self.dt_s, 0.0) if self.dt_s > 0.0 else 0.0
+        )
+        plant.u_prev2 = plant.u_prev
+        plant.u_prev = float(u_cmd)
+        return float(plant.v)
+
+    def _advance_energy(
+        self,
+        energy: float,
+        f_lo: float,
+        f_hi: float,
+        v_lo: float,
+        v_hi: float,
+        rho: float,
+    ) -> tuple[float, float, float]:
+        p_lb = inf_minus_fv(f_lo, f_hi, v_lo, v_hi)
+        w_lb = self.dt_s * p_lb - 0.5 * max(float(self.cfg.l_p_w_s), 0.0) * self.dt_s**2
+        rho_v2 = max(float(rho), 0.0) * self.dt_s * max(v_lo * v_lo, v_hi * v_hi)
+        return energy + w_lb - rho_v2, w_lb, rho_v2
+
+    def _in_terminal(
+        self,
+        *,
+        f_ub: float,
+        v_abs_ub: float,
+        u_cmd: float,
+        u_prev: float,
+        delay: deque[float],
+        energy: float,
+        require_energy: bool,
+    ) -> bool:
+        cfg = self.cfg
+        if cfg.require_contact_free_terminal and f_ub > float(cfg.f_release_n) + 1e-9:
+            return False
+        if v_abs_ub > float(cfg.v_hold_m_s) + 1e-9:
+            return False
+        acc = abs(u_cmd - u_prev) / self.dt_s if self.dt_s > 0.0 else 0.0
+        if acc > float(cfg.a_hold_m_s2) + 1e-9:
+            return False
+        if delay and max(abs(x) for x in delay) > float(cfg.queue_clear_m_s) + 1e-9:
+            return False
+        if require_energy and energy + 1e-12 < float(cfg.eps_j):
+            return False
+        return True
+
+    def terminal_set_invariant(self, *, require_energy: bool | None = None) -> bool:
+        """``u_T = 0`` keeps a contact-free rest set inside ``T``.
+
+        This is the discrete certificate for the hold law, not a hardware
+        proof.  Residual force growth is zero once ``r_F`` is off and
+        ``v_ub <= 0``.
+        """
+        cfg = self.cfg
+        need_e = (
+            self.energy_constrained() if require_energy is None else bool(require_energy)
+        )
+        plant = _PlantState(
+            v=0.0,
+            delay=deque([0.0] * max(self._delay_steps(), 1), maxlen=max(self._delay_steps(), 1)),
+            u_prev=0.0,
+            u_prev2=0.0,
+            a_plus=0.0,
+        )
+        f_ub = float(cfg.f_release_n)
+        energy = float(cfg.eps_j)
+        for _ in range(4):
+            u_t = self.terminal_hold_command(plant.u_prev, plant.u_prev2)
+            v = self._step_plant(plant, u_t)
+            ev = self._error_v(1)
+            v_hi = v + ev
+            v_lo = v - ev
+            v_press_ub = max(0.0, v_hi) if (v > 0.0 or u_t > 0.0) else 0.0
+            f_ub = f_ub + self.dt_s * max(float(cfg.k_ub_n_m), 0.0) * v_press_ub
+            energy, _, _ = self._advance_energy(
+                energy, 0.0, f_ub, v_lo, v_hi, cfg.rho_used() if need_e else 0.0
+            )
+            if not self._in_terminal(
+                f_ub=f_ub,
+                v_abs_ub=abs(v) + ev,
+                u_cmd=u_t,
+                u_prev=plant.u_prev2,
+                delay=plant.delay,
+                energy=energy,
+                require_energy=need_e,
+            ):
+                return False
+        return True
+
+    def _rollout(
+        self,
+        u0: float,
+        *,
+        f0: float,
+        energy0: float,
+        enforce_force: bool,
+        enforce_energy: bool,
+        rho: float,
+        f_max: float,
+    ) -> tuple[bool, float, float, int, bool, float, str]:
+        """Return (feasible, F_ub, E_lb, n_stop, reached_T, dx_pipe, reason).
+
+        Force indent is the every-tick max-hold
+        ``Δx_ub(i) = max{Δx_ub(i−1), Δx̂^+(i) + ē_{x,+}(i)}``.
+        When a certified stop table exists, that tube is replaced by
+        ``Δx_1^ub(ξ, u0) + D_b^ub(ξ_1)`` rather than
+        ``max(model, D_b^ub(ξ))``.
+        """
+        cfg = self.cfg
+        plant = self._copy_plant()
+        f_ub = max(float(f0), 0.0) + max(float(cfg.e_f_n), 0.0)
+        energy = float(energy0)
+        dx_hat = 0.0
+        dx_ub = 0.0
+        dx_table = float("nan")
+        rf_acc = 0.0
+        n_stop = 0
+        stopped = False
+        horizon = max(int(cfg.horizon_steps), 1)
+        k_ub = max(float(cfg.k_ub_n_m), 0.0)
+        released = False
+        use_lookup = bool(cfg.stop_dx_certified)
+        if enforce_force and f_ub > float(f_max) + 1e-9:
+            return False, f_ub, energy, 0, False, 0.0, "force"
+        if use_lookup and not cfg.stop_dx_bins and enforce_force:
+            return False, f_ub, energy, 0, False, 0.0, "force"
+        for i in range(horizon):
+            if i == 0:
+                u_cmd = float(u0)
+            else:
+                u_cmd = self.backup_command(
+                    plant.u_prev,
+                    plant.u_prev2,
+                    released=released,
+                    v_pred=plant.v,
+                )
+            v = self._step_plant(plant, u_cmd)
+            ev = self._error_v(i + 1)
+            ex_plus = self._error_x_plus(i + 1)
+            v_hi = v + ev
+            v_lo = v - ev
+            r_f = float(cfg.r_f_n_s) if i < int(cfg.r_f_window_steps) else 0.0
+            dx_hat += self.dt_s * max(0.0, v)
+            dx_ub = max(dx_ub, dx_hat + max(ex_plus, 0.0))
+            if use_lookup and i == 0:
+                tail = self.lookup_stop_dx(
+                    plant.v,
+                    plant.a_plus,
+                    self.queue_remain_m(plant.delay),
+                )
+                if (math.isnan(tail) or math.isinf(tail)) and enforce_force:
+                    return False, f_ub, energy, n_stop, False, dx_ub, "force"
+                if math.isfinite(tail):
+                    dx_table = dx_ub + float(tail)
+            if use_lookup and math.isfinite(dx_table):
+                dx_use = float(dx_table)
+            else:
+                dx_use = dx_ub
+            rf_acc += self.dt_s * max(r_f, 0.0)
+            f_ub = (
+                max(float(f0), 0.0)
+                + max(float(cfg.e_f_n), 0.0)
+                + k_ub * dx_use
+                + rf_acc
+            )
+            energy, _, _ = self._advance_energy(
+                energy, 0.0, f_ub, v_lo, v_hi, rho
+            )
+            if enforce_force and f_ub > float(f_max) + 1e-9:
+                return False, f_ub, energy, n_stop, False, dx_use, "force"
+            if enforce_energy and energy + 1e-12 < float(cfg.eps_j):
+                return False, f_ub, energy, n_stop, False, dx_use, "energy"
+            if (not stopped) and v_hi <= 0.0:
+                stopped = True
+                n_stop = i + 1
+            if f_ub <= float(cfg.f_release_n):
+                released = True
+        if not stopped:
+            n_stop = horizon
+        reached = self._in_terminal(
+            f_ub=f_ub,
+            v_abs_ub=max(abs(v_lo), abs(v_hi)),
+            u_cmd=plant.u_prev,
+            u_prev=plant.u_prev2,
+            delay=plant.delay,
+            energy=energy,
+            require_energy=enforce_energy,
+        )
+        if enforce_force and cfg.should_enforce_terminal() and not reached:
+            return False, f_ub, energy, n_stop, False, dx_ub, "terminal"
+        dx_out = dx_table if (use_lookup and math.isfinite(dx_table)) else dx_ub
+        return True, f_ub, energy, n_stop, reached, dx_out, ""
+
+    def pipeline_penetration_ub(
+        self,
+        f_csv: float | None = None,
+        v_actual: float | None = None,
+        a_actual: float | None = None,
+    ) -> float:
+        """Remaining indentation if the backup law starts now.
+
+        Uses the same ``u_b`` plant as the certificate.  Measured speed
+        and ``[a_actual]_+`` correct ``ξ``; the known delay queue is kept.
+        A certified table is ``D_b^ub(ξ)`` (backup from now).  Without it
+        the bound is the ``ē_{x,+}`` max-hold of the backup rollout.
+        """
+        if v_actual is None or not math.isfinite(float(v_actual)):
+            return 0.0
+        self._sync_plant_from_measurement(v_actual, a_actual)
+        if self.cfg.stop_dx_certified and self.cfg.stop_dx_bins:
+            lookup = self.lookup_stop_dx(
+                self._v_plant,
+                self._a_plus,
+                self.queue_remain_m(),
+            )
+            if math.isfinite(lookup):
+                dx = max(float(lookup), 0.0)
+                if dx > 1e-12:
+                    dx += max(float(self.cfg.e_x_m), 0.0)
+                return dx
+            if math.isinf(lookup):
+                return float("inf")
+        u_b = self.backup_command(
+            self._u_prev,
+            self._u_prev2,
+            released=False,
+            v_pred=self._v_plant,
+        )
+        _ok, _f, _e, _n, _t, dx, _reason = self._rollout(
+            u_b,
+            f0=0.0 if f_csv is None else max(float(f_csv), 0.0),
+            energy0=self.energy_lb_j,
+            enforce_force=False,
+            enforce_energy=False,
+            rho=0.0,
+            f_max=1e9,
+        )
+        dx = max(float(dx), 0.0)
+        if dx > 1e-12:
+            dx += max(float(self.cfg.e_x_m), 0.0)
+        return dx
+
+    def shift_tail_feasible(
+        self,
+        u0: float,
+        *,
+        f0: float,
+        energy0: float,
+        enforce_force: bool,
+        enforce_energy: bool,
+        rho: float,
+        f_max: float,
+    ) -> bool:
+        """If ``(u0, u_b, …)`` is feasible, the shifted tail stays feasible."""
+        ok0, *_rest = self._rollout(
+            u0,
+            f0=f0,
+            energy0=energy0,
+            enforce_force=enforce_force,
+            enforce_energy=enforce_energy,
+            rho=rho,
+            f_max=f_max,
+        )
+        if not ok0:
+            return False
+        saved = (
+            float(self._v_plant),
+            deque(self._delay, maxlen=self._delay.maxlen),
+            float(self._u_prev),
+            float(self._u_prev2),
+            float(self._a_plus),
+        )
+        plant = self._copy_plant()
+        u_lim = self._limit_increment(float(u0), plant.u_prev, plant.u_prev2)
+        v = self._step_plant(plant, u_lim)
+        ev = self._error_v(1)
+        v_hi = v + ev
+        if v > 0.0 or u_lim > 0.0:
+            v_press_ub = max(0.0, v_hi)
+        else:
+            v_press_ub = 0.0
+        f_next = (
+            max(float(f0), 0.0)
+            + max(float(self.cfg.e_f_n), 0.0)
+            + self.dt_s * max(float(self.cfg.k_ub_n_m), 0.0) * v_press_ub
+        )
+        e_next, _, _ = self._advance_energy(
+            float(energy0), 0.0, f_next, v - ev, v_hi, float(rho)
+        )
+        self._v_plant = plant.v
+        self._delay = plant.delay
+        self._u_prev = plant.u_prev
+        self._u_prev2 = plant.u_prev2
+        self._a_plus = plant.a_plus
+        u_b = self.backup_command(
+            self._u_prev,
+            self._u_prev2,
+            released=False,
+            v_pred=self._v_plant,
+        )
+        try:
+            ok1, *_ = self._rollout(
+                u_b,
+                f0=f_next,
+                energy0=e_next,
+                enforce_force=enforce_force,
+                enforce_energy=enforce_energy,
+                rho=rho,
+                f_max=f_max,
+            )
+        finally:
+            self._v_plant, self._delay, self._u_prev, self._u_prev2, self._a_plus = saved
+        return bool(ok1)
+
+    def _sync_plant_from_measurement(
+        self,
+        v_actual: float | None,
+        a_actual: float | None = None,
+    ) -> None:
+        if v_actual is not None and math.isfinite(float(v_actual)):
+            self._v_plant = float(v_actual)
+        if a_actual is not None and math.isfinite(float(a_actual)):
+            self._a_plus = max(float(a_actual), 0.0)
+
+    def _commit_sent(self, u_sent: float, *, keep_measured_state: bool = False) -> None:
+        v_save = float(self._v_plant)
+        a_save = float(self._a_plus)
+        plant = self._copy_plant()
+        self._step_plant(plant, float(u_sent))
+        self._v_plant = plant.v
+        self._delay = plant.delay
+        self._u_prev = plant.u_prev
+        self._u_prev2 = plant.u_prev2
+        self._a_plus = plant.a_plus
+        if keep_measured_state:
+            self._v_plant = v_save
+            self._a_plus = a_save
+
+    def update_measured_energy(self, f_csv: float, v_csv: float) -> tuple[float, float]:
+        """Advance the certified tank from measurements.  Never clamp in observe."""
+        cfg = self.cfg
+        p_lb = measured_power_lb(f_csv, v_csv, cfg.bar_f_n, cfg.bar_v_m_s)
+        w_lb = self.dt_s * p_lb - 0.5 * max(float(cfg.l_p_w_s), 0.0) * self.dt_s**2
+        v_abs = abs(float(v_csv)) + max(float(cfg.bar_v_m_s), 0.0)
+        rho_v2 = cfg.rho_used() * self.dt_s * v_abs * v_abs
+        self.energy_lb_j = float(self.energy_lb_j + w_lb - rho_v2)
+        return w_lb, rho_v2
+
+    def _recovery_hold_ok(
+        self,
+        *,
+        f_csv: float,
+        f_max: float,
+        v_meas: float,
+        a_actual: float | None,
+    ) -> bool:
+        """True only when force, measured motion, delay queue, and ξ are in hold."""
+        cfg = self.cfg
+        u_clear = max(float(cfg.queue_clear_m_s), 0.0)
+        v_hold = max(float(cfg.v_hold_m_s), 0.0)
+        a_hold = max(float(cfg.a_hold_m_s2), 0.0)
+        if max(float(f_csv), 0.0) > float(f_max) + 1e-9:
+            return False
+        if abs(float(v_meas)) > v_hold + 1e-9:
+            return False
+        if abs(float(self._v_plant)) > v_hold + 1e-9:
+            return False
+        pending = [float(self._u_prev), float(self._u_prev2), *self._delay]
+        if pending and max(abs(u) for u in pending) > u_clear + 1e-9:
+            return False
+        if self.dt_s > 0.0:
+            a_cmd = abs(float(self._u_prev) - float(self._u_prev2)) / self.dt_s
+            if a_cmd > a_hold + 1e-9:
+                return False
+        if (
+            a_actual is not None
+            and math.isfinite(float(a_actual))
+            and abs(float(a_actual)) > a_hold + 1e-9
+        ):
+            return False
+        return True
+
+    def update(
+        self,
+        u_nom: float,
+        *,
+        f_csv: float,
+        v_actual: float | None,
+        f_max_n: float,
+        in_domain: bool = True,
+        a_actual: float | None = None,
+    ) -> SafetyShieldResult:
+        cfg = self.cfg
+        t0 = time.perf_counter()
+        u_nom_f = float(u_nom)
+        predicted = float(self._v_plant)
+        tube_violation = False
+        if v_actual is not None and math.isfinite(float(v_actual)):
+            if abs(float(v_actual) - predicted) > self._error_v(1) + 1e-9:
+                tube_violation = True
+        self._sync_plant_from_measurement(v_actual, a_actual)
+        v_meas = (
+            float(v_actual)
+            if v_actual is not None and math.isfinite(float(v_actual))
+            else float(self._v_plant)
+        )
+        w_lb, rho_v2 = self.update_measured_energy(float(f_csv), v_meas)
+
+        u_b = self.backup_command(
+            self._u_prev,
+            self._u_prev2,
+            released=False,
+            v_pred=self._v_plant,
+        )
+        enforce_force = cfg.diagnoses_force()
+        enforce_energy = cfg.energy_constrained()
+        rho = cfg.rho_used()
+        f_max = max(float(f_max_n), float(cfg.f_release_n))
+        f_margin0 = float(f_max) - (max(float(f_csv), 0.0) + max(float(cfg.e_f_n), 0.0))
+        energy_margin0 = float(self.energy_lb_j) - float(cfg.eps_j)
+        domain_ok = bool(in_domain)
+
+        apply = cfg.applies_command()
+        if (not cfg.enabled) or cfg.normalized_mode() == "off":
+            u_sent = u_nom_f
+            self._commit_sent(u_sent)
+            self.last = SafetyShieldResult(
+                u_nom=u_nom_f,
+                u_b=u_b,
+                u_shield_hyp=u_nom_f,
+                u_sent=u_sent,
+                lambda_star=1.0,
+                lambda_obs=1.0,
+                shield_applied=False,
+                shield_feasible=True,
+                solver_timeout=False,
+                f_ub_n=max(float(f_csv), 0.0),
+                e_lb_j=float(self.energy_lb_j),
+                w_lb_j=w_lb,
+                rho_v2_w=rho_v2,
+                n_stop=0,
+                tube_violation=tube_violation,
+                solver_us=1e6 * (time.perf_counter() - t0),
+                dx_pipe_ub_m=0.0,
+                in_terminal=False,
+                infeasible_reason="",
+                f_constraint_margin_n=f_margin0,
+                energy_margin_j=energy_margin0,
+                terminal_ok=False,
+                recovery_latched=bool(self._recovery_latched),
+                domain_ok=domain_ok,
+                aj_ok=True,
+            )
+            return self.last
+
+        if not in_domain:
+            if apply:
+                self._recovery_latched = True
+                self._recovery_ok_s = 0.0
+                u_sent = self._limit_increment(u_b, self._u_prev, self._u_prev2)
+                applied = True
+            else:
+                u_sent = u_nom_f
+                applied = False
+            self._commit_sent(u_sent)
+            self.last = SafetyShieldResult(
+                u_nom=u_nom_f,
+                u_b=u_b,
+                u_shield_hyp=u_b,
+                u_sent=u_sent,
+                lambda_star=1.0,
+                lambda_obs=float("nan"),
+                shield_applied=bool(applied),
+                shield_feasible=False,
+                solver_timeout=False,
+                f_ub_n=max(float(f_csv), 0.0),
+                e_lb_j=float(self.energy_lb_j),
+                w_lb_j=w_lb,
+                rho_v2_w=rho_v2,
+                n_stop=0,
+                tube_violation=tube_violation,
+                solver_us=1e6 * (time.perf_counter() - t0),
+                dx_pipe_ub_m=0.0,
+                in_terminal=False,
+                infeasible_reason="domain",
+                f_constraint_margin_n=f_margin0,
+                energy_margin_j=energy_margin0,
+                terminal_ok=False,
+                recovery_latched=bool(self._recovery_latched),
+                domain_ok=False,
+                aj_ok=True,
+            )
+            return self.last
+
+        def evaluate(lam: float) -> tuple[bool, float, float, int, bool, float, float, str]:
+            u0 = u_b + float(lam) * (u_nom_f - u_b)
+            u0 = self._limit_increment(u0, self._u_prev, self._u_prev2)
+            ok, f_ub, e_lb, n_stop, reached, dx, reason = self._rollout(
+                u0,
+                f0=max(float(f_csv), 0.0),
+                energy0=self.energy_lb_j,
+                enforce_force=enforce_force,
+                enforce_energy=enforce_energy,
+                rho=rho,
+                f_max=f_max,
+            )
+            return ok, u0, f_ub, n_stop, reached, dx, e_lb, reason
+
+        timeout = False
+        budget_s = max(float(cfg.solver_budget_us), 1.0) * 1e-6
+        lo, hi = 0.0, 1.0
+        best_ok = False
+        best_lam = float("nan")
+        best_u0 = u_b
+        best_f = max(float(f_csv), 0.0)
+        best_e = float(self.energy_lb_j)
+        best_n = 0
+        best_t = False
+        best_dx = 0.0
+        fail_reason = ""
+
+        ok1, u1, f1, n1, t1, dx1, e1, r1 = evaluate(1.0)
+        if time.perf_counter() - t0 > budget_s:
+            timeout = True
+            fail_reason = "timeout"
+        if ok1:
+            best_ok, best_lam, best_u0 = True, 1.0, u1
+            best_f, best_e, best_n, best_t, best_dx = f1, e1, n1, t1, dx1
+        elif not timeout:
+            fail_reason = r1 or "force"
+            ok0, u0c, f0c, n0c, t0c, dx0c, e0c, r0 = evaluate(0.0)
+            if time.perf_counter() - t0 > budget_s:
+                timeout = True
+                fail_reason = "timeout"
+            if ok0:
+                best_ok, best_lam, best_u0 = True, 0.0, u0c
+                best_f, best_e, best_n, best_t, best_dx = f0c, e0c, n0c, t0c, dx0c
+                fail_reason = ""
+                while hi - lo > max(float(cfg.lambda_tol), 1e-4):
+                    if time.perf_counter() - t0 > budget_s:
+                        timeout = True
+                        break
+                    mid = 0.5 * (lo + hi)
+                    okm, um, fm, nm, tm, dxm, em, _rm = evaluate(mid)
+                    if okm:
+                        lo = mid
+                        best_ok, best_lam, best_u0 = True, mid, um
+                        best_f, best_e, best_n, best_t, best_dx = fm, em, nm, tm, dxm
+                    else:
+                        hi = mid
+            else:
+                fail_reason = r0 or fail_reason
+                best_f, best_e, best_n, best_t, best_dx = f0c, e0c, n0c, t0c, dx0c
+
+        feasible = bool(best_ok) and (not timeout)
+        if timeout and not best_ok:
+            feasible = False
+            fail_reason = "timeout"
+
+        lambda_obs = best_lam if best_ok else float("nan")
+        u_hyp = best_u0 if best_ok else u_b
+        hold_ok = self._recovery_hold_ok(
+            f_csv=float(f_csv),
+            f_max=f_max,
+            v_meas=v_meas,
+            a_actual=a_actual,
+        )
+        if apply and ((not feasible) or timeout):
+            self._recovery_latched = True
+            self._recovery_ok_s = 0.0
+        if self._recovery_latched and apply:
+            if hold_ok:
+                self._recovery_ok_s += self.dt_s
+            else:
+                self._recovery_ok_s = 0.0
+            if self._recovery_ok_s + 1e-12 >= max(float(cfg.recovery_hold_s), 0.0) and feasible:
+                self._recovery_latched = False
+                self._recovery_ok_s = 0.0
+
+        if apply:
+            if self._recovery_latched:
+                u_sent = self._limit_increment(u_b, self._u_prev, self._u_prev2)
+                applied = True
+            elif feasible:
+                u_sent = u_hyp
+                applied = abs(lambda_obs - 1.0) > max(float(cfg.lambda_tol), 1e-4)
+            else:
+                u_sent = self._limit_increment(u_b, self._u_prev, self._u_prev2)
+                applied = True
+        else:
+            u_sent = u_nom_f
+            applied = False
+
+        self._commit_sent(u_sent)
+        self.last = SafetyShieldResult(
+            u_nom=u_nom_f,
+            u_b=u_b,
+            u_shield_hyp=float(u_hyp),
+            u_sent=float(u_sent),
+            lambda_star=float(lambda_obs) if apply and best_ok and not self._recovery_latched else 1.0,
+            lambda_obs=float(lambda_obs),
+            shield_applied=bool(applied),
+            shield_feasible=bool(best_ok) and not timeout,
+            solver_timeout=bool(timeout),
+            f_ub_n=float(best_f),
+            e_lb_j=float(self.energy_lb_j),
+            w_lb_j=w_lb,
+            rho_v2_w=rho_v2,
+            n_stop=int(best_n),
+            tube_violation=tube_violation,
+            solver_us=1e6 * (time.perf_counter() - t0),
+            dx_pipe_ub_m=float(best_dx),
+            in_terminal=bool(best_t),
+            infeasible_reason="" if (best_ok and not timeout) else fail_reason,
+            f_constraint_margin_n=float(f_max) - float(best_f),
+            energy_margin_j=float(best_e) - float(cfg.eps_j),
+            terminal_ok=bool(best_t),
+            recovery_latched=bool(self._recovery_latched),
+            domain_ok=domain_ok,
+            aj_ok=True,
+        )
+        if not best_ok:
+            self.last.shield_feasible = False
+        return self.last
+```
+### FILE `rm75_control/rm75_control/control/admittance_common/controller.py`
+
+```python
+"""Stable tool-frame force/motion decoupling and trajectory tracking.
+
+Tool-Z force axis (exact ZOH of M v̇ + D v = e_f + D0 v_r):
+
+    v+ = a v + b (e_f + u_DOB + D0 v_r),  a=e^{-D Ts/M}, b=(1-a)/D
+
+* Low baseline ``D0`` preserves light feel and fast under-/over-force chase.
+* Short-lived ``ΔD_hf(Iₛ)`` dissipates contact chatter without sticky steady D.
+* ``u_DOB`` removes steady force offset (DOSMAC-lite) without raising D.
+* Proactive ``v_r`` chases under-force; over-force retract is never Iₛ-gated.
+* Recontact after flight uses a temporary press-speed cap.
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass, field
+
+import numpy as np
+from scipy.signal import butter, lfilter, lfilter_zi
+from scipy.spatial.transform import Rotation as Rsc
+
+from rm75_control.control.admittance_common.adaptive_ke import (
+    AdaptiveKeConfig,
+    EnvironmentStiffnessEstimator,
+)
+from rm75_control.control.admittance_common.contact_state import (
+    PhysicalContactConfig,
+    PhysicalContactTracker,
+)
+from rm75_control.control.admittance_common.fast_retract_guard import (
+    FastRetractGuard,
+    FastRetractGuardConfig,
+)
+from rm75_control.control.admittance_common.force_barrier import (
+    ForceSpaceVelocityDamper,
+    ForceBarrierConfig,
+)
+from rm75_control.control.admittance_common.force_dob import (
+    ForceDisturbanceObserver,
+    ForceDobConfig,
+)
+from rm75_control.control.admittance_common.bidirectional_flow import (
+    BidirectionalFlowConfig,
+    BidirectionalFlowController,
+)
+from rm75_control.control.admittance_common.cdyob import (
+    CdyobConfig,
+    CombinedDynamicsYob,
+)
+from rm75_control.control.admittance_common.delay_safety_shield import (
+    DelaySafetyShield,
+    SafetyShieldConfig,
+)
+from rm75_control.control.admittance_common.pose_math import pose_error, wrap_pi
+from rm75_control.control.admittance_common.proactive_force_ff import (
+    ProactiveFfConfig,
+    ProactiveForceIntegrator,
+)
+
+
+def smooth_deadband_eff(f_err: float, deadband_n: float, width_n: float) -> float:
+    """Apply a C1 deadband to the force error."""
+    if width_n <= 0.0:
+        if abs(f_err) <= deadband_n:
+            return 0.0
+        return f_err - math.copysign(deadband_n, f_err)
+    af = abs(f_err)
+    if af <= deadband_n:
+        return 0.0
+    if af >= deadband_n + width_n:
+        return f_err - math.copysign(deadband_n + 0.5 * width_n, f_err)
+    t = (af - deadband_n) / width_n
+    gain = t * t * (3.0 - 2.0 * t)
+    return math.copysign(gain * (af - deadband_n), f_err)
+
+
+@dataclass
+class SurfaceForceModulationConfig:
+    """Optional Piedra-style reduction of normal force while sliding.
+
+    This is a velocity-interface adaptation, not a passivity mechanism.  It
+    is disabled by default and only becomes eligible after physical contact
+    has remained stable for ``stable_contact_s``.
+    """
+
+    enabled: bool = False
+    min_force_scale: float = 0.25
+    beta_per_m: float = 80.0
+    stable_contact_s: float = 0.20
+    attack_s: float = 0.05
+    release_s: float = 0.15
+
+    @classmethod
+    def from_dict(cls, raw: dict) -> "SurfaceForceModulationConfig":
+        root = raw if isinstance(raw, dict) else {}
+        controller = root.get("hybrid_motion", root.get("controller", root))
+        if not isinstance(controller, dict):
+            controller = root
+        section = controller.get(
+            "surface_force_modulation",
+            root.get("surface_force_modulation", {}),
+        )
+        if not isinstance(section, dict):
+            section = {}
+        return cls(
+            enabled=bool(section.get("enabled", False)),
+            min_force_scale=float(section.get("min_force_scale", 0.25)),
+            beta_per_m=float(section.get("beta_per_m", 80.0)),
+            stable_contact_s=float(section.get("stable_contact_s", 0.20)),
+            attack_s=float(section.get("attack_s", 0.05)),
+            release_s=float(section.get("release_s", 0.15)),
+        )
+
+
+@dataclass
+class AdmittanceConfig:
+    """Configuration for the single stable force/motion controller."""
+
+    euler_order: str = "xyz"
+    force_axes: np.ndarray = field(
+        default_factory=lambda: np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
+    )
+    control_frame: str = "tool"
+    kp_pos: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    track_axes: np.ndarray = field(default_factory=lambda: np.ones(6))
+    system_delay_s: float = 0.055
+    contact_threshold_n: float = 0.5
+    contact_use_fz_only: bool = True
+    physical_contact: PhysicalContactConfig = field(
+        default_factory=PhysicalContactConfig
+    )
+    deadband_n: float = 0.3
+    deadband_width_n: float = 0.2
+    max_velocity: np.ndarray = field(
+        default_factory=lambda: np.array([0.2, 0.2, 0.05, 0.5, 0.5, 0.5])
+    )
+    max_acceleration: np.ndarray = field(
+        default_factory=lambda: np.array([1.0, 1.0, 0.8, 2.0, 2.0, 2.0])
+    )
+    max_vz_tool_m_s: float = 0.05
+    open_loop: bool = False
+    desired_force_ramp_s: float = 1.0
+    admittance_mass_z: float = 3.0
+    admittance_damping_z: float = 60.0
+    proactive_ff: ProactiveFfConfig = field(default_factory=ProactiveFfConfig)
+    fast_retract_guard: FastRetractGuardConfig = field(
+        default_factory=FastRetractGuardConfig
+    )
+    pos_err_deadband_m: float = 0.0
+    pos_correction_max_m_s: float = 0.0
+    adaptive_ke: AdaptiveKeConfig = field(default_factory=AdaptiveKeConfig)
+    var_damping_enabled: bool = True
+    var_damping_omega_c_hz: float = 3.5
+    var_damping_lambda: float = 0.951
+    var_damping_f_max_n: float = 7.0
+    var_damping_d_u: float = 0.0
+    var_damping_m_u: float = 2.0
+    var_damping_m_max: float = 7.0
+    var_damping_dc_alpha: float = 0.02
+    # Short-lived high-frequency dissipation (Dimeas detect, ΔD actuate).
+    var_damping_hf_attack_s: float = 0.02
+    var_damping_hf_hold_s: float = 0.15
+    var_damping_hf_release_s: float = 0.12
+    # Faster dump when |e_f| > hf_err (hand release / chase, not chatter hold).
+    var_damping_hf_release_fast_s: float = 0.04
+    var_damping_hf_on: float = 0.25
+    var_damping_hf_off: float = 0.12
+    # Only add ΔD_hf near the force setpoint so large under/over-force
+    # chase is not slowed by a step-response Is spike.
+    var_damping_hf_err_n: float = 0.8
+    # Upper bound on the loss-latched recontact press speed.  The actual
+    # cap is min(this, (F_max-F_enter-ΔF_unc)/(K_ub T_stop)).
+    recontact_vz_cap_m_s: float = 0.008
+    recontact_hold_s: float = 0.20
+    recontact_settle_m_s: float = 0.003
+    recontact_settle_hold_s: float = 0.050
+    # Soften under-force chase / DOB when tool-XY speed is near a scan turnaround.
+    force_lateral_soft_m_s: float = 0.006
+    force_lateral_full_m_s: float = 0.018
+    force_lateral_gain_floor: float = 0.35
+    force_dob: ForceDobConfig = field(default_factory=ForceDobConfig)
+    # Optional scalar proxy/real-port energy-flow adaptation.  ``off`` is
+    # the safe legacy default; observe/active are opt-in and require the
+    # caller to provide a verified force/velocity sign before press can be
+    # modulated.
+    bidirectional_flow: BidirectionalFlowConfig = field(
+        default_factory=BidirectionalFlowConfig
+    )
+    # Predictive force-space velocity damper.  Its telemetry is populated even
+    # when the flow adapter is disabled so existing loggers can consume the
+    # same fields in all modes.
+    force_barrier: ForceBarrierConfig = field(default_factory=ForceBarrierConfig)
+    cdyob: CdyobConfig = field(default_factory=CdyobConfig)
+    safety_shield: SafetyShieldConfig = field(default_factory=SafetyShieldConfig)
+    # Force-axis slew is intentionally asymmetric.  A zero value preserves
+    # the historical uncapped force-axis path; positive values are applied
+    # after the safety caps and before the normal-axis command is returned.
+    force_axis_slew_press_m_s2: float = 0.0
+    force_axis_slew_retract_m_s2: float = 0.0
+    force_axis_slew_reverse_m_s2: float = 0.0
+    force_axis_jerk_max_m_s3: float = 0.0
+    surface_force_modulation: SurfaceForceModulationConfig = field(
+        default_factory=SurfaceForceModulationConfig
+    )
+    # Contact episode re-arm is distinct from a physical contact reacquire.
+    contact_episode_release_s: float = 0.30
+    contact_episode_release_force_n: float = 0.15
+
+    @classmethod
+    def from_dict(cls, raw: dict) -> AdmittanceConfig:
+        c = raw.get("hybrid_motion", raw.get("controller", raw))
+        frames = raw.get("frames", {})
+        traj = raw.get("trajectory_demo", raw.get("trajectory", {}))
+        force_axes = np.asarray(
+            c.get("force_axes", [0, 0, 1, 0, 0, 0]),
+            dtype=float,
+        )
+        open_loop = bool(
+            c.get(
+                "open_loop",
+                c.get("open_loop_scan", traj.get("open_loop", False)),
+            )
+        )
+        return cls(
+            euler_order=str(frames.get("euler_order", "xyz")),
+            control_frame=str(
+                frames.get("control_frame", c.get("control_frame", "tool"))
+            ),
+            force_axes=force_axes,
+            kp_pos=np.asarray(
+                c.get("kp_pos", [0, 0, 0, 0, 0, 0]),
+                dtype=float,
+            ),
+            track_axes=np.asarray(
+                c.get("track_axes", [1, 1, 1, 1, 1, 1]),
+                dtype=float,
+            ),
+            system_delay_s=float(c.get("system_delay_s", 0.055)),
+            contact_threshold_n=float(c.get("contact_threshold_n", 0.5)),
+            contact_use_fz_only=bool(c.get("contact_use_fz_only", True)),
+            physical_contact=PhysicalContactConfig.from_dict(raw),
+            deadband_n=float(c.get("deadband_n", 0.3)),
+            deadband_width_n=float(c.get("deadband_width_n", 0.2)),
+            max_velocity=np.asarray(
+                c.get("max_velocity", [0.2, 0.2, 0.10, 0.5, 0.5, 0.5]),
+                dtype=float,
+            ),
+            max_acceleration=np.asarray(
+                c.get("max_acceleration", [1.0, 1.0, 0.8, 2.0, 2.0, 2.0]),
+                dtype=float,
+            ),
+            max_vz_tool_m_s=float(c.get("max_vz_tool_m_s", 0.05)),
+            open_loop=open_loop,
+            desired_force_ramp_s=float(c.get("desired_force_ramp_s", 1.0)),
+            admittance_mass_z=float(c.get("admittance_mass_z", 3.0)),
+            admittance_damping_z=float(c.get("admittance_damping_z", 60.0)),
+            proactive_ff=ProactiveFfConfig.from_dict(c),
+            fast_retract_guard=FastRetractGuardConfig.from_dict(raw),
+            pos_err_deadband_m=float(c.get("pos_err_deadband_m", 0.0)),
+            pos_correction_max_m_s=float(
+                c.get("pos_correction_max_m_s", 0.0)
+            ),
+            adaptive_ke=AdaptiveKeConfig.from_dict(raw, c),
+            var_damping_enabled=bool(c.get("var_damping_enabled", True)),
+            var_damping_omega_c_hz=float(
+                c.get("var_damping_omega_c_hz", 3.5)
+            ),
+            var_damping_lambda=float(c.get("var_damping_lambda", 0.951)),
+            var_damping_f_max_n=float(c.get("var_damping_f_max_n", 7.0)),
+            var_damping_d_u=float(c.get("var_damping_d_u", 0.0)),
+            var_damping_m_u=float(c.get("var_damping_m_u", 2.0)),
+            var_damping_m_max=float(c.get("var_damping_m_max", 7.0)),
+            var_damping_dc_alpha=float(
+                c.get("var_damping_dc_alpha", 0.02)
+            ),
+            var_damping_hf_attack_s=float(
+                c.get("var_damping_hf_attack_s", 0.02)
+            ),
+            var_damping_hf_hold_s=float(
+                c.get("var_damping_hf_hold_s", 0.15)
+            ),
+            var_damping_hf_release_s=float(
+                c.get("var_damping_hf_release_s", 0.12)
+            ),
+            var_damping_hf_release_fast_s=float(
+                c.get("var_damping_hf_release_fast_s", 0.04)
+            ),
+            var_damping_hf_on=float(c.get("var_damping_hf_on", 0.25)),
+            var_damping_hf_off=float(c.get("var_damping_hf_off", 0.12)),
+            var_damping_hf_err_n=float(
+                c.get("var_damping_hf_err_n", 0.8)
+            ),
+            recontact_vz_cap_m_s=float(
+                c.get("recontact_vz_cap_m_s", 0.008)
+            ),
+            recontact_hold_s=float(c.get("recontact_hold_s", 0.20)),
+            recontact_settle_m_s=float(c.get("recontact_settle_m_s", 0.003)),
+            recontact_settle_hold_s=float(c.get("recontact_settle_hold_s", 0.050)),
+            force_lateral_soft_m_s=float(
+                c.get("force_lateral_soft_m_s", 0.006)
+            ),
+            force_lateral_full_m_s=float(
+                c.get("force_lateral_full_m_s", 0.018)
+            ),
+            force_lateral_gain_floor=float(
+                c.get("force_lateral_gain_floor", 0.35)
+            ),
+            force_dob=ForceDobConfig.from_dict(c),
+            bidirectional_flow=BidirectionalFlowConfig.from_dict(raw),
+            force_barrier=ForceBarrierConfig.from_dict(raw),
+            cdyob=CdyobConfig.from_dict(raw),
+            safety_shield=SafetyShieldConfig.from_dict(raw),
+            force_axis_slew_press_m_s2=float(
+                c.get("force_axis_slew_press_m_s2", c.get("force_slew_press_m_s2", 0.0))
+            ),
+            force_axis_slew_retract_m_s2=float(
+                c.get(
+                    "force_axis_slew_retract_m_s2",
+                    c.get("force_slew_retract_m_s2", 0.0),
+                )
+            ),
+            force_axis_slew_reverse_m_s2=float(
+                c.get(
+                    "force_axis_slew_reverse_m_s2",
+                    c.get("force_slew_reverse_m_s2", 0.0),
+                )
+            ),
+            force_axis_jerk_max_m_s3=float(
+                c.get("force_axis_jerk_max_m_s3", 0.0)
+            ),
+            surface_force_modulation=SurfaceForceModulationConfig.from_dict(raw),
+            contact_episode_release_s=float(
+                c.get("contact_episode_release_s", 0.30)
+            ),
+            contact_episode_release_force_n=float(
+                c.get("contact_episode_release_force_n", 0.15)
+            ),
+        )
+
+
+class AdmittanceController:
+    """Tool-frame hybrid controller with TCP-Z force admittance."""
+
+    def __init__(
+        self,
+        dt: float,
+        config: AdmittanceConfig | None = None,
+    ) -> None:
+        self.dt = dt
+        self.cfg = config or AdmittanceConfig()
+        # A fixed identifier is retained in CSV logs; it is not a mode switch.
+        self.controller_mode = "legacy_symmetric"
+        self.last_v_cmd = np.zeros(6)
+        self.last_path_twist = np.zeros(6)
+        self.last_feedback_twist = np.zeros(6)
+        self._in_contact_latched = False
+        self.force_task_latched = False
+        self.contact_present = False
+        self.physical_contact_state = PhysicalContactTracker.FREE
+        self.physical_contact_loss_event = False
+        self.physical_contact_reacquire_event = False
+        self.physical_contact_acquire_event = False
+        self.physical_contact_low_timer_s = 0.0
+        self.physical_contact_high_timer_s = 0.0
+        self._physical_contact = PhysicalContactTracker(
+            self.cfg.physical_contact
+        )
+        self.time_scale = 1.0
+        self.v_force_z = 0.0
+        self.v_r_z = 0.0
+        # Force owns a Cartesian point along tool-Z; QPIK only tracks motion.
+        self._force_point_base = np.zeros(3)
+        self._force_point_inited = False
+        self.force_point_z = 0.0
+        self.last_pose_d_combined = np.zeros(6)
+        self._proactive_ff = ProactiveForceIntegrator(self.cfg.proactive_ff)
+        self.force_reference_scale_n = float("nan")
+        self.force_reference_drive = 0.0
+        self.force_reference_gate_scale = 1.0
+        self.force_reference_accel_m_s2 = 0.0
+        self.force_reference_reversal_reset = False
+        self.force_reference_fast_clear = False
+        self._fast_retract_guard = FastRetractGuard(
+            self.cfg.fast_retract_guard
+        )
+        self.force_fast_z = float("nan")
+        self.retract_guard_armed = False
+        self.retract_fast_hold = False
+        self.retract_fast_stop_count = 0
+        self.retract_fast_rearm_count = 0
+        self._contact_time_s = 0.0
+        self._d_z_smooth = float(self.cfg.admittance_damping_z)
+        self.f_des_z_eff = 0.0
+        self._ke_estimator = EnvironmentStiffnessEstimator(
+            self.cfg.adaptive_ke,
+            dt=dt,
+            mass_z=self.cfg.admittance_mass_z,
+        )
+        self.ke_est = float(self.cfg.adaptive_ke.ke_initial)
+        self.adaptive_bd = float(self.cfg.admittance_damping_z)
+        self.zeta_eff = float(self.cfg.adaptive_ke.zeta)
+        self.damping_z_eff = float(self.cfg.admittance_damping_z)
+        self.damping_ke_z = float(self.cfg.admittance_damping_z)
+        self.damping_dimeas_z = 0.0
+        self.instability_index = 0.0
+        self._m_z_now = float(self.cfg.admittance_mass_z)
+        self.mass_z_eff = self._m_z_now
+        self._f_dc = 0.0
+        self._p_hi = 0.0
+        self._p_ac = 0.0
+        self._delta_d_hf = 0.0
+        self._hf_hold_s = 0.0
+        self._hf_active = False
+        self._recontact_timer_s = 0.0
+        self._recontact_slow_latched = False
+        self._recontact_detached_seen = False
+        self._recontact_reacquired_seen = False
+        self._recontact_settle_ok_s = 0.0
+        self.recontact_slow_latched = False
+        self.recontact_detached_seen = False
+        self.v_recontact_cap_m_s = 0.0
+        self._force_dob = ForceDisturbanceObserver(self.cfg.force_dob)
+        self.u_dob_z = 0.0
+        self._force_barrier = ForceSpaceVelocityDamper(self.cfg.force_barrier)
+        self._cdyob = CombinedDynamicsYob(self.cfg.cdyob)
+        self._safety_shield = DelaySafetyShield(self.cfg.safety_shield, dt)
+        self.cdyob_corr_m_s = 0.0
+        self.ke_cap_n_m = float(self.cfg.adaptive_ke.ke_initial)
+        self.overforce_escape = False
+        self.v_force_cmd_z = 0.0
+        self.u_nom_raw_z = 0.0
+        self.u_nom_capped_z = 0.0
+        self.u_shield_hyp_z = 0.0
+        self.u_sent_z = 0.0
+        self.lambda_obs = 1.0
+        self.shield_applied = False
+        self.shield_feasible = True
+        self.shield_f_ub_n = 0.0
+        self.shield_e_lb_j = float(self.cfg.safety_shield.e0_j)
+        self.shield_w_lb_j = 0.0
+        self.shield_rho_v2_w = 0.0
+        self.shield_n_stop = 0
+        self.shield_tube_violation = False
+        self.shield_solver_us = 0.0
+        self.shield_infeasible_reason = ""
+        self.shield_f_constraint_margin_n = 0.0
+        self.shield_energy_margin_j = 0.0
+        self.shield_terminal_ok = False
+        self.shield_recovery_latched = False
+        self.shield_domain_ok = True
+        self.shield_aj_ok = True
+        self._v_tcp_z_prev: float | None = None
+        self._a_tcp_z_actual = 0.0
+        self._force_axis_acc = 0.0
+        self.force_pred_z = 0.0
+        self.force_dot_z = 0.0
+        self.force_barrier_contact_active = False
+        self._precontact_barrier_hold_s = 0.0
+        self._precontact_peak_force_n = 0.0
+        self.cap_press_z = self._v_z_cap()
+        self.cap_retract_z = self._v_z_cap()
+        self._bidirectional_flow = BidirectionalFlowController(
+            dt,
+            self.cfg.bidirectional_flow,
+        )
+        # Public alias retained for integration code and telemetry adapters.
+        self.bidirectional_flow = self._bidirectional_flow
+        self.flow_mode = self.cfg.bidirectional_flow.mode
+        self.flow_alpha = 1.0
+        self.flow_tank_energy = float(self.cfg.bidirectional_flow.T0)
+        self.flow_fc = 0.0
+        self.flow_v_track = 0.0
+        self.flow_v_aux = 0.0
+        self.flow_retract_through = 0.0
+        self.flow_press = 0.0
+        self.flow_gamma_effective = 0.0
+        self.flow_feedback_stale = True
+        self.flow_sign_verified = bool(self.cfg.bidirectional_flow.sign_verified)
+        # A physical reacquire is telemetry only until the tool has stayed
+        # detached at low raw force for the full episode-release interval.
+        self._episode_detached_s = 0.0
+        self._episode_rearm_armed = False
+        self._episode_seen = False
+        self.contact_episode_rearm_event = False
+        self.contact_episode_release_s = 0.0
+        self._surface_contact_s = 0.0
+        self.surface_force_scale = 1.0
+        self.surface_force_alpha = 0.0
+        self.surface_xy_error_m = 0.0
+        # Arm lateral chase softener only after real tool-XY scan motion.
+        self._lat_soften_hold_s = 0.0
+        self._episode_filter_seed_pending = False
+        self._init_hp_filter()
+
+    def _init_hp_filter(self) -> None:
+        fs = 1.0 / self.dt if self.dt > 0 else 100.0
+        wn = min(
+            max(self.cfg.var_damping_omega_c_hz / (0.5 * fs), 1e-3),
+            0.99,
+        )
+        b, a = butter(2, wn, btype="high")
+        self._hp_b = np.asarray(b, dtype=np.float64)
+        self._hp_a = np.asarray(a, dtype=np.float64)
+        self._hp_zi = np.zeros(
+            max(len(self._hp_a), len(self._hp_b)) - 1,
+            dtype=np.float64,
+        )
+        self._is_energy_alpha = (
+            float(min(1.0, self.dt / 0.2)) if self.dt > 0 else 0.05
+        )
+
+    def set_time_scale(self, scale: float) -> None:
+        self.time_scale = float(np.clip(scale, 0.0, 1.0))
+
+    def reset(self, *, clear_velocity: bool = False) -> None:
+        self._in_contact_latched = False
+        self.force_task_latched = False
+        self.contact_present = False
+        self.physical_contact_state = PhysicalContactTracker.FREE
+        self.physical_contact_loss_event = False
+        self.physical_contact_reacquire_event = False
+        self.physical_contact_acquire_event = False
+        self.physical_contact_low_timer_s = 0.0
+        self.physical_contact_high_timer_s = 0.0
+        self._physical_contact.reset()
+        self.v_force_z = 0.0
+        self.v_r_z = 0.0
+        self._force_point_base = np.zeros(3)
+        self._force_point_inited = False
+        self.force_point_z = 0.0
+        self.last_pose_d_combined = np.zeros(6)
+        self._proactive_ff.reset()
+        self.force_reference_scale_n = float("nan")
+        self.force_reference_drive = 0.0
+        self.force_reference_gate_scale = 1.0
+        self.force_reference_accel_m_s2 = 0.0
+        self.force_reference_reversal_reset = False
+        self.force_reference_fast_clear = False
+        self._fast_retract_guard.reset()
+        self.force_fast_z = float("nan")
+        self.retract_guard_armed = False
+        self.retract_fast_hold = False
+        self.retract_fast_stop_count = 0
+        self.retract_fast_rearm_count = 0
+        self._contact_time_s = 0.0
+        self._d_z_smooth = float(self.cfg.admittance_damping_z)
+        self.f_des_z_eff = 0.0
+        self.damping_z_eff = float(self.cfg.admittance_damping_z)
+        self.damping_ke_z = float(self.cfg.admittance_damping_z)
+        self.damping_dimeas_z = 0.0
+        self.instability_index = 0.0
+        self._m_z_now = float(self.cfg.admittance_mass_z)
+        self.mass_z_eff = self._m_z_now
+        self._f_dc = 0.0
+        self._p_hi = 0.0
+        self._p_ac = 0.0
+        self._delta_d_hf = 0.0
+        self._hf_hold_s = 0.0
+        self._hf_active = False
+        self._recontact_timer_s = 0.0
+        self._recontact_slow_latched = False
+        self._recontact_detached_seen = False
+        self._recontact_reacquired_seen = False
+        self._recontact_settle_ok_s = 0.0
+        self.recontact_slow_latched = False
+        self.recontact_detached_seen = False
+        self.v_recontact_cap_m_s = 0.0
+        self._force_dob.reset()
+        self.u_dob_z = 0.0
+        self._force_barrier.reset()
+        self._cdyob.reset()
+        self._safety_shield.reset()
+        self.cdyob_corr_m_s = 0.0
+        self.ke_cap_n_m = float(self.cfg.adaptive_ke.ke_initial)
+        self.overforce_escape = False
+        self.v_force_cmd_z = 0.0
+        self.u_nom_raw_z = 0.0
+        self.u_nom_capped_z = 0.0
+        self.u_shield_hyp_z = 0.0
+        self.u_sent_z = 0.0
+        self.lambda_obs = 1.0
+        self.shield_applied = False
+        self.shield_feasible = True
+        self.shield_f_ub_n = 0.0
+        self.shield_e_lb_j = float(self.cfg.safety_shield.e0_j)
+        self.shield_w_lb_j = 0.0
+        self.shield_rho_v2_w = 0.0
+        self.shield_n_stop = 0
+        self.shield_tube_violation = False
+        self.shield_solver_us = 0.0
+        self.shield_infeasible_reason = ""
+        self.shield_f_constraint_margin_n = 0.0
+        self.shield_energy_margin_j = 0.0
+        self.shield_terminal_ok = False
+        self.shield_recovery_latched = False
+        self.shield_domain_ok = True
+        self.shield_aj_ok = True
+        self._v_tcp_z_prev = None
+        self._a_tcp_z_actual = 0.0
+        self._force_axis_acc = 0.0
+        self.force_pred_z = 0.0
+        self.force_dot_z = 0.0
+        self.force_barrier_contact_active = False
+        self._precontact_barrier_hold_s = 0.0
+        self._precontact_peak_force_n = 0.0
+        self.cap_press_z = self._v_z_cap()
+        self.cap_retract_z = self._v_z_cap()
+        self._bidirectional_flow.reset()
+        self.flow_mode = self.cfg.bidirectional_flow.mode
+        self.flow_alpha = 1.0
+        self.flow_tank_energy = float(self.cfg.bidirectional_flow.T0)
+        self.flow_fc = 0.0
+        self.flow_v_track = 0.0
+        self.flow_v_aux = 0.0
+        self.flow_retract_through = 0.0
+        self.flow_press = 0.0
+        self.flow_gamma_effective = 0.0
+        self.flow_feedback_stale = True
+        self.flow_sign_verified = bool(self.cfg.bidirectional_flow.sign_verified)
+        self._episode_detached_s = 0.0
+        self._episode_rearm_armed = False
+        self._episode_seen = False
+        self.contact_episode_rearm_event = False
+        self.contact_episode_release_s = 0.0
+        self._surface_contact_s = 0.0
+        self.surface_force_scale = 1.0
+        self.surface_force_alpha = 0.0
+        self.surface_xy_error_m = 0.0
+        self._lat_soften_hold_s = 0.0
+        self._hp_zi.fill(0.0)
+        self._ke_estimator.reset()
+        self.ke_est = self._ke_estimator.ke_est
+        self.adaptive_bd = self._ke_estimator.bd
+        self.zeta_eff = self._ke_estimator.zeta_eff
+        if clear_velocity:
+            self.last_v_cmd.fill(0.0)
+
+    def begin_hybrid_episode(self, applied_twist: np.ndarray) -> None:
+        """Start a force task continuously without resetting passivity energy."""
+
+        seed = np.asarray(applied_twist, dtype=float).reshape(-1)
+        if seed.size != 6 or not np.all(np.isfinite(seed)):
+            raise ValueError("applied_twist must be a finite six-vector")
+        tank = float(self._bidirectional_flow.tank_energy)
+        energy_phys = float(self._bidirectional_flow.energy_phys_j)
+        energy_mismatch = float(self._bidirectional_flow.energy_mismatch_j)
+        # Reuse the established reset list for non-passivity episode state,
+        # then restore the energy account through the dedicated flow API.
+        self.reset(clear_velocity=False)
+        flow_sign = 1.0 if float(self.cfg.bidirectional_flow.normal_sign) >= 0.0 else -1.0
+        self._bidirectional_flow.begin_episode(
+            flow_sign * float(seed[2]),
+            tank_energy=tank,
+            energy_phys_j=energy_phys,
+            energy_mismatch_j=energy_mismatch,
+        )
+        self.last_v_cmd = seed.copy()
+        self.v_force_z = float(seed[2])
+        self.v_r_z = 0.0
+        self.time_scale = 1.0
+        self.flow_tank_energy = float(self._bidirectional_flow.tank_energy)
+        self.flow_alpha = float(self._bidirectional_flow.alpha)
+        self.flow_v_track = float(self._bidirectional_flow.v_track)
+        self.flow_v_aux = 0.0
+        self.flow_retract_through = float(self._bidirectional_flow.retract_through)
+        self.flow_press = float(self._bidirectional_flow.press)
+        self.flow_feedback_stale = True
+        # The first synchronized force sample seeds the high-pass filter at
+        # steady state, so a constant contact load is not interpreted as HF.
+        self._episode_filter_seed_pending = True
+
+    def _v_z_cap(self) -> float:
+        cap = float(self.cfg.max_vz_tool_m_s)
+        max_velocity_z = (
+            float(self.cfg.max_velocity[2])
+            if self.cfg.max_velocity.size >= 3
+            else cap
+        )
+        if max_velocity_z > 0.0:
+            cap = min(cap, max_velocity_z)
+        return max(cap, 0.0)
+
+    def _v_delay_safe(self) -> float:
+        """Delay-aware first/recontact press limit.
+
+        With a certified stop table: largest tabulated ``v0`` such that
+        ``F_enter+ΔF_unc+K_ub D_ub(v0,a0,q0) ≤ F_max``.  Otherwise
+        ``v = [(F_max - F_enter - ΔF_unc) / (K_ub T_stop)]_+``.
+        If the numerator is non-positive the limit is zero; no speed floor
+        is added.  ``recontact_vz_cap`` and ``v_seek_free`` are upper bounds
+        only.
+        """
+        cfg = self.cfg
+        k_ub = max(float(cfg.safety_shield.k_ub_n_m), 1.0)
+        f_des = abs(float(getattr(self, "f_des_z_eff", 0.0)))
+        f_max = f_des + max(
+            float(cfg.force_barrier.budget_min_n),
+            float(cfg.force_barrier.budget_frac) * f_des,
+        )
+        f_enter = max(float(cfg.physical_contact.enter_n), 0.0)
+        dfunc = max(float(cfg.force_barrier.e_f_n), 0.0) + max(
+            float(cfg.force_barrier.bar_f_n), 0.0
+        )
+        room = f_max - f_enter - dfunc
+        if room <= 0.0:
+            return 0.0
+        table_v = self._safety_shield.max_safe_approach_m_s(
+            room_n=room,
+            a0=max(float(self._a_tcp_z_actual), 0.0),
+            q0=self._safety_shield.queue_remain_m(),
+        )
+        if table_v is not None:
+            v = max(float(table_v), 0.0)
+        else:
+            t_stop = max(
+                float(cfg.force_barrier.tau_stop_s),
+                float(cfg.force_barrier.t_react_s),
+                1e-3,
+            )
+            v = room / (k_ub * t_stop)
+        configured = max(float(cfg.recontact_vz_cap_m_s), 0.0)
+        if configured > 0.0:
+            v = min(v, configured)
+        seek = max(float(cfg.force_barrier.v_seek_free_m_s), 0.0)
+        if seek > 0.0:
+            v = min(v, seek)
+        return max(v, 0.0)
+
+    def _v_recontact_safe(self) -> float:
+        return self._v_delay_safe()
+
+    def _unconfirmed_contact(self) -> bool:
+        ever = bool(self._physical_contact.ever_acquired) or bool(
+            self._episode_seen
+        )
+        return (
+            (not ever)
+            or bool(self._recontact_slow_latched)
+            or (not bool(self.contact_present))
+        )
+
+    def _press_vz_cap(self) -> float:
+        """Tool-Z press cap.  Unconfirmed / first / recontact use v_delay."""
+        cap = self._v_z_cap()
+        if self._unconfirmed_contact():
+            cap = min(cap, self._v_delay_safe())
+        return max(cap, 0.0)
+
+    def _update_delta_d_hf(
+        self,
+        dt_eff: float,
+        *,
+        abs_eff_n: float = 0.0,
+    ) -> float:
+        """Fast-attack / hold / fast-release ΔD from the Dimeas index."""
+        cfg = self.cfg
+        if not cfg.var_damping_enabled or dt_eff <= 0.0:
+            self._delta_d_hf = 0.0
+            self._hf_hold_s = 0.0
+            self._hf_active = False
+            return 0.0
+        is_now = float(self.instability_index)
+        ramp_s = float(cfg.desired_force_ramp_s)
+        ramp_done = ramp_s <= 1e-6 or self._contact_time_s >= ramp_s
+        near_setpoint = (
+            ramp_done
+            and abs(float(abs_eff_n)) <= float(cfg.var_damping_hf_err_n)
+        )
+        target = float(cfg.var_damping_d_u) * is_now
+        if (
+            (not self._hf_active)
+            and near_setpoint
+            and is_now >= float(cfg.var_damping_hf_on)
+        ):
+            self._hf_active = True
+            self._hf_hold_s = float(cfg.var_damping_hf_hold_s)
+        if self._hf_active:
+            if is_now >= float(cfg.var_damping_hf_off) and near_setpoint:
+                self._hf_hold_s = max(
+                    self._hf_hold_s, float(cfg.var_damping_hf_hold_s)
+                )
+            else:
+                self._hf_hold_s = max(0.0, self._hf_hold_s - dt_eff)
+            if self._hf_hold_s <= 0.0 and (
+                is_now < float(cfg.var_damping_hf_off) or not near_setpoint
+            ):
+                self._hf_active = False
+                target = 0.0
+            if not near_setpoint:
+                # Large force error: prefer chase / escape over HF damping.
+                target = 0.0
+            tau = max(float(cfg.var_damping_hf_attack_s), 1e-4)
+        else:
+            target = 0.0
+            tau = max(float(cfg.var_damping_hf_release_s), 1e-4)
+            # Hand-release / large force error: dump ΔD faster than the
+            # chatter-hold release so retract does not feel sticky.
+            if abs(float(abs_eff_n)) > float(cfg.var_damping_hf_err_n):
+                tau = min(tau, max(float(cfg.var_damping_hf_release_fast_s), 1e-4))
+        blend = min(1.0, dt_eff / tau)
+        self._delta_d_hf += blend * (target - self._delta_d_hf)
+        if not self._hf_active and abs(self._delta_d_hf) < 1e-3:
+            self._delta_d_hf = 0.0
+        return float(self._delta_d_hf)
+
+    def _lateral_chase_scale(
+        self,
+        v_lateral_m_s: float,
+        *,
+        dt_s: float = 0.0,
+    ) -> float:
+        """1 at full scan speed → ``force_lateral_gain_floor`` near turnaround.
+
+        Softening arms only after sustained tool-XY motion (a real scan).  Pure
+        force-hold / Z-surface tracking keeps full under-force chase.
+        """
+        cfg = self.cfg
+        soft = max(float(cfg.force_lateral_soft_m_s), 0.0)
+        full = max(float(cfg.force_lateral_full_m_s), soft + 1e-6)
+        floor = float(np.clip(cfg.force_lateral_gain_floor, 0.0, 1.0))
+        v_lat = float(v_lateral_m_s)
+        if v_lat >= 0.5 * full:
+            # Keep softener armed through short end-dwells.
+            self._lat_soften_hold_s = max(self._lat_soften_hold_s, 1.0)
+        if dt_s > 0.0 and self._lat_soften_hold_s > 0.0:
+            self._lat_soften_hold_s = max(0.0, self._lat_soften_hold_s - dt_s)
+        if self._lat_soften_hold_s <= 0.0:
+            return 1.0
+        u = float(np.clip((v_lat - soft) / (full - soft), 0.0, 1.0))
+        blend = u * u * (3.0 - 2.0 * u)
+        return float(floor + (1.0 - floor) * blend)
+
+    def _update_proactive_v_r(
+        self,
+        eff: float,
+        in_contact: bool,
+        dt_eff: float,
+        *,
+        rising_edge: bool,
+        desired_force_n: float = 0.0,
+        retract_fast_hold: bool = False,
+        chase_scale: float = 1.0,
+    ) -> float:
+        # Clear either sign on a new contact episode. Keeping a retract-only
+        # residue was one source of the previous press/retract asymmetry.
+        if rising_edge:
+            self._proactive_ff.reset()
+        self.v_r_z = self._proactive_ff.update(
+            eff,
+            in_contact=in_contact,
+            dt_eff=dt_eff,
+            instability_index=self.instability_index,
+            v_force_z=self.v_force_z,
+            v_z_cap=self._v_z_cap(),
+            desired_force_n=desired_force_n,
+            retract_fast_hold=retract_fast_hold,
+            chase_scale=chase_scale,
+            overforce_escape=bool(self.overforce_escape),
+        )
+        self.force_reference_scale_n = float(
+            self._proactive_ff.last_force_scale_n
+        )
+        self.force_reference_drive = float(self._proactive_ff.last_drive)
+        self.force_reference_gate_scale = float(
+            self._proactive_ff.last_instability_scale
+        )
+        self.force_reference_accel_m_s2 = float(
+            self._proactive_ff.last_reference_accel_m_s2
+        )
+        self.force_reference_reversal_reset = bool(
+            self._proactive_ff.last_reversal_reset
+        )
+        self.force_reference_fast_clear = bool(
+            self._proactive_ff.last_fast_retract_clear
+        )
+        return self.v_r_z
+
+    @staticmethod
+    def fuse_tool_sleeve(
+        v_pos_base: np.ndarray,
+        v_force_tool: np.ndarray,
+        r_mat: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Legacy sleeve (tests). Runtime path uses the force point + PBAC."""
+        v_pos_tool = np.zeros(6, dtype=float)
+        v_pos_tool[:3] = r_mat.T @ np.asarray(v_pos_base[:3], dtype=float)
+        v_pos_tool[3:6] = r_mat.T @ np.asarray(v_pos_base[3:6], dtype=float)
+        v_cmd_tool = v_pos_tool.copy()
+        v_cmd_tool[2] = float(v_force_tool[2])
+        v_cmd_base = np.zeros(6, dtype=float)
+        v_cmd_base[:3] = r_mat @ v_cmd_tool[:3]
+        v_cmd_base[3:] = r_mat @ v_cmd_tool[3:6]
+        return v_cmd_tool, v_cmd_base
+
+    def _advance_force_point(
+        self,
+        pose_predicted: np.ndarray,
+        desired_pose: np.ndarray,
+        r_mat: np.ndarray,
+        v_force_z: float,
+        dt_s: float,
+        *,
+        reseeds: bool,
+    ) -> None:
+        n = np.asarray(r_mat[:, 2], dtype=float)
+        p_now = np.asarray(pose_predicted[:3], dtype=float)
+        if (not self._force_point_inited) or reseeds:
+            self._force_point_base = p_now.copy()
+            self._force_point_inited = True
+        self._force_point_base = (
+            self._force_point_base + n * float(v_force_z) * float(dt_s)
+        )
+        self.force_point_z = float(np.dot(n, self._force_point_base))
+        pose_c = np.asarray(desired_pose, dtype=float).copy()
+        p_scan = pose_c[:3]
+        pose_c[:3] = p_scan - n * float(np.dot(n, p_scan)) + n * self.force_point_z
+        self.last_pose_d_combined = pose_c
+
+    def _motion_twist_to_force_point(
+        self,
+        pose_predicted: np.ndarray,
+        desired_pose: np.ndarray,
+        vel_ff: np.ndarray,
+        r_mat: np.ndarray,
+        v_force_z: float,
+        use_pbac: bool,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """PBAC to the fused scan+force point. QPIK sees only this motion twist."""
+        cfg = self.cfg
+        err_pose = pose_error(
+            desired_pose,
+            pose_predicted,
+            cfg.euler_order,
+        )
+        if not use_pbac:
+            err_pose[:] = 0.0
+        err_tool = r_mat.T @ err_pose[:3]
+        n = r_mat[:, 2]
+        err_tool[2] = float(np.dot(n, self._force_point_base - pose_predicted[:3]))
+        if cfg.pos_err_deadband_m > 0.0:
+            for index in range(3):
+                if abs(err_tool[index]) <= cfg.pos_err_deadband_m:
+                    err_tool[index] = 0.0
+        kp = cfg.kp_pos[:3] * cfg.track_axes[:3]
+        v_corr_tool = kp * err_tool
+        if cfg.pos_correction_max_m_s > 0.0:
+            v_corr_tool = np.clip(
+                v_corr_tool,
+                -cfg.pos_correction_max_m_s,
+                cfg.pos_correction_max_m_s,
+            )
+        err_rot_tool = r_mat.T @ err_pose[3:6]
+        kp_rot = cfg.kp_pos[3:6] * cfg.track_axes[3:6]
+        v_rot_tool = kp_rot * err_rot_tool
+        vel_ff_tool = r_mat.T @ np.asarray(vel_ff[:3], dtype=float)
+        vel_ff_tool[2] = float(v_force_z)
+        w_ff_tool = r_mat.T @ np.asarray(vel_ff[3:6], dtype=float)
+        v_cmd_tool = np.zeros(6, dtype=float)
+        v_cmd_tool[:3] = vel_ff_tool + v_corr_tool
+        v_cmd_tool[3:6] = w_ff_tool + v_rot_tool
+        v_cmd_base = np.zeros(6, dtype=float)
+        v_cmd_base[:3] = r_mat @ v_cmd_tool[:3]
+        v_cmd_base[3:] = r_mat @ v_cmd_tool[3:6]
+        path_task = np.concatenate((vel_ff_tool, w_ff_tool))
+        feedback_task = np.concatenate((v_corr_tool, v_rot_tool))
+        task_limit = np.asarray(cfg.max_velocity, dtype=float)
+        self.last_path_twist = np.clip(path_task, -task_limit, task_limit)
+        self.last_feedback_twist = np.clip(feedback_task, -task_limit, task_limit)
+        return v_cmd_tool, v_cmd_base
+
+    def compute_velocity_command(
+        self,
+        current_pose: np.ndarray,
+        desired_pose: np.ndarray,
+        desired_vel_ff: np.ndarray,
+        f_ext: np.ndarray,
+        desired_force: np.ndarray,
+        *,
+        in_contact: bool | None = None,
+        enable_pbac: bool | None = None,
+        f_ext_raw: np.ndarray | None = None,
+        dt_actual: float | None = None,
+        v_tcp_z_actual: float | None = None,
+        sensor_age_s: float | None = None,
+        feedback_age_s: float | None = None,
+        feedback_freshness: bool | float | None = None,
+        feedback_fresh: bool | float | None = None,
+    ) -> np.ndarray:
+        # Use the measured wall-clock period for force/proxy dynamics and
+        # safety timers.  Trajectory governor scaling remains a reference-path
+        # concern and does not alter physical-time integration.
+        if dt_actual is not None and np.isfinite(dt_actual):
+            dt_contact = float(np.clip(dt_actual, 1.0e-4, 0.10))
+        else:
+            dt_contact = float(self.dt)
+        cfg = self.cfg
+        r_mat = Rsc.from_euler(
+            cfg.euler_order,
+            current_pose[3:6],
+            degrees=False,
+        ).as_matrix()
+
+        pose_predicted = np.asarray(current_pose, dtype=float).copy()
+        if cfg.system_delay_s > 0.0:
+            if cfg.control_frame == "tool":
+                pose_predicted[:3] += (
+                    r_mat @ self.last_v_cmd[:3] * cfg.system_delay_s
+                )
+            else:
+                pose_predicted[:3] += (
+                    self.last_v_cmd[:3] * cfg.system_delay_s
+                )
+
+        err_pose = pose_error(
+            desired_pose,
+            pose_predicted,
+            cfg.euler_order,
+        )
+        vel_ff = np.asarray(desired_vel_ff, dtype=float).copy()
+        use_pbac = (
+            (not cfg.open_loop)
+            if enable_pbac is None
+            else bool(enable_pbac)
+        )
+        if not use_pbac:
+            err_pose[:] = 0.0
+
+        err_tool = r_mat.T @ err_pose[:3]
+        err_tool[2] = 0.0
+        if cfg.pos_err_deadband_m > 0.0:
+            for index in (0, 1):
+                if abs(err_tool[index]) <= cfg.pos_err_deadband_m:
+                    err_tool[index] = 0.0
+        kp_xy = np.array(
+            [
+                cfg.kp_pos[0] * cfg.track_axes[0],
+                cfg.kp_pos[1] * cfg.track_axes[1],
+                0.0,
+            ]
+        )
+        v_corr_tool = kp_xy * err_tool
+        if cfg.pos_correction_max_m_s > 0.0:
+            v_corr_tool[:2] = np.clip(
+                v_corr_tool[:2],
+                -cfg.pos_correction_max_m_s,
+                cfg.pos_correction_max_m_s,
+            )
+        v_corr = np.zeros(6, dtype=float)
+        v_corr[:3] = r_mat @ v_corr_tool
+        err_rot_tool = r_mat.T @ err_pose[3:6]
+        kp_rot = cfg.kp_pos[3:6] * cfg.track_axes[3:6]
+        v_corr[3:6] = r_mat @ (kp_rot * err_rot_tool)
+        v_pos_base = vel_ff + v_corr
+        if cfg.control_frame == "tool":
+            path_task = np.concatenate((r_mat.T @ vel_ff[:3], r_mat.T @ vel_ff[3:]))
+            feedback_task = np.concatenate(
+                (r_mat.T @ v_corr[:3], r_mat.T @ v_corr[3:])
+            )
+        else:
+            path_task = vel_ff.copy()
+            feedback_task = v_corr.copy()
+        # QPIK consumes these two sources independently.  Bound each source
+        # before the legacy combined-command clamp so saturation is not
+        # misreported as high-priority tracking feedback.
+        task_limit = np.asarray(cfg.max_velocity, dtype=float)
+        self.last_path_twist = np.clip(path_task, -task_limit, task_limit)
+        self.last_feedback_twist = np.clip(
+            feedback_task, -task_limit, task_limit
+        )
+
+        f_ext = np.asarray(f_ext, dtype=float)
+        f_des = np.asarray(desired_force, dtype=float)
+        f_ext_z = float(f_ext[2])
+        raw_z = (
+            float(f_ext_raw[2])
+            if f_ext_raw is not None
+            else f_ext_z
+        )
+        normal_sign = 1.0 if float(f_des[2]) >= 0.0 else -1.0
+        if in_contact is None:
+            contact_update = self._physical_contact.update(
+                normal_sign * f_ext_z,
+                normal_sign * raw_z,
+                dt_s=dt_contact,
+            )
+            if contact_update.acquired:
+                self._in_contact_latched = True
+        else:
+            physical_override = bool(in_contact)
+            if physical_override:
+                # The force task is enter-only.  Even an explicit physical
+                # contact override cannot end it; only reset() starts a new
+                # task/ramp episode.
+                self._in_contact_latched = True
+            contact_update = self._physical_contact.force_state(
+                physical_override
+            )
+        force_task_active = bool(self._in_contact_latched)
+        physical_contact = bool(contact_update.present)
+        self.force_task_latched = force_task_active
+        self.contact_present = physical_contact
+        self.physical_contact_state = str(contact_update.state)
+        self.physical_contact_loss_event = bool(contact_update.lost)
+        if (
+            self.physical_contact_loss_event
+            or contact_update.state == PhysicalContactTracker.SUSPECT_LOSS
+        ):
+            self._recontact_slow_latched = True
+            self._recontact_detached_seen = (
+                self._recontact_detached_seen or (not physical_contact)
+            )
+        if self._recontact_slow_latched and not physical_contact:
+            self._recontact_detached_seen = True
+            self._recontact_reacquired_seen = False
+        if bool(contact_update.reacquired):
+            self._recontact_reacquired_seen = True
+        self.physical_contact_reacquire_event = bool(
+            contact_update.reacquired
+        )
+        self.physical_contact_acquire_event = bool(contact_update.acquired)
+        self.physical_contact_low_timer_s = float(
+            self._physical_contact.low_timer_s
+        )
+        self.physical_contact_high_timer_s = float(
+            self._physical_contact.high_timer_s
+        )
+
+        # Force/proxy dynamics and all contact timers use wall-clock dt.  The
+        # governor still scales the trajectory/reference path above, but it
+        # must not silently slow the physical force state or make feedback
+        # freshness time-scale dependent.
+        dt_flow = dt_contact
+        dt_eff = dt_flow
+        if force_task_active:
+            self._contact_time_s += dt_flow
+
+        self.contact_episode_rearm_event = False
+        low_raw = normal_sign * raw_z < float(cfg.contact_episode_release_force_n)
+        if not physical_contact and self._episode_seen:
+            if not self._episode_rearm_armed:
+                if low_raw:
+                    self._episode_detached_s += dt_flow
+                else:
+                    # A detached interval only counts when raw force remains
+                    # low; this prevents a noisy trough from re-arming the
+                    # episode.  Once armed, keep the latch through the
+                    # contact tracker confirmation window.
+                    self._episode_detached_s = 0.0
+                self._episode_rearm_armed = (
+                    self._episode_detached_s
+                    >= max(float(cfg.contact_episode_release_s), 0.0)
+                )
+        elif not physical_contact:
+            # Free-space startup is not a detached contact episode.  Arming
+            # here made the very first acquisition look like a re-contact.
+            self._episode_detached_s = 0.0
+            self._episode_rearm_armed = False
+        elif contact_update.acquired:
+            # Physical reacquire is intentionally telemetry-only.  ``rising``
+            # is reserved for first contact or an explicitly re-armed episode.
+            self.contact_episode_rearm_event = bool(self._episode_rearm_armed)
+            if self._episode_rearm_armed:
+                self._episode_detached_s = 0.0
+                self._episode_rearm_armed = False
+            else:
+                self._episode_detached_s = 0.0
+        if physical_contact and not contact_update.acquired:
+            self._episode_detached_s = 0.0
+
+        rising_edge = bool(contact_update.acquired) and (
+            (not self._episode_seen) or self.contact_episode_rearm_event
+        )
+        if contact_update.acquired:
+            self._episode_seen = True
+        self.contact_episode_release_s = float(self._episode_detached_s)
+        # Physical reacquire is telemetry only.  The temporary press cap is
+        # re-armed on first contact or a true episode re-arm, never on every
+        # short contact trough.
+        v_tcp_press = (
+            None
+            if v_tcp_z_actual is None
+            else normal_sign * float(v_tcp_z_actual)
+        )
+        if v_tcp_press is not None and math.isfinite(v_tcp_press):
+            if self._v_tcp_z_prev is not None and dt_flow > 0.0:
+                self._a_tcp_z_actual = (
+                    v_tcp_press - float(self._v_tcp_z_prev)
+                ) / dt_flow
+            self._v_tcp_z_prev = float(v_tcp_press)
+        # Historical timer kept for telemetry only.  Safety press limit
+        # latches on contact *loss* and clears after confirmed contact at
+        # a settled press speed — not on reacquire.
+        if rising_edge:
+            self._recontact_timer_s = max(
+                self._recontact_timer_s,
+                float(cfg.recontact_hold_s),
+            )
+        if self._recontact_timer_s > 0.0:
+            self._recontact_timer_s = max(
+                0.0, self._recontact_timer_s - dt_contact
+            )
+        v_ok = (
+            v_tcp_press is not None
+            and math.isfinite(float(v_tcp_press))
+            and abs(float(v_tcp_press)) <= max(float(cfg.recontact_settle_m_s), 0.0)
+        )
+        can_release = (
+            self._recontact_slow_latched
+            and self._recontact_detached_seen
+            and self._recontact_reacquired_seen
+            and contact_update.state == PhysicalContactTracker.CONTACT
+            and v_ok
+        )
+        if can_release:
+            self._recontact_settle_ok_s += dt_flow
+            if self._recontact_settle_ok_s + 1e-12 >= max(
+                float(cfg.recontact_settle_hold_s), 0.0
+            ):
+                self._recontact_slow_latched = False
+                self._recontact_detached_seen = False
+                self._recontact_reacquired_seen = False
+                self._recontact_settle_ok_s = 0.0
+        else:
+            self._recontact_settle_ok_s = 0.0
+        self.recontact_slow_latched = bool(self._recontact_slow_latched)
+        self.recontact_detached_seen = bool(self._recontact_detached_seen)
+        self._update_instability_index(raw_z)
+
+        if cfg.var_damping_enabled:
+            mass_z = (
+                cfg.admittance_mass_z
+                + cfg.var_damping_m_u * self.instability_index
+            )
+            if cfg.var_damping_m_max > 0.0:
+                mass_z = min(mass_z, cfg.var_damping_m_max)
+        else:
+            mass_z = cfg.admittance_mass_z
+        self._m_z_now = max(mass_z, 1e-3)
+        self.mass_z_eff = self._m_z_now
+
+        f_des_z = self._effective_desired_z(float(f_des[2]))
+        # Piedra-style surface modulation is an optional tracking aid only;
+        # it changes the requested force smoothly after stable contact but is
+        # not credited by the passivity/energy account.
+        surface_scale = self._update_surface_force_scale(
+            float(np.linalg.norm(err_tool[:2])),
+            physical_contact=physical_contact,
+            dt_s=dt_flow,
+        )
+        f_des_z *= surface_scale
+        self.f_des_z_eff = float(f_des_z)
+        self.v_recontact_cap_m_s = (
+            self._v_delay_safe() if self._unconfirmed_contact() else 0.0
+        )
+        # Deliberately unfiltered.  A low-pass here bought nothing and
+        # cost twice: 12 ms of phase took the stiff-surface impact from 8 N to
+        # 12.2 N, and it starved the proactive feedforward (v_r 6.97 -> 5.89
+        # mm/s on a receding surface, tracking error 0.18 -> 0.28 N).
+        # Force-axis a/j live inside the shield, not as a post-send limiter.
+        f_err_z = f_des_z - f_ext_z
+        v_lateral_m_s = float(
+            np.linalg.norm((r_mat.T @ v_pos_base[:3])[:2])
+        )
+        chase_scale = self._lateral_chase_scale(
+            v_lateral_m_s, dt_s=dt_contact
+        )
+        if cfg.adaptive_ke.enabled:
+            self.ke_est, self.adaptive_bd = self._ke_estimator.update(
+                f_ext_z,
+                current_pose,
+                in_contact=physical_contact,
+                mass_z=self._m_z_now,
+                v_force_z=self.v_force_z,
+                v_lateral_m_s=v_lateral_m_s,
+                f_err_z=f_err_z,
+                f_des_z=f_des_z,
+                instability_index=self.instability_index,
+                euler_order=cfg.euler_order,
+                allow_impact_init=rising_edge,
+                allow_idle_decay=(
+                    self.physical_contact_state
+                    == PhysicalContactTracker.CONTACT
+                    and normal_sign * f_ext_z
+                    >= float(cfg.adaptive_ke.contact_force_n)
+                ),
+            )
+            self.zeta_eff = self._ke_estimator.zeta_eff
+            self.ke_cap_n_m = float(self._ke_estimator.ke_for_cap)
+        else:
+            self.ke_cap_n_m = float(self.ke_est)
+
+        # Predictive force-space damper is the primary hard-contact impact
+        # limiter.  It runs on wall time and uses the newest stiffness/mass
+        # estimate.  In active BEFM mode only, the previous verified tank
+        # balance may further tighten press; observe/off never alter behavior
+        # through the tank.
+        # The barrier always runs in a press-positive normal coordinate.  The
+        # rest of the legacy force loop may use either tool-Z sign, so map at
+        # this boundary and map velocity back after clamping.
+        force_normal_filtered = normal_sign * f_ext_z
+        force_normal_raw = normal_sign * raw_z
+        force_normal_desired = abs(float(f_des_z))
+        self.force_dot_z = float(
+            self._force_barrier.update_fdot(force_normal_raw, dt_flow)
+        )
+        energy_available_j = None
+        if cfg.bidirectional_flow.mode == "active":
+            energy_available_j = max(
+                float(self._bidirectional_flow.tank_energy)
+                - float(cfg.bidirectional_flow.Tmin),
+                0.0,
+            )
+        precontact_trigger = max(
+            float(cfg.force_barrier.precontact_raw_trigger_n), 0.0
+        )
+        precontact_impact = (
+            not physical_contact
+            and precontact_trigger > 0.0
+            and force_normal_raw >= precontact_trigger
+        )
+        if precontact_impact:
+            self._precontact_barrier_hold_s = max(
+                self._precontact_barrier_hold_s,
+                max(float(cfg.physical_contact.enter_confirm_s), dt_flow),
+            )
+            self._precontact_peak_force_n = max(
+                self._precontact_peak_force_n,
+                force_normal_raw,
+                force_normal_filtered,
+            )
+        elif self._precontact_barrier_hold_s > 0.0:
+            self._precontact_peak_force_n = max(
+                self._precontact_peak_force_n,
+                force_normal_raw,
+                force_normal_filtered,
+            )
+
+        # Keep the impact guard active throughout the filtered contact
+        # confirmation window.  This is deliberately separate from the
+        # physical/force-task latch: a raw air spike can pause press briefly,
+        # but it cannot create a sticky contact episode.
+        precontact_candidate = (
+            not physical_contact
+            and float(self._physical_contact.high_timer_s) > 0.0
+        )
+        precontact_guard = bool(
+            not physical_contact
+            and (
+                precontact_impact
+                or self._precontact_barrier_hold_s > 0.0
+                or precontact_candidate
+            )
+        )
+        barrier_contact = bool(physical_contact or precontact_guard)
+        self.force_barrier_contact_active = barrier_contact
+        if physical_contact:
+            barrier_force_n = force_normal_filtered
+            barrier_desired_n = force_normal_desired
+            self._precontact_barrier_hold_s = 0.0
+            self._precontact_peak_force_n = 0.0
+        else:
+            barrier_force_n = max(
+                force_normal_filtered,
+                force_normal_raw,
+                self._precontact_peak_force_n,
+            )
+            # Before confirmation, treat the acquire threshold as the safe
+            # force target.  Continuing toward a 2--5 N setpoint immediately
+            # after the first impact defeated the purpose of this guard.
+            barrier_desired_n = min(
+                force_normal_desired,
+                max(float(cfg.physical_contact.enter_n), 0.0),
+            )
+        v_n_actual = (
+            None
+            if v_tcp_z_actual is None
+            else normal_sign * float(v_tcp_z_actual)
+        )
+        shield_dx_m = None
+        if (
+            cfg.safety_shield.enabled
+            and cfg.safety_shield.normalized_mode() != "off"
+            and v_n_actual is not None
+        ):
+            shield_dx_m = self._safety_shield.pipeline_penetration_ub(
+                f_csv=barrier_force_n,
+                v_actual=v_n_actual,
+                a_actual=float(self._a_tcp_z_actual),
+            )
+        self.cap_press_z, self.cap_retract_z = self._force_barrier.caps(
+            f_z=barrier_force_n,
+            f_des_z=barrier_desired_n,
+            in_contact=barrier_contact,
+            v_z_cap=self._v_z_cap(),
+            seek_vz_m_s=self._v_z_cap(),
+            contact_enter_n=float(cfg.contact_threshold_n),
+            v_z_cap_retract=self._v_z_cap(),
+            ke_est_n_m=(
+                max(float(cfg.safety_shield.k_ub_n_m), 0.0)
+                if (
+                    self._unconfirmed_contact()
+                    and float(cfg.safety_shield.k_ub_n_m) > 0.0
+                )
+                else float(self.ke_cap_n_m)
+            ),
+            mass_eq_kg=float(self._m_z_now),
+            energy_available_j=energy_available_j,
+            tau_s=max(float(cfg.system_delay_s), float(cfg.force_barrier.t_react_s)),
+            v_tcp_z_actual=v_n_actual,
+            a_tcp_z_actual=float(self._a_tcp_z_actual),
+            shield_dx_m=shield_dx_m,
+        )
+        if precontact_guard:
+            # A deterministic low-speed confirmation sleeve closes the gap
+            # between the raw impact tick and the debounced filtered latch.
+            confirm_cap = max(float(cfg.recontact_vz_cap_m_s), 0.0)
+            if confirm_cap > 0.0:
+                self.cap_press_z = min(self.cap_press_z, confirm_cap)
+                self._force_barrier.cap_press_z = self.cap_press_z
+            self._precontact_barrier_hold_s = max(
+                0.0, self._precontact_barrier_hold_s - dt_flow
+            )
+            if self._precontact_barrier_hold_s <= 0.0 and not precontact_candidate:
+                self._precontact_peak_force_n = 0.0
+        if self._unconfirmed_contact():
+            self.cap_press_z = min(self.cap_press_z, self._v_delay_safe())
+            self._force_barrier.cap_press_z = self.cap_press_z
+        self.force_pred_z = float(self._force_barrier.f_pred_z)
+        escape_n = max(float(cfg.force_barrier.f_escape_n), 0.0)
+        self.overforce_escape = bool(
+            physical_contact
+            and force_normal_filtered >= force_normal_desired + escape_n
+        )
+        if self.physical_contact_loss_event:
+            self._proactive_ff.reset()
+            self._force_dob.reset()
+            self.v_r_z = 0.0
+            self.u_dob_z = 0.0
+
+        v_force_tool = np.zeros(6, dtype=float)
+        sensor_age_eff = (
+            feedback_age_s if feedback_age_s is not None else sensor_age_s
+        )
+        v_force_tool[2] = self._admittance_z(
+            f_err_z,
+            physical_contact,
+            dt_eff=dt_eff,
+            rising_edge=rising_edge,
+            desired_force_n=f_des_z,
+            raw_force_z=(
+                normal_sign * raw_z
+                if f_ext_raw is not None
+                else None
+            ),
+            dt_contact=dt_contact,
+            sensor_age_s=sensor_age_eff,
+            chase_scale=chase_scale,
+            force_pred_n=self.force_pred_z,
+            overforce_escape=self.overforce_escape,
+        )
+        v_force_tool[2] = self._cdyob.update(
+            float(v_force_tool[2]),
+            v_meas_m_s=(
+                None
+                if v_tcp_z_actual is None
+                else normal_sign * float(v_tcp_z_actual)
+            ),
+            force_n=force_normal_filtered,
+            dt_s=dt_flow,
+            tau_s=max(
+                float(cfg.system_delay_s),
+                float(cfg.force_barrier.t_react_s),
+            ),
+            in_contact=physical_contact,
+        )
+        self.cdyob_corr_m_s = float(self._cdyob.last_corr_m_s)
+        self.v_force_z = float(v_force_tool[2])
+        self.u_nom_raw_z = normal_sign * float(v_force_tool[2])
+        # Optional scalar bidirectional-flow adapter.  The adapter sees a
+        # press-positive normal coordinate; ``normal_sign`` maps the tool
+        # force convention into that coordinate and back.
+        flow_cfg = cfg.bidirectional_flow
+        flow_sign = 1.0 if float(flow_cfg.normal_sign) >= 0.0 else -1.0
+        flow_feedback_age = (
+            feedback_age_s if feedback_age_s is not None else sensor_age_s
+        )
+        flow_speed_actual = (
+            None
+            if v_tcp_z_actual is None
+            else flow_sign * float(v_tcp_z_actual)
+        )
+        flow_command = self._bidirectional_flow.update(
+            flow_sign * float(v_force_tool[2]),
+            # current_pose[2] is base-Z and is not a normal displacement when
+            # the tool is tilted.  Until the loop supplies a projected
+            # normal position, let the flow core integrate xa from the fresh
+            # tool-normal velocity instead of feeding it base-Z.
+            x_actual=None,
+            v_actual=flow_speed_actual,
+            force=flow_sign * f_ext_z,
+            dt_actual=dt_flow,
+            feedback_age_s=flow_feedback_age,
+            feedback_fresh=(
+                feedback_freshness
+                if feedback_freshness is not None
+                else feedback_fresh
+            ),
+            # Reconstruct the actual uncoupled implicit proxy RHS with the
+            # same total damping used by _admittance_z.  Tank credit remains
+            # limited to nominal_damping below, so Dimeas/impact damping is
+            # never used as fictitious energy income.
+            nominal_damping=float(cfg.admittance_damping_z),
+            proxy_mass=float(self._m_z_now),
+            proxy_damping=float(self.damping_z_eff),
+            active_effort_n=float(
+                max(float(f_des_z), 0.0)
+                + max(float(self.u_dob_z), 0.0)
+                + max(float(self.damping_ke_z * max(self.v_r_z, 0.0)), 0.0)
+            ),
+        )
+        if flow_cfg.mode == "active":
+            # The coupled proxy, not the uncoupled legacy Euler result, is the
+            # state carried into the next tick.  Without this assignment the
+            # -lambda*alpha*Fc branch would be forgotten every cycle.
+            self.v_force_z = flow_sign * float(self._bidirectional_flow.vp)
+            v_force_tool[2] = flow_sign * flow_command
+        self.flow_mode = str(flow_cfg.mode)
+        self.flow_alpha = float(self._bidirectional_flow.alpha)
+        self.flow_tank_energy = float(self._bidirectional_flow.tank_energy)
+        self.flow_fc = float(self._bidirectional_flow.fc)
+        self.flow_v_track = float(self._bidirectional_flow.v_track)
+        self.flow_v_aux = float(self._bidirectional_flow.v_aux)
+        self.flow_retract_through = float(
+            self._bidirectional_flow.retract_through
+        )
+        self.flow_press = float(self._bidirectional_flow.press)
+        self.flow_gamma_effective = float(
+            self._bidirectional_flow.gamma_effective
+        )
+        self.flow_feedback_stale = bool(
+            self._bidirectional_flow.feedback_stale
+        )
+        self.flow_sign_verified = bool(
+            self._bidirectional_flow.sign_verified
+        )
+        self._advance_force_point(
+            pose_predicted,
+            desired_pose,
+            r_mat,
+            float(v_force_tool[2]),
+            dt_eff,
+            reseeds=rising_edge,
+        )
+        v_cmd_tool, v_cmd_base = self._motion_twist_to_force_point(
+            pose_predicted,
+            desired_pose,
+            vel_ff,
+            r_mat,
+            float(v_force_tool[2]),
+            use_pbac,
+        )
+        # Recontact cap only limits press (+z); over-force retract stays open.
+        v_z_cap = self._v_z_cap()
+        press_cap = self._press_vz_cap()
+        if v_z_cap > 0.0:
+            lo = -v_z_cap
+            hi = max(press_cap, 0.0)
+            v_normal = normal_sign * float(v_cmd_tool[2])
+            v_normal = float(np.clip(v_normal, lo, hi))
+            # Force-space barrier caps are directional: a predicted force
+            # rise can close press while retract remains available.
+            v_normal = self._force_barrier.clamp_velocity(
+                v_normal
+            )
+            v_cmd_tool[2] = normal_sign * v_normal
+            if cfg.control_frame == "base":
+                v_cmd_base[:3] = r_mat @ v_cmd_tool[:3]
+                v_cmd_base[3:] = r_mat @ v_cmd_tool[3:6]
+
+        v_out = (
+            v_cmd_tool
+            if cfg.control_frame == "tool"
+            else v_cmd_base
+        )
+        v_clamp = np.clip(v_out, -cfg.max_velocity, cfg.max_velocity)
+        dv_max = cfg.max_acceleration * dt_flow
+        v_final = np.asarray(v_clamp, dtype=float).copy()
+        u_nom_capped = normal_sign * float(v_final[2]) if v_final.size > 2 else 0.0
+        self.u_nom_capped_z = float(u_nom_capped)
+        f_max_n = abs(float(self.f_des_z_eff)) + max(
+            float(cfg.force_barrier.budget_min_n),
+            float(cfg.force_barrier.budget_frac) * abs(float(self.f_des_z_eff)),
+        )
+        shield = self._safety_shield.update(
+            u_nom_capped,
+            f_csv=force_normal_filtered,
+            v_actual=(
+                None
+                if v_tcp_z_actual is None
+                else normal_sign * float(v_tcp_z_actual)
+            ),
+            f_max_n=f_max_n,
+            in_domain=True,
+            a_actual=float(self._a_tcp_z_actual),
+        )
+        self.u_shield_hyp_z = float(shield.u_shield_hyp)
+        self.u_sent_z = float(shield.u_sent)
+        self.lambda_obs = float(shield.lambda_obs)
+        self.shield_applied = bool(shield.shield_applied)
+        self.shield_feasible = bool(shield.shield_feasible)
+        self.shield_f_ub_n = float(shield.f_ub_n)
+        self.shield_e_lb_j = float(shield.e_lb_j)
+        self.shield_w_lb_j = float(shield.w_lb_j)
+        self.shield_rho_v2_w = float(shield.rho_v2_w)
+        self.shield_n_stop = int(shield.n_stop)
+        self.shield_tube_violation = bool(shield.tube_violation)
+        self.shield_solver_us = float(shield.solver_us)
+        self.shield_infeasible_reason = str(shield.infeasible_reason)
+        self.shield_f_constraint_margin_n = float(shield.f_constraint_margin_n)
+        self.shield_energy_margin_j = float(shield.energy_margin_j)
+        self.shield_terminal_ok = bool(shield.terminal_ok)
+        self.shield_aj_ok = bool(getattr(shield, "aj_ok", True))
+        self.shield_recovery_latched = bool(shield.recovery_latched)
+        self.shield_domain_ok = bool(shield.domain_ok)
+        if v_final.size > 2:
+            v_final[2] = normal_sign * float(shield.u_sent)
+        for index in range(6):
+            if index == 2 and cfg.force_axes[2] > 0.5:
+                continue
+            v_final[index] = float(
+                np.clip(
+                    v_final[index],
+                    self.last_v_cmd[index] - dv_max[index],
+                    self.last_v_cmd[index] + dv_max[index],
+                )
+            )
+        if cfg.bidirectional_flow.mode == "active":
+            self.flow_tank_energy = float(self._bidirectional_flow.tank_energy)
+        self.last_v_cmd = v_final.copy()
+        self.v_force_cmd_z = float(v_final[2]) if v_final.size > 2 else 0.0
+        return v_final
+
+    def _update_surface_force_scale(
+        self,
+        xy_error_m: float,
+        *,
+        physical_contact: bool,
+        dt_s: float,
+    ) -> float:
+        """Return the optional elastic-surface desired-force scale.
+
+        The normal force is reduced as tangential tracking error grows, using
+        ``alpha = 1-exp(-beta*||e_xy||)``.  This layer is deliberately
+        independent from BEFM/tank accounting and defaults to unity.
+        """
+
+        cfg = self.cfg.surface_force_modulation
+        self.surface_xy_error_m = max(float(xy_error_m), 0.0)
+        if physical_contact:
+            self._surface_contact_s += max(float(dt_s), 0.0)
+        else:
+            self._surface_contact_s = 0.0
+
+        eligible = (
+            bool(cfg.enabled)
+            and physical_contact
+            and self._surface_contact_s >= max(float(cfg.stable_contact_s), 0.0)
+        )
+        if eligible:
+            alpha_target = 1.0 - math.exp(
+                -max(float(cfg.beta_per_m), 0.0) * self.surface_xy_error_m
+            )
+            min_scale = float(np.clip(cfg.min_force_scale, 0.0, 1.0))
+            target = alpha_target * min_scale + (1.0 - alpha_target)
+        else:
+            alpha_target = 0.0
+            target = 1.0
+
+        target = float(np.clip(target, 0.0, 1.0))
+        tau = float(cfg.attack_s if target < self.surface_force_scale else cfg.release_s)
+        if tau <= 1.0e-9:
+            self.surface_force_scale = target
+        else:
+            blend = float(np.clip(max(float(dt_s), 0.0) / tau, 0.0, 1.0))
+            self.surface_force_scale += blend * (
+                target - self.surface_force_scale
+            )
+        self.surface_force_scale = float(
+            np.clip(self.surface_force_scale, 0.0, 1.0)
+        )
+        self.surface_force_alpha = float(np.clip(alpha_target, 0.0, 1.0))
+        return self.surface_force_scale
+
+    def _effective_desired_z(self, f_des_z: float) -> float:
+        cfg = self.cfg
+        if cfg.desired_force_ramp_s > 1e-6 and f_des_z > 0.0:
+            ramp = float(
+                np.clip(
+                    self._contact_time_s / cfg.desired_force_ramp_s,
+                    0.0,
+                    1.0,
+                )
+            )
+            f_start = min(
+                f_des_z,
+                max(
+                    cfg.contact_threshold_n
+                    + cfg.deadband_n
+                    + cfg.deadband_width_n
+                    + 0.2,
+                    0.35 * f_des_z,
+                ),
+            )
+            f_eff = f_start + (f_des_z - f_start) * ramp
+        else:
+            f_eff = f_des_z
+        self.f_des_z_eff = float(f_eff)
+        return float(f_eff)
+
+    def _update_instability_index(self, f_z: float) -> None:
+        cfg = self.cfg
+        if not cfg.var_damping_enabled:
+            self.instability_index = 0.0
+            return
+        if self._episode_filter_seed_pending:
+            self._hp_zi = lfilter_zi(self._hp_b, self._hp_a) * float(f_z)
+            self._f_dc = float(f_z)
+            self._p_hi = 0.0
+            self._p_ac = 0.0
+            self.instability_index = 0.0
+            self._episode_filter_seed_pending = False
+        filtered, self._hp_zi = lfilter(
+            self._hp_b,
+            self._hp_a,
+            np.asarray([f_z], dtype=np.float64),
+            zi=self._hp_zi,
+        )
+        high_pass = float(filtered[0])
+        self._f_dc += cfg.var_damping_dc_alpha * (f_z - self._f_dc)
+        f_ac = f_z - self._f_dc
+        alpha = self._is_energy_alpha
+        self._p_hi += alpha * (
+            high_pass * high_pass - self._p_hi
+        )
+        self._p_ac += alpha * (f_ac * f_ac - self._p_ac)
+        i_omega = min(
+            max(self._p_hi / (self._p_ac + 1e-6), 0.0),
+            1.0,
+        )
+        i_rms = min(
+            math.sqrt(max(self._p_ac, 0.0))
+            / max(cfg.var_damping_f_max_n, 1e-6),
+            1.0,
+        )
+        self.instability_index = (
+            i_omega * i_rms
+            + cfg.var_damping_lambda * self.instability_index
+        )
+
+    def _admittance_z(
+        self,
+        f_err: float,
+        in_contact: bool,
+        *,
+        dt_eff: float,
+        rising_edge: bool,
+        desired_force_n: float = 0.0,
+        raw_force_z: float | None = None,
+        dt_contact: float | None = None,
+        sensor_age_s: float | None = None,
+        chase_scale: float = 1.0,
+        force_pred_n: float | None = None,
+        overforce_escape: bool = False,
+    ) -> float:
+        cfg = self.cfg
+        eff = smooth_deadband_eff(
+            f_err,
+            cfg.deadband_n,
+            cfg.deadband_width_n,
+        )
+        mass_z = max(float(self._m_z_now), 1e-3)
+        # Steady damping: D0 unless legacy drive_damping keeps Keemink b_d.
+        if (
+            cfg.adaptive_ke.enabled
+            and cfg.adaptive_ke.drive_damping
+            and in_contact
+        ):
+            damping_ke = float(self.adaptive_bd)
+        else:
+            damping_ke = float(cfg.admittance_damping_z)
+        damping_dimeas = self._update_delta_d_hf(
+            dt_eff, abs_eff_n=abs(float(eff))
+        )
+        # Impact burst: on rising edge, briefly allow critical-damping level
+        # even when drive_damping is False (stiff-first without sticky steady D).
+        if (
+            rising_edge
+            and cfg.adaptive_ke.enabled
+            and not cfg.adaptive_ke.drive_damping
+            and in_contact
+        ):
+            damping_ke = max(damping_ke, float(self.adaptive_bd))
+        damping_target = damping_ke + damping_dimeas
+        if cfg.adaptive_ke.bd_max > 0.0:
+            damping_target = min(
+                damping_target,
+                float(cfg.adaptive_ke.bd_max),
+            )
+        if rising_edge and damping_target > self._d_z_smooth:
+            self._d_z_smooth = damping_target
+        elif dt_eff > 0.0:
+            if damping_target >= self._d_z_smooth:
+                tau_d = max(float(cfg.var_damping_hf_attack_s), 0.01)
+            else:
+                tau_d = max(float(cfg.var_damping_hf_release_s), 0.05)
+            blend = min(1.0, dt_eff / tau_d)
+            self._d_z_smooth += blend * (
+                damping_target - self._d_z_smooth
+            )
+        else:
+            self._d_z_smooth = damping_target
+        damping_total = self._d_z_smooth
+        # Keep the nominal/base damping attached to (v-v_r), but make every
+        # extra dissipative channel zero-centred.  In particular Dimeas must
+        # not multiply the proactive reference and thereby amplify a stale
+        # press/retract anchor.
+        damping_base = max(float(damping_ke), 0.0)
+        damping_extra = max(damping_total - damping_base, 0.0)
+        damping = damping_base + damping_extra
+        self.damping_ke_z = damping_ke
+        self.damping_dimeas_z = damping_dimeas
+        self.damping_z_eff = float(damping)
+
+        v_z_cap = self._v_z_cap()
+        press_cap = self._press_vz_cap()
+        retract_fast_hold = self._fast_retract_guard.update(
+            raw_force_n=raw_force_z,
+            desired_force_n=desired_force_n,
+            filtered_eff_n=eff,
+            active_reference_m_s=self.v_r_z,
+            dt_s=self.dt if dt_contact is None else dt_contact,
+            sensor_age_s=sensor_age_s,
+            instability_index=self.instability_index,
+            force_pred_n=force_pred_n,
+            overforce_escape=overforce_escape,
+        )
+        self.force_fast_z = float(self._fast_retract_guard.fast_force_n)
+        self.retract_guard_armed = bool(self._fast_retract_guard.armed)
+        self.retract_fast_hold = bool(retract_fast_hold)
+        self.retract_fast_stop_count = int(
+            self._fast_retract_guard.stop_count
+        )
+        self.retract_fast_rearm_count = int(
+            self._fast_retract_guard.rearm_count
+        )
+        v_reference = self._update_proactive_v_r(
+            eff,
+            in_contact,
+            dt_eff,
+            rising_edge=rising_edge,
+            desired_force_n=desired_force_n,
+            retract_fast_hold=retract_fast_hold,
+            chase_scale=chase_scale,
+        )
+        self.u_dob_z = self._force_dob.update(
+            eff,
+            dt_eff=dt_eff,
+            in_contact=in_contact,
+            instability_index=self.instability_index,
+            chase_scale=chase_scale,
+        )
+        drive = float(eff) + float(self.u_dob_z)
+        if dt_eff <= 0.0:
+            velocity = float(self.v_force_z)
+        else:
+            # Exact ZOH of M v̇ + D v = drive + D0 v_r.
+            # a = exp(-D Ts/M), b = (1-a)/D.  Extra damping stays
+            # zero-centred so it cannot amplify v_r.
+            damp = max(float(damping), 1e-9)
+            a_disc = math.exp(-damp * dt_eff / mass_z)
+            b_disc = (1.0 - a_disc) / damp
+            rhs = drive + max(damping_base, 0.0) * v_reference
+            velocity = a_disc * float(self.v_force_z) + b_disc * rhs
+        if v_z_cap > 0.0:
+            lo = -v_z_cap
+            hi = max(press_cap, 0.0)
+            velocity = float(np.clip(velocity, lo, hi))
+        self.v_force_z = velocity
+        return velocity
+
+
+HybridMotionConfig = AdmittanceConfig
+HybridMotionController = AdmittanceController
+```
+### FILE `rm75_control/rm75_control/control/admittance_common/force_barrier.py`
+
+```python
+"""One-sided empirical press cap with pipeline indentation debt.
+
+Press room uses adaptive ``K̂e`` (feel layer), not the shield ``K_ub``.
+Committed motion is subtracted from the force margin:
+
+    Δx_pipe = τ_stop [v_act]_+ + ½ τ_stop² [a_act]_+ + ē_x
+            (or the shield backup rollout when one is supplied)
+
+    F_pipe  = F + F̄ + K̂e Δx_pipe + ē_F
+    v_max,p = [(F_max − max(F, F_pred, F_pipe)) / (K̂e T_h)]_+
+
+``v_act`` is never added to the press speed.  Falling Ḟ does not reopen
+press.  Negative velocity does not reduce ``F_pipe``.  This layer is
+empirical and is not a passivity certificate.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import math
+
+
+@dataclass
+class ForceBarrierConfig:
+    enabled: bool = True
+    t_react_s: float = 0.055
+    budget_min_n: float = 1.0
+    budget_frac: float = 0.20
+    f_keep_n: float = 0.5
+    # Over-force band that fully opens retract (escape), independent of Ke.
+    f_escape_n: float = 0.5
+    v_ref_m_s: float = 0.05
+    v_min_retract_m_s: float = 0.0
+    v_min_press_m_s: float = 0.0
+    v_seek_free_m_s: float = 0.030
+    fdot_lpf_s: float = 0.040
+    stiffness_cap_enabled: bool = True
+    ke_floor_n_m: float = 50.0
+    mass_floor_kg: float = 0.05
+    precontact_raw_trigger_n: float = 0.0
+    # Extra Ke used for free-space / unconfident approach scheduling.
+    ke_schedule_eps_n_m: float = 1.0
+    # Closed-form stop time when the shield rollout is unavailable.
+    tau_stop_s: float = 0.080
+    e_x_m: float = 0.0004
+    e_f_n: float = 0.20
+    bar_f_n: float = 0.15
+
+    @classmethod
+    def from_dict(cls, raw: dict) -> "ForceBarrierConfig":
+        root = raw if isinstance(raw, dict) else {}
+        controller = root.get(
+            "hybrid_motion", root.get("controller", root)
+        )
+        if not isinstance(controller, dict):
+            controller = root
+        barrier = controller.get(
+            "force_barrier", root.get("force_barrier", {})
+        )
+        if not isinstance(barrier, dict):
+            barrier = {}
+        return cls(
+            enabled=bool(barrier.get("enabled", True)),
+            t_react_s=float(barrier.get("t_react_s", 0.055)),
+            budget_min_n=float(barrier.get("budget_min_n", 1.0)),
+            budget_frac=float(barrier.get("budget_frac", 0.20)),
+            f_keep_n=float(barrier.get("f_keep_n", 0.5)),
+            f_escape_n=float(barrier.get("f_escape_n", 0.5)),
+            v_ref_m_s=float(barrier.get("v_ref_m_s", 0.05)),
+            v_min_retract_m_s=float(barrier.get("v_min_retract_m_s", 0.0)),
+            v_min_press_m_s=float(barrier.get("v_min_press_m_s", 0.0)),
+            v_seek_free_m_s=float(barrier.get("v_seek_free_m_s", 0.030)),
+            fdot_lpf_s=float(barrier.get("fdot_lpf_s", 0.040)),
+            precontact_raw_trigger_n=float(
+                barrier.get("precontact_raw_trigger_n", 0.0)
+            ),
+            stiffness_cap_enabled=bool(
+                barrier.get("stiffness_cap_enabled", True)
+            ),
+            ke_floor_n_m=float(barrier.get("ke_floor_n_m", 50.0)),
+            mass_floor_kg=float(barrier.get("mass_floor_kg", 0.05)),
+            ke_schedule_eps_n_m=float(
+                barrier.get("ke_schedule_eps_n_m", 1.0)
+            ),
+            tau_stop_s=float(barrier.get("tau_stop_s", 0.080)),
+            e_x_m=float(barrier.get("e_x_m", 0.0004)),
+            e_f_n=float(barrier.get("e_f_n", 0.20)),
+            bar_f_n=float(barrier.get("bar_f_n", 0.15)),
+        )
+
+
+class ForceSpaceVelocityDamper:
+    def __init__(self, cfg: ForceBarrierConfig) -> None:
+        self.cfg = cfg
+        self.reset()
+
+    def reset(self) -> None:
+        self.f_dot_z = 0.0
+        self._f_prev: float | None = None
+        self.cap_press_z = 0.0
+        self.cap_retract_z = 0.0
+        self.f_pred_z = 0.0
+        self.dx_pipe_ub_m = 0.0
+        self.f_pipe_ub_n = 0.0
+
+    def update_fdot(self, f_z: float, dt_eff: float) -> float:
+        if dt_eff <= 0.0:
+            return self.f_dot_z
+        if self._f_prev is None:
+            self._f_prev = float(f_z)
+            self.f_dot_z = 0.0
+            return self.f_dot_z
+        raw = (float(f_z) - self._f_prev) / dt_eff
+        self._f_prev = float(f_z)
+        tau = max(float(self.cfg.fdot_lpf_s), 1e-6)
+        alpha = min(1.0, dt_eff / tau)
+        self.f_dot_z += alpha * (raw - self.f_dot_z)
+        return self.f_dot_z
+
+    def _tau_s(self, tau_s: float | None) -> float:
+        if tau_s is not None and math.isfinite(float(tau_s)) and float(tau_s) > 0.0:
+            return float(tau_s)
+        return max(float(self.cfg.t_react_s), 0.0)
+
+    def _budget(self, f_des_z: float) -> float:
+        return max(
+            float(self.cfg.budget_min_n),
+            float(self.cfg.budget_frac) * abs(float(f_des_z)),
+            1e-6,
+        )
+
+    def _ke_tau(
+        self,
+        *,
+        ke_est_n_m: float | None,
+        tau_s: float,
+    ) -> float:
+        ke = float(self.cfg.ke_floor_n_m)
+        if ke_est_n_m is not None and math.isfinite(float(ke_est_n_m)):
+            ke = max(float(ke_est_n_m), ke, float(self.cfg.ke_schedule_eps_n_m))
+        return max(ke * max(tau_s, 0.0), 1e-6)
+
+    def _ke_n_m(self, ke_est_n_m: float | None) -> float:
+        ke = float(self.cfg.ke_floor_n_m)
+        if ke_est_n_m is not None and math.isfinite(float(ke_est_n_m)):
+            ke = max(float(ke_est_n_m), ke, float(self.cfg.ke_schedule_eps_n_m))
+        return max(ke, 1e-6)
+
+    def pipeline_dx_ub(
+        self,
+        *,
+        v_tcp_z_actual: float | None,
+        a_tcp_z_actual: float | None,
+        shield_dx_m: float | None = None,
+        tau_stop_s: float | None = None,
+    ) -> float:
+        tau = (
+            float(tau_stop_s)
+            if tau_stop_s is not None and math.isfinite(float(tau_stop_s))
+            else float(self.cfg.tau_stop_s)
+        )
+        tau = max(tau, 0.0)
+        v_plus = max(float(v_tcp_z_actual or 0.0), 0.0)
+        a_plus = max(float(a_tcp_z_actual or 0.0), 0.0)
+        if shield_dx_m is not None and math.isfinite(float(shield_dx_m)):
+            dx = max(float(shield_dx_m), 0.0)
+            # The shield plant is first-order and has no a_act state.
+            if v_plus <= 1e-9 and a_plus > 0.0:
+                residual = 0.5 * tau * tau * a_plus
+                if residual > 1e-12:
+                    dx = max(dx, residual + max(float(self.cfg.e_x_m), 0.0))
+            return dx
+        motion = tau * v_plus + 0.5 * tau * tau * a_plus
+        if motion <= 1e-12:
+            return 0.0
+        return motion + max(float(self.cfg.e_x_m), 0.0)
+
+    def scheduled_approach_m_s(
+        self,
+        *,
+        f_des_z: float,
+        ke_est_n_m: float | None,
+        tau_s: float | None = None,
+        v_hi: float = 0.0,
+    ) -> float:
+        """ΔF_allow / (K̂e · τ) approach speed, clipped by v_hi / v_seek_free."""
+        tau = self._tau_s(tau_s)
+        budget = self._budget(f_des_z)
+        denom = self._ke_tau(ke_est_n_m=ke_est_n_m, tau_s=tau)
+        allow = budget / denom
+        seek = max(float(self.cfg.v_seek_free_m_s), 0.0)
+        if seek > 0.0:
+            allow = min(allow, seek) if allow > 0.0 else seek
+        if v_hi > 0.0:
+            allow = min(allow, v_hi) if allow > 0.0 else v_hi
+        return max(allow, 0.0)
+
+    def caps(
+        self,
+        *,
+        f_z: float,
+        f_des_z: float,
+        in_contact: bool,
+        v_z_cap: float,
+        seek_vz_m_s: float,
+        contact_enter_n: float,
+        v_z_cap_retract: float | None = None,
+        ke_est_n_m: float | None = None,
+        mass_eq_kg: float | None = None,
+        energy_available_j: float | None = None,
+        tau_s: float | None = None,
+        v_tcp_z_actual: float | None = None,
+        a_tcp_z_actual: float | None = None,
+        shield_dx_m: float | None = None,
+    ) -> tuple[float, float]:
+        cfg = self.cfg
+        v_hi = max(float(v_z_cap), 0.0)
+        v_hi_retract = max(
+            float(v_z_cap_retract) if v_z_cap_retract is not None else v_hi,
+            0.0,
+        )
+        tau = self._tau_s(tau_s)
+        dx_pipe = self.pipeline_dx_ub(
+            v_tcp_z_actual=v_tcp_z_actual,
+            a_tcp_z_actual=a_tcp_z_actual,
+            shield_dx_m=shield_dx_m,
+            tau_stop_s=max(tau, float(cfg.tau_stop_s)),
+        )
+        self.dx_pipe_ub_m = float(dx_pipe)
+        if not cfg.enabled:
+            self.cap_press_z = v_hi
+            self.cap_retract_z = v_hi_retract
+            self.f_pred_z = float(f_z)
+            return self.cap_press_z, self.cap_retract_z
+
+        if not in_contact:
+            seek = max(float(seek_vz_m_s), 0.0)
+            if v_hi > 0.0:
+                seek = min(seek, v_hi) if seek > 0.0 else v_hi
+            free = max(float(cfg.v_seek_free_m_s), 0.0)
+            if free > 0.0:
+                seek = min(seek, free) if seek > 0.0 else free
+            if cfg.stiffness_cap_enabled and ke_est_n_m is not None:
+                scheduled = self.scheduled_approach_m_s(
+                    f_des_z=f_des_z,
+                    ke_est_n_m=ke_est_n_m,
+                    tau_s=tau,
+                    v_hi=v_hi,
+                )
+                if scheduled > 0.0:
+                    seek = min(seek, scheduled) if seek > 0.0 else scheduled
+            del contact_enter_n
+            self.cap_press_z = seek if seek > 0.0 else v_hi
+            self.cap_retract_z = v_hi_retract
+            self.f_pred_z = float(f_z)
+            return self.cap_press_z, self.cap_retract_z
+
+        if abs(float(f_des_z)) < 1e-6:
+            self.cap_press_z = v_hi
+            self.cap_retract_z = v_hi_retract
+            self.f_pred_z = float(f_z)
+            return self.cap_press_z, self.cap_retract_z
+
+        budget = self._budget(f_des_z)
+        f_pred = float(f_z) + self.f_dot_z * tau
+        self.f_pred_z = f_pred
+        f_max = abs(float(f_des_z)) + budget
+        f_min = max(float(cfg.f_keep_n), 0.0)
+        ke = self._ke_n_m(ke_est_n_m)
+        denom = self._ke_tau(ke_est_n_m=ke_est_n_m, tau_s=tau)
+        if dx_pipe > 1e-12:
+            f_pipe = (
+                float(f_z)
+                + max(float(cfg.bar_f_n), 0.0)
+                + ke * dx_pipe
+                + max(float(cfg.e_f_n), 0.0)
+            )
+        else:
+            f_pipe = float(f_z)
+        self.f_pipe_ub_n = float(f_pipe)
+
+        # Falling Ḟ never reopens press.  Pipeline debt is taken from the
+        # remaining force margin; v_act is not added as extra press speed.
+        f_pred_press = max(f_pred, float(f_z), f_pipe)
+        v_press_max = (f_max - f_pred_press) / denom
+        cap_press = max(0.0, v_press_max)
+        if cfg.stiffness_cap_enabled and energy_available_j is not None:
+            mass = max(
+                float(mass_eq_kg) if mass_eq_kg is not None else 1.0,
+                float(cfg.mass_floor_kg),
+                1e-9,
+            )
+            energy = max(float(energy_available_j), 0.0)
+            cap_press = min(cap_press, math.sqrt(2.0 * energy / mass))
+        if v_hi > 0.0:
+            cap_press = min(cap_press, v_hi)
+        # Seek floor only while force margin remains.  A leftover
+        # v_min_press must not reopen press after F_pipe >= F_max.
+        v_min_press = max(float(cfg.v_min_press_m_s), 0.0)
+        if v_hi > 0.0:
+            v_min_press = min(v_min_press, v_hi)
+        if v_press_max > 1e-12 and v_min_press > 0.0:
+            cap_press = max(cap_press, min(v_min_press, v_press_max))
+
+        escape = max(float(cfg.f_escape_n), 0.0)
+        overforce = f_pred >= abs(float(f_des_z)) + escape
+        if overforce:
+            cap_retract = v_hi_retract
+        else:
+            v_lower = (f_min - f_pred) / denom
+            cap_retract = max(0.0, -v_lower)
+            if v_hi_retract > 0.0:
+                cap_retract = min(cap_retract, v_hi_retract)
+        cap_retract = max(cap_retract, max(float(cfg.v_min_retract_m_s), 0.0))
+        if v_hi_retract > 0.0:
+            cap_retract = min(cap_retract, v_hi_retract)
+
+        self.cap_press_z = float(cap_press)
+        self.cap_retract_z = float(cap_retract)
+        return self.cap_press_z, self.cap_retract_z
+
+    def clamp_eff(self, eff: float, damping: float) -> float:
+        damping = max(float(damping), 1e-6)
+        return float(
+            min(
+                max(float(eff), -damping * self.cap_retract_z),
+                damping * self.cap_press_z,
+            )
+        )
+
+    def clamp_velocity(self, velocity: float) -> float:
+        if velocity >= 0.0:
+            return float(min(velocity, self.cap_press_z))
+        return float(max(velocity, -self.cap_retract_z))
+```
+
+### FILE `rm75_control/rm75_control/control/admittance_common/contact_state.py`
+
+```python
+"""Physical normal-contact tracking, separate from the force-task latch.
+
+The force task must remain active while a moving surface temporarily leaves
+the probe.  Environment-stiffness adaptation has a different requirement: it
+must know when the probe is no longer carrying load so that a later impact can
+re-arm stiff-first damping.
+
+This tracker therefore never ends a task.  It only classifies the load-bearing
+contact episode using:
+
+* filtered force for a conservative, confirmed loss decision;
+* compensated raw force for a low-latency re-acquisition decision;
+* hysteresis and confirmation times so a short 4--12 Hz trough does not re-arm
+  stiff-first every half-cycle.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import numpy as np
+
+
+@dataclass
+class PhysicalContactConfig:
+    enabled: bool = True
+    enter_n: float = 0.80
+    hard_enter_n: float = 1.50
+    exit_n: float = 0.35
+    enter_confirm_s: float = 0.010
+    exit_confirm_s: float = 0.100
+
+    @classmethod
+    def from_dict(cls, raw: dict) -> PhysicalContactConfig:
+        c = raw.get("hybrid_motion", raw.get("controller", raw))
+        p = c.get("physical_contact", {})
+        if not isinstance(p, dict):
+            p = {}
+        return cls(
+            enabled=bool(p.get("enabled", True)),
+            enter_n=float(
+                p.get(
+                    "enter_n",
+                    c.get("physical_contact_enter_n", c.get("contact_threshold_n", 0.8)),
+                )
+            ),
+            hard_enter_n=float(
+                p.get(
+                    "hard_enter_n",
+                    c.get("physical_contact_hard_enter_n", 1.5),
+                )
+            ),
+            exit_n=float(
+                p.get(
+                    "exit_n",
+                    c.get("physical_contact_exit_n", 0.35),
+                )
+            ),
+            enter_confirm_s=float(
+                p.get(
+                    "enter_confirm_s",
+                    c.get("physical_contact_enter_confirm_s", 0.010),
+                )
+            ),
+            exit_confirm_s=float(
+                p.get(
+                    "exit_confirm_s",
+                    c.get("physical_contact_exit_confirm_s", 0.100),
+                )
+            ),
+        )
+
+
+@dataclass(frozen=True)
+class PhysicalContactUpdate:
+    present: bool
+    state: str
+    acquired: bool = False
+    reacquired: bool = False
+    lost: bool = False
+
+
+class PhysicalContactTracker:
+    """Four-state load-bearing contact tracker.
+
+    ``CONTACT`` and ``SUSPECT_LOSS`` both count as physically present.  A
+    confirmed ``LOST`` episode is required before the next force rise can emit
+    ``reacquired=True``.
+    """
+
+    FREE = "free"
+    CONTACT = "contact"
+    SUSPECT_LOSS = "suspect_loss"
+    LOST = "lost"
+
+    def __init__(self, cfg: PhysicalContactConfig) -> None:
+        self.cfg = cfg
+        self.reset()
+
+    def reset(self) -> None:
+        self.state = self.FREE
+        self.low_timer_s = 0.0
+        self.high_timer_s = 0.0
+        self.ever_acquired = False
+        self.filtered_force_n = 0.0
+        self.raw_force_n = 0.0
+
+    @property
+    def present(self) -> bool:
+        return self.state in (self.CONTACT, self.SUSPECT_LOSS)
+
+    def force_state(self, present: bool) -> PhysicalContactUpdate:
+        """Explicit-state compatibility path used by deterministic tests."""
+        was_present = self.present
+        had_contact = self.ever_acquired
+        self.low_timer_s = 0.0
+        self.high_timer_s = 0.0
+        if present:
+            self.state = self.CONTACT
+            self.ever_acquired = True
+            acquired = not was_present
+            return PhysicalContactUpdate(
+                present=True,
+                state=self.state,
+                acquired=acquired,
+                reacquired=acquired and had_contact,
+            )
+        self.state = self.LOST if had_contact else self.FREE
+        return PhysicalContactUpdate(
+            present=False,
+            state=self.state,
+            lost=was_present,
+        )
+
+    def update(
+        self,
+        filtered_force_n: float,
+        raw_force_n: float,
+        *,
+        dt_s: float,
+    ) -> PhysicalContactUpdate:
+        cfg = self.cfg
+        dt = max(float(dt_s), 0.0)
+        self.filtered_force_n = float(filtered_force_n)
+        self.raw_force_n = float(raw_force_n)
+
+        if not cfg.enabled:
+            present = max(self.filtered_force_n, self.raw_force_n) >= cfg.enter_n
+            return self.force_state(present)
+
+        finite = np.isfinite(self.filtered_force_n) and np.isfinite(
+            self.raw_force_n
+        )
+        if not finite:
+            # Missing data must never manufacture a contact transition.
+            self.low_timer_s = 0.0
+            self.high_timer_s = 0.0
+            return PhysicalContactUpdate(self.present, self.state)
+
+        if self.present:
+            self.high_timer_s = 0.0
+            if self.filtered_force_n < cfg.exit_n:
+                self.low_timer_s += dt
+                self.state = self.SUSPECT_LOSS
+                if self.low_timer_s + 1e-12 >= max(cfg.exit_confirm_s, 0.0):
+                    self.state = self.LOST
+                    self.low_timer_s = 0.0
+                    return PhysicalContactUpdate(
+                        present=False,
+                        state=self.state,
+                        lost=True,
+                    )
+            else:
+                self.low_timer_s = 0.0
+                self.state = self.CONTACT
+            return PhysicalContactUpdate(self.present, self.state)
+
+        self.low_timer_s = 0.0
+        # Initial contact is confirmed on the filtered channel.  The raw
+        # channel is intentionally reserved for *re*-acquisition after a
+        # known flight: tool/gravity residuals produced isolated 1--2 N raw
+        # spikes during the 162413 free-space approach and a single spike
+        # used to latch the force episode for the rest of the scan.  Immediate
+        # pre-contact impact limiting remains a separate force-barrier path.
+        hard_hit = (
+            self.ever_acquired
+            and cfg.hard_enter_n > 0.0
+            and self.raw_force_n >= cfg.hard_enter_n
+        )
+        if self.ever_acquired:
+            high = (
+                self.raw_force_n >= cfg.enter_n
+                or self.filtered_force_n >= cfg.enter_n
+            )
+        else:
+            high = self.filtered_force_n >= cfg.enter_n
+        if hard_hit:
+            self.high_timer_s = max(cfg.enter_confirm_s, 0.0)
+        elif high:
+            self.high_timer_s += dt
+        else:
+            self.high_timer_s = 0.0
+
+        if self.high_timer_s + 1e-12 >= max(cfg.enter_confirm_s, 0.0):
+            had_contact = self.ever_acquired
+            self.ever_acquired = True
+            self.state = self.CONTACT
+            self.high_timer_s = 0.0
+            return PhysicalContactUpdate(
+                present=True,
+                state=self.state,
+                acquired=True,
+                reacquired=had_contact,
+            )
+
+        self.state = self.LOST if self.ever_acquired else self.FREE
+        return PhysicalContactUpdate(False, self.state)
+```
+
+### FILE `rm75_control/rm75_control/control/admittance_common/cdyob.py`
+
+```python
+"""Samuel 2024 combined-dynamics Youla observer at the velocity interface.
+
+Reduced Youla-like velocity corrector.  It is a performance term only
+and is not a passivity certificate.  Start Q at 2–3 Hz from the
+identified ``P(z)``; do not treat ``1/(2π τ)`` as a theoretical cutoff.
+The paper's 15 Hz Q assumed td ≈ 3 ms at 1250 Hz and is not used here.
+
+N1 = Q C_n^{-1} A R_n^{-1} and N2 = Q A P_n^{-1} T_n^{-1} are realised as
+first-order filters on measured force and measured velocity.  Default ``enabled=false``.  Turn on only after observe/force scans.
+The observer never mutates the Lee tank or the shield energy.
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+
+import numpy as np
+
+
+@dataclass
+class CdyobConfig:
+    enabled: bool = False
+    # 0 → fall back to 1/(2π τ). Prefer an explicit 2–3 Hz start.
+    omega_q_hz: float = 2.5
+    tau_s: float = 0.0
+    # Residual first-order inner-loop time constant after the delay.
+    t_n_s: float = 0.020
+    # Nominal PI-like inner controller / mass-damper used to shape N1/N2.
+    cn_kp: float = 80.0
+    cn_ki: float = 400.0
+    rn_m: float = 2.5
+    rn_b: float = 20.0
+    pn_m: float = 0.0
+    a_gain: float = 1.0
+    v_corr_max_m_s: float = 0.030
+
+    @classmethod
+    def from_dict(cls, raw: dict) -> "CdyobConfig":
+        c = raw.get("hybrid_motion", raw.get("controller", raw))
+        if not isinstance(c, dict):
+            c = raw if isinstance(raw, dict) else {}
+        p = c.get("cdyob", {})
+        if not isinstance(p, dict):
+            p = {}
+        return cls(
+            enabled=bool(p.get("enabled", False)),
+            omega_q_hz=float(p.get("omega_q_hz", 2.5)),
+            tau_s=float(p.get("tau_s", 0.0)),
+            t_n_s=float(p.get("t_n_s", 0.020)),
+            cn_kp=float(p.get("cn_kp", 80.0)),
+            cn_ki=float(p.get("cn_ki", 400.0)),
+            rn_m=float(p.get("rn_m", 2.5)),
+            rn_b=float(p.get("rn_b", 20.0)),
+            pn_m=float(p.get("pn_m", 0.0)),
+            a_gain=float(p.get("a_gain", 1.0)),
+            v_corr_max_m_s=float(p.get("v_corr_max_m_s", 0.030)),
+        )
+
+
+class CombinedDynamicsYob:
+    """Discrete first-order CDYOB correction on the tool-Z velocity command."""
+
+    def __init__(self, cfg: CdyobConfig) -> None:
+        self.cfg = cfg
+        self.reset()
+
+    def reset(self) -> None:
+        self.q_state = 0.0
+        self.n1_state = 0.0
+        self.n2_state = 0.0
+        self._v_cmd_hist: list[float] = []
+        self._v_meas_prev = 0.0
+        self.last_corr_m_s = 0.0
+        self.last_omega_q_hz = 0.0
+
+    def _omega_q(self, tau_s: float) -> float:
+        if self.cfg.omega_q_hz > 1e-9:
+            return float(self.cfg.omega_q_hz)
+        tau = max(float(tau_s), 1e-3)
+        return 1.0 / (2.0 * math.pi * tau)
+
+    def _lpf(self, state: float, x: float, omega_hz: float, dt: float) -> float:
+        a = 1.0 - math.exp(-2.0 * math.pi * max(omega_hz, 0.0) * max(dt, 0.0))
+        a = float(np.clip(a, 0.0, 1.0))
+        return state + a * (x - state)
+
+    def update(
+        self,
+        v_nom_m_s: float,
+        *,
+        v_meas_m_s: float | None,
+        force_n: float,
+        dt_s: float,
+        tau_s: float,
+        in_contact: bool,
+    ) -> float:
+        cfg = self.cfg
+        if not cfg.enabled or dt_s <= 0.0:
+            self.last_corr_m_s = 0.0
+            return float(v_nom_m_s)
+        tau = float(cfg.tau_s) if cfg.tau_s > 1e-9 else max(float(tau_s), 0.0)
+        omega_q = self._omega_q(tau if tau > 1e-9 else 0.055)
+        self.last_omega_q_hz = omega_q
+
+        v_meas = (
+            float(v_meas_m_s)
+            if v_meas_m_s is not None and np.isfinite(v_meas_m_s)
+            else float(v_nom_m_s)
+        )
+        delay_n = max(int(round(tau / dt_s)), 1) if tau > 0.0 else 1
+        self._v_cmd_hist.append(float(v_nom_m_s))
+        if len(self._v_cmd_hist) > delay_n + 2:
+            self._v_cmd_hist = self._v_cmd_hist[-(delay_n + 2) :]
+        v_cmd_delayed = (
+            self._v_cmd_hist[-delay_n]
+            if len(self._v_cmd_hist) >= delay_n
+            else self._v_cmd_hist[0]
+        )
+
+        # T_n^{-1} V_m ≈ V_m + t_n · ḊV_m, compared with delayed V_i.
+        dv = (v_meas - self._v_meas_prev) / dt_s
+        self._v_meas_prev = v_meas
+        tn_inv_vm = v_meas + max(float(cfg.t_n_s), 0.0) * dv
+        inner_err = tn_inv_vm - v_cmd_delayed
+        self.q_state = self._lpf(self.q_state, inner_err, omega_q, dt_s)
+
+        # N1 ≈ Q · A / (C_n R_n): force → velocity, rolled off by Q.
+        cn = max(float(cfg.cn_kp), 1e-3)
+        rn = max(float(cfg.rn_b), 1e-3)
+        n1_gain = float(cfg.a_gain) / (cn * rn)
+        n1_raw = n1_gain * float(force_n)
+        self.n1_state = self._lpf(self.n1_state, n1_raw, omega_q, dt_s)
+
+        n2 = 0.0
+        if cfg.pn_m > 1e-9 and in_contact:
+            n2_gain = float(cfg.a_gain) / max(float(cfg.pn_m), 1e-6)
+            n2_raw = n2_gain * v_meas
+            self.n2_state = self._lpf(self.n2_state, n2_raw, omega_q, dt_s)
+            n2 = self.n2_state
+        else:
+            self.n2_state = self._lpf(self.n2_state, 0.0, omega_q, dt_s)
+
+        pert = self.q_state + self.n1_state - n2
+        if cfg.v_corr_max_m_s > 0.0:
+            pert = float(np.clip(pert, -cfg.v_corr_max_m_s, cfg.v_corr_max_m_s))
+        self.last_corr_m_s = float(pert)
+        return float(v_nom_m_s - pert)
+```
+
+### FILE `rm75_control/rm75_control/control/joint_admittance_8dof/loop.py`
+
+```python
+"""Joint-space inner loop: Cartesian twist -> absolute joint angles (rm_movej_canfd).
+
+``JointIkController``: hardware-free WBC slack-QP IK + safety clamp (no send-path LPF).
+``run_joint_admittance_phases``: on-robot orchestration closing on FK(q_meas).
+"""
+
+from __future__ import annotations
+
+import copy
+import csv
+import gc
+import inspect
+import json
+import math
+import os
+import queue
+import threading
+import time
+from dataclasses import dataclass, field
+from typing import Protocol
+
+import numpy as np
+from scipy.spatial.transform import Rotation as Rsc
+
+from rm75_control.control.admittance_common.async_state import arm_qdot_rad_s_from_snap
+from rm75_control.control.joint_admittance_8dof.collision_model import CollisionConfig
+from rm75_control.control.joint_admittance_8dof.ik_types import (
+    saturate_error,
+    sr_damping_lambda,
+)
+from rm75_control.control.joint_admittance_8dof.model import (
+    RobotKinematics,
+    arm_q_from_full,
+    deg2rad,
+    full_q_from_arm,
+    max_joint_err_deg,
+    pose_distance,
+    pose_error,
+    pose_track_error_mm_deg,
+    rad2deg,
+    wrap_joint_delta,
+)
+from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfig, QpIkController
+from rm75_control.control.joint_admittance_8dof.solver import cpp_kernel
+from rm75_control.control.joint_admittance_8dof.tasks.arm_angle import (
+    ArmAngleTask,
+    ArmAngleTaskConfig,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.manipulability_task import (
+    ManipulabilityTask,
+    ManipulabilityTaskConfig,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.nullspace_task import (
+    JointCenteringTask,
+    NullspaceTaskConfig,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
+    MidrangingController,
+    RailAllocatorConfig,
+    RailReferenceModel,
+    RailStateObserver,
+    allocate_rail,
+    arm_mirror_rail_limits,
+    margin_weight_from_activation,
+    wall_leave_only_sign,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
+    RailExtensionConfig,
+    RailExtensionTask,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.rail_goodness import (
+    CachedRailGoodness,
+    SigmaMinGoodness,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.secondary_composer import (
+    SecondaryComposer,
+    SecondaryRateFilter,
+    max_limit_activation,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.ird_adapter import (
+    IrdConfig,
+    try_load_ird,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
+    PostureRetarget,
+    PsiRetargetConfig,
+    design_family_ok,
+    fold_psi_to_positive,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.rail_lock import (
+    RailLockConfig,
+    RailLockTask,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import (
+    LockedStyle,
+    RailMode,
+)
+from rm75_control.control.joint_admittance_8dof.filters import (
+    first_order_lpf_vec,
+    smoothstep01,
+)
+from rm75_control.control.joint_admittance_8dof.saturation_latch import (
+    SaturationConfig,
+    secondary_scale_from_slack,
+)
+from rm75_control.control.joint_admittance_8dof.utils.safety import (
+    SafetyLimits,
+    Watchdog,
+    clamp_command_step,
+    integration_period,
+)
+
+# Pure rotation used to skip hold_setpoint (only vff[:3] was checked), so
+# homotopy q* chased live IK while the stick twisted J1 to −163°.
+_HOLD_ROT_THR_RAD_S = 0.05
+_QUIESCENT_LIN_M_S = 0.005
+_QUIESCENT_ROT_RAD_S = 0.05
+_QUIESCENT_TCP_M_S = 0.010
+_QUIESCENT_HOLD_S = 0.15
+_RAIL_V_DRIVE_CAP_M_S = 0.12
+_RAIL_PREF_WEIGHT = 64.0
+
+
+def hold_setpoint_from_vel_ff(
+    vel_ff: np.ndarray | None,
+    *,
+    lin_thr_m_s: float,
+    rot_thr_rad_s: float = _HOLD_ROT_THR_RAD_S,
+) -> bool:
+    """True if translation or rotation FF is commanding motion."""
+    if vel_ff is None:
+        return False
+    vff = np.asarray(vel_ff, dtype=float).reshape(-1)
+    if vff.size >= 3 and float(np.linalg.norm(vff[:3])) > float(lin_thr_m_s):
+        return True
+    if vff.size >= 6 and float(np.linalg.norm(vff[3:6])) > float(rot_thr_rad_s):
+        return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Inner loop (hardware-free)
+# ---------------------------------------------------------------------------
+@dataclass
+class CartesianTrackGains:
+    """Outer-loop Cartesian P gains from yaml ``cartesian_track``."""
+
+    k_task_lin: float = 10.0
+    k_task_rot: float = 2.0
+    max_pos_err_m: float = 0.05
+    max_rot_err_rad: float = 0.35
+    # First-order LPF on k*e only.  v_ff is never filtered.  0 = off.
+    fb_lpf_tau_s: float = 0.0
+
+
+@dataclass
+class JointIkConfig:
+    dt: float = 0.005
+    control_frame: str = "tool"
+    euler_order: str = "xyz"
+    qp: QpConfig = field(default_factory=QpConfig)
+    cartesian_track: CartesianTrackGains = field(default_factory=CartesianTrackGains)
+    nullspace: NullspaceTaskConfig = field(default_factory=NullspaceTaskConfig)
+    manipulability: ManipulabilityTaskConfig = field(default_factory=ManipulabilityTaskConfig)
+    arm_angle: ArmAngleTaskConfig = field(default_factory=ArmAngleTaskConfig)
+    psi_retarget: PsiRetargetConfig = field(default_factory=PsiRetargetConfig)
+    ird: IrdConfig = field(default_factory=IrdConfig)
+    collision: CollisionConfig = field(default_factory=CollisionConfig)
+    rail: RailLockConfig = field(default_factory=RailLockConfig)
+    rail_extension: RailExtensionConfig = field(default_factory=RailExtensionConfig)
+    rail_allocator: RailAllocatorConfig = field(default_factory=RailAllocatorConfig)
+    v_scale: float = 0.5
+    a_max_arm_rad_s2: float = 20.0
+    a_max_rail_m_s2: float = 0.60
+    position_margin_rad: float = 0.017
+    position_margin_rail_m: float = 0.0
+    control_cpu: int | None = None
+    disable_cstates: bool = True
+    resync_err_rad: float = 0.10
+    resync_err_rail_m: float = 0.020
+    feedback_timeout_s: float = 0.050
+    # Consecutive rejected/stale feedback before the loop faults.  One
+    # USB/GIL hitch must coast (FA24=0, arm holds TCP) instead of aborting.
+    feedback_coast_s: float = 0.30
+    rt_disable_gc: bool = True
+    verbose_json: bool = False
+    nullspace_d_null: float = 0.0
+    nullspace_d_null_adaptive: float = 1.0
+    nullspace_max_qdot_frac: float = 0.2
+    saturation: SaturationConfig = field(default_factory=SaturationConfig)
+    # python = in-process QPIK; native = separate wbc_rt process over SHM.
+    backend: str = "python"
+    native_bin: str | None = None
+    native_shm_prefix: str = "rm75_wbc"
+
+
+@dataclass
+class JointIkStep:
+    q_send: np.ndarray
+    qdot: np.ndarray
+    twist_base: np.ndarray
+    sigma_min: float
+    manip: float
+    slack_norm: float
+    n_cbf_active: int
+    follow_err_rad: float
+    cart_err_mm: float = 0.0
+    qdot_ff_norm: float = 0.0
+    vel_clamped: bool = False
+    acc_clamped: bool = False
+    pos_clamped: bool = False
+    tcp_jump_mm: float = 0.0
+    rail_vel_pin: float = float("nan")
+    rail_qdot_ff: float = float("nan")
+    plan_drives_rail: bool = False
+    arm_singularity_smooth: float = 1.0
+    limit_activation: float = 0.0
+    rail_ext_err_m: float = 0.0
+    rail_ext_weight: float = 0.0
+    rail_escape_active: bool = False
+    psi_deg: float = float("nan")
+    psi_ref_deg: float = float("nan")
+    psi_retarget_score: float = float("nan")
+    d_pref_m: float = float("nan")
+    elbow_margin_rad: float = float("nan")
+    wrist_open_rad: float = float("nan")
+    family_ok: bool = True
+    physical_saturated: bool = False
+    rail_contrib_m_s: float = float("nan")
+    arm_contrib_m_s: float = float("nan")
+    rail_motion_share: float = float("nan")
+    # Rail velocity the QP actually used for affine compensation, after the
+    # command/measurement blend.  rail_exec_velocity_m_s is overwritten with
+    # the raw worker estimate downstream, so the blended value needs its own.
+    rail_exec_for_qp_m_s: float = float("nan")
+    wln_scale_rail: float = float("nan")
+    wln_scale_arm_max: float = float("nan")
+    waste_ratio: float = float("nan")
+    rail_ff_m: float = float("nan")
+    rail_posture_err_m: float = float("nan")
+    d_star_m: float = float("nan")
+    psi_star_deg: float = float("nan")
+    minmax_margin: float = float("nan")
+    controller_mode: str = "qpik"
+    qp_backend: str = ""
+    qp_solver_status: str = "not_run"
+    qp_solver_iterations: int = 0
+    qp_solver_solve_ms: float = 0.0
+    qp_solver_call_count: int = 0
+    qp_solver_overrun: bool = False
+    qp1_status: str = "not_run"
+    qp2_status: str = "not_run"
+    qp1_solve_ms: float = 0.0
+    qp2_solve_ms: float = 0.0
+    qp_assembly_ms: float = 0.0
+    qp_fallback_ms: float = 0.0
+    qpik_total_ms: float = 0.0
+    qp2_fallback: bool = False
+    # Coarse per-stage tick profile (ms).  The loop budgets 5.0 ms but
+    # measured 6.16 ms mean with only 2.1% of ticks on time, and the log had
+    # no way to attribute the overrun.
+    tick_inner_ms: float = float("nan")
+    tick_send_ms: float = float("nan")
+    tick_log_ms: float = float("nan")
+    qpik_alpha: float = 1.0
+    qpik_beta: float = 1.0
+    qpik_authority: float = 1.0
+    qpik_equality_residual_max: float = float("nan")
+    qpik_hard_residual_max: float = float("nan")
+    qpik_anchor_valid: bool = True
+    qpik_recovery_overflow: bool = False
+    qpik_protected_nominal_overflow: np.ndarray = field(default_factory=lambda: np.zeros(4))
+    qpik_recovery_caps: np.ndarray = field(default_factory=lambda: np.zeros(14))
+    qpik_recovery_overflow_indices: tuple[int, ...] = ()
+    qpik_working_slack: np.ndarray = field(default_factory=lambda: np.zeros(8))
+    qpik_collision_slack: np.ndarray = field(default_factory=lambda: np.zeros(4))
+    qpik_dexterity_slack: float = 0.0
+    qpik_branch_slack: float = 0.0
+    rail_macro_pref_v: float = 0.0
+    rail_center_pref_v: float = 0.0
+    arm_risk_pref_norm: float = 0.0
+    arm_risk_pref: np.ndarray = field(default_factory=lambda: np.zeros(8))
+    risk_direction_cosine: float = float("nan")
+    path_velocity_xy: np.ndarray = field(default_factory=lambda: np.zeros(2))
+    feedback_xy_raw: np.ndarray = field(default_factory=lambda: np.zeros(2))
+    feedback_xy_filtered: np.ndarray = field(default_factory=lambda: np.zeros(2))
+    rail_xy_contribution: np.ndarray = field(default_factory=lambda: np.zeros(2))
+    arm_xy_contribution: np.ndarray = field(default_factory=lambda: np.zeros(2))
+    rail_task_projection: float = float("nan")
+    rail_arm_cancel: float = float("nan")
+    rail_decomposition_error: float = 0.0
+    wrist_singularity: float = float("nan")
+    hard_active_constraint_ids: tuple[str, ...] = ()
+    protected_target: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    protected_achieved: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    protected_residual: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    scan_target: np.ndarray = field(default_factory=lambda: np.zeros(2))
+    scan_achieved: np.ndarray = field(default_factory=lambda: np.zeros(2))
+    scan_residual: np.ndarray = field(default_factory=lambda: np.zeros(2))
+    fallback_level: str = "none"
+    fallback_reason: str = ""
+    solver_fault_latched: bool = False
+    health_state: str = "NORMAL"
+    arm_health: float = float("nan")
+    joint_margin_rad: float = float("nan")
+    wrist_margin_rad: float = float("nan")
+    accepted_reference_lag_s: float = 0.0
+    pre_solve_feedback_age_s: float = float("nan")
+    post_solve_feedback_age_s: float = float("nan")
+    rail_sat: bool = False
+    rail_exec_velocity_m_s: float = float("nan")
+    rail_measured_velocity_m_s: float = float("nan")
+    rail_commanded_velocity_m_s: float = float("nan")
+    rail_commanded_acceleration_m_s2: float = float("nan")
+    rail_feedback_age_s: float = float("nan")
+    a_mirror_frac: float = float("nan")
+    j_mirror_frac: float = float("nan")
+    last_limit_saturated: bool = False
+    keep_task_weight: bool = False
+    pref_slack_scale: float = 1.0
+    rail_task_vel: float = float("nan")
+    v_escape: float = float("nan")
+    v_reach: float = float("nan")
+    v_ff_rail: float = float("nan")
+    u_alloc: float = float("nan")
+    u_posture: float = float("nan")
+    u_mid: float = float("nan")
+    v_r_ref: float = float("nan")
+    comp_projected_frac: float = 0.0
+    rail_coast_active: bool = False
+    rail_feedback_reject_streak_s: float = 0.0
+    wall_override: bool = False
+    slack_zero_feasible: bool = False
+    sigma_arm: float = float("nan")
+    sns_scale: float = 1.0
+    qdot_meas: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    v_cmd: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    path_twist: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    feedback_twist: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    comfort_slack: np.ndarray = field(default_factory=lambda: np.zeros(7))
+    cbf_min_dist: float = float("nan")
+    cbf_pair: str = ""
+    nullspace_norm: float = float("nan")
+    nullspace_centering_norm: float = float("nan")
+    nullspace_manip_norm: float = float("nan")
+    nullspace_arm_angle_norm: float = float("nan")
+    nullspace_damping_norm: float = float("nan")
+    nullspace_rail_lock_norm: float = float("nan")
+    sat_scale: float = float("nan")
+    sec_target_norm: float = float("nan")
+    post_qp_step_clamp_enabled: bool = True
+    post_step_would_clamp: bool = False
+    post_step_clamp_applied: bool = False
+    dt_nom_s: float = float("nan")
+    dt_int_s: float = float("nan")
+    box_h1_s: float = float("nan")
+    box_h2_s: float = float("nan")
+    qdot_raw: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    qdot_pre_commit: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    qdot_committed: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    qdot_prev_used: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    qdot_prev2_used: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    box_lo: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    box_hi: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    post_step_shadow_q: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    arm_send_mono_ns: int = 0
+    rail_target_publish_mono_ns: int = 0
+    rail_fa24_write_mono_ns: int = 0
+    rail_encoder_sample_mono_ns: int = 0
+    v_cmd_received: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    v_cmd_feasible: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    v_tcp_estimated: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    e_shape: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    e_qp: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    e_exec: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    e_shape_norm: float = 0.0
+    e_qp_norm: float = 0.0
+    e_exec_norm: float = 0.0
+    quiescent: bool = False
+    secondary_suppressed: bool = False
+    command_stale: bool = False
+    joint_limited: bool = False
+    rail_limited: bool = False
+    wall_active: bool = False
+
+
+@dataclass
+class TrackerStatus:
+    """Pure-velocity inner-loop report.  Input is only ``v_cmd[6]``."""
+
+    v_cmd_received: np.ndarray
+    v_cmd_feasible: np.ndarray
+    v_tcp_estimated: np.ndarray
+    task_residual: np.ndarray
+    slack_norm: float
+    joint_limited: bool = False
+    rail_limited: bool = False
+    wall_active: bool = False
+    secondary_suppressed: bool = False
+    command_stale: bool = False
+    step: JointIkStep | None = None
+
+
+def scale_qdot_into_box(
+    qdot: np.ndarray,
+    lo: np.ndarray,
+    hi: np.ndarray,
+) -> np.ndarray:
+    """Uniform task-scaling into [lo, hi]: preserve Cartesian direction.
+
+    Per-joint ``np.clip`` would break the twist direction (Flacco SNS vs naive
+    saturation).  A single ``s ∈ [0, 1]`` is applied to the whole vector.
+    """
+    qdot = np.asarray(qdot, dtype=float).reshape(-1).copy()
+    lo = np.asarray(lo, dtype=float).reshape(-1)
+    hi = np.asarray(hi, dtype=float).reshape(-1)
+    if qdot.shape != lo.shape or qdot.shape != hi.shape:
+        return np.clip(qdot, lo, hi) if lo.shape == qdot.shape else qdot
+    s = 1.0
+    eps = 1.0e-12
+    for i, v in enumerate(qdot):
+        if v > hi[i] + eps:
+            if v > eps:
+                s = min(s, float(hi[i] / v))
+            else:
+                s = 0.0
+        elif v < lo[i] - eps:
+            if v < -eps:
+                s = min(s, float(lo[i] / v))
+            else:
+                s = 0.0
+    s = float(np.clip(s, 0.0, 1.0))
+    return qdot * s
+
+
+class JointIkController:
+    """Reusable inner loop: (q_cmd, q_meas, twist) -> next joint command (rad)."""
+
+    def __init__(self, kin: RobotKinematics, cfg: JointIkConfig | None = None) -> None:
+        self.kin = kin
+        self.cfg = cfg or JointIkConfig()
+        if (
+            not np.isfinite(float(self.cfg.feedback_timeout_s))
+            or float(self.cfg.feedback_timeout_s) <= 0.0
+        ):
+            raise ValueError("feedback_timeout_s must be finite and > 0")
+        self.cfg.qp.euler_order = self.cfg.euler_order
+        self.cfg.qp.collision = self.cfg.collision
+        self.centering_task = JointCenteringTask.from_kinematics(kin, self.cfg.nullspace)
+        self.manipulability_task = (
+            ManipulabilityTask(kin, self.cfg.manipulability)
+            if self.cfg.manipulability.k_mu > 0.0
+            else None
+        )
+        self.arm_task = (
+            ArmAngleTask(kin, self.cfg.arm_angle) if self.cfg.arm_angle.enabled else None
+        )
+        self.rail_task = RailLockTask(self.cfg.rail)
+        self.rail_ext_task = (
+            RailExtensionTask(kin, self.cfg.rail_extension)
+            if self.cfg.rail_extension.enabled
+            else None
+        )
+        if self.rail_ext_task is not None:
+            self.rail_ext_task.cfg.soft_min_m = float(self.cfg.rail.soft_min_m)
+            self.rail_ext_task.cfg.soft_max_m = float(self.cfg.rail.soft_max_m)
+        self.posture_retarget = (
+            PostureRetarget(kin, self.cfg.psi_retarget, euler_order=self.cfg.euler_order)
+            if self.cfg.psi_retarget.enabled
+            else None
+        )
+        self._rail_ext_active = True
+        ird_cfg = self.cfg.ird if self.cfg.ird is not None else IrdConfig()
+        self._ird = (
+            try_load_ird(ird_cfg) if bool(getattr(ird_cfg, "enabled", False)) else None
+        )
+        if self.posture_retarget is not None:
+            self.posture_retarget._ird = self._ird
+        # IRD is one-shot d* at plan_scan_stroke only.  Autograd goodness
+        # on this thread caused 127 ms hitches → servo FA24=0.
+        self._rail_goodness = CachedRailGoodness(
+            SigmaMinGoodness(kin), period_ticks=10
+        )
+        self._sigma_grad_rail_cached: float = 0.0
+        a_max_vec = np.full(kin.nv, float(self.cfg.a_max_arm_rad_s2))
+        a_max_vec[0] = float(self.cfg.a_max_rail_m_s2)
+        margin_vec = np.full(kin.nv, float(self.cfg.position_margin_rad))
+        margin_vec[0] = float(self.cfg.position_margin_rail_m)
+        self.limits = SafetyLimits.from_kinematics(
+            kin,
+            v_scale=self.cfg.v_scale,
+            a_max=a_max_vec,
+            position_margin=margin_vec,
+        )
+        if self.cfg.rail.v_max_m_s is not None:
+            self.limits.v_max[0] = min(
+                float(self.limits.v_max[0]),
+                float(self.cfg.rail.v_max_m_s),
+            )
+        self.limits.v_max[0] = min(
+            float(self.limits.v_max[0]), _RAIL_V_DRIVE_CAP_M_S
+        )
+        hard_lo = float(getattr(self.cfg.rail, "hard_min_m", 0.005))
+        hard_hi = float(getattr(self.cfg.rail, "hard_max_m", 0.78))
+        if not (
+            np.isfinite(hard_lo)
+            and np.isfinite(hard_hi)
+            and float(self.kin.q_lower[0]) <= hard_lo < hard_hi
+            and hard_hi <= float(self.kin.q_upper[0])
+        ):
+            raise ValueError(
+                "invalid rail hard limits: "
+                f"[{hard_lo:.6f}, {hard_hi:.6f}]"
+            )
+        self.limits.q_lower[0] = max(float(self.limits.q_lower[0]), hard_lo)
+        self.limits.q_upper[0] = min(float(self.limits.q_upper[0]), hard_hi)
+        self.limits.rail_soft_min_m = float(self.cfg.rail.soft_min_m)
+        self.limits.rail_soft_max_m = float(self.cfg.rail.soft_max_m)
+        self.core = QpIkController(self.kin, self.limits, self.cfg.qp)
+        self.core.set_q_star(self.centering_task.q_target)
+        self.core.set_q_star_signs(self.centering_task.q_target)
+        self.q_cmd = np.zeros(kin.nv, dtype=float)
+        self._arm_task_suppressed = False
+        self._centering_suppressed = False
+        self._manipulability_active = False
+        self._box_dt_last_t: float | None = None
+        self._box_h1_last: float | None = None
+        self._dq_prev: np.ndarray | None = None
+        alloc_cfg = getattr(self.cfg, "rail_allocator", RailAllocatorConfig())
+        self.rail_allocator_cfg = alloc_cfg
+        v_rail = float(self.limits.v_max[0])
+        self.rail_ref_model = RailReferenceModel(
+            f_c_hz=float(alloc_cfg.f_c_hz),
+            a_max=float(self.cfg.a_max_rail_m_s2),
+            j_max=float(self.cfg.qp.j_max_rail_m_s3),
+            v_max=v_rail,
+            reaction_s=float(alloc_cfg.reaction_s),
+            soft_min_m=float(self.cfg.rail.soft_min_m),
+            soft_max_m=float(self.cfg.rail.soft_max_m),
+            hard_min_m=hard_lo,
+            hard_max_m=hard_hi,
+        )
+        self.rail_observer = RailStateObserver(
+            pos_gain=float(alloc_cfg.observer_pos_gain),
+            vel_gain=float(alloc_cfg.observer_vel_gain),
+            vel_lpf_hz=float(alloc_cfg.observer_vel_lpf_hz),
+            v_max=v_rail,
+        )
+        self.last_v_r_ref = 0.0
+        self.last_u_alloc = 0.0
+        self.last_u_posture = 0.0
+        self.last_u_mid = 0.0
+        self.last_comp_projected_frac = 0.0
+        self._midrange_freeze = False
+        self.midranging = MidrangingController(
+            kp=float(alloc_cfg.kp_mid),
+            ki=float(alloc_cfg.ki_mid),
+            v_max=float(alloc_cfg.u_mid_max_m_s),
+            kaw=float(getattr(alloc_cfg, "kaw_mid", 8.0)),
+        )
+        if float(getattr(self.cfg.rail_extension, "v_lpf_fc_hz", 0.0) or 0.0) <= 0.0:
+            self.cfg.rail_extension.v_lpf_fc_hz = float(alloc_cfg.f_c_hz)
+        self.secondary = SecondaryComposer.from_controller_parts(
+            self.centering_task,
+            self.arm_task,
+            self.cfg.nullspace,
+            manipulability=self.manipulability_task,
+            rail_lock=self.rail_task,
+            d_null=self.cfg.nullspace_d_null,
+            adaptive_d_null_gain=self.cfg.nullspace_d_null_adaptive,
+            v_max=kin.v_max,
+            max_qdot_frac=self.cfg.nullspace_max_qdot_frac,
+        )
+        self.last_secondary_norm: float = 0.0
+        self._sec_filter = SecondaryRateFilter(int(kin.nv))
+        self._enabled = True
+        self._quiescent = False
+        self._quiet_s = 0.0
+        self._cmd_quiet_s = 0.0
+        self._last_tcp_est = np.zeros(6, dtype=float)
+        self._u_mid_committed = 0.0
+        self._u_mid_for_sec = 0.0
+        self.last_sigma_min: float = float(self.cfg.qp.sr_damping.sigma_ref)
+        self.last_slack_norm: float = 0.0
+        self._sat_scale: float = 1.0
+        self.last_sat_scale: float = 1.0
+        self.last_arm_rho: float = float("nan")
+        self._press_z_mark: float = float("nan")
+        self._press_stall_s: float = 0.0
+        self._d_star_nudge_cool_s: float = 0.0
+        self._family_ok: bool = True
+        self._rail_mode: RailMode = self.cfg.rail.mode
+        self._locked_style: LockedStyle = self.cfg.rail.locked_style
+        self._configured_rail_mode: RailMode = self.cfg.rail.mode
+        self._plan_drives_rail: bool = False
+        self._direct_joint_ptp: bool = False
+        self._last_post_step: dict = {}
+        self._apply_rail_mode_side_effects()
+        self._native = None
+        if str(getattr(self.cfg, "backend", "python")).lower() == "native":
+            from rm75_control.control.joint_admittance_8dof.wbc_rt.client import (
+                NativeWbcClient,
+            )
+
+            self._native = NativeWbcClient(self)
+            self._native.start()
+
+    def __del__(self) -> None:
+        native = getattr(self, "_native", None)
+        if native is not None:
+            try:
+                native.shutdown()
+            except Exception:
+                pass
+
+    @property
+    def rail_mode(self) -> RailMode:
+        return self._rail_mode
+
+    def set_plan_drives_rail(self, enabled: bool) -> None:
+        self._plan_drives_rail = bool(enabled)
+        if self._native is not None:
+            self._native.push_flags()
+
+    def set_direct_joint_ptp(self, enabled: bool) -> None:
+        self._direct_joint_ptp = bool(enabled)
+        if self._native is not None:
+            self._native.push_flags()
+
+    @property
+    def configured_rail_mode(self) -> RailMode:
+        return self._configured_rail_mode
+
+    @property
+    def locked_style(self) -> LockedStyle:
+        return self._locked_style
+
+    @property
+    def is_locked_hold(self) -> bool:
+        return (
+            self._rail_mode == RailMode.LOCKED
+            and self._locked_style == LockedStyle.HOLD
+        )
+
+    def set_arm_task_suppressed(self, suppressed: bool) -> None:
+        self._arm_task_suppressed = bool(suppressed)
+        if self._native is not None:
+            self._native.push_flags()
+
+    def set_centering_suppressed(self, suppressed: bool) -> None:
+        self._centering_suppressed = bool(suppressed)
+        if self._native is not None:
+            self._native.push_flags()
+
+    def set_manipulability_active(self, active: bool) -> None:
+        self._manipulability_active = bool(active) and self.manipulability_task is not None
+        if self._native is not None:
+            self._native.push_flags()
+
+    def set_rail_extension_active(self, active: bool) -> None:
+        self._rail_ext_active = bool(active)
+        if self._native is not None:
+            self._native.push_flags()
+
+    def set_rail_extension_mode(self, mode: str) -> None:
+        if self.rail_ext_task is not None:
+            self.rail_ext_task.set_mode(mode)  # type: ignore[arg-type]
+        if self._native is not None:
+            self._native.set_rail_extension_mode(mode)
+
+    def set_mode(self, mode: str) -> None:
+        """Alias for ``set_rail_extension_mode`` (facade contract)."""
+        self.set_rail_extension_mode(mode)
+
+    def set_rail_pose_target(self, y_rail_m: float | None) -> None:
+        if self.rail_ext_task is not None:
+            self.rail_ext_task.set_rail_pose_target(y_rail_m)
+        if self._native is not None:
+            self._native.set_rail_pose_target(y_rail_m)
+
+    def capture_rail_extension_ref(self) -> None:
+        if self.rail_ext_task is not None:
+            self.rail_ext_task.capture_reference(self.q_cmd)
+        if self._native is not None:
+            self._native.capture_rail_extension_ref()
+
+    def _measure_box_periods(self, dt: float) -> tuple[float, float | None]:
+        """Two most recent wall periods for the unequal-sample third-order box.
+
+        Each period is clamped to ``[0.8, 1.0] × dt`` (pass the nominal
+        period, not the jittering wall period) so one stalled tick cannot
+        open the acceleration/jerk boxes.
+        """
+        now = time.monotonic()
+        prev = self._box_dt_last_t
+        prev_h1 = self._box_h1_last
+        self._box_dt_last_t = now
+        nominal = max(float(dt), 1.0e-6)
+        if prev is None:
+            self._box_h1_last = nominal
+            return nominal, None
+        measured = now - prev
+        if not math.isfinite(measured) or measured <= 0.0:
+            h1 = nominal
+        else:
+            h1 = float(np.clip(measured, 0.8 * nominal, 1.0 * nominal))
+        self._box_h1_last = h1
+        return h1, prev_h1
+
+    def _commit_command_step(
+        self,
+        q_prev: np.ndarray,
+        dt_int: float,
+        dt_nom: float,
+    ) -> tuple[np.ndarray, bool]:
+        """Project ``q_cmd`` through the post-QP step box, or only shadow it.
+
+        Always writes the actually sent ``dq/dt_int`` into ``core.qdot_prev``.
+        Does not touch ``qdot_prev2`` / ``_qdot_prev_seen`` — ``step()`` shifts
+        those at the start of the next solve.
+        """
+        q_desired = np.asarray(self.q_cmd, dtype=float).copy()
+        q_shadow, _dq_shadow, would_clamp = clamp_command_step(
+            q_prev,
+            q_desired,
+            self._dq_prev,
+            self.limits.a_max,
+            dt_int,
+        )
+        # Shadow-only: if the clip would change the command, keep the QP
+        # result unless the shadow still satisfies the Cartesian lock.
+        q_final = np.asarray(q_desired, dtype=float)
+        clamp_applied = False
+        if would_clamp:
+            period = max(float(dt_int), 1.0e-12)
+            qdot_shadow = (
+                np.asarray(q_shadow, dtype=float) - np.asarray(q_prev, dtype=float)
+            ) / period
+            hard_s, lock_s = self.core.validate_final_qdot(qdot_shadow)
+            final_tol = max(
+                10.0 * float(getattr(self.cfg.qp, "eps_abs", 1.0e-6)),
+                1.0e-5,
+            )
+            if (
+                np.isfinite(hard_s)
+                and np.isfinite(lock_s)
+                and hard_s <= final_tol
+                and lock_s <= final_tol
+            ):
+                q_final = np.asarray(q_shadow, dtype=float)
+                clamp_applied = True
+        lo = np.asarray(self.limits.q_lower, dtype=float)
+        hi = np.asarray(self.limits.q_upper, dtype=float)
+        if lo.shape == q_final.shape and hi.shape == q_final.shape:
+            q_final = np.minimum(np.maximum(q_final, lo), hi)
+        dq_final = q_final - np.asarray(q_prev, dtype=float)
+        self.q_cmd = np.asarray(q_final, dtype=float).copy()
+        self._dq_prev = np.asarray(dq_final, dtype=float).copy()
+        period = max(float(dt_int), 1.0e-12)
+        qdot_committed = np.asarray(dq_final, dtype=float) / period
+        self.core.qdot_prev = qdot_committed.copy()
+        self._last_post_step = {
+            "would_clamp": bool(would_clamp),
+            "clamp_applied": bool(clamp_applied),
+            "shadow_q": np.asarray(q_shadow, dtype=float).copy(),
+            "qdot_committed": qdot_committed.copy(),
+        }
+        return qdot_committed, bool(clamp_applied)
+
+    def _attach_post_qp_ab(
+        self,
+        step: JointIkStep,
+        *,
+        dt_nom: float,
+        dt_int: float,
+        box_h1: float | None,
+        box_h2: float | None,
+        qdot_raw: np.ndarray,
+        qdot_pre_commit: np.ndarray,
+        qdot_committed: np.ndarray,
+        qdot_prev_used: np.ndarray,
+        qdot_prev2_used: np.ndarray,
+    ) -> JointIkStep:
+        """Stamp the A/B fields that the CSV / offline box check need."""
+        tel = self._last_post_step or {}
+        step.post_qp_step_clamp_enabled = True
+        step.post_step_would_clamp = bool(tel.get("would_clamp", False))
+        step.post_step_clamp_applied = bool(tel.get("clamp_applied", False))
+        step.acc_clamped = bool(tel.get("clamp_applied", step.acc_clamped))
+        step.dt_nom_s = float(dt_nom)
+        step.dt_int_s = float(dt_int)
+        step.box_h1_s = (
+            float(box_h1) if box_h1 is not None and np.isfinite(box_h1) else float("nan")
+        )
+        step.box_h2_s = (
+            float(box_h2) if box_h2 is not None and np.isfinite(box_h2) else float("nan")
+        )
+        step.qdot_raw = np.asarray(qdot_raw, dtype=float).copy()
+        step.qdot_pre_commit = np.asarray(qdot_pre_commit, dtype=float).copy()
+        step.qdot_committed = np.asarray(qdot_committed, dtype=float).copy()
+        step.qdot_prev_used = np.asarray(qdot_prev_used, dtype=float).copy()
+        step.qdot_prev2_used = np.asarray(qdot_prev2_used, dtype=float).copy()
+        step.box_lo = np.asarray(self.core.last_lo_box, dtype=float).copy()
+        step.box_hi = np.asarray(self.core.last_hi_box, dtype=float).copy()
+        shadow = tel.get("shadow_q")
+        step.post_step_shadow_q = (
+            np.asarray(shadow, dtype=float).copy()
+            if shadow is not None
+            else np.full(self.kin.nv, np.nan)
+        )
+        return step
+
+    def plan_scan_stroke(
+        self,
+        y_center_m: float,
+        amplitude_m: float,
+        q_rad: np.ndarray | None = None,
+    ) -> tuple[float, float]:
+        """One-shot min-max (d*, ψ*) at scan start.  Raises if infeasible."""
+        q = self.q_cmd if q_rad is None else np.asarray(q_rad, dtype=float)
+        if self.posture_retarget is None:
+            y_tcp = float(self.kin.fk_placement(q).translation[1])
+            d_star = y_tcp - float(q[0])
+            if self.rail_ext_task is not None:
+                self.rail_ext_task.set_d_pref(d_star)
+            return d_star, float("nan")
+        d_star, psi_star = self.posture_retarget.plan_stroke(
+            q,
+            y_center_m=float(y_center_m),
+            amplitude_m=float(amplitude_m),
+            rail_lo=float(self.limits.q_lower[0]),
+            rail_hi=float(self.limits.q_upper[0]),
+        )
+        if self.arm_task is not None:
+            self.arm_task.set_reference(float(psi_star))
+        if self.rail_ext_task is not None:
+            self.rail_ext_task.set_d_pref(float(d_star))
+        if self._native is not None:
+            self._native.set_stroke(float(d_star), float(psi_star))
+        return float(d_star), float(psi_star)
+
+    def _check_design_family(self, q_meas: np.ndarray) -> None:
+        qn = np.asarray(self.centering_task._q_target_default, dtype=float)
+        ok = design_family_ok(q_meas, qn)
+        self._family_ok = bool(ok)
+        if ok:
+            return
+        from rm75_control.kinematics.srs_ik import branch_from_q, psi_from_q
+
+        q = np.asarray(q_meas, dtype=float).reshape(-1)
+        psi_m = math.degrees(fold_psi_to_positive(psi_from_q(q)))
+        psi_n = math.degrees(fold_psi_to_positive(psi_from_q(qn)))
+        msg = (
+            "DESIGN FAMILY MISMATCH: measured "
+            f"ψ={psi_m:.1f}° branch={int(branch_from_q(q))} "
+            f"J1={math.degrees(float(q[1])):+.1f}° vs design "
+            f"ψ={psi_n:.1f}° branch={int(branch_from_q(qn))} "
+            f"J1={math.degrees(float(qn[1])):+.1f}°"
+        )
+        print(f"[joint_ik] {msg}", flush=True)
+        if bool(getattr(self.cfg.psi_retarget, "require_design_family", False)):
+            raise ValueError(msg)
+
+    def _latch_attractor_from_q(self, q_meas: np.ndarray) -> None:
+        """Yaml signs for the branch barrier; homotopy q* starts at live q.
+
+        Publishing the yaml photo as q* at t=0 pinned J1 to −90° while d*
+        was still the live split.  Barrier signs stay on the design family
+        so a planar J1≈0 start can still fold toward −90°.
+        """
+        q = np.asarray(q_meas, dtype=float).reshape(-1)
+        if q.size != self.kin.nv or not np.all(np.isfinite(q)):
+            return
+        q_nominal = np.asarray(self.centering_task._q_target_default, dtype=float)
+        self.core.set_q_star_signs(q_nominal)
+        q_star = q.copy()
+        if self.posture_retarget is not None and self.posture_retarget.q_star_rad is not None:
+            qh = np.asarray(self.posture_retarget.q_star_rad, dtype=float).reshape(-1)
+            if qh.size == q.size:
+                q_star = qh
+        self.centering_task.set_q_target(q_star)
+        self.core.set_q_star(q_star.copy())
+        if self.arm_task is not None:
+            self.arm_task.reset(q)
+        self._check_design_family(q)
+
+    def _publish_homotopy_centering(self) -> None:
+        """Homotopy q* while s<1; yaml nominal after s≈1."""
+        if self.posture_retarget is None:
+            return
+        if float(self.posture_retarget.homotopy_s) >= 1.0 - 1.0e-6:
+            self.centering_task.set_q_target(None)
+            self.core.set_q_star(np.asarray(self.centering_task.q_target, dtype=float))
+            return
+        qh = self.posture_retarget.q_star_rad
+        if qh is not None and np.asarray(qh).size == self.kin.nv:
+            self.centering_task.set_q_target(np.asarray(qh, dtype=float))
+            self.core.set_q_star(np.asarray(qh, dtype=float))
+
+    def reset(self, q0_rad: np.ndarray) -> None:
+        self.q_cmd = np.asarray(q0_rad, dtype=float).copy()
+        self.core.reset()
+        if self.arm_task is not None:
+            self.arm_task.reset(self.q_cmd)
+        if self.manipulability_task is not None:
+            self.manipulability_task.reset()
+        self.rail_task.reset(self.q_cmd)
+        if self.rail_ext_task is not None:
+            self.rail_ext_task.reset(self.q_cmd)
+        if self.posture_retarget is not None:
+            self.posture_retarget.reset(self.q_cmd)
+            if self.rail_ext_task is not None and np.isfinite(
+                self.posture_retarget.d_star_m
+            ):
+                self.rail_ext_task.set_d_pref(float(self.posture_retarget.d_star_m))
+            if self.arm_task is not None and self.posture_retarget._psi_cmd is not None:
+                self.arm_task.set_reference(float(self.posture_retarget._psi_cmd))
+        self._box_dt_last_t = None
+        self._box_h1_last = None
+        self._dq_prev = None
+        self.rail_ref_model.reset(float(self.q_cmd[0]) * 0.0)
+        self.rail_observer.reset(float(self.q_cmd[0]), 0.0)
+        self.midranging.reset()
+        self._midrange_freeze = False
+        self.last_v_r_ref = 0.0
+        self.last_u_alloc = 0.0
+        self.last_u_posture = 0.0
+        self.last_u_mid = 0.0
+        self.last_comp_projected_frac = 0.0
+        self._direct_joint_ptp = False
+        self._plan_drives_rail = False
+        self._press_z_mark = float("nan")
+        self._press_stall_s = 0.0
+        self._d_star_nudge_cool_s = 0.0
+        self._last_post_step = {}
+        self.last_slack_norm = 0.0
+        self._sat_scale = 1.0
+        self.last_sat_scale = 1.0
+        self._sec_filter.reset()
+        self._quiescent = False
+        self._quiet_s = 0.0
+        self._cmd_quiet_s = 0.0
+        self._last_tcp_est = np.zeros(6, dtype=float)
+        self._u_mid_committed = 0.0
+        self._u_mid_for_sec = 0.0
+        self._enabled = True
+        self._apply_rail_mode_side_effects()
+        self._latch_attractor_from_q(self.q_cmd)
+        if self._native is not None:
+            self._native.reset(self.q_cmd)
+
+    def begin_hybrid_episode(
+        self,
+        q_meas: np.ndarray,
+        qdot_applied: np.ndarray | None = None,
+    ) -> None:
+        """Preserve velocity continuity and latch yaml branch signs.
+
+        Homotopy ``q*`` starts at the measured pose.  Barrier signs stay on
+        the yaml family so a planar start can still fold toward design J1.
+        """
+        applied = self.core.qdot_prev if qdot_applied is None else qdot_applied
+        self.core.sync_applied(applied)
+        if self.posture_retarget is not None:
+            self.posture_retarget.reset(q_meas)
+        self._latch_attractor_from_q(q_meas)
+        if self._native is not None:
+            self._native.begin_hybrid_episode(q_meas, applied)
+
+    def set_rail_mode(
+        self,
+        mode: RailMode | str,
+        *,
+        q_ref_m: float | None = None,
+        locked_style: LockedStyle | str | None = None,
+    ) -> None:
+        if isinstance(mode, str):
+            mode = RailMode(mode)
+        self._rail_mode = mode
+        if locked_style is not None:
+            if isinstance(locked_style, str):
+                locked_style = LockedStyle(locked_style)
+            self._locked_style = locked_style
+        if q_ref_m is not None:
+            if (
+                mode == RailMode.LOCKED
+                and self._locked_style == LockedStyle.HOLD
+                and abs(float(q_ref_m) - float(self.q_cmd[0])) > 1.0e-9
+            ):
+                raise ValueError(
+                    "locked HOLD cannot move rail to a different reference; "
+                    "use a continuous RAIL_ONLY/TCP_FIXED phase first"
+                )
+            self.rail_task.set_reference(q_ref_m)
+        elif mode == RailMode.LOCKED and self._locked_style == LockedStyle.HOLD:
+            self.rail_task.reset(self.q_cmd)
+        self._apply_rail_mode_side_effects()
+        if self._native is not None:
+            self._native.set_rail_mode(
+                self._rail_mode,
+                q_ref_m=q_ref_m,
+                locked_style=self._locked_style,
+            )
+
+    def set_coupled(self) -> None:
+        self.set_rail_mode(RailMode.COUPLED)
+
+    def set_locked(
+        self,
+        style: LockedStyle | str = LockedStyle.HOLD,
+        *,
+        q_ref_m: float | None = None,
+    ) -> None:
+        self.set_rail_mode(RailMode.LOCKED, q_ref_m=q_ref_m, locked_style=style)
+
+    def _apply_rail_mode_side_effects(self) -> None:
+        self.rail_task.cfg.mode = self._rail_mode
+        self.rail_task.cfg.locked_style = self._locked_style
+        self.cfg.rail.mode = self._rail_mode
+        self.cfg.rail.locked_style = self._locked_style
+
+    def _pin_rail_if_locked_hold(self) -> None:
+        if not self.is_locked_hold or not self.cfg.rail.lock_hard_pin:
+            return
+        if self.rail_task.q_ref is None:
+            return
+        self.q_cmd[0] = float(self.rail_task.q_ref)
+        self.core.qdot_prev[0] = 0.0
+
+    def _twist_to_base(self, twist: np.ndarray, q_for_rot: np.ndarray) -> np.ndarray:
+        twist = np.asarray(twist, dtype=float)
+        if self.cfg.control_frame != "tool":
+            return twist
+        R = self.kin.fk_placement(q_for_rot).rotation
+        out = np.zeros(6, dtype=float)
+        out[:3] = R @ twist[:3]
+        out[3:6] = R @ twist[3:6]
+        return out
+
+    def _secondary(
+        self,
+        q: np.ndarray,
+        qdot_ff: np.ndarray | None,
+        *,
+        manipulability_active: bool | float | None = None,
+        centering_sigma_fade: bool = True,
+        dt_s: float | None = None,
+    ) -> np.ndarray:
+        slack = float(self.last_slack_norm)
+        target = secondary_scale_from_slack(slack, self.cfg.saturation)
+        dt = float(self.cfg.dt if dt_s is None else dt_s)
+        tau = float(getattr(self.cfg.saturation, "secondary_scale_tau_s", 0.10) or 0.0)
+        if tau <= 1.0e-9 or dt <= 0.0:
+            sat_scale = target
+        else:
+            alpha = min(1.0, dt / tau)
+            sat_scale = float(self._sat_scale) + alpha * (target - float(self._sat_scale))
+        self._sat_scale = float(sat_scale)
+        self.last_sat_scale = float(sat_scale)
+        qdot0 = self.secondary.compose(
+            q,
+            qdot_ff,
+            self.core.qdot_prev,
+            arm_suppressed=self._arm_task_suppressed,
+            sigma_min=self.last_sigma_min,
+            sigma_ref=self.cfg.qp.sr_damping.sigma_ref,
+            centering_suppressed=self._centering_suppressed,
+            centering_sigma_fade=centering_sigma_fade,
+            manipulability_active=(
+                self._manipulability_active
+                if manipulability_active is None
+                else manipulability_active
+            ),
+            soft_scale=sat_scale,
+            dt_s=dt,
+        )
+        self.last_secondary_norm = float(np.linalg.norm(qdot0))
+        return qdot0
+
+    def _clip_qdot_to_box(
+        self,
+        q_prev: np.ndarray,
+        qdot: np.ndarray,
+        dt: float,
+        q_meas: np.ndarray | None,
+        resync_vec: np.ndarray,
+        *,
+        rail_locked: bool,
+        rail_vel_pin: float | None,
+        box_h1: float | None = None,
+        box_h2: float | None = None,
+        rail_lead_exempt: bool = False,
+    ) -> np.ndarray:
+        qdot = np.asarray(qdot, dtype=float).reshape(-1).copy()
+        if qdot.shape != q_prev.shape or not np.all(np.isfinite(qdot)):
+            qdot = np.zeros_like(q_prev)
+        q_geom = q_meas if q_meas is not None else q_prev
+        lo, hi = self.core.constraints.bounds(
+            q_geom,
+            dt,
+            self.core.qdot_prev,
+            q_meas=q_meas,
+            q_cmd=q_prev,
+            resync_err=resync_vec,
+            rail_locked=rail_locked,
+            rail_lock_vel_eps_m_s=self.cfg.rail.lock_vel_eps_m_s,
+            rail_vel_pin_m_s=rail_vel_pin,
+            qdot_prev2=self.core.qdot_prev2,
+            j_max=self.core._j_max,
+            box_h1=box_h1,
+            box_h2=box_h2,
+            rail_lead_exempt=rail_lead_exempt,
+        )
+        return scale_qdot_into_box(qdot, lo, hi)
+
+    def _make_step(
+        self,
+        *,
+        qdot: np.ndarray,
+        twist_base: np.ndarray,
+        sigma_min: float,
+        manip: float,
+        slack_norm: float,
+        n_cbf_active: int,
+        follow_err: float,
+        qdot_ff_norm: float,
+        vel_clamped: bool = False,
+        acc_clamped: bool = False,
+        pos_clamped: bool = False,
+        rail_vel_pin: float | None = None,
+        rail_qdot_ff: float = float("nan"),
+        plan_drives_rail: bool = False,
+        rail_ext_err_m: float = 0.0,
+        rail_ext_weight: float = 0.0,
+        mode: str = "qpik",
+        failed: bool = False,
+        fallback_reason: str = "",
+        rail_macro_pref_v: float = 0.0,
+        rail_escape_active: bool = False,
+        rail_contrib_m_s: float = float("nan"),
+        arm_contrib_m_s: float = float("nan"),
+        rail_motion_share: float = float("nan"),
+        scan_target: np.ndarray | None = None,
+        scan_achieved: np.ndarray | None = None,
+        scan_residual: np.ndarray | None = None,
+        physical_saturated: bool = False,
+    ) -> JointIkStep:
+        slack = float(slack_norm)
+        self.last_slack_norm = slack if np.isfinite(slack) else 0.0
+        alpha = 0.0 if failed else float(np.clip(1.0 - slack, 0.0, 1.0))
+        qp_total_ms = float(getattr(self.core, "last_qp_total_ms", 0.0))
+        qp2_fallback = bool(getattr(self.core, "last_qp2_fallback", False))
+        return JointIkStep(
+            q_send=self.q_cmd.copy(),
+            qdot=np.asarray(qdot, dtype=float).copy(),
+            twist_base=np.asarray(twist_base, dtype=float).copy(),
+            sigma_min=float(sigma_min),
+            manip=float(manip),
+            slack_norm=slack,
+            n_cbf_active=int(n_cbf_active),
+            follow_err_rad=float(follow_err),
+            qdot_ff_norm=float(qdot_ff_norm),
+            vel_clamped=bool(vel_clamped),
+            acc_clamped=bool(acc_clamped),
+            pos_clamped=bool(pos_clamped),
+            rail_vel_pin=(
+                float(rail_vel_pin) if rail_vel_pin is not None else float("nan")
+            ),
+            rail_qdot_ff=float(rail_qdot_ff),
+            plan_drives_rail=bool(plan_drives_rail),
+            arm_singularity_smooth=self.secondary.last_arm_smooth,
+            limit_activation=self.secondary.last_limit_activation,
+            rail_ext_err_m=float(rail_ext_err_m),
+            rail_ext_weight=float(rail_ext_weight),
+            rail_escape_active=bool(rail_escape_active),
+            psi_deg=(
+                float(np.degrees(self.arm_task.arm_angle(self.q_cmd)))
+                if self.arm_task is not None
+                else float("nan")
+            ),
+            psi_ref_deg=(
+                float(np.degrees(self.arm_task.psi_ref))
+                if self.arm_task is not None and self.arm_task.psi_ref is not None
+                else float("nan")
+            ),
+            psi_retarget_score=(
+                float(self.posture_retarget.last_psi_score)
+                if self.posture_retarget is not None
+                else float("nan")
+            ),
+            d_pref_m=(
+                float(self.rail_ext_task.d_pref_m)
+                if self.rail_ext_task is not None and self.rail_ext_task.d_pref_m is not None
+                else float("nan")
+            ),
+            elbow_margin_rad=(
+                float(self.posture_retarget.last_elbow_margin_rad)
+                if self.posture_retarget is not None
+                else float("nan")
+            ),
+            wrist_open_rad=(
+                float(self.posture_retarget.last_wrist_open_rad)
+                if self.posture_retarget is not None
+                else float("nan")
+            ),
+            family_ok=bool(self._family_ok),
+            physical_saturated=bool(physical_saturated),
+            rail_contrib_m_s=float(rail_contrib_m_s),
+            arm_contrib_m_s=float(arm_contrib_m_s),
+            rail_motion_share=float(rail_motion_share),
+            wln_scale_rail=float(self.core.last_wln_scale[0]),
+            wln_scale_arm_max=float(np.max(self.core.last_wln_scale[1:])),
+            waste_ratio=(
+                (abs(float(rail_contrib_m_s)) + abs(float(arm_contrib_m_s)))
+                / max(abs(float(rail_contrib_m_s) + float(arm_contrib_m_s)), 1.0e-9)
+                if np.isfinite(rail_contrib_m_s) and np.isfinite(arm_contrib_m_s)
+                else float("nan")
+            ),
+            rail_ff_m=(
+                float(getattr(self.rail_ext_task, "last_rail_ff_m", float("nan")))
+                if self.rail_ext_task is not None
+                else float("nan")
+            ),
+            rail_posture_err_m=(
+                float(getattr(self.rail_ext_task, "last_track_err_m", float("nan")))
+                if self.rail_ext_task is not None
+                else float("nan")
+            ),
+            d_star_m=(
+                float(self.posture_retarget.d_star_m)
+                if self.posture_retarget is not None
+                else float("nan")
+            ),
+            psi_star_deg=(
+                float(np.degrees(self.posture_retarget.psi_star_rad))
+                if self.posture_retarget is not None
+                and np.isfinite(self.posture_retarget.psi_star_rad)
+                else float("nan")
+            ),
+            minmax_margin=(
+                float(self.posture_retarget.last_minmax_margin)
+                if self.posture_retarget is not None
+                else float("nan")
+            ),
+            controller_mode=mode,
+            qp_backend=self.core.backend_name,
+            qp_solver_status=self.core.last_status if mode == "qpik" else "not_run",
+            qp_solver_call_count=int(self.core.solve_count) if mode == "qpik" else 0,
+            qp_solver_solve_ms=qp_total_ms if mode == "qpik" else 0.0,
+            qp_solver_overrun=bool(
+                mode == "qpik"
+                and qp_total_ms > float(getattr(self.cfg.qp, "max_solve_ms", 5.0))
+            ),
+            qp1_status=(
+                str(getattr(self.core, "last_qp1_status", "not_run"))
+                if mode == "qpik"
+                else "not_run"
+            ),
+            qp2_status=(
+                str(getattr(self.core, "last_qp2_status", "not_run"))
+                if mode == "qpik"
+                else "not_run"
+            ),
+            qp1_solve_ms=(
+                float(getattr(self.core, "last_qp1_solve_ms", 0.0))
+                if mode == "qpik"
+                else 0.0
+            ),
+            qp2_solve_ms=(
+                float(getattr(self.core, "last_qp2_solve_ms", 0.0))
+                if mode == "qpik"
+                else 0.0
+            ),
+            qp_assembly_ms=(
+                max(
+                    qp_total_ms
+                    - float(getattr(self.core, "last_qp1_solve_ms", 0.0))
+                    - float(getattr(self.core, "last_qp2_solve_ms", 0.0))
+                    - float(getattr(self.core, "last_fallback_ms", 0.0)),
+                    0.0,
+                )
+                if mode == "qpik"
+                else 0.0
+            ),
+            qp_fallback_ms=(
+                float(getattr(self.core, "last_fallback_ms", 0.0))
+                if mode == "qpik"
+                else 0.0
+            ),
+            qpik_total_ms=qp_total_ms if mode == "qpik" else 0.0,
+            qp2_fallback=qp2_fallback if mode == "qpik" else False,
+            qpik_alpha=alpha,
+            qpik_beta=1.0,
+            qpik_authority=1.0,
+            qpik_hard_residual_max=0.0,
+            qpik_dexterity_slack=float(getattr(self.core, "last_dexterity_slack", 0.0)),
+            qpik_branch_slack=float(getattr(self.core, "last_branch_slack", 0.0)),
+            rail_macro_pref_v=float(rail_macro_pref_v),
+            rail_decomposition_error=0.0,
+            scan_target=(
+                np.asarray(scan_target, dtype=float).copy()
+                if scan_target is not None
+                else np.zeros(2)
+            ),
+            scan_achieved=(
+                np.asarray(scan_achieved, dtype=float).copy()
+                if scan_achieved is not None
+                else np.zeros(2)
+            ),
+            scan_residual=(
+                np.asarray(scan_residual, dtype=float).copy()
+                if scan_residual is not None
+                else np.zeros(2)
+            ),
+            fallback_level="stop" if failed else "none",
+            fallback_reason=fallback_reason,
+            solver_fault_latched=bool(mode == "qpik" and failed),
+            arm_health=float(sigma_min),
+            a_mirror_frac=float(getattr(self.core, "last_a_mirror_frac", float("nan"))),
+            j_mirror_frac=float(getattr(self.core, "last_j_mirror_frac", float("nan"))),
+        )
+
+    def enable(self) -> None:
+        self._enabled = True
+        if self._native is not None:
+            self._native.enable()
+
+    def stop(self) -> None:
+        """Communication abort: zero the next command.  Not a trajectory mode."""
+        self._enabled = False
+        self._quiescent = True
+        self._quiet_s = _QUIESCENT_HOLD_S
+        self._sec_filter.reset()
+        self.midranging.reset()
+        self.rail_ref_model.reset(0.0)
+        self.last_v_r_ref = 0.0
+        if self._native is not None:
+            self._native.stop()
+
+    def _update_quiescent(self, twist_base: np.ndarray, dt: float) -> bool:
+        v = np.asarray(twist_base, dtype=float).reshape(-1)
+        lin = float(np.linalg.norm(v[:3])) if v.size >= 3 else 0.0
+        rot = float(np.linalg.norm(v[3:6])) if v.size >= 6 else 0.0
+        tcp = np.asarray(self._last_tcp_est, dtype=float).reshape(-1)
+        tcp_lin = float(np.linalg.norm(tcp[:3])) if tcp.size >= 3 else 0.0
+        cmd_quiet = lin < _QUIESCENT_LIN_M_S and rot < _QUIESCENT_ROT_RAD_S
+        tcp_quiet = tcp_lin < _QUIESCENT_TCP_M_S
+        if cmd_quiet:
+            self._cmd_quiet_s += max(float(dt), 0.0)
+            if tcp_quiet:
+                self._quiet_s += max(float(dt), 0.0)
+            else:
+                self._quiet_s = 0.0
+        else:
+            self._cmd_quiet_s = 0.0
+            self._quiet_s = 0.0
+        self._quiescent = bool(self._quiet_s + 1.0e-12 >= _QUIESCENT_HOLD_S)
+        return self._quiescent
+
+    def step(
+        self,
+        v_cmd: np.ndarray,
+        stamp: float | None = None,
+        *,
+        q_meas: np.ndarray | None = None,
+        **kwargs,
+    ) -> TrackerStatus:
+        """Pure-velocity inner API: ``v_cmd[6]`` plus comms stamp."""
+        if self._native is not None:
+            return self._native.step(v_cmd, stamp, q_meas=q_meas, **kwargs)
+        stale = False
+        twist = np.asarray(v_cmd, dtype=float).reshape(-1).copy()
+        if twist.size != 6:
+            raise ValueError("v_cmd must be a 6-vector")
+        if stamp is not None and np.isfinite(float(stamp)):
+            age = time.monotonic() - float(stamp)
+            if age > float(self.cfg.feedback_timeout_s):
+                stale = True
+                twist[:] = 0.0
+        if not self._enabled:
+            stale = True
+            twist[:] = 0.0
+        inner_step = self.update(twist, q_meas=q_meas, **kwargs)
+        status = TrackerStatus(
+            v_cmd_received=np.asarray(inner_step.v_cmd_received, dtype=float).copy(),
+            v_cmd_feasible=np.asarray(inner_step.v_cmd_feasible, dtype=float).copy(),
+            v_tcp_estimated=np.asarray(inner_step.v_tcp_estimated, dtype=float).copy(),
+            task_residual=np.asarray(inner_step.protected_residual, dtype=float).copy(),
+            slack_norm=float(inner_step.slack_norm),
+            joint_limited=bool(inner_step.joint_limited),
+            rail_limited=bool(inner_step.rail_limited),
+            wall_active=bool(inner_step.wall_active or inner_step.wall_override),
+            secondary_suppressed=bool(inner_step.secondary_suppressed),
+            command_stale=bool(stale or inner_step.command_stale),
+            step=inner_step,
+        )
+        return status
+
+    def update(
+        self,
+        twist: np.ndarray,
+        dt: float | None = None,
+        q_meas: np.ndarray | None = None,
+        qdot_ff: np.ndarray | None = None,
+        *,
+        vel_ff: np.ndarray | None = None,
+        pose_d: np.ndarray | None = None,
+        f_ext_z: float | None = None,
+        f_des_z: float | None = None,
+        contact_active: bool = False,
+        task_rotation_base: np.ndarray | None = None,
+        task_safety_rows: tuple = (),
+        path_twist: np.ndarray | None = None,
+        feedback_twist: np.ndarray | None = None,
+        v_force_z: float | None = None,
+        rail_exec_vel_m_s: float | None = None,
+        rail_exec_smooth_m_s: float | None = None,
+        dt_wall_s: float | None = None,
+        command_stale: bool = False,
+        seed_q_cmd: bool = False,
+    ) -> JointIkStep:
+        if self._native is not None:
+            return self._native.update(
+                twist,
+                dt=dt,
+                q_meas=q_meas,
+                qdot_ff=qdot_ff,
+                vel_ff=vel_ff,
+                pose_d=pose_d,
+                f_ext_z=f_ext_z,
+                f_des_z=f_des_z,
+                contact_active=contact_active,
+                task_rotation_base=task_rotation_base,
+                task_safety_rows=task_safety_rows,
+                path_twist=path_twist,
+                feedback_twist=feedback_twist,
+                v_force_z=v_force_z,
+                rail_exec_vel_m_s=rail_exec_vel_m_s,
+                rail_exec_smooth_m_s=rail_exec_smooth_m_s,
+                dt_wall_s=dt_wall_s,
+                command_stale=command_stale,
+                seed_q_cmd=seed_q_cmd,
+            )
+        del f_ext_z, f_des_z, task_safety_rows
+        path_twist_arr = (
+            np.asarray(path_twist, dtype=float).reshape(6)
+            if path_twist is not None
+            else np.zeros(6)
+        )
+        feedback_twist_arr = (
+            np.asarray(feedback_twist, dtype=float).reshape(6)
+            if feedback_twist is not None
+            else np.zeros(6)
+        )
+        dt_nom = self.cfg.dt if dt is None else float(dt)
+        if not np.isfinite(dt_nom) or dt_nom <= 0.0:
+            raise ValueError("dt must be finite and > 0")
+        if dt_wall_s is None:
+            dt = dt_nom
+            dt_rail = dt_nom
+        else:
+            # Integrate on a clipped wall period so a single overrun cannot
+            # emit a 2x command step.  Force/proxy dynamics still see the
+            # raw wall period via dt_actual_s in the outer loop.
+            dt = integration_period(dt_nom, dt_wall_s)
+            dt_rail = dt
+        dt_int = float(dt)
+        qdot_prev_used = np.asarray(self.core.qdot_prev, dtype=float).copy()
+        qdot_prev2_used = np.asarray(self.core._qdot_prev_seen, dtype=float).copy()
+        qdot_raw = np.full(self.kin.nv, np.nan)
+        qdot_pre_commit = np.full(self.kin.nv, np.nan)
+        box_h1: float | None = None
+        box_h2: float | None = None
+        q_prev = np.asarray(self.q_cmd, dtype=float).copy()
+        if (
+            self._rail_mode == RailMode.COUPLED
+            and self.rail_observer._initialized
+            and self.rail_observer._last_sample_t is not None
+        ):
+            q_prev[0] = float(self.rail_observer.q_hat)
+            self.q_cmd[0] = float(q_prev[0])
+        if q_meas is None:
+            raise ValueError("q_meas is required for every Cartesian QPIK tick")
+        q_state = np.asarray(q_meas, dtype=float).copy()
+        if q_state.shape != (self.kin.nv,) or not np.isfinite(q_state).all():
+            raise ValueError(f"q_meas must be a finite {(self.kin.nv,)} vector")
+        follow_err = float(np.max(np.abs(q_prev - q_state)))
+        twist_task = np.asarray(twist, dtype=float).reshape(-1)
+        if twist_task.size != 6 or not np.isfinite(twist_task).all():
+            raise ValueError("twist must be a finite 6-vector")
+        if rail_exec_vel_m_s is not None and not np.isfinite(float(rail_exec_vel_m_s)):
+            raise ValueError("rail_exec_vel_m_s must be finite when supplied")
+        if rail_exec_smooth_m_s is not None and not np.isfinite(
+            float(rail_exec_smooth_m_s)
+        ):
+            raise ValueError("rail_exec_smooth_m_s must be finite when supplied")
+        # Hardware supplies the time-stamped worker estimate.  Offline, or
+        # before the first encoder sample, use the last committed rail
+        # command.  An initialized observer with v_hat=0 and no samples
+        # must not masquerade as "the rail is stopped".
+        if rail_exec_vel_m_s is not None:
+            rail_exec_for_qp = float(rail_exec_vel_m_s)
+        elif (
+            self.rail_observer._initialized
+            and self.rail_observer._last_sample_t is not None
+        ):
+            rail_exec_for_qp = float(self.rail_observer.v_hat)
+        else:
+            rail_exec_for_qp = float(self.core.qdot_prev[0])
+
+        if task_rotation_base is not None:
+            rotation_base_task = np.asarray(task_rotation_base, dtype=float)
+            twist_base = np.concatenate(
+                (
+                    rotation_base_task @ twist_task[:3],
+                    rotation_base_task @ twist_task[3:],
+                )
+            )
+        else:
+            twist_base = self._twist_to_base(twist_task, q_state)
+
+        need_mass = bool(self.cfg.qp.use_mass_weighted_reg)
+        if bool(getattr(self.cfg.qp, "use_cpp_kernel", True)):
+            J_pre, sigma_values_pre, mass_pre = cpp_kernel.kinematics_snapshot(
+                self.kin, q_state, need_mass=need_mass
+            )
+        else:
+            J_pre = self.kin.jacobian(q_state)
+            sigma_values_pre = self.kin.singular_values(J_pre)
+            mass_pre = self.kin.mass_matrix(q_state) if need_mass else None
+        sigma_pre = float(sigma_values_pre.min())
+        sigma_arm = float(cpp_kernel.singular_values(J_pre[:, 1:]).min())
+        sigma_ref = float(self.cfg.qp.sr_damping.sigma_ref)
+
+        locked_hold = self.is_locked_hold
+        rail_only = (
+            self._rail_mode == RailMode.LOCKED
+            and self._locked_style == LockedStyle.RAIL_ONLY
+        )
+        tcp_fixed = (
+            self._rail_mode == RailMode.LOCKED
+            and self._locked_style == LockedStyle.TCP_FIXED
+        )
+        if qdot_ff is not None:
+            v_lim_ff = np.asarray(self.limits.v_max, dtype=float)
+            qdot_ff = np.clip(np.asarray(qdot_ff, dtype=float), -v_lim_ff, v_lim_ff)
+
+        if self._direct_joint_ptp and qdot_ff is not None:
+            qdot_cmd = np.asarray(qdot_ff, dtype=float).copy()
+            if rail_only:
+                qdot_cmd[1:] = 0.0
+            q_next = q_prev + qdot_cmd * dt
+            q_next[0] = float(q_prev[0]) + float(qdot_cmd[0]) * float(dt_rail)
+            self.q_cmd = q_next
+            if dt > 1e-9:
+                applied = (self.q_cmd - q_prev) / dt
+                if dt_rail > 1e-9:
+                    applied[0] = (
+                        float(self.q_cmd[0]) - float(q_prev[0])
+                    ) / float(dt_rail)
+            else:
+                applied = qdot_cmd
+            self.core.sync_applied(applied)
+            qdot_raw = np.asarray(qdot_cmd, dtype=float).copy()
+            qdot_pre_commit = (
+                np.asarray(self.q_cmd, dtype=float) - q_prev
+            ) / max(float(dt), 1.0e-12)
+            applied, acc_clamped = self._commit_command_step(q_prev, dt, dt_nom)
+            self.last_sigma_min = sigma_pre
+            J = J_pre
+            sigma = sigma_values_pre
+            return self._attach_post_qp_ab(
+                self._make_step(
+                    qdot=applied,
+                    twist_base=twist_base,
+                    sigma_min=float(sigma.min()),
+                    manip=float(np.prod(sigma)),
+                    slack_norm=0.0,
+                    n_cbf_active=0,
+                    follow_err=follow_err,
+                    qdot_ff_norm=float(np.linalg.norm(qdot_ff)),
+                    rail_vel_pin=float(qdot_ff[0]),
+                    rail_qdot_ff=float(qdot_ff[0]),
+                    plan_drives_rail=True,
+                    acc_clamped=acc_clamped,
+                    mode="direct_joint_ptp",
+                ),
+                dt_nom=dt_nom,
+                dt_int=dt_int,
+                box_h1=box_h1,
+                box_h2=box_h2,
+                qdot_raw=qdot_raw,
+                qdot_pre_commit=qdot_pre_commit,
+                qdot_committed=applied,
+                qdot_prev_used=qdot_prev_used,
+                qdot_prev2_used=qdot_prev2_used,
+            )
+
+        plan_drives_rail = rail_only or tcp_fixed or bool(self._plan_drives_rail)
+        qdot_ff_sec = qdot_ff
+        rail_vel_pin: float | None = None
+        rail_qdot_ff_val = float("nan")
+        if qdot_ff is not None:
+            qdot_ff_arr = np.asarray(qdot_ff, dtype=float)
+            v_rail = float(qdot_ff_arr[0])
+            rail_qdot_ff_val = v_rail
+            qdot_ff_sec = qdot_ff_arr.copy()
+            qdot_ff_sec[0] = 0.0
+            if plan_drives_rail:
+                rail_vel_pin = v_rail
+
+        resync_vec = np.full(self.kin.nv, float(self.cfg.resync_err_rad))
+        resync_vec[0] = float(self.cfg.resync_err_rail_m)
+
+        pose_now = self.kin.fk_pose(q_prev)
+        z_now = float(pose_now[2])
+        y_tcp_d = None
+        tool_y_err_m = 0.0
+        if pose_d is not None:
+            pose_d_arr = np.asarray(pose_d, dtype=float).reshape(-1)
+            if pose_d_arr.size >= 2 and np.isfinite(pose_d_arr[1]):
+                y_tcp_d = float(pose_d_arr[1])
+                tool_y_err_m = y_tcp_d - float(pose_now[1])
+
+        ext_cfg = self.rail_ext_task.cfg if self.rail_ext_task is not None else None
+        v_force = (
+            float(v_force_z)
+            if v_force_z is not None and np.isfinite(float(v_force_z))
+            else float("nan")
+        )
+        v_min = float(getattr(ext_cfg, "press_v_force_min_m_s", 0.02))
+        dz_max = float(getattr(ext_cfg, "press_dz_max_m", 0.002))
+        y_thr = float(getattr(ext_cfg, "press_y_err_m", 0.005))
+        stall_need = float(getattr(ext_cfg, "press_stall_s", 0.5))
+        v_z_demand = v_force
+        demanding = bool(
+            bool(contact_active)
+            and np.isfinite(v_force)
+            and abs(v_z_demand) >= v_min
+        )
+        # Windowed stall: |Δz| over the timer, not per 5 ms tick (2 mm/tick
+        # is 400 mm/s — every real press looked "stuck").
+        if demanding:
+            if not np.isfinite(self._press_z_mark):
+                self._press_z_mark = z_now
+            z_progress = abs(z_now - self._press_z_mark)
+            if z_progress > dz_max:
+                self._press_z_mark = z_now
+                self._press_stall_s = 0.0
+                z_stuck = False
+            else:
+                self._press_stall_s += float(dt)
+                z_stuck = True
+        else:
+            self._press_z_mark = float("nan")
+            self._press_stall_s = 0.0
+            z_stuck = False
+        press_stalled_timer = self._press_stall_s + 1.0e-12 >= stall_need
+        has_travel = bool(
+            self.rail_ext_task is not None
+            and self.rail_ext_task._rail_has_open_travel(float(q_state[0]))
+        )
+        policy_leave = bool(
+            self.rail_ext_task is not None
+            and self.rail_ext_task._in_leave_band(
+                float(q_state[0]), self.rail_ext_task._policy_escape_sign(float(q_state[0]))
+            )
+        )
+        arm_starved = bool(abs(tool_y_err_m) >= y_thr)
+        comfort_m = float(self.cfg.qp.joint_comfort.m_comfort_rad)
+        j4_blocked = bool(
+            (float(self.limits.q_upper[4]) - float(q_prev[4])) <= comfort_m
+            or (float(q_prev[4]) - float(self.limits.q_lower[4])) <= comfort_m
+        )
+        allow_press_escape = bool(
+            demanding
+            and has_travel
+            and (
+                press_stalled_timer
+                or (j4_blocked and not policy_leave)
+                or (policy_leave and arm_starved)
+            )
+        )
+
+        lin_thr = (
+            float(self.rail_ext_task.cfg.v_ff_thr_m_s)
+            if self.rail_ext_task is not None
+            else 0.01
+        )
+        del lin_thr
+        self._update_quiescent(twist_base, float(dt))
+        slack_high = float(self.last_slack_norm) >= float(
+            getattr(self.cfg.saturation, "slack_enter", 0.15)
+        )
+        hold_d_star = bool(self._quiescent or slack_high)
+
+        if (
+            self.posture_retarget is not None
+            and self._rail_mode == RailMode.COUPLED
+        ):
+            psi_ref, d_pref = self.posture_retarget.step(
+                q_prev,
+                float(dt),
+                rail_lo=float(self.limits.q_lower[0]),
+                rail_hi=float(self.limits.q_upper[0]),
+                hold_setpoint=hold_d_star,
+            )
+            if self.arm_task is not None:
+                self.arm_task.set_reference(float(psi_ref))
+            if self.rail_ext_task is not None:
+                self.rail_ext_task.set_d_pref(float(d_pref))
+            self._publish_homotopy_centering()
+
+        if (
+            press_stalled_timer
+            and allow_press_escape
+            and bool(contact_active)
+            and np.isfinite(v_force)
+            and self.posture_retarget is not None
+            and self.rail_ext_task is not None
+            and self._d_star_nudge_cool_s <= 0.0
+        ):
+            y_des = y_tcp_d if y_tcp_d is not None else float(pose_now[1])
+            lo, hi = self.rail_ext_task._soft_travel()
+            away = self.rail_ext_task._preferred_escape_sign(float(q_prev[0]))
+            delta = -away * float(self.rail_ext_task.cfg.d_star_nudge_m)
+            d_new = self.posture_retarget.nudge_d_star(
+                delta, y_des_m=y_des, rail_lo=lo, rail_hi=hi, dt_s=float(dt)
+            )
+            if np.isfinite(d_new):
+                self.rail_ext_task.set_d_pref(float(d_new))
+            self._d_star_nudge_cool_s = stall_need
+        else:
+            self._d_star_nudge_cool_s = max(
+                0.0, self._d_star_nudge_cool_s - float(dt)
+            )
+
+        rail_task_vel: float | None = None
+        rail_task_weight = 0.0
+        rail_ext_err = 0.0
+        rail_escape_active = False
+        manip_weight: float | bool = self._manipulability_active
+        if (
+            self.rail_ext_task is not None
+            and self._rail_ext_active
+            and self._rail_mode == RailMode.COUPLED
+        ):
+            sigma_now = float(sigma_arm)
+            sig_scale = 1.0
+            sigma_esc_ref = max(
+                sigma_ref,
+                float(self.cfg.manipulability.sigma_fade_ref),
+            )
+            # No artificial floor: deep singularity must raise escape authority.
+            if sigma_esc_ref > 1e-9 and sigma_now < sigma_esc_ref:
+                sig_scale = max(sigma_now / sigma_esc_ref, 0.0)
+            _g, self._sigma_grad_rail_cached = self._rail_goodness.refresh(
+                q_prev, g_hint=sigma_pre
+            )
+            del _g
+            u_max = max_limit_activation(
+                q_prev,
+                self.centering_task.q_mid,
+                self.centering_task.half,
+                activation=self.centering_task.cfg.activation,
+            )
+            joint_margin_frac = float(np.clip(1.0 - u_max, 0.0, 1.0))
+            stroke_planned = bool(
+                self.posture_retarget is not None and self.posture_retarget.planned
+            )
+            homing_split = False
+            if self.posture_retarget is not None and not stroke_planned:
+                homing_split = float(self.posture_retarget.homotopy_s) < 1.0 - 1.0e-6
+            elbow_floor = float(self.cfg.qp.branch_barrier.box_activate_rad)
+            if elbow_floor <= 1.0e-9:
+                elbow_floor = float(self.cfg.qp.branch_barrier.activate_rad)
+            block_escape = abs(float(q_prev[4])) < elbow_floor
+            unload_sign = 0.0
+            if (
+                has_travel
+                and self.posture_retarget is not None
+                and np.isfinite(float(self.posture_retarget.d_star_m))
+            ):
+                j4_c = float(self.posture_retarget.cfg.elbow_center_rad)
+                if abs(float(q_prev[4])) > j4_c:
+                    y_now = float(self.kin.fk_placement(q_prev).translation[1])
+                    d_live = y_now - float(q_prev[0])
+                    unload_sign = float(
+                        np.sign(d_live - float(self.posture_retarget.d_star_m))
+                    )
+            v_ext, w_ext = self.rail_ext_task(
+                q_prev,
+                sigma_scale=sig_scale,
+                sigma_grad_rail=self._sigma_grad_rail_cached,
+                vel_ff=vel_ff,
+                dt_s=float(dt),
+                joint_margin_frac=joint_margin_frac,
+                sigma_raw=sigma_now,
+                y_tcp_d=y_tcp_d,
+                press_stalled=allow_press_escape,
+                tool_y_err_m=tool_y_err_m,
+                stroke_limiters=stroke_planned,
+                apply_d_band=not homing_split,
+                block_escape=block_escape,
+                unload_sign=unload_sign,
+                jacobian=J_pre,
+            )
+            rail_ext_err = self.rail_ext_task.last_err_m
+            rail_escape_active = bool(self.rail_ext_task._escape_active)
+            # Prefer projected MotionReference FF over joint-plan rail FF.
+            if np.isfinite(getattr(self.rail_ext_task, "last_v_ff", float("nan"))):
+                rail_qdot_ff_val = float(self.rail_ext_task.last_v_ff)
+            rail_task_weight = w_ext
+            # Escape (and only escape) still comes from the extension task.
+            # Cartesian mid-ranging and allocate_rail own the committed
+            # rail velocity below; w_ext only sets QP2 preference strength.
+            if abs(float(self.rail_ext_task.last_v_escape)) > 1.0e-4:
+                rail_task_vel = v_ext
+            if not self._manipulability_active and sigma_esc_ref > 1e-9:
+                manip_weight = smoothstep01(
+                    (sigma_esc_ref - float(sigma_now)) / sigma_esc_ref
+                )
+
+        arm_qdot_pref = None
+        if self._rail_mode == RailMode.COUPLED and not locked_hold:
+            lam = sr_damping_lambda(sigma_pre, self.cfg.qp.sr_damping)
+            mw = margin_weight_from_activation(
+                q_prev,
+                self.centering_task.q_mid,
+                self.centering_task.half,
+                k_margin=float(self.rail_allocator_cfg.k_margin),
+                activation=self.centering_task.cfg.activation,
+            )
+            u_alloc, _q_all = allocate_rail(
+                J_pre,
+                twist_base,
+                qdot_scale=np.asarray(self.limits.v_max, dtype=float),
+                margin_weight=mw,
+                lam=lam,
+                v0_m_s=float(self.rail_allocator_cfg.v0_m_s),
+                w0_rad_s=float(self.rail_allocator_cfg.w0_rad_s),
+                e_mid=(
+                    float(self.rail_ext_task.last_e_mid_m)
+                    if self.rail_ext_task is not None
+                    else 0.0
+                ),
+                k_err=float(self.rail_allocator_cfg.k_err_rail),
+                e_ref=float(self.rail_allocator_cfg.e_ref_m),
+            )
+            u_escape = 0.0
+            if self.rail_ext_task is not None:
+                u_escape = float(self.rail_ext_task.last_v_escape)
+                cap = max(float(self.rail_allocator_cfg.u_mid_max_m_s), 0.0)
+                if cap > 0.0:
+                    u_escape = float(np.clip(u_escape, -cap, cap))
+            e_mid = (
+                float(self.rail_ext_task.last_e_mid_m)
+                if self.rail_ext_task is not None
+                else 0.0
+            )
+            freeze_mid = bool(self._midrange_freeze) or bool(self._quiescent)
+            leave_sign = wall_leave_only_sign(
+                float(q_state[0]),
+                hard_min_m=float(self.limits.q_lower[0]),
+                hard_max_m=float(self.limits.q_upper[0]),
+                band_m=float(self.cfg.qp.limit_damper_band_rail_m),
+            )
+            u_mid = self.midranging.step(
+                e_mid,
+                float(dt),
+                freeze=freeze_mid,
+                leave_only_sign=leave_sign,
+                u_committed=self._u_mid_committed,
+            )
+            a_arm = np.asarray(self.limits.a_max, dtype=float).reshape(-1)[1:]
+            j_max_vec = self.core._j_max
+            if j_max_vec is None:
+                j_arm = np.full(max(self.kin.nv - 1, 1), float(self.cfg.qp.j_max_arm_rad_s3))
+            else:
+                j_arm = np.asarray(j_max_vec, dtype=float).reshape(-1)
+                if j_arm.size > 1:
+                    j_arm = j_arm[1:]
+            rho_a = float(getattr(self.rail_allocator_cfg, "rho_mirror_a", 0.50))
+            rho_j = float(getattr(self.rail_allocator_cfg, "rho_mirror_j", 0.30))
+            a_mir, j_mir = arm_mirror_rail_limits(
+                J_pre, a_arm, j_arm, rho_a=rho_a, rho_j=rho_j
+            )
+            # Primary rail share of v_cmd only.  u_mid / escape stay in QP2.
+            v_r_ref = self.rail_ref_model.step(
+                float(u_alloc),
+                float(dt),
+                x_m=float(q_state[0]),
+                a_max=a_mir,
+                j_max=j_mir,
+            )
+            # Leave-band is applied once, after the reference model, so a
+            # planned stroke cannot drive into the plus stop (or the
+            # policy-side pin).  Mid-ranging away from the wall is kept.
+            stroke_planned = bool(
+                self.posture_retarget is not None and self.posture_retarget.planned
+            )
+            if self.rail_ext_task is not None and stroke_planned:
+                y_r = float(q_state[0])
+                if self.rail_ext_task._in_plus_leave(y_r) and v_r_ref > 0.0:
+                    v_r_ref = 0.0
+                    self.rail_ref_model.reset(0.0)
+                pol = float(self.rail_ext_task._policy_escape_sign(y_r))
+                if (
+                    self.rail_ext_task._in_leave_band(y_r, pol)
+                    and v_r_ref * pol > 0.0
+                ):
+                    v_r_ref = 0.0
+                    self.rail_ref_model.reset(0.0)
+            if abs(float(v_r_ref)) < 1.0e-4:
+                v_r_ref = 0.0
+            rail_task_vel = float(v_r_ref)
+            self.last_v_r_ref = float(v_r_ref)
+            self.last_u_alloc = float(u_alloc)
+            self.last_u_posture = float(u_escape)
+            self.last_u_mid = float(u_mid)
+            u_sec = float(u_mid) + float(u_escape)
+            # u_mid lives in QP2, but it must not cancel the primary rail
+            # share of v_cmd that L1 already allocated.
+            if abs(float(v_r_ref)) > 1.0e-4 and u_sec * float(v_r_ref) < 0.0:
+                u_sec = 0.0
+            self._u_mid_for_sec = u_sec
+        else:
+            self.last_v_r_ref = (
+                float(rail_task_vel) if rail_task_vel is not None else 0.0
+            )
+            self.last_u_alloc = 0.0
+            self.last_u_posture = (
+                float(self.rail_ext_task.last_v_escape)
+                if self.rail_ext_task is not None
+                else 0.0
+            )
+            self.last_u_mid = 0.0
+            self._u_mid_for_sec = 0.0
+
+        rail_reg_scale = 1.0
+        if self.rail_ext_task is not None:
+            rail_reg_scale = float(
+                getattr(self.rail_ext_task, "last_d_star_reg_scale", 1.0) or 1.0
+            )
+
+        # Hard box is 5/780 mm.  Do not freeze q0 in a leave/fade band.
+        rail_sat_now = bool(
+            self.rail_ext_task is not None
+            and bool(getattr(self.rail_ext_task, "last_limit_saturated", False))
+        )
+        rail_vel_pin_eff = rail_vel_pin
+        rail_task_weight_eff = rail_task_weight
+        if (
+            self._rail_mode == RailMode.COUPLED
+            and not locked_hold
+            and rail_task_vel is not None
+        ):
+            rail_task_weight_eff = max(float(rail_task_weight_eff), _RAIL_PREF_WEIGHT)
+        keep_task_weight = False
+        pref_slack_scale = 1.0
+
+        box_h1, box_h2 = self._measure_box_periods(dt_nom)
+        qdot_history_before_solve = np.asarray(self.core.qdot_prev, dtype=float).copy()
+        if self.core._j_max is None:
+            j_max_sec = np.full(self.kin.nv, float(self.cfg.qp.j_max_arm_rad_s3))
+            j_max_sec[0] = float(self.cfg.qp.j_max_rail_m_s3)
+        else:
+            j_max_sec = np.asarray(self.core._j_max, dtype=float).copy()
+        sec_raw = self._secondary(
+            q_prev,
+            qdot_ff_sec,
+            manipulability_active=manip_weight,
+            centering_sigma_fade=not (
+                self._rail_ext_active and self._rail_mode == RailMode.COUPLED
+            ),
+            dt_s=float(dt),
+        )
+        if self._rail_mode == RailMode.COUPLED and not locked_hold:
+            sec_raw = np.asarray(sec_raw, dtype=float).copy()
+            sec_raw[0] = float(self._u_mid_for_sec)
+        if self._quiescent:
+            sec_raw = np.zeros_like(sec_raw)
+        sec_filt = self._sec_filter.step(
+            sec_raw, float(dt), j_max_sec, force_target=bool(self._quiescent)
+        )
+        frac = float(self.cfg.nullspace_max_qdot_frac)
+        if frac > 0.0:
+            cap = np.asarray(self.kin.v_max, dtype=float) * frac
+            if cap.size == sec_filt.size:
+                cap = cap.copy()
+                cap[0] = float(self.limits.v_max[0])
+                sec_filt = np.clip(sec_filt, -cap, cap)
+                self._sec_filter.qdot = np.asarray(sec_filt, dtype=float).copy()
+        self.last_secondary_norm = float(np.linalg.norm(sec_filt))
+        r = self.core.step(
+            q_prev,
+            twist_base,
+            dt,
+            secondary_qdot=sec_filt,
+            q_meas=q_state,
+            resync_err=resync_vec,
+            rail_locked=locked_hold,
+            rail_lock_reg_scale=self.cfg.rail.lock_reg_scale,
+            rail_reg_scale=rail_reg_scale,
+            rail_lock_vel_eps_m_s=self.cfg.rail.lock_vel_eps_m_s,
+            rail_vel_pin_m_s=rail_vel_pin_eff,
+            zero_secondary_rail=False,
+            rail_task_vel_m_s=rail_task_vel,
+            rail_task_weight=rail_task_weight_eff,
+            box_dt=box_h1,
+            box_h1=box_h1,
+            box_h2=box_h2,
+            keep_task_weight=keep_task_weight,
+            pref_slack_scale=pref_slack_scale,
+            rail_exec_vel_m_s=rail_exec_for_qp,
+            jacobian=J_pre,
+            sigma=sigma_values_pre,
+            mass_matrix=mass_pre,
+            kinematics_ready=True,
+            rail_open_travel=bool(
+                self._rail_mode == RailMode.COUPLED
+                and has_travel
+                and not locked_hold
+            ),
+            arm_qdot_pref=arm_qdot_pref,
+        )
+
+        qdot_out = np.asarray(r.qdot, dtype=float).copy()
+        qdot_raw = qdot_out.copy()
+        failed = bool(self.core.last_failed)
+        fallback_reason = "qp_failed" if failed else ""
+        if qdot_out.shape != q_prev.shape or not np.all(np.isfinite(qdot_out)):
+            qdot_out = np.zeros_like(q_prev)
+            failed = True
+            fallback_reason = "final_qdot_nonfinite_or_bad_shape"
+        if failed:
+            # One infeasible / max-iter tick must not kill the session.
+            # Brake with the certified previous command, same as 3d095f2.
+            decay = float(getattr(self.cfg.qp, "fail_qdot_decay", 0.85))
+            qdot_out = np.asarray(qdot_history_before_solve, dtype=float) * decay
+            v_lim = np.asarray(self.limits.v_max, dtype=float)
+            qdot_out = np.clip(qdot_out, -v_lim, v_lim)
+            self.q_cmd = q_prev + qdot_out * float(dt)
+            self.q_cmd[0] = float(q_prev[0]) + float(qdot_out[0]) * float(dt_rail)
+            self.core.qdot_prev = qdot_out.copy()
+            qdot_pre_commit = qdot_out.copy()
+            qdot_out, acc_clamped = self._commit_command_step(
+                q_prev, dt, dt_nom
+            )
+            return self._attach_post_qp_ab(
+                self._make_step(
+                    qdot=qdot_out,
+                    twist_base=twist_base,
+                    sigma_min=r.sigma_min,
+                    manip=r.manip,
+                    slack_norm=r.slack_norm,
+                    n_cbf_active=r.n_cbf_active,
+                    follow_err=follow_err,
+                    qdot_ff_norm=(
+                        float(np.linalg.norm(qdot_ff)) if qdot_ff is not None else 0.0
+                    ),
+                    rail_vel_pin=rail_vel_pin_eff,
+                    rail_qdot_ff=rail_qdot_ff_val,
+                    plan_drives_rail=bool(plan_drives_rail),
+                    rail_ext_err_m=rail_ext_err,
+                    rail_ext_weight=rail_task_weight,
+                    failed=False,
+                    acc_clamped=acc_clamped,
+                    fallback_reason="qp1_decay",
+                    rail_macro_pref_v=(
+                        float(rail_task_vel) if rail_task_vel is not None else 0.0
+                    ),
+                    rail_escape_active=rail_escape_active,
+                ),
+                dt_nom=dt_nom,
+                dt_int=dt_int,
+                box_h1=box_h1,
+                box_h2=box_h2,
+                qdot_raw=qdot_raw,
+                qdot_pre_commit=qdot_pre_commit,
+                qdot_committed=qdot_out,
+                qdot_prev_used=qdot_prev_used,
+                qdot_prev2_used=qdot_prev2_used,
+            )
+        else:
+            qdot_certified = qdot_out.copy()
+            q_candidate = q_prev + qdot_out * dt
+            margin = np.asarray(self.limits.position_margin, dtype=float)
+            if np.any(q_candidate < self.limits.q_lower + margin - 1.0e-9) or np.any(
+                q_candidate > self.limits.q_upper - margin + 1.0e-9
+            ):
+                qdot_out = self._clip_qdot_to_box(
+                    q_prev, qdot_out, dt, q_state, resync_vec,
+                    rail_locked=locked_hold, rail_vel_pin=rail_vel_pin_eff,
+                    box_h1=box_h1, box_h2=box_h2,
+                    rail_lead_exempt=(
+                        abs(float(q_prev[0]) - float(q_state[0]))
+                        > float(self.cfg.resync_err_rail_m)
+                    ),
+                )
+                fallback_reason = fallback_reason or "projected_into_velocity_box"
+
+        # Do NOT shape qdot_out[0] here to "match the rail servo bandwidth".
+        # Whatever is written here becomes core.qdot_prev below, which is the
+        # base of the QP acceleration box and the jerk box — a first-order
+        # filter therefore multiplies those limits by its own alpha instead
+        # of just smoothing.
+        q_next = q_prev + qdot_out * dt
+        self.q_cmd = q_next
+        self.core.qdot_prev = qdot_out.copy()
+
+        # When ``dt_wall_s`` is supplied, ``dt == dt_rail`` and this is a
+        # no-op.  Kept so a caller that still passes only nominal ``dt``
+        # does not leave the rail one period behind the servo.
+        self.q_cmd[0] = float(self.q_cmd[0]) + float(qdot_out[0]) * (
+            float(dt_rail) - float(dt)
+        )
+
+        # At the command floor, refuse to jog back into the switch.
+        lo0 = float(self.limits.q_lower[0])
+        hi0 = float(self.limits.q_upper[0])
+        self.q_cmd[0] = float(np.clip(self.q_cmd[0], lo0, hi0))
+        if self.q_cmd[0] <= lo0 + 1.0e-4 and self.core.qdot_prev[0] < 0.0:
+            self.q_cmd[0] = lo0
+            self.core.qdot_prev[0] = 0.0
+        elif self.q_cmd[0] >= hi0 - 1.0e-4 and self.core.qdot_prev[0] > 0.0:
+            self.q_cmd[0] = hi0
+            self.core.qdot_prev[0] = 0.0
+        if plan_drives_rail and qdot_ff is not None and dt_rail > 1e-9:
+            v_rail = float(np.asarray(qdot_ff)[0])
+            y = float(q_prev[0] + v_rail * float(dt_rail))
+            y_lo = float(self.limits.q_lower[0])
+            y_hi = float(self.limits.q_upper[0])
+            self.q_cmd[0] = float(np.clip(y, y_lo, y_hi))
+            self.core.qdot_prev[0] = (self.q_cmd[0] - q_prev[0]) / float(dt_rail)
+            if rail_only:
+                self.q_cmd[1:] = q_prev[1:]
+                self.core.qdot_prev[1:] = 0.0
+        else:
+            self._pin_rail_if_locked_hold()
+        qdot_out = self.core.qdot_prev.copy()
+        if locked_hold and self.cfg.rail.lock_hard_pin:
+            qdot_out[0] = 0.0
+        elif plan_drives_rail and qdot_ff is not None:
+            qdot_out[0] = float(np.asarray(qdot_ff)[0])
+            if rail_only:
+                qdot_out[1:] = 0.0
+
+        final_hard_violation, final_task_lock_violation = (
+            self.core.validate_final_qdot(qdot_out)
+        )
+        self.core.last_final_hard_violation = float(final_hard_violation)
+        self.core.last_final_task_lock_violation = float(final_task_lock_violation)
+        final_tol = max(
+            10.0 * float(getattr(self.cfg.qp, "eps_abs", 1.0e-6)),
+            1.0e-5,
+        )
+        if (
+            not np.isfinite(final_hard_violation)
+            or not np.isfinite(final_task_lock_violation)
+            or final_hard_violation > final_tol
+            or final_task_lock_violation > final_tol
+        ):
+            # A limiter/lead rewrite is not allowed to break QP1.  If this
+            # tick already has a certified QP command, publish that instead
+            # of stopping; stop only when no certified command exists.
+            hard_qp, lock_qp = self.core.validate_final_qdot(qdot_certified)
+            if (
+                np.isfinite(hard_qp)
+                and np.isfinite(lock_qp)
+                and hard_qp <= final_tol
+                and lock_qp <= final_tol
+            ):
+                fallback_reason = (
+                    fallback_reason or "limiter_rewrite_rejected_keep_qp"
+                )
+                qdot_out = qdot_certified.copy()
+                self.q_cmd = q_prev + qdot_out * dt
+                self.core.qdot_prev = qdot_out.copy()
+                self.core.last_final_hard_violation = float(hard_qp)
+                self.core.last_final_task_lock_violation = float(lock_qp)
+            else:
+                failed = True
+                fallback_reason = (
+                    "final_publication_certificate_failed:"
+                    f"hard={final_hard_violation:.3e},"
+                    f"task_lock={final_task_lock_violation:.3e}"
+                )
+                self.q_cmd = q_prev.copy()
+                self.core.qdot_prev = qdot_history_before_solve.copy()
+                qdot_out = np.zeros_like(q_prev)
+        self.last_sigma_min = r.sigma_min
+        self.last_arm_rho = float(r.sigma_min)
+        qdot_pre_commit = qdot_out.copy()
+        qdot_out, acc_clamped = self._commit_command_step(q_prev, dt, dt_nom)
+        # Decompose achieved linear velocity into rail vs arm along primary motion.
+        J_fin = J_pre
+        qdot_arr = np.asarray(qdot_out, dtype=float)
+        twist_rail = J_fin[:, 0] * float(rail_exec_for_qp)
+        twist_arm = J_fin[:, 1:] @ qdot_arr[1:]
+        motion_dir = np.asarray(twist_base[:3], dtype=float)
+        if vel_ff is not None:
+            vff = np.asarray(vel_ff, dtype=float).reshape(-1)
+            if vff.size >= 3 and float(np.linalg.norm(vff[:3])) > 1e-6:
+                motion_dir = vff[:3].astype(float)
+        n_dir = float(np.linalg.norm(motion_dir))
+        if n_dir <= 1e-9:
+            # Idle ticks have no commanded direction, which used to blank the
+            # whole split for the entire release window — exactly where the
+            # TCP leak lives.  The rail's own TCP axis is always defined and
+            # is the axis the leak shows up on.
+            rail_axis = np.asarray(J_fin[:3, 0], dtype=float)
+            n_axis = float(np.linalg.norm(rail_axis))
+            if n_axis > 1e-9:
+                motion_dir = rail_axis
+                n_dir = n_axis
+        if n_dir > 1e-9:
+            u = motion_dir / n_dir
+            rail_contrib = float(np.dot(twist_rail[:3], u))
+            arm_contrib = float(np.dot(twist_arm[:3], u))
+            denom = abs(rail_contrib) + abs(arm_contrib)
+            rail_share = (abs(rail_contrib) / denom) if denom > 1e-9 else float("nan")
+        else:
+            rail_contrib = float("nan")
+            arm_contrib = float("nan")
+            rail_share = float("nan")
+        # Keep qpik_scan_* alive: primary linear motion des/achieved/residual (m).
+        scan_t = np.array(
+            [float(twist_base[0]), float(twist_base[1])], dtype=float
+        )
+        scan_a = np.array(
+            [
+                float(twist_rail[0] + twist_arm[0]),
+                float(twist_rail[1] + twist_arm[1]),
+            ],
+            dtype=float,
+        )
+        q_now = np.asarray(self.q_cmd, dtype=float)
+        near_arm_m = float(getattr(self.cfg.qp, "near_arm_margin_rad", 0.08))
+        near_arm = bool(
+            np.any(q_now[1:] < self.limits.q_lower[1:] + near_arm_m)
+            or np.any(q_now[1:] > self.limits.q_upper[1:] - near_arm_m)
+        )
+        physical_saturated = bool(near_arm)
+        step = self._make_step(
+            qdot=qdot_out,
+            twist_base=twist_base,
+            sigma_min=r.sigma_min,
+            manip=r.manip,
+            slack_norm=r.slack_norm,
+            n_cbf_active=r.n_cbf_active,
+            follow_err=follow_err,
+            qdot_ff_norm=float(np.linalg.norm(qdot_ff)) if qdot_ff is not None else 0.0,
+            rail_vel_pin=rail_vel_pin_eff,
+            rail_qdot_ff=rail_qdot_ff_val,
+            plan_drives_rail=bool(plan_drives_rail),
+            rail_ext_err_m=rail_ext_err,
+            rail_ext_weight=rail_task_weight,
+            failed=failed,
+            acc_clamped=acc_clamped,
+            fallback_reason=fallback_reason,
+            rail_macro_pref_v=(
+                float(rail_task_vel) if rail_task_vel is not None else 0.0
+            ),
+            rail_escape_active=rail_escape_active,
+            rail_contrib_m_s=rail_contrib,
+            arm_contrib_m_s=arm_contrib,
+            rail_motion_share=rail_share,
+            scan_target=scan_t,
+            scan_achieved=scan_a,
+            scan_residual=scan_t - scan_a,
+            physical_saturated=physical_saturated,
+        )
+        actual_task_twist = twist_rail + twist_arm
+        actual_task_residual = np.asarray(twist_base, dtype=float) - actual_task_twist
+        step.protected_target = np.asarray(twist_base, dtype=float).copy()
+        step.protected_achieved = np.asarray(actual_task_twist, dtype=float).copy()
+        step.protected_residual = np.asarray(actual_task_residual, dtype=float).copy()
+        step.qpik_working_slack = np.asarray(actual_task_residual, dtype=float).copy()
+        step.qpik_equality_residual_max = float(np.max(np.abs(actual_task_residual)))
+        step.qpik_hard_residual_max = float(
+            getattr(self.core, "last_final_hard_violation", 0.0)
+        )
+        step.rail_xy_contribution = np.asarray(twist_rail[:2], dtype=float).copy()
+        step.arm_xy_contribution = np.asarray(twist_arm[:2], dtype=float).copy()
+        step.rail_exec_velocity_m_s = float(rail_exec_for_qp)
+        step.rail_exec_for_qp_m_s = float(rail_exec_for_qp)
+        if rail_exec_vel_m_s is not None:
+            step.rail_measured_velocity_m_s = float(rail_exec_vel_m_s)
+        if rail_exec_smooth_m_s is not None:
+            step.rail_commanded_velocity_m_s = float(rail_exec_smooth_m_s)
+        step.qp_solver_overrun = bool(getattr(self.core, "last_qp_overrun", False))
+        step.qp1_status = str(getattr(self.core, "last_qp1_status", step.qp1_status))
+        step.qp2_status = str(getattr(self.core, "last_qp2_status", step.qp2_status))
+        step.qp2_fallback = bool(getattr(self.core, "last_qp2_fallback", False))
+        step.rail_sat = bool(rail_sat_now)
+        step.last_limit_saturated = bool(
+            self.rail_ext_task is not None
+            and self.rail_ext_task.last_limit_saturated
+        )
+        step.keep_task_weight = bool(keep_task_weight)
+        step.pref_slack_scale = float(pref_slack_scale)
+        step.rail_task_vel = (
+            float(rail_task_vel) if rail_task_vel is not None else float("nan")
+        )
+        if self.rail_ext_task is not None:
+            step.v_escape = float(self.rail_ext_task.last_v_escape)
+            step.v_reach = float(self.rail_ext_task.last_v_reach)
+            step.v_ff_rail = float(self.rail_ext_task.last_v_ff)
+        step.u_alloc = float(self.last_u_alloc)
+        step.u_posture = float(self.last_u_posture)
+        step.u_mid = float(self.last_u_mid)
+        step.v_r_ref = float(self.last_v_r_ref)
+        step.comp_projected_frac = float(
+            getattr(self.core, "last_comp_projected_frac", self.last_comp_projected_frac)
+        )
+        self.last_comp_projected_frac = float(step.comp_projected_frac)
+        step.wall_override = bool(self.rail_ref_model.last_wall_override)
+        step.slack_zero_feasible = bool(
+            getattr(self.core, "last_zero_slack_feasible", False)
+        )
+        step.sigma_arm = float(sigma_arm)
+        step.sns_scale = float(getattr(self.core, "last_sns_scale", 1.0))
+        step.v_cmd = np.asarray(twist_base, dtype=float).reshape(6).copy()
+        step.path_twist = np.asarray(path_twist_arr, dtype=float).reshape(6).copy()
+        step.feedback_twist = np.asarray(
+            feedback_twist_arr, dtype=float
+        ).reshape(6).copy()
+        comfort = getattr(self.core, "last_comfort_slack", None)
+        if comfort is not None:
+            step.comfort_slack = np.asarray(comfort, dtype=float).reshape(-1)[:7]
+        step.cbf_min_dist = float(
+            getattr(self.core, "last_cbf_min_dist", float("nan"))
+        )
+        step.cbf_pair = str(getattr(self.core, "last_cbf_pair", "") or "")
+        step.nullspace_norm = float(self.last_secondary_norm)
+        step.nullspace_centering_norm = float(self.secondary.last_centering_norm)
+        step.nullspace_manip_norm = float(self.secondary.last_manip_norm)
+        step.nullspace_arm_angle_norm = float(self.secondary.last_arm_angle_norm)
+        step.nullspace_damping_norm = float(self.secondary.last_damping_norm)
+        step.nullspace_rail_lock_norm = float(self.secondary.last_rail_lock_norm)
+        step.sat_scale = float(self.last_sat_scale)
+        step.sec_target_norm = float(np.linalg.norm(self._sec_filter.target))
+        lock_jac = np.asarray(
+            getattr(self.core, "last_lock_jacobian", J_fin), dtype=float
+        )
+        lock_vel = np.asarray(
+            getattr(self.core, "last_lock_velocity", twist_base), dtype=float
+        ).reshape(-1)
+        if lock_vel.size != 6:
+            lock_vel = np.asarray(twist_base, dtype=float).reshape(6)
+        if lock_jac.shape == J_fin.shape:
+            v_qp_lock = lock_jac @ np.asarray(qdot_arr, dtype=float)
+        else:
+            v_qp_lock = np.asarray(J_fin, dtype=float) @ np.asarray(qdot_arr, dtype=float)
+        v_qp_cmd = np.asarray(J_fin, dtype=float) @ np.asarray(qdot_arr, dtype=float)
+        v_tcp_est = np.asarray(twist_rail, dtype=float) + np.asarray(
+            twist_arm, dtype=float
+        )
+        e_shape = np.asarray(twist_base, dtype=float) - lock_vel
+        e_qp = lock_vel - v_qp_lock
+        e_exec = v_qp_cmd - v_tcp_est
+        step.v_cmd_received = np.asarray(twist_base, dtype=float).reshape(6).copy()
+        step.v_cmd_feasible = lock_vel.reshape(6).copy()
+        step.v_tcp_estimated = v_tcp_est.reshape(6).copy()
+        step.e_shape = e_shape.reshape(6).copy()
+        step.e_qp = e_qp.reshape(6).copy()
+        step.e_exec = e_exec.reshape(6).copy()
+        step.e_shape_norm = float(np.linalg.norm(e_shape))
+        step.e_qp_norm = float(np.linalg.norm(e_qp))
+        step.e_exec_norm = float(np.linalg.norm(e_exec))
+        step.quiescent = bool(self._quiescent)
+        step.secondary_suppressed = bool(self._quiescent or slack_high)
+        step.command_stale = bool(command_stale)
+        lo_box = np.asarray(self.core.last_lo_box, dtype=float)
+        hi_box = np.asarray(self.core.last_hi_box, dtype=float)
+        qdot_chk = np.asarray(qdot_arr, dtype=float)
+        if lo_box.size == qdot_chk.size and hi_box.size == qdot_chk.size:
+            arm_hit = np.any(
+                (qdot_chk[1:] <= lo_box[1:] + 1.0e-9)
+                | (qdot_chk[1:] >= hi_box[1:] - 1.0e-9)
+            )
+            rail_hit = bool(
+                qdot_chk[0] <= lo_box[0] + 1.0e-9 or qdot_chk[0] >= hi_box[0] - 1.0e-9
+            )
+            step.joint_limited = bool(arm_hit or physical_saturated)
+            step.rail_limited = bool(rail_hit or rail_sat_now)
+        else:
+            step.joint_limited = bool(physical_saturated)
+            step.rail_limited = bool(rail_sat_now)
+        step.wall_active = bool(
+            step.wall_override
+            or abs(
+                wall_leave_only_sign(
+                    float(q_state[0]),
+                    hard_min_m=float(self.limits.q_lower[0]),
+                    hard_max_m=float(self.limits.q_upper[0]),
+                    band_m=float(self.cfg.qp.limit_damper_band_rail_m),
+                )
+            )
+            > 0.0
+        )
+        self._last_tcp_est = v_tcp_est.reshape(6).copy()
+        # Anti-windup sees the secondary rail that actually went out, not the
+        # primary v_r,ref share of v_cmd.
+        self._u_mid_committed = float(qdot_arr[0]) - float(self.last_v_r_ref)
+        return self._attach_post_qp_ab(
+            step,
+            dt_nom=dt_nom,
+            dt_int=dt_int,
+            box_h1=box_h1,
+            box_h2=box_h2,
+            qdot_raw=qdot_raw,
+            qdot_pre_commit=qdot_pre_commit,
+            qdot_committed=qdot_out,
+            qdot_prev_used=qdot_prev_used,
+            qdot_prev2_used=qdot_prev2_used,
+        )
+
+# ---------------------------------------------------------------------------
+# Outer loops
+# ---------------------------------------------------------------------------
+class OuterLoop(Protocol):
+    """Task-space controller producing a Cartesian twist each tick."""
+
+    def sample(self, t_s: float, current_pose: np.ndarray, f_ext: np.ndarray) -> np.ndarray:
+        """Return a 6D twist in the inner loop's control_frame."""
+        ...
+
+
+class AdmittanceOuterLoop:
+    """Wrap AdmittanceController + a MotionReferenceSource (force-position hybrid)."""
+
+    def __init__(self, controller, reference_source, *, desired_force: np.ndarray | None = None):
+        self.controller = controller
+        self.reference = reference_source
+        self.desired_force = (
+            np.zeros(6) if desired_force is None else np.asarray(desired_force, dtype=float)
+        )
+        self.last_err_mm: float = 0.0
+        self.last_track_rot_deg: float = 0.0
+        self.last_vel_ff: np.ndarray | None = None
+        self.last_pose_d: np.ndarray | None = None
+        self.last_path_twist = np.zeros(6)
+        self.last_feedback_twist = np.zeros(6)
+        self._reference_override = None
+
+    def begin_hybrid_episode(
+        self,
+        applied_twist_base: np.ndarray,
+        current_pose: np.ndarray,
+    ) -> None:
+        """Reset force-task transients and seed the output from applied motion."""
+
+        seed = np.asarray(applied_twist_base, dtype=float).reshape(6).copy()
+        if self.controller.cfg.control_frame == "tool":
+            rotation = Rsc.from_euler(
+                self.controller.cfg.euler_order,
+                np.asarray(current_pose, dtype=float)[3:6],
+                degrees=False,
+            ).as_matrix()
+            seed[:3] = rotation.T @ seed[:3]
+            seed[3:] = rotation.T @ seed[3:]
+        self.controller.begin_hybrid_episode(seed)
+        self.last_path_twist.fill(0.0)
+        self.last_feedback_twist.fill(0.0)
+
+    def set_reference_override(self, reference) -> None:
+        self._reference_override = reference
+
+    def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
+        if hasattr(self.reference, "set_origin"):
+            self.reference.set_origin(pose0, t_s=t_s)
+
+    def sample(
+        self,
+        t_s: float,
+        current_pose: np.ndarray,
+        f_ext: np.ndarray,
+        f_ext_raw: np.ndarray | None = None,
+        dt_actual: float | None = None,
+        sensor_age_s: float | None = None,
+        feedback_age_s: float | None = None,
+        feedback_fresh_tick: bool | None = None,
+        feedback_velocity_valid: bool | None = None,
+        v_tcp_z_actual: float | None = None,
+    ) -> np.ndarray:
+        ref = self._reference_override
+        self._reference_override = None
+        if ref is None:
+            ref = self.reference.sample(t_s)
+        self.last_pose_d = np.asarray(ref.pose_d, dtype=float).copy()
+        self.last_vel_ff = np.asarray(ref.vel_ff, dtype=float).copy()
+        # ``feedback_fresh_tick`` is a per-cycle telemetry edge, not a
+        # validity gate: when one UDP frame is missed, retain the last valid
+        # velocity and let ``feedback_age_s`` decide staleness.  Before the
+        # first successful finite-difference estimate, pass no velocity so
+        # BEFM remains fail-closed.
+        velocity_valid = (
+            bool(feedback_velocity_valid)
+            if feedback_velocity_valid is not None
+            else v_tcp_z_actual is not None
+        )
+        v_actual = v_tcp_z_actual if velocity_valid else None
+        command = self.controller.compute_velocity_command(
+            current_pose,
+            ref.pose_d,
+            ref.vel_ff,
+            f_ext,
+            self.desired_force,
+            f_ext_raw=f_ext_raw,
+            dt_actual=dt_actual,
+            sensor_age_s=sensor_age_s,
+            feedback_age_s=feedback_age_s,
+            feedback_fresh=None,
+            v_tcp_z_actual=v_actual,
+        )
+        pose_track = np.asarray(
+            getattr(self.controller, "last_pose_d_combined", ref.pose_d),
+            dtype=float,
+        ).reshape(-1)
+        if pose_track.size != 6 or not np.isfinite(pose_track).all():
+            pose_track = np.asarray(ref.pose_d, dtype=float)
+        tr_mm, tr_deg = pose_track_error_mm_deg(
+            pose_track,
+            current_pose,
+            track_axes=self.controller.cfg.track_axes,
+            euler_order=self.controller.cfg.euler_order,
+        )
+        self.last_err_mm = tr_mm
+        self.last_track_rot_deg = tr_deg
+        path = np.asarray(ref.vel_ff, dtype=float).reshape(6).copy()
+        if self.controller.cfg.control_frame == "tool":
+            rotation = Rsc.from_euler(
+                self.controller.cfg.euler_order,
+                current_pose[3:6],
+                degrees=False,
+            ).as_matrix()
+            path[:3] = rotation.T @ path[:3]
+            path[3:] = rotation.T @ path[3:]
+        self.last_path_twist = np.asarray(
+            self.controller.last_path_twist, dtype=float
+        ).copy()
+        self.last_feedback_twist = np.asarray(
+            self.controller.last_feedback_twist, dtype=float
+        ).copy()
+        return command
+
+
+@dataclass
+class CartesianTrackConfig:
+    """PD + feedforward Cartesian tracking (no force axis)."""
+
+    k_task: np.ndarray = field(default_factory=lambda: np.array([10.0, 10.0, 10.0, 2.0, 2.0, 2.0]))
+    max_pos_err_m: float = 0.05
+    max_rot_err_rad: float = 0.35
+    max_lin_vel_m_s: float = 0.4
+    max_ang_vel_rad_s: float = 1.5
+    euler_order: str = "xyz"
+    # Must match JointIkConfig.control_frame (tool twist is rotated by R @ twist).
+    control_frame: str = "tool"
+    path_feedforward: bool = True
+    fb_lpf_tau_s: float = 0.0
+
+
+class CartesianTrackOuterLoop:
+    """PD + feedforward Cartesian tracking against measured pose (no force)."""
+
+    def __init__(self, reference, cfg: CartesianTrackConfig | None = None) -> None:
+        self.reference = reference
+        self.cfg = cfg or CartesianTrackConfig()
+        self.last_err_mm: float = 0.0
+        self.last_vel_ff: np.ndarray | None = None
+        self.last_pose_d: np.ndarray | None = None
+        self.last_path_twist = np.zeros(6)
+        self.last_feedback_twist = np.zeros(6)
+        self._reference_override = None
+        self._fb_lpf: np.ndarray | None = None
+        self._last_t_s: float | None = None
+
+    def set_reference_override(self, reference) -> None:
+        self._reference_override = reference
+
+    def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
+        if hasattr(self.reference, "set_origin"):
+            self.reference.set_origin(pose0, t_s=t_s)
+        self._fb_lpf = None
+        self._last_t_s = None if t_s is None else float(t_s)
+
+    def sample(self, t_s: float, current_pose: np.ndarray, f_ext: np.ndarray) -> np.ndarray:
+        del f_ext
+        cfg = self.cfg
+        ref = self._reference_override
+        self._reference_override = None
+        if ref is None:
+            ref = self.reference.sample(t_s)
+        self.last_pose_d = np.asarray(ref.pose_d, dtype=float).copy()
+        self.last_vel_ff = np.asarray(ref.vel_ff, dtype=float).copy()
+        err = pose_error(ref.pose_d, current_pose, cfg.euler_order)
+        self.last_err_mm = float(np.linalg.norm(err[:3]) * 1000.0)
+        err_sat = saturate_error(err, cfg.max_pos_err_m, cfg.max_rot_err_rad)
+        v_ff = np.asarray(ref.vel_ff, dtype=float)
+        path_base = v_ff.copy() if cfg.path_feedforward else np.zeros(6)
+        feedback_base = cfg.k_task * err_sat
+        dt = 0.005
+        if self._last_t_s is not None:
+            raw_dt = float(t_s) - float(self._last_t_s)
+            if math.isfinite(raw_dt) and raw_dt > 1.0e-4:
+                dt = float(np.clip(raw_dt, 0.001, 0.05))
+        self._last_t_s = float(t_s)
+
+        def cap_twist(value: np.ndarray) -> np.ndarray:
+            capped = np.asarray(value, dtype=float).copy()
+            lin_norm = float(np.linalg.norm(capped[:3]))
+            if cfg.max_lin_vel_m_s > 0.0 and lin_norm > cfg.max_lin_vel_m_s:
+                capped[:3] *= cfg.max_lin_vel_m_s / lin_norm
+            ang_norm = float(np.linalg.norm(capped[3:6]))
+            if cfg.max_ang_vel_rad_s > 0.0 and ang_norm > cfg.max_ang_vel_rad_s:
+                capped[3:6] *= cfg.max_ang_vel_rad_s / ang_norm
+            return capped
+
+        path_base = cap_twist(path_base)
+        feedback_base = cap_twist(feedback_base)
+        tau = float(getattr(cfg, "fb_lpf_tau_s", 0.0) or 0.0)
+        if self._fb_lpf is None:
+            self._fb_lpf = np.asarray(feedback_base, dtype=float).copy()
+        else:
+            self._fb_lpf = first_order_lpf_vec(
+                self._fb_lpf, feedback_base, dt, tau
+            )
+        feedback_base = np.asarray(self._fb_lpf, dtype=float).copy()
+        v = cap_twist(path_base + feedback_base)  # base-frame legacy output
+
+        if cfg.control_frame == "tool":
+            R = Rsc.from_euler(cfg.euler_order, current_pose[3:6], degrees=False).as_matrix()
+            out = np.zeros(6, dtype=float)
+            out[:3] = R.T @ v[:3]
+            out[3:6] = R.T @ v[3:6]
+            path = np.zeros(6)
+            path[:3] = R.T @ path_base[:3]
+            path[3:6] = R.T @ path_base[3:6]
+            feedback = np.zeros(6)
+            feedback[:3] = R.T @ feedback_base[:3]
+            feedback[3:6] = R.T @ feedback_base[3:6]
+            self.last_path_twist = path
+            self.last_feedback_twist = feedback
+            return out
+        self.last_path_twist = path_base
+        self.last_feedback_twist = feedback_base
+        return v
+
+
+@dataclass
+class JointTrackConfig:
+    """Joint-space PD + feedforward tracking (MoveJ-like; no Cartesian stall)."""
+
+    k_joint: float = 2.0
+    max_joint_err_rad: float = 0.35
+    sigma_ref: float = 0.08
+    # σ-adaptive floor: k_eff = k_joint * max(σ/σ_ref, floor).
+    k_joint_sigma_min_frac: float = 0.2
+    control_frame: str = "tool"
+    euler_order: str = "xyz"
+    # Rise-only slew on k_eff (1/s); fall is immediate for singularity protection.
+    k_joint_rise_per_s: float = 1.2
+    # LPF on last_qdot_fb (s); damps QP dual chatter when secondary ≈ slack·W_task.
+    fb_lpf_tau_s: float = 0.015
+    # Scale fb secondary pull (0..1); keeps QP reg well-conditioned.
+    fb_secondary_gain: float = 0.4
+
+
+class JointTrackOuterLoop:
+    """MoveJ-like outer loop: track joint plan via J(q)·(qdot_plan + k·q_err)."""
+
+    def __init__(
+        self,
+        reference,
+        kin: RobotKinematics,
+        cfg: JointTrackConfig | None = None,
+        *,
+        v_max_rad_s: np.ndarray | None = None,
+    ) -> None:
+        self.reference = reference
+        self.kin = kin
+        self.cfg = cfg or JointTrackConfig()
+        self.v_max = (
+            np.asarray(v_max_rad_s, dtype=float)
+            if v_max_rad_s is not None
+            else np.asarray(kin.v_max, dtype=float)
+        )
+        self.last_err_mm: float = 0.0
+        self.last_joint_err_deg: float = 0.0
+        self.last_sigma_min: float = 0.0
+        # Feedback-only term for QP secondary (plan ff is governor-scaled separately).
+        self.last_qdot_fb: np.ndarray | None = None
+        self.last_qdot_command: np.ndarray | None = None
+        self._qdot_fb_lpf: np.ndarray | None = None  # LPF state, unscaled
+        self._k_eff_prev: float | None = None
+        self._t_prev: float | None = None
+
+    def set_origin(self, pose0: np.ndarray) -> None:
+        if hasattr(self.reference, "set_origin"):
+            self.reference.set_origin(pose0)
+
+    def sample(
+        self,
+        t_s: float,
+        current_pose: np.ndarray,
+        f_ext: np.ndarray,
+        *,
+        q_meas: np.ndarray | None = None,
+    ) -> np.ndarray:
+        del f_ext
+        if q_meas is None:
+            raise RuntimeError("JointTrackOuterLoop.sample requires q_meas")
+        cfg = self.cfg
+        q_ref, qdot_plan = self.reference.sample_q(t_s)
+        q_meas = np.asarray(q_meas, dtype=float)
+        q_err = np.clip(
+            wrap_joint_delta(q_meas, q_ref),
+            -cfg.max_joint_err_rad,
+            cfg.max_joint_err_rad,
+        )
+        self.last_joint_err_deg = max_joint_err_deg(q_meas, q_ref)
+        J = self.kin.jacobian(q_meas)
+        sigma = self.kin.singular_values(J)
+        sigma_min = float(sigma.min())
+        self.last_sigma_min = sigma_min
+        if cfg.sigma_ref > 1e-9:
+            k_target = cfg.k_joint * float(
+                np.clip(sigma_min / cfg.sigma_ref, cfg.k_joint_sigma_min_frac, 1.0)
+            )
+        else:
+            k_target = cfg.k_joint
+        # Rise-only slew on k_eff (fall is immediate).
+        if (
+            self._k_eff_prev is None
+            or self._t_prev is None
+            or cfg.k_joint_rise_per_s <= 0.0
+            or k_target <= self._k_eff_prev
+        ):
+            k_eff = k_target
+        else:
+            dt_eff = max(0.0, t_s - self._t_prev)
+            k_eff = min(k_target, self._k_eff_prev + cfg.k_joint_rise_per_s * dt_eff)
+        dt_eff_lpf = 0.005 if self._t_prev is None else max(1e-4, t_s - self._t_prev)
+        self._k_eff_prev = k_eff
+        self._t_prev = t_s
+        qdot_fb_raw = k_eff * q_err
+        if self._qdot_fb_lpf is None or cfg.fb_lpf_tau_s <= 0.0:
+            self._qdot_fb_lpf = qdot_fb_raw.copy()
+        else:
+            alpha = dt_eff_lpf / (cfg.fb_lpf_tau_s + dt_eff_lpf)
+            self._qdot_fb_lpf = self._qdot_fb_lpf + alpha * (qdot_fb_raw - self._qdot_fb_lpf)
+        # Scale secondary fb only; primary v_cmd still uses full qdot_fb_raw.
+        self.last_qdot_fb = self._qdot_fb_lpf * float(cfg.fb_secondary_gain)
+        qdot_cmd = qdot_plan + qdot_fb_raw
+        v_lim = np.asarray(self.v_max, dtype=float)
+        qdot_cmd = np.clip(qdot_cmd, -v_lim, v_lim)
+        self.last_qdot_command = qdot_cmd.copy()
+        v_base = J @ qdot_cmd
+        # Soften primary twist near σ or with large residual q_err.
+        q_err_deg = float(np.max(np.abs(np.rad2deg(q_err))))
+        feas = 1.0
+        if cfg.sigma_ref > 1e-9 and sigma_min < cfg.sigma_ref:
+            feas = float(
+                np.clip(sigma_min / cfg.sigma_ref, cfg.k_joint_sigma_min_frac, 1.0)
+            )
+        if q_err_deg > 8.0 and sigma_min < cfg.sigma_ref * 1.5:
+            feas *= min(1.0, 8.0 / q_err_deg)
+        if feas < 1.0:
+            v_base = feas * v_base
+        pose_ref = self.kin.fk_pose(q_ref)
+        err = pose_error(pose_ref, current_pose, cfg.euler_order)
+        self.last_err_mm = float(np.linalg.norm(err[:3]) * 1000.0)
+
+        if cfg.control_frame == "tool":
+            R = Rsc.from_euler(cfg.euler_order, current_pose[3:6], degrees=False).as_matrix()
+            out = np.zeros(6, dtype=float)
+            out[:3] = R.T @ v_base[:3]
+            out[3:6] = R.T @ v_base[3:6]
+            return out
+        return v_base
+
+
+# ---------------------------------------------------------------------------
+# On-robot orchestration
+# ---------------------------------------------------------------------------
+def _set_realtime_priority(priority: int = 80) -> bool:
+    """Best-effort SCHED_FIFO for the control thread (needs CAP_SYS_NICE / root)."""
+    try:
+        param = os.sched_param(priority)
+        os.sched_setscheduler(0, os.SCHED_FIFO, param)
+        return True
+    except (PermissionError, OSError, AttributeError):
+        return False
+
+
+def _pin_control_cpu(cpu: int | None) -> bool:
+    """Best-effort CPU affinity for the calling thread."""
+    if cpu is None:
+        return False
+    try:
+        os.sched_setaffinity(0, {int(cpu)})
+        return True
+    except (PermissionError, OSError, AttributeError, ValueError):
+        return False
+
+
+class _CStateGuard:
+    """Hold ``/dev/cpu_dma_latency`` at 0 so the CPU stays out of deep C-states."""
+
+    def __init__(self) -> None:
+        self._fd = None
+
+    def __enter__(self) -> "_CStateGuard":
+        try:
+            self._fd = open("/dev/cpu_dma_latency", "wb", buffering=0)
+            self._fd.write(b"\x00\x00\x00\x00")
+        except OSError:
+            self._fd = None
+        return self
+
+    def __exit__(self, *exc) -> None:
+        if self._fd is not None:
+            try:
+                self._fd.close()
+            except OSError:
+                pass
+            self._fd = None
+
+    @property
+    def active(self) -> bool:
+        return self._fd is not None
+
+
+# Spin the last ~1 ms of the period (sleep often wakes 1–3 ms late at 200 Hz).
+_SPIN_MARGIN_S = 0.001
+
+
+def _wait_until(deadline: float) -> None:
+    while True:
+        remaining = deadline - time.perf_counter()
+        if remaining <= 0:
+            return
+        if remaining > _SPIN_MARGIN_S:
+            time.sleep(remaining - _SPIN_MARGIN_S)
+
+
+def _resync_late_tick(next_tick: float, now: float, dt: float) -> tuple[float, float]:
+    """If we missed a whole period, jump the schedule forward instead of bursting.
+
+    Returns ``(next_tick, late_ms)`` where ``late_ms`` is how far ``now`` was
+    past the scheduled tick start (always >= 0).
+    """
+    late_s = now - next_tick
+    if late_s > dt:
+        return now, late_s * 1000.0
+    return next_tick, max(0.0, late_s * 1000.0)
+
+
+@dataclass
+class LoopResult:
+    ticks: int
+    duration_s: float
+    max_jitter_ms: float
+    stalled: bool
+    stutter_count: int = 0
+    stop_reason: str = ""
+
+
+def reference_time_step(dt_elapsed_s: float, scale: float) -> float:
+    """Advance ``t_ref`` by the time that actually passed, not ``dt_nom``."""
+    elapsed = float(dt_elapsed_s)
+    if not math.isfinite(elapsed) or elapsed <= 0.0:
+        return 0.0
+    return elapsed * float(scale)
+
+
+@dataclass
+class Phase:
+    """One leg of a multi-phase on-robot run (shared inner loop / watchdog).
+
+    ``t_ref`` advances by ``dt_wall * governor_scale`` so the reference
+    plays in real time. Set ``governor_err_max_mm=0`` to disable Cartesian
+    governor (typical for MoveJ-like joint moves).
+    """
+
+    outer: OuterLoop
+    label: str = ""
+    duration_s: float | None = None          # None -> run until wait_until (or max_duration_s)
+    max_duration_s: float | None = None      # wall-clock safety cap
+    wait_until: object | None = None         # Callable pose or (pose, q_meas) -> bool
+    qdot_ff_provider: object | None = None   # Callable[[float], qdot_ff_rad_s] sampled at t_ref
+    scale_qdot_ff_with_governor: bool = True # False keeps plan-anchor alive when t_ref frozen
+    require_arrival: bool = False            # abort later phases if wait_until never fires
+    arrival_plan_duration_s: float | None = None
+    arrival_dwell_s: float = 0.0
+    arrival_arm_speed_rad_s: float = 0.02
+    arrival_rail_speed_m_s: float = 0.003
+    governor_err_ok_mm: float = 5.0
+    governor_err_max_mm: float = 25.0
+    governor_scale_min: float = 0.25
+    # Joint-space governor: enable with governor_joint_err_max_deg > 0.
+    governor_joint_err_ok_deg: float = 3.0
+    governor_joint_err_max_deg: float = 0.0
+    governor_tau_s: float = 0.2
+    governor_freeze_below: float = 0.02
+    governor_release_above: float = 0.10
+    soft_start_ramp_s: float = 0.0           # governor soft-start at phase entry (s)
+    force_observer: object | None = None     # None -> reuse the loop-level force_observer
+    on_enter: object | None = None           # Callable[[], None], fired right after set_origin
+    on_exit: object | None = None            # Callable[[], None], fired when phase completes
+    on_tick: object | None = None            # Callable[[float, JointIkStep, np.ndarray], None]
+
+
+@dataclass
+class _ArrivalDwellGate:
+    """Require plan completion, geometric arrival, and settled sent velocity."""
+
+    plan_duration_s: float | None
+    dwell_required_s: float
+    arm_speed_rad_s: float
+    rail_speed_m_s: float
+    dwell_s: float = 0.0
+
+    def update(
+        self,
+        *,
+        geometric_arrival: bool,
+        t_ref_s: float,
+        qdot_applied: np.ndarray,
+        dt_s: float,
+        rail_settled: bool | None = None,
+    ) -> bool:
+        qdot = np.asarray(qdot_applied, dtype=float).reshape(-1)
+        if qdot.size != 8 or not np.all(np.isfinite(qdot)):
+            self.dwell_s = 0.0
+            return False
+        plan_complete = bool(
+            self.plan_duration_s is None
+            or float(t_ref_s) >= float(self.plan_duration_s) - 1.0e-12
+        )
+        rail_speed_ok = (
+            abs(float(qdot[0])) <= max(float(self.rail_speed_m_s), 0.0)
+            if rail_settled is None
+            else bool(rail_settled)
+        )
+        speed_ok = bool(
+            rail_speed_ok
+            and np.max(np.abs(qdot[1:]), initial=0.0)
+            <= max(float(self.arm_speed_rad_s), 0.0)
+        )
+        candidate = bool(geometric_arrival and plan_complete and speed_ok)
+        if candidate:
+            self.dwell_s += max(float(dt_s), 0.0)
+        else:
+            self.dwell_s = 0.0
+        return bool(candidate and (
+            self.dwell_s + 1.0e-12 >= max(float(self.dwell_required_s), 0.0)
+        ))
+
+
+class _TickLogger:
+    """Async per-tick CSV telemetry (background writer; no sync flush in the RT loop)."""
+
+    @staticmethod
+    def _json_compact(value) -> str:
+        """Encode structured telemetry as deterministic, strict JSON.
+
+        CSV remains the transport for compatibility with existing replay
+        tools.  Variable-length task rows/groups are kept in one compact JSON
+        cell; non-finite floats become ``null`` instead of invalid JSON NaN.
+        """
+
+        def normalize(item):
+            if isinstance(item, np.ndarray):
+                return normalize(item.tolist())
+            if isinstance(item, np.generic):
+                return normalize(item.item())
+            if isinstance(item, dict):
+                return {
+                    str(key): normalize(item[key])
+                    for key in sorted(item, key=lambda key: str(key))
+                }
+            if isinstance(item, (tuple, list)):
+                return [normalize(entry) for entry in item]
+            if isinstance(item, (float, np.floating)):
+                return float(item) if np.isfinite(item) else None
+            if isinstance(item, (int, np.integer, bool, str)) or item is None:
+                return item
+            value = getattr(item, "value", None)
+            if value is not None and value is not item:
+                return normalize(value)
+            return str(item)
+
+        return json.dumps(
+            normalize(value),
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+
+    def _json_field(self, value) -> str:
+        """Skip per-tick JSON dumps unless verbose telemetry is on."""
+
+        if not self._verbose_json:
+            return ""
+        return self._json_compact(value)
+
+    _HEADER = (
+        ["t_wall_s", "phase", "controller_mode", "t_ref_s"]
+        + [f"q_cmd_{i}" for i in range(0, 8)]
+        + [f"q_meas_{i}" for i in range(0, 8)]
+        + [f"pose_{a}" for a in ("x", "y", "z", "rx", "ry", "rz")]
+        # twist_* = deprecated alias of twist_requested_*; achieved = J(q)qdot.
+        + [f"twist_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + [f"twist_requested_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + [f"twist_achieved_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + ["track_err_mm", "follow_err_deg", "slack_norm", "n_cbf",
+           "vel_clamped", "acc_clamped", "pos_clamped", "fx", "fy", "fz",
+           "instability_idx", "instability_idx_raw", "instability_idx_active",
+           "damping_z_eff",
+           "damping_ke_z", "damping_dimeas_z",
+           "v_force_z", "ke_est",
+           "f_des_z_eff", "v_r_z",
+           "force_reference_scale_n", "force_reference_drive",
+           "force_reference_gate_scale",
+           "force_reference_accel_m_s2",
+           "force_reference_reversal_reset",
+           "force_reference_fast_clear",
+           "force_fast_z",
+           "retract_guard_armed", "retract_fast_hold",
+           "retract_fast_stop_count", "retract_fast_rearm_count",
+           "force_task_latched",
+           "physical_contact_state",
+           "physical_contact_acquire_event", "physical_contact_loss_event",
+           "physical_contact_reacquire_event",
+           "physical_contact_low_timer_s", "physical_contact_high_timer_s",
+           "mass_z_eff", "takeover",
+           "dt_actual_s", "deadline_slack_s", "sensor_age_s", "feedback_age_s",
+           "feedback_fresh_tick",
+           "fx_raw_comp", "fy_raw_comp", "fz_raw_comp",
+           "vz_achieved_tool", "contact_present",
+           "force_pred_z", "force_dot_z", "cap_press_z", "cap_retract_z",
+           "ke_update_gated", "ke_dx_m", "ke_df_n", "ke_update_count",
+           "governor_scale", "governor_scale_raw", "sigma_min",
+           "qdot_norm", "qdot_max_frac_vmax",
+           "qdot_ff_norm", "tcp_jump_mm",
+           "rail_target_sent_m", "rail_meas_m", "rail_cmd_meas_err_m",
+           "rail_vel_pin", "plan_drives_rail", "rail_qdot_ff",
+           # Motion-subspace accuracy (force axes excluded from "准" metrics).
+           "pose_d_x", "pose_d_y", "pose_d_z", "pose_d_rx", "pose_d_ry", "pose_d_rz",
+           "pose_meas_x", "pose_meas_y", "pose_meas_z",
+           "pose_meas_rx", "pose_meas_ry", "pose_meas_rz",
+           "motion_err_lin_x_mm", "motion_err_lin_y_mm", "motion_err_lin_z_mm",
+           "motion_err_rot_x_deg", "motion_err_rot_y_deg", "motion_err_rot_z_deg",
+           "motion_err_rms_mm", "motion_axis_peak_mm",
+           "vel_ff_vx", "vel_ff_vy", "vel_ff_vz", "vel_ff_wx", "vel_ff_wy", "vel_ff_wz",
+           "rail_contrib_m_s", "arm_contrib_m_s", "arm_y_qdot", "rail_motion_share",
+           "rail_exec_for_qp",
+           # Chan-Dubey reg multipliers: rail first, then the worst arm joint.
+           "wln_scale_rail", "wln_scale_arm_max",
+           "waste_ratio", "rail_ff_m", "rail_posture_err_m",
+           "rail_escape_active",
+           "psi_deg", "psi_ref_deg", "psi_retarget_score", "d_pref_m",
+           "d_star_m", "psi_star_deg", "minmax_margin",
+           "elbow_margin_rad", "wrist_open_rad", "family_ok",
+           "tool_y_des_m", "tool_y_err_mm",
+           "contact_phase", "v_air_cmd", "ke_hat", "dob_v", "barrier_cap_floor",
+           # Append-only normal-axis BEFM/audit schema.
+           "flow_x_p", "flow_v_p", "flow_v_aux", "flow_x_a", "flow_v_a",
+           "flow_e", "flow_edot", "flow_F_c", "flow_v_track",
+           "flow_P_e", "flow_P_c", "flow_alpha_target", "flow_alpha",
+           "flow_alpha_case", "flow_T", "flow_psi", "flow_S_n",
+           "flow_S_r_hat", "flow_P_phys", "flow_P_mismatch",
+           "flow_E_phys", "flow_E_mismatch", "flow_gamma_active",
+           # Observe-mode evidence: press (m/s) the gate would have removed.
+           "flow_alpha_would_gate", "flow_edot_aligned",
+           "flow_sign_fault", "flow_feedback_stale", "flow_blocked_reason",
+           "contact_episode_rearm_event", "contact_episode_release_s",
+           "surface_force_scale", "surface_force_alpha", "surface_xy_error_m",
+           "force_barrier_contact_active",
+           # Fixed single-shot QPIK telemetry.
+           "qpik_backend", "qpik_solver_status", "qpik_solver_iterations",
+           "qpik_solver_solve_ms", "qpik_solver_call_count",
+           "qpik_solver_overrun",
+           "qpik_qp1_status", "qpik_qp2_status",
+           "qpik_qp1_solve_ms", "qpik_qp2_solve_ms",
+           "qpik_assembly_ms", "qpik_fallback_ms",
+           "qpik_total_ms", "qpik_qp2_fallback",
+           "tick_inner_ms", "tick_send_ms", "tick_log_ms",
+           "qpik_alpha", "qpik_beta", "qpik_authority",
+           "qpik_equality_residual_max", "qpik_hard_residual_max",
+           "qpik_anchor_valid", "qpik_recovery_overflow",
+           "qpik_protected_nominal_overflow_json",
+           "qpik_recovery_caps_json",
+           "qpik_recovery_overflow_indices_json",
+           "qpik_hard_active_constraint_ids_json",
+           "qpik_protected_target_json", "qpik_protected_achieved_json",
+           "qpik_protected_residual_json",
+           "qpik_scan_target_json", "qpik_scan_achieved_json",
+           "qpik_scan_residual_json", "qpik_working_slack_json",
+           "qpik_collision_slack_json", "qpik_dexterity_slack",
+           "qpik_branch_slack", "qpik_rail_macro_pref_v",
+           "qpik_rail_center_pref_v",
+           "qpik_rail_final_qdot", "qpik_arm_risk_pref_norm",
+           "qpik_arm_risk_pref_json", "qpik_risk_direction_cosine",
+           "qpik_path_velocity_xy_json",
+           "qpik_feedback_xy_raw_json", "qpik_feedback_xy_filtered_json",
+           "qpik_rail_xy_contribution_json", "qpik_arm_xy_contribution_json",
+           "qpik_rail_task_projection", "qpik_rail_arm_cancel",
+           "qpik_rail_decomposition_error",
+           "qpik_arm_rho", "qpik_joint_margin_rad",
+           "qpik_wrist_margin_rad", "qpik_wrist_singularity",
+           "qpik_accepted_reference_lag_s",
+           "qpik_pre_solve_feedback_age_s", "qpik_post_solve_feedback_age_s",
+           "qpik_q_cmd_q_meas_norm", "qpik_fallback_level",
+           "qpik_fallback_reason", "qpik_solver_fault_latched",
+           "qpik_final_sent_qdot_json",
+           "post_qp_step_clamp_enabled",
+           "post_step_would_clamp",
+           "post_step_clamp_applied",
+           "dt_nom_s", "dt_int_s", "box_h1_s", "box_h2_s",
+           "qpik_qdot_raw_json",
+           "qpik_qdot_pre_commit_json",
+           "qpik_qdot_committed_json",
+           "qpik_qdot_prev_used_json",
+           "qpik_qdot_prev2_used_json",
+           "qpik_box_lo_json",
+           "qpik_box_hi_json",
+           "post_step_shadow_q_json",
+           "q_cmd_json",
+           "arm_send_mono_ns",
+           "rail_target_publish_mono_ns",
+           "rail_fa24_write_mono_ns",
+           "rail_encoder_sample_mono_ns",
+           "arm_qdot_target_wall_json",
+           "rail_sat",
+           "rail_exec_velocity_m_s", "rail_measured_velocity_m_s",
+           "rail_commanded_velocity_m_s", "rail_commanded_acceleration_m_s2",
+           "rail_feedback_age_s", "a_mirror_frac", "j_mirror_frac",
+           "last_limit_saturated", "keep_task_weight",
+           "pref_slack_scale", "rail_task_vel",
+           "v_escape", "v_reach", "v_ff_rail",
+           "u_alloc", "u_posture", "u_mid", "v_r_ref",
+           "comp_projected_frac",
+           "rail_coast_active", "rail_feedback_reject_streak_s",
+           "wall_override", "slack_zero_feasible",
+           "sigma_arm", "sns_scale",
+           "qpik_nullspace_norm",
+           "qpik_nullspace_centering_norm",
+           "qpik_nullspace_manip_norm",
+           "qpik_nullspace_arm_angle_norm",
+           "qpik_nullspace_damping_norm",
+           "qpik_nullspace_rail_lock_norm",
+           "qpik_sat_scale",
+           "qpik_sec_target_norm",
+           "cbf_min_dist", "cbf_pair",
+           "e_shape_norm", "e_qp_norm", "e_exec_norm",
+           "quiescent", "secondary_suppressed", "command_stale",
+           "joint_limited", "rail_limited", "wall_active"]
+        + [f"qdot_meas_{i}" for i in range(8)]
+        + [f"v_cmd_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + [f"path_twist_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + [f"feedback_twist_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + [f"comfort_slack_j{i}" for i in range(1, 8)]
+        + [
+            "pad_connected",
+            "pad_lx", "pad_ly", "pad_lt", "pad_rx", "pad_ry", "pad_rt",
+            "pad_lb", "pad_rb",
+            "pad_vx", "pad_vy", "pad_vz",
+            "pad_wx", "pad_wy", "pad_wz",
+        ]
+        + [f"pad_vcmd_base_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
+        + [
+            "u_dob_z",
+            "v_force_cmd_z",
+            "ke_cap_n_m",
+            "cdyob_corr_m_s",
+            "overforce_escape",
+            "u_nom_raw",
+            "u_nom_capped",
+            "u_shield_hyp",
+            "u_sent",
+            "lambda_obs",
+            "shield_applied",
+            "shield_feasible",
+            "f_ub_n",
+            "e_lb_j",
+            "w_lb_j",
+            "rho_v2_w",
+            "n_stop",
+            "tube_violation",
+            "solver_us",
+            "shield_infeasible_reason",
+            "f_constraint_margin_n",
+            "energy_margin_j",
+            "terminal_ok",
+            "aj_ok",
+            "domain_ok",
+            "recovery_latched",
+            "recontact_slow_latched",
+            "v_recontact_cap",
+        ]
+    )
+
+    def __init__(self, path: str, *, verbose_json: bool = False) -> None:
+        self._q: queue.SimpleQueue = queue.SimpleQueue()
+        self._stop = threading.Event()
+        self._verbose_json = bool(verbose_json)
+        self._prev_arm_send_ns = 0
+        self._prev_q_send_arm: np.ndarray | None = None
+        self._worker = threading.Thread(
+            target=self._run,
+            args=(path,),
+            name="joint-admittance-csv",
+            daemon=True,
+        )
+        self._worker.start()
+
+    def _run(self, path: str) -> None:
+        write_header = True
+        try:
+            write_header = not (os.path.exists(path) and os.path.getsize(path) > 0)
+        except OSError:
+            write_header = True
+        with open(path, "a", newline="") as f:
+            w = csv.writer(f)
+            if write_header:
+                w.writerow(self._HEADER)
+            n = 0
+            while True:
+                if self._stop.is_set() and self._q.empty():
+                    break
+                try:
+                    row = self._q.get(timeout=0.05)
+                except queue.Empty:
+                    continue
+                if row is None:
+                    break
+                if callable(row):
+                    row = row()
+                w.writerow(row)
+                n += 1
+                if n % 200 == 0:
+                    f.flush()
+
+    @staticmethod
+    def _fmt_pad_fields(outer) -> list[str]:
+        """Stick + mapped v_cmd extras; empty when the outer loop is not a pad."""
+
+        def _fmt_n(arr, n: int, prec: int = 6) -> list[str]:
+            if arr is None:
+                return [""] * n
+            vals = np.asarray(arr, dtype=float).reshape(-1)
+            out = []
+            for i in range(n):
+                if i >= vals.size or not np.isfinite(vals[i]):
+                    out.append("")
+                else:
+                    out.append(f"{float(vals[i]):.{prec}f}")
+            return out
+
+        axes = getattr(outer, "last_pad_axes", None)
+        buttons = getattr(outer, "last_pad_buttons", None)
+        if axes is None and buttons is None:
+            return [""] * 21
+        connected = getattr(outer, "last_pad_connected", False)
+        btn = (
+            np.asarray(buttons, dtype=float).reshape(-1)
+            if buttons is not None
+            else np.zeros(8)
+        )
+        lb = 1 if (btn.size > 4 and float(btn[4]) > 0.5) else 0
+        rb = 1 if (btn.size > 5 and float(btn[5]) > 0.5) else 0
+        return (
+            [str(int(bool(connected)))]
+            + _fmt_n(axes, 6, 4)
+            + [str(lb), str(rb)]
+            + _fmt_n(getattr(outer, "last_v_world", None), 3, 6)
+            + _fmt_n(getattr(outer, "last_w_tool", None), 3, 6)
+            + _fmt_n(getattr(outer, "last_twist_base", None), 6, 6)
+        )
+
+    def write(
+        self,
+        t_wall,
+        label,
+        t_ref,
+        step: JointIkStep,
+        q_meas,
+        pose,
+        f_ext,
+        outer=None,
+        *,
+        governor_scale: float = float("nan"),
+        governor_scale_raw: float = float("nan"),
+        v_max: np.ndarray | None = None,
+        rail_meas_m: float = float("nan"),
+        dt_actual_s: float = float("nan"),
+        sensor_age_s: float = float("nan"),
+        feedback_age_s: float = float("nan"),
+        feedback_fresh_tick: bool = False,
+        f_ext_raw: np.ndarray | None = None,
+        twist_achieved_base: np.ndarray | None = None,
+        v_tcp_z_actual: float = float("nan"),
+        qdot_meas: np.ndarray | None = None,
+        rail_target_sent_m: float | None = None,
+        deadline_slack_s: float = float("nan"),
+    ) -> None:
+        qm = q_meas if q_meas is not None else np.full(8, np.nan)
+        ctrl = getattr(outer, "controller", None)
+        is_idx = getattr(ctrl, "instability_index", float("nan"))
+        is_idx_raw = getattr(ctrl, "instability_index_raw", float("nan"))
+        d_eff = getattr(ctrl, "damping_z_eff", float("nan"))
+        d_ke = getattr(ctrl, "damping_ke_z", float("nan"))
+        d_dimeas = getattr(ctrl, "damping_dimeas_z", float("nan"))
+        v_fz = getattr(ctrl, "v_force_z", float("nan"))
+        u_dob_z = getattr(ctrl, "u_dob_z", float("nan"))
+        v_force_cmd_z = getattr(ctrl, "v_force_cmd_z", float("nan"))
+        ke_cap_n_m = getattr(ctrl, "ke_cap_n_m", float("nan"))
+        cdyob_corr_m_s = getattr(ctrl, "cdyob_corr_m_s", float("nan"))
+        overforce_escape = getattr(ctrl, "overforce_escape", False)
+        u_nom_raw = getattr(ctrl, "u_nom_raw_z", float("nan"))
+        u_nom_capped = getattr(ctrl, "u_nom_capped_z", float("nan"))
+        u_shield_hyp = getattr(ctrl, "u_shield_hyp_z", float("nan"))
+        u_sent = getattr(ctrl, "u_sent_z", float("nan"))
+        lambda_obs = getattr(ctrl, "lambda_obs", float("nan"))
+        shield_applied = getattr(ctrl, "shield_applied", False)
+        shield_feasible = getattr(ctrl, "shield_feasible", True)
+        f_ub_n = getattr(ctrl, "shield_f_ub_n", float("nan"))
+        e_lb_j = getattr(ctrl, "shield_e_lb_j", float("nan"))
+        w_lb_j = getattr(ctrl, "shield_w_lb_j", float("nan"))
+        rho_v2_w = getattr(ctrl, "shield_rho_v2_w", float("nan"))
+        n_stop = getattr(ctrl, "shield_n_stop", 0)
+        tube_violation = getattr(ctrl, "shield_tube_violation", False)
+        solver_us = getattr(ctrl, "shield_solver_us", float("nan"))
+        shield_infeasible_reason = getattr(ctrl, "shield_infeasible_reason", "")
+        f_constraint_margin_n = getattr(
+            ctrl, "shield_f_constraint_margin_n", float("nan")
+        )
+        energy_margin_j = getattr(ctrl, "shield_energy_margin_j", float("nan"))
+        terminal_ok = getattr(ctrl, "shield_terminal_ok", False)
+        aj_ok = getattr(ctrl, "shield_aj_ok", True)
+        domain_ok = getattr(ctrl, "shield_domain_ok", True)
+        recovery_latched = getattr(ctrl, "shield_recovery_latched", False)
+        recontact_slow_latched = getattr(ctrl, "recontact_slow_latched", False)
+        v_recontact_cap = getattr(ctrl, "v_recontact_cap_m_s", float("nan"))
+        ke_est = getattr(ctrl, "ke_est", float("nan"))
+        f_des_eff = getattr(ctrl, "f_des_z_eff", float("nan"))
+        v_r_z = getattr(ctrl, "v_r_z", float("nan"))
+        force_reference_scale = getattr(
+            ctrl, "force_reference_scale_n", float("nan")
+        )
+        force_reference_drive = getattr(
+            ctrl, "force_reference_drive", float("nan")
+        )
+        force_reference_gate = getattr(
+            ctrl, "force_reference_gate_scale", float("nan")
+        )
+        force_reference_accel = getattr(
+            ctrl, "force_reference_accel_m_s2", float("nan")
+        )
+        force_reference_reversal_reset = getattr(
+            ctrl, "force_reference_reversal_reset", False
+        )
+        force_reference_fast_clear = getattr(
+            ctrl, "force_reference_fast_clear", False
+        )
+        force_fast_z = getattr(ctrl, "force_fast_z", float("nan"))
+        retract_guard_armed = getattr(ctrl, "retract_guard_armed", False)
+        retract_fast_hold = getattr(ctrl, "retract_fast_hold", False)
+        retract_fast_stop_count = getattr(
+            ctrl, "retract_fast_stop_count", 0
+        )
+        retract_fast_rearm_count = getattr(
+            ctrl, "retract_fast_rearm_count", 0
+        )
+        force_task_latched = getattr(ctrl, "force_task_latched", False)
+        physical_contact_state = getattr(
+            ctrl, "physical_contact_state", ""
+        )
+        physical_contact_acquire_event = getattr(
+            ctrl, "physical_contact_acquire_event", False
+        )
+        physical_contact_loss_event = getattr(
+            ctrl, "physical_contact_loss_event", False
+        )
+        physical_contact_reacquire_event = getattr(
+            ctrl, "physical_contact_reacquire_event", False
+        )
+        physical_contact_tracker = getattr(ctrl, "_physical_contact", None)
+        physical_contact_low_timer = getattr(
+            ctrl,
+            "physical_contact_low_timer_s",
+            getattr(physical_contact_tracker, "low_timer_s", float("nan")),
+        )
+        physical_contact_high_timer = getattr(
+            ctrl,
+            "physical_contact_high_timer_s",
+            getattr(physical_contact_tracker, "high_timer_s", float("nan")),
+        )
+        mass_z_eff = getattr(ctrl, "mass_z_eff", float("nan"))
+        takeover = getattr(ctrl, "takeover_active", False)
+        contact_present = getattr(ctrl, "contact_present", False)
+        cap_press_z = getattr(ctrl, "cap_press_z", float("nan"))
+        cap_retract_z = getattr(ctrl, "cap_retract_z", float("nan"))
+        force_pred_z = getattr(ctrl, "force_pred_z", float("nan"))
+        force_dot_z = getattr(ctrl, "force_dot_z", float("nan"))
+        force_barrier_contact_active = getattr(
+            ctrl, "force_barrier_contact_active", False
+        )
+        contact_phase = getattr(ctrl, "contact_phase", "")
+        v_air_cmd = getattr(ctrl, "v_air_cmd", float("nan"))
+        ke_hat = getattr(ctrl, "ke_hat", getattr(ctrl, "ke_est", float("nan")))
+        dob_v = getattr(ctrl, "dob_v", float("nan"))
+        barrier_cap_floor = getattr(ctrl, "barrier_cap_floor", float("nan"))
+        ke_tracker = getattr(ctrl, "_ke_estimator", None)
+        ke_update_gated = getattr(ke_tracker, "update_gated", False)
+        ke_dx_m = getattr(ke_tracker, "last_dx_m", float("nan"))
+        ke_df_n = getattr(ke_tracker, "last_df_n", float("nan"))
+        ke_update_count = getattr(ke_tracker, "update_count", 0)
+        flow = getattr(ctrl, "bidirectional_flow", None)
+        flow_xp = getattr(flow, "xp", float("nan"))
+        flow_vp = getattr(flow, "vp", float("nan"))
+        flow_v_aux = getattr(flow, "v_aux", float("nan"))
+        flow_xa = getattr(flow, "xa", float("nan"))
+        flow_va = getattr(flow, "va", float("nan"))
+        flow_e = getattr(flow, "e", float("nan"))
+        flow_edot = getattr(flow, "edot", float("nan"))
+        flow_fc = getattr(flow, "fc", float("nan"))
+        flow_v_track = getattr(flow, "v_track", float("nan"))
+        flow_pe = getattr(flow, "Pe", float("nan"))
+        flow_pc = getattr(flow, "Pc", float("nan"))
+        flow_alpha_target = getattr(flow, "alpha_raw", float("nan"))
+        flow_alpha = getattr(flow, "alpha", float("nan"))
+        flow_alpha_case = getattr(flow, "alpha_case", "")
+        flow_would_gate = getattr(flow, "alpha_would_gate_m_s", float("nan"))
+        flow_edot_aligned = getattr(
+            flow, "mismatch_velocity_aligned", float("nan")
+        )
+        flow_tank = getattr(flow, "tank_energy", float("nan"))
+        flow_psi = getattr(flow, "psi", float("nan"))
+        flow_sn = getattr(flow, "Sn", float("nan"))
+        flow_sr = getattr(flow, "Sr_hat", float("nan"))
+        flow_p_phys = getattr(flow, "P_phys", float("nan"))
+        flow_p_mismatch = getattr(flow, "P_mismatch", float("nan"))
+        flow_e_phys = getattr(flow, "energy_phys_j", float("nan"))
+        flow_e_mismatch = getattr(flow, "energy_mismatch_j", float("nan"))
+        flow_gamma = getattr(flow, "gamma_effective", float("nan"))
+        flow_sign_fault = getattr(flow, "sign_fault", True)
+        flow_stale = getattr(flow, "feedback_stale", True)
+        flow_blocked = getattr(flow, "blocked_reason", "")
+        episode_rearm = getattr(ctrl, "contact_episode_rearm_event", False)
+        episode_release_s = getattr(
+            ctrl, "contact_episode_release_s", float("nan")
+        )
+        surface_force_scale = getattr(ctrl, "surface_force_scale", float("nan"))
+        surface_force_alpha = getattr(ctrl, "surface_force_alpha", float("nan"))
+        surface_xy_error_m = getattr(ctrl, "surface_xy_error_m", float("nan"))
+        raw_comp = (
+            np.asarray(f_ext_raw, dtype=float)
+            if f_ext_raw is not None
+            else np.full(6, np.nan)
+        )
+        twist_achieved = (
+            np.asarray(twist_achieved_base, dtype=float)
+            if twist_achieved_base is not None
+            else np.full(6, np.nan)
+        )
+        qdot_norm = float(np.linalg.norm(step.qdot))
+        # Max |qdot|/v_max (1.0 = saturated on at least one joint).
+        if v_max is not None and np.any(v_max > 1e-9):
+            qdot_max_frac = float(np.max(np.abs(step.qdot) / np.maximum(v_max, 1e-9)))
+        else:
+            qdot_max_frac = float("nan")
+        if rail_target_sent_m is not None and np.isfinite(float(rail_target_sent_m)):
+            rail_sent = float(rail_target_sent_m)
+        else:
+            rail_sent = float(step.q_send[0]) if step.q_send is not None else float("nan")
+        try:
+            q_cmd_q_meas_norm = float(
+                np.linalg.norm(np.asarray(step.q_send, dtype=float) - qm)
+            )
+        except (TypeError, ValueError):
+            q_cmd_q_meas_norm = float("nan")
+
+        # Desired pose + motion-subspace errors (force axes zeroed / ignored).
+        pose_d = getattr(outer, "last_pose_d", None)
+        pose_d_arr = (
+            np.asarray(pose_d, dtype=float).reshape(-1)
+            if pose_d is not None
+            else np.full(6, np.nan)
+        )
+        if pose_d_arr.size < 6:
+            pose_d_arr = np.full(6, np.nan)
+        pose_meas_arr = np.asarray(pose, dtype=float).reshape(-1)
+        if pose_meas_arr.size < 6:
+            pose_meas_arr = np.full(6, np.nan)
+        vel_ff = getattr(outer, "last_vel_ff", None)
+        vel_ff_arr = (
+            np.asarray(vel_ff, dtype=float).reshape(-1)
+            if vel_ff is not None
+            else np.full(6, np.nan)
+        )
+        if vel_ff_arr.size < 6:
+            vel_ff_arr = np.full(6, np.nan)
+        motion_err_lin_mm = np.full(3, np.nan)
+        motion_err_rot_deg = np.full(3, np.nan)
+        motion_err_rms_mm = float("nan")
+        motion_axis_peak_mm = float("nan")
+        tool_y_des_m = float("nan")
+        tool_y_err_mm = float("nan")
+        euler_order = "xyz"
+        track_axes = np.ones(6)
+        ctrl_cfg = getattr(ctrl, "cfg", None) if ctrl is not None else None
+        if ctrl_cfg is not None:
+            euler_order = str(getattr(ctrl_cfg, "euler_order", "xyz"))
+            ta = getattr(ctrl_cfg, "track_axes", None)
+            if ta is not None:
+                track_axes = np.asarray(ta, dtype=float).reshape(-1)
+                if track_axes.size < 6:
+                    track_axes = np.ones(6)
+        if np.all(np.isfinite(pose_d_arr)) and np.all(np.isfinite(pose_meas_arr)):
+            err_base = pose_error(pose_d_arr, pose_meas_arr, euler_order)
+            r_cur = Rsc.from_euler(
+                euler_order, pose_meas_arr[3:6], degrees=False
+            ).as_matrix()
+            err_tool = np.zeros(6, dtype=float)
+            err_tool[:3] = r_cur.T @ err_base[:3]
+            err_tool[3:6] = r_cur.T @ err_base[3:6]
+            ta6 = np.asarray(track_axes, dtype=float)[:6]
+            # Force-axis components excluded from accuracy (NaN in per-axis cols).
+            for i in range(3):
+                if ta6[i] > 0.5:
+                    motion_err_lin_mm[i] = float(err_tool[i] * 1000.0)
+                else:
+                    motion_err_lin_mm[i] = float("nan")
+            for i in range(3):
+                if ta6[3 + i] > 0.5:
+                    motion_err_rot_deg[i] = float(np.degrees(err_tool[3 + i]))
+                else:
+                    motion_err_rot_deg[i] = float("nan")
+            lin_tracked = motion_err_lin_mm[np.isfinite(motion_err_lin_mm)]
+            if lin_tracked.size:
+                motion_err_rms_mm = float(np.sqrt(np.mean(np.square(lin_tracked))))
+                motion_axis_peak_mm = float(np.max(np.abs(lin_tracked)))
+            # SIN fixture alias: tool-Y from general des/meas (control frame).
+            tool_y_des_m = float((r_cur.T @ pose_d_arr[:3])[1])
+            if np.isfinite(motion_err_lin_mm[1]):
+                tool_y_err_mm = float(motion_err_lin_mm[1])
+            elif ta6[1] > 0.5:
+                tool_y_meas = float((r_cur.T @ pose_meas_arr[:3])[1])
+                tool_y_err_mm = float((tool_y_des_m - tool_y_meas) * 1000.0)
+
+        def _fmt6(arr: np.ndarray | None) -> list[str]:
+            if arr is None:
+                return [""] * 6
+            vals = np.asarray(arr, dtype=float).reshape(-1)
+            if vals.size < 6:
+                vals = np.pad(vals, (0, 6 - int(vals.size)), constant_values=np.nan)
+            return [
+                f"{float(v):.6f}" if np.isfinite(v) else ""
+                for v in vals[:6]
+            ]
+
+        def _fmt8(arr: np.ndarray | None) -> list[str]:
+            if arr is None:
+                return [""] * 8
+            vals = np.asarray(arr, dtype=float).reshape(-1)
+            if vals.size < 8:
+                vals = np.pad(vals, (0, 8 - int(vals.size)), constant_values=np.nan)
+            return [
+                f"{float(v):.6f}" if np.isfinite(v) else ""
+                for v in vals[:8]
+            ]
+
+        def _fmt3(arr: np.ndarray, prec: int = 4) -> list[str]:
+            return [
+                f"{float(v):.{prec}f}" if np.isfinite(v) else ""
+                for v in np.asarray(arr, dtype=float).reshape(-1)[:3]
+            ]
+
+        comfort = np.asarray(
+            getattr(step, "comfort_slack", np.zeros(7)), dtype=float
+        ).reshape(-1)
+        if comfort.size < 7:
+            comfort = np.pad(comfort, (0, 7 - int(comfort.size)))
+        comfort = comfort[:7]
+        pad_fields = self._fmt_pad_fields(outer)
+        controller_mode = str(getattr(step, "controller_mode", "") or "none")
+        qm = np.asarray(qm, dtype=float).copy()
+        pose = np.asarray(pose, dtype=float).copy()
+        f_ext = np.asarray(f_ext, dtype=float).copy()
+        raw_comp = np.asarray(raw_comp, dtype=float).copy()
+        twist_achieved = np.asarray(twist_achieved, dtype=float).copy()
+        if qdot_meas is not None:
+            qdot_meas = np.asarray(qdot_meas, dtype=float).copy()
+
+        # Snapshot step so the writer thread cannot see the next tick mutate it.
+        step = copy.copy(step)
+        for _name, _val in vars(step).items():
+            if isinstance(_val, np.ndarray):
+                setattr(step, _name, np.array(_val, copy=True))
+        arm_ns = int(getattr(step, "arm_send_mono_ns", 0) or 0)
+        q_send_arr = np.asarray(step.q_send, dtype=float).reshape(-1)
+        arm_qdot_wall = None
+        if (
+            self._prev_arm_send_ns > 0
+            and arm_ns > self._prev_arm_send_ns
+            and q_send_arr.size >= 8
+            and self._prev_q_send_arm is not None
+        ):
+            dt_send = (arm_ns - self._prev_arm_send_ns) * 1.0e-9
+            if dt_send > 0.0:
+                arm_qdot_wall = (
+                    q_send_arr[1:8] - self._prev_q_send_arm
+                ) / dt_send
+        if arm_ns > 0 and q_send_arr.size >= 8:
+            self._prev_arm_send_ns = arm_ns
+            self._prev_q_send_arm = q_send_arr[1:8].copy()
+        # Format on the writer thread: f-strings of ~300 columns were ~0.4 ms
+        # on the control thread even after the disk write was already queued.
+        self._q.put(lambda: (
+            [
+                f"{t_wall:.4f}",
+                label,
+                controller_mode,
+                f"{t_ref:.4f}",
+            ]
+            + [f"{v:.6f}" for v in step.q_send]
+            + [f"{v:.6f}" for v in qm]
+            + [f"{v:.6f}" for v in pose]
+            + [f"{v:.5f}" for v in step.twist_base]
+            + [f"{v:.5f}" for v in step.twist_base]
+            + [f"{v:.5f}" for v in twist_achieved]
+            + [f"{step.cart_err_mm:.3f}", f"{np.degrees(step.follow_err_rad):.4f}",
+               f"{step.slack_norm:.5f}", step.n_cbf_active,
+               int(step.vel_clamped), int(step.acc_clamped), int(step.pos_clamped),
+               f"{f_ext[0]:.3f}", f"{f_ext[1]:.3f}", f"{f_ext[2]:.3f}",
+               f"{is_idx:.4f}", f"{is_idx_raw:.4f}", f"{is_idx:.4f}",
+               f"{d_eff:.2f}",
+               f"{d_ke:.2f}", f"{d_dimeas:.2f}",
+               f"{v_fz:.5f}", f"{ke_est:.1f}",
+               f"{f_des_eff:.3f}", f"{v_r_z:.5f}",
+               f"{force_reference_scale:.4f}",
+               f"{force_reference_drive:.6f}",
+               f"{force_reference_gate:.4f}",
+               f"{force_reference_accel:.6f}",
+               int(bool(force_reference_reversal_reset)),
+               int(bool(force_reference_fast_clear)),
+               f"{force_fast_z:.3f}",
+               int(bool(retract_guard_armed)),
+               int(bool(retract_fast_hold)),
+               int(retract_fast_stop_count),
+               int(retract_fast_rearm_count),
+               int(bool(force_task_latched)),
+               str(physical_contact_state),
+               int(bool(physical_contact_acquire_event)),
+               int(bool(physical_contact_loss_event)),
+               int(bool(physical_contact_reacquire_event)),
+               f"{float(physical_contact_low_timer):.6f}",
+               f"{float(physical_contact_high_timer):.6f}",
+               f"{mass_z_eff:.4f}",
+               int(bool(takeover)),
+               f"{dt_actual_s:.6f}",
+               (
+                   f"{float(deadline_slack_s):.6f}"
+                   if np.isfinite(deadline_slack_s)
+                   else ""
+               ),
+               f"{sensor_age_s:.6f}",
+               f"{feedback_age_s:.6f}", int(bool(feedback_fresh_tick)),
+               f"{raw_comp[0]:.3f}", f"{raw_comp[1]:.3f}", f"{raw_comp[2]:.3f}",
+               f"{v_tcp_z_actual:.6f}", int(bool(contact_present)),
+               f"{force_pred_z:.4f}", f"{force_dot_z:.4f}",
+               f"{cap_press_z:.6f}", f"{cap_retract_z:.6f}",
+               int(bool(ke_update_gated)), f"{ke_dx_m:.8f}", f"{ke_df_n:.5f}",
+               int(ke_update_count),
+               f"{governor_scale:.4f}", f"{governor_scale_raw:.4f}",
+               f"{step.sigma_min:.5f}",
+               f"{qdot_norm:.5f}", f"{qdot_max_frac:.4f}",
+               f"{step.qdot_ff_norm:.5f}", f"{step.tcp_jump_mm:.3f}",
+               f"{rail_sent:.6f}",
+               f"{rail_meas_m:.6f}" if np.isfinite(rail_meas_m) else "",
+               (
+                   f"{float(step.q_send[0]) - float(qm[0]):.6f}"
+                   if (
+                       step.q_send is not None
+                       and np.isfinite(float(step.q_send[0]))
+                       and np.isfinite(float(qm[0]))
+                   )
+                   else ""
+               ),
+               f"{step.rail_vel_pin:.6f}" if np.isfinite(step.rail_vel_pin) else "",
+               int(bool(step.plan_drives_rail)),
+               f"{step.rail_qdot_ff:.6f}" if np.isfinite(step.rail_qdot_ff) else "",
+               *_fmt6(pose_d_arr),
+               *_fmt6(pose_meas_arr),
+               *_fmt3(motion_err_lin_mm, prec=3),
+               *_fmt3(motion_err_rot_deg, prec=4),
+               f"{motion_err_rms_mm:.3f}" if np.isfinite(motion_err_rms_mm) else "",
+               (
+                   f"{motion_axis_peak_mm:.3f}"
+                   if np.isfinite(motion_axis_peak_mm)
+                   else ""
+               ),
+               *_fmt6(vel_ff_arr),
+               (
+                   f"{step.rail_contrib_m_s:.6f}"
+                   if np.isfinite(step.rail_contrib_m_s)
+                   else ""
+               ),
+               (
+                   f"{step.arm_contrib_m_s:.6f}"
+                   if np.isfinite(step.arm_contrib_m_s)
+                   else ""
+               ),
+               (
+                   f"{step.arm_contrib_m_s:.6f}"
+                   if np.isfinite(step.arm_contrib_m_s)
+                   else ""
+               ),
+               (
+                   f"{step.rail_motion_share:.4f}"
+                   if np.isfinite(step.rail_motion_share)
+                   else ""
+               ),
+               (
+                   f"{step.rail_exec_for_qp_m_s:.6f}"
+                   if np.isfinite(
+                       getattr(step, "rail_exec_for_qp_m_s", float("nan"))
+                   )
+                   else ""
+               ),
+               (
+                   f"{step.wln_scale_rail:.4f}"
+                   if np.isfinite(getattr(step, "wln_scale_rail", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{step.wln_scale_arm_max:.4f}"
+                   if np.isfinite(getattr(step, "wln_scale_arm_max", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{step.waste_ratio:.4f}"
+                   if np.isfinite(getattr(step, "waste_ratio", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{step.rail_ff_m:.6f}"
+                   if np.isfinite(getattr(step, "rail_ff_m", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{step.rail_posture_err_m:.6f}"
+                   if np.isfinite(getattr(step, "rail_posture_err_m", float("nan")))
+                   else ""
+               ),
+               int(bool(step.rail_escape_active)),
+               f"{step.psi_deg:.4f}" if np.isfinite(step.psi_deg) else "",
+               f"{step.psi_ref_deg:.4f}" if np.isfinite(step.psi_ref_deg) else "",
+               (
+                   f"{step.psi_retarget_score:.6f}"
+                   if np.isfinite(step.psi_retarget_score)
+                   else ""
+               ),
+               f"{step.d_pref_m:.6f}" if np.isfinite(step.d_pref_m) else "",
+               (
+                   f"{step.d_star_m:.6f}"
+                   if np.isfinite(getattr(step, "d_star_m", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{step.psi_star_deg:.4f}"
+                   if np.isfinite(getattr(step, "psi_star_deg", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{step.minmax_margin:.6f}"
+                   if np.isfinite(getattr(step, "minmax_margin", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{step.elbow_margin_rad:.6f}"
+                   if np.isfinite(step.elbow_margin_rad)
+                   else ""
+               ),
+               (
+                   f"{step.wrist_open_rad:.6f}"
+                   if np.isfinite(step.wrist_open_rad)
+                   else ""
+               ),
+               "1" if bool(getattr(step, "family_ok", True)) else "0",
+               f"{tool_y_des_m:.6f}" if np.isfinite(tool_y_des_m) else "",
+               f"{tool_y_err_mm:.3f}" if np.isfinite(tool_y_err_mm) else "",
+               str(contact_phase),
+               f"{float(v_air_cmd):.6f}" if np.isfinite(v_air_cmd) else "",
+               f"{float(ke_hat):.4f}" if np.isfinite(ke_hat) else "",
+               f"{float(dob_v):.6f}" if np.isfinite(dob_v) else "",
+               (
+                   f"{float(barrier_cap_floor):.6f}"
+                   if np.isfinite(barrier_cap_floor)
+                   else ""
+               ),
+               f"{flow_xp:.8f}", f"{flow_vp:.8f}", f"{flow_v_aux:.8f}",
+               f"{flow_xa:.8f}", f"{flow_va:.8f}", f"{flow_e:.8f}",
+               f"{flow_edot:.8f}", f"{flow_fc:.8f}", f"{flow_v_track:.8f}",
+               f"{flow_pe:.8f}", f"{flow_pc:.8f}",
+               f"{flow_alpha_target:.8f}", f"{flow_alpha:.8f}",
+               str(flow_alpha_case), f"{flow_tank:.9f}", f"{flow_psi:.8f}",
+               f"{flow_sn:.9f}", f"{flow_sr:.9f}", f"{flow_p_phys:.8f}",
+               f"{flow_p_mismatch:.8f}", f"{flow_e_phys:.9f}",
+               f"{flow_e_mismatch:.9f}", f"{flow_gamma:.8f}",
+               f"{float(flow_would_gate):.8f}",
+               f"{float(flow_edot_aligned):.8f}",
+               int(bool(flow_sign_fault)), int(bool(flow_stale)),
+               str(flow_blocked), int(bool(episode_rearm)),
+               f"{episode_release_s:.6f}", f"{surface_force_scale:.6f}",
+               f"{surface_force_alpha:.6f}", f"{surface_xy_error_m:.8f}",
+               int(bool(force_barrier_contact_active)),
+               str(step.qp_backend), str(step.qp_solver_status),
+               int(step.qp_solver_iterations),
+               f"{step.qp_solver_solve_ms:.6f}",
+               int(step.qp_solver_call_count),
+               int(bool(step.qp_solver_overrun)),
+               str(getattr(step, "qp1_status", "not_run")),
+               str(getattr(step, "qp2_status", "not_run")),
+               f"{float(getattr(step, 'qp1_solve_ms', 0.0)):.6f}",
+               f"{float(getattr(step, 'qp2_solve_ms', 0.0)):.6f}",
+               f"{float(getattr(step, 'qp_assembly_ms', 0.0)):.6f}",
+               f"{float(getattr(step, 'qp_fallback_ms', 0.0)):.6f}",
+               f"{float(getattr(step, 'qpik_total_ms', 0.0)):.6f}",
+               int(bool(getattr(step, "qp2_fallback", False))),
+               *(
+                   f"{v:.4f}" if np.isfinite(v) else ""
+                   for v in (
+                       getattr(step, "tick_inner_ms", float("nan")),
+                       getattr(step, "tick_send_ms", float("nan")),
+                       getattr(step, "tick_log_ms", float("nan")),
+                   )
+               ),
+               f"{step.qpik_alpha:.8f}", f"{step.qpik_beta:.8f}",
+               f"{step.qpik_authority:.8f}",
+               f"{step.qpik_equality_residual_max:.9e}",
+               f"{step.qpik_hard_residual_max:.9e}",
+               int(bool(step.qpik_anchor_valid)),
+               int(bool(step.qpik_recovery_overflow)),
+               self._json_field(step.qpik_protected_nominal_overflow),
+               self._json_field(step.qpik_recovery_caps),
+               self._json_field(step.qpik_recovery_overflow_indices),
+               self._json_field(step.hard_active_constraint_ids),
+               self._json_field(step.protected_target),
+               self._json_field(step.protected_achieved),
+               self._json_field(step.protected_residual),
+               self._json_field(step.scan_target),
+               self._json_field(step.scan_achieved),
+               self._json_field(step.scan_residual),
+               self._json_field(step.qpik_working_slack),
+               self._json_field(step.qpik_collision_slack),
+               f"{step.qpik_dexterity_slack:.9e}",
+               f"{step.qpik_branch_slack:.9e}",
+               f"{step.rail_macro_pref_v:.8f}",
+               f"{step.rail_center_pref_v:.8f}", f"{step.qdot[0]:.8f}",
+               f"{step.arm_risk_pref_norm:.8f}",
+               self._json_field(step.arm_risk_pref),
+               f"{step.risk_direction_cosine:.8f}",
+               self._json_field(step.path_velocity_xy),
+               self._json_field(step.feedback_xy_raw),
+               self._json_field(step.feedback_xy_filtered),
+               self._json_field(step.rail_xy_contribution),
+               self._json_field(step.arm_xy_contribution),
+               f"{step.rail_task_projection:.8f}",
+               f"{step.rail_arm_cancel:.8f}",
+               f"{step.rail_decomposition_error:.9e}",
+               f"{step.arm_health:.8f}",
+               f"{step.joint_margin_rad:.8f}", f"{step.wrist_margin_rad:.8f}",
+               f"{step.wrist_singularity:.8f}",
+               f"{step.accepted_reference_lag_s:.6f}",
+               f"{step.pre_solve_feedback_age_s:.6f}",
+               f"{step.post_solve_feedback_age_s:.6f}",
+               f"{q_cmd_q_meas_norm:.8f}",
+               str(step.fallback_level), str(step.fallback_reason),
+               int(bool(step.solver_fault_latched)),
+               self._json_compact(step.qdot),
+               int(bool(getattr(step, "post_qp_step_clamp_enabled", True))),
+               int(bool(getattr(step, "post_step_would_clamp", False))),
+               int(bool(getattr(step, "post_step_clamp_applied", False))),
+               (
+                   f"{float(step.dt_nom_s):.9e}"
+                   if np.isfinite(getattr(step, "dt_nom_s", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(step.dt_int_s):.9e}"
+                   if np.isfinite(getattr(step, "dt_int_s", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(step.box_h1_s):.9e}"
+                   if np.isfinite(getattr(step, "box_h1_s", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(step.box_h2_s):.9e}"
+                   if np.isfinite(getattr(step, "box_h2_s", float("nan")))
+                   else ""
+               ),
+               self._json_field(getattr(step, "qdot_raw", None)),
+               self._json_field(getattr(step, "qdot_pre_commit", None)),
+               self._json_field(getattr(step, "qdot_committed", None)),
+               self._json_field(getattr(step, "qdot_prev_used", None)),
+               self._json_field(getattr(step, "qdot_prev2_used", None)),
+               self._json_field(getattr(step, "box_lo", None)),
+               self._json_field(getattr(step, "box_hi", None)),
+               self._json_field(getattr(step, "post_step_shadow_q", None)),
+               self._json_compact(step.q_send),
+               (
+                   str(int(arm_ns))
+                   if arm_ns > 0
+                   else ""
+               ),
+               (
+                   str(int(step.rail_target_publish_mono_ns))
+                   if int(getattr(step, "rail_target_publish_mono_ns", 0) or 0) > 0
+                   else ""
+               ),
+               (
+                   str(int(step.rail_fa24_write_mono_ns))
+                   if int(getattr(step, "rail_fa24_write_mono_ns", 0) or 0) > 0
+                   else ""
+               ),
+               (
+                   str(int(step.rail_encoder_sample_mono_ns))
+                   if int(getattr(step, "rail_encoder_sample_mono_ns", 0) or 0) > 0
+                   else ""
+               ),
+               self._json_field(arm_qdot_wall),
+               int(bool(step.rail_sat)),
+               (
+                   f"{float(step.rail_exec_velocity_m_s):.8f}"
+                   if np.isfinite(step.rail_exec_velocity_m_s) else ""
+               ),
+               (
+                   f"{float(step.rail_measured_velocity_m_s):.8f}"
+                   if np.isfinite(step.rail_measured_velocity_m_s) else ""
+               ),
+               (
+                   f"{float(step.rail_commanded_velocity_m_s):.8f}"
+                   if np.isfinite(step.rail_commanded_velocity_m_s) else ""
+               ),
+               (
+                   f"{float(step.rail_commanded_acceleration_m_s2):.8f}"
+                   if np.isfinite(step.rail_commanded_acceleration_m_s2) else ""
+               ),
+               (
+                   f"{float(step.rail_feedback_age_s):.6f}"
+                   if np.isfinite(step.rail_feedback_age_s) else ""
+               ),
+               (
+                   f"{float(step.a_mirror_frac):.6f}"
+                   if np.isfinite(step.a_mirror_frac) else ""
+               ),
+               (
+                   f"{float(step.j_mirror_frac):.6f}"
+                   if np.isfinite(step.j_mirror_frac) else ""
+               ),
+               int(bool(step.last_limit_saturated)),
+               int(bool(step.keep_task_weight)),
+               f"{float(step.pref_slack_scale):.4f}",
+               (
+                   f"{float(step.rail_task_vel):.6f}"
+                   if np.isfinite(step.rail_task_vel)
+                   else ""
+               ),
+               f"{float(step.v_escape):.6f}" if np.isfinite(step.v_escape) else "",
+               f"{float(step.v_reach):.6f}" if np.isfinite(step.v_reach) else "",
+               f"{float(step.v_ff_rail):.6f}" if np.isfinite(step.v_ff_rail) else "",
+               f"{float(step.u_alloc):.6f}" if np.isfinite(step.u_alloc) else "",
+               f"{float(step.u_posture):.6f}" if np.isfinite(step.u_posture) else "",
+               f"{float(getattr(step, 'u_mid', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_mid", float("nan"))) else "",
+               f"{float(step.v_r_ref):.6f}" if np.isfinite(step.v_r_ref) else "",
+               f"{float(getattr(step, 'comp_projected_frac', 0.0)):.6f}",
+               int(bool(getattr(step, "rail_coast_active", False))),
+               (
+                   f"{float(step.rail_feedback_reject_streak_s):.6f}"
+                   if np.isfinite(getattr(step, "rail_feedback_reject_streak_s", float("nan")))
+                   else ""
+               ),
+               "1" if bool(step.wall_override) else "0",
+               "1" if bool(step.slack_zero_feasible) else "0",
+               f"{float(step.sigma_arm):.5f}" if np.isfinite(step.sigma_arm) else "",
+               f"{float(step.sns_scale):.4f}",
+               (
+                   f"{float(step.nullspace_norm):.6f}"
+                   if np.isfinite(step.nullspace_norm)
+                   else ""
+               ),
+               (
+                   f"{float(getattr(step, 'nullspace_centering_norm', float('nan'))):.6f}"
+                   if np.isfinite(getattr(step, "nullspace_centering_norm", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(getattr(step, 'nullspace_manip_norm', float('nan'))):.6f}"
+                   if np.isfinite(getattr(step, "nullspace_manip_norm", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(getattr(step, 'nullspace_arm_angle_norm', float('nan'))):.6f}"
+                   if np.isfinite(getattr(step, "nullspace_arm_angle_norm", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(getattr(step, 'nullspace_damping_norm', float('nan'))):.6f}"
+                   if np.isfinite(getattr(step, "nullspace_damping_norm", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(getattr(step, 'nullspace_rail_lock_norm', float('nan'))):.6f}"
+                   if np.isfinite(getattr(step, "nullspace_rail_lock_norm", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(getattr(step, 'sat_scale', float('nan'))):.6f}"
+                   if np.isfinite(getattr(step, "sat_scale", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(getattr(step, 'sec_target_norm', float('nan'))):.6f}"
+                   if np.isfinite(getattr(step, "sec_target_norm", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(step.cbf_min_dist):.6f}"
+                   if np.isfinite(step.cbf_min_dist)
+                   else ""
+               ),
+               str(step.cbf_pair),
+               f"{float(getattr(step, 'e_shape_norm', 0.0)):.6f}",
+               f"{float(getattr(step, 'e_qp_norm', 0.0)):.6f}",
+               f"{float(getattr(step, 'e_exec_norm', 0.0)):.6f}",
+               int(bool(getattr(step, "quiescent", False))),
+               int(bool(getattr(step, "secondary_suppressed", False))),
+               int(bool(getattr(step, "command_stale", False))),
+               int(bool(getattr(step, "joint_limited", False))),
+               int(bool(getattr(step, "rail_limited", False))),
+               int(bool(getattr(step, "wall_active", False))),
+               *_fmt8(
+                   qdot_meas
+                   if qdot_meas is not None
+                   else getattr(step, "qdot_meas", None)
+               ),
+               *_fmt6(getattr(step, "v_cmd", step.twist_base)),
+               *_fmt6(getattr(step, "path_twist", None)),
+               *_fmt6(getattr(step, "feedback_twist", None)),
+               *(f"{float(v):.9e}" for v in comfort),
+               *pad_fields,
+               f"{float(u_dob_z):.6f}" if np.isfinite(float(u_dob_z)) else "",
+               (
+                   f"{float(v_force_cmd_z):.6f}"
+                   if np.isfinite(float(v_force_cmd_z))
+                   else ""
+               ),
+               f"{float(ke_cap_n_m):.4f}" if np.isfinite(float(ke_cap_n_m)) else "",
+               (
+                   f"{float(cdyob_corr_m_s):.6f}"
+                   if np.isfinite(float(cdyob_corr_m_s))
+                   else ""
+               ),
+               int(bool(overforce_escape)),
+               f"{float(u_nom_raw):.6f}" if np.isfinite(float(u_nom_raw)) else "",
+               f"{float(u_nom_capped):.6f}" if np.isfinite(float(u_nom_capped)) else "",
+               f"{float(u_shield_hyp):.6f}" if np.isfinite(float(u_shield_hyp)) else "",
+               f"{float(u_sent):.6f}" if np.isfinite(float(u_sent)) else "",
+               f"{float(lambda_obs):.6f}" if np.isfinite(float(lambda_obs)) else "",
+               int(bool(shield_applied)),
+               int(bool(shield_feasible)),
+               f"{float(f_ub_n):.6f}" if np.isfinite(float(f_ub_n)) else "",
+               f"{float(e_lb_j):.8f}" if np.isfinite(float(e_lb_j)) else "",
+               f"{float(w_lb_j):.8f}" if np.isfinite(float(w_lb_j)) else "",
+               f"{float(rho_v2_w):.8f}" if np.isfinite(float(rho_v2_w)) else "",
+               int(n_stop),
+               int(bool(tube_violation)),
+               f"{float(solver_us):.2f}" if np.isfinite(float(solver_us)) else "",
+               str(shield_infeasible_reason or ""),
+               (
+                   f"{float(f_constraint_margin_n):.6f}"
+                   if np.isfinite(float(f_constraint_margin_n))
+                   else ""
+               ),
+               (
+                   f"{float(energy_margin_j):.8f}"
+                   if np.isfinite(float(energy_margin_j))
+                   else ""
+               ),
+               int(bool(terminal_ok)),
+               int(bool(aj_ok)),
+               int(bool(domain_ok)),
+               int(bool(recovery_latched)),
+               int(bool(recontact_slow_latched)),
+               (
+                   f"{float(v_recontact_cap):.6f}"
+                   if np.isfinite(float(v_recontact_cap))
+                   else ""
+               ),
+               ]
+        ))
+
+    def close(self) -> None:
+        self._q.put(None)
+        self._stop.set()
+        self._worker.join(timeout=1.0)
+
+
+def _expand_q_meas(q_deg_or_rad: np.ndarray, rail_m: float) -> np.ndarray:
+    """Realman feedback is 7 arm joints; prepend rail position for 8-DOF FK."""
+    q = np.asarray(q_deg_or_rad, dtype=float)
+    if q.size >= 8:
+        return q[:8]
+    if q.size == 7:
+        return full_q_from_arm(q, rail_m)
+    raise ValueError(f"expected 7 or 8 joint values, got {q.size}")
+
+
+def _rail_qdot_m_s(
+    rail_bridge,
+    q_new: np.ndarray,
+    last_q: np.ndarray | None,
+    dt_feedback: float | None,
+) -> float | None:
+    """Rail is not in the RealMan UDP frame; use FA24 speed, else Δq0/Δt."""
+    meas = getattr(rail_bridge, "measured_speed_m_s", None)
+    if meas is not None:
+        try:
+            v_rail = float(meas)
+        except (TypeError, ValueError):
+            v_rail = float("nan")
+        if np.isfinite(v_rail):
+            return v_rail
+    if (
+        last_q is not None
+        and dt_feedback is not None
+        and 0.001 <= float(dt_feedback) <= 0.050
+    ):
+        return float(q_new[0] - last_q[0]) / float(dt_feedback)
+    return None
+
+
+@dataclass
+class RailExecutionEstimate:
+    position_m: float
+    velocity_m_s: float
+    measured_velocity_m_s: float
+    commanded_velocity_m_s: float
+    commanded_acceleration_m_s2: float
+    sample_mono_s: float
+    age_s: float
+    extrapolation_age_s: float
+    command_mode: str
+    rejected: bool = False
+    reason: str = ""
+
+
+def accumulate_feedback_coast(
+    streak_s: float,
+    dt_s: float,
+    *,
+    bad: bool,
+    limit_s: float,
+) -> tuple[float, bool, bool]:
+    """Accumulate a rejected/stale streak.
+
+    Returns ``(new_streak_s, coast_active, should_fault)``.  A single bad
+    tick coasts; only a sustained streak past ``limit_s`` is a fault.
+    """
+
+    if not bad:
+        return 0.0, False, False
+    new = float(streak_s) + max(float(dt_s), 0.0)
+    limit = max(float(limit_s), 0.0)
+    return new, True, bool(new > limit)
+
+
+def _rail_execution_velocity_estimate(
+    rail_bridge,
+    *,
+    now_s: float | None = None,
+    freshness_s: float,
+    feedback=None,
+    require_fresh: bool = True,
+    observer: RailStateObserver | None = None,
+    v_r_ref: float | None = None,
+    dt_s: float | None = None,
+) -> RailExecutionEstimate | None:
+    """Bounded rail execution estimate for strict QPIK affine compensation.
+
+    Between two FA24 samples the measured velocity is propagated with the
+    worker's latest commanded acceleration over the true sample age, but
+    never farther than two configured rail polls.  A sample older than
+    ``freshness_s`` still coasts on that last reading (USB jitter must not
+    kill the task).  Missing or non-finite feedback is a fault only when
+    ``require_fresh`` is true.  Before the first sample the caller should
+    pass ``require_fresh=False`` so a cold Modbus poll can finish; the QP
+    then uses its existing command-velocity ZOH.
+    """
+    if rail_bridge is None or not getattr(rail_bridge, "enabled", False):
+        return None
+    now = time.monotonic() if now_s is None else float(now_s)
+    try:
+        if feedback is None:
+            feedback = rail_bridge.execution_feedback
+        position = float(feedback.position_m)
+        sample_t = float(feedback.sample_mono_s)
+        v_meas = float(feedback.v_meas_m_s)
+        v_cmd = float(feedback.v_cmd_m_s)
+        a_cmd = float(feedback.a_cmd_m_s2)
+        feedback_valid = bool(getattr(feedback, "valid", True))
+        mode_obj = feedback.command_mode
+    except Exception as exc:
+        if not require_fresh:
+            return None
+        return RailExecutionEstimate(
+            position_m=float("nan"),
+            velocity_m_s=0.0,
+            measured_velocity_m_s=0.0,
+            commanded_velocity_m_s=0.0,
+            commanded_acceleration_m_s2=0.0,
+            sample_mono_s=float("nan"),
+            age_s=float("inf"),
+            extrapolation_age_s=0.0,
+            command_mode="",
+            rejected=True,
+            reason=f"unavailable:{exc}",
+        )
+    values = (now, position, sample_t, v_meas, v_cmd, a_cmd)
+    if not all(np.isfinite(value) for value in values):
+        if not require_fresh:
+            return None
+        return RailExecutionEstimate(
+            position_m=position if np.isfinite(position) else float("nan"),
+            velocity_m_s=0.0,
+            measured_velocity_m_s=v_meas if np.isfinite(v_meas) else 0.0,
+            commanded_velocity_m_s=v_cmd if np.isfinite(v_cmd) else 0.0,
+            commanded_acceleration_m_s2=a_cmd if np.isfinite(a_cmd) else 0.0,
+            sample_mono_s=sample_t if np.isfinite(sample_t) else float("nan"),
+            age_s=float("inf"),
+            extrapolation_age_s=0.0,
+            command_mode=str(getattr(mode_obj, "value", mode_obj) or ""),
+            rejected=True,
+            reason="non_finite",
+        )
+    if not feedback_valid:
+        if not require_fresh:
+            return None
+        return RailExecutionEstimate(
+            position_m=position,
+            velocity_m_s=0.0,
+            measured_velocity_m_s=v_meas,
+            commanded_velocity_m_s=0.0,
+            commanded_acceleration_m_s2=0.0,
+            sample_mono_s=sample_t,
+            age_s=max(0.0, now - sample_t),
+            extrapolation_age_s=0.0,
+            command_mode=str(getattr(mode_obj, "value", mode_obj) or ""),
+            rejected=True,
+            reason="encoder_gate",
+        )
+    age = max(0.0, now - sample_t)
+    # freshness_s is the call-site budget; stale age coasts instead of
+    # raising.  One USB hiccup (age 83 ms vs 80 ms) must not stop QPIK.
+    # Worker still hard-holds FA24 after 3 Modbus fails.
+    _ = max(float(freshness_s), 0.0)
+    cfg = getattr(rail_bridge, "config", None)
+    poll_hz = max(float(getattr(cfg, "poll_hz", 50.0)), 1.0)
+    extrap_age = min(age, 2.0 / poll_hz)
+    if observer is not None:
+        q_hat, v_est = observer.update(
+            now_s=now,
+            dt_s=float(dt_s) if dt_s is not None else max(age, 1.0e-3),
+            v_r_ref=float(v_r_ref) if v_r_ref is not None else float(v_cmd),
+            v_written=float(v_cmd) if np.isfinite(float(v_cmd)) else None,
+            q_meas=position,
+            sample_t=sample_t,
+            v_meas=v_meas,
+        )
+        position = float(q_hat)
+    else:
+        v_est = v_meas + a_cmd * extrap_age
+    v_cap = abs(float(getattr(cfg, "vel_max_m_s", float("inf"))))
+    if np.isfinite(v_cap):
+        v_est = float(np.clip(v_est, -v_cap, v_cap))
+    mode = str(getattr(mode_obj, "value", mode_obj) or "")
+    return RailExecutionEstimate(
+        position_m=position,
+        velocity_m_s=float(v_est),
+        measured_velocity_m_s=v_meas,
+        commanded_velocity_m_s=v_cmd,
+        commanded_acceleration_m_s2=a_cmd,
+        sample_mono_s=sample_t,
+        age_s=age,
+        extrapolation_age_s=extrap_age,
+        command_mode=mode,
+    )
+
+
+def _qdot_meas_8dof(
+    q_new: np.ndarray,
+    last_q: np.ndarray | None,
+    dt_feedback: float | None,
+    snap,
+    rail_bridge=None,
+    rail_velocity_m_s: float | None = None,
+) -> np.ndarray | None:
+    """8-vector qdot: SDK arm speed + rail encoder/servo. Finite-diff only as fallback."""
+    arm = arm_qdot_rad_s_from_snap(snap)
+    if arm is not None:
+        qdot = np.zeros(8, dtype=float)
+        qdot[1:] = arm
+        v_rail = (
+            float(rail_velocity_m_s)
+            if rail_velocity_m_s is not None
+            and np.isfinite(float(rail_velocity_m_s))
+            else _rail_qdot_m_s(rail_bridge, q_new, last_q, dt_feedback)
+        )
+        if v_rail is not None:
+            qdot[0] = v_rail
+        return qdot
+    if last_q is None or dt_feedback is None:
+        return None
+    if not (0.001 <= float(dt_feedback) <= 0.050):
+        return None
+    qdot = wrap_joint_delta(last_q, q_new) / float(dt_feedback)
+    if rail_velocity_m_s is not None and np.isfinite(float(rail_velocity_m_s)):
+        qdot[0] = float(rail_velocity_m_s)
+    return qdot
+
+
+def _rail_m_for_init(rail_bridge, inner: JointIkController) -> float:
+    """Seed WBC ``q_cmd[0]`` from encoder so the first set_target is near reality."""
+    if rail_bridge is not None and rail_bridge.enabled:
+        return float(rail_bridge.measured_m)
+    return float(inner.q_cmd[0])
+
+
+def _rail_m_for_feedback(rail_bridge, inner: JointIkController) -> float:
+    """Return measured rail position; enabled-rail faults must stop 8D QPIK."""
+    if rail_bridge is None or not getattr(rail_bridge, "enabled", False):
+        return float(inner.q_cmd[0])
+    try:
+        meas = float(rail_bridge.measured_m)
+    except Exception as exc:
+        raise RuntimeError(f"rail feedback unavailable: {exc}") from exc
+    sane = getattr(rail_bridge, "_encoder_sane", None)
+    if callable(sane):
+        if not sane(meas):
+            raise RuntimeError(f"rail encoder value is invalid: {meas!r}")
+    elif not (np.isfinite(meas)):
+        raise RuntimeError(f"rail encoder value is non-finite: {meas!r}")
+    return meas
+
+
+def _rail_settled_for_arrival(
+    rail_bridge,
+    *,
+    speed_limit_m_s: float,
+    now_s: float,
+    freshness_s: float,
+) -> bool | None:
+    """Return worker-aligned rail standstill, or None when no rail is active."""
+
+    if rail_bridge is None or not getattr(rail_bridge, "enabled", False):
+        return None
+    try:
+        sample = rail_bridge.servo_sample
+        sample_time = float(sample.sample_mono_s)
+        v_cmd = float(sample.v_cmd_m_s)
+        v_meas = float(sample.v_meas_m_s)
+    except Exception:
+        return False
+    if not all(np.isfinite(value) for value in (sample_time, v_cmd, v_meas)):
+        return False
+    if max(0.0, float(now_s) - sample_time) > max(float(freshness_s), 0.0):
+        return False
+    limit = max(float(speed_limit_m_s), 0.0)
+    return bool(abs(v_cmd) <= limit and abs(v_meas) <= limit)
+
+
+def _qpik_rail_v_ff_m_s(qdot0: float) -> float:
+    """Servo ``v_ff`` is the QPIK rail velocity, never a pad/path bypass."""
+    v = float(qdot0)
+    if not math.isfinite(v):
+        return 0.0
+    return v
+
+
+def _wall_clock_rail_target(
+    q_send0: float,
+    qdot0: float,
+    dt_wall: float,
+    dt_nom: float,
+    *,
+    soft_lo: float,
+    soft_hi: float,
+    meas_m: float | None = None,
+    lead_max_m: float = 0.0,
+) -> float:
+    """Publish QPIK ``q_send[0]``; the rail already integrated on wall time.
+
+    Soft limits and the ±``lead_max_m`` command-lead clamp stay here.
+    Do not add ``qdot * (dt_wall - dt_nom)`` — that would double-count.
+    Clamp against measured position even when idle so a parked command
+    cannot wander tens of centimetres off the encoder.
+    """
+    del dt_wall, dt_nom, qdot0
+    x = float(q_send0)
+    lo = float(soft_lo)
+    hi = float(soft_hi)
+    if hi < lo:
+        lo, hi = hi, lo
+    x = max(lo, min(hi, x))
+    lead = max(float(lead_max_m), 0.0)
+    if lead > 0.0 and meas_m is not None and math.isfinite(float(meas_m)):
+        meas = float(meas_m)
+        x = max(meas - lead, min(meas + lead, x))
+    return x
+
+
+def _publish_rail_target_before_arm(
+    rail_bridge,
+    target_m: float,
+    fault_stop,
+    v_ff_m_s: float | None = None,
+) -> tuple[bool, str]:
+    """Require the rail to accept this 8D tick before publishing the arm half."""
+
+    if rail_bridge is None or not getattr(rail_bridge, "enabled", False):
+        return True, ""
+    if not bool(getattr(rail_bridge, "calibrated", False)):
+        reason = "rail_target_rejected:not_calibrated"
+    elif bool(getattr(rail_bridge, "panicked", False)):
+        detail = str(getattr(rail_bridge, "panic_reason", "") or "panic")
+        reason = (
+            f"rail_target_rejected:{detail}; "
+            "restart Window A to re-arm (panic latches)"
+        )
+    elif not bool(getattr(rail_bridge, "armed", False)):
+        reason = "rail_target_rejected:not_armed; restart Window A to re-arm"
+    else:
+        try:
+            accepted = rail_bridge.set_target_m(
+                float(target_m), v_ff_m_s=v_ff_m_s
+            )
+        except Exception as exc:
+            reason = f"rail_target_exception:{type(exc).__name__}:{exc}"
+        else:
+            if accepted is True:
+                return True, ""
+            reason = "rail_target_rejected:bridge_declined"
+    fault_stop(reason)
+    return False, reason
+
+
+def _joint_plan_err_deg(outer: OuterLoop, t_ref: float, q_meas: np.ndarray) -> float | None:
+    """Max |q_ref(t_ref) - q_meas| in deg from the outer loop's joint reference."""
+    ref = getattr(outer, "reference", None)
+    if ref is None or not hasattr(ref, "sample_q"):
+        return None
+    q_ref, _ = ref.sample_q(t_ref)
+    return max_joint_err_deg(q_meas, q_ref)
+
+
+def _reference_governor_scale(
+    phase: Phase,
+    *,
+    outer_err_mm: float | None,
+    joint_err_deg: float | None,
+    physical_saturated: bool = False,
+) -> float:
+    """Raw governor scale in [0, 1] (min of active bands); filter in GovernorFilter.
+
+    Cartesian error only slows the clock when a joint/rail is physically
+    saturated; otherwise tracking lag from a bad IK posture must not crawl
+    the reference to ~4% speed.  A floor (``governor_scale_min``) still
+    applies whenever a band is active.
+    """
+    scales: list[float] = []
+    floor = float(getattr(phase, "governor_scale_min", 0.0) or 0.0)
+
+    if phase.governor_joint_err_max_deg > 0.0 and joint_err_deg is not None:
+        e0, e1 = phase.governor_joint_err_ok_deg, phase.governor_joint_err_max_deg
+        if e1 > e0:
+            scales.append(float(np.clip((e1 - joint_err_deg) / (e1 - e0), 0.0, 1.0)))
+        else:
+            scales.append(1.0)
+
+    if phase.governor_err_max_mm > 0.0 and outer_err_mm is not None:
+        if physical_saturated:
+            e0, e1 = phase.governor_err_ok_mm, phase.governor_err_max_mm
+            if e1 > e0:
+                scales.append(float(np.clip((e1 - outer_err_mm) / (e1 - e0), 0.0, 1.0)))
+        else:
+            scales.append(1.0)
+
+    if not scales:
+        return 1.0
+    return max(float(min(scales)), floor)
+
+
+class GovernorFilter:
+    """First-order LPF + freeze hysteresis on the governor scale."""
+
+    def __init__(
+        self,
+        tau_s: float = 0.2,
+        freeze_below: float = 0.02,
+        release_above: float = 0.10,
+        scale_min: float = 0.0,
+    ) -> None:
+        self.tau_s = float(tau_s)
+        self.freeze_below = float(freeze_below)
+        self.release_above = float(release_above)
+        self.scale_min = float(scale_min)
+        self.scale = 1.0
+        self.frozen = False
+
+    def update(self, raw: float, dt: float) -> float:
+        floor = float(getattr(self, "scale_min", 0.0) or 0.0)
+        raw = float(np.clip(raw, floor, 1.0))
+        alpha = 1.0 if self.tau_s <= 0.0 else min(1.0, dt / self.tau_s)
+        self.scale += alpha * (raw - self.scale)
+        freeze_below = float(self.freeze_below)
+        if floor >= freeze_below:
+            self.frozen = False
+            return float(np.clip(self.scale, floor, 1.0))
+        if self.frozen:
+            if raw >= self.release_above and self.scale >= self.release_above:
+                self.frozen = False
+        elif self.scale <= freeze_below:
+            self.frozen = True
+        if self.frozen:
+            return 0.0
+        return float(np.clip(self.scale, floor, 1.0))
+
+
+def _send_joint_canfd_cmd(robot, q_deg, follow: bool, canfd_proxy=None) -> None:
+    from rm75_control.motion.canfd import send_joint_canfd
+
+    q = np.asarray(q_deg, dtype=float).reshape(-1)[:7]
+    if canfd_proxy is not None:
+        canfd_proxy.write(q, follow=follow)
+        return
+    if robot is None:
+        raise RuntimeError("no robot handle and no CANFD proxy configured")
+    send_joint_canfd(robot, list(q), follow=follow)
+
+
+def _guard_qpik_step_before_send(step: JointIkStep, fault_stop) -> tuple[bool, str]:
+    """Gate rail/CANFD publication.  A failed QP1 has no certified command."""
+    if bool(step.solver_fault_latched) or str(step.fallback_level) == "stop":
+        reason = f"qpik_fault:{step.fallback_level}:{step.fallback_reason}"
+        fault_stop(reason)
+        return False, reason
+    return True, ""
+
+
+def run_joint_admittance_phases(
+    session,
+    phases: list[Phase],
+    inner: JointIkController,
+    *,
+    q_start_deg: np.ndarray | None = None,
+    dt: float | None = None,
+    force_observer=None,
+    follow: bool = True,
+    move_speed: int = 20,
+    realtime: bool = False,
+    watchdog_timeout_s: float = 0.1,
+    on_step=None,
+    log_csv: str | None = None,
+    verbose: bool = True,
+    state_bus=None,
+    canfd_proxy=None,
+    stop_check=None,
+    rail_bridge=None,
+) -> LoopResult:
+    """Run ``Phase`` objects on the robot as one continuous CANFD stream."""
+    from rm75_control.control.admittance_common.state_bus import RobotStateBus
+
+    dt = inner.cfg.dt if dt is None else dt
+    robot = session.robot
+
+    if q_start_deg is not None:
+        if robot is None:
+            raise RuntimeError("q_start_deg move_j requires a local robot session")
+        session.move_joints(list(np.asarray(q_start_deg, dtype=float)), velocity_percent=move_speed, block=1)
+        time.sleep(0.5)
+
+    own_bus = state_bus is None
+    if own_bus:
+        state_bus = RobotStateBus(robot, session.config, robot_ip=session.ip)
+        state_bus.start()
+    async_obs = state_bus.observer
+    if verbose and own_bus:
+        print(
+            f"  feedback: UDP push {async_obs.push_period_ms:.0f}ms "
+            f"port={async_obs.config.port} ip={async_obs._target_ip}",
+            flush=True,
+        )
+    ticks = 0
+    max_jitter_ms = 0.0
+    stutter_count = 0
+    stalled = False
+    total_t0 = time.perf_counter()
+    logger = (
+        _TickLogger(
+            log_csv,
+            verbose_json=bool(getattr(inner.cfg, "verbose_json", False)),
+        )
+        if log_csv
+        else None
+    )
+    cstate = (
+        _CStateGuard()
+        if realtime and bool(getattr(inner.cfg, "disable_cstates", True))
+        else None
+    )
+    if cstate is not None:
+        cstate.__enter__()
+        if verbose and not cstate.active:
+            print("  (/dev/cpu_dma_latency unavailable — C-states not held)", flush=True)
+    try:
+        _pose0_rm = async_obs.wait_first_pose(timeout_s=5.0)
+        snap0 = async_obs.read()
+        if snap0.q_deg is None:
+            raise RuntimeError("no joint feedback from robot")
+        q0_rad = _expand_q_meas(
+            deg2rad(snap0.q_deg),
+            _rail_m_for_init(rail_bridge, inner),
+        )
+        # Cartesian loop uses Pinocchio TCP (may differ from RealMan FK).
+        pose0 = inner.kin.fk_pose(q0_rad)
+        inner.reset(q0_rad)
+
+        if realtime:
+            if not _set_realtime_priority():
+                if verbose:
+                    print("  (SCHED_FIFO unavailable - running at normal priority)", flush=True)
+            if _pin_control_cpu(getattr(inner.cfg, "control_cpu", None)):
+                if verbose:
+                    print(
+                        f"  control thread pinned to CPU {inner.cfg.control_cpu}",
+                        flush=True,
+                    )
+            elif verbose and getattr(inner.cfg, "control_cpu", None) is not None:
+                print("  (CPU affinity unavailable)", flush=True)
+
+        gc_frozen = False
+        if realtime and bool(getattr(inner.cfg, "rt_disable_gc", True)):
+            gc.collect()
+            gc.freeze()
+            gc.disable()
+            gc_frozen = True
+
+        def _hold() -> None:
+            # watchdog stall action: hold at the last commanded joint state
+            try:
+                _send_joint_canfd_cmd(
+                    robot,
+                    rad2deg(arm_q_from_full(inner.q_cmd)),
+                    False,
+                    canfd_proxy,
+                )
+            except Exception:
+                if robot is not None:
+                    try:
+                        robot.rm_set_arm_slow_stop()
+                    except Exception:
+                        pass
+
+        wd = Watchdog(watchdog_timeout_s, _hold)
+        wd.start()
+
+        def _fault_stop(reason: str) -> None:
+            """Stop both axes without publishing another trajectory target."""
+
+            if verbose:
+                print(f"  QPIK SAFETY STOP: {reason}", flush=True)
+            if rail_bridge is not None and getattr(rail_bridge, "enabled", False):
+                try:
+                    rail_bridge.hold_current()
+                except Exception:
+                    try:
+                        rail_bridge.kill_motion()
+                    except Exception:
+                        pass
+            if robot is not None:
+                try:
+                    robot.rm_set_arm_slow_stop()
+                except Exception:
+                    pass
+
+        try:
+            pose_rm = _pose0_rm
+            q_meas = q0_rad
+            pose_pin = pose0
+            jump_warn_t = 0.0
+            phase_stopped = False
+            stop_reason = ""
+            rail_feedback_ready = False
+            try:
+                for phase_idx, phase in enumerate(phases):
+                    if stop_check is not None and stop_check():
+                        phase_stopped = True
+                        if verbose:
+                            extra = (
+                                " before first tick (stop during pad/program init)"
+                                if ticks == 0
+                                else ""
+                            )
+                            print(f"  stopped by external request{extra}", flush=True)
+                        break
+                    if verbose:
+                        print(f"-- phase: {phase.label or phase.outer.__class__.__name__} --", flush=True)
+                    # Phase origin from encoders (never from the command integrator).
+                    snap = async_obs.read()
+                    if snap.q_deg is not None:
+                        rail_seed = _rail_m_for_init(rail_bridge, inner)
+                        q_meas = _expand_q_meas(deg2rad(snap.q_deg), rail_seed)
+                    pose_pin = inner.kin.fk_pose(q_meas)
+                    # Soft-start: reseed plan from live encoders (no tick-0 lurch).
+                    ref = getattr(phase.outer, "reference", None)
+                    if ref is not None:
+                        try:
+                            q_live = np.asarray(q_meas, dtype=float).reshape(-1)
+                            if hasattr(ref, "reseed_start"):
+                                ref.reseed_start(q_live)
+                            elif hasattr(ref, "q_start") and hasattr(ref, "q_target"):
+                                if q_live.size == int(np.asarray(ref.q_start).size):
+                                    ref.q_start = q_live.copy()
+                        except Exception:
+                            pass
+                    if hasattr(phase.outer, "set_origin"):
+                        phase.outer.set_origin(pose_pin)
+                    if phase.on_enter is not None:
+                        phase.on_enter()
+                    if hasattr(phase.outer, "begin_hybrid_episode"):
+                        applied_qdot = inner.core.qdot_prev
+                        applied_twist = inner.kin.jacobian(q_meas) @ applied_qdot
+                        inner.begin_hybrid_episode(q_meas, applied_qdot)
+                        phase.outer.begin_hybrid_episode(applied_twist, pose_pin)
+
+                    obs = phase.force_observer if phase.force_observer is not None else force_observer
+                    phase_t0 = time.perf_counter()
+                    next_tick = phase_t0
+                    last_tick_time = phase_t0
+                    t_ref = 0.0
+                    gov_filter = GovernorFilter(
+                        tau_s=phase.governor_tau_s,
+                        freeze_below=phase.governor_freeze_below,
+                        release_above=phase.governor_release_above,
+                        scale_min=float(getattr(phase, "governor_scale_min", 0.25)),
+                    )
+                    scale = 1.0
+                    phase_arrived = False
+                    arrival_gate = _ArrivalDwellGate(
+                        plan_duration_s=phase.arrival_plan_duration_s,
+                        dwell_required_s=phase.arrival_dwell_s,
+                        arm_speed_rad_s=phase.arrival_arm_speed_rad_s,
+                        rail_speed_m_s=phase.arrival_rail_speed_m_s,
+                    )
+                    prev_pose_cmd = inner.kin.fk_pose(inner.q_cmd)
+                    # TCP velocity from SDK joint_speed (rail from servo / Δq0).
+                    last_feedback_seq = int(getattr(snap, "seq", 0))
+                    last_feedback_t = float(getattr(snap, "t_s", 0.0))
+                    last_feedback_q = np.asarray(q_meas, dtype=float).copy()
+                    # ``feedback_age_s`` tracks the last sample from which a
+                    # finite-difference TCP velocity was actually computed;
+                    # sensor transport age is a separate diagnostic.
+                    last_feedback_velocity_t = last_feedback_t
+                    twist_achieved_base = np.zeros(6, dtype=float)
+                    qdot_meas = None
+                    v_tcp_z_actual = 0.0
+                    feedback_velocity_valid = False
+                    feedback_fresh_tick = False
+                    first_tick = True
+                    last_log_ms = float("nan")
+                    rail_reject_streak_s = 0.0
+                    sensor_stale_streak_s = 0.0
+                    rail_coast_active = False
+                    wd.arm()
+                    while True:
+                        if stop_check is not None and stop_check():
+                            phase_stopped = True
+                            break
+                        if not wd.fired:
+                            wd.beat()
+                        now = time.perf_counter()
+                        dt_raw = now - last_tick_time
+                        last_tick_time = now
+                        # The first phase tick occurs immediately after setup;
+                        # subsequent wall periods are only sanity-clamped so
+                        # >15 ms stalls remain visible to the force/proxy
+                        # dynamics.  ``update()`` integrates arm and rail on
+                        # this wall period when ``dt_wall_s`` is passed.
+                        if first_tick:
+                            dt_wall_actual = float(dt)
+                            first_tick = False
+                        else:
+                            dt_wall_actual = float(
+                                np.clip(
+                                    dt_raw if np.isfinite(dt_raw) else dt,
+                                    1.0e-4,
+                                    0.10,
+                                )
+                            )
+                        next_tick, late_ms = _resync_late_tick(next_tick, now, dt)
+                        if late_ms > dt * 1000.0:
+                            stutter_count += 1
+                        max_jitter_ms = max(max_jitter_ms, late_ms)
+                        t_wall = now - phase_t0
+                        if (
+                            phase.duration_s is not None
+                            and phase.wait_until is None
+                            and t_ref >= phase.duration_s
+                        ):
+                            break
+                        if phase.max_duration_s is not None and t_wall >= phase.max_duration_s:
+                            break
+    
+                        feedback_fresh_tick = False
+                        snap = async_obs.read()
+                        coast_limit_s = float(
+                            getattr(inner.cfg, "feedback_coast_s", 0.30)
+                        )
+                        try:
+                            rail_exec_estimate = _rail_execution_velocity_estimate(
+                                rail_bridge,
+                                now_s=time.monotonic(),
+                                freshness_s=float(inner.cfg.feedback_timeout_s),
+                                require_fresh=rail_feedback_ready,
+                                observer=inner.rail_observer,
+                                v_r_ref=float(inner.last_v_r_ref),
+                                dt_s=float(dt_wall_actual),
+                            )
+                        except RuntimeError as exc:
+                            rail_exec_estimate = RailExecutionEstimate(
+                                position_m=float("nan"),
+                                velocity_m_s=0.0,
+                                measured_velocity_m_s=0.0,
+                                commanded_velocity_m_s=0.0,
+                                commanded_acceleration_m_s2=0.0,
+                                sample_mono_s=float("nan"),
+                                age_s=float("inf"),
+                                extrapolation_age_s=0.0,
+                                command_mode="",
+                                rejected=True,
+                                reason=str(exc),
+                            )
+                        rail_rejected = bool(
+                            rail_exec_estimate is not None
+                            and getattr(rail_exec_estimate, "rejected", False)
+                        )
+                        rail_reject_reason = (
+                            str(getattr(rail_exec_estimate, "reason", "") or "")
+                            if rail_rejected
+                            else ""
+                        )
+                        (
+                            rail_reject_streak_s,
+                            rail_coast_active,
+                            rail_coast_fault,
+                        ) = accumulate_feedback_coast(
+                            rail_reject_streak_s,
+                            dt_wall_actual,
+                            bad=rail_rejected,
+                            limit_s=coast_limit_s,
+                        )
+                        if rail_coast_fault:
+                            phase_stopped = True
+                            stop_reason = (
+                                "rail_feedback_fault:"
+                                f"{rail_reject_reason or 'rejected'}"
+                                f":streak={rail_reject_streak_s:.3f}s"
+                            )
+                            _fault_stop(stop_reason)
+                            break
+                        if rail_exec_estimate is not None and not rail_rejected:
+                            rail_feedback_ready = True
+                        inner._midrange_freeze = bool(rail_coast_active)
+                        if rail_coast_active:
+                            inner.last_v_r_ref = 0.0
+                            try:
+                                inner.rail_ref_model.reset(0.0)
+                            except Exception:
+                                pass
+                            if rail_bridge is not None and getattr(
+                                rail_bridge, "enabled", False
+                            ):
+                                try:
+                                    rail_bridge.hold_current()
+                                except Exception:
+                                    pass
+                        if snap.pose is not None:
+                            pose_rm = snap.pose
+                        if snap.q_deg is not None:
+                            try:
+                                if (
+                                    rail_exec_estimate is not None
+                                    and np.isfinite(float(rail_exec_estimate.position_m))
+                                ):
+                                    rail_measured_m = float(
+                                        rail_exec_estimate.position_m
+                                    )
+                                else:
+                                    rail_measured_m = float(q_meas[0])
+                            except Exception:
+                                rail_measured_m = float(q_meas[0])
+                            q_new = _expand_q_meas(
+                                deg2rad(snap.q_deg), rail_measured_m
+                            )
+                            snap_seq = int(getattr(snap, "seq", 0))
+                            snap_t = float(getattr(snap, "t_s", 0.0))
+                            if (
+                                snap_seq != last_feedback_seq
+                                and snap_t > last_feedback_t
+                            ):
+                                dt_feedback = snap_t - last_feedback_t
+                                qdot_meas = _qdot_meas_8dof(
+                                    q_new,
+                                    last_feedback_q,
+                                    dt_feedback,
+                                    snap,
+                                    rail_bridge,
+                                    rail_velocity_m_s=(
+                                        rail_exec_estimate.velocity_m_s
+                                        if rail_exec_estimate is not None
+                                        else None
+                                    ),
+                                )
+                                if qdot_meas is not None:
+                                    twist_achieved_base = (
+                                        inner.kin.jacobian(q_new) @ qdot_meas
+                                    )
+                                    pose_for_velocity = inner.kin.fk_pose(q_new)
+                                    r_velocity = Rsc.from_euler(
+                                        inner.cfg.euler_order,
+                                        pose_for_velocity[3:6],
+                                        degrees=False,
+                                    ).as_matrix()
+                                    v_tcp_z_actual = float(
+                                        (r_velocity.T @ twist_achieved_base[:3])[2]
+                                    )
+                                    feedback_fresh_tick = True
+                                    feedback_velocity_valid = True
+                                    last_feedback_velocity_t = snap_t
+                                last_feedback_seq = snap_seq
+                                last_feedback_t = snap_t
+                                last_feedback_q = q_new.copy()
+                            q_meas = q_new
+                            pose_pin = inner.kin.fk_pose(q_meas)
+
+                        sensor_age_s = (
+                            max(0.0, time.monotonic() - float(snap.t_s))
+                            if float(getattr(snap, "t_s", 0.0)) > 0.0
+                            else float("inf")
+                        )
+                        feedback_age_s = (
+                            max(0.0, time.monotonic() - last_feedback_velocity_t)
+                            if last_feedback_velocity_t > 0.0
+                            else float("inf")
+                        )
+
+                        sensor_stale_now = (
+                            not np.isfinite(sensor_age_s)
+                            or sensor_age_s > float(inner.cfg.feedback_timeout_s)
+                        )
+                        (
+                            sensor_stale_streak_s,
+                            sensor_coast_active,
+                            sensor_coast_fault,
+                        ) = accumulate_feedback_coast(
+                            sensor_stale_streak_s,
+                            dt_wall_actual,
+                            bad=sensor_stale_now,
+                            limit_s=coast_limit_s,
+                        )
+                        if sensor_coast_fault:
+                            phase_stopped = True
+                            stop_reason = (
+                                "feedback_stale: "
+                                f"age={sensor_age_s:.6f}s > "
+                                f"{inner.cfg.feedback_timeout_s:.6f}s"
+                                f":streak={sensor_stale_streak_s:.3f}s"
+                            )
+                            _fault_stop(stop_reason)
+                            break
+                        if sensor_coast_active:
+                            if rail_bridge is not None and getattr(
+                                rail_bridge, "enabled", False
+                            ):
+                                try:
+                                    rail_bridge.hold_current()
+                                except Exception:
+                                    pass
+                            ticks += 1
+                            next_tick += dt
+                            _wait_until(next_tick)
+                            continue
+
+                        f_ext = np.zeros(6)
+                        f_ext_raw = None
+                        if obs is not None:
+                            pose_l7 = inner.kin.frame_pose(q_meas, "link_7")
+                            _signed, f_ext = obs.update(now - total_t0, pose_l7, snap.force_raw)
+                            f_ext_raw = getattr(obs, "f_ext_raw_last", None)
+                            f_ext = inner.kin.wrench_link7_to_tcp(f_ext)
+                            if f_ext_raw is not None:
+                                f_ext_raw = inner.kin.wrench_link7_to_tcp(f_ext_raw)
+    
+                        q_prev = inner.q_cmd.copy()
+                        sample_params = inspect.signature(phase.outer.sample).parameters
+                        sample_kwargs: dict = {}
+                        if "q_meas" in sample_params:
+                            sample_kwargs["q_meas"] = q_meas
+                        if "f_ext_raw" in sample_params and f_ext_raw is not None:
+                            # Unfiltered wrench for Dimeas (LPF hides the band).
+                            sample_kwargs["f_ext_raw"] = f_ext_raw
+                        if "dt_actual" in sample_params:
+                            sample_kwargs["dt_actual"] = dt_wall_actual
+                        if "v_tcp_z_actual" in sample_params:
+                            sample_kwargs["v_tcp_z_actual"] = v_tcp_z_actual
+                        if "sensor_age_s" in sample_params:
+                            sample_kwargs["sensor_age_s"] = sensor_age_s
+                        if "feedback_age_s" in sample_params:
+                            sample_kwargs["feedback_age_s"] = feedback_age_s
+                        if "feedback_fresh_tick" in sample_params:
+                            sample_kwargs["feedback_fresh_tick"] = feedback_fresh_tick
+                        if "feedback_velocity_valid" in sample_params:
+                            sample_kwargs["feedback_velocity_valid"] = (
+                                feedback_velocity_valid
+                            )
+                        twist = np.asarray(
+                            phase.outer.sample(t_ref, pose_pin, f_ext, **sample_kwargs),
+                            dtype=float,
+                        )
+                        qdot_ff = (
+                            phase.qdot_ff_provider(t_ref)
+                            if phase.qdot_ff_provider is not None
+                            else None
+                        )
+                        qdot_command = getattr(
+                            phase.outer, "last_qdot_command", None
+                        )
+                        if qdot_command is not None:
+                            qdot_ff = np.asarray(qdot_command, dtype=float).copy()
+                        if qdot_ff is not None:
+                            qdot_ff = np.asarray(qdot_ff, dtype=float)
+                            if phase.scale_qdot_ff_with_governor:
+                                qdot_ff = qdot_ff * scale
+                        # Additive joint fb (not governor-scaled) closes nullspace q_err.
+                        qdot_fb = getattr(phase.outer, "last_qdot_fb", None)
+                        if qdot_fb is not None and qdot_command is None:
+                            qdot_fb = np.asarray(qdot_fb, dtype=float)
+                            qdot_ff = qdot_fb if qdot_ff is None else (qdot_ff + qdot_fb)
+                        vel_ff_ref = getattr(phase.outer, "last_vel_ff", None)
+                        pose_d_ref = getattr(phase.outer, "last_pose_d", None)
+                        path_twist = getattr(phase.outer, "last_path_twist", None)
+                        feedback_twist = getattr(
+                            phase.outer, "last_feedback_twist", None
+                        )
+                        control_dt = dt
+                        ctrl = getattr(phase.outer, "controller", None)
+                        f_des_z = float(
+                            getattr(ctrl, "f_des_z_eff", float("nan"))
+                        ) if ctrl is not None else float("nan")
+                        f_ext_z = (
+                            float(f_ext[2])
+                            if f_ext is not None and len(f_ext) > 2
+                            else float("nan")
+                        )
+                        _t_inner0 = time.perf_counter()
+                        step = inner.update(
+                            twist,
+                            control_dt,
+                            q_meas=q_meas,
+                            qdot_ff=qdot_ff,
+                            vel_ff=vel_ff_ref,
+                            pose_d=pose_d_ref,
+                            f_ext_z=f_ext_z if math.isfinite(f_ext_z) else None,
+                            f_des_z=f_des_z if math.isfinite(f_des_z) else None,
+                            contact_active=bool(
+                                getattr(ctrl, "contact_present", False)
+                                if ctrl is not None
+                                else False
+                            ),
+                            path_twist=path_twist,
+                            feedback_twist=feedback_twist,
+                            v_force_z=(
+                                float(getattr(ctrl, "v_force_z", float("nan")))
+                                if ctrl is not None
+                                else None
+                            ),
+                            rail_exec_vel_m_s=(
+                                rail_exec_estimate.velocity_m_s
+                                if rail_exec_estimate is not None
+                                and not rail_coast_active
+                                else None
+                            ),
+                            rail_exec_smooth_m_s=(
+                                rail_exec_estimate.commanded_velocity_m_s
+                                if rail_exec_estimate is not None
+                                and not rail_coast_active
+                                else None
+                            ),
+                            dt_wall_s=dt_wall_actual,
+                        )
+                        step.rail_coast_active = bool(rail_coast_active)
+                        step.rail_feedback_reject_streak_s = float(
+                            rail_reject_streak_s
+                        )
+                        if rail_exec_estimate is not None:
+                            step.rail_exec_velocity_m_s = float(
+                                rail_exec_estimate.velocity_m_s
+                            )
+                            step.rail_measured_velocity_m_s = float(
+                                rail_exec_estimate.measured_velocity_m_s
+                            )
+                            step.rail_commanded_velocity_m_s = float(
+                                rail_exec_estimate.commanded_velocity_m_s
+                            )
+                            step.rail_commanded_acceleration_m_s2 = float(
+                                rail_exec_estimate.commanded_acceleration_m_s2
+                            )
+                            step.rail_feedback_age_s = float(rail_exec_estimate.age_s)
+                        step.tick_inner_ms = (
+                            time.perf_counter() - _t_inner0
+                        ) * 1000.0
+                        step.pre_solve_feedback_age_s = sensor_age_s
+                        # A hard-construction/final-validation fault is acted on before the
+                        # rail target or CANFD joint command can be published.
+                        sendable, qpik_stop_reason = _guard_qpik_step_before_send(
+                            step, _fault_stop
+                        )
+                        if not sendable:
+                            phase_stopped = True
+                            stop_reason = qpik_stop_reason
+                            if logger is not None:
+                                rail_meas = float("nan")
+                                if (
+                                    rail_bridge is not None
+                                    and rail_bridge.enabled
+                                ):
+                                    try:
+                                        rail_meas = float(rail_bridge.measured_m)
+                                    except Exception:
+                                        rail_meas = float("nan")
+                                step.tick_log_ms = last_log_ms
+                                logger.write(
+                                    now - total_t0,
+                                    phase.label,
+                                    t_ref,
+                                    step,
+                                    q_meas,
+                                    pose_pin,
+                                    f_ext,
+                                    outer=phase.outer,
+                                    rail_meas_m=rail_meas,
+                                    dt_actual_s=dt_wall_actual,
+                                    sensor_age_s=sensor_age_s,
+                                    feedback_age_s=feedback_age_s,
+                                    feedback_fresh_tick=feedback_fresh_tick,
+                                    f_ext_raw=f_ext_raw,
+                                    twist_achieved_base=twist_achieved_base,
+                                    v_tcp_z_actual=v_tcp_z_actual,
+                                    qdot_meas=qdot_meas,
+                                )
+                            break
+                        outer_err_mm = getattr(phase.outer, "last_err_mm", None)
+                        if outer_err_mm is not None:
+                            step.cart_err_mm = outer_err_mm
+                        pose_cmd = inner.kin.fk_pose(step.q_send)
+                        step.tcp_jump_mm = float(
+                            np.linalg.norm(pose_cmd[:3] - prev_pose_cmd[:3]) * 1000.0
+                        )
+                        if verbose and step.tcp_jump_mm > 8.0 and now - jump_warn_t >= 1.0:
+                            jump_warn_t = now
+                            print(
+                                f"  warn: TCP jump {step.tcp_jump_mm:.1f}mm/tick",
+                                flush=True,
+                            )
+                        prev_pose_cmd = pose_cmd
+                        publication_reason = ""
+                        if stop_check is not None and stop_check():
+                            publication_reason = "external_stop_before_send"
+                        elif wd.fired:
+                            publication_reason = "watchdog_fired_before_send"
+                        else:
+                            publish_snap = async_obs.read()
+                            snap_time = float(getattr(publish_snap, "t_s", 0.0))
+                            post_solve_sensor_age_s = (
+                                max(0.0, time.monotonic() - snap_time)
+                                if snap_time > 0.0
+                                else float("inf")
+                            )
+                            step.post_solve_feedback_age_s = post_solve_sensor_age_s
+                            post_stale = (
+                                not np.isfinite(post_solve_sensor_age_s)
+                                or post_solve_sensor_age_s
+                                > float(inner.cfg.feedback_timeout_s)
+                            )
+                            if post_stale:
+                                (
+                                    sensor_stale_streak_s,
+                                    _post_coast,
+                                    post_fault,
+                                ) = accumulate_feedback_coast(
+                                    sensor_stale_streak_s,
+                                    dt_wall_actual,
+                                    bad=True,
+                                    limit_s=coast_limit_s,
+                                )
+                                if post_fault:
+                                    publication_reason = (
+                                        "feedback_stale_before_send:"
+                                        f"age={post_solve_sensor_age_s:.6f}s"
+                                        f":streak={sensor_stale_streak_s:.3f}s"
+                                    )
+                            elif not wd.beat():
+                                publication_reason = "watchdog_latched_before_send"
+                        if publication_reason:
+                            phase_stopped = True
+                            stop_reason = publication_reason
+                            _fault_stop(stop_reason)
+                            break
+                        _t_send0 = time.perf_counter()
+                        qdot0_pub = _qpik_rail_v_ff_m_s(
+                            float(np.asarray(step.qdot, dtype=float).reshape(-1)[0])
+                        )
+                        rail_meas_pub = float("nan")
+                        if rail_bridge is not None and getattr(rail_bridge, "enabled", False):
+                            try:
+                                rail_meas_pub = float(rail_bridge.measured_m)
+                            except Exception:
+                                rail_meas_pub = float("nan")
+                        rail_pub_m = _wall_clock_rail_target(
+                            float(step.q_send[0]),
+                            qdot0_pub,
+                            dt_wall_actual,
+                            float(inner.cfg.dt),
+                            soft_lo=float(inner.limits.q_lower[0]),
+                            soft_hi=float(inner.limits.q_upper[0]),
+                            meas_m=rail_meas_pub,
+                            lead_max_m=float(inner.cfg.resync_err_rail_m),
+                        )
+                        if rail_coast_active:
+                            qdot0_pub = 0.0
+                            step.v_r_ref = 0.0
+                            if rail_bridge is not None and getattr(
+                                rail_bridge, "enabled", False
+                            ):
+                                try:
+                                    rail_bridge.hold_current()
+                                except Exception:
+                                    pass
+                            rail_ok, rail_reason = True, ""
+                        else:
+                            step.rail_target_publish_mono_ns = time.monotonic_ns()
+                            rail_ok, rail_reason = _publish_rail_target_before_arm(
+                                rail_bridge,
+                                float(rail_pub_m),
+                                _fault_stop,
+                                v_ff_m_s=qdot0_pub,
+                            )
+                        if not rail_ok:
+                            phase_stopped = True
+                            stop_reason = rail_reason
+                            break
+                        if rail_bridge is not None:
+                            step.rail_fa24_write_mono_ns = int(
+                                getattr(rail_bridge, "last_fa24_write_mono_ns", 0) or 0
+                            )
+                            step.rail_encoder_sample_mono_ns = int(
+                                getattr(rail_bridge, "last_encoder_sample_mono_ns", 0)
+                                or 0
+                            )
+                        try:
+                            step.arm_send_mono_ns = time.monotonic_ns()
+                            _send_joint_canfd_cmd(
+                                robot,
+                                rad2deg(arm_q_from_full(step.q_send)),
+                                follow,
+                                canfd_proxy,
+                            )
+                        except Exception as exc:
+                            phase_stopped = True
+                            stop_reason = (
+                                "arm_send_fault:"
+                                f"{type(exc).__name__}:{exc}"
+                            )
+                            _fault_stop(stop_reason)
+                            break
+                        step.tick_send_ms = (
+                            time.perf_counter() - _t_send0
+                        ) * 1000.0
+    
+                        joint_err_deg = getattr(
+                            phase.outer, "last_joint_err_deg", None
+                        )
+                        if joint_err_deg is None:
+                            joint_err_deg = _joint_plan_err_deg(
+                                phase.outer, t_ref, q_meas
+                            )
+                        raw_scale = _reference_governor_scale(
+                            phase,
+                            outer_err_mm=outer_err_mm,
+                            joint_err_deg=joint_err_deg,
+                            physical_saturated=bool(step.physical_saturated),
+                        )
+                        scale = gov_filter.update(raw_scale, control_dt)
+                        # Soft-start ramp: first ~0.3s cannot command near-vmax.
+                        ramp_s = float(getattr(phase, "soft_start_ramp_s", 0.0) or 0.0)
+                        if ramp_s > 1e-6 and step.controller_mode != "direct_joint_ptp":
+                            scale *= float(np.clip(t_wall / ramp_s, 0.0, 1.0))
+                        t_ref += reference_time_step(dt_wall_actual, scale)
+                        step.accepted_reference_lag_s = max(0.0, t_wall - t_ref)
+    
+                        if phase.on_tick is not None:
+                            phase.on_tick(t_ref, step, q_meas)
+    
+                        dq_deg = np.abs(rad2deg(step.q_send - q_prev))
+                        if verbose and now - jump_warn_t >= 1.0 and np.any(dq_deg > 1.5):
+                            jump_warn_t = now
+                            j = int(np.argmax(dq_deg)) + 1
+                            print(
+                                f"  warn: joint jump J{j} {dq_deg.max():.2f}deg/tick "
+                                f"(>{1.5:.1f} @ {dt*1000:.0f}ms)",
+                                flush=True,
+                            )
+    
+                        if logger is not None:
+                            rail_meas = float("nan")
+                            if rail_bridge is not None and rail_bridge.enabled:
+                                try:
+                                    rail_meas = float(rail_bridge.measured_m)
+                                except Exception:
+                                    rail_meas = float("nan")
+                            # The write cannot time itself into its own row, so
+                            # carry the previous tick's cost; over a run the
+                            # statistics are the same.
+                            step.tick_log_ms = last_log_ms
+                            _t_log0 = time.perf_counter()
+                            deadline_slack_s = (next_tick + dt) - time.perf_counter()
+                            logger.write(
+                                now - total_t0, phase.label, t_ref, step, q_meas, pose_pin, f_ext,
+                                outer=phase.outer,
+                                governor_scale=scale,
+                                governor_scale_raw=raw_scale,
+                                v_max=inner.limits.v_max,
+                                rail_meas_m=rail_meas,
+                                rail_target_sent_m=rail_pub_m,
+                                dt_actual_s=dt_wall_actual,
+                                deadline_slack_s=deadline_slack_s,
+                                sensor_age_s=sensor_age_s,
+                                feedback_age_s=feedback_age_s,
+                                feedback_fresh_tick=feedback_fresh_tick,
+                                f_ext_raw=f_ext_raw,
+                                twist_achieved_base=twist_achieved_base,
+                                v_tcp_z_actual=v_tcp_z_actual,
+                                qdot_meas=qdot_meas,
+                            )
+                            last_log_ms = (
+                                time.perf_counter() - _t_log0
+                            ) * 1000.0
+                        if on_step is not None:
+                            on_step(phase.label, t_ref, step, pose_pin, f_ext, t_wall)
+
+                        if phase.wait_until is not None:
+                            n_wait = len(inspect.signature(phase.wait_until).parameters)
+                            if n_wait >= 2:
+                                phase_arrived = bool(phase.wait_until(pose_pin, q_meas))
+                            else:
+                                phase_arrived = bool(phase.wait_until(pose_pin))
+                            if arrival_gate.update(
+                                geometric_arrival=phase_arrived,
+                                t_ref_s=t_ref,
+                                qdot_applied=step.qdot,
+                                dt_s=control_dt,
+                                rail_settled=_rail_settled_for_arrival(
+                                    rail_bridge,
+                                    speed_limit_m_s=phase.arrival_rail_speed_m_s,
+                                    now_s=time.monotonic(),
+                                    freshness_s=inner.cfg.feedback_timeout_s,
+                                ),
+                            ):
+                                phase_arrived = True
+                                break
+                            phase_arrived = False
+    
+                        ticks += 1
+                        next_tick += dt
+                        _wait_until(next_tick)
+
+                    if phase.on_exit is not None:
+                        phase.on_exit()
+
+                    if phase_stopped:
+                        break
+
+                    if phase.require_arrival and not phase_arrived:
+                        stop_reason = f"arrival_timeout:{phase.label or phase_idx}"
+                        phase_stopped = True
+                        _fault_stop(stop_reason)
+                        err_mm = getattr(phase.outer, "last_err_mm", float("nan"))
+                        jq = getattr(phase.outer, "last_joint_err_deg", float("nan"))
+                        d_mm = d_deg = float("nan")
+                        try:
+                            pt = getattr(phase, "pose_target", None)
+                            if pt is None:
+                                ref = getattr(phase.outer, "reference", None)
+                                pt = getattr(ref, "pose_d", None) or getattr(ref, "pose_target", None)
+                            if pt is not None and q_meas is not None:
+                                d_mm, d_deg = pose_distance(
+                                    pose_pin, pt, inner.cfg.euler_order
+                                )
+                        except Exception:
+                            pass
+                        print(
+                            f"  ERROR: phase {phase.label!r} did not reach target "
+                            f"(t_ref={t_ref:.2f}s, wall={t_wall:.1f}s, "
+                            f"track={err_mm:.0f}mm, poseΔ={d_mm:.1f}mm/{d_deg:.1f}deg, "
+                            f"jq={jq:.1f}deg) "
+                            f"— safety stop",
+                            flush=True,
+                        )
+                        break
+            except KeyboardInterrupt:
+                if verbose:
+                    print("\nStopped.", flush=True)
+        finally:
+            inner.set_direct_joint_ptp(False)
+            inner.set_plan_drives_rail(False)
+            wd.stop()
+            stalled = wd.fired
+    finally:
+        if own_bus:
+            state_bus.stop()
+        if logger is not None:
+            logger.close()
+        if cstate is not None:
+            cstate.__exit__(None, None, None)
+        if locals().get("gc_frozen"):
+            gc.enable()
+            gc.unfreeze()
+
+    total_s = time.perf_counter() - total_t0
+    if verbose:
+        stutter_note = f", {stutter_count} stutter(s)" if stutter_count else ""
+        print(
+            f"  joint-admittance loop: {ticks} ticks, {total_s:.1f}s, "
+            f"max jitter {max_jitter_ms:.2f} ms{stutter_note}"
+            f"{' [WATCHDOG FIRED]' if stalled else ''}",
+            flush=True,
+        )
+    return LoopResult(
+        ticks=ticks,
+        duration_s=total_s,
+        max_jitter_ms=max_jitter_ms,
+        stalled=stalled,
+        stutter_count=stutter_count,
+        stop_reason=stop_reason,
+    )
+
+
+def run_joint_admittance_loop(
+    session,
+    outer: OuterLoop,
+    inner: JointIkController,
+    *,
+    q_start_deg: np.ndarray | None = None,
+    duration_s: float = 10.0,
+    dt: float | None = None,
+    force_observer=None,
+    follow: bool = True,
+    move_speed: int = 20,
+    realtime: bool = False,
+    watchdog_timeout_s: float = 0.1,
+    on_step=None,
+    log_csv: str | None = None,
+    verbose: bool = True,
+    state_bus=None,
+    rail_bridge=None,
+) -> LoopResult:
+    """Single-phase convenience wrapper around ``run_joint_admittance_phases``."""
+    phase = Phase(
+        outer=outer,
+        label="run",
+        duration_s=duration_s,
+    )
+    on_step_1 = None if on_step is None else (lambda label, t, step, pose, f_ext: on_step(t, step, pose, f_ext))
+    return run_joint_admittance_phases(
+        session,
+        [phase],
+        inner,
+        q_start_deg=q_start_deg,
+        dt=dt,
+        force_observer=force_observer,
+        follow=follow,
+        move_speed=move_speed,
+        realtime=realtime,
+        watchdog_timeout_s=watchdog_timeout_s,
+        on_step=on_step_1,
+        log_csv=log_csv,
+        verbose=verbose,
+        state_bus=state_bus,
+        rail_bridge=rail_bridge,
+    )
+```
+
+### FILE `peirastic/apps/identify_plant.py`
+
+```python
+#!/usr/bin/env python3
+"""Window C: free-space plant identification for τ_eff / G_v(s).
+
+Requires Window A running with --log-csv.  Default sequence: tool-Z
+steps (±2/5/10/20/40/80 mm/s) and a 0.2–5 Hz chirp.
+
+``--stop-reverse`` is plant identification: +10/+20/+40/+80 mm/s to 0 and
+to −40 mm/s.  Analyse with ``--analyze-stop --input-column twist_vz``.
+``--backup-replay`` sends the shield's a/j-limited ``u_b``.  Pass
+``--window-a-csv`` so each tick syncs measured ``v`` / ``[a]_+``, and
+analyse with ``--analyze-stop --event-log`` so Window A is aligned to
+the explicit trigger, not a 3 mm/s edge.  That is still not a
+certificate until independent val and ``stop_dx_ub.certified: true``.
+
+Does not enable force mode.  Bidirectional_flow / CDYOB stay observe/off.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import math
+import time
+from pathlib import Path
+
+import numpy as np
+
+from peirastic.core.ipc import CommandClient, Status, TwistBus
+from peirastic.core.modes import Mode, ModeRequest
+
+STEPS_MM_S = (2.0, 5.0, 10.0, 20.0, 40.0, 80.0)
+STOP_SPEEDS_MM_S = (10.0, 20.0, 40.0, 80.0)
+REVERSE_MM_S = -40.0
+
+
+def _parse_speeds_mm_s(raw: str) -> tuple[float, ...]:
+    text = str(raw).strip()
+    if not text:
+        return STOP_SPEEDS_MM_S
+    return tuple(float(x) for x in text.split(",") if x.strip())
+
+
+def _force_yaml_path() -> Path:
+    return Path(__file__).resolve().parents[1] / "configs" / "force.yaml"
+
+
+def _tool_z_twist(vz_m_s: float) -> np.ndarray:
+    tw = np.zeros(6, dtype=float)
+    tw[2] = float(vz_m_s)
+    return tw
+
+
+def _write_vz(bus: TwistBus, vz_m_s: float, hz: float) -> None:
+    bus.write(_tool_z_twist(vz_m_s), hz=hz, connected=True)
+
+
+def _wait_or_estop(client: CommandClient, seconds: float) -> bool:
+    t0 = time.monotonic()
+    while time.monotonic() - t0 < seconds:
+        tel = client.snapshot()
+        if int(tel["status"]) == int(Status.ESTOP):
+            print("[ESTOP] " + str(tel["msg"]), flush=True)
+            return False
+        time.sleep(0.005)
+    return True
+
+
+def run_sequence(
+    *,
+    prefix: str,
+    hold_s: float,
+    rest_s: float,
+    chirp_s: float,
+    chirp_amp_m_s: float,
+    hz: float,
+) -> int:
+    client = CommandClient(prefix=prefix)
+    bus = TwistBus(prefix=prefix, create=False)
+    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {}))
+    print("[MODE] SERVO_TWIST identify_plant", flush=True)
+    dt = 1.0 / max(hz, 1.0)
+    try:
+        _write_vz(bus, 0.0, hz)
+        if not _wait_or_estop(client, rest_s):
+            return 130
+        for mm_s in STEPS_MM_S:
+            vz = mm_s / 1000.0
+            for sign in (1.0, -1.0):
+                cmd = sign * vz
+                print(f"[STEP] vz={cmd:+.4f} m/s hold={hold_s:.2f}s", flush=True)
+                t0 = time.monotonic()
+                while time.monotonic() - t0 < hold_s:
+                    _write_vz(bus, cmd, hz)
+                    tel = client.snapshot()
+                    if int(tel["status"]) == int(Status.ESTOP):
+                        print("[ESTOP] " + str(tel["msg"]), flush=True)
+                        return 130
+                    time.sleep(dt)
+                t1 = time.monotonic()
+                while time.monotonic() - t1 < rest_s:
+                    _write_vz(bus, 0.0, hz)
+                    time.sleep(dt)
+        print(
+            f"[CHIRP] {chirp_amp_m_s*1000:.1f} mm/s  0.2–5 Hz  {chirp_s:.1f}s",
+            flush=True,
+        )
+        t0 = time.monotonic()
+        while True:
+            t = time.monotonic() - t0
+            if t >= chirp_s:
+                break
+            f0, f1 = 0.2, 5.0
+            k = math.log(f1 / f0) / max(chirp_s, 1e-6)
+            phase = 2.0 * math.pi * f0 * (math.exp(k * t) - 1.0) / k
+            vz = chirp_amp_m_s * math.sin(phase)
+            _write_vz(bus, vz, hz)
+            tel = client.snapshot()
+            if int(tel["status"]) == int(Status.ESTOP):
+                print("[ESTOP] " + str(tel["msg"]), flush=True)
+                return 130
+            time.sleep(dt)
+        _write_vz(bus, 0.0, hz)
+        print("[OK] sequence complete — analyse the Window A CSV with --analyze", flush=True)
+        return 0
+    except KeyboardInterrupt:
+        _write_vz(bus, 0.0, hz)
+        client.stop()
+        print("[STOP] interrupted", flush=True)
+        return 0
+    finally:
+        bus.close()
+        client.close()
+
+
+def _hold_cmd(bus: TwistBus, client: CommandClient, vz_m_s: float, seconds: float, hz: float) -> bool:
+    dt = 1.0 / max(hz, 1.0)
+    t0 = time.monotonic()
+    while time.monotonic() - t0 < seconds:
+        _write_vz(bus, vz_m_s, hz)
+        tel = client.snapshot()
+        if int(tel["status"]) == int(Status.ESTOP):
+            print("[ESTOP] " + str(tel["msg"]), flush=True)
+            return False
+        time.sleep(dt)
+    return True
+
+
+def run_stop_reverse_sequence(
+    *,
+    prefix: str,
+    hold_s: float,
+    short_hold_s: float,
+    rest_s: float,
+    hz: float,
+    speeds_mm_s: tuple[float, ...] = STOP_SPEEDS_MM_S,
+) -> int:
+    """Free-space stop / reverse identification.  No force loop.
+
+    This sequence identifies the plant from commanded tool-Z to achieved
+    speed.  Instantaneous ``→ 0`` / ``→ −40 mm/s`` is *not* the shield
+    backup ``u_b`` (which is a/j limited).  Measured Δx is therefore a
+    plant-ID statistic, not Δx_b^ub, unless the CSV command matches the
+    shield backup.
+    """
+    client = CommandClient(prefix=prefix)
+    bus = TwistBus(prefix=prefix, create=False)
+    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {}))
+    print("[MODE] SERVO_TWIST identify_plant --stop-reverse", flush=True)
+    try:
+        if not _hold_cmd(bus, client, 0.0, rest_s, hz):
+            return 130
+        for mm_s in speeds_mm_s:
+            vz = mm_s / 1000.0
+            rev = REVERSE_MM_S / 1000.0
+            for label, dwell in (("settled", hold_s), ("accel", short_hold_s)):
+                print(
+                    f"[STOP] +{mm_s:.0f}→0  {label} hold={dwell:.2f}s",
+                    flush=True,
+                )
+                if not _hold_cmd(bus, client, vz, dwell, hz):
+                    return 130
+                if not _hold_cmd(bus, client, 0.0, rest_s, hz):
+                    return 130
+                print(
+                    f"[REV]  +{mm_s:.0f}→{REVERSE_MM_S:.0f}  {label} hold={dwell:.2f}s",
+                    flush=True,
+                )
+                if not _hold_cmd(bus, client, vz, dwell, hz):
+                    return 130
+                if not _hold_cmd(bus, client, rev, rest_s, hz):
+                    return 130
+                if not _hold_cmd(bus, client, 0.0, rest_s, hz):
+                    return 130
+        print(
+            "[OK] stop/reverse complete — analyse with --analyze-stop. "
+            "This is plant ID (u_cmd→v), not a certified Δx_b^ub unless "
+            "the logged command equals the a/j-limited backup.",
+            flush=True,
+        )
+        return 0
+    except KeyboardInterrupt:
+        _write_vz(bus, 0.0, hz)
+        client.stop()
+        print("[STOP] interrupted", flush=True)
+        return 0
+    finally:
+        bus.close()
+        client.close()
+
+
+def run_backup_replay_sequence(
+    *,
+    prefix: str,
+    hold_s: float,
+    short_hold_s: float,
+    rest_s: float,
+    hz: float,
+    speeds_mm_s: tuple[float, ...],
+    event_log: Path,
+    window_a_csv: Path | None = None,
+) -> int:
+    """Play the shield's a/j-limited ``u_b``, not an instant −40 mm/s step.
+
+    Each tick prefers measured ``v`` / ``[a]_+`` from Window A.  Without
+    ``--window-a-csv`` this is only an open-loop model-generated backup
+    sequence; do not treat it as the online shield.
+    """
+    from collections import deque
+
+    import yaml
+
+    from rm75_control.control.admittance_common.delay_safety_shield import (
+        DelaySafetyShield,
+        SafetyShieldConfig,
+    )
+
+    dt = 1.0 / max(hz, 1.0)
+    raw = {}
+    ypath = _force_yaml_path()
+    if ypath.is_file():
+        loaded = yaml.safe_load(ypath.read_text())
+        raw = loaded if isinstance(loaded, dict) else {}
+    sh = DelaySafetyShield(SafetyShieldConfig.from_dict(raw), dt)
+    client = CommandClient(prefix=prefix)
+    bus = TwistBus(prefix=prefix, create=False)
+    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {}))
+    closed_loop = window_a_csv is not None and Path(window_a_csv).is_file()
+    print(
+        "[MODE] SERVO_TWIST identify_plant --backup-replay  "
+        f"a_max={sh.cfg.a_max_m_s2} j_max={sh.cfg.j_max_m_s3} "
+        f"u_retract={sh.cfg.u_retract_m_s} "
+        f"{'closed-loop v_actual' if closed_loop else 'OPEN-LOOP model v (not a certificate)'}",
+        flush=True,
+    )
+    rows: list[dict[str, str]] = []
+    event_n = 0
+    try:
+        if not _hold_cmd(bus, client, 0.0, rest_s, hz):
+            return 130
+        for mm_s in speeds_mm_s:
+            vz = mm_s / 1000.0
+            for label, dwell in (("settled", hold_s), ("accel", short_hold_s)):
+                event_n += 1
+                eid = f"{event_n:03d}_{mm_s:.0f}_{label}"
+                if not _hold_cmd(bus, client, vz, dwell, hz):
+                    return 130
+                delay_n = max(sh._delay_steps(), 1)
+                sh.reset()
+                sh._delay = deque([vz] * delay_n, maxlen=max(delay_n, 1))
+                sh._u_prev = vz
+                sh._u_prev2 = vz
+                v_meas, a_plus, t_csv = _tail_window_a_motion(window_a_csv)
+                if v_meas is not None:
+                    sh._sync_plant_from_measurement(v_meas, a_plus)
+                t_trigger_wall = time.time()
+                t_trigger_mono = time.monotonic()
+                print(
+                    f"[BACKUP] event_id={eid} trigger=backup_to_terminal "
+                    f"phase={label} v0_cmd={mm_s:.0f} mm/s "
+                    f"v0_meas={('nan' if v_meas is None else f'{1e3 * v_meas:.1f}')} mm/s "
+                    f"a0+={('nan' if a_plus is None else f'{a_plus:.3f}')} "
+                    f"t_wall_csv={('nan' if t_csv is None else f'{t_csv:.4f}')} "
+                    f"hold={dwell:.2f}s",
+                    flush=True,
+                )
+                hold_acc = 0.0
+                n_max = int(round((rest_s + 0.50) / dt))
+                for tick in range(n_max):
+                    v_now, a_now, t_csv_now = _tail_window_a_motion(window_a_csv)
+                    if v_now is not None:
+                        sh._sync_plant_from_measurement(v_now, a_now)
+                    v_pred = (
+                        float(sh._v_plant)
+                        if v_now is not None
+                        else float(vz)
+                    )
+                    u = sh.backup_command(
+                        sh._u_prev,
+                        sh._u_prev2,
+                        released=False,
+                        v_pred=v_pred,
+                    )
+                    t_unix = time.time()
+                    if tick == 0:
+                        t_trigger_wall = t_unix
+                    _write_vz(bus, u, hz)
+                    sh._commit_sent(u, keep_measured_state=v_now is not None)
+                    queue_u = ";".join(f"{float(x):.6f}" for x in sh._delay)
+                    rows.append(
+                        {
+                            "event_id": eid,
+                            "trigger": "backup_to_terminal",
+                            "phase": label,
+                            "tick": str(tick),
+                            "t_unix_s": f"{t_unix:.6f}",
+                            "t_mono_s": f"{time.monotonic() - t_trigger_mono:.6f}",
+                            "t_wall_csv_s": (
+                                "" if t_csv_now is None else f"{t_csv_now:.6f}"
+                            ),
+                            "u_b": f"{u:.6f}",
+                            "v0_cmd": f"{vz:.6f}",
+                            "v_actual": (
+                                "" if v_now is None else f"{v_now:.6f}"
+                            ),
+                            "a0_plus": (
+                                "" if a_now is None else f"{a_now:.6f}"
+                            ),
+                            "q_remain_m": f"{sh.queue_remain_m():.8f}",
+                            "queue_u": queue_u,
+                        }
+                    )
+                    tel = client.snapshot()
+                    if int(tel["status"]) == int(Status.ESTOP):
+                        print("[ESTOP] " + str(tel["msg"]), flush=True)
+                        return 130
+                    q_ok = sh.queue_press() <= float(sh.cfg.queue_clear_m_s) + 1e-9
+                    v_ok = (
+                        abs(float(sh._v_plant)) <= float(sh.cfg.v_hold_m_s) + 1e-9
+                        if v_now is not None
+                        else True
+                    )
+                    if (
+                        abs(u) <= float(sh.cfg.queue_clear_m_s) + 1e-9
+                        and v_ok
+                        and q_ok
+                    ):
+                        hold_acc += dt
+                        if hold_acc + 1e-12 >= 0.050:
+                            break
+                    else:
+                        hold_acc = 0.0
+                    time.sleep(dt)
+                del t_trigger_wall
+                if not _hold_cmd(bus, client, 0.0, rest_s, hz):
+                    return 130
+        event_log.parent.mkdir(parents=True, exist_ok=True)
+        fieldnames = [
+            "event_id",
+            "trigger",
+            "phase",
+            "tick",
+            "t_unix_s",
+            "t_mono_s",
+            "t_wall_csv_s",
+            "u_b",
+            "v0_cmd",
+            "v_actual",
+            "a0_plus",
+            "q_remain_m",
+            "queue_u",
+        ]
+        with event_log.open("w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+        print(
+            f"[OK] backup replay complete — events={event_n} log={event_log}. "
+            "Analyse Window A CSV with --analyze-stop --event-log "
+            f"{event_log} --input-column twist_vz. "
+            "This is still not a certificate until independent val and "
+            "stop_dx_ub.certified: true.",
+            flush=True,
+        )
+        return 0
+    except KeyboardInterrupt:
+        _write_vz(bus, 0.0, hz)
+        client.stop()
+        print("[STOP] interrupted", flush=True)
+        return 0
+    finally:
+        bus.close()
+        client.close()
+
+
+def _simulate_first_order(
+    cmd: np.ndarray,
+    *,
+    delay_steps: int,
+    tp_s: float,
+    dt: float,
+) -> np.ndarray:
+    alpha = math.exp(-dt / max(tp_s, 1e-4))
+    v = 0.0
+    delay = [0.0] * max(int(delay_steps), 0)
+    out = np.zeros_like(cmd)
+    for i, u in enumerate(cmd):
+        if delay:
+            u_app = delay[0]
+            delay = delay[1:] + [float(u)]
+        else:
+            u_app = float(u)
+        v = alpha * v + (1.0 - alpha) * u_app
+        out[i] = v
+    return out
+
+
+def _tail_window_a_motion(
+    path: Path | None,
+) -> tuple[float | None, float | None, float | None]:
+    """Latest ``(v_z, [a_z]+, t_wall_csv)`` from a growing Window A CSV."""
+    if path is None:
+        return None, None, None
+    csv_path = Path(path)
+    if not csv_path.is_file():
+        return None, None, None
+    try:
+        data = csv_path.read_bytes()
+    except OSError:
+        return None, None, None
+    if len(data) > 131072:
+        chunk = data[:2048] + b"\n" + data[-65536:]
+        text = chunk.decode("utf-8", "replace")
+        lines = [ln for ln in text.splitlines() if ln.strip()]
+        if len(lines) >= 2:
+            header = lines[0]
+            body = lines[1:]
+            if "," in header and "t_wall" in header:
+                text = header + "\n" + "\n".join(body)
+            else:
+                text = data[-65536:].decode("utf-8", "replace")
+    else:
+        text = data.decode("utf-8", "replace")
+    try:
+        reader = csv.DictReader(text.splitlines())
+        rows = [r for r in reader if r]
+    except Exception:
+        return None, None, None
+    samples: list[tuple[float, float]] = []
+    for row in rows:
+        try:
+            t = float(row.get("t_wall_s") or "nan")
+            v = float(
+                row.get("twist_achieved_vz")
+                or row.get("v_tcp_z_actual")
+                or row.get("vz_achieved_tool")
+                or "nan"
+            )
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(t) and math.isfinite(v):
+            samples.append((t, v))
+    if not samples:
+        return None, None, None
+    t1, v1 = samples[-1]
+    a_plus = 0.0
+    if len(samples) >= 2:
+        t0, v0 = samples[-2]
+        dts = t1 - t0
+        if dts > 1e-4:
+            a_plus = max((v1 - v0) / dts, 0.0)
+    return v1, a_plus, t1
+
+
+def _horizon_error_ub(
+    cmd: np.ndarray,
+    ach: np.ndarray,
+    *,
+    delay_steps: int,
+    tp_s: float,
+    dt: float,
+    horizon: int,
+    margin: float,
+) -> tuple[list[float], list[float]]:
+    ev = [0.0] * horizon
+    n = int(cmd.size)
+    alpha = math.exp(-dt / max(tp_s, 1e-4))
+    for k in range(0, n - horizon, max(horizon // 4, 1)):
+        delay = [float(cmd[max(k - delay_steps + j, 0)]) for j in range(delay_steps)]
+        v = float(ach[k])
+        for i in range(horizon):
+            idx = k + i
+            u = float(cmd[idx]) if idx < n else 0.0
+            if delay_steps > 0:
+                u_app = delay[0]
+                delay = delay[1:] + [u]
+            else:
+                u_app = u
+            v = alpha * v + (1.0 - alpha) * u_app
+            if idx + 1 < n:
+                ev[i] = max(ev[i], abs(float(ach[idx + 1]) - v))
+    ev_ub = [float(e + margin) for e in ev]
+    ex_ub: list[float] = []
+    acc = 0.0
+    for e in ev_ub:
+        acc += dt * e
+        ex_ub.append(acc)
+    return ev_ub, ex_ub
+
+
+def analyze_csv(
+    path: Path,
+    *,
+    horizon: int = 40,
+    write_yaml: Path | None = None,
+    margin: float = 0.002,
+) -> int:
+    with path.open(newline="") as f:
+        rows = list(csv.DictReader(f))
+    if not rows:
+        print(f"[ERR] empty csv {path}", flush=True)
+        return 1
+    cmd = np.array([float(r.get("twist_vz") or "nan") for r in rows], dtype=float)
+    ach = np.array(
+        [float(r.get("twist_achieved_vz") or r.get("v_tcp_z_actual") or "nan")
+         for r in rows],
+        dtype=float,
+    )
+    t = np.array([float(r.get("t_wall_s") or "nan") for r in rows], dtype=float)
+    mask = np.isfinite(cmd) & np.isfinite(ach) & np.isfinite(t)
+    cmd, ach, t = cmd[mask], ach[mask], t[mask]
+    if cmd.size < 50:
+        print("[ERR] not enough finite twist samples", flush=True)
+        return 1
+    dt = float(np.median(np.diff(t))) if t.size > 2 else 0.005
+    split = max(int(0.7 * cmd.size), 50)
+    cmd_tr, ach_tr = cmd[:split], ach[:split]
+    cmd_va, ach_va = cmd[split:], ach[split:]
+    if cmd_va.size < horizon + 5:
+        cmd_tr, ach_tr = cmd[: cmd.size // 2], ach[: cmd.size // 2]
+        cmd_va, ach_va = cmd[cmd.size // 2 :], ach[cmd.size // 2 :]
+
+    cmd0 = cmd_tr - np.mean(cmd_tr)
+    ach0 = ach_tr - np.mean(ach_tr)
+    corr = np.correlate(ach0, cmd0, mode="full")
+    lags = np.arange(-cmd0.size + 1, ach0.size)
+    i = int(np.argmax(corr))
+    lag_ticks = max(int(lags[i]), 0)
+    t0_s = lag_ticks * dt
+    best_tp = 0.060
+    best_err = float("inf")
+    for tp in np.linspace(0.020, 0.150, 14):
+        pred = _simulate_first_order(
+            cmd_tr, delay_steps=lag_ticks, tp_s=float(tp), dt=dt
+        )
+        err = float(np.mean((pred - ach_tr) ** 2))
+        if err < best_err:
+            best_err = err
+            best_tp = float(tp)
+    ev_ub, ex_ub = _horizon_error_ub(
+        cmd_va,
+        ach_va,
+        delay_steps=lag_ticks,
+        tp_s=best_tp,
+        dt=dt,
+        horizon=int(horizon),
+        margin=float(margin),
+    )
+    rho = float("nan")
+    if lag_ticks > 0 and cmd.size > lag_ticks + 2:
+        rho = float(np.corrcoef(cmd[:-lag_ticks], ach[lag_ticks:])[0, 1])
+    elif cmd.size > 2:
+        rho = float(np.corrcoef(cmd, ach)[0, 1])
+    print(f"[ID] file={path}", flush=True)
+    print(f"[ID] n={cmd.size} train={cmd_tr.size} val={cmd_va.size} dt≈{dt*1000:.2f} ms", flush=True)
+    print(
+        f"[ID] T0≈{t0_s*1000:.1f} ms  Tp≈{best_tp*1000:.1f} ms  "
+        f"corr≈{rho:.3f}  (placeholder plant, not a certificate)",
+        flush=True,
+    )
+    print(
+        f"[ID] val ē_v(1)={ev_ub[0]:.4f} ē_v({horizon})={ev_ub[-1]:.4f} m/s  "
+        f"ē_x({horizon})={ex_ub[-1]*1000:.2f} mm",
+        flush=True,
+    )
+    yaml_block = (
+        "safety_shield:\n"
+        "  plant:\n"
+        f"    t0_s: {t0_s:.4f}\n"
+        f"    tp_s: {best_tp:.4f}\n"
+        f"    horizon_steps: {int(horizon)}\n"
+        "  velocity_error_ub_m_s:\n"
+        + "".join(f"    - {e:.6f}\n" for e in ev_ub)
+        + "  position_error_ub_m:\n"
+        + "".join(f"    - {e:.7f}\n" for e in ex_ub)
+        + "  position_error_ub_plus_m:\n"
+        + "".join(f"    - {e:.7f}\n" for e in ex_ub)
+    )
+    print(yaml_block, flush=True)
+    print(
+        "[ID] write these bounds into hybrid_motion.safety_shield after a "
+        "separate validation set covers the operating envelope. "
+        "Do not treat this fit as a passivity proof.",
+        flush=True,
+    )
+    if write_yaml is not None:
+        write_yaml.write_text(yaml_block)
+        print(f"[ID] wrote {write_yaml}", flush=True)
+    return 0
+
+
+def _load_twist_csv(
+    path: Path,
+    *,
+    input_column: str = "twist_vz",
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    with path.open(newline="") as f:
+        rows = list(csv.DictReader(f))
+    twist = np.array([float(r.get("twist_vz") or "nan") for r in rows], dtype=float)
+    sent = np.array([float(r.get("u_sent") or "nan") for r in rows], dtype=float)
+    ach = np.array(
+        [float(r.get("twist_achieved_vz") or r.get("v_tcp_z_actual") or "nan")
+         for r in rows],
+        dtype=float,
+    )
+    t = np.array([float(r.get("t_wall_s") or "nan") for r in rows], dtype=float)
+    col = str(input_column).strip().lower()
+    if col not in ("twist_vz", "u_sent"):
+        raise ValueError("input-column must be twist_vz or u_sent")
+    cmd = twist if col == "twist_vz" else sent
+    mask = np.isfinite(cmd) & np.isfinite(ach) & np.isfinite(t)
+    return cmd[mask], ach[mask], t[mask], twist[mask], sent[mask]
+
+
+def _load_event_log(path: Path) -> list[dict[str, str]]:
+    with path.open(newline="") as f:
+        return [dict(r) for r in csv.DictReader(f)]
+
+
+def _event_trigger_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    """First tick of each event_id, in log order."""
+    seen: set[str] = set()
+    out: list[dict[str, str]] = []
+    for row in rows:
+        eid = str(row.get("event_id") or "").strip()
+        if not eid or eid in seen:
+            continue
+        if str(row.get("trigger") or "") != "backup_to_terminal":
+            continue
+        tick = str(row.get("tick") or "0").strip()
+        if tick not in ("", "0"):
+            continue
+        seen.add(eid)
+        out.append(row)
+    if not out:
+        # Logs without a tick column: first row of each event_id.
+        seen.clear()
+        for row in rows:
+            eid = str(row.get("event_id") or "").strip()
+            if not eid or eid in seen:
+                continue
+            seen.add(eid)
+            out.append(row)
+    return out
+
+
+def _align_trigger_index(
+    cmd: np.ndarray,
+    t: np.ndarray,
+    trigger: dict[str, str],
+    *,
+    search_from: int = 1,
+) -> int | None:
+    """Map an explicit trigger to the Window A sample that starts backup.
+
+    Prefers the first logged ``u_b`` against ``v0_cmd → u_b`` so integration
+    starts at the true trigger tick, not a 3 mm/s edge and not the last
+    hold sample.  ``t_wall_csv_s`` is the fallback.
+    """
+    try:
+        v0 = float(trigger.get("v0_cmd") or "nan")
+        u0 = float(trigger.get("u_b") or "nan")
+    except ValueError:
+        v0, u0 = float("nan"), float("nan")
+    start = max(int(search_from), 1)
+    if math.isfinite(v0) and math.isfinite(u0):
+        for k in range(start, int(cmd.size)):
+            prev = float(cmd[k - 1])
+            now = float(cmd[k])
+            if (
+                abs(prev - v0) <= 0.0015
+                and abs(now - u0) <= 2.0e-4
+                and now < prev - 1e-6
+            ):
+                return int(k)
+    t_csv = trigger.get("t_wall_csv_s") or ""
+    if t_csv.strip():
+        try:
+            t0 = float(t_csv)
+        except ValueError:
+            t0 = float("nan")
+        if math.isfinite(t0) and t.size:
+            idx = int(np.argmin(np.abs(t - t0)))
+            if abs(float(t[idx]) - t0) <= 0.020 and idx >= start - 1:
+                return max(idx, 0)
+    return None
+
+
+def _step_dt(t: np.ndarray, fallback: float) -> np.ndarray:
+    """Per-sample Δt.  Large gaps are *not* clipped; callers must invalidate."""
+    n = int(t.size)
+    dt = np.full(n, max(float(fallback), 1e-4))
+    if n > 1:
+        d = np.diff(t)
+        dt[1:] = d
+        dt[0] = d[0] if d.size else dt[0]
+    return np.maximum(dt, 1e-4)
+
+
+def _has_dt_gap(dt_arr: np.ndarray, start: int, n: int, max_s: float) -> bool:
+    sl = dt_arr[int(start) : int(start) + int(n)]
+    if sl.size == 0:
+        return False
+    return bool(float(np.max(sl)) > float(max_s) + 1e-12)
+
+
+def _event_end(cmd: np.ndarray, start: int) -> int:
+    """Stop integrating at the next press trial, not at end-of-file."""
+    saw_nonpos = False
+    for k in range(int(start), int(cmd.size)):
+        u = float(cmd[k])
+        if u <= 0.002:
+            saw_nonpos = True
+        elif saw_nonpos and u > 0.008:
+            return int(k)
+    return int(cmd.size)
+
+
+def _event_metrics(
+    cmd: np.ndarray,
+    ach: np.ndarray,
+    t: np.ndarray,
+    *,
+    start: int,
+    settle_m_s: float,
+    horizon: int,
+    v_hold_m_s: float = 0.015,
+    a_hold_m_s2: float = 0.15,
+    u_clear_m_s: float = 0.015,
+    hold_s: float = 0.050,
+    delay_s: float = 0.050,
+    end: int | None = None,
+    dt_gap_s: float = 0.050,
+) -> dict[str, float]:
+    """Press-positive stop metrics.  Negative speed never reduces Δx_b^+."""
+    del settle_m_s
+    dt_arr = _step_dt(t, 0.005)
+    stop = int(end) if end is not None else _event_end(cmd, start)
+    stop = min(max(stop, start + 2), int(ach.size))
+    search_n = int(stop - start)
+    if search_n < 2:
+        return {}
+    if _has_dt_gap(dt_arr, start, search_n, dt_gap_s):
+        return {
+            "v0": float(ach[start]),
+            "a0": 0.0,
+            "dx_press": float("nan"),
+            "dx_retract": float("nan"),
+            "n_press": float("nan"),
+            "n_b": float("nan"),
+            "reached_T": 0.0,
+            "horizon": float(horizon),
+            "q_press": 0.0,
+            "q_remain_m": 0.0,
+            "gap_invalid": 1.0,
+        }
+    v0 = float(ach[start])
+    a0 = (
+        (float(ach[start]) - float(ach[start - 1])) / float(dt_arr[start])
+        if start > 0
+        else 0.0
+    )
+    a0_plus = max(a0, 0.0)
+    delay_n = max(int(round(float(delay_s) / max(float(np.median(dt_arr)), 1e-4))), 1)
+    dx_press = 0.0
+    dx_retract = 0.0
+    n_press = 0
+    hold_acc = 0.0
+    n_b = float("nan")
+    reached = False
+    for i in range(search_n):
+        idx = start + i
+        v = float(ach[idx])
+        dts = float(dt_arr[idx])
+        dx_press += max(v, 0.0) * dts
+        dx_retract += max(-v, 0.0) * dts
+        if v > 0.0:
+            n_press = i + 1
+        u = float(cmd[idx])
+        a_act = (v - float(ach[idx - 1])) / dts if idx > 0 else 0.0
+        a_cmd = (u - float(cmd[idx - 1])) / dts if idx > 0 else 0.0
+        q0 = start + i + 1 - delay_n
+        pending = cmd[max(q0, 0) : idx + 1]
+        queue_ok = (
+            pending.size == 0
+            or float(np.max(np.abs(pending))) <= float(u_clear_m_s) + 1e-9
+        )
+        terminal = (
+            abs(v) <= float(v_hold_m_s) + 1e-9
+            and abs(a_act) <= float(a_hold_m_s2) + 1e-9
+            and abs(u) <= float(u_clear_m_s) + 1e-9
+            and abs(a_cmd) <= float(a_hold_m_s2) + 1e-9
+            and queue_ok
+        )
+        if terminal:
+            hold_acc += dts
+            if hold_acc + 1e-12 >= float(hold_s) and not reached:
+                n_b = float(i + 1)
+                reached = True
+        else:
+            hold_acc = 0.0
+    inflight = cmd[max(start - delay_n, 0) : start]
+    dt_med = float(np.median(dt_arr))
+    q_remain = (
+        dt_med * float(np.sum(np.maximum(inflight, 0.0))) if inflight.size else 0.0
+    )
+    q_press = float(max(float(np.max(inflight)), 0.0)) if inflight.size else 0.0
+    return {
+        "v0": v0,
+        "a0": a0_plus,
+        "a0_signed": a0,
+        "dx_press": dx_press,
+        "dx_retract": dx_retract,
+        "n_press": float(n_press),
+        "n_b": n_b,
+        "reached_T": 1.0 if reached else 0.0,
+        "horizon": float(horizon),
+        "q_press": q_press,
+        "q_remain_m": q_remain,
+        "gap_invalid": 0.0,
+    }
+
+
+def _rollout_fopdt(
+    cmd: np.ndarray,
+    ach: np.ndarray,
+    k: int,
+    horizon: int,
+    delay_steps: int,
+    tp_s: float,
+    dt_arr: np.ndarray,
+) -> np.ndarray:
+    d = max(int(delay_steps), 0)
+    delay = [float(cmd[max(k - d + 1 + j, 0)]) for j in range(d)]
+    v = float(ach[k])
+    out = np.zeros(horizon)
+    for i in range(horizon):
+        idx = k + 1 + i
+        u = float(cmd[idx]) if idx < cmd.size else 0.0
+        dts = float(dt_arr[min(idx, max(dt_arr.size - 1, 0))])
+        alpha = math.exp(-dts / max(float(tp_s), 1e-4))
+        if delay:
+            u_app = delay[0]
+            delay = delay[1:] + [u]
+        else:
+            u_app = u
+        v = alpha * v + (1.0 - alpha) * u_app
+        out[i] = v
+    return out
+
+
+def _rollout_second(
+    cmd: np.ndarray,
+    ach: np.ndarray,
+    k: int,
+    horizon: int,
+    wn: float,
+    z: float,
+    dt_arr: np.ndarray,
+) -> np.ndarray:
+    y = float(ach[k])
+    dts0 = float(dt_arr[k]) if k < dt_arr.size else 0.005
+    yd = (float(ach[k]) - float(ach[k - 1])) / dts0 if k > 0 else 0.0
+    out = np.zeros(horizon)
+    for i in range(horizon):
+        idx = k + 1 + i
+        u = float(cmd[idx]) if idx < cmd.size else 0.0
+        dts = float(dt_arr[min(idx, max(dt_arr.size - 1, 0))])
+        ydd = (wn * wn) * (u - y) - 2.0 * z * wn * yd
+        yd += ydd * dts
+        y += yd * dts
+        out[i] = y
+    return out
+
+
+def _rollout_arx(
+    cmd: np.ndarray,
+    ach: np.ndarray,
+    k: int,
+    horizon: int,
+    theta: np.ndarray,
+    na: int,
+    nb: int,
+) -> np.ndarray:
+    yhat: dict[int, float] = {}
+
+    def y_at(j: int) -> float:
+        if j in yhat:
+            return yhat[j]
+        if 0 <= j <= k:
+            return float(ach[j])
+        return 0.0
+
+    def u_at(j: int) -> float:
+        if 0 <= j < cmd.size:
+            return float(cmd[j])
+        return 0.0
+
+    out = np.zeros(horizon)
+    for i in range(1, horizon + 1):
+        t = k + i
+        phi = [y_at(t - 1 - j) for j in range(na)] + [u_at(t - j) for j in range(nb)]
+        pred = float(np.dot(theta, np.asarray(phi, dtype=float)))
+        yhat[t] = pred
+        out[i - 1] = pred
+    return out
+
+
+def _open_loop_envelopes(
+    cmd: np.ndarray,
+    ach: np.ndarray,
+    t: np.ndarray,
+    *,
+    origins: list[int],
+    horizon: int,
+    rollout_fn,
+    origin_dt_gap_s: float = 0.050,
+) -> tuple[list[float], list[float], list[float], int]:
+    """Unified ê_v(i), ê_x(i), ê_{x,+}(i) from the same origins: v̂(k+i|k)."""
+    ev = [0.0] * horizon
+    ex = [0.0] * horizon
+    ex_plus = [0.0] * horizon
+    dt_arr = _step_dt(t, 0.005)
+    used = 0
+    for k in origins:
+        if k + horizon >= ach.size or k < 0:
+            continue
+        if _has_dt_gap(dt_arr, k, horizon + 1, origin_dt_gap_s):
+            continue
+        pred = rollout_fn(k)
+        acc = 0.0
+        acc_plus_act = 0.0
+        acc_plus_hat = 0.0
+        used += 1
+        for i in range(horizon):
+            actual = float(ach[k + i + 1])
+            ev[i] = max(ev[i], abs(actual - float(pred[i])))
+            acc += float(dt_arr[k + i + 1]) * (actual - float(pred[i]))
+            ex[i] = max(ex[i], abs(acc))
+            dts = float(dt_arr[k + i + 1])
+            acc_plus_act += dts * max(actual, 0.0)
+            acc_plus_hat += dts * max(float(pred[i]), 0.0)
+            ex_plus[i] = max(ex_plus[i], max(acc_plus_act - acc_plus_hat, 0.0))
+    return ev, ex, ex_plus, used
+
+
+def _fit_arx(cmd: np.ndarray, ach: np.ndarray, na: int = 3, nb: int = 3) -> np.ndarray | None:
+    rows = []
+    rhs = []
+    for k in range(max(na, nb), int(cmd.size)):
+        phi = [float(ach[k - 1 - i]) for i in range(na)] + [
+            float(cmd[k - i]) for i in range(nb)
+        ]
+        rows.append(phi)
+        rhs.append(float(ach[k]))
+    if len(rows) < 20:
+        return None
+    theta, *_ = np.linalg.lstsq(np.asarray(rows), np.asarray(rhs), rcond=None)
+    return np.asarray(theta, dtype=float)
+
+
+def _monotonic_stop_bins(rows: list[dict[str, float]]) -> list[dict[str, float]]:
+    groups: dict[int, list[dict[str, float]]] = {}
+    for r in rows:
+        if float(r.get("gap_invalid", 0.0)) >= 0.5:
+            continue
+        if not math.isfinite(float(r.get("dx_press", float("nan")))):
+            continue
+        lo = int(1000.0 * abs(float(r["v0"])) // 10.0) * 10
+        groups.setdefault(lo, []).append(r)
+    out: list[dict[str, float]] = []
+    run_dx = 0.0
+    for lo in sorted(groups):
+        rs = groups[lo]
+        dx = max(float(r["dx_press"]) for r in rs)
+        run_dx = max(run_dx, dx)
+        a0 = max(max(float(r["a0"]), 0.0) for r in rs)
+        q0 = max(float(r.get("q_press", 0.0)) for r in rs)
+        q_remain = max(float(r.get("q_remain_m", 0.0)) for r in rs)
+        nbs = [float(r["n_b"]) for r in rs if math.isfinite(float(r["n_b"]))]
+        out.append(
+            {
+                "v0_m_s": (lo + 10) / 1000.0,
+                "a0_m_s2": a0,
+                "q_press_m_s": q0,
+                "q_remain_m": q_remain,
+                "dx_ub_m": run_dx,
+                "n_b": float(max(nbs) if nbs else 0.0),
+            }
+        )
+    return out
+
+
+def _stop_dx_yaml_block(rows: list[dict[str, float]], *, source: str) -> str:
+    bins = _monotonic_stop_bins(rows)
+    lines = [
+        "safety_shield:",
+        "  stop_dx_ub:",
+        "    certified: false",
+        f"    source: {source}",
+        "    note: plant-ID or unvalidated backup replay; not Δx_b^ub until",
+        "      independent val covers the envelope and certified is set true.",
+        "      a0 is [a_actual]+.  q_remain_m is dt Σ [u]+ of the delay line.",
+        "      D_b covers backup-from-now; the shield uses Δx_1(u(λ))+D_b(ξ_1).",
+        "    bins:",
+    ]
+    if not bins:
+        lines.append("      []")
+    for b in bins:
+        lines.append(
+            "      - "
+            f"{{v0_m_s: {b['v0_m_s']:.4f}, a0_m_s2: {b['a0_m_s2']:.4f}, "
+            f"q_press_m_s: {b['q_press_m_s']:.4f}, "
+            f"q_remain_m: {b['q_remain_m']:.8f}, dx_ub_m: {b['dx_ub_m']:.7f}, "
+            f"n_b: {int(b['n_b'])}}}"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def analyze_stop_reverse(
+    path: Path,
+    *,
+    horizon: int = 40,
+    settle_m_s: float = 0.003,
+    val_path: Path | None = None,
+    input_column: str = "twist_vz",
+    write_yaml: Path | None = None,
+    dt_gap_s: float = 0.050,
+    event_log: Path | None = None,
+) -> int:
+    """Plant-ID stop metrics.  Not a backup certificate unless input is u_b."""
+    cmd, ach, t, twist, sent = _load_twist_csv(path, input_column=input_column)
+    if cmd.size < 80:
+        print("[ERR] not enough finite command samples", flush=True)
+        return 1
+    dt = float(np.median(np.diff(t))) if t.size > 2 else 0.005
+    dt_arr_all = _step_dt(t, dt)
+    n_twist = int(np.sum(np.isfinite(twist)))
+    n_sent = int(np.sum(np.isfinite(sent)))
+    print(
+        f"[ID-SR] input_column={input_column}  twist_vz finite={n_twist}  "
+        f"u_sent finite={n_sent}",
+        flush=True,
+    )
+    if input_column == "twist_vz":
+        print(
+            "[ID-SR] SERVO_TWIST plant ID uses twist_vz.  "
+            "u_sent may be empty or stale in this mode; do not prefer it.",
+            flush=True,
+        )
+    else:
+        print(
+            "[ID-SR] using u_sent (backup replay).  Instantaneous →0/−40 "
+            "on twist_vz is not this column.",
+            flush=True,
+        )
+    print(
+        f"[ID-SR] timestamp dt median={1e3 * dt:.2f} ms  "
+        f"max={1e3 * float(np.max(dt_arr_all)):.2f} ms  "
+        f"gap_limit={1e3 * dt_gap_s:.0f} ms (gaps invalidate the event)",
+        flush=True,
+    )
+    print(
+        "[ID-SR] this CSV is plant ID unless the logged command equals the "
+        "a/j-limited backup.  Reverse N_b includes any held −40 mm/s and is "
+        "not backup-to-terminal time.",
+        flush=True,
+    )
+    min_drop = max(0.5 * 1.20 * max(dt, 1e-4), 0.001)
+    edges: list[tuple[str, int]] = []
+    if event_log is not None and Path(event_log).is_file():
+        triggers = _event_trigger_rows(_load_event_log(Path(event_log)))
+        search_from = 1
+        missed = 0
+        for trig in triggers:
+            idx = _align_trigger_index(cmd, t, trig, search_from=search_from)
+            if idx is None:
+                missed += 1
+                print(
+                    f"[ID-SR] event_id={trig.get('event_id')} not aligned "
+                    "(need t_wall_csv_s or v0_cmd→u_b match)",
+                    flush=True,
+                )
+                continue
+            edges.append(("backup", int(idx)))
+            search_from = int(idx) + 1
+        print(
+            f"[ID-SR] event-log={event_log} triggers={len(triggers)} "
+            f"aligned={len(edges)} missed={missed} "
+            "(explicit trigger, not a 3 mm/s edge)",
+            flush=True,
+        )
+    else:
+        in_backup = False
+        for k in range(1, cmd.size):
+            prev, now = float(cmd[k - 1]), float(cmd[k])
+            if prev > 0.008 and abs(now) <= 0.002:
+                edges.append(("stop", k))
+                in_backup = False
+            elif prev > 0.008 and now < -0.020:
+                edges.append(("reverse", k))
+                in_backup = False
+            elif prev > 0.008 and (prev - now) >= min_drop and now > -0.020:
+                if not in_backup:
+                    edges.append(("backup", k))
+                    in_backup = True
+            elif abs(now) <= 0.002:
+                in_backup = False
+        if event_log is not None:
+            print(
+                f"[ID-SR] event-log {event_log} missing; falling back to "
+                "command edges (may miss the first jerk-limited ticks)",
+                flush=True,
+            )
+    if not edges:
+        print("[ERR] no +v→0 / +v→−40 / backup-decel edges in this CSV", flush=True)
+        return 1
+    print(
+        f"[ID-SR] file={path} n={cmd.size} dt≈{dt*1000:.2f} ms edges={len(edges)}",
+        flush=True,
+    )
+    by_kind: dict[str, list[dict[str, float]]] = {
+        "stop": [],
+        "reverse": [],
+        "backup": [],
+    }
+    expand = 0
+    gap_n = 0
+    for kind, idx in edges:
+        met = _event_metrics(
+            cmd,
+            ach,
+            t,
+            start=idx,
+            settle_m_s=settle_m_s,
+            horizon=horizon,
+            end=_event_end(cmd, idx),
+            dt_gap_s=dt_gap_s,
+        )
+        if not met:
+            continue
+        if float(met.get("gap_invalid", 0.0)) >= 0.5:
+            gap_n += 1
+            print(
+                f"[ID-SR] {kind}@{idx} invalid: timestamp gap > {1e3*dt_gap_s:.0f} ms",
+                flush=True,
+            )
+            continue
+        by_kind[kind].append(met)
+        if not met["reached_T"] or (
+            math.isfinite(met["n_b"]) and met["n_b"] > horizon
+        ):
+            expand += 1
+    if gap_n:
+        print(f"[ID-SR] dropped {gap_n} events with timestamp gaps", flush=True)
+    for kind, rows in by_kind.items():
+        if not rows:
+            print(f"[ID-SR] {kind}: none", flush=True)
+            continue
+        dx = np.array([r["dx_press"] for r in rows])
+        n_press = np.array([r["n_press"] for r in rows])
+        nb = np.array([r["n_b"] for r in rows])
+        reached = np.array([r["reached_T"] for r in rows])
+        v0 = np.array([r["v0"] for r in rows])
+        finite_nb = nb[np.isfinite(nb)]
+        print(
+            f"[ID-SR] {kind}: n={len(rows)}  reached_T={int(np.sum(reached))}/{len(rows)}  "
+            f"Δx^+ p50={1e3*float(np.median(dx)):.2f} mm  "
+            f"p95={1e3*float(np.percentile(dx, 95)):.2f} mm  "
+            f"N_press p50={float(np.median(n_press)):.1f}  "
+            f"N_b p50={float(np.median(finite_nb)) if finite_nb.size else float('nan'):.1f}  "
+            f"|v0| p50={1e3*float(np.median(np.abs(v0))):.1f} mm/s",
+            flush=True,
+        )
+        bins: dict[int, list[float]] = {}
+        for r in rows:
+            key = int(1000.0 * abs(float(r["v0"])) // 10.0) * 10
+            bins.setdefault(key, []).append(float(r["dx_press"]))
+        parts = [
+            f"{lo}–{lo+10}mm/s:{1e3*max(vals):.2f}mm"
+            for lo, vals in sorted(bins.items())
+        ]
+        print(
+            f"[ID-SR] {kind} Δx^+(v0) by |v0| bin (max, not a global max): "
+            + "; ".join(parts),
+            flush=True,
+        )
+        if kind == "reverse":
+            print(
+                "[ID-SR] reverse N_b includes held −40 mm/s; not shield N_b.",
+                flush=True,
+            )
+        if int(np.sum(reached)) < len(rows):
+            print(
+                f"[ID-SR] {kind}: {len(rows) - int(np.sum(reached))} events never "
+                f"entered the hold set.  Expand --horizon (now {horizon}); "
+                "do not set N_b = horizon.",
+                flush=True,
+            )
+    if expand:
+        print(
+            f"[ID-SR] {expand} events need a longer horizon or did not reach T.",
+            flush=True,
+        )
+    table_rows = by_kind["backup"] or by_kind["stop"]
+    table_src = "backup_replay" if by_kind["backup"] else "plant_step_stop"
+    yaml_block = _stop_dx_yaml_block(table_rows, source=table_src)
+    print(yaml_block, flush=True)
+    print(
+        "[ID-SR] copy stop_dx_ub into hybrid_motion.safety_shield only as a "
+        "development table.  Leave certified: false until backup replay "
+        "and independent val pass.  a0 is [a_actual]+; q_remain_m is dt Σ [u]+. "
+        "The shield uses Δx_1(u(λ))+D_b(ξ_1), not max(model, D_b(ξ)).",
+        flush=True,
+    )
+    if write_yaml is not None:
+        write_yaml.write_text(yaml_block)
+        print(f"[ID-SR] wrote {write_yaml}", flush=True)
+
+    independent = val_path is not None
+    if independent:
+        cmd_va, ach_va, t_va, _tw, _se = _load_twist_csv(
+            val_path, input_column=input_column
+        )
+        cmd_tr, ach_tr, t_tr = cmd, ach, t
+        print(f"[ID-SR] independent validation file={val_path}", flush=True)
+    else:
+        split = max(int(0.7 * cmd.size), 80)
+        cmd_tr, ach_tr, t_tr = cmd[:split], ach[:split], t[:split]
+        cmd_va, ach_va, t_va = cmd[split:], ach[split:], t[split:]
+        if cmd_va.size < horizon + 5:
+            mid = cmd.size // 2
+            cmd_tr, ach_tr, t_tr = cmd[:mid], ach[:mid], t[:mid]
+            cmd_va, ach_va, t_va = cmd[mid:], ach[mid:], t[mid:]
+        print(
+            "[ID-SR] WARNING: same-run 70/30 split is development only. "
+            "A certificate needs a separate validation run (pose, payload, "
+            "and preferably another date/boot).  Sequence is speed-increasing, "
+            "so this split can become low-speed train / high-speed val.",
+            flush=True,
+        )
+
+    cmd0 = cmd_tr - np.mean(cmd_tr)
+    ach0 = ach_tr - np.mean(ach_tr)
+    corr = np.correlate(ach0, cmd0, mode="full")
+    lags = np.arange(-cmd0.size + 1, ach0.size)
+    lag = max(int(lags[int(np.argmax(corr))]), 0)
+    dt_tr = _step_dt(t_tr, dt)
+    best_tp = 0.020
+    best_err = float("inf")
+    dt_med = float(np.median(dt_tr))
+    for tp in np.linspace(0.010, 0.080, 15):
+        pred = _simulate_first_order(
+            cmd_tr, delay_steps=lag, tp_s=float(tp), dt=dt_med
+        )
+        err = float(np.mean((pred - ach_tr) ** 2))
+        if err < best_err:
+            best_err = err
+            best_tp = float(tp)
+    best_wn, best_z, best_e2 = 40.0, 0.8, float("inf")
+    dt_va = _step_dt(t_va, dt)
+
+    def _sim_second_train(u: np.ndarray, wn: float, z: float) -> np.ndarray:
+        y = np.zeros_like(u)
+        yd = 0.0
+        for i, ui in enumerate(u):
+            ydd = (wn * wn) * (float(ui) - (y[i - 1] if i else 0.0)) - 2.0 * z * wn * yd
+            yd += ydd * dt_med
+            y[i] = (y[i - 1] if i else 0.0) + yd * dt_med
+        return y
+
+    for wn in np.linspace(20.0, 80.0, 8):
+        for z in (0.5, 0.8, 1.1, 1.4):
+            pred = _sim_second_train(cmd_tr, float(wn), float(z))
+            err = float(np.mean((pred - ach_tr) ** 2))
+            if err < best_e2:
+                best_e2 = err
+                best_wn, best_z = float(wn), float(z)
+    theta = _fit_arx(cmd_tr, ach_tr)
+    step = max(horizon // 4, 1)
+    origins = list(range(0, max(cmd_va.size - horizon - 2, 1), step))
+    ev_f, ex_f, ex_f_plus, n_f = _open_loop_envelopes(
+        cmd_va,
+        ach_va,
+        t_va,
+        origins=origins,
+        horizon=horizon,
+        rollout_fn=lambda k: _rollout_fopdt(
+            cmd_va, ach_va, k, horizon, lag, best_tp, dt_va
+        ),
+        origin_dt_gap_s=dt_gap_s,
+    )
+    ev_2, ex_2, ex_2_plus, _n_2 = _open_loop_envelopes(
+        cmd_va,
+        ach_va,
+        t_va,
+        origins=origins,
+        horizon=horizon,
+        rollout_fn=lambda k: _rollout_second(
+            cmd_va, ach_va, k, horizon, best_wn, best_z, dt_va
+        ),
+        origin_dt_gap_s=dt_gap_s,
+    )
+    if theta is None:
+        ev_a, ex_a, ex_a_plus = [0.0] * horizon, [0.0] * horizon, [0.0] * horizon
+    else:
+        ev_a, ex_a, ex_a_plus, _n_a = _open_loop_envelopes(
+            cmd_va,
+            ach_va,
+            t_va,
+            origins=origins,
+            horizon=horizon,
+            rollout_fn=lambda k: _rollout_arx(
+                cmd_va, ach_va, k, horizon, theta, 3, 3
+            ),
+            origin_dt_gap_s=dt_gap_s,
+        )
+    def _emax(xs: list[float]) -> float:
+        return max(xs) if xs else float("nan")
+
+    print(
+        f"[ID-SR] open-loop ê(k+i|k) origins={n_f} (same starts for all models)  "
+        f"FOPDT(T0={lag * dt * 1000:.1f}ms,Tp={best_tp * 1000:.1f}ms) "
+        f"ê_v max={_emax(ev_f):.4f} ê_x max={1e3 * _emax(ex_f):.2f}mm "
+        f"ê_x,+ max={1e3 * _emax(ex_f_plus):.2f}mm  "
+        f"2nd(wn={best_wn:.1f},z={best_z:.2f}) "
+        f"ê_v max={_emax(ev_2):.4f} ê_x max={1e3 * _emax(ex_2):.2f}mm "
+        f"ê_x,+ max={1e3 * _emax(ex_2_plus):.2f}mm  "
+        f"ARX ê_v max={_emax(ev_a):.4f} ê_x max={1e3 * _emax(ex_a):.2f}mm "
+        f"ê_x,+ max={1e3 * _emax(ex_a_plus):.2f}mm",
+        flush=True,
+    )
+    print(
+        "[ID-SR] pick the smallest *open-loop* 1–H envelope.  Use ê_{x,+} "
+        "for force indent; signed ê_x can cancel.  Correlation is not the "
+        "criterion.  Do not shrink ê on the validation set.",
+        flush=True,
+    )
+    print(
+        "[ID-SR] first-contact feasible only if "
+        "F_enter+ΔF_unc+K_ub Δx_b^ub(v0,a0,q0)+ΔF_active^ub ≤ F_max.  "
+        "Plant-step Δx^+ is not that bound.  If the inequality fails at low "
+        "v0, do not shrink the tube.",
+        flush=True,
+    )
+    return 0
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="peirastic plant identification")
+    parser.add_argument("--shm-prefix", default="")
+    parser.add_argument("--hold-s", type=float, default=0.80)
+    parser.add_argument("--rest-s", type=float, default=0.40)
+    parser.add_argument("--chirp-s", type=float, default=8.0)
+    parser.add_argument("--chirp-amp-mm-s", type=float, default=20.0)
+    parser.add_argument("--hz", type=float, default=200.0)
+    parser.add_argument("--analyze", type=str, default="", help="analyse an existing CSV")
+    parser.add_argument(
+        "--analyze-stop",
+        type=str,
+        default="",
+        help="analyse a --stop-reverse CSV for Δx^+ / N_press / N_b",
+    )
+    parser.add_argument(
+        "--val",
+        type=str,
+        default="",
+        help="independent validation CSV for --analyze-stop (not a 70/30 split)",
+    )
+    parser.add_argument(
+        "--input-column",
+        choices=("twist_vz", "u_sent"),
+        default="twist_vz",
+        help="SERVO_TWIST plant ID uses twist_vz; backup replay may use u_sent",
+    )
+    parser.add_argument(
+        "--dt-gap-s",
+        type=float,
+        default=0.050,
+        help="timestamp gap that invalidates a stop event (not silently clipped)",
+    )
+    parser.add_argument(
+        "--speeds-mm-s",
+        type=str,
+        default="",
+        help="comma list for --stop-reverse / --backup-replay (default 10,20,40,80)",
+    )
+    parser.add_argument(
+        "--backup-replay",
+        action="store_true",
+        help="play a/j-limited shield backup instead of instant →0/−40",
+    )
+    parser.add_argument(
+        "--event-log",
+        type=str,
+        default="",
+        help="backup-replay event log (write path, or --analyze-stop align file)",
+    )
+    parser.add_argument(
+        "--window-a-csv",
+        type=str,
+        default="",
+        help="Window A --log-csv path so --backup-replay syncs measured v/[a]+",
+    )
+    parser.add_argument("--horizon", type=int, default=40)
+    parser.add_argument("--write-yaml", type=str, default="")
+    parser.add_argument("--error-margin", type=float, default=0.002)
+    parser.add_argument(
+        "--stop-reverse",
+        action="store_true",
+        help="run +10/20/40/80 → 0 and → −40 mm/s (settled and accel)",
+    )
+    parser.add_argument(
+        "--short-hold-s",
+        type=float,
+        default=0.050,
+        help="nonzero-accel dwell before stop/reverse",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the sequence without talking to Window A",
+    )
+    args = parser.parse_args()
+    speeds = _parse_speeds_mm_s(args.speeds_mm_s)
+    if args.analyze_stop:
+        elog = Path(args.event_log) if args.event_log else None
+        return analyze_stop_reverse(
+            Path(args.analyze_stop),
+            horizon=int(args.horizon),
+            val_path=Path(args.val) if args.val else None,
+            input_column=str(args.input_column),
+            write_yaml=Path(args.write_yaml) if args.write_yaml else None,
+            dt_gap_s=float(args.dt_gap_s),
+            event_log=elog,
+        )
+    if args.analyze:
+        return analyze_csv(
+            Path(args.analyze),
+            horizon=int(args.horizon),
+            write_yaml=Path(args.write_yaml) if args.write_yaml else None,
+            margin=float(args.error_margin),
+        )
+    if args.dry_run:
+        if args.backup_replay:
+            print(
+                f"[DRY] backup-replay mm/s={speeds} hold={args.hold_s} "
+                f"short={args.short_hold_s} rest={args.rest_s}",
+                flush=True,
+            )
+        elif args.stop_reverse:
+            print(
+                f"[DRY] stop-reverse mm/s={speeds} →0 and →{REVERSE_MM_S} "
+                f"hold={args.hold_s} short={args.short_hold_s} rest={args.rest_s} "
+                "(plant ID, not Δx_b^ub)",
+                flush=True,
+            )
+        else:
+            print(
+                f"[DRY] steps mm/s={STEPS_MM_S} hold={args.hold_s} rest={args.rest_s} "
+                f"chirp={args.chirp_s}s amp={args.chirp_amp_mm_s} mm/s",
+                flush=True,
+            )
+        return 0
+    if args.backup_replay:
+        return run_backup_replay_sequence(
+            prefix=str(args.shm_prefix),
+            hold_s=float(args.hold_s),
+            short_hold_s=float(args.short_hold_s),
+            rest_s=float(args.rest_s),
+            hz=float(args.hz),
+            speeds_mm_s=speeds,
+            event_log=Path(args.event_log) if args.event_log else Path("identify_backup_events.csv"),
+            window_a_csv=Path(args.window_a_csv) if args.window_a_csv else None,
+        )
+    if args.stop_reverse:
+        return run_stop_reverse_sequence(
+            prefix=str(args.shm_prefix),
+            hold_s=float(args.hold_s),
+            short_hold_s=float(args.short_hold_s),
+            rest_s=float(args.rest_s),
+            hz=float(args.hz),
+            speeds_mm_s=speeds,
+        )
+    return run_sequence(
+        prefix=str(args.shm_prefix),
+        hold_s=float(args.hold_s),
+        rest_s=float(args.rest_s),
+        chirp_s=float(args.chirp_s),
+        chirp_amp_m_s=float(args.chirp_amp_mm_s) / 1000.0,
+        hz=float(args.hz),
+    )
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+```
+### FILE `peirastic/apps/shield_feel_metrics.py`
+
+```python
+#!/usr/bin/env python3
+"""Offline feel/safety report from a Window A --log-csv run.
+
+Prints shield_active_frac, lambda_p05, RMS(u_sent − u_nom), longest
+activation streak, F > F_ub hits, peak force, and contact-loss count.
+These numbers decide whether feel degraded; they are not a theorem.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import math
+from pathlib import Path
+
+import numpy as np
+
+
+def _col(rows: list[dict], name: str) -> np.ndarray:
+    return np.array([float(r.get(name) or "nan") for r in rows], dtype=float)
+
+
+def compute_metrics(
+    rows: list[dict],
+    *,
+    eps_lambda: float = 0.02,
+) -> dict[str, float | int]:
+    contact = _col(rows, "contact_present")
+    if not np.isfinite(contact).any():
+        contact = _col(rows, "force_task_latched")
+    lam = _col(rows, "lambda_obs")
+    u_nom = _col(rows, "u_nom_capped")
+    u_sent = _col(rows, "u_sent")
+    f = _col(rows, "fz")
+    f_ub = _col(rows, "f_ub_n")
+    loss = _col(rows, "physical_contact_loss_event")
+    in_c = contact > 0.5
+    n_c = int(np.count_nonzero(in_c))
+    if n_c == 0:
+        return {
+            "contact_n": 0,
+            "shield_active_frac": float("nan"),
+            "failsafe_frac": float("nan"),
+            "effective_intervention_frac": float("nan"),
+            "lambda_p05": float("nan"),
+            "rms_u_sent_minus_u_nom": float("nan"),
+            "longest_active_ticks": 0,
+            "f_ub_pierce": 0,
+            "peak_abs_fz": float("nan"),
+            "losses": 0,
+        }
+    lam_c = lam[in_c]
+    active = np.isfinite(lam_c) & (lam_c < 1.0 - eps_lambda)
+    frac = float(np.mean(active)) if lam_c.size else float("nan")
+    feas = _col(rows, "shield_feasible")
+    if not np.isfinite(feas).any():
+        feas = np.ones(len(rows), dtype=float)
+    fail = in_c & (feas < 0.5)
+    failsafe_frac = float(np.count_nonzero(fail) / n_c)
+    intervene = in_c & ((np.isfinite(lam) & (lam < 1.0 - eps_lambda)) | (feas < 0.5))
+    effective_intervention_frac = float(np.count_nonzero(intervene) / n_c)
+    finite_lam = lam_c[np.isfinite(lam_c)]
+    p05 = float(np.percentile(finite_lam, 5)) if finite_lam.size else float("nan")
+    du = u_sent - u_nom
+    du = du[in_c]
+    du = du[np.isfinite(du)]
+    rms = float(np.sqrt(np.mean(du * du))) if du.size else float("nan")
+    longest = 0
+    run = 0
+    applied = _col(rows, "shield_applied")
+    for a, c in zip(applied, contact):
+        if c > 0.5 and a > 0.5:
+            run += 1
+            longest = max(longest, run)
+        else:
+            run = 0
+    both = np.isfinite(f) & np.isfinite(f_ub) & in_c
+    pierce = int(np.count_nonzero(f[both] > f_ub[both] + 1e-6)) if np.any(both) else 0
+    peak = float(np.nanmax(np.abs(f))) if f.size else float("nan")
+    losses = int(np.nansum(loss)) if loss.size else 0
+    return {
+        "contact_n": n_c,
+        "shield_active_frac": frac,
+        "failsafe_frac": failsafe_frac,
+        "effective_intervention_frac": effective_intervention_frac,
+        "lambda_p05": p05,
+        "rms_u_sent_minus_u_nom": rms,
+        "longest_active_ticks": longest,
+        "f_ub_pierce": pierce,
+        "peak_abs_fz": peak,
+        "losses": losses,
+    }
+
+
+def report(path: Path, *, eps_lambda: float = 0.02) -> int:
+    with path.open(newline="") as f:
+        rows = list(csv.DictReader(f))
+    if not rows:
+        print(f"[ERR] empty {path}", flush=True)
+        return 1
+    metrics = compute_metrics(rows, eps_lambda=eps_lambda)
+    n_c = int(metrics["contact_n"])
+    if n_c == 0:
+        print("[METRICS] no contact samples", flush=True)
+        return 0
+    frac = float(metrics["shield_active_frac"])
+    p05 = float(metrics["lambda_p05"])
+    rms = float(metrics["rms_u_sent_minus_u_nom"])
+    longest = int(metrics["longest_active_ticks"])
+    pierce = int(metrics["f_ub_pierce"])
+    peak = float(metrics["peak_abs_fz"])
+    losses = int(metrics["losses"])
+    print(f"[METRICS] file={path} contact_n={n_c}", flush=True)
+    print(f"[METRICS] shield_active_frac={frac:.4f}", flush=True)
+    print(
+        f"[METRICS] failsafe_frac={float(metrics['failsafe_frac']):.4f}  "
+        f"effective_intervention_frac="
+        f"{float(metrics['effective_intervention_frac']):.4f}",
+        flush=True,
+    )
+    print(f"[METRICS] lambda_p05={p05:.4f}", flush=True)
+    print(f"[METRICS] rms_u_sent_minus_u_nom={rms:.6f} m/s", flush=True)
+    print(f"[METRICS] longest_active_ticks={longest}", flush=True)
+    print(f"[METRICS] f_ub_pierce={pierce}  peak_|fz|={peak:.3f} N  losses={losses}", flush=True)
+    if math.isfinite(frac) and frac > 0.25:
+        print(
+            "[METRICS] long activation is expected on a hard phantom with "
+            "M=1, D=25; it is not by itself a shield bug.",
+            flush=True,
+        )
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="shield feel metrics from CSV")
+    parser.add_argument("csv")
+    parser.add_argument("--eps-lambda", type=float, default=0.02)
+    args = parser.parse_args()
+    return report(Path(args.csv), eps_lambda=float(args.eps_lambda))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+```
+
+### FILE `peirastic/apps/gamepad.py`
+
+```python
+#!/usr/bin/env python3
+"""Window C: pad → filtered v_cmd → servo_twist.
+
+L3 toggles force-velocity hybrid: tool-Z from peirastic/configs/force.yaml,
+other axes stay on the pad. R3 e-stop.
+"""
+
+from __future__ import annotations
+
+import argparse
+import time
+from dataclasses import replace
+
+from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
+    GamepadTwistConfig,
+)
+from peirastic.core.ipc import CommandClient, Status, TwistBus
+from peirastic.core.modes import Mode, ModeRequest
+from peirastic.realman8dof.force.config import desired_z_n
+from peirastic.sources.gamepad import GamepadTwistSource
+
+
+def _fmt_vec(vec, n=3) -> str:
+    return " ".join(f"{float(v):+.3f}" for v in list(vec)[:n])
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="peirastic gamepad source")
+    parser.add_argument("--shm-prefix", default="")
+    parser.add_argument("--desired-z", type=float, default=None)
+    parser.add_argument("--trans-m-s", type=float, default=None)
+    parser.add_argument("--rot-rad-s", type=float, default=None)
+    parser.add_argument("--hold", action="store_true", help="use servo_twist_hold")
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        default=True,
+        help="no periodic v_cmd log (default)",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="print a 5 Hz pad heartbeat",
+    )
+    args = parser.parse_args()
+    quiet = bool(args.quiet) and not bool(args.verbose)
+    twist_cfg = GamepadTwistConfig()
+    if args.trans_m_s is not None or args.rot_rad_s is not None:
+        twist_cfg = replace(
+            twist_cfg,
+            trans_m_s=float(args.trans_m_s) if args.trans_m_s is not None else twist_cfg.trans_m_s,
+            rot_rad_s=float(args.rot_rad_s) if args.rot_rad_s is not None else twist_cfg.rot_rad_s,
+        )
+    fz = float(args.desired_z) if args.desired_z is not None else desired_z_n()
+    hybrid_payload = {"reference": "pad", "use_tff_split": True}
+    if args.desired_z is not None:
+        hybrid_payload["desired_z"] = float(args.desired_z)
+    prefix = str(args.shm_prefix)
+    client = CommandClient(prefix=prefix)
+    twist_bus = TwistBus(prefix=prefix, create=False)
+    src = GamepadTwistSource(cfg=twist_cfg)
+    src.start()
+    vel_mode = Mode.SERVO_TWIST_HOLD if args.hold else Mode.SERVO_TWIST
+    hybrid = False
+    last_l3_s = 0.0
+    last_log_s = 0.0
+    client.set_mode(ModeRequest(vel_mode, {}))
+    pad = getattr(src, "pad", None)
+    describe = getattr(pad, "describe", None)
+    print("[MODE] SERVO_TWIST" + ("_HOLD" if args.hold else ""), flush=True)
+    print(f"[STATE] L3 hybrid Fz*={fz:.2f}N (peirastic/configs/force.yaml)", flush=True)
+    if describe is not None:
+        print("[STATE] " + str(describe()), flush=True)
+    try:
+        while True:
+            snap = src.snapshot()
+            twist_bus.write(
+                snap["twist"],
+                axes=snap["axes"],
+                buttons=snap["buttons"],
+                hz=snap["hz"],
+                connected=snap["connected"],
+                l3=snap["l3"],
+                r3=snap["r3"],
+            )
+            if snap["armed"] and snap["r3_edge"]:
+                print("[ESTOP] pad R3 — zero rail then stop", flush=True)
+                client.estop()
+                return 130
+            now = time.monotonic()
+            if snap["l3_edge"] and (now - last_l3_s) > 0.15:
+                last_l3_s = now
+                hybrid = not hybrid
+                if hybrid:
+                    client.set_mode(ModeRequest(Mode.TRACK_HYBRID, hybrid_payload))
+                    print(f"[MODE] TRACK_HYBRID pad+force Z={fz:.2f}N", flush=True)
+                else:
+                    client.set_mode(ModeRequest(vel_mode, {}))
+                    print("[MODE] " + vel_mode.name, flush=True)
+            if not quiet and (now - last_log_s) >= 0.20:
+                last_log_s = now
+                twv = snap["twist"]
+                ax = snap["axes"]
+                print(
+                    f"[PAD] {snap['layout']} hz={snap['hz']:5.1f} "
+                    f"v={_fmt_vec(twv[:3])} w={_fmt_vec(twv[3:6])} "
+                    f"ax={_fmt_vec(ax, 6)} "
+                    f"l3={int(snap['l3'])} r3={int(snap['r3'])} "
+                    f"armed={int(snap['armed'])} hybrid={int(hybrid)}",
+                    flush=True,
+                )
+            tel = client.snapshot()
+            if int(tel["status"]) == int(Status.ESTOP):
+                print("[ESTOP] " + str(tel["msg"]), flush=True)
+                return 130
+            time.sleep(0.005)
+    except KeyboardInterrupt:
+        client.stop()
+        print("[STOP] interrupted", flush=True)
+        return 0
+    finally:
+        src.close()
+        twist_bus.close()
+        client.close()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+```
+
+### FILE `peirastic/configs/force.yaml`
+
+```yaml
+# Force-axis law for every peirastic force mode (pad hybrid, hold, ellipse+force).
+# Copied from the sin-scan demo (d_sin_tool_y / joint_admittance_8dof hybrid_motion).
+# A reloads this file on each force-mode compile. --desired-z overrides the setpoint only.
+
+force:
+  desired_z_n: 2.0
+
+frames:
+  euler_order: xyz
+  control_frame: tool
+
+hybrid_motion:
+  force_axes:
+  - 0
+  - 0
+  - 1
+  - 0
+  - 0
+  - 0
+  track_axes:
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  kp_pos:
+  - 10.0
+  - 10.0
+  - 5.0
+  - 1.5
+  - 1.5
+  - 1.5
+  pos_err_deadband_m: 0.0005
+  pos_correction_max_m_s: 0.08
+  system_delay_s: 0.055
+  contact_threshold_n: 0.8
+  contact_use_fz_only: true
+  physical_contact:
+    enabled: true
+    # Initial acquire uses filtered force only.  Replaying 162413 with
+    # 0.85 N / 20 ms moves the false 3.49 s acquire to the stable load at
+    # 4.14 s, while remaining reachable below the shipped 1 N target.
+    enter_n: 0.85
+    hard_enter_n: 1.5
+    # The same log shows a ~0.65 N airborne residual.  Exit/rearm thresholds
+    # therefore straddle that measured baseline instead of assuming <0.15 N.
+    exit_n: 0.70
+    enter_confirm_s: 0.02
+    exit_confirm_s: 0.1
+  # Slightly wider band: blunt single-tick contact dips without sticky D.
+  deadband_n: 0.08
+  deadband_width_n: 0.10
+  max_velocity:
+  - 0.22
+  - 0.22
+  - 0.1
+  - 0.6
+  - 0.6
+  - 0.6
+  max_acceleration:
+  - 1.0
+  - 1.0
+  - 0.8
+  - 2.0
+  - 2.0
+  - 2.0
+  # Low baseline MD for light feel + fast under/over-force chase.
+  # Chatter: short-lived ΔD_hf(Is). Steady offset: force_dob. Not sticky Ke·D.
+  admittance_mass_z: 1.0
+  admittance_damping_z: 25.0
+  max_vz_tool_m_s: 0.08
+  desired_force_ramp_s: 0.30
+  var_damping_enabled: true
+  var_damping_omega_c_hz: 2.5
+  var_damping_lambda: 0.951
+  var_damping_f_max_n: 7.0
+  # Dimeas Iₛ raises virtual mass briefly; ΔD_hf authority is off.
+  var_damping_d_u: 0.0
+  var_damping_m_u: 0.0
+  var_damping_m_max: 3.0
+  var_damping_dc_alpha: 0.02
+  var_damping_hf_attack_s: 0.02
+  var_damping_hf_hold_s: 0.08
+  var_damping_hf_release_s: 0.12
+  var_damping_hf_release_fast_s: 0.04  # dump ΔD on hand-release / large |e_f|
+  var_damping_hf_on: 0.30
+  var_damping_hf_off: 0.15
+  var_damping_hf_err_n: 0.8
+  recontact_vz_cap_m_s: 0.012
+  # Safety recontact speed latches on contact *loss* / suspect_loss, not on
+  # reacquire.  hold / episode_release only manage estimator episodes.
+  recontact_hold_s: 0.80
+  recontact_settle_m_s: 0.003
+  recontact_settle_hold_s: 0.050
+  contact_episode_release_s: 0.80
+  contact_episode_release_force_n: 0.75
+  # Restored from e85c9ab.  Steady under-force offset rejection; 1bfe98b
+  # disabled it as part of the anti-bounce sweep, and the force barrier below
+  # now provides that brake instead.
+  force_dob:
+    enabled: true
+    ki: 8.0
+    leak_s: 0.4
+    u_max_n: 1.5
+    freeze_is: 0.45
+    reset_on_reversal: true
+  # Contact impact is limited before BEFM/tank intervention.  In free space
+  # this preserves the 80 mm/s approach; after contact F+Fdot*T and the
+  # stiffness estimate continuously tighten positive press speed.
+  force_barrier:
+    enabled: true
+    t_react_s: 0.055
+    budget_min_n: 1.0
+    budget_frac: 0.20
+    f_keep_n: 0.5
+    f_escape_n: 0.5
+    v_ref_m_s: 0.08
+    v_min_retract_m_s: 0.0
+    v_min_press_m_s: 0.0
+    # Upper bound only.  First contact and loss-latched recontact use
+    # K_ub, so scheduled approach is a few mm/s, not this 30 mm/s.
+    v_seek_free_m_s: 0.030
+    tau_stop_s: 0.080
+    e_x_m: 0.0004
+    e_f_n: 0.20
+    bar_f_n: 0.15
+    fdot_lpf_s: 0.040
+    precontact_raw_trigger_n: 1.50 # short impact sleeve; never latches contact
+    stiffness_cap_enabled: true
+    ke_floor_n_m: 50.0
+    mass_floor_kg: 0.05
+  # Approximate PROB/CDYOB corrector. Off until after observe/force
+  # scans. Q starts at 2–3 Hz from identified P(z); not a passivity cutoff.
+  cdyob:
+    enabled: false
+    omega_q_hz: 2.5
+    tau_s: 0.0
+    t_n_s: 0.020
+    v_corr_max_m_s: 0.030
+  # Normal-port delay-aware shield. Stay in observe until the same solver
+  # is feasible on hardware. force/observe are empirical peak guards:
+  # require_contact_free_terminal is false until a release model exists.
+  # Do not enable passive/ospf/CDYOB from this file.
+  safety_shield:
+    enabled: true
+    mode: observe
+    k_ub_n_m: 8000.0
+    recovery_hold_s: 0.050
+    require_contact_free_terminal: false
+    r_f_n_s: 8.0
+    r_f_window_steps: 20
+    f_release_n: 0.70
+    u_retract_m_s: 0.040
+    a_max_m_s2: 1.20
+    j_max_m_s3: 40.0
+    rho: 0.15
+    e0_j: 0.004
+    eps_j: 0.0005
+    # One-pose free-space fit from run_20260821_000011 identify tail.
+    # Not a passivity certificate; another pose/load still needed.
+    plant:
+      t0_s: 0.050
+      tp_s: 0.020
+      horizon_steps: 40
+    # stop_dx_ub is written by --analyze-stop --write-yaml.
+    # certified: false until backup replay + independent val.  A certified
+    # table is D_b^ub(ξ) for backup-from-now; the shield candidate is
+    # D_ub(ξ,u(λ)) = Δx_1^ub + D_b^ub(ξ_1).  Lookup a0 is [a_actual]+;
+    # q_remain_m is dt Σ [u]+.  Force indent uses ē_{x,+}, not signed ē_x.
+    # Do not set certified true from a plant-step Δx^+ table.
+    # stop_dx_ub:
+    #   certified: false
+    #   source: plant_step_stop
+    #   bins: []
+    velocity_error_ub_m_s:
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002822
+    - 0.002820
+    - 0.002800
+    - 0.002834
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002829
+    - 0.002800
+    - 0.002800
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002820
+    - 0.002800
+    - 0.002800
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002820
+    - 0.002800
+    - 0.002800
+    position_error_ub_m:
+    - 0.0000140
+    - 0.0000280
+    - 0.0000420
+    - 0.0000541
+    - 0.0000681
+    - 0.0000822
+    - 0.0000963
+    - 0.0001104
+    - 0.0001244
+    - 0.0001386
+    - 0.0001526
+    - 0.0001666
+    - 0.0001806
+    - 0.0001927
+    - 0.0002067
+    - 0.0002208
+    - 0.0002349
+    - 0.0002490
+    - 0.0002630
+    - 0.0002770
+    - 0.0002911
+    - 0.0003051
+    - 0.0003191
+    - 0.0003311
+    - 0.0003451
+    - 0.0003592
+    - 0.0003733
+    - 0.0003874
+    - 0.0004014
+    - 0.0004154
+    - 0.0004295
+    - 0.0004435
+    - 0.0004575
+    - 0.0004695
+    - 0.0004835
+    - 0.0004976
+    - 0.0005117
+    - 0.0005258
+    - 0.0005398
+    - 0.0005538
+  # Historical keys. Force-axis a/j now live inside the shield; these
+  # values are not applied after u_sent.
+  force_axis_slew_press_m_s2: 1.20
+  force_axis_slew_retract_m_s2: 1.20
+  force_axis_slew_reverse_m_s2: 2.00
+  force_axis_jerk_max_m_s3: 40.0
+  # Lee-structure speed-level engineering adapter.  Observe is deliberately
+  # non-mutating until the slow press/retract sign check and 2/5/10 mm/s
+  # no-contact delay identification have been recorded.
+  bidirectional_flow:
+    mode: observe
+    normal_sign: 1.0
+    sign_verified: false
+    feedback_delay_verified: false
+    require_sign_verification: true
+    require_delay_verification: true
+    # Lee Sec. V-C: alpha is zero in free space.  Below this |fz| the gate is
+    # held off and the tank charges from proxy damping.
+    free_space_force_n: 0.5
+    Dtrack: 25.0
+    Kd: 25.0
+    Kp: 250.0              # Dtrack / 0.10 s
+    Ki: 0.0
+    lambda_gain: 0.25
+    track_correction_max_m_s: 0.020
+    M_p: 1.0
+    D_p: 25.0
+    # Provisional conservative auxiliary values; retune only after the
+    # velocity-step identification.  This branch can hold/retract, never press.
+    M_a: 0.05
+    D_a: 5.0
+    K_a: 50.0
+    B_a: 5.0
+    u_retract_n: 0.0
+    aux_max_retract_m_s: 0.050
+    alpha_attack_s: 0.020
+    alpha_release_s: 0.150
+    max_feedback_age_s: 0.020
+    T0: 0.0010
+    Tmax: 0.0040
+    Tmin: 0.0001
+    mu_power_w: 0.0
+    positive_switching_cost_j: 0.0
+  # Optional Piedra-style elastic-surface force reduction.  Disabled until
+  # stable-contact hardware validation; it is not a passivity guarantee.
+  surface_force_modulation:
+    enabled: false
+    min_force_scale: 0.25
+    beta_per_m: 80.0
+    stable_contact_s: 0.20
+    attack_s: 0.05
+    release_s: 0.15
+  # Soften under-force chase near scan turnaround (tool-XY slow).
+  force_lateral_soft_m_s: 0.006
+  force_lateral_full_m_s: 0.018
+  force_lateral_gain_floor: 0.35
+  adaptive_ke:
+    enabled: true
+    # Observe Ke / impact burst only — do not hold high critical D in steady contact.
+    drive_damping: false
+    zeta: 0.9
+    ke_initial: 80.0
+    ke_min: 40.0
+    ke_max: 2500.0
+    ke_impact_initial: 0.0
+    ke_cap_ub_n_m: 2000.0
+    ke_forgetting: 0.995
+    ke_forgetting_inc: 0.88
+    ke_idle_decay_s: 2.0
+    ke_soft_floor: 120.0
+    ke_detach_decay_s: 1.0
+    displacement_source: admittance
+    dx_threshold_m: 8.0e-05
+    contact_force_n: 0.8
+    settle_ticks: 10
+    gate_lateral_velocity: true
+    lateral_vel_gate_m_s: 0.02
+    gate_df_spike: true
+    df_spike_n: 4.0
+    f_err_gate_n: 1.2
+    f_err_gate_frac: 0.35
+    bd_min: 25.0
+    bd_max: 180.0
+    bd_slew_max: 400.0
+    ke_slew_max: 1200.0
+  proactive_feedforward: true
+  # Bidirectional press feedforward restored from e85c9ab: retract_only killed
+  # the press-side v_r integration outright (measured v_r_z p95 = 0), which is
+  # the single largest cause of slow under-force chase.  The force barrier
+  # still caps press as the force error closes.
+  proactive_retract_only: false
+  proactive_gain: 0.24
+  proactive_retract_gain: 0.24
+  proactive_leak_s: 0.25
+  v_r_max_m_s: 0.06
+  proactive_gate_press_on_is: false
+  proactive_press_is_gate_start: 0.2
+  proactive_press_is_gate: 0.6
+  proactive_press_is_soft_floor: 0.45
+  proactive_press_is_soft_stop: 0.85
+  proactive_press_slew_max_m_s2: 0.35
+  proactive_retract_slew_max_m_s2: 0.35
+  proactive_press_drive_max: 1.4
+  proactive_retract_drive_max: 1.4
+  proactive_reset_on_reversal: true
+  proactive_in_band_n: 0.25
+  proactive_in_band_leak_s: 0.05
+  force_scale_min_n: 0.18
+  force_scale_fraction: 0.0
+  fast_retract_guard:
+    enabled: true
+    cutoff_hz: 20.0
+    stop_margin_n: 0.25
+    stop_margin_fraction: 0.05
+    rearm_margin_n: 0.45
+    rearm_margin_fraction: 0.1
+    stop_confirm_s: 0.015
+    rearm_confirm_s: 0.01
+    min_hold_s: 0.025
+    max_sensor_age_s: 0.02
+```
+### FILE `peirastic/configs/controller.yaml`
+
+```yaml
+# peirastic Window A machine config — peirastic/configs/controller.yaml
+# Inner / rail / robot. Force-axis law is peirastic/configs/force.yaml (loaded separately).
+#
+# URDF: rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf
+# Genesis viz: python -m rm75_control.control.joint_admittance_8dof.viewer.demo --show-viewer
+# Param spec: joint_admittance_8dof/config/slider_rail.yaml (default viewer scene)
+
+robot:
+  ip: "192.168.1.18"
+  port: 8080
+  thread_mode: 2
+
+timing:
+  # 5.0 ms target.  t_ref advances by wall time; integration clips a late
+  # tick to [dt_nom, 1.25*dt_nom].  If deadline_slack_s > 0 on <99% of
+  # ticks, raise this back to 7.0.
+  dt_ms: 5.0
+  # Post-solve gate re-reads UDP; 80 ms still fails closed on a true push gap.
+  feedback_timeout_ms: 80.0
+  # Consecutive rejected/stale feedback before abort.  One hitch coasts.
+  feedback_coast_ms: 300.0
+  rt_disable_gc: true
+  verbose_json: false
+  # Best-effort RT: pin the control thread; hold /dev/cpu_dma_latency at 0.
+  control_cpu: 2
+  disable_cstates: true
+
+# UDP arm-state push (rm_set_realtime_push). Requires robot.thread_mode: 2.
+realtime_push:
+  cycle: 1              # broadcast period = cycle * 5 ms (1 -> 200 Hz)
+  port: 8098
+  ip: "192.168.1.80"    # PC NIC on robot subnet — do not auto-detect on multi-NIC hosts
+  force_coordinate: 0   # 0=sensor frame (matches rm_get_force_data force_data)
+
+# Shared-memory state relay for split-process Genesis twin (same host).
+# Match realtime_push (cycle=1 -> 200 Hz) so attach-mode WBC does not stair-step.
+state_relay:
+  enabled: false
+  name: rm75_state
+  hz: 200
+
+# Slack-QP inner loop (Escande). Physical q/v/a/collision live under hard_limits;
+# Cartesian/nullspace/rail-extension tuning lives under inner.
+qpik:
+  hard_limits:
+    v_scale: 0.8
+    a_max_arm_rad_s2: 3.0
+    a_max_rail_m_s2: 0.60
+    position_margin_deg: 0.3
+    position_margin_rail_mm: 0.0
+    command_lead_arm_deg: 6.0
+    command_lead_rail_mm: 20.0
+    velocity_damper:
+      arm_band_rad: 0.25
+      rail_band_m: 0.025
+    collision:
+      enabled: true
+      d_safe: 0.01
+      d_activate: 0.04
+      gamma: 5.0
+      max_pairs: 8
+    rail:
+      mode: coupled
+      locked_style: hold
+      lock_vel_eps_m_s: 0.0
+      v_max_m_s: 0.15
+      travel_m: 0.80
+      # Linear taper inner edge (must match rail_band_m).  Stick-speed
+      # braking is the stopping envelope, not a step at this line.
+      soft_min_m: 0.030
+      soft_max_m: 0.755
+      # QP / servo box.  5–780 mm is the full travel; 780 is reachable.
+      hard_min_m: 0.005
+      hard_max_m: 0.78
+
+inner:
+  # python = in-process QPIK. native = separate wbc_rt process (SHM).
+  backend: native
+  native_bin: /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/native/wbc_rt/build/wbc_rt
+  control_frame: tool
+  euler_order: xyz
+  # Sync RealMan active tool into Pinocchio link_7→tcp (force-hybrid / tool-Z).
+  sync_tcp_from_robot: true
+
+  qp:
+    task_weight: [100.0, 100.0, 100.0, 50.0, 50.0, 50.0]
+    reg: [1.0e-3, 1.0e-2, 1.0e-2, 1.0e-2, 1.0e-2, 1.2e-2, 1.2e-2, 1.2e-2]
+    backend: proxqp
+    use_cpp_kernel: true
+    eps_abs: 1.0e-6
+    max_iter: 400
+    max_iter_cap: 400
+    max_solve_ms: 5.0
+    fail_qdot_decay: 0.85
+    twist_sigma_floor: 0.02
+    warn_on_fail: false
+    sr_damping:
+      lam0: 0.05
+      sigma_ref: 0.08
+      sigma_floor: 1.0e-6
+    task_weight_min_frac: 0.05
+    task_weight_lpf_tau_s: 0.25
+    aniso_task_damping: true
+    use_mass_weighted_reg: true
+    mass_reg_floor: 0.05
+    mass_weight_exempt_rail: true
+    mass_reg_lpf_tau_s: 0.2
+    limit_damper_band_rad: 0.25
+    limit_damper_band_rail_m: 0.025
+    near_arm_margin_rad: 0.08
+    # Rail continuity is the hard a/j box + macro filter, not a soft glue term.
+    smoothness_weight: [0.0, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
+    # Third-order box: bounds how fast the commanded acceleration may turn.
+    # Measured jerk RMS was 250-570 rad/s³ with the acceleration flipping sign
+    # on ~half the ticks while the reference twist was smooth.
+    j_max_arm_rad_s3: 300.0
+    # 3.0 made a full rail acceleration reversal take 2*a_max/j = 0.2 s versus
+    # 0.02 s on the arm; 60 keeps 2*a_max/j = 0.02 s after a_max rose to 0.60.
+    j_max_rail_m_s3: 60.0
+    sigma_setbased:
+      enabled: true
+      activate: 0.12
+      safe: 0.06
+      exit: 0.16
+      gamma: 8.0
+      slack_weight: 200.0
+      grad_period_ticks: 10
+    branch_barrier:
+      enabled: true
+      # Soft preference at 30°.  The hard velocity box starts at 50° so
+      # J4 cannot blast through 0 when QP1 is holding TCP (035411).
+      activate_rad: 0.52
+      box_activate_rad: 0.87
+      eps_rad: 0.35
+      # J4 ±135° damper (open travel only).  Do not reuse eps_rad=20°
+      # or the upper wall sits at 115° and vertical press dies.
+      j4_limit_eps_rad: 0.08726646259971647   # 5° → zero at ~130°
+      j4_limit_activate_rad: 0.4363323129985824  # 25° → taper from ~110°
+      # J1 same-sign over-fold.  Zero at 140°; 0→−90° startup stays free.
+      j1_overfold_abs_rad: 2.443460952792061   # 140°
+      j1_overfold_activate_rad: 0.4363323129985824  # 25° → taper from ~115°
+      gamma: 6.0
+      slack_weight: 80.0
+      dwell_free_s: 0.3
+      dwell_ramp_s: 1.0
+      dwell_scale_max: 5.0
+    # Moe/Kanoun set-based comfort: each arm joint, own slack, 15–25° band.
+    joint_comfort:
+      enabled: true
+      m_comfort_deg: 15.0
+      activate_deg: 25.0
+      gamma: 6.0
+      slack_weight: 80.0
+
+  collision:
+    enabled: true
+    d_safe: 0.01
+    d_activate: 0.04
+    gamma: 5.0
+    max_pairs: 8
+
+  nullspace:
+    k_center: 1.0
+    k_limit: 2.0
+    activation: 0.75
+    weights: [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    # Side-lying family (Pin–Culioli minmax on the photo seed): ψ=68°,
+    # d=−0.185, J4≈96°.  Same branch as the taught lean; the 104° seed
+    # already hit 124° under a typical Δx/roll shake.  Signs are fixed.
+    q_nominal_deg: [0.0, -89.5, -94.5, 65.2, 96.0, 89.3, 61.0, 94.6]
+    manipulability:
+      k_mu: 0.8
+      eps_rad: 5.0e-4
+      sigma_fade_ref: 0.12
+      grad_period_ticks: 10
+      qdot_tau_s: 0.05
+
+  nullspace_d_null: 0.5
+  nullspace_d_null_adaptive: 1.0
+  nullspace_max_qdot_frac: 0.2
+  # Continuous nullspace fade from task slack.  Not a binary latch.
+  saturation:
+    slack_enter: 0.15
+    slack_exit: 0.03
+    secondary_scale: 0.15
+    secondary_scale_tau_s: 0.10
+
+  arm_angle:
+    enabled: true
+    k_psi: 1.5
+    psi_ref_deg: null
+    obs_smooth_floor: 0.3
+
+  psi_retarget:
+    enabled: true
+    n_y: 9
+    n_d: 8
+    n_psi: 9
+    w_sigma: 0.5
+    # Band around the 60° attractor — not |q6|/128°, which sacrificed J2.
+    w_wrist: 0.5
+    margin_floor_deg: 20.0
+    psi_rate_deg_s: 25.0
+    # Design split: J4≈96° (band center 95°).  Unplanned step shares one
+    # progress s across (d*, ψ*, q*); q* is srs_ik at the live TCP, not
+    # the yaml photo at t=0.
+    psi_attr_deg: 68.0
+    d_attr_m: -0.185
+    d_center_rate_m_s: 0.02
+    psi_cmd_lead_deg: 18.0
+    psi_replan_period_s: 0.1
+    psi_search_half_span_deg: 45.0
+    psi_search_n: 9
+    psi_wrist_ok_deg: 40.0
+    psi_return_dwell_s: 1.0
+    # >110° collapses J6 on this family.  Never cross ψ=0.
+    psi_envelope_deg: [40.0, 110.0]
+    require_design_family: false
+    rail_margin_m: 0.02
+    # Reject cells whose wrist sits on the ~20° branch-barrier floor.
+    wrist_min_deg: 30.0
+
+  # Signed IRD field (ird_playground).  One-shot d* at plan_scan_stroke only.
+  # Hot-path RailGoodness is σ_min (autograd IRD caused 127 ms hitches).
+  # Queries rebuild probe45 TCP from link_7 so gripper2 is ok.
+  ird:
+    enabled: true
+    device: cpu
+    allow_stale: true
+
+  rail_extension:
+    enabled: true
+    k_ext: 2.0
+    k_ff: 1.0
+    v_ff_thr_m_s: 0.005
+    v_ff_span_m_s: 0.015
+    e0_m: 0.02
+    e1_m: 0.08
+    w_max: 2.0
+    v_max_m_s: 0.08
+    limit_margin_m: 0.15
+    pin_margin_m: 0.008
+    escape_leave_m: 0.04
+    healthy_sigma_mute: 0.08
+    press_v_force_min_m_s: 0.02
+    press_dz_max_m: 0.002
+    press_y_err_m: 0.005
+    press_stall_s: 0.5
+    d_band_m: 0.005
+    k_sigma_boost: 2.0
+    k_esc: 0.5
+    w_sigma_floor: 1.0
+    k_pose: 2.0
+    pose_e0_m: 0.005
+    pose_e1_m: 0.04
+    pose_w_max: 4.0
+    sigma_guard_enter: 0.45
+    sigma_guard_exit: 0.70
+    v_guard_max_m_s: 0.04
+    v_lpf_tau_s: 0.05
+    v_lpf_fc_hz: 5.0
+    v_lpf_tau_escape_s: 0.04
+    # Narrow latch: deep σ or true near-limit only (healthy = FF + allocator).
+    sigma_escape_enter: 0.55
+    sigma_escape_exit: 0.80
+    margin_escape_enter: 0.12
+    margin_escape_exit: 0.25
+    sigma_drop_rate: 0.0
+    escape_enter_dwell_s: 0.05
+    k_escape_boost: 1.2
+    escape_grad_floor: 0.0
+    k_margin_boost: 4.0
+    w_ext_cap: 24.0
+    d_star_err0_m: 0.01
+    d_star_err1_m: 0.04
+    d_star_w_mult: 6.0
+    d_star_reg_mult: 20.0
+    # Escape sign: auto = open travel / σ gradient.  minus/plus force a side.
+    escape_sign_policy: auto
+
+  rail_allocator:
+    v0_m_s: 0.05
+    w0_rad_s: 0.30
+    k_margin: 4.0
+    kp_mid: 1.2
+    ki_mid: 0.80
+    u_mid_max_m_s: 0.12
+    k_err_rail: 4.0
+    e_ref_m: 0.08
+    f_c_hz: 1.0
+    kaw_mid: 8.0
+    rho_mirror_a: 0.50
+    rho_mirror_j: 0.30
+    reaction_s: 0.06
+    observer_pos_gain: 0.35
+    observer_vel_gain: 2.0
+    observer_vel_lpf_hz: 8.0
+
+
+frames:
+  # Prefer inner.control_frame / inner.euler_order; this block only supplies
+  # euler_order fallback for older loaders.
+  euler_order: xyz
+
+force:
+  desired_z_n: 1.0
+  phi_source: phi_recommended
+  fc_hz: 6.0
+  min_samples: 22
+  causal_fc_hz: 12.0
+  causal_order: 1
+  causal_history: 5
+  # Inertia compensation off on the joint stream (re-enable only with telemetry).
+  use_inertia: false
+
+# Outer-loop Cartesian P for CARTESIAN_TRACK / GOTO.  CLI --move-kp
+# overrides k_task_lin only.  Rotation stays here.
+# fb_lpf_tau_s filters k*e only; vel_ff is never filtered.  0 = off.
+cartesian_track:
+  k_task_lin: 12.0
+  k_task_rot: 2.0
+  max_pos_err_m: 0.05
+  max_rot_err_rad: 0.35
+  fb_lpf_tau_s: 0.0
+
+hybrid_motion:
+  force_axes:
+  - 0
+  - 0
+  - 1
+  - 0
+  - 0
+  - 0
+  track_axes:
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  kp_pos:
+  - 10.0
+  - 10.0
+  - 5.0
+  - 1.5
+  - 1.5
+  - 1.5
+  pos_err_deadband_m: 0.0005
+  pos_correction_max_m_s: 0.08
+  system_delay_s: 0.055
+  contact_threshold_n: 0.8
+  contact_use_fz_only: true
+  physical_contact:
+    enabled: true
+    # Initial acquire uses filtered force only.  Replaying 162413 with
+    # 0.85 N / 20 ms moves the false 3.49 s acquire to the stable load at
+    # 4.14 s, while remaining reachable below the shipped 1 N target.
+    enter_n: 0.85
+    hard_enter_n: 1.5
+    # The same log shows a ~0.65 N airborne residual.  Exit/rearm thresholds
+    # therefore straddle that measured baseline instead of assuming <0.15 N.
+    exit_n: 0.70
+    enter_confirm_s: 0.02
+    exit_confirm_s: 0.1
+  # Slightly wider band: blunt single-tick contact dips without sticky D.
+  deadband_n: 0.08
+  deadband_width_n: 0.10
+  max_velocity:
+  - 0.22
+  - 0.22
+  - 0.1
+  - 0.6
+  - 0.6
+  - 0.6
+  max_acceleration:
+  - 1.0
+  - 1.0
+  - 0.8
+  - 2.0
+  - 2.0
+  - 2.0
+  # Low baseline MD for light feel + fast under/over-force chase.
+  # Chatter: short-lived ΔD_hf(Is). Steady offset: force_dob. Not sticky Ke·D.
+  admittance_mass_z: 1.0
+  admittance_damping_z: 25.0
+  max_vz_tool_m_s: 0.08
+  desired_force_ramp_s: 0.30
+  var_damping_enabled: true
+  var_damping_omega_c_hz: 2.5
+  var_damping_lambda: 0.951
+  var_damping_f_max_n: 7.0
+  # Dimeas Iₛ raises virtual mass briefly; ΔD_hf authority is off.
+  var_damping_d_u: 0.0
+  var_damping_m_u: 0.0
+  var_damping_m_max: 3.0
+  var_damping_dc_alpha: 0.02
+  var_damping_hf_attack_s: 0.02
+  var_damping_hf_hold_s: 0.08
+  var_damping_hf_release_s: 0.12
+  var_damping_hf_release_fast_s: 0.04  # dump ΔD on hand-release / large |e_f|
+  var_damping_hf_on: 0.30
+  var_damping_hf_off: 0.15
+  var_damping_hf_err_n: 0.8
+  recontact_vz_cap_m_s: 0.012
+  # Safety recontact speed latches on contact *loss* / suspect_loss, not on
+  # reacquire.  hold / episode_release only manage estimator episodes.
+  recontact_hold_s: 0.80
+  recontact_settle_m_s: 0.003
+  recontact_settle_hold_s: 0.050
+  contact_episode_release_s: 0.80
+  contact_episode_release_force_n: 0.75
+  # Restored from e85c9ab.  Steady under-force offset rejection; 1bfe98b
+  # disabled it as part of the anti-bounce sweep, and the force barrier below
+  # now provides that brake instead.
+  force_dob:
+    enabled: true
+    ki: 8.0
+    leak_s: 0.4
+    u_max_n: 1.5
+    freeze_is: 0.45
+    reset_on_reversal: true
+  # Contact impact is limited before BEFM/tank intervention.  In free space
+  # this preserves the 80 mm/s approach; after contact F+Fdot*T and the
+  # stiffness estimate continuously tighten positive press speed.
+  force_barrier:
+    enabled: true
+    t_react_s: 0.055
+    budget_min_n: 1.0
+    budget_frac: 0.20
+    f_keep_n: 0.5
+    f_escape_n: 0.5
+    v_ref_m_s: 0.08
+    v_min_retract_m_s: 0.0
+    v_min_press_m_s: 0.0
+    # Upper bound only.  First contact and loss-latched recontact use
+    # K_ub, so scheduled approach is a few mm/s, not this 30 mm/s.
+    v_seek_free_m_s: 0.030
+    tau_stop_s: 0.080
+    e_x_m: 0.0004
+    e_f_n: 0.20
+    bar_f_n: 0.15
+    fdot_lpf_s: 0.040
+    precontact_raw_trigger_n: 1.50 # short impact sleeve; never latches contact
+    stiffness_cap_enabled: true
+    ke_floor_n_m: 50.0
+    mass_floor_kg: 0.05
+  # Approximate PROB/CDYOB corrector. Off until after observe/force
+  # scans. Q starts at 2–3 Hz from identified P(z); not a passivity cutoff.
+  cdyob:
+    enabled: false
+    omega_q_hz: 2.5
+    tau_s: 0.0
+    t_n_s: 0.020
+    v_corr_max_m_s: 0.030
+  # Normal-port delay-aware shield. Stay in observe until the same solver
+  # is feasible on hardware. force/observe are empirical peak guards:
+  # require_contact_free_terminal is false until a release model exists.
+  # Do not enable passive/ospf/CDYOB from this file.
+  safety_shield:
+    enabled: true
+    mode: observe
+    k_ub_n_m: 8000.0
+    recovery_hold_s: 0.050
+    require_contact_free_terminal: false
+    r_f_n_s: 8.0
+    r_f_window_steps: 20
+    f_release_n: 0.70
+    u_retract_m_s: 0.040
+    a_max_m_s2: 1.20
+    j_max_m_s3: 40.0
+    rho: 0.15
+    e0_j: 0.004
+    eps_j: 0.0005
+    # One-pose free-space fit from run_20260821_000011 identify tail.
+    # Not a passivity certificate; another pose/load still needed.
+    plant:
+      t0_s: 0.050
+      tp_s: 0.020
+      horizon_steps: 40
+    # stop_dx_ub is written by --analyze-stop --write-yaml.
+    # certified: false until backup replay + independent val.
+    # Force indent uses ē_{x,+}; lookup a0 is [a_actual]+; q_remain_m is dt Σ [u]+.
+    # Candidate bound is Δx_1^ub(ξ,u(λ))+D_b^ub(ξ_1), not max(model, D_b(ξ)).
+
+    velocity_error_ub_m_s:
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002822
+    - 0.002820
+    - 0.002800
+    - 0.002834
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002829
+    - 0.002800
+    - 0.002800
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002820
+    - 0.002800
+    - 0.002800
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002820
+    - 0.002800
+    - 0.002800
+    position_error_ub_m:
+    - 0.0000140
+    - 0.0000280
+    - 0.0000420
+    - 0.0000541
+    - 0.0000681
+    - 0.0000822
+    - 0.0000963
+    - 0.0001104
+    - 0.0001244
+    - 0.0001386
+    - 0.0001526
+    - 0.0001666
+    - 0.0001806
+    - 0.0001927
+    - 0.0002067
+    - 0.0002208
+    - 0.0002349
+    - 0.0002490
+    - 0.0002630
+    - 0.0002770
+    - 0.0002911
+    - 0.0003051
+    - 0.0003191
+    - 0.0003311
+    - 0.0003451
+    - 0.0003592
+    - 0.0003733
+    - 0.0003874
+    - 0.0004014
+    - 0.0004154
+    - 0.0004295
+    - 0.0004435
+    - 0.0004575
+    - 0.0004695
+    - 0.0004835
+    - 0.0004976
+    - 0.0005117
+    - 0.0005258
+    - 0.0005398
+    - 0.0005538
+  # Historical keys. Force-axis a/j now live inside the shield; these
+  # values are not applied after u_sent.
+  force_axis_slew_press_m_s2: 1.20
+  force_axis_slew_retract_m_s2: 1.20
+  force_axis_slew_reverse_m_s2: 2.00
+  force_axis_jerk_max_m_s3: 40.0
+  # Lee-structure speed-level engineering adapter.  Observe is deliberately
+  # non-mutating until the slow press/retract sign check and 2/5/10 mm/s
+  # no-contact delay identification have been recorded.
+  bidirectional_flow:
+    mode: observe
+    normal_sign: 1.0
+    sign_verified: false
+    feedback_delay_verified: false
+    require_sign_verification: true
+    require_delay_verification: true
+    # Lee Sec. V-C: alpha is zero in free space.  Below this |fz| the gate is
+    # held off and the tank charges from proxy damping.
+    free_space_force_n: 0.5
+    Dtrack: 25.0
+    Kd: 25.0
+    Kp: 250.0              # Dtrack / 0.10 s
+    Ki: 0.0
+    lambda_gain: 0.25
+    track_correction_max_m_s: 0.020
+    M_p: 1.0
+    D_p: 25.0
+    # Provisional conservative auxiliary values; retune only after the
+    # velocity-step identification.  This branch can hold/retract, never press.
+    M_a: 0.05
+    D_a: 5.0
+    K_a: 50.0
+    B_a: 5.0
+    u_retract_n: 0.0
+    aux_max_retract_m_s: 0.050
+    alpha_attack_s: 0.020
+    alpha_release_s: 0.150
+    max_feedback_age_s: 0.020
+    T0: 0.0010
+    Tmax: 0.0040
+    Tmin: 0.0001
+    mu_power_w: 0.0
+    positive_switching_cost_j: 0.0
+  # Optional Piedra-style elastic-surface force reduction.  Disabled until
+  # stable-contact hardware validation; it is not a passivity guarantee.
+  surface_force_modulation:
+    enabled: false
+    min_force_scale: 0.25
+    beta_per_m: 80.0
+    stable_contact_s: 0.20
+    attack_s: 0.05
+    release_s: 0.15
+  # Soften under-force chase near scan turnaround (tool-XY slow).
+  force_lateral_soft_m_s: 0.006
+  force_lateral_full_m_s: 0.018
+  force_lateral_gain_floor: 0.35
+  adaptive_ke:
+    enabled: true
+    # Observe Ke / impact burst only — do not hold high critical D in steady contact.
+    drive_damping: false
+    zeta: 0.9
+    ke_initial: 80.0
+    ke_min: 40.0
+    ke_max: 2500.0
+    ke_impact_initial: 0.0
+    ke_cap_ub_n_m: 2000.0
+    ke_forgetting: 0.995
+    ke_forgetting_inc: 0.88
+    ke_idle_decay_s: 2.0
+    ke_soft_floor: 120.0
+    ke_detach_decay_s: 1.0
+    displacement_source: admittance
+    dx_threshold_m: 8.0e-05
+    contact_force_n: 0.8
+    settle_ticks: 10
+    gate_lateral_velocity: true
+    lateral_vel_gate_m_s: 0.02
+    gate_df_spike: true
+    df_spike_n: 4.0
+    f_err_gate_n: 1.2
+    f_err_gate_frac: 0.35
+    bd_min: 25.0
+    bd_max: 180.0
+    bd_slew_max: 400.0
+    ke_slew_max: 1200.0
+  proactive_feedforward: true
+  # Bidirectional press feedforward restored from e85c9ab: retract_only killed
+  # the press-side v_r integration outright (measured v_r_z p95 = 0), which is
+  # the single largest cause of slow under-force chase.  The force barrier
+  # still caps press as the force error closes.
+  proactive_retract_only: false
+  proactive_gain: 0.24
+  proactive_retract_gain: 0.24
+  proactive_leak_s: 0.25
+  v_r_max_m_s: 0.06
+  proactive_gate_press_on_is: false
+  proactive_press_is_gate_start: 0.2
+  proactive_press_is_gate: 0.6
+  proactive_press_is_soft_floor: 0.45
+  proactive_press_is_soft_stop: 0.85
+  proactive_press_slew_max_m_s2: 0.35
+  proactive_retract_slew_max_m_s2: 0.35
+  proactive_press_drive_max: 1.4
+  proactive_retract_drive_max: 1.4
+  proactive_reset_on_reversal: true
+  proactive_in_band_n: 0.25
+  proactive_in_band_leak_s: 0.05
+  force_scale_min_n: 0.18
+  force_scale_fraction: 0.0
+  fast_retract_guard:
+    enabled: true
+    cutoff_hz: 20.0
+    stop_margin_n: 0.25
+    stop_margin_fraction: 0.05
+    rearm_margin_n: 0.45
+    rearm_margin_fraction: 0.1
+    stop_confirm_s: 0.015
+    rearm_confirm_s: 0.01
+    min_hold_s: 0.025
+    max_sensor_age_s: 0.02
+hw:
+  lw100:
+    enabled: true
+    host: 192.168.0.7
+    port: 8234
+    slave: 1
+    lead_mm: 10.0
+    # calibrated_file: load var/lw100_rail_zero.json (run apps/lw100_rail_home_limit.py first).
+    # current/fixed are debug-only; with require_calibration true, current is refused.
+    zero_mode: calibrated_file
+    counts0: 0
+    calibration_path: var/lw100_rail_zero.json
+    require_calibration: true
+    home_di: di4             # −Y home switch (confirmed on HW; was swapped vs DI3)
+    plus_di: di3             # +Y end (run-time e-stop if hit)
+    di_nc: true
+    di_debounce_n: 3
+    soft_min_m: 0.030        # full-speed inner edge; must match qpik.hard_limits.rail
+    soft_max_m: 0.755
+    hard_min_m: 0.005        # travel box 5–780 mm
+    hard_max_m: 0.78
+    post_home_m: 0.025
+    # Home-script only (controller does not auto-home on start):
+    home_search_m_s: 0.020
+    home_creep_m_s: 0.003
+    home_backoff_mm: 5.0
+    home_touch_count: 3
+    home_search_timeout_s: 60.0
+    home_to_post_m_s: 0.030
+    limit_poll_every: 5
+    # Host rail_y ↔ motor: -1 flips FA24 RPM (+ encoder map in rail_servo).
+    sign: -1
+    enable_settle_s: 0.3
+    # Cold start: prove worker Modbus read+FA24=0 before any set_target / move→D.
+    arm_good_reads: 30          # ~0.6 s @ 50 Hz consecutive healthy polls
+    arm_settle_s: 0.8           # extra FA24=0 hold after good polls
+    arm_max_span_mm: 2.0
+    arm_timeout_s: 10.0
+    fault_margin_m: 0.05
+    # 205605: t_read med 5.8 ms, FA24 write usually skipped.  43 Hz left
+    # ~17 ms of sleep.  60 Hz (16.7 ms) still has ~11 ms median headroom;
+    # 80 Hz is tight on p95.  Do not change FA72 or the USR-TCP232-304 baud
+    # alone — both ends must match, then power-cycle the drive.  Confirm no
+    # DI is mapped to 7 (ZCLAMP) and FC-15 bit6 is 0; do not query while A
+    # is live.  FA40/FA41 = time 0→1000 r/min, not 0→vel_max.
+    poll_hz: 60
+    inter_frame_delay_s: 0.0005
+    timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0
+    retries: 1
+    deadband_mm: 0.5
+    # FA23 overspeed trip: must sit ABOVE commanded peak (0.15 m/s ≈ 900 rpm
+    # @ 10 mm/rev). Equal FA23=cmd caused Er-01 on scan overshoot (151334).
+    max_speed_rpm: 1200
+    # Soft CSP via FA24 (see apps/lw100_vel_pos_follow_demo.py).
+    # POSITION scan/home PD.  Coupled QPIK is pure velocity (no FA24 P).
+    # Loaded PD scan BEST (400±40 mm): kp=14/kd=0.22.
+    vel_kp: 14.0
+    vel_kd: 0.22
+    vel_kd_max_m_s: 0.005
+    # Matches QP box rail.v_max_m_s 0.15 × v_scale 0.8.  parse_rail_servo_config
+    # also caps hw.vel_max by that product so the two cannot drift apart.
+    vel_max_m_s: 0.12
+    vel_amax_m_s2: 1.2
+    # Coupled-mode catch-up of x_ref toward x_goal while moving.  20 mm/s
+    # clears a 20 mm standing offset in ~1 s without outrunning FF.
+    catch_v_max_m_s: 0.02
+    catch_k: 5.0
+    catch_frac: 0.3
+    decel_request_margin_m_s: 0.005
+    match_drive_accel: true
+    fa24_rpm_deadband: 0   # write every worker tick; skip only if rpm is unchanged
+    vel_deadband_mm: 0.05   # tight tracking band (not a permanent accuracy sacrifice)
+    # Standstill hysteresis: freeze FA24 after tight settle; wake only if pushed.
+    standstill_enter_mm: 0.05
+    standstill_exit_mm: 0.25
+    standstill_dwell_s: 0.08
+    approach_m: 0.040
+    latch_watch_s: 0.12
+    target_timeout_s: 0.25
+    # Extra coast after timeout before FA24=0.  A 127 ms hitch must not brake.
+    target_stale_coast_s: 0.35
+    encoder_freeze_s: 1.0
+    encoder_freeze_min_v_m_s: 0.02
+    encoder_freeze_min_move_mm: 0.15
+    # End-of-stream / task-end settle before releasing follow (closes latched overshoot).
+    settle_tol_mm: 0.05
+    settle_v_m_s: 0.006
+    settle_timeout_s: 1.5
+    # Stall-safe speed: worst-case latched FA24 overshoot ≤ |err| for max_stall_s.
+    max_stall_s: 0.06
+    stall_v_floor_m_s: 0.004
+    # Soft-reject above v_max·gap + margin; wipe cal only on ≥50 mm or 2 soft jumps.
+    jump_margin_mm: 3.0
+    jump_hard_mm: 50.0
+    jump_soft_streak_panic: 2
+    # FA40/41: 120 ms → drive a ≈ 1.0 m/s².  Host a_max is min(this, QP
+    # a_max_rail_m_s2 0.60, 0.85 × vel_max/accel_s) so the servo cannot
+    # outrun the QP model.
+    accel_ms: 120
+    decel_ms: 120
+    scurve_ms: 30            # FA42
+    busy_speed_rpm: 1
+    home_on_exit: false
+    release_son_on_exit: false  # stop with FA24=0 and keep SON; avoids enable-edge frame wipe
+    home_speed_rpm: 900
+    home_approach_mm: 40
+    home_timeout_s: 60
+    verbose: false
+
+startup:
+  # Used by window A / C bring-up (not 6-DOF pose_slot).
+  enable_force: false
+  follow: true
+  move_speed: 20
+  realtime: false
+  # Control-loop stall timeout.  QP backend pulses the watchdog during ProxQP.
+  watchdog_timeout_s: 0.50
+```
+### FILE `rm75_control/configs/joint_admittance_8dof.yaml`
+
+```yaml
+# Joint-space 8-DOF inner loop (rail_y + RM75 arm) — configs/joint_admittance_8dof.yaml
+#
+# URDF: rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf
+# Genesis viz: python -m rm75_control.control.joint_admittance_8dof.viewer.demo --show-viewer
+# Param spec: joint_admittance_8dof/config/slider_rail.yaml (default viewer scene)
+
+robot:
+  ip: "192.168.1.18"
+  port: 8080
+  thread_mode: 2
+
+timing:
+  # 5.0 ms target.  t_ref advances by wall time; integration clips a late
+  # tick to [dt_nom, 1.25*dt_nom].  If deadline_slack_s > 0 on <99% of
+  # ticks, raise this back to 7.0.
+  dt_ms: 5.0
+  # Post-solve gate re-reads UDP; 80 ms still fails closed on a true push gap.
+  feedback_timeout_ms: 80.0
+  # Consecutive rejected/stale feedback before abort.  One hitch coasts.
+  feedback_coast_ms: 300.0
+  rt_disable_gc: true
+  verbose_json: false
+  # Best-effort RT: pin the control thread; hold /dev/cpu_dma_latency at 0.
+  control_cpu: 2
+  disable_cstates: true
+
+# UDP arm-state push (rm_set_realtime_push). Requires robot.thread_mode: 2.
+realtime_push:
+  cycle: 1              # broadcast period = cycle * 5 ms (1 -> 200 Hz)
+  port: 8098
+  ip: "192.168.1.80"    # PC NIC on robot subnet — do not auto-detect on multi-NIC hosts
+  force_coordinate: 0   # 0=sensor frame (matches rm_get_force_data force_data)
+
+# Shared-memory state relay for split-process Genesis twin (same host).
+# Match realtime_push (cycle=1 -> 200 Hz) so attach-mode WBC does not stair-step.
+state_relay:
+  enabled: false
+  name: rm75_state
+  hz: 200
+
+# Slack-QP inner loop (Escande). Physical q/v/a/collision live under hard_limits;
+# Cartesian/nullspace/rail-extension tuning lives under inner.
+qpik:
+  hard_limits:
+    v_scale: 0.8
+    a_max_arm_rad_s2: 3.0
+    a_max_rail_m_s2: 0.60
+    position_margin_deg: 0.3
+    position_margin_rail_mm: 0.0
+    command_lead_arm_deg: 6.0
+    command_lead_rail_mm: 20.0
+    velocity_damper:
+      arm_band_rad: 0.25
+      rail_band_m: 0.025
+    collision:
+      enabled: true
+      d_safe: 0.01
+      d_activate: 0.04
+      gamma: 5.0
+      max_pairs: 8
+    rail:
+      mode: coupled
+      locked_style: hold
+      lock_vel_eps_m_s: 0.0
+      v_max_m_s: 0.15
+      travel_m: 0.80
+      # Linear taper inner edge (must match rail_band_m).  Stick-speed
+      # braking is the stopping envelope, not a step at this line.
+      soft_min_m: 0.030
+      soft_max_m: 0.755
+      # QP / servo box.  5–780 mm is the full travel; 780 is reachable.
+      hard_min_m: 0.005
+      hard_max_m: 0.78
+
+inner:
+  # python = in-process QPIK. native = separate wbc_rt process (SHM).
+  backend: native
+  native_bin: /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/native/wbc_rt/build/wbc_rt
+  control_frame: tool
+  euler_order: xyz
+  # Sync RealMan active tool into Pinocchio link_7→tcp (force-hybrid / tool-Z).
+  sync_tcp_from_robot: true
+
+  qp:
+    task_weight: [100.0, 100.0, 100.0, 50.0, 50.0, 50.0]
+    reg: [1.0e-3, 1.0e-2, 1.0e-2, 1.0e-2, 1.0e-2, 1.2e-2, 1.2e-2, 1.2e-2]
+    backend: proxqp
+    use_cpp_kernel: true
+    eps_abs: 1.0e-6
+    max_iter: 400
+    max_iter_cap: 400
+    max_solve_ms: 5.0
+    fail_qdot_decay: 0.85
+    twist_sigma_floor: 0.02
+    warn_on_fail: false
+    sr_damping:
+      lam0: 0.05
+      sigma_ref: 0.08
+      sigma_floor: 1.0e-6
+    task_weight_min_frac: 0.05
+    task_weight_lpf_tau_s: 0.25
+    aniso_task_damping: true
+    use_mass_weighted_reg: true
+    mass_reg_floor: 0.05
+    mass_weight_exempt_rail: true
+    mass_reg_lpf_tau_s: 0.2
+    limit_damper_band_rad: 0.25
+    limit_damper_band_rail_m: 0.025
+    near_arm_margin_rad: 0.08
+    # Rail continuity is the hard a/j box + macro filter, not a soft glue term.
+    smoothness_weight: [0.0, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
+    # Third-order box: bounds how fast the commanded acceleration may turn.
+    # Measured jerk RMS was 250-570 rad/s³ with the acceleration flipping sign
+    # on ~half the ticks while the reference twist was smooth.
+    j_max_arm_rad_s3: 300.0
+    # 3.0 made a full rail acceleration reversal take 2*a_max/j = 0.2 s versus
+    # 0.02 s on the arm; 60 keeps 2*a_max/j = 0.02 s after a_max rose to 0.60.
+    j_max_rail_m_s3: 60.0
+    sigma_setbased:
+      enabled: true
+      activate: 0.12
+      safe: 0.06
+      exit: 0.16
+      gamma: 8.0
+      slack_weight: 200.0
+      grad_period_ticks: 10
+    branch_barrier:
+      enabled: true
+      # Soft preference at 30°.  The hard velocity box starts at 50° so
+      # J4 cannot blast through 0 when QP1 is holding TCP (035411).
+      activate_rad: 0.52
+      box_activate_rad: 0.87
+      eps_rad: 0.35
+      # J4 ±135° damper (open travel only).  Do not reuse eps_rad=20°
+      # or the upper wall sits at 115° and vertical press dies.
+      j4_limit_eps_rad: 0.08726646259971647   # 5° → zero at ~130°
+      j4_limit_activate_rad: 0.4363323129985824  # 25° → taper from ~110°
+      # J1 same-sign over-fold.  Zero at 140°; 0→−90° startup stays free.
+      j1_overfold_abs_rad: 2.443460952792061   # 140°
+      j1_overfold_activate_rad: 0.4363323129985824  # 25° → taper from ~115°
+      gamma: 6.0
+      slack_weight: 80.0
+      dwell_free_s: 0.3
+      dwell_ramp_s: 1.0
+      dwell_scale_max: 5.0
+    # Moe/Kanoun set-based comfort: each arm joint, own slack, 15–25° band.
+    joint_comfort:
+      enabled: true
+      m_comfort_deg: 15.0
+      activate_deg: 25.0
+      gamma: 6.0
+      slack_weight: 80.0
+
+  collision:
+    enabled: true
+    d_safe: 0.01
+    d_activate: 0.04
+    gamma: 5.0
+    max_pairs: 8
+
+  nullspace:
+    k_center: 1.0
+    k_limit: 2.0
+    activation: 0.75
+    weights: [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    # Side-lying family (Pin–Culioli minmax on the photo seed): ψ=68°,
+    # d=−0.185, J4≈96°.  Same branch as the taught lean; the 104° seed
+    # already hit 124° under a typical Δx/roll shake.  Signs are fixed.
+    q_nominal_deg: [0.0, -89.5, -94.5, 65.2, 96.0, 89.3, 61.0, 94.6]
+    manipulability:
+      k_mu: 0.8
+      eps_rad: 5.0e-4
+      sigma_fade_ref: 0.12
+      grad_period_ticks: 10
+      qdot_tau_s: 0.05
+
+  nullspace_d_null: 0.5
+  nullspace_d_null_adaptive: 1.0
+  nullspace_max_qdot_frac: 0.2
+  # Continuous nullspace fade from task slack.  Not a binary latch.
+  saturation:
+    slack_enter: 0.15
+    slack_exit: 0.03
+    secondary_scale: 0.15
+    secondary_scale_tau_s: 0.10
+
+  arm_angle:
+    enabled: true
+    k_psi: 1.5
+    psi_ref_deg: null
+    obs_smooth_floor: 0.3
+
+  psi_retarget:
+    enabled: true
+    n_y: 9
+    n_d: 8
+    n_psi: 9
+    w_sigma: 0.5
+    # Band around the 60° attractor — not |q6|/128°, which sacrificed J2.
+    w_wrist: 0.5
+    margin_floor_deg: 20.0
+    psi_rate_deg_s: 25.0
+    # Design split: J4≈96° (band center 95°).  Unplanned step shares one
+    # progress s across (d*, ψ*, q*); q* is srs_ik at the live TCP, not
+    # the yaml photo at t=0.
+    psi_attr_deg: 68.0
+    d_attr_m: -0.185
+    d_center_rate_m_s: 0.02
+    psi_cmd_lead_deg: 18.0
+    psi_replan_period_s: 0.1
+    psi_search_half_span_deg: 45.0
+    psi_search_n: 9
+    psi_wrist_ok_deg: 40.0
+    psi_return_dwell_s: 1.0
+    # >110° collapses J6 on this family.  Never cross ψ=0.
+    psi_envelope_deg: [40.0, 110.0]
+    require_design_family: false
+    rail_margin_m: 0.02
+    # Reject cells whose wrist sits on the ~20° branch-barrier floor.
+    wrist_min_deg: 30.0
+
+  # Signed IRD field (ird_playground).  One-shot d* at plan_scan_stroke only.
+  # Hot-path RailGoodness is σ_min (autograd IRD caused 127 ms hitches).
+  # Queries rebuild probe45 TCP from link_7 so gripper2 is ok.
+  ird:
+    enabled: true
+    device: cpu
+    allow_stale: true
+
+  rail_extension:
+    enabled: true
+    k_ext: 2.0
+    k_ff: 1.0
+    v_ff_thr_m_s: 0.005
+    v_ff_span_m_s: 0.015
+    e0_m: 0.02
+    e1_m: 0.08
+    w_max: 2.0
+    v_max_m_s: 0.08
+    limit_margin_m: 0.15
+    pin_margin_m: 0.008
+    escape_leave_m: 0.04
+    healthy_sigma_mute: 0.08
+    press_v_force_min_m_s: 0.02
+    press_dz_max_m: 0.002
+    press_y_err_m: 0.005
+    press_stall_s: 0.5
+    d_band_m: 0.005
+    k_sigma_boost: 2.0
+    k_esc: 0.5
+    w_sigma_floor: 1.0
+    k_pose: 2.0
+    pose_e0_m: 0.005
+    pose_e1_m: 0.04
+    pose_w_max: 4.0
+    sigma_guard_enter: 0.45
+    sigma_guard_exit: 0.70
+    v_guard_max_m_s: 0.04
+    v_lpf_tau_s: 0.05
+    v_lpf_fc_hz: 5.0
+    v_lpf_tau_escape_s: 0.04
+    # Narrow latch: deep σ or true near-limit only (healthy = FF + allocator).
+    sigma_escape_enter: 0.55
+    sigma_escape_exit: 0.80
+    margin_escape_enter: 0.12
+    margin_escape_exit: 0.25
+    sigma_drop_rate: 0.0
+    escape_enter_dwell_s: 0.05
+    k_escape_boost: 1.2
+    escape_grad_floor: 0.0
+    k_margin_boost: 4.0
+    w_ext_cap: 24.0
+    d_star_err0_m: 0.01
+    d_star_err1_m: 0.04
+    d_star_w_mult: 6.0
+    d_star_reg_mult: 20.0
+    # Escape sign: auto = open travel / σ gradient.  minus/plus force a side.
+    escape_sign_policy: auto
+
+  rail_allocator:
+    v0_m_s: 0.05
+    w0_rad_s: 0.30
+    k_margin: 4.0
+    kp_mid: 1.2
+    ki_mid: 0.80
+    u_mid_max_m_s: 0.12
+    k_err_rail: 4.0
+    e_ref_m: 0.08
+    f_c_hz: 1.0
+    kaw_mid: 8.0
+    rho_mirror_a: 0.50
+    rho_mirror_j: 0.30
+    reaction_s: 0.06
+    observer_pos_gain: 0.35
+    observer_vel_gain: 2.0
+    observer_vel_lpf_hz: 8.0
+
+
+frames:
+  # Prefer inner.control_frame / inner.euler_order; this block only supplies
+  # euler_order fallback for older loaders.
+  euler_order: xyz
+
+force:
+  desired_z_n: 1.0
+  phi_source: phi_recommended
+  fc_hz: 6.0
+  min_samples: 22
+  causal_fc_hz: 12.0
+  causal_order: 1
+  causal_history: 5
+  # Inertia compensation off on the joint stream (re-enable only with telemetry).
+  use_inertia: false
+
+# Outer-loop Cartesian P for CARTESIAN_TRACK / GOTO.  CLI --move-kp
+# overrides k_task_lin only.  Rotation stays here.
+# fb_lpf_tau_s filters k*e only; vel_ff is never filtered.  0 = off.
+cartesian_track:
+  k_task_lin: 12.0
+  k_task_rot: 2.0
+  max_pos_err_m: 0.05
+  max_rot_err_rad: 0.35
+  fb_lpf_tau_s: 0.0
+
+hybrid_motion:
+  force_axes:
+  - 0
+  - 0
+  - 1
+  - 0
+  - 0
+  - 0
+  track_axes:
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  kp_pos:
+  - 10.0
+  - 10.0
+  - 5.0
+  - 1.5
+  - 1.5
+  - 1.5
+  pos_err_deadband_m: 0.0005
+  pos_correction_max_m_s: 0.08
+  system_delay_s: 0.055
+  contact_threshold_n: 0.8
+  contact_use_fz_only: true
+  physical_contact:
+    enabled: true
+    # Initial acquire uses filtered force only.  Replaying 162413 with
+    # 0.85 N / 20 ms moves the false 3.49 s acquire to the stable load at
+    # 4.14 s, while remaining reachable below the shipped 1 N target.
+    enter_n: 0.85
+    hard_enter_n: 1.5
+    # The same log shows a ~0.65 N airborne residual.  Exit/rearm thresholds
+    # therefore straddle that measured baseline instead of assuming <0.15 N.
+    exit_n: 0.70
+    enter_confirm_s: 0.02
+    exit_confirm_s: 0.1
+  # Slightly wider band: blunt single-tick contact dips without sticky D.
+  deadband_n: 0.08
+  deadband_width_n: 0.10
+  max_velocity:
+  - 0.22
+  - 0.22
+  - 0.1
+  - 0.6
+  - 0.6
+  - 0.6
+  max_acceleration:
+  - 1.0
+  - 1.0
+  - 0.8
+  - 2.0
+  - 2.0
+  - 2.0
+  # Low baseline MD for light feel + fast under/over-force chase.
+  # Chatter: short-lived ΔD_hf(Is). Steady offset: force_dob. Not sticky Ke·D.
+  admittance_mass_z: 1.0
+  admittance_damping_z: 25.0
+  max_vz_tool_m_s: 0.08
+  desired_force_ramp_s: 0.30
+  var_damping_enabled: true
+  var_damping_omega_c_hz: 2.5
+  var_damping_lambda: 0.951
+  var_damping_f_max_n: 7.0
+  # Dimeas Iₛ raises virtual mass briefly; ΔD_hf authority is off.
+  var_damping_d_u: 0.0
+  var_damping_m_u: 0.0
+  var_damping_m_max: 3.0
+  var_damping_dc_alpha: 0.02
+  var_damping_hf_attack_s: 0.02
+  var_damping_hf_hold_s: 0.08
+  var_damping_hf_release_s: 0.12
+  var_damping_hf_release_fast_s: 0.04  # dump ΔD on hand-release / large |e_f|
+  var_damping_hf_on: 0.30
+  var_damping_hf_off: 0.15
+  var_damping_hf_err_n: 0.8
+  recontact_vz_cap_m_s: 0.012
+  # Safety recontact speed latches on contact *loss* / suspect_loss, not on
+  # reacquire.  hold / episode_release only manage estimator episodes.
+  recontact_hold_s: 0.80
+  recontact_settle_m_s: 0.003
+  recontact_settle_hold_s: 0.050
+  contact_episode_release_s: 0.80
+  contact_episode_release_force_n: 0.75
+  # Restored from e85c9ab.  Steady under-force offset rejection; 1bfe98b
+  # disabled it as part of the anti-bounce sweep, and the force barrier below
+  # now provides that brake instead.
+  force_dob:
+    enabled: true
+    ki: 8.0
+    leak_s: 0.4
+    u_max_n: 1.5
+    freeze_is: 0.45
+    reset_on_reversal: true
+  # Contact impact is limited before BEFM/tank intervention.  In free space
+  # this preserves the 80 mm/s approach; after contact F+Fdot*T and the
+  # stiffness estimate continuously tighten positive press speed.
+  force_barrier:
+    enabled: true
+    t_react_s: 0.055
+    budget_min_n: 1.0
+    budget_frac: 0.20
+    f_keep_n: 0.5
+    f_escape_n: 0.5
+    v_ref_m_s: 0.08
+    v_min_retract_m_s: 0.0
+    v_min_press_m_s: 0.0
+    # Upper bound only.  First contact and loss-latched recontact use
+    # K_ub, so scheduled approach is a few mm/s, not this 30 mm/s.
+    v_seek_free_m_s: 0.030
+    tau_stop_s: 0.080
+    e_x_m: 0.0004
+    e_f_n: 0.20
+    bar_f_n: 0.15
+    fdot_lpf_s: 0.040
+    precontact_raw_trigger_n: 1.50 # short impact sleeve; never latches contact
+    stiffness_cap_enabled: true
+    ke_floor_n_m: 50.0
+    mass_floor_kg: 0.05
+  # Approximate PROB/CDYOB corrector. Off until after observe/force
+  # scans. Q starts at 2–3 Hz from identified P(z); not a passivity cutoff.
+  cdyob:
+    enabled: false
+    omega_q_hz: 2.5
+    tau_s: 0.0
+    t_n_s: 0.020
+    v_corr_max_m_s: 0.030
+  # Normal-port delay-aware shield. Stay in observe until the same solver
+  # is feasible on hardware. force/observe are empirical peak guards:
+  # require_contact_free_terminal is false until a release model exists.
+  # Do not enable passive/ospf/CDYOB from this file.
+  safety_shield:
+    enabled: true
+    mode: observe
+    k_ub_n_m: 8000.0
+    recovery_hold_s: 0.050
+    require_contact_free_terminal: false
+    r_f_n_s: 8.0
+    r_f_window_steps: 20
+    f_release_n: 0.70
+    u_retract_m_s: 0.040
+    a_max_m_s2: 1.20
+    j_max_m_s3: 40.0
+    rho: 0.15
+    e0_j: 0.004
+    eps_j: 0.0005
+    # One-pose free-space fit from run_20260821_000011 identify tail.
+    # Not a passivity certificate; another pose/load still needed.
+    plant:
+      t0_s: 0.050
+      tp_s: 0.020
+      horizon_steps: 40
+    # stop_dx_ub is written by --analyze-stop --write-yaml.
+    # certified: false until backup replay + independent val.
+    # Force indent uses ē_{x,+}; lookup a0 is [a_actual]+; q_remain_m is dt Σ [u]+.
+    # Candidate bound is Δx_1^ub(ξ,u(λ))+D_b^ub(ξ_1), not max(model, D_b(ξ)).
+
+    velocity_error_ub_m_s:
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002822
+    - 0.002820
+    - 0.002800
+    - 0.002834
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002829
+    - 0.002800
+    - 0.002800
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002820
+    - 0.002800
+    - 0.002800
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002820
+    - 0.002800
+    - 0.002800
+    position_error_ub_m:
+    - 0.0000140
+    - 0.0000280
+    - 0.0000420
+    - 0.0000541
+    - 0.0000681
+    - 0.0000822
+    - 0.0000963
+    - 0.0001104
+    - 0.0001244
+    - 0.0001386
+    - 0.0001526
+    - 0.0001666
+    - 0.0001806
+    - 0.0001927
+    - 0.0002067
+    - 0.0002208
+    - 0.0002349
+    - 0.0002490
+    - 0.0002630
+    - 0.0002770
+    - 0.0002911
+    - 0.0003051
+    - 0.0003191
+    - 0.0003311
+    - 0.0003451
+    - 0.0003592
+    - 0.0003733
+    - 0.0003874
+    - 0.0004014
+    - 0.0004154
+    - 0.0004295
+    - 0.0004435
+    - 0.0004575
+    - 0.0004695
+    - 0.0004835
+    - 0.0004976
+    - 0.0005117
+    - 0.0005258
+    - 0.0005398
+    - 0.0005538
+  # Historical keys. Force-axis a/j now live inside the shield; these
+  # values are not applied after u_sent.
+  force_axis_slew_press_m_s2: 1.20
+  force_axis_slew_retract_m_s2: 1.20
+  force_axis_slew_reverse_m_s2: 2.00
+  force_axis_jerk_max_m_s3: 40.0
+  # Lee-structure speed-level engineering adapter.  Observe is deliberately
+  # non-mutating until the slow press/retract sign check and 2/5/10 mm/s
+  # no-contact delay identification have been recorded.
+  bidirectional_flow:
+    mode: observe
+    normal_sign: 1.0
+    sign_verified: false
+    feedback_delay_verified: false
+    require_sign_verification: true
+    require_delay_verification: true
+    # Lee Sec. V-C: alpha is zero in free space.  Below this |fz| the gate is
+    # held off and the tank charges from proxy damping.
+    free_space_force_n: 0.5
+    Dtrack: 25.0
+    Kd: 25.0
+    Kp: 250.0              # Dtrack / 0.10 s
+    Ki: 0.0
+    lambda_gain: 0.25
+    track_correction_max_m_s: 0.020
+    M_p: 1.0
+    D_p: 25.0
+    # Provisional conservative auxiliary values; retune only after the
+    # velocity-step identification.  This branch can hold/retract, never press.
+    M_a: 0.05
+    D_a: 5.0
+    K_a: 50.0
+    B_a: 5.0
+    u_retract_n: 0.0
+    aux_max_retract_m_s: 0.050
+    alpha_attack_s: 0.020
+    alpha_release_s: 0.150
+    max_feedback_age_s: 0.020
+    T0: 0.0010
+    Tmax: 0.0040
+    Tmin: 0.0001
+    mu_power_w: 0.0
+    positive_switching_cost_j: 0.0
+  # Optional Piedra-style elastic-surface force reduction.  Disabled until
+  # stable-contact hardware validation; it is not a passivity guarantee.
+  surface_force_modulation:
+    enabled: false
+    min_force_scale: 0.25
+    beta_per_m: 80.0
+    stable_contact_s: 0.20
+    attack_s: 0.05
+    release_s: 0.15
+  # Soften under-force chase near scan turnaround (tool-XY slow).
+  force_lateral_soft_m_s: 0.006
+  force_lateral_full_m_s: 0.018
+  force_lateral_gain_floor: 0.35
+  adaptive_ke:
+    enabled: true
+    # Observe Ke / impact burst only — do not hold high critical D in steady contact.
+    drive_damping: false
+    zeta: 0.9
+    ke_initial: 80.0
+    ke_min: 40.0
+    ke_max: 2500.0
+    ke_impact_initial: 0.0
+    ke_cap_ub_n_m: 2000.0
+    ke_forgetting: 0.995
+    ke_forgetting_inc: 0.88
+    ke_idle_decay_s: 2.0
+    ke_soft_floor: 120.0
+    ke_detach_decay_s: 1.0
+    displacement_source: admittance
+    dx_threshold_m: 8.0e-05
+    contact_force_n: 0.8
+    settle_ticks: 10
+    gate_lateral_velocity: true
+    lateral_vel_gate_m_s: 0.02
+    gate_df_spike: true
+    df_spike_n: 4.0
+    f_err_gate_n: 1.2
+    f_err_gate_frac: 0.35
+    bd_min: 25.0
+    bd_max: 180.0
+    bd_slew_max: 400.0
+    ke_slew_max: 1200.0
+  proactive_feedforward: true
+  # Bidirectional press feedforward restored from e85c9ab: retract_only killed
+  # the press-side v_r integration outright (measured v_r_z p95 = 0), which is
+  # the single largest cause of slow under-force chase.  The force barrier
+  # still caps press as the force error closes.
+  proactive_retract_only: false
+  proactive_gain: 0.24
+  proactive_retract_gain: 0.24
+  proactive_leak_s: 0.25
+  v_r_max_m_s: 0.06
+  proactive_gate_press_on_is: false
+  proactive_press_is_gate_start: 0.2
+  proactive_press_is_gate: 0.6
+  proactive_press_is_soft_floor: 0.45
+  proactive_press_is_soft_stop: 0.85
+  proactive_press_slew_max_m_s2: 0.35
+  proactive_retract_slew_max_m_s2: 0.35
+  proactive_press_drive_max: 1.4
+  proactive_retract_drive_max: 1.4
+  proactive_reset_on_reversal: true
+  proactive_in_band_n: 0.25
+  proactive_in_band_leak_s: 0.05
+  force_scale_min_n: 0.18
+  force_scale_fraction: 0.0
+  fast_retract_guard:
+    enabled: true
+    cutoff_hz: 20.0
+    stop_margin_n: 0.25
+    stop_margin_fraction: 0.05
+    rearm_margin_n: 0.45
+    rearm_margin_fraction: 0.1
+    stop_confirm_s: 0.015
+    rearm_confirm_s: 0.01
+    min_hold_s: 0.025
+    max_sensor_age_s: 0.02
+hw:
+  lw100:
+    enabled: true
+    host: 192.168.0.7
+    port: 8234
+    slave: 1
+    lead_mm: 10.0
+    # calibrated_file: load var/lw100_rail_zero.json (run apps/lw100_rail_home_limit.py first).
+    # current/fixed are debug-only; with require_calibration true, current is refused.
+    zero_mode: calibrated_file
+    counts0: 0
+    calibration_path: var/lw100_rail_zero.json
+    require_calibration: true
+    home_di: di4             # −Y home switch (confirmed on HW; was swapped vs DI3)
+    plus_di: di3             # +Y end (run-time e-stop if hit)
+    di_nc: true
+    di_debounce_n: 3
+    soft_min_m: 0.030        # full-speed inner edge; must match qpik.hard_limits.rail
+    soft_max_m: 0.755
+    hard_min_m: 0.005        # travel box 5–780 mm
+    hard_max_m: 0.78
+    post_home_m: 0.025
+    # Home-script only (controller does not auto-home on start):
+    home_search_m_s: 0.020
+    home_creep_m_s: 0.003
+    home_backoff_mm: 5.0
+    home_touch_count: 3
+    home_search_timeout_s: 60.0
+    home_to_post_m_s: 0.030
+    limit_poll_every: 5
+    # Host rail_y ↔ motor: -1 flips FA24 RPM (+ encoder map in rail_servo).
+    sign: -1
+    enable_settle_s: 0.3
+    # Cold start: prove worker Modbus read+FA24=0 before any set_target / move→D.
+    arm_good_reads: 30          # ~0.6 s @ 50 Hz consecutive healthy polls
+    arm_settle_s: 0.8           # extra FA24=0 hold after good polls
+    arm_max_span_mm: 2.0
+    arm_timeout_s: 10.0
+    fault_margin_m: 0.05
+    # 205605: t_read med 5.8 ms, FA24 write usually skipped.  43 Hz left
+    # ~17 ms of sleep.  60 Hz (16.7 ms) still has ~11 ms median headroom;
+    # 80 Hz is tight on p95.  Do not change FA72 or the USR-TCP232-304 baud
+    # alone — both ends must match, then power-cycle the drive.  Confirm no
+    # DI is mapped to 7 (ZCLAMP) and FC-15 bit6 is 0; do not query while A
+    # is live.  FA40/FA41 = time 0→1000 r/min, not 0→vel_max.
+    poll_hz: 60
+    inter_frame_delay_s: 0.0005
+    timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0
+    retries: 1
+    deadband_mm: 0.5
+    # FA23 overspeed trip: must sit ABOVE commanded peak (0.15 m/s ≈ 900 rpm
+    # @ 10 mm/rev). Equal FA23=cmd caused Er-01 on scan overshoot (151334).
+    max_speed_rpm: 1200
+    # Soft CSP via FA24 (see apps/lw100_vel_pos_follow_demo.py).
+    # POSITION scan/home PD.  Coupled QPIK is pure velocity (no FA24 P).
+    # Loaded PD scan BEST (400±40 mm): kp=14/kd=0.22.
+    vel_kp: 14.0
+    vel_kd: 0.22
+    vel_kd_max_m_s: 0.005
+    # Matches QP box rail.v_max_m_s 0.15 × v_scale 0.8.  parse_rail_servo_config
+    # also caps hw.vel_max by that product so the two cannot drift apart.
+    vel_max_m_s: 0.12
+    vel_amax_m_s2: 1.2
+    # Coupled-mode catch-up of x_ref toward x_goal while moving.  20 mm/s
+    # clears a 20 mm standing offset in ~1 s without outrunning FF.
+    catch_v_max_m_s: 0.02
+    catch_k: 5.0
+    catch_frac: 0.3
+    decel_request_margin_m_s: 0.005
+    match_drive_accel: true
+    fa24_rpm_deadband: 0   # write every worker tick; skip only if rpm is unchanged
+    vel_deadband_mm: 0.05   # tight tracking band (not a permanent accuracy sacrifice)
+    # Standstill hysteresis: freeze FA24 after tight settle; wake only if pushed.
+    standstill_enter_mm: 0.05
+    standstill_exit_mm: 0.25
+    standstill_dwell_s: 0.08
+    approach_m: 0.040
+    latch_watch_s: 0.12
+    target_timeout_s: 0.25
+    # Extra coast after timeout before FA24=0.  A 127 ms hitch must not brake.
+    target_stale_coast_s: 0.35
+    encoder_freeze_s: 1.0
+    encoder_freeze_min_v_m_s: 0.02
+    encoder_freeze_min_move_mm: 0.15
+    # End-of-stream / task-end settle before releasing follow (closes latched overshoot).
+    settle_tol_mm: 0.05
+    settle_v_m_s: 0.006
+    settle_timeout_s: 1.5
+    # Stall-safe speed: worst-case latched FA24 overshoot ≤ |err| for max_stall_s.
+    max_stall_s: 0.06
+    stall_v_floor_m_s: 0.004
+    # Soft-reject above v_max·gap + margin; wipe cal only on ≥50 mm or 2 soft jumps.
+    jump_margin_mm: 3.0
+    jump_hard_mm: 50.0
+    jump_soft_streak_panic: 2
+    # FA40/41: 120 ms → drive a ≈ 1.0 m/s².  Host a_max is min(this, QP
+    # a_max_rail_m_s2 0.60, 0.85 × vel_max/accel_s) so the servo cannot
+    # outrun the QP model.
+    accel_ms: 120
+    decel_ms: 120
+    scurve_ms: 30            # FA42
+    busy_speed_rpm: 1
+    home_on_exit: false
+    release_son_on_exit: false  # stop with FA24=0 and keep SON; avoids enable-edge frame wipe
+    home_speed_rpm: 900
+    home_approach_mm: 40
+    home_timeout_s: 60
+    verbose: false
+
+startup:
+  # Used by window A / C bring-up (not 6-DOF pose_slot).
+  enable_force: false
+  follow: true
+  move_speed: 20
+  realtime: false
+  # Control-loop stall timeout.  QP backend pulses the watchdog during ProxQP.
+  watchdog_timeout_s: 0.50
+```
+### FILE `rm75_control/tests/test_delay_safety_shield.py`
+
+```python
+"""Delay-aware shield: modes, energy, terminal set, pipeline debt."""
+
+from __future__ import annotations
+
+import math
+
+from collections import deque
+
+import numpy as np
+import pytest
+
+from rm75_control.control.admittance_common.controller import (
+    AdmittanceConfig,
+    AdmittanceController,
+)
+from rm75_control.control.admittance_common.delay_safety_shield import (
+    DelaySafetyShield,
+    SafetyShieldConfig,
+    StopDxBin,
+    inf_minus_fv,
+    measured_power_lb,
+)
+from rm75_control.control.admittance_common.force_barrier import (
+    ForceBarrierConfig,
+    ForceSpaceVelocityDamper,
+)
+
+
+def _shield(mode: str = "observe", **kwargs) -> DelaySafetyShield:
+    params = dict(
+        enabled=True,
+        mode=mode,
+        horizon_steps=30,
+        t0_s=0.005,
+        tp_s=0.020,
+        k_ub_n_m=800.0,
+        r_f_n_s=0.0,
+        r_f_window_steps=0,
+        f_release_n=0.8,
+        v_hold_m_s=0.015,
+        u_retract_m_s=0.030,
+        queue_clear_m_s=0.025,
+        a_max_m_s2=2.0,
+        j_max_m_s3=0.0,
+        e0_j=0.004,
+        eps_j=0.0005,
+        e_f_n=0.0,
+        bar_f_n=0.0,
+        rho=0.2,
+        solver_budget_us=4000.0,
+    )
+    params.update(kwargs)
+    return DelaySafetyShield(SafetyShieldConfig(**params), 0.005)
+
+
+def test_observe_sends_nom_and_records_lambda() -> None:
+    sh = _shield("observe")
+    out = sh.update(0.02, f_csv=1.0, v_actual=0.0, f_max_n=3.0)
+    assert out.u_sent == pytest.approx(0.02)
+    assert out.shield_applied is False
+    assert math.isfinite(out.lambda_obs)
+
+
+def test_force_rollout_rejects_continued_press() -> None:
+    sh = _shield(
+        "force",
+        k_ub_n_m=2000.0,
+        enforce_terminal=False,
+        velocity_error_ub_m_s=[0.0] * 40,
+        position_error_ub_plus_m=[0.0] * 40,
+    )
+    sh._u_prev = 0.0
+    sh._u_prev2 = 0.0
+    sh._v_plant = 0.0
+    ok_press, f_press, *_ = sh._rollout(
+        0.08,
+        f0=2.0,
+        energy0=0.004,
+        enforce_force=True,
+        enforce_energy=False,
+        rho=0.0,
+        f_max=2.15,
+    )
+    ok_stop, f_stop, *_ = sh._rollout(
+        0.0,
+        f0=2.0,
+        energy0=0.004,
+        enforce_force=True,
+        enforce_energy=False,
+        rho=0.0,
+        f_max=2.15,
+    )
+    assert ok_press is False
+    assert ok_stop is True
+    assert f_press > f_stop
+
+
+def test_infeasible_does_not_forge_lambda_zero() -> None:
+    sh = _shield(
+        "force",
+        k_ub_n_m=50000.0,
+        horizon_steps=4,
+        r_f_n_s=200.0,
+        r_f_window_steps=4,
+        f_release_n=0.1,
+        u_retract_m_s=0.001,
+        a_max_m_s2=0.05,
+        j_max_m_s3=0.05,
+    )
+    out = sh.update(0.08, f_csv=2.9, v_actual=0.06, f_max_n=3.0)
+    if not out.shield_feasible:
+        assert math.isnan(out.lambda_obs)
+
+
+def test_energy_not_reset_on_zero_force() -> None:
+    sh = _shield("observe")
+    sh.update(0.02, f_csv=2.0, v_actual=0.03, f_max_n=3.0)
+    drained = float(sh.energy_lb_j)
+    assert drained < sh.cfg.e0_j
+    sh.update(-0.01, f_csv=0.0, v_actual=0.0, f_max_n=3.0)
+    assert sh.energy_lb_j == pytest.approx(drained, abs=0.002)
+    assert sh.energy_lb_j != pytest.approx(sh.cfg.e0_j)
+
+
+def test_press_positive_power_is_negative() -> None:
+    p = measured_power_lb(2.0, 0.03, 0.0, 0.0)
+    assert p < 0.0
+    assert inf_minus_fv(1.5, 2.5, 0.01, 0.04) < 0.0
+
+
+def test_terminal_hold_is_invariant() -> None:
+    sh = _shield("force", r_f_n_s=0.0, r_f_window_steps=0)
+    assert sh.terminal_set_invariant(require_energy=False) is True
+
+
+def test_backup_tail_shift_stays_feasible() -> None:
+    sh = _shield("force", k_ub_n_m=400.0, r_f_n_s=0.0)
+    first = sh.update(0.01, f_csv=1.0, v_actual=0.0, f_max_n=4.0)
+    assert first.shield_feasible
+    second = sh.update(0.0, f_csv=1.0, v_actual=0.0, f_max_n=4.0)
+    assert second.shield_feasible
+
+
+def test_pipeline_dx_positive_when_only_accel() -> None:
+    damper = ForceSpaceVelocityDamper(
+        ForceBarrierConfig(enabled=True, t_react_s=0.055, tau_stop_s=0.08)
+    )
+    dx0 = damper.pipeline_dx_ub(v_tcp_z_actual=0.0, a_tcp_z_actual=0.0)
+    dx_a = damper.pipeline_dx_ub(v_tcp_z_actual=0.0, a_tcp_z_actual=1.5)
+    assert dx0 == pytest.approx(0.0)
+    assert dx_a > 0.0
+
+
+def test_v_act_tightens_press_cap() -> None:
+    cfg = ForceBarrierConfig(
+        enabled=True,
+        t_react_s=0.055,
+        tau_stop_s=0.08,
+        v_min_press_m_s=0.0,
+        budget_min_n=0.5,
+        budget_frac=0.0,
+        bar_f_n=0.0,
+        e_f_n=0.0,
+        e_x_m=0.0,
+        stiffness_cap_enabled=True,
+    )
+    rest = ForceSpaceVelocityDamper(cfg)
+    moving = ForceSpaceVelocityDamper(cfg)
+    kwargs = dict(
+        f_z=2.0,
+        f_des_z=2.0,
+        in_contact=True,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+        ke_est_n_m=2000.0,
+        tau_s=0.055,
+        mass_eq_kg=1.0,
+        a_tcp_z_actual=0.0,
+    )
+    cap0, _ = rest.caps(v_tcp_z_actual=0.0, **kwargs)
+    cap_v, _ = moving.caps(v_tcp_z_actual=0.05, **kwargs)
+    assert cap_v < cap0
+
+
+def test_negative_velocity_does_not_open_press() -> None:
+    damper = ForceSpaceVelocityDamper(
+        ForceBarrierConfig(
+            enabled=True,
+            t_react_s=0.055,
+            v_min_press_m_s=0.0,
+            budget_min_n=0.5,
+            budget_frac=0.0,
+            bar_f_n=0.0,
+            e_f_n=0.0,
+            e_x_m=0.0,
+            stiffness_cap_enabled=True,
+        )
+    )
+    damper.f_dot_z = -80.0
+    cap, _ = damper.caps(
+        f_z=2.0,
+        f_des_z=2.0,
+        in_contact=True,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+        ke_est_n_m=2000.0,
+        tau_s=0.055,
+        mass_eq_kg=1.0,
+        v_tcp_z_actual=-0.08,
+        a_tcp_z_actual=-2.0,
+    )
+    assert cap == pytest.approx(0.5 / (2000.0 * 0.055), rel=0.05)
+
+
+def test_cap_press_zero_keeps_retract() -> None:
+    damper = ForceSpaceVelocityDamper(ForceBarrierConfig(enabled=True))
+    damper.cap_press_z = 0.0
+    damper.cap_retract_z = 0.08
+    assert damper.clamp_velocity(0.04) == pytest.approx(0.0)
+    assert damper.clamp_velocity(-0.05) == pytest.approx(-0.05)
+
+
+def test_controller_observe_sent_equals_capped() -> None:
+    cfg = AdmittanceConfig()
+    cfg.var_damping_enabled = False
+    cfg.safety_shield.mode = "observe"
+    cfg.safety_shield.enabled = True
+    cfg.force_axis_slew_press_m_s2 = 1.2
+    cfg.force_axis_jerk_max_m_s3 = 40.0
+    ctrl = AdmittanceController(0.005, cfg)
+    pose = np.zeros(6)
+    f_ext = np.array([0.0, 0.0, 1.2, 0.0, 0.0, 0.0])
+    f_des = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
+    v = ctrl.compute_velocity_command(
+        pose, pose, np.zeros(6), f_ext, f_des, v_tcp_z_actual=0.0, dt_actual=0.005
+    )
+    assert v[2] == pytest.approx(ctrl.u_sent_z)
+    assert ctrl.u_sent_z == pytest.approx(ctrl.u_nom_capped_z)
+    assert ctrl.shield_applied is False
+
+
+def test_observe_records_energy_below_eps() -> None:
+    sh = _shield("observe", e0_j=0.0006, eps_j=0.0005)
+    for _ in range(8):
+        sh.update(0.04, f_csv=4.0, v_actual=0.05, f_max_n=3.0)
+    assert sh.energy_lb_j < sh.cfg.eps_j
+
+
+def test_force_mode_cuts_lambda_when_already_pressing() -> None:
+    sh = _shield(
+        "force",
+        k_ub_n_m=1500.0,
+        enforce_terminal=False,
+        j_max_m_s3=0.0,
+        a_max_m_s2=8.0,
+        r_f_n_s=0.0,
+        e_f_n=0.0,
+        bar_f_n=0.0,
+        tp_s=0.015,
+        t0_s=0.0,
+        velocity_error_ub_m_s=[0.001] * 30,
+    )
+    sh._v_plant = 0.012
+    sh._u_prev = 0.012
+    sh._u_prev2 = 0.012
+    out = sh.update(0.08, f_csv=2.05, v_actual=0.012, f_max_n=2.20)
+    if out.shield_feasible:
+        assert out.lambda_obs < 1.0 - 1e-6
+        assert out.u_sent < out.u_nom
+    else:
+        assert math.isnan(out.lambda_obs)
+        assert out.u_sent != pytest.approx(out.u_nom)
+
+
+def test_passive_rho_is_zero_ospf_uses_rho() -> None:
+    passive = _shield("passive", rho=0.4)
+    ospf = _shield("ospf", rho=0.4)
+    assert passive.cfg.rho_used() == pytest.approx(0.0)
+    assert ospf.cfg.rho_used() == pytest.approx(0.4)
+
+
+def test_shift_tail_recursive_feasibility() -> None:
+    sh = _shield("force", k_ub_n_m=400.0, r_f_n_s=0.0, enforce_terminal=False)
+    assert sh.shift_tail_feasible(
+        0.01,
+        f0=1.0,
+        energy0=0.004,
+        enforce_force=True,
+        enforce_energy=False,
+        rho=0.0,
+        f_max=4.0,
+    )
+
+
+def test_tube_violation_uses_predicted_plant() -> None:
+    sh = _shield("observe")
+    sh._v_plant = 0.0
+    out = sh.update(0.0, f_csv=1.0, v_actual=0.05, f_max_n=3.0)
+    assert out.tube_violation is True
+
+
+def test_pipeline_without_measured_speed_is_zero() -> None:
+    sh = _shield("observe")
+    sh._v_plant = 0.04
+    assert sh.pipeline_penetration_ub(v_actual=None) == pytest.approx(0.0)
+
+
+def test_pipeline_keeps_pending_press_queue() -> None:
+    sh = _shield("observe", t0_s=0.050, tp_s=0.020, e_x_m=0.0, r_f_n_s=0.0)
+    delay_n = max(sh._delay_steps(), 1)
+    pending = deque([0.04] * delay_n, maxlen=sh._delay.maxlen)
+    sh._delay = pending
+    sh._v_plant = 0.0
+    sh._u_prev = 0.0
+    sh._u_prev2 = 0.0
+    dx = sh.pipeline_penetration_ub(v_actual=0.0)
+    assert dx > 0.0
+    assert list(sh._delay) == list(pending)
+
+
+def test_stop_dx_lookup_is_monotonic_covering() -> None:
+    sh = _shield("observe")
+    sh.cfg.stop_dx_certified = True
+    sh.cfg.stop_dx_bins = [
+        StopDxBin(v0_m_s=0.010, dx_ub_m=0.0004),
+        StopDxBin(v0_m_s=0.020, dx_ub_m=0.0008),
+    ]
+    assert sh.lookup_stop_dx(0.009, 0.0, 0.0) == pytest.approx(0.0004)
+    assert sh.lookup_stop_dx(0.015, 0.0, 0.0) == pytest.approx(0.0008)
+    assert math.isinf(sh.lookup_stop_dx(0.030, 0.0, 0.0))
+    sh.cfg.k_ub_n_m = 1000.0
+    assert sh.max_safe_approach_m_s(room_n=0.5, a0=0.0, q0=0.0) == pytest.approx(0.010)
+    assert sh.max_safe_approach_m_s(room_n=0.3, a0=0.0, q0=0.0) == pytest.approx(0.0)
+
+
+def test_rollout_uses_error_x_plus_every_tick() -> None:
+    sh = _shield(
+        "observe",
+        t0_s=0.0,
+        k_ub_n_m=1000.0,
+        r_f_n_s=0.0,
+        e_f_n=0.0,
+        enforce_terminal=False,
+        velocity_error_ub_m_s=[0.0] * 40,
+        position_error_ub_m=[0.0] * 40,
+        position_error_ub_plus_m=[0.001] * 40,
+    )
+    sh._v_plant = 0.02
+    sh._u_prev = 0.0
+    sh._u_prev2 = 0.0
+    _ok, f_ub, _e, _n, _t, dx, _reason = sh._rollout(
+        0.0,
+        f0=0.0,
+        energy0=0.004,
+        enforce_force=False,
+        enforce_energy=False,
+        rho=0.0,
+        f_max=1e9,
+    )
+    assert dx >= 0.0
+    assert f_ub >= 1000.0 * 0.001 - 1e-9
+
+
+def test_error_x_plus_updates_when_predicted_speed_is_negative() -> None:
+    sh = _shield(
+        "observe",
+        t0_s=0.0,
+        k_ub_n_m=1000.0,
+        r_f_n_s=0.0,
+        e_f_n=0.0,
+        enforce_terminal=False,
+        velocity_error_ub_m_s=[0.0] * 40,
+        position_error_ub_plus_m=[0.002] * 40,
+    )
+    sh._v_plant = -0.01
+    sh._u_prev = -0.01
+    sh._u_prev2 = -0.01
+    _ok, f_ub, *_rest = sh._rollout(
+        -0.01,
+        f0=0.0,
+        energy0=0.004,
+        enforce_force=False,
+        enforce_energy=False,
+        rho=0.0,
+        f_max=1e9,
+    )
+    assert f_ub >= 1000.0 * 0.002 - 1e-9
+
+
+def test_signed_position_error_is_not_the_force_indent() -> None:
+    sh = _shield(
+        "observe",
+        t0_s=0.0,
+        k_ub_n_m=1000.0,
+        r_f_n_s=0.0,
+        e_f_n=0.0,
+        enforce_terminal=False,
+        velocity_error_ub_m_s=[0.0] * 40,
+        position_error_ub_m=[0.010] * 40,
+        position_error_ub_plus_m=[],
+    )
+    sh._v_plant = -0.02
+    sh._u_prev = -0.02
+    sh._u_prev2 = -0.02
+    _ok, f_ub, *_rest = sh._rollout(
+        -0.02,
+        f0=0.0,
+        energy0=0.004,
+        enforce_force=False,
+        enforce_energy=False,
+        rho=0.0,
+        f_max=1e9,
+    )
+    assert f_ub < 1.0
+
+
+def test_lookup_uses_measured_a_plus_not_command_accel() -> None:
+    sh = _shield("observe")
+    sh.cfg.stop_dx_certified = True
+    sh.cfg.stop_dx_bins = [
+        StopDxBin(v0_m_s=0.040, a0_m_s2=0.10, q_remain_m=0.001, dx_ub_m=0.0003),
+        StopDxBin(v0_m_s=0.040, a0_m_s2=8.0, q_remain_m=0.001, dx_ub_m=0.0020),
+    ]
+    sh._v_plant = 0.02
+    sh._a_plus = 0.0
+    sh._u_prev = 0.04
+    sh._u_prev2 = 0.0
+    assert sh.dt_s == pytest.approx(0.005)
+    cmd_a = abs(sh._u_prev - sh._u_prev2) / sh.dt_s
+    assert cmd_a > 1.0
+    assert sh.lookup_stop_dx(0.02, sh._a_plus, 0.0) == pytest.approx(0.0003)
+    assert sh.lookup_stop_dx(0.02, cmd_a, 0.0) == pytest.approx(0.0020)
+
+
+def test_certified_indent_is_first_tick_plus_backup_tail() -> None:
+    sh = _shield(
+        "observe",
+        t0_s=0.0,
+        k_ub_n_m=1000.0,
+        r_f_n_s=0.0,
+        e_f_n=0.0,
+        enforce_terminal=False,
+        velocity_error_ub_m_s=[0.0] * 40,
+        position_error_ub_plus_m=[0.0] * 40,
+        u_retract_m_s=0.0,
+        a_max_m_s2=50.0,
+        j_max_m_s3=0.0,
+    )
+    sh._v_plant = 0.02
+    sh._a_plus = 0.0
+    sh._u_prev = 0.0
+    sh._u_prev2 = 0.0
+    _ok_m, f_model, *_r = sh._rollout(
+        0.02,
+        f0=0.0,
+        energy0=0.004,
+        enforce_force=False,
+        enforce_energy=False,
+        rho=0.0,
+        f_max=1e9,
+    )
+    sh.cfg.stop_dx_certified = True
+    sh.cfg.stop_dx_bins = [
+        StopDxBin(v0_m_s=0.080, a0_m_s2=50.0, q_remain_m=1.0, dx_ub_m=0.0002),
+    ]
+    _ok_t, f_table, *_r2 = sh._rollout(
+        0.02,
+        f0=0.0,
+        energy0=0.004,
+        enforce_force=False,
+        enforce_energy=False,
+        rho=0.0,
+        f_max=1e9,
+    )
+    assert f_model > f_table + 0.05
+    dt = sh.dt_s
+    v1 = math.exp(-dt / sh.cfg.tp_s) * 0.02 + (1.0 - math.exp(-dt / sh.cfg.tp_s)) * 0.02
+    dx1 = dt * max(v1, 0.0)
+    assert f_table == pytest.approx(1000.0 * (dx1 + 0.0002), abs=1e-6)
+
+
+def test_shield_pipeline_is_the_cap_source() -> None:
+    damper = ForceSpaceVelocityDamper(
+        ForceBarrierConfig(enabled=True, tau_stop_s=0.08, e_x_m=0.0004)
+    )
+    closed = damper.pipeline_dx_ub(v_tcp_z_actual=0.03, a_tcp_z_actual=0.0)
+    sourced = damper.pipeline_dx_ub(
+        v_tcp_z_actual=0.03,
+        a_tcp_z_actual=0.0,
+        shield_dx_m=0.0012,
+    )
+    assert sourced == pytest.approx(0.0012)
+    assert closed > sourced
+
+
+def test_observe_runs_same_force_certificate() -> None:
+    kwargs = dict(
+        k_ub_n_m=50000.0,
+        horizon_steps=8,
+        e_f_n=0.0,
+        r_f_n_s=0.0,
+        t0_s=0.0,
+        tp_s=0.020,
+        enforce_terminal=False,
+    )
+    obs = _shield("observe", **kwargs)
+    frc = _shield("force", **kwargs)
+    for sh in (obs, frc):
+        sh._v_plant = 0.04
+        sh._u_prev = 0.04
+        sh._u_prev2 = 0.04
+    out_obs = obs.update(0.08, f_csv=4.0, v_actual=0.04, f_max_n=2.4)
+    out_frc = frc.update(0.08, f_csv=4.0, v_actual=0.04, f_max_n=2.4)
+    assert out_obs.shield_feasible is False
+    assert out_frc.shield_feasible is False
+    assert out_obs.infeasible_reason == "force"
+    assert out_frc.infeasible_reason == "force"
+    assert out_obs.u_sent == pytest.approx(0.08)
+    assert out_frc.u_sent < out_frc.u_nom
+    assert math.isnan(out_obs.lambda_obs)
+    assert math.isnan(out_frc.lambda_obs)
+
+
+def test_force_recovery_stays_on_backup() -> None:
+    sh = _shield(
+        "force",
+        k_ub_n_m=50000.0,
+        e_f_n=0.0,
+        r_f_n_s=0.0,
+        recovery_hold_s=0.05,
+        t0_s=0.0,
+        enforce_terminal=False,
+    )
+    bad = sh.update(0.08, f_csv=5.0, v_actual=0.0, f_max_n=2.4)
+    assert bad.recovery_latched is True
+    assert bad.u_sent != pytest.approx(0.08)
+    good = sh.update(0.08, f_csv=1.0, v_actual=0.0, f_max_n=3.0)
+    assert good.recovery_latched is True
+    assert good.u_sent != pytest.approx(0.08)
+
+
+def test_suspect_loss_does_not_release_same_tick() -> None:
+    from rm75_control.control.admittance_common.contact_state import (
+        PhysicalContactConfig,
+        PhysicalContactTracker,
+    )
+
+    cfg = AdmittanceConfig()
+    cfg.var_damping_enabled = False
+    cfg.adaptive_ke.enabled = False
+    cfg.safety_shield.mode = "observe"
+    cfg.recontact_settle_m_s = 0.003
+    cfg.recontact_settle_hold_s = 0.050
+    cfg.physical_contact = PhysicalContactConfig(
+        enabled=True,
+        enter_n=0.8,
+        hard_enter_n=1.5,
+        exit_n=0.50,
+        enter_confirm_s=0.010,
+        exit_confirm_s=0.050,
+    )
+    ctrl = AdmittanceController(0.005, cfg)
+    pose = np.zeros(6)
+    f_des = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
+    for _ in range(10):
+        ctrl.compute_velocity_command(
+            pose,
+            pose,
+            np.zeros(6),
+            np.array([0.0, 0.0, 1.2, 0.0, 0.0, 0.0]),
+            f_des,
+            v_tcp_z_actual=0.0,
+            dt_actual=0.005,
+        )
+    assert ctrl.contact_present
+    assert ctrl.recontact_slow_latched is False
+    ctrl.compute_velocity_command(
+        pose,
+        pose,
+        np.zeros(6),
+        np.array([0.0, 0.0, 0.30, 0.0, 0.0, 0.0]),
+        f_des,
+        v_tcp_z_actual=0.0,
+        dt_actual=0.005,
+    )
+    assert ctrl.physical_contact_state == PhysicalContactTracker.SUSPECT_LOSS
+    assert ctrl.contact_present
+    assert ctrl.recontact_slow_latched is True
+    assert ctrl.recontact_detached_seen is False
+
+
+def test_first_contact_uses_delay_safe_cap() -> None:
+    cfg = AdmittanceConfig()
+    cfg.var_damping_enabled = False
+    cfg.adaptive_ke.enabled = False
+    cfg.safety_shield.mode = "observe"
+    cfg.safety_shield.k_ub_n_m = 8000.0
+    cfg.recontact_vz_cap_m_s = 0.012
+    cfg.force_barrier.v_seek_free_m_s = 0.030
+    ctrl = AdmittanceController(0.005, cfg)
+    pose = np.zeros(6)
+    f_des = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
+    ctrl.compute_velocity_command(
+        pose,
+        pose,
+        np.zeros(6),
+        np.zeros(6),
+        f_des,
+        v_tcp_z_actual=0.0,
+        dt_actual=0.005,
+    )
+    assert ctrl.contact_present is False
+    assert ctrl.recontact_slow_latched is False
+    v_safe = ctrl._v_delay_safe()
+    assert v_safe > 0.0
+    assert v_safe < 0.010
+    assert ctrl.v_recontact_cap_m_s == pytest.approx(v_safe)
+    assert ctrl.cap_press_z <= v_safe + 1e-9
+    assert ctrl.u_nom_capped_z <= v_safe + 1e-6
+
+
+def test_recovery_requires_cleared_delay_queue() -> None:
+    from collections import deque
+
+    sh = _shield(
+        "force",
+        t0_s=0.050,
+        tp_s=0.020,
+        recovery_hold_s=0.020,
+        queue_clear_m_s=0.015,
+        v_hold_m_s=0.015,
+        a_hold_m_s2=0.15,
+        k_ub_n_m=400.0,
+        r_f_n_s=0.0,
+        e_f_n=0.0,
+        enforce_terminal=False,
+    )
+    n = max(sh._delay_steps(), 1)
+    sh._delay = deque([0.08] * n, maxlen=n)
+    sh._u_prev = 0.0
+    sh._u_prev2 = 0.0
+    sh._v_plant = 0.0
+    sh._recovery_latched = True
+    sh._recovery_ok_s = 0.0
+    dirty = sh.update(0.0, f_csv=1.0, v_actual=0.0, f_max_n=3.0, a_actual=0.0)
+    assert dirty.recovery_latched is True
+    sh._delay = deque([0.0] * n, maxlen=n)
+    sh._u_prev = 0.0
+    sh._u_prev2 = 0.0
+    out = None
+    for _ in range(8):
+        out = sh.update(0.0, f_csv=1.0, v_actual=0.0, f_max_n=3.0, a_actual=0.0)
+    assert out is not None
+    assert out.recovery_latched is False
+
+
+def test_recontact_sequence_releases_only_after_settled_hold() -> None:
+    from rm75_control.control.admittance_common.contact_state import (
+        PhysicalContactConfig,
+        PhysicalContactTracker,
+    )
+
+    cfg = AdmittanceConfig()
+    cfg.var_damping_enabled = False
+    cfg.adaptive_ke.enabled = False
+    cfg.safety_shield.mode = "observe"
+    cfg.safety_shield.k_ub_n_m = 8000.0
+    cfg.recontact_settle_m_s = 0.003
+    cfg.recontact_settle_hold_s = 0.050
+    cfg.physical_contact = PhysicalContactConfig(
+        enabled=True,
+        enter_n=0.8,
+        hard_enter_n=1.5,
+        exit_n=0.50,
+        enter_confirm_s=0.010,
+        exit_confirm_s=0.025,
+    )
+    ctrl = AdmittanceController(0.005, cfg)
+    pose = np.zeros(6)
+    f_des = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
+
+    def tick(fz: float, raw: float, v: float) -> None:
+        f_ext = np.array([0.0, 0.0, fz, 0.0, 0.0, 0.0])
+        f_raw = np.array([0.0, 0.0, raw, 0.0, 0.0, 0.0])
+        ctrl.compute_velocity_command(
+            pose,
+            pose,
+            np.zeros(6),
+            f_ext,
+            f_des,
+            f_ext_raw=f_raw,
+            v_tcp_z_actual=v,
+            dt_actual=0.005,
+        )
+
+    for _ in range(10):
+        tick(1.2, 1.2, 0.0)
+    assert ctrl.physical_contact_state == PhysicalContactTracker.CONTACT
+    assert ctrl.recontact_slow_latched is False
+
+    for _ in range(3):
+        tick(0.30, 0.30, 0.0)
+    assert ctrl.physical_contact_state == PhysicalContactTracker.SUSPECT_LOSS
+    assert ctrl.recontact_slow_latched is True
+    assert ctrl.recontact_detached_seen is False
+
+    for _ in range(4):
+        tick(0.30, 0.30, 0.0)
+    assert ctrl.physical_contact_state == PhysicalContactTracker.LOST
+    assert ctrl.contact_present is False
+    assert ctrl.recontact_detached_seen is True
+    assert ctrl.recontact_slow_latched is True
+
+    for _ in range(4):
+        tick(0.10, 0.10, 0.040)
+    assert ctrl.recontact_slow_latched is True
+
+    tick(0.90, 1.90, 0.060)
+    assert ctrl.physical_contact_reacquire_event
+    assert ctrl.physical_contact_state == PhysicalContactTracker.CONTACT
+    assert ctrl.recontact_slow_latched is True
+    for _ in range(4):
+        tick(1.2, 1.2, 0.050)
+        assert ctrl.recontact_slow_latched is True
+
+    for i in range(9):
+        tick(1.2, 1.2, 0.0)
+        assert ctrl.recontact_slow_latched is True, i
+    tick(1.2, 1.2, 0.0)
+    assert ctrl.recontact_slow_latched is False
+
+
+def test_retract_speed_does_not_release_recontact_latch() -> None:
+    from rm75_control.control.admittance_common.contact_state import (
+        PhysicalContactConfig,
+        PhysicalContactTracker,
+    )
+
+    cfg = AdmittanceConfig()
+    cfg.var_damping_enabled = False
+    cfg.adaptive_ke.enabled = False
+    cfg.safety_shield.mode = "observe"
+    cfg.recontact_settle_m_s = 0.003
+    cfg.recontact_settle_hold_s = 0.050
+    cfg.physical_contact = PhysicalContactConfig(
+        enabled=True,
+        enter_n=0.8,
+        hard_enter_n=1.5,
+        exit_n=0.50,
+        enter_confirm_s=0.010,
+        exit_confirm_s=0.025,
+    )
+    ctrl = AdmittanceController(0.005, cfg)
+    pose = np.zeros(6)
+    f_des = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
+
+    def tick(fz: float, raw: float, v: float) -> None:
+        f_ext = np.array([0.0, 0.0, fz, 0.0, 0.0, 0.0])
+        f_raw = np.array([0.0, 0.0, raw, 0.0, 0.0, 0.0])
+        ctrl.compute_velocity_command(
+            pose,
+            pose,
+            np.zeros(6),
+            f_ext,
+            f_des,
+            f_ext_raw=f_raw,
+            v_tcp_z_actual=v,
+            dt_actual=0.005,
+        )
+
+    for _ in range(10):
+        tick(1.2, 1.2, 0.0)
+    for _ in range(8):
+        tick(0.30, 0.30, 0.0)
+    assert ctrl.physical_contact_state == PhysicalContactTracker.LOST
+    tick(0.90, 1.90, 0.060)
+    assert ctrl.physical_contact_reacquire_event
+    assert ctrl.physical_contact_state == PhysicalContactTracker.CONTACT
+    for _ in range(12):
+        tick(1.2, 1.2, -0.040)
+        assert ctrl.recontact_slow_latched is True
+    for i in range(9):
+        tick(1.2, 1.2, 0.0)
+        assert ctrl.recontact_slow_latched is True, i
+    tick(1.2, 1.2, 0.0)
+    assert ctrl.recontact_slow_latched is False
+
+
+def test_zero_press_cap_does_not_reopen_positive_clip() -> None:
+    cfg = AdmittanceConfig()
+    cfg.var_damping_enabled = False
+    cfg.adaptive_ke.enabled = False
+    cfg.safety_shield.mode = "observe"
+    ctrl = AdmittanceController(0.005, cfg)
+    pose = np.zeros(6)
+    f_ext = np.array([0.0, 0.0, 6.0, 0.0, 0.0, 0.0])
+    f_des = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
+    ctrl.compute_velocity_command(
+        pose, pose, np.zeros(6), f_ext, f_des, v_tcp_z_actual=0.0, dt_actual=0.005
+    )
+    assert ctrl.cap_press_z == pytest.approx(0.0, abs=1e-9)
+    assert ctrl.u_nom_capped_z <= 0.0 + 1e-9
+
+
+def test_contact_loss_latches_slow_reapproach() -> None:
+    cfg = AdmittanceConfig()
+    cfg.var_damping_enabled = False
+    cfg.adaptive_ke.enabled = False
+    cfg.safety_shield.mode = "observe"
+    cfg.safety_shield.k_ub_n_m = 8000.0
+    cfg.recontact_vz_cap_m_s = 0.012
+    cfg.physical_contact.exit_n = 0.35
+    cfg.physical_contact.exit_confirm_s = 0.020
+    ctrl = AdmittanceController(0.005, cfg)
+    pose = np.zeros(6)
+    f_des = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
+    for _ in range(10):
+        ctrl.compute_velocity_command(
+            pose,
+            pose,
+            np.zeros(6),
+            np.array([0.0, 0.0, 1.2, 0.0, 0.0, 0.0]),
+            f_des,
+            v_tcp_z_actual=0.0,
+            dt_actual=0.005,
+        )
+    assert ctrl.contact_present
+    for _ in range(8):
+        ctrl.compute_velocity_command(
+            pose,
+            pose,
+            np.zeros(6),
+            np.zeros(6),
+            f_des,
+            v_tcp_z_actual=0.020,
+            dt_actual=0.005,
+        )
+    assert ctrl.recontact_slow_latched
+    ctrl.compute_velocity_command(
+        pose,
+        pose,
+        np.zeros(6),
+        np.zeros(6),
+        f_des,
+        v_tcp_z_actual=0.060,
+        dt_actual=0.005,
+    )
+    assert ctrl.recontact_slow_latched
+    assert ctrl.v_recontact_cap_m_s > 0.0
+    assert ctrl.cap_press_z <= ctrl.v_recontact_cap_m_s + 1e-9
+    assert ctrl.u_nom_capped_z <= ctrl.v_recontact_cap_m_s + 1e-6
+
+
+def test_controller_no_post_shield_zero_trap() -> None:
+    cfg = AdmittanceConfig()
+    cfg.var_damping_enabled = False
+    cfg.safety_shield.mode = "observe"
+    cfg.force_axis_slew_press_m_s2 = 1.2
+    cfg.force_axis_slew_retract_m_s2 = 1.2
+    cfg.force_axis_jerk_max_m_s3 = 40.0
+    ctrl = AdmittanceController(0.005, cfg)
+    ctrl.last_v_cmd[2] = -0.04
+    pose = np.zeros(6)
+    f_ext = np.array([0.0, 0.0, 6.0, 0.0, 0.0, 0.0])
+    f_des = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
+    v = ctrl.compute_velocity_command(
+        pose, pose, np.zeros(6), f_ext, f_des, v_tcp_z_actual=0.01, dt_actual=0.005
+    )
+    assert v[2] <= 0.0 + 1e-9
+```
+### FILE `rm75_control/tests/test_force_barrier.py`
+
+```python
+"""Continuous predictive force-barrier caps (no v_min relay)."""
+
+from __future__ import annotations
+
+import pytest
+
+from rm75_control.control.admittance_common.force_barrier import (
+    ForceBarrierConfig,
+    ForceSpaceVelocityDamper,
+)
+
+
+def test_vmin_press_does_not_reopen_zero_margin() -> None:
+    damper = ForceSpaceVelocityDamper(
+        ForceBarrierConfig(
+            enabled=True,
+            t_react_s=0.055,
+            v_min_press_m_s=0.003,
+            v_min_retract_m_s=0.0,
+            v_ref_m_s=0.08,
+            stiffness_cap_enabled=True,
+            budget_min_n=0.5,
+            budget_frac=0.0,
+            bar_f_n=0.0,
+            e_f_n=0.0,
+            e_x_m=0.0,
+        )
+    )
+    damper.f_dot_z = 0.0
+    cap_press, cap_retract = damper.caps(
+        f_z=4.0,
+        f_des_z=2.0,
+        in_contact=True,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+        ke_est_n_m=680.0,
+        mass_eq_kg=1.0,
+        tau_s=0.055,
+        v_tcp_z_actual=0.0,
+    )
+    assert cap_press == pytest.approx(0.0, abs=1e-9)
+    assert cap_retract > 0.02
+
+
+def test_overforce_closes_press_without_vmin_floor() -> None:
+    damper = ForceSpaceVelocityDamper(
+        ForceBarrierConfig(
+            enabled=True,
+            t_react_s=0.055,
+            v_min_press_m_s=0.0,
+            v_min_retract_m_s=0.0,
+            v_ref_m_s=0.08,
+            stiffness_cap_enabled=True,
+        )
+    )
+    damper.f_dot_z = 0.0
+    cap_press, cap_retract = damper.caps(
+        f_z=4.0,
+        f_des_z=2.0,
+        in_contact=True,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+        ke_est_n_m=680.0,
+        mass_eq_kg=1.0,
+        tau_s=0.055,
+        v_tcp_z_actual=0.0,
+    )
+    assert cap_press == pytest.approx(0.0, abs=1e-9)
+    assert cap_retract > 0.02
+
+
+def test_stiffer_ke_lowers_press_cap() -> None:
+    cfg = ForceBarrierConfig(
+        enabled=True,
+        t_react_s=0.055,
+        v_min_press_m_s=0.0,
+        budget_min_n=0.5,
+        budget_frac=0.0,
+        stiffness_cap_enabled=True,
+    )
+    soft = ForceSpaceVelocityDamper(cfg)
+    stiff = ForceSpaceVelocityDamper(cfg)
+    kwargs = dict(
+        f_z=2.0,
+        f_des_z=2.0,
+        in_contact=True,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+        tau_s=0.055,
+        v_tcp_z_actual=0.0,
+        mass_eq_kg=1.0,
+    )
+    p_soft, _ = soft.caps(ke_est_n_m=250.0, **kwargs)
+    p_stiff, _ = stiff.caps(ke_est_n_m=1100.0, **kwargs)
+    assert p_soft > p_stiff
+    assert p_stiff == pytest.approx(0.5 / (1100.0 * 0.055), rel=0.05)
+
+
+def test_delayed_press_speed_does_not_reopen_cap() -> None:
+    damper = ForceSpaceVelocityDamper(
+        ForceBarrierConfig(
+            enabled=True,
+            t_react_s=0.055,
+            v_min_press_m_s=0.0,
+            budget_min_n=0.5,
+            budget_frac=0.0,
+            stiffness_cap_enabled=True,
+        )
+    )
+    damper.f_dot_z = 0.0
+    kwargs = dict(
+        f_z=2.0,
+        f_des_z=2.0,
+        in_contact=True,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+        ke_est_n_m=2000.0,
+        tau_s=0.055,
+        mass_eq_kg=1.0,
+    )
+    cap0, _ = damper.caps(v_tcp_z_actual=0.0, **kwargs)
+    cap_v, _ = damper.caps(v_tcp_z_actual=0.05, **kwargs)
+    assert cap0 == pytest.approx(0.5 / (2000.0 * 0.055), rel=0.05)
+    assert cap_v < cap0
+    assert cap_v < 0.02
+
+
+def test_falling_force_does_not_reopen_press() -> None:
+    damper = ForceSpaceVelocityDamper(
+        ForceBarrierConfig(
+            enabled=True,
+            t_react_s=0.055,
+            v_min_press_m_s=0.0,
+            budget_min_n=0.5,
+            budget_frac=0.0,
+            stiffness_cap_enabled=True,
+        )
+    )
+    damper.f_dot_z = -80.0
+    cap, _ = damper.caps(
+        f_z=2.0,
+        f_des_z=2.0,
+        in_contact=True,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+        ke_est_n_m=2000.0,
+        tau_s=0.055,
+        mass_eq_kg=1.0,
+        v_tcp_z_actual=-0.08,
+    )
+    assert cap == pytest.approx(0.5 / (2000.0 * 0.055), rel=0.05)
+
+
+def test_free_space_ke_schedules_approach() -> None:
+    damper = ForceSpaceVelocityDamper(
+        ForceBarrierConfig(
+            enabled=True,
+            t_react_s=0.055,
+            v_seek_free_m_s=0.030,
+            budget_min_n=0.5,
+            budget_frac=0.0,
+            stiffness_cap_enabled=True,
+        )
+    )
+    cap, _ = damper.caps(
+        f_z=0.0,
+        f_des_z=2.0,
+        in_contact=False,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+        ke_est_n_m=2000.0,
+        tau_s=0.055,
+    )
+    assert cap < 0.030
+    assert cap == pytest.approx(0.5 / (2000.0 * 0.055), rel=0.05)
+```
+
+### FILE `rm75_control/tests/test_force_tracking_log.py`
+
+```python
+"""CSV schema checks for the single stable force controller."""
+
+from __future__ import annotations
+
+import csv
+
+import numpy as np
+
+from rm75_control.control.admittance_common.controller import (
+    AdmittanceConfig,
+    AdmittanceController,
+)
+from rm75_control.control.joint_admittance_8dof.loop import (
+    JointIkStep,
+    _TickLogger,
+)
+
+
+def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
+    path = tmp_path / "force.csv"
+    logger = _TickLogger(str(path))
+    step = JointIkStep(
+        q_send=np.zeros(8),
+        qdot=np.zeros(8),
+        twist_base=np.zeros(6),
+        sigma_min=0.2,
+        manip=0.1,
+        slack_norm=0.0,
+        n_cbf_active=0,
+        follow_err_rad=0.0,
+    )
+    controller = AdmittanceController(0.005, AdmittanceConfig())
+
+    class Outer:
+        pass
+
+    outer = Outer()
+    outer.controller = controller
+    controller.force_reference_fast_clear = True
+    controller.force_fast_z = 1.234
+    controller.retract_guard_armed = True
+    controller.retract_fast_hold = True
+    controller.retract_fast_stop_count = 2
+    controller.retract_fast_rearm_count = 3
+    controller.force_task_latched = True
+    controller.physical_contact_state = "suspect_loss"
+    controller.physical_contact_acquire_event = True
+    controller.physical_contact_loss_event = False
+    controller.physical_contact_reacquire_event = True
+    controller.physical_contact_low_timer_s = 0.012
+    controller.physical_contact_high_timer_s = 0.034
+    logger.write(
+        0.0,
+        "scan",
+        0.0,
+        step,
+        np.zeros(8),
+        np.zeros(6),
+        np.zeros(6),
+        outer=outer,
+        dt_actual_s=0.005,
+        sensor_age_s=0.001,
+        f_ext_raw=np.zeros(6),
+        twist_achieved_base=np.zeros(6),
+        v_tcp_z_actual=0.002,
+    )
+    logger.close()
+
+    with path.open(newline="") as stream:
+        rows = list(csv.reader(stream))
+    assert len(rows) == 2
+    assert len(rows[0]) == len(rows[1])
+    header = rows[0]
+    assert "force_reference_scale_n" in header
+    assert "force_reference_drive" in header
+    assert "force_reference_gate_scale" in header
+    assert "force_reference_accel_m_s2" in header
+    assert "force_reference_reversal_reset" in header
+    assert "force_reference_fast_clear" in header
+    assert "force_fast_z" in header
+    assert "retract_guard_armed" in header
+    assert "retract_fast_hold" in header
+    assert "retract_fast_stop_count" in header
+    assert "retract_fast_rearm_count" in header
+    assert "force_task_latched" in header
+    assert "physical_contact_state" in header
+    assert "physical_contact_acquire_event" in header
+    assert "physical_contact_loss_event" in header
+    assert "physical_contact_reacquire_event" in header
+    assert "physical_contact_low_timer_s" in header
+    assert "physical_contact_high_timer_s" in header
+    assert "mass_z_eff" in header
+    assert "damping_ke_z" in header
+    assert "damping_dimeas_z" in header
+    assert "vz_achieved_tool" in header
+    assert "pose_d_x" in header
+    assert "pose_meas_x" in header
+    assert "motion_err_lin_y_mm" in header
+    assert "motion_err_rms_mm" in header
+    assert "motion_axis_peak_mm" in header
+    assert "vel_ff_vy" in header
+    assert "rail_contrib_m_s" in header
+    assert "arm_contrib_m_s" in header
+    assert "arm_y_qdot" in header
+    assert "rail_motion_share" in header
+    assert "rail_escape_active" in header
+    assert "tool_y_des_m" in header
+    assert "psi_deg" in header
+    assert "psi_ref_deg" in header
+    assert "d_pref_m" in header
+    assert "waste_ratio" in header
+    assert "rail_ff_m" in header
+    assert "d_star_m" in header
+    assert "contact_phase" in header
+    assert "ke_hat" in header
+    assert "dob_v" in header
+    assert "barrier_cap_floor" in header
+    assert "elbow_margin_rad" in header
+    assert "wrist_open_rad" in header
+    assert "family_ok" in header
+    assert "tool_y_err_mm" in header
+    assert "rail_sat" in header
+    assert "sigma_arm" in header
+    assert "qdot_meas_0" in header
+    assert "v_cmd_vy" in header
+    assert "path_twist_vy" in header
+    assert "feedback_twist_vy" in header
+    assert "sns_scale" in header
+    assert "v_escape" in header
+    assert "cbf_min_dist" in header
+    assert "comfort_slack_j4" in header
+    assert "pad_lx" in header
+    assert "pad_vcmd_base_vy" in header
+    assert "u_dob_z" in header
+    assert "v_force_cmd_z" in header
+    assert "ke_cap_n_m" in header
+    assert "cdyob_corr_m_s" in header
+    assert "overforce_escape" in header
+    assert "u_nom_raw" in header
+    assert "u_nom_capped" in header
+    assert "u_shield_hyp" in header
+    assert "u_sent" in header
+    assert "lambda_obs" in header
+    assert "shield_applied" in header
+    assert "shield_feasible" in header
+    assert "f_ub_n" in header
+    assert "e_lb_j" in header
+    assert "w_lb_j" in header
+    assert "rho_v2_w" in header
+    assert "n_stop" in header
+    assert "tube_violation" in header
+    assert "solver_us" in header
+    assert "shield_infeasible_reason" in header
+    assert "f_constraint_margin_n" in header
+    assert "energy_margin_j" in header
+    assert "terminal_ok" in header
+    assert "aj_ok" in header
+    assert "domain_ok" in header
+    assert "recovery_latched" in header
+    assert "recontact_slow_latched" in header
+    assert "v_recontact_cap" in header
+
+    values = dict(zip(header, rows[1], strict=True))
+    assert values["rail_escape_active"] == "0"
+    assert values["force_reference_fast_clear"] == "1"
+    assert values["force_fast_z"] == "1.234"
+    assert values["retract_guard_armed"] == "1"
+    assert values["retract_fast_hold"] == "1"
+    assert values["retract_fast_stop_count"] == "2"
+    assert values["retract_fast_rearm_count"] == "3"
+    assert values["force_task_latched"] == "1"
+    assert values["physical_contact_state"] == "suspect_loss"
+    assert values["physical_contact_acquire_event"] == "1"
+    assert values["physical_contact_loss_event"] == "0"
+    assert values["physical_contact_reacquire_event"] == "1"
+    assert values["physical_contact_low_timer_s"] == "0.012000"
+    assert values["physical_contact_high_timer_s"] == "0.034000"
+
+
+def test_motion_axis_accuracy_columns_populated(tmp_path):
+    path = tmp_path / "motion.csv"
+    logger = _TickLogger(str(path))
+    step = JointIkStep(
+        q_send=np.zeros(8),
+        qdot=np.zeros(8),
+        twist_base=np.array([0.0, 0.02, 0.0, 0.0, 0.0, 0.0]),
+        sigma_min=0.2,
+        manip=0.1,
+        slack_norm=0.0,
+        n_cbf_active=0,
+        follow_err_rad=0.0,
+        rail_contrib_m_s=0.01,
+        arm_contrib_m_s=0.01,
+        rail_motion_share=0.5,
+        rail_escape_active=False,
+    )
+    cfg = AdmittanceConfig(
+        track_axes=np.array([1.0, 1.0, 0.0, 1.0, 1.0, 1.0]),
+        force_axes=np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
+    )
+    controller = AdmittanceController(0.005, cfg)
+
+    class Outer:
+        pass
+
+    outer = Outer()
+    outer.controller = controller
+    outer.last_pose_d = np.array([0.0, 0.05, 0.0, 0.0, 0.0, 0.0])
+    outer.last_vel_ff = np.array([0.0, 0.03, 0.0, 0.0, 0.0, 0.0])
+    pose_meas = np.array([0.0, 0.04, 0.01, 0.0, 0.0, 0.0])
+    logger.write(
+        0.0,
+        "scan",
+        0.0,
+        step,
+        np.zeros(8),
+        pose_meas,
+        np.zeros(6),
+        outer=outer,
+    )
+    logger.close()
+    with path.open(newline="") as stream:
+        rows = list(csv.reader(stream))
+    values = dict(zip(rows[0], rows[1], strict=True))
+    assert values["pose_d_y"] == "0.050000"
+    assert values["pose_meas_y"] == "0.040000"
+    assert values["motion_err_lin_y_mm"] != ""
+    assert values["motion_err_lin_z_mm"] == ""  # force axis excluded
+    assert values["motion_err_rms_mm"] != ""
+    assert values["vel_ff_vy"] == "0.030000"
+    assert values["rail_contrib_m_s"] == "0.010000"
+    assert values["rail_escape_active"] == "0"
+    assert values["tool_y_err_mm"] != ""
+
+
+def test_tick_logger_appends_on_restart(tmp_path):
+    path = tmp_path / "run.csv"
+    step = JointIkStep(
+        q_send=np.zeros(8),
+        qdot=np.zeros(8),
+        twist_base=np.zeros(6),
+        sigma_min=0.2,
+        manip=0.1,
+        slack_norm=0.0,
+        n_cbf_active=0,
+        follow_err_rad=0.0,
+    )
+    controller = AdmittanceController(0.005, AdmittanceConfig())
+
+    class Outer:
+        pass
+
+    outer = Outer()
+    outer.controller = controller
+    first = _TickLogger(str(path))
+    first.write(0.0, "scan", 0.0, step, np.zeros(8), np.zeros(6), np.zeros(6), outer=outer)
+    first.close()
+    second = _TickLogger(str(path))
+    second.write(0.01, "scan", 0.01, step, np.zeros(8), np.zeros(6), np.zeros(6), outer=outer)
+    second.close()
+    with path.open(newline="") as stream:
+        rows = list(csv.reader(stream))
+    assert rows[0][0] == "t_wall_s"
+    assert len(rows) == 3
+    assert rows[1][0] != "t_wall_s"
+    assert rows[2][0] != "t_wall_s"
+    assert len(rows[0]) == len(rows[1]) == len(rows[2])
+```
+
+### FILE `rm75_control/tests/test_shield_feel_metrics.py`
+
+```python
+"""Offline shield feel report."""
+
+from __future__ import annotations
+
+import csv
+from pathlib import Path
+
+from peirastic.apps.shield_feel_metrics import compute_metrics, report
+
+
+def test_feel_metrics_counts_activation_and_pierce(tmp_path: Path) -> None:
+    rows = [
+        {
+            "contact_present": "1",
+            "lambda_obs": "1.00",
+            "u_nom_capped": "0.020",
+            "u_sent": "0.020",
+            "fz": "2.0",
+            "f_ub_n": "3.0",
+            "physical_contact_loss_event": "0",
+            "shield_applied": "0",
+        },
+        {
+            "contact_present": "1",
+            "lambda_obs": "0.40",
+            "u_nom_capped": "0.040",
+            "u_sent": "0.010",
+            "fz": "4.2",
+            "f_ub_n": "3.5",
+            "physical_contact_loss_event": "1",
+            "shield_applied": "1",
+        },
+        {
+            "contact_present": "1",
+            "lambda_obs": "0.50",
+            "u_nom_capped": "0.030",
+            "u_sent": "0.012",
+            "fz": "3.0",
+            "f_ub_n": "3.4",
+            "physical_contact_loss_event": "0",
+            "shield_applied": "1",
+        },
+        {
+            "contact_present": "0",
+            "lambda_obs": "1.00",
+            "u_nom_capped": "0.000",
+            "u_sent": "0.000",
+            "fz": "0.1",
+            "f_ub_n": "3.0",
+            "physical_contact_loss_event": "0",
+            "shield_applied": "0",
+        },
+    ]
+    metrics = compute_metrics(rows, eps_lambda=0.02)
+    assert metrics["contact_n"] == 3
+    assert metrics["shield_active_frac"] == 2.0 / 3.0
+    assert metrics["lambda_p05"] < 0.45
+    assert metrics["rms_u_sent_minus_u_nom"] > 0.0
+    assert metrics["longest_active_ticks"] == 2
+    assert metrics["f_ub_pierce"] == 1
+    assert metrics["losses"] == 1
+    assert metrics["failsafe_frac"] == 0.0
+    assert metrics["effective_intervention_frac"] == 2.0 / 3.0
+
+    path = tmp_path / "run.csv"
+    with path.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+    assert report(path) == 0
+```
+
+### FILE `rm75_control/tests/test_identify_plant.py`
+
+```python
+"""Horizon error tubes from the plant-identification script."""
+
+from __future__ import annotations
+
+import csv
+import math
+from pathlib import Path
+
+import numpy as np
+import pytest
+import yaml
+
+from peirastic.apps.identify_plant import (
+    analyze_csv,
+    analyze_stop_reverse,
+    _align_trigger_index,
+    _event_metrics,
+    _horizon_error_ub,
+    _load_twist_csv,
+    _open_loop_envelopes,
+    _rollout_fopdt,
+    _simulate_first_order,
+    _step_dt,
+)
+
+
+def test_horizon_error_ub_has_nb_steps() -> None:
+    dt = 0.005
+    n = 240
+    cmd = np.zeros(n)
+    cmd[20:80] = 0.04
+    cmd[140:200] = -0.04
+    ach = _simulate_first_order(cmd, delay_steps=1, tp_s=0.040, dt=dt)
+    ach = ach + 0.001 * np.sin(np.linspace(0.0, 6.0, n))
+    ev, ex = _horizon_error_ub(
+        cmd,
+        ach,
+        delay_steps=1,
+        tp_s=0.040,
+        dt=dt,
+        horizon=40,
+        margin=0.002,
+    )
+    assert len(ev) == 40
+    assert len(ex) == 40
+    assert all(e >= 0.001 for e in ev)
+    assert ex[-1] > ex[0]
+    assert all(ex[i] <= ex[i + 1] + 1e-12 for i in range(len(ex) - 1))
+
+
+def test_analyze_csv_writes_shield_yaml(tmp_path: Path) -> None:
+    dt = 0.005
+    n = 300
+    t = np.arange(n) * dt
+    cmd = np.zeros(n)
+    cmd[30:90] = 0.04
+    cmd[160:220] = -0.03
+    ach = _simulate_first_order(cmd, delay_steps=2, tp_s=0.050, dt=dt)
+    csv_path = tmp_path / "plant.csv"
+    with csv_path.open("w", newline="") as f:
+        writer = csv.DictWriter(
+            f, fieldnames=["t_wall_s", "twist_vz", "twist_achieved_vz"]
+        )
+        writer.writeheader()
+        for ti, u, v in zip(t, cmd, ach):
+            writer.writerow(
+                {
+                    "t_wall_s": f"{ti:.6f}",
+                    "twist_vz": f"{u:.6f}",
+                    "twist_achieved_vz": f"{v:.6f}",
+                }
+            )
+    yaml_path = tmp_path / "tube.yaml"
+    assert analyze_csv(csv_path, horizon=20, write_yaml=yaml_path, margin=0.001) == 0
+    loaded = yaml.safe_load(yaml_path.read_text())
+    assert loaded["safety_shield"]["plant"]["horizon_steps"] == 20
+    assert len(loaded["safety_shield"]["velocity_error_ub_m_s"]) == 20
+    assert len(loaded["safety_shield"]["position_error_ub_m"]) == 20
+    assert len(loaded["safety_shield"]["position_error_ub_plus_m"]) == 20
+
+
+def test_analyze_stop_reverse_finds_stop_and_reverse(tmp_path: Path) -> None:
+    dt = 0.005
+    cmd = np.zeros(400)
+    cmd[20:80] = 0.040
+    cmd[80:140] = 0.0
+    cmd[160:220] = 0.040
+    cmd[220:280] = -0.040
+    t = np.arange(cmd.size) * dt
+    ach = _simulate_first_order(cmd, delay_steps=4, tp_s=0.020, dt=dt)
+    csv_path = tmp_path / "stop.csv"
+    with csv_path.open("w", newline="") as f:
+        writer = csv.DictWriter(
+            f, fieldnames=["t_wall_s", "twist_vz", "twist_achieved_vz"]
+        )
+        writer.writeheader()
+        for ti, u, v in zip(t, cmd, ach):
+            writer.writerow(
+                {
+                    "t_wall_s": f"{ti:.6f}",
+                    "twist_vz": f"{u:.6f}",
+                    "twist_achieved_vz": f"{v:.6f}",
+                }
+            )
+    assert analyze_stop_reverse(csv_path, horizon=40) == 0
+
+
+def test_event_metrics_press_dx_does_not_cancel_retract() -> None:
+    dt = 0.005
+    n = 80
+    t = np.arange(n) * dt
+    cmd = np.zeros(n)
+    cmd[:10] = 0.04
+    ach = np.zeros(n)
+    ach[:5] = 0.004
+    ach[5:10] = -0.004
+    met = _event_metrics(cmd, ach, t, start=0, settle_m_s=0.003, horizon=40)
+    signed = float(np.sum(ach) * dt)
+    assert abs(signed) < 1e-6
+    assert met["dx_press"] == pytest.approx(5 * 0.004 * dt)
+    assert met["dx_press"] > 0.0
+    assert met["n_press"] == pytest.approx(5.0)
+
+
+def test_event_metrics_nb_is_hold_not_first_crossing() -> None:
+    dt = 0.005
+    n = 80
+    t = np.arange(n) * dt
+    cmd = np.zeros(n)
+    ach = np.full(n, 0.020)
+    ach[3] = 0.0
+    ach[20:] = 0.0
+    met = _event_metrics(
+        cmd,
+        ach,
+        t,
+        start=0,
+        settle_m_s=0.003,
+        horizon=40,
+        hold_s=0.050,
+        delay_s=0.0,
+        u_clear_m_s=0.015,
+        v_hold_m_s=0.015,
+        a_hold_m_s2=50.0,
+    )
+    assert met["n_press"] == pytest.approx(20.0)
+    assert math.isfinite(met["n_b"])
+    assert met["n_b"] >= 20 + int(0.050 / dt) - 1
+    assert met["n_b"] != pytest.approx(4.0)
+
+
+def test_open_loop_envelopes_share_origins() -> None:
+    dt = 0.005
+    n = 120
+    t = np.arange(n) * dt
+    cmd = np.zeros(n)
+    cmd[10:50] = 0.04
+    ach = _simulate_first_order(cmd, delay_steps=2, tp_s=0.020, dt=dt)
+    dt_arr = _step_dt(t, dt)
+    origins = [8, 16, 24]
+    ev, ex, ex_plus, used = _open_loop_envelopes(
+        cmd,
+        ach,
+        t,
+        origins=origins,
+        horizon=10,
+        rollout_fn=lambda k: _rollout_fopdt(cmd, ach, k, 10, 2, 0.020, dt_arr),
+    )
+    assert used == 3
+    assert len(ev) == 10
+    assert len(ex) == 10
+    assert len(ex_plus) == 10
+    assert max(ev) < 1e-9
+
+
+def test_event_metrics_does_not_force_nb_to_horizon() -> None:
+    dt = 0.005
+    n = 40
+    t = np.arange(n) * dt
+    cmd = np.full(n, 0.040)
+    ach = np.full(n, 0.040)
+    met = _event_metrics(cmd, ach, t, start=0, settle_m_s=0.003, horizon=40)
+    assert met["reached_T"] == pytest.approx(0.0)
+    assert not math.isfinite(met["n_b"])
+    assert met["n_press"] == pytest.approx(40.0)
+
+
+def test_step_dt_does_not_clip_large_gaps() -> None:
+    t = np.array([0.0, 0.005, 0.010, 0.210])
+    dt = _step_dt(t, 0.005)
+    assert dt[-1] == pytest.approx(0.200)
+
+
+def test_event_metrics_invalidates_timestamp_gap() -> None:
+    dt = 0.005
+    n = 80
+    t = np.arange(n) * dt
+    t[40:] += 0.20
+    cmd = np.zeros(n)
+    ach = np.full(n, 0.004)
+    met = _event_metrics(cmd, ach, t, start=0, settle_m_s=0.003, horizon=40)
+    assert met["gap_invalid"] == pytest.approx(1.0)
+    assert not math.isfinite(met["dx_press"])
+
+
+def test_load_twist_csv_defaults_to_twist_vz(tmp_path: Path) -> None:
+    csv_path = tmp_path / "cols.csv"
+    with csv_path.open("w", newline="") as f:
+        writer = csv.DictWriter(
+            f, fieldnames=["t_wall_s", "twist_vz", "u_sent", "twist_achieved_vz"]
+        )
+        writer.writeheader()
+        for i in range(10):
+            writer.writerow(
+                {
+                    "t_wall_s": f"{i * 0.005:.6f}",
+                    "twist_vz": "0.040000",
+                    "u_sent": "0.080000",
+                    "twist_achieved_vz": "0.020000",
+                }
+            )
+    cmd, ach, _t, twist, sent = _load_twist_csv(csv_path, input_column="twist_vz")
+    assert float(np.mean(cmd)) == pytest.approx(0.04)
+    assert float(np.mean(twist)) == pytest.approx(0.04)
+    assert float(np.mean(sent)) == pytest.approx(0.08)
+    cmd_s, *_rest = _load_twist_csv(csv_path, input_column="u_sent")
+    assert float(np.mean(cmd_s)) == pytest.approx(0.08)
+
+
+def test_analyze_stop_writes_uncertified_stop_dx_yaml(tmp_path: Path) -> None:
+    dt = 0.005
+    cmd = np.zeros(400)
+    cmd[20:80] = 0.040
+    cmd[80:140] = 0.0
+    cmd[160:220] = 0.040
+    cmd[220:280] = -0.040
+    t = np.arange(cmd.size) * dt
+    ach = _simulate_first_order(cmd, delay_steps=4, tp_s=0.020, dt=dt)
+    csv_path = tmp_path / "stop.csv"
+    yaml_path = tmp_path / "stop_dx.yaml"
+    with csv_path.open("w", newline="") as f:
+        writer = csv.DictWriter(
+            f, fieldnames=["t_wall_s", "twist_vz", "twist_achieved_vz"]
+        )
+        writer.writeheader()
+        for ti, u, v in zip(t, cmd, ach):
+            writer.writerow(
+                {
+                    "t_wall_s": f"{ti:.6f}",
+                    "twist_vz": f"{u:.6f}",
+                    "twist_achieved_vz": f"{v:.6f}",
+                }
+            )
+    assert analyze_stop_reverse(csv_path, horizon=40, write_yaml=yaml_path) == 0
+    loaded = yaml.safe_load(yaml_path.read_text())
+    assert loaded["safety_shield"]["stop_dx_ub"]["certified"] is False
+    bins = loaded["safety_shield"]["stop_dx_ub"]["bins"]
+    assert bins
+    assert "q_remain_m" in bins[0]
+    assert "a0_m_s2" in bins[0]
+
+
+def test_open_loop_ex_plus_does_not_cancel() -> None:
+    dt = 0.005
+    n = 40
+    t = np.arange(n) * dt
+    cmd = np.zeros(n)
+    ach = np.zeros(n)
+    ach[11] = 0.010
+    ach[12] = -0.010
+
+    def pred(_k: int) -> np.ndarray:
+        return np.zeros(8)
+
+    _ev, ex, ex_plus, used = _open_loop_envelopes(
+        cmd,
+        ach,
+        t,
+        origins=[10],
+        horizon=8,
+        rollout_fn=pred,
+    )
+    assert used == 1
+    assert ex[1] < 1e-9
+    assert ex_plus[1] == pytest.approx(0.010 * dt)
+
+
+def test_event_metrics_a0_is_press_positive_actual() -> None:
+    dt = 0.005
+    n = 40
+    t = np.arange(n) * dt
+    cmd = np.full(n, 0.040)
+    ach = np.zeros(n)
+    ach[9] = 0.010
+    ach[10] = 0.016
+    met = _event_metrics(cmd, ach, t, start=10, settle_m_s=0.003, horizon=20)
+    assert met["a0"] == pytest.approx((0.016 - 0.010) / dt)
+    cmd[5:10] = 0.040
+    met2 = _event_metrics(
+        cmd, ach, t, start=10, settle_m_s=0.003, horizon=20, delay_s=0.025
+    )
+    assert met2["q_remain_m"] > 0.0
+    assert met2["a0"] >= 0.0
+
+
+def test_align_trigger_uses_first_ub_not_velocity_edge() -> None:
+    dt = 0.005
+    n = 80
+    t = np.arange(n) * dt
+    cmd = np.full(n, 0.020)
+    cmd[40] = 0.019
+    cmd[41] = 0.017
+    cmd[42] = 0.014
+    cmd[50:] = 0.0
+    idx = _align_trigger_index(
+        cmd,
+        t,
+        {"v0_cmd": "0.020000", "u_b": "0.019000"},
+        search_from=1,
+    )
+    assert idx == 40
+
+
+def test_analyze_stop_aligns_event_log(tmp_path: Path) -> None:
+    dt = 0.005
+    n = 120
+    t = np.arange(n) * dt
+    cmd = np.zeros(n)
+    cmd[20:50] = 0.020
+    cmd[50] = 0.019
+    cmd[51] = 0.016
+    cmd[52] = 0.012
+    cmd[53:80] = 0.0
+    ach = cmd.copy()
+    csv_path = tmp_path / "win_a.csv"
+    with csv_path.open("w", newline="") as f:
+        writer = csv.DictWriter(
+            f, fieldnames=["t_wall_s", "twist_vz", "twist_achieved_vz"]
+        )
+        writer.writeheader()
+        for ti, u, v in zip(t, cmd, ach):
+            writer.writerow(
+                {
+                    "t_wall_s": f"{ti:.6f}",
+                    "twist_vz": f"{u:.6f}",
+                    "twist_achieved_vz": f"{v:.6f}",
+                }
+            )
+    log_path = tmp_path / "events.csv"
+    with log_path.open("w", newline="") as f:
+        writer = csv.DictWriter(
+            f, fieldnames=["event_id", "trigger", "tick", "v0_cmd", "u_b"]
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "event_id": "001_20_settled",
+                "trigger": "backup_to_terminal",
+                "tick": "0",
+                "v0_cmd": "0.020000",
+                "u_b": "0.019000",
+            }
+        )
+    assert analyze_stop_reverse(csv_path, horizon=40, event_log=log_path) == 0
+
+```
+### FILE `rm75_control/tests/test_admittance_contact.py`
+
+```python
+"""Tool-Z admittance contact behaviour: engagement ramp, unified vz cap, closed-loop."""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+from rm75_control.control.admittance_common.proactive_force_ff import ProactiveFfConfig
+from rm75_control.control.hybrid_motion.controller import AdmittanceConfig, AdmittanceController
+
+
+def _base_cfg(**over) -> AdmittanceConfig:
+    kw = dict(
+        contact_threshold_n=0.8,
+        contact_use_fz_only=True,
+        admittance_mass_z=1.0,
+        admittance_damping_z=25.0,
+        deadband_n=0.0,
+        deadband_width_n=0.0,
+        max_vz_tool_m_s=0.05,
+        max_velocity=np.array([0.2, 0.2, 0.05, 0.5, 0.5, 0.5]),
+        desired_force_ramp_s=0.0,
+        var_damping_enabled=False,
+    )
+    kw.update(over)
+    cfg = AdmittanceConfig(**kw)
+    cfg.proactive_ff = ProactiveFfConfig(enabled=False)
+    cfg.adaptive_ke.enabled = False
+    return cfg
+
+
+def _tick(ctrl: AdmittanceController, fz: float, f_des_z: float = 3.0) -> float:
+    f_ext = np.zeros(6)
+    f_ext[2] = fz
+    f_des = np.zeros(6)
+    f_des[2] = f_des_z
+    ctrl.compute_velocity_command(np.zeros(6), np.zeros(6), np.zeros(6), f_ext, f_des)
+    return ctrl.v_force_z
+
+
+def test_hybrid_episode_reset_is_bumpless_and_clears_episode_state():
+    cfg = _base_cfg(var_damping_enabled=True)
+    cfg.bidirectional_flow.Tmin = 0.001
+    cfg.bidirectional_flow.T0 = 0.003
+    cfg.bidirectional_flow.Tmax = 0.004
+    ctrl = AdmittanceController(0.005, cfg)
+    ctrl._bidirectional_flow.tank_energy = 0.0015
+    ctrl._in_contact_latched = True
+    ctrl.force_task_latched = True
+    ctrl.contact_present = True
+    ctrl._contact_time_s = 2.0
+    ctrl._episode_seen = True
+    ctrl._episode_detached_s = 0.2
+    ctrl._proactive_ff.v_r = 0.02
+    ctrl.v_r_z = 0.02
+    ctrl._force_dob.u_dob = 0.8
+    ctrl.u_dob_z = 0.8
+    ctrl._ke_estimator.ke_est = 1234.0
+    seed = np.array([0.01, -0.02, 0.015, 0.03, -0.04, 0.05])
+
+    ctrl.begin_hybrid_episode(seed)
+
+    np.testing.assert_allclose(ctrl.last_v_cmd, seed)
+    assert ctrl.v_force_z == pytest.approx(seed[2])
+    assert ctrl._bidirectional_flow.tank_energy == pytest.approx(0.0015)
+    assert not ctrl._in_contact_latched
+    assert not ctrl.force_task_latched
+    assert not ctrl.contact_present
+    assert ctrl._contact_time_s == 0.0
+    assert not ctrl._episode_seen
+    assert ctrl._episode_detached_s == 0.0
+    assert ctrl._proactive_ff.v_r == 0.0
+    assert ctrl.v_r_z == 0.0
+    assert ctrl._force_dob.u_dob == 0.0
+    assert ctrl.u_dob_z == 0.0
+    assert ctrl._ke_estimator.ke_est == pytest.approx(cfg.adaptive_ke.ke_initial)
+
+
+def test_hybrid_episode_first_force_sample_has_no_filter_or_barrier_spike():
+    cfg = _base_cfg(var_damping_enabled=True)
+    ctrl = AdmittanceController(0.005, cfg)
+    ctrl.begin_hybrid_episode(np.zeros(6))
+
+    ctrl._update_instability_index(6.0)
+    assert ctrl.instability_index == pytest.approx(0.0, abs=1.0e-12)
+    assert ctrl._p_hi == pytest.approx(0.0, abs=1.0e-12)
+    assert ctrl._force_barrier.update_fdot(6.0, 0.005) == pytest.approx(0.0)
+
+
+def test_admittance_outer_episode_seeds_applied_twist_in_task_frame():
+    from scipy.spatial.transform import Rotation as Rsc
+
+    from rm75_control.control.joint_admittance_8dof.loop import AdmittanceOuterLoop
+    from rm75_control.control.joint_admittance_8dof.reference import HoldReference
+
+    cfg = _base_cfg(control_frame="tool")
+    ctrl = AdmittanceController(0.005, cfg)
+    outer = AdmittanceOuterLoop(ctrl, HoldReference())
+    pose = np.array([0.2, 0.1, 0.3, 0.4, -0.2, 0.3])
+    applied_base = np.array([0.01, -0.02, 0.03, 0.04, -0.05, 0.06])
+    rotation = Rsc.from_euler(cfg.euler_order, pose[3:6]).as_matrix()
+    expected = np.concatenate(
+        (rotation.T @ applied_base[:3], rotation.T @ applied_base[3:])
+    )
+
+    outer.begin_hybrid_episode(applied_base, pose)
+
+    np.testing.assert_allclose(ctrl.last_v_cmd, expected, atol=1.0e-12)
+    assert ctrl.v_force_z == pytest.approx(expected[2])
+
+
+def test_single_press_cap_no_free_space_switch():
+    """One tool-Z cap in and out of contact — the 5× press-speed jump at
+    contact latch that produced the dual press-speed-tier jitter is gone."""
+    ctrl = AdmittanceController(0.005, _base_cfg())
+    # Externally inject a large negative state, no contact ever latched.
+    ctrl.v_force_z = -0.15
+    v = _tick(ctrl, fz=0.0)
+    # Same unified cap governs both directions.
+    cap = ctrl._v_z_cap()
+    assert -cap - 1e-9 <= v <= cap + 1e-9
+    # The cap must not depend on contact latch alone (only on |F_err| press-side).
+    ctrl2 = AdmittanceController(0.005, _base_cfg())
+    for _ in range(50):  # latch contact at setpoint → f_err ≈ 0
+        _tick(ctrl2, fz=3.0)
+    assert ctrl2._v_z_cap() == cap
+
+
+def test_engagement_force_ramp():
+    """Tool-Z setpoint ramps from ~contact threshold to full value on contact."""
+    cfg = _base_cfg(desired_force_ramp_s=1.0)
+    ctrl = AdmittanceController(0.005, cfg)
+    _tick(ctrl, fz=1.0, f_des_z=3.0)
+    early = ctrl.f_des_z_eff
+    assert early < 1.5, f"setpoint must start low, got {early}"
+    for _ in range(300):  # 1.5 s of latched contact
+        _tick(ctrl, fz=1.0, f_des_z=3.0)
+    assert abs(ctrl.f_des_z_eff - 3.0) < 1e-9
+
+
+def test_unified_vz_cap_no_state_windup():
+    """``v_force_z`` must never exceed the single symmetric tool-Z cap."""
+    dt = 0.005
+    cfg = _base_cfg(
+        max_vz_tool_m_s=0.20,
+        max_velocity=np.array([0.2, 0.2, 0.05, 0.5, 0.5, 0.5]),
+        admittance_damping_z=5.0,
+    )
+    ctrl = AdmittanceController(dt, cfg)
+    for _ in range(400):
+        _tick(ctrl, fz=7.0, f_des_z=3.0)
+    cap = ctrl._v_z_cap()
+    assert cap == pytest.approx(0.05)
+    assert abs(ctrl.v_force_z) <= cap + 1e-9
+
+
+def test_closed_loop_stiff_surface_no_bounce():
+    """Closed-loop regression on a stiff unilateral spring with the SHIPPED
+    yaml: approach → impact → settle at the setpoint with no sustained
+    contact flipping. Regression guard against the /tmp/scan_v5.csv bounce
+    cascade (71 contact losses in 45 s, fz range 0..9.4 N)."""
+    import yaml
+    from pathlib import Path
+
+    dt = 0.005
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
+    cfg = AdmittanceConfig.from_dict(raw)
+    ctrl = AdmittanceController(dt, cfg)
+
+    ke_true = 8000.0  # hard surface
+    x = -0.005        # 5 mm above the surface (at x=0)
+    flips = 0
+    was_contact = False
+    fz_hist: list[float] = []
+    for _ in range(2400):  # 12 s
+        fz = ke_true * max(x, 0.0)
+        v = _tick(ctrl, fz=fz, f_des_z=3.0)
+        x += v * dt
+        # Physical contact state, not the controller's enter-only latch.
+        in_c = fz >= cfg.contact_threshold_n
+        if in_c != was_contact:
+            flips += 1
+        was_contact = in_c
+        fz_hist.append(fz)
+
+    tail = np.asarray(fz_hist[-400:])  # last 2 s
+    # The 27c1689 restore lets the stiff-first K̂_e absorb the first impact;
+    # a few contact flips while the estimator settles are acceptable, but
+    # never a limit cycle.
+    assert flips <= 8, f"contact flipped {flips} times -- bounce limit cycle"
+    assert np.max(np.asarray(fz_hist)) < 7.0, "impact overshoot too large"
+    assert abs(tail.mean() - 3.0) < 0.8, f"force did not settle at 3N (mean {tail.mean():.2f})"
+    assert tail.std() < 0.6, f"force still oscillating (std {tail.std():.2f})"
+
+
+def test_closed_loop_very_hard_surface_no_bounce_cascade():
+    """A very stiff (20 kN/m) surface with the SHIPPED yaml must not enter a
+    bounce cascade even on repeated re-impact. This is the direct guard
+    against the scan_v5.csv failure mode (71 contact losses in 45 s)."""
+    import yaml
+    from pathlib import Path
+
+    dt = 0.005
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
+    cfg = AdmittanceConfig.from_dict(raw)
+    ctrl = AdmittanceController(dt, cfg)
+
+    ke_true = 20000.0  # very hard
+    x = -0.008
+    flips = 0
+    was_contact = False
+    fz_hist: list[float] = []
+    for _ in range(3000):  # 15 s
+        fz = ke_true * max(x, 0.0)
+        v = _tick(ctrl, fz=fz, f_des_z=3.0)
+        x += v * dt
+        in_c = fz >= cfg.contact_threshold_n
+        if in_c != was_contact:
+            flips += 1
+        was_contact = in_c
+        fz_hist.append(fz)
+
+    tail = np.asarray(fz_hist[-600:])  # last 3 s
+    # A "bounce cascade" is dozens of contact flips per second (scan_v5 had
+    # 142 flips in 45s ≈ 3/s). Post-fix we accept a few initial bounces
+    # while K̂_e is learning, then contact must stay latched.
+    assert flips <= 16, (
+        f"bounce cascade: {flips} contact flips in 15s (scan_v5 had 142 in 45s). "
+        "Stiff-first K̂_e + Dimeas inertia + single vz cap must keep re-impact damped."
+    )
+    # Very-hard-surface first-impact peak: acceptable up to ~2.7× setpoint
+    # (still well inside the safe envelope, whereas scan_v5 saw 9.4 N ≈ 3.1×).
+    assert np.max(np.asarray(fz_hist)) < 8.0, (
+        f"impact overshoot too large: {np.max(fz_hist):.2f} N"
+    )
+    assert abs(tail.mean() - 3.0) < 0.8, f"force did not settle at 3N (mean {tail.mean():.2f})"
+    assert tail.std() < 0.80, f"force still oscillating (std {tail.std():.2f})"
+
+
+def test_dimeas_5hz_forced_oscillation_adds_zero_centered_damping():
+    """A 5 Hz forced fz oscillation (in the contact-resonance band that
+    ``_update_instability_index``'s HP-filter targets) must raise Iₛ.
+    Shipped policy keeps Dimeas as a detector only: ΔD_hf and m_u are 0,
+    so virtual mass stays at the configured light value.
+    """
+    import yaml
+    from pathlib import Path
+
+    dt = 0.005
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
+    cfg = AdmittanceConfig.from_dict(raw)
+    ctrl = AdmittanceController(dt, cfg)
+    ctrl._in_contact_latched = True
+
+    m_base = ctrl._m_z_now
+    assert ctrl.instability_index == 0.0
+    assert abs(m_base - cfg.admittance_mass_z) < 1e-6
+
+    import math as _m
+    max_mass = m_base
+    max_dimeas_damping = 0.0
+    max_total_damping = ctrl.damping_z_eff
+    for i in range(2000):  # 10 s of forced 5 Hz oscillation on raw fz
+        t = i * dt
+        fz = 3.0 + 3.0 * _m.sin(2.0 * _m.pi * 5.0 * t)
+        f_ext = np.zeros(6); f_ext[2] = fz
+        f_des = np.zeros(6); f_des[2] = 3.0
+        f_raw = np.zeros(6); f_raw[2] = fz
+        ctrl.compute_velocity_command(
+            np.zeros(6), np.zeros(6), np.zeros(6), f_ext, f_des,
+            in_contact=True, f_ext_raw=f_raw,
+        )
+        max_mass = max(max_mass, ctrl._m_z_now)
+        max_dimeas_damping = max(
+            max_dimeas_damping,
+            ctrl.damping_dimeas_z,
+        )
+        max_total_damping = max(max_total_damping, ctrl.damping_z_eff)
+
+    assert ctrl.instability_index > 0.1, (
+        f"5 Hz forced oscillation must raise Iₛ above 0.1, got "
+        f"{ctrl.instability_index:.4f}"
+    )
+    assert cfg.var_damping_d_u == pytest.approx(0.0)
+    assert cfg.var_damping_m_u == pytest.approx(0.0)
+    assert max_mass == pytest.approx(m_base)
+    assert max_dimeas_damping < 1.0
+
+
+def test_dimeas_disabled_leaves_mass_static():
+    """With ``var_damping_enabled=False`` the inertia channel is inert:
+    Iₛ stays at 0 and m_z stays at the configured admittance_mass_z, even
+    under the same 5 Hz forced oscillation.
+    """
+    cfg = _base_cfg(admittance_mass_z=1.0, var_damping_enabled=False)
+    ctrl = AdmittanceController(0.005, cfg)
+    import math as _m
+    for i in range(1000):
+        t = i * 0.005
+        fz = 3.0 + 3.0 * _m.sin(2.0 * _m.pi * 5.0 * t)
+        f_ext = np.zeros(6); f_ext[2] = fz
+        f_raw = np.zeros(6); f_raw[2] = fz
+        ctrl.compute_velocity_command(
+            np.zeros(6), np.zeros(6), np.zeros(6), f_ext, np.zeros(6),
+            in_contact=True, f_ext_raw=f_raw,
+        )
+    assert ctrl.instability_index == 0.0
+    assert abs(ctrl._m_z_now - cfg.admittance_mass_z) < 1e-9
+
+
+def test_closed_loop_soft_surface_converges():
+    """Same loop on soft tissue (300 N/m): must reach the setpoint (no
+    permanent over-damped stall)."""
+    import yaml
+    from pathlib import Path
+
+    dt = 0.005
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
+    cfg = AdmittanceConfig.from_dict(raw)
+    ctrl = AdmittanceController(dt, cfg)
+
+    ke_true = 300.0
+    x = -0.005
+    fz_hist: list[float] = []
+    for _ in range(2400):  # 12 s
+        fz = ke_true * max(x, 0.0)
+        v = _tick(ctrl, fz=fz, f_des_z=3.0)
+        x += v * dt
+        fz_hist.append(fz)
+    tail = np.asarray(fz_hist[-400:])
+    assert abs(tail.mean() - 3.0) < 0.8, f"soft surface: mean {tail.mean():.2f}"
+    assert tail.std() < 0.5
+
+
+def test_production_stack_tracks_moving_surface_at_1n_and_5n():
+    """The shipped 8-DoF stack (adaptive K̂e + Dimeas both enabled) must
+    follow a compliant surface in either normal direction without restoring
+    the old target-force-dependent response.
+
+    A constant-velocity surface is deliberately used here: after the
+    transient, the TCP velocity must match it and the residual force bias must
+    stay inside the passive-admittance bias budget at both 1 N and 5 N.
+    ``proactive_retract_only`` is intentionally asymmetric in the shipped
+    safety baseline, so equal press/retract force error is not an invariant.
+    """
+    import yaml
+    from pathlib import Path
+
+    dt = 0.005
+    raw = yaml.safe_load(
+        Path("configs/joint_admittance_8dof.yaml").read_text()
+    )
+    ke_true = 800.0
+    results: dict[tuple[float, float], tuple[float, float]] = {}
+
+    for desired in (1.0, 5.0):
+        for surface_velocity in (-0.01, 0.01):
+            cfg = AdmittanceConfig.from_dict(raw)
+            # Surface-velocity match uses the passive+proactive chase; DOB is
+            # covered separately for steady-force bias rejection.
+            cfg.force_dob.enabled = False
+            ctrl = AdmittanceController(dt, cfg)
+            tcp_z = desired / ke_true
+            surface_z = 0.0
+            force_tail: list[float] = []
+            velocity_tail: list[float] = []
+
+            for tick in range(2000):
+                force_z = max(
+                    0.0,
+                    ke_true * (tcp_z - surface_z),
+                )
+                force = np.zeros(6)
+                force[2] = force_z
+                target = np.zeros(6)
+                target[2] = desired
+                pose = np.zeros(6)
+                pose[2] = tcp_z
+                velocity = ctrl.compute_velocity_command(
+                    pose,
+                    pose,
+                    np.zeros(6),
+                    force,
+                    target,
+                    f_ext_raw=force,
+                    dt_actual=dt,
+                    in_contact=True,
+                )[2]
+                tcp_z += velocity * dt
+                surface_z += surface_velocity * dt
+                if tick >= 800:
+                    force_tail.append(force_z)
+                    velocity_tail.append(velocity)
+
+            force_arr = np.asarray(force_tail)
+            results[(desired, surface_velocity)] = (
+                float(np.mean(np.abs(force_arr - desired))),
+                float(np.mean(velocity_tail)),
+            )
+
+    # A passive steady chase needs approximately D*v plus the smooth-deadband
+    # offset.  At D=25 Ns/m and v=10 mm/s this is ~0.38 N, independent of the
+    # 1/5 N setpoint.  The old 0.25 N assertion contradicted that configured
+    # plant and encouraged re-enabling proactive press merely to satisfy a
+    # test.
+    passive_bias_budget = (
+        cfg.admittance_damping_z * 0.01
+        + cfg.deadband_n
+        + 0.5 * cfg.deadband_width_n
+        + 0.05
+    )
+    for desired in (1.0, 5.0):
+        assert results[(desired, -0.01)][0] <= passive_bias_budget
+        assert results[(desired, 0.01)][0] <= passive_bias_budget
+    for desired in (1.0, 5.0):
+        assert results[(desired, -0.01)][1] == pytest.approx(
+            -0.01,
+            abs=2e-4,
+        )
+        assert results[(desired, 0.01)][1] == pytest.approx(
+            0.01,
+            abs=2e-4,
+        )
+```
+
+### FILE `rm75_control/tests/test_cdyob.py`
+
+```python
+"""CDYOB ω_Q follows τ_eff, not the paper's 15 Hz."""
+
+from __future__ import annotations
+
+import math
+
+import pytest
+
+from rm75_control.control.admittance_common.cdyob import (
+    CdyobConfig,
+    CombinedDynamicsYob,
+)
+
+
+def test_omega_q_from_tau() -> None:
+    yob = CombinedDynamicsYob(CdyobConfig(enabled=True, omega_q_hz=0.0, tau_s=0.055))
+    yob.update(0.0, v_meas_m_s=0.0, force_n=0.0, dt_s=0.005, tau_s=0.055, in_contact=False)
+    assert yob.last_omega_q_hz == pytest.approx(1.0 / (2.0 * math.pi * 0.055), rel=1e-6)
+    assert yob.last_omega_q_hz < 4.0
+
+
+def test_default_q_is_two_to_three_hz_and_off() -> None:
+    cfg = CdyobConfig()
+    assert cfg.enabled is False
+    assert cfg.omega_q_hz == pytest.approx(2.5)
+    from_yaml = CdyobConfig.from_dict({"hybrid_motion": {"cdyob": {}}})
+    assert from_yaml.enabled is False
+    assert from_yaml.omega_q_hz == pytest.approx(2.5)
+
+
+def test_disabled_passthrough() -> None:
+    yob = CombinedDynamicsYob(CdyobConfig(enabled=False))
+    out = yob.update(
+        0.04, v_meas_m_s=0.01, force_n=2.0, dt_s=0.005, tau_s=0.055, in_contact=True
+    )
+    assert out == pytest.approx(0.04)
+    assert yob.last_corr_m_s == pytest.approx(0.0)
+```
+
+### FILE `rm75_control/tests/test_force_smooth_chase.py`
+
+```python
+"""Smooth constant-force chase: DOB, no Is gate on under-force, short ΔD_hf."""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+from rm75_control.control.admittance_common.controller import (
+    AdmittanceConfig,
+    AdmittanceController,
+)
+from rm75_control.control.admittance_common.force_dob import (
+    ForceDobConfig,
+    ForceDisturbanceObserver,
+)
+from rm75_control.control.admittance_common.proactive_force_ff import (
+    ProactiveFfConfig,
+    ProactiveForceIntegrator,
+)
+
+
+DT = 0.005
+
+
+def test_force_dob_removes_steady_bias():
+    dob = ForceDisturbanceObserver(
+        ForceDobConfig(enabled=True, ki=10.0, leak_s=0.5, u_max_n=2.0, freeze_is=0.9)
+    )
+    u = 0.0
+    for _ in range(400):
+        u = dob.update(0.4, dt_eff=DT, in_contact=True, instability_index=0.0)
+    assert u > 0.3
+    assert u <= 2.0 + 1e-9
+
+
+def test_underforce_press_not_gated_by_is():
+    ff = ProactiveForceIntegrator(
+        ProactiveFfConfig(
+            enabled=True,
+            gain=0.2,
+            retract_gain=0.2,
+            gate_press_on_is=False,
+            press_is_gate=0.5,
+            press_is_gate_start=0.2,
+            leak_s=0.3,
+            v_r_max_m_s=0.06,
+        )
+    )
+    v = 0.0
+    for _ in range(80):
+        v = ff.update(
+            0.8,
+            in_contact=True,
+            dt_eff=DT,
+            instability_index=1.0,
+            v_force_z=0.0,
+            v_z_cap=0.1,
+            desired_force_n=2.0,
+        )
+    assert v > 0.01
+
+
+def test_yaml_smooth_chase_defaults_load():
+    import yaml
+    from pathlib import Path
+
+    raw = yaml.safe_load(
+        Path("configs/joint_admittance_8dof.yaml").read_text(encoding="utf-8")
+    )
+    cfg = AdmittanceConfig.from_dict(raw)
+    # 45c74e1 force law: DOB + bidirectional proactive, barrier as the brake.
+    # Desired-point decoupling tracks tool-Z of the force point, not scan Z.
+    assert cfg.force_dob.enabled
+    assert cfg.proactive_ff.retract_only is False
+    assert cfg.force_barrier.enabled
+    assert cfg.track_axes[2] == pytest.approx(1.0)
+    assert cfg.kp_pos[2] > 0.0
+    assert cfg.kp_pos[2] < cfg.kp_pos[0]
+    assert cfg.adaptive_ke.drive_damping is False
+    assert cfg.proactive_ff.gate_press_on_is is False
+    assert cfg.var_damping_d_u == pytest.approx(0.0)
+    assert cfg.var_damping_m_u == pytest.approx(0.0)
+    assert cfg.cdyob.enabled is False
+    assert cfg.cdyob.omega_q_hz == pytest.approx(2.5)
+    assert cfg.safety_shield.mode == "observe"
+    assert cfg.safety_shield.k_ub_n_m == pytest.approx(8000.0)
+    assert cfg.admittance_mass_z == pytest.approx(1.0)
+    assert cfg.admittance_damping_z == pytest.approx(25.0)
+    ctrl = AdmittanceController(DT, cfg)
+    f_ext = np.zeros(6)
+    f_des = np.zeros(6)
+    f_des[2] = 2.0
+    for _ in range(40):
+        f_ext[2] = 0.9
+        ctrl.compute_velocity_command(
+            np.zeros(6), np.zeros(6), np.zeros(6), f_ext, f_des
+        )
+    # Sustained under-force must now recruit both auxiliary terms, not just
+    # the passive admittance: DOB removes the steady offset and the proactive
+    # reference chases press.  Both were off in the 1bfe98b anti-bounce
+    # baseline, which is what made the descent feel damped.
+    assert ctrl.v_force_z > 0.0
+    assert ctrl.u_dob_z > 0.0
+    assert ctrl.v_r_z > 0.0
+
+
+def test_hf_delta_d_releases_after_hold():
+    cfg = AdmittanceConfig(
+        admittance_mass_z=1.0,
+        admittance_damping_z=25.0,
+        desired_force_ramp_s=0.0,
+        var_damping_enabled=True,
+        var_damping_d_u=80.0,
+        var_damping_m_u=1.0,
+        var_damping_hf_attack_s=0.02,
+        var_damping_hf_hold_s=0.10,
+        var_damping_hf_release_s=0.05,
+        var_damping_hf_on=0.2,
+        var_damping_hf_off=0.1,
+        var_damping_hf_err_n=1.0,
+    )
+    cfg.adaptive_ke.enabled = False
+    cfg.adaptive_ke.drive_damping = False
+    cfg.proactive_ff = ProactiveFfConfig(enabled=False)
+    cfg.force_dob = ForceDobConfig(enabled=False)
+    ctrl = AdmittanceController(DT, cfg)
+    ctrl._contact_time_s = 1.0
+    ctrl.instability_index = 0.8
+    for _ in range(10):
+        d = ctrl._update_delta_d_hf(DT, abs_eff_n=0.2)
+    assert d > 10.0
+    ctrl.instability_index = 0.0
+    for _ in range(80):
+        d = ctrl._update_delta_d_hf(DT, abs_eff_n=0.2)
+    assert d < 5.0
+```
+
+### FILE `rm75_control/tests/test_proactive_force_ff.py`
+
+```python
+"""Leaky ∫F_err proactive reference (bidirectional chase + bounce guards)."""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+import yaml
+from pathlib import Path
+
+from rm75_control.control.admittance_common.controller import (
+    AdmittanceConfig,
+    AdmittanceController,
+)
+from rm75_control.control.admittance_common.scaling import (
+    scale_admittance_for_desired_z,
+)
+from rm75_control.control.admittance_common.proactive_force_ff import (
+    ProactiveFfConfig,
+    ProactiveForceIntegrator,
+)
+
+DT = 0.005
+
+
+def test_integrator_bidirectional_press_and_retract():
+    ff = ProactiveForceIntegrator(
+        ProactiveFfConfig(enabled=True, retract_only=False, gain=0.10, leak_s=10.0)
+    )
+    for _ in range(200):
+        ff.update(1.0, in_contact=True, dt_eff=DT, instability_index=0.0, v_force_z=0.0, v_z_cap=0.10)
+    assert ff.v_r > 0.01
+    ff.reset()
+    for _ in range(200):
+        ff.update(-1.0, in_contact=True, dt_eff=DT, instability_index=0.0, v_force_z=0.0, v_z_cap=0.10)
+    assert ff.v_r < -0.01
+
+
+def test_instability_gates_press_but_keeps_retract_escape_open():
+    ff_lo = ProactiveForceIntegrator(ProactiveFfConfig(gain=0.10, leak_s=10.0, press_is_gate=0.5))
+    ff_hi = ProactiveForceIntegrator(ProactiveFfConfig(gain=0.10, leak_s=10.0, press_is_gate=0.5))
+    ff_retract_lo = ProactiveForceIntegrator(ProactiveFfConfig(gain=0.10, leak_s=10.0, press_is_gate=0.5))
+    ff_retract_hi = ProactiveForceIntegrator(ProactiveFfConfig(gain=0.10, leak_s=10.0, press_is_gate=0.5))
+    for _ in range(50):
+        ff_lo.update(2.0, in_contact=True, dt_eff=DT, instability_index=0.0, v_force_z=0.0, v_z_cap=0.10)
+        ff_hi.update(2.0, in_contact=True, dt_eff=DT, instability_index=0.25, v_force_z=0.0, v_z_cap=0.10)
+        ff_retract_lo.update(-2.0, in_contact=True, dt_eff=DT, instability_index=0.0, v_force_z=0.0, v_z_cap=0.10)
+        ff_retract_hi.update(-2.0, in_contact=True, dt_eff=DT, instability_index=2.0, v_force_z=0.0, v_z_cap=0.10)
+    assert ff_hi.v_r < ff_lo.v_r - 1e-6
+    assert ff_retract_hi.v_r == pytest.approx(ff_retract_lo.v_r)
+    assert ff_retract_hi.last_instability_scale == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize(
+    ("instability", "expected_scale"),
+    [(0.10, 1.0), (0.20, 1.0), (0.40, 0.5), (0.60, 0.0), (1.0, 0.0)],
+)
+def test_press_gate_has_noise_floor_and_unchanged_hard_stop(
+    instability: float,
+    expected_scale: float,
+):
+    ff = ProactiveForceIntegrator(
+        ProactiveFfConfig(
+            gain=0.10,
+            leak_s=10.0,
+            press_is_gate_start=0.20,
+            press_is_gate=0.60,
+        )
+    )
+    ff.update(
+        1.0,
+        in_contact=True,
+        dt_eff=DT,
+        instability_index=instability,
+        v_force_z=0.0,
+        v_z_cap=0.10,
+    )
+    assert ff.last_instability_scale == pytest.approx(expected_scale)
+
+
+def test_rising_edge_clears_press_v_r():
+    ctrl = AdmittanceController(
+        DT,
+        AdmittanceConfig(
+            proactive_ff=ProactiveFfConfig(enabled=True),
+            adaptive_ke=AdmittanceConfig().adaptive_ke,
+        ),
+    )
+    ctrl.cfg.adaptive_ke.enabled = False
+    ctrl._proactive_ff.v_r = 0.04
+    ctrl._update_proactive_v_r(0.0, True, DT, rising_edge=True)
+    assert ctrl.v_r_z == pytest.approx(0.0)
+
+
+def test_stable_controller_normalizes_setpoint_and_is_small_signal_symmetric():
+    cfg = AdmittanceConfig(
+        proactive_ff=ProactiveFfConfig(
+            enabled=True,
+            gain=0.10,
+            leak_s=1e6,
+            press_is_gate=0.5,
+        ),
+    )
+
+    def integrate(error: float, desired: float, instability: float) -> float:
+        ctrl = AdmittanceController(DT, cfg)
+        ctrl._in_contact_latched = True
+        ctrl.instability_index = instability
+        for _ in range(100):
+            ctrl._update_proactive_v_r(
+                error,
+                True,
+                DT,
+                rising_edge=False,
+                desired_force_n=desired,
+            )
+        return ctrl.v_r_z
+
+    # Constant Fs (force_scale_fraction=0): same error → same v_r at any
+    # setpoint.  Both signs still share the small-error gain.
+    press_a = integrate(0.15, 1.0, 0.0)
+    press_b = integrate(0.15, 5.0, 0.0)
+    retract_a = integrate(-0.15, 1.0, 0.0)
+    retract_b = integrate(-0.15, 5.0, 0.0)
+    assert press_b == pytest.approx(press_a, rel=1e-9)
+    assert retract_b == pytest.approx(retract_a, rel=1e-9)
+    assert retract_a == pytest.approx(-press_a, rel=1e-9)
+
+
+def test_same_contact_reversal_discards_old_reference_in_both_directions():
+    cfg = ProactiveFfConfig(
+        gain=0.10,
+        retract_gain=0.10,
+        leak_s=0.3,
+        press_is_gate=0.5,
+        reset_on_reversal=True,
+    )
+    ff = ProactiveForceIntegrator(cfg)
+    for _ in range(100):
+        ff.update(
+            1.0,
+            in_contact=True,
+            dt_eff=DT,
+            instability_index=0.0,
+            v_force_z=0.0,
+            v_z_cap=0.10,
+        )
+    assert ff.v_r > 0.0
+    ff.update(
+        -1.0,
+        in_contact=True,
+        dt_eff=DT,
+        instability_index=2.0,
+        v_force_z=0.0,
+        v_z_cap=0.10,
+    )
+    assert ff.last_reversal_reset is True
+    assert ff.v_r < 0.0
+    assert ff.last_reference_accel_m_s2 < 0.0
+
+    for _ in range(100):
+        ff.update(
+            -1.0,
+            in_contact=True,
+            dt_eff=DT,
+            instability_index=0.0,
+            v_force_z=0.0,
+            v_z_cap=0.10,
+        )
+    assert ff.v_r < 0.0
+    ff.update(
+        1.0,
+        in_contact=True,
+        dt_eff=DT,
+        instability_index=0.0,
+        v_force_z=0.0,
+        v_z_cap=0.10,
+    )
+    assert ff.last_reversal_reset is True
+    assert ff.v_r > 0.0
+
+
+def test_zero_effective_error_leaks_without_false_reversal_reset():
+    ff = ProactiveForceIntegrator(
+        ProactiveFfConfig(leak_s=0.3, reset_on_reversal=True)
+    )
+    ff.v_r = 0.02
+    ff.update(
+        0.0,
+        in_contact=True,
+        dt_eff=DT,
+        instability_index=1.0,
+        v_force_z=0.0,
+        v_z_cap=0.10,
+    )
+    assert ff.last_reversal_reset is False
+    assert 0.0 < ff.v_r < 0.02
+
+
+def test_reference_drive_and_antiwindup_are_bounded_on_both_signs():
+    ff = ProactiveForceIntegrator(
+        ProactiveFfConfig(
+            gain=0.10,
+            retract_gain=0.10,
+            leak_s=1e6,
+            press_drive_max=1.0,
+            retract_drive_max=1.0,
+            v_r_max_m_s=0.06,
+        )
+    )
+    ff.update(
+        -100.0,
+        in_contact=True,
+        dt_eff=DT,
+        instability_index=100.0,
+        v_force_z=0.0,
+        v_z_cap=0.10,
+        desired_force_n=1.0,
+    )
+    assert ff.last_drive == pytest.approx(-1.0)
+    assert ff.last_reference_accel_m_s2 == pytest.approx(-0.10)
+
+    # Outward integration freezes at the force-velocity cap.
+    ff.update(
+        -100.0,
+        in_contact=True,
+        dt_eff=DT,
+        instability_index=100.0,
+        v_force_z=-0.10,
+        v_z_cap=0.10,
+        desired_force_n=1.0,
+    )
+    assert ff.last_reference_accel_m_s2 == pytest.approx(0.0)
+
+
+def test_stable_controller_rising_edge_clears_either_old_direction():
+    ctrl = AdmittanceController(DT, AdmittanceConfig())
+    for old_reference in (-0.04, 0.04):
+        ctrl._proactive_ff.v_r = old_reference
+        ctrl._update_proactive_v_r(
+            0.0,
+            True,
+            DT,
+            rising_edge=True,
+            desired_force_n=2.0,
+        )
+        assert ctrl.v_r_z == pytest.approx(0.0)
+
+
+def test_stable_controller_keeps_2965_parameters_fixed_across_setpoints():
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
+    assert "controller_mode" not in raw["hybrid_motion"]
+    cfg1 = scale_admittance_for_desired_z(raw, 1.0)
+    cfg5 = scale_admittance_for_desired_z(raw, 5.0)
+    assert cfg1.admittance_mass_z == pytest.approx(cfg5.admittance_mass_z)
+    assert cfg1.var_damping_f_max_n == pytest.approx(
+        cfg5.var_damping_f_max_n
+    )
+    assert cfg1.adaptive_ke.bd_max == pytest.approx(cfg5.adaptive_ke.bd_max)
+    ctrl = AdmittanceController(DT, cfg1)
+    assert ctrl.controller_mode == "legacy_symmetric"
+
+
+def test_stable_controller_tracks_moving_surface_at_1n_and_5n_without_bias():
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
+    ke_n_m = 800.0
+    results = {}
+    for desired in (1.0, 5.0):
+        for surface_velocity in (-0.01, 0.01):
+            cfg = scale_admittance_for_desired_z(raw, desired)
+            # Isolate the corrected force-reference dynamics in this linear
+            # contact test. Ke/Dimeas retain their 2965fea implementations and
+            # have their own regression tests.
+            cfg.adaptive_ke.enabled = False
+            cfg.var_damping_enabled = False
+            cfg.force_dob.enabled = False
+            # The shipped YAML is retract-only for safety.  This regression
+            # intentionally isolates bidirectional force-reference tracking
+            # on moving surfaces, so opt into that behavior locally.
+            cfg.proactive_ff.retract_only = False
+            ctrl = AdmittanceController(DT, cfg)
+            tcp_z = desired / ke_n_m
+            surface_z = 0.0
+            samples = []
+            velocity_samples = []
+            for tick in range(1600):
+                force_z = max(0.0, ke_n_m * (tcp_z - surface_z))
+                force = np.zeros(6)
+                force[2] = force_z
+                target = np.zeros(6)
+                target[2] = desired
+                pose = np.zeros(6)
+                pose[2] = tcp_z
+                velocity = ctrl.compute_velocity_command(
+                    pose,
+                    pose,
+                    np.zeros(6),
+                    force,
+                    target,
+                    f_ext_raw=force,
+                    in_contact=True,
+                )[2]
+                tcp_z += velocity * DT
+                surface_z += surface_velocity * DT
+                if tick >= 600:
+                    samples.append(force_z)
+                    velocity_samples.append(velocity)
+            results[(desired, surface_velocity)] = (
+                float(np.mean(np.abs(np.asarray(samples) - desired))),
+                float(np.mean(velocity_samples)),
+            )
+
+    assert results[(1.0, -0.01)][0] <= 0.26
+    assert results[(1.0, 0.01)][0] <= 0.26
+    assert results[(5.0, -0.01)][0] <= 0.60
+    assert results[(5.0, 0.01)][0] <= 0.60
+    for desired in (1.0, 5.0):
+        negative_error = results[(desired, -0.01)][0]
+        positive_error = results[(desired, 0.01)][0]
+        # Predictive press cap is tighter than retract, so approaching vs
+        # receding surfaces may differ; keep the gap bounded.
+        assert max(negative_error, positive_error) <= 2.6 * min(
+            negative_error,
+            positive_error,
+        )
+        assert results[(desired, -0.01)][1] == pytest.approx(
+            -0.01,
+            abs=2e-4,
+        )
+        assert results[(desired, 0.01)][1] == pytest.approx(
+            0.01,
+            abs=2e-4,
+        )
+
+
+def _controller(**over) -> AdmittanceController:
+    kw = dict(
+        contact_threshold_n=0.8,
+        deadband_n=0.0,
+        deadband_width_n=0.0,
+        max_vz_tool_m_s=0.10,
+        max_velocity=np.array([0.2, 0.2, 0.10, 0.5, 0.5, 0.5]),
+        admittance_mass_z=1.0,
+        admittance_damping_z=25.0,
+        var_damping_enabled=False,
+        proactive_ff=ProactiveFfConfig(
+            enabled=True,
+            retract_only=False,
+            gain=0.10,
+            leak_s=0.3,
+            v_r_max_m_s=0.06,
+        ),
+    )
+    kw.update(over)
+    cfg = AdmittanceConfig(**kw)
+    cfg.adaptive_ke.enabled = False
+    return AdmittanceController(DT, cfg)
+
+
+def _mark_confirmed_contact(ctrl: AdmittanceController) -> None:
+    """Inner-loop tests skip the contact tracker; do not treat that as first contact."""
+    ctrl._in_contact_latched = True
+    ctrl._episode_seen = True
+    ctrl.contact_present = True
+    ctrl._recontact_slow_latched = False
+
+
+def test_proactive_boosts_velocity_under_sustained_error():
+    ctrl = _controller()
+    _mark_confirmed_contact(ctrl)
+    for _ in range(400):
+        ctrl._admittance_z(
+            2.0,
+            True,
+            dt_eff=DT,
+            rising_edge=False,
+        )
+    assert ctrl.v_r_z > 0.015
+    assert ctrl.v_force_z > 0.08
+
+
+def test_high_instability_cannot_delay_overforce_escape_after_reversal():
+    ctrl = _controller(var_damping_enabled=True)
+    _mark_confirmed_contact(ctrl)
+
+    # Build the exact stale state seen in the hardware logs: positive TCP-Z
+    # velocity and a positive active reference immediately before a fast
+    # over-force push.
+    for _ in range(200):
+        ctrl._m_z_now = 1.0
+        ctrl.instability_index = 0.0
+        ctrl._admittance_z(
+            1.0,
+            True,
+            dt_eff=DT,
+            rising_edge=False,
+            desired_force_n=2.0,
+        )
+    assert ctrl.v_force_z > 0.0
+    assert ctrl.v_r_z > 0.0
+
+    first_tick_reset = False
+    ticks_to_retract = None
+    for tick in range(1, 41):
+        # Is=0.7 is above the configured press gate.  Dimeas mass and damping
+        # remain active, but they may not close the over-force escape branch.
+        ctrl._m_z_now = 3.8
+        ctrl.instability_index = 0.7
+        ctrl._admittance_z(
+            -2.0,
+            True,
+            dt_eff=DT,
+            rising_edge=False,
+            desired_force_n=2.0,
+        )
+        if tick == 1:
+            first_tick_reset = ctrl.force_reference_reversal_reset
+            assert ctrl.v_r_z < 0.0
+            assert ctrl.force_reference_gate_scale == pytest.approx(1.0)
+        if ctrl.v_force_z < 0.0:
+            ticks_to_retract = tick
+            break
+
+    assert first_tick_reset is True
+    assert ticks_to_retract is not None
+    assert ticks_to_retract * DT <= 0.10
+
+
+def test_yaml_proactive_bidirectional_and_headroom():
+    raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
+    hm = raw["hybrid_motion"]
+    assert hm["proactive_feedforward"] is True
+    # Bidirectional again (e85c9ab): retract_only zeroed the press-side v_r
+    # integration outright, which is what made under-force chase so slow.
+    assert hm["proactive_retract_only"] is False
+    # Asymmetric chase: retract gain may exceed press gain (over-force escape).
+    assert float(hm["proactive_gain"]) > 0.0
+    assert float(hm["proactive_retract_gain"]) == pytest.approx(float(hm["proactive_gain"]))
+    assert 0.0 <= hm["proactive_press_is_gate_start"] < hm[
+        "proactive_press_is_gate"
+    ]
+    assert hm.get("proactive_gate_press_on_is", True) is False
+    assert float(hm["proactive_press_drive_max"]) >= 1.0
+    assert float(hm["proactive_retract_drive_max"]) == pytest.approx(
+        float(hm["proactive_press_drive_max"])
+    )
+    assert hm["proactive_reset_on_reversal"] is True
+    assert hm["v_r_max_m_s"] < hm["max_vz_tool_m_s"]
+    assert "li2022" not in hm
+```
+
+
+---
+
+## 4. git HEAD 原有「力控制律双版本审查稿」
+
 # 力控制律双版本审查稿
 
 生成方式：机械摘录 git `e85c9ab957c78d500c3746159f1f47f4cabe3f0a`（A 版）与当前工作树（B 版），避免手抄走样。  

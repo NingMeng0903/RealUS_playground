@@ -31,8 +31,19 @@ def main() -> int:
     parser.add_argument("--trans-m-s", type=float, default=None)
     parser.add_argument("--rot-rad-s", type=float, default=None)
     parser.add_argument("--hold", action="store_true", help="use servo_twist_hold")
-    parser.add_argument("--quiet", action="store_true", help="no periodic v_cmd log")
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        default=True,
+        help="no periodic v_cmd log (default)",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="print a 5 Hz pad heartbeat",
+    )
     args = parser.parse_args()
+    quiet = bool(args.quiet) and not bool(args.verbose)
     twist_cfg = GamepadTwistConfig()
     if args.trans_m_s is not None or args.rot_rad_s is not None:
         twist_cfg = replace(
@@ -86,7 +97,7 @@ def main() -> int:
                 else:
                     client.set_mode(ModeRequest(vel_mode, {}))
                     print("[MODE] " + vel_mode.name, flush=True)
-            if not args.quiet and (now - last_log_s) >= 0.20:
+            if not quiet and (now - last_log_s) >= 0.20:
                 last_log_s = now
                 twv = snap["twist"]
                 ax = snap["axes"]

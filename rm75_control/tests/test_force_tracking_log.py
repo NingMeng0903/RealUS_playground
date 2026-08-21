@@ -136,6 +136,29 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert "ke_cap_n_m" in header
     assert "cdyob_corr_m_s" in header
     assert "overforce_escape" in header
+    assert "u_nom_raw" in header
+    assert "u_nom_capped" in header
+    assert "u_shield_hyp" in header
+    assert "u_sent" in header
+    assert "lambda_obs" in header
+    assert "shield_applied" in header
+    assert "shield_feasible" in header
+    assert "f_ub_n" in header
+    assert "e_lb_j" in header
+    assert "w_lb_j" in header
+    assert "rho_v2_w" in header
+    assert "n_stop" in header
+    assert "tube_violation" in header
+    assert "solver_us" in header
+    assert "shield_infeasible_reason" in header
+    assert "f_constraint_margin_n" in header
+    assert "energy_margin_j" in header
+    assert "terminal_ok" in header
+    assert "aj_ok" in header
+    assert "domain_ok" in header
+    assert "recovery_latched" in header
+    assert "recontact_slow_latched" in header
+    assert "v_recontact_cap" in header
 
     values = dict(zip(header, rows[1], strict=True))
     assert values["rail_escape_active"] == "0"

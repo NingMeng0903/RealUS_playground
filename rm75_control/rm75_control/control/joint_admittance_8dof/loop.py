@@ -334,6 +334,10 @@ class JointIkStep:
     sigma_arm: float = float("nan")
     sns_scale: float = 1.0
     qdot_meas: np.ndarray = field(default_factory=lambda: np.full(8, np.nan))
+    v_tcp_z_actual: float = float("nan")
+    a_tcp_z_plus: float = 0.0
+    feedback_age_s: float = float("nan")
+    feedback_velocity_valid: bool = False
     v_cmd: np.ndarray = field(default_factory=lambda: np.zeros(6))
     path_twist: np.ndarray = field(default_factory=lambda: np.zeros(6))
     feedback_twist: np.ndarray = field(default_factory=lambda: np.zeros(6))
@@ -3180,6 +3184,29 @@ class _TickLogger:
             "ke_cap_n_m",
             "cdyob_corr_m_s",
             "overforce_escape",
+            "u_nom_raw",
+            "u_nom_capped",
+            "u_shield_hyp",
+            "u_sent",
+            "lambda_obs",
+            "shield_applied",
+            "shield_feasible",
+            "f_ub_n",
+            "e_lb_j",
+            "w_lb_j",
+            "rho_v2_w",
+            "n_stop",
+            "tube_violation",
+            "solver_us",
+            "shield_infeasible_reason",
+            "f_constraint_margin_n",
+            "energy_margin_j",
+            "terminal_ok",
+            "aj_ok",
+            "domain_ok",
+            "recovery_latched",
+            "recontact_slow_latched",
+            "v_recontact_cap",
         ]
     )
 
@@ -3300,6 +3327,31 @@ class _TickLogger:
         ke_cap_n_m = getattr(ctrl, "ke_cap_n_m", float("nan"))
         cdyob_corr_m_s = getattr(ctrl, "cdyob_corr_m_s", float("nan"))
         overforce_escape = getattr(ctrl, "overforce_escape", False)
+        u_nom_raw = getattr(ctrl, "u_nom_raw_z", float("nan"))
+        u_nom_capped = getattr(ctrl, "u_nom_capped_z", float("nan"))
+        u_shield_hyp = getattr(ctrl, "u_shield_hyp_z", float("nan"))
+        u_sent = getattr(ctrl, "u_sent_z", float("nan"))
+        lambda_obs = getattr(ctrl, "lambda_obs", float("nan"))
+        shield_applied = getattr(ctrl, "shield_applied", False)
+        shield_feasible = getattr(ctrl, "shield_feasible", True)
+        f_ub_n = getattr(ctrl, "shield_f_ub_n", float("nan"))
+        e_lb_j = getattr(ctrl, "shield_e_lb_j", float("nan"))
+        w_lb_j = getattr(ctrl, "shield_w_lb_j", float("nan"))
+        rho_v2_w = getattr(ctrl, "shield_rho_v2_w", float("nan"))
+        n_stop = getattr(ctrl, "shield_n_stop", 0)
+        tube_violation = getattr(ctrl, "shield_tube_violation", False)
+        solver_us = getattr(ctrl, "shield_solver_us", float("nan"))
+        shield_infeasible_reason = getattr(ctrl, "shield_infeasible_reason", "")
+        f_constraint_margin_n = getattr(
+            ctrl, "shield_f_constraint_margin_n", float("nan")
+        )
+        energy_margin_j = getattr(ctrl, "shield_energy_margin_j", float("nan"))
+        terminal_ok = getattr(ctrl, "shield_terminal_ok", False)
+        aj_ok = getattr(ctrl, "shield_aj_ok", True)
+        domain_ok = getattr(ctrl, "shield_domain_ok", True)
+        recovery_latched = getattr(ctrl, "shield_recovery_latched", False)
+        recontact_slow_latched = getattr(ctrl, "recontact_slow_latched", False)
+        v_recontact_cap = getattr(ctrl, "v_recontact_cap_m_s", float("nan"))
         ke_est = getattr(ctrl, "ke_est", float("nan"))
         f_des_eff = getattr(ctrl, "f_des_z_eff", float("nan"))
         v_r_z = getattr(ctrl, "v_r_z", float("nan"))
@@ -4024,6 +4076,41 @@ class _TickLogger:
                    else ""
                ),
                int(bool(overforce_escape)),
+               f"{float(u_nom_raw):.6f}" if np.isfinite(float(u_nom_raw)) else "",
+               f"{float(u_nom_capped):.6f}" if np.isfinite(float(u_nom_capped)) else "",
+               f"{float(u_shield_hyp):.6f}" if np.isfinite(float(u_shield_hyp)) else "",
+               f"{float(u_sent):.6f}" if np.isfinite(float(u_sent)) else "",
+               f"{float(lambda_obs):.6f}" if np.isfinite(float(lambda_obs)) else "",
+               int(bool(shield_applied)),
+               int(bool(shield_feasible)),
+               f"{float(f_ub_n):.6f}" if np.isfinite(float(f_ub_n)) else "",
+               f"{float(e_lb_j):.8f}" if np.isfinite(float(e_lb_j)) else "",
+               f"{float(w_lb_j):.8f}" if np.isfinite(float(w_lb_j)) else "",
+               f"{float(rho_v2_w):.8f}" if np.isfinite(float(rho_v2_w)) else "",
+               int(n_stop),
+               int(bool(tube_violation)),
+               f"{float(solver_us):.2f}" if np.isfinite(float(solver_us)) else "",
+               str(shield_infeasible_reason or ""),
+               (
+                   f"{float(f_constraint_margin_n):.6f}"
+                   if np.isfinite(float(f_constraint_margin_n))
+                   else ""
+               ),
+               (
+                   f"{float(energy_margin_j):.8f}"
+                   if np.isfinite(float(energy_margin_j))
+                   else ""
+               ),
+               int(bool(terminal_ok)),
+               int(bool(aj_ok)),
+               int(bool(domain_ok)),
+               int(bool(recovery_latched)),
+               int(bool(recontact_slow_latched)),
+               (
+                   f"{float(v_recontact_cap):.6f}"
+                   if np.isfinite(float(v_recontact_cap))
+                   else ""
+               ),
                ]
         ))
 
@@ -4701,6 +4788,7 @@ def run_joint_admittance_phases(
                     twist_achieved_base = np.zeros(6, dtype=float)
                     qdot_meas = None
                     v_tcp_z_actual = 0.0
+                    last_v_tcp_z = None
                     feedback_velocity_valid = False
                     feedback_fresh_tick = False
                     first_tick = True

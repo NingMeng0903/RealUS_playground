@@ -356,9 +356,17 @@ def _controller(**over) -> AdmittanceController:
     return AdmittanceController(DT, cfg)
 
 
+def _mark_confirmed_contact(ctrl: AdmittanceController) -> None:
+    """Inner-loop tests skip the contact tracker; do not treat that as first contact."""
+    ctrl._in_contact_latched = True
+    ctrl._episode_seen = True
+    ctrl.contact_present = True
+    ctrl._recontact_slow_latched = False
+
+
 def test_proactive_boosts_velocity_under_sustained_error():
     ctrl = _controller()
-    ctrl._in_contact_latched = True
+    _mark_confirmed_contact(ctrl)
     for _ in range(400):
         ctrl._admittance_z(
             2.0,
@@ -372,7 +380,7 @@ def test_proactive_boosts_velocity_under_sustained_error():
 
 def test_high_instability_cannot_delay_overforce_escape_after_reversal():
     ctrl = _controller(var_damping_enabled=True)
-    ctrl._in_contact_latched = True
+    _mark_confirmed_contact(ctrl)
 
     # Build the exact stale state seen in the hardware logs: positive TCP-Z
     # velocity and a positive active reference immediately before a fast

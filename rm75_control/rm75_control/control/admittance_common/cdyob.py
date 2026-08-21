@@ -1,17 +1,13 @@
 """Samuel 2024 combined-dynamics Youla observer at the velocity interface.
 
-The inner loop is a black-box velocity servo.  After ``identify_plant.py``
-fills ``tau_s`` (and optionally ``t_n_s``), Q is a first-order low-pass at
-
-    ω_Q = 1 / (2π τ)     (≈ 2.9 Hz for τ = 55 ms)
-
-so the Q-delay phase stays well below 180°.  The paper's 15 Hz Q assumed
-td ≈ 3 ms at 1250 Hz and is not used here.
+Reduced Youla-like velocity corrector.  It is a performance term only
+and is not a passivity certificate.  Start Q at 2–3 Hz from the
+identified ``P(z)``; do not treat ``1/(2π τ)`` as a theoretical cutoff.
+The paper's 15 Hz Q assumed td ≈ 3 ms at 1250 Hz and is not used here.
 
 N1 = Q C_n^{-1} A R_n^{-1} and N2 = Q A P_n^{-1} T_n^{-1} are realised as
-first-order filters on measured force and measured velocity.  Default
-``enabled=false``: turn on only after a free-space step/chirp has confirmed
-τ_eff.  The observer never mutates the Lee tank.
+first-order filters on measured force and measured velocity.  Default ``enabled=false``.  Turn on only after observe/force scans.
+The observer never mutates the Lee tank or the shield energy.
 """
 
 from __future__ import annotations
@@ -25,8 +21,8 @@ import numpy as np
 @dataclass
 class CdyobConfig:
     enabled: bool = False
-    # 0 → ω_Q = 1/(2π τ).  Never use the paper's 15 Hz on this plant.
-    omega_q_hz: float = 0.0
+    # 0 → fall back to 1/(2π τ). Prefer an explicit 2–3 Hz start.
+    omega_q_hz: float = 2.5
     tau_s: float = 0.0
     # Residual first-order inner-loop time constant after the delay.
     t_n_s: float = 0.020
@@ -49,7 +45,7 @@ class CdyobConfig:
             p = {}
         return cls(
             enabled=bool(p.get("enabled", False)),
-            omega_q_hz=float(p.get("omega_q_hz", 0.0)),
+            omega_q_hz=float(p.get("omega_q_hz", 2.5)),
             tau_s=float(p.get("tau_s", 0.0)),
             t_n_s=float(p.get("t_n_s", 0.020)),
             cn_kp=float(p.get("cn_kp", 80.0)),

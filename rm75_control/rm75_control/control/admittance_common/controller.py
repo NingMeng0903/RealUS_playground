@@ -1,8 +1,8 @@
 """Stable tool-frame force/motion decoupling and trajectory tracking.
 
-Tool-Z force axis (implicit Euler):
+Tool-Z force axis (exact ZOH of M v̇ + D v = e_f + D0 v_r):
 
-    M0 · v̇ + (D0 + ΔD_hf) · (v − v_r) = e_f + u_DOB
+    v+ = a v + b (e_f + u_DOB + D0 v_r),  a=e^{-D Ts/M}, b=(1-a)/D
 
 * Low baseline ``D0`` preserves light feel and fast under-/over-force chase.
 * Short-lived ``ΔD_hf(Iₛ)`` dissipates contact chatter without sticky steady D.
@@ -47,6 +47,10 @@ from rm75_control.control.admittance_common.bidirectional_flow import (
 from rm75_control.control.admittance_common.cdyob import (
     CdyobConfig,
     CombinedDynamicsYob,
+)
+from rm75_control.control.admittance_common.delay_safety_shield import (
+    DelaySafetyShield,
+    SafetyShieldConfig,
 )
 from rm75_control.control.admittance_common.pose_math import pose_error, wrap_pi
 from rm75_control.control.admittance_common.proactive_force_ff import (
@@ -165,9 +169,12 @@ class AdmittanceConfig:
     # Only add ΔD_hf near the force setpoint so large under/over-force
     # chase is not slowed by a step-response Is spike.
     var_damping_hf_err_n: float = 0.8
-    # Temporary press-speed limit after DETACHED → RECONTACT.
+    # Upper bound on the loss-latched recontact press speed.  The actual
+    # cap is min(this, (F_max-F_enter-ΔF_unc)/(K_ub T_stop)).
     recontact_vz_cap_m_s: float = 0.008
     recontact_hold_s: float = 0.20
+    recontact_settle_m_s: float = 0.003
+    recontact_settle_hold_s: float = 0.050
     # Soften under-force chase / DOB when tool-XY speed is near a scan turnaround.
     force_lateral_soft_m_s: float = 0.006
     force_lateral_full_m_s: float = 0.018
@@ -185,6 +192,7 @@ class AdmittanceConfig:
     # same fields in all modes.
     force_barrier: ForceBarrierConfig = field(default_factory=ForceBarrierConfig)
     cdyob: CdyobConfig = field(default_factory=CdyobConfig)
+    safety_shield: SafetyShieldConfig = field(default_factory=SafetyShieldConfig)
     # Force-axis slew is intentionally asymmetric.  A zero value preserves
     # the historical uncapped force-axis path; positive values are applied
     # after the safety caps and before the normal-axis command is returned.
@@ -287,6 +295,8 @@ class AdmittanceConfig:
                 c.get("recontact_vz_cap_m_s", 0.008)
             ),
             recontact_hold_s=float(c.get("recontact_hold_s", 0.20)),
+            recontact_settle_m_s=float(c.get("recontact_settle_m_s", 0.003)),
+            recontact_settle_hold_s=float(c.get("recontact_settle_hold_s", 0.050)),
             force_lateral_soft_m_s=float(
                 c.get("force_lateral_soft_m_s", 0.006)
             ),
@@ -300,6 +310,7 @@ class AdmittanceConfig:
             bidirectional_flow=BidirectionalFlowConfig.from_dict(raw),
             force_barrier=ForceBarrierConfig.from_dict(raw),
             cdyob=CdyobConfig.from_dict(raw),
+            safety_shield=SafetyShieldConfig.from_dict(raw),
             force_axis_slew_press_m_s2=float(
                 c.get("force_axis_slew_press_m_s2", c.get("force_slew_press_m_s2", 0.0))
             ),
@@ -402,14 +413,45 @@ class AdmittanceController:
         self._hf_hold_s = 0.0
         self._hf_active = False
         self._recontact_timer_s = 0.0
+        self._recontact_slow_latched = False
+        self._recontact_detached_seen = False
+        self._recontact_reacquired_seen = False
+        self._recontact_settle_ok_s = 0.0
+        self.recontact_slow_latched = False
+        self.recontact_detached_seen = False
+        self.v_recontact_cap_m_s = 0.0
         self._force_dob = ForceDisturbanceObserver(self.cfg.force_dob)
         self.u_dob_z = 0.0
         self._force_barrier = ForceSpaceVelocityDamper(self.cfg.force_barrier)
         self._cdyob = CombinedDynamicsYob(self.cfg.cdyob)
+        self._safety_shield = DelaySafetyShield(self.cfg.safety_shield, dt)
         self.cdyob_corr_m_s = 0.0
         self.ke_cap_n_m = float(self.cfg.adaptive_ke.ke_initial)
         self.overforce_escape = False
         self.v_force_cmd_z = 0.0
+        self.u_nom_raw_z = 0.0
+        self.u_nom_capped_z = 0.0
+        self.u_shield_hyp_z = 0.0
+        self.u_sent_z = 0.0
+        self.lambda_obs = 1.0
+        self.shield_applied = False
+        self.shield_feasible = True
+        self.shield_f_ub_n = 0.0
+        self.shield_e_lb_j = float(self.cfg.safety_shield.e0_j)
+        self.shield_w_lb_j = 0.0
+        self.shield_rho_v2_w = 0.0
+        self.shield_n_stop = 0
+        self.shield_tube_violation = False
+        self.shield_solver_us = 0.0
+        self.shield_infeasible_reason = ""
+        self.shield_f_constraint_margin_n = 0.0
+        self.shield_energy_margin_j = 0.0
+        self.shield_terminal_ok = False
+        self.shield_recovery_latched = False
+        self.shield_domain_ok = True
+        self.shield_aj_ok = True
+        self._v_tcp_z_prev: float | None = None
+        self._a_tcp_z_actual = 0.0
         self._force_axis_acc = 0.0
         self.force_pred_z = 0.0
         self.force_dot_z = 0.0
@@ -517,14 +559,45 @@ class AdmittanceController:
         self._hf_hold_s = 0.0
         self._hf_active = False
         self._recontact_timer_s = 0.0
+        self._recontact_slow_latched = False
+        self._recontact_detached_seen = False
+        self._recontact_reacquired_seen = False
+        self._recontact_settle_ok_s = 0.0
+        self.recontact_slow_latched = False
+        self.recontact_detached_seen = False
+        self.v_recontact_cap_m_s = 0.0
         self._force_dob.reset()
         self.u_dob_z = 0.0
         self._force_barrier.reset()
         self._cdyob.reset()
+        self._safety_shield.reset()
         self.cdyob_corr_m_s = 0.0
         self.ke_cap_n_m = float(self.cfg.adaptive_ke.ke_initial)
         self.overforce_escape = False
         self.v_force_cmd_z = 0.0
+        self.u_nom_raw_z = 0.0
+        self.u_nom_capped_z = 0.0
+        self.u_shield_hyp_z = 0.0
+        self.u_sent_z = 0.0
+        self.lambda_obs = 1.0
+        self.shield_applied = False
+        self.shield_feasible = True
+        self.shield_f_ub_n = 0.0
+        self.shield_e_lb_j = float(self.cfg.safety_shield.e0_j)
+        self.shield_w_lb_j = 0.0
+        self.shield_rho_v2_w = 0.0
+        self.shield_n_stop = 0
+        self.shield_tube_violation = False
+        self.shield_solver_us = 0.0
+        self.shield_infeasible_reason = ""
+        self.shield_f_constraint_margin_n = 0.0
+        self.shield_energy_margin_j = 0.0
+        self.shield_terminal_ok = False
+        self.shield_recovery_latched = False
+        self.shield_domain_ok = True
+        self.shield_aj_ok = True
+        self._v_tcp_z_prev = None
+        self._a_tcp_z_actual = 0.0
         self._force_axis_acc = 0.0
         self.force_pred_z = 0.0
         self.force_dot_z = 0.0
@@ -608,14 +681,70 @@ class AdmittanceController:
             cap = min(cap, max_velocity_z)
         return max(cap, 0.0)
 
+    def _v_delay_safe(self) -> float:
+        """Delay-aware first/recontact press limit.
+
+        With a certified stop table: largest tabulated ``v0`` such that
+        ``F_enter+ΔF_unc+K_ub D_ub(v0,a0,q0) ≤ F_max``.  Otherwise
+        ``v = [(F_max - F_enter - ΔF_unc) / (K_ub T_stop)]_+``.
+        If the numerator is non-positive the limit is zero; no speed floor
+        is added.  ``recontact_vz_cap`` and ``v_seek_free`` are upper bounds
+        only.
+        """
+        cfg = self.cfg
+        k_ub = max(float(cfg.safety_shield.k_ub_n_m), 1.0)
+        f_des = abs(float(getattr(self, "f_des_z_eff", 0.0)))
+        f_max = f_des + max(
+            float(cfg.force_barrier.budget_min_n),
+            float(cfg.force_barrier.budget_frac) * f_des,
+        )
+        f_enter = max(float(cfg.physical_contact.enter_n), 0.0)
+        dfunc = max(float(cfg.force_barrier.e_f_n), 0.0) + max(
+            float(cfg.force_barrier.bar_f_n), 0.0
+        )
+        room = f_max - f_enter - dfunc
+        if room <= 0.0:
+            return 0.0
+        table_v = self._safety_shield.max_safe_approach_m_s(
+            room_n=room,
+            a0=max(float(self._a_tcp_z_actual), 0.0),
+            q0=self._safety_shield.queue_remain_m(),
+        )
+        if table_v is not None:
+            v = max(float(table_v), 0.0)
+        else:
+            t_stop = max(
+                float(cfg.force_barrier.tau_stop_s),
+                float(cfg.force_barrier.t_react_s),
+                1e-3,
+            )
+            v = room / (k_ub * t_stop)
+        configured = max(float(cfg.recontact_vz_cap_m_s), 0.0)
+        if configured > 0.0:
+            v = min(v, configured)
+        seek = max(float(cfg.force_barrier.v_seek_free_m_s), 0.0)
+        if seek > 0.0:
+            v = min(v, seek)
+        return max(v, 0.0)
+
+    def _v_recontact_safe(self) -> float:
+        return self._v_delay_safe()
+
+    def _unconfirmed_contact(self) -> bool:
+        ever = bool(self._physical_contact.ever_acquired) or bool(
+            self._episode_seen
+        )
+        return (
+            (not ever)
+            or bool(self._recontact_slow_latched)
+            or (not bool(self.contact_present))
+        )
+
     def _press_vz_cap(self) -> float:
-        """Symmetric tool-Z cap, optionally tightened on press after recontact."""
+        """Tool-Z press cap.  Unconfirmed / first / recontact use v_delay."""
         cap = self._v_z_cap()
-        if (
-            self._recontact_timer_s > 0.0
-            and self.cfg.recontact_vz_cap_m_s > 0.0
-        ):
-            cap = min(cap, float(self.cfg.recontact_vz_cap_m_s))
+        if self._unconfirmed_contact():
+            cap = min(cap, self._v_delay_safe())
         return max(cap, 0.0)
 
     def _update_delta_d_hf(
@@ -973,6 +1102,19 @@ class AdmittanceController:
         self.contact_present = physical_contact
         self.physical_contact_state = str(contact_update.state)
         self.physical_contact_loss_event = bool(contact_update.lost)
+        if (
+            self.physical_contact_loss_event
+            or contact_update.state == PhysicalContactTracker.SUSPECT_LOSS
+        ):
+            self._recontact_slow_latched = True
+            self._recontact_detached_seen = (
+                self._recontact_detached_seen or (not physical_contact)
+            )
+        if self._recontact_slow_latched and not physical_contact:
+            self._recontact_detached_seen = True
+            self._recontact_reacquired_seen = False
+        if bool(contact_update.reacquired):
+            self._recontact_reacquired_seen = True
         self.physical_contact_reacquire_event = bool(
             contact_update.reacquired
         )
@@ -1035,6 +1177,20 @@ class AdmittanceController:
         # Physical reacquire is telemetry only.  The temporary press cap is
         # re-armed on first contact or a true episode re-arm, never on every
         # short contact trough.
+        v_tcp_press = (
+            None
+            if v_tcp_z_actual is None
+            else normal_sign * float(v_tcp_z_actual)
+        )
+        if v_tcp_press is not None and math.isfinite(v_tcp_press):
+            if self._v_tcp_z_prev is not None and dt_flow > 0.0:
+                self._a_tcp_z_actual = (
+                    v_tcp_press - float(self._v_tcp_z_prev)
+                ) / dt_flow
+            self._v_tcp_z_prev = float(v_tcp_press)
+        # Historical timer kept for telemetry only.  Safety press limit
+        # latches on contact *loss* and clears after confirmed contact at
+        # a settled press speed — not on reacquire.
         if rising_edge:
             self._recontact_timer_s = max(
                 self._recontact_timer_s,
@@ -1044,14 +1200,42 @@ class AdmittanceController:
             self._recontact_timer_s = max(
                 0.0, self._recontact_timer_s - dt_contact
             )
+        v_ok = (
+            v_tcp_press is not None
+            and math.isfinite(float(v_tcp_press))
+            and abs(float(v_tcp_press)) <= max(float(cfg.recontact_settle_m_s), 0.0)
+        )
+        can_release = (
+            self._recontact_slow_latched
+            and self._recontact_detached_seen
+            and self._recontact_reacquired_seen
+            and contact_update.state == PhysicalContactTracker.CONTACT
+            and v_ok
+        )
+        if can_release:
+            self._recontact_settle_ok_s += dt_flow
+            if self._recontact_settle_ok_s + 1e-12 >= max(
+                float(cfg.recontact_settle_hold_s), 0.0
+            ):
+                self._recontact_slow_latched = False
+                self._recontact_detached_seen = False
+                self._recontact_reacquired_seen = False
+                self._recontact_settle_ok_s = 0.0
+        else:
+            self._recontact_settle_ok_s = 0.0
+        self.recontact_slow_latched = bool(self._recontact_slow_latched)
+        self.recontact_detached_seen = bool(self._recontact_detached_seen)
         self._update_instability_index(raw_z)
 
-        mass_z = (
-            cfg.admittance_mass_z
-            + cfg.var_damping_m_u * self.instability_index
-        )
-        if cfg.var_damping_m_max > 0.0:
-            mass_z = min(mass_z, cfg.var_damping_m_max)
+        if cfg.var_damping_enabled:
+            mass_z = (
+                cfg.admittance_mass_z
+                + cfg.var_damping_m_u * self.instability_index
+            )
+            if cfg.var_damping_m_max > 0.0:
+                mass_z = min(mass_z, cfg.var_damping_m_max)
+        else:
+            mass_z = cfg.admittance_mass_z
         self._m_z_now = max(mass_z, 1e-3)
         self.mass_z_eff = self._m_z_now
 
@@ -1066,13 +1250,14 @@ class AdmittanceController:
         )
         f_des_z *= surface_scale
         self.f_des_z_eff = float(f_des_z)
-        # Deliberately unfiltered.  Raw fz moves 0.16 N per tick, but the
-        # force-axis slew limiter already bounds the command to ~4.9 mm/s per
-        # tick and the measured v_force_z step is only 2.8 mm/s p95 — the
-        # noise never reaches the joints.  A low-pass here bought nothing and
+        self.v_recontact_cap_m_s = (
+            self._v_delay_safe() if self._unconfirmed_contact() else 0.0
+        )
+        # Deliberately unfiltered.  A low-pass here bought nothing and
         # cost twice: 12 ms of phase took the stiff-surface impact from 8 N to
         # 12.2 N, and it starved the proactive feedforward (v_r 6.97 -> 5.89
         # mm/s on a receding surface, tracking error 0.18 -> 0.28 N).
+        # Force-axis a/j live inside the shield, not as a post-send limiter.
         f_err_z = f_des_z - f_ext_z
         v_lateral_m_s = float(
             np.linalg.norm((r_mat.T @ v_pos_base[:3])[:2])
@@ -1187,6 +1372,22 @@ class AdmittanceController:
                 force_normal_desired,
                 max(float(cfg.physical_contact.enter_n), 0.0),
             )
+        v_n_actual = (
+            None
+            if v_tcp_z_actual is None
+            else normal_sign * float(v_tcp_z_actual)
+        )
+        shield_dx_m = None
+        if (
+            cfg.safety_shield.enabled
+            and cfg.safety_shield.normalized_mode() != "off"
+            and v_n_actual is not None
+        ):
+            shield_dx_m = self._safety_shield.pipeline_penetration_ub(
+                f_csv=barrier_force_n,
+                v_actual=v_n_actual,
+                a_actual=float(self._a_tcp_z_actual),
+            )
         self.cap_press_z, self.cap_retract_z = self._force_barrier.caps(
             f_z=barrier_force_n,
             f_des_z=barrier_desired_n,
@@ -1195,15 +1396,20 @@ class AdmittanceController:
             seek_vz_m_s=self._v_z_cap(),
             contact_enter_n=float(cfg.contact_threshold_n),
             v_z_cap_retract=self._v_z_cap(),
-            ke_est_n_m=float(self.ke_cap_n_m),
+            ke_est_n_m=(
+                max(float(cfg.safety_shield.k_ub_n_m), 0.0)
+                if (
+                    self._unconfirmed_contact()
+                    and float(cfg.safety_shield.k_ub_n_m) > 0.0
+                )
+                else float(self.ke_cap_n_m)
+            ),
             mass_eq_kg=float(self._m_z_now),
             energy_available_j=energy_available_j,
             tau_s=max(float(cfg.system_delay_s), float(cfg.force_barrier.t_react_s)),
-            v_tcp_z_actual=(
-                None
-                if v_tcp_z_actual is None
-                else normal_sign * float(v_tcp_z_actual)
-            ),
+            v_tcp_z_actual=v_n_actual,
+            a_tcp_z_actual=float(self._a_tcp_z_actual),
+            shield_dx_m=shield_dx_m,
         )
         if precontact_guard:
             # A deterministic low-speed confirmation sleeve closes the gap
@@ -1217,6 +1423,9 @@ class AdmittanceController:
             )
             if self._precontact_barrier_hold_s <= 0.0 and not precontact_candidate:
                 self._precontact_peak_force_n = 0.0
+        if self._unconfirmed_contact():
+            self.cap_press_z = min(self.cap_press_z, self._v_delay_safe())
+            self._force_barrier.cap_press_z = self.cap_press_z
         self.force_pred_z = float(self._force_barrier.f_pred_z)
         escape_n = max(float(cfg.force_barrier.f_escape_n), 0.0)
         self.overforce_escape = bool(
@@ -1267,6 +1476,7 @@ class AdmittanceController:
         )
         self.cdyob_corr_m_s = float(self._cdyob.last_corr_m_s)
         self.v_force_z = float(v_force_tool[2])
+        self.u_nom_raw_z = normal_sign * float(v_force_tool[2])
         # Optional scalar bidirectional-flow adapter.  The adapter sees a
         # press-positive normal coordinate; ``normal_sign`` maps the tool
         # force convention into that coordinate and back.
@@ -1355,7 +1565,7 @@ class AdmittanceController:
         press_cap = self._press_vz_cap()
         if v_z_cap > 0.0:
             lo = -v_z_cap
-            hi = press_cap if press_cap > 0.0 else v_z_cap
+            hi = max(press_cap, 0.0)
             v_normal = normal_sign * float(v_cmd_tool[2])
             v_normal = float(np.clip(v_normal, lo, hi))
             # Force-space barrier caps are directional: a predicted force
@@ -1376,66 +1586,47 @@ class AdmittanceController:
         v_clamp = np.clip(v_out, -cfg.max_velocity, cfg.max_velocity)
         dv_max = cfg.max_acceleration * dt_flow
         v_final = np.asarray(v_clamp, dtype=float).copy()
+        u_nom_capped = normal_sign * float(v_final[2]) if v_final.size > 2 else 0.0
+        self.u_nom_capped_z = float(u_nom_capped)
+        f_max_n = abs(float(self.f_des_z_eff)) + max(
+            float(cfg.force_barrier.budget_min_n),
+            float(cfg.force_barrier.budget_frac) * abs(float(self.f_des_z_eff)),
+        )
+        shield = self._safety_shield.update(
+            u_nom_capped,
+            f_csv=force_normal_filtered,
+            v_actual=(
+                None
+                if v_tcp_z_actual is None
+                else normal_sign * float(v_tcp_z_actual)
+            ),
+            f_max_n=f_max_n,
+            in_domain=True,
+            a_actual=float(self._a_tcp_z_actual),
+        )
+        self.u_shield_hyp_z = float(shield.u_shield_hyp)
+        self.u_sent_z = float(shield.u_sent)
+        self.lambda_obs = float(shield.lambda_obs)
+        self.shield_applied = bool(shield.shield_applied)
+        self.shield_feasible = bool(shield.shield_feasible)
+        self.shield_f_ub_n = float(shield.f_ub_n)
+        self.shield_e_lb_j = float(shield.e_lb_j)
+        self.shield_w_lb_j = float(shield.w_lb_j)
+        self.shield_rho_v2_w = float(shield.rho_v2_w)
+        self.shield_n_stop = int(shield.n_stop)
+        self.shield_tube_violation = bool(shield.tube_violation)
+        self.shield_solver_us = float(shield.solver_us)
+        self.shield_infeasible_reason = str(shield.infeasible_reason)
+        self.shield_f_constraint_margin_n = float(shield.f_constraint_margin_n)
+        self.shield_energy_margin_j = float(shield.energy_margin_j)
+        self.shield_terminal_ok = bool(shield.terminal_ok)
+        self.shield_aj_ok = bool(getattr(shield, "aj_ok", True))
+        self.shield_recovery_latched = bool(shield.recovery_latched)
+        self.shield_domain_ok = bool(shield.domain_ok)
+        if v_final.size > 2:
+            v_final[2] = normal_sign * float(shield.u_sent)
         for index in range(6):
-            if cfg.force_axes[index] > 0.5:
-                if index == 2:
-                    desired_normal = normal_sign * float(v_final[index])
-                    previous_normal = normal_sign * float(self.last_v_cmd[index])
-                    press_slew = max(
-                        float(cfg.force_axis_slew_press_m_s2), 0.0
-                    )
-                    retract_slew = max(
-                        float(cfg.force_axis_slew_retract_m_s2), 0.0
-                    )
-                    reverse_slew = max(
-                        float(cfg.force_axis_slew_reverse_m_s2), 0.0
-                    )
-                    if desired_normal >= previous_normal:
-                        if press_slew > 0.0:
-                            desired_normal = float(
-                                min(
-                                    desired_normal,
-                                    previous_normal + press_slew * dt_flow,
-                                )
-                            )
-                    else:
-                        # Crossing from press to retract is a safety escape,
-                        # so it has its own faster allowance.  Once already
-                        # retracting, use the regular retract slew.
-                        slew = (
-                            reverse_slew
-                            if reverse_slew > 0.0
-                            and (
-                                self.overforce_escape
-                                or (
-                                    previous_normal > 0.0
-                                    and desired_normal <= 0.0
-                                )
-                            )
-                            else retract_slew
-                        )
-                        if slew <= 0.0:
-                            continue
-                        desired_normal = float(
-                            max(
-                                desired_normal,
-                                previous_normal - slew * dt_flow,
-                            )
-                        )
-                    jerk_max = max(float(cfg.force_axis_jerk_max_m_s3), 0.0)
-                    if jerk_max > 0.0 and dt_flow > 0.0:
-                        acc = (desired_normal - previous_normal) / dt_flow
-                        acc_lim = self._force_axis_acc + jerk_max * dt_flow
-                        acc_lo = self._force_axis_acc - jerk_max * dt_flow
-                        acc = float(np.clip(acc, acc_lo, acc_lim))
-                        desired_normal = previous_normal + acc * dt_flow
-                        self._force_axis_acc = acc
-                    else:
-                        if dt_flow > 0.0:
-                            self._force_axis_acc = (
-                                desired_normal - previous_normal
-                            ) / dt_flow
-                    v_final[index] = normal_sign * desired_normal
+            if index == 2 and cfg.force_axes[2] > 0.5:
                 continue
             v_final[index] = float(
                 np.clip(
@@ -1445,12 +1636,6 @@ class AdmittanceController:
                 )
             )
         if cfg.bidirectional_flow.mode == "active":
-            requested_press = max(normal_sign * float(v_final[2]), 0.0)
-            paid_press = self._bidirectional_flow.settle_applied_press(
-                requested_press
-            )
-            if requested_press > paid_press:
-                v_final[2] = normal_sign * paid_press
             self.flow_tank_energy = float(self._bidirectional_flow.tank_energy)
         self.last_v_cmd = v_final.copy()
         self.v_force_cmd_z = float(v_final[2]) if v_final.size > 2 else 0.0
@@ -1689,18 +1874,17 @@ class AdmittanceController:
         if dt_eff <= 0.0:
             velocity = float(self.v_force_z)
         else:
-            # Implicit Euler with split damping:
-            # (M/dt + D0 + D_extra)v+ = M/dt*v + D0*v_r + drive.
-            # D_extra is zero-centred and therefore cannot amplify v_r.
-            denom = mass_z / dt_eff + max(damping, 0.0)
-            velocity = (
-                (mass_z / dt_eff) * self.v_force_z
-                + max(damping_base, 0.0) * v_reference
-                + drive
-            ) / max(denom, 1e-6)
+            # Exact ZOH of M v̇ + D v = drive + D0 v_r.
+            # a = exp(-D Ts/M), b = (1-a)/D.  Extra damping stays
+            # zero-centred so it cannot amplify v_r.
+            damp = max(float(damping), 1e-9)
+            a_disc = math.exp(-damp * dt_eff / mass_z)
+            b_disc = (1.0 - a_disc) / damp
+            rhs = drive + max(damping_base, 0.0) * v_reference
+            velocity = a_disc * float(self.v_force_z) + b_disc * rhs
         if v_z_cap > 0.0:
             lo = -v_z_cap
-            hi = press_cap if press_cap > 0.0 else v_z_cap
+            hi = max(press_cap, 0.0)
             velocity = float(np.clip(velocity, lo, hi))
         self.v_force_z = velocity
         return velocity

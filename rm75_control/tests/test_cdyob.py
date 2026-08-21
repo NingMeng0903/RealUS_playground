@@ -19,6 +19,15 @@ def test_omega_q_from_tau() -> None:
     assert yob.last_omega_q_hz < 4.0
 
 
+def test_default_q_is_two_to_three_hz_and_off() -> None:
+    cfg = CdyobConfig()
+    assert cfg.enabled is False
+    assert cfg.omega_q_hz == pytest.approx(2.5)
+    from_yaml = CdyobConfig.from_dict({"hybrid_motion": {"cdyob": {}}})
+    assert from_yaml.enabled is False
+    assert from_yaml.omega_q_hz == pytest.approx(2.5)
+
+
 def test_disabled_passthrough() -> None:
     yob = CombinedDynamicsYob(CdyobConfig(enabled=False))
     out = yob.update(
