@@ -5,7 +5,7 @@ Tool-Z force axis (exact ZOH of M v̇ + D v = e_f + D0 v_r):
     v+ = a v + b (e_f + u_DOB + D0 v_r),  a=e^{-D Ts/M}, b=(1-a)/D
 
 * Low baseline ``D0`` preserves light feel and fast under-/over-force chase.
-* Short-lived ``ΔD_hf(Iₛ)`` dissipates contact chatter without sticky steady D.
+* ``ΔD_hf(Iₛ)`` is computed; shipped ``var_damping_d_u=0`` gives it no authority.
 * ``u_DOB`` removes steady force offset (DOSMAC-lite) without raising D.
 * Proactive ``v_r`` chases under-force; over-force retract is never Iₛ-gated.
 * Recontact after flight uses a temporary press-speed cap.
@@ -175,6 +175,10 @@ class AdmittanceConfig:
     recontact_hold_s: float = 0.20
     recontact_settle_m_s: float = 0.003
     recontact_settle_hold_s: float = 0.050
+    # Do not open full chase until measured force has approached F_des.
+    # Tonight's observe hybrid released at F=0.84 / Fdes=1.32 and v_r
+    # wound to 24 mm/s, then lost contact.
+    recontact_release_force_frac: float = 0.70
     # Soften under-force chase / DOB when tool-XY speed is near a scan turnaround.
     force_lateral_soft_m_s: float = 0.006
     force_lateral_full_m_s: float = 0.018
@@ -297,6 +301,9 @@ class AdmittanceConfig:
             recontact_hold_s=float(c.get("recontact_hold_s", 0.20)),
             recontact_settle_m_s=float(c.get("recontact_settle_m_s", 0.003)),
             recontact_settle_hold_s=float(c.get("recontact_settle_hold_s", 0.050)),
+            recontact_release_force_frac=float(
+                c.get("recontact_release_force_frac", 0.70)
+            ),
             force_lateral_soft_m_s=float(
                 c.get("force_lateral_soft_m_s", 0.006)
             ),
@@ -349,12 +356,20 @@ class AdmittanceController:
     ) -> None:
         self.dt = dt
         self.cfg = config or AdmittanceConfig()
+        if self.cfg.cdyob.computes() and (
+            self.cfg.force_dob.enabled or self.cfg.proactive_ff.enabled
+        ):
+            raise ValueError(
+                "CDYOB shadow/active requires the same A-only baseline: "
+                "disable force_dob and proactive_feedforward"
+            )
         # A fixed identifier is retained in CSV logs; it is not a mode switch.
         self.controller_mode = "legacy_symmetric"
         self.last_v_cmd = np.zeros(6)
         self.last_path_twist = np.zeros(6)
         self.last_feedback_twist = np.zeros(6)
         self._in_contact_latched = False
+        self.force_task_armed = False
         self.force_task_latched = False
         self.contact_present = False
         self.physical_contact_state = PhysicalContactTracker.FREE
@@ -413,19 +428,46 @@ class AdmittanceController:
         self._hf_hold_s = 0.0
         self._hf_active = False
         self._recontact_timer_s = 0.0
+        self._first_contact_slow_latched = True
         self._recontact_slow_latched = False
         self._recontact_detached_seen = False
         self._recontact_reacquired_seen = False
         self._recontact_settle_ok_s = 0.0
-        self.recontact_slow_latched = False
+        self._u_force_slewed = 0.0
+        self._u_force_slew_dot = 0.0
+        self.recontact_slow_latched = True
         self.recontact_detached_seen = False
         self.v_recontact_cap_m_s = 0.0
         self._force_dob = ForceDisturbanceObserver(self.cfg.force_dob)
         self.u_dob_z = 0.0
         self._force_barrier = ForceSpaceVelocityDamper(self.cfg.force_barrier)
         self._cdyob = CombinedDynamicsYob(self.cfg.cdyob)
-        self._safety_shield = DelaySafetyShield(self.cfg.safety_shield, dt)
+        self._safety_shield = DelaySafetyShield(
+            self.cfg.safety_shield,
+            dt,
+            require_certificate=self.cfg.safety_shield.applies_command(),
+        )
+        if self.cfg.safety_shield.applies_command():
+            self._safety_shield.assert_enforcement_ready()
         self.cdyob_corr_m_s = 0.0
+        self.cdyob_qtinv_vm = 0.0
+        self.cdyob_q_vi = 0.0
+        self.cdyob_n1_force = 0.0
+        self.cdyob_n2_velocity = 0.0
+        self.cdyob_pert_unclipped = 0.0
+        self.cdyob_pert_clipped = 0.0
+        self.cdyob_blend = 0.0
+        self.cdyob_vi = 0.0
+        self.cdyob_candidate = 0.0
+        self.cdyob_antiwindup_error = 0.0
+        self.cdyob_residual = 0.0
+        self.cdyob_saturated = False
+        self.cdyob_constrained = False
+        self.cdyob_linear_equivalent = False
+        self.cdyob_apply_ready = False
+        self.cdyob_ready_s = 0.0
+        self._cdyob_ready_s = 0.0
+        self.cdyob_mode = "off"
         self.ke_cap_n_m = float(self.cfg.adaptive_ke.ke_initial)
         self.overforce_escape = False
         self.v_force_cmd_z = 0.0
@@ -448,8 +490,9 @@ class AdmittanceController:
         self.shield_energy_margin_j = 0.0
         self.shield_terminal_ok = False
         self.shield_recovery_latched = False
-        self.shield_domain_ok = True
+        self.shield_domain_ok = False
         self.shield_aj_ok = True
+        self.shield_uncertified_brake = False
         self._v_tcp_z_prev: float | None = None
         self._a_tcp_z_actual = 0.0
         self._force_axis_acc = 0.0
@@ -515,6 +558,7 @@ class AdmittanceController:
 
     def reset(self, *, clear_velocity: bool = False) -> None:
         self._in_contact_latched = False
+        self.force_task_armed = False
         self.force_task_latched = False
         self.contact_present = False
         self.physical_contact_state = PhysicalContactTracker.FREE
@@ -559,11 +603,14 @@ class AdmittanceController:
         self._hf_hold_s = 0.0
         self._hf_active = False
         self._recontact_timer_s = 0.0
+        self._first_contact_slow_latched = True
         self._recontact_slow_latched = False
         self._recontact_detached_seen = False
         self._recontact_reacquired_seen = False
         self._recontact_settle_ok_s = 0.0
-        self.recontact_slow_latched = False
+        self._u_force_slewed = 0.0
+        self._u_force_slew_dot = 0.0
+        self.recontact_slow_latched = True
         self.recontact_detached_seen = False
         self.v_recontact_cap_m_s = 0.0
         self._force_dob.reset()
@@ -572,6 +619,24 @@ class AdmittanceController:
         self._cdyob.reset()
         self._safety_shield.reset()
         self.cdyob_corr_m_s = 0.0
+        self.cdyob_qtinv_vm = 0.0
+        self.cdyob_q_vi = 0.0
+        self.cdyob_n1_force = 0.0
+        self.cdyob_n2_velocity = 0.0
+        self.cdyob_pert_unclipped = 0.0
+        self.cdyob_pert_clipped = 0.0
+        self.cdyob_blend = 0.0
+        self.cdyob_vi = 0.0
+        self.cdyob_candidate = 0.0
+        self.cdyob_antiwindup_error = 0.0
+        self.cdyob_residual = 0.0
+        self.cdyob_saturated = False
+        self.cdyob_constrained = False
+        self.cdyob_linear_equivalent = False
+        self.cdyob_apply_ready = False
+        self.cdyob_ready_s = 0.0
+        self._cdyob_ready_s = 0.0
+        self.cdyob_mode = "off"
         self.ke_cap_n_m = float(self.cfg.adaptive_ke.ke_initial)
         self.overforce_escape = False
         self.v_force_cmd_z = 0.0
@@ -594,8 +659,9 @@ class AdmittanceController:
         self.shield_energy_margin_j = 0.0
         self.shield_terminal_ok = False
         self.shield_recovery_latched = False
-        self.shield_domain_ok = True
+        self.shield_domain_ok = False
         self.shield_aj_ok = True
+        self.shield_uncertified_brake = False
         self._v_tcp_z_prev = None
         self._a_tcp_z_actual = 0.0
         self._force_axis_acc = 0.0
@@ -688,8 +754,9 @@ class AdmittanceController:
         ``F_enter+ΔF_unc+K_ub D_ub(v0,a0,q0) ≤ F_max``.  Otherwise
         ``v = [(F_max - F_enter - ΔF_unc) / (K_ub T_stop)]_+``.
         If the numerator is non-positive the limit is zero; no speed floor
-        is added.  ``recontact_vz_cap`` and ``v_seek_free`` are upper bounds
-        only.
+        is added.  The numerical ~2.8 mm/s value is a conservative
+        engineering start from ``K_ub`` and a placeholder ``T_stop``, not
+        a proven 3 N guarantee.  ``v_seek_free`` is only an extra clip.
         """
         cfg = self.cfg
         k_ub = max(float(cfg.safety_shield.k_ub_n_m), 1.0)
@@ -730,22 +797,141 @@ class AdmittanceController:
     def _v_recontact_safe(self) -> float:
         return self._v_delay_safe()
 
+    def _has_acquired_contact(self) -> bool:
+        return bool(self._physical_contact.ever_acquired) or bool(self._episode_seen)
+
     def _unconfirmed_contact(self) -> bool:
-        ever = bool(self._physical_contact.ever_acquired) or bool(
-            self._episode_seen
-        )
         return (
-            (not ever)
+            (not self._has_acquired_contact())
+            or bool(self._first_contact_slow_latched)
             or bool(self._recontact_slow_latched)
             or (not bool(self.contact_present))
         )
 
-    def _press_vz_cap(self) -> float:
-        """Tool-Z press cap.  Unconfirmed / first / recontact use v_delay."""
+    def _use_delay_safe_press(self) -> bool:
+        """K_ub limit only while touching and a first/recontact latch is on.
+
+        Flight after the force task is armed keeps chasing ``F*`` at
+        ``v_seek_free``.  Parking that path at ``v_delay_safe`` is what
+        left the probe hanging in air with a small force.
+        """
+        if not bool(self.contact_present):
+            return False
+        return bool(
+            self._first_contact_slow_latched or self._recontact_slow_latched
+        )
+
+    def _v_air_seek(self) -> float:
+        """Free-space approach cap.  Not a first-contact force bound."""
+        seek = max(float(self.cfg.force_barrier.v_seek_free_m_s), 0.0)
         cap = self._v_z_cap()
-        if self._unconfirmed_contact():
+        if cap > 0.0 and seek > 0.0:
+            return min(cap, seek)
+        return seek if seek > 0.0 else cap
+
+    def _press_vz_cap(self) -> float:
+        """Tool-Z press cap.
+
+        Free space and armed flight: ``v_seek_free`` (20 mm/s).
+        First / re-touch while a slow latch is on: ``v_delay_safe``.
+        Confirmed contact after latch release: ``max_vz``.
+        """
+        cap = self._v_z_cap()
+        if self._use_delay_safe_press():
             cap = min(cap, self._v_delay_safe())
+        elif not bool(self.contact_present):
+            seek = self._v_air_seek()
+            if seek > 0.0:
+                cap = min(cap, seek)
         return max(cap, 0.0)
+
+    def _slew_force_normal(self, u_target: float, dt_s: float) -> float:
+        """Slew the press-positive normal command.  Does not leave hybrid."""
+        cfg = self.cfg
+        dt = max(float(dt_s), 0.0)
+        prev = float(self._u_force_slewed)
+        target = float(u_target)
+        press_a = max(float(cfg.force_axis_slew_press_m_s2), 0.0)
+        retract_a = max(float(cfg.force_axis_slew_retract_m_s2), 0.0)
+        reverse_a = max(float(cfg.force_axis_slew_reverse_m_s2), 0.0)
+        jerk = max(float(cfg.force_axis_jerk_max_m_s3), 0.0)
+        if dt <= 0.0 or (press_a <= 0.0 and retract_a <= 0.0 and reverse_a <= 0.0):
+            self._u_force_slewed = target
+            self._u_force_slew_dot = 0.0
+            return target
+        du = target - prev
+        if prev * target < 0.0 and reverse_a > 0.0:
+            a_lim = reverse_a
+        elif du >= 0.0:
+            a_lim = press_a if press_a > 0.0 else reverse_a
+        else:
+            a_lim = retract_a if retract_a > 0.0 else reverse_a
+        if a_lim <= 0.0:
+            self._u_force_slewed = target
+            self._u_force_slew_dot = 0.0
+            return target
+        if jerk > 0.0:
+            max_da = jerk * dt
+            signed = math.copysign(a_lim, du if du != 0.0 else 1.0)
+            a_use = float(
+                np.clip(signed, self._u_force_slew_dot - max_da, self._u_force_slew_dot + max_da)
+            )
+            a_use = float(np.clip(a_use, -a_lim, a_lim))
+        else:
+            a_use = math.copysign(a_lim, du if du != 0.0 else 1.0)
+        stepped = prev + a_use * dt
+        if du >= 0.0:
+            stepped = min(stepped, target)
+        else:
+            stepped = max(stepped, target)
+        self._u_force_slew_dot = a_use
+        self._u_force_slewed = float(stepped)
+        return float(stepped)
+
+    def _pipeline_press_clear(self) -> bool:
+        """True when the delay line has no large leftover press command."""
+        lim = max(float(self.cfg.safety_shield.queue_clear_m_s), 0.0)
+        shield = self._safety_shield
+        pending = [float(shield._u_prev), float(shield._u_prev2), *shield._delay]
+        press = [max(float(u), 0.0) for u in pending]
+        return (not press) or max(press) <= lim + 1e-12
+
+    def _pose_in_certificate_domain(self, pose: np.ndarray) -> bool:
+        cfg = self.cfg.safety_shield
+        if not cfg.pose_domain_declared:
+            return False
+        lo = list(cfg.pose_min)
+        hi = list(cfg.pose_max)
+        if len(lo) < 6 or len(hi) < 6:
+            return False
+        vec = np.asarray(pose, dtype=float).reshape(-1)
+        if vec.size < 6 or not np.all(np.isfinite(vec[:6])):
+            return False
+        return all(
+            math.isfinite(float(lo[i]))
+            and math.isfinite(float(hi[i]))
+            and float(lo[i]) <= float(hi[i])
+            and float(lo[i]) - 1e-12 <= float(vec[i]) <= float(hi[i]) + 1e-12
+            for i in range(6)
+        )
+
+    def _payload_in_certificate_domain(self) -> bool:
+        cfg = self.cfg.safety_shield
+        if not cfg.payload_domain_declared:
+            return False
+        lo = cfg.payload_min_kg
+        hi = cfg.payload_max_kg
+        mass = cfg.payload_kg
+        if lo is None or hi is None or mass is None:
+            return False
+        if not (
+            math.isfinite(float(lo))
+            and math.isfinite(float(hi))
+            and math.isfinite(float(mass))
+            and float(lo) <= float(hi)
+        ):
+            return False
+        return float(lo) - 1e-12 <= float(mass) <= float(hi) + 1e-12
 
     def _update_delta_d_hf(
         self,
@@ -1098,18 +1284,16 @@ class AdmittanceController:
             )
         force_task_active = bool(self._in_contact_latched)
         physical_contact = bool(contact_update.present)
+        self.force_task_armed = force_task_active
         self.force_task_latched = force_task_active
         self.contact_present = physical_contact
         self.physical_contact_state = str(contact_update.state)
         self.physical_contact_loss_event = bool(contact_update.lost)
-        if (
-            self.physical_contact_loss_event
-            or contact_update.state == PhysicalContactTracker.SUSPECT_LOSS
-        ):
+        if self.physical_contact_loss_event:
+            # Confirmed LOST only.  A 4–12 Hz trough is SUSPECT_LOSS and
+            # must not re-arm the crawl latch, or chase dies in air.
             self._recontact_slow_latched = True
-            self._recontact_detached_seen = (
-                self._recontact_detached_seen or (not physical_contact)
-            )
+            self._recontact_detached_seen = True
         if self._recontact_slow_latched and not physical_contact:
             self._recontact_detached_seen = True
             self._recontact_reacquired_seen = False
@@ -1205,29 +1389,52 @@ class AdmittanceController:
             and math.isfinite(float(v_tcp_press))
             and abs(float(v_tcp_press)) <= max(float(cfg.recontact_settle_m_s), 0.0)
         )
-        can_release = (
+        pipe_ok = self._pipeline_press_clear()
+        f_meas = normal_sign * f_ext_z
+        f_cmd = abs(float(f_des[2]))
+        frac = min(max(float(cfg.recontact_release_force_frac), 0.0), 1.0)
+        force_ok = math.isfinite(f_meas) and f_meas + 1e-12 >= frac * f_cmd
+        first_ok = (
+            self._first_contact_slow_latched
+            and contact_update.state == PhysicalContactTracker.CONTACT
+            and v_ok
+            and pipe_ok
+            and force_ok
+        )
+        re_ok = (
             self._recontact_slow_latched
             and self._recontact_detached_seen
             and self._recontact_reacquired_seen
             and contact_update.state == PhysicalContactTracker.CONTACT
             and v_ok
+            and pipe_ok
+            and force_ok
         )
+        can_release = first_ok or re_ok
         if can_release:
             self._recontact_settle_ok_s += dt_flow
             if self._recontact_settle_ok_s + 1e-12 >= max(
                 float(cfg.recontact_settle_hold_s), 0.0
             ):
-                self._recontact_slow_latched = False
-                self._recontact_detached_seen = False
-                self._recontact_reacquired_seen = False
+                if first_ok:
+                    self._first_contact_slow_latched = False
+                if re_ok:
+                    self._recontact_slow_latched = False
+                    self._recontact_detached_seen = False
+                    self._recontact_reacquired_seen = False
                 self._recontact_settle_ok_s = 0.0
         else:
             self._recontact_settle_ok_s = 0.0
-        self.recontact_slow_latched = bool(self._recontact_slow_latched)
+        self.recontact_slow_latched = bool(
+            self._first_contact_slow_latched or self._recontact_slow_latched
+        )
         self.recontact_detached_seen = bool(self._recontact_detached_seen)
         self._update_instability_index(raw_z)
 
-        if cfg.var_damping_enabled:
+        if cfg.cdyob.computes():
+            # Paper A-only baseline is fixed LTI A(s)=1/(Ms+D).
+            mass_z = cfg.admittance_mass_z
+        elif cfg.var_damping_enabled:
             mass_z = (
                 cfg.admittance_mass_z
                 + cfg.var_damping_m_u * self.instability_index
@@ -1251,7 +1458,7 @@ class AdmittanceController:
         f_des_z *= surface_scale
         self.f_des_z_eff = float(f_des_z)
         self.v_recontact_cap_m_s = (
-            self._v_delay_safe() if self._unconfirmed_contact() else 0.0
+            self._v_delay_safe() if self._use_delay_safe_press() else 0.0
         )
         # Deliberately unfiltered.  A low-pass here bought nothing and
         # cost twice: 12 ms of phase took the stiff-surface impact from 8 N to
@@ -1365,13 +1572,15 @@ class AdmittanceController:
                 force_normal_raw,
                 self._precontact_peak_force_n,
             )
-            # Before confirmation, treat the acquire threshold as the safe
-            # force target.  Continuing toward a 2--5 N setpoint immediately
-            # after the first impact defeated the purpose of this guard.
-            barrier_desired_n = min(
-                force_normal_desired,
-                max(float(cfg.physical_contact.enter_n), 0.0),
-            )
+            # Virgin precontact still aims at the acquire threshold.
+            # After the force task is armed, keep chasing F* in air.
+            if force_task_active:
+                barrier_desired_n = force_normal_desired
+            else:
+                barrier_desired_n = min(
+                    force_normal_desired,
+                    max(float(cfg.physical_contact.enter_n), 0.0),
+                )
         v_n_actual = (
             None
             if v_tcp_z_actual is None
@@ -1388,6 +1597,19 @@ class AdmittanceController:
                 v_actual=v_n_actual,
                 a_actual=float(self._a_tcp_z_actual),
             )
+        if not barrier_contact and not self._use_delay_safe_press():
+            # Air seek, including armed flight after a bounce-off.  Do not
+            # schedule that path with a leftover contact ke_cap / K_ub.
+            barrier_ke_n_m: float | None = None
+        elif (
+            self._use_delay_safe_press()
+            and float(cfg.safety_shield.k_ub_n_m) > 0.0
+        ):
+            barrier_ke_n_m = max(
+                float(cfg.safety_shield.k_ub_n_m), 0.0
+            )
+        else:
+            barrier_ke_n_m = float(self.ke_cap_n_m)
         self.cap_press_z, self.cap_retract_z = self._force_barrier.caps(
             f_z=barrier_force_n,
             f_des_z=barrier_desired_n,
@@ -1396,14 +1618,7 @@ class AdmittanceController:
             seek_vz_m_s=self._v_z_cap(),
             contact_enter_n=float(cfg.contact_threshold_n),
             v_z_cap_retract=self._v_z_cap(),
-            ke_est_n_m=(
-                max(float(cfg.safety_shield.k_ub_n_m), 0.0)
-                if (
-                    self._unconfirmed_contact()
-                    and float(cfg.safety_shield.k_ub_n_m) > 0.0
-                )
-                else float(self.ke_cap_n_m)
-            ),
+            ke_est_n_m=barrier_ke_n_m,
             mass_eq_kg=float(self._m_z_now),
             energy_available_j=energy_available_j,
             tau_s=max(float(cfg.system_delay_s), float(cfg.force_barrier.t_react_s)),
@@ -1423,7 +1638,7 @@ class AdmittanceController:
             )
             if self._precontact_barrier_hold_s <= 0.0 and not precontact_candidate:
                 self._precontact_peak_force_n = 0.0
-        if self._unconfirmed_contact():
+        if self._use_delay_safe_press():
             self.cap_press_z = min(self.cap_press_z, self._v_delay_safe())
             self._force_barrier.cap_press_z = self.cap_press_z
         self.force_pred_z = float(self._force_barrier.f_pred_z)
@@ -1432,7 +1647,11 @@ class AdmittanceController:
             physical_contact
             and force_normal_filtered >= force_normal_desired + escape_n
         )
-        if self.physical_contact_loss_event:
+        if self.physical_contact_loss_event or (
+            (not physical_contact) and self.force_task_armed
+        ):
+            # Freeze / anti-windup chase while the probe is not carrying load.
+            # force_task_armed may stay true until reset()/mode switch.
             self._proactive_ff.reset()
             self._force_dob.reset()
             self.v_r_z = 0.0
@@ -1459,6 +1678,26 @@ class AdmittanceController:
             force_pred_n=self.force_pred_z,
             overforce_escape=self.overforce_escape,
         )
+        cdyob_ready_now = bool(
+            physical_contact
+            and not self._use_delay_safe_press()
+            and not self.overforce_escape
+            and float(f_des_z) > 0.0
+            and float(force_normal_filtered)
+            >= float(cfg.cdyob.active_force_ratio) * float(f_des_z)
+            and v_tcp_z_actual is not None
+            and abs(normal_sign * float(v_tcp_z_actual))
+            <= float(cfg.cdyob.active_settle_speed_m_s)
+        )
+        if cfg.cdyob.computes() and cdyob_ready_now:
+            self._cdyob_ready_s += dt_flow
+        else:
+            self._cdyob_ready_s = 0.0
+        self.cdyob_ready_s = float(self._cdyob_ready_s)
+        self.cdyob_apply_ready = bool(
+            self._cdyob_ready_s
+            >= max(float(cfg.cdyob.active_settle_hold_s), 0.0)
+        )
         v_force_tool[2] = self._cdyob.update(
             float(v_force_tool[2]),
             v_meas_m_s=(
@@ -1468,13 +1707,11 @@ class AdmittanceController:
             ),
             force_n=force_normal_filtered,
             dt_s=dt_flow,
-            tau_s=max(
-                float(cfg.system_delay_s),
-                float(cfg.force_barrier.t_react_s),
-            ),
-            in_contact=physical_contact,
+            mass_z=float(self._m_z_now),
+            damping_z=float(self.damping_z_eff),
+            apply_scale=1.0 if self.cdyob_apply_ready else 0.0,
         )
-        self.cdyob_corr_m_s = float(self._cdyob.last_corr_m_s)
+        self._publish_cdyob_telemetry()
         self.v_force_z = float(v_force_tool[2])
         self.u_nom_raw_z = normal_sign * float(v_force_tool[2])
         # Optional scalar bidirectional-flow adapter.  The adapter sees a
@@ -1560,11 +1797,22 @@ class AdmittanceController:
             float(v_force_tool[2]),
             use_pbac,
         )
-        # Recontact cap only limits press (+z); over-force retract stays open.
+        # Recontact cap only limits press (+z).  First CDYOB active operation
+        # additionally bounds both directions to the validated 10–20 mm/s
+        # range; the historical 80 mm/s cap remains for non-CDYOB operation.
         v_z_cap = self._v_z_cap()
         press_cap = self._press_vz_cap()
+        v_candidate_normal = normal_sign * float(v_cmd_tool[2])
+        retract_cap = v_z_cap
+        if cfg.cdyob.applies():
+            press_cap = min(
+                press_cap, max(float(cfg.cdyob.active_press_max_m_s), 0.0)
+            )
+            retract_cap = min(
+                v_z_cap, max(float(cfg.cdyob.active_retract_max_m_s), 0.0)
+            )
         if v_z_cap > 0.0:
-            lo = -v_z_cap
+            lo = -retract_cap
             hi = max(press_cap, 0.0)
             v_normal = normal_sign * float(v_cmd_tool[2])
             v_normal = float(np.clip(v_normal, lo, hi))
@@ -1573,6 +1821,7 @@ class AdmittanceController:
             v_normal = self._force_barrier.clamp_velocity(
                 v_normal
             )
+            v_normal = self._slew_force_normal(v_normal, dt_flow)
             v_cmd_tool[2] = normal_sign * v_normal
             if cfg.control_frame == "base":
                 v_cmd_base[:3] = r_mat @ v_cmd_tool[:3]
@@ -1592,6 +1841,9 @@ class AdmittanceController:
             float(cfg.force_barrier.budget_min_n),
             float(cfg.force_barrier.budget_frac) * abs(float(self.f_des_z_eff)),
         )
+        shield_age = (
+            feedback_age_s if feedback_age_s is not None else sensor_age_s
+        )
         shield = self._safety_shield.update(
             u_nom_capped,
             f_csv=force_normal_filtered,
@@ -1601,8 +1853,10 @@ class AdmittanceController:
                 else normal_sign * float(v_tcp_z_actual)
             ),
             f_max_n=f_max_n,
-            in_domain=True,
             a_actual=float(self._a_tcp_z_actual),
+            feedback_age_s=shield_age,
+            pose_in_domain=self._pose_in_certificate_domain(current_pose),
+            payload_in_domain=self._payload_in_certificate_domain(),
         )
         self.u_shield_hyp_z = float(shield.u_shield_hyp)
         self.u_sent_z = float(shield.u_sent)
@@ -1623,6 +1877,10 @@ class AdmittanceController:
         self.shield_aj_ok = bool(getattr(shield, "aj_ok", True))
         self.shield_recovery_latched = bool(shield.recovery_latched)
         self.shield_domain_ok = bool(shield.domain_ok)
+        self.shield_uncertified_brake = bool(
+            self.shield_uncertified_brake
+            or getattr(shield, "uncertified_brake", False)
+        )
         if v_final.size > 2:
             v_final[2] = normal_sign * float(shield.u_sent)
         for index in range(6):
@@ -1639,7 +1897,45 @@ class AdmittanceController:
             self.flow_tank_energy = float(self._bidirectional_flow.tank_energy)
         self.last_v_cmd = v_final.copy()
         self.v_force_cmd_z = float(v_final[2]) if v_final.size > 2 else 0.0
+        self._cdyob.commit_sent(
+            float(self.u_sent_z),
+            candidate_m_s=float(v_candidate_normal),
+            dt_s=dt_flow,
+        )
+        self.cdyob_vi = float(self._cdyob.telemetry.vi_m_s)
+        self.cdyob_candidate = float(self._cdyob.telemetry.candidate_m_s)
+        self.cdyob_antiwindup_error = float(
+            self._cdyob.telemetry.antiwindup_error_m_s
+        )
+        self.cdyob_constrained = bool(self._cdyob.telemetry.constrained)
+        self.cdyob_linear_equivalent = bool(
+            self._cdyob.telemetry.linear_equivalent
+            and float(cfg.deadband_n) <= 0.0
+            and float(cfg.deadband_width_n) <= 0.0
+            and float(cfg.desired_force_ramp_s) <= 0.0
+            and cfg.bidirectional_flow.mode != "active"
+            and not cfg.surface_force_modulation.enabled
+        )
         return v_final
+
+    def _publish_cdyob_telemetry(self) -> None:
+        tel = self._cdyob.telemetry
+        self.cdyob_corr_m_s = float(tel.corr_m_s)
+        self.cdyob_qtinv_vm = float(tel.qtinv_vm)
+        self.cdyob_q_vi = float(tel.q_vi)
+        self.cdyob_n1_force = float(tel.n1_force)
+        self.cdyob_n2_velocity = float(tel.n2_velocity)
+        self.cdyob_pert_unclipped = float(tel.pert_unclipped)
+        self.cdyob_pert_clipped = float(tel.pert_clipped)
+        self.cdyob_blend = float(tel.blend)
+        self.cdyob_vi = float(tel.vi_m_s)
+        self.cdyob_candidate = float(tel.candidate_m_s)
+        self.cdyob_antiwindup_error = float(tel.antiwindup_error_m_s)
+        self.cdyob_residual = float(tel.residual)
+        self.cdyob_saturated = bool(tel.saturated)
+        self.cdyob_constrained = bool(tel.constrained)
+        self.cdyob_linear_equivalent = bool(tel.linear_equivalent)
+        self.cdyob_mode = str(tel.mode)
 
     def _update_surface_force_scale(
         self,
@@ -1781,7 +2077,9 @@ class AdmittanceController:
         )
         mass_z = max(float(self._m_z_now), 1e-3)
         # Steady damping: D0 unless legacy drive_damping keeps Keemink b_d.
-        if (
+        if cfg.cdyob.computes():
+            damping_ke = float(cfg.admittance_damping_z)
+        elif (
             cfg.adaptive_ke.enabled
             and cfg.adaptive_ke.drive_damping
             and in_contact
@@ -1792,10 +2090,15 @@ class AdmittanceController:
         damping_dimeas = self._update_delta_d_hf(
             dt_eff, abs_eff_n=abs(float(eff))
         )
+        if cfg.cdyob.computes():
+            # Keep detecting instability, but do not change A during either
+            # A-only baseline or CDYOB shadow/active operation.
+            damping_dimeas = 0.0
         # Impact burst: on rising edge, briefly allow critical-damping level
         # even when drive_damping is False (stiff-first without sticky steady D).
         if (
             rising_edge
+            and not cfg.cdyob.computes()
             and cfg.adaptive_ke.enabled
             and not cfg.adaptive_ke.drive_damping
             and in_contact
@@ -1854,9 +2157,13 @@ class AdmittanceController:
         self.retract_fast_rearm_count = int(
             self._fast_retract_guard.rearm_count
         )
+        chase_live = bool(in_contact) and not self._use_delay_safe_press()
+        if self.cfg.cdyob.computes():
+            # Shadow and active must share the same A-only baseline.
+            chase_live = False
         v_reference = self._update_proactive_v_r(
             eff,
-            in_contact,
+            chase_live,
             dt_eff,
             rising_edge=rising_edge,
             desired_force_n=desired_force_n,
@@ -1866,7 +2173,7 @@ class AdmittanceController:
         self.u_dob_z = self._force_dob.update(
             eff,
             dt_eff=dt_eff,
-            in_contact=in_contact,
+            in_contact=chase_live,
             instability_index=self.instability_index,
             chase_scale=chase_scale,
         )

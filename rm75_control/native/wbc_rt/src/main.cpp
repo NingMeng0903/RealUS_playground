@@ -410,6 +410,9 @@ int main(int argc, char** argv) {
         out->ns_rail_lock = tout.ns_rail_lock;
         out->sat_scale = tout.sat_scale;
         out->sec_target_norm = tout.sec_target_norm;
+        out->homotopy_s = tout.homotopy_s;
+        out->psi_star = tout.psi_star;
+        out->rail_motion_share = tout.rail_motion_share;
         out->flags = tout.flags;
         out->status = tout.status;
       }

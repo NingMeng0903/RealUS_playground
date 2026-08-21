@@ -31,6 +31,11 @@ def test_loss_event_clears_vr_and_dob() -> None:
     cfg.var_damping_enabled = False
     cfg.physical_contact.enabled = False
     ctrl = AdmittanceController(DT, cfg)
+    # This isolated legacy-loop test deliberately opens the first-contact
+    # slow latch; production CDYOB shadow keeps both loops disabled.
+    ctrl._first_contact_slow_latched = False
+    ctrl._in_contact_latched = True
+    ctrl._episode_seen = True
     f_ext = np.zeros(6)
     f_des = np.zeros(6)
     f_des[2] = 2.0

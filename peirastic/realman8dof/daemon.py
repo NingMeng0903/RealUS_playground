@@ -283,7 +283,7 @@ class ControllerService:
                 return False
 
             def _on_step(label, t_phase, step, pose, f_ext, t_wall=float("nan")) -> None:
-                del label, t_wall
+                del label
                 t_ref = float(t_phase)
                 polled = self.hub.poll()
                 if polled is not None:
@@ -337,6 +337,15 @@ class ControllerService:
                     f_ext_z=fz,
                     msg=phase.label,
                 )
+                self.hub.motion.publish(
+                    v_tcp_z=float(getattr(step, "v_tcp_z_actual", float("nan"))),
+                    a_tcp_z_plus=float(getattr(step, "a_tcp_z_plus", 0.0)),
+                    feedback_age_s=float(
+                        getattr(step, "feedback_age_s", float("inf"))
+                    ),
+                    t_wall_s=float(t_wall),
+                    valid=bool(getattr(step, "feedback_velocity_valid", False)),
+                )
                 self.panel.update(
                     mode=MODE_LABEL[self.mode],
                     status="RUNNING",
@@ -375,6 +384,18 @@ class ControllerService:
                     except Exception:
                         pass
                 self.hub.publish(status=Status.ESTOP, mode=self.mode, estop=True)
+            elif result.stop_reason == "uncertified_brake":
+                self._trip_hardware(
+                    rail,
+                    result.stop_reason,
+                    robot=getattr(sess, "robot", None),
+                )
+                self.hub.publish(
+                    status=Status.ESTOP,
+                    mode=self.mode,
+                    estop=True,
+                    msg=result.stop_reason,
+                )
             elif result.stop_reason:
                 self.panel.event("WARN", result.stop_reason)
                 self.hub.publish(status=Status.ERROR, mode=self.mode, msg=result.stop_reason[:90])

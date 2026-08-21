@@ -359,7 +359,17 @@ def test_production_stack_tracks_moving_surface_at_1n_and_5n():
             # Surface-velocity match uses the passive+proactive chase; DOB is
             # covered separately for steady-force bias rejection.
             cfg.force_dob.enabled = False
+            cfg.cdyob.enabled = False
+            cfg.force_axis_slew_press_m_s2 = 0.0
+            cfg.force_axis_slew_retract_m_s2 = 0.0
+            cfg.force_axis_slew_reverse_m_s2 = 0.0
+            cfg.force_axis_jerk_max_m_s3 = 0.0
             ctrl = AdmittanceController(dt, cfg)
+            ctrl._first_contact_slow_latched = False
+            ctrl._recontact_slow_latched = False
+            ctrl._in_contact_latched = True
+            ctrl._episode_seen = True
+            ctrl.contact_present = True
             tcp_z = desired / ke_true
             surface_z = 0.0
             force_tail: list[float] = []

@@ -558,6 +558,32 @@ def test_minus_z_twist_does_not_enable_press_escape_without_force() -> None:
     assert abs(float(step.v_escape)) <= 1.0e-6
 
 
+def test_emid_uses_live_tcp_not_latched_pose_d() -> None:
+    inner = _yaml_inner_at_rail(0.40)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q = _SEED_Q.copy()
+    q[0] = 0.40
+    inner.reset(q)
+    y_live = float(inner.kin.fk_pose(q)[1])
+    d_live = y_live - float(q[0])
+    d_star = d_live - 0.08
+    inner.rail_ext_task.set_d_pref(d_star)
+    if inner.posture_retarget is not None:
+        inner.posture_retarget._d_star = d_star
+        inner.posture_retarget.d_star_m = d_star
+        inner.posture_retarget._d_center_target = d_star
+    pose_d = inner.kin.fk_pose(q).copy()
+    pose_d[1] += 0.40
+    twist = np.array([0.0, 0.05, 0.0, 0.0, 0.0, 0.0])
+    inner.update(twist, q_meas=q, vel_ff=twist, pose_d=pose_d)
+    d_used = float(inner.rail_ext_task.d_pref_m)
+    rail_ff = float(inner.rail_ext_task.last_rail_ff_m)
+    assert rail_ff == pytest.approx(y_live - d_used, abs=1e-6)
+    assert abs(rail_ff - (float(pose_d[1]) - d_used)) > 0.30
+    e_mid = float(inner.rail_ext_task.last_e_mid_m)
+    assert e_mid == pytest.approx((y_live - d_used) - float(q[0]), abs=0.02)
+
+
 def test_large_d_star_error_keeps_outer_vel_ff() -> None:
     inner = _yaml_inner_at_rail(0.40)
     SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)

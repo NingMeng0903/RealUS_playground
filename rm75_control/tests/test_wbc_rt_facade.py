@@ -23,7 +23,7 @@ _SEED_Q = np.array([0.375, 0.194, -0.503, -0.069, 1.979, -0.776, 0.547, -4.370])
 
 def test_protocol_sizes_match_packed_cxx() -> None:
     assert P.WBC_IN_SIZE == 608
-    assert P.WBC_OUT_SIZE == 584
+    assert P.WBC_OUT_SIZE == 608
     binary = find_wbc_rt_binary()
     if binary is None:
         pytest.skip("wbc_rt binary not built")
@@ -99,11 +99,19 @@ def test_native_smoke_step_and_setters() -> None:
         inner.set_rail_extension_active(True)
         inner.begin_hybrid_episode(_SEED_Q, np.zeros(8))
         q0 = inner.q_cmd.copy()
+        last = None
+        vy = np.array([0.0, 0.02, 0.0, 0.0, 0.0, 0.0])
         for _ in range(8):
-            inner.step(np.array([0.0, 0.02, 0.0, 0.0, 0.0, 0.0]), q_meas=inner.q_cmd)
+            last = inner.step(vy, q_meas=inner.q_cmd, vel_ff=vy)
+        assert last is not None
         assert np.all(np.isfinite(inner.q_cmd))
         assert inner.q_cmd.shape == (8,)
         assert float(np.linalg.norm(inner.q_cmd - q0)) > 1e-6
+        step = last.step
+        assert step is not None
+        assert np.isfinite(step.homotopy_s)
+        assert np.isfinite(step.psi_star_deg)
+        assert np.isfinite(step.rail_motion_share)
         inner.stop()
     finally:
         if inner._native is not None:

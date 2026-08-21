@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 
 _PLAYGROUND = Path(__file__).resolve().parents[2]
@@ -69,6 +70,18 @@ def test_servo_twist_is_pure_passthrough() -> None:
     got = outer.sample(0.0, pose, np.zeros(6))
     assert np.allclose(got, v)
     assert outer.last_err_mm == 0.0
+
+
+def test_servo_twist_refreshes_pose_d_from_live_tcp() -> None:
+    v = np.array([0.0, 0.10, 0.0, 0.0, 0.0, 0.0])
+    outer = ServoTwistOuter(v)
+    origin = np.array([0.4, 0.18, 0.3, 0.0, 0.0, 0.0])
+    live = origin + np.array([0.0, 0.40, 0.0, 0.0, 0.0, 0.0])
+    outer.set_origin(origin)
+    outer.sample(0.0, live, np.zeros(6))
+    assert outer.last_pose_d is not None
+    assert outer.last_pose_d[1] == pytest.approx(live[1])
+    assert abs(float(outer.last_pose_d[1] - origin[1])) > 0.30
 
 
 def test_servo_twist_hold_latches_pose() -> None:
@@ -174,6 +187,43 @@ def test_ipc_unique_prefix_roundtrip() -> None:
         assert snap["ticks"] == 3
         twist.write(np.array([0.01, 0, 0, 0, 0, 0]), hz=125.0, r3=False)
         assert twist.read()["twist"][0] == pytest.approx(0.01)
+        from peirastic.core.ipc import MotionBus
+
+        reader = MotionBus(prefix=prefix, create=False)
+        try:
+            hub.motion.publish(
+                v_tcp_z=0.02,
+                a_tcp_z_plus=0.4,
+                feedback_age_s=0.005,
+                t_wall_s=1.0,
+                valid=True,
+            )
+            row, why = reader.fresh(-1, max_age_s=0.020)
+            assert why == ""
+            assert row is not None
+            assert row["v_tcp_z"] == pytest.approx(0.02)
+            assert int(row["seq"]) % 2 == 0
+            assert row["age_total_s"] <= 0.020
+            stale, reason = reader.fresh(int(row["seq"]), max_age_s=0.020)
+            assert stale is None
+            assert reason == "seq_stale"
+            hub.motion.publish(
+                v_tcp_z=0.01,
+                a_tcp_z_plus=0.0,
+                feedback_age_s=0.014,
+                t_wall_s=1.0,
+                valid=True,
+            )
+            time.sleep(0.003)
+            aged, age_why = reader.fresh(-1, max_age_s=0.015)
+            assert aged is None
+            assert age_why == "age_total"
+            hub.motion._row[0]["seq"] = 3
+            torn, torn_why = reader.fresh(-1, max_age_s=0.050)
+            assert torn is None
+            assert torn_why in ("torn", "empty")
+        finally:
+            reader.close()
         client.close()
     finally:
         twist.close()
@@ -325,13 +375,28 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
     assert float(force["hybrid_motion"]["max_vz_tool_m_s"]) == pytest.approx(0.08)
     assert float(force["hybrid_motion"]["system_delay_s"]) == pytest.approx(0.055)
     assert float(force["hybrid_motion"]["force_barrier"]["v_seek_free_m_s"]) == pytest.approx(
-        0.030
+        0.020
     )
+    assert force["hybrid_motion"]["physical_contact"]["hold_until_reset"] is False
+    assert force["hybrid_motion"]["safety_shield"]["mode"] == "observe"
+    assert force["hybrid_motion"]["safety_shield"]["terminal_invariance_proven"] is False
+    assert force["hybrid_motion"]["safety_shield"]["energy_sign_verified"] is False
     assert float(force["hybrid_motion"]["force_barrier"]["v_min_press_m_s"]) == pytest.approx(
         0.0
     )
     assert float(force["hybrid_motion"]["force_scale_fraction"]) == pytest.approx(0.0)
-    assert force["hybrid_motion"]["cdyob"]["enabled"] is False
+    assert force["hybrid_motion"]["cdyob"]["mode"] == "shadow"
+    assert float(force["hybrid_motion"]["cdyob"]["t0_s"]) == pytest.approx(0.030)
+    assert float(force["hybrid_motion"]["cdyob"]["tp_s"]) == pytest.approx(0.012)
+    assert float(force["hybrid_motion"]["cdyob"]["omega_q_hz"]) == pytest.approx(
+        0.75
+    )
+    assert float(
+        force["hybrid_motion"]["cdyob"]["active_press_max_m_s"]
+    ) == pytest.approx(0.010)
+    assert force["hybrid_motion"]["cdyob"]["active_model_validated"] is True
+    assert force["hybrid_motion"]["force_dob"]["enabled"] is False
+    assert force["hybrid_motion"]["proactive_feedforward"] is False
 
 
 def test_pad_hybrid_keeps_pad_axes_force_owns_z() -> None:

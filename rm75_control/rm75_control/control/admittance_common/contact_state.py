@@ -29,6 +29,10 @@ class PhysicalContactConfig:
     exit_n: float = 0.35
     enter_confirm_s: float = 0.010
     exit_confirm_s: float = 0.100
+    # Must stay false on hardware.  Locking CONTACT after acquire hides
+    # a real bounce-off and reopens 80 mm/s press.  Force-task arming is
+    # a separate latch on the controller.
+    hold_until_reset: bool = False
 
     @classmethod
     def from_dict(cls, raw: dict) -> PhysicalContactConfig:
@@ -68,6 +72,7 @@ class PhysicalContactConfig:
                     c.get("physical_contact_exit_confirm_s", 0.100),
                 )
             ),
+            hold_until_reset=bool(p.get("hold_until_reset", False)),
         )
 
 
@@ -159,6 +164,10 @@ class PhysicalContactTracker:
 
         if self.present:
             self.high_timer_s = 0.0
+            if cfg.hold_until_reset and self.ever_acquired:
+                self.low_timer_s = 0.0
+                self.state = self.CONTACT
+                return PhysicalContactUpdate(True, self.CONTACT)
             if self.filtered_force_n < cfg.exit_n:
                 self.low_timer_s += dt
                 self.state = self.SUSPECT_LOSS

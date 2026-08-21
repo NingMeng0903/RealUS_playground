@@ -67,6 +67,9 @@ struct TickOut {
   double ns_rail_lock = 0.0;
   double sat_scale = 1.0;
   double sec_target_norm = 0.0;
+  double homotopy_s = 0.0;
+  double psi_star = 0.0;
+  double rail_motion_share = std::numeric_limits<double>::quiet_NaN();
 };
 
 class Collision {

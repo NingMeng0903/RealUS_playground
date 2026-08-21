@@ -33,6 +33,10 @@ class ForceBarrierConfig:
     v_ref_m_s: float = 0.05
     v_min_retract_m_s: float = 0.0
     v_min_press_m_s: float = 0.0
+    # Kept only while clearly under-force.  Over-force / zero-margin
+    # contact still closes press (v_min_press must not reopen that).
+    v_underforce_press_m_s: float = 0.010
+    underforce_band_n: float = 0.20
     v_seek_free_m_s: float = 0.030
     fdot_lpf_s: float = 0.040
     stiffness_cap_enabled: bool = True
@@ -70,6 +74,10 @@ class ForceBarrierConfig:
             v_ref_m_s=float(barrier.get("v_ref_m_s", 0.05)),
             v_min_retract_m_s=float(barrier.get("v_min_retract_m_s", 0.0)),
             v_min_press_m_s=float(barrier.get("v_min_press_m_s", 0.0)),
+            v_underforce_press_m_s=float(
+                barrier.get("v_underforce_press_m_s", 0.010)
+            ),
+            underforce_band_n=float(barrier.get("underforce_band_n", 0.20)),
             v_seek_free_m_s=float(barrier.get("v_seek_free_m_s", 0.030)),
             fdot_lpf_s=float(barrier.get("fdot_lpf_s", 0.040)),
             precontact_raw_trigger_n=float(
@@ -305,6 +313,13 @@ class ForceSpaceVelocityDamper:
 
         escape = max(float(cfg.f_escape_n), 0.0)
         overforce = f_pred >= abs(float(f_des_z)) + escape
+        band = max(float(cfg.underforce_band_n), 0.0)
+        clearly_under = float(f_z) + band < abs(float(f_des_z))
+        v_under = max(float(cfg.v_underforce_press_m_s), 0.0)
+        if clearly_under and not overforce and v_under > 0.0:
+            if v_hi > 0.0:
+                v_under = min(v_under, v_hi)
+            cap_press = max(cap_press, v_under)
         if overforce:
             cap_retract = v_hi_retract
         else:

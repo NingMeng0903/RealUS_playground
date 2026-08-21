@@ -240,6 +240,7 @@ class JointIkStep:
     rail_posture_err_m: float = float("nan")
     d_star_m: float = float("nan")
     psi_star_deg: float = float("nan")
+    homotopy_s: float = float("nan")
     minmax_margin: float = float("nan")
     controller_mode: str = "qpik"
     qp_backend: str = ""
@@ -1241,6 +1242,11 @@ class JointIkController:
                 and np.isfinite(self.posture_retarget.psi_star_rad)
                 else float("nan")
             ),
+            homotopy_s=(
+                float(self.posture_retarget.homotopy_s)
+                if self.posture_retarget is not None
+                else float("nan")
+            ),
             minmax_margin=(
                 float(self.posture_retarget.last_minmax_margin)
                 if self.posture_retarget is not None
@@ -1800,7 +1806,9 @@ class JointIkController:
                 dt_s=float(dt),
                 joint_margin_frac=joint_margin_frac,
                 sigma_raw=sigma_now,
-                y_tcp_d=y_tcp_d,
+                # Mid-range e_mid = (y_tcp − d*) − y_rail. SERVO_TWIST pose_d.y
+                # stays at set_origin; that latch must not become y_des.
+                y_tcp_d=float(pose_now[1]),
                 press_stalled=allow_press_escape,
                 tool_y_err_m=tool_y_err_m,
                 stroke_limiters=stroke_planned,
@@ -3069,7 +3077,7 @@ class _TickLogger:
            "waste_ratio", "rail_ff_m", "rail_posture_err_m",
            "rail_escape_active",
            "psi_deg", "psi_ref_deg", "psi_retarget_score", "d_pref_m",
-           "d_star_m", "psi_star_deg", "minmax_margin",
+           "d_star_m", "psi_star_deg", "homotopy_s", "minmax_margin",
            "elbow_margin_rad", "wrist_open_rad", "family_ok",
            "tool_y_des_m", "tool_y_err_mm",
            "contact_phase", "v_air_cmd", "ke_hat", "dob_v", "barrier_cap_floor",
@@ -3183,6 +3191,23 @@ class _TickLogger:
             "v_force_cmd_z",
             "ke_cap_n_m",
             "cdyob_corr_m_s",
+            "cdyob_mode",
+            "cdyob_qtinv_vm",
+            "cdyob_q_vi",
+            "cdyob_n1_force",
+            "cdyob_n2_velocity",
+            "cdyob_pert_unclipped",
+            "cdyob_pert_clipped",
+            "cdyob_blend",
+            "cdyob_vi",
+            "cdyob_candidate",
+            "cdyob_antiwindup_error",
+            "cdyob_residual",
+            "cdyob_saturated",
+            "cdyob_constrained",
+            "cdyob_linear_equivalent",
+            "cdyob_apply_ready",
+            "cdyob_ready_s",
             "overforce_escape",
             "u_nom_raw",
             "u_nom_capped",
@@ -3204,6 +3229,7 @@ class _TickLogger:
             "terminal_ok",
             "aj_ok",
             "domain_ok",
+            "uncertified_brake",
             "recovery_latched",
             "recontact_slow_latched",
             "v_recontact_cap",
@@ -3326,6 +3352,27 @@ class _TickLogger:
         v_force_cmd_z = getattr(ctrl, "v_force_cmd_z", float("nan"))
         ke_cap_n_m = getattr(ctrl, "ke_cap_n_m", float("nan"))
         cdyob_corr_m_s = getattr(ctrl, "cdyob_corr_m_s", float("nan"))
+        cdyob_mode = getattr(ctrl, "cdyob_mode", "")
+        cdyob_qtinv_vm = getattr(ctrl, "cdyob_qtinv_vm", float("nan"))
+        cdyob_q_vi = getattr(ctrl, "cdyob_q_vi", float("nan"))
+        cdyob_n1_force = getattr(ctrl, "cdyob_n1_force", float("nan"))
+        cdyob_n2_velocity = getattr(ctrl, "cdyob_n2_velocity", float("nan"))
+        cdyob_pert_unclipped = getattr(ctrl, "cdyob_pert_unclipped", float("nan"))
+        cdyob_pert_clipped = getattr(ctrl, "cdyob_pert_clipped", float("nan"))
+        cdyob_blend = getattr(ctrl, "cdyob_blend", float("nan"))
+        cdyob_vi = getattr(ctrl, "cdyob_vi", float("nan"))
+        cdyob_candidate = getattr(ctrl, "cdyob_candidate", float("nan"))
+        cdyob_antiwindup_error = getattr(
+            ctrl, "cdyob_antiwindup_error", float("nan")
+        )
+        cdyob_residual = getattr(ctrl, "cdyob_residual", float("nan"))
+        cdyob_saturated = getattr(ctrl, "cdyob_saturated", False)
+        cdyob_constrained = getattr(ctrl, "cdyob_constrained", False)
+        cdyob_linear_equivalent = getattr(
+            ctrl, "cdyob_linear_equivalent", False
+        )
+        cdyob_apply_ready = getattr(ctrl, "cdyob_apply_ready", False)
+        cdyob_ready_s = getattr(ctrl, "cdyob_ready_s", float("nan"))
         overforce_escape = getattr(ctrl, "overforce_escape", False)
         u_nom_raw = getattr(ctrl, "u_nom_raw_z", float("nan"))
         u_nom_capped = getattr(ctrl, "u_nom_capped_z", float("nan"))
@@ -3348,7 +3395,8 @@ class _TickLogger:
         energy_margin_j = getattr(ctrl, "shield_energy_margin_j", float("nan"))
         terminal_ok = getattr(ctrl, "shield_terminal_ok", False)
         aj_ok = getattr(ctrl, "shield_aj_ok", True)
-        domain_ok = getattr(ctrl, "shield_domain_ok", True)
+        domain_ok = getattr(ctrl, "shield_domain_ok", False)
+        uncertified_brake = getattr(ctrl, "shield_uncertified_brake", False)
         recovery_latched = getattr(ctrl, "shield_recovery_latched", False)
         recontact_slow_latched = getattr(ctrl, "recontact_slow_latched", False)
         v_recontact_cap = getattr(ctrl, "v_recontact_cap_m_s", float("nan"))
@@ -3784,6 +3832,11 @@ class _TickLogger:
                    else ""
                ),
                (
+                   f"{step.homotopy_s:.6f}"
+                   if np.isfinite(getattr(step, "homotopy_s", float("nan")))
+                   else ""
+               ),
+               (
                    f"{step.minmax_margin:.6f}"
                    if np.isfinite(getattr(step, "minmax_margin", float("nan")))
                    else ""
@@ -4075,6 +4128,39 @@ class _TickLogger:
                    if np.isfinite(float(cdyob_corr_m_s))
                    else ""
                ),
+               str(cdyob_mode or ""),
+               f"{float(cdyob_qtinv_vm):.6f}" if np.isfinite(float(cdyob_qtinv_vm)) else "",
+               f"{float(cdyob_q_vi):.6f}" if np.isfinite(float(cdyob_q_vi)) else "",
+               f"{float(cdyob_n1_force):.6f}" if np.isfinite(float(cdyob_n1_force)) else "",
+               f"{float(cdyob_n2_velocity):.6f}" if np.isfinite(float(cdyob_n2_velocity)) else "",
+               (
+                   f"{float(cdyob_pert_unclipped):.6f}"
+                   if np.isfinite(float(cdyob_pert_unclipped))
+                   else ""
+               ),
+               (
+                   f"{float(cdyob_pert_clipped):.6f}"
+                   if np.isfinite(float(cdyob_pert_clipped))
+                   else ""
+               ),
+               f"{float(cdyob_blend):.4f}" if np.isfinite(float(cdyob_blend)) else "",
+               f"{float(cdyob_vi):.6f}" if np.isfinite(float(cdyob_vi)) else "",
+               (
+                   f"{float(cdyob_candidate):.6f}"
+                   if np.isfinite(float(cdyob_candidate))
+                   else ""
+               ),
+               (
+                   f"{float(cdyob_antiwindup_error):.6f}"
+                   if np.isfinite(float(cdyob_antiwindup_error))
+                   else ""
+               ),
+               f"{float(cdyob_residual):.6f}" if np.isfinite(float(cdyob_residual)) else "",
+               int(bool(cdyob_saturated)),
+               int(bool(cdyob_constrained)),
+               int(bool(cdyob_linear_equivalent)),
+               int(bool(cdyob_apply_ready)),
+               f"{float(cdyob_ready_s):.4f}" if np.isfinite(float(cdyob_ready_s)) else "",
                int(bool(overforce_escape)),
                f"{float(u_nom_raw):.6f}" if np.isfinite(float(u_nom_raw)) else "",
                f"{float(u_nom_capped):.6f}" if np.isfinite(float(u_nom_capped)) else "",
@@ -4104,6 +4190,7 @@ class _TickLogger:
                int(bool(terminal_ok)),
                int(bool(aj_ok)),
                int(bool(domain_ok)),
+               int(bool(uncertified_brake)),
                int(bool(recovery_latched)),
                int(bool(recontact_slow_latched)),
                (
@@ -4399,6 +4486,21 @@ def _qpik_rail_v_ff_m_s(qdot0: float) -> float:
     if not math.isfinite(v):
         return 0.0
     return v
+
+
+def _guard_uncertified_brake_before_inner(
+    outer,
+    fault_stop,
+) -> tuple[bool, str]:
+    """Stop this tick before IK, rail target, or arm CANFD publication."""
+    controller = getattr(outer, "controller", None)
+    if controller is None or not bool(
+        getattr(controller, "shield_uncertified_brake", False)
+    ):
+        return True, ""
+    reason = "uncertified_brake"
+    fault_stop(reason)
+    return False, reason
 
 
 def _wall_clock_rail_target(
@@ -5052,6 +5154,16 @@ def run_joint_admittance_phases(
                             phase.outer.sample(t_ref, pose_pin, f_ext, **sample_kwargs),
                             dtype=float,
                         )
+                        tick_sendable, brake_reason = (
+                            _guard_uncertified_brake_before_inner(
+                                phase.outer,
+                                _fault_stop,
+                            )
+                        )
+                        if not tick_sendable:
+                            phase_stopped = True
+                            stop_reason = brake_reason
+                            break
                         qdot_ff = (
                             phase.qdot_ff_provider(t_ref)
                             if phase.qdot_ff_provider is not None
@@ -5380,6 +5492,23 @@ def run_joint_admittance_phases(
                             last_log_ms = (
                                 time.perf_counter() - _t_log0
                             ) * 1000.0
+                        step.v_tcp_z_actual = float(v_tcp_z_actual)
+                        if (
+                            last_v_tcp_z is not None
+                            and math.isfinite(float(v_tcp_z_actual))
+                            and float(dt_wall_actual) > 1e-4
+                        ):
+                            step.a_tcp_z_plus = max(
+                                (float(v_tcp_z_actual) - float(last_v_tcp_z))
+                                / float(dt_wall_actual),
+                                0.0,
+                            )
+                        else:
+                            step.a_tcp_z_plus = 0.0
+                        step.feedback_age_s = float(feedback_age_s)
+                        step.feedback_velocity_valid = bool(feedback_velocity_valid)
+                        if feedback_velocity_valid and math.isfinite(float(v_tcp_z_actual)):
+                            last_v_tcp_z = float(v_tcp_z_actual)
                         if on_step is not None:
                             on_step(phase.label, t_ref, step, pose_pin, f_ext, t_wall)
 

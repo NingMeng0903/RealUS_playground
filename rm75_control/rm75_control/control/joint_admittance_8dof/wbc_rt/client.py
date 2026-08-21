@@ -425,12 +425,24 @@ class NativeWbcClient:
             nullspace_rail_lock_norm=float(o["ns_rail_lock"]),
             sat_scale=float(o["sat_scale"]),
             sec_target_norm=float(o["sec_target_norm"]),
+            homotopy_s=float(o["homotopy_s"]),
+            psi_star_deg=(
+                float(np.degrees(o["psi_star"]))
+                if np.isfinite(float(o["psi_star"]))
+                else float("nan")
+            ),
+            rail_motion_share=float(o["rail_motion_share"]),
         )
         self.ctrl.last_secondary_norm = float(step.nullspace_norm)
         self.ctrl.last_sat_scale = float(step.sat_scale)
         if self.ctrl.rail_ext_task is not None and np.isfinite(float(o["d_pref"])):
             self.ctrl.rail_ext_task.d_pref_m = float(o["d_pref"])
-        if self.ctrl.posture_retarget is not None and np.isfinite(float(o["d_star"])):
-            self.ctrl.posture_retarget.d_star_m = float(o["d_star"])
-            self.ctrl.posture_retarget._d_star = float(o["d_star"])
+        if self.ctrl.posture_retarget is not None:
+            if np.isfinite(float(o["d_star"])):
+                self.ctrl.posture_retarget.d_star_m = float(o["d_star"])
+                self.ctrl.posture_retarget._d_star = float(o["d_star"])
+            if np.isfinite(float(o["psi_star"])):
+                self.ctrl.posture_retarget.psi_star_rad = float(o["psi_star"])
+            if np.isfinite(float(o["homotopy_s"])):
+                self.ctrl.posture_retarget.homotopy_s = float(o["homotopy_s"])
         return step

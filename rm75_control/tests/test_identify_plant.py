@@ -13,14 +13,19 @@ import yaml
 from peirastic.apps.identify_plant import (
     analyze_csv,
     analyze_stop_reverse,
+    analyze_tn,
     _align_trigger_index,
     _event_metrics,
     _horizon_error_ub,
     _load_twist_csv,
+    _monotonic_stop_bins,
+    _motion_fresh_or_wait,
+    _lookup_stop_cover,
     _open_loop_envelopes,
     _rollout_fopdt,
     _simulate_first_order,
     _step_dt,
+    _validate_stop_lookup,
 )
 
 
@@ -158,7 +163,7 @@ def test_open_loop_envelopes_share_origins() -> None:
     ach = _simulate_first_order(cmd, delay_steps=2, tp_s=0.020, dt=dt)
     dt_arr = _step_dt(t, dt)
     origins = [8, 16, 24]
-    ev, ex, ex_plus, used = _open_loop_envelopes(
+    ev, ex, ex_plus, _ea, used = _open_loop_envelopes(
         cmd,
         ach,
         t,
@@ -272,7 +277,7 @@ def test_open_loop_ex_plus_does_not_cancel() -> None:
     def pred(_k: int) -> np.ndarray:
         return np.zeros(8)
 
-    _ev, ex, ex_plus, used = _open_loop_envelopes(
+    _ev, ex, ex_plus, _ea, used = _open_loop_envelopes(
         cmd,
         ach,
         t,
@@ -321,6 +326,203 @@ def test_align_trigger_uses_first_ub_not_velocity_edge() -> None:
     assert idx == 40
 
 
+def test_validate_stop_lookup_flags_overbound_and_uncovered() -> None:
+    bins = [
+        {
+            "v0_m_s": 0.030,
+            "a0_m_s2": 1.0,
+            "q_remain_m": 0.001,
+            "dx_ub_m": 0.0010,
+            "n_b": 8.0,
+        }
+    ]
+    ok = _validate_stop_lookup(
+        bins,
+        [
+            {
+                "v0": 0.020,
+                "a0": 0.2,
+                "q_remain_m": 0.0,
+                "dx_press": 0.0004,
+                "n_b": 6.0,
+                "reached_T": 1.0,
+            }
+        ],
+    )
+    assert ok["n"] == 1
+    assert ok["complete"] == 1
+    assert ok["n_trigger"] == 1
+    assert ok["n_aligned"] == 1
+    assert ok["n_valid"] == 1
+    assert ok["n_checked"] == 1
+    assert ok["n_missed"] == 0
+    assert ok["n_gap"] == 0
+    assert ok["over_dx"] == 0
+    assert ok["over_nb"] == 0
+    assert ok["uncovered"] == 0
+    assert ok["terminal_fail"] == 0
+    over = _validate_stop_lookup(
+        bins,
+        [
+            {
+                "v0": 0.020,
+                "a0": 0.2,
+                "q_remain_m": 0.0,
+                "dx_press": 0.0020,
+                "n_b": 6.0,
+                "reached_T": 1.0,
+            }
+        ],
+    )
+    assert over["over_dx"] == 1
+    nb = _validate_stop_lookup(
+        bins,
+        [
+            {
+                "v0": 0.020,
+                "a0": 0.2,
+                "q_remain_m": 0.0,
+                "dx_press": 0.0004,
+                "n_b": 12.0,
+                "reached_T": 1.0,
+            }
+        ],
+    )
+    assert nb["over_nb"] == 1
+    miss = _validate_stop_lookup(
+        bins,
+        [
+            {
+                "v0": 0.080,
+                "a0": 0.2,
+                "q_remain_m": 0.0,
+                "dx_press": 0.0004,
+                "n_b": 4.0,
+                "reached_T": 1.0,
+            }
+        ],
+    )
+    assert miss["uncovered"] == 1
+    never_t = _validate_stop_lookup(
+        bins,
+        [
+            {
+                "v0": 0.020,
+                "a0": 0.2,
+                "q_remain_m": 0.0,
+                "dx_press": 0.0004,
+                "n_b": float("nan"),
+                "reached_T": 0.0,
+            }
+        ],
+    )
+    assert never_t["terminal_fail"] == 1
+    assert never_t["over_dx"] == 0
+    assert never_t["complete"] == 0
+    gapped = _validate_stop_lookup(
+        bins,
+        [
+            {
+                "v0": 0.020,
+                "a0": 0.2,
+                "q_remain_m": 0.0,
+                "dx_press": float("nan"),
+                "n_b": float("nan"),
+                "reached_T": 0.0,
+                "gap_invalid": 1.0,
+            }
+        ],
+        n_trigger=1,
+        n_aligned=1,
+        n_missed=0,
+    )
+    assert gapped["n_gap"] == 1
+    assert gapped["n_checked"] == 0
+    assert gapped["complete"] == 0
+    missed = _validate_stop_lookup(
+        bins,
+        [
+            {
+                "v0": 0.020,
+                "a0": 0.2,
+                "q_remain_m": 0.0,
+                "dx_press": 0.0004,
+                "n_b": 6.0,
+                "reached_T": 1.0,
+            }
+        ],
+        n_trigger=2,
+        n_aligned=1,
+        n_missed=1,
+    )
+    assert missed["n_missed"] == 1
+    assert missed["complete"] == 0
+
+
+def test_stop_bins_3d_covering_does_not_undercut() -> None:
+    bins = _monotonic_stop_bins(
+        [
+            {
+                "v0": 0.020,
+                "a0": 0.10,
+                "q_remain_m": 0.0,
+                "dx_press": 0.0020,
+                "n_b": 12.0,
+                "reached_T": 1.0,
+            },
+            {
+                "v0": 0.020,
+                "a0": 8.0,
+                "q_remain_m": 0.0,
+                "dx_press": 0.0004,
+                "n_b": 4.0,
+                "reached_T": 1.0,
+            },
+        ]
+    )
+    dx_lo, _nb = _lookup_stop_cover(bins, v0=0.020, a0=0.10, q_remain_m=0.0)
+    dx_hi, _nb2 = _lookup_stop_cover(bins, v0=0.020, a0=8.0, q_remain_m=0.0)
+    assert dx_lo >= 0.0020 - 1e-12
+    assert dx_hi >= 0.0020 - 1e-12
+
+
+def test_stop_bins_jerk_state_does_not_undercut() -> None:
+    bins = _monotonic_stop_bins(
+        [
+            {
+                "v0": 0.020,
+                "a0": 0.0,
+                "q_remain_m": 0.0,
+                "u_prev": 0.0,
+                "a_cmd": 0.0,
+                "q_front": 0.0,
+                "dx_press": 0.0004,
+                "n_b": 4.0,
+                "reached_T": 1.0,
+            },
+            {
+                "v0": 0.020,
+                "a0": 0.0,
+                "q_remain_m": 0.0,
+                "u_prev": 0.020,
+                "a_cmd": 1.0,
+                "q_front": 0.020,
+                "dx_press": 0.0020,
+                "n_b": 12.0,
+                "reached_T": 1.0,
+            },
+        ]
+    )
+    dx_lo, _ = _lookup_stop_cover(
+        bins, v0=0.020, a0=0.0, q_remain_m=0.0, u_prev=0.0
+    )
+    dx_hi, _ = _lookup_stop_cover(
+        bins, v0=0.020, a0=0.0, q_remain_m=0.0, u_prev=0.020, a_cmd=1.0, q_front=0.020
+    )
+    assert dx_lo >= 0.0004 - 1e-12
+    assert dx_hi >= 0.0020 - 1e-12
+
+
 def test_analyze_stop_aligns_event_log(tmp_path: Path) -> None:
     dt = 0.005
     n = 120
@@ -362,4 +564,85 @@ def test_analyze_stop_aligns_event_log(tmp_path: Path) -> None:
             }
         )
     assert analyze_stop_reverse(csv_path, horizon=40, event_log=log_path) == 0
+
+
+class _FakeMotion:
+    def __init__(self, replies: list[tuple[dict | None, str]]) -> None:
+        self.replies = list(replies)
+        self.calls = 0
+
+    def fresh(self, last_seq: int, *, max_age_s: float):
+        del last_seq, max_age_s
+        i = min(self.calls, len(self.replies) - 1)
+        self.calls += 1
+        return self.replies[i]
+
+
+def test_motion_fresh_or_wait_retries_seq_stale_then_accepts() -> None:
+    nxt = {
+        "seq": 6,
+        "v_tcp_z": 0.01,
+        "a_tcp_z_plus": 0.0,
+        "t_wall_s": 1.0,
+        "age_total_s": 0.004,
+        "valid": True,
+    }
+    motion = _FakeMotion([(None, "seq_stale"), (None, "torn"), (nxt, "")])
+    row, why = _motion_fresh_or_wait(motion, 4, max_age_s=0.050, poll_s=0.0)
+    assert why == ""
+    assert row is not None
+    assert int(row["seq"]) == 6
+    assert motion.calls == 3
+
+
+def test_motion_fresh_or_wait_age_total_aborts_without_reuse() -> None:
+    motion = _FakeMotion([(None, "age_total")])
+    row, why = _motion_fresh_or_wait(motion, 4, max_age_s=0.050, poll_s=0.0)
+    assert row is None
+    assert why == "age_total"
+    assert motion.calls == 1
+
+
+def test_analyze_tn_recovers_fopdt(tmp_path: Path) -> None:
+    dt = 0.005
+    n = 800
+    t = np.arange(n) * dt
+    cmd = np.zeros(n)
+    cmd[40:160] = 0.010
+    cmd[200:320] = 0.020
+    cmd[360:480] = -0.010
+    ach = _simulate_first_order(cmd, delay_steps=10, tp_s=0.020, dt=dt)
+    train = tmp_path / "tn_train.csv"
+    val = tmp_path / "tn_val.csv"
+    for path in (train, val):
+        with path.open("w", newline="") as f:
+            writer = csv.DictWriter(
+                f, fieldnames=["t_wall_s", "vel_ff_vz", "vz_achieved_tool"]
+            )
+            writer.writeheader()
+            for ti, u, v in zip(t, cmd, ach):
+                writer.writerow(
+                    {
+                        "t_wall_s": f"{ti:.6f}",
+                        "vel_ff_vz": f"{u:.6f}",
+                        "vz_achieved_tool": f"{v:.6f}",
+                    }
+                )
+    yaml_path = tmp_path / "tn.yaml"
+    assert analyze_tn(train, val_path=val, write_yaml=yaml_path) == 0
+    loaded = yaml.safe_load(yaml_path.read_text())
+    assert loaded["hybrid_motion"]["cdyob"]["mode"] == "shadow"
+    assert float(loaded["hybrid_motion"]["cdyob"]["t0_s"]) == pytest.approx(
+        0.050, abs=0.010
+    )
+    assert float(loaded["hybrid_motion"]["cdyob"]["tp_s"]) == pytest.approx(
+        0.020, abs=0.010
+    )
+    assert float(
+        loaded["hybrid_motion"]["cdyob"]["omega_q_hz"]
+    ) == pytest.approx(0.75)
+    assert float(
+        loaded["hybrid_motion"]["cdyob"]["v_corr_max_m_s"]
+    ) == pytest.approx(0.003)
+    assert loaded["hybrid_motion"]["cdyob"]["active_model_validated"] is False
 

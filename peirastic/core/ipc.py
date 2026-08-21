@@ -331,41 +331,80 @@ class MotionBus:
         valid: bool = False,
     ) -> None:
         row = self._row[0]
-        row["seq"] = np.uint64(int(row["seq"]) + 1)
+        seq = int(row["seq"])
+        if seq % 2 == 1:
+            seq -= 1
+        row["seq"] = np.uint64(seq + 1)
         row["t_mono"] = float(time.monotonic())
         row["t_wall_s"] = float(t_wall_s)
         row["v_tcp_z"] = float(v_tcp_z)
         row["a_tcp_z_plus"] = max(float(a_tcp_z_plus), 0.0)
         row["feedback_age_s"] = float(feedback_age_s)
         row["valid"] = np.uint8(1 if valid else 0)
+        row["seq"] = np.uint64(seq + 2)
 
     def read(self) -> dict:
+        row, why = self._seqlock_copy()
+        if row is None:
+            return {
+                "seq": 0,
+                "t_mono": 0.0,
+                "t_wall_s": float("nan"),
+                "v_tcp_z": float("nan"),
+                "a_tcp_z_plus": 0.0,
+                "feedback_age_s": float("inf"),
+                "valid": False,
+                "pub_age_s": float("inf"),
+                "age_total_s": float("inf"),
+                "torn": why,
+            }
+        return row
+
+    def _seqlock_copy(self) -> tuple[dict | None, str]:
         row = self._row[0]
-        t_mono = float(row["t_mono"])
-        return {
-            "seq": int(row["seq"]),
-            "t_mono": t_mono,
-            "t_wall_s": float(row["t_wall_s"]),
-            "v_tcp_z": float(row["v_tcp_z"]),
-            "a_tcp_z_plus": float(row["a_tcp_z_plus"]),
-            "feedback_age_s": float(row["feedback_age_s"]),
-            "valid": bool(row["valid"]),
-            "pub_age_s": (
+        for _ in range(32):
+            s1 = int(row["seq"])
+            if s1 <= 0:
+                return None, "empty"
+            if s1 % 2 == 1:
+                continue
+            t_mono = float(row["t_mono"])
+            payload = {
+                "seq": s1,
+                "t_mono": t_mono,
+                "t_wall_s": float(row["t_wall_s"]),
+                "v_tcp_z": float(row["v_tcp_z"]),
+                "a_tcp_z_plus": float(row["a_tcp_z_plus"]),
+                "feedback_age_s": float(row["feedback_age_s"]),
+                "valid": bool(row["valid"]),
+            }
+            s2 = int(row["seq"])
+            if s1 != s2 or s2 % 2 == 1:
+                continue
+            pub_age = (
                 max(0.0, time.monotonic() - t_mono) if t_mono > 0.0 else float("inf")
-            ),
-        }
+            )
+            fb = float(payload["feedback_age_s"])
+            payload["pub_age_s"] = pub_age
+            payload["age_total_s"] = (
+                fb + pub_age if math.isfinite(fb) and math.isfinite(pub_age) else float("inf")
+            )
+            payload["torn"] = ""
+            return payload, ""
+        return None, "torn"
 
     def fresh(self, last_seq: int, *, max_age_s: float) -> tuple[dict | None, str]:
-        """Return the row only if seq advanced and both ages are inside the bound."""
-        row = self.read()
+        """Accept only a new even seqlock generation whose total age is in bound."""
+        row, why = self._seqlock_copy()
+        if row is None:
+            return None, why or "torn"
         limit = max(float(max_age_s), 0.0)
         if not row["valid"] or not math.isfinite(float(row["v_tcp_z"])):
             return None, "invalid"
         if int(row["seq"]) <= int(last_seq):
             return None, "seq_stale"
-        if float(row["pub_age_s"]) > limit + 1e-12:
-            return None, "pub_age"
-        fb = float(row["feedback_age_s"])
-        if (not math.isfinite(fb)) or fb > limit + 1e-12:
-            return None, "feedback_age"
+        if not math.isfinite(float(row["age_total_s"])):
+            return None, "age_total"
+        if float(row["age_total_s"]) > limit + 1e-12:
+            return None, "age_total"
         return row, ""

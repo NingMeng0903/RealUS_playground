@@ -57,6 +57,9 @@ class ServoTwistOuter:
         self.last_feedback_twist[:] = 0.0
         self.last_vel_ff = twist.copy()
         self.last_err_mm = 0.0
+        # Keep pose_d on the live TCP. set_origin alone used to freeze Y at the
+        # start, which made mid-ranging and tool_y_err chase the origin.
+        self.last_pose_d = np.asarray(current_pose, dtype=float).reshape(6).copy()
         return twist
 
 

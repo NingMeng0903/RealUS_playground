@@ -273,11 +273,18 @@ def test_stable_controller_tracks_moving_surface_at_1n_and_5n_without_bias():
             cfg.adaptive_ke.enabled = False
             cfg.var_damping_enabled = False
             cfg.force_dob.enabled = False
-            # The shipped YAML is retract-only for safety.  This regression
-            # intentionally isolates bidirectional force-reference tracking
-            # on moving surfaces, so opt into that behavior locally.
+            cfg.cdyob.enabled = False
+            # Shipped CDYOB configs use A-only.  This regression intentionally
+            # opts into the legacy proactive loop in isolation.
+            cfg.proactive_ff.enabled = True
             cfg.proactive_ff.retract_only = False
+            cfg.desired_force_ramp_s = 0.0
+            cfg.force_axis_slew_press_m_s2 = 0.0
+            cfg.force_axis_slew_retract_m_s2 = 0.0
+            cfg.force_axis_slew_reverse_m_s2 = 0.0
+            cfg.force_axis_jerk_max_m_s3 = 0.0
             ctrl = AdmittanceController(DT, cfg)
+            _mark_confirmed_contact(ctrl)
             tcp_z = desired / ke_n_m
             surface_z = 0.0
             samples = []
@@ -362,6 +369,7 @@ def _mark_confirmed_contact(ctrl: AdmittanceController) -> None:
     ctrl._episode_seen = True
     ctrl.contact_present = True
     ctrl._recontact_slow_latched = False
+    ctrl._first_contact_slow_latched = False
 
 
 def test_proactive_boosts_velocity_under_sustained_error():
@@ -425,16 +433,20 @@ def test_high_instability_cannot_delay_overforce_escape_after_reversal():
     assert ticks_to_retract * DT <= 0.10
 
 
-def test_yaml_proactive_bidirectional_and_headroom():
+def test_yaml_proactive_parameters_retained_but_a_only_baseline_disables_loop():
     raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     hm = raw["hybrid_motion"]
-    assert hm["proactive_feedforward"] is True
-    # Bidirectional again (e85c9ab): retract_only zeroed the press-side v_r
-    # integration outright, which is what made under-force chase so slow.
+    assert hm["proactive_feedforward"] is False
+    # Parameters remain available for isolated tests / legacy non-CDYOB
+    # configurations, but are not part of the CDYOB A-only baseline.
     assert hm["proactive_retract_only"] is False
-    # Asymmetric chase: retract gain may exceed press gain (over-force escape).
-    assert float(hm["proactive_gain"]) > 0.0
-    assert float(hm["proactive_retract_gain"]) == pytest.approx(float(hm["proactive_gain"]))
+    # 014140: the old residual oscillation was v_r dominated.
+    assert float(hm["proactive_gain"]) == pytest.approx(0.06)
+    assert float(hm["proactive_retract_gain"]) == pytest.approx(0.06)
+    assert float(hm["proactive_leak_s"]) == pytest.approx(0.50)
+    assert float(hm["v_r_max_m_s"]) == pytest.approx(0.02)
+    assert float(hm["proactive_in_band_n"]) == pytest.approx(0.08)
+    assert float(hm["proactive_in_band_leak_s"]) == pytest.approx(0.12)
     assert 0.0 <= hm["proactive_press_is_gate_start"] < hm[
         "proactive_press_is_gate"
     ]

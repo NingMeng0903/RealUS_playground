@@ -26,8 +26,10 @@ follows from shifting that backup tail, provided the next state stays
 in the prediction tube.
 
 Force indent uses the press-positive error ``ē_{x,+}``, not signed
-position error.  Lookup state ``a0`` is ``[a_actual]_+``, never command
-acceleration.
+position error.  Lookup state ``a0`` is ``[a_actual]_+``.  The stop
+table also covers ``[u_prev]_+``, ``[a_cmd]_+``, and ``[q_front]_+``;
+``q_remain`` alone is not a proven abstraction of the delay-line
+permutation.  Finite-horizon ``ē_v(N)`` is not ``ē_v(∞)``.
 """
 
 from __future__ import annotations
@@ -108,13 +110,20 @@ class StopDxBin:
     """One monotonic covering sample of remaining press-positive indent.
 
     ``a0_m_s2`` is ``[a_actual]_+``.  ``q_remain_m`` is the delay-line
-    remaining press ``dt * Σ [u_j]_+``, not ``max(queue)``.
+    remaining press ``dt * Σ [u_j]_+``, not ``max(queue)``.  ``u_prev``,
+    ``a_cmd``, and ``q_front`` are the jerk-backup / next-applied
+    command.  Missing fields parse as 0 and fail-close on a nonzero
+    query.  Same ``(v,a,q_remain)`` with a different queue order is
+    still not proven equivalent.
     """
 
     v0_m_s: float
     a0_m_s2: float = 0.0
     q_press_m_s: float = 0.0
     q_remain_m: float = 0.0
+    u_prev_m_s: float = 0.0
+    a_cmd_m_s2: float = 0.0
+    q_front_m_s: float = 0.0
     dx_ub_m: float = 0.0
     n_b: int = 0
 
@@ -138,6 +147,9 @@ def _parse_stop_dx_bins(raw: object) -> list[StopDxBin]:
                 v0_m_s=abs(float(item.get("v0_m_s", 0.0))),
                 a0_m_s2=max(float(item.get("a0_m_s2", 0.0)), 0.0),
                 q_press_m_s=q_press,
+                u_prev_m_s=max(float(item.get("u_prev_m_s", 0.0)), 0.0),
+                a_cmd_m_s2=max(float(item.get("a_cmd_m_s2", 0.0)), 0.0),
+                q_front_m_s=max(float(item.get("q_front_m_s", 0.0)), 0.0),
                 q_remain_m=q_remain,
                 dx_ub_m=max(float(item.get("dx_ub_m", 0.0)), 0.0),
                 n_b=max(int(item.get("n_b", 0)), 0),
@@ -185,12 +197,32 @@ class SafetyShieldConfig:
     # Press-positive indent error.  Signed position_error_ub_m is not this.
     position_error_ub_plus_m: list[float] = field(default_factory=list)
     acceleration_error_ub_m_s2: list[float] = field(default_factory=list)
-    # Residual press indent allowed inside a contact-free T (metres).
+    # ē_v(∞).  None = unknown; a finite table's last entry is not this.
+    velocity_error_persistent_m_s: float | None = None
+    # Initial gap g_0 (m).  Not extra contact force.  Need g_0 >= D_T^ub.
     x_detach_m: float = 0.0
     # Empty / certified=false: plant-ID only.  First contact still uses T_stop.
     stop_dx_certified: bool = False
     stop_dx_source: str = ""
     stop_dx_bins: list[StopDxBin] = field(default_factory=list)
+    # Writing velocity_error_persistent_m_s=0 is not a proof.  These
+    # stay false until a hold property / infinite-horizon e_x / stable
+    # closed-loop argument and a measured energy-sign check exist.
+    terminal_invariance_proven: bool = False
+    energy_sign_verified: bool = False
+    # Runtime certificate domain.  Undeclared pose/payload or an empty
+    # stop table makes domain_ok false; that is the certificate meaning.
+    max_feedback_age_s: float = 0.015
+    v_domain_m_s: float = 0.0
+    a_domain_m_s2: float = 0.0
+    u_domain_m_s: float = 0.0
+    pose_domain_declared: bool = False
+    payload_domain_declared: bool = False
+    pose_min: list[float] = field(default_factory=list)
+    pose_max: list[float] = field(default_factory=list)
+    payload_min_kg: float | None = None
+    payload_max_kg: float | None = None
+    payload_kg: float | None = None
 
     @classmethod
     def from_dict(cls, raw: dict) -> "SafetyShieldConfig":
@@ -226,6 +258,12 @@ class SafetyShieldConfig:
         stop_sec = section.get("stop_dx_ub", {})
         if not isinstance(stop_sec, dict):
             stop_sec = {}
+        pose_min = section.get("pose_min", [])
+        pose_max = section.get("pose_max", [])
+        if not isinstance(pose_min, list):
+            pose_min = []
+        if not isinstance(pose_max, list):
+            pose_max = []
         timeout_default = None
         if "fail_safe_on_solver_timeout" in section:
             timeout_default = bool(section.get("fail_safe_on_solver_timeout"))
@@ -267,10 +305,53 @@ class SafetyShieldConfig:
             position_error_ub_m=[float(x) for x in ex],
             position_error_ub_plus_m=[float(x) for x in ex_plus],
             acceleration_error_ub_m_s2=[float(x) for x in ea],
+            velocity_error_persistent_m_s=(
+                None
+                if section.get(
+                    "velocity_error_persistent_m_s",
+                    plant.get("velocity_error_persistent_m_s", None),
+                )
+                is None
+                else float(
+                    section.get(
+                        "velocity_error_persistent_m_s",
+                        plant.get("velocity_error_persistent_m_s"),
+                    )
+                )
+            ),
             x_detach_m=max(float(section.get("x_detach_m", 0.0)), 0.0),
             stop_dx_certified=bool(stop_sec.get("certified", False)),
             stop_dx_source=str(stop_sec.get("source", "")),
             stop_dx_bins=_parse_stop_dx_bins(stop_sec.get("bins", [])),
+            terminal_invariance_proven=bool(
+                section.get("terminal_invariance_proven", False)
+            ),
+            energy_sign_verified=bool(section.get("energy_sign_verified", False)),
+            max_feedback_age_s=float(section.get("max_feedback_age_s", 0.015)),
+            v_domain_m_s=float(section.get("v_domain_m_s", 0.0)),
+            a_domain_m_s2=float(section.get("a_domain_m_s2", 0.0)),
+            u_domain_m_s=float(section.get("u_domain_m_s", 0.0)),
+            pose_domain_declared=bool(section.get("pose_domain_declared", False)),
+            payload_domain_declared=bool(
+                section.get("payload_domain_declared", False)
+            ),
+            pose_min=[float(x) for x in pose_min],
+            pose_max=[float(x) for x in pose_max],
+            payload_min_kg=(
+                None
+                if section.get("payload_min_kg") is None
+                else float(section.get("payload_min_kg"))
+            ),
+            payload_max_kg=(
+                None
+                if section.get("payload_max_kg") is None
+                else float(section.get("payload_max_kg"))
+            ),
+            payload_kg=(
+                None
+                if section.get("payload_kg") is None
+                else float(section.get("payload_kg"))
+            ),
         )
 
     def normalized_mode(self) -> str:
@@ -312,6 +393,62 @@ class SafetyShieldConfig:
             return bool(self.fail_safe_on_solver_timeout)
         return self.applies_command()
 
+    def enforcement_blockers(self) -> list[str]:
+        """Why force/passive/ospf must refuse to start.
+
+        Observe/off have no blockers.  Writing
+        ``velocity_error_persistent_m_s: 0`` is not a terminal proof.
+        """
+        mode = self.normalized_mode()
+        if mode in ("observe", "off"):
+            return []
+        reasons: list[str] = []
+        if mode in ("force", "passive", "ospf"):
+            if not self.stop_dx_certified:
+                reasons.append("stop_dx_ub.certified is false")
+            if not self.stop_dx_bins:
+                reasons.append("stop_dx_ub bins empty")
+            if not self.pose_domain_declared:
+                reasons.append("pose domain not declared")
+            elif len(self.pose_min) < 6 or len(self.pose_max) < 6:
+                reasons.append("pose_min/max missing")
+            elif any(
+                not math.isfinite(float(value))
+                for value in (*self.pose_min[:6], *self.pose_max[:6])
+            ) or any(
+                float(lo) > float(hi)
+                for lo, hi in zip(self.pose_min[:6], self.pose_max[:6])
+            ):
+                reasons.append("pose_min/max invalid")
+            if not self.payload_domain_declared:
+                reasons.append("payload domain not declared")
+            elif (
+                self.payload_min_kg is None
+                or self.payload_max_kg is None
+                or self.payload_kg is None
+                or not math.isfinite(float(self.payload_min_kg))
+                or not math.isfinite(float(self.payload_max_kg))
+                or not math.isfinite(float(self.payload_kg))
+                or float(self.payload_min_kg) > float(self.payload_max_kg)
+                or float(self.payload_kg) < float(self.payload_min_kg)
+                or float(self.payload_kg) > float(self.payload_max_kg)
+            ):
+                reasons.append("payload_kg outside declared range")
+        if mode in ("passive", "ospf"):
+            if not self.terminal_invariance_proven:
+                reasons.append(
+                    "terminal_invariance_proven is false "
+                    "(ē_v(∞)=0 must come from a hold / infinite-horizon "
+                    "or closed-loop argument, not a written zero)"
+                )
+            if not self.energy_sign_verified:
+                reasons.append("energy_sign_verified is false")
+        return reasons
+
+
+class ShieldCertificationError(RuntimeError):
+    """force / passive / ospf requested without a completed certificate."""
+
 
 @dataclass
 class SafetyShieldResult:
@@ -340,6 +477,7 @@ class SafetyShieldResult:
     recovery_latched: bool = False
     domain_ok: bool = True
     aj_ok: bool = True
+    uncertified_brake: bool = False
 
 
 @dataclass
@@ -354,10 +492,37 @@ class _PlantState:
 class DelaySafetyShield:
     """Online backup-to-terminal filter on the press-positive normal axis."""
 
-    def __init__(self, cfg: SafetyShieldConfig, dt_s: float) -> None:
+    def __init__(
+        self,
+        cfg: SafetyShieldConfig,
+        dt_s: float,
+        *,
+        require_certificate: bool = False,
+    ) -> None:
         self.cfg = cfg
         self.dt_s = max(float(dt_s), 1e-4)
+        self._mode_frozen = cfg.normalized_mode()
+        self.require_certificate = bool(require_certificate)
         self.reset()
+
+    def enforcement_blockers(self) -> list[str]:
+        reasons = list(self.cfg.enforcement_blockers())
+        mode = self.cfg.normalized_mode()
+        if mode in ("force", "passive", "ospf"):
+            if self.cfg.stop_dx_certified and self.cfg.stop_dx_bins:
+                dx = self.lookup_stop_dx(0.0, 0.0, 0.0)
+                if not math.isfinite(dx):
+                    reasons.append("stop table does not cover the rest query")
+        if mode in ("passive", "ospf") and not self.terminal_set_invariant():
+            reasons.append("terminal_set_invariant is false")
+        return reasons
+
+    def assert_enforcement_ready(self) -> None:
+        reasons = self.enforcement_blockers()
+        if reasons:
+            raise ShieldCertificationError(
+                f"refuse {self.cfg.normalized_mode()}: " + "; ".join(reasons)
+            )
 
     def reset(self) -> None:
         cfg = self.cfg
@@ -370,6 +535,7 @@ class DelaySafetyShield:
         self.energy_lb_j = float(cfg.e0_j)
         self._recovery_latched = False
         self._recovery_ok_s = 0.0
+        self._uncertified_brake_latched = False
         self.last = SafetyShieldResult(
             u_nom=0.0,
             u_b=0.0,
@@ -406,6 +572,24 @@ class DelaySafetyShield:
         defaults = default_velocity_error_ub(max(int(self.cfg.horizon_steps), 1))
         idx = min(max(int(step_index) - 1, 0), len(defaults) - 1)
         return defaults[idx]
+
+    def _error_v_persistent(self) -> float:
+        """Declared ``ē_v(∞)``.  A finite table's last entry is not this.
+
+        ``None`` (unknown) or any positive value makes ``D_T^ub = ∞``.
+        """
+        pers = self.cfg.velocity_error_persistent_m_s
+        if pers is None:
+            return float("inf")
+        return max(float(pers), 0.0)
+
+    def _error_v_infinite(self, step_index: int) -> float:
+        """Finite-table ``ē_v(k)``; do not hold the last entry past ``N``."""
+        table = self.cfg.velocity_error_ub_m_s
+        idx = int(step_index) - 1
+        if table and 0 <= idx < len(table):
+            return max(float(table[idx]), 0.0)
+        return self._error_v_persistent()
 
     def _error_x(self, step_index: int) -> float:
         table = self.cfg.position_error_ub_m
@@ -482,12 +666,32 @@ class DelaySafetyShield:
             return 0.0
         return self.dt_s * sum(max(float(u), 0.0) for u in q)
 
-    def lookup_stop_dx(self, v0: float, a0: float, q0: float) -> float:
-        """Monotonic covering ``D_ub(|v0|,[a0]+,q_remain)``.
+    def _stop_query_extras(
+        self, plant: _PlantState | None = None
+    ) -> tuple[float, float, float]:
+        """``([u_prev]+, [a_cmd]+, [q_front]+)`` for the jerk-backup table."""
+        u_prev = float(plant.u_prev) if plant is not None else float(self._u_prev)
+        u_prev2 = float(plant.u_prev2) if plant is not None else float(self._u_prev2)
+        delay = plant.delay if plant is not None else self._delay
+        a_cmd = (u_prev - u_prev2) / self.dt_s if self.dt_s > 0.0 else 0.0
+        q_front = float(delay[0]) if delay else 0.0
+        return max(u_prev, 0.0), max(a_cmd, 0.0), max(q_front, 0.0)
 
-        ``a0`` is press-direction actual acceleration.  ``q0`` is remaining
-        press indent in metres.  Returns NaN if the table is empty, +inf
-        if the query is outside every covering bin.
+    def lookup_stop_dx(
+        self,
+        v0: float,
+        a0: float,
+        q0: float,
+        u_prev: float = 0.0,
+        a_cmd: float = 0.0,
+        q_front: float = 0.0,
+    ) -> float:
+        """Monotonic covering of remaining press-positive indent.
+
+        Query is ``(|v0|,[a0]+,q_remain,[u_prev]+,[a_cmd]+,[q_front]+)``.
+        ``a0`` is press-direction actual acceleration.  Missing table
+        fields parse as 0 and fail-close on a nonzero extra.  Returns
+        NaN if the table is empty, +inf if uncovered.
         """
         bins = self.cfg.stop_dx_bins
         if not bins:
@@ -495,12 +699,18 @@ class DelaySafetyShield:
         v = abs(float(v0))
         a = max(float(a0), 0.0)
         q = max(float(q0), 0.0)
+        up = max(float(u_prev), 0.0)
+        ac = max(float(a_cmd), 0.0)
+        qf = max(float(q_front), 0.0)
         covering = [
             float(b.dx_ub_m)
             for b in bins
             if float(b.v0_m_s) + 1e-12 >= v
             and float(b.a0_m_s2) + 1e-12 >= a
             and float(b.q_remain_m) + 1e-12 >= q
+            and float(b.u_prev_m_s) + 1e-12 >= up
+            and float(b.a_cmd_m_s2) + 1e-12 >= ac
+            and float(b.q_front_m_s) + 1e-12 >= qf
         ]
         if not covering:
             return float("inf")
@@ -513,10 +723,18 @@ class DelaySafetyShield:
         k_ub = max(float(self.cfg.k_ub_n_m), 1.0)
         if float(room_n) <= 0.0:
             return 0.0
+        u_prev, a_cmd, q_front = self._stop_query_extras()
         best = 0.0
         any_ok = False
         for b in self.cfg.stop_dx_bins:
-            dx = self.lookup_stop_dx(float(b.v0_m_s), a0, q0)
+            dx = self.lookup_stop_dx(
+                float(b.v0_m_s),
+                a0,
+                q0,
+                u_prev,
+                a_cmd,
+                q_front,
+            )
             if not math.isfinite(dx):
                 continue
             if k_ub * dx <= float(room_n) + 1e-12:
@@ -625,54 +843,112 @@ class DelaySafetyShield:
             return False
         return True
 
-    def terminal_set_invariant(self, *, require_energy: bool | None = None) -> bool:
-        """``u_T = 0`` keeps a contact-free rest set inside ``T``.
+    def _terminal_box_vertices(self) -> list[_PlantState]:
+        """Vertices / press corners of the box ``T``.
 
-        Press indent uses ``[v_hi]_+`` unconditionally.  Nominal
-        ``v=0,u=0`` does not zero residual ``ē_v``.  Contact-free T is
-        invariant only if that residual dies, ``x_detach_m`` covers the
-        four-step indent, or the caller proves no recontact.
+        ``T`` allows ``|v|≤v_hold``, ``|q_i|≤q_clear``, ``|a|≤a_hold``.
+        The origin is not the worst initial state.  Queue permutation
+        inside ``T`` is sampled at all-press, front, and back, not
+        enumerated (that would be ``3^{N_d}``).
         """
-        cfg = self.cfg
-        need_e = (
-            self.energy_constrained() if require_energy is None else bool(require_energy)
+        n = max(self._delay_steps(), 1)
+        vh = max(float(self.cfg.v_hold_m_s), 0.0)
+        qc = max(float(self.cfg.queue_clear_m_s), 0.0)
+        ah = max(float(self.cfg.a_hold_m_s2), 0.0)
+        da = ah * self.dt_s
+
+        def make(
+            v: float,
+            delay_vals: list[float],
+            u_prev: float,
+            u_prev2: float,
+            a_plus: float,
+        ) -> _PlantState:
+            u2 = _clip(u_prev2, -qc, qc)
+            return _PlantState(
+                v=float(v),
+                delay=deque(delay_vals, maxlen=n),
+                u_prev=float(u_prev),
+                u_prev2=float(u2),
+                a_plus=float(a_plus),
+            )
+
+        zeros = [0.0] * n
+        plus = [qc] * n
+        minus = [-qc] * n
+        front = [qc] + [0.0] * (n - 1)
+        back = [0.0] * (n - 1) + [qc]
+        corners = (
+            (zeros, 0.0, 0.0, 0.0),
+            (plus, qc, qc - da, ah),
+            (plus, qc, qc, 0.0),
+            (front, qc, qc - da, ah),
+            (back, qc, qc - da, ah),
+            (minus, -qc, -qc + da, 0.0),
+            (zeros, qc, qc - da, ah),
         )
+        out: list[_PlantState] = []
+        for v in (vh, 0.0, -vh):
+            for delay, up, up2, ap in corners:
+                out.append(make(v, delay, up, up2, ap))
+        return out
+
+    def _indent_from_plant(self, plant0: _PlantState) -> float:
+        """``Σ T_s [v_k^{ub}]_+`` under ``u_T`` from one initial state."""
+        n = max(self._delay_steps(), 1)
         plant = _PlantState(
-            v=0.0,
-            delay=deque([0.0] * max(self._delay_steps(), 1), maxlen=max(self._delay_steps(), 1)),
-            u_prev=0.0,
-            u_prev2=0.0,
-            a_plus=0.0,
+            v=float(plant0.v),
+            delay=deque(plant0.delay, maxlen=n),
+            u_prev=float(plant0.u_prev),
+            u_prev2=float(plant0.u_prev2),
+            a_plus=float(plant0.a_plus),
         )
-        k_ub = max(float(cfg.k_ub_n_m), 0.0)
-        f_ub = float(cfg.f_release_n)
-        f_lim = float(cfg.f_release_n) + k_ub * max(float(cfg.x_detach_m), 0.0)
-        energy = float(cfg.eps_j)
-        for _ in range(4):
+        table_n = len(self.cfg.velocity_error_ub_m_s) if self.cfg.velocity_error_ub_m_s else 0
+        n_max = max(int(self.cfg.horizon_steps), table_n, n, 8) + 200
+        d_t = 0.0
+        for k in range(n_max):
             u_t = self.terminal_hold_command(plant.u_prev, plant.u_prev2)
             v = self._step_plant(plant, u_t)
-            ev = self._error_v(1)
-            v_hi = v + ev
-            v_lo = v - ev
-            v_press_ub = max(0.0, v_hi)
-            f_ub = f_ub + self.dt_s * k_ub * v_press_ub
-            energy, _, _ = self._advance_energy(
-                energy, 0.0, f_ub, v_lo, v_hi, cfg.rho_used() if need_e else 0.0
-            )
-            if f_ub > f_lim + 1e-9:
-                return False
-            if not self._in_terminal(
-                f_ub=f_ub,
-                v_abs_ub=abs(v) + ev,
-                u_cmd=u_t,
-                u_prev=plant.u_prev2,
-                delay=plant.delay,
-                energy=energy,
-                require_energy=need_e,
-                f_term=f_lim,
-            ):
-                return False
-        return True
+            ev = self._error_v_infinite(k + 1)
+            if not math.isfinite(ev):
+                return float("inf")
+            d_t += self.dt_s * max(0.0, v + ev)
+            if not math.isfinite(d_t):
+                return float("inf")
+        ev_inf = self._error_v_persistent()
+        if max(0.0, float(plant.v) + ev_inf) > 1e-9:
+            return float("inf")
+        return d_t
+
+    def terminal_indent_ub(self) -> float:
+        """``D_T^{ub} = sup_{ξ∈T} Σ T_s [v_k]_+`` on the sampled box.
+
+        Returns ``+∞`` unless ``ē_v(∞)`` is declared to be 0.  A last
+        finite-horizon ``ē_v(N)`` is not that declaration.
+        """
+        ev_inf = self._error_v_persistent()
+        if not math.isfinite(ev_inf) or ev_inf > 1e-15:
+            return float("inf")
+        worst = 0.0
+        for plant in self._terminal_box_vertices():
+            d_t = self._indent_from_plant(plant)
+            if not math.isfinite(d_t):
+                return float("inf")
+            worst = max(worst, d_t)
+        return worst
+
+    def terminal_set_invariant(self, *, require_energy: bool | None = None) -> bool:
+        """``g_0 >= D_T^{ub}`` over the box ``T``, not just the origin.
+
+        ``x_detach_m`` is ``g_0``.  ``ē_v(∞)`` must be declared 0;
+        a finite table ending at 0 is not enough.  Energy is not a
+        substitute for the gap test.
+        """
+        del require_energy
+        d_t = self.terminal_indent_ub()
+        if not math.isfinite(d_t):
+            return False
+        return max(float(self.cfg.x_detach_m), 0.0) + 1e-12 >= d_t
 
     def _rollout(
         self,
@@ -738,10 +1014,14 @@ class DelaySafetyShield:
                     ev,
                     self._error_a(1),
                 )
+                u_p, a_c, q_f = self._stop_query_extras(plant)
                 tail = self.lookup_stop_dx(
                     v_q,
                     a_q,
                     self.queue_remain_m(plant.delay),
+                    u_p,
+                    a_c,
+                    q_f,
                 )
                 if (math.isnan(tail) or math.isinf(tail)) and enforce_force:
                     return False, f_ub, energy, n_stop, False, dx_ub, "force"
@@ -803,10 +1083,14 @@ class DelaySafetyShield:
             return 0.0
         self._sync_plant_from_measurement(v_actual, a_actual)
         if self.cfg.stop_dx_certified and self.cfg.stop_dx_bins:
+            u_p, a_c, q_f = self._stop_query_extras()
             lookup = self.lookup_stop_dx(
                 self._v_plant,
                 self._a_plus,
                 self.queue_remain_m(),
+                u_p,
+                a_c,
+                q_f,
             )
             if math.isfinite(lookup):
                 dx = max(float(lookup), 0.0)
@@ -972,6 +1256,112 @@ class DelaySafetyShield:
             return False
         return True
 
+    @staticmethod
+    def _mode_applies(mode: str) -> bool:
+        return str(mode).strip().lower() in ("force", "passive", "ospf")
+
+    def _apply_this_tick(self) -> bool:
+        """Frozen construct-time mode only.  A live mode change refuses."""
+        return self._mode_applies(self._mode_frozen)
+
+    def _mode_mutated(self) -> bool:
+        return self.cfg.normalized_mode() != self._mode_frozen
+
+    def _v_domain_m_s(self) -> float:
+        if float(self.cfg.v_domain_m_s) > 0.0:
+            return float(self.cfg.v_domain_m_s)
+        if self.cfg.stop_dx_bins:
+            return max(float(b.v0_m_s) for b in self.cfg.stop_dx_bins)
+        return float("nan")
+
+    def _a_domain_m_s2(self) -> float:
+        if float(self.cfg.a_domain_m_s2) > 0.0:
+            return float(self.cfg.a_domain_m_s2)
+        declared = max(float(self.cfg.a_max_m_s2), 0.0)
+        if self.cfg.stop_dx_bins:
+            return max(declared, max(float(b.a0_m_s2) for b in self.cfg.stop_dx_bins))
+        return declared if declared > 0.0 else float("nan")
+
+    def _u_domain_m_s(self) -> float:
+        if float(self.cfg.u_domain_m_s) > 0.0:
+            return float(self.cfg.u_domain_m_s)
+        if self.cfg.stop_dx_bins:
+            return max(float(b.u_prev_m_s) for b in self.cfg.stop_dx_bins)
+        return float("nan")
+
+    def lookup_covers_state(
+        self,
+        v0: float | None = None,
+        a0: float | None = None,
+    ) -> bool:
+        """True only when the 6-D backup table covers the measured state."""
+        v = self._v_plant if v0 is None else float(v0)
+        a = self._a_plus if a0 is None else float(a0)
+        if not math.isfinite(v) or not math.isfinite(a):
+            return False
+        q = self.queue_remain_m()
+        up, ac, qf = self._stop_query_extras()
+        dx = self.lookup_stop_dx(v, a, q, up, ac, qf)
+        return math.isfinite(dx)
+
+    def evaluate_domain(
+        self,
+        *,
+        v_actual: float | None,
+        a_actual: float | None,
+        feedback_age_s: float | None,
+        pose_in_domain: bool,
+        payload_in_domain: bool,
+    ) -> tuple[bool, list[str]]:
+        """Certificate-domain membership.  Missing measurements fail closed."""
+        reasons: list[str] = []
+        if not pose_in_domain:
+            reasons.append("pose")
+        if not payload_in_domain:
+            reasons.append("payload")
+        if v_actual is None or not math.isfinite(float(v_actual)):
+            reasons.append("v_actual")
+        else:
+            v_lim = self._v_domain_m_s()
+            if not math.isfinite(v_lim):
+                reasons.append("v_domain")
+            elif abs(float(v_actual)) > v_lim + 1e-12:
+                reasons.append("v")
+        if a_actual is None or not math.isfinite(float(a_actual)):
+            reasons.append("a_actual")
+        else:
+            a_lim = self._a_domain_m_s2()
+            if not math.isfinite(a_lim):
+                reasons.append("a_domain")
+            elif abs(float(a_actual)) > a_lim + 1e-12:
+                reasons.append("a")
+        pending = [float(self._u_prev), float(self._u_prev2), *self._delay]
+        if any(not math.isfinite(u) for u in pending):
+            reasons.append("queue")
+        else:
+            u_lim = self._u_domain_m_s()
+            if not math.isfinite(u_lim):
+                reasons.append("queue_domain")
+            elif pending and max(abs(u) for u in pending) > u_lim + 1e-12:
+                reasons.append("queue")
+        if feedback_age_s is None or not math.isfinite(float(feedback_age_s)):
+            reasons.append("feedback_age")
+        elif float(feedback_age_s) > float(self.cfg.max_feedback_age_s) + 1e-12:
+            reasons.append("feedback_age")
+        v_q = (
+            float(v_actual)
+            if v_actual is not None and math.isfinite(float(v_actual))
+            else None
+        )
+        a_q = (
+            float(a_actual)
+            if a_actual is not None and math.isfinite(float(a_actual))
+            else None
+        )
+        if not self.lookup_covers_state(v_q, a_q):
+            reasons.append("lookup")
+        return (not reasons), reasons
+
     def update(
         self,
         u_nom: float,
@@ -979,8 +1369,11 @@ class DelaySafetyShield:
         f_csv: float,
         v_actual: float | None,
         f_max_n: float,
-        in_domain: bool = True,
+        in_domain: bool | None = None,
         a_actual: float | None = None,
+        feedback_age_s: float | None = None,
+        pose_in_domain: bool = False,
+        payload_in_domain: bool = False,
     ) -> SafetyShieldResult:
         cfg = self.cfg
         t0 = time.perf_counter()
@@ -1010,9 +1403,79 @@ class DelaySafetyShield:
         f_max = max(float(f_max_n), float(cfg.f_release_n))
         f_margin0 = float(f_max) - (max(float(f_csv), 0.0) + max(float(cfg.e_f_n), 0.0))
         energy_margin0 = float(self.energy_lb_j) - float(cfg.eps_j)
-        domain_ok = bool(in_domain)
+        runtime_ok, domain_reasons = self.evaluate_domain(
+            v_actual=v_actual,
+            a_actual=a_actual,
+            feedback_age_s=feedback_age_s,
+            pose_in_domain=bool(pose_in_domain),
+            payload_in_domain=bool(payload_in_domain),
+        )
+        if in_domain is False:
+            runtime_ok = False
+            if "caller" not in domain_reasons:
+                domain_reasons = ["caller", *domain_reasons]
+        domain_ok = bool(runtime_ok)
+        lookup_ok = self.lookup_covers_state(v_actual, a_actual)
+        apply = self._apply_this_tick()
 
-        apply = cfg.applies_command()
+        def _aj_send(intent: float) -> tuple[float, bool]:
+            sent = self._limit_increment(intent, self._u_prev, self._u_prev2)
+            return sent, abs(sent - intent) <= 1e-9 or abs(
+                sent - self._limit_increment(sent, self._u_prev, self._u_prev2)
+            ) <= 1e-9
+
+        def _refuse(reason: str, *, brake: bool) -> SafetyShieldResult:
+            self._recovery_latched = True
+            self._recovery_ok_s = 0.0
+            if brake:
+                self._uncertified_brake_latched = True
+            intent = 0.0 if brake else u_b
+            u_sent, aj_ok = _aj_send(intent)
+            self._commit_sent(u_sent)
+            self.last = SafetyShieldResult(
+                u_nom=u_nom_f,
+                u_b=u_b,
+                u_shield_hyp=u_b,
+                u_sent=u_sent,
+                lambda_star=0.0,
+                lambda_obs=float("nan"),
+                shield_applied=True,
+                shield_feasible=False,
+                solver_timeout=False,
+                f_ub_n=max(float(f_csv), 0.0),
+                e_lb_j=float(self.energy_lb_j),
+                w_lb_j=w_lb,
+                rho_v2_w=rho_v2,
+                n_stop=0,
+                tube_violation=tube_violation,
+                solver_us=1e6 * (time.perf_counter() - t0),
+                dx_pipe_ub_m=0.0,
+                in_terminal=False,
+                infeasible_reason=reason,
+                f_constraint_margin_n=f_margin0,
+                energy_margin_j=energy_margin0,
+                terminal_ok=False,
+                recovery_latched=True,
+                domain_ok=domain_ok,
+                aj_ok=aj_ok,
+                uncertified_brake=bool(self._uncertified_brake_latched),
+            )
+            return self.last
+
+        if self._mode_mutated():
+            return _refuse(
+                f"mode_changed:{self._mode_frozen}->{self.cfg.normalized_mode()}",
+                brake=True,
+            )
+        if apply and self._uncertified_brake_latched:
+            return _refuse("uncertified_brake", brake=True)
+        if apply:
+            blockers = self.enforcement_blockers()
+            if blockers:
+                return _refuse(
+                    "uncertified:" + ",".join(blockers),
+                    brake=not lookup_ok,
+                )
         if (not cfg.enabled) or cfg.normalized_mode() == "off":
             u_sent = u_nom_f
             self._commit_sent(u_sent)
@@ -1042,47 +1505,20 @@ class DelaySafetyShield:
                 recovery_latched=bool(self._recovery_latched),
                 domain_ok=domain_ok,
                 aj_ok=True,
+                uncertified_brake=False,
             )
             return self.last
 
-        if not in_domain:
-            if apply:
-                self._recovery_latched = True
-                self._recovery_ok_s = 0.0
-                u_sent = self._limit_increment(u_b, self._u_prev, self._u_prev2)
-                applied = True
-            else:
-                u_sent = u_nom_f
-                applied = False
-            self._commit_sent(u_sent)
-            self.last = SafetyShieldResult(
-                u_nom=u_nom_f,
-                u_b=u_b,
-                u_shield_hyp=u_b,
-                u_sent=u_sent,
-                lambda_star=1.0,
-                lambda_obs=float("nan"),
-                shield_applied=bool(applied),
-                shield_feasible=False,
-                solver_timeout=False,
-                f_ub_n=max(float(f_csv), 0.0),
-                e_lb_j=float(self.energy_lb_j),
-                w_lb_j=w_lb,
-                rho_v2_w=rho_v2,
-                n_stop=0,
-                tube_violation=tube_violation,
-                solver_us=1e6 * (time.perf_counter() - t0),
-                dx_pipe_ub_m=0.0,
-                in_terminal=False,
-                infeasible_reason="domain",
-                f_constraint_margin_n=f_margin0,
-                energy_margin_j=energy_margin0,
-                terminal_ok=False,
-                recovery_latched=bool(self._recovery_latched),
-                domain_ok=False,
-                aj_ok=True,
+        if apply and tube_violation:
+            return _refuse(
+                "tube",
+                brake=not lookup_ok,
             )
-            return self.last
+        if apply and not domain_ok:
+            return _refuse(
+                "domain:" + ",".join(domain_reasons),
+                brake=True,
+            )
 
         def evaluate(lam: float) -> tuple[bool, float, float, int, bool, float, float, str]:
             u0 = u_b + float(lam) * (u_nom_f - u_b)
@@ -1210,6 +1646,7 @@ class DelaySafetyShield:
             recovery_latched=bool(self._recovery_latched),
             domain_ok=domain_ok,
             aj_ok=True,
+            uncertified_brake=bool(self._uncertified_brake_latched),
         )
         if not best_ok:
             self.last.shield_feasible = False

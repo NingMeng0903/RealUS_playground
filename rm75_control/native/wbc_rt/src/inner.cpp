@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <fstream>
+#include <limits>
 #include <stdexcept>
 
 #include <pinocchio/algorithm/frames.hpp>
@@ -870,7 +871,9 @@ TickOut InnerLoop::step(const TickIn& in) {
   last_e_mid_ = 0.0;
   if (cfg_.rail_ext_enabled && rail_ext_active_ && rail_mode_ == kRailCoupled) {
     const double y = q_state[0];
-    const double y_des = has_pose_d ? y_tcp_d : y_tcp;
+    // e_mid = (y_tcp − d*) − y_rail. SERVO_TWIST latches pose_d at set_origin;
+    // using that Y pulls the rail back to the start instead of tracking d*.
+    const double y_des = y_tcp;
     const double rail_ff = y_des - d_pref_;
     const double err_raw = rail_ff - y;
     double band = planned_ ? 0.0 : cfg_.d_band;
@@ -1145,6 +1148,29 @@ TickOut InnerLoop::step(const TickIn& in) {
   out.ns_norm = sec_filt.norm();
   out.sat_scale = sat_scale_;
   out.sec_target_norm = sec_target_.norm();
+  out.homotopy_s = homotopy_s_;
+  out.psi_star = psi_star_;
+  {
+    const Vec6 twist_rail = J.col(0) * rail_exec;
+    const Vec6 twist_arm = J.rightCols<7>() * qdot.tail<7>();
+    Eigen::Vector3d motion = twist_base.head<3>();
+    if ((in.flags & kInHasVelFf) && in.vel_ff.head<3>().norm() > 1e-6) {
+      motion = in.vel_ff.head<3>();
+    }
+    double n_dir = motion.norm();
+    if (n_dir <= 1e-9) {
+      motion = J.topLeftCorner<3, 1>();
+      n_dir = motion.norm();
+    }
+    out.rail_motion_share = std::numeric_limits<double>::quiet_NaN();
+    if (n_dir > 1e-9) {
+      const Eigen::Vector3d u = motion / n_dir;
+      const double rc = twist_rail.head<3>().dot(u);
+      const double ac = twist_arm.head<3>().dot(u);
+      const double den = std::abs(rc) + std::abs(ac);
+      if (den > 1e-9) out.rail_motion_share = std::abs(rc) / den;
+    }
+  }
   if (out.joint_limited) out.flags |= kOutJointLimited;
   if (out.rail_limited) out.flags |= kOutRailLimited;
   if (out.wall_active) out.flags |= kOutWallActive;

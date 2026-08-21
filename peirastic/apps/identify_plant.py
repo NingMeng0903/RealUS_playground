@@ -6,13 +6,18 @@ steps (±2/5/10/20/40/80 mm/s) and a 0.2–5 Hz chirp.
 
 ``--stop-reverse`` is plant identification: +10/+20/+40/+80 mm/s to 0 and
 to −40 mm/s.  Analyse with ``--analyze-stop --input-column twist_vz``.
-``--backup-replay`` sends the shield's a/j-limited ``u_b``.  Pass
-``--window-a-csv`` so each tick syncs measured ``v`` / ``[a]_+``, and
-analyse with ``--analyze-stop --event-log`` so Window A is aligned to
-the explicit trigger, not a 3 mm/s edge.  That is still not a
-certificate until independent val and ``stop_dx_ub.certified: true``.
+``--backup-replay`` sends the shield's a/j-limited ``u_b``.  Certificate
+replay reads ``v_actual`` from the 200 Hz ``peirastic_motion`` SHM, not
+the Window A CSV (flushed every 200 rows).  Stale motion aborts to zero.
+Analyse with ``--analyze-stop --event-log``.  Independent backup val
+needs ``--val-event-log``.  That is still not a certificate until
+every event reaches T, jerk-state covering passes, and
+``stop_dx_ub.certified: true``.  Do not set certified true until
+the terminal box proof and backup-table state are complete.
 
-Does not enable force mode.  Bidirectional_flow / CDYOB stay observe/off.
+Does not enable force mode.  Bidirectional_flow stays observe/off.
+``--analyze-tn`` fits Γ_d + min-phase T_n from ``vel_ff_vz → vz_achieved_tool``.
+``--replay-cdyob`` shadows the observer on an existing hybrid CSV.
 """
 
 from __future__ import annotations
@@ -25,7 +30,7 @@ from pathlib import Path
 
 import numpy as np
 
-from peirastic.core.ipc import CommandClient, Status, TwistBus
+from peirastic.core.ipc import CommandClient, MotionBus, Status, TwistBus
 from peirastic.core.modes import Mode, ModeRequest
 
 STEPS_MM_S = (2.0, 5.0, 10.0, 20.0, 40.0, 80.0)
@@ -73,6 +78,7 @@ def run_sequence(
     chirp_s: float,
     chirp_amp_m_s: float,
     hz: float,
+    include_steps: bool = True,
 ) -> int:
     client = CommandClient(prefix=prefix)
     bus = TwistBus(prefix=prefix, create=False)
@@ -83,23 +89,27 @@ def run_sequence(
         _write_vz(bus, 0.0, hz)
         if not _wait_or_estop(client, rest_s):
             return 130
-        for mm_s in STEPS_MM_S:
-            vz = mm_s / 1000.0
-            for sign in (1.0, -1.0):
-                cmd = sign * vz
-                print(f"[STEP] vz={cmd:+.4f} m/s hold={hold_s:.2f}s", flush=True)
-                t0 = time.monotonic()
-                while time.monotonic() - t0 < hold_s:
-                    _write_vz(bus, cmd, hz)
-                    tel = client.snapshot()
-                    if int(tel["status"]) == int(Status.ESTOP):
-                        print("[ESTOP] " + str(tel["msg"]), flush=True)
-                        return 130
-                    time.sleep(dt)
-                t1 = time.monotonic()
-                while time.monotonic() - t1 < rest_s:
-                    _write_vz(bus, 0.0, hz)
-                    time.sleep(dt)
+        if include_steps:
+            for mm_s in STEPS_MM_S:
+                vz = mm_s / 1000.0
+                for sign in (1.0, -1.0):
+                    cmd = sign * vz
+                    print(
+                        f"[STEP] vz={cmd:+.4f} m/s hold={hold_s:.2f}s",
+                        flush=True,
+                    )
+                    t0 = time.monotonic()
+                    while time.monotonic() - t0 < hold_s:
+                        _write_vz(bus, cmd, hz)
+                        tel = client.snapshot()
+                        if int(tel["status"]) == int(Status.ESTOP):
+                            print("[ESTOP] " + str(tel["msg"]), flush=True)
+                            return 130
+                        time.sleep(dt)
+                    t1 = time.monotonic()
+                    while time.monotonic() - t1 < rest_s:
+                        _write_vz(bus, 0.0, hz)
+                        time.sleep(dt)
         print(
             f"[CHIRP] {chirp_amp_m_s*1000:.1f} mm/s  0.2–5 Hz  {chirp_s:.1f}s",
             flush=True,
@@ -143,6 +153,34 @@ def _hold_cmd(bus: TwistBus, client: CommandClient, vz_m_s: float, seconds: floa
             return False
         time.sleep(dt)
     return True
+
+
+def _motion_fresh_or_wait(
+    motion: MotionBus,
+    last_seq: int,
+    *,
+    max_age_s: float,
+    poll_s: float = 0.001,
+) -> tuple[dict | None, str]:
+    """Wait for the next even generation; do not reuse a sample.
+
+    ``seq_stale`` / torn copies are publish jitter, not a certificate fault,
+    until ``max_age_s`` elapses.  ``age_total`` / invalid / empty still abort
+    immediately so a stale or dead SHM is never used as ``v_actual``.
+    """
+    limit = max(float(max_age_s), 0.0)
+    deadline = time.monotonic() + limit
+    last_why = "seq_stale"
+    while True:
+        row, why = motion.fresh(last_seq, max_age_s=limit)
+        if row is not None:
+            return row, ""
+        last_why = str(why or "seq_stale")
+        if last_why not in ("seq_stale", "torn"):
+            return None, last_why
+        if time.monotonic() >= deadline:
+            return None, last_why
+        time.sleep(max(float(poll_s), 0.0))
 
 
 def run_stop_reverse_sequence(
@@ -218,12 +256,12 @@ def run_backup_replay_sequence(
     speeds_mm_s: tuple[float, ...],
     event_log: Path,
     window_a_csv: Path | None = None,
+    motion_max_age_s: float = 0.015,
 ) -> int:
     """Play the shield's a/j-limited ``u_b``, not an instant −40 mm/s step.
 
-    Each tick prefers measured ``v`` / ``[a]_+`` from Window A.  Without
-    ``--window-a-csv`` this is only an open-loop model-generated backup
-    sequence; do not treat it as the online shield.
+    Closed-loop replay requires the 200 Hz ``peirastic_motion`` SHM.
+    Window A CSV is flushed every 200 rows and is not a feedback source.
     """
     from collections import deque
 
@@ -243,17 +281,40 @@ def run_backup_replay_sequence(
     sh = DelaySafetyShield(SafetyShieldConfig.from_dict(raw), dt)
     client = CommandClient(prefix=prefix)
     bus = TwistBus(prefix=prefix, create=False)
+    try:
+        motion = MotionBus(prefix=prefix, create=False)
+    except Exception as exc:
+        bus.close()
+        client.close()
+        print(
+            f"[ERR] peirastic_motion SHM missing ({exc}).  Restart Window A "
+            "after this build.  CSV is not 200 Hz feedback; aborting "
+            "certificate-grade --backup-replay.",
+            flush=True,
+        )
+        return 2
     client.set_mode(ModeRequest(Mode.SERVO_TWIST, {}))
-    closed_loop = window_a_csv is not None and Path(window_a_csv).is_file()
     print(
         "[MODE] SERVO_TWIST identify_plant --backup-replay  "
         f"a_max={sh.cfg.a_max_m_s2} j_max={sh.cfg.j_max_m_s3} "
-        f"u_retract={sh.cfg.u_retract_m_s} "
-        f"{'closed-loop v_actual' if closed_loop else 'OPEN-LOOP model v (not a certificate)'}",
+        f"u_retract={sh.cfg.u_retract_m_s}  "
+        f"motion SHM max_age={1e3 * motion_max_age_s:.0f} ms  "
+        "(CSV is not closed-loop)",
         flush=True,
     )
     rows: list[dict[str, str]] = []
     event_n = 0
+    last_seq = -1
+
+    def _abort_stale(reason: str) -> int:
+        _write_vz(bus, 0.0, hz)
+        print(
+            f"[ABORT] motion feedback {reason}; sent zero.  "
+            "Not a stop certificate.",
+            flush=True,
+        )
+        return 2
+
     try:
         if not _hold_cmd(bus, client, 0.0, rest_s, hz):
             return 130
@@ -269,43 +330,46 @@ def run_backup_replay_sequence(
                 sh._delay = deque([vz] * delay_n, maxlen=max(delay_n, 1))
                 sh._u_prev = vz
                 sh._u_prev2 = vz
-                v_meas, a_plus, t_csv = _tail_window_a_motion(window_a_csv)
-                if v_meas is not None:
-                    sh._sync_plant_from_measurement(v_meas, a_plus)
-                t_trigger_wall = time.time()
                 t_trigger_mono = time.monotonic()
                 print(
                     f"[BACKUP] event_id={eid} trigger=backup_to_terminal "
-                    f"phase={label} v0_cmd={mm_s:.0f} mm/s "
-                    f"v0_meas={('nan' if v_meas is None else f'{1e3 * v_meas:.1f}')} mm/s "
-                    f"a0+={('nan' if a_plus is None else f'{a_plus:.3f}')} "
-                    f"t_wall_csv={('nan' if t_csv is None else f'{t_csv:.4f}')} "
-                    f"hold={dwell:.2f}s",
+                    f"phase={label} v0_cmd={mm_s:.0f} mm/s hold={dwell:.2f}s",
                     flush=True,
                 )
                 hold_acc = 0.0
                 n_max = int(round((rest_s + 0.50) / dt))
                 for tick in range(n_max):
-                    v_now, a_now, t_csv_now = _tail_window_a_motion(window_a_csv)
-                    if v_now is not None:
-                        sh._sync_plant_from_measurement(v_now, a_now)
-                    v_pred = (
-                        float(sh._v_plant)
-                        if v_now is not None
-                        else float(vz)
+                    row_m, why = _motion_fresh_or_wait(
+                        motion, last_seq, max_age_s=motion_max_age_s
                     )
+                    if row_m is None:
+                        return _abort_stale(why)
+                    last_seq = int(row_m["seq"])
+                    sh._sync_plant_from_measurement(
+                        float(row_m["v_tcp_z"]), float(row_m["a_tcp_z_plus"])
+                    )
+                    if tick == 0:
+                        print(
+                            f"[BACKUP] trigger v0_meas="
+                            f"{1e3 * float(row_m['v_tcp_z']):.1f} mm/s "
+                            f"a0+={float(row_m['a_tcp_z_plus']):.3f} "
+                            f"t_wall={row_m['t_wall_s']:.4f}",
+                            flush=True,
+                        )
                     u = sh.backup_command(
                         sh._u_prev,
                         sh._u_prev2,
                         released=False,
-                        v_pred=v_pred,
+                        v_pred=float(sh._v_plant),
                     )
                     t_unix = time.time()
-                    if tick == 0:
-                        t_trigger_wall = t_unix
                     _write_vz(bus, u, hz)
-                    sh._commit_sent(u, keep_measured_state=v_now is not None)
+                    sh._commit_sent(u, keep_measured_state=True)
                     queue_u = ";".join(f"{float(x):.6f}" for x in sh._delay)
+                    t_csv_now = None
+                    if window_a_csv is not None:
+                        _v_csv, _a_csv, t_csv_now = _tail_window_a_motion(window_a_csv)
+                        del _v_csv, _a_csv
                     rows.append(
                         {
                             "event_id": eid,
@@ -315,16 +379,14 @@ def run_backup_replay_sequence(
                             "t_unix_s": f"{t_unix:.6f}",
                             "t_mono_s": f"{time.monotonic() - t_trigger_mono:.6f}",
                             "t_wall_csv_s": (
-                                "" if t_csv_now is None else f"{t_csv_now:.6f}"
+                                f"{float(row_m['t_wall_s']):.6f}"
+                                if math.isfinite(float(row_m["t_wall_s"]))
+                                else ("" if t_csv_now is None else f"{t_csv_now:.6f}")
                             ),
                             "u_b": f"{u:.6f}",
                             "v0_cmd": f"{vz:.6f}",
-                            "v_actual": (
-                                "" if v_now is None else f"{v_now:.6f}"
-                            ),
-                            "a0_plus": (
-                                "" if a_now is None else f"{a_now:.6f}"
-                            ),
+                            "v_actual": f"{float(row_m['v_tcp_z']):.6f}",
+                            "a0_plus": f"{float(row_m['a_tcp_z_plus']):.6f}",
                             "q_remain_m": f"{sh.queue_remain_m():.8f}",
                             "queue_u": queue_u,
                         }
@@ -334,11 +396,7 @@ def run_backup_replay_sequence(
                         print("[ESTOP] " + str(tel["msg"]), flush=True)
                         return 130
                     q_ok = sh.queue_press() <= float(sh.cfg.queue_clear_m_s) + 1e-9
-                    v_ok = (
-                        abs(float(sh._v_plant)) <= float(sh.cfg.v_hold_m_s) + 1e-9
-                        if v_now is not None
-                        else True
-                    )
+                    v_ok = abs(float(sh._v_plant)) <= float(sh.cfg.v_hold_m_s) + 1e-9
                     if (
                         abs(u) <= float(sh.cfg.queue_clear_m_s) + 1e-9
                         and v_ok
@@ -350,7 +408,6 @@ def run_backup_replay_sequence(
                     else:
                         hold_acc = 0.0
                     time.sleep(dt)
-                del t_trigger_wall
                 if not _hold_cmd(bus, client, 0.0, rest_s, hz):
                     return 130
         event_log.parent.mkdir(parents=True, exist_ok=True)
@@ -390,6 +447,7 @@ def run_backup_replay_sequence(
     finally:
         bus.close()
         client.close()
+        motion.close()
 
 
 def _simulate_first_order(
@@ -771,6 +829,9 @@ def _event_metrics(
             "horizon": float(horizon),
             "q_press": 0.0,
             "q_remain_m": 0.0,
+            "u_prev": 0.0,
+            "a_cmd": 0.0,
+            "q_front": 0.0,
             "gap_invalid": 1.0,
         }
     v0 = float(ach[start])
@@ -824,6 +885,11 @@ def _event_metrics(
         dt_med * float(np.sum(np.maximum(inflight, 0.0))) if inflight.size else 0.0
     )
     q_press = float(max(float(np.max(inflight)), 0.0)) if inflight.size else 0.0
+    u_prev = float(cmd[start - 1]) if start > 0 else 0.0
+    u_prev2 = float(cmd[start - 2]) if start > 1 else u_prev
+    dt0 = float(dt_arr[start]) if start < dt_arr.size else dt_med
+    a_cmd = (u_prev - u_prev2) / dt0 if dt0 > 1e-12 else 0.0
+    q_front = float(inflight[0]) if inflight.size else 0.0
     return {
         "v0": v0,
         "a0": a0_plus,
@@ -836,6 +902,9 @@ def _event_metrics(
         "horizon": float(horizon),
         "q_press": q_press,
         "q_remain_m": q_remain,
+        "u_prev": max(u_prev, 0.0),
+        "a_cmd": max(a_cmd, 0.0),
+        "q_front": max(q_front, 0.0),
         "gap_invalid": 0.0,
     }
 
@@ -934,11 +1003,12 @@ def _open_loop_envelopes(
     horizon: int,
     rollout_fn,
     origin_dt_gap_s: float = 0.050,
-) -> tuple[list[float], list[float], list[float], int]:
-    """Unified ê_v(i), ê_x(i), ê_{x,+}(i) from the same origins: v̂(k+i|k)."""
+) -> tuple[list[float], list[float], list[float], list[float], int]:
+    """Unified ê_v, ê_x, ê_{x,+}, ê_a from the same origins: v̂(k+i|k)."""
     ev = [0.0] * horizon
     ex = [0.0] * horizon
     ex_plus = [0.0] * horizon
+    ea = [0.0] * horizon
     dt_arr = _step_dt(t, 0.005)
     used = 0
     for k in origins:
@@ -950,6 +1020,8 @@ def _open_loop_envelopes(
         acc = 0.0
         acc_plus_act = 0.0
         acc_plus_hat = 0.0
+        prev_act = float(ach[k])
+        prev_hat = float(ach[k])
         used += 1
         for i in range(horizon):
             actual = float(ach[k + i + 1])
@@ -960,7 +1032,13 @@ def _open_loop_envelopes(
             acc_plus_act += dts * max(actual, 0.0)
             acc_plus_hat += dts * max(float(pred[i]), 0.0)
             ex_plus[i] = max(ex_plus[i], max(acc_plus_act - acc_plus_hat, 0.0))
-    return ev, ex, ex_plus, used
+            if dts > 1e-9:
+                a_act = (actual - prev_act) / dts
+                a_hat = (float(pred[i]) - prev_hat) / dts
+                ea[i] = max(ea[i], abs(a_act - a_hat))
+            prev_act = actual
+            prev_hat = float(pred[i])
+    return ev, ex, ex_plus, ea, used
 
 
 def _fit_arx(cmd: np.ndarray, ach: np.ndarray, na: int = 3, nb: int = 3) -> np.ndarray | None:
@@ -978,36 +1056,202 @@ def _fit_arx(cmd: np.ndarray, ach: np.ndarray, na: int = 3, nb: int = 3) -> np.n
     return np.asarray(theta, dtype=float)
 
 
+def _snap_v_cover_m_s(v0: float) -> float:
+    mm = abs(float(v0)) * 1000.0
+    if mm <= 1e-9:
+        return 0.0
+    return math.ceil(mm / 10.0 - 1e-12) * 0.010
+
+
+_STOP_COVER_KEYS = (
+    "v0_m_s",
+    "a0_m_s2",
+    "q_remain_m",
+    "u_prev_m_s",
+    "a_cmd_m_s2",
+    "q_front_m_s",
+)
+
+
+def _stop_point_covers(hi: dict[str, float], lo: dict[str, float]) -> bool:
+    return all(
+        float(hi.get(k, 0.0)) + 1e-12 >= float(lo.get(k, 0.0))
+        for k in _STOP_COVER_KEYS
+    )
+
+
 def _monotonic_stop_bins(rows: list[dict[str, float]]) -> list[dict[str, float]]:
-    groups: dict[int, list[dict[str, float]]] = {}
+    """Covering closure on ``(v,a,q_remain,u_prev,a_cmd,q_front)``.
+
+    Each event stays a point.  A dominating corner inflates ``dx`` / ``N_b``
+    so a high-``a`` or high-``u_prev`` short stop cannot undercut a longer
+    coast.  ``q_remain`` is still not a proven permutation abstraction.
+    """
+    pts: list[dict[str, float]] = []
     for r in rows:
         if float(r.get("gap_invalid", 0.0)) >= 0.5:
             continue
+        if float(r.get("reached_T", 0.0)) < 0.5:
+            continue
         if not math.isfinite(float(r.get("dx_press", float("nan")))):
             continue
-        lo = int(1000.0 * abs(float(r["v0"])) // 10.0) * 10
-        groups.setdefault(lo, []).append(r)
-    out: list[dict[str, float]] = []
-    run_dx = 0.0
-    for lo in sorted(groups):
-        rs = groups[lo]
-        dx = max(float(r["dx_press"]) for r in rs)
-        run_dx = max(run_dx, dx)
-        a0 = max(max(float(r["a0"]), 0.0) for r in rs)
-        q0 = max(float(r.get("q_press", 0.0)) for r in rs)
-        q_remain = max(float(r.get("q_remain_m", 0.0)) for r in rs)
-        nbs = [float(r["n_b"]) for r in rs if math.isfinite(float(r["n_b"]))]
-        out.append(
+        if not math.isfinite(float(r.get("n_b", float("nan")))):
+            continue
+        pts.append(
             {
-                "v0_m_s": (lo + 10) / 1000.0,
-                "a0_m_s2": a0,
-                "q_press_m_s": q0,
-                "q_remain_m": q_remain,
-                "dx_ub_m": run_dx,
-                "n_b": float(max(nbs) if nbs else 0.0),
+                "v0_m_s": _snap_v_cover_m_s(float(r["v0"])),
+                "a0_m_s2": max(float(r["a0"]), 0.0),
+                "q_press_m_s": max(float(r.get("q_press", 0.0)), 0.0),
+                "q_remain_m": max(float(r.get("q_remain_m", 0.0)), 0.0),
+                "u_prev_m_s": max(float(r.get("u_prev", 0.0)), 0.0),
+                "a_cmd_m_s2": max(float(r.get("a_cmd", 0.0)), 0.0),
+                "q_front_m_s": max(float(r.get("q_front", 0.0)), 0.0),
+                "dx_ub_m": float(r["dx_press"]),
+                "n_b": float(r["n_b"]),
             }
         )
-    return out
+    for i, pi in enumerate(pts):
+        dx = float(pi["dx_ub_m"])
+        nb = float(pi["n_b"])
+        for pj in pts:
+            if _stop_point_covers(pi, pj):
+                dx = max(dx, float(pj["dx_ub_m"]))
+                nb = max(nb, float(pj["n_b"]))
+        pts[i] = {**pi, "dx_ub_m": dx, "n_b": nb}
+    kept: list[dict[str, float]] = []
+    for i, pi in enumerate(pts):
+        dominated = False
+        for j, pj in enumerate(pts):
+            if i == j:
+                continue
+            if (
+                _stop_point_covers(pj, pi)
+                and float(pj["dx_ub_m"]) + 1e-12 >= float(pi["dx_ub_m"])
+                and float(pj["n_b"]) + 1e-12 >= float(pi["n_b"])
+                and (
+                    any(
+                        float(pj[k]) > float(pi[k]) + 1e-12
+                        for k in _STOP_COVER_KEYS
+                    )
+                    or float(pj["dx_ub_m"]) > float(pi["dx_ub_m"]) + 1e-12
+                    or float(pj["n_b"]) > float(pi["n_b"]) + 1e-12
+                )
+            ):
+                dominated = True
+                break
+        if not dominated:
+            kept.append(pi)
+    kept.sort(
+        key=lambda b: (
+            b["v0_m_s"],
+            b["a0_m_s2"],
+            b["q_remain_m"],
+            b["u_prev_m_s"],
+            b["a_cmd_m_s2"],
+            b["q_front_m_s"],
+        )
+    )
+    return kept
+
+
+def _lookup_stop_cover(
+    bins: list[dict[str, float]],
+    *,
+    v0: float,
+    a0: float,
+    q_remain_m: float,
+    u_prev: float = 0.0,
+    a_cmd: float = 0.0,
+    q_front: float = 0.0,
+) -> tuple[float, float]:
+    query = {
+        "v0_m_s": abs(float(v0)),
+        "a0_m_s2": max(float(a0), 0.0),
+        "q_remain_m": max(float(q_remain_m), 0.0),
+        "u_prev_m_s": max(float(u_prev), 0.0),
+        "a_cmd_m_s2": max(float(a_cmd), 0.0),
+        "q_front_m_s": max(float(q_front), 0.0),
+    }
+    covering = [b for b in bins if _stop_point_covers(b, query)]
+    if not covering:
+        return float("inf"), float("inf")
+    best = min(covering, key=lambda b: float(b["dx_ub_m"]))
+    return float(best["dx_ub_m"]), float(best.get("n_b", 0.0))
+
+
+def _validate_stop_lookup(
+    bins: list[dict[str, float]],
+    events: list[dict[str, float]],
+    *,
+    n_trigger: int | None = None,
+    n_aligned: int | None = None,
+    n_missed: int = 0,
+) -> dict[str, int]:
+    over_dx = 0
+    over_nb = 0
+    uncovered = 0
+    terminal_fail = 0
+    n_gap = 0
+    n_invalid = 0
+    n_checked = 0
+    for ev in events:
+        if float(ev.get("gap_invalid", 0.0)) >= 0.5:
+            n_gap += 1
+            continue
+        if not math.isfinite(float(ev.get("dx_press", float("nan")))):
+            n_invalid += 1
+            continue
+        n_checked += 1
+        reached = float(ev.get("reached_T", 0.0)) >= 0.5
+        nb = float(ev.get("n_b", float("nan")))
+        if (not reached) or (not math.isfinite(nb)):
+            terminal_fail += 1
+            continue
+        d_ub, n_ub = _lookup_stop_cover(
+            bins,
+            v0=float(ev["v0"]),
+            a0=float(ev["a0"]),
+            q_remain_m=float(ev.get("q_remain_m", 0.0)),
+            u_prev=float(ev.get("u_prev", 0.0)),
+            a_cmd=float(ev.get("a_cmd", 0.0)),
+            q_front=float(ev.get("q_front", 0.0)),
+        )
+        if not math.isfinite(d_ub):
+            uncovered += 1
+            continue
+        if float(ev["dx_press"]) > d_ub + 1e-12:
+            over_dx += 1
+        if (not math.isfinite(n_ub)) or nb > n_ub + 1e-12:
+            over_nb += 1
+    n_trig = int(n_trigger) if n_trigger is not None else len(events)
+    n_al = int(n_aligned) if n_aligned is not None else len(events)
+    n_valid = n_checked
+    complete = int(
+        n_trig == n_al == n_valid == n_checked
+        and n_trig > 0
+        and int(n_missed) == 0
+        and n_gap == 0
+        and n_invalid == 0
+        and terminal_fail == 0
+        and uncovered == 0
+        and over_dx == 0
+        and over_nb == 0
+    )
+    return {
+        "n": n_checked,
+        "n_trigger": n_trig,
+        "n_aligned": n_al,
+        "n_valid": n_valid,
+        "n_checked": n_checked,
+        "n_missed": int(n_missed),
+        "n_gap": n_gap,
+        "n_invalid": n_invalid,
+        "over_dx": over_dx,
+        "over_nb": over_nb,
+        "uncovered": uncovered,
+        "terminal_fail": terminal_fail,
+        "complete": complete,
+    }
 
 
 def _stop_dx_yaml_block(rows: list[dict[str, float]], *, source: str) -> str:
@@ -1018,7 +1262,9 @@ def _stop_dx_yaml_block(rows: list[dict[str, float]], *, source: str) -> str:
         "    certified: false",
         f"    source: {source}",
         "    note: plant-ID or unvalidated backup replay; not Δx_b^ub until",
-        "      independent val covers the envelope and certified is set true.",
+        "      independent val covers every event and certified is set true.",
+        "      Covering on (v0,a0,q_remain,u_prev,a_cmd,q_front).",
+        "      q_remain is not a proven delay-queue permutation abstraction.",
         "      a0 is [a_actual]+.  q_remain_m is dt Σ [u]+ of the delay line.",
         "      D_b covers backup-from-now; the shield uses Δx_1(u(λ))+D_b(ξ_1).",
         "    bins:",
@@ -1030,10 +1276,53 @@ def _stop_dx_yaml_block(rows: list[dict[str, float]], *, source: str) -> str:
             "      - "
             f"{{v0_m_s: {b['v0_m_s']:.4f}, a0_m_s2: {b['a0_m_s2']:.4f}, "
             f"q_press_m_s: {b['q_press_m_s']:.4f}, "
-            f"q_remain_m: {b['q_remain_m']:.8f}, dx_ub_m: {b['dx_ub_m']:.7f}, "
-            f"n_b: {int(b['n_b'])}}}"
+            f"q_remain_m: {b['q_remain_m']:.8f}, "
+            f"u_prev_m_s: {b['u_prev_m_s']:.4f}, "
+            f"a_cmd_m_s2: {b['a_cmd_m_s2']:.4f}, "
+            f"q_front_m_s: {b['q_front_m_s']:.4f}, "
+            f"dx_ub_m: {b['dx_ub_m']:.7f}, n_b: {int(b['n_b'])}}}"
         )
     return "\n".join(lines) + "\n"
+
+
+def _command_stop_edges(cmd: np.ndarray, *, dt: float) -> list[tuple[str, int]]:
+    min_drop = max(0.5 * 1.20 * max(dt, 1e-4), 0.001)
+    edges: list[tuple[str, int]] = []
+    in_backup = False
+    for k in range(1, cmd.size):
+        prev, now = float(cmd[k - 1]), float(cmd[k])
+        if prev > 0.008 and abs(now) <= 0.002:
+            edges.append(("stop", k))
+            in_backup = False
+        elif prev > 0.008 and now < -0.020:
+            edges.append(("reverse", k))
+            in_backup = False
+        elif prev > 0.008 and (prev - now) >= min_drop and now > -0.020:
+            if not in_backup:
+                edges.append(("backup", k))
+                in_backup = True
+        elif abs(now) <= 0.002:
+            in_backup = False
+    return edges
+
+
+def _event_log_edges(
+    cmd: np.ndarray,
+    t: np.ndarray,
+    event_log: Path,
+) -> tuple[list[tuple[str, int]], int, int]:
+    triggers = _event_trigger_rows(_load_event_log(Path(event_log)))
+    edges: list[tuple[str, int]] = []
+    search_from = 1
+    missed = 0
+    for trig in triggers:
+        idx = _align_trigger_index(cmd, t, trig, search_from=search_from)
+        if idx is None:
+            missed += 1
+            continue
+        edges.append(("backup", int(idx)))
+        search_from = int(idx) + 1
+    return edges, len(triggers), missed
 
 
 def analyze_stop_reverse(
@@ -1046,6 +1335,7 @@ def analyze_stop_reverse(
     write_yaml: Path | None = None,
     dt_gap_s: float = 0.050,
     event_log: Path | None = None,
+    val_event_log: Path | None = None,
 ) -> int:
     """Plant-ID stop metrics.  Not a backup certificate unless input is u_b."""
     cmd, ach, t, twist, sent = _load_twist_csv(path, input_column=input_column)
@@ -1085,46 +1375,17 @@ def analyze_stop_reverse(
         "not backup-to-terminal time.",
         flush=True,
     )
-    min_drop = max(0.5 * 1.20 * max(dt, 1e-4), 0.001)
     edges: list[tuple[str, int]] = []
     if event_log is not None and Path(event_log).is_file():
-        triggers = _event_trigger_rows(_load_event_log(Path(event_log)))
-        search_from = 1
-        missed = 0
-        for trig in triggers:
-            idx = _align_trigger_index(cmd, t, trig, search_from=search_from)
-            if idx is None:
-                missed += 1
-                print(
-                    f"[ID-SR] event_id={trig.get('event_id')} not aligned "
-                    "(need t_wall_csv_s or v0_cmd→u_b match)",
-                    flush=True,
-                )
-                continue
-            edges.append(("backup", int(idx)))
-            search_from = int(idx) + 1
+        edges, n_trig, missed = _event_log_edges(cmd, t, Path(event_log))
         print(
-            f"[ID-SR] event-log={event_log} triggers={len(triggers)} "
+            f"[ID-SR] event-log={event_log} triggers={n_trig} "
             f"aligned={len(edges)} missed={missed} "
             "(explicit trigger, not a 3 mm/s edge)",
             flush=True,
         )
     else:
-        in_backup = False
-        for k in range(1, cmd.size):
-            prev, now = float(cmd[k - 1]), float(cmd[k])
-            if prev > 0.008 and abs(now) <= 0.002:
-                edges.append(("stop", k))
-                in_backup = False
-            elif prev > 0.008 and now < -0.020:
-                edges.append(("reverse", k))
-                in_backup = False
-            elif prev > 0.008 and (prev - now) >= min_drop and now > -0.020:
-                if not in_backup:
-                    edges.append(("backup", k))
-                    in_backup = True
-            elif abs(now) <= 0.002:
-                in_backup = False
+        edges = _command_stop_edges(cmd, dt=dt)
         if event_log is not None:
             print(
                 f"[ID-SR] event-log {event_log} missing; falling back to "
@@ -1229,12 +1490,135 @@ def analyze_stop_reverse(
         "[ID-SR] copy stop_dx_ub into hybrid_motion.safety_shield only as a "
         "development table.  Leave certified: false until backup replay "
         "and independent val pass.  a0 is [a_actual]+; q_remain_m is dt Σ [u]+. "
+        "Table also stores u_prev, a_cmd, q_front.  Still not certified. "
         "The shield uses Δx_1(u(λ))+D_b(ξ_1), not max(model, D_b(ξ)).",
         flush=True,
     )
     if write_yaml is not None:
         write_yaml.write_text(yaml_block)
         print(f"[ID-SR] wrote {write_yaml}", flush=True)
+
+    bins_now = _monotonic_stop_bins(table_rows)
+    independent = val_path is not None
+    val_lookup_fail = False
+    if independent:
+        cmd_val, ach_val, t_val, _twv, _sev = _load_twist_csv(
+            val_path, input_column=input_column
+        )
+        dt_val = float(np.median(np.diff(t_val))) if t_val.size > 2 else dt
+        used_val_log = False
+        if val_event_log is not None and Path(val_event_log).is_file():
+            val_edges, n_vt, n_vm = _event_log_edges(
+                cmd_val, t_val, Path(val_event_log)
+            )
+            used_val_log = True
+            print(
+                f"[ID-SR] val-event-log={val_event_log} triggers={n_vt} "
+                f"aligned={len(val_edges)} missed={n_vm}",
+                flush=True,
+            )
+        else:
+            val_edges = _command_stop_edges(cmd_val, dt=dt_val)
+            if table_src == "backup_replay":
+                print(
+                    "[ID-SR] FAIL: backup table needs --val-event-log.  "
+                    "Command edges can miss the first jerk-limited ticks.  "
+                    "Leave certified: false.",
+                    flush=True,
+                )
+            elif val_event_log is not None:
+                print(
+                    f"[ID-SR] val-event-log {val_event_log} missing; "
+                    "using command edges.",
+                    flush=True,
+                )
+        val_events: list[dict[str, float]] = []
+        n_reverse = 0
+        for kind, idx in val_edges:
+            if kind == "reverse":
+                n_reverse += 1
+                continue
+            met = _event_metrics(
+                cmd_val,
+                ach_val,
+                t_val,
+                start=idx,
+                settle_m_s=settle_m_s,
+                horizon=horizon,
+                end=_event_end(cmd_val, idx),
+                dt_gap_s=dt_gap_s,
+            )
+            if not met:
+                val_events.append(
+                    {
+                        "v0": 0.0,
+                        "a0": 0.0,
+                        "dx_press": float("nan"),
+                        "n_b": float("nan"),
+                        "reached_T": 0.0,
+                        "gap_invalid": 1.0,
+                    }
+                )
+            else:
+                val_events.append(met)
+        if used_val_log:
+            n_trigger = int(n_vt)
+            n_aligned = int(len(val_edges))
+            n_missed = int(n_vm)
+        else:
+            n_trigger = int(len(val_edges) - n_reverse)
+            n_aligned = int(len(val_events))
+            n_missed = 0
+        report = _validate_stop_lookup(
+            bins_now,
+            val_events,
+            n_trigger=n_trigger,
+            n_aligned=n_aligned,
+            n_missed=n_missed,
+        )
+        print(
+            f"[ID-SR] stop-lookup val trigger={report['n_trigger']} "
+            f"aligned={report['n_aligned']} valid={report['n_valid']} "
+            f"checked={report['n_checked']} missed={report['n_missed']} "
+            f"gap={report['n_gap']} over_dx={report['over_dx']} "
+            f"over_Nb={report['over_nb']} uncovered={report['uncovered']} "
+            f"terminal_fail={report['terminal_fail']}",
+            flush=True,
+        )
+        lookup_fail = bool(
+            report["complete"] == 0
+            or (table_src == "backup_replay" and not used_val_log)
+        )
+        val_lookup_fail = lookup_fail
+        if report["n_trigger"] == 0:
+            print(
+                "[ID-SR] FAIL: --val produced no stop/backup events for lookup.",
+                flush=True,
+            )
+        elif lookup_fail:
+            print(
+                "[ID-SR] FAIL: lookup val needs "
+                "N_trigger=N_aligned=N_valid=N_checked and "
+                "N_missed=N_gap=N_terminalFail=N_uncovered=N_overDx="
+                "N_overNb=0.  A gapped or unaligned event is a fail, "
+                "not a skip.  Leave certified: false.",
+                flush=True,
+            )
+        else:
+            print(
+                "[ID-SR] lookup covers every independent stop/backup event "
+                "(Δx^+ ≤ D_b^ub and N_b ≤ N_b^ub).  Still do not set "
+                "certified: true: terminal D_T is a box-sup, last ē_v(N) "
+                "is not ē_v(∞), and q_remain is not a proven queue "
+                "permutation abstraction.",
+                flush=True,
+            )
+    else:
+        print(
+            "[ID-SR] WARNING: stop-lookup events were not checked on an "
+            "independent --val file.  Plant 70/30 is not that check.",
+            flush=True,
+        )
 
     independent = val_path is not None
     if independent:
@@ -1298,7 +1682,7 @@ def analyze_stop_reverse(
     theta = _fit_arx(cmd_tr, ach_tr)
     step = max(horizon // 4, 1)
     origins = list(range(0, max(cmd_va.size - horizon - 2, 1), step))
-    ev_f, ex_f, ex_f_plus, n_f = _open_loop_envelopes(
+    ev_f, ex_f, ex_f_plus, ea_f, n_f = _open_loop_envelopes(
         cmd_va,
         ach_va,
         t_va,
@@ -1309,7 +1693,7 @@ def analyze_stop_reverse(
         ),
         origin_dt_gap_s=dt_gap_s,
     )
-    ev_2, ex_2, ex_2_plus, _n_2 = _open_loop_envelopes(
+    ev_2, ex_2, ex_2_plus, ea_2, _n_2 = _open_loop_envelopes(
         cmd_va,
         ach_va,
         t_va,
@@ -1321,9 +1705,14 @@ def analyze_stop_reverse(
         origin_dt_gap_s=dt_gap_s,
     )
     if theta is None:
-        ev_a, ex_a, ex_a_plus = [0.0] * horizon, [0.0] * horizon, [0.0] * horizon
+        ev_a, ex_a, ex_a_plus, ea_arx = (
+            [0.0] * horizon,
+            [0.0] * horizon,
+            [0.0] * horizon,
+            [0.0] * horizon,
+        )
     else:
-        ev_a, ex_a, ex_a_plus, _n_a = _open_loop_envelopes(
+        ev_a, ex_a, ex_a_plus, ea_arx, _n_a = _open_loop_envelopes(
             cmd_va,
             ach_va,
             t_va,
@@ -1341,12 +1730,12 @@ def analyze_stop_reverse(
         f"[ID-SR] open-loop ê(k+i|k) origins={n_f} (same starts for all models)  "
         f"FOPDT(T0={lag * dt * 1000:.1f}ms,Tp={best_tp * 1000:.1f}ms) "
         f"ê_v max={_emax(ev_f):.4f} ê_x max={1e3 * _emax(ex_f):.2f}mm "
-        f"ê_x,+ max={1e3 * _emax(ex_f_plus):.2f}mm  "
+        f"ê_x,+ max={1e3 * _emax(ex_f_plus):.2f}mm ê_a max={_emax(ea_f):.3f}  "
         f"2nd(wn={best_wn:.1f},z={best_z:.2f}) "
         f"ê_v max={_emax(ev_2):.4f} ê_x max={1e3 * _emax(ex_2):.2f}mm "
-        f"ê_x,+ max={1e3 * _emax(ex_2_plus):.2f}mm  "
+        f"ê_x,+ max={1e3 * _emax(ex_2_plus):.2f}mm ê_a max={_emax(ea_2):.3f}  "
         f"ARX ê_v max={_emax(ev_a):.4f} ê_x max={1e3 * _emax(ex_a):.2f}mm "
-        f"ê_x,+ max={1e3 * _emax(ex_a_plus):.2f}mm",
+        f"ê_x,+ max={1e3 * _emax(ex_a_plus):.2f}mm ê_a max={_emax(ea_arx):.3f}",
         flush=True,
     )
     print(
@@ -1362,7 +1751,466 @@ def analyze_stop_reverse(
         "v0, do not shrink the tube.",
         flush=True,
     )
+    return 1 if val_lookup_fail else 0
+
+
+def _finite_col(rows: list[dict[str, str]], key: str) -> np.ndarray:
+    out = np.empty(len(rows), dtype=float)
+    for i, row in enumerate(rows):
+        try:
+            out[i] = float(row.get(key) or "nan")
+        except (TypeError, ValueError):
+            out[i] = float("nan")
+    return out
+
+
+def _load_tool_z_csv(path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Command/measurement pair in the same tool-Z frame."""
+    with path.open(newline="") as f:
+        rows = list(csv.DictReader(f))
+    t = _finite_col(rows, "t_wall_s")
+    u = _finite_col(rows, "vel_ff_vz")
+    y = _finite_col(rows, "vz_achieved_tool")
+    mask = np.isfinite(t) & np.isfinite(u) & np.isfinite(y)
+    t, u, y = t[mask], u[mask], y[mask]
+    if t.size < 8:
+        raise ValueError(f"{path} has no finite vel_ff_vz/vz_achieved_tool pair")
+    order = np.argsort(t, kind="stable")
+    return t[order], u[order], y[order]
+
+
+def _resample_uniform(
+    t: np.ndarray, u: np.ndarray, y: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+    dt = float(np.median(np.diff(t))) if t.size > 2 else 0.005
+    if not math.isfinite(dt) or dt <= 1e-4:
+        dt = 0.005
+    t0 = float(t[0])
+    t1 = float(t[-1])
+    n = max(int(round((t1 - t0) / dt)) + 1, 8)
+    tu = t0 + dt * np.arange(n)
+    return tu, np.interp(tu, t, u), np.interp(tu, t, y), dt
+
+
+def _simulate_fopdt_k(
+    cmd: np.ndarray,
+    *,
+    delay_steps: int,
+    tp_s: float,
+    gain: float,
+    dt: float,
+) -> np.ndarray:
+    y = _simulate_first_order(
+        cmd, delay_steps=delay_steps, tp_s=tp_s, dt=dt
+    )
+    return float(gain) * y
+
+
+def _fit_fopdt(
+    cmd: np.ndarray, ach: np.ndarray, dt: float
+) -> tuple[int, float, float, float]:
+    best = (float("inf"), 10, 0.020, 1.0)
+    cmd0 = cmd - np.mean(cmd)
+    ach0 = ach - np.mean(ach)
+    if cmd0.size > 4 and float(np.std(cmd0)) > 1e-8:
+        corr = np.correlate(ach0, cmd0, mode="full")
+        lags = np.arange(-cmd0.size + 1, ach0.size)
+        lag0 = int(max(lags[int(np.argmax(corr))], 0))
+    else:
+        lag0 = 10
+    # Keep the correlation delay (communication Γ_d).  Do not trade it
+    # against Tp: that inflates the residual time constant and the
+    # derivative in T_n^{-1}.
+    delay_lo = max(lag0 - 2, 0)
+    delay_hi = lag0 + 2
+    for delay in range(delay_lo, delay_hi + 1):
+        for tp in np.linspace(0.008, 0.040, 17):
+            pred = _simulate_first_order(
+                cmd, delay_steps=delay, tp_s=float(tp), dt=dt
+            )
+            den = float(np.dot(pred, pred))
+            gain = float(np.dot(pred, ach) / den) if den > 1e-12 else 1.0
+            gain = float(np.clip(gain, 0.7, 1.3))
+            err = float(np.mean((gain * pred - ach) ** 2))
+            if err < best[0]:
+                best = (err, delay, float(tp), gain)
+    return best[1], best[2], best[3], math.sqrt(best[0])
+
+
+def _simulate_second_zero(
+    cmd: np.ndarray,
+    *,
+    delay_steps: int,
+    wn: float,
+    z: float,
+    z_zero: float,
+    dt: float,
+) -> np.ndarray:
+    """T(s) = (s/z_zero + 1) / (s^2/wn^2 + 2 z s/wn + 1) after a delay."""
+    y = np.zeros_like(cmd)
+    yd = 0.0
+    delay = [0.0] * max(int(delay_steps), 0)
+    wn = max(float(wn), 1.0)
+    z = max(float(z), 0.2)
+    z_zero = max(float(z_zero), 1.0)
+    for i, u in enumerate(cmd):
+        if delay:
+            u_app = delay[0]
+            delay = delay[1:] + [float(u)]
+        else:
+            u_app = float(u)
+        prev = y[i - 1] if i else 0.0
+        # Input zero: u_f = u + ú/z_zero, ú ≈ (u - u_prev)/dt
+        u_prev = delay[-1] if delay else (float(cmd[i - 1]) if i else u_app)
+        u_f = u_app + (u_app - u_prev) / max(dt * z_zero, 1e-6)
+        ydd = (wn * wn) * (u_f - prev) - 2.0 * z * wn * yd
+        yd += ydd * dt
+        y[i] = prev + yd * dt
+    return y
+
+
+def _band_mag_phase_err(
+    cmd: np.ndarray,
+    ach: np.ndarray,
+    pred: np.ndarray,
+    dt: float,
+    f_lo: float = 0.2,
+    f_hi: float = 5.0,
+) -> tuple[float, float]:
+    n = int(cmd.size)
+    if n < 32:
+        return float("nan"), float("nan")
+    win = np.hanning(n)
+    freq = np.fft.rfftfreq(n, dt)
+    band = (freq >= f_lo) & (freq <= f_hi)
+    if not np.any(band):
+        return float("nan"), float("nan")
+    u = np.fft.rfft(cmd * win)
+    y = np.fft.rfft(ach * win)
+    p = np.fft.rfft(pred * win)
+    eps = 1e-12
+    mag_err = float(
+        np.mean(np.abs(np.abs(y[band] / (u[band] + eps)) - np.abs(p[band] / (u[band] + eps))))
+    )
+    ang_y = np.angle(y[band] / (u[band] + eps))
+    ang_p = np.angle(p[band] / (u[band] + eps))
+    phase_err = float(np.mean(np.abs(np.angle(np.exp(1j * (ang_y - ang_p))))))
+    return mag_err, phase_err
+
+
+def analyze_tn(
+    path: Path,
+    *,
+    val_path: Path | None = None,
+    write_yaml: Path | None = None,
+    fit_speed_max_m_s: float = 0.025,
+) -> int:
+    """Fit a shadow-only Γ_d + T_n candidate on tool-Z step logs.
+
+    Step validation does not certify phase in the intended Q band.  Active
+    operation still requires PRBS/multisine (or an equivalent FRF experiment)
+    and leaves ``active_model_validated`` false.
+    """
+    t, u, y = _load_tool_z_csv(path)
+    tu, uu, yy, dt = _resample_uniform(t, u, y)
+    broadband_excitation = np.unique(np.round(uu, decimals=5)).size > 100
+    # Fit on the contiguous record.  Masking low-speed samples would
+    # stitch distant ticks together and destroy the delay.
+    delay, tp, gain, train_rmse = _fit_fopdt(uu, yy, dt)
+    print(
+        f"[ID-TN] corr_lag={delay} ticks  (Γ_d pinned near cross-correlation)",
+        flush=True,
+    )
+    pred = _simulate_fopdt_k(
+        uu, delay_steps=delay, tp_s=tp, gain=gain, dt=dt
+    )
+    low = np.abs(uu) <= fit_speed_max_m_s + 1e-9
+    train_low = (
+        math.sqrt(float(np.mean((pred[low] - yy[low]) ** 2)))
+        if np.any(low)
+        else train_rmse
+    )
+    train_all = math.sqrt(float(np.mean((pred - yy) ** 2)))
+    mag_err, phase_err = _band_mag_phase_err(uu, yy, pred, dt)
+    pole = math.exp(-dt / max(tp, 1e-4))
+    print(
+        f"[ID-TN] train={path}  dt={1e3 * dt:.2f}ms  "
+        f"pair=vel_ff_vz→vz_achieved_tool  "
+        f"excitation={'broadband/chirp' if broadband_excitation else 'step'}",
+        flush=True,
+    )
+    print(
+        f"[ID-TN] FOPDT T0={delay * dt * 1000:.1f}ms  Tp={tp * 1000:.1f}ms  "
+        f"K={gain:.3f}  pole={pole:.4f}  min_phase=yes  dc≈{gain:.3f}",
+        flush=True,
+    )
+    print(
+        f"[ID-TN] train RMSE (≤{1e3 * fit_speed_max_m_s:.0f} mm/s)="
+        f"{1e3 * train_low:.2f} mm/s  all-speeds={1e3 * train_all:.2f} mm/s  "
+        f"step-spectrum diagnostic |T|err[0.2-5Hz]={mag_err:.3f}  "
+        f"∠err={phase_err:.3f} rad",
+        flush=True,
+    )
+
+    val_rmse = float("nan")
+    if val_path is not None:
+        tv, uv, yv = _load_tool_z_csv(val_path)
+        _t2, uv, yv, dtv = _resample_uniform(tv, uv, yv)
+        pred_v = _simulate_fopdt_k(
+            uv, delay_steps=max(int(round(delay * dt / dtv)), 0),
+            tp_s=tp, gain=gain, dt=dtv,
+        )
+        val_rmse = math.sqrt(float(np.mean((pred_v - yv) ** 2)))
+        high = np.abs(uv) > 0.030
+        high_rmse = (
+            math.sqrt(float(np.mean((pred_v[high] - yv[high]) ** 2)))
+            if np.any(high)
+            else float("nan")
+        )
+        print(
+            f"[ID-TN] val={val_path}  RMSE={1e3 * val_rmse:.2f} mm/s  "
+            f"40/80 RMSE={1e3 * high_rmse:.2f} mm/s",
+            flush=True,
+        )
+
+    best2 = float("inf")
+    best2_p = (40.0, 0.8, 80.0)
+    for wn in (25.0, 40.0, 55.0, 70.0):
+        for z in (0.7, 1.0, 1.3):
+            for z0 in (40.0, 80.0, 160.0):
+                p2 = _simulate_second_zero(
+                    uu, delay_steps=delay, wn=wn, z=z, z_zero=z0, dt=dt
+                )
+                err = float(np.mean((p2 - yy) ** 2))
+                if err < best2:
+                    best2 = err
+                    best2_p = (wn, z, z0)
+    second_rmse = math.sqrt(best2)
+    choose_second = second_rmse + 1e-4 < 0.75 * train_all
+    print(
+        f"[ID-TN] 2nd+zero wn={best2_p[0]:.0f} z={best2_p[1]:.2f} "
+        f"z0={best2_p[2]:.0f} RMSE={1e3 * second_rmse:.2f} mm/s  "
+        f"{'selected' if choose_second else 'not selected (keep FOPDT)'}",
+        flush=True,
+    )
+    t0_s = delay * dt
+    yaml_block = (
+        "hybrid_motion:\n"
+        "  cdyob:\n"
+        "    mode: shadow\n"
+        f"    t0_s: {t0_s:.4f}\n"
+        f"    tp_s: {tp:.4f}\n"
+        "    omega_q_hz: 0.75\n"
+        "    pn_m: 0.0\n"
+        "    v_corr_max_m_s: 0.003\n"
+        "    blend_s: 0.30\n"
+        "    active_press_max_m_s: 0.010\n"
+        "    active_retract_max_m_s: 0.010\n"
+        "    active_q_max_hz: 1.0\n"
+        "    active_force_ratio: 0.90\n"
+        "    active_settle_speed_m_s: 0.003\n"
+        "    active_settle_hold_s: 0.20\n"
+        "    active_model_validated: false\n"
+    )
+    print("[ID-TN] yaml:\n" + yaml_block, flush=True)
+    if write_yaml is not None:
+        write_yaml.write_text(yaml_block)
+        print(f"[ID-TN] wrote {write_yaml}", flush=True)
+    if choose_second:
+        print(
+            "[ID-TN] WARNING: second-order looked better; still shipping FOPDT "
+            "unless a chirp confirms the extra zero.",
+            flush=True,
+        )
+    if broadband_excitation:
+        print(
+            "[ID-TN] ACTIVE BLOCKED: one broadband/chirp record is not an "
+            "independent validation.  Repeat it in a separate log and compare "
+            "the target-Q-band FRF before active_model_validated=true.",
+            flush=True,
+        )
+    else:
+        print(
+            "[ID-TN] ACTIVE BLOCKED: stop/step data do not bound 1–3 Hz phase. "
+            "Collect PRBS/multisine before setting active_model_validated=true.",
+            flush=True,
+        )
     return 0
+
+
+def _col_or_nan(row: dict[str, str], *keys: str) -> float:
+    for key in keys:
+        raw = row.get(key)
+        if raw in (None, ""):
+            continue
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(value):
+            return value
+    return float("nan")
+
+
+def replay_cdyob(path: Path) -> int:
+    """Shadow the paper CDYOB on a recorded hybrid CSV.  Not a closed-loop claim."""
+    from rm75_control.control.admittance_common.cdyob import (
+        CdyobConfig,
+        CombinedDynamicsYob,
+    )
+
+    with path.open(newline="") as f:
+        rows = list(csv.DictReader(f))
+    if len(rows) < 20:
+        print(f"[CDYOB-REPLAY] too few rows in {path}", flush=True)
+        return 1
+    cfg = CdyobConfig(
+        mode="shadow",
+        omega_q_hz=0.75,
+        t0_s=0.050,
+        tp_s=0.026,
+        v_corr_max_m_s=0.003,
+        blend_s=0.30,
+    )
+    yob = CombinedDynamicsYob(cfg)
+    dt_med = 0.005
+    t = _finite_col(rows, "t_wall_s")
+    if np.isfinite(t).sum() > 4:
+        dts = np.diff(t[np.isfinite(t)])
+        dts = dts[(dts > 1e-4) & (dts < 0.05)]
+        if dts.size:
+            dt_med = float(np.median(dts))
+    corrs: list[float] = []
+    unclip: list[float] = []
+    v_r_seen: list[float] = []
+    dob_seen: list[float] = []
+    sat = 0
+    contact_n = 0
+    for i, row in enumerate(rows):
+        dt = _col_or_nan(row, "dt_actual_s")
+        if not math.isfinite(dt) or dt <= 0.0:
+            dt = dt_med
+        v_nom = _col_or_nan(row, "v_force_z", "u_nom_raw", "vel_ff_vz")
+        v_meas = _col_or_nan(row, "vz_achieved_tool")
+        force = _col_or_nan(row, "fz")
+        if not math.isfinite(v_nom):
+            v_nom = 0.0
+        if not math.isfinite(force):
+            force = 0.0
+        # Logged fz is tool-Z (press-negative on this stack).  Observer uses
+        # press-positive force, same as controller.force_normal_filtered.
+        force_n = -force if math.isfinite(force) else 0.0
+        v_meas_n = (
+            None if not math.isfinite(v_meas) else float(v_meas)
+        )
+        yob.update(
+            float(v_nom),
+            v_meas_m_s=v_meas_n,
+            force_n=force_n,
+            dt_s=float(dt),
+            mass_z=1.0,
+            damping_z=40.0,
+            apply_scale=0.0,
+        )
+        sent = _col_or_nan(
+            row, "u_sent", "u_nom_capped", "vel_ff_vz", "v_force_z"
+        )
+        yob.commit_sent(
+            float(sent) if math.isfinite(sent) else float(v_nom),
+            dt_s=float(dt),
+        )
+        tel = yob.telemetry
+        state = str(row.get("physical_contact_state") or "")
+        in_contact = state in (
+            "contact",
+            "confirmed",
+            "held",
+            "stable",
+        ) or str(row.get("contact_present") or "0") in ("1", "true", "True")
+        if in_contact or not any(
+            str(row.get(k) or "").strip() for k in ("physical_contact_state",)
+        ):
+            unclip.append(float(tel.pert_unclipped))
+            corrs.append(float(tel.pert_clipped))
+            sat += int(bool(tel.saturated))
+            v_r = _col_or_nan(row, "v_r_z")
+            dob = _col_or_nan(row, "u_dob_z")
+            if math.isfinite(v_r):
+                v_r_seen.append(v_r)
+            if math.isfinite(dob):
+                dob_seen.append(dob)
+        if in_contact:
+            contact_n += 1
+    arr = np.asarray(unclip, dtype=float)
+    clip = np.asarray(corrs, dtype=float)
+    peak = float(np.max(np.abs(arr))) if arr.size else 0.0
+    p95 = float(np.percentile(np.abs(arr), 95)) if arr.size else 0.0
+    # 2.73 Hz tone in the unclipped correction (offline, open-loop).
+    tone = float("nan")
+    if arr.size > 64:
+        freq = np.fft.rfftfreq(arr.size, dt_med)
+        spec = np.abs(np.fft.rfft(arr - np.mean(arr))) ** 2
+        idx = int(np.argmin(np.abs(freq - 2.73)))
+        tone = float(spec[idx]) if spec.size else float("nan")
+    v_r_p95 = (
+        float(np.percentile(np.abs(np.asarray(v_r_seen)), 95))
+        if v_r_seen
+        else 0.0
+    )
+    dob_p95 = (
+        float(np.percentile(np.abs(np.asarray(dob_seen)), 95))
+        if dob_seen
+        else 0.0
+    )
+    baseline_known = bool(v_r_seen) and bool(dob_seen)
+    baseline_compatible = (
+        baseline_known and v_r_p95 < 1e-6 and dob_p95 < 1e-6
+    )
+    runtime_shadow_rows = sum(
+        1
+        for row in rows
+        if str(row.get("cdyob_mode") or "").strip().lower() == "shadow"
+        and math.isfinite(_col_or_nan(row, "cdyob_pert_unclipped"))
+    )
+    print(
+        f"[CDYOB-REPLAY] {path.name}  n={len(rows)} used={arr.size} "
+        f"contact_rows≈{contact_n}  "
+        f"|pert| p95={1e3 * p95:.2f} mm/s  peak={1e3 * peak:.2f} mm/s  "
+        f"clip={sat}/{arr.size}  2.73Hz pwr={tone:.3e}",
+        flush=True,
+    )
+    print(
+        "[CDYOB-REPLAY] A-only baseline="
+        f"{'yes' if baseline_compatible else 'NO' if baseline_known else 'unknown'}  "
+        f"|v_r|p95={1e3 * v_r_p95:.2f} mm/s  |u_dob|p95={dob_p95:.3f} N",
+        flush=True,
+    )
+    print(
+        f"[CDYOB-REPLAY] runtime shadow telemetry rows={runtime_shadow_rows}  "
+        f"contact rows={contact_n}",
+        flush=True,
+    )
+    print(
+        "[CDYOB-REPLAY] open-loop shadow only.  Does not claim closed-loop "
+        "suppression.  polarity check: +force (press) should not produce a "
+        f"sustained +pert (mean={1e3 * float(np.mean(arr)):.2f} mm/s).",
+        flush=True,
+    )
+    if not baseline_known or runtime_shadow_rows == 0:
+        print(
+            "[CDYOB-REPLAY] NOT A SHADOW RUN: controller CDYOB telemetry is "
+            "blank (for example, plain servo_twist rather than hybrid force).",
+            flush=True,
+        )
+    elif not baseline_compatible:
+        print(
+            "[CDYOB-REPLAY] NOT AN ACTIVE PREDICTOR: this log contains v_r/DOB. "
+            "Record A-only off baseline, then A-only CDYOB shadow.",
+            flush=True,
+        )
+    del clip
+    return 0
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="peirastic plant identification")
@@ -1378,6 +2226,18 @@ def main() -> int:
         type=str,
         default="",
         help="analyse a --stop-reverse CSV for Δx^+ / N_press / N_b",
+    )
+    parser.add_argument(
+        "--analyze-tn",
+        type=str,
+        default="",
+        help="fit Γ_d + T_n from vel_ff_vz → vz_achieved_tool",
+    )
+    parser.add_argument(
+        "--replay-cdyob",
+        type=str,
+        default="",
+        help="shadow paper CDYOB on an existing hybrid CSV",
     )
     parser.add_argument(
         "--val",
@@ -1418,7 +2278,19 @@ def main() -> int:
         "--window-a-csv",
         type=str,
         default="",
-        help="Window A --log-csv path so --backup-replay syncs measured v/[a]+",
+        help="optional Window A CSV for event-log t_wall notes (not 200 Hz v)",
+    )
+    parser.add_argument(
+        "--motion-max-age-s",
+        type=float,
+        default=0.015,
+        help="abort --backup-replay if feedback_age + SHM publish age exceeds this",
+    )
+    parser.add_argument(
+        "--val-event-log",
+        type=str,
+        default="",
+        help="independent backup val event log (not command edges)",
     )
     parser.add_argument("--horizon", type=int, default=40)
     parser.add_argument("--write-yaml", type=str, default="")
@@ -1427,6 +2299,11 @@ def main() -> int:
         "--stop-reverse",
         action="store_true",
         help="run +10/20/40/80 → 0 and → −40 mm/s (settled and accel)",
+    )
+    parser.add_argument(
+        "--chirp-only",
+        action="store_true",
+        help="run only the 0.2–5 Hz chirp; do not repeat step identification",
     )
     parser.add_argument(
         "--short-hold-s",
@@ -1441,6 +2318,14 @@ def main() -> int:
     )
     args = parser.parse_args()
     speeds = _parse_speeds_mm_s(args.speeds_mm_s)
+    if args.analyze_tn:
+        return analyze_tn(
+            Path(args.analyze_tn),
+            val_path=Path(args.val) if args.val else None,
+            write_yaml=Path(args.write_yaml) if args.write_yaml else None,
+        )
+    if args.replay_cdyob:
+        return replay_cdyob(Path(args.replay_cdyob))
     if args.analyze_stop:
         elog = Path(args.event_log) if args.event_log else None
         return analyze_stop_reverse(
@@ -1451,6 +2336,7 @@ def main() -> int:
             write_yaml=Path(args.write_yaml) if args.write_yaml else None,
             dt_gap_s=float(args.dt_gap_s),
             event_log=elog,
+            val_event_log=Path(args.val_event_log) if args.val_event_log else None,
         )
     if args.analyze:
         return analyze_csv(
@@ -1475,7 +2361,8 @@ def main() -> int:
             )
         else:
             print(
-                f"[DRY] steps mm/s={STEPS_MM_S} hold={args.hold_s} rest={args.rest_s} "
+                f"[DRY] steps mm/s={(() if args.chirp_only else STEPS_MM_S)} "
+                f"hold={args.hold_s} rest={args.rest_s} "
                 f"chirp={args.chirp_s}s amp={args.chirp_amp_mm_s} mm/s",
                 flush=True,
             )
@@ -1490,6 +2377,7 @@ def main() -> int:
             speeds_mm_s=speeds,
             event_log=Path(args.event_log) if args.event_log else Path("identify_backup_events.csv"),
             window_a_csv=Path(args.window_a_csv) if args.window_a_csv else None,
+            motion_max_age_s=float(args.motion_max_age_s),
         )
     if args.stop_reverse:
         return run_stop_reverse_sequence(
@@ -1507,6 +2395,7 @@ def main() -> int:
         chirp_s=float(args.chirp_s),
         chirp_amp_m_s=float(args.chirp_amp_mm_s) / 1000.0,
         hz=float(args.hz),
+        include_steps=not bool(args.chirp_only),
     )
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import math
 from types import SimpleNamespace
 
@@ -13,9 +14,11 @@ from rm75_control.control.joint_admittance_8dof.loop import (
     JointIkConfig,
     JointIkController,
     _guard_qpik_step_before_send,
+    _guard_uncertified_brake_before_inner,
     _publish_rail_target_before_arm,
     _qpik_rail_v_ff_m_s,
     _rail_m_for_feedback,
+    run_joint_admittance_phases,
     _wall_clock_rail_target,
 )
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics, full_q_from_arm
@@ -196,6 +199,33 @@ def test_rail_rejection_stops_before_arm_half_of_8d_tick() -> None:
     assert not accepted
     assert reason == "rail_target_rejected:bridge_declined"
     assert events == [reason]
+
+
+def test_uncertified_brake_same_tick_publishes_no_new_axis_target() -> None:
+    """The brake boundary precedes IK, rail target, and arm CANFD send."""
+    outer = SimpleNamespace(
+        controller=SimpleNamespace(shield_uncertified_brake=True)
+    )
+    events: list[str] = []
+    sendable, reason = _guard_uncertified_brake_before_inner(
+        outer,
+        lambda why: events.append(f"fault_stop:{why}"),
+    )
+    if sendable:
+        events.extend(("inner.update", "rail.set_target_m", "arm.canfd"))
+
+    assert not sendable
+    assert reason == "uncertified_brake"
+    assert events == ["fault_stop:uncertified_brake"]
+
+
+def test_uncertified_brake_guard_precedes_all_normal_tick_publication() -> None:
+    source = inspect.getsource(run_joint_admittance_phases)
+    guard = source.index("_guard_uncertified_brake_before_inner(")
+    inner_update = source.index("step = inner.update(")
+    rail_publish = source.index("_publish_rail_target_before_arm(", inner_update)
+    arm_publish = source.index("_send_joint_canfd_cmd(", inner_update)
+    assert guard < inner_update < rail_publish < arm_publish
 
 
 def test_invalid_enabled_rail_feedback_never_falls_back_to_q_cmd() -> None:

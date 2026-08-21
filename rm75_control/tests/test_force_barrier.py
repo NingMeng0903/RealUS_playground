@@ -156,6 +156,39 @@ def test_falling_force_does_not_reopen_press() -> None:
     assert cap == pytest.approx(0.5 / (2000.0 * 0.055), rel=0.05)
 
 
+def test_underforce_keeps_press_floor() -> None:
+    damper = ForceSpaceVelocityDamper(
+        ForceBarrierConfig(
+            enabled=True,
+            t_react_s=0.055,
+            v_min_press_m_s=0.0,
+            v_underforce_press_m_s=0.010,
+            underforce_band_n=0.20,
+            v_ref_m_s=0.08,
+            stiffness_cap_enabled=True,
+            budget_min_n=0.5,
+            budget_frac=0.0,
+            bar_f_n=0.15,
+            e_f_n=0.20,
+            e_x_m=0.0004,
+        )
+    )
+    damper.f_dot_z = 0.0
+    cap_press, _ = damper.caps(
+        f_z=0.40,
+        f_des_z=2.0,
+        in_contact=True,
+        v_z_cap=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+        ke_est_n_m=8000.0,
+        mass_eq_kg=1.0,
+        tau_s=0.055,
+        v_tcp_z_actual=0.02,
+    )
+    assert cap_press == pytest.approx(0.010, abs=1e-9)
+
+
 def test_free_space_ke_schedules_approach() -> None:
     damper = ForceSpaceVelocityDamper(
         ForceBarrierConfig(

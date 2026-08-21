@@ -68,9 +68,9 @@ def test_yaml_smooth_chase_defaults_load():
         Path("configs/joint_admittance_8dof.yaml").read_text(encoding="utf-8")
     )
     cfg = AdmittanceConfig.from_dict(raw)
-    # 45c74e1 force law: DOB + bidirectional proactive, barrier as the brake.
-    # Desired-point decoupling tracks tool-Z of the force point, not scan Z.
-    assert cfg.force_dob.enabled
+    # CDYOB off-baseline and shadow share the same A-only force law.
+    assert cfg.force_dob.enabled is False
+    assert cfg.proactive_ff.enabled is False
     assert cfg.proactive_ff.retract_only is False
     assert cfg.force_barrier.enabled
     assert cfg.track_axes[2] == pytest.approx(1.0)
@@ -80,28 +80,40 @@ def test_yaml_smooth_chase_defaults_load():
     assert cfg.proactive_ff.gate_press_on_is is False
     assert cfg.var_damping_d_u == pytest.approx(0.0)
     assert cfg.var_damping_m_u == pytest.approx(0.0)
-    assert cfg.cdyob.enabled is False
-    assert cfg.cdyob.omega_q_hz == pytest.approx(2.5)
+    assert cfg.cdyob.mode == "shadow"
+    assert cfg.cdyob.applies() is False
+    assert cfg.cdyob.omega_q_hz == pytest.approx(0.75)
+    assert cfg.cdyob.t0_s == pytest.approx(0.030)
+    assert cfg.cdyob.tp_s == pytest.approx(0.012)
+    assert cfg.cdyob.v_corr_max_m_s == pytest.approx(0.003)
+    assert cfg.cdyob.active_press_max_m_s == pytest.approx(0.010)
+    assert cfg.cdyob.active_retract_max_m_s == pytest.approx(0.010)
+    assert cfg.cdyob.active_force_ratio == pytest.approx(0.90)
+    assert cfg.cdyob.active_settle_speed_m_s == pytest.approx(0.003)
+    assert cfg.cdyob.active_settle_hold_s == pytest.approx(0.20)
+    assert cfg.cdyob.active_model_validated is True
     assert cfg.safety_shield.mode == "observe"
     assert cfg.safety_shield.k_ub_n_m == pytest.approx(8000.0)
     assert cfg.admittance_mass_z == pytest.approx(1.0)
-    assert cfg.admittance_damping_z == pytest.approx(25.0)
+    assert cfg.admittance_damping_z == pytest.approx(40.0)
     ctrl = AdmittanceController(DT, cfg)
+    ctrl._first_contact_slow_latched = False
+    ctrl._recontact_slow_latched = False
+    ctrl._in_contact_latched = True
+    ctrl._episode_seen = True
+    ctrl.contact_present = True
     f_ext = np.zeros(6)
     f_des = np.zeros(6)
     f_des[2] = 2.0
     for _ in range(40):
         f_ext[2] = 0.9
         ctrl.compute_velocity_command(
-            np.zeros(6), np.zeros(6), np.zeros(6), f_ext, f_des
+            np.zeros(6), np.zeros(6), np.zeros(6), f_ext, f_des, in_contact=True
         )
-    # Sustained under-force must now recruit both auxiliary terms, not just
-    # the passive admittance: DOB removes the steady offset and the proactive
-    # reference chases press.  Both were off in the 1bfe98b anti-bounce
-    # baseline, which is what made the descent feel damped.
+    # A-only shadow baseline: under-force is handled by A, not hidden DOB/v_r.
     assert ctrl.v_force_z > 0.0
-    assert ctrl.u_dob_z > 0.0
-    assert ctrl.v_r_z > 0.0
+    assert ctrl.u_dob_z == pytest.approx(0.0)
+    assert ctrl.v_r_z == pytest.approx(0.0)
 
 
 def test_hf_delta_d_releases_after_hold():

@@ -643,7 +643,7 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.rail_allocator.kp_mid == pytest.approx(1.2)
     assert cfg.rail_allocator.k_err_rail == pytest.approx(4.0)
     assert cfg.rail_allocator.e_ref_m == pytest.approx(0.08)
-    assert cfg.rail_allocator.f_c_hz == pytest.approx(1.0)
+    assert cfg.rail_allocator.f_c_hz == pytest.approx(2.0)
     assert cfg.rail_allocator.kaw_mid == pytest.approx(8.0)
     assert cfg.rail_allocator.rho_mirror_a == pytest.approx(0.50)
     assert cfg.rail_allocator.rho_mirror_j == pytest.approx(0.30)
@@ -714,10 +714,12 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     # Rail command shaping must not come back: it fed core.qdot_prev and so
     # multiplied every acceleration limit by its own alpha.
     assert not hasattr(cfg.rail, "cmd_lpf_tau_s")
-    # e85c9ab press speed restored; the barrier stays as the brake.
+    # CDYOB off/shadow comparison uses the same A-only baseline.
     hm = raw["hybrid_motion"]
     assert hm["proactive_retract_only"] is False
-    assert hm["force_dob"]["enabled"] is True
+    assert hm["proactive_feedforward"] is False
+    assert hm["force_dob"]["enabled"] is False
+    assert hm["cdyob"]["mode"] == "shadow"
     assert float(hm["force_axis_slew_press_m_s2"]) >= 0.8
     assert hm["force_barrier"]["enabled"] is True
     # The blunt phase-2 instruments stay out.

@@ -8,7 +8,7 @@ Usage::
 
 Segments are ``active`` / ``hold_pullback`` / ``quiet_hold`` (stick centered,
 ``track_err_mm < 1``, and the run lasts at least 0.25 s).  Native
-``qpik_nullspace_*`` columns are empty until window A is restarted on SHM v2.
+``qpik_nullspace_*`` / homotopy columns need a window A restart on SHM v3.
 """
 
 from __future__ import annotations

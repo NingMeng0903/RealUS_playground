@@ -37,7 +37,7 @@ class RailAllocatorConfig:
     k_err_rail: float = 4.0
     e_ref_m: float = 0.08
     # Reference-model cutoff.  τ = 1/(2π f_c).  Rail is a low-frequency
-    # actuator; start near 1 Hz and raise only with identified lag data.
+    # actuator. Yaml is 2 Hz after the live-Y e_mid fix; do not jump to 5–10 Hz.
     f_c_hz: float = 1.0
     kaw_mid: float = 8.0
     rho_mirror_a: float = 0.50

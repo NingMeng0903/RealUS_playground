@@ -6,7 +6,7 @@
 namespace wbc_rt {
 
 static constexpr uint32_t kMagic = 0x57424331u;  // 'WBC1'
-static constexpr uint32_t kVersion = 2;
+static constexpr uint32_t kVersion = 3;
 
 enum Cmd : uint32_t {
   kCmdNone = 0,
@@ -141,11 +141,14 @@ struct WbcOut {
   double ns_rail_lock;
   double sat_scale;
   double sec_target_norm;
+  double homotopy_s;
+  double psi_star;
+  double rail_motion_share;
 };
 #pragma pack(pop)
 
 static_assert(sizeof(WbcIn) == 608, "WbcIn layout drift");
-static_assert(sizeof(WbcOut) == 584, "WbcOut layout drift");
+static_assert(sizeof(WbcOut) == 608, "WbcOut layout drift");
 
 inline void clear_in(WbcIn* s) {
   std::memset(s, 0, sizeof(WbcIn));

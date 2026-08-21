@@ -286,7 +286,9 @@ inner:
     u_mid_max_m_s: 0.12
     k_err_rail: 4.0
     e_ref_m: 0.08
-    f_c_hz: 1.0
+    # Rail velocity LPF after the live-Y e_mid fix. 2 Hz follows Y faster than
+    # 1 Hz without the 5–10 Hz hunting the reversal tests guard against.
+    f_c_hz: 2.0
     kaw_mid: 8.0
     rho_mirror_a: 0.50
     rho_mirror_j: 0.30
@@ -356,8 +358,9 @@ hybrid_motion:
     # 4.14 s, while remaining reachable below the shipped 1 N target.
     enter_n: 0.85
     hard_enter_n: 1.5
-    # The same log shows a ~0.65 N airborne residual.  Exit/rearm thresholds
-    # therefore straddle that measured baseline instead of assuming <0.15 N.
+    # Force task may stay armed across a bounce.  Physical CONTACT must
+    # still be allowed to go LOST, or 80 mm/s press reopens in air.
+    hold_until_reset: false
     exit_n: 0.70
     enter_confirm_s: 0.02
     exit_confirm_s: 0.1
@@ -378,10 +381,10 @@ hybrid_motion:
   - 2.0
   - 2.0
   - 2.0
-  # Low baseline MD for light feel + fast under/over-force chase.
+  # 022208: continuous damping for the residual 2.73 Hz base-admittance mode.
   # Chatter: short-lived ΔD_hf(Is). Steady offset: force_dob. Not sticky Ke·D.
   admittance_mass_z: 1.0
-  admittance_damping_z: 25.0
+  admittance_damping_z: 40.0
   max_vz_tool_m_s: 0.08
   desired_force_ramp_s: 0.30
   var_damping_enabled: true
@@ -412,7 +415,7 @@ hybrid_motion:
   # disabled it as part of the anti-bounce sweep, and the force barrier below
   # now provides that brake instead.
   force_dob:
-    enabled: true
+    enabled: false
     ki: 8.0
     leak_s: 0.4
     u_max_n: 1.5
@@ -431,9 +434,10 @@ hybrid_motion:
     v_ref_m_s: 0.08
     v_min_retract_m_s: 0.0
     v_min_press_m_s: 0.0
-    # Upper bound only.  First contact and loss-latched recontact use
-    # K_ub, so scheduled approach is a few mm/s, not this 30 mm/s.
-    v_seek_free_m_s: 0.030
+    v_underforce_press_m_s: 0.010
+    underforce_band_n: 0.20
+    # Extra clip only.  First contact is K_ub T_stop, not this number.
+    v_seek_free_m_s: 0.020
     tau_stop_s: 0.080
     e_x_m: 0.0004
     e_f_n: 0.20
@@ -443,14 +447,26 @@ hybrid_motion:
     stiffness_cap_enabled: true
     ke_floor_n_m: 50.0
     mass_floor_kg: 0.05
-  # Approximate PROB/CDYOB corrector. Off until after observe/force
-  # scans. Q starts at 2–3 Hz from identified P(z); not a passivity cutoff.
+  # Independent chirps 031234/031605 select T0=30 ms, Tp=12 ms.  Do not
+  # invert Γd or claim Y=A when any downstream constraint is active.
   cdyob:
-    enabled: false
-    omega_q_hz: 2.5
-    tau_s: 0.0
-    t_n_s: 0.020
-    v_corr_max_m_s: 0.030
+    mode: shadow
+    omega_q_hz: 0.75
+    t0_s: 0.030
+    tp_s: 0.012
+    tau_s: 0.030
+    t_n_s: 0.012
+    pn_m: 0.0
+    v_corr_max_m_s: 0.003
+    blend_s: 0.30
+    active_press_max_m_s: 0.010
+    active_retract_max_m_s: 0.010
+    active_q_max_hz: 1.0
+    active_force_ratio: 0.90
+    active_settle_speed_m_s: 0.003
+    active_settle_hold_s: 0.20
+    # 032041 A-only contact shadow passes polarity/clip + settled-apply gates.
+    active_model_validated: true
   # Normal-port delay-aware shield. Stay in observe until the same solver
   # is feasible on hardware. force/observe are empirical peak guards:
   # require_contact_free_terminal is false until a release model exists.
@@ -458,6 +474,12 @@ hybrid_motion:
   safety_shield:
     enabled: true
     mode: observe
+    terminal_invariance_proven: false
+    energy_sign_verified: false
+    # Certificate domain.  Declared without numeric bounds is still false.
+    pose_domain_declared: false
+    payload_domain_declared: false
+    max_feedback_age_s: 0.015
     k_ub_n_m: 8000.0
     recovery_hold_s: 0.050
     require_contact_free_terminal: false
@@ -477,9 +499,9 @@ hybrid_motion:
       tp_s: 0.020
       horizon_steps: 40
     # stop_dx_ub is written by --analyze-stop --write-yaml.
-    # certified: false until backup replay + independent val.
-    # Force indent uses ē_{x,+}; lookup a0 is [a_actual]+; q_remain_m is dt Σ [u]+.
-    # Candidate bound is Δx_1^ub(ξ,u(λ))+D_b^ub(ξ_1), not max(model, D_b(ξ)).
+    # certified: false until 200 Hz motion-SHM backup replay + independent
+    # val covers every stop event.  Tail lookup uses the worst successor
+    # (v_{1,q}, a_{1,q}), not the nominal (v̂_1, â_1).
 
     velocity_error_ub_m_s:
     - 0.002810
@@ -648,16 +670,14 @@ hybrid_motion:
     bd_max: 180.0
     bd_slew_max: 400.0
     ke_slew_max: 1200.0
-  proactive_feedforward: true
-  # Bidirectional press feedforward restored from e85c9ab: retract_only killed
-  # the press-side v_r integration outright (measured v_r_z p95 = 0), which is
-  # the single largest cause of slow under-force chase.  The force barrier
-  # still caps press as the force error closes.
+  proactive_feedforward: false
+  # Legacy parameters are retained for isolated non-CDYOB tests only.
   proactive_retract_only: false
-  proactive_gain: 0.24
-  proactive_retract_gain: 0.24
-  proactive_leak_s: 0.25
-  v_r_max_m_s: 0.06
+  # 014140 showed why this inactive v_r branch must not contaminate shadow.
+  proactive_gain: 0.06
+  proactive_retract_gain: 0.06
+  proactive_leak_s: 0.50
+  v_r_max_m_s: 0.02
   proactive_gate_press_on_is: false
   proactive_press_is_gate_start: 0.2
   proactive_press_is_gate: 0.6
@@ -668,8 +688,8 @@ hybrid_motion:
   proactive_press_drive_max: 1.4
   proactive_retract_drive_max: 1.4
   proactive_reset_on_reversal: true
-  proactive_in_band_n: 0.25
-  proactive_in_band_leak_s: 0.05
+  proactive_in_band_n: 0.08
+  proactive_in_band_leak_s: 0.12
   force_scale_min_n: 0.18
   force_scale_fraction: 0.0
   fast_retract_guard:

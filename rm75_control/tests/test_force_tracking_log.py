@@ -111,6 +111,8 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert "waste_ratio" in header
     assert "rail_ff_m" in header
     assert "d_star_m" in header
+    assert "psi_star_deg" in header
+    assert "homotopy_s" in header
     assert "contact_phase" in header
     assert "ke_hat" in header
     assert "dob_v" in header
@@ -135,6 +137,20 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert "v_force_cmd_z" in header
     assert "ke_cap_n_m" in header
     assert "cdyob_corr_m_s" in header
+    assert "cdyob_qtinv_vm" in header
+    assert "cdyob_q_vi" in header
+    assert "cdyob_n1_force" in header
+    assert "cdyob_pert_unclipped" in header
+    assert "cdyob_blend" in header
+    assert "cdyob_vi" in header
+    assert "cdyob_candidate" in header
+    assert "cdyob_antiwindup_error" in header
+    assert "cdyob_residual" in header
+    assert "cdyob_saturated" in header
+    assert "cdyob_constrained" in header
+    assert "cdyob_linear_equivalent" in header
+    assert "cdyob_apply_ready" in header
+    assert "cdyob_ready_s" in header
     assert "overforce_escape" in header
     assert "u_nom_raw" in header
     assert "u_nom_capped" in header
@@ -156,6 +172,7 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert "terminal_ok" in header
     assert "aj_ok" in header
     assert "domain_ok" in header
+    assert "uncertified_brake" in header
     assert "recovery_latched" in header
     assert "recontact_slow_latched" in header
     assert "v_recontact_cap" in header

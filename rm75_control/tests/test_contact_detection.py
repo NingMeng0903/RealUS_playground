@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 import yaml
 
 from rm75_control.control.admittance_common.contact_state import PhysicalContactTracker
@@ -190,6 +191,41 @@ def test_force_barrier_uses_press_positive_coordinate_for_negative_tool_z():
     over_force = command(-3.0)
     assert over_force[2] > 0.0  # retract remains available in the other sign
     assert over_force[2] <= ctrl.cap_retract_z + 1.0e-12
+
+
+def test_force_task_armed_survives_physical_loss():
+    """Force task may stay armed; physical CONTACT must still go LOST."""
+    cfg = _cfg(
+        physical_contact=PhysicalContactConfig(
+            enabled=True,
+            enter_n=0.8,
+            hard_enter_n=1.5,
+            exit_n=0.70,
+            enter_confirm_s=0.010,
+            exit_confirm_s=0.050,
+            hold_until_reset=False,
+        )
+    )
+    ctrl = AdmittanceController(0.005, cfg)
+    for _ in range(4):
+        _tick(ctrl, fz=1.2, raw_fz=1.2, f_des_z=2.0)
+    assert ctrl.physical_contact_state == PhysicalContactTracker.CONTACT
+    assert ctrl.force_task_armed
+    assert ctrl.contact_present
+    for _ in range(40):
+        _tick(ctrl, fz=0.10, raw_fz=0.10, f_des_z=2.0)
+    assert ctrl.physical_contact_state == PhysicalContactTracker.LOST
+    assert ctrl.contact_present is False
+    assert ctrl.force_task_armed
+    assert ctrl.recontact_slow_latched is True
+    # Armed flight keeps chasing F* at air-seek, not the 2.8 mm/s crawl.
+    assert ctrl._use_delay_safe_press() is False
+    assert ctrl._press_vz_cap() == pytest.approx(
+        ctrl._v_air_seek(), abs=1e-9
+    )
+    ctrl.reset()
+    assert ctrl.physical_contact_state == PhysicalContactTracker.FREE
+    assert ctrl.force_task_armed is False
 
 
 def test_force_task_latch_persists_after_confirmed_physical_loss():
