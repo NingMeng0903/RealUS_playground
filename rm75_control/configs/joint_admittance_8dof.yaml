@@ -33,8 +33,9 @@ realtime_push:
 
 # Shared-memory state relay for split-process Genesis twin (same host).
 # Match realtime_push (cycle=1 -> 200 Hz) so attach-mode WBC does not stair-step.
+# Window B (`run_with_twin.py`) only mirrors hardware if this is on.
 state_relay:
-  enabled: false
+  enabled: true
   name: rm75_state
   hz: 200
 

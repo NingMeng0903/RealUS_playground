@@ -463,3 +463,51 @@ def test_gamepad_l3_r3_edges() -> None:
     src._tick()
     snap = src.snapshot()
     assert snap["r3_edge"]
+
+
+def test_gamepad_usb_or_missing_cannot_command_motion() -> None:
+    cfg = GamepadTwistConfig(dt=0.005)
+    usb = FakePad(axes=np.array([-1.0, 0.0, -1.0, 0.0, 0.0, -1.0]))
+    usb.transport = "usb"
+    usb.link_transport = "usb"
+    src = GamepadTwistSource(pad=usb, cfg=cfg)
+    src._tick()
+    snap = src.snapshot()
+    assert snap["armed"] is False
+    assert snap["connected"] is False
+    assert snap["transport"] == "usb"
+    assert np.allclose(snap["twist"], 0.0)
+    usb.buttons[LOGICAL_L3] = 1.0
+    usb.buttons[LOGICAL_R3] = 1.0
+    src._tick()
+    snap = src.snapshot()
+    assert snap["l3"] is False
+    assert snap["r3"] is False
+    assert snap["l3_edge"] is False
+    assert snap["r3_edge"] is False
+
+    missing = FakePad(axes=np.array([-1.0, 0.0, -1.0, 0.0, 0.0, -1.0]))
+    missing.transport = "none"
+    missing.link_transport = "none"
+    src2 = GamepadTwistSource(pad=missing, cfg=cfg)
+    src2._tick()
+    snap2 = src2.snapshot()
+    assert snap2["connected"] is False
+    assert np.allclose(snap2["twist"], 0.0)
+
+
+def test_gamepad_bluetooth_live_arms_after_settle() -> None:
+    pad = FakePad(axes=np.array([-1.0, 0.0, -1.0, 0.0, 0.0, -1.0]))
+    pad.transport = "bluetooth"
+    pad.link_transport = "bluetooth"
+    src = GamepadTwistSource(pad=pad, cfg=GamepadTwistConfig(dt=0.005))
+    src._tick()
+    snap = src.snapshot()
+    assert snap["connected"] is True
+    assert snap["armed"] is False
+    assert np.allclose(snap["twist"], 0.0)
+    src._live_since_s = time.monotonic() - 1.0
+    src._tick()
+    snap = src.snapshot()
+    assert snap["armed"] is True
+    assert float(np.linalg.norm(snap["twist"][:3])) > 0.0

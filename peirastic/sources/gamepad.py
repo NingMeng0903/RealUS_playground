@@ -34,9 +34,10 @@ class GamepadTwistSource:
         *,
         pose_fn=None,
     ) -> None:
-        self.pad = pad if pad is not None else XboxPad()
+        self.pad = pad if pad is not None else XboxPad(require_transport="bluetooth")
         self.cfg = cfg or GamepadTwistConfig()
         self.pose_fn = pose_fn
+        self.require_transport = "bluetooth"
         self._lock = threading.Lock()
         self._twist = np.zeros(6, dtype=float)
         self._axes = np.zeros(6, dtype=float)
@@ -56,8 +57,22 @@ class GamepadTwistSource:
         self._lpf = np.zeros(6, dtype=float)
         self._latched = False
         self._stamps: list[float] = []
-        self._t0 = time.monotonic()
-        self._armed = str(getattr(pad, "transport", "") or "") == "fake"
+        self._armed = self._is_fake_pad()
+        self._live_since_s = time.monotonic() if self._armed else None
+
+    def _is_fake_pad(self) -> bool:
+        return str(getattr(self.pad, "transport", "") or "") == "fake"
+
+    def _motion_live(self) -> bool:
+        if self._is_fake_pad():
+            return bool(getattr(self.pad, "connected", True))
+        if not bool(getattr(self.pad, "connected", False)):
+            return False
+        link = str(
+            getattr(self.pad, "link_transport", getattr(self.pad, "transport", ""))
+            or ""
+        )
+        return link == str(self.require_transport)
 
     def start(self) -> None:
         if self._thread is not None:
@@ -93,6 +108,10 @@ class GamepadTwistSource:
                 "connected": self._connected,
                 "layout": self._layout_name(),
                 "armed": self._armed,
+                "transport": str(
+                    getattr(self.pad, "link_transport", getattr(self.pad, "transport", ""))
+                    or "none"
+                ),
             }
 
     def _loop(self) -> None:
@@ -123,27 +142,38 @@ class GamepadTwistSource:
         buttons[: min(16, raw_b.size)] = raw_b[:16]
         l3 = bool(state.button(LOGICAL_L3))
         r3 = bool(state.button(LOGICAL_R3))
+        live = self._motion_live()
+        now = time.monotonic()
+        if live:
+            if self._live_since_s is None:
+                self._live_since_s = now
+            if not self._armed and (now - float(self._live_since_s)) >= 0.25:
+                self._armed = True
+        else:
+            self._armed = False
+            self._live_since_s = None
+            self._latched = False
         layout = getattr(self.pad, "layout", None)
         z_sign = int(getattr(layout, "z_sign", getattr(self.cfg, "z_sign", 1)) or 1)
         cfg = replace(self.cfg, z_sign=z_sign)
         v_raw, w_raw = map_pad_to_world_lin_tool_ang(state, cfg)
         requested = pad_hold_active(state, self.cfg, self._latched)
-        self._latched = bool(requested)
-        if requested:
+        self._latched = bool(requested) and live
+        if requested and live:
             blended = self._lpf_pad(np.concatenate([v_raw, w_raw]))
             v_w, w_t = blended[:3], blended[3:6]
         else:
             self._lpf[:] = 0.0
             v_w = np.zeros(3)
             w_t = np.zeros(3)
-        if not self._armed and (time.monotonic() - self._t0) >= 0.25:
-            self._armed = True
-        if not self._armed:
+        if not self._armed or not live:
             self._lpf[:] = 0.0
             self._mapped_out[:] = 0.0
             self._mapped_acc[:] = 0.0
             v_w = np.zeros(3)
             w_t = np.zeros(3)
+            l3 = False
+            r3 = False
         v_s, w_s = self._slew(v_w, w_t)
         pose = np.zeros(6)
         if self.pose_fn is not None:
@@ -166,7 +196,7 @@ class GamepadTwistSource:
             self._axes = axes
             self._buttons = buttons
             self._hz = hz
-            self._connected = bool(getattr(self.pad, "connected", True))
+            self._connected = bool(live)
 
     def _layout_name(self) -> str:
         layout = getattr(self.pad, "layout", None)

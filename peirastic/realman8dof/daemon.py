@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import signal
 import time
@@ -106,6 +107,30 @@ class ControllerService:
         self.hub.close()
         self.twist.close()
 
+    def _pad_row(self) -> dict:
+        return self.twist.read()
+
+    def _pad_twist(self) -> np.ndarray:
+        row = self._pad_row()
+        if not bool(row["connected"]):
+            return np.zeros(6, dtype=float)
+        tw = np.asarray(row["twist"], dtype=float).reshape(-1)
+        if tw.size < 6:
+            out = np.zeros(6, dtype=float)
+            out[: tw.size] = tw
+            return out
+        return tw[:6].copy()
+
+    def _pad_r3(self) -> bool:
+        row = self._pad_row()
+        return bool(row["connected"]) and bool(row["r3"])
+
+    def _pad_hz(self) -> float:
+        row = self._pad_row()
+        if not bool(row["connected"]):
+            return float("nan")
+        return float(row["hz"])
+
     def _on_signal(self, rail) -> None:
         def _handler(_signum, _frame) -> None:
             if self._stop:
@@ -204,7 +229,7 @@ class ControllerService:
                     self.ctx,
                     req,
                     raw=self.raw,
-                    twist_read=lambda: self.twist.read()["twist"],
+                    twist_read=self._pad_twist,
                     dt=dt,
                 )
             except Exception as exc:
@@ -269,7 +294,7 @@ class ControllerService:
                     self.ctx,
                     parsed_req,
                     raw=self.raw,
-                    twist_read=lambda: self.twist.read()["twist"],
+                    twist_read=self._pad_twist,
                     dt=dt,
                 )
                 _install_velocity(new, parsed_req, pose, t_ref)
@@ -277,7 +302,7 @@ class ControllerService:
             def _stop() -> bool:
                 if self._stop or self.estop.tripped or self.hub.should_stop():
                     return True
-                if self.twist.read()["r3"]:
+                if self._pad_r3():
                     self._trip_hardware(rail, "pad R3", robot=getattr(sess, "robot", None))
                     return True
                 return False
@@ -309,7 +334,7 @@ class ControllerService:
                             self.ctx,
                             ModeRequest(Mode.SERVO_TWIST, {}),
                             raw=self.raw,
-                            twist_read=lambda: self.twist.read()["twist"],
+                            twist_read=self._pad_twist,
                             dt=dt,
                         )
                         _install_velocity(
@@ -331,7 +356,7 @@ class ControllerService:
                     mode=self.mode,
                     ticks=self.ticks,
                     estop=self.estop.tripped,
-                    pad_hz=float(self.twist.read()["hz"]),
+                    pad_hz=float(self._pad_hz()),
                     track_err_mm=err,
                     slack=slack,
                     f_ext_z=fz,
@@ -357,7 +382,7 @@ class ControllerService:
                     slack=slack,
                     rail_m=float(q[0]) if q.size else float("nan"),
                     wbc_ok=True,
-                    pad_hz=float(self.twist.read()["hz"]),
+                    pad_hz=float(self._pad_hz()),
                     estop=self.estop.tripped,
                     estop_reason=self.estop.reason,
                 )
@@ -442,10 +467,41 @@ def run_service(
             bus.start()
             relay = None
             if relay_cfg.enabled:
+                def _rail_m_fn() -> float:
+                    # Twin must show LW100 encoder, not URDF 0 / WBC q_cmd.
+                    if not rail.enabled:
+                        return float("nan")
+                    if rail.calibrated:
+                        m = float(rail.measured_m)
+                        if math.isfinite(m):
+                            return m
+                    return float("nan")
+
                 relay = StateRelayPublisher(
-                    bus, name=relay_cfg.name, hz=relay_cfg.hz, kin=svc.inner.kin
+                    bus,
+                    name=relay_cfg.name,
+                    hz=relay_cfg.hz,
+                    kin=svc.inner.kin,
+                    rail_m_fn=_rail_m_fn,
                 )
                 relay.start()
+                enc = float(rail.measured_m) if rail.enabled else float("nan")
+                enc_s = (
+                    f"{enc * 1000.0:.1f} mm"
+                    if math.isfinite(enc)
+                    else "n/a (uncalibrated)"
+                )
+                print(
+                    f"[STATE] shm {relay_cfg.name!r} @ {relay_cfg.hz:.0f} Hz "
+                    f"(Genesis twin; rail encoder {enc_s})",
+                    flush=True,
+                )
+            else:
+                print(
+                    "[WARN] state_relay.enabled=false — "
+                    "Genesis twin will stay at URDF default (no hardware DW)",
+                    flush=True,
+                )
             try:
                 svc.panel.event("STATE", "running")
                 svc.run(sess, bus, rail)

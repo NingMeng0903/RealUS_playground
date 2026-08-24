@@ -1,13 +1,18 @@
 """Minimal Xbox / pygame joystick reader for 8-DOF QPIK teleop.
 
-Physical SDL order depends on USB vs Bluetooth.  This module picks the
-device (wired wins) and remaps into the logical order consumed by
-``gamepad_twist``: left stick 0/1, LT 2, right stick 3/4, RT 5; LB=4, RB=5.
+Physical SDL order depends on USB vs Bluetooth.  Default pick still
+prefers USB when both are present.  Peirastic teleop passes
+``require_transport="bluetooth"`` and uses the kernel Bus/GUID, not the
+pygame display name: this bench is kernel ``Xbox Wireless Controller``
+and SDL ``Xbox Series X Controller``.
+Logical order consumed by ``gamepad_twist``: left stick 0/1, LT 2, right
+stick 3/4, RT 5; LB=4, RB=5.
 """
 
 from __future__ import annotations
 
 import signal
+import time
 from dataclasses import dataclass
 
 import numpy as np
@@ -15,10 +20,11 @@ import numpy as np
 from rm75_control.control.joint_admittance_8dof.teleop.pad_layout import (
     PadLayout,
     apply_layout,
+    bluetooth_link_live,
     classify_layout,
+    classify_link_transport,
     load_pinned_layout,
     pick_device_index,
-    transport_from_name,
 )
 
 XBOX_BUTTON_A = 0
@@ -97,43 +103,36 @@ class XboxPad:
         auto_select: bool = True,
         layout: PadLayout | None = None,
         pin_layout: bool = True,
+        require_transport: str | None = None,
     ) -> None:
         pygame = _init_joystick_pygame()
         self._pygame = pygame
         self._joy = None
         self._closed = False
         self._layout = layout
+        self._pin_layout = bool(pin_layout)
+        self._allow_missing = bool(allow_missing)
+        self._auto_select = bool(auto_select)
+        self._requested_index = device_index
+        self.require_transport = (
+            None if require_transport is None else str(require_transport)
+        )
         self.name = ""
+        self.guid = ""
         self.transport = "unknown"
+        self.link_transport = "none"
         self.device_index = -1
-        count = int(pygame.joystick.get_count())
-        names = [pygame.joystick.Joystick(i).get_name() for i in range(count)]
-        if auto_select and names:
-            idx = pick_device_index(names)
-        else:
-            idx = 0 if device_index is None else int(device_index)
-        if count <= idx or idx < 0:
-            if not allow_missing:
-                raise RuntimeError(
-                    f"no joystick at index {idx} (found {count})"
-                )
-            return
-        self._joy = pygame.joystick.Joystick(int(idx))
-        self._joy.init()
-        self.device_index = int(idx)
-        self.name = self._joy.get_name()
-        self.transport = transport_from_name(self.name)
-        guid = ""
-        try:
-            guid = str(self._joy.get_guid())
-        except Exception:
-            pass
-        if self._layout is None and pin_layout:
-            self._layout = load_pinned_layout(name=self.name, guid=guid or None)
+        self._instance_id = None
+        self._next_open_s = 0.0
+        self._open_or_refresh(force=True)
 
     @property
     def connected(self) -> bool:
-        return self._joy is not None and not self._closed
+        if self._joy is None or self._closed:
+            return False
+        if self.require_transport:
+            return self.link_transport == self.require_transport
+        return True
 
     @property
     def layout(self) -> PadLayout | None:
@@ -141,17 +140,24 @@ class XboxPad:
 
     def describe(self) -> str:
         layout_name = self._layout.name if self._layout is not None else "pending"
+        req = self.require_transport or "any"
         return (
             f"pad[{self.device_index}] {self.name!r} "
-            f"transport={self.transport} layout={layout_name}"
+            f"transport={self.link_transport} layout={layout_name} "
+            f"require={req} live={int(self.connected)}"
         )
 
     def read(self) -> PadState:
         axes = np.zeros(_N_AXES, dtype=float)
         buttons = np.zeros(_N_BUTTONS, dtype=float)
-        if self._joy is None or self._closed:
+        if self._closed:
             return PadState(axes=axes, buttons=buttons)
-        self._pygame.event.pump()
+        pump = getattr(getattr(self._pygame, "event", None), "pump", None)
+        if pump is not None:
+            pump()
+        self._open_or_refresh()
+        if self._joy is None or not self.connected:
+            return PadState(axes=axes, buttons=buttons)
         n_ax = int(self._joy.get_numaxes())
         n_btn = int(self._joy.get_numbuttons())
         raw_ax = np.array(
@@ -172,12 +178,135 @@ class XboxPad:
         if self._closed:
             return
         self._closed = True
+        self._drop_joy()
+
+    def _enumerate(self) -> list[dict]:
+        out: list[dict] = []
+        count = int(self._pygame.joystick.get_count())
+        for i in range(count):
+            joy = self._pygame.joystick.Joystick(i)
+            name = str(joy.get_name())
+            guid = ""
+            try:
+                guid = str(joy.get_guid())
+            except Exception:
+                pass
+            kind = classify_link_transport(name=name, guid=guid)
+            out.append(
+                {"index": i, "name": name, "guid": guid, "transport": kind}
+            )
+        return out
+
+    def _open_or_refresh(self, *, force: bool = False) -> None:
+        now = time.monotonic()
+        removed = self._removed_instance()
+        if self._joy is not None:
+            live = self._probe_live()
+            if removed or not live:
+                self._drop_joy()
+            else:
+                return
+        if not force and now < self._next_open_s:
+            return
+        self._next_open_s = now + 0.25
+        found = self._enumerate()
+        if not found:
+            return
+        names = [row["name"] for row in found]
+        kinds = [row["transport"] for row in found]
+        try:
+            if self._auto_select:
+                idx = pick_device_index(
+                    names,
+                    transports=kinds,
+                    require_transport=self.require_transport,
+                )
+            else:
+                idx = 0 if self._requested_index is None else int(self._requested_index)
+                if idx < 0 or idx >= len(found):
+                    raise ValueError("joystick index out of range")
+                if (
+                    self.require_transport
+                    and kinds[idx] != self.require_transport
+                ):
+                    raise ValueError("joystick is not the required transport")
+        except ValueError:
+            if not self._allow_missing:
+                raise
+            return
+        row = found[idx]
+        if self.require_transport and row["transport"] != self.require_transport:
+            return
+        if self.require_transport == "bluetooth" and not bluetooth_link_live(
+            guid=row["guid"]
+        ):
+            return
+        joy = self._pygame.joystick.Joystick(int(row["index"]))
+        joy.init()
+        self._joy = joy
+        self.device_index = int(row["index"])
+        self.name = str(row["name"])
+        self.guid = str(row["guid"])
+        self.link_transport = str(row["transport"])
+        self.transport = self.link_transport
+        try:
+            self._instance_id = int(joy.get_instance_id())
+        except Exception:
+            self._instance_id = None
+        if self._layout is None and self._pin_layout:
+            self._layout = load_pinned_layout(name=self.name, guid=self.guid or None)
+
+    def _probe_live(self) -> bool:
+        if self._joy is None:
+            self.link_transport = "none"
+            return False
+        guid = self.guid
+        try:
+            guid = str(self._joy.get_guid())
+            self.guid = guid
+        except Exception:
+            self.link_transport = "none"
+            return False
+        kind = classify_link_transport(name=self.name, guid=guid)
+        self.link_transport = kind
+        self.transport = kind
+        if self.require_transport == "bluetooth":
+            return kind == "bluetooth" and bluetooth_link_live(guid=guid)
+        if self.require_transport:
+            return kind == self.require_transport
+        return True
+
+    def _removed_instance(self) -> bool:
+        if self._joy is None or self._instance_id is None:
+            return False
+        removed = getattr(self._pygame, "JOYDEVICEREMOVED", None)
+        ev = getattr(self._pygame, "event", None)
+        if removed is None or ev is None:
+            return False
+        getter = getattr(ev, "get", None)
+        if getter is None:
+            return False
+        for event in getter():
+            if getattr(event, "type", None) != removed:
+                continue
+            ev_id = getattr(event, "instance_id", None)
+            if ev_id is None or int(ev_id) == int(self._instance_id):
+                return True
+        return False
+
+    def _drop_joy(self) -> None:
         try:
             if self._joy is not None:
                 self._joy.quit()
         except Exception:
             pass
         self._joy = None
+        self._instance_id = None
+        self.device_index = -1
+        self.name = ""
+        self.guid = ""
+        self.transport = "none"
+        self.link_transport = "none"
 
 
 class FakePad:
@@ -201,6 +330,7 @@ class FakePad:
         self.closed = False
         self.name = "fake"
         self.transport = "fake"
+        self.link_transport = "fake"
         self.device_index = 0
 
     @property

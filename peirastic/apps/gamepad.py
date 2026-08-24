@@ -3,6 +3,10 @@
 
 L3 toggles force-velocity hybrid: tool-Z from peirastic/configs/force.yaml,
 other axes stay on the pad. R3 e-stop.
+
+Motion is sent only while a live Bluetooth pad is present (kernel Bus /
+SDL GUID). USB and a missing pad are inhibited so their rest axes cannot
+alias the xpadneo trigger map. Pygame and kernel names may differ.
 """
 
 from __future__ import annotations
@@ -69,26 +73,39 @@ def main() -> int:
     describe = getattr(pad, "describe", None)
     print("[MODE] SERVO_TWIST" + ("_HOLD" if args.hold else ""), flush=True)
     print(f"[STATE] L3 hybrid Fz*={fz:.2f}N (peirastic/configs/force.yaml)", flush=True)
+    print("[STATE] motion requires live bluetooth pad (usb/missing inhibited)", flush=True)
     if describe is not None:
         print("[STATE] " + str(describe()), flush=True)
+    last_live = None
     try:
         while True:
             snap = src.snapshot()
+            live = bool(snap["connected"]) and bool(snap["armed"])
             twist_bus.write(
-                snap["twist"],
+                snap["twist"] if live else [0.0] * 6,
                 axes=snap["axes"],
-                buttons=snap["buttons"],
-                hz=snap["hz"],
-                connected=snap["connected"],
-                l3=snap["l3"],
-                r3=snap["r3"],
+                buttons=snap["buttons"] if live else None,
+                hz=snap["hz"] if live else float("nan"),
+                connected=live,
+                l3=bool(snap["l3"]) if live else False,
+                r3=bool(snap["r3"]) if live else False,
             )
-            if snap["armed"] and snap["r3_edge"]:
+            if last_live is None or live != last_live:
+                last_live = live
+                why = str(snap.get("transport") or "none")
+                if live:
+                    print(f"[PAD] bluetooth live transport={why} — motion enabled", flush=True)
+                else:
+                    print(
+                        f"[PAD] no live bluetooth (transport={why}) — motion inhibited",
+                        flush=True,
+                    )
+            if live and snap["r3_edge"]:
                 print("[ESTOP] pad R3 — zero rail then stop", flush=True)
                 client.estop()
                 return 130
             now = time.monotonic()
-            if snap["l3_edge"] and (now - last_l3_s) > 0.15:
+            if live and snap["l3_edge"] and (now - last_l3_s) > 0.15:
                 last_l3_s = now
                 hybrid = not hybrid
                 if hybrid:

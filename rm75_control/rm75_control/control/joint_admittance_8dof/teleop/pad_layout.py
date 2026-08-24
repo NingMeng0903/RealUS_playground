@@ -33,6 +33,13 @@ LAYOUT_BT_REST0 = "bt_rest0"
 
 _WIRELESS_NAME = re.compile(r"wireless|bluetooth|xpadneo|series\s*x|xbox series", re.I)
 _WIRED_NAME = re.compile(r"x-box 360 pad|\bwired\b|xpad(?!neo)", re.I)
+_BT_MAC = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}\b", re.I)
+_JS_HANDLER = re.compile(r"\bjs\d+\b", re.I)
+_PAD_NAME = re.compile(r"controller|gamepad|joystick|x-box|xbox|xpad", re.I)
+
+LINUX_INPUT_DEVICES = Path("/proc/bus/input/devices")
+BUS_USB = 0x0003
+BUS_BLUETOOTH = 0x0005
 
 DEFAULT_LAYOUT_PATH = Path("var/gamepad_layout.json")
 
@@ -133,6 +140,151 @@ def transport_from_name(name: str) -> str:
     return "unknown"
 
 
+def transport_from_bus(bus: int | None) -> str:
+    if bus is None:
+        return "unknown"
+    code = int(bus)
+    if code == BUS_BLUETOOTH:
+        return "bluetooth"
+    if code == BUS_USB:
+        return "usb"
+    return "unknown"
+
+
+def transport_from_guid(guid: str) -> str:
+    """SDL2 joystick GUID: first uint16 is the kernel bus, little-endian hex."""
+
+    text = str(guid or "").strip().lower()
+    if len(text) < 4 or any(ch not in "0123456789abcdef" for ch in text[:4]):
+        return "unknown"
+    bus = int(text[0:2], 16) | (int(text[2:4], 16) << 8)
+    return transport_from_bus(bus)
+
+
+def transport_from_phys(phys: str) -> str:
+    text = str(phys or "").strip()
+    if text.lower().startswith("usb"):
+        return "usb"
+    if _BT_MAC.match(text):
+        return "bluetooth"
+    return "unknown"
+
+
+def parse_linux_input_devices(text: str) -> list[dict]:
+    """Parse ``/proc/bus/input/devices`` into joystick-like records."""
+
+    devices: list[dict] = []
+    cur: dict = {}
+
+    def _flush() -> None:
+        if not cur:
+            return
+        handlers = str(cur.get("handlers") or "")
+        name = str(cur.get("name") or "")
+        if _JS_HANDLER.search(handlers) or _PAD_NAME.search(name):
+            devices.append(dict(cur))
+
+    for raw in str(text or "").splitlines():
+        line = raw.strip()
+        if not line:
+            _flush()
+            cur = {}
+            continue
+        if line.startswith("I:"):
+            bus_m = re.search(r"Bus=([0-9a-fA-F]+)", line)
+            cur["bus"] = int(bus_m.group(1), 16) if bus_m else None
+        elif line.startswith("N: Name="):
+            cur["name"] = line.split("=", 1)[1].strip().strip('"')
+        elif line.startswith("P: Phys="):
+            cur["phys"] = line.split("=", 1)[1].strip()
+        elif line.startswith("H: Handlers="):
+            cur["handlers"] = line.split("=", 1)[1].strip()
+    _flush()
+    return devices
+
+
+def linux_input_devices(path: str | Path | None = None) -> list[dict]:
+    p = Path(path) if path is not None else LINUX_INPUT_DEVICES
+    try:
+        return parse_linux_input_devices(p.read_text(encoding="utf-8", errors="replace"))
+    except OSError:
+        return []
+
+
+def classify_link_transport(
+    *,
+    name: str = "",
+    guid: str = "",
+    bus: int | None = None,
+    phys: str = "",
+    linux_devices: list[dict] | None = None,
+) -> str:
+    """USB vs Bluetooth link. GUID/bus/phys win; pygame vs kernel names differ."""
+
+    from_bus = transport_from_bus(bus)
+    if from_bus != "unknown":
+        return from_bus
+    from_guid = transport_from_guid(guid)
+    if from_guid != "unknown":
+        return from_guid
+    from_phys = transport_from_phys(phys)
+    if from_phys != "unknown":
+        return from_phys
+    matches = []
+    for dev in linux_devices if linux_devices is not None else linux_input_devices():
+        kind = classify_link_transport(
+            bus=dev.get("bus"),
+            phys=str(dev.get("phys") or ""),
+            linux_devices=[],
+        )
+        if kind != "unknown":
+            matches.append(kind)
+    unique = tuple(dict.fromkeys(matches))
+    if len(unique) == 1:
+        return unique[0]
+    if len(unique) > 1:
+        return "unknown"
+    return transport_from_name(name)
+
+
+def bluetooth_joystick_present(linux_devices: list[dict] | None = None) -> bool:
+    """True if the kernel currently has a Bluetooth joystick.
+
+    Do not match pygame names.  This bench reports kernel
+    ``Xbox Wireless Controller`` and SDL ``Xbox Series X Controller``.
+    """
+
+    devices = linux_devices if linux_devices is not None else linux_input_devices()
+    for dev in devices:
+        kind = classify_link_transport(
+            bus=dev.get("bus"),
+            phys=str(dev.get("phys") or ""),
+            linux_devices=[],
+        )
+        if kind != "bluetooth":
+            continue
+        handlers = str(dev.get("handlers") or "")
+        if _JS_HANDLER.search(handlers) or _PAD_NAME.search(str(dev.get("name") or "")):
+            return True
+    return False
+
+
+def bluetooth_link_live(
+    *,
+    guid: str = "",
+    linux_devices: list[dict] | None = None,
+) -> bool:
+    """Live Bluetooth pad only. USB-only and missing are false.
+
+    Kernel table wins over a stale pygame object.  A GUID of 0500 with an
+    empty kernel list is a dropped link, not a live pad.
+    """
+
+    if linux_devices is not None or LINUX_INPUT_DEVICES.is_file():
+        return bluetooth_joystick_present(linux_devices)
+    return transport_from_guid(guid) == "bluetooth"
+
+
 def device_priority(name: str, *, transport: str | None = None) -> int:
     """Higher wins. USB/wired always outranks Bluetooth."""
 
@@ -147,12 +299,30 @@ def device_priority(name: str, *, transport: str | None = None) -> int:
     return 20
 
 
-def pick_device_index(names: list[str]) -> int:
+def pick_device_index(
+    names: list[str],
+    *,
+    transports: list[str] | None = None,
+    require_transport: str | None = None,
+) -> int:
     if not names:
         raise ValueError("no joysticks")
+    kinds = (
+        [str(t) for t in transports]
+        if transports is not None
+        else [transport_from_name(n) for n in names]
+    )
+    if len(kinds) < len(names):
+        kinds.extend("unknown" for _ in range(len(names) - len(kinds)))
+    candidates = list(range(len(names)))
+    want = str(require_transport or "").strip()
+    if want:
+        candidates = [i for i in candidates if kinds[i] == want]
+        if not candidates:
+            raise ValueError(f"no {want} joystick")
     ranked = sorted(
-        range(len(names)),
-        key=lambda i: (-device_priority(names[i]), i),
+        candidates,
+        key=lambda i: (-device_priority(names[i], transport=kinds[i]), i),
     )
     return int(ranked[0])
 

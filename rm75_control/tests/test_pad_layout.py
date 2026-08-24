@@ -117,6 +117,65 @@ def test_series_x_name_is_bluetooth() -> None:
     assert classify_layout(rest, name="Xbox Series X Controller").name == LAYOUT_BT_XPADNEO
 
 
+def test_kernel_xbox_wireless_name_is_live_bluetooth() -> None:
+    from rm75_control.control.joint_admittance_8dof.teleop.pad_layout import (
+        bluetooth_link_live,
+        classify_link_transport,
+        parse_linux_input_devices,
+        pick_device_index,
+        transport_from_guid,
+    )
+
+    assert transport_from_guid("0500509d5e040000130b000017050000") == "bluetooth"
+    assert transport_from_guid("030000005e0400000e02000000000000") == "usb"
+    kernel_bt = parse_linux_input_devices(
+        "I: Bus=0005 Vendor=045e Product=0b13 Version=0517\n"
+        'N: Name="Xbox Wireless Controller"\n'
+        "P: Phys=c4:d0:e3:90:a3:a7\n"
+        "H: Handlers=kbd event9 js0\n"
+    )
+    # pygame/SDL name differs from the kernel HID name on this bench.
+    assert bluetooth_link_live(
+        guid="0500509d5e040000130b000017050000",
+        linux_devices=kernel_bt,
+    ) is True
+    assert classify_link_transport(
+        name="Xbox Series X Controller",
+        guid="0500509d5e040000130b000017050000",
+        linux_devices=kernel_bt,
+    ) == "bluetooth"
+    usb_only = parse_linux_input_devices(
+        "I: Bus=0003 Vendor=045e Product=0b13 Version=0000\n"
+        'N: Name="Xbox Series X Controller"\n'
+        "P: Phys=usb-0000:00:14.0-3/input0\n"
+        "H: Handlers=event10 js0\n"
+    )
+    assert bluetooth_link_live(
+        guid="0500509d5e040000130b000017050000",
+        linux_devices=usb_only,
+    ) is False
+    assert bluetooth_link_live(
+        guid="0500509d5e040000130b000017050000",
+        linux_devices=[],
+    ) is False
+    assert classify_link_transport(
+        name="Xbox Series X Controller",
+        guid="030000005e040000130b000000000000",
+        linux_devices=usb_only,
+    ) == "usb"
+    names = ["Xbox Series X Controller", "Xbox Series X Controller"]
+    kinds = ["usb", "bluetooth"]
+    assert pick_device_index(names, transports=kinds, require_transport="bluetooth") == 1
+    with pytest.raises(ValueError, match="bluetooth"):
+        pick_device_index(names, transports=["usb", "usb"], require_transport="bluetooth")
+
+
+def test_wired_rest_on_bt_layout_aliases_motion() -> None:
+    wired_rest = np.array([0.02, 0.02, -1.0, 0.01, 0.02, -1.0])
+    v, w = _cmd(wired_rest, layout=layout_bt_xpadneo())
+    assert float(np.linalg.norm(v)) > 0.01 or float(np.linalg.norm(w)) > 0.01
+
+
 def test_pinned_wired_dump_on_series_x_uses_bt_axes(tmp_path) -> None:
     path = tmp_path / "gamepad_layout.json"
     path.write_text(
