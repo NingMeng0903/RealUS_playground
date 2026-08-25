@@ -98,12 +98,12 @@ hybrid_motion:
   recontact_settle_hold_s: 0.050
   contact_episode_release_s: 0.80
   contact_episode_release_force_n: 0.75
-  # CDYOB shadow and active use the same A-only baseline.  Do not let this
-  # integrator become an unmodelled part of V_r during shadow.
+  # Slow DC chase.  Must stay well below CDYOB Q (0.75 Hz).  034244
+  # ki=8 / leak=0.4 s sat in the same band as Q and overshot on soft.
   force_dob:
-    enabled: false
-    ki: 8.0
-    leak_s: 0.4
+    enabled: true
+    ki: 2.0
+    leak_s: 1.5
     u_max_n: 1.5
     freeze_is: 0.45
     reset_on_reversal: true
@@ -120,7 +120,7 @@ hybrid_motion:
     v_ref_m_s: 0.08
     v_min_retract_m_s: 0.0
     v_min_press_m_s: 0.0
-    v_underforce_press_m_s: 0.010
+    v_underforce_press_m_s: 0.0
     underforce_band_n: 0.20
     # Extra clip only.  First contact is K_ub T_stop, not this number.
     v_seek_free_m_s: 0.020
@@ -138,21 +138,21 @@ hybrid_motion:
   # N2 is off (no extra payload).  Linear Y=A equivalence applies only while
   # blend=1 and correction/barrier/slew/shield are all inactive.
   cdyob:
-    mode: shadow
+    mode: active
     omega_q_hz: 0.75
     t0_s: 0.030
     tp_s: 0.012
     tau_s: 0.030
     t_n_s: 0.012
     pn_m: 0.0
-    v_corr_max_m_s: 0.003
+    v_corr_max_m_s: 0.015
     blend_s: 0.30
     active_press_max_m_s: 0.010
-    active_retract_max_m_s: 0.010
+    active_retract_max_m_s: 0.015
     active_q_max_hz: 1.0
     active_force_ratio: 0.90
-    active_settle_speed_m_s: 0.003
-    active_settle_hold_s: 0.20
+    active_settle_speed_m_s: 0.010
+    active_settle_hold_s: 0.05
     # 032041 A-only contact shadow passes polarity/clip + settled-apply gates.
     active_model_validated: true
   # Normal-port delay-aware shield. Stay in observe until the same solver
@@ -367,16 +367,14 @@ hybrid_motion:
     bd_max: 180.0
     bd_slew_max: 400.0
     ke_slew_max: 1200.0
-  # Same A-only baseline as CDYOB active; keep off in both off-baseline and
-  # shadow recordings.  It is not part of the paper's A(F_r-F_m).
-  proactive_feedforward: false
+  proactive_feedforward: true
   # Legacy parameters are retained for isolated non-CDYOB tests only.
   proactive_retract_only: false
   # 014140 showed why this inactive v_r branch must not contaminate shadow.
-  proactive_gain: 0.06
-  proactive_retract_gain: 0.06
-  proactive_leak_s: 0.50
-  v_r_max_m_s: 0.02
+  proactive_gain: 0.02
+  proactive_retract_gain: 0.02
+  proactive_leak_s: 1.50
+  v_r_max_m_s: 0.008
   proactive_gate_press_on_is: false
   proactive_press_is_gate_start: 0.2
   proactive_press_is_gate: 0.6

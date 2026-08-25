@@ -64,6 +64,11 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
     margin_weight_from_activation,
     wall_leave_only_sign,
 )
+from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
+    RailCommandMixer,
+    project_lpf_into_wall,
+    q_star_srs_valid,
+)
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
     RailExtensionConfig,
     RailExtensionTask,
@@ -327,6 +332,25 @@ class JointIkStep:
     u_posture: float = float("nan")
     u_mid: float = float("nan")
     v_r_ref: float = float("nan")
+    u_task_raw: float = float("nan")
+    u_task_feasible: float = float("nan")
+    u_pi_raw: float = float("nan")
+    u_mid_cmd: float = float("nan")
+    u_post_raw: float = float("nan")
+    u_post_feasible: float = float("nan")
+    u_mid_applied: float = float("nan")
+    d_star_dot_cmd: float = float("nan")
+    u_escape_raw: float = float("nan")
+    u_escape_feasible: float = float("nan")
+    escape_active: float = float("nan")
+    escape_dir: float = float("nan")
+    u_base: float = float("nan")
+    u_feasible: float = float("nan")
+    v_r_lpf: float = float("nan")
+    e_d: float = float("nan")
+    V_d_proxy: float = float("nan")
+    j4_design_slack: float = float("nan")
+    P_ext_trans: float = float("nan")
     comp_projected_frac: float = 0.0
     rail_coast_active: bool = False
     rail_feedback_reject_streak_s: float = 0.0
@@ -563,6 +587,18 @@ class JointIkController:
             v_max=float(alloc_cfg.u_mid_max_m_s),
             kaw=float(getattr(alloc_cfg, "kaw_mid", 8.0)),
         )
+        d_rate = float(
+            getattr(getattr(self.cfg, "psi_retarget", None), "d_center_rate_m_s", 0.02)
+        )
+        self.rail_mixer = RailCommandMixer(
+            kp=float(alloc_cfg.kp_mid),
+            ki=float(alloc_cfg.ki_mid),
+            u_mid_max=float(alloc_cfg.u_mid_max_m_s),
+            kaw=float(getattr(alloc_cfg, "kaw_mid", 8.0)),
+            d_center_rate=d_rate,
+        )
+        self._last_mix = None
+        self._last_valid_q_star: np.ndarray | None = None
         if float(getattr(self.cfg.rail_extension, "v_lpf_fc_hz", 0.0) or 0.0) <= 0.0:
             self.cfg.rail_extension.v_lpf_fc_hz = float(alloc_cfg.f_c_hz)
         self.secondary = SecondaryComposer.from_controller_parts(
@@ -890,17 +926,21 @@ class JointIkController:
         self._check_design_family(q)
 
     def _publish_homotopy_centering(self) -> None:
-        """Homotopy q* while s<1; yaml nominal after s≈1."""
+        """Always publish last-valid SRS q*.  Yaml is signs-only, never a pin at s=1."""
         if self.posture_retarget is None:
             return
-        if float(self.posture_retarget.homotopy_s) >= 1.0 - 1.0e-6:
-            self.centering_task.set_q_target(None)
-            self.core.set_q_star(np.asarray(self.centering_task.q_target, dtype=float))
-            return
         qh = self.posture_retarget.q_star_rad
-        if qh is not None and np.asarray(qh).size == self.kin.nv:
-            self.centering_task.set_q_target(np.asarray(qh, dtype=float))
-            self.core.set_q_star(np.asarray(qh, dtype=float))
+        q_lo = np.asarray(self.limits.q_lower, dtype=float)
+        q_hi = np.asarray(self.limits.q_upper, dtype=float)
+        if q_star_srs_valid(qh, q_lo=q_lo, q_hi=q_hi):
+            q_star = np.asarray(qh, dtype=float)
+            self._last_valid_q_star = q_star.copy()
+        elif self._last_valid_q_star is not None:
+            q_star = np.asarray(self._last_valid_q_star, dtype=float)
+        else:
+            q_star = np.asarray(self.centering_task.q_target, dtype=float)
+        self.centering_task.set_q_target(q_star)
+        self.core.set_q_star(q_star)
 
     def reset(self, q0_rad: np.ndarray) -> None:
         self.q_cmd = np.asarray(q0_rad, dtype=float).copy()
@@ -926,6 +966,9 @@ class JointIkController:
         self.rail_ref_model.reset(float(self.q_cmd[0]) * 0.0)
         self.rail_observer.reset(float(self.q_cmd[0]), 0.0)
         self.midranging.reset()
+        self.rail_mixer.reset()
+        self._last_mix = None
+        self._last_valid_q_star = None
         self._midrange_freeze = False
         self.last_v_r_ref = 0.0
         self.last_u_alloc = 0.0
@@ -1851,39 +1894,46 @@ class JointIkController:
                 lam=lam,
                 v0_m_s=float(self.rail_allocator_cfg.v0_m_s),
                 w0_rad_s=float(self.rail_allocator_cfg.w0_rad_s),
-                e_mid=(
-                    float(self.rail_ext_task.last_e_mid_m)
-                    if self.rail_ext_task is not None
-                    else 0.0
-                ),
+                e_mid=float(self.rail_mixer.last.e_d),
                 k_err=float(self.rail_allocator_cfg.k_err_rail),
                 e_ref=float(self.rail_allocator_cfg.e_ref_m),
             )
             u_escape = 0.0
+            escape_on = False
             if self.rail_ext_task is not None:
                 u_escape = float(self.rail_ext_task.last_v_escape)
                 cap = max(float(self.rail_allocator_cfg.u_mid_max_m_s), 0.0)
                 if cap > 0.0:
                     u_escape = float(np.clip(u_escape, -cap, cap))
-            e_mid = (
-                float(self.rail_ext_task.last_e_mid_m)
-                if self.rail_ext_task is not None
-                else 0.0
-            )
-            freeze_mid = bool(self._midrange_freeze) or bool(self._quiescent)
+                escape_on = bool(self.rail_ext_task._escape_active)
             leave_sign = wall_leave_only_sign(
                 float(q_state[0]),
                 hard_min_m=float(self.limits.q_lower[0]),
                 hard_max_m=float(self.limits.q_upper[0]),
                 band_m=float(self.cfg.qp.limit_damper_band_rail_m),
             )
-            u_mid = self.midranging.step(
-                e_mid,
-                float(dt),
-                freeze=freeze_mid,
-                leave_only_sign=leave_sign,
-                u_committed=self._u_mid_committed,
+            y_tcp = float(pose_now[1])
+            d_live = y_tcp - float(q_prev[0])
+            d_target = float("nan")
+            if self.posture_retarget is not None and np.isfinite(
+                float(self.posture_retarget.d_star_m)
+            ):
+                d_target = float(self.posture_retarget.d_star_m)
+            mix = self.rail_mixer.step(
+                d_live=d_live,
+                d_star_target=d_target,
+                u_task_raw=float(u_alloc),
+                u_escape_raw=float(u_escape),
+                escape_explicit=escape_on,
+                dt=float(dt),
+                u_max=float(self.limits.v_max[0]),
+                leave_sign=float(leave_sign),
+                hold_d_star=bool(hold_d_star) and not escape_on,
+                quiescent=bool(self._quiescent),
+                in_wall=abs(float(leave_sign)) > 0.0,
             )
+            if abs(float(leave_sign)) > 0.0:
+                self.rail_ref_model.project_into_wall(float(leave_sign))
             a_arm = np.asarray(self.limits.a_max, dtype=float).reshape(-1)[1:]
             j_max_vec = self.core._j_max
             if j_max_vec is None:
@@ -1897,17 +1947,13 @@ class JointIkController:
             a_mir, j_mir = arm_mirror_rail_limits(
                 J_pre, a_arm, j_arm, rho_a=rho_a, rho_j=rho_j
             )
-            # Primary rail share of v_cmd only.  u_mid / escape stay in QP2.
             v_r_ref = self.rail_ref_model.step(
-                float(u_alloc),
+                float(mix.u_feasible),
                 float(dt),
                 x_m=float(q_state[0]),
                 a_max=a_mir,
                 j_max=j_mir,
             )
-            # Leave-band is applied once, after the reference model, so a
-            # planned stroke cannot drive into the plus stop (or the
-            # policy-side pin).  Mid-ranging away from the wall is kept.
             stroke_planned = bool(
                 self.posture_retarget is not None and self.posture_retarget.planned
             )
@@ -1929,13 +1975,10 @@ class JointIkController:
             self.last_v_r_ref = float(v_r_ref)
             self.last_u_alloc = float(u_alloc)
             self.last_u_posture = float(u_escape)
-            self.last_u_mid = float(u_mid)
-            u_sec = float(u_mid) + float(u_escape)
-            # u_mid lives in QP2, but it must not cancel the primary rail
-            # share of v_cmd that L1 already allocated.
-            if abs(float(v_r_ref)) > 1.0e-4 and u_sec * float(v_r_ref) < 0.0:
-                u_sec = 0.0
-            self._u_mid_for_sec = u_sec
+            self.last_u_mid = float(mix.u_mid_cmd)
+            self._u_mid_for_sec = 0.0
+            self._u_mid_committed = float(mix.u_mid_applied)
+            self._last_mix = mix
         else:
             self.last_v_r_ref = (
                 float(rail_task_vel) if rail_task_vel is not None else 0.0
@@ -1948,6 +1991,7 @@ class JointIkController:
             )
             self.last_u_mid = 0.0
             self._u_mid_for_sec = 0.0
+            self._last_mix = None
 
         rail_reg_scale = 1.0
         if self.rail_ext_task is not None:
@@ -1989,7 +2033,7 @@ class JointIkController:
         )
         if self._rail_mode == RailMode.COUPLED and not locked_hold:
             sec_raw = np.asarray(sec_raw, dtype=float).copy()
-            sec_raw[0] = float(self._u_mid_for_sec)
+            sec_raw[0] = 0.0
         if self._quiescent:
             sec_raw = np.zeros_like(sec_raw)
         sec_filt = self._sec_filter.step(
@@ -2413,9 +2457,27 @@ class JointIkController:
             > 0.0
         )
         self._last_tcp_est = v_tcp_est.reshape(6).copy()
-        # Anti-windup sees the secondary rail that actually went out, not the
-        # primary v_r,ref share of v_cmd.
-        self._u_mid_committed = float(qdot_arr[0]) - float(self.last_v_r_ref)
+        mix = getattr(self, "_last_mix", None)
+        if mix is not None:
+            self._u_mid_committed = float(mix.u_mid_applied)
+            step.u_task_raw = float(mix.u_task_raw)
+            step.u_task_feasible = float(mix.u_task_feasible)
+            step.u_pi_raw = float(mix.u_pi_raw)
+            step.u_mid_cmd = float(mix.u_mid_cmd)
+            step.u_post_raw = float(mix.u_post_raw)
+            step.u_post_feasible = float(mix.u_post_feasible)
+            step.u_mid_applied = float(mix.u_mid_applied)
+            step.d_star_dot_cmd = float(mix.d_star_dot_cmd)
+            step.u_escape_raw = float(mix.u_escape_raw)
+            step.u_escape_feasible = float(mix.u_escape_feasible)
+            step.escape_active = float(mix.escape_active)
+            step.escape_dir = float(mix.escape_dir)
+            step.u_base = float(mix.u_base)
+            step.u_feasible = float(mix.u_feasible)
+            step.v_r_lpf = float(getattr(self.rail_ref_model, "last_v_lpf", 0.0))
+            step.e_d = float(mix.e_d)
+            step.V_d_proxy = float(mix.V_d_proxy)
+        step.j4_design_slack = float(getattr(self.core, "last_j4_design_slack", 0.0))
         return self._attach_post_qp_ab(
             step,
             dt_nom=dt_nom,
@@ -3032,6 +3094,7 @@ class _TickLogger:
         + [f"twist_achieved_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
         + ["track_err_mm", "follow_err_deg", "slack_norm", "n_cbf",
            "vel_clamped", "acc_clamped", "pos_clamped", "fx", "fy", "fz",
+           "P_ext_trans",
            "instability_idx", "instability_idx_raw", "instability_idx_active",
            "damping_z_eff",
            "damping_ke_z", "damping_dimeas_z",
@@ -3157,6 +3220,11 @@ class _TickLogger:
            "pref_slack_scale", "rail_task_vel",
            "v_escape", "v_reach", "v_ff_rail",
            "u_alloc", "u_posture", "u_mid", "v_r_ref",
+           "u_task_raw", "u_task_feasible", "u_pi_raw", "u_mid_cmd",
+           "u_post_raw", "u_post_feasible", "u_mid_applied", "d_star_dot_cmd",
+           "u_escape_raw", "u_escape_feasible", "escape_active", "escape_dir",
+           "u_base", "u_feasible", "v_r_lpf", "e_d", "V_d_proxy",
+           "j4_design_slack", "P_ext_trans",
            "comp_projected_frac",
            "rail_coast_active", "rail_feedback_reject_streak_s",
            "wall_override", "slack_zero_feasible",
@@ -3648,6 +3716,23 @@ class _TickLogger:
         f_ext = np.asarray(f_ext, dtype=float).copy()
         raw_comp = np.asarray(raw_comp, dtype=float).copy()
         twist_achieved = np.asarray(twist_achieved, dtype=float).copy()
+        # Translational power only (f·v).  Not full P_ext, not P_leak.
+        p_ext_trans = float("nan")
+        if (
+            f_ext.size >= 3
+            and twist_achieved.size >= 3
+            and np.isfinite(f_ext[:3]).all()
+            and np.isfinite(twist_achieved[:3]).all()
+        ):
+            p_ext_trans = float(
+                f_ext[0] * twist_achieved[0]
+                + f_ext[1] * twist_achieved[1]
+                + f_ext[2] * twist_achieved[2]
+            )
+        try:
+            step.P_ext_trans = float(p_ext_trans)
+        except Exception:
+            pass
         if qdot_meas is not None:
             qdot_meas = np.asarray(qdot_meas, dtype=float).copy()
 
@@ -3692,6 +3777,7 @@ class _TickLogger:
                f"{step.slack_norm:.5f}", step.n_cbf_active,
                int(step.vel_clamped), int(step.acc_clamped), int(step.pos_clamped),
                f"{f_ext[0]:.3f}", f"{f_ext[1]:.3f}", f"{f_ext[2]:.3f}",
+               f"{p_ext_trans:.6f}" if np.isfinite(p_ext_trans) else "",
                f"{is_idx:.4f}", f"{is_idx_raw:.4f}", f"{is_idx:.4f}",
                f"{d_eff:.2f}",
                f"{d_ke:.2f}", f"{d_dimeas:.2f}",
@@ -4040,6 +4126,25 @@ class _TickLogger:
                f"{float(step.u_posture):.6f}" if np.isfinite(step.u_posture) else "",
                f"{float(getattr(step, 'u_mid', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_mid", float("nan"))) else "",
                f"{float(step.v_r_ref):.6f}" if np.isfinite(step.v_r_ref) else "",
+               f"{float(getattr(step, 'u_task_raw', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_task_raw", float("nan"))) else "",
+               f"{float(getattr(step, 'u_task_feasible', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_task_feasible", float("nan"))) else "",
+               f"{float(getattr(step, 'u_pi_raw', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_pi_raw", float("nan"))) else "",
+               f"{float(getattr(step, 'u_mid_cmd', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_mid_cmd", float("nan"))) else "",
+               f"{float(getattr(step, 'u_post_raw', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_post_raw", float("nan"))) else "",
+               f"{float(getattr(step, 'u_post_feasible', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_post_feasible", float("nan"))) else "",
+               f"{float(getattr(step, 'u_mid_applied', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_mid_applied", float("nan"))) else "",
+               f"{float(getattr(step, 'd_star_dot_cmd', float('nan'))):.6f}" if np.isfinite(getattr(step, "d_star_dot_cmd", float("nan"))) else "",
+               f"{float(getattr(step, 'u_escape_raw', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_escape_raw", float("nan"))) else "",
+               f"{float(getattr(step, 'u_escape_feasible', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_escape_feasible", float("nan"))) else "",
+               f"{float(getattr(step, 'escape_active', float('nan'))):.6f}" if np.isfinite(getattr(step, "escape_active", float("nan"))) else "",
+               f"{float(getattr(step, 'escape_dir', float('nan'))):.6f}" if np.isfinite(getattr(step, "escape_dir", float("nan"))) else "",
+               f"{float(getattr(step, 'u_base', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_base", float("nan"))) else "",
+               f"{float(getattr(step, 'u_feasible', float('nan'))):.6f}" if np.isfinite(getattr(step, "u_feasible", float("nan"))) else "",
+               f"{float(getattr(step, 'v_r_lpf', float('nan'))):.6f}" if np.isfinite(getattr(step, "v_r_lpf", float("nan"))) else "",
+               f"{float(getattr(step, 'e_d', float('nan'))):.6f}" if np.isfinite(getattr(step, "e_d", float("nan"))) else "",
+               f"{float(getattr(step, 'V_d_proxy', float('nan'))):.6f}" if np.isfinite(getattr(step, "V_d_proxy", float("nan"))) else "",
+               f"{float(getattr(step, 'j4_design_slack', float('nan'))):.6f}" if np.isfinite(getattr(step, "j4_design_slack", float("nan"))) else "",
+               f"{float(getattr(step, 'P_ext_trans', float('nan'))):.6f}" if np.isfinite(getattr(step, "P_ext_trans", float("nan"))) else "",
                f"{float(getattr(step, 'comp_projected_frac', 0.0)):.6f}",
                int(bool(getattr(step, "rail_coast_active", False))),
                (

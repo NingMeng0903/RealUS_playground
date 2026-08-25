@@ -714,12 +714,11 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     # Rail command shaping must not come back: it fed core.qdot_prev and so
     # multiplied every acceleration limit by its own alpha.
     assert not hasattr(cfg.rail, "cmd_lpf_tau_s")
-    # CDYOB off/shadow comparison uses the same A-only baseline.
     hm = raw["hybrid_motion"]
     assert hm["proactive_retract_only"] is False
-    assert hm["proactive_feedforward"] is False
-    assert hm["force_dob"]["enabled"] is False
-    assert hm["cdyob"]["mode"] == "shadow"
+    assert hm["proactive_feedforward"] is True
+    assert hm["force_dob"]["enabled"] is True
+    assert hm["cdyob"]["mode"] == "active"
     assert float(hm["force_axis_slew_press_m_s2"]) >= 0.8
     assert hm["force_barrier"]["enabled"] is True
     # The blunt phase-2 instruments stay out.

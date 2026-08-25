@@ -1,4 +1,5 @@
 #include "wbc_rt/inner.hpp"
+#include "wbc_rt/rail_command.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -232,8 +233,19 @@ void InnerLoop::reset(const Vec8& q0) {
   have_dq_prev_ = false;
   v_r_ref_ = 0.0;
   v_r_a_ = 0.0;
+  v_r_lpf_ = 0.0;
   v_r_init_ = false;
+  wall_pi_frozen_ = false;
   u_alloc_ = u_mid_ = u_mid_committed_ = mid_integ_ = 0.0;
+  u_task_raw_ = u_task_feasible_ = u_pi_raw_ = u_mid_cmd_ = 0.0;
+  u_post_raw_ = u_post_feasible_ = u_mid_applied_ = d_star_dot_cmd_ = 0.0;
+  u_escape_raw_ = u_escape_feasible_ = u_base_ = u_feasible_ = 0.0;
+  e_d_ = V_d_proxy_ = j4_design_slack_ = 0.0;
+  d_star_ref_ = 0.0;
+  d_star_ref_init_ = false;
+  escape_dir_ = 0;
+  have_valid_q_star_ = false;
+  last_valid_q_star_ = q0;
   q_hat_ = q0[0];
   v_hat_ = 0.0;
   obs_init_ = true;
@@ -611,6 +623,8 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   slack_w[0] = cfg_.sigma_slack_w;
   slack_w[1] = cfg_.branch_slack_w * dwell_scale_;
   for (int k = 2; k < kNPref; ++k) slack_w[k] = cfg_.comfort_slack_w;
+  if (cfg_.j4_design_enabled) slack_w[2] = cfg_.j4_design_slack_w;
+  else slack_w[2] = 0.0;
 
   MatX H2 = MatX::Zero(kNVar, kNVar);
   H2.topLeftCorner<kNv, kNv>() = h_reg.asDiagonal();
@@ -642,9 +656,20 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     if (w > 1e-6) {
       pref_J(pref_n, 4) = (d_hi <= d_lo) ? -w : w;
       pref_lo[pref_n] = -cfg_.comfort_gamma * (margin - cfg_.comfort_m) * w;
-      pref_s[pref_n] = 2 + 3;  // J4 slack
+      pref_s[pref_n] = 2 + 3;  // J4 physical slack
       ++pref_n;
     }
+  }
+  if (cfg_.j4_design_enabled) {
+    const int j4 = j4_index(kNv);
+    pref_J(pref_n, j4) = 1.0;
+    pref_lo[pref_n] = -cfg_.j4_design_gamma * (q_geom[j4] - cfg_.j4_design_lo);
+    pref_s[pref_n] = 2;
+    ++pref_n;
+    pref_J(pref_n, j4) = -1.0;
+    pref_lo[pref_n] = -cfg_.j4_design_gamma * (cfg_.j4_design_hi - q_geom[j4]);
+    pref_s[pref_n] = 2;
+    ++pref_n;
   }
   if (cfg_.sigma_enabled) {
     if (last_sigma_ < cfg_.sigma_activate) sigma_row_active_ = true;
@@ -680,6 +705,10 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   qp2_last_ok_ = qp2_ok;
   Vec8 qdot_out = qdot1;
   if (qp2_ok) qdot_out = qp2_->results.x.head<kNv>();
+  j4_design_slack_ = 0.0;
+  if (qp2_ok && qp2_->results.x.size() > kNv + kNTaskSlack + 2) {
+    j4_design_slack_ = std::max(0.0, qp2_->results.x[kNv + kNTaskSlack + 2]);
+  }
   *qdot = qdot_out;
   *residual = b_task - J_task * qdot_out;
   *slack = residual->norm();
@@ -847,8 +876,16 @@ TickOut InnerLoop::step(const TickIn& in) {
     homotopy_s_ = posture_.homotopy_s();
     planned_ = posture_.planned();
     d_pref_ = d_star_;
-    if (homotopy_s_ + 1e-12 >= 1.0) q_star_ = q_nominal_;
-    else q_star_ = posture_.q_star();
+    const Vec8 cand = posture_.q_star();
+    if (q_finite_in_limits(cand, q_lo_, q_hi_)) {
+      q_star_ = cand;
+      last_valid_q_star_ = cand;
+      have_valid_q_star_ = true;
+    } else if (have_valid_q_star_) {
+      q_star_ = last_valid_q_star_;
+    } else {
+      q_star_ = q_nominal_;
+    }
   }
   if (press_stalled && allow_press && contact && has_vf && nudge_cool_s_ <= 0.0) {
     const double away = (q_prev[0] > 0.5 * (soft.first + soft.second)) ? 1.0 : -1.0;
@@ -900,14 +937,29 @@ TickOut InnerLoop::step(const TickIn& in) {
       last_v_escape_ = 0.0;
     }
     last_ext_w_ = cfg_.w_max_ext;
-    if (std::abs(last_v_escape_) > 1e-4) {
-      rail_task_vel = last_v_escape_;
-      have_rail_vel = true;
-    }
     rail_task_w = last_ext_w_;
   }
 
   if (rail_mode_ == kRailCoupled && !locked_hold) {
+    const double d_live = y_tcp - q_state[0];
+    const bool hold_ref = (hold_d && !escape_active_) || !std::isfinite(d_star_);
+    if (!d_star_ref_init_ || !std::isfinite(d_star_ref_)) {
+      d_star_ref_ = d_live;
+      d_star_ref_init_ = true;
+      d_star_dot_cmd_ = 0.0;
+    } else if (hold_ref || dt <= 1e-12) {
+      d_star_dot_cmd_ = 0.0;
+    } else {
+      const double lim = std::abs(cfg_.d_center_rate) * dt;
+      const double delta = clip(d_star_ - d_star_ref_, -lim, lim);
+      d_star_ref_ += delta;
+      d_star_dot_cmd_ = delta / dt;
+    }
+    d_pref_ = d_star_ref_;
+    e_d_ = d_live - d_star_ref_;
+    last_e_mid_ = e_d_;
+    V_d_proxy_ = 0.5 * cfg_.kp_mid * e_d_ * e_d_;
+
     const double lam = sr_damping_lambda(last_sigma_, cfg_.sr_lam0, cfg_.sr_sigma_ref,
                                          cfg_.sr_sigma_floor);
     const Vec8 mw = margin_weight_from_activation(q_prev, q_mid_, half_, cfg_.k_margin,
@@ -916,20 +968,59 @@ TickOut InnerLoop::step(const TickIn& in) {
                                      last_e_mid_, cfg_.k_err_rail, cfg_.e_ref);
     (void)qall;
     u_alloc_ = u_a;
+    u_task_raw_ = u_a;
+    u_escape_raw_ = last_v_escape_;
     const double leave = wall_leave_only_sign(q_state[0], q_lo_[0], q_hi_[0], cfg_.damper_band_rail);
-    const bool freeze = quiescent_;
-    if (!freeze) mid_integ_ += cfg_.ki_mid * last_e_mid_ * dt;
-    double raw = cfg_.kp_mid * last_e_mid_ + mid_integ_;
-    double sat = soft_saturate(raw, cfg_.u_mid_max);
-    if (leave > 0.0 && sat > 0.0) sat = 0.0;
-    if (leave < 0.0 && sat < 0.0) sat = 0.0;
-    if (dt > 0.0) mid_integ_ += cfg_.kaw_mid * (u_mid_committed_ - raw) * dt;
-    u_mid_ = sat;
+    wall_pi_frozen_ = (leave != 0.0);
+    if (wall_pi_frozen_) {
+      v_r_lpf_ = project_lpf_into_wall(v_r_lpf_, leave);
+      v_r_ref_ = project_lpf_into_wall(v_r_ref_, leave);
+    }
+    escape_dir_ = update_escape_dir(escape_active_, u_escape_raw_, escape_dir_);
+    const int guard_dir = escape_active_ ? escape_dir_ : 0;
+    double u_lo = 0.0, u_hi = 0.0;
+    wall_velocity_bounds(v_max_[0], leave, &u_lo, &u_hi);
+
+    const bool zero_posture = quiescent_ && !escape_active_;
+    if (zero_posture) {
+      mid_integ_ = -cfg_.kp_mid * e_d_;
+      u_pi_raw_ = 0.0;
+      u_mid_cmd_ = 0.0;
+      u_post_raw_ = 0.0;
+      d_star_dot_cmd_ = 0.0;
+      const RailShares shares = allocate_rail_shares(0.0, 0.0, 0.0, 0, u_lo, u_hi);
+      u_task_feasible_ = 0.0;
+      u_escape_feasible_ = 0.0;
+      u_base_ = 0.0;
+      u_post_feasible_ = 0.0;
+      u_feasible_ = 0.0;
+      u_mid_applied_ = 0.0;
+      u_mid_ = 0.0;
+      (void)shares;
+    } else {
+      u_pi_raw_ = cfg_.kp_mid * e_d_ + mid_integ_;
+      u_mid_cmd_ = soft_saturate(u_pi_raw_, cfg_.u_mid_max);
+      u_post_raw_ = u_mid_cmd_ - d_star_dot_cmd_;
+      const RailShares shares =
+          allocate_rail_shares(u_task_raw_, u_post_raw_, u_escape_raw_, guard_dir, u_lo, u_hi);
+      u_task_feasible_ = shares.u_task_feasible;
+      u_escape_feasible_ = shares.u_escape_feasible;
+      u_base_ = shares.u_base;
+      u_post_feasible_ = shares.u_post_feasible;
+      u_feasible_ = shares.u_feasible;
+      u_mid_applied_ = u_post_feasible_ + d_star_dot_cmd_;
+      u_mid_ = u_mid_cmd_;
+      if (!wall_pi_frozen_ && dt > 0.0) {
+        mid_integ_ += (cfg_.ki_mid * e_d_ + cfg_.kaw_mid * (u_mid_applied_ - u_pi_raw_)) * dt;
+      }
+    }
+
     auto [a_mir, j_mir] = arm_mirror_rail_limits(J, a_max_, j_max_, cfg_.rho_a, cfg_.rho_j);
     const double tau = lpf_tau_from_fc(cfg_.f_c_hz);
-    double v_f = u_alloc_;
-    if (v_r_init_ && tau > 1e-9) v_f = first_order_lpf(v_r_ref_, u_alloc_, dt, tau);
+    double v_f = u_feasible_;
+    if (v_r_init_ && tau > 1e-9) v_f = first_order_lpf(v_r_lpf_, u_feasible_, dt, tau);
     v_r_init_ = true;
+    v_r_lpf_ = v_f;
     double a_raw = (v_f - v_r_ref_) / dt;
     const double a_lim = std::min(cfg_.a_max_rail, a_mir);
     const double j_lim = std::min(cfg_.j_max_rail, j_mir);
@@ -939,7 +1030,7 @@ TickOut InnerLoop::step(const TickIn& in) {
     double lo_c, hi_c;
     wall_cap(q_state[0], cfg_.hard_min, cfg_.hard_max, a_lim, cfg_.rail_reaction_s, &lo_c, &hi_c);
     v = clip(v, lo_c, hi_c);
-    if (std::abs(v) < 5e-4 && std::abs(u_alloc_) < 5e-4) v = 0.0;
+    if (std::abs(v) < 5e-4 && std::abs(u_feasible_) < 5e-4) v = 0.0;
     if (planned_ && q_state[0] >= cfg_.soft_max - cfg_.escape_leave && v > 0.0) v = 0.0;
     v_r_ref_ = v;
     v_r_a_ = (v - (v_r_ref_ - a * dt)) / dt;
@@ -949,6 +1040,8 @@ TickOut InnerLoop::step(const TickIn& in) {
   } else {
     u_alloc_ = 0.0;
     u_mid_ = 0.0;
+    u_feasible_ = 0.0;
+    u_mid_applied_ = 0.0;
   }
 
   Vec8 qdot_center = Vec8::Zero();
@@ -1016,7 +1109,7 @@ TickOut InnerLoop::step(const TickIn& in) {
     }
     sec.tail<7>() *= sat_scale_;
   }
-  if (rail_mode_ == kRailCoupled && !locked_hold) sec[0] = u_mid_ + last_v_escape_;
+  sec[0] = 0.0;
   out.ns_centering = qdot_center.norm();
   out.ns_manip = qdot_mu.norm();
   out.ns_arm_angle = qdot_arm.norm();
@@ -1117,7 +1210,7 @@ TickOut InnerLoop::step(const TickIn& in) {
   qdot_prev_ = qdot;
   last_slack_ = slack;
   last_tcp_est_ = J * qdot;
-  u_mid_committed_ = qdot[0] - v_r_ref_;
+  u_mid_committed_ = u_mid_applied_;
 
   const auto t1 = std::chrono::steady_clock::now();
   out.q_cmd = q_cmd_;
@@ -1150,6 +1243,24 @@ TickOut InnerLoop::step(const TickIn& in) {
   out.sec_target_norm = sec_target_.norm();
   out.homotopy_s = homotopy_s_;
   out.psi_star = psi_star_;
+  out.u_task_raw = u_task_raw_;
+  out.u_task_feasible = u_task_feasible_;
+  out.u_pi_raw = u_pi_raw_;
+  out.u_mid_cmd = u_mid_cmd_;
+  out.u_post_raw = u_post_raw_;
+  out.u_post_feasible = u_post_feasible_;
+  out.u_mid_applied = u_mid_applied_;
+  out.d_star_dot_cmd = d_star_dot_cmd_;
+  out.u_escape_raw = u_escape_raw_;
+  out.u_escape_feasible = u_escape_feasible_;
+  out.escape_active = escape_active_ ? 1.0 : 0.0;
+  out.escape_dir = static_cast<double>(escape_dir_);
+  out.u_base = u_base_;
+  out.u_feasible = u_feasible_;
+  out.v_r_lpf = v_r_lpf_;
+  out.e_d = e_d_;
+  out.V_d_proxy = V_d_proxy_;
+  out.j4_design_slack = j4_design_slack_;
   {
     const Vec6 twist_rail = J.col(0) * rail_exec;
     const Vec6 twist_arm = J.rightCols<7>() * qdot.tail<7>();

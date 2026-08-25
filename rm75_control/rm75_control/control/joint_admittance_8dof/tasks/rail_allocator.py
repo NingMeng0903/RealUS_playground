@@ -138,10 +138,20 @@ class RailReferenceModel:
         self.hard_max_m = float(soft_max_m if hard_max_m is None else hard_max_m)
         self.state = RailReferenceState()
         self.last_wall_override = False
+        self.last_v_lpf = 0.0
 
     def reset(self, v0: float = 0.0) -> None:
         self.state = RailReferenceState(v=float(v0), a=0.0, initialized=False)
         self.last_wall_override = False
+        self.last_v_lpf = float(v0)
+
+    def project_into_wall(self, leave_sign: float) -> None:
+        from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
+            project_lpf_into_wall,
+        )
+
+        self.last_v_lpf = project_lpf_into_wall(self.last_v_lpf, leave_sign)
+        self.state.v = project_lpf_into_wall(float(self.state.v), leave_sign)
 
     def step(
         self,
@@ -167,6 +177,7 @@ class RailReferenceModel:
             v_f = u
         else:
             v_f = first_order_lpf(float(self.state.v), u, dt, tau)
+        self.last_v_lpf = float(v_f)
         v_prev = float(self.state.v)
         a_prev = float(self.state.a)
         a_raw = (v_f - v_prev) / dt

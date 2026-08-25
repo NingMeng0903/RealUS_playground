@@ -70,6 +70,26 @@ struct TickOut {
   double homotopy_s = 0.0;
   double psi_star = 0.0;
   double rail_motion_share = std::numeric_limits<double>::quiet_NaN();
+  // Mixer telemetry (SHM v4). V_d_proxy is a configuration-error storage
+  // proxy: 0.5 * kp_mid * e_d^2. kp_mid is s^-1, not stiffness, not joules.
+  double u_task_raw = 0.0;
+  double u_task_feasible = 0.0;
+  double u_pi_raw = 0.0;
+  double u_mid_cmd = 0.0;
+  double u_post_raw = 0.0;
+  double u_post_feasible = 0.0;
+  double u_mid_applied = 0.0;
+  double d_star_dot_cmd = 0.0;
+  double u_escape_raw = 0.0;
+  double u_escape_feasible = 0.0;
+  double escape_active = 0.0;
+  double escape_dir = 0.0;
+  double u_base = 0.0;
+  double u_feasible = 0.0;
+  double v_r_lpf = 0.0;
+  double e_d = 0.0;
+  double V_d_proxy = 0.0;
+  double j4_design_slack = 0.0;
 };
 
 class Collision {
@@ -146,6 +166,8 @@ class InnerLoop {
   Vec8 q_star_ = Vec8::Zero();
   Vec8 q_star_signs_ = Vec8::Zero();
   Vec8 q_nominal_ = Vec8::Zero();
+  Vec8 last_valid_q_star_ = Vec8::Zero();
+  bool have_valid_q_star_ = false;
   Vec8 m_diag_lpf_ = Vec8::Ones();
   bool m_diag_init_ = false;
 
@@ -159,11 +181,28 @@ class InnerLoop {
 
   double v_r_ref_ = 0.0;
   double v_r_a_ = 0.0;
+  double v_r_lpf_ = 0.0;
   bool v_r_init_ = false;
+  bool wall_pi_frozen_ = false;
   double u_alloc_ = 0.0;
   double u_mid_ = 0.0;
   double u_mid_committed_ = 0.0;
   double mid_integ_ = 0.0;
+  double u_task_raw_ = 0.0;
+  double u_task_feasible_ = 0.0;
+  double u_pi_raw_ = 0.0;
+  double u_mid_cmd_ = 0.0;
+  double u_post_raw_ = 0.0;
+  double u_post_feasible_ = 0.0;
+  double u_mid_applied_ = 0.0;
+  double d_star_dot_cmd_ = 0.0;
+  double u_escape_raw_ = 0.0;
+  double u_escape_feasible_ = 0.0;
+  double u_base_ = 0.0;
+  double u_feasible_ = 0.0;
+  double e_d_ = 0.0;
+  double V_d_proxy_ = 0.0;
+  double j4_design_slack_ = 0.0;
   double q_hat_ = 0.0;
   double v_hat_ = 0.0;
   bool obs_init_ = false;
@@ -195,6 +234,8 @@ class InnerLoop {
 
   double d_star_ = 0.0;
   double d_pref_ = 0.0;
+  double d_star_ref_ = 0.0;
+  bool d_star_ref_init_ = false;
   double psi_cmd_ = 0.0;
   double psi_star_ = 0.0;
   double homotopy_s_ = 0.0;
@@ -207,6 +248,7 @@ class InnerLoop {
   double nudge_cool_s_ = 0.0;
 
   bool escape_active_ = false;
+  int escape_dir_ = 0;
   double escape_sign_ = 0.0;
   double last_e_mid_ = 0.0;
   double last_v_escape_ = 0.0;

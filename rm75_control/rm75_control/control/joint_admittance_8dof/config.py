@@ -194,6 +194,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             "mass_reg_lpf_tau_s",
             "limit_damper_band_rad", "limit_damper_band_rail_m",
             "sigma_setbased", "branch_barrier", "joint_comfort",
+            "j4_design_comfort",
             "smoothness_weight", "near_arm_margin_rad",
             "j_max_arm_rad_s3", "j_max_rail_m_s3",
             "use_cpp_kernel",
@@ -217,6 +218,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         BranchBarrierConfig,
     )
     from rm75_control.control.joint_admittance_8dof.solver.joint_comfort import (
+        J4DesignComfortConfig,
         JointComfortConfig,
     )
     from rm75_control.control.joint_admittance_8dof.solver.sigma_setbased import (
@@ -250,6 +252,14 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             "enabled", "m_comfort_deg", "activate_deg", "gamma", "slack_weight",
         },
         name="inner.qp.joint_comfort",
+    )
+    jd = _mapping(c.get("j4_design_comfort"), name="inner.qp.j4_design_comfort")
+    _reject_unknown(
+        jd,
+        {
+            "enabled", "lower_deg", "upper_deg", "gamma", "slack_weight",
+        },
+        name="inner.qp.j4_design_comfort",
     )
     smooth_raw = c.get("smoothness_weight", 0.15)
     if isinstance(smooth_raw, (list, tuple, np.ndarray)):
@@ -406,6 +416,25 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             gamma=_finite_float(jc.get("gamma", 6.0), name="joint_comfort.gamma"),
             slack_weight=_finite_float(
                 jc.get("slack_weight", 80.0), name="joint_comfort.slack_weight"
+            ),
+        ),
+        j4_design_comfort=J4DesignComfortConfig(
+            enabled=bool(jd.get("enabled", True)),
+            lower_rad=math.radians(
+                _finite_float(
+                    jd.get("lower_deg", 70.0),
+                    name="j4_design_comfort.lower_deg",
+                )
+            ),
+            upper_rad=math.radians(
+                _finite_float(
+                    jd.get("upper_deg", 115.0),
+                    name="j4_design_comfort.upper_deg",
+                )
+            ),
+            gamma=_finite_float(jd.get("gamma", 4.0), name="j4_design_comfort.gamma"),
+            slack_weight=_finite_float(
+                jd.get("slack_weight", 60.0), name="j4_design_comfort.slack_weight"
             ),
         ),
         near_arm_margin_rad=_finite_float(

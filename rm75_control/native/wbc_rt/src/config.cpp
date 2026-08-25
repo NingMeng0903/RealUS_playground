@@ -117,6 +117,11 @@ Config Config::load(const std::string& path) {
     else if (key == "qp.joint_comfort.activate_rad") c.comfort_activate = n0();
     else if (key == "qp.joint_comfort.gamma") c.comfort_gamma = n0();
     else if (key == "qp.joint_comfort.slack_weight") c.comfort_slack_w = n0();
+    else if (key == "qp.j4_design_comfort.enabled") c.j4_design_enabled = i0() != 0;
+    else if (key == "qp.j4_design_comfort.lower_rad") c.j4_design_lo = n0();
+    else if (key == "qp.j4_design_comfort.upper_rad") c.j4_design_hi = n0();
+    else if (key == "qp.j4_design_comfort.gamma") c.j4_design_gamma = n0();
+    else if (key == "qp.j4_design_comfort.slack_weight") c.j4_design_slack_w = n0();
     else if (key == "collision.enabled") c.collision_enabled = i0() != 0;
     else if (key == "collision.d_safe") c.d_safe = n0();
     else if (key == "collision.d_activate") c.d_activate = n0();

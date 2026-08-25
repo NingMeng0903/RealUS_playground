@@ -23,7 +23,7 @@ _SEED_Q = np.array([0.375, 0.194, -0.503, -0.069, 1.979, -0.776, 0.547, -4.370])
 
 def test_protocol_sizes_match_packed_cxx() -> None:
     assert P.WBC_IN_SIZE == 608
-    assert P.WBC_OUT_SIZE == 608
+    assert P.WBC_OUT_SIZE == 752
     binary = find_wbc_rt_binary()
     if binary is None:
         pytest.skip("wbc_rt binary not built")

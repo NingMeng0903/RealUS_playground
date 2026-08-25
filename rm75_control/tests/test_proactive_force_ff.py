@@ -436,15 +436,13 @@ def test_high_instability_cannot_delay_overforce_escape_after_reversal():
 def test_yaml_proactive_parameters_retained_but_a_only_baseline_disables_loop():
     raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     hm = raw["hybrid_motion"]
-    assert hm["proactive_feedforward"] is False
-    # Parameters remain available for isolated tests / legacy non-CDYOB
-    # configurations, but are not part of the CDYOB A-only baseline.
+    assert hm["proactive_feedforward"] is True
     assert hm["proactive_retract_only"] is False
-    # 014140: the old residual oscillation was v_r dominated.
-    assert float(hm["proactive_gain"]) == pytest.approx(0.06)
-    assert float(hm["proactive_retract_gain"]) == pytest.approx(0.06)
-    assert float(hm["proactive_leak_s"]) == pytest.approx(0.50)
-    assert float(hm["v_r_max_m_s"]) == pytest.approx(0.02)
+    # 034244: chase must stay below CDYOB Q=0.75 Hz.
+    assert float(hm["proactive_gain"]) == pytest.approx(0.02)
+    assert float(hm["proactive_retract_gain"]) == pytest.approx(0.02)
+    assert float(hm["proactive_leak_s"]) == pytest.approx(1.50)
+    assert float(hm["v_r_max_m_s"]) == pytest.approx(0.008)
     assert float(hm["proactive_in_band_n"]) == pytest.approx(0.08)
     assert float(hm["proactive_in_band_leak_s"]) == pytest.approx(0.12)
     assert 0.0 <= hm["proactive_press_is_gate_start"] < hm[

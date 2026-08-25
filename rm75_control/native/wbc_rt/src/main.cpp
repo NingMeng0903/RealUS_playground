@@ -413,6 +413,24 @@ int main(int argc, char** argv) {
         out->homotopy_s = tout.homotopy_s;
         out->psi_star = tout.psi_star;
         out->rail_motion_share = tout.rail_motion_share;
+        out->u_task_raw = tout.u_task_raw;
+        out->u_task_feasible = tout.u_task_feasible;
+        out->u_pi_raw = tout.u_pi_raw;
+        out->u_mid_cmd = tout.u_mid_cmd;
+        out->u_post_raw = tout.u_post_raw;
+        out->u_post_feasible = tout.u_post_feasible;
+        out->u_mid_applied = tout.u_mid_applied;
+        out->d_star_dot_cmd = tout.d_star_dot_cmd;
+        out->u_escape_raw = tout.u_escape_raw;
+        out->u_escape_feasible = tout.u_escape_feasible;
+        out->escape_active = tout.escape_active;
+        out->escape_dir = tout.escape_dir;
+        out->u_base = tout.u_base;
+        out->u_feasible = tout.u_feasible;
+        out->v_r_lpf = tout.v_r_lpf;
+        out->e_d = tout.e_d;
+        out->V_d_proxy = tout.V_d_proxy;
+        out->j4_design_slack = tout.j4_design_slack;
         out->flags = tout.flags;
         out->status = tout.status;
       }

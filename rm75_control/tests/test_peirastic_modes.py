@@ -385,18 +385,34 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
         0.0
     )
     assert float(force["hybrid_motion"]["force_scale_fraction"]) == pytest.approx(0.0)
-    assert force["hybrid_motion"]["cdyob"]["mode"] == "shadow"
+    assert force["hybrid_motion"]["cdyob"]["mode"] == "active"
     assert float(force["hybrid_motion"]["cdyob"]["t0_s"]) == pytest.approx(0.030)
     assert float(force["hybrid_motion"]["cdyob"]["tp_s"]) == pytest.approx(0.012)
     assert float(force["hybrid_motion"]["cdyob"]["omega_q_hz"]) == pytest.approx(
         0.75
     )
     assert float(
+        force["hybrid_motion"]["cdyob"]["v_corr_max_m_s"]
+    ) == pytest.approx(0.015)
+    assert float(
         force["hybrid_motion"]["cdyob"]["active_press_max_m_s"]
     ) == pytest.approx(0.010)
+    assert float(
+        force["hybrid_motion"]["cdyob"]["active_retract_max_m_s"]
+    ) == pytest.approx(0.015)
     assert force["hybrid_motion"]["cdyob"]["active_model_validated"] is True
-    assert force["hybrid_motion"]["force_dob"]["enabled"] is False
-    assert force["hybrid_motion"]["proactive_feedforward"] is False
+    assert float(
+        force["hybrid_motion"]["cdyob"]["active_settle_speed_m_s"]
+    ) == pytest.approx(0.010)
+    assert float(
+        force["hybrid_motion"]["cdyob"]["active_settle_hold_s"]
+    ) == pytest.approx(0.05)
+    assert force["hybrid_motion"]["force_dob"]["enabled"] is True
+    assert float(force["hybrid_motion"]["force_dob"]["ki"]) == pytest.approx(2.0)
+    assert force["hybrid_motion"]["proactive_feedforward"] is True
+    assert float(
+        force["hybrid_motion"]["force_barrier"]["v_underforce_press_m_s"]
+    ) == pytest.approx(0.0)
 
 
 def test_pad_hybrid_keeps_pad_axes_force_owns_z() -> None:

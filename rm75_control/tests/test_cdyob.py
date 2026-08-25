@@ -304,19 +304,40 @@ def test_force_velocity_sign_press_positive() -> None:
     assert abs(yob.last_corr_m_s) < 2e-3
 
 
-def test_controller_rejects_shadow_with_auxiliary_active_loops() -> None:
+def test_controller_allows_chase_with_cdyob() -> None:
     raw = {
         "hybrid_motion": {
             "admittance_mass_z": 1.0,
             "admittance_damping_z": 40.0,
+            "desired_force_ramp_s": 0.0,
             "cdyob": {"mode": "shadow", "t0_s": 0.050, "tp_s": 0.020},
-            "force_dob": {"enabled": True},
+            "force_dob": {"enabled": True, "ki": 8.0, "u_max_n": 1.5},
             "proactive_feedforward": True,
         }
     }
     cfg = AdmittanceConfig.from_dict(raw)
-    with pytest.raises(ValueError, match="A-only baseline"):
-        AdmittanceController(0.005, cfg)
+    cfg.physical_contact.enabled = False
+    ctrl = AdmittanceController(0.005, cfg)
+    ctrl.contact_present = True
+    ctrl._in_contact_latched = True
+    ctrl._first_contact_slow_latched = False
+    ctrl._recontact_slow_latched = False
+    ctrl._episode_seen = True
+    ctrl.force_task_armed = True
+    f_ext = np.array([0.0, 0.0, 0.9, 0.0, 0.0, 0.0])
+    f_des = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
+    pose = np.zeros(6)
+    for _ in range(80):
+        ctrl.compute_velocity_command(
+            pose,
+            pose,
+            np.zeros(6),
+            f_ext,
+            f_des,
+            in_contact=True,
+            v_tcp_z_actual=0.0,
+        )
+    assert abs(ctrl.v_r_z) > 1e-4 or abs(ctrl.u_dob_z) > 1e-4
 
 
 def test_controller_a_only_off_and_shadow_share_baseline() -> None:
@@ -507,4 +528,48 @@ def test_first_active_normal_command_is_limited_to_10mm_s() -> None:
         in_contact=True,
         v_tcp_z_actual=0.0,
     )
-    assert -0.010 - 1e-12 <= float(retract[2]) < 0.0
+    # Overforce escape is not pinned by active_retract_max.
+    assert float(retract[2]) < -0.010 - 1e-12
+
+
+def test_overforce_snaps_cdyob_blend_without_settle() -> None:
+    cfg = AdmittanceConfig.from_dict(
+        {
+            "hybrid_motion": {
+                "desired_force_ramp_s": 0.0,
+                "cdyob": {
+                    "mode": "active",
+                    "active_model_validated": True,
+                    "omega_q_hz": 0.75,
+                    "blend_s": 0.30,
+                    "v_corr_max_m_s": 0.015,
+                    "active_force_ratio": 0.90,
+                    "active_settle_speed_m_s": 0.003,
+                    "active_settle_hold_s": 0.20,
+                },
+                "force_dob": {"enabled": False},
+                "proactive_feedforward": False,
+            }
+        }
+    )
+    cfg.physical_contact.enabled = False
+    ctrl = AdmittanceController(0.005, cfg)
+    ctrl._first_contact_slow_latched = False
+    ctrl._recontact_slow_latched = False
+    ctrl._in_contact_latched = True
+    ctrl._episode_seen = True
+    pose = np.zeros(6)
+    overforce = np.array([0.0, 0.0, 4.0, 0.0, 0.0, 0.0])
+    desired = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
+    ctrl.compute_velocity_command(
+        pose,
+        pose,
+        np.zeros(6),
+        overforce,
+        desired,
+        in_contact=True,
+        v_tcp_z_actual=0.020,
+    )
+    assert ctrl.overforce_escape is True
+    assert ctrl.cdyob_apply_ready is False
+    assert ctrl.cdyob_blend == pytest.approx(1.0)

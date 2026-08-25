@@ -649,7 +649,8 @@ def test_qpik_rail_brakes_when_task_drops() -> None:
         moving = inner.update(plus_y, q_meas=inner.q_cmd, vel_ff=plus_y)
     assert moving is not None
     # Least-norm split gives the rail a share of +Y, not the full 0.08.
-    assert float(moving.qdot[0]) > 0.01
+    # 2 Hz LPF of u_feasible plus d* posture (ρ=0) can cancel part of u_task.
+    assert float(moving.qdot[0]) > 0.005
 
 
 def test_rail_task_vel_is_issued_when_weight_is_zero_but_ff_is_live() -> None:
@@ -680,23 +681,36 @@ def test_rail_task_vel_stays_dropped_when_ff_is_zero() -> None:
 
 
 def test_zero_v_cmd_does_not_put_u_mid_on_v_r_ref() -> None:
+    """stick=0 with |e_d|≈80 mm, still not quiescent: posture owns the rail."""
     inner = _yaml_inner_at_rail(0.40)
     SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
     q = _SEED_Q.copy()
     q[0] = 0.40
     inner.reset(q)
-    if inner.rail_ext_task is not None:
-        inner.rail_ext_task.set_d_pref(float(inner.rail_ext_task.d_pref_m or 0.0) + 0.08)
     twist = np.zeros(6)
-    last = None
-    for _ in range(40):
+    last = inner.update(twist, q_meas=inner.q_cmd.copy())
+    pose0 = inner.kin.fk_pose(inner.q_cmd)
+    assert inner.rail_mixer.d_star.ref is not None
+    inner.rail_mixer.d_star.ref = float(inner.rail_mixer.d_star.ref) - 0.08
+    if inner.posture_retarget is not None:
+        inner.posture_retarget.d_star_m = float(inner.rail_mixer.d_star.ref)
+    n = min(20, max(1, int(0.10 / max(float(inner.cfg.dt), 1.0e-3))))
+    for _ in range(n):
         last = inner.update(twist, q_meas=inner.q_cmd.copy())
     assert last is not None
-    assert abs(float(last.v_r_ref)) < 5.0e-3
-    assert abs(float(last.u_alloc)) < 5.0e-3
+    assert not bool(inner._quiescent)
+    assert abs(float(last.e_d)) > 0.05
+    assert abs(float(last.u_post_feasible)) > 1.0e-2
+    assert abs(float(last.v_r_ref)) > 1.5e-2
+    pose1 = inner.kin.fk_pose(inner.q_cmd)
+    assert float(np.linalg.norm(pose1[:3] - pose0[:3])) < 0.008
 
 
 def test_leave_wall_v_cmd_not_cancelled_by_u_mid() -> None:
+    from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
+        wall_leave_only_sign,
+    )
+
     inner = _yaml_inner_at_rail(0.755)
     SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
     q = _SEED_Q.copy()
@@ -706,8 +720,17 @@ def test_leave_wall_v_cmd_not_cancelled_by_u_mid() -> None:
     step = inner.update(leave, q_meas=q, vel_ff=leave, task_rotation_base=np.eye(3))
     assert float(step.v_cmd[1]) < -0.04
     assert float(step.rail_task_vel) <= 1.0e-4 or float(step.rail_task_vel) < 0.0
-    if np.isfinite(step.u_mid):
-        assert float(step.u_mid) <= 1.0e-3
+    leave_sign = wall_leave_only_sign(
+        0.755,
+        hard_min_m=float(inner.limits.q_lower[0]),
+        hard_max_m=float(inner.limits.q_upper[0]),
+        band_m=float(inner.cfg.qp.limit_damper_band_rail_m),
+    )
+    v_lpf = float(inner.rail_ref_model.last_v_lpf)
+    if leave_sign > 0.0:
+        assert v_lpf <= 1.0e-6
+    elif leave_sign < 0.0:
+        assert v_lpf >= -1.0e-6
 
 
 def test_zero_v_cmd_tcp_drift_after_quiescent() -> None:
@@ -716,17 +739,41 @@ def test_zero_v_cmd_tcp_drift_after_quiescent() -> None:
     q = _SEED_Q.copy()
     q[0] = 0.40
     inner.reset(q)
-    if inner.rail_ext_task is not None:
-        inner.rail_ext_task.set_d_pref(float(inner.rail_ext_task.d_pref_m or 0.0) + 0.08)
     pose0 = inner.kin.fk_pose(inner.q_cmd)
     last = None
     for _ in range(80):
         last = inner.update(np.zeros(6), q_meas=inner.q_cmd.copy())
     assert last is not None
+    assert bool(inner._quiescent)
+    assert inner.rail_mixer.d_star.ref is not None
+    inner.rail_mixer.d_star.ref = float(inner.rail_mixer.d_star.ref) - 0.08
+    if inner.posture_retarget is not None:
+        inner.posture_retarget.d_star_m = float(inner.rail_mixer.d_star.ref)
+    d_hold = float(inner.rail_mixer.d_star.ref)
+    v_lpf = []
+    v_ref = []
+    for _ in range(40):
+        last = inner.update(np.zeros(6), q_meas=inner.q_cmd.copy())
+        v_lpf.append(float(inner.rail_ref_model.last_v_lpf))
+        v_ref.append(float(last.v_r_ref))
     pose1 = inner.kin.fk_pose(inner.q_cmd)
     assert float(np.linalg.norm(pose1[:3] - pose0[:3])) < 0.002
     assert bool(inner._quiescent)
+    assert abs(float(last.u_post_feasible)) < 1.0e-9
+    assert abs(float(last.u_feasible)) < 1.0e-9
+    assert abs(float(last.u_pi_raw)) < 1.0e-9
+    kp = float(inner.rail_mixer.kp)
+    assert float(inner.rail_mixer.xi) == pytest.approx(
+        -kp * float(last.e_d), abs=1.0e-9
+    )
+    assert float(inner.rail_mixer.d_star.ref) == pytest.approx(d_hold, abs=1.0e-9)
+    tail = np.asarray(v_lpf, dtype=float)
+    assert np.all(np.abs(tail[1:]) <= np.abs(tail[:-1]) + 1.0e-9)
+    assert abs(float(v_lpf[-1])) < 5.0e-4
     assert abs(float(last.qdot[0])) < 0.01
+    vr = np.asarray(v_ref, dtype=float)
+    if abs(float(vr[0])) > 1.0e-6:
+        assert np.all(vr * float(vr[0]) >= -1.0e-6)
     assert abs(float(last.v_r_ref)) < 5.0e-3
 
 

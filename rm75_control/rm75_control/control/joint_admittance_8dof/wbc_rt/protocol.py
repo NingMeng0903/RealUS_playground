@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 
 WBC_MAGIC = 0x57424331
-WBC_VERSION = 3
+WBC_VERSION = 4
 DEFAULT_IN_NAME = "rm75_wbc_in"
 DEFAULT_OUT_NAME = "rm75_wbc_out"
 
@@ -135,6 +135,24 @@ WBC_OUT_DTYPE = np.dtype(
         ("homotopy_s", "<f8"),
         ("psi_star", "<f8"),
         ("rail_motion_share", "<f8"),
+        ("u_task_raw", "<f8"),
+        ("u_task_feasible", "<f8"),
+        ("u_pi_raw", "<f8"),
+        ("u_mid_cmd", "<f8"),
+        ("u_post_raw", "<f8"),
+        ("u_post_feasible", "<f8"),
+        ("u_mid_applied", "<f8"),
+        ("d_star_dot_cmd", "<f8"),
+        ("u_escape_raw", "<f8"),
+        ("u_escape_feasible", "<f8"),
+        ("escape_active", "<f8"),
+        ("escape_dir", "<f8"),
+        ("u_base", "<f8"),
+        ("u_feasible", "<f8"),
+        ("v_r_lpf", "<f8"),
+        ("e_d", "<f8"),
+        ("V_d_proxy", "<f8"),
+        ("j4_design_slack", "<f8"),
     ],
     align=False,
 )
@@ -143,7 +161,7 @@ WBC_IN_SIZE = int(WBC_IN_DTYPE.itemsize)
 WBC_OUT_SIZE = int(WBC_OUT_DTYPE.itemsize)
 # Packed C++ layouts in native/wbc_rt/include/wbc_rt/protocol.hpp.
 assert WBC_IN_SIZE == 608, WBC_IN_SIZE
-assert WBC_OUT_SIZE == 608, WBC_OUT_SIZE
+assert WBC_OUT_SIZE == 752, WBC_OUT_SIZE
 
 
 def view_in(buf) -> np.ndarray:

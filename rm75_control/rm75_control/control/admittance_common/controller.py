@@ -356,13 +356,6 @@ class AdmittanceController:
     ) -> None:
         self.dt = dt
         self.cfg = config or AdmittanceConfig()
-        if self.cfg.cdyob.computes() and (
-            self.cfg.force_dob.enabled or self.cfg.proactive_ff.enabled
-        ):
-            raise ValueError(
-                "CDYOB shadow/active requires the same A-only baseline: "
-                "disable force_dob and proactive_feedforward"
-            )
         # A fixed identifier is retained in CSV logs; it is not a mode switch.
         self.controller_mode = "legacy_symmetric"
         self.last_v_cmd = np.zeros(6)
@@ -1698,6 +1691,11 @@ class AdmittanceController:
             self._cdyob_ready_s
             >= max(float(cfg.cdyob.active_settle_hold_s), 0.0)
         )
+        apply_scale = 1.0 if self.cdyob_apply_ready else 0.0
+        snap_blend = False
+        if cfg.cdyob.applies() and self.overforce_escape:
+            apply_scale = 1.0
+            snap_blend = True
         v_force_tool[2] = self._cdyob.update(
             float(v_force_tool[2]),
             v_meas_m_s=(
@@ -1709,7 +1707,8 @@ class AdmittanceController:
             dt_s=dt_flow,
             mass_z=float(self._m_z_now),
             damping_z=float(self.damping_z_eff),
-            apply_scale=1.0 if self.cdyob_apply_ready else 0.0,
+            apply_scale=apply_scale,
+            snap_blend=snap_blend,
         )
         self._publish_cdyob_telemetry()
         self.v_force_z = float(v_force_tool[2])
@@ -1808,9 +1807,10 @@ class AdmittanceController:
             press_cap = min(
                 press_cap, max(float(cfg.cdyob.active_press_max_m_s), 0.0)
             )
-            retract_cap = min(
-                v_z_cap, max(float(cfg.cdyob.active_retract_max_m_s), 0.0)
-            )
+            if not self.overforce_escape:
+                retract_cap = min(
+                    v_z_cap, max(float(cfg.cdyob.active_retract_max_m_s), 0.0)
+                )
         if v_z_cap > 0.0:
             lo = -retract_cap
             hi = max(press_cap, 0.0)
@@ -2157,10 +2157,11 @@ class AdmittanceController:
         self.retract_fast_rearm_count = int(
             self._fast_retract_guard.rearm_count
         )
-        chase_live = bool(in_contact) and not self._use_delay_safe_press()
-        if self.cfg.cdyob.computes():
-            # Shadow and active must share the same A-only baseline.
-            chase_live = False
+        chase_live = (
+            bool(in_contact)
+            and not self._use_delay_safe_press()
+            and not overforce_escape
+        )
         v_reference = self._update_proactive_v_r(
             eff,
             chase_live,

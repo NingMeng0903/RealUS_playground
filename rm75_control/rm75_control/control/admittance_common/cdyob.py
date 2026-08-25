@@ -376,6 +376,7 @@ class CombinedDynamicsYob:
         mass_z: float,
         damping_z: float,
         apply_scale: float = 1.0,
+        snap_blend: bool = False,
     ) -> float:
         cfg = self.cfg
         mode = cfg.normalized_mode()
@@ -424,7 +425,11 @@ class CombinedDynamicsYob:
         target = (
             float(_clamp(apply_scale, 0.0, 1.0)) if mode == "active" else 0.0
         )
-        if cfg.blend_s > 1e-6:
+        if snap_blend and target > 0.0:
+            # Overforce spikes are shorter than blend_s.  Waiting 0.3 s
+            # leaves corr at zero for the only ticks the observer is needed.
+            self._blend = target
+        elif cfg.blend_s > 1e-6:
             rate = float(dt_s) / cfg.blend_s
             if target > self._blend:
                 self._blend = min(target, self._blend + rate)

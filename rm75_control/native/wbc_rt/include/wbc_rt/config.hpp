@@ -92,6 +92,12 @@ struct Config {
   double comfort_gamma = 6.0;
   double comfort_slack_w = 80.0;
 
+  bool j4_design_enabled = true;
+  double j4_design_lo = 1.2217304763960306;   // 70°
+  double j4_design_hi = 2.007128639793479;    // 115°
+  double j4_design_gamma = 4.0;
+  double j4_design_slack_w = 60.0;
+
   bool collision_enabled = true;
   double d_safe = 0.01;
   double d_activate = 0.04;

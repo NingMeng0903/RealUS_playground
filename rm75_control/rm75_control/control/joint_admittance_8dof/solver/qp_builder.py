@@ -46,6 +46,8 @@ from rm75_control.control.joint_admittance_8dof.solver.branch_barrier import (
     BranchBarrierConfig,
 )
 from rm75_control.control.joint_admittance_8dof.solver.joint_comfort import (
+    J4DesignComfortBuilder,
+    J4DesignComfortConfig,
     JointComfortBuilder,
     JointComfortConfig,
 )
@@ -177,6 +179,7 @@ class QpConfig:
     sigma_setbased: SigmaSetBasedConfig = field(default_factory=SigmaSetBasedConfig)
     branch_barrier: BranchBarrierConfig = field(default_factory=BranchBarrierConfig)
     joint_comfort: JointComfortConfig = field(default_factory=JointComfortConfig)
+    j4_design_comfort: J4DesignComfortConfig = field(default_factory=J4DesignComfortConfig)
     # Arm joints this close to a stop count as physically saturated (rad).
     near_arm_margin_rad: float = 0.08
     # Soft velocity continuity: ½ w_s ‖q̇ − q̇_prev‖² added to the QP cost
@@ -438,6 +441,8 @@ class QpIkController:
         self.sigma_setbased = SigmaSetBasedTracker(self.cfg.sigma_setbased)
         self.branch_barrier = BranchBarrierBuilder(self.cfg.branch_barrier)
         self.joint_comfort = JointComfortBuilder(self.cfg.joint_comfort)
+        self.j4_design_comfort = J4DesignComfortBuilder(self.cfg.j4_design_comfort)
+        self.last_j4_design_slack = 0.0
         self.qdot_prev = np.zeros(kin.nv, dtype=float)
         self.qdot_prev2 = np.zeros(kin.nv, dtype=float)
         self._qdot_prev_seen = np.zeros(kin.nv, dtype=float)
@@ -640,6 +645,8 @@ class QpIkController:
         self.sigma_setbased.reset()
         self.branch_barrier.reset()
         self.joint_comfort.reset()
+        self.j4_design_comfort.reset()
+        self.last_j4_design_slack = 0.0
 
     def set_q_star(self, q_star: np.ndarray | None) -> None:
         """Homotopy / centering attractor (not necessarily yaml signs)."""
@@ -1295,6 +1302,10 @@ class QpIkController:
             comfort_w = float(self.cfg.joint_comfort.slack_weight) * pref_w
             if n_pref > 2:
                 slack_w[2:] = comfort_w
+            if bool(self.cfg.j4_design_comfort.enabled) and n_pref > 2:
+                slack_w[2] = float(self.cfg.j4_design_comfort.slack_weight) * pref_w
+            else:
+                slack_w[2] = 0.0
             rail_w_qp2 = 0.0
             rail_vel_qp2 = 0.0
             if (
@@ -1348,7 +1359,10 @@ class QpIkController:
             comfort_rows = self.joint_comfort.build_rows(
                 q_geom, self.constraints.lim.q_lower, self.constraints.lim.q_upper
             )
-            pref = self._merge_pref_rows(sigma_rows, branch_rows, comfort_rows)
+            design_rows = self.j4_design_comfort.build_rows(q_geom)
+            pref = self._merge_pref_rows(
+                sigma_rows, branch_rows, comfort_rows, design_rows
+            )
             C2, lo2, hi2 = _assemble(
                 nv,
                 n_task,
@@ -1431,6 +1445,11 @@ class QpIkController:
                 qdot = np.asarray(x2[:nv], dtype=float)
                 x = x2
                 C_final, lo_final, hi_final = C2, lo2, hi2
+            self.last_j4_design_slack = 0.0
+            if x is not None and int(np.asarray(x).size) > nv + n_task + 2:
+                self.last_j4_design_slack = float(
+                    max(0.0, float(np.asarray(x).reshape(-1)[nv + n_task + 2]))
+                )
             final_c = C_final @ x
             self.last_final_hard_violation = float(
                 max(

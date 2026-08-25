@@ -432,6 +432,24 @@ class NativeWbcClient:
                 else float("nan")
             ),
             rail_motion_share=float(o["rail_motion_share"]),
+            u_task_raw=float(o["u_task_raw"]),
+            u_task_feasible=float(o["u_task_feasible"]),
+            u_pi_raw=float(o["u_pi_raw"]),
+            u_mid_cmd=float(o["u_mid_cmd"]),
+            u_post_raw=float(o["u_post_raw"]),
+            u_post_feasible=float(o["u_post_feasible"]),
+            u_mid_applied=float(o["u_mid_applied"]),
+            d_star_dot_cmd=float(o["d_star_dot_cmd"]),
+            u_escape_raw=float(o["u_escape_raw"]),
+            u_escape_feasible=float(o["u_escape_feasible"]),
+            escape_active=float(o["escape_active"]),
+            escape_dir=float(o["escape_dir"]),
+            u_base=float(o["u_base"]),
+            u_feasible=float(o["u_feasible"]),
+            v_r_lpf=float(o["v_r_lpf"]),
+            e_d=float(o["e_d"]),
+            V_d_proxy=float(o["V_d_proxy"]),
+            j4_design_slack=float(o["j4_design_slack"]),
         )
         self.ctrl.last_secondary_norm = float(step.nullspace_norm)
         self.ctrl.last_sat_scale = float(step.sat_scale)

@@ -108,6 +108,7 @@ def test_planar_start_keeps_design_j1_sign() -> None:
 
 
 def test_homotopy_done_pins_centering_to_yaml() -> None:
+    """s=1 still publishes last-valid SRS q*; yaml is signs-only."""
     cfg = build_joint_ik_config(_raw())
     cfg.ird.enabled = False
     cfg.collision.enabled = False
@@ -118,22 +119,25 @@ def test_homotopy_done_pins_centering_to_yaml() -> None:
     )
     inner.reset(q)
     yanked = q.copy()
-    yanked[1] = np.deg2rad(-160.0)
+    yanked[1] = 0.0
     assert inner.posture_retarget is not None
     inner.posture_retarget.q_star_rad = yanked
     inner.posture_retarget.homotopy_s = 0.4
     inner._publish_homotopy_centering()
-    assert float(inner.centering_task.q_target[1]) == pytest.approx(
-        np.deg2rad(-160.0)
-    )
+    assert float(inner.centering_task.q_target[1]) == pytest.approx(0.0)
     inner.posture_retarget.homotopy_s = 1.0
     inner._publish_homotopy_centering()
     yaml_j1 = float(cfg.nullspace.q_nominal_rad[1])
-    assert float(inner.centering_task.q_target[1]) == pytest.approx(yaml_j1)
+    assert float(inner.centering_task.q_target[1]) == pytest.approx(0.0)
     assert inner.core.q_star is not None
-    assert float(inner.core.q_star[1]) == pytest.approx(yaml_j1)
+    assert float(inner.core.q_star[1]) == pytest.approx(0.0)
+    assert abs(float(inner.core.q_star[1]) - yaml_j1) > np.deg2rad(20.0)
     assert inner.core.q_star_signs is not None
     assert float(inner.core.q_star_signs[1]) < 0.0
+    # Invalid SRS keeps the last valid vector instead of snapping to yaml.
+    inner.posture_retarget.q_star_rad = yanked + np.nan
+    inner._publish_homotopy_centering()
+    assert float(inner.centering_task.q_target[1]) == pytest.approx(0.0)
 
 
 def test_psi_star_returns_home_after_healthy_dwell() -> None:
