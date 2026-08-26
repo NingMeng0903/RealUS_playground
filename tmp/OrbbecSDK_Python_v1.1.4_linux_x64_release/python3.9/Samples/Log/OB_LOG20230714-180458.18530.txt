@@ -1,0 +1,20 @@
+Log file created at: 2023/07/14 18:04:58
+Running on machine: passoni
+Running duration (h:mm:ss): 0:00:00
+Log line format: [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
+[I20230714 18:04:58.485266 18530 DeviceManager.cpp:54] DeviceManager init ...
+[I20230714 18:04:58.485339 18530 LinuxPal.cpp:21] createObPal: create LinuxPal!
+[I20230714 18:04:58.621445 18530 EnumeratorLibusb.cpp:325] queryDevicesInfo done!
+[I20230714 18:04:58.621987 18530 DeviceManager.cpp:373] Current usb device port list::
+[I20230714 18:04:58.622001 18530 DeviceManager.cpp:375]         - 3-4.1-8.0 | Orbbec(R) Astra(TM) 3D Camera(F) Depth
+[I20230714 18:04:58.622005 18530 DeviceManager.cpp:375]         - 3-2-7.0 | USB Camera
+[I20230714 18:04:58.622013 18530 DeviceManager.cpp:362] No device matched!
+[I20230714 18:04:58.622056 18530 LinuxPal.cpp:142] Create PollingDeviceWatcher!
+[I20230714 18:04:58.622063 18530 DeviceManager.cpp:99] DeviceManager init  done!
+[I20230714 18:04:58.622066 18530 DeviceManager.cpp:50] DeviceManager construct done
+[I20230714 18:04:58.622071 18530 Context.cpp:51] Context created!
+[I20230714 18:04:58.625713 18530 Context.cpp:55] Context destroying ...
+[I20230714 18:04:58.625778 18530 DeviceManager.cpp:103] DeviceManager destroy ...
+[I20230714 18:04:58.629519 18530 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20230714 18:04:58.629649 18530 DeviceManager.cpp:131] DeviceManager destroy done
+[I20230714 18:04:58.629680 18530 DeviceManager.cpp:137] DeviceManager Destructors  done

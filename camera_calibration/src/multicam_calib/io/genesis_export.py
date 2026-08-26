@@ -181,7 +181,9 @@ def build_genesis_bundle(
                 "handedness": "right",
                 "image_origin": "top_left",
                 "camera_forward_axis": "+z",
-                "xy_alignment": "bed_edges" if world_meta.xy_aligned_to_bed else "floor_board",
+                "xy_alignment": (
+                    "bed_edges" if world_meta.xy_aligned_to_bed else str(world_meta.xy_reference or "rail")
+                ),
             },
             "origin": {
                 "mode": world_meta.origin_mode,
@@ -194,6 +196,10 @@ def build_genesis_bundle(
         },
         "bed": {
             "height_m": float(world_meta.bed_height_m),
+            "height_tag_plane_m": float(
+                (world_meta.extra or {}).get("bed_height_tag_plane_m", world_meta.bed_height_m)
+            ),
+            "board_thickness_m": float((world_meta.extra or {}).get("board_thickness_m", 0.0)),
             "size_m": [float(world_meta.bed_size_m[0]), float(world_meta.bed_size_m[1])],
             "rotation_deg": float(world_meta.bed_rotation_deg),
             "center_world": [float(v) for v in world_meta.bed_center_world],

@@ -74,7 +74,7 @@ def main() -> int:
     intrinsics = load_intrinsics_map(intrinsics_path())
 
     print(f"Session: {session_root}")
-    print(f"align_xy_to_bed: {world_cfg.align_xy_to_bed}")
+    print(f"align_xy_to_bed: {world_cfg.align_xy_to_bed}  xy_reference: {world_cfg.xy_reference}")
     report = run_stage2_phase(
         bundle=bundle,
         phase="corners",

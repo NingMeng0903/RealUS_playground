@@ -1,4 +1,5 @@
 data/
+data_720p_backup/
 # Keep exported calibration YAML (genesis_bundle, intrinsics, extrinsics, world_meta)
 calibration_results/board.pdf
 __pycache__/

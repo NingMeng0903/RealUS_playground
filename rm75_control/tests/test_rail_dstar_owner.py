@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import itertools
 import math
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -24,9 +26,15 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
     DStarRef,
     RailCommandMixer,
     allocate_rail_shares,
+    in_leave_band,
+    leave_margin_m,
+    policy_escape_sign,
+    press_escape_allowed_from_flags,
     project_lpf_into_wall,
     q_star_srs_valid,
+    soft_rail_travel,
     update_escape_dir,
+    wall_velocity_bounds,
 )
 from rm75_control.control.joint_admittance_8dof.wbc_rt import protocol as P
 from rm75_control.control.joint_admittance_8dof.wbc_rt.client import find_wbc_rt_binary
@@ -127,7 +135,7 @@ def test_task_saturation_is_not_blamed_on_pi() -> None:
     assert abs(tel.u_pi_raw) < 1e-12
 
 
-def test_tanh_anti_windup_bounds_xi() -> None:
+def test_hard_clip_anti_windup_bounds_xi() -> None:
     mix = RailCommandMixer(kp=1.2, ki=8.0, u_mid_max=0.12, kaw=8.0)
     mix.d_star.init_from_live(0.0)
     for _ in range(400):
@@ -142,6 +150,64 @@ def test_tanh_anti_windup_bounds_xi() -> None:
         )
     assert abs(mix.xi) < 0.6
     assert abs(mix.last.u_mid_cmd) <= 0.12 + 1e-12
+
+
+def test_unsaturated_pi_has_zero_anti_windup() -> None:
+    mix = RailCommandMixer(kp=1.2, ki=0.8, u_mid_max=0.12, kaw=8.0)
+    mix.d_star.init_from_live(0.0)
+    tel = mix.step(
+        d_live=-0.04,
+        d_star_target=0.0,
+        u_task_raw=0.0,
+        u_escape_raw=0.0,
+        escape_explicit=False,
+        dt=0.005,
+        u_max=0.12,
+        hold_d_star=True,
+    )
+    assert tel.u_mid_cmd == pytest.approx(tel.u_pi_raw, abs=1e-12)
+    assert tel.u_mid_applied == pytest.approx(tel.u_pi_raw, abs=1e-12)
+    assert abs(tel.u_pi_raw) < 0.12 - 1e-6
+
+
+def test_pi_plant_closes_e_d_with_rail_sign() -> None:
+    mix = RailCommandMixer(kp=1.2, ki=0.8, u_mid_max=0.12, kaw=8.0)
+    mix.d_star.init_from_live(0.0)
+    d_live = -0.04
+    dt = 0.005
+    tel = None
+    for _ in range(int(2.0 / dt)):
+        tel = mix.step(
+            d_live=d_live,
+            d_star_target=0.0,
+            u_task_raw=0.0,
+            u_escape_raw=0.0,
+            escape_explicit=False,
+            dt=dt,
+            u_max=0.12,
+            hold_d_star=True,
+        )
+        d_live -= float(tel.u_mid_applied) * dt
+    assert tel is not None
+    assert abs(d_live - float(tel.d_star_ref)) < 0.020
+
+
+def test_wall_pi_frozen_does_not_integrate_or_backcalc() -> None:
+    mix = RailCommandMixer(kp=1.2, ki=0.8, u_mid_max=0.12, kaw=8.0)
+    mix.d_star.init_from_live(0.0)
+    mix.xi = 0.05
+    for _ in range(40):
+        mix.step(
+            d_live=0.20,
+            d_star_target=0.0,
+            u_task_raw=0.0,
+            u_escape_raw=0.0,
+            escape_explicit=False,
+            dt=0.005,
+            u_max=0.12,
+            in_wall=True,
+        )
+        assert mix.xi == pytest.approx(0.05, abs=1e-12)
 
 
 def test_escape_dir_debounce() -> None:
@@ -350,3 +416,331 @@ def test_sim_scan_C_long_stroke() -> None:
     wider bound than A/B because the rail can pin at the stroke ends.
     """
     assert _scan_p95(0.08, 1.15, 0.015, 0.77) < 0.080
+
+
+def _wbc_bin():
+    binary = find_wbc_rt_binary()
+    if binary is None:
+        pytest.skip("wbc_rt binary not built")
+    return binary
+
+
+def test_press_escape_flag_truth_table_matches_native() -> None:
+    binary = _wbc_bin()
+    names = (
+        "demanding",
+        "has_travel",
+        "press_stalled",
+        "j4_blocked",
+        "arm_starved",
+        "policy_leave",
+    )
+    for bits in itertools.product((False, True), repeat=6):
+        kwargs = dict(zip(names, bits))
+        py = press_escape_allowed_from_flags(**kwargs)
+        out = subprocess.check_output(
+            [str(binary), "--press-escape", "--flags", *[str(int(b)) for b in bits]],
+            text=True,
+        ).strip()
+        assert int(out) == int(py), kwargs
+        if not bits[0] or not bits[1]:
+            assert py is False
+        elif bits[2]:
+            assert py is True
+        elif bits[3] and not bits[5]:
+            assert py is True
+        elif bits[3] and bits[5] and not bits[4]:
+            assert py is False
+        elif bits[5] and bits[4]:
+            assert py is True
+        elif (not bits[5]) and bits[4] and (not bits[2]) and (not bits[3]):
+            assert py is False
+
+
+def test_policy_leave_geometry_matches_native() -> None:
+    binary = _wbc_bin()
+    urdf_lo, urdf_hi = 0.0, 0.785
+    soft_min, soft_max = 0.005, 0.78
+    escape_leave, pin_margin = 0.04, 0.008
+    lo, hi = soft_rail_travel(urdf_lo, urdf_hi, soft_min, soft_max)
+    leave = leave_margin_m(escape_leave, pin_margin)
+    mid = 0.5 * (lo + hi)
+    ys = (
+        lo,
+        lo + leave,
+        lo + leave + 0.001,
+        mid,
+        hi - leave - 0.001,
+        hi - leave,
+        hi,
+        0.40,
+    )
+    for policy in ("minus", "plus", "auto"):
+        for y in ys:
+            for latched in (0.0, 1.0, -1.0):
+                py_sign = policy_escape_sign(policy, y, lo, hi, latched_sign=latched)
+                py_leave = in_leave_band(y, lo, hi, leave, py_sign)
+                out = subprocess.check_output(
+                    [
+                        str(binary),
+                        "--policy-leave",
+                        "--y",
+                        str(y),
+                        "--urdf-lo",
+                        str(urdf_lo),
+                        "--urdf-hi",
+                        str(urdf_hi),
+                        "--soft-min",
+                        str(soft_min),
+                        "--soft-max",
+                        str(soft_max),
+                        "--escape-leave",
+                        str(escape_leave),
+                        "--pin-margin",
+                        str(pin_margin),
+                        "--policy",
+                        policy,
+                        "--latched-sign",
+                        str(latched),
+                    ],
+                    text=True,
+                ).split()
+                assert float(out[0]) == pytest.approx(py_sign)
+                assert int(out[1]) == int(py_leave)
+
+
+def test_two_phase_stop_after_press_revoke() -> None:
+    mix = RailCommandMixer(kp=1.2, ki=0.8, u_mid_max=0.12, kaw=8.0)
+    mix.d_star.init_from_live(0.25)
+    tel_on = mix.step(
+        d_live=0.27,
+        d_star_target=0.25,
+        u_task_raw=0.03,
+        u_escape_raw=0.08,
+        escape_explicit=True,
+        dt=0.005,
+        u_max=0.12,
+        quiescent=False,
+    )
+    assert tel_on.escape_active == pytest.approx(1.0)
+    assert abs(tel_on.u_escape_raw) > 1e-9
+    tel_off = mix.step(
+        d_live=0.27,
+        d_star_target=0.25,
+        u_task_raw=0.03,
+        u_escape_raw=0.0,
+        escape_explicit=False,
+        dt=0.005,
+        u_max=0.12,
+        quiescent=False,
+    )
+    assert tel_off.escape_active == pytest.approx(0.0)
+    assert tel_off.u_escape_raw == pytest.approx(0.0)
+    assert abs(tel_off.u_escape_feasible) < 1e-12
+    tel_q = mix.step(
+        d_live=0.27,
+        d_star_target=0.25,
+        u_task_raw=0.03,
+        u_escape_raw=0.0,
+        escape_explicit=False,
+        dt=0.005,
+        u_max=0.12,
+        quiescent=True,
+    )
+    assert tel_q.u_task_feasible == pytest.approx(0.0)
+    assert tel_q.u_post_feasible == pytest.approx(0.0)
+    assert tel_q.u_feasible == pytest.approx(0.0)
+
+
+def test_dead_end_wall_cap_zeros_into_wall_keeps_raw() -> None:
+    u_lo, u_hi = wall_velocity_bounds(0.12, 1.0)
+    shares = allocate_rail_shares(
+        u_task_raw=0.0,
+        u_post_raw=0.0,
+        u_escape_raw=0.08,
+        escape_dir=1,
+        u_lo=u_lo,
+        u_hi=u_hi,
+    )
+    assert shares["u_escape_feasible"] == pytest.approx(0.0)
+    assert shares["u_feasible"] == pytest.approx(0.0)
+    mix = RailCommandMixer(kp=1.2, ki=0.8, u_mid_max=0.12, kaw=8.0)
+    mix.d_star.init_from_live(0.25)
+    tel = mix.step(
+        d_live=0.25,
+        d_star_target=0.25,
+        u_task_raw=0.0,
+        u_escape_raw=0.08,
+        escape_explicit=True,
+        dt=0.005,
+        u_max=0.12,
+        leave_sign=1.0,
+        quiescent=False,
+    )
+    assert tel.u_escape_raw == pytest.approx(0.08)
+    assert tel.escape_active == pytest.approx(1.0)
+    assert tel.u_feasible <= 1e-12
+
+
+def _separated_task_j(nv: int = 8) -> np.ndarray:
+    w = np.array([100.0, 100.0, 100.0, 50.0, 50.0, 50.0])
+    w_sqrt = np.sqrt(w)
+    s_j = np.array([1.0, 0.82, 0.61, 0.40, 0.22, 0.057])
+    u = np.eye(6)
+    v = np.eye(nv)[:, :6]
+    jw = u @ np.diag(s_j) @ v.T
+    return jw / w_sqrt[:, None], w
+
+
+def _python_task_weight_core(*, aniso: bool, tau: float):
+    from rm75_control.control.joint_admittance_8dof.ik_types import SrDampingConfig
+    from rm75_control.control.joint_admittance_8dof.collision_model import CollisionConfig
+    from rm75_control.control.joint_admittance_8dof.solver.qp_builder import (
+        QpConfig,
+        QpIkController,
+    )
+    from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
+
+    kin = RobotKinematics()
+    limits = SafetyLimits(
+        q_lower=kin.q_lower,
+        q_upper=kin.q_upper,
+        v_max=kin.v_max,
+        a_max=np.full(kin.nv, 10.0),
+        position_margin=np.full(kin.nv, 0.01),
+    )
+    cfg = QpConfig(
+        task_weight=np.array([100.0, 100.0, 100.0, 50.0, 50.0, 50.0]),
+        aniso_task_damping=bool(aniso),
+        task_weight_lpf_tau_s=float(tau),
+        task_weight_min_frac=0.05,
+        sr_damping=SrDampingConfig(lam0=0.05, sigma_ref=0.08, sigma_floor=1e-6),
+        collision=CollisionConfig(enabled=False),
+    )
+    return QpIkController(kin, limits, cfg)
+
+
+def _native_task_weight(
+    binary,
+    j: np.ndarray,
+    w: np.ndarray,
+    *,
+    dt: float,
+    tau: float,
+    aniso: bool,
+    ticks: int,
+    zero_rail: bool = False,
+    reset_before_tick: int | None = None,
+    extra_j: list[np.ndarray] | None = None,
+) -> list[np.ndarray]:
+    cmd = [
+        str(binary),
+        "--task-weight",
+        "--J",
+        *[f"{x:.17g}" for x in np.asarray(j, dtype=float).reshape(-1)],
+    ]
+    for jx in extra_j or []:
+        cmd.extend(["--J", *[f"{x:.17g}" for x in np.asarray(jx, dtype=float).reshape(-1)]])
+    cmd.extend(
+        [
+            "--w",
+            *[f"{x:.17g}" for x in np.asarray(w, dtype=float).reshape(-1)],
+            "--dt",
+            str(dt),
+            "--tau",
+            str(tau),
+            "--sigma-ref",
+            "0.08",
+            "--min-frac",
+            "0.05",
+            "--aniso",
+            "1" if aniso else "0",
+            "--ticks",
+            str(int(ticks)),
+        ]
+    )
+    if zero_rail:
+        cmd.append("--zero-rail")
+    if reset_before_tick is not None:
+        cmd.extend(["--reset-before-tick", str(int(reset_before_tick))])
+    out = subprocess.check_output(cmd, text=True).strip().splitlines()
+    mats = []
+    for line in out:
+        vals = [float(x) for x in line.split()]
+        assert len(vals) == 36
+        mats.append(np.array(vals, dtype=float).reshape(6, 6))
+    return mats
+
+
+def test_native_task_weight_parity_aniso_iso_lpf_reset_rail() -> None:
+    binary = _wbc_bin()
+    j, w = _separated_task_j()
+    dt = 0.005
+    tau = 0.25
+    for aniso in (True, False):
+        core = _python_task_weight_core(aniso=aniso, tau=tau)
+        native = _native_task_weight(
+            binary, j, w, dt=dt, tau=tau, aniso=aniso, ticks=8
+        )
+        for k, w_nat in enumerate(native):
+            w_py = core._task_weight_matrix(j, dt=dt, keep_task_weight=False)
+            assert np.allclose(w_nat, w_py, rtol=1e-7, atol=1e-8), (aniso, k)
+
+    core0 = _python_task_weight_core(aniso=True, tau=0.0)
+    w_raw = core0._task_weight_matrix(j, dt=dt, keep_task_weight=False)
+    native_first = _native_task_weight(
+        binary, j, w, dt=dt, tau=tau, aniso=True, ticks=1
+    )
+    assert np.allclose(native_first[0], w_raw, rtol=1e-7, atol=1e-8)
+
+    s_j2 = np.array([1.0, 0.82, 0.61, 0.40, 0.22, 0.030])
+    w_sqrt = np.sqrt(w)
+    j2 = (np.eye(6) @ np.diag(s_j2) @ np.eye(8)[:, :6].T) / w_sqrt[:, None]
+    core_l = _python_task_weight_core(aniso=True, tau=tau)
+    native_l = _native_task_weight(
+        binary, j, w, dt=dt, tau=tau, aniso=True, ticks=3, extra_j=[j2]
+    )
+    w_l = [
+        core_l._task_weight_matrix(jj, dt=dt, keep_task_weight=False)
+        for jj in (j, j2, j2)
+    ]
+    for k, w_nat in enumerate(native_l):
+        assert np.allclose(w_nat, w_l[k], rtol=1e-7, atol=1e-8), k
+    core_raw2 = _python_task_weight_core(aniso=True, tau=0.0)
+    w_raw2 = core_raw2._task_weight_matrix(j2, dt=dt, keep_task_weight=False)
+    assert not np.allclose(native_l[1], w_raw2, rtol=1e-4, atol=1e-5)
+
+    core_r = _python_task_weight_core(aniso=True, tau=tau)
+    native_r = _native_task_weight(
+        binary, j, w, dt=dt, tau=tau, aniso=True, ticks=3, reset_before_tick=2
+    )
+    w1 = core_r._task_weight_matrix(j, dt=dt, keep_task_weight=False)
+    core_r.reset()
+    w2 = core_r._task_weight_matrix(j, dt=dt, keep_task_weight=False)
+    w3 = core_r._task_weight_matrix(j, dt=dt, keep_task_weight=False)
+    assert np.allclose(native_r[0], w1, rtol=1e-7, atol=1e-8)
+    assert np.allclose(native_r[1], w2, rtol=1e-7, atol=1e-8)
+    assert np.allclose(native_r[2], w3, rtol=1e-7, atol=1e-8)
+    assert np.allclose(w1, w2, rtol=1e-12, atol=1e-12)
+
+    j_z = j.copy()
+    j_z[:, 0] = 0.0
+    core_z = _python_task_weight_core(aniso=True, tau=0.0)
+    w_z = core_z._task_weight_matrix(j_z, dt=dt, keep_task_weight=False)
+    native_z = _native_task_weight(
+        binary, j, w, dt=dt, tau=0.0, aniso=True, ticks=1, zero_rail=True
+    )
+    assert np.allclose(native_z[0], w_z, rtol=1e-7, atol=1e-8)
+
+    s_rep = np.array([1.0, 1.0, 1.0, 0.4, 0.4, 0.057])
+    w_sqrt = np.sqrt(w)
+    u = np.eye(6)
+    v = np.eye(8)[:, :6]
+    j_rep = (u @ np.diag(s_rep) @ v.T) / w_sqrt[:, None]
+    core_rep = _python_task_weight_core(aniso=True, tau=0.0)
+    w_rep = core_rep._task_weight_matrix(j_rep, dt=dt, keep_task_weight=False)
+    native_rep = _native_task_weight(
+        binary, j_rep, w, dt=dt, tau=0.0, aniso=True, ticks=1
+    )
+    assert np.allclose(native_rep[0], w_rep, rtol=1e-5, atol=1e-6)
+

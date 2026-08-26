@@ -17,16 +17,21 @@ from pupil_apriltags import Detector
 
 from multicam_calib.io.config import BoardConfig, DetectorConfig
 
-# pupil_apriltags corner index order differs from our board-frame convention
-# (BL, BR, TR, TL with +X right, +Y up on the board).  Empirically verified on
-# the physical tag36h11 board: remap raw indices [0,1,2,3] -> [3,0,1,2].
+# Default = large bed board. pupil_apriltags corner index order differs from
+# board-frame [BL, BR, TR, TL]. Empirically: bed board [3,0,1,2], EE board
+# [1,2,3,0] (tags printed 90° relative to the bed sheet). Prefer
+# ``BoardConfig.pupil_to_board_corner_perm`` via ``gather_correspondences``.
 _PUPIL_TO_BOARD_CORNER_PERM = np.array([3, 0, 1, 2], dtype=np.int64)
 
 
-def corners_to_board_frame(corners: np.ndarray) -> np.ndarray:
-    """Map pupil_apriltags corners to board-model corner order."""
+def corners_to_board_frame(
+    corners: np.ndarray,
+    perm: np.ndarray | list[int] | tuple[int, ...] | None = None,
+) -> np.ndarray:
+    """Map pupil_apriltags corners to board-model corner order [BL, BR, TR, TL]."""
     c = np.asarray(corners, dtype=np.float64).reshape(4, 2)
-    return c[_PUPIL_TO_BOARD_CORNER_PERM]
+    p = _PUPIL_TO_BOARD_CORNER_PERM if perm is None else np.asarray(perm, dtype=np.int64).reshape(4)
+    return c[p]
 
 
 @dataclass
@@ -36,6 +41,33 @@ class TagDetection:
     center: np.ndarray   # (2,) float64
     decision_margin: float
     hamming: int
+
+
+def scale_detections(
+    dets: list[TagDetection],
+    *,
+    from_wh: tuple[int, int],
+    to_wh: tuple[int, int],
+) -> list[TagDetection]:
+    """Map detections from a resized detect image back to the display/capture frame."""
+    fw, fh = int(from_wh[0]), int(from_wh[1])
+    tw, th = int(to_wh[0]), int(to_wh[1])
+    if fw <= 0 or fh <= 0 or (fw == tw and fh == th):
+        return dets
+    sx = tw / float(fw)
+    sy = th / float(fh)
+    out: list[TagDetection] = []
+    for d in dets:
+        out.append(
+            TagDetection(
+                tag_id=d.tag_id,
+                corners=np.asarray(d.corners, dtype=np.float64).reshape(4, 2) * np.array([sx, sy]),
+                center=np.asarray(d.center, dtype=np.float64).reshape(2) * np.array([sx, sy]),
+                decision_margin=d.decision_margin,
+                hamming=d.hamming,
+            )
+        )
+    return out
 
 
 class AprilTagDetector:
@@ -52,6 +84,10 @@ class AprilTagDetector:
             decode_sharpening=float(det_cfg.decode_sharpening),
         )
         self._valid_ids = board.all_expected_ids()
+        # Grazing / tiny quads make OpenCV invert a singular homography and
+        # spam "WRN: Matrix is singular". Harmless for live preview.
+        # OpenCV 4.11 wheels expose setLogLevel but not LOG_LEVEL_ERROR (2 = ERROR).
+        cv2.setLogLevel(2)
 
     def detect(self, image_bgr: np.ndarray) -> list[TagDetection]:
         """Detect tags on this board in a BGR image."""

@@ -204,11 +204,50 @@ def min_area_rect_from_xy(points_xy: np.ndarray) -> RotatedRect:
         raise ValueError("Need at least 3 points for a rotated rect fit.")
     (cx, cy), (w, h), angle = cv2.minAreaRect(pts)
     box = cv2.boxPoints(((cx, cy), (w, h), angle))
+    return normalize_rotated_rect(
+        RotatedRect(
+            center_xy=(float(cx), float(cy)),
+            size=(float(w), float(h)),
+            angle_deg=float(angle),
+            corners_xy=np.asarray(box, dtype=np.float64),
+        )
+    )
+
+
+def _fold_axis_angle_deg(angle_deg: float) -> float:
+    """Fold an undirected-axis angle into (-90, 90]."""
+    a = (float(angle_deg) + 90.0) % 180.0 - 90.0
+    if a <= -90.0:
+        a += 180.0
+    return float(a)
+
+
+def normalize_rotated_rect(rect: RotatedRect) -> RotatedRect:
+    """Fold OpenCV's (0, 90] minAreaRect angle so ``size[0]`` is the axis nearer +X.
+
+    OpenCV 4.5+ reports ``angle`` in ``(0, 90]`` and may swap width/height.
+    A bed skewed −8.6° would otherwise come out as +81.4° with the axes
+    swapped. After this, ``angle_deg`` is in ``(-45, 45]`` and ``size[0]``
+    is the side along that axis.
+    """
+    w, h = float(rect.size[0]), float(rect.size[1])
+    a0 = _fold_axis_angle_deg(rect.angle_deg)
+    a1 = _fold_axis_angle_deg(rect.angle_deg + 90.0)
+    if abs(a0) < abs(a1) or (abs(a0) == abs(a1) and abs(a0) <= 45.0 and w >= h):
+        angle, size = a0, (w, h)
+    else:
+        angle, size = a1, (h, w)
+    if angle <= -45.0:
+        angle += 90.0
+        size = (size[1], size[0])
+    elif angle > 45.0:
+        angle -= 90.0
+        size = (size[1], size[0])
     return RotatedRect(
-        center_xy=(float(cx), float(cy)),
-        size=(float(w), float(h)),
+        center_xy=rect.center_xy,
+        size=size,
         angle_deg=float(angle),
-        corners_xy=np.asarray(box, dtype=np.float64),
+        corners_xy=np.asarray(rect.corners_xy, dtype=np.float64),
     )
 
 

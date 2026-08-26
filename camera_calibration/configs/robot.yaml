@@ -1,0 +1,32 @@
+# Robot-world / hand-eye constants used by Stage 2 "robot" phase.
+#
+# Ground height is not observable from vision once the floor-board phase is
+# gone. base_link sits on the slider top; this measured height is the only
+# tape-measure scalar that anchors z=0.
+
+base_link_height_above_floor_m: 0.274
+
+# WBC URDF rail_y joint origin in rail_base (meters). rail_y=0 → slider at -Y end.
+# T_railbase_baselink(rail_y) = translate(this + [0, rail_y, 0]).
+rail_y_origin_in_railbase_m: [0.0, -0.4, 0.0]
+
+shm:
+  name: rm75_state
+  max_age_s: 0.25
+
+stillness:
+  window_s: 0.15
+  trans_m: 0.001
+  rot_deg: 0.3
+  rail_m: 0.0005
+
+# Used for provenance in robot_world.yaml (sha1 of this file).
+wbc_urdf: ../rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf
+
+# Identify joint_1..6 zero offsets in the robot-world BA. joint_7 is always
+# locked at 0 (absorbed by T_tcp_board). Samples without q_deg fall back to
+# the 12-parameter rigid-only model.
+kinematic_fit:
+  joint_offsets: true
+  rail_span_min_m: 0.15
+  board_scale_warn: 0.002

@@ -1,0 +1,16 @@
+joint_zero_offsets_deg:
+- -0.12719090204759542
+- -0.08017369184371216
+- -0.11409973822400163
+- -0.38845126597441926
+- -0.23969445933011083
+- -1.0152475058131862
+- 0.0
+wbc_urdf_sha1: 9b469f5e82b0ae2c5ee88e03c71a79d05d74fcb3
+wbc_urdf: /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf
+n_samples: 43
+ba_rmse_px: 0.5863070775421866
+leave_out_rmse_px: 0.5969723587880549
+fitted_at: '2026-08-26T06:20:45Z'
+lock_reasons:
+- joint_7 locked at 0 (absorbed by T_tcp_board)

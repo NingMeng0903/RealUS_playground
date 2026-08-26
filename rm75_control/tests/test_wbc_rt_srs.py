@@ -125,6 +125,61 @@ def test_cxx_fk_pose_matches_python(kin, dumped_cfg) -> None:
     assert np.allclose(cxx[3:], py[3:], atol=1e-9)
 
 
+@pytest.fixture(scope="module")
+def kin_synced() -> RobotKinematics:
+    kin = RobotKinematics()
+    offset = kin.tcp_offset_pose.copy()
+    offset[5] += np.deg2rad(1.5)
+    kin.apply_link7_to_tcp_offset(offset)
+    return kin
+
+
+@pytest.fixture(scope="module")
+def dumped_cfg_synced(kin_synced: RobotKinematics, tmp_path_factory) -> Path:
+    raw = yaml.safe_load(_CFG.read_text())
+    cfg = build_joint_ik_config(raw)
+    path = tmp_path_factory.mktemp("wbc_rt_srs_synced") / "wbc.cfg"
+    dump_wbc_config(cfg, path, urdf_path=kin_synced.urdf_path, kin=kin_synced)
+    return path
+
+
+@pytest.mark.skipif(_BIN is None, reason="wbc_rt binary not built")
+def test_cxx_fk_pose_matches_synced_tool(kin_synced, dumped_cfg_synced) -> None:
+    py = np.asarray(kin_synced.fk_pose(_SEED_Q), dtype=float).reshape(6)
+    urdf_kin = RobotKinematics()
+    urdf_pose = np.asarray(urdf_kin.fk_pose(_SEED_Q), dtype=float).reshape(6)
+    assert not np.allclose(py[3:], urdf_pose[3:], atol=1e-4)
+    cxx = _parse_floats(
+        _run(
+            [
+                "--fk-pose",
+                "--config",
+                str(dumped_cfg_synced),
+                "--q",
+                *[f"{x:.17g}" for x in _SEED_Q],
+            ]
+        )
+    )
+    assert cxx.shape == (6,)
+    assert np.allclose(cxx[:3], py[:3], atol=1e-10)
+    assert np.allclose(cxx[3:], py[3:], atol=1e-9)
+
+
+@pytest.mark.skipif(_BIN is None, reason="wbc_rt binary not built")
+def test_cxx_posture_matches_synced_tool(kin_synced, dumped_cfg_synced) -> None:
+    dt = 0.005
+    rail_lo, rail_hi = 0.005, 0.78
+    ticks = 40
+    py = _py_posture_rows(kin_synced, _SEED_Q, dt, rail_lo, rail_hi, False, ticks)
+    cxx = _cxx_posture_rows(dumped_cfg_synced, _SEED_Q, dt, rail_lo, rail_hi, False, ticks)
+    assert py.shape == cxx.shape
+    assert np.allclose(py[:, 0], cxx[:, 0], atol=1e-9)
+    assert np.allclose(py[:, 1], cxx[:, 1], atol=1e-9)
+    assert np.allclose(py[:, 2], cxx[:, 2], atol=1e-9)
+    assert np.allclose(py[:, 3], cxx[:, 3], atol=1e-9)
+    assert np.allclose(py[:, 4:], cxx[:, 4:], atol=1e-7)
+
+
 def _py_posture_rows(kin, q, dt, rail_lo, rail_hi, hold, ticks):
     raw = yaml.safe_load(_CFG.read_text())
     cfg = build_joint_ik_config(raw)

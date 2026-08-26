@@ -111,6 +111,9 @@ def build_scene(
             "name": str(support.get("name", "bed_surface")),
             "pos": [float(v) for v in support.get("pos", [0.0, 0.0, 0.23])],
             "size": [float(v) for v in support.get("size", [1.9, 0.7, 0.1])],
+            "rotation_deg": float(
+                support.get("rotation_deg", bed.get("rotation_deg", 0.0))
+            ),
             "color": [0.55, 0.55, 0.57, 1.0],
             "semantic_role": "bed",
             "spawn_in_genesis": True,

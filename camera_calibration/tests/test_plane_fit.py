@@ -107,6 +107,24 @@ class TestPlaneFit(unittest.TestCase):
         self.assertLess(abs(aa.center_xy()[0]), 0.02)
         self.assertLess(abs(aa.center_xy()[1]), 0.02)
 
+    def test_min_area_rect_reports_minus_8p6_not_81(self) -> None:
+        from multicam_calib.calib.plane_fit import min_area_rect_from_xy
+
+        corners = np.array(
+            [[-0.95, -0.35], [0.95, -0.35], [0.95, 0.35], [-0.95, 0.35]],
+            dtype=np.float64,
+        )
+        angle = -8.6
+        rad = np.deg2rad(angle)
+        c, s = np.cos(rad), np.sin(rad)
+        R = np.array([[c, -s], [s, c]])
+        pts = (R @ corners.T).T
+        rect = min_area_rect_from_xy(pts)
+        self.assertLess(abs(rect.angle_deg - (-8.6)), 0.5)
+        self.assertGreater(rect.size[0], rect.size[1])
+        self.assertLess(abs(rect.angle_deg), 45.0)
+
 
 if __name__ == "__main__":
     unittest.main()
+

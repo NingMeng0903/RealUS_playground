@@ -107,7 +107,8 @@ def sample_near_edge_points(
     rng = np.random.default_rng(seed)
     heights = leg_heights_m or [0.10, 0.15]
     x0 = float(base_xy[0])
-    # Along rail travel, slightly onto the bed from the rail side
+    # Along rail travel = world +X under rail-aligned Stage 2. y_max is the
+    # axis-aligned bed edge; a skewed bed makes this an approximation.
     xs = rng.uniform(x0 + 0.05, x0 + 0.75, size=n)
     y_edge = float(bed["y_max"]) - rng.uniform(0.02, 0.12, size=n)
     zs = float(bed["height_m"]) + rng.choice(heights, size=n)

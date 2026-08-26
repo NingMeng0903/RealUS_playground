@@ -1,0 +1,220 @@
+Log file created at: 2023/07/18 20:58:32
+Running on machine: passoni
+Running duration (h:mm:ss): 0:00:00
+Log line format: [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
+[I20230718 20:58:32.588691 115066 DeviceManager.cpp:54] DeviceManager init ...
+[I20230718 20:58:32.588872 115066 LinuxPal.cpp:21] createObPal: create LinuxPal!
+[I20230718 20:58:32.711939 115066 EnumeratorLibusb.cpp:325] queryDevicesInfo done!
+[I20230718 20:58:32.713575 115066 DeviceManager.cpp:373] Current usb device port list::
+[I20230718 20:58:32.713591 115066 DeviceManager.cpp:375]         - 1-2-5.0 | Orbbec(R) Astra(TM) 3D Camera(F) Depth
+[I20230718 20:58:32.713596 115066 DeviceManager.cpp:375]         - 1-1-4.0 | USB Camera
+[W20230718 20:58:32.713608 115066 OpenNIDeviceInfo.cpp:172] New openni device matched.
+[I20230718 20:58:32.713614 115066 DeviceManager.cpp:345] Devices matched:
+[I20230718 20:58:32.713618 115066 DeviceManager.cpp:359]   - openniDevice = 1
+[I20230718 20:58:32.713666 115066 LinuxPal.cpp:142] Create PollingDeviceWatcher!
+[I20230718 20:58:32.713675 115066 DeviceManager.cpp:99] DeviceManager init  done!
+[I20230718 20:58:32.713678 115066 DeviceManager.cpp:50] DeviceManager construct done
+[I20230718 20:58:32.713682 115066 Context.cpp:51] Context created!
+[I20230718 20:58:32.713687 115066 DeviceManager.cpp:211] DeviceManager  createDevice...
+[I20230718 20:58:32.717794 115066 OpenNIHostProtocol.cpp:487] Hardware versions: FW=5.8.23(14),HW=0, Chip=7,Sensor=0,SYS=12
+[E20230718 20:58:32.720278 115066 OpenNIHostProtocol.cpp:502] Get usb core type failed!
+[I20230718 20:58:32.720306 115066 OpenNIHostProtocol.cpp:574] Requesting KeepAlive...
+[I20230718 20:58:32.722637 115066 OpenNIHostProtocol.cpp:581] Got KeepAlive Reply.
+[I20230718 20:58:32.728405 115066 OpenNIHostProtocol.cpp:574] Requesting KeepAlive...
+[I20230718 20:58:32.732241 115066 OpenNIHostProtocol.cpp:581] Got KeepAlive Reply.
+[I20230718 20:58:32.732259 115066 OpenNIHostProtocol.cpp:596] Getting the fixed params...
+[I20230718 20:58:32.736421 115066 OpenNIHostProtocol.cpp:633] Reading sensor serial number...
+[I20230718 20:58:32.740216 115066 OpenNISensorFirmware.cpp:892] Sensor serial number:AY2B43100A7
+[I20230718 20:58:32.743269 115066 OpenNIHostProtocol.cpp:702] Reading sensor platform string...
+[I20230718 20:58:32.745615 115066 OpenNISensorFirmware.cpp:920] Firmware version RD3013
+[I20230718 20:58:32.749218 115066 OpenNISensorFirmware.cpp:926] Device frequency 50
+[I20230718 20:58:32.749250 115066 OpenNIHostProtocol.cpp:773] Update supported depth video modes from firmware
+[I20230718 20:58:32.749256 115066 OpenNIHostProtocol.cpp:806] Reading CMOS 1 supported presets...
+[I20230718 20:58:32.753158 115066 OpenNIHostProtocol.cpp:773] Update supported depth video modes from firmware
+[I20230718 20:58:32.753176 115066 OpenNIHostProtocol.cpp:806] Reading CMOS 2 supported presets...
+[I20230718 20:58:32.855358 115066 OpenNISensorFirmware.cpp:938] OpenNI camera params read.
+[I20230718 20:58:33.225103 115066 OpenNISensorFirmware.cpp:1216] OpenNI camera params read end.
+[I20230718 20:58:33.225191 115066 OpenNISensorIO.cpp:29] Opening endpoint 0x81 for depth...
+[I20230718 20:58:33.225216 115066 OpenNISensorIO.cpp:41] Depth endpoint(0x81) was successfully opened.
+[I20230718 20:58:33.225236 115066 OpenNISensorIO.cpp:48] Opening endpoint 0x82 for IR...
+[I20230718 20:58:33.225257 115066 OpenNISensorIO.cpp:54] IR endpoint(0x82) was successfully opened.
+[I20230718 20:58:33.225277 115066 OpenNISensorIO.cpp:60] Opening endpoint 0x84 for image...
+[I20230718 20:58:33.225297 115066 OpenNISensorIO.cpp:65] Image endpoint is not supported...
+[I20230718 20:58:33.225317 115066 OpenNISensorIO.cpp:75] Opening endpoint 0x83 for misc...
+[I20230718 20:58:33.225335 115066 OpenNISensorIO.cpp:80] Misc endpoint is not supported...
+[I20230718 20:58:33.225354 115066 OpenNISensorIO.cpp:87] Endpoints open end.
+[I20230718 20:58:33.225375 115066 VendorCommand.cpp:187] VendorCommand constructor 0x55672ea1e260
+[I20230718 20:58:33.225395 115066 OpenNIDevice.cpp:162] init sensor map start!
+[I20230718 20:58:33.225417 115066 OpenNIDevice.cpp:176] init sensor map done!
+[I20230718 20:58:33.225471 115066 AbstractDevice.cpp:364] Default config file is not loaded!
+[I20230718 20:58:33.225495 115066 OpenNIDevice.cpp:216] Init depth process param start!
+[I20230718 20:58:33.225515 115066 OpenNIDevice.cpp:229] Device baseline: 39.9415, fx: 947.352
+[I20230718 20:58:33.225544 115066 OpenNIDevice.cpp:262] Init depth process param done!
+[I20230718 20:58:33.225567 115066 OpenNIDevice.cpp:29] OpenNIDevice init done
+[I20230718 20:58:33.225589 115066 DeviceManager.cpp:307] DeviceManager createDevice done!
+[I20230718 20:58:33.225610 115066 Pipeline.cpp:26] Pipeline init ...
+[I20230718 20:58:33.225636 115066 Pipeline.cpp:172] loadFrameQueueSizeConfig() config queue size: 10
+[I20230718 20:58:33.225662 115066 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20230718 20:58:33.225687 115066 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20230718 20:58:33.225708 115066 Pipeline.cpp:47] Pipeline init done!
+[I20230718 20:58:33.225761 115066 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20230718 20:58:33.225816 115066 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20230718 20:58:33.225858 115066 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20230718 20:58:33.226101 115066 OpenNIDevice.cpp:328] Depth sensor has been created!
+[I20230718 20:58:33.226130 115066 OpenNIVideoSensor.cpp:814] Query stream profile! size= 24, sensorType=OB_SENSOR_DEPTH
+[I20230718 20:58:33.226227 115066 Pipeline.cpp:181] Pipeline start() start!
+[I20230718 20:58:33.226263 115066 FrameProcessingBlockManager.cpp:75]  FrameProcessingBlockManager started, 0 processingblocks contained!
+[I20230718 20:58:33.226285 115066 Pipeline.cpp:226] Start stream ...
+[I20230718 20:58:33.226337 115066 FrameBufferManager.hpp:58] FrameBufferManager created! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE, obj addr:93901652356640, frame obj total size:0.0843267MB
+[I20230718 20:58:33.226387 115066 FrameBufferManager.cpp:107] DepthFrame bufferManager created!
+[I20230718 20:58:33.226438 115066 OpenNISensorStreams.cpp:79] Firmware stream Depth processor was replaced.
+[I20230718 20:58:33.226461 115066 FrameProcessor.cpp:75]  FrameProcessor stoped!
+[I20230718 20:58:33.226481 115066 FrameProcessor.cpp:66]  FrameProcessor started, 3 block contained!
+[I20230718 20:58:33.230788 115066 OpenNIVideoSensor.cpp:702] Creating USB Depth read thread... 
+[I20230718 20:58:33.230871 115066 OpenNIUSBLinux.cpp:112] Starting a USB read thread...
+[I20230718 20:58:33.233880 115066 OpenNISensorParams.cpp:110] set property DepthFormat(3).
+[I20230718 20:58:33.235451 115071 OpenNIDataProcessor.cpp:28] Depth: Expected 1, got71
+[I20230718 20:58:33.235527 115071 OpenNIPacketProcessor.cpp:32] Read: Depthbuffer is corrupt. Size is 48220 (!= 88000)
+[I20230718 20:58:33.235576 115071 OpenNIFrameProcessor.cpp:89] Depth frame is corrupt!
+[I20230718 20:58:33.238554 115066 OpenNISensorParams.cpp:121] DepthFormat(3)was successfully set.
+[I20230718 20:58:33.238600 115066 OpenNISensorParams.cpp:110] set property DepthResolution(20).
+[I20230718 20:58:33.241807 115066 OpenNISensorParams.cpp:121] DepthResolution(20)was successfully set.
+[I20230718 20:58:33.241856 115066 OpenNISensorParams.cpp:110] set property DepthFPS(5).
+[I20230718 20:58:33.247161 115066 OpenNISensorParams.cpp:121] DepthFPS(5)was successfully set.
+[I20230718 20:58:33.247200 115066 OpenNISensorParams.cpp:110] set property DepthHoleFilter(1).
+[I20230718 20:58:33.251273 115066 OpenNISensorParams.cpp:121] DepthHoleFilter(1)was successfully set.
+[I20230718 20:58:33.251317 115066 OpenNISensorParams.cpp:110] set property Registration(0).
+[I20230718 20:58:33.254377 115066 OpenNISensorParams.cpp:121] Registration(0)was successfully set.
+[I20230718 20:58:33.254421 115066 OpenNISensorParams.cpp:110] set property DepthMirror(1).
+[I20230718 20:58:33.257470 115066 OpenNISensorParams.cpp:121] DepthMirror(1)was successfully set.
+[I20230718 20:58:33.257499 115066 OpenNISensorParams.cpp:110] set property Stream1Mode(2).
+[I20230718 20:58:33.262504 115066 OpenNISensorParams.cpp:121] Stream1Mode(2)was successfully set.
+[I20230718 20:58:33.262524 115066 OpenNISensorParams.cpp:110] set property DepthCropEnabled(0).
+[I20230718 20:58:33.266737 115066 OpenNISensorParams.cpp:121] DepthCropEnabled(0)was successfully set.
+[I20230718 20:58:33.266754 115066 OpenNISensorParams.cpp:110] set property FrameSync(0).
+[I20230718 20:58:33.269218 115066 OpenNISensorParams.cpp:121] FrameSync(0)was successfully set.
+[I20230718 20:58:33.269243 115066 Pipeline.cpp:237] Sensor start, sensorType=OB_SENSOR_DEPTH streamType=OB_STREAM_DEPTH
+[I20230718 20:58:33.269250 115066 Pipeline.cpp:239] Start stream done!
+[I20230718 20:58:33.269254 115066 Pipeline.cpp:222] Pipeline start() done!
+[I20230718 20:58:33.269299 115066 OpenNISensorParams.cpp:110] set property DepthMirror(1).
+[I20230718 20:58:33.272284 115066 OpenNISensorParams.cpp:121] DepthMirror(1)was successfully set.
+[I20230718 20:58:33.318364 115071 OpenNIDataProcessor.cpp:28] Depth: Expected 108, got1
+[I20230718 20:58:33.318406 115071 OpenNIFrameProcessor.cpp:96] Depth Frame Buffer overflow! current size: 85680
+[I20230718 20:58:33.318413 115071 OpenNIFrameProcessor.cpp:89] Depth frame is corrupt!
+[E20230718 20:58:33.318415 115071 OpenNIPacketProcessor.cpp:18] Write buffer overflow!
+[W20230718 20:58:33.372859 115066 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230718 20:58:33.372905 115066 ApiImpl.cpp:1398] frameSet is nullptr
+[I20230718 20:58:33.380339 115071 OpenNIPacketProcessor.cpp:32] Read: Depthbuffer is corrupt. Size is 85680 (!= 88000)
+[I20230718 20:58:33.442356 115071 FrameBufferManager.cpp:33] New frame buffer allocated=0.0843267MB, total usage: {allocated=0.0843267MB, max limit=2048MB}
+[I20230718 20:58:33.442500 115071 FrameProcessingBlock.cpp:57] FrameProcessingBlock@N11libobsensor13FrameUnpackerE process thread started!
+[I20230718 20:58:33.442564 115072 FrameBufferManager.hpp:58] FrameBufferManager created! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE, obj addr:139685355588400, frame obj total size:0.122474MB
+[I20230718 20:58:33.442575 115072 FrameBufferManager.cpp:107] DepthFrame bufferManager created!
+[I20230718 20:58:33.442618 115072 FrameBufferManager.cpp:33] New frame buffer allocated=0.122474MB, total usage: {allocated=0.2068MB, max limit=2048MB}
+[I20230718 20:58:33.442698 115072 FrameProcessingBlock.cpp:57] FrameProcessingBlock@N11libobsensor15FrameSoftFilterE process thread started!
+[I20230718 20:58:33.443226 115073 FrameProcessingBlock.cpp:57] FrameProcessingBlock@N11libobsensor24Disparity2DepthConverterE process thread started!
+[I20230718 20:58:33.443311 115074 FrameBufferManager.hpp:58] FrameBufferManager created! @N11libobsensor18FrameBufferManagerINS_8FrameSetEEE, obj addr:139685221370672, frame obj total size:0.000159264MB
+[I20230718 20:58:33.443325 115074 FrameBufferManager.cpp:33] New frame buffer allocated=0.000159264MB, total usage: {allocated=0.20696MB, max limit=2048MB}
+[I20230718 20:58:33.448916 115066 Pipeline.cpp:71] Pipeline deInit start!
+[I20230718 20:58:33.449012 115066 Pipeline.cpp:350] Pipeline stop start!
+[I20230718 20:58:33.449074 115066 Pipeline.cpp:322] Stop stream ...
+[I20230718 20:58:33.449124 115066 OpenNIVideoSensor.cpp:712] Shutting down USB Depth read thread...
+[I20230718 20:58:33.449164 115066 OpenNIUSBLinux.cpp:346] Shutdown read thread...
+[I20230718 20:58:33.501874 115071 OpenNIUSBLinux.cpp:287] Do not submit(4)...
+[I20230718 20:58:33.501937 115072 FrameBufferManager.cpp:33] New frame buffer allocated=0.122474MB, total usage: {allocated=0.329433MB, max limit=2048MB}
+[I20230718 20:58:33.502064 115071 OpenNIUSBLinux.cpp:218] Cancel request transfer(5)...
+[I20230718 20:58:33.505878 115068 RequestLibusb.cpp:21] transfer cancelled!
+[W20230718 20:58:33.606153 115071 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer 5: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20230718 20:58:33.606199 115071 OpenNIUSBLinux.cpp:287] Do not submit(5)...
+[I20230718 20:58:33.606302 115071 OpenNIUSBLinux.cpp:218] Cancel request transfer(7)...
+[I20230718 20:58:33.609213 115068 RequestLibusb.cpp:21] transfer cancelled!
+[W20230718 20:58:33.709883 115071 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer 7: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20230718 20:58:33.709929 115071 OpenNIDataProcessor.cpp:28] Depth: Expected 96, got123
+[I20230718 20:58:33.709941 115071 OpenNIUSBLinux.cpp:287] Do not submit(7)...
+[I20230718 20:58:33.710032 115071 OpenNIUSBLinux.cpp:218] Cancel request transfer(9)...
+[I20230718 20:58:33.713641 115068 RequestLibusb.cpp:21] transfer cancelled!
+[W20230718 20:58:33.814154 115071 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer 9: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20230718 20:58:33.814219 115071 OpenNIDataProcessor.cpp:28] Depth: Expected 134, got161
+[I20230718 20:58:33.814231 115071 OpenNIFrameProcessor.cpp:96] Depth Frame Buffer overflow! current size: 85680
+[I20230718 20:58:33.814236 115071 OpenNIFrameProcessor.cpp:89] Depth frame is corrupt!
+[E20230718 20:58:33.814239 115071 OpenNIPacketProcessor.cpp:18] Write buffer overflow!
+[I20230718 20:58:33.814245 115071 OpenNIPacketProcessor.cpp:32] Read: Depthbuffer is corrupt. Size is 85680 (!= 88000)
+[I20230718 20:58:33.814251 115071 OpenNIUSBLinux.cpp:287] Do not submit(9)...
+[I20230718 20:58:33.814352 115071 OpenNIUSBLinux.cpp:218] Cancel request transfer(12)...
+[I20230718 20:58:33.817256 115068 RequestLibusb.cpp:21] transfer cancelled!
+[W20230718 20:58:33.917820 115071 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer c: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20230718 20:58:33.917863 115071 OpenNIUSBLinux.cpp:287] Do not submit(12)...
+[I20230718 20:58:33.917963 115071 OpenNIUSBLinux.cpp:218] Cancel request transfer(14)...
+[I20230718 20:58:33.920830 115068 RequestLibusb.cpp:21] transfer cancelled!
+[W20230718 20:58:34.020900 115071 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer e: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20230718 20:58:34.020961 115071 OpenNIDataProcessor.cpp:28] Depth: Expected 176, got256
+[I20230718 20:58:34.020973 115071 OpenNIPacketProcessor.cpp:32] Read: Depthbuffer is corrupt. Size is 20680 (!= 88000)
+[I20230718 20:58:34.020977 115071 OpenNIFrameProcessor.cpp:89] Depth frame is corrupt!
+[I20230718 20:58:34.020987 115071 OpenNIUSBLinux.cpp:287] Do not submit(14)...
+[I20230718 20:58:34.021077 115071 OpenNIUSBLinux.cpp:218] Cancel request transfer(0)...
+[I20230718 20:58:34.024482 115068 RequestLibusb.cpp:21] transfer cancelled!
+[W20230718 20:58:34.124498 115071 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer 0: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20230718 20:58:34.124547 115071 OpenNIDataProcessor.cpp:28] Depth: Expected 272, got15
+[I20230718 20:58:34.124558 115071 OpenNIUSBLinux.cpp:287] Do not submit(0)...
+[I20230718 20:58:34.124670 115071 OpenNIUSBLinux.cpp:218] Cancel request transfer(2)...
+[I20230718 20:58:34.127884 115068 RequestLibusb.cpp:21] transfer cancelled!
+[W20230718 20:58:34.228432 115071 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer 2: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20230718 20:58:34.228482 115071 OpenNIDataProcessor.cpp:28] Depth: Expected 26, got53
+[I20230718 20:58:34.228492 115071 OpenNIPacketProcessor.cpp:32] Read: Depthbuffer is corrupt. Size is 81880 (!= 88000)
+[I20230718 20:58:34.228495 115071 OpenNIFrameProcessor.cpp:89] Depth frame is corrupt!
+[I20230718 20:58:34.228507 115071 OpenNIUSBLinux.cpp:287] Do not submit(2)...
+[E20230718 20:58:34.228510 115071 OpenNIUSBLinux.cpp:204] exist(0) read thread(3)...
+[W20230718 20:58:34.228603 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228646 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228657 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228662 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228675 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228682 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228688 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228693 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228698 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228704 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228710 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228716 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228722 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228727 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228734 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[W20230718 20:58:34.228739 115066 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Success, number: 0
+[I20230718 20:58:34.228745 115066 OpenNIUSBLinux.cpp:380] Shutdown read thread end...
+[I20230718 20:58:34.228750 115066 OpenNISensorParams.cpp:110] set property Stream1Mode(0).
+[I20230718 20:58:34.230489 115066 OpenNISensorParams.cpp:121] Stream1Mode(0)was successfully set.
+[I20230718 20:58:34.231369 115066 FrameProcessingBlock.cpp:72] FrameProcessingBlock@N11libobsensor13FrameUnpackerE process thread stoped!
+[I20230718 20:58:34.232527 115066 FrameProcessingBlock.cpp:72] FrameProcessingBlock@N11libobsensor15FrameSoftFilterE process thread stoped!
+[I20230718 20:58:34.233583 115066 FrameProcessingBlock.cpp:72] FrameProcessingBlock@N11libobsensor24Disparity2DepthConverterE process thread stoped!
+[I20230718 20:58:34.233599 115066 FrameProcessor.cpp:75]  FrameProcessor stoped!
+[I20230718 20:58:34.233604 115066 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE,  obj addr:93901652356640
+[I20230718 20:58:34.233610 115066 FrameBufferManager.cpp:54] Frame buffer released=0.0843267MB, total usage: {allocated=0.245107MB, max limit=2048MB}
+[I20230718 20:58:34.233623 115066 OpenNISensorStreams.cpp:114] Erase FW Stream Depth
+[I20230718 20:58:34.233628 115066 OpenNISensorStreams.cpp:124] released FW Stream Depth
+[E20230718 20:58:34.233631 115066 OpenNIVideoSensor.cpp:634] OpenNI Depth stream stop success.
+[I20230718 20:58:34.233639 115066 Pipeline.cpp:335] Sensor stop, sensorType=OB_SENSOR_DEPTH
+[I20230718 20:58:34.233644 115066 Pipeline.cpp:341] Stop stream done!
+[I20230718 20:58:34.233652 115066 OpenNISensorParams.cpp:110] set property Registration(0).
+[I20230718 20:58:34.236241 115066 OpenNISensorParams.cpp:121] Registration(0)was successfully set.
+[I20230718 20:58:34.236289 115066 FrameProcessingBlockManager.cpp:84]  FrameProcessingBlockManager stoped!
+[I20230718 20:58:34.236312 115066 FrameProcessingBlockManager.cpp:20] Processing block list cleared!
+[I20230718 20:58:34.236333 115066 Pipeline.cpp:379] Pipeline stop done!
+[I20230718 20:58:34.236352 115066 Pipeline.cpp:79] Pipeline deInit done!
+[I20230718 20:58:34.236377 115066 OpenNIDevice.cpp:33] ~OpenNIDevice done
+[I20230718 20:58:34.236398 115066 OpenNIVideoSensor.cpp:962] OpenNIVideoSensor ::~OpenNIVideoSensor, sensorType=OB_SENSOR_DEPTH
+[I20230718 20:58:34.236426 115066 FrameProcessor.cpp:557] try remove eventId: PropertyValueUpdate
+[I20230718 20:58:34.236451 115066 FrameProcessor.cpp:557] try remove eventId: DepthStreamProfileChanged
+[I20230718 20:58:34.236505 115066 VendorCommand.cpp:195] destructor 0x55672ea1e260
+[I20230718 20:58:34.236531 115066 VendorCommand.cpp:439] disableHeartBeat heartBeatHelper_: 0
+[I20230718 20:58:34.236550 115066 HostProtocol.cpp:143] ~HostProtocol()
+[I20230718 20:58:34.236588 115070 HostProtocol.cpp:171] emitTranDataFutureSignalThread_ finish
+[I20230718 20:58:34.236644 115066 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20230718 20:58:34.236711 115066 Context.cpp:55] Context destroying ...
+[I20230718 20:58:34.236737 115066 DeviceManager.cpp:103] DeviceManager destroy ...
+[I20230718 20:58:34.242148 115066 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20230718 20:58:34.242367 115066 DeviceManager.cpp:131] DeviceManager destroy done
+[I20230718 20:58:34.242425 115066 DeviceManager.cpp:137] DeviceManager Destructors  done
+[I20230718 20:58:34.242887 115066 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_8FrameSetEEE,  obj addr:139685221370672
+[I20230718 20:58:34.242942 115066 FrameBufferManager.cpp:54] Frame buffer released=0.000159264MB, total usage: {allocated=0.244947MB, max limit=2048MB}
+[I20230718 20:58:34.243039 115066 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE,  obj addr:139685355588400
+[I20230718 20:58:34.243091 115066 FrameBufferManager.cpp:54] Frame buffer released=0.122474MB, total usage: {allocated=0.122474MB, max limit=2048MB}
+[I20230718 20:58:34.243135 115066 FrameBufferManager.cpp:54] Frame buffer released=0.122474MB, total usage: {allocated=0MB, max limit=2048MB}

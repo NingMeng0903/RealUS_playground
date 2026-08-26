@@ -1,0 +1,219 @@
+Log file created at: 2023/07/14 18:16:21
+Running on machine: passoni
+Running duration (h:mm:ss): 0:00:00
+Log line format: [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
+[I20230714 18:16:21.607784 18744 DeviceManager.cpp:54] DeviceManager init ...
+[I20230714 18:16:21.607988 18744 LinuxPal.cpp:21] createObPal: create LinuxPal!
+[I20230714 18:16:21.610879 18744 EnumeratorLibusb.cpp:325] queryDevicesInfo done!
+[I20230714 18:16:21.610963 18744 DeviceManager.cpp:373] Current usb device port list::
+[I20230714 18:16:21.611009 18744 DeviceManager.cpp:375]         - 3-2-9.0 | ORBBEC Close Depth Sensor
+[I20230714 18:16:21.611078 18744 DeviceManager.cpp:375]         - 3-2-9.1 | ORBBEC Audio Device
+[W20230714 18:16:21.611129 18744 OpenNIDeviceInfo.cpp:110] New openni device matched.
+[W20230714 18:16:21.611191 18744 OpenNIDeviceInfo.cpp:110] New openni device matched.
+[I20230714 18:16:21.611274 18744 DeviceManager.cpp:345] Devices matched:
+[I20230714 18:16:21.611315 18744 DeviceManager.cpp:359]   - openniDevice = 2
+[I20230714 18:16:21.611375 18744 LinuxPal.cpp:142] Create PollingDeviceWatcher!
+[I20230714 18:16:21.611420 18744 DeviceManager.cpp:99] DeviceManager init  done!
+[I20230714 18:16:21.611459 18744 DeviceManager.cpp:50] DeviceManager construct done
+[I20230714 18:16:21.611497 18744 Context.cpp:51] Context created!
+[I20230714 18:16:21.611536 18744 DeviceManager.cpp:211] DeviceManager  createDevice...
+[I20230714 18:16:21.612036 18744 OpenNIHostProtocol.cpp:487] Hardware versions: FW=5.8.22(14),HW=0, Chip=0,Sensor=0,SYS=12
+[E20230714 18:16:21.612372 18744 OpenNIHostProtocol.cpp:502] Get usb core type failed!
+[I20230714 18:16:21.612447 18744 OpenNIHostProtocol.cpp:574] Requesting KeepAlive...
+[I20230714 18:16:21.612854 18744 OpenNIHostProtocol.cpp:581] Got KeepAlive Reply.
+[I20230714 18:16:21.614765 18744 OpenNIHostProtocol.cpp:574] Requesting KeepAlive...
+[I20230714 18:16:21.615173 18744 OpenNIHostProtocol.cpp:581] Got KeepAlive Reply.
+[I20230714 18:16:21.615235 18744 OpenNIHostProtocol.cpp:596] Getting the fixed params...
+[I20230714 18:16:21.615701 18744 OpenNIHostProtocol.cpp:633] Reading sensor serial number...
+[I20230714 18:16:21.616071 18744 OpenNISensorFirmware.cpp:892] Sensor serial number:17111811359
+[I20230714 18:16:21.616513 18744 OpenNIHostProtocol.cpp:702] Reading sensor platform string...
+[I20230714 18:16:21.616824 18744 OpenNISensorFirmware.cpp:920] Firmware version RD109Y-007
+[I20230714 18:16:21.617180 18744 OpenNISensorFirmware.cpp:926] Device frequency 100
+[I20230714 18:16:21.617223 18744 OpenNIHostProtocol.cpp:773] Update supported depth video modes from firmware
+[I20230714 18:16:21.617244 18744 OpenNIHostProtocol.cpp:806] Reading CMOS 0 supported presets...
+[I20230714 18:16:21.627478 18744 OpenNISensorFirmware.cpp:938] OpenNI camera params read.
+[I20230714 18:16:21.628258 18744 OpenNISensorFirmware.cpp:1216] OpenNI camera params read end.
+[I20230714 18:16:21.628319 18744 OpenNISensorIO.cpp:29] Opening endpoint 0x81 for depth...
+[I20230714 18:16:21.628361 18744 OpenNISensorIO.cpp:41] Depth endpoint(0x81) was successfully opened.
+[I20230714 18:16:21.628401 18744 OpenNISensorIO.cpp:48] Opening endpoint 0x82 for IR...
+[I20230714 18:16:21.628439 18744 OpenNISensorIO.cpp:54] IR endpoint(0x82) was successfully opened.
+[I20230714 18:16:21.628477 18744 OpenNISensorIO.cpp:60] Opening endpoint 0x84 for image...
+[I20230714 18:16:21.628515 18744 OpenNISensorIO.cpp:65] Image endpoint is not supported...
+[I20230714 18:16:21.628553 18744 OpenNISensorIO.cpp:75] Opening endpoint 0x83 for misc...
+[I20230714 18:16:21.628608 18744 OpenNISensorIO.cpp:80] Misc endpoint is not supported...
+[I20230714 18:16:21.628654 18744 OpenNISensorIO.cpp:87] Endpoints open end.
+[I20230714 18:16:21.628692 18744 VendorCommand.cpp:187] VendorCommand constructor 0x55b4595a8430
+[I20230714 18:16:21.628731 18744 OpenNIDevice.cpp:162] init sensor map start!
+[I20230714 18:16:21.628770 18744 OpenNIDevice.cpp:176] init sensor map done!
+[I20230714 18:16:21.628858 18744 AbstractDevice.cpp:364] Default config file is not loaded!
+[I20230714 18:16:21.628916 18744 OpenNIDevice.cpp:216] Init depth process param start!
+[I20230714 18:16:21.628963 18744 OpenNIDevice.cpp:236] Device baseline: 7.5, zpd: 65, zpps: 0.0569833
+[I20230714 18:16:21.629010 18744 OpenNIDevice.cpp:262] Init depth process param done!
+[I20230714 18:16:21.629050 18744 OpenNIDevice.cpp:29] OpenNIDevice init done
+[I20230714 18:16:21.629117 18744 DeviceManager.cpp:307] DeviceManager createDevice done!
+[I20230714 18:16:21.629166 18744 Pipeline.cpp:26] Pipeline init ...
+[I20230714 18:16:21.629212 18744 Pipeline.cpp:172] loadFrameQueueSizeConfig() config queue size: 10
+[I20230714 18:16:21.629256 18744 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20230714 18:16:21.629302 18744 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20230714 18:16:21.629341 18744 Pipeline.cpp:47] Pipeline init done!
+[I20230714 18:16:21.629405 18744 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20230714 18:16:21.629451 18744 OpenNIDevice.cpp:363] Depth sensor has been created!
+[I20230714 18:16:21.629493 18744 OpenNIVideoSensor.cpp:814] Query stream profile! size= 10, sensorType=OB_SENSOR_COLOR
+[I20230714 18:16:21.629549 18744 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20230714 18:16:21.629634 18744 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20230714 18:16:21.629681 18744 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20230714 18:16:21.629945 18744 OpenNIDevice.cpp:328] Depth sensor has been created!
+[I20230714 18:16:21.629989 18744 OpenNIVideoSensor.cpp:814] Query stream profile! size= 8, sensorType=OB_SENSOR_DEPTH
+[I20230714 18:16:21.630064 18744 Pipeline.cpp:181] Pipeline start() start!
+[W20230714 18:16:21.630134 18744 ObException.cpp:5] device config is not supported software d2c align!
+[W20230714 18:16:21.730883 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:21.730928 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:21.831601 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:21.831657 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:21.932235 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:21.932276 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:22.032856 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:22.032896 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:22.133901 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:22.134032 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:22.235186 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:22.235226 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:22.335728 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:22.335776 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:22.436866 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:22.436913 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:22.537707 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:22.537750 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:22.638875 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:22.638916 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:22.739722 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:22.739760 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:22.839927 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:22.839975 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:22.940266 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:22.940313 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:23.040745 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:23.040791 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:23.141111 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:23.141322 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:23.241648 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:23.241693 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:23.342198 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:23.342240 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:23.442950 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:23.443010 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:23.543968 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:23.544028 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:23.645141 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:23.645287 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:23.745421 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:23.745463 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:23.846400 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:23.846458 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:23.947707 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:23.947764 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:24.047899 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:24.047943 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:24.148607 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:24.148672 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:24.249003 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:24.249045 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:24.350042 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:24.350104 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:24.450428 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:24.450471 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:24.550566 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:24.550613 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:24.652374 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:24.652420 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:24.753274 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:24.753345 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:24.854290 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:24.854441 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:24.955513 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:24.955561 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:25.056520 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:25.056563 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:25.157517 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:25.157557 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:25.258541 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:25.258584 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:25.360287 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:25.360335 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:25.460991 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:25.461038 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:25.562127 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:25.562180 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:25.662390 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:25.662436 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:25.763689 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:25.763732 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:25.865082 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:25.865124 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:25.966070 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:25.966125 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:26.066469 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:26.066538 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:26.167178 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:26.167225 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:26.268318 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:26.268365 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:26.368997 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:26.369043 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:26.469455 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:26.469504 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:26.570516 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:26.570565 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:26.671061 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:26.671126 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:26.772178 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:26.772325 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:26.873219 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:26.873358 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:26.974488 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:26.974553 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:27.076058 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:27.076124 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:27.177366 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:27.177498 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:27.277796 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:27.277838 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:27.378347 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:27.378391 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:27.478588 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:27.478644 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:27.579735 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:27.579777 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:27.680771 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:27.680852 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:27.781312 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:27.781361 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:27.882010 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:27.882156 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:27.983290 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:27.983338 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:28.083539 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:28.083586 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:28.184240 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:28.184288 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:28.285531 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:28.285571 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[W20230714 18:16:28.386655 18744 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20230714 18:16:28.386700 18744 ApiImpl.cpp:1398] frameSet is nullptr
+[I20230714 18:16:28.391229 18744 Pipeline.cpp:71] Pipeline deInit start!
+[I20230714 18:16:28.391356 18744 Pipeline.cpp:79] Pipeline deInit done!
+[I20230714 18:16:28.391407 18744 OpenNIDevice.cpp:33] ~OpenNIDevice done
+[I20230714 18:16:28.391448 18744 OpenNIVideoSensor.cpp:962] OpenNIVideoSensor ::~OpenNIVideoSensor, sensorType=OB_SENSOR_COLOR
+[I20230714 18:16:28.391489 18744 OpenNIVideoSensor.cpp:962] OpenNIVideoSensor ::~OpenNIVideoSensor, sensorType=OB_SENSOR_DEPTH
+[I20230714 18:16:28.391574 18744 FrameProcessor.cpp:557] try remove eventId: PropertyValueUpdate
+[I20230714 18:16:28.391625 18744 FrameProcessor.cpp:557] try remove eventId: DepthStreamProfileChanged
+[I20230714 18:16:28.391671 18744 VendorCommand.cpp:195] destructor 0x55b4595a8430
+[I20230714 18:16:28.391711 18744 VendorCommand.cpp:439] disableHeartBeat heartBeatHelper_: 0
+[I20230714 18:16:28.391750 18744 HostProtocol.cpp:143] ~HostProtocol()
+[I20230714 18:16:28.391825 18748 HostProtocol.cpp:171] emitTranDataFutureSignalThread_ finish
+[I20230714 18:16:28.391902 18744 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20230714 18:16:28.391988 18744 Context.cpp:55] Context destroying ...
+[I20230714 18:16:28.392030 18744 DeviceManager.cpp:103] DeviceManager destroy ...
+[I20230714 18:16:28.395975 18744 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20230714 18:16:28.396118 18744 DeviceManager.cpp:131] DeviceManager destroy done
+[I20230714 18:16:28.396171 18744 DeviceManager.cpp:137] DeviceManager Destructors  done

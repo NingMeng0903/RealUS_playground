@@ -7,24 +7,34 @@ corner_tags:
   bl: 162
   br: 12
 
-min_floor_samples: 3
+min_robot_samples: 3
 min_bed_samples: 3
 min_corner_samples: 4
 
 # Corner capture gate: all four corner IDs + at least this many cameras for fusion.
-min_cameras_corner_fusion: 3
+# 2 = stereo pair at a bed end (cam1/3 or cam2/4); 3 is nicer but not always visible.
+min_cameras_corner_fusion: 2
 require_all_corner_tags: true
 # Max 3D deviation (mm) of per-camera board pose vs fused pose at corner tags.
 corner_fusion_max_std_mm: 40.0
 # Partial board views at bed edges (Stage 1 uses min_tags_per_view: 80).
 min_tags_corner_view: 20
 
-# Phase capture gates (mm above fitted floor plane in ref frame).
-floor_max_height_above_plane_mm: 120
+# Robot-phase per-sample gate (EE board). Dataset size is not a sufficiency gate
+# beyond min_robot_samples (hand-eye mathematical minimum).
+min_cameras_robot: 2
+min_tags_robot_view: 7
+
+# Bed capture: board must be at least this high (mm) above the robot-derived floor.
 bed_min_height_above_floor_mm: 200
 bed_height_match_tolerance_mm: 100
+# Tag-plane → mattress top. PnP sees the printed face; subtract this for the bed surface.
+board_thickness_m: 0.0035
 
 # bed_center_projected_to_floor: world origin on floor under bed rectangle center.
-# align_xy_to_bed: rotate world X/Y about +Z so bed edges are parallel to world axes.
+# align_xy_to_bed: false — world +X is the rail axis (xy_reference: rail).
+# The bed may be skewed; its yaw is stored as bed_rotation_deg.
 origin_mode: bed_center_projected_to_floor
-align_xy_to_bed: true
+align_xy_to_bed: false
+xy_reference: rail
+bed_skew_warn_deg: 5.0

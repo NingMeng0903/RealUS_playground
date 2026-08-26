@@ -277,3 +277,52 @@ def test_f_ext_on_separate_shm_does_not_shift_rail(relay_name):
     finally:
         pub.stop()
 
+
+def test_load_joint_zero_offsets_missing_is_zero(tmp_path):
+    from rm75_control.control.admittance_common.state_relay import load_joint_zero_offsets_deg
+
+    q = load_joint_zero_offsets_deg(
+        {"joint_zero_offsets": str(tmp_path / "nope.yaml")},
+        urdf_path=None,
+    )
+    np.testing.assert_allclose(q, np.zeros(7))
+
+
+def test_load_joint_zero_offsets_sha1_mismatch_is_zero(tmp_path):
+    from rm75_control.control.admittance_common.state_relay import load_joint_zero_offsets_deg
+
+    p = tmp_path / "off.yaml"
+    p.write_text(
+        "joint_zero_offsets_deg: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]\n"
+        "wbc_urdf_sha1: deadbeef\n",
+        encoding="utf-8",
+    )
+    urdf = tmp_path / "dummy.urdf"
+    urdf.write_text("<robot/>", encoding="utf-8")
+    q = load_joint_zero_offsets_deg({"joint_zero_offsets": str(p)}, urdf_path=urdf)
+    np.testing.assert_allclose(q, np.zeros(7))
+
+
+def test_pose_from_kin_applies_offsets_before_fk():
+    class _RecKin:
+        def __init__(self):
+            self.last_q = None
+
+        def fk_pose(self, q8):
+            self.last_q = np.asarray(q8, dtype=float).copy()
+            return np.array([0.1, 0.2, 0.3, 0.0, 0.0, 0.0])
+
+    obs = _FakeObserver()
+    bus = RobotStateBus(None, observer=obs)
+    pub = StateRelayPublisher(bus, name="unused", hz=10.0, rail_m_fn=lambda: 0.05, kin=_RecKin())
+    pub.set_joint_zero_offsets_deg(np.array([1.0, 0.0, 0.0, 0.0, 0.0, 2.0, 9.0]))
+    snap = obs.read()
+    pose = pub._pose_from_kin(snap, 0.05)
+    assert pose is not None
+    assert pub._kin.last_q is not None
+    q8 = pub._kin.last_q
+    assert q8[0] == pytest.approx(0.05)
+    assert np.degrees(q8[1]) == pytest.approx(11.0)
+    assert np.degrees(q8[6]) == pytest.approx(17.0)
+    assert np.degrees(q8[7]) == pytest.approx(0.0)
+

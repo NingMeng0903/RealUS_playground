@@ -73,6 +73,43 @@ def _apply_tcp_offset(
         return
     _LAST_TCP_OFFSET_PRINTED = offset.copy()
     print(message, flush=True)
+    _warn_if_tcp_differs_from_urdf(kin, euler_order=euler_order)
+
+
+_TCP_URDF_WARN_DEG = 0.05
+_TCP_URDF_WARN_M = 0.0005
+
+
+def _warn_if_tcp_differs_from_urdf(
+    kin: "RobotKinematics",
+    *,
+    euler_order: str | None = None,
+) -> None:
+    """Print both frames when the synced tool diverges from the URDF default."""
+    urdf = getattr(kin, "urdf_tcp_offset_pose", None)
+    synced = getattr(kin, "tcp_offset_pose", None)
+    if urdf is None or synced is None:
+        return
+    urdf = np.asarray(urdf, dtype=float).reshape(6)
+    synced = np.asarray(synced, dtype=float).reshape(6)
+    order = str(euler_order or getattr(kin, "euler_order", DEFAULT_EULER_ORDER))
+    d_t = float(np.linalg.norm(synced[:3] - urdf[:3]))
+    d_rot = float(
+        np.degrees(
+            (Rsc.from_euler(order, synced[3:6]) * Rsc.from_euler(order, urdf[3:6]).inv()).magnitude()
+        )
+    )
+    if d_t < _TCP_URDF_WARN_M and d_rot < _TCP_URDF_WARN_DEG:
+        return
+    print(
+        "warn: synced tool frame differs from URDF link_7_to_tcp "
+        f"by {d_t * 1000.0:.2f} mm / {d_rot:.4f} deg — "
+        f"urdf xyz(mm)={np.round(urdf[:3] * 1000.0, 3).tolist()} "
+        f"rpy(rad)={np.round(urdf[3:6], 6).tolist()} "
+        f"synced xyz(mm)={np.round(synced[:3] * 1000.0, 3).tolist()} "
+        f"rpy(rad)={np.round(synced[3:6], 6).tolist()}",
+        flush=True,
+    )
 
 
 def apply_kin_tcp_offset(

@@ -1,0 +1,16 @@
+Log file created at: 2023/07/14 18:18:19
+Running on machine: passoni
+Running duration (h:mm:ss): 0:00:00
+Log line format: [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
+[I20230714 18:18:19.673303 18838 DeviceManager.cpp:54] DeviceManager init ...
+[I20230714 18:18:19.674588 18838 LinuxPal.cpp:21] createObPal: create LinuxPal!
+[I20230714 18:18:19.822618 18838 EnumeratorLibusb.cpp:325] queryDevicesInfo done!
+[I20230714 18:18:19.823156 18838 DeviceManager.cpp:373] Current usb device port list::
+[I20230714 18:18:19.823200 18838 DeviceManager.cpp:375]         - 3-4.1-11.0 | USB Camera
+[I20230714 18:18:19.823225 18838 DeviceManager.cpp:375]         - 3-2-10.0 | Orbbec(R) Astra(TM) 3D Camera(F) Depth
+[I20230714 18:18:19.823251 18838 DeviceManager.cpp:362] No device matched!
+[I20230714 18:18:19.823331 18838 LinuxPal.cpp:142] Create PollingDeviceWatcher!
+[I20230714 18:18:19.823390 18838 DeviceManager.cpp:99] DeviceManager init  done!
+[I20230714 18:18:19.823415 18838 DeviceManager.cpp:50] DeviceManager construct done
+[I20230714 18:18:19.823437 18838 Context.cpp:51] Context created!
+[W20230714 18:18:19.823460 18838 ObException.cpp:5] No device found, fail to create pipeline!

@@ -1,0 +1,231 @@
+Log file created at: 2026/08/26 16:50:30
+Running on machine: pei
+Running duration (h:mm:ss): 0:00:00
+Log line format: [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
+[I20260826 16:50:30.185182 392330 DeviceManager.cpp:54] DeviceManager init ...
+[I20260826 16:50:30.185359 392330 LinuxPal.cpp:21] createObPal: create LinuxPal!
+[I20260826 16:50:30.474402 392330 EnumeratorLibusb.cpp:325] queryDevicesInfo done!
+[I20260826 16:50:30.572243 392330 DeviceManager.cpp:373] Current usb device port list::
+[I20260826 16:50:30.572268 392330 DeviceManager.cpp:375]         - 2-3.4.2.2-115.0 | Orbbec(R) Astra(TM) 3D Camera(F) Depth
+[I20260826 16:50:30.572270 392330 DeviceManager.cpp:375]         - 1-6.4.2.1-65.0 | USB Cameraÿ
+[W20260826 16:50:30.572278 392330 OpenNIDeviceInfo.cpp:172] New openni device matched.
+[I20260826 16:50:30.572281 392330 DeviceManager.cpp:345] Devices matched:
+[I20260826 16:50:30.572283 392330 DeviceManager.cpp:359]   - openniDevice = 1
+[I20260826 16:50:30.572345 392330 LinuxPal.cpp:142] Create PollingDeviceWatcher!
+[I20260826 16:50:30.572350 392330 DeviceManager.cpp:99] DeviceManager init  done!
+[I20260826 16:50:30.572352 392330 DeviceManager.cpp:50] DeviceManager construct done
+[I20260826 16:50:30.572355 392330 Context.cpp:51] Context created!
+[I20260826 16:50:30.572358 392330 DeviceManager.cpp:211] DeviceManager  createDevice...
+[I20260826 16:50:30.572847 392330 OpenNIHostProtocol.cpp:487] Hardware versions: FW=5.8.23(14),HW=0, Chip=7,Sensor=0,SYS=12
+[E20260826 16:50:30.573127 392330 OpenNIHostProtocol.cpp:502] Get usb core type failed!
+[I20260826 16:50:30.573132 392330 OpenNIHostProtocol.cpp:574] Requesting KeepAlive...
+[I20260826 16:50:30.573308 392330 OpenNIHostProtocol.cpp:581] Got KeepAlive Reply.
+[I20260826 16:50:30.574626 392330 OpenNIHostProtocol.cpp:574] Requesting KeepAlive...
+[I20260826 16:50:30.574844 392330 OpenNIHostProtocol.cpp:581] Got KeepAlive Reply.
+[I20260826 16:50:30.574849 392330 OpenNIHostProtocol.cpp:596] Getting the fixed params...
+[I20260826 16:50:30.575174 392330 OpenNIHostProtocol.cpp:633] Reading sensor serial number...
+[I20260826 16:50:30.575362 392330 OpenNISensorFirmware.cpp:892] Sensor serial number:AY2MC31016E
+[I20260826 16:50:30.575577 392330 OpenNIHostProtocol.cpp:702] Reading sensor platform string...
+[I20260826 16:50:30.575812 392330 OpenNISensorFirmware.cpp:920] Firmware version RD3013
+[I20260826 16:50:30.575997 392330 OpenNISensorFirmware.cpp:926] Device frequency 50
+[I20260826 16:50:30.576011 392330 OpenNIHostProtocol.cpp:773] Update supported depth video modes from firmware
+[I20260826 16:50:30.576013 392330 OpenNIHostProtocol.cpp:806] Reading CMOS 1 supported presets...
+[I20260826 16:50:30.576253 392330 OpenNIHostProtocol.cpp:773] Update supported depth video modes from firmware
+[I20260826 16:50:30.576256 392330 OpenNIHostProtocol.cpp:806] Reading CMOS 2 supported presets...
+[I20260826 16:50:30.582729 392330 OpenNISensorFirmware.cpp:938] OpenNI camera params read.
+[I20260826 16:50:30.606675 392330 OpenNISensorFirmware.cpp:1216] OpenNI camera params read end.
+[I20260826 16:50:30.606715 392330 OpenNISensorIO.cpp:29] Opening endpoint 0x81 for depth...
+[I20260826 16:50:30.606720 392330 OpenNISensorIO.cpp:41] Depth endpoint(0x81) was successfully opened.
+[I20260826 16:50:30.606722 392330 OpenNISensorIO.cpp:48] Opening endpoint 0x82 for IR...
+[I20260826 16:50:30.606724 392330 OpenNISensorIO.cpp:54] IR endpoint(0x82) was successfully opened.
+[I20260826 16:50:30.606727 392330 OpenNISensorIO.cpp:60] Opening endpoint 0x84 for image...
+[I20260826 16:50:30.606729 392330 OpenNISensorIO.cpp:65] Image endpoint is not supported...
+[I20260826 16:50:30.606731 392330 OpenNISensorIO.cpp:75] Opening endpoint 0x83 for misc...
+[I20260826 16:50:30.606734 392330 OpenNISensorIO.cpp:80] Misc endpoint is not supported...
+[I20260826 16:50:30.606737 392330 OpenNISensorIO.cpp:87] Endpoints open end.
+[I20260826 16:50:30.606741 392330 VendorCommand.cpp:187] VendorCommand constructor 0x1a2f7e90
+[I20260826 16:50:30.606747 392330 OpenNIDevice.cpp:162] init sensor map start!
+[I20260826 16:50:30.606752 392330 OpenNIDevice.cpp:176] init sensor map done!
+[I20260826 16:50:30.606787 392330 AbstractDevice.cpp:364] Default config file is not loaded!
+[I20260826 16:50:30.606791 392330 OpenNIDevice.cpp:216] Init depth process param start!
+[I20260826 16:50:30.606793 392330 OpenNIDevice.cpp:229] Device baseline: 39.9902, fx: 954.568
+[I20260826 16:50:30.606804 392330 OpenNIDevice.cpp:262] Init depth process param done!
+[I20260826 16:50:30.606808 392330 OpenNIDevice.cpp:29] OpenNIDevice init done
+[I20260826 16:50:30.606813 392330 DeviceManager.cpp:307] DeviceManager createDevice done!
+[I20260826 16:50:30.606817 392330 Pipeline.cpp:26] Pipeline init ...
+[I20260826 16:50:30.606825 392330 Pipeline.cpp:172] loadFrameQueueSizeConfig() config queue size: 10
+[I20260826 16:50:30.606830 392330 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20260826 16:50:30.606834 392330 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20260826 16:50:30.606838 392330 Pipeline.cpp:47] Pipeline init done!
+[I20260826 16:50:30.626703 392330 ObUvcDevice.cpp:56] uvc_open success
+[I20260826 16:50:30.626777 392330 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20260826 16:50:30.626789 392330 VideoSensor.cpp:283] VideoSensor created, SensorType=OB_SENSOR_COLOR
+[I20260826 16:50:30.626794 392330 OpenNIDevice.cpp:387] Color sensor has been created!
+[I20260826 16:50:30.626827 392330 VideoSensor.cpp:389] Query stream profile! size= 18, SensorType=OB_SENSOR_COLOR
+[I20260826 16:50:30.626884 392330 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20260826 16:50:30.626889 392330 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20260826 16:50:30.626894 392330 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20260826 16:50:30.626951 392330 OpenNIDevice.cpp:328] Depth sensor has been created!
+[I20260826 16:50:30.626960 392330 OpenNIVideoSensor.cpp:814] Query stream profile! size= 24, sensorType=OB_SENSOR_DEPTH
+[W20260826 16:50:30.626997 392330 ObException.cpp:5] Current device does not support frame sync!
+[I20260826 16:50:30.627102 392330 Pipeline.cpp:181] Pipeline start() start!
+[I20260826 16:50:30.627295 392330 OpenNISensorParams.cpp:110] set property Registration(0).
+[I20260826 16:50:30.627481 392330 OpenNISensorParams.cpp:121] Registration(0)was successfully set.
+[I20260826 16:50:30.627490 392330 FrameProcessingBlockManager.cpp:75]  FrameProcessingBlockManager started, 2 processingblocks contained!
+[I20260826 16:50:30.627493 392330 Pipeline.cpp:226] Start stream ...
+[I20260826 16:50:30.627496 392330 VideoSensor.cpp:502] VideoSensor::start, SensorType=OB_SENSOR_COLOR
+[I20260826 16:50:30.627501 392330 FrameBufferManager.hpp:58] FrameBufferManager created! @N11libobsensor18FrameBufferManagerINS_10ColorFrameEEE, obj addr:439495216, frame obj total size:0.293365MB
+[I20260826 16:50:30.627507 392330 FrameBufferManager.cpp:123] ColorFrame bufferManager created!
+[I20260826 16:50:30.627511 392330 FrameProcessor.cpp:75]  FrameProcessor stoped!
+[I20260826 16:50:30.627516 392330 FrameProcessor.cpp:66]  FrameProcessor started, 1 block contained!
+[I20260826 16:50:30.627522 392330 VideoSensor.cpp:579] Profile: width=640, height=480, fps=30, format=OB_FORMAT_MJPG
+[I20260826 16:50:30.627527 392330 ObUvcDevice.cpp:71] ObUvcDevice::startStream()...
+[I20260826 16:50:30.627532 392330 ObUvcDevice.cpp:325] playProfile: infIndex= 0 selected_format.width= 640 height=480.format=5
+[I20260826 16:50:31.079195 392330 ObUvcDevice.cpp:76] ObUvcDevice::startStream() done
+[I20260826 16:50:31.079234 392330 VideoSensor.cpp:625] Stream starting! SensorType=OB_SENSOR_COLOR
+[I20260826 16:50:31.079241 392330 Pipeline.cpp:237] Sensor start, sensorType=OB_SENSOR_COLOR streamType=OB_STREAM_COLOR
+[I20260826 16:50:31.079248 392330 FrameBufferManager.hpp:58] FrameBufferManager created! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE, obj addr:439410752, frame obj total size:0.336097MB
+[I20260826 16:50:31.079260 392330 FrameBufferManager.cpp:107] DepthFrame bufferManager created!
+[I20260826 16:50:31.079281 392330 OpenNISensorStreams.cpp:79] Firmware stream Depth processor was replaced.
+[I20260826 16:50:31.079285 392330 FrameProcessor.cpp:75]  FrameProcessor stoped!
+[I20260826 16:50:31.079290 392330 FrameProcessor.cpp:66]  FrameProcessor started, 3 block contained!
+[I20260826 16:50:31.079644 392330 OpenNIVideoSensor.cpp:702] Creating USB Depth read thread... 
+[I20260826 16:50:31.079650 392330 OpenNIUSBLinux.cpp:112] Starting a USB read thread...
+[I20260826 16:50:31.081741 392330 OpenNISensorParams.cpp:110] set property DepthFormat(3).
+[I20260826 16:50:31.082005 392330 OpenNISensorParams.cpp:121] DepthFormat(3)was successfully set.
+[I20260826 16:50:31.082010 392330 OpenNISensorParams.cpp:110] set property DepthResolution(17).
+[I20260826 16:50:31.082317 392330 OpenNISensorParams.cpp:121] DepthResolution(17)was successfully set.
+[I20260826 16:50:31.082320 392330 OpenNISensorParams.cpp:110] set property DepthFPS(30).
+[I20260826 16:50:31.083885 392330 OpenNISensorParams.cpp:121] DepthFPS(30)was successfully set.
+[I20260826 16:50:31.083889 392330 OpenNISensorParams.cpp:110] set property DepthHoleFilter(1).
+[I20260826 16:50:31.084133 392330 OpenNISensorParams.cpp:121] DepthHoleFilter(1)was successfully set.
+[I20260826 16:50:31.084136 392330 OpenNISensorParams.cpp:110] set property Registration(0).
+[I20260826 16:50:31.084371 392330 OpenNISensorParams.cpp:121] Registration(0)was successfully set.
+[I20260826 16:50:31.084374 392330 OpenNISensorParams.cpp:110] set property DepthMirror(1).
+[I20260826 16:50:31.084563 392330 OpenNISensorParams.cpp:121] DepthMirror(1)was successfully set.
+[I20260826 16:50:31.084565 392330 OpenNISensorParams.cpp:110] set property Stream1Mode(2).
+[I20260826 16:50:31.086163 392330 OpenNISensorParams.cpp:121] Stream1Mode(2)was successfully set.
+[I20260826 16:50:31.086176 392330 OpenNISensorParams.cpp:110] set property DepthCropEnabled(0).
+[I20260826 16:50:31.086936 392330 OpenNISensorParams.cpp:121] DepthCropEnabled(0)was successfully set.
+[I20260826 16:50:31.086943 392330 OpenNISensorParams.cpp:110] set property FrameSync(0).
+[I20260826 16:50:31.087128 392330 OpenNISensorParams.cpp:121] FrameSync(0)was successfully set.
+[I20260826 16:50:31.087141 392330 Pipeline.cpp:237] Sensor start, sensorType=OB_SENSOR_DEPTH streamType=OB_STREAM_DEPTH
+[I20260826 16:50:31.087147 392330 Pipeline.cpp:239] Start stream done!
+[I20260826 16:50:31.087153 392330 Pipeline.cpp:222] Pipeline start() done!
+[I20260826 16:50:31.109995 392399 OpenNIDataProcessor.cpp:28] Depth: Expected 1, got605
+[I20260826 16:50:31.110044 392399 OpenNIDataProcessor.cpp:28] Depth: Expected 606, got956
+[I20260826 16:50:31.140448 392399 FrameBufferManager.cpp:33] New frame buffer allocated=0.336097MB, total usage: {allocated=0.336097MB, max limit=2048MB}
+[I20260826 16:50:31.140712 392399 FrameProcessingBlock.cpp:57] FrameProcessingBlock@N11libobsensor13FrameUnpackerE process thread started!
+[I20260826 16:50:31.140829 392401 FrameBufferManager.hpp:58] FrameBufferManager created! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE, obj addr:136401249110912, frame obj total size:0.488685MB
+[I20260826 16:50:31.140862 392401 FrameBufferManager.cpp:107] DepthFrame bufferManager created!
+[I20260826 16:50:31.140877 392401 FrameBufferManager.cpp:33] New frame buffer allocated=0.488685MB, total usage: {allocated=0.824781MB, max limit=2048MB}
+[I20260826 16:50:31.141202 392401 FrameProcessingBlock.cpp:57] FrameProcessingBlock@N11libobsensor15FrameSoftFilterE process thread started!
+[I20260826 16:50:31.142237 392402 FrameProcessingBlock.cpp:57] FrameProcessingBlock@N11libobsensor24Disparity2DepthConverterE process thread started!
+[I20260826 16:50:31.142582 392403 FrameBufferManager.hpp:58] FrameBufferManager created! @N11libobsensor18FrameBufferManagerINS_8FrameSetEEE, obj addr:136401114893184, frame obj total size:0.000174522MB
+[I20260826 16:50:31.171196 392401 FrameBufferManager.cpp:33] New frame buffer allocated=0.488685MB, total usage: {allocated=1.31347MB, max limit=2048MB}
+[W20260826 16:50:31.187706 392400 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20260826 16:50:31.187743 392400 ApiImpl.cpp:1398] frameSet is nullptr
+[I20260826 16:50:31.202172 392401 FrameBufferManager.cpp:33] New frame buffer allocated=0.488685MB, total usage: {allocated=1.80215MB, max limit=2048MB}
+[I20260826 16:50:31.204046 392403 FrameBufferManager.cpp:33] New frame buffer allocated=0.000174522MB, total usage: {allocated=1.80233MB, max limit=2048MB}
+[I20260826 16:50:31.204144 392403 FrameProcessingBlock.cpp:57] FrameProcessingBlock@N11libobsensor9D2CFilterE process thread started!
+[I20260826 16:50:31.204212 392404 FrameBufferManager.hpp:58] FrameBufferManager created! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE, obj addr:136400913567024, frame obj total size:0.586341MB
+[I20260826 16:50:31.205507 392404 FrameBufferManager.cpp:33] New frame buffer allocated=0.586341MB, total usage: {allocated=2.38867MB, max limit=2048MB}
+[I20260826 16:50:31.207991 392404 FrameProcessingBlock.cpp:57] FrameProcessingBlock@N11libobsensor17PostProcessFilterE process thread started!
+[I20260826 16:50:31.233966 392403 FrameBufferManager.cpp:33] New frame buffer allocated=0.000174522MB, total usage: {allocated=2.38884MB, max limit=2048MB}
+[I20260826 16:50:31.234054 392404 FrameBufferManager.cpp:33] New frame buffer allocated=0.586341MB, total usage: {allocated=2.97518MB, max limit=2048MB}
+[I20260826 16:50:31.326900 392398 FrameBufferManager.cpp:33] New frame buffer allocated=0.293365MB, total usage: {allocated=3.26855MB, max limit=2048MB}
+[I20260826 16:50:31.358850 392398 FrameBufferManager.cpp:33] New frame buffer allocated=0.293365MB, total usage: {allocated=3.56191MB, max limit=2048MB}
+[I20260826 16:50:32.159408 392330 Pipeline.cpp:350] Pipeline stop start!
+[I20260826 16:50:32.159459 392330 Pipeline.cpp:322] Stop stream ...
+[I20260826 16:50:32.159471 392330 OpenNIVideoSensor.cpp:712] Shutting down USB Depth read thread...
+[I20260826 16:50:32.159478 392330 OpenNIUSBLinux.cpp:346] Shutdown read thread...
+[I20260826 16:50:32.170594 392399 OpenNIUSBLinux.cpp:287] Do not submit(5)...
+[I20260826 16:50:32.170665 392399 OpenNIUSBLinux.cpp:218] Cancel request transfer(6)...
+[I20260826 16:50:32.171025 392395 RequestLibusb.cpp:21] transfer cancelled!
+[W20260826 16:50:32.270942 392399 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer 6: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20260826 16:50:32.270988 392399 OpenNIUSBLinux.cpp:287] Do not submit(6)...
+[I20260826 16:50:32.271050 392399 OpenNIUSBLinux.cpp:218] Cancel request transfer(13)...
+[I20260826 16:50:32.271181 392395 RequestLibusb.cpp:21] transfer cancelled!
+[W20260826 16:50:32.371198 392399 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer d: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20260826 16:50:32.371245 392399 OpenNIDataProcessor.cpp:28] Depth: Expected 2591, got2911
+[I20260826 16:50:32.371274 392399 OpenNIUSBLinux.cpp:287] Do not submit(13)...
+[I20260826 16:50:32.371345 392399 OpenNIUSBLinux.cpp:218] Cancel request transfer(4)...
+[I20260826 16:50:32.371436 392395 RequestLibusb.cpp:21] transfer cancelled!
+[W20260826 16:50:32.471484 392399 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer 4: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20260826 16:50:32.471529 392399 OpenNIDataProcessor.cpp:28] Depth: Expected 2942, got3262
+[I20260826 16:50:32.471554 392399 OpenNIUSBLinux.cpp:287] Do not submit(4)...
+[E20260826 16:50:32.471560 392399 OpenNIUSBLinux.cpp:204] exist(0) read thread(5)...
+[W20260826 16:50:32.471712 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471757 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471765 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471772 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471787 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471794 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471801 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471807 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471814 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471820 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471827 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471834 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471840 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471850 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471858 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260826 16:50:32.471864 392330 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[I20260826 16:50:32.471870 392330 OpenNIUSBLinux.cpp:380] Shutdown read thread end...
+[I20260826 16:50:32.471879 392330 OpenNISensorParams.cpp:110] set property Stream1Mode(0).
+[I20260826 16:50:32.472743 392330 OpenNISensorParams.cpp:121] Stream1Mode(0)was successfully set.
+[I20260826 16:50:32.473140 392330 FrameProcessingBlock.cpp:72] FrameProcessingBlock@N11libobsensor13FrameUnpackerE process thread stoped!
+[I20260826 16:50:32.473196 392330 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE,  obj addr:136401249110912
+[I20260826 16:50:32.473255 392330 FrameBufferManager.cpp:54] Frame buffer released=0.488685MB, total usage: {allocated=3.07323MB, max limit=2048MB}
+[I20260826 16:50:32.473304 392330 FrameBufferManager.cpp:54] Frame buffer released=0.488685MB, total usage: {allocated=2.58454MB, max limit=2048MB}
+[I20260826 16:50:32.473342 392330 FrameBufferManager.cpp:54] Frame buffer released=0.488685MB, total usage: {allocated=2.09586MB, max limit=2048MB}
+[I20260826 16:50:32.473472 392330 FrameProcessingBlock.cpp:72] FrameProcessingBlock@N11libobsensor15FrameSoftFilterE process thread stoped!
+[I20260826 16:50:32.474347 392330 FrameProcessingBlock.cpp:72] FrameProcessingBlock@N11libobsensor24Disparity2DepthConverterE process thread stoped!
+[I20260826 16:50:32.474361 392330 FrameProcessor.cpp:75]  FrameProcessor stoped!
+[I20260826 16:50:32.474370 392330 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE,  obj addr:439410752
+[I20260826 16:50:32.474395 392330 FrameBufferManager.cpp:54] Frame buffer released=0.336097MB, total usage: {allocated=1.75976MB, max limit=2048MB}
+[I20260826 16:50:32.474428 392330 OpenNISensorStreams.cpp:114] Erase FW Stream Depth
+[I20260826 16:50:32.474437 392330 OpenNISensorStreams.cpp:124] released FW Stream Depth
+[E20260826 16:50:32.474443 392330 OpenNIVideoSensor.cpp:634] OpenNI Depth stream stop success.
+[I20260826 16:50:32.474449 392330 Pipeline.cpp:335] Sensor stop, sensorType=OB_SENSOR_DEPTH
+[I20260826 16:50:32.474459 392330 VideoSensor.cpp:629] VideoSensor::stop, SensorType=OB_SENSOR_COLOR
+[I20260826 16:50:32.474474 392330 ObUvcDevice.cpp:81] ObUvcDevice::stopStream()...
+[I20260826 16:50:32.524425 392330 ObUvcDevice.cpp:85] ObUvcDevice::stopStream() done
+[I20260826 16:50:32.524471 392330 VideoSensor.cpp:662] stream stoped! SensorType=OB_SENSOR_COLOR
+[I20260826 16:50:32.524479 392330 FrameProcessor.cpp:75]  FrameProcessor stoped!
+[I20260826 16:50:32.524484 392330 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_10ColorFrameEEE,  obj addr:439495216
+[I20260826 16:50:32.524490 392330 FrameBufferManager.cpp:54] Frame buffer released=0.293365MB, total usage: {allocated=1.4664MB, max limit=2048MB}
+[I20260826 16:50:32.524515 392330 FrameBufferManager.cpp:54] Frame buffer released=0.293365MB, total usage: {allocated=1.17303MB, max limit=2048MB}
+[I20260826 16:50:32.524526 392330 VideoSensor.cpp:671] VideoSensor::stop done, SensorType=OB_SENSOR_COLOR
+[I20260826 16:50:32.524545 392330 Pipeline.cpp:335] Sensor stop, sensorType=OB_SENSOR_COLOR
+[I20260826 16:50:32.524550 392330 Pipeline.cpp:341] Stop stream done!
+[I20260826 16:50:32.524564 392330 OpenNISensorParams.cpp:110] set property Registration(0).
+[I20260826 16:50:32.525070 392330 OpenNISensorParams.cpp:121] Registration(0)was successfully set.
+[I20260826 16:50:32.525547 392330 FrameProcessingBlock.cpp:72] FrameProcessingBlock@N11libobsensor9D2CFilterE process thread stoped!
+[I20260826 16:50:32.525555 392330 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE,  obj addr:136400913567024
+[I20260826 16:50:32.525599 392330 FrameBufferManager.cpp:54] Frame buffer released=0.586341MB, total usage: {allocated=0.58669MB, max limit=2048MB}
+[I20260826 16:50:32.525650 392330 FrameBufferManager.cpp:54] Frame buffer released=0.586341MB, total usage: {allocated=0.000349045MB, max limit=2048MB}
+[I20260826 16:50:32.526399 392330 FrameProcessingBlock.cpp:72] FrameProcessingBlock@N11libobsensor17PostProcessFilterE process thread stoped!
+[I20260826 16:50:32.526410 392330 FrameProcessingBlockManager.cpp:84]  FrameProcessingBlockManager stoped!
+[I20260826 16:50:32.526415 392330 FrameProcessingBlockManager.cpp:20] Processing block list cleared!
+[I20260826 16:50:32.526420 392330 Pipeline.cpp:379] Pipeline stop done!
+[I20260826 16:50:32.526453 392330 Pipeline.cpp:71] Pipeline deInit start!
+[I20260826 16:50:32.526458 392330 Pipeline.cpp:79] Pipeline deInit done!
+[I20260826 16:50:32.526467 392330 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_8FrameSetEEE,  obj addr:136401114893184
+[I20260826 16:50:32.526472 392330 FrameBufferManager.cpp:54] Frame buffer released=0.000174522MB, total usage: {allocated=0.000174522MB, max limit=2048MB}
+[I20260826 16:50:32.526480 392330 FrameBufferManager.cpp:54] Frame buffer released=0.000174522MB, total usage: {allocated=0MB, max limit=2048MB}
+[I20260826 16:50:32.526489 392330 OpenNIDevice.cpp:33] ~OpenNIDevice done
+[I20260826 16:50:32.526496 392330 VideoSensor.cpp:287] VideoSensor::~VideoSensor(), SensorType=OB_SENSOR_COLOR
+[I20260826 16:50:32.526504 392330 OpenNIVideoSensor.cpp:962] OpenNIVideoSensor ::~OpenNIVideoSensor, sensorType=OB_SENSOR_DEPTH
+[I20260826 16:50:32.526520 392330 FrameProcessor.cpp:557] try remove eventId: PropertyValueUpdate
+[I20260826 16:50:32.526527 392330 FrameProcessor.cpp:557] try remove eventId: DepthStreamProfileChanged
+[I20260826 16:50:32.526624 392330 VendorCommand.cpp:195] destructor 0x1a2f7e90
+[I20260826 16:50:32.526633 392330 VendorCommand.cpp:439] disableHeartBeat heartBeatHelper_: 0
+[I20260826 16:50:32.526638 392330 HostProtocol.cpp:143] ~HostProtocol()
+[I20260826 16:50:32.526674 392397 HostProtocol.cpp:171] emitTranDataFutureSignalThread_ finish
+[I20260826 16:50:32.526722 392330 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20260826 16:50:32.526799 392330 Context.cpp:55] Context destroying ...
+[I20260826 16:50:32.526808 392330 DeviceManager.cpp:103] DeviceManager destroy ...
+[I20260826 16:50:32.526818 392330 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20260826 16:50:32.526974 392330 DeviceManager.cpp:131] DeviceManager destroy done
+[I20260826 16:50:32.526984 392330 DeviceManager.cpp:137] DeviceManager Destructors  done

@@ -22,3 +22,20 @@ def test_apply_link7_to_tcp_offset_updates_fk():
     _, d_rot = pose_distance(pose0, pose1, kin.euler_order)
     assert d_rot > 89.0
     np.testing.assert_allclose(kin.tcp_offset_pose, offset, atol=1e-9)
+
+
+def test_sync_warns_when_tool_differs_from_urdf(capsys):
+    from rm75_control.force.compensation.tool_pose import maybe_sync_kin_tcp_from_config
+
+    kin = RobotKinematics()
+    urdf = kin.urdf_tcp_offset_pose.copy()
+    offset = urdf.copy()
+    offset[5] += np.deg2rad(1.5)
+    maybe_sync_kin_tcp_from_config(
+        kin,
+        {"inner": {"sync_tcp_from_robot": False, "euler_order": "xyz"}},
+        tcp_offset_pose=offset,
+    )
+    err = capsys.readouterr().out
+    assert "synced tool frame differs from URDF" in err
+    assert "1.5" in err or "1.50" in err

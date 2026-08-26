@@ -1,0 +1,28 @@
+# End-effector 4×4 AprilTag board (mounted on the gripper).
+#
+# Family: tag36h11
+# Grid:   4 rows × 4 columns
+# Formula: id(row, col) = 177 - row + 15 * col
+#   row 0 = top, col 0 = left
+#   (0,0)=177  (0,1)=192  (0,2)=207  (0,3)=222
+#   (3,0)=174  (3,3)=219
+#
+# Same tag size / gap as the large bed board. Board frame: origin at geometric
+# center, +X along columns (left→right), +Y up (bottom→top row).
+
+family: tag36h11
+rows: 4
+cols: 4
+id_row_step: -1
+id_col_step: 15
+id_origin: 177
+tag_size_m: 0.04
+tag_spacing_m: 0.01
+# Measure the printed 4×4 outer span (outer tag edge to opposite outer edge).
+# Nominal span = 4*tag_size + 3*tag_spacing = 0.190 m. If the print is small,
+# set tag_size_m = span_m / 4.75 and scale tag_spacing_m by the same ratio.
+# The solver only warns when its estimated scale differs by >0.2%.
+# Empirically opposite cyclic shift from the large bed board: tags on this
+# print are rotated 90° relative to board.yaml. Locked on 29 captured views
+# ([1,2,3,0] → 0.3 px PnP; the bed-board perm [3,0,1,2] → ~30 px).
+pupil_to_board_corner_perm: [1, 2, 3, 0]

@@ -23,4 +23,11 @@ def stage1_rmse_label() -> str:
     rmse = ext.metadata.get("total_rmse_px")
     if rmse is None:
         return "Stage1: (no RMSE)"
+    mm = ext.metadata.get("board_pose_disagreement_mean_mm")
+    try:
+        mm_f = float(mm)
+    except (TypeError, ValueError):
+        mm_f = float("nan")
+    if mm is not None and mm_f == mm_f:
+        return f"Stage1: {float(rmse):.3f} px / {mm_f:.2f} mm"
     return f"Stage1: {float(rmse):.3f} px"

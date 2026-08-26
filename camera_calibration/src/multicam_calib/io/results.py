@@ -11,6 +11,7 @@ Every "run" overwrites these files. Intermediate per-session raw data lives in
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -128,6 +129,59 @@ def world_meta_path() -> Path:
     return RESULTS_DIR / "world_meta.yaml"
 
 
+def robot_world_path() -> Path:
+    return RESULTS_DIR / "robot_world.yaml"
+
+
+def joint_zero_offsets_path() -> Path:
+    return RESULTS_DIR / "joint_zero_offsets.yaml"
+
+
+def load_joint_zero_offsets_deg(*, urdf_sha1: str | None = None) -> np.ndarray:
+    """Stage 2 ``joint_1..7`` offsets (deg). Missing file or sha1 mismatch → zeros.
+
+    ``joint_7`` is always 0 (absorbed by the tool frame in Stage 2).
+    """
+    zeros = np.zeros(7, dtype=np.float64)
+    p = joint_zero_offsets_path()
+    if not p.is_file():
+        return zeros
+    data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    file_sha = str(data.get("wbc_urdf_sha1") or "")
+    if urdf_sha1 and file_sha and file_sha != str(urdf_sha1):
+        return zeros
+    q = np.asarray(data.get("joint_zero_offsets_deg") or [], dtype=np.float64).reshape(-1)
+    out = zeros.copy()
+    n = min(7, int(q.size))
+    out[:n] = q[:n]
+    out[6] = 0.0
+    return out
+
+
+def save_joint_zero_offsets(payload: dict[str, Any], path: Path | None = None) -> Path:
+    p = path or joint_zero_offsets_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("w", encoding="utf-8") as fh:
+        yaml.safe_dump(_yamlify(payload), fh, sort_keys=False, default_flow_style=False)
+    return p
+
+
+def build_joint_zero_offsets_payload(diagnostics: dict[str, Any]) -> dict[str, Any]:
+    leave = diagnostics.get("leave_out_rmse") or {}
+    return {
+        "joint_zero_offsets_deg": [
+            float(v) for v in (diagnostics.get("joint_zero_offsets_deg") or [0.0] * 7)
+        ],
+        "wbc_urdf_sha1": str(diagnostics.get("wbc_urdf_sha1") or ""),
+        "wbc_urdf": str(diagnostics.get("wbc_urdf") or ""),
+        "n_samples": int(diagnostics.get("n_samples") or 0),
+        "ba_rmse_px": float(diagnostics.get("ba_rmse_px") or float("nan")),
+        "leave_out_rmse_px": leave.get("mean_rmse_px"),
+        "fitted_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "lock_reasons": list(diagnostics.get("joint_offset_lock_reasons") or []),
+    }
+
+
 @dataclass
 class WorldMeta:
     """Stage 2 semantic world frame metadata (bed envelope, heights, residuals)."""
@@ -150,6 +204,7 @@ class WorldMeta:
     phases_completed: list[str]
     xy_aligned_to_bed: bool = False
     bed_xy_skew_deg_pre_align: float = 0.0
+    xy_reference: str = "rail"
     extra: dict[str, Any] = field(default_factory=dict)
 
     def as_yaml_dict(self) -> dict[str, Any]:
@@ -166,6 +221,7 @@ class WorldMeta:
             "bed_rotation_deg": float(self.bed_rotation_deg),
             "xy_aligned_to_bed": bool(self.xy_aligned_to_bed),
             "bed_xy_skew_deg_pre_align": float(self.bed_xy_skew_deg_pre_align),
+            "xy_reference": str(self.xy_reference),
             "corner_fusion_std_mm": [float(v) for v in self.corner_fusion_std_mm],
             "phases_completed": list(self.phases_completed),
             **{k: _yamlify(v) for k, v in self.extra.items()},
@@ -178,7 +234,8 @@ class WorldMeta:
             "origin_mode", "floor_plane_residual_mm", "bed_height_m", "bed_plane_residual_mm",
             "bed_size_m", "bed_center_world", "bed_center_on_floor", "corner_rects_xy",
             "bed_outer_rect_xy", "bed_rotation_deg", "xy_aligned_to_bed",
-            "bed_xy_skew_deg_pre_align", "corner_fusion_std_mm", "phases_completed",
+            "bed_xy_skew_deg_pre_align", "xy_reference", "corner_fusion_std_mm",
+            "phases_completed",
         }
         extra = {k: v for k, v in d.items() if k not in known}
         raw_outer = d.get("bed_outer_rect_xy") or []
@@ -198,10 +255,29 @@ class WorldMeta:
             bed_rotation_deg=float(d.get("bed_rotation_deg", 0.0)),
             xy_aligned_to_bed=bool(d.get("xy_aligned_to_bed", False)),
             bed_xy_skew_deg_pre_align=float(d.get("bed_xy_skew_deg_pre_align", 0.0)),
+            xy_reference=str(d.get("xy_reference", "rail")),
             corner_fusion_std_mm=list(d.get("corner_fusion_std_mm") or []),
             phases_completed=list(d.get("phases_completed") or []),
             extra=extra,
         )
+
+
+def save_robot_world(payload: dict[str, Any], path: Path | None = None) -> Path:
+    """Write ``robot_world.yaml`` (hand-eye + rail-aligned world geometry)."""
+    p = path or robot_world_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("w", encoding="utf-8") as fh:
+        yaml.safe_dump(_yamlify(payload), fh, sort_keys=False, default_flow_style=False)
+    return p
+
+
+def load_robot_world(path: Path | None = None) -> dict[str, Any] | None:
+    p = path or robot_world_path()
+    if not p.exists():
+        return None
+    with p.open("r", encoding="utf-8") as fh:
+        raw = yaml.safe_load(fh) or {}
+    return raw or None
 
 
 def save_world_meta(meta: WorldMeta, path: Path | None = None) -> None:

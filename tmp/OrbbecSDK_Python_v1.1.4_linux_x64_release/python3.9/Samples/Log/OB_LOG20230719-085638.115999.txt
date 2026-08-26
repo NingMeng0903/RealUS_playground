@@ -1,0 +1,18 @@
+Log file created at: 2023/07/19 08:56:38
+Running on machine: passoni
+Running duration (h:mm:ss): 0:00:00
+Log line format: [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
+[I20230719 08:56:38.430747 115999 DeviceManager.cpp:54] DeviceManager init ...
+[I20230719 08:56:38.430968 115999 LinuxPal.cpp:21] createObPal: create LinuxPal!
+[I20230719 08:56:38.432364 115999 EnumeratorLibusb.cpp:325] queryDevicesInfo done!
+[I20230719 08:56:38.432416 115999 DeviceManager.cpp:373] Current usb device port list::
+[I20230719 08:56:38.432466 115999 DeviceManager.cpp:362] No device matched!
+[I20230719 08:56:38.432549 115999 LinuxPal.cpp:142] Create PollingDeviceWatcher!
+[I20230719 08:56:38.432585 115999 DeviceManager.cpp:99] DeviceManager init  done!
+[I20230719 08:56:38.432605 115999 DeviceManager.cpp:50] DeviceManager construct done
+[I20230719 08:56:38.432624 115999 Context.cpp:51] Context created!
+[I20230719 08:56:38.437089 115999 Context.cpp:55] Context destroying ...
+[I20230719 08:56:38.437222 115999 DeviceManager.cpp:103] DeviceManager destroy ...
+[I20230719 08:56:38.441416 115999 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20230719 08:56:38.441628 115999 DeviceManager.cpp:131] DeviceManager destroy done
+[I20230719 08:56:38.441681 115999 DeviceManager.cpp:137] DeviceManager Destructors  done

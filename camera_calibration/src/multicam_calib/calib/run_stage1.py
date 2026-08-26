@@ -33,6 +33,7 @@ class Stage1Report:
     initial_cam_poses: dict[str, np.ndarray]
     ba: BAResult
     rejected_views: list[tuple[int, str, str]] = field(default_factory=list)  # (frame, alias, reason)
+    board_disagreement_mm: dict[str, float] = field(default_factory=dict)
 
     def summary(self) -> str:
         lines = [
@@ -41,8 +42,15 @@ class Stage1Report:
             f"  cameras:          {', '.join(self.aliases)}",
             f"  observations:     {self.ba.n_observations}",
             f"  total RMSE:       {self.ba.total_rmse:.4f} px",
-            f"  per-camera RMSE:",
         ]
+        mm = getattr(self, "board_disagreement_mm", None)
+        if isinstance(mm, dict) and mm.get("mean_mm") is not None:
+            lines.append(
+                f"  board pose disagreement: {float(mm['mean_mm']):.2f} mm mean "
+                f"(depth {float(mm.get('mean_depth_mm', float('nan'))):.2f} mm, "
+                f"max {float(mm.get('max_mm', float('nan'))):.2f} mm)"
+            )
+        lines.append("  per-camera RMSE:")
         for a, r in self.ba.per_camera_rmse.items():
             lines.append(f"    {a:<8} {r:.4f} px")
         lines.append(f"  per-frame RMSE:")
@@ -53,6 +61,48 @@ class Stage1Report:
             for fr, al, why in self.rejected_views[:10]:
                 lines.append(f"    frame {fr} {al}: {why}")
         return "\n".join(lines)
+
+
+def _stage1_board_disagreement_mm(
+    per_view_poses: dict[int, dict[str, np.ndarray]],
+    cam_poses: dict[str, np.ndarray],
+) -> dict[str, float]:
+    """Same-sample inter-camera board translation disagreement (PnP in ref)."""
+    errs: list[float] = []
+    depth: list[float] = []
+    for views in per_view_poses.values():
+        poses: list[tuple[np.ndarray, np.ndarray]] = []
+        for alias, T_cam_board in views.items():
+            T_ref_cam = cam_poses.get(alias)
+            if T_ref_cam is None:
+                continue
+            T_ref_cam = np.asarray(T_ref_cam, dtype=np.float64)
+            T_ref_board = T_ref_cam @ np.asarray(T_cam_board, dtype=np.float64)
+            z_cam = T_ref_cam[:3, :3] @ np.array([0.0, 0.0, 1.0])
+            poses.append((T_ref_board[:3, 3].copy(), z_cam))
+        if len(poses) < 2:
+            continue
+        for i in range(len(poses)):
+            for j in range(i + 1, len(poses)):
+                d = poses[i][0] - poses[j][0]
+                errs.append(float(np.linalg.norm(d) * 1000.0))
+                depth.append(float(abs(d @ poses[i][1]) * 1000.0))
+    if not errs:
+        return {
+            "mean_mm": float("nan"),
+            "median_mm": float("nan"),
+            "max_mm": float("nan"),
+            "mean_depth_mm": float("nan"),
+            "n_pairs": 0,
+        }
+    arr = np.asarray(errs, dtype=np.float64)
+    return {
+        "mean_mm": float(np.mean(arr)),
+        "median_mm": float(np.median(arr)),
+        "max_mm": float(np.max(arr)),
+        "mean_depth_mm": float(np.mean(depth)),
+        "n_pairs": int(arr.size),
+    }
 
 
 def run_stage1(
@@ -162,6 +212,7 @@ def run_stage1(
         max_nfev=app_cfg.calibration.ba.max_nfev,
         verbose=app_cfg.calibration.ba.verbose,
     )
+    board_mm = _stage1_board_disagreement_mm(per_view_poses, ba.cam_poses)
 
     ext = ExtrinsicsSet(
         reference=ref,
@@ -172,6 +223,11 @@ def run_stage1(
             "n_observations": ba.n_observations,
             "total_rmse_px": ba.total_rmse,
             "per_camera_rmse_px": ba.per_camera_rmse,
+            "board_pose_disagreement_mean_mm": board_mm["mean_mm"],
+            "board_pose_disagreement_median_mm": board_mm["median_mm"],
+            "board_pose_disagreement_max_mm": board_mm["max_mm"],
+            "board_pose_disagreement_mean_depth_mm": board_mm["mean_depth_mm"],
+            "board_pose_disagreement_n_pairs": board_mm["n_pairs"],
         },
     )
     save_extrinsics(ext, save_path or extrinsics_rel_path())
@@ -183,4 +239,5 @@ def run_stage1(
         initial_cam_poses=init.poses,
         ba=ba,
         rejected_views=rejected,
+        board_disagreement_mm=board_mm,
     )

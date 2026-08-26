@@ -4,6 +4,9 @@ scipy>=1.11
 
 # Camera SDK & imaging
 pyrealsense2>=2.55
+# Stage 3 Orbbec RGB-D: install separately so it does not pull opencv-python (Qt)
+# over opencv-python-headless:
+#   pip install --upgrade --no-deps pyorbbecsdk2
 # headless build: same cv2 API but no bundled Qt (avoids PyQt5 xcb conflict in run_ui).
 # Pin 4.11.x — works with numpy 1.26; 4.13+ pulls numpy>=2.
 opencv-python-headless>=4.11.0.86,<4.12

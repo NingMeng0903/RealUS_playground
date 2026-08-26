@@ -38,6 +38,7 @@ from rm75_control.control.admittance_common.state_bus import RobotStateBus
 from rm75_control.control.admittance_common.observer import CompensatedForceObserver
 from rm75_control.control.admittance_common.state_relay import (
     StateRelayPublisher,
+    load_joint_zero_offsets_deg,
     parse_state_relay_config,
 )
 from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
@@ -460,6 +461,14 @@ def main() -> int:
                     hz=relay_hz,
                     rail_m_fn=rail_pub,
                     kin=inner.kin if inner is not None else pub_kin,
+                )
+                urdf_for_off = None
+                if inner is not None:
+                    urdf_for_off = getattr(inner.kin, "urdf_path", None)
+                elif pub_kin is not None:
+                    urdf_for_off = getattr(pub_kin, "urdf_path", None)
+                relay.set_joint_zero_offsets_deg(
+                    load_joint_zero_offsets_deg(raw, urdf_path=urdf_for_off)
                 )
                 try:
                     relay.set_force_observer(CompensatedForceObserver.from_yaml(raw))

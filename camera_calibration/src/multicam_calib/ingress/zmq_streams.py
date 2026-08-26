@@ -42,6 +42,7 @@ class ZmqCameraStreamThread:
 
     alias: str
     _hub: "ZmqMulticamHub"
+    source: str = "preview"  # preview | capture
     _thread: threading.Thread | None = field(default=None, init=False)
 
     def start(self, on_frame=None) -> None:
@@ -52,6 +53,8 @@ class ZmqCameraStreamThread:
         return
 
     def latest(self) -> Frame | None:
+        if self.source == "capture":
+            return self._hub.capture_latest(self.alias)
         return self._hub.preview_latest(self.alias)
 
     def last_error(self) -> BaseException | None:
@@ -68,11 +71,13 @@ class ZmqMulticamHub:
         aliases: list[str],
         preview_topic: str = "amongus_camera_preview_v1",
         capture_topic: str = "amongus_camera_frame_v1",
+        rcvhwm: int = 64,
     ) -> None:
         self.connect = str(connect)
         self.aliases = list(aliases)
         self.preview_topic = str(preview_topic)
         self.capture_topic = str(capture_topic)
+        self._rcvhwm = int(rcvhwm)
         self._preview_latest: dict[str, Frame] = {}
         self._capture_latest: dict[str, Frame] = {}
         self._preview_index: dict[str, int] = {a: 0 for a in self.aliases}
@@ -84,8 +89,13 @@ class ZmqMulticamHub:
         self._capture_thread: threading.Thread | None = None
         self._started = False
 
-    def stream_threads(self) -> dict[str, ZmqCameraStreamThread]:
-        return {alias: ZmqCameraStreamThread(alias=alias, _hub=self) for alias in self.aliases}
+    def stream_threads(self, source: str = "preview") -> dict[str, ZmqCameraStreamThread]:
+        if source not in ("preview", "capture"):
+            raise ValueError(f"source must be 'preview' or 'capture', got {source!r}")
+        return {
+            alias: ZmqCameraStreamThread(alias=alias, _hub=self, source=source)
+            for alias in self.aliases
+        }
 
     def start(self) -> None:
         if self._started:
@@ -109,6 +119,10 @@ class ZmqMulticamHub:
     def preview_latest(self, alias: str) -> Frame | None:
         with self._lock:
             return self._preview_latest.get(alias)
+
+    def capture_latest(self, alias: str) -> Frame | None:
+        with self._lock:
+            return self._capture_latest.get(alias)
 
     def last_error(self, alias: str) -> BaseException | None:
         return self._errors.get(alias)
@@ -153,37 +167,45 @@ class ZmqMulticamHub:
         import zmq
 
         ctx = zmq.Context.instance()
-        sock = ctx.socket(zmq.SUB)
-        sock.setsockopt(zmq.RCVTIMEO, 50)
-        sock.setsockopt(zmq.RCVHWM, 8)
-        sock.connect(self.connect)
-        sock.setsockopt(zmq.SUBSCRIBE, topic.encode("utf-8"))
+        alias_set = set(self.aliases)
+        while not self._stop.is_set():
+            sock = ctx.socket(zmq.SUB)
+            sock.setsockopt(zmq.RCVTIMEO, 50)
+            sock.setsockopt(zmq.RCVHWM, self._rcvhwm)
+            sock.setsockopt(zmq.LINGER, 0)
+            try:
+                sock.connect(self.connect)
+                sock.setsockopt(zmq.SUBSCRIBE, topic.encode("utf-8"))
+            except zmq.ZMQError:
+                sock.close(0)
+                time.sleep(0.2)
+                continue
+            try:
+                self._ingest_socket(sock, store=store, index=index, alias_set=alias_set)
+            finally:
+                sock.close(0)
+            if not self._stop.is_set():
+                time.sleep(0.2)
+
+    def _ingest_socket(
+        self,
+        sock: Any,
+        *,
+        store: dict[str, Frame],
+        index: dict[str, int],
+        alias_set: set[str],
+    ) -> None:
+        import zmq
+
         while not self._stop.is_set():
             try:
                 parts = sock.recv_multipart()
             except zmq.Again:
                 continue
             except zmq.ZMQError:
-                break
-            if len(parts) < 3:
-                continue
-            name = ""
-            try:
-                meta = json.loads(parts[1].decode("utf-8"))
-                name = str(meta.get("camera_name") or "")
-                if name not in self.aliases:
-                    continue
-                bgr = _decode_jpeg(parts[2])
-                index[name] = index.get(name, 0) + 1
-                frame = _meta_to_frame(meta, bgr, frame_index=index[name])
-            except Exception as exc:
-                if name:
-                    self._errors[name] = exc
-                continue
-            with self._lock:
-                store[name] = frame
-                self._errors.pop(name, None)
-            # Drain backlog — keep only newest per camera on this socket.
+                return
+            self._store_parts(parts, store=store, index=index, alias_set=alias_set)
+            pending: dict[str, tuple[dict[str, Any], bytes]] = {}
             while True:
                 try:
                     parts = sock.recv_multipart(zmq.NOBLOCK)
@@ -194,16 +216,47 @@ class ZmqMulticamHub:
                 try:
                     meta = json.loads(parts[1].decode("utf-8"))
                     name = str(meta.get("camera_name") or "")
-                    if name not in self.aliases:
-                        continue
-                    bgr = _decode_jpeg(parts[2])
+                except Exception:
+                    continue
+                if name in alias_set:
+                    pending[name] = (meta, parts[2])
+            for name, (meta, jpeg) in pending.items():
+                try:
+                    bgr = _decode_jpeg(jpeg)
                     index[name] = index.get(name, 0) + 1
                     frame = _meta_to_frame(meta, bgr, frame_index=index[name])
                     with self._lock:
                         store[name] = frame
-                except Exception:
-                    continue
-        sock.close(0)
+                        self._errors.pop(name, None)
+                except Exception as exc:
+                    self._errors[name] = exc
+
+    def _store_parts(
+        self,
+        parts: list[bytes],
+        *,
+        store: dict[str, Frame],
+        index: dict[str, int],
+        alias_set: set[str],
+    ) -> None:
+        if len(parts) < 3:
+            return
+        name = ""
+        try:
+            meta = json.loads(parts[1].decode("utf-8"))
+            name = str(meta.get("camera_name") or "")
+            if name not in alias_set:
+                return
+            bgr = _decode_jpeg(parts[2])
+            index[name] = index.get(name, 0) + 1
+            frame = _meta_to_frame(meta, bgr, frame_index=index[name])
+        except Exception as exc:
+            if name:
+                self._errors[name] = exc
+            return
+        with self._lock:
+            store[name] = frame
+            self._errors.pop(name, None)
 
     def _preview_loop(self) -> None:
         self._ingest_loop(topic=self.preview_topic, store=self._preview_latest, index=self._preview_index)

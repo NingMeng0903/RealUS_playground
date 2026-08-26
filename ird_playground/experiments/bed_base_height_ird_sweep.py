@@ -81,8 +81,16 @@ def load_base_xy_quat(slider_yaml: Path) -> tuple[np.ndarray, np.ndarray]:
 
 
 def load_bed_footprint(bundle_yaml: Path) -> dict[str, float | np.ndarray]:
+    # Axis-aligned XY box. A skewed bed (rotation_deg != 0) overestimates the
+    # footprint by ~L*sin(θ); rewrite if measured yaw is more than ~1°.
     raw = yaml.safe_load(bundle_yaml.read_text(encoding="utf-8"))
     bed = raw["bed"]
+    rot = float(bed.get("rotation_deg", 0.0))
+    if abs(rot) > 1.0:
+        print(
+            f"[bed-ird] WARN: bed.rotation_deg={rot:.2f} — x_min/y_max assume an "
+            "axis-aligned bed; rail-aligned world leaves the bed skewed."
+        )
     size = np.asarray(bed["size_m"], dtype=np.float64).reshape(2)
     center = np.asarray(bed.get("center_on_floor", [0.0, 0.0, 0.0]), dtype=np.float64)
     return {

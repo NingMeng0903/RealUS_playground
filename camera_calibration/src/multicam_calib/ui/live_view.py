@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from math import ceil, sqrt
 from typing import Callable, Protocol
+import time
 
 import cv2
 import numpy as np
@@ -16,7 +17,7 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QGridLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
-from multicam_calib.board.detector import AprilTagDetector, TagDetection, draw_detections
+from multicam_calib.board.detector import AprilTagDetector, TagDetection, draw_detections, scale_detections
 from multicam_calib.io.config import SyncConfig
 from multicam_calib.recording.sync import CameraStreamThread, MultiCamSnapshot, snapshot_best_effort
 
@@ -33,7 +34,9 @@ class ViewCache:
     image_bgr: np.ndarray | None = None
     detections: list[TagDetection] = field(default_factory=list)
     frame_index: int = -1
+    badge_frame_index: int = -1
     error: str | None = None
+    last_seen_mono_ns: int = 0
 
 
 class LiveViewGrid(QWidget):
@@ -54,6 +57,8 @@ class LiveViewGrid(QWidget):
         refresh_hz: int = 15,
         min_tags_for_ba: int | None = None,
         snapshot_fn: Callable[[], MultiCamSnapshot | None] | None = None,
+        empty_frame_hint: str | None = None,
+        badge_streams: dict[str, StreamLike] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -62,10 +67,14 @@ class LiveViewGrid(QWidget):
         self._detector = detector
         self._capture_detector = capture_detector or detector
         self._preview_detector = preview_detector or detector
+        self._badge_streams = badge_streams
+        self._rr = 0
         self._sync_cfg = sync_cfg or SyncConfig()
         self._cell_width = int(cell_width)
         self._min_tags_for_ba = min_tags_for_ba
         self._snapshot_fn = snapshot_fn
+        self._empty_frame_hint = str(empty_frame_hint or "").strip()
+        self._stale_ns = 1_000_000_000
         self._active = True
         self._labels: dict[str, QLabel] = {}
         self._status_labels: dict[str, QLabel] = {}
@@ -75,6 +84,21 @@ class LiveViewGrid(QWidget):
         self._timer.setInterval(max(30, int(1000 / max(1, refresh_hz))))
         self._timer.timeout.connect(self._refresh)
         self._timer.start()
+
+    def set_board_mode(
+        self,
+        detector: AprilTagDetector,
+        *,
+        preview_detector: AprilTagDetector | None = None,
+        min_tags_for_ba: int | None = None,
+    ) -> None:
+        """Switch the live/capture detectors (large bed board vs EE board)."""
+        self._detector = detector
+        self._capture_detector = detector
+        self._preview_detector = preview_detector or detector
+        self._min_tags_for_ba = min_tags_for_ba
+        for cache in self._caches.values():
+            cache.badge_frame_index = -1
 
     def set_active(self, active: bool) -> None:
         """Pause preview timer when tab is hidden (saves CPU, reduces lag)."""
@@ -121,6 +145,7 @@ class LiveViewGrid(QWidget):
     def _refresh(self) -> None:
         if not self._active:
             return
+        now = time.monotonic_ns()
         for alias in self._aliases:
             stream = self._streams.get(alias)
             if stream is None:
@@ -129,27 +154,72 @@ class LiveViewGrid(QWidget):
             frame = stream.latest()
             if frame is None:
                 err = stream.last_error()
-                text = f"{alias}: (no frame)"
+                text = f"{alias}: {self._empty_frame_hint}" if self._empty_frame_hint else f"{alias}: (no frame)"
                 if err is not None:
                     text += f" — last error: {type(err).__name__}"
                 self._status_labels[alias].setText(text)
                 continue
             cache = self._caches[alias]
-            if frame.frame_index == cache.frame_index:
+            if int(frame.frame_index or 0) != cache.frame_index:
+                cache.frame_index = int(frame.frame_index or 0)
+                cache.image_bgr = frame.image
+                cache.last_seen_mono_ns = now
+                if self._badge_streams is None:
+                    cache.error = None
+                    try:
+                        detect_img = self._preview_detect_image(frame.image)
+                        raw = self._preview_detector.detect(detect_img)
+                        dh, dw = detect_img.shape[:2]
+                        ih, iw = frame.image.shape[:2]
+                        cache.detections = scale_detections(raw, from_wh=(dw, dh), to_wh=(iw, ih))
+                        cache.error = None
+                    except Exception as exc:  # noqa: BLE001
+                        cache.detections = []
+                        cache.error = f"{type(exc).__name__}: {exc}"
                 self._render_cell(alias, cache)
-                continue
-            cache.frame_index = int(frame.frame_index or 0)
-            cache.image_bgr = frame.image
-            try:
-                detect_img = self._preview_detect_image(frame.image)
-                cache.detections = self._preview_detector.detect(detect_img)
-                cache.error = None
-            except Exception as exc:  # noqa: BLE001
-                cache.detections = []
-                cache.error = f"{type(exc).__name__}: {exc}"
+            elif cache.last_seen_mono_ns and (now - cache.last_seen_mono_ns) > self._stale_ns:
+                age_s = (now - cache.last_seen_mono_ns) / 1e9
+                self._status_labels[alias].setText(
+                    f"{alias}: stalled {age_s:.1f}s (publisher dropped this camera)"
+                )
+                self._status_labels[alias].setStyleSheet(
+                    "color: #fc3; background: #3a2a00; padding: 2px 6px;"
+                )
+        self._refresh_badge_round_robin()
+
+    def _refresh_badge_round_robin(self) -> None:
+        """Detect tags on one full-res capture frame per tick; overlay on preview."""
+        if self._badge_streams is None or not self._aliases:
+            return
+        alias = self._aliases[self._rr]
+        self._rr = (self._rr + 1) % len(self._aliases)
+        stream = self._badge_streams.get(alias)
+        if stream is None:
+            return
+        frame = stream.latest()
+        if frame is None:
+            return
+        cache = self._caches[alias]
+        badge_idx = int(frame.frame_index or 0)
+        if badge_idx == cache.badge_frame_index:
+            return
+        cache.badge_frame_index = badge_idx
+        try:
+            raw = self._detector.detect(frame.image)
+            bh, bw = frame.image.shape[:2]
+            if cache.image_bgr is not None:
+                ih, iw = cache.image_bgr.shape[:2]
+            else:
+                ih, iw = bh, bw
+            cache.detections = scale_detections(raw, from_wh=(bw, bh), to_wh=(iw, ih))
+            cache.error = None
+        except Exception as exc:  # noqa: BLE001
+            cache.detections = []
+            cache.error = f"{type(exc).__name__}: {exc}"
+        if cache.image_bgr is not None:
             self._render_cell(alias, cache)
 
-    def _render_cell(self, alias: str, cache: ViewCache) -> None:
+    def _render_cell(self, alias: str, cache: ViewCache, *, status_already_set: bool = False) -> None:
         img = cache.image_bgr
         if img is None:
             return
@@ -175,8 +245,9 @@ class LiveViewGrid(QWidget):
             style = "color: white; background: #222; padding: 2px 6px;"
         if cache.error:
             status += f"   [!] {cache.error}"
-        self._status_labels[alias].setText(status)
-        self._status_labels[alias].setStyleSheet(style)
+        if not status_already_set:
+            self._status_labels[alias].setText(status)
+            self._status_labels[alias].setStyleSheet(style)
 
     def snapshot_now(self) -> dict[str, tuple[np.ndarray, list[TagDetection], int]] | None:
         """Return a copy of the best-synced (image, detections, sync_ts_ns) per alias."""

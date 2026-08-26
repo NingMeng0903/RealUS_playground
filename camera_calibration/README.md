@@ -13,21 +13,21 @@ Three calibration stages:
   AprilTag board; joint bundle adjustment recovers each camera's SE(3) pose
   relative to the reference camera.
 - **Stage 2 — World alignment.** Three phases define the world frame:
-  1. **Ground plane** — board on the floor at multiple positions; SVD plane fit
-     sets world +Z upward with Z=0 on the floor.
-  2. **Bed plane** — board on the bed at multiple positions; parallel plane fit
-     estimates bed height `z_bed` only (normal locked to the floor normal).
-  3. **Bed corners** — four captures, one board placement per physical bed
-     corner (**any rotation** is fine — the bed itself need not be parallel to
-     world X/Y); outer-corner tags **151 / 1 / 162 / 12** are auto-detected and
-     fused across ≥3 cameras; every physical tag-corner point from all
-     captures is pooled and fit with a **minimum-area rectangle at any
-     orientation** (`cv2.minAreaRect`, not an axis-aligned box) to get bed
-     size; the world origin is the bed-center projected onto the floor.
+  1. **Robot (hand-eye)** — EE 4×4 AprilTag board on the gripper. Shared-memory
+     `rm75_state` supplies `T_railbase_tcp`. Bundle adjustment recovers
+     `T_ref_railbase` and `T_tcp_board`. World +X is the URDF rail axis
+     (`R[:,1]`); +Z is `base_link` +Z orthogonalized against the rail so the
+     rail is strictly horizontal. The floor is the plane through `base_link`
+     minus `base_link_height_above_floor_m` (274 mm, tape-measured).
+  2. **Bed plane** — large board on the bed; parallel-plane height `z_bed`
+     (normal locked to the robot-derived floor normal).
+  3. **Bed corners** — four captures, one large-board placement per physical
+     bed corner (**any rotation** is fine); outer-corner tags **151 / 1 / 162 / 12**
+     are fused across ≥3 cameras; a **minimum-area rectangle** gives bed size
+     and `bed_rotation_deg`. World origin is the bed-center projected onto the
+     floor. XY stay rail-aligned (`align_xy_to_bed: false`); the bed may be skewed.
 
-  Re-calibrating the ground phase **cascades** and clears bed + corners data.
-  Bed-center coordinates are written to `world_meta.yaml` for robot BASE chaining
-  while keeping Z=0 on the floor.
+  Re-calibrating the robot phase **cascades** and clears bed + corners data.
 
 ## Quick start
 
@@ -62,7 +62,9 @@ camera_calibration/
 ├── configs/
 │   ├── cameras.yaml            # serial -> alias, permanent binding
 │   ├── board.yaml              # AprilTag grid geometry
-│   ├── world.yaml              # Stage 2 floor/bed/corners thresholds + corner tag IDs
+│   ├── world.yaml              # Stage 2 robot/bed/corners thresholds + corner tag IDs
+│   ├── board_ee.yaml           # 4×4 EE AprilTag board (robot phase)
+│   ├── robot.yaml              # 274 mm floor anchor, SHM name, stillness gates
 │   └── app.yaml                # stream + sync + detector + BA parameters
 ├── calibration_results/        # canonical outputs — always overwritten in place
 │   ├── intrinsics.yaml
@@ -171,13 +173,17 @@ hand-eye) and are not used here.
   is the first alias in `cameras.yaml` at the time Stage 1 ran (usually
   `cam1`).
 - `extrinsics_world.yaml`: dictionary `alias -> T_world_cam (4×4)`. World +Z is
-  the floor normal; origin is bed center projected to floor (`origin_mode`).
-  When `align_xy_to_bed: true` (default), world +X/+Y are rotated about +Z so
-  bed edges are parallel to world axes (`bed_rotation_deg` ≈ 0 in exports).
+  the robot-derived floor normal; +X is the rail axis; origin is bed center
+  projected to floor (`origin_mode`). With `align_xy_to_bed: false` (default)
+  the bed may carry a nonzero `bed_rotation_deg`.
+- `robot_world.yaml`: `T_world_railbase`, `T_world_baselink_at_rail0`
+  (`T_world_railbase @ translate([0,-0.4,0])`), `T_tcp_board`, rail direction,
+  and hand-eye diagnostics. Export a twin overlay with
+  `scripts/export_twin_rail_calib.py`.
 - `world_meta.yaml`: bed envelope (`bed_size_m`, `bed_rotation_deg`,
   `bed_outer_rect_xy`, `bed_center_world`, `bed_center_on_floor` — all in the
   **final** world frame, origin at bed center on floor), plane residuals, and
-  `bed_xy_skew_deg_pre_align` when XY was deskewed.
+  `bed_xy_skew_deg_pre_align` (bed yaw vs world +X).
 - `genesis_bundle.yaml`: **single Genesis handoff file** — merges intrinsics,
   world extrinsics, bed geometry, and quality metrics under fixed top-level
   sections (`metadata`, `world_frame`, `bed`, `cameras`). The `cameras` block

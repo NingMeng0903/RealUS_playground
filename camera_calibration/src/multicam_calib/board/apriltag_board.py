@@ -70,7 +70,7 @@ class BoardGeometry:
             model = self.corners_by_tag.get(int(tag_id))
             if model is None:
                 continue
-            px_arr = corners_to_board_frame(px)
+            px_arr = corners_to_board_frame(px, self.config.pupil_to_board_corner_perm)
             obj.append(model)
             img.append(px_arr)
             used.append(int(tag_id))

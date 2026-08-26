@@ -1,13 +1,12 @@
 # Runtime / UI parameters.
 
 stream:
-  # RGB stream settings shared across cameras.
-  # Default 1280x720@30: stable for 4x D435 on one USB3 hub (calibration + preview).
-  # Change width/height/fps here — D435 supports up to 1920x1080@30 per camera,
-  # but 4x1080p30 often drops frames unless each camera has dedicated USB3 bandwidth.
-  # After changing resolution you must re-run Stage 0 intrinsics and Stage 1.
-  width: 1280
-  height: 720
+  # 4x D435 1920x1080. Current cabling is 2 cameras per USB3 hub — try 30 fps
+  # first. If publisher hits "Couldn't resolve requests" or wait_for_frames
+  # timeouts, restart Cam with --fps 15 (K does not depend on fps).
+  # After changing width/height you must re-run Stage 0 then Stage 1/2.
+  width: 1920
+  height: 1080
   fps: 30
   color_format: bgr8       # driver returns numpy HxWx3 uint8 in BGR order
 
@@ -29,7 +28,7 @@ detector:
   quad_sigma: 0.0
   refine_edges: 1
   decode_sharpening: 0.25
-  preview_quad_decimate: 2.0
+  preview_quad_decimate: 1.0
 
 ui:
   preview_refresh_hz: 15   # same cadence as fb97347; stream threads stay at stream.fps

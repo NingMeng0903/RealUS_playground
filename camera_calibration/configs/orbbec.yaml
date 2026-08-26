@@ -1,0 +1,22 @@
+# Stage 3 — Orbbec RGB-D factory check (not the 4× RealSense roster).
+# Serial empty = first Orbbec device on the bus.
+#
+# RGB UVC advertises 1080p/5MP MJPEG, but v1 SDK + depth on this hub only
+# stably opens 640x480. Stay here for Stage 3/4/5 (K is resolution-locked).
+orbbec:
+  serial: ""
+  color_width: 640
+  color_height: 480
+  depth_width: 640
+  depth_height: 400
+  fps: 30
+  depth_fps: 15           # hub/expansion: keep depth bandwidth down
+  depth_flip_h: true      # first-gen OpenNI depth is mirrored vs UVC RGB
+  align: d2c_sw           # d2c_sw | d2c_hw | off
+  min_depth_m: 0.20
+  max_depth_m: 3.00
+  overlay_alpha: 0.45
+  min_valid_points: 500
+  min_valid_frac: 0.02
+  bundled_sdk_root: ../tmp/OrbbecSDK_Python_v1.1.4_linux_x64_release
+  v1_python: /media/camp/EXT_DRIVE/envs/orbbec_sdk39/bin/python

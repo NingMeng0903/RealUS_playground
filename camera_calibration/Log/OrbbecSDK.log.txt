@@ -1,0 +1,231 @@
+[08/26 15:48:24.739156][info][367954][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 15:48:24.739536][info][367954][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 15:48:24.739539][info][367954][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 15:48:24.739540][info][367954][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 15:48:25.743617][info][367954][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 15:48:33.953834][info][368262][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 15:48:33.954267][info][368262][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 15:48:33.954270][info][368262][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 15:48:33.954272][info][368262][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 15:48:34.960336][info][368262][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:08:21.873563][info][372543][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:08:21.873600][warning][372543][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:08:21.923827][warning][372543][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:08:21.923880][warning][372543][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:08:21.973956][warning][372543][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:08:21.974454][info][372543][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:08:21.974458][info][372543][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:08:21.974460][info][372543][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:08:22.981258][info][372543][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:08:34.323273][info][372838][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:08:34.323320][warning][372838][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:08:34.373507][warning][372838][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:08:34.373564][warning][372838][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:08:34.423752][warning][372838][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:08:34.424671][info][372838][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:08:34.424678][info][372838][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:08:34.424680][info][372838][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:08:35.432194][info][372838][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:08:35.432275][warning][372838][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[08/26 16:21:00.914909][info][378448][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:21:00.915000][warning][378448][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:21:00.965111][warning][378448][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:21:00.965173][warning][378448][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:21:01.015298][warning][378448][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:21:01.016341][info][378448][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:21:01.016346][info][378448][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:21:01.016349][info][378448][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:21:02.020073][info][378448][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:21:09.371454][info][378448][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:21:09.371515][warning][378448][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:21:09.421622][warning][378448][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:21:09.421705][warning][378448][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:21:09.471794][warning][378448][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:21:09.472784][info][378448][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:21:09.472797][info][378448][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:21:09.472800][info][378448][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:21:10.479865][info][378448][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:21:10.479883][warning][378448][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[08/26 16:21:15.061793][info][378448][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:21:15.061824][warning][378448][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:21:15.111914][warning][378448][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:21:15.111959][warning][378448][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:21:15.162076][warning][378448][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:21:15.162525][info][378448][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:21:15.162529][info][378448][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:21:15.162531][info][378448][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:21:16.166215][info][378448][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:21:16.166234][warning][378448][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[08/26 16:21:49.301809][info][378448][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:21:49.301855][warning][378448][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:21:49.352057][warning][378448][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:21:49.352142][warning][378448][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:21:49.402387][warning][378448][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:21:49.403759][info][378448][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:21:49.403770][info][378448][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:21:49.403775][info][378448][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:21:50.408207][info][378448][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:21:50.408235][warning][378448][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[08/26 16:22:11.191742][info][379569][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:22:11.191871][debug][379569][DeviceManager.cpp:52] DeviceManager init ...
+[08/26 16:22:11.191885][debug][379569][DeviceManager.cpp:58] Enable USB Device Enumerator ...
+[08/26 16:22:11.191896][warning][379569][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:22:11.241998][warning][379569][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:22:11.242038][warning][379569][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:22:11.292150][warning][379569][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:22:11.292191][debug][379569][UsbEnumeratorLibusb.cpp:451] queryUsbInterfaces done!
+[08/26 16:22:11.292596][debug][379569][ObV4lGmslDevicePort.cpp:2059] video queryDevicesInfo devInfoList.size():0
+[08/26 16:22:11.292599][debug][379569][ObV4lGmslDevicePort.cpp:2060] queryDevicesInfo done!
+[08/26 16:22:11.292601][debug][379569][UsbDeviceEnumerator.cpp:158] Current usb device port list:
+[08/26 16:22:11.292603][debug][379569][UsbDeviceEnumerator.cpp:161]  - 2-3.4.2.2-113.0 | 
+[08/26 16:22:11.292603][debug][379569][UsbDeviceEnumerator.cpp:161]  - 1-6.4.2.1-63.0 | 
+[08/26 16:22:11.292710][info][379569][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:22:11.292713][debug][379569][UsbDeviceEnumerator.cpp:58] No matched usb device found!
+[08/26 16:22:11.292721][info][379569][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:22:11.292723][debug][379569][DeviceManager.cpp:78] DeviceManager construct done!
+[08/26 16:22:11.292725][info][379569][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:22:12.296825][debug][379569][NetDeviceEnumerator.cpp:66] No net source port found!
+[08/26 16:22:12.296842][debug][379569][NetDeviceEnumerator.cpp:38] No net device found!
+[08/26 16:22:12.296874][info][379569][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:22:12.296913][warning][379569][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[08/26 16:22:12.298645][debug][379569][DeviceManager.cpp:82] DeviceManager destroy ...
+[08/26 16:22:13.300286][debug][379569][UsbEnumeratorLibusb.cpp:488] UsbEnumeratorLibusb::stopEventHandler()
+[08/26 16:22:13.300648][debug][379569][UsbEnumeratorLibusb.cpp:349] UsbEnumeratorLibusb destroyed
+[08/26 16:22:13.300671][debug][379569][DeviceManager.cpp:95] DeviceManager Destructors done
+[08/26 16:22:13.300882][debug][379573][GVCPClient.cpp:463] bind 0.0.0.0:42656 [**9 logs in 2109ms, last: 16:22:11.191718**]
+[08/26 16:22:37.724027][info][379757][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:22:37.724408][warning][379757][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:22:37.774519][warning][379757][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:22:37.774566][warning][379757][UsbEnumeratorLibusb.cpp:398] Failed to open USB device: error=Access denied (insufficient permissions). Try again
+[08/26 16:22:37.824822][warning][379757][UsbEnumeratorLibusb.cpp:407] Failed to open USB device (Access denied (insufficient permissions)), skipping, info.serial and infName may be empty
+[08/26 16:22:37.825311][info][379757][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:22:37.825317][info][379757][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:22:37.825319][info][379757][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:22:38.829639][info][379757][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:25:27.800773][info][381819][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:25:27.800850][warning][381819][UsbEnumeratorLibusb.cpp:159] Invalid descriptor index: 0
+[08/26 16:25:27.800865][error][381819][UsbEnumeratorLibusb.cpp:424] Failed to query USB device serial number
+[08/26 16:25:28.082488][info][381819][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:25:28.082504][info][381819][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:25:28.082508][info][381819][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:25:29.087441][info][381819][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:25:32.363266][info][381819][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:25:32.363323][warning][381819][UsbEnumeratorLibusb.cpp:159] Invalid descriptor index: 0
+[08/26 16:25:32.363341][error][381819][UsbEnumeratorLibusb.cpp:424] Failed to query USB device serial number
+[08/26 16:25:32.645401][info][381819][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:25:32.645413][info][381819][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:25:32.645416][info][381819][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:25:33.652146][info][381819][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:25:33.652172][warning][381819][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[08/26 16:25:41.393054][info][381819][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:25:41.393095][warning][381819][UsbEnumeratorLibusb.cpp:159] Invalid descriptor index: 0
+[08/26 16:25:41.393112][error][381819][UsbEnumeratorLibusb.cpp:424] Failed to query USB device serial number
+[08/26 16:25:41.673606][info][381819][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:25:41.673613][info][381819][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:25:41.673615][info][381819][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:25:42.677966][info][381819][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:25:42.677985][warning][381819][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[08/26 16:25:56.033528][info][381819][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:25:56.033594][warning][381819][UsbEnumeratorLibusb.cpp:159] Invalid descriptor index: 0
+[08/26 16:25:56.033620][error][381819][UsbEnumeratorLibusb.cpp:424] Failed to query USB device serial number
+[08/26 16:25:56.314234][info][381819][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:25:56.314241][info][381819][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:25:56.314243][info][381819][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:25:57.318243][info][381819][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:25:57.318261][warning][381819][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[08/26 16:26:54.754334][info][383525][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:26:54.754678][debug][383525][DeviceManager.cpp:52] DeviceManager init ...
+[08/26 16:26:54.754694][debug][383525][DeviceManager.cpp:58] Enable USB Device Enumerator ...
+[08/26 16:26:54.754721][warning][383525][UsbEnumeratorLibusb.cpp:159] Invalid descriptor index: 0
+[08/26 16:26:54.754727][error][383525][UsbEnumeratorLibusb.cpp:424] Failed to query USB device serial number
+[08/26 16:26:55.035383][debug][383525][UsbEnumeratorLibusb.cpp:451] queryUsbInterfaces done!
+[08/26 16:26:55.036034][debug][383525][ObV4lGmslDevicePort.cpp:2059] video queryDevicesInfo devInfoList.size():0
+[08/26 16:26:55.036041][debug][383525][ObV4lGmslDevicePort.cpp:2060] queryDevicesInfo done!
+[08/26 16:26:55.036044][debug][383525][UsbDeviceEnumerator.cpp:158] Current usb device port list:
+[08/26 16:26:55.036046][debug][383525][UsbDeviceEnumerator.cpp:161]  - 2-3.4.2.2-115.0 | Orbbec(R) Astra(TM) 3D Camera(F) Depth
+[08/26 16:26:55.036047][debug][383525][UsbDeviceEnumerator.cpp:161]  - 1-6.4.2.1-65.0 | USB Camera?
+[08/26 16:26:55.036110][info][383525][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:26:55.036112][debug][383525][UsbDeviceEnumerator.cpp:58] No matched usb device found!
+[08/26 16:26:55.036115][info][383525][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:26:55.036116][debug][383525][DeviceManager.cpp:78] DeviceManager construct done!
+[08/26 16:26:55.036118][info][383525][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:26:56.039915][debug][383525][NetDeviceEnumerator.cpp:66] No net source port found!
+[08/26 16:26:56.039931][debug][383525][NetDeviceEnumerator.cpp:38] No net device found!
+[08/26 16:26:56.039971][info][383525][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:26:56.042265][debug][383525][DeviceManager.cpp:82] DeviceManager destroy ...
+[08/26 16:26:57.044276][debug][383525][UsbEnumeratorLibusb.cpp:488] UsbEnumeratorLibusb::stopEventHandler()
+[08/26 16:26:57.044504][debug][383525][UsbEnumeratorLibusb.cpp:349] UsbEnumeratorLibusb destroyed
+[08/26 16:26:57.044543][debug][383525][DeviceManager.cpp:95] DeviceManager Destructors done
+[08/26 16:26:57.044599][debug][383529][GVCPClient.cpp:463] bind 0.0.0.0:34477 [**9 logs in 2290ms, last: 16:26:54.754322**]
+[08/26 16:31:14.814356][info][384983][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:31:14.814412][warning][384983][UsbEnumeratorLibusb.cpp:159] Invalid descriptor index: 0
+[08/26 16:31:14.814431][error][384983][UsbEnumeratorLibusb.cpp:424] Failed to query USB device serial number
+[08/26 16:31:15.096399][info][384983][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:31:15.096411][info][384983][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:31:15.096414][info][384983][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:31:16.100432][info][384983][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:31:17.117215][info][384983][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:31:17.117267][warning][384983][UsbEnumeratorLibusb.cpp:159] Invalid descriptor index: 0
+[08/26 16:31:17.117285][error][384983][UsbEnumeratorLibusb.cpp:424] Failed to query USB device serial number
+[08/26 16:31:17.130729][info][384983][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:31:17.130733][info][384983][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:31:17.130734][info][384983][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:31:18.135003][info][384983][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:31:18.135024][warning][384983][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[08/26 16:53:59.978501][info][395327][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:53:59.978591][warning][395327][UsbEnumeratorLibusb.cpp:159] Invalid descriptor index: 0
+[08/26 16:53:59.978611][error][395327][UsbEnumeratorLibusb.cpp:424] Failed to query USB device serial number
+[08/26 16:54:00.260184][info][395327][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:54:00.260198][info][395327][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:54:00.260201][info][395327][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:54:01.266515][info][395327][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 16:55:18.327572][info][396858][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 16:55:18.327627][warning][396858][UsbEnumeratorLibusb.cpp:159] Invalid descriptor index: 0
+[08/26 16:55:18.327645][error][396858][UsbEnumeratorLibusb.cpp:424] Failed to query USB device serial number
+[08/26 16:55:18.609910][info][396858][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 16:55:18.609916][info][396858][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 16:55:18.609918][info][396858][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 16:55:19.615084][info][396858][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/26 17:06:14.079417][info][399603][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/26 17:06:14.079476][warning][399603][UsbEnumeratorLibusb.cpp:159] Invalid descriptor index: 0
+[08/26 17:06:14.079493][error][399603][UsbEnumeratorLibusb.cpp:424] Failed to query USB device serial number
+[08/26 17:06:14.362091][info][399603][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/26 17:06:14.362100][info][399603][DeviceManager.cpp:25] Current found device(s): (0)
+[08/26 17:06:14.362102][info][399603][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/26 17:06:15.367943][info][399603][DeviceManager.cpp:25] Current device(s) list: (0)

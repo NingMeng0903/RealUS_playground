@@ -1,0 +1,294 @@
+Log file created at: 2026/08/26 16:54:09
+Running on machine: pei
+Running duration (h:mm:ss): 0:00:00
+Log line format: [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
+[I20260826 16:54:09.149036 395680 DeviceManager.cpp:54] DeviceManager init ...
+[I20260826 16:54:09.149292 395680 LinuxPal.cpp:21] createObPal: create LinuxPal!
+[I20260826 16:54:09.212006 395680 EnumeratorLibusb.cpp:325] queryDevicesInfo done!
+[I20260826 16:54:09.311585 395680 DeviceManager.cpp:373] Current usb device port list::
+[I20260826 16:54:09.311620 395680 DeviceManager.cpp:375]         - 2-3.4.2.2-115.0 | Orbbec(R) Astra(TM) 3D Camera(F) Depth
+[I20260826 16:54:09.311623 395680 DeviceManager.cpp:375]         - 1-6.4.2.1-65.0 | USB Cameraÿ
+[W20260826 16:54:09.311632 395680 OpenNIDeviceInfo.cpp:172] New openni device matched.
+[I20260826 16:54:09.311635 395680 DeviceManager.cpp:345] Devices matched:
+[I20260826 16:54:09.311640 395680 DeviceManager.cpp:359]   - openniDevice = 1
+[I20260826 16:54:09.311687 395680 LinuxPal.cpp:142] Create PollingDeviceWatcher!
+[I20260826 16:54:09.311693 395680 DeviceManager.cpp:99] DeviceManager init  done!
+[I20260826 16:54:09.311697 395680 DeviceManager.cpp:50] DeviceManager construct done
+[I20260826 16:54:09.311712 395680 Context.cpp:51] Context created!
+[I20260826 16:54:09.311715 395680 DeviceManager.cpp:211] DeviceManager  createDevice...
+[E20260826 16:54:09.311760 395680 HandleLibusb.hpp:79] failed to claim usb interface: 0, error: OB_USB_STATUS_BUSY
+[I20260826 16:54:09.312173 395680 OpenNIHostProtocol.cpp:487] Hardware versions: FW=5.8.23(14),HW=0, Chip=7,Sensor=0,SYS=12
+[E20260826 16:54:09.312644 395680 OpenNIHostProtocol.cpp:502] Get usb core type failed!
+[I20260826 16:54:09.312674 395680 OpenNIHostProtocol.cpp:574] Requesting KeepAlive...
+[I20260826 16:54:09.313146 395680 OpenNIHostProtocol.cpp:581] Got KeepAlive Reply.
+[I20260826 16:54:09.314448 395680 OpenNIHostProtocol.cpp:574] Requesting KeepAlive...
+[I20260826 16:54:09.314713 395680 OpenNIHostProtocol.cpp:581] Got KeepAlive Reply.
+[I20260826 16:54:09.314724 395680 OpenNIHostProtocol.cpp:596] Getting the fixed params...
+[I20260826 16:54:09.315048 395680 OpenNIHostProtocol.cpp:633] Reading sensor serial number...
+[I20260826 16:54:09.315407 395680 OpenNISensorFirmware.cpp:892] Sensor serial number:AY2MC31016E
+[I20260826 16:54:09.315606 395680 OpenNIHostProtocol.cpp:702] Reading sensor platform string...
+[I20260826 16:54:09.316025 395680 OpenNISensorFirmware.cpp:920] Firmware version RD3013
+[I20260826 16:54:09.316468 395680 OpenNISensorFirmware.cpp:926] Device frequency 50
+[I20260826 16:54:09.316490 395680 OpenNIHostProtocol.cpp:773] Update supported depth video modes from firmware
+[I20260826 16:54:09.316497 395680 OpenNIHostProtocol.cpp:806] Reading CMOS 1 supported presets...
+[I20260826 16:54:09.316927 395680 OpenNIHostProtocol.cpp:773] Update supported depth video modes from firmware
+[I20260826 16:54:09.316938 395680 OpenNIHostProtocol.cpp:806] Reading CMOS 2 supported presets...
+[I20260826 16:54:09.324105 395680 OpenNISensorFirmware.cpp:938] OpenNI camera params read.
+[I20260826 16:54:09.350960 395680 OpenNISensorFirmware.cpp:1216] OpenNI camera params read end.
+[I20260826 16:54:09.350996 395680 OpenNISensorIO.cpp:29] Opening endpoint 0x81 for depth...
+[I20260826 16:54:09.351001 395680 OpenNISensorIO.cpp:41] Depth endpoint(0x81) was successfully opened.
+[I20260826 16:54:09.351004 395680 OpenNISensorIO.cpp:48] Opening endpoint 0x82 for IR...
+[I20260826 16:54:09.351008 395680 OpenNISensorIO.cpp:54] IR endpoint(0x82) was successfully opened.
+[I20260826 16:54:09.351012 395680 OpenNISensorIO.cpp:60] Opening endpoint 0x84 for image...
+[I20260826 16:54:09.351015 395680 OpenNISensorIO.cpp:65] Image endpoint is not supported...
+[I20260826 16:54:09.351018 395680 OpenNISensorIO.cpp:75] Opening endpoint 0x83 for misc...
+[I20260826 16:54:09.351022 395680 OpenNISensorIO.cpp:80] Misc endpoint is not supported...
+[I20260826 16:54:09.351024 395680 OpenNISensorIO.cpp:87] Endpoints open end.
+[I20260826 16:54:09.351029 395680 VendorCommand.cpp:187] VendorCommand constructor 0x322ee960
+[I20260826 16:54:09.351042 395680 OpenNIDevice.cpp:162] init sensor map start!
+[I20260826 16:54:09.351046 395680 OpenNIDevice.cpp:176] init sensor map done!
+[I20260826 16:54:09.351065 395680 AbstractDevice.cpp:364] Default config file is not loaded!
+[I20260826 16:54:09.351070 395680 OpenNIDevice.cpp:216] Init depth process param start!
+[I20260826 16:54:09.351073 395680 OpenNIDevice.cpp:229] Device baseline: 39.9902, fx: 954.568
+[I20260826 16:54:09.351084 395680 OpenNIDevice.cpp:262] Init depth process param done!
+[I20260826 16:54:09.351089 395680 OpenNIDevice.cpp:29] OpenNIDevice init done
+[I20260826 16:54:09.351094 395680 DeviceManager.cpp:307] DeviceManager createDevice done!
+[I20260826 16:54:09.351099 395680 Pipeline.cpp:26] Pipeline init ...
+[I20260826 16:54:09.351106 395680 Pipeline.cpp:172] loadFrameQueueSizeConfig() config queue size: 10
+[I20260826 16:54:09.351112 395680 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20260826 16:54:09.351118 395680 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20260826 16:54:09.351122 395680 Pipeline.cpp:47] Pipeline init done!
+[I20260826 16:54:09.351150 395680 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20260826 16:54:09.351155 395680 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20260826 16:54:09.351161 395680 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20260826 16:54:09.351233 395680 OpenNIDevice.cpp:328] Depth sensor has been created!
+[I20260826 16:54:09.351243 395680 OpenNIVideoSensor.cpp:814] Query stream profile! size= 24, sensorType=OB_SENSOR_DEPTH
+[I20260826 16:54:09.351298 395680 Pipeline.cpp:181] Pipeline start() start!
+[I20260826 16:54:09.351306 395680 FrameProcessingBlockManager.cpp:75]  FrameProcessingBlockManager started, 0 processingblocks contained!
+[I20260826 16:54:09.351310 395680 Pipeline.cpp:226] Start stream ...
+[I20260826 16:54:09.351315 395680 FrameBufferManager.hpp:58] FrameBufferManager created! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE, obj addr:841578448, frame obj total size:0.336097MB
+[I20260826 16:54:09.351320 395680 FrameBufferManager.cpp:107] DepthFrame bufferManager created!
+[I20260826 16:54:09.351336 395680 OpenNISensorStreams.cpp:79] Firmware stream Depth processor was replaced.
+[I20260826 16:54:09.351341 395680 FrameProcessor.cpp:75]  FrameProcessor stoped!
+[I20260826 16:54:09.351346 395680 FrameProcessor.cpp:66]  FrameProcessor started, 3 block contained!
+[I20260826 16:54:09.351595 395680 OpenNIVideoSensor.cpp:702] Creating USB Depth read thread... 
+[I20260826 16:54:09.351601 395680 OpenNIUSBLinux.cpp:112] Starting a USB read thread...
+[W20260826 16:54:09.352667 395680 MessengerLibusb.cpp:20] reset_endpoint returned error, index: 129, error: Device or resource busy, number: 16
+[I20260826 16:54:09.352742 395680 OpenNISensorParams.cpp:110] set property DepthFormat(3).
+[W20260826 16:54:09.352818 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.352852 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer 0: Failed to submit asynch I/O transfer!
+[W20260826 16:54:09.352870 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.352880 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer 1: Failed to submit asynch I/O transfer!
+[W20260826 16:54:09.352892 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.352901 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer 2: Failed to submit asynch I/O transfer!
+[W20260826 16:54:09.352913 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.352922 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer 3: Failed to submit asynch I/O transfer!
+[W20260826 16:54:09.352934 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.352952 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer 4: Failed to submit asynch I/O transfer!
+[W20260826 16:54:09.352964 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.352994 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer 5: Failed to submit asynch I/O transfer!
+[I20260826 16:54:09.353005 395680 OpenNISensorParams.cpp:121] DepthFormat(3)was successfully set.
+[W20260826 16:54:09.353014 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.353029 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer 6: Failed to submit asynch I/O transfer!
+[W20260826 16:54:09.353035 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.353041 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer 7: Failed to submit asynch I/O transfer!
+[W20260826 16:54:09.353047 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.353051 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer 8: Failed to submit asynch I/O transfer!
+[W20260826 16:54:09.353057 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.353062 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer 9: Failed to submit asynch I/O transfer!
+[W20260826 16:54:09.353068 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.353072 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer a: Failed to submit asynch I/O transfer!
+[W20260826 16:54:09.353080 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.353084 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer b: Failed to submit asynch I/O transfer!
+[W20260826 16:54:09.353089 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.353094 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer c: Failed to submit asynch I/O transfer!
+[W20260826 16:54:09.353099 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.353103 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer d: Failed to submit asynch I/O transfer!
+[I20260826 16:54:09.353022 395680 OpenNISensorParams.cpp:110] set property DepthResolution(17).
+[W20260826 16:54:09.353109 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.353132 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer e: Failed to submit asynch I/O transfer!
+[W20260826 16:54:09.353139 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:09.353143 395717 OpenNIUSBLinux.cpp:194] Endpoint 0x81, Buffer f: Failed to submit asynch I/O transfer!
+[I20260826 16:54:09.353318 395680 OpenNISensorParams.cpp:121] DepthResolution(17)was successfully set.
+[I20260826 16:54:09.353343 395680 OpenNISensorParams.cpp:110] set property DepthFPS(15).
+[I20260826 16:54:09.354949 395680 OpenNISensorParams.cpp:121] DepthFPS(15)was successfully set.
+[I20260826 16:54:09.354975 395680 OpenNISensorParams.cpp:110] set property DepthHoleFilter(1).
+[I20260826 16:54:09.355233 395680 OpenNISensorParams.cpp:121] DepthHoleFilter(1)was successfully set.
+[I20260826 16:54:09.355248 395680 OpenNISensorParams.cpp:110] set property Registration(0).
+[I20260826 16:54:09.356040 395680 OpenNISensorParams.cpp:121] Registration(0)was successfully set.
+[I20260826 16:54:09.356052 395680 OpenNISensorParams.cpp:110] set property DepthMirror(1).
+[I20260826 16:54:09.356334 395680 OpenNISensorParams.cpp:121] DepthMirror(1)was successfully set.
+[I20260826 16:54:09.356339 395680 OpenNISensorParams.cpp:110] set property Stream1Mode(2).
+[I20260826 16:54:09.357967 395680 OpenNISensorParams.cpp:121] Stream1Mode(2)was successfully set.
+[I20260826 16:54:09.357985 395680 OpenNISensorParams.cpp:110] set property DepthCropEnabled(0).
+[I20260826 16:54:09.358866 395680 OpenNISensorParams.cpp:121] DepthCropEnabled(0)was successfully set.
+[I20260826 16:54:09.358903 395680 OpenNISensorParams.cpp:110] set property FrameSync(0).
+[I20260826 16:54:09.359124 395680 OpenNISensorParams.cpp:121] FrameSync(0)was successfully set.
+[I20260826 16:54:09.359133 395680 Pipeline.cpp:237] Sensor start, sensorType=OB_SENSOR_DEPTH streamType=OB_STREAM_DEPTH
+[I20260826 16:54:09.359136 395680 Pipeline.cpp:239] Start stream done!
+[I20260826 16:54:09.359139 395680 Pipeline.cpp:222] Pipeline start() done!
+[W20260826 16:54:09.559217 395680 Pipeline.cpp:316] waitForFrame timeout= 200
+[W20260826 16:54:09.559252 395680 ApiImpl.cpp:1398] frameSet is nullptr
+[W20260826 16:54:09.759330 395680 Pipeline.cpp:316] waitForFrame timeout= 200
+[W20260826 16:54:09.759371 395680 ApiImpl.cpp:1398] frameSet is nullptr
+[W20260826 16:54:09.959540 395680 Pipeline.cpp:316] waitForFrame timeout= 200
+[W20260826 16:54:09.959595 395680 ApiImpl.cpp:1398] frameSet is nullptr
+[W20260826 16:54:10.159795 395680 Pipeline.cpp:316] waitForFrame timeout= 200
+[W20260826 16:54:10.159857 395680 ApiImpl.cpp:1398] frameSet is nullptr
+[I20260826 16:54:10.353226 395717 OpenNIUSBLinux.cpp:218] Cancel request transfer(0)...
+[W20260826 16:54:10.353276 395717 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:10.353279 395717 OpenNIUSBLinux.cpp:229] Endpoint 0x81,Buffer 0: Failed to cancel asynch I/O transfer.
+[W20260826 16:54:10.359931 395680 Pipeline.cpp:316] waitForFrame timeout= 200
+[W20260826 16:54:10.359954 395680 ApiImpl.cpp:1398] frameSet is nullptr
+[W20260826 16:54:10.453363 395717 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer 0: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[W20260826 16:54:10.453485 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:10.453490 395717 OpenNIUSBLinux.cpp:281] Endpoint 0x81,Buffer 0: Failed to re-submit asynch I/O transfer!
+[W20260826 16:54:10.560047 395680 Pipeline.cpp:316] waitForFrame timeout= 200
+[W20260826 16:54:10.560101 395680 ApiImpl.cpp:1398] frameSet is nullptr
+[W20260826 16:54:10.760197 395680 Pipeline.cpp:316] waitForFrame timeout= 200
+[W20260826 16:54:10.760252 395680 ApiImpl.cpp:1398] frameSet is nullptr
+[W20260826 16:54:10.960350 395680 Pipeline.cpp:316] waitForFrame timeout= 200
+[W20260826 16:54:10.960402 395680 ApiImpl.cpp:1398] frameSet is nullptr
+[W20260826 16:54:11.160480 395680 Pipeline.cpp:316] waitForFrame timeout= 200
+[W20260826 16:54:11.160522 395680 ApiImpl.cpp:1398] frameSet is nullptr
+[W20260826 16:54:11.360620 395680 Pipeline.cpp:316] waitForFrame timeout= 200
+[W20260826 16:54:11.360702 395680 ApiImpl.cpp:1398] frameSet is nullptr
+[I20260826 16:54:11.453593 395717 OpenNIUSBLinux.cpp:218] Cancel request transfer(1)...
+[W20260826 16:54:11.453652 395717 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:11.453661 395717 OpenNIUSBLinux.cpp:229] Endpoint 0x81,Buffer 1: Failed to cancel asynch I/O transfer.
+[W20260826 16:54:11.553730 395717 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer 1: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[W20260826 16:54:11.553790 395717 MessengerLibusb.cpp:69] usb_request_queue returned error, endpoint: 129 error: Device or resource busy, number: 16
+[E20260826 16:54:11.553795 395717 OpenNIUSBLinux.cpp:281] Endpoint 0x81,Buffer 1: Failed to re-submit asynch I/O transfer!
+[W20260826 16:54:11.560781 395680 Pipeline.cpp:316] waitForFrame timeout= 200
+[W20260826 16:54:11.560822 395680 ApiImpl.cpp:1398] frameSet is nullptr
+[I20260826 16:54:11.560842 395680 Pipeline.cpp:350] Pipeline stop start!
+[I20260826 16:54:11.560846 395680 Pipeline.cpp:322] Stop stream ...
+[I20260826 16:54:11.560855 395680 OpenNIVideoSensor.cpp:712] Shutting down USB Depth read thread...
+[I20260826 16:54:11.560860 395680 OpenNIUSBLinux.cpp:346] Shutdown read thread...
+[I20260826 16:54:12.553862 395717 OpenNIUSBLinux.cpp:218] Cancel request transfer(2)...
+[W20260826 16:54:12.553902 395717 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.553906 395717 OpenNIUSBLinux.cpp:229] Endpoint 0x81,Buffer 2: Failed to cancel asynch I/O transfer.
+[W20260826 16:54:12.653975 395717 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer 2: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20260826 16:54:12.654019 395717 OpenNIUSBLinux.cpp:287] Do not submit(2)...
+[E20260826 16:54:12.654023 395717 OpenNIUSBLinux.cpp:204] exist(0) read thread(3)...
+[W20260826 16:54:12.654064 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654101 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654107 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654112 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654117 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654121 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654125 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654129 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654134 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654139 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654145 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654148 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654153 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654157 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654161 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[W20260826 16:54:12.654165 395680 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Device or resource busy, number: 16
+[I20260826 16:54:12.654325 395680 OpenNIUSBLinux.cpp:380] Shutdown read thread end...
+[I20260826 16:54:12.654331 395680 OpenNISensorParams.cpp:110] set property Stream1Mode(0).
+[I20260826 16:54:12.655207 395680 OpenNISensorParams.cpp:121] Stream1Mode(0)was successfully set.
+[I20260826 16:54:12.655220 395680 FrameProcessor.cpp:75]  FrameProcessor stoped!
+[I20260826 16:54:12.655224 395680 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE,  obj addr:841578448
+[I20260826 16:54:12.655241 395680 OpenNISensorStreams.cpp:114] Erase FW Stream Depth
+[I20260826 16:54:12.655258 395680 OpenNISensorStreams.cpp:124] released FW Stream Depth
+[E20260826 16:54:12.655263 395680 OpenNIVideoSensor.cpp:634] OpenNI Depth stream stop success.
+[I20260826 16:54:12.655267 395680 Pipeline.cpp:335] Sensor stop, sensorType=OB_SENSOR_DEPTH
+[I20260826 16:54:12.655272 395680 Pipeline.cpp:341] Stop stream done!
+[I20260826 16:54:12.655283 395680 OpenNISensorParams.cpp:110] set property Registration(0).
+[I20260826 16:54:12.655457 395680 OpenNISensorParams.cpp:121] Registration(0)was successfully set.
+[I20260826 16:54:12.655464 395680 FrameProcessingBlockManager.cpp:84]  FrameProcessingBlockManager stoped!
+[I20260826 16:54:12.655468 395680 FrameProcessingBlockManager.cpp:20] Processing block list cleared!
+[I20260826 16:54:12.655472 395680 Pipeline.cpp:379] Pipeline stop done!
+[I20260826 16:54:13.055778 395680 Pipeline.cpp:71] Pipeline deInit start!
+[I20260826 16:54:13.055840 395680 Pipeline.cpp:79] Pipeline deInit done!
+[I20260826 16:54:13.055851 395680 OpenNIDevice.cpp:33] ~OpenNIDevice done
+[I20260826 16:54:13.055856 395680 OpenNIVideoSensor.cpp:962] OpenNIVideoSensor ::~OpenNIVideoSensor, sensorType=OB_SENSOR_DEPTH
+[I20260826 16:54:13.055871 395680 FrameProcessor.cpp:557] try remove eventId: PropertyValueUpdate
+[I20260826 16:54:13.055876 395680 FrameProcessor.cpp:557] try remove eventId: DepthStreamProfileChanged
+[I20260826 16:54:13.055886 395680 VendorCommand.cpp:195] destructor 0x322ee960
+[I20260826 16:54:13.055888 395680 VendorCommand.cpp:439] disableHeartBeat heartBeatHelper_: 0
+[I20260826 16:54:13.055891 395680 HostProtocol.cpp:143] ~HostProtocol()
+[I20260826 16:54:13.055935 395716 HostProtocol.cpp:171] emitTranDataFutureSignalThread_ finish
+[I20260826 16:54:13.056089 395680 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20260826 16:54:13.056134 395680 Context.cpp:55] Context destroying ...
+[I20260826 16:54:13.056142 395680 DeviceManager.cpp:103] DeviceManager destroy ...
+[I20260826 16:54:13.056149 395680 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20260826 16:54:13.056509 395680 DeviceManager.cpp:131] DeviceManager destroy done
+[I20260826 16:54:13.056528 395680 DeviceManager.cpp:137] DeviceManager Destructors  done
+[I20260826 16:54:13.056553 395680 Context.cpp:13] Context creating!
+[I20260826 16:54:13.056567 395680 Context.cpp:33] Config file version=1.1
+[I20260826 16:54:13.056577 395680 FrameBufferManager.cpp:22] Max global frame buffer size updated! Size=2048MB
+[I20260826 16:54:13.056583 395680 Context.cpp:78] filter version[major.minor.maintenance.build]: 1.1.4.0
+[I20260826 16:54:13.056591 395680 DeviceManager.cpp:54] DeviceManager init ...
+[I20260826 16:54:13.056595 395680 LinuxPal.cpp:21] createObPal: create LinuxPal!
+[I20260826 16:54:13.101472 395680 EnumeratorLibusb.cpp:325] queryDevicesInfo done!
+[I20260826 16:54:13.201359 395680 DeviceManager.cpp:373] Current usb device port list::
+[I20260826 16:54:13.201388 395680 DeviceManager.cpp:375]         - 2-3.4.2.2-115.0 | Orbbec(R) Astra(TM) 3D Camera(F) Depth
+[I20260826 16:54:13.201395 395680 DeviceManager.cpp:375]         - 1-6.4.2.1-65.0 | USB Cameraÿ
+[W20260826 16:54:13.201408 395680 OpenNIDeviceInfo.cpp:172] New openni device matched.
+[I20260826 16:54:13.201412 395680 DeviceManager.cpp:345] Devices matched:
+[I20260826 16:54:13.201416 395680 DeviceManager.cpp:359]   - openniDevice = 1
+[I20260826 16:54:13.201447 395680 LinuxPal.cpp:142] Create PollingDeviceWatcher!
+[I20260826 16:54:13.201452 395680 DeviceManager.cpp:99] DeviceManager init  done!
+[I20260826 16:54:13.201457 395680 DeviceManager.cpp:50] DeviceManager construct done
+[I20260826 16:54:13.201460 395680 Context.cpp:51] Context created!
+[I20260826 16:54:13.201464 395680 DeviceManager.cpp:211] DeviceManager  createDevice...
+[E20260826 16:54:13.201514 395680 HandleLibusb.hpp:79] failed to claim usb interface: 0, error: OB_USB_STATUS_BUSY
+[I20260826 16:54:13.201733 395680 OpenNIHostProtocol.cpp:487] Hardware versions: FW=5.8.23(14),HW=0, Chip=7,Sensor=0,SYS=12
+[E20260826 16:54:13.201908 395680 OpenNIHostProtocol.cpp:502] Get usb core type failed!
+[I20260826 16:54:13.201925 395680 OpenNIHostProtocol.cpp:574] Requesting KeepAlive...
+[I20260826 16:54:13.202178 395680 OpenNIHostProtocol.cpp:581] Got KeepAlive Reply.
+[I20260826 16:54:13.203425 395680 OpenNIHostProtocol.cpp:574] Requesting KeepAlive...
+[I20260826 16:54:13.203675 395680 OpenNIHostProtocol.cpp:581] Got KeepAlive Reply.
+[I20260826 16:54:13.203682 395680 OpenNIHostProtocol.cpp:596] Getting the fixed params...
+[I20260826 16:54:13.203969 395680 OpenNIHostProtocol.cpp:633] Reading sensor serial number...
+[I20260826 16:54:13.204170 395680 OpenNISensorFirmware.cpp:892] Sensor serial number:AY2MC31016E
+[I20260826 16:54:13.204433 395680 OpenNIHostProtocol.cpp:702] Reading sensor platform string...
+[I20260826 16:54:13.204718 395680 OpenNISensorFirmware.cpp:920] Firmware version RD3013
+[I20260826 16:54:13.205114 395680 OpenNISensorFirmware.cpp:926] Device frequency 50
+[I20260826 16:54:13.205145 395680 OpenNIHostProtocol.cpp:773] Update supported depth video modes from firmware
+[I20260826 16:54:13.205156 395680 OpenNIHostProtocol.cpp:806] Reading CMOS 1 supported presets...
+[I20260826 16:54:13.205461 395680 OpenNIHostProtocol.cpp:773] Update supported depth video modes from firmware
+[I20260826 16:54:13.205479 395680 OpenNIHostProtocol.cpp:806] Reading CMOS 2 supported presets...
+[I20260826 16:54:13.212163 395680 OpenNISensorFirmware.cpp:938] OpenNI camera params read.
+[I20260826 16:54:13.235298 395680 OpenNISensorFirmware.cpp:1216] OpenNI camera params read end.
+[I20260826 16:54:13.235329 395680 OpenNISensorIO.cpp:29] Opening endpoint 0x81 for depth...
+[I20260826 16:54:13.235337 395680 OpenNISensorIO.cpp:41] Depth endpoint(0x81) was successfully opened.
+[I20260826 16:54:13.235342 395680 OpenNISensorIO.cpp:48] Opening endpoint 0x82 for IR...
+[I20260826 16:54:13.235348 395680 OpenNISensorIO.cpp:54] IR endpoint(0x82) was successfully opened.
+[I20260826 16:54:13.235353 395680 OpenNISensorIO.cpp:60] Opening endpoint 0x84 for image...
+[I20260826 16:54:13.235358 395680 OpenNISensorIO.cpp:65] Image endpoint is not supported...
+[I20260826 16:54:13.235363 395680 OpenNISensorIO.cpp:75] Opening endpoint 0x83 for misc...
+[I20260826 16:54:13.235368 395680 OpenNISensorIO.cpp:80] Misc endpoint is not supported...
+[I20260826 16:54:13.235373 395680 OpenNISensorIO.cpp:87] Endpoints open end.
+[I20260826 16:54:13.235379 395680 VendorCommand.cpp:187] VendorCommand constructor 0x3224b810
+[I20260826 16:54:13.235385 395680 OpenNIDevice.cpp:162] init sensor map start!
+[I20260826 16:54:13.235394 395680 OpenNIDevice.cpp:176] init sensor map done!
+[I20260826 16:54:13.235416 395680 AbstractDevice.cpp:364] Default config file is not loaded!
+[I20260826 16:54:13.235423 395680 OpenNIDevice.cpp:216] Init depth process param start!
+[I20260826 16:54:13.235430 395680 OpenNIDevice.cpp:229] Device baseline: 39.9902, fx: 954.568
+[I20260826 16:54:13.235440 395680 OpenNIDevice.cpp:262] Init depth process param done!
+[I20260826 16:54:13.235447 395680 OpenNIDevice.cpp:29] OpenNIDevice init done
+[I20260826 16:54:13.235455 395680 DeviceManager.cpp:307] DeviceManager createDevice done!
+[I20260826 16:54:13.235460 395680 Pipeline.cpp:26] Pipeline init ...
+[I20260826 16:54:13.235471 395680 Pipeline.cpp:172] loadFrameQueueSizeConfig() config queue size: 10
+[I20260826 16:54:13.235482 395680 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20260826 16:54:13.235491 395680 FrameProcessingBlock.cpp:23] FrameProcessingBlock() config frame queue size: 10
+[I20260826 16:54:13.235497 395680 Pipeline.cpp:47] Pipeline init done!
+[W20260826 16:54:13.327989 395680 ObUvcDevice.cpp:52] uvc_open  path=1-6.4.2.1-65.0 already opened
+[I20260826 16:54:13.331463 395680 Pipeline.cpp:71] Pipeline deInit start!
+[I20260826 16:54:13.331502 395680 Pipeline.cpp:79] Pipeline deInit done!
+[I20260826 16:54:13.331517 395680 OpenNIDevice.cpp:33] ~OpenNIDevice done
+[I20260826 16:54:13.331537 395680 VendorCommand.cpp:195] destructor 0x3224b810
+[I20260826 16:54:13.331544 395680 VendorCommand.cpp:439] disableHeartBeat heartBeatHelper_: 0
+[I20260826 16:54:13.331550 395680 HostProtocol.cpp:143] ~HostProtocol()
+[I20260826 16:54:13.331583 395727 HostProtocol.cpp:171] emitTranDataFutureSignalThread_ finish
+[I20260826 16:54:13.331692 395680 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20260826 16:54:13.331732 395680 Context.cpp:55] Context destroying ...
+[I20260826 16:54:13.331741 395680 DeviceManager.cpp:103] DeviceManager destroy ...
+[I20260826 16:54:13.331753 395680 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20260826 16:54:13.332074 395680 DeviceManager.cpp:131] DeviceManager destroy done
+[I20260826 16:54:13.332090 395680 DeviceManager.cpp:137] DeviceManager Destructors  done

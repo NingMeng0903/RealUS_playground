@@ -20,8 +20,8 @@ Design notes
 - Model Z origin is ``rail_base`` (frame bottom).  ``rail_link`` frame sits at the
   rail module floor (top of frame / rail bottom).  ``slider_link`` frame sits at
   the slider top center; ``arm_mount`` is identity offset on that plane.
-- Rail long axis = Y (prismatic travel). "Outer side" = +X: the arm is offset
-  toward +X and flush with the rail +X face; the frame protrudes toward -X.
+- Rail long axis = Y (prismatic travel). Rail +X is the outer face; the stand
+  is flush there and extends toward -X (rear / toward the bed).
 
 The generator is pure text (no numpy / Genesis import) so its output can be
 parsed and asserted in isolation.
@@ -221,6 +221,51 @@ _ARM_BLOCK = """  <link name="base_link">
     <parent link="link_7" />
     <child link="tcp" />
   </joint>
+  <!-- OpenCV / Genesis / UE-calib optical: +Z out of lens, +X right, +Y down.
+       Stage 5 T_link7_cam (26-view BA, 2026-08-26). -->
+  <link name="wrist_camera">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.022 0.016 0.012" />
+      </geometry>
+      <material name="wrist_camera_body">
+        <color rgba="0.15 0.78 0.95 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.012 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.024 0.003 0.003" />
+      </geometry>
+      <material name="wrist_camera_x">
+        <color rgba="0.95 0.15 0.15 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0.012 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.003 0.024 0.003" />
+      </geometry>
+      <material name="wrist_camera_y">
+        <color rgba="0.20 0.85 0.25 1" />
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.03" rpy="0 0 0" />
+      <geometry>
+        <box size="0.004 0.004 0.060" />
+      </geometry>
+      <material name="wrist_camera_z">
+        <color rgba="0.20 0.40 1.00 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="link_7_to_wrist_camera" type="fixed">
+    <origin xyz="0.073036194 0.056181762 0.035658169" rpy="-0.20219080 -0.86145291 1.58824199" />
+    <parent link="link_7" />
+    <child link="wrist_camera" />
+  </joint>
 """
 
 from rm75_control.control.joint_admittance_8dof.param_model.paths import DEFAULT_SPEC_YAML
@@ -230,27 +275,27 @@ DEFAULT_SPEC: dict[str, Any] = {
     "rail": {
         "effective_travel_mm": 360.0,
         "end_overhead_mm": 0.0,
-        "width_mm": 150.0,
-        "base_plate_thickness_mm": 12.0,
-        "track_height_mm": 18.0,
-        "track_width_mm": 22.0,
-        "track_gap_mm": 66.0,
+        "width_mm": 100.0,
+        "base_plate_thickness_mm": 20.0,
+        "track_height_mm": 10.0,
+        "track_width_mm": 16.0,
+        "track_gap_mm": 50.0,
         "side_plate_thickness_mm": 14.0,
         "side_plate_height_mm": 80.0,
     },
     "slider": {
-        "width_mm": 160.0,
-        "length_mm": 170.0,
-        "top_to_rail_bottom_mm": 66.0,
+        "width_mm": 120.0,
+        "length_mm": 120.0,
+        "top_to_rail_bottom_mm": "auto",
     },
     "frame": {
-        # "auto" → height from world_calib.base_pos_m[2] so rail_base meets/penetrates floor.
-        "height_mm": "auto",
-        "floor_sink_mm": 10.0,  # penetrate ground by this much (no air gap under frame)
-        "width_mm": 220.0,
+        "height_mm": 20.0,
+        "floor_sink_mm": 2.0,
+        "width_mm": 120.0,
+        "extend_rear_mm": 400.0,
     },
     "arm_mount": {
-        "offset_x_mm": 40.0,
+        "offset_x_mm": 0.0,
         "offset_y_mm": 0.0,
     },
     "world_calib": {
@@ -259,7 +304,8 @@ DEFAULT_SPEC: dict[str, Any] = {
     },
     "colors": {
         "frame": [0.75, 0.75, 0.78, 1.0],
-        "rail_metal": [0.60, 0.62, 0.65, 1.0],
+        "rail_deck": [0.46, 0.46, 0.48, 1.0],
+        "rail_metal": [0.58, 0.58, 0.60, 1.0],
         "dark": [0.18, 0.18, 0.20, 1.0],
     },
 }
@@ -279,11 +325,22 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return out
 
 
-def load_spec(spec: dict | str | Path) -> dict[str, Any]:
-    """Return a full spec dict (defaults merged) from a dict, YAML path, or str."""
-    if isinstance(spec, (str, Path)):
-        import yaml
+def load_spec(
+    spec: dict | str | Path,
+    *,
+    overlay: dict | str | Path | None = None,
+) -> dict[str, Any]:
+    """Return a full spec dict (defaults merged) from a dict, YAML path, or str.
 
+    If ``spec`` is a path and a sibling ``slider_rail.calibrated.yaml`` exists,
+    that overlay is merged on top (``world_calib`` from robot-world hand-eye).
+    Pass ``overlay=`` to force a file / dict, or ``overlay=False`` via an empty
+    dict to skip the auto sibling (use ``overlay={}``).
+    """
+    import yaml
+
+    path: Path | None = None
+    if isinstance(spec, (str, Path)):
         path = Path(spec)
         if not path.is_file():
             raise FileNotFoundError(
@@ -301,7 +358,23 @@ def load_spec(spec: dict | str | Path) -> dict[str, Any]:
     body = raw.get("slider_rail", raw) if isinstance(raw, dict) else {}
     if not isinstance(body, dict):
         raise SliderRailSpecError("slider_rail spec must be a mapping")
-    return _deep_merge(DEFAULT_SPEC, body)
+    merged = _deep_merge(DEFAULT_SPEC, body)
+    overlay_src: dict | str | Path | None = overlay
+    if overlay_src is None and path is not None:
+        sibling = path.with_name("slider_rail.calibrated.yaml")
+        if sibling.is_file():
+            overlay_src = sibling
+    if overlay_src not in (None, {}):
+        if isinstance(overlay_src, (str, Path)):
+            raw_o = yaml.safe_load(Path(overlay_src).read_text(encoding="utf-8")) or {}
+            body_o = raw_o.get("slider_rail", raw_o) if isinstance(raw_o, dict) else {}
+        elif isinstance(overlay_src, dict):
+            body_o = overlay_src.get("slider_rail", overlay_src)
+        else:
+            body_o = {}
+        if isinstance(body_o, dict) and body_o:
+            merged = _deep_merge(merged, body_o)
+    return merged
 
 
 def _rgba(color: Any) -> str:
@@ -352,27 +425,40 @@ def _box_visual(
     )
 
 
-def _auto_frame_height_m(full: dict[str, Any]) -> float:
-    """Frame height so ``rail_base`` sits on/through the world floor (z=0).
+def _is_auto(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str) and value.strip().lower() in ("", "auto"):
+        return True
+    return False
 
-    With world Z up (current calib quat is yaw-only), ``entity_z ≈ base_z - slider_top_z``
-    and ``slider_top_z = frame_h + top_to_rail_bottom``.  Choosing
 
-        frame_h = base_z - top_to_rail_bottom + floor_sink
-
-    yields ``entity_z = -floor_sink`` (flush when sink=0, penetrates when sink>0).
-    """
-    slider = full["slider"]
-    frame = full["frame"]
+def _calib_base_z_m(full: dict[str, Any], fallback: float) -> float:
     wc = full.get("world_calib") or {}
-    top_to_rail = float(slider["top_to_rail_bottom_mm"]) * 1e-3
-    sink = float(frame.get("floor_sink_mm", 0.0)) * 1e-3
-    base_pos = wc.get("base_pos_m", [0.0, 0.0, top_to_rail])
+    base_pos = wc.get("base_pos_m", [0.0, 0.0, fallback])
     try:
-        base_z = float(base_pos[2])
+        return float(base_pos[2])
     except (TypeError, IndexError, ValueError) as exc:
         raise SliderRailSpecError(f"world_calib.base_pos_m must be xyz, got {base_pos!r}") from exc
-    return max(0.0, base_z - top_to_rail + sink)
+
+
+def _auto_frame_height_m(full: dict[str, Any], top_to_rail_m: float) -> float:
+    """Frame height so ``rail_base`` sits on/through the world floor (z=0).
+
+    ``entity_z ≈ base_z - (frame_h + top_to_rail)``. Choosing
+
+        frame_h = base_z - top_to_rail + floor_sink
+
+    yields ``entity_z = -floor_sink``.
+    """
+    sink = float(full["frame"].get("floor_sink_mm", 0.0)) * 1e-3
+    return max(0.0, _calib_base_z_m(full, top_to_rail_m) - top_to_rail_m + sink)
+
+
+def _auto_top_to_rail_m(full: dict[str, Any], frame_h_m: float) -> float:
+    """Slider stack so a fixed-height stand still touches the floor."""
+    sink = float(full["frame"].get("floor_sink_mm", 0.0)) * 1e-3
+    return max(0.0, _calib_base_z_m(full, frame_h_m) - frame_h_m + sink)
 
 
 def compute_layout(spec: dict[str, Any]) -> dict[str, float]:
@@ -386,9 +472,11 @@ def compute_layout(spec: dict[str, Any]) -> dict[str, float]:
 
     Joint origin is at the slider-center pose for ``rail_y = 0``.
 
-    Frame height: if ``frame.height_mm`` is ``\"auto\"`` / omitted, it is derived
-    from ``world_calib.base_pos_m[2]`` (+ ``floor_sink_mm``) so the stand does not
-    float above the ground plane.
+    Frame height: a numeric ``frame.height_mm`` is the stand under the rail
+    (default 20 mm). If ``slider.top_to_rail_bottom_mm`` is ``\"auto\"``, the
+    slider stack is grown so ``base_link`` stays at ``world_calib.base_pos_m[2]``
+    and the stand still meets the floor. If the frame is ``\"auto\"`` and the
+    slider stack is numeric, the old stand-grows-to-floor behaviour is kept.
     """
     full = load_spec(spec) if "rail" not in spec else spec
     rail = full["rail"]
@@ -408,16 +496,25 @@ def compute_layout(spec: dict[str, Any]) -> dict[str, float]:
     side_t = float(rail["side_plate_thickness_mm"]) * m
     side_h = float(rail["side_plate_height_mm"]) * m
 
-    h_raw = frame.get("height_mm", "auto")
-    if h_raw is None or (isinstance(h_raw, str) and str(h_raw).strip().lower() in ("", "auto")):
-        frame_h = _auto_frame_height_m(full)
+    h_raw = frame.get("height_mm", 20.0)
+    t_raw = slider.get("top_to_rail_bottom_mm", "auto")
+    if _is_auto(h_raw) and _is_auto(t_raw):
+        frame_h = 0.020
+        top_to_rail_bottom = _auto_top_to_rail_m(full, frame_h)
+    elif _is_auto(h_raw):
+        top_to_rail_bottom = float(t_raw) * m
+        frame_h = _auto_frame_height_m(full, top_to_rail_bottom)
+    elif _is_auto(t_raw):
+        frame_h = float(h_raw) * m
+        top_to_rail_bottom = _auto_top_to_rail_m(full, frame_h)
     else:
         frame_h = float(h_raw) * m
-    frame_w = float(frame["width_mm"]) * m
+        top_to_rail_bottom = float(t_raw) * m
+    frame_w_under = float(frame["width_mm"]) * m
+    extend_rear = float(frame.get("extend_rear_mm", 0.0)) * m
 
     slider_w = float(slider["width_mm"]) * m
     slider_l = float(slider["length_mm"]) * m
-    top_to_rail_bottom = float(slider["top_to_rail_bottom_mm"]) * m
 
     # Flush fit: slider face against end-plate inner face at both travel limits.
     rail_len_y = travel + slider_l + 2.0 * side_t + end_extra
@@ -436,6 +533,14 @@ def compute_layout(spec: dict[str, Any]) -> dict[str, float]:
             f"({(base_t + track_h) * 1e3:.1f} mm); got {top_to_rail_bottom * 1e3:.1f} mm"
         )
 
+    # Stand: +X flush with rail +X; extra ``extend_rear`` goes toward -X (rear).
+    rail_plus_x = rail_w / 2.0
+    rail_minus_x = -rail_w / 2.0
+    frame_plus_x = rail_plus_x
+    frame_minus_x = min(frame_plus_x - frame_w_under, rail_minus_x - extend_rear)
+    frame_w = frame_plus_x - frame_minus_x
+    frame_cx = 0.5 * (frame_plus_x + frame_minus_x)
+
     return {
         "m": m,
         "travel": travel,
@@ -451,6 +556,8 @@ def compute_layout(spec: dict[str, Any]) -> dict[str, float]:
         "side_h": side_h,
         "frame_h": frame_h,
         "frame_w": frame_w,
+        "frame_cx": frame_cx,
+        "extend_rear": extend_rear,
         "slider_w": slider_w,
         "slider_l": slider_l,
         "slider_h": slider_h,
@@ -459,7 +566,7 @@ def compute_layout(spec: dict[str, Any]) -> dict[str, float]:
         "track_top_z": track_top_z,
         "slider_top_z": slider_top_z,
         "top_to_rail_bottom": top_to_rail_bottom,
-        "rail_plus_x_face": rail_w / 2.0,
+        "rail_plus_x_face": rail_plus_x,
     }
 
 
@@ -472,16 +579,16 @@ def build_urdf_string(spec: dict | str | Path) -> str:
 
     frame_rgba = _rgba(colors["frame"])
     metal_rgba = _rgba(colors["rail_metal"])
+    deck_rgba = _rgba(colors.get("rail_deck", colors["rail_metal"]))
     dark_rgba = _rgba(colors["dark"])
 
-    # Frame: +X face flush with rail +X face -> center shifts toward -X.
+    # Frame: +X face flush with rail +X; extra width / extend_rear toward -X.
     # Skip a zero-thickness box when frame.height_mm == 0 (rail sits on floor).
     if lay["frame_h"] > 1e-6:
-        frame_cx = lay["rail_plus_x_face"] - lay["frame_w"] / 2.0
         frame_cz = lay["frame_h"] / 2.0
         frame_visual = _box_visual(
             size=(lay["frame_w"], lay["rail_len_y"], lay["frame_h"]),
-            center=(frame_cx, 0.0, frame_cz),
+            center=(lay["frame_cx"], 0.0, frame_cz),
             mat_name="frame_mat",
             rgba=frame_rgba,
         )
@@ -494,8 +601,8 @@ def build_urdf_string(spec: dict | str | Path) -> str:
     base_plate = _box_visual(
         size=(lay["rail_w"], deck_len_y, lay["base_t"]),
         center=(0.0, 0.0, lay["base_t"] / 2.0),
-        mat_name="rail_metal_mat",
-        rgba=metal_rgba,
+        mat_name="rail_deck_mat",
+        rgba=deck_rgba,
     )
     track_cz = lay["base_t"] + lay["track_h"] / 2.0
     track_x = lay["track_gap"] / 2.0

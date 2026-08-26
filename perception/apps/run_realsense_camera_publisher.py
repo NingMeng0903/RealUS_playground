@@ -24,7 +24,8 @@ import yaml
 _PERCEPTION_ROOT = Path(__file__).resolve().parents[1]
 if str(_PERCEPTION_ROOT) not in sys.path:
     sys.path.insert(0, str(_PERCEPTION_ROOT))
-from realsense_timestamps import enable_global_time, frame_timing_ns  # noqa: E402
+from realsense_open import open_color_pipeline  # noqa: E402
+from realsense_timestamps import frame_timing_ns  # noqa: E402
 
 DEFAULT_CAPTURE_TOPIC = "amongus_camera_frame_v1"
 DEFAULT_PREVIEW_TOPIC = "amongus_camera_preview_v1"
@@ -129,18 +130,15 @@ def _meta_for_camera(
 
 def _open_realsense(serial: str, width: int, height: int, fps: int):
     try:
-        import pyrealsense2 as rs
+        import pyrealsense2 as rs  # noqa: F401
     except ImportError as exc:
         raise ImportError(
             "pyrealsense2 required. Use camera_calib env or install into genesis env."
         ) from exc
-    cfg = rs.config()
-    cfg.enable_device(str(serial))
-    cfg.enable_stream(rs.stream.color, int(width), int(height), rs.format.bgr8, int(fps))
-    pipeline = rs.pipeline()
-    profile = pipeline.start(cfg)
-    enable_global_time(profile)
-    return rs, pipeline, profile
+    pipeline, profile, usb = open_color_pipeline(
+        str(serial), int(width), int(height), int(fps)
+    )
+    return pipeline, profile, usb
 
 
 def _encode_send(
@@ -160,7 +158,9 @@ def _encode_send(
     payload = [topic, json.dumps(meta, ensure_ascii=True).encode("utf-8"), buf.tobytes()]
     with send_lock:
         try:
-            sock.send_multipart(payload, flags=0)
+            import zmq
+
+            sock.send_multipart(payload, flags=zmq.NOBLOCK)
         except Exception:
             return
 
@@ -184,39 +184,26 @@ def _camera_publish_loop(
     import cv2
 
     frame_index = 0
+    misses = 0
     while not stop_event.is_set():
         try:
-            frames = pipe.wait_for_frames(timeout_ms=500)
+            frames = pipe.wait_for_frames(timeout_ms=1000)
         except Exception:
+            misses += 1
+            if misses in (1, 5, 15) or misses % 30 == 0:
+                print(f"WARN {cid}: wait_for_frames timeout x{misses}", flush=True)
             continue
+        misses = 0
         color = frames.get_color_frame()
         if color is None:
             continue
         source_ns, wall_ns = frame_timing_ns(color)
-        bgr = np.asanyarray(color.get_data())
+        # RealSense ring buffer is reused; copy before remap/JPEG.
+        bgr = np.ascontiguousarray(color.get_data()).copy()
         full_h, full_w = bgr.shape[:2]
         capture_bgr = bgr
         if undistort_map is not None:
             capture_bgr = cv2.remap(bgr, undistort_map[0], undistort_map[1], interpolation=cv2.INTER_LINEAR)
-        meta_capture = _meta_for_camera(
-            camera_name=cid,
-            cam=cam,
-            frame_index=frame_index,
-            source_time_ns=source_ns,
-            wall_time_ns=wall_ns,
-            session_id=session_id,
-            width=full_w,
-            height=full_h,
-            image_is_undistorted=undistort_map is not None,
-        )
-        _encode_send(
-            sock=sock,
-            send_lock=send_lock,
-            topic=capture_topic,
-            meta=meta_capture,
-            bgr=capture_bgr,
-            encode_params=capture_encode,
-        )
         if preview_topic is not None and preview_max_width > 0:
             pw = min(int(preview_max_width), int(full_w))
             ph = max(1, int(round(full_h * pw / max(full_w, 1))))
@@ -240,6 +227,25 @@ def _camera_publish_loop(
                 bgr=preview_bgr,
                 encode_params=preview_encode,
             )
+        meta_capture = _meta_for_camera(
+            camera_name=cid,
+            cam=cam,
+            frame_index=frame_index,
+            source_time_ns=source_ns,
+            wall_time_ns=wall_ns,
+            session_id=session_id,
+            width=full_w,
+            height=full_h,
+            image_is_undistorted=undistort_map is not None,
+        )
+        _encode_send(
+            sock=sock,
+            send_lock=send_lock,
+            topic=capture_topic,
+            meta=meta_capture,
+            bgr=capture_bgr,
+            encode_params=capture_encode,
+        )
         frame_index += 1
 
 
@@ -267,9 +273,21 @@ def main() -> int:
         help="Low-res preview topic (empty to disable)",
     )
     ap.add_argument("--fps", type=int, default=30)
+    ap.add_argument(
+        "--width",
+        type=int,
+        default=0,
+        help="Color width (0 = genesis_bundle image_size). Set 1920 when recalibrating at 1080p.",
+    )
+    ap.add_argument(
+        "--height",
+        type=int,
+        default=0,
+        help="Color height (0 = genesis_bundle image_size). Set 1080 when recalibrating at 1080p.",
+    )
     ap.add_argument("--jpeg-quality", type=int, default=90, help="Capture JPEG quality")
     ap.add_argument("--preview-jpeg-quality", type=int, default=72)
-    ap.add_argument("--preview-max-width", type=int, default=640, help="Preview stream width (height scaled)")
+    ap.add_argument("--preview-max-width", type=int, default=960, help="Preview stream width (height scaled)")
     ap.add_argument("--undistort", action="store_true", help="Undistort with bundle K/dist before publish")
     ap.add_argument("--session-id", type=str, default="realus_realsense")
     ap.add_argument("--dry-run", action="store_true")
@@ -320,23 +338,36 @@ def main() -> int:
     threads: list[threading.Thread] = []
     stop_event = threading.Event()
     try:
-        for cid in cam_ids:
+        for i, cid in enumerate(cam_ids):
             cam = bundle["cameras"][cid]
-            w, h = [int(v) for v in cam["image_size"]]
-            _rs, pipe, _prof = _open_realsense(serials[cid], w, h, args.fps)
+            bw, bh = [int(v) for v in cam["image_size"]]
+            w = int(args.width) if int(args.width) > 0 else bw
+            h = int(args.height) if int(args.height) > 0 else bh
+            if i:
+                time.sleep(0.3)
+            pipe, _prof, usb = _open_realsense(serials[cid], w, h, args.fps)
             pipelines[cid] = pipe
             if args.undistort:
+                if (w, h) != (bw, bh):
+                    raise ValueError(
+                        f"{cid}: --undistort needs stream {w}x{h} to match bundle "
+                        f"image_size {bw}x{bh}. Recalibrating? omit --undistort until Stage 0 is redone."
+                    )
                 K = np.asarray(cam["intrinsics"], dtype=np.float64).reshape(3, 3)
                 dist = np.asarray(cam.get("distortion", [0.0] * 5), dtype=np.float64).reshape(-1)[:5]
                 maps[cid] = cv2.initUndistortRectifyMap(K, dist, None, K, (w, h), cv2.CV_32FC1)
             else:
                 maps[cid] = None
-            print(f"  opened {cid} serial={serials[cid]} {w}x{h}@{args.fps} global_time=on", flush=True)
+            print(
+                f"  opened {cid} serial={serials[cid]} usb={usb} {w}x{h}@{args.fps} global_time=on",
+                flush=True,
+            )
 
         ctx = zmq.Context.instance()
         sock = ctx.socket(zmq.PUB)
         sock.setsockopt(zmq.LINGER, 200)
-        sock.setsockopt(zmq.SNDHWM, 8)
+        sock.setsockopt(zmq.SNDHWM, 64)
+        sock.setsockopt(zmq.SNDTIMEO, 0)
         sock.bind(str(args.pub_bind))
         capture_topic = str(args.topic).encode("utf-8")
         preview_topic = preview_topic_str.encode("utf-8") if preview_topic_str else None

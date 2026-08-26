@@ -1,0 +1,65 @@
+Log file created at: 2023/07/19 08:56:53
+Running on machine: passoni
+Running duration (h:mm:ss): 0:00:00
+Log line format: [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
+[I20230719 08:56:53.543910 116040 DeviceManager.cpp:54] DeviceManager init ...
+[I20230719 08:56:53.544132 116040 LinuxPal.cpp:21] createObPal: create LinuxPal!
+[I20230719 08:56:53.568140 116040 EnumeratorLibusb.cpp:325] queryDevicesInfo done!
+[I20230719 08:56:53.573843 116040 DeviceManager.cpp:373] Current usb device port list::
+[I20230719 08:56:53.573923 116040 DeviceManager.cpp:375]         - 1-2-7.0 | Orbbec(R) Astra(TM) 3D Camera(F) Depth
+[I20230719 08:56:53.573947 116040 DeviceManager.cpp:375]         - 1-1-6.0 | USB Camera
+[W20230719 08:56:53.573976 116040 OpenNIDeviceInfo.cpp:172] New openni device matched.
+[I20230719 08:56:53.574005 116040 DeviceManager.cpp:345] Devices matched:
+[I20230719 08:56:53.574026 116040 DeviceManager.cpp:359]   - openniDevice = 1
+[I20230719 08:56:53.574102 116040 LinuxPal.cpp:142] Create PollingDeviceWatcher!
+[I20230719 08:56:53.574132 116040 DeviceManager.cpp:99] DeviceManager init  done!
+[I20230719 08:56:53.574153 116040 DeviceManager.cpp:50] DeviceManager construct done
+[I20230719 08:56:53.574174 116040 Context.cpp:51] Context created!
+[I20230719 08:56:53.574268 116040 DeviceManager.cpp:211] DeviceManager  createDevice...
+[I20230719 08:56:53.576872 116040 OpenNIHostProtocol.cpp:487] Hardware versions: FW=5.8.23(14),HW=0, Chip=7,Sensor=0,SYS=12
+[E20230719 08:56:53.579900 116040 OpenNIHostProtocol.cpp:502] Get usb core type failed!
+[I20230719 08:56:53.579952 116040 OpenNIHostProtocol.cpp:574] Requesting KeepAlive...
+[I20230719 08:56:53.582849 116040 OpenNIHostProtocol.cpp:581] Got KeepAlive Reply.
+[I20230719 08:56:53.587752 116040 OpenNIHostProtocol.cpp:574] Requesting KeepAlive...
+[I20230719 08:56:53.591883 116040 OpenNIHostProtocol.cpp:581] Got KeepAlive Reply.
+[I20230719 08:56:53.591933 116040 OpenNIHostProtocol.cpp:596] Getting the fixed params...
+[I20230719 08:56:53.595965 116040 OpenNIHostProtocol.cpp:633] Reading sensor serial number...
+[I20230719 08:56:53.599927 116040 OpenNISensorFirmware.cpp:892] Sensor serial number:AY2B43100A7
+[I20230719 08:56:53.603890 116040 OpenNIHostProtocol.cpp:702] Reading sensor platform string...
+[I20230719 08:56:53.606858 116040 OpenNISensorFirmware.cpp:920] Firmware version RD3013
+[I20230719 08:56:53.609807 116040 OpenNISensorFirmware.cpp:926] Device frequency 50
+[I20230719 08:56:53.609841 116040 OpenNIHostProtocol.cpp:773] Update supported depth video modes from firmware
+[I20230719 08:56:53.609846 116040 OpenNIHostProtocol.cpp:806] Reading CMOS 1 supported presets...
+[I20230719 08:56:53.612866 116040 OpenNIHostProtocol.cpp:773] Update supported depth video modes from firmware
+[I20230719 08:56:53.612882 116040 OpenNIHostProtocol.cpp:806] Reading CMOS 2 supported presets...
+[I20230719 08:56:53.718101 116040 OpenNISensorFirmware.cpp:938] OpenNI camera params read.
+[I20230719 08:56:54.114439 116040 OpenNISensorFirmware.cpp:1216] OpenNI camera params read end.
+[I20230719 08:56:54.114526 116040 OpenNISensorIO.cpp:29] Opening endpoint 0x81 for depth...
+[I20230719 08:56:54.114552 116040 OpenNISensorIO.cpp:41] Depth endpoint(0x81) was successfully opened.
+[I20230719 08:56:54.114571 116040 OpenNISensorIO.cpp:48] Opening endpoint 0x82 for IR...
+[I20230719 08:56:54.114591 116040 OpenNISensorIO.cpp:54] IR endpoint(0x82) was successfully opened.
+[I20230719 08:56:54.114610 116040 OpenNISensorIO.cpp:60] Opening endpoint 0x84 for image...
+[I20230719 08:56:54.114629 116040 OpenNISensorIO.cpp:65] Image endpoint is not supported...
+[I20230719 08:56:54.114648 116040 OpenNISensorIO.cpp:75] Opening endpoint 0x83 for misc...
+[I20230719 08:56:54.114666 116040 OpenNISensorIO.cpp:80] Misc endpoint is not supported...
+[I20230719 08:56:54.114686 116040 OpenNISensorIO.cpp:87] Endpoints open end.
+[I20230719 08:56:54.114706 116040 VendorCommand.cpp:187] VendorCommand constructor 0x5576ad0e5210
+[I20230719 08:56:54.114725 116040 OpenNIDevice.cpp:162] init sensor map start!
+[I20230719 08:56:54.114746 116040 OpenNIDevice.cpp:176] init sensor map done!
+[I20230719 08:56:54.114794 116040 AbstractDevice.cpp:364] Default config file is not loaded!
+[I20230719 08:56:54.114840 116040 OpenNIDevice.cpp:216] Init depth process param start!
+[I20230719 08:56:54.114861 116040 OpenNIDevice.cpp:229] Device baseline: 39.9415, fx: 947.352
+[I20230719 08:56:54.114889 116040 OpenNIDevice.cpp:262] Init depth process param done!
+[I20230719 08:56:54.114912 116040 OpenNIDevice.cpp:29] OpenNIDevice init done
+[I20230719 08:56:54.114933 116040 DeviceManager.cpp:307] DeviceManager createDevice done!
+[I20230719 08:57:12.827457 116040 Context.cpp:55] Context destroying ...
+[I20230719 08:57:12.828861 116040 OpenNIDevice.cpp:33] ~OpenNIDevice done
+[I20230719 08:57:12.828907 116040 VendorCommand.cpp:195] destructor 0x5576ad0e5210
+[I20230719 08:57:12.828931 116040 VendorCommand.cpp:439] disableHeartBeat heartBeatHelper_: 0
+[I20230719 08:57:12.828951 116040 HostProtocol.cpp:143] ~HostProtocol()
+[I20230719 08:57:12.829008 116044 HostProtocol.cpp:171] emitTranDataFutureSignalThread_ finish
+[I20230719 08:57:12.829126 116040 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20230719 08:57:12.829200 116040 DeviceManager.cpp:103] DeviceManager destroy ...
+[I20230719 08:57:12.834056 116040 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20230719 08:57:12.834178 116040 DeviceManager.cpp:131] DeviceManager destroy done
+[I20230719 08:57:12.834224 116040 DeviceManager.cpp:137] DeviceManager Destructors  done

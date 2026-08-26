@@ -113,7 +113,7 @@ class Stage0Panel(QWidget):
         self._btn_solve.clicked.connect(self._on_solve)
         self._alias_cb.currentTextChanged.connect(lambda _: self._update_status())
 
-        self._timer = QTimer(self); self._timer.setInterval(80)
+        self._timer = QTimer(self); self._timer.setInterval(150)
         self._timer.timeout.connect(self._refresh_preview); self._timer.start()
         self._update_status()
 
@@ -149,29 +149,37 @@ class Stage0Panel(QWidget):
         frame = stream.latest()
         if frame is None:
             return
-        img = frame.image.copy()
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        cap = self._current_captures()
-        found, corners = cv2.findChessboardCornersSB(
-            gray, (cap.cfg.cols, cap.cfg.rows), flags=cv2.CALIB_CB_EXHAUSTIVE | cv2.CALIB_CB_ACCURACY
-        )
-        overlay_color = (0, 255, 0) if found else (0, 165, 255)
-        if found:
-            cv2.drawChessboardCorners(img, (cap.cfg.cols, cap.cfg.rows), corners, found)
-        # Downscale for the label.
+        img = frame.image
         h, w = img.shape[:2]
         target_w = min(960, w)
-        target_h = int(round(h * target_w / w))
-        thumb = cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_AREA)
+        if target_w < w:
+            target_h = max(1, int(round(h * target_w / w)))
+            thumb = cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_AREA)
+        else:
+            thumb = img.copy()
+        gray = cv2.cvtColor(thumb, cv2.COLOR_BGR2GRAY)
+        cap = self._current_captures()
+        found, corners = cv2.findChessboardCornersSB(gray, (cap.cfg.cols, cap.cfg.rows))
+        if found:
+            cv2.drawChessboardCorners(thumb, (cap.cfg.cols, cap.cfg.rows), corners, found)
         rgb = cv2.cvtColor(thumb, cv2.COLOR_BGR2RGB)
         qimg = QImage(rgb.data, rgb.shape[1], rgb.shape[0], rgb.strides[0], QImage.Format_RGB888)
         self._preview.setPixmap(QPixmap.fromImage(qimg.copy()))
+        self._update_status()
 
     def _update_status(self) -> None:
         alias = self._alias_cb.currentText()
         cap = self._captures.get(alias)
         n = cap.num_captures() if cap else 0
-        self._status.setText(f"{alias}: {n} chessboard captures")
+        size = cap.image_size if cap is not None else None
+        if size is None:
+            stream = self._streams.get(alias)
+            frame = stream.latest() if stream is not None else None
+            if frame is not None:
+                fh, fw = frame.image.shape[:2]
+                size = (fw, fh)
+        size_s = f" @{size[0]}x{size[1]}" if size is not None else ""
+        self._status.setText(f"{alias}: {n} chessboard captures{size_s}")
 
     def _on_capture(self) -> None:
         alias = self._alias_cb.currentText()
@@ -189,7 +197,10 @@ class Stage0Panel(QWidget):
             self._log.append(f"{alias}: capture error — {exc}")
             return
         if ok:
-            self._log.append(f"{alias}: captured chessboard #{cap.num_captures()}")
+            wh = cap.image_size or (frame.image.shape[1], frame.image.shape[0])
+            self._log.append(
+                f"{alias}: captured chessboard #{cap.num_captures()} @{wh[0]}x{wh[1]}"
+            )
         else:
             self._log.append(f"{alias}: chessboard not detected in this frame.")
         self._update_status()

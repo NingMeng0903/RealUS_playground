@@ -43,11 +43,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             preview=replace(app_cfg.preview, source="zmq", zmq_connect=zmq_connect),
         )
 
-    resolved = resolve_roster(mutate_config=not zmq_mode)
-    online = [r for r in resolved if r.online]
-    if not zmq_mode and not online:
-        QMessageBox.critical(None, "No cameras", "No cameras detected. Plug in and try again.")
-        return 1
+    # ZMQ mode must not query USB: publisher already owns the RealSense
+    # devices. query_devices() while they stream causes UVC XU protocol
+    # errors and randomly drops cameras (often 2 of 4).
+    resolved = []
+    if not zmq_mode:
+        resolved = resolve_roster(mutate_config=True)
+        online = [r for r in resolved if r.online]
+        if not online:
+            QMessageBox.critical(None, "No cameras", "No cameras detected. Plug in and try again.")
+            return 1
 
     devices = {}
     zmq_hub = None
@@ -59,8 +64,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         roster = load_camera_roster()
         aliases = [e.alias for e in roster]
-        if not aliases:
-            aliases = [r.entry.alias for r in resolved if r.entry.alias]
         if not aliases:
             aliases = [f"cam{i}" for i in range(1, 5)]
         zmq_hub = ZmqMulticamHub(

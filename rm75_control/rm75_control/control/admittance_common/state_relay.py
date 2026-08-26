@@ -6,14 +6,17 @@ thread. Twin process subscribes read-only — no Realman TCP/UDP.
 
 from __future__ import annotations
 
+import hashlib
 import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from multiprocessing import shared_memory
+from pathlib import Path
 from typing import Any
 
 import numpy as np
+import yaml
 
 from rm75_control.control.admittance_common.async_state import AsyncStateSnapshot, RealtimeStateObserver
 from rm75_control.control.admittance_common.shm_util import (
@@ -73,6 +76,53 @@ def parse_state_relay_config(raw: dict[str, Any] | None) -> StateRelayConfig:
         name=str(section.get("name", DEFAULT_RELAY_NAME)),
         hz=float(section.get("hz", DEFAULT_RELAY_HZ)),
     )
+
+
+def _urdf_sha1(path: Path | str | None) -> str:
+    if path is None:
+        return ""
+    p = Path(path)
+    if not p.is_file():
+        return ""
+    return hashlib.sha1(p.read_bytes()).hexdigest()
+
+
+def load_joint_zero_offsets_deg(
+    raw: dict[str, Any] | None,
+    *,
+    urdf_path: Path | str | None = None,
+) -> np.ndarray:
+    """7-vector of arm offsets (deg). Missing file or sha1 mismatch → zeros."""
+    zeros = np.zeros(7, dtype=float)
+    raw = raw or {}
+    section = raw.get("state_relay") or {}
+    path = raw.get("joint_zero_offsets") or section.get("joint_zero_offsets")
+    if not path:
+        return zeros
+    p = Path(str(path))
+    if not p.is_file():
+        print(f"warn: joint_zero_offsets missing ({p}) — using zeros", flush=True)
+        return zeros
+    try:
+        data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError) as exc:
+        print(f"warn: joint_zero_offsets unreadable ({p}): {exc} — using zeros", flush=True)
+        return zeros
+    file_sha = str(data.get("wbc_urdf_sha1") or "")
+    live_sha = _urdf_sha1(urdf_path)
+    if file_sha and live_sha and file_sha != live_sha:
+        print(
+            f"warn: joint_zero_offsets URDF sha1 mismatch "
+            f"(file {file_sha[:8]}… vs live {live_sha[:8]}…) — using zeros",
+            flush=True,
+        )
+        return zeros
+    q = np.asarray(data.get("joint_zero_offsets_deg") or [], dtype=float).reshape(-1)
+    out = zeros.copy()
+    n = min(7, q.size)
+    out[:n] = q[:n]
+    out[6] = 0.0
+    return out
 
 
 def normalize_relay_name(name: str) -> str:
@@ -365,6 +415,7 @@ class StateRelayPublisher:
         # ArmTip/link_7) with gripper-TCP fk_pose(q, rail).
         self._kin = kin
         self._kin_lock = threading.Lock()
+        self._joint_zero_offsets_deg = np.zeros(7, dtype=float)
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._shm: shared_memory.SharedMemory | None = None
@@ -395,6 +446,18 @@ class StateRelayPublisher:
         """Hot-swap TCP kinematics used for SHM pose (e.g. after tool sync)."""
         with self._kin_lock:
             self._kin = kin
+
+    def set_joint_zero_offsets_deg(self, offsets_deg: np.ndarray | None) -> None:
+        """7-vector applied only to published FK pose, not the control loop."""
+        if offsets_deg is None:
+            self._joint_zero_offsets_deg = np.zeros(7, dtype=float)
+            return
+        q = np.asarray(offsets_deg, dtype=float).reshape(-1)
+        out = np.zeros(7, dtype=float)
+        n = min(7, q.size)
+        out[:n] = q[:n]
+        out[6] = 0.0
+        self._joint_zero_offsets_deg = out
 
     def set_force_observer(self, observer: Any | None) -> None:
         """Attach gravity/sign compensator for idle ``rm75_f_ext`` publish."""
@@ -462,7 +525,11 @@ class StateRelayPublisher:
         if kin is None or snap.q_deg is None:
             return None
         try:
-            q8 = expand_q_meas_8dof(snap.q_deg, rail_m)
+            q_deg = np.asarray(snap.q_deg, dtype=float).reshape(-1).copy()
+            dq = self._joint_zero_offsets_deg
+            if q_deg.size >= 7 and np.any(dq):
+                q_deg[:7] = q_deg[:7] + dq[:7]
+            q8 = expand_q_meas_8dof(q_deg, rail_m)
             return np.asarray(kin.fk_pose(q8), dtype=float).reshape(6)
         except Exception:
             return None

@@ -1,0 +1,207 @@
+T_world_railbase:
+- - 1.5612511283791264e-17
+  - 0.9999999999989998
+  - 5.724587470723463e-17
+  - -0.4494202494608287
+- - -0.9999999999990001
+  - -8.673617379884035e-19
+  - 0.0
+  - 0.4488370418539608
+- - -5.551115123125783e-17
+  - 3.469446951953614e-18
+  - 1.0
+  - 0.2739999999999998
+- - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+T_world_baselink_at_rail0:
+- - 1.5612511283791264e-17
+  - 0.9999999999989998
+  - 5.724587470723463e-17
+  - -0.8494202494604286
+- - -0.9999999999990001
+  - -8.673617379884035e-19
+  - 0.0
+  - 0.4488370418539608
+- - -5.551115123125783e-17
+  - 3.469446951953614e-18
+  - 1.0
+  - 0.2739999999999998
+- - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+T_ref_railbase:
+- - 0.006085974816763998
+  - 0.999837513645645
+  - -0.016967828895421755
+  - -0.4257343753729473
+- - 0.8522374191788056
+  - -0.01406258110468249
+  - -0.522966179751734
+  - -0.3922710386613404
+- - -0.5231198163537474
+  - -0.011277859706913529
+  - -0.8521845267419802
+  - 1.9130211031858235
+- - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+T_tcp_board:
+- - -0.9996977789233537
+  - -0.01934542042274601
+  - -0.015169229524956446
+  - 0.0038552689452268593
+- - 0.014998453428652529
+  - 0.008942481076989773
+  - -0.9998475275895501
+  - -0.061875017645676024
+- - 0.019478121327842428
+  - -0.9997728675758583
+  - -0.00864962708346243
+  - -0.07746868588926535
+- - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+rail_direction_world:
+- 0.9999999999989998
+- -8.673617379884035e-19
+- 3.469446951953614e-18
+base_pos_m:
+- -0.8494202494604286
+- 0.4488370418539608
+- 0.2739999999999998
+base_quat_wxyz:
+- -0.707106781186194
+- 6.133173666736563e-19
+- 1.2266347333473126e-18
+- 0.7071067811869011
+base_link_height_above_floor_m: 0.274
+rail_y_origin_in_railbase_m:
+- 0.0
+- -0.4
+- 0.0
+joint_zero_offsets_deg:
+- -0.12719090204759542
+- -0.08017369184371216
+- -0.11409973822400163
+- -0.38845126597441926
+- -0.23969445933011083
+- -1.0152475058131862
+- 0.0
+diagnostics:
+  ba_rmse_px: 0.5863070775421866
+  ba_rmse_at_2m_mm: 0.8769338623553438
+  ba_rmse_px_note: "reprojection after rigid T_ref_railbase + T_tcp_board + joint_1..6\
+    \ offsets; includes Stage-1 workspace error and arm FK. Single-view PnP on the\
+    \ EE board is ~0.3 px \u2014 this number is not detection noise."
+  n_samples: 43
+  n_samples_rejected: 0
+  rejected_sample_indices: []
+  n_observations: 125
+  per_camera_n_obs:
+    cam2: 37
+    cam4: 41
+    cam1: 29
+    cam3: 18
+  rail_baseline_m: 0.739036636352539
+  n_rail_stations: 18
+  x_axis_sigma_deg: 0.005791038545048577
+  x_axis_sigma_at_2m_mm: 0.20214537944199926
+  x_axis_sigma_note: approximate 1-sigma from (J^T J)^{-1} s^2 under cauchy loss
+  rail_axis_residual_deg: 0.6403804889130599
+  rail_axis_residual_note: visual slider track after removing SHM arm (T_baselink_tcp)
+    vs URDF R_ref_railbase[:,1]; arm does not need to be frozen
+  baselink_z_tilt_from_world_z_deg: 0.0
+  per_camera_rail_axis_ref:
+    cam1:
+    - -0.9998046402468393
+    - 0.0197631449224132
+    - -0.00031534689471010395
+    cam2:
+    - 0.9999779445486566
+    - -0.005871261297086215
+    - 0.0031046267127032325
+    cam3:
+    - 0.9996773331795918
+    - -0.023407373586508344
+    - -0.009865312398551297
+    cam4:
+    - 0.999863859450136
+    - -0.016487822914747038
+    - -0.0006436311138256259
+  per_camera_rail_axis_angle_from_full_deg:
+    cam1: 0.7402079633633185
+    cam2: 0.9483786216462055
+    cam3: 0.5415792732859795
+    cam4: 0.624945659570736
+  per_camera_rail_axis_spread_deg: 0.9483786216462055
+  leave_one_group:
+    cam13:
+      rail_axis_ref:
+      - 0.9998770231043137
+      - -0.012582641126581313
+      - -0.009360331742811978
+      angle_from_full_deg: 0.13880131353291944
+    cam24:
+      rail_axis_ref:
+      - 0.9998481514630577
+      - -0.012502773827892298
+      - -0.012138972877267618
+      angle_from_full_deg: 0.10208668396960306
+  leave_one_group_angle_deg: 0.15927880337517303
+  wbc_urdf: /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf
+  wbc_urdf_sha1: 9b469f5e82b0ae2c5ee88e03c71a79d05d74fcb3
+  joint_zero_offsets_deg:
+  - -0.12719090204759542
+  - -0.08017369184371216
+  - -0.11409973822400163
+  - -0.38845126597441926
+  - -0.23969445933011083
+  - -1.0152475058131862
+  - 0.0
+  joint_offset_lock_reasons:
+  - joint_7 locked at 0 (absorbed by T_tcp_board)
+  joint_offsets_enabled: true
+  fk_vs_camera_invariants:
+    rel_angle_rms_deg: 0.3848320524125118
+    screw_pitch_rms_mm: 4.594546051606494
+    n_pairs: 823
+  inter_camera_board_disagreement_mm:
+    mean_mm: 6.3416282649744256
+    median_mm: 6.034891969728898
+    max_mm: 14.874564978164265
+    mean_depth_mm: 2.981235680191416
+    n_pairs: 133
+  leave_out_rmse:
+    groups:
+      fold_0:
+        n_train: 32
+        n_held: 11
+        rmse_px: 0.5510305517498952
+      fold_1:
+        n_train: 32
+        n_held: 11
+        rmse_px: 0.6537008947952646
+      fold_2:
+        n_train: 32
+        n_held: 11
+        rmse_px: 0.6584304014174738
+      fold_3:
+        n_train: 33
+        n_held: 10
+        rmse_px: 0.5247275871895858
+    mean_rmse_px: 0.5969723587880549
+  board_scale_est: 0.9973117275365596
+  board_scale_warn: true
+  board_scale_note: estimated EE-board scale vs config (1.0 = config is exact). Warn
+    if |s-1| > 0.20%.
+  tool_frame_delta_from_shm:
+    mean_deg: 1.56672922803475
+    spread_deg: 1.2462644869095022e-13
+  board_scale_alert: "estimated EE board scale 0.99731 differs from config by 0.27%\
+    \ \u2014 re-measure tag_size_m / tag_spacing_m"
+wbc_urdf_sha1: 9b469f5e82b0ae2c5ee88e03c71a79d05d74fcb3

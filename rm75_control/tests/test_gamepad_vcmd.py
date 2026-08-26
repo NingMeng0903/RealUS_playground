@@ -645,7 +645,9 @@ def test_qpik_rail_brakes_when_task_drops() -> None:
     assert abs(float(last.qdot[0])) < 0.05
     plus_y = np.array([0.0, 0.08, 0.0, 0.0, 0.0, 0.0])
     moving = None
-    for _ in range(80):
+    # Quiescent latch on the zero-cmd stretch resets homotopy on resume
+    # (s=0). d* slew can cancel u_task for ~0.4 s; wait past that.
+    for _ in range(160):
         moving = inner.update(plus_y, q_meas=inner.q_cmd, vel_ff=plus_y)
     assert moving is not None
     # Least-norm split gives the rail a share of +Y, not the full 0.08.
@@ -687,6 +689,10 @@ def test_zero_v_cmd_does_not_put_u_mid_on_v_r_ref() -> None:
     q = _SEED_Q.copy()
     q[0] = 0.40
     inner.reset(q)
+    plus_y = np.array([0.0, 0.08, 0.0, 0.0, 0.0, 0.0])
+    for _ in range(8):
+        inner.update(plus_y, q_meas=inner.q_cmd.copy(), vel_ff=plus_y)
+    assert not bool(inner._quiescent)
     twist = np.zeros(6)
     last = inner.update(twist, q_meas=inner.q_cmd.copy())
     pose0 = inner.kin.fk_pose(inner.q_cmd)
@@ -775,6 +781,50 @@ def test_zero_v_cmd_tcp_drift_after_quiescent() -> None:
     if abs(float(vr[0])) > 1.0e-6:
         assert np.all(vr * float(vr[0]) >= -1.0e-6)
     assert abs(float(last.v_r_ref)) < 5.0e-3
+
+
+def test_quiescent_latch_ignores_tcp_residual() -> None:
+    inner = _yaml_inner_at_rail(0.40)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q = _SEED_Q.copy()
+    q[0] = 0.40
+    inner.reset(q)
+    last = None
+    for _ in range(80):
+        last = inner.update(np.zeros(6), q_meas=inner.q_cmd.copy())
+    assert last is not None
+    assert bool(inner._quiescent)
+    h0 = float(getattr(last, "homotopy_s", float("nan")))
+    if inner.posture_retarget is not None:
+        h0 = float(inner.posture_retarget.homotopy_s)
+    for _ in range(40):
+        inner._last_tcp_est = np.array([0.02, 0.0, 0.0, 0.0, 0.0, 0.0])
+        last = inner.update(np.zeros(6), q_meas=inner.q_cmd.copy())
+    assert bool(inner._quiescent)
+    assert abs(float(last.u_post_feasible)) < 1.0e-9
+    h1 = float(getattr(last, "homotopy_s", float("nan")))
+    if inner.posture_retarget is not None:
+        h1 = float(inner.posture_retarget.homotopy_s)
+    assert h1 == pytest.approx(h0, abs=1.0e-9)
+    assert abs(h1) > 1.0e-9 or h0 == pytest.approx(0.0, abs=1.0e-9)
+
+
+def test_quiescent_exit_uses_command_hysteresis() -> None:
+    inner = _yaml_inner_at_rail(0.40)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q = _SEED_Q.copy()
+    q[0] = 0.40
+    inner.reset(q)
+    for _ in range(80):
+        inner.update(np.zeros(6), q_meas=inner.q_cmd.copy())
+    assert bool(inner._quiescent)
+    keep = np.array([0.006, 0.0, 0.0, 0.0, 0.0, 0.0])
+    for _ in range(10):
+        inner.update(keep, q_meas=inner.q_cmd.copy(), vel_ff=keep)
+    assert bool(inner._quiescent)
+    leave = np.array([0.010, 0.0, 0.0, 0.0, 0.0, 0.0])
+    inner.update(leave, q_meas=inner.q_cmd.copy(), vel_ff=leave)
+    assert not bool(inner._quiescent)
 
 
 def test_tracker_step_api_returns_status() -> None:
