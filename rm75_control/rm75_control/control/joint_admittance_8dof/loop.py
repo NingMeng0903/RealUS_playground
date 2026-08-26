@@ -626,6 +626,7 @@ class JointIkController:
         self._u_mid_for_sec = 0.0
         self.last_sigma_min: float = float(self.cfg.qp.sr_damping.sigma_ref)
         self.last_slack_norm: float = 0.0
+        self._slack_hold_latched: bool = False
         self._sat_scale: float = 1.0
         self.last_sat_scale: float = 1.0
         self.last_arm_rho: float = float("nan")
@@ -985,6 +986,7 @@ class JointIkController:
         self._d_star_nudge_cool_s = 0.0
         self._last_post_step = {}
         self.last_slack_norm = 0.0
+        self._slack_hold_latched = False
         self._sat_scale = 1.0
         self.last_sat_scale = 1.0
         self._sec_filter.reset()
@@ -1015,6 +1017,7 @@ class JointIkController:
         if self.posture_retarget is not None:
             self.posture_retarget.reset(q_meas)
         self._latch_attractor_from_q(q_meas)
+        self._slack_hold_latched = False
         if self._native is not None:
             self._native.begin_hybrid_episode(q_meas, applied)
 
@@ -1391,6 +1394,7 @@ class JointIkController:
         self.midranging.reset()
         self.rail_ref_model.reset(0.0)
         self.last_v_r_ref = 0.0
+        self._slack_hold_latched = False
         if self._native is not None:
             self._native.stop()
 
@@ -1765,27 +1769,33 @@ class JointIkController:
             float(dt),
             press_escape_allowed=bool(allow_press_escape),
         )
-        slack_high = float(self.last_slack_norm) >= float(
-            getattr(self.cfg.saturation, "slack_enter", 0.15)
-        )
+        slack_enter = float(getattr(self.cfg.saturation, "slack_enter", 0.15))
+        slack_exit = float(getattr(self.cfg.saturation, "slack_exit", 0.03))
+        slack_now = float(self.last_slack_norm)
+        if (not self._slack_hold_latched) and slack_now >= slack_enter:
+            self._slack_hold_latched = True
+        elif self._slack_hold_latched and slack_now <= slack_exit:
+            self._slack_hold_latched = False
+        slack_high = bool(self._slack_hold_latched)
         hold_d_star = bool(self._quiescent or slack_high)
 
         if (
             self.posture_retarget is not None
             and self._rail_mode == RailMode.COUPLED
         ):
-            psi_ref, d_pref = self.posture_retarget.step(
-                q_prev,
-                float(dt),
-                rail_lo=float(self.limits.q_lower[0]),
-                rail_hi=float(self.limits.q_upper[0]),
-                hold_setpoint=hold_d_star,
-            )
-            if self.arm_task is not None:
-                self.arm_task.set_reference(float(psi_ref))
-            if self.rail_ext_task is not None:
-                self.rail_ext_task.set_d_pref(float(d_pref))
-            self._publish_homotopy_centering()
+            if (not slack_high) or bool(self._quiescent):
+                psi_ref, d_pref = self.posture_retarget.step(
+                    q_prev,
+                    float(dt),
+                    rail_lo=float(self.limits.q_lower[0]),
+                    rail_hi=float(self.limits.q_upper[0]),
+                    hold_setpoint=bool(self._quiescent),
+                )
+                if self.arm_task is not None:
+                    self.arm_task.set_reference(float(psi_ref))
+                if self.rail_ext_task is not None:
+                    self.rail_ext_task.set_d_pref(float(d_pref))
+                self._publish_homotopy_centering()
 
         if (
             press_stalled_timer
@@ -1953,6 +1963,7 @@ class JointIkController:
                 leave_sign=float(leave_sign),
                 hold_d_star=bool(hold_d_star) and not escape_on,
                 quiescent=bool(self._quiescent),
+                posture_hold=bool(slack_high),
                 in_wall=abs(float(leave_sign)) > 0.0,
             )
             if abs(float(leave_sign)) > 0.0:

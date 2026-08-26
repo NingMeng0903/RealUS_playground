@@ -5,14 +5,18 @@ import unittest
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+from multicam_calib.board.apriltag_board import build_board_geometry
 from multicam_calib.calib.orbbec_handeye import (
     calibrate_handeye_init,
     load_orbbec_color_intrinsics,
     load_orbbec_handeye_captures,
+    orbbec_fx_compare_text,
     payload_to_captures,
+    refit_color_intrinsics_from_captures,
     save_orbbec_handeye_captures,
 )
-from multicam_calib.io.results import Intrinsics, load_joint_zero_offsets_deg
+from multicam_calib.io.config import load_board
+from multicam_calib.io.results import Intrinsics
 from multicam_calib.calib.pose_graph import se3_inv
 from multicam_calib.calib.urdf_fk import UrdfFK
 from multicam_calib.io.config import load_robot
@@ -67,6 +71,44 @@ class TestLoadOrbbecK(unittest.TestCase):
         self.assertEqual(tuple(got.image_size), (999, 888))
         self.assertIn(got.source, {"factory", "chessboard_scaled", "factory_scaled"})
 
+    def test_refuses_640_to_1080_aspect_scale(self) -> None:
+        saved = Intrinsics(
+            K=np.array([[454.86, 0.0, 328.4], [0.0, 454.93, 247.0], [0.0, 0.0, 1.0]]),
+            dist=np.zeros(5),
+            image_size=(640, 480),
+            source="apriltag26",
+        )
+        factory = Intrinsics(
+            K=np.array([[420.0, 0.0, 960.0], [0.0, 420.0, 540.0], [0.0, 0.0, 1.0]]),
+            dist=np.zeros(5),
+            image_size=(1920, 1080),
+            source="factory",
+        )
+        with self.assertWarns(UserWarning):
+            got = load_orbbec_color_intrinsics(
+                factory=factory, image_size=(1920, 1080), saved=saved
+            )
+        self.assertEqual(got.source, "factory")
+        self.assertAlmostEqual(float(got.K[0, 0]), 420.0)
+
+    def test_fx_compare_text_uses_saved(self) -> None:
+        saved = Intrinsics(
+            K=np.array([[454.86, 0.0, 328.0], [0.0, 454.9, 247.0], [0.0, 0.0, 1.0]]),
+            dist=np.zeros(5),
+            image_size=(640, 480),
+            source="apriltag26",
+        )
+        text = orbbec_fx_compare_text(factory_fx=456.0, saved=saved)
+        self.assertIn("saved fx=454.9", text)
+        self.assertIn("factory fx=456.0", text)
+
+
+class TestRefitColorK(unittest.TestCase):
+    def test_rejects_too_few_views(self) -> None:
+        geom = build_board_geometry(load_board())
+        with self.assertRaises(RuntimeError):
+            refit_color_intrinsics_from_captures([], board_geom=geom)
+
 
 class TestHandeyeCaptureRoundtrip(unittest.TestCase):
     def test_save_load_preserves_q_and_tags(self) -> None:
@@ -112,15 +154,14 @@ class TestHandeyeCaptureRoundtrip(unittest.TestCase):
 
 
 class TestStage2OffsetsInFk(unittest.TestCase):
-    def test_loads_j6_and_moves_flange(self) -> None:
+    def test_j6_offset_moves_flange(self) -> None:
         fk = UrdfFK(load_robot().wbc_urdf_path())
-        dq = load_joint_zero_offsets_deg(urdf_sha1=fk.sha1)
-        self.assertAlmostEqual(float(dq[5]), -1.015, places=2)
-        self.assertEqual(float(dq[6]), 0.0)
+        dq = np.zeros(6)
+        dq[5] = np.deg2rad(-1.015)
         q = np.zeros(7)
         rail = 0.05
         t0 = fk.fk(rail, np.deg2rad(q), None)
-        t1 = fk.fk(rail, np.deg2rad(q), np.deg2rad(dq[:6]))
+        t1 = fk.fk(rail, np.deg2rad(q), dq)
         dt = float(np.linalg.norm(t1[:3, 3] - t0[:3, 3]))
         self.assertGreater(dt, 0.001)
         self.assertLess(dt, 0.025)

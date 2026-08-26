@@ -21,15 +21,20 @@ from PyQt5.QtWidgets import (
 
 from multicam_calib.board.apriltag_board import BoardGeometry
 from multicam_calib.board.detector import AprilTagDetector, scale_detections
+from multicam_calib.calib.intrinsics import persist_intrinsics
 from multicam_calib.calib.orbbec_handeye import (
+    FACTORY_ORBBEC_COLOR_FX,
     load_orbbec_color_intrinsics,
     load_orbbec_handeye_captures,
+    orbbec_fx_compare_text,
     orbbec_handeye_captures_last_path,
     orbbec_handeye_captures_path,
+    refit_color_intrinsics_from_captures,
     save_orbbec_handeye,
     save_orbbec_handeye_captures,
     solve_orbbec_handeye,
 )
+from multicam_calib.io.results import load_intrinsics_map
 from multicam_calib.devices.orbbec import OrbbecRGBDSession
 from multicam_calib.ingress.robot_state import RobotStateReader
 from multicam_calib.io.config import OrbbecConfig, RobotConfig
@@ -39,12 +44,13 @@ class _SolveWorker(QThread):
     finished_ok = pyqtSignal(object, str)
     finished_err = pyqtSignal(str)
 
-    def __init__(self, captures, board_geom, intrinsics, robot_cfg) -> None:
+    def __init__(self, captures, board_geom, intrinsics, robot_cfg, color_rms_px=None) -> None:
         super().__init__()
         self.captures = captures
         self.board_geom = board_geom
         self.intrinsics = intrinsics
         self.robot_cfg = robot_cfg
+        self.color_rms_px = color_rms_px
 
     def run(self) -> None:  # noqa: D401
         try:
@@ -53,12 +59,34 @@ class _SolveWorker(QThread):
                 board_geom=self.board_geom,
                 intrinsics=self.intrinsics,
                 robot_cfg=self.robot_cfg,
+                color_rms_px=self.color_rms_px,
             )
             path = save_orbbec_handeye(result)
         except Exception:  # noqa: BLE001
             self.finished_err.emit(traceback.format_exc())
         else:
             self.finished_ok.emit(result, str(path))
+
+
+class _RefitWorker(QThread):
+    finished_ok = pyqtSignal(object)
+    finished_err = pyqtSignal(str)
+
+    def __init__(self, captures, board_geom) -> None:
+        super().__init__()
+        self.captures = captures
+        self.board_geom = board_geom
+
+    def run(self) -> None:  # noqa: D401
+        try:
+            result = refit_color_intrinsics_from_captures(
+                self.captures,
+                board_geom=self.board_geom,
+            )
+        except Exception:  # noqa: BLE001
+            self.finished_err.emit(traceback.format_exc())
+        else:
+            self.finished_ok.emit(result)
 
 
 class Stage5OrbbecHandeyePanel(QWidget):
@@ -81,6 +109,8 @@ class Stage5OrbbecHandeyePanel(QWidget):
         self._robot = RobotStateReader(robot_cfg.shm.name)
         self._captures: list[dict] = []
         self._worker: _SolveWorker | None = None
+        self._refit_worker: _RefitWorker | None = None
+        self._color_rms_px: float | None = None
         self._active = False
 
         root = QVBoxLayout(self)
@@ -105,8 +135,10 @@ class Stage5OrbbecHandeyePanel(QWidget):
         self._btn_delete = QPushButton("Delete selected")
         self._btn_clear = QPushButton("Clear")
         self._btn_load_last = QPushButton("Load last")
+        self._btn_refit = QPushButton("Refit K from captures")
         self._btn_run = QPushButton("Solve T_link7_cam")
         self._btn_capture.setEnabled(False)
+        self._btn_refit.setEnabled(False)
         self._btn_run.setEnabled(False)
         btns.addWidget(self._btn_open)
         btns.addWidget(self._btn_1080)
@@ -114,6 +146,7 @@ class Stage5OrbbecHandeyePanel(QWidget):
         btns.addWidget(self._btn_delete)
         btns.addWidget(self._btn_clear)
         btns.addWidget(self._btn_load_last)
+        btns.addWidget(self._btn_refit)
         btns.addStretch(1)
         btns.addWidget(self._btn_run)
         root.addLayout(btns)
@@ -131,6 +164,7 @@ class Stage5OrbbecHandeyePanel(QWidget):
         self._btn_delete.clicked.connect(self._on_delete)
         self._btn_clear.clicked.connect(self._on_clear)
         self._btn_load_last.clicked.connect(self._on_load_last)
+        self._btn_refit.clicked.connect(self._on_refit)
         self._btn_run.clicked.connect(self._on_run)
 
         self._timer = QTimer(self)
@@ -161,6 +195,18 @@ class Stage5OrbbecHandeyePanel(QWidget):
         self._reopen(self._session.open, label="640 + depth")
 
     def _on_open_1080(self) -> None:
+        saved = load_intrinsics_map().get("orbbec")
+        if saved is None or (int(saved.image_size[0]), int(saved.image_size[1])) != (1920, 1080):
+            src = "none" if saved is None else f"{saved.image_size[0]}x{saved.image_size[1]} ({saved.source})"
+            QMessageBox.warning(
+                self,
+                "No native 1080p K",
+                "Saved Orbbec color K is "
+                f"{src}. Scaling 640x480 → 1920x1080 changes the pixel aspect "
+                "and is blocked. This stream will use factory / V4L guess.\n\n"
+                "To calibrate at 1080p, capture a native 1920x1080 AprilTag set "
+                "and Refit K from those views.",
+            )
         self._reopen(lambda: self._session.open_rgb_only(1920, 1080), label="1080p RGB (no depth)")
 
     def _reopen(self, opener, *, label: str) -> None:
@@ -227,16 +273,21 @@ class Stage5OrbbecHandeyePanel(QWidget):
         _set_pix(self._preview, img)
         shm_ok, age = self._robot.is_fresh(self._robot_cfg.shm.max_age_s)
         src = "factory"
+        factory_fx = FACTORY_ORBBEC_COLOR_FX
         try:
-            src = str(self._intrinsics().source)
+            intr = self._intrinsics()
+            src = str(intr.source)
         except Exception:  # noqa: BLE001
             pass
+        if self._session.params is not None and str(self._session.params.color.source) == "factory":
+            factory_fx = float(self._session.params.color.K[0, 0])
         age_s = float("nan") if age is None else float(age)
         self._status.setText(
             f"preview only  capture={w}x{h}  "
             f"depth={'on' if self._session.has_depth else 'off'}  "
             f"tags={len(dets)}  samples={len(self._captures)}  "
-            f"K={src}  SHM={'ok' if shm_ok else 'stale'} age={age_s:.2f}s"
+            f"K={src}  {orbbec_fx_compare_text(factory_fx=factory_fx)}  "
+            f"SHM={'ok' if shm_ok else 'stale'} age={age_s:.2f}s"
         )
 
     def _on_capture(self) -> None:
@@ -301,7 +352,9 @@ class Stage5OrbbecHandeyePanel(QWidget):
             n = int(cap.get("n_tags") or len(cap.get("detections") or {}))
             rail = float(cap.get("rail_m") or 0.0)
             self._list.addItem(f"#{i + 1}  tags={n}  rail={rail:.3f} m")
-        self._btn_run.setEnabled(len(self._captures) >= 6)
+        n = len(self._captures)
+        self._btn_run.setEnabled(n >= 6)
+        self._btn_refit.setEnabled(n >= 10)
 
     def _set_captures(self, captures: list[dict]) -> None:
         self._captures = list(captures)
@@ -347,6 +400,46 @@ class Stage5OrbbecHandeyePanel(QWidget):
         kind = "last/" if src == last else "working"
         self._log.append(f"loaded {n} view(s) from {kind}  {src}")
 
+    def _normalized_captures(self) -> list[dict]:
+        caps = []
+        for c in self._captures:
+            caps.append(
+                {
+                    **c,
+                    "detections": {int(k): np.asarray(v, dtype=np.float64) for k, v in c["detections"].items()},
+                }
+            )
+        return caps
+
+    def _on_refit(self) -> None:
+        if len(self._captures) < 10:
+            QMessageBox.warning(self, "Not enough", "Need at least 10 captures to refit color K.")
+            return
+        self._btn_refit.setEnabled(False)
+        self._log.append(f"refitting color K from {len(self._captures)} views …")
+        self._refit_worker = _RefitWorker(self._normalized_captures(), self._board_geom)
+        self._refit_worker.finished_ok.connect(self._on_refit_ok)
+        self._refit_worker.finished_err.connect(self._on_refit_err)
+        self._refit_worker.start()
+
+    def _on_refit_ok(self, result) -> None:
+        self._btn_refit.setEnabled(len(self._captures) >= 10)
+        persist_intrinsics("orbbec", result.intrinsics)
+        self._color_rms_px = float(result.rms_px)
+        old = "none" if result.previous_fx is None else f"{result.previous_fx:.2f}"
+        K = result.intrinsics.K
+        self._log.append(
+            f"refit K source={result.intrinsics.source}  "
+            f"fx {old} → {K[0, 0]:.3f}  fy={K[1, 1]:.3f}  "
+            f"rms={result.rms_px:.4f} px  views={result.n_views}  "
+            f"pts={result.n_points}  factory fx={FACTORY_ORBBEC_COLOR_FX:.1f}  "
+            f"→ intrinsics.yaml"
+        )
+
+    def _on_refit_err(self, err: str) -> None:
+        self._btn_refit.setEnabled(len(self._captures) >= 10)
+        self._log.append("Refit K FAILED:\n" + err)
+
     def _on_run(self) -> None:
         if len(self._captures) < 6:
             QMessageBox.warning(self, "Not enough", "Need at least 6 captures with wrist rotation.")
@@ -360,18 +453,13 @@ class Stage5OrbbecHandeyePanel(QWidget):
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, "Intrinsics", str(exc))
             return
-        caps = []
-        for c in self._captures:
-            caps.append(
-                {
-                    **c,
-                    "detections": {int(k): np.asarray(v, dtype=np.float64) for k, v in c["detections"].items()},
-                }
-            )
+        caps = self._normalized_captures()
         self._btn_run.setEnabled(False)
         self._log.append(f"solving from {len(caps)} views …")
         self._persist()
-        self._worker = _SolveWorker(caps, self._board_geom, intr, self._robot_cfg)
+        self._worker = _SolveWorker(
+            caps, self._board_geom, intr, self._robot_cfg, self._color_rms_px
+        )
         self._worker.finished_ok.connect(self._on_ok)
         self._worker.finished_err.connect(self._on_err)
         self._worker.start()

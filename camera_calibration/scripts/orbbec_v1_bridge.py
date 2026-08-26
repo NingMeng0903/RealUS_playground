@@ -145,6 +145,46 @@ def _decode_depth_m(frame, np):
     return (raw.astype(np.float32) * scale) * 1e-3
 
 
+def _try_set_bool(dev, prop, value: bool) -> bool | None:
+    from ObTypes import OB_PY_PERMISSION_READ_WRITE, OB_PY_PERMISSION_WRITE
+
+    for perm in (OB_PY_PERMISSION_READ_WRITE, OB_PY_PERMISSION_WRITE):
+        try:
+            if not dev.isPropertySupported(prop, perm):
+                continue
+            dev.setBoolProperty(prop, bool(value))
+            try:
+                return bool(dev.getBoolProperty(prop))
+            except Exception:
+                return bool(value)
+        except Exception:
+            continue
+    try:
+        return bool(dev.getBoolProperty(prop))
+    except Exception:
+        return None
+
+
+def _enable_depth_emitter(pipe) -> dict:
+    """Wrist cams sit inside LDP range; LDP leaves the IR projector off and depth is zeros."""
+    from Property import (
+        OB_PY_PROP_DISPARITY_TO_DEPTH_BOOL,
+        OB_PY_PROP_LASER_BOOL,
+        OB_PY_PROP_LDP_BOOL,
+        OB_PY_PROP_SDK_DEPTH_FRAME_UNPACK_BOOL,
+    )
+
+    try:
+        dev = pipe.getDevice()
+    except Exception:
+        return {"laser": None, "ldp": None}
+    ldp = _try_set_bool(dev, OB_PY_PROP_LDP_BOOL, False)
+    laser = _try_set_bool(dev, OB_PY_PROP_LASER_BOOL, True)
+    _try_set_bool(dev, OB_PY_PROP_DISPARITY_TO_DEPTH_BOOL, True)
+    _try_set_bool(dev, OB_PY_PROP_SDK_DEPTH_FRAME_UNPACK_BOOL, True)
+    return {"laser": laser, "ldp": ldp}
+
+
 class _Session:
     def __init__(self) -> None:
         self.pipe = None
@@ -206,6 +246,7 @@ class _Session:
                 used = "unsupported"
 
         pipe.start(config, None)
+        emitter = _enable_depth_emitter(pipe)
         self.pipe = pipe
         self.align = used
         self._depth_flip_h = bool(req.get("depth_flip_h", True))
@@ -251,6 +292,8 @@ class _Session:
             "color": color_model,
             "depth": depth_model,
             "T_color_depth": t_cd,
+            "laser": emitter.get("laser"),
+            "ldp": emitter.get("ldp"),
         }
         self._stop.clear()
         self._thread = threading.Thread(target=self._grab_loop, daemon=True)

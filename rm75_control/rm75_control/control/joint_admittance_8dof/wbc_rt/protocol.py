@@ -153,6 +153,7 @@ WBC_OUT_DTYPE = np.dtype(
         ("e_d", "<f8"),
         ("V_d_proxy", "<f8"),
         ("j4_design_slack", "<f8"),
+        ("sigma_slack", "<f8"),
     ],
     align=False,
 )
@@ -161,7 +162,7 @@ WBC_IN_SIZE = int(WBC_IN_DTYPE.itemsize)
 WBC_OUT_SIZE = int(WBC_OUT_DTYPE.itemsize)
 # Packed C++ layouts in native/wbc_rt/include/wbc_rt/protocol.hpp.
 assert WBC_IN_SIZE == 608, WBC_IN_SIZE
-assert WBC_OUT_SIZE == 752, WBC_OUT_SIZE
+assert WBC_OUT_SIZE == 760, WBC_OUT_SIZE
 
 
 def view_in(buf) -> np.ndarray:

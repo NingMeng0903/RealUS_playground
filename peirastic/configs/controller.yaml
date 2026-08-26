@@ -40,9 +40,9 @@ state_relay:
   name: rm75_state
   hz: 200
 
-# Applied only to published SHM / twin FK pose. Missing file or URDF sha1
-# mismatch → zeros (raw encoder q_deg is still published unchanged).
-joint_zero_offsets: /media/camp/EXT_DRIVE/RealUS_playground/camera_calibration/calibration_results/joint_zero_offsets.yaml
+# Stage 2 joint_zero_offsets.yaml is diagnostic-only. Missing key → zeros
+# (raw encoder q_deg is published unchanged). Do not point this at a Stage 2
+# file after a robot re-zero.
 
 # Slack-QP inner loop (Escande). Physical q/v/a/collision live under hard_limits;
 # Cartesian/nullspace/rail-extension tuning lives under inner.
@@ -124,9 +124,9 @@ inner:
     j_max_rail_m_s3: 60.0
     sigma_setbased:
       enabled: true
-      activate: 0.12
-      safe: 0.06
-      exit: 0.16
+      activate: 0.09
+      safe: 0.045
+      exit: 0.13
       gamma: 8.0
       slack_weight: 200.0
       grad_period_ticks: 10
@@ -295,7 +295,7 @@ inner:
     k_margin: 4.0
     kp_mid: 1.2
     ki_mid: 0.80
-    u_mid_max_m_s: 0.12
+    u_mid_max_m_s: 0.03
     k_err_rail: 4.0
     e_ref_m: 0.08
     # Rail velocity LPF after the live-Y e_mid fix. 2 Hz follows Y faster than

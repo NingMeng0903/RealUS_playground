@@ -65,9 +65,6 @@ from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
     build_wbc_inequalities,
     collapse_interval,
 )
-from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
-    project_arm_compensation,
-)
 from rm75_control.control.joint_admittance_8dof.solver.sigma_setbased import (
     PrefInequalityRows,
     SigmaSetBasedConfig,
@@ -964,23 +961,12 @@ class QpIkController:
         rail_exec = None
         rail_exec_contrib = np.zeros(N_TASK_SLACK, dtype=float)
         J_task = np.asarray(J, dtype=float).copy()
-        self.last_comp_projected_frac = 0.0
         if rail_exec_vel_m_s is not None and np.isfinite(float(rail_exec_vel_m_s)):
             rail_exec = float(rail_exec_vel_m_s)
             rail_exec_contrib = J[:, 0] * rail_exec
             J_task[:, 0] = 0.0
-            delta_v_req = -rail_exec_contrib
-            delta_v_cmp, frac = project_arm_compensation(
-                J,
-                delta_v_req,
-                q_geom,
-                self.constraints.lim.q_lower,
-                self.constraints.lim.q_upper,
-            )
-            b_task = v_cmd0 + delta_v_cmp
-            self.last_comp_projected_frac = float(frac)
-        else:
-            b_task = v_cmd0 - rail_exec_contrib
+        b_task = v_cmd0 - rail_exec_contrib
+        self.last_comp_projected_frac = 0.0
         # Public telemetry is expressed in the caller's original Cartesian
         # coordinates.  ``b_task`` is the internal arm-only target after
         # subtracting the measured rail contribution.

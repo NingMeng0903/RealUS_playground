@@ -7,6 +7,10 @@
 Optional human overlay (requires RealUS src on PYTHONPATH):
   --track-subscribe tcp://127.0.0.1:5598
   --canonical-human-source fitted
+
+Optional Orbbec wrist cloud (default off; publisher is a separate process):
+  python perception/apps/run_orbbec_cloud_publisher.py
+  python apps/joint_admittance_8dof/run_with_twin.py --orbbec-cloud
 """
 
 from __future__ import annotations
@@ -126,6 +130,17 @@ def main() -> int:
         metavar="0-255",
         help="Orange SMPL-X skin opacity (default 120; anatomy draws underneath in solid pass)",
     )
+    ap.add_argument(
+        "--orbbec-cloud",
+        action="store_true",
+        help="Subscribe Orbbec wrist point cloud (default off)",
+    )
+    ap.add_argument(
+        "--orbbec-cloud-subscribe",
+        type=str,
+        default="tcp://127.0.0.1:17358",
+        help="ZMQ address for Orbbec cloud (used only with --orbbec-cloud)",
+    )
     args = ap.parse_args()
 
     track_subscribe = ""
@@ -144,6 +159,7 @@ def main() -> int:
 
     twin: DigitalTwinMirror | None = None
     overlay = None
+    cloud_overlay = None
 
     scene = RailGenesisScene(
         RailGenesisConfig(
@@ -247,10 +263,32 @@ def main() -> int:
             except Exception as exc:
                 print(f"rm75 twin: human overlay disabled ({exc})", flush=True)
 
+        if args.orbbec_cloud:
+            try:
+                from rm75_control.control.joint_admittance_8dof.viewer.orbbec_cloud_overlay import (
+                    OrbbecCloudOverlay,
+                    OrbbecCloudOverlayConfig,
+                )
+
+                cloud_overlay = OrbbecCloudOverlay(
+                    scene,
+                    OrbbecCloudOverlayConfig(subscribe=str(args.orbbec_cloud_subscribe)),
+                )
+                cloud_overlay.start()
+                twin.set_after_sync(cloud_overlay.draw)
+                print(
+                    f"rm75 twin: orbbec cloud overlay v4 subscribe={args.orbbec_cloud_subscribe}",
+                    flush=True,
+                )
+            except Exception as exc:
+                print(f"rm75 twin: orbbec cloud overlay disabled ({exc})", flush=True)
+
         _run_subscribe_loop(bus=bus, twin=twin, shm_name=shm_name)
     finally:
         if overlay is not None:
             overlay.stop()
+        if cloud_overlay is not None:
+            cloud_overlay.stop()
         bus.stop()
         if twin is not None:
             twin.stop()

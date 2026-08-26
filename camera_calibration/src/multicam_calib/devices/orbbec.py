@@ -337,6 +337,7 @@ class OrbbecRGBDSession:
     _backend: str = field(default="", init=False)
     _params: OrbbecFactoryParams | None = field(default=None, init=False)
     _opened: bool = field(default=False, init=False)
+    _emitter: dict[str, Any] = field(default_factory=dict, init=False)
 
     @property
     def params(self) -> OrbbecFactoryParams | None:
@@ -353,6 +354,10 @@ class OrbbecRGBDSession:
     @property
     def has_depth(self) -> bool:
         return self._backend in ("sdk", "v1")
+
+    @property
+    def emitter(self) -> dict[str, Any]:
+        return dict(self._emitter)
 
     def open_rgb_only(self, width: int = 1920, height: int = 1080) -> OrbbecFactoryParams:
         """Close depth/v1 and open UVC MJPEG RGB (Stage 5 does not need depth)."""
@@ -513,7 +518,9 @@ class OrbbecRGBDSession:
             self._v1.close()
             self._v1 = None
             raise RuntimeError(str(reply.get("error") or "v1 open failed"))
-        params = _params_from_v1(reply["params"])
+        raw = reply["params"]
+        params = _params_from_v1(raw)
+        self._emitter = {"laser": raw.get("laser"), "ldp": raw.get("ldp")}
         want = (int(self.cfg.color_width), int(self.cfg.color_height))
         got = (int(params.color.image_size[0]), int(params.color.image_size[1]))
         if want[0] >= 1280 and (abs(got[0] - want[0]) > 16 or abs(got[1] - want[1]) > 16):
@@ -618,6 +625,7 @@ class OrbbecRGBDSession:
         self._v1 = None
         self._backend = ""
         self._opened = False
+        self._emitter = {}
         if v1 is not None:
             try:
                 v1.close()
@@ -732,6 +740,7 @@ class OrbbecRGBDSession:
         max_m: float,
         min_valid: int,
         min_valid_frac: float,
+        stride: int = 2,
     ) -> tuple[np.ndarray, np.ndarray | None, str]:
         """Return (xyz, rgb, source). ``source`` is ``sdk`` or ``unproject``."""
         xyz, rgb, source = self._try_sdk_cloud(frame)
@@ -741,7 +750,7 @@ class OrbbecRGBDSession:
                 frame.depth_m,
                 self._params.color.K,
                 color_bgr=frame.color_bgr,
-                stride=2,
+                stride=int(max(stride, 1)),
                 min_m=min_m,
                 max_m=max_m,
             )

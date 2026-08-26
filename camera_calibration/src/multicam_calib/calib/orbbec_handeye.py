@@ -15,6 +15,7 @@ still talks TCP.
 """
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,13 +25,18 @@ import cv2
 import numpy as np
 import yaml
 from scipy.optimize import least_squares
+from scipy.spatial.transform import Rotation as Rsc
 
 from multicam_calib.board.apriltag_board import BoardGeometry
 from multicam_calib.calib.pnp import solve_view_pose
 from multicam_calib.calib.pose_graph import se3_exp, se3_inv, se3_log
 from multicam_calib.calib.urdf_fk import UrdfFK
 from multicam_calib.io.config import RESULTS_DIR, RobotConfig, load_robot
-from multicam_calib.io.results import Intrinsics, load_joint_zero_offsets_deg
+from multicam_calib.io.results import Intrinsics, load_intrinsics_map, load_joint_zero_offsets_deg
+
+# Gemini / Astra F color factory pinhole at 640x480 (SDK, not Stage 4).
+FACTORY_ORBBEC_COLOR_FX = 456.0
+_ASPECT_SCALE_TOL = 0.01
 
 
 @dataclass
@@ -61,11 +67,13 @@ class OrbbecHandeyeResult:
     shm_vs_fk_mm: float | None = None
     shm_vs_fk_deg: float | None = None
     gripper_rot_span_deg: float | None = None
+    color_intrinsics: dict[str, Any] = field(default_factory=dict)
 
     def as_yaml_dict(self) -> dict[str, Any]:
         def _T(T: np.ndarray) -> list[list[float]]:
             return [[float(v) for v in row] for row in np.asarray(T)]
 
+        xyz, rpy = _xyz_rpy_from_T(self.T_link7_cam)
         return {
             "metadata": {
                 "created_utc": datetime.now(timezone.utc).isoformat(),
@@ -75,6 +83,9 @@ class OrbbecHandeyeResult:
                 "pnp_rmse_px": float(self.pnp_rmse_px),
                 "gripper_frame": "link_7",
                 "camera_frame": "orbbec_color",
+                "urdf_link": "wrist_camera",
+                "urdf_joint": "link_7_to_wrist_camera",
+                "optical_convention": "opencv_z_forward_y_down",
                 "joint_zero_offsets_deg": [float(v) for v in self.joint_zero_offsets_deg],
                 "per_view_ba_rmse_px": [float(v) for v in self.per_view_ba_rmse_px],
                 "shm_vs_fk_mm": None if self.shm_vs_fk_mm is None else float(self.shm_vs_fk_mm),
@@ -84,9 +95,12 @@ class OrbbecHandeyeResult:
                 else float(self.gripper_rot_span_deg),
             },
             "T_link7_cam": _T(self.T_link7_cam),
+            "T_link7_cam_xyz_m": [float(v) for v in xyz],
+            "T_link7_cam_rpy_xyz_rad": [float(v) for v in rpy],
             "T_tcp_cam": _T(self.T_tcp_cam),
             "T_link7_tcp": _T(self.T_link7_tcp),
             "T_railbase_board": _T(self.T_railbase_board),
+            "color_intrinsics": dict(self.color_intrinsics),
             "notes": list(self.notes),
         }
 
@@ -209,33 +223,166 @@ def load_orbbec_handeye_captures(path: Path | None = None) -> list[dict[str, Any
     return payload_to_captures(data)
 
 
+def _aspect_ratio(size: tuple[int, int]) -> float:
+    w, h = int(size[0]), int(size[1])
+    if h < 1:
+        return float("inf")
+    return float(w) / float(h)
+
+
+def aspect_ratio_change(src: tuple[int, int], dst: tuple[int, int]) -> float:
+    a0 = _aspect_ratio(src)
+    if not np.isfinite(a0) or a0 <= 0.0:
+        return float("inf")
+    return abs(_aspect_ratio(dst) - a0) / a0
+
+
+def _pinhole_guess_intrinsics(width: int, height: int) -> Intrinsics:
+    from multicam_calib.devices.orbbec import pinhole_guess_v4l
+
+    return pinhole_guess_v4l(int(width), int(height)).as_intrinsics()
+
+
+def orbbec_fx_compare_text(*, factory_fx: float | None = None, saved: Intrinsics | None = None) -> str:
+    """Status-bar line: saved fx (source) vs factory fx."""
+    if saved is None:
+        saved = load_intrinsics_map().get("orbbec")
+    fac = FACTORY_ORBBEC_COLOR_FX if factory_fx is None else float(factory_fx)
+    if saved is None:
+        return f"saved fx=none  factory fx={fac:.1f}"
+    return (
+        f"saved fx={float(saved.K[0, 0]):.1f} ({saved.source})  "
+        f"factory fx={fac:.1f}"
+    )
+
+
 def load_orbbec_color_intrinsics(
     *,
     factory: Intrinsics | None = None,
     image_size: tuple[int, int] | None = None,
+    saved: Intrinsics | None = None,
 ) -> Intrinsics:
-    """Stage 4 chessboard entry ``orbbec``, else factory from the open device.
+    """Saved ``orbbec`` color K, else factory from the open device.
 
-    If ``image_size`` differs from the saved K, scale fx/fy/cx/cy and keep dist
-    (Brown-Conrady is in normalized coordinates).
+    Same-aspect resizes scale fx/fy/cx/cy. A width/height ratio change over
+    ~1% is refused (640x480 → 1920x1080 is not a pinhole scale) and falls
+    back to ``factory`` or a V4L guess.
     """
     from multicam_calib.calib.orbbec_rgbd import PinholeModel, scale_pinhole_to_image_size
-    from multicam_calib.io.results import load_intrinsics_map
 
-    saved = load_intrinsics_map().get("orbbec")
+    if saved is None:
+        saved = load_intrinsics_map().get("orbbec")
     if saved is not None:
         if image_size is None or (
             int(saved.image_size[0]) == int(image_size[0]) and int(saved.image_size[1]) == int(image_size[1])
         ):
             return saved
+        dst = (int(image_size[0]), int(image_size[1]))
+        if aspect_ratio_change(saved.image_size, dst) > _ASPECT_SCALE_TOL:
+            warnings.warn(
+                f"Orbbec K is {saved.image_size[0]}x{saved.image_size[1]}; "
+                f"refusing scale to {dst[0]}x{dst[1]} (aspect change). "
+                "Use a native 1080p entry or factory/V4L guess.",
+                UserWarning,
+                stacklevel=2,
+            )
+            if factory is not None:
+                return factory
+            return _pinhole_guess_intrinsics(dst[0], dst[1])
         scaled = scale_pinhole_to_image_size(
             PinholeModel(saved.K, saved.dist, saved.image_size, str(saved.source)),
-            (int(image_size[0]), int(image_size[1])),
+            dst,
         )
         return scaled.as_intrinsics()
     if factory is not None:
         return factory
     raise RuntimeError("No Orbbec color K/d. Run Stage 4 or Open Orbbec for factory intrinsics.")
+
+
+@dataclass
+class ColorIntrinsicsRefit:
+    intrinsics: Intrinsics
+    rms_px: float
+    n_views: int
+    n_points: int
+    previous_fx: float | None
+
+
+def refit_color_intrinsics_from_captures(
+    captures: list[dict[str, Any]],
+    *,
+    board_geom: BoardGeometry,
+    min_tags: int = 8,
+    min_views: int = 10,
+    max_fx_rel_change: float = 0.20,
+    previous: Intrinsics | None = None,
+    source: str = "apriltag26",
+) -> ColorIntrinsicsRefit:
+    """Chessboard-style ``calibrateCamera`` on Stage 5 AprilTag correspondences."""
+    obj_list: list[np.ndarray] = []
+    img_list: list[np.ndarray] = []
+    image_size: tuple[int, int] | None = None
+    for cap in captures:
+        dets_raw = cap.get("detections") or {}
+        dets = {int(k): np.asarray(v, dtype=np.float64) for k, v in dets_raw.items()}
+        obj, img, used = board_geom.gather_correspondences(dets)
+        if len(used) < int(min_tags):
+            continue
+        obj_list.append(obj.astype(np.float32))
+        img_list.append(img.astype(np.float32))
+        size = cap.get("image_size") or []
+        if len(size) >= 2:
+            image_size = (int(size[0]), int(size[1]))
+    if len(obj_list) < int(min_views):
+        raise RuntimeError(f"need ≥{min_views} views with ≥{min_tags} tags, got {len(obj_list)}")
+    if image_size is None:
+        raise RuntimeError("captures have no image_size")
+    rms, K, dist, _rvecs, _tvecs = cv2.calibrateCamera(obj_list, img_list, image_size, None, None)
+    fx = float(K[0, 0])
+    if previous is None:
+        previous = load_intrinsics_map().get("orbbec")
+    prev_fx = None if previous is None else float(previous.K[0, 0])
+    ref_fx = prev_fx if prev_fx is not None else FACTORY_ORBBEC_COLOR_FX
+    if ref_fx > 1.0 and abs(fx - ref_fx) / ref_fx > float(max_fx_rel_change):
+        raise RuntimeError(
+            f"refit fx={fx:.2f} differs from {ref_fx:.2f} by more than "
+            f"{100.0 * max_fx_rel_change:.0f}%; refusing to write"
+        )
+    n_pts = int(sum(p.shape[0] for p in obj_list))
+    return ColorIntrinsicsRefit(
+        intrinsics=Intrinsics(
+            K=np.asarray(K, dtype=np.float64),
+            dist=np.asarray(dist, dtype=np.float64).reshape(-1),
+            image_size=image_size,
+            source=str(source),
+        ),
+        rms_px=float(rms),
+        n_views=len(obj_list),
+        n_points=n_pts,
+        previous_fx=prev_fx,
+    )
+
+
+def _xyz_rpy_from_T(T: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    T = np.asarray(T, dtype=np.float64).reshape(4, 4)
+    xyz = T[:3, 3].copy()
+    rpy = Rsc.from_matrix(T[:3, :3]).as_euler("xyz")
+    return xyz, rpy
+
+
+def _color_intrinsics_payload(intr: Intrinsics, *, rms_px: float | None = None) -> dict[str, Any]:
+    K = np.asarray(intr.K, dtype=np.float64).reshape(3, 3)
+    return {
+        "fx": float(K[0, 0]),
+        "fy": float(K[1, 1]),
+        "cx": float(K[0, 2]),
+        "cy": float(K[1, 2]),
+        "dist": [float(v) for v in np.asarray(intr.dist, dtype=np.float64).reshape(-1)],
+        "image_size": [int(intr.image_size[0]), int(intr.image_size[1])],
+        "source": str(intr.source),
+        "factory_fx": float(FACTORY_ORBBEC_COLOR_FX),
+        "rms_px": None if rms_px is None else float(rms_px),
+    }
 
 
 def _Rt(T: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -424,6 +571,7 @@ def solve_orbbec_handeye(
     min_tags: int = 8,
     min_samples: int = 6,
     apply_joint_offsets: bool = False,
+    color_rms_px: float | None = None,
 ) -> OrbbecHandeyeResult:
     robot_cfg = robot_cfg or load_robot()
     fk = UrdfFK(robot_cfg.wbc_urdf_path())
@@ -460,7 +608,8 @@ def solve_orbbec_handeye(
     notes = [
         "Gripper frame is URDF link_7 (flange), not tcp.",
         "Target is the fixed large AprilTag board. Do not use the EE board.",
-        "PnP uses Stage 4 chessboard K/d when present, else factory color K/d.",
+        f"PnP uses color K/d source={intrinsics.source} "
+        f"fx={float(intrinsics.K[0, 0]):.2f} (factory fx={FACTORY_ORBBEC_COLOR_FX:.1f}).",
         "Runtime depth: T_link7_depth = T_link7_cam @ T_color_depth (factory D2C).",
         (
             "FK offsets ON: " + ", ".join(f"j{i + 1}={v:.3f}°" for i, v in enumerate(offsets_deg))
@@ -483,4 +632,5 @@ def solve_orbbec_handeye(
         shm_vs_fk_mm=shm_mm,
         shm_vs_fk_deg=shm_deg,
         gripper_rot_span_deg=rot_span,
+        color_intrinsics=_color_intrinsics_payload(intrinsics, rms_px=color_rms_px),
     )

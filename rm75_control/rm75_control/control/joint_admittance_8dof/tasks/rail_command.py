@@ -238,6 +238,7 @@ class RailCommandMixer:
         leave_sign: float = 0.0,
         hold_d_star: bool = False,
         quiescent: bool = False,
+        posture_hold: bool = False,
         in_wall: bool = False,
     ) -> RailMixTelemetry:
         u_lo, u_hi = wall_velocity_bounds(u_max, leave_sign)
@@ -274,53 +275,43 @@ class RailCommandMixer:
             V_d_proxy=float(V),
         )
 
-        zero_posture = bool(quiescent) and not bool(escape_explicit)
-        if zero_posture:
+        task_hold = bool(quiescent) and not bool(escape_explicit)
+        posture_hold_now = bool(posture_hold) or task_hold
+        if posture_hold_now:
             self.xi = -self.kp * e_d
             tel.xi = float(self.xi)
             tel.u_pi_raw = 0.0
             tel.u_mid_cmd = 0.0
             tel.u_post_raw = 0.0
             tel.d_star_dot_cmd = 0.0
-            shares = allocate_rail_shares(
-                u_task_raw=0.0,
-                u_post_raw=0.0,
-                u_escape_raw=0.0,
-                escape_dir=0,
-                u_lo=u_lo,
-                u_hi=u_hi,
-            )
-            tel.u_task_feasible = 0.0
-            tel.u_escape_feasible = 0.0
-            tel.u_base = 0.0
-            tel.u_post_feasible = 0.0
-            tel.u_feasible = 0.0
-            tel.u_mid_applied = 0.0
-            self.last = tel
-            return tel
+            d_dot = 0.0
+            u_pi_raw = 0.0
+            u_post_raw = 0.0
+        else:
+            u_pi_raw = self.kp * e_d + self.xi
+            u_mid_cmd = float(np.clip(u_pi_raw, -self.u_mid_max, self.u_mid_max))
+            u_post_raw = u_mid_cmd - d_dot
+            tel.xi = float(self.xi)
+            tel.u_pi_raw = float(u_pi_raw)
+            tel.u_mid_cmd = float(u_mid_cmd)
+            tel.u_post_raw = float(u_post_raw)
 
-        u_pi_raw = self.kp * e_d + self.xi
-        u_mid_cmd = float(np.clip(u_pi_raw, -self.u_mid_max, self.u_mid_max))
-        u_post_raw = u_mid_cmd - d_dot
         shares = allocate_rail_shares(
-            u_task_raw=float(u_task_raw),
-            u_post_raw=float(u_post_raw),
-            u_escape_raw=float(u_escape_raw),
-            escape_dir=guard_dir,
+            u_task_raw=0.0 if task_hold else float(u_task_raw),
+            u_post_raw=0.0 if posture_hold_now else float(u_post_raw),
+            u_escape_raw=0.0 if task_hold else float(u_escape_raw),
+            escape_dir=0 if task_hold else guard_dir,
             u_lo=u_lo,
             u_hi=u_hi,
         )
         u_post_f = float(shares["u_post_feasible"])
-        u_mid_applied = u_post_f + d_dot
-        if (not self.wall_pi_frozen) and dt > 0.0:
+        u_mid_applied = u_post_f + float(d_dot)
+        if (not posture_hold_now) and (not self.wall_pi_frozen) and dt > 0.0:
             self.xi += (
                 self.ki * e_d + self.kaw * (u_mid_applied - u_pi_raw)
             ) * float(dt)
+            tel.xi = float(self.xi)
 
-        tel.xi = float(self.xi)
-        tel.u_pi_raw = float(u_pi_raw)
-        tel.u_mid_cmd = float(u_mid_cmd)
-        tel.u_post_raw = float(u_post_raw)
         tel.u_task_feasible = float(shares["u_task_feasible"])
         tel.u_escape_feasible = float(shares["u_escape_feasible"])
         tel.u_base = float(shares["u_base"])

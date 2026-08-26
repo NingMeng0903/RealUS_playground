@@ -162,11 +162,12 @@ struct WbcOut {
   double e_d;
   double V_d_proxy;
   double j4_design_slack;
+  double sigma_slack;
 };
 #pragma pack(pop)
 
 static_assert(sizeof(WbcIn) == 608, "WbcIn layout drift");
-static_assert(sizeof(WbcOut) == 752, "WbcOut layout drift");
+static_assert(sizeof(WbcOut) == 760, "WbcOut layout drift");
 
 inline void clear_in(WbcIn* s) {
   std::memset(s, 0, sizeof(WbcIn));

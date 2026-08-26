@@ -225,4 +225,17 @@
     <parent link="link_7" />
     <child link="tcp" />
   </joint>
+  <link name="wrist_camera">
+    <collision>
+      <origin xyz="0.02 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.12 0.03 0.03" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="link_7_to_wrist_camera" type="fixed">
+    <origin xyz="0.064853526 0.025247380 0.065670289" rpy="-0.19092023 -0.86158535 1.58594946" />
+    <parent link="link_7" />
+    <child link="wrist_camera" />
+  </joint>
 </robot>

@@ -70,6 +70,7 @@ def test_replay_csv_writes_strict_qpik_diagnostics(tmp_path: Path) -> None:
         CONFIG,
         output_csv=output,
         disable_cbf=True,
+        backend="python",
     )
     rows = result["rows"]
     summary = result["summary"]
@@ -125,7 +126,9 @@ def test_replay_csv_writes_strict_qpik_diagnostics(tmp_path: Path) -> None:
 def test_replay_stride_and_max_rows_select_source_rows(tmp_path: Path) -> None:
     source = tmp_path / "small_wbc.csv"
     _write_fixture(source)
-    result = replay_csv(source, CONFIG, stride=2, max_rows=2, disable_cbf=True)
+    result = replay_csv(
+        source, CONFIG, stride=2, max_rows=2, disable_cbf=True, backend="python"
+    )
     assert len(result["rows"]) == 2
     assert result["rows"][0]["source_row"] == 0
     assert result["rows"][1]["source_row"] == 2
@@ -152,6 +155,7 @@ def test_replay_free_running_integrates_controller_state(tmp_path: Path) -> None
         CONFIG,
         disable_cbf=True,
         mode="free-running",
+        backend="python",
     )
     rows = result["rows"]
     summary = result["summary"]

@@ -335,10 +335,10 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         sigma_setbased=SigmaSetBasedConfig(
             enabled=bool(ss.get("enabled", True)),
             activate=_finite_float(
-                ss.get("activate", 0.14), name="sigma_setbased.activate"
+                ss.get("activate", 0.09), name="sigma_setbased.activate"
             ),
-            safe=_finite_float(ss.get("safe", 0.06), name="sigma_setbased.safe"),
-            exit=_finite_float(ss.get("exit", 0.18), name="sigma_setbased.exit"),
+            safe=_finite_float(ss.get("safe", 0.045), name="sigma_setbased.safe"),
+            exit=_finite_float(ss.get("exit", 0.13), name="sigma_setbased.exit"),
             gamma=_finite_float(ss.get("gamma", 8.0), name="sigma_setbased.gamma"),
             slack_weight=_finite_float(
                 ss.get("slack_weight", 200.0), name="sigma_setbased.slack_weight"

@@ -220,6 +220,7 @@ void InnerLoop::stop() {
   v_r_a_ = 0.0;
   v_r_init_ = false;
   mid_integ_ = 0.0;
+  slack_hold_latched_ = false;
   sec_qdot_.setZero();
   sec_acc_.setZero();
   sec_target_.setZero();
@@ -244,7 +245,7 @@ void InnerLoop::reset(const Vec8& q0) {
   u_task_raw_ = u_task_feasible_ = u_pi_raw_ = u_mid_cmd_ = 0.0;
   u_post_raw_ = u_post_feasible_ = u_mid_applied_ = d_star_dot_cmd_ = 0.0;
   u_escape_raw_ = u_escape_feasible_ = u_base_ = u_feasible_ = 0.0;
-  e_d_ = V_d_proxy_ = j4_design_slack_ = 0.0;
+  e_d_ = V_d_proxy_ = j4_design_slack_ = sigma_slack_ = 0.0;
   d_star_ref_ = 0.0;
   d_star_ref_init_ = false;
   escape_dir_ = 0;
@@ -255,6 +256,7 @@ void InnerLoop::reset(const Vec8& q0) {
   obs_init_ = true;
   last_sample_t_ = -1.0;
   last_slack_ = 0.0;
+  slack_hold_latched_ = false;
   sat_scale_ = 1.0;
   quiet_s_ = 0.0;
   cmd_quiet_s_ = 0.0;
@@ -277,6 +279,9 @@ void InnerLoop::reset(const Vec8& q0) {
   sec_age_ = 1e9;
   m_diag_init_ = false;
   box_t_init_ = false;
+  sigma_row_active_ = false;
+  sigma_grad_.setZero();
+  sigma_tick_ = 0;
   task_weight_.reset();
   kin_.update(q0);
   posture_.reset(q0, kin_.fk_pose_at(q0));
@@ -308,6 +313,7 @@ void InnerLoop::begin_hybrid(const Vec8& q_meas, const Vec8& qdot_applied) {
   homotopy_s_ = 0.0;
   planned_ = false;
   hold_d_prev_ = false;
+  slack_hold_latched_ = false;
 }
 
 void InnerLoop::set_rail_mode(uint32_t mode, uint32_t style, double q_ref, bool has_ref) {
@@ -518,16 +524,14 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
                           const Vec8& q_prev, const Vec8& qdot_nom, double rail_exec,
                           bool has_rail_exec, double rail_task_vel, double rail_w,
                           bool rail_locked, double dt, double h1, double h2, bool rail_open,
-                          double rail_pin, bool has_pin, bool lead_exempt, Vec8* qdot,
-                          Vec6* residual, double* slack) {
+                          double rail_pin, bool has_pin, bool lead_exempt, double sigma_arm,
+                          Vec8* qdot, Vec6* residual, double* slack) {
   Mat6x8 J_task = J;
   Vec6 b_task = v_cmd;
   if (has_rail_exec) {
     const Vec6 rail_contrib = J.col(0) * rail_exec;
     J_task.col(0).setZero();
-    auto [cmp, frac] = project_arm_compensation(J, -rail_contrib, q_geom, q_lo_, q_hi_, 0.8, 1.0);
-    (void)frac;
-    b_task = v_cmd + cmp;
+    b_task = v_cmd - rail_contrib;
   }
   Vec8 lo_box, hi_box;
   apply_velocity_box(q_geom, q_prev, q_geom, dt, h1, h2, rail_locked, rail_pin, has_pin,
@@ -672,11 +676,11 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     ++pref_n;
   }
   if (cfg_.sigma_enabled) {
-    if (last_sigma_ < cfg_.sigma_activate) sigma_row_active_ = true;
-    if (last_sigma_ >= cfg_.sigma_exit) sigma_row_active_ = false;
+    if (sigma_arm < cfg_.sigma_activate) sigma_row_active_ = true;
+    if (sigma_arm >= cfg_.sigma_exit) sigma_row_active_ = false;
     if (sigma_row_active_ && sigma_grad_.norm() > 1e-12) {
       pref_J.row(pref_n) = sigma_grad_.transpose();
-      pref_lo[pref_n] = -cfg_.sigma_gamma * (last_sigma_ - cfg_.sigma_safe);
+      pref_lo[pref_n] = -cfg_.sigma_gamma * (sigma_arm - cfg_.sigma_safe);
       pref_s[pref_n] = 0;
       ++pref_n;
     }
@@ -706,6 +710,10 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   Vec8 qdot_out = qdot1;
   if (qp2_ok) qdot_out = qp2_->results.x.head<kNv>();
   j4_design_slack_ = 0.0;
+  sigma_slack_ = 0.0;
+  if (qp2_ok && qp2_->results.x.size() > kNv + kNTaskSlack) {
+    sigma_slack_ = std::max(0.0, qp2_->results.x[kNv + kNTaskSlack + 0]);
+  }
   if (qp2_ok && qp2_->results.x.size() > kNv + kNTaskSlack + 2) {
     j4_design_slack_ = std::max(0.0, qp2_->results.x[kNv + kNTaskSlack + 2]);
   }
@@ -877,13 +885,17 @@ TickOut InnerLoop::step(const TickIn& in) {
     else cmd_quiet_s_ = 0.0;
     if (cmd_quiet_s_ + 1e-12 >= kQuietHold) quiescent_ = true;
   }
-  const bool slack_high = last_slack_ >= cfg_.slack_enter;
+  if (!slack_hold_latched_ && last_slack_ >= cfg_.slack_enter) slack_hold_latched_ = true;
+  else if (slack_hold_latched_ && last_slack_ <= cfg_.slack_exit) slack_hold_latched_ = false;
+  const bool slack_high = slack_hold_latched_;
   const bool hold_d = quiescent_ || slack_high;
   hold_d_prev_ = hold_d;
 
   if (cfg_.psi_enabled && rail_mode_ == kRailCoupled) {
     const Vec6 pose = kin_.fk_pose_at(q_prev);
-    posture_.step(q_prev, pose, dt, q_lo_[0], q_hi_[0], hold_d);
+    if (!slack_high || quiescent_) {
+      posture_.step(q_prev, pose, dt, q_lo_[0], q_hi_[0], quiescent_);
+    }
     d_star_ = posture_.d_star();
     psi_cmd_ = posture_.psi_cmd();
     psi_star_ = posture_.psi_star();
@@ -997,38 +1009,35 @@ TickOut InnerLoop::step(const TickIn& in) {
     double u_lo = 0.0, u_hi = 0.0;
     wall_velocity_bounds(v_max_[0], leave, &u_lo, &u_hi);
 
-    const bool zero_posture = quiescent_ && !escape_active_;
-    if (zero_posture) {
+    const bool task_hold = quiescent_ && !escape_active_;
+    const bool posture_hold = slack_high || task_hold;
+    if (posture_hold) {
       mid_integ_ = -cfg_.kp_mid * e_d_;
       u_pi_raw_ = 0.0;
       u_mid_cmd_ = 0.0;
       u_post_raw_ = 0.0;
       d_star_dot_cmd_ = 0.0;
-      const RailShares shares = allocate_rail_shares(0.0, 0.0, 0.0, 0, u_lo, u_hi);
-      u_task_feasible_ = 0.0;
-      u_escape_feasible_ = 0.0;
-      u_base_ = 0.0;
-      u_post_feasible_ = 0.0;
-      u_feasible_ = 0.0;
-      u_mid_applied_ = 0.0;
       u_mid_ = 0.0;
-      (void)shares;
     } else {
       u_pi_raw_ = cfg_.kp_mid * e_d_ + mid_integ_;
       u_mid_cmd_ = clip(u_pi_raw_, -cfg_.u_mid_max, cfg_.u_mid_max);
       u_post_raw_ = u_mid_cmd_ - d_star_dot_cmd_;
-      const RailShares shares =
-          allocate_rail_shares(u_task_raw_, u_post_raw_, u_escape_raw_, guard_dir, u_lo, u_hi);
-      u_task_feasible_ = shares.u_task_feasible;
-      u_escape_feasible_ = shares.u_escape_feasible;
-      u_base_ = shares.u_base;
-      u_post_feasible_ = shares.u_post_feasible;
-      u_feasible_ = shares.u_feasible;
-      u_mid_applied_ = u_post_feasible_ + d_star_dot_cmd_;
       u_mid_ = u_mid_cmd_;
-      if (!wall_pi_frozen_ && dt > 0.0) {
-        mid_integ_ += (cfg_.ki_mid * e_d_ + cfg_.kaw_mid * (u_mid_applied_ - u_pi_raw_)) * dt;
-      }
+    }
+    const RailShares shares = allocate_rail_shares(
+        task_hold ? 0.0 : u_task_raw_,
+        posture_hold ? 0.0 : u_post_raw_,
+        task_hold ? 0.0 : u_escape_raw_,
+        task_hold ? 0 : guard_dir,
+        u_lo, u_hi);
+    u_task_feasible_ = shares.u_task_feasible;
+    u_escape_feasible_ = shares.u_escape_feasible;
+    u_base_ = shares.u_base;
+    u_post_feasible_ = shares.u_post_feasible;
+    u_feasible_ = shares.u_feasible;
+    u_mid_applied_ = u_post_feasible_ + d_star_dot_cmd_;
+    if (!posture_hold && !wall_pi_frozen_ && dt > 0.0) {
+      mid_integ_ += (cfg_.ki_mid * e_d_ + cfg_.kaw_mid * (u_mid_applied_ - u_pi_raw_)) * dt;
     }
 
     auto [a_mir, j_mir] = arm_mirror_rail_limits(J, a_max_, j_max_, cfg_.rho_a, cfg_.rho_j);
@@ -1155,8 +1164,12 @@ TickOut InnerLoop::step(const TickIn& in) {
     sec_qdot_ = sec_filt;
   }
 
-  ++sigma_tick_;
-  if (cfg_.sigma_enabled && (sigma_tick_ % std::max(cfg_.sigma_grad_period, 1) == 0)) {
+  const int sigma_period = std::max(cfg_.sigma_grad_period, 1);
+  const bool sigma_activated_edge =
+      !sigma_row_active_ && (sigma_arm < cfg_.sigma_activate);
+  const bool refresh_sigma_grad =
+      sigma_tick_ == 0 || sigma_activated_edge || (sigma_tick_ % sigma_period == 0);
+  if (cfg_.sigma_enabled && refresh_sigma_grad) {
     const double eps = cfg_.sigma_grad_eps;
     sigma_grad_.setZero();
     for (int i = 1; i < kNv; ++i) {
@@ -1168,6 +1181,7 @@ TickOut InnerLoop::step(const TickIn& in) {
     }
     kin_.update(q_state);
   }
+  ++sigma_tick_;
 
   const bool plan_rail = rail_only || tcp_fixed || plan_drives_rail_;
   double rail_pin = 0.0;
@@ -1183,7 +1197,7 @@ TickOut InnerLoop::step(const TickIn& in) {
   const bool ok = solve_hqp(J, twist_base, q_state, q_prev, sec_filt, rail_exec, has_rail_exec,
                             have_rail_vel ? rail_task_vel : 0.0, rail_task_w, locked_hold, dt, h1,
                             h2, rail_mode_ == kRailCoupled && has_travel && !locked_hold, rail_pin,
-                            has_pin, lead_exempt, &qdot, &residual, &slack);
+                            has_pin, lead_exempt, sigma_arm, &qdot, &residual, &slack);
   if (!ok) {
     qdot = qdot_prev_ * cfg_.fail_qdot_decay;
     for (int i = 0; i < kNv; ++i) qdot[i] = clip(qdot[i], -v_max_[i], v_max_[i]);
@@ -1277,6 +1291,7 @@ TickOut InnerLoop::step(const TickIn& in) {
   out.e_d = e_d_;
   out.V_d_proxy = V_d_proxy_;
   out.j4_design_slack = j4_design_slack_;
+  out.sigma_slack = sigma_slack_;
   {
     const Vec6 twist_rail = J.col(0) * rail_exec;
     const Vec6 twist_arm = J.rightCols<7>() * qdot.tail<7>();

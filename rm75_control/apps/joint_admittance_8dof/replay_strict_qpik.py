@@ -61,6 +61,11 @@ Q_FIELDS = tuple(f"q_meas_{i}" for i in range(8))
 Q_CMD_FIELDS = tuple(f"q_cmd_{i}" for i in range(8))
 QDOT_MEAS_FIELDS = tuple(f"qdot_meas_{i}" for i in range(8))
 TWIST_FIELDS = tuple(f"v_cmd_{axis}" for axis in AXES)
+
+
+def _twist_fields(prefix: str) -> tuple[str, ...]:
+    name = str(prefix or "v_cmd").strip() or "v_cmd"
+    return tuple(f"{name}_{axis}" for axis in AXES)
 QDOT_HISTORY_FIELD = "qpik_final_sent_qdot_json"
 
 _DEFAULT_CONFIG = (
@@ -126,6 +131,44 @@ def _optional_json_vector(
     if vector.size != size or not np.isfinite(vector).all():
         return None
     return vector.copy()
+
+
+def _vec6(value: Any, default: float = float("nan")) -> np.ndarray:
+    arr = np.asarray(value, dtype=float).reshape(-1)
+    if arr.size != 6:
+        return np.full(6, default, dtype=float)
+    return arr
+
+
+def _p0_acceptance_fields(controller: JointIkController, core: Any) -> dict[str, Any]:
+    """Extra columns needed to score the rail-compensation P0 contract."""
+
+    target = _vec6(getattr(core, "last_task_target", None), float("nan"))
+    rail = _vec6(getattr(core, "last_rail_exec_contrib", None), 0.0)
+    b_task = target - rail
+    posture = getattr(controller, "posture_retarget", None)
+    sigma_tracker = getattr(core, "sigma_setbased", None)
+    mix = getattr(controller, "_last_mix", None)
+    return {
+        "homotopy_s": float(getattr(posture, "homotopy_s", float("nan")))
+        if posture is not None
+        else float("nan"),
+        "slack_hold_latched": int(bool(getattr(controller, "_slack_hold_latched", False))),
+        "dexterity_slack": float(getattr(core, "last_dexterity_slack", float("nan"))),
+        "sigma_arm": float(getattr(sigma_tracker, "last_sigma", float("nan")))
+        if sigma_tracker is not None
+        else float(getattr(controller, "last_sigma_min", float("nan"))),
+        "b_task_json": _json_value(b_task),
+        "b_task_ang_norm_rad_s": float(np.linalg.norm(b_task[3:])),
+        "u_post_feasible": float(getattr(mix, "u_post_feasible", float("nan")))
+        if mix is not None
+        else float("nan"),
+        "u_task_feasible": float(getattr(mix, "u_task_feasible", float("nan")))
+        if mix is not None
+        else float("nan"),
+        "q_cmd_2": float(np.asarray(controller.q_cmd, dtype=float)[2]),
+        "q_cmd_4": float(np.asarray(controller.q_cmd, dtype=float)[4]),
+    }
 
 
 def _fallback(
@@ -312,9 +355,10 @@ def _controller_row(
     timestamp: float | None,
     box_dt_holder: dict[str, float],
     reset_controller: bool,
+    twist_fields: tuple[str, ...] = TWIST_FIELDS,
 ) -> tuple[dict[str, Any], float | None]:
     twist = np.asarray(
-        [_required_float(row, field, source_row) for field in TWIST_FIELDS], dtype=float
+        [_required_float(row, field, source_row) for field in twist_fields], dtype=float
     )
 
     path_twist = np.asarray(
@@ -358,19 +402,13 @@ def _controller_row(
     wall_ms = (time.perf_counter_ns() - wall_start) / 1.0e6
 
     core = controller.core
-    measured_rail_contrib = np.asarray(
-        getattr(core, "last_rail_exec_contrib", np.zeros(6)), dtype=float
-    ).reshape(6)
-    arm_contrib = np.asarray(
-        getattr(core, "last_arm_contrib", np.zeros(6)), dtype=float
-    ).reshape(6)
-    residual = np.asarray(step.protected_residual, dtype=float).reshape(6)
+    measured_rail_contrib = _vec6(getattr(core, "last_rail_exec_contrib", None), 0.0)
+    arm_contrib = _vec6(getattr(core, "last_arm_contrib", None), 0.0)
+    residual = _vec6(getattr(step, "protected_residual", None), float("nan"))
     if not np.isfinite(residual).all():
         # Keep the report usable with an older controller snapshot that did
         # not publish protected_residual, while never inventing a zero slack.
-        residual = np.asarray(
-            getattr(core, "last_task_residual", np.full(6, np.nan)), dtype=float
-        ).reshape(6)
+        residual = _vec6(getattr(core, "last_task_residual", None), float("nan"))
     residual_inf = float(np.max(np.abs(residual))) if np.isfinite(residual).all() else float("nan")
     qp_total = _finite_float(getattr(step, "qpik_total_ms", None))
     if qp_total is None or qp_total <= 0.0:
@@ -434,13 +472,14 @@ def _controller_row(
         "qdot_command_json": _json_value(np.asarray(step.qdot, dtype=float)),
         "q_cmd_rail_m": float(np.asarray(controller.q_cmd, dtype=float)[0]),
         "qp1_residual_json": _json_value(
-            np.asarray(getattr(core, "last_qp1_residual", residual), dtype=float).reshape(6)
+            _vec6(getattr(core, "last_qp1_residual", residual))
         ),
     }
     for index, value in enumerate(q_meas):
         row_out[f"q_meas_{index}"] = float(value)
     for axis, value in zip(AXES, twist):
         row_out[f"v_cmd_{axis}"] = float(value)
+    row_out.update(_p0_acceptance_fields(controller, core))
     return row_out, float(rail_meas)
 
 
@@ -461,11 +500,12 @@ def _controller_row_free_running(
     box_dt_source: str,
     timestamp: float | None,
     box_dt_holder: dict[str, float | None],
+    twist_fields: tuple[str, ...] = TWIST_FIELDS,
 ) -> tuple[dict[str, Any], float | None]:
     """Integrate one free-running tick from logged ``v_cmd`` only."""
 
     twist = np.asarray(
-        [_required_float(row, field, source_row) for field in TWIST_FIELDS], dtype=float
+        [_required_float(row, field, source_row) for field in twist_fields], dtype=float
     )
     path_twist = np.asarray(
         [_finite_float(row.get(f"path_twist_{axis}")) or 0.0 for axis in AXES],
@@ -486,17 +526,11 @@ def _controller_row_free_running(
     )
     wall_ms = (time.perf_counter_ns() - wall_start) / 1.0e6
     core = controller.core
-    measured_rail_contrib = np.asarray(
-        getattr(core, "last_rail_exec_contrib", np.zeros(6)), dtype=float
-    ).reshape(6)
-    arm_contrib = np.asarray(
-        getattr(core, "last_arm_contrib", np.zeros(6)), dtype=float
-    ).reshape(6)
-    residual = np.asarray(step.protected_residual, dtype=float).reshape(6)
+    measured_rail_contrib = _vec6(getattr(core, "last_rail_exec_contrib", None), 0.0)
+    arm_contrib = _vec6(getattr(core, "last_arm_contrib", None), 0.0)
+    residual = _vec6(getattr(step, "protected_residual", None), float("nan"))
     if not np.isfinite(residual).all():
-        residual = np.asarray(
-            getattr(core, "last_task_residual", np.full(6, np.nan)), dtype=float
-        ).reshape(6)
+        residual = _vec6(getattr(core, "last_task_residual", None), float("nan"))
     residual_inf = (
         float(np.max(np.abs(residual))) if np.isfinite(residual).all() else float("nan")
     )
@@ -562,13 +596,14 @@ def _controller_row_free_running(
         "qdot_command_json": _json_value(np.asarray(step.qdot, dtype=float)),
         "q_cmd_rail_m": float(np.asarray(controller.q_cmd, dtype=float)[0]),
         "qp1_residual_json": _json_value(
-            np.asarray(getattr(core, "last_qp1_residual", residual), dtype=float).reshape(6)
+            _vec6(getattr(core, "last_qp1_residual", residual))
         ),
     }
     for index, value in enumerate(np.asarray(controller.q_cmd, dtype=float)):
         row_out[f"q_meas_{index}"] = float(value)
     for axis, value in zip(AXES, twist):
         row_out[f"v_cmd_{axis}"] = float(value)
+    row_out.update(_p0_acceptance_fields(controller, core))
     return row_out, float(np.asarray(step.qdot, dtype=float)[0])
 
 
@@ -718,6 +753,16 @@ def _output_fields() -> list[str]:
         "timing_source",
         "timing_over_5ms",
         "qdot_command_json",
+        "homotopy_s",
+        "slack_hold_latched",
+        "dexterity_slack",
+        "sigma_arm",
+        "b_task_json",
+        "b_task_ang_norm_rad_s",
+        "u_post_feasible",
+        "u_task_feasible",
+        "q_cmd_2",
+        "q_cmd_4",
     ]
 
 
@@ -757,6 +802,8 @@ def replay_csv(
     qmeas_filter: str = "raw",
     qmeas_lowpass_hz: float = 25.0,
     use_logged_qmeas: bool = False,
+    twist_prefix: str = "v_cmd",
+    backend: str | None = None,
 ) -> dict[str, Any]:
     """Replay selected CSV rows and return ``{"rows", "summary"}``.
 
@@ -786,6 +833,9 @@ def replay_csv(
     )
     cfg.qmeas_filter = str(qmeas_filter or "raw")
     cfg.qmeas_lowpass_hz = float(qmeas_lowpass_hz)
+    if backend:
+        cfg.backend = str(backend)
+    twist_fields = _twist_fields(twist_prefix)
     controller = JointIkController(RobotKinematics(), cfg)
     # ``update`` asks the controller for the two most recent wall periods.
     # Replace only this instance method so the current source row's measured
@@ -817,7 +867,7 @@ def replay_csv(
         if reader.fieldnames is None:
             raise ValueError("input CSV has no header")
         missing_q = sorted(set(Q_FIELDS) - set(reader.fieldnames))
-        missing_twist = sorted(set(TWIST_FIELDS) - set(reader.fieldnames))
+        missing_twist = sorted(set(twist_fields) - set(reader.fieldnames))
         if missing_q or missing_twist:
             raise ValueError(
                 "input CSV is missing required fields: "
@@ -904,6 +954,7 @@ def replay_csv(
                         timestamp=current_t,
                         box_dt_holder=box_dt_holder,
                         reset_controller=(selected == 0),
+                        twist_fields=twist_fields,
                     )
                 else:
                     if selected == 0:
@@ -932,6 +983,7 @@ def replay_csv(
                         box_dt_source=box_dt_source,
                         timestamp=current_t,
                         box_dt_holder=box_dt_holder,
+                        twist_fields=twist_fields,
                     )
                 rows_out.append(out)
                 box_dt_holder["prev"] = float(box_dt)
@@ -1035,6 +1087,17 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="free-running: feed logged q_meas instead of integrated q_cmd",
     )
+    parser.add_argument(
+        "--twist-prefix",
+        default="v_cmd",
+        help="CSV twist column prefix (v_cmd or twist_requested)",
+    )
+    parser.add_argument(
+        "--backend",
+        choices=("python", "native"),
+        default=None,
+        help="override inner.backend from the yaml",
+    )
     args = parser.parse_args(argv)
     try:
         result = replay_csv(
@@ -1052,6 +1115,8 @@ def main(argv: list[str] | None = None) -> int:
             qmeas_filter=args.qmeas_filter,
             qmeas_lowpass_hz=args.qmeas_lowpass_hz,
             use_logged_qmeas=args.use_logged_qmeas,
+            twist_prefix=args.twist_prefix,
+            backend=args.backend,
         )
     except (OSError, ValueError, yaml.YAMLError) as exc:
         parser.error(str(exc))

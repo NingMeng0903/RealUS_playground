@@ -659,6 +659,7 @@ int main(int argc, char** argv) {
         out->e_d = tout.e_d;
         out->V_d_proxy = tout.V_d_proxy;
         out->j4_design_slack = tout.j4_design_slack;
+        out->sigma_slack = tout.sigma_slack;
         out->flags = tout.flags;
         out->status = tout.status;
       }

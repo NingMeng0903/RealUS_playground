@@ -62,9 +62,9 @@ struct Config {
   double sr_sigma_floor = 1e-6;
 
   bool sigma_enabled = true;
-  double sigma_activate = 0.12;
-  double sigma_safe = 0.06;
-  double sigma_exit = 0.16;
+  double sigma_activate = 0.09;
+  double sigma_safe = 0.045;
+  double sigma_exit = 0.13;
   double sigma_gamma = 8.0;
   double sigma_slack_w = 200.0;
   double sigma_grad_eps = 1e-4;

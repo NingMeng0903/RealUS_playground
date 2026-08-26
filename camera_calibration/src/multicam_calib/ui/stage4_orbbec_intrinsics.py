@@ -22,6 +22,7 @@ from PyQt5.QtWidgets import (
 )
 
 from multicam_calib.calib.intrinsics import ChessboardCaptures, ChessboardConfig, persist_intrinsics
+from multicam_calib.calib.orbbec_handeye import FACTORY_ORBBEC_COLOR_FX, orbbec_fx_compare_text
 from multicam_calib.calib.orbbec_rgbd import build_undistort_maps, remap_like
 from multicam_calib.devices.orbbec import OrbbecRGBDSession
 from multicam_calib.io.config import OrbbecConfig
@@ -155,8 +156,12 @@ class Stage4OrbbecIntrinsicsPanel(QWidget):
         self._btn_open.setEnabled(not opened)
         if opened and self._session.params is not None:
             color = self._session.params.color
+            factory_fx = (
+                float(color.K[0, 0]) if str(color.source) == "factory" else FACTORY_ORBBEC_COLOR_FX
+            )
             self._status.setText(
                 f"{color.source} fx={color.K[0, 0]:.1f} fy={color.K[1, 1]:.1f}  "
+                f"{orbbec_fx_compare_text(factory_fx=factory_fx)}  "
                 f"captures={self._captures.num_captures()}"
             )
 
@@ -211,9 +216,13 @@ class Stage4OrbbecIntrinsicsPanel(QWidget):
                 self._maps = build_undistort_maps(model)
                 self._maps_key = key
             _set_pix(self._lab_undist, remap_like(frame.color_bgr, self._maps))
+        factory_fx = FACTORY_ORBBEC_COLOR_FX
+        if self._session.params is not None and str(self._session.params.color.source) == "factory":
+            factory_fx = float(self._session.params.color.K[0, 0])
         self._status.setText(
             f"preview only  capture={w}x{h}  "
-            f"captures={self._captures.num_captures()}  chessboard={'yes' if found else 'no'}"
+            f"captures={self._captures.num_captures()}  chessboard={'yes' if found else 'no'}  "
+            f"{orbbec_fx_compare_text(factory_fx=factory_fx)}"
         )
 
     def _on_capture(self) -> None:

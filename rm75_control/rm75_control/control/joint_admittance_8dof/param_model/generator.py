@@ -29,6 +29,8 @@ parsed and asserted in isolation.
 
 from __future__ import annotations
 
+import math
+import os
 from pathlib import Path
 from typing import Any
 
@@ -221,54 +223,94 @@ _ARM_BLOCK = """  <link name="base_link">
     <parent link="link_7" />
     <child link="tcp" />
   </joint>
-  <!-- OpenCV / Genesis / UE-calib optical: +Z out of lens, +X right, +Y down.
-       Stage 5 T_link7_cam (26-view BA, 2026-08-26). -->
-  <link name="wrist_camera">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <box size="0.022 0.016 0.012" />
-      </geometry>
-      <material name="wrist_camera_body">
-        <color rgba="0.15 0.78 0.95 1" />
-      </material>
-    </visual>
-    <visual>
-      <origin xyz="0.012 0 0" rpy="0 0 0" />
-      <geometry>
-        <box size="0.024 0.003 0.003" />
-      </geometry>
-      <material name="wrist_camera_x">
-        <color rgba="0.95 0.15 0.15 1" />
-      </material>
-    </visual>
-    <visual>
-      <origin xyz="0 0.012 0" rpy="0 0 0" />
-      <geometry>
-        <box size="0.003 0.024 0.003" />
-      </geometry>
-      <material name="wrist_camera_y">
-        <color rgba="0.20 0.85 0.25 1" />
-      </material>
-    </visual>
-    <visual>
-      <origin xyz="0 0 0.03" rpy="0 0 0" />
-      <geometry>
-        <box size="0.004 0.004 0.060" />
-      </geometry>
-      <material name="wrist_camera_z">
-        <color rgba="0.20 0.40 1.00 1" />
-      </material>
-    </visual>
-  </link>
-  <joint name="link_7_to_wrist_camera" type="fixed">
-    <origin xyz="0.073036194 0.056181762 0.035658169" rpy="-0.20219080 -0.86145291 1.58824199" />
-    <parent link="link_7" />
-    <child link="wrist_camera" />
-  </joint>
 """
 
+# OpenCV / Genesis / URDF optical: +Z out of lens, +X right, +Y down.
+# Used only when orbbec_handeye.yaml is missing.
+_WRIST_CAMERA_FALLBACK_XYZ = (0.064854, 0.025247, 0.065670)
+_WRIST_CAMERA_FALLBACK_RPY = (-0.190920, -0.861585, 1.585949)
+
 from rm75_control.control.joint_admittance_8dof.param_model.paths import DEFAULT_SPEC_YAML
+
+
+def _handeye_yaml_path() -> Path | None:
+    env = os.environ.get("CAMERA_CALIB_HANDEYE", "").strip()
+    if env:
+        p = Path(env).expanduser()
+        if p.is_file():
+            return p.resolve()
+    root = os.environ.get("REALUS_PLAYGROUND_ROOT", "").strip()
+    if root:
+        p = Path(root).expanduser() / "camera_calibration/calibration_results/orbbec_handeye.yaml"
+        if p.is_file():
+            return p.resolve()
+    for parent in Path(__file__).resolve().parents:
+        cand = parent / "camera_calibration/calibration_results/orbbec_handeye.yaml"
+        if cand.is_file():
+            return cand
+    return None
+
+
+def _rpy_xyz_from_R(R: list[list[float]]) -> tuple[float, float, float]:
+    """URDF fixed-axis RPY: R = Rz(yaw) @ Ry(pitch) @ Rx(roll)."""
+    pitch = math.asin(max(-1.0, min(1.0, -float(R[2][0]))))
+    cp = math.cos(pitch)
+    if abs(cp) > 1e-8:
+        roll = math.atan2(float(R[2][1]), float(R[2][2]))
+        yaw = math.atan2(float(R[1][0]), float(R[0][0]))
+    else:
+        roll = math.atan2(-float(R[0][1]), float(R[1][1]))
+        yaw = 0.0
+    return roll, pitch, yaw
+
+
+def load_wrist_camera_origin() -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    path = _handeye_yaml_path()
+    if path is None:
+        return _WRIST_CAMERA_FALLBACK_XYZ, _WRIST_CAMERA_FALLBACK_RPY
+    import yaml
+
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    xyz = data.get("T_link7_cam_xyz_m")
+    rpy = data.get("T_link7_cam_rpy_xyz_rad")
+    if (
+        isinstance(xyz, (list, tuple))
+        and len(xyz) == 3
+        and isinstance(rpy, (list, tuple))
+        and len(rpy) == 3
+    ):
+        return (
+            (float(xyz[0]), float(xyz[1]), float(xyz[2])),
+            (float(rpy[0]), float(rpy[1]), float(rpy[2])),
+        )
+    T = data.get("T_link7_cam")
+    if isinstance(T, list) and len(T) >= 3:
+        return (
+            (float(T[0][3]), float(T[1][3]), float(T[2][3])),
+            _rpy_xyz_from_R([[float(T[i][j]) for j in range(3)] for i in range(3)]),
+        )
+    return _WRIST_CAMERA_FALLBACK_XYZ, _WRIST_CAMERA_FALLBACK_RPY
+
+
+def _wrist_camera_block(xyz: tuple[float, float, float], rpy: tuple[float, float, float]) -> str:
+    return (
+        "  <!-- OpenCV / Genesis / UE-calib optical: +Z out of lens, +X right, +Y down.\n"
+        "       Stage 5 T_link7_cam from orbbec_handeye.yaml (fallback if missing). -->\n"
+        '  <link name="wrist_camera">\n'
+        "    <collision>\n"
+        '      <origin xyz="0.02 0 0" rpy="0 0 0" />\n'
+        "      <geometry>\n"
+        '        <box size="0.12 0.03 0.03" />\n'
+        "      </geometry>\n"
+        "    </collision>\n"
+        "  </link>\n"
+        '  <joint name="link_7_to_wrist_camera" type="fixed">\n'
+        f'    <origin xyz="{xyz[0]:.9f} {xyz[1]:.9f} {xyz[2]:.9f}" '
+        f'rpy="{rpy[0]:.8f} {rpy[1]:.8f} {rpy[2]:.8f}" />\n'
+        '    <parent link="link_7" />\n'
+        '    <child link="wrist_camera" />\n'
+        "  </joint>\n"
+    )
 
 DEFAULT_SPEC: dict[str, Any] = {
     "arm": "rm75",
@@ -727,6 +769,7 @@ def build_urdf_string(spec: dict | str | Path) -> str:
         + slider_link
         + arm_mount_joint
         + _ARM_BLOCK
+        + _wrist_camera_block(*load_wrist_camera_origin())
         + "</robot>\n"
     )
 

@@ -21,9 +21,9 @@ from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 @dataclass
 class SigmaSetBasedConfig:
     enabled: bool = True
-    activate: float = 0.14
-    safe: float = 0.06
-    exit: float = 0.18
+    activate: float = 0.09
+    safe: float = 0.045
+    exit: float = 0.13
     gamma: float = 8.0
     slack_weight: float = 200.0
     grad_eps: float = 1.0e-4

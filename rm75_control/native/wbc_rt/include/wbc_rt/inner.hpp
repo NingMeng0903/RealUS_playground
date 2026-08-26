@@ -91,6 +91,7 @@ struct TickOut {
   double e_d = 0.0;
   double V_d_proxy = 0.0;
   double j4_design_slack = 0.0;
+  double sigma_slack = 0.0;
 };
 
 class Collision {
@@ -138,7 +139,7 @@ class InnerLoop {
                  bool has_rail_exec, double rail_task_vel, double rail_w,
                  bool rail_locked, double dt, double h1, double h2,
                  bool rail_open, double rail_pin, bool has_pin, bool lead_exempt,
-                 Vec8* qdot, Vec6* residual, double* slack);
+                 double sigma_arm, Vec8* qdot, Vec6* residual, double* slack);
 
   Config cfg_;
   Kinematics kin_;
@@ -204,12 +205,14 @@ class InnerLoop {
   double e_d_ = 0.0;
   double V_d_proxy_ = 0.0;
   double j4_design_slack_ = 0.0;
+  double sigma_slack_ = 0.0;
   double q_hat_ = 0.0;
   double v_hat_ = 0.0;
   bool obs_init_ = false;
   double last_sample_t_ = -1.0;
 
   double last_slack_ = 0.0;
+  bool slack_hold_latched_ = false;
   double sat_scale_ = 1.0;
   double last_sigma_ = 0.08;
   double quiet_s_ = 0.0;

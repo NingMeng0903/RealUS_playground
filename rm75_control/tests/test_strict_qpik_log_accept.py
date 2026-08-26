@@ -156,7 +156,9 @@ def test_logged_runs_free_running_acceptance(
             writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
             writer.writeheader()
             writer.writerows(segment)
-        result = replay_csv(sliced, CONFIG, disable_cbf=True, mode="free-running")
+        result = replay_csv(
+            sliced, CONFIG, disable_cbf=True, mode="free-running", backend="python"
+        )
         rows = result["rows"]
         assert result["summary"]["replay_mode"] == "free-running"
         residuals = np.array(
@@ -170,7 +172,9 @@ def test_logged_runs_free_running_acceptance(
         assert float(np.nanmedian(residuals)) <= 1.0e-3
         return
 
-    result = replay_csv(path, CONFIG, disable_cbf=True, mode="free-running")
+    result = replay_csv(
+        path, CONFIG, disable_cbf=True, mode="free-running", backend="python"
+    )
     rows = result["rows"]
     assert rows
     assert result["summary"]["replay_mode"] == "free-running"

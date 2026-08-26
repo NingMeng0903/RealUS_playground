@@ -306,47 +306,17 @@
     <child link="tcp" />
   </joint>
   <!-- OpenCV / Genesis / UE-calib optical: +Z out of lens, +X right, +Y down.
-       Stage 5 T_link7_cam (26-view BA, 2026-08-26). -->
+       Stage 5 T_link7_cam from orbbec_handeye.yaml (fallback if missing). -->
   <link name="wrist_camera">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
+    <collision>
+      <origin xyz="0.02 0 0" rpy="0 0 0" />
       <geometry>
-        <box size="0.022 0.016 0.012" />
+        <box size="0.12 0.03 0.03" />
       </geometry>
-      <material name="wrist_camera_body">
-        <color rgba="0.15 0.78 0.95 1" />
-      </material>
-    </visual>
-    <visual>
-      <origin xyz="0.012 0 0" rpy="0 0 0" />
-      <geometry>
-        <box size="0.024 0.003 0.003" />
-      </geometry>
-      <material name="wrist_camera_x">
-        <color rgba="0.95 0.15 0.15 1" />
-      </material>
-    </visual>
-    <visual>
-      <origin xyz="0 0.012 0" rpy="0 0 0" />
-      <geometry>
-        <box size="0.003 0.024 0.003" />
-      </geometry>
-      <material name="wrist_camera_y">
-        <color rgba="0.20 0.85 0.25 1" />
-      </material>
-    </visual>
-    <visual>
-      <origin xyz="0 0 0.03" rpy="0 0 0" />
-      <geometry>
-        <box size="0.004 0.004 0.060" />
-      </geometry>
-      <material name="wrist_camera_z">
-        <color rgba="0.20 0.40 1.00 1" />
-      </material>
-    </visual>
+    </collision>
   </link>
   <joint name="link_7_to_wrist_camera" type="fixed">
-    <origin xyz="0.073036194 0.056181762 0.035658169" rpy="-0.20219080 -0.86145291 1.58824199" />
+    <origin xyz="0.064853526 0.025247380 0.065670289" rpy="-0.19092023 -0.86158535 1.58594946" />
     <parent link="link_7" />
     <child link="wrist_camera" />
   </joint>

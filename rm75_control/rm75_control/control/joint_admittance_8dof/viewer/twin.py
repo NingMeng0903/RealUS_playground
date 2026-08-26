@@ -37,12 +37,14 @@ class DigitalTwinMirror:
         hz: float = 30.0,
         rail_m_fn: Callable[[], float] | None = None,
         rail_extrapolate_s: float = 0.04,
+        after_sync: Callable[[np.ndarray], None] | None = None,
     ) -> None:
         self._bus = bus
         self._scene = scene
         self._hz = max(float(hz), 1.0)
         self._rail_m_fn = rail_m_fn or (lambda: 0.0)
         self._rail_extrapolate_s = max(0.0, float(rail_extrapolate_s))
+        self._after_sync = after_sync
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._viewer_closed = False
@@ -79,6 +81,10 @@ class DigitalTwinMirror:
         self._rail_v = 0.0
         self._rail_stale = True
 
+    def set_after_sync(self, fn: Callable[[np.ndarray], None] | None) -> None:
+        """Optional hook after each successful ``set_joint_positions`` + ``step``."""
+        self._after_sync = fn
+
     def _extrapolate_rail(self, rail_meas: float, now: float) -> float:
         """Constant-velocity hold between SHM encoder updates (≤ rail_extrapolate_s)."""
         x = float(rail_meas)
@@ -101,7 +107,9 @@ class DigitalTwinMirror:
         if abs(x - self._rail_sample) > 1e-7:
             dt = max(now - self._rail_t, 1e-4)
             # Large jump after reconnect → teleport, do not invent speed from 0.
-            if abs(x - self._rail_x) > 0.05:
+            # Jump, or a hitch gap: never invent speed from a long dt
+            # (camera+cloud used to coast on stale v, then snap back).
+            if abs(x - self._rail_x) > 0.05 or dt > 0.08:
                 self._rail_v = 0.0
                 self._rail_x = x
                 self._rail_sample = x
@@ -181,6 +189,7 @@ class DigitalTwinMirror:
                 q[0] = self._extrapolate_rail(float(q[0]), now)
             self._scene.set_joint_positions(q)
             self._scene.step()
+            self._run_after_sync(q)
             self._note_sync(True, rail_raw=rail_raw)
         except AssertionError:
             # Genesis/quadrants fastcache race after A restart while B stays up.
@@ -221,7 +230,20 @@ class DigitalTwinMirror:
             self._thread.join(timeout=2.0)
             self._thread = None
 
+    def _run_after_sync(self, q: np.ndarray) -> None:
+        if self._after_sync is None:
+            return
+        try:
+            self._after_sync(q)
+        except Exception as exc:
+            if _is_viewer_closed(exc):
+                self._viewer_closed = True
+                raise
+            print(f"rm75 twin: after_sync skipped ({exc})", flush=True)
+
     def feed(self, q8) -> None:
         """Offline replay: push an 8-DOF vector without the state bus."""
-        self._scene.set_joint_positions(q8)
+        q = np.asarray(q8, dtype=float).reshape(-1)
+        self._scene.set_joint_positions(q)
         self._scene.step()
+        self._run_after_sync(q)

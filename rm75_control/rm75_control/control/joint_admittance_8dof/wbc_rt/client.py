@@ -450,9 +450,12 @@ class NativeWbcClient:
             e_d=float(o["e_d"]),
             V_d_proxy=float(o["V_d_proxy"]),
             j4_design_slack=float(o["j4_design_slack"]),
+            qpik_dexterity_slack=float(o["sigma_slack"]),
         )
         self.ctrl.last_secondary_norm = float(step.nullspace_norm)
         self.ctrl.last_sat_scale = float(step.sat_scale)
+        if hasattr(self.ctrl, "core") and self.ctrl.core is not None:
+            self.ctrl.core.last_dexterity_slack = float(o["sigma_slack"])
         if self.ctrl.rail_ext_task is not None and np.isfinite(float(o["d_pref"])):
             self.ctrl.rail_ext_task.d_pref_m = float(o["d_pref"])
         if self.ctrl.posture_retarget is not None:
