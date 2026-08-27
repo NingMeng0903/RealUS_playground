@@ -23,57 +23,6 @@ from rm75_control.control.joint_admittance_8dof.wbc_rt.config_dump import dump_w
 from rm75_control.control.joint_admittance_8dof.wbc_rt import protocol as P
 
 
-_QP_STATUS_NAMES = {
-    P.QP_NOT_RUN: "not_run",
-    P.QP_SOLVED: "solved",
-    P.QP_MAX_ITER: "max_iter",
-    P.QP_PRIMAL_INFEASIBLE: "primal_infeasible",
-    P.QP_DUAL_INFEASIBLE: "dual_infeasible",
-    P.QP_CLOSEST_PRIMAL_FEASIBLE: "closest_primal_feasible",
-    P.QP_NONFINITE: "nonfinite",
-    P.QP_CERTIFICATE_FAILED: "certificate_failed",
-    P.QP_OVERRUN: "overrun",
-    P.QP_EXCEPTION: "exception",
-}
-
-_FAILURE_NAMES = {
-    0: "none",
-    1: "input_nonfinite",
-    2: "box_infeasible",
-    3: "qp1_status",
-    4: "qp1_certificate",
-    5: "qp2_status",
-    6: "qp2_certificate",
-    7: "solve_overrun",
-    8: "final_certificate",
-    9: "input_stale",
-}
-
-
-def classify_native_fallback(
-    fallback_u: int,
-    failure_code: int,
-    *,
-    native_failed: bool,
-) -> tuple[str, str, bool]:
-    """Map native SHM fallback/failure.  Only a true fail/stop latches."""
-    if native_failed or int(fallback_u) == P.FALLBACK_STOP:
-        return (
-            "stop",
-            _FAILURE_NAMES.get(int(failure_code), "native_solver_failed"),
-            True,
-        )
-    return "none", "", False
-
-
-def failed_timeout_out():
-    """Explicit stop-shaped OUT record for a STEP wait timeout or torn read."""
-    o = np.zeros((), dtype=P.WBC_OUT_DTYPE)
-    o["status"] = P.STATUS_FAIL
-    o["flags"] = P.OUT_FAILED | P.OUT_STALE
-    return o
-
-
 def find_wbc_rt_binary(explicit: str | None = None) -> Path | None:
     if explicit:
         p = Path(explicit)
@@ -115,69 +64,13 @@ class NativeWbcClient:
         self._proc: subprocess.Popen | None = None
         self._cfg_path: Path | None = None
         self._seq = 0
-        self._step_count = 0
         self._started = False
-
-    @staticmethod
-    def _begin_write(rec) -> int:
-        """Open an input seqlock write and return its even base generation."""
-        base = int(rec["generation"]) & ((1 << 64) - 1)
-        if base & 1:
-            base = (base + 1) & ((1 << 64) - 1)
-        rec["generation"] = np.uint64((base + 1) & ((1 << 64) - 1))
-        return base
-
-    @staticmethod
-    def _end_write(rec, base: int) -> None:
-        rec["generation"] = np.uint64((int(base) + 2) & ((1 << 64) - 1))
-
-    def _stable_out_copy(self):
-        """Return a torn-read-safe copy of the native output record."""
-        if self._out is None:
-            return None
-        for _ in range(4):
-            g0 = int(self._out["generation"][0])
-            if g0 & 1:
-                time.sleep(0.00005)
-                continue
-            snap = self._out[0].copy()
-            g1 = int(self._out["generation"][0])
-            if g0 == g1 and not (g1 & 1) and int(snap["generation"]) == g1:
-                return snap
-        return None
 
     def start(self) -> None:
         binary = find_wbc_rt_binary(getattr(self.cfg, "native_bin", None))
         if binary is None:
             raise FileNotFoundError(
                 "wbc_rt binary not found; build native/wbc_rt or set WBC_RT_BIN"
-            )
-        env = os.environ.copy()
-        cmeel = env.get(
-            "CMEEL_PREFIX",
-            "/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix",
-        )
-        lib = str(Path(cmeel) / "lib")
-        env["LD_LIBRARY_PATH"] = lib + (
-            ":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else ""
-        )
-        info = subprocess.run(
-            [str(binary), "--protocol-info"],
-            env=env,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=2.0,
-        )
-        try:
-            version, in_size, out_size = (int(v) for v in info.stdout.split())
-        except (ValueError, TypeError):
-            raise RuntimeError(f"wbc_rt protocol-info failed: {info.stdout!r}")
-        if (version, in_size, out_size) != (P.WBC_VERSION, P.WBC_IN_SIZE, P.WBC_OUT_SIZE):
-            raise RuntimeError(
-                "wbc_rt protocol mismatch: "
-                f"native=({version},{in_size},{out_size}) "
-                f"client=({P.WBC_VERSION},{P.WBC_IN_SIZE},{P.WBC_OUT_SIZE})"
             )
         tmp = Path(tempfile.mkdtemp(prefix="wbc_rt_"))
         self._cfg_path = tmp / "wbc.cfg"
@@ -197,6 +90,13 @@ class NativeWbcClient:
         self._in["version"] = P.WBC_VERSION
         self._out["magic"] = P.WBC_MAGIC
         self._out["version"] = P.WBC_VERSION
+        env = os.environ.copy()
+        cmeel = env.get(
+            "CMEEL_PREFIX",
+            "/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix",
+        )
+        lib = str(Path(cmeel) / "lib")
+        env["LD_LIBRARY_PATH"] = lib + (":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else "")
         self._proc = subprocess.Popen(
             [
                 str(binary),
@@ -217,8 +117,7 @@ class NativeWbcClient:
                 raise RuntimeError(
                     f"wbc_rt exited during start (code {self._proc.returncode})"
                 )
-            ready = self._stable_out_copy()
-            if ready is not None and int(ready["status"]) == P.STATUS_READY:
+            if int(self._out["status"][0]) == P.STATUS_READY:
                 self._started = True
                 print(
                     f"[joint_ik] inner.backend=native wbc_rt pid={self._proc.pid} "
@@ -252,26 +151,11 @@ class NativeWbcClient:
 
     def _wait_seq(self, seq: int, *, timeout_s: float | None = None) -> bool:
         limit = time.monotonic() + float(self.timeout_s if timeout_s is None else timeout_s)
-        polls = 0
         while time.monotonic() < limit:
-            g0 = int(self._out["generation"][0])
-            if g0 & 1:
-                time.sleep(0.00005)
-                continue
-            observed = int(self._out["seq"][0])
-            g1 = int(self._out["generation"][0])
-            if g0 == g1 and not (g1 & 1) and observed == int(seq):
+            if int(self._out["seq"][0]) == int(seq):
                 return True
             if self._proc is not None and self._proc.poll() is not None:
                 return False
-            # The native worker is a same-host real-time helper.  A long
-            # fixed sleep here adds an avoidable millisecond-scale phase lag
-            # at 200 Hz; yield only occasionally so the common path observes
-            # the completed generation immediately while still being fair to
-            # the worker and other threads.
-            polls += 1
-            if polls & 0x3f == 0:
-                time.sleep(0)
         return False
 
     def _next_seq(self) -> int:
@@ -289,17 +173,11 @@ class NativeWbcClient:
         timeout_s: float | None = None,
     ) -> bool:
         rec = self._in[0]
-        base = self._begin_write(rec)
         rec["cmd"] = np.uint32(cmd)
         rec["magic"] = P.WBC_MAGIC
         rec["version"] = P.WBC_VERSION
         rec["cmd_f"][:] = 0.0
         rec["cmd_u"][:] = 0
-        rec["qdot_ff"][:] = 0.0
-        rec["pose_d"][:] = 0.0
-        rec["vel_ff"][:] = 0.0
-        rec["path_twist"][:] = 0.0
-        rec["feedback_twist"][:] = 0.0
         if cmd_f is not None:
             arr = np.asarray(cmd_f, dtype=float).reshape(-1)
             n = min(arr.size, 16)
@@ -311,10 +189,8 @@ class NativeWbcClient:
         if q_meas is not None:
             rec["q_meas"][:] = np.asarray(q_meas, dtype=float).reshape(8)
         seq = self._next_seq()
-        self._step_count += 1
         rec["cmd_seq"] = np.uint64(seq)
         rec["seq"] = np.uint64(seq)
-        self._end_write(rec, base)
         if not wait:
             return True
         return self._wait_seq(seq, timeout_s=timeout_s if timeout_s is not None else 0.5)
@@ -380,10 +256,9 @@ class NativeWbcClient:
             cmd_f=[float(y_center_m), float(amplitude_m)],
             timeout_s=2.0,
         )
-        out = self._stable_out_copy()
-        if ok and out is not None:
-            d = float(out["cmd_f"][0])
-            psi = float(out["cmd_f"][1])
+        if ok:
+            d = float(self._out["cmd_f"][0][0])
+            psi = float(self._out["cmd_f"][0][1])
             if np.isfinite(d):
                 return d, psi
         return float("nan"), float("nan")
@@ -403,18 +278,15 @@ class NativeWbcClient:
     def set_rail_extension_mode(self, mode: str) -> None:
         self._command(P.CMD_SET_RAIL_EXT_MODE, cmd_f=[1.0 if str(mode) == "pose_attract" else 0.0])
 
-    def _sync_q(self, out=None) -> None:
-        if self._out is None and out is None:
+    def _sync_q(self) -> None:
+        if self._out is None:
             return
-        o = self._stable_out_copy() if out is None else out
-        if o is None:
-            return
-        self.ctrl.q_cmd = np.asarray(o["q_cmd"], dtype=float).copy()
-        self.ctrl.last_u_alloc = float(o["u_alloc"])
-        self.ctrl.last_u_mid = float(o["u_mid"])
-        self.ctrl.last_v_r_ref = float(o["v_r_ref"])
-        self.ctrl.last_slack_norm = float(o["slack"])
-        self.ctrl.last_sigma_min = float(o["sigma_min"])
+        self.ctrl.q_cmd = np.asarray(self._out["q_cmd"][0], dtype=float).copy()
+        self.ctrl.last_u_alloc = float(self._out["u_alloc"][0])
+        self.ctrl.last_u_mid = float(self._out["u_mid"][0])
+        self.ctrl.last_v_r_ref = float(self._out["v_r_ref"][0])
+        self.ctrl.last_slack_norm = float(self._out["slack"][0])
+        self.ctrl.last_sigma_min = float(self._out["sigma_min"][0])
 
     def step(self, v_cmd, stamp=None, *, q_meas=None, **kwargs) -> TrackerStatus:
         stale = False
@@ -448,7 +320,6 @@ class NativeWbcClient:
         if q_meas is None:
             raise ValueError("q_meas is required for every Cartesian QPIK tick")
         rec = self._in[0]
-        base = self._begin_write(rec)
         rec["magic"] = P.WBC_MAGIC
         rec["version"] = P.WBC_VERSION
         rec["cmd"] = P.CMD_STEP
@@ -460,17 +331,6 @@ class NativeWbcClient:
         rec["q_meas"][:] = np.asarray(q_meas, dtype=float).reshape(8)
         rec["rail_q"] = float(np.asarray(q_meas, dtype=float).reshape(-1)[0])
         rec["cmd_f"][:] = 0.0
-        # Clear all optional feed-forward ownership before setting this tick's
-        # flags/values.  A stale producer can therefore never inherit a prior
-        # qdot_ff or twist merely because the field remained in SHM.
-        rec["qdot_ff"][:] = 0.0
-        rec["pose_d"][:] = 0.0
-        rec["vel_ff"][:] = 0.0
-        rec["path_twist"][:] = 0.0
-        rec["feedback_twist"][:] = 0.0
-        posture_d = kwargs.get("posture_d")
-        posture_psi = kwargs.get("posture_psi")
-        posture_q = kwargs.get("posture_q", kwargs.get("q_star"))
         flags = 0
         if kwargs.get("contact_active"):
             flags |= P.IN_CONTACT
@@ -486,7 +346,7 @@ class NativeWbcClient:
         if vfz is not None and np.isfinite(float(vfz)):
             rec["v_force_z"] = float(vfz)
             flags |= P.IN_HAS_V_FORCE
-        if qdot_ff is not None and not bool(kwargs.get("command_stale")):
+        if qdot_ff is not None:
             rec["qdot_ff"][:] = np.asarray(qdot_ff, dtype=float).reshape(-1)[:8]
             flags |= P.IN_HAS_QDOT_FF
         pose_d = kwargs.get("pose_d")
@@ -505,54 +365,27 @@ class NativeWbcClient:
         if feedback_twist is not None:
             rec["feedback_twist"][:] = np.asarray(feedback_twist, dtype=float).reshape(6)
             flags |= P.IN_HAS_FEEDBACK_TWIST
-        if posture_d is not None or posture_psi is not None:
-            rec["cmd_f"][0] = float(
-                posture_d if posture_d is not None else float("nan")
-            )
-            rec["cmd_f"][1] = float(
-                posture_psi if posture_psi is not None else float("nan")
-            )
-            flags |= P.IN_HAS_POSTURE
-        if posture_q is not None:
-            q_star = np.asarray(posture_q, dtype=float).reshape(-1)
-            if q_star.size != 8 or not np.all(np.isfinite(q_star)):
-                raise ValueError("posture_q/q_star must be a finite 8-vector")
-            rec["cmd_f"][3:11] = q_star
-            flags |= P.IN_HAS_QSTAR
         rec["flags"] = np.uint32(flags)
         seq = self._next_seq()
         rec["cmd_seq"] = np.uint64(seq)
         rec["seq"] = np.uint64(seq)
-        self._end_write(rec, base)
         ok = self._wait_seq(seq)
         if not ok:
-            # Do not issue a second STEP while the old request may still be
-            # executing.  Never classify from the last stable OUT record.
-            self.ctrl.q_cmd = np.asarray(self.ctrl.q_cmd, dtype=float).copy()
-            try:
-                self._command(P.CMD_STOP, wait=False)
-            except Exception:
-                pass
-            o = failed_timeout_out()
-        else:
-            o = self._stable_out_copy()
-        if o is None:
-            o = failed_timeout_out()
-        if ok:
-            self._sync_q(o)
-        q_cmd = np.asarray(o["q_cmd"], dtype=float).copy() if ok else np.asarray(self.ctrl.q_cmd, dtype=float).copy()
-        qdot = np.asarray(o["qdot"], dtype=float).copy() if ok else np.zeros(8, dtype=float)
+            rec["v_cmd"][:] = 0.0
+            rec["flags"] = np.uint32(flags | P.IN_STALE)
+            seq = self._next_seq()
+            rec["cmd_seq"] = np.uint64(seq)
+            rec["seq"] = np.uint64(seq)
+            ok = self._wait_seq(seq)
+        o = self._out[0]
+        self._sync_q()
+        q_cmd = np.asarray(o["q_cmd"], dtype=float).copy()
+        qdot = np.asarray(o["qdot"], dtype=float).copy()
         v_recv = np.asarray(o["v_cmd_received"], dtype=float).copy()
         v_feas = np.asarray(o["v_cmd_feasible"], dtype=float).copy()
         v_tcp = np.asarray(o["v_tcp_estimated"], dtype=float).copy()
         resid = np.asarray(o["task_residual"], dtype=float).copy()
         stale = (not ok) or bool(int(o["flags"]) & P.OUT_STALE) or bool(kwargs.get("command_stale"))
-        native_failed = (
-            (not ok)
-            or int(o["status"]) == P.STATUS_FAIL
-            or bool(int(o["flags"]) & P.OUT_FAILED)
-        )
-        failure_code = int(o["failure_code"])
         step = JointIkStep(
             q_send=q_cmd,
             qdot=qdot,
@@ -563,12 +396,8 @@ class NativeWbcClient:
             n_cbf_active=0,
             follow_err_rad=0.0,
             qp_backend="native",
-            qp_solver_status=(
-                "timeout" if not ok else ("failed" if native_failed else "ok")
-            ),
+            qp_solver_status="ok" if ok else "timeout",
             qp_solver_solve_ms=float(o["solve_ms"]),
-            qp_solver_call_count=int(self._step_count),
-            failure_code=failure_code,
             u_alloc=float(o["u_alloc"]),
             u_mid=float(o["u_mid"]),
             v_r_ref=float(o["v_r_ref"]),
@@ -587,11 +416,7 @@ class NativeWbcClient:
             rail_limited=bool(int(o["rail_limited"])),
             wall_active=bool(int(o["wall_active"])),
             secondary_suppressed=bool(int(o["secondary_suppressed"])),
-            controller_mode=(
-                "direct_joint_ptp"
-                if bool(getattr(self.ctrl, "_direct_joint_ptp", False))
-                else "qpik"
-            ),
+            controller_mode="qpik",
             nullspace_norm=float(o["ns_norm"]),
             nullspace_centering_norm=float(o["ns_centering"]),
             nullspace_manip_norm=float(o["ns_manip"]),
@@ -631,34 +456,11 @@ class NativeWbcClient:
             rail_bind_lo=int(o["rail_bind_lo"]),
             rail_bind_hi=int(o["rail_bind_hi"]),
             rail_task_vel_used=float(o["rail_task_vel_used"]),
-            # Native protocol v5 does not carry the legacy rail-extension
-            # reach/FF diagnostics; expose finite neutral values rather than
-            # leaking dataclass NaNs into CSV/replay consumers.
-            v_reach=0.0,
-            v_ff_rail=0.0,
             rail_h1=float(o["rail_h1"]),
             rail_h2=float(o["rail_h2"]),
             rail_qdot_prev=float(o["rail_qdot_prev"]),
             rail_qdot_prev2=float(o["rail_qdot_prev2"]),
         )
-        fallback_u = int(o["fallback_level"])
-        level, reason, latched = classify_native_fallback(
-            fallback_u, failure_code, native_failed=native_failed
-        )
-        if level != "none":
-            step.fallback_level = level
-            step.fallback_reason = reason
-            step.solver_fault_latched = latched
-        step.qp1_status = _QP_STATUS_NAMES.get(int(o["qp1_status"]), "unknown")
-        step.qp2_status = _QP_STATUS_NAMES.get(int(o["qp2_status"]), "unknown")
-        step.qp2_fallback = fallback_u == P.FALLBACK_QP1
-        step.posture_gate_scale = float(o["posture_gate"])
-        step.posture_gate_active = step.posture_gate_scale >= 0.999
-        step.qpik_hard_residual_max = float(o["final_hard_violation"])
-        step.final_hard_violation = float(o["final_hard_violation"])
-        step.task_lock_violation = float(o["task_lock_violation"])
-        step.final_box_violation = float(o["final_box_violation"])
-        step.qp_solver_overrun = bool(int(o["qp_overrun"]))
         self.ctrl.last_secondary_norm = float(step.nullspace_norm)
         self.ctrl.last_sat_scale = float(step.sat_scale)
         if hasattr(self.ctrl, "core") and self.ctrl.core is not None:

@@ -6,7 +6,7 @@ closed loop: the arm still solves ``J_a q̇_a = v_d − J_r v̂_r`` in QP1.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -18,100 +18,6 @@ from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
     stopping_velocity,
     wall_cap,
 )
-
-
-@dataclass
-class PostureGateConfig:
-    """Task-relevance gate for background d-star recentering."""
-
-    enabled: bool = True
-    enter_ratio: float = 0.50
-    exit_ratio: float = 0.35
-    enter_speed_m_s: float = 0.010
-    exit_speed_m_s: float = 0.005
-    enter_dwell_s: float = 0.050
-    exit_dwell_s: float = 0.100
-    open_tau_s: float = 0.150
-    close_tau_s: float = 0.100
-
-
-class PostureDemandGate:
-    """Hysteretic, bumpless rail-posture relevance gate."""
-
-    def __init__(self, cfg: PostureGateConfig) -> None:
-        self.cfg = cfg
-        self.active = False
-        self.scale = 0.0
-        self.enter_elapsed_s = 0.0
-        self.exit_elapsed_s = 0.0
-        self.projected_speed_m_s = 0.0
-        self.projected_ratio = 0.0
-
-    def reset(self) -> None:
-        self.active = False
-        self.scale = 0.0
-        self.enter_elapsed_s = 0.0
-        self.exit_elapsed_s = 0.0
-        self.projected_speed_m_s = 0.0
-        self.projected_ratio = 0.0
-
-    def step(
-        self,
-        reference_twist: np.ndarray,
-        rail_jacobian: np.ndarray,
-        dt_s: float,
-        *,
-        safety_override: bool = False,
-    ) -> float:
-        cfg = self.cfg
-        dt = max(float(dt_s), 0.0)
-        v = np.asarray(reference_twist, dtype=float).reshape(-1)[:3]
-        jr = np.asarray(rail_jacobian, dtype=float).reshape(-1)[:3]
-        den = float(np.dot(jr, jr))
-        v_norm = float(np.linalg.norm(v))
-        if den > 1.0e-12 and v_norm > 1.0e-12:
-            rail_speed = float(np.dot(jr, v) / den)
-            direction = jr / np.sqrt(den)
-            ratio = abs(float(np.dot(direction, v))) / v_norm
-        else:
-            rail_speed = 0.0
-            ratio = 0.0
-        self.projected_speed_m_s = float(rail_speed)
-        self.projected_ratio = float(np.clip(ratio, 0.0, 1.0))
-
-        if not cfg.enabled:
-            self.active = True
-        elif safety_override:
-            self.active = True
-            self.enter_elapsed_s = 0.0
-            self.exit_elapsed_s = 0.0
-        elif self.active:
-            leaving = (
-                self.projected_ratio <= float(cfg.exit_ratio)
-                or abs(self.projected_speed_m_s) <= float(cfg.exit_speed_m_s)
-            )
-            self.exit_elapsed_s = self.exit_elapsed_s + dt if leaving else 0.0
-            self.enter_elapsed_s = 0.0
-            if self.exit_elapsed_s + 1.0e-12 >= float(cfg.exit_dwell_s):
-                self.active = False
-                self.exit_elapsed_s = 0.0
-        else:
-            entering = (
-                self.projected_ratio >= float(cfg.enter_ratio)
-                and abs(self.projected_speed_m_s) >= float(cfg.enter_speed_m_s)
-            )
-            self.enter_elapsed_s = self.enter_elapsed_s + dt if entering else 0.0
-            self.exit_elapsed_s = 0.0
-            if self.enter_elapsed_s + 1.0e-12 >= float(cfg.enter_dwell_s):
-                self.active = True
-                self.enter_elapsed_s = 0.0
-
-        target = 1.0 if self.active else 0.0
-        tau = float(cfg.open_tau_s if self.active else cfg.close_tau_s)
-        alpha = 1.0 if tau <= 0.0 else min(1.0, dt / tau)
-        self.scale += alpha * (target - self.scale)
-        self.scale = float(np.clip(self.scale, 0.0, 1.0))
-        return self.scale
 
 
 @dataclass
@@ -141,7 +47,6 @@ class RailAllocatorConfig:
     observer_pos_gain: float = 0.35
     observer_vel_gain: float = 2.0
     observer_vel_lpf_hz: float = 8.0
-    posture_gate: PostureGateConfig = field(default_factory=PostureGateConfig)
 
 
 def allocate_rail(
@@ -574,8 +479,6 @@ def project_arm_compensation(
 
 __all__ = (
     "MidrangingController",
-    "PostureDemandGate",
-    "PostureGateConfig",
     "RailAllocatorConfig",
     "RailReferenceModel",
     "RailReferenceState",

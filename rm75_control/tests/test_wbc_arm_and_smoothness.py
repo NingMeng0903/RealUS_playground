@@ -50,10 +50,7 @@ def test_inconsistent_state_collapses_to_feasible_brake():
     # Huge previous velocity so accel band cannot intersect position-safe box.
     qdot_prev = np.full(kin.nv, 50.0)
     lo, hi = box.bounds(q, dt=0.005, qdot_prev=qdot_prev)
-    # A 50 rad/s history is physically incompatible with the current hard
-    # velocity/acceleration box.  Real empty intersections are now preserved
-    # and reported as ``box_infeasible`` instead of silently collapsed.
-    assert np.any(lo > hi)
+    assert np.all(lo <= hi)
     assert np.all(np.isfinite(lo))
     assert np.all(np.isfinite(hi))
 

@@ -96,6 +96,7 @@ inner:
     max_iter: 400
     max_iter_cap: 400
     max_solve_ms: 5.0
+    fail_qdot_decay: 0.85
     twist_sigma_floor: 0.02
     warn_on_fail: false
     sr_damping:
@@ -307,16 +308,6 @@ inner:
     observer_pos_gain: 0.35
     observer_vel_gain: 2.0
     observer_vel_lpf_hz: 8.0
-    posture_gate:
-      enabled: true
-      enter_ratio: 0.50
-      exit_ratio: 0.35
-      enter_speed_m_s: 0.010
-      exit_speed_m_s: 0.005
-      enter_dwell_s: 0.050
-      exit_dwell_s: 0.100
-      open_tau_s: 0.150
-      close_tau_s: 0.100
 
 
 frames:

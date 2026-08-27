@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 
 WBC_MAGIC = 0x57424331
-WBC_VERSION = 5
+WBC_VERSION = 4
 DEFAULT_IN_NAME = "rm75_wbc_in"
 DEFAULT_OUT_NAME = "rm75_wbc_out"
 
@@ -61,33 +61,6 @@ STATUS_OK = 2
 STATUS_FAIL = 3
 STATUS_SHUTDOWN = 4
 
-# QP result/status telemetry.  Only QP_SOLVED is publishable.
-QP_NOT_RUN = 0
-QP_SOLVED = 1
-QP_MAX_ITER = 2
-QP_PRIMAL_INFEASIBLE = 3
-QP_DUAL_INFEASIBLE = 4
-QP_CLOSEST_PRIMAL_FEASIBLE = 5
-QP_NONFINITE = 6
-QP_CERTIFICATE_FAILED = 7
-QP_OVERRUN = 8
-QP_EXCEPTION = 9
-
-FALLBACK_NONE = 0
-FALLBACK_QP1 = 1
-FALLBACK_STOP = 2
-
-FAILURE_NONE = 0
-FAILURE_INPUT_NONFINITE = 1
-FAILURE_BOX_INFEASIBLE = 2
-FAILURE_QP1_STATUS = 3
-FAILURE_QP1_CERTIFICATE = 4
-FAILURE_QP2_STATUS = 5
-FAILURE_QP2_CERTIFICATE = 6
-FAILURE_SOLVE_OVERRUN = 7
-FAILURE_FINAL_CERTIFICATE = 8
-FAILURE_INPUT_STALE = 9
-
 RAIL_COUPLED = 0
 RAIL_LOCKED = 1
 STYLE_HOLD = 0
@@ -98,7 +71,6 @@ WBC_IN_DTYPE = np.dtype(
     [
         ("magic", "<u4"),
         ("version", "<u4"),
-        ("generation", "<u8"),
         ("seq", "<u8"),
         ("cmd_seq", "<u8"),
         ("cmd", "<u4"),
@@ -126,7 +98,6 @@ WBC_OUT_DTYPE = np.dtype(
     [
         ("magic", "<u4"),
         ("version", "<u4"),
-        ("generation", "<u8"),
         ("seq", "<u8"),
         ("cmd_ack", "<u8"),
         ("status", "<u4"),
@@ -192,17 +163,6 @@ WBC_OUT_DTYPE = np.dtype(
         ("rail_h2", "<f8"),
         ("rail_qdot_prev", "<f8"),
         ("rail_qdot_prev2", "<f8"),
-        ("qp1_status", "<u4"),
-        ("qp2_status", "<u4"),
-        ("fallback_level", "<u4"),
-        ("failure_code", "<u4"),
-        ("qp1_hard_violation", "<f8"),
-        ("final_hard_violation", "<f8"),
-        ("task_lock_violation", "<f8"),
-        ("final_box_violation", "<f8"),
-        ("qp_overrun", "<u4"),
-        ("reserved_status", "<u4"),
-        ("posture_gate", "<f8"),
     ],
     align=False,
 )
@@ -210,8 +170,8 @@ WBC_OUT_DTYPE = np.dtype(
 WBC_IN_SIZE = int(WBC_IN_DTYPE.itemsize)
 WBC_OUT_SIZE = int(WBC_OUT_DTYPE.itemsize)
 # Packed C++ layouts in native/wbc_rt/include/wbc_rt/protocol.hpp.
-assert WBC_IN_SIZE == 616, WBC_IN_SIZE
-assert WBC_OUT_SIZE == 896, WBC_OUT_SIZE
+assert WBC_IN_SIZE == 608, WBC_IN_SIZE
+assert WBC_OUT_SIZE == 824, WBC_OUT_SIZE
 
 
 def view_in(buf) -> np.ndarray:

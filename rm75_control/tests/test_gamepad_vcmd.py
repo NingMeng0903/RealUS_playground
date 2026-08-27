@@ -705,14 +705,9 @@ def test_zero_v_cmd_does_not_put_u_mid_on_v_r_ref() -> None:
         last = inner.update(twist, q_meas=inner.q_cmd.copy())
     assert last is not None
     assert not bool(inner._quiescent)
-    # With the posture relevance gate, the d* target is frozen while the
-    # command is not rail-related; no accumulated 80 mm error is repaid in a
-    # single release tick.  The diagnostic remains finite and the gate ramps
-    # continuously when the earlier +Y command re-opens it.
-    assert np.isfinite(float(last.e_d))
-    assert np.isfinite(float(last.u_post_feasible))
-    assert 0.0 <= float(last.posture_gate_scale) <= 1.0
-    assert np.isfinite(float(last.v_r_ref))
+    assert abs(float(last.e_d)) > 0.05
+    assert abs(float(last.u_post_feasible)) > 1.0e-2
+    assert abs(float(last.v_r_ref)) > 1.5e-2
     pose1 = inner.kin.fk_pose(inner.q_cmd)
     assert float(np.linalg.norm(pose1[:3] - pose0[:3])) < 0.008
 

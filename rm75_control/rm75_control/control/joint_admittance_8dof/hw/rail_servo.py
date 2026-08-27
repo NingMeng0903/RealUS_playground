@@ -37,8 +37,6 @@ from dataclasses import dataclass, replace
 from enum import Enum
 from pathlib import Path
 
-import numpy as np
-
 # Shared idle / park / stream-stationary threshold (m/s).  Do not scatter
 # 1 mm/s literals — they used to gate catch-up and park independently.
 RAIL_IDLE_EPS_M_S = 1.0e-3
@@ -137,73 +135,6 @@ def next_poll_deadline(next_t: float, now: float, period: float) -> float:
     return max(float(next_t) + float(period), float(now))
 
 
-def intersect_rail_velocity_box(
-    v_des_m_s: float,
-    v_prev_m_s: float,
-    a_prev_m_s2: float,
-    *,
-    dt_s: float,
-    v_max_m_s: float,
-    a_max_m_s2: float,
-    j_max_m_s3: float,
-    wall_lo_m_s: float = float("-inf"),
-    wall_hi_m_s: float = float("inf"),
-    rpm_per_m_s: float | None = None,
-) -> tuple[float, float, float, bool]:
-    """Intersect velocity, acceleration, jerk, wall and RPM boxes.
-
-    The returned tuple is ``(v, a, j, feasible)``.  RPM quantisation is
-    treated as another hard interval when ``rpm_per_m_s`` is supplied; if the
-    interval is narrower than one RPM, the nearest representable value is
-    selected and ``feasible`` is false so the caller can account for the
-    quantisation-only violation rather than silently widening the box.
-    """
-    dt = max(float(dt_s), 1.0e-6)
-    vmax = max(abs(float(v_max_m_s)), 0.0)
-    amax = max(abs(float(a_max_m_s2)), 0.0)
-    jmax = max(abs(float(j_max_m_s3)), 0.0)
-    vp = float(v_prev_m_s)
-    ap = float(a_prev_m_s2)
-    if not math.isfinite(vp):
-        vp = 0.0
-    if not math.isfinite(ap):
-        ap = 0.0
-    ap = max(-amax, min(amax, ap))
-    a_lo = max(-amax, ap - jmax * dt)
-    a_hi = min(amax, ap + jmax * dt)
-    lo = vp + a_lo * dt
-    hi = vp + a_hi * dt
-    if lo > hi:
-        lo, hi = hi, lo
-    lo = max(lo, -vmax, float(wall_lo_m_s))
-    hi = min(hi, vmax, float(wall_hi_m_s))
-    desired = float(v_des_m_s) if math.isfinite(float(v_des_m_s)) else 0.0
-    if lo <= hi:
-        v = max(lo, min(hi, desired))
-        feasible = True
-    else:
-        # Conflicting wall/continuity boxes: hold the closest safe endpoint.
-        # This is intentionally reported as infeasible; the worker can mark a
-        # safety hold instead of publishing an un-certified command.
-        v = max(float(wall_lo_m_s), min(float(wall_hi_m_s), vp))
-        v = max(-vmax, min(vmax, v))
-        feasible = False
-    if rpm_per_m_s is not None and math.isfinite(float(rpm_per_m_s)) and float(rpm_per_m_s) > 0.0:
-        scale = float(rpm_per_m_s)
-        rpm_lo = math.ceil(lo * scale - 1.0e-12)
-        rpm_hi = math.floor(hi * scale + 1.0e-12)
-        if rpm_lo <= rpm_hi:
-            rpm = int(max(rpm_lo, min(rpm_hi, round(v * scale))))
-            v = float(rpm) / scale
-        else:
-            rpm = int(round(v * scale))
-            v = float(rpm) / scale
-            feasible = False
-    a = (v - vp) / dt
-    j = (a - ap) / dt
-    return float(v), float(a), float(j), bool(feasible)
-
-
 @dataclass
 class RailServoConfig:
     enabled: bool = False
@@ -246,8 +177,6 @@ class RailServoConfig:
     vel_kd: float = 0.22  # dimensionless gain on velocity error
     vel_max_m_s: float = 0.30
     vel_amax_m_s2: float = 0.8  # softer slew vs Er-01 / host overshoot
-    # FA24 worker jerk limit. Keep this equal to inner.qp.j_max_rail_m_s3.
-    j_max_m_s3: float = 60.0
     # Coupled-mode bounded catch-up of x_ref toward x_goal while moving.
     # Pure integration ratcheted 15.9 mm of e_shape over 84 s of gamepad.
     catch_v_max_m_s: float = 0.02
@@ -341,9 +270,6 @@ class RailServoSample:
     sample_mono_s: float = float("nan")
     target_rx_mono_s: float = float("nan")
     motion_seq: int = 0
-    # Sequence of the command actually consumed by the worker. ``motion_seq``
-    # is retained as a compatibility alias for older CSV/replay consumers.
-    command_seq: int = 0
     x_goal_m: float = float("nan")
     x_ref_m: float = float("nan")
     x_meas_m: float = float("nan")
@@ -354,7 +280,6 @@ class RailServoSample:
     v_des_m_s: float = 0.0
     v_cmd_m_s: float = 0.0
     a_cmd_m_s2: float = 0.0
-    j_cmd_m_s3: float = 0.0
     x_goal_eval_m: float = float("nan")
     rpm_cmd: int = 0
     follow: bool = False
@@ -367,8 +292,6 @@ class RailServoSample:
     hold_reason: str = ""
     command_mode: str = "position"
     feedback_valid: bool = False
-    fa24_write_mono_ns: int = 0
-    emergency_override: bool = False
 
 
 class RailCommandMode(str, Enum):
@@ -418,31 +341,6 @@ class RailCommand:
     def command_mode(self) -> RailCommandMode:
         return self.mode
 
-    @property
-    def command_seq(self) -> int:
-        return int(self.motion_seq)
-
-
-@dataclass(frozen=True)
-class RailCommandReceipt:
-    """Receipt returned by :meth:`set_target_m`.
-
-    It remains truthy/falsey like the historical boolean return while exposing
-    the monotonic command sequence for execution acknowledgement.
-    """
-
-    accepted: bool
-    command_seq: int = 0
-    rx_mono_s: float = float("nan")
-    reason: str = ""
-
-    def __bool__(self) -> bool:
-        return bool(self.accepted)
-
-    @property
-    def motion_seq(self) -> int:
-        return int(self.command_seq)
-
 
 @dataclass(frozen=True)
 class RailExecutionFeedback:
@@ -460,19 +358,11 @@ class RailExecutionFeedback:
     sample_mono_s: float = float("nan")
     sample_age_s: float = float("inf")
     motion_seq: int = 0
-    command_seq: int = 0
     valid: bool = False
     command_mode: RailCommandMode = RailCommandMode.POSITION
     follow: bool = False
     armed: bool = False
     panic: bool = False
-    j_cmd_m_s3: float = 0.0
-    fa24_write_mono_ns: int = 0
-    emergency_override: bool = False
-
-    @property
-    def command_sequence(self) -> int:
-        return int(self.command_seq or self.motion_seq)
 
     @property
     def x_meas_m(self) -> float:
@@ -601,13 +491,6 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         vel_amax_m_s2 = min(hw_a_max, float(qp_a_max))
     else:
         vel_amax_m_s2 = hw_a_max
-    inner_qp = (raw.get("inner", {}) or {}).get("qp", {}) or {}
-    qp_j_max = float(inner_qp.get("j_max_rail_m_s3", 60.0))
-    if "j_max_m_s3" in hw and abs(float(hw["j_max_m_s3"]) - qp_j_max) > 1.0e-9:
-        raise ValueError(
-            "rail jerk-limit mismatch: hw.lw100.j_max_m_s3 must equal "
-            "inner.qp.j_max_rail_m_s3"
-        )
     standstill_enter_mm = max(float(hw.get("standstill_enter_mm", 0.05)), 0.01)
     standstill_exit_mm = max(
         float(hw.get("standstill_exit_mm", standstill_enter_mm * 5.0)),
@@ -649,7 +532,6 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         vel_kd=float(hw.get("vel_kd", 0.22)),
         vel_max_m_s=vel_max_m_s,
         vel_amax_m_s2=vel_amax_m_s2,
-        j_max_m_s3=max(0.0, qp_j_max),
         catch_v_max_m_s=float(hw.get("catch_v_max_m_s", 0.02)),
         catch_k=float(hw.get("catch_k", 5.0)),
         catch_frac=float(hw.get("catch_frac", 0.3)),
@@ -711,8 +593,7 @@ class _RailCsvLogger:
         "rpm_cmd,e_track_mm,e_shape_mm,"
         "hold_count,hold_reason,command_mode,"
         "t_read_ms,t_write_ms,n_modbus,"
-        "fa24_write_mono_ns,encoder_sample_mono_ns,command_seq,j_cmd_m_s3,"
-        "emergency_override"
+        "fa24_write_mono_ns,encoder_sample_mono_ns"
     ).split(",")
 
     def __init__(self, path: str) -> None:
@@ -791,9 +672,6 @@ class _RailCsvLogger:
         n_modbus: int = 0,
         fa24_write_mono_ns: int = 0,
         encoder_sample_mono_ns: int = 0,
-        command_seq: int = 0,
-        j_cmd_m_s3: float = float("nan"),
-        emergency_override: bool = False,
     ) -> None:
         t_wall = time.monotonic() - self._t0
 
@@ -875,9 +753,6 @@ class _RailCsvLogger:
                     if int(encoder_sample_mono_ns) > 0
                     else ""
                 ),
-                int(command_seq),
-                _f(j_cmd_m_s3),
-                int(bool(emergency_override)),
             ]
         )
 
@@ -902,10 +777,6 @@ class RailServoBridge:
         self._measured_seq = 0  # bumps on every successful encoder/speed poll
         self._measured_mono_s = float("nan")
         self._servo_sample = RailServoSample()
-        # Keep a short timestamped execution history so the arm loop can
-        # select/interpolate rail state at the same monotonic timestamp as its
-        # asynchronous arm snapshot instead of mixing old arm with new rail.
-        self._execution_history: deque[RailServoSample] = deque(maxlen=64)
         self._lock = threading.Lock()
         self._drive: LW100Drive | None = None
         self._thread: threading.Thread | None = None
@@ -1176,103 +1047,13 @@ class RailServoBridge:
                 a_cmd_m_s2=float(sample.a_cmd_m_s2),
                 sample_mono_s=sample_t,
                 sample_age_s=age,
-                motion_seq=int(sample.command_seq or sample.motion_seq),
-                command_seq=int(sample.command_seq or sample.motion_seq),
+                motion_seq=int(sample.motion_seq),
                 valid=bool(sample.feedback_valid),
                 command_mode=mode,
                 follow=bool(sample.follow),
                 armed=bool(sample.armed),
                 panic=bool(sample.panic),
-                j_cmd_m_s3=float(sample.j_cmd_m_s3),
-                fa24_write_mono_ns=int(sample.fa24_write_mono_ns),
-                emergency_override=bool(sample.emergency_override),
             )
-
-    def execution_feedback_at(self, t_mono_s: float) -> RailExecutionFeedback:
-        """Return the execution sample aligned to a monotonic query time.
-
-        Linear interpolation is used only between two valid worker samples;
-        before/after the retained history the nearest sample is held.  The
-        returned sample time is the actual source time (or query time for an
-        interpolation), so freshness remains meaningful to the caller.
-        """
-        query = float(t_mono_s)
-        if not math.isfinite(query):
-            return self.execution_feedback
-        with self._lock:
-            samples = tuple(self._execution_history)
-            if not samples:
-                samples = (self._servo_sample,)
-        finite = [s for s in samples if math.isfinite(float(s.sample_mono_s))]
-        if not finite:
-            return self.execution_feedback
-        before = [s for s in finite if float(s.sample_mono_s) <= query]
-        after = [s for s in finite if float(s.sample_mono_s) >= query]
-        lo = before[-1] if before else finite[0]
-        hi = after[0] if after else finite[-1]
-        t_lo = float(lo.sample_mono_s)
-        t_hi = float(hi.sample_mono_s)
-        if hi is lo or t_hi <= t_lo + 1.0e-12:
-            chosen = lo if before else hi
-            sample_t = float(chosen.sample_mono_s)
-            vals = chosen
-        else:
-            alpha = float(np.clip((query - t_lo) / (t_hi - t_lo), 0.0, 1.0))
-            def lerp(name: str) -> float:
-                return float(getattr(lo, name)) + alpha * (
-                    float(getattr(hi, name)) - float(getattr(lo, name))
-                )
-            vals = RailServoSample(
-                sample_mono_s=query,
-                target_rx_mono_s=lerp("target_rx_mono_s"),
-                motion_seq=int(lo.motion_seq),
-                command_seq=int(lo.command_seq),
-                x_goal_m=lerp("x_goal_m"),
-                x_ref_m=lerp("x_ref_m"),
-                x_meas_m=lerp("x_meas_m"),
-                v_goal_est_m_s=lerp("v_goal_est_m_s"),
-                v_ref_m_s=lerp("v_ref_m_s"),
-                a_ref_m_s2=lerp("a_ref_m_s2"),
-                v_meas_m_s=lerp("v_meas_m_s"),
-                v_des_m_s=lerp("v_des_m_s"),
-                v_cmd_m_s=lerp("v_cmd_m_s"),
-                a_cmd_m_s2=lerp("a_cmd_m_s2"),
-                j_cmd_m_s3=lerp("j_cmd_m_s3"),
-                x_goal_eval_m=lerp("x_goal_eval_m"),
-                rpm_cmd=int(round(lerp("rpm_cmd"))),
-                follow=bool(lo.follow),
-                armed=bool(lo.armed),
-                panic=bool(lo.panic or hi.panic),
-                poll_ok=bool(lo.poll_ok and hi.poll_ok),
-                mb_fail_n=max(int(lo.mb_fail_n), int(hi.mb_fail_n)),
-                freeze_flag=bool(lo.freeze_flag or hi.freeze_flag),
-                hold_count=max(int(lo.hold_count), int(hi.hold_count)),
-                hold_reason=str(lo.hold_reason or hi.hold_reason),
-                command_mode=str(lo.command_mode),
-                feedback_valid=bool(lo.feedback_valid and hi.feedback_valid),
-                fa24_write_mono_ns=int(lo.fa24_write_mono_ns),
-                emergency_override=bool(lo.emergency_override or hi.emergency_override),
-            )
-            sample_t = query
-        now = time.monotonic()
-        return RailExecutionFeedback(
-            position_m=float(vals.x_meas_m),
-            v_meas_m_s=float(vals.v_meas_m_s),
-            v_cmd_m_s=float(vals.v_cmd_m_s),
-            a_cmd_m_s2=float(vals.a_cmd_m_s2),
-            sample_mono_s=sample_t,
-            sample_age_s=max(0.0, now - sample_t),
-            motion_seq=int(vals.command_seq or vals.motion_seq),
-            command_seq=int(vals.command_seq or vals.motion_seq),
-            valid=bool(vals.feedback_valid),
-            command_mode=RailCommandMode.coerce(vals.command_mode),
-            follow=bool(vals.follow),
-            armed=bool(vals.armed),
-            panic=bool(vals.panic),
-            j_cmd_m_s3=float(vals.j_cmd_m_s3),
-            fa24_write_mono_ns=int(vals.fa24_write_mono_ns),
-            emergency_override=bool(vals.emergency_override),
-        )
 
     def set_target_m(
         self,
@@ -1280,7 +1061,7 @@ class RailServoBridge:
         v_ff_m_s: float | None = None,
         *,
         mode: RailCommandMode | str | None = None,
-    ) -> RailCommandReceipt:
+    ) -> bool:
         """Accept a rail goal and report whether it entered the follow buffer.
 
         ``v_ff_m_s`` is the QPIK rail velocity for this tick.  When finite the
@@ -1311,7 +1092,7 @@ class RailServoBridge:
                     flush=True,
                 )
                 self._log_event("reject_uncalibrated", target_m=float(target_m))
-            return RailCommandReceipt(False, reason="not_calibrated")
+            return False
         if not armed:
             now = time.monotonic()
             if now - self._last_reject_unarmed_log >= 1.0:
@@ -1322,13 +1103,13 @@ class RailServoBridge:
                     flush=True,
                 )
                 self._log_event("reject_unarmed", target_m=float(target_m))
-            return RailCommandReceipt(False, reason="not_armed")
+            return False
         raw = float(target_m)
         soft_lo, soft_hi = self._soft_lo_hi()
         if not math.isfinite(raw):
             print(f"lw100 rail: reject non-finite target {raw}", flush=True)
             self._log_event("reject_nonfinite", target_m=raw)
-            return RailCommandReceipt(False, reason="nonfinite_target")
+            return False
         if raw < soft_lo - 0.005 or raw > soft_hi + 0.005:
             print(
                 f"lw100 rail: reject target {raw * 1000:.1f} mm "
@@ -1336,14 +1117,14 @@ class RailServoBridge:
                 flush=True,
             )
             self._log_event("reject_oob", target_m=raw)
-            return RailCommandReceipt(False, reason="target_out_of_bounds")
+            return False
         snapped = max(soft_lo, min(soft_hi, raw))
         rx_mono = time.monotonic()
         with self._lock:
             # PANIC latches until explicit rearm (limit DI / encoder fault).
             # Do not auto-clear here — that let WBC resume while the arm kept moving.
             if panic or self._panic:
-                return RailCommandReceipt(False, reason="panic")
+                return False
             self._target_m = snapped
             self._command_mode = command_mode
             self._command_seq = int(self._command_seq) + 1
@@ -1357,8 +1138,7 @@ class RailServoBridge:
             self._hold_active = False
             self._hold_anchor_m = float("nan")
             self._hold_origin_m = float("nan")
-            seq = int(self._command_seq)
-        return RailCommandReceipt(True, command_seq=seq, rx_mono_s=rx_mono)
+        return True
 
     def hold_current(self) -> None:
         """Stop following; FA24=0. Keep last sane target (do not adopt insane encoder)."""
@@ -2091,14 +1871,11 @@ class RailServoBridge:
             self._servo_sample = RailServoSample(
                 sample_mono_s=float(self._measured_mono_s),
                 target_rx_mono_s=0.0,
-                motion_seq=int(self._command_seq),
-                command_seq=int(self._command_seq),
+                motion_seq=int(self._measured_seq),
                 x_goal_m=measured,
                 x_ref_m=measured,
                 x_meas_m=measured,
             )
-            self._execution_history.clear()
-            self._execution_history.append(self._servo_sample)
             self._last_hold_reason = ""
             self._last_hold_mono = 0.0
             self._hold_count = 0
@@ -2788,7 +2565,6 @@ class RailServoBridge:
         jump_soft_streak_panic = max(1, int(self.config.jump_soft_streak_panic))
         prev_t = time.monotonic()
         prev_v_cmd = 0.0
-        prev_a_cmd = 0.0
         x_ref = float(self.measured_m) if math.isfinite(self.measured_m) else 0.0
         v_ref = 0.0
         a_ref = 0.0
@@ -2808,11 +2584,7 @@ class RailServoBridge:
         last_accepted_enc_t = last_enc_ok_t
         verbose = bool(self.config.verbose)
         # Cap PD/slew dt so a stalled poll cannot blow kd·de or fake a freeze.
-        # Integrate against the actual worker cadence, but bound a delayed
-        # poll to the same 1.25x interval used by QPIK. This keeps the FA24
-        # execution box identical to the command-side h1/h2 contract.
-        dt_cap = max(1.25 * period, 1.0e-3)
-        j_max = max(float(self.config.j_max_m_s3), 0.0)
+        dt_cap = max(3.0 * period, 0.05)
         # If FA24 is nonzero but we have not read encoder this long → hard kill.
         latch_watch_s = max(float(self.config.latch_watch_s), 0.0)
         # Cold-start / re-arm: consecutive healthy polls with FA24=0.
@@ -2849,7 +2621,6 @@ class RailServoBridge:
                 arm_samples.clear()
                 arm_settle_deadline = None
                 prev_v_cmd = 0.0
-                prev_a_cmd = 0.0
                 v_ref = 0.0
                 a_ref = 0.0
                 ref_inited = False
@@ -2869,7 +2640,7 @@ class RailServoBridge:
             t0 = time.monotonic()
             dt_wall = max(t0 - prev_t, 1e-4)
             prev_t = t0
-            dt = min(max(dt_wall, period), dt_cap)
+            dt = min(dt_wall, dt_cap)
             poll_ok = dt_wall <= dt_cap
             if poll_ok:
                 poll_period_history.append(float(dt_wall))
@@ -2899,8 +2670,6 @@ class RailServoBridge:
             v_des = 0.0
             v_cmd = 0.0
             a_cmd = 0.0
-            j_cmd = 0.0
-            emergency_override = False
             hard_hold_this_tick = False
             encoder_accepted = True
             try:
@@ -2909,7 +2678,6 @@ class RailServoBridge:
                     self._latch_kill_req.clear()
                     self._hold_velocity(measured, "FA24 latched without encoder (safety flag)")
                     prev_v_cmd = 0.0
-                    prev_a_cmd = 0.0
                     v_cmd = 0.0
                     hard_hold_this_tick = True
 
@@ -2922,7 +2690,6 @@ class RailServoBridge:
                         f"for {t0 - last_enc_ok_t:.2f}s",
                     )
                     prev_v_cmd = 0.0
-                    prev_a_cmd = 0.0
                     v_cmd = 0.0
                     hard_hold_this_tick = True
 
@@ -2953,7 +2720,6 @@ class RailServoBridge:
                 # Snapshot command state under lock; only stamp encoder if sane.
                 with self._lock:
                     target = float(self._target_m)
-                    command_seq = int(self._command_seq)
                     target_v_ff = float(self._target_v_ff_m_s)
                     command_mode = RailCommandMode(self._command_mode)
                     follow = bool(self._follow_enabled)
@@ -3155,14 +2921,12 @@ class RailServoBridge:
                             f"dt_wall={dt_wall * 1000:.0f}ms",
                         )
                         prev_v_cmd = 0.0
-                        prev_a_cmd = 0.0
                         v_cmd = 0.0
                         hard_hold_this_tick = True
 
                 if not math.isfinite(target):
                     self._hold_velocity(measured, "invalid target")
                     prev_v_cmd = 0.0
-                    prev_a_cmd = 0.0
                     v_cmd = 0.0
                     follow = False
 
@@ -3170,7 +2934,6 @@ class RailServoBridge:
                 if not armed and not panic and not self._abort.is_set():
                     self._drive.set_velocity_rpm(0, force=False)
                     prev_v_cmd = 0.0
-                    prev_a_cmd = 0.0
                     if poll_ok and self._encoder_sane(measured):
                         arm_good += 1
                         arm_samples.append(measured)
@@ -3563,6 +3326,8 @@ class RailServoBridge:
                             lim = cruise_m_s * (abs(err_x) / home_band)
                         v_des = max(-lim, min(lim, v_des))
 
+                    dv_max = a_ref_max * dt
+                    v_cmd = max(prev_v_cmd - dv_max, min(prev_v_cmd + dv_max, v_des))
                     env_lo, env_hi = self._envelope_lo_hi()
                     lo_cap, hi_cap = wall_cap(
                         measured,
@@ -3571,20 +3336,8 @@ class RailServoBridge:
                         a_max=float(a_ref_max),
                         reaction_s=float(self.config.wall_reaction_s),
                     )
-                    rpm_per_mps = max(abs(self._mps_to_rpm(1.0)), 1.0e-9)
-                    v_env, a_cmd, j_cmd, box_feasible = intersect_rail_velocity_box(
-                        v_des,
-                        prev_v_cmd,
-                        prev_a_cmd,
-                        dt_s=dt,
-                        v_max_m_s=v_max,
-                        a_max_m_s2=float(a_ref_max),
-                        j_max_m_s3=j_max,
-                        wall_lo_m_s=lo_cap,
-                        wall_hi_m_s=hi_cap,
-                        rpm_per_m_s=rpm_per_mps,
-                    )
-                    if abs(v_env - v_des) > 1.0e-9:
+                    v_env = max(lo_cap, min(hi_cap, v_cmd))
+                    if abs(v_env - v_cmd) > 1.0e-9:
                         self._wall_override_count = (
                             int(getattr(self, "_wall_override_count", 0)) + 1
                         )
@@ -3592,21 +3345,12 @@ class RailServoBridge:
                     else:
                         self._wall_override_last = False
                     v_cmd = v_env
-                    if not box_feasible:
-                        self._wall_override_last = True
-                        self._hold_velocity(measured, "box_infeasible")
-                        v_cmd = 0.0
-                        prev_v_cmd = 0.0
-                        prev_a_cmd = 0.0
-                        a_cmd = 0.0
-                        j_cmd = 0.0
-                        emergency_override = True
+                    a_cmd = (v_cmd - prev_v_cmd) / max(dt, 1.0e-6)
                     if standstill_held:
-                        # The latch is only entered once the reference and
-                        # measured motion are already quiet. Keep the value
-                        # produced by the continuity box so a normal stop is
-                        # still jerk-limited; no post-box hard zero.
+                        # Instant freeze — do not coast down through stiction hum.
                         v_des = 0.0
+                        v_cmd = 0.0
+                        a_cmd = 0.0
                     elif not follow_live:
                         if (
                             abs(v_ref) < RAIL_IDLE_EPS_M_S
@@ -3615,20 +3359,16 @@ class RailServoBridge:
                         ):
                             v_cmd = 0.0
                             a_cmd = 0.0
-                            j_cmd = (a_cmd - prev_a_cmd) / max(dt, 1.0e-6)
 
-                    # A single/double slow poll keeps the box-certified
-                    # command. Holding the old velocity here would implicitly
-                    # force a_new=0 and can violate the jerk interval when
-                    # a_prev is non-zero. Three consecutive misses are a
-                    # communication fault and may hard-stop.
+                    # Single/double slow poll: coast. ≥3 → hard zero.
                     if not poll_ok:
                         if slow_poll_n >= 3:
                             v_cmd = 0.0
                             prev_v_cmd = 0.0
-                            prev_a_cmd = 0.0
                             a_cmd = 0.0
-                            j_cmd = 0.0
+                        else:
+                            v_cmd = prev_v_cmd
+                            a_cmd = 0.0
                         freeze_anchor_t = t0
                     elif abs(v_cmd) >= freeze_vmin:
                         # Freeze only if drive RPM≈0 AND host Δx is stuck.
@@ -3647,14 +3387,11 @@ class RailServoBridge:
                             )
                             v_cmd = 0.0
                             prev_v_cmd = 0.0
-                            prev_a_cmd = 0.0
                             a_cmd = 0.0
-                            j_cmd = 0.0
                             v_ref = 0.0
                             a_ref = 0.0
                             ref_inited = False
                             freeze_anchor_t = t0
-                            hard_hold_this_tick = True
                     else:
                         freeze_anchor_x = measured
                         freeze_anchor_t = t0
@@ -3669,59 +3406,11 @@ class RailServoBridge:
                         )
                         v_cmd = 0.0
                         prev_v_cmd = 0.0
-                        prev_a_cmd = 0.0
                         a_cmd = 0.0
-                        j_cmd = 0.0
                         v_ref = 0.0
                         a_ref = 0.0
                         ref_inited = False
-                        hard_hold_this_tick = True
 
-                # A normal stream end/hold must brake through the same
-                # execution box. Only panic, abort and explicit hard-hold
-                # paths may clear FA24 immediately.
-                normal_stop = (
-                    not panic
-                    and not self._abort.is_set()
-                    and not hard_hold_this_tick
-                    and not follow
-                    and abs(prev_v_cmd) > 1.0e-9
-                )
-                if normal_stop:
-                    env_lo, env_hi = self._envelope_lo_hi()
-                    lo_cap, hi_cap = wall_cap(
-                        measured,
-                        lo=env_lo,
-                        hi=env_hi,
-                        a_max=float(a_max),
-                        reaction_s=float(self.config.wall_reaction_s),
-                    )
-                    v_cmd, a_cmd, j_cmd, box_feasible = intersect_rail_velocity_box(
-                        0.0,
-                        prev_v_cmd,
-                        prev_a_cmd,
-                        dt_s=dt,
-                        v_max_m_s=v_max,
-                        a_max_m_s2=float(a_max),
-                        j_max_m_s3=j_max,
-                        wall_lo_m_s=lo_cap,
-                        wall_hi_m_s=hi_cap,
-                        rpm_per_m_s=max(abs(self._mps_to_rpm(1.0)), 1.0e-9),
-                    )
-                    if not box_feasible:
-                        self._hold_velocity(measured, "box_infeasible")
-                        v_cmd = 0.0
-                        prev_v_cmd = 0.0
-                        prev_a_cmd = 0.0
-                        a_cmd = 0.0
-                        j_cmd = 0.0
-                        emergency_override = True
-                emergency_override = bool(
-                    emergency_override
-                    or panic
-                    or self._abort.is_set()
-                    or hard_hold_this_tick
-                )
                 rpm = sign * self._mps_to_rpm(v_cmd)
                 rpm_deadband = (
                     int(self.config.fa24_rpm_deadband)
@@ -3744,23 +3433,13 @@ class RailServoBridge:
                         self._last_fa24_write_mono_ns = int(fa24_write_ns)
                 else:
                     t_write_ms = 0.0
-                # Recompute the executed values after integer RPM quantisation;
-                # these are the values used for the next tick's a/j box and
-                # exposed to the execution feedback stream.
-                executed_v_cmd = sign * self._rpm_to_mps(float(rpm_cmd))
-                executed_a_cmd = (executed_v_cmd - prev_v_cmd) / max(dt, 1.0e-6)
-                executed_j_cmd = (executed_a_cmd - prev_a_cmd) / max(dt, 1.0e-6)
-                prev_v_cmd = executed_v_cmd
-                prev_a_cmd = executed_a_cmd
-                v_cmd = executed_v_cmd
-                a_cmd = executed_a_cmd
-                j_cmd = executed_j_cmd
+                prev_v_cmd = sign * self._rpm_to_mps(float(rpm_cmd))
                 control_mono = time.monotonic()
                 sample_mono = motion_sample_mono
                 sample_x_ref = x_ref if ref_inited else measured
                 with self._lock:
                     self._commanded_m = sample_x_ref
-                    motion_seq = command_seq
+                    motion_seq = int(self._measured_seq)
                     hold_count = int(self._hold_count)
                     hold_reason = (
                         str(self._last_hold_reason)
@@ -3774,7 +3453,6 @@ class RailServoBridge:
                         sample_mono_s=sample_mono,
                         target_rx_mono_s=last_rx,
                         motion_seq=motion_seq,
-                        command_seq=command_seq,
                         x_goal_m=float(target),
                         x_goal_eval_m=x_goal_eval,
                         x_ref_m=sample_x_ref,
@@ -3786,7 +3464,6 @@ class RailServoBridge:
                         v_des_m_s=v_des,
                         v_cmd_m_s=v_cmd,
                         a_cmd_m_s2=a_cmd,
-                        j_cmd_m_s3=j_cmd,
                         rpm_cmd=int(rpm_cmd),
                         follow=follow,
                         armed=armed,
@@ -3798,10 +3475,7 @@ class RailServoBridge:
                         hold_reason=hold_reason,
                         command_mode=command_mode.value,
                         feedback_valid=bool(encoder_accepted),
-                        fa24_write_mono_ns=int(self._last_fa24_write_mono_ns),
-                        emergency_override=emergency_override,
                     )
-                    self._execution_history.append(self._servo_sample)
                 if self._csv is not None:
                     last_rpm = int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
                     self._csv.write(
@@ -3825,7 +3499,6 @@ class RailServoBridge:
                         sample_mono_s=sample_mono,
                         target_rx_mono_s=last_rx,
                         motion_seq=motion_seq,
-                        command_seq=command_seq,
                         x_goal_m=target,
                         x_goal_eval_m=x_goal_eval,
                         x_ref_m=sample_x_ref,
@@ -3839,7 +3512,6 @@ class RailServoBridge:
                         v_des_m_s=v_des,
                         v_cmd_m_s=v_cmd,
                         a_cmd_m_s2=a_cmd,
-                        j_cmd_m_s3=j_cmd,
                         rpm_cmd=rpm_cmd,
                         hold_count=hold_count,
                         hold_reason=hold_reason,
@@ -3850,7 +3522,6 @@ class RailServoBridge:
                         n_modbus=n_modbus,
                         fa24_write_mono_ns=int(self._last_fa24_write_mono_ns),
                         encoder_sample_mono_ns=int(self._last_encoder_sample_mono_ns),
-                        emergency_override=emergency_override,
                     )
                 # Rare SP-slot reassert (avoid extra Modbus during tracking).
                 if loop_n > 0 and loop_n % max(1, int(self.config.poll_hz * 30)) == 0:
@@ -3899,7 +3570,6 @@ class RailServoBridge:
                 # Consecutive poll failures → zero FA24, stay ARMED (resume on next OK).
                 if mb_fail_n >= 3:
                     prev_v_cmd = 0.0
-                    prev_a_cmd = 0.0
                     v_ref = 0.0
                     a_ref = 0.0
                     ref_inited = False
@@ -3908,34 +3578,6 @@ class RailServoBridge:
                         f"modbus poll failed {mb_fail_n}x"
                         + (f" with latched FA24={latched} r/min" if abs(latched) > 0 else ""),
                     )
-                # Publish a failure sample even though no normal worker tick
-                # reached the FA24 write path.  Consumers must be able to see
-                # the emergency override and the command sequence that was
-                # last consumed; retaining the previous ``poll_ok`` sample
-                # would make a hard hold look like stale healthy motion.
-                with self._lock:
-                    emergency = bool(mb_fail_n >= 3)
-                    base_sample = self._servo_sample
-                    self._servo_sample = replace(
-                        base_sample,
-                        sample_mono_s=float(time.monotonic()),
-                        motion_seq=int(self._command_seq),
-                        command_seq=int(self._command_seq),
-                        x_meas_m=float(self.measured_m),
-                        v_cmd_m_s=0.0 if emergency else float(base_sample.v_cmd_m_s),
-                        a_cmd_m_s2=0.0 if emergency else float(base_sample.a_cmd_m_s2),
-                        j_cmd_m_s3=0.0 if emergency else float(base_sample.j_cmd_m_s3),
-                        rpm_cmd=0 if emergency else int(base_sample.rpm_cmd),
-                        follow=bool(self._follow_enabled),
-                        armed=bool(self._armed),
-                        poll_ok=False,
-                        mb_fail_n=int(mb_fail_n),
-                        hold_count=int(self._hold_count),
-                        hold_reason=str(self._last_hold_reason),
-                        fa24_write_mono_ns=int(self._last_fa24_write_mono_ns),
-                        emergency_override=emergency,
-                    )
-                    self._execution_history.append(self._servo_sample)
                 # Skip / hold: short yield only (never 0.25–0.5 s reconnect sleep).
                 if self._stop.wait(0.02 if mb_fail_n < 5 else 0.05):
                     break
@@ -3944,7 +3586,6 @@ class RailServoBridge:
                 if self._stop.is_set() or self._abort.is_set():
                     break
                 prev_v_cmd = 0.0
-                prev_a_cmd = 0.0
                 v_ref = 0.0
                 a_ref = 0.0
                 ref_inited = False

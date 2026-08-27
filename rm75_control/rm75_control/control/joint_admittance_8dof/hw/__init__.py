@@ -2,7 +2,6 @@
 
 from rm75_control.control.joint_admittance_8dof.hw.rail_servo import (
     RailCommand,
-    RailCommandReceipt,
     RailCommandMode,
     RailExecutionFeedback,
     RailServoBridge,
@@ -12,7 +11,6 @@ from rm75_control.control.joint_admittance_8dof.hw.rail_servo import (
 
 __all__ = [
     "RailCommand",
-    "RailCommandReceipt",
     "RailCommandMode",
     "RailExecutionFeedback",
     "RailServoBridge",

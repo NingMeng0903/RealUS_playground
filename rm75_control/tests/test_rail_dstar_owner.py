@@ -58,10 +58,10 @@ def _yaml_inner_at_rail(q_rail_m: float) -> JointIkController:
     return inner
 
 
-def test_protocol_v5_layout_is_896() -> None:
-    assert P.WBC_VERSION == 5
-    assert P.WBC_OUT_SIZE == 896
-    assert P.WBC_IN_SIZE == 616
+def test_protocol_v4_layout_is_824() -> None:
+    assert P.WBC_VERSION == 4
+    assert P.WBC_OUT_SIZE == 824
+    assert P.WBC_IN_SIZE == 608
     binary = find_wbc_rt_binary()
     if binary is None:
         pytest.skip("wbc_rt binary not built")
@@ -69,8 +69,8 @@ def test_protocol_v5_layout_is_896() -> None:
 
     out = subprocess.check_output([str(binary), "--sizes"], text=True).strip()
     inn, outn = out.split()
-    assert int(inn) == 616
-    assert int(outn) == 896
+    assert int(inn) == 608
+    assert int(outn) == 824
 
 
 def test_allocate_identity_and_bidirectional_cancel() -> None:
@@ -743,3 +743,4 @@ def test_native_task_weight_parity_aniso_iso_lpf_reset_rail() -> None:
         binary, j_rep, w, dt=dt, tau=0.0, aniso=True, ticks=1
     )
     assert np.allclose(native_rep[0], w_rep, rtol=1e-5, atol=1e-6)
+

@@ -141,17 +141,25 @@ inline double wall_leave_only_sign(double x, double hard_min, double hard_max, d
   return 0.0;
 }
 
-inline bool reconcile_interval(Vec8* lo, Vec8* hi, double tolerance) {
-  const double tol = std::max(tolerance, 0.0);
+inline void collapse_interval(Vec8* lo, Vec8* hi, const Vec8* qdot_prev, const Vec8* a_max,
+                              double dt) {
   for (int i = 0; i < kNv; ++i) {
-    if (!std::isfinite((*lo)[i]) || !std::isfinite((*hi)[i])) return false;
     if ((*lo)[i] <= (*hi)[i]) continue;
-    if ((*lo)[i] - (*hi)[i] > tol) return false;
-    const double midpoint = 0.5 * ((*lo)[i] + (*hi)[i]);
-    (*lo)[i] = midpoint;
-    (*hi)[i] = midpoint;
+    double collapsed = 0.0;
+    if ((*hi)[i] < 0.0 && (*lo)[i] > 0.0) {
+      collapsed = 0.0;
+    } else if (qdot_prev == nullptr) {
+      collapsed = (std::abs((*lo)[i]) <= std::abs((*hi)[i])) ? (*lo)[i] : (*hi)[i];
+    } else {
+      collapsed = ((*qdot_prev)[i] >= 0.0) ? (*lo)[i] : (*hi)[i];
+    }
+    if (qdot_prev != nullptr && a_max != nullptr && dt > 0.0) {
+      const double step = (*a_max)[i] * dt;
+      collapsed = clip(collapsed, (*qdot_prev)[i] - step, (*qdot_prev)[i] + step);
+    }
+    (*lo)[i] = collapsed;
+    (*hi)[i] = collapsed;
   }
-  return true;
 }
 
 inline double max_limit_activation(const Vec8& q, const Vec8& mid, const Vec8& half,

@@ -101,16 +101,6 @@ struct TickOut {
   double rail_h2 = 0.0;
   double rail_qdot_prev = 0.0;
   double rail_qdot_prev2 = 0.0;
-  uint32_t qp1_status = kQpNotRun;
-  uint32_t qp2_status = kQpNotRun;
-  uint32_t fallback_level = kFallbackNone;
-  uint32_t failure_code = kFailureNone;
-  double qp1_hard_violation = 0.0;
-  double final_hard_violation = 0.0;
-  double task_lock_violation = 0.0;
-  double final_box_violation = 0.0;
-  uint32_t qp_overrun = 0;
-  double posture_gate = 1.0;
 };
 
 class Collision {
@@ -148,7 +138,7 @@ class InnerLoop {
   const Vec8& q_cmd() const { return q_cmd_; }
 
  private:
-  bool apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const Vec8& q_meas,
+  void apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const Vec8& q_meas,
                           double dt, double h1, double h2, bool rail_locked,
                           double rail_pin, bool has_pin, bool lead_exempt,
                           Vec8* lo, Vec8* hi);
@@ -161,7 +151,7 @@ class InnerLoop {
                  bool has_rail_exec, double rail_task_vel, double rail_w,
                  bool rail_locked, double dt, double h1, double h2,
                  bool rail_open, double rail_pin, bool has_pin, bool lead_exempt,
-                 double sigma_arm, bool direct_pin, Vec8* qdot, Vec6* residual, double* slack);
+                 double sigma_arm, Vec8* qdot, Vec6* residual, double* slack);
 
   Config cfg_;
   Kinematics kin_;
@@ -237,19 +227,6 @@ class InnerLoop {
   double rail_h2_ = 0.0;
   double rail_qdot_prev_tel_ = 0.0;
   double rail_qdot_prev2_tel_ = 0.0;
-  bool posture_gate_active_ = false;
-  double posture_gate_scale_ = 0.0;
-  double posture_gate_enter_s_ = 0.0;
-  double posture_gate_exit_s_ = 0.0;
-  uint32_t qp1_status_ = kQpNotRun;
-  uint32_t qp2_status_ = kQpNotRun;
-  uint32_t fallback_level_ = kFallbackNone;
-  uint32_t failure_code_ = kFailureNone;
-  double qp1_hard_violation_ = 0.0;
-  double final_hard_violation_ = 0.0;
-  double task_lock_violation_ = 0.0;
-  double final_box_violation_ = 0.0;
-  bool qp_overrun_ = false;
   double q_hat_ = 0.0;
   double v_hat_ = 0.0;
   bool obs_init_ = false;
@@ -319,7 +296,6 @@ class InnerLoop {
   MatX last_C_;
   VecX last_lo_;
   VecX last_hi_;
-  VecX last_x_;
   TaskWeightState task_weight_;
 };
 

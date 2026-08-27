@@ -166,6 +166,9 @@ class QpConfig:
     # Rail stopping-envelope look-ahead.  0 uses the control period only.
     limit_damper_rail_reaction_s: float = 0.06
     warn_on_fail: bool = True
+    # Deprecated compatibility setting.  Strict HQP fails closed on QP1
+    # failure and never publishes a decayed previous command.
+    fail_qdot_decay: float = 0.85
     # Hard wall-clock budget for one ProxQP attempt+retry (ms).  Exceeding
     # this skips the retry and returns fail — prevents GIL freezes of
     # multiple seconds near σ→0 that starve the rail Modbus loop (PANIC).
@@ -387,12 +390,8 @@ class _OsqpWbcBackend:
             self.prob.warm_start(x=np.asarray(warm_start_x, dtype=float))
         res = self.prob.solve()
         self.last_solve_ms = (_time.perf_counter() - t0) * 1000.0
-        status = str(getattr(getattr(res, "info", None), "status", "")).strip().lower()
-        # OSQP exposes a finite iterate for inaccurate, maximum-iteration and
-        # primal-infeasible statuses.  Those iterates are diagnostics only;
-        # publishing them would violate the fail-closed QP contract.
-        if status != "solved" or res.x is None or not np.all(np.isfinite(res.x)):
-            self.last_status = status or "failed"
+        if res.x is None or np.any(np.isnan(res.x)):
+            self.last_status = "failed"
             return None
         self.last_status = "solved"
         return np.asarray(res.x, dtype=float)
@@ -533,7 +532,6 @@ class QpIkController:
         self.last_lock_jacobian = np.zeros((N_TASK_SLACK, kin.nv), dtype=float)
         self.last_lock_velocity = np.zeros(N_TASK_SLACK, dtype=float)
         self.last_final_task_lock_violation = 0.0
-        self.last_final_box_violation = 0.0
         self.last_a_mirror_frac = float("nan")
         self.last_j_mirror_frac = float("nan")
         self.last_qp_overrun = False
@@ -554,10 +552,14 @@ class QpIkController:
         slot: str = "qp1",
     ):
         want = self.cfg.backend.lower()
-        # QP backends own mutable warm-start state.  Keeping them on the
-        # shared kinematics object lets independent controllers contaminate
-        # one another's solve history, especially during native shadow runs.
-        # Construct one backend per controller/slot instead.
+        key = (want, int(nv), int(n_eq), int(self._max_cbf), str(slot))
+        cache = getattr(self.kin, "_qp_backend_cache", None)
+        if cache is None:
+            cache = {}
+            setattr(self.kin, "_qp_backend_cache", cache)
+        cached = cache.get(key)
+        if cached is not None:
+            return cached
         backend = None
         if want == "proxqp":
             try:
@@ -579,6 +581,7 @@ class QpIkController:
                 ) from exc
         if backend is None:
             raise ValueError(f"unknown QP backend {self.cfg.backend!r}")
+        cache[key] = backend
         return backend
 
     @property
@@ -655,7 +658,6 @@ class QpIkController:
         )
         self.last_lock_velocity = np.zeros(N_TASK_SLACK, dtype=float)
         self.last_final_task_lock_violation = 0.0
-        self.last_final_box_violation = 0.0
         self.last_a_mirror_frac = float("nan")
         self.last_j_mirror_frac = float("nan")
         self.last_qp_overrun = False
@@ -935,7 +937,6 @@ class QpIkController:
         kinematics_ready: bool = False,
         rail_open_travel: bool = False,
         arm_qdot_pref: np.ndarray | None = None,
-        direct_qdot_target: np.ndarray | None = None,
     ) -> IkStepResult:
         t_total = time.perf_counter()
         q_prev = np.asarray(q_prev, dtype=float).reshape(-1)
@@ -1032,21 +1033,12 @@ class QpIkController:
             if secondary_qdot is not None
             else np.zeros(nv, dtype=float)
         )
-        direct_target = None
-        if direct_qdot_target is not None:
-            direct_target = np.asarray(direct_qdot_target, dtype=float).reshape(-1)
-            if direct_target.size != nv or not np.all(np.isfinite(direct_target)):
-                raise ValueError(f"direct_qdot_target must be a finite {(nv,)} vector")
         if zero_secondary_rail and qdot_nom.size:
             qdot_nom[0] = 0.0
         if arm_qdot_pref is not None:
             pref = np.asarray(arm_qdot_pref, dtype=float).reshape(-1)
             n = min(pref.size, qdot_nom.size)
             qdot_nom[1:n] = pref[1:n]
-        if direct_target is not None:
-            # Direct PTP owns the complete nominal vector; no secondary
-            # preference may overwrite the requested joint trajectory.
-            qdot_nom = direct_target.copy()
 
         # Limit avoidance and the velocity box use the same measured geometry.
         w_reg = self._w_reg.copy()
@@ -1121,43 +1113,6 @@ class QpIkController:
         bind_lo, bind_hi = note_rail_bind(
             bind_lo, bind_hi, olo, ohi, lo_box[0], hi_box[0], RAIL_BIND_COLLAPSE
         )
-        if direct_target is not None:
-            tol = 1.0e-12
-            if np.any(direct_target < lo_box - tol) or np.any(direct_target > hi_box + tol):
-                # A direct PTP target has ownership of every joint, but not
-                # of safety limits.  Do not clip it or let QP2 reinterpret it.
-                self.last_failed = True
-                self.last_status = "box_infeasible"
-                self.last_qp1_status = "box_infeasible"
-                self.last_qp2_status = "not_run"
-                self.last_qp1_hard_violation = float("inf")
-                self.last_final_hard_violation = float("inf")
-                self.last_final_task_lock_violation = float("inf")
-                self.last_qdot_qp1 = np.zeros(nv, dtype=float)
-                self.last_lo_box = np.asarray(lo_box, dtype=float).copy()
-                self.last_hi_box = np.asarray(hi_box, dtype=float).copy()
-                self.last_rail_box_lo = float(lo_box[0])
-                self.last_rail_box_hi = float(hi_box[0])
-                residual = np.asarray(v_cmd0, dtype=float).copy()
-                self.last_task_residual = residual.copy()
-                self.last_task_residual_norm = float(np.linalg.norm(residual))
-                self.last_qp1_residual = residual.copy()
-                self.last_qp1_residual_norm = self.last_task_residual_norm
-                self.last_qp2_residual = residual.copy()
-                self.last_qp2_residual_norm = self.last_task_residual_norm
-                return IkStepResult(
-                    q_next=q_prev.copy(),
-                    qdot=np.zeros(nv, dtype=float),
-                    sigma_min=sigma_min,
-                    manip=self.kin.manipulability(J),
-                    slack_norm=self.last_task_residual_norm,
-                    n_cbf_active=0,
-                    dexterity_slack=0.0,
-                    branch_slack=0.0,
-                    sns_scale=1.0,
-                )
-            lo_box = direct_target.copy()
-            hi_box = direct_target.copy()
         self.last_lo_box = np.asarray(lo_box, dtype=float).copy()
         self.last_hi_box = np.asarray(hi_box, dtype=float).copy()
         self.last_rail_box_lo = float(lo_box[0])
@@ -1188,39 +1143,6 @@ class QpIkController:
         else:
             cbf = CbfRows(jacobian=np.zeros((0, nv)), lower=np.zeros(0))
             self._cbf_slots = CbfSlotTracker(max_pairs=self._max_cbf)
-        if np.any(lo_box > hi_box + 1.0e-12):
-            # A true empty intersection is a safety fault.  Do not hand an
-            # arbitrary braking endpoint to either QP level.
-            self.last_lo_box = np.asarray(lo_box, dtype=float).copy()
-            self.last_hi_box = np.asarray(hi_box, dtype=float).copy()
-            self.last_rail_box_lo = float(lo_box[0])
-            self.last_rail_box_hi = float(hi_box[0])
-            self.last_failed = True
-            self.last_status = "box_infeasible"
-            self.last_qp1_status = "box_infeasible"
-            self.last_qp2_status = "not_run"
-            self.last_qp1_hard_violation = float("inf")
-            self.last_final_hard_violation = float("inf")
-            self.last_final_task_lock_violation = float("inf")
-            self.last_qdot_qp1 = np.zeros(nv, dtype=float)
-            residual = np.asarray(v_cmd0, dtype=float).copy()
-            self.last_task_residual = residual.copy()
-            self.last_task_residual_norm = float(np.linalg.norm(residual))
-            self.last_qp1_residual = residual.copy()
-            self.last_qp1_residual_norm = self.last_task_residual_norm
-            self.last_qp2_residual = residual.copy()
-            self.last_qp2_residual_norm = self.last_task_residual_norm
-            return IkStepResult(
-                q_next=q_prev.copy(),
-                qdot=np.zeros(nv, dtype=float),
-                sigma_min=sigma_min,
-                manip=self.kin.manipulability(J),
-                slack_norm=self.last_task_residual_norm,
-                n_cbf_active=int(cbf.jacobian.shape[0]),
-                dexterity_slack=0.0,
-                branch_slack=0.0,
-                sns_scale=1.0,
-            )
         if rail_exec is not None and cbf.jacobian.size:
             # CBF is a constraint on actual instantaneous motion just like the
             # protected TCP task.  Do not let a lagging rail command masquerade
@@ -1353,16 +1275,7 @@ class QpIkController:
             self.last_fallback_ms = (time.perf_counter() - t_fallback) * 1000.0
         else:
             qdot1 = np.asarray(x1[:nv], dtype=float).copy()
-            if direct_target is not None:
-                # Exact variable bounds may still be returned a few solver
-                # epsilons away from their pin.  Canonicalize the certified
-                # point to the hard target and update its task slack so QP1's
-                # equality remains exact.
-                qdot1 = direct_target.copy()
-                x1 = np.asarray(x1, dtype=float).copy()
-                x1[:nv] = qdot1
-                x1[nv : nv + n_task] = J_task @ qdot1 - b_task
-            elif rail_exec is not None:
+            if rail_exec is not None:
                 # Rail is not in QP1's task map.  Seed the next command at the
                 # allocator preference (clipped to this tick's box) so QP2 and
                 # QP2-fallback send a defined qdot[0].  Do not lock the full
@@ -1573,10 +1486,6 @@ class QpIkController:
                 qdot = np.asarray(x2[:nv], dtype=float)
                 x = x2
                 C_final, lo_final, hi_final = C2, lo2, hi2
-            if direct_target is not None:
-                qdot = direct_target.copy()
-                x = np.asarray(x, dtype=float).copy()
-                x[:nv] = qdot
             self.last_j4_design_slack = 0.0
             if x is not None and int(np.asarray(x).size) > nv + n_task + 2:
                 self.last_j4_design_slack = float(

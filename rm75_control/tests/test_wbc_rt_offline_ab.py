@@ -32,10 +32,6 @@ def _base_cfg():
     raw = yaml.safe_load(_CFG.read_text())
     cfg = build_joint_ik_config(raw)
     cfg.ird.enabled = False
-    # Shadow replay compares Python/native numerical parity; use a generous
-    # budget so host scheduling does not turn an otherwise valid sample into
-    # the production fail-closed timing stop.
-    cfg.qp.max_solve_ms = 50.0
     return cfg
 
 
