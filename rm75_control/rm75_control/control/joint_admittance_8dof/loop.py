@@ -1343,8 +1343,8 @@ class JointIkController:
             qpik_total_ms=qp_total_ms,
             qp2_fallback=qp2_fallback,
             failure_code=(
-                7 if bool(getattr(self.core, "last_qp_overrun", False)) else
                 2 if str(getattr(self.core, "last_status", "")) == "box_infeasible" else
+                7 if bool(getattr(self.core, "last_qp_overrun", False)) and not failed else
                 3 if failed else 0
             ),
             final_hard_violation=float(
@@ -1379,7 +1379,7 @@ class JointIkController:
                 if scan_residual is not None
                 else np.zeros(2)
             ),
-            fallback_level="stop" if failed else "none",
+            fallback_level=("stop" if failed else "none"),
             fallback_reason=fallback_reason,
             solver_fault_latched=bool(failed),
             arm_health=float(sigma_min),
@@ -2170,26 +2170,15 @@ class JointIkController:
 
         qdot_out = np.asarray(r.qdot, dtype=float).copy()
         qdot_raw = qdot_out.copy()
-        failed = bool(
-            self.core.last_failed
-            or bool(getattr(self.core, "last_qp_overrun", False))
-        )
-        fallback_reason = ""
-        if failed:
-            fallback_reason = (
-                "qp_solve_overrun"
-                if bool(getattr(self.core, "last_qp_overrun", False))
-                and not self.core.last_failed
-                else "qp_failed"
-            )
+        failed = bool(self.core.last_failed)
+        fallback_reason = "qp_failed" if failed else ""
         if qdot_out.shape != q_prev.shape or not np.all(np.isfinite(qdot_out)):
             qdot_out = np.zeros_like(q_prev)
             failed = True
             fallback_reason = "final_qdot_nonfinite_or_bad_shape"
         if failed:
-            # QP1 produced no command certified against this tick's complete
-            # hard set.  Preserve both command and velocity history; the
-            # publication guard performs the coordinated rail/arm stop.
+            # Failed QP1: no certified command.  A late but certified solve
+            # still publishes; only an uncertified result restores history.
             self.q_cmd = q_prev.copy()
             self.core.qdot_prev = qdot_history_before_solve.copy()
             self.core.qdot_prev2 = qdot_prev2_history_before_solve.copy()
@@ -4973,9 +4962,16 @@ def _send_joint_canfd_cmd(robot, q_deg, follow: bool, canfd_proxy=None) -> None:
     send_joint_canfd(robot, list(q), follow=follow)
 
 
+def _qpik_publish_action(step: JointIkStep) -> str:
+    """Classify a solved tick: send or session stop."""
+    if bool(step.solver_fault_latched) or str(step.fallback_level) == "stop":
+        return "stop"
+    return "send"
+
+
 def _guard_qpik_step_before_send(step: JointIkStep, fault_stop) -> tuple[bool, str]:
     """Gate rail/CANFD publication.  A failed QP1 has no certified command."""
-    if bool(step.solver_fault_latched) or str(step.fallback_level) == "stop":
+    if _qpik_publish_action(step) == "stop":
         reason = f"qpik_fault:{step.fallback_level}:{step.fallback_reason}"
         fault_stop(reason)
         return False, reason
@@ -5670,6 +5666,9 @@ def run_joint_admittance_phases(
                             stop_reason = publication_reason
                             _fault_stop(stop_reason)
                             break
+                        rail_pub_m = float(step.q_send[0])
+                        raw_scale = 1.0
+                        scale = 1.0
                         _t_send0 = time.perf_counter()
                         qdot0_pub = _qpik_rail_v_ff_m_s(
                             float(np.asarray(step.qdot, dtype=float).reshape(-1)[0])

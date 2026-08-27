@@ -50,6 +50,30 @@ _FAILURE_NAMES = {
 }
 
 
+def classify_native_fallback(
+    fallback_u: int,
+    failure_code: int,
+    *,
+    native_failed: bool,
+) -> tuple[str, str, bool]:
+    """Map native SHM fallback/failure.  Only a true fail/stop latches."""
+    if native_failed or int(fallback_u) == P.FALLBACK_STOP:
+        return (
+            "stop",
+            _FAILURE_NAMES.get(int(failure_code), "native_solver_failed"),
+            True,
+        )
+    return "none", "", False
+
+
+def failed_timeout_out():
+    """Explicit stop-shaped OUT record for a STEP wait timeout or torn read."""
+    o = np.zeros((), dtype=P.WBC_OUT_DTYPE)
+    o["status"] = P.STATUS_FAIL
+    o["flags"] = P.OUT_FAILED | P.OUT_STALE
+    return o
+
+
 def find_wbc_rt_binary(explicit: str | None = None) -> Path | None:
     if explicit:
         p = Path(explicit)
@@ -503,26 +527,17 @@ class NativeWbcClient:
         ok = self._wait_seq(seq)
         if not ok:
             # Do not issue a second STEP while the old request may still be
-            # executing.  The outer loop will command its own coordinated
-            # hold/slow-stop on this timeout.
-            o = self._stable_out_copy()
+            # executing.  Never classify from the last stable OUT record.
             self.ctrl.q_cmd = np.asarray(self.ctrl.q_cmd, dtype=float).copy()
-            # Replace the timed-out request with an asynchronous STOP.  This
-            # is deliberately not another STEP: the native loop will consume
-            # it after any in-flight snapshot and latch its own hold state.
             try:
                 self._command(P.CMD_STOP, wait=False)
             except Exception:
                 pass
+            o = failed_timeout_out()
         else:
             o = self._stable_out_copy()
         if o is None:
-            # A timeout must not consume a potentially torn output.  Return
-            # an explicit stop-shaped record and let the outer controller
-            # coordinate rail hold plus arm slow-stop.
-            o = np.zeros((), dtype=P.WBC_OUT_DTYPE)
-            o["status"] = P.STATUS_FAIL
-            o["flags"] = P.OUT_FAILED | P.OUT_STALE
+            o = failed_timeout_out()
         if ok:
             self._sync_q(o)
         q_cmd = np.asarray(o["q_cmd"], dtype=float).copy() if ok else np.asarray(self.ctrl.q_cmd, dtype=float).copy()
@@ -532,7 +547,11 @@ class NativeWbcClient:
         v_tcp = np.asarray(o["v_tcp_estimated"], dtype=float).copy()
         resid = np.asarray(o["task_residual"], dtype=float).copy()
         stale = (not ok) or bool(int(o["flags"]) & P.OUT_STALE) or bool(kwargs.get("command_stale"))
-        native_failed = int(o["status"]) == P.STATUS_FAIL or bool(int(o["flags"]) & P.OUT_FAILED)
+        native_failed = (
+            (not ok)
+            or int(o["status"]) == P.STATUS_FAIL
+            or bool(int(o["flags"]) & P.OUT_FAILED)
+        )
         failure_code = int(o["failure_code"])
         step = JointIkStep(
             q_send=q_cmd,
@@ -544,7 +563,9 @@ class NativeWbcClient:
             n_cbf_active=0,
             follow_err_rad=0.0,
             qp_backend="native",
-            qp_solver_status=("failed" if native_failed else ("ok" if ok else "timeout")),
+            qp_solver_status=(
+                "timeout" if not ok else ("failed" if native_failed else "ok")
+            ),
             qp_solver_solve_ms=float(o["solve_ms"]),
             qp_solver_call_count=int(self._step_count),
             failure_code=failure_code,
@@ -620,15 +641,17 @@ class NativeWbcClient:
             rail_qdot_prev=float(o["rail_qdot_prev"]),
             rail_qdot_prev2=float(o["rail_qdot_prev2"]),
         )
-        if native_failed:
-            step.fallback_level = "stop"
-            step.fallback_reason = _FAILURE_NAMES.get(
-                failure_code, "native_solver_failed"
-            )
-            step.solver_fault_latched = True
+        fallback_u = int(o["fallback_level"])
+        level, reason, latched = classify_native_fallback(
+            fallback_u, failure_code, native_failed=native_failed
+        )
+        if level != "none":
+            step.fallback_level = level
+            step.fallback_reason = reason
+            step.solver_fault_latched = latched
         step.qp1_status = _QP_STATUS_NAMES.get(int(o["qp1_status"]), "unknown")
         step.qp2_status = _QP_STATUS_NAMES.get(int(o["qp2_status"]), "unknown")
-        step.qp2_fallback = int(o["fallback_level"]) == P.FALLBACK_QP1
+        step.qp2_fallback = fallback_u == P.FALLBACK_QP1
         step.posture_gate_scale = float(o["posture_gate"])
         step.posture_gate_active = step.posture_gate_scale >= 0.999
         step.qpik_hard_residual_max = float(o["final_hard_violation"])

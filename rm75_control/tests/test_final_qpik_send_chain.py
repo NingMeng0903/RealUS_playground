@@ -21,6 +21,12 @@ from rm75_control.control.joint_admittance_8dof.loop import (
     run_joint_admittance_phases,
     _wall_clock_rail_target,
 )
+from rm75_control.control.joint_admittance_8dof.wbc_rt import protocol as P
+from rm75_control.control.joint_admittance_8dof.wbc_rt.client import (
+    NativeWbcClient,
+    classify_native_fallback,
+    failed_timeout_out,
+)
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics, full_q_from_arm
 from rm75_control.control.joint_admittance_8dof.solver.qp_builder import QpConfig
 from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedStyle, RailMode
@@ -86,7 +92,39 @@ def test_backend_failure_latches_stop_without_advancing_history() -> None:
     assert events == [reason]
 
 
-def test_empty_velocity_box_does_not_latch_stop() -> None:
+def test_certified_overrun_is_sendable_and_does_not_stop() -> None:
+    controller = _controller()
+    previous = np.full(8, 0.05)
+    controller.core.sync_applied(previous)
+    q_before = controller.q_cmd.copy()
+    controller.cfg.qp.max_solve_ms = 1.0e-9
+    step = controller.update(
+        np.array([0.01, -0.006, 0.004, 0.0, 0.0, 0.0]), q_meas=Q_SAFE
+    )
+    assert step.fallback_level != "stop"
+    assert not step.solver_fault_latched
+    assert step.qp_solver_overrun
+    assert np.linalg.norm(step.qdot) > 0.0
+    assert not np.allclose(step.q_send, q_before, atol=1e-12)
+    events: list[str] = []
+    sendable, reason = _guard_qpik_step_before_send(step, events.append)
+    assert sendable
+    assert reason == ""
+    assert events == []
+
+    controller.cfg.qp.max_solve_ms = 50.0
+    step2 = controller.update(
+        np.array([0.01, -0.006, 0.004, 0.0, 0.0, 0.0]), q_meas=Q_SAFE
+    )
+    assert step2.fallback_level == "none"
+    assert not step2.solver_fault_latched
+    sendable2, reason2 = _guard_qpik_step_before_send(step2, events.append)
+    assert sendable2
+    assert reason2 == ""
+    assert events == []
+
+
+def test_zero_twist_remains_sendable() -> None:
     controller = _controller()
     step = controller.update(np.zeros(6), q_meas=Q_SAFE)
     events: list[str] = []
@@ -95,6 +133,75 @@ def test_empty_velocity_box_does_not_latch_stop() -> None:
     assert reason == ""
     assert not step.solver_fault_latched
     assert events == []
+
+
+def test_empty_velocity_box_latches_stop_without_publish() -> None:
+    controller = _controller()
+    previous = np.full(8, 50.0)
+    controller.core.sync_applied(previous)
+    q_before = controller.q_cmd.copy()
+    step = controller.update(np.zeros(6), q_meas=Q_SAFE)
+    assert step.fallback_level == "stop"
+    assert step.solver_fault_latched
+    assert step.fallback_reason == "qp_failed"
+    assert str(step.qp1_status) == "box_infeasible"
+    assert int(step.failure_code) == P.FAILURE_BOX_INFEASIBLE
+    np.testing.assert_allclose(step.qdot, 0.0, atol=1e-12, rtol=0.0)
+    np.testing.assert_allclose(step.q_send, q_before, atol=1e-12, rtol=0.0)
+    np.testing.assert_allclose(controller.core.qdot_prev, previous, atol=1e-12, rtol=0.0)
+    events: list[str] = []
+    sendable, reason = _guard_qpik_step_before_send(step, events.append)
+    assert not sendable
+    assert reason == "qpik_fault:stop:qp_failed"
+    assert events == [reason]
+
+
+def test_native_fallback_uncertified_and_timeout_stay_stop() -> None:
+    for fallback_u, failure_code in (
+        (P.FALLBACK_STOP, P.FAILURE_QP1_STATUS),
+        (P.FALLBACK_STOP, P.FAILURE_QP1_CERTIFICATE),
+        (P.FALLBACK_STOP, P.FAILURE_BOX_INFEASIBLE),
+        (P.FALLBACK_NONE, P.FAILURE_FINAL_CERTIFICATE),
+        (P.FALLBACK_NONE, P.FAILURE_NONE),
+        (P.FALLBACK_STOP, P.FAILURE_SOLVE_OVERRUN),
+    ):
+        level, reason, latched = classify_native_fallback(
+            fallback_u, failure_code, native_failed=True
+        )
+        assert level == "stop"
+        assert latched
+        assert reason
+    level, _, latched = classify_native_fallback(
+        P.FALLBACK_NONE, P.FAILURE_SOLVE_OVERRUN, native_failed=False
+    )
+    assert (level, latched) == ("none", False)
+    o = failed_timeout_out()
+    assert int(o["status"]) == P.STATUS_FAIL
+    assert int(o["flags"]) & P.OUT_FAILED
+    update_src = inspect.getsource(NativeWbcClient.update)
+    assert "failed_timeout_out()" in update_src
+
+
+def test_no_qdot_decay_publish_regression() -> None:
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    inner = (root / "native" / "wbc_rt" / "src" / "inner.cpp").read_text()
+    builder = (
+        root
+        / "rm75_control"
+        / "control"
+        / "joint_admittance_8dof"
+        / "solver"
+        / "qp_builder.py"
+    ).read_text()
+    loop = (
+        root / "rm75_control" / "control" / "joint_admittance_8dof" / "loop.py"
+    ).read_text()
+    assert "fail_qdot_decay" not in inner
+    assert "fail_qdot_decay" not in builder
+    assert "fail_qdot_decay" not in loop
+    assert "qp1_decay" not in loop
 
 
 def test_numerical_failure_is_not_sendable() -> None:

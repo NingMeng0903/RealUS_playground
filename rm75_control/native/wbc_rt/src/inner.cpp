@@ -860,10 +860,24 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
       std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - solve_start)
           .count();
   if (qp1_elapsed_ms > cfg_.max_solve_ms) {
+    // Certified QP1 is a publishable command.  Discarding it here used to
+    // skip CANFD every tick whenever ProxSuite missed the 5 ms budget.
     qp_overrun_ = true;
     failure_code_ = kFailureSolveOverrun;
-    fallback_level_ = kFallbackStop;
-    return false;
+    fallback_level_ = kFallbackQp1;
+    last_lock_J_ = has_rail_exec ? J_task : J;
+    last_lock_v_ = J_task * qdot1;
+    final_hard_violation_ = qp1_hard_violation_;
+    task_lock_violation_ = 0.0;
+    final_box_violation_ = box_violation(qdot1, lo_box, hi_box);
+    *qdot = qdot1;
+    *residual = b_task - last_lock_v_;
+    *slack = residual->norm();
+    last_C_ = C;
+    last_lo_ = lo;
+    last_hi_ = hi;
+    last_x_ = x1;
+    return true;
   }
   const Vec6 t1 = J_task * qdot1;
   last_lock_J_ = has_rail_exec ? J_task : J;
@@ -1046,8 +1060,6 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   if (elapsed_ms > cfg_.max_solve_ms) {
     qp_overrun_ = true;
     failure_code_ = kFailureSolveOverrun;
-    fallback_level_ = kFallbackStop;
-    return false;
   }
   *qdot = qdot_out;
   *residual = b_task - J_task * qdot_out;
@@ -1775,11 +1787,11 @@ TickOut InnerLoop::step(const TickIn& in) {
   if (out.rail_limited) out.flags |= kOutRailLimited;
   if (out.wall_active) out.flags |= kOutWallActive;
   if (out.secondary_suppressed) out.flags |= kOutSecSuppressed;
-  if (!ok) {
+  if (ok) {
+    out.status = kStatusOk;
+  } else {
     out.flags |= kOutFailed;
     out.status = kStatusFail;
-  } else {
-    out.status = kStatusOk;
   }
   return out;
 }

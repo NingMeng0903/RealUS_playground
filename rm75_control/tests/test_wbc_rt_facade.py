@@ -25,6 +25,7 @@ def test_protocol_sizes_match_packed_cxx() -> None:
     assert P.WBC_VERSION == 5
     assert P.WBC_IN_SIZE == 616
     assert P.WBC_OUT_SIZE == 896
+    assert P.FAILURE_SOLVE_OVERRUN == 7
     binary = find_wbc_rt_binary()
     if binary is None:
         pytest.skip("wbc_rt binary not built")
@@ -34,6 +35,11 @@ def test_protocol_sizes_match_packed_cxx() -> None:
     inn, outn = out.split()
     assert int(inn) == P.WBC_IN_SIZE
     assert int(outn) == P.WBC_OUT_SIZE
+    info = subprocess.check_output([str(binary), "--protocol-info"], text=True).strip()
+    ver, inn2, outn2 = info.split()
+    assert int(ver) == P.WBC_VERSION
+    assert int(inn2) == P.WBC_IN_SIZE
+    assert int(outn2) == P.WBC_OUT_SIZE
 
 
 def test_yaml_default_backend_is_native() -> None:
@@ -80,6 +86,7 @@ def test_native_smoke_step_and_setters() -> None:
     raw = yaml.safe_load(_CFG.read_text())
     cfg = build_joint_ik_config(raw)
     cfg.backend = "native"
+    cfg.qp.max_solve_ms = 50.0
     cfg.native_shm_prefix = f"rm75_wbc_smoke_{os.getpid()}"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
@@ -113,6 +120,38 @@ def test_native_smoke_step_and_setters() -> None:
         assert np.isfinite(step.homotopy_s)
         assert np.isfinite(step.psi_star_deg)
         assert np.isfinite(step.rail_motion_share)
+        inner.stop()
+    finally:
+        if inner._native is not None:
+            inner._native.shutdown()
+
+
+@pytest.mark.skipif(find_wbc_rt_binary() is None, reason="wbc_rt binary not built")
+def test_native_certified_overrun_still_publishes() -> None:
+    raw = yaml.safe_load(_CFG.read_text())
+    cfg = build_joint_ik_config(raw)
+    cfg.backend = "native"
+    cfg.qp.max_solve_ms = 1.0e-9
+    cfg.native_shm_prefix = f"rm75_wbc_hold_{os.getpid()}"
+    cfg.collision.enabled = False
+    cfg.qp.collision.enabled = False
+    cfg.ird.enabled = False
+    inner = JointIkController(RobotKinematics(), cfg)
+    try:
+        inner.reset(_SEED_Q)
+        inner.enable()
+        inner.set_coupled()
+        q0 = inner.q_cmd.copy()
+        step = inner.update(
+            np.array([0.0, 0.02, 0.0, 0.0, 0.0, 0.0]),
+            q_meas=q0,
+            vel_ff=np.array([0.0, 0.02, 0.0, 0.0, 0.0, 0.0]),
+        )
+        assert step.fallback_level != "stop"
+        assert not step.solver_fault_latched
+        assert bool(step.qp_solver_overrun)
+        assert np.linalg.norm(step.qdot) > 0.0
+        assert not np.allclose(inner.q_cmd, q0, atol=1e-12)
         inner.stop()
     finally:
         if inner._native is not None:
