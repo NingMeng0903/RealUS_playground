@@ -187,13 +187,24 @@ def _camera_publish_loop(
     misses = 0
     while not stop_event.is_set():
         try:
-            frames = pipe.wait_for_frames(timeout_ms=1000)
+            # Short poll: 4x 1080p remap+JPEG regularly exceeds one frame time.
+            # A 2 s wait made every recovered USB/CPU blip look like a dead camera.
+            frames = pipe.wait_for_frames(timeout_ms=200)
         except Exception:
             misses += 1
-            if misses in (1, 5, 15) or misses % 30 == 0:
+            if misses in (15, 50) or misses % 150 == 0:
                 print(f"WARN {cid}: wait_for_frames timeout x{misses}", flush=True)
             continue
         misses = 0
+        # Remap+JPEG can exceed one frame time; keep only the latest frameset
+        # so the next wait does not sit on a drained queue and look "dead".
+        try:
+            extra = pipe.poll_for_frames()
+            while extra:
+                frames = extra
+                extra = pipe.poll_for_frames()
+        except Exception:
+            pass
         color = frames.get_color_frame()
         if color is None:
             continue
@@ -288,7 +299,11 @@ def main() -> int:
     ap.add_argument("--jpeg-quality", type=int, default=90, help="Capture JPEG quality")
     ap.add_argument("--preview-jpeg-quality", type=int, default=72)
     ap.add_argument("--preview-max-width", type=int, default=960, help="Preview stream width (height scaled)")
-    ap.add_argument("--undistort", action="store_true", help="Undistort with bundle K/dist before publish")
+    ap.add_argument(
+        "--undistort",
+        action="store_true",
+        help="Undistort every live frame (slow). Y-capture remaps the burst itself; omit for ~30 fps.",
+    )
     ap.add_argument("--session-id", type=str, default="realus_realsense")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
@@ -400,6 +415,12 @@ def main() -> int:
             t.start()
             threads.append(t)
         print(f"  parallel capture: {len(threads)} threads, source_time_ns=RS global time", flush=True)
+        if args.undistort:
+            print(
+                "  undistort on: 4x 1080p remap+JPEG will drop frames; "
+                "timeout WARN means backlog, not a dead camera",
+                flush=True,
+            )
         while True:
             time.sleep(0.5)
     except KeyboardInterrupt:

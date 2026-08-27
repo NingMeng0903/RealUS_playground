@@ -5,7 +5,7 @@ Does not connect to the real robot or SHM. The arm stays at the authored demo po
 
 For **twin** mode (mirror live robot via SHM), use rm75_control::
 
-  python apps/joint_admittance_8dof/run_with_twin.py --track-subscribe tcp://127.0.0.1:5598
+  python apps/joint_admittance_8dof/run_with_twin.py
 """
 
 from __future__ import annotations

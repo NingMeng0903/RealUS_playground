@@ -2,11 +2,13 @@
 
 #include <cstdint>
 #include <cstring>
+#include <cstddef>
+#include <atomic>
 
 namespace wbc_rt {
 
 static constexpr uint32_t kMagic = 0x57424331u;  // 'WBC1'
-static constexpr uint32_t kVersion = 4;
+static constexpr uint32_t kVersion = 5;
 
 enum Cmd : uint32_t {
   kCmdNone = 0,
@@ -68,6 +70,38 @@ enum Status : uint32_t {
   kStatusShutdown = 4,
 };
 
+enum QpStatus : uint32_t {
+  kQpNotRun = 0,
+  kQpSolved = 1,
+  kQpMaxIter = 2,
+  kQpPrimalInfeasible = 3,
+  kQpDualInfeasible = 4,
+  kQpClosestPrimalFeasible = 5,
+  kQpNonfinite = 6,
+  kQpCertificateFailed = 7,
+  kQpOverrun = 8,
+  kQpException = 9,
+};
+
+enum FallbackLevel : uint32_t {
+  kFallbackNone = 0,
+  kFallbackQp1 = 1,
+  kFallbackStop = 2,
+};
+
+enum FailureCode : uint32_t {
+  kFailureNone = 0,
+  kFailureInputNonfinite = 1,
+  kFailureBoxInfeasible = 2,
+  kFailureQp1Status = 3,
+  kFailureQp1Certificate = 4,
+  kFailureQp2Status = 5,
+  kFailureQp2Certificate = 6,
+  kFailureSolveOverrun = 7,
+  kFailureFinalCertificate = 8,
+  kFailureInputStale = 9,
+};
+
 enum RailModeU : uint32_t {
   kRailCoupled = 0,
   kRailLocked = 1,
@@ -83,6 +117,7 @@ enum LockedStyleU : uint32_t {
 struct WbcIn {
   uint32_t magic;
   uint32_t version;
+  uint64_t generation;
   uint64_t seq;
   uint64_t cmd_seq;
   uint32_t cmd;
@@ -107,6 +142,7 @@ struct WbcIn {
 struct WbcOut {
   uint32_t magic;
   uint32_t version;
+  uint64_t generation;
   uint64_t seq;
   uint64_t cmd_ack;
   uint32_t status;
@@ -172,11 +208,22 @@ struct WbcOut {
   double rail_h2;
   double rail_qdot_prev;
   double rail_qdot_prev2;
+  uint32_t qp1_status;
+  uint32_t qp2_status;
+  uint32_t fallback_level;
+  uint32_t failure_code;
+  double qp1_hard_violation;
+  double final_hard_violation;
+  double task_lock_violation;
+  double final_box_violation;
+  uint32_t qp_overrun;
+  uint32_t reserved_status;
+  double posture_gate;
 };
 #pragma pack(pop)
 
-static_assert(sizeof(WbcIn) == 608, "WbcIn layout drift");
-static_assert(sizeof(WbcOut) == 824, "WbcOut layout drift");
+static_assert(sizeof(WbcIn) == 616, "WbcIn layout drift");
+static_assert(sizeof(WbcOut) == 896, "WbcOut layout drift");
 
 inline void clear_in(WbcIn* s) {
   std::memset(s, 0, sizeof(WbcIn));
@@ -188,6 +235,40 @@ inline void clear_out(WbcOut* s) {
   std::memset(s, 0, sizeof(WbcOut));
   s->magic = kMagic;
   s->version = kVersion;
+}
+
+// Shared-memory records use a generation seqlock.  Writers publish an odd
+// generation while mutating a record and finish with the next even value.
+// Readers copy only a stable even generation, preventing torn Eigen inputs or
+// telemetry from crossing the process boundary.
+template <typename T>
+inline bool read_snapshot(const T* shared, T* local) {
+  const auto* gen = &shared->generation;
+  const uint64_t g0 = __atomic_load_n(gen, __ATOMIC_ACQUIRE);
+  if (g0 & 1u) return false;
+  std::memcpy(local, shared, sizeof(T));
+  std::atomic_thread_fence(std::memory_order_acquire);
+  const uint64_t g1 = __atomic_load_n(gen, __ATOMIC_ACQUIRE);
+  return g0 == g1 && !(g1 & 1u) && local->generation == g1;
+}
+
+template <typename T>
+inline void publish_snapshot(T* shared, const T& value) {
+  const auto* gen_const = &shared->generation;
+  uint64_t current = __atomic_load_n(gen_const, __ATOMIC_RELAXED);
+  if (current & 1u) ++current;
+  const uint64_t odd = current + 1u;
+  const uint64_t even = odd + 1u;
+  __atomic_store_n(&shared->generation, odd, __ATOMIC_RELEASE);
+  // Keep generation itself atomic and copy the two surrounding byte ranges.
+  constexpr std::size_t off = offsetof(T, generation);
+  std::memcpy(reinterpret_cast<unsigned char*>(shared),
+              reinterpret_cast<const unsigned char*>(&value), off);
+  std::memcpy(reinterpret_cast<unsigned char*>(shared) + off + sizeof(uint64_t),
+              reinterpret_cast<const unsigned char*>(&value) + off + sizeof(uint64_t),
+              sizeof(T) - off - sizeof(uint64_t));
+  std::atomic_thread_fence(std::memory_order_release);
+  __atomic_store_n(&shared->generation, even, __ATOMIC_RELEASE);
 }
 
 }  // namespace wbc_rt

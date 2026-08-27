@@ -1,4 +1,4 @@
-"""Optional Orbbec colored-cloud overlay for the 8-DOF twin (default off).
+"""Orbbec colored-cloud overlay for the 8-DOF twin (default on in run_with_twin).
 
 CPU mesh is built on the ZMQ thread. ``draw_debug_mesh`` must run on the
 twin thread (Genesis / OpenGL). ``after_sync`` writes ``T_world_cam`` every

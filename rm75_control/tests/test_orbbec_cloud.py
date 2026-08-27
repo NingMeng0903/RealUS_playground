@@ -261,19 +261,22 @@ def test_overlay_draw_without_cloud_does_not_raise():
     ov.stop()
 
 
-def test_overlay_default_off_is_cli_store_true():
-    """run_with_twin --orbbec-cloud is opt-in; default argparse is False."""
+def test_overlay_default_on_has_no_flags():
+    """run_with_twin defaults: Orbbec cloud + orange SMPL-X on; off switches exist."""
     import argparse
     from pathlib import Path as P
 
     src = P(__file__).resolve().parents[1] / "apps/joint_admittance_8dof/run_with_twin.py"
     text = src.read_text(encoding="utf-8")
-    assert 'ap.add_argument(\n        "--orbbec-cloud",\n        action="store_true"' in text
+    assert "BooleanOptionalAction" in text
+    assert 'default="tcp://127.0.0.1:5598"' in text
+    assert "--no-track-subscribe" in text
     ap = argparse.ArgumentParser()
-    ap.add_argument("--orbbec-cloud", action="store_true")
+    ap.add_argument("--orbbec-cloud", action=argparse.BooleanOptionalAction, default=True)
     ap.add_argument("--orbbec-cloud-subscribe", default="tcp://127.0.0.1:17358")
     ns = ap.parse_args([])
-    assert ns.orbbec_cloud is False
+    assert ns.orbbec_cloud is True
+    assert ap.parse_args(["--no-orbbec-cloud"]).orbbec_cloud is False
 
 
 def test_overlay_rebuilds_mesh_only_on_new_cloud():

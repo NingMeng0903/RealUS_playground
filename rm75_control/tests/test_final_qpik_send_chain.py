@@ -59,7 +59,7 @@ def test_successful_final_send_is_exact_qp_velocity() -> None:
     )
 
 
-def test_backend_failure_decays_and_stays_sendable() -> None:
+def test_backend_failure_latches_stop_without_advancing_history() -> None:
     controller = _controller()
     previous = np.full(8, 0.05)
     controller.core.sync_applied(previous)
@@ -72,20 +72,18 @@ def test_backend_failure_decays_and_stays_sendable() -> None:
     finally:
         backend.solve = real_solve  # type: ignore[method-assign]
 
-    decay = float(controller.cfg.qp.fail_qdot_decay)
     assert step.qp_solver_call_count == 1
-    assert step.fallback_level == "none"
-    assert not step.solver_fault_latched
-    assert step.fallback_reason == "qp1_decay"
-    np.testing.assert_allclose(step.qdot, decay * previous, atol=1e-12, rtol=0.0)
-    np.testing.assert_allclose(
-        step.q_send, q_before + controller.cfg.dt * step.qdot, atol=1e-12, rtol=0.0
-    )
+    assert step.fallback_level == "stop"
+    assert step.solver_fault_latched
+    assert step.fallback_reason == "qp_failed"
+    np.testing.assert_allclose(step.qdot, 0.0, atol=1e-12, rtol=0.0)
+    np.testing.assert_allclose(step.q_send, q_before, atol=1e-12, rtol=0.0)
+    np.testing.assert_allclose(controller.core.qdot_prev, previous, atol=1e-12, rtol=0.0)
     events: list[str] = []
     sendable, reason = _guard_qpik_step_before_send(step, events.append)
-    assert sendable
-    assert reason == ""
-    assert events == []
+    assert not sendable
+    assert "qpik_fault:stop:qp_failed" == reason
+    assert events == [reason]
 
 
 def test_empty_velocity_box_does_not_latch_stop() -> None:
@@ -99,7 +97,7 @@ def test_empty_velocity_box_does_not_latch_stop() -> None:
     assert events == []
 
 
-def test_numerical_fallback_decays_without_latching_stop() -> None:
+def test_numerical_failure_is_not_sendable() -> None:
     controller = _controller()
     backend = controller.core.backend
     real_solve = backend.solve
@@ -111,28 +109,49 @@ def test_numerical_fallback_decays_without_latching_stop() -> None:
 
     events: list[str] = []
     sendable, reason = _guard_qpik_step_before_send(step, events.append)
-    assert sendable
-    assert reason == ""
-    assert step.fallback_reason == "qp1_decay"
-    assert step.fallback_level == "none"
-    assert not step.solver_fault_latched
-    assert events == []
+    assert not sendable
+    assert reason == "qpik_fault:stop:qp_failed"
+    assert step.fallback_reason == "qp_failed"
+    assert step.fallback_level == "stop"
+    assert step.solver_fault_latched
+    assert events == [reason]
 
 
-def test_direct_joint_ptp_calls_no_cartesian_backend() -> None:
+def test_direct_joint_ptp_uses_certified_qp_backend() -> None:
     controller = _controller()
     controller.set_direct_joint_ptp(True)
     calls_before = controller.core.solve_count
+    target = np.full(8, 0.001)
+    target[0] = 5.0e-5
     step = controller.update(
-        np.zeros(6), q_meas=Q_SAFE, qdot_ff=np.full(8, 0.05)
+        np.zeros(6), q_meas=Q_SAFE, qdot_ff=target
     )
-    assert controller.core.solve_count == calls_before
+    assert controller.core.solve_count == calls_before + 1
     assert step.controller_mode == "direct_joint_ptp"
-    assert step.qp_solver_call_count == 0
+    assert step.qp_solver_call_count == calls_before + 1
     assert not step.solver_fault_latched
+    np.testing.assert_allclose(step.qdot, target, atol=1.0e-6, rtol=0.0)
     controller.reset(Q_SAFE)
     assert not controller._direct_joint_ptp
     assert not controller._plan_drives_rail
+
+
+def test_direct_joint_ptp_out_of_box_fails_closed() -> None:
+    controller = _controller()
+    controller.set_direct_joint_ptp(True)
+    previous = np.full(8, 0.002)
+    controller.core.sync_applied(previous)
+    q_before = controller.q_cmd.copy()
+    # The first-tick acceleration/jerk box cannot reach this target.
+    step = controller.update(
+        np.zeros(6), q_meas=Q_SAFE, qdot_ff=np.full(8, 0.05)
+    )
+    assert step.solver_fault_latched
+    assert step.fallback_level == "stop"
+    assert step.fallback_reason == "qp_failed"
+    np.testing.assert_allclose(step.qdot, 0.0, atol=1.0e-12)
+    np.testing.assert_allclose(step.q_send, q_before, atol=1.0e-12)
+    np.testing.assert_allclose(controller.core.qdot_prev, previous, atol=1.0e-12)
 
 
 def test_cartesian_qpik_rejects_missing_measured_state() -> None:
@@ -371,9 +390,13 @@ def test_arm_and_rail_integrate_on_wall_dt() -> None:
     step = wall.update(
         np.zeros(6), dt, q_meas=q0, qdot_ff=qdot_ff, dt_wall_s=dt_wall
     )
-    assert wall.q_cmd[0] == pytest.approx(q0[0] + qdot_ff[0] * dt_int)
-    assert wall.q_cmd[2] == pytest.approx(q0[2] + qdot_ff[2] * dt_int)
-    assert step.qdot[0] == pytest.approx(qdot_ff[0])
+    # Direct FF is a tracked QP preference, not an unchecked velocity write.
+    # The published command integrates the certified qdot on the clipped wall
+    # period and remains inside the same hard box used by the solver.
+    np.testing.assert_allclose(wall.q_cmd, q0 + step.qdot * dt_int, atol=1.0e-9)
+    assert np.all(step.qdot >= wall.core.last_lo_box - 1.0e-9)
+    assert np.all(step.qdot <= wall.core.last_hi_box + 1.0e-9)
+    assert step.qp_solver_call_count == 1
     assert np.all(wall.q_cmd >= wall.limits.q_lower - 1.0e-9)
     assert np.all(wall.q_cmd <= wall.limits.q_upper + 1.0e-9)
 

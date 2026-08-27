@@ -34,7 +34,7 @@ source env.sh
 | 窗口 | 进程 | 环境 | 连真机？ | 职责 |
 |------|------|------|----------|------|
 | **A** | `run_joint_admittance.py` | `env.sh` | **是**（唯一 TCP + UDP） | 常驻；200 Hz WBC；发布 `rm75_state`；直发 CANFD |
-| **B** | `run_with_twin.py` | `env_viewer.sh` | 否 | Genesis 数字孪生，只读 `rm75_state`；可选 5598/5601 人体 overlay |
+| **B** | `run_with_twin.py` | `env_viewer.sh` | 否 | Genesis 数字孪生，只读 `rm75_state`；默认订 5598 橙色人 + 17358 点云 |
 | **C** | `d_sin_tool_y.py` | `env.sh` | 否（attach A） | 本地 IK / 相位规划；经 phase IPC 提交任务 |
 
 **SHM（同机 POSIX 共享内存）：**
@@ -104,14 +104,15 @@ rm75 controller: hot-wait
 cd /media/camp/EXT_DRIVE/RealUS_playground/rm75_control
 source env_viewer.sh
 
-# 仅机械臂镜像（无人体）
+# 机械臂 + 橙色 SMPL-X（5598）+ 腕部点云（17358）；发布器未开则空转
 python apps/joint_admittance_8dof/run_with_twin.py
 
-# 机械臂 + 橙色 SMPL-X + 解剖（需感知已发布 5598/5601）
+# 只要机械臂
+python apps/joint_admittance_8dof/run_with_twin.py --no-track-subscribe --no-orbbec-cloud
+
+# 再开解剖 / fitted 人体（5601 / 5599）
 python apps/joint_admittance_8dof/run_with_twin.py \
-  --track-subscribe tcp://127.0.0.1:5598 \
   --track-mesh-alpha 120 \
-  --anatomy-subscribe tcp://127.0.0.1:5601 \
   --canonical-human-source fitted
 ```
 
@@ -128,7 +129,9 @@ rm75 twin: human overlay track=tcp://127.0.0.1:5598 canonical=fitted
 | `--backend cpu` | CUDA 不可用时降级（慢，见 §0.7） |
 | `--headless` | 无 Genesis 窗口，仅后台同步 |
 | `--no-anatomy` | 关闭 5601 解剖绘制 |
-| `--track-mesh-alpha 0-255` | 橙色皮肤透明度（默认 55） |
+| `--no-track-subscribe` | 关闭橙色 SMPL-X |
+| `--no-orbbec-cloud` | 关闭腕部点云 |
+| `--track-mesh-alpha 0-255` | 橙色皮肤透明度（默认 120） |
 
 A 重启后 B 会打印 `rm75 twin: reconnected to controller`。B **不连机器人**。
 

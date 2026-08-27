@@ -18,8 +18,10 @@ from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
 from rm75_control.control.joint_admittance_8dof.teleop.xbox_pad import (
     PadState,
     XboxPad,
+    XBOX_BUTTON_Y,
 )
 
+LOGICAL_Y = XBOX_BUTTON_Y
 LOGICAL_L3 = 6
 LOGICAL_R3 = 7
 
@@ -45,10 +47,13 @@ class GamepadTwistSource:
         self._hz = float("nan")
         self._l3 = False
         self._r3 = False
+        self._y = False
         self._l3_prev = False
         self._r3_prev = False
+        self._y_prev = False
         self._l3_edge = False
         self._r3_edge = False
+        self._y_edge = False
         self._connected = False
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -94,8 +99,10 @@ class GamepadTwistSource:
         with self._lock:
             l3_edge = self._l3_edge
             r3_edge = self._r3_edge
+            y_edge = self._y_edge
             self._l3_edge = False
             self._r3_edge = False
+            self._y_edge = False
             return {
                 "twist": self._twist.copy(),
                 "axes": self._axes.copy(),
@@ -103,8 +110,10 @@ class GamepadTwistSource:
                 "hz": float(self._hz),
                 "l3": self._l3,
                 "r3": self._r3,
+                "y": self._y,
                 "l3_edge": l3_edge,
                 "r3_edge": r3_edge,
+                "y_edge": y_edge,
                 "connected": self._connected,
                 "layout": self._layout_name(),
                 "armed": self._armed,
@@ -142,6 +151,7 @@ class GamepadTwistSource:
         buttons[: min(16, raw_b.size)] = raw_b[:16]
         l3 = bool(state.button(LOGICAL_L3))
         r3 = bool(state.button(LOGICAL_R3))
+        y = bool(state.button(LOGICAL_Y))
         live = self._motion_live()
         now = time.monotonic()
         if live:
@@ -188,10 +198,13 @@ class GamepadTwistSource:
         with self._lock:
             self._l3_edge = self._l3_edge or (l3 and not self._l3_prev)
             self._r3_edge = self._r3_edge or (r3 and not self._r3_prev)
+            self._y_edge = self._y_edge or (y and not self._y_prev)
             self._l3_prev = l3
             self._r3_prev = r3
+            self._y_prev = y
             self._l3 = l3
             self._r3 = r3
+            self._y = y
             self._twist = twist
             self._axes = axes
             self._buttons = buttons

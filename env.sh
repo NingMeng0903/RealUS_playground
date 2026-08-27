@@ -6,13 +6,22 @@ export AMONGUS_PROJECT_ROOT="${REALUS_PROJECT_ROOT}"
 export REPO="${REALUS_PROJECT_ROOT}"
 export SRC="${REALUS_PROJECT_ROOT}/src"
 export PYTHONNOUSERSITE=1
-export PYTHONPATH="${SRC}${PYTHONPATH:+:${PYTHONPATH}}"
+# Repo + rm75_control so Window C gamepad can run in genesis (DWPose GPU lives here).
+export PYTHONPATH="${REALUS_PROJECT_ROOT}:${REALUS_PROJECT_ROOT}/rm75_control:${SRC}${PYTHONPATH:+:${PYTHONPATH}}"
 
-# Reuse Among_US genesis conda env
-if [ -x /media/camp/EXT_DRIVE/envs/genesis/bin/python ]; then
-  export PY=/media/camp/EXT_DRIVE/envs/genesis/bin/python
-  # shellcheck disable=SC1091
-  source /media/camp/EXT_DRIVE/envs/genesis/bin/activate 2>/dev/null || true
+# Reuse Among_US genesis conda env (no venv-style bin/activate).
+GENESIS_ENV="/media/camp/EXT_DRIVE/envs/genesis"
+if [ -x "${GENESIS_ENV}/bin/python" ]; then
+  export PY="${GENESIS_ENV}/bin/python"
+  export PATH="${GENESIS_ENV}/bin:${PATH}"
+  CONDA_BASE="${CONDA_BASE:-/home/camp/miniconda3}"
+  if [ -f "${CONDA_BASE}/etc/profile.d/conda.sh" ]; then
+    # shellcheck disable=SC1091
+    source "${CONDA_BASE}/etc/profile.d/conda.sh"
+    conda activate "${GENESIS_ENV}"
+  fi
+else
+  echo "WARN: genesis env not found: ${GENESIS_ENV}" >&2
 fi
 
 # RealSense Cam publisher: prefer genesis $PY; fall back to camera_calib if pyrealsense2 missing.
@@ -64,7 +73,8 @@ if [ -n "${LD_LIBRARY_PATH:-}" ]; then
 fi
 
 echo "RealUS env ready: REPO=${REPO}"
-echo "  PY=${PY:-python}"
+echo "  PY=${PY:-python}  ($(command -v python 2>/dev/null || echo no-python))"
+echo "  CONDA_PREFIX=${CONDA_PREFIX:-none}"
 echo "  SESSION_DIR=${SESSION_DIR}"
 echo "  CAMERA_CALIB_BUNDLE=${CAMERA_CALIB_BUNDLE}"
 echo "  SMPLX_OUTPUT_ROOT=${REALUS_SMPLX_OUTPUT_ROOT}"

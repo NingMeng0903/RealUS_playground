@@ -14,48 +14,22 @@ import argparse
 import json
 import logging
 import os
-import subprocess
 import sys
 import time
 from pathlib import Path
 
+_REPO = Path(os.environ.get("REALUS_PROJECT_ROOT", Path(__file__).resolve().parents[2]))
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
+
+from perception.capture_flow import run_smplx_capture  # noqa: E402
+
 TOPIC = "realus_capture_trigger_v1"
-
-
-def _repo_root() -> Path:
-    return Path(os.environ.get("REALUS_PROJECT_ROOT", Path(__file__).resolve().parents[2]))
-
-
-def _smplx_output_root(repo: Path) -> Path:
-    return Path(os.environ.get("REALUS_SMPLX_OUTPUT_ROOT", repo / "smplx_outputs"))
-
-
-def _run_capture(repo: Path, *, config: Path, connect: str, extra_argv: list[str]) -> int:
-    py = os.environ.get("PY", sys.executable)
-    cmd = [
-        py,
-        str(repo / "perception/apps/run_smplx_capture.py"),
-        "--config",
-        str(config),
-        "--connect",
-        str(connect),
-        "--output-root",
-        str(_smplx_output_root(repo)),
-        "--publish-kind",
-        "smplx_mesh",
-        "--publish-genesis",
-        *extra_argv,
-    ]
-    env = dict(os.environ)
-    src = str((repo / "src").resolve())
-    env["PYTHONPATH"] = src if not env.get("PYTHONPATH") else f"{src}:{env['PYTHONPATH']}"
-    logging.info("capture exec: %s", " ".join(cmd))
-    return int(subprocess.call(cmd, cwd=str(repo), env=env))
 
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    repo = _repo_root()
+    repo = _REPO
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--bind", type=str, default="tcp://127.0.0.1:17357")
     ap.add_argument("--topic", type=str, default=TOPIC)
@@ -100,8 +74,19 @@ def main() -> int:
         except Exception:
             pass
         logging.info("capture trigger received label=%s", label)
-        rc = _run_capture(repo, config=args.config, connect=str(args.camera_connect), extra_argv=list(extra))
-        logging.info("capture finished exit=%s", rc)
+        result = run_smplx_capture(
+            run_name=time.strftime("%Y%m%d_%H%M%S"),
+            repo=repo,
+            camera_connect=str(args.camera_connect),
+            config=Path(args.config),
+            extra_argv=list(extra),
+        )
+        logging.info(
+            "capture finished exit=%s ok=%s run=%s",
+            result.returncode,
+            int(result.ok),
+            result.run_name,
+        )
 
     sock.close(0)
     return 0

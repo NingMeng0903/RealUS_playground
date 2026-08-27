@@ -6,6 +6,7 @@
 #include <cstring>
 #include <iomanip>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <thread>
 #include <vector>
@@ -473,6 +474,7 @@ int main(int argc, char** argv) {
   bool want_press = false;
   bool want_leave = false;
   bool want_tw = false;
+  bool want_protocol_info = false;
   for (int i = 1; i < argc; ++i) {
     const std::string a = argv[i];
     if (a == "--config" && i + 1 < argc) config_path = argv[++i];
@@ -485,6 +487,7 @@ int main(int argc, char** argv) {
     else if (a == "--press-escape") want_press = true;
     else if (a == "--policy-leave") want_leave = true;
     else if (a == "--task-weight") want_tw = true;
+    else if (a == "--protocol-info") want_protocol_info = true;
     else if (a == "--help") {
       std::cout << "wbc_rt --config FILE --in NAME --out NAME\n"
                 << "wbc_rt --srs-ik --pose 6 --psi P --branch B --y-shoulder Y [--R 9 --t 3]\n"
@@ -493,7 +496,8 @@ int main(int argc, char** argv) {
                 << "wbc_rt --posture-tick --config FILE --q 8 [--dt --rail-lo --rail-hi --hold --ticks]\n"
                 << "wbc_rt --press-escape --flags 6\n"
                 << "wbc_rt --policy-leave --y Y --policy P [--soft-min --soft-max --latched-sign ...]\n"
-                << "wbc_rt --task-weight --J 48 [--w 6 --dt --tau --aniso --ticks --zero-rail]\n";
+                << "wbc_rt --task-weight --J 48 [--w 6 --dt --tau --aniso --ticks --zero-rail]\n"
+                << "wbc_rt --protocol-info  # print version and packed SHM sizes\n";
       return 0;
     } else if (a == "--sizes") {
       std::cout << sizeof(wbc_rt::WbcIn) << " " << sizeof(wbc_rt::WbcOut) << "\n";
@@ -507,6 +511,11 @@ int main(int argc, char** argv) {
   if (want_press) return run_press_escape(argc, argv);
   if (want_leave) return run_policy_leave(argc, argv);
   if (want_tw) return run_task_weight(argc, argv);
+  if (want_protocol_info) {
+    std::cout << wbc_rt::kVersion << " " << sizeof(wbc_rt::WbcIn) << " "
+              << sizeof(wbc_rt::WbcOut) << "\n";
+    return 0;
+  }
   if (config_path.empty()) {
     std::cerr << "wbc_rt: --config required\n";
     return 2;
@@ -521,24 +530,52 @@ int main(int argc, char** argv) {
     wbc_rt::ShmMap out_map;
     in_map.open(in_name, sizeof(wbc_rt::WbcIn));
     out_map.open(out_name, sizeof(wbc_rt::WbcOut));
-    auto* in = reinterpret_cast<wbc_rt::WbcIn*>(in_map.ptr);
-    auto* out = reinterpret_cast<wbc_rt::WbcOut*>(out_map.ptr);
-    wbc_rt::clear_out(out);
-    out->status = wbc_rt::kStatusReady;
-    out->flags = wbc_rt::kOutReady;
+    auto* in_shared = reinterpret_cast<wbc_rt::WbcIn*>(in_map.ptr);
+    auto* out_shared = reinterpret_cast<wbc_rt::WbcOut*>(out_map.ptr);
+    wbc_rt::WbcOut out_initial;
+    wbc_rt::clear_out(&out_initial);
+    out_initial.status = wbc_rt::kStatusReady;
+    out_initial.flags = wbc_rt::kOutReady;
+    wbc_rt::publish_snapshot(out_shared, out_initial);
+    wbc_rt::WbcIn in_snapshot;
+    wbc_rt::WbcOut out_snapshot;
     std::uint64_t last_seq = 0;
     while (!g_stop) {
+      if (!wbc_rt::read_snapshot(in_shared, &in_snapshot)) {
+        std::this_thread::sleep_for(std::chrono::microseconds(50));
+        continue;
+      }
+      const auto* in = &in_snapshot;
+      if (!wbc_rt::read_snapshot(out_shared, &out_snapshot)) {
+        wbc_rt::clear_out(&out_snapshot);
+        out_snapshot.status = wbc_rt::kStatusReady;
+        out_snapshot.flags = wbc_rt::kOutReady;
+      }
+      auto* out = &out_snapshot;
       const std::uint64_t seq = in->seq;
       if (seq == last_seq) {
         std::this_thread::sleep_for(std::chrono::microseconds(50));
         continue;
       }
       last_seq = seq;
+      if (in->magic != wbc_rt::kMagic || in->version != wbc_rt::kVersion) {
+        out->status = wbc_rt::kStatusFail;
+        out->flags = wbc_rt::kOutFailed;
+        out->cmd_ack = in->cmd_seq;
+        out->seq = seq;
+        out->magic = wbc_rt::kMagic;
+        out->version = wbc_rt::kVersion;
+        wbc_rt::publish_snapshot(out_shared, *out);
+        continue;
+      }
       const std::uint32_t cmd = in->cmd;
       if (cmd == wbc_rt::kCmdShutdown) {
         out->status = wbc_rt::kStatusShutdown;
         out->seq = seq;
         out->cmd_ack = in->cmd_seq;
+        out->magic = wbc_rt::kMagic;
+        out->version = wbc_rt::kVersion;
+        wbc_rt::publish_snapshot(out_shared, *out);
         break;
       }
       auto publish_q = [&]() {
@@ -547,8 +584,16 @@ int main(int argc, char** argv) {
       };
       if (cmd == wbc_rt::kCmdEnable) {
         loop.enable();
+        out->flags = wbc_rt::kOutReady;
+        out->status = wbc_rt::kStatusReady;
       } else if (cmd == wbc_rt::kCmdStop) {
         loop.stop();
+        std::fill(std::begin(out->qdot), std::end(out->qdot), 0.0);
+        std::fill(std::begin(out->v_cmd_feasible), std::end(out->v_cmd_feasible), 0.0);
+        std::fill(std::begin(out->v_tcp_estimated), std::end(out->v_tcp_estimated), 0.0);
+        out->flags = wbc_rt::kOutStale | wbc_rt::kOutFailed;
+        out->status = wbc_rt::kStatusFail;
+        out->fallback_level = wbc_rt::kFallbackStop;
       } else if (cmd == wbc_rt::kCmdReset) {
         wbc_rt::Vec8 q;
         for (int i = 0; i < wbc_rt::kNv; ++i) q[i] = in->q_meas[i];
@@ -669,6 +714,16 @@ int main(int argc, char** argv) {
         out->rail_h2 = tout.rail_h2;
         out->rail_qdot_prev = tout.rail_qdot_prev;
         out->rail_qdot_prev2 = tout.rail_qdot_prev2;
+        out->qp1_status = tout.qp1_status;
+        out->qp2_status = tout.qp2_status;
+        out->fallback_level = tout.fallback_level;
+        out->failure_code = tout.failure_code;
+        out->qp1_hard_violation = tout.qp1_hard_violation;
+        out->final_hard_violation = tout.final_hard_violation;
+        out->task_lock_violation = tout.task_lock_violation;
+        out->final_box_violation = tout.final_box_violation;
+        out->qp_overrun = tout.qp_overrun;
+        out->posture_gate = tout.posture_gate;
         out->flags = tout.flags;
         out->status = tout.status;
       }
@@ -679,6 +734,7 @@ int main(int argc, char** argv) {
       out->version = wbc_rt::kVersion;
       out->cmd_ack = in->cmd_seq;
       out->seq = seq;
+      wbc_rt::publish_snapshot(out_shared, *out);
     }
   } catch (const std::exception& e) {
     std::cerr << "wbc_rt: " << e.what() << "\n";

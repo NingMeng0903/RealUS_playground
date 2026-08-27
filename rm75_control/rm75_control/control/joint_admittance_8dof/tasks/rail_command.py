@@ -239,6 +239,7 @@ class RailCommandMixer:
         hold_d_star: bool = False,
         quiescent: bool = False,
         posture_hold: bool = False,
+        posture_gate_scale: float = 1.0,
         in_wall: bool = False,
     ) -> RailMixTelemetry:
         u_lo, u_hi = wall_velocity_bounds(u_max, leave_sign)
@@ -290,7 +291,7 @@ class RailCommandMixer:
         else:
             u_pi_raw = self.kp * e_d + self.xi
             u_mid_cmd = float(np.clip(u_pi_raw, -self.u_mid_max, self.u_mid_max))
-            u_post_raw = u_mid_cmd - d_dot
+            u_post_raw = (u_mid_cmd - d_dot) * float(np.clip(posture_gate_scale, 0.0, 1.0))
             tel.xi = float(self.xi)
             tel.u_pi_raw = float(u_pi_raw)
             tel.u_mid_cmd = float(u_mid_cmd)

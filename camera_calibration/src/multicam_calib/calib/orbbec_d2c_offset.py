@@ -76,6 +76,8 @@ def load_R_depth_to_color(path: Path | str | None = None) -> tuple[np.ndarray, d
     if not p.is_file():
         return ident, {"source": "identity", "path": str(p), "R_depth_to_color_rpy_xyz_deg": [0.0, 0.0, 0.0]}
     data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    if data.get("enabled") is False:
+        return ident, {"source": "disabled", "path": str(p), "R_depth_to_color_rpy_xyz_deg": [0.0, 0.0, 0.0]}
     raw = data.get("R_depth_to_color")
     try:
         R = np.asarray(raw, dtype=np.float64).reshape(3, 3)

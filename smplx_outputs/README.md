@@ -13,10 +13,13 @@ Each run: `smplx_outputs/<YYYYMMDD_HHMMSS>/moment_0000/`
 | `smplx_result.npz` | Fit result |
 | `moment.json` | Quality gate + timing |
 
-Launch remote button:
+Trigger (same job):
 
 ```bash
 source env.sh
+# Xbox Y on Window C (genesis: TensorRT/CUDA DWPose)
+$PY -m peirastic.apps.gamepad
+# or the remote button
 $PY perception/apps/run_capture_remote_gui.py
 ```
 

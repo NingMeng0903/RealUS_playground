@@ -42,7 +42,6 @@ struct Config {
   int max_iter = 400;
   int max_iter_cap = 400;
   double max_solve_ms = 5.0;
-  double fail_qdot_decay = 0.85;
   double twist_sigma_floor = 0.02;
   double task_weight_min_frac = 0.05;
   double task_weight_lpf_tau_s = 0.25;
@@ -180,6 +179,18 @@ struct Config {
   double observer_pos_gain = 0.35;
   double observer_vel_gain = 2.0;
   double observer_vel_lpf_hz = 8.0;
+
+  // Posture/d-star motion is enabled only when the commanded task has a
+  // sufficiently strong component along the physical rail direction.
+  bool posture_gate_enabled = true;
+  double posture_gate_enter_ratio = 0.50;
+  double posture_gate_exit_ratio = 0.35;
+  double posture_gate_enter_speed = 0.010;
+  double posture_gate_exit_speed = 0.005;
+  double posture_gate_enter_dwell = 0.050;
+  double posture_gate_exit_dwell = 0.100;
+  double posture_gate_open_tau = 0.150;
+  double posture_gate_close_tau = 0.100;
 
   bool rail_ext_enabled = true;
   double k_ext = 1.0;

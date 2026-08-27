@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Publish Orbbec D2C-aligned colored point cloud (camera frame) over ZMQ.
 
-Occupies the USB camera (v1 Gemini goes through the 3.9 bridge). The twin
-viewer only subscribes and must be started with ``--orbbec-cloud``.
+Occupies the USB camera (v1 Gemini goes through the 3.9 bridge). Twin
+subscribes by default (``--no-orbbec-cloud`` to skip).
 
   python perception/apps/run_orbbec_cloud_publisher.py
-  python apps/joint_admittance_8dof/run_with_twin.py --orbbec-cloud
+  python apps/joint_admittance_8dof/run_with_twin.py
 """
 
 from __future__ import annotations
@@ -50,15 +50,15 @@ def _parse_args() -> argparse.Namespace:
     ap.add_argument("--depth-fps", type=int, default=30, help="Depth stream fps (overrides orbbec.yaml)")
     ap.add_argument("--session-id", type=str, default="realus_orbbec")
     ap.add_argument(
-        "--d2c-offset",
+        "--depth-ray",
         type=Path,
         default=None,
-        help="orbbec_d2c_offset.yaml (default: camera_calibration/calibration_results)",
+        help="orbbec_depth_ray.yaml (default: camera_calibration/calibration_results)",
     )
     ap.add_argument(
-        "--no-d2c-offset",
+        "--no-depth-ray",
         action="store_true",
-        help="Skip depth-to-color residual rotation (A/B). Stage 5 yaml is never written.",
+        help="Skip along-ray depth scale (A/B). Stays on color rays either way.",
     )
     ap.add_argument("--dry-run", action="store_true")
     return ap.parse_args()
@@ -81,7 +81,7 @@ def main() -> int:
 
     try:
         import zmq
-        from multicam_calib.calib.orbbec_d2c_offset import apply_R_depth_to_color, load_R_depth_to_color
+        from multicam_calib.calib.orbbec_depth_ray import apply_depth_ray_scale, load_depth_ray_coeff
         from multicam_calib.calib.orbbec_rgbd import unproject_aligned_depth
         from multicam_calib.devices.orbbec import OrbbecRGBDSession
         from multicam_calib.io.config import load_orbbec
@@ -93,15 +93,13 @@ def main() -> int:
         )
         return 1
 
-    if args.no_d2c_offset:
-        R_d2c = np.eye(3, dtype=np.float64)
-        d2c_meta = {"source": "disabled", "R_depth_to_color_rpy_xyz_deg": [0.0, 0.0, 0.0]}
+    if args.no_depth_ray:
+        ray_c = np.array([1.0, 0.0, 0.0], dtype=np.float64)
+        ray_meta = {"source": "disabled"}
     else:
-        R_d2c, d2c_meta = load_R_depth_to_color(args.d2c_offset)
-    d2c_rpy_deg = np.asarray(d2c_meta.get("R_depth_to_color_rpy_xyz_deg") or [0.0, 0.0, 0.0], dtype=np.float64)
+        ray_c, ray_meta = load_depth_ray_coeff(args.depth_ray)
     print(
-        f"d2c_offset rpy_xyz_deg=[{d2c_rpy_deg[0]:+.4f}, {d2c_rpy_deg[1]:+.4f}, {d2c_rpy_deg[2]:+.4f}] "
-        f"source={d2c_meta.get('source')}",
+        f"depth_ray coeff={np.asarray(ray_c).tolist()} source={ray_meta.get('source')}",
         flush=True,
     )
     if args.dry_run:
@@ -165,7 +163,7 @@ def main() -> int:
                     )
                 continue
             empty = 0
-            xyz = apply_R_depth_to_color(xyz, R_d2c)
+            xyz = apply_depth_ray_scale(xyz, ray_c)
             source = "unproject"
             rgb_f = _cloud_rgb(rgb, source)
             if rgb_f.shape[0] != xyz.shape[0]:
@@ -182,8 +180,8 @@ def main() -> int:
                 "T_link7_cam": np.asarray(T_link7_cam, dtype=np.float64).tolist(),
                 "cloud_source": str(source),
                 "color_size": [int(frame.color_size[0]), int(frame.color_size[1])],
-                "d2c_offset_rpy_xyz_deg": [float(v) for v in d2c_rpy_deg],
-                "d2c_offset_applied": bool(d2c_meta.get("source") not in {"identity", "identity_bad_yaml", "identity_bad_R", "disabled"}),
+                "depth_ray_coeff": [float(v) for v in np.asarray(ray_c, dtype=np.float64).reshape(3)],
+                "depth_ray_applied": bool(ray_meta.get("source") not in {"identity", "identity_bad_yaml", "identity_bad_coeff", "disabled"}),
             }
             payload = pack_cloud_multipart(args.topic, meta, xyz, rgb_f)
             try:

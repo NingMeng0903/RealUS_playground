@@ -32,12 +32,14 @@ $REALUS_CAMERA_PY perception/apps/run_realsense_camera_publisher.py \
   --bundle "$CAMERA_CALIB_BUNDLE" \
   --cameras-yaml "$REALUS_CAMERAS_YAML" \
   --pub-bind tcp://127.0.0.1:17356 \
-  --undistort
+  --width 1920 --height 1080 --fps 30
 ```
 
 首次缺 `pyrealsense2` 时：`pip install -r perception/requirements.txt`（或 `$REALUS_CAMERA_PY` 会自动回退到 `envs/camera_calib`）。
 
 相机数 = `genesis_bundle.yaml` 全部 alias（扩展相机只改标定，不写死 4）。
+
+直播不要加 `--undistort`（四路 1080p remap 会掉到 ~20 fps）。Xbox Y / Window 8 只对抓到的 8–12 组去畸变。
 
 Publisher 并行采集，时间戳：`source_time_ns` = RealSense global time（硬件），`sim_time_ns` 同值；Window 8 / 标定 capture 按 **hardware timestamp** 对齐（非 per-camera frame_index）。
 
@@ -77,19 +79,27 @@ cd rm75_control && source env_viewer.sh && cd "$REALUS_PROJECT_ROOT"
 $PY perception/apps/run_genesis_perception_viewer.py --anatomy-alpha 0.3
 ```
 
-**twin** — 窗口 A 真机运行时，Genesis 镜像 `rm75_state`（机械臂随真机动）+ 可选人体 overlay：
+**twin** — 窗口 A 真机运行时，Genesis 镜像 `rm75_state`（机械臂随真机动）。默认订橙色 SMPL-X（5598）和腕部点云（17358）；发布器没开就空转：
 
 ```bash
 cd rm75_control && source env_viewer.sh && cd "$REALUS_PROJECT_ROOT"
-python apps/joint_admittance_8dof/run_with_twin.py \
-  --track-subscribe tcp://127.0.0.1:5598 \
-  --anatomy-subscribe tcp://127.0.0.1:5601 \
-  --canonical-human-source fitted
+python apps/joint_admittance_8dof/run_with_twin.py
 ```
+
+只要机械臂：`--no-track-subscribe --no-orbbec-cloud`。解剖 / fitted 人体再加 `--canonical-human-source fitted`。
 
 床体高度 **完全来自** `genesis_bundle.yaml` 的 `bed.height_m`（或 `support_surface.top_z_m`）：Genesis 网格从 z=0 铺到该标定顶面，无固定厚度常数。
 
 #### 8 — 触发 SMPL-X 拟合（躺下后执行，可多次）
+
+**推荐：Xbox Y（Window C 已开时）**
+
+```bash
+source env.sh
+$PY -m peirastic.apps.gamepad
+```
+
+手柄 **Y** = Window 8 全流程：多相机抓拍 → DWPose / EasyMocap → 预览 PNG → 5598 橙色 mesh 进 Genesis。终端会打 `[CAPTURE] Y — …`。L3 / R3 仍是力混合和急停。关掉绑定：`--no-capture-y`。
 
 **实验用远程按钮（临时）：**
 
@@ -97,7 +107,7 @@ python apps/joint_admittance_8dof/run_with_twin.py \
 $PY perception/apps/run_capture_remote_gui.py
 ```
 
-弹窗点 **CAPTURE AND GENERATE SMPLX** = Window 8 全流程 + Genesis 投射；结果在 `smplx_outputs/<timestamp>/moment_0000/`（原图、DWPose、融合点、SMPL-X 重投影 PNG）。
+弹窗点 **CAPTURE AND GENERATE SMPLX** 与 Xbox Y 同一条任务；结果在 `smplx_outputs/<timestamp>/moment_0000/`（原图、DWPose、融合点、SMPL-X 重投影 PNG）。
 
 **命令行等价：**
 
@@ -201,7 +211,7 @@ $PY perception/apps/run_realsense_camera_publisher.py \
   --bundle "$CAMERA_CALIB_BUNDLE" \
   --cameras-yaml "$REALUS_CAMERAS_YAML" \
   --pub-bind tcp://127.0.0.1:17356 \
-  --undistort
+  --width 1920 --height 1080 --fps 30
 ```
 
 相机数 = `genesis_bundle.yaml` 里全部 alias（当前 cam1–cam4；加相机只改标定 yaml）。
@@ -264,10 +274,7 @@ python apps/joint_admittance_8dof/run_joint_admittance.py --config configs/joint
 ```bash
 cd /media/camp/EXT_DRIVE/RealUS_playground/rm75_control
 source env_viewer.sh
-python apps/joint_admittance_8dof/run_with_twin.py \
-  --track-subscribe tcp://127.0.0.1:5598 \
-  --canonical-human-source fitted \
-  --anatomy-subscribe tcp://127.0.0.1:5601
+python apps/joint_admittance_8dof/run_with_twin.py --canonical-human-source fitted
 ```
 
 ### 窗口 8 — EasyMocap SMPL-X 拟合（单帧；可重复跑做动态更新）

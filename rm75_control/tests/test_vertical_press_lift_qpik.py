@@ -31,6 +31,7 @@ def test_vertical_press_lift_reconfigures_without_rail_hunting() -> None:
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False
     cfg.qp.joint_comfort.enabled = False
+    cfg.qp.max_solve_ms = 50.0
     kin = RobotKinematics()
     inner = JointIkController(kin, cfg)
     q = RISK_POSE.copy()

@@ -23,6 +23,7 @@ from rm75_control.control.joint_admittance_8dof.tasks.nullspace_task import (
     NullspaceTaskConfig,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
+    PostureGateConfig,
     RailAllocatorConfig,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
@@ -187,7 +188,7 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         c,
         {
             "task_weight", "reg", "backend", "eps_abs", "max_iter", "max_iter_cap",
-            "max_solve_ms", "fail_qdot_decay", "twist_sigma_floor", "warn_on_fail",
+            "max_solve_ms", "twist_sigma_floor", "warn_on_fail",
             "sr_damping", "task_weight_min_frac", "task_weight_lpf_tau_s",
             "aniso_task_damping",
             "use_mass_weighted_reg", "mass_reg_floor", "mass_weight_exempt_rail",
@@ -323,9 +324,6 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             name="inner.qp.limit_damper_band_rail_m",
         ),
         warn_on_fail=bool(c.get("warn_on_fail", False)),
-        fail_qdot_decay=_finite_float(
-            c.get("fail_qdot_decay", 0.85), name="inner.qp.fail_qdot_decay"
-        ),
         max_solve_ms=_finite_float(
             c.get("max_solve_ms", 5.0), name="inner.qp.max_solve_ms"
         ),
@@ -836,6 +834,7 @@ def _parse_rail_extension(inner: dict) -> RailExtensionConfig:
 
 def _parse_rail_allocator(inner: dict) -> RailAllocatorConfig:
     r = _mapping(inner.get("rail_allocator"), name="inner.rail_allocator")
+    gate = _mapping(r.get("posture_gate"), name="inner.rail_allocator.posture_gate")
     _reject_unknown(
         r,
         {
@@ -844,8 +843,18 @@ def _parse_rail_allocator(inner: dict) -> RailAllocatorConfig:
             "f_c_hz", "reaction_s", "kaw_mid", "rho_mirror_a", "rho_mirror_j",
             "observer_pos_gain", "observer_vel_gain",
             "observer_vel_lpf_hz",
+            "posture_gate",
         },
         name="inner.rail_allocator",
+    )
+    _reject_unknown(
+        gate,
+        {
+            "enabled", "enter_ratio", "exit_ratio", "enter_speed_m_s",
+            "exit_speed_m_s", "enter_dwell_s", "exit_dwell_s",
+            "open_tau_s", "close_tau_s",
+        },
+        name="inner.rail_allocator.posture_gate",
     )
     return RailAllocatorConfig(
         v0_m_s=_finite_float(r.get("v0_m_s", 0.05), name="rail_allocator.v0_m_s"),
@@ -886,6 +895,17 @@ def _parse_rail_allocator(inner: dict) -> RailAllocatorConfig:
         observer_vel_lpf_hz=_finite_float(
             r.get("observer_vel_lpf_hz", 8.0),
             name="rail_allocator.observer_vel_lpf_hz",
+        ),
+        posture_gate=PostureGateConfig(
+            enabled=bool(gate.get("enabled", True)),
+            enter_ratio=_finite_float(gate.get("enter_ratio", 0.50), name="posture_gate.enter_ratio"),
+            exit_ratio=_finite_float(gate.get("exit_ratio", 0.35), name="posture_gate.exit_ratio"),
+            enter_speed_m_s=_finite_float(gate.get("enter_speed_m_s", 0.010), name="posture_gate.enter_speed_m_s"),
+            exit_speed_m_s=_finite_float(gate.get("exit_speed_m_s", 0.005), name="posture_gate.exit_speed_m_s"),
+            enter_dwell_s=_finite_float(gate.get("enter_dwell_s", 0.050), name="posture_gate.enter_dwell_s"),
+            exit_dwell_s=_finite_float(gate.get("exit_dwell_s", 0.100), name="posture_gate.exit_dwell_s"),
+            open_tau_s=_finite_float(gate.get("open_tau_s", 0.150), name="posture_gate.open_tau_s"),
+            close_tau_s=_finite_float(gate.get("close_tau_s", 0.100), name="posture_gate.close_tau_s"),
         ),
     )
 

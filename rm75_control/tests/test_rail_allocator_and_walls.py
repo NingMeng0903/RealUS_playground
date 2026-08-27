@@ -9,6 +9,7 @@ import pytest
 
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
+    collapse_interval,
     stopping_velocity,
     wall_cap,
 )
@@ -52,6 +53,18 @@ def test_wall_cap_after_slew_not_just_dv_max() -> None:
     assert v_slew < -0.10
     assert v_cmd > v_slew
     assert v_cmd >= lo_cap - 1e-12
+
+
+def test_collapse_interval_preserves_true_empty_box() -> None:
+    lo, hi = collapse_interval(
+        np.array([0.02, 0.200000000001]), np.array([0.01, 0.2])
+    )
+    # A 10 mm/s crossing is a real infeasibility, not roundoff.  The tiny
+    # second crossing is safely closed to its midpoint.
+    assert lo[0] == pytest.approx(0.02)
+    assert hi[0] == pytest.approx(0.01)
+    assert lo[1] == pytest.approx(0.2000000000005)
+    assert hi[1] == pytest.approx(0.2000000000005)
 
 
 def test_allocate_rail_uses_translation_and_can_be_zero_on_pure_rotation() -> None:

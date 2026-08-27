@@ -67,41 +67,21 @@ def collapse_interval(
     a_max: np.ndarray | None = None,
     dt: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Collapse an empty velocity interval to a singleton feasible brake.
-
-    When ``lo > hi``, set both bounds to one executable velocity: keep 0 if it
-    lies strictly between the conflicting bounds, otherwise take the closest
-    side that prefers braking toward the limit (matching command-lead
-    behaviour).  Never raises.
-    """
+    """Close only numerical crossings; preserve real empty hard boxes."""
     lo = np.asarray(lo, dtype=float).copy()
     hi = np.asarray(hi, dtype=float).copy()
     crossed = lo > hi
     if not np.any(crossed):
         return lo, hi
 
-    # hi < 0 < lo: the empty box straddles standstill — stop.
-    keep_zero = crossed & (hi < 0.0) & (lo > 0.0)
-    if qdot_prev is None:
-        pick_lo = np.abs(lo) <= np.abs(hi)
-        collapsed = np.where(pick_lo, lo, hi)
-    else:
-        prev = np.asarray(qdot_prev, dtype=float)
-        # Moving positive: collapse onto lo (strongest brake of further +motion).
-        # Moving negative: collapse onto hi.  Same rule as command_lead.
-        collapsed = np.where(prev >= 0.0, lo, hi)
-    collapsed = np.where(keep_zero, 0.0, collapsed)
-    if (
-        qdot_prev is not None
-        and a_max is not None
-        and dt is not None
-        and float(dt) > 0.0
-    ):
-        prev = np.asarray(qdot_prev, dtype=float)
-        a_step = np.asarray(a_max, dtype=float) * float(dt)
-        collapsed = np.clip(collapsed, prev - a_step, prev + a_step)
-    lo = np.where(crossed, collapsed, lo)
-    hi = np.where(crossed, collapsed, hi)
+    # True empty boxes are intentionally left crossed.  The controller reports
+    # them as infeasible instead of dropping a hard constraint.  Only a tiny
+    # numerical crossing can be closed, and it is closed to its midpoint so
+    # neither side wins merely because of floating-point roundoff.
+    close = crossed & ((lo - hi) <= 1.0e-8)
+    midpoint = 0.5 * (lo + hi)
+    lo = np.where(close, midpoint, lo)
+    hi = np.where(close, midpoint, hi)
     return lo, hi
 
 

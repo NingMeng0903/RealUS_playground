@@ -93,6 +93,7 @@ def collect_synced_burst(
     *,
     duration_s: float = 0.5,
     wait_timeout_s: float = 2.0,
+    min_frames: int = 1,
     motion_window: MotionFrameWindow | None = None,
     canonical: CanonicalMotionIndexClient | None = None,
     max_frame_span: int | None = 2,
@@ -102,6 +103,7 @@ def collect_synced_burst(
     """Collect a producer-timestamped synchronized burst after its first group."""
     deadline = time.perf_counter() + max(float(wait_timeout_s), 0.05)
     duration_ns = int(max(float(duration_s), 0.0) * 1_000_000_000)
+    need = max(1, int(min_frames))
     frames: list[SyncedMultiviewFrame] = []
     motion_indices: list[int | None] = []
     first_timestamp_ns: int | None = None
@@ -124,6 +126,9 @@ def collect_synced_burst(
             continue
         frames.append(synced)
         motion_indices.append(motion_fi)
-        if int(synced.timestamp_ns) - first_timestamp_ns >= duration_ns:
+        spanned = int(synced.timestamp_ns) - first_timestamp_ns >= duration_ns
+        if spanned and len(frames) >= need:
             return frames, motion_indices, None
+    if frames and len(frames) >= need:
+        return frames, motion_indices, None
     return frames, motion_indices, (None if frames else reason)

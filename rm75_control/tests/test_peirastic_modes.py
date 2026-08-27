@@ -26,7 +26,7 @@ from peirastic.core.modes import Mode as ModeE, ModeRequest
 from peirastic.realman8dof.force.tff import SELECTION_TOOL_Z_FORCE, compose_tff
 from peirastic.realman8dof.modes.servo import ServoTwistHoldOuter, ServoTwistOuter
 from peirastic.realman8dof.session import ModeEngine, compile_request
-from peirastic.sources.gamepad import LOGICAL_L3, LOGICAL_R3, GamepadTwistSource
+from peirastic.sources.gamepad import LOGICAL_L3, LOGICAL_R3, LOGICAL_Y, GamepadTwistSource
 from rm75_control.control.joint_admittance_8dof.api import CompileContext
 from rm75_control.control.joint_admittance_8dof.loop import JointIkController
 
@@ -117,6 +117,9 @@ def test_gamepad_source_is_not_a_mode() -> None:
     assert float(np.linalg.norm(snap["twist"][:3])) > 0.0
     assert LOGICAL_L3 == 6
     assert LOGICAL_R3 == 7
+    assert LOGICAL_Y == 3
+    assert snap["y"] is False
+    assert snap["y_edge"] is False
     assert "layout" in snap
     assert "armed" in snap
 
@@ -479,6 +482,23 @@ def test_gamepad_l3_r3_edges() -> None:
     src._tick()
     snap = src.snapshot()
     assert snap["r3_edge"]
+
+
+def test_gamepad_y_edge_without_motion() -> None:
+    pad = FakePad()
+    pad.transport = "usb"
+    pad.link_transport = "usb"
+    src = GamepadTwistSource(pad=pad, cfg=GamepadTwistConfig(dt=0.005))
+    src._tick()
+    assert src.snapshot()["y_edge"] is False
+    pad.buttons[LOGICAL_Y] = 1.0
+    src._tick()
+    snap = src.snapshot()
+    assert snap["connected"] is False
+    assert snap["y"] is True
+    assert snap["y_edge"] is True
+    src._tick()
+    assert src.snapshot()["y_edge"] is False
 
 
 def test_gamepad_usb_or_missing_cannot_command_motion() -> None:

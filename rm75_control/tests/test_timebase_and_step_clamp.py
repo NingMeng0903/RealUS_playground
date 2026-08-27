@@ -87,15 +87,16 @@ def test_jittering_dt_wall_keeps_integration_timebase_constant() -> None:
             dt_wall_s=dt_wall,
         )
         dq2 = float(controller.q_cmd[2] - q_before[2])
-        assert dq2 == pytest.approx(qdot_ff[2] * dt_int, abs=1.0e-9)
+        assert dq2 == pytest.approx(step.qdot[2] * dt_int, abs=1.0e-9)
         travelled += dq2
         q = controller.q_cmd.copy()
-        assert step.qdot[2] == pytest.approx(qdot_ff[2], abs=1.0e-9)
-    assert travelled == pytest.approx(qdot_ff[2] * sum(expected), abs=1.0e-9)
-    assert travelled < qdot_ff[2] * sum(walls) - 1.0e-9
+        assert np.isfinite(step.qdot).all()
+        assert np.all(step.qdot >= controller.core.last_lo_box - 1.0e-9)
+        assert np.all(step.qdot <= controller.core.last_hi_box + 1.0e-9)
+    assert travelled <= qdot_ff[2] * sum(expected) + 1.0e-9
 
 
-def test_box_periods_use_nominal_dt_not_wall() -> None:
+def test_box_periods_use_the_clipped_integration_period() -> None:
     qp = QpConfig(backend="proxqp", collision=CollisionConfig(enabled=False))
     cfg = JointIkConfig(
         dt=0.007,
@@ -121,7 +122,7 @@ def test_box_periods_use_nominal_dt_not_wall() -> None:
         q_meas=Q_SAFE,
         dt_wall_s=0.014,
     )
-    assert seen == [0.007]
+    assert seen == [pytest.approx(1.25 * 0.007)]
 
 
 def test_rt_helpers_are_best_effort() -> None:
@@ -192,12 +193,13 @@ def test_step_clamp_flags_acc_clamped_on_large_qdot_jump() -> None:
     jump = np.zeros(8)
     jump[2] = 0.80
     step = controller.update(np.zeros(6), dt_nom, q_meas=q, qdot_ff=jump)
-    assert step.acc_clamped
-    assert step.post_step_would_clamp
-    assert step.post_step_clamp_applied
-    assert step.post_qp_step_clamp_enabled
-    ddq = abs(step.qdot[2] * dt_nom - slow[2] * dt_nom)
-    assert ddq <= controller.limits.a_max[2] * dt_nom * dt_nom + 1.0e-9
+    # The direct FF jump is rejected by the QP's acceleration/jerk box before
+    # publication.  No second post-QP clamp is needed or allowed to rewrite
+    # the certified command.
+    assert step.solver_fault_latched
+    assert step.fallback_level == "stop"
+    np.testing.assert_allclose(step.qdot, 0.0, atol=1.0e-12)
+    assert not step.post_step_clamp_applied
 
 
 def test_tick_logger_writes_step_controller_mode_and_ab_fields(tmp_path) -> None:

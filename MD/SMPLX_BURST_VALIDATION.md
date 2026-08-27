@@ -2,7 +2,7 @@
 
 本验收不允许使用 `smplx_outputs` 内此前两次结果作调参或统计样本。
 
-每组使用更新后的 RealSense 发布器（必须带 `--undistort`）和以下采集入口：
+每组使用更新后的 RealSense 发布器（直播不要 `--undistort`；捕获入口会对 burst 去畸变）和以下采集入口：
 
 ```bash
 python -m projects.genesis_ue_sync.multiview_realtime.cli.run_offline_terminal8_capture \
@@ -10,8 +10,8 @@ python -m projects.genesis_ue_sync.multiview_realtime.cli.run_offline_terminal8_
   --capture-burst-s 0.5
 ```
 
-入口会拒绝缺少 `image_geometry.undistorted=true` 和
-`projection_distortion_model=zero` 的帧。每个新 run 保存四路 burst RGB、
+入口会把 raw 帧 remap 成 `image_geometry.undistorted=true`、
+`projection_distortion_model=zero` 再拟合。每个新 run 保存四路 burst RGB、
 `burst_sync_metadata.json`、`raw_simcc.npz`、逐帧 SimCC 候选/不确定度、逐关节
 融合内点诊断及 EasyMocap 输出。
 

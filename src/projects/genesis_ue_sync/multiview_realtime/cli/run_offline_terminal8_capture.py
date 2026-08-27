@@ -37,6 +37,7 @@ from projects.genesis_ue_sync.multiview_realtime.ingress.motion_frame_gate impor
     motion_window_from_scene_spec,
 )
 from projects.genesis_ue_sync.multiview_realtime.ingress.synced_frame_acquire import collect_synced_burst
+from projects.genesis_ue_sync.multiview_realtime.ingress.undistort_burst import ensure_undistorted_burst
 from projects.genesis_ue_sync.multiview_realtime.publish.static_smplx_track import publish_static_smplx_track
 from projects.genesis_ue_sync.multiview_realtime.track_stream import DEFAULT_TRACK_PUB_BIND
 from projects.genesis_ue_sync.tracking.calibration import load_calibration_bundle
@@ -213,30 +214,6 @@ def _write_frozen_capture(moment_dir: Path, synced: Any, camera_ids: list[str], 
     )
 
 
-def _validate_undistorted_geometry(frames: list[Any], camera_ids: list[str]) -> None:
-    """Reject mixed raw/undistorted frames before they reach calibrated DLT."""
-    contract: dict[str, tuple[bool, str]] = {}
-    for frame in frames:
-        for cid in camera_ids:
-            meta = dict((frame.metadata_by_camera.get(cid) or {}))
-            geometry = dict(meta.get("image_geometry") or {})
-            if not geometry:
-                raise ValueError(
-                    f"{cid} frame {frame.frame_index} lacks image_geometry metadata; "
-                    "use the updated RealSense publisher with --undistort."
-                )
-            undistorted = bool(geometry.get("undistorted", False))
-            model = str(geometry.get("projection_distortion_model") or "")
-            if not undistorted or model != "zero":
-                raise ValueError(
-                    f"{cid} frame {frame.frame_index} violates undistorted/zero-distortion contract: {geometry}"
-                )
-            state = (undistorted, model)
-            if cid in contract and contract[cid] != state:
-                raise ValueError(f"inconsistent image geometry for {cid}: {contract[cid]} vs {state}")
-            contract[cid] = state
-
-
 def _write_frozen_burst(moment_dir: Path, frames: list[Any], camera_ids: list[str], *, write_images: bool) -> None:
     burst_dir = Path(moment_dir) / "burst"
     rows = []
@@ -390,6 +367,7 @@ def main() -> int:
             stream,
             duration_s=float(args.capture_burst_s),
             wait_timeout_s=max(0.1, deadline - time.perf_counter()),
+            min_frames=int(args.min_burst_frames),
             motion_window=motion_window,
             canonical=canonical,
             max_frame_span=int(args.max_output_frame_span),
@@ -415,7 +393,7 @@ def main() -> int:
             )
             return 2
 
-        _validate_undistorted_geometry(burst_frames, list(cfg.camera_ids))
+        burst_frames = ensure_undistorted_burst(burst_frames, list(cfg.camera_ids))
         synced = burst_frames[len(burst_frames) // 2]
         motion_fi = burst_motion_fi[len(burst_motion_fi) // 2]
         logging.info("captured %d hardware-sync groups over %.3fs", len(burst_frames), (burst_frames[-1].timestamp_ns - burst_frames[0].timestamp_ns) * 1e-9)

@@ -71,7 +71,6 @@ Config Config::load(const std::string& path) {
     else if (key == "qp.max_iter") c.max_iter = i0();
     else if (key == "qp.max_iter_cap") c.max_iter_cap = i0();
     else if (key == "qp.max_solve_ms") c.max_solve_ms = n0();
-    else if (key == "qp.fail_qdot_decay") c.fail_qdot_decay = n0();
     else if (key == "qp.twist_sigma_floor") c.twist_sigma_floor = n0();
     else if (key == "qp.task_weight_min_frac") c.task_weight_min_frac = n0();
     else if (key == "qp.task_weight_lpf_tau_s") c.task_weight_lpf_tau_s = n0();
@@ -204,6 +203,15 @@ Config Config::load(const std::string& path) {
     else if (key == "rail_allocator.observer_pos_gain") c.observer_pos_gain = n0();
     else if (key == "rail_allocator.observer_vel_gain") c.observer_vel_gain = n0();
     else if (key == "rail_allocator.observer_vel_lpf_hz") c.observer_vel_lpf_hz = n0();
+    else if (key == "rail_allocator.posture_gate.enabled") c.posture_gate_enabled = i0() != 0;
+    else if (key == "rail_allocator.posture_gate.enter_ratio") c.posture_gate_enter_ratio = n0();
+    else if (key == "rail_allocator.posture_gate.exit_ratio") c.posture_gate_exit_ratio = n0();
+    else if (key == "rail_allocator.posture_gate.enter_speed_m_s") c.posture_gate_enter_speed = n0();
+    else if (key == "rail_allocator.posture_gate.exit_speed_m_s") c.posture_gate_exit_speed = n0();
+    else if (key == "rail_allocator.posture_gate.enter_dwell_s") c.posture_gate_enter_dwell = n0();
+    else if (key == "rail_allocator.posture_gate.exit_dwell_s") c.posture_gate_exit_dwell = n0();
+    else if (key == "rail_allocator.posture_gate.open_tau_s") c.posture_gate_open_tau = n0();
+    else if (key == "rail_allocator.posture_gate.close_tau_s") c.posture_gate_close_tau = n0();
     else if (key == "rail_extension.enabled") c.rail_ext_enabled = i0() != 0;
     else if (key == "rail_extension.k_ext") c.k_ext = n0();
     else if (key == "rail_extension.k_ff") c.k_ff = n0();
@@ -243,6 +251,19 @@ Config Config::load(const std::string& path) {
     else if (key == "saturation.slack_exit") c.slack_exit = n0();
     else if (key == "saturation.secondary_scale") c.secondary_scale = n0();
     else if (key == "saturation.secondary_scale_tau_s") c.secondary_scale_tau_s = n0();
+  }
+  if (c.max_pairs < 1 || c.max_pairs > kMaxCbf) {
+    throw std::runtime_error("collision.max_pairs must be in [1, 8]");
+  }
+  if (c.collision_enabled && c.collision_urdf.empty()) {
+    throw std::runtime_error("collision.enabled requires collision_urdf");
+  }
+  if (c.posture_gate_enter_ratio < 0.0 || c.posture_gate_enter_ratio > 1.0 ||
+      c.posture_gate_exit_ratio < 0.0 || c.posture_gate_exit_ratio > c.posture_gate_enter_ratio ||
+      c.posture_gate_enter_speed < 0.0 || c.posture_gate_exit_speed < 0.0 ||
+      c.posture_gate_enter_dwell < 0.0 || c.posture_gate_exit_dwell < 0.0 ||
+      c.posture_gate_open_tau < 0.0 || c.posture_gate_close_tau < 0.0) {
+    throw std::runtime_error("rail_allocator.posture_gate parameters are invalid");
   }
   return c;
 }

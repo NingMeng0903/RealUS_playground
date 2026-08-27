@@ -123,7 +123,7 @@ def layout_bt_xpadneo() -> PadLayout:
         axis_sign={"lx": 1, "ly": -1, "lt": 1, "rx": 1, "ry": 1, "rt": 1},
         z_sign=-1,
         # xpadneo: A B X Y View Menu LB RB …  (LB is 6, not wired 4)
-        button_index={"a": 0, "b": 1, "x": 2, "y": 3, "lb": 6, "rb": 7, "l3": 13, "r3": 14},
+        button_index={"a": 0, "b": 1, "x": 3, "y": 4, "lb": 6, "rb": 7, "l3": 13, "r3": 14},
     )
 
 

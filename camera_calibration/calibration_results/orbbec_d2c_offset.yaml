@@ -1,4 +1,6 @@
 schema: orbbec_d2c_offset_v1
+enabled: false
+superseded_by: orbbec_depth_ray.yaml
 metadata:
   created_utc: '2026-08-26T16:11:55.453414+00:00'
   serial: AY2MC31016E
@@ -63,8 +65,8 @@ metadata:
   does_not_change:
   - orbbec_handeye.yaml
   - genesis_bundle.yaml
-  note: Rotation only. Locked-distance point-to-plane is diagnostic (depth bias);
-    it is not used for R.
+  note: Discarded. Optical-center R knocks D2C corners off the color ray. Use
+    orbbec_depth_ray.yaml (along-ray scale) instead.
 R_depth_to_color:
 - - 0.9993884270037561
   - 0.004020011064943596

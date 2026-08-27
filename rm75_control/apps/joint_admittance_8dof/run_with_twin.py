@@ -4,13 +4,15 @@
   source env_viewer.sh   # or RealUS env.sh + genesis
   python apps/joint_admittance_8dof/run_with_twin.py
 
-Optional human overlay (requires RealUS src on PYTHONPATH):
-  --track-subscribe tcp://127.0.0.1:5598
-  --canonical-human-source fitted
+Human overlay and Orbbec wrist cloud are on by default (empty-spin if
+no publisher). Window A SHM is ``rm75_state``.
 
-Optional Orbbec wrist cloud (default off; publisher is a separate process):
-  python perception/apps/run_orbbec_cloud_publisher.py
-  python apps/joint_admittance_8dof/run_with_twin.py --orbbec-cloud
+  python apps/joint_admittance_8dof/run_with_twin.py
+  python perception/apps/run_orbbec_cloud_publisher.py   # optional, USB
+  # Xbox Y / run_smplx_capture publishes orange mesh on :5598
+
+  --no-track-subscribe     robot only (no orange SMPL-X)
+  --no-orbbec-cloud        no wrist cloud
 """
 
 from __future__ import annotations
@@ -106,7 +108,12 @@ def main() -> int:
     ap.add_argument("--twin-hz", type=float, default=60.0)
     ap.add_argument("--backend", choices=("cpu", "cuda"), default="cuda")
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--track-subscribe", type=str, default="", help="ZMQ track overlay (e.g. tcp://127.0.0.1:5598)")
+    ap.add_argument(
+        "--track-subscribe",
+        type=str,
+        default="tcp://127.0.0.1:5598",
+        help="ZMQ orange SMPL-X mesh (default tcp://127.0.0.1:5598)",
+    )
     ap.add_argument(
         "--no-track-subscribe",
         action="store_true",
@@ -132,20 +139,24 @@ def main() -> int:
     )
     ap.add_argument(
         "--orbbec-cloud",
-        action="store_true",
-        help="Subscribe Orbbec wrist point cloud (default off)",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Subscribe Orbbec wrist point cloud (default on; idle if no publisher)",
     )
     ap.add_argument(
         "--orbbec-cloud-subscribe",
         type=str,
         default="tcp://127.0.0.1:17358",
-        help="ZMQ address for Orbbec cloud (used only with --orbbec-cloud)",
+        help="ZMQ address for Orbbec cloud",
     )
     args = ap.parse_args()
 
     track_subscribe = ""
     if not args.no_track_subscribe:
-        track_subscribe = str(args.track_subscribe or os.environ.get("AMONGUS_GENESIS_TRACK_SUBSCRIBE", "")).strip()
+        track_subscribe = str(
+            args.track_subscribe
+            or os.environ.get("AMONGUS_GENESIS_TRACK_SUBSCRIBE", "tcp://127.0.0.1:5598")
+        ).strip()
 
     if args.dry_run:
         return 0
