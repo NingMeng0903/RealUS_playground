@@ -172,3 +172,114 @@ Log line format: [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
 [I20260827 21:39:00.700382 1071405 FrameBufferManager.cpp:33] New frame buffer allocated=0.000174522MB, total usage: {allocated=5.61521MB, max limit=2048MB}
 [I20260827 21:39:00.701538 1071408 FrameBufferManager.cpp:33] New frame buffer allocated=0.586341MB, total usage: {allocated=6.20155MB, max limit=2048MB}
 [I20260827 21:40:39.383301 1071401 FrameBufferManager.cpp:33] New frame buffer allocated=0.336097MB, total usage: {allocated=6.53765MB, max limit=2048MB}
+[W20260827 23:30:30.902937 1071402 Pipeline.cpp:316] waitForFrame timeout= 100
+[W20260827 23:30:30.903021 1071402 ApiImpl.cpp:1398] frameSet is nullptr
+[I20260828 00:15:21.886612 1071161 Pipeline.cpp:350] Pipeline stop start!
+[I20260828 00:15:21.886670 1071161 Pipeline.cpp:322] Stop stream ...
+[I20260828 00:15:21.886708 1071161 OpenNIVideoSensor.cpp:712] Shutting down USB Depth read thread...
+[I20260828 00:15:21.886721 1071161 OpenNIUSBLinux.cpp:346] Shutdown read thread...
+[I20260828 00:15:21.888152 1071401 OpenNIUSBLinux.cpp:287] Do not submit(4)...
+[I20260828 00:15:21.888223 1071401 OpenNIUSBLinux.cpp:218] Cancel request transfer(5)...
+[I20260828 00:15:21.888415 1071293 RequestLibusb.cpp:21] transfer cancelled!
+[I20260828 00:15:21.901125 1071400 FrameBufferManager.cpp:33] New frame buffer allocated=0.293365MB, total usage: {allocated=6.83101MB, max limit=2048MB}
+[W20260828 00:15:21.988401 1071401 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer 5: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20260828 00:15:21.988447 1071401 OpenNIUSBLinux.cpp:287] Do not submit(5)...
+[I20260828 00:15:21.988514 1071401 OpenNIUSBLinux.cpp:218] Cancel request transfer(12)...
+[I20260828 00:15:21.988646 1071293 RequestLibusb.cpp:21] transfer cancelled!
+[W20260828 00:15:22.088673 1071401 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer c: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20260828 00:15:22.088737 1071401 OpenNIDataProcessor.cpp:28] Depth: Expected 3032, got3352
+[I20260828 00:15:22.088768 1071401 OpenNIUSBLinux.cpp:287] Do not submit(12)...
+[I20260828 00:15:22.088831 1071401 OpenNIUSBLinux.cpp:218] Cancel request transfer(3)...
+[I20260828 00:15:22.089062 1071293 RequestLibusb.cpp:21] transfer cancelled!
+[W20260828 00:15:22.189139 1071401 OpenNIUSBLinux.cpp:244] Endpoint 0x81,Buffer 3: Failed waiting on asynch transfer event:OB_EVENT_TIMEOUT
+[I20260828 00:15:22.189220 1071401 OpenNIDataProcessor.cpp:28] Depth: Expected 3382, got3702
+[I20260828 00:15:22.189239 1071401 OpenNIFrameProcessor.cpp:96] Depth Frame Buffer overflow! current size: 351900
+[I20260828 00:15:22.189246 1071401 OpenNIFrameProcessor.cpp:89] Depth frame is corrupt!
+[E20260828 00:15:22.189266 1071401 OpenNIPacketProcessor.cpp:18] Write buffer overflow!
+[I20260828 00:15:22.189275 1071401 OpenNIUSBLinux.cpp:287] Do not submit(3)...
+[E20260828 00:15:22.189284 1071401 OpenNIUSBLinux.cpp:204] exist(0) read thread(4)...
+[W20260828 00:15:22.189323 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189361 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189371 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189380 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189390 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189399 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189407 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189416 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189425 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189433 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189442 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189451 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189459 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189467 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189476 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[W20260828 00:15:22.189484 1071161 MessengerLibusb.cpp:81] usb_request_cancel returned error, endpoint: 129 error: Resource temporarily unavailable, number: 11
+[I20260828 00:15:22.189493 1071161 OpenNIUSBLinux.cpp:380] Shutdown read thread end...
+[I20260828 00:15:22.189504 1071161 OpenNISensorParams.cpp:110] set property Stream1Mode(0).
+[I20260828 00:15:22.190375 1071161 OpenNISensorParams.cpp:121] Stream1Mode(0)was successfully set.
+[I20260828 00:15:22.191321 1071161 FrameProcessingBlock.cpp:72] FrameProcessingBlock@N11libobsensor13FrameUnpackerE process thread stoped!
+[I20260828 00:15:22.191332 1071161 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE,  obj addr:135232414026624
+[I20260828 00:15:22.191370 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.488685MB, total usage: {allocated=6.34233MB, max limit=2048MB}
+[I20260828 00:15:22.191426 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.488685MB, total usage: {allocated=5.85364MB, max limit=2048MB}
+[I20260828 00:15:22.191458 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.488685MB, total usage: {allocated=5.36496MB, max limit=2048MB}
+[I20260828 00:15:22.191674 1071161 FrameProcessingBlock.cpp:72] FrameProcessingBlock@N11libobsensor15FrameSoftFilterE process thread stoped!
+[I20260828 00:15:22.192047 1071161 FrameProcessingBlock.cpp:72] FrameProcessingBlock@N11libobsensor24Disparity2DepthConverterE process thread stoped!
+[I20260828 00:15:22.192061 1071161 FrameProcessor.cpp:75]  FrameProcessor stoped!
+[I20260828 00:15:22.192068 1071161 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE,  obj addr:811932304
+[I20260828 00:15:22.192076 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.336097MB, total usage: {allocated=5.02886MB, max limit=2048MB}
+[I20260828 00:15:22.192101 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.336097MB, total usage: {allocated=4.69276MB, max limit=2048MB}
+[I20260828 00:15:22.192129 1071161 OpenNISensorStreams.cpp:114] Erase FW Stream Depth
+[I20260828 00:15:22.192138 1071161 OpenNISensorStreams.cpp:124] released FW Stream Depth
+[E20260828 00:15:22.192143 1071161 OpenNIVideoSensor.cpp:634] OpenNI Depth stream stop success.
+[I20260828 00:15:22.192153 1071161 Pipeline.cpp:335] Sensor stop, sensorType=OB_SENSOR_DEPTH
+[I20260828 00:15:22.192166 1071161 VideoSensor.cpp:629] VideoSensor::stop, SensorType=OB_SENSOR_COLOR
+[I20260828 00:15:22.192183 1071161 ObUvcDevice.cpp:81] ObUvcDevice::stopStream()...
+[I20260828 00:15:22.241572 1071161 ObUvcDevice.cpp:85] ObUvcDevice::stopStream() done
+[I20260828 00:15:22.241607 1071161 VideoSensor.cpp:662] stream stoped! SensorType=OB_SENSOR_COLOR
+[I20260828 00:15:22.241618 1071161 FrameProcessor.cpp:75]  FrameProcessor stoped!
+[I20260828 00:15:22.241628 1071161 VideoSensor.cpp:671] VideoSensor::stop done, SensorType=OB_SENSOR_COLOR
+[I20260828 00:15:22.241632 1071161 Pipeline.cpp:335] Sensor stop, sensorType=OB_SENSOR_COLOR
+[I20260828 00:15:22.241636 1071161 Pipeline.cpp:341] Stop stream done!
+[I20260828 00:15:22.241655 1071161 OpenNISensorParams.cpp:110] set property Registration(0).
+[I20260828 00:15:22.241930 1071161 OpenNISensorParams.cpp:121] Registration(0)was successfully set.
+[I20260828 00:15:22.242518 1071161 FrameProcessingBlock.cpp:72] FrameProcessingBlock@N11libobsensor9D2CFilterE process thread stoped!
+[I20260828 00:15:22.243362 1071161 FrameProcessingBlock.cpp:72] FrameProcessingBlock@N11libobsensor17PostProcessFilterE process thread stoped!
+[I20260828 00:15:22.243392 1071161 FrameProcessingBlockManager.cpp:84]  FrameProcessingBlockManager stoped!
+[I20260828 00:15:22.243400 1071161 FrameProcessingBlockManager.cpp:20] Processing block list cleared!
+[I20260828 00:15:22.243415 1071161 Pipeline.cpp:379] Pipeline stop done!
+[I20260828 00:15:22.243422 1071161 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_10ColorFrameEEE,  obj addr:811809168
+[I20260828 00:15:22.243430 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.293365MB, total usage: {allocated=4.3994MB, max limit=2048MB}
+[I20260828 00:15:22.243446 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.293365MB, total usage: {allocated=4.10604MB, max limit=2048MB}
+[I20260828 00:15:22.243454 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.293365MB, total usage: {allocated=3.81267MB, max limit=2048MB}
+[I20260828 00:15:22.243461 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.293365MB, total usage: {allocated=3.51931MB, max limit=2048MB}
+[I20260828 00:15:22.243484 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.293365MB, total usage: {allocated=3.22594MB, max limit=2048MB}
+[I20260828 00:15:22.243494 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.293365MB, total usage: {allocated=2.93258MB, max limit=2048MB}
+[I20260828 00:15:22.243502 1071161 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_10DepthFrameEEE,  obj addr:135232078482736
+[I20260828 00:15:22.243558 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.586341MB, total usage: {allocated=2.34624MB, max limit=2048MB}
+[I20260828 00:15:22.243569 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.586341MB, total usage: {allocated=1.7599MB, max limit=2048MB}
+[I20260828 00:15:22.243577 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.586341MB, total usage: {allocated=1.17355MB, max limit=2048MB}
+[I20260828 00:15:22.243592 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.586341MB, total usage: {allocated=0.587214MB, max limit=2048MB}
+[I20260828 00:15:22.243635 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.586341MB, total usage: {allocated=0.000872612MB, max limit=2048MB}
+[I20260828 00:15:22.243705 1071161 Pipeline.cpp:71] Pipeline deInit start!
+[I20260828 00:15:22.243721 1071161 Pipeline.cpp:79] Pipeline deInit done!
+[I20260828 00:15:22.243736 1071161 FrameBufferManager.hpp:62] FrameBufferManager destroyed! @N11libobsensor18FrameBufferManagerINS_8FrameSetEEE,  obj addr:135232279808896
+[I20260828 00:15:22.243739 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.000174522MB, total usage: {allocated=0.00069809MB, max limit=2048MB}
+[I20260828 00:15:22.243748 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.000174522MB, total usage: {allocated=0.000523567MB, max limit=2048MB}
+[I20260828 00:15:22.243752 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.000174522MB, total usage: {allocated=0.000349045MB, max limit=2048MB}
+[I20260828 00:15:22.243755 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.000174522MB, total usage: {allocated=0.000174522MB, max limit=2048MB}
+[I20260828 00:15:22.243758 1071161 FrameBufferManager.cpp:54] Frame buffer released=0.000174522MB, total usage: {allocated=0MB, max limit=2048MB}
+[I20260828 00:15:22.243764 1071161 OpenNIDevice.cpp:33] ~OpenNIDevice done
+[I20260828 00:15:22.243769 1071161 VideoSensor.cpp:287] VideoSensor::~VideoSensor(), SensorType=OB_SENSOR_COLOR
+[I20260828 00:15:22.243777 1071161 OpenNIVideoSensor.cpp:962] OpenNIVideoSensor ::~OpenNIVideoSensor, sensorType=OB_SENSOR_DEPTH
+[I20260828 00:15:22.243804 1071161 FrameProcessor.cpp:557] try remove eventId: PropertyValueUpdate
+[I20260828 00:15:22.243809 1071161 FrameProcessor.cpp:557] try remove eventId: DepthStreamProfileChanged
+[I20260828 00:15:22.243865 1071161 VendorCommand.cpp:195] destructor 0x30621f30
+[I20260828 00:15:22.243870 1071161 VendorCommand.cpp:439] disableHeartBeat heartBeatHelper_: 0
+[I20260828 00:15:22.243875 1071161 HostProtocol.cpp:143] ~HostProtocol()
+[I20260828 00:15:22.243903 1071385 HostProtocol.cpp:171] emitTranDataFutureSignalThread_ finish
+[I20260828 00:15:22.243938 1071161 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20260828 00:15:22.244063 1071161 Context.cpp:55] Context destroying ...
+[I20260828 00:15:22.244068 1071161 DeviceManager.cpp:103] DeviceManager destroy ...
+[I20260828 00:15:22.244074 1071161 ContextLibusb.cpp:56] UsbContext::stopEventHandler()
+[I20260828 00:15:22.244225 1071161 DeviceManager.cpp:131] DeviceManager destroy done
+[I20260828 00:15:22.244230 1071161 DeviceManager.cpp:137] DeviceManager Destructors  done
