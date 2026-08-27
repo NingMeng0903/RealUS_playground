@@ -660,6 +660,15 @@ int main(int argc, char** argv) {
         out->V_d_proxy = tout.V_d_proxy;
         out->j4_design_slack = tout.j4_design_slack;
         out->sigma_slack = tout.sigma_slack;
+        out->rail_box_lo = tout.rail_box_lo;
+        out->rail_box_hi = tout.rail_box_hi;
+        out->rail_bind_lo = tout.rail_bind_lo;
+        out->rail_bind_hi = tout.rail_bind_hi;
+        out->rail_task_vel_used = tout.rail_task_vel_used;
+        out->rail_h1 = tout.rail_h1;
+        out->rail_h2 = tout.rail_h2;
+        out->rail_qdot_prev = tout.rail_qdot_prev;
+        out->rail_qdot_prev2 = tout.rail_qdot_prev2;
         out->flags = tout.flags;
         out->status = tout.status;
       }

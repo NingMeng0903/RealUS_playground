@@ -353,6 +353,15 @@ class JointIkStep:
     e_d: float = float("nan")
     V_d_proxy: float = float("nan")
     j4_design_slack: float = float("nan")
+    rail_box_lo: float = float("nan")
+    rail_box_hi: float = float("nan")
+    rail_bind_lo: float = float("nan")
+    rail_bind_hi: float = float("nan")
+    rail_task_vel_used: float = float("nan")
+    rail_h1: float = float("nan")
+    rail_h2: float = float("nan")
+    rail_qdot_prev: float = float("nan")
+    rail_qdot_prev2: float = float("nan")
     P_ext_trans: float = float("nan")
     comp_projected_frac: float = 0.0
     rail_coast_active: bool = False
@@ -2393,6 +2402,19 @@ class JointIkController:
         step.rail_task_vel = (
             float(rail_task_vel) if rail_task_vel is not None else float("nan")
         )
+        step.rail_box_lo = float(getattr(self.core, "last_rail_box_lo", float("nan")))
+        step.rail_box_hi = float(getattr(self.core, "last_rail_box_hi", float("nan")))
+        step.rail_bind_lo = float(getattr(self.core, "last_rail_bind_lo", float("nan")))
+        step.rail_bind_hi = float(getattr(self.core, "last_rail_bind_hi", float("nan")))
+        step.rail_task_vel_used = float(
+            getattr(self.core, "last_rail_task_vel_used", step.rail_task_vel)
+        )
+        step.rail_h1 = float(getattr(self.core, "last_rail_h1", float("nan")))
+        step.rail_h2 = float(getattr(self.core, "last_rail_h2", float("nan")))
+        step.rail_qdot_prev = float(getattr(self.core, "last_rail_qdot_prev", float("nan")))
+        step.rail_qdot_prev2 = float(
+            getattr(self.core, "last_rail_qdot_prev2", float("nan"))
+        )
         if self.rail_ext_task is not None:
             step.v_escape = float(self.rail_ext_task.last_v_escape)
             step.v_reach = float(self.rail_ext_task.last_v_reach)
@@ -3252,6 +3274,9 @@ class _TickLogger:
            "rail_feedback_age_s", "a_mirror_frac", "j_mirror_frac",
            "last_limit_saturated", "keep_task_weight",
            "pref_slack_scale", "rail_task_vel",
+           "rail_box_lo", "rail_box_hi", "rail_bind_lo", "rail_bind_hi",
+           "rail_task_vel_used", "rail_h1", "rail_h2",
+           "rail_qdot_prev", "rail_qdot_prev2",
            "v_escape", "v_reach", "v_ff_rail",
            "u_alloc", "u_posture", "u_mid", "v_r_ref",
            "u_task_raw", "u_task_feasible", "u_pi_raw", "u_mid_cmd",
@@ -4151,6 +4176,51 @@ class _TickLogger:
                (
                    f"{float(step.rail_task_vel):.6f}"
                    if np.isfinite(step.rail_task_vel)
+                   else ""
+               ),
+               (
+                   f"{float(step.rail_box_lo):.8f}"
+                   if np.isfinite(getattr(step, "rail_box_lo", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(step.rail_box_hi):.8f}"
+                   if np.isfinite(getattr(step, "rail_box_hi", float("nan")))
+                   else ""
+               ),
+               (
+                   str(int(step.rail_bind_lo))
+                   if np.isfinite(getattr(step, "rail_bind_lo", float("nan")))
+                   else ""
+               ),
+               (
+                   str(int(step.rail_bind_hi))
+                   if np.isfinite(getattr(step, "rail_bind_hi", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(step.rail_task_vel_used):.8f}"
+                   if np.isfinite(getattr(step, "rail_task_vel_used", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(step.rail_h1):.9e}"
+                   if np.isfinite(getattr(step, "rail_h1", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(step.rail_h2):.9e}"
+                   if np.isfinite(getattr(step, "rail_h2", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(step.rail_qdot_prev):.8f}"
+                   if np.isfinite(getattr(step, "rail_qdot_prev", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(step.rail_qdot_prev2):.8f}"
+                   if np.isfinite(getattr(step, "rail_qdot_prev2", float("nan")))
                    else ""
                ),
                f"{float(step.v_escape):.6f}" if np.isfinite(step.v_escape) else "",

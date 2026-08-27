@@ -211,6 +211,25 @@ InnerLoop::InnerLoop(const Config& cfg)
 
 void InnerLoop::enable() { enabled_ = true; }
 
+void InnerLoop::clear_rail_box_tel() {
+  rail_box_lo_ = 0.0;
+  rail_box_hi_ = 0.0;
+  rail_bind_lo_ = kRailBindNone;
+  rail_bind_hi_ = kRailBindNone;
+  rail_task_vel_used_ = 0.0;
+  rail_h1_ = 0.0;
+  rail_h2_ = 0.0;
+  rail_qdot_prev_tel_ = 0.0;
+  rail_qdot_prev2_tel_ = 0.0;
+}
+
+void InnerLoop::note_rail_bind(double old_lo, double old_hi, const Vec8& lo, const Vec8& hi,
+                               uint32_t stage) {
+  constexpr double kEps = 1.0e-12;
+  if (lo[0] > old_lo + kEps) rail_bind_lo_ = stage;
+  if (hi[0] < old_hi - kEps) rail_bind_hi_ = stage;
+}
+
 void InnerLoop::stop() {
   enabled_ = false;
   quiescent_ = true;
@@ -227,6 +246,7 @@ void InnerLoop::stop() {
   sec_lpf_.setZero();
   gN_lpf_.setZero();
   gN_lpf_init_ = false;
+  clear_rail_box_tel();
 }
 
 void InnerLoop::reset(const Vec8& q0) {
@@ -282,6 +302,7 @@ void InnerLoop::reset(const Vec8& q0) {
   sigma_row_active_ = false;
   sigma_grad_.setZero();
   sigma_tick_ = 0;
+  clear_rail_box_tel();
   task_weight_.reset();
   kin_.update(q0);
   posture_.reset(q0, kin_.fk_pose_at(q0));
@@ -381,6 +402,8 @@ void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const 
                                    Vec8* lo, Vec8* hi) {
   *lo = -v_max_;
   *hi = v_max_;
+  rail_bind_lo_ = kRailBindVMaxDamper;
+  rail_bind_hi_ = kRailBindVMaxDamper;
   Vec8 band = Vec8::Constant(cfg_.damper_band_rad);
   band[0] = cfg_.damper_band_rail;
   const Vec8 m = (Vec8() << cfg_.position_margin_rail_m,
@@ -390,84 +413,140 @@ void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const 
                      .finished();
   double q_rail_hi = std::max(q_geom[0], q_cmd[0]);
   double q_rail_lo = std::min(q_geom[0], q_cmd[0]);
-  for (int i = 0; i < kNv; ++i) {
-    const double b = std::max(band[i], 1e-9);
-    double d_hi = clip(((q_hi_[i] - m[i]) - q_geom[i]) / b, 0.0, 1.0);
-    double d_lo = clip((q_geom[i] - (q_lo_[i] + m[i])) / b, 0.0, 1.0);
-    if (band[i] <= 1e-9) {
-      d_hi = 1.0;
-      d_lo = 1.0;
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    for (int i = 0; i < kNv; ++i) {
+      const double b = std::max(band[i], 1e-9);
+      double d_hi = clip(((q_hi_[i] - m[i]) - q_geom[i]) / b, 0.0, 1.0);
+      double d_lo = clip((q_geom[i] - (q_lo_[i] + m[i])) / b, 0.0, 1.0);
+      if (band[i] <= 1e-9) {
+        d_hi = 1.0;
+        d_lo = 1.0;
+      }
+      (*hi)[i] = std::min((*hi)[i], v_max_[i] * d_hi);
+      (*lo)[i] = std::max((*lo)[i], -v_max_[i] * d_lo);
     }
-    (*hi)[i] = std::min((*hi)[i], v_max_[i] * d_hi);
-    (*lo)[i] = std::max((*lo)[i], -v_max_[i] * d_lo);
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindVMaxDamper);
   }
   if (band[0] > 1e-9) {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
     const double b0 = band[0];
     const double d_hi = clip((q_hi_[0] - m[0] - q_rail_hi) / b0, 0.0, 1.0);
     const double d_lo = clip((q_rail_lo - q_lo_[0] - m[0]) / b0, 0.0, 1.0);
     (*hi)[0] = std::min((*hi)[0], v_max_[0] * d_hi);
     (*lo)[0] = std::max((*lo)[0], -v_max_[0] * d_lo);
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindCmdDamper);
   }
-  double lo_cap, hi_cap;
-  wall_cap(q_geom[0], q_lo_[0] + m[0], q_hi_[0] - m[0], a_max_[0], cfg_.rail_reaction_s, &lo_cap,
-           &hi_cap);
-  double lo_hi, hi_hi, lo_lo, hi_lo;
-  wall_cap(q_rail_hi, q_lo_[0] + m[0], q_hi_[0] - m[0], a_max_[0], cfg_.rail_reaction_s, &lo_hi,
-           &hi_hi);
-  wall_cap(q_rail_lo, q_lo_[0] + m[0], q_hi_[0] - m[0], a_max_[0], cfg_.rail_reaction_s, &lo_lo,
-           &hi_lo);
-  (*hi)[0] = std::min({(*hi)[0], hi_cap, hi_hi, hi_lo});
-  (*lo)[0] = std::max({(*lo)[0], lo_cap, lo_hi, lo_lo});
-  for (int i = 0; i < kNv; ++i) {
-    double p_lo = (q_lo_[i] + m[i] - q_geom[i]) / dt;
-    double p_hi = (q_hi_[i] - m[i] - q_geom[i]) / dt;
-    if (i == 0) {
-      if (q_geom[0] < q_lo_[0] + m[0]) p_lo = std::min(p_lo, 0.0);
-      if (q_geom[0] > q_hi_[0] - m[0]) p_hi = std::max(p_hi, 0.0);
-    }
-    (*lo)[i] = std::max((*lo)[i], p_lo);
-    (*hi)[i] = std::min((*hi)[i], p_hi);
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    double lo_cap, hi_cap;
+    wall_cap(q_geom[0], q_lo_[0] + m[0], q_hi_[0] - m[0], a_max_[0], cfg_.rail_reaction_s, &lo_cap,
+             &hi_cap);
+    double lo_hi, hi_hi, lo_lo, hi_lo;
+    wall_cap(q_rail_hi, q_lo_[0] + m[0], q_hi_[0] - m[0], a_max_[0], cfg_.rail_reaction_s, &lo_hi,
+             &hi_hi);
+    wall_cap(q_rail_lo, q_lo_[0] + m[0], q_hi_[0] - m[0], a_max_[0], cfg_.rail_reaction_s, &lo_lo,
+             &hi_lo);
+    (*hi)[0] = std::min({(*hi)[0], hi_cap, hi_hi, hi_lo});
+    (*lo)[0] = std::max({(*lo)[0], lo_cap, lo_hi, lo_lo});
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindWallCap);
   }
-  collapse_interval(lo, hi, &qdot_prev_, &a_max_, dt);
-  const double a_dt = h1;
-  for (int i = 0; i < kNv; ++i) {
-    (*lo)[i] = std::max((*lo)[i], qdot_prev_[i] - a_max_[i] * a_dt);
-    (*hi)[i] = std::min((*hi)[i], qdot_prev_[i] + a_max_[i] * a_dt);
-  }
-  collapse_interval(lo, hi, &qdot_prev_, &a_max_, dt);
-  if (std::isfinite(h2) && h2 > 1e-9) {
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
     for (int i = 0; i < kNv; ++i) {
-      const double centre = qdot_prev_[i] + (a_dt / h2) * (qdot_prev_[i] - qdot_prev2_[i]);
-      const double span = j_max_[i] * a_dt * a_dt;
-      (*lo)[i] = std::max((*lo)[i], centre - span);
-      (*hi)[i] = std::min((*hi)[i], centre + span);
+      double p_lo = (q_lo_[i] + m[i] - q_geom[i]) / dt;
+      double p_hi = (q_hi_[i] - m[i] - q_geom[i]) / dt;
+      if (i == 0) {
+        if (q_geom[0] < q_lo_[0] + m[0]) p_lo = std::min(p_lo, 0.0);
+        if (q_geom[0] > q_hi_[0] - m[0]) p_hi = std::max(p_hi, 0.0);
+      }
+      (*lo)[i] = std::max((*lo)[i], p_lo);
+      (*hi)[i] = std::min((*hi)[i], p_hi);
     }
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindPosBound);
+  }
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
     collapse_interval(lo, hi, &qdot_prev_, &a_max_, dt);
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindCollapse);
+  }
+  const double a_dt = h1;
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    for (int i = 0; i < kNv; ++i) {
+      (*lo)[i] = std::max((*lo)[i], qdot_prev_[i] - a_max_[i] * a_dt);
+      (*hi)[i] = std::min((*hi)[i], qdot_prev_[i] + a_max_[i] * a_dt);
+    }
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindAccel);
+  }
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    collapse_interval(lo, hi, &qdot_prev_, &a_max_, dt);
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindCollapse);
+  }
+  if (std::isfinite(h2) && h2 > 1e-9) {
+    {
+      const double olo = (*lo)[0];
+      const double ohi = (*hi)[0];
+      for (int i = 0; i < kNv; ++i) {
+        const double centre = qdot_prev_[i] + (a_dt / h2) * (qdot_prev_[i] - qdot_prev2_[i]);
+        const double span = j_max_[i] * a_dt * a_dt;
+        (*lo)[i] = std::max((*lo)[i], centre - span);
+        (*hi)[i] = std::min((*hi)[i], centre + span);
+      }
+      note_rail_bind(olo, ohi, *lo, *hi, kRailBindJerk);
+    }
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    collapse_interval(lo, hi, &qdot_prev_, &a_max_, dt);
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindCollapse);
   }
   Vec8 re = Vec8::Constant(cfg_.resync_err_rad);
   re[0] = cfg_.resync_err_rail_m;
-  for (int i = 0; i < kNv; ++i) {
-    if (re[i] <= 0.0) continue;
-    double lead = q_cmd[i] - q_meas[i];
-    if (lead_exempt && i == 0) lead = 0.0;
-    const double reaction = (i == 0) ? cfg_.rail_reaction_s : dt;
-    const double toward_hi = stopping_velocity(re[i] - lead, a_max_[i], reaction);
-    const double toward_lo = -stopping_velocity(re[i] + lead, a_max_[i], reaction);
-    double chi = std::min((*hi)[i], toward_hi);
-    double clo = std::max((*lo)[i], toward_lo);
-    if (clo > chi) {
-      if (lead >= 0.0) chi = clo;
-      else clo = chi;
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    for (int i = 0; i < kNv; ++i) {
+      if (re[i] <= 0.0) continue;
+      double lead = q_cmd[i] - q_meas[i];
+      if (lead_exempt && i == 0) lead = 0.0;
+      const double reaction = (i == 0) ? cfg_.rail_reaction_s : dt;
+      const double toward_hi = stopping_velocity(re[i] - lead, a_max_[i], reaction);
+      const double toward_lo = -stopping_velocity(re[i] + lead, a_max_[i], reaction);
+      double chi = std::min((*hi)[i], toward_hi);
+      double clo = std::max((*lo)[i], toward_lo);
+      if (clo > chi) {
+        if (lead >= 0.0) chi = clo;
+        else clo = chi;
+      }
+      (*hi)[i] = chi;
+      (*lo)[i] = clo;
     }
-    (*hi)[i] = chi;
-    (*lo)[i] = clo;
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindLead);
   }
-  collapse_interval(lo, hi, &qdot_prev_, &a_max_, dt);
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    collapse_interval(lo, hi, &qdot_prev_, &a_max_, dt);
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindCollapse);
+  }
   if (has_pin) {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
     const double v = clip(rail_pin, (*lo)[0], (*hi)[0]);
     (*lo)[0] = v;
     (*hi)[0] = v;
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindPin);
   } else if (rail_locked) {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
     const double prev = qdot_prev_[0];
     double target = 0.0;
     if (std::abs(prev) <= cfg_.lock_vel_eps && (*lo)[0] <= 0.0 && 0.0 <= (*hi)[0]) {
@@ -478,6 +557,7 @@ void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const 
     }
     (*lo)[0] = target;
     (*hi)[0] = target;
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindLocked);
   }
 }
 
@@ -533,11 +613,28 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     J_task.col(0).setZero();
     b_task = v_cmd - rail_contrib;
   }
+  rail_task_vel_used_ = rail_task_vel;
+  rail_h1_ = h1;
+  rail_h2_ = h2;
+  rail_qdot_prev_tel_ = qdot_prev_[0];
+  rail_qdot_prev2_tel_ = qdot_prev2_[0];
   Vec8 lo_box, hi_box;
   apply_velocity_box(q_geom, q_prev, q_geom, dt, h1, h2, rail_locked, rail_pin, has_pin,
                      lead_exempt, &lo_box, &hi_box);
-  tighten_branch(q_geom, rail_open, &lo_box, &hi_box);
-  collapse_interval(&lo_box, &hi_box, &qdot_prev_, &a_max_, dt);
+  {
+    const double olo = lo_box[0];
+    const double ohi = hi_box[0];
+    tighten_branch(q_geom, rail_open, &lo_box, &hi_box);
+    note_rail_bind(olo, ohi, lo_box, hi_box, kRailBindBranch);
+  }
+  {
+    const double olo = lo_box[0];
+    const double ohi = hi_box[0];
+    collapse_interval(&lo_box, &hi_box, &qdot_prev_, &a_max_, dt);
+    note_rail_bind(olo, ohi, lo_box, hi_box, kRailBindCollapse);
+  }
+  rail_box_lo_ = lo_box[0];
+  rail_box_hi_ = hi_box[0];
 
   MatX C = MatX::Zero(kNIn, kNVar);
   VecX lo = VecX::Constant(kNIn, -1e20);
@@ -1292,6 +1389,15 @@ TickOut InnerLoop::step(const TickIn& in) {
   out.V_d_proxy = V_d_proxy_;
   out.j4_design_slack = j4_design_slack_;
   out.sigma_slack = sigma_slack_;
+  out.rail_box_lo = rail_box_lo_;
+  out.rail_box_hi = rail_box_hi_;
+  out.rail_bind_lo = rail_bind_lo_;
+  out.rail_bind_hi = rail_bind_hi_;
+  out.rail_task_vel_used = rail_task_vel_used_;
+  out.rail_h1 = rail_h1_;
+  out.rail_h2 = rail_h2_;
+  out.rail_qdot_prev = rail_qdot_prev_tel_;
+  out.rail_qdot_prev2 = rail_qdot_prev2_tel_;
   {
     const Vec6 twist_rail = J.col(0) * rail_exec;
     const Vec6 twist_arm = J.rightCols<7>() * qdot.tail<7>();

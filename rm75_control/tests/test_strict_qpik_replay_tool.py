@@ -120,7 +120,13 @@ def test_replay_csv_writes_strict_qpik_diagnostics(tmp_path: Path) -> None:
         "history_mode",
         "snapshot_q_prev_json",
         "timing_over_5ms",
+        "rail_box_lo",
+        "rail_bind_hi",
+        "rail_task_vel_used",
     }.issubset(written[0])
+    assert "rail_box" in summary
+    assert summary["rail_box"]["rows"] == 3
+    assert "bind_hi_hist" in summary["rail_box"]
 
 
 def test_replay_stride_and_max_rows_select_source_rows(tmp_path: Path) -> None:

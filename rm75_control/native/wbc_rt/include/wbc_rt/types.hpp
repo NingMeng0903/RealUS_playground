@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <utility>
 
@@ -15,6 +16,23 @@ constexpr int kNPref = 9;
 constexpr int kMaxCbf = 8;
 constexpr int kMaxPrefRows = 16;
 constexpr int kNTaskSlack = 6;
+
+// Last stage that strictly tightened the rail velocity bound.  0 means the
+// box is still the initial ±v_max (or unset after reset).
+enum RailBindStage : uint32_t {
+  kRailBindNone = 0,
+  kRailBindVMaxDamper = 1,
+  kRailBindCmdDamper = 2,
+  kRailBindWallCap = 3,
+  kRailBindPosBound = 4,
+  kRailBindAccel = 5,
+  kRailBindJerk = 6,
+  kRailBindLead = 7,
+  kRailBindPin = 8,
+  kRailBindLocked = 9,
+  kRailBindBranch = 10,
+  kRailBindCollapse = 11,
+};
 
 using Vec6 = Eigen::Matrix<double, 6, 1>;
 using Vec8 = Eigen::Matrix<double, 8, 1>;

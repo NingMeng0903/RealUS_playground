@@ -61,9 +61,13 @@ from rm75_control.control.joint_admittance_8dof.filters import (
     first_order_lpf_vec,
 )
 from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
+    RAIL_BIND_BRANCH,
+    RAIL_BIND_COLLAPSE,
+    RAIL_BIND_NONE,
     VelocityBoxConstraints,
     build_wbc_inequalities,
     collapse_interval,
+    note_rail_bind,
 )
 from rm75_control.control.joint_admittance_8dof.solver.sigma_setbased import (
     PrefInequalityRows,
@@ -507,6 +511,15 @@ class QpIkController:
         self.last_final_hard_violation = 0.0
         self.last_lo_box = np.full(kin.nv, -np.inf, dtype=float)
         self.last_hi_box = np.full(kin.nv, np.inf, dtype=float)
+        self.last_rail_box_lo = 0.0
+        self.last_rail_box_hi = 0.0
+        self.last_rail_bind_lo = RAIL_BIND_NONE
+        self.last_rail_bind_hi = RAIL_BIND_NONE
+        self.last_rail_task_vel_used = 0.0
+        self.last_rail_h1 = 0.0
+        self.last_rail_h2 = 0.0
+        self.last_rail_qdot_prev = 0.0
+        self.last_rail_qdot_prev2 = 0.0
         self.last_qp2_seed_violation = 0.0
         self.last_qp2_seed_equality = 0.0
         # Final-publication certificate.  Retain the qdot-only hard set and
@@ -623,6 +636,15 @@ class QpIkController:
         self.last_final_hard_violation = 0.0
         self.last_lo_box = np.full(self.kin.nv, -np.inf, dtype=float)
         self.last_hi_box = np.full(self.kin.nv, np.inf, dtype=float)
+        self.last_rail_box_lo = 0.0
+        self.last_rail_box_hi = 0.0
+        self.last_rail_bind_lo = RAIL_BIND_NONE
+        self.last_rail_bind_hi = RAIL_BIND_NONE
+        self.last_rail_task_vel_used = 0.0
+        self.last_rail_h1 = 0.0
+        self.last_rail_h2 = 0.0
+        self.last_rail_qdot_prev = 0.0
+        self.last_rail_qdot_prev2 = 0.0
         self.last_qp2_seed_violation = 0.0
         self.last_qp2_seed_equality = 0.0
         self.last_hard_cbf_jacobian = np.zeros((0, self.kin.nv), dtype=float)
@@ -1064,6 +1086,9 @@ class QpIkController:
                 else False
             ),
         )
+        bind_lo = int(self.constraints.last_rail_bind_lo)
+        bind_hi = int(self.constraints.last_rail_bind_hi)
+        olo, ohi = float(lo_box[0]), float(hi_box[0])
         lo_box, hi_box = self.branch_barrier.tighten_box(
             lo_box,
             hi_box,
@@ -1074,6 +1099,10 @@ class QpIkController:
             q_lower=self.constraints.lim.q_lower,
             q_upper=self.constraints.lim.q_upper,
         )
+        bind_lo, bind_hi = note_rail_bind(
+            bind_lo, bind_hi, olo, ohi, lo_box[0], hi_box[0], RAIL_BIND_BRANCH
+        )
+        olo, ohi = float(lo_box[0]), float(hi_box[0])
         lo_box, hi_box = collapse_interval(
             lo_box,
             hi_box,
@@ -1081,8 +1110,27 @@ class QpIkController:
             a_max=self.constraints.lim.a_max,
             dt=dt,
         )
+        bind_lo, bind_hi = note_rail_bind(
+            bind_lo, bind_hi, olo, ohi, lo_box[0], hi_box[0], RAIL_BIND_COLLAPSE
+        )
         self.last_lo_box = np.asarray(lo_box, dtype=float).copy()
         self.last_hi_box = np.asarray(hi_box, dtype=float).copy()
+        self.last_rail_box_lo = float(lo_box[0])
+        self.last_rail_box_hi = float(hi_box[0])
+        self.last_rail_bind_lo = int(bind_lo)
+        self.last_rail_bind_hi = int(bind_hi)
+        if rail_task_vel_m_s is not None and np.isfinite(float(rail_task_vel_m_s)):
+            self.last_rail_task_vel_used = float(rail_task_vel_m_s)
+        else:
+            self.last_rail_task_vel_used = 0.0
+        self.last_rail_h1 = float(
+            box_h1 if box_h1 is not None else (box_dt if box_dt is not None else dt)
+        )
+        self.last_rail_h2 = (
+            float(box_h2) if box_h2 is not None and np.isfinite(float(box_h2)) else float("nan")
+        )
+        self.last_rail_qdot_prev = float(self.qdot_prev[0])
+        self.last_rail_qdot_prev2 = float(self.qdot_prev2[0])
         if self.collision is not None and self.collision_cfg.enabled:
             cbf = build_cbf_rows(
                 self.collision,

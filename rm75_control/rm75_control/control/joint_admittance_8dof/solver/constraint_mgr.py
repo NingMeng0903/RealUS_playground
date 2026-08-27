@@ -11,6 +11,54 @@ import numpy as np
 from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import CbfRows
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 
+RAIL_BIND_NONE = 0
+RAIL_BIND_VMAX_DAMPER = 1
+RAIL_BIND_CMD_DAMPER = 2
+RAIL_BIND_WALL_CAP = 3
+RAIL_BIND_POS_BOUND = 4
+RAIL_BIND_ACCEL = 5
+RAIL_BIND_JERK = 6
+RAIL_BIND_LEAD = 7
+RAIL_BIND_PIN = 8
+RAIL_BIND_LOCKED = 9
+RAIL_BIND_BRANCH = 10
+RAIL_BIND_COLLAPSE = 11
+
+RAIL_BIND_NAMES = {
+    RAIL_BIND_NONE: "none",
+    RAIL_BIND_VMAX_DAMPER: "v_max_damper",
+    RAIL_BIND_CMD_DAMPER: "cmd_damper",
+    RAIL_BIND_WALL_CAP: "wall_cap",
+    RAIL_BIND_POS_BOUND: "pos_bound",
+    RAIL_BIND_ACCEL: "accel",
+    RAIL_BIND_JERK: "jerk",
+    RAIL_BIND_LEAD: "lead",
+    RAIL_BIND_PIN: "pin",
+    RAIL_BIND_LOCKED: "locked",
+    RAIL_BIND_BRANCH: "tighten_branch",
+    RAIL_BIND_COLLAPSE: "collapse_interval",
+}
+
+_BIND_EPS = 1.0e-12
+
+
+def note_rail_bind(
+    bind_lo: int,
+    bind_hi: int,
+    old_lo: float,
+    old_hi: float,
+    new_lo: float,
+    new_hi: float,
+    stage: int,
+) -> tuple[int, int]:
+    """Return updated rail bind ids if ``stage`` strictly tightened a bound."""
+
+    if float(new_lo) > float(old_lo) + _BIND_EPS:
+        bind_lo = int(stage)
+    if float(new_hi) < float(old_hi) - _BIND_EPS:
+        bind_hi = int(stage)
+    return bind_lo, bind_hi
+
 
 def collapse_interval(
     lo: np.ndarray,
@@ -97,6 +145,10 @@ class VelocityBoxConstraints:
         self.damper_band_rad = np.asarray(damper_band_rad, dtype=float)
         # Extra look-ahead on the rail stopping envelope.  0 falls back to dt.
         self.rail_reaction_s = max(float(rail_reaction_s), 0.0)
+        self.last_rail_bind_lo = RAIL_BIND_NONE
+        self.last_rail_bind_hi = RAIL_BIND_NONE
+        self.last_rail_box_lo = float("nan")
+        self.last_rail_box_hi = float("nan")
 
     def bounds(
         self,
@@ -132,6 +184,8 @@ class VelocityBoxConstraints:
 
         lo = -lim.v_max.copy()
         hi = lim.v_max.copy()
+        bind_lo = RAIL_BIND_VMAX_DAMPER
+        bind_hi = RAIL_BIND_VMAX_DAMPER
 
         m = lim.position_margin
         q_cmd_arr = None
@@ -166,13 +220,18 @@ class VelocityBoxConstraints:
             # Joints with band <= 0 keep the full velocity box.
             d_hi = np.where(band > 1e-9, d_hi, 1.0)
             d_lo = np.where(band > 1e-9, d_lo, 1.0)
+            olo, ohi = float(lo[0]), float(hi[0])
             hi = np.minimum(hi, lim.v_max * d_hi)
             lo = np.maximum(lo, -lim.v_max * d_lo)
+            bind_lo, bind_hi = note_rail_bind(
+                bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_VMAX_DAMPER
+            )
             # Rail linear taper uses the leading state so a few millimetres
             # of command lead / servo overshoot cannot skip the cone.
             m0 = float(np.broadcast_to(np.asarray(m, dtype=float).reshape(-1), q.shape)[0])
             b0 = float(np.broadcast_to(band, q.shape)[0])
             if b0 > 1e-9:
+                olo, ohi = float(lo[0]), float(hi[0])
                 d_hi[0] = float(
                     np.clip((float(lim.q_upper[0]) - m0 - q_rail_hi) / b0, 0.0, 1.0)
                 )
@@ -181,6 +240,9 @@ class VelocityBoxConstraints:
                 )
                 hi[0] = min(float(hi[0]), float(lim.v_max[0]) * float(d_hi[0]))
                 lo[0] = max(float(lo[0]), -float(lim.v_max[0]) * float(d_lo[0]))
+                bind_lo, bind_hi = note_rail_bind(
+                    bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_CMD_DAMPER
+                )
 
         m = np.broadcast_to(np.asarray(m, dtype=float), q.shape)
         a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()
@@ -214,8 +276,12 @@ class VelocityBoxConstraints:
                     a_max=float(a_max[0]),
                     reaction_s=float(self.rail_reaction_s),
                 )
+                olo, ohi = float(lo[0]), float(hi[0])
                 hi[0] = min(float(hi[0]), hi_cap, hi_hi, hi_lo)
                 lo[0] = max(float(lo[0]), lo_cap, lo_hi, lo_lo)
+                bind_lo, bind_hi = note_rail_bind(
+                    bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_WALL_CAP
+                )
 
         p_lo = (lim.q_lower + m - q) / dt
         p_hi = (lim.q_upper - m - q) / dt
@@ -228,19 +294,35 @@ class VelocityBoxConstraints:
             p_lo[0] = min(float(p_lo[0]), 0.0)
         if q[0] > rail_hi:
             p_hi[0] = max(float(p_hi[0]), 0.0)
+        olo, ohi = float(lo[0]), float(hi[0])
         lo = np.maximum(lo, p_lo)
         hi = np.minimum(hi, p_hi)
+        bind_lo, bind_hi = note_rail_bind(
+            bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_POS_BOUND
+        )
+        olo, ohi = float(lo[0]), float(hi[0])
         lo, hi = collapse_interval(
             lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
+        )
+        bind_lo, bind_hi = note_rail_bind(
+            bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_COLLAPSE
         )
 
         if a_max is not None and qdot_prev is not None:
             qdot_prev = np.asarray(qdot_prev, dtype=float)
             a = a_max * a_dt
+            olo, ohi = float(lo[0]), float(hi[0])
             lo = np.maximum(lo, qdot_prev - a)
             hi = np.minimum(hi, qdot_prev + a)
+            bind_lo, bind_hi = note_rail_bind(
+                bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_ACCEL
+            )
+            olo, ohi = float(lo[0]), float(hi[0])
             lo, hi = collapse_interval(
                 lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
+            )
+            bind_lo, bind_hi = note_rail_bind(
+                bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_COLLAPSE
             )
 
         # Third order.  Velocity and acceleration boxes still permit the
@@ -262,10 +344,18 @@ class VelocityBoxConstraints:
             else:
                 centre = np.asarray(qdot_prev, dtype=float)
             span = np.asarray(j_max, dtype=float) * a_dt * a_dt
+            olo, ohi = float(lo[0]), float(hi[0])
             lo = np.maximum(lo, centre - span)
             hi = np.minimum(hi, centre + span)
+            bind_lo, bind_hi = note_rail_bind(
+                bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_JERK
+            )
+            olo, ohi = float(lo[0]), float(hi[0])
             lo, hi = collapse_interval(
                 lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
+            )
+            bind_lo, bind_hi = note_rail_bind(
+                bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_COLLAPSE
             )
 
         # Command lead is an anti-windup envelope, not a physical joint limit.
@@ -314,10 +404,18 @@ class VelocityBoxConstraints:
                 candidate_lo = np.where(
                     crossed & (lead < 0.0), candidate_hi, candidate_lo
                 )
+                olo, ohi = float(lo[0]), float(hi[0])
                 hi = np.where(active, candidate_hi, hi)
                 lo = np.where(active, candidate_lo, lo)
+                bind_lo, bind_hi = note_rail_bind(
+                    bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_LEAD
+                )
+                olo, ohi = float(lo[0]), float(hi[0])
                 lo, hi = collapse_interval(
                     lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
+                )
+                bind_lo, bind_hi = note_rail_bind(
+                    bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_COLLAPSE
                 )
 
         if rail_vel_pin_m_s is not None:
@@ -328,8 +426,12 @@ class VelocityBoxConstraints:
             # box; it may pin the closest executable velocity, never replace
             # velocity/position/acceleration/command-lead bounds.
             v_safe = float(np.clip(v, lo[0], hi[0]))
+            olo, ohi = float(lo[0]), float(hi[0])
             lo[0] = v_safe
             hi[0] = v_safe
+            bind_lo, bind_hi = note_rail_bind(
+                bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_PIN
+            )
         elif rail_locked:
             eps = max(float(rail_lock_vel_eps_m_s), 0.0)
             previous = 0.0 if qdot_prev is None else float(qdot_prev[0])
@@ -345,9 +447,17 @@ class VelocityBoxConstraints:
                 target = float(np.clip(target, lo[0], hi[0]))
             else:
                 target = float(np.clip(0.0, lo[0], hi[0]))
+            olo, ohi = float(lo[0]), float(hi[0])
             lo[0] = target
             hi[0] = target
+            bind_lo, bind_hi = note_rail_bind(
+                bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_LOCKED
+            )
 
+        self.last_rail_bind_lo = int(bind_lo)
+        self.last_rail_bind_hi = int(bind_hi)
+        self.last_rail_box_lo = float(lo[0])
+        self.last_rail_box_hi = float(hi[0])
         return lo, hi
 
 
@@ -416,8 +526,22 @@ def build_wbc_inequalities(
 
 
 __all__ = [
+    "RAIL_BIND_ACCEL",
+    "RAIL_BIND_BRANCH",
+    "RAIL_BIND_CMD_DAMPER",
+    "RAIL_BIND_COLLAPSE",
+    "RAIL_BIND_JERK",
+    "RAIL_BIND_LEAD",
+    "RAIL_BIND_LOCKED",
+    "RAIL_BIND_NAMES",
+    "RAIL_BIND_NONE",
+    "RAIL_BIND_PIN",
+    "RAIL_BIND_POS_BOUND",
+    "RAIL_BIND_VMAX_DAMPER",
+    "RAIL_BIND_WALL_CAP",
     "VelocityBoxConstraints",
     "build_wbc_inequalities",
     "collapse_interval",
+    "note_rail_bind",
     "stopping_velocity",
 ]

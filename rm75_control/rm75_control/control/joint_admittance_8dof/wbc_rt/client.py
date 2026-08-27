@@ -451,11 +451,29 @@ class NativeWbcClient:
             V_d_proxy=float(o["V_d_proxy"]),
             j4_design_slack=float(o["j4_design_slack"]),
             qpik_dexterity_slack=float(o["sigma_slack"]),
+            rail_box_lo=float(o["rail_box_lo"]),
+            rail_box_hi=float(o["rail_box_hi"]),
+            rail_bind_lo=int(o["rail_bind_lo"]),
+            rail_bind_hi=int(o["rail_bind_hi"]),
+            rail_task_vel_used=float(o["rail_task_vel_used"]),
+            rail_h1=float(o["rail_h1"]),
+            rail_h2=float(o["rail_h2"]),
+            rail_qdot_prev=float(o["rail_qdot_prev"]),
+            rail_qdot_prev2=float(o["rail_qdot_prev2"]),
         )
         self.ctrl.last_secondary_norm = float(step.nullspace_norm)
         self.ctrl.last_sat_scale = float(step.sat_scale)
         if hasattr(self.ctrl, "core") and self.ctrl.core is not None:
             self.ctrl.core.last_dexterity_slack = float(o["sigma_slack"])
+            self.ctrl.core.last_rail_box_lo = float(o["rail_box_lo"])
+            self.ctrl.core.last_rail_box_hi = float(o["rail_box_hi"])
+            self.ctrl.core.last_rail_bind_lo = int(o["rail_bind_lo"])
+            self.ctrl.core.last_rail_bind_hi = int(o["rail_bind_hi"])
+            self.ctrl.core.last_rail_task_vel_used = float(o["rail_task_vel_used"])
+            self.ctrl.core.last_rail_h1 = float(o["rail_h1"])
+            self.ctrl.core.last_rail_h2 = float(o["rail_h2"])
+            self.ctrl.core.last_rail_qdot_prev = float(o["rail_qdot_prev"])
+            self.ctrl.core.last_rail_qdot_prev2 = float(o["rail_qdot_prev2"])
         if self.ctrl.rail_ext_task is not None and np.isfinite(float(o["d_pref"])):
             self.ctrl.rail_ext_task.d_pref_m = float(o["d_pref"])
         if self.ctrl.posture_retarget is not None:

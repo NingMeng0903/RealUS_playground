@@ -163,11 +163,20 @@ struct WbcOut {
   double V_d_proxy;
   double j4_design_slack;
   double sigma_slack;
+  double rail_box_lo;
+  double rail_box_hi;
+  uint32_t rail_bind_lo;
+  uint32_t rail_bind_hi;
+  double rail_task_vel_used;
+  double rail_h1;
+  double rail_h2;
+  double rail_qdot_prev;
+  double rail_qdot_prev2;
 };
 #pragma pack(pop)
 
 static_assert(sizeof(WbcIn) == 608, "WbcIn layout drift");
-static_assert(sizeof(WbcOut) == 760, "WbcOut layout drift");
+static_assert(sizeof(WbcOut) == 824, "WbcOut layout drift");
 
 inline void clear_in(WbcIn* s) {
   std::memset(s, 0, sizeof(WbcIn));

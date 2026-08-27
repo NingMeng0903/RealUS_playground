@@ -92,6 +92,15 @@ struct TickOut {
   double V_d_proxy = 0.0;
   double j4_design_slack = 0.0;
   double sigma_slack = 0.0;
+  double rail_box_lo = 0.0;
+  double rail_box_hi = 0.0;
+  uint32_t rail_bind_lo = 0;
+  uint32_t rail_bind_hi = 0;
+  double rail_task_vel_used = 0.0;
+  double rail_h1 = 0.0;
+  double rail_h2 = 0.0;
+  double rail_qdot_prev = 0.0;
+  double rail_qdot_prev2 = 0.0;
 };
 
 class Collision {
@@ -134,6 +143,9 @@ class InnerLoop {
                           double rail_pin, bool has_pin, bool lead_exempt,
                           Vec8* lo, Vec8* hi);
   void tighten_branch(const Vec8& q, bool rail_open, Vec8* lo, Vec8* hi);
+  void clear_rail_box_tel();
+  void note_rail_bind(double old_lo, double old_hi, const Vec8& lo, const Vec8& hi,
+                      uint32_t stage);
   bool solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom,
                  const Vec8& q_prev, const Vec8& qdot_nom, double rail_exec,
                  bool has_rail_exec, double rail_task_vel, double rail_w,
@@ -206,6 +218,15 @@ class InnerLoop {
   double V_d_proxy_ = 0.0;
   double j4_design_slack_ = 0.0;
   double sigma_slack_ = 0.0;
+  double rail_box_lo_ = 0.0;
+  double rail_box_hi_ = 0.0;
+  uint32_t rail_bind_lo_ = 0;
+  uint32_t rail_bind_hi_ = 0;
+  double rail_task_vel_used_ = 0.0;
+  double rail_h1_ = 0.0;
+  double rail_h2_ = 0.0;
+  double rail_qdot_prev_tel_ = 0.0;
+  double rail_qdot_prev2_tel_ = 0.0;
   double q_hat_ = 0.0;
   double v_hat_ = 0.0;
   bool obs_init_ = false;

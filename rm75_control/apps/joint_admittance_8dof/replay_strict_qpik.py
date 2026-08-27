@@ -171,6 +171,44 @@ def _p0_acceptance_fields(controller: JointIkController, core: Any) -> dict[str,
     }
 
 
+def _rail_box_fields(controller: JointIkController, core: Any, step: Any) -> dict[str, Any]:
+    """Scalar rail-box attribution for one replayed tick."""
+
+    qdot0 = float(np.asarray(getattr(step, "qdot", np.full(8, np.nan)), dtype=float).reshape(-1)[0])
+    used = float(getattr(step, "rail_task_vel_used", float("nan")))
+    if not np.isfinite(used):
+        used = float(getattr(core, "last_rail_task_vel_used", float("nan")))
+    lo = float(getattr(step, "rail_box_lo", getattr(core, "last_rail_box_lo", float("nan"))))
+    hi = float(getattr(step, "rail_box_hi", getattr(core, "last_rail_box_hi", float("nan"))))
+    bind_lo = float(getattr(step, "rail_bind_lo", getattr(core, "last_rail_bind_lo", float("nan"))))
+    bind_hi = float(getattr(step, "rail_bind_hi", getattr(core, "last_rail_bind_hi", float("nan"))))
+    h1 = float(getattr(step, "rail_h1", getattr(core, "last_rail_h1", float("nan"))))
+    h2 = float(getattr(step, "rail_h2", getattr(core, "last_rail_h2", float("nan"))))
+    if not np.isfinite(h1):
+        h1 = float(getattr(step, "box_h1_s", float("nan")))
+    if not np.isfinite(h2):
+        h2 = float(getattr(step, "box_h2_s", float("nan")))
+    prev = float(getattr(step, "rail_qdot_prev", getattr(core, "last_rail_qdot_prev", float("nan"))))
+    prev2 = float(
+        getattr(step, "rail_qdot_prev2", getattr(core, "last_rail_qdot_prev2", float("nan")))
+    )
+    q0 = float(np.asarray(controller.q_cmd, dtype=float)[0])
+    return {
+        "rail_box_lo": lo,
+        "rail_box_hi": hi,
+        "rail_bind_lo": bind_lo,
+        "rail_bind_hi": bind_hi,
+        "rail_task_vel_used": used,
+        "rail_h1": h1,
+        "rail_h2": h2,
+        "rail_qdot_prev": prev,
+        "rail_qdot_prev2": prev2,
+        "rail_qdot0": qdot0,
+        "rail_box_dev_m_s": qdot0 - used if np.isfinite(qdot0) and np.isfinite(used) else float("nan"),
+        "q_cmd_0": q0,
+    }
+
+
 def _fallback(
     counters: Counter[str], labels: list[str], name: str
 ) -> None:
@@ -480,6 +518,7 @@ def _controller_row(
     for axis, value in zip(AXES, twist):
         row_out[f"v_cmd_{axis}"] = float(value)
     row_out.update(_p0_acceptance_fields(controller, core))
+    row_out.update(_rail_box_fields(controller, core, step))
     return row_out, float(rail_meas)
 
 
@@ -604,6 +643,7 @@ def _controller_row_free_running(
     for axis, value in zip(AXES, twist):
         row_out[f"v_cmd_{axis}"] = float(value)
     row_out.update(_p0_acceptance_fields(controller, core))
+    row_out.update(_rail_box_fields(controller, core, step))
     return row_out, float(np.asarray(step.qdot, dtype=float)[0])
 
 
@@ -662,6 +702,129 @@ def _summarize_slack_probe(rows: list[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _summarize_rail_box(rows: list[Mapping[str, Any]]) -> dict[str, Any]:
+    """Attribute |qdot[0] - rail_task_vel_used| to the last tightening stage."""
+
+    from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
+        RAIL_BIND_JERK,
+        RAIL_BIND_NAMES,
+    )
+
+    def _num(row: Mapping[str, Any], key: str) -> float:
+        try:
+            return float(row.get(key, float("nan")))
+        except (TypeError, ValueError):
+            return float("nan")
+
+    n = len(rows)
+    if n == 0:
+        return {"rows": 0}
+    dev = np.array([_num(row, "rail_box_dev_m_s") for row in rows], dtype=float)
+    lo = np.array([_num(row, "rail_box_lo") for row in rows], dtype=float)
+    hi = np.array([_num(row, "rail_box_hi") for row in rows], dtype=float)
+    qdot = np.array([_num(row, "rail_qdot0") for row in rows], dtype=float)
+    h1 = np.array([_num(row, "rail_h1") for row in rows], dtype=float)
+    h2 = np.array([_num(row, "rail_h2") for row in rows], dtype=float)
+    q0 = np.array(
+        [
+            _num(row, "q_meas_0")
+            if np.isfinite(_num(row, "q_meas_0"))
+            else _num(row, "q_cmd_0")
+            for row in rows
+        ],
+        dtype=float,
+    )
+    bind_lo = np.array([_num(row, "rail_bind_lo") for row in rows], dtype=float)
+    bind_hi = np.array([_num(row, "rail_bind_hi") for row in rows], dtype=float)
+    abs_dev = np.abs(dev)
+    big = np.isfinite(abs_dev) & (abs_dev > 0.004)
+    eps = 1.0e-6
+    interior = (
+        np.isfinite(lo)
+        & np.isfinite(hi)
+        & np.isfinite(qdot)
+        & (qdot > lo + eps)
+        & (qdot < hi - eps)
+    )
+    ratio = np.where(
+        np.isfinite(h1) & np.isfinite(h2) & (h2 > 1.0e-9),
+        h1 / h2,
+        np.nan,
+    )
+    big_dev = abs_dev[big]
+    ratio_big = ratio[big]
+    corr = float("nan")
+    if (
+        np.isfinite(big_dev).sum() > 4
+        and np.isfinite(ratio_big).sum() > 4
+        and float(np.nanstd(big_dev)) > 0.0
+        and float(np.nanstd(ratio_big)) > 0.0
+    ):
+        mask = np.isfinite(big_dev) & np.isfinite(ratio_big)
+        corr = float(np.corrcoef(big_dev[mask], ratio_big[mask])[0, 1])
+
+    def _hist(ids: np.ndarray) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for value in ids[np.isfinite(ids)]:
+            key = RAIL_BIND_NAMES.get(int(value), str(int(value)))
+            counts[key] = counts.get(key, 0) + 1
+        return dict(sorted(counts.items(), key=lambda item: item[0]))
+
+    ends = (q0 < 0.06) | (q0 > 0.72)
+    jerk_bind = (bind_lo == RAIL_BIND_JERK) | (bind_hi == RAIL_BIND_JERK)
+
+    def _clean_pct(values: np.ndarray) -> dict[str, float | None]:
+        raw = _percentiles(values[np.isfinite(values)])
+        return {
+            key: (None if not math.isfinite(val) else val) for key, val in raw.items()
+        }
+
+    def _jerk_rate_by_ratio(
+        ratios: np.ndarray, jerk: np.ndarray
+    ) -> dict[str, dict[str, float | int]]:
+        edges = (0.0, 0.5, 0.8, 1.25, 2.0, 4.0, float("inf"))
+        labels = ("<0.5", "0.5-0.8", "0.8-1.25", "1.25-2.0", "2.0-4.0", ">4.0")
+        out: dict[str, dict[str, float | int]] = {}
+        finite = np.isfinite(ratios)
+        for low, high, label in zip(edges[:-1], edges[1:], labels):
+            if np.isinf(high):
+                mask = finite & (ratios >= low)
+            else:
+                mask = finite & (ratios >= low) & (ratios < high)
+            count = int(np.count_nonzero(mask))
+            out[label] = {
+                "count": count,
+                "jerk_bind_rate": float(np.mean(jerk[mask])) if count else 0.0,
+            }
+        return out
+
+    return {
+        "rows": n,
+        "dev_threshold_m_s": 0.004,
+        "large_dev_count": int(np.count_nonzero(big)),
+        "large_dev_fraction": float(np.mean(big)) if n else 0.0,
+        "abs_dev_m_s": _clean_pct(abs_dev),
+        "bind_lo_hist": _hist(bind_lo),
+        "bind_hi_hist": _hist(bind_hi),
+        "large_dev_bind_lo_hist": _hist(bind_lo[big]),
+        "large_dev_bind_hi_hist": _hist(bind_hi[big]),
+        "interior_dev_fraction": (
+            float(np.mean(interior[big])) if np.any(big) else 0.0
+        ),
+        "interior_all_fraction": float(np.mean(interior)) if n else 0.0,
+        "abs_dev_vs_h1_over_h2_corr": None if not math.isfinite(corr) else corr,
+        "jerk_bind_fraction": float(np.mean(jerk_bind)) if n else 0.0,
+        "jerk_bind_among_large_dev": (
+            float(np.mean(jerk_bind[big])) if np.any(big) else 0.0
+        ),
+        "end_of_stroke_among_large_dev": (
+            float(np.mean(ends[big])) if np.any(big) else 0.0
+        ),
+        "h1_over_h2": _clean_pct(ratio),
+        "jerk_bind_rate_by_h1_over_h2": _jerk_rate_by_ratio(ratio, jerk_bind),
+    }
+
+
 def summarize_replay_rows(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     """Build a JSON-serializable aggregate from replay output rows."""
 
@@ -704,6 +867,7 @@ def summarize_replay_rows(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
             sorted(Counter(str(row["rail_measurement_source"]) for row in rows_list).items())
         ),
         "history_fallback_counts": dict(sorted(history_fallbacks.items())),
+        "rail_box": _summarize_rail_box(rows_list),
     }
     return result
 
@@ -763,6 +927,18 @@ def _output_fields() -> list[str]:
         "u_task_feasible",
         "q_cmd_2",
         "q_cmd_4",
+        "rail_box_lo",
+        "rail_box_hi",
+        "rail_bind_lo",
+        "rail_bind_hi",
+        "rail_task_vel_used",
+        "rail_h1",
+        "rail_h2",
+        "rail_qdot_prev",
+        "rail_qdot_prev2",
+        "rail_qdot0",
+        "rail_box_dev_m_s",
+        "q_cmd_0",
     ]
 
 
