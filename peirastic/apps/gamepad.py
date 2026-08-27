@@ -3,7 +3,8 @@
 
 L3 toggles force-velocity hybrid: tool-Z from peirastic/configs/force.yaml,
 other axes stay on the pad. R3 e-stop. Y starts Window-8 SMPL-X capture
-(preview PNGs + Genesis orange mesh), same job as the remote GUI button.
+(preview PNGs + Genesis orange mesh). Burst frames estimate beta; pose
+is one hardware-sync group, same as Among_US Terminal 8 / the GUI button.
 
 Motion is sent only while a live Bluetooth pad is present (kernel Bus /
 SDL GUID). USB and a missing pad are inhibited so their rest axes cannot
@@ -101,7 +102,7 @@ def main() -> int:
     if args.no_capture_y:
         print("[STATE] Y capture disabled (--no-capture-y)", flush=True)
     else:
-        print("[STATE] Y = SMPL-X capture + preview PNGs + Genesis publish", flush=True)
+        print("[STATE] Y = SMPL-X (burst→beta, 1 sync frame→pose) + preview + Genesis", flush=True)
     print("[STATE] motion requires live bluetooth pad (usb/missing inhibited)", flush=True)
     if describe is not None:
         print("[STATE] " + str(describe()), flush=True)
@@ -176,7 +177,7 @@ def main() -> int:
                     print(
                         _green(
                             "[CAPTURE] DWPose TensorRT/CUDA + EasyMocap GPU — "
-                            "leave Cam and this window running"
+                            "mesh publishes after pose; preview PNGs keep writing"
                         ),
                         flush=True,
                     )

@@ -3,8 +3,8 @@
 
   1. Grab a 0.5 s hardware-timestamp synchronized burst from camera ingress.
   2. Run DWPose133 and adaptive per-joint robust DLT for every group.
-  3. Fit shared beta with per-frame pose/root; the bed SDF only prevents
-     penetration and never attracts joints/feet to the bed.
+  3. Fit shared beta on the 0.5 s burst; extract pose/mesh from one synced
+     frame. The bed SDF only prevents penetration and never attracts joints.
   4. Write RGB, SimCC, fusion and SMPL-X diagnostics under output-root.
 """
 
@@ -410,6 +410,30 @@ def main() -> int:
 
         detector = DwposeOnnxDetector(DwposeOnnxConfig.from_dict(dict(cfg.pose_backend.get("dwpose") or {})))
         detector.preload()
+        published: dict[str, Any] = {}
+
+        def _publish_now() -> None:
+            if "diag" in published:
+                return
+            pub_diag = publish_static_smplx_track(
+                moment_dir=moment_dir,
+                frame_index=int(synced.frame_index),
+                timestamp_ns=int(synced.timestamp_ns),
+                bind=str(args.publish_bind),
+                duration_s=float(publish_duration_s),
+                rate_hz=float(publish_rate_hz),
+                publish_kind=str(args.publish_kind),
+                gender=str(args.gender),
+            )
+            published["diag"] = pub_diag
+            logging.info(
+                "published static Genesis track kind=%s sent=%s duration_s=%s bind=%s",
+                pub_diag.get("payload_kind"),
+                pub_diag.get("sent"),
+                publish_duration_s,
+                pub_diag.get("bind"),
+            )
+
         moment_summary = process_burst(
             moment_dir=moment_dir,
             synced_frames=burst_frames,
@@ -429,6 +453,7 @@ def main() -> int:
             scene_spec_path=cfg.scene_spec_path,
             motion_frame_indices=burst_motion_fi,
             write_debug_images=write_debug_images,
+            on_fitted=_publish_now if bool(args.publish_genesis) else None,
         )
 
         if fixed_betas is None and moment_summary.get("easymocap_betas") is not None:
@@ -450,7 +475,16 @@ def main() -> int:
             "ok": bool(moment_summary.get("fit_ok")),
             "elapsed_s": float(time.perf_counter() - t_capture),
             "moment_dir": str(moment_dir.resolve()),
-            "moment": moment_summary,
+            "moment": {
+                "fit_ok": moment_summary.get("fit_ok"),
+                "publish_mode": moment_summary.get("publish_mode"),
+                "burst": moment_summary.get("burst"),
+                "final_quality": moment_summary.get("final_quality"),
+                "easymocap_betas": moment_summary.get("easymocap_betas"),
+                "fit_error": moment_summary.get("fit_error"),
+                "skip_reason": moment_summary.get("skip_reason"),
+                "debug_overlay_dirs": moment_summary.get("debug_overlay_dirs"),
+            },
         }
 
         if (bool(export_canonical_tpose) or bool(args.anatomy_retarget)) and summary.get("fixed_betas"):
@@ -502,24 +536,8 @@ def main() -> int:
             }
         if bool(args.publish_genesis) and bool(moment_summary.get("fit_ok")):
             try:
-                pub_diag = publish_static_smplx_track(
-                    moment_dir=moment_dir,
-                    frame_index=int(synced.frame_index),
-                    timestamp_ns=int(synced.timestamp_ns),
-                    bind=str(args.publish_bind),
-                    duration_s=float(publish_duration_s),
-                    rate_hz=float(publish_rate_hz),
-                    publish_kind=str(args.publish_kind),
-                    gender=str(args.gender),
-                )
-                summary["genesis_publish"] = pub_diag
-                logging.info(
-                    "published static Genesis track kind=%s sent=%s duration_s=%s bind=%s",
-                    pub_diag.get("payload_kind"),
-                    pub_diag.get("sent"),
-                    publish_duration_s,
-                    pub_diag.get("bind"),
-                )
+                _publish_now()
+                summary["genesis_publish"] = published.get("diag") or {"ok": False, "error": "publish_missing"}
             except Exception as exc:
                 summary["genesis_publish"] = {"ok": False, "error": str(exc)}
                 logging.warning("Genesis static publish failed: %s", exc)

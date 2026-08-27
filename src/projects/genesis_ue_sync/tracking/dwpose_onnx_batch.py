@@ -152,6 +152,7 @@ def infer_multiview_body25(
     confidence_threshold: float,
     retain_simcc: bool = False,
     simcc_topk: int = 5,
+    build_simcc_candidates: bool = True,
 ) -> tuple[dict[str, np.ndarray], dict[str, Any], dict[str, Any]]:
     """Run YOLO per view + one batched pose ONNX call; return Body25 per camera."""
     images = [np.asarray(images_by_id[cid], dtype=np.uint8) for cid in camera_ids]
@@ -200,7 +201,7 @@ def infer_multiview_body25(
     keypoints_by_camera: dict[str, np.ndarray] = {}
     diagnostics_by_camera: dict[str, Any] = {}
     post_ms = 0.0
-    simcc_info = _simcc_summary(simcc_x, simcc_y, simcc_topk)
+    simcc_info = _simcc_summary(simcc_x, simcc_y, simcc_topk) if bool(build_simcc_candidates) else None
     for i, cid in enumerate(camera_ids):
         t_post0 = time.perf_counter()
         kp_view = np.asarray(keypoints[i : i + 1], dtype=np.float32)
@@ -225,36 +226,37 @@ def infer_multiview_body25(
             "postprocess_ms": 0.0,
             "total_ms": round(per_yolo + (t_pose1 - t_pose0) * 1000.0 / max(len(camera_ids), 1), 3),
         }
-        simcc_meta = {key: np.asarray(value[i]).tolist() for key, value in simcc_info.items()}
-        # SimCC predicts independent x/y distributions.  Form their Cartesian
-        # product and retain the strongest joint modes; pairing equal ranks is
-        # incorrect whenever the two axes are multimodal in a different order.
-        candidate_summary = _cartesian_simcc_candidates(
-            simcc_info,
-            i,
-            topk=simcc_topk,
-            model_input_size=model_input_size,
-            center=centers[i],
-            scale=scales[i],
-        )
-        for name, value in candidate_summary.items():
-            simcc_meta[name] = np.asarray(value).tolist()
-        candidate_xy = candidate_summary["candidate_xy"]
-        try:
-            from projects.genesis_ue_sync.tracking.dwpose_easymocap_export import (
-                ucoco133_simcc_to_easymocap_meta,
+        if simcc_info is not None:
+            simcc_meta = {key: np.asarray(value[i]).tolist() for key, value in simcc_info.items()}
+            # SimCC predicts independent x/y distributions.  Form their Cartesian
+            # product and retain the strongest joint modes; pairing equal ranks is
+            # incorrect whenever the two axes are multimodal in a different order.
+            candidate_summary = _cartesian_simcc_candidates(
+                simcc_info,
+                i,
+                topk=simcc_topk,
+                model_input_size=model_input_size,
+                center=centers[i],
+                scale=scales[i],
             )
+            for name, value in candidate_summary.items():
+                simcc_meta[name] = np.asarray(value).tolist()
+            candidate_xy = candidate_summary["candidate_xy"]
+            try:
+                from projects.genesis_ue_sync.tracking.dwpose_easymocap_export import (
+                    ucoco133_simcc_to_easymocap_meta,
+                )
 
-            if candidate_xy.shape[0] >= 133:
-                mapped = ucoco133_simcc_to_easymocap_meta(simcc_meta)
-                meta["simcc_easymocap"] = {
-                    part: {name: np.asarray(value).tolist() for name, value in payload.items()}
-                    for part, payload in mapped.items()
-                }
-        except (TypeError, ValueError):
-            # Older/non-UCOCO models retain their native SimCC metadata.
-            pass
-        meta["simcc"] = simcc_meta
+                if candidate_xy.shape[0] >= 133:
+                    mapped = ucoco133_simcc_to_easymocap_meta(simcc_meta)
+                    meta["simcc_easymocap"] = {
+                        part: {name: np.asarray(value).tolist() for name, value in payload.items()}
+                        for part, payload in mapped.items()
+                    }
+            except (TypeError, ValueError):
+                # Older/non-UCOCO models retain their native SimCC metadata.
+                pass
+            meta["simcc"] = simcc_meta
         keypoints_by_camera[cid] = body25
         diagnostics_by_camera[cid] = meta
         post_ms += (time.perf_counter() - t_post0) * 1000.0
@@ -292,6 +294,7 @@ def infer_multiview_easymocap(
     confidence_threshold: float,
     retain_simcc: bool = False,
     simcc_topk: int = 5,
+    build_simcc_candidates: bool = True,
 ) -> tuple[dict[str, dict[str, np.ndarray]], dict[str, Any], dict[str, Any]]:
     """Batched pose ONNX with UCOCO-133 -> EasyMocap bodyhandface per view."""
     from projects.genesis_ue_sync.tracking.dwpose_easymocap_export import ucoco133_to_easymocap_annot
@@ -333,6 +336,7 @@ def infer_multiview_easymocap(
         confidence_threshold=confidence_threshold,
         retain_simcc=retain_simcc,
         simcc_topk=simcc_topk,
+        build_simcc_candidates=bool(build_simcc_candidates),
     )
     annots_by_camera: dict[str, dict[str, np.ndarray]] = {}
     for cid in camera_ids:

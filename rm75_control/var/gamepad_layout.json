@@ -8,6 +8,6 @@
     "axis_sign": {"lx": 1, "ly": -1, "lt": 1, "rx": 1, "ry": 1, "rt": 1},
     "z_sign": -1,
     "trigger_rest": -1.0,
-    "button_index": {"a": 0, "b": 1, "x": 2, "y": 3, "lb": 6, "rb": 7, "l3": 13, "r3": 14}
+    "button_index": {"a": 0, "b": 1, "x": 3, "y": 4, "lb": 6, "rb": 7, "l3": 13, "r3": 14}
   }
 }

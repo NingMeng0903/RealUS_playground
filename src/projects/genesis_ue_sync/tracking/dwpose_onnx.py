@@ -423,6 +423,8 @@ class DwposeOnnxDetector:
         self,
         views_rgb: dict[str, np.ndarray],
         camera_ids: list[str],
+        *,
+        build_simcc_candidates: bool = True,
     ) -> tuple[dict[str, dict[str, np.ndarray]], dict[str, dict], dict[str, Any]]:
         """Per-view EasyMocap bodyhandface annotations (batched pose when enabled)."""
         self.preload()
@@ -445,6 +447,7 @@ class DwposeOnnxDetector:
                 confidence_threshold=float(self.config.confidence_threshold),
                 retain_simcc=bool(self.config.retain_simcc),
                 simcc_topk=int(self.config.simcc_topk),
+                build_simcc_candidates=bool(build_simcc_candidates),
             )
 
         annots: dict[str, dict[str, np.ndarray]] = {}

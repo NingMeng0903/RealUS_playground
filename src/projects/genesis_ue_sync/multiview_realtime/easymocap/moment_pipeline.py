@@ -7,6 +7,7 @@ import logging
 import shutil
 import time
 from pathlib import Path
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -1045,8 +1046,9 @@ def process_burst(
     scene_spec_path: str | Path | None = None,
     motion_frame_indices: list[int | None] | None = None,
     write_debug_images: bool = True,
+    on_fitted: Callable[[], None] | None = None,
 ) -> dict[str, Any]:
-    """Fit one shared-beta SMPL-X sequence from a 0.5 s synced RGB burst."""
+    """Shared-beta from the burst; pose/mesh extract from one synced frame."""
     if not synced_frames:
         raise ValueError("process_burst requires at least one synced frame")
     moment_dir = Path(moment_dir)
@@ -1060,8 +1062,16 @@ def process_burst(
     raw_simcc_arrays: dict[str, np.ndarray] = {}
     views_by_frame = [frame.views_rgb for frame in synced_frames]
     arrays, _ = camera_arrays(calibration, camera_ids, synced_frames[0].views_rgb, scale_to_ingress=True)
+    t_dwpose = 0.0
+    t_dlt = 0.0
     for frame in synced_frames:
-        annots, det_meta, batch_meta = detector.infer_easymocap_annot_multiview(frame.views_rgb, camera_ids)
+        t0 = time.perf_counter()
+        annots, det_meta, batch_meta = detector.infer_easymocap_annot_multiview(
+            frame.views_rgb,
+            camera_ids,
+            build_simcc_candidates=False,
+        )
+        t_dwpose += time.perf_counter() - t0
         raw_simcc = batch_meta.pop("_raw_simcc", None)
         if isinstance(raw_simcc, dict):
             raw_simcc_arrays[f"frame_{len(annots_by_frame):06d}_x"] = np.asarray(raw_simcc["x"])
@@ -1069,17 +1079,26 @@ def process_burst(
         annots = _sanitize_annots_by_cam(annots)
         raw_annots_by_frame.append(_sanitize_annots_by_cam(annots))
         tri_diag: dict[str, Any] = {}
+        t0 = time.perf_counter()
         parts = triangulate_bodyhand_keypoints3d(
             annots, camera_ids, arrays["P"], tri_cfg=tri_cfg,
-            include_hands=not bool(zero_hand_keypoints), diagnostics=tri_diag,
-            observation_meta_by_cam=_simcc_observation_meta(det_meta, camera_ids),
+            include_hands=False, diagnostics=tri_diag,
         )
-        # The final inlier annotation is rebuilt after the burst path selects
-        # (or rejects) a per-joint triangulation hypothesis.
+        t_dlt += time.perf_counter() - t0
+        logger.info(
+            "DWPose GPU group %d/%d yolo=%.1fms pose=%.1fms wall=%.1fms providers=%s",
+            len(annots_by_frame) + 1,
+            len(synced_frames),
+            float(batch_meta.get("yolo_det_ms_total") or 0.0),
+            float(batch_meta.get("pose_onnx_ms_batch") or 0.0),
+            float(batch_meta.get("wall_ms") or 0.0),
+            getattr(detector, "_execution_providers", ()),
+        )
         annots_by_frame.append(annots)
         parts_by_frame.append(parts)
         tri_by_frame.append(tri_diag)
         detection_by_frame.append({"per_camera": det_meta, "batch": batch_meta})
+    logger.info("timing DWPose infer %.3fs over %d groups (exclude capture/overlays)", t_dwpose, len(synced_frames))
 
     timestamps = [int(frame.timestamp_ns) for frame in synced_frames]
     if raw_simcc_arrays:
@@ -1105,6 +1124,27 @@ def process_burst(
         range(len(synced_frames)),
         key=lambda i: _burst_frame_score(dict(tri_by_frame[i].get("body25") or {}), i, center),
     )
+    ref_tri: dict[str, Any] = {}
+    parts_by_frame[reference_index] = triangulate_bodyhand_keypoints3d(
+        annots_by_frame[reference_index],
+        camera_ids,
+        arrays["P"],
+        tri_cfg=tri_cfg,
+        include_hands=not bool(zero_hand_keypoints),
+        diagnostics=ref_tri,
+    )
+    tri_by_frame[reference_index] = ref_tri
+    annots_by_frame[reference_index] = _bodyhand_annots_from_selected_inliers(
+        raw_annots_by_frame[reference_index],
+        camera_ids,
+        tri_by_frame[reference_index],
+        dict(detection_by_frame[reference_index].get("per_camera") or {}),
+    )
+    logger.info(
+        "burst shape uses %d frames; pose/publish is 1 synced frame index=%d",
+        len(synced_frames),
+        reference_index,
+    )
     dataset_root = moment_dir / "easymocap_dataset"
     easymocap_out = moment_dir / "easymocap_output"
     pack_burst_dataset(
@@ -1116,6 +1156,7 @@ def process_burst(
     )
     fit_diagnostics: dict[str, Any] = {}
     ensure_smplx_assets(gender=gender, model_type=fit_model)
+    t_fit0 = time.perf_counter()
     params, body_model = run_mv1p_smplx_fit(
         dataset_root=dataset_root, output_root=easymocap_out, camera_ids=camera_ids,
         gender=gender, model_type=fit_model, thres2d=thres2d, max_repro_error=max_repro_error,
@@ -1124,11 +1165,19 @@ def process_burst(
         bed_sdf_max_iter=bed_sdf_max_iter, scene_spec_path=scene_spec_path or cfg.scene_spec_path,
         fit_diagnostics=fit_diagnostics, tri_cfg=tri_cfg, fit_opts=fit_opts,
         zero_hand_keypoints=zero_hand_keypoints, fit_2d_source=fit_2d_source,
+        pose_frame_index=int(reference_index),
+    )
+    t_easymocap = time.perf_counter() - t_fit0
+    logger.info(
+        "timing EasyMocap fit %.3fs (shape on %d frames, pose on 1) DLT=%.3fs",
+        t_easymocap,
+        len(synced_frames),
+        t_dlt,
     )
     body_model_cache["model"] = body_model
     reference = synced_frames[reference_index]
-    verts, faces = easymocap_vertices_world(body_model, params, frame_index=reference_index)
-    pred_joints = easymocap_joints_world(body_model, params, frame_index=reference_index)
+    verts, faces = easymocap_vertices_world(body_model, params, frame_index=0)
+    pred_joints = easymocap_joints_world(body_model, params, frame_index=0)
     final_reprojection_errors: list[float] = []
     for view_index, cid in enumerate(camera_ids):
         target = np.asarray(annots_by_frame[reference_index][cid]["keypoints"], dtype=np.float32)
@@ -1169,26 +1218,33 @@ def process_burst(
         reprojection_ok=repro_ok,
         bed_penetrating_verts=int(pen_count),
     )
-    # Save only the selected frame's mesh parameters for Genesis, preserving
-    # the full per-frame sequence in EasyMocap output and diagnostics.
     def _frame_param(name: str, width: int) -> np.ndarray:
         arr = np.asarray(params[name], dtype=np.float32).reshape(-1, width)
-        return arr[reference_index : reference_index + 1]
+        return arr[:1]
+    poses_raw = np.asarray(params["poses"], dtype=np.float32)
+    poses_row = poses_raw.reshape(-1) if poses_raw.ndim == 1 else poses_raw.reshape(-1, poses_raw.shape[-1])[0]
     np.savez(
         moment_dir / "smplx_result.npz",
         Rh=_frame_param("Rh", 3), Th=_frame_param("Th", 3),
-        poses=np.asarray(params["poses"], dtype=np.float32).reshape(len(synced_frames), -1)[reference_index],
+        poses=poses_row,
         shapes=np.asarray(params["shapes"], dtype=np.float32),
         root_align_offset=np.zeros((3,), dtype=np.float32), vertices=verts.astype(np.float32), faces=np.asarray(faces, dtype=np.int32),
     )
+    logger.info("smplx_result written -> %s fit_ok=%s", moment_dir / "smplx_result.npz", fit_ok)
+    if fit_ok and on_fitted is not None:
+        try:
+            on_fitted()
+        except Exception as exc:
+            logger.warning("on_fitted callback failed: %s", exc)
     debug_overlay_dirs: list[str] = []
     if bool(write_debug_images):
+        logger.info("writing debug overlay PNGs after Genesis publish")
         # Save actual fitted pose overlays for both the burst start and the
         # selected reference.  These are RGB reprojections, not Genesis-viewer
         # screenshots, so they diagnose visual geometry independently of bed
         # rendering or mesh publishing.
-        for debug_index in sorted({0, int(reference_index)}):
-            debug_verts, _ = easymocap_vertices_world(body_model, params, frame_index=debug_index)
+        for debug_index in (int(reference_index),):
+            debug_verts, _ = easymocap_vertices_world(body_model, params, frame_index=0)
             frame_tag = f"frame_{debug_index:06d}"
             debug_dirs = {
                 "skeleton_2d": moment_dir / "skeleton_2d" / frame_tag,
@@ -1258,8 +1314,15 @@ def process_burst(
                           "final_smplx_reprojection_max_px": publish_reprojection_max_px},
         "debug_overlay_dirs": debug_overlay_dirs,
         "easymocap_betas": [float(v) for v in np.asarray(params["shapes"]).reshape(-1)[:10]],
+        "timing_s": {
+            "dwpose_infer": float(t_dwpose),
+            "dlt": float(t_dlt),
+            "easymocap_fit": float(t_easymocap),
+            "dwpose_plus_easymocap": float(t_dwpose + t_easymocap),
+        },
     }
-    (moment_dir / "moment.json").write_text(json.dumps(_jsonable(summary), ensure_ascii=True, indent=2), encoding="utf-8")
+    disk = {k: v for k, v in summary.items() if k not in ("triangulation_by_frame", "detection_by_frame")}
+    (moment_dir / "moment.json").write_text(json.dumps(_jsonable(disk), ensure_ascii=True, indent=2), encoding="utf-8")
     return summary
 
 

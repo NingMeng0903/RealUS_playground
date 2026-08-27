@@ -1084,6 +1084,25 @@ def _joint_optimize_pose3d2d(
     )
 
 
+def select_pose_frame_arrays(
+    kp3ds: np.ndarray,
+    kp2ds: np.ndarray,
+    bboxes: np.ndarray,
+    kp2ds_for_2d: np.ndarray | None,
+    pose_frame_index: int | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray | None]:
+    """Keep every burst frame for shape; slice pose/root observations to one sync frame."""
+    if pose_frame_index is None:
+        return kp3ds, kp2ds, bboxes, kp2ds_for_2d
+    index = int(pose_frame_index)
+    n_frames = int(np.asarray(kp3ds).shape[0])
+    if index < 0 or index >= n_frames:
+        raise ValueError(f"pose_frame_index={index} out of range for {n_frames} burst frames")
+    sl = slice(index, index + 1)
+    fit = None if kp2ds_for_2d is None else np.asarray(kp2ds_for_2d)[sl]
+    return np.asarray(kp3ds)[sl], np.asarray(kp2ds)[sl], np.asarray(bboxes)[sl], fit
+
+
 def _smpl_fit_from_keypoints(
     body_model: Any,
     kp3ds: np.ndarray,
@@ -1099,6 +1118,7 @@ def _smpl_fit_from_keypoints(
     bed_sdf_margin_m: float = 0.008,
     bed_sdf_weight: float = 0.0,
     fit_diagnostics: dict[str, Any] | None = None,
+    pose_frame_index: int | None = None,
 ) -> dict[str, Any]:
     """Shared-shape 3D initialization followed by joint 3D/2D/bed optimization."""
     from easymocap.dataset import CONFIG
@@ -1201,28 +1221,31 @@ def _smpl_fit_from_keypoints(
     cfg.device = body_model.device
     cfg.model = model_type
 
-    params = body_model.init_params(nFrames=kp3ds.shape[0])
+    fit_kp2ds = kp2ds_for_2d if kp2ds_for_2d is not None else kp2ds
+    kp3ds_pose, kp2ds_pose, bboxes_pose, fit_kp2ds_pose = select_pose_frame_arrays(
+        kp3ds, kp2ds, bboxes, fit_kp2ds, pose_frame_index
+    )
+    params = body_model.init_params(nFrames=int(kp3ds_pose.shape[0]))
     params["shapes"] = params_shape["shapes"].copy()
     weight_pose = load_weight_pose(model_type, args.opts)
-    fit_kp2ds = kp2ds_for_2d if kp2ds_for_2d is not None else kp2ds
     params = multi_stage_optimize(
         body_model,
         params,
-        kp3ds,
+        kp3ds_pose,
         None,
         None,
         None,
         weight_pose,
         cfg,
     )
-    params, root_diag = _initialize_roots_from_body25(body_model, params, kp3ds)
+    params, root_diag = _initialize_roots_from_body25(body_model, params, kp3ds_pose)
     optimizer_diag: dict[str, Any] = {}
     params = _joint_optimize_pose3d2d(
         body_model,
         params,
-        kp3ds,
-        fit_kp2ds,
-        bboxes,
+        kp3ds_pose,
+        fit_kp2ds_pose if fit_kp2ds_pose is not None else kp2ds_pose,
+        bboxes_pose,
         Pall,
         weight_pose,
         args,
@@ -1235,15 +1258,20 @@ def _smpl_fit_from_keypoints(
         optimizer_diagnostics=optimizer_diag,
     )
     predicted_final = _body_model_joints_sequence(body_model, params)
-    _unused, final_alignment = estimate_body25_root_offsets(predicted_final, kp3ds)
+    _unused, final_alignment = estimate_body25_root_offsets(predicted_final, kp3ds_pose)
     root_diag["final"] = final_alignment
     if fit_diagnostics is not None:
         fit_diagnostics["shape_fit"] = shape_diag
         fit_diagnostics["root_alignment"] = root_diag
+        fit_diagnostics["n_frames_shape"] = int(np.asarray(kp3ds).shape[0])
+        fit_diagnostics["n_frames_pose"] = int(kp3ds_pose.shape[0])
+        fit_diagnostics["pose_frame_index"] = (
+            None if pose_frame_index is None else int(pose_frame_index)
+        )
         fit_diagnostics["fusion_to_smplx"] = fusion_to_smplx_joint_diagnostics(
             predicted_final,
-            kp3ds,
-            fit_kp2ds,
+            kp3ds_pose,
+            fit_kp2ds_pose if fit_kp2ds_pose is not None else kp2ds_pose,
             Pall,
         )
         fit_diagnostics["final_optimizer"] = {
@@ -1310,8 +1338,9 @@ def run_mv1p_smplx_fit(
     zero_hand_keypoints: bool = False,
     fit_2d_source: str = "raw_inlier_2d",
     write_easymocap_smpl_json: bool = False,
+    pose_frame_index: int | None = None,
 ) -> tuple[dict[str, Any], Any]:
-    """Run EasyMocap mv1p fit; a burst shares beta and has per-frame pose/root."""
+    """Run EasyMocap mv1p fit; a burst shares beta, pose is one synced frame."""
     ensure_easymocap_import()
     model_type = str(model_type).lower()
     ensure_smplx_assets(gender=gender, model_type=model_type)
@@ -1455,6 +1484,9 @@ def run_mv1p_smplx_fit(
     diag["smplx_fit_opts"] = dict(resolved_fit_opts) if resolved_fit_opts else "easymocap_official_defaults"
     diag["smplx_fit_zero_hand_keypoints"] = bool(zero_hand_keypoints)
     diag["n_frames"] = int(end - start)
+    diag["n_frames_shape"] = int(end - start)
+    diag["n_frames_pose"] = 1 if pose_frame_index is not None else int(end - start)
+    diag["pose_frame_index"] = None if pose_frame_index is None else int(pose_frame_index)
     diag["shared_beta"] = True
     beta_source = "fixed" if fixed_betas is not None else "easymocap_optimize_shape"
     old_cwd = os.getcwd()
@@ -1490,6 +1522,7 @@ def run_mv1p_smplx_fit(
             bed_sdf_margin_m=float(bed_sdf_margin_m),
             bed_sdf_weight=float(bed_sdf_weight) if bool(bed_sdf) else 0.0,
             fit_diagnostics=diag,
+            pose_frame_index=pose_frame_index,
         )
         t_after_fit = _time.perf_counter()
         diag["betas_source"] = beta_source
@@ -1502,7 +1535,8 @@ def run_mv1p_smplx_fit(
 
             frame_losses: list[float] = []
             penetrating_verts = 0
-            for frame_index in range(int(kp3ds.shape[0])):
+            n_pose = int(np.asarray(params["Rh"], dtype=np.float32).reshape(-1, 3).shape[0])
+            for frame_index in range(n_pose):
                 frame_verts, _faces = easymocap_vertices_world(body_model, params, frame_index=frame_index)
                 frame_loss, frame_count = bed_penetration_loss(
                     frame_verts,

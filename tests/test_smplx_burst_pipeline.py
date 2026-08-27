@@ -12,6 +12,7 @@ from projects.genesis_ue_sync.multiview_realtime.easymocap.delayed_smplx import 
     estimate_body25_root_offsets,
     fusion_to_smplx_joint_diagnostics,
     mask_body25_2d_to_triangulation_inliers,
+    select_pose_frame_arrays,
     stack_bodyhand_keypoints3d,
 )
 from projects.genesis_ue_sync.multiview_realtime.easymocap.moment_pipeline import (
@@ -30,6 +31,18 @@ def test_reprojection_publication_boundary_is_inclusive() -> None:
     assert _passes_reprojection_gate([50.0], 50.0)
     assert not _passes_reprojection_gate([50.1], 50.0)
     assert not _passes_reprojection_gate([], 50.0)
+
+
+def test_pose_extract_uses_one_synced_frame() -> None:
+    kp3ds = np.zeros((12, 25, 4), dtype=np.float32)
+    kp2ds = np.zeros((12, 4, 25, 3), dtype=np.float32)
+    bboxes = np.zeros((12, 4, 5), dtype=np.float32)
+    kp3ds[7, 0, :3] = (1.0, 2.0, 3.0)
+    sliced, *_ = select_pose_frame_arrays(kp3ds, kp2ds, bboxes, None, 7)
+    assert sliced.shape[0] == 1
+    np.testing.assert_allclose(sliced[0, 0, :3], (1.0, 2.0, 3.0))
+    all_frames, *_ = select_pose_frame_arrays(kp3ds, kp2ds, bboxes, None, None)
+    assert all_frames.shape[0] == 12
 
 
 def test_bed_penetration_count_is_not_a_publication_gate() -> None:

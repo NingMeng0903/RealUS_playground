@@ -208,6 +208,20 @@ def test_wired_layout_maps_physical_l3_r3() -> None:
     assert mapped[7] == pytest.approx(1.0)
 
 
+def test_bt_xpadneo_yellow_y_is_physical_4() -> None:
+    axes = np.zeros(6)
+    buttons = np.zeros(16)
+    buttons[4] = 1.0
+    _ax, mapped = apply_layout(axes, buttons, layout_bt_xpadneo())
+    assert mapped[3] == pytest.approx(1.0)  # logical Y
+    assert mapped[2] == pytest.approx(0.0)  # logical X
+    buttons[4] = 0.0
+    buttons[3] = 1.0
+    _ax, mapped = apply_layout(axes, buttons, layout_bt_xpadneo())
+    assert mapped[2] == pytest.approx(1.0)
+    assert mapped[3] == pytest.approx(0.0)
+
+
 def test_bt_xpadneo_maps_physical_l3_r3() -> None:
     axes = np.array([0.0, 0.0, 0.0, 0.0, -1.0, -1.0])
     buttons = np.zeros(16)
