@@ -397,12 +397,10 @@ def main() -> int:
         synced = burst_frames[len(burst_frames) // 2]
         motion_fi = burst_motion_fi[len(burst_motion_fi) // 2]
         logging.info("captured %d hardware-sync groups over %.3fs", len(burst_frames), (burst_frames[-1].timestamp_ns - burst_frames[0].timestamp_ns) * 1e-9)
-        _write_frozen_burst(moment_dir, burst_frames, list(cfg.camera_ids), write_images=write_debug_images)
-        logging.info(
-            "frozen six-camera moment written -> %s%s",
-            moment_dir,
-            "/images_raw" if write_debug_images else " (metadata only)",
-        )
+        # Do not dump 11×4 1080p PNGs to USB before DWPose — that blocked
+        # recognition for ~45s on EXT_DRIVE. Metadata only until after publish.
+        _write_frozen_burst(moment_dir, burst_frames, list(cfg.camera_ids), write_images=False)
+        logging.info("frozen burst metadata written -> %s (preview PNGs after Genesis)", moment_dir)
         stream.close()
 
         summary["betas_path"] = str(betas_path.resolve()) if betas_path else None
@@ -455,6 +453,9 @@ def main() -> int:
             write_debug_images=write_debug_images,
             on_fitted=_publish_now if bool(args.publish_genesis) else None,
         )
+        if write_debug_images:
+            logging.info("writing burst preview PNGs after Genesis publish")
+            _write_frozen_burst(moment_dir, burst_frames, list(cfg.camera_ids), write_images=True)
 
         if fixed_betas is None and moment_summary.get("easymocap_betas") is not None:
             betas_path, diag_path = _save_beta_calibration(
