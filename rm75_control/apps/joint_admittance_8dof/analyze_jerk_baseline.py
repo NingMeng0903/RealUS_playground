@@ -27,6 +27,10 @@ S6 gates (rewritten; do not use the old contradictory thresholds):
     tanh saturation: |u| > 0.9·u_max, not |u|==u_max
 
 Hardware X/Y scan is not run by this script.
+
+200 Hz coarse-rail/fine-J4 gates live under j4_gates:
+plus_mid_on70 / minus_mid_on115 < 10%, medians in [80, 105],
+mid-stroke |jerk|>60 < 3% and p95 < 15.
 """
 
 from __future__ import annotations
@@ -196,16 +200,29 @@ def _collapse_gates(rows, qdot, blo, bhi, dt: float) -> dict:
     }
 
 
-def _j4_gates(rows) -> dict:
+def _j4_gates(rows, qdot=None, dt: float = 0.005) -> dict:
     empty = {
         "j4_in_band_pct": float("nan"),
         "j4_plus_y_median_deg": float("nan"),
         "j4_minus_y_median_deg": float("nan"),
         "j4_y_median_split_deg": float("nan"),
         "j4_d_corr": float("nan"),
+        "plus_mid_on70_pct": float("nan"),
+        "minus_mid_on115_pct": float("nan"),
+        "plus_mid_j4_median_deg": float("nan"),
+        "minus_mid_j4_median_deg": float("nan"),
+        "plus_mid_slack_gt_0_01_pct": float("nan"),
+        "mid_jerk_over_60_pct": float("nan"),
+        "mid_jerk_p95": float("nan"),
         "j4_in_band_pct_gt_75": False,
         "j4_y_median_split_lt_25": False,
         "j4_d_corr_below_0_88": False,
+        "plus_mid_on70_pct_lt_10": False,
+        "minus_mid_on115_pct_lt_10": False,
+        "plus_mid_j4_median_in_80_105": False,
+        "minus_mid_j4_median_in_80_105": False,
+        "mid_jerk_over_60_pct_lt_3": False,
+        "mid_jerk_p95_lt_15": False,
     }
     q4 = _col(rows, "q_meas_4")
     if not np.any(np.isfinite(q4)):
@@ -213,6 +230,8 @@ def _j4_gates(rows) -> dict:
     e_d = _col(rows, "e_d")
     d_star = _col(rows, "d_star_m")
     vy = _col(rows, "twist_requested_vy")
+    rail = _col(rows, "q_meas_0")
+    slack = _col(rows, "slack_norm")
     if not np.any(np.isfinite(q4)):
         return empty
     j4_deg = np.rad2deg(q4)
@@ -234,15 +253,85 @@ def _j4_gates(rows) -> dict:
         if np.isfinite(plus_med) and np.isfinite(minus_med)
         else float("nan")
     )
+    plus_mid = (
+        plus
+        & np.isfinite(rail)
+        & (rail >= 0.20)
+        & (rail <= 0.65)
+    )
+    minus_mid = (
+        minus
+        & np.isfinite(rail)
+        & (rail >= 0.20)
+        & (rail <= 0.65)
+    )
+    on70 = plus_mid & (np.abs(j4_deg - 70.0) < 0.8)
+    on115 = minus_mid & (np.abs(j4_deg - 115.0) < 0.8)
+    on70_pct = (
+        100.0 * float(np.mean(on70[plus_mid])) if np.any(plus_mid) else float("nan")
+    )
+    on115_pct = (
+        100.0 * float(np.mean(on115[minus_mid])) if np.any(minus_mid) else float("nan")
+    )
+    plus_mid_med = (
+        float(np.median(j4_deg[plus_mid])) if np.any(plus_mid) else float("nan")
+    )
+    minus_mid_med = (
+        float(np.median(j4_deg[minus_mid])) if np.any(minus_mid) else float("nan")
+    )
+    slack_pct = float("nan")
+    if np.any(plus_mid) and np.any(np.isfinite(slack[plus_mid])):
+        slack_pct = 100.0 * float(np.mean(slack[plus_mid] > 0.01))
+    mid_scan = plus_mid | minus_mid
+    mid_jerk_over = float("nan")
+    mid_jerk_p95 = float("nan")
+    if qdot is not None and np.asarray(qdot).shape[0] == j4_deg.size and np.any(mid_scan):
+        qd = np.asarray(qdot, dtype=float)
+        prev = _json_vec(rows, "qpik_qdot_prev_used_json")
+        if not np.any(np.isfinite(prev)):
+            rp = _col(rows, "rail_qdot_prev")
+            prev = np.vstack([np.zeros((1, 8)), qd[:-1]])
+            if np.any(np.isfinite(rp)):
+                prev[:, 0] = rp
+        h1 = _col(rows, "rail_h1")
+        if not np.any(np.isfinite(h1)):
+            h1 = np.full(j4_deg.size, dt)
+        h1 = np.where(np.isfinite(h1) & (h1 > 0.0), h1, dt)
+        a = (qd[:, 0] - prev[:, 0]) / h1
+        a_prev = np.roll(a, 1)
+        a_prev[0] = 0.0
+        jerk = (a - a_prev) / h1
+        mid_j = np.abs(jerk[mid_scan])
+        mid_jerk_over = 100.0 * float(np.mean(mid_j > 60.0))
+        mid_jerk_p95 = float(np.nanpercentile(mid_j, 95))
     return {
         "j4_in_band_pct": in_pct,
         "j4_plus_y_median_deg": plus_med,
         "j4_minus_y_median_deg": minus_med,
         "j4_y_median_split_deg": split,
         "j4_d_corr": corr,
+        "plus_mid_on70_pct": on70_pct,
+        "minus_mid_on115_pct": on115_pct,
+        "plus_mid_j4_median_deg": plus_mid_med,
+        "minus_mid_j4_median_deg": minus_mid_med,
+        "plus_mid_slack_gt_0_01_pct": slack_pct,
+        "mid_jerk_over_60_pct": mid_jerk_over,
+        "mid_jerk_p95": mid_jerk_p95,
         "j4_in_band_pct_gt_75": in_pct > 75.0,
         "j4_y_median_split_lt_25": bool(np.isfinite(split) and split < 25.0),
         "j4_d_corr_below_0_88": bool(np.isfinite(corr) and abs(corr) < 0.88),
+        "plus_mid_on70_pct_lt_10": bool(np.isfinite(on70_pct) and on70_pct < 10.0),
+        "minus_mid_on115_pct_lt_10": bool(np.isfinite(on115_pct) and on115_pct < 10.0),
+        "plus_mid_j4_median_in_80_105": bool(
+            np.isfinite(plus_mid_med) and 80.0 <= plus_mid_med <= 105.0
+        ),
+        "minus_mid_j4_median_in_80_105": bool(
+            np.isfinite(minus_mid_med) and 80.0 <= minus_mid_med <= 105.0
+        ),
+        "mid_jerk_over_60_pct_lt_3": bool(
+            np.isfinite(mid_jerk_over) and mid_jerk_over < 3.0
+        ),
+        "mid_jerk_p95_lt_15": bool(np.isfinite(mid_jerk_p95) and mid_jerk_p95 < 15.0),
     }
 
 
@@ -361,7 +450,7 @@ def analyze(path: Path, *, u_mid_max: float = 0.03, dt: float = 0.005) -> dict:
             ),
         },
         "collapse_gates": _collapse_gates(rows, qdot, blo, bhi, dt),
-        "j4_gates": _j4_gates(rows),
+        "j4_gates": _j4_gates(rows, qdot=qdot, dt=dt),
     }
 
 

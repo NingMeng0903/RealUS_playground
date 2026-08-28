@@ -222,6 +222,7 @@ class InnerLoop {
   double v_r_lpf_ = 0.0;
   bool v_r_init_ = false;
   bool wall_pi_frozen_ = false;
+  double leave_sign_ = 0.0;
   double u_alloc_ = 0.0;
   double u_mid_ = 0.0;
   double u_mid_committed_ = 0.0;

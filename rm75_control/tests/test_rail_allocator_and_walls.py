@@ -19,6 +19,7 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
     allocate_rail,
     lpf_tau_from_fc,
     margin_weight_from_activation,
+    margin_weight_toward_box,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
     RailExtensionConfig,
@@ -219,6 +220,77 @@ def test_margin_weight_from_activation_grows_near_limit() -> None:
     assert w[1] > w[2]
 
 
+def _box_mw_expected(q: float, lo: float, hi: float, toward: float, k: float) -> float:
+    if toward == 0.0:
+        return 1.0
+    activate = 0.5 * (hi - lo)
+    d_wall = (q - lo) if toward < 0.0 else (hi - q)
+    over = float(np.clip((activate - d_wall) / activate, 0.0, 1.0))
+    return 1.0 + k * over * over
+
+
+def test_margin_weight_toward_box_rest_is_one() -> None:
+    lo, hi = np.deg2rad(70.0), np.deg2rad(115.0)
+    mid = 0.5 * (lo + hi)
+    assert margin_weight_toward_box(mid, lo, hi, 0.0, k_margin=4.0) == pytest.approx(1.0)
+    assert margin_weight_toward_box(
+        np.deg2rad(96.0), lo, hi, 0.0, k_margin=4.0
+    ) == pytest.approx(1.0)
+    assert margin_weight_toward_box(
+        np.deg2rad(88.0), lo, hi, 0.0, k_margin=4.0
+    ) == pytest.approx(1.0)
+
+
+def test_margin_weight_toward_box_grows_toward_wall_leave_is_one() -> None:
+    lo, hi = np.deg2rad(70.0), np.deg2rad(115.0)
+    k = 4.0
+    toward = -0.2
+    prev = None
+    for q_deg in (92.5, 81.25, 70.0):
+        q = np.deg2rad(q_deg)
+        mw = margin_weight_toward_box(q, lo, hi, toward, k_margin=k)
+        exp = _box_mw_expected(q, lo, hi, toward, k)
+        assert mw == pytest.approx(exp)
+        if prev is not None:
+            assert mw >= prev - 1e-12
+        prev = mw
+    assert margin_weight_toward_box(
+        np.deg2rad(70.0), lo, hi, -0.2, k_margin=k
+    ) == pytest.approx(1.0 + k)
+    assert margin_weight_toward_box(
+        np.deg2rad(115.0), lo, hi, 0.2, k_margin=k
+    ) == pytest.approx(1.0 + k)
+    assert margin_weight_toward_box(
+        np.deg2rad(72.0), lo, hi, 0.2, k_margin=k
+    ) == pytest.approx(1.0)
+    assert margin_weight_toward_box(
+        np.deg2rad(113.0), lo, hi, -0.2, k_margin=k
+    ) == pytest.approx(1.0)
+
+
+def test_margin_weight_toward_box_pushes_y_to_rail() -> None:
+    J = np.zeros((6, 8))
+    J[1, 0] = 1.0
+    J[1, 4] = -1.0
+    s = np.ones(8)
+    v = np.array([0.0, 0.05, 0.0, 0.0, 0.0, 0.0])
+    mw = np.ones(8)
+    u0, q0 = allocate_rail(J, v, qdot_scale=s, margin_weight=mw, lam=0.02)
+    assert q0[4] < 0.0
+    box_mw = margin_weight_toward_box(
+        np.deg2rad(72.0),
+        np.deg2rad(70.0),
+        np.deg2rad(115.0),
+        float(q0[4]),
+        k_margin=4.0,
+    )
+    assert box_mw > 3.0
+    mw[4] = box_mw
+    u1, q1 = allocate_rail(J, v, qdot_scale=s, margin_weight=mw, lam=0.02)
+    assert abs(u1) > abs(u0)
+    assert abs(q1[4]) < abs(q0[4])
+
+
 def test_midranging_pi_integrates_and_freezes_on_wall() -> None:
     ctrl = MidrangingController(kp=0.40, ki=0.80, v_max=0.03)
     u0 = ctrl.step(0.02, 0.005, freeze=False)
@@ -261,6 +333,7 @@ def test_allocate_rail_share_rises_with_e_mid() -> None:
             qdot_scale=s,
             margin_weight=mw,
             lam=0.05,
+            v0_m_s=1.0,
             e_mid=e_mid,
             k_err=4.0,
             e_ref=0.08,
@@ -272,6 +345,56 @@ def test_allocate_rail_share_rises_with_e_mid() -> None:
     assert shares[-1] > shares[0]
 
 
+def test_allocate_rail_share_rises_with_abs_vy() -> None:
+    J = np.zeros((6, 8))
+    J[1, 0] = 1.0
+    J[1, 1] = 1.0
+    s = np.array([0.12, 1.5, 1.5, 1.5, 1.5, 2.0, 2.0, 2.0])
+    mw = np.ones(8)
+    shares = []
+    for vy in (0.01, 0.03, 0.05):
+        v = np.array([0.0, vy, 0.0, 0.0, 0.0, 0.0])
+        u_r, qdot = allocate_rail(
+            J,
+            v,
+            qdot_scale=s,
+            margin_weight=mw,
+            lam=0.05,
+            v0_m_s=0.05,
+            e_mid=0.0,
+            k_err=4.0,
+            e_ref=0.08,
+        )
+        tot = abs(float(u_r)) + abs(float(qdot[1]))
+        shares.append(abs(float(u_r)) / max(tot, 1e-12))
+    for prev, cur in zip(shares, shares[1:]):
+        assert cur >= prev - 1e-9
+    u0, _ = allocate_rail(
+        J,
+        np.zeros(6),
+        qdot_scale=s,
+        margin_weight=mw,
+        lam=0.05,
+        v0_m_s=0.05,
+        e_mid=0.0,
+        k_err=4.0,
+        e_ref=0.08,
+    )
+    u_hi, _ = allocate_rail(
+        J,
+        np.array([0.0, 0.05, 0.0, 0.0, 0.0, 0.0]),
+        qdot_scale=s,
+        margin_weight=mw,
+        lam=0.05,
+        v0_m_s=0.05,
+        e_mid=0.0,
+        k_err=4.0,
+        e_ref=0.08,
+    )
+    assert abs(float(u_hi)) > abs(float(u0))
+    assert shares[-1] > shares[0]
+
+
 def test_wall_leave_only_sign_at_hard_band() -> None:
     from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
         wall_leave_only_sign,
@@ -280,6 +403,92 @@ def test_wall_leave_only_sign_at_hard_band() -> None:
     assert wall_leave_only_sign(0.40, hard_min_m=0.005, hard_max_m=0.78, band_m=0.025) == 0.0
     assert wall_leave_only_sign(0.76, hard_min_m=0.005, hard_max_m=0.78, band_m=0.025) == 1.0
     assert wall_leave_only_sign(0.02, hard_min_m=0.005, hard_max_m=0.78, band_m=0.025) == -1.0
+
+
+def test_leave_exit_eps_holds_until_inside_soft_line() -> None:
+    from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
+        update_leave_sign,
+        wall_leave_only_sign,
+    )
+
+    hard_min, hard_max, band, eps = 0.005, 0.78, 0.025, 0.008
+    raw_in = wall_leave_only_sign(0.754, hard_min_m=hard_min, hard_max_m=hard_max, band_m=band)
+    assert raw_in == 0.0
+    held = update_leave_sign(
+        raw_in,
+        x_m=0.754,
+        hard_min_m=hard_min,
+        hard_max_m=hard_max,
+        band_m=band,
+        exit_eps_m=eps,
+        prev_leave=1.0,
+    )
+    assert held == 1.0
+    released = update_leave_sign(
+        0.0,
+        x_m=0.740,
+        hard_min_m=hard_min,
+        hard_max_m=hard_max,
+        band_m=band,
+        exit_eps_m=eps,
+        prev_leave=1.0,
+    )
+    assert released == 0.0
+    minus_held = update_leave_sign(
+        0.0,
+        x_m=0.038,
+        hard_min_m=hard_min,
+        hard_max_m=hard_max,
+        band_m=band,
+        exit_eps_m=eps,
+        prev_leave=-1.0,
+    )
+    assert minus_held == -1.0
+
+
+def test_mixer_parks_into_wall_but_allows_leave() -> None:
+    from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
+        RailCommandMixer,
+    )
+
+    mix = RailCommandMixer(kp=1.2, ki=0.8, u_mid_max=0.12, kaw=8.0)
+    mix.d_star.init_from_live(0.25)
+    parked = mix.step(
+        d_live=0.25,
+        d_star_target=0.25,
+        u_task_raw=0.05,
+        u_escape_raw=0.0,
+        escape_explicit=False,
+        dt=0.005,
+        u_max=0.12,
+        leave_sign=1.0,
+        in_wall=True,
+    )
+    assert parked.u_feasible == pytest.approx(0.0, abs=1e-12)
+    assert parked.u_task_feasible == pytest.approx(0.0, abs=1e-12)
+    leaving = mix.step(
+        d_live=0.25,
+        d_star_target=0.25,
+        u_task_raw=-0.05,
+        u_escape_raw=0.0,
+        escape_explicit=False,
+        dt=0.005,
+        u_max=0.12,
+        leave_sign=1.0,
+        in_wall=True,
+    )
+    assert leaving.u_feasible < -1.0e-3
+
+
+def test_reference_model_projects_lpf_into_wall() -> None:
+    model = RailReferenceModel(f_c_hz=4.0, a_max=0.60, j_max=120.0, v_max=0.12)
+    model.reset(0.0)
+    for _ in range(20):
+        model.step(0.08, 0.005, x_m=0.70)
+    assert model.state.v > 0.02
+    v = model.step(0.08, 0.005, x_m=0.756, leave_sign=1.0)
+    assert v <= 1.0e-9
+    assert model.last_v_lpf <= 1.0e-9
 
 
 def test_midranging_projects_into_wall_and_does_not_windup() -> None:
@@ -329,3 +538,45 @@ def test_secondary_rate_filter_holds_target_between_15hz_samples() -> None:
         zeroed = filt.step(np.zeros(2), 0.005, j_max, force_target=True)
     assert zeroed is not None
     assert abs(float(zeroed[0])) < 1.0e-3
+
+
+def test_j4_gates_report_both_walls_and_mid_jerk() -> None:
+    import importlib.util
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "joint_admittance_8dof"
+        / "analyze_jerk_baseline.py"
+    )
+    spec = importlib.util.spec_from_file_location("analyze_jerk_baseline", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec is not None and spec.loader is not None
+    spec.loader.exec_module(mod)
+    _j4_gates = mod._j4_gates
+
+    n = 8
+    rows = [
+        {
+            "q_meas_4": f"{np.deg2rad(90.0):.8f}",
+            "e_d": "0.0",
+            "d_star_m": "0.0",
+            "twist_requested_vy": "0.05" if i < 4 else "-0.05",
+            "q_meas_0": "0.40",
+            "slack_norm": "0.0",
+            "qpik_qdot_prev_used_json": "",
+            "rail_qdot_prev": "0.05",
+            "rail_h1": "0.005",
+        }
+        for i in range(n)
+    ]
+    qdot = np.zeros((n, 8))
+    qdot[:, 0] = 0.05
+    g = _j4_gates(rows, qdot=qdot, dt=0.005)
+    assert g["plus_mid_on70_pct"] == pytest.approx(0.0)
+    assert g["minus_mid_on115_pct"] == pytest.approx(0.0)
+    assert g["plus_mid_j4_median_in_80_105"]
+    assert g["minus_mid_j4_median_in_80_105"]
+    assert g["mid_jerk_over_60_pct_lt_3"]
+    assert g["mid_jerk_p95_lt_15"]

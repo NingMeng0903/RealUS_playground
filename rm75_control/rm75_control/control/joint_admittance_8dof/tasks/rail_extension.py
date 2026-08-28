@@ -638,8 +638,8 @@ class RailExtensionTask:
         e0 = max(float(self.cfg.d_star_err0_m), 0.0)
         e1 = max(float(self.cfg.d_star_err1_m), e0 + 1.0e-6)
         drift = smoothstep01((err_abs - e0) / (e1 - e0)) if e0 > 0.0 else 0.0
-        # Haviland eq (14) cheapens the rail in allocate_rail; do not also
-        # make the QP rail *more* expensive when |e_mid| is large.
+        # allocate_rail already cheapens the rail on |e_mid| / |v_y|; do not
+        # also make the QP rail more expensive when |e_mid| is large.
         self.last_d_star_reg_scale = 1.0
         v_ff_measured = (
             rail_vel_ff_from_reference(

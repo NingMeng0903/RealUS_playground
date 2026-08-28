@@ -249,7 +249,10 @@ class RailCommandMixer:
         posture_hold: bool = False,
         in_wall: bool = False,
     ) -> RailMixTelemetry:
-        u_lo, u_hi = wall_velocity_bounds(u_max, leave_sign)
+        if float(leave_sign) * float(u_task_raw) > 1.0e-4:
+            u_lo, u_hi = 0.0, 0.0
+        else:
+            u_lo, u_hi = wall_velocity_bounds(u_max, leave_sign)
         self.escape_dir = update_escape_dir(
             explicit_active=bool(escape_explicit),
             u_escape_raw=float(u_escape_raw),

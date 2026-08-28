@@ -195,6 +195,7 @@ Config Config::load(const std::string& path) {
     else if (key == "rail_allocator.k_err_rail") c.k_err_rail = n0();
     else if (key == "rail_allocator.e_ref_m") c.e_ref = n0();
     else if (key == "rail_allocator.f_c_hz") c.f_c_hz = n0();
+    else if (key == "rail_allocator.leave_exit_eps_m") c.leave_exit_eps = n0();
     else if (key == "rail_allocator.kaw_mid") c.kaw_mid = n0();
     else if (key == "rail_allocator.rho_mirror_a") c.rho_a = n0();
     else if (key == "rail_allocator.rho_mirror_j") c.rho_j = n0();

@@ -62,10 +62,13 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
     allocate_rail,
     arm_mirror_rail_limits,
     margin_weight_from_activation,
+    margin_weight_toward_box,
+    update_leave_sign,
     wall_leave_only_sign,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
     RailCommandMixer,
+    j4_index,
     press_escape_allowed_from_flags,
     q_star_srs_valid,
 )
@@ -646,6 +649,7 @@ class JointIkController:
         self._last_tcp_est = np.zeros(6, dtype=float)
         self._u_mid_committed = 0.0
         self._u_mid_for_sec = 0.0
+        self._leave_sign = 0.0
         self.last_sigma_min: float = float(self.cfg.qp.sr_damping.sigma_ref)
         self.last_slack_norm: float = 0.0
         self._slack_hold_latched: bool = False
@@ -1018,6 +1022,7 @@ class JointIkController:
         self._last_tcp_est = np.zeros(6, dtype=float)
         self._u_mid_committed = 0.0
         self._u_mid_for_sec = 0.0
+        self._leave_sign = 0.0
         self._enabled = True
         self._apply_rail_mode_side_effects()
         self._latch_attractor_from_q(self.q_cmd)
@@ -1946,11 +1951,8 @@ class JointIkController:
                 k_margin=float(self.rail_allocator_cfg.k_margin),
                 activation=self.centering_task.cfg.activation,
             )
-            u_alloc, _q_all = allocate_rail(
-                J_pre,
-                twist_base,
+            alloc_kw = dict(
                 qdot_scale=np.asarray(self.limits.v_max, dtype=float),
-                margin_weight=mw,
                 lam=lam,
                 v0_m_s=float(self.rail_allocator_cfg.v0_m_s),
                 w0_rad_s=float(self.rail_allocator_cfg.w0_rad_s),
@@ -1958,6 +1960,26 @@ class JointIkController:
                 k_err=float(self.rail_allocator_cfg.k_err_rail),
                 e_ref=float(self.rail_allocator_cfg.e_ref_m),
             )
+            u_alloc, _q_all = allocate_rail(
+                J_pre, twist_base, margin_weight=mw, **alloc_kw
+            )
+            jd = getattr(self.cfg.qp, "j4_design_comfort", None)
+            if jd is not None and bool(getattr(jd, "enabled", False)):
+                j4 = j4_index(int(np.asarray(q_prev).reshape(-1).size))
+                if 0 <= j4 < int(np.asarray(mw).size):
+                    box_mw = margin_weight_toward_box(
+                        float(q_prev[j4]),
+                        float(jd.lower_rad),
+                        float(jd.upper_rad),
+                        float(_q_all[j4]),
+                        k_margin=float(self.rail_allocator_cfg.k_margin),
+                    )
+                    if box_mw > float(mw[j4]):
+                        mw = np.asarray(mw, dtype=float).copy()
+                        mw[j4] = box_mw
+                        u_alloc, _q_all = allocate_rail(
+                            J_pre, twist_base, margin_weight=mw, **alloc_kw
+                        )
             u_escape = 0.0
             escape_on = False
             if self.rail_ext_task is not None:
@@ -1966,7 +1988,7 @@ class JointIkController:
                 if cap > 0.0:
                     u_escape = float(np.clip(u_escape, -cap, cap))
                 escape_on = bool(self.rail_ext_task._escape_active)
-            leave_sign = wall_leave_only_sign(
+            leave_raw = wall_leave_only_sign(
                 float(q_state[0]),
                 hard_min_m=float(self.limits.q_lower[0]),
                 hard_max_m=float(self.limits.q_upper[0]),
@@ -1978,13 +2000,25 @@ class JointIkController:
             if stroke_planned and self.rail_ext_task is not None:
                 y_r = float(q_state[0])
                 if self.rail_ext_task._in_plus_leave(y_r):
-                    leave_sign = max(float(leave_sign), 1.0)
+                    leave_raw = max(float(leave_raw), 1.0)
                 pol = float(self.rail_ext_task._policy_escape_sign(y_r))
                 if self.rail_ext_task._in_leave_band(y_r, pol):
                     if pol > 0.0:
-                        leave_sign = max(float(leave_sign), 1.0)
-                    elif pol < 0.0 and float(leave_sign) <= 0.0:
-                        leave_sign = min(float(leave_sign), -1.0)
+                        leave_raw = max(float(leave_raw), 1.0)
+                    elif pol < 0.0 and float(leave_raw) <= 0.0:
+                        leave_raw = min(float(leave_raw), -1.0)
+            leave_sign = update_leave_sign(
+                leave_raw,
+                x_m=float(q_state[0]),
+                hard_min_m=float(self.limits.q_lower[0]),
+                hard_max_m=float(self.limits.q_upper[0]),
+                band_m=float(self.cfg.qp.limit_damper_band_rail_m),
+                exit_eps_m=float(
+                    getattr(self.rail_allocator_cfg, "leave_exit_eps_m", 0.008)
+                ),
+                prev_leave=float(self._leave_sign),
+            )
+            self._leave_sign = float(leave_sign)
             y_tcp = float(pose_now[1])
             d_live = y_tcp - float(q_prev[0])
             d_target = float("nan")
@@ -2019,12 +2053,15 @@ class JointIkController:
             a_mir, j_mir = arm_mirror_rail_limits(
                 J_pre, a_arm, j_arm, rho_a=rho_a, rho_j=rho_j
             )
+            if abs(float(leave_sign)) > 0.0:
+                self.rail_ref_model.project_into_wall(float(leave_sign))
             v_r_ref = self.rail_ref_model.step(
                 float(mix.u_feasible),
                 float(dt),
                 x_m=float(q_state[0]),
                 a_max=a_mir,
                 j_max=j_mir,
+                leave_sign=float(leave_sign),
             )
             rail_task_vel = float(v_r_ref)
             self.last_v_r_ref = float(v_r_ref)
@@ -2548,16 +2585,7 @@ class JointIkController:
             step.joint_limited = bool(physical_saturated)
             step.rail_limited = bool(rail_sat_now)
         step.wall_active = bool(
-            step.wall_override
-            or abs(
-                wall_leave_only_sign(
-                    float(q_state[0]),
-                    hard_min_m=float(self.limits.q_lower[0]),
-                    hard_max_m=float(self.limits.q_upper[0]),
-                    band_m=float(self.cfg.qp.limit_damper_band_rail_m),
-                )
-            )
-            > 0.0
+            step.wall_override or abs(float(getattr(self, "_leave_sign", 0.0))) > 0.0
         )
         self._last_tcp_est = v_tcp_est.reshape(6).copy()
         mix = getattr(self, "_last_mix", None)

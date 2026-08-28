@@ -298,9 +298,9 @@ inner:
     u_mid_max_m_s: 0.03
     k_err_rail: 4.0
     e_ref_m: 0.08
-    # Rail velocity LPF after the live-Y e_mid fix. 2 Hz follows Y faster than
-    # 1 Hz without the 5–10 Hz hunting the reversal tests guard against.
-    f_c_hz: 2.0
+    # 4 Hz follows Y; stay below the 5–10 Hz reversal hunt.  Leave ε 8 mm.
+    f_c_hz: 4.0
+    leave_exit_eps_m: 0.008
     kaw_mid: 8.0
     rho_mirror_a: 0.50
     rho_mirror_j: 0.30

@@ -1132,6 +1132,9 @@ class QpIkController:
         self.last_rail_bind_lo = int(bind_lo)
         self.last_rail_bind_hi = int(bind_hi)
         if rail_task_vel_m_s is not None and np.isfinite(float(rail_task_vel_m_s)):
+            lo0, hi0 = float(lo_box[0]), float(hi_box[0])
+            if np.isfinite(lo0) and np.isfinite(hi0):
+                rail_task_vel_m_s = float(np.clip(float(rail_task_vel_m_s), lo0, hi0))
             self.last_rail_task_vel_used = float(rail_task_vel_m_s)
         else:
             self.last_rail_task_vel_used = 0.0

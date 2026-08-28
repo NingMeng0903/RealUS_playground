@@ -196,6 +196,7 @@ def dump_wbc_config(
         f"rail_allocator.k_err_rail {_f(ra.k_err_rail)}",
         f"rail_allocator.e_ref_m {_f(ra.e_ref_m)}",
         f"rail_allocator.f_c_hz {_f(ra.f_c_hz)}",
+        f"rail_allocator.leave_exit_eps_m {_f(ra.leave_exit_eps_m)}",
         f"rail_allocator.kaw_mid {_f(ra.kaw_mid)}",
         f"rail_allocator.rho_mirror_a {_f(ra.rho_mirror_a)}",
         f"rail_allocator.rho_mirror_j {_f(ra.rho_mirror_j)}",

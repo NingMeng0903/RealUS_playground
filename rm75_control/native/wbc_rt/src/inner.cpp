@@ -256,6 +256,7 @@ void InnerLoop::stop() {
   v_r_ref_ = 0.0;
   v_r_a_ = 0.0;
   v_r_init_ = false;
+  leave_sign_ = 0.0;
   mid_integ_ = 0.0;
   slack_hold_latched_ = false;
   sec_qdot_.setZero();
@@ -279,6 +280,7 @@ void InnerLoop::reset(const Vec8& q0) {
   v_r_lpf_ = 0.0;
   v_r_init_ = false;
   wall_pi_frozen_ = false;
+  leave_sign_ = 0.0;
   u_alloc_ = u_mid_ = u_mid_committed_ = mid_integ_ = 0.0;
   u_task_raw_ = u_task_feasible_ = u_pi_raw_ = u_mid_cmd_ = 0.0;
   u_post_raw_ = u_post_feasible_ = u_mid_applied_ = d_star_dot_cmd_ = 0.0;
@@ -642,7 +644,6 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     J_task.col(0).setZero();
     b_task = v_cmd - rail_contrib;
   }
-  rail_task_vel_used_ = rail_task_vel;
   rail_h1_ = h1;
   rail_h2_ = h2;
   rail_qdot_prev_tel_ = qdot_prev_[0];
@@ -664,6 +665,10 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     collapse_interval(&lo_box, &hi_box, &qdot_prev_, &a_max_, dt);
     note_rail_bind(olo, ohi, lo_box, hi_box, kRailBindCollapse);
   }
+  if (std::isfinite(rail_task_vel)) {
+    rail_task_vel = clip(rail_task_vel, lo_box[0], hi_box[0]);
+  }
+  rail_task_vel_used_ = rail_task_vel;
   rail_box_lo_ = lo_box[0];
   rail_box_hi_ = hi_box[0];
 
@@ -1182,25 +1187,45 @@ TickOut InnerLoop::step(const TickIn& in) {
 
     const double lam = sr_damping_lambda(last_sigma_, cfg_.sr_lam0, cfg_.sr_sigma_ref,
                                          cfg_.sr_sigma_floor);
-    const Vec8 mw = margin_weight_from_activation(q_prev, q_mid_, half_, cfg_.k_margin,
-                                                  cfg_.ns_activation);
+    Vec8 mw = margin_weight_from_activation(q_prev, q_mid_, half_, cfg_.k_margin,
+                                           cfg_.ns_activation);
     auto [u_a, qall] = allocate_rail(J, twist_base, v_max_, mw, lam, cfg_.v0, cfg_.w0,
                                      last_e_mid_, cfg_.k_err_rail, cfg_.e_ref);
+    if (cfg_.j4_design_enabled && cfg_.j4_design_hi > cfg_.j4_design_lo) {
+      const int j4 = j4_index(kNv);
+      const double box_mw = margin_weight_toward_box(
+          q_prev[j4], cfg_.j4_design_lo, cfg_.j4_design_hi, qall[j4], cfg_.k_margin);
+      if (box_mw > mw[j4]) {
+        mw[j4] = box_mw;
+        auto again = allocate_rail(J, twist_base, v_max_, mw, lam, cfg_.v0, cfg_.w0,
+                                   last_e_mid_, cfg_.k_err_rail, cfg_.e_ref);
+        u_a = again.first;
+        qall = again.second;
+      }
+    }
     (void)qall;
     u_alloc_ = u_a;
     u_task_raw_ = u_a;
     u_escape_raw_ = last_v_escape_;
-    const double leave_wall =
+    double leave_raw =
         wall_leave_only_sign(q_state[0], q_lo_[0], q_hi_[0], cfg_.damper_band_rail);
-    double leave = leave_wall;
     if (planned_ && q_state[0] >= cfg_.soft_max - cfg_.escape_leave) {
-      leave = std::max(leave, 1.0);
+      leave_raw = std::max(leave_raw, 1.0);
     }
+    const double leave = update_leave_sign(leave_raw, q_state[0], q_lo_[0], q_hi_[0],
+                                           cfg_.damper_band_rail, cfg_.leave_exit_eps,
+                                           leave_sign_);
+    leave_sign_ = leave;
     wall_pi_frozen_ = (leave != 0.0);
     escape_dir_ = update_escape_dir(escape_active_, u_escape_raw_, escape_dir_);
     const int guard_dir = escape_active_ ? escape_dir_ : 0;
     double u_lo = 0.0, u_hi = 0.0;
-    wall_velocity_bounds(v_max_[0], leave, &u_lo, &u_hi);
+    if (leave * u_task_raw_ > 1.0e-4) {
+      u_lo = 0.0;
+      u_hi = 0.0;
+    } else {
+      wall_velocity_bounds(v_max_[0], leave, &u_lo, &u_hi);
+    }
 
     const bool task_hold = quiescent_ && !escape_active_;
     const double alpha = secondary_alpha_;
@@ -1240,6 +1265,8 @@ TickOut InnerLoop::step(const TickIn& in) {
     const double tau = lpf_tau_from_fc(cfg_.f_c_hz);
     double v_f = u_feasible_;
     if (v_r_init_ && tau > 1e-9) v_f = first_order_lpf(v_r_ref_, u_feasible_, dt, tau);
+    v_f = project_lpf_into_wall(v_f, leave);
+    v_r_ref_ = project_lpf_into_wall(v_r_ref_, leave);
     v_r_init_ = true;
     v_r_lpf_ = v_f;
     double a_raw = (v_f - v_r_ref_) / dt;

@@ -206,6 +206,18 @@ inline double wall_leave_only_sign(double x, double hard_min, double hard_max, d
   return 0.0;
 }
 
+// Lillo ε: enter on the raw band, exit only after exit_eps inside the soft line.
+inline double update_leave_sign(double raw, double x, double hard_min, double hard_max,
+                                double band, double exit_eps, double prev) {
+  if (raw > 0.0) return 1.0;
+  if (raw < 0.0) return -1.0;
+  const double eps = std::max(exit_eps, 0.0);
+  const double b = std::max(band, 0.0);
+  if (prev > 0.0 && x > hard_max - b - eps) return 1.0;
+  if (prev < 0.0 && x < hard_min + b + eps) return -1.0;
+  return 0.0;
+}
+
 inline void collapse_interval(Vec8* lo, Vec8* hi, const Vec8* qdot_prev, const Vec8* a_max,
                               double dt) {
   for (int i = 0; i < kNv; ++i) {
@@ -251,6 +263,22 @@ inline Vec8 margin_weight_from_activation(const Vec8& q, const Vec8& mid, const 
   return mw;
 }
 
+inline double margin_weight_toward_box(double q, double lo, double hi, double toward,
+                                       double k_margin) {
+  // Chan-Dubey toward the approached wall only.  Activate at half the box
+  // width so the interior stays ~1 and the wall reaches 1+k_margin.
+  if (!(hi > lo) || !std::isfinite(q) || !std::isfinite(toward)) {
+    return 1.0;
+  }
+  if (!(toward > 0.0) && !(toward < 0.0)) return 1.0;
+  const double k = std::max(k_margin, 0.0);
+  const double activate = 0.5 * (hi - lo);
+  if (!(activate > 0.0)) return 1.0;
+  const double d_wall = (toward < 0.0) ? (q - lo) : (hi - q);
+  const double over = clip((activate - d_wall) / activate, 0.0, 1.0);
+  return 1.0 + k * over * over;
+}
+
 inline std::pair<double, Vec8> allocate_rail(const Mat6x8& J, const Vec6& v_d,
                                              const Vec8& qdot_scale, const Vec8& mw,
                                              double lam, double v0, double w0, double e_mid,
@@ -262,8 +290,13 @@ inline std::pair<double, Vec8> allocate_rail(const Mat6x8& J, const Vec6& v_d,
   Mat6x8 Jn;
   for (int r = 0; r < 6; ++r) Jn.row(r) = J.row(r) / scale[r];
   Vec8 Winv = qdot_scale.cwiseProduct(qdot_scale).cwiseQuotient(mw.cwiseMax(1.0e-9));
+  // Holistic 2022 (14) cheapens the base on large pose error.  Teleop has
+  // no large ||e|| mid-scan, so |v_y|/v0 stands in for coarse travel.  Not
+  // the paper formula.
   if (k_err > 0.0) {
-    const double gain = 1.0 + k_err * std::min(std::abs(e_mid) / std::max(e_ref, 1e-9), 1.0);
+    const double e_term = std::abs(e_mid) / std::max(e_ref, 1e-9);
+    const double v_term = std::abs(v_d[1]) / std::max(v0, 1e-9);
+    const double gain = 1.0 + k_err * std::min(std::max(e_term, v_term), 1.0);
     Winv[0] *= gain * gain;
   }
   Eigen::Matrix<double, 6, 6> A = Eigen::Matrix<double, 6, 6>::Zero();

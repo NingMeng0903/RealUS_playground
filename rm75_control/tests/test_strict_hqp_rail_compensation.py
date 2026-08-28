@@ -91,6 +91,33 @@ def test_rail_jerk_box_moves_all_feasible_task_residual_to_arm() -> None:
     )
 
 
+def test_rail_task_vel_is_clipped_into_velocity_box() -> None:
+    controller = _controller()
+    core = controller.core
+    jacobian = controller.kin.jacobian(Q_SAFE)
+    task = jacobian[:, 1] * 0.004
+    resync = np.r_[0.02, np.full(7, 0.10)]
+    core.step(
+        Q_SAFE,
+        task,
+        0.005,
+        q_meas=Q_SAFE,
+        resync_err=resync,
+        rail_exec_vel_m_s=0.0,
+        rail_task_vel_m_s=0.08,
+        rail_task_weight=1.0e5,
+        zero_secondary_rail=True,
+        jacobian=jacobian,
+        sigma=controller.kin.singular_values(jacobian),
+    )
+    lo = float(core.last_rail_box_lo)
+    hi = float(core.last_rail_box_hi)
+    used = float(core.last_rail_task_vel_used)
+    assert np.isfinite(lo) and np.isfinite(hi) and np.isfinite(used)
+    assert lo - 1.0e-9 <= used <= hi + 1.0e-9
+    assert used != pytest.approx(0.08, abs=1.0e-4)
+
+
 def test_measured_rail_recenter_is_cancelled_by_arm() -> None:
     controller = _controller()
     core = controller.core

@@ -33,12 +33,14 @@ class RailAllocatorConfig:
     kp_mid: float = 1.2
     ki_mid: float = 0.80
     u_mid_max_m_s: float = 0.12
-    # Haviland 2022 eq (14): cheapen the rail when |e_mid| is large.
+    # Cheapen the rail on large |e_mid| or |v_y| (teleop stand-in for
+    # Holistic 2022 (14) pose-error term; not that formula).
     k_err_rail: float = 4.0
     e_ref_m: float = 0.08
-    # Reference-model cutoff.  τ = 1/(2π f_c).  Rail is a low-frequency
-    # actuator. Yaml is 2 Hz after the live-Y e_mid fix; do not jump to 5–10 Hz.
-    f_c_hz: float = 1.0
+    # Reference-model cutoff.  τ = 1/(2π f_c).  4 Hz follows Y; stay below 5–10.
+    f_c_hz: float = 4.0
+    # Lillo ε: leave stays on until this far inside the soft line (8 mm).
+    leave_exit_eps_m: float = 0.008
     kaw_mid: float = 8.0
     rho_mirror_a: float = 0.50
     rho_mirror_j: float = 0.30
@@ -82,11 +84,12 @@ def allocate_rail(
     v_n = v / scale
     J_n = J / scale[:, None]
     Winv_diag = (s * s) / np.maximum(mw, 1.0e-9)
-    # Haviland 2022 eq (14): base cheap when the mid-ranging error is large.
+    # Holistic 2022 (14) uses pose error.  Mid-scan |e_mid| is small, so
+    # |v_y|/v0 is the coarse-travel stand-in.  Not the paper formula.
     if float(k_err) > 0.0:
-        gain = 1.0 + float(k_err) * min(
-            abs(float(e_mid)) / max(float(e_ref), 1.0e-9), 1.0
-        )
+        e_term = abs(float(e_mid)) / max(float(e_ref), 1.0e-9)
+        v_term = abs(float(v[1])) / max(float(v0_m_s), 1.0e-9)
+        gain = 1.0 + float(k_err) * min(max(e_term, v_term), 1.0)
         Winv_diag[0] *= gain * gain
     JW = J_n * Winv_diag[None, :]
     a = JW @ J_n.T
@@ -162,6 +165,7 @@ class RailReferenceModel:
         apply_wall: bool = True,
         a_max: float | None = None,
         j_max: float | None = None,
+        leave_sign: float = 0.0,
     ) -> float:
         dt = float(dt_s)
         if dt <= 1.0e-9:
@@ -177,8 +181,13 @@ class RailReferenceModel:
             v_f = u
         else:
             v_f = first_order_lpf(float(self.state.v), u, dt, tau)
+        from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
+            project_lpf_into_wall,
+        )
+
+        v_f = project_lpf_into_wall(v_f, leave_sign)
         self.last_v_lpf = float(v_f)
-        v_prev = float(self.state.v)
+        v_prev = project_lpf_into_wall(float(self.state.v), leave_sign)
         a_prev = float(self.state.a)
         a_raw = (v_f - v_prev) / dt
         da_max = float(j_lim) * dt
@@ -303,6 +312,38 @@ def margin_weight_from_activation(
     return 1.0 + float(k_margin) * over * over
 
 
+def margin_weight_toward_box(
+    q: float,
+    lo: float,
+    hi: float,
+    toward: float,
+    *,
+    k_margin: float,
+) -> float:
+    """Chan-Dubey weight toward the approached wall only.
+
+    Activation is half the box width.  Interior stays ~1; the wall is
+    ``1+k_margin``.  Leaving the wall is 1.
+    """
+    q_v = float(q)
+    lo_v = float(lo)
+    hi_v = float(hi)
+    toward_v = float(toward)
+    if not (hi_v > lo_v):
+        return 1.0
+    if not (np.isfinite(q_v) and np.isfinite(toward_v)):
+        return 1.0
+    if not (toward_v > 0.0 or toward_v < 0.0):
+        return 1.0
+    k = max(float(k_margin), 0.0)
+    activate = 0.5 * (hi_v - lo_v)
+    if not (activate > 0.0):
+        return 1.0
+    d_wall = (q_v - lo_v) if toward_v < 0.0 else (hi_v - q_v)
+    over = float(np.clip((activate - d_wall) / activate, 0.0, 1.0))
+    return 1.0 + k * over * over
+
+
 def soft_saturate(value: float, limit: float) -> float:
     """``limit * tanh(value / limit)``.  Keeps a gradient at the cap."""
 
@@ -397,6 +438,31 @@ def wall_leave_only_sign(
     return 0.0
 
 
+def update_leave_sign(
+    raw: float,
+    *,
+    x_m: float,
+    hard_min_m: float,
+    hard_max_m: float,
+    band_m: float,
+    exit_eps_m: float,
+    prev_leave: float,
+) -> float:
+    """Enter on the raw band; exit only after ``exit_eps_m`` inside the soft line."""
+    if float(raw) > 0.0:
+        return 1.0
+    if float(raw) < 0.0:
+        return -1.0
+    eps = max(float(exit_eps_m), 0.0)
+    band = max(float(band_m), 0.0)
+    x = float(x_m)
+    if float(prev_leave) > 0.0 and x > float(hard_max_m) - band - eps:
+        return 1.0
+    if float(prev_leave) < 0.0 and x < float(hard_min_m) + band + eps:
+        return -1.0
+    return 0.0
+
+
 def arm_mirror_rail_limits(
     J: np.ndarray,
     a_arm_max: np.ndarray,
@@ -487,9 +553,11 @@ __all__ = (
     "arm_mirror_rail_limits",
     "lpf_tau_from_fc",
     "margin_weight_from_activation",
+    "margin_weight_toward_box",
     "project_arm_compensation",
     "soft_saturate",
     "stopping_velocity",
+    "update_leave_sign",
     "wall_cap",
     "wall_leave_only_sign",
 )

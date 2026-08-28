@@ -171,7 +171,8 @@ struct Config {
   double u_mid_max = 0.03;
   double k_err_rail = 4.0;
   double e_ref = 0.08;
-  double f_c_hz = 2.0;
+  double f_c_hz = 4.0;
+  double leave_exit_eps = 0.008;
   double kaw_mid = 8.0;
   double rho_a = 0.50;
   double rho_j = 0.30;
