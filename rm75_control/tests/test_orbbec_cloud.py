@@ -105,6 +105,9 @@ def test_pack_unpack_roundtrip():
     assert parts[0] == b"orbbec_cloud_v1"
     meta, xyz2, rgb2 = unpack_cloud_multipart(parts)
     assert meta["n"] == 2
+    assert "wall_time_ns" in meta
+    assert "source_time_ns" in meta
+    assert "sim_time_ns" in meta
     np.testing.assert_allclose(xyz2, xyz)
     np.testing.assert_allclose(rgb2, rgb)
 

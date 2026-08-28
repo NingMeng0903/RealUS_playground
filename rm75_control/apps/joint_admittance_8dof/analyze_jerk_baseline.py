@@ -163,12 +163,17 @@ def _collapse_gates(rows, qdot, blo, bhi, dt: float) -> dict:
     same = np.sign(a) == np.sign(prev[:, 0])
     bind_lo = _col(rows, "rail_bind_lo")
     bind_hi = _col(rows, "rail_bind_hi")
-    changes = 0.0
-    if np.any(np.isfinite(bind_lo)):
-        changes += float(np.nansum(bind_lo[1:] != bind_lo[:-1]))
-    if np.any(np.isfinite(bind_hi)):
-        changes += float(np.nansum(bind_hi[1:] != bind_hi[:-1]))
-    changes_s = changes / (n * dt)
+    lo_s = (
+        float(np.nansum(bind_lo[1:] != bind_lo[:-1])) / (n * dt)
+        if np.any(np.isfinite(bind_lo))
+        else 0.0
+    )
+    hi_s = (
+        float(np.nansum(bind_hi[1:] != bind_hi[:-1])) / (n * dt)
+        if np.any(np.isfinite(bind_hi))
+        else 0.0
+    )
+    changes_s = max(lo_s, hi_s)
     a_cmd = _col(rows, "rail_commanded_acceleration_m_s2")
     peak = fft_peak_hz(a_cmd, dt, fmin=8.0, fmax=16.0)
     jerk_over = 100.0 * float(np.mean(np.abs(jerk) > 60.0))
@@ -188,6 +193,56 @@ def _collapse_gates(rows, qdot, blo, bhi, dt: float) -> dict:
         "degen_same_dir_pct_lt_20": same_pct < 20.0,
         "rail_bind_changes_per_s_lt_4": changes_s < 4.0,
         "a_cmd_12hz_peak_gone": not (8.0 <= peak <= 16.0) if np.isfinite(peak) else True,
+    }
+
+
+def _j4_gates(rows) -> dict:
+    empty = {
+        "j4_in_band_pct": float("nan"),
+        "j4_plus_y_median_deg": float("nan"),
+        "j4_minus_y_median_deg": float("nan"),
+        "j4_y_median_split_deg": float("nan"),
+        "j4_d_corr": float("nan"),
+        "j4_in_band_pct_gt_75": False,
+        "j4_y_median_split_lt_25": False,
+        "j4_d_corr_below_0_88": False,
+    }
+    q4 = _col(rows, "q_meas_4")
+    if not np.any(np.isfinite(q4)):
+        q4 = _col(rows, "q_cmd_4")
+    e_d = _col(rows, "e_d")
+    d_star = _col(rows, "d_star_m")
+    vy = _col(rows, "twist_requested_vy")
+    if not np.any(np.isfinite(q4)):
+        return empty
+    j4_deg = np.rad2deg(q4)
+    in_band = (j4_deg >= 70.0) & (j4_deg <= 115.0) & np.isfinite(j4_deg)
+    in_pct = 100.0 * float(np.mean(in_band))
+    d = e_d + d_star
+    ok = np.isfinite(j4_deg) & np.isfinite(d)
+    corr = (
+        float(np.corrcoef(j4_deg[ok], d[ok])[0, 1])
+        if int(np.count_nonzero(ok)) >= 8
+        else float("nan")
+    )
+    plus = np.isfinite(vy) & (vy > 0.01) & np.isfinite(j4_deg)
+    minus = np.isfinite(vy) & (vy < -0.01) & np.isfinite(j4_deg)
+    plus_med = float(np.median(j4_deg[plus])) if np.any(plus) else float("nan")
+    minus_med = float(np.median(j4_deg[minus])) if np.any(minus) else float("nan")
+    split = (
+        abs(plus_med - minus_med)
+        if np.isfinite(plus_med) and np.isfinite(minus_med)
+        else float("nan")
+    )
+    return {
+        "j4_in_band_pct": in_pct,
+        "j4_plus_y_median_deg": plus_med,
+        "j4_minus_y_median_deg": minus_med,
+        "j4_y_median_split_deg": split,
+        "j4_d_corr": corr,
+        "j4_in_band_pct_gt_75": in_pct > 75.0,
+        "j4_y_median_split_lt_25": bool(np.isfinite(split) and split < 25.0),
+        "j4_d_corr_below_0_88": bool(np.isfinite(corr) and abs(corr) < 0.88),
     }
 
 
@@ -306,6 +361,7 @@ def analyze(path: Path, *, u_mid_max: float = 0.03, dt: float = 0.005) -> dict:
             ),
         },
         "collapse_gates": _collapse_gates(rows, qdot, blo, bhi, dt),
+        "j4_gates": _j4_gates(rows),
     }
 
 

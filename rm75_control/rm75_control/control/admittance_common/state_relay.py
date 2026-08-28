@@ -36,6 +36,7 @@ _SLOT_DTYPE = np.dtype(
     [
         ("seq", "<u8"),
         ("t_s", "<f8"),
+        ("wall_time_ns", "<u8"),
         ("q_deg", "<f8", (7,)),
         ("pose", "<f8", (6,)),
         ("force", "<f8", (6,)),
@@ -53,6 +54,7 @@ _F_EXT_DTYPE = np.dtype(
         ("session_id", "<u8"),
         ("seq", "<u8"),
         ("t_s", "<f8"),
+        ("wall_time_ns", "<u8"),
         ("f_ext", "<f8", (6,)),
         ("ok", "u1"),
     ],
@@ -193,6 +195,7 @@ def _write_slot(
 ) -> None:
     slot["seq"] = np.uint64(seq)
     slot["t_s"] = float(snap.t_s)
+    slot["wall_time_ns"] = np.uint64(int(time.time_ns()))
     if snap.q_deg is not None:
         slot["q_deg"][:] = np.asarray(snap.q_deg, dtype=float)[:7]
     pose = pose_override if pose_override is not None else snap.pose
@@ -216,6 +219,7 @@ def _read_slot(slot) -> tuple[int, AsyncStateSnapshot, float]:
         q_deg=q_deg,
         force_raw=force_raw,
         t_s=float(slot["t_s"]),
+        wall_time_ns=int(slot["wall_time_ns"]) if "wall_time_ns" in slot.dtype.names else 0,
         ok=ok,
         seq=seq,
     )
@@ -243,6 +247,7 @@ class _ForceExtShm:
             self._arr["session_id"] = np.uint64(self._session_id)
             self._arr["seq"] = np.uint64(0)
             self._arr["t_s"] = 0.0
+            self._arr["wall_time_ns"] = np.uint64(0)
             self._arr["f_ext"][:] = np.nan
             self._arr["ok"] = np.uint8(0)
             self._seq = 0
@@ -268,6 +273,7 @@ class _ForceExtShm:
             self._seq += 1
             self._arr["seq"] = np.uint64(self._seq)
             self._arr["t_s"] = float(time.time() if t_s is None else t_s)
+            self._arr["wall_time_ns"] = np.uint64(int(time.time_ns()))
             self._arr["f_ext"][:] = np.nan
             n = min(6, arr.size)
             self._arr["f_ext"][:n] = arr[:n]

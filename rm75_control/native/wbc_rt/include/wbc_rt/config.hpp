@@ -54,7 +54,7 @@ struct Config {
   double rail_reaction_s = 0.06;
   double near_arm_margin_rad = 0.08;
   double j_max_arm = 300.0;
-  double j_max_rail = 60.0;
+  double j_max_rail = 120.0;
   double sr_lam0 = 0.05;
   double sr_sigma_ref = 0.08;
   double sr_sigma_floor = 1e-6;

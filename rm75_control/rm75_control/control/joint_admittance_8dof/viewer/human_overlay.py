@@ -210,13 +210,14 @@ class TwinHumanOverlay:
                 }
         if not robot_entities:
             return
+        now = int(time.time_ns())
         payload = {
             "schema_version": 1,
             "sim_step_index": 0,
             "frame_index": 0,
-            "wall_time_ns": time.time_ns(),
-            "sim_time_ns": time.time_ns(),
-            "source_time_ns": time.time_ns(),
+            "wall_time_ns": now,
+            "sim_time_ns": now,
+            "source_time_ns": now,
             "clock_domain": "realus_twin",
             "robot_entities": robot_entities,
             "human": {},
@@ -258,13 +259,14 @@ class TwinHumanOverlay:
                 robot_entities["robot_main"] = {
                     "joint_positions": [float(v) for v in qv.tolist()],
                 }
+        now = int(time.time_ns())
         payload = {
             "schema_version": 1,
             "sim_step_index": 0,
             "frame_index": 0,
-            "wall_time_ns": time.time_ns(),
-            "sim_time_ns": time.time_ns(),
-            "source_time_ns": time.time_ns(),
+            "wall_time_ns": now,
+            "sim_time_ns": now,
+            "source_time_ns": now,
             "clock_domain": "realus_twin",
             "robot_entities": robot_entities,
             "human": human,

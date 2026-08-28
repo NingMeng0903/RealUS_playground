@@ -210,21 +210,14 @@ inline void collapse_interval(Vec8* lo, Vec8* hi, const Vec8* qdot_prev, const V
                               double dt) {
   for (int i = 0; i < kNv; ++i) {
     if ((*lo)[i] <= (*hi)[i]) continue;
-    // Crossed: lo > hi.  The conflicting interval is [hi, lo].
-    const double gap_lo = (*hi)[i];
-    const double gap_hi = (*lo)[i];
-    double target = 0.0;
-    if (qdot_prev != nullptr) {
-      target = (*qdot_prev)[i];
-      if (a_max != nullptr && dt > 0.0) {
-        const double step = (*a_max)[i] * dt;
-        if (target > 0.0) target = std::max(0.0, target - step);
-        else if (target < 0.0) target = std::min(0.0, target + step);
-      } else {
-        target = 0.0;
-      }
+    double collapsed = 0.0;
+    if ((*hi)[i] < 0.0 && (*lo)[i] > 0.0) {
+      collapsed = 0.0;
+    } else if (qdot_prev == nullptr) {
+      collapsed = (std::abs((*lo)[i]) <= std::abs((*hi)[i])) ? (*lo)[i] : (*hi)[i];
+    } else {
+      collapsed = ((*qdot_prev)[i] >= 0.0) ? (*lo)[i] : (*hi)[i];
     }
-    double collapsed = clip(target, gap_lo, gap_hi);
     if (qdot_prev != nullptr && a_max != nullptr && dt > 0.0) {
       const double step = (*a_max)[i] * dt;
       collapsed = clip(collapsed, (*qdot_prev)[i] - step, (*qdot_prev)[i] + step);

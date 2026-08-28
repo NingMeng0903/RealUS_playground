@@ -15,11 +15,15 @@ from rm75_control.control.joint_admittance_8dof.api import SecondaryPolicy
 from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
 from rm75_control.control.joint_admittance_8dof.loop import JointIkController
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
+from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
+    VelocityBoxConstraints,
+)
 from rm75_control.control.joint_admittance_8dof.solver.joint_comfort import (
-    J4_DESIGN_SLACK,
     J4DesignComfortBuilder,
+    j4_design_qdot_bounds,
     j4_joint_index,
 )
+from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
     EPS_ENTER,
     EPS_EXIT,
@@ -306,26 +310,58 @@ def test_j4_index_uses_representation() -> None:
     assert j4_joint_index(7) == 3
 
 
-def test_j4_design_band_21deg_and_96deg() -> None:
+def test_j4_design_pref_rows_are_empty() -> None:
     b = J4DesignComfortBuilder()
     q21 = np.zeros(8)
     q21[4] = np.deg2rad(21.0)
     rows = b.build_rows(q21)
-    assert rows.active
-    assert rows.jacobian.shape[0] == 2
-    assert int(rows.slack_col[0]) == J4_DESIGN_SLACK
-    assert rows.jacobian[0, 4] == pytest.approx(1.0)
-    assert rows.lower[0] > 0.0
+    assert not rows.active
+    assert rows.jacobian.shape[0] == 0
     q96 = np.zeros(8)
     q96[4] = np.deg2rad(96.0)
-    rows96 = b.build_rows(q96)
-    assert rows96.lower[0] < 0.0
-    assert rows96.lower[1] < 0.0
-    disabled = J4DesignComfortBuilder()
-    disabled.cfg.enabled = False
-    empty = disabled.build_rows(q21)
-    assert not empty.active
-    assert empty.jacobian.shape[0] == 0
+    assert b.build_rows(q96).jacobian.shape[0] == 0
+
+
+def test_j4_design_hard_box_holds_band() -> None:
+    gamma = 4.0
+    lo_rad = np.deg2rad(70.0)
+    hi_rad = np.deg2rad(115.0)
+    lim = SafetyLimits(
+        q_lower=np.concatenate(([0.005], np.full(7, -3.0))),
+        q_upper=np.concatenate(([0.78], np.full(7, 3.0))),
+        v_max=np.concatenate(([0.12], np.full(7, 2.0))),
+        a_max=None,
+        position_margin=np.zeros(8),
+    )
+    box = VelocityBoxConstraints(
+        lim,
+        damper_band_rad=0.0,
+        rail_reaction_s=0.0,
+        j4_design_enabled=True,
+        j4_design_lo=lo_rad,
+        j4_design_hi=hi_rad,
+        j4_design_gamma=gamma,
+    )
+    q = np.zeros(8)
+    q[0] = 0.40
+    q[4] = np.deg2rad(96.0)
+    lo, hi = box.bounds(q, 0.005)
+    want_lo, want_hi = j4_design_qdot_bounds(
+        float(q[4]), lower_rad=lo_rad, upper_rad=hi_rad, gamma=gamma
+    )
+    assert lo[4] == pytest.approx(want_lo)
+    assert hi[4] == pytest.approx(want_hi)
+    assert lo[4] < 0.0 < hi[4]
+    q[4] = np.deg2rad(21.0)
+    lo21, hi21 = box.bounds(q, 0.005)
+    assert lo21[4] > 0.0
+    assert hi21[4] >= lo21[4] - 1e-12 or lo21[4] > hi21[4]
+    q[4] = np.deg2rad(70.0)
+    lo70, _ = box.bounds(q, 0.005)
+    assert lo70[4] == pytest.approx(0.0, abs=1e-12)
+    q[4] = np.deg2rad(115.0)
+    _, hi115 = box.bounds(q, 0.005)
+    assert hi115[4] == pytest.approx(0.0, abs=1e-12)
 
 
 def test_inner_mixer_puts_posture_on_rail_not_sec0() -> None:

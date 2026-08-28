@@ -119,9 +119,9 @@ inner:
     # Measured jerk RMS was 250-570 rad/s³ with the acceleration flipping sign
     # on ~half the ticks while the reference twist was smooth.
     j_max_arm_rad_s3: 300.0
-    # 3.0 made a full rail acceleration reversal take 2*a_max/j = 0.2 s versus
-    # 0.02 s on the arm; 60 keeps 2*a_max/j = 0.02 s after a_max rose to 0.60.
-    j_max_rail_m_s3: 60.0
+    # nonempty accel ∩ jerk needs j_max·h1 ≥ a_max → 0.60/0.005 = 120.
+    # 60 only authorized 0.30 m/s² and emptied the box once |a| exceeded that.
+    j_max_rail_m_s3: 120.0
     sigma_setbased:
       enabled: true
       activate: 0.09
@@ -156,6 +156,7 @@ inner:
       activate_deg: 25.0
       gamma: 6.0
       slack_weight: 80.0
+    # Hard FT velocity box on J4 (no slacked pref rows).  slack_weight unused.
     j4_design_comfort:
       enabled: true
       lower_deg: 70.0

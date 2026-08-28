@@ -168,13 +168,17 @@ def main() -> int:
             rgb_f = _cloud_rgb(rgb, source)
             if rgb_f.shape[0] != xyz.shape[0]:
                 rgb_f = np.full((int(xyz.shape[0]), 3), 0.7, dtype=np.float32)
+            wall_ns = int(time.time_ns())
+            source_ns = int(frame.timestamp_ns) if int(getattr(frame, "timestamp_ns", 0) or 0) else wall_ns
             meta: dict[str, Any] = {
                 "schema_version": 1,
                 "session_id": str(args.session_id),
                 "source_id": "realus.orbbec",
                 "frame_index": int(frame_index),
-                "timestamp_ns": int(frame.timestamp_ns),
-                "wall_time_ns": int(time.time_ns()),
+                "timestamp_ns": source_ns,
+                "source_time_ns": source_ns,
+                "sim_time_ns": wall_ns,
+                "wall_time_ns": wall_ns,
                 "n": int(xyz.shape[0]),
                 "K": K.tolist(),
                 "T_link7_cam": np.asarray(T_link7_cam, dtype=np.float64).tolist(),

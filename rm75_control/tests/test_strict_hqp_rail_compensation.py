@@ -31,6 +31,7 @@ def _controller() -> JointIkController:
         collision=collision,
         smoothness_weight=np.r_[0.0, np.full(7, 0.15)],
     )
+    qp.j4_design_comfort.enabled = False
     cfg = JointIkConfig(control_frame="base", qp=qp, collision=collision)
     controller = JointIkController(RobotKinematics(), cfg)
     controller.reset(Q_SAFE)

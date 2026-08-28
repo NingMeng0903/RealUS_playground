@@ -55,6 +55,7 @@ class AsyncStateSnapshot:
     qdot_deg_s: np.ndarray | None = None
     force_raw: np.ndarray = field(default_factory=lambda: np.zeros(6))
     t_s: float = 0.0
+    wall_time_ns: int = 0
     ok: bool = False
     seq: int = 0
 

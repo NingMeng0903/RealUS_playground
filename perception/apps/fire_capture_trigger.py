@@ -21,7 +21,14 @@ def main() -> int:
     sock = ctx.socket(zmq.PUB)
     sock.connect(str(args.connect))
     time.sleep(0.15)
-    payload = {"schema_version": 1, "label": str(args.label), "wall_time_ns": time.time_ns()}
+    now = int(time.time_ns())
+    payload = {
+        "schema_version": 1,
+        "label": str(args.label),
+        "source_time_ns": now,
+        "sim_time_ns": now,
+        "wall_time_ns": now,
+    }
     sock.send_multipart([str(args.topic).encode("utf-8"), json.dumps(payload).encode("utf-8")])
     sock.close(0)
     print(f"trigger sent connect={args.connect} label={args.label}", flush=True)

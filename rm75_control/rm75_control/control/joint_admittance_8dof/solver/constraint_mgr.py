@@ -9,6 +9,10 @@ from __future__ import annotations
 import numpy as np
 
 from rm75_control.control.joint_admittance_8dof.solver.cbf_constraints import CbfRows
+from rm75_control.control.joint_admittance_8dof.solver.joint_comfort import (
+    j4_design_qdot_bounds,
+    j4_joint_index,
+)
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 
 RAIL_BIND_NONE = 0
@@ -67,12 +71,12 @@ def collapse_interval(
     a_max: np.ndarray | None = None,
     dt: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Collapse an empty velocity interval to a singleton toward standstill.
+    """Collapse an empty velocity interval to a singleton.
 
-    When ``lo > hi`` the conflicting gap is ``[hi, lo]``.  Project a
-    brake-toward-zero target onto that gap, then keep the result inside the
-    acceleration envelope around ``qdot_prev``.  Must match
-    ``wbc_rt::collapse_interval`` in ``types.hpp``.  Never raises.
+    When ``lo > hi`` pick ``lo`` if the previous velocity was non-negative,
+    else ``hi``.  A gap that straddles zero collapses to 0.  The result is
+    then clipped to the acceleration envelope around ``qdot_prev``.  Must
+    match ``wbc_rt::collapse_interval`` in ``types.hpp``.  Never raises.
     """
     lo = np.asarray(lo, dtype=float).copy()
     hi = np.asarray(hi, dtype=float).copy()
@@ -80,22 +84,14 @@ def collapse_interval(
     if not np.any(crossed):
         return lo, hi
 
-    gap_lo = hi
-    gap_hi = lo
+    keep_zero = crossed & (hi < 0.0) & (lo > 0.0)
     if qdot_prev is None:
-        target = np.zeros_like(lo)
+        pick_lo = np.abs(lo) <= np.abs(hi)
+        collapsed = np.where(pick_lo, lo, hi)
     else:
         prev = np.asarray(qdot_prev, dtype=float)
-        if a_max is not None and dt is not None and float(dt) > 0.0:
-            step = np.asarray(a_max, dtype=float) * float(dt)
-            target = np.array(prev, dtype=float, copy=True)
-            pos = target > 0.0
-            neg = target < 0.0
-            target = np.where(pos, np.maximum(0.0, target - step), target)
-            target = np.where(neg, np.minimum(0.0, target + step), target)
-        else:
-            target = np.zeros_like(lo)
-    collapsed = np.clip(target, gap_lo, gap_hi)
+        collapsed = np.where(prev >= 0.0, lo, hi)
+    collapsed = np.where(keep_zero, 0.0, collapsed)
     if (
         qdot_prev is not None
         and a_max is not None
@@ -141,6 +137,10 @@ class VelocityBoxConstraints:
         *,
         damper_band_rad: float | np.ndarray = 0.15,
         rail_reaction_s: float = 0.06,
+        j4_design_enabled: bool = False,
+        j4_design_lo: float = 1.2217304763960306,
+        j4_design_hi: float = 2.007128639793479,
+        j4_design_gamma: float = 4.0,
     ) -> None:
         self.lim = limits
         # Faverjon/Tournassoud velocity-damper influence zone before each
@@ -150,6 +150,10 @@ class VelocityBoxConstraints:
         self.damper_band_rad = np.asarray(damper_band_rad, dtype=float)
         # Extra look-ahead on the rail stopping envelope.  0 falls back to dt.
         self.rail_reaction_s = max(float(rail_reaction_s), 0.0)
+        self.j4_design_enabled = bool(j4_design_enabled)
+        self.j4_design_lo = float(j4_design_lo)
+        self.j4_design_hi = float(j4_design_hi)
+        self.j4_design_gamma = float(j4_design_gamma)
         self.last_rail_bind_lo = RAIL_BIND_NONE
         self.last_rail_bind_hi = RAIL_BIND_NONE
         self.last_rail_box_lo = float("nan")
@@ -248,6 +252,22 @@ class VelocityBoxConstraints:
                 bind_lo, bind_hi = note_rail_bind(
                     bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_CMD_DAMPER
                 )
+
+        if (
+            self.j4_design_enabled
+            and self.j4_design_hi > self.j4_design_lo
+            and self.j4_design_gamma > 0.0
+        ):
+            idx = j4_joint_index(int(q.size))
+            if idx >= 0:
+                lo_j4, hi_j4 = j4_design_qdot_bounds(
+                    float(q[idx]),
+                    lower_rad=self.j4_design_lo,
+                    upper_rad=self.j4_design_hi,
+                    gamma=self.j4_design_gamma,
+                )
+                lo[idx] = max(float(lo[idx]), float(lo_j4))
+                hi[idx] = min(float(hi[idx]), float(hi_j4))
 
         m = np.broadcast_to(np.asarray(m, dtype=float), q.shape)
         a_max = None if lim.a_max is None else np.asarray(lim.a_max, dtype=float).copy()

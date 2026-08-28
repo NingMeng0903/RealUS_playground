@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
@@ -276,6 +277,11 @@ def pack_cloud_multipart(
     if cols.shape[0] != pts.shape[0]:
         raise ValueError(f"xyz/rgb length mismatch: {pts.shape[0]} vs {cols.shape[0]}")
     payload = dict(meta)
+    wall = int(payload.get("wall_time_ns") or time.time_ns())
+    source = int(payload.get("source_time_ns") or payload.get("timestamp_ns") or wall)
+    payload.setdefault("wall_time_ns", wall)
+    payload.setdefault("source_time_ns", source)
+    payload.setdefault("sim_time_ns", source)
     payload["schema_version"] = int(payload.get("schema_version", 1))
     payload["n"] = int(pts.shape[0])
     payload["xyz_dtype"] = "float32"

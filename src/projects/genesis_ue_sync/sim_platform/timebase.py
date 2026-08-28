@@ -5,6 +5,17 @@ from dataclasses import dataclass
 from typing import Any
 
 
+def host_clock_fields(*, source_time_ns: int | None = None) -> dict[str, int]:
+    """Host CLOCK_REALTIME stamp for live streams (ZMQ / SHM / files)."""
+    wall_time_ns = int(time.time_ns())
+    source = wall_time_ns if source_time_ns is None else int(source_time_ns)
+    return {
+        "source_time_ns": source,
+        "sim_time_ns": source,
+        "wall_time_ns": wall_time_ns,
+    }
+
+
 @dataclass(frozen=True)
 class ClockSnapshot:
     sim_step_index: int

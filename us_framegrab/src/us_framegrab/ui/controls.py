@@ -17,6 +17,9 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from us_framegrab.ui.wallpaper import PANEL_GRAY, WallpaperPane
+from us_framegrab.wallpaper import WallpaperStore
+
 
 class _SliderSpin(QWidget):
     valueChanged = pyqtSignal(int)
@@ -67,18 +70,28 @@ class ControlsPanel(QWidget):
     next_device_clicked = pyqtSignal()
     refresh_devices_clicked = pyqtSignal()
     machine_changed = pyqtSignal(str)
+    wallpaper_clicked = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setFixedWidth(340)
+        self.setObjectName("controlsPanel")
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setStyleSheet(f"#controlsPanel {{ background: {PANEL_GRAY.name()}; }}")
         root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        top = QWidget()
+        top_l = QVBoxLayout(top)
+        top_l.setContentsMargins(8, 8, 8, 6)
 
         machine_box = QGroupBox("Machine")
         machine_l = QVBoxLayout(machine_box)
         self.machine = QComboBox()
         machine_l.addWidget(self.machine)
         self.machine.activated[int].connect(self._emit_machine)
-        root.addWidget(machine_box)
+        top_l.addWidget(machine_box)
 
         crop_box = QGroupBox("Crop [x0, x1, y0, y1]")
         form = QFormLayout(crop_box)
@@ -92,7 +105,7 @@ class ControlsPanel(QWidget):
         form.addRow("y1", self.y1)
         for w in (self.x0, self.x1, self.y0, self.y1):
             w.valueChanged.connect(self._emit_crop)
-        root.addWidget(crop_box)
+        top_l.addWidget(crop_box)
 
         flags = QGroupBox("Frame")
         flags_l = QVBoxLayout(flags)
@@ -105,7 +118,7 @@ class ControlsPanel(QWidget):
         self.hflip.toggled.connect(self.hflip_changed.emit)
         self.color.toggled.connect(self.color_changed.emit)
         self.auto_cropping.toggled.connect(self.auto_cropping_changed.emit)
-        root.addWidget(flags)
+        top_l.addWidget(flags)
 
         stream = QGroupBox("Stream")
         stream_l = QFormLayout(stream)
@@ -114,7 +127,7 @@ class ControlsPanel(QWidget):
         self.quality.setValue(80)
         self.quality.valueChanged.connect(self.jpeg_quality_changed.emit)
         stream_l.addRow("JPEG quality", self.quality)
-        root.addWidget(stream)
+        top_l.addWidget(stream)
 
         btns = QVBoxLayout()
         self.btn_auto = QPushButton("Auto-crop now")
@@ -133,13 +146,17 @@ class ControlsPanel(QWidget):
         btns.addLayout(row)
         btns.addWidget(self.btn_refresh)
         btns.addWidget(self.btn_save)
-        root.addLayout(btns)
+        top_l.addLayout(btns)
 
         self.status = QLabel("")
         self.status.setWordWrap(True)
         self.status.setStyleSheet("color: #222; font-size: 12px;")
-        root.addWidget(self.status)
-        root.addStretch(1)
+        top_l.addWidget(self.status)
+        root.addWidget(top)
+
+        self.wallpaper = WallpaperPane()
+        self.wallpaper.choose_clicked.connect(self.wallpaper_clicked.emit)
+        root.addWidget(self.wallpaper, 1)
 
         self.btn_auto.clicked.connect(self.auto_crop_clicked.emit)
         self.btn_preview.toggled.connect(self._on_preview_toggled)
@@ -188,6 +205,9 @@ class ControlsPanel(QWidget):
                 current = index
         self.machine.setCurrentIndex(current)
         self.machine.blockSignals(False)
+
+    def set_wallpaper(self, store: WallpaperStore, theme_id: str) -> None:
+        self.wallpaper.set_theme(store, theme_id)
 
     def sliders_down(self) -> bool:
         return any(w.slider.isSliderDown() for w in (self.x0, self.x1, self.y0, self.y1))

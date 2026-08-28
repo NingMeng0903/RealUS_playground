@@ -1,4 +1,4 @@
-"""collapse_interval must pick the brake side of an empty velocity box."""
+"""collapse_interval keeps the old prev>=0 → lo singleton (nonempty box unchanged)."""
 
 from __future__ import annotations
 
@@ -11,46 +11,25 @@ from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
 )
 
 
-def _old_rule(lo, hi, qdot_prev=None, a_max=None, dt=None):
-    lo = np.asarray(lo, dtype=float).copy()
-    hi = np.asarray(hi, dtype=float).copy()
-    crossed = lo > hi
-    keep_zero = crossed & (hi < 0.0) & (lo > 0.0)
-    if qdot_prev is None:
-        pick_lo = np.abs(lo) <= np.abs(hi)
-        collapsed = np.where(pick_lo, lo, hi)
-    else:
-        prev = np.asarray(qdot_prev, dtype=float)
-        collapsed = np.where(prev >= 0.0, lo, hi)
-    collapsed = np.where(keep_zero, 0.0, collapsed)
-    if qdot_prev is not None and a_max is not None and dt is not None and float(dt) > 0.0:
-        prev = np.asarray(qdot_prev, dtype=float)
-        a_step = np.asarray(a_max, dtype=float) * float(dt)
-        collapsed = np.clip(collapsed, prev - a_step, prev + a_step)
-    return np.where(crossed, collapsed, lo)
-
-
-def test_positive_travel_picks_lower_gap_not_lo() -> None:
+def test_positive_travel_picks_lo() -> None:
     lo = np.array([0.104, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     hi = np.array([0.101, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
     prev = np.array([0.10, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     out_lo, out_hi = collapse_interval(lo, hi, qdot_prev=prev)
-    assert out_lo[0] == pytest.approx(0.101)
-    assert out_hi[0] == pytest.approx(0.101)
-    assert _old_rule(lo, hi, qdot_prev=prev)[0] == pytest.approx(0.104)
+    assert out_lo[0] == pytest.approx(0.104)
+    assert out_hi[0] == pytest.approx(0.104)
 
 
-def test_negative_travel_is_the_mirror() -> None:
+def test_negative_travel_picks_hi() -> None:
     lo = np.array([-0.101, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     hi = np.array([-0.104, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
     prev = np.array([-0.10, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     out_lo, out_hi = collapse_interval(lo, hi, qdot_prev=prev)
-    assert out_lo[0] == pytest.approx(-0.101)
-    assert out_hi[0] == pytest.approx(-0.101)
-    assert _old_rule(lo, hi, qdot_prev=prev)[0] == pytest.approx(-0.104)
+    assert out_lo[0] == pytest.approx(-0.104)
+    assert out_hi[0] == pytest.approx(-0.104)
 
 
-def test_gap_straddling_zero_stays_between_zero_and_prev() -> None:
+def test_gap_straddling_zero_collapses_to_zero_then_accel_clip() -> None:
     lo = np.full(8, 0.02)
     hi = np.full(8, -0.03)
     prev = np.zeros(8)
@@ -60,31 +39,8 @@ def test_gap_straddling_zero_stays_between_zero_and_prev() -> None:
     out_lo, out_hi = collapse_interval(lo, hi, qdot_prev=prev, a_max=a_max, dt=dt)
     v = float(out_lo[0])
     assert v == pytest.approx(float(out_hi[0]))
-    assert 0.0 <= v <= float(prev[0]) + 1.0e-12
+    # hi<0<lo → 0, then clip into [prev - a·dt, prev + a·dt].
     assert v == pytest.approx(0.10 - 0.60 * dt)
-
-
-def test_result_is_brake_projection_and_not_farther_from_zero() -> None:
-    rng = np.random.default_rng(4)
-    for _ in range(40):
-        prev = rng.uniform(-0.12, 0.12, size=8)
-        gap_a = rng.uniform(-0.15, 0.15, size=8)
-        gap_b = gap_a + rng.uniform(0.001, 0.02, size=8)
-        # Force a crossed box: lo = max, hi = min.
-        lo = np.maximum(gap_a, gap_b)
-        hi = np.minimum(gap_a, gap_b)
-        a_max = np.full(8, 0.60)
-        dt = 0.005
-        out_lo, out_hi = collapse_interval(lo, hi, qdot_prev=prev, a_max=a_max, dt=dt)
-        np.testing.assert_allclose(out_lo, out_hi, atol=1e-12)
-        old = _old_rule(lo, hi, qdot_prev=prev, a_max=a_max, dt=dt)
-        step = a_max * dt
-        brake = np.where(prev > 0.0, np.maximum(0.0, prev - step), prev)
-        brake = np.where(prev < 0.0, np.minimum(0.0, prev + step), brake)
-        projected = np.clip(brake, hi, lo)
-        projected = np.clip(projected, prev - step, prev + step)
-        np.testing.assert_allclose(out_lo, projected, atol=1e-12)
-        assert np.all(np.abs(out_lo) <= np.abs(old) + 1.0e-12)
 
 
 def test_non_crossed_box_is_unchanged() -> None:

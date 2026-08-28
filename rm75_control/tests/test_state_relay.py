@@ -99,6 +99,7 @@ def test_relay_pub_sub_roundtrip(relay_name):
             time.sleep(0.005)
         assert snap.ok
         assert snap.seq > 0
+        assert int(getattr(snap, "wall_time_ns", 0) or 0) > 0
         assert snap.q_deg is not None
         assert snap.q_deg[0] == pytest.approx(10.0)
         q8 = sub.q_meas_8dof()

@@ -447,6 +447,12 @@ void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const 
     }
     note_rail_bind(olo, ohi, *lo, *hi, kRailBindVMaxDamper);
   }
+  if (cfg_.j4_design_enabled && cfg_.j4_design_hi > cfg_.j4_design_lo &&
+      cfg_.j4_design_gamma > 0.0) {
+    const int j4 = j4_index(kNv);
+    (*lo)[j4] = std::max((*lo)[j4], -cfg_.j4_design_gamma * (q_geom[j4] - cfg_.j4_design_lo));
+    (*hi)[j4] = std::min((*hi)[j4], cfg_.j4_design_gamma * (cfg_.j4_design_hi - q_geom[j4]));
+  }
   if (band[0] > 1e-9) {
     const double olo = (*lo)[0];
     const double ohi = (*hi)[0];
@@ -788,8 +794,6 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   slack_w[0] = cfg_.sigma_slack_w;
   slack_w[1] = cfg_.branch_slack_w * dwell_scale_;
   for (int k = 2; k < kNPref; ++k) slack_w[k] = cfg_.comfort_slack_w;
-  if (cfg_.j4_design_enabled) slack_w[2] = cfg_.j4_design_slack_w;
-  else slack_w[2] = 0.0;
 
   MatX H2 = MatX::Zero(kNVar, kNVar);
   H2.topLeftCorner<kNv, kNv>() = h_reg.asDiagonal();
@@ -824,17 +828,6 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
       pref_s[pref_n] = 2 + 3;  // J4 physical slack
       ++pref_n;
     }
-  }
-  if (cfg_.j4_design_enabled) {
-    const int j4 = j4_index(kNv);
-    pref_J(pref_n, j4) = 1.0;
-    pref_lo[pref_n] = -cfg_.j4_design_gamma * (q_geom[j4] - cfg_.j4_design_lo);
-    pref_s[pref_n] = 2;
-    ++pref_n;
-    pref_J(pref_n, j4) = -1.0;
-    pref_lo[pref_n] = -cfg_.j4_design_gamma * (cfg_.j4_design_hi - q_geom[j4]);
-    pref_s[pref_n] = 2;
-    ++pref_n;
   }
   if (cfg_.sigma_enabled) {
     if (sigma_arm < cfg_.sigma_activate) sigma_row_active_ = true;

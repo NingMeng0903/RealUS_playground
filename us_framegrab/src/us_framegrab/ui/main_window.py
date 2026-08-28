@@ -10,6 +10,8 @@ from us_framegrab.presets import list_presets
 from us_framegrab.runtime import FrameGrabSession
 from us_framegrab.ui.controls import ControlsPanel
 from us_framegrab.ui.preview import CropPreview
+from us_framegrab.ui.wallpaper import WallpaperPickerDialog
+from us_framegrab.wallpaper import WallpaperStore, default_wallpaper_dir
 
 
 class MainWindow(QMainWindow):
@@ -20,6 +22,7 @@ class MainWindow(QMainWindow):
         self._syncing = False
         self._last_size = (0, 0)
         self._stream_view = False
+        self._wallpapers = WallpaperStore(default_wallpaper_dir(session.cfg.path))
 
         header = QLabel(str(session.cfg.pub_bind))
         header.setStyleSheet("padding: 4px; background: #333; color: white;")
@@ -28,12 +31,15 @@ class MainWindow(QMainWindow):
         self.controls = ControlsPanel()
 
         body = QHBoxLayout()
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(6)
         body.addWidget(self.preview, 1)
         body.addWidget(self.controls)
 
         central = QWidget()
         lay = QVBoxLayout(central)
         lay.setContentsMargins(6, 6, 6, 6)
+        lay.setSpacing(6)
         lay.addWidget(header)
         lay.addLayout(body, 1)
         self.setCentralWidget(central)
@@ -53,6 +59,7 @@ class MainWindow(QMainWindow):
             jpeg_quality=snap.jpeg_quality,
         )
         self.preview.set_cbox(snap.cbox)
+        self.controls.set_wallpaper(self._wallpapers, self._wallpapers.active_id)
 
         self.preview.crop_changed.connect(self._on_preview_crop)
         self.controls.crop_changed.connect(self._on_controls_crop)
@@ -67,6 +74,7 @@ class MainWindow(QMainWindow):
         self.controls.next_device_clicked.connect(lambda: session.switch_device(1))
         self.controls.refresh_devices_clicked.connect(self._on_refresh)
         self.controls.machine_changed.connect(self._on_machine)
+        self.controls.wallpaper_clicked.connect(self._on_wallpaper)
 
         self._timer = QTimer(self)
         self._timer.setInterval(66)
@@ -104,6 +112,11 @@ class MainWindow(QMainWindow):
         )
         self.preview.set_cbox(snap.cbox)
         self._syncing = False
+
+    def _on_wallpaper(self) -> None:
+        dlg = WallpaperPickerDialog(self._wallpapers, parent=self)
+        dlg.exec_()
+        self.controls.set_wallpaper(self._wallpapers, self._wallpapers.active_id)
 
     def _on_auto_crop(self) -> None:
         if not self._session.auto_crop_once():

@@ -267,7 +267,6 @@ class FrameGrabSession:
         if elapsed >= 2.0:
             hz = self._pub_count / elapsed
             self._publish_hz = hz
-            log.info("publish rate: %.1f Hz", hz)
             self._pub_count = 0
             self._pub_stat_t = now
 

@@ -347,30 +347,22 @@ py::tuple collapse_interval(
     std::memcpy(amax.data(), a.data(), sizeof(double) * static_cast<size_t>(n));
   }
   for (int i = 0; i < n; ++i) {
-    if (lo[static_cast<size_t>(i)] <= hi[static_cast<size_t>(i)]) continue;
-    const double gap_lo = hi[static_cast<size_t>(i)];
-    const double gap_hi = lo[static_cast<size_t>(i)];
-    double target = 0.0;
-    if (has_prev) {
-      target = prev[static_cast<size_t>(i)];
-      if (has_amax && dt > 0.0) {
-        const double step = amax[static_cast<size_t>(i)] * dt;
-        if (target > 0.0) target = std::max(0.0, target - step);
-        else if (target < 0.0) target = std::min(0.0, target + step);
-      } else {
-        target = 0.0;
-      }
+    const size_t k = static_cast<size_t>(i);
+    if (lo[k] <= hi[k]) continue;
+    double collapsed = 0.0;
+    if (hi[k] < 0.0 && lo[k] > 0.0) {
+      collapsed = 0.0;
+    } else if (!has_prev) {
+      collapsed = (std::abs(lo[k]) <= std::abs(hi[k])) ? lo[k] : hi[k];
+    } else {
+      collapsed = (prev[k] >= 0.0) ? lo[k] : hi[k];
     }
-    double collapsed = clip_d(target, gap_lo, gap_hi);
     if (has_prev && has_amax && dt > 0.0) {
-      const double step = amax[static_cast<size_t>(i)] * dt;
-      collapsed = clip_d(
-          collapsed,
-          prev[static_cast<size_t>(i)] - step,
-          prev[static_cast<size_t>(i)] + step);
+      const double step = amax[k] * dt;
+      collapsed = clip_d(collapsed, prev[k] - step, prev[k] + step);
     }
-    lo[static_cast<size_t>(i)] = collapsed;
-    hi[static_cast<size_t>(i)] = collapsed;
+    lo[k] = collapsed;
+    hi[k] = collapsed;
   }
   return py::make_tuple(lo, hi);
 }

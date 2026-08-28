@@ -187,7 +187,7 @@ class QpConfig:
     # alone let the commanded acceleration flip sign every tick; this bounds
     # how fast it may turn.  0 disables either axis.
     j_max_arm_rad_s3: float = 300.0
-    j_max_rail_m_s3: float = 60.0
+    j_max_rail_m_s3: float = 120.0;
 
 
 class _ProxQpWbcBackend:
@@ -431,10 +431,15 @@ class QpIkController:
         # Per-joint damper band: arm in rad, prismatic rail (joint 0) in m.
         damper_band = np.full(kin.nv, float(self.cfg.limit_damper_band_rad))
         damper_band[0] = float(self.cfg.limit_damper_band_rail_m)
+        jd = self.cfg.j4_design_comfort
         self.constraints = VelocityBoxConstraints(
             limits,
             damper_band_rad=damper_band,
             rail_reaction_s=float(self.cfg.limit_damper_rail_reaction_s),
+            j4_design_enabled=bool(jd.enabled),
+            j4_design_lo=float(jd.lower_rad),
+            j4_design_hi=float(jd.upper_rad),
+            j4_design_gamma=float(jd.gamma),
         )
         self.collision_cfg = self.cfg.collision
         self._max_cbf = max(1, int(self.collision_cfg.max_pairs))
@@ -1375,10 +1380,6 @@ class QpIkController:
                 comfort_w = float(self.cfg.joint_comfort.slack_weight) * pref_w
                 if n_pref > 2:
                     slack_w[2:] = comfort_w
-                if bool(self.cfg.j4_design_comfort.enabled) and n_pref > 2:
-                    slack_w[2] = float(self.cfg.j4_design_comfort.slack_weight) * pref_w
-                else:
-                    slack_w[2] = 0.0
                 rail_w_qp2 = 0.0
                 rail_vel_qp2 = 0.0
                 if (

@@ -100,7 +100,10 @@ class JointComfortBuilder:
 
 @dataclass
 class J4DesignComfortConfig:
-    """Soft J4 design band (70–115°).  Shared slack index 2.  Not an HQP layer."""
+    """J4 design band (70–115°) as a hard Faverjon–Tournassoud velocity box.
+
+    Slacked pref rows are not built; the band is intersected into ``lo_box/hi_box``.
+    """
 
     enabled: bool = True
     lower_rad: float = np.deg2rad(70.0)
@@ -119,6 +122,20 @@ def j4_joint_index(nv: int) -> int:
     return -1
 
 
+def j4_design_qdot_bounds(
+    q4: float,
+    *,
+    lower_rad: float,
+    upper_rad: float,
+    gamma: float,
+) -> tuple[float, float]:
+    """Hard velocity box for the J4 design band (Haviland/FT, ρ_s = 0)."""
+    return (
+        -float(gamma) * (float(q4) - float(lower_rad)),
+        float(gamma) * (float(upper_rad) - float(q4)),
+    )
+
+
 class J4DesignComfortBuilder:
     def __init__(self, cfg: J4DesignComfortConfig | None = None) -> None:
         self.cfg = cfg or J4DesignComfortConfig()
@@ -132,40 +149,15 @@ class J4DesignComfortBuilder:
     def build_rows(self, q_rad: np.ndarray) -> PrefInequalityRows:
         q = np.asarray(q_rad, dtype=float).reshape(-1)
         nv = int(q.size)
-        empty = PrefInequalityRows(
+        idx = j4_joint_index(nv)
+        if idx >= 0:
+            self.last_q4 = float(q[idx])
+        self.last_n_rows = 0
+        return PrefInequalityRows(
             jacobian=np.zeros((0, nv)),
             slack_col=np.zeros(0, dtype=int),
             lower=np.zeros(0),
             active=False,
-        )
-        idx = j4_joint_index(nv)
-        if not self.cfg.enabled or idx < 0:
-            self.last_n_rows = 0
-            return empty
-        q4 = float(q[idx])
-        self.last_q4 = q4
-        lo = float(self.cfg.lower_rad)
-        hi = float(self.cfg.upper_rad)
-        if hi <= lo:
-            self.last_n_rows = 0
-            return empty
-        gamma = float(self.cfg.gamma)
-        jac = np.zeros((2, nv), dtype=float)
-        slack = np.array([J4_DESIGN_SLACK, J4_DESIGN_SLACK], dtype=int)
-        # qdot_4 + δ ≥ -γ (q4 - 70°)  →  J = +e_4, lo = -γ(q4-lo)
-        jac[0, idx] = 1.0
-        # -qdot_4 + δ ≥ -γ (115° - q4)  →  J = -e_4, lo = -γ(hi-q4)
-        jac[1, idx] = -1.0
-        lower = np.array(
-            [-gamma * (q4 - lo), -gamma * (hi - q4)],
-            dtype=float,
-        )
-        self.last_n_rows = 2
-        return PrefInequalityRows(
-            jacobian=jac,
-            slack_col=slack,
-            lower=lower,
-            active=True,
         )
 
 
@@ -176,5 +168,6 @@ __all__ = [
     "J4DesignComfortConfig",
     "JointComfortBuilder",
     "JointComfortConfig",
+    "j4_design_qdot_bounds",
     "j4_joint_index",
 ]

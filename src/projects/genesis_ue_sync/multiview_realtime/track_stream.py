@@ -5,6 +5,14 @@ from __future__ import annotations
 import os
 from typing import Any, TypedDict
 
+from projects.genesis_ue_sync.sim_platform.timebase import host_clock_fields
+
+
+def _with_clock(out: dict[str, Any], timestamp_ns: int | None) -> dict[str, Any]:
+    source = int(timestamp_ns) if timestamp_ns else None
+    out.update(host_clock_fields(source_time_ns=source))
+    return out
+
 TOPIC_MULTIVIEW_TRACK_V1 = "amongus_multiview_track_v1"
 TOPIC_ANATOMY_ASSET_V1 = "amongus_anatomy_asset_v1"
 DEFAULT_TRACK_PUB_BIND = "tcp://127.0.0.1:5598"
@@ -80,7 +88,7 @@ def track_keypoints3d_to_dict(
     }
     if translation_m is not None:
         out["translation_m"] = [float(v) for v in np.asarray(translation_m, dtype=np.float32).reshape(3).tolist()]
-    return out
+    return _with_clock(out, timestamp_ns)
 
 
 class MultiviewTrackPoseV1(TypedDict, total=False):
@@ -100,13 +108,14 @@ def track_clear_to_dict(
     reason: str = "",
 ) -> dict[str, Any]:
     """Tell the Genesis subscriber to remove the live orange SMPL overlay."""
-    return {
+    out = {
         "schema_version": 3,
         "payload_kind": "clear",
         "frame_index": int(frame_index),
         "timestamp_ns": int(timestamp_ns),
         "reason": str(reason),
     }
+    return _with_clock(out, timestamp_ns)
 
 
 def track_pose_to_dict(
@@ -130,7 +139,7 @@ def track_pose_to_dict(
     }
     if translation_m is not None:
         out["translation_m"] = [float(v) for v in np.asarray(translation_m, dtype=np.float32).reshape(3).tolist()]
-    return out
+    return _with_clock(out, timestamp_ns)
 
 
 def track_mesh_vertices_to_dict(
@@ -185,7 +194,7 @@ def track_mesh_vertices_to_dict(
         out["shape_hash"] = str(shape_hash)
     if pose_hash is not None:
         out["pose_hash"] = str(pose_hash)
-    return out
+    return _with_clock(out, timestamp_ns)
 
 
 def anatomy_asset_control_to_dict(
@@ -220,4 +229,4 @@ def anatomy_asset_control_to_dict(
         out["opacity"] = float(max(0.0, min(1.0, float(opacity))))
     if mode is not None:
         out["mode"] = str(mode)
-    return out
+    return _with_clock(out, int(timestamp_ns) if int(timestamp_ns) else None)
