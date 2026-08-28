@@ -67,12 +67,12 @@ def collapse_interval(
     a_max: np.ndarray | None = None,
     dt: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Collapse an empty velocity interval to a singleton feasible brake.
+    """Collapse an empty velocity interval to a singleton toward standstill.
 
-    When ``lo > hi``, set both bounds to one executable velocity: keep 0 if it
-    lies strictly between the conflicting bounds, otherwise take the closest
-    side that prefers braking toward the limit (matching command-lead
-    behaviour).  Never raises.
+    When ``lo > hi`` the conflicting gap is ``[hi, lo]``.  Project a
+    brake-toward-zero target onto that gap, then keep the result inside the
+    acceleration envelope around ``qdot_prev``.  Must match
+    ``wbc_rt::collapse_interval`` in ``types.hpp``.  Never raises.
     """
     lo = np.asarray(lo, dtype=float).copy()
     hi = np.asarray(hi, dtype=float).copy()
@@ -80,17 +80,22 @@ def collapse_interval(
     if not np.any(crossed):
         return lo, hi
 
-    # hi < 0 < lo: the empty box straddles standstill — stop.
-    keep_zero = crossed & (hi < 0.0) & (lo > 0.0)
+    gap_lo = hi
+    gap_hi = lo
     if qdot_prev is None:
-        pick_lo = np.abs(lo) <= np.abs(hi)
-        collapsed = np.where(pick_lo, lo, hi)
+        target = np.zeros_like(lo)
     else:
         prev = np.asarray(qdot_prev, dtype=float)
-        # Moving positive: collapse onto lo (strongest brake of further +motion).
-        # Moving negative: collapse onto hi.  Same rule as command_lead.
-        collapsed = np.where(prev >= 0.0, lo, hi)
-    collapsed = np.where(keep_zero, 0.0, collapsed)
+        if a_max is not None and dt is not None and float(dt) > 0.0:
+            step = np.asarray(a_max, dtype=float) * float(dt)
+            target = np.array(prev, dtype=float, copy=True)
+            pos = target > 0.0
+            neg = target < 0.0
+            target = np.where(pos, np.maximum(0.0, target - step), target)
+            target = np.where(neg, np.minimum(0.0, target + step), target)
+        else:
+            target = np.zeros_like(lo)
+    collapsed = np.clip(target, gap_lo, gap_hi)
     if (
         qdot_prev is not None
         and a_max is not None

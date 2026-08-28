@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 
 WBC_MAGIC = 0x57424331
-WBC_VERSION = 4
+WBC_VERSION = 6
 DEFAULT_IN_NAME = "rm75_wbc_in"
 DEFAULT_OUT_NAME = "rm75_wbc_out"
 
@@ -60,6 +60,11 @@ STATUS_READY = 1
 STATUS_OK = 2
 STATUS_FAIL = 3
 STATUS_SHUTDOWN = 4
+
+QP_NOT_RUN = 0
+QP_SOLVED = 1
+QP_MAX_ITER = 2
+QP_FAILED = 3
 
 RAIL_COUPLED = 0
 RAIL_LOCKED = 1
@@ -163,6 +168,30 @@ WBC_OUT_DTYPE = np.dtype(
         ("rail_h2", "<f8"),
         ("rail_qdot_prev", "<f8"),
         ("rail_qdot_prev2", "<f8"),
+        ("qp1_status", "<u4"),
+        ("qp2_status", "<u4"),
+        ("qp1_iter", "<u4"),
+        ("qp2_iter", "<u4"),
+        ("n_cbf_active", "<u4"),
+        ("box_degenerate", "<u4"),
+        ("box_infeasible", "<u4"),
+        ("manip_active", "<u4"),
+        ("qp1_solve_ms", "<f8"),
+        ("qp2_solve_ms", "<f8"),
+        ("assembly_ms", "<f8"),
+        ("fallback_ms", "<f8"),
+        ("hard_residual_max", "<f8"),
+        ("equality_residual_max", "<f8"),
+        ("rail_exec", "<f8"),
+        ("box_excess_max", "<f8"),
+        ("follow_err_rad", "<f8"),
+        ("qdot_qp_vs_sent_max", "<f8"),
+        ("dual_cancel", "<f8"),
+        ("secondary_alpha", "<f8"),
+        ("box_lo", "<f8", (8,)),
+        ("box_hi", "<f8", (8,)),
+        ("qdot_prev", "<f8", (8,)),
+        ("qdot_prev2", "<f8", (8,)),
     ],
     align=False,
 )
@@ -171,7 +200,7 @@ WBC_IN_SIZE = int(WBC_IN_DTYPE.itemsize)
 WBC_OUT_SIZE = int(WBC_OUT_DTYPE.itemsize)
 # Packed C++ layouts in native/wbc_rt/include/wbc_rt/protocol.hpp.
 assert WBC_IN_SIZE == 608, WBC_IN_SIZE
-assert WBC_OUT_SIZE == 824, WBC_OUT_SIZE
+assert WBC_OUT_SIZE == 1208, WBC_OUT_SIZE
 
 
 def view_in(buf) -> np.ndarray:

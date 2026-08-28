@@ -9,6 +9,7 @@
 | [`rm75_control/`](rm75_control/) | `envs/rm75` / viewer:`envs/genesis` | RM75 8-DOF 导纳、Genesis twin（可挂 SMPL/解剖 overlay） |
 | [`ird_playground/`](ird_playground/) | `envs/rm75` + PyTorch | 通用 Neural IRD 点场 + 查询侧区域 A；离散能力图/IRD GT |
 | [`camera_calibration/`](camera_calibration/) | `envs/camera_calib` | 4 相机 + 床内外参标定 UI、`genesis_bundle.yaml` |
+| [`us_framegrab/`](us_framegrab/) | `envs/camera_calib` | HDMI 超声整屏采集、裁剪、ZMQ 图传 |
 | [`perception/`](perception/) | `envs/genesis` | 真相机 ZMQ、DWPose+EasyMocap、解剖 retarget 入口 |
 | [`src/`](src/) | `envs/genesis` | 从 Among_US 迁移的 `genesis_ue_sync` / `bridge` / `common` |
 | [`configs/`](configs/) | — | RealUS scene / tracking / anatomy |
@@ -57,6 +58,17 @@ python scripts/run_ui.py
 ```
 
 标定产物：`camera_calibration/calibration_results/genesis_bundle.yaml`（4 相机 + 床世界系）。
+
+### 超声 HDMI 图传
+
+```bash
+cd us_framegrab && source env.sh
+python scripts/run_ui.py
+# 或已调好裁剪后只发流：
+python scripts/run_ui.py --headless
+```
+
+裁剪后 JPEG：`tcp://127.0.0.1:17359`（`amongus_camera_frame_v1` / `amongus_camera_preview_v1`）。
 
 ## 包间数据流（目标架构）
 

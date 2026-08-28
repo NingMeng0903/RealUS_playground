@@ -21,6 +21,7 @@ from rm75_control.control.joint_admittance_8dof.loop import JointIkStep, Tracker
 from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedStyle, RailMode
 from rm75_control.control.joint_admittance_8dof.wbc_rt.config_dump import dump_wbc_config
 from rm75_control.control.joint_admittance_8dof.wbc_rt import protocol as P
+from rm75_control.control.joint_admittance_8dof.qp_cert import qp_status_name
 
 
 def find_wbc_rt_binary(explicit: str | None = None) -> Path | None:
@@ -88,8 +89,6 @@ class NativeWbcClient:
         self._out[0].fill(0)
         self._in["magic"] = P.WBC_MAGIC
         self._in["version"] = P.WBC_VERSION
-        self._out["magic"] = P.WBC_MAGIC
-        self._out["version"] = P.WBC_VERSION
         env = os.environ.copy()
         cmeel = env.get(
             "CMEEL_PREFIX",
@@ -118,6 +117,16 @@ class NativeWbcClient:
                     f"wbc_rt exited during start (code {self._proc.returncode})"
                 )
             if int(self._out["status"][0]) == P.STATUS_READY:
+                out_magic = int(self._out["magic"][0])
+                out_ver = int(self._out["version"][0])
+                if out_magic != P.WBC_MAGIC or out_ver != P.WBC_VERSION:
+                    self.shutdown()
+                    raise RuntimeError(
+                        f"wbc_rt protocol mismatch: native magic/version "
+                        f"{out_magic}/{out_ver} vs client "
+                        f"{P.WBC_MAGIC}/{P.WBC_VERSION} "
+                        f"(in={P.WBC_IN_SIZE} out={P.WBC_OUT_SIZE})"
+                    )
                 self._started = True
                 print(
                     f"[joint_ik] inner.backend=native wbc_rt pid={self._proc.pid} "
@@ -386,18 +395,64 @@ class NativeWbcClient:
         v_tcp = np.asarray(o["v_tcp_estimated"], dtype=float).copy()
         resid = np.asarray(o["task_residual"], dtype=float).copy()
         stale = (not ok) or bool(int(o["flags"]) & P.OUT_STALE) or bool(kwargs.get("command_stale"))
+        native_status = int(o["status"])
+        qp1_name = qp_status_name(o["qp1_status"])
+        qp2_name = qp_status_name(o["qp2_status"])
+        if not ok:
+            solver_status = "timeout"
+        elif native_status == P.STATUS_FAIL:
+            solver_status = "failed"
+        elif qp2_name in ("solved", "max_iter"):
+            solver_status = qp2_name
+        elif qp1_name in ("solved", "max_iter", "failed"):
+            solver_status = qp1_name
+        elif native_status == P.STATUS_OK:
+            solver_status = "ok"
+        else:
+            solver_status = "failed"
+        box_lo = np.asarray(o["box_lo"], dtype=float).copy()
+        box_hi = np.asarray(o["box_hi"], dtype=float).copy()
+        qdot_prev_used = np.asarray(o["qdot_prev"], dtype=float).copy()
+        qdot_prev2_used = np.asarray(o["qdot_prev2"], dtype=float).copy()
         step = JointIkStep(
             q_send=q_cmd,
             qdot=qdot,
             twist_base=v_recv,
             sigma_min=float(o["sigma_min"]),
-            manip=float("nan"),
+            manip=float(o["sigma_min"]) if int(o["manip_active"]) else float("nan"),
             slack_norm=float(o["slack"]),
-            n_cbf_active=0,
-            follow_err_rad=0.0,
+            n_cbf_active=int(o["n_cbf_active"]),
+            follow_err_rad=float(o["follow_err_rad"]),
             qp_backend="native",
-            qp_solver_status="ok" if ok else "timeout",
+            qp_solver_status=solver_status,
+            qp_solver_iterations=int(o["qp1_iter"]) + int(o["qp2_iter"]),
             qp_solver_solve_ms=float(o["solve_ms"]),
+            qp_solver_overrun=bool(float(o["solve_ms"]) > 5.0),
+            qp1_status=qp1_name,
+            qp2_status=qp2_name,
+            qp1_solve_ms=float(o["qp1_solve_ms"]),
+            qp2_solve_ms=float(o["qp2_solve_ms"]),
+            qp_assembly_ms=float(o["assembly_ms"]),
+            qp_fallback_ms=float(o["fallback_ms"]),
+            qpik_total_ms=float(o["solve_ms"]),
+            qpik_hard_residual_max=float(o["hard_residual_max"]),
+            qpik_equality_residual_max=float(o["equality_residual_max"]),
+            qp2_fallback=qp2_name == "failed",
+            qdot_raw=qdot.copy(),
+            qdot_pre_commit=qdot.copy(),
+            qdot_committed=qdot.copy(),
+            box_degenerate=bool(int(o["box_degenerate"])),
+            box_infeasible=bool(int(o["box_infeasible"])),
+            box_excess_max=float(o["box_excess_max"]),
+            manip_active=bool(int(o["manip_active"])),
+            qdot_qp_vs_sent_max=float(o["qdot_qp_vs_sent_max"]),
+            dual_cancel=float(o["dual_cancel"]),
+            secondary_alpha=float(o["secondary_alpha"]),
+            box_lo=box_lo,
+            box_hi=box_hi,
+            qdot_prev_used=qdot_prev_used,
+            qdot_prev2_used=qdot_prev2_used,
+            rail_exec_for_qp_m_s=float(o["rail_exec"]),
             u_alloc=float(o["u_alloc"]),
             u_mid=float(o["u_mid"]),
             v_r_ref=float(o["v_r_ref"]),
@@ -474,6 +529,18 @@ class NativeWbcClient:
             self.ctrl.core.last_rail_h2 = float(o["rail_h2"])
             self.ctrl.core.last_rail_qdot_prev = float(o["rail_qdot_prev"])
             self.ctrl.core.last_rail_qdot_prev2 = float(o["rail_qdot_prev2"])
+            self.ctrl.core.qdot_prev = qdot.copy()
+            self.ctrl.core.qdot_prev2 = qdot_prev_used.copy()
+            self.ctrl.core._qdot_prev_seen = qdot_prev_used.copy()
+            self.ctrl.core.last_lo_box = box_lo
+            self.ctrl.core.last_hi_box = box_hi
+            self.ctrl.core.last_qp1_status = qp1_name
+            self.ctrl.core.last_qp2_status = qp2_name
+            self.ctrl.core.last_qp1_solve_ms = float(o["qp1_solve_ms"])
+            self.ctrl.core.last_qp2_solve_ms = float(o["qp2_solve_ms"])
+            self.ctrl.core.last_qp1_iter = int(o["qp1_iter"])
+            self.ctrl.core.last_qp2_iter = int(o["qp2_iter"])
+            self.ctrl.core.last_qp2_fallback = qp2_name == "failed"
         if self.ctrl.rail_ext_task is not None and np.isfinite(float(o["d_pref"])):
             self.ctrl.rail_ext_task.d_pref_m = float(o["d_pref"])
         if self.ctrl.posture_retarget is not None:

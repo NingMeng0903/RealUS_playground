@@ -27,6 +27,17 @@ constexpr double kQuietRotExit = 0.08;
 constexpr double kQuietTcp = 0.010;
 constexpr double kQuietHold = 0.15;
 
+uint32_t qp_status_code(proxsuite::proxqp::QPSolverOutput s) {
+  using S = proxsuite::proxqp::QPSolverOutput;
+  if (s == S::PROXQP_SOLVED) return kQpSolved;
+  if (s == S::PROXQP_MAX_ITER_REACHED) return kQpMaxIter;
+  return kQpFailed;
+}
+
+bool qp_is_candidate(uint32_t code) {
+  return code == kQpSolved || code == kQpMaxIter;
+}
+
 void solve_dense_qp(proxsuite::proxqp::dense::QP<double>& qp,
                     bool* inited,
                     bool last_ok,
@@ -36,7 +47,8 @@ void solve_dense_qp(proxsuite::proxqp::dense::QP<double>& qp,
                     const VecX& b,
                     const MatX& C,
                     const VecX& lo,
-                    const VecX& hi) {
+                    const VecX& hi,
+                    const VecX* seed = nullptr) {
   using IG = proxsuite::proxqp::InitialGuessStatus;
   if (!*inited) {
     qp.init(H, g, A, b, C, lo, hi, true);
@@ -45,6 +57,10 @@ void solve_dense_qp(proxsuite::proxqp::dense::QP<double>& qp,
     qp.settings.initial_guess =
         last_ok ? IG::WARM_START_WITH_PREVIOUS_RESULT : IG::NO_INITIAL_GUESS;
     qp.update(H, g, A, b, C, lo, hi, true);
+  }
+  if (seed != nullptr && seed->size() == H.rows()) {
+    qp.settings.initial_guess = IG::WARM_START;
+    qp.results.x = *seed;
   }
   qp.solve();
 }
@@ -221,6 +237,8 @@ void InnerLoop::clear_rail_box_tel() {
   rail_h2_ = 0.0;
   rail_qdot_prev_tel_ = 0.0;
   rail_qdot_prev2_tel_ = 0.0;
+  qdot_prev_tel_.setZero();
+  qdot_prev2_tel_.setZero();
 }
 
 void InnerLoop::note_rail_bind(double old_lo, double old_hi, const Vec8& lo, const Vec8& hi,
@@ -606,6 +624,11 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
                           bool rail_locked, double dt, double h1, double h2, bool rail_open,
                           double rail_pin, bool has_pin, bool lead_exempt, double sigma_arm,
                           Vec8* qdot, Vec6* residual, double* slack) {
+  const auto t_asm0 = std::chrono::steady_clock::now();
+  qp1_status_ = kQpNotRun;
+  qp2_status_ = kQpNotRun;
+  qp1_iter_ = qp2_iter_ = 0;
+  qp1_ms_ = qp2_ms_ = assembly_ms_ = fallback_ms_ = 0.0;
   Mat6x8 J_task = J;
   Vec6 b_task = v_cmd;
   if (has_rail_exec) {
@@ -618,6 +641,8 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   rail_h2_ = h2;
   rail_qdot_prev_tel_ = qdot_prev_[0];
   rail_qdot_prev2_tel_ = qdot_prev2_[0];
+  qdot_prev_tel_ = qdot_prev_;
+  qdot_prev2_tel_ = qdot_prev2_;
   Vec8 lo_box, hi_box;
   apply_velocity_box(q_geom, q_prev, q_geom, dt, h1, h2, rail_locked, rail_pin, has_pin,
                      lead_exempt, &lo_box, &hi_box);
@@ -675,17 +700,41 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   const double inset = std::max(2.0 * cfg_.eps_abs, 1e-8);
   VecX lo1 = lo, hi1 = hi;
   for (int i = 0; i < kNIn; ++i) {
-    if (std::isfinite(lo1[i]) && std::isfinite(hi1[i]) && (hi1[i] - lo1[i]) > 2 * inset) {
+    const bool flo = std::isfinite(lo1[i]);
+    const bool fhi = std::isfinite(hi1[i]);
+    if (flo && fhi && (hi1[i] - lo1[i]) > 2 * inset) {
       lo1[i] += inset;
+      hi1[i] -= inset;
+    } else if (flo && !fhi) {
+      lo1[i] += inset;
+    } else if (!flo && fhi) {
       hi1[i] -= inset;
     }
   }
 
+  last_lo_box_ = lo_box;
+  last_hi_box_ = hi_box;
+  n_cbf_active_ = 0;
+  if (collision_) {
+    // Count CBF rows that have a finite lower bound (active collision).
+    for (int i = 0; i < kMaxCbf; ++i) {
+      if (std::isfinite(lo[kNv + i]) && lo[kNv + i] > -1e19) ++n_cbf_active_;
+    }
+  }
+
+  const auto t_qp1_0 = std::chrono::steady_clock::now();
+  assembly_ms_ = std::chrono::duration<double, std::milli>(t_qp1_0 - t_asm0).count();
   solve_dense_qp(*qp1_, &qp1_inited_, qp1_last_ok_, H1, g1, A1, b_task, C, lo1, hi1);
-  const bool qp1_ok = qp1_->results.info.status == proxsuite::proxqp::QPSolverOutput::PROXQP_SOLVED ||
-                      qp1_->results.info.status == proxsuite::proxqp::QPSolverOutput::PROXQP_MAX_ITER_REACHED;
+  const auto t_qp1_1 = std::chrono::steady_clock::now();
+  qp1_ms_ = std::chrono::duration<double, std::milli>(t_qp1_1 - t_qp1_0).count();
+  qp1_status_ = qp_status_code(qp1_->results.info.status);
+  qp1_iter_ = static_cast<uint32_t>(qp1_->results.info.iter);
+  const bool qp1_ok = qp_is_candidate(qp1_status_);
   qp1_last_ok_ = qp1_ok;
   if (!qp1_ok) {
+    qp2_status_ = kQpNotRun;
+    qp2_iter_ = 0;
+    qp2_ms_ = 0.0;
     *qdot = Vec8::Zero();
     *residual = b_task;
     *slack = residual->norm();
@@ -698,6 +747,21 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     if (std::isfinite(rail_task_vel) && !rail_locked) seed = rail_task_vel;
     qdot1[0] = clip(seed, lo_box[0], hi_box[0]);
     x1[0] = qdot1[0];
+  }
+  {
+    double excess = 0.0;
+    uint32_t deg = 0, inf = 0;
+    bool subst = false;
+    measure_qdot_box(qdot1, lo_box, hi_box, &excess, &deg, &inf, &subst);
+    if (subst) {
+      qp2_status_ = kQpNotRun;
+      qp2_iter_ = 0;
+      qp2_ms_ = 0.0;
+      *qdot = qdot1;
+      *residual = b_task - J_task * qdot1;
+      *slack = residual->norm();
+      return false;
+    }
   }
   const Vec6 t1 = J_task * qdot1;
   last_lock_J_ = has_rail_exec ? J_task : J;
@@ -793,26 +857,62 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   A2.leftCols<kNv>() = last_lock_J_;
   VecX x2_seed = VecX::Zero(kNVar);
   x2_seed.head<kNv>() = qdot1;
-  if (!qp2_inited_) {
-    qp2_->init(H2, g2, A2, last_lock_v_, C, lo, hi, true);
-    qp2_inited_ = true;
-    qp2_->results.x = x2_seed;
-    qp2_->solve();
-  } else {
-    solve_dense_qp(*qp2_, &qp2_inited_, qp2_last_ok_, H2, g2, A2, last_lock_v_, C, lo, hi);
+  if (x1.size() >= kNv + kNTaskSlack) {
+    x2_seed.segment<kNTaskSlack>(kNv) = x1.segment<kNTaskSlack>(kNv);
   }
-  const bool qp2_ok = qp2_->results.info.status == proxsuite::proxqp::QPSolverOutput::PROXQP_SOLVED ||
-                      qp2_->results.info.status == proxsuite::proxqp::QPSolverOutput::PROXQP_MAX_ITER_REACHED;
+  for (int k = 0; k < pref_n; ++k) {
+    const int col = kNv + kNTaskSlack + pref_s[k];
+    const double base = pref_J.row(k).dot(qdot1);
+    const double need = std::max(pref_lo[k] - base, 0.0);
+    x2_seed[col] = std::max(x2_seed[col], need + inset);
+  }
+  const auto t_qp2_0 = std::chrono::steady_clock::now();
+  solve_dense_qp(*qp2_, &qp2_inited_, qp2_last_ok_, H2, g2, A2, last_lock_v_, C, lo, hi,
+                 &x2_seed);
+  const auto t_qp2_1 = std::chrono::steady_clock::now();
+  qp2_ms_ = std::chrono::duration<double, std::milli>(t_qp2_1 - t_qp2_0).count();
+  qp2_status_ = qp_status_code(qp2_->results.info.status);
+  qp2_iter_ = static_cast<uint32_t>(qp2_->results.info.iter);
+  const bool qp2_ok = qp_is_candidate(qp2_status_);
   qp2_last_ok_ = qp2_ok;
   Vec8 qdot_out = qdot1;
-  if (qp2_ok) qdot_out = qp2_->results.x.head<kNv>();
+  VecX x_pub = x1;
+  if (qp2_ok) {
+    Vec8 qdot2 = qp2_->results.x.head<kNv>();
+    double excess = 0.0;
+    uint32_t deg = 0, inf = 0;
+    bool subst = false;
+    measure_qdot_box(qdot2, lo_box, hi_box, &excess, &deg, &inf, &subst);
+    if (!subst) {
+      qdot_out = qdot2;
+      x_pub = qp2_->results.x;
+    } else {
+      qp2_status_ = kQpFailed;
+    }
+  }
+  {
+    double excess = 0.0;
+    uint32_t deg = 0, inf = 0;
+    bool subst = false;
+    measure_qdot_box(qdot_out, lo_box, hi_box, &excess, &deg, &inf, &subst);
+    if (subst) {
+      *qdot = qdot1;
+      *residual = b_task - J_task * qdot1;
+      *slack = residual->norm();
+      last_C_ = C;
+      last_lo_ = lo;
+      last_hi_ = hi;
+      last_lock_v_ = last_lock_J_ * qdot1;
+      return false;
+    }
+  }
   j4_design_slack_ = 0.0;
   sigma_slack_ = 0.0;
-  if (qp2_ok && qp2_->results.x.size() > kNv + kNTaskSlack) {
-    sigma_slack_ = std::max(0.0, qp2_->results.x[kNv + kNTaskSlack + 0]);
+  if (x_pub.size() > kNv + kNTaskSlack) {
+    sigma_slack_ = std::max(0.0, x_pub[kNv + kNTaskSlack + 0]);
   }
-  if (qp2_ok && qp2_->results.x.size() > kNv + kNTaskSlack + 2) {
-    j4_design_slack_ = std::max(0.0, qp2_->results.x[kNv + kNTaskSlack + 2]);
+  if (x_pub.size() > kNv + kNTaskSlack + 2) {
+    j4_design_slack_ = std::max(0.0, x_pub[kNv + kNTaskSlack + 2]);
   }
   *qdot = qdot_out;
   *residual = b_task - J_task * qdot_out;
@@ -821,6 +921,7 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   last_lo_ = lo;
   last_hi_ = hi;
   last_lock_v_ = last_lock_J_ * qdot_out;
+  last_qdot_qp_ = qdot_out;
   return true;
 }
 
@@ -985,14 +1086,14 @@ TickOut InnerLoop::step(const TickIn& in) {
   if (!slack_hold_latched_ && last_slack_ >= cfg_.slack_enter) slack_hold_latched_ = true;
   else if (slack_hold_latched_ && last_slack_ <= cfg_.slack_exit) slack_hold_latched_ = false;
   const bool slack_high = slack_hold_latched_;
-  const bool hold_d = quiescent_ || slack_high;
+  secondary_alpha_ = raised_cosine_alpha(last_slack_, cfg_.slack_exit, cfg_.slack_enter,
+                                         last_sigma_, cfg_.sigma_fade_ref);
+  const bool hold_d = quiescent_;
   hold_d_prev_ = hold_d;
 
   if (cfg_.psi_enabled && rail_mode_ == kRailCoupled) {
     const Vec6 pose = kin_.fk_pose_at(q_prev);
-    if (!slack_high || quiescent_) {
-      posture_.step(q_prev, pose, dt, q_lo_[0], q_hi_[0], quiescent_);
-    }
+    posture_.step(q_prev, pose, dt, q_lo_[0], q_hi_[0], quiescent_);
     d_star_ = posture_.d_star();
     psi_cmd_ = posture_.psi_cmd();
     psi_star_ = posture_.psi_star();
@@ -1076,7 +1177,8 @@ TickOut InnerLoop::step(const TickIn& in) {
       d_star_dot_cmd_ = 0.0;
     } else {
       const double lim = std::abs(cfg_.d_center_rate) * dt;
-      const double delta = clip(d_star_ - d_star_ref_, -lim, lim);
+      const double err = d_star_ - d_star_ref_;
+      const double delta = (lim > 1e-15) ? lim * std::tanh(err / lim) : 0.0;
       d_star_ref_ += delta;
       d_star_dot_cmd_ = delta / dt;
     }
@@ -1095,35 +1197,34 @@ TickOut InnerLoop::step(const TickIn& in) {
     u_alloc_ = u_a;
     u_task_raw_ = u_a;
     u_escape_raw_ = last_v_escape_;
-    const double leave = wall_leave_only_sign(q_state[0], q_lo_[0], q_hi_[0], cfg_.damper_band_rail);
-    wall_pi_frozen_ = (leave != 0.0);
-    if (wall_pi_frozen_) {
-      v_r_lpf_ = project_lpf_into_wall(v_r_lpf_, leave);
-      v_r_ref_ = project_lpf_into_wall(v_r_ref_, leave);
+    const double leave_wall =
+        wall_leave_only_sign(q_state[0], q_lo_[0], q_hi_[0], cfg_.damper_band_rail);
+    double leave = leave_wall;
+    if (planned_ && q_state[0] >= cfg_.soft_max - cfg_.escape_leave) {
+      leave = std::max(leave, 1.0);
     }
+    wall_pi_frozen_ = (leave != 0.0);
     escape_dir_ = update_escape_dir(escape_active_, u_escape_raw_, escape_dir_);
     const int guard_dir = escape_active_ ? escape_dir_ : 0;
     double u_lo = 0.0, u_hi = 0.0;
     wall_velocity_bounds(v_max_[0], leave, &u_lo, &u_hi);
 
     const bool task_hold = quiescent_ && !escape_active_;
-    const bool posture_hold = slack_high || task_hold;
-    if (posture_hold) {
+    const double alpha = secondary_alpha_;
+    if (task_hold && !wall_pi_frozen_) {
       mid_integ_ = -cfg_.kp_mid * e_d_;
-      u_pi_raw_ = 0.0;
-      u_mid_cmd_ = 0.0;
+    }
+    u_pi_raw_ = cfg_.kp_mid * e_d_ + mid_integ_;
+    u_mid_cmd_ = soft_saturate(u_pi_raw_, cfg_.u_mid_max);
+    u_post_raw_ = alpha * (u_mid_cmd_ - d_star_dot_cmd_);
+    u_mid_ = u_mid_cmd_;
+    if (task_hold) {
       u_post_raw_ = 0.0;
       d_star_dot_cmd_ = 0.0;
-      u_mid_ = 0.0;
-    } else {
-      u_pi_raw_ = cfg_.kp_mid * e_d_ + mid_integ_;
-      u_mid_cmd_ = clip(u_pi_raw_, -cfg_.u_mid_max, cfg_.u_mid_max);
-      u_post_raw_ = u_mid_cmd_ - d_star_dot_cmd_;
-      u_mid_ = u_mid_cmd_;
     }
     const RailShares shares = allocate_rail_shares(
         task_hold ? 0.0 : u_task_raw_,
-        posture_hold ? 0.0 : u_post_raw_,
+        u_post_raw_,
         task_hold ? 0.0 : u_escape_raw_,
         task_hold ? 0 : guard_dir,
         u_lo, u_hi);
@@ -1133,14 +1234,19 @@ TickOut InnerLoop::step(const TickIn& in) {
     u_post_feasible_ = shares.u_post_feasible;
     u_feasible_ = shares.u_feasible;
     u_mid_applied_ = u_post_feasible_ + d_star_dot_cmd_;
-    if (!posture_hold && !wall_pi_frozen_ && dt > 0.0) {
-      mid_integ_ += (cfg_.ki_mid * e_d_ + cfg_.kaw_mid * (u_mid_applied_ - u_pi_raw_)) * dt;
+    if (!wall_pi_frozen_ && dt > 0.0) {
+      if (alpha < 1.0e-6 || task_hold) {
+        mid_integ_ = -cfg_.kp_mid * e_d_;
+      } else {
+        mid_integ_ += (cfg_.ki_mid * e_d_ + cfg_.kaw_mid * (u_mid_applied_ - u_pi_raw_)) * dt;
+        mid_integ_ = (1.0 - alpha) * (-cfg_.kp_mid * e_d_) + alpha * mid_integ_;
+      }
     }
 
     auto [a_mir, j_mir] = arm_mirror_rail_limits(J, a_max_, j_max_, cfg_.rho_a, cfg_.rho_j);
     const double tau = lpf_tau_from_fc(cfg_.f_c_hz);
     double v_f = u_feasible_;
-    if (v_r_init_ && tau > 1e-9) v_f = first_order_lpf(v_r_lpf_, u_feasible_, dt, tau);
+    if (v_r_init_ && tau > 1e-9) v_f = first_order_lpf(v_r_ref_, u_feasible_, dt, tau);
     v_r_init_ = true;
     v_r_lpf_ = v_f;
     double a_raw = (v_f - v_r_ref_) / dt;
@@ -1153,7 +1259,6 @@ TickOut InnerLoop::step(const TickIn& in) {
     wall_cap(q_state[0], cfg_.hard_min, cfg_.hard_max, a_lim, cfg_.rail_reaction_s, &lo_c, &hi_c);
     v = clip(v, lo_c, hi_c);
     if (std::abs(v) < 5e-4 && std::abs(u_feasible_) < 5e-4) v = 0.0;
-    if (planned_ && q_state[0] >= cfg_.soft_max - cfg_.escape_leave && v > 0.0) v = 0.0;
     v_r_ref_ = v;
     v_r_a_ = (v - (v_r_ref_ - a * dt)) / dt;
     rail_task_vel = v;
@@ -1164,6 +1269,8 @@ TickOut InnerLoop::step(const TickIn& in) {
     u_mid_ = 0.0;
     u_feasible_ = 0.0;
     u_mid_applied_ = 0.0;
+    u_post_raw_ = 0.0;
+    u_post_feasible_ = 0.0;
   }
 
   Vec8 qdot_center = Vec8::Zero();
@@ -1236,8 +1343,7 @@ TickOut InnerLoop::step(const TickIn& in) {
   out.ns_manip = qdot_mu.norm();
   out.ns_arm_angle = qdot_arm.norm();
   out.ns_damping = qdot_damp.norm();
-  out.ns_rail_lock = 0.0;
-  if (quiescent_) sec.setZero();
+  out.ns_rail_lock = locked_hold ? std::abs(qdot_center[0] - qdot_damp[0]) : 0.0;
   sec_lpf_ = first_order_lpf_vec(sec_lpf_, sec, dt, lpf_tau_from_fc(cfg_.sec_input_lpf_hz));
   const double period = 1.0 / std::max(cfg_.sec_target_hz, 1.0e-6);
   sec_age_ += dt;
@@ -1259,6 +1365,12 @@ TickOut InnerLoop::step(const TickIn& in) {
     cap[0] = v_max_[0];
     for (int i = 0; i < kNv; ++i) sec_filt[i] = clip(sec_filt[i], -cap[i], cap[i]);
     sec_qdot_ = sec_filt;
+  }
+
+  {
+    const double lam_ns = sr_damping_lambda(last_sigma_, cfg_.sr_lam0, cfg_.sr_sigma_ref,
+                                            cfg_.sr_sigma_floor);
+    sec_filt = project_nullspace(J, sec_filt, lam_ns);
   }
 
   const int sigma_period = std::max(cfg_.sigma_grad_period, 1);
@@ -1291,14 +1403,23 @@ TickOut InnerLoop::step(const TickIn& in) {
   Vec8 qdot;
   Vec6 residual;
   double slack = 0.0;
+  const auto t_fb0 = std::chrono::steady_clock::now();
   const bool ok = solve_hqp(J, twist_base, q_state, q_prev, sec_filt, rail_exec, has_rail_exec,
                             have_rail_vel ? rail_task_vel : 0.0, rail_task_w, locked_hold, dt, h1,
                             h2, rail_mode_ == kRailCoupled && has_travel && !locked_hold, rail_pin,
                             has_pin, lead_exempt, sigma_arm, &qdot, &residual, &slack);
+  const Vec8 qdot_qp = qdot;
+  bool published_ok = ok;
   if (!ok) {
-    qdot = qdot_prev_ * cfg_.fail_qdot_decay;
-    for (int i = 0; i < kNv; ++i) qdot[i] = clip(qdot[i], -v_max_[i], v_max_[i]);
+    qdot = inbox_brake(qdot_prev_, last_lo_box_, last_hi_box_, a_max_, h1);
+    fallback_ms_ = std::chrono::duration<double, std::milli>(
+                       std::chrono::steady_clock::now() - t_fb0)
+                       .count();
+    published_ok = false;
+  } else {
+    fallback_ms_ = 0.0;
   }
+  last_qdot_qp_ = qdot_qp;
   q_cmd_ = q_prev + qdot * dt;
   q_cmd_[0] = clip(q_cmd_[0], q_lo_[0], q_hi_[0]);
   if (q_cmd_[0] <= q_lo_[0] + 1e-4 && qdot[0] < 0.0) {
@@ -1398,6 +1519,37 @@ TickOut InnerLoop::step(const TickIn& in) {
   out.rail_h2 = rail_h2_;
   out.rail_qdot_prev = rail_qdot_prev_tel_;
   out.rail_qdot_prev2 = rail_qdot_prev2_tel_;
+  out.qdot_prev_used = qdot_prev_tel_;
+  out.qdot_prev2_used = qdot_prev2_tel_;
+  out.qp1_status = qp1_status_;
+  out.qp2_status = qp2_status_;
+  out.qp1_iter = qp1_iter_;
+  out.qp2_iter = qp2_iter_;
+  out.n_cbf_active = n_cbf_active_;
+  out.qp1_solve_ms = qp1_ms_;
+  out.qp2_solve_ms = qp2_ms_;
+  out.assembly_ms = assembly_ms_;
+  out.fallback_ms = fallback_ms_;
+  out.rail_exec = rail_exec;
+  out.follow_err_rad = (q_cmd_.tail<7>() - q_state.tail<7>()).norm();
+  out.qdot_qp_vs_sent_max = (last_qdot_qp_ - qdot).cwiseAbs().maxCoeff();
+  out.dual_cancel = dual_cancel_frac(u_task_feasible_, u_post_feasible_);
+  out.secondary_alpha = secondary_alpha_;
+  out.manip_active = manip_active_ ? 1u : 0u;
+  {
+    double excess = 0.0;
+    uint32_t deg = 0, inf = 0;
+    bool subst = false;
+    measure_qdot_box(qdot, last_lo_box_, last_hi_box_, &excess, &deg, &inf, &subst);
+    out.box_excess_max = excess;
+    out.box_degenerate = deg;
+    out.box_infeasible = inf;
+    out.box_lo = last_lo_box_;
+    out.box_hi = last_hi_box_;
+    (void)subst;
+  }
+  out.hard_residual_max = out.box_excess_max;
+  out.equality_residual_max = residual.cwiseAbs().maxCoeff();
   {
     const Vec6 twist_rail = J.col(0) * rail_exec;
     const Vec6 twist_arm = J.rightCols<7>() * qdot.tail<7>();
@@ -1423,7 +1575,7 @@ TickOut InnerLoop::step(const TickIn& in) {
   if (out.rail_limited) out.flags |= kOutRailLimited;
   if (out.wall_active) out.flags |= kOutWallActive;
   if (out.secondary_suppressed) out.flags |= kOutSecSuppressed;
-  out.status = kStatusOk;
+  out.status = published_ok ? kStatusOk : kStatusFail;
   return out;
 }
 

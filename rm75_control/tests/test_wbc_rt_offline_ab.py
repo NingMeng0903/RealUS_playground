@@ -22,7 +22,9 @@ from rm75_control.control.joint_admittance_8dof.reference import ellipse_xy_moti
 from rm75_control.control.joint_admittance_8dof.wbc_rt.client import find_wbc_rt_binary
 
 
-_CFG = Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml"
+_CFG = Path(__file__).resolve().parents[2] / "peirastic" / "configs" / "controller.yaml"
+if not _CFG.is_file():
+    _CFG = Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml"
 _SEED_Q = np.array([0.375, 0.194, -0.503, -0.069, 1.979, -0.776, 0.547, -4.370])
 _ARM_P95_RAD = 1.0e-4
 _RAIL_MM = 0.1

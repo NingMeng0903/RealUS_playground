@@ -1,0 +1,31 @@
+color: false
+hflip: false
+frame_id: us_prob
+final_cbox:
+  x0: 753
+  x1: 1417
+  y0: 154
+  y1: 880
+init_cbox:
+  x0: 550
+  x1: 1650
+  y0: 150
+  y1: 920
+capture_backend: ffmpeg
+frame_width: 1920
+frame_height: 1080
+publish_rate: 60.0
+compressed_quality: 80
+time_offset: 0.0
+video_device_path: /dev/v4l/by-id/usb-eEver_HDMI_Capture_20000130041415-video-index0
+video_index: 3
+auto_crop_on_startup: true
+pub_bind: tcp://127.0.0.1:17359
+capture_topic: amongus_camera_frame_v1
+preview_topic: amongus_camera_preview_v1
+preview_max_width: 960
+preview_jpeg_quality: 72
+camera_name: us_img
+source_id: realus.us_framegrab
+session_id: realus_us_framegrab
+machine: sonoscape_e2

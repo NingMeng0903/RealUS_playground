@@ -67,8 +67,14 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
 from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
     RailCommandMixer,
     press_escape_allowed_from_flags,
-    project_lpf_into_wall,
     q_star_srs_valid,
+)
+from rm75_control.control.joint_admittance_8dof.qp_cert import (
+    dual_cancel_frac,
+    inbox_brake,
+    measure_qdot_box,
+    qp_status_name,
+    raised_cosine_alpha,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.rail_extension import (
     RailExtensionConfig,
@@ -265,6 +271,13 @@ class JointIkStep:
     qp_fallback_ms: float = 0.0
     qpik_total_ms: float = 0.0
     qp2_fallback: bool = False
+    box_degenerate: bool = False
+    box_infeasible: bool = False
+    box_excess_max: float = 0.0
+    manip_active: bool = False
+    qdot_qp_vs_sent_max: float = float("nan")
+    dual_cancel: float = 0.0
+    secondary_alpha: float = 1.0
     # Coarse per-stage tick profile (ms).  The loop budgets 5.0 ms but
     # measured 6.16 ms mean with only 2.1% of ticks on time, and the log had
     # no way to attribute the overrun.
@@ -1316,8 +1329,7 @@ class JointIkController:
             qp_solver_call_count=int(self.core.solve_count) if mode == "qpik" else 0,
             qp_solver_solve_ms=qp_total_ms if mode == "qpik" else 0.0,
             qp_solver_overrun=bool(
-                mode == "qpik"
-                and qp_total_ms > float(getattr(self.cfg.qp, "max_solve_ms", 5.0))
+                mode == "qpik" and qp_total_ms > 5.0
             ),
             qp1_status=(
                 str(getattr(self.core, "last_qp1_status", "not_run"))
@@ -1786,25 +1798,31 @@ class JointIkController:
         elif self._slack_hold_latched and slack_now <= slack_exit:
             self._slack_hold_latched = False
         slack_high = bool(self._slack_hold_latched)
-        hold_d_star = bool(self._quiescent or slack_high)
+        secondary_alpha = raised_cosine_alpha(
+            slack_now,
+            slack_exit,
+            slack_enter,
+            float(sigma_pre),
+            float(getattr(self.cfg.manipulability, "sigma_fade_ref", 0.12)),
+        )
+        hold_d_star = bool(self._quiescent)
 
         if (
             self.posture_retarget is not None
             and self._rail_mode == RailMode.COUPLED
         ):
-            if (not slack_high) or bool(self._quiescent):
-                psi_ref, d_pref = self.posture_retarget.step(
-                    q_prev,
-                    float(dt),
-                    rail_lo=float(self.limits.q_lower[0]),
-                    rail_hi=float(self.limits.q_upper[0]),
-                    hold_setpoint=bool(self._quiescent),
-                )
-                if self.arm_task is not None:
-                    self.arm_task.set_reference(float(psi_ref))
-                if self.rail_ext_task is not None:
-                    self.rail_ext_task.set_d_pref(float(d_pref))
-                self._publish_homotopy_centering()
+            psi_ref, d_pref = self.posture_retarget.step(
+                q_prev,
+                float(dt),
+                rail_lo=float(self.limits.q_lower[0]),
+                rail_hi=float(self.limits.q_upper[0]),
+                hold_setpoint=bool(self._quiescent),
+            )
+            if self.arm_task is not None:
+                self.arm_task.set_reference(float(psi_ref))
+            if self.rail_ext_task is not None:
+                self.rail_ext_task.set_d_pref(float(d_pref))
+            self._publish_homotopy_centering()
 
         if (
             press_stalled_timer
@@ -1954,6 +1972,19 @@ class JointIkController:
                 hard_max_m=float(self.limits.q_upper[0]),
                 band_m=float(self.cfg.qp.limit_damper_band_rail_m),
             )
+            stroke_planned = bool(
+                self.posture_retarget is not None and self.posture_retarget.planned
+            )
+            if stroke_planned and self.rail_ext_task is not None:
+                y_r = float(q_state[0])
+                if self.rail_ext_task._in_plus_leave(y_r):
+                    leave_sign = max(float(leave_sign), 1.0)
+                pol = float(self.rail_ext_task._policy_escape_sign(y_r))
+                if self.rail_ext_task._in_leave_band(y_r, pol):
+                    if pol > 0.0:
+                        leave_sign = max(float(leave_sign), 1.0)
+                    elif pol < 0.0 and float(leave_sign) <= 0.0:
+                        leave_sign = min(float(leave_sign), -1.0)
             y_tcp = float(pose_now[1])
             d_live = y_tcp - float(q_prev[0])
             d_target = float("nan")
@@ -1972,11 +2003,9 @@ class JointIkController:
                 leave_sign=float(leave_sign),
                 hold_d_star=bool(hold_d_star) and not escape_on,
                 quiescent=bool(self._quiescent),
-                posture_hold=bool(slack_high),
+                secondary_alpha=float(secondary_alpha),
                 in_wall=abs(float(leave_sign)) > 0.0,
             )
-            if abs(float(leave_sign)) > 0.0:
-                self.rail_ref_model.project_into_wall(float(leave_sign))
             a_arm = np.asarray(self.limits.a_max, dtype=float).reshape(-1)[1:]
             j_max_vec = self.core._j_max
             if j_max_vec is None:
@@ -1997,23 +2026,6 @@ class JointIkController:
                 a_max=a_mir,
                 j_max=j_mir,
             )
-            stroke_planned = bool(
-                self.posture_retarget is not None and self.posture_retarget.planned
-            )
-            if self.rail_ext_task is not None and stroke_planned:
-                y_r = float(q_state[0])
-                if self.rail_ext_task._in_plus_leave(y_r) and v_r_ref > 0.0:
-                    v_r_ref = 0.0
-                    self.rail_ref_model.reset(0.0)
-                pol = float(self.rail_ext_task._policy_escape_sign(y_r))
-                if (
-                    self.rail_ext_task._in_leave_band(y_r, pol)
-                    and v_r_ref * pol > 0.0
-                ):
-                    v_r_ref = 0.0
-                    self.rail_ref_model.reset(0.0)
-            if abs(float(v_r_ref)) < 1.0e-4:
-                v_r_ref = 0.0
             rail_task_vel = float(v_r_ref)
             self.last_v_r_ref = float(v_r_ref)
             self.last_u_alloc = float(u_alloc)
@@ -2077,10 +2089,8 @@ class JointIkController:
         if self._rail_mode == RailMode.COUPLED and not locked_hold:
             sec_raw = np.asarray(sec_raw, dtype=float).copy()
             sec_raw[0] = 0.0
-        if self._quiescent:
-            sec_raw = np.zeros_like(sec_raw)
         sec_filt = self._sec_filter.step(
-            sec_raw, float(dt), j_max_sec, force_target=bool(self._quiescent)
+            sec_raw, float(dt), j_max_sec, force_target=False
         )
         frac = float(self.cfg.nullspace_max_qdot_frac)
         if frac > 0.0:
@@ -2133,12 +2143,14 @@ class JointIkController:
             failed = True
             fallback_reason = "final_qdot_nonfinite_or_bad_shape"
         if failed:
-            # One infeasible / max-iter tick must not kill the session.
-            # Brake with the certified previous command, same as 3d095f2.
-            decay = float(getattr(self.cfg.qp, "fail_qdot_decay", 0.85))
-            qdot_out = np.asarray(qdot_history_before_solve, dtype=float) * decay
-            v_lim = np.asarray(self.limits.v_max, dtype=float)
-            qdot_out = np.clip(qdot_out, -v_lim, v_lim)
+            h1_brake = float(box_h1) if box_h1 is not None and np.isfinite(box_h1) else float(dt)
+            qdot_out = inbox_brake(
+                qdot_history_before_solve,
+                getattr(self.core, "last_lo_box", np.full(q_prev.shape, -np.inf)),
+                getattr(self.core, "last_hi_box", np.full(q_prev.shape, np.inf)),
+                np.asarray(self.limits.a_max, dtype=float),
+                h1_brake,
+            )
             self.q_cmd = q_prev + qdot_out * float(dt)
             self.q_cmd[0] = float(q_prev[0]) + float(qdot_out[0]) * float(dt_rail)
             self.core.qdot_prev = qdot_out.copy()
@@ -2146,7 +2158,7 @@ class JointIkController:
             qdot_out, acc_clamped = self._commit_command_step(
                 q_prev, dt, dt_nom
             )
-            return self._attach_post_qp_ab(
+            step = self._attach_post_qp_ab(
                 self._make_step(
                     qdot=qdot_out,
                     twist_base=twist_base,
@@ -2165,7 +2177,7 @@ class JointIkController:
                     rail_ext_weight=rail_task_weight,
                     failed=False,
                     acc_clamped=acc_clamped,
-                    fallback_reason="qp1_decay",
+                    fallback_reason="qp1_inbox_brake",
                     rail_macro_pref_v=(
                         float(rail_task_vel) if rail_task_vel is not None else 0.0
                     ),
@@ -2181,6 +2193,13 @@ class JointIkController:
                 qdot_prev_used=qdot_prev_used,
                 qdot_prev2_used=qdot_prev2_used,
             )
+            step.secondary_alpha = float(secondary_alpha)
+            mix_now = getattr(self, "_last_mix", None)
+            if mix_now is not None:
+                step.dual_cancel = dual_cancel_frac(
+                    float(mix_now.u_task_feasible), float(mix_now.u_post_feasible)
+                )
+            return step
         else:
             qdot_certified = qdot_out.copy()
             q_candidate = q_prev + qdot_out * dt
@@ -2389,9 +2408,37 @@ class JointIkController:
         if rail_exec_smooth_m_s is not None:
             step.rail_commanded_velocity_m_s = float(rail_exec_smooth_m_s)
         step.qp_solver_overrun = bool(getattr(self.core, "last_qp_overrun", False))
-        step.qp1_status = str(getattr(self.core, "last_qp1_status", step.qp1_status))
-        step.qp2_status = str(getattr(self.core, "last_qp2_status", step.qp2_status))
+        step.qp1_status = qp_status_name(
+            getattr(self.core, "last_qp1_status", step.qp1_status)
+        )
+        step.qp2_status = qp_status_name(
+            getattr(self.core, "last_qp2_status", step.qp2_status)
+        )
+        step.qp_solver_iterations = int(
+            getattr(self.core, "last_qp1_iter", 0)
+        ) + int(getattr(self.core, "last_qp2_iter", 0))
         step.qp2_fallback = bool(getattr(self.core, "last_qp2_fallback", False))
+        excess, deg, inf, _subst = measure_qdot_box(
+            qdot_arr,
+            getattr(self.core, "last_lo_box", np.full(8, np.nan)),
+            getattr(self.core, "last_hi_box", np.full(8, np.nan)),
+        )
+        step.box_excess_max = float(excess)
+        step.box_degenerate = bool(deg)
+        step.box_infeasible = bool(inf)
+        step.manip_active = bool(getattr(self, "_manipulability_active", False))
+        raw = np.asarray(qdot_raw, dtype=float).reshape(-1)
+        sent = np.asarray(qdot_arr, dtype=float).reshape(-1)
+        n = min(raw.size, sent.size)
+        step.qdot_qp_vs_sent_max = (
+            float(np.max(np.abs(raw[:n] - sent[:n]))) if n else 0.0
+        )
+        mix_now = getattr(self, "_last_mix", None)
+        if mix_now is not None:
+            step.dual_cancel = dual_cancel_frac(
+                float(mix_now.u_task_feasible), float(mix_now.u_post_feasible)
+            )
+        step.secondary_alpha = float(secondary_alpha)
         step.rail_sat = bool(rail_sat_now)
         step.last_limit_saturated = bool(
             self.rail_ext_task is not None
@@ -3283,7 +3330,7 @@ class _TickLogger:
            "u_post_raw", "u_post_feasible", "u_mid_applied", "d_star_dot_cmd",
            "u_escape_raw", "u_escape_feasible", "escape_active", "escape_dir",
            "u_base", "u_feasible", "v_r_lpf", "e_d", "V_d_proxy",
-           "j4_design_slack", "P_ext_trans",
+           "j4_design_slack",
            "comp_projected_frac",
            "rail_coast_active", "rail_feedback_reject_streak_s",
            "wall_override", "slack_zero_feasible",
@@ -3360,6 +3407,13 @@ class _TickLogger:
             "recovery_latched",
             "recontact_slow_latched",
             "v_recontact_cap",
+            "qpik_box_degenerate",
+            "qpik_box_infeasible",
+            "qpik_box_excess_max",
+            "qpik_manip_active",
+            "qpik_qdot_qp_vs_sent_max",
+            "qpik_dual_cancel",
+            "secondary_alpha",
         ]
     )
 
@@ -3819,7 +3873,7 @@ class _TickLogger:
             self._prev_q_send_arm = q_send_arr[1:8].copy()
         # Format on the writer thread: f-strings of ~300 columns were ~0.4 ms
         # on the control thread even after the disk write was already queued.
-        self._q.put(lambda: (
+        self._q.put(lambda: self._checked_row(
             [
                 f"{t_wall:.4f}",
                 label,
@@ -4248,7 +4302,6 @@ class _TickLogger:
                f"{float(getattr(step, 'e_d', float('nan'))):.6f}" if np.isfinite(getattr(step, "e_d", float("nan"))) else "",
                f"{float(getattr(step, 'V_d_proxy', float('nan'))):.6f}" if np.isfinite(getattr(step, "V_d_proxy", float("nan"))) else "",
                f"{float(getattr(step, 'j4_design_slack', float('nan'))):.6f}" if np.isfinite(getattr(step, "j4_design_slack", float("nan"))) else "",
-               f"{float(getattr(step, 'P_ext_trans', float('nan'))):.6f}" if np.isfinite(getattr(step, "P_ext_trans", float("nan"))) else "",
                f"{float(getattr(step, 'comp_projected_frac', 0.0)):.6f}",
                int(bool(getattr(step, "rail_coast_active", False))),
                (
@@ -4407,8 +4460,35 @@ class _TickLogger:
                    if np.isfinite(float(v_recontact_cap))
                    else ""
                ),
+               int(bool(getattr(step, "box_degenerate", False))),
+               int(bool(getattr(step, "box_infeasible", False))),
+               (
+                   f"{float(getattr(step, 'box_excess_max', float('nan'))):.9e}"
+                   if np.isfinite(getattr(step, "box_excess_max", float("nan")))
+                   else ""
+               ),
+               int(bool(getattr(step, "manip_active", False))),
+               (
+                   f"{float(getattr(step, 'qdot_qp_vs_sent_max', float('nan'))):.9e}"
+                   if np.isfinite(getattr(step, "qdot_qp_vs_sent_max", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(getattr(step, 'dual_cancel', float('nan'))):.6f}"
+                   if np.isfinite(getattr(step, "dual_cancel", float("nan")))
+                   else ""
+               ),
+               (
+                   f"{float(getattr(step, 'secondary_alpha', float('nan'))):.6f}"
+                   if np.isfinite(getattr(step, "secondary_alpha", float("nan")))
+                   else ""
+               ),
                ]
         ))
+
+    def _checked_row(self, row: list) -> list:
+        assert len(row) == len(self._HEADER), (len(row), len(self._HEADER))
+        return row
 
     def close(self) -> None:
         self._q.put(None)

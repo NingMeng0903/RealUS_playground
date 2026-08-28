@@ -316,6 +316,65 @@ py::tuple setup_qp2_costs(
   );
 }
 
+double clip_d(double x, double lo, double hi) {
+  return std::min(hi, std::max(lo, x));
+}
+
+py::tuple collapse_interval(
+    InArr lo_in, InArr hi_in, py::object prev_obj, py::object amax_obj, double dt) {
+  const int n = static_cast<int>(lo_in.size());
+  if (n != static_cast<int>(hi_in.size()) || n <= 0) {
+    throw std::runtime_error("collapse_interval size mismatch");
+  }
+  std::vector<double> lo(lo_in.data(), lo_in.data() + n);
+  std::vector<double> hi(hi_in.data(), hi_in.data() + n);
+  const bool has_prev = !prev_obj.is_none();
+  const bool has_amax = !amax_obj.is_none();
+  std::vector<double> prev(static_cast<size_t>(n), 0.0);
+  std::vector<double> amax(static_cast<size_t>(n), 0.0);
+  if (has_prev) {
+    const InArr p = prev_obj.cast<InArr>();
+    if (static_cast<int>(p.size()) != n) {
+      throw std::runtime_error("qdot_prev size mismatch");
+    }
+    std::memcpy(prev.data(), p.data(), sizeof(double) * static_cast<size_t>(n));
+  }
+  if (has_amax) {
+    const InArr a = amax_obj.cast<InArr>();
+    if (static_cast<int>(a.size()) != n) {
+      throw std::runtime_error("a_max size mismatch");
+    }
+    std::memcpy(amax.data(), a.data(), sizeof(double) * static_cast<size_t>(n));
+  }
+  for (int i = 0; i < n; ++i) {
+    if (lo[static_cast<size_t>(i)] <= hi[static_cast<size_t>(i)]) continue;
+    const double gap_lo = hi[static_cast<size_t>(i)];
+    const double gap_hi = lo[static_cast<size_t>(i)];
+    double target = 0.0;
+    if (has_prev) {
+      target = prev[static_cast<size_t>(i)];
+      if (has_amax && dt > 0.0) {
+        const double step = amax[static_cast<size_t>(i)] * dt;
+        if (target > 0.0) target = std::max(0.0, target - step);
+        else if (target < 0.0) target = std::min(0.0, target + step);
+      } else {
+        target = 0.0;
+      }
+    }
+    double collapsed = clip_d(target, gap_lo, gap_hi);
+    if (has_prev && has_amax && dt > 0.0) {
+      const double step = amax[static_cast<size_t>(i)] * dt;
+      collapsed = clip_d(
+          collapsed,
+          prev[static_cast<size_t>(i)] - step,
+          prev[static_cast<size_t>(i)] + step);
+    }
+    lo[static_cast<size_t>(i)] = collapsed;
+    hi[static_cast<size_t>(i)] = collapsed;
+  }
+  return py::make_tuple(lo, hi);
+}
+
 }  // namespace
 
 PYBIND11_MODULE(_qpik_kernel, m) {
@@ -325,4 +384,5 @@ PYBIND11_MODULE(_qpik_kernel, m) {
   m.def("project_nullspace", &project_nullspace);
   m.def("setup_qp1", &setup_qp1);
   m.def("setup_qp2_costs", &setup_qp2_costs);
+  m.def("collapse_interval", &collapse_interval);
 }

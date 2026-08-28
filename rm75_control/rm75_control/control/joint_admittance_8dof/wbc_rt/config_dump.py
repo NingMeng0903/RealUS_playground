@@ -85,8 +85,6 @@ def dump_wbc_config(
         f"qp.eps_abs {_f(qp.eps_abs)}",
         f"qp.max_iter {int(qp.max_iter)}",
         f"qp.max_iter_cap {int(qp.max_iter_cap)}",
-        f"qp.max_solve_ms {_f(qp.max_solve_ms)}",
-        f"qp.fail_qdot_decay {_f(qp.fail_qdot_decay)}",
         f"qp.twist_sigma_floor {_f(qp.twist_sigma_floor)}",
         f"qp.task_weight_min_frac {_f(qp.task_weight_min_frac)}",
         f"qp.task_weight_lpf_tau_s {_f(qp.task_weight_lpf_tau_s)}",

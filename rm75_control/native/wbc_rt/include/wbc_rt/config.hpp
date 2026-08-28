@@ -41,8 +41,6 @@ struct Config {
   double eps_abs = 1e-6;
   int max_iter = 400;
   int max_iter_cap = 400;
-  double max_solve_ms = 5.0;
-  double fail_qdot_decay = 0.85;
   double twist_sigma_floor = 0.02;
   double task_weight_min_frac = 0.05;
   double task_weight_lpf_tau_s = 0.25;
@@ -152,7 +150,7 @@ struct Config {
   }
 
   double k_mu = 0.0;
-  double sigma_fade_ref = 0.08;
+  double sigma_fade_ref = 0.12;
 
   int rail_mode = 0;
   int locked_style = 0;
@@ -170,10 +168,10 @@ struct Config {
   double k_margin = 4.0;
   double kp_mid = 1.2;
   double ki_mid = 0.80;
-  double u_mid_max = 0.12;
+  double u_mid_max = 0.03;
   double k_err_rail = 4.0;
   double e_ref = 0.08;
-  double f_c_hz = 1.0;
+  double f_c_hz = 2.0;
   double kaw_mid = 8.0;
   double rho_a = 0.50;
   double rho_j = 0.30;

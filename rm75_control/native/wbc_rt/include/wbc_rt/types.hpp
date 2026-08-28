@@ -8,6 +8,10 @@
 
 #include <Eigen/Dense>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 namespace wbc_rt {
 
 constexpr int kNv = 8;
@@ -44,6 +48,72 @@ using MatX = Eigen::MatrixXd;
 
 inline double clip(double x, double lo, double hi) {
   return std::min(hi, std::max(lo, x));
+}
+
+inline double soft_saturate(double x, double lim) {
+  if (!(lim > 0.0) || !std::isfinite(x)) return 0.0;
+  return lim * std::tanh(x / lim);
+}
+
+inline Vec8 inbox_brake(const Vec8& qdot_prev, const Vec8& lo, const Vec8& hi,
+                        const Vec8& a_max, double h1) {
+  Vec8 out = Vec8::Zero();
+  const double h = std::max(h1, 0.0);
+  for (int i = 0; i < kNv; ++i) {
+    const double step = std::max(a_max[i] * h, 0.0);
+    double brake = qdot_prev[i];
+    if (qdot_prev[i] > 0.0) brake = qdot_prev[i] - step;
+    else if (qdot_prev[i] < 0.0) brake = qdot_prev[i] + step;
+    if (std::isfinite(lo[i]) && std::isfinite(hi[i]) && lo[i] <= hi[i]) {
+      out[i] = clip(brake, lo[i], hi[i]);
+    } else if (std::isfinite(lo[i]) && std::isfinite(hi[i])) {
+      out[i] = 0.5 * (lo[i] + hi[i]);
+    } else {
+      out[i] = brake;
+    }
+  }
+  return out;
+}
+
+inline void measure_qdot_box(const Vec8& qdot, const Vec8& lo, const Vec8& hi,
+                             double* excess_max, uint32_t* degenerate,
+                             uint32_t* infeasible, bool* substantial_out) {
+  *excess_max = 0.0;
+  *degenerate = 0;
+  *infeasible = 0;
+  *substantial_out = false;
+  for (int i = 0; i < kNv; ++i) {
+    if (!(std::isfinite(lo[i]) && std::isfinite(hi[i]))) continue;
+    const double w = hi[i] - lo[i];
+    if (w < -1.0e-12) {
+      *infeasible = 1;
+      *degenerate = 1;
+    } else if (w <= 1.0e-9) {
+      *degenerate = 1;
+    }
+    double excess = 0.0;
+    if (qdot[i] < lo[i]) excess = lo[i] - qdot[i];
+    if (qdot[i] > hi[i]) excess = std::max(excess, qdot[i] - hi[i]);
+    *excess_max = std::max(*excess_max, excess);
+    if (excess > 1.0e-6 && (w <= 1.0e-9 || excess > 0.10 * w)) *substantial_out = true;
+  }
+}
+
+inline double raised_cosine_alpha(double slack, double slack_exit, double slack_enter,
+                                  double sigma, double sigma_ref) {
+  const double span = std::max(slack_enter - slack_exit, 1.0e-9);
+  double x = clip((slack - slack_exit) / span, 0.0, 1.0);
+  const double a_slack = 0.5 * (1.0 + std::cos(M_PI * x));
+  const double a_sigma = clip(sigma / std::max(sigma_ref, 1.0e-9), 0.0, 1.0);
+  return a_slack * a_sigma;
+}
+
+inline double dual_cancel_frac(double u_task, double u_post, double active = 0.002) {
+  if (std::abs(u_task) <= active || std::abs(u_post) <= active) return 0.0;
+  if (u_task * u_post >= 0.0) return 0.0;
+  const double den = std::abs(u_task) + std::abs(u_post);
+  if (den <= 1.0e-12) return 0.0;
+  return 1.0 - std::abs(u_task + u_post) / den;
 }
 
 inline double smoothstep01(double x) {
@@ -129,11 +199,6 @@ inline double sr_damping_lambda(double sigma_min, double lam0, double sigma_ref,
   return lam0 * r * r;
 }
 
-inline double soft_saturate(double value, double limit) {
-  const double lim = std::max(limit, 1.0e-9);
-  return lim * std::tanh(value / lim);
-}
-
 inline double wall_leave_only_sign(double x, double hard_min, double hard_max, double band) {
   band = std::max(band, 0.0);
   if (x >= hard_max - band) return 1.0;
@@ -145,14 +210,21 @@ inline void collapse_interval(Vec8* lo, Vec8* hi, const Vec8* qdot_prev, const V
                               double dt) {
   for (int i = 0; i < kNv; ++i) {
     if ((*lo)[i] <= (*hi)[i]) continue;
-    double collapsed = 0.0;
-    if ((*hi)[i] < 0.0 && (*lo)[i] > 0.0) {
-      collapsed = 0.0;
-    } else if (qdot_prev == nullptr) {
-      collapsed = (std::abs((*lo)[i]) <= std::abs((*hi)[i])) ? (*lo)[i] : (*hi)[i];
-    } else {
-      collapsed = ((*qdot_prev)[i] >= 0.0) ? (*lo)[i] : (*hi)[i];
+    // Crossed: lo > hi.  The conflicting interval is [hi, lo].
+    const double gap_lo = (*hi)[i];
+    const double gap_hi = (*lo)[i];
+    double target = 0.0;
+    if (qdot_prev != nullptr) {
+      target = (*qdot_prev)[i];
+      if (a_max != nullptr && dt > 0.0) {
+        const double step = (*a_max)[i] * dt;
+        if (target > 0.0) target = std::max(0.0, target - step);
+        else if (target < 0.0) target = std::min(0.0, target + step);
+      } else {
+        target = 0.0;
+      }
     }
+    double collapsed = clip(target, gap_lo, gap_hi);
     if (qdot_prev != nullptr && a_max != nullptr && dt > 0.0) {
       const double step = (*a_max)[i] * dt;
       collapsed = clip(collapsed, (*qdot_prev)[i] - step, (*qdot_prev)[i] + step);

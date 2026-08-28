@@ -706,8 +706,8 @@ def test_zero_v_cmd_does_not_put_u_mid_on_v_r_ref() -> None:
     assert last is not None
     assert not bool(inner._quiescent)
     assert abs(float(last.e_d)) > 0.05
-    assert abs(float(last.u_post_feasible)) > 1.0e-2
-    assert abs(float(last.v_r_ref)) > 1.5e-2
+    assert abs(float(last.u_post_feasible)) > 1.0e-3
+    assert abs(float(last.v_r_ref)) > 1.5e-3
     pose1 = inner.kin.fk_pose(inner.q_cmd)
     assert float(np.linalg.norm(pose1[:3] - pose0[:3])) < 0.008
 

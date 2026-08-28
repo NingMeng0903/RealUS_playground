@@ -70,8 +70,6 @@ Config Config::load(const std::string& path) {
     else if (key == "qp.eps_abs") c.eps_abs = n0();
     else if (key == "qp.max_iter") c.max_iter = i0();
     else if (key == "qp.max_iter_cap") c.max_iter_cap = i0();
-    else if (key == "qp.max_solve_ms") c.max_solve_ms = n0();
-    else if (key == "qp.fail_qdot_decay") c.fail_qdot_decay = n0();
     else if (key == "qp.twist_sigma_floor") c.twist_sigma_floor = n0();
     else if (key == "qp.task_weight_min_frac") c.task_weight_min_frac = n0();
     else if (key == "qp.task_weight_lpf_tau_s") c.task_weight_lpf_tau_s = n0();

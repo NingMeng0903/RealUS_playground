@@ -152,7 +152,7 @@ def test_qp2_failure_uses_same_tick_qp1_not_previous_velocity() -> None:
 
     assert core.last_qp2_fallback
     assert np.linalg.norm(result.qdot) > 1.0e-4
-    assert not np.allclose(result.qdot, core.cfg.fail_qdot_decay * previous)
+    assert not np.allclose(result.qdot, 0.85 * previous)
     assert result.qdot[0] == pytest.approx(
         np.clip(0.0, core.last_lo_box[0], core.last_hi_box[0]), abs=2.0e-7
     )

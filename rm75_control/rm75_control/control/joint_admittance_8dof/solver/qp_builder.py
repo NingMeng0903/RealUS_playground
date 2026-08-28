@@ -41,6 +41,10 @@ from rm75_control.control.joint_admittance_8dof.ik_types import (
 )
 from rm75_control.control.joint_admittance_8dof.solver import cpp_kernel
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
+from rm75_control.control.joint_admittance_8dof.qp_cert import (
+    measure_qdot_box,
+    qp_status_name,
+)
 from rm75_control.control.joint_admittance_8dof.solver.branch_barrier import (
     BranchBarrierBuilder,
     BranchBarrierConfig,
@@ -86,7 +90,7 @@ N_SLACK = N_TASK_SLACK
 @dataclass
 class QpConfig:
     task_weight: np.ndarray = field(
-        default_factory=lambda: np.array([1.0, 1.0, 1.0, 0.5, 0.5, 0.5], dtype=float)
+        default_factory=lambda: np.array([100.0, 100.0, 100.0, 50.0, 50.0, 50.0], dtype=float)
     )
     # Effort allocation for ultrasound scanning on a 7-DOF arm + rail:
     #
@@ -111,14 +115,14 @@ class QpConfig:
     # joins the primary equality when the arm Jacobian is ill-conditioned.
     reg: np.ndarray = field(
         default_factory=lambda: np.array(
-            [1.0e-2, 1.0e-2, 1.0e-2, 1.0e-2, 1.0e-2, 5.0e-3, 5.0e-3, 5.0e-3],
+            [1.0e-3, 1.0e-2, 1.0e-2, 1.0e-2, 1.0e-2, 1.2e-2, 1.2e-2, 1.2e-2],
             dtype=float,
         )
     )
     backend: str = "proxqp"
     use_cpp_kernel: bool = True
     eps_abs: float = 1e-6
-    max_iter: int = 200
+    max_iter: int = 400
     # Clamp applied in ProxQP backend so a yaml typo (e.g. 3000) cannot freeze
     # the 200 Hz loop for seconds near singularities / CBF.
     max_iter_cap: int = 400
@@ -166,16 +170,7 @@ class QpConfig:
     # Rail stopping-envelope look-ahead.  0 uses the control period only.
     limit_damper_rail_reaction_s: float = 0.06
     warn_on_fail: bool = True
-    # Deprecated compatibility setting.  Strict HQP fails closed on QP1
-    # failure and never publishes a decayed previous command.
-    fail_qdot_decay: float = 0.85
-    # Hard wall-clock budget for one ProxQP attempt+retry (ms).  Exceeding
-    # this skips the retry and returns fail — prevents GIL freezes of
-    # multiple seconds near σ→0 that starve the rail Modbus loop (PANIC).
-    max_solve_ms: float = 5.0
-    # Below this σ_min, Cartesian twist (incl. force) is scaled down so
-    # nullspace escape / rail recruitment can win over force-driven collapse.
-    # Keep a tiny numeric floor; set-based σ + rail do the real "尽量不进".
+    # Unused yaml keys are accepted by config.py and ignored here.
     twist_sigma_floor: float = 0.02
     sigma_setbased: SigmaSetBasedConfig = field(default_factory=SigmaSetBasedConfig)
     branch_barrier: BranchBarrierConfig = field(default_factory=BranchBarrierConfig)
@@ -192,7 +187,7 @@ class QpConfig:
     # alone let the commanded acceleration flip sign every tick; this bounds
     # how fast it may turn.  0 disables either axis.
     j_max_arm_rad_s3: float = 300.0
-    j_max_rail_m_s3: float = 3.0
+    j_max_rail_m_s3: float = 60.0
 
 
 class _ProxQpWbcBackend:
@@ -240,19 +235,27 @@ class _ProxQpWbcBackend:
         # thousands of identical lines and itself starve the control loop.
         self._warn_every = 25
         self._warn_seen = 0
-        self._max_solve_s = max(1.0e-3, float(getattr(cfg, "max_solve_ms", 8.0)) * 1.0e-3)
+        self._tick_s = 5.0e-3
         # Strict HQP uses one solve per level.  Keep the legacy retry for the
         # old constructor/API, but never retry a strict level: a retry here
         # would silently turn the fixed two-solve budget into an SNS loop.
         self._allow_retry = bool(allow_retry)
         self.last_solve_ms = 0.0
         self.last_status = "not_run"
+        self.last_iter = 0
 
     def _status(self):
         return self.qp.results.info.status
 
+    def _status_name(self) -> str:
+        return qp_status_name(self._status())
+
     def _solved(self) -> bool:
-        return self._status() == self._px.proxqp.QPSolverOutput.PROXQP_SOLVED
+        s = self._status()
+        return s in (
+            self._px.proxqp.QPSolverOutput.PROXQP_SOLVED,
+            self._px.proxqp.QPSolverOutput.PROXQP_MAX_ITER_REACHED,
+        )
 
     def solve(
         self,
@@ -296,14 +299,11 @@ class _ProxQpWbcBackend:
             self.qp.solve()
         elapsed = _time.perf_counter() - t0
         self.last_solve_ms = elapsed * 1000.0
-        self.last_status = str(self._status())
+        self.last_status = self._status_name()
+        self.last_iter = int(getattr(self.qp.results.info, "iter", 0) or 0)
 
         if not self._solved() and self._allow_retry:
-            # First retry: cold-start + loose eps + fewer iters.  Skip the
-            # retry if the first attempt already burned the wall budget —
-            # near σ→0 a second full solve can hold the GIL for seconds
-            # (rail Modbus starves → encoder freeze → PANIC; Ctrl+C feels dead).
-            remaining = self._max_solve_s - elapsed
+            remaining = self._tick_s - elapsed
             if remaining > 1.0e-3:
                 self.qp.settings.initial_guess = (
                     self._px.proxqp.InitialGuess.NO_INITIAL_GUESS
@@ -318,7 +318,8 @@ class _ProxQpWbcBackend:
                 self.last_solve_ms = (
                     _time.perf_counter() - t0
                 ) * 1000.0
-                self.last_status = str(self._status())
+                self.last_status = self._status_name()
+                self.last_iter = int(getattr(self.qp.results.info, "iter", 0) or 0)
 
         if not self._solved():
             self.fail_count += 1
@@ -334,7 +335,7 @@ class _ProxQpWbcBackend:
 
         self.fail_count = 0
         self._warn_seen = 0
-        self.last_status = "solved"
+        self.last_status = self._status_name()
         return np.asarray(self.qp.results.x, dtype=float)
 
 
@@ -364,6 +365,7 @@ class _OsqpWbcBackend:
         self.prob = None
         self.last_solve_ms = 0.0
         self.last_status = "not_run"
+        self.last_iter = 0
         self._allow_retry = bool(allow_retry)
 
     def solve(self, H, g, A, b, C, lo, hi, *, warm_start_x=None):
@@ -394,6 +396,7 @@ class _OsqpWbcBackend:
             self.last_status = "failed"
             return None
         self.last_status = "solved"
+        self.last_iter = int(getattr(res, "iter", 0) or 0)
         return np.asarray(res.x, dtype=float)
 
 
@@ -488,6 +491,8 @@ class QpIkController:
         # after ``step``.
         self.last_qp1_status = "not_run"
         self.last_qp2_status = "not_run"
+        self.last_qp1_iter = 0
+        self.last_qp2_iter = 0
         self.last_qp1_solve_ms = 0.0
         self.last_qp2_solve_ms = 0.0
         self.last_qp_total_ms = 0.0
@@ -614,6 +619,8 @@ class QpIkController:
         self._wln_scale_prev = np.ones(self.kin.nv, dtype=float)
         self.last_qp1_status = "not_run"
         self.last_qp2_status = "not_run"
+        self.last_qp1_iter = 0
+        self.last_qp2_iter = 0
         self.last_qp1_solve_ms = 0.0
         self.last_qp2_solve_ms = 0.0
         self.last_qp_total_ms = 0.0
@@ -1241,9 +1248,10 @@ class QpIkController:
         self.last_qp1_solve_ms = float(
             getattr(self.backend, "last_solve_ms", 0.0)
         )
-        self.last_qp1_status = str(
+        self.last_qp1_status = qp_status_name(
             getattr(self.backend, "last_status", "failed" if x1 is None else "solved")
         )
+        self.last_qp1_iter = int(getattr(self.backend, "last_iter", 0) or 0)
         self.last_zero_slack_feasible = False
         if x1 is None:
             t_fallback = time.perf_counter()
@@ -1292,237 +1300,282 @@ class QpIkController:
                 x1 = np.asarray(x1, dtype=float).copy()
                 x1[0] = qdot1[0]
             self.last_qdot_qp1 = qdot1.copy()
-            hard_lo_violation = np.maximum(lo - C_hard @ x1, 0.0)
-            hard_hi_violation = np.maximum(C_hard @ x1 - hi, 0.0)
-            self.last_qp1_hard_violation = float(
-                max(
-                    np.max(hard_lo_violation, initial=0.0),
-                    np.max(hard_hi_violation, initial=0.0),
-                )
-            )
-            t1 = J_task @ qdot1
-            self.last_qp1_task_velocity = np.asarray(t1, dtype=float).copy()
-            if rail_exec is not None:
-                lock_jac = np.asarray(J_task, dtype=float).copy()
-                lock_vel = np.asarray(t1, dtype=float).copy()
-            else:
-                lock_jac = np.asarray(J, dtype=float).copy()
-                lock_vel = np.asarray(t1, dtype=float).copy()
-            self.last_lock_jacobian = lock_jac
-            self.last_lock_velocity = lock_vel
-            residual1 = b_task - t1
-            self.last_qp1_residual = residual1.copy()
-            self.last_qp1_residual_norm = float(np.linalg.norm(residual1))
-
-            # Build QP2's existing weighted secondary objective.  Its task
-            # equality is augmented with w_task=0, locking QP1's achieved
-            # task exactly while allowing all lower-priority preferences.
-            if self.cfg.use_mass_weighted_reg and M is not None:
-                m_diag = np.maximum(np.diag(M), self.cfg.mass_reg_floor)
-                if self.cfg.mass_weight_exempt_rail:
-                    m_diag[0] = 1.0
-                tau = float(self.cfg.mass_reg_lpf_tau_s)
-                if tau > 1.0e-9 and dt > 1.0e-9:
-                    if self._m_diag_lpf is None:
-                        self._m_diag_lpf = m_diag.copy()
-                    else:
-                        self._m_diag_lpf = first_order_lpf_vec(
-                            self._m_diag_lpf, m_diag, dt, tau
-                        )
-                    m_diag = self._m_diag_lpf
-                h_reg = w_reg * m_diag
-            else:
-                h_reg = w_reg
-            slack_w = np.zeros(n_pref, dtype=float)
-            slack_w[0] = float(self.cfg.sigma_setbased.slack_weight)
-            slack_w[1] = (
-                float(self.cfg.branch_barrier.slack_weight)
-                * pref_w
-                * float(self.branch_barrier.last_dwell_scale)
-            )
-            comfort_w = float(self.cfg.joint_comfort.slack_weight) * pref_w
-            if n_pref > 2:
-                slack_w[2:] = comfort_w
-            if bool(self.cfg.j4_design_comfort.enabled) and n_pref > 2:
-                slack_w[2] = float(self.cfg.j4_design_comfort.slack_weight) * pref_w
-            else:
-                slack_w[2] = 0.0
-            rail_w_qp2 = 0.0
-            rail_vel_qp2 = 0.0
-            if (
-                rail_task_vel_m_s is not None
-                and rail_w_eff > 0.0
-                and not rail_locked
-                and rail_vel_pin_m_s is None
-            ):
-                rail_w_qp2 = float(rail_w_eff)
-                rail_vel_qp2 = float(rail_task_vel_m_s)
-            smooth_raw = np.asarray(
-                getattr(self.cfg, "smoothness_weight", 0.0), dtype=float
-            ).reshape(-1)
-            if smooth_raw.size == 1:
-                smooth = np.full(nv, float(smooth_raw[0]), dtype=float)
-            elif smooth_raw.size == nv:
-                smooth = smooth_raw.copy()
-            else:
-                raise ValueError(
-                    f"smoothness_weight must be scalar or length {nv}, got {smooth_raw.size}"
-                )
-            smooth = np.maximum(smooth, 0.0)
-            H2, g2 = cpp_kernel.setup_qp2_costs(
-                nv,
-                n_task,
-                n_pref,
-                h_reg,
-                qdot_nom,
-                slack_w,
-                rail_w=rail_w_qp2,
-                rail_vel=rail_vel_qp2,
-                smooth=smooth,
-                qdot_prev=self.qdot_prev,
-                use_native=bool(getattr(self.cfg, "use_cpp_kernel", True)),
-            )
-
-            sigma_rows = self.sigma_setbased.build_row(self.kin, q_geom)
-            q_star = (
-                self.q_star_signs
-                if self.q_star_signs is not None
-                else (self.q_star if self.q_star is not None else q_geom)
-            )
-            # Soft branch rows never bound (max slack 2e-6).  Keep the hard
-            # Faverjon damper in tighten_box.
-            branch_rows = PrefInequalityRows(
-                jacobian=np.zeros((0, nv)),
-                slack_col=np.zeros(0, dtype=int),
-                lower=np.zeros(0),
-                active=False,
-            )
-            comfort_rows = self.joint_comfort.build_rows(
-                q_geom, self.constraints.lim.q_lower, self.constraints.lim.q_upper
-            )
-            design_rows = self.j4_design_comfort.build_rows(q_geom)
-            pref = self._merge_pref_rows(
-                sigma_rows, branch_rows, comfort_rows, design_rows
-            )
-            C2, lo2, hi2 = _assemble(
-                nv,
-                n_task,
-                lo_box,
-                hi_box,
-                cbf,
-                self._max_cbf,
-                n_pref_slack=n_pref,
-                max_pref_rows=MAX_PREF_ROWS,
-                pref_jacobian=pref.jacobian,
-                pref_slack_col=pref.slack_col,
-                pref_lower=pref.lower,
-            )
-            A2 = np.zeros((n_task, n_var), dtype=float)
-            A2[:, :nv] = lock_jac
-            b2 = lock_vel
-            # Same-tick feasible hot start: qdot1 already satisfies all hard
-            # constraints and exactly produces b2.  Fill only the one-sided
-            # preference slacks needed by the added QP2 rows.  Seeding from
-            # the previous tick here caused false PRIMAL_INFEASIBLE statuses
-            # when the acceleration box moved between samples.
-            x2_seed = np.zeros(n_var, dtype=float)
-            x2_seed[:nv] = qdot1
-            for k in range(n_pref):
-                col = nv + n_task + k
-                rows = C2[:, col] > 0.5
-                finite_rows = rows & np.isfinite(lo2)
-                if np.any(finite_rows):
-                    base = C2[finite_rows, :nv] @ qdot1
-                    need = float(np.max(lo2[finite_rows] - base, initial=0.0))
-                    x2_seed[col] = max(need, 0.0) + feasibility_inset
-            seed_c = C2 @ x2_seed
-            self.last_qp2_seed_violation = float(
-                max(
-                    np.max(np.maximum(lo2 - seed_c, 0.0), initial=0.0),
-                    np.max(np.maximum(seed_c - hi2, 0.0), initial=0.0),
-                )
-            )
-            self.last_qp2_seed_equality = float(
-                np.max(np.abs(A2 @ x2_seed - b2), initial=0.0)
-            )
-            qp2_exception_status = ""
-            try:
-                x2 = self._solve_qp(
-                    self._backend_qp2,
-                    np.ascontiguousarray(H2),
-                    np.ascontiguousarray(g2),
-                    np.ascontiguousarray(A2),
-                    np.ascontiguousarray(b2),
-                    np.ascontiguousarray(C2),
-                    np.ascontiguousarray(lo2),
-                    np.ascontiguousarray(hi2),
-                    warm_start_x=np.ascontiguousarray(x2_seed),
-                )
-            except Exception as exc:
-                # QP1 is already a valid protected solution.  A secondary
-                # backend exception must not turn into a stale-velocity send.
-                x2 = None
-                qp2_exception_status = f"exception:{type(exc).__name__}"
-            self.last_qp2_solve_ms = float(
-                getattr(self._backend_qp2, "last_solve_ms", 0.0)
-            )
-            self.last_qp2_status = qp2_exception_status or str(
-                getattr(
-                    self._backend_qp2,
-                    "last_status",
-                    "failed" if x2 is None else "solved",
-                )
-            )
-            if x2 is None:
+            excess, deg, inf, subst1 = measure_qdot_box(qdot1, lo_box, hi_box)
+            self.last_box_excess_max = float(excess)
+            self.last_box_degenerate = bool(deg)
+            self.last_box_infeasible = bool(inf)
+            if subst1:
                 t_fallback = time.perf_counter()
-                qdot = qdot1
-                x = x1
-                C_final, lo_final, hi_final = C_hard, lo, hi
-                self.last_qp2_fallback = True
-                self.last_fallback_ms = (
-                    time.perf_counter() - t_fallback
-                ) * 1000.0
-            else:
-                qdot = np.asarray(x2[:nv], dtype=float)
-                x = x2
-                C_final, lo_final, hi_final = C2, lo2, hi2
-            self.last_j4_design_slack = 0.0
-            if x is not None and int(np.asarray(x).size) > nv + n_task + 2:
-                self.last_j4_design_slack = float(
-                    max(0.0, float(np.asarray(x).reshape(-1)[nv + n_task + 2]))
+                qdot = np.zeros_like(self.qdot_prev)
+                residual = b_task - J_task @ qdot
+                self.last_qp1_residual = residual.copy()
+                self.last_qp1_residual_norm = float(np.linalg.norm(residual))
+                self.last_qp2_residual = residual.copy()
+                self.last_qp2_residual_norm = self.last_qp1_residual_norm
+                self.last_qp2_status = "not_run"
+                self.last_qp2_solve_ms = 0.0
+                self.last_failed = True
+                self.last_status = "failed"
+                self.last_sns_scale = 1.0
+                self.last_qp2_fallback = False
+                dex_s = br_s = 0.0
+                comfort = np.zeros(7, dtype=float)
+                self.last_qp1_hard_violation = float(excess)
+                self.last_final_hard_violation = float(excess)
+                self.last_fallback_ms = (time.perf_counter() - t_fallback) * 1000.0
+            if not subst1:
+                hard_lo_violation = np.maximum(lo - C_hard @ x1, 0.0)
+                hard_hi_violation = np.maximum(C_hard @ x1 - hi, 0.0)
+                self.last_qp1_hard_violation = float(
+                    max(
+                        np.max(hard_lo_violation, initial=0.0),
+                        np.max(hard_hi_violation, initial=0.0),
+                    )
                 )
-            final_c = C_final @ x
-            self.last_final_hard_violation = float(
-                max(
-                    np.max(np.maximum(lo_final - final_c, 0.0), initial=0.0),
-                    np.max(np.maximum(final_c - hi_final, 0.0), initial=0.0),
+                t1 = J_task @ qdot1
+                self.last_qp1_task_velocity = np.asarray(t1, dtype=float).copy()
+                if rail_exec is not None:
+                    lock_jac = np.asarray(J_task, dtype=float).copy()
+                    lock_vel = np.asarray(t1, dtype=float).copy()
+                else:
+                    lock_jac = np.asarray(J, dtype=float).copy()
+                    lock_vel = np.asarray(t1, dtype=float).copy()
+                self.last_lock_jacobian = lock_jac
+                self.last_lock_velocity = lock_vel
+                residual1 = b_task - t1
+                self.last_qp1_residual = residual1.copy()
+                self.last_qp1_residual_norm = float(np.linalg.norm(residual1))
+
+                # Build QP2's existing weighted secondary objective.  Its task
+                # equality is augmented with w_task=0, locking QP1's achieved
+                # task exactly while allowing all lower-priority preferences.
+                if self.cfg.use_mass_weighted_reg and M is not None:
+                    m_diag = np.maximum(np.diag(M), self.cfg.mass_reg_floor)
+                    if self.cfg.mass_weight_exempt_rail:
+                        m_diag[0] = 1.0
+                    tau = float(self.cfg.mass_reg_lpf_tau_s)
+                    if tau > 1.0e-9 and dt > 1.0e-9:
+                        if self._m_diag_lpf is None:
+                            self._m_diag_lpf = m_diag.copy()
+                        else:
+                            self._m_diag_lpf = first_order_lpf_vec(
+                                self._m_diag_lpf, m_diag, dt, tau
+                            )
+                        m_diag = self._m_diag_lpf
+                    h_reg = w_reg * m_diag
+                else:
+                    h_reg = w_reg
+                slack_w = np.zeros(n_pref, dtype=float)
+                slack_w[0] = float(self.cfg.sigma_setbased.slack_weight)
+                slack_w[1] = (
+                    float(self.cfg.branch_barrier.slack_weight)
+                    * pref_w
+                    * float(self.branch_barrier.last_dwell_scale)
                 )
-            )
-            self.last_final_task_lock_violation = float(
-                np.max(
-                    np.abs(lock_jac @ np.asarray(qdot, dtype=float) - lock_vel),
-                    initial=0.0,
+                comfort_w = float(self.cfg.joint_comfort.slack_weight) * pref_w
+                if n_pref > 2:
+                    slack_w[2:] = comfort_w
+                if bool(self.cfg.j4_design_comfort.enabled) and n_pref > 2:
+                    slack_w[2] = float(self.cfg.j4_design_comfort.slack_weight) * pref_w
+                else:
+                    slack_w[2] = 0.0
+                rail_w_qp2 = 0.0
+                rail_vel_qp2 = 0.0
+                if (
+                    rail_task_vel_m_s is not None
+                    and rail_w_eff > 0.0
+                    and not rail_locked
+                    and rail_vel_pin_m_s is None
+                ):
+                    rail_w_qp2 = float(rail_w_eff)
+                    rail_vel_qp2 = float(rail_task_vel_m_s)
+                smooth_raw = np.asarray(
+                    getattr(self.cfg, "smoothness_weight", 0.0), dtype=float
+                ).reshape(-1)
+                if smooth_raw.size == 1:
+                    smooth = np.full(nv, float(smooth_raw[0]), dtype=float)
+                elif smooth_raw.size == nv:
+                    smooth = smooth_raw.copy()
+                else:
+                    raise ValueError(
+                        f"smoothness_weight must be scalar or length {nv}, got {smooth_raw.size}"
+                    )
+                smooth = np.maximum(smooth, 0.0)
+                H2, g2 = cpp_kernel.setup_qp2_costs(
+                    nv,
+                    n_task,
+                    n_pref,
+                    h_reg,
+                    qdot_nom,
+                    slack_w,
+                    rail_w=rail_w_qp2,
+                    rail_vel=rail_vel_qp2,
+                    smooth=smooth,
+                    qdot_prev=self.qdot_prev,
+                    use_native=bool(getattr(self.cfg, "use_cpp_kernel", True)),
                 )
-            )
-            residual = b_task - J_task @ qdot
-            self.last_qp2_residual = residual.copy()
-            self.last_qp2_residual_norm = float(np.linalg.norm(residual))
-            dex_s = float(max(0.0, x[nv + n_task]))
-            br_s = float(max(0.0, x[nv + n_task + 1]))
-            comfort = np.maximum(
-                0.0, np.asarray(x[nv + n_task + 2 : nv + n_task + 9], dtype=float)
-            )
-            if comfort.size < 7:
-                comfort = np.pad(comfort, (0, 7 - int(comfort.size)))
-            comfort = comfort[:7]
-            self.last_failed = False
-            self.last_status = "solved"
-            self.last_sns_scale = 1.0
+
+                sigma_rows = self.sigma_setbased.build_row(self.kin, q_geom)
+                q_star = (
+                    self.q_star_signs
+                    if self.q_star_signs is not None
+                    else (self.q_star if self.q_star is not None else q_geom)
+                )
+                # Soft branch rows never bound (max slack 2e-6).  Keep the hard
+                # Faverjon damper in tighten_box.
+                branch_rows = PrefInequalityRows(
+                    jacobian=np.zeros((0, nv)),
+                    slack_col=np.zeros(0, dtype=int),
+                    lower=np.zeros(0),
+                    active=False,
+                )
+                comfort_rows = self.joint_comfort.build_rows(
+                    q_geom, self.constraints.lim.q_lower, self.constraints.lim.q_upper
+                )
+                design_rows = self.j4_design_comfort.build_rows(q_geom)
+                pref = self._merge_pref_rows(
+                    sigma_rows, branch_rows, comfort_rows, design_rows
+                )
+                C2, lo2, hi2 = _assemble(
+                    nv,
+                    n_task,
+                    lo_box,
+                    hi_box,
+                    cbf,
+                    self._max_cbf,
+                    n_pref_slack=n_pref,
+                    max_pref_rows=MAX_PREF_ROWS,
+                    pref_jacobian=pref.jacobian,
+                    pref_slack_col=pref.slack_col,
+                    pref_lower=pref.lower,
+                )
+                A2 = np.zeros((n_task, n_var), dtype=float)
+                A2[:, :nv] = lock_jac
+                b2 = lock_vel
+                # Same-tick feasible hot start: qdot1 already satisfies all hard
+                # constraints and exactly produces b2.  Fill only the one-sided
+                # preference slacks needed by the added QP2 rows.  Seeding from
+                # the previous tick here caused false PRIMAL_INFEASIBLE statuses
+                # when the acceleration box moved between samples.
+                x2_seed = np.zeros(n_var, dtype=float)
+                x2_seed[:nv] = qdot1
+                for k in range(n_pref):
+                    col = nv + n_task + k
+                    rows = C2[:, col] > 0.5
+                    finite_rows = rows & np.isfinite(lo2)
+                    if np.any(finite_rows):
+                        base = C2[finite_rows, :nv] @ qdot1
+                        need = float(np.max(lo2[finite_rows] - base, initial=0.0))
+                        x2_seed[col] = max(need, 0.0) + feasibility_inset
+                seed_c = C2 @ x2_seed
+                self.last_qp2_seed_violation = float(
+                    max(
+                        np.max(np.maximum(lo2 - seed_c, 0.0), initial=0.0),
+                        np.max(np.maximum(seed_c - hi2, 0.0), initial=0.0),
+                    )
+                )
+                self.last_qp2_seed_equality = float(
+                    np.max(np.abs(A2 @ x2_seed - b2), initial=0.0)
+                )
+                qp2_exception_status = ""
+                try:
+                    x2 = self._solve_qp(
+                        self._backend_qp2,
+                        np.ascontiguousarray(H2),
+                        np.ascontiguousarray(g2),
+                        np.ascontiguousarray(A2),
+                        np.ascontiguousarray(b2),
+                        np.ascontiguousarray(C2),
+                        np.ascontiguousarray(lo2),
+                        np.ascontiguousarray(hi2),
+                        warm_start_x=np.ascontiguousarray(x2_seed),
+                    )
+                except Exception as exc:
+                    # QP1 is already a valid protected solution.  A secondary
+                    # backend exception must not turn into a stale-velocity send.
+                    x2 = None
+                    qp2_exception_status = f"exception:{type(exc).__name__}"
+                self.last_qp2_solve_ms = float(
+                    getattr(self._backend_qp2, "last_solve_ms", 0.0)
+                )
+                self.last_qp2_iter = int(
+                    getattr(self._backend_qp2, "last_iter", 0) or 0
+                )
+                self.last_qp2_status = qp2_exception_status or qp_status_name(
+                    getattr(
+                        self._backend_qp2,
+                        "last_status",
+                        "failed" if x2 is None else "solved",
+                    )
+                )
+                if x2 is not None:
+                    qdot2 = np.asarray(x2[:nv], dtype=float)
+                    _e, _d, _i, subst2 = measure_qdot_box(qdot2, lo_box, hi_box)
+                    if subst2:
+                        x2 = None
+                        self.last_qp2_status = "failed"
+                if x2 is None:
+                    t_fallback = time.perf_counter()
+                    qdot = qdot1
+                    x = x1
+                    C_final, lo_final, hi_final = C_hard, lo, hi
+                    self.last_qp2_fallback = True
+                    self.last_fallback_ms = (
+                        time.perf_counter() - t_fallback
+                    ) * 1000.0
+                else:
+                    qdot = np.asarray(x2[:nv], dtype=float)
+                    x = x2
+                    C_final, lo_final, hi_final = C2, lo2, hi2
+                _e2, _d2, _i2, subst_pub = measure_qdot_box(qdot, lo_box, hi_box)
+                if subst_pub:
+                    t_fallback = time.perf_counter()
+                    qdot = np.zeros_like(self.qdot_prev)
+                    residual = b_task - J_task @ qdot
+                    self.last_failed = True
+                    self.last_status = "failed"
+                    self.last_qp2_fallback = True
+                    self.last_fallback_ms = (
+                        time.perf_counter() - t_fallback
+                    ) * 1000.0
+                    dex_s = br_s = 0.0
+                    comfort = np.zeros(7, dtype=float)
+                else:
+                    self.last_j4_design_slack = 0.0
+                    if x is not None and int(np.asarray(x).size) > nv + n_task + 2:
+                        self.last_j4_design_slack = float(
+                            max(0.0, float(np.asarray(x).reshape(-1)[nv + n_task + 2]))
+                        )
+                    final_c = C_final @ x
+                    self.last_final_hard_violation = float(
+                        max(
+                            np.max(np.maximum(lo_final - final_c, 0.0), initial=0.0),
+                            np.max(np.maximum(final_c - hi_final, 0.0), initial=0.0),
+                        )
+                    )
+                    self.last_final_task_lock_violation = float(
+                        np.max(
+                            np.abs(lock_jac @ np.asarray(qdot, dtype=float) - lock_vel),
+                            initial=0.0,
+                        )
+                    )
+                    residual = b_task - J_task @ qdot
+                    self.last_qp2_residual = residual.copy()
+                    self.last_qp2_residual_norm = float(np.linalg.norm(residual))
+                    dex_s = float(max(0.0, x[nv + n_task]))
+                    br_s = float(max(0.0, x[nv + n_task + 1]))
+                    comfort = np.maximum(
+                        0.0, np.asarray(x[nv + n_task + 2 : nv + n_task + 9], dtype=float)
+                    )
+                    if comfort.size < 7:
+                        comfort = np.pad(comfort, (0, 7 - int(comfort.size)))
+                    comfort = comfort[:7]
+                    self.last_failed = False
+                    self.last_status = self.last_qp2_status or self.last_qp1_status
+                    self.last_sns_scale = 1.0
 
         self.last_qp_total_ms = (time.perf_counter() - t_total) * 1000.0
-        self.last_qp_overrun = bool(
-            self.last_qp_total_ms > float(getattr(self.cfg, "max_solve_ms", 5.0))
-        )
+        self.last_qp_overrun = bool(self.last_qp_total_ms > 5.0)
         # Preserve the legacy loop's ``core.backend.last_solve_ms`` telemetry,
         # but make it represent the complete two-level controller budget.
         self.backend.last_solve_ms = float(self.last_qp_total_ms)

@@ -639,7 +639,7 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert qn[6] == pytest.approx(61.0)
     assert cfg.rail.soft_min_m == pytest.approx(0.030)
     assert cfg.rail_extension.d_star_reg_mult == pytest.approx(20.0)
-    assert cfg.rail_allocator.u_mid_max_m_s == pytest.approx(0.12)
+    assert cfg.rail_allocator.u_mid_max_m_s == pytest.approx(0.03)
     assert cfg.rail_allocator.kp_mid == pytest.approx(1.2)
     assert cfg.rail_allocator.k_err_rail == pytest.approx(4.0)
     assert cfg.rail_allocator.e_ref_m == pytest.approx(0.08)

@@ -101,6 +101,30 @@ struct TickOut {
   double rail_h2 = 0.0;
   double rail_qdot_prev = 0.0;
   double rail_qdot_prev2 = 0.0;
+  uint32_t qp1_status = kQpNotRun;
+  uint32_t qp2_status = kQpNotRun;
+  uint32_t qp1_iter = 0;
+  uint32_t qp2_iter = 0;
+  uint32_t n_cbf_active = 0;
+  uint32_t box_degenerate = 0;
+  uint32_t box_infeasible = 0;
+  uint32_t manip_active = 0;
+  double qp1_solve_ms = 0.0;
+  double qp2_solve_ms = 0.0;
+  double assembly_ms = 0.0;
+  double fallback_ms = 0.0;
+  double hard_residual_max = 0.0;
+  double equality_residual_max = 0.0;
+  double rail_exec = 0.0;
+  double box_excess_max = 0.0;
+  double follow_err_rad = 0.0;
+  double qdot_qp_vs_sent_max = 0.0;
+  double dual_cancel = 0.0;
+  double secondary_alpha = 1.0;
+  Vec8 box_lo = Vec8::Constant(-1e20);
+  Vec8 box_hi = Vec8::Constant(1e20);
+  Vec8 qdot_prev_used = Vec8::Zero();
+  Vec8 qdot_prev2_used = Vec8::Zero();
 };
 
 class Collision {
@@ -227,6 +251,8 @@ class InnerLoop {
   double rail_h2_ = 0.0;
   double rail_qdot_prev_tel_ = 0.0;
   double rail_qdot_prev2_tel_ = 0.0;
+  Vec8 qdot_prev_tel_ = Vec8::Zero();
+  Vec8 qdot_prev2_tel_ = Vec8::Zero();
   double q_hat_ = 0.0;
   double v_hat_ = 0.0;
   bool obs_init_ = false;
@@ -234,6 +260,7 @@ class InnerLoop {
 
   double last_slack_ = 0.0;
   bool slack_hold_latched_ = false;
+  double secondary_alpha_ = 1.0;
   double sat_scale_ = 1.0;
   double last_sigma_ = 0.08;
   double quiet_s_ = 0.0;
@@ -296,6 +323,18 @@ class InnerLoop {
   MatX last_C_;
   VecX last_lo_;
   VecX last_hi_;
+  Vec8 last_lo_box_ = Vec8::Constant(-1e20);
+  Vec8 last_hi_box_ = Vec8::Constant(1e20);
+  Vec8 last_qdot_qp_ = Vec8::Zero();
+  uint32_t qp1_status_ = kQpNotRun;
+  uint32_t qp2_status_ = kQpNotRun;
+  uint32_t qp1_iter_ = 0;
+  uint32_t qp2_iter_ = 0;
+  double qp1_ms_ = 0.0;
+  double qp2_ms_ = 0.0;
+  double assembly_ms_ = 0.0;
+  double fallback_ms_ = 0.0;
+  uint32_t n_cbf_active_ = 0;
   TaskWeightState task_weight_;
 };
 

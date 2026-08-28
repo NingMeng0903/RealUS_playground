@@ -72,12 +72,20 @@ def test_backend_failure_decays_and_stays_sendable() -> None:
     finally:
         backend.solve = real_solve  # type: ignore[method-assign]
 
-    decay = float(controller.cfg.qp.fail_qdot_decay)
+    from rm75_control.control.joint_admittance_8dof.qp_cert import inbox_brake
+
+    expected = inbox_brake(
+        previous,
+        controller.core.last_lo_box,
+        controller.core.last_hi_box,
+        np.asarray(controller.limits.a_max, dtype=float),
+        float(controller.cfg.dt),
+    )
     assert step.qp_solver_call_count == 1
     assert step.fallback_level == "none"
     assert not step.solver_fault_latched
-    assert step.fallback_reason == "qp1_decay"
-    np.testing.assert_allclose(step.qdot, decay * previous, atol=1e-12, rtol=0.0)
+    assert step.fallback_reason == "qp1_inbox_brake"
+    np.testing.assert_allclose(step.qdot, expected, atol=1e-12, rtol=0.0)
     np.testing.assert_allclose(
         step.q_send, q_before + controller.cfg.dt * step.qdot, atol=1e-12, rtol=0.0
     )
@@ -113,7 +121,7 @@ def test_numerical_fallback_decays_without_latching_stop() -> None:
     sendable, reason = _guard_qpik_step_before_send(step, events.append)
     assert sendable
     assert reason == ""
-    assert step.fallback_reason == "qp1_decay"
+    assert step.fallback_reason == "qp1_inbox_brake"
     assert step.fallback_level == "none"
     assert not step.solver_fault_latched
     assert events == []

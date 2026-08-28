@@ -58,9 +58,9 @@ def _yaml_inner_at_rail(q_rail_m: float) -> JointIkController:
     return inner
 
 
-def test_protocol_v4_layout_is_824() -> None:
-    assert P.WBC_VERSION == 4
-    assert P.WBC_OUT_SIZE == 824
+def test_protocol_v6_layout_is_1208() -> None:
+    assert P.WBC_VERSION == 6
+    assert P.WBC_OUT_SIZE == 1208
     assert P.WBC_IN_SIZE == 608
     binary = find_wbc_rt_binary()
     if binary is None:
@@ -70,7 +70,7 @@ def test_protocol_v4_layout_is_824() -> None:
     out = subprocess.check_output([str(binary), "--sizes"], text=True).strip()
     inn, outn = out.split()
     assert int(inn) == 608
-    assert int(outn) == 824
+    assert int(outn) == 1208
 
 
 def test_allocate_identity_and_bidirectional_cancel() -> None:
@@ -93,7 +93,10 @@ def test_allocate_identity_and_bidirectional_cancel() -> None:
         u_lo=-0.12,
         u_hi=0.12,
     )
-    assert cancel["u_feasible"] == pytest.approx(0.0, abs=1e-12)
+    assert cancel["u_feasible"] == pytest.approx(
+        cancel["u_base"] + cancel["u_post_feasible"]
+    )
+    assert cancel["u_post_feasible"] == pytest.approx(-0.10)
 
 
 def test_escape_guard_never_crossed() -> None:
@@ -152,7 +155,11 @@ def test_hard_clip_anti_windup_bounds_xi() -> None:
     assert abs(mix.last.u_mid_cmd) <= 0.12 + 1e-12
 
 
-def test_unsaturated_pi_has_zero_anti_windup() -> None:
+def test_unsaturated_pi_uses_tanh_not_hard_clip() -> None:
+    from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
+        soft_saturate,
+    )
+
     mix = RailCommandMixer(kp=1.2, ki=0.8, u_mid_max=0.12, kaw=8.0)
     mix.d_star.init_from_live(0.0)
     tel = mix.step(
@@ -165,9 +172,9 @@ def test_unsaturated_pi_has_zero_anti_windup() -> None:
         u_max=0.12,
         hold_d_star=True,
     )
-    assert tel.u_mid_cmd == pytest.approx(tel.u_pi_raw, abs=1e-12)
-    assert tel.u_mid_applied == pytest.approx(tel.u_pi_raw, abs=1e-12)
+    assert tel.u_mid_cmd == pytest.approx(soft_saturate(tel.u_pi_raw, 0.12), abs=1e-12)
     assert abs(tel.u_pi_raw) < 0.12 - 1e-6
+    assert abs(tel.u_mid_cmd) < abs(tel.u_pi_raw)
 
 
 def test_pi_plant_closes_e_d_with_rail_sign() -> None:
@@ -321,7 +328,7 @@ def test_j4_design_band_21deg_and_96deg() -> None:
     assert empty.jacobian.shape[0] == 0
 
 
-def test_inner_sec0_never_written_and_share_identity() -> None:
+def test_inner_mixer_puts_posture_on_rail_not_sec0() -> None:
     inner = _yaml_inner_at_rail(0.40)
     SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
     last = inner.update(np.zeros(6), q_meas=inner.q_cmd.copy())
@@ -340,6 +347,22 @@ def test_inner_j4_21deg_recovery_direction_or_slack() -> None:
     inner.reset(q)
     last = inner.update(np.zeros(6), q_meas=q)
     assert np.isfinite(last.j4_design_slack)
+    assert float(last.qdot[4]) >= -1.0e-4 or float(last.j4_design_slack) > 0.0
+
+
+def test_inner_j4_recovers_after_quiet_latch() -> None:
+    """Centering must keep pulling J4 after the stick-still latch; do not zero sec."""
+    inner = _yaml_inner_at_rail(0.40)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    q = inner.q_cmd.copy()
+    q[4] = np.deg2rad(21.0)
+    inner.reset(q)
+    last = None
+    for _ in range(80):
+        last = inner.update(np.zeros(6), q_meas=inner.q_cmd.copy())
+    assert last is not None
+    assert bool(inner._quiescent)
+    assert float(inner.secondary.last_centering_norm) > 1.0e-4
     assert float(last.qdot[4]) >= -1.0e-4 or float(last.j4_design_slack) > 0.0
 
 

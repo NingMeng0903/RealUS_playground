@@ -23,7 +23,7 @@ _SEED_Q = np.array([0.375, 0.194, -0.503, -0.069, 1.979, -0.776, 0.547, -4.370])
 
 def test_protocol_sizes_match_packed_cxx() -> None:
     assert P.WBC_IN_SIZE == 608
-    assert P.WBC_OUT_SIZE == 824
+    assert P.WBC_OUT_SIZE == 1208
     binary = find_wbc_rt_binary()
     if binary is None:
         pytest.skip("wbc_rt binary not built")
@@ -33,6 +33,10 @@ def test_protocol_sizes_match_packed_cxx() -> None:
     inn, outn = out.split()
     assert int(inn) == P.WBC_IN_SIZE
     assert int(outn) == P.WBC_OUT_SIZE
+    info = subprocess.check_output([str(binary), "--protocol-info"], text=True)
+    assert "version 6" in info
+    assert "608" in info
+    assert "1208" in info
 
 
 def test_yaml_default_backend_is_native() -> None:

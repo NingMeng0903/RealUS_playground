@@ -493,10 +493,17 @@ int main(int argc, char** argv) {
                 << "wbc_rt --posture-tick --config FILE --q 8 [--dt --rail-lo --rail-hi --hold --ticks]\n"
                 << "wbc_rt --press-escape --flags 6\n"
                 << "wbc_rt --policy-leave --y Y --policy P [--soft-min --soft-max --latched-sign ...]\n"
-                << "wbc_rt --task-weight --J 48 [--w 6 --dt --tau --aniso --ticks --zero-rail]\n";
+                << "wbc_rt --task-weight --J 48 [--w 6 --dt --tau --aniso --ticks --zero-rail]\n"
+                << "wbc_rt --sizes\n"
+                << "wbc_rt --protocol-info\n";
       return 0;
     } else if (a == "--sizes") {
       std::cout << sizeof(wbc_rt::WbcIn) << " " << sizeof(wbc_rt::WbcOut) << "\n";
+      return 0;
+    } else if (a == "--protocol-info") {
+      std::cout << "version " << wbc_rt::kVersion
+                << " in " << sizeof(wbc_rt::WbcIn)
+                << " out " << sizeof(wbc_rt::WbcOut) << "\n";
       return 0;
     }
   }
@@ -526,6 +533,12 @@ int main(int argc, char** argv) {
     wbc_rt::clear_out(out);
     out->status = wbc_rt::kStatusReady;
     out->flags = wbc_rt::kOutReady;
+    if (in->magic == wbc_rt::kMagic && in->version != 0 &&
+        in->version != wbc_rt::kVersion) {
+      std::cerr << "wbc_rt: protocol version mismatch (in=" << in->version
+                << " native=" << wbc_rt::kVersion << ")\n";
+      return 3;
+    }
     std::uint64_t last_seq = 0;
     while (!g_stop) {
       const std::uint64_t seq = in->seq;
@@ -669,6 +682,32 @@ int main(int argc, char** argv) {
         out->rail_h2 = tout.rail_h2;
         out->rail_qdot_prev = tout.rail_qdot_prev;
         out->rail_qdot_prev2 = tout.rail_qdot_prev2;
+        out->qp1_status = tout.qp1_status;
+        out->qp2_status = tout.qp2_status;
+        out->qp1_iter = tout.qp1_iter;
+        out->qp2_iter = tout.qp2_iter;
+        out->n_cbf_active = tout.n_cbf_active;
+        out->box_degenerate = tout.box_degenerate;
+        out->box_infeasible = tout.box_infeasible;
+        out->manip_active = tout.manip_active;
+        out->qp1_solve_ms = tout.qp1_solve_ms;
+        out->qp2_solve_ms = tout.qp2_solve_ms;
+        out->assembly_ms = tout.assembly_ms;
+        out->fallback_ms = tout.fallback_ms;
+        out->hard_residual_max = tout.hard_residual_max;
+        out->equality_residual_max = tout.equality_residual_max;
+        out->rail_exec = tout.rail_exec;
+        out->box_excess_max = tout.box_excess_max;
+        out->follow_err_rad = tout.follow_err_rad;
+        out->qdot_qp_vs_sent_max = tout.qdot_qp_vs_sent_max;
+        out->dual_cancel = tout.dual_cancel;
+        out->secondary_alpha = tout.secondary_alpha;
+        for (int i = 0; i < wbc_rt::kNv; ++i) {
+          out->box_lo[i] = tout.box_lo[i];
+          out->box_hi[i] = tout.box_hi[i];
+          out->qdot_prev[i] = tout.qdot_prev_used[i];
+          out->qdot_prev2[i] = tout.qdot_prev2_used[i];
+        }
         out->flags = tout.flags;
         out->status = tout.status;
       }

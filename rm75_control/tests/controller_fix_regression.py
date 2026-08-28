@@ -109,12 +109,9 @@ class PatchedSourceTest(unittest.TestCase):
         py = (
             ROOT / "rm75_control/control/joint_admittance_8dof/loop.py"
         ).read_text()
-        self.assertIn("last_slack_ <= cfg_.slack_exit", cpp)
-        self.assertIn("if (!slack_high || quiescent_)", cpp)
-        self.assertIn("const bool posture_hold = slack_high || task_hold;", cpp)
+        self.assertIn("secondary_alpha=float(secondary_alpha)", py)
+        self.assertNotIn("const bool posture_hold = slack_high || task_hold;", cpp)
         self.assertIn("slack_now <= slack_exit", py)
-        self.assertIn("if (not slack_high) or bool(self._quiescent):", py)
-        self.assertIn("posture_hold=bool(slack_high)", py)
         self.assertNotIn(
             "quiescent=bool(self._quiescent or slack_high)", py
         )

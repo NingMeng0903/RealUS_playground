@@ -13,6 +13,7 @@ import numpy as np
 
 from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
     build_wbc_inequalities as _py_build_wbc,
+    collapse_interval as _py_collapse_interval,
 )
 from rm75_control.control.joint_admittance_8dof.ik_types import (
     project_onto_task_nullspace as _py_project,
@@ -223,6 +224,27 @@ def setup_qp2_costs(
         H[:nv, :nv] += np.diag(sm)
         g[:nv] -= sm * qp
     return H, g
+
+
+def collapse_interval(lo, hi, qdot_prev=None, a_max=None, dt=None):
+    """Native ``collapse_interval`` when the kernel is loaded; Python otherwise."""
+    lo_a = np.ascontiguousarray(lo, dtype=float).reshape(-1)
+    hi_a = np.ascontiguousarray(hi, dtype=float).reshape(-1)
+    if not available() or not hasattr(_NATIVE, "collapse_interval"):
+        return _py_collapse_interval(
+            lo_a, hi_a, qdot_prev=qdot_prev, a_max=a_max, dt=dt
+        )
+    prev = (
+        None
+        if qdot_prev is None
+        else np.ascontiguousarray(qdot_prev, dtype=float).reshape(-1)
+    )
+    amax = (
+        None if a_max is None else np.ascontiguousarray(a_max, dtype=float).reshape(-1)
+    )
+    dt_v = float(dt) if dt is not None else 0.0
+    lo_o, hi_o = _NATIVE.collapse_interval(lo_a, hi_a, prev, amax, dt_v)
+    return np.asarray(lo_o, dtype=float), np.asarray(hi_o, dtype=float)
 
 
 def solve_dense_qp(H, g, A, b, C, lo, hi, *, warm_x=None, max_iter=400, eps_abs=1e-6):

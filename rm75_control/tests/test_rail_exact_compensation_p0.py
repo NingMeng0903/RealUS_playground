@@ -177,7 +177,7 @@ def test_posture_hold_keeps_nonzero_task_when_interval_is_open() -> None:
     assert tel.u_post_feasible == pytest.approx(0.0, abs=1e-12)
 
 
-def test_slack_hold_does_not_advance_or_reset_homotopy() -> None:
+def test_slack_hold_latches_but_still_steps_planner() -> None:
     ctrl = _controller()
     ctrl.set_rail_mode(RailMode.COUPLED)
     twist = np.array([0.0, 0.04, 0.0, 0.0, 0.0, 0.0])
@@ -189,8 +189,7 @@ def test_slack_hold_does_not_advance_or_reset_homotopy() -> None:
     ctrl.last_slack_norm = 0.20
     ctrl.update(twist, 0.005, q_meas=Q_SAFE, rail_exec_vel_m_s=0.0)
     assert ctrl._slack_hold_latched is True
-    assert ctrl.posture_retarget.homotopy_s == pytest.approx(seeded, abs=1e-12)
-    assert ctrl.posture_retarget._held_prev is False
+    assert ctrl.posture_retarget.homotopy_s != pytest.approx(seeded, abs=1e-12)
     ctrl.last_slack_norm = 0.02
     ctrl.update(twist, 0.005, q_meas=Q_SAFE, rail_exec_vel_m_s=0.0)
     assert ctrl._slack_hold_latched is False
@@ -300,6 +299,6 @@ def test_regression_script_points_at_this_repo() -> None:
         path = Path(__file__).resolve().parent / "controller_fix_regression.py"
     text = path.read_text(encoding="utf-8")
     assert "reconstructed/rm75_control" not in text
-    assert "posture_hold=bool(slack_high)" in text
+    assert "secondary_alpha=float(secondary_alpha)" in text
     assert "b_task = v_cmd - rail_contrib" in text
     assert "slack_now <= slack_exit" in text

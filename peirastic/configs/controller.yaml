@@ -20,7 +20,7 @@ timing:
   # Consecutive rejected/stale feedback before abort.  One hitch coasts.
   feedback_coast_ms: 300.0
   rt_disable_gc: true
-  verbose_json: false
+  verbose_json: true
   # Best-effort RT: pin the control thread; hold /dev/cpu_dma_latency at 0.
   control_cpu: 2
   disable_cstates: true

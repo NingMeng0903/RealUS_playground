@@ -1,9 +1,10 @@
 """Single rail-owner mixer: d* PI, task share, and soft-escape guard.
 
-``u_task`` is the TCP-motion share assigned to the rail, not the TCP primary
-task.  Posture may cancel it both ways (ρ=0).  Only an explicitly active soft
-``u_escape`` is un-cancellable.  Hard wall / collision / over-force stay
-downstream of the 2 Hz LPF.
+``u_task`` is the TCP-motion share assigned to the rail.  ``d = y_tcp − y_rail``
+is J4's geometry: if the rail does not carry that Y share, ``e_d`` grows and
+J4 walks (run 152537).  Posture ``u_post`` sits on the same command.  Only an
+explicitly active soft ``u_escape`` is un-cancellable.  Hard wall / collision /
+over-force stay downstream of the 2 Hz LPF.
 
 ``V_d_proxy = 0.5 * kp_mid * e_d²`` is a configuration-error storage proxy.
 ``kp_mid`` has units s⁻¹; this is not stiffness and not joules.
@@ -12,6 +13,8 @@ downstream of the 2 Hz LPF.
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+import math
 
 import numpy as np
 
@@ -179,7 +182,11 @@ class DStarRef:
             self.dot = 0.0
             return float(self.ref), 0.0
         lim = abs(float(rate_m_s)) * float(dt)
-        delta = clip(target - float(self.ref), -lim, lim)
+        err = target - float(self.ref)
+        if lim <= 1.0e-15:
+            delta = 0.0
+        else:
+            delta = lim * math.tanh(err / lim)
         self.ref = float(self.ref) + delta
         self.dot = delta / float(dt)
         return float(self.ref), float(self.dot)
@@ -238,6 +245,7 @@ class RailCommandMixer:
         leave_sign: float = 0.0,
         hold_d_star: bool = False,
         quiescent: bool = False,
+        secondary_alpha: float = 1.0,
         posture_hold: bool = False,
         in_wall: bool = False,
     ) -> RailMixTelemetry:
@@ -275,30 +283,29 @@ class RailCommandMixer:
             V_d_proxy=float(V),
         )
 
+        from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
+            soft_saturate,
+        )
+
         task_hold = bool(quiescent) and not bool(escape_explicit)
-        posture_hold_now = bool(posture_hold) or task_hold
-        if posture_hold_now:
+        alpha = 0.0 if bool(posture_hold) else float(np.clip(secondary_alpha, 0.0, 1.0))
+        if task_hold and (not self.wall_pi_frozen):
             self.xi = -self.kp * e_d
-            tel.xi = float(self.xi)
-            tel.u_pi_raw = 0.0
-            tel.u_mid_cmd = 0.0
-            tel.u_post_raw = 0.0
+        u_pi_raw = self.kp * e_d + self.xi
+        u_mid_cmd = soft_saturate(u_pi_raw, self.u_mid_max)
+        u_post_raw = alpha * (u_mid_cmd - float(d_dot))
+        if task_hold:
+            u_post_raw = 0.0
             tel.d_star_dot_cmd = 0.0
             d_dot = 0.0
-            u_pi_raw = 0.0
-            u_post_raw = 0.0
-        else:
-            u_pi_raw = self.kp * e_d + self.xi
-            u_mid_cmd = float(np.clip(u_pi_raw, -self.u_mid_max, self.u_mid_max))
-            u_post_raw = u_mid_cmd - d_dot
-            tel.xi = float(self.xi)
-            tel.u_pi_raw = float(u_pi_raw)
-            tel.u_mid_cmd = float(u_mid_cmd)
-            tel.u_post_raw = float(u_post_raw)
+        tel.xi = float(self.xi)
+        tel.u_pi_raw = float(u_pi_raw)
+        tel.u_mid_cmd = float(u_mid_cmd)
+        tel.u_post_raw = float(u_post_raw)
 
         shares = allocate_rail_shares(
             u_task_raw=0.0 if task_hold else float(u_task_raw),
-            u_post_raw=0.0 if posture_hold_now else float(u_post_raw),
+            u_post_raw=float(u_post_raw),
             u_escape_raw=0.0 if task_hold else float(u_escape_raw),
             escape_dir=0 if task_hold else guard_dir,
             u_lo=u_lo,
@@ -306,10 +313,14 @@ class RailCommandMixer:
         )
         u_post_f = float(shares["u_post_feasible"])
         u_mid_applied = u_post_f + float(d_dot)
-        if (not posture_hold_now) and (not self.wall_pi_frozen) and dt > 0.0:
-            self.xi += (
-                self.ki * e_d + self.kaw * (u_mid_applied - u_pi_raw)
-            ) * float(dt)
+        if (not self.wall_pi_frozen) and dt > 0.0:
+            if alpha < 1.0e-6 or task_hold:
+                self.xi = -self.kp * e_d
+            else:
+                self.xi += (
+                    self.ki * e_d + self.kaw * (u_mid_applied - u_pi_raw)
+                ) * float(dt)
+                self.xi = (1.0 - alpha) * (-self.kp * e_d) + alpha * self.xi
             tel.xi = float(self.xi)
 
         tel.u_task_feasible = float(shares["u_task_feasible"])

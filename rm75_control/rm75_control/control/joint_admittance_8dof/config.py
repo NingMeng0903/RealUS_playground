@@ -323,12 +323,6 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
             name="inner.qp.limit_damper_band_rail_m",
         ),
         warn_on_fail=bool(c.get("warn_on_fail", False)),
-        fail_qdot_decay=_finite_float(
-            c.get("fail_qdot_decay", 0.85), name="inner.qp.fail_qdot_decay"
-        ),
-        max_solve_ms=_finite_float(
-            c.get("max_solve_ms", 5.0), name="inner.qp.max_solve_ms"
-        ),
         twist_sigma_floor=_finite_float(
             c.get("twist_sigma_floor", 0.02), name="inner.qp.twist_sigma_floor"
         ),

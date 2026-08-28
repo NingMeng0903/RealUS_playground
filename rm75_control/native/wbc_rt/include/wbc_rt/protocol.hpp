@@ -6,7 +6,7 @@
 namespace wbc_rt {
 
 static constexpr uint32_t kMagic = 0x57424331u;  // 'WBC1'
-static constexpr uint32_t kVersion = 4;
+static constexpr uint32_t kVersion = 6;
 
 enum Cmd : uint32_t {
   kCmdNone = 0,
@@ -66,6 +66,13 @@ enum Status : uint32_t {
   kStatusOk = 2,
   kStatusFail = 3,
   kStatusShutdown = 4,
+};
+
+enum QpStatusU : uint32_t {
+  kQpNotRun = 0,
+  kQpSolved = 1,
+  kQpMaxIter = 2,
+  kQpFailed = 3,
 };
 
 enum RailModeU : uint32_t {
@@ -172,11 +179,35 @@ struct WbcOut {
   double rail_h2;
   double rail_qdot_prev;
   double rail_qdot_prev2;
+  uint32_t qp1_status;
+  uint32_t qp2_status;
+  uint32_t qp1_iter;
+  uint32_t qp2_iter;
+  uint32_t n_cbf_active;
+  uint32_t box_degenerate;
+  uint32_t box_infeasible;
+  uint32_t manip_active;
+  double qp1_solve_ms;
+  double qp2_solve_ms;
+  double assembly_ms;
+  double fallback_ms;
+  double hard_residual_max;
+  double equality_residual_max;
+  double rail_exec;
+  double box_excess_max;
+  double follow_err_rad;
+  double qdot_qp_vs_sent_max;
+  double dual_cancel;
+  double secondary_alpha;
+  double box_lo[8];
+  double box_hi[8];
+  double qdot_prev[8];
+  double qdot_prev2[8];
 };
 #pragma pack(pop)
 
 static_assert(sizeof(WbcIn) == 608, "WbcIn layout drift");
-static_assert(sizeof(WbcOut) == 824, "WbcOut layout drift");
+static_assert(sizeof(WbcOut) == 1208, "WbcOut layout drift");
 
 inline void clear_in(WbcIn* s) {
   std::memset(s, 0, sizeof(WbcIn));
