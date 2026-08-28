@@ -39,6 +39,8 @@ class RailAllocatorConfig:
     e_ref_m: float = 0.08
     # Reference-model cutoff.  τ = 1/(2π f_c).  4 Hz follows Y; stay below 5–10.
     f_c_hz: float = 4.0
+    # L1 jerk.  Hard QP box stays at qp.j_max_rail_m_s3 (120).
+    j_max_ref_m_s3: float = 60.0
     # Lillo ε: leave stays on until this far inside the soft line (8 mm).
     leave_exit_eps_m: float = 0.008
     kaw_mid: float = 8.0

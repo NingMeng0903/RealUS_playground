@@ -128,6 +128,33 @@ class PatchedSourceTest(unittest.TestCase):
         self.assertIn("slack_hold_latched_ = false", cpp_stop)
         self.assertIn("self._slack_hold_latched = False", py_stop)
 
+    def test_l1_jerk_is_sixty_hard_box_stays_120(self) -> None:
+        types = (ROOT / "native/wbc_rt/include/wbc_rt/types.hpp").read_text()
+        cpp = (ROOT / "native/wbc_rt/src/inner.cpp").read_text()
+        cfg = (ROOT / "native/wbc_rt/include/wbc_rt/config.hpp").read_text()
+        yaml = (ROOT / "configs/joint_admittance_8dof.yaml").read_text()
+        self.assertIn("constexpr double kRailRefJerk = 60.0;", types)
+        self.assertIn("const double j_lim = std::min(kRailRefJerk, j_mir);", cpp)
+        self.assertNotIn("std::min(cfg_.j_max_rail, j_mir)", cpp)
+        self.assertIn("double j_max_rail = 120.0;", cfg)
+        self.assertIn("j_max_rail_m_s3: 120.0", yaml)
+
+    def test_rail_box_excess_is_always_substantial(self) -> None:
+        types = (ROOT / "native/wbc_rt/include/wbc_rt/types.hpp").read_text()
+        self.assertIn("i == 0 || w <= 1.0e-9 || excess > 0.10 * w", types)
+
+    def test_one_clock_is_dt_nom(self) -> None:
+        cpp = (ROOT / "native/wbc_rt/src/inner.cpp").read_text()
+        step = cpp[cpp.index("TickOut InnerLoop::step") :]
+        self.assertIn("const double dt = dt_nom;", step)
+        self.assertIn("h1 = dt_nom;", step)
+        self.assertIn("h2 = dt_nom;", step)
+        py = (
+            ROOT / "rm75_control/control/joint_admittance_8dof/loop.py"
+        ).read_text()
+        self.assertIn("dt = dt_nom", py)
+        self.assertNotIn("dt = integration_period(dt_nom, dt_wall_s)", py)
+
     def test_sigma_barrier_uses_sigma_arm_argument(self) -> None:
         cpp = (ROOT / "native/wbc_rt/src/inner.cpp").read_text()
         self.assertIn("double sigma_arm,", cpp)

@@ -82,6 +82,18 @@ def test_margin_weight_pushes_task_to_rail() -> None:
     assert abs(q_w[1]) < abs(q_eq[1])
 
 
+def test_l1_reference_jerk_is_60_not_qp_box_120() -> None:
+    dt = 0.005
+    model = RailReferenceModel(f_c_hz=4.0, a_max=0.60, j_max=60.0, v_max=0.15)
+    model.reset(0.0)
+    prev_a = 0.0
+    for _ in range(12):
+        model.step(0.12, dt, x_m=0.40, apply_wall=False)
+        assert abs(model.state.a - prev_a) <= 60.0 * dt + 1.0e-9
+        prev_a = float(model.state.a)
+    assert abs(model.state.a) <= 0.60 + 1.0e-9
+
+
 def test_reference_model_uses_real_dt_and_committed_history() -> None:
     model = RailReferenceModel(f_c_hz=5.0, a_max=0.60, j_max=60.0, v_max=0.12, reaction_s=0.06)
     model.reset(0.0)
@@ -580,3 +592,18 @@ def test_j4_gates_report_both_walls_and_mid_jerk() -> None:
     assert g["minus_mid_j4_median_in_80_105"]
     assert g["mid_jerk_over_60_pct_lt_3"]
     assert g["mid_jerk_p95_lt_15"]
+    assert "mid_jerk_over_60_pct" in g
+    assert "mid_jerk_p95" in g
+    hw = {
+        "rail_box_out_eq_0": True,
+        "mid_jerk_over_60_pct_lt_3": g["mid_jerk_over_60_pct_lt_3"],
+        "mid_jerk_p95_lt_15": g["mid_jerk_p95_lt_15"],
+        "j4_on_wall_lt_10": bool(
+            g["plus_mid_on70_pct_lt_10"] and g["minus_mid_on115_pct_lt_10"]
+        ),
+        "j4_median_in_80_105": bool(
+            g["plus_mid_j4_median_in_80_105"] and g["minus_mid_j4_median_in_80_105"]
+        ),
+    }
+    assert hw["j4_on_wall_lt_10"]
+    assert hw["j4_median_in_80_105"]

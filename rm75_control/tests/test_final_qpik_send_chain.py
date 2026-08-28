@@ -365,10 +365,9 @@ def test_wall_clock_idle_still_clamps_far_command() -> None:
     assert parked == pytest.approx(0.42)
 
 
-def test_arm_and_rail_integrate_on_wall_dt() -> None:
+def test_arm_and_rail_integrate_on_dt_nom() -> None:
     dt = 0.005
     dt_wall = 0.010
-    dt_int = min(dt_wall, 1.25 * dt)
     qdot_ff = np.zeros(8)
     qdot_ff[0] = 0.001
     qdot_ff[2] = 0.001
@@ -379,26 +378,25 @@ def test_arm_and_rail_integrate_on_wall_dt() -> None:
     step = wall.update(
         np.zeros(6), dt, q_meas=q0, qdot_ff=qdot_ff, dt_wall_s=dt_wall
     )
-    assert wall.q_cmd[0] == pytest.approx(q0[0] + qdot_ff[0] * dt_int)
-    assert wall.q_cmd[2] == pytest.approx(q0[2] + qdot_ff[2] * dt_int)
+    assert wall.q_cmd[0] == pytest.approx(q0[0] + qdot_ff[0] * dt)
+    assert wall.q_cmd[2] == pytest.approx(q0[2] + qdot_ff[2] * dt)
     assert step.qdot[0] == pytest.approx(qdot_ff[0])
     assert np.all(wall.q_cmd >= wall.limits.q_lower - 1.0e-9)
     assert np.all(wall.q_cmd <= wall.limits.q_upper + 1.0e-9)
 
 
-def test_qp_tick_integrates_on_wall_dt_and_stays_in_position_box() -> None:
+def test_qp_tick_integrates_on_dt_nom_and_stays_in_position_box() -> None:
     controller = _controller()
     q0 = controller.q_cmd.copy()
     dt_nom = float(controller.cfg.dt)
     dt_wall = 1.6 * dt_nom
-    dt_int = min(dt_wall, 1.25 * dt_nom)
     twist = np.array([0.0, 0.04, 0.0, 0.0, 0.0, 0.0])
     step = controller.update(
         twist, dt_nom, q_meas=q0, vel_ff=twist, dt_wall_s=dt_wall
     )
     np.testing.assert_allclose(
         controller.q_cmd,
-        q0 + np.asarray(step.qdot, dtype=float) * dt_int,
+        q0 + np.asarray(step.qdot, dtype=float) * dt_nom,
         atol=1.0e-8,
         rtol=0.0,
     )

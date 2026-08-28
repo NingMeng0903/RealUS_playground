@@ -21,6 +21,11 @@ constexpr int kMaxCbf = 8;
 constexpr int kMaxPrefRows = 16;
 constexpr int kNTaskSlack = 6;
 
+// L1 reference-model jerk.  Hard QP box stays at qp.j_max_rail (120) so
+// a∩j stays nonempty (a_max*dt = 0.60*0.005).  Matches Python
+// RailReferenceModel default.
+constexpr double kRailRefJerk = 60.0;
+
 // Last stage that strictly tightened the rail velocity bound.  0 means the
 // box is still the initial ±v_max (or unset after reset).
 enum RailBindStage : uint32_t {
@@ -95,7 +100,10 @@ inline void measure_qdot_box(const Vec8& qdot, const Vec8& lo, const Vec8& hi,
     if (qdot[i] < lo[i]) excess = lo[i] - qdot[i];
     if (qdot[i] > hi[i]) excess = std::max(excess, qdot[i] - hi[i]);
     *excess_max = std::max(*excess_max, excess);
-    if (excess > 1.0e-6 && (w <= 1.0e-9 || excess > 0.10 * w)) *substantial_out = true;
+    if (excess > 1.0e-6 &&
+        (i == 0 || w <= 1.0e-9 || excess > 0.10 * w)) {
+      *substantial_out = true;
+    }
   }
 }
 

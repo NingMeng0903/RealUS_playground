@@ -122,7 +122,6 @@ from rm75_control.control.joint_admittance_8dof.utils.safety import (
     SafetyLimits,
     Watchdog,
     clamp_command_step,
-    integration_period,
 )
 
 # Pure rotation used to skip hold_setpoint (only vff[:3] was checked), so
@@ -589,7 +588,7 @@ class JointIkController:
         self.rail_ref_model = RailReferenceModel(
             f_c_hz=float(alloc_cfg.f_c_hz),
             a_max=float(self.cfg.a_max_rail_m_s2),
-            j_max=float(self.cfg.qp.j_max_rail_m_s3),
+            j_max=float(getattr(alloc_cfg, "j_max_ref_m_s3", 60.0)),
             v_max=v_rail,
             reaction_s=float(alloc_cfg.reaction_s),
             soft_min_m=float(self.cfg.rail.soft_min_m),
@@ -756,27 +755,18 @@ class JointIkController:
             self._native.capture_rail_extension_ref()
 
     def _measure_box_periods(self, dt: float) -> tuple[float, float | None]:
-        """Two most recent wall periods for the unequal-sample third-order box.
-
-        Each period is clamped to ``[0.8, 1.0] × dt`` (pass the nominal
-        period, not the jittering wall period) so one stalled tick cannot
-        open the acceleration/jerk boxes.
-        """
+        """Box / collapse / analyzer clock is ``dt_nom``, not wall jitter."""
         now = time.monotonic()
         prev = self._box_dt_last_t
         prev_h1 = self._box_h1_last
         self._box_dt_last_t = now
         nominal = max(float(dt), 1.0e-6)
+        self._box_h1_last = nominal
         if prev is None:
-            self._box_h1_last = nominal
             return nominal, None
-        measured = now - prev
-        if not math.isfinite(measured) or measured <= 0.0:
-            h1 = nominal
-        else:
-            h1 = float(np.clip(measured, 0.8 * nominal, 1.0 * nominal))
-        self._box_h1_last = h1
-        return h1, prev_h1
+        if prev_h1 is None:
+            return nominal, nominal
+        return nominal, float(prev_h1)
 
     def _commit_command_step(
         self,
@@ -1558,15 +1548,12 @@ class JointIkController:
         dt_nom = self.cfg.dt if dt is None else float(dt)
         if not np.isfinite(dt_nom) or dt_nom <= 0.0:
             raise ValueError("dt must be finite and > 0")
-        if dt_wall_s is None:
-            dt = dt_nom
-            dt_rail = dt_nom
-        else:
-            # Integrate on a clipped wall period so a single overrun cannot
-            # emit a 2x command step.  Force/proxy dynamics still see the
-            # raw wall period via dt_actual_s in the outer loop.
-            dt = integration_period(dt_nom, dt_wall_s)
-            dt_rail = dt
+        # Box, collapse, and integrate share T = dt_nom.  Wall jitter must
+        # not stretch the command step (native InnerLoop already does this).
+        # Force/proxy dynamics still see the raw wall via dt_actual_s.
+        _ = dt_wall_s
+        dt = dt_nom
+        dt_rail = dt_nom
         dt_int = float(dt)
         qdot_prev_used = np.asarray(self.core.qdot_prev, dtype=float).copy()
         qdot_prev2_used = np.asarray(self.core._qdot_prev_seen, dtype=float).copy()

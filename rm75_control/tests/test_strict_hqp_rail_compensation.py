@@ -349,6 +349,94 @@ def test_secondary_macro_preferences_and_cbf_cannot_change_qp1(monkeypatch) -> N
     )
 
 
+def test_qp2_rail_outside_box_publishes_qp1_xstar() -> None:
+    controller = _controller()
+    core = controller.core
+    jacobian = controller.kin.jacobian(Q_SAFE)
+    task = jacobian[:, 1] * 0.004
+    orig = core._solve_qp
+
+    def _leak_rail(backend, *args, **kwargs):
+        x = orig(backend, *args, **kwargs)
+        if backend is core._backend_qp2 and x is not None:
+            x = np.asarray(x, dtype=float).copy()
+            x[0] = 0.08194
+            return x
+        return x
+
+    core._solve_qp = _leak_rail
+    try:
+        result = core.step(
+            Q_SAFE,
+            task,
+            0.005,
+            q_meas=Q_SAFE,
+            rail_exec_vel_m_s=0.0,
+            rail_task_vel_m_s=0.08,
+            rail_task_weight=1.0e5,
+            zero_secondary_rail=True,
+            jacobian=jacobian,
+            sigma=controller.kin.singular_values(jacobian),
+        )
+    finally:
+        core._solve_qp = orig
+
+    lo = float(core.last_rail_box_lo)
+    hi = float(core.last_rail_box_hi)
+    used = float(core.last_rail_task_vel_used)
+    assert result.qdot[0] != pytest.approx(0.08194, abs=1.0e-4)
+    assert lo - 1.0e-9 <= result.qdot[0] <= hi + 1.0e-9
+    assert result.qdot[0] == pytest.approx(used, abs=2.0e-7)
+    np.testing.assert_allclose(result.qdot, core.last_qdot_qp1, atol=0.0, rtol=0.0)
+    assert core.last_qp2_status == "failed"
+    assert core.last_qp2_fallback
+
+
+def test_l1_jerk_is_independent_of_qp_j_max_rail() -> None:
+    controller = _controller()
+    assert controller.cfg.qp.j_max_rail_m_s3 == pytest.approx(120.0)
+    assert float(controller.rail_ref_model.j_max) == pytest.approx(60.0)
+
+
+def test_j4_design_box_stays_hard_in_c() -> None:
+    from pathlib import Path
+
+    import yaml
+
+    from rm75_control.control.joint_admittance_8dof.solver.joint_comfort import (
+        J4DesignComfortBuilder,
+        j4_design_qdot_bounds,
+    )
+
+    raw = yaml.safe_load(
+        (
+            Path(__file__).resolve().parents[1]
+            / "configs"
+            / "joint_admittance_8dof.yaml"
+        ).read_text()
+    )
+    jd = raw["inner"]["qp"]["j4_design_comfort"]
+    assert bool(jd["enabled"])
+    assert float(jd["lower_deg"]) == pytest.approx(70.0)
+    assert float(jd["upper_deg"]) == pytest.approx(115.0)
+    controller = _controller()
+    controller.cfg.qp.j4_design_comfort.enabled = True
+    controller.core.constraints.j4_design_enabled = True
+    q = Q_SAFE.copy()
+    q[4] = np.deg2rad(70.0)
+    lo, hi = controller.core.constraints.bounds(q, 0.005)
+    want_lo, _want_hi = j4_design_qdot_bounds(
+        float(q[4]),
+        lower_rad=np.deg2rad(70.0),
+        upper_rad=np.deg2rad(115.0),
+        gamma=float(controller.cfg.qp.j4_design_comfort.gamma),
+    )
+    assert lo[4] == pytest.approx(want_lo)
+    assert lo[4] == pytest.approx(0.0, abs=1.0e-12)
+    rows = J4DesignComfortBuilder().build_rows(q)
+    assert rows.jacobian.shape[0] == 0
+
+
 def test_cbf_uses_measured_not_commanded_rail_velocity(monkeypatch) -> None:
     def fake_cbf(*_args, **_kwargs) -> CbfRows:
         # Actual collision separation speed is qdot_rail + qdot_arm_1.

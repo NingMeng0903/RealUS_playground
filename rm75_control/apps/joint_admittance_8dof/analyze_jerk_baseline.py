@@ -383,7 +383,7 @@ def analyze(path: Path, *, u_mid_max: float = 0.03, dt: float = 0.005) -> dict:
     arm_jump = np.full(n, np.nan)
     if n > 1:
         arm_jump[1:] = np.max(np.abs(qdot[1:, 1:] - qdot[:-1, 1:]), axis=1)
-    return {
+    out = {
         "csv": str(path),
         "n_ticks": n,
         "decay_ticks": int(np.count_nonzero(decay)),
@@ -452,6 +452,36 @@ def analyze(path: Path, *, u_mid_max: float = 0.03, dt: float = 0.005) -> dict:
         "collapse_gates": _collapse_gates(rows, qdot, blo, bhi, dt),
         "j4_gates": _j4_gates(rows, qdot=qdot, dt=dt),
     }
+    j4 = out["j4_gates"]
+    box_out = int(out["rail_box_out_ticks"])
+    out["hw_gates"] = {
+        "rail_box_out_ticks": box_out,
+        "rail_box_out_eq_0": box_out == 0,
+        "mid_jerk_over_60_pct": j4["mid_jerk_over_60_pct"],
+        "mid_jerk_over_60_pct_lt_3": j4["mid_jerk_over_60_pct_lt_3"],
+        "mid_jerk_p95": j4["mid_jerk_p95"],
+        "mid_jerk_p95_lt_15": j4["mid_jerk_p95_lt_15"],
+        "plus_mid_on70_pct": j4["plus_mid_on70_pct"],
+        "minus_mid_on115_pct": j4["minus_mid_on115_pct"],
+        "j4_on_wall_lt_10": bool(
+            j4["plus_mid_on70_pct_lt_10"] and j4["minus_mid_on115_pct_lt_10"]
+        ),
+        "plus_mid_j4_median_deg": j4["plus_mid_j4_median_deg"],
+        "minus_mid_j4_median_deg": j4["minus_mid_j4_median_deg"],
+        "j4_median_in_80_105": bool(
+            j4["plus_mid_j4_median_in_80_105"] and j4["minus_mid_j4_median_in_80_105"]
+        ),
+        "pass": bool(
+            box_out == 0
+            and j4["mid_jerk_over_60_pct_lt_3"]
+            and j4["mid_jerk_p95_lt_15"]
+            and j4["plus_mid_on70_pct_lt_10"]
+            and j4["minus_mid_on115_pct_lt_10"]
+            and j4["plus_mid_j4_median_in_80_105"]
+            and j4["minus_mid_j4_median_in_80_105"]
+        ),
+    }
+    return out
 
 
 def main(argv: list[str] | None = None) -> int:

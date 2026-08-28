@@ -74,10 +74,9 @@ def test_jittering_dt_wall_keeps_integration_timebase_constant() -> None:
     qdot_ff = np.zeros(8)
     qdot_ff[2] = 0.010
     walls = [0.004, 0.006, 0.012, 0.005, 0.009]
-    expected = [integration_period(dt_nom, w) for w in walls]
     q = controller.q_cmd.copy()
     travelled = 0.0
-    for dt_wall, dt_int in zip(walls, expected):
+    for dt_wall in walls:
         q_before = controller.q_cmd.copy()
         step = controller.update(
             np.zeros(6),
@@ -87,12 +86,11 @@ def test_jittering_dt_wall_keeps_integration_timebase_constant() -> None:
             dt_wall_s=dt_wall,
         )
         dq2 = float(controller.q_cmd[2] - q_before[2])
-        assert dq2 == pytest.approx(qdot_ff[2] * dt_int, abs=1.0e-9)
+        assert dq2 == pytest.approx(qdot_ff[2] * dt_nom, abs=1.0e-9)
         travelled += dq2
         q = controller.q_cmd.copy()
         assert step.qdot[2] == pytest.approx(qdot_ff[2], abs=1.0e-9)
-    assert travelled == pytest.approx(qdot_ff[2] * sum(expected), abs=1.0e-9)
-    assert travelled < qdot_ff[2] * sum(walls) - 1.0e-9
+    assert travelled == pytest.approx(qdot_ff[2] * dt_nom * len(walls), abs=1.0e-9)
 
 
 def test_box_periods_use_nominal_dt_not_wall() -> None:

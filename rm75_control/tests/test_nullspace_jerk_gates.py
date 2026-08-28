@@ -222,8 +222,8 @@ def test_zero_twist_nullspace_is_quieter_with_lpf() -> None:
     assert drift_forced < 15.0
 
 
-def test_post_qp_clamp_uses_integration_dt(monkeypatch) -> None:
-    """Post-QP accel clamp must share the QP box period (dt_int), not dt_nom."""
+def test_post_qp_clamp_uses_dt_nom(monkeypatch) -> None:
+    """Box / collapse / integrate / post-QP clamp share T = dt_nom."""
 
     seen: list[float] = []
     real = clamp_command_step
@@ -244,5 +244,5 @@ def test_post_qp_clamp_uses_integration_dt(monkeypatch) -> None:
         dt_wall_s=dt_wall,
     )
     assert seen
-    assert seen[-1] == pytest.approx(integration_period(dt_nom, dt_wall))
-    assert seen[-1] != pytest.approx(dt_nom)
+    assert seen[-1] == pytest.approx(dt_nom)
+    assert seen[-1] != pytest.approx(integration_period(dt_nom, dt_wall))

@@ -98,6 +98,19 @@ def test_mixer_adds_posture_to_u_feasible() -> None:
     assert tel0.u_task_feasible == pytest.approx(0.04)
 
 
+def test_measure_box_rail_excess_is_always_substantial() -> None:
+    lo = np.full(8, -0.06)
+    hi = np.full(8, 0.06)
+    qdot = np.zeros(8)
+    qdot[0] = 0.066  # 6 mm over; 5% of width, old 10% rule would keep it
+    _e, _d, _i, subst = measure_qdot_box(qdot, lo, hi)
+    assert subst
+    qdot[0] = 0.0
+    qdot[1] = 0.066
+    _e, _d, _i, subst_arm = measure_qdot_box(qdot, lo, hi)
+    assert not subst_arm
+
+
 def test_measure_box_rejects_degenerate_excess() -> None:
     lo = np.full(8, 0.0804)
     hi = np.full(8, 0.0804)

@@ -91,7 +91,9 @@ def measure_qdot_box(qdot, lo, hi) -> tuple[float, bool, bool, bool]:
         if qdot[i] > hi[i]:
             excess = max(excess, float(qdot[i] - hi[i]))
         excess_max = max(excess_max, excess)
-        if excess > 1.0e-6 and (w <= 1.0e-9 or excess > 0.10 * w):
+        if excess > 1.0e-6 and (
+            i == 0 or w <= 1.0e-9 or excess > 0.10 * w
+        ):
             substantial = True
     return excess_max, degenerate, infeasible, substantial
 

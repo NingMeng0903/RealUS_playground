@@ -885,6 +885,8 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
       qdot_out = qdot2;
       x_pub = qp2_->results.x;
     } else {
+      // Rail excess > 1e-6: discard QP2 and publish QP1's x* (qdot1).
+      // qdot1[0] is already clip(v_r_ref, box).  Do not splice axes.
       qp2_status_ = kQpFailed;
     }
   }
@@ -932,7 +934,7 @@ TickOut InnerLoop::step(const TickIn& in) {
     out.flags |= kOutStale;
   }
   const double dt_nom = (std::isfinite(in.dt_nom) && in.dt_nom > 0.0) ? in.dt_nom : cfg_.dt;
-  const double dt = integration_period(dt_nom, in.dt_wall);
+  const double dt = dt_nom;
   if (in.flags & kInSeedQcmd) {
     q_cmd_ = in.q_meas;
     q_hat_ = in.q_meas[0];
@@ -1013,11 +1015,10 @@ TickOut InnerLoop::step(const TickIn& in) {
     box_last_t_ = now;
     box_h1_ = dt_nom;
   } else {
-    h2 = box_h1_;
-    h1 = clip(now - box_last_t_, 0.8 * dt_nom, 1.0 * dt_nom);
-    if (!(std::isfinite(h1) && h1 > 0.0)) h1 = dt_nom;
+    h2 = dt_nom;
     box_last_t_ = now;
-    box_h1_ = h1;
+    box_h1_ = dt_nom;
+    h1 = dt_nom;
   }
 
   const double z_now = kin_.tcp_xyz()[2];
@@ -1271,7 +1272,7 @@ TickOut InnerLoop::step(const TickIn& in) {
     v_r_lpf_ = v_f;
     double a_raw = (v_f - v_r_ref_) / dt;
     const double a_lim = std::min(cfg_.a_max_rail, a_mir);
-    const double j_lim = std::min(cfg_.j_max_rail, j_mir);
+    const double j_lim = std::min(kRailRefJerk, j_mir);
     double a = clip(a_raw, v_r_a_ - j_lim * dt, v_r_a_ + j_lim * dt);
     a = clip(a, -a_lim, a_lim);
     double v = clip(v_r_ref_ + a * dt, -v_max_[0], v_max_[0]);
