@@ -572,4 +572,5 @@ def test_overforce_snaps_cdyob_blend_without_settle() -> None:
     )
     assert ctrl.overforce_escape is True
     assert ctrl.cdyob_apply_ready is False
-    assert ctrl.cdyob_blend == pytest.approx(1.0)
+    # Overforce must not snap the observer blend (destabilizing at our delay).
+    assert ctrl.cdyob_blend == pytest.approx(0.0)

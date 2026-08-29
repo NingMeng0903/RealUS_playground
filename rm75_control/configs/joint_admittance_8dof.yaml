@@ -320,7 +320,7 @@ force:
   phi_source: phi_recommended
   fc_hz: 6.0
   min_samples: 22
-  causal_fc_hz: 12.0
+  causal_fc_hz: 20.0
   causal_order: 1
   causal_history: 5
   # Inertia compensation off on the joint stream (re-enable only with telemetry).
@@ -360,6 +360,8 @@ hybrid_motion:
   - 1.5
   pos_err_deadband_m: 0.0005
   pos_correction_max_m_s: 0.08
+  # Placeholder aligned to barrier t_react — never measured.  Certificates
+  # use runtime Td.  Voice-coil later only changes Td / caps.
   system_delay_s: 0.055
   contact_threshold_n: 0.8
   contact_use_fz_only: true
@@ -382,7 +384,7 @@ hybrid_motion:
   max_velocity:
   - 0.22
   - 0.22
-  - 0.1
+  - 0.025
   - 0.6
   - 0.6
   - 0.6
@@ -397,10 +399,13 @@ hybrid_motion:
   # Chatter: short-lived ΔD_hf(Is). Steady offset: force_dob. Not sticky Ke·D.
   admittance_mass_z: 1.0
   admittance_damping_z: 40.0
-  max_vz_tool_m_s: 0.08
+  admittance_stiffness_z: 10.0
+  xd_gain_m_s_per_n: 0.002
+  xd_rate_max_m_s: 0.002
+  max_vz_tool_m_s: 0.025
   desired_force_ramp_s: 0.30
   var_damping_enabled: true
-  var_damping_omega_c_hz: 2.5
+  var_damping_omega_c_hz: 1.2
   var_damping_lambda: 0.951
   var_damping_f_max_n: 7.0
   # Dimeas Iₛ raises virtual mass briefly; ΔD_hf authority is off.
@@ -442,13 +447,13 @@ hybrid_motion:
     budget_frac: 0.20
     f_keep_n: 0.5
     f_escape_n: 0.5
-    v_ref_m_s: 0.08
+    v_ref_m_s: 0.025
     v_min_retract_m_s: 0.0
     v_min_press_m_s: 0.0
-    v_underforce_press_m_s: 0.0
+    v_underforce_press_m_s: 0.010
     underforce_band_n: 0.20
     # Extra clip only.  First contact is K_ub T_stop, not this number.
-    v_seek_free_m_s: 0.020
+    v_seek_free_m_s: 0.010
     tau_stop_s: 0.080
     e_x_m: 0.0004
     e_f_n: 0.20
@@ -458,10 +463,10 @@ hybrid_motion:
     stiffness_cap_enabled: true
     ke_floor_n_m: 50.0
     mass_floor_kg: 0.05
-  # Independent chirps 031234/031605 select T0=30 ms, Tp=12 ms.  Do not
-  # invert Γd or claim Y=A when any downstream constraint is active.
+  # CDYOB is off.  At our delay it lowers Ke* (1059→775 N/m).
+  # Do not invert Γd or claim Y=A when any downstream constraint is active.
   cdyob:
-    mode: active
+    mode: "off"
     omega_q_hz: 0.75
     t0_s: 0.030
     tp_s: 0.012
@@ -476,8 +481,26 @@ hybrid_motion:
     active_force_ratio: 0.90
     active_settle_speed_m_s: 0.010
     active_settle_hold_s: 0.05
-    # 032041 A-only contact shadow passes polarity/clip + settled-apply gates.
-    active_model_validated: true
+    active_model_validated: false
+  # De Stefano Sec. IV only.  Port (F_meas, v_cmd), same tick.  Td is
+  # runtime — do not bake 55 ms or D=40.  Voice-coil keeps this block.
+  tdpa:
+    enabled: true
+    e_leak_pos_s: 2.0
+    alpha_max: 400.0
+    bias_lpf_s: 8.0
+    v_bias_gate_m_s: 0.003
+  # Certificate 3: set invariance, not passivity.  Shield stays observe.
+  force_corridor:
+    enabled: true
+    f_keep_n: 0.5
+  press_envelope:
+    # confirmed chase / air-first / overforce retract.  See
+    # MD/todo_controller_logs/id_fit_20260829/id_reference.log
+    soft_approach_m_s: 0.020
+    first_touch_m_s: 0.010
+    max_force_axis_m_s: 0.025
+    a_linear_m_s2: 1.20
   # Normal-port delay-aware shield. Stay in observe until the same solver
   # is feasible on hardware. force/observe are empirical peak guards:
   # require_contact_free_terminal is false until a release model exists.
@@ -497,17 +520,18 @@ hybrid_motion:
     r_f_n_s: 8.0
     r_f_window_steps: 20
     f_release_n: 0.70
-    u_retract_m_s: 0.040
+    u_retract_m_s: 0.010
     a_max_m_s2: 1.20
     j_max_m_s3: 40.0
     rho: 0.15
     e0_j: 0.004
     eps_j: 0.0005
-    # One-pose free-space fit from run_20260821_000011 identify tail.
-    # Not a passivity certificate; another pose/load still needed.
+    # Free-space chirp 20260829_202437: T0=35 ms all 8/15/25 mm/s.
+    # Td is a band (feedback_age p95 6.3 ms).  Do not use 3 Hz group delay
+    # as T0 (65/49/20 ms disagree).  Not a passivity certificate.
     plant:
-      t0_s: 0.050
-      tp_s: 0.020
+      t0_s: 0.035
+      tp_s: 0.012
       horizon_steps: 40
     # stop_dx_ub is written by --analyze-stop --write-yaml.
     # certified: false until 200 Hz motion-SHM backup replay + independent

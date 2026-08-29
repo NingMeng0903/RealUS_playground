@@ -116,9 +116,13 @@ class CdyobConfig:
         p = c.get("cdyob", {})
         if not isinstance(p, dict):
             p = {}
-        raw_mode = str(p.get("mode", "")).strip().lower()
-        if raw_mode in ("off", "shadow", "active"):
-            mode = raw_mode
+        raw_mode_val = p.get("mode", "off")
+        if raw_mode_val in (False, None, 0):
+            raw_mode = "off"
+        else:
+            raw_mode = str(raw_mode_val).strip().lower()
+        if raw_mode in ("off", "false", "0", "shadow", "active"):
+            mode = "off" if raw_mode in ("off", "false", "0") else raw_mode
         else:
             # Old enabled:true was the broken residual corrector.  Stay off.
             mode = "off"

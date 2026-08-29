@@ -375,10 +375,13 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
     )
     assert float(phase.outer.desired_force[2]) == pytest.approx(desired_z_n())
     force = load_force_raw()
-    assert float(force["hybrid_motion"]["max_vz_tool_m_s"]) == pytest.approx(0.08)
+    assert float(force["hybrid_motion"]["max_vz_tool_m_s"]) == pytest.approx(0.025)
     assert float(force["hybrid_motion"]["system_delay_s"]) == pytest.approx(0.055)
     assert float(force["hybrid_motion"]["force_barrier"]["v_seek_free_m_s"]) == pytest.approx(
-        0.020
+        0.010
+    )
+    assert float(force["hybrid_motion"]["press_envelope"]["first_touch_m_s"]) == pytest.approx(
+        0.010
     )
     assert force["hybrid_motion"]["physical_contact"]["hold_until_reset"] is False
     assert force["hybrid_motion"]["safety_shield"]["mode"] == "observe"
@@ -388,7 +391,7 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
         0.0
     )
     assert float(force["hybrid_motion"]["force_scale_fraction"]) == pytest.approx(0.0)
-    assert force["hybrid_motion"]["cdyob"]["mode"] == "active"
+    assert force["hybrid_motion"]["cdyob"]["mode"] == "off"
     assert float(force["hybrid_motion"]["cdyob"]["t0_s"]) == pytest.approx(0.030)
     assert float(force["hybrid_motion"]["cdyob"]["tp_s"]) == pytest.approx(0.012)
     assert float(force["hybrid_motion"]["cdyob"]["omega_q_hz"]) == pytest.approx(
@@ -403,7 +406,7 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
     assert float(
         force["hybrid_motion"]["cdyob"]["active_retract_max_m_s"]
     ) == pytest.approx(0.015)
-    assert force["hybrid_motion"]["cdyob"]["active_model_validated"] is True
+    assert force["hybrid_motion"]["cdyob"]["active_model_validated"] is False
     assert float(
         force["hybrid_motion"]["cdyob"]["active_settle_speed_m_s"]
     ) == pytest.approx(0.010)
@@ -415,7 +418,7 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
     assert force["hybrid_motion"]["proactive_feedforward"] is True
     assert float(
         force["hybrid_motion"]["force_barrier"]["v_underforce_press_m_s"]
-    ) == pytest.approx(0.0)
+    ) == pytest.approx(0.010)
 
 
 def test_pad_hybrid_keeps_pad_axes_force_owns_z() -> None:

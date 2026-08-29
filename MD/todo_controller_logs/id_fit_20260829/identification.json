@@ -1,0 +1,67 @@
+{
+  "air_dir": "/media/camp/EXT_DRIVE/RealUS_playground/MD/todo_controller_logs/id_air_20260829_202437",
+  "plant": {
+    "t0_s": 0.035,
+    "tp_s": 0.012,
+    "t0_spread_s": 0.0,
+    "group_delay_3hz_s": [
+      0.064547,
+      0.049488,
+      0.020232
+    ],
+    "group_delay_3hz_spread_s": 0.04431499999999999,
+    "write_single_fopdt": true,
+    "do_not_use_group_delay_as_t0": true,
+    "td_is_band": true,
+    "feedback_age_p95_s": 0.006292349999999999,
+    "linear_speed_mm_s": 40.0,
+    "first_touch_m_s": 0.01,
+    "note": "Chirp T0 is the delay to write.  3 Hz group delay disagrees across amplitudes \u2014 not a second FOPDT.  Age p95>5 ms so Td is a band around T0, not a point.  Force-loop FRF not identified."
+  },
+  "tdpa_sign": {
+    "ok": true,
+    "n_surfaces": 2,
+    "passivity_claimed": true
+  },
+  "contact": [
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/MD/todo_controller_logs/id_tdpa_20260829_210139/tdpa_press.csv",
+      "n_press": 38,
+      "window_s": 0.18500300000000003,
+      "f0_n": 0.427207,
+      "f1_n": 2.528694,
+      "dF_n": 2.101487,
+      "dx_mm": 1.4800240000000011,
+      "v_cmd_mm_s": 8.0,
+      "ke_n_m": 1419.9006232331358,
+      "ke_settled_n_m": 1419.9006232331358,
+      "sign_ok": true,
+      "passivity_claimed": true,
+      "e_obs_press_delta_j": 0.002077,
+      "e_obs_up_frac": 1.0,
+      "alpha_p95": 0.0
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/MD/todo_controller_logs/id_tdpa_20260829_212852/tdpa_press.csv",
+      "n_press": 105,
+      "window_s": 0.535007,
+      "f0_n": 0.452029,
+      "f1_n": 4.50013,
+      "dF_n": 4.048101000000001,
+      "dx_mm": 1.6050210000000014,
+      "v_cmd_mm_s": 3.0,
+      "ke_n_m": 2522.1483083398894,
+      "ke_settled_n_m": 2198.8318881358928,
+      "sign_ok": true,
+      "passivity_claimed": true,
+      "e_obs_press_delta_j": 0.0037790000000000002,
+      "e_obs_up_frac": 0.9807692307692307,
+      "alpha_p95": 0.0
+    }
+  ],
+  "not_identified": [
+    "force-loop F\u2192v FRF (hybrid tracking still the wrong excitation)",
+    "single tissue Ke (these are fixture stiffnesses)",
+    "stop-reverse \u0394x_b^ub"
+  ]
+}

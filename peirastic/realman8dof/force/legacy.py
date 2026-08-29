@@ -56,7 +56,12 @@ class LegacyForceLaw:
             v_tcp_z_actual=v_tcp_z_actual,
         )
         v = np.asarray(cmd, dtype=float).reshape(6)
-        v_force_z = float(getattr(self.controller, "v_force_z", v[2]))
+        # R1: emit the clamped command.  v_force_z is the pre-clamp admittance
+        # state and bypasses barrier / slew / shield / corridor.
+        if hasattr(self.controller, "v_force_cmd_z"):
+            v_force_z = float(self.controller.v_force_cmd_z)
+        else:
+            v_force_z = float(v[2])
         v_force = np.zeros(6, dtype=float)
         v_force[2] = v_force_z
         return ForceOutput(

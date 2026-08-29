@@ -1,0 +1,14 @@
+{
+  "n": 42414,
+  "port": "Fz x v_cmd, same tick",
+  "air_only": true,
+  "rigid_press_sign_check": false,
+  "e_obs_final_j": 0.005365282863139624,
+  "e_obs_min_j": -0.003036464847499343,
+  "e_obs_max_j": 0.011271244824617808,
+  "alpha_max": 400.0,
+  "alpha_clamped_ticks": 15120,
+  "fz_mean_n": 0.2474236336822747,
+  "fz_p95_n": 0.4746401499999997,
+  "note": "Air Fz is residual / bias.  This shadows observer leak and bookkeeping.  E_obs rising on a rigid press needs contact."
+}

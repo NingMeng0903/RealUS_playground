@@ -135,6 +135,11 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert "pad_vcmd_base_vy" in header
     assert "u_dob_z" in header
     assert "v_force_cmd_z" in header
+    assert "tdpa_e_obs_j" in header
+    assert "tdpa_alpha" in header
+    assert "tdpa_clamped" in header
+    assert "tdpa_passivity_holds" in header
+    assert "corridor_applied" in header
     assert "ke_cap_n_m" in header
     assert "cdyob_corr_m_s" in header
     assert "cdyob_qtinv_vm" in header

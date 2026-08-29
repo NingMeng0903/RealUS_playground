@@ -1,0 +1,27 @@
+{
+  "linear_speed_mm_s": 60.0,
+  "t0_spread_s": 0.009999999999990905,
+  "write_yaml_allowed": false,
+  "td_is_band": false,
+  "jitter": {
+    "n": 44700,
+    "feedback_age": {
+      "n": 44700,
+      "mean": 0.0030805369127516777,
+      "p95": 0.0031,
+      "max": 0.0031
+    },
+    "sensor_age": {
+      "n": 44700,
+      "mean": 0.0028805369127516776,
+      "p95": 0.0029,
+      "max": 0.0029
+    },
+    "dt_actual": {
+      "n": 44700,
+      "mean": 0.005,
+      "p95": 0.005,
+      "max": 0.005
+    }
+  }
+}

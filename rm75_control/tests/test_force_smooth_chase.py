@@ -79,8 +79,8 @@ def test_yaml_smooth_chase_defaults_load():
     assert cfg.proactive_ff.gate_press_on_is is False
     assert cfg.var_damping_d_u == pytest.approx(0.0)
     assert cfg.var_damping_m_u == pytest.approx(0.0)
-    assert cfg.cdyob.mode == "active"
-    assert cfg.cdyob.applies() is True
+    assert cfg.cdyob.mode == "off"
+    assert cfg.cdyob.applies() is False
     assert cfg.cdyob.omega_q_hz == pytest.approx(0.75)
     assert cfg.cdyob.t0_s == pytest.approx(0.030)
     assert cfg.cdyob.tp_s == pytest.approx(0.012)
@@ -93,8 +93,14 @@ def test_yaml_smooth_chase_defaults_load():
     assert cfg.force_dob.ki == pytest.approx(2.0)
     assert cfg.force_dob.leak_s == pytest.approx(1.5)
     assert cfg.proactive_ff.v_r_max_m_s == pytest.approx(0.008)
-    assert cfg.force_barrier.v_underforce_press_m_s == pytest.approx(0.0)
-    assert cfg.cdyob.active_model_validated is True
+    assert cfg.force_barrier.v_underforce_press_m_s == pytest.approx(0.010)
+    assert cfg.cdyob.active_model_validated is False
+    assert cfg.tdpa.enabled is True
+    assert cfg.force_corridor.enabled is True
+    assert cfg.press_envelope.max_force_axis_m_s == pytest.approx(0.025)
+    assert cfg.admittance_stiffness_z == pytest.approx(10.0)
+    assert cfg.var_damping_omega_c_hz == pytest.approx(1.2)
+    assert cfg.max_vz_tool_m_s == pytest.approx(0.025)
     assert cfg.safety_shield.mode == "observe"
     assert cfg.safety_shield.k_ub_n_m == pytest.approx(8000.0)
     assert cfg.admittance_mass_z == pytest.approx(1.0)

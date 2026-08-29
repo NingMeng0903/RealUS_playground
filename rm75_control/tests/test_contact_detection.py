@@ -492,6 +492,7 @@ def test_free_space_vz_respects_single_cap():
     )
     ctrl = AdmittanceController(0.005, cfg)
     ctrl.v_force_z = -0.15
+    ctrl._v_zoh_z = -0.15
     _tick(ctrl, fz=0.0)
     cap = ctrl._v_z_cap()
     assert -cap - 1e-9 <= ctrl.v_force_z <= cap + 1e-9

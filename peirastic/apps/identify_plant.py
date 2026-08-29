@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """Window C: free-space plant identification for τ_eff / G_v(s).
 
-Requires Window A running with --log-csv.  Default sequence: tool-Z
+Window A must be running to servo the arm.  Default sequence: tool-Z
 steps (±2/5/10/20/40/80 mm/s) and a 0.2–5 Hz chirp.
+
+``--air-campaign`` writes its *own* 200 Hz CSV (command + MotionBus +
+Fz + TDPA shadow) and runs ``--analyze-air`` when the sequence ends.
+Do not analyse the Window A hybrid log for this campaign.  Plots under
+``MD/todo_controller_logs/id_air_<stamp>/`` are required; no plots
+means the campaign is incomplete.  Do not add stop-reverse here.
 
 ``--stop-reverse`` is plant identification: +10/+20/+40/+80 mm/s to 0 and
 to −40 mm/s.  Analyse with ``--analyze-stop --input-column twist_vz``.
@@ -79,6 +85,10 @@ def run_sequence(
     chirp_amp_m_s: float,
     hz: float,
     include_steps: bool = True,
+    steps_mm_s: tuple[float, ...] | None = None,
+    chirp_f0_hz: float = 0.2,
+    chirp_f1_hz: float = 5.0,
+    chirp_amps_m_s: tuple[float, ...] | None = None,
 ) -> int:
     client = CommandClient(prefix=prefix)
     bus = TwistBus(prefix=prefix, create=False)
@@ -89,8 +99,9 @@ def run_sequence(
         _write_vz(bus, 0.0, hz)
         if not _wait_or_estop(client, rest_s):
             return 130
+        step_list = STEPS_MM_S if steps_mm_s is None else steps_mm_s
         if include_steps:
-            for mm_s in STEPS_MM_S:
+            for mm_s in step_list:
                 vz = mm_s / 1000.0
                 for sign in (1.0, -1.0):
                     cmd = sign * vz
@@ -110,27 +121,32 @@ def run_sequence(
                     while time.monotonic() - t1 < rest_s:
                         _write_vz(bus, 0.0, hz)
                         time.sleep(dt)
-        print(
-            f"[CHIRP] {chirp_amp_m_s*1000:.1f} mm/s  0.2–5 Hz  {chirp_s:.1f}s",
-            flush=True,
-        )
-        t0 = time.monotonic()
-        while True:
-            t = time.monotonic() - t0
-            if t >= chirp_s:
-                break
-            f0, f1 = 0.2, 5.0
-            k = math.log(f1 / f0) / max(chirp_s, 1e-6)
-            phase = 2.0 * math.pi * f0 * (math.exp(k * t) - 1.0) / k
-            vz = chirp_amp_m_s * math.sin(phase)
-            _write_vz(bus, vz, hz)
-            tel = client.snapshot()
-            if int(tel["status"]) == int(Status.ESTOP):
-                print("[ESTOP] " + str(tel["msg"]), flush=True)
+        amps = (chirp_amp_m_s,) if chirp_amps_m_s is None else chirp_amps_m_s
+        f0 = max(float(chirp_f0_hz), 1e-3)
+        f1 = max(float(chirp_f1_hz), f0 + 1e-3)
+        for amp in amps:
+            print(
+                f"[CHIRP] {amp*1000:.1f} mm/s  {f0:.2f}–{f1:.1f} Hz  {chirp_s:.1f}s",
+                flush=True,
+            )
+            t0 = time.monotonic()
+            while True:
+                t = time.monotonic() - t0
+                if t >= chirp_s:
+                    break
+                k = math.log(f1 / f0) / max(chirp_s, 1e-6)
+                phase = 2.0 * math.pi * f0 * (math.exp(k * t) - 1.0) / k
+                vz = float(amp) * math.sin(phase)
+                _write_vz(bus, vz, hz)
+                tel = client.snapshot()
+                if int(tel["status"]) == int(Status.ESTOP):
+                    print("[ESTOP] " + str(tel["msg"]), flush=True)
+                    return 130
+                time.sleep(dt)
+            if not _wait_or_estop(client, rest_s):
                 return 130
-            time.sleep(dt)
         _write_vz(bus, 0.0, hz)
-        print("[OK] sequence complete — analyse the Window A CSV with --analyze", flush=True)
+        print("[OK] sequence complete — analyse the Window A CSV with --analyze or --analyze-air", flush=True)
         return 0
     except KeyboardInterrupt:
         _write_vz(bus, 0.0, hz)
@@ -2219,6 +2235,62 @@ def main() -> int:
     parser.add_argument("--rest-s", type=float, default=0.40)
     parser.add_argument("--chirp-s", type=float, default=8.0)
     parser.add_argument("--chirp-amp-mm-s", type=float, default=20.0)
+    parser.add_argument("--chirp-f0", type=float, default=0.2)
+    parser.add_argument("--chirp-f1", type=float, default=5.0)
+    parser.add_argument(
+        "--chirp-amps-mm-s",
+        type=str,
+        default="",
+        help="comma list; with --air-campaign default 8,15,25",
+    )
+    parser.add_argument(
+        "--air-campaign",
+        action="store_true",
+        help="dense 4–80 mm/s steps + three 0.2–8 Hz chirps; no stop-reverse",
+    )
+    parser.add_argument(
+        "--tdpa-press",
+        action="store_true",
+        help=(
+            "open-loop seek + constant press for De Stefano §IV sign check; "
+            "force loop stays off — do not use hybrid F* tracking"
+        ),
+    )
+    parser.add_argument(
+        "--identify",
+        action="store_true",
+        help=(
+            "write plant+contact ID from a finished air-campaign dir "
+            "(--air-out) and --analyze-tdpa press CSVs; does not drive the arm"
+        ),
+    )
+    parser.add_argument(
+        "--analyze-air",
+        type=str,
+        default="",
+        help="comma-separated CSVs; write required plots to --air-out",
+    )
+    parser.add_argument(
+        "--analyze-tdpa",
+        type=str,
+        default="",
+        help=(
+            "score longest continuous press window on a --tdpa-press or "
+            "hybrid CSV (needs tdpa_e_obs_j)"
+        ),
+    )
+    parser.add_argument(
+        "--air-out",
+        type=str,
+        default="",
+        help="plot directory (default MD/todo_controller_logs/id_air_<stamp>)",
+    )
+    parser.add_argument(
+        "--log-csv",
+        type=str,
+        default="",
+        help="with --air-campaign, campaign CSV (default <air-out>/air_campaign.csv)",
+    )
     parser.add_argument("--hz", type=float, default=200.0)
     parser.add_argument("--analyze", type=str, default="", help="analyse an existing CSV")
     parser.add_argument(
@@ -2317,6 +2389,70 @@ def main() -> int:
         help="print the sequence without talking to Window A",
     )
     args = parser.parse_args()
+    if args.identify:
+        from datetime import datetime
+
+        from peirastic.apps.identify_air import write_identification_report
+
+        air_dir = Path(args.air_out) if args.air_out else Path(
+            "MD/todo_controller_logs/id_air_20260829_202437"
+        )
+        presses = [
+            Path(p.strip())
+            for p in str(args.analyze_tdpa).split(",")
+            if p.strip()
+        ]
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out = Path(args.log_csv) if args.log_csv else Path(
+            "MD/todo_controller_logs"
+        ) / f"id_fit_{stamp}"
+        report = write_identification_report(
+            air_dir=air_dir,
+            press_paths=presses,
+            out_dir=out,
+        )
+        plant = report["plant"]
+        print(
+            f"[ID] out={out} T0={1e3 * plant['t0_s']:.1f} ms "
+            f"Tp={1e3 * plant['tp_s']:.1f} ms "
+            f"write_fopdt={plant['write_single_fopdt']} "
+            f"td_band={plant['td_is_band']} "
+            f"surfaces={report['tdpa_sign']['n_surfaces']} "
+            f"sign={report['tdpa_sign']['ok']}",
+            flush=True,
+        )
+        if not plant["write_single_fopdt"]:
+            print("[ID] T0 spread > 8 ms: do not write a single FOPDT", flush=True)
+        return 0 if report["tdpa_sign"]["ok"] or not presses else 2
+    if args.analyze_tdpa:
+        from peirastic.apps.identify_air import analyze_tdpa_contact
+
+        verdict = analyze_tdpa_contact(Path(args.analyze_tdpa))
+        print(f"[TDPA] {verdict}", flush=True)
+        return 0 if verdict.get("ok") else 2
+    if args.analyze_air:
+        from datetime import datetime
+
+        from peirastic.apps.identify_air import analyze_air_paths
+
+        paths = [Path(p.strip()) for p in str(args.analyze_air).split(",") if p.strip()]
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out = Path(args.air_out) if args.air_out else Path(
+            "MD/todo_controller_logs"
+        ) / f"id_air_{stamp}"
+        result = analyze_air_paths(paths, out_dir=out)
+        print(
+            f"[ID-AIR] out={out} edges={len(result.edges)} chirps={len(result.chirps)} "
+            f"linear≤{result.linear_speed_mm_s:.1f} mm/s "
+            f"T0_spread={1e3 * result.t0_spread_s:.1f} ms",
+            flush=True,
+        )
+        if math.isfinite(result.t0_spread_s) and result.t0_spread_s > 0.008:
+            print(
+                "[ID-AIR] T0 spread > 8 ms: do not write a single FOPDT into yaml",
+                flush=True,
+            )
+        return 0
     speeds = _parse_speeds_mm_s(args.speeds_mm_s)
     if args.analyze_tn:
         return analyze_tn(
@@ -2359,6 +2495,44 @@ def main() -> int:
                 "(plant ID, not Δx_b^ub)",
                 flush=True,
             )
+        elif args.tdpa_press:
+            from peirastic.apps.identify_air import (
+                TDPA_ABORT_N,
+                TDPA_CONTACT_N,
+                TDPA_PRESS_M_S,
+                TDPA_PRESS_S,
+                TDPA_SEEK_M_S,
+                TDPA_SEEK_MAX_S,
+                TDPA_TARGET_N,
+            )
+
+            press_mm = speeds[0] if args.speeds_mm_s.strip() else 1e3 * TDPA_PRESS_M_S
+            press_s = (
+                float(args.hold_s) if float(args.hold_s) >= 1.5 else TDPA_PRESS_S
+            )
+            print(
+                f"[DRY] tdpa-press SERVO_TWIST force-loop OFF  "
+                f"seek {1e3 * TDPA_SEEK_M_S:.0f} mm/s until F>{TDPA_CONTACT_N:.1f} N "
+                f"(max {TDPA_SEEK_MAX_S:.0f}s) then +{press_mm:.0f} mm/s for "
+                f"{press_s:.1f}s (no stop at {TDPA_TARGET_N:.1f} N)  "
+                f"abort motion F>{TDPA_ABORT_N:.1f} N then score  "
+                "writes own csv; not hybrid F* tracking",
+                flush=True,
+            )
+        elif args.air_campaign:
+            from peirastic.apps.identify_air import (
+                AIR_CHIRP_AMPS_MM_S,
+                AIR_CHIRP_S,
+                AIR_STEPS_MM_S,
+            )
+
+            print(
+                f"[DRY] air-campaign steps mm/s={AIR_STEPS_MM_S} "
+                f"hold={max(args.hold_s, 1.0)} rest={max(args.rest_s, 0.5)} "
+                f"chirp={AIR_CHIRP_S}s amps={AIR_CHIRP_AMPS_MM_S} 0.2–8 Hz "
+                "writes own air_campaign.csv (not Window A log)",
+                flush=True,
+            )
         else:
             print(
                 f"[DRY] steps mm/s={(() if args.chirp_only else STEPS_MM_S)} "
@@ -2388,6 +2562,70 @@ def main() -> int:
             hz=float(args.hz),
             speeds_mm_s=speeds,
         )
+    if args.tdpa_press:
+        from datetime import datetime
+
+        from peirastic.apps.identify_air import (
+            TDPA_PRESS_M_S,
+            TDPA_PRESS_S,
+            run_tdpa_press_campaign,
+        )
+
+        press_m_s = (
+            float(speeds[0]) / 1000.0 if args.speeds_mm_s.strip() else TDPA_PRESS_M_S
+        )
+        press_s = float(args.hold_s) if float(args.hold_s) >= 1.5 else TDPA_PRESS_S
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out = Path(args.air_out) if args.air_out else Path(
+            "MD/todo_controller_logs"
+        ) / f"id_tdpa_{stamp}"
+        log = Path(args.log_csv) if args.log_csv else out / "tdpa_press.csv"
+        return run_tdpa_press_campaign(
+            prefix=str(args.shm_prefix),
+            hz=float(args.hz),
+            log_csv=log,
+            press_m_s=press_m_s,
+            press_s=press_s,
+        )
+    if args.air_campaign:
+        from datetime import datetime
+
+        from peirastic.apps.identify_air import (
+            AIR_CHIRP_AMPS_MM_S,
+            AIR_CHIRP_S,
+            AIR_HOLD_S,
+            AIR_REST_S,
+            AIR_STEPS_MM_S,
+            run_air_campaign,
+        )
+
+        extra_amps = _parse_speeds_mm_s(args.chirp_amps_mm_s)
+        chirp_amps = (
+            tuple(x / 1000.0 for x in extra_amps)
+            if args.chirp_amps_mm_s.strip()
+            else tuple(x / 1000.0 for x in AIR_CHIRP_AMPS_MM_S)
+        )
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out = Path(args.air_out) if args.air_out else Path(
+            "MD/todo_controller_logs"
+        ) / f"id_air_{stamp}"
+        log = Path(args.log_csv) if args.log_csv else out / "air_campaign.csv"
+        return run_air_campaign(
+            prefix=str(args.shm_prefix),
+            hold_s=max(float(args.hold_s), AIR_HOLD_S),
+            rest_s=max(float(args.rest_s), AIR_REST_S),
+            chirp_s=(
+                max(float(args.chirp_s), AIR_CHIRP_S)
+                if float(args.chirp_s) <= 8.0
+                else float(args.chirp_s)
+            ),
+            chirp_amps_m_s=chirp_amps,
+            steps_mm_s=AIR_STEPS_MM_S if not args.speeds_mm_s.strip() else speeds,
+            hz=float(args.hz),
+            log_csv=log,
+            out_dir=out,
+        )
+    extra_amps = _parse_speeds_mm_s(args.chirp_amps_mm_s)
     return run_sequence(
         prefix=str(args.shm_prefix),
         hold_s=float(args.hold_s),
@@ -2396,6 +2634,11 @@ def main() -> int:
         chirp_amp_m_s=float(args.chirp_amp_mm_s) / 1000.0,
         hz=float(args.hz),
         include_steps=not bool(args.chirp_only),
+        chirp_f0_hz=float(args.chirp_f0),
+        chirp_f1_hz=float(args.chirp_f1),
+        chirp_amps_m_s=(
+            tuple(x / 1000.0 for x in extra_amps) if args.chirp_amps_mm_s.strip() else None
+        ),
     )
 
 

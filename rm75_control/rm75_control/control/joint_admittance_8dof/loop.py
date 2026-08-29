@@ -3378,6 +3378,12 @@ class _TickLogger:
         + [
             "u_dob_z",
             "v_force_cmd_z",
+            "tdpa_e_obs_j",
+            "tdpa_alpha",
+            "tdpa_clamped",
+            "tdpa_passivity_holds",
+            "corridor_applied",
+            "corridor_infeasible",
             "ke_cap_n_m",
             "cdyob_corr_m_s",
             "cdyob_mode",
@@ -3546,6 +3552,12 @@ class _TickLogger:
         v_fz = getattr(ctrl, "v_force_z", float("nan"))
         u_dob_z = getattr(ctrl, "u_dob_z", float("nan"))
         v_force_cmd_z = getattr(ctrl, "v_force_cmd_z", float("nan"))
+        tdpa_e_obs_j = getattr(ctrl, "tdpa_e_obs_j", float("nan"))
+        tdpa_alpha = getattr(ctrl, "tdpa_alpha", float("nan"))
+        tdpa_clamped = getattr(ctrl, "tdpa_clamped", False)
+        tdpa_passivity_holds = getattr(ctrl, "tdpa_passivity_holds", True)
+        corridor_applied = getattr(ctrl, "corridor_applied", False)
+        corridor_infeasible = getattr(ctrl, "corridor_infeasible", False)
         ke_cap_n_m = getattr(ctrl, "ke_cap_n_m", float("nan"))
         cdyob_corr_m_s = getattr(ctrl, "cdyob_corr_m_s", float("nan"))
         cdyob_mode = getattr(ctrl, "cdyob_mode", "")
@@ -4399,6 +4411,20 @@ class _TickLogger:
                    if np.isfinite(float(v_force_cmd_z))
                    else ""
                ),
+               (
+                   f"{float(tdpa_e_obs_j):.8f}"
+                   if np.isfinite(float(tdpa_e_obs_j))
+                   else ""
+               ),
+               (
+                   f"{float(tdpa_alpha):.4f}"
+                   if np.isfinite(float(tdpa_alpha))
+                   else ""
+               ),
+               int(bool(tdpa_clamped)),
+               int(bool(tdpa_passivity_holds)),
+               int(bool(corridor_applied)),
+               int(bool(corridor_infeasible)),
                f"{float(ke_cap_n_m):.4f}" if np.isfinite(float(ke_cap_n_m)) else "",
                (
                    f"{float(cdyob_corr_m_s):.6f}"

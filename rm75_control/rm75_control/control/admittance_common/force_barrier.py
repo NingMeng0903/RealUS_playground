@@ -320,13 +320,11 @@ class ForceSpaceVelocityDamper:
             if v_hi > 0.0:
                 v_under = min(v_under, v_hi)
             cap_press = max(cap_press, v_under)
-        if overforce:
-            cap_retract = v_hi_retract
-        else:
-            v_lower = (f_min - f_pred) / denom
-            cap_retract = max(0.0, -v_lower)
-            if v_hi_retract > 0.0:
-                cap_retract = min(cap_retract, v_hi_retract)
+        # Corridor lower bound: retract only as far as F_keep requires.
+        # Overforce must not open the 80 mm/s escape (R4).  If this interval
+        # is empty the emitted-command corridor applies jerk-limited retract.
+        v_lower = (f_min - f_pred) / denom
+        cap_retract = max(0.0, -v_lower)
         cap_retract = max(cap_retract, max(float(cfg.v_min_retract_m_s), 0.0))
         if v_hi_retract > 0.0:
             cap_retract = min(cap_retract, v_hi_retract)
