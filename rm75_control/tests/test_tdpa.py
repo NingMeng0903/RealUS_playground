@@ -10,6 +10,13 @@ from rm75_control.control.admittance_common.tdpa import (
 )
 
 
+def test_apply_defaults_off() -> None:
+    assert TdpaConfig().apply is False
+    loaded = TdpaConfig.from_dict({"hybrid_motion": {"tdpa": {"enabled": True}}})
+    assert loaded.enabled is True
+    assert loaded.apply is False
+
+
 def test_e_obs_increases_when_pressing_into_rigid() -> None:
     obs = TimeDomainPassivityObserver(TdpaConfig(enabled=True, e_leak_pos_s=1e6))
     e0 = obs.e_obs_j

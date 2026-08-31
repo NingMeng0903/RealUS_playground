@@ -313,6 +313,7 @@ class ForceSpaceVelocityDamper:
 
         escape = max(float(cfg.f_escape_n), 0.0)
         overforce = f_pred >= abs(float(f_des_z)) + escape
+        at_or_over_set = f_pred >= abs(float(f_des_z))
         band = max(float(cfg.underforce_band_n), 0.0)
         clearly_under = float(f_z) + band < abs(float(f_des_z))
         v_under = max(float(cfg.v_underforce_press_m_s), 0.0)
@@ -320,14 +321,18 @@ class ForceSpaceVelocityDamper:
             if v_hi > 0.0:
                 v_under = min(v_under, v_hi)
             cap_press = max(cap_press, v_under)
-        # Corridor lower bound: retract only as far as F_keep requires.
-        # Overforce must not open the 80 mm/s escape (R4).  If this interval
-        # is empty the emitted-command corridor applies jerk-limited retract.
+        # Under F*: retract only as far as F_keep requires (set stay).
+        # At or over F*: leaving tissue.  The F_keep formula with Ke·τ
+        # sat at ~10–20 mm/s and forbade the 80 mm/s unload that kept
+        # 63401843 off a 12 Hz relay.  R4 is press-into-unknown-Ke.
         v_lower = (f_min - f_pred) / denom
-        cap_retract = max(0.0, -v_lower)
-        cap_retract = max(cap_retract, max(float(cfg.v_min_retract_m_s), 0.0))
-        if v_hi_retract > 0.0:
-            cap_retract = min(cap_retract, v_hi_retract)
+        if at_or_over_set:
+            cap_retract = v_hi_retract
+        else:
+            cap_retract = max(0.0, -v_lower)
+            cap_retract = max(cap_retract, max(float(cfg.v_min_retract_m_s), 0.0))
+            if v_hi_retract > 0.0:
+                cap_retract = min(cap_retract, v_hi_retract)
 
         self.cap_press_z = float(cap_press)
         self.cap_retract_z = float(cap_retract)

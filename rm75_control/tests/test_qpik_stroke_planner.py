@@ -654,7 +654,7 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert cfg.cartesian_track.k_task_rot == pytest.approx(2.0)
     assert cfg.cartesian_track.max_pos_err_m == pytest.approx(0.05)
     assert raw["hybrid_motion"]["kp_pos"][0] == pytest.approx(10.0)
-    assert raw["hybrid_motion"]["kp_pos"][2] == pytest.approx(5.0)
+    assert raw["hybrid_motion"]["kp_pos"][2] == pytest.approx(0.0)
     assert cfg.collision.d_safe == pytest.approx(0.01)
     assert cfg.collision.d_activate == pytest.approx(0.04)
     assert raw["hw"]["lw100"]["soft_min_m"] == pytest.approx(0.030)
@@ -721,7 +721,7 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     assert hm["force_dob"]["enabled"] is True
     assert hm["cdyob"]["mode"] == "off"
     assert float(hm["force_axis_slew_press_m_s2"]) >= 0.8
-    assert hm["force_barrier"]["enabled"] is True
+    assert hm["force_barrier"]["enabled"] is False
     # The blunt phase-2 instruments stay out.
     assert "vel_dob" not in hm
     assert "v_air_m_s" not in hm

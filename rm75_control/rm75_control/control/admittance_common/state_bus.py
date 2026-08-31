@@ -11,18 +11,24 @@ from rm75_control.control.admittance_common.async_state import (
     RealtimeStateObserver,
     create_state_observer,
 )
-from rm75_control.control.joint_admittance_8dof.model import deg2rad, full_q_from_arm
 
 
 def expand_q_meas_8dof(q_deg_or_rad: np.ndarray, rail_m: float) -> np.ndarray:
-    """Realman feedback is 7 arm joints; prepend rail for 8-DOF FK / viz."""
+    """Realman feedback is 7 arm joints; prepend rail for 8-DOF FK / viz.
+
+    Implemented here so Window C can attach ``RelayStateBus`` without Pinocchio.
+    Window A already publishes TCP; readers only need SHM + numpy.
+    """
     q = np.asarray(q_deg_or_rad, dtype=float)
     if q.size >= 8:
         return q[:8].copy()
     if q.size == 7:
         if np.max(np.abs(q)) > 2.0 * np.pi:
-            q = deg2rad(q)
-        return full_q_from_arm(q, rail_m)
+            q = q * (np.pi / 180.0)
+        out = np.zeros(8, dtype=float)
+        out[0] = float(rail_m)
+        out[1:] = q[:7]
+        return out
     raise ValueError(f"expected 7 or 8 joint values, got {q.size}")
 
 

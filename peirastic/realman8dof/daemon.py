@@ -27,7 +27,7 @@ from peirastic.core.estop import EstopBus
 from peirastic.core.ipc import Cmd, CommandHub, Status, TwistBus
 from peirastic.core.modes import MODE_LABEL, Mode, ModeRequest
 from peirastic.core.panel import Panel
-from peirastic.core.session import is_swappable
+from peirastic.core.session import idle_after_finite, is_swappable
 from peirastic.realman8dof.binding import bind_controller, load_yaml
 from peirastic.realman8dof.session import ProxyOuter, compile_request
 
@@ -102,6 +102,7 @@ class ControllerService:
         self._live: Phase | None = None
         self._mode_t0 = 0.0
         self._finite_duration: float | None = None
+        self._cmd_seq = 0
 
     def close(self) -> None:
         self.hub.close()
@@ -216,6 +217,7 @@ class ControllerService:
             if first is not None:
                 cmd, seq, parsed = first
                 self.hub.ack(seq)
+                self._cmd_seq = int(seq)
                 if cmd == Cmd.ESTOP:
                     self._trip_hardware(rail, "ipc estop", robot=getattr(sess, "robot", None))
                     continue
@@ -234,7 +236,13 @@ class ControllerService:
                 )
             except Exception as exc:
                 self.panel.event("WARN", f"compile {exc}")
-                self.hub.publish(status=Status.ERROR, mode=req.mode, msg=str(exc)[:90])
+                self.hub.publish(
+                    status=Status.ERROR,
+                    mode=req.mode,
+                    msg=str(exc)[:90],
+                    done_seq=self._cmd_seq,
+                    err_code=1,
+                )
                 time.sleep(0.05)
                 continue
 
@@ -261,6 +269,8 @@ class ControllerService:
                 t_ref: float,
                 *,
                 status: Status = Status.RUNNING,
+                done_seq: int | None = None,
+                err_code: int | None = None,
             ) -> None:
                 if phase.on_exit is not None:
                     phase.on_exit()
@@ -282,7 +292,13 @@ class ControllerService:
                 self._mode_t0 = float(t_ref)
                 self._finite_duration = new.duration_s
                 self.panel.event("MODE", MODE_LABEL[self.mode])
-                self.hub.publish(status=status, mode=self.mode, msg=phase.label)
+                self.hub.publish(
+                    status=status,
+                    mode=self.mode,
+                    msg=phase.label,
+                    done_seq=done_seq,
+                    err_code=err_code,
+                )
 
             def _apply(parsed_req: ModeRequest, pose, t_ref: float = 0.0) -> None:
                 # Joint PTP runner is not a velocity proxy: any new mode rebuilds.
@@ -314,6 +330,7 @@ class ControllerService:
                 if polled is not None:
                     cmd, seq, parsed = polled
                     self.hub.ack(seq)
+                    self._cmd_seq = int(seq)
                     if cmd == Cmd.ESTOP:
                         self._trip_hardware(rail, "ipc estop", robot=getattr(sess, "robot", None))
                     elif cmd == Cmd.STOP:
@@ -343,6 +360,8 @@ class ControllerService:
                             pose,
                             t_ref,
                             status=Status.DONE,
+                            done_seq=self._cmd_seq,
+                            err_code=0,
                         )
                     except Exception as exc:
                         self.panel.event("WARN", str(exc))
@@ -408,7 +427,13 @@ class ControllerService:
                         rail.halt_velocity()
                     except Exception:
                         pass
-                self.hub.publish(status=Status.ESTOP, mode=self.mode, estop=True)
+                self.hub.publish(
+                    status=Status.ESTOP,
+                    mode=self.mode,
+                    estop=True,
+                    done_seq=self._cmd_seq,
+                    err_code=-6,
+                )
             elif result.stop_reason == "uncertified_brake":
                 self._trip_hardware(
                     rail,
@@ -420,12 +445,28 @@ class ControllerService:
                     mode=self.mode,
                     estop=True,
                     msg=result.stop_reason,
+                    done_seq=self._cmd_seq,
+                    err_code=-6,
                 )
             elif result.stop_reason:
                 self.panel.event("WARN", result.stop_reason)
-                self.hub.publish(status=Status.ERROR, mode=self.mode, msg=result.stop_reason[:90])
-            elif self._pending is None and not velocity_loop:
-                self.hub.publish(status=Status.DONE, mode=self.mode, ticks=self.ticks)
+                self.hub.publish(
+                    status=Status.ERROR,
+                    mode=self.mode,
+                    msg=result.stop_reason[:90],
+                    done_seq=self._cmd_seq,
+                    err_code=1,
+                )
+            elif not velocity_loop:
+                self.hub.publish(
+                    status=Status.DONE,
+                    mode=self.mode,
+                    ticks=self.ticks,
+                    done_seq=self._cmd_seq,
+                    err_code=0,
+                )
+                if self._pending is None:
+                    self._pending = ModeRequest(idle_after_finite(), {})
 
 
 def run_service(

@@ -215,6 +215,11 @@ def run_smplx_capture(
     return result
 
 
+def capture_is_busy() -> bool:
+    with _job_lock:
+        return bool(_job_running)
+
+
 def try_start_smplx_capture(
     *,
     label: str = "manual",
@@ -254,6 +259,17 @@ def try_start_smplx_capture(
                 extra_argv=extra_argv,
                 on_log=on_log,
             )
+            if result.ok:
+                try:
+                    from perception.vessel_skin_plan import write_vessel_plan_for_run
+
+                    write_vessel_plan_for_run(
+                        run_dir=result.moment_dir.parent,
+                        moment_dir=result.moment_dir,
+                        repo=root,
+                    )
+                except Exception:
+                    pass
         finally:
             try:
                 fcntl.flock(lock_fh.fileno(), fcntl.LOCK_UN)

@@ -214,7 +214,7 @@ def test_free_space_ke_schedules_approach() -> None:
     assert cap == pytest.approx(0.5 / (2000.0 * 0.055), rel=0.05)
 
 
-def test_overforce_retract_is_corridor_not_eighty() -> None:
+def test_overforce_retract_opens_escape_ceiling() -> None:
     damper = ForceSpaceVelocityDamper(
         ForceBarrierConfig(
             enabled=True,
@@ -236,6 +236,7 @@ def test_overforce_retract_is_corridor_not_eighty() -> None:
         f_des_z=2.0,
         in_contact=True,
         v_z_cap=0.08,
+        v_z_cap_retract=0.08,
         seek_vz_m_s=0.08,
         contact_enter_n=0.5,
         ke_est_n_m=680.0,
@@ -243,6 +244,39 @@ def test_overforce_retract_is_corridor_not_eighty() -> None:
         tau_s=0.055,
         v_tcp_z_actual=0.0,
     )
-    expected = (2.6 - 0.5) / (680.0 * 0.055)
+    assert cap_retract == pytest.approx(0.08)
+
+
+def test_underforce_retract_stays_f_keep_corridor() -> None:
+    damper = ForceSpaceVelocityDamper(
+        ForceBarrierConfig(
+            enabled=True,
+            t_react_s=0.055,
+            v_min_retract_m_s=0.0,
+            f_keep_n=0.5,
+            f_escape_n=0.5,
+            budget_min_n=0.5,
+            budget_frac=0.0,
+            stiffness_cap_enabled=True,
+            bar_f_n=0.0,
+            e_f_n=0.0,
+            e_x_m=0.0,
+        )
+    )
+    damper.f_dot_z = 0.0
+    _, cap_retract = damper.caps(
+        f_z=1.2,
+        f_des_z=2.0,
+        in_contact=True,
+        v_z_cap=0.08,
+        v_z_cap_retract=0.08,
+        seek_vz_m_s=0.08,
+        contact_enter_n=0.5,
+        ke_est_n_m=680.0,
+        mass_eq_kg=1.0,
+        tau_s=0.055,
+        v_tcp_z_actual=0.0,
+    )
+    expected = (1.2 - 0.5) / (680.0 * 0.055)
     assert cap_retract == pytest.approx(expected, rel=0.05)
     assert cap_retract < 0.08 - 1e-6

@@ -431,6 +431,26 @@ def main() -> int:
                 publish_duration_s,
                 pub_diag.get("bind"),
             )
+            try:
+                if str(repo) not in sys.path:
+                    sys.path.insert(0, str(repo))
+                from perception.vessel_skin_plan import write_vessel_plan_after_fit
+
+                vp = write_vessel_plan_after_fit(
+                    run_dir=run_dir,
+                    moment_dir=moment_dir,
+                    canonical_dir=Path(canonical_staging_dir),
+                    repo=Path(repo),
+                    gender=str(args.gender),
+                )
+                published["vessel_plan"] = vp
+                if bool(vp.get("ok")):
+                    logging.info("vessel plan ready -> %s/%s", run_dir, "vessel_plan.json")
+                else:
+                    logging.warning("vessel plan refused: %s", vp.get("reason"))
+            except Exception as exc:
+                published["vessel_plan"] = {"ok": False, "error": str(exc)}
+                logging.warning("vessel plan failed: %s", exc)
 
         moment_summary = process_burst(
             moment_dir=moment_dir,
@@ -511,6 +531,25 @@ def main() -> int:
             except Exception as exc:
                 summary["canonical_tpose"] = {"ok": False, "error": str(exc)}
                 logging.warning("canonical T-pose export failed: %s", exc)
+
+        if bool(moment_summary.get("fit_ok")) and "vessel_plan" not in published:
+            try:
+                if str(repo) not in sys.path:
+                    sys.path.insert(0, str(repo))
+                from perception.vessel_skin_plan import write_vessel_plan_after_fit
+
+                summary["vessel_plan"] = write_vessel_plan_after_fit(
+                    run_dir=run_dir,
+                    moment_dir=moment_dir,
+                    canonical_dir=Path(canonical_staging_dir),
+                    repo=Path(repo),
+                    gender=str(args.gender),
+                )
+            except Exception as exc:
+                summary["vessel_plan"] = {"ok": False, "error": str(exc)}
+                logging.warning("vessel plan failed: %s", exc)
+        elif "vessel_plan" in published:
+            summary["vessel_plan"] = published["vessel_plan"]
 
         if bool(args.anatomy_retarget) and (summary.get("canonical_tpose") or {}).get("ok"):
             anatomy_argv = [

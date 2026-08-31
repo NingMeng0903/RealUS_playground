@@ -478,6 +478,7 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
         n,
         {
             "k_center", "k_limit", "activation", "weights", "q_nominal_deg",
+            "enter_fade_s",
             "manipulability",
         },
         name="inner.nullspace",
@@ -503,6 +504,9 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
             np.radians(_finite_array(q_nominal_deg, name="nullspace.q_nominal_deg", ndim=1))
             if q_nominal_deg is not None
             else None
+        ),
+        enter_fade_s=_finite_float(
+            n.get("enter_fade_s", 0.6), name="nullspace.enter_fade_s"
         ),
     )
     manipulability = ManipulabilityTaskConfig(

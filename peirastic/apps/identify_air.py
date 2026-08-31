@@ -856,7 +856,7 @@ def write_controller_ref(report: dict, out_dir: Path) -> None:
             "identified": "0.025",
             "unit": "m/s",
             "yaml_now": "0.025",
-            "consume": "overforce retract ceiling + saturation; never 0.080",
+            "consume": "linear press sat only; retract escape is u_retract (0.080)",
             "note": "leaving tissue does not re-indent through Td",
         },
         {

@@ -11,8 +11,14 @@ from rm75_control.control.joint_admittance_8dof.loop import Phase
 from rm75_control.control.joint_admittance_8dof.reference import (
     EllipseToolXYReference,
     HoldReference,
+    WorldPolylineReference,
 )
 from peirastic.core.modes import Mode, ModeRequest
+from peirastic.realman8dof.modes.cartesian import (
+    build_movel_phase,
+    build_moves_phase,
+    resolve_pose_q,
+)
 from peirastic.realman8dof.modes.joint import build_goto_joints_phase, build_movej_phase
 from peirastic.realman8dof.modes.servo import ServoTwistHoldOuter, ServoTwistOuter
 from peirastic.realman8dof.modes.track import (
@@ -50,6 +56,73 @@ def _ellipse_ref(payload: dict, euler_order: str) -> EllipseToolXYReference:
     )
 
 
+def _polyline_ref(payload: dict, euler_order: str) -> WorldPolylineReference:
+    points = payload.get("points")
+    poses = payload.get("poses")
+    rpy = payload.get("rpy")
+    plan_path = payload.get("plan_path")
+    phase = str(payload.get("phase") or "scan")
+    if plan_path and (points is None and poses is None):
+        import json
+        from pathlib import Path
+
+        raw = json.loads(Path(plan_path).read_text(encoding="utf-8"))
+        if not bool(raw.get("ok", True)):
+            raise ValueError(str(raw.get("reason") or "vessel plan is not ok"))
+        if phase == "close":
+            poses = [raw.get("contact_pose") or (raw.get("scan_poses") or [[]])[0]]
+        else:
+            poses = raw.get("scan_poses")
+            points = raw.get("world_xyz")
+            if rpy is None and poses:
+                rpy = [row[3:6] for row in poses]
+    if poses is not None:
+        arr = np.asarray(poses, dtype=float).reshape(-1, 6)
+        points = arr[:, :3]
+        rpy = arr[:, 3:6]
+    if points is None:
+        raise ValueError("polyline reference needs points, poses, or plan_path")
+    speed = payload.get("speed_m_s")
+    if speed is None and payload.get("speed_cm_s") is not None:
+        speed = 0.01 * float(payload["speed_cm_s"])
+    return WorldPolylineReference(
+        points,
+        rpy=rpy,
+        speed_m_s=0.02 if speed is None else float(speed),
+        soft_start=bool(payload.get("soft_start", True)),
+        ramp_s=float(payload.get("ramp_s", 0.4)),
+        euler_order=euler_order,
+    )
+
+
+def apply_qp_aux(inner, payload: dict | None) -> None:
+    """Apply optional QP auxiliary overrides carried on a mode payload."""
+
+    pay = dict(payload or {})
+    aux = dict(pay.get("qp_aux") or {})
+    if pay.get("collision_avoidance") is not None:
+        aux["collision"] = pay["collision_avoidance"]
+    if not aux:
+        return
+    core = getattr(inner, "core", None)
+    if "collision" in aux and core is not None and hasattr(core, "set_collision_enabled"):
+        core.set_collision_enabled(bool(aux["collision"]))
+    if "centering" in aux:
+        inner.set_centering_suppressed(not bool(aux["centering"]))
+    if "arm_angle" in aux:
+        inner.set_arm_task_suppressed(not bool(aux["arm_angle"]))
+    if "manipulability" in aux:
+        inner.set_manipulability_active(bool(aux["manipulability"]))
+    if "singularity_escape" in aux and core is not None:
+        cfg = getattr(getattr(core, "cfg", None), "sigma_setbased", None)
+        if cfg is not None:
+            cfg.enabled = bool(aux["singularity_escape"])
+        tracker = getattr(core, "sigma_setbased", None)
+        tcfg = getattr(tracker, "cfg", None)
+        if tcfg is not None:
+            tcfg.enabled = bool(aux["singularity_escape"])
+
+
 def compile_request(
     ctx: CompileContext,
     req: ModeRequest,
@@ -68,7 +141,7 @@ def compile_request(
         )
         phase = Phase(outer=outer, label="servo_twist", duration_s=payload.get("duration_s"))
         phase.on_enter = lambda: SecondaryPolicy(preset="track").apply(ctx.inner)
-        return phase
+        return _finish_phase(ctx, payload, phase)
     if req.mode == Mode.SERVO_TWIST_HOLD:
         outer = ServoTwistHoldOuter(
             _twist_source(payload, twist_read),
@@ -80,52 +153,102 @@ def compile_request(
             outer=outer, label="servo_twist_hold", duration_s=payload.get("duration_s")
         )
         phase.on_enter = lambda: SecondaryPolicy(preset="track").apply(ctx.inner)
-        return phase
+        return _finish_phase(ctx, payload, phase)
     if req.mode == Mode.TRACK_CARTESIAN:
         kind = str(payload.get("reference", "ellipse"))
         if kind == "hold":
             ref = HoldReference()
+        elif kind == "polyline":
+            ref = _polyline_ref(payload, ctx.euler_order)
         else:
             ref = _ellipse_ref(payload, ctx.euler_order)
-        return build_track_cartesian_phase(
+        return _finish_phase(
             ctx,
-            ref,
-            duration_s=payload.get("duration_s"),
-            label=str(payload.get("label", "track_cartesian")),
-            max_lin_vel_m_s=payload.get("max_lin_vel_m_s"),
-            move_kp=payload.get("move_kp"),
+            payload,
+            build_track_cartesian_phase(
+                ctx,
+                ref,
+                duration_s=payload.get("duration_s"),
+                label=str(payload.get("label", "track_cartesian")),
+                max_lin_vel_m_s=payload.get("max_lin_vel_m_s"),
+                move_kp=payload.get("move_kp"),
+            ),
         )
     if req.mode == Mode.TRACK_HYBRID:
         kind = str(payload.get("reference", "hold"))
         if kind in ("pad", "twist", "servo"):
-            return build_pad_hybrid_phase(
+            return _finish_phase(
                 ctx,
-                twist_read=_twist_source(payload, twist_read),
-                duration_s=payload.get("duration_s"),
-                dt=dt,
-                payload=payload,
+                payload,
+                build_pad_hybrid_phase(
+                    ctx,
+                    twist_read=_twist_source(payload, twist_read),
+                    duration_s=payload.get("duration_s"),
+                    dt=dt,
+                    label=str(payload.get("label", "track_hybrid_pad")),
+                    payload=payload,
+                ),
             )
         if kind == "ellipse":
             ref = _ellipse_ref(payload, ctx.euler_order)
+        elif kind == "polyline":
+            ref = _polyline_ref(payload, ctx.euler_order)
         else:
             ref = HoldReference()
-        return build_track_hybrid_phase(
+        return _finish_phase(
             ctx,
-            ref,
-            duration_s=payload.get("duration_s"),
-            dt=dt,
-            use_tff_split=bool(payload.get("use_tff_split", False)),
-            payload=payload,
+            payload,
+            build_track_hybrid_phase(
+                ctx,
+                ref,
+                duration_s=payload.get("duration_s"),
+                dt=dt,
+                use_tff_split=bool(payload.get("use_tff_split", False)),
+                payload=payload,
+            ),
         )
     if req.mode in (Mode.GOTO_JOINTS, Mode.MOVEJ):
-        q = np.asarray(payload["q_target"], dtype=float).reshape(-1)
+        if payload.get("q_target") is None:
+            if payload.get("pose") is None:
+                raise ValueError("MOVEJ needs q_target or pose")
+            q = resolve_pose_q(
+                ctx,
+                payload["pose"],
+                q_seed=None if payload.get("q_start") is None else np.asarray(payload["q_start"], dtype=float),
+                rail_m=payload.get("rail_m"),
+                require_path=False,
+            )
+        else:
+            q = np.asarray(payload["q_target"], dtype=float).reshape(-1)
         q0 = payload.get("q_start")
         q_start = None if q0 is None else np.asarray(q0, dtype=float)
         dur = payload.get("duration_s")
         if req.mode == Mode.GOTO_JOINTS:
-            return build_goto_joints_phase(ctx, q, q_start=q_start, duration_s=dur)
-        return build_movej_phase(ctx, q, q_start=q_start, duration_s=dur)
+            return _finish_phase(
+                ctx, payload, build_goto_joints_phase(ctx, q, q_start=q_start, duration_s=dur)
+            )
+        return _finish_phase(
+            ctx, payload, build_movej_phase(ctx, q, q_start=q_start, duration_s=dur)
+        )
+    if req.mode == Mode.MOVEL:
+        return _finish_phase(ctx, payload, build_movel_phase(ctx, payload, dt=dt))
+    if req.mode == Mode.MOVES:
+        return _finish_phase(ctx, payload, build_moves_phase(ctx, payload, dt=dt))
     raise ValueError(f"unknown mode {req.mode}")
+
+
+def _finish_phase(ctx: CompileContext, payload: dict, phase: Phase) -> Phase:
+    apply_qp_aux(ctx.inner, payload)
+    if payload.get("qp_aux"):
+        prev = phase.on_enter
+
+        def _enter() -> None:
+            if prev is not None:
+                prev()
+            apply_qp_aux(ctx.inner, payload)
+
+        phase.on_enter = _enter
+    return phase
 
 
 class ProxyOuter:

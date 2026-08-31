@@ -63,6 +63,7 @@ Config Config::load(const std::string& path) {
     else if (key == "ns_grad_lpf_hz") c.ns_grad_lpf_hz = n0();
     else if (key == "ns_hold_fade_v") c.ns_hold_fade_v = n0();
     else if (key == "ns_hold_fade_v0") c.ns_hold_fade_v0 = n0();
+    else if (key == "nullspace.enter_fade_s") c.ns_enter_fade_s = n0();
     else if (key == "sec_filter_zeta") c.sec_filter_zeta = n0();
     else if (key == "qp.task_weight") fill_vec(nums, c.task_weight.data(), 6);
     else if (key == "qp.reg") fill_vec(nums, c.reg.data(), 8);

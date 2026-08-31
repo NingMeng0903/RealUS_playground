@@ -39,6 +39,8 @@ _CTL = np.dtype(
         ("f_ext_z", "<f8"),
         ("t_mono", "<f8"),
         ("stop_req", "u1"),
+        ("done_seq", "<u8"),
+        ("err_code", "<i4"),
         ("msg", "S96"),
     ]
 )
@@ -143,6 +145,8 @@ class CommandHub:
         slack: float = float("nan"),
         f_ext_z: float = float("nan"),
         msg: str = "",
+        done_seq: int | None = None,
+        err_code: int | None = None,
     ) -> None:
         row = self._ctl[0]
         row["status"] = np.uint32(int(status))
@@ -155,6 +159,10 @@ class CommandHub:
         row["f_ext_z"] = float(f_ext_z)
         row["t_mono"] = float(time.monotonic())
         row["msg"] = str(msg).encode("utf-8")[:95]
+        if done_seq is not None:
+            row["done_seq"] = np.uint64(int(done_seq))
+        if err_code is not None:
+            row["err_code"] = np.int32(int(err_code))
 
     def should_stop(self) -> bool:
         return bool(self._ctl[0]["stop_req"])
@@ -230,6 +238,9 @@ class CommandClient:
             "slack": float(row["slack"]),
             "f_ext_z": float(row["f_ext_z"]),
             "ack_seq": int(row["ack_seq"]),
+            "cmd_seq": int(row["cmd_seq"]),
+            "done_seq": int(row["done_seq"]),
+            "err_code": int(row["err_code"]),
             "msg": bytes(row["msg"]).split(b"\x00", 1)[0].decode("utf-8", "replace"),
         }
 

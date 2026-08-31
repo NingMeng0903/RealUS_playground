@@ -8,3 +8,13 @@
  - msg: No device found
  - type: CAMERA_DISCONNECTED
  - status: 112
+[08/31 17:59:56.905212][info][1622546][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[08/31 17:59:56.905358][info][1622546][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[08/31 17:59:56.905361][info][1622546][DeviceManager.cpp:25] Current found device(s): (0)
+[08/31 17:59:56.905362][info][1622546][DeviceManager.cpp:463] Enable net device enumeration: true
+[08/31 17:59:57.909302][info][1622546][DeviceManager.cpp:25] Current device(s) list: (0)
+[08/31 17:59:57.909318][warning][1622546][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112

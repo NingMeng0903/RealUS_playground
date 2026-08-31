@@ -1,0 +1,23 @@
+"""Peirastic outer-loop facade (RM_API2 shape, SI units)."""
+
+from peirastic.api.arm import PeirasticArm
+from peirastic.api.codes import (
+    ERR_CONTROLLER,
+    ERR_NO_ACK,
+    ERR_SEND,
+    ERR_STOPPED,
+    ERR_TIMEOUT,
+    ERR_UNIMPLEMENTED,
+    OK,
+)
+
+__all__ = [
+    "ERR_CONTROLLER",
+    "ERR_NO_ACK",
+    "ERR_SEND",
+    "ERR_STOPPED",
+    "ERR_TIMEOUT",
+    "ERR_UNIMPLEMENTED",
+    "OK",
+    "PeirasticArm",
+]

@@ -18,9 +18,11 @@ from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
 from rm75_control.control.joint_admittance_8dof.teleop.xbox_pad import (
     PadState,
     XboxPad,
+    XBOX_BUTTON_B,
     XBOX_BUTTON_Y,
 )
 
+LOGICAL_B = XBOX_BUTTON_B
 LOGICAL_Y = XBOX_BUTTON_Y
 LOGICAL_L3 = 6
 LOGICAL_R3 = 7
@@ -48,12 +50,15 @@ class GamepadTwistSource:
         self._l3 = False
         self._r3 = False
         self._y = False
+        self._b = False
         self._l3_prev = False
         self._r3_prev = False
         self._y_prev = False
+        self._b_prev = False
         self._l3_edge = False
         self._r3_edge = False
         self._y_edge = False
+        self._b_edge = False
         self._connected = False
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -100,9 +105,11 @@ class GamepadTwistSource:
             l3_edge = self._l3_edge
             r3_edge = self._r3_edge
             y_edge = self._y_edge
+            b_edge = self._b_edge
             self._l3_edge = False
             self._r3_edge = False
             self._y_edge = False
+            self._b_edge = False
             return {
                 "twist": self._twist.copy(),
                 "axes": self._axes.copy(),
@@ -111,9 +118,11 @@ class GamepadTwistSource:
                 "l3": self._l3,
                 "r3": self._r3,
                 "y": self._y,
+                "b": self._b,
                 "l3_edge": l3_edge,
                 "r3_edge": r3_edge,
                 "y_edge": y_edge,
+                "b_edge": b_edge,
                 "connected": self._connected,
                 "layout": self._layout_name(),
                 "armed": self._armed,
@@ -152,6 +161,7 @@ class GamepadTwistSource:
         l3 = bool(state.button(LOGICAL_L3))
         r3 = bool(state.button(LOGICAL_R3))
         y = bool(state.button(LOGICAL_Y))
+        b = bool(state.button(LOGICAL_B))
         live = self._motion_live()
         now = time.monotonic()
         if live:
@@ -199,12 +209,15 @@ class GamepadTwistSource:
             self._l3_edge = self._l3_edge or (l3 and not self._l3_prev)
             self._r3_edge = self._r3_edge or (r3 and not self._r3_prev)
             self._y_edge = self._y_edge or (y and not self._y_prev)
+            self._b_edge = self._b_edge or (b and not self._b_prev)
             self._l3_prev = l3
             self._r3_prev = r3
             self._y_prev = y
+            self._b_prev = b
             self._l3 = l3
             self._r3 = r3
             self._y = y
+            self._b = b
             self._twist = twist
             self._axes = axes
             self._buttons = buttons

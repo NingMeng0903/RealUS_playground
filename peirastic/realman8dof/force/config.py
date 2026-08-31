@@ -20,6 +20,29 @@ _SKIP_PAYLOAD = {
     "label",
     "v_cmd",
     "desired_z",
+    "desired_force",
+    "points",
+    "poses",
+    "pose",
+    "rpy",
+    "plan_path",
+    "phase",
+    "speed_m_s",
+    "speed_cm_s",
+    "q_target",
+    "q_start",
+    "selection",
+    "mask_force_from_path",
+    "qp_aux",
+    "law",
+    "source",
+    "v",
+    "r",
+    "connect",
+    "block",
+    "rail_m",
+    "max_lin_vel_m_s",
+    "move_kp",
 }
 
 
@@ -56,6 +79,21 @@ def apply_force_payload(raw: dict, payload: dict | None) -> dict:
     pay = dict(payload or {})
     if pay.get("desired_z") is not None:
         out.setdefault("force", {})["desired_z_n"] = float(pay["desired_z"])
+    if pay.get("desired_force") is not None:
+        df = pay["desired_force"]
+        if isinstance(df, (int, float)):
+            out.setdefault("force", {})["desired_z_n"] = float(df)
+        else:
+            arr = list(df)
+            if len(arr) >= 3:
+                out.setdefault("force", {})["desired_z_n"] = float(arr[2])
+    if pay.get("control_frame") is not None:
+        out.setdefault("frames", {})["control_frame"] = str(pay["control_frame"])
+    if pay.get("sensor") is not None:
+        sensor = str(pay["sensor"]).lower()
+        hm_pre = dict(out.get("hybrid_motion") or {})
+        hm_pre["contact_use_fz_only"] = sensor in ("fz", "z", "1")
+        out["hybrid_motion"] = hm_pre
     if isinstance(pay.get("force"), dict):
         out.setdefault("force", {})
         _deep_merge(out["force"], pay["force"])
@@ -86,6 +124,25 @@ def apply_force_payload(raw: dict, payload: dict | None) -> dict:
             "force_axis_slew_reverse_m_s2",
         ):
             hm[key] = val
+    _pc_map = {
+        "contact_enter_n": "enter_n",
+        "contact_exit_n": "exit_n",
+        "enter_confirm_s": "enter_confirm_s",
+        "exit_confirm_s": "exit_confirm_s",
+        "hard_enter_n": "hard_enter_n",
+    }
+    pc = dict(hm.get("physical_contact") or {})
+    for src, dst in _pc_map.items():
+        if pay.get(src) is not None:
+            pc[dst] = float(pay[src])
+    if pc:
+        hm["physical_contact"] = pc
+    if pay.get("admittance_mass") is not None:
+        hm["admittance_mass_z"] = float(pay["admittance_mass"])
+    if pay.get("admittance_damping") is not None:
+        hm["admittance_damping_z"] = float(pay["admittance_damping"])
+    if pay.get("admittance_stiffness") is not None:
+        hm["admittance_stiffness_z"] = float(pay["admittance_stiffness"])
     out["hybrid_motion"] = hm
     return out
 

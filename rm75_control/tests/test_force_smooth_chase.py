@@ -71,14 +71,13 @@ def test_yaml_smooth_chase_defaults_load():
     assert cfg.force_dob.enabled is True
     assert cfg.proactive_ff.enabled is True
     assert cfg.proactive_ff.retract_only is False
-    assert cfg.force_barrier.enabled
-    assert cfg.track_axes[2] == pytest.approx(1.0)
-    assert cfg.kp_pos[2] > 0.0
-    assert cfg.kp_pos[2] < cfg.kp_pos[0]
+    assert cfg.force_barrier.enabled is False
+    assert cfg.track_axes[2] == pytest.approx(0.0)
+    assert cfg.kp_pos[2] == pytest.approx(0.0)
     assert cfg.adaptive_ke.drive_damping is False
     assert cfg.proactive_ff.gate_press_on_is is False
-    assert cfg.var_damping_d_u == pytest.approx(0.0)
-    assert cfg.var_damping_m_u == pytest.approx(0.0)
+    assert cfg.var_damping_d_u == pytest.approx(90.0)
+    assert cfg.var_damping_m_u == pytest.approx(1.5)
     assert cfg.cdyob.mode == "off"
     assert cfg.cdyob.applies() is False
     assert cfg.cdyob.omega_q_hz == pytest.approx(0.75)
@@ -90,21 +89,25 @@ def test_yaml_smooth_chase_defaults_load():
     assert cfg.cdyob.active_force_ratio == pytest.approx(0.90)
     assert cfg.cdyob.active_settle_speed_m_s == pytest.approx(0.010)
     assert cfg.cdyob.active_settle_hold_s == pytest.approx(0.05)
-    assert cfg.force_dob.ki == pytest.approx(2.0)
-    assert cfg.force_dob.leak_s == pytest.approx(1.5)
-    assert cfg.proactive_ff.v_r_max_m_s == pytest.approx(0.008)
+    assert cfg.force_dob.ki == pytest.approx(8.0)
+    assert cfg.force_dob.leak_s == pytest.approx(0.4)
+    assert cfg.proactive_ff.v_r_max_m_s == pytest.approx(0.06)
     assert cfg.force_barrier.v_underforce_press_m_s == pytest.approx(0.010)
     assert cfg.cdyob.active_model_validated is False
     assert cfg.tdpa.enabled is True
-    assert cfg.force_corridor.enabled is True
-    assert cfg.press_envelope.max_force_axis_m_s == pytest.approx(0.025)
-    assert cfg.admittance_stiffness_z == pytest.approx(10.0)
-    assert cfg.var_damping_omega_c_hz == pytest.approx(1.2)
-    assert cfg.max_vz_tool_m_s == pytest.approx(0.025)
+    assert cfg.tdpa.apply is False
+    assert cfg.safety_shield.u_retract_m_s == pytest.approx(0.080)
+    assert cfg.force_corridor.enabled is False
+    assert cfg.press_envelope.max_force_axis_m_s == pytest.approx(0.0)
+    assert cfg.press_envelope.first_touch_m_s == pytest.approx(0.0)
+    assert cfg.press_envelope.soft_approach_m_s == pytest.approx(0.0)
+    assert cfg.admittance_stiffness_z == pytest.approx(0.0)
+    assert cfg.var_damping_omega_c_hz == pytest.approx(2.5)
+    assert cfg.max_vz_tool_m_s == pytest.approx(0.08)
     assert cfg.safety_shield.mode == "observe"
     assert cfg.safety_shield.k_ub_n_m == pytest.approx(8000.0)
     assert cfg.admittance_mass_z == pytest.approx(1.0)
-    assert cfg.admittance_damping_z == pytest.approx(40.0)
+    assert cfg.admittance_damping_z == pytest.approx(25.0)
     ctrl = AdmittanceController(DT, cfg)
     ctrl._first_contact_slow_latched = False
     ctrl._recontact_slow_latched = False

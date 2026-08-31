@@ -51,7 +51,9 @@ def test_force_error_moves_desired_point_not_raw_sleeve():
     z0 = None
     for _ in range(30):
         f_ext[2] = 0.4
-        ctrl.compute_velocity_command(pose, pose_d, vel_ff, f_ext, f_des)
+        ctrl.compute_velocity_command(
+            pose, pose_d, vel_ff, f_ext, f_des, in_contact=True
+        )
         if z0 is None:
             z0 = float(ctrl.force_point_z)
     assert ctrl.v_force_z > 0.0

@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """Window C: pad → filtered v_cmd → servo_twist.
 
-L3 toggles force-velocity hybrid: tool-Z from peirastic/configs/force.yaml,
-other axes stay on the pad. R3 e-stop. Y starts Window-8 SMPL-X capture
-(preview PNGs + Genesis orange mesh). Burst frames estimate beta; pose
-is one hardware-sync group, same as Among_US Terminal 8 / the GUI button.
+The pad may stay connected. It drives only in SERVO_TWIST / SERVO_TWIST_HOLD
+or its own L3 pad-hybrid. MOVEJ, Cartesian, TRACK_CARTESIAN, and a running
+program outrank the sticks; R3 e-stop still wins.
 
-Motion is sent only while a live Bluetooth pad is present (kernel Bus /
-SDL GUID). USB and a missing pad are inhibited so their rest axes cannot
-alias the xpadneo trigger map. Pygame and kernel names may differ.
+L3 toggles force-velocity hybrid: tool-Z from peirastic/configs/force.yaml,
+other axes stay on the pad. Y starts Window-8 SMPL-X capture. B runs the
+R_SUPFEMV program. Motion requires a live Bluetooth pad.
 """
 
 from __future__ import annotations
@@ -31,9 +30,14 @@ from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
 )
 from peirastic.core.ipc import CommandClient, Status, TwistBus
 from peirastic.core.modes import Mode, ModeRequest
+from peirastic.core.session import pad_may_drive
 from peirastic.realman8dof.force.config import desired_z_n
 from peirastic.sources.gamepad import GamepadTwistSource
 
+from peirastic.apps.vessel_scan import (  # noqa: E402
+    program_is_running,
+    try_start_vessel_scan,
+)
 from perception.capture_flow import (  # noqa: E402
     CaptureResult,
     is_capture_progress_line,
@@ -72,6 +76,11 @@ def main() -> int:
         action="store_true",
         help="do not bind Xbox Y to SMPL-X capture",
     )
+    parser.add_argument(
+        "--no-vessel-b",
+        action="store_true",
+        help="do not bind Xbox B to the R_SUPFEMV approach/scan program",
+    )
     args = parser.parse_args()
     quiet = bool(args.quiet) and not bool(args.verbose)
     twist_cfg = GamepadTwistConfig()
@@ -82,7 +91,11 @@ def main() -> int:
             rot_rad_s=float(args.rot_rad_s) if args.rot_rad_s is not None else twist_cfg.rot_rad_s,
         )
     fz = float(args.desired_z) if args.desired_z is not None else desired_z_n()
-    hybrid_payload = {"reference": "pad", "use_tff_split": True}
+    hybrid_payload = {
+        "reference": "pad",
+        "use_tff_split": True,
+        "label": "track_hybrid_pad",
+    }
     if args.desired_z is not None:
         hybrid_payload["desired_z"] = float(args.desired_z)
     prefix = str(args.shm_prefix)
@@ -94,15 +107,27 @@ def main() -> int:
     hybrid = False
     last_l3_s = 0.0
     last_log_s = 0.0
-    client.set_mode(ModeRequest(vel_mode, {}))
+    tel0 = client.snapshot()
+    if pad_may_drive(int(tel0.get("mode") or vel_mode), label=str(tel0.get("msg") or "")):
+        client.set_mode(ModeRequest(vel_mode, {}))
+        print("[MODE] SERVO_TWIST" + ("_HOLD" if args.hold else ""), flush=True)
+    else:
+        print(
+            "[PAD] connected — command mode has priority "
+            f"(live={tel0.get('msg') or tel0.get('mode')}); R3 e-stop still live",
+            flush=True,
+        )
     pad = getattr(src, "pad", None)
     describe = getattr(pad, "describe", None)
-    print("[MODE] SERVO_TWIST" + ("_HOLD" if args.hold else ""), flush=True)
     print(f"[STATE] L3 hybrid Fz*={fz:.2f}N (peirastic/configs/force.yaml)", flush=True)
     if args.no_capture_y:
         print("[STATE] Y capture disabled (--no-capture-y)", flush=True)
     else:
         print("[STATE] Y = SMPL-X (burst→beta, 1 sync frame→pose) + preview + Genesis", flush=True)
+    if args.no_vessel_b:
+        print("[STATE] B vessel scan disabled (--no-vessel-b)", flush=True)
+    else:
+        print("[STATE] B = 8DOF TRACK 5cm standoff → hybrid close → 10cm R_SUPFEMV scan", flush=True)
     print("[STATE] motion requires live bluetooth pad (usb/missing inhibited)", flush=True)
     if describe is not None:
         print("[STATE] " + str(describe()), flush=True)
@@ -111,13 +136,20 @@ def main() -> int:
         while True:
             snap = src.snapshot()
             live = bool(snap["connected"]) and bool(snap["armed"])
+            program = program_is_running()
+            tel = client.snapshot()
+            pad_drive = live and pad_may_drive(
+                int(tel.get("mode") or 0),
+                program=program,
+                label=str(tel.get("msg") or ""),
+            )
             twist_bus.write(
-                snap["twist"] if live else [0.0] * 6,
+                snap["twist"] if pad_drive else [0.0] * 6,
                 axes=snap["axes"],
                 buttons=snap["buttons"] if live else None,
                 hz=snap["hz"] if live else float("nan"),
                 connected=live,
-                l3=bool(snap["l3"]) if live else False,
+                l3=bool(snap["l3"]) if pad_drive else False,
                 r3=bool(snap["r3"]) if live else False,
             )
             if last_live is None or live != last_live:
@@ -183,8 +215,27 @@ def main() -> int:
                     )
                 else:
                     print(_green(f"[CAPTURE] Y ignored ({start.reason})"), flush=True)
+            if snap.get("b_edge") and not args.no_vessel_b:
+                if program_is_running():
+                    print("[VESSEL] B ignored (busy)", flush=True)
+                elif not live:
+                    print("[VESSEL] B ignored (no live bluetooth)", flush=True)
+                else:
+                    print("[VESSEL] B — resolving R_SUPFEMV plan", flush=True)
+                    refuse = try_start_vessel_scan(
+                        client,
+                        repo=_REPO,
+                        on_log=lambda line: print(line, flush=True),
+                    )
+                    if refuse:
+                        print(f"[VESSEL] B ignored ({refuse})", flush=True)
+                    else:
+                        print(
+                            "[VESSEL] B — 8DOF TRACK 5cm → hybrid close → 10cm R_SUPFEMV",
+                            flush=True,
+                        )
             now = time.monotonic()
-            if live and snap["l3_edge"] and (now - last_l3_s) > 0.15:
+            if pad_drive and snap["l3_edge"] and (now - last_l3_s) > 0.15:
                 last_l3_s = now
                 hybrid = not hybrid
                 if hybrid:

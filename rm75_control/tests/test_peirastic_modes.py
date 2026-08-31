@@ -26,7 +26,13 @@ from peirastic.core.modes import Mode as ModeE, ModeRequest
 from peirastic.realman8dof.force.tff import SELECTION_TOOL_Z_FORCE, compose_tff
 from peirastic.realman8dof.modes.servo import ServoTwistHoldOuter, ServoTwistOuter
 from peirastic.realman8dof.session import ModeEngine, compile_request
-from peirastic.sources.gamepad import LOGICAL_L3, LOGICAL_R3, LOGICAL_Y, GamepadTwistSource
+from peirastic.sources.gamepad import (
+    LOGICAL_B,
+    LOGICAL_L3,
+    LOGICAL_R3,
+    LOGICAL_Y,
+    GamepadTwistSource,
+)
 from rm75_control.control.joint_admittance_8dof.api import CompileContext
 from rm75_control.control.joint_admittance_8dof.loop import JointIkController
 
@@ -118,8 +124,11 @@ def test_gamepad_source_is_not_a_mode() -> None:
     assert LOGICAL_L3 == 6
     assert LOGICAL_R3 == 7
     assert LOGICAL_Y == 3
+    assert LOGICAL_B == 1
     assert snap["y"] is False
     assert snap["y_edge"] is False
+    assert snap["b"] is False
+    assert snap["b_edge"] is False
     assert "layout" in snap
     assert "armed" in snap
 
@@ -242,6 +251,8 @@ def test_velocity_modes_swap_in_place_joint_rebuilds() -> None:
     assert is_swappable(ModeE.TRACK_HYBRID)
     assert not is_swappable(ModeE.GOTO_JOINTS)
     assert not is_swappable(ModeE.MOVEJ)
+    assert not is_swappable(ModeE.MOVEL)
+    assert not is_swappable(ModeE.MOVES)
 
 
 def test_mode_engine_offline_sample() -> None:
@@ -375,13 +386,13 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
     )
     assert float(phase.outer.desired_force[2]) == pytest.approx(desired_z_n())
     force = load_force_raw()
-    assert float(force["hybrid_motion"]["max_vz_tool_m_s"]) == pytest.approx(0.025)
+    assert float(force["hybrid_motion"]["max_vz_tool_m_s"]) == pytest.approx(0.08)
     assert float(force["hybrid_motion"]["system_delay_s"]) == pytest.approx(0.055)
     assert float(force["hybrid_motion"]["force_barrier"]["v_seek_free_m_s"]) == pytest.approx(
-        0.010
+        0.020
     )
     assert float(force["hybrid_motion"]["press_envelope"]["first_touch_m_s"]) == pytest.approx(
-        0.010
+        0.0
     )
     assert force["hybrid_motion"]["physical_contact"]["hold_until_reset"] is False
     assert force["hybrid_motion"]["safety_shield"]["mode"] == "observe"
@@ -390,7 +401,7 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
     assert float(force["hybrid_motion"]["force_barrier"]["v_min_press_m_s"]) == pytest.approx(
         0.0
     )
-    assert float(force["hybrid_motion"]["force_scale_fraction"]) == pytest.approx(0.0)
+    assert float(force["hybrid_motion"]["force_scale_fraction"]) == pytest.approx(0.12)
     assert force["hybrid_motion"]["cdyob"]["mode"] == "off"
     assert float(force["hybrid_motion"]["cdyob"]["t0_s"]) == pytest.approx(0.030)
     assert float(force["hybrid_motion"]["cdyob"]["tp_s"]) == pytest.approx(0.012)
@@ -414,7 +425,7 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
         force["hybrid_motion"]["cdyob"]["active_settle_hold_s"]
     ) == pytest.approx(0.05)
     assert force["hybrid_motion"]["force_dob"]["enabled"] is True
-    assert float(force["hybrid_motion"]["force_dob"]["ki"]) == pytest.approx(2.0)
+    assert float(force["hybrid_motion"]["force_dob"]["ki"]) == pytest.approx(8.0)
     assert force["hybrid_motion"]["proactive_feedforward"] is True
     assert float(
         force["hybrid_motion"]["force_barrier"]["v_underforce_press_m_s"]
@@ -504,6 +515,23 @@ def test_gamepad_y_edge_without_motion() -> None:
     assert src.snapshot()["y_edge"] is False
 
 
+def test_gamepad_b_edge_without_motion() -> None:
+    pad = FakePad()
+    pad.transport = "usb"
+    pad.link_transport = "usb"
+    src = GamepadTwistSource(pad=pad, cfg=GamepadTwistConfig(dt=0.005))
+    src._tick()
+    assert src.snapshot()["b_edge"] is False
+    pad.buttons[LOGICAL_B] = 1.0
+    src._tick()
+    snap = src.snapshot()
+    assert snap["connected"] is False
+    assert snap["b"] is True
+    assert snap["b_edge"] is True
+    src._tick()
+    assert src.snapshot()["b_edge"] is False
+
+
 def test_gamepad_usb_or_missing_cannot_command_motion() -> None:
     cfg = GamepadTwistConfig(dt=0.005)
     usb = FakePad(axes=np.array([-1.0, 0.0, -1.0, 0.0, 0.0, -1.0]))
@@ -550,3 +578,259 @@ def test_gamepad_bluetooth_live_arms_after_settle() -> None:
     snap = src.snapshot()
     assert snap["armed"] is True
     assert float(np.linalg.norm(snap["twist"][:3])) > 0.0
+
+
+def test_world_polyline_stays_on_line_and_covers_10cm() -> None:
+    from rm75_control.control.joint_admittance_8dof.reference import WorldPolylineReference
+
+    pts = np.linspace([0.40, 0.10, 0.20], [0.40, 0.20, 0.20], 21)
+    ref = WorldPolylineReference(pts, speed_m_s=0.05, soft_start=False, euler_order="xyz")
+    ref.set_origin(np.zeros(6), t_s=0.0)
+    samples = np.array([ref.sample(t).pose_d[:3] for t in np.linspace(0.0, 2.0, 41)])
+    assert samples[0, 1] == pytest.approx(0.10, abs=1e-9)
+    assert samples[-1, 1] == pytest.approx(0.20, abs=1e-9)
+    assert float(np.linalg.norm(samples[-1] - samples[0])) == pytest.approx(0.10, abs=1e-6)
+    assert np.allclose(samples[:, 0], 0.40, atol=1e-9)
+    assert np.allclose(samples[:, 2], 0.20, atol=1e-9)
+    assert ref.length_m == pytest.approx(0.10, abs=1e-9)
+
+
+def test_compile_polyline_hybrid_is_path_not_pad() -> None:
+    from peirastic.realman8dof.modes.track import HybridTffOuter
+
+    raw, ctx = _ctx()
+    pose = ctx.kin.fk_pose(_SEED)
+    pts = np.linspace(pose[:3], pose[:3] + np.array([0.0, 0.10, 0.0]), 11)
+    rpy = np.repeat(pose[3:6].reshape(1, 3), 11, axis=0)
+    phase = compile_request(
+        ctx,
+        ModeRequest(
+            ModeE.TRACK_HYBRID,
+            {
+                "reference": "polyline",
+                "use_tff_split": True,
+                "points": pts.tolist(),
+                "rpy": rpy.tolist(),
+                "speed_m_s": 0.02,
+                "desired_z": 0.0,
+            },
+        ),
+        raw=raw,
+    )
+    assert isinstance(phase.outer, HybridTffOuter)
+    phase.outer.set_origin(pose, t_s=0.0)
+    out = np.asarray(phase.outer.sample(0.2, pose, np.zeros(6)), dtype=float)
+    assert out.shape == (6,)
+    assert np.all(np.isfinite(out))
+
+
+def test_vessel_b_ignored_without_plan(tmp_path, monkeypatch) -> None:
+    from peirastic.apps.vessel_scan import vessel_b_refuse_reason
+
+    out = tmp_path / "smplx_outputs"
+    out.mkdir()
+    monkeypatch.setenv("REALUS_SMPLX_OUTPUT_ROOT", str(out))
+    assert vessel_b_refuse_reason(repo=tmp_path) == "no capture"
+
+
+def test_approach_cartesian_payload_does_not_pick_rail() -> None:
+    """B approach is a TCP hold. 8DOF QPIK owns the rail; no q_target."""
+    from peirastic.apps.vessel_scan import approach_cartesian_payload, standoff_pose_from_contact
+
+    start = np.array([0.40, 0.20, 0.35, 0.1, -0.2, 0.3], dtype=float)
+    contact = np.array([0.40, 0.05, 0.30, 0.07, 0.19, 2.23], dtype=float)
+    standoff = standoff_pose_from_contact(contact, approach_dz_m=0.05)
+    payload = approach_cartesian_payload(start, standoff)
+    assert payload["reference"] == "polyline"
+    assert payload["label"] == "vessel_approach"
+    assert "q_target" not in payload
+    assert "y_rail_target" not in payload
+    poses = np.asarray(payload["poses"], dtype=float).reshape(-1, 6)
+    assert poses.shape[0] == 1
+    assert np.allclose(poses[0, :3], standoff[:3])
+    assert np.allclose(poses[0, 3:6], start[3:6])
+    assert payload["duration_s"] is None
+
+
+def test_close_and_scan_keep_live_rpy() -> None:
+    from peirastic.apps.vessel_scan import poses_keep_rpy
+
+    contact = np.array([0.40, 0.20, 0.30, 0.07, 0.19, 2.23], dtype=float)
+    scan = np.array(
+        [
+            [0.40, 0.20, 0.30, 0.07, 0.19, 2.23],
+            [0.40, 0.25, 0.30, 0.08, 0.20, 2.40],
+        ],
+        dtype=float,
+    )
+    live_rpy = np.array([3.14, 0.0, -3.14], dtype=float)
+    close = poses_keep_rpy(contact, live_rpy)
+    held = poses_keep_rpy(scan, live_rpy)
+    assert np.allclose(close[0, :3], contact[:3])
+    assert np.allclose(close[0, 3:6], live_rpy)
+    assert np.allclose(held[:, :3], scan[:, :3])
+    assert np.allclose(held[:, 3:6], live_rpy)
+
+
+def test_wait_cartesian_arrival_uses_live_fk_not_path_err() -> None:
+    from peirastic.apps.vessel_scan import wait_cartesian_arrival
+    from peirastic.core.ipc import Status
+
+    goal = np.array([0.40, 0.20, 0.30], dtype=float)
+    poses = [
+        np.array([0.10, 0.20, 0.55], dtype=float),
+        np.array([0.25, 0.20, 0.42], dtype=float),
+        np.array([0.401, 0.199, 0.301], dtype=float),
+    ]
+    stale = {
+        "status": int(Status.RUNNING),
+        "mode": int(ModeE.TRACK_CARTESIAN),
+        "msg": "vessel_approach",
+        "track_err_mm": 0.0,
+    }
+
+    class _Client:
+        def snapshot(self):
+            return dict(stale)
+
+    got = wait_cartesian_arrival(
+        _Client(),
+        goal_xyz=goal,
+        pose_fn=lambda: poses.pop(0) if poses else goal,
+        arrive_mm=15.0,
+        timeout_s=1.0,
+    )
+    assert float(got["goal_err_mm"]) <= 15.0
+
+
+def test_wait_cartesian_arrival_ignores_zero_path_err_while_far() -> None:
+    from peirastic.apps.vessel_scan import wait_cartesian_arrival
+    from peirastic.core.ipc import Status
+
+    calls = {"n": 0}
+
+    class _Client:
+        def snapshot(self):
+            calls["n"] += 1
+            return {
+                "status": int(Status.RUNNING),
+                "mode": int(ModeE.TRACK_CARTESIAN),
+                "msg": "vessel_approach",
+                "track_err_mm": 0.0,
+            }
+
+    with pytest.raises(TimeoutError):
+        wait_cartesian_arrival(
+            _Client(),
+            goal_xyz=np.array([0.40, 0.20, 0.30], dtype=float),
+            pose_fn=lambda: np.array([0.10, 0.20, 0.55], dtype=float),
+            arrive_mm=15.0,
+            timeout_s=0.2,
+        )
+    assert calls["n"] >= 2
+
+
+def test_wait_status_closed_client_is_interrupted() -> None:
+    from peirastic.apps.vessel_scan import _wait_status
+
+    class _Client:
+        def snapshot(self):
+            raise TypeError("'NoneType' object is not subscriptable")
+
+    with pytest.raises(RuntimeError, match="interrupted"):
+        _wait_status(_Client(), want=set(), timeout_s=0.2)
+
+
+def test_wait_contact_requires_air_then_fz() -> None:
+    from peirastic.apps.vessel_scan import wait_contact
+    from peirastic.core.ipc import Status
+
+    ticks = [
+        {"status": int(Status.RUNNING), "mode": int(ModeE.TRACK_CARTESIAN), "msg": "vessel_approach", "f_ext_z": 1.2},
+        {"status": int(Status.RUNNING), "mode": int(ModeE.TRACK_HYBRID), "msg": "vessel_close", "f_ext_z": 1.2},
+        {"status": int(Status.RUNNING), "mode": int(ModeE.TRACK_HYBRID), "msg": "vessel_close", "f_ext_z": 0.1},
+        {"status": int(Status.RUNNING), "mode": int(ModeE.TRACK_HYBRID), "msg": "vessel_close", "f_ext_z": 1.1},
+        {"status": int(Status.RUNNING), "mode": int(ModeE.TRACK_HYBRID), "msg": "vessel_close", "f_ext_z": 1.1},
+    ]
+
+    class _Client:
+        def snapshot(self):
+            return ticks.pop(0) if ticks else {
+                "status": int(Status.RUNNING),
+                "mode": int(ModeE.TRACK_HYBRID),
+                "msg": "vessel_close",
+                "f_ext_z": 1.1,
+            }
+
+    assert wait_contact(_Client(), enter_n=0.85, confirm_s=0.02, timeout_s=1.0) is True
+
+
+def test_compile_approach_is_coupled_qpik_not_movej() -> None:
+    from peirastic.apps.vessel_scan import approach_cartesian_payload, standoff_pose_from_contact
+    from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import RailMode
+
+    raw, ctx = _ctx()
+    start = ctx.kin.fk_pose(_SEED)
+    contact = start.copy()
+    contact[:3] = start[:3] + np.array([0.0, -0.10, -0.05])
+    payload = approach_cartesian_payload(
+        start, standoff_pose_from_contact(contact, approach_dz_m=0.05)
+    )
+    phase = compile_request(ctx, ModeRequest(ModeE.TRACK_CARTESIAN, payload), raw=raw)
+    assert "approach" in str(phase.label)
+    assert "q_target" not in payload
+    ctx.inner.set_locked()
+    phase.on_enter()
+    assert ctx.inner.rail_mode == RailMode.COUPLED
+    assert not ctx.inner.is_locked_hold
+    phase.outer.set_origin(start, t_s=0.0)
+    out = np.asarray(phase.outer.sample(0.1, start, np.zeros(6)), dtype=float)
+    assert out.shape == (6,)
+    assert np.all(np.isfinite(out))
+    assert float(np.linalg.norm(out[:3])) > 1.0e-4
+    assert float(np.linalg.norm(out[3:6])) < 0.05
+
+
+def test_controller_T_is_stage2_T_world_railbase() -> None:
+    from peirastic.apps.vessel_scan import (
+        controller_T_world_from_rail_base,
+        robot_world_yaml_path,
+    )
+
+    raw = yaml.safe_load(robot_world_yaml_path().read_text(encoding="utf-8"))
+    T_yaml = np.asarray(raw["T_world_railbase"], dtype=float).reshape(4, 4)
+    T = controller_T_world_from_rail_base()
+    assert np.allclose(T, T_yaml, atol=1e-12)
+    kin = RobotKinematics()
+    M = kin.frame_placement(np.zeros(kin.nq), "base_link")
+    p_w = T[:3, :3] @ np.asarray(M.translation, dtype=float) + T[:3, 3]
+    p_yaml = np.asarray(raw["T_world_baselink_at_rail0"], dtype=float).reshape(4, 4)[:3, 3]
+    assert np.allclose(p_w, p_yaml, atol=1e-6)
+
+
+def test_vessel_world_pose_is_rotated_into_rail_base() -> None:
+    from peirastic.apps.vessel_scan import (
+        controller_T_world_from_rail_base,
+        poses_world_to_rail_base,
+    )
+
+    T = controller_T_world_from_rail_base()
+    contact_w = np.array([-0.15094593, 0.07237269, 0.46663934, 0.0, 0.0, 0.0])
+    contact_r = poses_world_to_rail_base(contact_w, T)
+    assert float(np.linalg.norm(contact_r[:3] - contact_w[:3])) > 0.20
+    # Inverse: sending camera-world as rail_base lands beside the bed, not on it.
+    fake_world = T[:3, :3] @ contact_w[:3] + T[:3, 3]
+    assert float(fake_world[1]) > 0.50
+    back = T[:3, :3] @ contact_r[:3] + T[:3, 3]
+    assert np.allclose(back, contact_w[:3], atol=1e-6)
+
+
+def test_standoff_is_5cm_along_minus_tool_z() -> None:
+    from peirastic.apps.vessel_scan import standoff_pose_from_contact
+    from scipy.spatial.transform import Rotation as Rsc
+
+    contact = np.array([0.40, 0.20, 0.30, 0.0, 0.0, 0.0], dtype=float)
+    planned = standoff_pose_from_contact(contact, approach_dz_m=0.05)
+    R = Rsc.from_euler("xyz", contact[3:6]).as_matrix()
+    assert float(np.linalg.norm(planned[:3] - contact[:3])) == pytest.approx(0.05, abs=1e-9)
+    assert np.allclose(planned[:3], contact[:3] - 0.05 * R[:, 2])

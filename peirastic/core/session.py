@@ -20,9 +20,45 @@ FINITE_MODES = frozenset(
     {
         Mode.GOTO_JOINTS,
         Mode.MOVEJ,
+        Mode.MOVEL,
+        Mode.MOVES,
     }
 )
 
 
 def is_swappable(mode: Mode) -> bool:
     return Mode(mode) in SWAPPABLE_MODES
+
+
+def idle_after_finite() -> Mode:
+    """After MOVEJ / Cartesian PTP, hold TCP so nullspace can reconfigure joints."""
+
+    return Mode.SERVO_TWIST_HOLD
+
+
+# Gamepad may write v_cmd and switch servo/pad-hybrid. Commanded modes win.
+PAD_DRIVE_MODES = frozenset(
+    {
+        Mode.SERVO_TWIST,
+        Mode.SERVO_TWIST_HOLD,
+    }
+)
+
+
+def pad_may_drive(mode: Mode, *, program: bool = False, label: str = "") -> bool:
+    """True when the pad may command motion. E-stop is always allowed.
+
+    Window A idles in SERVO_TWIST with or without a pad. A live pad does not
+    steal MOVEJ / CARTESIAN / TRACK_CARTESIAN / a running program. Pad-owned
+    TRACK_HYBRID (L3) stays driveable; vessel/HFPC hybrid does not.
+    """
+
+    if program:
+        return False
+    m = Mode(mode)
+    if m in PAD_DRIVE_MODES:
+        return True
+    if m == Mode.TRACK_HYBRID:
+        text = str(label or "").lower()
+        return "pad" in text
+    return False

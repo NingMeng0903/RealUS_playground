@@ -20,14 +20,14 @@ hybrid_motion:
   track_axes:
   - 1
   - 1
-  - 1
+  - 0
   - 1
   - 1
   - 1
   kp_pos:
   - 10.0
   - 10.0
-  - 5.0
+  - 0.0
   - 1.5
   - 1.5
   - 1.5
@@ -57,7 +57,7 @@ hybrid_motion:
   max_velocity:
   - 0.22
   - 0.22
-  - 0.025
+  - 0.1
   - 0.6
   - 0.6
   - 0.6
@@ -68,42 +68,33 @@ hybrid_motion:
   - 2.0
   - 2.0
   - 2.0
-  # 022208: the residual 2.73 Hz mode is now dominated by the base
-  # admittance, not CDYOB or v_r. D=40 keeps 10--20 mm/s response for
-  # ordinary force errors while adding continuous damping (no mode gate).
-  # Chatter: short-lived ΔD_hf(Is). Steady offset: force_dob. Not sticky Ke·D.
+  # e85 force law.  TDPA/corridor/shield do not change the command.
   admittance_mass_z: 1.0
-  admittance_damping_z: 40.0
-  # Ferraguti potential.  Small vs 120 N/m tissue (force-following);
-  # large enough to keep v→0 off the TDPA singularity.
-  admittance_stiffness_z: 10.0
+  admittance_damping_z: 25.0
+  admittance_stiffness_z: 0.0
   xd_gain_m_s_per_n: 0.002
   xd_rate_max_m_s: 0.002
-  # Linear-region envelope.  Never 80 mm/s on the force axis.
-  max_vz_tool_m_s: 0.025
-  desired_force_ramp_s: 0.30
+  max_vz_tool_m_s: 0.08
+  desired_force_ramp_s: 0.8
   var_damping_enabled: true
-  # Dimeas ωc was 3.5 Hz for a 1 ms loop.  Our 2.9–3.4 Hz cycle sat
-  # inside that high-pass.  Keep the detector below 1.5 Hz.
-  var_damping_omega_c_hz: 1.2
+  var_damping_omega_c_hz: 2.5
   var_damping_lambda: 0.951
   var_damping_f_max_n: 7.0
-  # Dimeas Iₛ raises virtual mass briefly; ΔD_hf authority is off.
-  var_damping_d_u: 0.0
-  var_damping_m_u: 0.0
+  var_damping_d_u: 90.0
+  var_damping_m_u: 1.5
   var_damping_m_max: 3.0
   var_damping_dc_alpha: 0.02
   var_damping_hf_attack_s: 0.02
-  var_damping_hf_hold_s: 0.08
+  var_damping_hf_hold_s: 0.18
   var_damping_hf_release_s: 0.12
   var_damping_hf_release_fast_s: 0.04  # dump ΔD on hand-release / large |e_f|
   var_damping_hf_on: 0.30
   var_damping_hf_off: 0.15
   var_damping_hf_err_n: 0.8
-  recontact_vz_cap_m_s: 0.012
+  recontact_vz_cap_m_s: 0.008
   # Safety recontact speed latches on contact *loss* / suspect_loss, not on
   # reacquire.  hold / episode_release only manage estimator episodes.
-  recontact_hold_s: 0.80
+  recontact_hold_s: 0.22
   recontact_settle_m_s: 0.003
   recontact_settle_hold_s: 0.050
   contact_episode_release_s: 0.80
@@ -112,16 +103,15 @@ hybrid_motion:
   # ki=8 / leak=0.4 s sat in the same band as Q and overshot on soft.
   force_dob:
     enabled: true
-    ki: 2.0
-    leak_s: 1.5
+    ki: 8.0
+    leak_s: 0.4
     u_max_n: 1.5
     freeze_is: 0.45
     reset_on_reversal: true
-  # Air / first / re-touch: 10 mm/s.  Unknown Ke in flight — do not
-  # seek at the old soft-tissue 20 mm/s.  After latch release, chase
-  # uses soft_approach (20).  Overforce retract uses max_force_axis (25).
+  # R2 air seek only.  Confirmed contact uses max_vz (80).  Barrier
+  # does not clamp — e85 had no clamp_velocity.
   force_barrier:
-    enabled: true
+    enabled: false
     t_react_s: 0.055
     budget_min_n: 1.0
     budget_frac: 0.20
@@ -133,7 +123,7 @@ hybrid_motion:
     v_underforce_press_m_s: 0.010
     underforce_band_n: 0.20
     # Extra clip only.  First contact is K_ub T_stop, not this number.
-    v_seek_free_m_s: 0.010
+    v_seek_free_m_s: 0.020
     tau_stop_s: 0.080
     e_x_m: 0.0004
     e_f_n: 0.20
@@ -165,10 +155,12 @@ hybrid_motion:
     active_settle_hold_s: 0.05
     active_model_validated: false
   # De Stefano Sec. IV only.  Port (F_meas, v_cmd), same tick.  Td is a
-  # runtime quantity — do not bake 55 ms or D=40 here.  A voice-coil
+  # runtime quantity — do not bake delay or D here.  A voice-coil
   # inner loop keeps this block and only changes plant delay / caps.
   tdpa:
     enabled: true
+    # Observer only.  apply:true with alpha_max=400 inverts D (222808).
+    apply: false
     e_leak_pos_s: 2.0
     alpha_max: 400.0
     bias_lpf_s: 8.0
@@ -176,14 +168,13 @@ hybrid_motion:
   # Certificate 3: set invariance of [F_keep, F_max], not passivity.
   # Shield stays observe; do not set certified / force / passive / ospf.
   force_corridor:
-    enabled: true
+    enabled: false
     f_keep_n: 0.5
   press_envelope:
-    # confirmed chase / air-first / overforce retract.  See
-    # MD/todo_controller_logs/id_fit_20260829/id_reference.log
-    soft_approach_m_s: 0.020
-    first_touch_m_s: 0.010
-    max_force_axis_m_s: 0.025
+    # 0 = unused; confirmed contact falls through to max_vz (80).
+    soft_approach_m_s: 0.0
+    first_touch_m_s: 0.0
+    max_force_axis_m_s: 0.0
     a_linear_m_s2: 1.20
   # Normal-port delay-aware shield. Stay in observe until the same solver
   # is feasible on hardware. force/observe are empirical peak guards:
@@ -206,7 +197,9 @@ hybrid_motion:
     r_f_n_s: 8.0
     r_f_window_steps: 20
     f_release_n: 0.70
-    u_retract_m_s: 0.010
+    # Escape only (F ≥ F*).  63401843 sat at 80 and left the pad
+    # before Td piled force.  Not a press-into-unknown-Ke number.
+    u_retract_m_s: 0.080
     a_max_m_s2: 1.20
     j_max_m_s3: 40.0
     rho: 0.15
@@ -402,10 +395,10 @@ hybrid_motion:
   # Legacy parameters are retained for isolated non-CDYOB tests only.
   proactive_retract_only: false
   # 014140 showed why this inactive v_r branch must not contaminate shadow.
-  proactive_gain: 0.02
-  proactive_retract_gain: 0.02
-  proactive_leak_s: 1.50
-  v_r_max_m_s: 0.008
+  proactive_gain: 0.24
+  proactive_retract_gain: 0.30
+  proactive_leak_s: 0.25
+  v_r_max_m_s: 0.06
   proactive_gate_press_on_is: false
   proactive_press_is_gate_start: 0.2
   proactive_press_is_gate: 0.6
@@ -413,13 +406,13 @@ hybrid_motion:
   proactive_press_is_soft_stop: 0.85
   proactive_press_slew_max_m_s2: 0.35
   proactive_retract_slew_max_m_s2: 0.35
-  proactive_press_drive_max: 1.4
+  proactive_press_drive_max: 1.2
   proactive_retract_drive_max: 1.4
   proactive_reset_on_reversal: true
   proactive_in_band_n: 0.08
   proactive_in_band_leak_s: 0.12
   force_scale_min_n: 0.18
-  force_scale_fraction: 0.0
+  force_scale_fraction: 0.12
   fast_retract_guard:
     enabled: true
     cutoff_hz: 20.0

@@ -14,6 +14,8 @@ class Mode(IntEnum):
     TRACK_HYBRID = 4
     GOTO_JOINTS = 5
     MOVEJ = 6
+    MOVEL = 7
+    MOVES = 8
 
 
 MODE_LABEL = {
@@ -23,6 +25,8 @@ MODE_LABEL = {
     Mode.TRACK_HYBRID: "TRACK_HYBRID",
     Mode.GOTO_JOINTS: "GOTO_JOINTS",
     Mode.MOVEJ: "MOVEJ",
+    Mode.MOVEL: "CARTESIAN",
+    Mode.MOVES: "MOVES",
 }
 
 

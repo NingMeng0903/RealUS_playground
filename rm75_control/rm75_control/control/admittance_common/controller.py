@@ -896,35 +896,51 @@ class AdmittanceController:
         self.x_d_z = 0.0
         self.x_tilde_z = 0.0
 
-    def _v_retract_cap(self) -> float:
-        """Hard saturation (max_force_axis / max_vz).  Not first_touch.
+    def _press_envelope_active(self) -> bool:
+        """Production e85 yaml writes 0/0/0 so confirmed contact uses max_vz."""
+        env = self.cfg.press_envelope
+        return (
+            float(env.soft_approach_m_s) > 0.0
+            or float(env.first_touch_m_s) > 0.0
+            or float(env.max_force_axis_m_s) > 0.0
+        )
 
-        Small force-error retract uses ``_nominal_retract_cap``.  Overforce
-        may use this ceiling: leaving tissue does not re-indent through
-        the delay line.  Never 80 mm/s (R4).
+    def _v_retract_cap(self) -> float:
+        """Hard saturation when F ≥ F*.
+
+        Envelope off (e85): retract is ``max_vz``.  Envelope on: press
+        stays in the linear sat; escape may open ``u_retract``.
         """
-        return max(self._v_z_cap(), 0.0)
+        cap = max(self._v_z_cap(), 0.0)
+        if not self._press_envelope_active():
+            return cap
+        escape = max(float(self.cfg.safety_shield.u_retract_m_s), 0.0)
+        if escape > 0.0:
+            cap = max(cap, escape)
+        return cap
 
     def _nominal_retract_cap(self) -> float:
-        """Retract ceiling for a small F_err.  first_touch so we do not yank."""
+        """Under-F* retract.  Soft/linear sat — not first_touch, not 80."""
         cap = self._v_z_cap()
-        first = max(float(self.cfg.press_envelope.first_touch_m_s), 0.0)
-        if first > 0.0:
-            cap = min(cap, first) if cap > 0.0 else first
+        if not self._press_envelope_active():
+            return max(cap, 0.0)
+        soft = max(float(self.cfg.press_envelope.soft_approach_m_s), 0.0)
+        if soft > 0.0:
+            cap = min(cap, soft) if cap > 0.0 else soft
         return max(cap, 0.0)
 
     def _emit_retract_cap(self, f_n: float, f_des: float) -> float:
         """Retract that may actually be sent.
 
-        Four regimes (Ferraguti set + plant delay):
-        * Overforce (F ≥ F*+escape): leave tissue, up to max_force_axis.
+        Envelope off (e85): always ``max_vz``.  Envelope on:
+        * F ≥ F*: leave, up to ``u_retract``.
         * First/recontact latch and F still in [F_keep, F_hi]: hold.
-        * First/recontact latch and F left the set: first_touch.
-        * Confirmed contact, small e_f: first_touch (feel, not 25).
+        * Under F*: soft_approach / linear sat.
         """
-        escape = max(float(self.cfg.force_barrier.f_escape_n), 0.0)
+        if not self._press_envelope_active():
+            return self._v_z_cap()
         f_abs = abs(float(f_des))
-        if float(f_n) >= f_abs + escape:
+        if float(f_n) >= f_abs:
             return self._v_retract_cap()
         if self._use_delay_safe_press():
             budget = max(
@@ -939,12 +955,20 @@ class AdmittanceController:
     def _press_vz_cap(self) -> float:
         """Tool-Z press cap.
 
-        Air / armed flight: first-touch (unknown Ke).
-        First / re-touch latch: ``v_delay_safe`` (K_ub T_stop).
-        Confirmed contact: ``soft_approach`` tissue chase, not first_touch.
-        ``max_vz`` / ``max_force_axis`` are saturation only.
+        Envelope off (e85): ``max_vz``, recontact 8 mm/s, air still R2 seek.
+        Envelope on: first-touch / latch ``v_delay_safe`` / soft_approach.
         """
         cap = self._v_z_cap()
+        if not self._press_envelope_active():
+            if not bool(self.contact_present):
+                seek = self._v_air_seek()
+                if seek > 0.0:
+                    cap = min(cap, seek)
+            elif self._recontact_timer_s > 0.0:
+                rec = max(float(self.cfg.recontact_vz_cap_m_s), 0.0)
+                if rec > 0.0:
+                    cap = min(cap, rec)
+            return max(cap, 0.0)
         if self._use_delay_safe_press():
             cap = min(cap, self._v_delay_safe())
         elif not bool(self.contact_present):
@@ -1248,6 +1272,14 @@ class AdmittanceController:
                 -cfg.pos_correction_max_m_s,
                 cfg.pos_correction_max_m_s,
             )
+        # Hybrid: a force axis is force-controlled.  Adding kp*err on
+        # tool-Z stores the first-touch hold as a pose spring, then
+        # dumps it as a retract yank when the latch opens (221937:
+        # u_nom_raw +0.4, u_nom_capped −12).  63401843 hid this by
+        # allowing 80 mm/s retract.
+        for index in range(3):
+            if float(cfg.force_axes[index]) > 0.5:
+                v_corr_tool[index] = 0.0
         err_rot_tool = r_mat.T @ err_pose[3:6]
         kp_rot = cfg.kp_pos[3:6] * cfg.track_axes[3:6]
         v_rot_tool = kp_rot * err_rot_tool
@@ -1755,7 +1787,7 @@ class AdmittanceController:
             )
             if self._precontact_barrier_hold_s <= 0.0 and not precontact_candidate:
                 self._precontact_peak_force_n = 0.0
-        if self._use_delay_safe_press():
+        if self._press_envelope_active() and self._use_delay_safe_press():
             self.cap_press_z = min(self.cap_press_z, self._v_delay_safe())
             self._force_barrier.cap_press_z = self.cap_press_z
         if retract_emit <= 0.0:
@@ -1793,18 +1825,21 @@ class AdmittanceController:
         sensor_age_eff = (
             feedback_age_s if feedback_age_s is not None else sensor_age_s
         )
-        # R2: F* := 0 out of contact.  TDPA uses F_meas × last emitted v_cmd.
+        # R2: F* := 0 out of contact.  TDPA always bookkeeps F×v_cmd.
+        # Applying Fc = Fe − α v with α ≫ D inverts the admittance
+        # (hardware 222808: α=400, D=40, 12 Hz relay).  Observe unless apply.
         if not physical_contact:
             f_err_adm = 0.0
-        elif self.cfg.tdpa.enabled:
+        else:
+            f_err_adm = float(f_err_z)
+        if physical_contact and self.cfg.tdpa.enabled:
             fc = self._tdpa.preview(
                 force_normal_filtered,
                 float(self.u_sent_z),
                 dt_flow,
             )
-            f_err_adm = float(force_normal_desired) - float(fc)
-        else:
-            f_err_adm = float(f_err_z)
+            if self.cfg.tdpa.apply:
+                f_err_adm = float(force_normal_desired) - float(fc)
         v_adm_z = self._admittance_z(
             f_err_adm,
             physical_contact,

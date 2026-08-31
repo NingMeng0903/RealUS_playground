@@ -222,6 +222,20 @@ def test_zero_twist_nullspace_is_quieter_with_lpf() -> None:
     assert drift_forced < 15.0
 
 
+def test_nullspace_enter_fade_is_smoothstep() -> None:
+    inner = _inner(Q_D.copy())
+    inner.set_centering_suppressed(True)
+    inner.set_centering_suppressed(False)
+    assert inner._nullspace_enter_scale(0.0) == pytest.approx(0.0)
+    s = 0.0
+    for _ in range(60):
+        s = inner._nullspace_enter_scale(0.005)
+    assert 0.35 < s < 0.65
+    for _ in range(80):
+        s = inner._nullspace_enter_scale(0.005)
+    assert s == pytest.approx(1.0)
+
+
 def test_post_qp_clamp_uses_dt_nom(monkeypatch) -> None:
     """Box / collapse / integrate / post-QP clamp share T = dt_nom."""
 

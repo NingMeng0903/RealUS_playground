@@ -664,6 +664,10 @@ class JointIkController:
         self._configured_rail_mode: RailMode = self.cfg.rail.mode
         self._plan_drives_rail: bool = False
         self._direct_joint_ptp: bool = False
+        self._ns_enter_T: float = float(
+            getattr(getattr(self.cfg, "nullspace", None), "enter_fade_s", 0.6) or 0.0
+        )
+        self._ns_enter_t: float = 1e9
         self._last_post_step: dict = {}
         self._apply_rail_mode_side_effects()
         self._native = None
@@ -718,9 +722,31 @@ class JointIkController:
             self._native.push_flags()
 
     def set_centering_suppressed(self, suppressed: bool) -> None:
+        was = bool(self._centering_suppressed)
         self._centering_suppressed = bool(suppressed)
+        if was and not self._centering_suppressed:
+            self.begin_nullspace_enter_fade()
         if self._native is not None:
             self._native.push_flags()
+
+    def begin_nullspace_enter_fade(self, duration_s: float | None = None) -> None:
+        """Start a C² fade-in of secondary tasks after leaving joint PTP."""
+
+        if duration_s is not None:
+            self._ns_enter_T = max(float(duration_s), 0.0)
+        self._ns_enter_t = 0.0
+
+    def _nullspace_enter_scale(self, dt: float) -> float:
+        period = float(self._ns_enter_T)
+        if period <= 1e-9:
+            return 1.0
+        t = float(self._ns_enter_t)
+        if t >= period:
+            return 1.0
+        t = min(t + max(float(dt), 0.0), period)
+        self._ns_enter_t = t
+        u = t / period
+        return float(u * u * u * (u * (6.0 * u - 15.0) + 10.0))
 
     def set_manipulability_active(self, active: bool) -> None:
         self._manipulability_active = bool(active) and self.manipulability_task is not None
@@ -997,6 +1023,7 @@ class JointIkController:
         self.last_comp_projected_frac = 0.0
         self._direct_joint_ptp = False
         self._plan_drives_rail = False
+        self._ns_enter_t = 1e9
         self._press_z_mark = float("nan")
         self._press_stall_s = 0.0
         self._d_star_nudge_cool_s = 0.0
@@ -1145,6 +1172,7 @@ class JointIkController:
             soft_scale=sat_scale,
             dt_s=dt,
         )
+        qdot0 = np.asarray(qdot0, dtype=float) * self._nullspace_enter_scale(dt)
         self.last_secondary_norm = float(np.linalg.norm(qdot0))
         return qdot0
 

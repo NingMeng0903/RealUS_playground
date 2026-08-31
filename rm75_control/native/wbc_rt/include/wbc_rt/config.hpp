@@ -33,6 +33,7 @@ struct Config {
   double ns_grad_lpf_hz = 0.0;
   double ns_hold_fade_v = 0.0;
   double ns_hold_fade_v0 = 0.0;
+  double ns_enter_fade_s = 0.6;
   double sec_filter_zeta = 1.0;
 
   Vec6 task_weight = (Vec6() << 100, 100, 100, 50, 50, 50).finished();

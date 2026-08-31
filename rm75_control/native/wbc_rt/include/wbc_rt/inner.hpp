@@ -279,6 +279,7 @@ class InnerLoop {
   bool direct_ptp_ = false;
   bool arm_suppress_ = false;
   bool center_suppress_ = false;
+  double ns_enter_t_ = 1e9;
   bool manip_active_ = false;
   bool rail_ext_active_ = true;
   int rail_ext_mode_ = 0;

@@ -373,7 +373,9 @@ void InnerLoop::set_flags(uint32_t bits) {
   plan_drives_rail_ = bits & kFlagPlanDrivesRail;
   direct_ptp_ = bits & kFlagDirectPtp;
   arm_suppress_ = bits & kFlagArmSuppress;
-  center_suppress_ = bits & kFlagCenterSuppress;
+  const bool next_center = bits & kFlagCenterSuppress;
+  if (center_suppress_ && !next_center) ns_enter_t_ = 0.0;
+  center_suppress_ = next_center;
   manip_active_ = bits & kFlagManipActive;
   rail_ext_active_ = bits & kFlagRailExtActive;
 }
@@ -1358,6 +1360,14 @@ TickOut InnerLoop::step(const TickIn& in) {
       sat_scale_ += alpha * (target - sat_scale_);
     }
     sec.tail<7>() *= sat_scale_;
+  }
+  {
+    const double period = cfg_.ns_enter_fade_s;
+    if (period > 1e-9 && ns_enter_t_ < period) {
+      ns_enter_t_ = std::min(ns_enter_t_ + dt, period);
+      const double u = clip(ns_enter_t_ / period, 0.0, 1.0);
+      sec.tail<7>() *= smoothstep01(u);
+    }
   }
   sec[0] = 0.0;
   out.ns_centering = qdot_center.norm();

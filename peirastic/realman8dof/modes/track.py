@@ -142,7 +142,37 @@ def _hybrid_controller(dt: float, payload: dict | None = None):
     controller, _raw, desired_z = build_force_controller(dt, payload=payload)
     f_des = np.zeros(6, dtype=float)
     f_des[2] = float(desired_z)
+    pay = dict(payload or {})
+    if pay.get("desired_force") is not None:
+        df = np.asarray(pay["desired_force"], dtype=float).reshape(-1)
+        if df.size == 1:
+            f_des[2] = float(df[0])
+        elif df.size >= 6:
+            f_des = df[:6].astype(float)
+        elif df.size >= 3:
+            f_des[2] = float(df[2])
     return controller, f_des
+
+
+def selection_from_payload(payload: dict | None) -> np.ndarray | None:
+    """Build TFF selection S (1=track, 0=force) from an optional payload."""
+
+    pay = dict(payload or {})
+    if pay.get("selection") is not None:
+        return np.asarray(pay["selection"], dtype=float).reshape(6)
+    if pay.get("track_axes") is not None:
+        return np.asarray(pay["track_axes"], dtype=float).reshape(6)
+    if pay.get("force_axes") is not None:
+        force = np.asarray(pay["force_axes"], dtype=float).reshape(6)
+        return np.clip(1.0 - force, 0.0, 1.0)
+    return None
+
+
+def _mask_force_from_path(payload: dict | None, default: bool) -> bool:
+    pay = dict(payload or {})
+    if pay.get("mask_force_from_path") is None:
+        return bool(default)
+    return bool(pay["mask_force_from_path"])
 
 
 def build_pad_hybrid_phase(
@@ -166,8 +196,9 @@ def build_pad_hybrid_phase(
         pos,
         LegacyForceLaw(controller),
         desired_force=f_des,
+        selection=selection_from_payload(payload),
         dt=dt,
-        mask_force_from_path=True,
+        mask_force_from_path=_mask_force_from_path(payload, True),
     )
     phase = Phase(outer=outer, label=label, duration_s=duration_s)
     phase.on_enter = lambda: SecondaryPolicy(preset="track").apply(ctx.inner)
@@ -202,7 +233,9 @@ def build_track_hybrid_phase(
         cart.outer,
         LegacyForceLaw(controller),
         desired_force=f_des,
+        selection=selection_from_payload(payload),
         dt=dt,
+        mask_force_from_path=_mask_force_from_path(payload, True),
     )
     phase = cart.phase
     phase.outer = outer

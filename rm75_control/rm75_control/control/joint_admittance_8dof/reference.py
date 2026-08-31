@@ -2,7 +2,7 @@
 
 HoldReference, JointSmoothMoveReference, SrsSmoothMoveReference (branch-locked
 quintic in pose/ψ), RailSmoothMoveReference, SinToolYReference,
-EllipseToolXYReference.
+EllipseToolXYReference, WorldPolylineReference.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ import math
 
 import numpy as np
 from scipy.spatial.transform import Rotation as Rsc
+from scipy.spatial.transform import Slerp
 
 from rm75_control.control.admittance_common.reference import MotionReference
 
@@ -628,3 +629,103 @@ class EllipseToolXYReference:
         vel = np.zeros(6, dtype=float)
         vel[:3] = r_mat @ np.array([vx, vy, 0.0])
         return MotionReference(pose_d=pose, vel_ff=vel, t_ref=t_s)
+
+
+def _polyline_arclength(points: np.ndarray) -> np.ndarray:
+    pts = np.asarray(points, dtype=float).reshape(-1, 3)
+    if pts.shape[0] <= 1:
+        return np.zeros((max(pts.shape[0], 1),), dtype=float)
+    seg = np.linalg.norm(np.diff(pts, axis=0), axis=1)
+    return np.concatenate([[0.0], np.cumsum(seg)])
+
+
+class WorldPolylineReference:
+    """World-frame polyline. ``set_origin`` only anchors time; poses stay absolute."""
+
+    def __init__(
+        self,
+        points: np.ndarray,
+        *,
+        rpy: np.ndarray | None = None,
+        speed_m_s: float = 0.02,
+        soft_start: bool = True,
+        ramp_s: float = 0.4,
+        euler_order: str = "xyz",
+    ) -> None:
+        self.points = np.asarray(points, dtype=float).reshape(-1, 3)
+        if self.points.shape[0] < 1:
+            raise ValueError("polyline needs at least one point")
+        if rpy is None:
+            self.rpy = np.zeros((self.points.shape[0], 3), dtype=float)
+        else:
+            raw = np.asarray(rpy, dtype=float)
+            if raw.ndim == 1:
+                self.rpy = np.repeat(raw.reshape(1, 3), self.points.shape[0], axis=0)
+            else:
+                self.rpy = raw.reshape(-1, 3)
+            if self.rpy.shape[0] != self.points.shape[0]:
+                raise ValueError("rpy count must match polyline points")
+        self.speed_m_s = max(float(speed_m_s), 0.0)
+        self.soft_start = bool(soft_start)
+        self.ramp_s = float(ramp_s)
+        self.euler_order = str(euler_order)
+        self._s = _polyline_arclength(self.points)
+        self._length = float(self._s[-1])
+        self._t_anchor = 0.0
+
+    @property
+    def length_m(self) -> float:
+        return self._length
+
+    def duration_s(self) -> float:
+        if self._length <= 1.0e-9 or self.speed_m_s <= 1.0e-9:
+            return 0.5
+        extra = 0.5 * self.ramp_s if self.soft_start else 0.0
+        return self._length / self.speed_m_s + extra
+
+    def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
+        del pose0
+        if t_s is not None:
+            self._t_anchor = float(t_s)
+
+    def _interp(self, s_m: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        s_m = float(np.clip(s_m, 0.0, self._length))
+        if self.points.shape[0] == 1 or self._length <= 1.0e-12:
+            tangent = np.zeros(3, dtype=float)
+            if self.points.shape[0] >= 2:
+                delta = self.points[-1] - self.points[0]
+                n = float(np.linalg.norm(delta))
+                if n > 1.0e-12:
+                    tangent = delta / n
+            return self.points[0].copy(), self.rpy[0].copy(), tangent
+        i = int(np.searchsorted(self._s, s_m, side="right") - 1)
+        i = int(np.clip(i, 0, self.points.shape[0] - 2))
+        span = float(self._s[i + 1] - self._s[i])
+        u = 0.0 if span <= 1.0e-12 else (s_m - float(self._s[i])) / span
+        p = (1.0 - u) * self.points[i] + u * self.points[i + 1]
+        delta = self.points[i + 1] - self.points[i]
+        n = float(np.linalg.norm(delta))
+        tangent = delta / n if n > 1.0e-12 else np.zeros(3, dtype=float)
+        rots = Rsc.from_euler(self.euler_order, self.rpy[[i, i + 1]], degrees=False)
+        rpy = Slerp([0.0, 1.0], rots)([float(np.clip(u, 0.0, 1.0))])[0].as_euler(
+            self.euler_order, degrees=False
+        )
+        return p, np.asarray(rpy, dtype=float), tangent
+
+    def sample(self, t_s: float) -> MotionReference:
+        t_eff = max(0.0, float(t_s) - float(self._t_anchor))
+        if self.soft_start:
+            tau, tau_dot = _soft_start_time_warp(t_eff, self.ramp_s)
+        else:
+            tau, tau_dot = t_eff, 1.0
+        s_m = min(self._length, self.speed_m_s * float(tau)) if self.speed_m_s > 0.0 else 0.0
+        if self._length <= 1.0e-12:
+            s_m = 0.0
+            tau_dot = 0.0
+        p, rpy, tangent = self._interp(s_m)
+        pose = np.zeros(6, dtype=float)
+        pose[:3] = p
+        pose[3:6] = rpy
+        vel = np.zeros(6, dtype=float)
+        vel[:3] = tangent * (self.speed_m_s * float(tau_dot))
+        return MotionReference(pose_d=pose, vel_ff=vel, t_ref=float(t_s))

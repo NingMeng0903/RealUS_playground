@@ -142,6 +142,7 @@ def dump_wbc_config(
         f"collision.gamma {_f(coll.gamma)}",
         f"collision.max_pairs {int(coll.max_pairs)}",
         f"nullspace.k_center {_f(ns.k_center)}",
+        f"nullspace.enter_fade_s {_f(getattr(ns, 'enter_fade_s', 0.6))}",
         f"nullspace.k_limit {_f(ns.k_limit)}",
         f"nullspace.activation {_f(ns.activation)}",
         _arr(
