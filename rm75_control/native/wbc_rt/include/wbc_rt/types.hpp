@@ -181,6 +181,36 @@ inline double clamp_psi_to_envelope(double psi, double lo, double hi) {
   return clip(fold_psi_to_positive(psi), lo, hi);
 }
 
+// Double-integrator setpoint tracker.  v_des = min(v_max, sqrt(2 a |e|)),
+// then |Δv| ≤ a dt.  From rest the first tick is O(a dt²).
+inline std::pair<double, double> track_bounded(double x, double v, double target, double dt,
+                                               double v_max, double a_max,
+                                               double err = std::numeric_limits<double>::quiet_NaN()) {
+  dt = std::max(dt, 0.0);
+  v_max = std::max(v_max, 0.0);
+  a_max = std::max(a_max, 0.0);
+  const double x0 = x;
+  const double v0 = v;
+  const double tgt = target;
+  const double e = std::isfinite(err) ? err : (tgt - x0);
+  if (dt <= 1.0e-15) return {x0, v0};
+  if (a_max <= 1.0e-15) {
+    const double step = std::min(v_max * dt, std::abs(e));
+    if (std::abs(e) <= 1.0e-15) return {tgt, 0.0};
+    return {x0 + std::copysign(step, e), std::copysign(std::min(v_max, std::abs(e) / dt), e)};
+  }
+  const double v_brake = (std::abs(e) > 0.0) ? std::sqrt(2.0 * a_max * std::abs(e)) : 0.0;
+  double v_des = 0.0;
+  if (std::abs(e) > 1.0e-15) v_des = std::copysign(std::min(v_max, v_brake), e);
+  double dv = v_des - v0;
+  const double dv_max = a_max * dt;
+  if (std::abs(dv) > dv_max) dv = std::copysign(dv_max, dv);
+  const double v1 = v0 + dv;
+  const double x1 = x0 + v1 * dt;
+  if (e * (tgt - x1) < 0.0) return {tgt, 0.0};
+  return {x1, v1};
+}
+
 inline double integration_period(double dt_nom, double dt_wall) {
   if (!(std::isfinite(dt_wall) && dt_wall > 0.0)) return dt_nom;
   return clip(dt_wall, dt_nom, 1.25 * dt_nom);

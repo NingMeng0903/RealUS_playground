@@ -37,6 +37,7 @@ from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
     fold_psi_to_positive,
     nearest_planar_psi,
     psi_err_avoiding_zero,
+    track_bounded,
 )
 from rm75_control.control.joint_admittance_8dof.utils.safety import SafetyLimits
 from rm75_control.kinematics.srs_ik import psi_from_q
@@ -197,7 +198,31 @@ def test_unplanned_step_holds_taught_plane_not_q_nominal() -> None:
     assert not rt.planned
 
 
-def test_hold_setpoint_freezes_d_star() -> None:
+def test_follow_live_rebases_homotopy() -> None:
+    kin = RobotKinematics()
+    rt = PostureRetarget(kin, PsiRetargetConfig(enabled=True))
+    q = np.array(
+        [0.50, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
+    )
+    rt.reset(q)
+    rt._s = 0.4
+    rt.homotopy_s = 0.4
+    rt._s_dot = 0.5
+    psi, d = rt.follow_live(q, 0.005)
+    assert rt.homotopy_s == pytest.approx(0.0)
+    assert rt._s_dot == pytest.approx(0.0)
+    assert np.isfinite(psi) and np.isfinite(d)
+
+
+def test_track_bounded_first_tick_is_o_a_dt2() -> None:
+    dt = 0.005
+    a = 0.06
+    x1, v1 = track_bounded(0.0, 0.0, 1.0, dt, v_max=0.02, a_max=a)
+    assert abs(x1) <= a * dt * dt + 1e-15
+    assert abs(v1) <= a * dt + 1e-15
+
+
+def test_hold_setpoint_does_not_freeze_d_star() -> None:
     kin = RobotKinematics()
     rt = PostureRetarget(kin, PsiRetargetConfig(enabled=True))
     q = np.array(
@@ -208,14 +233,17 @@ def test_hold_setpoint_freezes_d_star() -> None:
     rt._d_star = d_live
     rt.d_star_m = d_live
     rt._d_center_target = float(rt.cfg.d_attr_m)
-    for _ in range(20):
+    dt = 0.02
+    _psi, d0 = rt.step(q, dt, rail_lo=0.005, rail_hi=0.78, hold_setpoint=True)
+    assert abs(d0 - d_live) <= float(rt.cfg.d_center_accel_m_s2) * dt * dt + 1e-12
+    for _ in range(19):
         _psi, d = rt.step(
-            q, 0.02, rail_lo=0.005, rail_hi=0.78, hold_setpoint=True
+            q, dt, rail_lo=0.005, rail_hi=0.78, hold_setpoint=True
         )
-    assert d == pytest.approx(d_live, abs=1e-9)
+    assert abs(d - d_live) > 1e-6 or float(rt.homotopy_s) > 0.0
 
 
-def test_hold_setpoint_skips_retarget_before_homotopy(
+def test_hold_setpoint_still_retargets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     kin = RobotKinematics()
@@ -224,12 +252,15 @@ def test_hold_setpoint_skips_retarget_before_homotopy(
         [0.50, 0.0, np.deg2rad(-30.0), 0.0, np.pi / 2.0, 0.0, np.pi / 2.0, np.pi / 2.0]
     )
     rt.reset(q)
+    seen: list[int] = []
 
-    def _boom(*_a, **_k):
-        raise AssertionError("retarget must not run while holding")
+    def _mark(*_a, **_k):
+        seen.append(1)
 
-    monkeypatch.setattr(rt, "_maybe_retarget_psi", _boom)
+    monkeypatch.setattr(rt, "_maybe_retarget_psi", _mark)
+    monkeypatch.setattr(rt, "_advance_homotopy", lambda *_a, **_k: None)
     rt.step(q, 0.005, rail_lo=0.005, rail_hi=0.78, hold_setpoint=True)
+    assert seen
 
 
 def test_homotopy_rate_scale_scales_dt(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -250,7 +281,7 @@ def test_homotopy_rate_scale_scales_dt(monkeypatch: pytest.MonkeyPatch) -> None:
     assert seen[-1] == pytest.approx(0.00125)
 
 
-def test_hold_setpoint_does_not_slew_psi() -> None:
+def test_psi_from_rest_is_accel_bounded() -> None:
     kin = RobotKinematics()
     rt = PostureRetarget(kin, PsiRetargetConfig(enabled=True))
     q = np.array(
@@ -259,9 +290,13 @@ def test_hold_setpoint_does_not_slew_psi() -> None:
     rt.reset(q)
     psi0 = float(rt._psi_cmd)
     rt._psi_star = float(rt.cfg.psi_attr_rad)
-    for _ in range(40):
-        psi, _d = rt.step(q, 0.005, rail_lo=0.005, rail_hi=0.78, hold_setpoint=True)
-        assert psi == pytest.approx(psi0, abs=1e-12)
+    dt = 0.005
+    psi, _d = rt.step(q, dt, rail_lo=0.005, rail_hi=0.78, hold_setpoint=True)
+    a = float(rt.cfg.psi_accel_rad_s2)
+    assert abs(psi - psi0) <= a * dt * dt + 1e-12
+    for _ in range(39):
+        psi, _d = rt.step(q, dt, rail_lo=0.005, rail_hi=0.78, hold_setpoint=True)
+    assert abs(psi - psi0) > 1e-9
 
 
 def test_hold_release_does_not_jump_d_star(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -291,7 +326,7 @@ def test_hold_release_does_not_jump_d_star(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr(rt, "_clip_d_to_travel", lambda d_try, **k: float(d_try))
     dt = 0.005
     _psi, d = rt.step(q, dt, rail_lo=0.005, rail_hi=0.78, hold_setpoint=False)
-    assert abs(d - d0) <= cfg.d_center_rate_m_s * dt + 1e-9
+    assert abs(d - d0) <= cfg.d_center_accel_m_s2 * dt * dt + 1e-12
     assert abs(d - d_goal) > 0.10
 
 

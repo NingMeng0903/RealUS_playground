@@ -566,8 +566,10 @@ def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
         p,
         {
             "enabled", "n_y", "n_d", "n_psi", "w_sigma", "w_wrist",
-            "margin_floor_deg", "psi_rate_deg_s", "rail_margin_m",
-            "wrist_min_deg", "d_center_rate_m_s",
+            "margin_floor_deg", "psi_rate_deg_s", "psi_accel_deg_s2",
+            "rail_margin_m",
+            "wrist_min_deg", "d_center_rate_m_s", "d_center_accel_m_s2",
+            "homotopy_ramp_s",
             "psi_cmd_lead_deg",
             "psi_replan_period_s", "psi_search_half_span_deg", "psi_search_n",
             "psi_wrist_ok_deg", "psi_envelope_deg",
@@ -598,8 +600,20 @@ def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
                 p.get("psi_rate_deg_s", 25.0), name="psi_retarget.psi_rate_deg_s"
             )
         ),
+        psi_accel_rad_s2=math.radians(
+            _finite_float(
+                p.get("psi_accel_deg_s2", 60.0), name="psi_retarget.psi_accel_deg_s2"
+            )
+        ),
         d_center_rate_m_s=_finite_float(
             p.get("d_center_rate_m_s", 0.02), name="psi_retarget.d_center_rate_m_s"
+        ),
+        d_center_accel_m_s2=_finite_float(
+            p.get("d_center_accel_m_s2", 0.06),
+            name="psi_retarget.d_center_accel_m_s2",
+        ),
+        homotopy_ramp_s=_finite_float(
+            p.get("homotopy_ramp_s", 0.35), name="psi_retarget.homotopy_ramp_s"
         ),
         psi_cmd_lead_rad=math.radians(
             _finite_float(

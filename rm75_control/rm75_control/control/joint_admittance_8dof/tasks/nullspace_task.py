@@ -32,9 +32,9 @@ class NullspaceTaskConfig:
     # (e.g. J4 ~ 90deg) so the redundant DOF doesn't fight the primary task by
     # trying to snap the elbow straight; see JointCenteringTask.__call__.
     q_nominal_rad: np.ndarray | None = None
-    # After MOVEJ/direct PTP, fade secondary 0→1 so TCP is not jerked.
+    # After MOVEJ/direct PTP, C²-fade secondary *gain* 0→1. Does not freeze ψ/d*.
     enter_fade_s: float = 0.6
-    # After that hold, C²-fade homotopy toward ψ* so the settle pose is good.
+    # Unused. Kept so old yaml still parses.
     homotopy_fade_s: float = 0.6
 
 

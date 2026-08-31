@@ -246,13 +246,14 @@ def test_cxx_posture_homotopy_matches_python(kin, dumped_cfg) -> None:
 
 
 @pytest.mark.skipif(_BIN is None, reason="wbc_rt binary not built")
-def test_cxx_posture_hold_freezes_s(kin, dumped_cfg) -> None:
+def test_cxx_posture_hold_matches_live_python(kin, dumped_cfg) -> None:
     dt = 0.005
     rail_lo, rail_hi = 0.005, 0.78
     ticks = 40
     py = _py_posture_rows(kin, _SEED_Q, dt, rail_lo, rail_hi, True, ticks)
     cxx = _cxx_posture_rows(dumped_cfg, _SEED_Q, dt, rail_lo, rail_hi, True, ticks)
-    assert np.allclose(py[:, 0], 0.0, atol=1e-12)
-    assert np.allclose(cxx[:, 0], 0.0, atol=1e-12)
+    assert py[-1, 0] > 0.0
+    assert cxx[-1, 0] > 0.0
+    assert np.allclose(py[:, 0], cxx[:, 0], atol=1e-9)
     assert np.allclose(py[:, 1], cxx[:, 1], atol=1e-9)
     assert np.allclose(py[:, 2], cxx[:, 2], atol=1e-9)

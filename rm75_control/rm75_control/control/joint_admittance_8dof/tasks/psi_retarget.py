@@ -14,15 +14,18 @@ and holds the planned d* constant.
 Unplanned ``step`` homes ``(d*, ψ*, q*)`` on one progress ``s``.  ``T``
 is the slower of the existing ψ and d rates; ``q*`` is ``srs_ik`` at the
 current TCP (same branch), not the yaml photo at t=0.  Hunt ``d*`` /
-``ψ*`` while moving; ``hold_setpoint`` freezes ``ψ_cmd`` and ``d*``
-(no rate limit toward ``ψ*``) when the command and TCP are quiet, the
-post-PTP enter-fade is running, or slack is high.  Local ψ search takes over only
-while the wrist is collapsed and the elbow is still open (SEW is
-undefined near the J4 floor).
+``ψ*`` while moving.  ``ψ_cmd`` / ``d*`` are a second-order reference
+(Lee/Mansard/Park TRO 2012 intermediate desired value + Kröger OTG
+braking bound): they stay live across mode switches.  ``follow_live``
+keeps them on the measured arm during PTP so a later ``step`` joins
+C¹.  ``hold_setpoint`` is accepted but does not freeze.  Local ψ search
+takes over only while the wrist is collapsed and the elbow is still
+open (SEW is undefined near the J4 floor).
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -63,6 +66,52 @@ def nearest_planar_psi(psi_rad: float) -> float:
         return 0.0
     # ±π are the same SEW plane; keep +π so CSV ψ* reads 180°.
     return float(np.pi)
+
+
+def track_bounded(
+    x: float,
+    v: float,
+    target: float,
+    dt: float,
+    v_max: float,
+    a_max: float,
+    *,
+    err: float | None = None,
+) -> tuple[float, float]:
+    """Double-integrator setpoint tracker with a braking-distance bound.
+
+    ``v_des = min(v_max, sqrt(2 a |e|))``, then ``|Δv| ≤ a dt``.  From rest
+    the first tick is O(a dt²), not a rate-limit square wave.
+    """
+
+    dt = max(float(dt), 0.0)
+    v_max = max(float(v_max), 0.0)
+    a_max = max(float(a_max), 0.0)
+    x0 = float(x)
+    v0 = float(v)
+    tgt = float(target)
+    e = float(err) if err is not None else (tgt - x0)
+    if dt <= 1.0e-15:
+        return x0, v0
+    if a_max <= 1.0e-15:
+        step = min(v_max * dt, abs(e))
+        if abs(e) <= 1.0e-15:
+            return tgt, 0.0
+        return x0 + math.copysign(step, e), math.copysign(min(v_max, abs(e) / dt), e)
+    v_brake = math.sqrt(2.0 * a_max * abs(e)) if abs(e) > 0.0 else 0.0
+    if abs(e) <= 1.0e-15:
+        v_des = 0.0
+    else:
+        v_des = math.copysign(min(v_max, v_brake), e)
+    dv = v_des - v0
+    dv_max = a_max * dt
+    if abs(dv) > dv_max:
+        dv = math.copysign(dv_max, dv)
+    v1 = v0 + dv
+    x1 = x0 + v1 * dt
+    if e * (tgt - x1) < 0.0:
+        return tgt, 0.0
+    return x1, v1
 
 
 def fold_psi_to_positive(psi_rad: float) -> float:
@@ -321,6 +370,9 @@ class PostureRetarget:
         self.last_psi_family_degraded: bool = False
         self._healthy_dwell_s: float = 0.0
         self._held_prev: bool = False
+        self._psi_dot: float = 0.0
+        self._d_dot: float = 0.0
+        self._s_dot: float = 0.0
         self._ird = None
 
     @property
@@ -357,8 +409,54 @@ class PostureRetarget:
         self._planned = False
         self._z_plan = float("nan")
         self._held_prev = False
+        self._psi_dot = 0.0
+        self._d_dot = 0.0
+        self._s_dot = 0.0
         self.d_star_m = float(self._d_star)
         self.psi_star_rad = float(psi_star)
+
+    def follow_live(self, q_rad: np.ndarray, dt_s: float) -> tuple[float, float]:
+        """Keep (ψ_cmd, d*) on the moving arm. No IK. Rebase homotopy origin.
+
+        PTP uses this so the reference does not go stale and a later
+        ``step`` starts from rest at the live pose (C¹ join).
+        """
+
+        q = np.asarray(q_rad, dtype=float)
+        if self._psi_cmd is None or self._d_star is None:
+            self.reset(q)
+        live_psi = fold_psi_to_positive(float(psi_from_q(q)))
+        d_live = d_from_q(self.kin, q)
+        dt = max(float(dt_s), 0.0)
+        psi_cur = fold_psi_to_positive(float(self._psi_cmd))
+        nxt, self._psi_dot = track_bounded(
+            psi_cur,
+            float(self._psi_dot),
+            live_psi,
+            dt,
+            float(self.cfg.psi_rate_rad_s),
+            float(self.cfg.psi_accel_rad_s2),
+            err=psi_err_avoiding_zero(psi_cur, live_psi),
+        )
+        nxt = fold_psi_to_positive(nxt)
+        self._psi_cmd = nxt
+        d_cur = float(self._d_star)
+        self._d_star, self._d_dot = track_bounded(
+            d_cur,
+            float(self._d_dot),
+            float(d_live),
+            dt,
+            float(self.cfg.d_center_rate_m_s),
+            float(self.cfg.d_center_accel_m_s2),
+        )
+        self.d_star_m = float(self._d_star)
+        self._d0 = float(self._d_star)
+        self._psi0 = float(self._psi_cmd)
+        self._s = 0.0
+        self.homotopy_s = 0.0
+        self._s_dot = 0.0
+        self._update_margins(q)
+        return float(self._psi_cmd), float(self._d_star)
 
     def _update_margins(self, q: np.ndarray) -> None:
         q_arm = np.asarray(q, dtype=float).reshape(-1)
@@ -535,8 +633,13 @@ class PostureRetarget:
         hold_setpoint: bool = False,
         rate_scale: float = 1.0,
     ) -> tuple[float, float]:
-        """Slew (d*, ψ*, q*) on one s; planned strokes only slew ψ."""
-        del q_nominal
+        """Slew (d*, ψ*, q*) on one s; planned strokes only slew ψ.
+
+        ``hold_setpoint`` is ignored: the reference stays live (IDVA).
+        ``rate_scale`` still scales dt for tests / gain ramps.
+        """
+
+        del q_nominal, hold_setpoint
         q = np.asarray(q_rad, dtype=float)
         if self._psi_cmd is None or self._d_star is None:
             self.reset(q)
@@ -546,17 +649,7 @@ class PostureRetarget:
             psi_out = self._rate_limit_psi(dt, live_psi=live_psi)
             self._update_margins(q)
             return float(psi_out), float(self._d_star)
-        if self._held_prev and not hold_setpoint:
-            if self._d_star is not None and np.isfinite(float(self._d_star)):
-                self._d0 = float(self._d_star)
-            if self._psi_cmd is not None and np.isfinite(float(self._psi_cmd)):
-                self._psi0 = float(self._psi_cmd)
-            self._s = 0.0
-            self.homotopy_s = 0.0
-        self._held_prev = bool(hold_setpoint)
-        if hold_setpoint:
-            self._update_margins(q)
-            return float(self._psi_cmd), float(self._d_star)
+        self._held_prev = False
         self._maybe_retarget_psi(
             q,
             dt_s=dt,
@@ -599,7 +692,15 @@ class PostureRetarget:
         d0 = float(self._d0) if np.isfinite(self._d0) else float(self._d_star)
         psi0 = float(self._psi0) if np.isfinite(self._psi0) else float(self._psi_cmd)
         T = self._homotopy_T(d0, float(d_goal), psi0, psi_goal)
-        s_try = min(1.0, float(self._s) + float(dt_s) / T)
+        s_dot_nom = 1.0 / T
+        ramp = max(float(self.cfg.homotopy_ramp_s), 1.0e-6)
+        a_s = s_dot_nom / ramp
+        s_dot_tgt = 0.0 if float(self._s) >= 1.0 - 1.0e-12 else s_dot_nom
+        if float(self._s_dot) < s_dot_tgt:
+            self._s_dot = min(s_dot_tgt, float(self._s_dot) + a_s * float(dt_s))
+        elif float(self._s_dot) > s_dot_tgt:
+            self._s_dot = max(s_dot_tgt, float(self._s_dot) - a_s * float(dt_s))
+        s_try = min(1.0, float(self._s) + float(self._s_dot) * float(dt_s))
         d_try = float(d0 + s_try * (float(d_goal) - d0))
         y_tcp = float(pose[1])
         d_try = self._clip_d_to_travel(
@@ -612,13 +713,19 @@ class PostureRetarget:
         if d_try is None:
             self._rate_limit_psi(float(dt_s), live_psi=live_psi)
             return
-        d_step = max(float(self.cfg.d_center_rate_m_s), 0.0) * max(float(dt_s), 0.0)
         d_prev = (
             float(self._d_star)
             if self._d_star is not None and np.isfinite(float(self._d_star))
             else float(d_try)
         )
-        d_try = max(d_prev - d_step, min(d_prev + d_step, float(d_try)))
+        d_try, self._d_dot = track_bounded(
+            d_prev,
+            float(self._d_dot),
+            float(d_try),
+            float(dt_s),
+            float(self.cfg.d_center_rate_m_s),
+            float(self.cfg.d_center_accel_m_s2),
+        )
         psi_s = fold_psi_to_positive(
             float(psi0) + s_try * psi_err_avoiding_zero(psi0, psi_goal)
         )
@@ -980,11 +1087,14 @@ class PostureRetarget:
             else float(self._d_star)
         )
         cur = float(self._d_star)
-        err = target - cur
-        max_step = max(float(self.cfg.d_center_rate_m_s), 0.0) * max(float(dt_s), 0.0)
-        if max_step > 0.0 and abs(err) > max_step:
-            err = float(np.clip(err, -max_step, max_step))
-        new_d = float(cur + err)
+        new_d, self._d_dot = track_bounded(
+            cur,
+            float(self._d_dot),
+            target,
+            float(dt_s),
+            float(self.cfg.d_center_rate_m_s),
+            float(self.cfg.d_center_accel_m_s2),
+        )
         if (
             y_tcp is not None
             and rail_lo is not None
@@ -1020,14 +1130,18 @@ class PostureRetarget:
         cur = fold_psi_to_positive(
             float(self._psi_cmd if self._psi_cmd is not None else target)
         )
-        err = psi_err_avoiding_zero(cur, target)
-        max_step = float(self.cfg.psi_rate_rad_s) * dt_s
-        if max_step > 0.0 and abs(err) > max_step:
-            err = float(np.clip(err, -max_step, max_step))
-        nxt = float(cur + err)
-        # Never publish a command that sits on the wrong side of 0.
+        nxt, self._psi_dot = track_bounded(
+            cur,
+            float(self._psi_dot),
+            target,
+            float(dt_s),
+            float(self.cfg.psi_rate_rad_s),
+            float(self.cfg.psi_accel_rad_s2),
+            err=psi_err_avoiding_zero(cur, target),
+        )
         if cur * nxt < 0.0 and abs(cur) > 1.0e-6:
             nxt = float(np.sign(cur) * 1.0e-6)
+            self._psi_dot = 0.0
         nxt = fold_psi_to_positive(nxt)
         lead = max(float(self.cfg.psi_cmd_lead_rad), 0.0)
         if (
@@ -1040,6 +1154,7 @@ class PostureRetarget:
             lead_cur = abs(psi_err_avoiding_zero(live, cur))
             if lead_nxt > lead + 1.0e-12 and lead_nxt > lead_cur + 1.0e-12:
                 nxt = cur
+                self._psi_dot = 0.0
         self._psi_cmd = nxt
         return float(self._psi_cmd)
 
@@ -1048,6 +1163,7 @@ __all__ = [
     "PostureRetarget",
     "PsiRetargetConfig",
     "StrokeInfeasibleError",
+    "track_bounded",
     "arm_respects_floor",
     "clamp_psi_to_envelope",
     "d_from_q",

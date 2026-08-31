@@ -805,8 +805,8 @@ def test_quiescent_latch_ignores_tcp_residual() -> None:
     h1 = float(getattr(last, "homotopy_s", float("nan")))
     if inner.posture_retarget is not None:
         h1 = float(inner.posture_retarget.homotopy_s)
-    assert h1 == pytest.approx(h0, abs=1.0e-9)
-    assert abs(h1) > 1.0e-9 or h0 == pytest.approx(0.0, abs=1.0e-9)
+    # Idle rail PI stays held; homotopy itself stays live (no ψ freeze).
+    assert h1 >= h0 - 1.0e-15
 
 
 def test_quiescent_exit_uses_command_hysteresis() -> None:

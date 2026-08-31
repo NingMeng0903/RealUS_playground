@@ -62,6 +62,9 @@ def test_yaml_parses_manipulability_qdot_tau() -> None:
     cfg = build_joint_ik_config(raw)
     assert cfg.manipulability.qdot_tau_s == pytest.approx(0.05)
     assert cfg.manipulability.grad_period_ticks == 10
+    assert cfg.psi_retarget.psi_accel_rad_s2 == pytest.approx(np.deg2rad(60.0))
+    assert cfg.psi_retarget.d_center_accel_m_s2 == pytest.approx(0.06)
+    assert cfg.psi_retarget.homotopy_ramp_s == pytest.approx(0.35)
 
 
 def test_manipulability_qdot_is_first_order_smoothed() -> None:
@@ -236,13 +239,8 @@ def test_nullspace_enter_fade_is_smoothstep() -> None:
     assert s == pytest.approx(1.0)
 
 
-def test_post_ptp_fade_holds_psi_before_quiet_latch() -> None:
-    """CARTESIAN→SERVO_TWIST bump: ψ must not race before the 150 ms quiet latch.
-
-    run_20260901_000125: first servo tick ΔTCP ~0.05 mm, then −Y ~1.2 mm in
-    180 ms while ψ 84.9°→80° and homotopy 0.01→0.21. Fade on ``sec`` alone
-    does not freeze posture.step / rail midrange.
-    """
+def test_post_ptp_psi_is_accel_bounded_not_frozen() -> None:
+    """CARTESIAN→SERVO: switch does not reset ψ; |Δv| ≤ a dt."""
 
     inner = _inner(Q_D.copy())
     SecondaryPolicy(preset="move").apply(inner)
@@ -251,41 +249,42 @@ def test_post_ptp_fade_holds_psi_before_quiet_latch() -> None:
     for _ in range(5):
         inner.update(np.zeros(6), dt=dt, q_meas=q.copy())
         q = inner.q_cmd.copy()
-    assert inner._quiescent is False
     SecondaryPolicy(preset="track").apply(inner)
-    assert inner._posture_hold() is True
+    assert inner._posture_hold() is False
+    assert inner._homotopy_enter_scale() == pytest.approx(1.0)
     psi0 = float(inner.posture_retarget._psi_cmd)
+    v0 = float(inner.posture_retarget._psi_dot)
     s0 = float(inner.posture_retarget.homotopy_s)
-    y0 = float(inner.kin.fk_pose(q)[1])
-    peak_mm = 0.0
-    for _ in range(40):
+    a = float(inner.posture_retarget.cfg.psi_accel_rad_s2)
+    inner.update(np.zeros(6), dt=dt, q_meas=q.copy())
+    q = inner.q_cmd.copy()
+    psi1 = float(inner.posture_retarget._psi_cmd)
+    v1 = float(inner.posture_retarget._psi_dot)
+    assert abs(v1 - v0) <= a * dt + 1e-9
+    assert abs(psi1 - psi0) <= (abs(v0) + a * dt) * dt + 1e-9
+    assert float(inner.posture_retarget.homotopy_s) >= s0 - 1e-15
+    assert inner._nullspace_enter_scale(0.0) < 0.05
+    for _ in range(39):
         inner.update(np.zeros(6), dt=dt, q_meas=q.copy())
         q = inner.q_cmd.copy()
-        assert inner._posture_hold() is True
-        assert inner.posture_retarget.homotopy_s == pytest.approx(s0, abs=1e-12)
-        assert inner.posture_retarget._psi_cmd == pytest.approx(psi0, abs=1e-9)
-        peak_mm = max(peak_mm, abs(float(inner.kin.fk_pose(q)[1]) - y0) * 1000.0)
-    assert peak_mm < 0.35
+    assert inner._posture_hold() is False
 
 
-def test_post_ptp_homotopy_fades_in_after_hold() -> None:
-    """After the freeze window, idle still runs homotopy, C² from 0."""
+def test_post_ptp_homotopy_stays_live() -> None:
+    """Gain fade is C²; homotopy rate is never scaled to 0."""
 
     inner = _inner(Q_D.copy())
     SecondaryPolicy(preset="move").apply(inner)
     SecondaryPolicy(preset="track").apply(inner)
     inner._quiescent = True
-    assert inner._posture_hold() is True
-    assert inner._homotopy_enter_scale() == pytest.approx(0.0)
-    dt = 0.005
-    for _ in range(int(inner._ns_enter_T / dt) + 1):
-        inner._nullspace_enter_scale(dt)
-    inner._quiescent = True
-    assert inner._ns_homotopy_open is True
     assert inner._posture_hold() is False
-    assert inner._homotopy_enter_scale() < 0.25
-    for _ in range(int(inner._ns_homotopy_T / dt) + 1):
-        inner._nullspace_enter_scale(dt)
+    assert inner._homotopy_enter_scale() == pytest.approx(1.0)
+    dt = 0.005
+    s = inner._nullspace_enter_scale(0.0)
+    assert s == pytest.approx(0.0)
+    for _ in range(int(inner._ns_enter_T / dt) + 1):
+        s = inner._nullspace_enter_scale(dt)
+    assert s == pytest.approx(1.0)
     assert inner._homotopy_enter_scale() == pytest.approx(1.0)
     assert inner._posture_hold() is False
 

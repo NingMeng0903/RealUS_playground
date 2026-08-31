@@ -47,8 +47,7 @@ git push -u origin main
 cd /media/camp/EXT_DRIVE/RealUS_playground
 git status
 git add .
-git commit -m "开始写demo,开始分装，moovej,笛卡尔模式测试完成，缺少努力拉萨评测
-淡如淡出"
+git commit -m "修前测试"
 git push origin main
 
 

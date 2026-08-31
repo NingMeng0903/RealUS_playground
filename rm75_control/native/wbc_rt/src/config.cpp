@@ -144,7 +144,10 @@ Config Config::load(const std::string& path) {
     else if (key == "psi_retarget.psi_envelope_lo_rad") c.psi_env_lo = n0();
     else if (key == "psi_retarget.psi_envelope_hi_rad") c.psi_env_hi = n0();
     else if (key == "psi_retarget.d_center_rate_m_s") c.d_center_rate = n0();
+    else if (key == "psi_retarget.d_center_accel_m_s2") c.d_center_accel = n0();
     else if (key == "psi_retarget.psi_rate_rad_s") c.psi_rate = n0();
+    else if (key == "psi_retarget.psi_accel_rad_s2") c.psi_accel = n0();
+    else if (key == "psi_retarget.homotopy_ramp_s") c.homotopy_ramp_s = n0();
     else if (key == "psi_retarget.rail_margin_m") c.rail_margin = n0();
     else if (key == "psi_retarget.elbow_hi_rad") c.elbow_hi = n0();
     else if (key == "psi_retarget.elbow_hi_illegal_rad") c.elbow_illegal = n0();

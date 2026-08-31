@@ -29,6 +29,9 @@ void PostureRetarget::reset(const Vec8& q, const Vec6& pose) {
   q_star_ = q;
   planned_ = false;
   held_prev_ = false;
+  psi_dot_ = 0.0;
+  d_dot_ = 0.0;
+  s_dot_ = 0.0;
   search_age_s_ = 0.0;
   healthy_dwell_s_ = 0.0;
 }
@@ -42,6 +45,24 @@ void PostureRetarget::set_planned_stroke(double d_star, double psi_star) {
 
 void PostureRetarget::begin_unplanned(const Vec8& q, const Vec6& pose) {
   reset(q, pose);
+}
+
+void PostureRetarget::follow_live(const Vec8& q, const Vec6& pose, double dt) {
+  const double live_psi = fold_psi_to_positive(srs::psi_from_q(q));
+  const double d_live = pose[1] - q[0];
+  dt = std::max(dt, 0.0);
+  const double psi_cur = fold_psi_to_positive(psi_cmd_);
+  auto [nxt, v_psi] = track_bounded(psi_cur, psi_dot_, live_psi, dt, cfg_.psi_rate, cfg_.psi_accel,
+                                    psi_err_avoiding_zero(psi_cur, live_psi));
+  psi_cmd_ = fold_psi_to_positive(nxt);
+  psi_dot_ = v_psi;
+  auto [d_nxt, v_d] = track_bounded(d_star_, d_dot_, d_live, dt, cfg_.d_center_rate, cfg_.d_center_accel);
+  d_star_ = d_nxt;
+  d_dot_ = v_d;
+  d0_ = d_star_;
+  psi0_ = psi_cmd_;
+  s_ = 0.0;
+  s_dot_ = 0.0;
 }
 
 std::optional<PostureRetarget::Pack> PostureRetarget::eval_at(const Vec6& pose, double psi,
@@ -168,10 +189,10 @@ std::optional<double> PostureRetarget::select_d_for_elbow(const Vec8& q, const V
 
 double PostureRetarget::rate_limit_d(double dt) {
   const double target = std::isfinite(d_center_target_) ? d_center_target_ : d_star_;
-  double err = target - d_star_;
-  const double max_step = std::max(cfg_.d_center_rate, 0.0) * std::max(dt, 0.0);
-  if (max_step > 0.0 && std::abs(err) > max_step) err = clip(err, -max_step, max_step);
-  d_star_ = d_star_ + err;
+  auto [d_nxt, v_d] =
+      track_bounded(d_star_, d_dot_, target, dt, cfg_.d_center_rate, cfg_.d_center_accel);
+  d_star_ = d_nxt;
+  d_dot_ = v_d;
   return d_star_;
 }
 
@@ -187,18 +208,24 @@ double PostureRetarget::nudge_d_star(double delta_m, double y_des_m, double rail
 double PostureRetarget::rate_limit_psi(double dt, double live_psi) {
   const double target = fold_psi_to_positive(psi_star_);
   const double cur = fold_psi_to_positive(psi_cmd_);
-  double err = psi_err_avoiding_zero(cur, target);
-  const double max_step = cfg_.psi_rate * std::max(dt, 0.0);
-  if (max_step > 0.0 && std::abs(err) > max_step) err = clip(err, -max_step, max_step);
-  double nxt = cur + err;
-  if (cur * nxt < 0.0 && std::abs(cur) > 1e-6) nxt = std::copysign(1e-6, cur);
+  auto [nxt0, v_psi] = track_bounded(cur, psi_dot_, target, dt, cfg_.psi_rate, cfg_.psi_accel,
+                                     psi_err_avoiding_zero(cur, target));
+  double nxt = nxt0;
+  psi_dot_ = v_psi;
+  if (cur * nxt < 0.0 && std::abs(cur) > 1e-6) {
+    nxt = std::copysign(1e-6, cur);
+    psi_dot_ = 0.0;
+  }
   nxt = fold_psi_to_positive(nxt);
   const double lead = std::max(cfg_.psi_cmd_lead, 0.0);
   if (lead > 0.0 && std::isfinite(live_psi)) {
     const double live = fold_psi_to_positive(live_psi);
     const double lead_nxt = std::abs(psi_err_avoiding_zero(live, nxt));
     const double lead_cur = std::abs(psi_err_avoiding_zero(live, cur));
-    if (lead_nxt > lead + 1e-12 && lead_nxt > lead_cur + 1e-12) nxt = cur;
+    if (lead_nxt > lead + 1e-12 && lead_nxt > lead_cur + 1e-12) {
+      nxt = cur;
+      psi_dot_ = 0.0;
+    }
   }
   psi_cmd_ = nxt;
   return psi_cmd_;
@@ -213,15 +240,23 @@ void PostureRetarget::advance_homotopy(const Vec8& q, const Vec6& pose, double d
     return;
   }
   const double T = homotopy_T(d0_, *d_goal, psi0_, psi_goal);
-  const double s_try = std::min(1.0, s_ + dt / T);
+  const double s_dot_nom = 1.0 / T;
+  const double ramp = std::max(cfg_.homotopy_ramp_s, 1e-6);
+  const double a_s = s_dot_nom / ramp;
+  const double s_dot_tgt = (s_ >= 1.0 - 1e-12) ? 0.0 : s_dot_nom;
+  if (s_dot_ < s_dot_tgt) s_dot_ = std::min(s_dot_tgt, s_dot_ + a_s * dt);
+  else if (s_dot_ > s_dot_tgt) s_dot_ = std::max(s_dot_tgt, s_dot_ - a_s * dt);
+  const double s_try = std::min(1.0, s_ + s_dot_ * dt);
   const double d_live = pose[1] - q[0];
   auto d_try = clip_d(d0_ + s_try * (*d_goal - d0_), pose[1], rail_lo, rail_hi, d_live);
   if (!d_try) {
     rate_limit_psi(dt, live_psi);
     return;
   }
-  const double d_step = std::max(cfg_.d_center_rate, 0.0) * std::max(dt, 0.0);
-  *d_try = clip(*d_try, d_star_ - d_step, d_star_ + d_step);
+  auto [d_nxt, v_d] =
+      track_bounded(d_star_, d_dot_, *d_try, dt, cfg_.d_center_rate, cfg_.d_center_accel);
+  *d_try = d_nxt;
+  d_dot_ = v_d;
   const double psi_s = fold_psi_to_positive(psi0_ + s_try * psi_err_avoiding_zero(psi0_, psi_goal));
   const auto pack = eval_at(pose, psi_s, *d_try);
   if (!pack || !q_star_ok(pack->q_arm, q, pose, rail_lo, rail_hi)) {
@@ -320,21 +355,14 @@ std::optional<double> PostureRetarget::search_psi(const Vec8& q, const Vec6& pos
 
 void PostureRetarget::step(const Vec8& q, const Vec6& pose, double dt, double rail_lo,
                            double rail_hi, bool hold_setpoint, double rate_scale) {
+  (void)hold_setpoint;
   dt = std::max(dt, 0.0) * std::min(1.0, std::max(0.0, rate_scale));
   const double live_psi = fold_psi_to_positive(srs::psi_from_q(q));
   if (planned_) {
     rate_limit_psi(dt, live_psi);
     return;
   }
-  if (held_prev_ && !hold_setpoint) {
-    d0_ = d_star_;
-    psi0_ = psi_cmd_;
-    s_ = 0.0;
-  }
-  held_prev_ = hold_setpoint;
-  if (hold_setpoint) {
-    return;
-  }
+  held_prev_ = false;
   maybe_retarget_psi(q, pose, dt, rail_lo, rail_hi);
   advance_homotopy(q, pose, dt, rail_lo, rail_hi, live_psi);
 }

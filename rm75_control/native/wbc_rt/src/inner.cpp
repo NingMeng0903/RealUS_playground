@@ -346,16 +346,6 @@ void InnerLoop::begin_hybrid(const Vec8& q_meas, const Vec8& qdot_applied) {
   q_star_ = q_meas;
   q_star_signs_ = q_nominal_;
   kin_.update(q_meas);
-  posture_.begin_unplanned(q_meas, kin_.fk_pose_at(q_meas));
-  d_star_ = posture_.d_star();
-  d_pref_ = d_star_;
-  d0_ = d_star_;
-  psi_cmd_ = posture_.psi_cmd();
-  psi_star_ = posture_.psi_star();
-  psi0_ = psi_cmd_;
-  homotopy_s_ = 0.0;
-  planned_ = false;
-  hold_d_prev_ = false;
   slack_hold_latched_ = false;
 }
 
@@ -379,19 +369,6 @@ void InnerLoop::set_flags(uint32_t bits) {
   if (center_suppress_ && !next_center) {
     ns_enter_t_ = 0.0;
     ns_homotopy_open_ = true;
-    const Vec6 pose = kin_.fk_pose_at(q_cmd_);
-    posture_.reset(q_cmd_, pose);
-    d_star_ = posture_.d_star();
-    psi_cmd_ = posture_.psi_cmd();
-    psi_star_ = posture_.psi_star();
-    homotopy_s_ = 0.0;
-    planned_ = false;
-    d_pref_ = d_star_;
-    d_star_ref_ = d_star_;
-    d_star_ref_init_ = true;
-    d_star_dot_cmd_ = 0.0;
-    e_d_ = 0.0;
-    last_e_mid_ = 0.0;
   }
   center_suppress_ = next_center;
   manip_active_ = bits & kFlagManipActive;
@@ -998,10 +975,22 @@ TickOut InnerLoop::step(const TickIn& in) {
     if (rail_only) qdot.tail<7>().setZero();
     q_cmd_ = q_prev + qdot * dt;
     qdot_prev_ = qdot;
+    if (cfg_.psi_enabled && rail_mode_ == kRailCoupled) {
+      const Vec6 pose = kin_.fk_pose_at(q_cmd_);
+      posture_.follow_live(q_cmd_, pose, dt);
+      d_star_ = posture_.d_star();
+      psi_cmd_ = posture_.psi_cmd();
+      psi_star_ = posture_.psi_star();
+      homotopy_s_ = posture_.homotopy_s();
+      d_pref_ = d_star_;
+    }
     out.q_cmd = q_cmd_;
     out.qdot = qdot;
     out.sigma_min = last_sigma_;
     out.sigma_arm = sigma_arm;
+    out.homotopy_s = homotopy_s_;
+    out.d_star = d_star_;
+    out.psi = psi_cmd_;
     return out;
   }
 
@@ -1114,34 +1103,19 @@ TickOut InnerLoop::step(const TickIn& in) {
   secondary_alpha_ = raised_cosine_alpha(last_slack_, cfg_.slack_exit, cfg_.slack_enter,
                                          last_sigma_, cfg_.sigma_fade_ref);
   {
-    const double enter = cfg_.ns_enter_fade_s;
-    const double ht = cfg_.ns_homotopy_fade_s;
-    const double t_end = std::max(0.0, enter) + std::max(0.0, ht);
-    if (ns_enter_t_ < t_end) ns_enter_t_ = std::min(ns_enter_t_ + dt, t_end);
+    const double enter = std::max(0.0, cfg_.ns_enter_fade_s);
+    if (ns_enter_t_ < enter) ns_enter_t_ = std::min(ns_enter_t_ + dt, enter);
   }
-  const bool fading =
-      cfg_.ns_enter_fade_s > 1e-9 && ns_enter_t_ < cfg_.ns_enter_fade_s;
-  const bool hold_d = fading || (quiescent_ && !ns_homotopy_open_);
+  const bool hold_d = quiescent_;
   hold_d_prev_ = hold_d;
-  double homotopy_rate = 1.0;
-  if (ns_homotopy_open_) {
-    if (ns_enter_t_ + 1e-15 < cfg_.ns_enter_fade_s) {
-      homotopy_rate = 0.0;
-    } else if (cfg_.ns_homotopy_fade_s > 1e-9) {
-      const double u =
-          clip((ns_enter_t_ - cfg_.ns_enter_fade_s) / cfg_.ns_homotopy_fade_s, 0.0, 1.0);
-      homotopy_rate = smoothstep01(u);
-    }
-  }
 
   if (cfg_.psi_enabled && rail_mode_ == kRailCoupled) {
     const Vec6 pose = kin_.fk_pose_at(q_prev);
-    posture_.step(q_prev, pose, dt, q_lo_[0], q_hi_[0], hold_d, homotopy_rate);
+    posture_.step(q_prev, pose, dt, q_lo_[0], q_hi_[0], false, 1.0);
     d_star_ = posture_.d_star();
     psi_cmd_ = posture_.psi_cmd();
     psi_star_ = posture_.psi_star();
     homotopy_s_ = posture_.homotopy_s();
-    if (ns_homotopy_open_ && homotopy_s_ + 1e-6 >= 1.0) ns_homotopy_open_ = false;
     planned_ = posture_.planned();
     d_pref_ = d_star_;
     const Vec8 cand = posture_.q_star();

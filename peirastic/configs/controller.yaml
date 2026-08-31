@@ -180,7 +180,7 @@ inner:
     # d=−0.185, J4≈96°.  Same branch as the taught lean; the 104° seed
     # already hit 124° under a typical Δx/roll shake.  Signs are fixed.
     q_nominal_deg: [0.0, -89.5, -94.5, 65.2, 96.0, 89.3, 61.0, 94.6]
-    # After MOVEJ / Cartesian: freeze ψ/d*, fade secondary, then fade homotopy.
+    # After MOVEJ / Cartesian: C²-fade secondary *gain* only. Homotopy stays live.
     enter_fade_s: 0.6
     homotopy_fade_s: 0.6
     manipulability:
@@ -216,12 +216,15 @@ inner:
     w_wrist: 0.5
     margin_floor_deg: 20.0
     psi_rate_deg_s: 25.0
+    psi_accel_deg_s2: 60.0
     # Design split: J4≈96° (band center 95°).  Unplanned step shares one
     # progress s across (d*, ψ*, q*); q* is srs_ik at the live TCP, not
     # the yaml photo at t=0.
     psi_attr_deg: 68.0
     d_attr_m: -0.185
     d_center_rate_m_s: 0.02
+    d_center_accel_m_s2: 0.06
+    homotopy_ramp_s: 0.35
     psi_cmd_lead_deg: 18.0
     psi_replan_period_s: 0.1
     psi_search_half_span_deg: 45.0

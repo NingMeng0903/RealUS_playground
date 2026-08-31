@@ -34,7 +34,7 @@ struct Config {
   double ns_hold_fade_v = 0.0;
   double ns_hold_fade_v0 = 0.0;
   double ns_enter_fade_s = 0.6;
-  double ns_homotopy_fade_s = 0.6;
+  double ns_homotopy_fade_s = 0.6;  // unused; kept so old dumps still parse
   double sec_filter_zeta = 1.0;
 
   Vec6 task_weight = (Vec6() << 100, 100, 100, 50, 50, 50).finished();
@@ -123,7 +123,10 @@ struct Config {
   double psi_env_lo = 0.6981317007977318;        // 40°
   double psi_env_hi = 1.9198621771937625;        // 110°
   double d_center_rate = 0.02;
+  double d_center_accel = 0.06;
   double psi_rate = 0.4363323129985824;          // 25°/s
+  double psi_accel = 1.0471975511965976;         // 60°/s²
+  double homotopy_ramp_s = 0.35;
   double rail_margin = 0.02;
   double elbow_hi = 2.007128639793479;       // 115°
   double elbow_illegal = 2.2689280275926285;  // 130°

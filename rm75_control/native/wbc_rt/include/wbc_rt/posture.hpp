@@ -16,10 +16,12 @@ class PostureRetarget {
   void reset(const Vec8& q, const Vec6& pose);
   void set_planned_stroke(double d_star, double psi_star);
   void begin_unplanned(const Vec8& q, const Vec6& pose);
+  void follow_live(const Vec8& q, const Vec6& pose, double dt);
   double nudge_d_star(double delta_m, double y_des_m, double rail_lo, double rail_hi,
                       double dt);
 
   // Matches Python PostureRetarget.step.  Updates d*, ψ*, q*.
+  // hold_setpoint is accepted but does not freeze (IDVA).
   void step(const Vec8& q, const Vec6& pose, double dt, double rail_lo, double rail_hi,
             bool hold_setpoint, double rate_scale = 1.0);
 
@@ -72,6 +74,9 @@ class PostureRetarget {
   double psi0_ = 0.0;
   double psi_star_ = 0.0;
   double s_ = 0.0;
+  double psi_dot_ = 0.0;
+  double d_dot_ = 0.0;
+  double s_dot_ = 0.0;
   double search_age_s_ = 0.0;
   double healthy_dwell_s_ = 0.0;
   Vec8 q_star_ = Vec8::Zero();

@@ -735,26 +735,18 @@ class JointIkController:
             self._native.push_flags()
 
     def begin_nullspace_enter_fade(self, duration_s: float | None = None) -> None:
-        """Hold ψ/d*, fade secondary, then fade homotopy toward ψ* after PTP."""
+        """C²-fade secondary gain after a switch. Do not reset or freeze ψ/d*."""
 
         if duration_s is not None:
             self._ns_enter_T = max(float(duration_s), 0.0)
         self._ns_enter_t = 0.0
         self._ns_homotopy_open = True
-        if self.posture_retarget is not None:
-            self.posture_retarget.reset(self.q_cmd)
-            if self.arm_task is not None and self.posture_retarget._psi_cmd is not None:
-                self.arm_task.set_reference(float(self.posture_retarget._psi_cmd))
-        pose = self.kin.fk_pose(self.q_cmd)
-        d_live = float(pose[1]) - float(self.q_cmd[0])
-        self.rail_mixer.reset(d_live)
 
     def _nullspace_enter_scale(self, dt: float) -> float:
         enter = float(self._ns_enter_T)
-        t_end = enter + float(self._ns_homotopy_T)
         t = float(self._ns_enter_t)
-        if t < t_end:
-            t = min(t + max(float(dt), 0.0), t_end)
+        if t < enter:
+            t = min(t + max(float(dt), 0.0), enter)
             self._ns_enter_t = t
         if enter <= 1e-9:
             return 1.0
@@ -764,29 +756,14 @@ class JointIkController:
         return float(u * u * u * (u * (6.0 * u - 15.0) + 10.0))
 
     def _homotopy_enter_scale(self) -> float:
-        """0 during the post-PTP freeze, then C² 0→1 over homotopy_fade_s."""
+        """Reference stays live; no dt scale on homotopy."""
 
-        if not self._ns_homotopy_open:
-            return 1.0
-        enter = float(self._ns_enter_T)
-        if float(self._ns_enter_t) + 1e-15 < enter:
-            return 0.0
-        period = float(self._ns_homotopy_T)
-        if period <= 1e-9:
-            return 1.0
-        u = (float(self._ns_enter_t) - enter) / period
-        u = min(max(u, 0.0), 1.0)
-        return float(u * u * u * (u * (6.0 * u - 15.0) + 10.0))
+        return 1.0
 
     def _posture_hold(self) -> bool:
-        """Freeze ψ/d* only for the post-PTP hold; then homotopy may run idle."""
+        """Never freeze ψ/d*. Rail idle hold uses ``_quiescent`` separately."""
 
-        fading = float(self._ns_enter_t) < float(self._ns_enter_T)
-        if fading:
-            return True
-        if self._ns_homotopy_open:
-            return False
-        return bool(self._quiescent)
+        return False
 
     def set_manipulability_active(self, active: bool) -> None:
         self._manipulability_active = bool(active) and self.manipulability_task is not None
@@ -1099,8 +1076,6 @@ class JointIkController:
         """
         applied = self.core.qdot_prev if qdot_applied is None else qdot_applied
         self.core.sync_applied(applied)
-        if self.posture_retarget is not None:
-            self.posture_retarget.reset(q_meas)
         self._latch_attractor_from_q(q_meas)
         self._slack_hold_latched = False
         if self._native is not None:
@@ -1720,6 +1695,18 @@ class JointIkController:
             else:
                 applied = qdot_cmd
             self.core.sync_applied(applied)
+            if (
+                self.posture_retarget is not None
+                and self._rail_mode == RailMode.COUPLED
+            ):
+                psi_ref, d_pref = self.posture_retarget.follow_live(
+                    self.q_cmd, float(dt)
+                )
+                if self.arm_task is not None:
+                    self.arm_task.set_reference(float(psi_ref))
+                if self.rail_ext_task is not None:
+                    self.rail_ext_task.set_d_pref(float(d_pref))
+                self._publish_homotopy_centering()
             qdot_raw = np.asarray(qdot_cmd, dtype=float).copy()
             qdot_pre_commit = (
                 np.asarray(self.q_cmd, dtype=float) - q_prev
@@ -1866,7 +1853,7 @@ class JointIkController:
             float(sigma_pre),
             float(getattr(self.cfg.manipulability, "sigma_fade_ref", 0.12)),
         )
-        hold_d_star = self._posture_hold()
+        hold_d_star = bool(self._quiescent)
 
         if (
             self.posture_retarget is not None
@@ -1877,14 +1864,9 @@ class JointIkController:
                 float(dt),
                 rail_lo=float(self.limits.q_lower[0]),
                 rail_hi=float(self.limits.q_upper[0]),
-                hold_setpoint=hold_d_star,
-                rate_scale=self._homotopy_enter_scale(),
+                hold_setpoint=False,
+                rate_scale=1.0,
             )
-            if (
-                self._ns_homotopy_open
-                and float(self.posture_retarget.homotopy_s) >= 1.0 - 1e-6
-            ):
-                self._ns_homotopy_open = False
             if self.arm_task is not None:
                 self.arm_task.set_reference(float(psi_ref))
             if self.rail_ext_task is not None:
