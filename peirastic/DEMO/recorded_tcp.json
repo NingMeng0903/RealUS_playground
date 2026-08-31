@@ -1,7 +1,7 @@
 {
   "label": "after_movej_rail400",
   "source": "relay_rm75_state",
-  "note": "TCP at the MOVEJ teach pose (rail 400 mm). Cartesian demo goes here, waits 1 s, returns to that run's start.",
+  "note": "TCP at the MOVEJ teach pose (rail 400 mm). Cartesian demo goes here, waits 2 s, returns to that run's start.",
   "pose_m_rad": [
     0.19833126689873729,
     0.24356546680795083,

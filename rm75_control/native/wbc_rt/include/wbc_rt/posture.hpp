@@ -21,7 +21,7 @@ class PostureRetarget {
 
   // Matches Python PostureRetarget.step.  Updates d*, ψ*, q*.
   void step(const Vec8& q, const Vec6& pose, double dt, double rail_lo, double rail_hi,
-            bool hold_setpoint);
+            bool hold_setpoint, double rate_scale = 1.0);
 
   bool planned() const { return planned_; }
   double d_star() const { return d_star_; }

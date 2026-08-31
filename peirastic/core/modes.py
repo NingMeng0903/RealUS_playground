@@ -18,6 +18,15 @@ class Mode(IntEnum):
     MOVES = 8
 
 
+def try_mode(value) -> Mode | None:
+    """SHM is 0 until Window A publishes. Do not raise on that."""
+
+    try:
+        return Mode(int(value))
+    except (ValueError, TypeError):
+        return None
+
+
 MODE_LABEL = {
     Mode.SERVO_TWIST: "SERVO_TWIST",
     Mode.SERVO_TWIST_HOLD: "SERVO_TWIST_HOLD",

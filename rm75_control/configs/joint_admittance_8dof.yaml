@@ -180,6 +180,7 @@ inner:
     # already hit 124° under a typical Δx/roll shake.  Signs are fixed.
     q_nominal_deg: [0.0, -89.5, -94.5, 65.2, 96.0, 89.3, 61.0, 94.6]
     enter_fade_s: 0.6
+    homotopy_fade_s: 0.6
     manipulability:
       k_mu: 0.8
       eps_rad: 5.0e-4

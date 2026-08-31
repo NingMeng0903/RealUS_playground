@@ -223,12 +223,15 @@ def compile_request(
         q0 = payload.get("q_start")
         q_start = None if q0 is None else np.asarray(q0, dtype=float)
         dur = payload.get("duration_s")
+        v = payload.get("v")
         if req.mode == Mode.GOTO_JOINTS:
             return _finish_phase(
-                ctx, payload, build_goto_joints_phase(ctx, q, q_start=q_start, duration_s=dur)
+                ctx,
+                payload,
+                build_goto_joints_phase(ctx, q, q_start=q_start, duration_s=dur, v=v),
             )
         return _finish_phase(
-            ctx, payload, build_movej_phase(ctx, q, q_start=q_start, duration_s=dur)
+            ctx, payload, build_movej_phase(ctx, q, q_start=q_start, duration_s=dur, v=v)
         )
     if req.mode == Mode.MOVEL:
         return _finish_phase(ctx, payload, build_movel_phase(ctx, payload, dt=dt))

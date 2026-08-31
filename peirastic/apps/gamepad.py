@@ -29,7 +29,7 @@ from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
     GamepadTwistConfig,
 )
 from peirastic.core.ipc import CommandClient, Status, TwistBus
-from peirastic.core.modes import Mode, ModeRequest
+from peirastic.core.modes import Mode, ModeRequest, try_mode
 from peirastic.core.session import pad_may_drive
 from peirastic.realman8dof.force.config import desired_z_n
 from peirastic.sources.gamepad import GamepadTwistSource
@@ -107,16 +107,6 @@ def main() -> int:
     hybrid = False
     last_l3_s = 0.0
     last_log_s = 0.0
-    tel0 = client.snapshot()
-    if pad_may_drive(int(tel0.get("mode") or vel_mode), label=str(tel0.get("msg") or "")):
-        client.set_mode(ModeRequest(vel_mode, {}))
-        print("[MODE] SERVO_TWIST" + ("_HOLD" if args.hold else ""), flush=True)
-    else:
-        print(
-            "[PAD] connected — command mode has priority "
-            f"(live={tel0.get('msg') or tel0.get('mode')}); R3 e-stop still live",
-            flush=True,
-        )
     pad = getattr(src, "pad", None)
     describe = getattr(pad, "describe", None)
     print(f"[STATE] L3 hybrid Fz*={fz:.2f}N (peirastic/configs/force.yaml)", flush=True)
@@ -133,6 +123,22 @@ def main() -> int:
         print("[STATE] " + str(describe()), flush=True)
     last_live = None
     try:
+        tel0 = client.snapshot()
+        if try_mode(tel0.get("mode")) is None:
+            print("[PAD] waiting for Window A (controller mode unset)", flush=True)
+            while try_mode(tel0.get("mode")) is None:
+                time.sleep(0.05)
+                tel0 = client.snapshot()
+            print("[PAD] Window A live", flush=True)
+        if pad_may_drive(int(tel0.get("mode") or 0), label=str(tel0.get("msg") or "")):
+            client.set_mode(ModeRequest(vel_mode, {}))
+            print("[MODE] SERVO_TWIST" + ("_HOLD" if args.hold else ""), flush=True)
+        else:
+            print(
+                "[PAD] connected — command mode has priority "
+                f"(live={tel0.get('msg') or tel0.get('mode')}); R3 e-stop still live",
+                flush=True,
+            )
         while True:
             snap = src.snapshot()
             live = bool(snap["connected"]) and bool(snap["armed"])

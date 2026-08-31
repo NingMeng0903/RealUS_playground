@@ -479,6 +479,7 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
         {
             "k_center", "k_limit", "activation", "weights", "q_nominal_deg",
             "enter_fade_s",
+            "homotopy_fade_s",
             "manipulability",
         },
         name="inner.nullspace",
@@ -507,6 +508,10 @@ def _parse_nullspace(inner: dict) -> tuple[NullspaceTaskConfig, ManipulabilityTa
         ),
         enter_fade_s=_finite_float(
             n.get("enter_fade_s", 0.6), name="nullspace.enter_fade_s"
+        ),
+        homotopy_fade_s=_finite_float(
+            n.get("homotopy_fade_s", n.get("enter_fade_s", 0.6)),
+            name="nullspace.homotopy_fade_s",
         ),
     )
     manipulability = ManipulabilityTaskConfig(

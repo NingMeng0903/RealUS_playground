@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from peirastic.core.modes import Mode
+from peirastic.core.modes import Mode, try_mode
 
 # Velocity-interface modes settle to v* and swap in place on the same 200 Hz
 # runner: exit the previous outer, bind the next, keep inner / wbc_rt.
@@ -27,13 +27,18 @@ FINITE_MODES = frozenset(
 
 
 def is_swappable(mode: Mode) -> bool:
-    return Mode(mode) in SWAPPABLE_MODES
+    m = try_mode(mode)
+    return m is not None and m in SWAPPABLE_MODES
 
 
 def idle_after_finite() -> Mode:
-    """After MOVEJ / Cartesian PTP, hold TCP so nullspace can reconfigure joints."""
+    """After a planned move, return to velocity servo. Do not latch a pose hold.
 
-    return Mode.SERVO_TWIST_HOLD
+    Post-PTP: freeze ψ/d* while secondary fades in, then fade homotopy to ψ*.
+    The pad can drive as soon as the command finishes.
+    """
+
+    return Mode.SERVO_TWIST
 
 
 # Gamepad may write v_cmd and switch servo/pad-hybrid. Commanded modes win.
@@ -55,7 +60,9 @@ def pad_may_drive(mode: Mode, *, program: bool = False, label: str = "") -> bool
 
     if program:
         return False
-    m = Mode(mode)
+    m = try_mode(mode)
+    if m is None:
+        return False
     if m in PAD_DRIVE_MODES:
         return True
     if m == Mode.TRACK_HYBRID:

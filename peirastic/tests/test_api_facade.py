@@ -202,10 +202,10 @@ def test_cartesian_plan_is_joint_ptp() -> None:
     assert isinstance(phase.outer.reference, JointSmoothMoveReference)
 
 
-def test_idle_after_finite_holds_tcp() -> None:
+def test_idle_after_finite_is_servo_twist() -> None:
     from peirastic.core.session import idle_after_finite
 
-    assert idle_after_finite() == Mode.SERVO_TWIST_HOLD
+    assert idle_after_finite() == Mode.SERVO_TWIST
 
 
 def test_pad_yields_to_command_modes() -> None:
@@ -219,6 +219,9 @@ def test_pad_yields_to_command_modes() -> None:
     assert pad_may_drive(Mode.MOVEL) is False
     assert pad_may_drive(Mode.MOVEJ) is False
     assert pad_may_drive(Mode.TRACK_CARTESIAN) is False
+    assert pad_may_drive(0) is False
+    assert pad_may_drive(99) is False
+    assert pad_may_drive(None) is False
 
 
 def test_qp_aux_hits_inner() -> None:

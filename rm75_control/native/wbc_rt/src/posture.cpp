@@ -319,8 +319,8 @@ std::optional<double> PostureRetarget::search_psi(const Vec8& q, const Vec6& pos
 }
 
 void PostureRetarget::step(const Vec8& q, const Vec6& pose, double dt, double rail_lo,
-                           double rail_hi, bool hold_setpoint) {
-  dt = std::max(dt, 0.0);
+                           double rail_hi, bool hold_setpoint, double rate_scale) {
+  dt = std::max(dt, 0.0) * std::min(1.0, std::max(0.0, rate_scale));
   const double live_psi = fold_psi_to_positive(srs::psi_from_q(q));
   if (planned_) {
     rate_limit_psi(dt, live_psi);
@@ -333,7 +333,6 @@ void PostureRetarget::step(const Vec8& q, const Vec6& pose, double dt, double ra
   }
   held_prev_ = hold_setpoint;
   if (hold_setpoint) {
-    rate_limit_psi(dt, live_psi);
     return;
   }
   maybe_retarget_psi(q, pose, dt, rail_lo, rail_hi);

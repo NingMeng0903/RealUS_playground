@@ -231,7 +231,7 @@ class _MovePlanMixin(_ClientMixin):
         self._max_joint_speed = float(rad_s)
         return OK
 
-    def movej(self, q, v: float = 0.2, r: float = 0, connect: int = 0, block: int = 1) -> int:
+    def movej(self, q, v: float = 0.4, r: float = 0, connect: int = 0, block: int = 1) -> int:
         bad = self._check_tail(r, connect)
         if bad is not None:
             return bad
@@ -242,7 +242,7 @@ class _MovePlanMixin(_ClientMixin):
     def movej_p(
         self,
         pose,
-        v: float = 0.2,
+        v: float = 0.4,
         r: float = 0,
         connect: int = 0,
         block: int = 1,
@@ -258,10 +258,10 @@ class _MovePlanMixin(_ClientMixin):
         ).to_json()
         return self._send(Mode.MOVEJ, payload, block=block)
 
-    def movel(self, pose, v: float = 0.2, r: float = 0, connect: int = 0, block: int = 1) -> int:
+    def movel(self, pose, v: float = 0.4, r: float = 0, connect: int = 0, block: int = 1) -> int:
         return self.cartesian(pose, v=v, r=r, connect=connect, block=block)
 
-    def cartesian(self, pose, v: float = 0.2, r: float = 0, connect: int = 0, block: int = 1) -> int:
+    def cartesian(self, pose, v: float = 0.4, r: float = 0, connect: int = 0, block: int = 1) -> int:
         """Pose-to-pose: IK the goal, then joint-space smooth PTP (not a TCP line)."""
 
         bad = self._check_tail(r, connect)
@@ -276,7 +276,7 @@ class _MovePlanMixin(_ClientMixin):
         ).to_json()
         return self._send(Mode.MOVEL, payload, block=block)
 
-    def moves(self, poses, v: float = 0.2, r: float = 0, connect: int = 0, block: int = 1) -> int:
+    def moves(self, poses, v: float = 0.4, r: float = 0, connect: int = 0, block: int = 1) -> int:
         bad = self._check_tail(r, connect)
         if bad is not None:
             return bad

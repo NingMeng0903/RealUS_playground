@@ -14,8 +14,9 @@ and holds the planned d* constant.
 Unplanned ``step`` homes ``(d*, ψ*, q*)`` on one progress ``s``.  ``T``
 is the slower of the existing ψ and d rates; ``q*`` is ``srs_ik`` at the
 current TCP (same branch), not the yaml photo at t=0.  Hunt ``d*`` /
-``ψ*`` while moving; freeze ``hold_setpoint`` only when the command and
-TCP are both quiet (or slack is high).  Local ψ search takes over only
+``ψ*`` while moving; ``hold_setpoint`` freezes ``ψ_cmd`` and ``d*``
+(no rate limit toward ``ψ*``) when the command and TCP are quiet, the
+post-PTP enter-fade is running, or slack is high.  Local ψ search takes over only
 while the wrist is collapsed and the elbow is still open (SEW is
 undefined near the J4 floor).
 """
@@ -216,6 +217,13 @@ class PsiRetargetConfig:
     psi_rate_rad_s: float = 25.0 * np.pi / 180.0
     # Unplanned d* is a band around the design split, not a chasing point.
     d_center_rate_m_s: float = 0.02
+    # (ψ_cmd, d*) are a live second-order reference.  A rate cap alone makes
+    # ψ̇ a square wave at 25°/s the tick it is released; these bound ψ̈ / d̈ so
+    # the reference stays C¹ across a mode switch without freezing anything.
+    psi_accel_rad_s2: float = 60.0 * np.pi / 180.0
+    d_center_accel_m_s2: float = 0.06
+    # Time for the homotopy parameter s to reach its nominal 1/T rate.
+    homotopy_ramp_s: float = 0.35
     # Do not let ψ_cmd run more than this ahead of live ψ.
     psi_cmd_lead_rad: float = 18.0 * np.pi / 180.0
     # Design family (side-lying).  Unplanned homotopy and plan_stroke.
@@ -525,13 +533,14 @@ class PostureRetarget:
         rail_hi: float,
         q_nominal: np.ndarray | None = None,
         hold_setpoint: bool = False,
+        rate_scale: float = 1.0,
     ) -> tuple[float, float]:
         """Slew (d*, ψ*, q*) on one s; planned strokes only slew ψ."""
         del q_nominal
         q = np.asarray(q_rad, dtype=float)
         if self._psi_cmd is None or self._d_star is None:
             self.reset(q)
-        dt = max(float(dt_s), 0.0)
+        dt = max(float(dt_s), 0.0) * float(min(max(float(rate_scale), 0.0), 1.0))
         live_psi = fold_psi_to_positive(float(psi_from_q(q)))
         if self._planned:
             psi_out = self._rate_limit_psi(dt, live_psi=live_psi)
@@ -546,9 +555,8 @@ class PostureRetarget:
             self.homotopy_s = 0.0
         self._held_prev = bool(hold_setpoint)
         if hold_setpoint:
-            psi_out = self._rate_limit_psi(dt, live_psi=live_psi)
             self._update_margins(q)
-            return float(psi_out), float(self._d_star)
+            return float(self._psi_cmd), float(self._d_star)
         self._maybe_retarget_psi(
             q,
             dt_s=dt,

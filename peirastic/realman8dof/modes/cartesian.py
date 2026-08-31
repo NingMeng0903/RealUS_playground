@@ -16,7 +16,7 @@ from rm75_control.kinematics.srs_ik import (
     is_reachable,
     shoulder_y_from_q_rail,
 )
-from peirastic.realman8dof.modes.joint import build_movej_phase
+from peirastic.realman8dof.modes.joint import build_movej_phase, speed_frac
 from peirastic.realman8dof.modes.track import build_track_cartesian_phase
 
 
@@ -109,13 +109,7 @@ def resolve_pose_q(
 
 
 def _v_frac(payload: dict) -> float:
-    v = payload.get("v")
-    if v is None:
-        return 0.2
-    v = float(v)
-    if v <= 0.0:
-        return 0.2
-    return min(v, 1.0)
+    return speed_frac(payload.get("v"))
 
 
 def build_movel_phase(
@@ -159,6 +153,7 @@ def build_movel_phase(
         qt,
         q_start=q_start,
         duration_s=None if dur is None else float(dur),
+        v=_v_frac(payload),
         label=str(payload.get("label", "cartesian")),
     )
 

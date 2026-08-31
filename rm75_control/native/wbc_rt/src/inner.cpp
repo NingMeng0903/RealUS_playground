@@ -302,6 +302,8 @@ void InnerLoop::reset(const Vec8& q0) {
   cmd_quiet_s_ = 0.0;
   quiescent_ = false;
   hold_d_prev_ = false;
+  ns_enter_t_ = 1e9;
+  ns_homotopy_open_ = false;
   enabled_ = true;
   plan_drives_rail_ = false;
   direct_ptp_ = false;
@@ -374,7 +376,23 @@ void InnerLoop::set_flags(uint32_t bits) {
   direct_ptp_ = bits & kFlagDirectPtp;
   arm_suppress_ = bits & kFlagArmSuppress;
   const bool next_center = bits & kFlagCenterSuppress;
-  if (center_suppress_ && !next_center) ns_enter_t_ = 0.0;
+  if (center_suppress_ && !next_center) {
+    ns_enter_t_ = 0.0;
+    ns_homotopy_open_ = true;
+    const Vec6 pose = kin_.fk_pose_at(q_cmd_);
+    posture_.reset(q_cmd_, pose);
+    d_star_ = posture_.d_star();
+    psi_cmd_ = posture_.psi_cmd();
+    psi_star_ = posture_.psi_star();
+    homotopy_s_ = 0.0;
+    planned_ = false;
+    d_pref_ = d_star_;
+    d_star_ref_ = d_star_;
+    d_star_ref_init_ = true;
+    d_star_dot_cmd_ = 0.0;
+    e_d_ = 0.0;
+    last_e_mid_ = 0.0;
+  }
   center_suppress_ = next_center;
   manip_active_ = bits & kFlagManipActive;
   rail_ext_active_ = bits & kFlagRailExtActive;
@@ -413,7 +431,13 @@ void InnerLoop::set_rail_pose_target(double y, bool valid) {
 
 void InnerLoop::capture_rail_ext_ref(const Vec8& q) {
   kin_.update(q);
-  d_pref_ = kin_.tcp_xyz()[1] - q[0];
+  const double d_live = kin_.tcp_xyz()[1] - q[0];
+  d_pref_ = d_live;
+  d_star_ref_ = d_live;
+  d_star_ref_init_ = true;
+  d_star_dot_cmd_ = 0.0;
+  e_d_ = 0.0;
+  last_e_mid_ = 0.0;
 }
 
 void InnerLoop::set_rail_ext_mode(int pose_attract) { rail_ext_mode_ = pose_attract; }
@@ -1089,16 +1113,35 @@ TickOut InnerLoop::step(const TickIn& in) {
   const bool slack_high = slack_hold_latched_;
   secondary_alpha_ = raised_cosine_alpha(last_slack_, cfg_.slack_exit, cfg_.slack_enter,
                                          last_sigma_, cfg_.sigma_fade_ref);
-  const bool hold_d = quiescent_;
+  {
+    const double enter = cfg_.ns_enter_fade_s;
+    const double ht = cfg_.ns_homotopy_fade_s;
+    const double t_end = std::max(0.0, enter) + std::max(0.0, ht);
+    if (ns_enter_t_ < t_end) ns_enter_t_ = std::min(ns_enter_t_ + dt, t_end);
+  }
+  const bool fading =
+      cfg_.ns_enter_fade_s > 1e-9 && ns_enter_t_ < cfg_.ns_enter_fade_s;
+  const bool hold_d = fading || (quiescent_ && !ns_homotopy_open_);
   hold_d_prev_ = hold_d;
+  double homotopy_rate = 1.0;
+  if (ns_homotopy_open_) {
+    if (ns_enter_t_ + 1e-15 < cfg_.ns_enter_fade_s) {
+      homotopy_rate = 0.0;
+    } else if (cfg_.ns_homotopy_fade_s > 1e-9) {
+      const double u =
+          clip((ns_enter_t_ - cfg_.ns_enter_fade_s) / cfg_.ns_homotopy_fade_s, 0.0, 1.0);
+      homotopy_rate = smoothstep01(u);
+    }
+  }
 
   if (cfg_.psi_enabled && rail_mode_ == kRailCoupled) {
     const Vec6 pose = kin_.fk_pose_at(q_prev);
-    posture_.step(q_prev, pose, dt, q_lo_[0], q_hi_[0], quiescent_);
+    posture_.step(q_prev, pose, dt, q_lo_[0], q_hi_[0], hold_d, homotopy_rate);
     d_star_ = posture_.d_star();
     psi_cmd_ = posture_.psi_cmd();
     psi_star_ = posture_.psi_star();
     homotopy_s_ = posture_.homotopy_s();
+    if (ns_homotopy_open_ && homotopy_s_ + 1e-6 >= 1.0) ns_homotopy_open_ = false;
     planned_ = posture_.planned();
     d_pref_ = d_star_;
     const Vec8 cand = posture_.q_star();
@@ -1230,7 +1273,7 @@ TickOut InnerLoop::step(const TickIn& in) {
       wall_velocity_bounds(v_max_[0], leave, &u_lo, &u_hi);
     }
 
-    const bool task_hold = quiescent_ && !escape_active_;
+    const bool task_hold = hold_d && !escape_active_;
     const double alpha = secondary_alpha_;
     if (task_hold && !wall_pi_frozen_) {
       mid_integ_ = -cfg_.kp_mid * e_d_;
@@ -1364,7 +1407,6 @@ TickOut InnerLoop::step(const TickIn& in) {
   {
     const double period = cfg_.ns_enter_fade_s;
     if (period > 1e-9 && ns_enter_t_ < period) {
-      ns_enter_t_ = std::min(ns_enter_t_ + dt, period);
       const double u = clip(ns_enter_t_ / period, 0.0, 1.0);
       sec.tail<7>() *= smoothstep01(u);
     }

@@ -34,6 +34,8 @@ class NullspaceTaskConfig:
     q_nominal_rad: np.ndarray | None = None
     # After MOVEJ/direct PTP, fade secondary 0→1 so TCP is not jerked.
     enter_fade_s: float = 0.6
+    # After that hold, C²-fade homotopy toward ψ* so the settle pose is good.
+    homotopy_fade_s: float = 0.6
 
 
 class JointCenteringTask:

@@ -65,10 +65,10 @@ def main() -> int:
     else:
         print("[STATE] from  (live joints unavailable; MOVEJ still uses daemon q_cmd)", flush=True)
     print(f"[STATE] to    {_fmt_q(q_goal)}", flush=True)
-    print("[MODE] MOVEJ  v=0.2  block=1", flush=True)
+    print("[MODE] MOVEJ  v=0.4 (of configured max)  block=1", flush=True)
 
     try:
-        ret = arm.movej(q_goal, v=0.2, r=0, connect=0, block=1)
+        ret = arm.movej(q_goal, v=0.4, r=0, connect=0, block=1)
     except KeyboardInterrupt:
         arm.set_arm_stop()
         print("[STOP] interrupted", flush=True)

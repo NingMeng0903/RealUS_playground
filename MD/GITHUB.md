@@ -44,13 +44,18 @@ git remote add origin git@github.com:NingMeng0903/RealUS_playground.git
 # HTTPS (needs interactive login): https://github.com/NingMeng0903/RealUS_playground.git
 git push -u origin main
 ```
+cd /media/camp/EXT_DRIVE/RealUS_playground
+git status
+git add .
+git commit -m "开始写demo,开始分装，moovej,笛卡尔模式测试完成，缺少努力拉萨评测
+淡如淡出"
+git push origin main
+
 
 ## Subsequent pushes
 
 ```bash
-git add .
-git commit -m "备份控制器，准备修弹跳，简化1"
-git push -u origin main
+980
 ```
 
 If the remote is non-empty:

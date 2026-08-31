@@ -264,6 +264,29 @@ def test_mode_engine_offline_sample() -> None:
     assert v[1] == pytest.approx(0.02)
 
 
+def test_movej_v_scales_plan_duration() -> None:
+    raw, ctx = _ctx()
+    q_t = _SEED.copy()
+    q_t[3] += 0.35
+    fast = compile_request(
+        ctx, ModeRequest(ModeE.MOVEJ, {"q_target": q_t.tolist(), "v": 1.0}), raw=raw
+    )
+    slow = compile_request(
+        ctx, ModeRequest(ModeE.MOVEJ, {"q_target": q_t.tolist(), "v": 0.2}), raw=raw
+    )
+    t_fast = float(fast.arrival_plan_duration_s)
+    t_slow = float(slow.arrival_plan_duration_s)
+    assert t_slow > t_fast * 2.5
+    pose = ctx.kin.fk_pose(q_t).tolist()
+    cart_fast = compile_request(
+        ctx, ModeRequest(ModeE.MOVEL, {"pose": pose, "v": 1.0}), raw=raw
+    )
+    cart_slow = compile_request(
+        ctx, ModeRequest(ModeE.MOVEL, {"pose": pose, "v": 0.2}), raw=raw
+    )
+    assert float(cart_slow.arrival_plan_duration_s) > float(cart_fast.arrival_plan_duration_s) * 2.5
+
+
 def test_goto_and_movej_enable_direct_ptp() -> None:
     raw, ctx = _ctx()
     q_t = _SEED.copy()

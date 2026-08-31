@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Cartesian trajectory planning demo.
 
-Current TCP → recorded TCP (IK + joint-space smooth PTP) → wait 1 s → back.
+Current TCP → recorded TCP (IK + joint-space smooth PTP) → wait 2 s → back.
 
 A pose-to-pose move, not a forced TCP straight line. Same smooth joint
 interpolation as MOVEJ after the goal pose is solved. Window A idles in
@@ -32,7 +32,7 @@ for _p in (_REPO, _REPO / "rm75_control", _REPO / "src"):
 from peirastic.api import PeirasticArm
 from peirastic.api.codes import CODE_NAMES, OK
 
-HOLD_S = 1.0
+HOLD_S = 2.0
 POSE_WAIT_S = 15.0
 POSE_FILE = Path(__file__).resolve().parent / "recorded_tcp.json"
 
@@ -131,10 +131,10 @@ def main() -> int:
         f"[PLAN]  pose→pose joint PTP  Δxyz={dx * 1000.0:.1f} mm  hold={HOLD_S:.1f}s",
         flush=True,
     )
-    print("[MODE] CARTESIAN  current → recorded TCP", flush=True)
+    print("[MODE] CARTESIAN  current → recorded TCP  v=0.4", flush=True)
 
     try:
-        ret = arm.cartesian(target, v=0.2, r=0, connect=0, block=1)
+        ret = arm.cartesian(target, v=0.4, r=0, connect=0, block=1)
         name = CODE_NAMES.get(ret, str(ret))
         print(f"[{'OK' if ret == OK else 'WARN'}] cartesian outbound -> {ret} ({name})", flush=True)
         if ret != OK:
@@ -142,7 +142,7 @@ def main() -> int:
         print(f"[STATE] hold {HOLD_S:.1f}s", flush=True)
         time.sleep(HOLD_S)
         print("[MODE] CARTESIAN  recorded TCP → start", flush=True)
-        ret = arm.cartesian(start, v=0.2, r=0, connect=0, block=1)
+        ret = arm.cartesian(start, v=0.4, r=0, connect=0, block=1)
         name = CODE_NAMES.get(ret, str(ret))
         print(f"[{'OK' if ret == OK else 'WARN'}] cartesian return -> {ret} ({name})", flush=True)
         return 0 if ret == OK else 1
